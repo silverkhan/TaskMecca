@@ -19,28 +19,44 @@ from task_mecca.installer import (
 
 
 class InstallerTests(unittest.TestCase):
-    def test_install_creates_runtime_and_manifest(self):
+    def test_install_creates_framework_manifest_but_no_project_data(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
             target = install(root)
-            self.assertTrue((target / "collab_tools.py").is_file())
-            self.assertTrue((target / "web" / "app.js").is_file())
+            self.assertTrue((target / "framework" / "collab_tools.py").is_file())
+            self.assertTrue((target / "framework" / "web" / "app.js").is_file())
+            self.assertTrue((target / "ROOT_PROMPT.md").is_file())
+            self.assertFalse((target / "data").exists())
+
             manifest = load_manifest(target)
             self.assertIsNotNone(manifest)
-            self.assertEqual(manifest["task_mecca_version"], "0.1.1")
-            self.assertEqual(manifest["managed_files"]["roles/root.md"]["policy"], "customizable")
-            self.assertEqual(manifest["managed_files"]["web/app.js"]["policy"], "framework")
-            self.assertEqual(manifest["managed_files"]["ROOT_PROMPT.md"]["policy"], "customizable")
+            self.assertEqual(manifest["task_mecca_version"], "0.2.0")
+            self.assertEqual(manifest["schema_version"], 2)
+            self.assertEqual(
+                manifest["managed_files"]["framework/roles/root.md"]["policy"],
+                "customizable",
+            )
+            self.assertEqual(
+                manifest["managed_files"]["framework/web/app.js"]["policy"],
+                "framework",
+            )
+            self.assertEqual(
+                manifest["managed_files"]["ROOT_PROMPT.md"]["policy"],
+                "customizable",
+            )
 
     def test_local_customization_is_preserved_when_upstream_unchanged(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
             target = install(root)
-            role = target / "roles" / "root.md"
-            role.write_text(role.read_text(encoding="utf-8") + "\nLOCAL CUSTOMIZATION\n", encoding="utf-8")
+            role = target / "framework" / "roles" / "root.md"
+            role.write_text(
+                role.read_text(encoding="utf-8") + "\nLOCAL CUSTOMIZATION\n",
+                encoding="utf-8",
+            )
             plan = update_plan(root)
-            self.assertIn("roles/root.md", plan["preserve"])
-            self.assertNotIn("roles/root.md", plan["conflicts"])
+            self.assertIn("framework/roles/root.md", plan["preserve"])
+            self.assertNotIn("framework/roles/root.md", plan["conflicts"])
             apply_update(root)
             self.assertIn("LOCAL CUSTOMIZATION", role.read_text(encoding="utf-8"))
 
@@ -50,15 +66,14 @@ class InstallerTests(unittest.TestCase):
             target = install(root)
             manifest_path = target / MANIFEST_NAME
             manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-            # Simulate an older upstream baseline so the current bundled role represents a newer upstream revision.
-            manifest["managed_files"]["roles/root.md"]["baseline_sha256"] = "0" * 64
-            manifest["task_mecca_version"] = "0.0.9"
+            manifest["managed_files"]["framework/roles/root.md"]["baseline_sha256"] = "0" * 64
+            manifest["task_mecca_version"] = "0.1.9"
             manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
 
-            role = target / "roles" / "root.md"
+            role = target / "framework" / "roles" / "root.md"
             role.write_text("LOCAL ROLE EDIT\n", encoding="utf-8")
             plan = update_plan(root)
-            self.assertIn("roles/root.md", plan["conflicts"])
+            self.assertIn("framework/roles/root.md", plan["conflicts"])
 
             backup = create_backup(
                 root,
@@ -66,17 +81,51 @@ class InstallerTests(unittest.TestCase):
                 from_version=plan["installed_version"],
                 to_version=plan["available_version"],
             )
-            self.assertEqual((backup / "roles" / "root.md").read_text(), "LOCAL ROLE EDIT\n")
+            self.assertEqual(
+                (backup / "framework" / "roles" / "root.md").read_text(),
+                "LOCAL ROLE EDIT\n",
+            )
             apply_update(root, allow_conflicts=True)
             self.assertNotEqual(role.read_text(), "LOCAL ROLE EDIT\n")
-            self.assertEqual(load_manifest(target)["task_mecca_version"], "0.1.1")
+            self.assertEqual(load_manifest(target)["task_mecca_version"], "0.2.0")
+
+    def test_pre_02_flat_managed_file_is_retired_without_touching_data(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            target = install(root)
+
+            legacy_bytes = b"legacy flat runtime\n"
+            legacy = target / "collab_tools.py"
+            legacy.write_bytes(legacy_bytes)
+
+            project_data = target / "data" / "audit-evidence" / "A-1.txt"
+            project_data.parent.mkdir(parents=True)
+            project_data.write_text("KEEP\n", encoding="utf-8")
+
+            manifest_path = target / MANIFEST_NAME
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            manifest["task_mecca_version"] = "0.1.1"
+            manifest["schema_version"] = 1
+            manifest["managed_files"]["collab_tools.py"] = {
+                "policy": "framework",
+                "baseline_sha256": hashlib.sha256(legacy_bytes).hexdigest(),
+            }
+            manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+
+            plan = update_plan(root)
+            self.assertIn("collab_tools.py", plan["removals"])
+            apply_update(root)
+
+            self.assertFalse(legacy.exists())
+            self.assertTrue((target / "framework" / "collab_tools.py").is_file())
+            self.assertEqual(project_data.read_text(encoding="utf-8"), "KEEP\n")
 
     def test_retired_unmodified_agents_snippet_is_removed_on_update(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
             target = install(root)
             legacy = target / "AGENTS_TASK_MECCA_SNIPPET.md"
-            legacy_bytes = b"legacy project-wide integration snippet\\n"
+            legacy_bytes = b"legacy project-wide integration snippet\n"
             legacy.write_bytes(legacy_bytes)
 
             manifest_path = target / MANIFEST_NAME
@@ -93,21 +142,22 @@ class InstallerTests(unittest.TestCase):
             apply_update(root)
             self.assertFalse(legacy.exists())
             self.assertTrue((target / "ROOT_PROMPT.md").is_file())
-            self.assertEqual(load_manifest(target)["task_mecca_version"], "0.1.1")
 
-    def test_project_owned_backlog_is_never_touched(self):
+    def test_project_owned_data_is_never_touched(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
             target = install(root)
-            backlog = target / "backlog_demo" / "A-1_todo.md"
-            backlog.parent.mkdir()
-            backlog.write_text("# A-1 project data\n", encoding="utf-8")
+            artifact = target / "data" / "measurements" / "A-1.json"
+            artifact.parent.mkdir(parents=True)
+            artifact.write_text('{"value": 1}\n', encoding="utf-8")
             apply_update(root)
-            self.assertEqual(backlog.read_text(encoding="utf-8"), "# A-1 project data\n")
+            self.assertEqual(artifact.read_text(encoding="utf-8"), '{"value": 1}\n')
 
     def test_manifest_declares_project_owned_patterns(self):
         manifest = build_manifest(bundled_files())
         patterns = manifest["project_owned_patterns"]
+        self.assertIn("data/**", patterns)
+        self.assertIn("backlog/**", patterns)
         self.assertIn("backlog_*/**", patterns)
         self.assertIn(".runtime/**", patterns)
         self.assertIn("backups/**", patterns)
