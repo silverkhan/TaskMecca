@@ -5,7 +5,7 @@ For first use, you only need the following three steps.
 ## 1. Launch the dashboard
 
 ```bash
-uv run _task_mecca/framework/collab_tools.py web
+python _task_mecca/framework/collab_tools.py web
 ```
 
 The dashboard automatically detects backlog ledgers under `_task_mecca`. New projects use the canonical `data/backlog/` location. For compatibility, ledgers whose names begin with `backlog` such as `data/backlog_b` or legacy `backlog_b` remain discoverable; canonical `data/backlog/` has highest priority. Use the **Backlog** selector in the top bar to switch folders manually, or choose **Auto** to return to automatic selection.
