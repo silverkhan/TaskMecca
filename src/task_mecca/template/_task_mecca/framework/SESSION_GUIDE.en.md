@@ -9,12 +9,12 @@ Task Mecca documentation starts with what the user needs to do first. Internal r
 From the project root:
 
 ```bash
-uv run _task_mecca/collab_tools.py web
+uv run _task_mecca/framework/collab_tools.py web
 ```
 
 The browser dashboard is read-only and localhost-only. It shows backlog state, subagent workload, lifecycle timing, Needs Attention, and access observations.
 
-Backlog folders are detected automatically. Names containing `backlog` are preferred; if several exist, the candidate with the most recent recognized task change across active files and `archive/**` / `_complete/**` is selected. The top-bar **Backlog** selector can override the choice; **Auto** restores automatic selection.
+Backlog ledgers are detected automatically under `_task_mecca`. New projects use canonical `data/backlog/`; compatibility remains for names beginning with `backlog`, including `data/backlog_b` and legacy `backlog_b`. Canonical `data/backlog/` has highest priority. The top-bar **Backlog** selector can override the choice; **Auto** restores automatic selection.
 
 `archive/YYYY-MM/*.md` is read recursively. Current and completed tasks appear in one Backlog screen. `All` is the default status filter; `Ready / Working / Hold / Blocked / Done` can be combined.
 
@@ -29,7 +29,7 @@ The top bar includes a **Language** dropdown. `한국어` and `English` are curr
 Without `uv`:
 
 ```bash
-python _task_mecca/collab_tools.py web
+python _task_mecca/framework/collab_tools.py web
 ```
 
 ## 2. Configure Root
@@ -42,7 +42,7 @@ Integrate `AGENTS_TASK_MECCA_SNIPPET.md` once into the project-root `AGENTS.md`.
 
 ```text
 Act as the Task Mecca Root for this session.
-First read _task_mecca/SESSION_GUIDE.md, _task_mecca/collab.md, and _task_mecca/roles/root.md and follow those rules.
+First read _task_mecca/framework/SESSION_GUIDE.md, _task_mecca/framework/collab.md, and _task_mecca/framework/roles/root.md and follow those rules.
 Before delegating executable work to subagents, run the Full Access preflight described in SESSION_GUIDE.
 Classify work as Simple Task or Defined Task. For a simple task that is directly verifiable without additional interpretation, record only the goal and acceptance criteria and register it immediately. For work requiring scope, design, or user choices, prepare a requirement definition, get my confirmation, and then ask Registrar to register it losslessly.
 After registration, let Controller allocate work to Workers based on dependency and continuity, while Root remains the user-facing interface.
@@ -70,11 +70,11 @@ The detail UI is ordered as `Overview → Lifecycle → contract → execution/n
 At the first executable request of a session, Root performs the following automatically:
 
 1. Read project-required instructions and this `SESSION_GUIDE`.
-2. Read `_task_mecca/collab.md` and `_task_mecca/roles/root.md`.
+2. Read `_task_mecca/framework/collab.md` and `_task_mecca/framework/roles/root.md`.
 3. Before spawning Registrar/Controller/Workers, run:
 
 ```bash
-uv run _task_mecca/collab_tools.py preflight --require-full-access --json
+uv run _task_mecca/framework/collab_tools.py preflight --require-full-access --json
 ```
 
 4. Proceed only when `access.orchestration_ready == true`.
