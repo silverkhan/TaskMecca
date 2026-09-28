@@ -10,7 +10,7 @@ Task Mecca의 사용자 가이드는 **사용자가 실제로 무엇을 먼저 �
 프로젝트 루트에서 다음을 실행한다.
 
 ```bash
-uv run _task_mecca/framework/collab_tools.py web
+python _task_mecca/framework/collab_tools.py web
 ```
 
 브라우저가 열리며 기본 주소는 `http://127.0.0.1:8765`다. 대시보드는 read-only/local-only이며
@@ -74,7 +74,7 @@ Web UI에서 백로그 상세를 열면 `Overview → Lifecycle → 작업 계�
 
 1. **Root 활성화** — `_task_mecca/ROOT_PROMPT.md`의 프롬프트를 선택한 user-facing 세션에 1회 입력
 2. **작업 부여** — 자연어 또는 Markdown으로 요구사항을 Root에게 전달
-3. **대시보드** — 필요할 때 `uv run _task_mecca/framework/collab_tools.py web` 실행
+3. **대시보드** — 필요할 때 `python _task_mecca/framework/collab_tools.py web` 실행
 
 프로젝트 전역 `AGENTS.md` 연동은 Task Mecca의 기본 activation mechanism이 아니다.
 
@@ -93,7 +93,7 @@ Web UI에서 백로그 상세를 열면 `Overview → Lifecycle → 작업 계�
 ```bash
 python _task_mecca/framework/collab_tools.py preflight --require-full-access --json
 # uv 사용 시
-uv run _task_mecca/framework/collab_tools.py preflight --require-full-access --json
+python _task_mecca/framework/collab_tools.py preflight --require-full-access --json
 ```
 
 4. `access.orchestration_ready == true`이면 요구사항 정제와 이후 Registrar/Controller/worker dispatch를 정상 진행한다.
