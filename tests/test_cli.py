@@ -7,8 +7,33 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from task_mecca.cli import cmd_update
+from task_mecca.cli import cmd_init, cmd_update
 from task_mecca.installer import MANIFEST_NAME, install
+
+
+class CliInitTests(unittest.TestCase):
+    def test_init_preserves_existing_agents_md_without_prompting(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            agents = root / "AGENTS.md"
+            original = "# Existing project instructions\\n"
+            agents.write_text(original, encoding="utf-8")
+            args = argparse.Namespace(project=str(root))
+            with patch("builtins.input", side_effect=AssertionError("init must not prompt for AGENTS.md")):
+                rc = cmd_init(args)
+            self.assertEqual(rc, 0)
+            self.assertEqual(agents.read_text(encoding="utf-8"), original)
+            self.assertTrue((root / "_task_mecca" / "ROOT_PROMPT.md").is_file())
+
+    def test_init_does_not_create_agents_md(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            args = argparse.Namespace(project=str(root))
+            with patch("builtins.input", side_effect=AssertionError("init must not prompt for AGENTS.md")):
+                rc = cmd_init(args)
+            self.assertEqual(rc, 0)
+            self.assertFalse((root / "AGENTS.md").exists())
+            self.assertTrue((root / "_task_mecca" / "ROOT_PROMPT.md").is_file())
 
 
 class CliUpdateTests(unittest.TestCase):
