@@ -22,11 +22,6 @@ backlog, Subagent Workload, lifecycle timer, Needs Attention, Full Access 상태
 
 `archive/YYYY-MM/*.md`는 재귀적으로 읽는다. Web UI는 상태별 메뉴를 나누지 않고 **Backlog** 한 화면으로 통합한다. 기본은 `All` 단독 선택이며 전체 상태를 `ID ↓` 순으로 페이지 단위 표시한다. 페이지 크기의 기본값은 **Auto**이며 현재 브라우저 높이, 실제 backlog 행 높이, 하단 shortcut bar 여유 공간을 기준으로 한 화면에 들어갈 행 수를 자동 결정한다. 창 크기나 sidebar 폭이 바뀌면 다시 계산하며 `Per page`에서 `10 / 20 / 50`으로 고정할 수도 있다. `Ready / Working / Hold / Blocked / Done` 버튼은 여러 개를 동시에 선택할 수 있고, 개별 필터가 하나 이상 선택되면 `All`이 해제된다. `All`을 다시 누르면 나머지 필터를 모두 해제한다. `ID ↑ / Updated newest / Updated oldest` 정렬도 지원하며, Updated는 backlog 마지막 update 시각 기준이다. 목록에서는 `↑/↓` 이동, `Enter`/`→` 상세 진입, `←`/`Esc` 복귀, `/` 검색, `PgUp/PgDn` 페이지 이동을 사용할 수 있다.
 
-`uv`를 사용하지 않는 환경에서는 다음도 가능하다.
-
-```bash
-python _task_mecca/framework/collab_tools.py web
-```
 
 ## 2. Root 세션 활성화
 
@@ -91,8 +86,6 @@ Web UI에서 백로그 상세를 열면 `Overview → Lifecycle → 작업 계�
 3. 요구사항을 길게 정제하거나 Registrar/Controller를 생성하기 전에 다음 effective access gate를 먼저 실행한다.
 
 ```bash
-python _task_mecca/framework/collab_tools.py preflight --require-full-access --json
-# uv 사용 시
 python _task_mecca/framework/collab_tools.py preflight --require-full-access --json
 ```
 
