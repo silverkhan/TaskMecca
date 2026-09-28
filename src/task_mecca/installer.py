@@ -10,28 +10,32 @@ from pathlib import Path
 from typing import Iterable
 
 from . import __version__ as PACKAGE_VERSION
-SCHEMA_VERSION = 1
+
+SCHEMA_VERSION = 2
 TARGET_DIR = "_task_mecca"
 MANIFEST_NAME = "manifest.json"
 
 FRAMEWORK_FILES = {
-    "collab_tools.py",
-    "runtime_metadata.py",
     ".gitignore",
 }
-FRAMEWORK_PREFIXES = ("web/",)
+FRAMEWORK_PREFIXES = ("framework/",)
 CUSTOMIZABLE_FILES = {
-    "README.md",
-    "README.en.md",
-    "SESSION_GUIDE.md",
-    "SESSION_GUIDE.en.md",
-    "collab.md",
-    "_template.md",
     "ROOT_PROMPT.md",
+    "framework/README.md",
+    "framework/README.en.md",
+    "framework/SESSION_GUIDE.md",
+    "framework/SESSION_GUIDE.en.md",
+    "framework/collab.md",
+    "framework/_template.md",
 }
-CUSTOMIZABLE_PREFIXES = ("roles/",)
+CUSTOMIZABLE_PREFIXES = ("framework/roles/",)
 UPDATER_FILES = {"VERSION", MANIFEST_NAME}
+
+# Everything below data/ belongs to the project, not the Task Mecca distribution.
+# Legacy backlog locations remain declared for compatibility with pre-0.2 projects.
 PROJECT_OWNED_PATTERNS = (
+    "data/**",
+    "backlog/**",
     "backlog_*/**",
     ".runtime/**",
     "backups/**",
@@ -52,12 +56,12 @@ def _sha256(data: bytes) -> str:
 
 
 def _policy_for(path: str) -> str:
-    if path in FRAMEWORK_FILES or path.startswith(FRAMEWORK_PREFIXES):
-        return "framework"
     if path in CUSTOMIZABLE_FILES or path.startswith(CUSTOMIZABLE_PREFIXES):
         return "customizable"
     if path in UPDATER_FILES:
         return "updater"
+    if path in FRAMEWORK_FILES or path.startswith(FRAMEWORK_PREFIXES):
+        return "framework"
     return "framework"
 
 
@@ -122,6 +126,8 @@ def install(project_root: Path, *, overwrite: bool = False) -> Path:
     for rel, item in files.items():
         _write_file(target, rel, item.content)
     _write_manifest(target, build_manifest(files))
+    # Deliberately do not create data/ or backlog/. Registrar creates the canonical
+    # data/backlog ledger only when the first task is registered.
     return target
 
 
@@ -213,6 +219,23 @@ def create_backup(project_root: Path, files: Iterable[str], *, from_version: str
     return backup
 
 
+def _prune_empty_managed_dirs(target: Path) -> None:
+    # Remove empty directories left by framework layout migrations only. Project data,
+    # runtime state, and backups are never traversed or removed here.
+    protected = {"data", ".runtime", "backups"}
+    for path in sorted((p for p in target.rglob("*") if p.is_dir()), key=lambda p: len(p.parts), reverse=True):
+        try:
+            rel = path.relative_to(target)
+        except ValueError:
+            continue
+        if rel.parts and rel.parts[0] in protected:
+            continue
+        try:
+            path.rmdir()
+        except OSError:
+            pass
+
+
 def apply_update(project_root: Path, *, allow_conflicts: bool = False) -> dict:
     target = project_root / TARGET_DIR
     plan = update_plan(project_root)
@@ -223,7 +246,6 @@ def apply_update(project_root: Path, *, allow_conflicts: bool = False) -> dict:
     previous = load_manifest(target) or {}
     previous_files = previous.get("managed_files", {})
 
-    # Remove files retired by the new package. Conflicted removals have already been backed up.
     for rel in plan["removals"] + [p for p in plan["conflicts"] if p not in current_files]:
         path = target / rel
         if path.is_file():
@@ -235,11 +257,11 @@ def apply_update(project_root: Path, *, allow_conflicts: bool = False) -> dict:
         baseline = prev.get("baseline_sha256") if prev else None
         local_modified = prev is not None and disk_hash != baseline
         upstream_changed = prev is None or baseline != item.sha256
-        if rel in plan["conflicts"] or not local_modified or upstream_changed and rel in plan["safe"]:
+        if rel in plan["conflicts"] or not local_modified or (upstream_changed and rel in plan["safe"]):
             _write_file(target, rel, item.content)
         elif local_modified and not upstream_changed:
-            # Keep local customization when upstream did not change this file.
             pass
 
+    _prune_empty_managed_dirs(target)
     _write_manifest(target, build_manifest(current_files))
     return plan
