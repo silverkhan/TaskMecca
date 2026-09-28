@@ -1,0 +1,126 @@
+# Task Mecca
+
+For first use, you only need the following three steps.
+
+## 1. Launch the dashboard
+
+```bash
+uv run _task_mecca/collab_tools.py web
+```
+
+The dashboard automatically detects backlog folders inside the project. Folders whose names contain `backlog` are preferred; when multiple candidates exist, Task Mecca selects the one with the most recent recognized task change across active files and `archive/**` / `_complete/**`. Use the **Backlog** selector in the top bar to switch folders manually, or choose **Auto** to return to automatic selection.
+
+Completed work under `archive/YYYY-MM/` is read recursively. The **Backlog** screen shows current and completed tasks together. **All** is the default status filter; `Ready / Working / Hold / Blocked / Done` can be combined as multi-select filters.
+
+The default sort is `ID ↓`. You can switch to `ID ↑`, `Updated newest`, or `Updated oldest`. Updated sorting uses each backlog item's last update timestamp. The list now exposes **Updated as a dedicated column**, showing both relative time and date/time without opening the task.
+
+Page size defaults to **Auto**. Task Mecca measures the browser viewport and actual row height so one page fits the available vertical space. You can switch to fixed sizes `10 / 20 / 50`.
+
+Keyboard navigation:
+
+- `↑ / ↓`: move selection
+- `Enter` or `→`: open task
+- `←` or `Esc`: return to list
+- `/`: focus search
+- `PgUp / PgDn`: change page
+
+Task details place **Lifecycle immediately below Overview**. Wide screens show a floating right-side TOC; narrower screens show a floating TOC button that opens the same navigation panel.
+
+Use the sidebar arrow to collapse or expand the left navigation. Collapsed mode keeps icons visible; expanded mode shows icons and labels.
+
+The top bar includes a **Language** dropdown. Current languages are `한국어` and `English`. The selection is stored in the browser. Task Mecca UI chrome, generated messages, states, and User Manual follow the selected language. User-authored backlog Markdown is preserved as written and is not automatically translated. The language registry is designed so additional languages can be added later.
+
+The dashboard's Full Access indicator is historical information. Task Mecca runs a fresh active preflight immediately before each subagent dispatch.
+
+### Timing metrics
+
+- **Queue Time**: registration to first `doing`
+- **Active Time**: cumulative time across all `doing` intervals
+- **Wait Time**: cumulative time across all `hold` intervals
+- **Lead Time**: registration to completion; for unfinished work it continues to the current time
+
+If the current filename state is ahead of committed Git lifecycle history, Task Mecca records a provisional observed transition in `.runtime/lifecycle_observations.json`. This keeps Active/Wait timing from resetting while state-transition commits are pending. Git evidence takes precedence when it later arrives.
+
+Without `uv`:
+
+```bash
+python _task_mecca/collab_tools.py web
+```
+
+## 2. Configure Root
+
+If the project-level `AGENTS.md` already includes `AGENTS_TASK_MECCA_SNIPPET.md`, no additional setup is required. Otherwise, enter the following once in a new session:
+
+```text
+Act as the Task Mecca Root for this session.
+First read _task_mecca/SESSION_GUIDE.md, _task_mecca/collab.md, and _task_mecca/roles/root.md and follow those rules.
+Before delegating executable work to subagents, run the Full Access preflight described in SESSION_GUIDE.
+Classify work as Simple Task or Defined Task. For a simple task that is directly verifiable without additional interpretation, record only the goal and acceptance criteria and register it immediately. For work requiring scope, design, or user choices, prepare a requirement definition, get my confirmation, and then ask Registrar to register it losslessly.
+After registration, let Controller allocate work to Workers based on dependency and continuity, while Root remains the user-facing interface.
+```
+
+## 3. Assign work
+
+There is no special command syntax. Describe the task to Root in natural language or Markdown.
+
+```text
+Fix the incorrect command shown in README.
+```
+
+This is typically a **Simple Task**: goal and acceptance criteria are already clear.
+
+```text
+Improve backlog auto-discovery and change archive, filtering, and sorting behavior while preserving compatibility.
+```
+
+This is typically a **Defined Task**: Root clarifies the request, writes a requirement definition, gets user confirmation, then Registrar → Controller → Worker handles execution.
+
+Root chooses the lane based on whether the request is directly verifiable without additional interpretation, not simply by task size.
+
+## Task Mecca workflow
+
+```mermaid
+flowchart TD
+    U[User request] --> R[Root]
+    R --> E{Executable work?}
+    E -- No --> C[Root answers or discusses design]
+    E -- Yes --> A[Full Access preflight]
+    A -->|Fail| F[Ask user to enable Full Access]
+    F --> A
+    A -->|Pass| K{Directly verifiable without more interpretation?}
+    K -- Yes --> S[Simple Task: goal + acceptance criteria]
+    K -- No --> D[Defined Task: clarification + requirement definition]
+    D --> Q[User confirmation]
+    S --> G[Registrar: lossless registration]
+    Q --> G
+    G --> O[Controller: dependency + continuity]
+    O --> W[Worker: implementation]
+    W --> V[Controller: acceptance verification]
+    V -->|Remaining work| O
+    V -->|Complete| Z[Done: result + verification]
+```
+
+The Web UI renders fenced `mermaid` blocks as diagrams and lets you view/copy the source.
+
+For full operating rules, open **HELP → User Manual → Detailed Operations Guide** or read `SESSION_GUIDE.en.md`.
+
+## Installation and update ownership
+
+When Task Mecca is installed through the public bootstrap package, `_task_mecca/manifest.json` records the installed version and baseline hashes.
+
+- **Framework managed**: `collab_tools.py`, `runtime_metadata.py`, `web/*`. Updated automatically when upstream changes.
+- **Customizable managed**: `roles/*`, `SESSION_GUIDE*.md`, `collab.md`, `_template.md`, and Task Mecca manuals. If both the project copy and upstream changed, the updater lists those files, recommends a backup, creates one when approved, then warns before overwrite.
+- **Project owned**: `backlog_*`, archive content, and project-specific settings. Never overwritten by the updater.
+- **Runtime/backup**: `.runtime/*` and `backups/*`. Local-only operational/safety data and ignored by Git by default.
+
+The normal update entry point is intentionally just:
+
+```bash
+uvx task-mecca update
+```
+
+When running directly from GitHub before PyPI publication:
+
+```bash
+uvx --from git+https://github.com/silverkhan/TaskMecca.git task-mecca update
+```
