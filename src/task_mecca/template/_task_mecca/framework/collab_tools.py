@@ -9,7 +9,7 @@ spawn/message/wait 같은 협업 기능은 모델 런타임
 
 * ``agent``: canonical logical task path를 검증한다.
 * ``worker-name``: 새 worker에 사용할 포켓몬 별칭을 결정한다.
-* ``preflight``: backlog 원장과 effective Full Access/dispatch 준비 상태를 확인한다.
+* ``ensure-backlog``: 기존 원장을 선택하거나 첫 등록용 canonical `data/backlog`를 생성한다.\n* ``preflight``: backlog 원장과 effective Full Access/dispatch 준비 상태를 확인한다.
 * ``next-id``: archive를 포함한 다음 ID와 6자리 정렬키를 계산한다.
 * ``search``: 전체 backlog에서 관련 후보를 좁힌다.
 * ``inspect``: 항목 상태, 의존성, 담당 범위와 연속성 근거를 본다.
@@ -268,6 +268,7 @@ def discover_backlog_folders(root: Optional[Path] = None) -> list[dict[str, obje
         })
     candidates.sort(
         key=lambda row: (
+            int(int(row["record_count"]) > 0),
             int(bool(row["canonical"])),
             int(bool(row["under_data"])),
             int(bool(row["backlog_named"])),
