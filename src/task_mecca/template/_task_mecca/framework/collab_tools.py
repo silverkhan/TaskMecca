@@ -1247,7 +1247,8 @@ def doctor_report(
         "contracts": _contract_problems(rows),
     }
     if protocol_checks:
-        checks["dangling_links"] = dangling_links(base / "collab.md") if (base / "collab.md").is_file() else ["collab.md"]
+        protocol = PROTOCOL_ROOT / "collab.md"
+        checks["dangling_links"] = dangling_links(protocol) if protocol.is_file() else [str(protocol)]
     return {
         "ok": not any(bool(value) for value in checks.values()),
         "root": str(base),
