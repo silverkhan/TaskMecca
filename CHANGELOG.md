@@ -2,6 +2,13 @@
 
 All notable public releases will be documented here.
 
+## 0.1.1 - 2026-09-28
+
+- stop creating, modifying, or prompting to append Task Mecca instructions to project-level `AGENTS.md`
+- make Root activation explicit and session-scoped through `_task_mecca/ROOT_PROMPT.md`
+- document the invariant: installing Task Mecca does not make every project session Root
+- safely retire the 0.1.0 `AGENTS_TASK_MECCA_SNIPPET.md` managed file during update
+
 ## 0.1.0 - 2026-09-28
 
 Initial public alpha.
