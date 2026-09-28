@@ -29,3 +29,15 @@ Please include:
 - compatibility impact,
 - tests for parser/lifecycle/update behavior when relevant,
 - user-facing documentation updates for CLI/UI changes.
+
+
+## Installed ownership boundary
+
+The installed template has a physical ownership boundary:
+
+- `_task_mecca/framework/**`: framework-managed or customizable-managed distribution files.
+- `_task_mecca/data/**`: durable project/agent-owned data; never add these files to the package template or updater inventory.
+- `_task_mecca/.runtime/**`: ephemeral runtime state.
+- `_task_mecca/backups/**`: local updater safety copies.
+
+The installer must not create project data. Canonical `data/backlog/` is created by Registrar on first task registration.
