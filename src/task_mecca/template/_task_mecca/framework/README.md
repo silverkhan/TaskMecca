@@ -5,10 +5,10 @@
 ## 1. 대시보드 실행
 
 ```bash
-uv run _task_mecca/collab_tools.py web
+uv run _task_mecca/framework/collab_tools.py web
 ```
 
-대시보드는 프로젝트 안에서 백로그 폴더를 자동 탐지한다. 폴더명에 `backlog`가 포함된 후보를 우선하고, 여러 후보가 있으면 active 및 `archive/**`/`_complete/**` 작업 파일의 최근 변경 시각이 가장 최신인 폴더를 자동 선택한다. 상단 **Backlog** 선택기에서 다른 후보로 즉시 바꿀 수 있고, `Auto`를 선택하면 다시 최근 변경 기준 자동 선택으로 돌아간다. 상단 **Language** 드롭다운에서는 `한국어 / English`를 선택할 수 있으며 선택값은 브라우저에 저장된다. Task Mecca UI 문구·상태·메시지·User Manual은 선택 언어를 따르며, 사용자가 작성한 백로그 Markdown 원문은 자동 번역하지 않는다.
+대시보드는 `_task_mecca` 안에서 백로그 폴더를 자동 탐지한다. 신규 프로젝트의 canonical 위치는 `data/backlog/`이며, 기존 호환성을 위해 이름이 `backlog`로 시작하는 `data/backlog_b`, legacy `backlog_b` 같은 원장도 탐색한다. canonical `data/backlog/`가 있으면 가장 우선한다. 상단 **Backlog** 선택기에서 다른 후보로 즉시 바꿀 수 있고, `Auto`를 선택하면 다시 최근 변경 기준 자동 선택으로 돌아간다. 상단 **Language** 드롭다운에서는 `한국어 / English`를 선택할 수 있으며 선택값은 브라우저에 저장된다. Task Mecca UI 문구·상태·메시지·User Manual은 선택 언어를 따르며, 사용자가 작성한 백로그 Markdown 원문은 자동 번역하지 않는다.
 
 `archive/YYYY-MM/` 아래의 완료 작업도 자동으로 읽는다. Web UI의 **Backlog** 한 화면에서 현재 작업과 완료 작업을 함께 조회하며, 기본 `All` 필터는 전체 상태를 표시한다. `Ready / Working / Hold / Blocked / Done`은 버튼형 다중 필터로 조합할 수 있고 `All`을 누르면 개별 필터가 해제된다. 정렬 기본값은 `ID ↓`이며 `ID ↑ / Updated newest / Updated oldest`로 바꿀 수 있다. 목록에는 **독립된 Updated 컬럼**을 두어 상대시간과 실제 날짜/시각을 함께 표시하므로 상세 진입 없이 최근 갱신 시점을 확인할 수 있다. Updated 정렬은 backlog의 마지막 update 시각(파일 수정 또는 최신 lifecycle event)을 기준으로 한다.
 
@@ -33,8 +33,12 @@ Task Mecca는 subagent를 실제 dispatch하기 직전에 fresh active preflight
 `uv`를 사용하지 않는 환경에서는:
 
 ```bash
-python _task_mecca/collab_tools.py web
+python _task_mecca/framework/collab_tools.py web
 ```
+
+## Framework / Data 경계
+
+설치 시에는 `framework/`만 배포되고 `data/`는 만들지 않는다. 첫 task 등록 시 Registrar가 `ensure-backlog`를 통해 기존 원장을 선택하거나, 원장이 없으면 `_task_mecca/data/backlog/`를 생성한다. Agent가 만드는 durable 부산물도 framework와 섞지 말고 필요할 때 `data/` 아래에 둔다.
 
 ## 2. Root 세션 활성화
 
@@ -115,7 +119,7 @@ For older completed tasks where no `doing` transition was ever committed or obse
 
 - **Framework managed**: `collab_tools.py`, `runtime_metadata.py`, `web/*`. upstream 변경 시 자동 업데이트한다.
 - **Customizable managed**: `roles/*`, `SESSION_GUIDE*.md`, `collab.md`, `_template.md`, Task Mecca 매뉴얼. 프로젝트 수정과 upstream 변경이 동시에 존재할 때 수정 파일 목록을 보여주고 백업을 권장한다. 동의하면 백업을 만든 뒤 덮어쓰기 전에 다시 안내·확인한다.
-- **Project owned**: `backlog_*`, archive 내용, 프로젝트별 설정. updater가 덮어쓰지 않는다.
+- **Project owned**: `_task_mecca/data/**` 전체. Registrar가 첫 등록 시 `data/backlog/`를 만들며 updater는 `data/**`를 절대 덮어쓰지 않는다. pre-0.2 `backlog*` 경로도 호환을 위해 project-owned로 취급한다.
 - **Runtime/backup**: `.runtime/*`, `backups/*`. 로컬 운영/안전 데이터이며 기본적으로 Git에서 제외한다.
 
 사용자가 기억할 일반 업데이트 진입점은 하나다.
