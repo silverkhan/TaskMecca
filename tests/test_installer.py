@@ -29,7 +29,7 @@ class InstallerTests(unittest.TestCase):
 
             manifest = load_manifest(target)
             self.assertIsNotNone(manifest)
-            self.assertEqual(manifest["task_mecca_version"], "0.2.0")
+            self.assertEqual(manifest["task_mecca_version"], "0.2.1")
             self.assertEqual(manifest["schema_version"], 2)
             self.assertEqual(
                 manifest["managed_files"]["framework/roles/root.md"]["policy"],
@@ -86,7 +86,7 @@ class InstallerTests(unittest.TestCase):
             )
             apply_update(root, allow_conflicts=True)
             self.assertNotEqual(role.read_text(), "LOCAL ROLE EDIT\n")
-            self.assertEqual(load_manifest(target)["task_mecca_version"], "0.2.0")
+            self.assertEqual(load_manifest(target)["task_mecca_version"], "0.2.1")
 
     def test_update_migrates_unmodified_legacy_framework_layout(self):
         with tempfile.TemporaryDirectory() as td:
@@ -138,7 +138,7 @@ class InstallerTests(unittest.TestCase):
             apply_update(root)
             self.assertFalse(legacy.exists())
             self.assertTrue((target / "ROOT_PROMPT.md").is_file())
-            self.assertEqual(load_manifest(target)["task_mecca_version"], "0.2.0")
+            self.assertEqual(load_manifest(target)["task_mecca_version"], "0.2.1")
 
     def test_project_owned_data_is_never_touched(self):
         with tempfile.TemporaryDirectory() as td:
