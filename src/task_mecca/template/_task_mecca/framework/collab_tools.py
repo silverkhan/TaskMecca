@@ -167,7 +167,10 @@ def _root(value: Optional[Path]) -> Path:
 
 
 BACKLOG_SCAN_MAX_DEPTH = int(os.getenv("TASK_MECCA_BACKLOG_SCAN_DEPTH", "4"))
-BACKLOG_SCAN_SKIP = {".git", ".venv", "venv", "node_modules", "__pycache__", ".mypy_cache", ".pytest_cache"}
+BACKLOG_SCAN_SKIP = {
+    ".git", ".venv", "venv", "node_modules", "__pycache__", ".mypy_cache", ".pytest_cache",
+    "framework", ".runtime", "backups",
+}
 ARCHIVE_MONTH_RE = re.compile(r"^\d{4}-\d{2}$")
 
 
@@ -318,7 +321,11 @@ def _item_dirs(root: Path) -> list[Path]:
 
 def _selected_ledger_root(base: Path) -> Path:
     folders = _item_dirs(base)
-    return folders[0] if folders else base
+    if folders:
+        return folders[0]
+    if base.resolve() in {TASK_MECCA_ROOT.resolve(), FRAMEWORK_ROOT.resolve()}:
+        return CANONICAL_BACKLOG_ROOT
+    return base
 
 
 def _task_timings_for(base: Path) -> dict[str, dict[str, object]]:
@@ -564,7 +571,7 @@ def backlog_presence(
     rows = catalog(base) if records is None else records
     status = "ok" if rows else "empty"
     return {
-        "ok": status == "ok",
+        "ok": True,
         "status": status,
         "root": str(base),
         "folders": [str(path) for path in folders],
@@ -1734,8 +1741,11 @@ def _git(args: list[str], repo: Path) -> str:
 
 
 def _repo_root(root: Path) -> Path:
-    found = _git(["rev-parse", "--show-toplevel"], root).strip()
-    return Path(found) if found else root.parent
+    probe = root
+    while not probe.exists() and probe != probe.parent:
+        probe = probe.parent
+    found = _git(["rev-parse", "--show-toplevel"], probe).strip()
+    return Path(found) if found else probe.parent
 
 
 ACCESS_CACHE_REL = Path(".runtime") / "access_preflight.json"
@@ -1922,7 +1932,7 @@ def access_preflight(root: Optional[Path] = None, *, active_probe: bool = True) 
     probes: dict[str, dict[str, object]] = {}
 
     # Workspace write: use ignored ephemeral runtime storage and clean the probe.
-    probes["workspace_write"] = _probe_directory_write(PROTOCOL_ROOT / ".runtime", "workspace_write")
+    probes["workspace_write"] = _probe_directory_write(TASK_MECCA_ROOT / ".runtime", "workspace_write")
 
     # Git metadata write catches sandboxes that allow working-tree edits but deny .git.
     git_dir_text = _git(["rev-parse", "--git-dir"], repo).strip()
@@ -2359,7 +2369,7 @@ def _runtime_activity(base: Path, rows: list[dict[str, object]], timings: dict[s
     unknown, not dead.  Each JSON record may contain ``agent``, ``task_id``,
     ``heartbeat_at`` and ``state``.
     """
-    runtime_dir = PROTOCOL_ROOT / ".runtime" / "agents"
+    runtime_dir = TASK_MECCA_ROOT / ".runtime" / "agents"
     registry_available = runtime_dir.is_dir()
     heartbeats: list[dict[str, object]] = []
     if registry_available:
@@ -3866,7 +3876,7 @@ def _web_backlog_context(root: Optional[Path]) -> dict[str, object]:
     explicit: Optional[Path] = None
     if root is not None and _looks_like_backlog_folder(base):
         explicit = base.resolve()
-    selected = explicit or (Path(str(candidates[0]["path"])) if candidates else None)
+    selected = explicit or (Path(str(candidates[0]["path"])) if candidates else CANONICAL_BACKLOG_ROOT)
     scan_root = _backlog_scan_root(base)
     return {
         "scan_root": scan_root,
@@ -3892,11 +3902,12 @@ def _web_handler(root: Optional[Path]):
             if wanted in by_path:
                 return Path(wanted), candidates
         initial = context.get("selected")
-        if isinstance(initial, Path) and str(initial.resolve()) in by_path:
-            return initial.resolve(), candidates
+        if isinstance(initial, Path):
+            if str(initial.resolve()) in by_path or not candidates:
+                return initial.resolve(), candidates
         if candidates:
             return Path(str(candidates[0]["path"])), candidates
-        return None, candidates
+        return CANONICAL_BACKLOG_ROOT, candidates
 
     def with_selection(snapshot: dict[str, object], selected: Optional[Path], candidates: list[dict[str, object]]) -> dict[str, object]:
         clean_candidates = []
@@ -3954,12 +3965,6 @@ def _web_handler(root: Optional[Path]):
                 self._send_json(with_selection(payload, selected, candidates).get("backlog_selection", {}))
                 return
             if path == "/api/snapshot":
-                if selected is None:
-                    self._send_json({
-                        "error": "backlog folder not found",
-                        "backlog_selection": with_selection({}, None, candidates)["backlog_selection"],
-                    }, 404)
-                    return
                 try:
                     self._send_json(with_selection(dashboard_snapshot(selected), selected, candidates))
                 except Exception as exc:  # Web UI must surface diagnostics rather than die silently.
