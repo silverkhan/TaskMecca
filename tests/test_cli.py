@@ -19,19 +19,27 @@ class CliInitTests(unittest.TestCase):
             original = "# Existing project instructions\n"
             agents.write_text(original, encoding="utf-8")
             args = argparse.Namespace(project=str(root))
-            with patch("builtins.input", side_effect=AssertionError("init must not prompt for AGENTS.md")):
+            with patch(
+                "builtins.input",
+                side_effect=AssertionError("init must not prompt for AGENTS.md"),
+            ):
                 rc = cmd_init(args)
             self.assertEqual(rc, 0)
             self.assertEqual(agents.read_text(encoding="utf-8"), original)
             self.assertTrue((root / "_task_mecca" / "ROOT_PROMPT.md").is_file())
-            self.assertTrue((root / "_task_mecca" / "framework" / "collab_tools.py").is_file())
+            self.assertTrue(
+                (root / "_task_mecca" / "framework" / "collab_tools.py").is_file()
+            )
             self.assertFalse((root / "_task_mecca" / "data").exists())
 
-    def test_init_does_not_create_agents_or_backlog(self):
+    def test_init_does_not_create_agents_md_or_backlog(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
             args = argparse.Namespace(project=str(root))
-            with patch("builtins.input", side_effect=AssertionError("init must not prompt for AGENTS.md")):
+            with patch(
+                "builtins.input",
+                side_effect=AssertionError("init must not prompt for AGENTS.md"),
+            ):
                 rc = cmd_init(args)
             self.assertEqual(rc, 0)
             self.assertFalse((root / "AGENTS.md").exists())
@@ -44,7 +52,7 @@ class CliUpdateTests(unittest.TestCase):
         manifest_path = target / MANIFEST_NAME
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
         manifest["managed_files"]["framework/roles/root.md"]["baseline_sha256"] = "0" * 64
-        manifest["task_mecca_version"] = "0.1.9"
+        manifest["task_mecca_version"] = "0.1.1"
         manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
         role = target / "framework" / "roles" / "root.md"
         role.write_text("LOCAL ROLE EDIT\n", encoding="utf-8")
@@ -60,10 +68,14 @@ class CliUpdateTests(unittest.TestCase):
             self.assertEqual(rc, 0)
             self.assertNotEqual(role.read_text(encoding="utf-8"), "LOCAL ROLE EDIT\n")
             backups = sorted(
-                (root / "_task_mecca" / "backups").glob("*/framework/roles/root.md")
+                (root / "_task_mecca" / "backups").glob(
+                    "*/framework/roles/root.md"
+                )
             )
             self.assertEqual(len(backups), 1)
-            self.assertEqual(backups[0].read_text(encoding="utf-8"), "LOCAL ROLE EDIT\n")
+            self.assertEqual(
+                backups[0].read_text(encoding="utf-8"), "LOCAL ROLE EDIT\n"
+            )
 
     def test_interactive_update_can_cancel_before_backup(self):
         with tempfile.TemporaryDirectory() as td:
