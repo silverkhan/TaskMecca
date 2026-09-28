@@ -29,7 +29,8 @@ class InstallerTests(unittest.TestCase):
             self.assertIsNotNone(manifest)
             self.assertEqual(manifest["task_mecca_version"], "0.1.1")
             self.assertEqual(manifest["managed_files"]["roles/root.md"]["policy"], "customizable")
-            self.assertEqual(manifest["managed_files"]["web/app.js"]["policy"], "framework")\n            self.assertEqual(manifest["managed_files"]["ROOT_PROMPT.md"]["policy"], "customizable")
+            self.assertEqual(manifest["managed_files"]["web/app.js"]["policy"], "framework")
+            self.assertEqual(manifest["managed_files"]["ROOT_PROMPT.md"]["policy"], "customizable")
 
     def test_local_customization_is_preserved_when_upstream_unchanged(self):
         with tempfile.TemporaryDirectory() as td:
