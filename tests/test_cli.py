@@ -16,7 +16,7 @@ class CliInitTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
             agents = root / "AGENTS.md"
-            original = "# Existing project instructions\\n"
+            original = "# Existing project instructions\n"
             agents.write_text(original, encoding="utf-8")
             args = argparse.Namespace(project=str(root))
             with patch("builtins.input", side_effect=AssertionError("init must not prompt for AGENTS.md")):
@@ -24,8 +24,10 @@ class CliInitTests(unittest.TestCase):
             self.assertEqual(rc, 0)
             self.assertEqual(agents.read_text(encoding="utf-8"), original)
             self.assertTrue((root / "_task_mecca" / "ROOT_PROMPT.md").is_file())
+            self.assertTrue((root / "_task_mecca" / "framework" / "collab_tools.py").is_file())
+            self.assertFalse((root / "_task_mecca" / "data").exists())
 
-    def test_init_does_not_create_agents_md(self):
+    def test_init_does_not_create_agents_or_backlog(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
             args = argparse.Namespace(project=str(root))
@@ -33,7 +35,7 @@ class CliInitTests(unittest.TestCase):
                 rc = cmd_init(args)
             self.assertEqual(rc, 0)
             self.assertFalse((root / "AGENTS.md").exists())
-            self.assertTrue((root / "_task_mecca" / "ROOT_PROMPT.md").is_file())
+            self.assertFalse((root / "_task_mecca" / "data").exists())
 
 
 class CliUpdateTests(unittest.TestCase):
@@ -41,10 +43,10 @@ class CliUpdateTests(unittest.TestCase):
         target = install(root)
         manifest_path = target / MANIFEST_NAME
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-        manifest["managed_files"]["roles/root.md"]["baseline_sha256"] = "0" * 64
-        manifest["task_mecca_version"] = "0.0.9"
+        manifest["managed_files"]["framework/roles/root.md"]["baseline_sha256"] = "0" * 64
+        manifest["task_mecca_version"] = "0.1.9"
         manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
-        role = target / "roles" / "root.md"
+        role = target / "framework" / "roles" / "root.md"
         role.write_text("LOCAL ROLE EDIT\n", encoding="utf-8")
         return role
 
@@ -57,7 +59,9 @@ class CliUpdateTests(unittest.TestCase):
                 rc = cmd_update(args)
             self.assertEqual(rc, 0)
             self.assertNotEqual(role.read_text(encoding="utf-8"), "LOCAL ROLE EDIT\n")
-            backups = sorted((root / "_task_mecca" / "backups").glob("*/roles/root.md"))
+            backups = sorted(
+                (root / "_task_mecca" / "backups").glob("*/framework/roles/root.md")
+            )
             self.assertEqual(len(backups), 1)
             self.assertEqual(backups[0].read_text(encoding="utf-8"), "LOCAL ROLE EDIT\n")
 
