@@ -5,7 +5,7 @@
 ## 1. 대시보드 실행
 
 ```bash
-uv run _task_mecca/framework/collab_tools.py web
+python _task_mecca/framework/collab_tools.py web
 ```
 
 대시보드는 `_task_mecca` 안에서 백로그 폴더를 자동 탐지한다. 신규 프로젝트의 canonical 위치는 `data/backlog/`이며, 기존 호환성을 위해 이름이 `backlog`로 시작하는 `data/backlog_b`, legacy `backlog_b` 같은 원장도 탐색한다. canonical `data/backlog/`가 있으면 가장 우선한다. 상단 **Backlog** 선택기에서 다른 후보로 즉시 바꿀 수 있고, `Auto`를 선택하면 다시 최근 변경 기준 자동 선택으로 돌아간다. 상단 **Language** 드롭다운에서는 `한국어 / English`를 선택할 수 있으며 선택값은 브라우저에 저장된다. Task Mecca UI 문구·상태·메시지·User Manual은 선택 언어를 따르며, 사용자가 작성한 백로그 Markdown 원문은 자동 번역하지 않는다.
