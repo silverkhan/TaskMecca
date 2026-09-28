@@ -36,18 +36,23 @@ Task Mecca는 subagent를 실제 dispatch하기 직전에 fresh active preflight
 python _task_mecca/collab_tools.py web
 ```
 
-## 2. Root 설정
+## 2. Root 세션 활성화
 
-프로젝트 최상위 `AGENTS.md`에 `AGENTS_TASK_MECCA_SNIPPET.md`가 이미 통합되어 있으면 별도 설정이 필요 없다.
-자동 연동이 없다면 새 세션에서 다음 프롬프트를 한 번 입력한다.
+Task Mecca 설치와 Root 역할 부여는 별개다.
 
 ```text
-이 세션에서는 Task Mecca의 Root로 동작해 주세요.
-먼저 _task_mecca/SESSION_GUIDE.md, _task_mecca/collab.md, _task_mecca/roles/root.md를 읽고 그 규약을 따르세요.
-실행형 작업을 subagent에 위임하기 전에는 SESSION_GUIDE의 Full Access preflight를 먼저 수행하세요.
-작업을 Simple Task와 Defined Task로 구분하세요. 추가 해석 없이 바로 검증 가능한 단순 작업은 목표와 수용 기준만 기록하고 바로 등록하며, 범위·설계·사용자 선택이 필요한 작업만 요건 정의서를 작성해 제 확인을 받은 뒤 Registrar에 lossless하게 등록하세요.
-등록 이후에는 Controller가 작업 연속성과 의존성을 고려해 Worker에 배분하도록 하고, Root는 사용자-facing 창구로 유지하세요.
+프로젝트에 Task Mecca가 설치되어 있음 ≠ 현재 세션이 Root임
 ```
+
+Task Mecca 설치 과정은 프로젝트 최상위 `AGENTS.md`를 생성하거나 수정하지 않는다. 프로젝트 전역 지시로 Task Mecca를 자동 활성화하면 사용자-facing 단일 Root와 다른 세션/agent 사이의 역할 경계가 흐려질 수 있기 때문이다.
+
+Root로 사용할 **한 개의 사용자-facing 세션을 직접 선택**하고, 그 세션에 `ROOT_PROMPT.md`의 한국어 프롬프트를 붙여넣는다.
+
+```text
+_task_mecca/ROOT_PROMPT.md
+```
+
+그 세션이 명시적으로 `/root`가 된 뒤 자연어로 작업을 부여한다.
 
 ## 3. 작업 부여
 
