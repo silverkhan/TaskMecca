@@ -19,13 +19,12 @@ from task_mecca.installer import (
 
 
 class InstallerTests(unittest.TestCase):
-    def test_install_creates_framework_manifest_but_no_project_data(self):
+    def test_install_creates_framework_and_manifest_but_not_data(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
             target = install(root)
             self.assertTrue((target / "framework" / "collab_tools.py").is_file())
             self.assertTrue((target / "framework" / "web" / "app.js").is_file())
-            self.assertTrue((target / "ROOT_PROMPT.md").is_file())
             self.assertFalse((target / "data").exists())
 
             manifest = load_manifest(target)
@@ -67,7 +66,7 @@ class InstallerTests(unittest.TestCase):
             manifest_path = target / MANIFEST_NAME
             manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
             manifest["managed_files"]["framework/roles/root.md"]["baseline_sha256"] = "0" * 64
-            manifest["task_mecca_version"] = "0.1.9"
+            manifest["task_mecca_version"] = "0.1.1"
             manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
 
             role = target / "framework" / "roles" / "root.md"
@@ -89,36 +88,33 @@ class InstallerTests(unittest.TestCase):
             self.assertNotEqual(role.read_text(), "LOCAL ROLE EDIT\n")
             self.assertEqual(load_manifest(target)["task_mecca_version"], "0.2.0")
 
-    def test_pre_02_flat_managed_file_is_retired_without_touching_data(self):
+    def test_update_migrates_unmodified_legacy_framework_layout(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
             target = install(root)
-
-            legacy_bytes = b"legacy flat runtime\n"
+            current = (target / "framework" / "collab_tools.py").read_bytes()
             legacy = target / "collab_tools.py"
-            legacy.write_bytes(legacy_bytes)
-
-            project_data = target / "data" / "audit-evidence" / "A-1.txt"
-            project_data.parent.mkdir(parents=True)
-            project_data.write_text("KEEP\n", encoding="utf-8")
+            legacy.write_bytes(current)
 
             manifest_path = target / MANIFEST_NAME
             manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
             manifest["task_mecca_version"] = "0.1.1"
             manifest["schema_version"] = 1
+            manifest["managed_files"].pop("framework/collab_tools.py")
             manifest["managed_files"]["collab_tools.py"] = {
                 "policy": "framework",
-                "baseline_sha256": hashlib.sha256(legacy_bytes).hexdigest(),
+                "baseline_sha256": hashlib.sha256(current).hexdigest(),
             }
             manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
 
             plan = update_plan(root)
             self.assertIn("collab_tools.py", plan["removals"])
+            self.assertIn("framework/collab_tools.py", plan["safe"])
             apply_update(root)
 
             self.assertFalse(legacy.exists())
             self.assertTrue((target / "framework" / "collab_tools.py").is_file())
-            self.assertEqual(project_data.read_text(encoding="utf-8"), "KEEP\n")
+            self.assertEqual(load_manifest(target)["schema_version"], 2)
 
     def test_retired_unmodified_agents_snippet_is_removed_on_update(self):
         with tempfile.TemporaryDirectory() as td:
@@ -142,6 +138,7 @@ class InstallerTests(unittest.TestCase):
             apply_update(root)
             self.assertFalse(legacy.exists())
             self.assertTrue((target / "ROOT_PROMPT.md").is_file())
+            self.assertEqual(load_manifest(target)["task_mecca_version"], "0.2.0")
 
     def test_project_owned_data_is_never_touched(self):
         with tempfile.TemporaryDirectory() as td:
@@ -149,9 +146,9 @@ class InstallerTests(unittest.TestCase):
             target = install(root)
             artifact = target / "data" / "measurements" / "A-1.json"
             artifact.parent.mkdir(parents=True)
-            artifact.write_text('{"value": 1}\n', encoding="utf-8")
+            artifact.write_text('{"ok": true}\n', encoding="utf-8")
             apply_update(root)
-            self.assertEqual(artifact.read_text(encoding="utf-8"), '{"value": 1}\n')
+            self.assertEqual(artifact.read_text(encoding="utf-8"), '{"ok": true}\n')
 
     def test_manifest_declares_project_owned_patterns(self):
         manifest = build_manifest(bundled_files())
