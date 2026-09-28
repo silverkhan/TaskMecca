@@ -4,7 +4,7 @@
 
 Task Mecca는 orchestration framework와 프로젝트가 축적하는 durable data를 프로젝트 내부에서 **물리적으로 분리**합니다. Git clone만으로 해당 프로젝트가 사용한 Task Mecca 규약과 백로그 상태를 함께 재현하는 것을 목표로 합니다.
 
-> Public alpha: `0.2.0`. 프로젝트 내장 runtime은 현재 Task Mecca v2.17 계열을 기반으로 하며 공개용 설치/업데이트 계층을 추가했습니다.
+> Public alpha: `0.2.1`. 프로젝트 내장 runtime은 현재 Task Mecca v2.17 계열을 기반으로 하며 공개용 설치/업데이트 계층을 추가했습니다.
 
 [English README](README.md)
 
@@ -12,19 +12,31 @@ Task Mecca는 orchestration framework와 프로젝트가 축적하는 durable da
 
 ### 0. Framework 설치
 
-PyPI 공개 전:
+Task Mecca의 필수 환경은 **Python 3.11+와 Git**입니다. `uv`는 선택 사항입니다.
+
+PyPI 공개 전 기본 설치 방법:
 
 ```bash
-uvx --from git+https://github.com/silverkhan/TaskMecca.git task-mecca init
+python -m pip install "git+https://github.com/silverkhan/TaskMecca.git"
+python -m task_mecca init
 ```
 
 PyPI 공개 이후:
 
 ```bash
-uvx task-mecca init
+python -m pip install task-mecca
+python -m task_mecca init
 ```
 
 설치 시에는 Task Mecca framework와 설치 메타데이터만 만듭니다. **프로젝트 data와 backlog는 만들지 않으며**, 프로젝트 최상위 `AGENTS.md`도 생성하거나 수정하지 않습니다.
+
+이미 `uv`를 사용하는 사용자는 선택적으로 다음 단축 경로를 사용할 수 있습니다.
+
+```bash
+uvx --from git+https://github.com/silverkhan/TaskMecca.git task-mecca init
+```
+
+Task Mecca가 `uv` 설치를 요구하거나 자동 설치하지는 않습니다.
 
 설치 직후 구조:
 
@@ -76,17 +88,13 @@ Installer가 미리 만들지 않습니다. 기존 `backlog_b`, `backlog-team`�
 
 ### 3. Web UI 실행
 
-Launcher:
+설치된 **프로젝트 내부 runtime을 직접 실행**합니다.
 
 ```bash
-uvx --from git+https://github.com/silverkhan/TaskMecca.git task-mecca web
+python _task_mecca/framework/collab_tools.py web
 ```
 
-프로젝트 내장 runtime 직접 실행:
-
-```bash
-uv run _task_mecca/framework/collab_tools.py web
-```
+이 명령은 GitHub에 접속하지 않고, `uv`도 필요하지 않으며, bootstrap용 `task_mecca` Python package가 현재 환경에 계속 설치되어 있을 필요도 없습니다.
 
 Web UI는 read-only / localhost-only입니다. 아직 첫 backlog가 생성되지 않은 상태에서도 실행되며 uninitialized 상태를 표시할 수 있습니다.
 
@@ -125,9 +133,27 @@ _task_mecca/data/backlog_b/
 
 ## 업데이트
 
+PyPI 공개 전:
+
 ```bash
-uvx --from git+https://github.com/silverkhan/TaskMecca.git task-mecca update
+python -m pip install --upgrade "git+https://github.com/silverkhan/TaskMecca.git"
+python -m task_mecca update
 ```
+
+PyPI 공개 이후:
+
+```bash
+python -m pip install --upgrade task-mecca
+python -m task_mecca update
+```
+
+이미 `uv`를 사용하는 경우에만 선택적으로 다음 명령을 사용할 수 있습니다.
+
+```bash
+uvx --refresh --from git+https://github.com/silverkhan/TaskMecca.git task-mecca update
+```
+
+**설치/업데이트에는** 새 Task Mecca package를 가져오기 위한 네트워크 접속이 필요합니다. 반면 Web UI, doctor, preflight, backlog 작업 등 평상시 runtime 명령은 `_task_mecca/framework/`의 프로젝트 내장 파일을 직접 실행하므로 `uv`나 package 다운로드가 필요하지 않습니다.
 
 managed file의 로컬 수정이 새 버전과 충돌하면 Task Mecca가 수정 파일 목록을 보여주고, 백업을 권장하고, 동의 시 `_task_mecca/backups/<timestamp>/`에 보존한 뒤 덮어쓰기/퇴역 내용을 다시 알리고 최종 확인을 받습니다.
 
@@ -150,9 +176,10 @@ managed file의 로컬 수정이 새 버전과 충돌하면 Task Mecca가 수정
 
 - Python 3.11+
 - Git
-- `uv` 권장
+- 표준 bootstrap package 설치 경로에서는 `pip`
+- `uv` / `uvx`는 선택적 편의 도구
 
-설치되는 runtime 자체에는 별도 Python third-party dependency가 없습니다.
+프로젝트에 설치되는 runtime 자체에는 별도 Python third-party dependency가 없습니다.
 
 ## 라이선스
 
