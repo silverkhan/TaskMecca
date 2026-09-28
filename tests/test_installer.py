@@ -153,6 +153,22 @@ class InstallerTests(unittest.TestCase):
             self.assertEqual(artifact.read_text(encoding="utf-8"), '{"ok": true}\n')
             self.assertTrue(unknown_project_dir.is_dir())
 
+    def test_installed_runtime_docs_are_python_first(self):
+        files = bundled_files()
+        for rel in (
+            "framework/README.md",
+            "framework/README.en.md",
+            "framework/SESSION_GUIDE.md",
+            "framework/SESSION_GUIDE.en.md",
+            "framework/roles/root.md",
+        ):
+            text = files[rel].content.decode("utf-8")
+            self.assertNotIn("uv run _task_mecca/framework/collab_tools.py", text)
+        self.assertIn(
+            "python _task_mecca/framework/collab_tools.py web",
+            files["framework/README.md"].content.decode("utf-8"),
+        )
+
     def test_manifest_declares_project_owned_patterns(self):
         manifest = build_manifest(bundled_files())
         patterns = manifest["project_owned_patterns"]
