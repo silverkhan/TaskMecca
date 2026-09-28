@@ -30,33 +30,6 @@ def _project_root(value: str | None) -> Path:
     return Path(value or os.getcwd()).expanduser().resolve()
 
 
-def _integrate_agents(project_root: Path) -> None:
-    agents = project_root / "AGENTS.md"
-    marker = "## Task Mecca"
-    snippet = (
-        "\n\n## Task Mecca\n\n"
-        "When the user requests executable work, read `_task_mecca/SESSION_GUIDE.md` first and apply the Task Mecca workflow. "
-        "Run the effective Full Access preflight before creating subagents. Do not force orchestration for simple Q&A or design-only discussion.\n"
-    )
-    if agents.exists():
-        text = agents.read_text(encoding="utf-8")
-        if marker in text:
-            print("AGENTS.md already contains Task Mecca integration.")
-            return
-        print("\nProject AGENTS.md exists and will be preserved.")
-        if _yes_no("Append the Task Mecca bootstrap block to AGENTS.md?", default=True):
-            agents.write_text(text.rstrip() + snippet + "\n", encoding="utf-8")
-            print("Updated AGENTS.md")
-        else:
-            print("Skipped AGENTS.md. See _task_mecca/AGENTS_TASK_MECCA_SNIPPET.md for manual integration.")
-    else:
-        if _yes_no("Create AGENTS.md with the Task Mecca bootstrap block?", default=True):
-            agents.write_text(snippet.lstrip(), encoding="utf-8")
-            print("Created AGENTS.md")
-        else:
-            print("Skipped AGENTS.md. See _task_mecca/AGENTS_TASK_MECCA_SNIPPET.md for manual integration.")
-
-
 def cmd_init(args: argparse.Namespace) -> int:
     root = _project_root(args.project)
     print(f"Task Mecca {__version__} — initialize")
@@ -68,10 +41,12 @@ def cmd_init(args: argparse.Namespace) -> int:
         print("If this is an existing Task Mecca project, use `task-mecca update`.")
         return 2
     print(f"Installed to {target}")
-    _integrate_agents(root)
-    print("\nNext:")
+    print("\nTask Mecca does not modify AGENTS.md and does not make every project session Root.")
+    print("To activate Root explicitly, open the user-facing session you want to use as Root and paste the prompt from:")
+    print("  _task_mecca/ROOT_PROMPT.md")
+    print("\nDashboard:")
     print("  uv run _task_mecca/collab_tools.py web")
-    print("Then give Root a task in natural language.")
+    print("\nAfter Root is activated, give that session work in natural language.")
     return 0
 
 
