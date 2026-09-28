@@ -27,7 +27,7 @@ CUSTOMIZABLE_FILES = {
     "SESSION_GUIDE.en.md",
     "collab.md",
     "_template.md",
-    "AGENTS_TASK_MECCA_SNIPPET.md",
+    "ROOT_PROMPT.md",
 }
 CUSTOMIZABLE_PREFIXES = ("roles/",)
 UPDATER_FILES = {"VERSION", MANIFEST_NAME}
