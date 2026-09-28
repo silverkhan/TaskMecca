@@ -219,17 +219,19 @@ def create_backup(project_root: Path, files: Iterable[str], *, from_version: str
     return backup
 
 
-def _prune_empty_managed_dirs(target: Path) -> None:
-    # Remove empty directories left by framework layout migrations only. Project data,
-    # runtime state, and backups are never traversed or removed here.
-    protected = {"data", ".runtime", "backups"}
-    for path in sorted((p for p in target.rglob("*") if p.is_dir()), key=lambda p: len(p.parts), reverse=True):
-        try:
-            rel = path.relative_to(target)
-        except ValueError:
-            continue
-        if rel.parts and rel.parts[0] in protected:
-            continue
+def _prune_empty_managed_dirs(target: Path, removed_files: Iterable[str]) -> None:
+    """Prune only directories that became empty because managed files were retired.
+
+    Never scan arbitrary project-owned directories: unknown agent-created data must be
+    preserved even when an empty directory is not named in the manifest.
+    """
+    candidates: set[Path] = set()
+    for rel in removed_files:
+        parent = (target / rel).parent
+        while parent != target:
+            candidates.add(parent)
+            parent = parent.parent
+    for path in sorted(candidates, key=lambda p: len(p.parts), reverse=True):
         try:
             path.rmdir()
         except OSError:
@@ -246,7 +248,8 @@ def apply_update(project_root: Path, *, allow_conflicts: bool = False) -> dict:
     previous = load_manifest(target) or {}
     previous_files = previous.get("managed_files", {})
 
-    for rel in plan["removals"] + [p for p in plan["conflicts"] if p not in current_files]:
+    retired = plan["removals"] + [p for p in plan["conflicts"] if p not in current_files]
+    for rel in retired:
         path = target / rel
         if path.is_file():
             path.unlink()
@@ -262,6 +265,6 @@ def apply_update(project_root: Path, *, allow_conflicts: bool = False) -> dict:
         elif local_modified and not upstream_changed:
             pass
 
-    _prune_empty_managed_dirs(target)
+    _prune_empty_managed_dirs(target, retired)
     _write_manifest(target, build_manifest(current_files))
     return plan
