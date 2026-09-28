@@ -52,12 +52,8 @@ def cmd_init(args: argparse.Namespace) -> int:
     print("\nTask Mecca does not modify AGENTS.md and does not make every project session Root.")
     print("To activate Root explicitly, open the user-facing session you want to use as Root and paste the prompt from:")
     print("  _task_mecca/ROOT_PROMPT.md")
-    print("\nDashboard:")
-    print("  uvx task-mecca web")
-    print("  # before PyPI publication:")
-    print("  uvx --from git+https://github.com/silverkhan/TaskMecca.git task-mecca web")
-    print("\nDirect project-local runtime:")
-    print("  uv run _task_mecca/framework/collab_tools.py web")
+    print("\nDashboard (project-local, no network or uv required):")
+    print("  python _task_mecca/framework/collab_tools.py web")
     return 0
 
 
