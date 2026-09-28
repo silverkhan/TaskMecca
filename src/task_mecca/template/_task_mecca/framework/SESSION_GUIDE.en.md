@@ -26,11 +26,6 @@ Keyboard navigation: `↑/↓`, `Enter/→`, `←/Esc`, `/`, and `PgUp/PgDn`.
 
 The top bar includes a **Language** dropdown. `한국어` and `English` are currently supported. The selected language is persisted in `localStorage`. UI text, generated states/messages, controls, and the User Manual follow the selection. Backlog Markdown authored by users is never machine-translated. Additional languages can be added through the language registry and matching localized manual files.
 
-Without `uv`:
-
-```bash
-python _task_mecca/framework/collab_tools.py web
-```
 
 ## 2. Activate the Root session
 
