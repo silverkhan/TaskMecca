@@ -47,17 +47,23 @@ Without `uv`:
 python _task_mecca/collab_tools.py web
 ```
 
-## 2. Configure Root
+## 2. Activate the Root session
 
-If the project-level `AGENTS.md` already includes `AGENTS_TASK_MECCA_SNIPPET.md`, no additional setup is required. Otherwise, enter the following once in a new session:
+Task Mecca installation and Root activation are separate.
 
 ```text
-Act as the Task Mecca Root for this session.
-First read _task_mecca/SESSION_GUIDE.md, _task_mecca/collab.md, and _task_mecca/roles/root.md and follow those rules.
-Before delegating executable work to subagents, run the Full Access preflight described in SESSION_GUIDE.
-Classify work as Simple Task or Defined Task. For a simple task that is directly verifiable without additional interpretation, record only the goal and acceptance criteria and register it immediately. For work requiring scope, design, or user choices, prepare a requirement definition, get my confirmation, and then ask Registrar to register it losslessly.
-After registration, let Controller allocate work to Workers based on dependency and continuity, while Root remains the user-facing interface.
+Task Mecca installed in the project ≠ this session is Root
 ```
+
+Installation does not create or modify the project-level `AGENTS.md`. Project-wide activation would blur the role boundary between the single user-facing Root session and other sessions/agents.
+
+Choose the **one user-facing session** that should act as Root and paste the English prompt from:
+
+```text
+_task_mecca/ROOT_PROMPT.md
+```
+
+After that explicit activation, that session acts as `/root` and can receive work in natural language.
 
 ## 3. Assign work
 
