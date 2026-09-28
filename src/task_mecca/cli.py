@@ -30,6 +30,10 @@ def _project_root(value: str | None) -> Path:
     return Path(value or os.getcwd()).expanduser().resolve()
 
 
+def _runtime_script(project_root: Path) -> Path:
+    return project_root / TARGET_DIR / "framework" / "collab_tools.py"
+
+
 def cmd_init(args: argparse.Namespace) -> int:
     root = _project_root(args.project)
     print(f"Task Mecca {__version__} — initialize")
@@ -40,13 +44,20 @@ def cmd_init(args: argparse.Namespace) -> int:
         print(f"Not installed: {exc}")
         print("If this is an existing Task Mecca project, use `task-mecca update`.")
         return 2
+
     print(f"Installed to {target}")
+    print("\nTask Mecca installs framework files only.")
+    print("Project data is created later by agents under _task_mecca/data/.")
+    print("The first Registrar registration creates _task_mecca/data/backlog/.")
     print("\nTask Mecca does not modify AGENTS.md and does not make every project session Root.")
     print("To activate Root explicitly, open the user-facing session you want to use as Root and paste the prompt from:")
     print("  _task_mecca/ROOT_PROMPT.md")
     print("\nDashboard:")
-    print("  uv run _task_mecca/collab_tools.py web")
-    print("\nAfter Root is activated, give that session work in natural language.")
+    print("  uvx task-mecca web")
+    print("  # before PyPI publication:")
+    print("  uvx --from git+https://github.com/silverkhan/TaskMecca.git task-mecca web")
+    print("\nDirect project-local runtime:")
+    print("  uv run _task_mecca/framework/collab_tools.py web")
     return 0
 
 
@@ -73,7 +84,7 @@ def cmd_update(args: argparse.Namespace) -> int:
         print()
 
     if plan["conflicts"]:
-        print("Local modifications were detected in files that this update would replace:")
+        print("Local modifications were detected in files that this update would replace or retire:")
         for rel in plan["conflicts"]:
             print(f"  • {rel}")
         print("\nA backup is strongly recommended before updating.")
@@ -87,7 +98,7 @@ def cmd_update(args: argparse.Namespace) -> int:
             to_version=plan["available_version"],
         )
         print(f"\nBackup created: {backup}")
-        print("\nThe modified project versions listed above will now be overwritten by the official Task Mecca versions.")
+        print("\nThe modified project versions listed above will now be overwritten or retired by the official Task Mecca layout.")
         print("The backup will remain available even if you cancel here.")
         if not _yes_no("Continue with the update?", default=False):
             print("Update cancelled. The backup was kept; no managed files were overwritten.")
@@ -101,28 +112,55 @@ def cmd_update(args: argparse.Namespace) -> int:
     return 0
 
 
+def _run_runtime(project_root: Path, argv: list[str]) -> int:
+    script = _runtime_script(project_root)
+    if not script.exists():
+        print("Task Mecca framework runtime is not installed in this project.", file=sys.stderr)
+        return 2
+    return subprocess.call([sys.executable, str(script), *argv], cwd=project_root)
+
+
 def cmd_doctor(args: argparse.Namespace) -> int:
     root = _project_root(args.project)
-    target = root / TARGET_DIR
-    script = target / "collab_tools.py"
-    if not script.exists():
-        print("Task Mecca is not installed in this project.")
-        return 2
-    return subprocess.call([sys.executable, str(script), "doctor"], cwd=root)
+    return _run_runtime(root, ["doctor"])
+
+
+def cmd_web(args: argparse.Namespace) -> int:
+    root = _project_root(args.project)
+    argv = ["web"]
+    if args.port is not None:
+        argv.extend(["--port", str(args.port)])
+    if args.no_open:
+        argv.append("--no-open")
+    return _run_runtime(root, argv)
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="task-mecca", description="Install and update project-contained Task Mecca runtimes.")
+    parser = argparse.ArgumentParser(
+        prog="task-mecca",
+        description="Install, update, and launch project-contained Task Mecca runtimes.",
+    )
     parser.add_argument("--version", action="version", version=f"task-mecca {__version__}")
     sub = parser.add_subparsers(dest="command", required=True)
-    for name, handler, help_text in [
-        ("init", cmd_init, "Install Task Mecca into the current project"),
-        ("update", cmd_update, "Safely update an installed Task Mecca runtime"),
-        ("doctor", cmd_doctor, "Run the installed project's Task Mecca doctor"),
-    ]:
-        p = sub.add_parser(name, help=help_text)
-        p.add_argument("--project", help="Project root (defaults to current directory)")
-        p.set_defaults(func=handler)
+
+    p = sub.add_parser("init", help="Install Task Mecca framework into the current project")
+    p.add_argument("--project", help="Project root (defaults to current directory)")
+    p.set_defaults(func=cmd_init)
+
+    p = sub.add_parser("update", help="Safely update an installed Task Mecca framework")
+    p.add_argument("--project", help="Project root (defaults to current directory)")
+    p.set_defaults(func=cmd_update)
+
+    p = sub.add_parser("doctor", help="Run the installed project's Task Mecca doctor")
+    p.add_argument("--project", help="Project root (defaults to current directory)")
+    p.set_defaults(func=cmd_doctor)
+
+    p = sub.add_parser("web", help="Launch the installed project's local Task Mecca dashboard")
+    p.add_argument("--project", help="Project root (defaults to current directory)")
+    p.add_argument("--port", type=int, default=8765)
+    p.add_argument("--no-open", action="store_true")
+    p.set_defaults(func=cmd_web)
+
     return parser
 
 

@@ -2,158 +2,167 @@
 
 **Local-first orchestration and observability for multi-agent coding workflows.**
 
-Task Mecca keeps requirements, backlog state, worker allocation, lifecycle timing, and a local web dashboard inside the project repository. It is designed for agent-driven coding workflows where you want the project to remain reproducible from Git instead of depending on a central service.
+Task Mecca keeps its orchestration framework inside the project while keeping project-owned task data physically separate from framework files. A Git clone can therefore preserve both the exact Task Mecca operating rules and the project's durable backlog state without depending on a central service.
 
-> Public alpha: `0.1.1`. The project-contained runtime is based on the current Task Mecca v2.17 implementation.
+> Public alpha: `0.2.0`. The project-contained runtime is based on the current Task Mecca v2.17 line, with the public packaging/update layer added around it.
 
 [한국어 README](README.ko.md)
 
 ## Quick start
 
-### 0. Install Task Mecca into a project
+### 0. Install the framework
 
-Until the package is published on PyPI, run it directly from this repository:
+Before PyPI publication:
 
 ```bash
 uvx --from git+https://github.com/silverkhan/TaskMecca.git task-mecca init
 ```
 
-After PyPI publication, the intended shorter command is:
+After PyPI publication:
 
 ```bash
 uvx task-mecca init
 ```
 
-This installs a self-contained `_task_mecca/` directory into the current project. The project runtime remains local to the project; `uvx` is only the installer/updater layer. Installation does **not** create or modify the project-level `AGENTS.md`.
+Installation creates only Task Mecca framework/metadata. It does **not** create project data, does not create a backlog, and does not modify the project-level `AGENTS.md`.
 
-### 1. Launch the dashboard
+Installed layout:
 
-```bash
-uv run _task_mecca/collab_tools.py web
+```text
+_task_mecca/
+├── VERSION
+├── manifest.json
+├── ROOT_PROMPT.md
+├── framework/
+│   ├── collab_tools.py
+│   ├── runtime_metadata.py
+│   ├── README*.md
+│   ├── SESSION_GUIDE*.md
+│   ├── collab.md
+│   ├── _template.md
+│   ├── roles/
+│   └── web/
+├── .runtime/        # created only when runtime state is needed
+└── backups/         # created only when updater backup is needed
 ```
 
-Without `uv`:
+There is intentionally no `data/` directory immediately after installation.
 
-```bash
-python _task_mecca/collab_tools.py web
-```
+### 1. Activate one Root session explicitly
 
-### 2. Activate the Root session
-
-Task Mecca installation and Root activation are deliberately separate:
+Task Mecca installation and Root activation are separate:
 
 ```text
 Task Mecca installed in the project ≠ this session is Root
 ```
 
-`task-mecca init` does **not** create or modify `AGENTS.md`. Project-wide instructions would blur the boundary between the single user-facing Root session and other sessions/agents.
-
-Open the session you want to use as Root and paste the appropriate prompt from:
+Choose the single user-facing session that should act as Root and paste the prompt from:
 
 ```text
 _task_mecca/ROOT_PROMPT.md
 ```
 
-Only that explicitly activated session should act as `/root`.
+Only that explicitly activated session acts as `/root`.
 
-### 3. Give Root work
+### 2. Give Root work
 
-No special syntax is required. Describe the task naturally.
+Describe work naturally. Root classifies directly verifiable work as a **Simple Task** and work requiring scope/design/user choices as a **Defined Task**.
+
+On the first registration, Registrar creates the canonical project-owned ledger:
 
 ```text
-Fix the incorrect command in README.
+_task_mecca/data/backlog/
 ```
 
-Task Mecca classifies directly verifiable work as a **Simple Task** and work requiring scope/design/user choices as a **Defined Task**. Defined Tasks go through requirement clarification and user confirmation before registration.
+The installer does not create it. Existing ledgers such as `backlog_b`, `backlog-team`, or other names beginning with `backlog` remain discoverable for compatibility.
+
+### 3. Launch the dashboard
+
+Launcher form:
+
+```bash
+uvx --from git+https://github.com/silverkhan/TaskMecca.git task-mecca web
+```
+
+Direct project-local runtime:
+
+```bash
+uv run _task_mecca/framework/collab_tools.py web
+```
+
+The Web UI is read-only and localhost-only. It can start before the first backlog is created and reports the ledger as uninitialized.
+
+## Framework vs project data
+
+The filesystem boundary is intentional.
+
+| Area | Ownership | Update behavior |
+|---|---|---|
+| `_task_mecca/framework/**` | Task Mecca framework | Managed by updater |
+| `_task_mecca/ROOT_PROMPT.md` | Task Mecca managed/customizable | Backup + confirmation when both local and upstream changed |
+| `_task_mecca/data/**` | Project/agent durable data | Never overwritten by updater |
+| legacy `_task_mecca/backlog*/**` | Project data compatibility | Never overwritten by updater |
+| `_task_mecca/.runtime/**` | Ephemeral runtime state | Not durable project data |
+| `_task_mecca/backups/**` | Local updater safety copies | Never framework-managed |
+
+Agents may create additional durable artifacts under `data/` when a task genuinely needs them, for example measurements or audit evidence. Task Mecca does not pre-create or standardize arbitrary artifact folders.
+
+## Backlog convention
+
+New projects use one canonical path:
+
+```text
+_task_mecca/data/backlog/
+```
+
+Registrar creates it only on first registration. Discovery remains compatible with existing folders whose names begin with `backlog`.
+
+For migrated projects, keeping the legacy basename is allowed:
+
+```text
+_task_mecca/backlog_b/
+    ↓
+_task_mecca/data/backlog_b/
+```
+
+Task Mecca includes lifecycle-history compatibility so Git events recorded under the pre-0.2 direct path are also read when the same ledger basename is moved under `data/`.
 
 ## Update
-
-The user-facing update command is intentionally simple:
 
 ```bash
 uvx --from git+https://github.com/silverkhan/TaskMecca.git task-mecca update
 ```
 
-After PyPI publication:
+If an update would overwrite or retire locally modified managed files, Task Mecca:
 
-```bash
-uvx task-mecca update
-```
-
-If an update would overwrite locally modified managed files, Task Mecca:
-
-1. shows the modified file list,
-2. recommends creating a backup,
-3. creates `_task_mecca/backups/<timestamp>/` when you accept,
-4. clearly warns that the modified project copies will be overwritten,
+1. lists the affected files,
+2. recommends a backup,
+3. creates `_task_mecca/backups/<timestamp>/` after confirmation,
+4. clearly warns what will be overwritten/retired,
 5. asks for final confirmation before applying the update.
 
-You do not need to remember force/backup command-line flags.
+No force/backup flags are required for the normal flow.
 
-## File ownership model
+## Dashboard and orchestration features
 
-Task Mecca makes the update boundary explicit to both the updater and the user.
-
-| Area | Examples | Update behavior |
-|---|---|---|
-| **Framework managed** | `collab_tools.py`, `runtime_metadata.py`, `web/*` | Updated automatically when upstream changes |
-| **Customizable managed** | `roles/*`, `SESSION_GUIDE*.md`, `collab.md`, `_template.md`, local manuals | If both local and upstream changed, Task Mecca requires a backup + confirmation before overwrite |
-| **Project owned** | `backlog_*`, archive contents, project config | Never overwritten by the updater |
-| **Runtime/backup** | `.runtime/*`, `backups/*` | Local ephemeral/safety data; excluded from Git by default |
-
-If a customizable managed file was changed locally but the new Task Mecca release did **not** change that file upstream, the local version is preserved without prompting.
-
-The installed `_task_mecca/manifest.json` records the installed version and baseline hashes used to detect these cases.
-
-## What the dashboard provides
-
-- automatic backlog-folder discovery and manual switching
-- active + `archive/YYYY-MM/` backlog reading
-- combined status filters and keyboard navigation
-- ID/update sorting and adaptive page sizing
+- automatic backlog discovery and manual switching
+- active + `archive/YYYY-MM/` history
 - Simple / Defined / legacy backlog rendering
 - lifecycle timeline and Queue / Active / Wait / Lead timing
+- historical lifecycle compatibility across the 0.2 data-layout migration
+- dependency/readiness checks and Controller coordination snapshots
 - subagent workload and stale/worker-missing signals
-- Full Access preflight status and dispatch-time verification
+- dispatch-time Full Access preflight
 - Light / Dark / System themes
 - Korean / English UI and manuals
-- Markdown tables, code-copy buttons, and Mermaid diagrams
-- local-only, read-only web UI
-
-## Repository layout
-
-```text
-TaskMecca/
-├── src/task_mecca/              # uvx bootstrap package
-│   ├── cli.py                   # init / update / doctor
-│   ├── installer.py             # manifest + safe update engine
-│   └── template/_task_mecca/    # project-contained runtime template
-├── tests/                       # regression tests
-├── demo/                        # example backlog data
-└── .github/workflows/ci.yml     # Python 3.11–3.13 CI
-```
-
-Installed into another project:
-
-```text
-my-project/
-├── AGENTS.md
-├── source...
-└── _task_mecca/
-    ├── VERSION
-    ├── manifest.json
-    ├── collab_tools.py
-    ├── roles/
-    ├── web/
-    ├── backlog_*/
-    └── .runtime/
-```
+- Markdown tables, code-copy buttons, Mermaid diagrams
+- adaptive page sizing and keyboard navigation
 
 ## Requirements
 
 - Python 3.11+
 - Git
-- `uv` is recommended for installation and launch convenience, but the project-contained dashboard can also run with Python directly.
+- `uv` recommended
 
 The installed runtime has no third-party Python runtime dependencies.
 
@@ -164,7 +173,7 @@ python -m pip install -e .
 python -m unittest discover -s tests -v
 ```
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
+See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 

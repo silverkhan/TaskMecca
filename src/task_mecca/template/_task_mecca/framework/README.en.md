@@ -5,10 +5,10 @@ For first use, you only need the following three steps.
 ## 1. Launch the dashboard
 
 ```bash
-uv run _task_mecca/collab_tools.py web
+uv run _task_mecca/framework/collab_tools.py web
 ```
 
-The dashboard automatically detects backlog folders inside the project. Folders whose names contain `backlog` are preferred; when multiple candidates exist, Task Mecca selects the one with the most recent recognized task change across active files and `archive/**` / `_complete/**`. Use the **Backlog** selector in the top bar to switch folders manually, or choose **Auto** to return to automatic selection.
+The dashboard automatically detects backlog ledgers under `_task_mecca`. New projects use the canonical `data/backlog/` location. For compatibility, ledgers whose names begin with `backlog` such as `data/backlog_b` or legacy `backlog_b` remain discoverable; canonical `data/backlog/` has highest priority. Use the **Backlog** selector in the top bar to switch folders manually, or choose **Auto** to return to automatic selection.
 
 Completed work under `archive/YYYY-MM/` is read recursively. The **Backlog** screen shows current and completed tasks together. **All** is the default status filter; `Ready / Working / Hold / Blocked / Done` can be combined as multi-select filters.
 
@@ -44,8 +44,12 @@ If the current filename state is ahead of committed Git lifecycle history, Task 
 Without `uv`:
 
 ```bash
-python _task_mecca/collab_tools.py web
+python _task_mecca/framework/collab_tools.py web
 ```
+
+## Framework / Data boundary
+
+Installation deploys only `framework/`; it does not create `data/`. On the first task registration Registrar uses `ensure-backlog` to select an existing ledger or create `_task_mecca/data/backlog/`. Durable artifacts created by agents belong under `data/`, not inside `framework/`.
 
 ## 2. Activate the Root session
 
@@ -116,7 +120,7 @@ When Task Mecca is installed through the public bootstrap package, `_task_mecca/
 
 - **Framework managed**: `collab_tools.py`, `runtime_metadata.py`, `web/*`. Updated automatically when upstream changes.
 - **Customizable managed**: `roles/*`, `SESSION_GUIDE*.md`, `collab.md`, `_template.md`, and Task Mecca manuals. If both the project copy and upstream changed, the updater lists those files, recommends a backup, creates one when approved, then warns before overwrite.
-- **Project owned**: `backlog_*`, archive content, and project-specific settings. Never overwritten by the updater.
+- **Project owned**: all `_task_mecca/data/**`. Registrar creates `data/backlog/` on first registration; the updater never overwrites `data/**`. Pre-0.2 `backlog*` locations remain project-owned compatibility paths.
 - **Runtime/backup**: `.runtime/*` and `backups/*`. Local-only operational/safety data and ignored by Git by default.
 
 The normal update entry point is intentionally just:

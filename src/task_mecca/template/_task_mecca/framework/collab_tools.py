@@ -9,7 +9,7 @@ spawn/message/wait 같은 협업 기능은 모델 런타임
 
 * ``agent``: canonical logical task path를 검증한다.
 * ``worker-name``: 새 worker에 사용할 포켓몬 별칭을 결정한다.
-* ``preflight``: backlog 원장과 effective Full Access/dispatch 준비 상태를 확인한다.
+* ``ensure-backlog``: 기존 원장을 선택하거나 첫 등록용 canonical `data/backlog`를 생성한다.\n* ``preflight``: backlog 원장과 effective Full Access/dispatch 준비 상태를 확인한다.
 * ``next-id``: archive를 포함한 다음 ID와 6자리 정렬키를 계산한다.
 * ``search``: 전체 backlog에서 관련 후보를 좁힌다.
 * ``inspect``: 항목 상태, 의존성, 담당 범위와 연속성 근거를 본다.
@@ -66,8 +66,14 @@ except ImportError:  # pragma: no cover - POSIX
     msvcrt = None  # type: ignore[assignment]
 
 
-PROTOCOL_ROOT = Path(__file__).resolve().parent
-BACKLOG_GLOB = "backlog_*"
+FRAMEWORK_ROOT = Path(__file__).resolve().parent
+TASK_MECCA_ROOT = FRAMEWORK_ROOT.parent
+PROJECT_ROOT = TASK_MECCA_ROOT.parent
+DATA_ROOT = TASK_MECCA_ROOT / "data"
+CANONICAL_BACKLOG_ROOT = DATA_ROOT / "backlog"
+# Kept as the protocol/document root so existing internal references to roles/web/docs
+# remain framework-local.
+PROTOCOL_ROOT = FRAMEWORK_ROOT
 ITEM_RE = re.compile(
     r"^(?P<sort_key>(?:\d{4}|\d{6}))\."
     r"(?P<id>[A-Za-z]+-\d+)\."
@@ -157,11 +163,14 @@ def _configure_stdio() -> None:
 
 
 def _root(value: Optional[Path]) -> Path:
-    return PROTOCOL_ROOT if value is None else Path(value).resolve()
+    return TASK_MECCA_ROOT if value is None else Path(value).resolve()
 
 
 BACKLOG_SCAN_MAX_DEPTH = int(os.getenv("TASK_MECCA_BACKLOG_SCAN_DEPTH", "4"))
-BACKLOG_SCAN_SKIP = {".git", ".venv", "venv", "node_modules", "__pycache__", ".mypy_cache", ".pytest_cache"}
+BACKLOG_SCAN_SKIP = {
+    ".git", ".venv", "venv", "node_modules", "__pycache__", ".mypy_cache", ".pytest_cache",
+    "framework", ".runtime", "backups",
+}
 ARCHIVE_MONTH_RE = re.compile(r"^\d{4}-\d{2}$")
 
 
@@ -186,21 +195,21 @@ def _recognized_history_paths(folder: Path) -> list[Path]:
 def _looks_like_backlog_folder(folder: Path) -> bool:
     if not folder.is_dir():
         return False
-    if "backlog" in folder.name.lower():
-        return True
-    # Fallback for legacy/custom folder names: require a task file directly in the
-    # folder.  Archive month folders are therefore never mistaken for a ledger root.
-    return any(path.is_file() and ITEM_RE.fullmatch(path.name) for path in folder.glob("*.md"))
+    # Canonical name is "backlog". Compatibility remains open for backlog_b,
+    # backlog-team, and similar legacy/custom ledgers without treating arbitrary
+    # agent-created data folders as ledgers.
+    return folder.name.lower().startswith("backlog")
 
 
 def _backlog_scan_root(base: Path) -> Path:
-    # Normal documented layout: <project>/_task_mecca/collab_tools.py.  When no
-    # explicit root was supplied, scan the project rather than only _task_mecca.
-    if base.resolve() == PROTOCOL_ROOT.resolve():
-        return PROTOCOL_ROOT.parent.resolve()
+    # Normal 0.2+ layout scans only _task_mecca so sibling legacy backups or
+    # unrelated project folders cannot be selected accidentally.
+    resolved = base.resolve()
+    if resolved in {TASK_MECCA_ROOT.resolve(), FRAMEWORK_ROOT.resolve()}:
+        return TASK_MECCA_ROOT.resolve()
     if _looks_like_backlog_folder(base):
         return base.parent.resolve()
-    return base.resolve()
+    return resolved
 
 
 def discover_backlog_folders(root: Optional[Path] = None) -> list[dict[str, object]]:
@@ -242,16 +251,64 @@ def discover_backlog_folders(root: Optional[Path] = None) -> list[dict[str, obje
         except OSError:
             folder_mtime = 0.0
         latest = max(mtimes, default=folder_mtime)
+        try:
+            resolved.relative_to(DATA_ROOT.resolve())
+            under_data = True
+        except ValueError:
+            under_data = False
         candidates.append({
             "path": str(resolved),
             "name": folder.name,
-            "backlog_named": "backlog" in folder.name.lower(),
+            "canonical": resolved == CANONICAL_BACKLOG_ROOT.resolve(),
+            "under_data": under_data,
+            "backlog_named": folder.name.lower().startswith("backlog"),
             "record_count": len(task_paths),
             "latest_modified": datetime.fromtimestamp(latest, timezone.utc).astimezone().isoformat(timespec="seconds") if latest else None,
             "latest_modified_epoch": latest,
         })
-    candidates.sort(key=lambda row: (int(bool(row["backlog_named"])), float(row["latest_modified_epoch"]), str(row["path"])), reverse=True)
+    candidates.sort(
+        key=lambda row: (
+            int(int(row["record_count"]) > 0),
+            int(bool(row["canonical"])),
+            int(bool(row["under_data"])),
+            int(bool(row["backlog_named"])),
+            float(row["latest_modified_epoch"]),
+            str(row["path"]),
+        ),
+        reverse=True,
+    )
     return candidates
+
+
+def ensure_backlog(root: Optional[Path] = None) -> dict[str, object]:
+    """Return an existing ledger or create the canonical data/backlog ledger.
+
+    The installer intentionally creates no project data. Registrar calls this when
+    the first task is being registered.
+    """
+    base = _root(root)
+    existing = _item_dirs(base)
+    if existing:
+        selected = existing[0]
+        return {
+            "ok": True,
+            "created": False,
+            "path": str(selected),
+            "canonical": selected.resolve() == CANONICAL_BACKLOG_ROOT.resolve(),
+        }
+
+    target = (
+        Path(root).resolve()
+        if root is not None and Path(root).name.lower().startswith("backlog")
+        else CANONICAL_BACKLOG_ROOT
+    )
+    target.mkdir(parents=True, exist_ok=True)
+    return {
+        "ok": True,
+        "created": True,
+        "path": str(target.resolve()),
+        "canonical": target.resolve() == CANONICAL_BACKLOG_ROOT.resolve(),
+    }
 
 
 def _item_dirs(root: Path) -> list[Path]:
@@ -265,7 +322,11 @@ def _item_dirs(root: Path) -> list[Path]:
 
 def _selected_ledger_root(base: Path) -> Path:
     folders = _item_dirs(base)
-    return folders[0] if folders else base
+    if folders:
+        return folders[0]
+    if base.resolve() in {TASK_MECCA_ROOT.resolve(), FRAMEWORK_ROOT.resolve()}:
+        return CANONICAL_BACKLOG_ROOT
+    return base
 
 
 def _task_timings_for(base: Path) -> dict[str, dict[str, object]]:
@@ -500,17 +561,18 @@ def backlog_presence(
     folders = _item_dirs(base)
     if not folders:
         return {
-            "ok": False,
-            "status": "missing",
+            "ok": True,
+            "status": "uninitialized",
             "root": str(base),
             "folders": [],
             "record_count": 0,
-            "message": "자동 탐지 가능한 backlog 폴더를 찾지 못했다. 폴더명에 backlog가 포함되었는지 또는 작업 Markdown이 루트에 있는지 확인해야 한다.",
+            "active_count": 0,
+            "message": "아직 등록된 작업이 없어 backlog 원장이 생성되지 않았다. 첫 등록 시 Registrar가 data/backlog를 생성한다.",
         }
     rows = catalog(base) if records is None else records
     status = "ok" if rows else "empty"
     return {
-        "ok": status == "ok",
+        "ok": True,
         "status": status,
         "root": str(base),
         "folders": [str(path) for path in folders],
@@ -1185,7 +1247,8 @@ def doctor_report(
         "contracts": _contract_problems(rows),
     }
     if protocol_checks:
-        checks["dangling_links"] = dangling_links(base / "collab.md") if (base / "collab.md").is_file() else ["collab.md"]
+        protocol = PROTOCOL_ROOT / "collab.md"
+        checks["dangling_links"] = dangling_links(protocol) if protocol.is_file() else [str(protocol)]
     return {
         "ok": not any(bool(value) for value in checks.values()),
         "root": str(base),
@@ -1680,8 +1743,11 @@ def _git(args: list[str], repo: Path) -> str:
 
 
 def _repo_root(root: Path) -> Path:
-    found = _git(["rev-parse", "--show-toplevel"], root).strip()
-    return Path(found) if found else root.parent
+    probe = root
+    while not probe.exists() and probe != probe.parent:
+        probe = probe.parent
+    found = _git(["rev-parse", "--show-toplevel"], probe).strip()
+    return Path(found) if found else probe.parent
 
 
 ACCESS_CACHE_REL = Path(".runtime") / "access_preflight.json"
@@ -1739,7 +1805,7 @@ def _codex_config_hints() -> dict[str, object]:
 def _access_cache_path(base: Path) -> Path:
     # Runtime metadata belongs to Task Mecca itself, not to the currently selected
     # backlog folder. This keeps liveness/access state stable when the UI switches ledgers.
-    return PROTOCOL_ROOT / ACCESS_CACHE_REL
+    return TASK_MECCA_ROOT / ACCESS_CACHE_REL
 
 
 def _write_access_cache(base: Path, report: dict[str, object]) -> None:
@@ -1868,7 +1934,7 @@ def access_preflight(root: Optional[Path] = None, *, active_probe: bool = True) 
     probes: dict[str, dict[str, object]] = {}
 
     # Workspace write: use ignored ephemeral runtime storage and clean the probe.
-    probes["workspace_write"] = _probe_directory_write(PROTOCOL_ROOT / ".runtime", "workspace_write")
+    probes["workspace_write"] = _probe_directory_write(TASK_MECCA_ROOT / ".runtime", "workspace_write")
 
     # Git metadata write catches sandboxes that allow working-tree edits but deny .git.
     git_dir_text = _git(["rev-parse", "--git-dir"], repo).strip()
@@ -1986,7 +2052,7 @@ def _format_duration(seconds: Optional[float]) -> str:
 
 
 def _lifecycle_journal_path() -> Path:
-    return PROTOCOL_ROOT / ".runtime" / "lifecycle_observations.json"
+    return TASK_MECCA_ROOT / ".runtime" / "lifecycle_observations.json"
 
 
 def _load_lifecycle_journal() -> dict[str, object]:
@@ -2065,13 +2131,31 @@ def task_state_timings(repo: Path, root: Optional[Path] = None) -> dict[str, dic
     tasks whose doing/hold states were never committed or observed are reported as
     unobserved rather than falsely showing zero seconds.
     """
-    base = PROTOCOL_ROOT if root is None else Path(root)
-    try:
-        pathspec = str(base.resolve().relative_to(Path(repo).resolve()))
-    except ValueError:
-        pathspec = base.name
+    base = _selected_ledger_root(_root(None)) if root is None else Path(root)
+
+    def history_pathspecs() -> list[str]:
+        specs: list[str] = []
+        repo_root = Path(repo).resolve()
+
+        def add(path: Path) -> None:
+            try:
+                value = str(path.resolve().relative_to(repo_root))
+            except ValueError:
+                value = path.name
+            if value not in specs:
+                specs.append(value)
+
+        add(base)
+        # 0.2 moves durable project data under _task_mecca/data/. Keep the exact
+        # pre-0.2 ledger basename as an additional Git pathspec so historical
+        # lifecycle events survive e.g. backlog_b -> data/backlog_b migration.
+        if base.resolve().parent == DATA_ROOT.resolve():
+            add(TASK_MECCA_ROOT / base.name)
+        return specs
+
+    pathspecs = history_pathspecs()
     out = _git([
-        "log", "--reverse", "-M", "--format=@@COLLAB@@%cI", "--name-status", "--", pathspec
+        "log", "--reverse", "-M", "--format=@@COLLAB@@%cI", "--name-status", "--", *pathspecs
     ], repo)
     git_events: dict[str, list[tuple[str, str, str]]] = {}
     last_state: dict[str, str] = {}
@@ -2287,7 +2371,7 @@ def _runtime_activity(base: Path, rows: list[dict[str, object]], timings: dict[s
     unknown, not dead.  Each JSON record may contain ``agent``, ``task_id``,
     ``heartbeat_at`` and ``state``.
     """
-    runtime_dir = PROTOCOL_ROOT / ".runtime" / "agents"
+    runtime_dir = TASK_MECCA_ROOT / ".runtime" / "agents"
     registry_available = runtime_dir.is_dir()
     heartbeats: list[dict[str, object]] = []
     if registry_available:
@@ -3547,6 +3631,15 @@ def cmd_worker_name(args: argparse.Namespace) -> int:
     return 0 if report["ok"] else 2
 
 
+def cmd_ensure_backlog(args: argparse.Namespace) -> int:
+    report = ensure_backlog(args.root)
+    if args.json:
+        _json(report)
+    else:
+        print(("created: " if report["created"] else "existing: ") + str(report["path"]))
+    return 0
+
+
 def cmd_preflight(args: argparse.Namespace) -> int:
     backlog = backlog_presence(args.root)
     access = access_preflight(args.root, active_probe=True)
@@ -3785,7 +3878,7 @@ def _web_backlog_context(root: Optional[Path]) -> dict[str, object]:
     explicit: Optional[Path] = None
     if root is not None and _looks_like_backlog_folder(base):
         explicit = base.resolve()
-    selected = explicit or (Path(str(candidates[0]["path"])) if candidates else None)
+    selected = explicit or (Path(str(candidates[0]["path"])) if candidates else CANONICAL_BACKLOG_ROOT)
     scan_root = _backlog_scan_root(base)
     return {
         "scan_root": scan_root,
@@ -3811,11 +3904,12 @@ def _web_handler(root: Optional[Path]):
             if wanted in by_path:
                 return Path(wanted), candidates
         initial = context.get("selected")
-        if isinstance(initial, Path) and str(initial.resolve()) in by_path:
-            return initial.resolve(), candidates
+        if isinstance(initial, Path):
+            if str(initial.resolve()) in by_path or not candidates:
+                return initial.resolve(), candidates
         if candidates:
             return Path(str(candidates[0]["path"])), candidates
-        return None, candidates
+        return CANONICAL_BACKLOG_ROOT, candidates
 
     def with_selection(snapshot: dict[str, object], selected: Optional[Path], candidates: list[dict[str, object]]) -> dict[str, object]:
         clean_candidates = []
@@ -3873,12 +3967,6 @@ def _web_handler(root: Optional[Path]):
                 self._send_json(with_selection(payload, selected, candidates).get("backlog_selection", {}))
                 return
             if path == "/api/snapshot":
-                if selected is None:
-                    self._send_json({
-                        "error": "backlog folder not found",
-                        "backlog_selection": with_selection({}, None, candidates)["backlog_selection"],
-                    }, 404)
-                    return
                 try:
                     self._send_json(with_selection(dashboard_snapshot(selected), selected, candidates))
                 except Exception as exc:  # Web UI must surface diagnostics rather than die silently.
@@ -3930,19 +4018,22 @@ def _web_handler(root: Optional[Path]):
 def run_web_ui(root: Optional[Path], port: int = 8765, *, open_browser: bool = True) -> int:
     context = _web_backlog_context(root)
     selected = context.get("selected")
-    if not isinstance(selected, Path):
-        print(f"백로그 폴더를 찾지 못했다. 검색 위치: {context['scan_root']}", file=sys.stderr)
-        return 2
     # Opening the read-only dashboard must not itself become an access gate.
+    # Before the first registration there may be no backlog yet; the UI can still
+    # start and report the uninitialized state without creating project data.
     # Show the last observation passively; Root/Controller performs a fresh
     # active probe immediately before each subagent dispatch.
-    access = access_preflight(selected, active_probe=False)
+    access = access_preflight(selected if isinstance(selected, Path) else TASK_MECCA_ROOT, active_probe=False)
     host = "127.0.0.1"
     chosen = _find_web_port(host, max(1, int(port)))
     server = ThreadingHTTPServer((host, chosen), _web_handler(root))
     url = f"http://{host}:{chosen}/"
     print(f"Task Mecca Web UI: {url}")
-    print(f"backlog: {selected} {'(auto)' if not context.get('explicit') else '(explicit)'}")
+    print(
+        f"backlog: {selected} {'(auto)' if not context.get('explicit') else '(explicit)'}"
+        if isinstance(selected, Path)
+        else "backlog: not initialized (Registrar creates data/backlog on first registration)"
+    )
     print("read-only · localhost only · Ctrl+C to stop")
     if access.get("restriction_current"):
         print("WARNING: current runtime restriction detected · subagent dispatch will remain blocked until a fresh preflight succeeds")
@@ -3977,8 +4068,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description=__doc__.splitlines()[0],
         epilog=(
-            "Web UI: python _task_mecca/collab_tools.py web\n"
-            "uv project: uv run _task_mecca/collab_tools.py web"
+            "Web UI: python _task_mecca/framework/collab_tools.py web\n"
+            "uv project: uv run _task_mecca/framework/collab_tools.py web"
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -3995,6 +4086,11 @@ def build_parser() -> argparse.ArgumentParser:
     command.add_argument("--used", action="append", default=[], help="현재 live worker path 또는 alias; 반복 지정 가능")
     command.add_argument("--json", action="store_true")
     command.set_defaults(func=cmd_worker_name)
+
+    command = sub.add_parser("ensure-backlog", help="기존 원장을 선택하거나 첫 등록용 data/backlog 생성")
+    command.add_argument("--root", type=Path)
+    command.add_argument("--json", action="store_true")
+    command.set_defaults(func=cmd_ensure_backlog)
 
     command = sub.add_parser("preflight", help="backlog + effective Full Access/dispatch 준비 상태 확인")
     command.add_argument("root", nargs="?", type=Path)

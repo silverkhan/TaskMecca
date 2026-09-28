@@ -10,13 +10,13 @@ Task Mecca의 사용자 가이드는 **사용자가 실제로 무엇을 먼저 �
 프로젝트 루트에서 다음을 실행한다.
 
 ```bash
-uv run _task_mecca/collab_tools.py web
+uv run _task_mecca/framework/collab_tools.py web
 ```
 
 브라우저가 열리며 기본 주소는 `http://127.0.0.1:8765`다. 대시보드는 read-only/local-only이며
 backlog, Subagent Workload, lifecycle timer, Needs Attention, Full Access 상태를 보여준다.
 
-대시보드는 프로젝트에서 백로그 폴더를 자동 탐지한다. 이름에 `backlog`가 포함된 폴더를 우선 후보로 보고, 여러 후보가 있으면 active와 `archive/**`/`_complete/**` 안의 인식 가능한 작업 Markdown 중 가장 최근 변경이 일어난 폴더를 자동 선택한다. 상단 `Backlog` 선택기에서 다른 후보로 바꿀 수 있으며 수동 선택값은 브라우저에 유지된다. `Auto`를 선택하면 수동 고정을 해제하고 최근 변경 기준 자동 선택으로 돌아간다.
+대시보드는 `_task_mecca` 아래에서 백로그 원장을 자동 탐지한다. 신규 프로젝트의 canonical 위치는 `data/backlog/`이며, 기존 호환성을 위해 이름이 `backlog`로 시작하는 `data/backlog_b`, legacy `backlog_b` 같은 경로도 읽는다. canonical `data/backlog/`가 있으면 우선 선택한다. 상단 `Backlog` 선택기에서 다른 후보로 바꿀 수 있으며 수동 선택값은 브라우저에 유지된다. `Auto`를 선택하면 수동 고정을 해제하고 최근 변경 기준 자동 선택으로 돌아간다.
 
 상단 **Language** 드롭다운에서 `한국어 / English`를 선택할 수 있다. 선택값은 브라우저에 저장되며 Task Mecca UI 문구·상태·메시지·User Manual이 선택 언어를 따른다. 사용자 작성 백로그 Markdown은 원문 그대로 유지한다. 향후 언어는 언어 레지스트리와 해당 번역/매뉴얼 파일을 추가하는 방식으로 확장한다.
 
@@ -25,32 +25,24 @@ backlog, Subagent Workload, lifecycle timer, Needs Attention, Full Access 상태
 `uv`를 사용하지 않는 환경에서는 다음도 가능하다.
 
 ```bash
-python _task_mecca/collab_tools.py web
+python _task_mecca/framework/collab_tools.py web
 ```
 
-## 2. Root 설정
+## 2. Root 세션 활성화
 
-### 권장 — `AGENTS.md` 자동 연동
-
-Task Mecca 설치 시 프로젝트 최상위 `AGENTS.md`에 [`AGENTS_TASK_MECCA_SNIPPET.md`](AGENTS_TASK_MECCA_SNIPPET.md)의
-내용을 한 번 통합한다. 이후 새 Codex 세션에서는 사용자가 별도 bootstrap을 입력하지 않아도 실행형 요청을 Root가
-Task Mecca 흐름으로 처리한다.
-
-자동 연동이 이미 되어 있다면 아래 수동 프롬프트는 생략한다.
-
-### 수동 Root 설정 프롬프트
-
-자동 연동이 없거나 현재 세션에서 명시적으로 Root를 설정하려면 다음 프롬프트를 한 번 입력한다.
+Task Mecca 설치와 Root 역할 부여는 의도적으로 분리한다.
 
 ```text
-이 세션에서는 Task Mecca의 Root로 동작해 주세요.
-먼저 _task_mecca/SESSION_GUIDE.md, _task_mecca/collab.md, _task_mecca/roles/root.md를 읽고 그 규약을 따르세요.
-실행형 작업을 subagent에 위임하기 전에는 SESSION_GUIDE의 Full Access preflight를 먼저 수행하세요.
-작업을 Simple Task와 Defined Task로 구분하세요. 추가 해석 없이 바로 검증 가능한 단순 작업은 목표와 수용 기준만 기록하고 바로 등록하며, 범위·설계·사용자 선택이 필요한 작업만 요건 정의서를 작성해 제 확인을 받은 뒤 Registrar에 lossless하게 등록하세요.
-등록 이후에는 Controller가 작업 연속성과 의존성을 고려해 Worker에 배분하도록 하고, Root는 사용자-facing 창구로 유지하세요.
+프로젝트에 Task Mecca가 설치되어 있음 ≠ 현재 세션이 Root임
 ```
 
-Root 설정 이후 사용자가 Registrar/Controller/Worker를 직접 조작할 필요는 없다.
+Task Mecca는 프로젝트 최상위 `AGENTS.md`를 생성하거나 수정하지 않는다. Root로 사용할 **한 개의 user-facing 세션을 사용자가 직접 선택**하고 다음 파일의 한국어 프롬프트를 그 세션에 붙여넣는다.
+
+```text
+_task_mecca/ROOT_PROMPT.md
+```
+
+명시적으로 활성화한 세션만 `/root` 역할을 수행한다. 설치 직후에는 `data/`와 backlog가 없어도 정상이며, 첫 작업 등록 시 Registrar가 canonical `_task_mecca/data/backlog/`를 생성한다.
 
 ## 3. 작업 부여
 
@@ -80,12 +72,11 @@ Web UI에서 백로그 상세를 열면 `Overview → Lifecycle → 작업 계�
 
 사용자는 일반적으로 다음 세 가지만 기억하면 된다.
 
-1. **대시보드** — `uv run _task_mecca/collab_tools.py web`
-2. **Root** — `AGENTS.md` 자동 연동 또는 위 Root 설정 프롬프트 1회
-3. **작업 부여** — 자연어 또는 Markdown으로 요구사항을 Root에게 전달
+1. **Root 활성화** — `_task_mecca/ROOT_PROMPT.md`의 프롬프트를 선택한 user-facing 세션에 1회 입력
+2. **작업 부여** — 자연어 또는 Markdown으로 요구사항을 Root에게 전달
+3. **대시보드** — 필요할 때 `uv run _task_mecca/framework/collab_tools.py web` 실행
 
-> 설치 시 프로젝트 최상위 `AGENTS.md`가 `SESSION_GUIDE.md`를 가리키도록 하는 것은 선택적 편의가 아니라
-> **즉시 투입을 위한 진입점 계약**이다. 새 세션에서 Root가 이 문서를 자동 발견하지 못하면 설치가 완전히 끝난 상태로 보지 않는다.
+프로젝트 전역 `AGENTS.md` 연동은 Task Mecca의 기본 activation mechanism이 아니다.
 
 ---
 
@@ -95,14 +86,14 @@ Web UI에서 백로그 상세를 열면 `Overview → Lifecycle → 작업 계�
 
 새 세션에서 사용자가 **실행형 작업을 처음 요청하는 즉시** Root가 다음을 수행한다. 사용자는 이 절차를 지시할 필요가 없다.
 
-1. 프로젝트 `AGENTS.md`가 지시한 프로젝트 필수 문서와 이 `SESSION_GUIDE.md`를 읽는다.
-2. `_task_mecca/collab.md`와 `_task_mecca/roles/root.md`를 읽는다.
+1. 현재 세션이 `ROOT_PROMPT.md`로 명시적으로 Root 활성화되었음을 전제로, 프로젝트 자체의 필수 지시가 있으면 함께 읽고 이 `SESSION_GUIDE.md`를 확인한다.
+2. `_task_mecca/framework/collab.md`와 `_task_mecca/framework/roles/root.md`를 읽는다.
 3. 요구사항을 길게 정제하거나 Registrar/Controller를 생성하기 전에 다음 effective access gate를 먼저 실행한다.
 
 ```bash
-python _task_mecca/collab_tools.py preflight --require-full-access --json
+python _task_mecca/framework/collab_tools.py preflight --require-full-access --json
 # uv 사용 시
-uv run _task_mecca/collab_tools.py preflight --require-full-access --json
+uv run _task_mecca/framework/collab_tools.py preflight --require-full-access --json
 ```
 
 4. `access.orchestration_ready == true`이면 요구사항 정제와 이후 Registrar/Controller/worker dispatch를 정상 진행한다.
@@ -312,4 +303,14 @@ For older completed tasks where no `doing` transition was ever committed or obse
 
 ## 배포 경계
 
-공개 updater는 Task Mecca 파일을 framework-managed / customizable-managed / project-owned / runtime·backup 영역으로 구분한다. 백로그 데이터는 항상 project-owned다. upstream 업데이트가 사용자가 수정한 Task Mecca 문서를 덮어쓰게 되는 경우 updater는 대상 파일 목록을 보여주고, 백업을 권장하며, 동의 시 로컬 백업을 실제 생성한 뒤 수정본이 공식 새 버전으로 덮어써짐을 안내하고 최종 확인을 받아야 한다. 역할·정책 문서의 의미 기반 자동 merge는 시도하지 않는다.
+파일시스템 경계도 ownership을 그대로 반영한다.
+
+- `_task_mecca/framework/**`: Task Mecca framework 및 customizable policy/document
+- `_task_mecca/data/**`: project/agent가 축적하는 durable data. updater가 절대 덮어쓰지 않는다.
+- `_task_mecca/.runtime/**`: ephemeral runtime state
+- `_task_mecca/backups/**`: updater 안전 백업
+- pre-0.2 `_task_mecca/backlog*/**`: legacy project-data compatibility
+
+Installer는 `data/`나 backlog를 미리 만들지 않는다. 첫 등록 시 Registrar가 `ensure-backlog`를 호출해 기존 ledger를 사용하거나, 없을 때만 canonical `data/backlog/`를 만든다. Agent가 audit/measurement/test evidence 같은 durable 부산물을 만들 필요가 있으면 framework와 섞지 말고 `data/` 아래에 둔다. 하위 폴더명 자체는 Task Mecca가 강제하지 않는다.
+
+upstream 업데이트가 사용자가 수정한 managed Task Mecca 문서를 덮어쓰게 되는 경우 updater는 대상 파일 목록을 보여주고, 백업을 권장하며, 동의 시 로컬 백업을 실제 생성한 뒤 수정본이 공식 새 버전으로 덮어써짐을 안내하고 최종 확인을 받아야 한다. 역할·정책 문서의 의미 기반 자동 merge는 시도하지 않는다.
