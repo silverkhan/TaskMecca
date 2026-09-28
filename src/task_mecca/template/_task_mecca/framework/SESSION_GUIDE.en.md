@@ -32,21 +32,21 @@ Without `uv`:
 python _task_mecca/framework/collab_tools.py web
 ```
 
-## 2. Configure Root
+## 2. Activate the Root session
 
-### Recommended — project `AGENTS.md` integration
-
-Integrate `AGENTS_TASK_MECCA_SNIPPET.md` once into the project-root `AGENTS.md`. New sessions can then enter the Task Mecca workflow without a manual bootstrap prompt.
-
-### Manual Root setup prompt
+Task Mecca installation and Root activation are deliberately separate.
 
 ```text
-Act as the Task Mecca Root for this session.
-First read _task_mecca/framework/SESSION_GUIDE.md, _task_mecca/framework/collab.md, and _task_mecca/framework/roles/root.md and follow those rules.
-Before delegating executable work to subagents, run the Full Access preflight described in SESSION_GUIDE.
-Classify work as Simple Task or Defined Task. For a simple task that is directly verifiable without additional interpretation, record only the goal and acceptance criteria and register it immediately. For work requiring scope, design, or user choices, prepare a requirement definition, get my confirmation, and then ask Registrar to register it losslessly.
-After registration, let Controller allocate work to Workers based on dependency and continuity, while Root remains the user-facing interface.
+Task Mecca installed in the project ≠ this session is Root
 ```
+
+Task Mecca does not create or modify the project-level `AGENTS.md`. Choose the **one user-facing session** that should act as Root and paste the English prompt from:
+
+```text
+_task_mecca/ROOT_PROMPT.md
+```
+
+Only that explicitly activated session acts as `/root`. It is normal for a fresh installation to have no `data/` directory or backlog; Registrar creates canonical `_task_mecca/data/backlog/` on the first registration.
 
 ## 3. Assign work
 
@@ -69,7 +69,7 @@ The detail UI is ordered as `Overview → Lifecycle → contract → execution/n
 
 At the first executable request of a session, Root performs the following automatically:
 
-1. Read project-required instructions and this `SESSION_GUIDE`.
+1. Assume this session was explicitly activated with `ROOT_PROMPT.md`; also read any project-specific instructions and this `SESSION_GUIDE`.
 2. Read `_task_mecca/framework/collab.md` and `_task_mecca/framework/roles/root.md`.
 3. Before spawning Registrar/Controller/Workers, run:
 
@@ -224,4 +224,14 @@ The goal is to keep safety checks automatic and quiet, asking the user only when
 
 ## Distribution boundary
 
-The public updater treats Task Mecca files as framework-managed, customizable-managed, project-owned, or runtime/backup data. Backlog data is always project-owned. When an upstream update would replace locally customized Task Mecca documents, the updater must show the affected file list, recommend and create a local backup when approved, explain that the customized copies will be overwritten, and ask for final confirmation. It does not attempt semantic auto-merge of role or policy documents.
+Filesystem layout mirrors ownership:
+
+- `_task_mecca/framework/**`: Task Mecca framework and customizable policy/docs
+- `_task_mecca/data/**`: durable project/agent data; never overwritten by the updater
+- `_task_mecca/.runtime/**`: ephemeral runtime state
+- `_task_mecca/backups/**`: updater safety backups
+- pre-0.2 `_task_mecca/backlog*/**`: legacy project-data compatibility
+
+The installer does not pre-create `data/` or a backlog. On first registration Registrar calls `ensure-backlog`, reuses an existing ledger when present, and otherwise creates canonical `data/backlog/`. Durable audit/measurement/test evidence created by agents belongs under `data/`; Task Mecca does not standardize arbitrary artifact subfolder names.
+
+When an upstream update would replace locally customized managed documents, the updater shows the affected files, recommends and creates a local backup when approved, explains that the customized copies will be overwritten, and asks for final confirmation. It does not attempt semantic auto-merge of role or policy documents.
