@@ -30,11 +30,6 @@ Task Mecca는 subagent를 실제 dispatch하기 직전에 fresh active preflight
 
 현재 파일 상태가 Git lifecycle의 마지막 commit보다 앞서 있는 경우(예: `todo → doing` rename은 됐지만 lifecycle commit 전), Web UI는 현재 파일 상태를 무시하지 않는다. 파일 시스템의 관측 시각으로 **provisional lifecycle event**를 만들어 Queue/Active/Wait를 임시 보정하고 Lifecycle에 `provisional`로 표시한다. 실제 state transition commit이 기록되면 이 임시 이벤트는 자동으로 Git 이벤트로 대체된다.
 
-`uv`를 사용하지 않는 환경에서는:
-
-```bash
-python _task_mecca/framework/collab_tools.py web
-```
 
 ## Framework / Data 경계
 
@@ -122,14 +117,20 @@ For older completed tasks where no `doing` transition was ever committed or obse
 - **Project owned**: `_task_mecca/data/**` 전체. Registrar가 첫 등록 시 `data/backlog/`를 만들며 updater는 `data/**`를 절대 덮어쓰지 않는다. pre-0.2 `backlog*` 경로도 호환을 위해 project-owned로 취급한다.
 - **Runtime/backup**: `.runtime/*`, `backups/*`. 로컬 운영/안전 데이터이며 기본적으로 Git에서 제외한다.
 
-사용자가 기억할 일반 업데이트 진입점은 하나다.
+업데이트는 bootstrap package만 새 버전으로 가져온 뒤 프로젝트의 managed framework를 갱신한다.
+
+PyPI 공개 전:
 
 ```bash
-uvx task-mecca update
+python -m pip install --upgrade "git+https://github.com/silverkhan/TaskMecca.git"
+python -m task_mecca update
 ```
 
-PyPI 공개 전 GitHub 저장소에서 직접 실행할 때는 다음을 사용한다.
+PyPI 공개 이후:
 
 ```bash
-uvx --from git+https://github.com/silverkhan/TaskMecca.git task-mecca update
+python -m pip install --upgrade task-mecca
+python -m task_mecca update
 ```
+
+`uv`가 이미 설치된 사용자는 `uvx`를 선택적 편의 경로로 사용할 수 있지만 Task Mecca의 필수 요구사항은 아니다. Web UI, doctor, preflight 등 평상시 실행은 프로젝트 안의 Python runtime을 직접 사용하므로 인터넷이나 `uv`가 필요하지 않다.
