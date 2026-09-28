@@ -43,7 +43,7 @@ Task Mecca는 **권한이 부족한 상태에서 worker를 먼저 띄워 보고 
 새 세션에서 실행형 작업 요청을 인지하면 Root는 긴 요구사항 정제나 subagent 생성보다 먼저 다음 gate를 실행한다.
 
 ```bash
-python _task_mecca/collab_tools.py preflight --require-full-access --json
+python _task_mecca/framework/collab_tools.py preflight --require-full-access --json
 ```
 
 `access.orchestration_ready == true`일 때만 위임을 시작한다. `restricted` 또는 `unknown`이면:
@@ -96,13 +96,19 @@ Codex에서 network access는 filesystem sandbox mode와 별개일 수 있다. `
 
 ## 4. 백로그 schema v2
 
-파일은 `backlog_<접두사>/` 아래 항목 하나당 하나다.
+신규 프로젝트의 canonical ledger는 `_task_mecca/data/backlog/`다. Installer는 project data를 만들지 않으며, 첫 작업을 등록하는 Registrar가 필요할 때 생성한다.
 
 ```text
-backlog_a/
-  000143.A-143.local-web-ui.todo.md
-  archive/2026-09/000142.A-142.previous.done.md
+_task_mecca/
+  data/
+    backlog/
+      000143.A-143.local-web-ui.todo.md
+      archive/2026-09/000142.A-142.previous.done.md
 ```
+
+기존 프로젝트의 `backlog`, `backlog_b`, `backlog_*` 등 **backlog로 시작하는 ledger 이름은 읽기/운영 호환**한다. 새 ledger를 만들 때는 변형 이름을 새로 만들지 않고 canonical `data/backlog`를 사용한다.
+
+`data/` 아래는 project-owned durable data 영역이다. Agent가 작업 과정에서 별도 감사·측정·테스트 증적을 보존할 필요가 있으면 `data/` 아래에 생성할 수 있지만, Task Mecca는 `audits`, `measurements`, `tests` 같은 하위 이름 자체를 표준으로 강제하지 않는다.
 
 파일명:
 
@@ -250,14 +256,17 @@ heartbeat를 갱신하고 LLM worker가 heartbeat 유지 작업을 반복하지 
 
 ```text
 preflight
+→ ensure-backlog
 → search
 → 필요한 inspect
-→ next-id
+→ next-id --allow-empty
 → todo 생성
 → inspect
 → doctor
 → ID 반환
 ```
+
+`ensure-backlog`는 기존 ledger를 우선 사용하고, 아무 ledger도 없을 때만 `_task_mecca/data/backlog/`를 생성한다.
 
 중복/병합 판단이 필요하면 임의 병합하지 않고 `REGISTRATION_CONFLICT`로 Root에 돌린다. todo는 미배정으로
 시작한다.
@@ -321,9 +330,9 @@ Worker의 DONE 선언만으로 완료하지 않는다. Controller가 해당 task
 사람용 기본 인터페이스는 terminal TUI가 아니라 local read-only Web UI다.
 
 ```bash
-python _task_mecca/collab_tools.py
+python _task_mecca/framework/collab_tools.py
 # 또는
-python _task_mecca/collab_tools.py web
+python _task_mecca/framework/collab_tools.py web
 ```
 
 기본 주소는 `http://127.0.0.1:8765`다. 포트가 사용 중이면 인접 포트를 선택한다.
