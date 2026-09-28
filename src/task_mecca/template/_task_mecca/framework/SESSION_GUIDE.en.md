@@ -9,7 +9,7 @@ Task Mecca documentation starts with what the user needs to do first. Internal r
 From the project root:
 
 ```bash
-uv run _task_mecca/framework/collab_tools.py web
+python _task_mecca/framework/collab_tools.py web
 ```
 
 The browser dashboard is read-only and localhost-only. It shows backlog state, subagent workload, lifecycle timing, Needs Attention, and access observations.
@@ -74,7 +74,7 @@ At the first executable request of a session, Root performs the following automa
 3. Before spawning Registrar/Controller/Workers, run:
 
 ```bash
-uv run _task_mecca/framework/collab_tools.py preflight --require-full-access --json
+python _task_mecca/framework/collab_tools.py preflight --require-full-access --json
 ```
 
 4. Proceed only when `access.orchestration_ready == true`.
