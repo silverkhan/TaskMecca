@@ -147,8 +147,11 @@ class InstallerTests(unittest.TestCase):
             artifact = target / "data" / "measurements" / "A-1.json"
             artifact.parent.mkdir(parents=True)
             artifact.write_text('{"ok": true}\n', encoding="utf-8")
+            unknown_project_dir = target / "audits"
+            unknown_project_dir.mkdir()
             apply_update(root)
             self.assertEqual(artifact.read_text(encoding="utf-8"), '{"ok": true}\n')
+            self.assertTrue(unknown_project_dir.is_dir())
 
     def test_manifest_declares_project_owned_patterns(self):
         manifest = build_manifest(bundled_files())
