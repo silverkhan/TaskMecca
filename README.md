@@ -4,7 +4,7 @@
 
 Task Mecca keeps requirements, backlog state, worker allocation, lifecycle timing, and a local web dashboard inside the project repository. It is designed for agent-driven coding workflows where you want the project to remain reproducible from Git instead of depending on a central service.
 
-> Public alpha: `0.1.0`. The project-contained runtime is based on the current Task Mecca v2.17 implementation.
+> Public alpha: `0.1.1`. The project-contained runtime is based on the current Task Mecca v2.17 implementation.
 
 [한국어 README](README.ko.md)
 
@@ -24,7 +24,7 @@ After PyPI publication, the intended shorter command is:
 uvx task-mecca init
 ```
 
-This installs a self-contained `_task_mecca/` directory into the current project. The project runtime remains local to the project; `uvx` is only the installer/updater layer.
+This installs a self-contained `_task_mecca/` directory into the current project. The project runtime remains local to the project; `uvx` is only the installer/updater layer. Installation does **not** create or modify the project-level `AGENTS.md`.
 
 ### 1. Launch the dashboard
 
@@ -38,9 +38,23 @@ Without `uv`:
 python _task_mecca/collab_tools.py web
 ```
 
-### 2. Configure Root
+### 2. Activate the Root session
 
-`task-mecca init` can add the Task Mecca bootstrap block to the project's `AGENTS.md`. If you skip that step, copy the guidance from `_task_mecca/AGENTS_TASK_MECCA_SNIPPET.md` into the project-level `AGENTS.md`.
+Task Mecca installation and Root activation are deliberately separate:
+
+```text
+Task Mecca installed in the project ≠ this session is Root
+```
+
+`task-mecca init` does **not** create or modify `AGENTS.md`. Project-wide instructions would blur the boundary between the single user-facing Root session and other sessions/agents.
+
+Open the session you want to use as Root and paste the appropriate prompt from:
+
+```text
+_task_mecca/ROOT_PROMPT.md
+```
+
+Only that explicitly activated session should act as `/root`.
 
 ### 3. Give Root work
 

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import tempfile
 import unittest
@@ -26,9 +27,10 @@ class InstallerTests(unittest.TestCase):
             self.assertTrue((target / "web" / "app.js").is_file())
             manifest = load_manifest(target)
             self.assertIsNotNone(manifest)
-            self.assertEqual(manifest["task_mecca_version"], "0.1.0")
+            self.assertEqual(manifest["task_mecca_version"], "0.1.1")
             self.assertEqual(manifest["managed_files"]["roles/root.md"]["policy"], "customizable")
             self.assertEqual(manifest["managed_files"]["web/app.js"]["policy"], "framework")
+            self.assertEqual(manifest["managed_files"]["ROOT_PROMPT.md"]["policy"], "customizable")
 
     def test_local_customization_is_preserved_when_upstream_unchanged(self):
         with tempfile.TemporaryDirectory() as td:
@@ -67,7 +69,31 @@ class InstallerTests(unittest.TestCase):
             self.assertEqual((backup / "roles" / "root.md").read_text(), "LOCAL ROLE EDIT\n")
             apply_update(root, allow_conflicts=True)
             self.assertNotEqual(role.read_text(), "LOCAL ROLE EDIT\n")
-            self.assertEqual(load_manifest(target)["task_mecca_version"], "0.1.0")
+            self.assertEqual(load_manifest(target)["task_mecca_version"], "0.1.1")
+
+    def test_retired_unmodified_agents_snippet_is_removed_on_update(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            target = install(root)
+            legacy = target / "AGENTS_TASK_MECCA_SNIPPET.md"
+            legacy_bytes = b"legacy project-wide integration snippet\\n"
+            legacy.write_bytes(legacy_bytes)
+
+            manifest_path = target / MANIFEST_NAME
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            manifest["task_mecca_version"] = "0.1.0"
+            manifest["managed_files"]["AGENTS_TASK_MECCA_SNIPPET.md"] = {
+                "policy": "customizable",
+                "baseline_sha256": hashlib.sha256(legacy_bytes).hexdigest(),
+            }
+            manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+
+            plan = update_plan(root)
+            self.assertIn("AGENTS_TASK_MECCA_SNIPPET.md", plan["removals"])
+            apply_update(root)
+            self.assertFalse(legacy.exists())
+            self.assertTrue((target / "ROOT_PROMPT.md").is_file())
+            self.assertEqual(load_manifest(target)["task_mecca_version"], "0.1.1")
 
     def test_project_owned_backlog_is_never_touched(self):
         with tempfile.TemporaryDirectory() as td:
