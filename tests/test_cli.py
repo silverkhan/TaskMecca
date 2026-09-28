@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import io
 import tempfile
 import unittest
 from pathlib import Path
@@ -31,6 +32,22 @@ class CliInitTests(unittest.TestCase):
                 (root / "_task_mecca" / "framework" / "collab_tools.py").is_file()
             )
             self.assertFalse((root / "_task_mecca" / "data").exists())
+
+    def test_init_output_uses_project_local_python_runtime(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            args = argparse.Namespace(project=str(root))
+            stream = io.StringIO()
+            with patch("sys.stdout", stream):
+                rc = cmd_init(args)
+            self.assertEqual(rc, 0)
+            output = stream.getvalue()
+            self.assertIn(
+                "python _task_mecca/framework/collab_tools.py web",
+                output,
+            )
+            self.assertNotIn("uvx", output)
+            self.assertNotIn("uv run", output)
 
     def test_init_does_not_create_agents_md_or_backlog(self):
         with tempfile.TemporaryDirectory() as td:

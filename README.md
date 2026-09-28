@@ -4,7 +4,7 @@
 
 Task Mecca keeps its orchestration framework inside the project while keeping project-owned task data physically separate from framework files. A Git clone can therefore preserve both the exact Task Mecca operating rules and the project's durable backlog state without depending on a central service.
 
-> Public alpha: `0.2.0`. The project-contained runtime is based on the current Task Mecca v2.17 line, with the public packaging/update layer added around it.
+> Public alpha: `0.2.1`. The project-contained runtime is based on the current Task Mecca v2.17 line, with the public packaging/update layer added around it.
 
 [한국어 README](README.ko.md)
 
@@ -12,19 +12,31 @@ Task Mecca keeps its orchestration framework inside the project while keeping pr
 
 ### 0. Install the framework
 
-Before PyPI publication:
+Task Mecca requires **Python 3.11+ and Git**. `uv` is optional.
+
+Before PyPI publication, the primary install path is standard Python packaging:
 
 ```bash
-uvx --from git+https://github.com/silverkhan/TaskMecca.git task-mecca init
+python -m pip install "git+https://github.com/silverkhan/TaskMecca.git"
+python -m task_mecca init
 ```
 
 After PyPI publication:
 
 ```bash
-uvx task-mecca init
+python -m pip install task-mecca
+python -m task_mecca init
 ```
 
 Installation creates only Task Mecca framework/metadata. It does **not** create project data, does not create a backlog, and does not modify the project-level `AGENTS.md`.
+
+If `uv` is already installed, `uvx` is an optional convenience:
+
+```bash
+uvx --from git+https://github.com/silverkhan/TaskMecca.git task-mecca init
+```
+
+Task Mecca does not install or require `uv`.
 
 Installed layout:
 
@@ -78,17 +90,13 @@ The installer does not create it. Existing ledgers such as `backlog_b`, `backlog
 
 ### 3. Launch the dashboard
 
-Launcher form:
+Run the **installed project-local runtime directly**:
 
 ```bash
-uvx --from git+https://github.com/silverkhan/TaskMecca.git task-mecca web
+python _task_mecca/framework/collab_tools.py web
 ```
 
-Direct project-local runtime:
-
-```bash
-uv run _task_mecca/framework/collab_tools.py web
-```
+This does not contact GitHub, does not require `uv`, and does not depend on the bootstrap package remaining installed in the Python environment.
 
 The Web UI is read-only and localhost-only. It can start before the first backlog is created and reports the ledger as uninitialized.
 
@@ -129,9 +137,27 @@ Task Mecca includes lifecycle-history compatibility so Git events recorded under
 
 ## Update
 
+Before PyPI publication:
+
 ```bash
-uvx --from git+https://github.com/silverkhan/TaskMecca.git task-mecca update
+python -m pip install --upgrade "git+https://github.com/silverkhan/TaskMecca.git"
+python -m task_mecca update
 ```
+
+After PyPI publication:
+
+```bash
+python -m pip install --upgrade task-mecca
+python -m task_mecca update
+```
+
+If `uv` is already installed, the equivalent optional convenience command is:
+
+```bash
+uvx --refresh --from git+https://github.com/silverkhan/TaskMecca.git task-mecca update
+```
+
+Network access is needed for **install/update** because a new Task Mecca package must be retrieved. Normal project runtime commands such as Web UI, doctor, preflight, and backlog operations run from `_task_mecca/framework/` and do not require `uv` or package download.
 
 If an update would overwrite or retire locally modified managed files, Task Mecca:
 
@@ -162,9 +188,10 @@ No force/backup flags are required for the normal flow.
 
 - Python 3.11+
 - Git
-- `uv` recommended
+- `pip` for the standard bootstrap package installation path
+- `uv` / `uvx`: optional convenience only
 
-The installed runtime has no third-party Python runtime dependencies.
+The installed project runtime has no third-party Python runtime dependencies.
 
 ## Development
 

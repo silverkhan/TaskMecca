@@ -2,6 +2,14 @@
 
 All notable public releases will be documented here.
 
+## 0.2.1 - 2026-09-28
+
+- make Python 3.11+ and Git the core requirements; `uv` / `uvx` are optional conveniences only
+- document standard `python -m pip` + `python -m task_mecca` bootstrap/update paths
+- make project-local `python _task_mecca/framework/collab_tools.py ...` the canonical runtime invocation
+- remove `uvx ... web` from normal Web UI guidance so installed projects run fully locally without package download or network access
+- update Root/session documentation and CI to validate the Python-first workflow
+
 ## 0.2.0 - 2026-09-28
 
 - physically separate Task Mecca framework files under `_task_mecca/framework/`

@@ -5,7 +5,7 @@ For first use, you only need the following three steps.
 ## 1. Launch the dashboard
 
 ```bash
-uv run _task_mecca/framework/collab_tools.py web
+python _task_mecca/framework/collab_tools.py web
 ```
 
 The dashboard automatically detects backlog ledgers under `_task_mecca`. New projects use the canonical `data/backlog/` location. For compatibility, ledgers whose names begin with `backlog` such as `data/backlog_b` or legacy `backlog_b` remain discoverable; canonical `data/backlog/` has highest priority. Use the **Backlog** selector in the top bar to switch folders manually, or choose **Auto** to return to automatic selection.
@@ -41,11 +41,6 @@ The dashboard's Full Access indicator is historical information. Task Mecca runs
 
 If the current filename state is ahead of committed Git lifecycle history, Task Mecca records a provisional observed transition in `.runtime/lifecycle_observations.json`. This keeps Active/Wait timing from resetting while state-transition commits are pending. Git evidence takes precedence when it later arrives.
 
-Without `uv`:
-
-```bash
-python _task_mecca/framework/collab_tools.py web
-```
 
 ## Framework / Data boundary
 
@@ -123,14 +118,20 @@ When Task Mecca is installed through the public bootstrap package, `_task_mecca/
 - **Project owned**: all `_task_mecca/data/**`. Registrar creates `data/backlog/` on first registration; the updater never overwrites `data/**`. Pre-0.2 `backlog*` locations remain project-owned compatibility paths.
 - **Runtime/backup**: `.runtime/*` and `backups/*`. Local-only operational/safety data and ignored by Git by default.
 
-The normal update entry point is intentionally just:
+Update the bootstrap package first, then update the project's managed framework.
+
+Before PyPI publication:
 
 ```bash
-uvx task-mecca update
+python -m pip install --upgrade "git+https://github.com/silverkhan/TaskMecca.git"
+python -m task_mecca update
 ```
 
-When running directly from GitHub before PyPI publication:
+After PyPI publication:
 
 ```bash
-uvx --from git+https://github.com/silverkhan/TaskMecca.git task-mecca update
+python -m pip install --upgrade task-mecca
+python -m task_mecca update
 ```
+
+If `uv` is already installed, `uvx` remains an optional convenience, not a Task Mecca requirement. Normal Web UI, doctor, preflight, and backlog operations execute the project-local Python runtime directly and need neither `uv` nor network access.
