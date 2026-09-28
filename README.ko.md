@@ -4,7 +4,7 @@
 
 Task Mecca는 요건, 백로그 상태, worker 배분, lifecycle 시간, 로컬 Web UI를 프로젝트 안에 함께 둡니다. 중앙 서비스보다 Git clone만으로 운영 규약과 상태를 재현하는 것을 우선합니다.
 
-> Public alpha: `0.1.0`. 프로젝트 내장 runtime은 현재 Task Mecca v2.17을 기준으로 합니다.
+> Public alpha: `0.1.1`. 프로젝트 내장 runtime은 현재 Task Mecca v2.17을 기준으로 합니다.
 
 [English README](README.md)
 
@@ -24,7 +24,7 @@ PyPI 공개 이후 목표 사용법은 더 짧습니다.
 uvx task-mecca init
 ```
 
-`uvx`는 설치/업데이트 계층일 뿐이며, 실제 Task Mecca runtime은 계속 프로젝트의 `_task_mecca/`에 존재합니다.
+`uvx`는 설치/업데이트 계층일 뿐이며, 실제 Task Mecca runtime은 계속 프로젝트의 `_task_mecca/`에 존재합니다. 설치 과정에서는 프로젝트 최상위 `AGENTS.md`를 생성하거나 수정하지 않습니다.
 
 ### 1. 대시보드 실행
 
@@ -32,9 +32,23 @@ uvx task-mecca init
 uv run _task_mecca/collab_tools.py web
 ```
 
-### 2. Root 설정
+### 2. Root 세션 활성화
 
-`task-mecca init` 과정에서 프로젝트 `AGENTS.md`에 Task Mecca bootstrap 블록을 추가할 수 있습니다. 건너뛴 경우 `_task_mecca/AGENTS_TASK_MECCA_SNIPPET.md` 내용을 프로젝트 `AGENTS.md`에 반영합니다.
+Task Mecca 설치와 Root 역할 부여는 의도적으로 분리합니다.
+
+```text
+프로젝트에 Task Mecca가 설치되어 있음 ≠ 현재 세션이 Root임
+```
+
+`task-mecca init`은 프로젝트의 `AGENTS.md`를 생성하거나 수정하지 않습니다. 프로젝트 전역 지시로 Task Mecca를 활성화하면 사용자-facing 단일 Root와 다른 세션/agent의 역할 경계가 흐려질 수 있기 때문입니다.
+
+Root로 사용할 세션을 사용자가 직접 선택한 뒤 다음 파일의 한국어 프롬프트를 그 세션에 붙여넣습니다.
+
+```text
+_task_mecca/ROOT_PROMPT.md
+```
+
+명시적으로 활성화한 해당 세션만 `/root` 역할을 수행합니다.
 
 ### 3. 작업 부여
 
