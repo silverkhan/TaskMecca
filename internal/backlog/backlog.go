@@ -50,6 +50,14 @@ type Record struct {
 }
 
 
+
+func pythonUTCISO(value time.Time) string {
+    value=value.UTC()
+    text:=value.Format("2006-01-02T15:04:05.999999999")
+    text=strings.TrimRight(strings.TrimRight(text,"0"),".")
+    return text+"+00:00"
+}
+
 func fileChangeTime(info os.FileInfo) time.Time {
     if runtime.GOOS=="windows" { return info.ModTime() }
     value:=reflect.ValueOf(info.Sys())
@@ -202,8 +210,8 @@ func Catalog(project, root string) ([]Record,error) {
         stat,statErr:=os.Stat(path)
         mtime,ctime:="",""
         if statErr==nil {
-            mtime=stat.ModTime().UTC().Format(time.RFC3339Nano)
-            ctime=fileChangeTime(stat).UTC().Format(time.RFC3339Nano)
+            mtime=pythonUTCISO(stat.ModTime())
+            ctime=pythonUTCISO(fileChangeTime(stat))
         }
         rows=append(rows,Record{
             ID:strings.ToUpper(match[2]),SortKey:match[1],Slug:match[3],State:match[4],
