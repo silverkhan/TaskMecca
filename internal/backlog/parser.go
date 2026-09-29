@@ -13,6 +13,10 @@ var fieldNames = map[string]bool{
     "재개조건": true, "대기근거": true, "선행": true, "연관": true, "설명": true,
     "메모": true, "결과": true, "검증": true, "Branch": true, "실행기": true,
     "RuntimeProvider": true, "Dispatch상태": true, "실행상태": true, "실행근거": true, "Fallback근거": true,
+    // Legacy runtime-schema fields remain recognized as field boundaries so old
+    // ledgers do not bleed their metadata into 변경범위/RuntimeProvider values.
+    "Runtime계약": true, "요청Provider": true, "요청Model": true, "요청Effort": true,
+    "요청출처": true, "실효Provider": true, "실효Model": true, "실효Effort": true,
 }
 
 func parseFields(text string) map[string]string {
@@ -169,6 +173,8 @@ func documentModel(text string,fields map[string]string) map[string]any {
 
 func runtimeFromFields(fields map[string]string) map[string]any {
     provider:=strings.TrimSpace(fields["RuntimeProvider"])
+    if provider=="" { provider=strings.TrimSpace(fields["실효Provider"]) }
+    if provider=="" { provider=strings.TrimSpace(fields["요청Provider"]) }
     status:=strings.TrimSpace(fields["Dispatch상태"])
     if status=="" { status=strings.TrimSpace(fields["실행상태"]) }
     evidence:=strings.TrimSpace(fields["실행근거"])
