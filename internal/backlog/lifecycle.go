@@ -137,7 +137,7 @@ func LifecycleTimings(project,root string) (map[string]map[string]any,error) {
     now:=time.Now()
     journalChanged:=false
     combinedEvents:=map[string][]lifecycleEvent{}
-    for id,seq:=range combinedEvents { combinedEvents[id]=append([]lifecycleEvent{},seq...) }
+    for id,seq:=range events { combinedEvents[id]=append([]lifecycleEvent{},seq...) }
     for id,row:=range currentRows {
         durable:=events[id]
         durableLastState:=""
@@ -207,7 +207,7 @@ func LifecycleTimings(project,root string) (map[string]map[string]any,error) {
 
     result:=map[string]map[string]any{}
     labels:=map[string]string{"todo":"Registered","doing":"Started","hold":"Hold","done":"Completed"}
-    for id,seq:=range events {
+    for id,seq:=range combinedEvents {
         sort.SliceStable(seq,func(i,j int)bool {
             ti,_:=parseTime(seq[i].At); tj,_:=parseTime(seq[j].At); return ti.Before(tj)
         })
