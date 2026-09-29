@@ -6,7 +6,9 @@ import (
     "io/fs"
     "os"
     "path/filepath"
+    "reflect"
     "regexp"
+    "runtime"
     "sort"
     "strconv"
     "strings"
@@ -45,6 +47,27 @@ type Record struct {
     RuntimeMetadata map[string]any `json:"runtime_metadata"`
     Mtime string `json:"mtime"`
     Ctime string `json:"ctime"`
+}
+
+
+func fileChangeTime(info os.FileInfo) time.Time {
+    if runtime.GOOS=="windows" { return info.ModTime() }
+    value:=reflect.ValueOf(info.Sys())
+    if !value.IsValid() { return info.ModTime() }
+    if value.Kind()==reflect.Pointer { value=value.Elem() }
+    if !value.IsValid() || value.Kind()!=reflect.Struct { return info.ModTime() }
+    for _,name:=range []string{"Ctim","Ctimespec"} {
+        field:=value.FieldByName(name)
+        if !field.IsValid() { continue }
+        if field.Kind()==reflect.Struct {
+            sec:=field.FieldByName("Sec")
+            nsec:=field.FieldByName("Nsec")
+            if sec.IsValid() && nsec.IsValid() && sec.CanInt() && nsec.CanInt() {
+                return time.Unix(sec.Int(),nsec.Int())
+            }
+        }
+    }
+    return info.ModTime()
 }
 
 func named(path string) bool { return strings.HasPrefix(strings.ToLower(filepath.Base(path)), "backlog") }
@@ -180,7 +203,7 @@ func Catalog(project, root string) ([]Record,error) {
         mtime,ctime:="",""
         if statErr==nil {
             mtime=stat.ModTime().UTC().Format(time.RFC3339Nano)
-            ctime=mtime
+            ctime=fileChangeTime(stat).UTC().Format(time.RFC3339Nano)
         }
         rows=append(rows,Record{
             ID:strings.ToUpper(match[2]),SortKey:match[1],Slug:match[3],State:match[4],
