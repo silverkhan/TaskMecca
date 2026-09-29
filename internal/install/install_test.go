@@ -24,24 +24,24 @@ func TestInitAndPreserveData(t *testing.T) {
     file := filepath.Join(target, "data", "backlog", "000001.A-1.task.todo.md")
     if err := os.MkdirAll(filepath.Dir(file), 0755); err != nil { t.Fatal(err) }
     if err := os.WriteFile(file, []byte("# A-1\n"), 0644); err != nil { t.Fatal(err) }
-    if err := Update(root, "0.2.1"); err != nil { t.Fatal(err) }
+    if err := Migrate(root, "0.2.1"); err != nil { t.Fatal(err) }
     if got, err := os.ReadFile(file); err != nil || string(got) != "# A-1\n" {
         t.Fatalf("project data changed: %q %v", got, err)
     }
 }
 
-func TestUpdateStopsOnModifiedFramework(t *testing.T) {
+func TestMigrateStopsOnModifiedFramework(t *testing.T) {
     root := t.TempDir()
     if err := Init(root, "0.2.1"); err != nil { t.Fatal(err) }
     path := filepath.Join(root, targetName, "framework", "web", "app.js")
     if err := os.WriteFile(path, []byte("local change"), 0644); err != nil { t.Fatal(err) }
     // Unchanged upstream managed files are preserved, matching the Python updater.
-    if err := Update(root, "0.2.1"); err != nil { t.Fatal(err) }
+    if err := Migrate(root, "0.2.1"); err != nil { t.Fatal(err) }
     got, err := os.ReadFile(path)
     if err != nil || string(got) != "local change" { t.Fatalf("local customization lost: %q %v", got, err) }
 }
 
-func TestUpdateRestoresMissingManagedFile(t *testing.T) {
+func TestMigrateRestoresMissingManagedFile(t *testing.T) {
     project := t.TempDir()
     if err := Init(project, "0.2.0"); err != nil {
         t.Fatal(err)
@@ -50,7 +50,7 @@ func TestUpdateRestoresMissingManagedFile(t *testing.T) {
     if err := os.Remove(target); err != nil {
         t.Fatal(err)
     }
-    if err := Update(project, "0.2.1"); err != nil {
+    if err := Migrate(project, "0.2.1"); err != nil {
         t.Fatal(err)
     }
     if _, err := os.Stat(target); err != nil {
