@@ -5,8 +5,8 @@ import (
     "strings"
 )
 
-var sectionLine = regexp.MustCompile(`^(#{2,4})\\s+(.+?)\\s*$`)
-var checkboxLine = regexp.MustCompile(`^-\\s+\\[([ xX])\\]\\s+(.+)$`)
+var sectionLine = regexp.MustCompile(`^(#{2,4})\s+(.+?)\s*$`)
+var checkboxLine = regexp.MustCompile(`^-\s+\[([ xX])\]\s+(.+)$`)
 
 var fieldNames = map[string]bool{
     "등록자": true, "Agent": true, "변경범위": true, "대기": true, "대기유형": true,
