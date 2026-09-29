@@ -369,6 +369,15 @@ func emptyDash(value any) any {
     return value
 }
 
+func singleLine(value any) any {
+    text,ok:=value.(string)
+    if !ok { return value }
+    text=strings.TrimSpace(text)
+    if text=="" { return "-" }
+    if i:=strings.IndexByte(text,'\n'); i>=0 { text=text[:i] }
+    return strings.TrimSpace(text)
+}
+
 func joinAnyStrings(value any) string {
     values:=[]string{}
     switch rows:=value.(type) {
@@ -427,13 +436,13 @@ func printStatus(report map[string]any) {
     active,_:=report["active"].([]map[string]any)
     if len(active)==0 { fmt.Println("(active 항목 없음)") }
     for _,item:=range active {
-        fmt.Printf("%-8v %-8v %-24v %-12v %v\n",item["id"],item["state"],emptyDash(item["agent"]),item["time"],item["title"])
+        fmt.Printf("%-8v %-8v %-24v %-12v %v\n",item["id"],item["state"],singleLine(emptyDash(item["agent"])),item["time"],item["title"])
     }
     done,_:=report["done"].([]map[string]any)
     if len(done)>0 {
         fmt.Println("\nDone")
         for _,item:=range done {
-            fmt.Printf("%-8v done     %-24v %-12v %v\n",item["id"],emptyDash(item["agent"]),item["time"],item["title"])
+            fmt.Printf("%-8v done     %-24v %-12v %v\n",item["id"],singleLine(emptyDash(item["agent"])),item["time"],item["title"])
         }
     }
     fmt.Println("\nLive agents: use the current model runtime agent list; this local monitor does not infer liveness from Git.")
