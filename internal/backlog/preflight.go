@@ -144,6 +144,65 @@ func AccessPreflight(project,root string) map[string]any {
     return report
 }
 
+
+func AccessObservation(project string) map[string]any {
+    now:=time.Now()
+    sandboxEnv:=strings.TrimSpace(os.Getenv("CODEX_SANDBOX"))
+    marker:=sandboxMarkerState(sandboxEnv)
+    networkRaw:=strings.TrimSpace(os.Getenv("CODEX_SANDBOX_NETWORK_DISABLED"))
+    networkDisabled:=networkRaw!="" && networkRaw!="0" && strings.ToLower(networkRaw)!="false" && strings.ToLower(networkRaw)!="no"
+    if marker=="restricted" {
+        network:="unknown"; if networkDisabled { network="disabled" }
+        return map[string]any{
+            "status":"restricted","full_access_confirmed":false,"orchestration_ready":false,
+            "checked_at":now.Format("2006-01-02T15:04:05-07:00"),"source":"runtime_environment",
+            "sandbox_env":sandboxEnv,"sandbox_marker":marker,"network":network,
+            "message":"현재 프로세스에 제한된 Codex sandbox 신호가 있습니다. subagent dispatch 전에 Full Access를 활성화하세요.",
+            "dispatch_recheck_required":true,"restriction_current":true,
+            "reasons":[]string{"CODEX_SANDBOX="+sandboxEnv},
+        }
+    }
+    cachePath:=filepath.Join(project,"_task_mecca",".runtime","access_preflight.json")
+    if data,err:=os.ReadFile(cachePath); err==nil {
+        cached:=map[string]any{}
+        if json.Unmarshal(data,&cached)==nil {
+            var age any=nil
+            stale:=true
+            if checked:=toString(cached["checked_at"]); checked!="" {
+                if dt,ok:=parseTime(checked); ok {
+                    seconds:=now.Sub(dt).Seconds(); if seconds<0 { seconds=0 }
+                    age=seconds; stale=seconds>900
+                }
+            }
+            cached["source"]="cached_effective_probe"
+            cached["cache_age_seconds"]=age
+            cached["cache_stale"]=stale
+            cached["last_observed_status"]=valueOr(cached["status"],"unknown")
+            cached["dispatch_recheck_required"]=true
+            cached["orchestration_ready"]=false
+            if cached["status"]=="full" {
+                cached["message"]="마지막 effective Full Access 검증은 성공했습니다. 대시보드에서는 관측 이력으로만 표시하며 subagent dispatch 직전에 자동으로 다시 검증합니다."
+            } else if stale {
+                cached["message"]="마지막 권한 검증 결과가 오래되었습니다. 경고 상태는 아니며, subagent dispatch 직전에 active preflight를 자동 재실행합니다."
+            }
+            if sandboxEnv!="" { cached["sandbox_env"]=sandboxEnv }
+            cached["sandbox_marker"]=marker
+            cached["restriction_current"]=false
+            if networkDisabled { cached["network"]="disabled" }
+            return cached
+        }
+    }
+    network:="unknown"; if networkDisabled { network="disabled" }
+    var sandbox any=nil; if sandboxEnv!="" { sandbox=sandboxEnv }
+    return map[string]any{
+        "status":"unknown","full_access_confirmed":false,"orchestration_ready":false,
+        "checked_at":nil,"source":"no_effective_probe","sandbox_env":sandbox,
+        "sandbox_marker":marker,"network":network,
+        "message":"아직 effective Full Access 검증 이력이 없습니다. subagent dispatch 직전에 active preflight를 자동 실행합니다.",
+        "dispatch_recheck_required":true,"restriction_current":false,"reasons":[]string{},
+    }
+}
+
 func Preflight(project,root string,requireFull bool) (map[string]any,error) {
     backlog,err:=Presence(project,root,nil)
     if err!=nil { return nil,err }
