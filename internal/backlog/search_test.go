@@ -55,7 +55,7 @@ Search parity.
     row:=rows[0]
     if row.Document["schema"]!="simple-v2" { t.Fatalf("document=%+v",row.Document) }
     if row.Fields["설명"]!="Go parser migration" { t.Fatalf("fields=%+v",row.Fields) }
-    if row.RuntimeMetadata["RuntimeProvider"]!="codex" { t.Fatalf("runtime=%+v",row.RuntimeMetadata) }
+    if row.RuntimeMetadata["runtime_provider"]!="codex" { t.Fatalf("runtime=%+v",row.RuntimeMetadata) }
 
     report,err:=Search(root,"","parser",10)
     if err!=nil { t.Fatal(err) }
