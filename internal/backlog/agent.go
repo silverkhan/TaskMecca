@@ -7,6 +7,14 @@ import (
 
 var agentPath = regexp.MustCompile(`^/root(?:/[a-z0-9_]+)*$`)
 
+var workerPool = []string{
+    "kkobugi","pairi","isanghaessi","pikachyu","raichyu","naong","jammanbo","ibui",
+    "purin","metamong","mangnanyong","gorapadeok","paenteom","rukario","sikseuteil",
+    "rapeuraseu","rioreu","togepi","seurakeu","eonibugi","geobukwang","rijadeu",
+    "rijamong","isanghaepul","isanghaekkot","ppippi","myu","digeuda","kkoret",
+    "moraeduji","kkomadol","rongseuton",
+}
+
 var workerPolicy = map[string][]string{
     "kkobugi":{"squirtle"}, "pairi":{"charmander"}, "isanghaessi":{"bulbasaur"},
     "pikachyu":{"pikachu"}, "raichyu":{}, "naong":{"meowth"},
