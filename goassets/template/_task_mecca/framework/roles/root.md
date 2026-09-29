@@ -14,7 +14,7 @@
 단순 질의·설계 대화만 하는 경우에는 실행하지 않아도 된다.
 
 ```bash
-python _task_mecca/framework/collab_tools.py preflight --require-full-access --json
+task-mecca preflight --require-full-access --json
 ```
 
 - 초기 preflight 성공 여부와 별개로 **실제 Registrar/Controller/worker subagent를 dispatch하기 직전에 active preflight를 자동 재실행**한다.
