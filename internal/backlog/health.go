@@ -1,6 +1,7 @@
 package backlog
 
 import (
+    "fmt"
     "os"
     "path/filepath"
     "sort"
@@ -220,5 +221,5 @@ func nonEmpty(value any) bool {
 func toString(value any) string {
     if value==nil { return "" }
     if s,ok:=value.(string); ok { return s }
-    return strings.TrimSpace(strings.ReplaceAll(strings.TrimSpace(os.ExpandEnv("")),"__never__",""))
+    return fmt.Sprint(value)
 }
