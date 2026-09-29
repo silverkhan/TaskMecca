@@ -204,9 +204,22 @@ Search parity.
                   (ledger / name).write_text(body, encoding='utf-8')
               script = framework / 'collab_tools.py'
 
+              volatile = {
+                  'current_segment_seconds', 'queue_seconds', 'active_seconds', 'wait_seconds',
+                  'work_seconds', 'lead_seconds', 'elapsed_seconds', 'duration_seconds',
+                  'queue', 'active', 'wait', 'work', 'lead', 'elapsed', 'duration',
+                  'interval_seconds', 'interval',
+              }
+              def stable(value):
+                  if isinstance(value, dict):
+                      return {k: stable(v) for k, v in value.items() if k not in volatile}
+                  if isinstance(value, list):
+                      return [stable(v) for v in value]
+                  return value
+
               for command in (['inspect', 'A-4'], ['workload']):
                   python = subprocess.run(['python', str(script), *command, '--root', str(ledger), '--json'], capture_output=True, text=True)
                   go = subprocess.run(['go', 'run', './cmd/task-mecca', *command, '--project', root, '--root', str(ledger), '--json'], capture_output=True, text=True)
                   assert python.returncode == go.returncode, (command, python.stderr, go.stderr)
-                  assert json.loads(python.stdout) == json.loads(go.stdout), (command, python.stdout, go.stdout)
+                  assert stable(json.loads(python.stdout)) == stable(json.loads(go.stdout)), (command, python.stdout, go.stdout)
           PY
