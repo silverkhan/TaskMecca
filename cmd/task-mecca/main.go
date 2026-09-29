@@ -5,6 +5,7 @@ import (
     "fmt"
     "os"
     "path/filepath"
+    "strconv"
     "strings"
 
     "github.com/silverkhan/TaskMecca/internal/backlog"
@@ -21,7 +22,7 @@ func run(args []string) int {
         return 0
     }
     if len(args) == 0 {
-        fmt.Fprintln(os.Stderr, "usage: task-mecca <init|update|agent|worker-name|ensure-backlog|next-id> [options]")
+        fmt.Fprintln(os.Stderr, "usage: task-mecca <init|update|agent|worker-name|ensure-backlog|next-id|search> [options]")
         return 2
     }
     command := args[0]
@@ -30,6 +31,7 @@ func run(args []string) int {
     jsonOutput := false
     newWorker := false
     used := []string{}
+    limit := 10
     positional := []string{}
     for i := 1; i < len(args); i++ {
         if args[i] == "--project" && i+1 < len(args) {
@@ -40,6 +42,11 @@ func run(args []string) int {
             i++
         } else if args[i] == "--used" && i+1 < len(args) {
             used = append(used, args[i+1])
+            i++
+        } else if args[i] == "--limit" && i+1 < len(args) {
+            parsed, parseErr := strconv.Atoi(args[i+1])
+            if parseErr != nil { fmt.Fprintln(os.Stderr, "--limit requires an integer"); return 2 }
+            limit = parsed
             i++
         } else if args[i] == "--json" || args[i] == "--allow-empty" || args[i] == "--new" {
             if args[i] == "--json" { jsonOutput = true }
@@ -102,6 +109,19 @@ func run(args []string) int {
         report, err = backlog.NextID(root, rootOption, positional[0])
         if err == nil {
             if jsonOutput { emitJSON(report) } else { fmt.Printf("%s.%s\n", report["sort_key"], report["id"]) }
+        }
+    case "search":
+        if len(positional) != 1 { fmt.Fprintln(os.Stderr, "search requires a query"); return 2 }
+        var report backlog.SearchReport
+        report, err = backlog.Search(root, rootOption, positional[0], limit)
+        if err == nil {
+            if jsonOutput { emitJSON(report) } else if len(report.Results)==0 {
+                fmt.Println("(후보 없음)")
+            } else {
+                for _,row:=range report.Results {
+                    fmt.Printf("%-8s %-5s %s score=%d\n", row.ID, row.State, row.Title, row.Score)
+                }
+            }
         }
     default:
         // Go runtime commands must be implemented before this CLI can replace Python.
