@@ -106,5 +106,5 @@ esac
 say ""
 say "Project setup:"
 say "  task-mecca init"
-say "Existing project framework update:"
-say "  task-mecca update"
+say "Existing project framework migration:"
+say "  task-mecca migrate"
