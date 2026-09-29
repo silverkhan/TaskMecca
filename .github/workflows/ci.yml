@@ -153,7 +153,7 @@ Search parity.
         run: |
           python - <<'PY'
           import json, pathlib, subprocess, tempfile
-          script = 'src/task_mecca/template/_task_mecca/framework/collab_tools.py'
+          source_framework = pathlib.Path('src/task_mecca/template/_task_mecca/framework')
           tasks = {
               '000001.A-1.done.done.md': '''# A-1 Done
 - Agent: /root/controller/pairi
@@ -194,13 +194,18 @@ Search parity.
 ''',
           }
           with tempfile.TemporaryDirectory() as root:
-              ledger = pathlib.Path(root) / '_task_mecca' / 'data' / 'backlog'
+              task_mecca = pathlib.Path(root) / '_task_mecca'
+              framework = task_mecca / 'framework'
+              import shutil
+              shutil.copytree(source_framework, framework)
+              ledger = task_mecca / 'data' / 'backlog'
               ledger.mkdir(parents=True)
               for name, body in tasks.items():
                   (ledger / name).write_text(body, encoding='utf-8')
+              script = framework / 'collab_tools.py'
 
               for command in (['inspect', 'A-4'], ['workload']):
-                  python = subprocess.run(['python', script, *command, '--root', str(ledger), '--json'], capture_output=True, text=True)
+                  python = subprocess.run(['python', str(script), *command, '--root', str(ledger), '--json'], capture_output=True, text=True)
                   go = subprocess.run(['go', 'run', './cmd/task-mecca', *command, '--project', root, '--root', str(ledger), '--json'], capture_output=True, text=True)
                   assert python.returncode == go.returncode, (command, python.stderr, go.stderr)
                   assert json.loads(python.stdout) == json.loads(go.stdout), (command, python.stdout, go.stdout)
