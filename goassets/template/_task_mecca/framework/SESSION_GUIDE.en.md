@@ -222,11 +222,11 @@ The goal is to keep safety checks automatic and quiet, asking the user only when
 Filesystem layout mirrors ownership:
 
 - `_task_mecca/framework/**`: Task Mecca framework and customizable policy/docs
-- `_task_mecca/data/**`: durable project/agent data; never overwritten by the updater
+- `_task_mecca/data/**`: durable project/agent data; never overwritten by the migrator
 - `_task_mecca/.runtime/**`: ephemeral runtime state
-- `_task_mecca/backups/**`: updater safety backups
+- `_task_mecca/backups/**`: migrator safety backups
 - pre-0.2 `_task_mecca/backlog*/**`: legacy project-data compatibility
 
 The installer does not pre-create `data/` or a backlog. On first registration Registrar calls `ensure-backlog`, reuses an existing ledger when present, and otherwise creates canonical `data/backlog/`. Durable audit/measurement/test evidence created by agents belongs under `data/`; Task Mecca does not standardize arbitrary artifact subfolder names.
 
-When an upstream update would replace locally customized managed documents, the updater shows the affected files, recommends and creates a local backup when approved, explains that the customized copies will be overwritten, and asks for final confirmation. It does not attempt semantic auto-merge of role or policy documents.
+When an upstream update would replace locally customized managed documents, the migrator shows the affected files, recommends and creates a local backup when approved, explains that the customized copies will be overwritten, and asks for final confirmation. It does not attempt semantic auto-merge of role or policy documents.
