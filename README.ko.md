@@ -30,7 +30,7 @@ task-mecca init
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/silverkhan/TaskMecca/main/install.sh | sh
-task-mecca update
+task-mecca migrate
 ```
 
 설치 시에는 Task Mecca framework와 설치 메타데이터만 만듭니다. **프로젝트 data와 backlog는 만들지 않으며**, 프로젝트 최상위 `AGENTS.md`도 생성하거나 수정하지 않습니다.
@@ -50,7 +50,7 @@ _task_mecca/
 │   ├── roles/
 │   └── web/
 ├── .runtime/        # 필요해질 때 생성
-└── backups/         # updater 백업이 필요할 때 생성
+└── backups/         # migrator 백업이 필요할 때 생성
 ```
 
 설치 직후에는 `data/`가 없는 것이 정상입니다.
@@ -97,12 +97,12 @@ Web UI는 read-only / localhost-only입니다. 아직 첫 backlog가 생성되�
 
 | 영역 | 소유권 | 업데이트 정책 |
 |---|---|---|
-| `_task_mecca/framework/**` | Task Mecca framework | updater가 관리 |
+| `_task_mecca/framework/**` | Task Mecca framework | migrator가 관리 |
 | `_task_mecca/ROOT_PROMPT.md` | managed/customizable | 로컬·upstream 모두 변경 시 백업+확인 |
-| `_task_mecca/data/**` | 프로젝트/agent durable data | updater가 절대 덮어쓰지 않음 |
-| legacy `_task_mecca/backlog*/**` | 기존 프로젝트 data | 호환용, updater가 건드리지 않음 |
+| `_task_mecca/data/**` | 프로젝트/agent durable data | migrator가 절대 덮어쓰지 않음 |
+| legacy `_task_mecca/backlog*/**` | 기존 프로젝트 data | 호환용, migrator가 건드리지 않음 |
 | `_task_mecca/.runtime/**` | 임시 runtime state | durable data가 아님 |
-| `_task_mecca/backups/**` | updater 안전 백업 | framework 관리 대상 아님 |
+| `_task_mecca/backups/**` | migrator 안전 백업 | framework 관리 대상 아님 |
 
 Agent가 특정 작업을 수행하면서 measurement, audit evidence 등 durable 부산물이 실제로 필요하면 `data/` 아래에 만들 수 있습니다. Task Mecca가 임의의 `audits/`, `measurements/`, `tests/` 폴더를 미리 생성하거나 표준으로 강제하지는 않습니다.
 
@@ -131,7 +131,7 @@ _task_mecca/data/backlog_b/
 새 Task Mecca standalone 실행파일로 교체한 뒤 managed framework를 갱신합니다.
 
 ```bash
-task-mecca update
+task-mecca migrate
 ```
 
 새 binary를 가져오는 과정에는 사용자가 선택한 네트워크/파일 전송 수단이 필요하지만, Web UI, doctor, preflight, backlog 작업 등 평상시 runtime 명령은 standalone binary와 프로젝트 파일만으로 실행됩니다.
