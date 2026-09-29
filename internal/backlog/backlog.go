@@ -42,7 +42,7 @@ type Record struct {
     Fields map[string]string `json:"fields"`
     Document map[string]any `json:"document"`
     RawMarkdown string `json:"raw_markdown"`
-    RuntimeMetadata map[string]string `json:"runtime_metadata"`
+    RuntimeMetadata map[string]any `json:"runtime_metadata"`
     Mtime string `json:"mtime"`
     Ctime string `json:"ctime"`
 }
