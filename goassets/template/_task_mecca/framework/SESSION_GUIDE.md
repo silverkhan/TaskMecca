@@ -299,11 +299,11 @@ For older completed tasks where no `doing` transition was ever committed or obse
 파일시스템 경계도 ownership을 그대로 반영한다.
 
 - `_task_mecca/framework/**`: Task Mecca framework 및 customizable policy/document
-- `_task_mecca/data/**`: project/agent가 축적하는 durable data. updater가 절대 덮어쓰지 않는다.
+- `_task_mecca/data/**`: project/agent가 축적하는 durable data. migrator가 절대 덮어쓰지 않는다.
 - `_task_mecca/.runtime/**`: ephemeral runtime state
-- `_task_mecca/backups/**`: updater 안전 백업
+- `_task_mecca/backups/**`: migrator 안전 백업
 - pre-0.2 `_task_mecca/backlog*/**`: legacy project-data compatibility
 
 Installer는 `data/`나 backlog를 미리 만들지 않는다. 첫 등록 시 Registrar가 `ensure-backlog`를 호출해 기존 ledger를 사용하거나, 없을 때만 canonical `data/backlog/`를 만든다. Agent가 audit/measurement/test evidence 같은 durable 부산물을 만들 필요가 있으면 framework와 섞지 말고 `data/` 아래에 둔다. 하위 폴더명 자체는 Task Mecca가 강제하지 않는다.
 
-upstream 업데이트가 사용자가 수정한 managed Task Mecca 문서를 덮어쓰게 되는 경우 updater는 대상 파일 목록을 보여주고, 백업을 권장하며, 동의 시 로컬 백업을 실제 생성한 뒤 수정본이 공식 새 버전으로 덮어써짐을 안내하고 최종 확인을 받아야 한다. 역할·정책 문서의 의미 기반 자동 merge는 시도하지 않는다.
+upstream migration가 사용자가 수정한 managed Task Mecca 문서를 덮어쓰게 되는 경우 migrator는 대상 파일 목록을 보여주고, 백업을 권장하며, 동의 시 로컬 백업을 실제 생성한 뒤 수정본이 공식 새 버전으로 덮어써짐을 안내하고 최종 확인을 받아야 한다. 역할·정책 문서의 의미 기반 자동 merge는 시도하지 않는다.
