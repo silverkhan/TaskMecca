@@ -34,3 +34,9 @@ jobs:
           go-version-file: go.mod
       - run: go test ./...
       - run: go build ./cmd/task-mecca
+      - name: Go CLI backlog smoke
+        run: |
+          tmp="$(mktemp -d)"
+          go run ./cmd/task-mecca init --project "$tmp"
+          go run ./cmd/task-mecca ensure-backlog --project "$tmp" --json
+          go run ./cmd/task-mecca next-id A --project "$tmp" --json

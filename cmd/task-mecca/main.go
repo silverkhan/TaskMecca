@@ -1,10 +1,13 @@
 package main
 
 import (
+    "encoding/json"
     "fmt"
     "os"
     "path/filepath"
+    "strings"
 
+    "github.com/silverkhan/TaskMecca/internal/backlog"
     "github.com/silverkhan/TaskMecca/internal/install"
 )
 
@@ -18,15 +21,25 @@ func run(args []string) int {
         return 0
     }
     if len(args) == 0 {
-        fmt.Fprintln(os.Stderr, "usage: task-mecca <init|update|doctor|web> [--project DIR]")
+        fmt.Fprintln(os.Stderr, "usage: task-mecca <init|update|ensure-backlog|next-id> [options]")
         return 2
     }
     command := args[0]
     project := "."
+    rootOption := ""
+    jsonOutput := false
+    positional := []string{}
     for i := 1; i < len(args); i++ {
         if args[i] == "--project" && i+1 < len(args) {
             project = args[i+1]
             i++
+        } else if args[i] == "--root" && i+1 < len(args) {
+            rootOption = args[i+1]
+            i++
+        } else if args[i] == "--json" || args[i] == "--allow-empty" {
+            if args[i] == "--json" { jsonOutput = true }
+        } else if !strings.HasPrefix(args[i], "-") {
+            positional = append(positional, args[i])
         } else {
             fmt.Fprintf(os.Stderr, "unknown argument: %s\n", args[i])
             return 2
@@ -34,6 +47,11 @@ func run(args []string) int {
     }
     root, err := filepath.Abs(project)
     if err != nil { fmt.Fprintln(os.Stderr, err); return 2 }
+    if rootOption != "" {
+        if !filepath.IsAbs(rootOption) { rootOption = filepath.Join(root, rootOption) }
+        rootOption, err = filepath.Abs(rootOption)
+        if err != nil { fmt.Fprintln(os.Stderr, err); return 2 }
+    }
     switch command {
     case "init":
         if err = install.Init(root, version); err == nil {
@@ -42,6 +60,23 @@ func run(args []string) int {
     case "update":
         err = install.Update(root, version)
         if err == nil { fmt.Printf("Task Mecca %s updated\n", version) }
+    case "ensure-backlog":
+        var report map[string]any
+        report, err = backlog.Ensure(root, rootOption)
+        if err == nil {
+            if jsonOutput { emitJSON(report) } else {
+                label := "existing: "
+                if report["created"] == true { label = "created: " }
+                fmt.Println(label + report["path"].(string))
+            }
+        }
+    case "next-id":
+        if len(positional) != 1 { fmt.Fprintln(os.Stderr, "next-id requires a prefix"); return 2 }
+        var report map[string]any
+        report, err = backlog.NextID(root, rootOption, positional[0])
+        if err == nil {
+            if jsonOutput { emitJSON(report) } else { fmt.Printf("%s.%s\n", report["sort_key"], report["id"]) }
+        }
     default:
         // Go runtime commands must be implemented before this CLI can replace Python.
         fmt.Fprintf(os.Stderr, "%s is not yet implemented in the Go runtime\n", command)
@@ -49,4 +84,10 @@ func run(args []string) int {
     }
     if err != nil { fmt.Fprintln(os.Stderr, err); return 2 }
     return 0
+}
+
+func emitJSON(value any) {
+    encoder := json.NewEncoder(os.Stdout)
+    encoder.SetEscapeHTML(false)
+    _ = encoder.Encode(value)
 }
