@@ -19,7 +19,7 @@ const version = "0.2.1"
 func main() { os.Exit(run(os.Args[1:])) }
 
 func run(args []string) int {
-    if len(args) == 1 && (args[0] == "--version" || args[0] == "-version") {
+    if len(args) == 1 && (args[0] == "--version" || args[0] == "-version" || args[0] == "version") {
         fmt.Printf("task-mecca %s\n", version)
         return 0
     }
