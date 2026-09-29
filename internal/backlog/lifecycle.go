@@ -1,6 +1,8 @@
 package backlog
 
 import (
+    "encoding/json"
+    "os"
     "os/exec"
     "path/filepath"
     "sort"
@@ -111,7 +113,98 @@ func LifecycleTimings(project,root string) (map[string]map[string]any,error) {
         lastState[id]=state
     }
 
+    rows,err:=Catalog(project,root)
+    if err!=nil { return nil,err }
+    currentRows:=map[string]Record{}
+    for _,row:=range rows {
+        existing,ok:=currentRows[row.ID]
+        if !ok || (row.Location=="active" && existing.Location!="active") { currentRows[row.ID]=row }
+    }
+
+    journalPath:=filepath.Join(project,"_task_mecca",".runtime","lifecycle_observations.json")
+    journal:=map[string]any{"version":float64(1),"ledgers":map[string]any{}}
+    if data,readErr:=os.ReadFile(journalPath); readErr==nil {
+        _=json.Unmarshal(data,&journal)
+    }
+    ledgers,ok:=journal["ledgers"].(map[string]any)
+    if !ok { ledgers=map[string]any{}; journal["ledgers"]=ledgers }
+    absLedger,_:=filepath.Abs(ledger)
+    ledgerRow,ok:=ledgers[absLedger].(map[string]any)
+    if !ok { ledgerRow=map[string]any{"items":map[string]any{}}; ledgers[absLedger]=ledgerRow }
+    items,ok:=ledgerRow["items"].(map[string]any)
+    if !ok { items=map[string]any{}; ledgerRow["items"]=items }
+
     now:=time.Now()
+    journalChanged:=false
+    combinedEvents:=map[string][]lifecycleEvent{}
+    for id,seq:=range combinedEvents { combinedEvents[id]=append([]lifecycleEvent{},seq...) }
+    for id,row:=range currentRows {
+        durable:=events[id]
+        durableLastState:=""
+        var durableLastTime time.Time
+        hasDurableLast:=false
+        if len(durable)>0 {
+            durableLastState=durable[len(durable)-1].State
+            if parsed,ok:=parseTime(durable[len(durable)-1].At); ok { durableLastTime=parsed; hasDurableLast=true }
+        }
+
+        cached:=[]map[string]string{}
+        if raw,ok:=items[id].([]any); ok {
+            for _,entryRaw:=range raw {
+                entry,ok:=entryRaw.(map[string]any); if !ok { continue }
+                state,_:=entry["state"].(string); at,_:=entry["at"].(string)
+                dt,valid:=parseTime(at)
+                if !valid || (state!="todo"&&state!="doing"&&state!="hold"&&state!="done") { continue }
+                if !hasDurableLast || !dt.Before(durableLastTime) {
+                    cached=append(cached,map[string]string{"state":state,"at":at})
+                }
+            }
+        }
+        if durableLastState==row.State {
+            if len(cached)>0 { delete(items,id); journalChanged=true }
+            cached=nil
+        } else {
+            known:=durableLastState
+            if len(cached)>0 { known=cached[len(cached)-1]["state"] }
+            if known!=row.State {
+                observedRaw:=row.Ctime
+                if observedRaw=="" { observedRaw=row.Mtime }
+                observed,valid:=parseTime(observedRaw)
+                if !valid { observed=now }
+                previous:=durableLastTime
+                hasPrevious:=hasDurableLast
+                if len(cached)>0 {
+                    if p,ok:=parseTime(cached[len(cached)-1]["at"]); ok { previous=p; hasPrevious=true }
+                }
+                if hasPrevious && observed.Before(previous) { observed=now }
+                cached=append(cached,map[string]string{
+                    "state":row.State,
+                    "at":observed.Format(time.RFC3339),
+                })
+                raw:=[]any{}
+                for _,entry:=range cached { raw=append(raw,map[string]any{"state":entry["state"],"at":entry["at"]}) }
+                items[id]=raw
+                journalChanged=true
+            }
+        }
+        combined:=append([]lifecycleEvent{},durable...)
+        last:=""
+        if len(combined)>0 { last=combined[len(combined)-1].State }
+        for _,entry:=range cached {
+            if entry["state"]==last { continue }
+            combined=append(combined,lifecycleEvent{State:entry["state"],At:entry["at"],Source:"runtime_observed"})
+            last=entry["state"]
+        }
+        combinedEvents[id]=combined
+    }
+    if journalChanged {
+        if err:=os.MkdirAll(filepath.Dir(journalPath),0755); err==nil {
+            if data,err:=json.MarshalIndent(journal,"","  "); err==nil {
+                _=os.WriteFile(journalPath,append(data,'\n'),0644)
+            }
+        }
+    }
+
     result:=map[string]map[string]any{}
     labels:=map[string]string{"todo":"Registered","doing":"Started","hold":"Hold","done":"Completed"}
     for id,seq:=range events {
@@ -158,7 +251,7 @@ func LifecycleTimings(project,root string) (map[string]map[string]any,error) {
                 "interval_seconds":interval,
                 "interval":intervalValue,
                 "source":entry.event.Source,
-                "provisional":false,
+                "provisional":entry.event.Source!="git",
             })
         }
         current:=parsed[len(parsed)-1]
@@ -216,8 +309,16 @@ func LifecycleTimings(project,root string) (map[string]map[string]any,error) {
             "elapsed":formatDuration(elapsed),
             "duration":func()string{ if current.event.State=="done" { return formatDuration(activeValue) }; return "-" }(),
             "events":eventRows,
-            "lifecycle_inferred":false,
-            "lifecycle_inference_note":"",
+            "lifecycle_inferred":func()bool{
+                for _,event:=range eventRows { if value,ok:=event["provisional"].(bool); ok && value { return true } }
+                return false
+            }(),
+            "lifecycle_inference_note":func()string{
+                for _,event:=range eventRows { if value,ok:=event["provisional"].(bool); ok && value {
+                    return "Current state includes a provisional runtime observation that is retained across refreshes until Git records the transition."
+                } }
+                return ""
+            }(),
             "timing_incomplete":completed!=nil && !hasDoing,
             "timing_incomplete_note":func()string{
                 if completed!=nil && !hasDoing {
