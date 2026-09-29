@@ -22,7 +22,7 @@ func run(args []string) int {
         return 0
     }
     if len(args) == 0 {
-        fmt.Fprintln(os.Stderr, "usage: task-mecca <init|update|agent|worker-name|ensure-backlog|next-id|search> [options]")
+        fmt.Fprintln(os.Stderr, "usage: task-mecca <init|update|agent|worker-name|ensure-backlog|next-id|search|ready> [options]")
         return 2
     }
     command := args[0]
@@ -121,6 +121,35 @@ func run(args []string) int {
                 for _,row:=range report.Results {
                     fmt.Printf("%-8s %-5s %s score=%d\n", row.ID, row.State, row.Title, row.Score)
                 }
+            }
+        }
+    case "ready":
+        if len(positional) != 0 { fmt.Fprintln(os.Stderr, "ready takes no positional arguments"); return 2 }
+        var report map[string]any
+        report, err = backlog.Ready(root, rootOption)
+        if err == nil {
+            if jsonOutput { emitJSON(report) } else {
+                readyRows,_:=report["ready"].([]map[string]any)
+                blockedRows,_:=report["blocked"].([]map[string]any)
+                readyIDs:=[]string{}
+                blockedIDs:=[]string{}
+                for _,row:=range readyRows { readyIDs=append(readyIDs,row["id"].(string)) }
+                for _,row:=range blockedRows { blockedIDs=append(blockedIDs,row["id"].(string)) }
+                readyText:="-"; if len(readyIDs)>0 { readyText=strings.Join(readyIDs,", ") }
+                blockedText:="-"; if len(blockedIDs)>0 { blockedText=strings.Join(blockedIDs,", ") }
+                fmt.Println("Ready: "+readyText)
+                fmt.Println("Blocked: "+blockedText)
+                for _,row:=range blockedRows {
+                    if note,ok:=row["waiting_note"].(string); ok && note!="" { fmt.Printf("  %s 대기: %s\n",row["id"],note) }
+                }
+            }
+        }
+        if err==nil {
+            problems,_:=report["problems"].(map[string]any)
+            if problems!=nil {
+                missing,_:=problems["missing"].([]map[string]string)
+                cycles,_:=problems["cycles"].([][]string)
+                if len(missing)>0 || len(cycles)>0 { return 1 }
             }
         }
     default:
