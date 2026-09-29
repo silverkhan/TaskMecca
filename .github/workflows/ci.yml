@@ -77,3 +77,53 @@ jobs:
               go = subprocess.check_output(['go', 'run', './cmd/task-mecca', 'next-id', 'A', '--project', root, '--root', str(ledger), '--json'], text=True)
               assert json.loads(python) == json.loads(go), (python, go)
           PY
+
+      - name: Compare Go search JSON with Python runtime
+        run: |
+          python - <<'PY'
+          import json, pathlib, subprocess, tempfile
+          script = 'src/task_mecca/template/_task_mecca/framework/collab_tools.py'
+          task = '''# A-1 Searchable Task
+
+## 작업 개요
+- 등록자: test
+- Agent: /root/controller/pairi
+- 변경범위: internal/backlog
+- 선행: -
+- 연관: -
+- 설명: Go parser migration
+
+## 작업 정의
+### 목표
+Port the backlog parser.
+### 수용 기준
+- [x] Search can find this task.
+- [ ] Keep JSON parity.
+
+## 실행 정보
+- RuntimeProvider: codex
+- Dispatch상태: completed
+- 실행근거: test
+- Fallback근거: -
+
+## 작업 노트
+- 대기: -
+- 대기유형: -
+- 재개조건: -
+- 대기근거: -
+- 메모: parser note
+
+## 결과
+Parser complete.
+
+## 검증
+Search parity.
+'''
+          with tempfile.TemporaryDirectory() as root:
+              ledger = pathlib.Path(root) / '_task_mecca' / 'data' / 'backlog'
+              ledger.mkdir(parents=True)
+              (ledger / '000001.A-1.searchable.todo.md').write_text(task, encoding='utf-8')
+              python = subprocess.check_output(['python', script, 'search', 'parser', '--root', str(ledger), '--json'], text=True)
+              go = subprocess.check_output(['go', 'run', './cmd/task-mecca', 'search', 'parser', '--project', root, '--root', str(ledger), '--json'], text=True)
+              assert json.loads(python) == json.loads(go), (python, go)
+          PY
