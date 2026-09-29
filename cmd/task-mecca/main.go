@@ -22,7 +22,7 @@ func run(args []string) int {
         return 0
     }
     if len(args) == 0 {
-        fmt.Fprintln(os.Stderr, "usage: task-mecca <init|update|agent|worker-name|ensure-backlog|next-id|search|ready|inspect|workload|coordinate|audit> [options]")
+        fmt.Fprintln(os.Stderr, "usage: task-mecca <init|update|agent|worker-name|ensure-backlog|next-id|search|ready|inspect|workload|coordinate|audit|check|doctor|status|preflight> [options]")
         return 2
     }
     command := args[0]
@@ -33,6 +33,10 @@ func run(args []string) int {
     used := []string{}
     limit := 10
     workerCap := 3
+    protocol := ""
+    backlogOnly := false
+    includeDone := false
+    requireFullAccess := false
     positional := []string{}
     for i := 1; i < len(args); i++ {
         if args[i] == "--project" && i+1 < len(args) {
@@ -54,9 +58,15 @@ func run(args []string) int {
             if parseErr != nil { fmt.Fprintln(os.Stderr, "--worker-cap requires an integer"); return 2 }
             workerCap = parsed
             i++
-        } else if args[i] == "--json" || args[i] == "--allow-empty" || args[i] == "--new" {
+        } else if args[i] == "--protocol" && i+1 < len(args) {
+            protocol = args[i+1]
+            i++
+        } else if args[i] == "--json" || args[i] == "--allow-empty" || args[i] == "--new" || args[i] == "--backlog-only" || args[i] == "--done" || args[i] == "--require-full-access" {
             if args[i] == "--json" { jsonOutput = true }
             if args[i] == "--new" { newWorker = true }
+            if args[i] == "--backlog-only" { backlogOnly = true }
+            if args[i] == "--done" { includeDone = true }
+            if args[i] == "--require-full-access" { requireFullAccess = true }
         } else if !strings.HasPrefix(args[i], "-") {
             positional = append(positional, args[i])
         } else {
@@ -222,6 +232,70 @@ func run(args []string) int {
                 return 1
             }
         }
+    case "check":
+        if len(positional) != 0 { fmt.Fprintln(os.Stderr, "check takes no positional arguments"); return 2 }
+        if protocol!="" && !filepath.IsAbs(protocol) { protocol=filepath.Join(root,protocol) }
+        var problems []string
+        problems, err = backlog.Check(root, rootOption, protocol)
+        if err==nil {
+            if len(problems)>0 && strings.HasPrefix(problems[0],"__missing_protocol__:") {
+                fmt.Fprintln(os.Stderr,strings.TrimPrefix(problems[0],"__missing_protocol__:")+" 이 없다.")
+                return 2
+            }
+            if len(problems)>0 {
+                fmt.Fprintln(os.Stderr,strings.Join(problems,"\n"))
+                return 1
+            }
+            fmt.Println("통과: 문서 링크와 백로그 선행관계가 유효하다.")
+        }
+    case "doctor":
+        if len(positional) != 0 { fmt.Fprintln(os.Stderr, "doctor takes no positional arguments"); return 2 }
+        var report map[string]any
+        report, err = backlog.Doctor(root, rootOption, !backlogOnly)
+        if err==nil {
+            if jsonOutput {
+                emitJSON(report)
+            } else if report["ok"]==true {
+                fmt.Println("통과: 기계 검사가 모두 정상이다.")
+            } else {
+                fmt.Println("문제 발견:")
+                if checks,ok:=report["checks"].(map[string]any); ok {
+                    for _,name:=range []string{"backlog_presence","audit","duplicate_ids","missing_dependencies","dependency_cycles","filenames","agent_paths","scope_conflicts","contracts","dangling_links"} {
+                        if value,exists:=checks[name]; exists && hasItems(value) {
+                            data,_:=json.Marshal(value)
+                            fmt.Printf("  %s: %s\n",name,string(data))
+                        }
+                    }
+                }
+            }
+            if report["ok"]!=true { return 1 }
+        }
+    case "status":
+        if len(positional) != 0 { fmt.Fprintln(os.Stderr, "status takes no positional arguments"); return 2 }
+        var report map[string]any
+        report, err = backlog.Status(root, rootOption, includeDone)
+        if err==nil {
+            if jsonOutput { emitJSON(report) } else { printStatus(report) }
+        }
+    case "preflight":
+        if len(positional) != 0 { fmt.Fprintln(os.Stderr, "preflight takes no positional arguments"); return 2 }
+        var report map[string]any
+        report, err = backlog.Preflight(root, rootOption, requireFullAccess)
+        if err==nil {
+            if jsonOutput {
+                emitJSON(report)
+            } else {
+                if backlogReport,ok:=report["backlog"].(map[string]any); ok {
+                    fmt.Printf("BACKLOG %s: %v\n",strings.ToUpper(fmt.Sprint(backlogReport["status"])),backlogReport["message"])
+                }
+                if access,ok:=report["access"].(map[string]any); ok {
+                    fmt.Printf("ACCESS %s: %v\n",strings.ToUpper(fmt.Sprint(access["status"])),access["message"])
+                    if access["network"]=="disabled" { fmt.Println("NETWORK DISABLED: 네트워크가 필요한 작업은 별도 권한 확인이 필요합니다.") }
+                }
+            }
+            if backlogReport,ok:=report["backlog"].(map[string]any); ok && backlogReport["ok"]!=true { return 2 }
+            if requireFullAccess && report["orchestration_ready"]!=true { return 3 }
+        }
     default:
         // Go runtime commands must be implemented before this CLI can replace Python.
         fmt.Fprintf(os.Stderr, "%s is not yet implemented in the Go runtime\n", command)
@@ -276,4 +350,38 @@ func doingIDs(value any) string {
     ids:=[]string{}
     for _,row:=range rows { ids=append(ids,fmt.Sprintf("%v@%v",row["id"],emptyDash(row["agent"]))) }
     return strings.Join(ids,", ")
+}
+
+func hasItems(value any) bool {
+    switch v:=value.(type) {
+    case []any: return len(v)>0
+    case []string: return len(v)>0
+    case [][]string: return len(v)>0
+    case []map[string]any: return len(v)>0
+    case []map[string]string: return len(v)>0
+    default: return value!=nil
+    }
+}
+
+func printStatus(report map[string]any) {
+    counts,_:=report["counts"].(map[string]any)
+    fmt.Println("Task Mecca · root/registrar/controller/worker backlog")
+    fmt.Printf("updated=%v\n",report["snapshot_at"])
+    fmt.Printf("root=%v\n",report["root"])
+    fmt.Printf("doing=%v ready=%v blocked=%v hold=%v done=%v warnings=%v\n\n",
+        counts["doing"],counts["ready"],counts["blocked"],counts["hold"],counts["done_total"],counts["warnings"])
+    fmt.Println("Active")
+    active,_:=report["active"].([]map[string]any)
+    if len(active)==0 { fmt.Println("(active 항목 없음)") }
+    for _,item:=range active {
+        fmt.Printf("%-8v %-8v %-24v %-12v %v\n",item["id"],item["state"],emptyDash(item["agent"]),item["time"],item["title"])
+    }
+    done,_:=report["done"].([]map[string]any)
+    if len(done)>0 {
+        fmt.Println("\nDone")
+        for _,item:=range done {
+            fmt.Printf("%-8v done     %-24v %-12v %v\n",item["id"],emptyDash(item["agent"]),item["time"],item["title"])
+        }
+    }
+    fmt.Println("\nLive agents: use the current model runtime agent list; this local monitor does not infer liveness from Git.")
 }
