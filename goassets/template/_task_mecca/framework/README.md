@@ -114,7 +114,7 @@ For older completed tasks where no `doing` transition was ever committed or obse
 
 - **Framework managed**: `web/*`와 framework 문서. 실행 runtime은 standalone `task-mecca` binary에 포함되며 프로젝트 내부 Python 파일을 요구하지 않는다.
 - **Customizable managed**: `roles/*`, `SESSION_GUIDE*.md`, `collab.md`, `_template.md`, Task Mecca 매뉴얼. 프로젝트 수정과 upstream 변경이 동시에 존재할 때 수정 파일 목록을 보여주고 백업을 권장한다. 동의하면 백업을 만든 뒤 덮어쓰기 전에 다시 안내·확인한다.
-- **Project owned**: `_task_mecca/data/**` 전체. Registrar가 첫 등록 시 `data/backlog/`를 만들며 updater는 `data/**`를 절대 덮어쓰지 않는다. pre-0.2 `backlog*` 경로도 호환을 위해 project-owned로 취급한다.
+- **Project owned**: `_task_mecca/data/**` 전체. Registrar가 첫 등록 시 `data/backlog/`를 만들며 migrator는 `data/**`를 절대 덮어쓰지 않는다. pre-0.2 `backlog*` 경로도 호환을 위해 project-owned로 취급한다.
 - **Runtime/backup**: `.runtime/*`, `backups/*`. 로컬 운영/안전 데이터이며 기본적으로 Git에서 제외한다.
 
 업데이트는 bootstrap package만 새 버전으로 가져온 뒤 프로젝트의 managed framework를 갱신한다.
@@ -129,7 +129,7 @@ task-mecca web
 새 binary로 교체한 뒤 framework 파일을 갱신할 때는:
 
 ```bash
-task-mecca update
+task-mecca migrate
 ```
 
 최종 사용자는 Python, `uv`, Go toolchain을 설치할 필요가 없다. Web UI, doctor, preflight, backlog 조작은 standalone binary가 직접 수행한다.
