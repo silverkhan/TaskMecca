@@ -31,7 +31,10 @@ func Workload(project,root string) (map[string]any,error) {
     if err!=nil { return nil,err }
     timings,err:=LifecycleTimings(project,root)
     if err!=nil { return nil,err }
+    return workloadFrom(rows,readyReport,timings),nil
+}
 
+func workloadFrom(rows []Record, readyReport map[string]any, timings map[string]map[string]any) map[string]any {
     byID:=map[string]Record{}
     for _,row:=range rows { byID[row.ID]=row }
     grouped:=map[string]map[string]any{}
@@ -168,5 +171,5 @@ func Workload(project,root string) (map[string]any,error) {
         "unassigned_doing":unassigned,
         "released_holds":releasedHolds,
         "ready_candidate_basis":"explicit depends/related completed Agent history only; not live state or assignment",
-    },nil
+    }
 }
