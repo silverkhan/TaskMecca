@@ -23,3 +23,11 @@ The Go binary is not a replacement for the current Python distribution yet. This
 - The Go catalog currently parses only basic identity/title/fields. It is not yet suitable for scheduling, audits or the Web UI until the full document and lifecycle model is migrated.
 - The `agent` identity validation command now has a Go implementation and a Python/Go JSON parity check in CI.
 - `worker-name` now uses active doing assignments and live `--used` reservations. CI compares its JSON with Python on empty and reserved pools.
+
+
+## Third checkpoint
+
+- The Go backlog record now carries the normalized document model used by the Python runtime: Simple/Defined task schema, sections, requirements, acceptance items, result/verification, raw Markdown, archive month, and runtime metadata fields.
+- `search` is implemented in the Go CLI with the existing scoring contract and human/JSON output.
+- CI includes a Python/Go JSON parity check for search in addition to agent, worker-name, and archive-aware next-id.
+- Next migration layer: dependency/ready reports, then inspect/workload on top of lifecycle, hold-audit, and continuity primitives. Do not duplicate those behaviors with simplified one-off implementations.
