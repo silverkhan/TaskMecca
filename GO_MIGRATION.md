@@ -81,7 +81,7 @@ task-mecca web
 For an existing Task Mecca project, back it up or use a disposable clone first, replace the executable, then run:
 
 ```bash
-task-mecca update
+task-mecca migrate
 task-mecca doctor --json
 task-mecca status --json
 task-mecca web
