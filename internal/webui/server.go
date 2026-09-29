@@ -168,7 +168,7 @@ func Handler(project,root string) (http.Handler,error) {
 
     sendEmbedded:=func(w http.ResponseWriter,name string) {
         data,err:=fs.ReadFile(goassets.Template,embeddedRoot+"/web/"+name)
-        if err!=nil { http.NotFound(w,nil); return }
+        if err!=nil { http.Error(w,"not found",http.StatusNotFound); return }
         kind:=mime.TypeByExtension(filepath.Ext(name))
         if kind=="" { kind="application/octet-stream" }
         if strings.HasPrefix(kind,"text/") || strings.Contains(kind,"javascript") { kind=strings.Split(kind,";")[0]+"; charset=utf-8" }
