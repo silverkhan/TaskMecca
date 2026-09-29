@@ -1,0 +1,37 @@
+name: Go standalone artifacts
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "cmd/task-mecca/**"
+      - "internal/**"
+      - "goassets/**"
+      - "go.mod"
+      - ".github/workflows/go-artifacts.yml"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Test Go runtime
+        run: go test ./...
+      - name: Build standalone binaries
+        shell: bash
+        run: |
+          set -euxo pipefail
+          mkdir -p dist
+          CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o dist/task-mecca-windows-amd64.exe ./cmd/task-mecca
+          CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o dist/task-mecca-macos-amd64 ./cmd/task-mecca
+          CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -trimpath -ldflags="-s -w" -o dist/task-mecca-macos-arm64 ./cmd/task-mecca
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o dist/task-mecca-linux-amd64 ./cmd/task-mecca
+          sha256sum dist/* > dist/SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: task-mecca-standalone-${{ github.sha }}
+          path: dist/*
+          if-no-files-found: error
