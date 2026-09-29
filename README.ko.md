@@ -26,6 +26,13 @@ curl -fsSL https://raw.githubusercontent.com/silverkhan/TaskMecca/main/install.s
 task-mecca init
 ```
 
+이후 CLI 자체를 최신 main 빌드로 갱신할 때는 같은 설치 명령을 다시 실행하고, 현재 프로젝트 framework를 갱신합니다.
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/silverkhan/TaskMecca/main/install.sh | sh
+task-mecca update
+```
+
 설치 시에는 Task Mecca framework와 설치 메타데이터만 만듭니다. **프로젝트 data와 backlog는 만들지 않으며**, 프로젝트 최상위 `AGENTS.md`도 생성하거나 수정하지 않습니다.
 
 설치 직후 구조:
