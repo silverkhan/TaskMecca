@@ -26,6 +26,13 @@ Then initialize the current project:
 task-mecca init
 ```
 
+To refresh the CLI later, run the same installer command again, then update the current project's managed framework:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/silverkhan/TaskMecca/main/install.sh | sh
+task-mecca update
+```
+
 Installation creates only Task Mecca framework/metadata. It does **not** create project data, does not create a backlog, and does not modify the project-level `AGENTS.md`.
 
 Installed layout:
