@@ -1,6 +1,7 @@
 package backlog
 
 import (
+    "path/filepath"
     "regexp"
     "sort"
     "strings"
@@ -104,13 +105,10 @@ func Ready(project,root string) (map[string]any,error) {
         for key,value:=range blockers { item[key]=value }
         *target=append(*target,item)
     }
-    selected,err:=Select(project,root)
-    if err!=nil { return nil,err }
-    if selected=="" {
-        selected=root
-        if selected=="" { selected=project }
-    }
+    base:=root
+    if base=="" { base=filepath.Join(project,"_task_mecca") }
+    if absolute,absErr:=filepath.Abs(base); absErr==nil { base=absolute }
     sort.Slice(ready,func(i,j int)bool{return ready[i]["id"].(string)<ready[j]["id"].(string)})
     sort.Slice(blocked,func(i,j int)bool{return blocked[i]["id"].(string)<blocked[j]["id"].(string)})
-    return map[string]any{"root":selected,"ready":ready,"blocked":blocked,"problems":DependencyReport(rows)},nil
+    return map[string]any{"root":base,"ready":ready,"blocked":blocked,"problems":DependencyReport(rows)},nil
 }
