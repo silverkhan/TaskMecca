@@ -12,9 +12,15 @@ Task Mecca는 orchestration framework와 프로젝트가 축적하는 durable da
 
 ### 0. Framework 설치
 
-Task Mecca의 필수 환경은 **Git**과 운영체제에 맞는 standalone `task-mecca` 실행파일입니다. 최종 사용자는 Python, `uv`, Go toolchain을 설치할 필요가 없습니다.
+Task Mecca의 필수 환경은 **Git**입니다. 최종 사용자는 Python, `uv`, Go toolchain을 설치할 필요가 없습니다.
 
-다운로드한 실행파일을 PATH에서 실행 가능하게 둔 뒤 현재 프로젝트에서 다음을 실행합니다.
+macOS 또는 Linux에서는 저장소 주소를 이용해 한 줄로 standalone CLI를 설치할 수 있습니다.
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/silverkhan/TaskMecca/main/install.sh | sh
+```
+
+설치 후 현재 프로젝트에서 다음을 실행합니다.
 
 ```bash
 task-mecca init
