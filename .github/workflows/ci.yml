@@ -50,3 +50,15 @@ jobs:
               assert python.returncode == go.returncode, (path, python.stderr, go.stderr)
               assert json.loads(python.stdout) == json.loads(go.stdout), (path, python.stdout, go.stdout)
           PY
+      - name: Compare worker name JSON with Python runtime
+        run: |
+          python - <<'PY'
+          import json, subprocess, tempfile
+          script = 'src/task_mecca/template/_task_mecca/framework/collab_tools.py'
+          with tempfile.TemporaryDirectory() as root:
+              for used in [[], ['--used', '/root/controller/kkobugi'], ['--used', '/root/controller/charmander', '--used', 'pairi']]:
+                  python = subprocess.run(['python', script, 'worker-name', '--root', root, *used, '--json'], capture_output=True, text=True)
+                  go = subprocess.run(['go', 'run', './cmd/task-mecca', 'worker-name', '--project', root, '--root', root, *used, '--json'], capture_output=True, text=True)
+                  assert python.returncode == go.returncode, (python.stderr, go.stderr)
+                  assert json.loads(python.stdout) == json.loads(go.stdout), (python.stdout, go.stdout)
+          PY

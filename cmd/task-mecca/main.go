@@ -21,7 +21,7 @@ func run(args []string) int {
         return 0
     }
     if len(args) == 0 {
-        fmt.Fprintln(os.Stderr, "usage: task-mecca <init|update|agent|ensure-backlog|next-id> [options]")
+        fmt.Fprintln(os.Stderr, "usage: task-mecca <init|update|agent|worker-name|ensure-backlog|next-id> [options]")
         return 2
     }
     command := args[0]
@@ -29,6 +29,7 @@ func run(args []string) int {
     rootOption := ""
     jsonOutput := false
     newWorker := false
+    used := []string{}
     positional := []string{}
     for i := 1; i < len(args); i++ {
         if args[i] == "--project" && i+1 < len(args) {
@@ -36,6 +37,9 @@ func run(args []string) int {
             i++
         } else if args[i] == "--root" && i+1 < len(args) {
             rootOption = args[i+1]
+            i++
+        } else if args[i] == "--used" && i+1 < len(args) {
+            used = append(used, args[i+1])
             i++
         } else if args[i] == "--json" || args[i] == "--allow-empty" || args[i] == "--new" {
             if args[i] == "--json" { jsonOutput = true }
@@ -55,6 +59,14 @@ func run(args []string) int {
         if err != nil { fmt.Fprintln(os.Stderr, err); return 2 }
     }
     switch command {
+    case "worker-name":
+        report, workerErr := backlog.WorkerName(root, rootOption, used)
+        if workerErr != nil { err = workerErr; break }
+        if jsonOutput { emitJSON(report) } else if report["ok"] == true {
+            fmt.Println(report["path"])
+            fmt.Println("신규 검증: agent " + report["path"].(string) + " --new --json")
+        } else { fmt.Fprintln(os.Stderr, "사용 가능한 포켓몬 worker 이름이 없습니다.") }
+        if report["ok"] != true { return 2 }
     case "agent":
         if len(positional) != 1 { fmt.Fprintln(os.Stderr, "agent requires a path"); return 2 }
         report := backlog.AgentReport(positional[0], newWorker)
