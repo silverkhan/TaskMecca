@@ -151,7 +151,7 @@ func Update(project, version string) error {
     for path, data := range files {
         old, existed := previous.Managed[path]
         disk := fileHash(filepath.Join(target, filepath.FromSlash(path)))
-        if existed && disk != old.BaselineSHA256 && old.BaselineSHA256 == hash(data) { continue }
+        if existed && disk != "" && disk != old.BaselineSHA256 && old.BaselineSHA256 == hash(data) { continue }
         if err = write(target, path, data); err != nil { return err }
     }
     return saveManifest(target, incoming)
