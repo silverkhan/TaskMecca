@@ -128,9 +128,9 @@ func run(args []string) int {
         if err = install.Init(root, version); err == nil {
             fmt.Printf("Task Mecca %s installed to %s\n", version, filepath.Join(root, "_task_mecca"))
         }
-    case "update":
-        err = install.Update(root, version)
-        if err == nil { fmt.Printf("Task Mecca %s updated\n", version) }
+    case "migrate":
+        err = install.Migrate(root, version)
+        if err == nil { fmt.Printf("Task Mecca %s migrated\n", version) }
     case "ensure-backlog":
         var report map[string]any
         report, err = backlog.Ensure(root, rootOption)
