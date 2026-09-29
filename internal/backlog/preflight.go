@@ -85,18 +85,18 @@ func AccessPreflight(project,root string) map[string]any {
         probes["git_metadata_write"]=map[string]any{"name":"git_metadata_write","ok":false,"status":"fail","error":"Git repository not detected"}
     }
 
-    exe,exeErr:=os.Executable()
-    if exeErr==nil {
-        cmd:=exec.Command(exe,"--version"); cmd.Dir=repo
-        err:=cmd.Run()
-        code:=0
-        if err!=nil {
-            code=1
-            if exitErr,ok:=err.(*exec.ExitError); ok { code=exitErr.ExitCode() }
-        }
-        probes["subprocess"]=map[string]any{"name":"subprocess","ok":err==nil,"status":map[bool]string{true:"pass",false:"fail"}[err==nil],"returncode":code}
-    } else {
-        probes["subprocess"]=map[string]any{"name":"subprocess","ok":false,"status":"fail","error":fmt.Sprintf("%T: %v",exeErr,exeErr)}
+    cmd:=exec.Command("git","--version")
+    cmd.Dir=repo
+    processErr:=cmd.Run()
+    code:=0
+    if processErr!=nil {
+        code=1
+        if exitErr,ok:=processErr.(*exec.ExitError); ok { code=exitErr.ExitCode() }
+    }
+    probes["subprocess"]=map[string]any{
+        "name":"subprocess","ok":processErr==nil,
+        "status":map[bool]string{true:"pass",false:"fail"}[processErr==nil],
+        "returncode":code,
     }
 
     home,_:=os.UserHomeDir()
