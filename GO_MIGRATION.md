@@ -21,3 +21,4 @@ The Go binary is not a replacement for the current Python distribution yet. This
 
 - Go backlog discovery, canonical ledger creation, archive-aware catalog, and `next-id` are implemented with initial tests.
 - The Go catalog currently parses only basic identity/title/fields. It is not yet suitable for scheduling, audits or the Web UI until the full document and lifecycle model is migrated.
+- The `agent` identity validation command now has a Go implementation and a Python/Go JSON parity check in CI.

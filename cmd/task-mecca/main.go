@@ -21,13 +21,14 @@ func run(args []string) int {
         return 0
     }
     if len(args) == 0 {
-        fmt.Fprintln(os.Stderr, "usage: task-mecca <init|update|ensure-backlog|next-id> [options]")
+        fmt.Fprintln(os.Stderr, "usage: task-mecca <init|update|agent|ensure-backlog|next-id> [options]")
         return 2
     }
     command := args[0]
     project := "."
     rootOption := ""
     jsonOutput := false
+    newWorker := false
     positional := []string{}
     for i := 1; i < len(args); i++ {
         if args[i] == "--project" && i+1 < len(args) {
@@ -36,8 +37,9 @@ func run(args []string) int {
         } else if args[i] == "--root" && i+1 < len(args) {
             rootOption = args[i+1]
             i++
-        } else if args[i] == "--json" || args[i] == "--allow-empty" {
+        } else if args[i] == "--json" || args[i] == "--allow-empty" || args[i] == "--new" {
             if args[i] == "--json" { jsonOutput = true }
+            if args[i] == "--new" { newWorker = true }
         } else if !strings.HasPrefix(args[i], "-") {
             positional = append(positional, args[i])
         } else {
@@ -53,6 +55,18 @@ func run(args []string) int {
         if err != nil { fmt.Fprintln(os.Stderr, err); return 2 }
     }
     switch command {
+    case "agent":
+        if len(positional) != 1 { fmt.Fprintln(os.Stderr, "agent requires a path"); return 2 }
+        report := backlog.AgentReport(positional[0], newWorker)
+        if jsonOutput { emitJSON(report) } else {
+            label := "유효하지 않음"
+            if report["ok"] == true { label = "유효" }
+            mode := "(기존 identity/재사용)"
+            if newWorker { mode = "(신규 생성)" }
+            fmt.Println(label, report["path"], mode)
+        }
+        if report["ok"] != true { return 1 }
+        return 0
     case "init":
         if err = install.Init(root, version); err == nil {
             fmt.Printf("Task Mecca %s installed to %s\n", version, filepath.Join(root, "_task_mecca"))

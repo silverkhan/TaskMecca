@@ -40,3 +40,13 @@ jobs:
           go run ./cmd/task-mecca init --project "$tmp"
           go run ./cmd/task-mecca ensure-backlog --project "$tmp" --json
           go run ./cmd/task-mecca next-id A --project "$tmp" --json
+      - name: Compare agent JSON with Python runtime
+        run: |
+          python - <<'PY'
+          import json, subprocess
+          for path, extra in [('/root', []), ('/root/controller/pairi', ['--new']), ('/root/controller/charmander', []), ('/root/controller/unknown', [])]:
+              python = subprocess.run(['python', 'src/task_mecca/template/_task_mecca/framework/collab_tools.py', 'agent', path, *extra, '--json'], capture_output=True, text=True)
+              go = subprocess.run(['go', 'run', './cmd/task-mecca', 'agent', path, *extra, '--json'], capture_output=True, text=True)
+              assert python.returncode == go.returncode, (path, python.stderr, go.stderr)
+              assert json.loads(python.stdout) == json.loads(go.stdout), (path, python.stdout, go.stdout)
+          PY
