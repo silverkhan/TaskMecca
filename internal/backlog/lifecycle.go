@@ -28,6 +28,13 @@ func gitOutput(repo string,args ...string) string {
 func repoRoot(path string) string {
     probe:=path
     if probe=="" { probe="." }
+    if absolute,err:=filepath.Abs(probe); err==nil { probe=absolute }
+    for {
+        if _,err:=os.Stat(probe); err==nil { break }
+        parent:=filepath.Dir(probe)
+        if parent==probe { break }
+        probe=parent
+    }
     out:=strings.TrimSpace(gitOutput(probe,"rev-parse","--show-toplevel"))
     if out!="" { return out }
     return filepath.Dir(probe)
