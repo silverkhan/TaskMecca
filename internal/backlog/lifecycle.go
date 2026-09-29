@@ -82,7 +82,16 @@ func LifecycleTimings(project,root string) (map[string]map[string]any,error) {
     rel,relErr:=filepath.Rel(repo,ledger)
     if relErr!=nil { rel=filepath.Base(ledger) }
 
-    args:=[]string{"log","--reverse","-M","--format=@@COLLAB@@%cI","--name-status","--",rel}
+    pathspecs:=[]string{rel}
+    dataDir:=filepath.Join(project,"_task_mecca","data")
+    if cleanLedger,cleanData:=filepath.Clean(ledger),filepath.Clean(dataDir); filepath.Dir(cleanLedger)==cleanData {
+        legacy:=filepath.Join(project,"_task_mecca",filepath.Base(cleanLedger))
+        if legacyRel,legacyErr:=filepath.Rel(repo,legacy); legacyErr==nil && legacyRel!=rel {
+            pathspecs=append(pathspecs,legacyRel)
+        }
+    }
+    args:=[]string{"log","--reverse","-M","--format=@@COLLAB@@%cI","--name-status","--"}
+    args=append(args,pathspecs...)
     out:=gitOutput(repo,args...)
     events:=map[string][]lifecycleEvent{}
     lastState:=map[string]string{}
