@@ -139,7 +139,7 @@ func AccessPreflight(project,root string) map[string]any {
     }
     cachePath:=filepath.Join(project,"_task_mecca",".runtime","access_preflight.json")
     if err:=os.MkdirAll(filepath.Dir(cachePath),0755); err==nil {
-        if data,err:=json.MarshalIndent(report,"","  "); err==nil { _=os.WriteFile(cachePath,append(data,\x27\n\x27),0644) }
+        if data,err:=json.MarshalIndent(report,"","  "); err==nil { _=os.WriteFile(cachePath,append(data, '\n'),0644) }
     }
     return report
 }
