@@ -31,3 +31,13 @@ The Go binary is not a replacement for the current Python distribution yet. This
 - `search` is implemented in the Go CLI with the existing scoring contract and human/JSON output.
 - CI includes a Python/Go JSON parity check for search in addition to agent, worker-name, and archive-aware next-id.
 - Next migration layer: dependency/ready reports, then inspect/workload on top of lifecycle, hold-audit, and continuity primitives. Do not duplicate those behaviors with simplified one-off implementations.
+
+
+## Fourth checkpoint
+
+- Go now implements assignment views, released-hold audit semantics, continuity evidence, durable Git lifecycle reconstruction, and provisional lifecycle observations in `.runtime/lifecycle_observations.json`.
+- `inspect` and `workload` are implemented on top of the shared parser/dependency/lifecycle primitives rather than simplified one-off logic.
+- `coordinate` now builds a single scheduling snapshot with shared lifecycle timings, scope-conflict detection, parallel-fill accounting, the deterministic Pokémon worker pool, hold review, and the Controller Drain / Parallel Fill / Adaptive Worker Allocation contract fields.
+- `audit` is implemented with Python-compatible state-specific ownership and required-field checks.
+- CI parity checks cover inspect/workload and coordinate/audit structurally; only live clock-derived duration fields and snapshot timestamps are excluded from exact comparison.
+- GitHub Actions visibility for the newest commits is still pending at this checkpoint, so these commands remain migration work until the branch CI actually reports success.
