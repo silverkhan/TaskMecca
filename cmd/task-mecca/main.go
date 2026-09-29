@@ -7,9 +7,11 @@ import (
     "path/filepath"
     "strconv"
     "strings"
+    "time"
 
     "github.com/silverkhan/TaskMecca/internal/backlog"
     "github.com/silverkhan/TaskMecca/internal/install"
+    "github.com/silverkhan/TaskMecca/internal/webui"
 )
 
 const version = "0.2.1"
@@ -22,8 +24,12 @@ func run(args []string) int {
         return 0
     }
     if len(args) == 0 {
-        fmt.Fprintln(os.Stderr, "usage: task-mecca <init|update|agent|worker-name|ensure-backlog|next-id|search|ready|inspect|workload|coordinate|audit|check|doctor|status|preflight> [options]")
-        return 2
+        root,err:=filepath.Abs(".")
+        if err!=nil { fmt.Fprintln(os.Stderr,err); return 2 }
+        if err:=webui.Run(webui.Config{Project:root,Port:8765,OpenBrowser:true}); err!=nil {
+            fmt.Fprintln(os.Stderr,err); return 2
+        }
+        return 0
     }
     command := args[0]
     project := "."
@@ -37,6 +43,11 @@ func run(args []string) int {
     backlogOnly := false
     includeDone := false
     requireFullAccess := false
+    watch := false
+    once := false
+    noOpen := false
+    port := 8765
+    interval := 1.0
     positional := []string{}
     for i := 1; i < len(args); i++ {
         if args[i] == "--project" && i+1 < len(args) {
@@ -61,12 +72,23 @@ func run(args []string) int {
         } else if args[i] == "--protocol" && i+1 < len(args) {
             protocol = args[i+1]
             i++
-        } else if args[i] == "--json" || args[i] == "--allow-empty" || args[i] == "--new" || args[i] == "--backlog-only" || args[i] == "--done" || args[i] == "--require-full-access" {
+        } else if args[i] == "--port" && i+1 < len(args) {
+            parsed,parseErr:=strconv.Atoi(args[i+1])
+            if parseErr!=nil { fmt.Fprintln(os.Stderr,"--port requires an integer"); return 2 }
+            port=parsed; i++
+        } else if args[i] == "--interval" && i+1 < len(args) {
+            parsed,parseErr:=strconv.ParseFloat(args[i+1],64)
+            if parseErr!=nil { fmt.Fprintln(os.Stderr,"--interval requires a number"); return 2 }
+            interval=parsed; i++
+        } else if args[i] == "--json" || args[i] == "--allow-empty" || args[i] == "--new" || args[i] == "--backlog-only" || args[i] == "--done" || args[i] == "--require-full-access" || args[i] == "--watch" || args[i] == "--once" || args[i] == "--no-open" {
             if args[i] == "--json" { jsonOutput = true }
             if args[i] == "--new" { newWorker = true }
             if args[i] == "--backlog-only" { backlogOnly = true }
             if args[i] == "--done" { includeDone = true }
             if args[i] == "--require-full-access" { requireFullAccess = true }
+            if args[i] == "--watch" { watch = true }
+            if args[i] == "--once" { once = true }
+            if args[i] == "--no-open" { noOpen = true }
         } else if !strings.HasPrefix(args[i], "-") {
             positional = append(positional, args[i])
         } else {
@@ -272,10 +294,41 @@ func run(args []string) int {
         }
     case "status":
         if len(positional) != 0 { fmt.Fprintln(os.Stderr, "status takes no positional arguments"); return 2 }
+        if watch && !jsonOutput {
+            err=webui.Run(webui.Config{Project:root,Root:rootOption,Port:8765,OpenBrowser:true})
+            break
+        }
+        if watch && jsonOutput {
+            if interval<0.5 { interval=0.5 }
+            for {
+                report,statusErr:=backlog.Status(root,rootOption,includeDone)
+                if statusErr!=nil { err=statusErr; break }
+                emitJSON(report)
+                time.Sleep(time.Duration(interval*float64(time.Second)))
+            }
+            break
+        }
         var report map[string]any
         report, err = backlog.Status(root, rootOption, includeDone)
         if err==nil {
             if jsonOutput { emitJSON(report) } else { printStatus(report) }
+        }
+    case "web":
+        if len(positional) != 0 { fmt.Fprintln(os.Stderr, "web takes no positional arguments"); return 2 }
+        err=webui.Run(webui.Config{Project:root,Root:rootOption,Port:port,OpenBrowser:!noOpen})
+    case "monitor":
+        if len(positional) != 0 { fmt.Fprintln(os.Stderr, "monitor takes no positional arguments"); return 2 }
+        if !once && !jsonOutput {
+            err=webui.Run(webui.Config{Project:root,Root:rootOption,Port:port,OpenBrowser:!noOpen})
+            break
+        }
+        if interval<0.5 { interval=0.5 }
+        for {
+            report,statusErr:=backlog.Status(root,rootOption,includeDone)
+            if statusErr!=nil { err=statusErr; break }
+            if jsonOutput { emitJSON(report) } else { printStatus(report) }
+            if once { break }
+            time.Sleep(time.Duration(interval*float64(time.Second)))
         }
     case "preflight":
         if len(positional) != 0 { fmt.Fprintln(os.Stderr, "preflight takes no positional arguments"); return 2 }
