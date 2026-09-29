@@ -114,8 +114,8 @@ For full operating rules, open **HELP → User Manual → Detailed Operations Gu
 When Task Mecca is installed through the public bootstrap package, `_task_mecca/manifest.json` records the installed version and baseline hashes.
 
 - **Framework managed**: `web/*` and framework documentation. The runtime is embedded in the standalone `task-mecca` binary and does not require project-local Python files.
-- **Customizable managed**: `roles/*`, `SESSION_GUIDE*.md`, `collab.md`, `_template.md`, and Task Mecca manuals. If both the project copy and upstream changed, the updater lists those files, recommends a backup, creates one when approved, then warns before overwrite.
-- **Project owned**: all `_task_mecca/data/**`. Registrar creates `data/backlog/` on first registration; the updater never overwrites `data/**`. Pre-0.2 `backlog*` locations remain project-owned compatibility paths.
+- **Customizable managed**: `roles/*`, `SESSION_GUIDE*.md`, `collab.md`, `_template.md`, and Task Mecca manuals. If both the project copy and upstream changed, the migrator lists those files, recommends a backup, creates one when approved, then warns before overwrite.
+- **Project owned**: all `_task_mecca/data/**`. Registrar creates `data/backlog/` on first registration; the migrator never overwrites `data/**`. Pre-0.2 `backlog*` locations remain project-owned compatibility paths.
 - **Runtime/backup**: `.runtime/*` and `backups/*`. Local-only operational/safety data and ignored by Git by default.
 
 Update the bootstrap package first, then update the project's managed framework.
@@ -130,7 +130,7 @@ task-mecca web
 After replacing the binary with a newer release, update managed framework files with:
 
 ```bash
-task-mecca update
+task-mecca migrate
 ```
 
 End users do not need Python, `uv`, or the Go toolchain. The standalone binary directly provides the Web UI, doctor, preflight, and backlog operations.
