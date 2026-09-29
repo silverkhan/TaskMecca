@@ -41,3 +41,13 @@ The Go binary is not a replacement for the current Python distribution yet. This
 - `audit` is implemented with Python-compatible state-specific ownership and required-field checks.
 - CI parity checks cover inspect/workload and coordinate/audit structurally; only live clock-derived duration fields and snapshot timestamps are excluded from exact comparison.
 - GitHub Actions visibility for the newest commits is still pending at this checkpoint, so these commands remain migration work until the branch CI actually reports success.
+
+
+## Fifth checkpoint
+
+- Go now implements `check`, `doctor`, `status`, and `preflight`.
+- `doctor` reuses the shared dependency, audit, filename, agent-path, scope-conflict, contract, hold-review, and runtime-metadata checks and remains scoped to exactly one selected backlog ledger.
+- `status` reuses the same lifecycle snapshot and assignment semantics as `inspect`, `workload`, and `coordinate`, including optional completed-history display.
+- `preflight` performs effective workspace, Git-metadata, subprocess, and outside-workspace write probes; current sandbox markers can still force restricted status, and network restriction is reported independently.
+- CI definitions now include Python/Go parity coverage for check/doctor/status/preflight in addition to the earlier command surface. Clock-derived status/lifecycle fields and probe timestamps are excluded from exact structural comparison.
+- GitHub has still not exposed a workflow run for the newest Contents-API commits on this Draft PR. Keep the migration Draft and treat CI success as pending until an actual run is visible.
