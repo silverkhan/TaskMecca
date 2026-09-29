@@ -5,7 +5,7 @@
 ## 1. 대시보드 실행
 
 ```bash
-python _task_mecca/framework/collab_tools.py web
+task-mecca web
 ```
 
 대시보드는 `_task_mecca` 안에서 백로그 폴더를 자동 탐지한다. 신규 프로젝트의 canonical 위치는 `data/backlog/`이며, 기존 호환성을 위해 이름이 `backlog`로 시작하는 `data/backlog_b`, legacy `backlog_b` 같은 원장도 탐색한다. canonical `data/backlog/`가 있으면 가장 우선한다. 상단 **Backlog** 선택기에서 다른 후보로 즉시 바꿀 수 있고, `Auto`를 선택하면 다시 최근 변경 기준 자동 선택으로 돌아간다. 상단 **Language** 드롭다운에서는 `한국어 / English`를 선택할 수 있으며 선택값은 브라우저에 저장된다. Task Mecca UI 문구·상태·메시지·User Manual은 선택 언어를 따르며, 사용자가 작성한 백로그 Markdown 원문은 자동 번역하지 않는다.
@@ -112,25 +112,24 @@ For older completed tasks where no `doing` transition was ever committed or obse
 
 공개 bootstrap package로 설치하면 `_task_mecca/manifest.json`에 설치 버전과 managed file baseline hash가 기록된다.
 
-- **Framework managed**: `collab_tools.py`, `runtime_metadata.py`, `web/*`. upstream 변경 시 자동 업데이트한다.
+- **Framework managed**: `web/*`와 framework 문서. 실행 runtime은 standalone `task-mecca` binary에 포함되며 프로젝트 내부 Python 파일을 요구하지 않는다.
 - **Customizable managed**: `roles/*`, `SESSION_GUIDE*.md`, `collab.md`, `_template.md`, Task Mecca 매뉴얼. 프로젝트 수정과 upstream 변경이 동시에 존재할 때 수정 파일 목록을 보여주고 백업을 권장한다. 동의하면 백업을 만든 뒤 덮어쓰기 전에 다시 안내·확인한다.
 - **Project owned**: `_task_mecca/data/**` 전체. Registrar가 첫 등록 시 `data/backlog/`를 만들며 updater는 `data/**`를 절대 덮어쓰지 않는다. pre-0.2 `backlog*` 경로도 호환을 위해 project-owned로 취급한다.
 - **Runtime/backup**: `.runtime/*`, `backups/*`. 로컬 운영/안전 데이터이며 기본적으로 Git에서 제외한다.
 
 업데이트는 bootstrap package만 새 버전으로 가져온 뒤 프로젝트의 managed framework를 갱신한다.
 
-PyPI 공개 전:
+Task Mecca는 standalone `task-mecca` 실행파일로 배포한다. 운영체제에 맞는 binary를 PATH에서 실행 가능하게 둔 뒤 프로젝트 루트에서 다음을 사용한다.
 
 ```bash
-python -m pip install --upgrade "git+https://github.com/silverkhan/TaskMecca.git"
-python -m task_mecca update
+task-mecca init
+task-mecca web
 ```
 
-PyPI 공개 이후:
+새 binary로 교체한 뒤 framework 파일을 갱신할 때는:
 
 ```bash
-python -m pip install --upgrade task-mecca
-python -m task_mecca update
+task-mecca update
 ```
 
-`uv`가 이미 설치된 사용자는 `uvx`를 선택적 편의 경로로 사용할 수 있지만 Task Mecca의 필수 요구사항은 아니다. Web UI, doctor, preflight 등 평상시 실행은 프로젝트 안의 Python runtime을 직접 사용하므로 인터넷이나 `uv`가 필요하지 않다.
+최종 사용자는 Python, `uv`, Go toolchain을 설치할 필요가 없다. Web UI, doctor, preflight, backlog 조작은 standalone binary가 직접 수행한다.
