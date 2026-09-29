@@ -22,7 +22,7 @@ func run(args []string) int {
         return 0
     }
     if len(args) == 0 {
-        fmt.Fprintln(os.Stderr, "usage: task-mecca <init|update|agent|worker-name|ensure-backlog|next-id|search|ready|inspect|workload> [options]")
+        fmt.Fprintln(os.Stderr, "usage: task-mecca <init|update|agent|worker-name|ensure-backlog|next-id|search|ready|inspect|workload|coordinate|audit> [options]")
         return 2
     }
     command := args[0]
@@ -32,6 +32,7 @@ func run(args []string) int {
     newWorker := false
     used := []string{}
     limit := 10
+    workerCap := 3
     positional := []string{}
     for i := 1; i < len(args); i++ {
         if args[i] == "--project" && i+1 < len(args) {
@@ -47,6 +48,11 @@ func run(args []string) int {
             parsed, parseErr := strconv.Atoi(args[i+1])
             if parseErr != nil { fmt.Fprintln(os.Stderr, "--limit requires an integer"); return 2 }
             limit = parsed
+            i++
+        } else if args[i] == "--worker-cap" && i+1 < len(args) {
+            parsed, parseErr := strconv.Atoi(args[i+1])
+            if parseErr != nil { fmt.Fprintln(os.Stderr, "--worker-cap requires an integer"); return 2 }
+            workerCap = parsed
             i++
         } else if args[i] == "--json" || args[i] == "--allow-empty" || args[i] == "--new" {
             if args[i] == "--json" { jsonOutput = true }
@@ -189,6 +195,33 @@ func run(args []string) int {
             }
             if unassigned,ok:=report["unassigned_doing"].([]string); ok && len(unassigned)>0 { return 1 }
         }
+    case "coordinate":
+        if len(positional) != 0 { fmt.Fprintln(os.Stderr, "coordinate takes no positional arguments"); return 2 }
+        var report map[string]any
+        report, err = backlog.Coordinate(root, rootOption, workerCap)
+        if err==nil {
+            if jsonOutput { emitJSON(report) } else {
+                fmt.Printf("snapshot: %v\n",report["snapshot_at"])
+                fmt.Printf("scheduling_needed: %v\n",report["scheduling_needed"])
+                fmt.Printf("controller_review_needed: %v (advisory)\n",report["controller_review_needed"])
+                fmt.Println("ready: "+mapIDs(report["ready"]))
+                fmt.Println("doing: "+doingIDs(report["doing"]))
+                fmt.Println("execution: RuntimeProvider/Dispatch상태 only; model/effort tracking removed")
+            }
+            if conflicts,ok:=report["scope_conflicts"].([]map[string]any); ok && len(conflicts)>0 { return 1 }
+        }
+    case "audit":
+        if len(positional) != 0 { fmt.Fprintln(os.Stderr, "audit takes no positional arguments"); return 2 }
+        var findings []map[string]string
+        findings, err = backlog.Audit(root, rootOption)
+        if err==nil {
+            if len(findings)==0 {
+                fmt.Println("통과: 상태별 필수 칸이 모두 채워져 있다.")
+            } else {
+                emitJSON(findings)
+                return 1
+            }
+        }
     default:
         // Go runtime commands must be implemented before this CLI can replace Python.
         fmt.Fprintf(os.Stderr, "%s is not yet implemented in the Go runtime\n", command)
@@ -227,4 +260,20 @@ func readyCandidateIDs(value any) string {
     ids:=[]string{}
     for _,row:=range rows { ids=append(ids,fmt.Sprint(row["id"])) }
     return strings.Join(ids,",")
+}
+
+func mapIDs(value any) string {
+    rows,ok:=value.([]map[string]any)
+    if !ok || len(rows)==0 { return "-" }
+    ids:=[]string{}
+    for _,row:=range rows { ids=append(ids,fmt.Sprint(row["id"])) }
+    return strings.Join(ids,", ")
+}
+
+func doingIDs(value any) string {
+    rows,ok:=value.([]map[string]any)
+    if !ok || len(rows)==0 { return "-" }
+    ids:=[]string{}
+    for _,row:=range rows { ids=append(ids,fmt.Sprintf("%v@%v",row["id"],emptyDash(row["agent"]))) }
+    return strings.Join(ids,", ")
 }
