@@ -1,6 +1,6 @@
 # Task Mecca 협업 규약
 
-Task Mecca는 **Markdown backlog + Git lifecycle**을 durable source of truth로 사용한다. `collab_tools.py`는
+Task Mecca는 **Markdown backlog + Git lifecycle**을 durable source of truth로 사용한다. standalone `task-mecca` runtime은
 원장을 읽고 검증하고 scheduling snapshot과 **local read-only Web UI**를 제공한다. agent 생성·메시지·대기는
 Codex/Claude 등 현재 런타임의 협업 기능이 담당한다.
 
@@ -43,7 +43,7 @@ Task Mecca는 **권한이 부족한 상태에서 worker를 먼저 띄워 보고 
 새 세션에서 실행형 작업 요청을 인지하면 Root는 긴 요구사항 정제나 subagent 생성보다 먼저 다음 gate를 실행한다.
 
 ```bash
-python _task_mecca/framework/collab_tools.py preflight --require-full-access --json
+task-mecca preflight --require-full-access --json
 ```
 
 `access.orchestration_ready == true`일 때만 위임을 시작한다. `restricted` 또는 `unknown`이면:
@@ -287,8 +287,8 @@ Controller가 바꿀 수 있는 것은 worker, 병렬화, 구현 순서, 변경�
 
 ## 9. Worker identity
 
-Worker 이름은 현재 task가 아니라 재사용되는 identity다. 신규 worker는 `collab_tools.py`의
-`WORKER_ALIAS_POLICY` 정본 pool을 사용한다.
+Worker 이름은 현재 task가 아니라 재사용되는 identity다. 신규 worker는 `task-mecca worker-name`이 제공하는
+정본 포켓몬 pool을 사용한다.
 
 ```text
 /root/controller/kkobugi
@@ -330,9 +330,9 @@ Worker의 DONE 선언만으로 완료하지 않는다. Controller가 해당 task
 사람용 기본 인터페이스는 terminal TUI가 아니라 local read-only Web UI다.
 
 ```bash
-python _task_mecca/framework/collab_tools.py
+task-mecca
 # 또는
-python _task_mecca/framework/collab_tools.py web
+task-mecca web
 ```
 
 기본 주소는 `http://127.0.0.1:8765`다. 포트가 사용 중이면 인접 포트를 선택한다.
