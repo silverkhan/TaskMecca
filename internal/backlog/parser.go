@@ -12,7 +12,7 @@ var fieldNames = map[string]bool{
     "등록자": true, "Agent": true, "변경범위": true, "대기": true, "대기유형": true,
     "재개조건": true, "대기근거": true, "선행": true, "연관": true, "설명": true,
     "메모": true, "결과": true, "검증": true, "Branch": true, "실행기": true,
-    "RuntimeProvider": true, "Dispatch상태": true, "실행근거": true, "Fallback근거": true,
+    "RuntimeProvider": true, "Dispatch상태": true, "실행상태": true, "실행근거": true, "Fallback근거": true,
 }
 
 func parseFields(text string) map[string]string {
@@ -167,12 +167,30 @@ func documentModel(text string,fields map[string]string) map[string]any {
     }
 }
 
-func runtimeFromFields(fields map[string]string) map[string]string {
-    return map[string]string{
-        "RuntimeProvider":fields["RuntimeProvider"],
-        "Dispatch상태":fields["Dispatch상태"],
-        "실행근거":fields["실행근거"],
-        "Fallback근거":fields["Fallback근거"],
+func runtimeFromFields(fields map[string]string) map[string]any {
+    provider:=strings.TrimSpace(fields["RuntimeProvider"])
+    status:=strings.TrimSpace(fields["Dispatch상태"])
+    if status=="" { status=strings.TrimSpace(fields["실행상태"]) }
+    evidence:=strings.TrimSpace(fields["실행근거"])
+    fallback:=strings.TrimSpace(fields["Fallback근거"])
+    coverage:="legacy"
+    for _,name:=range []string{"RuntimeProvider","Dispatch상태","실행상태","실행근거","Fallback근거"} {
+        if strings.TrimSpace(fields[name])!="" { coverage="v2"; break }
+    }
+    schema:="legacy"
+    if coverage=="v2" { schema="2" }
+    if provider=="" { provider="unknown" }
+    if status=="" { status="unknown" }
+    if evidence=="" { evidence="unknown" }
+    return map[string]any{
+        "runtime_schema":schema,
+        "coverage":coverage,
+        "runtime_provider":provider,
+        "dispatch_status":status,
+        "execution_evidence":evidence,
+        "fallback_evidence":fallback,
+        "missing_fields":[]string{},
+        "findings":[]any{},
     }
 }
 
