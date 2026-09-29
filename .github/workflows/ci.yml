@@ -62,3 +62,18 @@ jobs:
                   assert python.returncode == go.returncode, (python.stderr, go.stderr)
                   assert json.loads(python.stdout) == json.loads(go.stdout), (python.stdout, go.stdout)
           PY
+      - name: Compare archived next ID with Python runtime
+        run: |
+          python - <<'PY'
+          import json, pathlib, subprocess, tempfile
+          script = 'src/task_mecca/template/_task_mecca/framework/collab_tools.py'
+          with tempfile.TemporaryDirectory() as root:
+              ledger = pathlib.Path(root) / '_task_mecca' / 'data' / 'backlog'
+              archive = ledger / 'archive' / '2026-09'
+              archive.mkdir(parents=True)
+              (archive / '000001.A-1.first.done.md').write_text('# A-1 First\n')
+              (ledger / '000002.A-2.second.todo.md').write_text('# A-2 Second\n')
+              python = subprocess.check_output(['python', script, 'next-id', 'A', '--root', str(ledger), '--json'], text=True)
+              go = subprocess.check_output(['go', 'run', './cmd/task-mecca', 'next-id', 'A', '--project', root, '--root', str(ledger), '--json'], text=True)
+              assert json.loads(python) == json.loads(go), (python, go)
+          PY
