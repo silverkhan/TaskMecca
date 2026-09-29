@@ -223,3 +223,47 @@ Search parity.
                   assert python.returncode == go.returncode, (command, python.stderr, go.stderr)
                   assert stable(json.loads(python.stdout)) == stable(json.loads(go.stdout)), (command, python.stdout, go.stdout)
           PY
+
+      - name: Compare Go coordinate and audit with Python runtime
+        run: |
+          python - <<'PY'
+          import json, pathlib, shutil, subprocess, tempfile
+          source_framework = pathlib.Path('src/task_mecca/template/_task_mecca/framework')
+          tasks = {
+              '000001.A-1.one.doing.md': '# A-1 One\n- Agent: /root/controller/pairi\n- 변경범위: internal/backlog\n',
+              '000002.A-2.two.doing.md': '# A-2 Two\n- Agent: /root/controller/kkobugi\n- 변경범위: internal/backlog/parser\n',
+              '000003.A-3.done.done.md': '# A-3 Done\n- Agent: /root/controller/pairi\n- 결과: -\n- 검증: -\n',
+          }
+          volatile = {
+              'snapshot_at', 'current_segment_seconds', 'queue_seconds', 'active_seconds',
+              'wait_seconds', 'work_seconds', 'lead_seconds', 'elapsed_seconds',
+              'duration_seconds', 'queue', 'active', 'wait', 'work', 'lead',
+              'elapsed', 'duration', 'interval_seconds', 'interval',
+          }
+          def stable(value):
+              if isinstance(value, dict):
+                  return {k: stable(v) for k, v in value.items() if k not in volatile}
+              if isinstance(value, list):
+                  return [stable(v) for v in value]
+              return value
+
+          with tempfile.TemporaryDirectory() as root:
+              task_mecca = pathlib.Path(root) / '_task_mecca'
+              framework = task_mecca / 'framework'
+              shutil.copytree(source_framework, framework)
+              ledger = task_mecca / 'data' / 'backlog'
+              ledger.mkdir(parents=True)
+              for name, body in tasks.items():
+                  (ledger / name).write_text(body, encoding='utf-8')
+              script = framework / 'collab_tools.py'
+
+              python = subprocess.run(['python', str(script), 'coordinate', '--worker-cap', '3', '--root', str(ledger), '--json'], capture_output=True, text=True)
+              go = subprocess.run(['go', 'run', './cmd/task-mecca', 'coordinate', '--worker-cap', '3', '--project', root, '--root', str(ledger), '--json'], capture_output=True, text=True)
+              assert python.returncode == go.returncode, (python.stderr, go.stderr)
+              assert stable(json.loads(python.stdout)) == stable(json.loads(go.stdout)), (python.stdout, go.stdout)
+
+              python = subprocess.run(['python', str(script), 'audit', '--root', str(ledger)], capture_output=True, text=True)
+              go = subprocess.run(['go', 'run', './cmd/task-mecca', 'audit', '--project', root, '--root', str(ledger)], capture_output=True, text=True)
+              assert python.returncode == go.returncode, (python.stderr, go.stderr)
+              assert json.loads(python.stdout) == json.loads(go.stdout), (python.stdout, go.stdout)
+          PY
