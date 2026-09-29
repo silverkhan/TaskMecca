@@ -14,7 +14,40 @@ import (
 )
 
 var itemName = regexp.MustCompile(`^(\d{4}|\d{6})\.([A-Za-z]+-\d+)\.([a-z0-9-]+)\.(todo|doing|hold|done)\.md$`)
-var prefixName = regexp.MustCompile(`^[A-Z]+$`)
+var prefixName = regexp.MustCompile(`^[A-Z]+package backlog
+
+import (
+    "errors"
+    "fmt"
+    "io/fs"
+    "os"
+    "path/filepath"
+    "regexp"
+    "sort"
+    "strconv"
+    "strings"
+    "time"
+)
+
+var itemName = regexp.MustCompile(`^(\d{4}|\d{6})\.([A-Za-z]+-\d+)\.([a-z0-9-]+)\.(todo|doing|hold|done)\.md$`)
+)
+var archiveMonthName = regexp.MustCompile(`^\\d{4}-\\d{2}package backlog
+
+import (
+    "errors"
+    "fmt"
+    "io/fs"
+    "os"
+    "path/filepath"
+    "regexp"
+    "sort"
+    "strconv"
+    "strings"
+    "time"
+)
+
+var itemName = regexp.MustCompile(`^(\d{4}|\d{6})\.([A-Za-z]+-\d+)\.([a-z0-9-]+)\.(todo|doing|hold|done)\.md$`)
+)
 
 var skip = map[string]bool{".git": true, ".venv": true, "venv": true, "node_modules": true, "__pycache__": true, ".mypy_cache": true, ".pytest_cache": true, "framework": true, ".runtime": true, "backups": true}
 
@@ -37,8 +70,14 @@ type Record struct {
     Path string `json:"path"`
     Folder string `json:"folder"`
     Location string `json:"location"`
+    ArchiveMonth string `json:"archive_month"`
     Title string `json:"title"`
     Fields map[string]string `json:"fields"`
+    Document map[string]any `json:"document"`
+    RawMarkdown string `json:"raw_markdown"`
+    RuntimeMetadata map[string]string `json:"runtime_metadata"`
+    Mtime string `json:"mtime"`
+    Ctime string `json:"ctime"`
 }
 
 func named(path string) bool { return strings.HasPrefix(strings.ToLower(filepath.Base(path)), "backlog") }
@@ -155,20 +194,33 @@ func Catalog(project, root string) ([]Record,error) {
         data,err:=os.ReadFile(path)
         if err!=nil { return nil,err }
         text:=strings.TrimPrefix(string(data),"\ufeff")
-        title:=""
-        fields:=map[string]string{}
-        lines:=strings.Split(text,"\n")
-        for _,line:=range lines {
-            if title=="" && strings.HasPrefix(line,"# ") { title=strings.TrimSpace(strings.TrimPrefix(line,"# ")) }
-            if strings.HasPrefix(line,"- ") {
-                parts:=strings.SplitN(strings.TrimPrefix(line,"- "),":",2)
-                if len(parts)==2 { fields[parts[0]]=strings.TrimSpace(parts[1]) }
-            }
-        }
+        fields:=parseFields(text)
+        document:=documentModel(text,fields)
+        if fields["결과"]=="" { if value,ok:=document["result"].(string); ok { fields["결과"]=value } }
+        if fields["검증"]=="" { if value,ok:=document["verification"].(string); ok { fields["검증"]=value } }
         rel,_:=filepath.Rel(folder,path)
         location:="active"
-        if strings.Contains(rel,string(filepath.Separator)) { location="legacy"; if strings.HasPrefix(rel,"archive"+string(filepath.Separator)) { location="archive" } }
-        rows=append(rows,Record{ID:strings.ToUpper(match[2]),SortKey:match[1],Slug:match[3],State:match[4],Path:path,Folder:filepath.Base(folder),Location:location,Title:title,Fields:fields})
+        archiveMonth:=""
+        if strings.Contains(rel,string(filepath.Separator)) {
+            location="legacy"
+            parts:=strings.Split(rel,string(filepath.Separator))
+            if len(parts)>=3 && parts[0]=="archive" {
+                location="archive"
+                if archiveMonthName.MatchString(parts[1]) { archiveMonth=parts[1] }
+            }
+        }
+        stat,statErr:=os.Stat(path)
+        mtime,ctime:="",""
+        if statErr==nil {
+            mtime=stat.ModTime().UTC().Format(time.RFC3339Nano)
+            ctime=mtime
+        }
+        rows=append(rows,Record{
+            ID:strings.ToUpper(match[2]),SortKey:match[1],Slug:match[3],State:match[4],
+            Path:path,Folder:filepath.Base(folder),Location:location,ArchiveMonth:archiveMonth,
+            Title:titleOf(text),Fields:fields,Document:document,RawMarkdown:text,
+            RuntimeMetadata:runtimeFromFields(fields),Mtime:mtime,Ctime:ctime,
+        })
     }
     sort.Slice(rows,func(i,j int)bool { if rows[i].ID!=rows[j].ID { return rows[i].ID<rows[j].ID }; return rows[i].Path<rows[j].Path })
     return rows,nil
