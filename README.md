@@ -30,7 +30,7 @@ To refresh the CLI later, run the same installer command again, then update the 
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/silverkhan/TaskMecca/main/install.sh | sh
-task-mecca update
+task-mecca migrate
 ```
 
 Installation creates only Task Mecca framework/metadata. It does **not** create project data, does not create a backlog, and does not modify the project-level `AGENTS.md`.
@@ -50,7 +50,7 @@ _task_mecca/
 │   ├── roles/
 │   └── web/
 ├── .runtime/        # created only when runtime state is needed
-└── backups/         # created only when updater backup is needed
+└── backups/         # created only when migrator backup is needed
 ```
 
 There is intentionally no `data/` directory immediately after installation.
@@ -101,12 +101,12 @@ The filesystem boundary is intentional.
 
 | Area | Ownership | Update behavior |
 |---|---|---|
-| `_task_mecca/framework/**` | Task Mecca framework | Managed by updater |
+| `_task_mecca/framework/**` | Task Mecca framework | Managed by migrator |
 | `_task_mecca/ROOT_PROMPT.md` | Task Mecca managed/customizable | Backup + confirmation when both local and upstream changed |
-| `_task_mecca/data/**` | Project/agent durable data | Never overwritten by updater |
-| legacy `_task_mecca/backlog*/**` | Project data compatibility | Never overwritten by updater |
+| `_task_mecca/data/**` | Project/agent durable data | Never overwritten by migrator |
+| legacy `_task_mecca/backlog*/**` | Project data compatibility | Never overwritten by migrator |
 | `_task_mecca/.runtime/**` | Ephemeral runtime state | Not durable project data |
-| `_task_mecca/backups/**` | Local updater safety copies | Never framework-managed |
+| `_task_mecca/backups/**` | Local migrator safety copies | Never framework-managed |
 
 Agents may create additional durable artifacts under `data/` when a task genuinely needs them, for example measurements or audit evidence. Task Mecca does not pre-create or standardize arbitrary artifact folders.
 
@@ -135,7 +135,7 @@ Task Mecca includes lifecycle-history compatibility so Git events recorded under
 Replace the standalone executable with a newer Task Mecca binary, then update the managed project framework:
 
 ```bash
-task-mecca update
+task-mecca migrate
 ```
 
 Downloading a newer binary requires whatever network/file-transfer method you choose, but normal runtime commands such as Web UI, doctor, preflight, and backlog operations execute entirely from the standalone binary and project files.
