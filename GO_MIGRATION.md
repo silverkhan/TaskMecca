@@ -1,6 +1,6 @@
 # Go runtime migration (in progress)
 
-The Go binary is not a replacement for the current Python distribution yet. This branch starts with the installer and keeps the Python runtime as the behavior reference. Do not distribute its binary as a complete Task Mecca release.
+This branch migrates Task Mecca to a standalone Go runtime. The Python implementation remains in `src/` as the behavior/parity reference during the migration, but the embedded project install template is now Python-free. Keep the PR Draft until cross-platform artifact and parity verification is complete.
 
 ## Compatibility boundary
 
@@ -9,13 +9,15 @@ The Go binary is not a replacement for the current Python distribution yet. This
 - Preserve JSON fields and ordering where callers consume them. Compare against the Python implementation using the existing fixtures and Git-history tests.
 - Preserve the local Web UI routes `/api/backlog-folders`, `/api/snapshot`, `/api/manual`, and `/api/tasks/{id}`, static assets, backlog selection, and read-only behavior.
 - Preserve direct worker identity `/root/controller/<worker_name>`, registrar/controller roles, Controller Drain, Parallel Fill, and Adaptive Worker Allocation.
-- Only remove the Python runtime and Python usage instructions after the Go command surface and behavior pass parity tests on Windows and macOS.
+- Installed projects must remain Python-free; keep the Python reference implementation only in the repository until final parity sign-off.
 
 ## Current migration status
 
-- Go module and embedded project template: started.
-- `init` and conservative `update`: implemented, pending CI and parity verification.
-- Backlog parser, scheduling reports, preflight, lifecycle history, Web UI, terminal UI, documentation and release packages: pending.
+- Go module and Python-free embedded project template: implemented.
+- `init` and conservative `update`: implemented.
+- Backlog parser, scheduling/health reports, effective preflight, lifecycle history, monitor, and local Web UI: implemented.
+- Standalone Windows/macOS/Linux artifact workflow: implemented.
+- Remaining work is focused on full parity sign-off, update-conflict UX review, packaging/release polish, and direct Windows/macOS behavior verification.
 
 ## Second checkpoint
 
@@ -51,3 +53,36 @@ The Go binary is not a replacement for the current Python distribution yet. This
 - `preflight` performs effective workspace, Git-metadata, subprocess, and outside-workspace write probes; current sandbox markers can still force restricted status, and network restriction is reported independently.
 - CI definitions now include Python/Go parity coverage for check/doctor/status/preflight in addition to the earlier command surface. Clock-derived status/lifecycle fields and probe timestamps are excluded from exact structural comparison.
 - GitHub has still not exposed a workflow run for the newest Contents-API commits on this Draft PR. Keep the migration Draft and treat CI success as pending until an actual run is visible.
+
+
+## Sixth checkpoint
+
+- The local read-only Web UI is now served directly by Go from embedded HTML/CSS/JS assets.
+- Go implements the existing HTTP routes: `/api/backlog-folders`, `/api/snapshot`, `/api/manual`, `/api/tasks/{id}`, static assets, and SPA fallback.
+- The dashboard snapshot includes backlog selection, tree rows, task details, lifecycle timings, runtime activity signals, health, workload, hold review, passive access observation, attention items, and counts.
+- `web`, `monitor`, and `status --watch` are wired to the Go runtime; invoking `task-mecca` with no arguments opens the Web UI, matching the current human-facing behavior.
+- The embedded install template no longer contains `collab_tools.py` or `runtime_metadata.py`; installer tests assert that a fresh standalone install contains no `.py` runtime files.
+- Framework and top-level documentation now use `task-mecca ...` commands and describe the standalone binary distribution.
+- A dedicated Actions workflow builds downloadable Windows amd64, macOS amd64/arm64, and Linux amd64 binaries with SHA-256 sums.
+- The first standalone-artifact run reached and passed `go test ./...`; cross-platform builds were still running when this checkpoint was written.
+
+### Direct test flow
+
+After downloading the artifact for your platform:
+
+```bash
+task-mecca --version
+task-mecca init
+task-mecca doctor --json
+task-mecca preflight --json
+task-mecca web
+```
+
+For an existing Task Mecca project, back it up or use a disposable clone first, replace the executable, then run:
+
+```bash
+task-mecca update
+task-mecca doctor --json
+task-mecca status --json
+task-mecca web
+```
