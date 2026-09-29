@@ -267,3 +267,66 @@ Search parity.
               assert python.returncode == go.returncode, (python.stderr, go.stderr)
               assert json.loads(python.stdout) == json.loads(go.stdout), (python.stdout, go.stdout)
           PY
+
+      - name: Compare Go check doctor status and preflight with Python runtime
+        run: |
+          python - <<'PY'
+          import json, os, pathlib, shutil, subprocess, tempfile
+          source_framework = pathlib.Path('src/task_mecca/template/_task_mecca/framework')
+          task = '''# A-1 Health Task
+- Agent: /root/controller/pairi
+- 변경범위: internal/backlog
+- 선행: -
+- 연관: -
+- RuntimeProvider: codex
+- Dispatch상태: running
+- 실행근거: test
+- Fallback근거: -
+'''
+          volatile = {
+              'snapshot_at', 'checked_at', 'mtime', 'ctime',
+              'current_segment_seconds', 'queue_seconds', 'active_seconds', 'wait_seconds',
+              'work_seconds', 'lead_seconds', 'elapsed_seconds', 'duration_seconds',
+              'queue', 'active', 'wait', 'work', 'lead', 'elapsed', 'duration',
+              'interval_seconds', 'interval',
+          }
+          def stable(value):
+              if isinstance(value, dict):
+                  return {k: stable(v) for k, v in value.items() if k not in volatile}
+              if isinstance(value, list):
+                  return [stable(v) for v in value]
+              return value
+
+          with tempfile.TemporaryDirectory() as root, tempfile.TemporaryDirectory() as home:
+              root = pathlib.Path(root)
+              task_mecca = root / '_task_mecca'
+              framework = task_mecca / 'framework'
+              shutil.copytree(source_framework, framework)
+              ledger = task_mecca / 'data' / 'backlog'
+              ledger.mkdir(parents=True)
+              (ledger / '000001.A-1.health.doing.md').write_text(task, encoding='utf-8')
+
+              subprocess.run(['git', 'init'], cwd=root, check=True, stdout=subprocess.DEVNULL)
+              subprocess.run(['git', 'config', 'user.email', 'ci@example.invalid'], cwd=root, check=True)
+              subprocess.run(['git', 'config', 'user.name', 'CI'], cwd=root, check=True)
+              subprocess.run(['git', 'add', '.'], cwd=root, check=True)
+              subprocess.run(['git', 'commit', '-m', 'fixture'], cwd=root, check=True, stdout=subprocess.DEVNULL)
+
+              script = framework / 'collab_tools.py'
+              env = os.environ.copy()
+              env['HOME'] = home
+              env['CODEX_HOME'] = str(pathlib.Path(home) / '.codex')
+              env.pop('CODEX_SANDBOX', None)
+              env.pop('CODEX_SANDBOX_NETWORK_DISABLED', None)
+
+              python = subprocess.run(['python', str(script), 'check'], cwd=root, env=env, capture_output=True, text=True)
+              go = subprocess.run(['go', 'run', './cmd/task-mecca', 'check', '--project', str(root)], env=env, capture_output=True, text=True)
+              assert python.returncode == go.returncode, (python.stderr, go.stderr)
+              assert python.stdout == go.stdout and python.stderr == go.stderr, (python.stdout, go.stdout, python.stderr, go.stderr)
+
+              for command in (['doctor', '--json'], ['status', '--json'], ['preflight', '--require-full-access', '--json']):
+                  python = subprocess.run(['python', str(script), *command, '--root', str(ledger)], cwd=root, env=env, capture_output=True, text=True)
+                  go = subprocess.run(['go', 'run', './cmd/task-mecca', command[0], '--project', str(root), '--root', str(ledger), *command[1:]], env=env, capture_output=True, text=True)
+                  assert python.returncode == go.returncode, (command, python.stderr, go.stderr)
+                  assert stable(json.loads(python.stdout)) == stable(json.loads(go.stdout)), (command, python.stdout, go.stdout)
+          PY
