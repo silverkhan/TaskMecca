@@ -20,7 +20,7 @@ Registrar는 Simple을 Defined로 부풀리거나 Defined를 Simple로 축소하
 1. `task-mecca ensure-backlog --json`을 실행한다.
 2. 기존 `backlog*` 원장이 있으면 그것을 그대로 사용한다. legacy/custom ledger를 임의로 새 이름으로 복제하지 않는다.
 3. 원장이 하나도 없을 때만 canonical `_task_mecca/data/backlog/`를 생성한다.
-4. `_task_mecca/data/**`는 project-owned이며 updater 대상이 아니다.
+4. `_task_mecca/data/**`는 project-owned이며 migrator 대상이 아니다.
 
 ## 등록 절차
 
