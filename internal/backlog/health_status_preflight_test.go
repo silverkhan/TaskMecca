@@ -18,6 +18,8 @@ func TestDoctorStatusCheckAndPreflight(t *testing.T) {
     if err:=os.WriteFile(filepath.Join(framework,"collab.md"),[]byte("# Protocol\n"),0644); err!=nil { t.Fatal(err) }
     task:="# A-1 Task\n- Agent: /root/controller/pairi\n- 변경범위: core\n- 선행: -\n- 연관: -\n- RuntimeProvider: codex\n- Dispatch상태: running\n- 실행근거: test\n- Fallback근거: -\n"
     if err:=os.WriteFile(filepath.Join(ledger,"000001.A-1.task.doing.md"),[]byte(task),0644); err!=nil { t.Fatal(err) }
+    doneTask:="# A-2 Done\n- Agent: AstraHigh\n- 변경범위: legacy\n- 선행: -\n- 연관: -\n- 결과: done\n- 검증: done\n"
+    if err:=os.WriteFile(filepath.Join(ledger,"000002.A-2.done.done.md"),[]byte(doneTask),0644); err!=nil { t.Fatal(err) }
     gitRun(t,root,"add",".")
     gitRun(t,root,"commit","-m","fixture")
 
@@ -32,6 +34,15 @@ func TestDoctorStatusCheckAndPreflight(t *testing.T) {
     if err!=nil { t.Fatal(err) }
     counts:=status["counts"].(map[string]any)
     if counts["doing"]!=1 { t.Fatalf("counts=%+v",counts) }
+    active:=status["active"].([]map[string]any)
+    if len(active)!=1 || active[0]["id"]!="A-1" { t.Fatalf("default active=%+v",active) }
+    done:=status["done"].([]map[string]any)
+    if len(done)!=0 { t.Fatalf("default status must hide done: %+v",done) }
+
+    withDone,err:=Status(root,"",true)
+    if err!=nil { t.Fatal(err) }
+    shownDone:=withDone["done"].([]map[string]any)
+    if len(shownDone)!=1 || shownDone[0]["id"]!="A-2" { t.Fatalf("with done=%+v",shownDone) }
 
     externalHome:=t.TempDir()
     t.Setenv("HOME",externalHome)
