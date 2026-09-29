@@ -74,18 +74,17 @@ func filenameProblems(rows []Record) []map[string]string {
 }
 
 func unrecognizedFiles(project,root string) ([]map[string]string,error) {
-    candidates,err:=Discover(project,root)
+    selected,err:=Select(project,root)
     if err!=nil { return nil,err }
     out:=[]map[string]string{}
-    for _,candidate:=range candidates {
-        paths,err:=History(candidate.Path)
-        if err!=nil { return nil,err }
-        for _,path:=range paths {
-            name:=filepath.Base(path)
-            if strings.HasPrefix(name,"_") { continue }
-            if !itemName.MatchString(name) {
-                out=append(out,map[string]string{"file":path,"problem":"unrecognized backlog filename"})
-            }
+    if selected=="" { return out,nil }
+    paths,err:=History(selected)
+    if err!=nil { return nil,err }
+    for _,path:=range paths {
+        name:=filepath.Base(path)
+        if strings.HasPrefix(name,"_") { continue }
+        if !itemName.MatchString(name) {
+            out=append(out,map[string]string{"file":path,"problem":"unrecognized backlog filename"})
         }
     }
     return out,nil
