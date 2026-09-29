@@ -11,6 +11,8 @@ on:
       - "install.sh"
       - ".github/workflows/release-go-main.yml"
   workflow_dispatch:
+  schedule:
+    - cron: "*/15 * * * *"
 
 permissions:
   contents: write
