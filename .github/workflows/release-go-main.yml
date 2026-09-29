@@ -1,0 +1,53 @@
+name: Publish rolling Go release
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "cmd/task-mecca/**"
+      - "internal/**"
+      - "goassets/**"
+      - "go.mod"
+      - "install.sh"
+      - ".github/workflows/release-go-main.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: task-mecca-go-main-release
+  cancel-in-progress: true
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Test Go runtime
+        run: go test ./...
+      - name: Build standalone binaries
+        shell: bash
+        run: |
+          set -euxo pipefail
+          mkdir -p dist
+          CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o dist/task-mecca-windows-amd64.exe ./cmd/task-mecca
+          CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o dist/task-mecca-macos-amd64 ./cmd/task-mecca
+          CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -trimpath -ldflags="-s -w" -o dist/task-mecca-macos-arm64 ./cmd/task-mecca
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o dist/task-mecca-linux-amd64 ./cmd/task-mecca
+          sha256sum dist/* > dist/SHA256SUMS.txt
+      - name: Replace rolling prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euxo pipefail
+          gh release delete go-main --cleanup-tag -y || true
+          gh release create go-main dist/* \
+            --target "$GITHUB_SHA" \
+            --title "Task Mecca Go rolling build" \
+            --notes "Rolling standalone build from main. Commit: $GITHUB_SHA" \
+            --prerelease
