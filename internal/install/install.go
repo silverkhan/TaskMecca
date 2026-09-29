@@ -92,7 +92,7 @@ func fileHash(path string) string {
 func Init(project, version string) error {
     target := filepath.Join(project, targetName)
     if entries, err := os.ReadDir(target); err == nil && len(entries) > 0 {
-        return fmt.Errorf("%s already exists; use task-mecca update", target)
+        return fmt.Errorf("%s already exists; use task-mecca migrate", target)
     } else if err != nil && !errors.Is(err, os.ErrNotExist) { return err }
     files, err := bundled()
     if err != nil { return err }
@@ -103,7 +103,7 @@ func Init(project, version string) error {
     return saveManifest(target, newManifest(files, version))
 }
 
-func Update(project, version string) error {
+func Migrate(project, version string) error {
     target := filepath.Join(project, targetName)
     raw, err := os.ReadFile(filepath.Join(target, "manifest.json"))
     if err != nil { return fmt.Errorf("manifest not found; run task-mecca init first: %w", err) }
@@ -143,7 +143,7 @@ func Update(project, version string) error {
         }
         meta, _ := json.MarshalIndent(map[string]any{"created_at": time.Now().Format(time.RFC3339), "from_version": previous.Version, "to_version": version, "files": copied}, "", "  ")
         if err = os.WriteFile(filepath.Join(backup, "backup.json"), append(meta, '\n'), 0644); err != nil { return err }
-        return fmt.Errorf("local changes conflict with upstream: %s; backup: %s; update stopped", strings.Join(conflicts, ", "), backup)
+        return fmt.Errorf("local changes conflict with upstream: %s; backup: %s; migration stopped", strings.Join(conflicts, ", "), backup)
     }
     for _, path := range retired {
         if err = os.Remove(filepath.Join(target, filepath.FromSlash(path))); err != nil { return err }
