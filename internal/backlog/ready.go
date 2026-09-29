@@ -6,7 +6,7 @@ import (
     "strings"
 )
 
-var idRef = regexp.MustCompile(`[A-Za-z]+-\\d+`)
+var idRef = regexp.MustCompile(`[A-Za-z]+-\d+`)
 
 func refs(value string) []string {
     seen:=map[string]bool{}
