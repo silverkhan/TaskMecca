@@ -18,9 +18,9 @@ func baseRoot(project, root string) string {
 
 func Presence(project,root string, records []Record) (map[string]any,error) {
     base:=baseRoot(project,root)
-    candidates,err:=Discover(project,root)
+    selected,err:=Select(project,root)
     if err!=nil { return nil,err }
-    if len(candidates)==0 {
+    if selected=="" {
         return map[string]any{
             "ok":true,"status":"uninitialized","root":base,"folders":[]string{},
             "record_count":0,"active_count":0,
@@ -32,8 +32,7 @@ func Presence(project,root string, records []Record) (map[string]any,error) {
         rows,err=Catalog(project,root)
         if err!=nil { return nil,err }
     }
-    folders:=[]string{}
-    for _,candidate:=range candidates { folders=append(folders,candidate.Path) }
+    folders:=[]string{selected}
     status:="empty"
     message:="backlog 후보 폴더는 있으나 인식 가능한 항목이 없다."
     if len(rows)>0 { status="ok"; message="backlog를 찾았고 항목을 읽을 수 있다." }
