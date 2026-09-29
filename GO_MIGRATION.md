@@ -64,7 +64,7 @@ This branch migrates Task Mecca to a standalone Go runtime. The Python implement
 - The embedded install template no longer contains `collab_tools.py` or `runtime_metadata.py`; installer tests assert that a fresh standalone install contains no `.py` runtime files.
 - Framework and top-level documentation now use `task-mecca ...` commands and describe the standalone binary distribution.
 - A dedicated Actions workflow builds downloadable Windows amd64, macOS amd64/arm64, and Linux amd64 binaries with SHA-256 sums.
-- The first standalone-artifact run reached and passed `go test ./...`; cross-platform builds were still running when this checkpoint was written.
+- The standalone-artifact workflow passed `go test ./...`, built all four target binaries successfully, and uploaded the artifact bundle.
 
 ### Direct test flow
 
