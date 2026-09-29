@@ -54,7 +54,8 @@ func Search(project,root,query string,limit int) (SearchReport,error) {
         }
         if strings.Contains(haystack,q) { score+=8 }
         if score==0 { continue }
-        if len(description)>500 { description=description[:500] }
+        runes:=[]rune(description)
+        if len(runes)>500 { description=string(runes[:500]) }
         results=append(results,SearchResult{
             ID:row.ID,State:row.State,Location:row.Location,Title:row.Title,
             Description:description,Path:row.Path,Score:score,
