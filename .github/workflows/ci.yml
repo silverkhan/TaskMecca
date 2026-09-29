@@ -288,6 +288,7 @@ Search parity.
               'current_segment_seconds', 'queue_seconds', 'active_seconds', 'wait_seconds',
               'work_seconds', 'lead_seconds', 'elapsed_seconds', 'duration_seconds',
               'queue', 'active', 'wait', 'work', 'lead', 'elapsed', 'duration',
+              'time', 'queue_time', 'work_time', 'lead_time',
               'interval_seconds', 'interval',
           }
           def stable(value):
