@@ -127,3 +127,24 @@ Search parity.
               go = subprocess.check_output(['go', 'run', './cmd/task-mecca', 'search', 'parser', '--project', root, '--root', str(ledger), '--json'], text=True)
               assert json.loads(python) == json.loads(go), (python, go)
           PY
+
+      - name: Compare Go ready JSON with Python runtime
+        run: |
+          python - <<'PY'
+          import json, pathlib, subprocess, tempfile
+          script = 'src/task_mecca/template/_task_mecca/framework/collab_tools.py'
+          tasks = {
+              '000001.A-1.done.done.md': '# A-1 Done\n- 선행: -\n',
+              '000002.A-2.ready.todo.md': '# A-2 Ready\n- 선행: A-1\n- 대기: -\n',
+              '000003.A-3.blocked.todo.md': '# A-3 Blocked\n- 선행: A-9\n- 대기: approval\n',
+          }
+          with tempfile.TemporaryDirectory() as root:
+              ledger = pathlib.Path(root) / '_task_mecca' / 'data' / 'backlog'
+              ledger.mkdir(parents=True)
+              for name, body in tasks.items():
+                  (ledger / name).write_text(body, encoding='utf-8')
+              python = subprocess.run(['python', script, 'ready', '--root', str(ledger), '--json'], capture_output=True, text=True)
+              go = subprocess.run(['go', 'run', './cmd/task-mecca', 'ready', '--project', root, '--root', str(ledger), '--json'], capture_output=True, text=True)
+              assert python.returncode == go.returncode, (python.stderr, go.stderr)
+              assert json.loads(python.stdout) == json.loads(go.stdout), (python.stdout, go.stdout)
+          PY
