@@ -22,7 +22,7 @@ func run(args []string) int {
         return 0
     }
     if len(args) == 0 {
-        fmt.Fprintln(os.Stderr, "usage: task-mecca <init|update|agent|worker-name|ensure-backlog|next-id|search|ready> [options]")
+        fmt.Fprintln(os.Stderr, "usage: task-mecca <init|update|agent|worker-name|ensure-backlog|next-id|search|ready|inspect|workload> [options]")
         return 2
     }
     command := args[0]
@@ -152,6 +152,43 @@ func run(args []string) int {
                 if len(missing)>0 || len(cycles)>0 { return 1 }
             }
         }
+    case "inspect":
+        if len(positional) != 1 { fmt.Fprintln(os.Stderr, "inspect requires an id"); return 2 }
+        var report map[string]any
+        report, err = backlog.Inspect(root, rootOption, positional[0])
+        if err==nil {
+            if report["exists"]!=true {
+                fmt.Fprintf(os.Stderr,"%s 항목을 찾지 못했다.\n",strings.ToUpper(positional[0]))
+                return 2
+            }
+            if jsonOutput { emitJSON(report) } else {
+                fmt.Printf("%s %s %s\n",report["id"],report["state"],report["title"])
+                fmt.Printf("Agent: %v  범위: %v\n",emptyDash(report["agent"]),emptyDash(report["change_scope"]))
+                fmt.Printf("ready: %v  waiting: %s\n",report["ready"],joinAnyStrings(report["waiting_for"]))
+                if note,ok:=report["waiting_note"].(string); ok && note!="" { fmt.Println("대기: "+note) }
+            }
+            if count,ok:=report["duplicate_count"].(int); ok && count>1 { return 1 }
+        }
+    case "workload":
+        if len(positional) != 0 { fmt.Fprintln(os.Stderr, "workload takes no positional arguments"); return 2 }
+        var report map[string]any
+        report, err = backlog.Workload(root, rootOption)
+        if err==nil {
+            if jsonOutput { emitJSON(report) } else {
+                agents,_:=report["agents"].([]map[string]any)
+                for _,row:=range agents {
+                    fmt.Printf("%s: doing=%s blocking=%s ready_history=%s\n",
+                        row["agent"],
+                        joinAnyStrings(row["doing"]),
+                        joinAnyStrings(row["blocking"]),
+                        readyCandidateIDs(row["ready_candidates"]),
+                    )
+                }
+                fmt.Println("execution: RuntimeProvider/Dispatch상태 only; model/effort tracking removed")
+                if len(agents)==0 { fmt.Println("(Agent workload 없음)") }
+            }
+            if unassigned,ok:=report["unassigned_doing"].([]string); ok && len(unassigned)>0 { return 1 }
+        }
     default:
         // Go runtime commands must be implemented before this CLI can replace Python.
         fmt.Fprintf(os.Stderr, "%s is not yet implemented in the Go runtime\n", command)
@@ -165,4 +202,29 @@ func emitJSON(value any) {
     encoder := json.NewEncoder(os.Stdout)
     encoder.SetEscapeHTML(false)
     _ = encoder.Encode(value)
+}
+
+func emptyDash(value any) any {
+    if text,ok:=value.(string); ok && text=="" { return "-" }
+    return value
+}
+
+func joinAnyStrings(value any) string {
+    values:=[]string{}
+    switch rows:=value.(type) {
+    case []string:
+        values=rows
+    case []any:
+        for _,row:=range rows { values=append(values,fmt.Sprint(row)) }
+    }
+    if len(values)==0 { return "-" }
+    return strings.Join(values,",")
+}
+
+func readyCandidateIDs(value any) string {
+    rows,ok:=value.([]map[string]any)
+    if !ok || len(rows)==0 { return "-" }
+    ids:=[]string{}
+    for _,row:=range rows { ids=append(ids,fmt.Sprint(row["id"])) }
+    return strings.Join(ids,",")
 }
