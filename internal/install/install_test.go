@@ -39,7 +39,7 @@ func TestUpdateStopsOnModifiedFramework(t *testing.T) {
     if err := Update(root, "0.2.1"); err != nil { t.Fatal(err) }
     got, err := os.ReadFile(path)
     if err != nil || string(got) != "local change" { t.Fatalf("local customization lost: %q %v", got, err) }
-
+}
 
 func TestUpdateRestoresMissingManagedFile(t *testing.T) {
     project := t.TempDir()
@@ -56,5 +56,4 @@ func TestUpdateRestoresMissingManagedFile(t *testing.T) {
     if _, err := os.Stat(target); err != nil {
         t.Fatalf("missing managed file was not restored: %v", err)
     }
-}
 }
