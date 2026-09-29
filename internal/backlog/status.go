@@ -43,7 +43,11 @@ func Status(project,root string,includeDone bool) (map[string]any,error) {
             "queue_time":valueOr(lifecycle["queue"],"-"),"work_time":valueOr(lifecycle["work"],"-"),
             "lead_time":valueOr(lifecycle["lead"],"-"),"lifecycle":lifecycle,
         }
-        if row.Location=="active" { active=append(active,item) } else if includeDone && row.State=="done" { done=append(done,item) }
+        if row.Location=="active" && row.State!="done" {
+            active=append(active,item)
+        } else if includeDone && row.State=="done" {
+            done=append(done,item)
+        }
     }
     sort.Slice(done,func(i,j int)bool {
         left:=toString(done[i]["completed_at"]); right:=toString(done[j]["completed_at"])
