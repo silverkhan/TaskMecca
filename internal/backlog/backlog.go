@@ -14,41 +14,8 @@ import (
 )
 
 var itemName = regexp.MustCompile(`^(\d{4}|\d{6})\.([A-Za-z]+-\d+)\.([a-z0-9-]+)\.(todo|doing|hold|done)\.md$`)
-var prefixName = regexp.MustCompile(`^[A-Z]+package backlog
-
-import (
-    "errors"
-    "fmt"
-    "io/fs"
-    "os"
-    "path/filepath"
-    "regexp"
-    "sort"
-    "strconv"
-    "strings"
-    "time"
-)
-
-var itemName = regexp.MustCompile(`^(\d{4}|\d{6})\.([A-Za-z]+-\d+)\.([a-z0-9-]+)\.(todo|doing|hold|done)\.md$`)
-)
-var archiveMonthName = regexp.MustCompile(`^\\d{4}-\\d{2}package backlog
-
-import (
-    "errors"
-    "fmt"
-    "io/fs"
-    "os"
-    "path/filepath"
-    "regexp"
-    "sort"
-    "strconv"
-    "strings"
-    "time"
-)
-
-var itemName = regexp.MustCompile(`^(\d{4}|\d{6})\.([A-Za-z]+-\d+)\.([a-z0-9-]+)\.(todo|doing|hold|done)\.md$`)
-)
-
+var prefixName = regexp.MustCompile(`^[A-Z]+$`)
+var archiveMonthName = regexp.MustCompile(`^\d{4}-\d{2}$`)
 var skip = map[string]bool{".git": true, ".venv": true, "venv": true, "node_modules": true, "__pycache__": true, ".mypy_cache": true, ".pytest_cache": true, "framework": true, ".runtime": true, "backups": true}
 
 type Candidate struct {
