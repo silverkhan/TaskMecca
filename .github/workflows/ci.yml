@@ -148,3 +148,60 @@ Search parity.
               assert python.returncode == go.returncode, (python.stderr, go.stderr)
               assert json.loads(python.stdout) == json.loads(go.stdout), (python.stdout, go.stdout)
           PY
+
+      - name: Compare Go inspect and workload JSON with Python runtime
+        run: |
+          python - <<'PY'
+          import json, pathlib, subprocess, tempfile
+          script = 'src/task_mecca/template/_task_mecca/framework/collab_tools.py'
+          tasks = {
+              '000001.A-1.done.done.md': '''# A-1 Done
+- Agent: /root/controller/pairi
+- 변경범위: core
+- 선행: -
+- 연관: -
+- RuntimeProvider: codex
+- Dispatch상태: completed
+- 실행근거: test
+- Fallback근거: -
+''',
+              '000002.A-2.doing.doing.md': '''# A-2 Doing
+- Agent: /root/controller/kkobugi
+- 변경범위: api
+- 선행: A-1
+- 연관: -
+- RuntimeProvider: codex
+- Dispatch상태: running
+- 실행근거: test
+- Fallback근거: -
+''',
+              '000003.A-3.ready.todo.md': '''# A-3 Ready
+- Agent: -
+- 변경범위: -
+- 선행: A-1
+- 연관: -
+- 대기: -
+''',
+              '000004.A-4.hold.hold.md': '''# A-4 Hold
+- Agent: /root/controller/pairi
+- 변경범위: ui
+- 대기: user reply
+- 대기유형: user
+- 재개조건: reply received
+- 대기근거: ticket
+- 선행: -
+- 연관: -
+''',
+          }
+          with tempfile.TemporaryDirectory() as root:
+              ledger = pathlib.Path(root) / '_task_mecca' / 'data' / 'backlog'
+              ledger.mkdir(parents=True)
+              for name, body in tasks.items():
+                  (ledger / name).write_text(body, encoding='utf-8')
+
+              for command in (['inspect', 'A-4'], ['workload']):
+                  python = subprocess.run(['python', script, *command, '--root', str(ledger), '--json'], capture_output=True, text=True)
+                  go = subprocess.run(['go', 'run', './cmd/task-mecca', *command, '--project', root, '--root', str(ledger), '--json'], capture_output=True, text=True)
+                  assert python.returncode == go.returncode, (command, python.stderr, go.stderr)
+                  assert json.loads(python.stdout) == json.loads(go.stdout), (command, python.stdout, go.stdout)
+          PY
