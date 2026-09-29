@@ -12,9 +12,15 @@ Task Mecca keeps its orchestration framework inside the project while keeping pr
 
 ### 0. Install the framework
 
-Task Mecca requires **Git** and the standalone `task-mecca` executable for your operating system. End users do not need Python, `uv`, or the Go toolchain.
+Task Mecca requires **Git**. End users do not need Python, `uv`, or the Go toolchain.
 
-Put the downloaded binary on PATH, then initialize the current project:
+On macOS or Linux, install the standalone CLI directly from this repository:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/silverkhan/TaskMecca/main/install.sh | sh
+```
+
+Then initialize the current project:
 
 ```bash
 task-mecca init
