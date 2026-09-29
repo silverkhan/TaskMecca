@@ -5,7 +5,7 @@ For first use, you only need the following three steps.
 ## 1. Launch the dashboard
 
 ```bash
-python _task_mecca/framework/collab_tools.py web
+task-mecca web
 ```
 
 The dashboard automatically detects backlog ledgers under `_task_mecca`. New projects use the canonical `data/backlog/` location. For compatibility, ledgers whose names begin with `backlog` such as `data/backlog_b` or legacy `backlog_b` remain discoverable; canonical `data/backlog/` has highest priority. Use the **Backlog** selector in the top bar to switch folders manually, or choose **Auto** to return to automatic selection.
@@ -113,25 +113,24 @@ For full operating rules, open **HELP → User Manual → Detailed Operations Gu
 
 When Task Mecca is installed through the public bootstrap package, `_task_mecca/manifest.json` records the installed version and baseline hashes.
 
-- **Framework managed**: `collab_tools.py`, `runtime_metadata.py`, `web/*`. Updated automatically when upstream changes.
+- **Framework managed**: `web/*` and framework documentation. The runtime is embedded in the standalone `task-mecca` binary and does not require project-local Python files.
 - **Customizable managed**: `roles/*`, `SESSION_GUIDE*.md`, `collab.md`, `_template.md`, and Task Mecca manuals. If both the project copy and upstream changed, the updater lists those files, recommends a backup, creates one when approved, then warns before overwrite.
 - **Project owned**: all `_task_mecca/data/**`. Registrar creates `data/backlog/` on first registration; the updater never overwrites `data/**`. Pre-0.2 `backlog*` locations remain project-owned compatibility paths.
 - **Runtime/backup**: `.runtime/*` and `backups/*`. Local-only operational/safety data and ignored by Git by default.
 
 Update the bootstrap package first, then update the project's managed framework.
 
-Before PyPI publication:
+Task Mecca is distributed as a standalone `task-mecca` executable. Put the binary for your operating system on PATH, then run from the project root:
 
 ```bash
-python -m pip install --upgrade "git+https://github.com/silverkhan/TaskMecca.git"
-python -m task_mecca update
+task-mecca init
+task-mecca web
 ```
 
-After PyPI publication:
+After replacing the binary with a newer release, update managed framework files with:
 
 ```bash
-python -m pip install --upgrade task-mecca
-python -m task_mecca update
+task-mecca update
 ```
 
-If `uv` is already installed, `uvx` remains an optional convenience, not a Task Mecca requirement. Normal Web UI, doctor, preflight, and backlog operations execute the project-local Python runtime directly and need neither `uv` nor network access.
+End users do not need Python, `uv`, or the Go toolchain. The standalone binary directly provides the Web UI, doctor, preflight, and backlog operations.
