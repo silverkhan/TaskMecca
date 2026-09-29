@@ -51,3 +51,12 @@ jobs:
             --title "Task Mecca Go rolling build" \
             --notes "Rolling standalone build from main. Commit: $GITHUB_SHA" \
             --prerelease
+      - name: Smoke test one-line installer
+        shell: bash
+        run: |
+          set -euxo pipefail
+          export HOME="$RUNNER_TEMP/task-mecca-installer-home"
+          mkdir -p "$HOME/.local/bin"
+          export PATH="$HOME/.local/bin:$PATH"
+          TASK_MECCA_RELEASE_TAG=go-main sh ./install.sh
+          task-mecca --version
