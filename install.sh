@@ -43,7 +43,12 @@ say "Downloading Task Mecca (${platform}/${machine})..."
 curl -fsSL "${BASE_URL}/${asset}" -o "${tmp}/${asset}" || fail "release asset not found: ${TAG}/${asset}"
 curl -fsSL "${BASE_URL}/SHA256SUMS.txt" -o "${tmp}/SHA256SUMS.txt" || fail "checksum file not found."
 
-expected="$(awk -v f="$asset" '$2 == f || $2 == "dist/" f {print $1}' "${tmp}/SHA256SUMS.txt")"
+expected="$(awk -v f="$asset" '{
+  p=$2
+  sub(/^\*/, "", p)
+  n=split(p, parts, "/")
+  if (parts[n] == f) { print $1; exit }
+}' "${tmp}/SHA256SUMS.txt")"
 [ -n "$expected" ] || fail "checksum entry missing for $asset"
 
 if command -v shasum >/dev/null 2>&1; then
