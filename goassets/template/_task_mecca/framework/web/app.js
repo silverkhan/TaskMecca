@@ -660,8 +660,8 @@ function showMigrationResyncModal(result) {
     (ko?'Root 세션 재동기화 필요':'Root session resynchronization required')+'</h2></div>'+
     '<button type="button" class="migration-resync-close" aria-label="'+(ko?'닫기':'Close')+'">×</button></div>'+
     '<p class="migration-resync-summary">'+(ko?
-      "'운영 지침이 변경되었습니다. 현재 Root 세션은 이전 지침을 기억하고 있을 수 있으므로 아래 프롬프트를 복사해 현재 세션에 붙여넣어 주세요.'":
-      "'Operational instructions changed. The active Root session may still carry the previous rules. Copy the prompt below and paste it into the current Root session.'")+'+'</p>'+
+      '운영 지침이 변경되었습니다. 현재 Root 세션은 이전 지침을 기억하고 있을 수 있으므로 아래 프롬프트를 복사해 현재 세션에 붙여넣어 주세요.':
+      'Operational instructions changed. The active Root session may still carry the previous rules. Copy the prompt below and paste it into the current Root session.')+'</p>'+
     '<div class="migration-resync-files"><strong>'+(ko?'변경된 지침':'Changed instructions')+'</strong><div>'+(changed||'<span>-</span>')+'</div></div>'+
     '<div class="migration-resync-prompt"><div class="migration-resync-label">'+(ko?'Root 세션에 붙여넣을 프롬프트':'Prompt to paste into the Root session')+'</div>'+
     copyableCodeBlock(esc(prompt))+'</div>'+
