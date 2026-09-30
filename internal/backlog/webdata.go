@@ -145,8 +145,6 @@ func backlogRevisionFromRows(rows []Record) string {
     for _,row:=range ordered {
         _,_=h.Write([]byte(row.Path))
         _,_=h.Write([]byte{0})
-        _,_=h.Write([]byte(row.Mtime))
-        _,_=h.Write([]byte{0})
         _,_=h.Write([]byte(row.State))
         _,_=h.Write([]byte{0})
         _,_=h.Write([]byte(row.RawMarkdown))
