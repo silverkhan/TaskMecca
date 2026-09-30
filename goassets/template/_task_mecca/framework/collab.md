@@ -94,6 +94,13 @@ Codex에서 network access는 filesystem sandbox mode와 별개일 수 있다. `
 
 내부 발견 작업도 같은 분류 규칙을 사용한다. 명확하고 bounded하면 Simple, 제품 의사결정이 필요하면 Defined다.
 
+## Project taxonomy / Tags
+
+작업 태그는 `_task_mecca/data/tags/registry.json`의 project-owned taxonomy와 backlog의 `Tags` metadata를 사용한다.
+Agent는 신규 태그 정의 전에 `task-mecca tags resolve/search`로 기존 canonical/alias를 먼저 탐색한다.
+기존 active 태그 assign/remove는 자율 처리할 수 있지만 rename/merge/retire 같은 taxonomy 구조 변경은 영향 범위를 사용자에게 알리고 승인 후 실행한다.
+상태·dependency·Agent assignment를 태그로 중복 표현하지 않는다. 전체 명령과 정책은 `TAGS.md`를 따른다.
+
 ## 사람용 backlog projection
 
 신규 backlog는 canonical contract와 별도로 `## 핵심 요약`을 가진다. 이 section은 Web UI의 첫 화면 projection이며
