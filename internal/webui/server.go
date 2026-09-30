@@ -2,6 +2,7 @@ package webui
 
 import (
     stdcontext "context"
+    "crypto/tls"
     "encoding/json"
     "fmt"
     "io/fs"
@@ -374,24 +375,89 @@ func Run(config Config) error {
         config.ControlToken=token
     }
     if config.StartedAt=="" { config.StartedAt=time.Now().Format(time.RFC3339) }
+
     restartCh:=make(chan maintenance.UpgradeResult,1)
     stopCh:=make(chan struct{},1)
     handler,err:=handler(config.Project,config.Root,config.Version,config.InstanceID,config.ControlToken,restartCh,stopCh)
     if err!=nil { return err }
-    host,hostMode:=resolveWebHost(config.Host)
-    config.Host=host
-    listener,port,err:=findListener(host,config.Port)
-    if err!=nil { return err }
+
+    requestedHost:=strings.TrimSpace(config.Host)
+    autoMode:=requestedHost=="" || strings.EqualFold(requestedHost,"auto")
+    var primaryListener net.Listener
+    var remoteListener net.Listener
+    localURL:=""
+    tailscaleURL:=""
+    tlsError:=""
+    bindHost:=""
+    port:=config.Port
+
+    if autoMode {
+        bindHost="127.0.0.1"
+        primaryListener,port,err=findListener(bindHost,config.Port)
+        if err!=nil { return err }
+        localURL=fmt.Sprintf("http://127.0.0.1:%d/",port)
+
+        tlsInfo:=ensureTailscaleTLS()
+        if tlsInfo.Enabled {
+            raw,listenErr:=net.Listen("tcp",fmt.Sprintf("%s:%d",tlsInfo.IP,port))
+            if listenErr!=nil {
+                tlsError=fmt.Sprintf("Tailscale HTTPS cannot bind %s:%d: %v",tlsInfo.IP,port,listenErr)
+            } else {
+                tlsConfig,tlsErr:=tailscaleTLSConfig(tlsInfo)
+                if tlsErr!=nil {
+                    _=raw.Close()
+                    tlsError=tlsErr.Error()
+                } else {
+                    remoteListener=tls.NewListener(raw,tlsConfig)
+                    tailscaleURL=fmt.Sprintf("https://%s:%d/",tlsInfo.DNSName,port)
+                }
+            }
+        } else if tlsInfo.Error!="" {
+            tlsError=tlsInfo.Error
+        }
+    } else {
+        host,hostMode:=resolveWebHost(requestedHost)
+        bindHost=host
+        primaryListener,port,err=findListener(host,config.Port)
+        if err!=nil { return err }
+        localURL=fmt.Sprintf("http://%s:%d/",host,port)
+        if hostMode=="tailscale" {
+            tlsError="explicit Tailscale IP binding uses HTTP; use --host auto for managed HTTPS"
+        }
+    }
+
     ctx,err:=webContext(config.Project,config.Root)
-    if err!=nil { _=listener.Close(); return err }
-    url:=fmt.Sprintf("http://%s:%d/",host,port)
+    if err!=nil {
+        _=primaryListener.Close()
+        if remoteListener!=nil { _=remoteListener.Close() }
+        return err
+    }
+
+    preferredURL:=localURL
+    if preferredURL=="" { preferredURL=tailscaleURL }
     if err=writeServiceState(ServiceState{
         PID:os.Getpid(),InstanceID:config.InstanceID,ControlToken:config.ControlToken,
-        Host:host,Port:port,URL:url,Version:config.Version,Project:config.Project,StartedAt:config.StartedAt,Running:true,
-    }); err!=nil { _=listener.Close(); return err }
+        Host:requestedHost,Port:port,URL:preferredURL,LocalURL:localURL,TailscaleURL:tailscaleURL,
+        TLSEnabled:tailscaleURL!="",TLSError:tlsError,
+        Version:config.Version,Project:config.Project,StartedAt:config.StartedAt,Running:true,
+    }); err!=nil {
+        _=primaryListener.Close()
+        if remoteListener!=nil { _=remoteListener.Close() }
+        return err
+    }
     defer removeServiceState(config.InstanceID,os.Getpid())
-    fmt.Println("Task Mecca Web UI: "+url)
-    if hostMode=="tailscale" { fmt.Println("network: Tailscale detected · bound to "+host) } else if hostMode=="localhost" { fmt.Println("network: localhost only") } else { fmt.Println("network: explicit bind · "+host) }
+
+    fmt.Println("Task Mecca Web UI")
+    if localURL!="" { fmt.Println("local:     "+localURL) }
+    if tailscaleURL!="" {
+        fmt.Println("tailscale: "+tailscaleURL)
+    } else if autoMode && tailscaleIPv4()!="" {
+        fmt.Println("tailscale HTTPS: unavailable")
+        if tlsError!="" { fmt.Println("  "+tlsError) }
+        fmt.Println("  Enable MagicDNS and HTTPS Certificates in the Tailscale admin DNS settings, then run: task-mecca web restart")
+    }
+    if !autoMode { fmt.Println("network: explicit bind · "+bindHost) }
+
     if ctx.selected!="" {
         mode:="(auto)"; if ctx.explicit { mode="(explicit)" }
         fmt.Printf("backlog: %s %s\n",ctx.selected,mode)
@@ -407,7 +473,11 @@ func Run(config Config) error {
     } else {
         fmt.Println("access: not yet observed · fresh active preflight runs automatically before dispatch")
     }
-    if config.OpenBrowser { go func(){ time.Sleep(200*time.Millisecond); openBrowser(url) }() }
+
+    if config.OpenBrowser && localURL!="" {
+        go func(){ time.Sleep(200*time.Millisecond); openBrowser(localURL) }()
+    }
+
     server:=&http.Server{Handler:handler,ReadHeaderTimeout:5*time.Second}
     go func(){
         select {
@@ -420,13 +490,29 @@ func Run(config Config) error {
         case <-stopCh:
             time.Sleep(100*time.Millisecond)
         }
-        ctx,cancel:=stdcontext.WithTimeout(stdcontext.Background(),2*time.Second)
+        shutdownCtx,cancel:=stdcontext.WithTimeout(stdcontext.Background(),2*time.Second)
         defer cancel()
-        _=server.Shutdown(ctx)
+        _=server.Shutdown(shutdownCtx)
     }()
-    err=server.Serve(listener)
-    if err==http.ErrServerClosed { return nil }
-    return err
+
+    errCh:=make(chan error,2)
+    go func(){ errCh<-server.Serve(primaryListener) }()
+    listeners:=1
+    if remoteListener!=nil {
+        listeners++
+        go func(){ errCh<-server.Serve(remoteListener) }()
+    }
+
+    for i:=0;i<listeners;i++ {
+        serveErr:=<-errCh
+        if serveErr!=nil && serveErr!=http.ErrServerClosed {
+            shutdownCtx,cancel:=stdcontext.WithTimeout(stdcontext.Background(),2*time.Second)
+            _=server.Shutdown(shutdownCtx)
+            cancel()
+            return serveErr
+        }
+    }
+    return nil
 }
 
 func LogEnabled() bool { return os.Getenv("TASK_MECCA_WEB_LOG")=="1" }
