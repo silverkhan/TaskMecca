@@ -401,21 +401,36 @@ function renderNotificationPanel() {
   const panel=$('#notificationPanel');
   if(!panel)return;
   const permission=typeof Notification==='undefined'?'unsupported':Notification.permission;
+  const enabled=Object.values(state.notificationSettings).some(Boolean);
+  let guide='';
+  if(permission==='granted'){
+    guide=enabled
+      ? `<div class="notification-state ok"><strong>${esc(t('notificationsOn'))}</strong><span>${esc(t('notificationSettings'))}</span></div>`
+      : `<div class="notification-state off"><strong>${esc(t('notificationsOff'))}</strong><span>${esc(t('notificationTypesDisabled'))}</span></div>`;
+  } else if(permission==='denied'){
+    guide=`<div class="notification-state warning"><strong>${esc(t('notificationsBlocked'))}</strong><span>${esc(t('notificationsDeniedGuide'))}</span></div>`;
+  } else {
+    guide=`<div class="notification-state warning"><strong>${esc(t('notificationsPermissionNeeded'))}</strong><span>${esc(t('allowBrowserNotifications'))}</span></div>`;
+  }
   panel.innerHTML=`<div class="notification-panel-head"><strong>${esc(t('notificationSettings'))}</strong><button type="button" id="notificationClose">×</button></div>
+    ${guide}
     <label><input type="checkbox" data-notification-setting="intervention" ${state.notificationSettings.intervention?'checked':''}> <span>${esc(t('notifyIntervention'))}</span></label>
     <label><input type="checkbox" data-notification-setting="completed" ${state.notificationSettings.completed?'checked':''}> <span>${esc(t('notifyCompleted'))}</span></label>
     <label><input type="checkbox" data-notification-setting="stalled" ${state.notificationSettings.stalled?'checked':''}> <span>${esc(t('notifyStalled'))}</span></label>
-    ${permission==='default'?`<button type="button" class="action-btn notification-permission" id="notificationPermission">${esc(t('allowBrowserNotifications'))}</button>`:''}
-    ${permission==='denied'?`<div class="notification-note">${esc(t('notificationsBlocked'))}</div>`:''}`;
+    ${permission==='default'?`<button type="button" class="action-btn notification-permission" id="notificationPermission">${esc(t('allowBrowserNotifications'))}</button>`:''}`;
   panel.querySelectorAll('[data-notification-setting]').forEach(input=>input.addEventListener('change',()=>{
     state.notificationSettings[input.dataset.notificationSetting]=input.checked;
     saveNotificationSettings();
+    updateNotificationIndicator();
+    renderNotificationPanel();
   }));
   $('#notificationClose')?.addEventListener('click',()=>panel.classList.remove('open'));
   $('#notificationPermission')?.addEventListener('click',async()=>{
     try { await Notification.requestPermission(); } catch(_) {}
+    updateNotificationIndicator();
     renderNotificationPanel();
   });
+  updateNotificationIndicator();
 }
 function saveOpenProjects() {
   localStorage.setItem('task-mecca-open-projects',JSON.stringify(state.openProjects));
@@ -878,7 +893,7 @@ function toggleSidebar() {
 }
 
 function render() {
-  nav(); translateChrome(); renderAccess(); renderBacklogPicker(); applySidebarState();
+  nav(); translateChrome(); renderAccess(); renderBacklogPicker(); applySidebarState(); updateNotificationIndicator();
   const c=$('#content');
   if (!state.snapshot) {
     if (state.view === 'hub' && state.hub) {
