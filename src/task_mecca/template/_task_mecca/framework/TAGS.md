@@ -49,7 +49,9 @@ task-mecca tags search strategy
 task-mecca tags show area:strategy
 task-mecca tags resolve "전략" --json
 task-mecca tags tasks 'area:strategy,type:bug|type:improvement'
+task-mecca tags query 'area:strategy,type:bug|type:improvement'
 task-mecca tags stats
+task-mecca tags catalog
 ```
 
 `tags tasks` 표현식은 쉼표가 AND, `|`가 OR다. 위 예시는 `area:strategy AND (type:bug OR type:improvement)`다.
@@ -61,6 +63,11 @@ task-mecca task tags A-143
 task-mecca task tag-add A-143 area:backend
 task-mecca task tag-remove A-143 concern:performance
 task-mecca task tag-set A-143 area:backend type:bug concern:data-integrity
+
+# Agent 공통 primitive aliases
+task-mecca tags assign A-143 area:backend
+task-mecca tags remove A-143 concern:performance
+task-mecca tags set A-143 area:backend type:bug concern:data-integrity
 ```
 
 기존 active 태그의 assign/remove/set은 Agent가 자율 처리할 수 있다. 정의되지 않은 태그는 바로 assign하지 않고 먼저 taxonomy를 탐색/정의한다.
