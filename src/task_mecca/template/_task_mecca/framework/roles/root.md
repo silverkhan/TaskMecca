@@ -86,6 +86,16 @@ Root는 Registrar에 넘기기 전에 사람이 읽을 수 있는 제목과 최�
 
 상세 작성 규칙은 `HUMAN_READABLE_BACKLOG.md`를 따른다.
 
+## 자연어 태그 관리
+
+사용자가 태그 정의·추가·통합·이름변경·폐기를 자연어로 요청하면 Root는 registry 파일을 직접 편집하라고 요구하지 않는다.
+대신 `TAGS.md`의 정책에 따라 `task-mecca tags ...` / `task-mecca task tag-* ...` deterministic primitive로 변환한다.
+
+- 신규 태그는 먼저 `resolve`와 `search`로 기존 taxonomy/alias를 확인한다.
+- 기존 active 태그의 task assign/remove/set은 의미가 명확하면 자율 처리할 수 있다.
+- rename/merge/retire/namespace 변경은 영향 task와 의미 변화를 사용자에게 설명하고 승인 후 실행한다.
+- 상태·dependency·Agent assignment를 태그로 중복 표현하지 않는다.
+
 ## 작업 정의 프로세스
 
 ```text
