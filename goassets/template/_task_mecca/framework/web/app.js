@@ -311,6 +311,38 @@ function accessBanner() {
   return `<div class="global-access danger"><div><strong>${esc(t('dispatchDisabled'))}</strong><span>${esc(t('enableFullAccess'))}</span></div><code>uv run _task_mecca/collab_tools.py preflight --require-full-access --json</code></div>`;
 }
 
+function renderProjectPicker() {
+  const picker=$('#projectPicker');
+  if(!picker)return;
+  const projects=state.hub?.projects||[];
+  const options=[{path:'',name:'Global Hub'},...projects.map(p=>({path:p.path,name:p.name}))];
+  picker.innerHTML=options.map(p=>`<option value="${esc(p.path)}" ${state.project===p.path?'selected':''}>${esc(p.name)}</option>`).join('');
+  picker.value=state.project||'';
+}
+function switchProject(path) {
+  state.backlog='';
+  state.snapshot=null;
+  state.loadError='';
+  localStorage.removeItem('task-mecca-backlog-folder');
+  if(!path){
+    state.project='';
+    state.view='hub';
+    state.detail=null;
+    history.pushState({},'','/?view=hub');
+    render();
+    refresh();
+    return;
+  }
+  state.project=path;
+  state.view='backlog';
+  state.detail=null;
+  state.listPage=1;
+  state.selectedIndex=0;
+  history.pushState({},'',`/?project=${encodeURIComponent(path)}&view=backlog`);
+  render();
+  refresh();
+}
+
 function renderBacklogPicker() {
   const picker = $('#backlogPicker');
   if (!picker || !state.snapshot) return;
@@ -638,7 +670,7 @@ function toggleSidebar() {
 }
 
 function render() {
-  nav(); translateChrome(); renderAccess(); renderBacklogPicker(); applySidebarState();
+  nav(); translateChrome(); renderProjectPicker(); renderAccess(); renderBacklogPicker(); applySidebarState();
   const c=$('#content');
   if (!state.snapshot) {
     if (state.view === 'hub' && state.hub) {
@@ -781,6 +813,7 @@ applyTheme(state.theme);
 document.querySelectorAll('[data-theme-choice]').forEach(b=>b.addEventListener('click',()=>applyTheme(b.dataset.themeChoice)));
 window.matchMedia?.('(prefers-color-scheme: dark)').addEventListener?.('change',()=>{if(state.theme==='system')renderMermaidDiagrams(true)});
 $('#languagePicker').addEventListener('change',e=>setLanguage(e.target.value));
+$('#projectPicker').addEventListener('change',e=>switchProject(e.target.value));
 $('#backlogPicker').addEventListener('change',e=>{
   const value=e.target.value;
   if(value===state.backlog)return;
