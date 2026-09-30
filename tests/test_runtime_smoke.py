@@ -207,6 +207,56 @@ Pass.
             finally:
                 self._unload_runtime(framework)
 
+    def test_coordinate_recovers_orphaned_doing_with_dirty_scope(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            target = install(root)
+            self._init_git(root)
+
+            source = root / "src" / "worker.py"
+            source.parent.mkdir(parents=True)
+            source.write_text("VALUE = 1\n", encoding="utf-8")
+            self._git(root, "add", "src/worker.py")
+            self._git(root, "commit", "-m", "baseline")
+
+            backlog = target / "data" / "backlog"
+            backlog.mkdir(parents=True)
+            (backlog / "000415.B-415.interrupted.doing.md").write_text(
+                "# B-415 Interrupted implementation\n"
+                "- Agent: /root/controller/kkobugi\n"
+                "- 변경범위: src\n",
+                encoding="utf-8",
+            )
+            runtime_dir = target / ".runtime" / "agents"
+            runtime_dir.mkdir(parents=True)
+            (runtime_dir / "kkobugi.json").write_text(
+                '{"agent":"/root/controller/kkobugi","task_id":"B-415","state":"completed","heartbeat_at":"2026-09-30T10:00:00+09:00"}',
+                encoding="utf-8",
+            )
+            source.write_text("VALUE = 2\n", encoding="utf-8")
+
+            module, framework = self._load_runtime(target)
+            try:
+                report = module.coordinate_report(backlog, worker_cap=3)
+                self.assertTrue(report["scheduling_needed"])
+                gaps = report["continuity_gaps"]
+                self.assertEqual(len(gaps), 1)
+                gap = gaps[0]
+                self.assertEqual(gap["code"], "worker_completed_backlog_doing")
+                recovery = gap["recovery"]
+                self.assertTrue(recovery["requires_fresh_preflight"])
+                self.assertEqual(recovery["uncommitted_change_count"], 1)
+                self.assertEqual(recovery["uncommitted_changes"], ["src/worker.py"])
+
+                fill = report["parallel_fill"]
+                self.assertEqual(fill["backlog_doing"], 1)
+                self.assertEqual(fill["active_doing"], 0)
+                self.assertEqual(fill["candidate_slots"], 3)
+                self.assertEqual(fill["recovery_to_review_this_pass"], 1)
+                self.assertTrue(fill["review_required"])
+            finally:
+                self._unload_runtime(framework)
+
     def test_lifecycle_history_survives_legacy_to_data_move(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)

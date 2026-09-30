@@ -993,6 +993,56 @@ def _scope_overlap(left: str, right: str) -> bool:
     return left == right or left.startswith(right + "/") or right.startswith(left + "/")
 
 
+def _working_tree_changes() -> tuple[list[str], Optional[str]]:
+    try:
+        done = subprocess.run(
+            ["git", "status", "--porcelain=v1", "-z", "--untracked-files=all", "--", "."],
+            cwd=PROJECT_ROOT,
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return [], f"{type(exc).__name__}: {exc}"
+    if done.returncode != 0:
+        return [], (done.stderr or f"git status exited {done.returncode}").strip()
+
+    parts = done.stdout.split("\x00")
+    changes: set[str] = set()
+    index = 0
+    while index < len(parts):
+        entry = parts[index]
+        index += 1
+        if len(entry) < 4:
+            continue
+        code = entry[:2]
+        path = entry[3:].replace("\\", "/")
+        if path:
+            changes.add(path)
+        if ("R" in code or "C" in code) and index < len(parts):
+            other = parts[index].replace("\\", "/")
+            index += 1
+            if other:
+                changes.add(other)
+    return sorted(changes), None
+
+
+def _scoped_working_tree_changes(changes: list[str], scope: str) -> list[str]:
+    scopes = _scope_tokens(scope)
+    if not scopes or not changes:
+        return []
+    matched: list[str] = []
+    for change in changes:
+        normalized = re.sub(r"^\./", "", change.replace("\\", "/")).lower()
+        if any(_scope_overlap(token, normalized) for token in scopes):
+            matched.append(change)
+    return sorted(set(matched))
+
+
+def _continuity_health_consumes_worker_slot(health: str) -> bool:
+    return health not in {"awaiting_finalize", "worker_missing", "needs_user"}
+
+
 def scope_conflicts(records: list[dict[str, object]]) -> list[dict[str, object]]:
     active: list[tuple[dict[str, object], list[str]]] = []
     for row in records:
@@ -1393,6 +1443,7 @@ def coordinate_report(root: Optional[Path] = None, worker_cap: int = DEFAULT_IMP
     ready = ready_report(base, rows)
     timings = _task_timings_for(base)
     activity = _runtime_activity(base, rows, timings)
+    working_changes, working_tree_error = _working_tree_changes()
     continuity_gaps: list[dict[str, object]] = []
     for row in rows:
         if row["location"] != "active" or row["state"] != "doing":
@@ -1417,18 +1468,39 @@ def coordinate_report(root: Optional[Path] = None, worker_cap: int = DEFAULT_IMP
             action = "release the worker claim, move the task to hold(user), record resume condition, and surface USER_DECISION_REQUIRED to Root"
         if not code:
             continue
+        uncommitted = _scoped_working_tree_changes(
+            working_changes, str(fields.get("변경범위", ""))
+        )
+        if uncommitted and health != "needs_user":
+            action = "inspect and preserve uncommitted changes before recovery; " + action
+        recovery: dict[str, object] = {
+            "continuity_confirmed": False,
+            "requires_live_agent_refresh": True,
+            "requires_fresh_preflight": health != "needs_user",
+            "allowed_outcomes": [
+                "finalize_done", "confirmed_fresh_turn", "explicit_reassignment", "hold_user"
+            ],
+            "uncommitted_changes": uncommitted,
+            "uncommitted_change_count": len(uncommitted),
+            "working_tree_check": "ok" if working_tree_error is None else "unavailable",
+        }
+        if working_tree_error is not None:
+            recovery["working_tree_error"] = working_tree_error
         continuity_gaps.append({
             "id": item_id,
             "title": row["title"],
             "agent": fields.get("Agent", ""),
+            "change_scope": fields.get("변경범위", ""),
             "health": health,
             "runtime_state": signal.get("runtime_state"),
             "code": code,
             "action": action,
+            "recovery": recovery,
             "last_activity_at": signal.get("last_activity_at"),
             "last_activity_source": signal.get("last_activity_source"),
         })
     doing = []
+    active_worker_count = 0
     for row in rows:
         if row["location"] != "active" or row["state"] != "doing":
             continue
@@ -1436,11 +1508,16 @@ def coordinate_report(root: Optional[Path] = None, worker_cap: int = DEFAULT_IMP
         assert isinstance(fields, dict)
         item_id = str(row["id"])
         timing = timings.get(item_id, {})
+        signal = activity.get(item_id)
+        health = str(signal.get("health", "runtime_unknown")) if signal else "runtime_unknown"
+        if _continuity_health_consumes_worker_slot(health):
+            active_worker_count += 1
         doing.append({
             "id": item_id,
             "title": row["title"],
             "agent": fields.get("Agent", ""),
             "change_scope": fields.get("변경범위", ""),
+            "runtime_health": health,
             "runtime_metadata": runtime.from_fields(fields),
             "elapsed": timing.get("elapsed", "-"),
             "elapsed_seconds": timing.get("elapsed_seconds"),
@@ -1461,17 +1538,20 @@ def coordinate_report(root: Optional[Path] = None, worker_cap: int = DEFAULT_IMP
     ready_items = with_lifecycle(ready["ready"])
     blocked_items = with_lifecycle(ready["blocked"])
     worker_cap = max(1, int(worker_cap))
-    active_implementation_count = len(doing)
-    candidate_slots = max(0, worker_cap - active_implementation_count)
-    ready_to_review = min(len(ready_items), candidate_slots)
+    backlog_doing_count = len(doing)
+    candidate_slots = max(0, worker_cap - active_worker_count)
+    recovery_to_review = min(len(continuity_gaps), candidate_slots)
+    ready_slots = max(0, candidate_slots - recovery_to_review)
+    ready_to_review = min(len(ready_items), ready_slots)
     hold_review = hold_review_report(base, rows)
     return {
         "snapshot_at": datetime.now(timezone.utc).astimezone().isoformat(),
         "source": "git_backlog",
         "root": str(base),
-        "scheduling_needed": bool(ready_items),
+        "scheduling_needed": bool(ready_items) or bool(continuity_gaps),
         "controller_review_needed": bool(hold_review["review_needed"]) or bool(continuity_gaps),
         "continuity_gaps": continuity_gaps,
+        "recovery_queue": continuity_gaps,
         "hold_review": hold_review,
         "ready": ready_items,
         "blocked": blocked_items,
@@ -1480,12 +1560,15 @@ def coordinate_report(root: Optional[Path] = None, worker_cap: int = DEFAULT_IMP
         "scope_conflicts": scope_conflicts(rows),
         "parallel_fill": {
             "implementation_worker_cap": worker_cap,
-            "active_doing": active_implementation_count,
+            "active_doing": active_worker_count,
+            "backlog_doing": backlog_doing_count,
+            "recovery_count": len(continuity_gaps),
             "candidate_slots": candidate_slots,
+            "recovery_to_review_this_pass": recovery_to_review,
             "ready_count": len(ready_items),
             "ready_to_review_this_pass": ready_to_review,
-            "review_required": bool(ready_to_review),
-            "meaning": "inspect/allocate up to this many ready tasks before waiting; final dispatch still requires live-state and scope checks",
+            "review_required": bool(recovery_to_review) or bool(ready_to_review),
+            "meaning": "resolve continuity recovery first, then inspect/allocate ready tasks before waiting; final dispatch still requires fresh preflight, live-state and scope checks",
         },
         "worker_naming": {
             "prefix": "/root/controller/",
@@ -1511,6 +1594,9 @@ def coordinate_report(root: Optional[Path] = None, worker_cap: int = DEFAULT_IMP
             "individual_completion": "settle original acceptance independently of queue drain; worker DONE alone is not proof",
             "continuity_gap_invariant": "a doing task must not remain ownerless after a worker turn ends; completed/missing/user-wait runtime signals require explicit finalize, fresh re-dispatch/reassignment, or hold(user)+Root escalation before the Controller can consider the pass settled",
             "self_delegation_forbidden": "a worker cannot create continuity by delegating follow-up work to itself; only a confirmed fresh runtime turn or explicit Controller reassignment counts as resumed execution",
+            "orphaned_doing_does_not_consume_slot": "doing tasks whose worker is completed, missing, or waiting for user are recovery work, not active implementation workers",
+            "recovery_precedes_parallel_fill": "continuity recovery is reviewed before new ready work; dispatch recovery requires fresh preflight and confirmed live-agent state",
+            "uncommitted_recovery_evidence": "when a continuity gap overlaps declared change scope, uncommitted files are surfaced and must be preserved/inspected before finalize or reassignment",
             "hold_review_is_advisory": "review this event, not automatic readiness/spawn or a command to keep draining unchanged external waits",
         },
     }

@@ -50,6 +50,9 @@ Worker는 남은 구현이 있는데 자기 자신에게 follow-up을 보내고 
 내부적으로 계속 실행 가능한 구현·테스트·commit/push 등이 남아 있다면 임의로 종료하지 않는다. 런타임 한계로 turn을 끝내야 한다면
 `BLOCKED`/미완결을 명시하고 Controller가 fresh turn 또는 재배정을 만들 수 있도록 남은 작업을 구체적으로 보고한다.
 
+현재 turn 종료 시 자신이 수정한 범위에 미커밋 변경이 남아 있다면 **그 사실과 변경 파일을 반드시 Controller에 명시**한다.
+"후속 작업을 나에게 전달했다", "다음 turn에서 계속한다" 같은 문장은 실제 fresh turn 생성의 증거가 아니며 DONE/BLOCKED 상태를 대체하지 않는다.
+
 ## Liveness
 
 런타임/orchestration layer가 지원하면 `.runtime/agents/*.json` heartbeat를 갱신할 수 있다. worker 자신의 LLM 행동을

@@ -281,7 +281,10 @@ Scheduling 결론 전에는 fresh `coordinate --json`과 실제 live agent 상�
 - 변경범위가 겹치거나 선행이 미완료면 병렬화하지 않는다.
 - dispatch 직전 exact task를 다시 inspect한다.
 - Worker DONE/BLOCKED마다 fresh state로 재조율한다.
-- `doing + runtime completed`, `doing + worker missing`, `doing + user wait` 조합은 **continuity gap**이다. `coordinate --json`의 `continuity_gaps`를 확인하고 finalize, confirmed fresh turn/reassignment, 또는 `hold(user)` + Root escalation 중 하나로 해소한다.
+- `doing + runtime completed`, `doing + worker missing`, `doing + user wait` 조합은 **continuity gap**이다. `coordinate --json`의 `recovery_queue`를 일반 ready보다 먼저 확인하고 finalize, confirmed fresh turn/reassignment, 또는 `hold(user)` + Root escalation 중 하나로 해소한다.
+- continuity gap의 worker는 live implementation slot을 점유한 것으로 계산하지 않는다. 남은 slot은 실제 live worker 기준으로 계산한다.
+- recovery dispatch는 fresh Full Access preflight와 live agent 상태 재확인 후에만 수행한다.
+- `recovery.uncommitted_changes`가 있으면 기존 변경을 보존·검토한 뒤 finalize/reassignment한다.
 - Worker의 자기 자신 대상 follow-up은 새 turn 생성이 확인되지 않으면 continuity로 인정하지 않는다.
 
 Controller가 바꿀 수 있는 것은 worker, 병렬화, 구현 순서, 변경범위, 재배정 같은 실행 방법이다. 확정된
