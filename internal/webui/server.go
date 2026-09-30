@@ -266,6 +266,7 @@ func handler(project,root,version,instanceID,controlToken string,restartCh chan<
 
     mux.HandleFunc("/style.css",func(w http.ResponseWriter,r *http.Request){ sendEmbedded(w,"style.css") })
     mux.HandleFunc("/app.js",func(w http.ResponseWriter,r *http.Request){ sendEmbedded(w,"app.js") })
+    mux.HandleFunc("/sw.js",func(w http.ResponseWriter,r *http.Request){ sendEmbedded(w,"sw.js") })
     mux.HandleFunc("/vendor/",func(w http.ResponseWriter,r *http.Request){
         name:=strings.TrimPrefix(r.URL.Path,"/")
         clean:=filepath.ToSlash(filepath.Clean(name))
