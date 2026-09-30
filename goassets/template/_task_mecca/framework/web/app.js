@@ -995,6 +995,13 @@ function detailToc() {
   const icon=`<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/></svg>`;
   return `<button class="detail-toc-fab" type="button" aria-label="${esc(t('tocOpen'))}" title="${esc(t('tocTitle'))}">${icon}</button><div class="detail-toc-scrim" aria-hidden="true"></div><aside class="detail-toc" aria-label="${esc(t('tocTitle'))}"><div class="detail-toc-head"><div class="detail-toc-title">${esc(t('tocTitle'))}</div><button class="detail-toc-close" type="button" aria-label="${esc(t('tocClose'))}" title="${esc(t('tocClose'))}">×</button></div><nav class="detail-toc-nav"></nav></aside>`;
 }
+function openDetailSection(id,behavior='smooth') {
+  const target=document.getElementById(id);
+  if(!target)return;
+  if(target.tagName?.toLowerCase()==='details')target.open=true;
+  target.scrollIntoView({behavior,block:'start'});
+  history.replaceState({},'',`${location.pathname}${location.search}#${encodeURIComponent(id)}`);
+}
 function bindDetailToc() {
   const layout=document.querySelector('.detail-layout');
   const toc=document.querySelector('.detail-toc-nav');
@@ -1014,9 +1021,7 @@ function bindDetailToc() {
   toc.innerHTML=sections.map((section,i)=>`<a href="#${esc(section.id)}" data-toc-target="${esc(section.id)}" class="${i===0?'active':''}">${esc(section.dataset.tocLabel||section.querySelector('h2')?.textContent||section.id)}</a>`).join('');
   toc.querySelectorAll('[data-toc-target]').forEach(link=>link.addEventListener('click',e=>{
     e.preventDefault();
-    const target=document.getElementById(link.dataset.tocTarget);
-    target?.scrollIntoView({behavior:'smooth',block:'start'});
-    history.replaceState({},'',`${location.pathname}${location.search}#${encodeURIComponent(link.dataset.tocTarget)}`);
+    openDetailSection(link.dataset.tocTarget);
     if(window.matchMedia('(max-width:1280px)').matches)setOpen(false);
   }));
   const setActive=id=>toc.querySelectorAll('[data-toc-target]').forEach(link=>link.classList.toggle('active',link.dataset.tocTarget===id));
@@ -1028,7 +1033,18 @@ function bindDetailToc() {
     sections.forEach(section=>observer.observe(section));
   }
   const hash=decodeURIComponent(location.hash.replace(/^#/,''));
-  if(hash&&document.getElementById(hash))requestAnimationFrame(()=>document.getElementById(hash)?.scrollIntoView({block:'start'}));
+  if(hash&&document.getElementById(hash))requestAnimationFrame(()=>openDetailSection(hash,'auto'));
+}
+function bindDetailInteractions() {
+  document.querySelectorAll('[data-detail-target]').forEach(link=>link.addEventListener('click',e=>{
+    e.preventDefault();
+    openDetailSection(link.dataset.detailTarget);
+  }));
+  document.querySelectorAll('[data-relation-id]').forEach(btn=>btn.addEventListener('click',e=>{
+    e.preventDefault();
+    e.stopPropagation();
+    openTask(btn.dataset.relationId);
+  }));
 }
 function detailView(task) {
   const act=task.activity||{}, lc=task.lifecycle||{}, reason=task.attention_reason||null, warn=Boolean(reason)||['quiet','stale','worker_missing'].includes(act.health), events=lc.events||[];
