@@ -1044,37 +1044,9 @@ function bindHubActions() {
     const path=btn.dataset.openProject||'';
     if(path)switchProject(path);
   }));
-  document.querySelectorAll('[data-migrate]').forEach(btn=>btn.addEventListener('click',async()=>{
-    btn.disabled=true;
-    try{
-      const r=await fetch('/api/migrate',{method:'POST',headers:{'Content-Type':'application/json','X-Task-Mecca-Action':'1'},body:JSON.stringify({project:btn.dataset.migrate})});
-      const body=await r.json();
-      if(!r.ok)throw new Error(body.error||'Migration failed');
-      await refresh();
-      if(body.instruction_refresh_required||body.legacy_bootstrap)showMigrationResyncModal(body);
-    }catch(e){
-      alert(String(e?.message||e));
-      btn.disabled=false;
-    }
-  }));
+  document.querySelectorAll('[data-migrate]').forEach(btn=>btn.addEventListener('click',e=>performProjectMigration(btn.dataset.migrate,e.currentTarget)));
   const up=$('#upgradeBtn');
-  if(up)up.addEventListener('click',async()=>{
-    up.disabled=true;up.textContent='Upgrading…';
-    const c=$('#content');
-    try{
-      const r=await fetch('/api/upgrade',{method:'POST',headers:{'X-Task-Mecca-Action':'1'}});
-      const body=await r.json();
-      if(!r.ok)throw new Error(body.error||'Upgrade failed');
-      if(body.restart_required && body.to && body.to!==body.from){
-        if(c)c.innerHTML=`<div class="upgrade-restart"><div class="upgrade-spinner"></div><h2>Task Mecca ${esc(body.to)}로 업그레이드했습니다</h2><p>Web 서버를 재시작하고 있습니다. 완료되면 이 페이지가 자동으로 새로고침됩니다.</p></div>`;
-        await waitForRestartedWeb(body.to);
-        return;
-      }
-      await refresh();
-    }catch(e){
-      alert(String(e?.message||e));up.disabled=false;up.textContent='Upgrade';
-    }
-  });
+  if(up)up.addEventListener('click',e=>performUpgrade(e.currentTarget));
 }
 
 function matchesStatusFilter(t, key) {
@@ -1426,7 +1398,7 @@ function toggleSidebar() {
 }
 
 function render() {
-  nav(); translateChrome(); renderAccess(); renderBacklogPicker(); applySidebarState(); updateNotificationIndicator();
+  nav(); translateChrome(); renderAccess(); renderBacklogPicker(); applySidebarState(); updateNotificationIndicator(); renderGlobalUpdateIndicator(); renderContentUpdatePrompt();
   const c=$('#content'), data=currentProjectData();
   if (!data && !state.detailTask) {
     if (state.view === 'hub' && state.hub) {
