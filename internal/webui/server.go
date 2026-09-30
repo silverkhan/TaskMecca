@@ -378,6 +378,8 @@ func Run(config Config) error {
     localURL:=""
     tailscaleURL:=""
     candidateTailscaleURL:=""
+    tailscaleDNS:=""
+    tailscaleIP:=""
     tailscaleManaged:=false
     tailscaleMode:=""
     tlsError:=""
@@ -391,7 +393,7 @@ func Run(config Config) error {
         localURL=fmt.Sprintf("http://127.0.0.1:%d/",port)
 
         if runtime.GOOS=="darwin" {
-            dns,_,statusErr:=tailscaleStatusInfo()
+            dns,ip,statusErr:=tailscaleStatusInfo()
             if statusErr!=nil {
                 tlsError=statusErr.Error()
             } else {
@@ -399,7 +401,9 @@ func Run(config Config) error {
                 if serveErr!=nil {
                     tlsError=serveErr.Error()
                 } else {
-                    tailscaleURL=serveURL
+                    candidateTailscaleURL=serveURL
+                    tailscaleDNS=dns
+                    tailscaleIP=ip
                     tailscaleManaged=managed
                     tailscaleMode="serve"
                 }
@@ -451,6 +455,35 @@ func Run(config Config) error {
         listeners++
         go func(){ errCh<-server.Serve(remoteListener) }()
         tailscaleURL=candidateTailscaleURL
+    }
+
+    if runtime.GOOS=="darwin" && candidateTailscaleURL!="" && tailscaleDNS!="" && tailscaleIP!="" {
+        verifyErr:=verifyTailscaleEndpoint(tailscaleDNS,tailscaleIP,port,config.InstanceID,2*time.Second)
+        if verifyErr!=nil {
+            firstErr:=verifyErr
+            _,applyErr:=applyTailscaleServe(port)
+            if applyErr==nil {
+                verifyErr=verifyTailscaleEndpoint(tailscaleDNS,tailscaleIP,port,config.InstanceID,2*time.Second)
+            } else {
+                verifyErr=fmt.Errorf("Serve reapply failed after health check error (%v): %w",firstErr,applyErr)
+            }
+
+            if verifyErr!=nil && tailscaleManaged {
+                beforeResetErr:=verifyErr
+                if resetErr:=refreshOwnedTailscaleServe(tailscaleDNS,port); resetErr==nil {
+                    verifyErr=verifyTailscaleEndpoint(tailscaleDNS,tailscaleIP,port,config.InstanceID,2*time.Second)
+                } else {
+                    verifyErr=fmt.Errorf("Serve hard reset failed after health check error (%v): %w",beforeResetErr,resetErr)
+                }
+            }
+        }
+        if verifyErr==nil {
+            tailscaleURL=candidateTailscaleURL
+            tlsError=""
+        } else {
+            tailscaleURL=""
+            tlsError=verifyErr.Error()
+        }
     }
 
     preferredURL:=localURL
