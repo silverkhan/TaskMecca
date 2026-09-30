@@ -154,6 +154,34 @@ func handler(project,root,version,instanceID,controlToken string,restartCh chan<
         writeJSON(w,map[string]any{"ok":true,"version":version,"instance_id":instanceID,"pid":os.Getpid()},200)
     })
 
+    mux.HandleFunc("/api/version",func(w http.ResponseWriter,r *http.Request) {
+        info:=maintenance.CachedVersionInfo(version)
+        if r.URL.Query().Get("refresh")=="1" { info=maintenance.RefreshVersionInfo(version) }
+        activeProject:=projectFor(r)
+        projectInfo:=map[string]any{"path":activeProject,"framework_version":"","migration_available":false}
+        for _,p:=range maintenance.ListProjects() {
+            if filepath.Clean(p.Path)!=filepath.Clean(activeProject) { continue }
+            projectInfo["framework_version"]=p.FrameworkVersion
+            projectInfo["migration_available"]=p.FrameworkVersion!="" && p.FrameworkVersion!=version
+            break
+        }
+        writeJSON(w,map[string]any{"cli":info,"project":projectInfo},200)
+    })
+
+    mux.HandleFunc("/api/revision",func(w http.ResponseWriter,r *http.Request) {
+        activeProject:=projectFor(r)
+        activeCtx,ctxErr:=webContext(activeProject,"")
+        if ctxErr!=nil { writeJSON(w,map[string]any{"error":ctxErr.Error()},500); return }
+        selected,_,err:=resolveBacklog(activeProject,activeCtx,r.URL.Query())
+        if err!=nil { writeJSON(w,map[string]any{"error":err.Error()},500); return }
+        revision,err:=backlog.BacklogRevision(activeProject,selected)
+        if err!=nil { writeJSON(w,map[string]any{"error":err.Error()},500); return }
+        revision["project_path"]=activeProject
+        revision["backlog"]=selected
+        writeJSON(w,revision,200)
+    })
+
+
     mux.HandleFunc("/api/admin/stop",func(w http.ResponseWriter,r *http.Request) {
         if r.Method!="POST" { writeJSON(w,map[string]any{"error":"POST required"},405); return }
         if stopCh==nil || controlToken=="" || r.Header.Get("X-Task-Mecca-Control")!=controlToken {
