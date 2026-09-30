@@ -399,24 +399,40 @@ func Run(config Config) error {
         if err!=nil { return err }
         localURL=fmt.Sprintf("http://127.0.0.1:%d/",port)
 
-        tlsInfo:=ensureTailscaleTLS()
-        if tlsInfo.Enabled {
-            remoteTLSInfo=tlsInfo
-            raw,listenErr:=listenTailscaleIP(tlsInfo.IP,port)
-            if listenErr!=nil {
-                tlsError=fmt.Sprintf("Tailscale HTTPS cannot bind %s:%d: %v",tlsInfo.IP,port,listenErr)
+        if runtime.GOOS=="darwin" {
+            dns,_,statusErr:=tailscaleStatusInfo()
+            if statusErr!=nil {
+                tlsError=statusErr.Error()
             } else {
-                tlsConfig,tlsErr:=tailscaleTLSConfig(tlsInfo)
-                if tlsErr!=nil {
-                    _=raw.Close()
-                    tlsError=tlsErr.Error()
+                serveURL,managed,serveErr:=ensureTailscaleServe(dns,port)
+                if serveErr!=nil {
+                    tlsError=serveErr.Error()
                 } else {
-                    remoteListener=tls.NewListener(raw,tlsConfig)
-                    candidateTailscaleURL=fmt.Sprintf("https://%s:%d/",tlsInfo.DNSName,port)
+                    tailscaleURL=serveURL
+                    tailscaleManaged=managed
+                    tailscaleMode="serve"
                 }
             }
-        } else if tlsInfo.Error!="" {
-            tlsError=tlsInfo.Error
+        } else {
+            tlsInfo:=ensureTailscaleTLS()
+            if tlsInfo.Enabled {
+                raw,listenErr:=listenTailscaleIP(tlsInfo.IP,port)
+                if listenErr!=nil {
+                    tlsError=fmt.Sprintf("Tailscale HTTPS cannot bind %s:%d: %v",tlsInfo.IP,port,listenErr)
+                } else {
+                    tlsConfig,tlsErr:=tailscaleTLSConfig(tlsInfo)
+                    if tlsErr!=nil {
+                        _=raw.Close()
+                        tlsError=tlsErr.Error()
+                    } else {
+                        remoteListener=tls.NewListener(raw,tlsConfig)
+                        candidateTailscaleURL=fmt.Sprintf("https://%s:%d/",tlsInfo.DNSName,port)
+                        tailscaleMode="direct"
+                    }
+                }
+            } else if tlsInfo.Error!="" {
+                tlsError=tlsInfo.Error
+            }
         }
     } else {
         host,hostMode:=resolveWebHost(requestedHost)
@@ -443,15 +459,7 @@ func Run(config Config) error {
     if remoteListener!=nil {
         listeners++
         go func(){ errCh<-server.Serve(remoteListener) }()
-        if runtime.GOOS=="darwin" {
-            if verifyErr:=verifyTailscaleHTTPS(remoteTLSInfo,port,config.InstanceID); verifyErr!=nil {
-                tlsError=verifyErr.Error()
-            } else {
-                tailscaleURL=candidateTailscaleURL
-            }
-        } else {
-            tailscaleURL=candidateTailscaleURL
-        }
+        tailscaleURL=candidateTailscaleURL
     }
 
     preferredURL:=localURL
@@ -460,6 +468,7 @@ func Run(config Config) error {
         PID:os.Getpid(),InstanceID:config.InstanceID,ControlToken:config.ControlToken,
         Host:requestedHost,Port:port,URL:preferredURL,LocalURL:localURL,TailscaleURL:tailscaleURL,
         TLSEnabled:tailscaleURL!="",TLSError:tlsError,
+        TailscaleManaged:tailscaleManaged,TailscaleMode:tailscaleMode,
         Version:config.Version,Project:config.Project,StartedAt:config.StartedAt,Running:true,
     }); err!=nil {
         _=primaryListener.Close()
@@ -475,7 +484,11 @@ func Run(config Config) error {
     } else if autoMode && tailscaleIPv4()!="" {
         fmt.Println("tailscale HTTPS: unavailable")
         if tlsError!="" { fmt.Println("  "+tlsError) }
-        fmt.Println("  Direct HTTPS was not verified; inspect: task-mecca web logs")
+        if runtime.GOOS=="darwin" {
+            fmt.Println("  Task Mecca could not configure Tailscale Serve; inspect: task-mecca web logs")
+        } else {
+            fmt.Println("  Direct HTTPS was not verified; inspect: task-mecca web logs")
+        }
     }
     if !autoMode { fmt.Println("network: explicit bind · "+bindHost) }
 
