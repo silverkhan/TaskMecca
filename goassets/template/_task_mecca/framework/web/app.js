@@ -322,6 +322,77 @@ function diagnosticBanner() {
   return `<div class="global-access"><div><strong>Partial diagnostics</strong><span>${esc(rows.map(x=>`${x.component}: ${x.error}`).join(' · '))}</span></div></div>`;
 }
 
+function saveNotificationSettings() {
+  localStorage.setItem('task-mecca-notifications',JSON.stringify(state.notificationSettings));
+}
+function notificationSeenSet() {
+  try { const raw=JSON.parse(localStorage.getItem('task-mecca-notification-seen')||'[]'); return new Set(Array.isArray(raw)?raw:[]); } catch(_) { return new Set(); }
+}
+function rememberNotification(key) {
+  const seen=[...notificationSeenSet()];
+  if(!seen.includes(key))seen.push(key);
+  localStorage.setItem('task-mecca-notification-seen',JSON.stringify(seen.slice(-250)));
+}
+function sendBrowserNotification(kind,task,reason,key) {
+  if(!state.notificationSettings[kind])return;
+  if(typeof Notification==='undefined'||Notification.permission!=='granted')return;
+  if(notificationSeenSet().has(key))return;
+  const projectName=(state.project||'').split(/[\\/]/).pop()||'Task Mecca';
+  const title=kind==='completed'
+    ? `${projectName} · ${task.id} 완료`
+    : `${projectName} · ${task.id} · ${reason?.title||t(kind==='stalled'?'notifyStalled':'notifyIntervention')}`;
+  const body=kind==='completed'
+    ? (titleOf(task)||task.id)
+    : [titleOf(task),reason?.message,reason?.resume_condition].filter(Boolean).join(' · ');
+  try {
+    const n=new Notification(title,{body,tag:`task-mecca:${state.project}:${task.id}:${kind}`});
+    n.onclick=()=>{ window.focus(); openTask(task.id); n.close(); };
+    rememberNotification(key);
+  } catch(_) {}
+}
+function processTaskNotifications(snapshot) {
+  if(!state.project||!snapshot)return;
+  const current=snapshot.all_items||{};
+  const previous=state.previousTasksByProject[state.project]||null;
+  Object.values(current).forEach(task=>{
+    const reason=task.attention_reason||null;
+    if(reason){
+      const kind=reason.type==='runtime_stalled'?'stalled':'intervention';
+      const key=`${state.project}:${task.id}:${kind}:${reason.type||''}:${task.updated_at||task.mtime||''}`;
+      sendBrowserNotification(kind,task,reason,key);
+    }
+    if(previous){
+      const before=previous[task.id];
+      if(task.file_state==='done' && before && before.file_state!=='done'){
+        const key=`${state.project}:${task.id}:completed:${task.completed_at||task.mtime||task.updated_at||''}`;
+        sendBrowserNotification('completed',task,null,key);
+      }
+    }
+  });
+  const compact={};
+  Object.values(current).forEach(task=>compact[task.id]={file_state:task.file_state,state:task.state,updated_at:task.updated_at});
+  state.previousTasksByProject[state.project]=compact;
+}
+function renderNotificationPanel() {
+  const panel=$('#notificationPanel');
+  if(!panel)return;
+  const permission=typeof Notification==='undefined'?'unsupported':Notification.permission;
+  panel.innerHTML=`<div class="notification-panel-head"><strong>${esc(t('notificationSettings'))}</strong><button type="button" id="notificationClose">×</button></div>
+    <label><input type="checkbox" data-notification-setting="intervention" ${state.notificationSettings.intervention?'checked':''}> <span>${esc(t('notifyIntervention'))}</span></label>
+    <label><input type="checkbox" data-notification-setting="completed" ${state.notificationSettings.completed?'checked':''}> <span>${esc(t('notifyCompleted'))}</span></label>
+    <label><input type="checkbox" data-notification-setting="stalled" ${state.notificationSettings.stalled?'checked':''}> <span>${esc(t('notifyStalled'))}</span></label>
+    ${permission==='default'?`<button type="button" class="action-btn notification-permission" id="notificationPermission">${esc(t('allowBrowserNotifications'))}</button>`:''}
+    ${permission==='denied'?`<div class="notification-note">${esc(t('notificationsBlocked'))}</div>`:''}`;
+  panel.querySelectorAll('[data-notification-setting]').forEach(input=>input.addEventListener('change',()=>{
+    state.notificationSettings[input.dataset.notificationSetting]=input.checked;
+    saveNotificationSettings();
+  }));
+  $('#notificationClose')?.addEventListener('click',()=>panel.classList.remove('open'));
+  $('#notificationPermission')?.addEventListener('click',async()=>{
+    try { await Notification.requestPermission(); } catch(_) {}
+    renderNotificationPanel();
+  });
+}
 function saveOpenProjects() {
   localStorage.setItem('task-mecca-open-projects',JSON.stringify(state.openProjects));
 }
