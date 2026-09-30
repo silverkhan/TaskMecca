@@ -157,6 +157,40 @@ Pass.
             finally:
                 self._unload_runtime(framework)
 
+    def test_human_summary_parser_is_optional_and_structured(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            target = install(root)
+            module, framework = self._load_runtime(target)
+            try:
+                text = """# A-24 Human summary
+
+## 핵심 요약
+- 목적: 처음 열었을 때 의미를 빠르게 파악한다.
+- 핵심 변경: 목록과 상세를 요약 중심으로 바꾼다.
+  필요한 상세만 펼친다.
+- 상태·결과: 진행 중이다.
+- 확인·후속: 모바일을 확인한다.
+
+## 작업 정의
+### 목표
+가독성을 높인다.
+### 수용 기준
+- [ ] 요약이 보인다.
+"""
+                doc = module._document_model(text, module._parse_fields(text))
+                self.assertTrue(doc["summary_present"])
+                self.assertEqual(doc["summary"]["purpose"], "처음 열었을 때 의미를 빠르게 파악한다.")
+                self.assertEqual(
+                    doc["summary"]["change"],
+                    "목록과 상세를 요약 중심으로 바꾼다.\n  필요한 상세만 펼친다.",
+                )
+                legacy = module._document_model("# A-1 Legacy\n- 설명: old\n", module._parse_fields("# A-1 Legacy\n- 설명: old\n"))
+                self.assertFalse(legacy["summary_present"])
+                self.assertEqual(legacy["summary"]["purpose"], "")
+            finally:
+                self._unload_runtime(framework)
+
     def test_legacy_backlog_basename_is_discovered_after_move_under_data(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
