@@ -12,7 +12,21 @@ From the project root:
 task-mecca web
 ```
 
-The browser dashboard is read-only. `task-mecca web` uses `--host auto` by default: when a Tailscale IPv4 address is available it binds to that address, otherwise it falls back to `127.0.0.1`. Use `--host <ip>` to override explicitly. It shows backlog state, subagent workload, lifecycle timing, Needs Attention, and access observations.
+`task-mecca web` starts a user-level singleton Web service in the background and opens the browser. The default port is `18765`; Task Mecca does not silently increment to another port. If the Web service is already running, the existing instance and URL are reused. `--host auto` binds to a detected Tailscale IPv4 address, otherwise it falls back to `127.0.0.1`. Use `--host <ip>` or `--port <port>` to override explicitly. The dashboard is read-only and shows backlog state, subagent workload, lifecycle timing, Needs Attention, and access observations.
+
+
+Web service controls:
+
+```bash
+task-mecca web status
+task-mecca web restart
+task-mecca web stop
+task-mecca web logs
+task-mecca web logs --follow
+task-mecca web --foreground
+```
+
+Background state and logs are stored under the user-level `~/.task-mecca/web/` directory. If the default port `18765` is occupied by another program, Task Mecca reports an error instead of silently moving to `18766`; use `--port` when an explicit override is needed.
 
 Backlog ledgers are detected automatically under `_task_mecca`. New projects use canonical `data/backlog/`; compatibility remains for names beginning with `backlog`, including `data/backlog_b` and legacy `backlog_b`. Canonical `data/backlog/` has highest priority. The top-bar **Backlog** selector can override the choice; **Auto** restores automatic selection.
 
