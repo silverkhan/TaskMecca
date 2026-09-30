@@ -233,6 +233,8 @@ func handler(project,root,version,instanceID,controlToken string,restartCh chan<
             "from_version":result.FromVersion,"to_version":result.ToVersion,
             "instruction_refresh_required":result.InstructionRefreshRequired,
             "changed_instructions":result.ChangedInstructions,
+            "legacy_bootstrap":result.LegacyBootstrap,
+            "backup_path":result.BackupPath,
         },200)
     })
 
