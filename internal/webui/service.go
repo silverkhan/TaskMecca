@@ -111,7 +111,10 @@ func serviceStatusWithToken() ServiceState {
 }
 
 func StartService(config Config) (ServiceState,error) {
-    if current:=ServiceStatus(); current.Running { return current,nil }
+    if current:=ServiceStatus(); current.Running {
+        if config.OpenBrowser { openBrowser(current.URL) }
+        return current,nil
+    }
     id,token,err:=NewServiceIdentity()
     if err!=nil { return ServiceState{},err }
     host,_:=resolveWebHost(config.Host)
@@ -180,4 +183,20 @@ func RestartService(config Config) (ServiceState,error) {
         if _,err:=StopService(); err!=nil { return ServiceState{},err }
     }
     return StartService(config)
+}
+
+
+func StreamLogs(w io.Writer, follow bool) error {
+    if err:=os.MkdirAll(webServiceDir(),0755); err!=nil { return err }
+    file,err:=os.OpenFile(WebLogPath(),os.O_CREATE|os.O_RDONLY,0644)
+    if err!=nil { return err }
+    defer file.Close()
+    if !follow {
+        _,err=io.Copy(w,file)
+        return err
+    }
+    for {
+        if _,err=io.Copy(w,file); err!=nil { return err }
+        time.Sleep(300*time.Millisecond)
+    }
 }
