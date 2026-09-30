@@ -145,12 +145,12 @@ func CachedVersionInfo(current string) VersionInfo {
         if json.Unmarshal(data,&cached)==nil {
             cached.Current=current
             if at,err:=time.Parse(time.RFC3339,cached.CheckedAt); err==nil && time.Since(at)<24*time.Hour {
-                cached.UpdateAvailable=cached.Latest!="" && cached.Latest!=current
+                cached.UpdateAvailable=newerVersion(cached.Latest,current)
                 return cached
             }
             info.Latest=cached.Latest
             info.CheckedAt=cached.CheckedAt
-            info.UpdateAvailable=info.Latest!="" && info.Latest!=current
+            info.UpdateAvailable=newerVersion(info.Latest,current)
         }
     }
     versionCheckMu.Lock()
@@ -167,12 +167,39 @@ func CachedVersionInfo(current string) VersionInfo {
     return info
 }
 
+func compareVersions(left,right string) int {
+    parse:=func(v string) []int {
+        v=strings.TrimSpace(strings.TrimPrefix(v,"v"))
+        core:=strings.SplitN(v,"-",2)[0]
+        parts:=strings.Split(core,".")
+        out:=make([]int,3)
+        for i:=0;i<len(out)&&i<len(parts);i++ {
+            n,err:=strconv.Atoi(parts[i])
+            if err!=nil { return []int{} }
+            out[i]=n
+        }
+        return out
+    }
+    a,b:=parse(left),parse(right)
+    if len(a)==0 || len(b)==0 { return strings.Compare(left,right) }
+    for i:=0;i<3;i++ {
+        if a[i]<b[i] { return -1 }
+        if a[i]>b[i] { return 1 }
+    }
+    return 0
+}
+
+func newerVersion(latest,current string) bool {
+    if strings.TrimSpace(latest)=="" { return false }
+    return compareVersions(latest,current)>0
+}
+
 func CheckLatest(current string) VersionInfo {
     info:=VersionInfo{Current:current,CheckedAt:time.Now().Format(time.RFC3339)}
     data,err:=httpGet(releaseBase()+"/VERSION.txt")
     if err!=nil { info.Error=err.Error(); return info }
     info.Latest=strings.TrimSpace(string(data))
-    info.UpdateAvailable=info.Latest!="" && info.Latest!=current
+    info.UpdateAvailable=newerVersion(info.Latest,current)
     return info
 }
 
