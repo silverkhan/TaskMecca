@@ -58,6 +58,7 @@ func NotificationEvents(project string,items map[string]map[string]any) ([]map[s
     }
 
     now:=time.Now().Format(time.RFC3339)
+    dirty:=false
     for id,item:=range items {
         fileState:=toString(item["file_state"])
         updatedAt:=toString(item["updated_at"])
@@ -77,16 +78,25 @@ func NotificationEvents(project string,items map[string]map[string]any) ([]map[s
                     "title":toString(item["title"]),
                     "task_updated_at":updatedAt,
                 })
+                dirty=true
             }
         }
 
-        journal.Items[id]=notificationObservation{FileState:fileState,UpdatedAt:updatedAt}
+        next:=notificationObservation{FileState:fileState,UpdatedAt:updatedAt}
+        if !seen || previous!=next {
+            journal.Items[id]=next
+            dirty=true
+        }
     }
 
     if len(journal.Events)>250 {
         journal.Events=append([]map[string]any{},journal.Events[len(journal.Events)-250:]...)
+        dirty=true
     }
 
+    if !dirty {
+        return append([]map[string]any{},journal.Events...),nil
+    }
     if err:=os.MkdirAll(filepath.Dir(path),0755); err!=nil { return nil,err }
     data,err:=json.MarshalIndent(journal,"","  ")
     if err!=nil { return nil,err }
