@@ -74,6 +74,39 @@ func Coordinate(project,root string,workerCap int) (map[string]any,error) {
     if err!=nil { return nil,err }
     timings,err:=LifecycleTimings(project,root)
     if err!=nil { return nil,err }
+    activity:=runtimeActivity(project,rows,timings)
+    continuityGaps:=[]map[string]any{}
+    for _,row:=range rows {
+        if row.Location!="active" || row.State!="doing" { continue }
+        signal:=activity[row.ID]
+        if signal==nil { continue }
+        health:=toString(signal["health"])
+        code:=""
+        action:=""
+        switch health {
+        case "awaiting_finalize":
+            code="worker_completed_backlog_doing"
+            action="verify acceptance; finalize done if satisfied, otherwise dispatch a fresh worker turn"
+        case "worker_missing":
+            code="worker_missing_backlog_doing"
+            action="refresh live agent state; re-dispatch the same worker only with a confirmed fresh turn, otherwise reassign explicitly"
+        case "needs_user":
+            code="user_decision_required_backlog_doing"
+            action="release the worker claim, move the task to hold(user), record resume condition, and surface USER_DECISION_REQUIRED to Root"
+        }
+        if code=="" { continue }
+        continuityGaps=append(continuityGaps,map[string]any{
+            "id":row.ID,
+            "title":row.Title,
+            "agent":row.Fields["Agent"],
+            "health":health,
+            "runtime_state":signal["runtime_state"],
+            "code":code,
+            "action":action,
+            "last_activity_at":signal["last_activity_at"],
+            "last_activity_source":signal["last_activity_source"],
+        })
+    }
 
     doing:=[]map[string]any{}
     for _,row:=range rows {
@@ -129,7 +162,8 @@ func Coordinate(project,root string,workerCap int) (map[string]any,error) {
         "source":"git_backlog",
         "root":base,
         "scheduling_needed":len(readyItems)>0,
-        "controller_review_needed":holdReview["review_needed"],
+        "controller_review_needed":holdReview["review_needed"].(bool) || len(continuityGaps)>0,
+        "continuity_gaps":continuityGaps,
         "hold_review":holdReview,
         "ready":readyItems,
         "blocked":blockedItems,
@@ -167,6 +201,8 @@ func Coordinate(project,root string,workerCap int) (map[string]any,error) {
             "dispatch_requires_recheck":"inspect <ID> --json immediately before doing/dispatch",
             "no_work_statement_requires":"this turn's coordinate + live agent state",
             "individual_completion":"settle original acceptance independently of queue drain; worker DONE alone is not proof",
+            "continuity_gap_invariant":"a doing task must not remain ownerless after a worker turn ends; completed/missing/user-wait runtime signals require explicit finalize, fresh re-dispatch/reassignment, or hold(user)+Root escalation before the Controller can consider the pass settled",
+            "self_delegation_forbidden":"a worker cannot create continuity by delegating follow-up work to itself; only a confirmed fresh runtime turn or explicit Controller reassignment counts as resumed execution",
             "hold_review_is_advisory":"review this event, not automatic readiness/spawn or a command to keep draining unchanged external waits",
         },
     },nil
