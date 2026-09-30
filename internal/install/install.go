@@ -102,7 +102,7 @@ func Init(project, version string) error {
         return fmt.Errorf("%s already exists; use task-mecca migrate", target)
     } else if err != nil && !errors.Is(err, os.ErrNotExist) { return err }
     files, err := bundled()
-    if err != nil { return result, err }
+    if err != nil { return err }
     if err = os.MkdirAll(target, 0755); err != nil { return err }
     for path, data := range files {
         if err = write(target, path, data); err != nil { return err }
