@@ -327,8 +327,11 @@ function renderBacklogPicker() {
 }
 
 function backlogUrl() {
-  if (state.statusFilters.includes('all')) return '/';
-  return `/?filter=${encodeURIComponent(state.statusFilters.join(','))}`;
+  const p=new URLSearchParams();
+  if(!state.statusFilters.includes('all'))p.set('filter',state.statusFilters.join(','));
+  if(state.project)p.set('project',state.project);
+  const qs=p.toString();
+  return '/'+(qs?'?'+qs:'');
 }
 function setStatusFilter(key) {
   const allowed = ['all','ready','doing','hold','blocked','done'];
@@ -536,7 +539,7 @@ function detailView(task) {
 function openTask(id) {
   if (!id) return;
   state.detail=id; state.raw=false;
-  history.pushState({},'',`/tasks/${encodeURIComponent(id)}`); render();
+  history.pushState({},'',`/tasks/${encodeURIComponent(id)}${state.project?`?project=${encodeURIComponent(state.project)}`:''}`); render();
 }
 function closeTask() {
   state.detail=null; history.pushState({},'',state.view==='backlog'?backlogUrl():`/?view=${state.view}`); render();
