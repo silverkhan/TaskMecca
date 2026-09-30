@@ -139,8 +139,16 @@ func run(args []string) int {
             fmt.Printf("Task Mecca %s installed to %s\n", version, filepath.Join(root, "_task_mecca"))
         }
     case "migrate":
-        err = install.Migrate(root, version)
-        if err == nil { _ = maintenance.RegisterProject(root); fmt.Printf("Task Mecca %s migrated\n", version) }
+        var migration install.MigrationResult
+        migration, err = install.MigrateWithResult(root, version)
+        if err == nil {
+            _ = maintenance.RegisterProject(root)
+            fmt.Printf("Task Mecca %s migrated\n", version)
+            if migration.InstructionRefreshRequired {
+                fmt.Println("Root session refresh required: Task Mecca operating instructions changed.")
+                fmt.Println("Open the Web Global Hub migration result or ask the active Root session to reread the current Task Mecca instructions before continuing.")
+            }
+        }
     case "upgrade":
         var result maintenance.UpgradeResult
         result, err = maintenance.Upgrade(version)
