@@ -95,29 +95,29 @@ func parseTagList(value string) []string {
 
 func defaultTagDefinitions(now string) []TagDefinition {
     rows:=[][3]string{
-        {"area:backend","Backend/server-side implementation",""},
-        {"area:frontend","Frontend/Web UI implementation",""},
-        {"area:strategy","Domain strategy or model logic",""},
-        {"area:data","Data pipeline, schema, storage or quality",""},
-        {"area:infra","Infrastructure, packaging, deployment or runtime",""},
-        {"area:docs","Documentation and operating guidance",""},
-        {"type:feature","New user-visible capability",""},
-        {"type:bug","Defect correction",""},
-        {"type:improvement","Improvement to existing behavior or UX",""},
-        {"type:refactor","Internal restructuring without intended behavior change",""},
-        {"type:research","Investigation, spike or research task",""},
-        {"concern:performance","Performance, latency or resource efficiency",""},
-        {"concern:security","Security, access control or trust boundary",""},
-        {"concern:ux","User experience and interaction quality",""},
-        {"concern:compatibility","Cross-version, platform or migration compatibility",""},
-        {"concern:data-integrity","Correctness and preservation of durable data",""},
+        {"area:backend","Backend/server-side implementation","백엔드,server"},
+        {"area:frontend","Frontend/Web UI implementation","프론트엔드,ui,web-ui"},
+        {"area:strategy","Domain strategy or model logic","전략"},
+        {"area:data","Data pipeline, schema, storage or quality","데이터"},
+        {"area:infra","Infrastructure, packaging, deployment or runtime","인프라,infrastructure"},
+        {"area:docs","Documentation and operating guidance","문서,documentation"},
+        {"type:feature","New user-visible capability","기능,신규기능"},
+        {"type:bug","Defect correction","버그,오류"},
+        {"type:improvement","Improvement to existing behavior or UX","개선"},
+        {"type:refactor","Internal restructuring without intended behavior change","리팩터링,refactoring"},
+        {"type:research","Investigation, spike or research task","연구,조사"},
+        {"concern:performance","Performance, latency or resource efficiency","성능"},
+        {"concern:security","Security, access control or trust boundary","보안"},
+        {"concern:ux","User experience and interaction quality","사용성,user-experience"},
+        {"concern:compatibility","Cross-version, platform or migration compatibility","호환성"},
+        {"concern:data-integrity","Correctness and preservation of durable data","데이터무결성,data integrity"},
     }
     out:=make([]TagDefinition,0,len(rows))
     for _,row:=range rows {
         parts:=strings.SplitN(row[0],":",2)
         out=append(out,TagDefinition{
             Canonical:row[0],Namespace:parts[0],Name:parts[1],
-            Description:row[1],Status:"active",CreatedAt:now,UpdatedAt:now,
+            Description:row[1],Aliases:splitAliases(row[2]),Status:"active",CreatedAt:now,UpdatedAt:now,
         })
     }
     return out
