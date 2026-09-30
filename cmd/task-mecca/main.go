@@ -35,7 +35,7 @@ func run(args []string) int {
         root,err:=filepath.Abs(".")
         if err!=nil { fmt.Fprintln(os.Stderr,err); return 2 }
         _ = maintenance.RegisterProject(root)
-        if err:=webui.Run(webui.Config{Project:root,Host:"auto",Port:8765,OpenBrowser:true,Version:version}); err!=nil {
+        if err:=webui.Run(webui.Config{Project:root,Host:"auto",Port:webui.DefaultPort,OpenBrowser:true,Version:version}); err!=nil {
             fmt.Fprintln(os.Stderr,err); return 2
         }
         return 0
@@ -55,8 +55,12 @@ func run(args []string) int {
     watch := false
     once := false
     noOpen := false
+    foreground := false
+    follow := false
+    webInstanceID := ""
+    webControlToken := ""
     host := "auto"
-    port := 8765
+    port := webui.DefaultPort
     interval := 1.0
     positional := []string{}
     for i := 1; i < len(args); i++ {
@@ -85,6 +89,12 @@ func run(args []string) int {
         } else if args[i] == "--host" && i+1 < len(args) {
             host = args[i+1]
             i++
+        } else if args[i] == "--web-instance-id" && i+1 < len(args) {
+            webInstanceID = args[i+1]
+            i++
+        } else if args[i] == "--web-control-token" && i+1 < len(args) {
+            webControlToken = args[i+1]
+            i++
         } else if args[i] == "--port" && i+1 < len(args) {
             parsed,parseErr:=strconv.Atoi(args[i+1])
             if parseErr!=nil { fmt.Fprintln(os.Stderr,"--port requires an integer"); return 2 }
@@ -93,7 +103,7 @@ func run(args []string) int {
             parsed,parseErr:=strconv.ParseFloat(args[i+1],64)
             if parseErr!=nil { fmt.Fprintln(os.Stderr,"--interval requires a number"); return 2 }
             interval=parsed; i++
-        } else if args[i] == "--json" || args[i] == "--allow-empty" || args[i] == "--new" || args[i] == "--backlog-only" || args[i] == "--done" || args[i] == "--require-full-access" || args[i] == "--watch" || args[i] == "--once" || args[i] == "--no-open" {
+        } else if args[i] == "--json" || args[i] == "--allow-empty" || args[i] == "--new" || args[i] == "--backlog-only" || args[i] == "--done" || args[i] == "--require-full-access" || args[i] == "--watch" || args[i] == "--once" || args[i] == "--no-open" || args[i] == "--foreground" || args[i] == "--follow" {
             if args[i] == "--json" { jsonOutput = true }
             if args[i] == "--new" { newWorker = true }
             if args[i] == "--backlog-only" { backlogOnly = true }
@@ -102,6 +112,8 @@ func run(args []string) int {
             if args[i] == "--watch" { watch = true }
             if args[i] == "--once" { once = true }
             if args[i] == "--no-open" { noOpen = true }
+            if args[i] == "--foreground" { foreground = true }
+            if args[i] == "--follow" { follow = true }
         } else if !strings.HasPrefix(args[i], "-") {
             positional = append(positional, args[i])
         } else {
@@ -324,7 +336,7 @@ func run(args []string) int {
         if len(positional) != 0 { fmt.Fprintln(os.Stderr, "status takes no positional arguments"); return 2 }
         if watch && !jsonOutput {
             _ = maintenance.RegisterProject(root)
-            err=webui.Run(webui.Config{Project:root,Root:rootOption,Port:8765,OpenBrowser:true,Version:version})
+            err=webui.Run(webui.Config{Project:root,Root:rootOption,Port:webui.DefaultPort,OpenBrowser:true,Version:version})
             break
         }
         if watch && jsonOutput {
@@ -346,9 +358,59 @@ func run(args []string) int {
             }
         }
     case "web":
-        if len(positional) != 0 { fmt.Fprintln(os.Stderr, "web takes no positional arguments"); return 2 }
+        if len(positional)>1 { fmt.Fprintln(os.Stderr, "web accepts at most one action: status, restart, stop, or logs"); return 2 }
+        action:=""
+        if len(positional)==1 { action=strings.ToLower(positional[0]) }
         _ = maintenance.RegisterProject(root)
-        err=webui.Run(webui.Config{Project:root,Root:rootOption,Host:host,Port:port,OpenBrowser:!noOpen,Version:version})
+        config:=webui.Config{Project:root,Root:rootOption,Host:host,Port:port,OpenBrowser:!noOpen,Version:version,InstanceID:webInstanceID,ControlToken:webControlToken}
+        switch action {
+        case "", "start":
+            if foreground {
+                if webInstanceID=="" {
+                    if current:=webui.ServiceStatus(); current.Running {
+                        fmt.Printf("Task Mecca Web is already running\nURL: %s\nPID: %d\n",current.URL,current.PID)
+                        break
+                    }
+                    var id,token string
+                    id,token,err=webui.NewServiceIdentity()
+                    if err!=nil { break }
+                    config.InstanceID=id
+                    config.ControlToken=token
+                }
+                err=webui.Run(config)
+            } else {
+                var state webui.ServiceState
+                state,err=webui.StartService(config)
+                if err==nil {
+                    fmt.Printf("Task Mecca Web is running\nURL: %s\nPID: %d\n",state.URL,state.PID)
+                }
+            }
+        case "status":
+            state:=webui.ServiceStatus()
+            if !state.Running {
+                fmt.Println("Task Mecca Web is not running")
+                break
+            }
+            uptime:="-"
+            if started,parseErr:=time.Parse(time.RFC3339,state.StartedAt); parseErr==nil { uptime=time.Since(started).Round(time.Second).String() }
+            fmt.Printf("Task Mecca Web\nStatus   running\nPID      %d\nVersion  %s\nHost     %s\nPort     %d\nURL      %s\nStarted  %s\nUptime   %s\n",
+                state.PID,state.Version,state.Host,state.Port,state.URL,state.StartedAt,uptime)
+        case "restart":
+            var state webui.ServiceState
+            state,err=webui.RestartService(config)
+            if err==nil { fmt.Printf("Task Mecca Web restarted\nURL: %s\nPID: %d\n",state.URL,state.PID) }
+        case "stop":
+            var state webui.ServiceState
+            state,err=webui.StopService()
+            if err==nil {
+                if state.PID==0 { fmt.Println("Task Mecca Web is not running") } else { fmt.Println("Task Mecca Web stopped") }
+            }
+        case "logs":
+            err=webui.StreamLogs(os.Stdout,follow)
+        default:
+            fmt.Fprintln(os.Stderr,"unknown web action: "+action+" (use status, restart, stop, or logs)")
+            return 2
+        }
     case "monitor":
         if len(positional) != 0 { fmt.Fprintln(os.Stderr, "monitor takes no positional arguments"); return 2 }
         if !once && !jsonOutput {
