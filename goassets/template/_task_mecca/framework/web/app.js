@@ -433,6 +433,58 @@ function nav() {
   });
 }
 
+function hubView() {
+  const h=state.hub||{};
+  const cli=h.cli||{};
+  const projects=Array.isArray(h.projects)?h.projects:[];
+  const cliStatus=cli.update_available
+    ? `<span class="badge warn">${esc(cli.current||'-')} → ${esc(cli.latest||'-')}</span>`
+    : `<span class="badge">${esc(cli.current||'-')}</span>`;
+  const cards=projects.map(p=>{
+    const c=p?.counts||{};
+    const name=p?.name||String(p?.path||'Project').split(/[\\/]/).pop()||'Project';
+    const framework=p?.framework_version||'unknown';
+    return `<article class="project-card">
+      <div class="project-card-head"><div><div class="eyebrow">${esc(p?.path||'')}</div><h2>${esc(name)}</h2></div><span class="badge">${esc(framework)}</span></div>
+      <div class="project-stats"><span><strong>${c.working||0}</strong> working</span><span><strong>${c.ready||0}</strong> ready</span><span><strong>${c.hold||0}</strong> hold</span></div>
+      <div class="project-actions">${p?.migration_available?`<button class="action-btn secondary" data-migrate="${esc(p.path)}">Migrate</button>`:''}<button class="action-btn" data-open-project="${esc(p?.path||'')}">Open</button></div>
+    </article>`;
+  }).join('');
+  return `<div class="page-head"><div><div class="eyebrow">TASK MECCA</div><h1>Global Hub</h1><p class="summary">CLI와 등록 프로젝트의 framework 상태를 관리합니다.</p></div><div class="hub-cli"><strong>CLI</strong> ${cliStatus} ${cli.update_available?'<button class="action-btn" id="upgradeBtn">Upgrade</button>':''}</div></div>
+    ${cli.error?`<div class="timing-note"><strong>Version check</strong><span>${esc(cli.error)}</span></div>`:''}
+    <div class="project-grid">${cards||'<div class="empty">등록된 Task Mecca 프로젝트가 없습니다.</div>'}</div>`;
+}
+function bindHubActions() {
+  document.querySelectorAll('[data-open-project]').forEach(btn=>btn.addEventListener('click',()=>{
+    const path=btn.dataset.openProject||'';
+    if(path)switchProject(path);
+  }));
+  document.querySelectorAll('[data-migrate]').forEach(btn=>btn.addEventListener('click',async()=>{
+    btn.disabled=true;
+    try{
+      const r=await fetch('/api/migrate',{method:'POST',headers:{'Content-Type':'application/json','X-Task-Mecca-Action':'1'},body:JSON.stringify({project:btn.dataset.migrate})});
+      const body=await r.json();
+      if(!r.ok)throw new Error(body.error||'Migration failed');
+      await refresh();
+    }catch(e){
+      alert(String(e?.message||e));
+      btn.disabled=false;
+    }
+  }));
+  const up=$('#upgradeBtn');
+  if(up)up.addEventListener('click',async()=>{
+    up.disabled=true;up.textContent='Upgrading…';
+    try{
+      const r=await fetch('/api/upgrade',{method:'POST',headers:{'X-Task-Mecca-Action':'1'}});
+      const body=await r.json();
+      if(!r.ok)throw new Error(body.error||'Upgrade failed');
+      alert(body.to&&body.to!==body.from?`Upgraded to ${body.to}. Restart Task Mecca.`:'Already current.');
+    }catch(e){
+      alert(String(e?.message||e));up.disabled=false;up.textContent='Upgrade';
+    }
+  });
+}
+
 function matchesStatusFilter(t, key) {
   if (key === 'ready') return t.state === 'ready';
   if (key === 'doing') return t.state === 'doing' || t.file_state === 'doing';
