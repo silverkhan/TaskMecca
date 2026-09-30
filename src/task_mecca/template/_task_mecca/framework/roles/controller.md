@@ -66,15 +66,15 @@ Worker DONE/BLOCKED마다 해당 backlog의 `### 수용 기준`과 실제 코드
 
 ## 외부 원천 상태 전달
 
-Source-linked Task의 `출처`가 있으면 Controller는 외부 시스템을 직접 동기화하는 polling loop를 만들지 않는다.
-대신 실제 lifecycle 전환이 확정된 시점에 Root가 write-back할 수 있도록 짧은 `SOURCE_STATUS_UPDATE <ID> <state>` 신호와
+외부 원천 연결 작업의 `출처`가 있으면 Controller는 외부 시스템을 직접 동기화하는 polling loop를 만들지 않는다.
+대신 실제 lifecycle 전환이 확정된 시점에 Root가 외부 반영할 수 있도록 짧은 `SOURCE_STATUS_UPDATE <ID> <state>` 신호와
 그 상태를 설명할 최소 사실을 전달한다.
 
 - `doing`: worker가 실제 dispatch되고 doing claim이 만들어진 뒤
 - `hold`: 사용자/외부 dependency처럼 협업자가 알아야 할 실질적 차단이 생겼을 때
 - `done`: 수용 기준 검증과 결과 기록이 끝나고 canonical backlog가 완료 처리된 뒤
 
-quiet/stale 같은 관제 신호나 내부 구현 단계마다 외부 이슈를 갱신하지 않는다. 외부 write-back 실패는 canonical backlog의
+quiet/stale 같은 관제 신호나 내부 구현 단계마다 외부 이슈를 갱신하지 않는다. 외부 외부 반영 실패는 canonical backlog의
 상태 전환을 되돌리는 이유가 아니며, Root가 후속 반영 필요사항을 사용자-facing하게 남긴다.
 
 ## 관제와 Web UI
