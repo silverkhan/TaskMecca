@@ -675,11 +675,11 @@ function setTagFilter(tag) {
   state.tagFilters=next;
   state.view='backlog'; state.detail=null; state.selectedIndex=0; state.listPage=1;
   history.pushState({},'',backlogUrl());
-  render();
+  refreshList();
 }
 function clearTagFilters() {
   state.tagFilters=[]; state.listPage=1; state.selectedIndex=0;
-  history.pushState({},'',backlogUrl()); render();
+  history.pushState({},'',backlogUrl()); refreshList();
 }
 function tagChip(tag,clickable=true) {
   return `<button type="button" class="tag-chip ${state.tagFilters.includes(tag)?'active':''}" ${clickable?`data-tag-filter="${esc(tag)}"`:''} title="${esc(tag)}">${esc(tag)}</button>`;
@@ -700,7 +700,7 @@ function setStatusFilter(key) {
   state.selectedIndex = 0;
   state.listPage = 1;
   history.pushState({},'',backlogUrl());
-  render();
+  refreshList();
 }
 function resolveProjectContext() {
   if(state.project)return state.project;
@@ -740,7 +740,12 @@ function navigateView(view) {
   params.set('view',view);
   if(state.project)params.set('project',state.project);
   history.pushState({},'',`/?${params.toString()}`);
-  if(needsProject && !state.snapshot){
+  state.detailTask=null;
+  if(view==='backlog'){
+    render();
+    refreshList();
+    ensureAttentionStream();
+  } else if(needsProject && !state.snapshot){
     render();
     refresh();
   } else {
