@@ -133,4 +133,6 @@ After replacing the binary with a newer release, update managed framework files 
 task-mecca migrate
 ```
 
+If migration changes instructions that affect the active session—such as `ROOT_PROMPT.md`, `SESSION_GUIDE*.md`, `collab.md`, or `roles/*.md`—**do not assume the current Root session automatically knows the new rules.** After migration, the Web UI reports whether Root-session resynchronization is required and provides a copyable prompt that can be pasted directly into the active Root session. Continue work after Root rereads the current instructions.
+
 End users do not need Python, `uv`, or the Go toolchain. The standalone binary directly provides the Web UI, doctor, preflight, and backlog operations.
