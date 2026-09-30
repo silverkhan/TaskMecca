@@ -27,7 +27,7 @@ const state = {
   language: localStorage.getItem('task-mecca-language') || (navigator.language?.toLowerCase().startsWith('ko') ? 'ko' : 'en'),
   manualByLanguage: {},
   notificationSettings: (()=>{ try { return {...{intervention:true,completed:true,stalled:true},...JSON.parse(localStorage.getItem('task-mecca-notifications')||'{}')}; } catch(_) { return {intervention:true,completed:true,stalled:true}; } })(),
-  previousTasksByProject: {},
+  previousTasksByProject: (()=>{ try { const raw=JSON.parse(localStorage.getItem('task-mecca-previous-tasks')||'{}'); return raw&&typeof raw==='object'?raw:{}; } catch(_) { return {}; } })(),
 };
 
 
@@ -372,6 +372,7 @@ function processTaskNotifications(snapshot) {
   const compact={};
   Object.values(current).forEach(task=>compact[task.id]={file_state:task.file_state,state:task.state,updated_at:task.updated_at});
   state.previousTasksByProject[state.project]=compact;
+  localStorage.setItem('task-mecca-previous-tasks',JSON.stringify(state.previousTasksByProject));
 }
 function renderNotificationPanel() {
   const panel=$('#notificationPanel');
