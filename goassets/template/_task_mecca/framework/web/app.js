@@ -157,9 +157,11 @@ function renderContentUpdatePrompt() {
 
 function markContentUpdate(reason='content') {
   if(!state.project)return;
+  const wasPending=state.pendingContentUpdate;
+  const previousReason=state.pendingContentReason;
   state.pendingContentUpdate=true;
   if(reason==='runtime' || !state.pendingContentReason)state.pendingContentReason=reason;
-  renderContentUpdatePrompt();
+  if(!wasPending || previousReason!==state.pendingContentReason)renderContentUpdatePrompt();
 }
 
 function acceptContentRevision(revision='') {
@@ -184,6 +186,7 @@ async function refreshVersionInfo(force=false) {
 let revisionCheckInFlight=null;
 async function checkContentRevision(establishOnly=false) {
   if(!state.project)return;
+  if(state.pendingContentUpdate && !establishOnly)return;
   if(revisionCheckInFlight)return revisionCheckInFlight;
   const project=state.project, backlog=state.backlog;
   revisionCheckInFlight=(async()=>{
@@ -1681,12 +1684,18 @@ async function refresh() {
 }
 function route(fromPop=false) {
   const previousDetail=state.detail;
+  const previousProject=state.project;
   const m=location.pathname.match(/^\/tasks\/([^/]+)/);
   state.detail=m?decodeURIComponent(m[1]).toUpperCase():null;
   if(previousDetail!==state.detail)state.detailTask=null;
   state.loadError='';
   const p=new URLSearchParams(location.search);
   state.project=p.get('project')||'';
+  if(previousProject!==state.project){
+    state.contentRevision='';
+    state.pendingContentUpdate=false;
+    state.pendingContentReason='';
+  }
   if(state.project){
     state.lastProject=state.project;
     localStorage.setItem('task-mecca-last-project',state.project);
