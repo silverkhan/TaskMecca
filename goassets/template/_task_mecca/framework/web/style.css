@@ -385,3 +385,66 @@
     z-index:120;
   }
 }
+
+/* Mobile topbar containment and notification panel */
+@media(max-width:680px){
+  .topbar{
+    display:grid;
+    grid-template-columns:minmax(0,1fr) auto auto auto;
+    gap:8px;
+    width:100%;
+    max-width:100vw;
+    padding:10px 12px;
+    overflow:visible;
+    align-items:center;
+  }
+  .search-wrap{
+    grid-column:1 / -1;
+    grid-row:1;
+    max-width:none;
+    min-width:0;
+    width:100%;
+  }
+  .backlog-picker{display:none}
+  .language-picker{
+    grid-column:1;
+    grid-row:2;
+    min-width:0;
+    justify-self:start;
+  }
+  .theme-switcher{
+    grid-column:2;
+    grid-row:2;
+    order:initial;
+    min-width:0;
+    max-width:132px;
+  }
+  .theme-btn{
+    padding:0 6px;
+    font-size:10px;
+  }
+  .notification-wrap{
+    grid-column:3;
+    grid-row:2;
+    position:static;
+  }
+  #refreshBtn{
+    grid-column:4;
+    grid-row:2;
+  }
+  .notification-panel{
+    position:fixed;
+    top:calc(env(safe-area-inset-top,0px) + 72px);
+    left:12px;
+    right:12px;
+    width:auto;
+    max-width:none;
+    max-height:calc(100dvh - 92px);
+    overflow:auto;
+    z-index:100;
+  }
+  .notification-note,.notification-state span{
+    overflow-wrap:anywhere;
+    word-break:keep-all;
+  }
+}
