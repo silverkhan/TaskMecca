@@ -15,6 +15,7 @@ import (
     "runtime"
     "sort"
     "strings"
+    "sync"
     "time"
 )
 
@@ -41,6 +42,9 @@ type VersionInfo struct {
     CheckedAt string `json:"checked_at,omitempty"`
     Error string `json:"error,omitempty"`
 }
+
+var versionCheckMu sync.Mutex
+var versionCheckRunning bool
 
 type UpgradeResult struct {
     From string `json:"from"`
@@ -124,12 +128,43 @@ func releaseBase() string {
 }
 
 func httpGet(url string) ([]byte,error) {
-    client:=&http.Client{Timeout:15*time.Second}
+    client:=&http.Client{Timeout:5*time.Second}
     resp,err:=client.Get(url)
     if err!=nil { return nil,err }
     defer resp.Body.Close()
     if resp.StatusCode<200 || resp.StatusCode>=300 { return nil,fmt.Errorf("HTTP %d",resp.StatusCode) }
     return io.ReadAll(resp.Body)
+}
+
+func versionCachePath() string { return filepath.Join(homeDir(),"update-check.json") }
+
+func CachedVersionInfo(current string) VersionInfo {
+    info:=VersionInfo{Current:current}
+    if data,err:=os.ReadFile(versionCachePath()); err==nil {
+        var cached VersionInfo
+        if json.Unmarshal(data,&cached)==nil {
+            cached.Current=current
+            if at,err:=time.Parse(time.RFC3339,cached.CheckedAt); err==nil && time.Since(at)<24*time.Hour {
+                cached.UpdateAvailable=cached.Latest!="" && cached.Latest!=current
+                return cached
+            }
+            info.Latest=cached.Latest
+            info.CheckedAt=cached.CheckedAt
+            info.UpdateAvailable=info.Latest!="" && info.Latest!=current
+        }
+    }
+    versionCheckMu.Lock()
+    if !versionCheckRunning {
+        versionCheckRunning=true
+        go func(){
+            fresh:=CheckLatest(current)
+            _=os.MkdirAll(homeDir(),0755)
+            if data,err:=json.MarshalIndent(fresh,"","  "); err==nil { _=os.WriteFile(versionCachePath(),append(data,'\n'),0644) }
+            versionCheckMu.Lock(); versionCheckRunning=false; versionCheckMu.Unlock()
+        }()
+    }
+    versionCheckMu.Unlock()
+    return info
 }
 
 func CheckLatest(current string) VersionInfo {
