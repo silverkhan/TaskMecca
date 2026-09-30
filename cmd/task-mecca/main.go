@@ -37,7 +37,7 @@ func run(args []string) int {
         _ = maintenance.RegisterProject(root)
         state,startErr:=webui.StartService(webui.Config{Project:root,Host:"auto",Port:webui.DefaultPort,OpenBrowser:true,Version:version})
         if startErr!=nil { fmt.Fprintln(os.Stderr,startErr); return 2 }
-        fmt.Printf("Task Mecca Web is running\nURL: %s\nPID: %d\n",state.URL,state.PID)
+        printWebState("Task Mecca Web is running",state)
         return 0
     }
     command := args[0]
@@ -368,7 +368,7 @@ func run(args []string) int {
             if foreground {
                 if webInstanceID=="" {
                     if current:=webui.ServiceStatus(); current.Running {
-                        fmt.Printf("Task Mecca Web is already running\nURL: %s\nPID: %d\n",current.URL,current.PID)
+                        printWebState("Task Mecca Web is already running",current)
                         break
                     }
                     var id,token string
@@ -382,7 +382,7 @@ func run(args []string) int {
                 var state webui.ServiceState
                 state,err=webui.StartService(config)
                 if err==nil {
-                    fmt.Printf("Task Mecca Web is running\nURL: %s\nPID: %d\n",state.URL,state.PID)
+                    printWebState("Task Mecca Web is running",state)
                 }
             }
         case "status":
@@ -393,12 +393,15 @@ func run(args []string) int {
             }
             uptime:="-"
             if started,parseErr:=time.Parse(time.RFC3339,state.StartedAt); parseErr==nil { uptime=time.Since(started).Round(time.Second).String() }
-            fmt.Printf("Task Mecca Web\nStatus   running\nPID      %d\nVersion  %s\nHost     %s\nPort     %d\nURL      %s\nStarted  %s\nUptime   %s\n",
-                state.PID,state.Version,state.Host,state.Port,state.URL,state.StartedAt,uptime)
+            fmt.Printf("Task Mecca Web\nStatus    running\nPID       %d\nVersion   %s\nPort      %d\n",state.PID,state.Version,state.Port)
+            if state.LocalURL!="" { fmt.Println("Local     "+state.LocalURL) }
+            if state.TailscaleURL!="" { fmt.Println("Tailscale "+state.TailscaleURL) }
+            if state.TLSError!="" && state.TailscaleURL=="" { fmt.Println("TLS       unavailable · "+state.TLSError) }
+            fmt.Printf("Started   %s\nUptime    %s\n",state.StartedAt,uptime)
         case "restart":
             var state webui.ServiceState
             state,err=webui.RestartService(config)
-            if err==nil { fmt.Printf("Task Mecca Web restarted\nURL: %s\nPID: %d\n",state.URL,state.PID) }
+            if err==nil { printWebState("Task Mecca Web restarted",state) }
         case "stop":
             var state webui.ServiceState
             state,err=webui.StopService()
@@ -542,6 +545,14 @@ func printStatus(report map[string]any) {
         }
     }
     fmt.Println("\nLive agents: use the current model runtime agent list; this local monitor does not infer liveness from Git.")
+}
+
+func printWebState(prefix string,state webui.ServiceState) {
+    if prefix!="" { fmt.Println(prefix) }
+    if state.LocalURL!="" { fmt.Println("Local     "+state.LocalURL) }
+    if state.TailscaleURL!="" { fmt.Println("Tailscale "+state.TailscaleURL) }
+    if state.TLSError!="" && state.TailscaleURL=="" { fmt.Println("Tailscale HTTPS unavailable: "+state.TLSError) }
+    fmt.Printf("PID       %d\n",state.PID)
 }
 
 func printUpdateHint(info maintenance.VersionInfo) {
