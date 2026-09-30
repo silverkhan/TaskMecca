@@ -90,9 +90,7 @@ func DependencyReport(rows []Record) map[string]any {
     return map[string]any{"missing":missing,"cycles":cycles}
 }
 
-func Ready(project,root string) (map[string]any,error) {
-    rows,err:=Catalog(project,root)
-    if err!=nil { return nil,err }
+func readyFromRows(project,root string,rows []Record) map[string]any {
     grouped:=groupedByID(rows)
     ready:=[]map[string]any{}
     blocked:=[]map[string]any{}
@@ -110,5 +108,37 @@ func Ready(project,root string) (map[string]any,error) {
     if absolute,absErr:=filepath.Abs(base); absErr==nil { base=absolute }
     sort.Slice(ready,func(i,j int)bool{return ready[i]["id"].(string)<ready[j]["id"].(string)})
     sort.Slice(blocked,func(i,j int)bool{return blocked[i]["id"].(string)<blocked[j]["id"].(string)})
-    return map[string]any{"root":base,"ready":ready,"blocked":blocked,"problems":DependencyReport(rows)},nil
+    return map[string]any{"root":base,"ready":ready,"blocked":blocked,"problems":DependencyReport(rows)}
+}
+
+func Ready(project,root string) (map[string]any,error) {
+    rows,err:=Catalog(project,root)
+    if err!=nil { return nil,err }
+    return readyFromRows(project,root,rows),nil
+}
+
+func QuickCounts(project,root string) (map[string]any,error) {
+    rows,err:=Catalog(project,root)
+    if err!=nil { return nil,err }
+    report:=readyFromRows(project,root,rows)
+    ready,_:=report["ready"].([]map[string]any)
+    blocked,_:=report["blocked"].([]map[string]any)
+    working,hold,done:=0,0,0
+    for _,row:=range rows {
+        if row.State=="done" { done++; continue }
+        if row.Location!="active" { continue }
+        switch row.State {
+        case "doing":
+            working++
+        case "hold":
+            hold++
+        }
+    }
+    return map[string]any{
+        "working":working,
+        "ready":len(ready),
+        "blocked":len(blocked),
+        "hold":hold,
+        "done":done,
+    },nil
 }

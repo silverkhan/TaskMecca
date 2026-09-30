@@ -10,6 +10,7 @@ const state = {
   detail: null,
   raw: false,
   lastFetch: 0,
+  lastHubFetch: 0,
   theme: localStorage.getItem('task-mecca-theme') || 'system',
   manual: null,
   manualTab: 'quick',
@@ -744,9 +745,10 @@ function showMigrationResyncModal(result) {
     '<div class="migration-resync-head"><div><div class="eyebrow">FRAMEWORK MIGRATION</div><h2 id="migrationResyncTitle">'+
     (ko?'Root 세션 재동기화 필요':'Root session resynchronization required')+'</h2></div>'+
     '<button type="button" class="migration-resync-close" aria-label="'+(ko?'닫기':'Close')+'">×</button></div>'+
-    '<p class="migration-resync-summary">'+(ko?
-      '운영 지침이 변경되었습니다. 현재 Root 세션은 이전 지침을 기억하고 있을 수 있으므로 아래 프롬프트를 복사해 현재 세션에 붙여넣어 주세요.':
-      'Operational instructions changed. The active Root session may still carry the previous rules. Copy the prompt below and paste it into the current Root session.')+'</p>'+
+    '<p class="migration-resync-summary">'+(result.legacy_bootstrap?
+      (ko?'레거시 Task Mecca 프로젝트를 최신 framework 구조로 안전하게 전환했습니다. 기존 project data/backlog는 보존되며, 교체 전 framework는 백업했습니다.':'Legacy Task Mecca was safely bootstrapped to the current framework layout. Project data/backlogs were preserved and the previous framework was backed up.'):
+      (ko?'운영 지침이 변경되었습니다. 현재 Root 세션은 이전 지침을 기억하고 있을 수 있으므로 아래 프롬프트를 복사해 현재 세션에 붙여넣어 주세요.':'Operational instructions changed. The active Root session may still carry the previous rules. Copy the prompt below and paste it into the current Root session.'))+'</p>'+
+    (result.backup_path?'<div class="migration-resync-files"><strong>'+(ko?'레거시 framework 백업':'Legacy framework backup')+'</strong><div><code>'+esc(result.backup_path)+'</code></div></div>':'')+
     '<div class="migration-resync-files"><strong>'+(ko?'변경된 지침':'Changed instructions')+'</strong><div>'+(changed||'<span>-</span>')+'</div></div>'+
     '<div class="migration-resync-prompt"><div class="migration-resync-label">'+(ko?'Root 세션에 붙여넣을 프롬프트':'Prompt to paste into the Root session')+'</div>'+
     copyableCodeBlock(esc(prompt))+'</div>'+
@@ -771,7 +773,7 @@ function bindHubActions() {
       const body=await r.json();
       if(!r.ok)throw new Error(body.error||'Migration failed');
       await refresh();
-      if(body.instruction_refresh_required)showMigrationResyncModal(body);
+      if(body.instruction_refresh_required||body.legacy_bootstrap)showMigrationResyncModal(body);
     }catch(e){
       alert(String(e?.message||e));
       btn.disabled=false;
@@ -1092,22 +1094,55 @@ async function loadManual(language = state.language, force = false) {
     state.manualByLanguage[language]={readme:t('manualUnavailable'),session_guide:t('manualUnavailable')};
   }
 }
-async function refresh() {
+let refreshInFlight=null;
+let refreshQueued=false;
+let hubFetchInFlight=null;
+
+async function refreshHub(force=false) {
+  const fresh=state.hub && Date.now()-state.lastHubFetch<60000;
+  if(!force && fresh)return state.hub;
+  if(hubFetchInFlight)return hubFetchInFlight;
+  hubFetchInFlight=(async()=>{
+    try {
+      const r=await fetch('/api/hub',{cache:'no-store'});
+      if(!r.ok)throw new Error(`HTTP ${r.status}`);
+      state.hub=await r.json();
+      state.lastHubFetch=Date.now();
+      return state.hub;
+    } finally {
+      hubFetchInFlight=null;
+    }
+  })();
+  return hubFetchInFlight;
+}
+
+async function refreshOnce() {
+  const targetProject=state.project;
+  const targetView=state.view;
   const params=new URLSearchParams();
   if(state.backlog)params.set('backlog',state.backlog);
-  if(state.project)params.set('project',state.project);
+  if(targetProject)params.set('project',targetProject);
   const qs=params.toString()?`?${params}`:'';
-  try {
-    const hubR=await fetch('/api/hub',{cache:'no-store'});
-    if(hubR.ok) state.hub=await hubR.json();
-  } catch(_) {}
-  if(state.view==='hub'){
-    state.snapshot=null;
-    state.loadError='';
-    $('#connectionDot').style.background='var(--ok)';
-    render();
+
+  if(targetView==='hub'){
+    try {
+      await refreshHub(true);
+      if(state.view!=='hub')return;
+      state.snapshot=null;
+      state.loadError='';
+      $('#connectionDot').style.background='var(--ok)';
+      render();
+    } catch(e) {
+      if(state.view!=='hub')return;
+      state.snapshot=null;
+      state.loadError=String(e?.message||e||'Unknown error');
+      $('#connectionDot').style.background='var(--danger)';
+      render();
+    }
     return;
   }
+
+  refreshHub(false).catch(()=>{});
   try {
     const r=await fetch('/api/snapshot'+qs,{cache:'no-store'});
     if(!r.ok){
@@ -1115,7 +1150,9 @@ async function refresh() {
       try { const body=await r.json(); detail=body.error||''; } catch(_) {}
       throw new Error(detail||`HTTP ${r.status}`);
     }
-    state.snapshot=await r.json();
+    const snapshot=await r.json();
+    if(targetProject!==state.project || state.view==='hub')return;
+    state.snapshot=snapshot;
     processTaskNotifications(state.snapshot);
     state.loadError='';
     state.lastFetch=Date.now();
@@ -1128,11 +1165,29 @@ async function refresh() {
     await loadManual();
     render();
   } catch(e) {
+    if(targetProject!==state.project || state.view==='hub')return;
     state.snapshot=null;
     state.loadError=String(e?.message||e||'Unknown error');
     $('#connectionDot').style.background='var(--danger)';
     $('#snapshotAge').textContent=t('disconnected');
     render();
+  }
+}
+
+async function refresh() {
+  if(refreshInFlight){
+    refreshQueued=true;
+    return refreshInFlight;
+  }
+  refreshInFlight=refreshOnce();
+  try {
+    await refreshInFlight;
+  } finally {
+    refreshInFlight=null;
+    if(refreshQueued){
+      refreshQueued=false;
+      queueMicrotask(()=>refresh());
+    }
   }
 }
 function route() {

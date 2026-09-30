@@ -134,11 +134,10 @@ func DashboardSnapshot(project,root string,recentDoneLimit int) (map[string]any,
     if err!=nil { return nil,err }
     presence,err:=Presence(project,root,rows)
     if err!=nil { return nil,err }
-    readyReport,err:=Ready(project,root)
-    if err!=nil { return nil,err }
+    readyReport:=readyFromRows(project,root,rows)
     hold:=HoldReview(rows)
     diagnostics:=[]map[string]string{}
-    timings,err:=LifecycleTimings(project,root)
+    timings,err:=lifecycleTimings(project,root,rows)
     if err!=nil {
         diagnostics=append(diagnostics,map[string]string{"component":"lifecycle","error":err.Error()})
         timings=map[string]map[string]any{}

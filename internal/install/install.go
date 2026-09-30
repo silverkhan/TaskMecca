@@ -36,6 +36,8 @@ type MigrationResult struct {
     ToVersion string `json:"to_version"`
     InstructionRefreshRequired bool `json:"instruction_refresh_required"`
     ChangedInstructions []string `json:"changed_instructions,omitempty"`
+    LegacyBootstrap bool `json:"legacy_bootstrap,omitempty"`
+    BackupPath string `json:"backup_path,omitempty"`
 }
 
 var owned = []string{"data/**", "backlog/**", "backlog_*/**", ".runtime/**", "backups/**", "config.toml"}
@@ -118,6 +120,76 @@ func sessionInstructionPath(path string) bool {
     return strings.HasPrefix(path, "framework/roles/") && strings.HasSuffix(path, ".md")
 }
 
+func copyTree(source,destination string) error {
+    info,err:=os.Stat(source)
+    if errors.Is(err,os.ErrNotExist) { return nil }
+    if err!=nil { return err }
+    if !info.IsDir() {
+        data,readErr:=os.ReadFile(source)
+        if readErr!=nil { return readErr }
+        return write(destination,".",data)
+    }
+    return filepath.WalkDir(source,func(path string,entry fs.DirEntry,walkErr error) error {
+        if walkErr!=nil { return walkErr }
+        rel,relErr:=filepath.Rel(source,path)
+        if relErr!=nil { return relErr }
+        target:=filepath.Join(destination,rel)
+        if entry.IsDir() { return os.MkdirAll(target,0755) }
+        if entry.Type()&os.ModeSymlink!=0 {
+            return fmt.Errorf("legacy framework backup does not support symlink: %s",path)
+        }
+        data,readErr:=os.ReadFile(path)
+        if readErr!=nil { return readErr }
+        if err:=os.MkdirAll(filepath.Dir(target),0755); err!=nil { return err }
+        return os.WriteFile(target,data,0644)
+    })
+}
+
+func legacyBootstrapMigration(target,version string,files map[string][]byte,result MigrationResult) (MigrationResult,error) {
+    result.LegacyBootstrap=true
+    if raw,err:=os.ReadFile(filepath.Join(target,"VERSION")); err==nil {
+        if value:=strings.TrimSpace(string(raw)); value!="" { result.FromVersion=value }
+    }
+    if result.FromVersion=="" { result.FromVersion="legacy" }
+
+    changedInstructions:=[]string{}
+    for path,data:=range files {
+        if sessionInstructionPath(path) && fileHash(filepath.Join(target,filepath.FromSlash(path)))!=hash(data) {
+            changedInstructions=append(changedInstructions,path)
+        }
+    }
+    sort.Strings(changedInstructions)
+
+    stamp:=time.Now().Format("2006-01-02_150405")
+    backupRoot:=filepath.Join(target,"backups",stamp,"legacy-bootstrap")
+    backedUp:=false
+    framework:=filepath.Join(target,"framework")
+    if _,err:=os.Stat(framework); err==nil {
+        if err:=copyTree(framework,filepath.Join(backupRoot,"framework")); err!=nil { return result,err }
+        backedUp=true
+    } else if !errors.Is(err,os.ErrNotExist) { return result,err }
+    for _,name:=range []string{"ROOT_PROMPT.md","VERSION"} {
+        source:=filepath.Join(target,name)
+        if _,err:=os.Stat(source); err==nil {
+            data,readErr:=os.ReadFile(source)
+            if readErr!=nil { return result,readErr }
+            if err:=write(backupRoot,name,data); err!=nil { return result,err }
+            backedUp=true
+        } else if !errors.Is(err,os.ErrNotExist) { return result,err }
+    }
+    if backedUp { result.BackupPath=backupRoot }
+
+    if err:=os.RemoveAll(framework); err!=nil { return result,err }
+    for path,data:=range files {
+        if err:=write(target,path,data); err!=nil { return result,err }
+    }
+    incoming:=newManifest(files,version)
+    if err:=saveManifest(target,incoming); err!=nil { return result,err }
+    result.ChangedInstructions=changedInstructions
+    result.InstructionRefreshRequired=len(changedInstructions)>0
+    return result,nil
+}
+
 func Migrate(project, version string) error {
     _, err := MigrateWithResult(project, version)
     return err
@@ -127,7 +199,12 @@ func MigrateWithResult(project, version string) (MigrationResult, error) {
     result := MigrationResult{ToVersion: version}
     target := filepath.Join(project, targetName)
     raw, err := os.ReadFile(filepath.Join(target, "manifest.json"))
-    if err != nil { return result, fmt.Errorf("manifest not found; run task-mecca init first: %w", err) }
+    if errors.Is(err,os.ErrNotExist) {
+        files,bundleErr:=bundled()
+        if bundleErr!=nil { return result,bundleErr }
+        return legacyBootstrapMigration(target,version,files,result)
+    }
+    if err != nil { return result, err }
     var previous manifest
     if err = json.Unmarshal(raw, &previous); err != nil { return result, err }
     result.FromVersion = previous.Version
