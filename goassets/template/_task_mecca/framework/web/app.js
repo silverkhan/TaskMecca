@@ -707,7 +707,7 @@ async function refresh() {
   } catch(e) {
     state.snapshot=null;
     state.loadError=String(e?.message||e||'Unknown error');
-    $('#connectionDot').style.background='var(--danger)');
+    $('#connectionDot').style.background='var(--danger)';
     $('#snapshotAge').textContent=t('disconnected');
     render();
   }
