@@ -37,6 +37,8 @@ jobs:
           grep -q "function switchProject(path)" goassets/template/_task_mecca/framework/web/app.js
           grep -q "function processTaskNotifications(snapshot)" goassets/template/_task_mecca/framework/web/app.js
           grep -q "function renderNotificationPanel()" goassets/template/_task_mecca/framework/web/app.js
+          grep -q "function migrationResyncPrompt(result)" goassets/template/_task_mecca/framework/web/app.js
+          grep -q "function showMigrationResyncModal(result)" goassets/template/_task_mecca/framework/web/app.js
       - name: Test Go runtime
         run: go test ./...
       - name: Build standalone binaries
