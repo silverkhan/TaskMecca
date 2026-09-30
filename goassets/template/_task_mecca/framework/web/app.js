@@ -604,8 +604,24 @@ function hubView() {
     </article>`;
   }).join('');
   return `<div class="page-head"><div><div class="eyebrow">TASK MECCA</div><h1>Global Hub</h1><p class="summary">CLI와 등록 프로젝트의 framework 상태를 관리합니다.</p></div><div class="hub-cli"><strong>CLI</strong> ${cliStatus} ${cli.update_available?'<button class="action-btn" id="upgradeBtn">Upgrade</button>':''}</div></div>
+    ${cli.update_available?'<div class="timing-note"><strong>Upgrade</strong><span>업그레이드가 완료되면 Task Mecca Web이 자동으로 재시작되며, 현재 브라우저 페이지도 자동으로 새로고침됩니다.</span></div>':''}
     ${cli.error?`<div class="timing-note"><strong>Version check</strong><span>${esc(cli.error)}</span></div>`:''}
     <div class="project-grid">${cards||'<div class="empty">등록된 Task Mecca 프로젝트가 없습니다.</div>'}</div>`;
+}
+async function waitForRestartedWeb(targetVersion) {
+  const started=Date.now();
+  while(Date.now()-started<30000){
+    try {
+      const r=await fetch(`/api/health?restart_wait=${Date.now()}`,{cache:'no-store'});
+      if(r.ok){
+        const body=await r.json();
+        if(!targetVersion||body.version===targetVersion){ location.reload(); return; }
+      }
+    } catch(_) {}
+    await new Promise(resolve=>setTimeout(resolve,500));
+  }
+  const c=$('#content');
+  if(c)c.innerHTML=`<div class="load-error"><h2>Task Mecca 재시작 대기 시간 초과</h2><p>서버가 자동으로 다시 시작되지 않았습니다. 터미널에서 task-mecca web을 실행한 뒤 이 페이지를 새로고침하세요.</p></div>`;
 }
 function bindHubActions() {
   document.querySelectorAll('[data-open-project]').forEach(btn=>btn.addEventListener('click',()=>{
@@ -627,11 +643,17 @@ function bindHubActions() {
   const up=$('#upgradeBtn');
   if(up)up.addEventListener('click',async()=>{
     up.disabled=true;up.textContent='Upgrading…';
+    const c=$('#content');
     try{
       const r=await fetch('/api/upgrade',{method:'POST',headers:{'X-Task-Mecca-Action':'1'}});
       const body=await r.json();
       if(!r.ok)throw new Error(body.error||'Upgrade failed');
-      alert(body.to&&body.to!==body.from?`Upgraded to ${body.to}. Restart Task Mecca.`:'Already current.');
+      if(body.restart_required && body.to && body.to!==body.from){
+        if(c)c.innerHTML=`<div class="upgrade-restart"><div class="upgrade-spinner"></div><h2>Task Mecca ${esc(body.to)}로 업그레이드했습니다</h2><p>Web 서버를 재시작하고 있습니다. 완료되면 이 페이지가 자동으로 새로고침됩니다.</p></div>`;
+        await waitForRestartedWeb(body.to);
+        return;
+      }
+      await refresh();
     }catch(e){
       alert(String(e?.message||e));up.disabled=false;up.textContent='Upgrade';
     }
