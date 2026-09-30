@@ -35,6 +35,8 @@ Agent는 새 태그를 만들기 전에 반드시 다음을 확인한다.
 ```bash
 task-mecca tags resolve "프론트엔드" --json
 task-mecca tags search frontend --json
+# discover is an alias of search
+task-mecca tags discover frontend --json
 task-mecca tags define custom:portfolio "포트폴리오 구성·최적화 작업" "포트폴리오,portfolio"
 ```
 
@@ -66,7 +68,7 @@ task-mecca task tag-set A-143 area:backend type:bug concern:data-integrity
 ## Taxonomy 변경
 
 ```bash
-task-mecca tags rename custom:server area:backend
+task-mecca tags rename custom:server custom:backend-service
 task-mecca tags merge custom:web-ui area:frontend
 task-mecca tags retire custom:old-category
 task-mecca tags retire custom:old-category area:data
