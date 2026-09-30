@@ -98,7 +98,7 @@ func ownershipMatches(dns string,port int) bool {
 }
 
 func ensureTailscaleServe(dns string,port int) (url string,managed bool,err error) {
-    if dns=="" { return " ",false,fmt.Errorf("Tailscale DNS name is unavailable") }
+    if dns=="" { return "",false,fmt.Errorf("Tailscale DNS name is unavailable") }
     status,err:=readTailscaleServeStatus()
     if err!=nil { return "",false,err }
 
