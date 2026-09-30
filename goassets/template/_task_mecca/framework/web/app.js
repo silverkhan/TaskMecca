@@ -63,6 +63,24 @@ Object.assign(I18N.en,{
   notificationPermissionError:'Notification permission request failed.',
 });
 
+Object.assign(I18N.ko,{
+  humanSummary:'핵심 요약', summaryPurpose:'목적', summaryChange:'핵심 변경', summaryStatusResult:'상태·결과', summaryFollowUp:'확인·후속',
+  summaryFallback:'기존 기록에서 구성한 요약', detailLinks:'상세 바로가기', backgroundProblem:'배경 및 문제', workScope:'작업 범위',
+  completionCriteria:'완료 기준', progressResult:'진행 상황·작업 결과', verificationDetail:'검증 상세', relatedWork:'관련 작업',
+  operationsEvidence:'운영·실행 근거', summaryTodoFallback:'등록됨. 완료 기준 충족 전입니다.',
+  summaryDoingFallback:'현재 구현 또는 검증이 진행 중입니다.', summaryHoldFallback:'현재 재개 조건을 기다리고 있습니다.',
+  summaryDoneFallback:'완료 처리되었습니다.', noFollowUp:'현재 별도 확인·후속 사항이 없습니다.',
+  detailExpand:'상세 펼치기', detailCollapse:'상세 접기', requirementsAndConstraints:'요구사항·제약', legacyDetails:'기존 작업 상세'
+});
+Object.assign(I18N.en,{
+  humanSummary:'Summary', summaryPurpose:'Purpose', summaryChange:'Key change', summaryStatusResult:'Status / result', summaryFollowUp:'Checks / follow-up',
+  summaryFallback:'Summary derived from legacy record', detailLinks:'Open details', backgroundProblem:'Background & problem', workScope:'Work scope',
+  completionCriteria:'Completion criteria', progressResult:'Progress / result', verificationDetail:'Verification details', relatedWork:'Related work',
+  operationsEvidence:'Operations / evidence', summaryTodoFallback:'Registered; completion criteria are not yet satisfied.',
+  summaryDoingFallback:'Implementation or verification is currently in progress.', summaryHoldFallback:'Waiting for the recorded resume condition.',
+  summaryDoneFallback:'Task has been completed.', noFollowUp:'No separate check or follow-up is currently recorded.',
+  detailExpand:'Expand details', detailCollapse:'Collapse details', requirementsAndConstraints:'Requirements / constraints', legacyDetails:'Legacy task details'
+});
 function t(key, vars = {}) {
   const dict = I18N[state.language] || I18N.en;
   let value = dict[key] ?? I18N.en[key] ?? key;
