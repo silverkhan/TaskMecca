@@ -131,7 +131,7 @@ func runtimeActivity(project string, rows []Record, timings map[string]map[strin
 }
 
 func DashboardSnapshot(project,root string,recentDoneLimit int) (map[string]any,error) {
-    rows,err:=Catalog(project,root)
+    rows,err:=CachedCatalog(project,root)
     if err!=nil { return nil,err }
     presence,err:=Presence(project,root,rows)
     if err!=nil { return nil,err }
