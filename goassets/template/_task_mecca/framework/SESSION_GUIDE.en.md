@@ -12,7 +12,7 @@ From the project root:
 task-mecca web
 ```
 
-`task-mecca web` starts a user-level singleton Web service in the background and opens the browser. The default port is `18765`; Task Mecca does not silently increment to another port. If the Web service is already running, the existing instance and URL are reused. `--host auto` binds to a detected Tailscale IPv4 address, otherwise it falls back to `127.0.0.1`. Use `--host <ip>` or `--port <port>` to override explicitly. The dashboard is read-only and shows backlog state, subagent workload, lifecycle timing, Needs Attention, and access observations.
+`task-mecca web` starts a user-level singleton Web service in the background and opens the browser. The default port is `18765`; Task Mecca does not silently increment to another port. If the Web service is already running, the existing instance and URL are reused. With the default `--host auto`, Task Mecca serves local HTTP on `127.0.0.1:18765` and, when Tailscale is detected, directly serves HTTPS on the Tailscale interface using the same port. The remote URL is `https://<machine>.<tailnet>.ts.net:18765`. Tailscale Serve is not required. Use `--host <ip>` or `--port <port>` to override explicitly. The dashboard is read-only and shows backlog state, subagent workload, lifecycle timing, Needs Attention, and access observations.
 
 
 Web service controls:
@@ -27,6 +27,8 @@ task-mecca web --foreground
 ```
 
 Background state and logs are stored under the user-level `~/.task-mecca/web/` directory. If the default port `18765` is occupied by another program, Task Mecca reports an error instead of silently moving to `18766`; use `--port` when an explicit override is needed.
+
+For direct Tailscale HTTPS, MagicDNS and HTTPS Certificates must be enabled in the Tailscale admin DNS settings. Task Mecca stores the issued certificate under `~/.task-mecca/web/tls/` and renews it only when needed. If HTTPS provisioning is unavailable, `task-mecca web status` reports the reason.
 
 Backlog ledgers are detected automatically under `_task_mecca`. New projects use canonical `data/backlog/`; compatibility remains for names beginning with `backlog`, including `data/backlog_b` and legacy `backlog_b`. Canonical `data/backlog/` has highest priority. The top-bar **Backlog** selector can override the choice; **Auto** restores automatic selection.
 
