@@ -405,7 +405,7 @@ func Run(config Config) error {
             if statusErr!=nil {
                 tlsError=statusErr.Error()
             } else {
-                serveURL,managed,serveErr:=ensureTailscaleServe(dns,port)
+                serveURL,managed,serveErr:=ensureTailscaleServe(dns,tailscaleServeHTTPSPort,port)
                 if serveErr!=nil {
                     tlsError=serveErr.Error()
                 } else {
