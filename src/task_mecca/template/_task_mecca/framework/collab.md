@@ -97,8 +97,9 @@ Codex에서 network access는 filesystem sandbox mode와 별개일 수 있다. `
 ## Project taxonomy / Tags
 
 작업 태그는 `_task_mecca/data/tags/registry.json`의 project-owned taxonomy와 backlog의 `Tags` metadata를 사용한다.
-Agent는 신규 태그 정의 전에 `task-mecca tags resolve/search`로 기존 canonical/alias를 먼저 탐색한다.
-기존 active 태그 assign/remove는 자율 처리할 수 있지만 rename/merge/retire 같은 taxonomy 구조 변경은 영향 범위를 사용자에게 알리고 승인 후 실행한다.
+신규 backlog item은 등록 전에 태그 분류를 기본적으로 수행한다. Agent는 `task-mecca tags resolve/search`로 기존 canonical/alias를 먼저 탐색하고,
+같은 의미가 없으면 신규 canonical tag를 define한 뒤 사용할 수 있다. `Tags: -`는 taxonomy 탐색 후 실제 분류 가치가 없는 경우에만 허용한다.
+기존 active 태그 assign/remove와 의미가 명확한 신규 tag define은 자율 처리할 수 있지만 rename/merge/retire 같은 taxonomy 구조 변경은 영향 범위를 사용자에게 알리고 승인 후 실행한다.
 상태·dependency·Agent assignment를 태그로 중복 표현하지 않는다. 전체 명령과 정책은 `TAGS.md`를 따른다.
 
 ## 사람용 backlog projection
