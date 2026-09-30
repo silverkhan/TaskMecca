@@ -75,6 +75,7 @@ func Coordinate(project,root string,workerCap int) (map[string]any,error) {
     timings,err:=LifecycleTimings(project,root)
     if err!=nil { return nil,err }
     activity:=runtimeActivity(project,rows,timings)
+    workingChanges,workingTreeErr:=workingTreeChanges(project)
     continuityGaps:=[]map[string]any{}
     for _,row:=range rows {
         if row.Location!="active" || row.State!="doing" { continue }
@@ -95,20 +96,40 @@ func Coordinate(project,root string,workerCap int) (map[string]any,error) {
             action="release the worker claim, move the task to hold(user), record resume condition, and surface USER_DECISION_REQUIRED to Root"
         }
         if code=="" { continue }
+        uncommitted:=scopedWorkingTreeChanges(workingChanges,row.Fields["변경범위"])
+        if len(uncommitted)>0 && health!="needs_user" {
+            action="inspect and preserve uncommitted changes before recovery; "+action
+        }
+        recovery:=map[string]any{
+            "continuity_confirmed":false,
+            "requires_live_agent_refresh":true,
+            "requires_fresh_preflight":health!="needs_user",
+            "allowed_outcomes":[]string{"finalize_done","confirmed_fresh_turn","explicit_reassignment","hold_user"},
+            "uncommitted_changes":uncommitted,
+            "uncommitted_change_count":len(uncommitted),
+            "working_tree_check":"ok",
+        }
+        if workingTreeErr!=nil {
+            recovery["working_tree_check"]="unavailable"
+            recovery["working_tree_error"]=workingTreeErr.Error()
+        }
         continuityGaps=append(continuityGaps,map[string]any{
             "id":row.ID,
             "title":row.Title,
             "agent":row.Fields["Agent"],
+            "change_scope":row.Fields["변경범위"],
             "health":health,
             "runtime_state":signal["runtime_state"],
             "code":code,
             "action":action,
+            "recovery":recovery,
             "last_activity_at":signal["last_activity_at"],
             "last_activity_source":signal["last_activity_source"],
         })
     }
 
     doing:=[]map[string]any{}
+    activeWorkerCount:=0
     for _,row:=range rows {
         if row.Location!="active" || row.State!="doing" { continue }
         lifecycle:=map[string]any{}
@@ -117,11 +138,15 @@ func Coordinate(project,root string,workerCap int) (map[string]any,error) {
         var elapsedSeconds any=nil
         if value,ok:=lifecycle["elapsed"].(string); ok { elapsed=value }
         if value,ok:=lifecycle["elapsed_seconds"]; ok { elapsedSeconds=value }
+        health:="runtime_unknown"
+        if signal:=activity[row.ID]; signal!=nil { health=toString(signal["health"]) }
+        if continuityHealthConsumesWorkerSlot(health) { activeWorkerCount++ }
         doing=append(doing,map[string]any{
             "id":row.ID,
             "title":row.Title,
             "agent":row.Fields["Agent"],
             "change_scope":row.Fields["변경범위"],
+            "runtime_health":health,
             "runtime_metadata":runtimeFromFields(row.Fields),
             "elapsed":elapsed,
             "elapsed_seconds":elapsedSeconds,
@@ -147,11 +172,14 @@ func Coordinate(project,root string,workerCap int) (map[string]any,error) {
     readyItems:=enrich(readyReport["ready"])
     blockedItems:=enrich(readyReport["blocked"])
     if workerCap<1 { workerCap=1 }
-    activeCount:=len(doing)
-    candidateSlots:=workerCap-activeCount
+    backlogDoingCount:=len(doing)
+    candidateSlots:=workerCap-activeWorkerCount
     if candidateSlots<0 { candidateSlots=0 }
+    recoveryToReview:=len(continuityGaps)
+    if recoveryToReview>candidateSlots { recoveryToReview=candidateSlots }
+    readySlots:=candidateSlots-recoveryToReview
     readyToReview:=len(readyItems)
-    if readyToReview>candidateSlots { readyToReview=candidateSlots }
+    if readyToReview>readySlots { readyToReview=readySlots }
     holdReview:=HoldReview(rows)
     base:=root
     if base=="" { base=filepath.Join(project,"_task_mecca") }
@@ -161,9 +189,10 @@ func Coordinate(project,root string,workerCap int) (map[string]any,error) {
         "snapshot_at":time.Now().Format("2006-01-02T15:04:05.999999999-07:00"),
         "source":"git_backlog",
         "root":base,
-        "scheduling_needed":len(readyItems)>0,
+        "scheduling_needed":len(readyItems)>0 || len(continuityGaps)>0,
         "controller_review_needed":holdReview["review_needed"].(bool) || len(continuityGaps)>0,
         "continuity_gaps":continuityGaps,
+        "recovery_queue":continuityGaps,
         "hold_review":holdReview,
         "ready":readyItems,
         "blocked":blockedItems,
@@ -172,12 +201,15 @@ func Coordinate(project,root string,workerCap int) (map[string]any,error) {
         "scope_conflicts":ScopeConflicts(rows),
         "parallel_fill":map[string]any{
             "implementation_worker_cap":workerCap,
-            "active_doing":activeCount,
+            "active_doing":activeWorkerCount,
+            "backlog_doing":backlogDoingCount,
+            "recovery_count":len(continuityGaps),
             "candidate_slots":candidateSlots,
+            "recovery_to_review_this_pass":recoveryToReview,
             "ready_count":len(readyItems),
             "ready_to_review_this_pass":readyToReview,
-            "review_required":readyToReview>0,
-            "meaning":"inspect/allocate up to this many ready tasks before waiting; final dispatch still requires live-state and scope checks",
+            "review_required":recoveryToReview>0 || readyToReview>0,
+            "meaning":"resolve continuity recovery first, then inspect/allocate ready tasks before waiting; final dispatch still requires fresh preflight, live-state and scope checks",
         },
         "worker_naming":map[string]any{
             "prefix":"/root/controller/",
@@ -203,6 +235,9 @@ func Coordinate(project,root string,workerCap int) (map[string]any,error) {
             "individual_completion":"settle original acceptance independently of queue drain; worker DONE alone is not proof",
             "continuity_gap_invariant":"a doing task must not remain ownerless after a worker turn ends; completed/missing/user-wait runtime signals require explicit finalize, fresh re-dispatch/reassignment, or hold(user)+Root escalation before the Controller can consider the pass settled",
             "self_delegation_forbidden":"a worker cannot create continuity by delegating follow-up work to itself; only a confirmed fresh runtime turn or explicit Controller reassignment counts as resumed execution",
+            "orphaned_doing_does_not_consume_slot":"doing tasks whose worker is completed, missing, or waiting for user are recovery work, not active implementation workers",
+            "recovery_precedes_parallel_fill":"continuity recovery is reviewed before new ready work; dispatch recovery requires fresh preflight and confirmed live-agent state",
+            "uncommitted_recovery_evidence":"when a continuity gap overlaps declared change scope, uncommitted files are surfaced and must be preserved/inspected before finalize or reassignment",
             "hold_review_is_advisory":"review this event, not automatic readiness/spawn or a command to keep draining unchanged external waits",
         },
     },nil
