@@ -329,6 +329,12 @@ func DashboardSnapshot(project,root string,recentDoneLimit int) (map[string]any,
         }
     }
     sort.Slice(attention,func(i,j int)bool{return toString(attention[i]["id"])<toString(attention[j]["id"])})
+    notificationEvents,notificationErr:=NotificationEvents(project,allItems)
+    if notificationErr!=nil {
+        diagnostics=append(diagnostics,map[string]string{"component":"notification_events","error":notificationErr.Error()})
+        notificationEvents=[]map[string]any{}
+    }
+
     activeIDs:=[]string{}
     for id,item:=range allItems {
         state:=toString(item["file_state"])
@@ -343,7 +349,7 @@ func DashboardSnapshot(project,root string,recentDoneLimit int) (map[string]any,
         "backlog_presence":presence,"tree_rows":treeRows,"all_items":allItems,
         "active_ids":activeIDs,"unrecognized_files":unrecognized,"done_items":completed,
         "health":health,"workload":workload,"task_timings":timings,"activity":activity,
-        "hold_review":hold,"access":access,"attention":attention,"diagnostics":diagnostics,
+        "hold_review":hold,"access":access,"attention":attention,"notification_events":notificationEvents,"diagnostics":diagnostics,
         "counts":map[string]any{
             "working":countItemsByFileState(allItems,"doing"),"ready":len(readyIDs),
             "blocked":len(blocked),"hold":countItemsByFileState(allItems,"hold"),
