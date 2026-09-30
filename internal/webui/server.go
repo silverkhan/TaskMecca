@@ -1,6 +1,7 @@
 package webui
 
 import (
+    "context"
     "encoding/json"
     "fmt"
     "io/fs"
@@ -110,6 +111,10 @@ func selectionPayload(ctx context, selected string, candidates []backlog.Candida
 }
 
 func Handler(project,root,version string) (http.Handler,error) {
+    return handler(project,root,version,nil)
+}
+
+func handler(project,root,version string,restartCh chan<- maintenance.UpgradeResult) (http.Handler,error) {
     if _,err:=webContext(project,root); err!=nil { return nil,err }
     mux:=http.NewServeMux()
 
@@ -129,6 +134,10 @@ func Handler(project,root,version string) (http.Handler,error) {
         w.WriteHeader(status)
         _,_=w.Write(body)
     }
+
+    mux.HandleFunc("/api/health",func(w http.ResponseWriter,r *http.Request) {
+        writeJSON(w,map[string]any{"ok":true,"version":version},200)
+    })
 
     mux.HandleFunc("/api/backlog-folders",func(w http.ResponseWriter,r *http.Request) {
         activeProject:=projectFor(r)
@@ -190,6 +199,9 @@ func Handler(project,root,version string) (http.Handler,error) {
         result,err:=maintenance.Upgrade(version)
         if err!=nil { writeJSON(w,map[string]any{"error":err.Error()},500); return }
         writeJSON(w,result,200)
+        if result.RestartRequired && restartCh!=nil {
+            select { case restartCh<-result: default: }
+        }
     })
 
     mux.HandleFunc("/api/migrate",func(w http.ResponseWriter,r *http.Request) {
@@ -265,8 +277,41 @@ func openBrowser(url string) {
     _=cmd.Start()
 }
 
+func scheduleWebRestart(result maintenance.UpgradeResult,config Config,port int) error {
+    exe:=result.Executable
+    if exe=="" {
+        var err error
+        exe,err=os.Executable()
+        if err!=nil { return err }
+        exe,_=filepath.EvalSymlinks(exe)
+    }
+    args:=[]string{"web","--project",config.Project,"--port",fmt.Sprint(port),"--no-open"}
+    if config.Root!="" { args=append(args,"--root",config.Root) }
+
+    if runtime.GOOS=="windows" {
+        helper,err:=os.CreateTemp("","task-mecca-web-restart-*.cmd")
+        if err!=nil { return err }
+        helperPath:=helper.Name()
+        body:=fmt.Sprintf("@echo off\r\n:wait\r\nif exist \"%s.new\" (timeout /t 1 /nobreak >nul & goto wait)\r\ntimeout /t 1 /nobreak >nul\r\nstart \"\" /D \"%s\" \"%s\" web --project \"%s\" --port %d --no-open%s\r\ndel \"%%~f0\"\r\n",
+            exe,config.Project,exe,config.Project,port,func()string{ if config.Root!="" { return " --root \""+strings.ReplaceAll(config.Root,"\"","\\"")+"\"" }; return "" }())
+        if _,err=helper.WriteString(body); err!=nil { _=helper.Close(); return err }
+        if err=helper.Close(); err!=nil { return err }
+        cmd:=exec.Command("cmd","/C","start","\"Task Mecca Web Restart\"","/MIN",helperPath)
+        cmd.Dir=config.Project
+        return cmd.Start()
+    }
+
+    shellArgs:=append([]string{"-c","sleep 1; exec \"$@\"" ,"task-mecca-web-restart",exe},args...)
+    cmd:=exec.Command("sh",shellArgs...)
+    cmd.Dir=config.Project
+    cmd.Stdout=os.Stdout
+    cmd.Stderr=os.Stderr
+    return cmd.Start()
+}
+
 func Run(config Config) error {
-    handler,err:=Handler(config.Project,config.Root,config.Version)
+    restartCh:=make(chan maintenance.UpgradeResult,1)
+    handler,err:=handler(config.Project,config.Root,config.Version,restartCh)
     if err!=nil { return err }
     listener,port,err:=findListener("127.0.0.1",config.Port)
     if err!=nil { return err }
@@ -291,6 +336,17 @@ func Run(config Config) error {
     }
     if config.OpenBrowser { go func(){ time.Sleep(200*time.Millisecond); openBrowser(url) }() }
     server:=&http.Server{Handler:handler,ReadHeaderTimeout:5*time.Second}
+    go func(){
+        result:=<-restartCh
+        time.Sleep(250*time.Millisecond)
+        if restartErr:=scheduleWebRestart(result,config,port); restartErr!=nil {
+            fmt.Fprintln(os.Stderr,"Task Mecca Web restart failed:",restartErr)
+            return
+        }
+        ctx,cancel:=context.WithTimeout(context.Background(),2*time.Second)
+        defer cancel()
+        _=server.Shutdown(ctx)
+    }()
     err=server.Serve(listener)
     if err==http.ErrServerClosed { return nil }
     return err
