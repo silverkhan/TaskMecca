@@ -10,6 +10,7 @@ const state = {
   detail: null,
   raw: false,
   lastFetch: 0,
+  lastHubFetch: 0,
   theme: localStorage.getItem('task-mecca-theme') || 'system',
   manual: null,
   manualTab: 'quick',
@@ -1092,22 +1093,55 @@ async function loadManual(language = state.language, force = false) {
     state.manualByLanguage[language]={readme:t('manualUnavailable'),session_guide:t('manualUnavailable')};
   }
 }
-async function refresh() {
+let refreshInFlight=null;
+let refreshQueued=false;
+let hubFetchInFlight=null;
+
+async function refreshHub(force=false) {
+  const fresh=state.hub && Date.now()-state.lastHubFetch<60000;
+  if(!force && fresh)return state.hub;
+  if(hubFetchInFlight)return hubFetchInFlight;
+  hubFetchInFlight=(async()=>{
+    try {
+      const r=await fetch('/api/hub',{cache:'no-store'});
+      if(!r.ok)throw new Error(`HTTP ${r.status}`);
+      state.hub=await r.json();
+      state.lastHubFetch=Date.now();
+      return state.hub;
+    } finally {
+      hubFetchInFlight=null;
+    }
+  })();
+  return hubFetchInFlight;
+}
+
+async function refreshOnce() {
+  const targetProject=state.project;
+  const targetView=state.view;
   const params=new URLSearchParams();
   if(state.backlog)params.set('backlog',state.backlog);
-  if(state.project)params.set('project',state.project);
+  if(targetProject)params.set('project',targetProject);
   const qs=params.toString()?`?${params}`:'';
-  try {
-    const hubR=await fetch('/api/hub',{cache:'no-store'});
-    if(hubR.ok) state.hub=await hubR.json();
-  } catch(_) {}
-  if(state.view==='hub'){
-    state.snapshot=null;
-    state.loadError='';
-    $('#connectionDot').style.background='var(--ok)';
-    render();
+
+  if(targetView==='hub'){
+    try {
+      await refreshHub(true);
+      if(state.view!=='hub')return;
+      state.snapshot=null;
+      state.loadError='';
+      $('#connectionDot').style.background='var(--ok)';
+      render();
+    } catch(e) {
+      if(state.view!=='hub')return;
+      state.snapshot=null;
+      state.loadError=String(e?.message||e||'Unknown error');
+      $('#connectionDot').style.background='var(--danger)';
+      render();
+    }
     return;
   }
+
+  refreshHub(false).catch(()=>{});
   try {
     const r=await fetch('/api/snapshot'+qs,{cache:'no-store'});
     if(!r.ok){
@@ -1115,7 +1149,9 @@ async function refresh() {
       try { const body=await r.json(); detail=body.error||''; } catch(_) {}
       throw new Error(detail||`HTTP ${r.status}`);
     }
-    state.snapshot=await r.json();
+    const snapshot=await r.json();
+    if(targetProject!==state.project || state.view==='hub')return;
+    state.snapshot=snapshot;
     processTaskNotifications(state.snapshot);
     state.loadError='';
     state.lastFetch=Date.now();
@@ -1128,11 +1164,29 @@ async function refresh() {
     await loadManual();
     render();
   } catch(e) {
+    if(targetProject!==state.project || state.view==='hub')return;
     state.snapshot=null;
     state.loadError=String(e?.message||e||'Unknown error');
     $('#connectionDot').style.background='var(--danger)';
     $('#snapshotAge').textContent=t('disconnected');
     render();
+  }
+}
+
+async function refresh() {
+  if(refreshInFlight){
+    refreshQueued=true;
+    return refreshInFlight;
+  }
+  refreshInFlight=refreshOnce();
+  try {
+    await refreshInFlight;
+  } finally {
+    refreshInFlight=null;
+    if(refreshQueued){
+      refreshQueued=false;
+      queueMicrotask(()=>refresh());
+    }
   }
 }
 function route() {
