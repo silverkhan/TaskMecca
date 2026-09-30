@@ -1317,6 +1317,14 @@ async function loadManual(language = state.language, force = false) {
 let refreshInFlight=null;
 let refreshQueued=false;
 let hubFetchInFlight=null;
+let listRefreshInFlight=null;
+let listRefreshQueued=false;
+
+function listNotificationPayload(data) {
+  const current={...(data?.attention_items||{})};
+  (data?.items||[]).forEach(task=>{current[task.id]=task});
+  return {all_items:current,notification_events:data?.notification_events||[],attention:data?.attention||[]};
+}
 
 async function refreshHub(force=false) {
   const fresh=state.hub && Date.now()-state.lastHubFetch<60000;
@@ -1336,6 +1344,109 @@ async function refreshHub(force=false) {
   return hubFetchInFlight;
 }
 
+function listQueryString() {
+  const params=new URLSearchParams();
+  if(state.backlog)params.set('backlog',state.backlog);
+  if(state.project)params.set('project',state.project);
+  params.set('page',String(Math.max(1,state.listPage||1)));
+  params.set('page_size',String(effectiveListPageSize()));
+  if(!state.statusFilters.includes('all'))params.set('status',state.statusFilters.join(','));
+  if(state.tagFilters.length)params.set('tags',state.tagFilters.join(','));
+  if(state.query.trim())params.set('q',state.query.trim());
+  params.set('sort',state.listSort||'id_desc');
+  return params.toString();
+}
+
+async function refreshList() {
+  if(!state.project)return;
+  if(listRefreshInFlight){
+    listRefreshQueued=true;
+    return listRefreshInFlight;
+  }
+  const targetProject=state.project;
+  const targetBacklog=state.backlog;
+  listRefreshInFlight=(async()=>{
+    try {
+      const r=await fetch('/api/backlog/tasks?'+listQueryString(),{cache:'no-store'});
+      if(!r.ok){
+        let detail=''; try { const body=await r.json(); detail=body.error||''; } catch(_) {}
+        throw new Error(detail||`HTTP ${r.status}`);
+      }
+      const data=await r.json();
+      if(targetProject!==state.project||targetBacklog!==state.backlog)return;
+      state.listData=data;
+      state.loadError='';
+      state.lastFetch=Date.now();
+      state.listPage=Math.max(1,Number(data.page)||1);
+      processTaskNotifications(listNotificationPayload(data));
+      const candidates=data?.backlog_selection?.candidates||[];
+      if(state.backlog && !candidates.some(x=>x.path===state.backlog)){
+        state.backlog='';
+        localStorage.removeItem('task-mecca-backlog-folder');
+      }
+      $('#connectionDot').style.background='var(--ok)';
+      ensureAttentionStream();
+      if(state.view==='backlog')render();
+    } catch(e) {
+      if(targetProject!==state.project)return;
+      state.loadError=String(e?.message||e||'Unknown error');
+      $('#connectionDot').style.background='var(--danger)';
+      if(!state.listData)render();
+    } finally {
+      listRefreshInFlight=null;
+      if(listRefreshQueued){
+        listRefreshQueued=false;
+        queueMicrotask(()=>refreshList());
+      }
+    }
+  })();
+  return listRefreshInFlight;
+}
+
+function closeAttentionStream() {
+  if(state.eventSource){ try{state.eventSource.close()}catch(_){} }
+  state.eventSource=null;
+  state.eventStreamKey='';
+}
+
+function ensureAttentionStream() {
+  if(!state.project||typeof EventSource==='undefined')return;
+  const params=new URLSearchParams();
+  params.set('project',state.project);
+  if(state.backlog)params.set('backlog',state.backlog);
+  const key=state.project+'|'+state.backlog;
+  if(state.eventSource&&state.eventStreamKey===key&&state.eventSource.readyState!==EventSource.CLOSED)return;
+  closeAttentionStream();
+  const source=new EventSource('/api/events?'+params.toString());
+  state.eventSource=source;
+  state.eventStreamKey=key;
+  source.addEventListener('attention',event=>{
+    if(state.eventStreamKey!==key)return;
+    let payload=null;
+    try{payload=JSON.parse(event.data)}catch(_){return}
+    processTaskNotifications(payload);
+    if(state.listData){
+      state.listData.attention=payload.attention||[];
+      state.listData.attention_items=payload.all_items||{};
+      state.listData.notification_events=payload.notification_events||[];
+      state.listData.counts=state.listData.counts||{};
+      state.listData.counts.attention=(payload.attention||[]).length;
+      state.listData.counts.needs_action=(payload.attention||[]).filter(x=>x.type!=='quiet').length;
+    }
+    if(state.snapshot){
+      state.snapshot.attention=payload.attention||[];
+      state.snapshot.notification_events=payload.notification_events||[];
+      state.snapshot.all_items={...(state.snapshot.all_items||{}),...(payload.all_items||{})};
+      state.snapshot.counts=state.snapshot.counts||{};
+      state.snapshot.counts.attention=(payload.attention||[]).length;
+    }
+    if(state.detail&&payload.all_items?.[state.detail])loadTaskDetail(state.detail);
+    if(state.view==='backlog'&&!state.detail)refreshList();
+    else if(state.view==='attention')render();
+    else nav();
+  });
+}
+
 async function refreshOnce() {
   const targetProject=state.project;
   const targetView=state.view;
@@ -1345,20 +1456,30 @@ async function refreshOnce() {
   const qs=params.toString()?`?${params}`:'';
 
   if(targetView==='hub'){
+    closeAttentionStream();
     try {
       await refreshHub(true);
       if(state.view!=='hub')return;
       state.snapshot=null;
+      state.listData=null;
       state.loadError='';
       $('#connectionDot').style.background='var(--ok)';
       render();
     } catch(e) {
       if(state.view!=='hub')return;
       state.snapshot=null;
+      state.listData=null;
       state.loadError=String(e?.message||e||'Unknown error');
       $('#connectionDot').style.background='var(--danger)';
       render();
     }
+    return;
+  }
+
+  if(targetView==='backlog'){
+    refreshHub(false).catch(()=>{});
+    await refreshList();
+    if(state.detail)await loadTaskDetail(state.detail);
     return;
   }
 
@@ -1383,6 +1504,7 @@ async function refreshOnce() {
     }
     $('#connectionDot').style.background='var(--ok)';
     await loadManual();
+    ensureAttentionStream();
     render();
   } catch(e) {
     if(targetProject!==state.project || state.view==='hub')return;
