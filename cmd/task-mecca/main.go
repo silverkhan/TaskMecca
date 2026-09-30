@@ -294,8 +294,8 @@ func run(args []string) int {
                     if matched:=fmt.Sprint(report["matched"]); matched!="" && matched!=row.Canonical { fmt.Println("matched: "+matched) }
                 } else { emitJSON(report) }
             }
-        case "tasks":
-            if len(positional)!=2 { fmt.Fprintln(os.Stderr,"tags tasks requires an expression (AND=comma, OR=pipe)"); return 2 }
+        case "tasks","query":
+            if len(positional)!=2 { fmt.Fprintln(os.Stderr,"tags tasks/query requires an expression (AND=comma, OR=pipe)"); return 2 }
             var rows []map[string]any
             rows,err=backlog.TagTasks(root,rootOption,positional[1])
             if err==nil {
@@ -310,6 +310,32 @@ func run(args []string) int {
             if err==nil {
                 if jsonOutput { emitJSON(rows) } else { printTagStats(rows) }
             }
+        case "catalog":
+            if len(positional)!=1 { fmt.Fprintln(os.Stderr,"tags catalog takes no arguments"); return 2 }
+            var report map[string]any
+            report,err=backlog.TagCatalogReport(root,rootOption)
+            if err==nil {
+                if jsonOutput { emitJSON(report) } else {
+                    if rows,ok:=report["registry"].([]backlog.TagDefinition); ok { printTagDefinitions(rows) }
+                    if stats,ok:=report["stats"].([]backlog.TagStat); ok { fmt.Println(); printTagStats(stats) }
+                }
+            }
+        case "assign":
+            if len(positional)!=3 { fmt.Fprintln(os.Stderr,"tags assign <task-id> <tag>"); return 2 }
+            var report map[string]any
+            report,err=backlog.TaskTagAdd(root,rootOption,positional[1],positional[2])
+            if err==nil { if jsonOutput { emitJSON(report) } else { fmt.Printf("%s: %s\n",positional[1],joinAnyStrings(report["tags"])) } }
+        case "remove":
+            if len(positional)!=3 { fmt.Fprintln(os.Stderr,"tags remove <task-id> <tag>"); return 2 }
+            var report map[string]any
+            report,err=backlog.TaskTagRemove(root,rootOption,positional[1],positional[2])
+            if err==nil { if jsonOutput { emitJSON(report) } else { fmt.Printf("%s: %s\n",positional[1],joinAnyStrings(report["tags"])) } }
+        case "set":
+            if len(positional)<2 { fmt.Fprintln(os.Stderr,"tags set <task-id> [tag...]"); return 2 }
+            values:=expandTagArgs(positional[2:])
+            var report map[string]any
+            report,err=backlog.TaskTagSet(root,rootOption,positional[1],values)
+            if err==nil { if jsonOutput { emitJSON(report) } else { fmt.Printf("%s: %s\n",positional[1],joinAnyStrings(report["tags"])) } }
         case "define":
             if len(positional)<2 || len(positional)>4 { fmt.Fprintln(os.Stderr,"tags define <namespace:name> [description] [alias1,alias2]"); return 2 }
             description:=""; aliases:=""
@@ -340,7 +366,7 @@ func run(args []string) int {
                     if from,ok:=report["from"]; ok { fmt.Printf("%v -> %v · tasks updated: %v\n",from,report["to"],report["tasks_updated"]) } else { fmt.Printf("%v · %v\n",report["tag"],report["status"]) }
                 }
             }
-        case "rebuild","catalog":
+        case "rebuild":
             if len(positional)!=1 { fmt.Fprintln(os.Stderr,"tags rebuild takes no arguments"); return 2 }
             var index backlog.TagIndex
             index,err=backlog.RebuildTagIndex(root,rootOption)
@@ -348,7 +374,7 @@ func run(args []string) int {
                 if jsonOutput { emitJSON(index) } else { fmt.Printf("tag index rebuilt: %d tasks · %d tags\n",len(index.Tasks),len(index.Stats)) }
             }
         default:
-            fmt.Fprintln(os.Stderr,"unknown tags action: "+action+" (use list, search, discover, show, resolve, tasks, stats, define, rename, merge, retire, rebuild)")
+            fmt.Fprintln(os.Stderr,"unknown tags action: "+action+" (use list, search, discover, show, resolve, tasks, query, stats, catalog, define, assign, remove, set, rename, merge, retire, rebuild)")
             return 2
         }
     case "task":
