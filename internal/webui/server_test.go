@@ -150,3 +150,16 @@ func TestManagedStopEndpointRequiresControlToken(t *testing.T) {
 func TestDefaultWebPortIsDedicated(t *testing.T) {
     if DefaultPort!=18765 { t.Fatalf("DefaultPort=%d",DefaultPort) }
 }
+
+
+func TestNormalizeManagedHostPromotesLegacyTailscaleIPToAuto(t *testing.T) {
+    if got:=NormalizeManagedHost("100.100.218.126"); got!="auto" {
+        t.Fatalf("NormalizeManagedHost tailscale=%q",got)
+    }
+    if got:=NormalizeManagedHost("127.0.0.1"); got!="127.0.0.1" {
+        t.Fatalf("NormalizeManagedHost localhost=%q",got)
+    }
+    if got:=NormalizeManagedHost("auto"); got!="auto" {
+        t.Fatalf("NormalizeManagedHost auto=%q",got)
+    }
+}
