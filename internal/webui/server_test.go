@@ -32,6 +32,8 @@ func TestHandlerServesDashboardAPIsAndAssets(t *testing.T) {
         contentType string
     }{
         {"/api/backlog-folders",200,"application/json"},
+        {"/api/revision",200,"application/json"},
+        {"/api/version",200,"application/json"},
         {"/api/snapshot",200,"application/json"},
         {"/api/tasks/A-1",200,"application/json"},
         {"/api/manual?lang=en",200,"application/json"},
