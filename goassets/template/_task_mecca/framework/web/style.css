@@ -302,3 +302,22 @@
 .upgrade-restart p{max-width:520px;margin:0;color:var(--muted);font-size:12px;line-height:1.6}
 .upgrade-spinner{width:34px;height:34px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:task-mecca-spin .8s linear infinite}
 @keyframes task-mecca-spin{to{transform:rotate(360deg)}}
+
+/* Migration Root-session resync modal */
+.migration-resync-overlay{position:fixed;inset:0;z-index:120;background:rgba(0,0,0,.36);backdrop-filter:blur(3px);display:grid;place-items:center;padding:24px}
+.migration-resync-modal{width:min(760px,calc(100vw - 32px));max-height:min(82vh,760px);overflow:auto;border:1px solid var(--border);border-radius:14px;background:var(--surface);box-shadow:0 28px 80px rgba(0,0,0,.28);padding:20px}
+.migration-resync-head{display:flex;align-items:flex-start;justify-content:space-between;gap:18px}
+.migration-resync-head h2{margin:5px 0 0;font-size:22px;letter-spacing:-.02em}
+.migration-resync-close{width:32px;height:32px;border:0;border-radius:8px;background:transparent;color:var(--muted);font-size:22px;cursor:pointer}
+.migration-resync-close:hover{background:var(--surface2);color:var(--text)}
+.migration-resync-summary{margin:14px 0 16px;color:var(--muted);font-size:13px;line-height:1.6}
+.migration-resync-files{padding:12px 14px;border:1px solid var(--border);border-radius:9px;background:var(--surface2)}
+.migration-resync-files strong{display:block;margin-bottom:7px;font-size:11px}
+.migration-resync-files div{display:flex;flex-wrap:wrap;gap:6px}
+.migration-resync-files code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10px;padding:3px 6px;border-radius:6px;background:var(--surface)}
+.migration-resync-prompt{margin-top:16px}
+.migration-resync-label{margin-bottom:7px;font-size:11px;font-weight:700;color:var(--muted)}
+.migration-resync-prompt .copy-code-wrap{margin:0}
+.migration-resync-prompt pre{max-height:310px;white-space:pre-wrap}
+.migration-resync-actions{display:flex;justify-content:flex-end;margin-top:16px}
+@media(max-width:680px){.migration-resync-overlay{padding:12px}.migration-resync-modal{width:100%;max-height:88vh;padding:16px}.migration-resync-head h2{font-size:19px}}
