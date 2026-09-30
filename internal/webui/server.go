@@ -1,7 +1,7 @@
 package webui
 
 import (
-    "context"
+    stdcontext "context"
     "encoding/json"
     "fmt"
     "io/fs"
@@ -345,7 +345,7 @@ func Run(config Config) error {
             fmt.Fprintln(os.Stderr,"Task Mecca Web restart failed:",restartErr)
             return
         }
-        ctx,cancel:=context.WithTimeout(context.Background(),2*time.Second)
+        ctx,cancel:=stdcontext.WithTimeout(stdcontext.Background(),2*time.Second)
         defer cancel()
         _=server.Shutdown(ctx)
     }()
