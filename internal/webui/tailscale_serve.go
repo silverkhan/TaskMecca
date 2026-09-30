@@ -28,12 +28,13 @@ type tailscaleServeStatus struct {
 
 type tailscaleServeOwnership struct {
     DNSName string `json:"dns_name"`
-    Port int `json:"port"`
+    HTTPSPort int `json:"https_port"`
+    BackendPort int `json:"backend_port"`
     Target string `json:"target"`
 }
 
-func tailscaleServeTarget(port int) string {
-    return fmt.Sprintf("http://127.0.0.1:%d",port)
+func tailscaleServeTarget(backendPort int) string {
+    return fmt.Sprintf("http://127.0.0.1:%d",backendPort)
 }
 
 func tailscaleServeOwnershipPath() string {
@@ -57,9 +58,9 @@ func readTailscaleServeStatus() (tailscaleServeStatus,error) {
     return status,nil
 }
 
-func serveConfigState(status tailscaleServeStatus,dns string,port int) (matching bool,occupied bool) {
-    portKey:=strconv.Itoa(port)
-    target:=tailscaleServeTarget(port)
+func serveConfigState(status tailscaleServeStatus,dns string,httpsPort,backendPort int) (matching bool,occupied bool) {
+    portKey:=strconv.Itoa(httpsPort)
+    target:=tailscaleServeTarget(backendPort)
     hostPort:=dns+":"+portKey
 
     tcp,tcpExists:=status.TCP[portKey]
@@ -91,27 +92,33 @@ func writeServeOwnership(owned tailscaleServeOwnership) error {
     return os.Rename(tmp,tailscaleServeOwnershipPath())
 }
 
-func ownershipMatches(dns string,port int) bool {
+func ownershipMatches(dns string,httpsPort,backendPort int) bool {
     owned,ok:=readServeOwnership()
     if !ok { return false }
-    return owned.DNSName==dns && owned.Port==port && strings.TrimRight(owned.Target,"/")==tailscaleServeTarget(port)
+    return owned.DNSName==dns &&
+        owned.HTTPSPort==httpsPort &&
+        owned.BackendPort==backendPort &&
+        strings.TrimRight(owned.Target,"/")==tailscaleServeTarget(backendPort)
 }
 
-func ensureTailscaleServe(dns string,port int) (url string,managed bool,err error) {
+func ensureTailscaleServe(dns string,httpsPort,backendPort int) (url string,managed bool,err error) {
     if dns=="" { return "",false,fmt.Errorf("Tailscale DNS name is unavailable") }
     status,err:=readTailscaleServeStatus()
     if err!=nil { return "",false,err }
 
-    matching,occupied:=serveConfigState(status,dns,port)
+    matching,occupied:=serveConfigState(status,dns,httpsPort,backendPort)
     if matching {
-        return fmt.Sprintf("https://%s:%d/",dns,port),ownershipMatches(dns,port),nil
+        if httpsPort==443 {
+        return fmt.Sprintf("https://%s/",dns),ownershipMatches(dns,httpsPort,backendPort),nil
+    }
+    return fmt.Sprintf("https://%s:%d/",dns,httpsPort),ownershipMatches(dns,httpsPort,backendPort),nil
     }
     if occupied {
-        return "",false,fmt.Errorf("Tailscale Serve port %d is already configured for another service",port)
+        return "",false,fmt.Errorf("Tailscale Serve HTTPS port %d is already configured for another service",httpsPort)
     }
 
-    target:=tailscaleServeTarget(port)
-    cmd,err:=tailscaleCommand("serve","--bg","--yes","--https="+strconv.Itoa(port),target)
+    target:=tailscaleServeTarget(backendPort)
+    cmd,err:=tailscaleCommand("serve","--bg","--yes","--https="+strconv.Itoa(httpsPort),target)
     if err!=nil { return "",false,err }
     output,cmdErr:=cmd.CombinedOutput()
     if cmdErr!=nil {
@@ -122,31 +129,34 @@ func ensureTailscaleServe(dns string,port int) (url string,managed bool,err erro
 
     status,err=readTailscaleServeStatus()
     if err!=nil { return "",false,err }
-    matching,_=serveConfigState(status,dns,port)
+    matching,_=serveConfigState(status,dns,httpsPort,backendPort)
     if !matching {
         msg:=strings.TrimSpace(string(output))
         if msg!="" {
-            return "",false,fmt.Errorf("Tailscale Serve command completed but port %d was not registered: %s",port,msg)
+            return "",false,fmt.Errorf("Tailscale Serve command completed but HTTPS port %d was not registered: %s",httpsPort,msg)
         }
-        return "",false,fmt.Errorf("Tailscale Serve command completed but port %d was not registered",port)
+        return "",false,fmt.Errorf("Tailscale Serve command completed but HTTPS port %d was not registered",httpsPort)
     }
 
-    owned:=tailscaleServeOwnership{DNSName:dns,Port:port,Target:target}
+    owned:=tailscaleServeOwnership{DNSName:dns,HTTPSPort:httpsPort,BackendPort:backendPort,Target:target}
     if err:=writeServeOwnership(owned); err!=nil {
         return "",false,fmt.Errorf("Tailscale Serve configured but ownership state could not be saved: %w",err)
     }
-    return fmt.Sprintf("https://%s:%d/",dns,port),true,nil
+    if httpsPort==443 {
+        return fmt.Sprintf("https://%s/",dns),true,nil
+    }
+    return fmt.Sprintf("https://%s:%d/",dns,httpsPort),true,nil
 }
 
-func disableOwnedTailscaleServe(port int) error {
+func disableOwnedTailscaleServe(backendPort int) error {
     owned,ok:=readServeOwnership()
-    if !ok || owned.Port!=port { return nil }
+    if !ok || owned.BackendPort!=backendPort { return nil }
 
     status,err:=readTailscaleServeStatus()
     if err!=nil { return err }
-    matching,_:=serveConfigState(status,owned.DNSName,owned.Port)
+    matching,_:=serveConfigState(status,owned.DNSName,owned.HTTPSPort,owned.BackendPort)
     if matching {
-        cmd,err:=tailscaleCommand("serve","--yes","--https="+strconv.Itoa(port),"off")
+        cmd,err:=tailscaleCommand("serve","--yes","--https="+strconv.Itoa(owned.HTTPSPort),"off")
         if err!=nil { return err }
         output,cmdErr:=cmd.CombinedOutput()
         if cmdErr!=nil {
