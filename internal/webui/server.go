@@ -110,8 +110,7 @@ func selectionPayload(ctx context, selected string, candidates []backlog.Candida
 }
 
 func Handler(project,root,version string) (http.Handler,error) {
-    ctx,err:=webContext(project,root)
-    if err!=nil { return nil,err }
+    if _,err:=webContext(project,root); err!=nil { return nil,err }
     mux:=http.NewServeMux()
 
     projectFor:=func(r *http.Request) string {
