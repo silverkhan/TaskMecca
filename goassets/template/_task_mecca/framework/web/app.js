@@ -373,10 +373,13 @@ function rememberNotification(key) {
   localStorage.setItem('task-mecca-notification-seen',JSON.stringify(seen.slice(-250)));
 }
 async function sendBrowserNotification(kind,task,reason,key) {
-  if(!state.notificationSettings[kind])return;
+  if(notificationSeenSet().has(key))return;
+  if(!state.notificationSettings[kind]){
+    rememberNotification(key);
+    return;
+  }
   const capability=notificationCapability();
   if(capability.mode!=='supported'||Notification.permission!=='granted')return;
-  if(notificationSeenSet().has(key))return;
   const projectName=(state.project||'').split(/[\\/]/).pop()||'Task Mecca';
   const title=kind==='completed'
     ? `${projectName} · ${task.id} 완료`
@@ -402,6 +405,23 @@ function processTaskNotifications(snapshot) {
   if(!state.project||!snapshot)return;
   const current=snapshot.all_items||{};
   const previous=state.previousTasksByProject[state.project]||null;
+  const serverEvents=Array.isArray(snapshot.notification_events)?snapshot.notification_events:[];
+  const completedByServer=new Set();
+
+  serverEvents.forEach(event=>{
+    if(event?.kind!=='completed'||!event.task_id||!event.id)return;
+    completedByServer.add(event.task_id);
+    const task=current[event.task_id]||(snapshot.done_items||[]).find(x=>x.id===event.task_id);
+    if(!task)return;
+    const key=`server:${state.project}:${event.id}`;
+    const eventAt=Date.parse(event.at||'');
+    if(Number.isFinite(eventAt) && Date.now()-eventAt>24*60*60*1000){
+      rememberNotification(key);
+      return;
+    }
+    sendBrowserNotification('completed',task,null,key);
+  });
+
   Object.values(current).forEach(task=>{
     const reason=task.attention_reason||null;
     if(reason){
@@ -409,7 +429,7 @@ function processTaskNotifications(snapshot) {
       const key=`${state.project}:${task.id}:${kind}:${reason.type||''}:${task.updated_at||task.mtime||''}`;
       sendBrowserNotification(kind,task,reason,key);
     }
-    if(previous){
+    if(previous&&!completedByServer.has(task.id)){
       const before=previous[task.id];
       if(task.file_state==='done' && before && before.file_state!=='done'){
         const key=`${state.project}:${task.id}:completed:${task.completed_at||task.mtime||task.updated_at||''}`;
