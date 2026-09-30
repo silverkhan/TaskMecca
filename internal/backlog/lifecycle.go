@@ -37,7 +37,9 @@ func lifecycleGitLog(repo string,pathspecs []string) string {
         lifecycleGitCache.Unlock()
         if ok && cached.head==head { return cached.output }
     }
-    out:=lifecycleGitLog(repo,pathspecs)
+    args:=[]string{"log","--reverse","-M","--format=@@COLLAB@@%cI","--name-status","--"}
+    args=append(args,pathspecs...)
+    out:=gitOutput(repo,args...)
     if head!="" {
         lifecycleGitCache.Lock()
         lifecycleGitCache.entries[key]=lifecycleGitCacheEntry{head:head,output:out}
@@ -130,9 +132,7 @@ func lifecycleTimings(project,root string,rows []Record) (map[string]map[string]
             pathspecs=append(pathspecs,legacyRel)
         }
     }
-    args:=[]string{"log","--reverse","-M","--format=@@COLLAB@@%cI","--name-status","--"}
-    args=append(args,pathspecs...)
-    out:=gitOutput(repo,args...)
+    out:=lifecycleGitLog(repo,pathspecs)
     events:=map[string][]lifecycleEvent{}
     lastState:=map[string]string{}
     stamp:=""
