@@ -211,9 +211,15 @@ func handler(project,root,version string,restartCh chan<- maintenance.UpgradeRes
         if err:=json.NewDecoder(r.Body).Decode(&body); err!=nil { writeJSON(w,map[string]any{"error":"invalid JSON"},400); return }
         target:=strings.TrimSpace(body.Project)
         if !maintenance.IsRegisteredProject(target) { writeJSON(w,map[string]any{"error":"project is not registered"},403); return }
-        if err:=install.Migrate(target,version); err!=nil { writeJSON(w,map[string]any{"error":err.Error()},409); return }
+        result,err:=install.MigrateWithResult(target,version)
+        if err!=nil { writeJSON(w,map[string]any{"error":err.Error()},409); return }
         _=maintenance.RegisterProject(target)
-        writeJSON(w,map[string]any{"ok":true,"project":target,"framework_version":version},200)
+        writeJSON(w,map[string]any{
+            "ok":true,"project":target,"framework_version":version,
+            "from_version":result.FromVersion,"to_version":result.ToVersion,
+            "instruction_refresh_required":result.InstructionRefreshRequired,
+            "changed_instructions":result.ChangedInstructions,
+        },200)
     })
 
     mux.HandleFunc("/api/tasks/",func(w http.ResponseWriter,r *http.Request) {
