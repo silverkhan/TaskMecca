@@ -1,5 +1,9 @@
 const state = {
   snapshot: null,
+  listData: null,
+  detailTask: null,
+  eventSource: null,
+  eventStreamKey: '',
   view: 'hub',
   hub: null,
   loadError: '',
@@ -33,6 +37,10 @@ const state = {
   previousTasksByProject: (()=>{ try { const raw=JSON.parse(localStorage.getItem('task-mecca-previous-tasks')||'{}'); return raw&&typeof raw==='object'?raw:{}; } catch(_) { return {}; } })(),
 };
 
+
+function currentProjectData() {
+  return state.view==='backlog' && state.listData ? state.listData : state.snapshot;
+}
 
 const LANGUAGES = {
   ko: { label: '한국어', locale: 'ko-KR' },
@@ -398,7 +406,7 @@ function runningSeconds(t, key) {
 }
 
 function renderAccess() {
-  const a = state.snapshot?.access || {}, el = $('#accessPill');
+  const a = currentProjectData()?.access || {}, el = $('#accessPill');
   if (!el) return;
   const st = a.status || 'unknown';
   const currentRestriction = Boolean(a.restriction_current);
@@ -415,12 +423,12 @@ function renderAccess() {
 ${a.checked_at ? `${t('accessLastChecked')} ${ago(a.checked_at)}` : t('notChecked')} · ${t('freshDispatch')}`;
 }
 function accessBanner() {
-  const a = state.snapshot?.access || {};
+  const a = currentProjectData()?.access || {};
   if (!a.restriction_current) return '';
   return `<div class="global-access danger"><div><strong>${esc(t('dispatchDisabled'))}</strong><span>${esc(t('enableFullAccess'))}</span></div><code>uv run _task_mecca/collab_tools.py preflight --require-full-access --json</code></div>`;
 }
 function diagnosticBanner() {
-  const rows=state.snapshot?.diagnostics||[];
+  const rows=currentProjectData()?.diagnostics||[];
   if(!rows.length)return '';
   return `<div class="global-access"><div><strong>Partial diagnostics</strong><span>${esc(rows.map(x=>`${x.component}: ${x.error}`).join(' · '))}</span></div></div>`;
 }
@@ -521,7 +529,7 @@ function processTaskNotifications(snapshot) {
       }
     }
   });
-  const compact={};
+  const compact={...(previous||{})};
   Object.values(current).forEach(task=>compact[task.id]={file_state:task.file_state,state:task.state,updated_at:task.updated_at});
   state.previousTasksByProject[state.project]=compact;
   localStorage.setItem('task-mecca-previous-tasks',JSON.stringify(state.previousTasksByProject));
@@ -616,15 +624,19 @@ function switchProject(path) {
   localStorage.setItem('task-mecca-last-project',path);
   state.backlog='';
   state.snapshot=null;
+  state.listData=null;
+  state.detailTask=null;
   state.loadError='';
   state.view='backlog';
   state.detail=null;
   state.listPage=1;
   state.selectedIndex=0;
+  closeAttentionStream();
   localStorage.removeItem('task-mecca-backlog-folder');
   history.pushState({},'',`/?project=${encodeURIComponent(path)}&view=backlog`);
   render();
-  refresh();
+  refreshList();
+  ensureAttentionStream();
 }
 function closeProjectSession(path) {
   state.openProjects=state.openProjects.filter(p=>p!==path);
@@ -632,14 +644,15 @@ function closeProjectSession(path) {
   if(state.project===path){
     const next=state.openProjects[0]||'';
     if(next){ switchProject(next); return; }
-    state.project=''; state.snapshot=null; state.view='hub'; state.detail=null;
+    state.project=''; state.snapshot=null; state.listData=null; state.detailTask=null; closeAttentionStream(); state.view='hub'; state.detail=null;
     history.pushState({},'','/?view=hub'); render(); refresh();
   } else render();
 }
 function renderBacklogPicker() {
   const picker = $('#backlogPicker');
-  if (!picker || !state.snapshot) return;
-  const selection = state.snapshot.backlog_selection || {};
+  const data=currentProjectData();
+  if (!picker || !data) return;
+  const selection = data.backlog_selection || {};
   const candidates = selection.candidates || [];
   const selected = selection.selected || '';
   const selectedCandidate = candidates.find(c => c.path === selected);
@@ -666,11 +679,11 @@ function setTagFilter(tag) {
   state.tagFilters=next;
   state.view='backlog'; state.detail=null; state.selectedIndex=0; state.listPage=1;
   history.pushState({},'',backlogUrl());
-  render();
+  refreshList();
 }
 function clearTagFilters() {
   state.tagFilters=[]; state.listPage=1; state.selectedIndex=0;
-  history.pushState({},'',backlogUrl()); render();
+  history.pushState({},'',backlogUrl()); refreshList();
 }
 function tagChip(tag,clickable=true) {
   return `<button type="button" class="tag-chip ${state.tagFilters.includes(tag)?'active':''}" ${clickable?`data-tag-filter="${esc(tag)}"`:''} title="${esc(tag)}">${esc(tag)}</button>`;
@@ -691,7 +704,7 @@ function setStatusFilter(key) {
   state.selectedIndex = 0;
   state.listPage = 1;
   history.pushState({},'',backlogUrl());
-  render();
+  refreshList();
 }
 function resolveProjectContext() {
   if(state.project)return state.project;
@@ -704,6 +717,9 @@ function navigateView(view) {
   if(view==='hub'){
     state.project='';
     state.snapshot=null;
+    state.listData=null;
+    state.detailTask=null;
+    closeAttentionStream();
     state.loadError='';
     state.view='hub';
     state.detail=null;
@@ -731,7 +747,12 @@ function navigateView(view) {
   params.set('view',view);
   if(state.project)params.set('project',state.project);
   history.pushState({},'',`/?${params.toString()}`);
-  if(needsProject && !state.snapshot){
+  state.detailTask=null;
+  if(view==='backlog'){
+    render();
+    refreshList();
+    ensureAttentionStream();
+  } else if(needsProject){
     render();
     refresh();
   } else {
@@ -739,7 +760,7 @@ function navigateView(view) {
   }
 }
 function nav() {
-  const c = state.snapshot?.counts || {};
+  const c = currentProjectData()?.counts || {};
   const projects=state.hub?.projects||[];
   const byPath=new Map(projects.map(p=>[p.path,p]));
   if(state.project)ensureOpenProject(state.project);
@@ -907,6 +928,7 @@ function matchesStatusFilter(t, key) {
   return true;
 }
 function allRowsForView() {
+  if(state.listData)return Array.isArray(state.listData.items)?state.listData.items:[];
   let items = Object.values(state.snapshot?.all_items || {});
   if (!state.statusFilters.includes('all')) {
     items = items.filter(t => state.statusFilters.some(key => matchesStatusFilter(t,key)));
@@ -928,6 +950,13 @@ function effectiveListPageSize() {
 }
 function pageInfo() {
   const items = allRowsForView();
+  if(state.listData){
+    const page=Math.max(1,Number(state.listData.page)||1);
+    const pages=Math.max(1,Number(state.listData.pages)||1);
+    const pageSize=Math.max(1,Number(state.listData.page_size)||effectiveListPageSize());
+    state.listPage=page;
+    return {items,pageItems:items,page,pages,total:Number(state.listData.total)||0,pageSize};
+  }
   const pageSize = effectiveListPageSize();
   const pages = Math.max(1, Math.ceil(items.length / pageSize));
   state.listPage = Math.min(Math.max(1,state.listPage),pages);
@@ -935,9 +964,10 @@ function pageInfo() {
   return {items, pageItems:items.slice(start,start+pageSize), page:state.listPage, pages, total:items.length, pageSize};
 }
 function statusFilterBar() {
-  const c = state.snapshot?.counts || {};
+  const data=currentProjectData()||{};
+  const c = data.counts || {};
   const defs = [
-    ['all',t('all'),Object.keys(state.snapshot?.all_items || {}).length],
+    ['all',t('all'),c.all??Object.keys(state.snapshot?.all_items || {}).length],
     ['ready',t('ready'),c.ready||0],
     ['doing',t('working'),c.working||0],
     ['hold',t('hold'),c.hold||0],
@@ -947,7 +977,7 @@ function statusFilterBar() {
   return `<div class="status-filter-wrap"><div class="filter-label">${esc(t('status'))}</div><div class="status-filter-bar" role="group" aria-label="${esc(t('status'))}">${defs.map(([k,label,n])=>`<button class="status-filter-btn ${state.statusFilters.includes(k)?'active':''}" data-status-filter="${k}" aria-pressed="${state.statusFilters.includes(k)?'true':'false'}">${esc(label)}<span>${n}</span></button>`).join('')}</div></div>`;
 }
 function tagFilterBar() {
-  const catalog=state.snapshot?.tag_catalog||{}, stats=Array.isArray(catalog.stats)?catalog.stats:[];
+  const catalog=currentProjectData()?.tag_catalog||{}, stats=Array.isArray(catalog.stats)?catalog.stats:[];
   const used=stats.filter(x=>x.total>0);
   const selected=state.tagFilters.map(tag=>tagChip(tag,true)).join('');
   const explorer=state.tagExplorerOpen?tagExplorerPanel(used):'';
@@ -956,7 +986,7 @@ function tagFilterBar() {
 function tagExplorerPanel(stats) {
   const groups={};
   stats.forEach(row=>{(groups[row.namespace]||(groups[row.namespace]=[])).push(row)});
-  const registry=new Map((state.snapshot?.tag_catalog?.registry||[]).map(x=>[x.canonical,x]));
+  const registry=new Map((currentProjectData()?.tag_catalog?.registry||[]).map(x=>[x.canonical,x]));
   return `<div class="tag-explorer">${Object.keys(groups).sort().map(ns=>`<section><h3>${esc(ns.toUpperCase())}</h3><div class="tag-stat-list">${groups[ns].sort((a,b)=>b.total-a.total||a.tag.localeCompare(b.tag)).map(row=>{const def=registry.get(row.tag)||{};return `<button type="button" class="tag-stat-row ${state.tagFilters.includes(row.tag)?'active':''}" data-tag-filter="${esc(row.tag)}"><span><strong>${esc(row.tag.split(':')[1]||row.tag)}</strong><small>${esc(def.description||row.description||'')}</small></span><span class="tag-stat-counts"><b>${row.total||0}</b><small>A ${row.active||0} · H ${row.hold||0} · D ${row.done||0}</small></span></button>`}).join('')}</div></section>`).join('')}</div>`;
 }
 function listControls(info) {
@@ -967,12 +997,13 @@ function listControls(info) {
 }
 
 function listView() {
-  const info = pageInfo(), rows = info.pageItems, c = state.snapshot.counts || {};
+  const data=currentProjectData()||{};
+  const info = pageInfo(), rows = info.pageItems, c = data.counts || {};
   state.selectedIndex = Math.min(Math.max(0,state.selectedIndex), Math.max(0,rows.length-1));
-  const meta = state.snapshot.backlog_selection || {};
+  const meta = data.backlog_selection || {};
   const filterLabel = state.statusFilters.includes('all') ? t('allStatuses') : state.statusFilters.map(stateLabel).join(' + ');
   const head=`<div class="task-list-head"><div>${esc(t('id'))}</div><div>${esc(t('taskColumn'))}</div><div>${esc(t('statusColumn'))}</div><div>${esc(t('agentColumn'))}</div><div>${esc(t('activeColumn'))}</div><div>${esc(t('updatedColumn'))}</div><div></div></div>`;
-  return `<div class="page-head"><div><div class="eyebrow">${esc(state.snapshot.repo||t('repository'))}</div><h1>${esc(t('backlog'))}</h1><p class="summary">${esc(meta.selected ? String(meta.selected).split(/[\/]/).pop() : '')} · ${info.total} ${esc(t('items'))} · ${esc(filterLabel)}</p></div></div><div class="metrics"><div class="metric"><strong>${c.working||0}</strong><span>${esc(t('working'))}</span></div><div class="metric"><strong>${c.ready||0}</strong><span>${esc(t('ready'))}</span></div><div class="metric"><strong>${c.hold||0}</strong><span>${esc(t('hold'))}</span></div><div class="metric"><strong>${c.attention||0}</strong><span>${esc(t('needsAttention'))}</span></div></div>${listControls(info)}${rows.length?`${head}<div class="task-list">${rows.map((task,i)=>{
+  return `<div class="page-head"><div><div class="eyebrow">${esc(data.repo||t('repository'))}</div><h1>${esc(t('backlog'))}</h1><p class="summary">${esc(meta.selected ? String(meta.selected).split(/[\/]/).pop() : '')} · ${info.total} ${esc(t('items'))} · ${esc(filterLabel)}</p></div></div><div class="metrics"><div class="metric"><strong>${c.working||0}</strong><span>${esc(t('working'))}</span></div><div class="metric"><strong>${c.ready||0}</strong><span>${esc(t('ready'))}</span></div><div class="metric"><strong>${c.hold||0}</strong><span>${esc(t('hold'))}</span></div><div class="metric"><strong>${c.attention||0}</strong><span>${esc(t('needsAttention'))}</span></div></div>${listControls(info)}${rows.length?`${head}<div class="task-list">${rows.map((task,i)=>{
     const act=task.activity||{}, h=act.health;
     const time=task.file_state==='doing'?fmtSec(runningSeconds(task,'active')):(task.file_state==='done'?fmtSec(task.active_seconds):'-');
     const hs=humanSummary(task);
@@ -1085,8 +1116,8 @@ function bindDetailInteractions() {
     e.preventDefault(); e.stopPropagation();
     state.detail=null;
     if(!state.tagFilters.includes(btn.dataset.tagFilter))state.tagFilters=[...state.tagFilters,btn.dataset.tagFilter];
-    state.view='backlog'; state.listPage=1; state.selectedIndex=0;
-    history.pushState({},'',backlogUrl()); render();
+    state.view='backlog'; state.detailTask=null; state.listPage=1; state.selectedIndex=0;
+    history.pushState({},'',backlogUrl()); refreshList();
   }));
 }
 function detailView(task) {
@@ -1110,13 +1141,37 @@ function detailView(task) {
   const body=`<div class="detail"><button class="back" id="backBtn">${esc(t('backToBacklog'))}</button><div class="detail-head"><div class="detail-id">${esc(task.id)}</div><h1>${esc(titleOf(task))}</h1><div class="detail-status"><span class="status ${esc(task.state)}">${esc(stateLabel(task.state))}</span>${task.agent?`<span class="badge">${esc(task.agent)}</span>`:''}<span class="badge">${esc(task.document?.schema||'legacy')}</span>${task.archive_month?`<span class="badge">archive/${esc(task.archive_month)}</span>`:''}</div>${(task.tags||[]).length?`<div class="detail-tag-row">${(task.tags||[]).map(tag=>tagChip(tag,true)).join('')}</div>`:''}</div>${humanSummaryCard(task)}${passiveAlert}${contractSections(task)}${progress}${verification}${related}${operations}${lifecycle}</div>`;
   return `<div class="detail-layout">${body}${detailToc()}</div>`;
 }
+async function loadTaskDetail(id) {
+  if(!id||!state.project)return;
+  const targetProject=state.project, targetID=id;
+  const params=new URLSearchParams();
+  params.set('project',targetProject);
+  if(state.backlog)params.set('backlog',state.backlog);
+  try {
+    const r=await fetch(`/api/tasks/${encodeURIComponent(targetID)}?${params.toString()}`,{cache:'no-store'});
+    if(!r.ok){
+      let detail=''; try { const body=await r.json(); detail=body.error||''; } catch(_) {}
+      throw new Error(detail||`HTTP ${r.status}`);
+    }
+    const task=await r.json();
+    if(state.project!==targetProject||state.detail!==targetID)return;
+    state.detailTask=task;
+    state.loadError='';
+    render();
+  } catch(e) {
+    if(state.project!==targetProject||state.detail!==targetID)return;
+    state.detailTask=null;
+    state.loadError=String(e?.message||e||'Unknown error');
+    render();
+  }
+}
 function openTask(id) {
   if (!id) return;
-  state.detail=id; state.raw=false;
-  const p=new URLSearchParams(); if(state.project)p.set('project',state.project); if(state.tagFilters.length)p.set('tags',state.tagFilters.join(',')); history.pushState({},'',`/tasks/${encodeURIComponent(id)}${p.toString()?`?${p.toString()}`:''}`); render();
+  state.detail=id; state.detailTask=null; state.loadError=''; state.raw=false; state.view='backlog';
+  const p=new URLSearchParams(); if(state.project)p.set('project',state.project); if(state.tagFilters.length)p.set('tags',state.tagFilters.join(',')); history.pushState({},'',`/tasks/${encodeURIComponent(id)}${p.toString()?`?${p.toString()}`:''}`); render(); loadTaskDetail(id);
 }
 function closeTask() {
-  state.detail=null; history.pushState({},'',state.view==='backlog'?backlogUrl():`/?view=${state.view}`); render();
+  state.detail=null; state.detailTask=null; state.loadError=''; history.pushState({},'',state.view==='backlog'?backlogUrl():`/?view=${state.view}`); render();
 }
 function bindRows() {
   document.querySelectorAll('[data-id]').forEach(el => el.onclick = () => {
@@ -1127,7 +1182,7 @@ function bindRows() {
   document.querySelectorAll('[data-tag-filter]').forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();setTagFilter(b.dataset.tagFilter)}));
   $('#tagExploreBtn')?.addEventListener('click',()=>{state.tagExplorerOpen=!state.tagExplorerOpen;render()});
   $('#tagClearBtn')?.addEventListener('click',clearTagFilters);
-  $('#listSort')?.addEventListener('change', e => { state.listSort=e.target.value; state.listPage=1; state.selectedIndex=0; localStorage.setItem('task-mecca-list-sort-v2',state.listSort); render(); });
+  $('#listSort')?.addEventListener('change', e => { state.listSort=e.target.value; state.listPage=1; state.selectedIndex=0; localStorage.setItem('task-mecca-list-sort-v2',state.listSort); refreshList(); });
   $('#listPageSize')?.addEventListener('change', e => {
     const value=e.target.value;
     state.listPage=1; state.selectedIndex=0;
@@ -1140,7 +1195,7 @@ function bindRows() {
       localStorage.setItem('task-mecca-list-page-mode-v1','manual');
       localStorage.setItem('task-mecca-list-page-size',String(state.listPageSize));
     }
-    render();
+    refreshList();
   });
   $('#prevPage')?.addEventListener('click', () => changeListPage(-1));
   $('#nextPage')?.addEventListener('click', () => changeListPage(1));
@@ -1149,7 +1204,7 @@ function changeListPage(delta) {
   if (state.view !== 'backlog') return;
   const info=pageInfo(), next=Math.min(info.pages,Math.max(1,state.listPage+delta));
   if (next===state.listPage) return;
-  state.listPage=next; state.selectedIndex=0; render(); window.scrollTo({top:0,behavior:'smooth'});
+  state.listPage=next; state.selectedIndex=0; refreshList(); window.scrollTo({top:0,behavior:'smooth'});
 }
 function highlightSelection(index) {
   const rows=[...document.querySelectorAll('.task-row[data-row-index]')];
@@ -1186,7 +1241,7 @@ function updateAutoListPageSize() {
   state.autoListPageSize=next;
   state.listPage=Math.floor(firstIndex/next)+1;
   state.selectedIndex=0;
-  render();
+  refreshList();
 }
 function scheduleAutoListPageSize() {
   if(state.listPageMode!=='auto')return;
@@ -1214,23 +1269,31 @@ function toggleSidebar() {
 
 function render() {
   nav(); translateChrome(); renderAccess(); renderBacklogPicker(); applySidebarState(); updateNotificationIndicator();
-  const c=$('#content');
-  if (!state.snapshot) {
+  const c=$('#content'), data=currentProjectData();
+  if (!data && !state.detailTask) {
     if (state.view === 'hub' && state.hub) {
       c.innerHTML=hubView(); bindHubActions(); return;
     }
     if (state.loadError) {
       c.innerHTML=`<div class="load-error"><h2>Project dashboard could not be loaded</h2><p><strong>Project</strong> ${esc(state.project||'-')}</p><p>${esc(state.loadError)}</p><div class="project-actions"><button class="action-btn secondary" id="retryProjectBtn">Retry</button><button class="action-btn" id="backToHubBtn">Back to Projects</button></div></div>`;
-      $('#retryProjectBtn')?.addEventListener('click',refresh);
-      $('#backToHubBtn')?.addEventListener('click',()=>{state.project='';state.backlog='';state.view='hub';history.pushState({},'','/?view=hub');render();refresh();});
+      $('#retryProjectBtn')?.addEventListener('click',()=>state.detail?loadTaskDetail(state.detail):refresh());
+      $('#backToHubBtn')?.addEventListener('click',()=>{state.project='';state.backlog='';state.listData=null;state.snapshot=null;state.view='hub';history.pushState({},'','/?view=hub');render();refresh();});
       return;
     }
     c.innerHTML=`<div class="loading">${esc(t('loading'))}</div>`; return;
   }
   const gate=accessBanner()+diagnosticBanner();
   if (state.detail) {
-    const t=state.snapshot.all_items[state.detail] || state.snapshot.done_items?.find(x=>x.id===state.detail);
-    c.innerHTML=gate+(t?detailView(t):`<div class="empty">${esc(t('taskNotFound'))}</div>`);
+    const task=state.detailTask;
+    if(!task){
+      if(state.loadError){
+        c.innerHTML=gate+`<div class="load-error"><h2>${esc(t('taskNotFound'))}</h2><p>${esc(state.loadError)}</p><div class="project-actions"><button class="action-btn secondary" id="detailBackBtn">${esc(t('backToBacklog'))}</button><button class="action-btn" id="detailRetryBtn">Retry</button></div></div>`;
+        $('#detailBackBtn')?.addEventListener('click',closeTask);
+        $('#detailRetryBtn')?.addEventListener('click',()=>{state.loadError='';render();loadTaskDetail(state.detail)});
+      } else c.innerHTML=gate+`<div class="loading">${esc(t('loading'))}</div>`;
+      return;
+    }
+    c.innerHTML=gate+detailView(task);
     $('#backBtn')?.addEventListener('click',closeTask);
     $('#rawToggle')?.addEventListener('click',()=>{
       state.raw=!state.raw;
@@ -1264,6 +1327,14 @@ async function loadManual(language = state.language, force = false) {
 let refreshInFlight=null;
 let refreshQueued=false;
 let hubFetchInFlight=null;
+let listRefreshInFlight=null;
+let listRefreshQueued=false;
+
+function listNotificationPayload(data) {
+  const current={...(data?.attention_items||{})};
+  (data?.items||[]).forEach(task=>{current[task.id]=task});
+  return {all_items:current,notification_events:data?.notification_events||[],attention:data?.attention||[]};
+}
 
 async function refreshHub(force=false) {
   const fresh=state.hub && Date.now()-state.lastHubFetch<60000;
@@ -1283,6 +1354,109 @@ async function refreshHub(force=false) {
   return hubFetchInFlight;
 }
 
+function listQueryString() {
+  const params=new URLSearchParams();
+  if(state.backlog)params.set('backlog',state.backlog);
+  if(state.project)params.set('project',state.project);
+  params.set('page',String(Math.max(1,state.listPage||1)));
+  params.set('page_size',String(effectiveListPageSize()));
+  if(!state.statusFilters.includes('all'))params.set('status',state.statusFilters.join(','));
+  if(state.tagFilters.length)params.set('tags',state.tagFilters.join(','));
+  if(state.query.trim())params.set('q',state.query.trim());
+  params.set('sort',state.listSort||'id_desc');
+  return params.toString();
+}
+
+async function refreshList() {
+  if(!state.project)return;
+  if(listRefreshInFlight){
+    listRefreshQueued=true;
+    return listRefreshInFlight;
+  }
+  const targetProject=state.project;
+  const targetBacklog=state.backlog;
+  listRefreshInFlight=(async()=>{
+    try {
+      const r=await fetch('/api/backlog/tasks?'+listQueryString(),{cache:'no-store'});
+      if(!r.ok){
+        let detail=''; try { const body=await r.json(); detail=body.error||''; } catch(_) {}
+        throw new Error(detail||`HTTP ${r.status}`);
+      }
+      const data=await r.json();
+      if(targetProject!==state.project||targetBacklog!==state.backlog)return;
+      state.listData=data;
+      state.loadError='';
+      state.lastFetch=Date.now();
+      state.listPage=Math.max(1,Number(data.page)||1);
+      processTaskNotifications(listNotificationPayload(data));
+      const candidates=data?.backlog_selection?.candidates||[];
+      if(state.backlog && !candidates.some(x=>x.path===state.backlog)){
+        state.backlog='';
+        localStorage.removeItem('task-mecca-backlog-folder');
+      }
+      $('#connectionDot').style.background='var(--ok)';
+      ensureAttentionStream();
+      if(state.view==='backlog')render();
+    } catch(e) {
+      if(targetProject!==state.project)return;
+      state.loadError=String(e?.message||e||'Unknown error');
+      $('#connectionDot').style.background='var(--danger)';
+      if(!state.listData)render();
+    } finally {
+      listRefreshInFlight=null;
+      if(listRefreshQueued){
+        listRefreshQueued=false;
+        queueMicrotask(()=>refreshList());
+      }
+    }
+  })();
+  return listRefreshInFlight;
+}
+
+function closeAttentionStream() {
+  if(state.eventSource){ try{state.eventSource.close()}catch(_){} }
+  state.eventSource=null;
+  state.eventStreamKey='';
+}
+
+function ensureAttentionStream() {
+  if(!state.project||typeof EventSource==='undefined')return;
+  const params=new URLSearchParams();
+  params.set('project',state.project);
+  if(state.backlog)params.set('backlog',state.backlog);
+  const key=state.project+'|'+state.backlog;
+  if(state.eventSource&&state.eventStreamKey===key&&state.eventSource.readyState!==EventSource.CLOSED)return;
+  closeAttentionStream();
+  const source=new EventSource('/api/events?'+params.toString());
+  state.eventSource=source;
+  state.eventStreamKey=key;
+  source.addEventListener('attention',event=>{
+    if(state.eventStreamKey!==key)return;
+    let payload=null;
+    try{payload=JSON.parse(event.data)}catch(_){return}
+    processTaskNotifications(payload);
+    if(state.listData){
+      state.listData.attention=payload.attention||[];
+      state.listData.attention_items=payload.all_items||{};
+      state.listData.notification_events=payload.notification_events||[];
+      state.listData.counts=state.listData.counts||{};
+      state.listData.counts.attention=(payload.attention||[]).length;
+      state.listData.counts.needs_action=(payload.attention||[]).filter(x=>x.type!=='quiet').length;
+    }
+    if(state.snapshot){
+      state.snapshot.attention=payload.attention||[];
+      state.snapshot.notification_events=payload.notification_events||[];
+      state.snapshot.all_items={...(state.snapshot.all_items||{}),...(payload.all_items||{})};
+      state.snapshot.counts=state.snapshot.counts||{};
+      state.snapshot.counts.attention=(payload.attention||[]).length;
+    }
+    if(state.detail&&payload.all_items?.[state.detail])loadTaskDetail(state.detail);
+    if(state.view==='backlog'&&!state.detail)refreshList();
+    else if(state.view==='attention')render();
+    else nav();
+  });
+}
+
 async function refreshOnce() {
   const targetProject=state.project;
   const targetView=state.view;
@@ -1292,20 +1466,30 @@ async function refreshOnce() {
   const qs=params.toString()?`?${params}`:'';
 
   if(targetView==='hub'){
+    closeAttentionStream();
     try {
       await refreshHub(true);
       if(state.view!=='hub')return;
       state.snapshot=null;
+      state.listData=null;
       state.loadError='';
       $('#connectionDot').style.background='var(--ok)';
       render();
     } catch(e) {
       if(state.view!=='hub')return;
       state.snapshot=null;
+      state.listData=null;
       state.loadError=String(e?.message||e||'Unknown error');
       $('#connectionDot').style.background='var(--danger)';
       render();
     }
+    return;
+  }
+
+  if(targetView==='backlog'){
+    refreshHub(false).catch(()=>{});
+    await refreshList();
+    if(state.detail)await loadTaskDetail(state.detail);
     return;
   }
 
@@ -1330,6 +1514,7 @@ async function refreshOnce() {
     }
     $('#connectionDot').style.background='var(--ok)';
     await loadManual();
+    ensureAttentionStream();
     render();
   } catch(e) {
     if(targetProject!==state.project || state.view==='hub')return;
@@ -1357,9 +1542,12 @@ async function refresh() {
     }
   }
 }
-function route() {
+function route(fromPop=false) {
+  const previousDetail=state.detail;
   const m=location.pathname.match(/^\/tasks\/([^/]+)/);
   state.detail=m?decodeURIComponent(m[1]).toUpperCase():null;
+  if(previousDetail!==state.detail)state.detailTask=null;
+  state.loadError='';
   const p=new URLSearchParams(location.search);
   state.project=p.get('project')||'';
   if(state.project){
@@ -1383,10 +1571,18 @@ function route() {
       state.tagFilters=rawTags.split(',').map(x=>x.trim()).filter(Boolean);
     }
   } else {
+    state.view='backlog';
     const rawTags=p.get('tags')||'';
     state.tagFilters=rawTags.split(',').map(x=>x.trim()).filter(Boolean);
   }
   render();
+  if(fromPop&&state.project&&state.view==='backlog'){
+    queueMicrotask(()=>{
+      refreshList();
+      ensureAttentionStream();
+      if(state.detail)loadTaskDetail(state.detail);
+    });
+  }
 }
 function renderLanguagePicker() {
   const picker=$('#languagePicker');
@@ -1443,7 +1639,12 @@ $('#backlogPicker').addEventListener('change',e=>{
   if(value)localStorage.setItem('task-mecca-backlog-folder',value);else localStorage.removeItem('task-mecca-backlog-folder');
   state.detail=null;state.listPage=1;state.selectedIndex=0;refresh();
 });
-$('#search').addEventListener('input',e=>{state.query=e.target.value;state.detail=null;state.listPage=1;state.selectedIndex=0;render()});
+let searchRefreshTimer=0;
+$('#search').addEventListener('input',e=>{
+  state.query=e.target.value; state.detail=null; state.detailTask=null; state.listPage=1; state.selectedIndex=0;
+  clearTimeout(searchRefreshTimer);
+  if(state.view==='backlog')searchRefreshTimer=setTimeout(refreshList,180); else render();
+});
 $('#refreshBtn').onclick=refresh;
 $('#notificationBtn')?.addEventListener('click',()=>{const panel=$('#notificationPanel');panel?.classList.toggle('open');renderNotificationPanel();});
 document.addEventListener('click',e=>{const panel=$('#notificationPanel');if(panel?.classList.contains('open')&&!panel.contains(e.target)&&!$('#notificationBtn')?.contains(e.target))panel.classList.remove('open')});
@@ -1483,14 +1684,24 @@ window.addEventListener('resize',()=>{
   clearTimeout(autoPageResizeTimer);
   autoPageResizeTimer=setTimeout(scheduleAutoListPageSize,100);
 });
-window.addEventListener('popstate',route);
+window.addEventListener('popstate',()=>route(true));
 setInterval(()=>{
-  if(state.snapshot){
+  const data=currentProjectData();
+  if(data){
     $('#snapshotAge').textContent=`${t('updated')} ${ago(new Date(state.lastFetch).toISOString())}`;
-    document.querySelectorAll('.live-timer').forEach(el=>{const t=state.snapshot.all_items[el.dataset.id];if(t)el.textContent=fmtSec(runningSeconds(t,'active'))});
-    if(state.detail){const t=state.snapshot.all_items[state.detail]||state.snapshot.done_items?.find(x=>x.id===state.detail);if(t){const a=document.querySelector('.live-active'),w=document.querySelector('.live-wait'),q=document.querySelector('.live-queue'),l=document.querySelector('.live-lead');if(a)a.textContent=fmtSec(runningSeconds(t,'active'));if(w)w.textContent=fmtSec(runningSeconds(t,'wait'));if(q)q.textContent=fmtSec(runningSeconds(t,'queue'));if(l)l.textContent=fmtSec(runningSeconds(t,'lead'))}}
+    const byID={};
+    (state.listData?.items||[]).forEach(task=>{byID[task.id]=task});
+    Object.assign(byID,state.snapshot?.all_items||{});
+    document.querySelectorAll('.live-timer').forEach(el=>{const task=byID[el.dataset.id];if(task)el.textContent=fmtSec(runningSeconds(task,'active'))});
+    if(state.detail&&state.detailTask){
+      const task=state.detailTask,a=document.querySelector('.live-active'),w=document.querySelector('.live-wait'),q=document.querySelector('.live-queue'),l=document.querySelector('.live-lead');
+      if(a)a.textContent=fmtSec(runningSeconds(task,'active'));if(w)w.textContent=fmtSec(runningSeconds(task,'wait'));if(q)q.textContent=fmtSec(runningSeconds(task,'queue'));if(l)l.textContent=fmtSec(runningSeconds(task,'lead'));
+    }
   }
 },1000);
-setInterval(refresh,10000);
+setInterval(()=>{
+  if(state.view==='backlog')refreshList();
+  else if(state.view!=='hub')refresh();
+},30000);
 if(window.isSecureContext&&'serviceWorker' in navigator)notificationWorker();
 route();refresh();
