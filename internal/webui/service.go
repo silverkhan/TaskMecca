@@ -144,21 +144,15 @@ func StartService(config Config) (ServiceState,error) {
     if config.Port<=0 { config.Port=DefaultPort }
 
     if err=os.MkdirAll(webServiceDir(),0755); err!=nil { return ServiceState{},err }
-    logFile,err:=os.OpenFile(WebLogPath(),os.O_CREATE|os.O_WRONLY|os.O_APPEND,0644)
-    if err!=nil { return ServiceState{},err }
 
     exe,err:=os.Executable()
-    if err!=nil { _=logFile.Close(); return ServiceState{},err }
+    if err!=nil { return ServiceState{},err }
     exe,_=filepath.EvalSymlinks(exe)
     args:=[]string{"web","--foreground","--project",config.Project,"--host",config.Host,"--port",fmt.Sprint(config.Port),"--no-open","--web-instance-id",id,"--web-control-token",token}
     if config.Root!="" { args=append(args,"--root",config.Root) }
-    cmd:=exec.Command(exe,args...)
-    cmd.Dir=config.Project
-    cmd.Stdout=logFile
-    cmd.Stderr=logFile
-    if err=cmd.Start(); err!=nil { _=logFile.Close(); return ServiceState{},err }
-    _=logFile.Close()
-    _=cmd.Process.Release()
+    if err=startManagedWebProcess(exe,args,config.Project); err!=nil {
+        return ServiceState{},err
+    }
 
     deadline:=time.Now().Add(10*time.Second)
     for time.Now().Before(deadline) {
@@ -178,7 +172,31 @@ func StartService(config Config) (ServiceState,error) {
 
 func StopService() (ServiceState,error) {
     state:=serviceStatusWithToken()
-    if !state.Running { return state,nil }
+    if !state.Running {
+        if managedWebProcessActive() {
+            if err:=stopManagedWebProcess(); err!=nil { return state,err }
+        }
+        return state,nil
+    }
+
+    if managedWebProcessActive() {
+        if state.TailscaleManaged {
+            if err:=disableOwnedTailscaleServe(state.Port); err!=nil { return state,err }
+        }
+        if err:=stopManagedWebProcess(); err!=nil { return state,err }
+        deadline:=time.Now().Add(5*time.Second)
+        for time.Now().Before(deadline) {
+            time.Sleep(100*time.Millisecond)
+            if !healthState(state) {
+                removeServiceState(state.InstanceID)
+                state.Running=false
+                state.ControlToken=""
+                return state,nil
+            }
+        }
+        return ServiceState{},errors.New("Task Mecca Web launchd service did not stop within timeout")
+    }
+
     controlURL:=state.LocalURL
     if controlURL=="" { controlURL=state.URL }
     endpoint:=strings.TrimRight(controlURL,"/")+"/api/admin/stop"
