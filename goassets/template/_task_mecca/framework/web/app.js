@@ -44,7 +44,7 @@ const I18N = {
   }
 };
 Object.assign(I18N.ko,{
-  notificationsInsecureTitle:'모바일 시스템 알림을 사용할 수 없는 접속입니다.',
+  notificationsInsecureTitle:'시스템 알림을 사용할 수 없는 접속입니다.',
   notificationsInsecureGuide:'현재 페이지가 HTTPS 보안 연결이 아닙니다. 모바일 브라우저의 시스템 알림 권한은 HTTPS에서만 사용할 수 있습니다. Tailscale HTTPS 주소로 접속한 뒤 다시 시도하세요.',
   notificationsIOSHomeTitle:'iPhone/iPad 알림 설정이 필요합니다.',
   notificationsIOSHomeGuide:'iOS에서는 사이트를 홈 화면에 추가한 뒤 홈 화면의 Task Mecca 웹 앱으로 열어야 알림 권한을 요청할 수 있습니다.',
