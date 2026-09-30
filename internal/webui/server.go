@@ -227,6 +227,7 @@ func handler(project,root,version,instanceID,controlToken string,restartCh chan<
         if !maintenance.IsRegisteredProject(target) { writeJSON(w,map[string]any{"error":"project is not registered"},403); return }
         result,err:=install.MigrateWithResult(target,version)
         if err!=nil { writeJSON(w,map[string]any{"error":err.Error()},409); return }
+        _,_ = backlog.EnsureTagRegistry(target)
         _=maintenance.RegisterProject(target)
         writeJSON(w,map[string]any{
             "ok":true,"project":target,"framework_version":version,
