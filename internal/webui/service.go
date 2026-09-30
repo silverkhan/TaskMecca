@@ -65,11 +65,14 @@ func writeServiceState(state ServiceState) error {
     return os.Rename(tmp,webStatePath())
 }
 
-func removeServiceState(instanceID string) {
+func removeServiceState(instanceID string,pid ...int) {
     data,err:=os.ReadFile(webStatePath())
     if err!=nil { return }
     var current ServiceState
-    if json.Unmarshal(data,&current)==nil && instanceID!="" && current.InstanceID!=instanceID { return }
+    if json.Unmarshal(data,&current)==nil {
+        if instanceID!="" && current.InstanceID!=instanceID { return }
+        if len(pid)>0 && pid[0]>0 && current.PID!=pid[0] { return }
+    }
     _=os.Remove(webStatePath())
 }
 
