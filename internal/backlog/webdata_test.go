@@ -62,13 +62,17 @@ func TestBacklogPagePaginatesFiltersAndOmitsRawMarkdown(t *testing.T) {
 func TestTaskDetailLoadsOneTaskWithRawMarkdown(t *testing.T) {
     project:=t.TempDir()
     folder:=filepath.Join(project,"_task_mecca","data","backlog")
-    writeWebTask(t,folder,"000001.A-1.alpha.todo.md","# A-1 Alpha\n- 설명: direct detail\n")
+    writeWebTask(t,folder,"000001.A-1.alpha.todo.md","# A-1 Alpha\n- 출처: [Linear · ENG-123](https://linear.app/acme/issue/ENG-123/example)\n- 설명: direct detail\n")
 
     item,err:=TaskDetail(project,folder,"A-1")
     if err!=nil { t.Fatal(err) }
     if item["id"]!="A-1" { t.Fatalf("item=%+v",item) }
     raw,ok:=item["raw_markdown"].(string)
     if !ok || raw=="" { t.Fatalf("raw_markdown=%v",item["raw_markdown"]) }
+    source,ok:=item["source"].(map[string]string)
+    if !ok || source["provider"]!="Linear" || source["reference"]!="ENG-123" || source["url"]=="" {
+        t.Fatalf("source=%#v",item["source"])
+    }
 }
 
 func TestAttentionSnapshotDetectsCompletedRuntimeAndPersistsCompletion(t *testing.T) {
