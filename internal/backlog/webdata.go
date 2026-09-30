@@ -1,6 +1,8 @@
 package backlog
 
 import (
+    "crypto/sha256"
+    "encoding/hex"
     "fmt"
     "path/filepath"
     "sort"
@@ -134,6 +136,28 @@ func parseFilterList(value string) []string {
         part=strings.TrimSpace(part); if part=="" || seen[part] { continue }; seen[part]=true; out=append(out,part)
     }
     return out
+}
+
+func BacklogRevision(project,root string) (map[string]any,error) {
+    rows,err:=CachedCatalog(project,root)
+    if err!=nil { return nil,err }
+    sort.Slice(rows,func(i,j int)bool{return rows[i].Path<rows[j].Path})
+    h:=sha256.New()
+    for _,row:=range rows {
+        _,_=h.Write([]byte(row.Path))
+        _,_=h.Write([]byte{0})
+        _,_=h.Write([]byte(row.Mtime))
+        _,_=h.Write([]byte{0})
+        _,_=h.Write([]byte(row.State))
+        _,_=h.Write([]byte{0})
+        _,_=h.Write([]byte(row.RawMarkdown))
+        _,_=h.Write([]byte{0})
+    }
+    return map[string]any{
+        "revision":hex.EncodeToString(h.Sum(nil))[:20],
+        "count":len(rows),
+        "checked_at":time.Now().Format(time.RFC3339),
+    },nil
 }
 
 func BacklogPage(project,root string,page,pageSize int,statuses,tags []string,search,sortKey string) (map[string]any,error) {
