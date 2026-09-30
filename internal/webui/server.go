@@ -285,9 +285,13 @@ func handler(project,root,version,instanceID,controlToken string,restartCh chan<
             if data,err:=fs.ReadFile(goassets.Template,embeddedRoot+"/"+fallback); err==nil { return string(data) }
             return ""
         }
+        rootPrompt:=""
+        if data,err:=fs.ReadFile(goassets.Template,"template/_task_mecca/ROOT_PROMPT.md"); err==nil { rootPrompt=string(data) }
         writeJSON(w,map[string]any{
             "readme":read(readme,"README.md"),
             "session_guide":read(session,"SESSION_GUIDE.md"),
+            "root_prompt":rootPrompt,
+            "root_prompt_path":"_task_mecca/ROOT_PROMPT.md",
             "language":lang,
         },200)
     })
