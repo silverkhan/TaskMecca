@@ -56,7 +56,9 @@ Task Mecca installed in the project ≠ this session is Root
 
 Installation does not create or modify the project-level `AGENTS.md`. Project-wide activation would blur the role boundary between the single user-facing Root session and other sessions/agents.
 
-Choose the **one user-facing session** that should act as Root and paste the English prompt from:
+Choose the **one user-facing session** that should act as Root and paste the English Root prompt.
+
+The Web user manual shows the actual prompt directly under **Quick Start → Root session prompt**, with one-click copy. To inspect the source file directly, use:
 
 ```text
 _task_mecca/ROOT_PROMPT.md

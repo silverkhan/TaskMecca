@@ -47,6 +47,8 @@ Task Mecca 설치 과정은 프로젝트 최상위 `AGENTS.md`를 생성하거�
 
 Root로 사용할 **한 개의 사용자-facing 세션을 직접 선택**하고, 그 세션에 `ROOT_PROMPT.md`의 한국어 프롬프트를 붙여넣는다.
 
+Web 사용자 매뉴얼의 **빠른 시작 → Root 세션 프롬프트**에서 실제 프롬프트 본문을 바로 확인하고 복사할 수 있다. 파일에서 직접 확인하려면 아래 경로를 사용한다.
+
 ```text
 _task_mecca/ROOT_PROMPT.md
 ```

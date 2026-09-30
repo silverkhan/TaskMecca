@@ -555,3 +555,24 @@
   .content-update-prompt{left:12px;right:12px;bottom:38px;transform:none;max-width:none;justify-content:space-between}
   .content-update-copy span{display:none}
 }
+
+
+/* User manual: inline Root session prompt */
+.root-prompt-card{margin:0 0 24px;padding:16px 17px 17px;border:1px solid color-mix(in srgb,var(--accent) 34%,var(--border));border-radius:12px;background:color-mix(in srgb,var(--accent) 5%,var(--surface))}
+.root-prompt-card.unavailable{border-color:var(--border);background:var(--surface)}
+.root-prompt-head{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;margin-bottom:12px}
+.root-prompt-head>div:first-child{min-width:0}
+.root-prompt-head strong{display:block;font-size:13px;color:var(--text)}
+.root-prompt-head span{display:block;margin-top:4px;color:var(--muted);font-size:11px;line-height:1.5}
+.root-prompt-path{flex:0 0 auto;text-align:right}
+.root-prompt-path span{margin:0 0 3px;font-size:9px;text-transform:uppercase;letter-spacing:.06em;font-weight:750}
+.root-prompt-path code{display:block;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10px;color:var(--text)}
+.root-prompt-code{margin:0}
+.root-prompt-code pre{max-height:360px;overflow:auto;background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:14px 46px 14px 14px;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.55}
+.root-prompt-code code{font-size:11px}
+@media(max-width:680px){
+  .root-prompt-card{padding:14px}
+  .root-prompt-head{display:block}
+  .root-prompt-path{margin-top:10px;text-align:left}
+  .root-prompt-code pre{max-height:none}
+}

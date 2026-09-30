@@ -101,6 +101,14 @@ Object.assign(I18N.en,{
 Object.assign(I18N.ko,{tags:'태그',tagExplore:'태그 탐색',tagFilter:'태그 필터',clearTags:'태그 필터 해제',noTags:'태그 없음',tagTotal:'전체',tagActive:'활성',tagHold:'보류',tagDone:'완료',unregisteredTag:'미등록 태그',tagDescription:'설명'});
 Object.assign(I18N.en,{tags:'Tags',tagExplore:'Explore tags',tagFilter:'Tag filter',clearTags:'Clear tag filters',noTags:'No tags',tagTotal:'Total',tagActive:'Active',tagHold:'Hold',tagDone:'Done',unregisteredTag:'Unregistered tag',tagDescription:'Description'});
 Object.assign(I18N.ko,{
+  rootPromptTitle:'Root 세션 프롬프트', rootPromptIntro:'Root로 사용할 사용자-facing 세션에 아래 프롬프트를 그대로 붙여넣으세요.',
+  rootPromptPath:'원본 파일', rootPromptUnavailable:'Root 세션 프롬프트를 불러올 수 없습니다.'
+});
+Object.assign(I18N.en,{
+  rootPromptTitle:'Root session prompt', rootPromptIntro:'Paste the prompt below into the single user-facing session that will act as Root.',
+  rootPromptPath:'Source file', rootPromptUnavailable:'The Root session prompt could not be loaded.'
+});
+Object.assign(I18N.ko,{
   updateAvailable:'업데이트 가능', currentVersion:'현재 버전', projectMigration:'프로젝트 마이그레이션 필요',
   newContentAvailable:'새 내용이 업데이트되었습니다.', refreshToSee:'현재 읽고 있는 내용은 유지됩니다. 새 내용을 보려면 새로고침하세요.',
   refreshNow:'새로고침', runtimeChanged:'작업 상태가 변경되었습니다.', contentChanged:'백로그 내용이 변경되었습니다.',
@@ -1156,9 +1164,27 @@ function attentionView() {
   const arr=state.snapshot.attention||[];
   return `<div class="page-head"><div><div class="eyebrow">${esc(t('operationsEyebrow'))}</div><h1>${esc(t('attention'))}</h1><p class="summary">${esc(t('advisory'))}</p></div></div>${arr.length?arr.map(a=>{const task=state.snapshot.all_items[a.id]||{},label=a.title||healthLabel(a.health),message=a.message||'',resume=a.resume_condition||'';return `<div class="attention-card" data-id="${esc(a.id)}"><div class="task-id">${esc(a.id)}</div><div><strong>${esc(titleOf(task))}</strong><p><b>${esc(label)}</b>${message?` · ${esc(message)}`:''}${resume?` · ${esc(resume)}`:''}</p></div><span class="badge ${a.severity==='danger'||a.health==='worker_missing'||a.health==='stale'?'danger':'warn'}">${esc(label)}</span></div>`}).join(''):`<div class="empty">${esc(t('noAttention'))}</div>`}`;
 }
+function rootPromptForLanguage(raw,language=state.language) {
+  raw=String(raw||'');
+  if(!raw.trim())return '';
+  const heading=language==='ko'?'한국어':'English';
+  const marker='## '+heading;
+  const start=raw.indexOf(marker);
+  if(start<0)return raw.trim();
+  const section=raw.slice(start+marker.length);
+  const match=section.match(/\`\`\`(?:text)?\s*\n([\s\S]*?)\n\`\`\`/);
+  return (match?.[1]||section.split(/^##\s+/m)[0]||'').trim();
+}
+function manualRootPromptCard(m) {
+  const prompt=rootPromptForLanguage(m?.root_prompt||'',state.language);
+  const path=m?.root_prompt_path||'_task_mecca/ROOT_PROMPT.md';
+  if(!prompt)return `<section class="root-prompt-card unavailable"><div class="root-prompt-head"><div><strong>${esc(t('rootPromptTitle'))}</strong><span>${esc(t('rootPromptUnavailable'))}</span></div></div></section>`;
+  return `<section class="root-prompt-card"><div class="root-prompt-head"><div><strong>${esc(t('rootPromptTitle'))}</strong><span>${esc(t('rootPromptIntro'))}</span></div><div class="root-prompt-path"><span>${esc(t('rootPromptPath'))}</span><code>${esc(path)}</code></div></div><div class="copy-code-wrap root-prompt-code"><button class="copy-code-btn" type="button" aria-label="${esc(t('copyCode'))}" title="${esc(t('copyCode'))}">${COPY_ICON}</button><pre><code>${esc(prompt)}</code></pre></div></section>`;
+}
 function manualView() {
   const m=state.manualByLanguage[state.language]||{}, tab=state.manualTab||'quick', body=tab==='operations'?(m.session_guide||''):(m.readme||'');
-  return `<div class="manual-shell"><div class="manual-hero"><div class="eyebrow">${esc(t('help'))}</div><h1>${esc(t('manual'))}</h1><p class="summary">${esc(t('manualIntro'))}</p></div><div class="manual-callout"><strong>${esc(t('dashboardLaunch'))}</strong><div class="copy-code-wrap compact"><button class="copy-code-btn" type="button" aria-label="${esc(t('copyCode'))}" title="${esc(t('copyCode'))}">${COPY_ICON}</button><pre><code>task-mecca web</code></pre></div></div><div class="shortcut-manual"><strong>${esc(t('keyboard'))}</strong><span><kbd>↑/↓</kbd> ${esc(t('move'))}</span><span><kbd>Enter/→</kbd> ${esc(t('open'))}</span><span><kbd>←/Esc</kbd> ${esc(t('back'))}</span><span><kbd>/</kbd> ${esc(t('search'))}</span><span><kbd>PgUp/PgDn</kbd> ${esc(t('page'))}</span></div><div class="manual-tabs"><button class="manual-tab ${tab==='quick'?'active':''}" data-manual-tab="quick">${esc(t('quickStart'))}</button><button class="manual-tab ${tab==='operations'?'active':''}" data-manual-tab="operations">${esc(t('detailedGuide'))}</button></div><div class="section markdown">${markdown(body||t('manualLoading'),{copyCode:true})}</div></div>`;
+  const rootPrompt=tab==='quick'?manualRootPromptCard(m):'';
+  return `<div class="manual-shell"><div class="manual-hero"><div class="eyebrow">${esc(t('help'))}</div><h1>${esc(t('manual'))}</h1><p class="summary">${esc(t('manualIntro'))}</p></div><div class="manual-callout"><strong>${esc(t('dashboardLaunch'))}</strong><div class="copy-code-wrap compact"><button class="copy-code-btn" type="button" aria-label="${esc(t('copyCode'))}" title="${esc(t('copyCode'))}">${COPY_ICON}</button><pre><code>task-mecca web</code></pre></div></div><div class="shortcut-manual"><strong>${esc(t('keyboard'))}</strong><span><kbd>↑/↓</kbd> ${esc(t('move'))}</span><span><kbd>Enter/→</kbd> ${esc(t('open'))}</span><span><kbd>←/Esc</kbd> ${esc(t('back'))}</span><span><kbd>/</kbd> ${esc(t('search'))}</span><span><kbd>PgUp/PgDn</kbd> ${esc(t('page'))}</span></div><div class="manual-tabs"><button class="manual-tab ${tab==='quick'?'active':''}" data-manual-tab="quick">${esc(t('quickStart'))}</button><button class="manual-tab ${tab==='operations'?'active':''}" data-manual-tab="operations">${esc(t('detailedGuide'))}</button></div>${rootPrompt}<div class="section markdown">${markdown(body||t('manualLoading'),{copyCode:true})}</div></div>`;
 }
 function workloadView() {
   const w=state.snapshot?.workload||{}, agents=w.agents||[], all=state.snapshot?.all_items||{}, unassigned=w.unassigned_doing||[], released=w.released_holds||[];
@@ -1458,7 +1484,7 @@ async function loadManual(language = state.language, force = false) {
     if(!r.ok)throw new Error(r.status);
     state.manualByLanguage[language]=await r.json();
   } catch(e) {
-    state.manualByLanguage[language]={readme:t('manualUnavailable'),session_guide:t('manualUnavailable')};
+    state.manualByLanguage[language]={readme:t('manualUnavailable'),session_guide:t('manualUnavailable'),root_prompt:''};
   }
 }
 let refreshInFlight=null;
