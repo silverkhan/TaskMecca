@@ -138,12 +138,11 @@ func parseFilterList(value string) []string {
     return out
 }
 
-func BacklogRevision(project,root string) (map[string]any,error) {
-    rows,err:=CachedCatalog(project,root)
-    if err!=nil { return nil,err }
-    sort.Slice(rows,func(i,j int)bool{return rows[i].Path<rows[j].Path})
+func backlogRevisionFromRows(rows []Record) string {
+    ordered:=append([]Record{},rows...)
+    sort.Slice(ordered,func(i,j int)bool{return ordered[i].Path<ordered[j].Path})
     h:=sha256.New()
-    for _,row:=range rows {
+    for _,row:=range ordered {
         _,_=h.Write([]byte(row.Path))
         _,_=h.Write([]byte{0})
         _,_=h.Write([]byte(row.Mtime))
@@ -153,8 +152,14 @@ func BacklogRevision(project,root string) (map[string]any,error) {
         _,_=h.Write([]byte(row.RawMarkdown))
         _,_=h.Write([]byte{0})
     }
+    return hex.EncodeToString(h.Sum(nil))[:20]
+}
+
+func BacklogRevision(project,root string) (map[string]any,error) {
+    rows,err:=CachedCatalog(project,root)
+    if err!=nil { return nil,err }
     return map[string]any{
-        "revision":hex.EncodeToString(h.Sum(nil))[:20],
+        "revision":backlogRevisionFromRows(rows),
         "count":len(rows),
         "checked_at":time.Now().Format(time.RFC3339),
     },nil
@@ -231,6 +236,7 @@ func BacklogPage(project,root string,page,pageSize int,statuses,tags []string,se
     return map[string]any{
         "snapshot_at":time.Now().Format(time.RFC3339),"root":root,"repo":filepath.Base(repoRoot(root)),
         "items":items,"page":page,"page_size":pageSize,"pages":pages,"total":total,
+        "revision":backlogRevisionFromRows(rows),
         "counts":counts,"tag_catalog":tagCatalog,"access":AccessObservation(project),
         "attention":attention["attention"],"attention_items":attention["all_items"],"notification_events":attention["notification_events"],
     },nil
