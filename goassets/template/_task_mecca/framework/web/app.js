@@ -4,6 +4,7 @@ const state = {
   hub: null,
   loadError: '',
   project: new URLSearchParams(location.search).get('project') || '',
+  lastProject: localStorage.getItem('task-mecca-last-project') || new URLSearchParams(location.search).get('project') || '',
   statusFilters: ['all'],
   query: '',
   detail: null,
@@ -330,6 +331,8 @@ function switchProject(path) {
   if(!path)return;
   ensureOpenProject(path);
   state.project=path;
+  state.lastProject=path;
+  localStorage.setItem('task-mecca-last-project',path);
   state.backlog='';
   state.snapshot=null;
   state.loadError='';
@@ -393,6 +396,51 @@ function setStatusFilter(key) {
   history.pushState({},'',backlogUrl());
   render();
 }
+function resolveProjectContext() {
+  if(state.project)return state.project;
+  if(state.lastProject)return state.lastProject;
+  if(state.openProjects.length)return state.openProjects[0];
+  const projects=state.hub?.projects||[];
+  return projects[0]?.path||'';
+}
+function navigateView(view) {
+  if(view==='hub'){
+    state.project='';
+    state.snapshot=null;
+    state.loadError='';
+    state.view='hub';
+    state.detail=null;
+    state.projectMenuOpen=false;
+    history.pushState({},'','/?view=hub');
+    render();
+    refresh();
+    return;
+  }
+  const needsProject=['backlog','workload','attention','issues','manual'].includes(view);
+  if(needsProject && !state.project){
+    const project=resolveProjectContext();
+    if(project){
+      state.project=project;
+      state.lastProject=project;
+      localStorage.setItem('task-mecca-last-project',project);
+      ensureOpenProject(project);
+    }
+  }
+  state.view=view;
+  state.detail=null;
+  state.selectedIndex=0;
+  state.listPage=1;
+  const params=new URLSearchParams();
+  params.set('view',view);
+  if(state.project)params.set('project',state.project);
+  history.pushState({},'',`/?${params.toString()}`);
+  if(needsProject && !state.snapshot){
+    render();
+    refresh();
+  } else {
+    render();
+  }
+}
 function nav() {
   const c = state.snapshot?.counts || {};
   const projects=state.hub?.projects||[];
@@ -419,17 +467,10 @@ function nav() {
   document.querySelectorAll('[data-close-project]').forEach(btn=>btn.addEventListener('click',e=>{e.stopPropagation();closeProjectSession(btn.dataset.closeProject)}));
   document.querySelectorAll('[data-add-project]').forEach(btn=>btn.addEventListener('click',()=>{state.projectMenuOpen=false;switchProject(btn.dataset.addProject)}));
   $('#openProjectBtn')?.addEventListener('click',()=>{state.projectMenuOpen=!state.projectMenuOpen;render()});
-  $('#hubNavBtn')?.addEventListener('click',()=>{state.project='';state.snapshot=null;state.view='hub';state.detail=null;state.projectMenuOpen=false;history.pushState({},'','/?view=hub');render();refresh()});
+  $('#hubNavBtn')?.addEventListener('click',()=>navigateView('hub'));
   document.querySelectorAll('[data-view]').forEach(b => {
     b.classList.toggle('active', state.view === b.dataset.view);
-    b.onclick = () => {
-      state.view = b.dataset.view;
-      state.detail = null;
-      state.selectedIndex = 0;
-      state.listPage = 1;
-      history.pushState({},'',state.view==='backlog'?backlogUrl():`/?view=${state.view}${state.project?`&project=${encodeURIComponent(state.project)}`:''}`);
-      render();
-    };
+    b.onclick = () => navigateView(b.dataset.view);
   });
 }
 
@@ -825,7 +866,11 @@ function route() {
   state.detail=m?decodeURIComponent(m[1]).toUpperCase():null;
   const p=new URLSearchParams(location.search);
   state.project=p.get('project')||'';
-  if(state.project)ensureOpenProject(state.project);
+  if(state.project){
+    state.lastProject=state.project;
+    localStorage.setItem('task-mecca-last-project',state.project);
+    ensureOpenProject(state.project);
+  }
   if (!state.detail) {
     state.view=p.get('view')||(state.project?'backlog':'hub');
     if(state.view==='hub') state.project='';
@@ -907,7 +952,7 @@ document.addEventListener('keydown',e=>{
   const tag=document.activeElement?.tagName?.toLowerCase();
   const editing=['input','textarea','select','button'].includes(tag)||document.activeElement?.isContentEditable;
   if(e.key==='/'&&document.activeElement!==$('#search')){e.preventDefault();$('#search').focus();return}
-  if(e.key==='?'&&!editing&&!state.detail){e.preventDefault();state.view='manual';history.pushState({},'', '/?view=manual');render();return}
+  if(e.key==='?'&&!editing&&!state.detail){e.preventDefault();navigateView('manual');return}
   if(state.detail){
     const detailLayout=document.querySelector('.detail-layout');
     if(e.key==='Escape'&&detailLayout?.classList.contains('toc-open')){
