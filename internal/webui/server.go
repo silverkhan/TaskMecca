@@ -293,8 +293,8 @@ func scheduleWebRestart(result maintenance.UpgradeResult,config Config,port int)
         if err!=nil { return err }
         helperPath:=helper.Name()
         rootArg:=""
-        if config.Root!="" { rootArg=" --root \\""+config.Root+"\\\"" }
-        body:=fmt.Sprintf("@echo off\\r\\n:wait\\r\\nif exist \\"%s.new\\" (timeout /t 1 /nobreak >nul & goto wait)\\r\\ntimeout /t 1 /nobreak >nul\\r\\nstart \\"\\" /D \\"%s\\" \\"%s\\" web --project \\"%s\\" --port %d --no-open%s\\r\\ndel \\"%%~f0\\"\\r\\n",
+        if config.Root!="" { rootArg=" --root \""+config.Root+"\"" }
+        body:=fmt.Sprintf("@echo off\r\n:wait\r\nif exist \"%s.new\" (timeout /t 1 /nobreak >nul & goto wait)\r\ntimeout /t 1 /nobreak >nul\r\nstart \"\" /D \"%s\" \"%s\" web --project \"%s\" --port %d --no-open%s\r\ndel \"%%~f0\"\r\n",
             exe,config.Project,exe,config.Project,port,rootArg)
         if _,err=helper.WriteString(body); err!=nil { _=helper.Close(); return err }
         if err=helper.Close(); err!=nil { return err }
