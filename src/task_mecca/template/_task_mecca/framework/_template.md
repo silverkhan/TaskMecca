@@ -26,13 +26,7 @@
 - 변경범위: -
 - 선행: -
 - 연관: -
-
-## 핵심 요약
-
-- 목적: -
-- 핵심 변경: -
-- 상태·결과: -
-- 확인·후속: -
+- Tags: -
 
 ## 핵심 요약
 
@@ -91,6 +85,14 @@
 - 변경범위: -
 - 선행: -
 - 연관: -
+- Tags: -
+
+## 핵심 요약
+
+- 목적: -
+- 핵심 변경: -
+- 상태·결과: -
+- 확인·후속: -
 
 ## 요건 정의서
 
@@ -151,6 +153,11 @@
 ```
 
 ---
+
+`Tags`는 선택형 project taxonomy다. 쉼표로 구분한 `namespace:name` 형식을 사용하며 예시는
+`area:backend, type:bug, concern:data-integrity`다. 상태(todo/doing/hold/done), 선행관계, Agent assignment처럼
+이미 구조화된 metadata는 태그로 중복하지 않는다. 신규 태그를 만들기 전에는 `task-mecca tags resolve/search`로
+기존 taxonomy와 alias를 먼저 확인한다. 상세 정책은 `TAGS.md`를 따른다.
 
 `선행`에는 이 항목의 원래 수용을 직접 막는 ID만 적고, 비차단 후속·맥락은 `연관`에 적는다.
 다른 항목의 잔여 작업이나 전체 queue 종료를 이 항목의 완료 기준으로 삼지 않는다.

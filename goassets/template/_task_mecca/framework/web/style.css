@@ -495,3 +495,35 @@
   .relation-groups{grid-template-columns:1fr}
   .detail-disclosure>summary{padding:17px 0}
 }
+
+
+/* Tag taxonomy exploration */
+.tag-filter-wrap{display:flex;align-items:flex-start;gap:12px;margin:0 0 12px;min-width:0}
+.tag-filter-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0}
+.tag-filter-selected,.task-tag-row,.detail-tag-row{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.tag-empty{color:var(--muted);font-size:11px}
+.tag-chip,.tag-explore-btn,.tag-clear-btn{border:1px solid var(--border);background:var(--surface);color:var(--muted);cursor:pointer}
+.tag-chip{display:inline-flex;align-items:center;height:23px;padding:0 7px;border-radius:999px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:9px}
+.tag-chip:hover,.tag-chip.active{border-color:color-mix(in srgb,var(--accent) 50%,var(--border));background:color-mix(in srgb,var(--accent) 9%,var(--surface));color:var(--text)}
+.tag-explore-btn,.tag-clear-btn{height:29px;padding:0 9px;border-radius:7px;font-size:10px;font-weight:650}
+.tag-explore-btn:hover,.tag-clear-btn:hover{background:var(--surface2);color:var(--text)}
+.task-tag-row{margin:3px 0 2px}
+.detail-tag-row{margin-top:10px}
+.tag-explorer{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px;margin:0 0 14px;padding:14px;border:1px solid var(--border);border-radius:11px;background:var(--surface)}
+.tag-explorer section{min-width:0}
+.tag-explorer h3{margin:0 0 8px;color:var(--muted);font-size:10px;letter-spacing:.09em}
+.tag-stat-list{display:grid;gap:5px}
+.tag-stat-row{width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:7px 9px;border:1px solid transparent;border-radius:8px;background:transparent;color:var(--text);text-align:left;cursor:pointer}
+.tag-stat-row:hover,.tag-stat-row.active{border-color:var(--border);background:var(--surface2)}
+.tag-stat-row>span:first-child{min-width:0;display:grid;gap:1px}
+.tag-stat-row strong{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px}
+.tag-stat-row small{color:var(--muted);font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tag-stat-counts{flex:0 0 auto;display:grid;justify-items:end}
+.tag-stat-counts b{font-size:12px}
+.tag-stat-counts small{font-variant-numeric:tabular-nums}
+@media(max-width:680px){
+  .tag-filter-wrap{flex-direction:column;gap:7px}
+  .tag-filter-actions{width:100%}
+  .tag-explorer{grid-template-columns:1fr;padding:10px}
+  .task-tag-row{max-height:27px;overflow:hidden}
+}

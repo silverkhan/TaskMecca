@@ -34,6 +34,7 @@ func dashboardItem(row Record, stateName string, waiting []string, timing map[st
         "hold_audit":assignment["hold_audit"],"candidate_agents":topAgents,
         "scope":assignment["change_scope"],"runtime_metadata":runtimeFromFields(row.Fields),
         "document":row.Document,"raw_markdown":row.RawMarkdown,"registrant":row.Fields["등록자"],
+        "tags":parseTagList(row.Fields["Tags"]),
         "wait_note":row.Fields["대기"],"depends_on":refs(row.Fields["선행"]),
         "related":refs(row.Fields["연관"]),"waiting_for":waiting,"time":itemTime,
         "created_at":timing["created_at"],"started_at":timing["started_at"],
@@ -137,6 +138,12 @@ func DashboardSnapshot(project,root string,recentDoneLimit int) (map[string]any,
     readyReport:=readyFromRows(project,root,rows)
     hold:=HoldReview(rows)
     diagnostics:=[]map[string]string{}
+    tagCatalog:=map[string]any{"registry":[]TagDefinition{},"stats":[]TagStat{},"namespaces":map[string][]TagStat{},"unregistered":[]string{}}
+    if catalog,tagErr:=TagCatalog(project,root,rows); tagErr!=nil {
+        diagnostics=append(diagnostics,map[string]string{"component":"tag_catalog","error":tagErr.Error()})
+    } else {
+        tagCatalog=catalog
+    }
     timings,err:=lifecycleTimings(project,root,rows)
     if err!=nil {
         diagnostics=append(diagnostics,map[string]string{"component":"lifecycle","error":err.Error()})
@@ -349,6 +356,7 @@ func DashboardSnapshot(project,root string,recentDoneLimit int) (map[string]any,
         "active_ids":activeIDs,"unrecognized_files":unrecognized,"done_items":completed,
         "health":health,"workload":workload,"task_timings":timings,"activity":activity,
         "hold_review":hold,"access":access,"attention":attention,"notification_events":notificationEvents,"diagnostics":diagnostics,
+        "tag_catalog":tagCatalog,
         "counts":map[string]any{
             "working":countItemsByFileState(allItems,"doing"),"ready":len(readyIDs),
             "blocked":len(blocked),"hold":countItemsByFileState(allItems,"hold"),

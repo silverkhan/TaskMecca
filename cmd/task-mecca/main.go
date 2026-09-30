@@ -15,7 +15,7 @@ import (
     "github.com/silverkhan/TaskMecca/internal/webui"
 )
 
-const version = "0.2.31"
+const version = "0.2.32"
 
 func main() { os.Exit(run(os.Args[1:])) }
 
@@ -154,6 +154,7 @@ func run(args []string) int {
         return 0
     case "init":
         if err = install.Init(root, version); err == nil {
+            _,_ = backlog.EnsureTagRegistry(root)
             _ = maintenance.RegisterProject(root)
             fmt.Printf("Task Mecca %s installed to %s\n", version, filepath.Join(root, "_task_mecca"))
         }
@@ -161,6 +162,7 @@ func run(args []string) int {
         var migration install.MigrationResult
         migration, err = install.MigrateWithResult(root, version)
         if err == nil {
+            _,_ = backlog.EnsureTagRegistry(root)
             _ = maintenance.RegisterProject(root)
             fmt.Printf("Task Mecca %s migrated\n", version)
             if migration.InstructionRefreshRequired {
@@ -245,10 +247,166 @@ func run(args []string) int {
             if jsonOutput { emitJSON(report) } else {
                 fmt.Printf("%s %s %s\n",report["id"],report["state"],report["title"])
                 fmt.Printf("Agent: %v  범위: %v\n",emptyDash(report["agent"]),emptyDash(report["change_scope"]))
+                if tags,tagErr:=backlog.TaskTags(root,rootOption,positional[0]); tagErr==nil { fmt.Printf("Tags: %s\n",joinAnyStrings(tags["tags"])) }
                 fmt.Printf("ready: %v  waiting: %s\n",report["ready"],joinAnyStrings(report["waiting_for"]))
                 if note,ok:=report["waiting_note"].(string); ok && note!="" { fmt.Println("대기: "+note) }
             }
             if count,ok:=report["duplicate_count"].(int); ok && count>1 { return 1 }
+        }
+    case "tags":
+        action:="list"
+        if len(positional)>0 { action=strings.ToLower(positional[0]) }
+        switch action {
+        case "list":
+            if len(positional)>1 { fmt.Fprintln(os.Stderr,"tags list takes no arguments"); return 2 }
+            var rows []backlog.TagDefinition
+            rows,err=backlog.TagList(root)
+            if err==nil {
+                if jsonOutput { emitJSON(rows) } else { printTagDefinitions(rows) }
+            }
+        case "search","discover":
+            if len(positional)<2 { fmt.Fprintln(os.Stderr,"tags search/discover requires a query"); return 2 }
+            var rows []backlog.TagDefinition
+            rows,err=backlog.TagSearch(root,strings.Join(positional[1:]," "))
+            if err==nil {
+                if jsonOutput { emitJSON(rows) } else { printTagDefinitions(rows) }
+            }
+        case "show":
+            if len(positional)!=2 { fmt.Fprintln(os.Stderr,"tags show requires a tag"); return 2 }
+            var report map[string]any
+            report,err=backlog.TagShow(root,positional[1])
+            if err==nil {
+                if jsonOutput { emitJSON(report) } else if report["found"]!=true {
+                    fmt.Println("(태그 없음)")
+                } else if row,ok:=report["tag"].(backlog.TagDefinition); ok {
+                    printTagDefinitions([]backlog.TagDefinition{row})
+                } else { emitJSON(report) }
+            }
+        case "resolve":
+            if len(positional)<2 { fmt.Fprintln(os.Stderr,"tags resolve requires a query"); return 2 }
+            var report map[string]any
+            report,err=backlog.TagResolve(root,strings.Join(positional[1:]," "))
+            if err==nil {
+                if jsonOutput { emitJSON(report) } else if report["found"]!=true {
+                    fmt.Println("(해결 가능한 태그 없음)")
+                } else if row,ok:=report["tag"].(backlog.TagDefinition); ok {
+                    fmt.Println(row.Canonical)
+                    if matched:=fmt.Sprint(report["matched"]); matched!="" && matched!=row.Canonical { fmt.Println("matched: "+matched) }
+                } else { emitJSON(report) }
+            }
+        case "tasks","query":
+            if len(positional)!=2 { fmt.Fprintln(os.Stderr,"tags tasks/query requires an expression (AND=comma, OR=pipe)"); return 2 }
+            var rows []map[string]any
+            rows,err=backlog.TagTasks(root,rootOption,positional[1])
+            if err==nil {
+                if jsonOutput { emitJSON(rows) } else if len(rows)==0 { fmt.Println("(태스크 없음)") } else {
+                    for _,row:=range rows { fmt.Printf("%-8v %-7v %-28v %s\n",row["id"],row["state"],singleLine(row["title"]),joinAnyStrings(row["tags"])) }
+                }
+            }
+        case "stats":
+            if len(positional)!=1 { fmt.Fprintln(os.Stderr,"tags stats takes no arguments"); return 2 }
+            var rows []backlog.TagStat
+            rows,err=backlog.TagStatsReport(root,rootOption)
+            if err==nil {
+                if jsonOutput { emitJSON(rows) } else { printTagStats(rows) }
+            }
+        case "catalog":
+            if len(positional)!=1 { fmt.Fprintln(os.Stderr,"tags catalog takes no arguments"); return 2 }
+            var report map[string]any
+            report,err=backlog.TagCatalogReport(root,rootOption)
+            if err==nil {
+                if jsonOutput { emitJSON(report) } else {
+                    if rows,ok:=report["registry"].([]backlog.TagDefinition); ok { printTagDefinitions(rows) }
+                    if stats,ok:=report["stats"].([]backlog.TagStat); ok { fmt.Println(); printTagStats(stats) }
+                }
+            }
+        case "assign":
+            if len(positional)!=3 { fmt.Fprintln(os.Stderr,"tags assign <task-id> <tag>"); return 2 }
+            var report map[string]any
+            report,err=backlog.TaskTagAdd(root,rootOption,positional[1],positional[2])
+            if err==nil { if jsonOutput { emitJSON(report) } else { fmt.Printf("%s: %s\n",positional[1],joinAnyStrings(report["tags"])) } }
+        case "remove":
+            if len(positional)!=3 { fmt.Fprintln(os.Stderr,"tags remove <task-id> <tag>"); return 2 }
+            var report map[string]any
+            report,err=backlog.TaskTagRemove(root,rootOption,positional[1],positional[2])
+            if err==nil { if jsonOutput { emitJSON(report) } else { fmt.Printf("%s: %s\n",positional[1],joinAnyStrings(report["tags"])) } }
+        case "set":
+            if len(positional)<2 { fmt.Fprintln(os.Stderr,"tags set <task-id> [tag...]"); return 2 }
+            values:=expandTagArgs(positional[2:])
+            var report map[string]any
+            report,err=backlog.TaskTagSet(root,rootOption,positional[1],values)
+            if err==nil { if jsonOutput { emitJSON(report) } else { fmt.Printf("%s: %s\n",positional[1],joinAnyStrings(report["tags"])) } }
+        case "define":
+            if len(positional)<2 || len(positional)>4 { fmt.Fprintln(os.Stderr,"tags define <namespace:name> [description] [alias1,alias2]"); return 2 }
+            description:=""; aliases:=""
+            if len(positional)>=3 { description=positional[2] }
+            if len(positional)>=4 { aliases=positional[3] }
+            var row backlog.TagDefinition
+            row,err=backlog.TagDefine(root,positional[1],description,aliases)
+            if err==nil {
+                if jsonOutput { emitJSON(row) } else { printTagDefinitions([]backlog.TagDefinition{row}) }
+            }
+        case "rename":
+            if len(positional)!=3 { fmt.Fprintln(os.Stderr,"tags rename <old> <new>"); return 2 }
+            var report map[string]any
+            report,err=backlog.TagRename(root,rootOption,positional[1],positional[2])
+            if err==nil { if jsonOutput { emitJSON(report) } else { fmt.Printf("%v -> %v · tasks updated: %v\n",report["from"],report["to"],report["tasks_updated"]) } }
+        case "merge":
+            if len(positional)!=3 { fmt.Fprintln(os.Stderr,"tags merge <old> <target>"); return 2 }
+            var report map[string]any
+            report,err=backlog.TagMerge(root,rootOption,positional[1],positional[2])
+            if err==nil { if jsonOutput { emitJSON(report) } else { fmt.Printf("%v -> %v · tasks updated: %v\n",report["from"],report["to"],report["tasks_updated"]) } }
+        case "retire":
+            if len(positional)<2 || len(positional)>3 { fmt.Fprintln(os.Stderr,"tags retire <tag> [replacement]"); return 2 }
+            replacement:=""; if len(positional)==3 { replacement=positional[2] }
+            var report map[string]any
+            report,err=backlog.TagRetire(root,rootOption,positional[1],replacement)
+            if err==nil {
+                if jsonOutput { emitJSON(report) } else {
+                    if from,ok:=report["from"]; ok { fmt.Printf("%v -> %v · tasks updated: %v\n",from,report["to"],report["tasks_updated"]) } else { fmt.Printf("%v · %v\n",report["tag"],report["status"]) }
+                }
+            }
+        case "rebuild":
+            if len(positional)!=1 { fmt.Fprintln(os.Stderr,"tags rebuild takes no arguments"); return 2 }
+            var index backlog.TagIndex
+            index,err=backlog.RebuildTagIndex(root,rootOption)
+            if err==nil {
+                if jsonOutput { emitJSON(index) } else { fmt.Printf("tag index rebuilt: %d tasks · %d tags\n",len(index.Tasks),len(index.Stats)) }
+            }
+        default:
+            fmt.Fprintln(os.Stderr,"unknown tags action: "+action+" (use list, search, discover, show, resolve, tasks, query, stats, catalog, define, assign, remove, set, rename, merge, retire, rebuild)")
+            return 2
+        }
+    case "task":
+        if len(positional)<2 { fmt.Fprintln(os.Stderr,"task requires an action and task id"); return 2 }
+        action:=strings.ToLower(positional[0])
+        id:=positional[1]
+        switch action {
+        case "tags":
+            if len(positional)!=2 { fmt.Fprintln(os.Stderr,"task tags <id>"); return 2 }
+            var report map[string]any
+            report,err=backlog.TaskTags(root,rootOption,id)
+            if err==nil {
+                if jsonOutput { emitJSON(report) } else { fmt.Printf("%s: %s\n",id,joinAnyStrings(report["tags"])) }
+            }
+        case "tag-add":
+            if len(positional)!=3 { fmt.Fprintln(os.Stderr,"task tag-add <id> <tag>"); return 2 }
+            var report map[string]any
+            report,err=backlog.TaskTagAdd(root,rootOption,id,positional[2])
+            if err==nil { if jsonOutput { emitJSON(report) } else { fmt.Printf("%s: %s\n",id,joinAnyStrings(report["tags"])) } }
+        case "tag-remove":
+            if len(positional)!=3 { fmt.Fprintln(os.Stderr,"task tag-remove <id> <tag>"); return 2 }
+            var report map[string]any
+            report,err=backlog.TaskTagRemove(root,rootOption,id,positional[2])
+            if err==nil { if jsonOutput { emitJSON(report) } else { fmt.Printf("%s: %s\n",id,joinAnyStrings(report["tags"])) } }
+        case "tag-set":
+            values:=expandTagArgs(positional[2:])
+            var report map[string]any
+            report,err=backlog.TaskTagSet(root,rootOption,id,values)
+            if err==nil { if jsonOutput { emitJSON(report) } else { fmt.Printf("%s: %s\n",id,joinAnyStrings(report["tags"])) } }
+        default:
+            fmt.Fprintln(os.Stderr,"unknown task action: "+action+" (use tags, tag-add, tag-remove, tag-set)")
+            return 2
         }
     case "workload":
         if len(positional) != 0 { fmt.Fprintln(os.Stderr, "workload takes no positional arguments"); return 2 }
@@ -464,6 +622,35 @@ func emitJSON(value any) {
     encoder := json.NewEncoder(os.Stdout)
     encoder.SetEscapeHTML(false)
     _ = encoder.Encode(value)
+}
+
+func printTagDefinitions(rows []backlog.TagDefinition) {
+    if len(rows)==0 { fmt.Println("(태그 없음)"); return }
+    fmt.Printf("%-28s %-10s %-9s %s\n","TAG","NAMESPACE","STATUS","DESCRIPTION")
+    for _,row:=range rows {
+        description:=row.Description
+        if row.ReplacedBy!="" { description=strings.TrimSpace(description+" -> "+row.ReplacedBy) }
+        fmt.Printf("%-28s %-10s %-9s %s\n",row.Canonical,row.Namespace,row.Status,description)
+        if len(row.Aliases)>0 { fmt.Printf("  aliases: %s\n",strings.Join(row.Aliases,", ")) }
+    }
+}
+
+func printTagStats(rows []backlog.TagStat) {
+    if len(rows)==0 { fmt.Println("(태그 사용 없음)"); return }
+    fmt.Printf("%-28s %6s %7s %6s %6s\n","TAG","TOTAL","ACTIVE","HOLD","DONE")
+    for _,row:=range rows {
+        fmt.Printf("%-28s %6d %7d %6d %6d\n",row.Tag,row.Total,row.Active,row.Hold,row.Done)
+    }
+}
+
+func expandTagArgs(values []string) []string {
+    out:=[]string{}
+    for _,value:=range values {
+        for _,part:=range strings.Split(value,",") {
+            if trimmed:=strings.TrimSpace(part); trimmed!="" { out=append(out,trimmed) }
+        }
+    }
+    return out
 }
 
 func emptyDash(value any) any {
