@@ -121,7 +121,11 @@ func Handler(project,root,version string) (http.Handler,error) {
 }
 
 func handler(project,root,version,instanceID,controlToken string,restartCh chan<- maintenance.UpgradeResult,stopCh chan<- struct{}) (http.Handler,error) {
-    if _,err:=webContext(project,root); err!=nil { return nil,err }
+    initialCtx,initialErr:=webContext(project,root)
+    if initialErr!=nil { return nil,initialErr }
+    if selected,_,selectErr:=resolveBacklog(project,initialCtx,url.Values{}); selectErr==nil {
+        ensureAttentionFeed(project,selected)
+    }
     mux:=http.NewServeMux()
 
     projectFor:=func(r *http.Request) string {
@@ -201,50 +205,23 @@ func handler(project,root,version,instanceID,controlToken string,restartCh chan<
         w.Header().Set("Cache-Control","no-cache")
         w.Header().Set("Connection","keep-alive")
         w.Header().Set("X-Accel-Buffering","no")
-        stableKey:=func(payload map[string]any) string {
-            parts:=[]string{}
-            if rows,ok:=payload["attention"].([]map[string]any); ok {
-                for _,row:=range rows {
-                    parts=append(parts,strings.Join([]string{
-                        fmt.Sprint(row["id"]),fmt.Sprint(row["type"]),fmt.Sprint(row["health"]),
-                        fmt.Sprint(row["runtime_state"]),fmt.Sprint(row["last_activity_at"]),
-                        fmt.Sprint(row["title"]),fmt.Sprint(row["message"]),fmt.Sprint(row["resume_condition"]),
-                    },"|"))
-                }
-            }
-            if events,ok:=payload["notification_events"].([]map[string]any); ok {
-                for _,event:=range events { parts=append(parts,"event:"+fmt.Sprint(event["id"])) }
-            }
-            sort.Strings(parts)
-            return strings.Join(parts,"\n")
-        }
-        last:=""
-        send:=func() bool {
-            payload,snapshotErr:=backlog.AttentionSnapshot(activeProject,selected,true)
-            if snapshotErr!=nil {
-                data,_:=json.Marshal(map[string]any{"error":snapshotErr.Error()})
-                _,_=fmt.Fprintf(w,"event: error\ndata: %s\n\n",data)
-                flusher.Flush()
-                return false
-            }
-            current:=stableKey(payload)
-            if current==last { return true }
-            last=current
-            data,_:=json.Marshal(payload)
-            _,_=fmt.Fprintf(w,"event: attention\ndata: %s\n\n",data)
+        feed:=ensureAttentionFeed(activeProject,selected)
+        ch,initial,cancel:=feed.subscribe()
+        defer cancel()
+        if len(initial)>0 {
+            _,_=fmt.Fprintf(w,"event: attention\ndata: %s\n\n",initial)
             flusher.Flush()
-            return true
         }
-        if !send() { return }
-        ticker:=time.NewTicker(3*time.Second)
         keepalive:=time.NewTicker(15*time.Second)
-        defer ticker.Stop(); defer keepalive.Stop()
+        defer keepalive.Stop()
         for {
             select {
             case <-r.Context().Done():
                 return
-            case <-ticker.C:
-                if !send() { return }
+            case data,ok:=<-ch:
+                if !ok { return }
+                _,_=fmt.Fprintf(w,"event: attention\ndata: %s\n\n",data)
+                flusher.Flush()
             case <-keepalive.C:
                 _,_=fmt.Fprint(w,": keepalive\n\n")
                 flusher.Flush()
