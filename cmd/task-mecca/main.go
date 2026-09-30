@@ -35,9 +35,9 @@ func run(args []string) int {
         root,err:=filepath.Abs(".")
         if err!=nil { fmt.Fprintln(os.Stderr,err); return 2 }
         _ = maintenance.RegisterProject(root)
-        if err:=webui.Run(webui.Config{Project:root,Host:"auto",Port:webui.DefaultPort,OpenBrowser:true,Version:version}); err!=nil {
-            fmt.Fprintln(os.Stderr,err); return 2
-        }
+        state,startErr:=webui.StartService(webui.Config{Project:root,Host:"auto",Port:webui.DefaultPort,OpenBrowser:true,Version:version})
+        if startErr!=nil { fmt.Fprintln(os.Stderr,startErr); return 2 }
+        fmt.Printf("Task Mecca Web is running\nURL: %s\nPID: %d\n",state.URL,state.PID)
         return 0
     }
     command := args[0]
@@ -336,7 +336,7 @@ func run(args []string) int {
         if len(positional) != 0 { fmt.Fprintln(os.Stderr, "status takes no positional arguments"); return 2 }
         if watch && !jsonOutput {
             _ = maintenance.RegisterProject(root)
-            err=webui.Run(webui.Config{Project:root,Root:rootOption,Port:webui.DefaultPort,OpenBrowser:true,Version:version})
+            _,err=webui.StartService(webui.Config{Project:root,Root:rootOption,Host:"auto",Port:webui.DefaultPort,OpenBrowser:true,Version:version})
             break
         }
         if watch && jsonOutput {
@@ -415,7 +415,7 @@ func run(args []string) int {
         if len(positional) != 0 { fmt.Fprintln(os.Stderr, "monitor takes no positional arguments"); return 2 }
         if !once && !jsonOutput {
             _ = maintenance.RegisterProject(root)
-            err=webui.Run(webui.Config{Project:root,Root:rootOption,Host:host,Port:port,OpenBrowser:!noOpen,Version:version})
+            _,err=webui.StartService(webui.Config{Project:root,Root:rootOption,Host:host,Port:port,OpenBrowser:!noOpen,Version:version})
             break
         }
         if interval<0.5 { interval=0.5 }
