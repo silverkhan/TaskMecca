@@ -10,6 +10,7 @@ import (
     "os"
     "os/exec"
     "path/filepath"
+    "runtime"
     "strings"
     "time"
 )
@@ -30,8 +31,70 @@ type TLSInfo struct {
     Error string
 }
 
+func tailscaleCLIPath() (string,error) {
+    if override:=strings.TrimSpace(os.Getenv("TASK_MECCA_TAILSCALE_CLI")); override!="" {
+        info,err:=os.Stat(override)
+        if err!=nil || info.IsDir() {
+            return "",fmt.Errorf("TASK_MECCA_TAILSCALE_CLI does not point to a usable file: %s",override)
+        }
+        return override,nil
+    }
+
+    if path,err:=exec.LookPath("tailscale"); err==nil {
+        return path,nil
+    }
+
+    candidates:=[]string{}
+    switch runtime.GOOS {
+    case "darwin":
+        candidates=[]string{
+            "/Applications/Tailscale.app/Contents/MacOS/Tailscale",
+            "/usr/local/bin/tailscale",
+            "/opt/homebrew/bin/tailscale",
+        }
+    case "windows":
+        if root:=strings.TrimSpace(os.Getenv("ProgramFiles")); root!="" {
+            candidates=append(candidates,filepath.Join(root,"Tailscale","tailscale.exe"))
+        }
+        if root:=strings.TrimSpace(os.Getenv("ProgramW6432")); root!="" {
+            candidates=append(candidates,filepath.Join(root,"Tailscale","tailscale.exe"))
+        }
+        if root:=strings.TrimSpace(os.Getenv("LOCALAPPDATA")); root!="" {
+            candidates=append(candidates,filepath.Join(root,"Tailscale","tailscale.exe"))
+        }
+    default:
+        candidates=[]string{
+            "/usr/bin/tailscale",
+            "/usr/local/bin/tailscale",
+            "/opt/homebrew/bin/tailscale",
+        }
+    }
+
+    for _,candidate:=range candidates {
+        info,err:=os.Stat(candidate)
+        if err==nil && !info.IsDir() {
+            return candidate,nil
+        }
+    }
+
+    return "",fmt.Errorf("Tailscale CLI not found in PATH or known installation locations")
+}
+
+func tailscaleCommand(args ...string) (*exec.Cmd,error) {
+    path,err:=tailscaleCLIPath()
+    if err!=nil { return nil,err }
+
+    cmd:=exec.Command(path,args...)
+    if runtime.GOOS=="darwin" && strings.Contains(path,"/Tailscale.app/") {
+        cmd.Env=append(os.Environ(),"TAILSCALE_BE_CLI=1")
+    }
+    return cmd,nil
+}
+
 func tailscaleStatusInfo() (string,string,error) {
-    cmd:=exec.Command("tailscale","status","--json")
+    cmd,err:=tailscaleCommand("status","--json")
+    if err!=nil { return "","",err }
+
     out,err:=cmd.Output()
     if err!=nil { return "","",fmt.Errorf("tailscale status --json failed: %w",err) }
     var status tailscaleStatus
@@ -75,12 +138,15 @@ func ensureTailscaleTLS() TLSInfo {
     certFile:=filepath.Join(dir,base+".crt")
     keyFile:=filepath.Join(dir,base+".key")
     if !certValidFor(certFile,dns,7*24*time.Hour) {
-        cmd:=exec.Command("tailscale","cert",
+        cmd,commandErr:=tailscaleCommand("cert",
             "--cert-file="+certFile,
             "--key-file="+keyFile,
             "--min-validity=168h",
             dns,
         )
+        if commandErr!=nil {
+            return TLSInfo{DNSName:dns,IP:ip,Error:commandErr.Error()}
+        }
         output,cmdErr:=cmd.CombinedOutput()
         if cmdErr!=nil {
             _=os.Remove(certFile)
