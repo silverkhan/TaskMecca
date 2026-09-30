@@ -1186,7 +1186,15 @@ function render() {
     const t=state.snapshot.all_items[state.detail] || state.snapshot.done_items?.find(x=>x.id===state.detail);
     c.innerHTML=gate+(t?detailView(t):`<div class="empty">${esc(t('taskNotFound'))}</div>`);
     $('#backBtn')?.addEventListener('click',closeTask);
-    $('#rawToggle')?.addEventListener('click',()=>{state.raw=!state.raw;render()});
+    $('#rawToggle')?.addEventListener('click',()=>{
+      state.raw=!state.raw;
+      render();
+      requestAnimationFrame(()=>{
+        const section=document.getElementById('verification');
+        if(section?.tagName?.toLowerCase()==='details')section.open=true;
+        section?.scrollIntoView({block:'nearest'});
+      });
+    });
     bindCopyButtons(); bindMermaidControls(); bindDetailToc(); bindDetailInteractions(); renderMermaidDiagrams();
     return;
   }
