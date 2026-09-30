@@ -25,6 +25,10 @@ type ServiceState struct {
     Host string `json:"host"`
     Port int `json:"port"`
     URL string `json:"url"`
+    LocalURL string `json:"local_url,omitempty"`
+    TailscaleURL string `json:"tailscale_url,omitempty"`
+    TLSEnabled bool `json:"tls_enabled"`
+    TLSError string `json:"tls_error,omitempty"`
     Version string `json:"version"`
     Project string `json:"project"`
     StartedAt string `json:"started_at"`
@@ -85,9 +89,11 @@ func readServiceState() (ServiceState,error) {
 }
 
 func healthState(state ServiceState) bool {
-    if state.URL=="" || state.InstanceID=="" { return false }
+    healthURL:=state.LocalURL
+    if healthURL=="" { healthURL=state.URL }
+    if healthURL=="" || state.InstanceID=="" { return false }
     client:=http.Client{Timeout:700*time.Millisecond}
-    resp,err:=client.Get(strings.TrimRight(state.URL,"/")+"/api/health")
+    resp,err:=client.Get(strings.TrimRight(healthURL,"/")+"/api/health")
     if err!=nil { return false }
     defer resp.Body.Close()
     if resp.StatusCode!=http.StatusOK { return false }
@@ -120,8 +126,7 @@ func StartService(config Config) (ServiceState,error) {
     }
     id,token,err:=NewServiceIdentity()
     if err!=nil { return ServiceState{},err }
-    host,_:=resolveWebHost(config.Host)
-    config.Host=host
+    if strings.TrimSpace(config.Host)=="" { config.Host="auto" }
     if config.Port<=0 { config.Port=DefaultPort }
 
     if err=os.MkdirAll(webServiceDir(),0755); err!=nil { return ServiceState{},err }
@@ -160,7 +165,9 @@ func StartService(config Config) (ServiceState,error) {
 func StopService() (ServiceState,error) {
     state:=serviceStatusWithToken()
     if !state.Running { return state,nil }
-    endpoint:=strings.TrimRight(state.URL,"/")+"/api/admin/stop"
+    controlURL:=state.LocalURL
+    if controlURL=="" { controlURL=state.URL }
+    endpoint:=strings.TrimRight(controlURL,"/")+"/api/admin/stop"
     req,err:=http.NewRequest(http.MethodPost,endpoint,bytes.NewReader(nil))
     if err!=nil { return ServiceState{},err }
     req.Header.Set("X-Task-Mecca-Control",state.ControlToken)
