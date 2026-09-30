@@ -67,6 +67,9 @@ fresh `coordinate --json`과 실제 live agent state를 다시 확인하고 `con
 - 사용자 판단이 필요하면 worker claim을 해제하고 `hold(user)`로 전환해 대기 사유·재개조건·근거를 기록한 뒤 Root에 `USER_DECISION_REQUIRED`를 올린다.
 - Worker가 자기 자신에게 follow-up을 보냈다는 사실은 continuity 증거가 아니다. 새 turn 생성이 확인되지 않은 자기 위임은 재개로 인정하지 않는다.
 - Controller는 위 gap 중 하나가 남아 있으면 queue가 안정 상태라고 보고하지 않는다.
+- `coordinate --json`의 `recovery_queue`를 일반 ready보다 먼저 검토한다. completed/missing/user-wait worker가 붙은 `doing`은 구현 worker slot을 점유하는 것으로 계산하지 않는다.
+- recovery에서 다시 worker를 dispatch하려면 **fresh Full Access preflight → live agent state 확인 → exact task inspect → fresh turn 생성 확인** 순서를 다시 거친다.
+- `recovery.uncommitted_changes`가 있으면 해당 변경을 먼저 보존·검토한다. 기존 미커밋 구현을 잃거나 다른 worker 변경과 섞지 않은 상태에서 finalize 또는 재배정한다.
 
 ## Worker identity
 
