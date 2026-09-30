@@ -2,6 +2,7 @@ package webui
 
 import (
     "encoding/json"
+    "net"
     "net/http"
     "net/http/httptest"
     "os"
@@ -74,4 +75,36 @@ func index(value,needle string) int {
         if value[i:i+len(needle)]==needle { return i }
     }
     return -1
+}
+
+
+func TestTailscaleIPv4Range(t *testing.T) {
+    cases:=[]struct{
+        raw string
+        want bool
+    }{
+        {"100.64.0.1",true},
+        {"100.100.20.30",true},
+        {"100.127.255.254",true},
+        {"100.63.255.255",false},
+        {"100.128.0.1",false},
+        {"127.0.0.1",false},
+        {"192.168.0.10",false},
+    }
+    for _,tc:=range cases {
+        if got:=isTailscaleIPv4(net.ParseIP(tc.raw)); got!=tc.want {
+            t.Fatalf("isTailscaleIPv4(%s)=%v want %v",tc.raw,got,tc.want)
+        }
+    }
+}
+
+func TestResolveWebHostExplicitAndLocalhost(t *testing.T) {
+    host,mode:=resolveWebHost("localhost")
+    if host!="127.0.0.1" || mode!="localhost" {
+        t.Fatalf("localhost resolved to %q mode=%q",host,mode)
+    }
+    host,mode=resolveWebHost("0.0.0.0")
+    if host!="0.0.0.0" || mode!="explicit" {
+        t.Fatalf("explicit host resolved to %q mode=%q",host,mode)
+    }
 }
