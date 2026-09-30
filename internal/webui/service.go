@@ -158,7 +158,7 @@ func StartService(config Config) (ServiceState,error) {
     _=logFile.Close()
     _=cmd.Process.Release()
 
-    deadline:=time.Now().Add(6*time.Second)
+    deadline:=time.Now().Add(10*time.Second)
     for time.Now().Before(deadline) {
         time.Sleep(150*time.Millisecond)
         state,readErr:=readServiceState()
