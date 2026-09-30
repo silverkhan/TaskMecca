@@ -42,6 +42,7 @@ type context struct {
     scanRoot string
     selected string
     explicit bool
+    candidates []backlog.Candidate
 }
 
 func looksLikeBacklog(path string) bool {
@@ -73,12 +74,16 @@ func webContext(project,root string) (context,error) {
     selected:=explicit
     if selected=="" && len(candidates)>0 { selected=candidates[0].Path }
     if selected=="" { selected=filepath.Join(project,"_task_mecca","data","backlog") }
-    return context{scanRoot:scan,selected:selected,explicit:explicit!=""},nil
+    return context{scanRoot:scan,selected:selected,explicit:explicit!="",candidates:candidates},nil
 }
 
 func resolveBacklog(project string, ctx context, query url.Values) (string,[]backlog.Candidate,error) {
-    candidates,err:=backlog.Discover(project,ctx.scanRoot)
-    if err!=nil { return "",nil,err }
+    candidates:=ctx.candidates
+    if candidates==nil {
+        var err error
+        candidates,err=backlog.Discover(project,ctx.scanRoot)
+        if err!=nil { return "",nil,err }
+    }
     allowed:=map[string]bool{}
     for _,candidate:=range candidates {
         absolute,_:=filepath.Abs(candidate.Path)
