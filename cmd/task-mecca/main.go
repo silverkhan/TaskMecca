@@ -264,8 +264,8 @@ func run(args []string) int {
             if err==nil {
                 if jsonOutput { emitJSON(rows) } else { printTagDefinitions(rows) }
             }
-        case "search":
-            if len(positional)<2 { fmt.Fprintln(os.Stderr,"tags search requires a query"); return 2 }
+        case "search","discover":
+            if len(positional)<2 { fmt.Fprintln(os.Stderr,"tags search/discover requires a query"); return 2 }
             var rows []backlog.TagDefinition
             rows,err=backlog.TagSearch(root,strings.Join(positional[1:]," "))
             if err==nil {
@@ -335,7 +335,11 @@ func run(args []string) int {
             replacement:=""; if len(positional)==3 { replacement=positional[2] }
             var report map[string]any
             report,err=backlog.TagRetire(root,rootOption,positional[1],replacement)
-            if err==nil { if jsonOutput { emitJSON(report) } else { emitJSON(report) } }
+            if err==nil {
+                if jsonOutput { emitJSON(report) } else {
+                    if from,ok:=report["from"]; ok { fmt.Printf("%v -> %v · tasks updated: %v\n",from,report["to"],report["tasks_updated"]) } else { fmt.Printf("%v · %v\n",report["tag"],report["status"]) }
+                }
+            }
         case "rebuild","catalog":
             if len(positional)!=1 { fmt.Fprintln(os.Stderr,"tags rebuild takes no arguments"); return 2 }
             var index backlog.TagIndex
@@ -344,7 +348,7 @@ func run(args []string) int {
                 if jsonOutput { emitJSON(index) } else { fmt.Printf("tag index rebuilt: %d tasks · %d tags\n",len(index.Tasks),len(index.Stats)) }
             }
         default:
-            fmt.Fprintln(os.Stderr,"unknown tags action: "+action+" (use list, search, show, resolve, tasks, stats, define, rename, merge, retire, rebuild)")
+            fmt.Fprintln(os.Stderr,"unknown tags action: "+action+" (use list, search, discover, show, resolve, tasks, stats, define, rename, merge, retire, rebuild)")
             return 2
         }
     case "task":
@@ -370,7 +374,6 @@ func run(args []string) int {
             report,err=backlog.TaskTagRemove(root,rootOption,id,positional[2])
             if err==nil { if jsonOutput { emitJSON(report) } else { fmt.Printf("%s: %s\n",id,joinAnyStrings(report["tags"])) } }
         case "tag-set":
-            if len(positional)<3 { fmt.Fprintln(os.Stderr,"task tag-set <id> <tag...>"); return 2 }
             values:=expandTagArgs(positional[2:])
             var report map[string]any
             report,err=backlog.TaskTagSet(root,rootOption,id,values)
