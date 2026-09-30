@@ -406,7 +406,7 @@ function runningSeconds(t, key) {
 }
 
 function renderAccess() {
-  const a = state.snapshot?.access || {}, el = $('#accessPill');
+  const a = currentProjectData()?.access || {}, el = $('#accessPill');
   if (!el) return;
   const st = a.status || 'unknown';
   const currentRestriction = Boolean(a.restriction_current);
@@ -1622,7 +1622,12 @@ $('#backlogPicker').addEventListener('change',e=>{
   if(value)localStorage.setItem('task-mecca-backlog-folder',value);else localStorage.removeItem('task-mecca-backlog-folder');
   state.detail=null;state.listPage=1;state.selectedIndex=0;refresh();
 });
-$('#search').addEventListener('input',e=>{state.query=e.target.value;state.detail=null;state.listPage=1;state.selectedIndex=0;render()});
+let searchRefreshTimer=0;
+$('#search').addEventListener('input',e=>{
+  state.query=e.target.value; state.detail=null; state.detailTask=null; state.listPage=1; state.selectedIndex=0;
+  clearTimeout(searchRefreshTimer);
+  if(state.view==='backlog')searchRefreshTimer=setTimeout(refreshList,180); else render();
+});
 $('#refreshBtn').onclick=refresh;
 $('#notificationBtn')?.addEventListener('click',()=>{const panel=$('#notificationPanel');panel?.classList.toggle('open');renderNotificationPanel();});
 document.addEventListener('click',e=>{const panel=$('#notificationPanel');if(panel?.classList.contains('open')&&!panel.contains(e.target)&&!$('#notificationBtn')?.contains(e.target))panel.classList.remove('open')});
@@ -1664,12 +1669,22 @@ window.addEventListener('resize',()=>{
 });
 window.addEventListener('popstate',route);
 setInterval(()=>{
-  if(state.snapshot){
+  const data=currentProjectData();
+  if(data){
     $('#snapshotAge').textContent=`${t('updated')} ${ago(new Date(state.lastFetch).toISOString())}`;
-    document.querySelectorAll('.live-timer').forEach(el=>{const t=state.snapshot.all_items[el.dataset.id];if(t)el.textContent=fmtSec(runningSeconds(t,'active'))});
-    if(state.detail){const t=state.snapshot.all_items[state.detail]||state.snapshot.done_items?.find(x=>x.id===state.detail);if(t){const a=document.querySelector('.live-active'),w=document.querySelector('.live-wait'),q=document.querySelector('.live-queue'),l=document.querySelector('.live-lead');if(a)a.textContent=fmtSec(runningSeconds(t,'active'));if(w)w.textContent=fmtSec(runningSeconds(t,'wait'));if(q)q.textContent=fmtSec(runningSeconds(t,'queue'));if(l)l.textContent=fmtSec(runningSeconds(t,'lead'))}}
+    const byID={};
+    (state.listData?.items||[]).forEach(task=>{byID[task.id]=task});
+    Object.assign(byID,state.snapshot?.all_items||{});
+    document.querySelectorAll('.live-timer').forEach(el=>{const task=byID[el.dataset.id];if(task)el.textContent=fmtSec(runningSeconds(task,'active'))});
+    if(state.detail&&state.detailTask){
+      const task=state.detailTask,a=document.querySelector('.live-active'),w=document.querySelector('.live-wait'),q=document.querySelector('.live-queue'),l=document.querySelector('.live-lead');
+      if(a)a.textContent=fmtSec(runningSeconds(task,'active'));if(w)w.textContent=fmtSec(runningSeconds(task,'wait'));if(q)q.textContent=fmtSec(runningSeconds(task,'queue'));if(l)l.textContent=fmtSec(runningSeconds(task,'lead'));
+    }
   }
 },1000);
-setInterval(refresh,10000);
+setInterval(()=>{
+  if(state.view==='backlog')refreshList();
+  else if(state.view!=='hub')refresh();
+},30000);
 if(window.isSecureContext&&'serviceWorker' in navigator)notificationWorker();
 route();refresh();
