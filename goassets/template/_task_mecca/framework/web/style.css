@@ -295,3 +295,10 @@
 .notification-state.ok{border-color:color-mix(in srgb,var(--ok) 35%,var(--border));background:color-mix(in srgb,var(--ok) 6%,var(--surface))}
 .notification-state.warning{border-color:color-mix(in srgb,var(--warn) 40%,var(--border));background:color-mix(in srgb,var(--warn) 7%,var(--surface))}
 .notification-state.off{border-color:var(--border)}
+
+/* Web upgrade restart */
+.upgrade-restart{min-height:55vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:12px}
+.upgrade-restart h2{margin:0;font-size:22px}
+.upgrade-restart p{max-width:520px;margin:0;color:var(--muted);font-size:12px;line-height:1.6}
+.upgrade-spinner{width:34px;height:34px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:task-mecca-spin .8s linear infinite}
+@keyframes task-mecca-spin{to{transform:rotate(360deg)}}
