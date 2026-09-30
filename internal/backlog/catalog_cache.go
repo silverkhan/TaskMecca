@@ -20,6 +20,7 @@ type catalogCacheEntry struct {
 
 var catalogCache = struct {
     sync.Mutex
+    Refresh sync.Mutex
     Entries map[string]catalogCacheEntry
 }{Entries:map[string]catalogCacheEntry{}}
 
@@ -59,6 +60,8 @@ func parseRecordFile(folder,path string) (Record,error) {
 }
 
 func CachedCatalog(project,root string) ([]Record,error) {
+    catalogCache.Refresh.Lock()
+    defer catalogCache.Refresh.Unlock()
     folder,err:=Select(project,root)
     if err!=nil { return nil,err }
     if folder=="" { return []Record{},nil }
