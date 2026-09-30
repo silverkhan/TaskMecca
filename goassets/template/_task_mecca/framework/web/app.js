@@ -374,6 +374,29 @@ function processTaskNotifications(snapshot) {
   state.previousTasksByProject[state.project]=compact;
   localStorage.setItem('task-mecca-previous-tasks',JSON.stringify(state.previousTasksByProject));
 }
+function updateNotificationIndicator() {
+  const btn=$('#notificationBtn'),badge=$('#notificationBadge');
+  if(!btn||!badge)return;
+  const permission=typeof Notification==='undefined'?'unsupported':Notification.permission;
+  const enabled=Object.values(state.notificationSettings).some(Boolean);
+  btn.classList.remove('notification-ok','notification-warning','notification-off');
+  badge.textContent='';
+  if(permission==='granted'&&enabled){
+    btn.classList.add('notification-ok');
+    btn.title=t('notificationsOn');
+    btn.setAttribute('aria-label',t('notificationsOn'));
+  } else if(permission==='default'||permission==='denied'||permission==='unsupported'){
+    btn.classList.add('notification-warning');
+    badge.textContent='!';
+    btn.title=permission==='denied'?t('notificationsBlocked'):t('notificationsPermissionNeeded');
+    btn.setAttribute('aria-label',btn.title);
+  } else {
+    btn.classList.add('notification-off');
+    badge.textContent='×';
+    btn.title=t('notificationTypesDisabled');
+    btn.setAttribute('aria-label',btn.title);
+  }
+}
 function renderNotificationPanel() {
   const panel=$('#notificationPanel');
   if(!panel)return;
