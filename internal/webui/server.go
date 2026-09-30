@@ -186,6 +186,7 @@ func Handler(project,root,version string) (http.Handler,error) {
 
     mux.HandleFunc("/api/upgrade",func(w http.ResponseWriter,r *http.Request) {
         if r.Method!="POST" { writeJSON(w,map[string]any{"error":"POST required"},405); return }
+        if r.Header.Get("X-Task-Mecca-Action")!="1" { writeJSON(w,map[string]any{"error":"maintenance action header required"},403); return }
         result,err:=maintenance.Upgrade(version)
         if err!=nil { writeJSON(w,map[string]any{"error":err.Error()},500); return }
         writeJSON(w,result,200)
@@ -193,6 +194,7 @@ func Handler(project,root,version string) (http.Handler,error) {
 
     mux.HandleFunc("/api/migrate",func(w http.ResponseWriter,r *http.Request) {
         if r.Method!="POST" { writeJSON(w,map[string]any{"error":"POST required"},405); return }
+        if r.Header.Get("X-Task-Mecca-Action")!="1" { writeJSON(w,map[string]any{"error":"maintenance action header required"},403); return }
         var body struct{ Project string `json:"project"` }
         if err:=json.NewDecoder(r.Body).Decode(&body); err!=nil { writeJSON(w,map[string]any{"error":"invalid JSON"},400); return }
         target:=strings.TrimSpace(body.Project)
@@ -278,7 +280,7 @@ func Run(config Config) error {
     } else {
         fmt.Println("backlog: not initialized (Registrar creates data/backlog on first registration)")
     }
-    fmt.Println("read-only · localhost only · Ctrl+C to stop")
+    fmt.Println("localhost only · maintenance actions require explicit UI confirmation · Ctrl+C to stop")
     access:=backlog.AccessObservation(config.Project)
     if access["restriction_current"]==true {
         fmt.Println("WARNING: current runtime restriction detected · subagent dispatch will remain blocked until a fresh preflight succeeds")
