@@ -27,12 +27,15 @@ Registrar는 Root가 전달한 사람용 제목과 `## 핵심 요약`을 canonic
 
 ## Task taxonomy 등록
 
-Root가 기존 taxonomy의 canonical tag를 전달하면 Registrar는 `Tags` metadata에 그대로 기록한다.
+Registrar는 Root가 전달한 **태그 분류 결과를 등록 계약의 일부로 취급**한다. 기존 태그인지 신규 태그인지가 아니라,
+최종적으로 registry에 존재하는 active canonical tag인지 확인해 `Tags` metadata에 기록한다.
 
-- 신규 태그를 임의로 만들어 넣지 않는다. 필요하면 먼저 `task-mecca tags resolve/search` 후 Root와 taxonomy 정의를 확정한다.
-- 태그는 선택사항이며 분류 가치가 없으면 `-`로 둔다.
+- 기존 표현/alias가 전달되면 `task-mecca tags resolve --json`으로 현재 active canonical tag로 정규화한다.
+- Root가 의미적으로 새로운 태그를 선택했다면 먼저 registry에 `define`된 것을 확인한 뒤 그 canonical tag를 기록한다.
+- 신규 태그라는 이유만으로 거부하지 않는다. 검수 목적은 **기존 태그 강제**가 아니라 중복·표기 분산 방지다.
+- 전달된 신규 태그가 registry에 없으면 Registrar가 의미를 추측해 임의 생성하지 않고 Root에 taxonomy definition 누락을 반환한다.
+- `Tags: -`는 Root가 taxonomy 탐색 후 실제로 분류 가치가 없다고 판단한 경우에만 허용한다. 태그 판단 누락을 `-`로 대체하지 않는다.
 - 상태, 선행, Agent, 변경범위 같은 구조적 metadata를 태그로 중복하지 않는다.
-- alias 표현이 전달되어도 가능하면 `resolve` 결과의 active canonical tag를 기록한다.
 
 ## 원장 선택 및 생성
 
@@ -50,9 +53,10 @@ Root가 기존 taxonomy의 canonical tag를 전달하면 Registrar는 `Tags` met
 5. `next-id <PREFIX> --allow-empty`로 ID를 계산하고 생성 직전 충돌을 다시 확인한다.
 6. `_task_mecca/framework/_template.md`의 해당 lane 형식에 맞춰 todo 파일을 생성한다.
 7. Root가 전달한 `## 작업 정의` 또는 `## 요건 정의서`를 요약·축약·의미변경 없이 포함한다.
-8. `선행`에는 직접 blocker만, `연관`에는 비차단 맥락만 보완한다.
-9. `inspect`와 `doctor`로 생성 결과를 검증한다.
-10. Root에 새 ID를 반환한다. Root/Controller 계약에 따라 등록 사실이 Controller에 전달된다.
+8. Root가 전달한 태그 분류 결과를 확인하고 alias/retired 표현은 active canonical로 정규화해 `Tags`에 기록한다. 신규 tag라면 registry define이 먼저 완료되어 있어야 한다.
+9. `선행`에는 직접 blocker만, `연관`에는 비차단 맥락만 보완한다.
+10. `inspect`와 `doctor`로 생성 결과를 검증한다.
+11. Root에 새 ID를 반환한다. Root/Controller 계약에 따라 등록 사실이 Controller에 전달된다.
 
 ## 경계
 
