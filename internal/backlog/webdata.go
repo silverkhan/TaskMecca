@@ -158,17 +158,40 @@ func BacklogPage(project,root string,page,pageSize int,statuses,tags []string,se
         if li!=lj { return li<lj }; return toString(filtered[i]["sort_key"])<toString(filtered[j]["sort_key"])
     }
     switch sortKey {
-    case "updated_asc": sort.Slice(filtered,cmpUpdated)
-    case "updated_desc": sort.Slice(filtered,func(i,j int)bool{return !cmpUpdated(i,j)})
-    case "id_asc": sort.Slice(filtered,func(i,j int)bool{return toString(filtered[i]["sort_key"])<toString(filtered[j]["sort_key"])})
-    default: sort.Slice(filtered,func(i,j int)bool{return toString(filtered[i]["sort_key"])>toString(filtered[j]["sort_key"])})
+    case "updated_asc":
+        sort.Slice(filtered,cmpUpdated)
+    case "updated_desc":
+        sort.Slice(filtered,func(i,j int)bool {
+            li:=toString(filtered[i]["updated_at"]); lj:=toString(filtered[j]["updated_at"])
+            if li!=lj { return li>lj }
+            si:=toString(filtered[i]["sort_key"]); sj:=toString(filtered[j]["sort_key"])
+            if si!=sj { return si>sj }
+            return toString(filtered[i]["id"])>toString(filtered[j]["id"])
+        })
+    case "id_asc":
+        sort.Slice(filtered,func(i,j int)bool {
+            si:=toString(filtered[i]["sort_key"]); sj:=toString(filtered[j]["sort_key"])
+            if si!=sj { return si<sj }
+            return toString(filtered[i]["id"])<toString(filtered[j]["id"])
+        })
+    default:
+        sort.Slice(filtered,func(i,j int)bool {
+            si:=toString(filtered[i]["sort_key"]); sj:=toString(filtered[j]["sort_key"])
+            if si!=sj { return si>sj }
+            return toString(filtered[i]["id"])>toString(filtered[j]["id"])
+        })
     }
     if pageSize<1 { pageSize=20 }; if pageSize>100 { pageSize=100 }; if page<1 { page=1 }
     total:=len(filtered); pages:=(total+pageSize-1)/pageSize; if pages<1 { pages=1 }; if page>pages { page=pages }
     start:=(page-1)*pageSize; end:=start+pageSize; if end>total { end=total }
     items:=[]map[string]any{}; if start<total { items=filtered[start:end] }
     tagCatalog,tagErr:=TagCatalog(project,root,rows); if tagErr!=nil { tagCatalog=map[string]any{} }
-    attention,attErr:=AttentionSnapshotFromRows(project,root,rows,true); if attErr!=nil { attention=map[string]any{"attention":[]map[string]any{},"notification_events":[]map[string]any{}} }
+    attention,attErr:=AttentionSnapshotFromRows(project,root,rows,true); if attErr!=nil { attention=map[string]any{"attention":[]map[string]any{},"all_items":map[string]map[string]any{},"notification_events":[]map[string]any{}} }
+    if rowsAtt,ok:=attention["attention"].([]map[string]any); ok {
+        counts["attention"]=len(rowsAtt)
+        needs:=0; for _,row:=range rowsAtt { if toString(row["type"])!="quiet" { needs++ } }
+        counts["needs_action"]=needs
+    }
     return map[string]any{
         "snapshot_at":time.Now().Format(time.RFC3339),"root":root,"repo":filepath.Base(repoRoot(root)),
         "items":items,"page":page,"page_size":pageSize,"pages":pages,"total":total,
