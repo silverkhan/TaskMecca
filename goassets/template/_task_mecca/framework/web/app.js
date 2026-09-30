@@ -140,10 +140,6 @@ function renderGlobalUpdateIndicator() {
     $('#globalMigrateBtn')?.addEventListener('click',e=>performProjectMigration(state.project,e.currentTarget));
     return;
   }
-  if(cli.current){
-    el.innerHTML=`<div class="global-update-pill" title="${esc(t('currentVersion'))}"><span>${esc(t('currentVersion'))}</span><strong>v${esc(cli.current)}</strong></div>`;
-    return;
-  }
   el.innerHTML='';
 }
 
