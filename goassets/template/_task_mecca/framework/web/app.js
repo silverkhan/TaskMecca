@@ -41,6 +41,7 @@ const state = {
   pendingContentReason: '',
   eventStreamInitialized: false,
   attentionRevision: '',
+  attentionRevisionKey: '',
 };
 
 
@@ -1545,6 +1546,7 @@ async function refreshList() {
       state.loadError='';
       state.lastFetch=Date.now();
       state.listPage=Math.max(1,Number(data.page)||1);
+      acceptContentRevision(data.revision||state.contentRevision);
       processTaskNotifications(listNotificationPayload(data));
       const candidates=data?.backlog_selection?.candidates||[];
       if(state.backlog && !candidates.some(x=>x.path===state.backlog)){
@@ -1576,6 +1578,14 @@ function closeAttentionStream() {
   state.eventStreamKey='';
 }
 
+function attentionPayloadRevision(payload) {
+  const parts=[];
+  (payload?.attention||[]).forEach(row=>parts.push(['a',row.id,row.type,row.health,row.runtime_state,row.last_activity_at,row.title,row.message,row.resume_condition].map(x=>String(x??'')).join('|')));
+  (payload?.notification_events||[]).forEach(event=>parts.push('e|'+String(event?.id||'')));
+  parts.sort();
+  return parts.join('\n');
+}
+
 function ensureAttentionStream() {
   if(!state.project||typeof EventSource==='undefined')return;
   const params=new URLSearchParams();
@@ -1584,6 +1594,10 @@ function ensureAttentionStream() {
   const key=state.project+'|'+state.backlog;
   if(state.eventSource&&state.eventStreamKey===key&&state.eventSource.readyState!==EventSource.CLOSED)return;
   closeAttentionStream();
+  if(state.attentionRevisionKey!==key){
+    state.attentionRevisionKey=key;
+    state.attentionRevision='';
+  }
   const source=new EventSource('/api/events?'+params.toString());
   state.eventSource=source;
   state.eventStreamKey=key;
@@ -1592,25 +1606,13 @@ function ensureAttentionStream() {
     let payload=null;
     try{payload=JSON.parse(event.data)}catch(_){return}
     processTaskNotifications(payload);
-    if(state.listData){
-      state.listData.attention=payload.attention||[];
-      state.listData.attention_items=payload.all_items||{};
-      state.listData.notification_events=payload.notification_events||[];
-      state.listData.counts=state.listData.counts||{};
-      state.listData.counts.attention=(payload.attention||[]).length;
-      state.listData.counts.needs_action=(payload.attention||[]).filter(x=>x.type!=='quiet').length;
-    }
-    if(state.snapshot){
-      state.snapshot.attention=payload.attention||[];
-      state.snapshot.notification_events=payload.notification_events||[];
-      state.snapshot.all_items={...(state.snapshot.all_items||{}),...(payload.all_items||{})};
-      state.snapshot.counts=state.snapshot.counts||{};
-      state.snapshot.counts.attention=(payload.attention||[]).length;
-    }
-    if(state.detail&&payload.all_items?.[state.detail])loadTaskDetail(state.detail);
-    if(state.view==='backlog'&&!state.detail)refreshList();
-    else if(state.view==='attention')render();
-    else nav();
+    const nextRevision=attentionPayloadRevision(payload);
+    const changed=Boolean(state.attentionRevision && nextRevision!==state.attentionRevision);
+    state.attentionRevision=nextRevision;
+    const count=(payload.attention||[]).length;
+    const badge=$('#attentionCount');
+    if(badge)badge.textContent=count||'';
+    if(changed)markContentUpdate('runtime');
   });
 }
 
