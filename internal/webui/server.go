@@ -27,6 +27,7 @@ const embeddedRoot = "template/_task_mecca/framework"
 type Config struct {
     Project string
     Root string
+    Host string
     Port int
     OpenBrowser bool
     Version string
@@ -264,6 +265,40 @@ func handler(project,root,version string,restartCh chan<- maintenance.UpgradeRes
     return mux,nil
 }
 
+func isTailscaleIPv4(ip net.IP) bool {
+    v4:=ip.To4()
+    if v4==nil { return false }
+    // Tailscale IPv4 addresses are allocated from 100.64.0.0/10.
+    return v4[0]==100 && v4[1]>=64 && v4[1]<=127
+}
+
+func tailscaleIPv4() string {
+    interfaces,err:=net.Interfaces()
+    if err!=nil { return "" }
+    for _,iface:=range interfaces {
+        if iface.Flags&net.FlagUp==0 || iface.Flags&net.FlagLoopback!=0 { continue }
+        addrs,err:=iface.Addrs()
+        if err!=nil { continue }
+        for _,addr:=range addrs {
+            raw:=addr.String()
+            if slash:=strings.IndexByte(raw,'/'); slash>=0 { raw=raw[:slash] }
+            ip:=net.ParseIP(raw)
+            if isTailscaleIPv4(ip) { return ip.String() }
+        }
+    }
+    return ""
+}
+
+func resolveWebHost(requested string) (string,string) {
+    requested=strings.TrimSpace(requested)
+    if requested=="" || strings.EqualFold(requested,"auto") {
+        if ts:=tailscaleIPv4(); ts!="" { return ts,"tailscale" }
+        return "127.0.0.1","localhost"
+    }
+    if strings.EqualFold(requested,"localhost") { return "127.0.0.1","localhost" }
+    return requested,"explicit"
+}
+
 func findListener(host string,preferred int) (net.Listener,int,error) {
     if preferred<1 { preferred=1 }
     for port:=preferred;port<preferred+30;port++ {
@@ -291,7 +326,7 @@ func scheduleWebRestart(result maintenance.UpgradeResult,config Config,port int)
         if err!=nil { return err }
         exe,_=filepath.EvalSymlinks(exe)
     }
-    args:=[]string{"web","--project",config.Project,"--port",fmt.Sprint(port),"--no-open"}
+    args:=[]string{"web","--project",config.Project,"--host",config.Host,"--port",fmt.Sprint(port),"--no-open"}
     if config.Root!="" { args=append(args,"--root",config.Root) }
 
     if runtime.GOOS=="windows" {
@@ -300,8 +335,8 @@ func scheduleWebRestart(result maintenance.UpgradeResult,config Config,port int)
         helperPath:=helper.Name()
         rootArg:=""
         if config.Root!="" { rootArg=" --root \""+config.Root+"\"" }
-        body:=fmt.Sprintf("@echo off\r\n:wait\r\nif exist \"%s.new\" (timeout /t 1 /nobreak >nul & goto wait)\r\ntimeout /t 1 /nobreak >nul\r\nstart \"\" /D \"%s\" \"%s\" web --project \"%s\" --port %d --no-open%s\r\ndel \"%%~f0\"\r\n",
-            exe,config.Project,exe,config.Project,port,rootArg)
+        body:=fmt.Sprintf("@echo off\r\n:wait\r\nif exist \"%s.new\" (timeout /t 1 /nobreak >nul & goto wait)\r\ntimeout /t 1 /nobreak >nul\r\nstart \"\" /D \"%s\" \"%s\" web --project \"%s\" --host \"%s\" --port %d --no-open%s\r\ndel \"%%~f0\"\r\n",
+            exe,config.Project,exe,config.Project,config.Host,port,rootArg)
         if _,err=helper.WriteString(body); err!=nil { _=helper.Close(); return err }
         if err=helper.Close(); err!=nil { return err }
         cmd:=exec.Command("cmd","/C","start","\"Task Mecca Web Restart\"","/MIN",helperPath)
@@ -321,19 +356,22 @@ func Run(config Config) error {
     restartCh:=make(chan maintenance.UpgradeResult,1)
     handler,err:=handler(config.Project,config.Root,config.Version,restartCh)
     if err!=nil { return err }
-    listener,port,err:=findListener("127.0.0.1",config.Port)
+    host,hostMode:=resolveWebHost(config.Host)
+    config.Host=host
+    listener,port,err:=findListener(host,config.Port)
     if err!=nil { return err }
     ctx,err:=webContext(config.Project,config.Root)
     if err!=nil { _=listener.Close(); return err }
-    url:=fmt.Sprintf("http://127.0.0.1:%d/",port)
+    url:=fmt.Sprintf("http://%s:%d/",host,port)
     fmt.Println("Task Mecca Web UI: "+url)
+    if hostMode=="tailscale" { fmt.Println("network: Tailscale detected · bound to "+host) } else if hostMode=="localhost" { fmt.Println("network: localhost only") } else { fmt.Println("network: explicit bind · "+host) }
     if ctx.selected!="" {
         mode:="(auto)"; if ctx.explicit { mode="(explicit)" }
         fmt.Printf("backlog: %s %s\n",ctx.selected,mode)
     } else {
         fmt.Println("backlog: not initialized (Registrar creates data/backlog on first registration)")
     }
-    fmt.Println("localhost only · maintenance actions require explicit UI confirmation · Ctrl+C to stop")
+    fmt.Println("maintenance actions require explicit UI confirmation · Ctrl+C to stop")
     access:=backlog.AccessObservation(config.Project)
     if access["restriction_current"]==true {
         fmt.Println("WARNING: current runtime restriction detected · subagent dispatch will remain blocked until a fresh preflight succeeds")
