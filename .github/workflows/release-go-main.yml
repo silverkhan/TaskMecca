@@ -29,6 +29,8 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
+      - name: Check Web UI JavaScript
+        run: node --check goassets/template/_task_mecca/framework/web/app.js
       - name: Test Go runtime
         run: go test ./...
       - name: Build standalone binaries
