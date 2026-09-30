@@ -624,15 +624,19 @@ function switchProject(path) {
   localStorage.setItem('task-mecca-last-project',path);
   state.backlog='';
   state.snapshot=null;
+  state.listData=null;
+  state.detailTask=null;
   state.loadError='';
   state.view='backlog';
   state.detail=null;
   state.listPage=1;
   state.selectedIndex=0;
+  closeAttentionStream();
   localStorage.removeItem('task-mecca-backlog-folder');
   history.pushState({},'',`/?project=${encodeURIComponent(path)}&view=backlog`);
   render();
-  refresh();
+  refreshList();
+  ensureAttentionStream();
 }
 function closeProjectSession(path) {
   state.openProjects=state.openProjects.filter(p=>p!==path);
@@ -1134,13 +1138,37 @@ function detailView(task) {
   const body=`<div class="detail"><button class="back" id="backBtn">${esc(t('backToBacklog'))}</button><div class="detail-head"><div class="detail-id">${esc(task.id)}</div><h1>${esc(titleOf(task))}</h1><div class="detail-status"><span class="status ${esc(task.state)}">${esc(stateLabel(task.state))}</span>${task.agent?`<span class="badge">${esc(task.agent)}</span>`:''}<span class="badge">${esc(task.document?.schema||'legacy')}</span>${task.archive_month?`<span class="badge">archive/${esc(task.archive_month)}</span>`:''}</div>${(task.tags||[]).length?`<div class="detail-tag-row">${(task.tags||[]).map(tag=>tagChip(tag,true)).join('')}</div>`:''}</div>${humanSummaryCard(task)}${passiveAlert}${contractSections(task)}${progress}${verification}${related}${operations}${lifecycle}</div>`;
   return `<div class="detail-layout">${body}${detailToc()}</div>`;
 }
+async function loadTaskDetail(id) {
+  if(!id||!state.project)return;
+  const targetProject=state.project, targetID=id;
+  const params=new URLSearchParams();
+  params.set('project',targetProject);
+  if(state.backlog)params.set('backlog',state.backlog);
+  try {
+    const r=await fetch(`/api/tasks/${encodeURIComponent(targetID)}?${params.toString()}`,{cache:'no-store'});
+    if(!r.ok){
+      let detail=''; try { const body=await r.json(); detail=body.error||''; } catch(_) {}
+      throw new Error(detail||`HTTP ${r.status}`);
+    }
+    const task=await r.json();
+    if(state.project!==targetProject||state.detail!==targetID)return;
+    state.detailTask=task;
+    state.loadError='';
+    render();
+  } catch(e) {
+    if(state.project!==targetProject||state.detail!==targetID)return;
+    state.detailTask=null;
+    state.loadError=String(e?.message||e||'Unknown error');
+    render();
+  }
+}
 function openTask(id) {
   if (!id) return;
-  state.detail=id; state.raw=false;
-  const p=new URLSearchParams(); if(state.project)p.set('project',state.project); if(state.tagFilters.length)p.set('tags',state.tagFilters.join(',')); history.pushState({},'',`/tasks/${encodeURIComponent(id)}${p.toString()?`?${p.toString()}`:''}`); render();
+  state.detail=id; state.detailTask=null; state.raw=false; state.view='backlog';
+  const p=new URLSearchParams(); if(state.project)p.set('project',state.project); if(state.tagFilters.length)p.set('tags',state.tagFilters.join(',')); history.pushState({},'',`/tasks/${encodeURIComponent(id)}${p.toString()?`?${p.toString()}`:''}`); render(); loadTaskDetail(id);
 }
 function closeTask() {
-  state.detail=null; history.pushState({},'',state.view==='backlog'?backlogUrl():`/?view=${state.view}`); render();
+  state.detail=null; state.detailTask=null; state.loadError=''; history.pushState({},'',state.view==='backlog'?backlogUrl():`/?view=${state.view}`); render();
 }
 function bindRows() {
   document.querySelectorAll('[data-id]').forEach(el => el.onclick = () => {
@@ -1238,23 +1266,24 @@ function toggleSidebar() {
 
 function render() {
   nav(); translateChrome(); renderAccess(); renderBacklogPicker(); applySidebarState(); updateNotificationIndicator();
-  const c=$('#content');
-  if (!state.snapshot) {
+  const c=$('#content'), data=currentProjectData();
+  if (!data && !state.detailTask) {
     if (state.view === 'hub' && state.hub) {
       c.innerHTML=hubView(); bindHubActions(); return;
     }
     if (state.loadError) {
       c.innerHTML=`<div class="load-error"><h2>Project dashboard could not be loaded</h2><p><strong>Project</strong> ${esc(state.project||'-')}</p><p>${esc(state.loadError)}</p><div class="project-actions"><button class="action-btn secondary" id="retryProjectBtn">Retry</button><button class="action-btn" id="backToHubBtn">Back to Projects</button></div></div>`;
-      $('#retryProjectBtn')?.addEventListener('click',refresh);
-      $('#backToHubBtn')?.addEventListener('click',()=>{state.project='';state.backlog='';state.view='hub';history.pushState({},'','/?view=hub');render();refresh();});
+      $('#retryProjectBtn')?.addEventListener('click',()=>state.detail?loadTaskDetail(state.detail):refresh());
+      $('#backToHubBtn')?.addEventListener('click',()=>{state.project='';state.backlog='';state.listData=null;state.snapshot=null;state.view='hub';history.pushState({},'','/?view=hub');render();refresh();});
       return;
     }
     c.innerHTML=`<div class="loading">${esc(t('loading'))}</div>`; return;
   }
   const gate=accessBanner()+diagnosticBanner();
   if (state.detail) {
-    const t=state.snapshot.all_items[state.detail] || state.snapshot.done_items?.find(x=>x.id===state.detail);
-    c.innerHTML=gate+(t?detailView(t):`<div class="empty">${esc(t('taskNotFound'))}</div>`);
+    const task=state.detailTask;
+    if(!task){ c.innerHTML=gate+`<div class="loading">${esc(t('loading'))}</div>`; return; }
+    c.innerHTML=gate+detailView(task);
     $('#backBtn')?.addEventListener('click',closeTask);
     $('#rawToggle')?.addEventListener('click',()=>{
       state.raw=!state.raw;
