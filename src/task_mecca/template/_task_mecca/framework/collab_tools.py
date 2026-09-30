@@ -419,6 +419,54 @@ def _acceptance_items(value: str) -> list[dict[str, object]]:
     return items
 
 
+def _summary_key(label: str) -> str:
+    normalized = label.strip()
+    if normalized in {"목적", "작업의 목적"}:
+        return "purpose"
+    if normalized in {"핵심 변경", "변경"}:
+        return "change"
+    if normalized in {"상태·결과", "현재 상태·결과", "상태/결과"}:
+        return "status_result"
+    if normalized in {"확인·후속", "확인·후속 사항", "확인/후속"}:
+        return "follow_up"
+    return ""
+
+
+def _human_summary(value: str) -> dict[str, str]:
+    result = {
+        "purpose": "",
+        "change": "",
+        "status_result": "",
+        "follow_up": "",
+    }
+    current = ""
+    chunks: list[str] = []
+
+    def flush() -> None:
+        nonlocal chunks
+        if not current:
+            chunks = []
+            return
+        text = "\n".join(chunks).strip()
+        result[current] = "" if text == "-" else text
+        chunks = []
+
+    for line in value.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("- ") and ":" in stripped:
+            label, raw = stripped[2:].split(":", 1)
+            key = _summary_key(label)
+            if key:
+                flush()
+                current = key
+                chunks = [raw.strip()]
+                continue
+        if current:
+            chunks.append(line)
+    flush()
+    return result
+
+
 def _document_model(text: str, fields: dict[str, str]) -> dict[str, object]:
     sections = _section_map(text)
     defined = _subsections(text, "요건 정의서")
@@ -461,10 +509,13 @@ def _document_model(text: str, fields: dict[str, str]) -> dict[str, object]:
         contract = {}
 
     acceptance = contract.get("수용 기준", "")
+    summary = _human_summary(sections.get("핵심 요약", ""))
     return {
         "schema": schema,
         "contract_kind": contract_kind,
         "sections": sections,
+        "summary": summary,
+        "summary_present": bool(sections.get("핵심 요약", "").strip()),
         # Keep one normalized object for CLI/search/UI consumers. Simple Tasks only
         # populate goal + acceptance; Defined Tasks populate the full structure.
         "requirements": {

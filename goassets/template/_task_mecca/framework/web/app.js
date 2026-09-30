@@ -63,6 +63,24 @@ Object.assign(I18N.en,{
   notificationPermissionError:'Notification permission request failed.',
 });
 
+Object.assign(I18N.ko,{
+  humanSummary:'핵심 요약', summaryPurpose:'목적', summaryChange:'핵심 변경', summaryStatusResult:'상태·결과', summaryFollowUp:'확인·후속',
+  summaryFallback:'기존 기록에서 구성한 요약', detailLinks:'상세 바로가기', backgroundProblem:'배경 및 문제', workScope:'작업 범위',
+  completionCriteria:'완료 기준', progressResult:'진행 상황·작업 결과', verificationDetail:'검증 상세', relatedWork:'관련 작업',
+  operationsEvidence:'운영·실행 근거', summaryTodoFallback:'등록됨. 완료 기준 충족 전입니다.',
+  summaryDoingFallback:'현재 구현 또는 검증이 진행 중입니다.', summaryHoldFallback:'현재 재개 조건을 기다리고 있습니다.',
+  summaryDoneFallback:'완료 처리되었습니다.', noFollowUp:'현재 별도 확인·후속 사항이 없습니다.',
+  detailExpand:'상세 펼치기', detailCollapse:'상세 접기', requirementsAndConstraints:'요구사항·제약', legacyDetails:'기존 작업 상세'
+});
+Object.assign(I18N.en,{
+  humanSummary:'Summary', summaryPurpose:'Purpose', summaryChange:'Key change', summaryStatusResult:'Status / result', summaryFollowUp:'Checks / follow-up',
+  summaryFallback:'Summary derived from legacy record', detailLinks:'Open details', backgroundProblem:'Background & problem', workScope:'Work scope',
+  completionCriteria:'Completion criteria', progressResult:'Progress / result', verificationDetail:'Verification details', relatedWork:'Related work',
+  operationsEvidence:'Operations / evidence', summaryTodoFallback:'Registered; completion criteria are not yet satisfied.',
+  summaryDoingFallback:'Implementation or verification is currently in progress.', summaryHoldFallback:'Waiting for the recorded resume condition.',
+  summaryDoneFallback:'Task has been completed.', noFollowUp:'No separate check or follow-up is currently recorded.',
+  detailExpand:'Expand details', detailCollapse:'Collapse details', requirementsAndConstraints:'Requirements / constraints', legacyDetails:'Legacy task details'
+});
 function t(key, vars = {}) {
   const dict = I18N[state.language] || I18N.en;
   let value = dict[key] ?? I18N.en[key] ?? key;
@@ -286,6 +304,67 @@ function bindCopyButtons() {
 }
 
 function titleOf(t) { return String(t.title || '').replace(new RegExp('^'+t.id+'\\s+','i'),'') || t.id; }
+function summaryText(value) {
+  const raw=String(value||'').trim();
+  if(!raw)return '';
+  const line=raw.split(/\r?\n/).map(x=>x.trim()).find(Boolean)||'';
+  return line
+    .replace(/^#{1,4}\s+/,'')
+    .replace(/^[-*]\s+/,'')
+    .replace(/^\d+\.\s+/,'')
+    .replace(/^\[[ xX]\]\s+/,'')
+    .replace(/\*\*([^*]+)\*\*/g,'$1')
+    .replace(/\[([^\]]+)\]\([^)]+\)/g,'$1')
+    .replace(/`([^`]+)`/g,'$1')
+    .trim();
+}
+function humanSummary(task) {
+  const doc=task.document||{}, raw=doc.summary||{}, req=doc.requirements||{}, reason=task.attention_reason||null;
+  const result=summaryText(doc.result||task.fields?.결과);
+  const notes=summaryText(doc.notes||task.fields?.메모);
+  const purpose=summaryText(raw.purpose)||summaryText(req.goal)||summaryText(task.fields?.설명)||titleOf(task);
+  const change=summaryText(raw.change)||(task.file_state==='done'?result:'');
+  let statusDetail='';
+  if(reason)statusDetail=summaryText(reason.message||reason.title);
+  else statusDetail=summaryText(raw.status_result);
+  if(!statusDetail){
+    if(task.file_state==='done')statusDetail=result||t('summaryDoneFallback');
+    else if(task.file_state==='hold')statusDetail=summaryText(task.fields?.대기)||t('summaryHoldFallback');
+    else if(task.file_state==='doing')statusDetail=notes||t('summaryDoingFallback');
+    else statusDetail=t('summaryTodoFallback');
+  }
+  let follow='';
+  if(reason?.resume_condition)follow=summaryText(reason.resume_condition);
+  if(!follow)follow=summaryText(raw.follow_up);
+  if(!follow&&task.file_state==='hold')follow=summaryText(task.fields?.재개조건);
+  const statusResult=`${stateLabel(task.state)} · ${statusDetail}`;
+  return {purpose,change,status_result:statusResult,follow_up:follow,canonical:Boolean(doc.summary_present)};
+}
+function summaryPreview(value,max=150) {
+  const text=summaryText(value);
+  if(text.length<=max)return text;
+  return text.slice(0,Math.max(0,max-1)).trimEnd()+'…';
+}
+function detailDisclosure(id,label,preview,body,open=false) {
+  return `<details class="section detail-section detail-disclosure" id="${esc(id)}" data-toc-label="${esc(label)}" ${open?'open':''}><summary><div><h2>${esc(label)}</h2>${preview?`<p>${esc(preview)}</p>`:''}</div><span class="detail-disclosure-chevron">⌄</span></summary><div class="detail-disclosure-body">${body}</div></details>`;
+}
+function relationBadges(ids,kind) {
+  const rows=(ids||[]).filter(Boolean);
+  if(!rows.length)return '<span class="summary">-</span>';
+  return rows.map(id=>`<button type="button" class="relation-link badge" data-relation-id="${esc(id)}">${esc(id)} · ${esc(kind)}</button>`).join(' ');
+}
+function humanSummaryCard(task) {
+  const s=humanSummary(task), reason=task.attention_reason||null;
+  const rows=[[t('summaryPurpose'),s.purpose],[t('summaryChange'),s.change],[t('summaryStatusResult'),s.status_result],[t('summaryFollowUp'),s.follow_up]].filter(([,value])=>Boolean(value));
+  const links=[];
+  const kind=task.document?.contract_kind||'legacy';
+  if(kind==='defined')links.push(['background',t('backgroundProblem')],['requirements',t('requirements')],['scope',t('workScope')],['acceptance',t('completionCriteria')]);
+  else if(kind==='simple')links.push(['task-definition',t('taskDefinition')],['acceptance',t('completionCriteria')]);
+  else links.push(['legacy-task',t('legacyDetails')]);
+  links.push(['progress-result',t('progressResult')],['verification',t('verificationDetail')],['related-work',t('relatedWork')],['operations',t('operationsEvidence')],['lifecycle',t('lifecycle')]);
+  const urgent=reason?`<div class="summary-alert ${reason.severity==='danger'?'danger':''}"><strong>${esc(reason.title||t('needsAttention'))}</strong><span>${esc(reason.message||'')}</span>${reason.resume_condition?`<span>${esc(reason.resume_condition)}</span>`:''}</div>`:'';
+  return `<section class="human-summary-card detail-section" id="human-summary" data-toc-label="${esc(t('humanSummary'))}"><div class="human-summary-head"><div><div class="eyebrow">${esc(t('humanSummary'))}</div>${!s.canonical?`<span class="summary-source">${esc(t('summaryFallback'))}</span>`:''}</div></div><div class="human-summary-grid">${rows.map(([label,value])=>`<div class="human-summary-row"><span>${esc(label)}</span><strong>${esc(value)}</strong></div>`).join('')}</div>${urgent}<div class="detail-jump-list"><span>${esc(t('detailLinks'))}</span>${links.map(([id,label])=>`<a href="#${esc(id)}" data-detail-target="${esc(id)}">${esc(label)}</a>`).join('')}</div></section>`;
+}
 function healthLabel(h) { return ({healthy:t('active'),quiet:t('quiet'),stale:t('stale'),worker_missing:t('workerMissing'),runtime_unknown:t('runtimeUnknown'),awaiting_finalize:t('awaitingFinalize'),needs_user:t('needsUser'),'n/a':'-'})[h] || h; }
 function stateLabel(s) { return ({doing:t('working'),ready:t('ready'),blocked:t('blocked'),hold:t('hold'),done:t('done'),todo:t('todo'),needs_user:t('needsUser'),awaiting_finalize:t('awaitingFinalize'),stalled:t('stalled')})[s] || s; }
 function lifecycleEventLabel(label) { return ({Registered:t('eventRegistered'),Started:t('eventStarted'),Hold:t('eventHold'),Completed:t('eventCompleted')})[label] || label; }
@@ -860,10 +939,12 @@ function listView() {
   return `<div class="page-head"><div><div class="eyebrow">${esc(state.snapshot.repo||t('repository'))}</div><h1>${esc(t('backlog'))}</h1><p class="summary">${esc(meta.selected ? String(meta.selected).split(/[\/]/).pop() : '')} · ${info.total} ${esc(t('items'))} · ${esc(filterLabel)}</p></div></div><div class="metrics"><div class="metric"><strong>${c.working||0}</strong><span>${esc(t('working'))}</span></div><div class="metric"><strong>${c.ready||0}</strong><span>${esc(t('ready'))}</span></div><div class="metric"><strong>${c.hold||0}</strong><span>${esc(t('hold'))}</span></div><div class="metric"><strong>${c.attention||0}</strong><span>${esc(t('needsAttention'))}</span></div></div>${listControls(info)}${rows.length?`${head}<div class="task-list">${rows.map((task,i)=>{
     const act=task.activity||{}, h=act.health;
     const time=task.file_state==='doing'?fmtSec(runningSeconds(task,'active')):(task.file_state==='done'?fmtSec(task.active_seconds):'-');
-    const sub = task.document?.requirements?.goal || task.fields?.설명 || task.scope || '';
+    const hs=humanSummary(task);
+    const sub=hs.purpose||task.scope||'';
+    const summaryLine=[hs.change,hs.follow_up?`${t('summaryFollowUp')}: ${hs.follow_up}`:''].filter(Boolean).join(' · ');
     const updated=updatedAt(task);
     const alias=(task.agent||'').split('/').pop()||'-';
-    return `<div class="task-row ${i===state.selectedIndex?'keyboard-selected':''}" data-id="${esc(task.id)}" data-row-index="${i}" tabindex="-1"><div class="task-id">${esc(task.id)}</div><div class="task-main"><div class="task-mobile-id">${esc(task.id)}</div><div class="task-title">${esc(titleOf(task))}</div><div class="task-sub">${esc(sub)}</div></div><div class="state-col"><span class="status ${esc(task.state)}">${esc(stateLabel(task.state))}</span>${['quiet','stale','worker_missing'].includes(h)?`<div class="task-sub">${esc(healthLabel(h))}</div>`:''}</div><div class="task-agent"><div>${esc(alias)}</div>${task.archive_month?`<div class="task-sub">archive/${esc(task.archive_month)}</div>`:''}</div><div class="task-active timer live-timer" data-id="${esc(task.id)}">${time}</div><div class="task-updated" title="${esc(dateTimeLabel(updated))}"><strong>${esc(ago(updated))}</strong><span>${esc(dateTimeLabel(updated,true))}</span></div><div class="chev">›</div></div>`;
+    return `<div class="task-row ${i===state.selectedIndex?'keyboard-selected':''}" data-id="${esc(task.id)}" data-row-index="${i}" tabindex="-1"><div class="task-id">${esc(task.id)}</div><div class="task-main"><div class="task-mobile-id">${esc(task.id)}</div><div class="task-title">${esc(titleOf(task))}</div><div class="task-sub">${esc(sub)}</div>${summaryLine?`<div class="task-summary-preview">${esc(summaryLine)}</div>`:''}</div><div class="state-col"><span class="status ${esc(task.state)}">${esc(stateLabel(task.state))}</span><div class="task-state-summary">${esc(summaryPreview(hs.status_result,90))}</div>${['quiet','stale','worker_missing'].includes(h)?`<div class="task-sub">${esc(healthLabel(h))}</div>`:''}</div><div class="task-agent"><div>${esc(alias)}</div>${task.archive_month?`<div class="task-sub">archive/${esc(task.archive_month)}</div>`:''}</div><div class="task-active timer live-timer" data-id="${esc(task.id)}">${time}</div><div class="task-updated" title="${esc(dateTimeLabel(updated))}"><strong>${esc(ago(updated))}</strong><span>${esc(dateTimeLabel(updated,true))}</span></div><div class="chev">›</div></div>`;
   }).join('')}</div>`:`<div class="empty">${esc(t('noMatches'))}</div>`}`;
 }
 
@@ -893,19 +974,33 @@ function issuesView() {
   return `<div class="page-head"><div><div class="eyebrow">${esc(t('diagnostics'))}</div><h1>${esc(t('issues'))}</h1><p class="summary">${esc(t('issuesIntro'))}</p></div></div>${rows.length?`<div class="markdown"><pre><code>${esc(rows.map(([k,v])=>`${k}: ${JSON.stringify(v,null,2)}`).join('\n\n'))}</code></pre></div>`:`<div class="empty">${esc(t('noIssues'))}</div>`}`;
 }
 function metaRow(k,v){return `<div class="meta-row"><span>${esc(k)}</span><span>${esc(v||'-')}</span></div>`}
-function contractSection(task) {
+function contractSections(task) {
   const doc=task.document||{}, req=doc.requirements||{}, kind=doc.contract_kind||'legacy';
-  if (kind === 'simple') {
-    return `<section class="section detail-section" id="task-definition" data-toc-label="${esc(t('taskDefinition'))}"><h2>${esc(t('taskDefinition'))}</h2><div class="contract-note">${esc(t('simpleNote'))}</div><h3>${esc(t('goal'))}</h3><div class="markdown">${markdown(req.goal)}</div><h3>${esc(t('acceptance'))}</h3><div class="markdown">${markdown(req.acceptance)}</div></section>`;
+  if(kind==='simple'){
+    const definition=`<div class="contract-note">${esc(t('simpleNote'))}</div><h3>${esc(t('goal'))}</h3><div class="markdown">${markdown(req.goal)}</div>`;
+    const acceptance=`<div class="markdown">${markdown(req.acceptance)}</div>`;
+    return detailDisclosure('task-definition',t('taskDefinition'),summaryPreview(req.goal),definition)+detailDisclosure('acceptance',t('completionCriteria'),summaryPreview(req.acceptance),acceptance);
   }
-  if (kind === 'defined') {
-    return `<section class="section detail-section" id="requirements" data-toc-label="${esc(t('requirements'))}"><h2>${esc(t('requirements'))}</h2><div class="contract-note">${esc(t('definedNote'))}</div><h3>${esc(t('background'))}</h3><div class="markdown">${markdown(req.background)}</div><h3>${esc(t('goal'))}</h3><div class="markdown">${markdown(req.goal)}</div><h3>${esc(t('requirements'))}</h3><div class="markdown">${markdown(req.requirements)}</div><h3>${esc(t('scope'))}</h3><h4>${esc(t('scopeIn'))}</h4><div class="markdown">${markdown(req.scope_in)}</div><h4>${esc(t('scopeOut'))}</h4><div class="markdown">${markdown(req.scope_out)}</div><h3>${esc(t('acceptance'))}</h3><div class="markdown">${markdown(req.acceptance)}</div><h3>${esc(t('constraints'))}</h3><div class="markdown">${markdown(req.constraints)}</div></section>`;
+  if(kind==='defined'){
+    const background=detailDisclosure('background',t('backgroundProblem'),summaryPreview(req.background),`<div class="contract-note">${esc(t('definedNote'))}</div><div class="markdown">${markdown(req.background)}</div>`);
+    const requirements=detailDisclosure('requirements',t('requirementsAndConstraints'),summaryPreview(req.requirements||req.goal),`<h3>${esc(t('goal'))}</h3><div class="markdown">${markdown(req.goal)}</div><h3>${esc(t('requirements'))}</h3><div class="markdown">${markdown(req.requirements)}</div>`);
+    const scopePreview=[summaryPreview(req.scope_in,80),summaryPreview(req.scope_out,80)].filter(Boolean).join(' / ');
+    const scope=detailDisclosure('scope',t('workScope'),scopePreview,`<h3>${esc(t('scopeIn'))}</h3><div class="markdown">${markdown(req.scope_in)}</div><h3>${esc(t('scopeOut'))}</h3><div class="markdown">${markdown(req.scope_out)}</div><h3>${esc(t('constraints'))}</h3><div class="markdown">${markdown(req.constraints)}</div>`);
+    const acceptance=detailDisclosure('acceptance',t('completionCriteria'),summaryPreview(req.acceptance),`<div class="markdown">${markdown(req.acceptance)}</div>`);
+    return background+requirements+scope+acceptance;
   }
-  return `<section class="section detail-section" id="legacy-task" data-toc-label="${esc(t('legacyTask'))}"><h2>${esc(t('legacyTask'))}</h2><div class="contract-note">${esc(t('legacyNote'))}</div><h3>${esc(t('description'))}</h3><div class="markdown">${markdown(task.fields?.설명)}</div></section>`;
+  return detailDisclosure('legacy-task',t('legacyDetails'),summaryPreview(task.fields?.설명),`<div class="contract-note">${esc(t('legacyNote'))}</div><div class="markdown">${markdown(task.fields?.설명)}</div>`);
 }
 function detailToc() {
   const icon=`<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/></svg>`;
   return `<button class="detail-toc-fab" type="button" aria-label="${esc(t('tocOpen'))}" title="${esc(t('tocTitle'))}">${icon}</button><div class="detail-toc-scrim" aria-hidden="true"></div><aside class="detail-toc" aria-label="${esc(t('tocTitle'))}"><div class="detail-toc-head"><div class="detail-toc-title">${esc(t('tocTitle'))}</div><button class="detail-toc-close" type="button" aria-label="${esc(t('tocClose'))}" title="${esc(t('tocClose'))}">×</button></div><nav class="detail-toc-nav"></nav></aside>`;
+}
+function openDetailSection(id,behavior='smooth') {
+  const target=document.getElementById(id);
+  if(!target)return;
+  if(target.tagName?.toLowerCase()==='details')target.open=true;
+  target.scrollIntoView({behavior,block:'start'});
+  history.replaceState({},'',`${location.pathname}${location.search}#${encodeURIComponent(id)}`);
 }
 function bindDetailToc() {
   const layout=document.querySelector('.detail-layout');
@@ -926,9 +1021,7 @@ function bindDetailToc() {
   toc.innerHTML=sections.map((section,i)=>`<a href="#${esc(section.id)}" data-toc-target="${esc(section.id)}" class="${i===0?'active':''}">${esc(section.dataset.tocLabel||section.querySelector('h2')?.textContent||section.id)}</a>`).join('');
   toc.querySelectorAll('[data-toc-target]').forEach(link=>link.addEventListener('click',e=>{
     e.preventDefault();
-    const target=document.getElementById(link.dataset.tocTarget);
-    target?.scrollIntoView({behavior:'smooth',block:'start'});
-    history.replaceState({},'',`${location.pathname}${location.search}#${encodeURIComponent(link.dataset.tocTarget)}`);
+    openDetailSection(link.dataset.tocTarget);
     if(window.matchMedia('(max-width:1280px)').matches)setOpen(false);
   }));
   const setActive=id=>toc.querySelectorAll('[data-toc-target]').forEach(link=>link.classList.toggle('active',link.dataset.tocTarget===id));
@@ -940,20 +1033,40 @@ function bindDetailToc() {
     sections.forEach(section=>observer.observe(section));
   }
   const hash=decodeURIComponent(location.hash.replace(/^#/,''));
-  if(hash&&document.getElementById(hash))requestAnimationFrame(()=>document.getElementById(hash)?.scrollIntoView({block:'start'}));
+  if(hash&&document.getElementById(hash))requestAnimationFrame(()=>openDetailSection(hash,'auto'));
+}
+function bindDetailInteractions() {
+  document.querySelectorAll('[data-detail-target]').forEach(link=>link.addEventListener('click',e=>{
+    e.preventDefault();
+    openDetailSection(link.dataset.detailTarget);
+  }));
+  document.querySelectorAll('[data-relation-id]').forEach(btn=>btn.addEventListener('click',e=>{
+    e.preventDefault();
+    e.stopPropagation();
+    openTask(btn.dataset.relationId);
+  }));
 }
 function detailView(task) {
   const act=task.activity||{}, lc=task.lifecycle||{}, reason=task.attention_reason||null, warn=Boolean(reason)||['quiet','stale','worker_missing'].includes(act.health), events=lc.events||[];
-  const timingInferred=Boolean(lc.lifecycle_inferred), timingNote=lc.lifecycle_inference_note||'';
-  const timingIncomplete=Boolean(lc.timing_incomplete), timingIncompleteNote=lc.timing_incomplete_note||'';
-  const lifecycle=`<section class="section detail-section" id="lifecycle" data-toc-label="${esc(t('lifecycle'))}"><h2>${esc(t('lifecycle'))}</h2>${events.length?`<div class="timeline">${events.map(e=>`<div class="timeline-event"><span class="timeline-dot"></span><span class="timeline-time">${esc(new Date(e.at).toLocaleString(localeCode()))}</span><div class="timeline-label"><strong>${esc(lifecycleEventLabel(e.label))}${e.provisional?` · ${esc(t('provisional'))}`:''}</strong><small>${e.interval&&e.interval!=='-'?`${esc(t('stayed'))} ${esc(e.interval)}`:''}${e.source&&e.source!=='git'?` · ${esc(e.source)}`:''}</small></div></div>`).join('')}</div>`:`<p class="summary">${esc(t('noLifecycle'))}</p>`}</section>`;
-  const alertText=reason
-    ? `<div class="attention-banner ${reason.severity==='danger'?'danger':''}"><strong>${esc(reason.title||stateLabel(task.state))}</strong><span>${esc(reason.message||'')}</span>${reason.resume_condition?`<span><b>Next:</b> ${esc(reason.resume_condition)}</span>`:''}${reason.evidence?`<span><b>Evidence:</b> ${esc(reason.evidence)}</span>`:''}</div>`
-    : (warn?`<div class="attention-banner ${['stale','worker_missing'].includes(act.health)?'danger':''}"><strong>${esc(healthLabel(act.health))}</strong> · ${esc(t('lastObservable',{ago:ago(act.last_activity_at),source:act.last_activity_source}))} ${esc(act.health==='worker_missing'?t('workerMissingDetail'):t('quietAdvisory'))}</div>`:'');
-  const body=`<div class="detail"><button class="back" id="backBtn">${esc(t('backToBacklog'))}</button><div class="detail-head"><div class="detail-id">${esc(task.id)}</div><h1>${esc(titleOf(task))}</h1><div class="detail-status"><span class="status ${esc(task.state)}">${esc(stateLabel(task.state))}</span>${task.agent?`<span class="badge">${esc(task.agent)}</span>`:''}<span class="badge">${esc(task.document?.schema||'legacy')}</span>${task.archive_month?`<span class="badge">archive/${esc(task.archive_month)}</span>`:''}</div>${alertText}</div><div class="detail-metrics"><div><div class="value live-active">${fmtSec(runningSeconds(task,'active'))}</div><div class="label">${esc(t('activeTime'))}</div></div><div><div class="value live-wait">${fmtSec(runningSeconds(task,'wait'))}</div><div class="label">${esc(t('waitTime'))}</div></div><div><div class="value live-queue">${fmtSec(runningSeconds(task,'queue'))}</div><div class="label">${esc(t('queueTime'))}</div></div><div><div class="value live-lead">${fmtSec(runningSeconds(task,'lead'))}</div><div class="label">${esc(t('leadTime'))}</div></div></div>${timingInferred?`<div class="timing-note"><strong>${esc(t('provisionalTiming'))}</strong><span>${esc(t('provisionalTimingDetail'))}</span></div>`:''}${timingIncomplete?`<div class="timing-note warning"><strong>${esc(t('incompleteHistory'))}</strong><span>${esc(t('incompleteHistoryDetail'))}</span></div>`:''}<section class="section detail-section" id="overview" data-toc-label="${esc(t('overview'))}"><h2>${esc(t('overview'))}</h2><div class="meta-grid">${metaRow(t('registrant'),task.registrant)}${metaRow(t('agent'),task.agent)}${metaRow(t('changeScope'),task.scope)}${metaRow(t('dependsOn'),(task.depends_on||[]).join(', '))}${metaRow(t('related'),(task.related||[]).join(', '))}${metaRow(t('location'),task.archive_month?`archive/${task.archive_month}`:task.location)}${metaRow(t('updated'),dateTimeLabel(updatedAt(task)))}${metaRow(t('completed'),dateTimeLabel(completionAt(task)))}${metaRow(t('activity'),healthLabel(act.health))}${metaRow(t('lastSignal'),act.last_activity_at?ago(act.last_activity_at):'-')}${metaRow(t('signalSource'),act.last_activity_source)}</div></section>${lifecycle}${contractSection(task)}<section class="section detail-section" id="execution" data-toc-label="${esc(t('execution'))}"><h2>${esc(t('execution'))}</h2><div class="meta-grid">${metaRow(t('runtimeProvider'),task.fields?.RuntimeProvider||'unknown')}${metaRow(t('dispatchStatus'),task.fields?.Dispatch상태||task.fields?.실행상태||'unknown')}${metaRow(t('executionEvidence'),task.fields?.실행근거||'unknown')}${metaRow(t('fallbackEvidence'),task.fields?.Fallback근거||'-')}</div></section><section class="section detail-section" id="work-notes" data-toc-label="${esc(t('workNotes'))}"><h2>${esc(t('workNotes'))}</h2><div class="markdown">${markdown(task.document?.notes||task.fields?.메모)}</div></section><section class="section detail-section" id="result" data-toc-label="${esc(t('result'))}"><h2>${esc(t('result'))}</h2><div class="markdown">${markdown(task.document?.result||task.fields?.결과)}</div></section><section class="section detail-section" id="verification" data-toc-label="${esc(t('verification'))}"><h2>${esc(t('verification'))}</h2><button id="rawToggle" class="raw-toggle">${esc(state.raw?t('rendered'):t('rawMarkdown'))}</button><div class="markdown">${markdown(task.document?.verification||task.fields?.검증)}</div>${state.raw?`<pre class="raw">${esc(task.raw_markdown||'')}</pre>`:''}</section></div>`;
+  const hs=humanSummary(task);
+  const timingInferred=Boolean(lc.lifecycle_inferred), timingIncomplete=Boolean(lc.timing_incomplete);
+  const lifecyclePreview=events.length?`${lifecycleEventLabel(events[events.length-1].label)} · ${dateTimeLabel(events[events.length-1].at,true)}`:t('noLifecycle');
+  const lifecycleBody=`${timingInferred?`<div class="timing-note"><strong>${esc(t('provisionalTiming'))}</strong><span>${esc(t('provisionalTimingDetail'))}</span></div>`:''}${timingIncomplete?`<div class="timing-note warning"><strong>${esc(t('incompleteHistory'))}</strong><span>${esc(t('incompleteHistoryDetail'))}</span></div>`:''}${events.length?`<div class="timeline">${events.map(e=>`<div class="timeline-event"><span class="timeline-dot"></span><span class="timeline-time">${esc(new Date(e.at).toLocaleString(localeCode()))}</span><div class="timeline-label"><strong>${esc(lifecycleEventLabel(e.label))}${e.provisional?` · ${esc(t('provisional'))}`:''}</strong><small>${e.interval&&e.interval!=='-'?`${esc(t('stayed'))} ${esc(e.interval)}`:''}${e.source&&e.source!=='git'?` · ${esc(e.source)}`:''}</small></div></div>`).join('')}</div>`:`<p class="summary">${esc(t('noLifecycle'))}</p>`}`;
+  const lifecycle=detailDisclosure('lifecycle',t('lifecycle'),lifecyclePreview,lifecycleBody);
+  const passiveAlert=!reason&&warn?`<div class="attention-banner ${['stale','worker_missing'].includes(act.health)?'danger':''}"><strong>${esc(healthLabel(act.health))}</strong><span>${esc(t('lastObservable',{ago:ago(act.last_activity_at),source:act.last_activity_source}))} ${esc(act.health==='worker_missing'?t('workerMissingDetail'):t('quietAdvisory'))}</span></div>`:'';
+  const progressBody=`<h3>${esc(t('workNotes'))}</h3><div class="markdown">${markdown(task.document?.notes||task.fields?.메모)}</div><h3>${esc(t('result'))}</h3><div class="markdown">${markdown(task.document?.result||task.fields?.결과)}</div>`;
+  const progress=detailDisclosure('progress-result',t('progressResult'),summaryPreview(hs.status_result),progressBody);
+  const verificationValue=task.document?.verification||task.fields?.검증;
+  const verificationBody=`<button id="rawToggle" class="raw-toggle">${esc(state.raw?t('rendered'):t('rawMarkdown'))}</button><div class="markdown">${markdown(verificationValue)}</div>${state.raw?`<pre class="raw">${esc(task.raw_markdown||'')}</pre>`:''}`;
+  const verification=detailDisclosure('verification',t('verificationDetail'),summaryPreview(verificationValue),verificationBody);
+  const relatedBody=`<div class="relation-groups"><div><h3>${esc(t('dependsOn'))}</h3><div class="relation-list">${relationBadges(task.depends_on,t('dependsOn'))}</div></div><div><h3>${esc(t('related'))}</h3><div class="relation-list">${relationBadges(task.related,t('related'))}</div></div></div>`;
+  const related=detailDisclosure('related-work',t('relatedWork'),[...(task.depends_on||[]),...(task.related||[])].join(', '),relatedBody);
+  const metricGrid=`<div class="detail-metrics embedded"><div><div class="value live-active">${fmtSec(runningSeconds(task,'active'))}</div><div class="label">${esc(t('activeTime'))}</div></div><div><div class="value live-wait">${fmtSec(runningSeconds(task,'wait'))}</div><div class="label">${esc(t('waitTime'))}</div></div><div><div class="value live-queue">${fmtSec(runningSeconds(task,'queue'))}</div><div class="label">${esc(t('queueTime'))}</div></div><div><div class="value live-lead">${fmtSec(runningSeconds(task,'lead'))}</div><div class="label">${esc(t('leadTime'))}</div></div></div>`;
+  const operationsBody=`${metricGrid}<h3>${esc(t('overview'))}</h3><div class="meta-grid">${metaRow(t('registrant'),task.registrant)}${metaRow(t('agent'),task.agent)}${metaRow(t('changeScope'),task.scope)}${metaRow(t('location'),task.archive_month?`archive/${task.archive_month}`:task.location)}${metaRow(t('updated'),dateTimeLabel(updatedAt(task)))}${metaRow(t('completed'),dateTimeLabel(completionAt(task)))}${metaRow(t('activity'),healthLabel(act.health))}${metaRow(t('lastSignal'),act.last_activity_at?ago(act.last_activity_at):'-')}${metaRow(t('signalSource'),act.last_activity_source)}</div><h3>${esc(t('execution'))}</h3><div class="meta-grid">${metaRow(t('runtimeProvider'),task.fields?.RuntimeProvider||'unknown')}${metaRow(t('dispatchStatus'),task.fields?.Dispatch상태||task.fields?.실행상태||'unknown')}${metaRow(t('executionEvidence'),task.fields?.실행근거||'unknown')}${metaRow(t('fallbackEvidence'),task.fields?.Fallback근거||'-')}</div>`;
+  const operations=detailDisclosure('operations',t('operationsEvidence'),`${task.agent||'-'} · ${healthLabel(act.health)}`,operationsBody);
+  const body=`<div class="detail"><button class="back" id="backBtn">${esc(t('backToBacklog'))}</button><div class="detail-head"><div class="detail-id">${esc(task.id)}</div><h1>${esc(titleOf(task))}</h1><div class="detail-status"><span class="status ${esc(task.state)}">${esc(stateLabel(task.state))}</span>${task.agent?`<span class="badge">${esc(task.agent)}</span>`:''}<span class="badge">${esc(task.document?.schema||'legacy')}</span>${task.archive_month?`<span class="badge">archive/${esc(task.archive_month)}</span>`:''}</div></div>${humanSummaryCard(task)}${passiveAlert}${contractSections(task)}${progress}${verification}${related}${operations}${lifecycle}</div>`;
   return `<div class="detail-layout">${body}${detailToc()}</div>`;
 }
-
 function openTask(id) {
   if (!id) return;
   state.detail=id; state.raw=false;
@@ -1073,8 +1186,16 @@ function render() {
     const t=state.snapshot.all_items[state.detail] || state.snapshot.done_items?.find(x=>x.id===state.detail);
     c.innerHTML=gate+(t?detailView(t):`<div class="empty">${esc(t('taskNotFound'))}</div>`);
     $('#backBtn')?.addEventListener('click',closeTask);
-    $('#rawToggle')?.addEventListener('click',()=>{state.raw=!state.raw;render()});
-    bindCopyButtons(); bindMermaidControls(); bindDetailToc(); renderMermaidDiagrams();
+    $('#rawToggle')?.addEventListener('click',()=>{
+      state.raw=!state.raw;
+      render();
+      requestAnimationFrame(()=>{
+        const section=document.getElementById('verification');
+        if(section?.tagName?.toLowerCase()==='details')section.open=true;
+        section?.scrollIntoView({block:'nearest'});
+      });
+    });
+    bindCopyButtons(); bindMermaidControls(); bindDetailToc(); bindDetailInteractions(); renderMermaidDiagrams();
     return;
   }
   c.innerHTML=(state.view==='hub'?hubView():gate+(state.view==='manual'?manualView():state.view==='workload'?workloadView():state.view==='attention'?attentionView():state.view==='issues'?issuesView():listView()));

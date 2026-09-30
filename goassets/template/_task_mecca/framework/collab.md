@@ -94,6 +94,17 @@ Codex에서 network access는 filesystem sandbox mode와 별개일 수 있다. `
 
 내부 발견 작업도 같은 분류 규칙을 사용한다. 명확하고 bounded하면 Simple, 제품 의사결정이 필요하면 Defined다.
 
+## 사람용 backlog projection
+
+신규 backlog는 canonical contract와 별도로 `## 핵심 요약`을 가진다. 이 section은 Web UI의 첫 화면 projection이며
+계약·수용 기준·검증 근거를 대체하지 않는다. 제목/요약/상세의 작성 규칙과 상태별 갱신 예시는
+`HUMAN_READABLE_BACKLOG.md`를 따른다.
+
+- 등록: 목적·예정 변경·완료 조건의 의미
+- 진행: 현재 단계·남은 일·차단 요인
+- 완료: 실제 변경·검증 판정·남은 후속
+- 사용자 판단/실패/중요 미검증은 요약에 숨기지 않음
+
 ## 4. 백로그 schema v2
 
 신규 프로젝트의 canonical ledger는 `_task_mecca/data/backlog/`다. Installer는 project data를 만들지 않으며, 첫 작업을 등록하는 Registrar가 필요할 때 생성한다.
