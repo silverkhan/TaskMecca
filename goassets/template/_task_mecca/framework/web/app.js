@@ -45,7 +45,7 @@ const I18N = {
 };
 Object.assign(I18N.ko,{
   notificationsInsecureTitle:'시스템 알림을 사용할 수 없는 접속입니다.',
-  notificationsInsecureGuide:'현재 페이지가 HTTPS 보안 연결이 아닙니다. 모바일 브라우저의 시스템 알림 권한은 HTTPS에서만 사용할 수 있습니다. Tailscale HTTPS 주소로 접속한 뒤 다시 시도하세요.',
+  notificationsInsecureGuide:'현재 페이지가 HTTPS 보안 연결이 아닙니다. 원격 브라우저의 시스템 알림 권한은 HTTPS에서만 사용할 수 있습니다. Task Mecca의 Tailscale HTTPS 주소로 접속한 뒤 다시 시도하세요.',
   notificationsIOSHomeTitle:'iPhone/iPad 알림 설정이 필요합니다.',
   notificationsIOSHomeGuide:'iOS에서는 사이트를 홈 화면에 추가한 뒤 홈 화면의 Task Mecca 웹 앱으로 열어야 알림 권한을 요청할 수 있습니다.',
   notificationsUnsupportedTitle:'이 브라우저는 시스템 알림을 지원하지 않습니다.',
@@ -54,7 +54,7 @@ Object.assign(I18N.ko,{
 });
 Object.assign(I18N.en,{
   notificationsInsecureTitle:'System notifications are unavailable on this connection.',
-  notificationsInsecureGuide:'This page is not using a secure HTTPS connection. Mobile browsers require HTTPS before notification permission can be requested. Reopen Task Mecca through a Tailscale HTTPS URL and try again.',
+  notificationsInsecureGuide:'This page is not using a secure HTTPS connection. Remote browsers require HTTPS before notification permission can be requested. Reopen Task Mecca through its Tailscale HTTPS URL and try again.',
   notificationsIOSHomeTitle:'iPhone/iPad notification setup is required.',
   notificationsIOSHomeGuide:'On iOS, add this site to the Home Screen and open the Task Mecca web app from the Home Screen before requesting notification permission.',
   notificationsUnsupportedTitle:'System notifications are not supported by this browser.',
