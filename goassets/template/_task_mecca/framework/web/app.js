@@ -20,6 +20,9 @@ const state = {
   listSort: localStorage.getItem('task-mecca-list-sort-v2') || 'id_desc',
   selectedIndex: 0,
   sidebarCollapsed: localStorage.getItem('task-mecca-sidebar-collapsed') === '1',
+  sidebarPeek: false,
+  projectMenuOpen: false,
+  openProjects: (()=>{ try { const raw=JSON.parse(localStorage.getItem('task-mecca-open-projects')||'[]'); return Array.isArray(raw)?raw:[]; } catch(_) { return []; } })(),
   language: localStorage.getItem('task-mecca-language') || (navigator.language?.toLowerCase().startsWith('ko') ? 'ko' : 'en'),
   manualByLanguage: {},
 };
@@ -311,38 +314,39 @@ function accessBanner() {
   return `<div class="global-access danger"><div><strong>${esc(t('dispatchDisabled'))}</strong><span>${esc(t('enableFullAccess'))}</span></div><code>uv run _task_mecca/collab_tools.py preflight --require-full-access --json</code></div>`;
 }
 
-function renderProjectPicker() {
-  const picker=$('#projectPicker');
-  if(!picker)return;
-  const projects=state.hub?.projects||[];
-  const options=[{path:'',name:'Global Hub'},...projects.map(p=>({path:p.path,name:p.name}))];
-  picker.innerHTML=options.map(p=>`<option value="${esc(p.path)}" ${state.project===p.path?'selected':''}>${esc(p.name)}</option>`).join('');
-  picker.value=state.project||'';
+function saveOpenProjects() {
+  localStorage.setItem('task-mecca-open-projects',JSON.stringify(state.openProjects));
+}
+function ensureOpenProject(path) {
+  if(!path)return;
+  if(!state.openProjects.includes(path)){ state.openProjects.push(path); saveOpenProjects(); }
 }
 function switchProject(path) {
+  if(!path)return;
+  ensureOpenProject(path);
+  state.project=path;
   state.backlog='';
   state.snapshot=null;
   state.loadError='';
-  localStorage.removeItem('task-mecca-backlog-folder');
-  if(!path){
-    state.project='';
-    state.view='hub';
-    state.detail=null;
-    history.pushState({},'','/?view=hub');
-    render();
-    refresh();
-    return;
-  }
-  state.project=path;
   state.view='backlog';
   state.detail=null;
   state.listPage=1;
   state.selectedIndex=0;
+  localStorage.removeItem('task-mecca-backlog-folder');
   history.pushState({},'',`/?project=${encodeURIComponent(path)}&view=backlog`);
   render();
   refresh();
 }
-
+function closeProjectSession(path) {
+  state.openProjects=state.openProjects.filter(p=>p!==path);
+  saveOpenProjects();
+  if(state.project===path){
+    const next=state.openProjects[0]||'';
+    if(next){ switchProject(next); return; }
+    state.project=''; state.snapshot=null; state.view='hub'; state.detail=null;
+    history.pushState({},'','/?view=hub'); render(); refresh();
+  } else render();
+}
 function renderBacklogPicker() {
   const picker = $('#backlogPicker');
   if (!picker || !state.snapshot) return;
@@ -386,38 +390,42 @@ function setStatusFilter(key) {
 }
 function nav() {
   const c = state.snapshot?.counts || {};
-  const total = Object.keys(state.snapshot?.all_items || {}).length;
-  $('#stateNav').innerHTML = `<div class="sidebar-label">TASK MECCA</div><button class="nav-item ${state.view==='hub'?'active':''}" data-view="hub" title="Projects"><span class="nav-main"><span class="nav-icon" aria-hidden="true">⌂</span><span class="nav-text">Projects</span></span></button><div class="sidebar-label">${esc(t('backlog').toUpperCase())}</div>` +
-    `<button class="nav-item ${state.view==='backlog'?'active':''}" data-view="backlog" title="${esc(t('backlog'))}"><span class="nav-main"><span class="nav-icon" aria-hidden="true">☷</span><span class="nav-text">${esc(t('backlog'))}</span></span><span class="count">${total}</span></button>`;
+  const projects=state.hub?.projects||[];
+  const byPath=new Map(projects.map(p=>[p.path,p]));
+  if(state.project)ensureOpenProject(state.project);
+  const sessions=state.openProjects.filter(path=>byPath.has(path)||path===state.project);
+  state.openProjects=sessions;
+  saveOpenProjects();
+  const closed=projects.filter(p=>!sessions.includes(p.path));
+  const sessionRows=sessions.map(path=>{
+    const p=byPath.get(path)||{name:path.split(/[\\/]/).pop()||path,counts:{}};
+    const pc=p.counts||{};
+    const active=state.project===path && state.view!=='hub';
+    const badge=(pc.working||0)+(pc.ready||0);
+    return `<div class="session-row ${active?'active':''}" data-session-project="${esc(path)}"><button class="session-open" type="button" title="${esc(path)}"><span class="session-dot ${pc.working?'busy':''}"></span><span class="session-name">${esc(p.name)}</span><span class="session-count">${badge||''}</span></button><button class="session-close" type="button" data-close-project="${esc(path)}" aria-label="Close ${esc(p.name)}" title="Close">×</button></div>`;
+  }).join('');
+  const menu=state.projectMenuOpen?`<div class="project-open-menu">${closed.length?closed.map(p=>`<button type="button" data-add-project="${esc(p.path)}"><span>${esc(p.name)}</span><small>${esc(p.path)}</small></button>`).join(''):'<div class="project-open-empty">No closed projects</div>'}</div>`:'';
+  $('#stateNav').innerHTML =
+    `<div class="sidebar-label">BACKLOGS</div><div class="session-list">${sessionRows||'<div class="session-empty">No open backlogs</div>'}</div><button class="nav-item session-add" id="openProjectBtn" type="button"><span class="nav-main"><span class="nav-icon">＋</span><span class="nav-text">Open Project</span></span></button>${menu}<div class="sidebar-label">SYSTEM</div><button class="nav-item ${state.view==='hub'?'active':''}" id="hubNavBtn" type="button"><span class="nav-main"><span class="nav-icon">⌂</span><span class="nav-text">Global Hub</span></span></button>`;
   $('#workloadCount').textContent = (state.snapshot?.workload?.agents || []).length || '';
   $('#attentionCount').textContent = c.attention || '';
   $('#issueCount').textContent = c.issues || '';
+  document.querySelectorAll('[data-session-project]').forEach(row=>row.querySelector('.session-open')?.addEventListener('click',()=>switchProject(row.dataset.sessionProject)));
+  document.querySelectorAll('[data-close-project]').forEach(btn=>btn.addEventListener('click',e=>{e.stopPropagation();closeProjectSession(btn.dataset.closeProject)}));
+  document.querySelectorAll('[data-add-project]').forEach(btn=>btn.addEventListener('click',()=>{state.projectMenuOpen=false;switchProject(btn.dataset.addProject)}));
+  $('#openProjectBtn')?.addEventListener('click',()=>{state.projectMenuOpen=!state.projectMenuOpen;render()});
+  $('#hubNavBtn')?.addEventListener('click',()=>{state.project='';state.snapshot=null;state.view='hub';state.detail=null;state.projectMenuOpen=false;history.pushState({},'','/?view=hub');render();refresh()});
   document.querySelectorAll('[data-view]').forEach(b => {
     b.classList.toggle('active', state.view === b.dataset.view);
     b.onclick = () => {
       state.view = b.dataset.view;
-      if (state.view === 'hub') {
-        state.project = '';
-        state.backlog = '';
-      }
       state.detail = null;
       state.selectedIndex = 0;
       state.listPage = 1;
-      history.pushState({},'',state.view==='hub'?'/?view=hub':state.view==='backlog'?backlogUrl():`/?view=${state.view}${state.project?`&project=${encodeURIComponent(state.project)}`:''}`);
+      history.pushState({},'',state.view==='backlog'?backlogUrl():`/?view=${state.view}${state.project?`&project=${encodeURIComponent(state.project)}`:''}`);
       render();
     };
   });
-}
-
-function hubView() {
-  const h=state.hub||{}, cli=h.cli||{}, projects=h.projects||[];
-  const cliStatus=cli.update_available?`<span class="badge warn">${esc(cli.current||'-')} → ${esc(cli.latest||'-')}</span>`:`<span class="badge">${esc(cli.current||'-')}</span>`;
-  return `<div class="page-head"><div><div class="eyebrow">TASK MECCA</div><h1>Projects</h1><p class="summary">Global Hub · CLI와 프로젝트별 framework 상태를 관리합니다.</p></div><div class="hub-cli"><strong>CLI</strong> ${cliStatus} ${cli.update_available?'<button class="action-btn" id="upgradeBtn">Upgrade</button>':''}</div></div>${cli.error?`<div class="timing-note"><strong>Version check</strong><span>${esc(cli.error)}</span></div>`:''}<div class="project-grid">${projects.map(p=>{const c=p.counts||{};return `<article class="project-card"><div class="project-card-head"><div><div class="eyebrow">${esc(p.path)}</div><h2>${esc(p.name)}</h2></div><span class="badge">${esc(p.framework_version||'unknown')}</span></div><div class="project-stats"><span><strong>${c.working||0}</strong> working</span><span><strong>${c.ready||0}</strong> ready</span><span><strong>${c.hold||0}</strong> hold</span></div><div class="project-actions">${p.migration_available?'<button class="action-btn secondary" data-migrate="'+esc(p.path)+'">Migrate</button>':''}<button class="action-btn" data-open-project="${esc(p.path)}">Open</button></div></article>`}).join('')||'<div class="empty">등록된 Task Mecca 프로젝트가 없습니다.</div>'}</div>`;
-}
-async function bindHubActions() {
-  document.querySelectorAll('[data-open-project]').forEach(b=>b.onclick=()=>{state.backlog='';localStorage.removeItem('task-mecca-backlog-folder');location.href='/?project='+encodeURIComponent(b.dataset.openProject)+'&view=backlog'});
-  document.querySelectorAll('[data-migrate]').forEach(b=>b.onclick=async()=>{b.disabled=true;const r=await fetch('/api/migrate',{method:'POST',headers:{'Content-Type':'application/json','X-Task-Mecca-Action':'1'},body:JSON.stringify({project:b.dataset.migrate})});const body=await r.json();if(!r.ok){alert(body.error||'Migration failed');}await refresh();});
-  const up=$('#upgradeBtn'); if(up) up.onclick=async()=>{up.disabled=true;up.textContent='Upgrading…';const r=await fetch('/api/upgrade',{method:'POST',headers:{'X-Task-Mecca-Action':'1'}});const body=await r.json();if(!r.ok){alert(body.error||'Upgrade failed');up.disabled=false;up.textContent='Upgrade';return;}alert(body.to&&body.to!==body.from?`Upgraded to ${body.to}. Restart Task Mecca.`:'Already current.');};
 }
 
 function matchesStatusFilter(t, key) {
@@ -655,7 +663,9 @@ function scheduleAutoListPageSize() {
 }
 
 function applySidebarState() {
-  document.querySelector('.app-shell')?.classList.toggle('sidebar-collapsed', state.sidebarCollapsed);
+  const shell=document.querySelector('.app-shell');
+  shell?.classList.toggle('sidebar-collapsed', state.sidebarCollapsed);
+  shell?.classList.toggle('sidebar-peek', state.sidebarCollapsed && state.sidebarPeek);
   const btn = $('#sidebarToggle');
   if (!btn) return;
   btn.textContent = state.sidebarCollapsed ? '›' : '‹';
@@ -664,13 +674,14 @@ function applySidebarState() {
 }
 function toggleSidebar() {
   state.sidebarCollapsed = !state.sidebarCollapsed;
+  state.sidebarPeek = false;
   localStorage.setItem('task-mecca-sidebar-collapsed', state.sidebarCollapsed ? '1' : '0');
   applySidebarState();
   scheduleAutoListPageSize();
 }
 
 function render() {
-  nav(); translateChrome(); renderProjectPicker(); renderAccess(); renderBacklogPicker(); applySidebarState();
+  nav(); translateChrome(); renderAccess(); renderBacklogPicker(); applySidebarState();
   const c=$('#content');
   if (!state.snapshot) {
     if (state.view === 'hub' && state.hub) {
@@ -749,6 +760,7 @@ function route() {
   state.detail=m?decodeURIComponent(m[1]).toUpperCase():null;
   const p=new URLSearchParams(location.search);
   state.project=p.get('project')||'';
+  if(state.project)ensureOpenProject(state.project);
   if (!state.detail) {
     state.view=p.get('view')||(state.project?'backlog':'hub');
     if(state.view==='hub') state.project='';
@@ -813,7 +825,6 @@ applyTheme(state.theme);
 document.querySelectorAll('[data-theme-choice]').forEach(b=>b.addEventListener('click',()=>applyTheme(b.dataset.themeChoice)));
 window.matchMedia?.('(prefers-color-scheme: dark)').addEventListener?.('change',()=>{if(state.theme==='system')renderMermaidDiagrams(true)});
 $('#languagePicker').addEventListener('change',e=>setLanguage(e.target.value));
-$('#projectPicker').addEventListener('change',e=>switchProject(e.target.value));
 $('#backlogPicker').addEventListener('change',e=>{
   const value=e.target.value;
   if(value===state.backlog)return;
@@ -824,6 +835,8 @@ $('#backlogPicker').addEventListener('change',e=>{
 $('#search').addEventListener('input',e=>{state.query=e.target.value;state.detail=null;state.listPage=1;state.selectedIndex=0;render()});
 $('#refreshBtn').onclick=refresh;
 $('#sidebarToggle').onclick=toggleSidebar;
+$('#sidebar')?.addEventListener('mouseenter',()=>{if(state.sidebarCollapsed){state.sidebarPeek=true;applySidebarState();}});
+$('#sidebar')?.addEventListener('mouseleave',()=>{if(state.sidebarCollapsed){state.sidebarPeek=false;state.projectMenuOpen=false;applySidebarState();}});
 
 document.addEventListener('keydown',e=>{
   const tag=document.activeElement?.tagName?.toLowerCase();
