@@ -34,6 +34,10 @@ jobs:
           go-version-file: go.mod
       - run: go test ./...
       - run: go build ./cmd/task-mecca
+      - name: Check Web JavaScript syntax
+        run: |
+          node --check goassets/template/_task_mecca/framework/web/app.js
+          node --check goassets/template/_task_mecca/framework/web/sw.js
       - name: Cross-compile macOS web listener
         run: GOOS=darwin GOARCH=arm64 go test -c -o /tmp/task-mecca-webui-darwin.test ./internal/webui
       - name: Go CLI backlog smoke
