@@ -644,7 +644,7 @@ function closeProjectSession(path) {
   if(state.project===path){
     const next=state.openProjects[0]||'';
     if(next){ switchProject(next); return; }
-    state.project=''; state.snapshot=null; state.view='hub'; state.detail=null;
+    state.project=''; state.snapshot=null; state.listData=null; state.detailTask=null; closeAttentionStream(); state.view='hub'; state.detail=null;
     history.pushState({},'','/?view=hub'); render(); refresh();
   } else render();
 }
@@ -752,7 +752,7 @@ function navigateView(view) {
     render();
     refreshList();
     ensureAttentionStream();
-  } else if(needsProject && !state.snapshot){
+  } else if(needsProject){
     render();
     refresh();
   } else {
@@ -1116,8 +1116,8 @@ function bindDetailInteractions() {
     e.preventDefault(); e.stopPropagation();
     state.detail=null;
     if(!state.tagFilters.includes(btn.dataset.tagFilter))state.tagFilters=[...state.tagFilters,btn.dataset.tagFilter];
-    state.view='backlog'; state.listPage=1; state.selectedIndex=0;
-    history.pushState({},'',backlogUrl()); render();
+    state.view='backlog'; state.detailTask=null; state.listPage=1; state.selectedIndex=0;
+    history.pushState({},'',backlogUrl()); refreshList();
   }));
 }
 function detailView(task) {
