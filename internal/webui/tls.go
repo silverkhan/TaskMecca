@@ -1,16 +1,19 @@
 package webui
 
 import (
+    stdcontext "context"
     "crypto/tls"
     "crypto/x509"
     "encoding/json"
     "encoding/pem"
     "fmt"
     "net"
+    "net/http"
     "os"
     "os/exec"
     "path/filepath"
     "runtime"
+    "strconv"
     "strings"
     "time"
 )
@@ -174,4 +177,52 @@ func tailscaleTLSConfig(info TLSInfo) (*tls.Config,error) {
         Certificates:[]tls.Certificate{cert},
         MinVersion:tls.VersionTLS12,
     },nil
+}
+
+
+func verifyTailscaleHTTPS(info TLSInfo,port int,instanceID string) error {
+    if !info.Enabled || info.IP=="" || info.DNSName=="" {
+        return fmt.Errorf("Tailscale HTTPS verification requires an enabled TLS endpoint")
+    }
+
+    dialer:=&net.Dialer{Timeout:500*time.Millisecond}
+    transport:=&http.Transport{
+        TLSClientConfig:&tls.Config{
+            ServerName:info.DNSName,
+            MinVersion:tls.VersionTLS12,
+        },
+        DialContext:func(ctx stdcontext.Context,network,address string) (net.Conn,error) {
+            return dialer.DialContext(ctx,"tcp4",net.JoinHostPort(info.IP,strconv.Itoa(port)))
+        },
+    }
+    defer transport.CloseIdleConnections()
+
+    client:=&http.Client{Transport:transport,Timeout:800*time.Millisecond}
+    endpoint:=fmt.Sprintf("https://%s:%d/api/health",info.DNSName,port)
+    deadline:=time.Now().Add(2*time.Second)
+    var lastErr error
+
+    for {
+        resp,err:=client.Get(endpoint)
+        if err==nil {
+            var payload map[string]any
+            decodeErr:=json.NewDecoder(resp.Body).Decode(&payload)
+            _=resp.Body.Close()
+            if resp.StatusCode==http.StatusOK && decodeErr==nil && fmt.Sprint(payload["instance_id"])==instanceID {
+                return nil
+            }
+            if decodeErr!=nil {
+                lastErr=fmt.Errorf("HTTPS health response decode failed: %w",decodeErr)
+            } else {
+                lastErr=fmt.Errorf("HTTPS health response mismatch: HTTP %d instance=%v",resp.StatusCode,payload["instance_id"])
+            }
+        } else {
+            lastErr=err
+        }
+
+        if time.Now().After(deadline) {
+            return fmt.Errorf("Tailscale HTTPS self-check failed for %s:%d: %w",info.IP,port,lastErr)
+        }
+        time.Sleep(100*time.Millisecond)
+    }
 }
