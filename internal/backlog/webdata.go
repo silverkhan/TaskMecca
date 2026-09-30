@@ -173,7 +173,7 @@ func BacklogPage(project,root string,page,pageSize int,statuses,tags []string,se
         "snapshot_at":time.Now().Format(time.RFC3339),"root":root,"repo":filepath.Base(repoRoot(root)),
         "items":items,"page":page,"page_size":pageSize,"pages":pages,"total":total,
         "counts":counts,"tag_catalog":tagCatalog,"access":AccessObservation(project),
-        "attention":attention["attention"],"notification_events":attention["notification_events"],
+        "attention":attention["attention"],"attention_items":attention["all_items"],"notification_events":attention["notification_events"],
     },nil
 }
 
