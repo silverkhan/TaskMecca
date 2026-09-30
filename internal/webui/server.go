@@ -201,6 +201,23 @@ func handler(project,root,version,instanceID,controlToken string,restartCh chan<
         w.Header().Set("Cache-Control","no-cache")
         w.Header().Set("Connection","keep-alive")
         w.Header().Set("X-Accel-Buffering","no")
+        stableKey:=func(payload map[string]any) string {
+            parts:=[]string{}
+            if rows,ok:=payload["attention"].([]map[string]any); ok {
+                for _,row:=range rows {
+                    parts=append(parts,strings.Join([]string{
+                        toString(row["id"]),toString(row["type"]),toString(row["health"]),
+                        toString(row["runtime_state"]),toString(row["last_activity_at"]),
+                        toString(row["title"]),toString(row["message"]),toString(row["resume_condition"]),
+                    },"|"))
+                }
+            }
+            if events,ok:=payload["notification_events"].([]map[string]any); ok {
+                for _,event:=range events { parts=append(parts,"event:"+toString(event["id"])) }
+            }
+            sort.Strings(parts)
+            return strings.Join(parts,"\n")
+        }
         last:=""
         send:=func() bool {
             payload,snapshotErr:=backlog.AttentionSnapshot(activeProject,selected,true)
@@ -210,10 +227,10 @@ func handler(project,root,version,instanceID,controlToken string,restartCh chan<
                 flusher.Flush()
                 return false
             }
-            data,_:=json.Marshal(payload)
-            current:=string(data)
+            current:=stableKey(payload)
             if current==last { return true }
             last=current
+            data,_:=json.Marshal(payload)
             _,_=fmt.Fprintf(w,"event: attention\ndata: %s\n\n",data)
             flusher.Flush()
             return true
