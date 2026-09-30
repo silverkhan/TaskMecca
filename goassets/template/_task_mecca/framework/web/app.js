@@ -913,6 +913,7 @@ function navigateView(view) {
   if(state.project)params.set('project',state.project);
   history.pushState({},'',`/?${params.toString()}`);
   state.detailTask=null;
+  if(state.project)refreshVersionInfo(false);
   if(view==='backlog'){
     render();
     refreshList();
@@ -1378,7 +1379,7 @@ function updateAutoListPageSize() {
   state.autoListPageSize=next;
   state.listPage=Math.floor(firstIndex/next)+1;
   state.selectedIndex=0;
-  refreshList();
+  if(Date.now()-state.lastFetch<1500 && !state.pendingContentUpdate)refreshList();
 }
 function scheduleAutoListPageSize() {
   if(state.listPageMode!=='auto')return;
@@ -1653,6 +1654,8 @@ async function refreshOnce() {
     $('#connectionDot').style.background='var(--ok)';
     await loadManual();
     ensureAttentionStream();
+    await checkContentRevision(true);
+    acceptContentRevision(state.contentRevision);
     render();
   } catch(e) {
     if(targetProject!==state.project || state.view==='hub')return;
