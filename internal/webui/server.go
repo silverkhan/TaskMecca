@@ -389,7 +389,7 @@ func Run(config Config) error {
         PID:os.Getpid(),InstanceID:config.InstanceID,ControlToken:config.ControlToken,
         Host:host,Port:port,URL:url,Version:config.Version,Project:config.Project,StartedAt:config.StartedAt,Running:true,
     }); err!=nil { _=listener.Close(); return err }
-    defer removeServiceState(config.InstanceID)
+    defer removeServiceState(config.InstanceID,os.Getpid())
     fmt.Println("Task Mecca Web UI: "+url)
     if hostMode=="tailscale" { fmt.Println("network: Tailscale detected · bound to "+host) } else if hostMode=="localhost" { fmt.Println("network: localhost only") } else { fmt.Println("network: explicit bind · "+host) }
     if ctx.selected!="" {
