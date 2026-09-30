@@ -6,6 +6,8 @@ const state = {
   project: new URLSearchParams(location.search).get('project') || '',
   lastProject: localStorage.getItem('task-mecca-last-project') || new URLSearchParams(location.search).get('project') || '',
   statusFilters: ['all'],
+  tagFilters: [],
+  tagExplorerOpen: false,
   query: '',
   detail: null,
   raw: false,
@@ -81,6 +83,8 @@ Object.assign(I18N.en,{
   summaryDoneFallback:'Task has been completed.', noFollowUp:'No separate check or follow-up is currently recorded.',
   detailExpand:'Expand details', detailCollapse:'Collapse details', requirementsAndConstraints:'Requirements / constraints', legacyDetails:'Legacy task details'
 });
+Object.assign(I18N.ko,{tags:'태그',tagExplore:'태그 탐색',tagFilter:'태그 필터',clearTags:'태그 필터 해제',noTags:'태그 없음',tagTotal:'전체',tagActive:'활성',tagHold:'보류',tagDone:'완료',unregisteredTag:'미등록 태그',tagDescription:'설명'});
+Object.assign(I18N.en,{tags:'Tags',tagExplore:'Explore tags',tagFilter:'Tag filter',clearTags:'Clear tag filters',noTags:'No tags',tagTotal:'Total',tagActive:'Active',tagHold:'Hold',tagDone:'Done',unregisteredTag:'Unregistered tag',tagDescription:'Description'});
 function t(key, vars = {}) {
   const dict = I18N[state.language] || I18N.en;
   let value = dict[key] ?? I18N.en[key] ?? key;
@@ -651,9 +655,25 @@ function renderBacklogPicker() {
 function backlogUrl() {
   const p=new URLSearchParams();
   if(!state.statusFilters.includes('all'))p.set('filter',state.statusFilters.join(','));
+  if(state.tagFilters.length)p.set('tags',state.tagFilters.join(','));
   if(state.project)p.set('project',state.project);
   const qs=p.toString();
   return '/'+(qs?'?'+qs:'');
+}
+function setTagFilter(tag) {
+  if(!tag)return;
+  const next=state.tagFilters.includes(tag)?state.tagFilters.filter(x=>x!==tag):[...state.tagFilters,tag];
+  state.tagFilters=next;
+  state.view='backlog'; state.detail=null; state.selectedIndex=0; state.listPage=1;
+  history.pushState({},'',backlogUrl());
+  render();
+}
+function clearTagFilters() {
+  state.tagFilters=[]; state.listPage=1; state.selectedIndex=0;
+  history.pushState({},'',backlogUrl()); render();
+}
+function tagChip(tag,clickable=true) {
+  return `<button type="button" class="tag-chip ${state.tagFilters.includes(tag)?'active':''}" ${clickable?`data-tag-filter="${esc(tag)}"`:''} title="${esc(tag)}">${esc(tag)}</button>`;
 }
 function setStatusFilter(key) {
   const allowed = ['all','ready','doing','hold','blocked','done'];
@@ -891,6 +911,9 @@ function allRowsForView() {
   if (!state.statusFilters.includes('all')) {
     items = items.filter(t => state.statusFilters.some(key => matchesStatusFilter(t,key)));
   }
+  if(state.tagFilters.length){
+    items=items.filter(task=>state.tagFilters.every(tag=>(task.tags||[]).includes(tag)));
+  }
   const q = state.query.trim().toLowerCase();
   if (q) items = items.filter(t => JSON.stringify([t.id,t.title,t.fields,t.document,t.archive_month]).toLowerCase().includes(q));
   const cmpUpdated = (a,b) => String(updatedAt(a)).localeCompare(String(updatedAt(b))) || String(a.sort_key).localeCompare(String(b.sort_key)) || String(a.id).localeCompare(String(b.id));
@@ -923,11 +946,24 @@ function statusFilterBar() {
   ];
   return `<div class="status-filter-wrap"><div class="filter-label">${esc(t('status'))}</div><div class="status-filter-bar" role="group" aria-label="${esc(t('status'))}">${defs.map(([k,label,n])=>`<button class="status-filter-btn ${state.statusFilters.includes(k)?'active':''}" data-status-filter="${k}" aria-pressed="${state.statusFilters.includes(k)?'true':'false'}">${esc(label)}<span>${n}</span></button>`).join('')}</div></div>`;
 }
+function tagFilterBar() {
+  const catalog=state.snapshot?.tag_catalog||{}, stats=Array.isArray(catalog.stats)?catalog.stats:[];
+  const used=stats.filter(x=>x.total>0);
+  const selected=state.tagFilters.map(tag=>tagChip(tag,true)).join('');
+  const explorer=state.tagExplorerOpen?tagExplorerPanel(used):'';
+  return `<div class="tag-filter-wrap"><div class="filter-label">${esc(t('tags'))}</div><div class="tag-filter-actions"><div class="tag-filter-selected">${selected||`<span class="tag-empty">${esc(t('noTags'))}</span>`}</div><button type="button" class="tag-explore-btn" id="tagExploreBtn">${esc(t('tagExplore'))} · ${used.length}</button>${state.tagFilters.length?`<button type="button" class="tag-clear-btn" id="tagClearBtn">${esc(t('clearTags'))}</button>`:''}</div></div>${explorer}`;
+}
+function tagExplorerPanel(stats) {
+  const groups={};
+  stats.forEach(row=>{(groups[row.namespace]||(groups[row.namespace]=[])).push(row)});
+  const registry=new Map((state.snapshot?.tag_catalog?.registry||[]).map(x=>[x.canonical,x]));
+  return `<div class="tag-explorer">${Object.keys(groups).sort().map(ns=>`<section><h3>${esc(ns.toUpperCase())}</h3><div class="tag-stat-list">${groups[ns].sort((a,b)=>b.total-a.total||a.tag.localeCompare(b.tag)).map(row=>{const def=registry.get(row.tag)||{};return `<button type="button" class="tag-stat-row ${state.tagFilters.includes(row.tag)?'active':''}" data-tag-filter="${esc(row.tag)}"><span><strong>${esc(row.tag.split(':')[1]||row.tag)}</strong><small>${esc(def.description||row.description||'')}</small></span><span class="tag-stat-counts"><b>${row.total||0}</b><small>${row.active||0}/${row.hold||0}/${row.done||0}</small></span></button>`}).join('')}</div></section>`).join('')}</div>`;
+}
 function listControls(info) {
   const autoSelected = state.listPageMode === 'auto';
   const pageValue = autoSelected ? 'auto' : String(state.listPageSize);
   const pageText=t('pageSummary',{page:info.page,pages:info.pages,total:info.total})+(autoSelected?t('autoRowsSummary',{n:info.pageSize}):'');
-  return `${statusFilterBar()}<div class="list-controls"><div class="control-group"><label>${esc(t('sort'))}<select id="listSort"><option value="id_desc" ${state.listSort==='id_desc'?'selected':''}>ID ↓</option><option value="id_asc" ${state.listSort==='id_asc'?'selected':''}>ID ↑</option><option value="updated_desc" ${state.listSort==='updated_desc'?'selected':''}>${esc(t('updatedNewest'))}</option><option value="updated_asc" ${state.listSort==='updated_asc'?'selected':''}>${esc(t('updatedOldest'))}</option></select></label><label>${esc(t('perPage'))}<select id="listPageSize"><option value="auto" ${pageValue==='auto'?'selected':''}>${esc(t('autoRows',{n:info.pageSize}))}</option><option value="10" ${pageValue==='10'?'selected':''}>10</option><option value="20" ${pageValue==='20'?'selected':''}>20</option><option value="50" ${pageValue==='50'?'selected':''}>50</option></select></label></div><div class="pager"><button id="prevPage" ${info.page<=1?'disabled':''}>←</button><span>${esc(pageText)}</span><button id="nextPage" ${info.page>=info.pages?'disabled':''}>→</button></div></div>`;
+  return `${statusFilterBar()}${tagFilterBar()}<div class="list-controls"><div class="control-group"><label>${esc(t('sort'))}<select id="listSort"><option value="id_desc" ${state.listSort==='id_desc'?'selected':''}>ID ↓</option><option value="id_asc" ${state.listSort==='id_asc'?'selected':''}>ID ↑</option><option value="updated_desc" ${state.listSort==='updated_desc'?'selected':''}>${esc(t('updatedNewest'))}</option><option value="updated_asc" ${state.listSort==='updated_asc'?'selected':''}>${esc(t('updatedOldest'))}</option></select></label><label>${esc(t('perPage'))}<select id="listPageSize"><option value="auto" ${pageValue==='auto'?'selected':''}>${esc(t('autoRows',{n:info.pageSize}))}</option><option value="10" ${pageValue==='10'?'selected':''}>10</option><option value="20" ${pageValue==='20'?'selected':''}>20</option><option value="50" ${pageValue==='50'?'selected':''}>50</option></select></label></div><div class="pager"><button id="prevPage" ${info.page<=1?'disabled':''}>←</button><span>${esc(pageText)}</span><button id="nextPage" ${info.page>=info.pages?'disabled':''}>→</button></div></div>`;
 }
 
 function listView() {
@@ -944,7 +980,7 @@ function listView() {
     const summaryLine=[hs.change,hs.follow_up?`${t('summaryFollowUp')}: ${hs.follow_up}`:''].filter(Boolean).join(' · ');
     const updated=updatedAt(task);
     const alias=(task.agent||'').split('/').pop()||'-';
-    return `<div class="task-row ${i===state.selectedIndex?'keyboard-selected':''}" data-id="${esc(task.id)}" data-row-index="${i}" tabindex="-1"><div class="task-id">${esc(task.id)}</div><div class="task-main"><div class="task-mobile-id">${esc(task.id)}</div><div class="task-title">${esc(titleOf(task))}</div><div class="task-sub">${esc(sub)}</div>${summaryLine?`<div class="task-summary-preview">${esc(summaryLine)}</div>`:''}</div><div class="state-col"><span class="status ${esc(task.state)}">${esc(stateLabel(task.state))}</span><div class="task-state-summary">${esc(summaryPreview(hs.status_result,90))}</div>${['quiet','stale','worker_missing'].includes(h)?`<div class="task-sub">${esc(healthLabel(h))}</div>`:''}</div><div class="task-agent"><div>${esc(alias)}</div>${task.archive_month?`<div class="task-sub">archive/${esc(task.archive_month)}</div>`:''}</div><div class="task-active timer live-timer" data-id="${esc(task.id)}">${time}</div><div class="task-updated" title="${esc(dateTimeLabel(updated))}"><strong>${esc(ago(updated))}</strong><span>${esc(dateTimeLabel(updated,true))}</span></div><div class="chev">›</div></div>`;
+    return `<div class="task-row ${i===state.selectedIndex?'keyboard-selected':''}" data-id="${esc(task.id)}" data-row-index="${i}" tabindex="-1"><div class="task-id">${esc(task.id)}</div><div class="task-main"><div class="task-mobile-id">${esc(task.id)}</div><div class="task-title">${esc(titleOf(task))}</div>${(task.tags||[]).length?`<div class="task-tag-row">${(task.tags||[]).map(tag=>tagChip(tag,true)).join('')}</div>`:''}<div class="task-sub">${esc(sub)}</div>${summaryLine?`<div class="task-summary-preview">${esc(summaryLine)}</div>`:''}</div><div class="state-col"><span class="status ${esc(task.state)}">${esc(stateLabel(task.state))}</span><div class="task-state-summary">${esc(summaryPreview(hs.status_result,90))}</div>${['quiet','stale','worker_missing'].includes(h)?`<div class="task-sub">${esc(healthLabel(h))}</div>`:''}</div><div class="task-agent"><div>${esc(alias)}</div>${task.archive_month?`<div class="task-sub">archive/${esc(task.archive_month)}</div>`:''}</div><div class="task-active timer live-timer" data-id="${esc(task.id)}">${time}</div><div class="task-updated" title="${esc(dateTimeLabel(updated))}"><strong>${esc(ago(updated))}</strong><span>${esc(dateTimeLabel(updated,true))}</span></div><div class="chev">›</div></div>`;
   }).join('')}</div>`:`<div class="empty">${esc(t('noMatches'))}</div>`}`;
 }
 
@@ -1045,6 +1081,13 @@ function bindDetailInteractions() {
     e.stopPropagation();
     openTask(btn.dataset.relationId);
   }));
+  document.querySelectorAll('[data-tag-filter]').forEach(btn=>btn.addEventListener('click',e=>{
+    e.preventDefault(); e.stopPropagation();
+    state.detail=null;
+    if(!state.tagFilters.includes(btn.dataset.tagFilter))state.tagFilters=[...state.tagFilters,btn.dataset.tagFilter];
+    state.view='backlog'; state.listPage=1; state.selectedIndex=0;
+    history.pushState({},'',backlogUrl()); render();
+  }));
 }
 function detailView(task) {
   const act=task.activity||{}, lc=task.lifecycle||{}, reason=task.attention_reason||null, warn=Boolean(reason)||['quiet','stale','worker_missing'].includes(act.health), events=lc.events||[];
@@ -1064,13 +1107,13 @@ function detailView(task) {
   const metricGrid=`<div class="detail-metrics embedded"><div><div class="value live-active">${fmtSec(runningSeconds(task,'active'))}</div><div class="label">${esc(t('activeTime'))}</div></div><div><div class="value live-wait">${fmtSec(runningSeconds(task,'wait'))}</div><div class="label">${esc(t('waitTime'))}</div></div><div><div class="value live-queue">${fmtSec(runningSeconds(task,'queue'))}</div><div class="label">${esc(t('queueTime'))}</div></div><div><div class="value live-lead">${fmtSec(runningSeconds(task,'lead'))}</div><div class="label">${esc(t('leadTime'))}</div></div></div>`;
   const operationsBody=`${metricGrid}<h3>${esc(t('overview'))}</h3><div class="meta-grid">${metaRow(t('registrant'),task.registrant)}${metaRow(t('agent'),task.agent)}${metaRow(t('changeScope'),task.scope)}${metaRow(t('location'),task.archive_month?`archive/${task.archive_month}`:task.location)}${metaRow(t('updated'),dateTimeLabel(updatedAt(task)))}${metaRow(t('completed'),dateTimeLabel(completionAt(task)))}${metaRow(t('activity'),healthLabel(act.health))}${metaRow(t('lastSignal'),act.last_activity_at?ago(act.last_activity_at):'-')}${metaRow(t('signalSource'),act.last_activity_source)}</div><h3>${esc(t('execution'))}</h3><div class="meta-grid">${metaRow(t('runtimeProvider'),task.fields?.RuntimeProvider||'unknown')}${metaRow(t('dispatchStatus'),task.fields?.Dispatch상태||task.fields?.실행상태||'unknown')}${metaRow(t('executionEvidence'),task.fields?.실행근거||'unknown')}${metaRow(t('fallbackEvidence'),task.fields?.Fallback근거||'-')}</div>`;
   const operations=detailDisclosure('operations',t('operationsEvidence'),`${task.agent||'-'} · ${healthLabel(act.health)}`,operationsBody);
-  const body=`<div class="detail"><button class="back" id="backBtn">${esc(t('backToBacklog'))}</button><div class="detail-head"><div class="detail-id">${esc(task.id)}</div><h1>${esc(titleOf(task))}</h1><div class="detail-status"><span class="status ${esc(task.state)}">${esc(stateLabel(task.state))}</span>${task.agent?`<span class="badge">${esc(task.agent)}</span>`:''}<span class="badge">${esc(task.document?.schema||'legacy')}</span>${task.archive_month?`<span class="badge">archive/${esc(task.archive_month)}</span>`:''}</div></div>${humanSummaryCard(task)}${passiveAlert}${contractSections(task)}${progress}${verification}${related}${operations}${lifecycle}</div>`;
+  const body=`<div class="detail"><button class="back" id="backBtn">${esc(t('backToBacklog'))}</button><div class="detail-head"><div class="detail-id">${esc(task.id)}</div><h1>${esc(titleOf(task))}</h1><div class="detail-status"><span class="status ${esc(task.state)}">${esc(stateLabel(task.state))}</span>${task.agent?`<span class="badge">${esc(task.agent)}</span>`:''}<span class="badge">${esc(task.document?.schema||'legacy')}</span>${task.archive_month?`<span class="badge">archive/${esc(task.archive_month)}</span>`:''}</div>${(task.tags||[]).length?`<div class="detail-tag-row">${(task.tags||[]).map(tag=>tagChip(tag,true)).join('')}</div>`:''}</div>${humanSummaryCard(task)}${passiveAlert}${contractSections(task)}${progress}${verification}${related}${operations}${lifecycle}</div>`;
   return `<div class="detail-layout">${body}${detailToc()}</div>`;
 }
 function openTask(id) {
   if (!id) return;
   state.detail=id; state.raw=false;
-  history.pushState({},'',`/tasks/${encodeURIComponent(id)}${state.project?`?project=${encodeURIComponent(state.project)}`:''}`); render();
+  const p=new URLSearchParams(); if(state.project)p.set('project',state.project); if(state.tagFilters.length)p.set('tags',state.tagFilters.join(',')); history.pushState({},'',`/tasks/${encodeURIComponent(id)}${p.toString()?`?${p.toString()}`:''}`); render();
 }
 function closeTask() {
   state.detail=null; history.pushState({},'',state.view==='backlog'?backlogUrl():`/?view=${state.view}`); render();
@@ -1081,6 +1124,9 @@ function bindRows() {
     openTask(el.dataset.id);
   });
   document.querySelectorAll('[data-status-filter]').forEach(b=>b.addEventListener('click',()=>setStatusFilter(b.dataset.statusFilter)));
+  document.querySelectorAll('[data-tag-filter]').forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();setTagFilter(b.dataset.tagFilter)}));
+  $('#tagExploreBtn')?.addEventListener('click',()=>{state.tagExplorerOpen=!state.tagExplorerOpen;render()});
+  $('#tagClearBtn')?.addEventListener('click',clearTagFilters);
   $('#listSort')?.addEventListener('change', e => { state.listSort=e.target.value; state.listPage=1; state.selectedIndex=0; localStorage.setItem('task-mecca-list-sort-v2',state.listSort); render(); });
   $('#listPageSize')?.addEventListener('change', e => {
     const value=e.target.value;
@@ -1333,7 +1379,12 @@ function route() {
         const picked=raw.split(',').map(x=>x.trim()).filter(x=>allowed.includes(x));
         state.statusFilters=picked.length?picked:['all'];
       } else state.statusFilters=['all'];
+      const rawTags=p.get('tags')||'';
+      state.tagFilters=rawTags.split(',').map(x=>x.trim()).filter(Boolean);
     }
+  } else {
+    const rawTags=p.get('tags')||'';
+    state.tagFilters=rawTags.split(',').map(x=>x.trim()).filter(Boolean);
   }
   render();
 }
