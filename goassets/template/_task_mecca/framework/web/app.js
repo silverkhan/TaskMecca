@@ -120,6 +120,145 @@ function localeCode() { return LANGUAGES[state.language]?.locale || 'en-US'; }
 
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+function renderGlobalUpdateIndicator() {
+  const el=$('#globalUpdateIndicator');
+  if(!el)return;
+  const payload=state.versionInfo||{};
+  const cli=payload.cli||state.hub?.cli||{};
+  const project=payload.project||{};
+  const projectMatches=state.project && project.path===state.project;
+  if(cli.update_available){
+    el.innerHTML=`<button type="button" class="global-update-pill available" id="globalUpgradeBtn" title="${esc(t('updateAvailable'))}"><span class="global-update-dot"></span><span>${esc(t('updateAvailable'))}</span><strong>${esc(cli.latest||'')}</strong></button>`;
+    $('#globalUpgradeBtn')?.addEventListener('click',e=>performUpgrade(e.currentTarget));
+    return;
+  }
+  if(projectMatches && project.migration_available){
+    el.innerHTML=`<button type="button" class="global-update-pill migration" id="globalMigrateBtn" title="${esc(t('projectMigration'))}"><span class="global-update-dot"></span><span>${esc(t('projectMigration'))}</span><strong>${esc(project.framework_version||'?')} → ${esc(cli.current||'')}</strong></button>`;
+    $('#globalMigrateBtn')?.addEventListener('click',e=>performProjectMigration(state.project,e.currentTarget));
+    return;
+  }
+  if(cli.current){
+    el.innerHTML=`<div class="global-update-pill" title="${esc(t('currentVersion'))}"><span>${esc(t('currentVersion'))}</span><strong>v${esc(cli.current)}</strong></div>`;
+    return;
+  }
+  el.innerHTML='';
+}
+
+function renderContentUpdatePrompt() {
+  const el=$('#contentUpdatePrompt');
+  if(!el)return;
+  if(!state.pendingContentUpdate || !state.project){
+    el.innerHTML='';
+    return;
+  }
+  const reason=state.pendingContentReason==='runtime'?t('runtimeChanged'):t('contentChanged');
+  el.innerHTML=`<div class="content-update-copy"><strong>${esc(t('newContentAvailable'))}</strong><span>${esc(reason)} ${esc(t('refreshToSee'))}</span></div><button type="button" class="content-update-action" id="contentUpdateRefreshBtn">${esc(t('refreshNow'))}</button>`;
+  $('#contentUpdateRefreshBtn')?.addEventListener('click',refreshVisibleContent);
+}
+
+function markContentUpdate(reason='content') {
+  if(!state.project)return;
+  state.pendingContentUpdate=true;
+  if(reason==='runtime' || !state.pendingContentReason)state.pendingContentReason=reason;
+  renderContentUpdatePrompt();
+}
+
+function acceptContentRevision(revision='') {
+  if(revision)state.contentRevision=revision;
+  state.pendingContentUpdate=false;
+  state.pendingContentReason='';
+  renderContentUpdatePrompt();
+}
+
+async function refreshVersionInfo(force=false) {
+  const params=new URLSearchParams();
+  if(state.project)params.set('project',state.project);
+  if(force)params.set('refresh','1');
+  try{
+    const r=await fetch('/api/version?'+params.toString(),{cache:'no-store'});
+    if(!r.ok)throw new Error(`HTTP ${r.status}`);
+    state.versionInfo=await r.json();
+    renderGlobalUpdateIndicator();
+  }catch(_){}
+}
+
+let revisionCheckInFlight=null;
+async function checkContentRevision(establishOnly=false) {
+  if(!state.project)return;
+  if(revisionCheckInFlight)return revisionCheckInFlight;
+  const project=state.project, backlog=state.backlog;
+  revisionCheckInFlight=(async()=>{
+    try{
+      const params=new URLSearchParams();
+      params.set('project',project);
+      if(backlog)params.set('backlog',backlog);
+      const r=await fetch('/api/revision?'+params.toString(),{cache:'no-store'});
+      if(!r.ok)return;
+      const body=await r.json();
+      if(project!==state.project || backlog!==state.backlog)return;
+      const revision=body.revision||'';
+      if(!revision)return;
+      if(!state.contentRevision || establishOnly){
+        state.contentRevision=revision;
+        return;
+      }
+      if(revision!==state.contentRevision)markContentUpdate('content');
+    }catch(_){}
+    finally{revisionCheckInFlight=null;}
+  })();
+  return revisionCheckInFlight;
+}
+
+async function refreshVisibleContent() {
+  const scrollY=window.scrollY;
+  state.pendingContentUpdate=false;
+  state.pendingContentReason='';
+  renderContentUpdatePrompt();
+  if(state.view==='backlog'){
+    await refreshList();
+    if(state.detail)await loadTaskDetail(state.detail);
+  } else {
+    await refresh();
+    await checkContentRevision(true);
+  }
+  requestAnimationFrame(()=>window.scrollTo({top:scrollY,left:0,behavior:'auto'}));
+}
+
+async function performUpgrade(button) {
+  if(button){button.disabled=true;button.textContent=t('upgrading');}
+  const content=$('#content');
+  try{
+    const r=await fetch('/api/upgrade',{method:'POST',headers:{'X-Task-Mecca-Action':'1'}});
+    const body=await r.json();
+    if(!r.ok)throw new Error(body.error||'Upgrade failed');
+    if(body.restart_required && body.to && body.to!==body.from){
+      if(content)content.innerHTML=`<div class="upgrade-restart"><div class="upgrade-spinner"></div><h2>Task Mecca ${esc(body.to)}로 업그레이드했습니다</h2><p>Web 서버를 재시작하고 있습니다. 완료되면 이 페이지가 자동으로 새로고침됩니다.</p></div>`;
+      await waitForRestartedWeb(body.to);
+      return;
+    }
+    await refreshVersionInfo(true);
+  }catch(e){
+    alert(String(e?.message||e));
+    if(button){button.disabled=false;renderGlobalUpdateIndicator();}
+  }
+}
+
+async function performProjectMigration(project,button) {
+  if(!project)return;
+  if(button){button.disabled=true;button.textContent=t('migrating');}
+  try{
+    const r=await fetch('/api/migrate',{method:'POST',headers:{'Content-Type':'application/json','X-Task-Mecca-Action':'1'},body:JSON.stringify({project})});
+    const body=await r.json();
+    if(!r.ok)throw new Error(body.error||'Migration failed');
+    await refreshVersionInfo(false);
+    await refreshVisibleContent();
+    if(body.instruction_refresh_required||body.legacy_bootstrap)showMigrationResyncModal(body);
+  }catch(e){
+    alert(String(e?.message||e));
+    if(button){button.disabled=false;renderGlobalUpdateIndicator();}
+  }
+}
 const fmtSec = n => {
   if (n == null || Number.isNaN(+n)) return '-';
   n = Math.max(0, Math.floor(+n));
