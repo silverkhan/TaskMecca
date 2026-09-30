@@ -1,5 +1,9 @@
 const state = {
   snapshot: null,
+  listData: null,
+  detailTask: null,
+  eventSource: null,
+  eventStreamKey: '',
   view: 'hub',
   hub: null,
   loadError: '',
@@ -33,6 +37,10 @@ const state = {
   previousTasksByProject: (()=>{ try { const raw=JSON.parse(localStorage.getItem('task-mecca-previous-tasks')||'{}'); return raw&&typeof raw==='object'?raw:{}; } catch(_) { return {}; } })(),
 };
 
+
+function currentProjectData() {
+  return state.view==='backlog' && state.listData ? state.listData : state.snapshot;
+}
 
 const LANGUAGES = {
   ko: { label: '한국어', locale: 'ko-KR' },
