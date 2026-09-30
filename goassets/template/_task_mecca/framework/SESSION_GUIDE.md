@@ -307,3 +307,19 @@ For older completed tasks where no `doing` transition was ever committed or obse
 Installer는 `data/`나 backlog를 미리 만들지 않는다. 첫 등록 시 Registrar가 `ensure-backlog`를 호출해 기존 ledger를 사용하거나, 없을 때만 canonical `data/backlog/`를 만든다. Agent가 audit/measurement/test evidence 같은 durable 부산물을 만들 필요가 있으면 framework와 섞지 말고 `data/` 아래에 둔다. 하위 폴더명 자체는 Task Mecca가 강제하지 않는다.
 
 upstream migration가 사용자가 수정한 managed Task Mecca 문서를 덮어쓰게 되는 경우 migrator는 대상 파일 목록을 보여주고, 백업을 권장하며, 동의 시 로컬 백업을 실제 생성한 뒤 수정본이 공식 새 버전으로 덮어써짐을 안내하고 최종 확인을 받아야 한다. 역할·정책 문서의 의미 기반 자동 merge는 시도하지 않는다.
+
+### 마이그레이션 후 Root 세션 재동기화
+
+현재 실행 중인 Root 세션은 마이그레이션 전에 읽은 지침을 계속 문맥으로 가지고 있을 수 있다. 따라서 migration이 다음 운영 지침 파일군을 실제로 변경했다면 현재 Root 세션을 **재동기화해야 한다.**
+
+- `_task_mecca/ROOT_PROMPT.md`
+- `_task_mecca/framework/SESSION_GUIDE.md`
+- `_task_mecca/framework/SESSION_GUIDE.en.md`
+- `_task_mecca/framework/collab.md`
+- `_task_mecca/framework/roles/*.md`
+
+단순 Web UI/CSS/runtime 구현 변경처럼 세션 행동 규칙이 바뀌지 않은 migration에는 재동기화를 요구하지 않는다.
+
+Web UI에서 migration을 실행하면 migrator가 실제 upstream instruction 변경 여부를 판정한다. 재동기화가 필요하면 완료 팝업에서 현재 Root 세션에 그대로 붙여넣을 수 있는 프롬프트를 제공한다. 사용자는 이 프롬프트를 복사해 **현재 Root 세션**에 전달한다. Root는 새 subagent dispatch나 새 실행 단계를 시작하기 전에 최신 `ROOT_PROMPT.md`, 현재 언어의 `SESSION_GUIDE`, `collab.md`, `roles/root.md`를 다시 읽고, 변경된 운영 규칙을 현재 세션에 재적용한 뒤 작업을 계속한다.
+
+Root 세션 자체를 새로 만들 필요는 없다. 최신 지침 재읽기와 재적용이 완료되면 기존 세션을 계속 사용할 수 있다.
