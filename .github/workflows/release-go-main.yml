@@ -37,6 +37,8 @@ jobs:
           grep -q "function switchProject(path)" goassets/template/_task_mecca/framework/web/app.js
           grep -q "function processTaskNotifications(snapshot)" goassets/template/_task_mecca/framework/web/app.js
           grep -q "function renderNotificationPanel()" goassets/template/_task_mecca/framework/web/app.js
+          grep -q "function notificationCapability()" goassets/template/_task_mecca/framework/web/app.js
+          test -f goassets/template/_task_mecca/framework/web/sw.js
           grep -q "function migrationResyncPrompt(result)" goassets/template/_task_mecca/framework/web/app.js
           grep -q "function showMigrationResyncModal(result)" goassets/template/_task_mecca/framework/web/app.js
       - name: Test Go runtime
@@ -73,3 +75,17 @@ jobs:
           export PATH="$HOME/.local/bin:$PATH"
           TASK_MECCA_RELEASE_TAG=go-main sh ./install.sh
           task-mecca --version
+
+          project="$RUNNER_TEMP/task-mecca-web-smoke"
+          mkdir -p "$project"
+          cd "$project"
+          task-mecca init
+          task-mecca web --host 127.0.0.1 --no-open
+          before_pid="$(task-mecca web status | awk '/^PID/{print $2}')"
+          test -n "$before_pid"
+          curl -fsS http://127.0.0.1:18765/api/health
+          task-mecca web --host 127.0.0.1 --no-open
+          after_pid="$(task-mecca web status | awk '/^PID/{print $2}')"
+          test "$before_pid" = "$after_pid"
+          task-mecca web stop
+          ! curl -fsS --max-time 1 http://127.0.0.1:18765/api/health
