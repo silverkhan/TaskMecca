@@ -135,13 +135,14 @@ func saveTagRegistry(project string,registry TagRegistry) error {
     return os.Rename(tmp,path)
 }
 
-func EnsureTagRegistry(project string) (TagRegistry,error) {
+func loadTagRegistry(project string,create bool) (TagRegistry,error) {
     path:=tagRegistryPath(project)
     data,err:=os.ReadFile(path)
     if errors.Is(err,os.ErrNotExist) {
         now:=time.Now().UTC().Format(time.RFC3339)
         registry:=TagRegistry{Version:1,Tags:defaultTagDefinitions(now)}
-        return registry,saveTagRegistry(project,registry)
+        if create { return registry,saveTagRegistry(project,registry) }
+        return registry,nil
     }
     if err!=nil { return TagRegistry{},err }
     registry:=TagRegistry{}
@@ -149,6 +150,10 @@ func EnsureTagRegistry(project string) (TagRegistry,error) {
     if registry.Version==0 { registry.Version=1 }
     if registry.Tags==nil { registry.Tags=[]TagDefinition{} }
     return registry,nil
+}
+
+func EnsureTagRegistry(project string) (TagRegistry,error) {
+    return loadTagRegistry(project,true)
 }
 
 func tagDefinitionIndex(registry TagRegistry,canonical string) int {
@@ -195,14 +200,14 @@ func resolveTagDefinition(registry TagRegistry,query string) (TagDefinition,stri
 }
 
 func TagResolve(project,query string) (map[string]any,error) {
-    registry,err:=EnsureTagRegistry(project)
+    registry,err:=loadTagRegistry(project,false)
     if err!=nil { return nil,err }
     resolved,matched,ok:=resolveTagDefinition(registry,query)
     return map[string]any{"query":query,"found":ok,"matched":matched,"tag":resolved},nil
 }
 
 func TagList(project string) ([]TagDefinition,error) {
-    registry,err:=EnsureTagRegistry(project)
+    registry,err:=loadTagRegistry(project,false)
     if err!=nil { return nil,err }
     rows:=append([]TagDefinition{},registry.Tags...)
     sort.Slice(rows,func(i,j int)bool{return rows[i].Canonical<rows[j].Canonical})
@@ -210,7 +215,7 @@ func TagList(project string) ([]TagDefinition,error) {
 }
 
 func TagSearch(project,query string) ([]TagDefinition,error) {
-    registry,err:=EnsureTagRegistry(project)
+    registry,err:=loadTagRegistry(project,false)
     if err!=nil { return nil,err }
     q:=strings.ToLower(strings.TrimSpace(query))
     rows:=[]TagDefinition{}
@@ -223,7 +228,7 @@ func TagSearch(project,query string) ([]TagDefinition,error) {
 }
 
 func TagShow(project,query string) (map[string]any,error) {
-    registry,err:=EnsureTagRegistry(project)
+    registry,err:=loadTagRegistry(project,false)
     if err!=nil { return nil,err }
     row,matched,ok:=resolveTagDefinition(registry,query)
     if !ok { return map[string]any{"found":false,"query":query},nil }
@@ -468,7 +473,7 @@ func TagRetire(project,root,input,replacement string) (map[string]any,error) {
 }
 
 func buildTagIndex(project,root string,rows []Record) (TagIndex,error) {
-    registry,err:=EnsureTagRegistry(project)
+    registry,err:=loadTagRegistry(project,false)
     if err!=nil { return TagIndex{},err }
     definitions:=map[string]TagDefinition{}
     for _,row:=range registry.Tags { definitions[row.Canonical]=row }
@@ -507,6 +512,7 @@ func buildTagIndex(project,root string,rows []Record) (TagIndex,error) {
 }
 
 func RebuildTagIndex(project,root string) (TagIndex,error) {
+    if _,err:=EnsureTagRegistry(project); err!=nil { return TagIndex{},err }
     rows,err:=Catalog(project,root)
     if err!=nil { return TagIndex{},err }
     index,err:=buildTagIndex(project,root,rows)
@@ -552,7 +558,7 @@ func tagsMatchExpression(tags []string,groups [][]string) bool {
 }
 
 func TagTasks(project,root,expr string) ([]map[string]any,error) {
-    registry,err:=EnsureTagRegistry(project); if err!=nil { return nil,err }
+    registry,err:=loadTagRegistry(project,false); if err!=nil { return nil,err }
     groups:=[][]string{}
     for _,andPart:=range strings.Split(expr,",") {
         choices:=[]string{}
@@ -581,7 +587,7 @@ func TagTasks(project,root,expr string) ([]map[string]any,error) {
 }
 
 func TagCatalog(project,root string,rows []Record) (map[string]any,error) {
-    registry,err:=EnsureTagRegistry(project); if err!=nil { return nil,err }
+    registry,err:=loadTagRegistry(project,false); if err!=nil { return nil,err }
     index,err:=buildTagIndex(project,root,rows); if err!=nil { return nil,err }
     namespaces:=map[string][]TagStat{}
     for _,stat:=range index.Stats { namespaces[stat.Namespace]=append(namespaces[stat.Namespace],stat) }
