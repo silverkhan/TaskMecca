@@ -321,3 +321,67 @@
 .migration-resync-prompt pre{max-height:310px;white-space:pre-wrap}
 .migration-resync-actions{display:flex;justify-content:flex-end;margin-top:16px}
 @media(max-width:680px){.migration-resync-overlay{padding:12px}.migration-resync-modal{width:100%;max-height:88vh;padding:16px}.migration-resync-head h2{font-size:19px}}
+
+/* Mobile topbar + notification panel containment */
+@media(max-width:680px){
+  .topbar{
+    display:grid;
+    grid-template-columns:minmax(0,1fr) auto auto auto;
+    align-items:center;
+    gap:8px;
+    padding:10px 12px;
+    height:auto;
+    min-height:72px;
+    overflow:visible;
+  }
+  .search-wrap{
+    grid-column:1 / -1;
+    width:100%;
+    max-width:none;
+    min-width:0;
+    order:1;
+  }
+  .language-picker{
+    grid-column:1;
+    justify-self:end;
+    min-width:0;
+    max-width:92px;
+    order:2;
+  }
+  .language-picker select{
+    min-width:0;
+    max-width:82px;
+  }
+  .theme-switcher{
+    grid-column:2;
+    order:2;
+    justify-self:end;
+    max-width:156px;
+    min-width:0;
+  }
+  .theme-btn{
+    padding:0 6px;
+    font-size:10px;
+  }
+  .notification-wrap{
+    grid-column:3;
+    order:2;
+    justify-self:end;
+  }
+  #refreshBtn{
+    grid-column:4;
+    order:2;
+    justify-self:end;
+  }
+  .notification-panel{
+    position:fixed;
+    left:12px;
+    right:12px;
+    top:118px;
+    width:auto;
+    max-width:none;
+    max-height:calc(100vh - 136px);
+    overflow:auto;
+    z-index:120;
+  }
+}
