@@ -63,6 +63,20 @@ func TestHandlerServesDashboardAPIsAndAssets(t *testing.T) {
     if _,ok:=all["A-1"]; !ok { t.Fatalf("snapshot=%+v",payload) }
     if _,ok:=payload["backlog_selection"]; !ok { t.Fatalf("missing backlog_selection") }
 
+    req=httptest.NewRequest(http.MethodGet,"/api/manual?lang=ko",nil)
+    rec=httptest.NewRecorder()
+    handler.ServeHTTP(rec,req)
+    if rec.Code!=http.StatusOK { t.Fatalf("manual status=%d body=%s",rec.Code,rec.Body.String()) }
+    manual:=map[string]any{}
+    if err:=json.Unmarshal(rec.Body.Bytes(),&manual); err!=nil { t.Fatal(err) }
+    rootPrompt,ok:=manual["root_prompt"].(string)
+    if !ok || !contains(rootPrompt,"이 세션에서는 Task Mecca의 Root로 동작해 주세요.") {
+        t.Fatalf("root_prompt missing from manual payload: %+v",manual)
+    }
+    if manual["root_prompt_path"]!="_task_mecca/ROOT_PROMPT.md" {
+        t.Fatalf("root_prompt_path=%v",manual["root_prompt_path"])
+    }
+
     req=httptest.NewRequest(http.MethodGet,"/api/tasks/A-404",nil)
     rec=httptest.NewRecorder()
     handler.ServeHTTP(rec,req)
