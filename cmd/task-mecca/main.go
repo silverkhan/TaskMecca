@@ -11,6 +11,7 @@ import (
 
     "github.com/silverkhan/TaskMecca/internal/backlog"
     "github.com/silverkhan/TaskMecca/internal/install"
+    "github.com/silverkhan/TaskMecca/internal/maintenance"
     "github.com/silverkhan/TaskMecca/internal/webui"
 )
 
@@ -26,7 +27,8 @@ func run(args []string) int {
     if len(args) == 0 {
         root,err:=filepath.Abs(".")
         if err!=nil { fmt.Fprintln(os.Stderr,err); return 2 }
-        if err:=webui.Run(webui.Config{Project:root,Port:8765,OpenBrowser:true}); err!=nil {
+        _ = maintenance.RegisterProject(root)
+        if err:=webui.Run(webui.Config{Project:root,Port:8765,OpenBrowser:true,Version:version}); err!=nil {
             fmt.Fprintln(os.Stderr,err); return 2
         }
         return 0
@@ -126,11 +128,18 @@ func run(args []string) int {
         return 0
     case "init":
         if err = install.Init(root, version); err == nil {
+            _ = maintenance.RegisterProject(root)
             fmt.Printf("Task Mecca %s installed to %s\n", version, filepath.Join(root, "_task_mecca"))
         }
     case "migrate":
         err = install.Migrate(root, version)
-        if err == nil { fmt.Printf("Task Mecca %s migrated\n", version) }
+        if err == nil { _ = maintenance.RegisterProject(root); fmt.Printf("Task Mecca %s migrated\n", version) }
+    case "upgrade":
+        var result maintenance.UpgradeResult
+        result, err = maintenance.Upgrade(version)
+        if err == nil {
+            if result.To == "" || result.To == version { fmt.Printf("Task Mecca %s is already current\n", version) } else { fmt.Printf("Task Mecca upgraded %s -> %s\n", result.From, result.To); if result.RestartRequired { fmt.Println("Restart Task Mecca to use the new version.") } }
+        }
     case "ensure-backlog":
         var report map[string]any
         report, err = backlog.Ensure(root, rootOption)
@@ -295,7 +304,8 @@ func run(args []string) int {
     case "status":
         if len(positional) != 0 { fmt.Fprintln(os.Stderr, "status takes no positional arguments"); return 2 }
         if watch && !jsonOutput {
-            err=webui.Run(webui.Config{Project:root,Root:rootOption,Port:8765,OpenBrowser:true})
+            _ = maintenance.RegisterProject(root)
+            err=webui.Run(webui.Config{Project:root,Root:rootOption,Port:8765,OpenBrowser:true,Version:version})
             break
         }
         if watch && jsonOutput {
@@ -315,7 +325,8 @@ func run(args []string) int {
         }
     case "web":
         if len(positional) != 0 { fmt.Fprintln(os.Stderr, "web takes no positional arguments"); return 2 }
-        err=webui.Run(webui.Config{Project:root,Root:rootOption,Port:port,OpenBrowser:!noOpen})
+        _ = maintenance.RegisterProject(root)
+        err=webui.Run(webui.Config{Project:root,Root:rootOption,Port:port,OpenBrowser:!noOpen,Version:version})
     case "monitor":
         if len(positional) != 0 { fmt.Fprintln(os.Stderr, "monitor takes no positional arguments"); return 2 }
         if !once && !jsonOutput {
