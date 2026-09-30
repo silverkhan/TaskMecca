@@ -180,26 +180,27 @@ func tailscaleTLSConfig(info TLSInfo) (*tls.Config,error) {
 }
 
 
-func verifyTailscaleHTTPS(info TLSInfo,port int,instanceID string) error {
-    if !info.Enabled || info.IP=="" || info.DNSName=="" {
-        return fmt.Errorf("Tailscale HTTPS verification requires an enabled TLS endpoint")
+func verifyTailscaleEndpoint(dns,ip string,port int,instanceID string,deadlineAfter time.Duration) error {
+    if dns=="" || ip=="" {
+        return fmt.Errorf("Tailscale HTTPS verification requires DNS name and IPv4 address")
     }
+    if deadlineAfter<=0 { deadlineAfter=2*time.Second }
 
     dialer:=&net.Dialer{Timeout:500*time.Millisecond}
     transport:=&http.Transport{
         TLSClientConfig:&tls.Config{
-            ServerName:info.DNSName,
+            ServerName:dns,
             MinVersion:tls.VersionTLS12,
         },
         DialContext:func(ctx stdcontext.Context,network,address string) (net.Conn,error) {
-            return dialer.DialContext(ctx,"tcp4",net.JoinHostPort(info.IP,strconv.Itoa(port)))
+            return dialer.DialContext(ctx,"tcp4",net.JoinHostPort(ip,strconv.Itoa(port)))
         },
     }
     defer transport.CloseIdleConnections()
 
     client:=&http.Client{Transport:transport,Timeout:800*time.Millisecond}
-    endpoint:=fmt.Sprintf("https://%s:%d/api/health",info.DNSName,port)
-    deadline:=time.Now().Add(2*time.Second)
+    endpoint:=fmt.Sprintf("https://%s:%d/api/health",dns,port)
+    deadline:=time.Now().Add(deadlineAfter)
     var lastErr error
 
     for {
@@ -221,8 +222,15 @@ func verifyTailscaleHTTPS(info TLSInfo,port int,instanceID string) error {
         }
 
         if time.Now().After(deadline) {
-            return fmt.Errorf("Tailscale HTTPS self-check failed for %s:%d: %w",info.IP,port,lastErr)
+            return fmt.Errorf("Tailscale HTTPS self-check failed for %s:%d: %w",ip,port,lastErr)
         }
         time.Sleep(100*time.Millisecond)
     }
+}
+
+func verifyTailscaleHTTPS(info TLSInfo,port int,instanceID string) error {
+    if !info.Enabled {
+        return fmt.Errorf("Tailscale HTTPS verification requires an enabled TLS endpoint")
+    }
+    return verifyTailscaleEndpoint(info.DNSName,info.IP,port,instanceID,2*time.Second)
 }
