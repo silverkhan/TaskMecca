@@ -132,4 +132,6 @@ task-mecca web
 task-mecca migrate
 ```
 
+마이그레이션 과정에서 `ROOT_PROMPT.md`, `SESSION_GUIDE*.md`, `collab.md`, `roles/*.md`처럼 현재 세션의 동작에 영향을 주는 지침이 바뀌었다면 **현재 Root 세션은 자동으로 새 지침을 알게 된 것으로 간주하지 않는다.** Web UI는 마이그레이션 완료 후 Root 세션 재동기화 필요 여부를 표시하고, 현재 세션에 그대로 붙여넣을 수 있는 복사 가능한 프롬프트를 제공한다. 이 프롬프트를 Root에 전달해 최신 지침을 다시 읽게 한 뒤 계속 작업한다.
+
 최종 사용자는 Python, `uv`, Go toolchain을 설치할 필요가 없다. Web UI, doctor, preflight, backlog 조작은 standalone binary가 직접 수행한다.
