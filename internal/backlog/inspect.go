@@ -54,6 +54,7 @@ func Inspect(project,root,itemID string) (map[string]any,error) {
         "hold_audit":assignment["hold_audit"],
         "runtime_metadata":runtimeFromFields(row.Fields),
         "registrant":row.Fields["등록자"],
+        "source":sourceFromFields(row.Fields),
         "continuity_agents":continuityAgents,
         "legacy_agent_history":legacy,
         "lifecycle":lifecycle,

@@ -10,7 +10,7 @@ var checkboxLine = regexp.MustCompile(`^-\s+\[([ xX])\]\s+(.+)$`)
 
 var fieldNames = map[string]bool{
     "등록자": true, "Agent": true, "변경범위": true, "대기": true, "대기유형": true,
-    "재개조건": true, "대기근거": true, "선행": true, "연관": true, "설명": true,
+    "재개조건": true, "대기근거": true, "선행": true, "연관": true, "출처": true, "설명": true,
     "메모": true, "결과": true, "검증": true, "Tags": true, "Branch": true, "실행기": true,
     "RuntimeProvider": true, "Dispatch상태": true, "실행상태": true, "실행근거": true, "Fallback근거": true,
     // Legacy runtime-schema fields remain recognized as field boundaries so old

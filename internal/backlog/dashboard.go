@@ -33,7 +33,7 @@ func dashboardItem(row Record, stateName string, waiting []string, timing map[st
         "agent":assignment["agent"],"assignment_kind":assignment["assignment_kind"],
         "hold_audit":assignment["hold_audit"],"candidate_agents":topAgents,
         "scope":assignment["change_scope"],"runtime_metadata":runtimeFromFields(row.Fields),
-        "document":row.Document,"raw_markdown":row.RawMarkdown,"registrant":row.Fields["등록자"],
+        "document":row.Document,"raw_markdown":row.RawMarkdown,"registrant":row.Fields["등록자"],"source":sourceFromFields(row.Fields),
         "tags":parseTagList(row.Fields["Tags"]),
         "wait_note":row.Fields["대기"],"depends_on":refs(row.Fields["선행"]),
         "related":refs(row.Fields["연관"]),"waiting_for":waiting,"time":itemTime,
