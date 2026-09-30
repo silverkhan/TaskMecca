@@ -20,7 +20,7 @@ func compactDocument(row Record) map[string]any {
 }
 
 func compactFields(row Record) map[string]string {
-    keys:=[]string{"설명","메모","결과","대기","재개조건","Agent","변경범위","등록자"}
+    keys:=[]string{"설명","메모","결과","대기","재개조건","Agent","변경범위","등록자","출처"}
     out:=map[string]string{}
     for _,key:=range keys { if value:=row.Fields[key]; value!="" { out[key]=value } }
     return out
@@ -55,7 +55,7 @@ func webSummaryItem(row Record,state string,waiting []string,review map[string]a
         "location":row.Location,"archive_month":row.ArchiveMonth,"path":row.Path,"mtime":row.Mtime,"updated_at":row.Mtime,
         "agent":assignment["agent"],"assignment_kind":assignment["assignment_kind"],"scope":assignment["change_scope"],
         "tags":parseTagList(row.Fields["Tags"]),"depends_on":refs(row.Fields["선행"]),"related":refs(row.Fields["연관"]),"waiting_for":waiting,
-        "document":compactDocument(row),"fields":compactFields(row),"registrant":row.Fields["등록자"],
+        "document":compactDocument(row),"fields":compactFields(row),"registrant":row.Fields["등록자"],"source":sourceFromFields(row.Fields),
         "activity":map[string]any{"health":"n/a"},
     }
     if signal!=nil { item["activity"]=signal }
