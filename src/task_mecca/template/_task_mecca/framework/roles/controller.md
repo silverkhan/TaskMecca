@@ -57,6 +57,17 @@ Worker DONE/BLOCKED마다 해당 backlog의 `### 수용 기준`과 실제 코드
 Web UI의 stale/quiet/worker-missing은 관제 보조 신호이지 자동 상태 전환 명령이 아니다. 특히 stale은 worker 사망을
 단정하지 않는다. 실제 runtime 상태와 작업 특성을 확인한 뒤 재배정·중단을 판단한다.
 
+## Continuity gap 복구
+
+Worker turn이 끝났는데 canonical backlog가 여전히 `doing`이면 다음 pass로 조용히 넘기지 않는다.
+fresh `coordinate --json`과 실제 live agent state를 다시 확인하고 `continuity_gaps`를 반드시 해소한다.
+
+- runtime이 completed인데 backlog가 doing이면 원래 수용 기준을 검증해 done 처리하거나, 남은 작업이 있으면 **새 runtime turn이 실제 생성됐음을 확인한 뒤** 재호출/재배정한다.
+- assigned worker가 runtime registry에서 사라졌으면 기존 메시지의 “재개 예정”을 실행 중으로 간주하지 않는다. live state를 확인하고 fresh turn 또는 명시적 재배정을 만든다.
+- 사용자 판단이 필요하면 worker claim을 해제하고 `hold(user)`로 전환해 대기 사유·재개조건·근거를 기록한 뒤 Root에 `USER_DECISION_REQUIRED`를 올린다.
+- Worker가 자기 자신에게 follow-up을 보냈다는 사실은 continuity 증거가 아니다. 새 turn 생성이 확인되지 않은 자기 위임은 재개로 인정하지 않는다.
+- Controller는 위 gap 중 하나가 남아 있으면 queue가 안정 상태라고 보고하지 않는다.
+
 ## Worker identity
 
 신규 worker는 공통 규약의 확정 Pokémon ASCII pool과 `agent <new-path> --new --json`을 따른다.
