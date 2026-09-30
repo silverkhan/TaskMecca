@@ -103,11 +103,19 @@ func runtimeActivity(project string, rows []Record, timings map[string]map[strin
             seconds:=now.Sub(dt).Seconds(); if seconds<0 { seconds=0 }; inactivity=seconds
         }
         health:="runtime_unknown"
-        if registryAvailable && agent!="" && hb==nil {
-            health="worker_missing"
-        } else if inactivity!=nil {
-            seconds:=inactivity.(float64)
-            if seconds>=float64(critical) { health="stale" } else if seconds>=float64(warn) { health="quiet" } else if hb!=nil { health="healthy" }
+        normalizedState:=strings.ToLower(strings.TrimSpace(runtimeState))
+        switch normalizedState {
+        case "done","completed","complete","finished","succeeded","success":
+            health="awaiting_finalize"
+        case "needs_user","user_input","user-action-required","user_action_required","blocked_user","waiting_for_user":
+            health="needs_user"
+        default:
+            if registryAvailable && agent!="" && hb==nil {
+                health="worker_missing"
+            } else if inactivity!=nil {
+                seconds:=inactivity.(float64)
+                if seconds>=float64(critical) { health="stale" } else if seconds>=float64(warn) { health="quiet" } else if hb!=nil { health="healthy" }
+            }
         }
         var lastValue any=nil; if lastAt!="" { lastValue=lastAt }
         lastSource:="none"; if lastAt!="" { lastSource=source }
@@ -172,6 +180,44 @@ func DashboardSnapshot(project,root string,recentDoneLimit int) (map[string]any,
         item:=dashboardItem(row,state,waiting,timing,continuityMap[id])
         item["hold_review"]=reviewByPath[row.Path]
         if signal,ok:=activity[id]; ok { item["activity"]=signal } else { item["activity"]=map[string]any{"health":"n/a"} }
+        reason:=map[string]any{}
+        if row.State=="hold" {
+            if review:=reviewByPath[row.Path]; review!=nil && toString(review["wait_kind"])=="user" {
+                reason=map[string]any{
+                    "type":"user_intervention","severity":"danger","title":"사용자 개입 필요",
+                    "message":firstNonEmpty(toString(review["wait_note"]),"사용자 입력 또는 판단을 기다리고 있습니다."),
+                    "resume_condition":toString(review["resume_condition"]),
+                    "evidence":toString(review["wait_evidence"]),
+                }
+                item["state"]="needs_user"
+            }
+        }
+        if signal,ok:=activity[id]; ok {
+            switch toString(signal["health"]) {
+            case "awaiting_finalize":
+                reason=map[string]any{
+                    "type":"completion_pending","severity":"warning","title":"완료 처리 필요",
+                    "message":"워커 런타임은 작업 완료를 보고했지만 백로그는 아직 doing 상태입니다.",
+                    "resume_condition":"결과와 검증을 확인한 뒤 태스크를 done으로 완료 처리하세요.",
+                }
+                item["state"]="awaiting_finalize"
+            case "needs_user":
+                reason=map[string]any{
+                    "type":"user_intervention","severity":"danger","title":"사용자 개입 필요",
+                    "message":"워커 런타임이 사용자 입력 또는 조치를 기다리고 있습니다.",
+                    "resume_condition":"필요한 사용자 판단 또는 입력을 제공한 뒤 작업을 재개하세요.",
+                }
+                item["state"]="needs_user"
+            case "stale","worker_missing":
+                reason=map[string]any{
+                    "type":"runtime_stalled","severity":"warning","title":"작업 정체 확인 필요",
+                    "message":"진행 중 태스크의 런타임 활동이 중단되었거나 할당 워커를 찾을 수 없습니다.",
+                    "resume_condition":"워커 상태와 남은 작업을 확인하고 재할당 또는 완료 처리 여부를 결정하세요.",
+                }
+                item["state"]="stalled"
+            }
+        }
+        if len(reason)>0 { item["attention_reason"]=reason }
         allItems[id]=item
     }
 
@@ -268,10 +314,18 @@ func DashboardSnapshot(project,root string,recentDoneLimit int) (map[string]any,
     if selected=="" { selected=filepath.Join(project,"_task_mecca","data","backlog") }
     access:=AccessObservation(project)
     attention:=[]map[string]any{}
-    for id,signal:=range activity {
-        healthValue:=toString(signal["health"])
-        if healthValue=="quiet"||healthValue=="stale"||healthValue=="worker_missing" {
-            row:=map[string]any{"id":id}; for k,v:=range signal { row[k]=v }; attention=append(attention,row)
+    for id,item:=range allItems {
+        if reason,ok:=item["attention_reason"].(map[string]any); ok && len(reason)>0 {
+            row:=map[string]any{"id":id}
+            for k,v:=range reason { row[k]=v }
+            if signal,ok:=activity[id]; ok { for k,v:=range signal { if _,exists:=row[k]; !exists { row[k]=v } } }
+            attention=append(attention,row)
+            continue
+        }
+        if signal,ok:=activity[id]; ok && toString(signal["health"])=="quiet" {
+            row:=map[string]any{"id":id,"type":"quiet","severity":"info","title":"활동 감소"}
+            for k,v:=range signal { row[k]=v }
+            attention=append(attention,row)
         }
     }
     sort.Slice(attention,func(i,j int)bool{return toString(attention[i]["id"])<toString(attention[j]["id"])})
@@ -294,7 +348,7 @@ func DashboardSnapshot(project,root string,recentDoneLimit int) (map[string]any,
             "working":countItemsByFileState(allItems,"doing"),"ready":len(readyIDs),
             "blocked":len(blocked),"hold":countItemsByFileState(allItems,"hold"),
             "hold_review":collectionLen(hold["candidates"]),"done":len(completed),
-            "issues":issueCount,"attention":len(attention),
+            "issues":issueCount,"attention":len(attention),"needs_action":func()int{ n:=0; for _,a:=range attention { if toString(a["type"])!="quiet" { n++ } }; return n }(),
         },
     },nil
 }
