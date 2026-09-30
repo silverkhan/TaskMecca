@@ -30,6 +30,8 @@ type ServiceState struct {
     TailscaleURL string `json:"tailscale_url,omitempty"`
     TLSEnabled bool `json:"tls_enabled"`
     TLSError string `json:"tls_error,omitempty"`
+    TailscaleManaged bool `json:"tailscale_managed,omitempty"`
+    TailscaleMode string `json:"tailscale_mode,omitempty"`
     Version string `json:"version"`
     Project string `json:"project"`
     StartedAt string `json:"started_at"`
@@ -192,7 +194,17 @@ func StopService() (ServiceState,error) {
     deadline:=time.Now().Add(5*time.Second)
     for time.Now().Before(deadline) {
         time.Sleep(100*time.Millisecond)
-        if !healthState(state) { removeServiceState(state.InstanceID); state.Running=false; state.ControlToken=""; return state,nil }
+        if !healthState(state) {
+            var cleanupErr error
+            if state.TailscaleManaged {
+                cleanupErr=disableOwnedTailscaleServe(state.Port)
+            }
+            removeServiceState(state.InstanceID)
+            state.Running=false
+            state.ControlToken=""
+            if cleanupErr!=nil { return state,cleanupErr }
+            return state,nil
+        }
     }
     return ServiceState{},errors.New("Task Mecca Web did not stop within timeout")
 }
