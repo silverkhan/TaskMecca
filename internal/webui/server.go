@@ -343,27 +343,15 @@ func scheduleWebRestart(result maintenance.UpgradeResult,config Config,port int)
     args:=[]string{"web","--foreground","--project",config.Project,"--host",config.Host,"--port",fmt.Sprint(port),"--no-open","--web-instance-id",config.InstanceID,"--web-control-token",config.ControlToken}
     if config.Root!="" { args=append(args,"--root",config.Root) }
 
-    if runtime.GOOS=="windows" {
-        helper,err:=os.CreateTemp("","task-mecca-web-restart-*.cmd")
-        if err!=nil { return err }
-        helperPath:=helper.Name()
-        rootArg:=""
-        if config.Root!="" { rootArg=" --root \""+config.Root+"\"" }
-        body:=fmt.Sprintf("@echo off\r\n:wait\r\nif exist \"%s.new\" (timeout /t 1 /nobreak >nul & goto wait)\r\ntimeout /t 1 /nobreak >nul\r\nstart \"\" /D \"%s\" \"%s\" web --foreground --project \"%s\" --host \"%s\" --port %d --no-open --web-instance-id \"%s\" --web-control-token \"%s\"%s\r\ndel \"%%~f0\"\r\n",
-            exe,config.Project,exe,config.Project,config.Host,port,config.InstanceID,config.ControlToken,rootArg)
-        if _,err=helper.WriteString(body); err!=nil { _=helper.Close(); return err }
-        if err=helper.Close(); err!=nil { return err }
-        cmd:=exec.Command("cmd","/C","start","\"Task Mecca Web Restart\"","/MIN",helperPath)
-        cmd.Dir=config.Project
-        return cmd.Start()
+    handled,err:=prepareManagedWebRestart()
+    if err!=nil { return err }
+    if handled {
+        // launchd owns the macOS background service with KeepAlive=true.
+        // The caller will gracefully shut this process down; launchd then
+        // starts the upgraded executable independently of the terminal session.
+        return nil
     }
-
-    shellArgs:=append([]string{"-c","sleep 1; exec \"$@\"" ,"task-mecca-web-restart",exe},args...)
-    cmd:=exec.Command("sh",shellArgs...)
-    cmd.Dir=config.Project
-    cmd.Stdout=os.Stdout
-    cmd.Stderr=os.Stderr
-    return cmd.Start()
+    return detachedWebRestart(exe,args,config.Project)
 }
 
 func Run(config Config) error {
