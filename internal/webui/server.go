@@ -385,10 +385,11 @@ func Run(config Config) error {
     autoMode:=requestedHost=="" || strings.EqualFold(requestedHost,"auto")
     var primaryListener net.Listener
     var remoteListener net.Listener
-    var remoteTLSInfo TLSInfo
     localURL:=""
     tailscaleURL:=""
     candidateTailscaleURL:=""
+    tailscaleManaged:=false
+    tailscaleMode:=""
     tlsError:=""
     bindHost:=""
     port:=config.Port
