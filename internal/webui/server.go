@@ -198,8 +198,8 @@ func handler(project,root,version,instanceID,controlToken string,restartCh chan<
         for _,p:=range projects {
             counts:=map[string]any{}
             if ctx,err:=webContext(p.Path,""); err==nil {
-                if snap,err:=backlog.DashboardSnapshot(p.Path,ctx.selected,5); err==nil {
-                    if c,ok:=snap["counts"].(map[string]any); ok { counts=c }
+                if quick,err:=backlog.QuickCounts(p.Path,ctx.selected); err==nil {
+                    counts=quick
                 }
             }
             rows=append(rows,map[string]any{"name":p.Name,"path":p.Path,"framework_version":p.FrameworkVersion,"last_seen":p.LastSeen,"counts":counts,"migration_available":p.FrameworkVersion!="" && p.FrameworkVersion!=version})
