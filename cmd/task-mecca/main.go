@@ -15,7 +15,7 @@ import (
     "github.com/silverkhan/TaskMecca/internal/webui"
 )
 
-const version = "0.2.18"
+const version = "0.2.19"
 
 func main() { os.Exit(run(os.Args[1:])) }
 
