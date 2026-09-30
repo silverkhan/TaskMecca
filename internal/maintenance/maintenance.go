@@ -158,7 +158,7 @@ func CachedVersionInfo(current string) VersionInfo {
     if !versionCheckRunning {
         versionCheckRunning=true
         go func(){
-            fresh:=RefreshVersionInfo(current)
+            _=RefreshVersionInfo(current)
             versionCheckMu.Lock(); versionCheckRunning=false; versionCheckMu.Unlock()
         }()
     }
