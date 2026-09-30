@@ -180,6 +180,33 @@ Pass.
             finally:
                 self._unload_runtime(framework)
 
+    def test_coordinate_surfaces_completed_worker_continuity_gap(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            target = install(root)
+            backlog = target / "data" / "backlog"
+            backlog.mkdir(parents=True)
+            (backlog / "000023.A-23.incomplete.doing.md").write_text(
+                "# A-23 Incomplete\n- Agent: /root/controller/kkobugi\n- 변경범위: internal/backlog\n",
+                encoding="utf-8",
+            )
+            runtime_dir = target / ".runtime" / "agents"
+            runtime_dir.mkdir(parents=True)
+            (runtime_dir / "kkobugi.json").write_text(
+                '{"agent":"/root/controller/kkobugi","task_id":"A-23","state":"completed","heartbeat_at":"2026-09-30T10:00:00+09:00"}',
+                encoding="utf-8",
+            )
+
+            module, framework = self._load_runtime(target)
+            try:
+                report = module.coordinate_report(backlog, worker_cap=3)
+                gaps = report["continuity_gaps"]
+                self.assertEqual(len(gaps), 1)
+                self.assertEqual(gaps[0]["code"], "worker_completed_backlog_doing")
+                self.assertTrue(report["controller_review_needed"])
+            finally:
+                self._unload_runtime(framework)
+
     def test_lifecycle_history_survives_legacy_to_data_move(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)

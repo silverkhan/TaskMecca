@@ -103,6 +103,19 @@ Worker/Controller가 구현 중 발견한 독립 결함·리팩터링·문서 ga
 명확하고 bounded하면 Simple Task로, 사용자 판단이 필요하면 Defined Task로 처리한다. 원래 항목의 수용 기준을
 새 발견으로 확대하지 않는다.
 
+## 사용자 개입 요청 surface
+
+Controller가 `USER_DECISION_REQUIRED`를 올리면 Root는 이를 일반 진행상황과 구분해 사용자에게 즉시 surface한다.
+해당 task는 사용자 입력을 기다리는 동안 canonical backlog에서 `hold(user)`여야 하며, Root는 다음 정보를 사용자에게 전달한다.
+
+- 어떤 task가 멈췄는지
+- 필요한 판단/입력이 무엇인지
+- 재개 조건이 무엇인지
+- 선택지가 있다면 각 선택의 의미
+
+Root는 알림을 받기 위해 polling loop를 만들지 않는다. Web UI/Controller가 durable state와 runtime event를 surface하고,
+사용자 응답이 오면 fresh preflight와 Controller 재조율을 통해 재개한다.
+
 ## Responsiveness
 
 Defined Task의 등록 전에는 필요한 만큼 논의한다. Simple Task는 불필요한 confirmation round-trip 없이 바로 등록한다.

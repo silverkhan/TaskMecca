@@ -1392,6 +1392,42 @@ def coordinate_report(root: Optional[Path] = None, worker_cap: int = DEFAULT_IMP
     rows = catalog(base)
     ready = ready_report(base, rows)
     timings = _task_timings_for(base)
+    activity = _runtime_activity(base, rows, timings)
+    continuity_gaps: list[dict[str, object]] = []
+    for row in rows:
+        if row["location"] != "active" or row["state"] != "doing":
+            continue
+        fields = row["fields"]
+        assert isinstance(fields, dict)
+        item_id = str(row["id"])
+        signal = activity.get(item_id)
+        if not signal:
+            continue
+        health = str(signal.get("health", ""))
+        code = ""
+        action = ""
+        if health == "awaiting_finalize":
+            code = "worker_completed_backlog_doing"
+            action = "verify acceptance; finalize done if satisfied, otherwise dispatch a fresh worker turn"
+        elif health == "worker_missing":
+            code = "worker_missing_backlog_doing"
+            action = "refresh live agent state; re-dispatch the same worker only with a confirmed fresh turn, otherwise reassign explicitly"
+        elif health == "needs_user":
+            code = "user_decision_required_backlog_doing"
+            action = "release the worker claim, move the task to hold(user), record resume condition, and surface USER_DECISION_REQUIRED to Root"
+        if not code:
+            continue
+        continuity_gaps.append({
+            "id": item_id,
+            "title": row["title"],
+            "agent": fields.get("Agent", ""),
+            "health": health,
+            "runtime_state": signal.get("runtime_state"),
+            "code": code,
+            "action": action,
+            "last_activity_at": signal.get("last_activity_at"),
+            "last_activity_source": signal.get("last_activity_source"),
+        })
     doing = []
     for row in rows:
         if row["location"] != "active" or row["state"] != "doing":
@@ -1434,7 +1470,8 @@ def coordinate_report(root: Optional[Path] = None, worker_cap: int = DEFAULT_IMP
         "source": "git_backlog",
         "root": str(base),
         "scheduling_needed": bool(ready_items),
-        "controller_review_needed": hold_review["review_needed"],
+        "controller_review_needed": bool(hold_review["review_needed"]) or bool(continuity_gaps),
+        "continuity_gaps": continuity_gaps,
         "hold_review": hold_review,
         "ready": ready_items,
         "blocked": blocked_items,
@@ -1472,6 +1509,8 @@ def coordinate_report(root: Optional[Path] = None, worker_cap: int = DEFAULT_IMP
             "dispatch_requires_recheck": "inspect <ID> --json immediately before doing/dispatch",
             "no_work_statement_requires": "this turn's coordinate + live agent state",
             "individual_completion": "settle original acceptance independently of queue drain; worker DONE alone is not proof",
+            "continuity_gap_invariant": "a doing task must not remain ownerless after a worker turn ends; completed/missing/user-wait runtime signals require explicit finalize, fresh re-dispatch/reassignment, or hold(user)+Root escalation before the Controller can consider the pass settled",
+            "self_delegation_forbidden": "a worker cannot create continuity by delegating follow-up work to itself; only a confirmed fresh runtime turn or explicit Controller reassignment counts as resumed execution",
             "hold_review_is_advisory": "review this event, not automatic readiness/spawn or a command to keep draining unchanged external waits",
         },
     }
@@ -2414,7 +2453,15 @@ def _runtime_activity(base: Path, rows: list[dict[str, object]], timings: dict[s
                 source = "git lifecycle"
         last_dt = _parse_iso(last_at)
         inactivity = max(0.0, (now - last_dt.astimezone(now.tzinfo)).total_seconds()) if last_dt else None
-        if registry_available and agent and not hb:
+        normalized_state = runtime_state.strip().lower()
+        if normalized_state in {"done", "completed", "complete", "finished", "succeeded", "success"}:
+            health = "awaiting_finalize"
+        elif normalized_state in {
+            "needs_user", "user_input", "user-action-required", "user_action_required",
+            "blocked_user", "waiting_for_user",
+        }:
+            health = "needs_user"
+        elif registry_available and agent and not hb:
             health = "worker_missing"
         elif inactivity is None:
             health = "runtime_unknown"

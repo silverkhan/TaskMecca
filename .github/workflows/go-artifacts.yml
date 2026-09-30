@@ -7,6 +7,9 @@ on:
       - "cmd/task-mecca/**"
       - "internal/**"
       - "goassets/**"
+      - "src/task_mecca/template/_task_mecca/framework/**"
+      - "tests/**"
+      - "pyproject.toml"
       - "go.mod"
       - ".github/workflows/go-artifacts.yml"
 
@@ -18,8 +21,19 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
       - name: Test Go runtime
         run: go test ./...
+      - name: Test Python compatibility runtime
+        run: |
+          python -m pip install -e .
+          python -m unittest discover -s tests -v
+      - name: Check Web JavaScript syntax
+        run: |
+          node --check goassets/template/_task_mecca/framework/web/app.js
+          node --check goassets/template/_task_mecca/framework/web/sw.js
       - name: Build standalone binaries
         shell: bash
         run: |
