@@ -13,7 +13,7 @@ Task Mecca의 사용자 가이드는 **사용자가 실제로 무엇을 먼저 �
 task-mecca web
 ```
 
-`task-mecca web`은 사용자 단위 singleton Web 서비스를 백그라운드로 실행하고 브라우저를 연다. 기본 포트는 `18765`이며 자동으로 다음 포트로 증가하지 않는다. 이미 Task Mecca Web이 실행 중이면 새 서버를 만들지 않고 기존 URL을 재사용한다. 기본 `--host auto`는 Tailscale IPv4가 있으면 해당 주소에 bind하고, 없으면 `127.0.0.1`을 사용한다. 필요하면 `--host <ip>` 또는 `--port <port>`로 명시할 수 있다. 대시보드는 read-only이며
+`task-mecca web`은 사용자 단위 singleton Web 서비스를 백그라운드로 실행하고 브라우저를 연다. 기본 포트는 `18765`이며 자동으로 다음 포트로 증가하지 않는다. 이미 Task Mecca Web이 실행 중이면 새 서버를 만들지 않고 기존 URL을 재사용한다. 기본 `--host auto`에서는 로컬 `127.0.0.1:18765`에 HTTP를 제공하고, Tailscale이 감지되면 같은 포트의 Tailscale 인터페이스에 Task Mecca가 직접 HTTPS를 제공한다. 원격 주소는 `https://<machine>.<tailnet>.ts.net:18765` 형식이다. Tailscale Serve는 필요하지 않다. 필요하면 `--host <ip>` 또는 `--port <port>`로 명시할 수 있다. 대시보드는 read-only이며
 backlog, Subagent Workload, lifecycle timer, Needs Attention, Full Access 상태를 보여준다.
 
 
@@ -29,6 +29,8 @@ task-mecca web --foreground
 ```
 
 백그라운드 로그와 상태는 사용자 전역 `~/.task-mecca/web/` 아래에서 관리한다. 기본 포트 `18765`가 다른 프로그램에 의해 사용 중이면 자동으로 `18766` 등으로 이동하지 않고 오류를 내며, 필요한 경우 사용자가 `--port`를 명시한다.
+
+Tailscale 직접 HTTPS를 사용하려면 Tailscale Admin의 DNS 설정에서 MagicDNS와 HTTPS Certificates가 활성화되어 있어야 한다. Task Mecca는 발급 인증서를 `~/.task-mecca/web/tls/` 아래에 보관하고 필요할 때만 갱신한다. HTTPS 준비에 실패하면 `task-mecca web status`에서 원인을 표시한다.
 
 대시보드는 `_task_mecca` 아래에서 백로그 원장을 자동 탐지한다. 신규 프로젝트의 canonical 위치는 `data/backlog/`이며, 기존 호환성을 위해 이름이 `backlog`로 시작하는 `data/backlog_b`, legacy `backlog_b` 같은 경로도 읽는다. canonical `data/backlog/`가 있으면 우선 선택한다. 상단 `Backlog` 선택기에서 다른 후보로 바꿀 수 있으며 수동 선택값은 브라우저에 유지된다. `Auto`를 선택하면 수동 고정을 해제하고 최근 변경 기준 자동 선택으로 돌아간다.
 
