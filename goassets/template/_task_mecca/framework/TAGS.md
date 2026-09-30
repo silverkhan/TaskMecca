@@ -19,7 +19,24 @@ _task_mecca/.runtime/tag_index.json     # rebuildable projection/cache
 - `concern`: performance, security, ux, compatibility, data-integrity 등 횡단 관심사
 - `custom`: 프로젝트 고유 분류
 
-태그는 선택사항이다. `todo`, `doing`, `hold`, `done`, dependency ID, Agent name처럼 이미 구조화된 metadata를 태그로 반복하지 않는다.
+태그는 schema상 선택사항이지만 **신규 Task 등록에서는 태그 분류를 기본 절차로 수행**한다. 의미 있는 분류가 있으면 기존 또는 신규 canonical tag를 기록하고,
+taxonomy 탐색 후 실제 분류 가치가 없는 경우에만 `Tags: -`를 사용한다. `todo`, `doing`, `hold`, `done`, dependency ID, Agent name처럼 이미 구조화된 metadata는 태그로 반복하지 않는다.
+
+## 신규 Task 기본 분류
+
+신규 backlog item을 만들 때 Root는 사용자가 태그를 별도로 요청하지 않아도 다음 순서로 분류한다.
+
+1. 업무 영역(`area`), 작업 유형(`type`), 횡단 관심사(`concern`) 또는 프로젝트 고유 의미(`custom`)를 판단한다.
+2. `resolve/search`로 existing canonical/alias/유사 태그를 확인한다.
+3. 같은 의미가 있으면 existing active canonical을 사용한다.
+4. 기존 taxonomy에 없는 의미라면 **신규 canonical tag를 define한 뒤 즉시 사용**한다.
+5. 분류 가치가 실제로 없을 때만 `Tags: -`를 기록한다.
+
+신규 태그는 정상적인 taxonomy 성장 경로다. canonical 검수는 신규 태그를 막기 위한 것이 아니라
+`area:frontend`, `area:front-end`, `custom:frontend`처럼 같은 의미가 여러 이름으로 분산되는 것을 막기 위한 것이다.
+
+신규 tag define은 의미와 namespace가 명확하고 기존 taxonomy와 비중복이면 Agent가 자율 처리할 수 있다.
+의미가 애매하거나 새로운 namespace/분류 축 자체를 도입하는 판단이면 사용자에게 확인한다.
 
 ## 신규 태그 정의 전 순서
 
@@ -70,7 +87,8 @@ task-mecca tags remove A-143 concern:performance
 task-mecca tags set A-143 area:backend type:bug concern:data-integrity
 ```
 
-기존 active 태그의 assign/remove/set은 Agent가 자율 처리할 수 있다. 정의되지 않은 태그는 바로 assign하지 않고 먼저 taxonomy를 탐색/정의한다.
+기존 active 태그의 assign/remove/set은 Agent가 자율 처리할 수 있다. 정의되지 않은 의미가 필요하면 기존 taxonomy를 먼저 탐색하고,
+중복이 없으면 신규 canonical tag를 define한 뒤 assign한다. 신규 태그라는 이유만으로 assignment를 포기하지 않는다.
 
 ## Taxonomy 변경
 

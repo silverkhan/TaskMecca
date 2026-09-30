@@ -86,13 +86,28 @@ Root는 Registrar에 넘기기 전에 사람이 읽을 수 있는 제목과 최�
 
 상세 작성 규칙은 `HUMAN_READABLE_BACKLOG.md`를 따른다.
 
-## 자연어 태그 관리
+## Task 태그 분류 및 자연어 태그 관리
+
+Root는 **모든 신규 backlog item을 Registrar에 넘기기 전에 태그 분류를 한 번 수행**한다. 사용자가 태그를 따로 요청하지 않아도
+현재 task의 의미와 project taxonomy를 비교해 탐색 가치가 있는 태그를 선정한다.
+
+분류 절차:
+
+1. task의 업무 영역·작업 유형·횡단 관심사를 식별한다.
+2. `task-mecca tags resolve/search --json`으로 기존 canonical tag, alias, 유사 태그를 먼저 확인한다.
+3. 같은 의미의 기존 태그가 있으면 현재 active canonical tag를 재사용한다.
+4. 기존 taxonomy로 표현되지 않는 **의미적으로 새로운 분류**라면 신규 canonical tag를 정의한 뒤 해당 task에 사용한다.
+5. 분류 가치가 실제로 없는 경우에만 `Tags: -`를 선택한다. 태그 판단을 생략한 결과로 `-`를 넘기지 않는다.
+
+기본적으로 1~3개의 의미 있는 태그를 우선하되 개수를 채우기 위해 불필요한 태그를 만들지 않는다.
+신규 태그 정의 자체는 금지 대상이 아니다. 의미와 namespace가 명확하고 기존 taxonomy와 중복되지 않으면 Root가 자율적으로
+`task-mecca tags define ...`을 실행할 수 있다. 의미가 애매하거나 taxonomy 경계를 바꾸는 선택이면 사용자에게 확인한다.
 
 사용자가 태그 정의·추가·통합·이름변경·폐기를 자연어로 요청하면 Root는 registry 파일을 직접 편집하라고 요구하지 않는다.
 대신 `TAGS.md`의 정책에 따라 `task-mecca tags ...` / `task-mecca task tag-* ...` deterministic primitive로 변환한다.
 
-- 신규 태그는 먼저 `resolve`와 `search`로 기존 taxonomy/alias를 확인한다.
 - 기존 active 태그의 task assign/remove/set은 의미가 명확하면 자율 처리할 수 있다.
+- 신규 태그 define은 기존 taxonomy 탐색 후 의미가 명확하고 비중복이면 자율 처리할 수 있다.
 - rename/merge/retire/namespace 변경은 영향 task와 의미 변화를 사용자에게 설명하고 승인 후 실행한다.
 - 상태·dependency·Agent assignment를 태그로 중복 표현하지 않는다.
 
@@ -109,8 +124,9 @@ Root classification
 공통적으로:
 
 1. 하나의 요구가 독립 검증 가능한 여러 backlog item으로 나뉘어야 하면 **Root 단계에서** 분해한다.
-2. Registrar가 ID를 반환하면 Controller에 `NEW_TASK <ID>`를 알리고 Root는 사용자 입력을 받을 수 있는 상태로 돌아간다.
-3. 등록된 `## 작업 정의` 또는 `## 요건 정의서`가 해당 task의 canonical contract다.
+2. 각 신규 item마다 taxonomy를 탐색하고 기존 canonical tag 재사용 또는 필요한 신규 tag define까지 끝낸 뒤 Registrar에 넘긴다.
+3. Registrar가 ID를 반환하면 Controller에 `NEW_TASK <ID>`를 알리고 Root는 사용자 입력을 받을 수 있는 상태로 돌아간다.
+4. 등록된 `## 작업 정의` 또는 `## 요건 정의서`가 해당 task의 canonical contract다.
 
 ## 계약 경계
 
