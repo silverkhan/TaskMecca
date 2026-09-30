@@ -330,7 +330,8 @@ func run(args []string) int {
     case "monitor":
         if len(positional) != 0 { fmt.Fprintln(os.Stderr, "monitor takes no positional arguments"); return 2 }
         if !once && !jsonOutput {
-            err=webui.Run(webui.Config{Project:root,Root:rootOption,Port:port,OpenBrowser:!noOpen})
+            _ = maintenance.RegisterProject(root)
+            err=webui.Run(webui.Config{Project:root,Root:rootOption,Port:port,OpenBrowser:!noOpen,Version:version})
             break
         }
         if interval<0.5 { interval=0.5 }
