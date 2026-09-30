@@ -87,7 +87,8 @@ Object.assign(I18N.ko,{
   operationsEvidence:'운영·실행 근거', summaryTodoFallback:'등록됨. 완료 기준 충족 전입니다.',
   summaryDoingFallback:'현재 구현 또는 검증이 진행 중입니다.', summaryHoldFallback:'현재 재개 조건을 기다리고 있습니다.',
   summaryDoneFallback:'완료 처리되었습니다.', noFollowUp:'현재 별도 확인·후속 사항이 없습니다.',
-  detailExpand:'상세 펼치기', detailCollapse:'상세 접기', requirementsAndConstraints:'요구사항·제약', legacyDetails:'기존 작업 상세'
+  detailExpand:'상세 펼치기', detailCollapse:'상세 접기', requirementsAndConstraints:'요구사항·제약', legacyDetails:'기존 작업 상세',
+  source:'출처', openSource:'외부 원본 열기'
 });
 Object.assign(I18N.en,{
   humanSummary:'Summary', summaryPurpose:'Purpose', summaryChange:'Key change', summaryStatusResult:'Status / result', summaryFollowUp:'Checks / follow-up',
@@ -96,7 +97,8 @@ Object.assign(I18N.en,{
   operationsEvidence:'Operations / evidence', summaryTodoFallback:'Registered; completion criteria are not yet satisfied.',
   summaryDoingFallback:'Implementation or verification is currently in progress.', summaryHoldFallback:'Waiting for the recorded resume condition.',
   summaryDoneFallback:'Task has been completed.', noFollowUp:'No separate check or follow-up is currently recorded.',
-  detailExpand:'Expand details', detailCollapse:'Collapse details', requirementsAndConstraints:'Requirements / constraints', legacyDetails:'Legacy task details'
+  detailExpand:'Expand details', detailCollapse:'Collapse details', requirementsAndConstraints:'Requirements / constraints', legacyDetails:'Legacy task details',
+  source:'Source', openSource:'Open external source'
 });
 Object.assign(I18N.ko,{tags:'태그',tagExplore:'태그 탐색',tagFilter:'태그 필터',clearTags:'태그 필터 해제',noTags:'태그 없음',tagTotal:'전체',tagActive:'활성',tagHold:'보류',tagDone:'완료',unregisteredTag:'미등록 태그',tagDescription:'설명'});
 Object.assign(I18N.en,{tags:'Tags',tagExplore:'Explore tags',tagFilter:'Tag filter',clearTags:'Clear tag filters',noTags:'No tags',tagTotal:'Total',tagActive:'Active',tagHold:'Hold',tagDone:'Done',unregisteredTag:'Unregistered tag',tagDescription:'Description'});
@@ -1156,7 +1158,7 @@ function listView() {
     const summaryLine=[hs.change,hs.follow_up?`${t('summaryFollowUp')}: ${hs.follow_up}`:''].filter(Boolean).join(' · ');
     const updated=updatedAt(task);
     const alias=(task.agent||'').split('/').pop()||'-';
-    return `<div class="task-row ${i===state.selectedIndex?'keyboard-selected':''}" data-id="${esc(task.id)}" data-row-index="${i}" tabindex="-1"><div class="task-id">${esc(task.id)}</div><div class="task-main"><div class="task-mobile-id">${esc(task.id)}</div><div class="task-title">${esc(titleOf(task))}</div>${(task.tags||[]).length?`<div class="task-tag-row">${(task.tags||[]).map(tag=>tagChip(tag,true)).join('')}</div>`:''}<div class="task-sub">${esc(sub)}</div>${summaryLine?`<div class="task-summary-preview">${esc(summaryLine)}</div>`:''}</div><div class="state-col"><span class="status ${esc(task.state)}">${esc(stateLabel(task.state))}</span><div class="task-state-summary">${esc(summaryPreview(hs.status_result,90))}</div>${['quiet','stale','worker_missing'].includes(h)?`<div class="task-sub">${esc(healthLabel(h))}</div>`:''}</div><div class="task-agent"><div>${esc(alias)}</div>${task.archive_month?`<div class="task-sub">archive/${esc(task.archive_month)}</div>`:''}</div><div class="task-active timer live-timer" data-id="${esc(task.id)}">${time}</div><div class="task-updated" title="${esc(dateTimeLabel(updated))}"><strong>${esc(ago(updated))}</strong><span>${esc(dateTimeLabel(updated,true))}</span></div><div class="chev">›</div></div>`;
+    return `<div class="task-row ${i===state.selectedIndex?'keyboard-selected':''}" data-id="${esc(task.id)}" data-row-index="${i}" tabindex="-1"><div class="task-id">${esc(task.id)}</div><div class="task-main"><div class="task-mobile-id">${esc(task.id)}</div><div class="task-title">${esc(titleOf(task))}</div>${task.source?.label?`<div class="task-source-row">${sourceLink(task.source,true)}</div>`:''}${(task.tags||[]).length?`<div class="task-tag-row">${(task.tags||[]).map(tag=>tagChip(tag,true)).join('')}</div>`:''}<div class="task-sub">${esc(sub)}</div>${summaryLine?`<div class="task-summary-preview">${esc(summaryLine)}</div>`:''}</div><div class="state-col"><span class="status ${esc(task.state)}">${esc(stateLabel(task.state))}</span><div class="task-state-summary">${esc(summaryPreview(hs.status_result,90))}</div>${['quiet','stale','worker_missing'].includes(h)?`<div class="task-sub">${esc(healthLabel(h))}</div>`:''}</div><div class="task-agent"><div>${esc(alias)}</div>${task.archive_month?`<div class="task-sub">archive/${esc(task.archive_month)}</div>`:''}</div><div class="task-active timer live-timer" data-id="${esc(task.id)}">${time}</div><div class="task-updated" title="${esc(dateTimeLabel(updated))}"><strong>${esc(ago(updated))}</strong><span>${esc(dateTimeLabel(updated,true))}</span></div><div class="chev">›</div></div>`;
   }).join('')}</div>`:`<div class="empty">${esc(t('noMatches'))}</div>`}`;
 }
 
@@ -1204,6 +1206,13 @@ function issuesView() {
   return `<div class="page-head"><div><div class="eyebrow">${esc(t('diagnostics'))}</div><h1>${esc(t('issues'))}</h1><p class="summary">${esc(t('issuesIntro'))}</p></div></div>${rows.length?`<div class="markdown"><pre><code>${esc(rows.map(([k,v])=>`${k}: ${JSON.stringify(v,null,2)}`).join('\n\n'))}</code></pre></div>`:`<div class="empty">${esc(t('noIssues'))}</div>`}`;
 }
 function metaRow(k,v){return `<div class="meta-row"><span>${esc(k)}</span><span>${esc(v||'-')}</span></div>`}
+function sourceLink(source,compact=false) {
+  const label=source?.label||source?.raw||'';
+  if(!label)return '';
+  const cls=`source-link${compact?' compact':''}`;
+  if(source?.url)return `<a class="${cls}" data-external-source href="${esc(source.url)}" target="_blank" rel="noopener noreferrer" title="${esc(t('openSource'))}"><span>${esc(label)}</span><span aria-hidden="true">↗</span></a>`;
+  return `<span class="${cls} muted"><span>${esc(label)}</span></span>`;
+}
 function contractSections(task) {
   const doc=task.document||{}, req=doc.requirements||{}, kind=doc.contract_kind||'legacy';
   if(kind==='simple'){
@@ -1301,7 +1310,7 @@ function detailView(task) {
   const metricGrid=`<div class="detail-metrics embedded"><div><div class="value live-active">${fmtSec(runningSeconds(task,'active'))}</div><div class="label">${esc(t('activeTime'))}</div></div><div><div class="value live-wait">${fmtSec(runningSeconds(task,'wait'))}</div><div class="label">${esc(t('waitTime'))}</div></div><div><div class="value live-queue">${fmtSec(runningSeconds(task,'queue'))}</div><div class="label">${esc(t('queueTime'))}</div></div><div><div class="value live-lead">${fmtSec(runningSeconds(task,'lead'))}</div><div class="label">${esc(t('leadTime'))}</div></div></div>`;
   const operationsBody=`${metricGrid}<h3>${esc(t('overview'))}</h3><div class="meta-grid">${metaRow(t('registrant'),task.registrant)}${metaRow(t('agent'),task.agent)}${metaRow(t('changeScope'),task.scope)}${metaRow(t('location'),task.archive_month?`archive/${task.archive_month}`:task.location)}${metaRow(t('updated'),dateTimeLabel(updatedAt(task)))}${metaRow(t('completed'),dateTimeLabel(completionAt(task)))}${metaRow(t('activity'),healthLabel(act.health))}${metaRow(t('lastSignal'),act.last_activity_at?ago(act.last_activity_at):'-')}${metaRow(t('signalSource'),act.last_activity_source)}</div><h3>${esc(t('execution'))}</h3><div class="meta-grid">${metaRow(t('runtimeProvider'),task.fields?.RuntimeProvider||'unknown')}${metaRow(t('dispatchStatus'),task.fields?.Dispatch상태||task.fields?.실행상태||'unknown')}${metaRow(t('executionEvidence'),task.fields?.실행근거||'unknown')}${metaRow(t('fallbackEvidence'),task.fields?.Fallback근거||'-')}</div>`;
   const operations=detailDisclosure('operations',t('operationsEvidence'),`${task.agent||'-'} · ${healthLabel(act.health)}`,operationsBody);
-  const body=`<div class="detail"><button class="back" id="backBtn">${esc(t('backToBacklog'))}</button><div class="detail-head"><div class="detail-id">${esc(task.id)}</div><h1>${esc(titleOf(task))}</h1><div class="detail-status"><span class="status ${esc(task.state)}">${esc(stateLabel(task.state))}</span>${task.agent?`<span class="badge">${esc(task.agent)}</span>`:''}<span class="badge">${esc(task.document?.schema||'legacy')}</span>${task.archive_month?`<span class="badge">archive/${esc(task.archive_month)}</span>`:''}</div>${(task.tags||[]).length?`<div class="detail-tag-row">${(task.tags||[]).map(tag=>tagChip(tag,true)).join('')}</div>`:''}</div>${humanSummaryCard(task)}${passiveAlert}${contractSections(task)}${progress}${verification}${related}${operations}${lifecycle}</div>`;
+  const body=`<div class="detail"><button class="back" id="backBtn">${esc(t('backToBacklog'))}</button><div class="detail-head"><div class="detail-id">${esc(task.id)}</div><h1>${esc(titleOf(task))}</h1><div class="detail-status"><span class="status ${esc(task.state)}">${esc(stateLabel(task.state))}</span>${task.agent?`<span class="badge">${esc(task.agent)}</span>`:''}<span class="badge">${esc(task.document?.schema||'legacy')}</span>${task.archive_month?`<span class="badge">archive/${esc(task.archive_month)}</span>`:''}</div>${task.source?.label?`<div class="detail-source-row"><span>${esc(t('source'))}</span>${sourceLink(task.source)}</div>`:''}${(task.tags||[]).length?`<div class="detail-tag-row">${(task.tags||[]).map(tag=>tagChip(tag,true)).join('')}</div>`:''}</div>${humanSummaryCard(task)}${passiveAlert}${contractSections(task)}${progress}${verification}${related}${operations}${lifecycle}</div>`;
   return `<div class="detail-layout">${body}${detailToc()}</div>`;
 }
 async function loadTaskDetail(id) {
@@ -1337,7 +1346,8 @@ function closeTask() {
   state.detail=null; state.detailTask=null; state.loadError=''; history.pushState({},'',state.view==='backlog'?backlogUrl():`/?view=${state.view}`); render();
 }
 function bindRows() {
-  document.querySelectorAll('[data-id]').forEach(el => el.onclick = () => {
+  document.querySelectorAll('[data-id]').forEach(el => el.onclick = e => {
+    if(e.target?.closest?.('[data-external-source]'))return;
     if (el.dataset.rowIndex != null) state.selectedIndex = Number(el.dataset.rowIndex) || 0;
     openTask(el.dataset.id);
   });
