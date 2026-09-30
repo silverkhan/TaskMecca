@@ -206,14 +206,14 @@ func handler(project,root,version,instanceID,controlToken string,restartCh chan<
             if rows,ok:=payload["attention"].([]map[string]any); ok {
                 for _,row:=range rows {
                     parts=append(parts,strings.Join([]string{
-                        toString(row["id"]),toString(row["type"]),toString(row["health"]),
-                        toString(row["runtime_state"]),toString(row["last_activity_at"]),
-                        toString(row["title"]),toString(row["message"]),toString(row["resume_condition"]),
+                        fmt.Sprint(row["id"]),fmt.Sprint(row["type"]),fmt.Sprint(row["health"]),
+                        fmt.Sprint(row["runtime_state"]),fmt.Sprint(row["last_activity_at"]),
+                        fmt.Sprint(row["title"]),fmt.Sprint(row["message"]),fmt.Sprint(row["resume_condition"]),
                     },"|"))
                 }
             }
             if events,ok:=payload["notification_events"].([]map[string]any); ok {
-                for _,event:=range events { parts=append(parts,"event:"+toString(event["id"])) }
+                for _,event:=range events { parts=append(parts,"event:"+fmt.Sprint(event["id"])) }
             }
             sort.Strings(parts)
             return strings.Join(parts,"\n")
