@@ -164,3 +164,50 @@
 .project-picker option{background:var(--surface);color:var(--text)}
 @media(max-width:1050px){.project-picker span{display:none}.project-picker select{max-width:140px}}
 @media(max-width:680px){.project-picker{height:34px;padding:0 6px}.project-picker select{max-width:120px}}
+
+/* Session-style project navigation */
+.session-list{display:flex;flex-direction:column;gap:3px}
+.session-row{display:flex;align-items:center;gap:2px;border-radius:8px;color:var(--muted)}
+.session-row:hover,.session-row.active{background:var(--surface2);color:var(--text)}
+.session-open{min-width:0;flex:1;border:0;background:transparent;color:inherit;padding:8px 6px 8px 10px;display:flex;align-items:center;gap:8px;text-align:left;cursor:pointer}
+.session-dot{width:7px;height:7px;border-radius:50%;background:var(--muted);flex:0 0 auto}
+.session-dot.busy{background:var(--accent)}
+.session-name{min-width:0;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:12px;font-weight:600}
+.session-count{font-size:10px;color:var(--muted);font-variant-numeric:tabular-nums}
+.session-close{width:26px;height:26px;flex:0 0 auto;border:0;border-radius:6px;background:transparent;color:var(--muted);cursor:pointer;opacity:0}
+.session-row:hover .session-close,.session-row.active .session-close{opacity:1}
+.session-close:hover{background:var(--border);color:var(--text)}
+.session-add{margin-top:3px}
+.session-empty,.project-open-empty{padding:7px 10px;color:var(--muted);font-size:11px}
+.project-open-menu{margin:4px 0 4px;border:1px solid var(--border);border-radius:9px;background:var(--surface);padding:4px;max-height:220px;overflow:auto;box-shadow:var(--shadow)}
+.project-open-menu button{width:100%;border:0;background:transparent;border-radius:7px;padding:8px;text-align:left;cursor:pointer}
+.project-open-menu button:hover{background:var(--surface2)}
+.project-open-menu span,.project-open-menu small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.project-open-menu span{font-size:12px;font-weight:650}
+.project-open-menu small{font-size:9px;color:var(--muted);margin-top:2px}
+
+/* Hover-peek keeps the content column stable while temporarily expanding the sidebar. */
+@media(min-width:681px){
+  .app-shell.sidebar-collapsed.sidebar-peek .sidebar{
+    position:fixed;left:0;top:0;width:var(--sidebar);z-index:40;
+    padding:22px 14px;box-shadow:14px 0 36px rgba(0,0,0,.12)
+  }
+  .app-shell.sidebar-collapsed.sidebar-peek .brand-copy,
+  .app-shell.sidebar-collapsed.sidebar-peek .sidebar-label,
+  .app-shell.sidebar-collapsed.sidebar-peek .nav-text,
+  .app-shell.sidebar-collapsed.sidebar-peek .count,
+  .app-shell.sidebar-collapsed.sidebar-peek .sidebar-footer-text{display:block}
+  .app-shell.sidebar-collapsed.sidebar-peek .sidebar-head{display:flex}
+  .app-shell.sidebar-collapsed.sidebar-peek .brand{padding:0 8px 24px;justify-content:flex-start}
+  .app-shell.sidebar-collapsed.sidebar-peek .sidebar-toggle{margin:0}
+  .app-shell.sidebar-collapsed.sidebar-peek .nav-item{justify-content:space-between;padding:8px 10px}
+  .app-shell.sidebar-collapsed.sidebar-peek .nav-main{justify-content:flex-start;gap:10px}
+  .app-shell.sidebar-collapsed.sidebar-peek .sidebar-footer{justify-content:flex-start;padding-left:10px;padding-right:10px}
+  .app-shell.sidebar-collapsed:not(.sidebar-peek) .session-name,
+  .app-shell.sidebar-collapsed:not(.sidebar-peek) .session-count,
+  .app-shell.sidebar-collapsed:not(.sidebar-peek) .session-close,
+  .app-shell.sidebar-collapsed:not(.sidebar-peek) .session-empty,
+  .app-shell.sidebar-collapsed:not(.sidebar-peek) .project-open-menu{display:none}
+  .app-shell.sidebar-collapsed:not(.sidebar-peek) .session-row{justify-content:center}
+  .app-shell.sidebar-collapsed:not(.sidebar-peek) .session-open{flex:0 0 auto;padding:9px;justify-content:center}
+}
