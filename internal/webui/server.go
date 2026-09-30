@@ -181,7 +181,7 @@ func Handler(project,root,version string) (http.Handler,error) {
             }
             rows=append(rows,map[string]any{"name":p.Name,"path":p.Path,"framework_version":p.FrameworkVersion,"last_seen":p.LastSeen,"counts":counts,"migration_available":p.FrameworkVersion!="" && p.FrameworkVersion!=version})
         }
-        writeJSON(w,map[string]any{"cli":maintenance.CheckLatest(version),"projects":rows,"current_project":project},200)
+        writeJSON(w,map[string]any{"cli":maintenance.CachedVersionInfo(version),"projects":rows,"current_project":project},200)
     })
 
     mux.HandleFunc("/api/upgrade",func(w http.ResponseWriter,r *http.Request) {
