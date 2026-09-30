@@ -399,7 +399,7 @@ func Run(config Config) error {
 
         tlsInfo:=ensureTailscaleTLS()
         if tlsInfo.Enabled {
-            raw,listenErr:=net.Listen("tcp",fmt.Sprintf("%s:%d",tlsInfo.IP,port))
+            raw,listenErr:=listenTailscaleIP(tlsInfo.IP,port)
             if listenErr!=nil {
                 tlsError=fmt.Sprintf("Tailscale HTTPS cannot bind %s:%d: %v",tlsInfo.IP,port,listenErr)
             } else {
