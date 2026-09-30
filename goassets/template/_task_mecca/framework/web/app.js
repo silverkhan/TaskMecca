@@ -1167,7 +1167,7 @@ async function loadTaskDetail(id) {
 }
 function openTask(id) {
   if (!id) return;
-  state.detail=id; state.detailTask=null; state.raw=false; state.view='backlog';
+  state.detail=id; state.detailTask=null; state.loadError=''; state.raw=false; state.view='backlog';
   const p=new URLSearchParams(); if(state.project)p.set('project',state.project); if(state.tagFilters.length)p.set('tags',state.tagFilters.join(',')); history.pushState({},'',`/tasks/${encodeURIComponent(id)}${p.toString()?`?${p.toString()}`:''}`); render(); loadTaskDetail(id);
 }
 function closeTask() {
@@ -1285,7 +1285,14 @@ function render() {
   const gate=accessBanner()+diagnosticBanner();
   if (state.detail) {
     const task=state.detailTask;
-    if(!task){ c.innerHTML=gate+`<div class="loading">${esc(t('loading'))}</div>`; return; }
+    if(!task){
+      if(state.loadError){
+        c.innerHTML=gate+`<div class="load-error"><h2>${esc(t('taskNotFound'))}</h2><p>${esc(state.loadError)}</p><div class="project-actions"><button class="action-btn secondary" id="detailBackBtn">${esc(t('backToBacklog'))}</button><button class="action-btn" id="detailRetryBtn">Retry</button></div></div>`;
+        $('#detailBackBtn')?.addEventListener('click',closeTask);
+        $('#detailRetryBtn')?.addEventListener('click',()=>{state.loadError='';render();loadTaskDetail(state.detail)});
+      } else c.innerHTML=gate+`<div class="loading">${esc(t('loading'))}</div>`;
+      return;
+    }
     c.innerHTML=gate+detailView(task);
     $('#backBtn')?.addEventListener('click',closeTask);
     $('#rawToggle')?.addEventListener('click',()=>{
@@ -1535,9 +1542,12 @@ async function refresh() {
     }
   }
 }
-function route() {
+function route(fromPop=false) {
+  const previousDetail=state.detail;
   const m=location.pathname.match(/^\/tasks\/([^/]+)/);
   state.detail=m?decodeURIComponent(m[1]).toUpperCase():null;
+  if(previousDetail!==state.detail)state.detailTask=null;
+  state.loadError='';
   const p=new URLSearchParams(location.search);
   state.project=p.get('project')||'';
   if(state.project){
@@ -1566,6 +1576,13 @@ function route() {
     state.tagFilters=rawTags.split(',').map(x=>x.trim()).filter(Boolean);
   }
   render();
+  if(fromPop&&state.project&&state.view==='backlog'){
+    queueMicrotask(()=>{
+      refreshList();
+      ensureAttentionStream();
+      if(state.detail)loadTaskDetail(state.detail);
+    });
+  }
 }
 function renderLanguagePicker() {
   const picker=$('#languagePicker');
@@ -1667,7 +1684,7 @@ window.addEventListener('resize',()=>{
   clearTimeout(autoPageResizeTimer);
   autoPageResizeTimer=setTimeout(scheduleAutoListPageSize,100);
 });
-window.addEventListener('popstate',route);
+window.addEventListener('popstate',()=>route(true));
 setInterval(()=>{
   const data=currentProjectData();
   if(data){
