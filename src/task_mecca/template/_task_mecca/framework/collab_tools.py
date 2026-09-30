@@ -128,6 +128,7 @@ POKEMON_WORKER_SET = NEW_POKEMON_WORKER_SET | frozenset(
 )
 DEFAULT_IMPLEMENTATION_WORKER_CAP = 3
 LINK_RE = re.compile(r"\]\((?!https?://|#)([^)]+)\)")
+SOURCE_LINK_RE = re.compile(r"^\[([^\]]+)\]\((https?://[^)]+)\)$")
 
 FIELD_NAMES = (
     "등록자",
@@ -140,6 +141,7 @@ FIELD_NAMES = (
     "대기근거",
     "선행",
     "연관",
+    "출처",
     "설명",
     "메모",
     "결과",
@@ -465,6 +467,28 @@ def _human_summary(value: str) -> dict[str, str]:
         if current:
             chunks.append(line)
     flush()
+    return result
+
+
+def _source_from_fields(fields: dict[str, str]) -> dict[str, str]:
+    raw = str(fields.get("출처", "")).strip()
+    if not raw or raw == "-":
+        return {}
+    result = {"raw": raw}
+    match = SOURCE_LINK_RE.fullmatch(raw)
+    if match:
+        label = match.group(1).strip().replace("`", "")
+        result["label"] = label
+        result["url"] = match.group(2).strip()
+    else:
+        label = raw.replace("`", "")
+        result["label"] = label
+    if " · " in label:
+        provider, reference = label.split(" · ", 1)
+        if provider.strip():
+            result["provider"] = provider.strip()
+        if reference.strip():
+            result["reference"] = reference.strip()
     return result
 
 
@@ -990,6 +1014,7 @@ def inspect_report(item_id: str, root: Optional[Path] = None) -> dict[str, objec
         "hold_audit": assignment["hold_audit"],
         "runtime_metadata": runtime.from_fields(fields),
         "registrant": fields.get("등록자", ""),
+        "source": _source_from_fields(fields),
         "continuity_agents": continuity,
         "legacy_agent_history": legacy,
         "lifecycle": lifecycle,
@@ -2666,6 +2691,7 @@ def _dashboard_item(
         "document": row.get("document", {}),
         "raw_markdown": row.get("raw_markdown", ""),
         "registrant": str(fields.get("등록자", "")),
+        "source": _source_from_fields(fields),
         "wait_note": str(fields.get("대기", "")),
         "depends_on": _refs(str(fields.get("선행", ""))),
         "related": _refs(str(fields.get("연관", ""))),
