@@ -14,6 +14,7 @@ import (
     "os/exec"
     "path/filepath"
     "runtime"
+    "strconv"
     "strings"
     "time"
 
@@ -162,6 +163,78 @@ func handler(project,root,version,instanceID,controlToken string,restartCh chan<
         writeJSON(w,selectionPayload(activeCtx,selected,candidates),200)
     })
 
+    mux.HandleFunc("/api/backlog/tasks",func(w http.ResponseWriter,r *http.Request) {
+        activeProject:=projectFor(r)
+        activeCtx,ctxErr:=webContext(activeProject,"")
+        if ctxErr!=nil { writeJSON(w,map[string]any{"error":ctxErr.Error()},500); return }
+        selected,candidates,err:=resolveBacklog(activeProject,activeCtx,r.URL.Query())
+        if err!=nil { writeJSON(w,map[string]any{"error":err.Error()},500); return }
+        page:=1; if raw:=r.URL.Query().Get("page"); raw!="" { if value,e:=strconv.Atoi(raw); e==nil { page=value } }
+        pageSize:=20; if raw:=r.URL.Query().Get("page_size"); raw!="" { if value,e:=strconv.Atoi(raw); e==nil { pageSize=value } }
+        split:=func(value string) []string {
+            out:=[]string{}; seen:=map[string]bool{}
+            for _,part:=range strings.Split(value,",") {
+                part=strings.TrimSpace(part)
+                if part=="" || seen[part] { continue }
+                seen[part]=true; out=append(out,part)
+            }
+            return out
+        }
+        statuses:=split(r.URL.Query().Get("status"))
+        tags:=split(r.URL.Query().Get("tags"))
+        result,err:=backlog.BacklogPage(activeProject,selected,page,pageSize,statuses,tags,r.URL.Query().Get("q"),r.URL.Query().Get("sort"))
+        if err!=nil { writeJSON(w,map[string]any{"error":err.Error()},500); return }
+        result["backlog_selection"]=selectionPayload(activeCtx,selected,candidates)
+        result["project_path"]=activeProject
+        writeJSON(w,result,200)
+    })
+
+    mux.HandleFunc("/api/events",func(w http.ResponseWriter,r *http.Request) {
+        activeProject:=projectFor(r)
+        activeCtx,ctxErr:=webContext(activeProject,"")
+        if ctxErr!=nil { http.Error(w,ctxErr.Error(),500); return }
+        selected,_,err:=resolveBacklog(activeProject,activeCtx,r.URL.Query())
+        if err!=nil { http.Error(w,err.Error(),500); return }
+        flusher,ok:=w.(http.Flusher)
+        if !ok { http.Error(w,"streaming unsupported",500); return }
+        w.Header().Set("Content-Type","text/event-stream; charset=utf-8")
+        w.Header().Set("Cache-Control","no-cache")
+        w.Header().Set("Connection","keep-alive")
+        w.Header().Set("X-Accel-Buffering","no")
+        last:=""
+        send:=func() bool {
+            payload,snapshotErr:=backlog.AttentionSnapshot(activeProject,selected,true)
+            if snapshotErr!=nil {
+                data,_:=json.Marshal(map[string]any{"error":snapshotErr.Error()})
+                _,_=fmt.Fprintf(w,"event: error\ndata: %s\n\n",data)
+                flusher.Flush()
+                return false
+            }
+            data,_:=json.Marshal(payload)
+            current:=string(data)
+            if current==last { return true }
+            last=current
+            _,_=fmt.Fprintf(w,"event: attention\ndata: %s\n\n",data)
+            flusher.Flush()
+            return true
+        }
+        if !send() { return }
+        ticker:=time.NewTicker(3*time.Second)
+        keepalive:=time.NewTicker(15*time.Second)
+        defer ticker.Stop(); defer keepalive.Stop()
+        for {
+            select {
+            case <-r.Context().Done():
+                return
+            case <-ticker.C:
+                if !send() { return }
+            case <-keepalive.C:
+                _,_=fmt.Fprint(w,": keepalive\n\n")
+                flusher.Flush()
+            }
+        }
+    })
+
     mux.HandleFunc("/api/snapshot",func(w http.ResponseWriter,r *http.Request) {
         activeProject:=projectFor(r)
         activeCtx,ctxErr:=webContext(activeProject,"")
@@ -246,12 +319,8 @@ func handler(project,root,version,instanceID,controlToken string,restartCh chan<
         selected,_,err:=resolveBacklog(activeProject,activeCtx,r.URL.Query())
         if err!=nil { writeJSON(w,map[string]any{"error":err.Error()},500); return }
         id:=strings.ToUpper(strings.TrimSpace(strings.TrimPrefix(r.URL.Path,"/api/tasks/")))
-        snapshot,err:=backlog.DashboardSnapshot(activeProject,selected,5)
-        if err!=nil { writeJSON(w,map[string]any{"error":err.Error()},500); return }
-        all,ok:=snapshot["all_items"].(map[string]map[string]any)
-        if !ok { writeJSON(w,map[string]any{"error":"task not found","id":id},404); return }
-        item,ok:=all[id]
-        if !ok { writeJSON(w,map[string]any{"error":"task not found","id":id},404); return }
+        item,err:=backlog.TaskDetail(activeProject,selected,id)
+        if err!=nil { writeJSON(w,map[string]any{"error":err.Error(),"id":id},404); return }
         writeJSON(w,item,200)
     })
 
