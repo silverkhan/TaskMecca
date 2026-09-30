@@ -130,7 +130,7 @@ func BacklogPage(project,root string,page,pageSize int,statuses,tags []string,se
     readyIDs,blocked,reviewByPath,activity,_:=webStateMaps(project,root,rows)
     byID:=preferredRows(rows)
     all:=make([]map[string]any,0,len(byID))
-    counts:=map[string]int{"working":0,"ready":0,"blocked":0,"hold":0,"done":0,"attention":0,"needs_action":0}
+    counts:=map[string]int{"all":len(byID),"working":0,"ready":0,"blocked":0,"hold":0,"done":0,"attention":0,"needs_action":0}
     for id,row:=range byID {
         state:=row.State
         if row.State=="todo" && readyIDs[id] { state="ready" }
@@ -168,7 +168,7 @@ func BacklogPage(project,root string,page,pageSize int,statuses,tags []string,se
     start:=(page-1)*pageSize; end:=start+pageSize; if end>total { end=total }
     items:=[]map[string]any{}; if start<total { items=filtered[start:end] }
     tagCatalog,tagErr:=TagCatalog(project,root,rows); if tagErr!=nil { tagCatalog=map[string]any{} }
-    attention,attErr:=AttentionSnapshotFromRows(project,root,rows,false); if attErr!=nil { attention=map[string]any{"attention":[]map[string]any{},"notification_events":[]map[string]any{}} }
+    attention,attErr:=AttentionSnapshotFromRows(project,root,rows,true); if attErr!=nil { attention=map[string]any{"attention":[]map[string]any{},"notification_events":[]map[string]any{}} }
     return map[string]any{
         "snapshot_at":time.Now().Format(time.RFC3339),"root":root,"repo":filepath.Base(repoRoot(root)),
         "items":items,"page":page,"page_size":pageSize,"pages":pages,"total":total,
