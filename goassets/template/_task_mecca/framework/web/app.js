@@ -43,6 +43,25 @@ const I18N = {
     backlog:'Backlog', operations:'Operations', help:'Help', workload:'Subagent Workload', attention:'Needs Attention', issues:'Issues', manual:'User Manual', searchPlaceholder:'Search ID, title, requirements, acceptance criteria…', backlogFolder:'Backlog', language:'Language', refresh:'Refresh', themeSystem:'System', themeLight:'Light', themeDark:'Dark', accessUnchecked:'Access unchecked', loading:'Loading Task Mecca…', disconnected:'Disconnected', move:'move', open:'open', back:'back', search:'search', page:'page', status:'Status', all:'All', ready:'Ready', working:'Working', hold:'Hold', blocked:'Blocked', done:'Done', todo:'Todo', active:'Active', quiet:'Quiet', stale:'Stale', workerMissing:'Worker missing', runtimeUnknown:'Runtime unknown', awaitingFinalize:'Needs finalization', needsUser:'User action required', stalled:'Stalled', notificationSettings:'Notification settings', allowBrowserNotifications:'Allow browser notifications', notifyIntervention:'User action required', notifyCompleted:'Task completed', notifyStalled:'Task stalled', notificationsBlocked:'Notifications are blocked by the browser.', notificationsOn:'Notifications on', notificationsOff:'Notifications off', notificationsPermissionNeeded:'Enable browser notifications to receive actual alerts.', notificationsDeniedGuide:'Allow notifications in the browser site settings, then refresh this page.', notificationTypesDisabled:'All notification types are turned off.', sort:'Sort', perPage:'Per page', updatedNewest:'Updated newest', updatedOldest:'Updated oldest', autoRows:'Auto ({n})', pageSummary:'Page {page} / {pages} · {total} items', autoRowsSummary:' · Auto {n} rows', allStatuses:'All statuses', items:'items', needsAttention:'Needs attention', updated:'Updated', agent:'Agent', activeTime:'Active time', task:'Task', id:'ID', repository:'Repository', noMatches:'No backlog items match the selected filters.', manualIntro:'Review the first-use flow and Task Mecca operating rules inside the UI.', dashboardLaunch:'Dashboard launch', keyboard:'Keyboard', quickStart:'Quick Start', detailedGuide:'Detailed Operations Guide', manualLoading:'Manual is loading…', manualUnavailable:'Manual unavailable.', operationsEyebrow:'Operations', diagnostics:'Diagnostics', noAttention:'No tasks currently need attention.', advisory:'Shows tasks that need user action, finalization, or runtime investigation.', workers:'Workers', doing:'Doing', downstreamBlocked:'Downstream blocked', readyContinuity:'Ready continuity', noWorkload:'No assigned subagent workload.', noCurrentDoing:'No current doing task.', unassignedDoing:'Unassigned doing', releasedHold:'Released hold ownership', continuity:'Continuity', blocks:'Blocks', scope:'Change scope', workloadIntro:'Durable allocation view from backlog/Git. Runtime health is shown when observable.', issuesIntro:'Doctor and hold-review findings from the current snapshot.', noIssues:'No diagnostic issues.', taskDefinition:'Task Definition', simpleNote:'Simple Task · no separate requirement-definition confirmation required.', goal:'Goal', acceptance:'Acceptance criteria', requirements:'Requirements', definedNote:'Defined Task · requirement definition confirmed before registration.', background:'Background & problem', scopeIn:'IN', scopeOut:'OUT', constraints:'Constraints & preservation', legacyTask:'Legacy task', legacyNote:'Legacy backlog · rendered from available fields without inventing missing requirement data.', description:'Description', tocTitle:'On this task', tocOpen:'Open table of contents', tocClose:'Close table of contents', lifecycle:'Lifecycle', noLifecycle:'No lifecycle transitions are available yet.', stayed:'Stayed', provisional:'provisional', overview:'Overview', registrant:'Registrant', changeScope:'Change scope', dependsOn:'Depends on', related:'Related', location:'Location', completed:'Completed', activity:'Activity', lastSignal:'Last signal', signalSource:'Signal source', execution:'Execution', runtimeProvider:'RuntimeProvider', dispatchStatus:'Dispatch status', executionEvidence:'Execution evidence', fallbackEvidence:'Fallback evidence', workNotes:'Work notes', result:'Result', verification:'Verification', rawMarkdown:'Raw Markdown', rendered:'Rendered', waitTime:'Wait time', queueTime:'Queue time', leadTime:'Lead time', provisionalTiming:'Provisional lifecycle timing', incompleteHistory:'Incomplete lifecycle history', lastObservable:'Last observable activity {ago} ({source}).', workerMissingDetail:'Task is doing but the assigned worker is absent from the available runtime registry.', quietAdvisory:'This is advisory; long-running work can be legitimately quiet.', backToBacklog:'← Backlog', taskNotFound:'Task not found.', restrictedNow:'Restricted now', lastFullAccess:'Last Full Access', fullAccess:'Full Access', lastRestricted:'Last check restricted', accessLastChecked:'Access last checked', accessNotChecked:'Access not checked', networkOff:'Net off', notChecked:'Not checked', freshDispatch:'dispatch always runs a fresh active preflight.', dispatchDisabled:'Subagent dispatch disabled', enableFullAccess:'Current runtime restriction detected. Enable Full Access before dispatch.', auto:'Auto', manualMode:'Manual', noBacklog:'No backlog selected', copyCode:'Copy code', copied:'Copied', copyFailed:'Copy failed', mermaid:'Mermaid', showSource:'Show source', hideSource:'Hide source', renderingDiagram:'Rendering diagram…', mermaidUnavailable:'Mermaid renderer unavailable.', mermaidUnavailableDetail:'Task Mecca could not load the local or CDN Mermaid runtime. Use Source to view or copy the diagram text.', mermaidFailed:'Mermaid render failed.', invalidMermaid:'Invalid Mermaid syntax', secondsAgo:'{n}s ago', minutesAgo:'{n}m ago', hoursAgo:'{n}h ago', daysAgo:'{n}d ago', justNow:'just now', updatedColumn:'Updated', activeColumn:'Active', agentColumn:'Agent', statusColumn:'Status', taskColumn:'Task', expandSidebar:'Expand sidebar', collapseSidebar:'Collapse sidebar', eventRegistered:'Registered', eventStarted:'Started', eventHold:'Hold', eventCompleted:'Completed', observatory:'Backlog Observatory', theme:'Theme', followSystemTheme:'Follow system theme', useLightTheme:'Use light theme', useDarkTheme:'Use dark theme', selectBacklog:'Select backlog folder', provisionalTimingDetail:'The current state transition is not yet recorded in Git, so timing uses the runtime observation.', incompleteHistoryDetail:'Some timing cannot be reconstructed exactly because the historical lifecycle has no observed start evidence.'
   }
 };
+Object.assign(I18N.ko,{
+  notificationsInsecureTitle:'모바일 시스템 알림을 사용할 수 없는 접속입니다.',
+  notificationsInsecureGuide:'현재 페이지가 HTTPS 보안 연결이 아닙니다. 모바일 브라우저의 시스템 알림 권한은 HTTPS에서만 사용할 수 있습니다. Tailscale HTTPS 주소로 접속한 뒤 다시 시도하세요.',
+  notificationsIOSHomeTitle:'iPhone/iPad 알림 설정이 필요합니다.',
+  notificationsIOSHomeGuide:'iOS에서는 사이트를 홈 화면에 추가한 뒤 홈 화면의 Task Mecca 웹 앱으로 열어야 알림 권한을 요청할 수 있습니다.',
+  notificationsUnsupportedTitle:'이 브라우저는 시스템 알림을 지원하지 않습니다.',
+  notificationsUnsupportedGuide:'현재 브라우저에서는 시스템 알림 API를 사용할 수 없습니다. 지원되는 브라우저 또는 HTTPS 환경을 사용하세요.',
+  notificationPermissionError:'알림 권한 요청에 실패했습니다.',
+});
+Object.assign(I18N.en,{
+  notificationsInsecureTitle:'System notifications are unavailable on this connection.',
+  notificationsInsecureGuide:'This page is not using a secure HTTPS connection. Mobile browsers require HTTPS before notification permission can be requested. Reopen Task Mecca through a Tailscale HTTPS URL and try again.',
+  notificationsIOSHomeTitle:'iPhone/iPad notification setup is required.',
+  notificationsIOSHomeGuide:'On iOS, add this site to the Home Screen and open the Task Mecca web app from the Home Screen before requesting notification permission.',
+  notificationsUnsupportedTitle:'System notifications are not supported by this browser.',
+  notificationsUnsupportedGuide:'The current browser cannot use the system Notification API. Use a supported browser or HTTPS environment.',
+  notificationPermissionError:'Notification permission request failed.',
+});
+
 function t(key, vars = {}) {
   const dict = I18N[state.language] || I18N.en;
   let value = dict[key] ?? I18N.en[key] ?? key;
@@ -322,6 +341,26 @@ function diagnosticBanner() {
   return `<div class="global-access"><div><strong>Partial diagnostics</strong><span>${esc(rows.map(x=>`${x.component}: ${x.error}`).join(' · '))}</span></div></div>`;
 }
 
+function isIOSDevice() {
+  return /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform==='MacIntel' && navigator.maxTouchPoints>1);
+}
+function isStandaloneWebApp() {
+  return window.matchMedia?.('(display-mode: standalone)').matches || navigator.standalone===true;
+}
+function notificationCapability() {
+  if(!window.isSecureContext) return {mode:'insecure',canRequest:false};
+  if(isIOSDevice()&&!isStandaloneWebApp()) return {mode:'ios-home',canRequest:false};
+  if(typeof Notification==='undefined') return {mode:'unsupported',canRequest:false};
+  return {mode:'supported',canRequest:true,permission:Notification.permission};
+}
+async function notificationWorker() {
+  if(!('serviceWorker' in navigator)||!window.isSecureContext)return null;
+  try{
+    await navigator.serviceWorker.register('/sw.js',{scope:'/'});
+    return await navigator.serviceWorker.ready;
+  }catch(_){ return null; }
+}
+
 function saveNotificationSettings() {
   localStorage.setItem('task-mecca-notifications',JSON.stringify(state.notificationSettings));
 }
@@ -333,9 +372,10 @@ function rememberNotification(key) {
   if(!seen.includes(key))seen.push(key);
   localStorage.setItem('task-mecca-notification-seen',JSON.stringify(seen.slice(-250)));
 }
-function sendBrowserNotification(kind,task,reason,key) {
+async function sendBrowserNotification(kind,task,reason,key) {
   if(!state.notificationSettings[kind])return;
-  if(typeof Notification==='undefined'||Notification.permission!=='granted')return;
+  const capability=notificationCapability();
+  if(capability.mode!=='supported'||Notification.permission!=='granted')return;
   if(notificationSeenSet().has(key))return;
   const projectName=(state.project||'').split(/[\\/]/).pop()||'Task Mecca';
   const title=kind==='completed'
@@ -344,8 +384,16 @@ function sendBrowserNotification(kind,task,reason,key) {
   const body=kind==='completed'
     ? (titleOf(task)||task.id)
     : [titleOf(task),reason?.message,reason?.resume_condition].filter(Boolean).join(' · ');
+  const tag=`task-mecca:${state.project}:${task.id}:${kind}`;
+  const target=`/tasks/${encodeURIComponent(task.id)}?project=${encodeURIComponent(state.project||'')}`;
   try {
-    const n=new Notification(title,{body,tag:`task-mecca:${state.project}:${task.id}:${kind}`});
+    const registration=await notificationWorker();
+    if(registration){
+      await registration.showNotification(title,{body,tag,data:{url:target}});
+      rememberNotification(key);
+      return;
+    }
+    const n=new Notification(title,{body,tag});
     n.onclick=()=>{ window.focus(); openTask(task.id); n.close(); };
     rememberNotification(key);
   } catch(_) {}
@@ -377,7 +425,8 @@ function processTaskNotifications(snapshot) {
 function updateNotificationIndicator() {
   const btn=$('#notificationBtn'),badge=$('#notificationBadge');
   if(!btn||!badge)return;
-  const permission=typeof Notification==='undefined'?'unsupported':Notification.permission;
+  const capability=notificationCapability();
+  const permission=capability.mode==='supported'?Notification.permission:capability.mode;
   const enabled=Object.values(state.notificationSettings).some(Boolean);
   btn.classList.remove('notification-ok','notification-warning','notification-off');
   badge.textContent='';
@@ -385,10 +434,14 @@ function updateNotificationIndicator() {
     btn.classList.add('notification-ok');
     btn.title=t('notificationsOn');
     btn.setAttribute('aria-label',t('notificationsOn'));
-  } else if(permission==='default'||permission==='denied'||permission==='unsupported'){
+  } else if(permission==='default'||permission==='denied'||permission==='unsupported'||permission==='insecure'||permission==='ios-home'){
     btn.classList.add('notification-warning');
     badge.textContent='!';
-    btn.title=permission==='denied'?t('notificationsBlocked'):t('notificationsPermissionNeeded');
+    btn.title=permission==='denied'?t('notificationsBlocked')
+      :permission==='insecure'?t('notificationsInsecureTitle')
+      :permission==='ios-home'?t('notificationsIOSHomeTitle')
+      :permission==='unsupported'?t('notificationsUnsupportedTitle')
+      :t('notificationsPermissionNeeded');
     btn.setAttribute('aria-label',btn.title);
   } else {
     btn.classList.add('notification-off');
@@ -400,7 +453,8 @@ function updateNotificationIndicator() {
 function renderNotificationPanel() {
   const panel=$('#notificationPanel');
   if(!panel)return;
-  const permission=typeof Notification==='undefined'?'unsupported':Notification.permission;
+  const capability=notificationCapability();
+  const permission=capability.mode==='supported'?Notification.permission:capability.mode;
   const enabled=Object.values(state.notificationSettings).some(Boolean);
   let guide='';
   if(permission==='granted'){
@@ -409,6 +463,12 @@ function renderNotificationPanel() {
       : `<div class="notification-state off"><strong>${esc(t('notificationsOff'))}</strong><span>${esc(t('notificationTypesDisabled'))}</span></div>`;
   } else if(permission==='denied'){
     guide=`<div class="notification-state warning"><strong>${esc(t('notificationsBlocked'))}</strong><span>${esc(t('notificationsDeniedGuide'))}</span></div>`;
+  } else if(permission==='insecure'){
+    guide=`<div class="notification-state warning"><strong>${esc(t('notificationsInsecureTitle'))}</strong><span>${esc(t('notificationsInsecureGuide'))}</span></div>`;
+  } else if(permission==='ios-home'){
+    guide=`<div class="notification-state warning"><strong>${esc(t('notificationsIOSHomeTitle'))}</strong><span>${esc(t('notificationsIOSHomeGuide'))}</span></div>`;
+  } else if(permission==='unsupported'){
+    guide=`<div class="notification-state warning"><strong>${esc(t('notificationsUnsupportedTitle'))}</strong><span>${esc(t('notificationsUnsupportedGuide'))}</span></div>`;
   } else {
     guide=`<div class="notification-state warning"><strong>${esc(t('notificationsPermissionNeeded'))}</strong><span>${esc(t('allowBrowserNotifications'))}</span></div>`;
   }
@@ -417,7 +477,7 @@ function renderNotificationPanel() {
     <label><input type="checkbox" data-notification-setting="intervention" ${state.notificationSettings.intervention?'checked':''}> <span>${esc(t('notifyIntervention'))}</span></label>
     <label><input type="checkbox" data-notification-setting="completed" ${state.notificationSettings.completed?'checked':''}> <span>${esc(t('notifyCompleted'))}</span></label>
     <label><input type="checkbox" data-notification-setting="stalled" ${state.notificationSettings.stalled?'checked':''}> <span>${esc(t('notifyStalled'))}</span></label>
-    ${permission==='default'?`<button type="button" class="action-btn notification-permission" id="notificationPermission">${esc(t('allowBrowserNotifications'))}</button>`:''}`;
+    ${permission==='default'&&capability.canRequest?`<button type="button" class="action-btn notification-permission" id="notificationPermission">${esc(t('allowBrowserNotifications'))}</button>`:''}`;
   panel.querySelectorAll('[data-notification-setting]').forEach(input=>input.addEventListener('change',()=>{
     state.notificationSettings[input.dataset.notificationSetting]=input.checked;
     saveNotificationSettings();
@@ -426,7 +486,12 @@ function renderNotificationPanel() {
   }));
   $('#notificationClose')?.addEventListener('click',()=>panel.classList.remove('open'));
   $('#notificationPermission')?.addEventListener('click',async()=>{
-    try { await Notification.requestPermission(); } catch(_) {}
+    try {
+      await Notification.requestPermission();
+      if(Notification.permission==='granted')await notificationWorker();
+    } catch(_) {
+      alert(t('notificationPermissionError'));
+    }
     updateNotificationIndicator();
     renderNotificationPanel();
   });
@@ -1180,4 +1245,5 @@ setInterval(()=>{
   }
 },1000);
 setInterval(refresh,10000);
+if(window.isSecureContext&&'serviceWorker' in navigator)notificationWorker();
 route();refresh();
