@@ -784,6 +784,9 @@ function switchProject(path) {
   state.snapshot=null;
   state.listData=null;
   state.detailTask=null;
+  state.contentRevision='';
+  state.pendingContentUpdate=false;
+  state.pendingContentReason='';
   state.loadError='';
   state.view='backlog';
   state.detail=null;
@@ -795,6 +798,7 @@ function switchProject(path) {
   render();
   refreshList();
   ensureAttentionStream();
+  refreshVersionInfo(false);
 }
 function closeProjectSession(path) {
   state.openProjects=state.openProjects.filter(p=>p!==path);
@@ -877,6 +881,9 @@ function navigateView(view) {
     state.snapshot=null;
     state.listData=null;
     state.detailTask=null;
+    state.contentRevision='';
+    state.pendingContentUpdate=false;
+    state.pendingContentReason='';
     closeAttentionStream();
     state.loadError='';
     state.view='hub';
@@ -1767,6 +1774,9 @@ $('#backlogPicker').addEventListener('change',e=>{
   const value=e.target.value;
   if(value===state.backlog)return;
   state.backlog=value;
+  state.contentRevision='';
+  state.pendingContentUpdate=false;
+  state.pendingContentReason='';
   if(value)localStorage.setItem('task-mecca-backlog-folder',value);else localStorage.removeItem('task-mecca-backlog-folder');
   state.detail=null;state.listPage=1;state.selectedIndex=0;refresh();
 });
@@ -1776,7 +1786,7 @@ $('#search').addEventListener('input',e=>{
   clearTimeout(searchRefreshTimer);
   if(state.view==='backlog')searchRefreshTimer=setTimeout(refreshList,180); else render();
 });
-$('#refreshBtn').onclick=refresh;
+$('#refreshBtn').onclick=refreshVisibleContent;
 $('#notificationBtn')?.addEventListener('click',()=>{const panel=$('#notificationPanel');panel?.classList.toggle('open');renderNotificationPanel();});
 document.addEventListener('click',e=>{const panel=$('#notificationPanel');if(panel?.classList.contains('open')&&!panel.contains(e.target)&&!$('#notificationBtn')?.contains(e.target))panel.classList.remove('open')});
 $('#sidebarToggle').onclick=toggleSidebar;
@@ -1830,9 +1840,9 @@ setInterval(()=>{
     }
   }
 },1000);
-setInterval(()=>{
-  if(state.view==='backlog')refreshList();
-  else if(state.view!=='hub')refresh();
-},30000);
+setInterval(()=>{ if(state.project)checkContentRevision(false); },15000);
+setInterval(()=>refreshVersionInfo(true),300000);
 if(window.isSecureContext&&'serviceWorker' in navigator)notificationWorker();
 route();refresh();
+refreshVersionInfo(false);
+setTimeout(()=>refreshVersionInfo(true),800);
