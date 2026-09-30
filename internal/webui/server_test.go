@@ -37,6 +37,7 @@ func TestHandlerServesDashboardAPIsAndAssets(t *testing.T) {
         {"/api/manual?lang=en",200,"application/json"},
         {"/",200,"text/html"},
         {"/app.js",200,"javascript"},
+        {"/sw.js",200,"javascript"},
         {"/style.css",200,"text/css"},
         {"/tasks/A-1",200,"text/html"},
     }
@@ -107,4 +108,45 @@ func TestResolveWebHostExplicitAndLocalhost(t *testing.T) {
     if host!="0.0.0.0" || mode!="explicit" {
         t.Fatalf("explicit host resolved to %q mode=%q",host,mode)
     }
+}
+
+
+func TestFindListenerDoesNotIncrementOccupiedPort(t *testing.T) {
+    occupied,err:=net.Listen("tcp","127.0.0.1:0")
+    if err!=nil { t.Fatal(err) }
+    defer occupied.Close()
+    port:=occupied.Addr().(*net.TCPAddr).Port
+    listener,actual,err:=findListener("127.0.0.1",port)
+    if listener!=nil { listener.Close(); t.Fatal("listener unexpectedly succeeded on occupied port") }
+    if err==nil { t.Fatal("expected occupied-port error") }
+    if actual!=0 { t.Fatalf("unexpected fallback port: %d",actual) }
+}
+
+func TestManagedStopEndpointRequiresControlToken(t *testing.T) {
+    root:=t.TempDir()
+    ledger:=filepath.Join(root,"_task_mecca","data","backlog")
+    if err:=os.MkdirAll(ledger,0755); err!=nil { t.Fatal(err) }
+    stopCh:=make(chan struct{},1)
+    handler,err:=handler(root,"","0.2.17","instance-1","secret-token",nil,stopCh)
+    if err!=nil { t.Fatal(err) }
+
+    req:=httptest.NewRequest(http.MethodPost,"/api/admin/stop",nil)
+    rec:=httptest.NewRecorder()
+    handler.ServeHTTP(rec,req)
+    if rec.Code!=http.StatusForbidden { t.Fatalf("missing token status=%d",rec.Code) }
+
+    req=httptest.NewRequest(http.MethodPost,"/api/admin/stop",nil)
+    req.Header.Set("X-Task-Mecca-Control","secret-token")
+    rec=httptest.NewRecorder()
+    handler.ServeHTTP(rec,req)
+    if rec.Code!=http.StatusOK { t.Fatalf("valid token status=%d body=%s",rec.Code,rec.Body.String()) }
+    select {
+    case <-stopCh:
+    default:
+        t.Fatal("stop signal was not delivered")
+    }
+}
+
+func TestDefaultWebPortIsDedicated(t *testing.T) {
+    if DefaultPort!=18765 { t.Fatalf("DefaultPort=%d",DefaultPort) }
 }
