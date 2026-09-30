@@ -295,7 +295,7 @@ func rewriteTaskTagField(text string,tags []string) string {
         if len(lines)>0 && strings.HasPrefix(strings.TrimSpace(lines[0]),"# ") { insertAt=1 } else { insertAt=0 }
     }
     addition:="- Tags: "+value
-    lines=append(lines,nil)
+    lines=append(lines,"")
     copy(lines[insertAt+1:],lines[insertAt:])
     lines[insertAt]=addition
     return strings.Join(lines,"\n")
