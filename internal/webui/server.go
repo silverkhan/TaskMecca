@@ -64,7 +64,7 @@ func scanRoot(project,root string) string {
 
 func webContext(project,root string) (context,error) {
     scan:=scanRoot(project,root)
-    candidates,err:=backlog.Discover(project,scan)
+    candidates,err:=cachedBacklogDiscover(project,scan)
     if err!=nil { return context{},err }
     explicit:=""
     if root!="" && looksLikeBacklog(root) {
