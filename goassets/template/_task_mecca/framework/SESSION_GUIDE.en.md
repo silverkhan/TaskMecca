@@ -230,3 +230,19 @@ Filesystem layout mirrors ownership:
 The installer does not pre-create `data/` or a backlog. On first registration Registrar calls `ensure-backlog`, reuses an existing ledger when present, and otherwise creates canonical `data/backlog/`. Durable audit/measurement/test evidence created by agents belongs under `data/`; Task Mecca does not standardize arbitrary artifact subfolder names.
 
 When an upstream update would replace locally customized managed documents, the migrator shows the affected files, recommends and creates a local backup when approved, explains that the customized copies will be overwritten, and asks for final confirmation. It does not attempt semantic auto-merge of role or policy documents.
+
+### Root-session resynchronization after migration
+
+An already-running Root session may still carry instructions that it read before migration. Therefore, if migration actually changes any of the following operational instruction files, the current Root session **must be resynchronized**:
+
+- `_task_mecca/ROOT_PROMPT.md`
+- `_task_mecca/framework/SESSION_GUIDE.md`
+- `_task_mecca/framework/SESSION_GUIDE.en.md`
+- `_task_mecca/framework/collab.md`
+- `_task_mecca/framework/roles/*.md`
+
+A migration that only changes Web UI/CSS/runtime implementation and does not alter session behavior does not require this resynchronization.
+
+When migration is run from the Web UI, the migrator determines whether upstream instruction files actually changed. If resynchronization is required, the completion dialog provides a copyable prompt that can be pasted directly into the **current Root session**. Before starting another subagent dispatch or execution step, Root rereads the latest `ROOT_PROMPT.md`, the session guide for the active language, `collab.md`, and `roles/root.md`, then reapplies the current operating rules.
+
+There is no need to create a new Root session solely because of migration. The existing session can continue after it has reread and reapplied the updated instructions.
