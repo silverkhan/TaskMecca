@@ -17,6 +17,8 @@ import (
 
     "github.com/silverkhan/TaskMecca/goassets"
     "github.com/silverkhan/TaskMecca/internal/backlog"
+    "github.com/silverkhan/TaskMecca/internal/install"
+    "github.com/silverkhan/TaskMecca/internal/maintenance"
 )
 
 const embeddedRoot = "template/_task_mecca/framework"
@@ -26,6 +28,7 @@ type Config struct {
     Root string
     Port int
     OpenBrowser bool
+    Version string
 }
 
 type context struct {
@@ -106,10 +109,17 @@ func selectionPayload(ctx context, selected string, candidates []backlog.Candida
     }
 }
 
-func Handler(project,root string) (http.Handler,error) {
+func Handler(project,root,version string) (http.Handler,error) {
     ctx,err:=webContext(project,root)
     if err!=nil { return nil,err }
     mux:=http.NewServeMux()
+
+    projectFor:=func(r *http.Request) string {
+        requested:=strings.TrimSpace(r.URL.Query().Get("project"))
+        if requested=="" { return project }
+        if maintenance.IsRegisteredProject(requested) { if abs,err:=filepath.Abs(requested); err==nil { return abs } }
+        return project
+    }
 
     writeJSON:=func(w http.ResponseWriter,payload any,status int) {
         body,err:=json.Marshal(payload)
@@ -122,17 +132,24 @@ func Handler(project,root string) (http.Handler,error) {
     }
 
     mux.HandleFunc("/api/backlog-folders",func(w http.ResponseWriter,r *http.Request) {
-        selected,candidates,err:=resolveBacklog(project,ctx,r.URL.Query())
+        activeProject:=projectFor(r)
+        activeCtx,ctxErr:=webContext(activeProject,"")
+        if ctxErr!=nil { writeJSON(w,map[string]any{"error":ctxErr.Error()},500); return }
+        selected,candidates,err:=resolveBacklog(activeProject,activeCtx,r.URL.Query())
         if err!=nil { writeJSON(w,map[string]any{"error":err.Error()},500); return }
-        writeJSON(w,selectionPayload(ctx,selected,candidates),200)
+        writeJSON(w,selectionPayload(activeCtx,selected,candidates),200)
     })
 
     mux.HandleFunc("/api/snapshot",func(w http.ResponseWriter,r *http.Request) {
-        selected,candidates,err:=resolveBacklog(project,ctx,r.URL.Query())
+        activeProject:=projectFor(r)
+        activeCtx,ctxErr:=webContext(activeProject,"")
+        if ctxErr!=nil { writeJSON(w,map[string]any{"error":ctxErr.Error()},500); return }
+        selected,candidates,err:=resolveBacklog(activeProject,activeCtx,r.URL.Query())
         if err!=nil { writeJSON(w,map[string]any{"error":err.Error()},500); return }
-        snapshot,err:=backlog.DashboardSnapshot(project,selected,5)
+        snapshot,err:=backlog.DashboardSnapshot(activeProject,selected,5)
         if err!=nil { writeJSON(w,map[string]any{"error":err.Error()},500); return }
-        snapshot["backlog_selection"]=selectionPayload(ctx,selected,candidates)
+        snapshot["backlog_selection"]=selectionPayload(activeCtx,selected,candidates)
+        snapshot["project_path"]=activeProject
         writeJSON(w,snapshot,200)
     })
 
@@ -153,11 +170,47 @@ func Handler(project,root string) (http.Handler,error) {
         },200)
     })
 
+    mux.HandleFunc("/api/hub",func(w http.ResponseWriter,r *http.Request) {
+        projects:=maintenance.ListProjects()
+        rows:=make([]map[string]any,0,len(projects))
+        for _,p:=range projects {
+            counts:=map[string]any{}
+            if ctx,err:=webContext(p.Path,""); err==nil {
+                if snap,err:=backlog.DashboardSnapshot(p.Path,ctx.selected,5); err==nil {
+                    if c,ok:=snap["counts"].(map[string]any); ok { counts=c }
+                }
+            }
+            rows=append(rows,map[string]any{"name":p.Name,"path":p.Path,"framework_version":p.FrameworkVersion,"last_seen":p.LastSeen,"counts":counts,"migration_available":p.FrameworkVersion!="" && p.FrameworkVersion!=version})
+        }
+        writeJSON(w,map[string]any{"cli":maintenance.CheckLatest(version),"projects":rows,"current_project":project},200)
+    })
+
+    mux.HandleFunc("/api/upgrade",func(w http.ResponseWriter,r *http.Request) {
+        if r.Method!="POST" { writeJSON(w,map[string]any{"error":"POST required"},405); return }
+        result,err:=maintenance.Upgrade(version)
+        if err!=nil { writeJSON(w,map[string]any{"error":err.Error()},500); return }
+        writeJSON(w,result,200)
+    })
+
+    mux.HandleFunc("/api/migrate",func(w http.ResponseWriter,r *http.Request) {
+        if r.Method!="POST" { writeJSON(w,map[string]any{"error":"POST required"},405); return }
+        var body struct{ Project string `json:"project"` }
+        if err:=json.NewDecoder(r.Body).Decode(&body); err!=nil { writeJSON(w,map[string]any{"error":"invalid JSON"},400); return }
+        target:=strings.TrimSpace(body.Project)
+        if !maintenance.IsRegisteredProject(target) { writeJSON(w,map[string]any{"error":"project is not registered"},403); return }
+        if err:=install.Migrate(target,version); err!=nil { writeJSON(w,map[string]any{"error":err.Error()},409); return }
+        _=maintenance.RegisterProject(target)
+        writeJSON(w,map[string]any{"ok":true,"project":target,"framework_version":version},200)
+    })
+
     mux.HandleFunc("/api/tasks/",func(w http.ResponseWriter,r *http.Request) {
-        selected,_,err:=resolveBacklog(project,ctx,r.URL.Query())
+        activeProject:=projectFor(r)
+        activeCtx,ctxErr:=webContext(activeProject,"")
+        if ctxErr!=nil { writeJSON(w,map[string]any{"error":ctxErr.Error()},500); return }
+        selected,_,err:=resolveBacklog(activeProject,activeCtx,r.URL.Query())
         if err!=nil { writeJSON(w,map[string]any{"error":err.Error()},500); return }
         id:=strings.ToUpper(strings.TrimSpace(strings.TrimPrefix(r.URL.Path,"/api/tasks/")))
-        snapshot,err:=backlog.DashboardSnapshot(project,selected,5)
+        snapshot,err:=backlog.DashboardSnapshot(activeProject,selected,5)
         if err!=nil { writeJSON(w,map[string]any{"error":err.Error()},500); return }
         all,ok:=snapshot["all_items"].(map[string]map[string]any)
         if !ok { writeJSON(w,map[string]any{"error":"task not found","id":id},404); return }
@@ -212,7 +265,7 @@ func openBrowser(url string) {
 }
 
 func Run(config Config) error {
-    handler,err:=Handler(config.Project,config.Root)
+    handler,err:=Handler(config.Project,config.Root,config.Version)
     if err!=nil { return err }
     listener,port,err:=findListener("127.0.0.1",config.Port)
     if err!=nil { return err }
