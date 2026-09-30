@@ -278,3 +278,20 @@
 .notification-panel input{accent-color:var(--accent)}
 .notification-permission{width:100%;margin-top:8px}
 .notification-note{margin-top:8px;padding:8px;border-radius:7px;background:var(--surface2);color:var(--muted);font-size:10px;line-height:1.4}
+
+/* Notification state indicator */
+.notification-btn{position:relative}
+.notification-bell{display:grid;place-items:center;width:18px;height:18px}
+.notification-bell svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.notification-badge{position:absolute;right:-3px;top:-3px;min-width:14px;height:14px;padding:0 3px;border-radius:999px;display:none;align-items:center;justify-content:center;font-size:9px;font-weight:800;line-height:1;background:var(--danger);color:#fff;border:2px solid var(--surface)}
+.notification-btn.notification-warning .notification-badge,
+.notification-btn.notification-off .notification-badge{display:flex}
+.notification-btn.notification-ok{color:var(--accent)}
+.notification-btn.notification-warning{color:var(--warn)}
+.notification-btn.notification-off{color:var(--muted)}
+.notification-state{display:flex;flex-direction:column;gap:3px;margin:2px 0 10px;padding:10px 11px;border:1px solid var(--border);border-radius:8px;background:var(--surface2)}
+.notification-state strong{font-size:11px;color:var(--text)}
+.notification-state span{font-size:10px;line-height:1.45;color:var(--muted)}
+.notification-state.ok{border-color:color-mix(in srgb,var(--ok) 35%,var(--border));background:color-mix(in srgb,var(--ok) 6%,var(--surface))}
+.notification-state.warning{border-color:color-mix(in srgb,var(--warn) 40%,var(--border));background:color-mix(in srgb,var(--warn) 7%,var(--surface))}
+.notification-state.off{border-color:var(--border)}
