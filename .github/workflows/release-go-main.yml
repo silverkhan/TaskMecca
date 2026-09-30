@@ -30,7 +30,11 @@ jobs:
         with:
           go-version-file: go.mod
       - name: Check Web UI JavaScript
-        run: node --check goassets/template/_task_mecca/framework/web/app.js
+        run: |
+          node --check goassets/template/_task_mecca/framework/web/app.js
+          grep -q "function hubView()" goassets/template/_task_mecca/framework/web/app.js
+          grep -q "function bindHubActions()" goassets/template/_task_mecca/framework/web/app.js
+          grep -q "function switchProject(path)" goassets/template/_task_mecca/framework/web/app.js
       - name: Test Go runtime
         run: go test ./...
       - name: Build standalone binaries
