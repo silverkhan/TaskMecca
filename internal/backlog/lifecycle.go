@@ -8,6 +8,7 @@ import (
     "sort"
     "strconv"
     "strings"
+    "sync"
     "time"
 )
 
@@ -15,6 +16,34 @@ type lifecycleEvent struct {
     State string
     At string
     Source string
+}
+
+type lifecycleGitCacheEntry struct {
+    head string
+    output string
+}
+
+var lifecycleGitCache = struct {
+    sync.Mutex
+    entries map[string]lifecycleGitCacheEntry
+}{entries: map[string]lifecycleGitCacheEntry{}}
+
+func lifecycleGitLog(repo string,pathspecs []string) string {
+    head:=strings.TrimSpace(gitOutput(repo,"rev-parse","HEAD"))
+    key:=repo+"\x00"+strings.Join(pathspecs,"\x00")
+    if head!="" {
+        lifecycleGitCache.Lock()
+        cached,ok:=lifecycleGitCache.entries[key]
+        lifecycleGitCache.Unlock()
+        if ok && cached.head==head { return cached.output }
+    }
+    out:=lifecycleGitLog(repo,pathspecs)
+    if head!="" {
+        lifecycleGitCache.Lock()
+        lifecycleGitCache.entries[key]=lifecycleGitCacheEntry{head:head,output:out}
+        lifecycleGitCache.Unlock()
+    }
+    return out
 }
 
 func gitOutput(repo string,args ...string) string {
@@ -80,6 +109,10 @@ func parseTime(value string) (time.Time,bool) {
 }
 
 func LifecycleTimings(project,root string) (map[string]map[string]any,error) {
+    return lifecycleTimings(project,root,nil)
+}
+
+func lifecycleTimings(project,root string,rows []Record) (map[string]map[string]any,error) {
     ledger,err:=Select(project,root)
     if err!=nil { return nil,err }
     if ledger=="" {
@@ -129,8 +162,10 @@ func LifecycleTimings(project,root string) (map[string]map[string]any,error) {
         lastState[id]=state
     }
 
-    rows,err:=Catalog(project,root)
-    if err!=nil { return nil,err }
+    if rows==nil {
+        rows,err=Catalog(project,root)
+        if err!=nil { return nil,err }
+    }
     currentRows:=map[string]Record{}
     for _,row:=range rows {
         existing,ok:=currentRows[row.ID]
