@@ -118,7 +118,7 @@ func Ready(project,root string) (map[string]any,error) {
 }
 
 func QuickCounts(project,root string) (map[string]any,error) {
-    rows,err:=Catalog(project,root)
+    rows,err:=CachedCatalog(project,root)
     if err!=nil { return nil,err }
     report:=readyFromRows(project,root,rows)
     ready,_:=report["ready"].([]map[string]any)
