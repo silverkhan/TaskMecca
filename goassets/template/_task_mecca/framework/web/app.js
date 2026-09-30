@@ -623,6 +623,57 @@ async function waitForRestartedWeb(targetVersion) {
   const c=$('#content');
   if(c)c.innerHTML=`<div class="load-error"><h2>Task Mecca 재시작 대기 시간 초과</h2><p>서버가 자동으로 다시 시작되지 않았습니다. 터미널에서 task-mecca web을 실행한 뒤 이 페이지를 새로고침하세요.</p></div>`;
 }
+function migrationResyncPrompt(result) {
+  const changed=(result.changed_instructions||[]).join(', ') || '-';
+  if(state.language==='ko'){
+    return 'Task Mecca 프레임워크가 '+(result.from_version||'?')+' → '+(result.to_version||'?')+'로 마이그레이션되었습니다.\n\n'+
+      '현재 Root 세션의 Task Mecca 운영 지침을 최신 상태로 재동기화해주세요.\n\n'+
+      '새 작업이나 subagent dispatch를 시작하기 전에 다음 파일을 다시 읽고 현재 세션에 적용하세요:\n'+
+      '- _task_mecca/ROOT_PROMPT.md\n'+
+      '- _task_mecca/framework/SESSION_GUIDE.md\n'+
+      '- _task_mecca/framework/collab.md\n'+
+      '- _task_mecca/framework/roles/root.md\n\n'+
+      '이번 마이그레이션에서 변경된 운영 지침:\n'+changed+'\n\n'+
+      '현재 세션은 그대로 유지하되, 이전에 읽은 지침과 새 지침이 충돌하면 최신 파일의 지침을 우선하세요.\n'+
+      '재동기화가 완료되면 현재 작업 방식에 영향을 주는 변경사항만 간단히 요약하고, 그 다음부터 최신 Task Mecca 규칙으로 계속 진행해주세요.';
+  }
+  return 'Task Mecca framework was migrated from '+(result.from_version||'?')+' to '+(result.to_version||'?')+'.\n\n'+
+    'Resynchronize the current Root session with the latest Task Mecca operating instructions.\n\n'+
+    'Before starting any new work or subagent dispatch, reread and apply:\n'+
+    '- _task_mecca/ROOT_PROMPT.md\n'+
+    '- _task_mecca/framework/SESSION_GUIDE.en.md\n'+
+    '- _task_mecca/framework/collab.md\n'+
+    '- _task_mecca/framework/roles/root.md\n\n'+
+    'Operational instruction files changed by this migration:\n'+changed+'\n\n'+
+    'Keep the current session. If previously-read instructions conflict with the updated files, follow the latest files.\n'+
+    'After resynchronization, briefly summarize only the changes that affect the current workflow, then continue using the latest Task Mecca rules.';
+}
+function showMigrationResyncModal(result) {
+  document.querySelector('.migration-resync-overlay')?.remove();
+  const ko=state.language==='ko';
+  const prompt=migrationResyncPrompt(result);
+  const changed=(result.changed_instructions||[]).map(x=>'<code>'+esc(x)+'</code>').join('');
+  const overlay=document.createElement('div');
+  overlay.className='migration-resync-overlay';
+  overlay.innerHTML='<div class="migration-resync-modal" role="dialog" aria-modal="true" aria-labelledby="migrationResyncTitle">'+
+    '<div class="migration-resync-head"><div><div class="eyebrow">FRAMEWORK MIGRATION</div><h2 id="migrationResyncTitle">'+
+    (ko?'Root 세션 재동기화 필요':'Root session resynchronization required')+'</h2></div>'+
+    '<button type="button" class="migration-resync-close" aria-label="'+(ko?'닫기':'Close')+'">×</button></div>'+
+    '<p class="migration-resync-summary">'+(ko?
+      "'운영 지침이 변경되었습니다. 현재 Root 세션은 이전 지침을 기억하고 있을 수 있으므로 아래 프롬프트를 복사해 현재 세션에 붙여넣어 주세요.'":
+      "'Operational instructions changed. The active Root session may still carry the previous rules. Copy the prompt below and paste it into the current Root session.'")+'+'</p>'+
+    '<div class="migration-resync-files"><strong>'+(ko?'변경된 지침':'Changed instructions')+'</strong><div>'+(changed||'<span>-</span>')+'</div></div>'+
+    '<div class="migration-resync-prompt"><div class="migration-resync-label">'+(ko?'Root 세션에 붙여넣을 프롬프트':'Prompt to paste into the Root session')+'</div>'+
+    copyableCodeBlock(esc(prompt))+'</div>'+
+    '<div class="migration-resync-actions"><button type="button" class="action-btn" id="migrationResyncDone">'+(ko?'확인':'Done')+'</button></div>'+
+    '</div>';
+  document.body.appendChild(overlay);
+  bindCopyButtons();
+  const close=()=>overlay.remove();
+  overlay.querySelector('.migration-resync-close')?.addEventListener('click',close);
+  overlay.querySelector('#migrationResyncDone')?.addEventListener('click',close);
+  overlay.addEventListener('click',e=>{if(e.target===overlay)close();});
+}
 function bindHubActions() {
   document.querySelectorAll('[data-open-project]').forEach(btn=>btn.addEventListener('click',()=>{
     const path=btn.dataset.openProject||'';
@@ -635,6 +686,7 @@ function bindHubActions() {
       const body=await r.json();
       if(!r.ok)throw new Error(body.error||'Migration failed');
       await refresh();
+      if(body.instruction_refresh_required)showMigrationResyncModal(body);
     }catch(e){
       alert(String(e?.message||e));
       btn.disabled=false;
