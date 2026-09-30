@@ -529,7 +529,7 @@ function processTaskNotifications(snapshot) {
       }
     }
   });
-  const compact={};
+  const compact={...(previous||{})};
   Object.values(current).forEach(task=>compact[task.id]={file_state:task.file_state,state:task.state,updated_at:task.updated_at});
   state.previousTasksByProject[state.project]=compact;
   localStorage.setItem('task-mecca-previous-tasks',JSON.stringify(state.previousTasksByProject));
@@ -717,6 +717,9 @@ function navigateView(view) {
   if(view==='hub'){
     state.project='';
     state.snapshot=null;
+    state.listData=null;
+    state.detailTask=null;
+    closeAttentionStream();
     state.loadError='';
     state.view='hub';
     state.detail=null;
@@ -1179,7 +1182,7 @@ function bindRows() {
   document.querySelectorAll('[data-tag-filter]').forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();setTagFilter(b.dataset.tagFilter)}));
   $('#tagExploreBtn')?.addEventListener('click',()=>{state.tagExplorerOpen=!state.tagExplorerOpen;render()});
   $('#tagClearBtn')?.addEventListener('click',clearTagFilters);
-  $('#listSort')?.addEventListener('change', e => { state.listSort=e.target.value; state.listPage=1; state.selectedIndex=0; localStorage.setItem('task-mecca-list-sort-v2',state.listSort); render(); });
+  $('#listSort')?.addEventListener('change', e => { state.listSort=e.target.value; state.listPage=1; state.selectedIndex=0; localStorage.setItem('task-mecca-list-sort-v2',state.listSort); refreshList(); });
   $('#listPageSize')?.addEventListener('change', e => {
     const value=e.target.value;
     state.listPage=1; state.selectedIndex=0;
@@ -1192,7 +1195,7 @@ function bindRows() {
       localStorage.setItem('task-mecca-list-page-mode-v1','manual');
       localStorage.setItem('task-mecca-list-page-size',String(state.listPageSize));
     }
-    render();
+    refreshList();
   });
   $('#prevPage')?.addEventListener('click', () => changeListPage(-1));
   $('#nextPage')?.addEventListener('click', () => changeListPage(1));
@@ -1201,7 +1204,7 @@ function changeListPage(delta) {
   if (state.view !== 'backlog') return;
   const info=pageInfo(), next=Math.min(info.pages,Math.max(1,state.listPage+delta));
   if (next===state.listPage) return;
-  state.listPage=next; state.selectedIndex=0; render(); window.scrollTo({top:0,behavior:'smooth'});
+  state.listPage=next; state.selectedIndex=0; refreshList(); window.scrollTo({top:0,behavior:'smooth'});
 }
 function highlightSelection(index) {
   const rows=[...document.querySelectorAll('.task-row[data-row-index]')];
@@ -1238,7 +1241,7 @@ function updateAutoListPageSize() {
   state.autoListPageSize=next;
   state.listPage=Math.floor(firstIndex/next)+1;
   state.selectedIndex=0;
-  render();
+  refreshList();
 }
 function scheduleAutoListPageSize() {
   if(state.listPageMode!=='auto')return;
@@ -1558,6 +1561,7 @@ function route() {
       state.tagFilters=rawTags.split(',').map(x=>x.trim()).filter(Boolean);
     }
   } else {
+    state.view='backlog';
     const rawTags=p.get('tags')||'';
     state.tagFilters=rawTags.split(',').map(x=>x.trim()).filter(Boolean);
   }
