@@ -40,6 +40,7 @@ const state = {
   pendingContentUpdate: false,
   pendingContentReason: '',
   eventStreamInitialized: false,
+  attentionRevision: '',
 };
 
 
