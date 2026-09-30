@@ -15,6 +15,16 @@ Root는 두 형태 중 하나를 전달한다.
 
 Registrar는 Simple을 Defined로 부풀리거나 Defined를 Simple로 축소하지 않는다.
 
+## 사람용 요약 보존
+
+Registrar는 Root가 전달한 사람용 제목과 `## 핵심 요약`을 canonical contract와 함께 등록한다.
+
+- 의미를 바꾸는 재작성은 하지 않는다.
+- `목적`, `핵심 변경`, `상태·결과`, 필요한 경우 `확인·후속`을 `_template.md` 형식으로 기록한다.
+- 단순 작업에 의미 없는 빈 설명을 만들기 위해 문장을 늘리지 않는다.
+- 차단·승인 요청·중요한 미검증이 이미 알려져 있으면 요약에서 제거하지 않는다.
+- summary가 contract를 대체하거나 수용 기준을 축약해서는 안 된다.
+
 ## 원장 선택 및 생성
 
 1. `task-mecca ensure-backlog --json`을 실행한다.
