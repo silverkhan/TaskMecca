@@ -25,6 +25,15 @@ Registrar는 Root가 전달한 사람용 제목과 `## 핵심 요약`을 canonic
 - 차단·승인 요청·중요한 미검증이 이미 알려져 있으면 요약에서 제거하지 않는다.
 - summary가 contract를 대체하거나 수용 기준을 축약해서는 안 된다.
 
+## Task taxonomy 등록
+
+Root가 기존 taxonomy의 canonical tag를 전달하면 Registrar는 `Tags` metadata에 그대로 기록한다.
+
+- 신규 태그를 임의로 만들어 넣지 않는다. 필요하면 먼저 `task-mecca tags resolve/search` 후 Root와 taxonomy 정의를 확정한다.
+- 태그는 선택사항이며 분류 가치가 없으면 `-`로 둔다.
+- 상태, 선행, Agent, 변경범위 같은 구조적 metadata를 태그로 중복하지 않는다.
+- alias 표현이 전달되어도 가능하면 `resolve` 결과의 active canonical tag를 기록한다.
+
 ## 원장 선택 및 생성
 
 1. `task-mecca ensure-backlog --json`을 실행한다.
