@@ -35,6 +35,11 @@ const state = {
   manualByLanguage: {},
   notificationSettings: (()=>{ try { return {...{intervention:true,completed:true,stalled:true},...JSON.parse(localStorage.getItem('task-mecca-notifications')||'{}')}; } catch(_) { return {intervention:true,completed:true,stalled:true}; } })(),
   previousTasksByProject: (()=>{ try { const raw=JSON.parse(localStorage.getItem('task-mecca-previous-tasks')||'{}'); return raw&&typeof raw==='object'?raw:{}; } catch(_) { return {}; } })(),
+  versionInfo: null,
+  contentRevision: '',
+  pendingContentUpdate: false,
+  pendingContentReason: '',
+  eventStreamInitialized: false,
 };
 
 
