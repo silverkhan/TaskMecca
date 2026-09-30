@@ -24,8 +24,8 @@ Task Mecca에서 사용자가 읽는 자연어는 **사용자가 실제로 소�
 
 ## 외부 이슈와 연결된 작업
 
-Linear, GitHub Issue 등 연결된 업무 항목에서 시작된 태스크는 **Source-linked Task**다. Task Mecca는 외부 이슈 관리 시스템을
-복제하지 않고, 해당 항목을 작업의 provenance와 협업 write-back 지점으로 연결한다.
+Linear, GitHub Issue 등 연결된 업무 항목에서 시작된 태스크는 **외부 원천 연결 작업(외부 원천 연결 작업)**다. Task Mecca는 외부 이슈 관리 시스템을
+복제하지 않고, 해당 항목을 작업의 출처 추적 정보와 협업 외부 반영 지점으로 연결한다.
 
 권장 흐름:
 
@@ -45,15 +45,15 @@ External issue
 - 출처: [GitHub · owner/repo#84](https://github.com/owner/repo/issues/84)
 ```
 
-canonical Web URL을 알 수 있으면 Markdown 링크를 사용한다. 이 링크는 Markdown 자체에서도 열 수 있고 Web UI에서는
+공식 Web URL을 알 수 있으면 Markdown 링크를 사용한다. 이 링크는 Markdown 자체에서도 열 수 있고 Web UI에서는
 외부 원본 링크로 표시되어 새 탭에서 열린다. 운영체제/브라우저가 해당 서비스의 URL을 앱에 연결해 둔 경우 그 연결을 사용할 수 있다.
-서비스별 비표준 deep-link scheme을 Task Mecca가 하드코딩하지 않는다.
+서비스별 비표준 앱 전용 링크 방식을 Task Mecca가 하드코딩하지 않는다.
 
-Source-linked Task에서 책임은 다음처럼 나눈다.
+외부 원천 연결 작업에서 책임은 다음처럼 나눈다.
 
-- 외부 이슈: 사람과 조직이 공유하는 업무 원천 및 협업 surface
+- 외부 이슈: 사람과 조직이 공유하는 업무 원천 및 협업 창구
 - Task Mecca 백로그: Agent가 실행하는 현재의 확정 작업 계약과 lifecycle 원장
-- Root: 외부 원천 읽기, 중요한 결정 write-back, lifecycle 상태의 의미 기반 대응, 완료 결과 반영
+- Root: 외부 원천 읽기, 중요한 결정 외부 반영, lifecycle 상태의 의미 기반 대응, 완료 결과 반영
 - Registrar: `출처`를 손실 없이 등록
 - Controller: 실제 lifecycle 전환을 Root에 알림
 - Worker: 외부 시스템을 임의 갱신하지 않고 canonical backlog 계약을 수행
@@ -236,7 +236,7 @@ Defined Task:
 ### 작업 개요
 
 - `등록자`: `user` 또는 발견 agent canonical path
-- `출처`: 외부 이슈에서 시작된 경우 `[서비스 · 식별자](canonical Web URL)`, 직접 요청이면 `-`
+- `출처`: 외부 이슈에서 시작된 경우 `[서비스 · 식별자](공식 Web URL)`, 직접 요청이면 `-`
 - `Agent`: active doing의 현재 담당자. todo/hold는 `-`
 - `변경범위`: active doing의 쓰기 범위. 읽기 전용이면 `읽기 전용`
 - `선행`: 이 항목의 원래 수용을 직접 막는 ID만
@@ -431,7 +431,7 @@ python _task_mecca/framework/collab_tools.py web
 - effective Full Access / Restricted / Unknown 전역 표시
 - Raw Markdown 확인
 - URL `/tasks/<ID>` 직접 접근
-- Source-linked Task의 외부 이슈 식별자와 클릭 가능한 원본 링크
+- 외부 원천 연결 작업의 외부 이슈 식별자와 클릭 가능한 원본 링크
 - Light/Dark system theme
 
 Web UI는 projection/view다. backlog를 직접 수정하지 않는다. `monitor`는 호환 alias이며 interactive 사용 시
