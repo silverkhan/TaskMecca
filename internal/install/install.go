@@ -31,6 +31,13 @@ type manifest struct {
     Owned []string `json:"project_owned_patterns"`
 }
 
+type MigrationResult struct {
+    FromVersion string `json:"from_version"`
+    ToVersion string `json:"to_version"`
+    InstructionRefreshRequired bool `json:"instruction_refresh_required"`
+    ChangedInstructions []string `json:"changed_instructions,omitempty"`
+}
+
 var owned = []string{"data/**", "backlog/**", "backlog_*/**", ".runtime/**", "backups/**", "config.toml"}
 
 var customizable = map[string]bool{
@@ -95,7 +102,7 @@ func Init(project, version string) error {
         return fmt.Errorf("%s already exists; use task-mecca migrate", target)
     } else if err != nil && !errors.Is(err, os.ErrNotExist) { return err }
     files, err := bundled()
-    if err != nil { return err }
+    if err != nil { return result, err }
     if err = os.MkdirAll(target, 0755); err != nil { return err }
     for path, data := range files {
         if err = write(target, path, data); err != nil { return err }
@@ -103,15 +110,30 @@ func Init(project, version string) error {
     return saveManifest(target, newManifest(files, version))
 }
 
+func sessionInstructionPath(path string) bool {
+    switch path {
+    case "ROOT_PROMPT.md", "framework/SESSION_GUIDE.md", "framework/SESSION_GUIDE.en.md", "framework/collab.md":
+        return true
+    }
+    return strings.HasPrefix(path, "framework/roles/") && strings.HasSuffix(path, ".md")
+}
+
 func Migrate(project, version string) error {
+    _, err := MigrateWithResult(project, version)
+    return err
+}
+
+func MigrateWithResult(project, version string) (MigrationResult, error) {
+    result := MigrationResult{ToVersion: version}
     target := filepath.Join(project, targetName)
     raw, err := os.ReadFile(filepath.Join(target, "manifest.json"))
-    if err != nil { return fmt.Errorf("manifest not found; run task-mecca init first: %w", err) }
+    if err != nil { return result, fmt.Errorf("manifest not found; run task-mecca init first: %w", err) }
     var previous manifest
-    if err = json.Unmarshal(raw, &previous); err != nil { return err }
-    if previous.Managed == nil { return errors.New("invalid Task Mecca manifest") }
+    if err = json.Unmarshal(raw, &previous); err != nil { return result, err }
+    result.FromVersion = previous.Version
+    if previous.Managed == nil { return result, errors.New("invalid Task Mecca manifest") }
     files, err := bundled()
-    if err != nil { return err }
+    if err != nil { return result, err }
     incoming := newManifest(files, version)
     paths := make([]string, 0, len(previous.Managed)+len(files))
     seen := map[string]bool{}
@@ -120,6 +142,7 @@ func Migrate(project, version string) error {
     sort.Strings(paths)
     conflicts := []string{}
     retired := []string{}
+    changedInstructions := []string{}
     for _, path := range paths {
         old, existed := previous.Managed[path]
         data, exists := files[path]
@@ -127,32 +150,36 @@ func Migrate(project, version string) error {
         modified := existed && disk != old.BaselineSHA256
         changed := !existed || !exists || old.BaselineSHA256 != hash(data)
         if existed && !exists && !modified { retired = append(retired, path) }
+        if changed && sessionInstructionPath(path) { changedInstructions = append(changedInstructions, path) }
         if modified && changed { conflicts = append(conflicts, path) }
     }
     if len(conflicts) > 0 {
         stamp := time.Now().Format("2006-01-02_150405")
         backup := filepath.Join(target, "backups", stamp)
-        if err = os.MkdirAll(backup, 0755); err != nil { return err }
+        if err = os.MkdirAll(backup, 0755); err != nil { return result, err }
         copied := []string{}
         for _, path := range conflicts {
             data, readErr := os.ReadFile(filepath.Join(target, filepath.FromSlash(path)))
             if readErr == nil {
-                if err = write(backup, path, data); err != nil { return err }
+                if err = write(backup, path, data); err != nil { return result, err }
                 copied = append(copied, path)
             }
         }
         meta, _ := json.MarshalIndent(map[string]any{"created_at": time.Now().Format(time.RFC3339), "from_version": previous.Version, "to_version": version, "files": copied}, "", "  ")
-        if err = os.WriteFile(filepath.Join(backup, "backup.json"), append(meta, '\n'), 0644); err != nil { return err }
-        return fmt.Errorf("local changes conflict with upstream: %s; backup: %s; migration stopped", strings.Join(conflicts, ", "), backup)
+        if err = os.WriteFile(filepath.Join(backup, "backup.json"), append(meta, '\n'), 0644); err != nil { return result, err }
+        return result, fmt.Errorf("local changes conflict with upstream: %s; backup: %s; migration stopped", strings.Join(conflicts, ", "), backup)
     }
     for _, path := range retired {
-        if err = os.Remove(filepath.Join(target, filepath.FromSlash(path))); err != nil { return err }
+        if err = os.Remove(filepath.Join(target, filepath.FromSlash(path))); err != nil { return result, err }
     }
     for path, data := range files {
         old, existed := previous.Managed[path]
         disk := fileHash(filepath.Join(target, filepath.FromSlash(path)))
         if existed && disk != "" && disk != old.BaselineSHA256 && old.BaselineSHA256 == hash(data) { continue }
-        if err = write(target, path, data); err != nil { return err }
+        if err = write(target, path, data); err != nil { return result, err }
     }
-    return saveManifest(target, incoming)
+    if err = saveManifest(target, incoming); err != nil { return result, err }
+    result.ChangedInstructions = changedInstructions
+    result.InstructionRefreshRequired = len(changedInstructions) > 0
+    return result, nil
 }
