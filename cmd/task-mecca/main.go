@@ -22,6 +22,13 @@ func main() { os.Exit(run(os.Args[1:])) }
 func run(args []string) int {
     if len(args) == 1 && (args[0] == "--version" || args[0] == "-version" || args[0] == "version") {
         fmt.Printf("task-mecca %s\n", version)
+        info:=maintenance.RefreshVersionInfo(version)
+        if info.UpdateAvailable {
+            fmt.Printf("latest %s · update available\n",info.Latest)
+            fmt.Println("run: task-mecca upgrade")
+        } else if info.Latest!="" {
+            fmt.Printf("latest %s\n",info.Latest)
+        }
         return 0
     }
     if len(args) == 0 {
@@ -321,7 +328,10 @@ func run(args []string) int {
         var report map[string]any
         report, err = backlog.Status(root, rootOption, includeDone)
         if err==nil {
-            if jsonOutput { emitJSON(report) } else { printStatus(report) }
+            if jsonOutput { emitJSON(report) } else {
+                printStatus(report)
+                printUpdateHint(maintenance.ReadCachedVersionInfo(version))
+            }
         }
     case "web":
         if len(positional) != 0 { fmt.Fprintln(os.Stderr, "web takes no positional arguments"); return 2 }
@@ -459,3 +469,10 @@ func printStatus(report map[string]any) {
     }
     fmt.Println("\nLive agents: use the current model runtime agent list; this local monitor does not infer liveness from Git.")
 }
+
+func printUpdateHint(info maintenance.VersionInfo) {
+    if !info.UpdateAvailable || info.Latest=="" { return }
+    fmt.Printf("\nUpdate available: %s → %s\n",info.Current,info.Latest)
+    fmt.Println("Run: task-mecca upgrade")
+}
+
