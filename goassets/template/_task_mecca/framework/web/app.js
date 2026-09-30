@@ -1187,7 +1187,7 @@ function render() {
     c.innerHTML=gate+(t?detailView(t):`<div class="empty">${esc(t('taskNotFound'))}</div>`);
     $('#backBtn')?.addEventListener('click',closeTask);
     $('#rawToggle')?.addEventListener('click',()=>{state.raw=!state.raw;render()});
-    bindCopyButtons(); bindMermaidControls(); bindDetailToc(); renderMermaidDiagrams();
+    bindCopyButtons(); bindMermaidControls(); bindDetailToc(); bindDetailInteractions(); renderMermaidDiagrams();
     return;
   }
   c.innerHTML=(state.view==='hub'?hubView():gate+(state.view==='manual'?manualView():state.view==='workload'?workloadView():state.view==='attention'?attentionView():state.view==='issues'?issuesView():listView()));
