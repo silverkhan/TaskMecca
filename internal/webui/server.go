@@ -385,8 +385,10 @@ func Run(config Config) error {
     autoMode:=requestedHost=="" || strings.EqualFold(requestedHost,"auto")
     var primaryListener net.Listener
     var remoteListener net.Listener
+    var remoteTLSInfo TLSInfo
     localURL:=""
     tailscaleURL:=""
+    candidateTailscaleURL:=""
     tlsError:=""
     bindHost:=""
     port:=config.Port
@@ -399,6 +401,7 @@ func Run(config Config) error {
 
         tlsInfo:=ensureTailscaleTLS()
         if tlsInfo.Enabled {
+            remoteTLSInfo=tlsInfo
             raw,listenErr:=listenTailscaleIP(tlsInfo.IP,port)
             if listenErr!=nil {
                 tlsError=fmt.Sprintf("Tailscale HTTPS cannot bind %s:%d: %v",tlsInfo.IP,port,listenErr)
@@ -409,7 +412,7 @@ func Run(config Config) error {
                     tlsError=tlsErr.Error()
                 } else {
                     remoteListener=tls.NewListener(raw,tlsConfig)
-                    tailscaleURL=fmt.Sprintf("https://%s:%d/",tlsInfo.DNSName,port)
+                    candidateTailscaleURL=fmt.Sprintf("https://%s:%d/",tlsInfo.DNSName,port)
                 }
             }
         } else if tlsInfo.Error!="" {
@@ -431,6 +434,24 @@ func Run(config Config) error {
         _=primaryListener.Close()
         if remoteListener!=nil { _=remoteListener.Close() }
         return err
+    }
+
+    server:=&http.Server{Handler:handler,ReadHeaderTimeout:5*time.Second}
+    errCh:=make(chan error,2)
+    go func(){ errCh<-server.Serve(primaryListener) }()
+    listeners:=1
+    if remoteListener!=nil {
+        listeners++
+        go func(){ errCh<-server.Serve(remoteListener) }()
+        if runtime.GOOS=="darwin" {
+            if verifyErr:=verifyTailscaleHTTPS(remoteTLSInfo,port,config.InstanceID); verifyErr!=nil {
+                tlsError=verifyErr.Error()
+            } else {
+                tailscaleURL=candidateTailscaleURL
+            }
+        } else {
+            tailscaleURL=candidateTailscaleURL
+        }
     }
 
     preferredURL:=localURL
@@ -478,7 +499,6 @@ func Run(config Config) error {
         go func(){ time.Sleep(200*time.Millisecond); openBrowser(localURL) }()
     }
 
-    server:=&http.Server{Handler:handler,ReadHeaderTimeout:5*time.Second}
     go func(){
         select {
         case result:=<-restartCh:
@@ -495,13 +515,6 @@ func Run(config Config) error {
         _=server.Shutdown(shutdownCtx)
     }()
 
-    errCh:=make(chan error,2)
-    go func(){ errCh<-server.Serve(primaryListener) }()
-    listeners:=1
-    if remoteListener!=nil {
-        listeners++
-        go func(){ errCh<-server.Serve(remoteListener) }()
-    }
 
     for i:=0;i<listeners;i++ {
         serveErr:=<-errCh
