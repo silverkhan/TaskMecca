@@ -13,7 +13,7 @@ Task Mecca의 사용자 가이드는 **사용자가 실제로 무엇을 먼저 �
 task-mecca web
 ```
 
-브라우저가 열리며 기본 주소는 `http://127.0.0.1:8765`다. 대시보드는 read-only/local-only이며
+브라우저가 열리며 기본 포트는 `8765`다. `task-mecca web`은 기본적으로 `--host auto`로 동작해 Tailscale IPv4가 있으면 해당 주소에 bind하고, 없으면 `127.0.0.1`을 사용한다. 필요하면 `--host <ip>`로 명시할 수 있다. 대시보드는 read-only이며
 backlog, Subagent Workload, lifecycle timer, Needs Attention, Full Access 상태를 보여준다.
 
 대시보드는 `_task_mecca` 아래에서 백로그 원장을 자동 탐지한다. 신규 프로젝트의 canonical 위치는 `data/backlog/`이며, 기존 호환성을 위해 이름이 `backlog`로 시작하는 `data/backlog_b`, legacy `backlog_b` 같은 경로도 읽는다. canonical `data/backlog/`가 있으면 우선 선택한다. 상단 `Backlog` 선택기에서 다른 후보로 바꿀 수 있으며 수동 선택값은 브라우저에 유지된다. `Auto`를 선택하면 수동 고정을 해제하고 최근 변경 기준 자동 선택으로 돌아간다.
