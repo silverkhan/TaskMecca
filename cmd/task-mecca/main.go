@@ -247,6 +247,7 @@ func run(args []string) int {
             if jsonOutput { emitJSON(report) } else {
                 fmt.Printf("%s %s %s\n",report["id"],report["state"],report["title"])
                 fmt.Printf("Agent: %v  범위: %v\n",emptyDash(report["agent"]),emptyDash(report["change_scope"]))
+                if source,ok:=report["source"].(map[string]string); ok && source["label"]!="" { if source["url"]!="" { fmt.Printf("출처: %s  %s\n",source["label"],source["url"]) } else { fmt.Printf("출처: %s\n",source["label"]) } }
                 if tags,tagErr:=backlog.TaskTags(root,rootOption,positional[0]); tagErr==nil { fmt.Printf("Tags: %s\n",joinAnyStrings(tags["tags"])) }
                 fmt.Printf("ready: %v  waiting: %s\n",report["ready"],joinAnyStrings(report["waiting_for"]))
                 if note,ok:=report["waiting_note"].(string); ok && note!="" { fmt.Println("대기: "+note) }
