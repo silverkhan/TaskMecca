@@ -423,12 +423,12 @@ function renderAccess() {
 ${a.checked_at ? `${t('accessLastChecked')} ${ago(a.checked_at)}` : t('notChecked')} · ${t('freshDispatch')}`;
 }
 function accessBanner() {
-  const a = state.snapshot?.access || {};
+  const a = currentProjectData()?.access || {};
   if (!a.restriction_current) return '';
   return `<div class="global-access danger"><div><strong>${esc(t('dispatchDisabled'))}</strong><span>${esc(t('enableFullAccess'))}</span></div><code>uv run _task_mecca/collab_tools.py preflight --require-full-access --json</code></div>`;
 }
 function diagnosticBanner() {
-  const rows=state.snapshot?.diagnostics||[];
+  const rows=currentProjectData()?.diagnostics||[];
   if(!rows.length)return '';
   return `<div class="global-access"><div><strong>Partial diagnostics</strong><span>${esc(rows.map(x=>`${x.component}: ${x.error}`).join(' · '))}</span></div></div>`;
 }
@@ -646,8 +646,9 @@ function closeProjectSession(path) {
 }
 function renderBacklogPicker() {
   const picker = $('#backlogPicker');
-  if (!picker || !state.snapshot) return;
-  const selection = state.snapshot.backlog_selection || {};
+  const data=currentProjectData();
+  if (!picker || !data) return;
+  const selection = data.backlog_selection || {};
   const candidates = selection.candidates || [];
   const selected = selection.selected || '';
   const selectedCandidate = candidates.find(c => c.path === selected);
@@ -747,7 +748,7 @@ function navigateView(view) {
   }
 }
 function nav() {
-  const c = state.snapshot?.counts || {};
+  const c = currentProjectData()?.counts || {};
   const projects=state.hub?.projects||[];
   const byPath=new Map(projects.map(p=>[p.path,p]));
   if(state.project)ensureOpenProject(state.project);
@@ -915,6 +916,7 @@ function matchesStatusFilter(t, key) {
   return true;
 }
 function allRowsForView() {
+  if(state.listData)return Array.isArray(state.listData.items)?state.listData.items:[];
   let items = Object.values(state.snapshot?.all_items || {});
   if (!state.statusFilters.includes('all')) {
     items = items.filter(t => state.statusFilters.some(key => matchesStatusFilter(t,key)));
@@ -936,6 +938,13 @@ function effectiveListPageSize() {
 }
 function pageInfo() {
   const items = allRowsForView();
+  if(state.listData){
+    const page=Math.max(1,Number(state.listData.page)||1);
+    const pages=Math.max(1,Number(state.listData.pages)||1);
+    const pageSize=Math.max(1,Number(state.listData.page_size)||effectiveListPageSize());
+    state.listPage=page;
+    return {items,pageItems:items,page,pages,total:Number(state.listData.total)||0,pageSize};
+  }
   const pageSize = effectiveListPageSize();
   const pages = Math.max(1, Math.ceil(items.length / pageSize));
   state.listPage = Math.min(Math.max(1,state.listPage),pages);
@@ -943,9 +952,10 @@ function pageInfo() {
   return {items, pageItems:items.slice(start,start+pageSize), page:state.listPage, pages, total:items.length, pageSize};
 }
 function statusFilterBar() {
-  const c = state.snapshot?.counts || {};
+  const data=currentProjectData()||{};
+  const c = data.counts || {};
   const defs = [
-    ['all',t('all'),Object.keys(state.snapshot?.all_items || {}).length],
+    ['all',t('all'),c.all??Object.keys(state.snapshot?.all_items || {}).length],
     ['ready',t('ready'),c.ready||0],
     ['doing',t('working'),c.working||0],
     ['hold',t('hold'),c.hold||0],
@@ -955,7 +965,7 @@ function statusFilterBar() {
   return `<div class="status-filter-wrap"><div class="filter-label">${esc(t('status'))}</div><div class="status-filter-bar" role="group" aria-label="${esc(t('status'))}">${defs.map(([k,label,n])=>`<button class="status-filter-btn ${state.statusFilters.includes(k)?'active':''}" data-status-filter="${k}" aria-pressed="${state.statusFilters.includes(k)?'true':'false'}">${esc(label)}<span>${n}</span></button>`).join('')}</div></div>`;
 }
 function tagFilterBar() {
-  const catalog=state.snapshot?.tag_catalog||{}, stats=Array.isArray(catalog.stats)?catalog.stats:[];
+  const catalog=currentProjectData()?.tag_catalog||{}, stats=Array.isArray(catalog.stats)?catalog.stats:[];
   const used=stats.filter(x=>x.total>0);
   const selected=state.tagFilters.map(tag=>tagChip(tag,true)).join('');
   const explorer=state.tagExplorerOpen?tagExplorerPanel(used):'';
@@ -964,7 +974,7 @@ function tagFilterBar() {
 function tagExplorerPanel(stats) {
   const groups={};
   stats.forEach(row=>{(groups[row.namespace]||(groups[row.namespace]=[])).push(row)});
-  const registry=new Map((state.snapshot?.tag_catalog?.registry||[]).map(x=>[x.canonical,x]));
+  const registry=new Map((currentProjectData()?.tag_catalog?.registry||[]).map(x=>[x.canonical,x]));
   return `<div class="tag-explorer">${Object.keys(groups).sort().map(ns=>`<section><h3>${esc(ns.toUpperCase())}</h3><div class="tag-stat-list">${groups[ns].sort((a,b)=>b.total-a.total||a.tag.localeCompare(b.tag)).map(row=>{const def=registry.get(row.tag)||{};return `<button type="button" class="tag-stat-row ${state.tagFilters.includes(row.tag)?'active':''}" data-tag-filter="${esc(row.tag)}"><span><strong>${esc(row.tag.split(':')[1]||row.tag)}</strong><small>${esc(def.description||row.description||'')}</small></span><span class="tag-stat-counts"><b>${row.total||0}</b><small>A ${row.active||0} · H ${row.hold||0} · D ${row.done||0}</small></span></button>`}).join('')}</div></section>`).join('')}</div>`;
 }
 function listControls(info) {
@@ -975,12 +985,13 @@ function listControls(info) {
 }
 
 function listView() {
-  const info = pageInfo(), rows = info.pageItems, c = state.snapshot.counts || {};
+  const data=currentProjectData()||{};
+  const info = pageInfo(), rows = info.pageItems, c = data.counts || {};
   state.selectedIndex = Math.min(Math.max(0,state.selectedIndex), Math.max(0,rows.length-1));
-  const meta = state.snapshot.backlog_selection || {};
+  const meta = data.backlog_selection || {};
   const filterLabel = state.statusFilters.includes('all') ? t('allStatuses') : state.statusFilters.map(stateLabel).join(' + ');
   const head=`<div class="task-list-head"><div>${esc(t('id'))}</div><div>${esc(t('taskColumn'))}</div><div>${esc(t('statusColumn'))}</div><div>${esc(t('agentColumn'))}</div><div>${esc(t('activeColumn'))}</div><div>${esc(t('updatedColumn'))}</div><div></div></div>`;
-  return `<div class="page-head"><div><div class="eyebrow">${esc(state.snapshot.repo||t('repository'))}</div><h1>${esc(t('backlog'))}</h1><p class="summary">${esc(meta.selected ? String(meta.selected).split(/[\/]/).pop() : '')} · ${info.total} ${esc(t('items'))} · ${esc(filterLabel)}</p></div></div><div class="metrics"><div class="metric"><strong>${c.working||0}</strong><span>${esc(t('working'))}</span></div><div class="metric"><strong>${c.ready||0}</strong><span>${esc(t('ready'))}</span></div><div class="metric"><strong>${c.hold||0}</strong><span>${esc(t('hold'))}</span></div><div class="metric"><strong>${c.attention||0}</strong><span>${esc(t('needsAttention'))}</span></div></div>${listControls(info)}${rows.length?`${head}<div class="task-list">${rows.map((task,i)=>{
+  return `<div class="page-head"><div><div class="eyebrow">${esc(data.repo||t('repository'))}</div><h1>${esc(t('backlog'))}</h1><p class="summary">${esc(meta.selected ? String(meta.selected).split(/[\/]/).pop() : '')} · ${info.total} ${esc(t('items'))} · ${esc(filterLabel)}</p></div></div><div class="metrics"><div class="metric"><strong>${c.working||0}</strong><span>${esc(t('working'))}</span></div><div class="metric"><strong>${c.ready||0}</strong><span>${esc(t('ready'))}</span></div><div class="metric"><strong>${c.hold||0}</strong><span>${esc(t('hold'))}</span></div><div class="metric"><strong>${c.attention||0}</strong><span>${esc(t('needsAttention'))}</span></div></div>${listControls(info)}${rows.length?`${head}<div class="task-list">${rows.map((task,i)=>{
     const act=task.activity||{}, h=act.health;
     const time=task.file_state==='doing'?fmtSec(runningSeconds(task,'active')):(task.file_state==='done'?fmtSec(task.active_seconds):'-');
     const hs=humanSummary(task);
