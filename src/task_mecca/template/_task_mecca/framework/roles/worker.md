@@ -37,6 +37,19 @@ Controller가 배정한 bounded subtask를 수행한다. worker 이름은 task�
 
 worker는 backlog를 스스로 done/archive로 확정하지 않는다.
 
+## Turn 종료와 자기 위임
+
+Worker는 남은 구현이 있는데 자기 자신에게 follow-up을 보내고 현재 turn을 종료하는 방식으로 연속성을 만들지 않는다.
+자기 자신 대상 위임은 새 active turn을 보장하지 않으므로 **재개로 인정되지 않는다**.
+
+현재 turn을 끝낼 때는 반드시 다음 중 하나여야 한다.
+
+- `DONE`: 원래 수용 기준별 결과와 검증 근거를 모두 Controller에 반환한다.
+- `BLOCKED`: 현재 turn에서 진행할 수 없는 직접 사유, 남은 작업, 필요한 조치/결정, 재개 조건을 Controller에 반환한다.
+
+내부적으로 계속 실행 가능한 구현·테스트·commit/push 등이 남아 있다면 임의로 종료하지 않는다. 런타임 한계로 turn을 끝내야 한다면
+`BLOCKED`/미완결을 명시하고 Controller가 fresh turn 또는 재배정을 만들 수 있도록 남은 작업을 구체적으로 보고한다.
+
 ## Liveness
 
 런타임/orchestration layer가 지원하면 `.runtime/agents/*.json` heartbeat를 갱신할 수 있다. worker 자신의 LLM 행동을
