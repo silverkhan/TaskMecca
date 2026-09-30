@@ -31,6 +31,9 @@ type Config struct {
     Port int
     OpenBrowser bool
     Version string
+    InstanceID string
+    ControlToken string
+    StartedAt string
 }
 
 type context struct {
@@ -112,10 +115,10 @@ func selectionPayload(ctx context, selected string, candidates []backlog.Candida
 }
 
 func Handler(project,root,version string) (http.Handler,error) {
-    return handler(project,root,version,nil)
+    return handler(project,root,version,"","",nil,nil)
 }
 
-func handler(project,root,version string,restartCh chan<- maintenance.UpgradeResult) (http.Handler,error) {
+func handler(project,root,version,instanceID,controlToken string,restartCh chan<- maintenance.UpgradeResult,stopCh chan<- struct{}) (http.Handler,error) {
     if _,err:=webContext(project,root); err!=nil { return nil,err }
     mux:=http.NewServeMux()
 
@@ -137,7 +140,16 @@ func handler(project,root,version string,restartCh chan<- maintenance.UpgradeRes
     }
 
     mux.HandleFunc("/api/health",func(w http.ResponseWriter,r *http.Request) {
-        writeJSON(w,map[string]any{"ok":true,"version":version},200)
+        writeJSON(w,map[string]any{"ok":true,"version":version,"instance_id":instanceID,"pid":os.Getpid()},200)
+    })
+
+    mux.HandleFunc("/api/admin/stop",func(w http.ResponseWriter,r *http.Request) {
+        if r.Method!="POST" { writeJSON(w,map[string]any{"error":"POST required"},405); return }
+        if stopCh==nil || controlToken=="" || r.Header.Get("X-Task-Mecca-Control")!=controlToken {
+            writeJSON(w,map[string]any{"error":"forbidden"},403); return
+        }
+        writeJSON(w,map[string]any{"ok":true},200)
+        select { case stopCh<-struct{}{}: default: }
     })
 
     mux.HandleFunc("/api/backlog-folders",func(w http.ResponseWriter,r *http.Request) {
@@ -299,13 +311,13 @@ func resolveWebHost(requested string) (string,string) {
     return requested,"explicit"
 }
 
-func findListener(host string,preferred int) (net.Listener,int,error) {
-    if preferred<1 { preferred=1 }
-    for port:=preferred;port<preferred+30;port++ {
-        listener,err:=net.Listen("tcp",fmt.Sprintf("%s:%d",host,port))
-        if err==nil { return listener,port,nil }
+func findListener(host string,port int) (net.Listener,int,error) {
+    if port<1 { port=DefaultPort }
+    listener,err:=net.Listen("tcp",fmt.Sprintf("%s:%d",host,port))
+    if err!=nil {
+        return nil,0,fmt.Errorf("Task Mecca Web cannot bind %s:%d: %w; another process may already use this port. Use --port <port> to choose another port",host,port,err)
     }
-    return nil,0,fmt.Errorf("사용 가능한 local Web UI port를 찾지 못했다: %d-%d",preferred,preferred+29)
+    return listener,port,nil
 }
 
 func openBrowser(url string) {
@@ -326,7 +338,7 @@ func scheduleWebRestart(result maintenance.UpgradeResult,config Config,port int)
         if err!=nil { return err }
         exe,_=filepath.EvalSymlinks(exe)
     }
-    args:=[]string{"web","--project",config.Project,"--host",config.Host,"--port",fmt.Sprint(port),"--no-open"}
+    args:=[]string{"web","--foreground","--project",config.Project,"--host",config.Host,"--port",fmt.Sprint(port),"--no-open","--web-instance-id",config.InstanceID,"--web-control-token",config.ControlToken}
     if config.Root!="" { args=append(args,"--root",config.Root) }
 
     if runtime.GOOS=="windows" {
@@ -335,8 +347,8 @@ func scheduleWebRestart(result maintenance.UpgradeResult,config Config,port int)
         helperPath:=helper.Name()
         rootArg:=""
         if config.Root!="" { rootArg=" --root \""+config.Root+"\"" }
-        body:=fmt.Sprintf("@echo off\r\n:wait\r\nif exist \"%s.new\" (timeout /t 1 /nobreak >nul & goto wait)\r\ntimeout /t 1 /nobreak >nul\r\nstart \"\" /D \"%s\" \"%s\" web --project \"%s\" --host \"%s\" --port %d --no-open%s\r\ndel \"%%~f0\"\r\n",
-            exe,config.Project,exe,config.Project,config.Host,port,rootArg)
+        body:=fmt.Sprintf("@echo off\r\n:wait\r\nif exist \"%s.new\" (timeout /t 1 /nobreak >nul & goto wait)\r\ntimeout /t 1 /nobreak >nul\r\nstart \"\" /D \"%s\" \"%s\" web --foreground --project \"%s\" --host \"%s\" --port %d --no-open --web-instance-id \"%s\" --web-control-token \"%s\"%s\r\ndel \"%%~f0\"\r\n",
+            exe,config.Project,exe,config.Project,config.Host,port,config.InstanceID,config.ControlToken,rootArg)
         if _,err=helper.WriteString(body); err!=nil { _=helper.Close(); return err }
         if err=helper.Close(); err!=nil { return err }
         cmd:=exec.Command("cmd","/C","start","\"Task Mecca Web Restart\"","/MIN",helperPath)
@@ -353,8 +365,17 @@ func scheduleWebRestart(result maintenance.UpgradeResult,config Config,port int)
 }
 
 func Run(config Config) error {
+    if config.Port<=0 { config.Port=DefaultPort }
+    if config.InstanceID=="" || config.ControlToken=="" {
+        id,token,idErr:=NewServiceIdentity()
+        if idErr!=nil { return idErr }
+        config.InstanceID=id
+        config.ControlToken=token
+    }
+    if config.StartedAt=="" { config.StartedAt=time.Now().Format(time.RFC3339) }
     restartCh:=make(chan maintenance.UpgradeResult,1)
-    handler,err:=handler(config.Project,config.Root,config.Version,restartCh)
+    stopCh:=make(chan struct{},1)
+    handler,err:=handler(config.Project,config.Root,config.Version,config.InstanceID,config.ControlToken,restartCh,stopCh)
     if err!=nil { return err }
     host,hostMode:=resolveWebHost(config.Host)
     config.Host=host
@@ -363,6 +384,11 @@ func Run(config Config) error {
     ctx,err:=webContext(config.Project,config.Root)
     if err!=nil { _=listener.Close(); return err }
     url:=fmt.Sprintf("http://%s:%d/",host,port)
+    if err=writeServiceState(ServiceState{
+        PID:os.Getpid(),InstanceID:config.InstanceID,ControlToken:config.ControlToken,
+        Host:host,Port:port,URL:url,Version:config.Version,Project:config.Project,StartedAt:config.StartedAt,Running:true,
+    }); err!=nil { _=listener.Close(); return err }
+    defer removeServiceState(config.InstanceID)
     fmt.Println("Task Mecca Web UI: "+url)
     if hostMode=="tailscale" { fmt.Println("network: Tailscale detected · bound to "+host) } else if hostMode=="localhost" { fmt.Println("network: localhost only") } else { fmt.Println("network: explicit bind · "+host) }
     if ctx.selected!="" {
@@ -383,11 +409,15 @@ func Run(config Config) error {
     if config.OpenBrowser { go func(){ time.Sleep(200*time.Millisecond); openBrowser(url) }() }
     server:=&http.Server{Handler:handler,ReadHeaderTimeout:5*time.Second}
     go func(){
-        result:=<-restartCh
-        time.Sleep(250*time.Millisecond)
-        if restartErr:=scheduleWebRestart(result,config,port); restartErr!=nil {
-            fmt.Fprintln(os.Stderr,"Task Mecca Web restart failed:",restartErr)
-            return
+        select {
+        case result:=<-restartCh:
+            time.Sleep(250*time.Millisecond)
+            if restartErr:=scheduleWebRestart(result,config,port); restartErr!=nil {
+                fmt.Fprintln(os.Stderr,"Task Mecca Web restart failed:",restartErr)
+                return
+            }
+        case <-stopCh:
+            time.Sleep(100*time.Millisecond)
         }
         ctx,cancel:=stdcontext.WithTimeout(stdcontext.Background(),2*time.Second)
         defer cancel()
