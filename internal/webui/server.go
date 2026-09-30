@@ -292,8 +292,10 @@ func scheduleWebRestart(result maintenance.UpgradeResult,config Config,port int)
         helper,err:=os.CreateTemp("","task-mecca-web-restart-*.cmd")
         if err!=nil { return err }
         helperPath:=helper.Name()
-        body:=fmt.Sprintf("@echo off\r\n:wait\r\nif exist \"%s.new\" (timeout /t 1 /nobreak >nul & goto wait)\r\ntimeout /t 1 /nobreak >nul\r\nstart \"\" /D \"%s\" \"%s\" web --project \"%s\" --port %d --no-open%s\r\ndel \"%%~f0\"\r\n",
-            exe,config.Project,exe,config.Project,port,func()string{ if config.Root!="" { return " --root \""+strings.ReplaceAll(config.Root,"\"","\\"")+"\"" }; return "" }())
+        rootArg:=""
+        if config.Root!="" { rootArg=" --root \\""+config.Root+"\\\"" }
+        body:=fmt.Sprintf("@echo off\\r\\n:wait\\r\\nif exist \\"%s.new\\" (timeout /t 1 /nobreak >nul & goto wait)\\r\\ntimeout /t 1 /nobreak >nul\\r\\nstart \\"\\" /D \\"%s\\" \\"%s\\" web --project \\"%s\\" --port %d --no-open%s\\r\\ndel \\"%%~f0\\"\\r\\n",
+            exe,config.Project,exe,config.Project,port,rootArg)
         if _,err=helper.WriteString(body); err!=nil { _=helper.Close(); return err }
         if err=helper.Close(); err!=nil { return err }
         cmd:=exec.Command("cmd","/C","start","\"Task Mecca Web Restart\"","/MIN",helperPath)
