@@ -379,8 +379,8 @@ function hubView() {
 }
 async function bindHubActions() {
   document.querySelectorAll('[data-open-project]').forEach(b=>b.onclick=()=>{location.href='/?project='+encodeURIComponent(b.dataset.openProject)+'&view=backlog'});
-  document.querySelectorAll('[data-migrate]').forEach(b=>b.onclick=async()=>{b.disabled=true;const r=await fetch('/api/migrate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({project:b.dataset.migrate})});const body=await r.json();if(!r.ok){alert(body.error||'Migration failed');}await refresh();});
-  const up=$('#upgradeBtn'); if(up) up.onclick=async()=>{up.disabled=true;up.textContent='Upgrading…';const r=await fetch('/api/upgrade',{method:'POST'});const body=await r.json();if(!r.ok){alert(body.error||'Upgrade failed');up.disabled=false;up.textContent='Upgrade';return;}alert(body.to&&body.to!==body.from?`Upgraded to ${body.to}. Restart Task Mecca.`:'Already current.');};
+  document.querySelectorAll('[data-migrate]').forEach(b=>b.onclick=async()=>{b.disabled=true;const r=await fetch('/api/migrate',{method:'POST',headers:{'Content-Type':'application/json','X-Task-Mecca-Action':'1'},body:JSON.stringify({project:b.dataset.migrate})});const body=await r.json();if(!r.ok){alert(body.error||'Migration failed');}await refresh();});
+  const up=$('#upgradeBtn'); if(up) up.onclick=async()=>{up.disabled=true;up.textContent='Upgrading…';const r=await fetch('/api/upgrade',{method:'POST',headers:{'X-Task-Mecca-Action':'1'}});const body=await r.json();if(!r.ok){alert(body.error||'Upgrade failed');up.disabled=false;up.textContent='Upgrade';return;}alert(body.to&&body.to!==body.from?`Upgraded to ${body.to}. Restart Task Mecca.`:'Already current.');};
 }
 
 function matchesStatusFilter(t, key) {
