@@ -97,6 +97,33 @@ func ownershipMatches(dns string,port int) bool {
     return owned.DNSName==dns && owned.Port==port && strings.TrimRight(owned.Target,"/")==tailscaleServeTarget(port)
 }
 
+func applyTailscaleServe(port int) (string,error) {
+    target:=tailscaleServeTarget(port)
+    cmd,err:=tailscaleCommand("serve","--bg","--yes","--https="+strconv.Itoa(port),target)
+    if err!=nil { return "",err }
+    output,cmdErr:=cmd.CombinedOutput()
+    if cmdErr!=nil {
+        msg:=strings.TrimSpace(string(output))
+        if msg!="" { return msg,fmt.Errorf("unable to configure Tailscale Serve: %s",msg) }
+        return msg,fmt.Errorf("unable to configure Tailscale Serve: %w",cmdErr)
+    }
+    return strings.TrimSpace(string(output)),nil
+}
+
+func refreshOwnedTailscaleServe(dns string,port int) error {
+    if !ownershipMatches(dns,port) { return nil }
+    cmd,err:=tailscaleCommand("serve","--yes","--https="+strconv.Itoa(port),"off")
+    if err!=nil { return err }
+    output,cmdErr:=cmd.CombinedOutput()
+    if cmdErr!=nil {
+        msg:=strings.TrimSpace(string(output))
+        if msg!="" { return fmt.Errorf("unable to refresh Tailscale Serve: %s",msg) }
+        return fmt.Errorf("unable to refresh Tailscale Serve: %w",cmdErr)
+    }
+    if _,err:=applyTailscaleServe(port); err!=nil { return err }
+    return nil
+}
+
 func ensureTailscaleServe(dns string,port int) (url string,managed bool,err error) {
     if dns=="" { return "",false,fmt.Errorf("Tailscale DNS name is unavailable") }
     status,err:=readTailscaleServeStatus()
@@ -104,21 +131,33 @@ func ensureTailscaleServe(dns string,port int) (url string,managed bool,err erro
 
     matching,occupied:=serveConfigState(status,dns,port)
     if matching {
-        return fmt.Sprintf("https://%s:%d/",dns,port),ownershipMatches(dns,port),nil
+        managed:=ownershipMatches(dns,port)
+        if managed {
+            if err:=refreshOwnedTailscaleServe(dns,port); err!=nil {
+                return "",false,err
+            }
+            status,err=readTailscaleServeStatus()
+            if err!=nil { return "",false,err }
+            matching,_=serveConfigState(status,dns,port)
+            if !matching {
+                return "",false,fmt.Errorf("Tailscale Serve refresh completed but port %d is no longer registered",port)
+            }
+        } else {
+            // Re-issue the identical Serve command to wake a persisted but stale
+            // proxy listener without taking ownership of a user-managed route.
+            if _,err:=applyTailscaleServe(port); err!=nil {
+                return "",false,err
+            }
+        }
+        return fmt.Sprintf("https://%s:%d/",dns,port),managed,nil
     }
     if occupied {
         return "",false,fmt.Errorf("Tailscale Serve port %d is already configured for another service",port)
     }
 
     target:=tailscaleServeTarget(port)
-    cmd,err:=tailscaleCommand("serve","--bg","--yes","--https="+strconv.Itoa(port),target)
-    if err!=nil { return "",false,err }
-    output,cmdErr:=cmd.CombinedOutput()
-    if cmdErr!=nil {
-        msg:=strings.TrimSpace(string(output))
-        if msg!="" { return "",false,fmt.Errorf("unable to configure Tailscale Serve: %s",msg) }
-        return "",false,fmt.Errorf("unable to configure Tailscale Serve: %w",cmdErr)
-    }
+    output,applyErr:=applyTailscaleServe(port)
+    if applyErr!=nil { return "",false,applyErr }
 
     status,err=readTailscaleServeStatus()
     if err!=nil { return "",false,err }
