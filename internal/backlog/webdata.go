@@ -93,6 +93,18 @@ func webStateMaps(project,root string,rows []Record) (map[string]bool,map[string
     return readyIDs,blocked,reviewByPath,activity,hold
 }
 
+func webAttentionMaps(project string,rows []Record) (map[string]map[string]any,map[string]map[string]any) {
+    hold:=HoldReview(rows)
+    reviewByPath:=map[string]map[string]any{}
+    for _,key:=range []string{"candidates","waiting"} {
+        if values,ok:=hold[key].([]map[string]any); ok {
+            for _,x:=range values { reviewByPath[toString(x["path"])]=x }
+        }
+    }
+    activity:=runtimeActivity(project,rows,map[string]map[string]any{})
+    return reviewByPath,activity
+}
+
 func stateMatches(item map[string]any,statuses []string) bool {
     if len(statuses)==0 { return true }
     state:=toString(item["state"]); fileState:=toString(item["file_state"])
@@ -221,7 +233,7 @@ func TaskDetail(project,root,id string) (map[string]any,error) {
 }
 
 func AttentionSnapshotFromRows(project,root string,rows []Record,reconcile bool) (map[string]any,error) {
-    _,_,reviewByPath,activity,_:=webStateMaps(project,root,rows)
+    reviewByPath,activity:=webAttentionMaps(project,rows)
     byID:=preferredRows(rows)
     allItems:=map[string]map[string]any{}
     attention:=[]map[string]any{}
