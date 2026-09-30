@@ -90,3 +90,34 @@ func TestMigrateReportsInstructionRefreshWhenSessionGuideChanges(t *testing.T) {
     }
     if !found { t.Fatalf("changed instructions missing session guide: %#v", result.ChangedInstructions) }
 }
+
+
+func TestLegacyBootstrapMigrationPreservesProjectDataAndBacksUpFramework(t *testing.T) {
+    project:=t.TempDir()
+    target:=filepath.Join(project,targetName)
+    if err:=os.MkdirAll(filepath.Join(target,"framework"),0755); err!=nil { t.Fatal(err) }
+    if err:=os.MkdirAll(filepath.Join(target,"data","backlog"),0755); err!=nil { t.Fatal(err) }
+    if err:=os.WriteFile(filepath.Join(target,"framework","legacy.md"),[]byte("legacy framework\n"),0644); err!=nil { t.Fatal(err) }
+    if err:=os.WriteFile(filepath.Join(target,"ROOT_PROMPT.md"),[]byte("legacy root\n"),0644); err!=nil { t.Fatal(err) }
+    if err:=os.WriteFile(filepath.Join(target,"VERSION"),[]byte("0.1.9\n"),0644); err!=nil { t.Fatal(err) }
+    backlogFile:=filepath.Join(target,"data","backlog","000001.A-1.keep.todo.md")
+    if err:=os.WriteFile(backlogFile,[]byte("# A-1 Keep\n"),0644); err!=nil { t.Fatal(err) }
+
+    result,err:=MigrateWithResult(project,"0.2.27")
+    if err!=nil { t.Fatal(err) }
+    if !result.LegacyBootstrap { t.Fatal("expected legacy bootstrap") }
+    if result.FromVersion!="0.1.9" { t.Fatalf("from_version=%q",result.FromVersion) }
+    if result.BackupPath=="" { t.Fatal("expected backup path") }
+    if got,err:=os.ReadFile(backlogFile); err!=nil || string(got)!="# A-1 Keep\n" {
+        t.Fatalf("project backlog changed: %q %v",got,err)
+    }
+    if got,err:=os.ReadFile(filepath.Join(result.BackupPath,"framework","legacy.md")); err!=nil || string(got)!="legacy framework\n" {
+        t.Fatalf("legacy framework backup missing: %q %v",got,err)
+    }
+    if _,err:=os.Stat(filepath.Join(target,"manifest.json")); err!=nil {
+        t.Fatalf("manifest not created: %v",err)
+    }
+    if _,err:=os.Stat(filepath.Join(target,"framework","legacy.md")); !os.IsNotExist(err) {
+        t.Fatalf("legacy framework residue should be replaced, err=%v",err)
+    }
+}
