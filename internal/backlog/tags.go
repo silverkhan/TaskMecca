@@ -275,6 +275,7 @@ func TagDefine(project,canonical,description,aliases string) (TagDefinition,erro
 
 func rewriteTaskTagField(text string,tags []string) string {
     value:=strings.Join(tags,", ")
+    if value=="" { value="-" }
     lines:=strings.Split(text,"\n")
     for i,line:=range lines {
         trimmed:=strings.TrimSpace(line)
@@ -584,6 +585,12 @@ func TagTasks(project,root,expr string) ([]map[string]any,error) {
     }
     sort.Slice(out,func(i,j int)bool{return fmt.Sprint(out[i]["id"])<fmt.Sprint(out[j]["id"])})
     return out,nil
+}
+
+func TagCatalogReport(project,root string) (map[string]any,error) {
+    rows,err:=Catalog(project,root)
+    if err!=nil { return nil,err }
+    return TagCatalog(project,root,rows)
 }
 
 func TagCatalog(project,root string,rows []Record) (map[string]any,error) {
