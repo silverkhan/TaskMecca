@@ -35,7 +35,7 @@ func run(args []string) int {
         root,err:=filepath.Abs(".")
         if err!=nil { fmt.Fprintln(os.Stderr,err); return 2 }
         _ = maintenance.RegisterProject(root)
-        if err:=webui.Run(webui.Config{Project:root,Port:8765,OpenBrowser:true,Version:version}); err!=nil {
+        if err:=webui.Run(webui.Config{Project:root,Host:"auto",Port:8765,OpenBrowser:true,Version:version}); err!=nil {
             fmt.Fprintln(os.Stderr,err); return 2
         }
         return 0
@@ -55,6 +55,7 @@ func run(args []string) int {
     watch := false
     once := false
     noOpen := false
+    host := "auto"
     port := 8765
     interval := 1.0
     positional := []string{}
@@ -80,6 +81,9 @@ func run(args []string) int {
             i++
         } else if args[i] == "--protocol" && i+1 < len(args) {
             protocol = args[i+1]
+            i++
+        } else if args[i] == "--host" && i+1 < len(args) {
+            host = args[i+1]
             i++
         } else if args[i] == "--port" && i+1 < len(args) {
             parsed,parseErr:=strconv.Atoi(args[i+1])
@@ -344,12 +348,12 @@ func run(args []string) int {
     case "web":
         if len(positional) != 0 { fmt.Fprintln(os.Stderr, "web takes no positional arguments"); return 2 }
         _ = maintenance.RegisterProject(root)
-        err=webui.Run(webui.Config{Project:root,Root:rootOption,Port:port,OpenBrowser:!noOpen,Version:version})
+        err=webui.Run(webui.Config{Project:root,Root:rootOption,Host:host,Port:port,OpenBrowser:!noOpen,Version:version})
     case "monitor":
         if len(positional) != 0 { fmt.Fprintln(os.Stderr, "monitor takes no positional arguments"); return 2 }
         if !once && !jsonOutput {
             _ = maintenance.RegisterProject(root)
-            err=webui.Run(webui.Config{Project:root,Root:rootOption,Port:port,OpenBrowser:!noOpen,Version:version})
+            err=webui.Run(webui.Config{Project:root,Root:rootOption,Host:host,Port:port,OpenBrowser:!noOpen,Version:version})
             break
         }
         if interval<0.5 { interval=0.5 }
