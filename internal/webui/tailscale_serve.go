@@ -131,25 +131,7 @@ func ensureTailscaleServe(dns string,port int) (url string,managed bool,err erro
 
     matching,occupied:=serveConfigState(status,dns,port)
     if matching {
-        managed:=ownershipMatches(dns,port)
-        if managed {
-            if err:=refreshOwnedTailscaleServe(dns,port); err!=nil {
-                return "",false,err
-            }
-            status,err=readTailscaleServeStatus()
-            if err!=nil { return "",false,err }
-            matching,_=serveConfigState(status,dns,port)
-            if !matching {
-                return "",false,fmt.Errorf("Tailscale Serve refresh completed but port %d is no longer registered",port)
-            }
-        } else {
-            // Re-issue the identical Serve command to wake a persisted but stale
-            // proxy listener without taking ownership of a user-managed route.
-            if _,err:=applyTailscaleServe(port); err!=nil {
-                return "",false,err
-            }
-        }
-        return fmt.Sprintf("https://%s:%d/",dns,port),managed,nil
+        return fmt.Sprintf("https://%s:%d/",dns,port),ownershipMatches(dns,port),nil
     }
     if occupied {
         return "",false,fmt.Errorf("Tailscale Serve port %d is already configured for another service",port)
