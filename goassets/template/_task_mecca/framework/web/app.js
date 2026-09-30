@@ -1695,6 +1695,7 @@ function route(fromPop=false) {
     state.contentRevision='';
     state.pendingContentUpdate=false;
     state.pendingContentReason='';
+    if(state.project)queueMicrotask(()=>refreshVersionInfo(false));
   }
   if(state.project){
     state.lastProject=state.project;
