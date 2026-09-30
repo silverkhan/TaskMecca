@@ -32,6 +32,17 @@ func notificationEventExists(events []map[string]any,id string) bool {
     return false
 }
 
+func ReadNotificationEvents(project string) ([]map[string]any,error) {
+    path:=filepath.Join(project,"_task_mecca",".runtime","notification_events.json")
+    data,err:=os.ReadFile(path)
+    if os.IsNotExist(err) { return []map[string]any{},nil }
+    if err!=nil { return nil,err }
+    journal:=notificationJournal{}
+    if err:=json.Unmarshal(data,&journal); err!=nil { return nil,err }
+    if journal.Events==nil { return []map[string]any{},nil }
+    return append([]map[string]any{},journal.Events...),nil
+}
+
 func NotificationEvents(project string,items map[string]map[string]any) ([]map[string]any,error) {
     path:=filepath.Join(project,"_task_mecca",".runtime","notification_events.json")
     journal:=notificationJournal{
