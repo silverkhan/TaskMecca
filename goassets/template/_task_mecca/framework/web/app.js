@@ -313,6 +313,11 @@ function accessBanner() {
   if (!a.restriction_current) return '';
   return `<div class="global-access danger"><div><strong>${esc(t('dispatchDisabled'))}</strong><span>${esc(t('enableFullAccess'))}</span></div><code>uv run _task_mecca/collab_tools.py preflight --require-full-access --json</code></div>`;
 }
+function diagnosticBanner() {
+  const rows=state.snapshot?.diagnostics||[];
+  if(!rows.length)return '';
+  return `<div class="global-access"><div><strong>Partial diagnostics</strong><span>${esc(rows.map(x=>`${x.component}: ${x.error}`).join(' · '))}</span></div></div>`;
+}
 
 function saveOpenProjects() {
   localStorage.setItem('task-mecca-open-projects',JSON.stringify(state.openProjects));
@@ -688,13 +693,14 @@ function render() {
       c.innerHTML=hubView(); bindHubActions(); return;
     }
     if (state.loadError) {
-      c.innerHTML=`<div class="load-error"><h2>Project dashboard could not be loaded</h2><p>${esc(state.loadError)}</p><button class="action-btn" id="backToHubBtn">Back to Projects</button></div>`;
+      c.innerHTML=`<div class="load-error"><h2>Project dashboard could not be loaded</h2><p><strong>Project</strong> ${esc(state.project||'-')}</p><p>${esc(state.loadError)}</p><div class="project-actions"><button class="action-btn secondary" id="retryProjectBtn">Retry</button><button class="action-btn" id="backToHubBtn">Back to Projects</button></div></div>`;
+      $('#retryProjectBtn')?.addEventListener('click',refresh);
       $('#backToHubBtn')?.addEventListener('click',()=>{state.project='';state.backlog='';state.view='hub';history.pushState({},'','/?view=hub');render();refresh();});
       return;
     }
     c.innerHTML=`<div class="loading">${esc(t('loading'))}</div>`; return;
   }
-  const gate=accessBanner();
+  const gate=accessBanner()+diagnosticBanner();
   if (state.detail) {
     const t=state.snapshot.all_items[state.detail] || state.snapshot.done_items?.find(x=>x.id===state.detail);
     c.innerHTML=gate+(t?detailView(t):`<div class="empty">${esc(t('taskNotFound'))}</div>`);
@@ -729,6 +735,13 @@ async function refresh() {
     const hubR=await fetch('/api/hub',{cache:'no-store'});
     if(hubR.ok) state.hub=await hubR.json();
   } catch(_) {}
+  if(state.view==='hub'){
+    state.snapshot=null;
+    state.loadError='';
+    $('#connectionDot').style.background='var(--ok)';
+    render();
+    return;
+  }
   try {
     const r=await fetch('/api/snapshot'+qs,{cache:'no-store'});
     if(!r.ok){
