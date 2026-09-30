@@ -12,7 +12,7 @@ From the project root:
 task-mecca web
 ```
 
-The browser dashboard is read-only and localhost-only. It shows backlog state, subagent workload, lifecycle timing, Needs Attention, and access observations.
+The browser dashboard is read-only. `task-mecca web` uses `--host auto` by default: when a Tailscale IPv4 address is available it binds to that address, otherwise it falls back to `127.0.0.1`. Use `--host <ip>` to override explicitly. It shows backlog state, subagent workload, lifecycle timing, Needs Attention, and access observations.
 
 Backlog ledgers are detected automatically under `_task_mecca`. New projects use canonical `data/backlog/`; compatibility remains for names beginning with `backlog`, including `data/backlog_b` and legacy `backlog_b`. Canonical `data/backlog/` has highest priority. The top-bar **Backlog** selector can override the choice; **Auto** restores automatic selection.
 
