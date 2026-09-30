@@ -129,8 +129,12 @@ func DashboardSnapshot(project,root string,recentDoneLimit int) (map[string]any,
     readyReport,err:=Ready(project,root)
     if err!=nil { return nil,err }
     hold:=HoldReview(rows)
+    diagnostics:=[]map[string]string{}
     timings,err:=LifecycleTimings(project,root)
-    if err!=nil { return nil,err }
+    if err!=nil {
+        diagnostics=append(diagnostics,map[string]string{"component":"lifecycle","error":err.Error()})
+        timings=map[string]map[string]any{}
+    }
     activity:=runtimeActivity(project,rows,timings)
 
     readyIDs:=map[string]bool{}
@@ -241,17 +245,26 @@ func DashboardSnapshot(project,root string,recentDoneLimit int) (map[string]any,
     sort.Strings(rest)
     for _,id:=range rest { appendTree(id,0,nil) }
 
-    doctor,err:=Doctor(project,root,false)
-    if err!=nil { return nil,err }
-    health,_:=doctor["checks"].(map[string]any)
-    if health==nil { health=map[string]any{} }
+    health:=map[string]any{}
+    doctor,doctorErr:=Doctor(project,root,false)
+    if doctorErr!=nil {
+        diagnostics=append(diagnostics,map[string]string{"component":"doctor","error":doctorErr.Error()})
+    } else if checks,ok:=doctor["checks"].(map[string]any); ok && checks!=nil {
+        health=checks
+    }
     health["hold_review"]=hold["candidates"]
     health["runtime_metadata"]=runtimeFindings(rows)
-    unrecognized,err:=unrecognizedFiles(project,root)
-    if err!=nil { return nil,err }
+    unrecognized,unrecognizedErr:=unrecognizedFiles(project,root)
+    if unrecognizedErr!=nil {
+        diagnostics=append(diagnostics,map[string]string{"component":"unrecognized_files","error":unrecognizedErr.Error()})
+        unrecognized=[]map[string]string{}
+    }
     workload:=workloadFrom(rows,readyReport,timings)
-    selected,err:=Select(project,root)
-    if err!=nil { return nil,err }
+    selected,selectErr:=Select(project,root)
+    if selectErr!=nil {
+        diagnostics=append(diagnostics,map[string]string{"component":"backlog_selection","error":selectErr.Error()})
+        selected=""
+    }
     if selected=="" { selected=filepath.Join(project,"_task_mecca","data","backlog") }
     access:=AccessObservation(project)
     attention:=[]map[string]any{}
@@ -276,7 +289,7 @@ func DashboardSnapshot(project,root string,recentDoneLimit int) (map[string]any,
         "backlog_presence":presence,"tree_rows":treeRows,"all_items":allItems,
         "active_ids":activeIDs,"unrecognized_files":unrecognized,"done_items":completed,
         "health":health,"workload":workload,"task_timings":timings,"activity":activity,
-        "hold_review":hold,"access":access,"attention":attention,
+        "hold_review":hold,"access":access,"attention":attention,"diagnostics":diagnostics,
         "counts":map[string]any{
             "working":countItemsByFileState(allItems,"doing"),"ready":len(readyIDs),
             "blocked":len(blocked),"hold":countItemsByFileState(allItems,"hold"),
