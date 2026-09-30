@@ -22,7 +22,7 @@ func TestHandlerServesDashboardAPIsAndAssets(t *testing.T) {
 `
     if err:=os.WriteFile(filepath.Join(ledger,"000001.A-1.web.todo.md"),[]byte(task),0644); err!=nil { t.Fatal(err) }
 
-    handler,err:=Handler(root,"")
+    handler,err:=Handler(root,"","0.2.4")
     if err!=nil { t.Fatal(err) }
 
     cases:=[]struct{
