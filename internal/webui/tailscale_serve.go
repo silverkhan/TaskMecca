@@ -9,6 +9,8 @@ import (
     "strings"
 )
 
+const tailscaleServeHTTPSPort = 443
+
 type tailscaleServeTCPHandler struct {
     HTTPS bool `json:"HTTPS"`
 }
@@ -28,13 +30,24 @@ type tailscaleServeStatus struct {
 
 type tailscaleServeOwnership struct {
     DNSName string `json:"dns_name"`
-    HTTPSPort int `json:"https_port"`
-    BackendPort int `json:"backend_port"`
+    HTTPSPort int `json:"https_port,omitempty"`
+    BackendPort int `json:"backend_port,omitempty"`
     Target string `json:"target"`
+
+    // Port is the 0.2.24 ownership field. Keep it temporarily so upgrades can
+    // remove the old :18765 Serve mapping before switching to standard HTTPS.
+    LegacyPort int `json:"port,omitempty"`
 }
 
 func tailscaleServeTarget(backendPort int) string {
     return fmt.Sprintf("http://127.0.0.1:%d",backendPort)
+}
+
+func tailscaleServeURL(dns string,httpsPort int) string {
+    if httpsPort==443 {
+        return fmt.Sprintf("https://%s/",dns)
+    }
+    return fmt.Sprintf("https://%s:%d/",dns,httpsPort)
 }
 
 func tailscaleServeOwnershipPath() string {
@@ -80,11 +93,19 @@ func readServeOwnership() (tailscaleServeOwnership,bool) {
     if err!=nil { return tailscaleServeOwnership{},false }
     var owned tailscaleServeOwnership
     if json.Unmarshal(data,&owned)!=nil { return tailscaleServeOwnership{},false }
+
+    if owned.HTTPSPort==0 && owned.LegacyPort>0 {
+        owned.HTTPSPort=owned.LegacyPort
+    }
+    if owned.BackendPort==0 && owned.LegacyPort>0 {
+        owned.BackendPort=owned.LegacyPort
+    }
     return owned,true
 }
 
 func writeServeOwnership(owned tailscaleServeOwnership) error {
     if err:=os.MkdirAll(webServiceDir(),0755); err!=nil { return err }
+    owned.LegacyPort=0
     data,err:=json.MarshalIndent(owned,"","  ")
     if err!=nil { return err }
     tmp:=tailscaleServeOwnershipPath()+".tmp"
@@ -101,17 +122,50 @@ func ownershipMatches(dns string,httpsPort,backendPort int) bool {
         strings.TrimRight(owned.Target,"/")==tailscaleServeTarget(backendPort)
 }
 
+func disableServeMapping(dns string,httpsPort,backendPort int) error {
+    status,err:=readTailscaleServeStatus()
+    if err!=nil { return err }
+    matching,_:=serveConfigState(status,dns,httpsPort,backendPort)
+    if !matching { return nil }
+
+    cmd,err:=tailscaleCommand("serve","--yes","--https="+strconv.Itoa(httpsPort),"off")
+    if err!=nil { return err }
+    output,cmdErr:=cmd.CombinedOutput()
+    if cmdErr!=nil {
+        msg:=strings.TrimSpace(string(output))
+        if msg!="" { return fmt.Errorf("unable to disable Tailscale Serve: %s",msg) }
+        return fmt.Errorf("unable to disable Tailscale Serve: %w",cmdErr)
+    }
+    return nil
+}
+
+func migrateLegacyServeOwnership(dns string,backendPort int) error {
+    owned,ok:=readServeOwnership()
+    if !ok { return nil }
+
+    if owned.DNSName!=dns || owned.BackendPort!=backendPort || owned.HTTPSPort==tailscaleServeHTTPSPort {
+        return nil
+    }
+
+    if err:=disableServeMapping(owned.DNSName,owned.HTTPSPort,owned.BackendPort); err!=nil {
+        return fmt.Errorf("unable to remove legacy Tailscale Serve mapping on HTTPS port %d: %w",owned.HTTPSPort,err)
+    }
+    return os.Remove(tailscaleServeOwnershipPath())
+}
+
 func ensureTailscaleServe(dns string,httpsPort,backendPort int) (url string,managed bool,err error) {
     if dns=="" { return "",false,fmt.Errorf("Tailscale DNS name is unavailable") }
+
+    if err:=migrateLegacyServeOwnership(dns,backendPort); err!=nil && !os.IsNotExist(err) {
+        return "",false,err
+    }
+
     status,err:=readTailscaleServeStatus()
     if err!=nil { return "",false,err }
 
     matching,occupied:=serveConfigState(status,dns,httpsPort,backendPort)
     if matching {
-        if httpsPort==443 {
-        return fmt.Sprintf("https://%s/",dns),ownershipMatches(dns,httpsPort,backendPort),nil
-    }
-    return fmt.Sprintf("https://%s:%d/",dns,httpsPort),ownershipMatches(dns,httpsPort,backendPort),nil
+        return tailscaleServeURL(dns,httpsPort),ownershipMatches(dns,httpsPort,backendPort),nil
     }
     if occupied {
         return "",false,fmt.Errorf("Tailscale Serve HTTPS port %d is already configured for another service",httpsPort)
@@ -138,32 +192,27 @@ func ensureTailscaleServe(dns string,httpsPort,backendPort int) (url string,mana
         return "",false,fmt.Errorf("Tailscale Serve command completed but HTTPS port %d was not registered",httpsPort)
     }
 
-    owned:=tailscaleServeOwnership{DNSName:dns,HTTPSPort:httpsPort,BackendPort:backendPort,Target:target}
+    owned:=tailscaleServeOwnership{
+        DNSName:dns,
+        HTTPSPort:httpsPort,
+        BackendPort:backendPort,
+        Target:target,
+    }
     if err:=writeServeOwnership(owned); err!=nil {
         return "",false,fmt.Errorf("Tailscale Serve configured but ownership state could not be saved: %w",err)
     }
-    if httpsPort==443 {
-        return fmt.Sprintf("https://%s/",dns),true,nil
-    }
-    return fmt.Sprintf("https://%s:%d/",dns,httpsPort),true,nil
+    return tailscaleServeURL(dns,httpsPort),true,nil
 }
 
 func disableOwnedTailscaleServe(backendPort int) error {
     owned,ok:=readServeOwnership()
     if !ok || owned.BackendPort!=backendPort { return nil }
 
-    status,err:=readTailscaleServeStatus()
-    if err!=nil { return err }
-    matching,_:=serveConfigState(status,owned.DNSName,owned.HTTPSPort,owned.BackendPort)
-    if matching {
-        cmd,err:=tailscaleCommand("serve","--yes","--https="+strconv.Itoa(owned.HTTPSPort),"off")
-        if err!=nil { return err }
-        output,cmdErr:=cmd.CombinedOutput()
-        if cmdErr!=nil {
-            msg:=strings.TrimSpace(string(output))
-            if msg!="" { return fmt.Errorf("unable to disable Tailscale Serve: %s",msg) }
-            return fmt.Errorf("unable to disable Tailscale Serve: %w",cmdErr)
-        }
+    if err:=disableServeMapping(owned.DNSName,owned.HTTPSPort,owned.BackendPort); err!=nil {
+        return err
     }
-    return os.Remove(tailscaleServeOwnershipPath())
+    if err:=os.Remove(tailscaleServeOwnershipPath()); err!=nil && !os.IsNotExist(err) {
+        return err
+    }
+    return nil
 }
