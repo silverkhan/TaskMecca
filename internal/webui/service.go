@@ -8,6 +8,7 @@ import (
     "errors"
     "fmt"
     "io"
+    "net"
     "net/http"
     "os"
     "os/exec"
@@ -102,6 +103,17 @@ func healthState(state ServiceState) bool {
     return fmt.Sprint(payload["instance_id"])==state.InstanceID
 }
 
+func IsTailscaleHost(host string) bool {
+    return isTailscaleIPv4(net.ParseIP(strings.TrimSpace(host)))
+}
+
+func NormalizeManagedHost(host string) string {
+    host=strings.TrimSpace(host)
+    if host=="" || strings.EqualFold(host,"auto") { return "auto" }
+    if IsTailscaleHost(host) { return "auto" }
+    return host
+}
+
 func ServiceStatus() ServiceState {
     state,err:=readServiceState()
     if err!=nil { return ServiceState{} }
@@ -188,7 +200,9 @@ func StopService() (ServiceState,error) {
 func RestartService(config Config) (ServiceState,error) {
     current:=serviceStatusWithToken()
     if current.Running {
-        if config.Host=="" || config.Host=="auto" { config.Host=current.Host }
+        if config.Host=="" || config.Host=="auto" {
+            config.Host=NormalizeManagedHost(current.Host)
+        }
         if config.Port<=0 || config.Port==DefaultPort { config.Port=current.Port }
         if _,err:=StopService(); err!=nil { return ServiceState{},err }
     }
