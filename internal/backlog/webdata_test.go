@@ -42,7 +42,7 @@ func TestBacklogPagePaginatesFiltersAndOmitsRawMarkdown(t *testing.T) {
     writeWebTask(t,folder,"000001.A-1.alpha.todo.md","# A-1 Alpha\n- Tags: area:backend\n- 설명: alpha search token\n")
     writeWebTask(t,folder,"000002.A-2.beta.doing.md","# A-2 Beta\n- Agent: /root/controller/pairi\n- Tags: area:backend\n")
     writeWebTask(t,folder,"000003.A-3.gamma.done.md","# A-3 Gamma\n- Tags: area:frontend\n")
-    writeWebTask(t,folder,"000004.A-4.delta.done.md","# A-4 Delta\n- Tags: area:backend\n")
+    writeWebTask(t,folder,"000004.A-4.delta.done.md","# A-4 Delta\n- 출처: [GitHub · silverkhan/TaskMecca#84](https://github.com/silverkhan/TaskMecca/issues/84)\n- Tags: area:backend\n")
     if _,err:=EnsureTagRegistry(project); err!=nil { t.Fatal(err) }
 
     page,err:=BacklogPage(project,folder,1,1,[]string{"done"},[]string{"area:backend"},"","id_desc")
@@ -52,6 +52,8 @@ func TestBacklogPagePaginatesFiltersAndOmitsRawMarkdown(t *testing.T) {
     if len(items)!=1 || items[0]["id"]!="A-4" { t.Fatalf("items=%+v",items) }
     if _,exists:=items[0]["raw_markdown"]; exists { t.Fatal("paged summary leaked raw_markdown") }
     if _,exists:=items[0]["lifecycle"]; exists { t.Fatal("paged summary leaked lifecycle detail") }
+    source,ok:=items[0]["source"].(map[string]string)
+    if !ok || source["provider"]!="GitHub" || source["reference"]!="silverkhan/TaskMecca#84" || source["url"]=="" { t.Fatalf("paged source=%#v",items[0]["source"]) }
 
     searched,err:=BacklogPage(project,folder,1,20,nil,nil,"search token","id_desc")
     if err!=nil { t.Fatal(err) }
