@@ -475,7 +475,7 @@ func Run(config Config) error {
     } else if autoMode && tailscaleIPv4()!="" {
         fmt.Println("tailscale HTTPS: unavailable")
         if tlsError!="" { fmt.Println("  "+tlsError) }
-        fmt.Println("  Enable MagicDNS and HTTPS Certificates in the Tailscale admin DNS settings, then run: task-mecca web restart")
+        fmt.Println("  Direct HTTPS was not verified; inspect: task-mecca web logs")
     }
     if !autoMode { fmt.Println("network: explicit bind · "+bindHost) }
 
