@@ -63,5 +63,4 @@ func listenTailscaleIP(ip string,port int) (net.Listener,error) {
         },
     }
 
-    return lc.Listen(stdcontext.Background(),"tcp4",net.JoinHostPort(ip,strconv.Itoa(port)))
-}
+    // Tailscale itself binds the socket to the utun interface, then listens\n    // on the wildcard address on Darwin. Binding directly to the 100.x address\n    // can create a socket that is not reachable through the Network Extension.\n    return lc.Listen(stdcontext.Background(),"tcp4",net.JoinHostPort("",strconv.Itoa(port)))\n}
