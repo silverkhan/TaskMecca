@@ -154,6 +154,7 @@ func run(args []string) int {
         return 0
     case "init":
         if err = install.Init(root, version); err == nil {
+            _,_ = backlog.EnsureTagRegistry(root)
             _ = maintenance.RegisterProject(root)
             fmt.Printf("Task Mecca %s installed to %s\n", version, filepath.Join(root, "_task_mecca"))
         }
@@ -161,6 +162,7 @@ func run(args []string) int {
         var migration install.MigrationResult
         migration, err = install.MigrateWithResult(root, version)
         if err == nil {
+            _,_ = backlog.EnsureTagRegistry(root)
             _ = maintenance.RegisterProject(root)
             fmt.Printf("Task Mecca %s migrated\n", version)
             if migration.InstructionRefreshRequired {
