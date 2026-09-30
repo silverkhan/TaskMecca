@@ -1,6 +1,8 @@
 const state = {
   snapshot: null,
-  view: 'backlog',
+  view: 'hub',
+  hub: null,
+  project: new URLSearchParams(location.search).get('project') || '',
   statusFilters: ['all'],
   query: '',
   detail: null,
@@ -349,7 +351,7 @@ function setStatusFilter(key) {
 function nav() {
   const c = state.snapshot?.counts || {};
   const total = Object.keys(state.snapshot?.all_items || {}).length;
-  $('#stateNav').innerHTML = `<div class="sidebar-label">${esc(t('backlog').toUpperCase())}</div>` +
+  $('#stateNav').innerHTML = `<div class="sidebar-label">TASK MECCA</div><button class="nav-item ${state.view==='hub'?'active':''}" data-view="hub" title="Projects"><span class="nav-main"><span class="nav-icon" aria-hidden="true">⌂</span><span class="nav-text">Projects</span></span></button><div class="sidebar-label">${esc(t('backlog').toUpperCase())}</div>` +
     `<button class="nav-item ${state.view==='backlog'?'active':''}" data-view="backlog" title="${esc(t('backlog'))}"><span class="nav-main"><span class="nav-icon" aria-hidden="true">☷</span><span class="nav-text">${esc(t('backlog'))}</span></span><span class="count">${total}</span></button>`;
   $('#workloadCount').textContent = (state.snapshot?.workload?.agents || []).length || '';
   $('#attentionCount').textContent = c.attention || '';
@@ -361,10 +363,21 @@ function nav() {
       state.detail = null;
       state.selectedIndex = 0;
       state.listPage = 1;
-      history.pushState({},'',state.view==='backlog'?backlogUrl():`/?view=${state.view}`);
+      history.pushState({},'',state.view==='hub'?'/?view=hub':state.view==='backlog'?backlogUrl():`/?view=${state.view}${state.project?`&project=${encodeURIComponent(state.project)}`:''}`);
       render();
     };
   });
+}
+
+function hubView() {
+  const h=state.hub||{}, cli=h.cli||{}, projects=h.projects||[];
+  const cliStatus=cli.update_available?`<span class="badge warn">${esc(cli.current||'-')} → ${esc(cli.latest||'-')}</span>`:`<span class="badge">${esc(cli.current||'-')}</span>`;
+  return `<div class="page-head"><div><div class="eyebrow">TASK MECCA</div><h1>Projects</h1><p class="summary">Global Hub · CLI와 프로젝트별 framework 상태를 관리합니다.</p></div><div class="hub-cli"><strong>CLI</strong> ${cliStatus} ${cli.update_available?'<button class="action-btn" id="upgradeBtn">Upgrade</button>':''}</div></div>${cli.error?`<div class="timing-note"><strong>Version check</strong><span>${esc(cli.error)}</span></div>`:''}<div class="project-grid">${projects.map(p=>{const c=p.counts||{};return `<article class="project-card"><div class="project-card-head"><div><div class="eyebrow">${esc(p.path)}</div><h2>${esc(p.name)}</h2></div><span class="badge">${esc(p.framework_version||'unknown')}</span></div><div class="project-stats"><span><strong>${c.working||0}</strong> working</span><span><strong>${c.ready||0}</strong> ready</span><span><strong>${c.hold||0}</strong> hold</span></div><div class="project-actions">${p.migration_available?'<button class="action-btn secondary" data-migrate="'+esc(p.path)+'">Migrate</button>':''}<button class="action-btn" data-open-project="${esc(p.path)}">Open</button></div></article>`}).join('')||'<div class="empty">등록된 Task Mecca 프로젝트가 없습니다.</div>'}</div>`;
+}
+async function bindHubActions() {
+  document.querySelectorAll('[data-open-project]').forEach(b=>b.onclick=()=>{location.href='/?project='+encodeURIComponent(b.dataset.openProject)+'&view=backlog'});
+  document.querySelectorAll('[data-migrate]').forEach(b=>b.onclick=async()=>{b.disabled=true;const r=await fetch('/api/migrate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({project:b.dataset.migrate})});const body=await r.json();if(!r.ok){alert(body.error||'Migration failed');}await refresh();});
+  const up=$('#upgradeBtn'); if(up) up.onclick=async()=>{up.disabled=true;up.textContent='Upgrading…';const r=await fetch('/api/upgrade',{method:'POST'});const body=await r.json();if(!r.ok){alert(body.error||'Upgrade failed');up.disabled=false;up.textContent='Upgrade';return;}alert(body.to&&body.to!==body.from?`Upgraded to ${body.to}. Restart Task Mecca.`:'Already current.');};
 }
 
 function matchesStatusFilter(t, key) {
@@ -441,7 +454,7 @@ function attentionView() {
 }
 function manualView() {
   const m=state.manualByLanguage[state.language]||{}, tab=state.manualTab||'quick', body=tab==='operations'?(m.session_guide||''):(m.readme||'');
-  return `<div class="manual-shell"><div class="manual-hero"><div class="eyebrow">${esc(t('help'))}</div><h1>${esc(t('manual'))}</h1><p class="summary">${esc(t('manualIntro'))}</p></div><div class="manual-callout"><strong>${esc(t('dashboardLaunch'))}</strong><div class="copy-code-wrap compact"><button class="copy-code-btn" type="button" aria-label="${esc(t('copyCode'))}" title="${esc(t('copyCode'))}">${COPY_ICON}</button><pre><code>uv run _task_mecca/collab_tools.py web</code></pre></div></div><div class="shortcut-manual"><strong>${esc(t('keyboard'))}</strong><span><kbd>↑/↓</kbd> ${esc(t('move'))}</span><span><kbd>Enter/→</kbd> ${esc(t('open'))}</span><span><kbd>←/Esc</kbd> ${esc(t('back'))}</span><span><kbd>/</kbd> ${esc(t('search'))}</span><span><kbd>PgUp/PgDn</kbd> ${esc(t('page'))}</span></div><div class="manual-tabs"><button class="manual-tab ${tab==='quick'?'active':''}" data-manual-tab="quick">${esc(t('quickStart'))}</button><button class="manual-tab ${tab==='operations'?'active':''}" data-manual-tab="operations">${esc(t('detailedGuide'))}</button></div><div class="section markdown">${markdown(body||t('manualLoading'),{copyCode:true})}</div></div>`;
+  return `<div class="manual-shell"><div class="manual-hero"><div class="eyebrow">${esc(t('help'))}</div><h1>${esc(t('manual'))}</h1><p class="summary">${esc(t('manualIntro'))}</p></div><div class="manual-callout"><strong>${esc(t('dashboardLaunch'))}</strong><div class="copy-code-wrap compact"><button class="copy-code-btn" type="button" aria-label="${esc(t('copyCode'))}" title="${esc(t('copyCode'))}">${COPY_ICON}</button><pre><code>task-mecca web</code></pre></div></div><div class="shortcut-manual"><strong>${esc(t('keyboard'))}</strong><span><kbd>↑/↓</kbd> ${esc(t('move'))}</span><span><kbd>Enter/→</kbd> ${esc(t('open'))}</span><span><kbd>←/Esc</kbd> ${esc(t('back'))}</span><span><kbd>/</kbd> ${esc(t('search'))}</span><span><kbd>PgUp/PgDn</kbd> ${esc(t('page'))}</span></div><div class="manual-tabs"><button class="manual-tab ${tab==='quick'?'active':''}" data-manual-tab="quick">${esc(t('quickStart'))}</button><button class="manual-tab ${tab==='operations'?'active':''}" data-manual-tab="operations">${esc(t('detailedGuide'))}</button></div><div class="section markdown">${markdown(body||t('manualLoading'),{copyCode:true})}</div></div>`;
 }
 function workloadView() {
   const w=state.snapshot?.workload||{}, agents=w.agents||[], all=state.snapshot?.all_items||{}, unassigned=w.unassigned_doing||[], released=w.released_holds||[];
@@ -629,8 +642,8 @@ function render() {
     bindCopyButtons(); bindMermaidControls(); bindDetailToc(); renderMermaidDiagrams();
     return;
   }
-  c.innerHTML=gate+(state.view==='manual'?manualView():state.view==='workload'?workloadView():state.view==='attention'?attentionView():state.view==='issues'?issuesView():listView());
-  bindRows();
+  c.innerHTML=(state.view==='hub'?hubView():gate+(state.view==='manual'?manualView():state.view==='workload'?workloadView():state.view==='attention'?attentionView():state.view==='issues'?issuesView():listView()));
+  bindRows(); if(state.view==='hub') bindHubActions();
   if(state.view==='backlog')scheduleAutoListPageSize();
   document.querySelectorAll('[data-manual-tab]').forEach(b=>b.onclick=()=>{state.manualTab=b.dataset.manualTab;render()});
   bindCopyButtons(); bindMermaidControls(); renderMermaidDiagrams();
@@ -648,8 +661,9 @@ async function loadManual(language = state.language, force = false) {
 }
 async function refresh() {
   try {
-    const qs=state.backlog?`?backlog=${encodeURIComponent(state.backlog)}`:'';
-    const r=await fetch('/api/snapshot'+qs,{cache:'no-store'});
+    const params=new URLSearchParams(); if(state.backlog)params.set('backlog',state.backlog); if(state.project)params.set('project',state.project); const qs=params.toString()?`?${params}`:'';
+    const [hubR,r]=await Promise.all([fetch('/api/hub',{cache:'no-store'}),fetch('/api/snapshot'+qs,{cache:'no-store'})]);
+    if(hubR.ok) state.hub=await hubR.json();
     if(!r.ok)throw new Error(r.status);
     state.snapshot=await r.json(); state.lastFetch=Date.now();
     const candidates=state.snapshot?.backlog_selection?.candidates||[];
