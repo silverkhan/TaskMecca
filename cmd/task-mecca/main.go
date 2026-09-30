@@ -121,6 +121,9 @@ func run(args []string) int {
             return 2
         }
     }
+    if webInstanceID!="" && webControlToken!="" {
+        host=webui.NormalizeManagedHost(host)
+    }
     root, err := filepath.Abs(project)
     if err != nil { fmt.Fprintln(os.Stderr, err); return 2 }
     if rootOption != "" {
