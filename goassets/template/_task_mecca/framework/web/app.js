@@ -2,6 +2,7 @@ const state = {
   snapshot: null,
   view: 'hub',
   hub: null,
+  loadError: '',
   project: new URLSearchParams(location.search).get('project') || '',
   statusFilters: ['all'],
   query: '',
@@ -363,6 +364,10 @@ function nav() {
     b.classList.toggle('active', state.view === b.dataset.view);
     b.onclick = () => {
       state.view = b.dataset.view;
+      if (state.view === 'hub') {
+        state.project = '';
+        state.backlog = '';
+      }
       state.detail = null;
       state.selectedIndex = 0;
       state.listPage = 1;
@@ -378,7 +383,7 @@ function hubView() {
   return `<div class="page-head"><div><div class="eyebrow">TASK MECCA</div><h1>Projects</h1><p class="summary">Global Hub · CLI와 프로젝트별 framework 상태를 관리합니다.</p></div><div class="hub-cli"><strong>CLI</strong> ${cliStatus} ${cli.update_available?'<button class="action-btn" id="upgradeBtn">Upgrade</button>':''}</div></div>${cli.error?`<div class="timing-note"><strong>Version check</strong><span>${esc(cli.error)}</span></div>`:''}<div class="project-grid">${projects.map(p=>{const c=p.counts||{};return `<article class="project-card"><div class="project-card-head"><div><div class="eyebrow">${esc(p.path)}</div><h2>${esc(p.name)}</h2></div><span class="badge">${esc(p.framework_version||'unknown')}</span></div><div class="project-stats"><span><strong>${c.working||0}</strong> working</span><span><strong>${c.ready||0}</strong> ready</span><span><strong>${c.hold||0}</strong> hold</span></div><div class="project-actions">${p.migration_available?'<button class="action-btn secondary" data-migrate="'+esc(p.path)+'">Migrate</button>':''}<button class="action-btn" data-open-project="${esc(p.path)}">Open</button></div></article>`}).join('')||'<div class="empty">등록된 Task Mecca 프로젝트가 없습니다.</div>'}</div>`;
 }
 async function bindHubActions() {
-  document.querySelectorAll('[data-open-project]').forEach(b=>b.onclick=()=>{location.href='/?project='+encodeURIComponent(b.dataset.openProject)+'&view=backlog'});
+  document.querySelectorAll('[data-open-project]').forEach(b=>b.onclick=()=>{state.backlog='';localStorage.removeItem('task-mecca-backlog-folder');location.href='/?project='+encodeURIComponent(b.dataset.openProject)+'&view=backlog'});
   document.querySelectorAll('[data-migrate]').forEach(b=>b.onclick=async()=>{b.disabled=true;const r=await fetch('/api/migrate',{method:'POST',headers:{'Content-Type':'application/json','X-Task-Mecca-Action':'1'},body:JSON.stringify({project:b.dataset.migrate})});const body=await r.json();if(!r.ok){alert(body.error||'Migration failed');}await refresh();});
   const up=$('#upgradeBtn'); if(up) up.onclick=async()=>{up.disabled=true;up.textContent='Upgrading…';const r=await fetch('/api/upgrade',{method:'POST',headers:{'X-Task-Mecca-Action':'1'}});const body=await r.json();if(!r.ok){alert(body.error||'Upgrade failed');up.disabled=false;up.textContent='Upgrade';return;}alert(body.to&&body.to!==body.from?`Upgraded to ${body.to}. Restart Task Mecca.`:'Already current.');};
 }
@@ -635,7 +640,17 @@ function toggleSidebar() {
 function render() {
   nav(); translateChrome(); renderAccess(); renderBacklogPicker(); applySidebarState();
   const c=$('#content');
-  if (!state.snapshot) { c.innerHTML=`<div class="loading">${esc(t('loading'))}</div>`; return; }
+  if (!state.snapshot) {
+    if (state.view === 'hub' && state.hub) {
+      c.innerHTML=hubView(); bindHubActions(); return;
+    }
+    if (state.loadError) {
+      c.innerHTML=`<div class="load-error"><h2>Project dashboard could not be loaded</h2><p>${esc(state.loadError)}</p><button class="action-btn" id="backToHubBtn">Back to Projects</button></div>`;
+      $('#backToHubBtn')?.addEventListener('click',()=>{state.project='';state.backlog='';state.view='hub';history.pushState({},'','/?view=hub');render();refresh();});
+      return;
+    }
+    c.innerHTML=`<div class="loading">${esc(t('loading'))}</div>`; return;
+  }
   const gate=accessBanner();
   if (state.detail) {
     const t=state.snapshot.all_items[state.detail] || state.snapshot.done_items?.find(x=>x.id===state.detail);
@@ -663,28 +678,48 @@ async function loadManual(language = state.language, force = false) {
   }
 }
 async function refresh() {
+  const params=new URLSearchParams();
+  if(state.backlog)params.set('backlog',state.backlog);
+  if(state.project)params.set('project',state.project);
+  const qs=params.toString()?`?${params}`:'';
   try {
-    const params=new URLSearchParams(); if(state.backlog)params.set('backlog',state.backlog); if(state.project)params.set('project',state.project); const qs=params.toString()?`?${params}`:'';
-    const [hubR,r]=await Promise.all([fetch('/api/hub',{cache:'no-store'}),fetch('/api/snapshot'+qs,{cache:'no-store'})]);
+    const hubR=await fetch('/api/hub',{cache:'no-store'});
     if(hubR.ok) state.hub=await hubR.json();
-    if(!r.ok)throw new Error(r.status);
-    state.snapshot=await r.json(); state.lastFetch=Date.now();
+  } catch(_) {}
+  try {
+    const r=await fetch('/api/snapshot'+qs,{cache:'no-store'});
+    if(!r.ok){
+      let detail='';
+      try { const body=await r.json(); detail=body.error||''; } catch(_) {}
+      throw new Error(detail||`HTTP ${r.status}`);
+    }
+    state.snapshot=await r.json();
+    state.loadError='';
+    state.lastFetch=Date.now();
     const candidates=state.snapshot?.backlog_selection?.candidates||[];
     if(state.backlog && !candidates.some(c=>c.path===state.backlog)){
-      state.backlog=''; localStorage.removeItem('task-mecca-backlog-folder');
+      state.backlog='';
+      localStorage.removeItem('task-mecca-backlog-folder');
     }
     $('#connectionDot').style.background='var(--ok)';
-    await loadManual(); render();
+    await loadManual();
+    render();
   } catch(e) {
-    $('#connectionDot').style.background='var(--danger)'; $('#snapshotAge').textContent=t('disconnected');
+    state.snapshot=null;
+    state.loadError=String(e?.message||e||'Unknown error');
+    $('#connectionDot').style.background='var(--danger)');
+    $('#snapshotAge').textContent=t('disconnected');
+    render();
   }
 }
 function route() {
   const m=location.pathname.match(/^\/tasks\/([^/]+)/);
   state.detail=m?decodeURIComponent(m[1]).toUpperCase():null;
   const p=new URLSearchParams(location.search);
+  state.project=p.get('project')||'';
   if (!state.detail) {
-    state.view=p.get('view')||'backlog';
+    state.view=p.get('view')||(state.project?'backlog':'hub');
+    if(state.view==='hub') state.project='';
     if (state.view === 'backlog') {
       const legacy=p.get('state');
       const raw=p.get('filter');
