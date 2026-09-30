@@ -251,11 +251,17 @@ func TagDefine(project,canonical,description,aliases string) (TagDefinition,erro
     registry,err:=EnsureTagRegistry(project)
     if err!=nil { return TagDefinition{},err }
     if tagDefinitionIndex(registry,normalized)>=0 { return TagDefinition{},fmt.Errorf("tag already exists: %s",normalized) }
+    requestedAliases:=splitAliases(aliases)
+    for _,alias:=range requestedAliases {
+        if existing,matched,ok:=resolveTagDefinition(registry,alias); ok {
+            return TagDefinition{},fmt.Errorf("alias %q already resolves to %s via %s",alias,existing.Canonical,matched)
+        }
+    }
     now:=time.Now().UTC().Format(time.RFC3339)
     parts:=strings.SplitN(normalized,":",2)
     row:=TagDefinition{
         Canonical:normalized,Namespace:parts[0],Name:parts[1],
-        Description:strings.TrimSpace(description),Aliases:splitAliases(aliases),
+        Description:strings.TrimSpace(description),Aliases:requestedAliases,
         Status:"active",CreatedAt:now,UpdatedAt:now,
     }
     registry.Tags=append(registry.Tags,row)
@@ -551,9 +557,12 @@ func TagTasks(project,root,expr string) ([]map[string]any,error) {
     for _,andPart:=range strings.Split(expr,",") {
         choices:=[]string{}
         for _,orPart:=range strings.Split(andPart,"|") {
-            resolved,_,ok:=resolveTagDefinition(registry,strings.TrimSpace(orPart))
+            token:=strings.TrimSpace(orPart)
+            resolved,_,ok:=resolveTagDefinition(registry,token)
             if ok { choices=append(choices,resolved.Canonical); continue }
-            if normalized,normErr:=NormalizeTag(orPart); normErr==nil { choices=append(choices,normalized) }
+            normalized,normErr:=NormalizeTag(token)
+            if normErr!=nil { return nil,fmt.Errorf("invalid tag expression token %q: %w",token,normErr) }
+            choices=append(choices,normalized)
         }
         if len(choices)>0 { groups=append(groups,dedupeSorted(choices)) }
     }
