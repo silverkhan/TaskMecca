@@ -304,6 +304,67 @@ function bindCopyButtons() {
 }
 
 function titleOf(t) { return String(t.title || '').replace(new RegExp('^'+t.id+'\\s+','i'),'') || t.id; }
+function summaryText(value) {
+  const raw=String(value||'').trim();
+  if(!raw)return '';
+  const line=raw.split(/\r?\n/).map(x=>x.trim()).find(Boolean)||'';
+  return line
+    .replace(/^#{1,4}\s+/,'')
+    .replace(/^[-*]\s+/,'')
+    .replace(/^\d+\.\s+/,'')
+    .replace(/^\[[ xX]\]\s+/,'')
+    .replace(/\*\*([^*]+)\*\*/g,'$1')
+    .replace(/\[([^\]]+)\]\([^)]+\)/g,'$1')
+    .replace(/`([^`]+)`/g,'$1')
+    .trim();
+}
+function humanSummary(task) {
+  const doc=task.document||{}, raw=doc.summary||{}, req=doc.requirements||{}, reason=task.attention_reason||null;
+  const result=summaryText(doc.result||task.fields?.결과);
+  const notes=summaryText(doc.notes||task.fields?.메모);
+  const purpose=summaryText(raw.purpose)||summaryText(req.goal)||summaryText(task.fields?.설명)||titleOf(task);
+  const change=summaryText(raw.change)||(task.file_state==='done'?result:'');
+  let statusDetail='';
+  if(reason)statusDetail=summaryText(reason.message||reason.title);
+  else statusDetail=summaryText(raw.status_result);
+  if(!statusDetail){
+    if(task.file_state==='done')statusDetail=result||t('summaryDoneFallback');
+    else if(task.file_state==='hold')statusDetail=summaryText(task.fields?.대기)||t('summaryHoldFallback');
+    else if(task.file_state==='doing')statusDetail=notes||t('summaryDoingFallback');
+    else statusDetail=t('summaryTodoFallback');
+  }
+  let follow='';
+  if(reason?.resume_condition)follow=summaryText(reason.resume_condition);
+  if(!follow)follow=summaryText(raw.follow_up);
+  if(!follow&&task.file_state==='hold')follow=summaryText(task.fields?.재개조건);
+  const statusResult=`${stateLabel(task.state)} · ${statusDetail}`;
+  return {purpose,change,status_result:statusResult,follow_up:follow,canonical:Boolean(doc.summary_present)};
+}
+function summaryPreview(value,max=150) {
+  const text=summaryText(value);
+  if(text.length<=max)return text;
+  return text.slice(0,Math.max(0,max-1)).trimEnd()+'…';
+}
+function detailDisclosure(id,label,preview,body,open=false) {
+  return `<details class="section detail-section detail-disclosure" id="${esc(id)}" data-toc-label="${esc(label)}" ${open?'open':''}><summary><div><h2>${esc(label)}</h2>${preview?`<p>${esc(preview)}</p>`:''}</div><span class="detail-disclosure-chevron">⌄</span></summary><div class="detail-disclosure-body">${body}</div></details>`;
+}
+function relationBadges(ids,kind) {
+  const rows=(ids||[]).filter(Boolean);
+  if(!rows.length)return '<span class="summary">-</span>';
+  return rows.map(id=>`<button type="button" class="relation-link badge" data-relation-id="${esc(id)}">${esc(id)} · ${esc(kind)}</button>`).join(' ');
+}
+function humanSummaryCard(task) {
+  const s=humanSummary(task), reason=task.attention_reason||null;
+  const rows=[[t('summaryPurpose'),s.purpose],[t('summaryChange'),s.change],[t('summaryStatusResult'),s.status_result],[t('summaryFollowUp'),s.follow_up]].filter(([,value])=>Boolean(value));
+  const links=[];
+  const kind=task.document?.contract_kind||'legacy';
+  if(kind==='defined')links.push(['background',t('backgroundProblem')],['requirements',t('requirements')],['scope',t('workScope')],['acceptance',t('completionCriteria')]);
+  else if(kind==='simple')links.push(['task-definition',t('taskDefinition')],['acceptance',t('completionCriteria')]);
+  else links.push(['legacy-task',t('legacyDetails')]);
+  links.push(['progress-result',t('progressResult')],['verification',t('verificationDetail')],['related-work',t('relatedWork')],['operations',t('operationsEvidence')],['lifecycle',t('lifecycle')]);
+  const urgent=reason?`<div class="summary-alert ${reason.severity==='danger'?'danger':''}"><strong>${esc(reason.title||t('needsAttention'))}</strong><span>${esc(reason.message||'')}</span>${reason.resume_condition?`<span>${esc(reason.resume_condition)}</span>`:''}</div>`:'';
+  return `<section class="human-summary-card detail-section" id="human-summary" data-toc-label="${esc(t('humanSummary'))}"><div class="human-summary-head"><div><div class="eyebrow">${esc(t('humanSummary'))}</div>${!s.canonical?`<span class="summary-source">${esc(t('summaryFallback'))}</span>`:''}</div></div><div class="human-summary-grid">${rows.map(([label,value])=>`<div class="human-summary-row"><span>${esc(label)}</span><strong>${esc(value)}</strong></div>`).join('')}</div>${urgent}<div class="detail-jump-list"><span>${esc(t('detailLinks'))}</span>${links.map(([id,label])=>`<a href="#${esc(id)}" data-detail-target="${esc(id)}">${esc(label)}</a>`).join('')}</div></section>`;
+}
 function healthLabel(h) { return ({healthy:t('active'),quiet:t('quiet'),stale:t('stale'),worker_missing:t('workerMissing'),runtime_unknown:t('runtimeUnknown'),awaiting_finalize:t('awaitingFinalize'),needs_user:t('needsUser'),'n/a':'-'})[h] || h; }
 function stateLabel(s) { return ({doing:t('working'),ready:t('ready'),blocked:t('blocked'),hold:t('hold'),done:t('done'),todo:t('todo'),needs_user:t('needsUser'),awaiting_finalize:t('awaitingFinalize'),stalled:t('stalled')})[s] || s; }
 function lifecycleEventLabel(label) { return ({Registered:t('eventRegistered'),Started:t('eventStarted'),Hold:t('eventHold'),Completed:t('eventCompleted')})[label] || label; }
