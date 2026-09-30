@@ -117,6 +117,58 @@ func acceptanceItems(value string) []map[string]any {
     return items
 }
 
+func summaryKey(label string) string {
+    normalized:=strings.TrimSpace(label)
+    switch normalized {
+    case "목적","작업의 목적":
+        return "purpose"
+    case "핵심 변경","변경":
+        return "change"
+    case "상태·결과","현재 상태·결과","상태/결과":
+        return "status_result"
+    case "확인·후속","확인·후속 사항","확인/후속":
+        return "follow_up"
+    default:
+        return ""
+    }
+}
+
+func humanSummary(value string) map[string]string {
+    out:=map[string]string{
+        "purpose":"",
+        "change":"",
+        "status_result":"",
+        "follow_up":"",
+    }
+    current:=""
+    chunks:=[]string{}
+    flush:=func(){
+        if current=="" { chunks=nil; return }
+        text:=strings.TrimSpace(strings.Join(chunks,"\n"))
+        if text=="-" { text="" }
+        out[current]=text
+        chunks=nil
+    }
+    for _,line:=range strings.Split(value,"\n") {
+        trimmed:=strings.TrimSpace(line)
+        if strings.HasPrefix(trimmed,"- ") {
+            body:=strings.TrimSpace(strings.TrimPrefix(trimmed,"- "))
+            if i:=strings.Index(body,":"); i>=0 {
+                key:=summaryKey(body[:i])
+                if key!="" {
+                    flush()
+                    current=key
+                    chunks=[]string{strings.TrimSpace(body[i+1:])}
+                    continue
+                }
+            }
+        }
+        if current!="" { chunks=append(chunks,line) }
+    }
+    flush()
+    return out
+}
+
 func documentModel(text string,fields map[string]string) map[string]any {
     sections:=sectionMap(text)
     defined:=subsections(text,"요건 정의서")
@@ -146,10 +198,13 @@ func documentModel(text string,fields map[string]string) map[string]any {
     }
     acceptance:=contract["수용 기준"]
     if kind!="defined" { scopeIn=""; scopeOut="" }
+    summary:=humanSummary(sections["핵심 요약"])
     return map[string]any{
         "schema":schema,
         "contract_kind":kind,
         "sections":sections,
+        "summary":summary,
+        "summary_present":strings.TrimSpace(sections["핵심 요약"])!="",
         "requirements":map[string]any{
             "background":defined["배경 및 문제"],
             "goal":contract["목표"],
