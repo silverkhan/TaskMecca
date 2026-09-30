@@ -145,7 +145,7 @@ func CachedVersionInfo(current string) VersionInfo {
         var cached VersionInfo
         if json.Unmarshal(data,&cached)==nil {
             cached.Current=current
-            if at,err:=time.Parse(time.RFC3339,cached.CheckedAt); err==nil && time.Since(at)<24*time.Hour {
+            if at,err:=time.Parse(time.RFC3339,cached.CheckedAt); err==nil && time.Since(at)<5*time.Minute {
                 cached.UpdateAvailable=newerVersion(cached.Latest,current)
                 return cached
             }
@@ -158,9 +158,7 @@ func CachedVersionInfo(current string) VersionInfo {
     if !versionCheckRunning {
         versionCheckRunning=true
         go func(){
-            fresh:=CheckLatest(current)
-            _=os.MkdirAll(homeDir(),0755)
-            if data,err:=json.MarshalIndent(fresh,"","  "); err==nil { _=os.WriteFile(versionCachePath(),append(data,'\n'),0644) }
+            fresh:=RefreshVersionInfo(current)
             versionCheckMu.Lock(); versionCheckRunning=false; versionCheckMu.Unlock()
         }()
     }
@@ -193,6 +191,28 @@ func compareVersions(left,right string) int {
 func newerVersion(latest,current string) bool {
     if strings.TrimSpace(latest)=="" { return false }
     return compareVersions(latest,current)>0
+}
+
+func RefreshVersionInfo(current string) VersionInfo {
+    fresh:=CheckLatest(current)
+    _=os.MkdirAll(homeDir(),0755)
+    if data,err:=json.MarshalIndent(fresh,"","  "); err==nil {
+        _=os.WriteFile(versionCachePath(),append(data,'\n'),0644)
+    }
+    return fresh
+}
+
+func ReadCachedVersionInfo(current string) VersionInfo {
+    info:=VersionInfo{Current:current}
+    if data,err:=os.ReadFile(versionCachePath()); err==nil {
+        var cached VersionInfo
+        if json.Unmarshal(data,&cached)==nil {
+            cached.Current=current
+            cached.UpdateAvailable=newerVersion(cached.Latest,current)
+            return cached
+        }
+    }
+    return info
 }
 
 func CheckLatest(current string) VersionInfo {
