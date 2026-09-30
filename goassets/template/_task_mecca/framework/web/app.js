@@ -98,6 +98,18 @@ Object.assign(I18N.en,{
 });
 Object.assign(I18N.ko,{tags:'태그',tagExplore:'태그 탐색',tagFilter:'태그 필터',clearTags:'태그 필터 해제',noTags:'태그 없음',tagTotal:'전체',tagActive:'활성',tagHold:'보류',tagDone:'완료',unregisteredTag:'미등록 태그',tagDescription:'설명'});
 Object.assign(I18N.en,{tags:'Tags',tagExplore:'Explore tags',tagFilter:'Tag filter',clearTags:'Clear tag filters',noTags:'No tags',tagTotal:'Total',tagActive:'Active',tagHold:'Hold',tagDone:'Done',unregisteredTag:'Unregistered tag',tagDescription:'Description'});
+Object.assign(I18N.ko,{
+  updateAvailable:'업데이트 가능', currentVersion:'현재 버전', projectMigration:'프로젝트 마이그레이션 필요',
+  newContentAvailable:'새 내용이 업데이트되었습니다.', refreshToSee:'현재 읽고 있는 내용은 유지됩니다. 새 내용을 보려면 새로고침하세요.',
+  refreshNow:'새로고침', runtimeChanged:'작업 상태가 변경되었습니다.', contentChanged:'백로그 내용이 변경되었습니다.',
+  upgrading:'업그레이드 중…', migrating:'마이그레이션 중…'
+});
+Object.assign(I18N.en,{
+  updateAvailable:'Update available', currentVersion:'Current version', projectMigration:'Project migration required',
+  newContentAvailable:'New content is available.', refreshToSee:'Your current reading position is preserved. Refresh when you want to see the update.',
+  refreshNow:'Refresh', runtimeChanged:'Task status changed.', contentChanged:'Backlog content changed.',
+  upgrading:'Upgrading…', migrating:'Migrating…'
+});
 function t(key, vars = {}) {
   const dict = I18N[state.language] || I18N.en;
   let value = dict[key] ?? I18N.en[key] ?? key;
