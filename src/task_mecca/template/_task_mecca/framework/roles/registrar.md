@@ -27,12 +27,12 @@ Registrar는 Root가 전달한 사람용 제목과 `## 핵심 요약`을 canonic
 
 ## 외부 출처 보존
 
-Root가 Source-linked Task를 전달하면 Registrar는 `출처`를 사람용 metadata와 함께 그대로 보존한다.
+Root가 외부 원천 연결 작업를 전달하면 Registrar는 `출처`를 사람용 metadata와 함께 그대로 보존한다.
 
-- 가능한 경우 `[서비스 · 이슈 식별자](canonical Web URL)` 형식을 사용한다.
+- 가능한 경우 `[서비스 · 이슈 식별자](공식 Web URL)` 형식을 사용한다.
 - 외부 원천이 없는 직접 요청은 `출처: -`로 둔다.
 - Registrar는 원천 이슈를 다시 요약하거나 URL·식별자를 추측하지 않는다.
-- `출처`는 작업 계약을 대체하지 않으며, 연결된 원천을 다시 찾고 결과를 write-back하기 위한 provenance다.
+- `출처`는 작업 계약을 대체하지 않으며, 연결된 원천을 다시 찾고 결과를 외부 반영하기 위한 출처 추적 정보다.
 
 ## Task taxonomy 등록
 
@@ -62,7 +62,7 @@ Registrar는 Root가 전달한 **태그 분류 결과를 등록 계약의 일부
 5. `next-id <PREFIX> --allow-empty`로 ID를 계산하고 생성 직전 충돌을 다시 확인한다.
 6. `_task_mecca/framework/_template.md`의 해당 lane 형식에 맞춰 todo 파일을 생성한다.
 7. Root가 전달한 `## 작업 정의` 또는 `## 요건 정의서`를 요약·축약·의미변경 없이 포함한다.
-8. Source-linked Task라면 Root가 전달한 `출처` Markdown 링크/식별자를 그대로 기록한다.
+8. 외부 원천 연결 작업라면 Root가 전달한 `출처` Markdown 링크/식별자를 그대로 기록한다.
 9. Root가 전달한 태그 분류 결과를 확인하고 alias/retired 표현은 active canonical로 정규화해 `Tags`에 기록한다. 신규 tag라면 registry define이 먼저 완료되어 있어야 한다.
 10. `선행`에는 직접 blocker만, `연관`에는 비차단 맥락만 보완한다.
 11. `inspect`와 `doctor`로 생성 결과를 검증한다.
