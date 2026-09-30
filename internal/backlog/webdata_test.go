@@ -93,3 +93,28 @@ func TestAttentionSnapshotDetectsCompletedRuntimeAndPersistsCompletion(t *testin
     for _,event:=range events { if event["task_id"]=="A-1" && event["kind"]=="completed" { found=true } }
     if !found { t.Fatalf("completion event missing: %+v",events) }
 }
+
+
+func TestBacklogRevisionIgnoresMtimeOnlyTouchesButDetectsContentChange(t *testing.T) {
+    project:=t.TempDir()
+    folder:=filepath.Join(project,"_task_mecca","data","backlog")
+    path:=writeWebTask(t,folder,"000001.A-1.alpha.todo.md","# A-1 Alpha\n- 설명: same content\n")
+
+    first,err:=BacklogRevision(project,folder)
+    if err!=nil { t.Fatal(err) }
+    firstRevision:=first["revision"]
+    now:=time.Now().Add(2*time.Second)
+    if err:=os.Chtimes(path,now,now); err!=nil { t.Fatal(err) }
+    second,err:=BacklogRevision(project,folder)
+    if err!=nil { t.Fatal(err) }
+    if second["revision"]!=firstRevision {
+        t.Fatalf("mtime-only touch changed revision: %v -> %v",firstRevision,second["revision"])
+    }
+
+    if err:=os.WriteFile(path,[]byte("# A-1 Alpha\n- 설명: changed content\n"),0644); err!=nil { t.Fatal(err) }
+    third,err:=BacklogRevision(project,folder)
+    if err!=nil { t.Fatal(err) }
+    if third["revision"]==firstRevision {
+        t.Fatalf("content change did not change revision: %v",third["revision"])
+    }
+}

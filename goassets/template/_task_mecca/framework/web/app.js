@@ -35,6 +35,13 @@ const state = {
   manualByLanguage: {},
   notificationSettings: (()=>{ try { return {...{intervention:true,completed:true,stalled:true},...JSON.parse(localStorage.getItem('task-mecca-notifications')||'{}')}; } catch(_) { return {intervention:true,completed:true,stalled:true}; } })(),
   previousTasksByProject: (()=>{ try { const raw=JSON.parse(localStorage.getItem('task-mecca-previous-tasks')||'{}'); return raw&&typeof raw==='object'?raw:{}; } catch(_) { return {}; } })(),
+  versionInfo: null,
+  contentRevision: '',
+  pendingContentUpdate: false,
+  pendingContentReason: '',
+  eventStreamInitialized: false,
+  attentionRevision: '',
+  attentionRevisionKey: '',
 };
 
 
@@ -93,6 +100,18 @@ Object.assign(I18N.en,{
 });
 Object.assign(I18N.ko,{tags:'태그',tagExplore:'태그 탐색',tagFilter:'태그 필터',clearTags:'태그 필터 해제',noTags:'태그 없음',tagTotal:'전체',tagActive:'활성',tagHold:'보류',tagDone:'완료',unregisteredTag:'미등록 태그',tagDescription:'설명'});
 Object.assign(I18N.en,{tags:'Tags',tagExplore:'Explore tags',tagFilter:'Tag filter',clearTags:'Clear tag filters',noTags:'No tags',tagTotal:'Total',tagActive:'Active',tagHold:'Hold',tagDone:'Done',unregisteredTag:'Unregistered tag',tagDescription:'Description'});
+Object.assign(I18N.ko,{
+  updateAvailable:'업데이트 가능', currentVersion:'현재 버전', projectMigration:'프로젝트 마이그레이션 필요',
+  newContentAvailable:'새 내용이 업데이트되었습니다.', refreshToSee:'현재 읽고 있는 내용은 유지됩니다. 새 내용을 보려면 새로고침하세요.',
+  refreshNow:'새로고침', runtimeChanged:'작업 상태가 변경되었습니다.', contentChanged:'백로그 내용이 변경되었습니다.',
+  upgrading:'업그레이드 중…', migrating:'마이그레이션 중…'
+});
+Object.assign(I18N.en,{
+  updateAvailable:'Update available', currentVersion:'Current version', projectMigration:'Project migration required',
+  newContentAvailable:'New content is available.', refreshToSee:'Your current reading position is preserved. Refresh when you want to see the update.',
+  refreshNow:'Refresh', runtimeChanged:'Task status changed.', contentChanged:'Backlog content changed.',
+  upgrading:'Upgrading…', migrating:'Migrating…'
+});
 function t(key, vars = {}) {
   const dict = I18N[state.language] || I18N.en;
   let value = dict[key] ?? I18N.en[key] ?? key;
@@ -103,6 +122,144 @@ function localeCode() { return LANGUAGES[state.language]?.locale || 'en-US'; }
 
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+function renderGlobalUpdateIndicator() {
+  const el=$('#globalUpdateIndicator');
+  if(!el)return;
+  const payload=state.versionInfo||{};
+  const cli=payload.cli||state.hub?.cli||{};
+  const project=payload.project||{};
+  const projectMatches=state.project && project.path===state.project;
+  if(cli.update_available){
+    el.innerHTML=`<button type="button" class="global-update-pill available" id="globalUpgradeBtn" title="${esc(t('updateAvailable'))}"><span class="global-update-dot"></span><span>${esc(t('updateAvailable'))}</span><strong>${esc(cli.latest||'')}</strong></button>`;
+    $('#globalUpgradeBtn')?.addEventListener('click',e=>performUpgrade(e.currentTarget));
+    return;
+  }
+  if(projectMatches && project.migration_available){
+    el.innerHTML=`<button type="button" class="global-update-pill migration" id="globalMigrateBtn" title="${esc(t('projectMigration'))}"><span class="global-update-dot"></span><span>${esc(t('projectMigration'))}</span><strong>${esc(project.framework_version||'?')} → ${esc(cli.current||'')}</strong></button>`;
+    $('#globalMigrateBtn')?.addEventListener('click',e=>performProjectMigration(state.project,e.currentTarget));
+    return;
+  }
+  el.innerHTML='';
+}
+
+function renderContentUpdatePrompt() {
+  const el=$('#contentUpdatePrompt');
+  if(!el)return;
+  if(!state.pendingContentUpdate || !state.project){
+    el.innerHTML='';
+    return;
+  }
+  const reason=state.pendingContentReason==='runtime'?t('runtimeChanged'):t('contentChanged');
+  el.innerHTML=`<div class="content-update-copy"><strong>${esc(t('newContentAvailable'))}</strong><span>${esc(reason)} ${esc(t('refreshToSee'))}</span></div><button type="button" class="content-update-action" id="contentUpdateRefreshBtn">${esc(t('refreshNow'))}</button>`;
+  $('#contentUpdateRefreshBtn')?.addEventListener('click',refreshVisibleContent);
+}
+
+function markContentUpdate(reason='content') {
+  if(!state.project)return;
+  const wasPending=state.pendingContentUpdate;
+  const previousReason=state.pendingContentReason;
+  state.pendingContentUpdate=true;
+  if(reason==='runtime' || !state.pendingContentReason)state.pendingContentReason=reason;
+  if(!wasPending || previousReason!==state.pendingContentReason)renderContentUpdatePrompt();
+}
+
+function acceptContentRevision(revision='') {
+  if(revision)state.contentRevision=revision;
+  state.pendingContentUpdate=false;
+  state.pendingContentReason='';
+  renderContentUpdatePrompt();
+}
+
+async function refreshVersionInfo(force=false) {
+  const params=new URLSearchParams();
+  if(state.project)params.set('project',state.project);
+  if(force)params.set('refresh','1');
+  try{
+    const r=await fetch('/api/version?'+params.toString(),{cache:'no-store'});
+    if(!r.ok)throw new Error(`HTTP ${r.status}`);
+    state.versionInfo=await r.json();
+    renderGlobalUpdateIndicator();
+  }catch(_){}
+}
+
+let revisionCheckInFlight=null;
+async function checkContentRevision(establishOnly=false) {
+  if(!state.project)return;
+  if(state.pendingContentUpdate && !establishOnly)return;
+  if(revisionCheckInFlight)return revisionCheckInFlight;
+  const project=state.project, backlog=state.backlog;
+  revisionCheckInFlight=(async()=>{
+    try{
+      const params=new URLSearchParams();
+      params.set('project',project);
+      if(backlog)params.set('backlog',backlog);
+      const r=await fetch('/api/revision?'+params.toString(),{cache:'no-store'});
+      if(!r.ok)return;
+      const body=await r.json();
+      if(project!==state.project || backlog!==state.backlog)return;
+      const revision=body.revision||'';
+      if(!revision)return;
+      if(!state.contentRevision || establishOnly){
+        state.contentRevision=revision;
+        return;
+      }
+      if(revision!==state.contentRevision)markContentUpdate('content');
+    }catch(_){}
+    finally{revisionCheckInFlight=null;}
+  })();
+  return revisionCheckInFlight;
+}
+
+async function refreshVisibleContent() {
+  const scrollY=window.scrollY;
+  state.pendingContentUpdate=false;
+  state.pendingContentReason='';
+  renderContentUpdatePrompt();
+  if(state.view==='backlog'){
+    await refreshList();
+    if(state.detail)await loadTaskDetail(state.detail);
+  } else {
+    await refresh();
+    await checkContentRevision(true);
+  }
+  requestAnimationFrame(()=>window.scrollTo({top:scrollY,left:0,behavior:'auto'}));
+}
+
+async function performUpgrade(button) {
+  if(button){button.disabled=true;button.textContent=t('upgrading');}
+  const content=$('#content');
+  try{
+    const r=await fetch('/api/upgrade',{method:'POST',headers:{'X-Task-Mecca-Action':'1'}});
+    const body=await r.json();
+    if(!r.ok)throw new Error(body.error||'Upgrade failed');
+    if(body.restart_required && body.to && body.to!==body.from){
+      if(content)content.innerHTML=`<div class="upgrade-restart"><div class="upgrade-spinner"></div><h2>Task Mecca ${esc(body.to)}로 업그레이드했습니다</h2><p>Web 서버를 재시작하고 있습니다. 완료되면 이 페이지가 자동으로 새로고침됩니다.</p></div>`;
+      await waitForRestartedWeb(body.to);
+      return;
+    }
+    await refreshVersionInfo(true);
+  }catch(e){
+    alert(String(e?.message||e));
+    if(button){button.disabled=false;renderGlobalUpdateIndicator();}
+  }
+}
+
+async function performProjectMigration(project,button) {
+  if(!project)return;
+  if(button){button.disabled=true;button.textContent=t('migrating');}
+  try{
+    const r=await fetch('/api/migrate',{method:'POST',headers:{'Content-Type':'application/json','X-Task-Mecca-Action':'1'},body:JSON.stringify({project})});
+    const body=await r.json();
+    if(!r.ok)throw new Error(body.error||'Migration failed');
+    await refreshVersionInfo(false);
+    await refreshVisibleContent();
+    if(body.instruction_refresh_required||body.legacy_bootstrap)showMigrationResyncModal(body);
+  }catch(e){
+    alert(String(e?.message||e));
+    if(button){button.disabled=false;renderGlobalUpdateIndicator();}
+  }
+}
 const fmtSec = n => {
   if (n == null || Number.isNaN(+n)) return '-';
   n = Math.max(0, Math.floor(+n));
@@ -626,6 +783,9 @@ function switchProject(path) {
   state.snapshot=null;
   state.listData=null;
   state.detailTask=null;
+  state.contentRevision='';
+  state.pendingContentUpdate=false;
+  state.pendingContentReason='';
   state.loadError='';
   state.view='backlog';
   state.detail=null;
@@ -637,6 +797,7 @@ function switchProject(path) {
   render();
   refreshList();
   ensureAttentionStream();
+  refreshVersionInfo(false);
 }
 function closeProjectSession(path) {
   state.openProjects=state.openProjects.filter(p=>p!==path);
@@ -719,6 +880,9 @@ function navigateView(view) {
     state.snapshot=null;
     state.listData=null;
     state.detailTask=null;
+    state.contentRevision='';
+    state.pendingContentUpdate=false;
+    state.pendingContentReason='';
     closeAttentionStream();
     state.loadError='';
     state.view='hub';
@@ -748,6 +912,7 @@ function navigateView(view) {
   if(state.project)params.set('project',state.project);
   history.pushState({},'',`/?${params.toString()}`);
   state.detailTask=null;
+  if(state.project)refreshVersionInfo(false);
   if(view==='backlog'){
     render();
     refreshList();
@@ -886,37 +1051,9 @@ function bindHubActions() {
     const path=btn.dataset.openProject||'';
     if(path)switchProject(path);
   }));
-  document.querySelectorAll('[data-migrate]').forEach(btn=>btn.addEventListener('click',async()=>{
-    btn.disabled=true;
-    try{
-      const r=await fetch('/api/migrate',{method:'POST',headers:{'Content-Type':'application/json','X-Task-Mecca-Action':'1'},body:JSON.stringify({project:btn.dataset.migrate})});
-      const body=await r.json();
-      if(!r.ok)throw new Error(body.error||'Migration failed');
-      await refresh();
-      if(body.instruction_refresh_required||body.legacy_bootstrap)showMigrationResyncModal(body);
-    }catch(e){
-      alert(String(e?.message||e));
-      btn.disabled=false;
-    }
-  }));
+  document.querySelectorAll('[data-migrate]').forEach(btn=>btn.addEventListener('click',e=>performProjectMigration(btn.dataset.migrate,e.currentTarget)));
   const up=$('#upgradeBtn');
-  if(up)up.addEventListener('click',async()=>{
-    up.disabled=true;up.textContent='Upgrading…';
-    const c=$('#content');
-    try{
-      const r=await fetch('/api/upgrade',{method:'POST',headers:{'X-Task-Mecca-Action':'1'}});
-      const body=await r.json();
-      if(!r.ok)throw new Error(body.error||'Upgrade failed');
-      if(body.restart_required && body.to && body.to!==body.from){
-        if(c)c.innerHTML=`<div class="upgrade-restart"><div class="upgrade-spinner"></div><h2>Task Mecca ${esc(body.to)}로 업그레이드했습니다</h2><p>Web 서버를 재시작하고 있습니다. 완료되면 이 페이지가 자동으로 새로고침됩니다.</p></div>`;
-        await waitForRestartedWeb(body.to);
-        return;
-      }
-      await refresh();
-    }catch(e){
-      alert(String(e?.message||e));up.disabled=false;up.textContent='Upgrade';
-    }
-  });
+  if(up)up.addEventListener('click',e=>performUpgrade(e.currentTarget));
 }
 
 function matchesStatusFilter(t, key) {
@@ -1241,7 +1378,7 @@ function updateAutoListPageSize() {
   state.autoListPageSize=next;
   state.listPage=Math.floor(firstIndex/next)+1;
   state.selectedIndex=0;
-  refreshList();
+  if(Date.now()-state.lastFetch<1500 && !state.pendingContentUpdate)refreshList();
 }
 function scheduleAutoListPageSize() {
   if(state.listPageMode!=='auto')return;
@@ -1268,7 +1405,7 @@ function toggleSidebar() {
 }
 
 function render() {
-  nav(); translateChrome(); renderAccess(); renderBacklogPicker(); applySidebarState(); updateNotificationIndicator();
+  nav(); translateChrome(); renderAccess(); renderBacklogPicker(); applySidebarState(); updateNotificationIndicator(); renderGlobalUpdateIndicator(); renderContentUpdatePrompt();
   const c=$('#content'), data=currentProjectData();
   if (!data && !state.detailTask) {
     if (state.view === 'hub' && state.hub) {
@@ -1388,6 +1525,7 @@ async function refreshList() {
       state.loadError='';
       state.lastFetch=Date.now();
       state.listPage=Math.max(1,Number(data.page)||1);
+      acceptContentRevision(data.revision||state.contentRevision);
       processTaskNotifications(listNotificationPayload(data));
       const candidates=data?.backlog_selection?.candidates||[];
       if(state.backlog && !candidates.some(x=>x.path===state.backlog)){
@@ -1419,6 +1557,14 @@ function closeAttentionStream() {
   state.eventStreamKey='';
 }
 
+function attentionPayloadRevision(payload) {
+  const parts=[];
+  (payload?.attention||[]).forEach(row=>parts.push(['a',row.id,row.type,row.health,row.runtime_state,row.last_activity_at,row.title,row.message,row.resume_condition].map(x=>String(x??'')).join('|')));
+  (payload?.notification_events||[]).forEach(event=>parts.push('e|'+String(event?.id||'')));
+  parts.sort();
+  return parts.join('\n');
+}
+
 function ensureAttentionStream() {
   if(!state.project||typeof EventSource==='undefined')return;
   const params=new URLSearchParams();
@@ -1427,6 +1573,10 @@ function ensureAttentionStream() {
   const key=state.project+'|'+state.backlog;
   if(state.eventSource&&state.eventStreamKey===key&&state.eventSource.readyState!==EventSource.CLOSED)return;
   closeAttentionStream();
+  if(state.attentionRevisionKey!==key){
+    state.attentionRevisionKey=key;
+    state.attentionRevision='';
+  }
   const source=new EventSource('/api/events?'+params.toString());
   state.eventSource=source;
   state.eventStreamKey=key;
@@ -1435,25 +1585,13 @@ function ensureAttentionStream() {
     let payload=null;
     try{payload=JSON.parse(event.data)}catch(_){return}
     processTaskNotifications(payload);
-    if(state.listData){
-      state.listData.attention=payload.attention||[];
-      state.listData.attention_items=payload.all_items||{};
-      state.listData.notification_events=payload.notification_events||[];
-      state.listData.counts=state.listData.counts||{};
-      state.listData.counts.attention=(payload.attention||[]).length;
-      state.listData.counts.needs_action=(payload.attention||[]).filter(x=>x.type!=='quiet').length;
-    }
-    if(state.snapshot){
-      state.snapshot.attention=payload.attention||[];
-      state.snapshot.notification_events=payload.notification_events||[];
-      state.snapshot.all_items={...(state.snapshot.all_items||{}),...(payload.all_items||{})};
-      state.snapshot.counts=state.snapshot.counts||{};
-      state.snapshot.counts.attention=(payload.attention||[]).length;
-    }
-    if(state.detail&&payload.all_items?.[state.detail])loadTaskDetail(state.detail);
-    if(state.view==='backlog'&&!state.detail)refreshList();
-    else if(state.view==='attention')render();
-    else nav();
+    const nextRevision=attentionPayloadRevision(payload);
+    const changed=Boolean(state.attentionRevision && nextRevision!==state.attentionRevision);
+    state.attentionRevision=nextRevision;
+    const count=(payload.attention||[]).length;
+    const badge=$('#attentionCount');
+    if(badge)badge.textContent=count||'';
+    if(changed)markContentUpdate('runtime');
   });
 }
 
@@ -1515,6 +1653,8 @@ async function refreshOnce() {
     $('#connectionDot').style.background='var(--ok)';
     await loadManual();
     ensureAttentionStream();
+    await checkContentRevision(true);
+    acceptContentRevision(state.contentRevision);
     render();
   } catch(e) {
     if(targetProject!==state.project || state.view==='hub')return;
@@ -1544,12 +1684,19 @@ async function refresh() {
 }
 function route(fromPop=false) {
   const previousDetail=state.detail;
+  const previousProject=state.project;
   const m=location.pathname.match(/^\/tasks\/([^/]+)/);
   state.detail=m?decodeURIComponent(m[1]).toUpperCase():null;
   if(previousDetail!==state.detail)state.detailTask=null;
   state.loadError='';
   const p=new URLSearchParams(location.search);
   state.project=p.get('project')||'';
+  if(previousProject!==state.project){
+    state.contentRevision='';
+    state.pendingContentUpdate=false;
+    state.pendingContentReason='';
+    if(state.project)queueMicrotask(()=>refreshVersionInfo(false));
+  }
   if(state.project){
     state.lastProject=state.project;
     localStorage.setItem('task-mecca-last-project',state.project);
@@ -1636,6 +1783,9 @@ $('#backlogPicker').addEventListener('change',e=>{
   const value=e.target.value;
   if(value===state.backlog)return;
   state.backlog=value;
+  state.contentRevision='';
+  state.pendingContentUpdate=false;
+  state.pendingContentReason='';
   if(value)localStorage.setItem('task-mecca-backlog-folder',value);else localStorage.removeItem('task-mecca-backlog-folder');
   state.detail=null;state.listPage=1;state.selectedIndex=0;refresh();
 });
@@ -1645,7 +1795,7 @@ $('#search').addEventListener('input',e=>{
   clearTimeout(searchRefreshTimer);
   if(state.view==='backlog')searchRefreshTimer=setTimeout(refreshList,180); else render();
 });
-$('#refreshBtn').onclick=refresh;
+$('#refreshBtn').onclick=refreshVisibleContent;
 $('#notificationBtn')?.addEventListener('click',()=>{const panel=$('#notificationPanel');panel?.classList.toggle('open');renderNotificationPanel();});
 document.addEventListener('click',e=>{const panel=$('#notificationPanel');if(panel?.classList.contains('open')&&!panel.contains(e.target)&&!$('#notificationBtn')?.contains(e.target))panel.classList.remove('open')});
 $('#sidebarToggle').onclick=toggleSidebar;
@@ -1699,9 +1849,9 @@ setInterval(()=>{
     }
   }
 },1000);
-setInterval(()=>{
-  if(state.view==='backlog')refreshList();
-  else if(state.view!=='hub')refresh();
-},30000);
+setInterval(()=>{ if(state.project)checkContentRevision(false); },15000);
+setInterval(()=>refreshVersionInfo(true),300000);
 if(window.isSecureContext&&'serviceWorker' in navigator)notificationWorker();
 route();refresh();
+refreshVersionInfo(false);
+setTimeout(()=>refreshVersionInfo(true),800);
