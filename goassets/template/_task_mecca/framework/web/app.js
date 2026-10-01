@@ -112,13 +112,32 @@ Object.assign(I18N.ko,{
   runtimeAmbiguous:'연결 모호',
   runtimeStale:'관측 정체',
   runtimeHookStatus:'Hook 상태',
-  runtimeHookNote:'Hook은 별도 프로그램이 아니라 Codex/Claude 설정에 Task Mecca 관측 명령을 연결하는 규칙입니다.',
-  runtimeHookEnabled:'활성화됨',
-  runtimeHookDisabled:'비활성',
-  runtimeEnableObservation:'Runtime 관측 활성화',
-  runtimeEnableConfirm:'현재 프로젝트의 Codex/Claude 설정에 Task Mecca lifecycle Hook 규칙을 추가합니다. 기존 설정은 유지됩니다. 계속할까요?',
-  runtimeEnabling:'활성화 중…',
-  runtimeNoAttempts:'아직 관측된 Agent 실행이 없습니다. Hook을 활성화한 뒤 Subagent를 실행하면 여기에 표시됩니다.',
+  runtimeHookNote:'Hook은 별도 프로그램이 아니라 Codex/Claude 설정에 Task Mecca 관측 명령을 연결하는 규칙입니다. 설정됨과 실제 실행 가능 상태는 다를 수 있습니다.',
+  runtimeHookUnconfigured:'미설정',
+  runtimeHookVerificationRequired:'확인 필요',
+  runtimeHookObserved:'관측 확인됨',
+  runtimeHookConfigure:'설정',
+  runtimeHookDisable:'관측 끄기',
+  runtimeHookConfiguring:'설정 중…',
+  runtimeHookDisabling:'끄는 중…',
+  runtimeHookEnableConfirm:'{provider} 프로젝트 설정에 Task Mecca lifecycle Hook 규칙을 추가합니다. 기존 Hook은 유지됩니다. 계속할까요?',
+  runtimeHookDisableConfirm:'{provider} 설정에서 Task Mecca가 추가한 lifecycle Hook만 제거합니다. 기존 관측 기록은 유지되고 다른 Hook은 건드리지 않습니다. 계속할까요?',
+  runtimeHookActivity:'Activity',
+  runtimeHookStart:'Start',
+  runtimeHookStop:'Stop',
+  runtimeHookReceived:'수신됨',
+  runtimeHookNotObserved:'미관측',
+  runtimeHookLastObserved:'마지막 수신',
+  runtimeCodexUnconfigured:'설정 후 Codex에서 Hook 신뢰 검토가 필요합니다.',
+  runtimeCodexVerify:'Codex에서 /hooks를 열어 Task Mecca Hook을 검토·승인하세요. 승인 전에 이미 생성된 Subagent의 Start/Stop 이벤트는 소급되지 않을 수 있습니다. 승인 후 새 Subagent를 실행해 확인하세요.',
+  runtimeCodexActivityOnly:'Activity는 수신되었습니다. Start가 아직 미관측입니다. Hook 승인 전에 시작된 Agent일 수 있으므로 승인 후 새 Subagent를 생성해 Start/Stop을 확인하세요.',
+  runtimeCodexObserved:'실제 Codex Hook 이벤트 수신이 확인되었습니다. Hook 정의가 변경되면 Codex에서 다시 신뢰 검토가 필요할 수 있습니다.',
+  runtimeClaudeUnconfigured:'설정 후 interactive Claude Code에서는 이 프로젝트가 workspace trust된 상태여야 Hook이 실행됩니다.',
+  runtimeClaudeVerify:'Interactive Claude Code에서 프로젝트 workspace trust 상태를 확인한 뒤 새 Subagent를 실행하세요. claude -p/SDK는 별도 trust dialog 없이 설정 Hook이 실행될 수 있습니다.',
+  runtimeClaudeActivityOnly:'Activity는 수신되었습니다. Start가 아직 미관측입니다. 기존 Agent가 설정 이전에 시작됐을 수 있으므로 새 Subagent로 Start/Stop을 확인하세요.',
+  runtimeClaudeObserved:'실제 Claude Code Hook 이벤트 수신이 확인되었습니다.',
+  runtimeHookHistoryPreserved:'관측을 꺼도 기존 Execution Ledger 기록은 삭제되지 않습니다.',
+  runtimeNoAttempts:'아직 관측된 Agent 실행이 없습니다. Provider 설정과 신뢰 상태를 확인한 뒤 새 Subagent를 실행하면 여기에 표시됩니다.',
   runtimeAttempt:'Attempt',
   runtimeId:'Runtime ID',
   runtimeBinding:'Binding',
@@ -154,13 +173,32 @@ Object.assign(I18N.en,{
   runtimeAmbiguous:'Ambiguous binding',
   runtimeStale:'Stale evidence',
   runtimeHookStatus:'Hook status',
-  runtimeHookNote:'Hooks are configuration rules that connect Codex/Claude lifecycle events to Task Mecca; they are not separate programs.',
-  runtimeHookEnabled:'Enabled',
-  runtimeHookDisabled:'Disabled',
-  runtimeEnableObservation:'Enable runtime observation',
-  runtimeEnableConfirm:'Add Task Mecca lifecycle hook rules to this project’s Codex/Claude settings while preserving existing configuration?',
-  runtimeEnabling:'Enabling…',
-  runtimeNoAttempts:'No Agent execution has been observed yet. Enable hooks and run subagents to see them here.',
+  runtimeHookNote:'Hooks are configuration rules that connect Codex/Claude events to Task Mecca. Being configured is not the same as being trusted or actually observed.',
+  runtimeHookUnconfigured:'Not configured',
+  runtimeHookVerificationRequired:'Verification needed',
+  runtimeHookObserved:'Observation confirmed',
+  runtimeHookConfigure:'Configure',
+  runtimeHookDisable:'Turn off observation',
+  runtimeHookConfiguring:'Configuring…',
+  runtimeHookDisabling:'Turning off…',
+  runtimeHookEnableConfirm:'Add Task Mecca lifecycle Hook rules to this project’s {provider} settings while preserving existing Hooks?',
+  runtimeHookDisableConfirm:'Remove only Task Mecca lifecycle Hooks from {provider}. Existing observation history and unrelated Hooks will be preserved.',
+  runtimeHookActivity:'Activity',
+  runtimeHookStart:'Start',
+  runtimeHookStop:'Stop',
+  runtimeHookReceived:'Received',
+  runtimeHookNotObserved:'Not observed',
+  runtimeHookLastObserved:'Last received',
+  runtimeCodexUnconfigured:'After configuration, Codex requires Hook trust review.',
+  runtimeCodexVerify:'Open /hooks in Codex and review/trust the Task Mecca Hooks. Start/Stop events from subagents created before trust may not be recoverable. Create a new subagent after approval to verify.',
+  runtimeCodexActivityOnly:'Activity is arriving, but Start has not been observed. The agent may have started before Hook approval. Create a new subagent after approval to verify Start/Stop.',
+  runtimeCodexObserved:'Actual Codex Hook events have been received. A changed Hook definition may require trust review again.',
+  runtimeClaudeUnconfigured:'After configuration, interactive Claude Code requires this project to be workspace-trusted for settings Hooks to run.',
+  runtimeClaudeVerify:'Confirm workspace trust in interactive Claude Code, then create a new subagent. claude -p/SDK may run settings Hooks without a separate trust dialog.',
+  runtimeClaudeActivityOnly:'Activity is arriving, but Start has not been observed. Create a new subagent to verify Start/Stop after configuration/trust.',
+  runtimeClaudeObserved:'Actual Claude Code Hook events have been received.',
+  runtimeHookHistoryPreserved:'Turning observation off does not delete the existing Execution Ledger.',
+  runtimeNoAttempts:'No Agent execution has been observed yet. Verify provider configuration/trust and create a new subagent.',
   runtimeAttempt:'Attempt',
   runtimeId:'Runtime ID',
   runtimeBinding:'Binding',
@@ -700,22 +738,35 @@ async function performUpgrade(button) {
   }
 }
 
-async function performRuntimeHooksEnable(button) {
-  if(!window.confirm(t('runtimeEnableConfirm')))return;
-  if(button){button.disabled=true;button.textContent=t('runtimeEnabling');}
+async function performRuntimeHookAction(button) {
+  const provider=button?.dataset?.provider||'all';
+  const action=button?.dataset?.runtimeHookAction||'enable';
+  const providerLabel=String(provider).toUpperCase();
+  const confirmKey=action==='disable'?'runtimeHookDisableConfirm':'runtimeHookEnableConfirm';
+  if(!window.confirm(tf(confirmKey,{provider:providerLabel})))return;
+  const original=button?.textContent||'';
+  if(button){
+    button.disabled=true;
+    button.textContent=action==='disable'?t('runtimeHookDisabling'):t('runtimeHookConfiguring');
+  }
   try{
     const params=new URLSearchParams();
     if(state.project)params.set('project',state.project);
     const qs=params.toString()?`?${params}`:'';
-    const r=await fetch('/api/runtime/hooks'+qs,{method:'POST',headers:{'Content-Type':'application/json','X-Task-Mecca-Action':'1'},body:JSON.stringify({provider:'all'})});
+    const r=await fetch('/api/runtime/hooks'+qs,{
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-Task-Mecca-Action':'1'},
+      body:JSON.stringify({provider,action})
+    });
     const body=await r.json();
-    if(!r.ok)throw new Error(body.error||'Runtime hook activation failed');
+    if(!r.ok)throw new Error(body.error||'Runtime hook action failed');
     await refresh();
   }catch(e){
     alert(String(e?.message||e));
-    if(button){button.disabled=false;button.textContent=t('runtimeEnableObservation');}
+    if(button){button.disabled=false;button.textContent=original;}
   }
 }
+
 
 async function performProjectMigration(project,button) {
   if(!project)return;
@@ -1996,6 +2047,51 @@ function runtimeAttemptCard(attempt,findings) {
     </details>
   </article>`;
 }
+function runtimeHookStateLabel(stateValue) {
+  return stateValue==='observed'?t('runtimeHookObserved'):stateValue==='verification_required'?t('runtimeHookVerificationRequired'):t('runtimeHookUnconfigured');
+}
+function runtimeHookStateClass(stateValue) {
+  return stateValue==='observed'?'ok':stateValue==='verification_required'?'warn':'';
+}
+function runtimeHookGuidance(hook) {
+  const events=hook?.observed_events||{};
+  const activityOnly=Boolean(events.activity)&&!events.start;
+  if(hook?.provider==='codex') {
+    if(!hook?.configured)return t('runtimeCodexUnconfigured');
+    if(activityOnly)return t('runtimeCodexActivityOnly');
+    if(hook?.state==='observed')return t('runtimeCodexObserved');
+    return t('runtimeCodexVerify');
+  }
+  if(!hook?.configured)return t('runtimeClaudeUnconfigured');
+  if(activityOnly)return t('runtimeClaudeActivityOnly');
+  if(hook?.state==='observed')return t('runtimeClaudeObserved');
+  return t('runtimeClaudeVerify');
+}
+function runtimeHookEventChip(label,received) {
+  return `<span class="runtime-hook-event ${received?'received':''}"><b>${esc(label)}</b><span>${esc(received?t('runtimeHookReceived'):t('runtimeHookNotObserved'))}</span></span>`;
+}
+function runtimeHookCard(hook) {
+  const events=hook?.observed_events||{}, provider=String(hook?.provider||'').toUpperCase();
+  const action=hook?.configured?'disable':'enable';
+  const actionLabel=hook?.configured?t('runtimeHookDisable'):t('runtimeHookConfigure');
+  const last=hook?.last_observed_at||'';
+  return `<article class="runtime-hook-card">
+    <div class="runtime-hook-card-head">
+      <div class="runtime-hook-identity"><strong>${esc(provider)}</strong><span title="${esc(hook?.path||'')}">${esc(hook?.path||'-')}</span></div>
+      <span class="badge ${runtimeHookStateClass(hook?.state)}">${esc(runtimeHookStateLabel(hook?.state))}</span>
+    </div>
+    <p class="runtime-hook-guidance">${esc(runtimeHookGuidance(hook))}</p>
+    <div class="runtime-hook-events">
+      ${runtimeHookEventChip(t('runtimeHookActivity'),Boolean(events.activity))}
+      ${runtimeHookEventChip(t('runtimeHookStart'),Boolean(events.start))}
+      ${runtimeHookEventChip(t('runtimeHookStop'),Boolean(events.stop))}
+    </div>
+    ${last?`<div class="runtime-hook-last">${esc(t('runtimeHookLastObserved'))} · ${esc(ago(last))}</div>`:''}
+    <div class="runtime-hook-actions">
+      <button class="runtime-hook-action ${action==='disable'?'secondary':''}" data-runtime-hook-action="${action}" data-provider="${esc(hook?.provider||'')}">${esc(actionLabel)}</button>
+    </div>
+  </article>`;
+}
 function workloadView() {
   const snapshot=state.snapshot||{}, w=snapshot.workload||{}, agents=w.agents||[], all=snapshot.all_items||{}, unassigned=w.unassigned_doing||[], released=w.released_holds||[];
   const runtime=snapshot.runtime_observability||{}, attempts=runtime.attempts||[], findings=runtime.findings||[], hooks=runtime.hooks||[], rc=runtime.counts||{};
@@ -2003,14 +2099,15 @@ function workloadView() {
   findings.forEach(row=>{if(row.attempt_id)(findingsByAttempt[row.attempt_id]??=[]).push(row)});
   const latestByAgent={};
   attempts.forEach(attempt=>{if(attempt.agent_path&&!latestByAgent[attempt.agent_path])latestByAgent[attempt.agent_path]=attempt});
-  const allHooksEnabled=hooks.length>=2&&hooks.every(h=>h.installed);
-  const hookCards=hooks.map(h=>`<div class="runtime-hook-row"><div><strong>${esc((h.provider||'').toUpperCase())}</strong><span title="${esc(h.path||'')}">${esc(h.path||'-')}</span></div><span class="badge ${h.installed?'ok':'warn'}">${esc(h.installed?t('runtimeHookEnabled'):t('runtimeHookDisabled'))}</span></div>`).join('');
+  const hookCards=hooks.map(runtimeHookCard).join('');
   const runtimePanel=`<section class="runtime-observability">
     <div class="runtime-section-head">
       <div><div class="eyebrow">Runtime</div><h2>${esc(t('runtimeObservability'))}</h2><p class="summary">${esc(t('runtimeObservabilityIntro'))}</p></div>
-      ${allHooksEnabled?'':`<button class="action-btn" id="runtimeHooksEnableBtn">${esc(t('runtimeEnableObservation'))}</button>`}
     </div>
-    <div class="runtime-hook-panel"><div><strong>${esc(t('runtimeHookStatus'))}</strong><p>${esc(t('runtimeHookNote'))}</p></div><div class="runtime-hook-list">${hookCards||'-'}</div></div>
+    <div class="runtime-hook-panel">
+      <div class="runtime-hook-explainer"><strong>${esc(t('runtimeHookStatus'))}</strong><p>${esc(t('runtimeHookNote'))}</p><p class="runtime-hook-history-note">${esc(t('runtimeHookHistoryPreserved'))}</p></div>
+      <div class="runtime-hook-list">${hookCards||'-'}</div>
+    </div>
     <div class="metrics runtime-metrics">
       <div class="metric"><strong>${Number(rc.total||attempts.length)}</strong><span>${esc(t('runtimeAttempts'))}</span></div>
       <div class="metric"><strong>${Number(rc.running||0)}</strong><span>${esc(t('runtimeRunning'))}</span></div>
@@ -2329,8 +2426,9 @@ function render() {
   c.innerHTML=(state.view==='hub'?hubView():gate+(state.view==='manual'?manualView():state.view==='workload'?workloadView():state.view==='attention'?attentionView():state.view==='issues'?issuesView():listView()));
   bindRows(); if(state.view==='hub') bindHubActions();
   if(state.view==='workload'){
-    const runtimeEnable=$('#runtimeHooksEnableBtn');
-    if(runtimeEnable)runtimeEnable.addEventListener('click',e=>performRuntimeHooksEnable(e.currentTarget));
+    document.querySelectorAll('[data-runtime-hook-action]').forEach(button=>{
+      button.addEventListener('click',e=>performRuntimeHookAction(e.currentTarget));
+    });
   }
   if(state.view==='backlog')scheduleAutoListPageSize();
   document.querySelectorAll('[data-manual-tab]').forEach(b=>b.onclick=()=>{state.manualTab=b.dataset.manualTab;render()});
