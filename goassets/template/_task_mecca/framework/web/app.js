@@ -1743,6 +1743,7 @@ async function refreshOnce() {
     refreshHub(false).catch(()=>{});
     await refreshList();
     if(state.detail)await loadTaskDetail(state.detail);
+    await checkContentRevision(true);
     return;
   }
 
@@ -1964,7 +1965,10 @@ setInterval(()=>{
     }
   }
 },1000);
-setInterval(()=>{ if(state.project)checkContentRevision(false); },5000);
+setInterval(()=>{
+  if(state.project)checkContentRevision(false);
+  else if(state.view==='hub')refreshHub(true).then(()=>{if(state.view==='hub')render()}).catch(()=>{});
+},5000);
 setInterval(()=>refreshVersionInfo(true),300000);
 if(window.isSecureContext&&'serviceWorker' in navigator)notificationWorker();
 route();refresh();
