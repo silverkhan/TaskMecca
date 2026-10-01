@@ -1,0 +1,95 @@
+name: Release version guard
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate Stable release contract
+        shell: bash
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+
+          changed_file_list="$RUNNER_TEMP/changed-files.txt"
+          git diff --name-only "$BASE_SHA" "$HEAD_SHA" | tee "$changed_file_list"
+
+          product_regex='^(cmd/task-mecca/|internal/|goassets/|go\.mod$|install\.sh$|install\.ps1$)'
+          if ! grep -Eq "$product_regex" "$changed_file_list"; then
+            {
+              echo "## Release version guard"
+              echo
+              echo "No Stable release-triggering product files changed."
+              echo
+              echo "Version bump: **not required**"
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          base_version="$(git show "$BASE_SHA:goassets/template/_task_mecca/VERSION" | tr -d '\r\n')"
+          head_version="$(tr -d '\r\n' < goassets/template/_task_mecca/VERSION)"
+          cli_version="$(sed -n 's/^var version = "\([^"]*\)"/\1/p' cmd/task-mecca/main.go)"
+
+          if ! [[ "$base_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Base VERSION is not Stable SemVer: $base_version"
+            exit 1
+          fi
+          if ! [[ "$head_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Head VERSION is not Stable SemVer: $head_version"
+            exit 1
+          fi
+          if [ "$head_version" != "$cli_version" ]; then
+            echo "::error::VERSION ($head_version) and CLI version ($cli_version) differ."
+            exit 1
+          fi
+
+          python - "$base_version" "$head_version" <<'PY'
+          import sys
+          base = tuple(map(int, sys.argv[1].split('.')))
+          head = tuple(map(int, sys.argv[2].split('.')))
+          if head <= base:
+              raise SystemExit(
+                  f"::error::Stable product changes require a version increase: {sys.argv[1]} -> {sys.argv[2]}"
+              )
+          PY
+
+          note_path="goassets/template/_task_mecca/framework/release-notes/current.json"
+          canonical_note="release-notes/$head_version.json"
+          test -f "$note_path" || { echo "::error::Missing embedded release note: $note_path"; exit 1; }
+          test -f "$canonical_note" || { echo "::error::Missing canonical release note: $canonical_note"; exit 1; }
+          test -f release-notes/index.json || { echo "::error::Missing release-notes/index.json"; exit 1; }
+
+          note_version="$(jq -r '.version // empty' "$note_path")"
+          canonical_version="$(jq -r '.version // empty' "$canonical_note")"
+          index_version="$(jq -r '.releases[0].version // empty' release-notes/index.json)"
+          if [ "$note_version" != "$head_version" ] || [ "$canonical_version" != "$head_version" ] || [ "$index_version" != "$head_version" ]; then
+            echo "::error::Release note versions must all match $head_version (current=$note_version, canonical=$canonical_version, index=$index_version)."
+            exit 1
+          fi
+          diff -u <(jq -S . "$note_path") <(jq -S . "$canonical_note")
+
+          {
+            echo "## Release version guard"
+            echo
+            echo "| Check | Result |"
+            echo "| --- | --- |"
+            echo "| Product change | Yes |"
+            echo "| Stable version | \`$base_version\` → \`$head_version\` |"
+            echo "| CLI / VERSION | Match |"
+            echo "| Release note contract | Match |"
+            echo
+            echo "Stable promotion contract is ready."
+          } >> "$GITHUB_STEP_SUMMARY"
