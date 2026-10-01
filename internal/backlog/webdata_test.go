@@ -3,6 +3,7 @@ package backlog
 import (
     "os"
     "path/filepath"
+    "strings"
     "testing"
     "time"
 )
@@ -108,6 +109,8 @@ func TestAttentionSnapshotDetectsCompletedRuntimeAndPersistsCompletion(t *testin
     if err!=nil { t.Fatal(err) }
     attention:=first["attention"].([]map[string]any)
     if len(attention)!=1 || attention[0]["type"]!="completion_pending" { t.Fatalf("attention=%+v",attention) }
+    if toString(attention[0]["action"])=="" { t.Fatalf("completion pending action missing: %+v",attention[0]) }
+    if !strings.Contains(toString(attention[0]["action"]),"done") { t.Fatalf("completion action should explain finalization: %+v",attention[0]) }
 
     if err:=os.Remove(path); err!=nil { t.Fatal(err) }
     writeWebTask(t,folder,"000001.A-1.alpha.done.md","# A-1 Alpha\n- Agent: /root/controller/pairi\n- 결과: done\n")
@@ -160,5 +163,27 @@ func TestBacklogRevisionIgnoresMtimeOnlyTouchesButDetectsContentChange(t *testin
     if err!=nil { t.Fatal(err) }
     if third["revision"]==firstRevision {
         t.Fatalf("content change did not change revision: %v",third["revision"])
+    }
+}
+
+
+func TestAttentionSnapshotWorkerMissingIsActionableWithoutDeclaringDeath(t *testing.T) {
+    project:=t.TempDir()
+    folder:=filepath.Join(project,"_task_mecca","data","backlog")
+    writeWebTask(t,folder,"000001.A-1.alpha.doing.md","# A-1 Alpha\n- Agent: /root/controller/pairi\n")
+
+    runtimeDir:=filepath.Join(project,"_task_mecca",".runtime","agents")
+    if err:=os.MkdirAll(runtimeDir,0755); err!=nil { t.Fatal(err) }
+
+    snapshot,err:=AttentionSnapshot(project,folder,false)
+    if err!=nil { t.Fatal(err) }
+    attention:=snapshot["attention"].([]map[string]any)
+    if len(attention)!=1 { t.Fatalf("attention=%+v",attention) }
+    row:=attention[0]
+    if row["type"]!="runtime_stalled" { t.Fatalf("type=%v row=%+v",row["type"],row) }
+    if toString(row["action"])=="" { t.Fatalf("required action missing: %+v",row) }
+    message:=toString(row["message"])
+    if !strings.Contains(message,"실제 종료 여부는 확정하지 않습니다") {
+        t.Fatalf("stalled message must preserve liveness uncertainty: %q",message)
     }
 }

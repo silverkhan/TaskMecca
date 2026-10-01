@@ -32,7 +32,8 @@ func attentionRevision(payload map[string]any) string {
             parts=append(parts,strings.Join([]string{
                 fmt.Sprint(row["id"]),fmt.Sprint(row["type"]),fmt.Sprint(row["health"]),
                 fmt.Sprint(row["runtime_state"]),fmt.Sprint(row["last_activity_at"]),
-                fmt.Sprint(row["title"]),fmt.Sprint(row["message"]),fmt.Sprint(row["resume_condition"]),
+                fmt.Sprint(row["title"]),fmt.Sprint(row["message"]),fmt.Sprint(row["action"]),
+                fmt.Sprint(row["resume_condition"]),fmt.Sprint(row["evidence"]),
             },"|"))
         }
     }
