@@ -109,6 +109,22 @@ The core ideas are intentionally small:
 
 ## Version Update
 
+Task Mecca supports **Stable / Dev** update channels.
+
+- `stable` is the default and follows formal `main → go-main` builds.
+- `dev` is opt-in for development and follows `dev → go-dev` builds.
+- Dev builds use the next stable version as their base, for example `0.2.46-dev.1`, `0.2.46-dev.2`, and are promoted to `0.2.46` when released.
+
+Check or change the local channel:
+
+```bash
+task-mecca channel
+task-mecca channel dev
+task-mecca channel stable
+```
+
+The selected channel is stored locally, so normal users continue to follow Stable unless they explicitly opt into Dev.
+
 ### From Web
 
 When a newer version is available, Web shows the Update state and can launch the upgrade. If the project framework also needs migration, Web guides that step as well.
@@ -138,6 +154,7 @@ On macOS/Linux, a running Task Mecca Web service is restarted with the upgraded 
 | `task-mecca web status` | inspect Web service status |
 | `task-mecca web restart` | restart Web service |
 | `task-mecca upgrade` | update the Task Mecca CLI |
+| `task-mecca channel [stable|dev]` | Show or change the update channel |
 | `task-mecca migrate` | update the project framework |
 | `task-mecca status` | summarize backlog state |
 | `task-mecca inspect <ID>` | inspect one task |

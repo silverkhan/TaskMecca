@@ -109,6 +109,22 @@ Task Mecca Web UI
 
 ## 버전 Update
 
+Task Mecca는 **Stable / Dev** 두 업데이트 채널을 지원합니다.
+
+- `stable`은 기본 채널이며 `main → go-main` 정식 빌드만 받습니다.
+- `dev`는 명시적으로 선택한 개발자용 채널이며 `dev → go-dev` 개발 빌드를 받습니다.
+- 개발 빌드는 다음 정식 버전을 기준으로 `0.2.46-dev.1`, `0.2.46-dev.2`처럼 증가하고, 정식 승격 시 `0.2.46`이 됩니다.
+
+현재 채널 확인/변경:
+
+```bash
+task-mecca channel
+task-mecca channel dev
+task-mecca channel stable
+```
+
+채널 선택은 로컬 설치에 저장되므로 일반 사용자는 별도 설정 없이 계속 Stable만 추적합니다.
+
 ### Web에서
 
 새 버전이 있으면 Web UI에 Update 상태가 표시됩니다. Web에서 업데이트를 실행할 수 있으며, 프로젝트 framework가 함께 갱신되어야 하는 경우 migration도 안내합니다.
@@ -138,6 +154,7 @@ macOS/Linux에서는 CLI 업데이트 중 Web이 실행 중이면 새 실행파�
 | `task-mecca web status` | Web 서비스 상태 확인 |
 | `task-mecca web restart` | Web 서비스 재시작 |
 | `task-mecca upgrade` | Task Mecca CLI 업데이트 |
+| `task-mecca channel [stable|dev]` | 업데이트 채널 확인/변경 |
 | `task-mecca migrate` | 프로젝트 framework 업데이트 |
 | `task-mecca status` | 현재 backlog 상태 요약 |
 | `task-mecca inspect <ID>` | 특정 작업 상세 확인 |

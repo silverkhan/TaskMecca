@@ -22,7 +22,10 @@ import (
 
 const (
     repo = "silverkhan/TaskMecca"
-    releaseTag = "go-main"
+    stableChannel = "stable"
+    devChannel = "dev"
+    stableReleaseTag = "go-main"
+    devReleaseTag = "go-dev"
 )
 
 type Project struct {
@@ -39,6 +42,7 @@ type registry struct {
 type VersionInfo struct {
     Current string `json:"current"`
     Latest string `json:"latest,omitempty"`
+    Channel string `json:"channel"`
     UpdateAvailable bool `json:"update_available"`
     CheckedAt string `json:"checked_at,omitempty"`
     Error string `json:"error,omitempty"`
@@ -63,6 +67,37 @@ func homeDir() string {
 }
 
 func registryPath() string { return filepath.Join(homeDir(),"projects.json") }
+func channelPath() string { return filepath.Join(homeDir(),"channel") }
+
+func normalizeChannel(value string) (string,error) {
+    value=strings.ToLower(strings.TrimSpace(value))
+    switch value {
+    case "",stableChannel:
+        return stableChannel,nil
+    case devChannel:
+        return devChannel,nil
+    default:
+        return "",fmt.Errorf("unknown update channel %q (use stable or dev)",value)
+    }
+}
+
+func CurrentChannel() string {
+    if value:=strings.TrimSpace(os.Getenv("TASK_MECCA_CHANNEL")); value!="" {
+        if channel,err:=normalizeChannel(value); err==nil { return channel }
+    }
+    if data,err:=os.ReadFile(channelPath()); err==nil {
+        if channel,channelErr:=normalizeChannel(string(data)); channelErr==nil { return channel }
+    }
+    return stableChannel
+}
+
+func SetChannel(value string) error {
+    channel,err:=normalizeChannel(value)
+    if err!=nil { return err }
+    if err=os.MkdirAll(homeDir(),0755); err!=nil { return err }
+    return os.WriteFile(channelPath(),[]byte(channel+"\n"),0644)
+}
+
 
 func normalizeVersion(value string) string {
     value=strings.TrimSpace(value)
@@ -133,7 +168,8 @@ func IsRegisteredProject(path string) bool {
 func releaseLocation() (string,string) {
     repoName:=repo
     if v:=strings.TrimSpace(os.Getenv("TASK_MECCA_REPO")); v!="" { repoName=v }
-    tag:=releaseTag
+    tag:=stableReleaseTag
+    if CurrentChannel()==devChannel { tag=devReleaseTag }
     if v:=strings.TrimSpace(os.Getenv("TASK_MECCA_RELEASE_TAG")); v!="" { tag=v }
     return repoName,tag
 }
@@ -175,15 +211,16 @@ func httpGet(url string) ([]byte,error) {
     return nil,lastErr
 }
 
-func versionCachePath() string { return filepath.Join(homeDir(),"update-check.json") }
+func versionCachePath() string { return filepath.Join(homeDir(),"update-check-"+CurrentChannel()+".json") }
 
 func CachedVersionInfo(current string) VersionInfo {
     current=normalizeVersion(current)
-    info:=VersionInfo{Current:current}
+    info:=VersionInfo{Current:current,Channel:CurrentChannel()}
     if data,err:=os.ReadFile(versionCachePath()); err==nil {
         var cached VersionInfo
         if json.Unmarshal(data,&cached)==nil {
             cached.Current=current
+            cached.Channel=CurrentChannel()
             cached.Latest=normalizeVersion(cached.Latest)
             if at,err:=time.Parse(time.RFC3339,cached.CheckedAt); err==nil && time.Since(at)<5*time.Minute {
                 cached.UpdateAvailable=newerVersion(cached.Latest,current)
@@ -207,26 +244,61 @@ func CachedVersionInfo(current string) VersionInfo {
 }
 
 func compareVersions(left,right string) int {
-    left=normalizeVersion(left)
-    right=normalizeVersion(right)
-    parse:=func(v string) []int {
-        v=strings.TrimSpace(strings.TrimPrefix(v,"v"))
-        core:=strings.SplitN(v,"-",2)[0]
-        parts:=strings.Split(core,".")
-        out:=make([]int,3)
-        for i:=0;i<len(out)&&i<len(parts);i++ {
-            n,err:=strconv.Atoi(parts[i])
-            if err!=nil { return []int{} }
-            out[i]=n
+    type semver struct {
+        core [3]int
+        prerelease []string
+        valid bool
+    }
+    parse:=func(value string) semver {
+        value=strings.TrimSpace(strings.TrimPrefix(normalizeVersion(value),"v"))
+        value=strings.SplitN(value,"+",2)[0]
+        parts:=strings.SplitN(value,"-",2)
+        coreParts:=strings.Split(parts[0],".")
+        if len(coreParts)!=3 { return semver{} }
+        parsed:=semver{valid:true}
+        for i:=0;i<3;i++ {
+            n,err:=strconv.Atoi(coreParts[i])
+            if err!=nil || n<0 { return semver{} }
+            parsed.core[i]=n
         }
-        return out
+        if len(parts)==2 {
+            if parts[1]=="" { return semver{} }
+            parsed.prerelease=strings.Split(parts[1],".")
+            for _,item:=range parsed.prerelease { if item=="" { return semver{} } }
+        }
+        return parsed
     }
+    compareIdentifier:=func(a,b string) int {
+        ai,aErr:=strconv.Atoi(a)
+        bi,bErr:=strconv.Atoi(b)
+        aNumeric:=aErr==nil
+        bNumeric:=bErr==nil
+        if aNumeric && bNumeric {
+            if ai<bi { return -1 }
+            if ai>bi { return 1 }
+            return 0
+        }
+        if aNumeric && !bNumeric { return -1 }
+        if !aNumeric && bNumeric { return 1 }
+        return strings.Compare(a,b)
+    }
+
     a,b:=parse(left),parse(right)
-    if len(a)==0 || len(b)==0 { return strings.Compare(left,right) }
+    if !a.valid || !b.valid { return strings.Compare(normalizeVersion(left),normalizeVersion(right)) }
     for i:=0;i<3;i++ {
-        if a[i]<b[i] { return -1 }
-        if a[i]>b[i] { return 1 }
+        if a.core[i]<b.core[i] { return -1 }
+        if a.core[i]>b.core[i] { return 1 }
     }
+    if len(a.prerelease)==0 && len(b.prerelease)==0 { return 0 }
+    if len(a.prerelease)==0 { return 1 }
+    if len(b.prerelease)==0 { return -1 }
+    limit:=len(a.prerelease)
+    if len(b.prerelease)<limit { limit=len(b.prerelease) }
+    for i:=0;i<limit;i++ {
+        if cmp:=compareIdentifier(a.prerelease[i],b.prerelease[i]); cmp!=0 { return cmp }
+    }
+    if len(a.prerelease)<len(b.prerelease) { return -1 }
+    if len(a.prerelease)>len(b.prerelease) { return 1 }
     return 0
 }
 
@@ -249,11 +321,12 @@ func RefreshVersionInfo(current string) VersionInfo {
 
 func ReadCachedVersionInfo(current string) VersionInfo {
     current=normalizeVersion(current)
-    info:=VersionInfo{Current:current}
+    info:=VersionInfo{Current:current,Channel:CurrentChannel()}
     if data,err:=os.ReadFile(versionCachePath()); err==nil {
         var cached VersionInfo
         if json.Unmarshal(data,&cached)==nil {
             cached.Current=current
+            cached.Channel=CurrentChannel()
             cached.Latest=normalizeVersion(cached.Latest)
             cached.UpdateAvailable=newerVersion(cached.Latest,current)
             return cached
@@ -264,7 +337,7 @@ func ReadCachedVersionInfo(current string) VersionInfo {
 
 func CheckLatest(current string) VersionInfo {
     current=normalizeVersion(current)
-    info:=VersionInfo{Current:current,CheckedAt:time.Now().Format(time.RFC3339)}
+    info:=VersionInfo{Current:current,Channel:CurrentChannel(),CheckedAt:time.Now().Format(time.RFC3339)}
     data,err:=httpGet(releaseBase()+"/VERSION.txt")
     if err!=nil {
         releaseErr:=err
@@ -315,13 +388,16 @@ func Upgrade(current string) (UpgradeResult,error) {
     result:=UpgradeResult{From:current}
     info:=CheckLatest(current)
     if info.Error!="" { return result,errors.New(info.Error) }
+    if !info.UpdateAvailable {
+        result.To=current
+        return result,nil
+    }
     result.To=info.Latest
     exe,err:=os.Executable()
     if err!=nil { return result,err }
     exe,err=filepath.EvalSymlinks(exe)
     if err!=nil { return result,err }
     result.Executable=exe
-    if !info.UpdateAvailable { return result,nil }
     asset,err:=assetName(); if err!=nil { return result,err }
     binary,err:=httpGet(releaseBase()+"/"+asset); if err!=nil { return result,err }
     sums,err:=httpGet(releaseBase()+"/SHA256SUMS.txt"); if err!=nil { return result,err }
