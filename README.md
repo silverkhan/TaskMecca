@@ -104,7 +104,7 @@ The core ideas are intentionally small:
 - **Task definitions do not live only in chat.** They are persisted in the Markdown backlog.
 - **Workers read the original task contract**, not just a relay summary.
 - **Controller supervises parallel execution, waiting, recovery, and completion.**
-- **Linear / GitHub Issue work can keep its source link** and receive meaningful decisions, status changes, and completion results.
+- **Linear / GitHub Issue work keeps its source link**: Root writes back important decisions, while Controller writes real lifecycle changes and completion results.
 - **User-facing language follows the user’s language and work context**, rather than exposing internal agent jargon.
 
 ## Version Update
