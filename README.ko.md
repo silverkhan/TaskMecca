@@ -104,7 +104,7 @@ Task Mecca Web UI
 - **작업 정의를 대화 속에만 두지 않습니다.** Markdown backlog에 durable하게 남깁니다.
 - **Worker는 전달받은 짧은 요약이 아니라 원래 작업 계약을 직접 읽습니다.**
 - **여러 Worker의 실행과 중단·재개·완료를 Controller가 관제합니다.**
-- **Linear / GitHub Issue에서 시작한 작업은 출처를 연결하고 중요한 결정·상태·결과를 원천 이슈에도 반영할 수 있습니다.**
+- **Linear / GitHub Issue에서 시작한 작업은 출처를 연결하고, Root가 중요한 합의를, Controller가 실제 상태 변화와 완료 결과를 원천 이슈에 반영합니다.**
 - **사용자가 읽는 내용은 사용자의 언어와 업무 맥락을 우선합니다.**
 
 ## 버전 Update
