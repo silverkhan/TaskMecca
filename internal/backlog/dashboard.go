@@ -192,6 +192,7 @@ func DashboardSnapshot(project,root string,recentDoneLimit int) (map[string]any,
                 reason=map[string]any{
                     "type":"user_intervention","severity":"danger","title":"사용자 개입 필요",
                     "message":firstNonEmpty(toString(review["wait_note"]),"사용자 입력 또는 판단을 기다리고 있습니다."),
+                    "action":"대기 사유를 확인하고 필요한 사용자 입력 또는 판단을 제공하세요.",
                     "resume_condition":toString(review["resume_condition"]),
                     "evidence":toString(review["wait_evidence"]),
                 }
@@ -204,21 +205,24 @@ func DashboardSnapshot(project,root string,recentDoneLimit int) (map[string]any,
                 reason=map[string]any{
                     "type":"completion_pending","severity":"warning","title":"완료 처리 필요",
                     "message":"워커 런타임은 작업 완료를 보고했지만 백로그는 아직 doing 상태입니다.",
-                    "resume_condition":"결과와 검증을 확인한 뒤 태스크를 done으로 완료 처리하세요.",
+                    "action":"결과와 검증을 확인하고 태스크를 done으로 완료 처리하세요.",
+                    "resume_condition":"백로그가 done으로 완료 처리되면 경고가 해제됩니다.",
                 }
                 item["state"]="awaiting_finalize"
             case "needs_user":
                 reason=map[string]any{
                     "type":"user_intervention","severity":"danger","title":"사용자 개입 필요",
                     "message":"워커 런타임이 사용자 입력 또는 조치를 기다리고 있습니다.",
-                    "resume_condition":"필요한 사용자 판단 또는 입력을 제공한 뒤 작업을 재개하세요.",
+                    "action":"필요한 사용자 판단 또는 입력을 제공하세요.",
+                    "resume_condition":"사용자 입력 이후 작업이 재개되거나 상태가 정리되면 경고가 해제됩니다.",
                 }
                 item["state"]="needs_user"
             case "stale","worker_missing":
                 reason=map[string]any{
                     "type":"runtime_stalled","severity":"warning","title":"작업 정체 확인 필요",
-                    "message":"진행 중 태스크의 런타임 활동이 중단되었거나 할당 워커를 찾을 수 없습니다.",
-                    "resume_condition":"워커 상태와 남은 작업을 확인하고 재할당 또는 완료 처리 여부를 결정하세요.",
+                    "message":"최근 런타임 활동이 오래 관측되지 않았거나 할당 워커를 현재 registry에서 찾을 수 없습니다. 실제 종료 여부는 확정하지 않습니다.",
+                    "action":"워커 상태와 남은 작업을 확인하고 재할당·재개·완료 처리 중 필요한 조치를 결정하세요.",
+                    "resume_condition":"정상 런타임 활동이 다시 관측되거나 작업 상태가 정리되면 경고가 해제됩니다.",
                 }
                 item["state"]="stalled"
             }
