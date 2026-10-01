@@ -78,10 +78,11 @@ func TestExplicitReleaseChannelLocation(t *testing.T) {
 
 func TestWebChannelSwitchRejectsEnvironmentOverride(t *testing.T) {
     t.Setenv("TASK_MECCA_CHANNEL","stable")
-    if _,err:=SwitchChannel("0.2.50","dev"); err==nil {
+    if _,err:=SwitchChannel("0.2.49","dev"); err==nil {
         t.Fatal("expected environment override to block Web channel switch")
     }
 }
+
 
 func TestFrameworkSyncCandidatesFollowChannel(t *testing.T) {
     home:=t.TempDir()

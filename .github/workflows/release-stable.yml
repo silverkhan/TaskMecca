@@ -35,6 +35,15 @@ jobs:
           current_version="$(tr -d '\r\n' < goassets/template/_task_mecca/VERSION)"
           cli_version="$(sed -n 's/^var version = "\([^"]*\)"/\1/p' cmd/task-mecca/main.go)"
           test "$current_version" = "$cli_version"
+          note_path="goassets/template/_task_mecca/framework/release-notes/current.json"
+          remote_note_path="release-notes/${current_version}.json"
+          test -f "$note_path"
+          test -f "$remote_note_path"
+          note_version="$(jq -r '.version // empty' "$note_path")"
+          test "$note_version" = "$current_version"
+          index_version="$(jq -r '.releases[0].version // empty' release-notes/index.json)"
+          test "$index_version" = "$current_version"
+          diff -u <(jq -S . "$note_path") <(jq -S . "$remote_note_path")
           if git rev-parse HEAD^ >/dev/null 2>&1; then
             previous_version="$(git show HEAD^:goassets/template/_task_mecca/VERSION 2>/dev/null | tr -d '\r\n' || true)"
             if [ -n "$previous_version" ] && [ "$previous_version" = "$current_version" ]; then

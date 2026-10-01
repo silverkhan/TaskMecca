@@ -230,6 +230,12 @@ func versionFallbackURLForChannel(value string) (string,error) {
     return "https://raw.githubusercontent.com/"+repoName+"/"+tag+"/goassets/template/_task_mecca/VERSION",nil
 }
 
+func stableReleaseRawURL(path string) string {
+    repoName:=repo
+    if v:=strings.TrimSpace(os.Getenv("TASK_MECCA_REPO")); v!="" { repoName=v }
+    return "https://raw.githubusercontent.com/"+repoName+"/"+stableReleaseTag+"/"+strings.TrimPrefix(path,"/")
+}
+
 func httpGet(url string) ([]byte,error) {
     client:=&http.Client{Timeout:5*time.Second}
     var lastErr error
@@ -312,6 +318,18 @@ func frameworkSyncCandidates(currentVersion,targetVersion,targetChannel string) 
         })
     }
     return candidates
+}
+
+func StableReleaseNotesIndex() ([]byte,error) {
+    return httpGet(stableReleaseRawURL("release-notes/index.json"))
+}
+
+func StableReleaseNote(version string) ([]byte,error) {
+    version=normalizeVersion(version)
+    if version=="" || strings.Contains(version,"..") || strings.ContainsAny(version,"/\\") {
+        return nil,errors.New("invalid release note version")
+    }
+    return httpGet(stableReleaseRawURL("release-notes/"+version+".json"))
 }
 
 func versionCachePath() string { return filepath.Join(homeDir(),"update-check-"+CurrentChannel()+".json") }
@@ -546,9 +564,9 @@ func Upgrade(current string) (UpgradeResult,error) {
     }
     binary,err:=fetchReleaseBinary(releaseBase())
     if err!=nil { return result,err }
-    installed,err:=installBinary(current,info.Latest,binary)
-    installed.Channel=CurrentChannel()
-    return installed,err
+    result,err=installBinary(current,info.Latest,binary)
+    result.Channel=CurrentChannel()
+    return result,err
 }
 
 func SwitchChannel(current,target string) (UpgradeResult,error) {

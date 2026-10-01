@@ -19,7 +19,10 @@
         <button class="nav-item" data-view="attention" title="Needs Attention"><span class="nav-main"><span class="nav-icon" aria-hidden="true">!</span><span class="nav-text" id="attentionText">Needs Attention</span></span><span id="attentionCount" class="count"></span></button>
         <button class="nav-item" data-view="issues" title="Issues"><span class="nav-main"><span class="nav-icon" aria-hidden="true">△</span><span class="nav-text" id="issuesText">Issues</span></span><span id="issueCount" class="count"></span></button>
       </div>
-      <div class="sidebar-section"><div class="sidebar-label" id="helpLabel">HELP</div><button class="nav-item" data-view="manual" title="User Manual"><span class="nav-main"><span class="nav-icon" aria-hidden="true">?</span><span class="nav-text" id="manualText">User Manual</span></span><span class="count">?</span></button></div>
+      <div class="sidebar-section"><div class="sidebar-label" id="helpLabel">HELP</div>
+        <button class="nav-item" data-view="manual" title="User Manual"><span class="nav-main"><span class="nav-icon" aria-hidden="true">?</span><span class="nav-text" id="manualText">User Manual</span></span><span class="count">?</span></button>
+        <button class="nav-item" data-view="release-notes" title="Update history"><span class="nav-main"><span class="nav-icon" aria-hidden="true">↟</span><span class="nav-text" id="releaseNotesText">Update history</span></span><span id="releaseNotesBadge" class="count release-nav-badge" aria-hidden="true"></span></button>
+      </div>
       <div class="sidebar-footer"><span id="connectionDot" class="dot"></span><span id="snapshotAge" class="sidebar-footer-text">Loading…</span></div>
     </aside>
     <main class="main">
@@ -37,11 +40,13 @@
         <div class="notification-wrap"><button id="notificationBtn" class="icon-btn notification-btn" title="Notification settings" aria-label="Notification settings"><span class="notification-bell" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg></span><span id="notificationBadge" class="notification-badge" aria-hidden="true"></span></button><div id="notificationPanel" class="notification-panel" role="dialog" aria-label="Notification settings"></div></div>
         <button id="refreshBtn" class="icon-btn" title="Refresh">↻</button>
       </header>
+      <div id="releaseUnreadPrompt" class="release-unread-prompt" aria-live="polite"></div>
       <section id="content" class="content"><div class="loading">Loading Task Mecca…</div></section>
       <div id="contentUpdatePrompt" class="content-update-prompt" aria-live="polite"></div>
       <div class="shortcut-bar" id="shortcutBar"><span><kbd>↑</kbd><kbd>↓</kbd> move</span><span><kbd>Enter</kbd>/<kbd>→</kbd> open</span><span><kbd>←</kbd>/<kbd>Esc</kbd> back</span><span><kbd>/</kbd> search</span><span><kbd>PgUp</kbd>/<kbd>PgDn</kbd> page</span></div>
     </main>
   </div>
+  <div id="releaseNoteModal" class="release-note-modal" hidden></div>
   <script src="/app.js"></script>
 </body>
 </html>
