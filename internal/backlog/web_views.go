@@ -1,6 +1,10 @@
 package backlog
 
-import "time"
+import (
+    "time"
+
+    "github.com/silverkhan/TaskMecca/internal/runtimeobs"
+)
 
 // WorkloadSnapshot returns only the data required by the Web workload view.
 // It intentionally avoids DashboardSnapshot's tag catalog, Doctor checks,
@@ -27,6 +31,62 @@ func WorkloadSnapshot(project, root string) (map[string]any, error) {
     workload := workloadFrom(rows, readyReport, timings)
     byID := preferredRows(rows)
     allItems := map[string]map[string]any{}
+
+    runtimeLedger, ledgerErr := runtimeobs.ReconcileLedger(project, 10, time.Now())
+    if ledgerErr != nil {
+        diagnostics = append(diagnostics, map[string]string{
+            "component": "runtime_observability",
+            "error":     ledgerErr.Error(),
+        })
+        runtimeLedger = runtimeobs.Ledger{
+            Version:     1,
+            GeneratedAt: time.Now().Format(time.RFC3339Nano),
+            Attempts:    []runtimeobs.Attempt{},
+            Findings:    []runtimeobs.LedgerFinding{},
+        }
+    }
+
+    hookSetups := []runtimeobs.HookSetup{}
+    for _, provider := range []string{"codex", "claude"} {
+        setup, hookErr := runtimeobs.HookStatus(project, provider)
+        if hookErr != nil {
+            diagnostics = append(diagnostics, map[string]string{
+                "component": "runtime_hooks_" + provider,
+                "error":     hookErr.Error(),
+            })
+            continue
+        }
+        hookSetups = append(hookSetups, setup)
+    }
+
+    runtimeCounts := map[string]int{
+        "total":     len(runtimeLedger.Attempts),
+        "running":   0,
+        "terminal":  0,
+        "unbound":   0,
+        "ambiguous": 0,
+        "stale":     0,
+    }
+    for _, attempt := range runtimeLedger.Attempts {
+        if attempt.Terminal {
+            runtimeCounts["terminal"]++
+        } else if attempt.CurrentState == runtimeobs.StateRunning || attempt.CurrentState == runtimeobs.StateStarting {
+            runtimeCounts["running"]++
+        }
+        switch attempt.BindingState {
+        case runtimeobs.BindingUnbound:
+            runtimeCounts["unbound"]++
+        case runtimeobs.BindingAmbiguous:
+            runtimeCounts["ambiguous"]++
+        }
+    }
+    staleAttempts := map[string]bool{}
+    for _, finding := range runtimeLedger.Findings {
+        if finding.Code == "stale" && finding.AttemptID != "" {
+            staleAttempts[finding.AttemptID] = true
+        }
+    }
+    runtimeCounts["stale"] = len(staleAttempts)
 
     for id, row := range byID {
         if row.Location != "active" || row.State != "doing" {
@@ -60,6 +120,13 @@ func WorkloadSnapshot(project, root string) (map[string]any, error) {
         "snapshot_at": time.Now().Format(time.RFC3339),
         "workload":    workload,
         "all_items":   allItems,
+        "runtime_observability": map[string]any{
+            "attempts": runtimeLedger.Attempts,
+            "findings": runtimeLedger.Findings,
+            "hooks":    hookSetups,
+            "counts":   runtimeCounts,
+            "generated_at": runtimeLedger.GeneratedAt,
+        },
         "diagnostics": diagnostics,
     }, nil
 }
