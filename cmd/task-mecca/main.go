@@ -15,7 +15,7 @@ import (
     "github.com/silverkhan/TaskMecca/internal/webui"
 )
 
-const version = "0.2.43"
+const version = "0.2.44"
 
 func main() { os.Exit(run(os.Args[1:])) }
 
@@ -28,6 +28,8 @@ func run(args []string) int {
             fmt.Println("run: task-mecca upgrade")
         } else if info.Latest!="" {
             fmt.Printf("latest %s\n",info.Latest)
+        } else if info.Error!="" {
+            fmt.Fprintf(os.Stderr,"latest check failed: %s\n",info.Error)
         }
         return 0
     }
