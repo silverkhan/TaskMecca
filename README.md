@@ -154,6 +154,7 @@ On macOS/Linux, a running Task Mecca Web service is restarted with the upgraded 
 | `task-mecca web status` | inspect Web service status |
 | `task-mecca web restart` | restart Web service |
 | `task-mecca upgrade` | update the Task Mecca CLI |
+| `task-mecca channel [stable|dev]` | Show or change the update channel |
 | `task-mecca migrate` | update the project framework |
 | `task-mecca status` | summarize backlog state |
 | `task-mecca inspect <ID>` | inspect one task |
