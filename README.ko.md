@@ -21,7 +21,13 @@ macOS / Linux:
 curl -fsSL https://raw.githubusercontent.com/silverkhan/TaskMecca/main/install.sh | sh
 ```
 
-Windows는 [rolling release](https://github.com/silverkhan/TaskMecca/releases/tag/release-stable)의 `task-mecca-windows-amd64.exe`를 내려받아 `task-mecca.exe`로 사용할 수 있는 PATH 위치에 둡니다.
+Windows PowerShell:
+
+```powershell
+irm https://raw.githubusercontent.com/silverkhan/TaskMecca/main/install.ps1 | iex
+```
+
+Windows 설치 스크립트는 정식 배포 파일의 SHA-256을 검증한 뒤 사용자 영역에 설치하고 PATH를 자동 등록하므로 관리자 권한이 필요하지 않습니다.
 
 최종 사용자는 Python, `uv`, Go toolchain을 설치할 필요가 없습니다.
 
