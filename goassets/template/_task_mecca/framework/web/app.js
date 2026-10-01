@@ -33,7 +33,7 @@ const state = {
   openProjects: (()=>{ try { const raw=JSON.parse(localStorage.getItem('task-mecca-open-projects')||'[]'); return Array.isArray(raw)?raw:[]; } catch(_) { return []; } })(),
   language: localStorage.getItem('task-mecca-language') || (navigator.language?.toLowerCase().startsWith('ko') ? 'ko' : 'en'),
   manualByLanguage: {},
-  notificationSettings: (()=>{ try { return {...{intervention:true,completed:true,stalled:true},...JSON.parse(localStorage.getItem('task-mecca-notifications')||'{}')}; } catch(_) { return {intervention:true,completed:true,stalled:true}; } })(),
+  notificationSettings: (()=>{ try { return {...{intervention:true,finalize:true,completed:true,stalled:true},...JSON.parse(localStorage.getItem('task-mecca-notifications')||'{}')}; } catch(_) { return {intervention:true,finalize:true,completed:true,stalled:true}; } })(),
   previousTasksByProject: (()=>{ try { const raw=JSON.parse(localStorage.getItem('task-mecca-previous-tasks')||'{}'); return raw&&typeof raw==='object'?raw:{}; } catch(_) { return {}; } })(),
   versionInfo: null,
   contentRevision: '',
@@ -80,6 +80,26 @@ Object.assign(I18N.en,{
   notificationsUnsupportedTitle:'System notifications are not supported by this browser.',
   notificationsUnsupportedGuide:'The current browser cannot use the system Notification API. Use a supported browser or HTTPS environment.',
   notificationPermissionError:'Notification permission request failed.',
+});
+Object.assign(I18N.ko,{
+  notifyFinalize:'완료 처리 필요',
+  globalAttentionTitle:'조치가 필요한 작업이 있습니다.',
+  globalAttentionOpen:'확인 필요 보기',
+  globalAttentionUser:'사용자 조치',
+  globalAttentionFinalize:'완료 처리',
+  globalAttentionStalled:'정체 확인',
+  attentionAction:'필요한 조치',
+  attentionResume:'해제·재개 조건',
+});
+Object.assign(I18N.en,{
+  notifyFinalize:'Needs finalization',
+  globalAttentionTitle:'Tasks need attention.',
+  globalAttentionOpen:'Open Needs Attention',
+  globalAttentionUser:'User action',
+  globalAttentionFinalize:'Finalization',
+  globalAttentionStalled:'Stalled check',
+  attentionAction:'Required action',
+  attentionResume:'Clear / resume condition',
 });
 
 Object.assign(I18N.ko,{
@@ -609,7 +629,7 @@ function humanSummaryCard(task) {
   else if(kind==='simple')links.push(['task-definition',t('taskDefinition')],['acceptance',t('completionCriteria')]);
   else links.push(['legacy-task',t('legacyDetails')]);
   links.push(['progress-result',t('progressResult')],['verification',t('verificationDetail')]);
-  const urgent=reason?`<div class="summary-alert ${reason.severity==='danger'?'danger':''}"><strong>${esc(reason.title||t('needsAttention'))}</strong><span>${esc(reason.message||'')}</span>${reason.resume_condition?`<span>${esc(reason.resume_condition)}</span>`:''}</div>`:'';
+  const urgent=reason?`<div class="summary-alert ${reason.severity==='danger'?'danger':''}"><strong>${esc(reason.title||t('needsAttention'))}</strong>${reason.message?`<span>${esc(reason.message)}</span>`:''}${reason.action?`<span class="summary-alert-line"><b>${esc(t('attentionAction'))}</b><span>${esc(reason.action)}</span></span>`:''}${reason.resume_condition?`<span class="summary-alert-line"><b>${esc(t('attentionResume'))}</b><span>${esc(reason.resume_condition)}</span></span>`:''}</div>`:'';
   return `<section class="human-summary-card detail-section" id="human-summary" data-toc-label="${esc(t('humanSummary'))}"><div class="human-summary-head"><div><div class="eyebrow">${esc(t('humanSummary'))}</div>${!s.canonical?`<span class="summary-source">${esc(t('summaryFallback'))}</span>`:''}</div></div><div class="human-summary-grid">${rows.map(([label,value])=>`<div class="human-summary-row"><span>${esc(label)}</span><strong>${esc(value)}</strong></div>`).join('')}</div>${urgent}<div class="detail-jump-list"><span>${esc(t('detailLinks'))}</span>${links.map(([id,label])=>`<a href="#${esc(id)}" data-detail-target="${esc(id)}">${esc(label)}</a>`).join('')}</div></section>`;
 }
 function healthLabel(h) { return ({healthy:t('active'),quiet:t('quiet'),stale:t('stale'),worker_missing:t('workerMissing'),runtime_unknown:t('runtimeUnknown'),awaiting_finalize:t('awaitingFinalize'),needs_user:t('needsUser'),'n/a':'-'})[h] || h; }
@@ -666,6 +686,24 @@ function diagnosticBanner() {
   const rows=currentProjectData()?.diagnostics||[];
   if(!rows.length)return '';
   return `<div class="global-access"><div><strong>Partial diagnostics</strong><span>${esc(rows.map(x=>`${x.component}: ${x.error}`).join(' · '))}</span></div></div>`;
+}
+function globalAttentionBanner() {
+  const rows=(currentProjectData()?.attention||[]).filter(row=>row&&row.type!=='quiet');
+  if(!rows.length)return '';
+  const counts={user:0,finalize:0,stalled:0};
+  rows.forEach(row=>{
+    if(row.type==='user_intervention')counts.user++;
+    else if(row.type==='completion_pending')counts.finalize++;
+    else if(row.type==='runtime_stalled')counts.stalled++;
+  });
+  const summary=[];
+  if(counts.user)summary.push(`${t('globalAttentionUser')} ${counts.user}`);
+  if(counts.finalize)summary.push(`${t('globalAttentionFinalize')} ${counts.finalize}`);
+  if(counts.stalled)summary.push(`${t('globalAttentionStalled')} ${counts.stalled}`);
+  return `<button type="button" class="global-attention ${counts.user?'danger':''}" id="globalAttentionBanner"><span class="global-attention-copy"><strong>${esc(t('globalAttentionTitle'))}</strong><span>${esc(summary.join(' · '))}</span></span><span class="global-attention-open">${esc(t('globalAttentionOpen'))} →</span></button>`;
+}
+function bindGlobalAttentionBanner() {
+  $('#globalAttentionBanner')?.addEventListener('click',()=>navigateView('attention'));
 }
 
 function isIOSDevice() {
@@ -728,6 +766,19 @@ async function sendBrowserNotification(kind,task,reason,key) {
     rememberNotification(key);
   } catch(_) {}
 }
+function attentionNotificationKind(reason) {
+  if(reason?.type==='runtime_stalled')return 'stalled';
+  if(reason?.type==='completion_pending')return 'finalize';
+  return 'intervention';
+}
+function attentionEpisodeKey(task,reason,kind) {
+  const activity=task.activity||{};
+  const runtimeBased=reason?.type==='runtime_stalled'||reason?.type==='completion_pending';
+  const marker=runtimeBased
+    ? [activity.health,activity.runtime_state,activity.last_activity_at,activity.heartbeat_at,task.agent].filter(Boolean).join('|')
+    : [task.updated_at||task.mtime,reason?.message,reason?.action,reason?.resume_condition,reason?.evidence].filter(Boolean).join('|');
+  return `${state.project}:${task.id}:${kind}:${reason?.type||''}:${marker}`;
+}
 function processTaskNotifications(snapshot) {
   if(!state.project||!snapshot)return;
   const current=snapshot.all_items||{};
@@ -752,8 +803,8 @@ function processTaskNotifications(snapshot) {
   Object.values(current).forEach(task=>{
     const reason=task.attention_reason||null;
     if(reason){
-      const kind=reason.type==='runtime_stalled'?'stalled':'intervention';
-      const key=`${state.project}:${task.id}:${kind}:${reason.type||''}:${task.updated_at||task.mtime||''}`;
+      const kind=attentionNotificationKind(reason);
+      const key=attentionEpisodeKey(task,reason,kind);
       sendBrowserNotification(kind,task,reason,key);
     }
     if(previous&&!completedByServer.has(task.id)){
@@ -822,6 +873,7 @@ function renderNotificationPanel() {
   panel.innerHTML=`<div class="notification-panel-head"><strong>${esc(t('notificationSettings'))}</strong><button type="button" id="notificationClose">×</button></div>
     ${guide}
     <label><input type="checkbox" data-notification-setting="intervention" ${state.notificationSettings.intervention?'checked':''}> <span>${esc(t('notifyIntervention'))}</span></label>
+    <label><input type="checkbox" data-notification-setting="finalize" ${state.notificationSettings.finalize?'checked':''}> <span>${esc(t('notifyFinalize'))}</span></label>
     <label><input type="checkbox" data-notification-setting="completed" ${state.notificationSettings.completed?'checked':''}> <span>${esc(t('notifyCompleted'))}</span></label>
     <label><input type="checkbox" data-notification-setting="stalled" ${state.notificationSettings.stalled?'checked':''}> <span>${esc(t('notifyStalled'))}</span></label>
     ${permission==='default'&&capability.canRequest?`<button type="button" class="action-btn notification-permission" id="notificationPermission">${esc(t('allowBrowserNotifications'))}</button>`:''}`;
@@ -1245,7 +1297,7 @@ function listView() {
 
 function attentionView() {
   const arr=state.snapshot.attention||[];
-  return `<div class="page-head"><div><div class="eyebrow">${esc(t('operationsEyebrow'))}</div><h1>${esc(t('attention'))}</h1><p class="summary">${esc(t('advisory'))}</p></div></div>${arr.length?arr.map(a=>{const task=state.snapshot.all_items[a.id]||{},label=a.title||healthLabel(a.health),message=a.message||'',resume=a.resume_condition||'';return `<div class="attention-card" data-id="${esc(a.id)}"><div class="task-id">${esc(a.id)}</div><div><strong>${esc(titleOf(task))}</strong><p><b>${esc(label)}</b>${message?` · ${esc(message)}`:''}${resume?` · ${esc(resume)}`:''}</p></div><span class="badge ${a.severity==='danger'||a.health==='worker_missing'||a.health==='stale'?'danger':'warn'}">${esc(label)}</span></div>`}).join(''):`<div class="empty">${esc(t('noAttention'))}</div>`}`;
+  return `<div class="page-head"><div><div class="eyebrow">${esc(t('operationsEyebrow'))}</div><h1>${esc(t('attention'))}</h1><p class="summary">${esc(t('advisory'))}</p></div></div>${arr.length?arr.map(a=>{const task=state.snapshot.all_items[a.id]||{},label=a.title||healthLabel(a.health),message=a.message||'',action=a.action||'',resume=a.resume_condition||'';return `<div class="attention-card" data-id="${esc(a.id)}"><div class="task-id">${esc(a.id)}</div><div><strong>${esc(titleOf(task))}</strong><p><b>${esc(label)}</b>${message?` · ${esc(message)}`:''}</p>${action?`<div class="attention-instruction"><b>${esc(t('attentionAction'))}</b><span>${esc(action)}</span></div>`:''}${resume?`<div class="attention-instruction"><b>${esc(t('attentionResume'))}</b><span>${esc(resume)}</span></div>`:''}</div><span class="badge ${a.severity==='danger'||a.health==='worker_missing'||a.health==='stale'?'danger':'warn'}">${esc(label)}</span></div>`}).join(''):`<div class="empty">${esc(t('noAttention'))}</div>`}`;
 }
 function rootPromptForLanguage(raw,language=state.language) {
   raw=String(raw||'');
@@ -1541,18 +1593,20 @@ function render() {
     }
     c.innerHTML=`<div class="loading">${esc(t('loading'))}</div>`; return;
   }
-  const gate=accessBanner()+diagnosticBanner();
+  const gate=accessBanner()+diagnosticBanner()+globalAttentionBanner();
   if (state.detail) {
     const task=state.detailTask;
     if(!task){
       if(state.loadError){
         c.innerHTML=gate+`<div class="load-error"><h2>${esc(t('taskNotFound'))}</h2><p>${esc(state.loadError)}</p><div class="project-actions"><button class="action-btn secondary" id="detailBackBtn">${esc(t('backToBacklog'))}</button><button class="action-btn" id="detailRetryBtn">Retry</button></div></div>`;
+        bindGlobalAttentionBanner();
         $('#detailBackBtn')?.addEventListener('click',closeTask);
         $('#detailRetryBtn')?.addEventListener('click',()=>{state.loadError='';render();loadTaskDetail(state.detail)});
-      } else c.innerHTML=gate+`<div class="loading">${esc(t('loading'))}</div>`;
+      } else { c.innerHTML=gate+`<div class="loading">${esc(t('loading'))}</div>`; bindGlobalAttentionBanner(); }
       return;
     }
     c.innerHTML=gate+detailView(task);
+    bindGlobalAttentionBanner();
     $('#backBtn')?.addEventListener('click',closeTask);
     $('#rawToggle')?.addEventListener('click',()=>{
       const scrollY=window.scrollY;
@@ -1564,6 +1618,7 @@ function render() {
     return;
   }
   c.innerHTML=(state.view==='hub'?hubView():gate+(state.view==='manual'?manualView():state.view==='workload'?workloadView():state.view==='attention'?attentionView():state.view==='issues'?issuesView():listView()));
+  bindGlobalAttentionBanner();
   bindRows(); if(state.view==='hub') bindHubActions();
   if(state.view==='backlog')scheduleAutoListPageSize();
   document.querySelectorAll('[data-manual-tab]').forEach(b=>b.onclick=()=>{state.manualTab=b.dataset.manualTab;render()});
