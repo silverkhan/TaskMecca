@@ -42,6 +42,29 @@ The dashboard's Full Access indicator is historical information. Task Mecca runs
 If the current filename state is ahead of committed Git lifecycle history, Task Mecca records a provisional observed transition in `.runtime/lifecycle_observations.json`. This keeps Active/Wait timing from resetting while state-transition commits are pending. Git evidence takes precedence when it later arrives.
 
 
+### Runtime observability and Hook trust
+
+**Subagent Workload → Runtime execution observability** collects actual Codex/Claude execution events through project Hook configuration. Hooks are not separate programs; they are configuration rules that connect provider events to `task-mecca runtime observe ...`.
+
+**Configured is not the same as trusted or observed.**
+
+- **Codex**: after Task Mecca adds rules to `.codex/hooks.json`, Codex may still require Hook trust review. In the CLI/TUI, open `/hooks` and review/trust the Task Mecca Hooks. Start/Stop events from subagents that began or ended before approval may not be recoverable, so create a **new subagent after approval** to verify. Changing a Hook definition may require trust review again.
+- **Claude Code**: settings Hooks in `.claude/settings.json` do not use the same per-Hook approval model. Interactive sessions require the project to be **workspace-trusted**. `claude -p`/SDK sessions may run settings Hooks without a separate trust dialog.
+
+Web distinguishes `Not configured / Verification needed / Observation confirmed` and separately shows whether Activity / Start / Stop events have actually been received. When Task Mecca cannot directly verify provider trust state, it does not infer approval.
+
+CLI management:
+
+```bash
+task-mecca runtime hooks status all
+task-mecca runtime hooks enable codex
+task-mecca runtime hooks enable claude
+task-mecca runtime hooks disable codex
+task-mecca runtime hooks disable claude
+```
+
+`disable` removes only Task Mecca-managed Hook handlers and preserves unrelated Hooks. Turning observation off does not delete the existing Execution Ledger.
+
 ## Framework / Data boundary
 
 Installation deploys only `framework/`; it does not create `data/`. On the first task registration Registrar uses `ensure-backlog` to select an existing ledger or create `_task_mecca/data/backlog/`. Durable artifacts created by agents belong under `data/`, not inside `framework/`.
