@@ -409,6 +409,41 @@ func Report(project string, recentLimit int) (SpikeReport, error) {
     return report, nil
 }
 
+func FilterReport(report SpikeReport, provider string) SpikeReport {
+    provider = strings.ToLower(strings.TrimSpace(provider))
+    if provider == "" {
+        return report
+    }
+    filtered := report
+    filtered.Providers = nil
+    filtered.Agents = nil
+    filtered.Findings = nil
+    filtered.Recent = nil
+    filtered.Events = 0
+    for _, row := range report.Providers {
+        if row.Provider == provider {
+            filtered.Providers = append(filtered.Providers, row)
+            filtered.Events += row.Events
+        }
+    }
+    for _, row := range report.Agents {
+        if row.Provider == provider {
+            filtered.Agents = append(filtered.Agents, row)
+        }
+    }
+    for _, row := range report.Findings {
+        if row.Provider == "" || row.Provider == provider {
+            filtered.Findings = append(filtered.Findings, row)
+        }
+    }
+    for _, row := range report.Recent {
+        if row.Provider == provider {
+            filtered.Recent = append(filtered.Recent, row)
+        }
+    }
+    return filtered
+}
+
 func firstString(payload map[string]any, keys ...string) string {
     for _, key := range keys {
         if value, ok := payload[key]; ok {
