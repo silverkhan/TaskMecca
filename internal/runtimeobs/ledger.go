@@ -137,7 +137,7 @@ func attemptIDFor(provider, sessionID, agentID string) string {
 
 func eventIDFor(e ExecutionEvent) string {
     parts:=[]string{e.EventKind,e.Provider,e.SessionID,e.TurnID,e.RuntimeAgentID,e.HookEventName,e.ToolUseID,string(e.State),e.RawSHA256,e.TaskID,e.AgentPath,e.ParentAttemptID,e.BindingSource}
-    if e.RawSHA256=="" { parts=append(parts,e.ObservedAt) }
+    if e.RawSHA256=="" || (e.EventKind=="state" && e.TurnID=="") { parts=append(parts,e.ObservedAt) }
     if e.EventKind=="binding" {
         keys:=make([]string,0,len(e.BindingEvidence))
         for k:=range e.BindingEvidence { keys=append(keys,k) }
@@ -235,13 +235,23 @@ func (a *accumulator) apply(e ExecutionEvent) {
     case "activity":
         a.attempt.ActivityCount++; a.attempt.LastActivityAt=maxTimeString(a.attempt.LastActivityAt,e.ObservedAt)
     case "state":
+        if (e.State==StateStarting || e.State==StateRunning) && a.attempt.Terminal && a.attempt.EndedAt!="" {
+            ended,endedErr:=time.Parse(time.RFC3339Nano,a.attempt.EndedAt)
+            observed,observedErr:=time.Parse(time.RFC3339Nano,e.ObservedAt)
+            if endedErr==nil && observedErr==nil && observed.After(ended) {
+                a.attempt.Terminal=false
+                a.attempt.EndedAt=""
+                a.attempt.StartedAt=e.ObservedAt
+            }
+        }
         if e.State==StateStarting || e.State==StateRunning { if a.attempt.StartedAt=="" { a.attempt.StartedAt=e.ObservedAt } }
         if e.State==StateRunning { a.attempt.LastActivityAt=maxTimeString(a.attempt.LastActivityAt,e.ObservedAt) }
-        if !a.attempt.Terminal || e.Terminal {
+        terminalAlready := e.Terminal && a.attempt.Terminal && a.attempt.CurrentState==e.State
+        if !a.attempt.Terminal || (e.Terminal && !terminalAlready) {
             if a.attempt.CurrentState!=e.State { a.transitions=append(a.transitions,Transition{At:e.ObservedAt,State:e.State,Kind:"state",EvidenceSource:e.EvidenceSource,ObservationQuality:e.ObservationQuality,Reason:e.Reason}) }
             a.attempt.CurrentState=e.State; a.attempt.StateEvidenceSource=e.EvidenceSource; a.attempt.StateObservationQuality=e.ObservationQuality
         }
-        if e.Terminal { a.attempt.Terminal=true; a.attempt.EndedAt=e.ObservedAt }
+        if e.Terminal && !terminalAlready { a.attempt.Terminal=true; a.attempt.EndedAt=e.ObservedAt }
     case "binding":
         addValue(a.taskIDs,e.TaskID); addValue(a.agentPaths,e.AgentPath); addValue(a.parents,e.ParentAttemptID)
         if e.BindingSource!="" { a.attempt.BindingSource=e.BindingSource }

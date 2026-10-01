@@ -113,6 +113,20 @@ task-mecca preflight --require-full-access --json
 단순 질의·설계 논의처럼 subagent 실행이 전혀 필요 없는 대화는 이 gate 때문에 막지 않는다. 그러나 실제 Task Mecca
 위임 단계로 넘어가기 전에는 반드시 통과해야 한다.
 
+### 이벤트 기반 실행 인계
+
+실행까지 승인된 작업은 Registrar/Worker 완료 뒤 Root의 다음 대화를 기다리지 않는다.
+
+- Root는 Registrar 실행 전에 `/root/controller`의 exact runtime identity를 준비하고 역할 경로 binding을 확인한다.
+- Registrar는 등록 성공 후 `registration_ready` handoff로 Controller에 직접 message/resume한다.
+- Worker는 DONE/BLOCKED 시 `worker_done`/`worker_blocked` handoff로 Controller에 직접 message/resume한다.
+- 종료된 agent의 **새 turn을 시작하는 resume**는 새 subagent dispatch와 동일하게 fresh Full Access preflight를 요구한다.
+- running agent에 기존 turn 메시지만 보내는 경우와 completed agent를 새 turn으로 재개하는 경우를 구분한다.
+- target identity/state가 없거나 모호하면 자동 인계 성공으로 간주하지 않는다.\n- `task-mecca handoff capability show <provider> --json`의 baseline/evidence를 사용하며, 실제 smoke test 결과는 `capability record`로 덮어써 provider 이름만으로 기능을 가정하지 않는다.
+- 상세 명령과 역할별 책임은 `collab.md`와 `roles/*.md`를 따른다.
+
+`_task_mecca/.runtime/handoffs/events.jsonl`은 ephemeral orchestration evidence이며 backlog/Git contract를 대체하지 않는다.
+
 ## 5. Full Access가 확인되지 않을 때
 
 `preflight --require-full-access`는 다음 중 하나를 반환한다.

@@ -155,6 +155,30 @@ Task Mecca에 등록된 `## 작업 정의` / `## 요건 정의서`가 현재 실
 Codex처럼 subagent가 Root를 다시 깨울 수 없는 런타임에서도 이것을 오류로 보지 않는다. 다음 Root 대화에서 그 durable 정보를 읽고
 사용자와 재합의한 뒤 Task Mecca 계약과 원천 이슈를 다시 맞춘다.
 
+## Controller bootstrap과 등록 이후 인계
+
+실행까지 승인된 작업을 Registrar에 넘기기 전에 Root는 **Controller를 먼저 주소 지정 가능한 runtime identity로 준비**한다.
+
+1. Registrar/Controller의 새 turn을 시작하기 직전에 fresh `preflight --require-full-access --json`을 통과한다.
+2. `task-mecca runtime hooks status <provider>`와 실제 runtime evidence를 확인한다. `task-mecca handoff capability show <provider> --json`도 확인해 현재 runtime에서 message/resume capability가 지원되는지 본다. exact identity나 필요한 capability가 확인되지 않은 상태에서 자동 인계 성공을 가정하지 않는다.
+3. 재사용 가능한 `/root/controller`가 있으면 그 runtime attempt를 사용한다. 없으면 Controller를 먼저 생성하고 실제 `SubagentStart`/runtime identity가 관측된 뒤 계속한다.
+4. Controller attempt가 아직 역할 경로에 binding되지 않았다면 다음처럼 **task와 무관한 역할 binding**을 만든다.
+
+```bash
+task-mecca runtime bind <controller-attempt-id> - /root/controller --json
+```
+
+5. Registrar 요청에 최소한 다음을 함께 전달한다.
+   - `execution_authorized`: 등록만인지 실행까지 승인됐는지
+   - `controller_attempt_id`
+   - runtime provider / runtime agent ID / session scope 등 확인된 identity
+   - 확정 contract와 외부 출처
+6. Registrar가 등록 성공 후 Controller에 직접 handoff하도록 지시한다. 이후 정상 실행·완료 경로를 Root의 다음 turn에 의존시키지 않는다.
+
+Runtime observation이 비활성이라 exact target을 안전하게 원장화할 수 없으면 autonomous handoff를 사용하지 않는다. 이 경우 Root가 현재 turn 안에서 등록 결과를 받은 뒤 Controller 인계까지 수행하는 fallback을 사용한다.
+
+Codex에서는 종료된 Root를 subagent가 새 turn으로 재개할 수 없으므로 Controller의 최종 완료 처리는 Root wake와 분리한다. Claude 등 Root/parent resume이 가능한 runtime도 Root wake 성공을 task completion 조건으로 삼지 않는다.
+
 ## 작업 정의 프로세스
 
 ```text

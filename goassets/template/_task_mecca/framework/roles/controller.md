@@ -60,6 +60,54 @@ Worker 보고를 `결과`, `검증`, `핵심 요약`에 반영할 때는 보고 
 사용자가 바로 이해할 수 있는 자연스러운 문장으로 다시 서술한다. 특히 영어 명사구에 한국어 조사만 붙이거나
 여러 내부 개념을 한 문장에 연쇄해서 쓰지 않는다. `HUMAN_READABLE_BACKLOG.md`의 표현 원칙과 예시를 따른다.
 
+## Handoff 수신과 멱등 처리
+
+Registrar 또는 Worker로부터 handoff를 받으면 side effect 전에 현재 Controller의 **runtime attempt ID까지 포함해 claim**한다.
+
+```bash
+task-mecca handoff claim <HANDOFF_ID> \
+  --as /root/controller \
+  --source-attempt <current-controller-attempt-id> \
+  --json
+```
+
+- `claimed=true`: 현재 Controller가 처리권을 획득했다.
+- `already_claimed=true`: 같은 runtime attempt가 이미 claim했다. 이전 turn 중단 뒤 재개라면 현재 원장 상태를 확인하고 남은 단계부터 계속할 수 있다.
+- `already_applied=true`: 이미 소비된 이벤트다. side effect를 반복하지 않는다.
+- `claim_conflict=true`: 다른 Controller runtime attempt가 처리 중이므로 자동 진행하지 않는다.
+- `contract_changed=true`: handoff의 계약 snapshot과 현재 canonical contract가 다르다. 자동 완료/구현을 멈추고 `hold(user)` 또는 필요한 reconciliation 상태를 기록한다.
+
+### 등록 handoff
+
+`registration_ready`를 claim한 뒤 현재 backlog를 다시 `inspect`하고 scheduling을 수행한다. Worker를 dispatch할 때 Worker 메시지에 다음을 함께 넣는다.
+
+- Controller의 현재 attempt/runtime identity
+- handoff의 `contract_sha256`
+- backlog ID와 canonical file을 직접 읽으라는 지시
+
+Worker가 실제 생성된 것이 확인된 뒤 registration handoff를 `applied`로 기록한다.
+
+### Worker DONE/BLOCKED handoff
+
+Worker report를 claim한 뒤 다음 순서를 지킨다.
+
+```text
+현재 contract 재검증
+→ 수용 기준별 코드/테스트 evidence 검증
+→ 미완료면 Worker resume/reassign
+→ 사용자 판단 필요면 hold(user)
+→ 충족 시 결과·검증 기록 + done/archive
+→ 외부 원천 write-back
+→ Root 결과 보고
+→ handoff applied
+```
+
+각 단계 결과는 `handoff mark`로 기록한다. 특히 `backlog-finalized`, `external-synced`, `root-reported`를 구분한다.
+
+외부 Linear/GitHub write 직후 local mark 전에 중단되어 성공 여부가 불명확하면 **blind retry하지 않는다.** 원격 evidence로 기존 write를 확인할 수 없으면 `external-synced=unknown`으로 남겨 중복 comment/status update를 피한다.
+
+Root에 결과를 보낸 사실과 Root가 실제 새 turn으로 재개된 사실은 별개다. Codex에서는 Root 자동 재개를 요구하지 않으며, Claude에서도 Root wake는 best-effort capability다.
+
 ## 완료 처리
 
 Worker DONE/BLOCKED마다 해당 backlog의 `### 수용 기준`과 실제 코드·검증 근거를 대조한다. Simple/Defined 여부와 무관하게
