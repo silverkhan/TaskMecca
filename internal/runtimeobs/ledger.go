@@ -235,7 +235,8 @@ func (a *accumulator) apply(e ExecutionEvent) {
     case "activity":
         a.attempt.ActivityCount++; a.attempt.LastActivityAt=maxTimeString(a.attempt.LastActivityAt,e.ObservedAt)
     case "state":
-        if e.State==StateRunning { if a.attempt.StartedAt=="" { a.attempt.StartedAt=e.ObservedAt }; a.attempt.LastActivityAt=maxTimeString(a.attempt.LastActivityAt,e.ObservedAt) }
+        if e.State==StateStarting || e.State==StateRunning { if a.attempt.StartedAt=="" { a.attempt.StartedAt=e.ObservedAt } }
+        if e.State==StateRunning { a.attempt.LastActivityAt=maxTimeString(a.attempt.LastActivityAt,e.ObservedAt) }
         if !a.attempt.Terminal || e.Terminal {
             if a.attempt.CurrentState!=e.State { a.transitions=append(a.transitions,Transition{At:e.ObservedAt,State:e.State,Kind:"state",EvidenceSource:e.EvidenceSource,ObservationQuality:e.ObservationQuality,Reason:e.Reason}) }
             a.attempt.CurrentState=e.State; a.attempt.StateEvidenceSource=e.EvidenceSource; a.attempt.StateObservationQuality=e.ObservationQuality
@@ -269,6 +270,7 @@ func (a *accumulator) finish(limit int,now time.Time) (Attempt,[]LedgerFinding) 
         end:=now; if a.attempt.EndedAt!="" { if parsed,err:=time.Parse(time.RFC3339Nano,a.attempt.EndedAt); err==nil { end=parsed } }
         if start,err:=time.Parse(time.RFC3339Nano,a.attempt.StartedAt); err==nil && end.After(start) { a.attempt.ElapsedMillis=end.Sub(start).Milliseconds() }
     }
+    sort.SliceStable(a.transitions,func(i,j int)bool { return a.transitions[i].At<a.transitions[j].At })
     a.attempt.ActiveTimeAvailable=false
     a.attempt.ActiveTimeNote="hook lifecycle does not provide authoritative active intervals; observed_active_ms is unset"
     a.attempt.WaitingMillis=waitingMillis(a.transitions,a.attempt.EndedAt,now)
