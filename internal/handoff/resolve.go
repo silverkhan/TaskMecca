@@ -72,37 +72,54 @@ func resolveTarget(project, targetPath, sourceAttemptID, targetAttemptID string,
 		RuntimeAgentID: chosen.RuntimeAgentID, SessionID: chosen.SessionID,
 		Provider: chosen.Provider, State: string(chosen.CurrentState),
 	}
-	action, fresh, reason := actionFor(*chosen, targetPath)
+	action, fresh, reason, capabilityErr := actionFor(project, *chosen, targetPath)
+	if capabilityErr != nil {
+		return target, ActionHold, false, "capability_evidence_error", capabilityErr
+	}
 	return target, action, fresh, reason, nil
 }
 
-func actionFor(attempt runtimeobs.Attempt, targetPath string) (Action, bool, string) {
+func actionFor(project string, attempt runtimeobs.Attempt, targetPath string) (Action, bool, string, error) {
 	provider := strings.ToLower(strings.TrimSpace(attempt.Provider))
+	caps, err := LoadCapabilities(project, provider)
+	if err != nil {
+		return ActionHold, false, "capability_evidence_error", err
+	}
 	state := attempt.CurrentState
 	switch state {
 	case runtimeobs.StateStarting, runtimeobs.StateRunning:
-		return ActionMessageRunning, false, "target_running"
+		if caps.CanMessageRunning == CapabilitySupported {
+			return ActionMessageRunning, false, "target_running", nil
+		}
+		return ActionHold, false, "message_running_capability_" + string(caps.CanMessageRunning), nil
 	case runtimeobs.StateCompleted:
 		agentType:=strings.ToLower(strings.TrimSpace(attempt.AgentType))
 		if provider=="claude" && (agentType=="explore" || agentType=="plan") {
-			return ActionHold, false, "claude_one_shot_agent_not_resumable"
+			return ActionHold, false, "claude_one_shot_agent_not_resumable", nil
 		}
-		if provider == "codex" && targetPath == "/root" {
-			return ActionReportOnly, false, "codex_root_cannot_be_resumed"
+		if targetPath == "/root" {
+			switch caps.CanResumeRoot {
+			case CapabilitySupported:
+				return ActionResumeCompleted, true, "root_resume_capability_supported", nil
+			case CapabilityUnsupported:
+				return ActionReportOnly, false, "root_resume_capability_unsupported", nil
+			default:
+				return ActionReportOnly, false, "root_resume_capability_unknown", nil
+			}
 		}
-		if provider == "codex" || provider == "claude" {
-			return ActionResumeCompleted, true, "completed_target_is_resumable"
+		if caps.CanResumeCompleted == CapabilitySupported {
+			return ActionResumeCompleted, true, "completed_target_is_resumable", nil
 		}
-		return ActionHold, false, "provider_resume_capability_unknown"
+		return ActionHold, false, "resume_completed_capability_" + string(caps.CanResumeCompleted), nil
 	case runtimeobs.StateInterrupted:
-		return ActionHold, false, "target_interrupted_or_cancelled"
+		return ActionHold, false, "target_interrupted_or_cancelled", nil
 	case runtimeobs.StateErrored:
-		return ActionHold, false, "target_errored"
+		return ActionHold, false, "target_errored", nil
 	case runtimeobs.StateShutdown:
-		return ActionHold, false, "target_shutdown"
+		return ActionHold, false, "target_shutdown", nil
 	case runtimeobs.StateWaitingUser, runtimeobs.StateWaitingApproval:
-		return ActionHold, false, "target_waiting"
+		return ActionHold, false, "target_waiting", nil
 	default:
-		return ActionHold, false, "target_state_unknown"
+		return ActionHold, false, "target_state_unknown", nil
 	}
 }

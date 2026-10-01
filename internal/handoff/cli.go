@@ -29,7 +29,7 @@ type cliOptions struct {
 
 func RunCLI(args []string, stdout, stderr io.Writer) int {
 	if len(args) == 0 {
-		fmt.Fprintln(stderr, "handoff requires one of: prepare, claim, mark, inspect, reconcile")
+		fmt.Fprintln(stderr, "handoff requires one of: prepare, claim, mark, inspect, reconcile, capability")
 		return 2
 	}
 	action := strings.ToLower(args[0])
@@ -117,6 +117,40 @@ func RunCLI(args []string, stdout, stderr io.Writer) int {
 			return 1
 		}
 		printValue(stdout, ledger, opts.jsonOutput)
+	case "capability":
+		if len(opts.positionals) < 2 {
+			fmt.Fprintln(stderr, "handoff capability requires: show <provider> | record <provider> <name> <supported|unsupported|unknown>")
+			return 2
+		}
+		subaction := strings.ToLower(opts.positionals[0])
+		provider := strings.ToLower(opts.positionals[1])
+		switch subaction {
+		case "show":
+			if len(opts.positionals) != 2 {
+				fmt.Fprintln(stderr, "handoff capability show requires exactly one provider")
+				return 2
+			}
+			caps, callErr := LoadCapabilities(project, provider)
+			if callErr != nil {
+				fmt.Fprintln(stderr, callErr)
+				return 1
+			}
+			printValue(stdout, caps, opts.jsonOutput)
+		case "record":
+			if len(opts.positionals) != 4 {
+				fmt.Fprintln(stderr, "handoff capability record requires <provider> <name> <supported|unsupported|unknown>")
+				return 2
+			}
+			caps, callErr := RecordCapability(project, provider, opts.positionals[2], CapabilityState(strings.ToLower(opts.positionals[3])), opts.evidence, now)
+			if callErr != nil {
+				fmt.Fprintln(stderr, callErr)
+				return 1
+			}
+			printValue(stdout, caps, opts.jsonOutput)
+		default:
+			fmt.Fprintln(stderr, "handoff capability action must be show or record")
+			return 2
+		}
 	default:
 		fmt.Fprintln(stderr, "unknown handoff action: "+action)
 		return 2

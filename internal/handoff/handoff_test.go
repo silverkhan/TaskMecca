@@ -248,3 +248,53 @@ func TestAppliedRequiresClaim(t *testing.T) {
 		t.Fatal("applied must require a prior claim")
 	}
 }
+
+
+func TestCapabilityEvidenceCanDisableCompletedResume(t *testing.T) {
+	project := t.TempDir()
+	writeSimpleTask(t, project, "A-1")
+	now := time.Date(2026, 10, 2, 1, 0, 0, 0, time.UTC)
+	appendControllerAttempt(t, project, "run-controller", "session-1", "controller-1", runtimeobs.StateCompleted, now)
+	if _, err := RecordCapability(project, "codex", "can_resume_completed_agent", CapabilityUnsupported, "runtime smoke failed", now.Add(time.Second)); err != nil {
+		t.Fatal(err)
+	}
+	got, err := Prepare(PrepareRequest{
+		Project: project, TaskID: "A-1", EventType: EventRegistrationReady,
+		SourceAgentPath: "/root/registrar", TargetAgentPath: "/root/controller",
+		TargetAttemptID: "run-controller", ExecutionAuthorized: true,
+	}, now.Add(2*time.Second))
+	if err != nil { t.Fatal(err) }
+	if got.Action != ActionHold || got.Reason != "resume_completed_capability_unsupported" {
+		t.Fatalf("prepare=%+v", got)
+	}
+	caps, err := LoadCapabilities(project, "codex"); if err != nil { t.Fatal(err) }
+	if caps.Source != "runtime_evidence" || caps.CanResumeCompleted != CapabilityUnsupported {
+		t.Fatalf("caps=%+v", caps)
+	}
+}
+
+func TestClaudeOneShotCompletedAgentIsNotResumed(t *testing.T) {
+	project := t.TempDir()
+	writeSimpleTask(t, project, "A-1")
+	now := time.Date(2026, 10, 2, 1, 0, 0, 0, time.UTC)
+	state := runtimeobs.ExecutionEvent{
+		EventKind: "state", ObservedAt: now.Format(time.RFC3339Nano), AttemptID: "run-controller",
+		Provider: "claude", SessionID: "session-1", RuntimeAgentID: "controller-1", AgentType: "Explore",
+		State: runtimeobs.StateCompleted, Terminal: true, EvidenceSource: runtimeobs.EvidenceHook, ObservationQuality: runtimeobs.QualityObserved,
+	}
+	if err := runtimeobs.AppendExecutionEvent(project, state); err != nil { t.Fatal(err) }
+	binding := runtimeobs.ExecutionEvent{
+		EventKind: "binding", ObservedAt: now.Add(time.Millisecond).Format(time.RFC3339Nano), AttemptID: "run-controller",
+		AgentPath: "/root/controller", BindingSource: "test", EvidenceSource: runtimeobs.EvidenceManualBinding, ObservationQuality: runtimeobs.QualityAuthoritative,
+	}
+	if err := runtimeobs.AppendExecutionEvent(project, binding); err != nil { t.Fatal(err) }
+	got, err := Prepare(PrepareRequest{
+		Project: project, TaskID: "A-1", EventType: EventRegistrationReady,
+		SourceAgentPath: "/root/registrar", TargetAgentPath: "/root/controller",
+		TargetAttemptID: "run-controller", ExecutionAuthorized: true,
+	}, now.Add(time.Second))
+	if err != nil { t.Fatal(err) }
+	if got.Action != ActionHold || got.Reason != "claude_one_shot_agent_not_resumable" {
+		t.Fatalf("prepare=%+v", got)
+	}
+}
