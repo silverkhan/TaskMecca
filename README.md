@@ -67,7 +67,7 @@ From the project root, in a new terminal or the current one:
 task-mecca web
 ```
 
-![Task Mecca Web UI](docs/task-mecca-web.svg)
+![Task Mecca Web UI](docs/task-mecca-web-en.svg)
 
 The Web UI gives you a direct view of:
 
