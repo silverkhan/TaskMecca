@@ -274,7 +274,8 @@ function releaseNoteKnown(version) {
   return Boolean(state.releaseNoteDetails[version] || state.releaseNotes.some(item=>item.version===version));
 }
 function releaseNoteUnread(version=currentReleaseVersion()) {
-  if(!version||!releaseNoteKnown(version))return false;
+  const current=currentReleaseVersion();
+  if(!version||version!==current||!releaseNoteKnown(version))return false;
   return localStorage.getItem('task-mecca-release-notes-seen-version')!==version;
 }
 function renderReleaseNotesBadge() {
