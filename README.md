@@ -32,7 +32,36 @@ task-mecca init
 
 Initialization installs the Task Mecca framework and operating manuals. The backlog itself is created when the first task is registered.
 
-### 3. Launch the Web UI
+### 3. Activate your LLM session as Task Mecca Root
+
+After initialization, **open the agent/LLM conversation you use—such as Codex or Claude Code—from the same project root.**
+
+Choose exactly one user-facing session to act as the **Root**, then paste the prompt below into that session.
+
+```text
+Act as the Task Mecca Root for this session.
+First read _task_mecca/framework/SESSION_GUIDE.md, _task_mecca/framework/collab.md, and _task_mecca/framework/roles/root.md and follow those rules.
+For all user-facing conversation and backlog prose—titles, summaries, requirements, status, and results—write natively in the user's primary language and vocabulary. Keep exact English identifiers, commands, paths, or technical terms when they improve precision, but do not mechanically leak internal English modifiers or word order into another language; restate the whole expression naturally in the user's language.
+When work originates from a connected external item such as a Linear or GitHub issue, read that source and preserve a clickable source reference in the backlog. When possible, write meaningful decisions, real status transitions, and completion results back to the same source through the connected capability.
+Before delegating executable work to subagents, run the Full Access preflight described in SESSION_GUIDE.
+Classify work as Simple Task or Defined Task. For a simple task that is directly verifiable without additional interpretation, record only the goal and acceptance criteria and register it immediately. For work requiring scope, design, or user choices, prepare a requirement definition, get my confirmation, and then ask Registrar to register it losslessly.
+If no backlog exists yet, Registrar creates _task_mecca/data/backlog on the first registration. Everything under data is project-owned and is never overwritten by the framework updater.
+After registration, let Controller allocate work to Workers based on dependency and continuity, while Root remains the user-facing interface.
+```
+
+The same source prompt is installed at [`_task_mecca/ROOT_PROMPT.md`](goassets/template/_task_mecca/ROOT_PROMPT.md). README and the Web User Manual expose the prompt body directly so a first-time user does not need to navigate files before starting.
+
+After sending the prompt, just describe work naturally in the same session:
+
+```text
+Fix the login API bug and verify the related tests.
+```
+
+Task Mecca classifies the request as a directly executable **Simple Task** or a **Defined Task** that needs scope/design agreement, then continues through backlog registration and execution.
+
+### 4. Launch the Web UI
+
+From the project root, in a new terminal or the current one:
 
 ```bash
 task-mecca web
@@ -51,22 +80,6 @@ The Web UI gives you a direct view of:
 - the Root prompt and detailed User Manual.
 
 The default port is `18765`. In a configured Tailscale environment, Task Mecca can also expose its own HTTPS endpoint without a separate `tailscale serve`.
-
-### 4. Activate one Root session
-
-In Web, open **User Manual → Quick Start → Root session prompt**, copy the prompt, and give it to the single user-facing AI session that should run Task Mecca.
-
-You can also open it directly:
-
-[`_task_mecca/ROOT_PROMPT.md`](goassets/template/_task_mecca/ROOT_PROMPT.md)
-
-Then describe work naturally:
-
-```text
-Fix the login API bug and verify the related tests.
-```
-
-Task Mecca classifies work as a directly executable **Simple Task** or a **Defined Task** that first needs scope/design agreement, then continues through registration and execution.
 
 ## How it works
 
