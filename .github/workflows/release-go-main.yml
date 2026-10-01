@@ -11,8 +11,6 @@ on:
       - "install.sh"
       - ".github/workflows/release-go-main.yml"
   workflow_dispatch:
-  schedule:
-    - cron: "*/15 * * * *"
 
 permissions:
   contents: write
@@ -26,9 +24,25 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
+      - name: Validate release version bump
+        shell: bash
+        run: |
+          set -euo pipefail
+          current_version="$(tr -d '\r\n' < goassets/template/_task_mecca/VERSION)"
+          cli_version="$(sed -n 's/^const version = "\([^"]*\)"/\1/p' cmd/task-mecca/main.go)"
+          test "$current_version" = "$cli_version"
+          if git rev-parse HEAD^ >/dev/null 2>&1; then
+            previous_version="$(git show HEAD^:goassets/template/_task_mecca/VERSION 2>/dev/null | tr -d '\r\n' || true)"
+            if [ -n "$previous_version" ] && [ "$previous_version" = "$current_version" ]; then
+              echo "::error::Release-triggering change requires a version bump (still $current_version)."
+              exit 1
+            fi
+          fi
       - name: Check Web UI JavaScript
         run: |
           node --check goassets/template/_task_mecca/framework/web/app.js
@@ -57,15 +71,37 @@ jobs:
           ! grep -Fq '\\r' dist/VERSION.txt
           grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$' dist/VERSION.txt
           (cd dist && sha256sum task-mecca-* > SHA256SUMS.txt)
-      - name: Replace rolling prerelease
+      - name: Update rolling prerelease without deleting it
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euxo pipefail
-          gh release delete go-main --cleanup-tag -y || true
-          gh release create go-main dist/* \
-            --target "$GITHUB_SHA" \
+          if ! gh release view go-main >/dev/null 2>&1; then
+            git tag -f go-main "$GITHUB_SHA"
+            git push origin refs/tags/go-main --force
+            gh release create go-main \
+              --target "$GITHUB_SHA" \
+              --title "Task Mecca Go rolling build" \
+              --notes "Rolling standalone build from main. Commit: $GITHUB_SHA" \
+              --prerelease
+          fi
+
+          # Keep the old VERSION.txt available until every executable and checksum is ready.
+          gh release upload go-main \
+            dist/task-mecca-windows-amd64.exe \
+            dist/task-mecca-macos-amd64 \
+            dist/task-mecca-macos-arm64 \
+            dist/task-mecca-linux-amd64 \
+            dist/SHA256SUMS.txt \
+            --clobber
+
+          git tag -f go-main "$GITHUB_SHA"
+          git push origin refs/tags/go-main --force
+
+          # Publish the new version marker last so clients never discover a half-published build.
+          gh release upload go-main dist/VERSION.txt --clobber
+          gh release edit go-main \
             --title "Task Mecca Go rolling build" \
             --notes "Rolling standalone build from main. Commit: $GITHUB_SHA" \
             --prerelease

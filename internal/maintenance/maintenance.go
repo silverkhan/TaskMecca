@@ -130,21 +130,49 @@ func IsRegisteredProject(path string) bool {
     return false
 }
 
-func releaseBase() string {
+func releaseLocation() (string,string) {
     repoName:=repo
     if v:=strings.TrimSpace(os.Getenv("TASK_MECCA_REPO")); v!="" { repoName=v }
     tag:=releaseTag
     if v:=strings.TrimSpace(os.Getenv("TASK_MECCA_RELEASE_TAG")); v!="" { tag=v }
+    return repoName,tag
+}
+
+func releaseBase() string {
+    repoName,tag:=releaseLocation()
     return "https://github.com/"+repoName+"/releases/download/"+tag
+}
+
+func versionFallbackURL() string {
+    repoName,tag:=releaseLocation()
+    return "https://raw.githubusercontent.com/"+repoName+"/"+tag+"/goassets/template/_task_mecca/VERSION"
 }
 
 func httpGet(url string) ([]byte,error) {
     client:=&http.Client{Timeout:5*time.Second}
-    resp,err:=client.Get(url)
-    if err!=nil { return nil,err }
-    defer resp.Body.Close()
-    if resp.StatusCode<200 || resp.StatusCode>=300 { return nil,fmt.Errorf("HTTP %d",resp.StatusCode) }
-    return io.ReadAll(resp.Body)
+    var lastErr error
+    for attempt:=0; attempt<3; attempt++ {
+        req,err:=http.NewRequest(http.MethodGet,url,nil)
+        if err!=nil { return nil,err }
+        req.Header.Set("User-Agent","task-mecca")
+        resp,err:=client.Do(req)
+        if err==nil {
+            data,readErr:=io.ReadAll(resp.Body)
+            _=resp.Body.Close()
+            if readErr==nil && resp.StatusCode>=200 && resp.StatusCode<300 { return data,nil }
+            if readErr!=nil {
+                lastErr=readErr
+            } else {
+                lastErr=fmt.Errorf("HTTP %d",resp.StatusCode)
+                if resp.StatusCode!=404 && resp.StatusCode!=429 && resp.StatusCode<500 { return nil,lastErr }
+            }
+        } else {
+            lastErr=err
+        }
+        if attempt<2 { time.Sleep(time.Duration(attempt+1)*500*time.Millisecond) }
+    }
+    if lastErr==nil { lastErr=errors.New("request failed") }
+    return nil,lastErr
 }
 
 func versionCachePath() string { return filepath.Join(homeDir(),"update-check.json") }
@@ -238,7 +266,14 @@ func CheckLatest(current string) VersionInfo {
     current=normalizeVersion(current)
     info:=VersionInfo{Current:current,CheckedAt:time.Now().Format(time.RFC3339)}
     data,err:=httpGet(releaseBase()+"/VERSION.txt")
-    if err!=nil { info.Error=err.Error(); return info }
+    if err!=nil {
+        releaseErr:=err
+        data,err=httpGet(versionFallbackURL())
+        if err!=nil {
+            info.Error=fmt.Sprintf("release version check failed: %v; fallback failed: %v",releaseErr,err)
+            return info
+        }
+    }
     info.Latest=normalizeVersion(string(data))
     info.UpdateAvailable=newerVersion(info.Latest,current)
     return info
