@@ -2,7 +2,7 @@
 set -eu
 
 REPO="${TASK_MECCA_REPO:-silverkhan/TaskMecca}"
-TAG="${TASK_MECCA_RELEASE_TAG:-go-main}"
+TAG="${TASK_MECCA_RELEASE_TAG:-release-stable}"
 BASE_URL="https://github.com/${REPO}/releases/download/${TAG}"
 
 say() { printf '%s\n' "$*"; }
