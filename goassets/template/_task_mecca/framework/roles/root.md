@@ -160,7 +160,7 @@ Codex처럼 subagent가 Root를 다시 깨울 수 없는 런타임에서도 이�
 실행까지 승인된 작업을 Registrar에 넘기기 전에 Root는 **Controller를 먼저 주소 지정 가능한 runtime identity로 준비**한다.
 
 1. Registrar/Controller의 새 turn을 시작하기 직전에 fresh `preflight --require-full-access --json`을 통과한다.
-2. `task-mecca runtime hooks status <provider>`와 실제 runtime evidence를 확인한다. exact identity를 확인할 수 없는 상태에서 자동 인계 성공을 가정하지 않는다.
+2. `task-mecca runtime hooks status <provider>`와 실제 runtime evidence를 확인한다. `task-mecca handoff capability show <provider> --json`도 확인해 현재 runtime에서 message/resume capability가 지원되는지 본다. exact identity나 필요한 capability가 확인되지 않은 상태에서 자동 인계 성공을 가정하지 않는다.
 3. 재사용 가능한 `/root/controller`가 있으면 그 runtime attempt를 사용한다. 없으면 Controller를 먼저 생성하고 실제 `SubagentStart`/runtime identity가 관측된 뒤 계속한다.
 4. Controller attempt가 아직 역할 경로에 binding되지 않았다면 다음처럼 **task와 무관한 역할 binding**을 만든다.
 

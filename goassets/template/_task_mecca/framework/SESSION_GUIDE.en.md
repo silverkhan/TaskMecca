@@ -102,7 +102,7 @@ Execution-authorized work must not wait for another Root user turn after Registr
 - Worker directly messages or resumes Controller when reporting DONE/BLOCKED.
 - Resuming a completed agent starts a new turn and therefore requires a fresh Full Access preflight.
 - A message to a currently running agent is distinct from resuming a completed agent.
-- Missing, ambiguous, cancelled, or permission-blocked targets are not recorded as successful handoffs.
+- Missing, ambiguous, cancelled, or permission-blocked targets are not recorded as successful handoffs.\n- Use `task-mecca handoff capability show <provider> --json`; runtime smoke-test evidence recorded with `capability record` overrides builtin baselines, so dispatch does not rely on provider names alone.
 - See `collab.md` and `roles/*.md` for the canonical protocol.
 
 `_task_mecca/.runtime/handoffs/events.jsonl` is ephemeral orchestration evidence and does not replace the backlog/Git contract.

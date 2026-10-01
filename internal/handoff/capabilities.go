@@ -133,8 +133,16 @@ func RecordCapability(project, provider, name string, state CapabilityState, evi
 		return RuntimeCapabilities{}, err
 	}
 	if err := os.Rename(tmp, path); err != nil {
-		_ = os.Remove(tmp)
-		return RuntimeCapabilities{}, err
+		// Windows does not replace an existing destination with os.Rename.
+		// Capability evidence is ephemeral, so fall back to remove + rename.
+		if removeErr := os.Remove(path); removeErr != nil && !errors.Is(removeErr, os.ErrNotExist) {
+			_ = os.Remove(tmp)
+			return RuntimeCapabilities{}, err
+		}
+		if retryErr := os.Rename(tmp, path); retryErr != nil {
+			_ = os.Remove(tmp)
+			return RuntimeCapabilities{}, retryErr
+		}
 	}
 	return caps, nil
 }

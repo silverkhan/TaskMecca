@@ -122,7 +122,7 @@ task-mecca preflight --require-full-access --json
 - Worker는 DONE/BLOCKED 시 `worker_done`/`worker_blocked` handoff로 Controller에 직접 message/resume한다.
 - 종료된 agent의 **새 turn을 시작하는 resume**는 새 subagent dispatch와 동일하게 fresh Full Access preflight를 요구한다.
 - running agent에 기존 turn 메시지만 보내는 경우와 completed agent를 새 turn으로 재개하는 경우를 구분한다.
-- target identity/state가 없거나 모호하면 자동 인계 성공으로 간주하지 않는다.
+- target identity/state가 없거나 모호하면 자동 인계 성공으로 간주하지 않는다.\n- `task-mecca handoff capability show <provider> --json`의 baseline/evidence를 사용하며, 실제 smoke test 결과는 `capability record`로 덮어써 provider 이름만으로 기능을 가정하지 않는다.
 - 상세 명령과 역할별 책임은 `collab.md`와 `roles/*.md`를 따른다.
 
 `_task_mecca/.runtime/handoffs/events.jsonl`은 ephemeral orchestration evidence이며 backlog/Git contract를 대체하지 않는다.
