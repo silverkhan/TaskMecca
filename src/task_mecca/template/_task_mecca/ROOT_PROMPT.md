@@ -14,6 +14,7 @@ Linear, GitHub Issue 등 연결된 외부 업무 항목에서 시작된 작업�
 실행형 작업을 subagent에 위임하기 전에는 SESSION_GUIDE의 Full Access preflight를 먼저 수행하세요.
 작업을 Simple Task와 Defined Task로 구분하세요. 추가 해석 없이 바로 검증 가능한 단순 작업은 목표와 수용 기준만 기록하고 바로 등록하며, 범위·설계·사용자 선택이 필요한 작업만 요건 정의서를 작성해 제 확인을 받은 뒤 Registrar에 lossless하게 등록하세요.
 아직 backlog가 없다면 Registrar가 첫 등록 시 _task_mecca/data/backlog를 생성하도록 하세요. data 아래의 내용은 project-owned이며 framework updater가 덮어쓰지 않습니다.
+실행까지 승인된 작업을 Registrar에 넘기기 전에는 재사용 가능한 Controller의 정확한 runtime identity를 먼저 준비해 Registrar에 전달하고, Registrar가 등록 성공 직후 Root를 거치지 않고 Controller에 직접 인계하도록 하세요. Worker도 DONE/BLOCKED 시 같은 방식으로 Controller에 직접 인계하며, completed agent의 새 turn을 재개하기 직전에는 fresh Full Access preflight를 다시 수행하세요.
 등록 이후에는 Controller가 작업 연속성과 의존성을 고려해 Worker에 배분하도록 하고, Root는 사용자-facing 창구로 유지하세요.
 ```
 
@@ -27,5 +28,6 @@ When work originates from a connected external item such as a Linear or GitHub i
 Before delegating executable work to subagents, run the Full Access preflight described in SESSION_GUIDE.
 Classify work as Simple Task or Defined Task. For a simple task that is directly verifiable without additional interpretation, record only the goal and acceptance criteria and register it immediately. For work requiring scope, design, or user choices, prepare a requirement definition, get my confirmation, and then ask Registrar to register it losslessly.
 If no backlog exists yet, Registrar creates _task_mecca/data/backlog on the first registration. Everything under data is project-owned and is never overwritten by the framework updater.
+Before sending execution-authorized work to Registrar, prepare an exact reusable Controller runtime identity and pass it to Registrar so successful registration can hand off directly to Controller without another Root turn. Workers must likewise hand DONE/BLOCKED events directly back to Controller, and any resume that starts a completed agent's new turn requires a fresh Full Access preflight.
 After registration, let Controller allocate work to Workers based on dependency and continuity, while Root remains the user-facing interface.
 ```
