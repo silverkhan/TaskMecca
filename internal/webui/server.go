@@ -121,6 +121,9 @@ func selectionPayload(ctx context, selected string, candidates []backlog.Candida
     }
 }
 
+var releaseChannelOptionsProvider = maintenance.GetReleaseChannelOptions
+var releaseChannelSwitchProvider = maintenance.SwitchChannel
+
 func Handler(project,root,version string) (http.Handler,error) {
     return handler(project,root,version,"","",nil,nil)
 }
@@ -355,6 +358,24 @@ func handler(project,root,version,instanceID,controlToken string,restartCh chan<
         if r.Header.Get("X-Task-Mecca-Action")!="1" { writeJSON(w,map[string]any{"error":"maintenance action header required"},403); return }
         result,err:=maintenance.Upgrade(version)
         if err!=nil { writeJSON(w,map[string]any{"error":err.Error()},500); return }
+        writeJSON(w,result,200)
+        if result.RestartRequired && restartCh!=nil {
+            select { case restartCh<-result: default: }
+        }
+    })
+
+    mux.HandleFunc("/api/channel-options",func(w http.ResponseWriter,r *http.Request) {
+        if r.Method!="GET" { writeJSON(w,map[string]any{"error":"GET required"},405); return }
+        writeJSON(w,releaseChannelOptionsProvider(version),200)
+    })
+
+    mux.HandleFunc("/api/channel-switch",func(w http.ResponseWriter,r *http.Request) {
+        if r.Method!="POST" { writeJSON(w,map[string]any{"error":"POST required"},405); return }
+        if r.Header.Get("X-Task-Mecca-Action")!="1" { writeJSON(w,map[string]any{"error":"maintenance action header required"},403); return }
+        var body struct{ Channel string `json:"channel"` }
+        if err:=json.NewDecoder(r.Body).Decode(&body); err!=nil { writeJSON(w,map[string]any{"error":"invalid JSON"},400); return }
+        result,switchErr:=releaseChannelSwitchProvider(version,body.Channel)
+        if switchErr!=nil { writeJSON(w,map[string]any{"error":switchErr.Error()},409); return }
         writeJSON(w,result,200)
         if result.RestartRequired && restartCh!=nil {
             select { case restartCh<-result: default: }

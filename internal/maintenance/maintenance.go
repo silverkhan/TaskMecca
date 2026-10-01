@@ -51,12 +51,36 @@ type VersionInfo struct {
 var versionCheckMu sync.Mutex
 var versionCheckRunning bool
 
+type FrameworkSyncCandidate struct {
+    Name string `json:"name"`
+    Path string `json:"path"`
+    FromVersion string `json:"from_version"`
+    ToVersion string `json:"to_version"`
+}
+
 type UpgradeResult struct {
     From string `json:"from"`
     To string `json:"to"`
+    Channel string `json:"channel,omitempty"`
+    FrameworkSync []FrameworkSyncCandidate `json:"framework_sync,omitempty"`
     Executable string `json:"executable"`
     RestartRequired bool `json:"restart_required"`
     Scheduled bool `json:"scheduled,omitempty"`
+}
+
+type ReleaseChannelTarget struct {
+    Channel string `json:"channel"`
+    Version string `json:"version,omitempty"`
+    FrameworkSync []FrameworkSyncCandidate `json:"framework_sync,omitempty"`
+    Error string `json:"error,omitempty"`
+}
+
+type ReleaseChannelOptions struct {
+    CurrentVersion string `json:"current_version"`
+    CurrentChannel string `json:"current_channel"`
+    Stable ReleaseChannelTarget `json:"stable"`
+    Dev ReleaseChannelTarget `json:"dev"`
+    EnvironmentOverride bool `json:"environment_override,omitempty"`
 }
 
 func homeDir() string {
@@ -184,6 +208,28 @@ func versionFallbackURL() string {
     return "https://raw.githubusercontent.com/"+repoName+"/"+tag+"/goassets/template/_task_mecca/VERSION"
 }
 
+func releaseLocationForChannel(value string) (string,string,error) {
+    channel,err:=normalizeChannel(value)
+    if err!=nil { return "","",err }
+    repoName:=repo
+    if v:=strings.TrimSpace(os.Getenv("TASK_MECCA_REPO")); v!="" { repoName=v }
+    tag:=stableReleaseTag
+    if channel==devChannel { tag=devReleaseTag }
+    return repoName,tag,nil
+}
+
+func releaseBaseForChannel(value string) (string,error) {
+    repoName,tag,err:=releaseLocationForChannel(value)
+    if err!=nil { return "",err }
+    return "https://github.com/"+repoName+"/releases/download/"+tag,nil
+}
+
+func versionFallbackURLForChannel(value string) (string,error) {
+    repoName,tag,err:=releaseLocationForChannel(value)
+    if err!=nil { return "",err }
+    return "https://raw.githubusercontent.com/"+repoName+"/"+tag+"/goassets/template/_task_mecca/VERSION",nil
+}
+
 func httpGet(url string) ([]byte,error) {
     client:=&http.Client{Timeout:5*time.Second}
     var lastErr error
@@ -209,6 +255,63 @@ func httpGet(url string) ([]byte,error) {
     }
     if lastErr==nil { lastErr=errors.New("request failed") }
     return nil,lastErr
+}
+
+func latestVersionForChannel(value string) (string,error) {
+    base,err:=releaseBaseForChannel(value)
+    if err!=nil { return "",err }
+    data,err:=httpGet(base+"/VERSION.txt")
+    if err==nil { return normalizeVersion(string(data)),nil }
+    releaseErr:=err
+    fallback,fallbackErr:=versionFallbackURLForChannel(value)
+    if fallbackErr!=nil { return "",fallbackErr }
+    data,err=httpGet(fallback)
+    if err!=nil { return "",fmt.Errorf("release version check failed: %v; fallback failed: %v",releaseErr,err) }
+    return normalizeVersion(string(data)),nil
+}
+
+func GetReleaseChannelOptions(current string) ReleaseChannelOptions {
+    out:=ReleaseChannelOptions{
+        CurrentVersion:normalizeVersion(current),
+        CurrentChannel:CurrentChannel(),
+        Stable:ReleaseChannelTarget{Channel:stableChannel},
+        Dev:ReleaseChannelTarget{Channel:devChannel},
+        EnvironmentOverride:strings.TrimSpace(os.Getenv("TASK_MECCA_CHANNEL"))!="",
+    }
+    if version,err:=latestVersionForChannel(stableChannel); err!=nil {
+        out.Stable.Error=err.Error()
+    } else {
+        out.Stable.Version=version
+        out.Stable.FrameworkSync=frameworkSyncCandidates(current,version,stableChannel)
+    }
+    if version,err:=latestVersionForChannel(devChannel); err!=nil {
+        out.Dev.Error=err.Error()
+    } else {
+        out.Dev.Version=version
+        out.Dev.FrameworkSync=frameworkSyncCandidates(current,version,devChannel)
+    }
+    return out
+}
+
+func frameworkSyncCandidates(currentVersion,targetVersion,targetChannel string) []FrameworkSyncCandidate {
+    currentVersion=normalizeVersion(currentVersion)
+    targetVersion=normalizeVersion(targetVersion)
+    candidates:=[]FrameworkSyncCandidate{}
+    for _,project:=range ListProjects() {
+        framework:=normalizeVersion(project.FrameworkVersion)
+        if framework=="" || framework==targetVersion { continue }
+        include:=false
+        if targetChannel==stableChannel {
+            include=strings.Contains(strings.ToLower(framework),"-dev.")
+        } else if targetChannel==devChannel {
+            include=framework==currentVersion || !strings.Contains(strings.ToLower(framework),"-dev.")
+        }
+        if !include { continue }
+        candidates=append(candidates,FrameworkSyncCandidate{
+            Name:project.Name,Path:project.Path,FromVersion:framework,ToVersion:targetVersion,
+        })
+    }
+    return candidates
 }
 
 func versionCachePath() string { return filepath.Join(homeDir(),"update-check-"+CurrentChannel()+".json") }
@@ -383,27 +486,27 @@ func checksumFor(data []byte,asset string) (string,error) {
     return "",fmt.Errorf("checksum entry missing for %s",asset)
 }
 
-func Upgrade(current string) (UpgradeResult,error) {
-    current=normalizeVersion(current)
-    result:=UpgradeResult{From:current}
-    info:=CheckLatest(current)
-    if info.Error!="" { return result,errors.New(info.Error) }
-    if !info.UpdateAvailable {
-        result.To=current
-        return result,nil
-    }
-    result.To=info.Latest
+func fetchReleaseBinary(base string) ([]byte,error) {
+    asset,err:=assetName()
+    if err!=nil { return nil,err }
+    binary,err:=httpGet(base+"/"+asset)
+    if err!=nil { return nil,err }
+    sums,err:=httpGet(base+"/SHA256SUMS.txt")
+    if err!=nil { return nil,err }
+    expected,err:=checksumFor(sums,asset)
+    if err!=nil { return nil,err }
+    digest:=sha256.Sum256(binary)
+    if hex.EncodeToString(digest[:])!=expected { return nil,errors.New("SHA-256 verification failed") }
+    return binary,nil
+}
+
+func installBinary(current,to string,binary []byte) (UpgradeResult,error) {
+    result:=UpgradeResult{From:normalizeVersion(current),To:normalizeVersion(to)}
     exe,err:=os.Executable()
     if err!=nil { return result,err }
     exe,err=filepath.EvalSymlinks(exe)
     if err!=nil { return result,err }
     result.Executable=exe
-    asset,err:=assetName(); if err!=nil { return result,err }
-    binary,err:=httpGet(releaseBase()+"/"+asset); if err!=nil { return result,err }
-    sums,err:=httpGet(releaseBase()+"/SHA256SUMS.txt"); if err!=nil { return result,err }
-    expected,err:=checksumFor(sums,asset); if err!=nil { return result,err }
-    digest:=sha256.Sum256(binary)
-    if hex.EncodeToString(digest[:])!=expected { return result,errors.New("SHA-256 verification failed") }
 
     dir:=filepath.Dir(exe)
     tmp,err:=os.CreateTemp(dir,".task-mecca-upgrade-*")
@@ -430,4 +533,58 @@ func Upgrade(current string) (UpgradeResult,error) {
     result.RestartRequired=true
     result.Scheduled=true
     return result,nil
+}
+
+func Upgrade(current string) (UpgradeResult,error) {
+    current=normalizeVersion(current)
+    result:=UpgradeResult{From:current,Channel:CurrentChannel()}
+    info:=CheckLatest(current)
+    if info.Error!="" { return result,errors.New(info.Error) }
+    if !info.UpdateAvailable {
+        result.To=current
+        return result,nil
+    }
+    binary,err:=fetchReleaseBinary(releaseBase())
+    if err!=nil { return result,err }
+    installed,err:=installBinary(current,info.Latest,binary)
+    installed.Channel=CurrentChannel()
+    return installed,err
+}
+
+func SwitchChannel(current,target string) (UpgradeResult,error) {
+    current=normalizeVersion(current)
+    result:=UpgradeResult{From:current}
+    if strings.TrimSpace(os.Getenv("TASK_MECCA_CHANNEL"))!="" {
+        return result,errors.New("release channel is controlled by TASK_MECCA_CHANNEL; remove the environment override before switching from Web")
+    }
+    channel,err:=normalizeChannel(target)
+    if err!=nil { return result,err }
+    targetVersion,err:=latestVersionForChannel(channel)
+    if err!=nil { return result,err }
+    result.To=targetVersion
+    result.Channel=channel
+    result.FrameworkSync=frameworkSyncCandidates(current,targetVersion,channel)
+
+    previous:=CurrentChannel()
+    if previous==channel && targetVersion==current { return result,nil }
+
+    if targetVersion==current {
+        if err=SetChannel(channel); err!=nil { return result,err }
+        return result,nil
+    }
+
+    base,err:=releaseBaseForChannel(channel)
+    if err!=nil { return result,err }
+    binary,err:=fetchReleaseBinary(base)
+    if err!=nil { return result,err }
+
+    if err=SetChannel(channel); err!=nil { return result,err }
+    installed,installErr:=installBinary(current,targetVersion,binary)
+    installed.Channel=channel
+    installed.FrameworkSync=result.FrameworkSync
+    if installErr!=nil {
+        _=SetChannel(previous)
+        return installed,installErr
+    }
+    return installed,nil
 }
