@@ -8,8 +8,11 @@ import (
     "os"
     "path/filepath"
     "runtime"
+    "strings"
     "testing"
     "time"
+
+    "github.com/silverkhan/TaskMecca/internal/runtimeobs"
 )
 
 func TestHandlerServesDashboardAPIsAndAssets(t *testing.T) {
@@ -24,6 +27,18 @@ func TestHandlerServesDashboardAPIsAndAssets(t *testing.T) {
 - 설명: web fixture
 `
     if err:=os.WriteFile(filepath.Join(ledger,"000001.A-1.web.todo.md"),[]byte(task),0644); err!=nil { t.Fatal(err) }
+
+    runtimeEvent:=runtimeobs.ExecutionEvent{
+        EventKind:"state",
+        ObservedAt:time.Date(2026,10,1,12,0,0,0,time.UTC).Format(time.RFC3339Nano),
+        AttemptID:"run-web-test",
+        Provider:"codex",
+        RuntimeAgentID:"agent-web",
+        State:runtimeobs.StateRunning,
+        EvidenceSource:runtimeobs.EvidenceHook,
+        ObservationQuality:runtimeobs.QualityObserved,
+    }
+    if err:=runtimeobs.AppendExecutionEvent(root,runtimeEvent); err!=nil { t.Fatal(err) }
 
     handler,err:=Handler(root,"","0.2.4")
     if err!=nil { t.Fatal(err) }
@@ -78,6 +93,32 @@ func TestHandlerServesDashboardAPIsAndAssets(t *testing.T) {
         if _,ok:=viewPayload["backlog_selection"]; !ok { t.Fatalf("%s missing backlog_selection",path) }
         if viewPayload["project_path"]!=root { t.Fatalf("%s project_path=%v",path,viewPayload["project_path"]) }
     }
+
+    req=httptest.NewRequest(http.MethodGet,"/api/workload",nil)
+    rec=httptest.NewRecorder()
+    handler.ServeHTTP(rec,req)
+    workloadPayload:=map[string]any{}
+    if err:=json.Unmarshal(rec.Body.Bytes(),&workloadPayload); err!=nil { t.Fatal(err) }
+    runtimeView,ok:=workloadPayload["runtime_observability"].(map[string]any)
+    if !ok { t.Fatalf("runtime_observability=%T payload=%+v",workloadPayload["runtime_observability"],workloadPayload) }
+    attempts,ok:=runtimeView["attempts"].([]any)
+    if !ok || len(attempts)!=1 { t.Fatalf("runtime attempts=%T %+v",runtimeView["attempts"],runtimeView["attempts"]) }
+    firstAttempt,ok:=attempts[0].(map[string]any)
+    if !ok || firstAttempt["runtime_agent_id"]!="agent-web" { t.Fatalf("attempt=%+v",attempts[0]) }
+
+    req=httptest.NewRequest(http.MethodPost,"/api/runtime/hooks",strings.NewReader(`{"provider":"codex"}`))
+    req.Header.Set("Content-Type","application/json")
+    rec=httptest.NewRecorder()
+    handler.ServeHTTP(rec,req)
+    if rec.Code!=http.StatusForbidden { t.Fatalf("runtime hooks without action header status=%d",rec.Code) }
+
+    req=httptest.NewRequest(http.MethodPost,"/api/runtime/hooks",strings.NewReader(`{"provider":"codex"}`))
+    req.Header.Set("Content-Type","application/json")
+    req.Header.Set("X-Task-Mecca-Action","1")
+    rec=httptest.NewRecorder()
+    handler.ServeHTTP(rec,req)
+    if rec.Code!=http.StatusOK { t.Fatalf("runtime hooks status=%d body=%s",rec.Code,rec.Body.String()) }
+    if _,err:=os.Stat(filepath.Join(root,".codex","hooks.json")); err!=nil { t.Fatalf("codex hook config not written: %v",err) }
 
     req=httptest.NewRequest(http.MethodGet,"/api/manual?lang=ko",nil)
     rec=httptest.NewRecorder()
