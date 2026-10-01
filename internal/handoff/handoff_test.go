@@ -215,3 +215,36 @@ func TestClaimConflictsAcrossControllerAttempts(t *testing.T) {
 		t.Fatalf("claim=%+v", second)
 	}
 }
+
+
+func TestClaimRejectsWrongTargetAttempt(t *testing.T) {
+	project := t.TempDir()
+	writeSimpleTask(t, project, "A-1")
+	now := time.Date(2026, 10, 2, 1, 0, 0, 0, time.UTC)
+	appendControllerAttempt(t, project, "run-controller", "session-1", "controller-1", runtimeobs.StateCompleted, now)
+	got, err := Prepare(PrepareRequest{
+		Project: project, TaskID: "A-1", EventType: EventRegistrationReady,
+		SourceAgentPath: "/root/registrar", TargetAgentPath: "/root/controller",
+		TargetAttemptID: "run-controller", ExecutionAuthorized: true,
+	}, now.Add(time.Second))
+	if err != nil { t.Fatal(err) }
+	claim, err := Claim(project, got.HandoffID, "/root/controller", "run-other-controller", now.Add(2*time.Second))
+	if err != nil { t.Fatal(err) }
+	if !claim.ClaimConflict || claim.Reason != "claimant_attempt_mismatch" {
+		t.Fatalf("claim=%+v", claim)
+	}
+}
+
+func TestAppliedRequiresClaim(t *testing.T) {
+	project := t.TempDir()
+	writeSimpleTask(t, project, "A-1")
+	now := time.Date(2026, 10, 2, 1, 0, 0, 0, time.UTC)
+	got, err := Prepare(PrepareRequest{
+		Project: project, TaskID: "A-1", EventType: EventRegistrationReady,
+		SourceAgentPath: "/root/registrar", TargetAgentPath: "/root/controller", ExecutionAuthorized: false,
+	}, now)
+	if err != nil { t.Fatal(err) }
+	if _, err := Mark(project, got.HandoffID, "applied", "ok", "premature", now.Add(time.Second)); err == nil {
+		t.Fatal("applied must require a prior claim")
+	}
+}

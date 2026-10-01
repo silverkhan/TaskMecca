@@ -190,6 +190,12 @@ func Claim(project, handoffID, recipient, claimantAttemptID string, now time.Tim
 		}
 		if row.Target.AgentPath != "" && row.Target.AgentPath != recipient {
 			result.ClaimConflict = true
+			result.Reason = "claimant_path_mismatch"
+			return nil
+		}
+		if row.Target.AttemptID != "" && row.Target.AttemptID != claimantAttemptID {
+			result.ClaimConflict = true
+			result.Reason = "claimant_attempt_mismatch"
 			return nil
 		}
 		if row.ClaimedBy != "" {
@@ -245,6 +251,9 @@ func Mark(project, handoffID, step, resultValue, evidence string, now time.Time)
 			}
 			if resultValue != "ok" {
 				return errors.New("applied step only accepts result=ok")
+			}
+			if row.ClaimedBy == "" || row.ClaimedAttemptID == "" {
+				return errors.New("handoff cannot be marked applied before claim")
 			}
 			record := Record{
 				HandoffID: handoffID, RecordKind: "applied", Step: step, Result: resultValue,

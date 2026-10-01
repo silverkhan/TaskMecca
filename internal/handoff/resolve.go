@@ -83,6 +83,10 @@ func actionFor(attempt runtimeobs.Attempt, targetPath string) (Action, bool, str
 	case runtimeobs.StateStarting, runtimeobs.StateRunning:
 		return ActionMessageRunning, false, "target_running"
 	case runtimeobs.StateCompleted:
+		agentType:=strings.ToLower(strings.TrimSpace(attempt.AgentType))
+		if provider=="claude" && (agentType=="explore" || agentType=="plan") {
+			return ActionHold, false, "claude_one_shot_agent_not_resumable"
+		}
 		if provider == "codex" && targetPath == "/root" {
 			return ActionReportOnly, false, "codex_root_cannot_be_resumed"
 		}
