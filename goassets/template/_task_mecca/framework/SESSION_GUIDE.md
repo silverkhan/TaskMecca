@@ -13,7 +13,7 @@ Task Mecca의 사용자 가이드는 **사용자가 실제로 무엇을 먼저 �
 task-mecca web
 ```
 
-`task-mecca web`은 사용자 단위 singleton Web 서비스를 백그라운드로 실행하고 브라우저를 연다. 기본 포트는 `18765`이며 자동으로 다음 포트로 증가하지 않는다. 이미 Task Mecca Web이 실행 중이면 새 서버를 만들지 않고 기존 URL을 재사용한다. 기본 `--host auto`에서는 로컬 `127.0.0.1:18765`에 HTTP를 제공하고, Tailscale이 감지되면 같은 포트의 Tailscale 인터페이스에 Task Mecca가 직접 HTTPS를 제공한다. 원격 주소는 `https://<machine>.<tailnet>.ts.net:18765` 형식이다. Tailscale Serve는 필요하지 않다. 필요하면 `--host <ip>` 또는 `--port <port>`로 명시할 수 있다. 대시보드는 read-only이며
+`task-mecca web`은 사용자 단위 singleton Web 서비스를 백그라운드로 실행하고 브라우저를 연다. 기본 포트는 `18765`이며 자동으로 다음 포트로 증가하지 않는다. 이미 Task Mecca Web이 실행 중이면 새 서버를 만들지 않고 기존 URL을 재사용한다. 기본 `--host auto`에서는 로컬 `127.0.0.1:18765`에 HTTP를 제공하고, Tailscale이 감지되면 같은 포트의 Tailscale 인터페이스에 Task Mecca가 직접 HTTPS를 제공한다. Windows/Linux에서는 로컬 Web을 먼저 즉시 사용할 수 있게 한 뒤 Tailscale HTTPS 인증서 준비를 백그라운드에서 완료하므로, 최초 인증서 발급이 오래 걸려도 로컬 Web 시작은 실패로 처리되지 않는다. 원격 주소는 `https://<machine>.<tailnet>.ts.net:18765` 형식이다. Tailscale Serve는 필요하지 않다. 필요하면 `--host <ip>` 또는 `--port <port>`로 명시할 수 있다. 대시보드는 read-only이며
 backlog, Subagent Workload, lifecycle timer, Needs Attention, Full Access 상태를 보여준다.
 
 
