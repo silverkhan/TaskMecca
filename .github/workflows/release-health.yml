@@ -1,0 +1,101 @@
+name: Release health
+
+on:
+  workflow_run:
+    workflows:
+      - Publish stable release
+      - Publish Dev release
+    types: [completed]
+
+permissions:
+  actions: read
+  contents: read
+  issues: write
+
+jobs:
+  health:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Update release health issue
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          WORKFLOW_NAME: ${{ github.event.workflow_run.name }}
+          CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+          RUN_URL: ${{ github.event.workflow_run.html_url }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
+          EVENT_NAME: ${{ github.event.workflow_run.event }}
+        run: |
+          set -euo pipefail
+
+          if [ "$WORKFLOW_NAME" = "Publish stable release" ]; then
+            channel="stable"
+            channel_label="Stable"
+          else
+            channel="dev"
+            channel_label="Dev"
+          fi
+
+          marker="<!-- task-mecca-release-health:$channel -->"
+          title="[Release Health] $channel_label release failed"
+          existing="$(gh issue list --repo "$REPO" --state open --limit 100 --json number,body --jq ".[] | select((.body // \"\") | contains(\"$marker\")) | .number" | head -n 1 || true)"
+
+          {
+            echo "## Release health · $channel_label"
+            echo
+            echo "- Workflow: **$WORKFLOW_NAME**"
+            echo "- Conclusion: **$CONCLUSION**"
+            echo "- Commit: \`$HEAD_SHA\`"
+            echo "- Branch: \`$HEAD_BRANCH\`"
+            echo "- Run: $RUN_URL"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if [ "$CONCLUSION" = "success" ]; then
+            if [ -n "$existing" ]; then
+              gh issue comment "$existing" --repo "$REPO" --body "Recovered successfully in [run #$RUN_ID]($RUN_URL) at commit \`$HEAD_SHA\`."
+              gh issue close "$existing" --repo "$REPO"
+              echo >> "$GITHUB_STEP_SUMMARY"
+              echo "Existing release-health issue #$existing was closed after recovery." >> "$GITHUB_STEP_SUMMARY"
+            else
+              echo >> "$GITHUB_STEP_SUMMARY"
+              echo "No open release-health issue. Channel is healthy." >> "$GITHUB_STEP_SUMMARY"
+            fi
+            exit 0
+          fi
+
+          if [ "$CONCLUSION" = "cancelled" ] || [ "$CONCLUSION" = "skipped" ]; then
+            echo >> "$GITHUB_STEP_SUMMARY"
+            echo "No incident issue created for a $CONCLUSION run." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          body_file="$RUNNER_TEMP/release-health.md"
+          cat > "$body_file" <<EOF
+          $marker
+          ## $channel_label release pipeline needs attention
+
+          The latest **$WORKFLOW_NAME** run did not complete successfully.
+
+          | Field | Value |
+          | --- | --- |
+          | Conclusion | **$CONCLUSION** |
+          | Branch | \`$HEAD_BRANCH\` |
+          | Commit | \`$HEAD_SHA\` |
+          | Trigger | \`$EVENT_NAME\` |
+          | Workflow run | [#$RUN_ID]($RUN_URL) |
+
+          This issue is maintained automatically. A later successful $channel_label release will close it.
+          EOF
+
+          if [ -n "$existing" ]; then
+            gh issue edit "$existing" --repo "$REPO" --title "$title" --body-file "$body_file"
+            echo >> "$GITHUB_STEP_SUMMARY"
+            echo "Updated existing incident issue #$existing." >> "$GITHUB_STEP_SUMMARY"
+          else
+            issue_url="$(gh issue create --repo "$REPO" --title "$title" --body-file "$body_file")"
+            echo >> "$GITHUB_STEP_SUMMARY"
+            echo "Created release-health incident: $issue_url" >> "$GITHUB_STEP_SUMMARY"
+          fi
