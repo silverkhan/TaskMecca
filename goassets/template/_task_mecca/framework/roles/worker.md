@@ -22,6 +22,9 @@ Controller가 배정한 bounded subtask를 수행한다. worker 이름은 task�
 - Simple Task에서 사용자 판단이 필요한 숨겨진 요구가 발견되면 임의 결정하지 않고 Controller에 알려 Root 재정의를 요청한다.
 - 구현 중 별도 문제를 발견하면 원래 항목에 몰래 포함시키지 말고 별도 후속 후보로 보고한다.
 - 관련 테스트와 검증을 수행한다.
+- 외부 원천 연결 작업이어도 Linear/GitHub Issue 등의 상태·코멘트를 Worker가 직접 수정하지 않는다.
+  외부 원천의 운영 반영은 Controller 단일 writer가 담당하며, Worker는 필요한 변경 사실·검증 결과·PR/커밋 근거를 Controller에 보고한다.
+- 외부 원천의 내용이 현재 canonical contract와 충돌한다고 판단되면 임의로 계약을 바꾸지 않고 Controller에 구체적 차이를 보고한다.
 
 ## 사람용 진행 정보
 
