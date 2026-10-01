@@ -71,6 +71,7 @@ type UpgradeResult struct {
 type ReleaseChannelTarget struct {
     Channel string `json:"channel"`
     Version string `json:"version,omitempty"`
+    FrameworkSync []FrameworkSyncCandidate `json:"framework_sync,omitempty"`
     Error string `json:"error,omitempty"`
 }
 
@@ -277,8 +278,18 @@ func GetReleaseChannelOptions(current string) ReleaseChannelOptions {
         Dev:ReleaseChannelTarget{Channel:devChannel},
         EnvironmentOverride:strings.TrimSpace(os.Getenv("TASK_MECCA_CHANNEL"))!="",
     }
-    if version,err:=latestVersionForChannel(stableChannel); err!=nil { out.Stable.Error=err.Error() } else { out.Stable.Version=version }
-    if version,err:=latestVersionForChannel(devChannel); err!=nil { out.Dev.Error=err.Error() } else { out.Dev.Version=version }
+    if version,err:=latestVersionForChannel(stableChannel); err!=nil {
+        out.Stable.Error=err.Error()
+    } else {
+        out.Stable.Version=version
+        out.Stable.FrameworkSync=frameworkSyncCandidates(current,version,stableChannel)
+    }
+    if version,err:=latestVersionForChannel(devChannel); err!=nil {
+        out.Dev.Error=err.Error()
+    } else {
+        out.Dev.Version=version
+        out.Dev.FrameworkSync=frameworkSyncCandidates(current,version,devChannel)
+    }
     return out
 }
 
