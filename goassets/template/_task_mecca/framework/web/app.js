@@ -37,8 +37,10 @@ const state = {
   previousTasksByProject: (()=>{ try { const raw=JSON.parse(localStorage.getItem('task-mecca-previous-tasks')||'{}'); return raw&&typeof raw==='object'?raw:{}; } catch(_) { return {}; } })(),
   versionInfo: null,
   contentRevision: '',
+  contentStateSnapshot: [],
   pendingContentUpdate: false,
   pendingContentReason: '',
+  pendingContentChanges: [],
   eventStreamInitialized: false,
   attentionRevision: '',
   attentionRevisionKey: '',
@@ -114,12 +116,14 @@ Object.assign(I18N.ko,{
   updateAvailable:'업데이트 가능', currentVersion:'현재 버전', projectMigration:'프로젝트 마이그레이션 필요',
   newContentAvailable:'새 내용이 업데이트되었습니다.', refreshToSee:'현재 읽고 있는 내용은 유지됩니다. 새 내용을 보려면 새로고침하세요.',
   refreshNow:'새로고침', runtimeChanged:'작업 상태가 변경되었습니다.', contentChanged:'백로그 내용이 변경되었습니다.',
+  statusChanges:'상태 변화', taskRegistered:'등록됨', taskRemoved:'목록에서 제거됨', moreStatusChanges:'외 {n}건',
   upgrading:'업그레이드 중…', migrating:'마이그레이션 중…'
 });
 Object.assign(I18N.en,{
   updateAvailable:'Update available', currentVersion:'Current version', projectMigration:'Project migration required',
   newContentAvailable:'New content is available.', refreshToSee:'Your current reading position is preserved. Refresh when you want to see the update.',
   refreshNow:'Refresh', runtimeChanged:'Task status changed.', contentChanged:'Backlog content changed.',
+  statusChanges:'Status changes', taskRegistered:'Registered', taskRemoved:'Removed from backlog', moreStatusChanges:'{n} more',
   upgrading:'Upgrading…', migrating:'Migrating…'
 });
 function t(key, vars = {}) {
@@ -153,31 +157,80 @@ function renderGlobalUpdateIndicator() {
   el.innerHTML='';
 }
 
+function revisionStateMap(rows=[]) {
+  const out=new Map();
+  (Array.isArray(rows)?rows:[]).forEach(row=>{
+    const id=String(row?.id||'').toUpperCase();
+    if(id)out.set(id,{id,title:String(row?.title||id),file_state:String(row?.file_state||'')});
+  });
+  return out;
+}
+
+function diffRevisionStates(beforeRows=[],afterRows=[]) {
+  const before=revisionStateMap(beforeRows), after=revisionStateMap(afterRows), changes=[];
+  after.forEach((next,id)=>{
+    const previous=before.get(id);
+    if(!previous){
+      changes.push({id,title:next.title,from:'',to:next.file_state,kind:'registered'});
+      return;
+    }
+    if(previous.file_state!==next.file_state){
+      changes.push({id,title:next.title||previous.title,from:previous.file_state,to:next.file_state,kind:'state'});
+    }
+  });
+  before.forEach((previous,id)=>{
+    if(!after.has(id))changes.push({id,title:previous.title,from:previous.file_state,to:'',kind:'removed'});
+  });
+  changes.sort((a,b)=>a.id.localeCompare(b.id));
+  return changes;
+}
+
+function statusChangeMarkup(changes=[]) {
+  if(!changes.length)return '';
+  const visible=changes.slice(0,3);
+  const rows=visible.map(change=>{
+    let transition='';
+    if(change.kind==='registered')transition=`${t('taskRegistered')} · ${stateLabel(change.to)}`;
+    else if(change.kind==='removed')transition=t('taskRemoved');
+    else transition=`${stateLabel(change.from)} → ${stateLabel(change.to)}`;
+    return `<li class="${change.to==='done'?'completed':''}"><strong>${esc(change.id)}</strong><span>${esc(change.title)}</span><b>${esc(transition)}</b></li>`;
+  }).join('');
+  const more=changes.length>visible.length?`<div class="content-update-more">${esc(t('moreStatusChanges',{n:changes.length-visible.length}))}</div>`:'';
+  return `<div class="content-update-changes"><span class="content-update-changes-title">${esc(t('statusChanges'))}</span><ul>${rows}</ul>${more}</div>`;
+}
+
 function renderContentUpdatePrompt() {
   const el=$('#contentUpdatePrompt');
   if(!el)return;
-  if(!state.pendingContentUpdate || !state.project){
+  if(!state.pendingContentUpdate || !state.project || state.view!=='backlog'){
     el.innerHTML='';
     return;
   }
   const reason=state.pendingContentReason==='runtime'?t('runtimeChanged'):t('contentChanged');
-  el.innerHTML=`<div class="content-update-copy"><strong>${esc(t('newContentAvailable'))}</strong><span>${esc(reason)} ${esc(t('refreshToSee'))}</span></div><button type="button" class="content-update-action" id="contentUpdateRefreshBtn">${esc(t('refreshNow'))}</button>`;
+  el.innerHTML=`<div class="content-update-copy"><strong>${esc(t('newContentAvailable'))}</strong><span>${esc(reason)} ${esc(t('refreshToSee'))}</span>${statusChangeMarkup(state.pendingContentChanges)}</div><button type="button" class="content-update-action" id="contentUpdateRefreshBtn">${esc(t('refreshNow'))}</button>`;
   $('#contentUpdateRefreshBtn')?.addEventListener('click',refreshVisibleContent);
 }
 
-function markContentUpdate(reason='content') {
+function markContentUpdate(reason='content',changes=[]) {
   if(!state.project)return;
+  if(state.view!=='backlog'){
+    queueMicrotask(()=>refresh());
+    return;
+  }
   const wasPending=state.pendingContentUpdate;
   const previousReason=state.pendingContentReason;
   state.pendingContentUpdate=true;
   if(reason==='runtime' || !state.pendingContentReason)state.pendingContentReason=reason;
-  if(!wasPending || previousReason!==state.pendingContentReason)renderContentUpdatePrompt();
+  if(Array.isArray(changes) && changes.length)state.pendingContentChanges=changes;
+  if(!wasPending || previousReason!==state.pendingContentReason || changes.length)renderContentUpdatePrompt();
 }
 
-function acceptContentRevision(revision='') {
+function acceptContentRevision(revision='',states=null) {
   if(revision)state.contentRevision=revision;
+  if(Array.isArray(states))state.contentStateSnapshot=states;
   state.pendingContentUpdate=false;
   state.pendingContentReason='';
+  state.pendingContentChanges=[];
   renderContentUpdatePrompt();
 }
 
@@ -196,7 +249,6 @@ async function refreshVersionInfo(force=false) {
 let revisionCheckInFlight=null;
 async function checkContentRevision(establishOnly=false) {
   if(!state.project)return;
-  if(state.pendingContentUpdate && !establishOnly)return;
   if(revisionCheckInFlight)return revisionCheckInFlight;
   const project=state.project, backlog=state.backlog;
   revisionCheckInFlight=(async()=>{
@@ -208,13 +260,22 @@ async function checkContentRevision(establishOnly=false) {
       if(!r.ok)return;
       const body=await r.json();
       if(project!==state.project || backlog!==state.backlog)return;
-      const revision=body.revision||'';
+      const revision=body.revision||'', states=Array.isArray(body.states)?body.states:[];
       if(!revision)return;
       if(!state.contentRevision || establishOnly){
-        state.contentRevision=revision;
+        acceptContentRevision(revision,states);
         return;
       }
-      if(revision!==state.contentRevision)markContentUpdate('content');
+      if(revision!==state.contentRevision){
+        const changes=diffRevisionStates(state.contentStateSnapshot,states);
+        if(state.view==='backlog')markContentUpdate('content',changes);
+        else {
+          acceptContentRevision(revision,states);
+          queueMicrotask(()=>refresh());
+        }
+      } else if(!state.pendingContentUpdate && states.length) {
+        state.contentStateSnapshot=states;
+      }
     }catch(_){}
     finally{revisionCheckInFlight=null;}
   })();
@@ -229,6 +290,7 @@ async function refreshVisibleContent() {
   if(state.view==='backlog'){
     await refreshList();
     if(state.detail)await loadTaskDetail(state.detail);
+    await checkContentRevision(true);
   } else {
     await refresh();
     await checkContentRevision(true);
@@ -897,8 +959,10 @@ function navigateView(view) {
     state.listData=null;
     state.detailTask=null;
     state.contentRevision='';
+    state.contentStateSnapshot=[];
     state.pendingContentUpdate=false;
     state.pendingContentReason='';
+    state.pendingContentChanges=[];
     closeAttentionStream();
     state.loadError='';
     state.view='hub';
@@ -1314,15 +1378,19 @@ function detailView(task) {
   const progressBody=`<h3>${esc(t('workNotes'))}</h3><div class="markdown">${markdown(task.document?.notes||task.fields?.메모)}</div><h3>${esc(t('result'))}</h3><div class="markdown">${markdown(task.document?.result||task.fields?.결과)}</div>`;
   const progress=semanticSection('progress-result',t('progressResult'),sectionSummaries.progress_result,progressBody);
   const verificationValue=task.document?.verification||task.fields?.검증;
-  const verificationBody=`<button id="rawToggle" class="raw-toggle">${esc(state.raw?t('rendered'):t('rawMarkdown'))}</button><div class="markdown">${markdown(verificationValue)}</div>${state.raw?`<pre class="raw">${esc(task.raw_markdown||'')}</pre>`:''}`;
+  const verificationBody=`<div class="markdown">${markdown(verificationValue)}</div>`;
   const verification=semanticSection('verification',t('verificationDetail'),sectionSummaries.verification,verificationBody);
   const relatedBody=`<div class="relation-groups"><div><h3>${esc(t('dependsOn'))}</h3><div class="relation-list">${relationBadges(task.depends_on,t('dependsOn'))}</div></div><div><h3>${esc(t('related'))}</h3><div class="relation-list">${relationBadges(task.related,t('related'))}</div></div></div>`;
   const related=detailDisclosure('related-work',t('relatedWork'),[...(task.depends_on||[]),...(task.related||[])].join(', '),relatedBody);
   const metricGrid=`<div class="detail-metrics embedded"><div><div class="value live-active">${fmtSec(runningSeconds(task,'active'))}</div><div class="label">${esc(t('activeTime'))}</div></div><div><div class="value live-wait">${fmtSec(runningSeconds(task,'wait'))}</div><div class="label">${esc(t('waitTime'))}</div></div><div><div class="value live-queue">${fmtSec(runningSeconds(task,'queue'))}</div><div class="label">${esc(t('queueTime'))}</div></div><div><div class="value live-lead">${fmtSec(runningSeconds(task,'lead'))}</div><div class="label">${esc(t('leadTime'))}</div></div></div>`;
   const operationsBody=`${metricGrid}<h3>${esc(t('overview'))}</h3><div class="meta-grid">${metaRow(t('registrant'),task.registrant)}${metaRow(t('agent'),task.agent)}${metaRow(t('changeScope'),task.scope)}${metaRow(t('location'),task.archive_month?`archive/${task.archive_month}`:task.location)}${metaRow(t('updated'),dateTimeLabel(updatedAt(task)))}${metaRow(t('completed'),dateTimeLabel(completionAt(task)))}${metaRow(t('activity'),healthLabel(act.health))}${metaRow(t('lastSignal'),act.last_activity_at?ago(act.last_activity_at):'-')}${metaRow(t('signalSource'),act.last_activity_source)}</div><h3>${esc(t('execution'))}</h3><div class="meta-grid">${metaRow(t('runtimeProvider'),task.fields?.RuntimeProvider||'unknown')}${metaRow(t('dispatchStatus'),task.fields?.Dispatch상태||task.fields?.실행상태||'unknown')}${metaRow(t('executionEvidence'),task.fields?.실행근거||'unknown')}${metaRow(t('fallbackEvidence'),task.fields?.Fallback근거||'-')}</div>`;
   const operations=detailDisclosure('operations',t('operationsEvidence'),`${task.agent||'-'} · ${healthLabel(act.health)}`,operationsBody);
-  const body=`<div class="detail"><button class="back" id="backBtn">${esc(t('backToBacklog'))}</button><div class="detail-head"><div class="detail-id">${esc(task.id)}</div><h1>${esc(titleOf(task))}</h1><div class="detail-status"><span class="status ${esc(task.state)}">${esc(stateLabel(task.state))}</span>${task.agent?`<span class="badge">${esc(task.agent)}</span>`:''}<span class="badge">${esc(task.document?.schema||'legacy')}</span>${task.archive_month?`<span class="badge">archive/${esc(task.archive_month)}</span>`:''}</div>${task.source?.label?`<div class="detail-source-row"><span>${esc(t('source'))}</span>${sourceLink(task.source)}</div>`:''}${(task.tags||[]).length?`<div class="detail-tag-row">${(task.tags||[]).map(tag=>tagChip(tag,true)).join('')}</div>`:''}</div>${humanSummaryCard(task)}${related}${operations}${lifecycle}${passiveAlert}${contractSections(task)}${progress}${verification}</div>`;
-  return `<div class="detail-layout">${body}${detailToc()}</div>`;
+  const rawToggle=`<button id="rawToggle" class="raw-toggle ${state.raw?'active':''}">${esc(state.raw?t('rendered'):t('rawMarkdown'))}</button>`;
+  const detailHead=`<div class="detail-head"><div class="detail-head-top"><div class="detail-id">${esc(task.id)}</div>${rawToggle}</div><h1>${esc(titleOf(task))}</h1><div class="detail-status"><span class="status ${esc(task.state)}">${esc(stateLabel(task.state))}</span>${task.agent?`<span class="badge">${esc(task.agent)}</span>`:''}<span class="badge">${esc(task.document?.schema||'legacy')}</span>${task.archive_month?`<span class="badge">archive/${esc(task.archive_month)}</span>`:''}</div>${task.source?.label?`<div class="detail-source-row"><span>${esc(t('source'))}</span>${sourceLink(task.source)}</div>`:''}${(task.tags||[]).length?`<div class="detail-tag-row">${(task.tags||[]).map(tag=>tagChip(tag,true)).join('')}</div>`:''}</div>`;
+  const rawPanel=`<section class="section raw-markdown-view"><h2>${esc(t('rawMarkdown'))}</h2><pre class="raw">${esc(task.raw_markdown||'')}</pre></section>`;
+  const rendered=`${humanSummaryCard(task)}${related}${operations}${lifecycle}${passiveAlert}${contractSections(task)}${progress}${verification}`;
+  const body=`<div class="detail"><button class="back" id="backBtn">${esc(t('backToBacklog'))}</button>${detailHead}${state.raw?rawPanel:rendered}</div>`;
+  return `<div class="detail-layout ${state.raw?'raw-mode':''}">${body}${state.raw?'':detailToc()}</div>`;
 }
 async function loadTaskDetail(id) {
   if(!id||!state.project)return;
@@ -1480,13 +1548,10 @@ function render() {
     c.innerHTML=gate+detailView(task);
     $('#backBtn')?.addEventListener('click',closeTask);
     $('#rawToggle')?.addEventListener('click',()=>{
+      const scrollY=window.scrollY;
       state.raw=!state.raw;
       render();
-      requestAnimationFrame(()=>{
-        const section=document.getElementById('verification');
-        if(section?.tagName?.toLowerCase()==='details')section.open=true;
-        section?.scrollIntoView({block:'nearest'});
-      });
+      requestAnimationFrame(()=>window.scrollTo({top:scrollY,left:0,behavior:'auto'}));
     });
     bindCopyButtons(); bindMermaidControls(); bindDetailToc(); bindDetailInteractions(); renderMermaidDiagrams();
     return;
@@ -1638,7 +1703,10 @@ function ensureAttentionStream() {
     const count=(payload.attention||[]).length;
     const badge=$('#attentionCount');
     if(badge)badge.textContent=count||'';
-    if(changed)markContentUpdate('runtime');
+    if(changed){
+      if(state.view==='backlog')markContentUpdate('runtime');
+      else queueMicrotask(()=>refresh());
+    }
   });
 }
 
