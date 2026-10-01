@@ -91,6 +91,24 @@ func JournalPath(project string) string {
     return filepath.Join(project, "_task_mecca", ".runtime", spikeDirName, spikeFileName)
 }
 
+func ResolveProject(start string) (string, error) {
+    current, err := filepath.Abs(start)
+    if err != nil {
+        return "", err
+    }
+    for {
+        info, statErr := os.Stat(filepath.Join(current, "_task_mecca"))
+        if statErr == nil && info.IsDir() {
+            return current, nil
+        }
+        parent := filepath.Dir(current)
+        if parent == current {
+            return "", fmt.Errorf("Task Mecca project root not found from %s", start)
+        }
+        current = parent
+    }
+}
+
 func Observe(project, provider string, input io.Reader, now time.Time) (SpikeEvent, error) {
     provider = strings.ToLower(strings.TrimSpace(provider))
     if provider != "codex" && provider != "claude" {
@@ -231,8 +249,6 @@ func Report(project string, recentLimit int) (SpikeReport, error) {
     }
     agents := map[string]*mutableAgent{}
     providers := map[string]*ProviderSummary{}
-    startSeen := map[string]bool{}
-
     for _, event := range events {
         ps := providers[event.Provider]
         if ps == nil {
@@ -286,12 +302,10 @@ func Report(project string, recentLimit int) (SpikeReport, error) {
             agents[key] = a
         }
         a.summary.EventCount++
-        if event.ObservedAt < a.summary.FirstObserved || a.summary.FirstObserved == "" {
+        if a.summary.FirstObserved == "" {
             a.summary.FirstObserved = event.ObservedAt
         }
-        if event.ObservedAt > a.summary.LastObserved {
-            a.summary.LastObserved = event.ObservedAt
-        }
+        a.summary.LastObserved = event.ObservedAt
         if event.AgentType != "" {
             a.types[event.AgentType] = struct{}{}
         }
@@ -306,31 +320,12 @@ func Report(project string, recentLimit int) (SpikeReport, error) {
         }
         if isStart {
             a.summary.SawStart = true
-            startSeen[key] = true
         }
         if isStop {
             a.summary.SawStop = true
-            if !startSeen[key] {
-                report.Findings = append(report.Findings, SpikeFinding{
-                    Severity: "warning",
-                    Code: "stop_without_start",
-                    Provider: event.Provider,
-                    AgentID: event.AgentID,
-                    Message: "SubagentStop was observed without an earlier SubagentStart in this journal",
-                })
-            }
         }
         if isTool {
             a.summary.ActivityCount++
-            if !startSeen[key] {
-                report.Findings = append(report.Findings, SpikeFinding{
-                    Severity: "info",
-                    Code: "activity_without_start",
-                    Provider: event.Provider,
-                    AgentID: event.AgentID,
-                    Message: "tool activity was observed before a SubagentStart in this journal",
-                })
-            }
         }
     }
 
@@ -351,6 +346,24 @@ func Report(project string, recentLimit int) (SpikeReport, error) {
         a.summary.SessionIDs = sortedKeys(a.sessions)
         a.summary.TurnIDs = sortedKeys(a.turns)
         a.summary.EventNames = sortedKeys(a.eventNames)
+        if a.summary.SawStop && !a.summary.SawStart {
+            report.Findings = append(report.Findings, SpikeFinding{
+                Severity: "warning",
+                Code: "stop_without_start",
+                Provider: a.summary.Provider,
+                AgentID: a.summary.AgentID,
+                Message: "SubagentStop was observed without a SubagentStart in this journal",
+            })
+        }
+        if a.summary.ActivityCount > 0 && !a.summary.SawStart {
+            report.Findings = append(report.Findings, SpikeFinding{
+                Severity: "info",
+                Code: "activity_without_start",
+                Provider: a.summary.Provider,
+                AgentID: a.summary.AgentID,
+                Message: "tool activity was observed without a SubagentStart in this journal; collection may have started mid-run",
+            })
+        }
         if a.summary.SawStart && !a.summary.SawStop {
             report.Findings = append(report.Findings, SpikeFinding{
                 Severity: "info",
