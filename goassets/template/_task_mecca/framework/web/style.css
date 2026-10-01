@@ -598,3 +598,40 @@
   .root-prompt-path{margin-top:10px;text-align:left}
   .root-prompt-code pre{max-height:none}
 }
+
+/* Compact backlog list layout */
+.task-list-head,.task-row{grid-template-columns:64px minmax(320px,1fr) 96px 92px 80px 112px 20px;gap:10px}
+.task-list-head{padding-left:6px;padding-right:6px}
+.task-row{padding:10px 6px}
+.task-main{min-width:0}
+.task-title{font-size:13px;line-height:1.35}
+.task-meta-row{display:flex;align-items:center;gap:5px;min-width:0;margin-top:4px;overflow:hidden;white-space:nowrap}
+.task-meta-row .source-link{flex:0 1 auto;max-width:min(46%,320px);min-width:0;padding:2px 6px;font-size:9px}
+.task-meta-row .tag-chip{flex:0 0 auto;height:20px;padding:0 6px;font-size:8.5px}
+.tag-overflow{flex:0 0 auto;display:inline-flex;align-items:center;height:20px;padding:0 6px;border:1px solid var(--border);border-radius:999px;background:var(--surface2);color:var(--muted);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:8.5px}
+.task-preview{margin-top:3px;color:var(--muted);font-size:10px;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.task-state-summary{-webkit-line-clamp:1}
+.task-updated{gap:1px}
+.chev{text-align:right}
+
+@media(max-width:1180px){
+  .task-list-head,.task-row{grid-template-columns:64px minmax(260px,1fr) 94px 80px 110px 20px;gap:9px}
+  .task-list-head>:nth-child(4),.task-agent{display:none}
+  .task-meta-row .source-link{max-width:42%}
+}
+@media(max-width:900px){
+  .task-list-head,.task-row{grid-template-columns:60px minmax(220px,1fr) 90px 108px 20px;gap:8px}
+  .task-list-head>:nth-child(4),.task-list-head>:nth-child(5),.task-agent,.task-active{display:none}
+  .task-meta-row .source-link{max-width:48%}
+}
+@media(max-width:680px){
+  .task-list-head,.task-row{grid-template-columns:minmax(0,1fr) 82px 88px 18px;gap:7px}
+  .task-row{padding:9px 4px}
+  .task-list-head>:first-child,.task-id,.task-list-head>:nth-child(4),.task-list-head>:nth-child(5),.task-agent,.task-active{display:none}
+  .task-meta-row{gap:4px}
+  .task-meta-row .source-link{max-width:54%}
+  .task-meta-row .tag-chip{height:19px;max-width:112px;overflow:hidden;text-overflow:ellipsis}
+  .tag-overflow{height:19px}
+  .task-preview{font-size:9.5px}
+}
+
