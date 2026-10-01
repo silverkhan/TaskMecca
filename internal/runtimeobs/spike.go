@@ -109,7 +109,7 @@ func ResolveProject(start string) (string, error) {
     }
 }
 
-func Observe(project, provider string, input io.Reader, now time.Time) (SpikeEvent, error) {
+func ParseHookEvent(provider string, input io.Reader, now time.Time) (SpikeEvent, error) {
     provider = strings.ToLower(strings.TrimSpace(provider))
     if provider != "codex" && provider != "claude" {
         return SpikeEvent{}, fmt.Errorf("unsupported provider %q (use codex or claude)", provider)
@@ -125,7 +125,14 @@ func Observe(project, provider string, input io.Reader, now time.Time) (SpikeEve
     if err := json.Unmarshal(raw, &payload); err != nil {
         return SpikeEvent{}, fmt.Errorf("invalid hook JSON: %w", err)
     }
-    event := normalizeEvent(provider, payload, raw, now)
+    return normalizeEvent(provider, payload, raw, now), nil
+}
+
+func Observe(project, provider string, input io.Reader, now time.Time) (SpikeEvent, error) {
+    event, err := ParseHookEvent(provider, input, now)
+    if err != nil {
+        return SpikeEvent{}, err
+    }
     path := JournalPath(project)
     if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
         return SpikeEvent{}, err
