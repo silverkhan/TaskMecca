@@ -21,7 +21,7 @@ macOS / Linux:
 curl -fsSL https://raw.githubusercontent.com/silverkhan/TaskMecca/main/install.sh | sh
 ```
 
-On Windows, download `task-mecca-windows-amd64.exe` from the [rolling release](https://github.com/silverkhan/TaskMecca/releases/tag/go-main) and place it on PATH as `task-mecca.exe`.
+On Windows, download `task-mecca-windows-amd64.exe` from the [rolling release](https://github.com/silverkhan/TaskMecca/releases/tag/release-stable) and place it on PATH as `task-mecca.exe`.
 
 End users do not need Python, `uv`, or the Go toolchain.
 
@@ -115,8 +115,8 @@ The core ideas are intentionally small:
 
 Task Mecca supports **Stable / Dev** update channels.
 
-- `stable` is the default and follows formal `main → go-main` builds.
-- `dev` is opt-in for development and follows `dev → go-dev` builds.
+- `stable` is the default and follows formal `main → release-stable` builds.
+- `dev` is opt-in for development and follows `dev → release-dev` builds.
 - Dev builds use the next stable version as their base, for example `0.2.46-dev.1`, `0.2.46-dev.2`, and are promoted to `0.2.46` when released.
 
 Check or change the local channel:
@@ -127,7 +127,7 @@ task-mecca channel dev
 task-mecca channel stable
 ```
 
-The selected channel is stored locally, so normal users continue to follow Stable unless they explicitly opt into Dev.
+The selected channel is stored locally, so normal users continue to follow Stable unless they explicitly opt into Dev. The old `go-main` / `go-dev` tags remain only as legacy aliases so older clients can transition safely.
 
 ### From Web
 
