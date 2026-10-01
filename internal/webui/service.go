@@ -90,6 +90,16 @@ func readServiceState() (ServiceState,error) {
     return state,nil
 }
 
+func updateServiceState(instanceID string, apply func(*ServiceState)) error {
+    state,err:=readServiceState()
+    if err!=nil { return err }
+    if state.InstanceID!=instanceID {
+        return fmt.Errorf("Task Mecca Web service instance changed while updating state")
+    }
+    apply(&state)
+    return writeServiceState(state)
+}
+
 func healthState(state ServiceState) bool {
     healthURL:=state.LocalURL
     if healthURL=="" { healthURL=state.URL }

@@ -457,6 +457,83 @@ func scheduleWebRestart(result maintenance.UpgradeResult,config Config,port int)
     return detachedWebRestart(exe,args,config.Project)
 }
 
+var autoTailscaleIPv4Provider = tailscaleIPv4
+var directTailscaleTLSProvider = ensureTailscaleTLS
+
+func publishDirectTailscaleFailure(instanceID,message string) {
+    message=strings.TrimSpace(message)
+    if message=="" { message="Tailscale HTTPS is unavailable" }
+    if err:=updateServiceState(instanceID,func(state *ServiceState) {
+        state.TailscaleURL=""
+        state.TLSEnabled=false
+        state.TLSError=message
+        state.TailscaleManaged=false
+        state.TailscaleMode=""
+    }); err==nil {
+        fmt.Println("tailscale HTTPS: unavailable")
+        fmt.Println("  "+message)
+        fmt.Println("  Local Web remains available; inspect: task-mecca web logs")
+    }
+}
+
+func serveDirectTailscaleHTTPS(server *http.Server,port int,instanceID string,done <-chan struct{}) {
+    tlsInfo:=directTailscaleTLSProvider()
+    select {
+    case <-done:
+        return
+    default:
+    }
+
+    if !tlsInfo.Enabled {
+        publishDirectTailscaleFailure(instanceID,tlsInfo.Error)
+        return
+    }
+
+    raw,listenErr:=listenTailscaleIP(tlsInfo.IP,port)
+    if listenErr!=nil {
+        publishDirectTailscaleFailure(instanceID,fmt.Sprintf("Tailscale HTTPS cannot bind %s:%d: %v",tlsInfo.IP,port,listenErr))
+        return
+    }
+
+    tlsConfig,tlsErr:=tailscaleTLSConfig(tlsInfo)
+    if tlsErr!=nil {
+        _=raw.Close()
+        publishDirectTailscaleFailure(instanceID,tlsErr.Error())
+        return
+    }
+
+    remoteListener:=tls.NewListener(raw,tlsConfig)
+    select {
+    case <-done:
+        _=remoteListener.Close()
+        return
+    default:
+    }
+
+    tailscaleURL:=fmt.Sprintf("https://%s:%d/",tlsInfo.DNSName,port)
+    if err:=updateServiceState(instanceID,func(state *ServiceState) {
+        state.TailscaleURL=tailscaleURL
+        state.TLSEnabled=true
+        state.TLSError=""
+        state.TailscaleManaged=false
+        state.TailscaleMode="direct"
+    }); err!=nil {
+        _=remoteListener.Close()
+        return
+    }
+    fmt.Println("tailscale: "+tailscaleURL)
+
+    serveErr:=server.Serve(remoteListener)
+    if serveErr!=nil && serveErr!=http.ErrServerClosed {
+        select {
+        case <-done:
+            return
+        default:
+            publishDirectTailscaleFailure(instanceID,"Tailscale HTTPS listener stopped: "+serveErr.Error())
+        }
+    }
+}
+
 func Run(config Config) error {
     if config.Port<=0 { config.Port=DefaultPort }
     if config.InstanceID=="" || config.ControlToken=="" {
@@ -475,7 +552,6 @@ func Run(config Config) error {
     requestedHost:=strings.TrimSpace(config.Host)
     autoMode:=requestedHost=="" || strings.EqualFold(requestedHost,"auto")
     var primaryListener net.Listener
-    var remoteListener net.Listener
     localURL:=""
     tailscaleURL:=""
     candidateTailscaleURL:=""
@@ -485,6 +561,7 @@ func Run(config Config) error {
     tailscaleMode:=""
     tlsError:=""
     bindHost:=""
+    directTLSPending:=false
     port:=config.Port
 
     if autoMode {
@@ -509,26 +586,12 @@ func Run(config Config) error {
                     tailscaleMode="serve"
                 }
             }
-        } else {
-            tlsInfo:=ensureTailscaleTLS()
-            if tlsInfo.Enabled {
-                raw,listenErr:=listenTailscaleIP(tlsInfo.IP,port)
-                if listenErr!=nil {
-                    tlsError=fmt.Sprintf("Tailscale HTTPS cannot bind %s:%d: %v",tlsInfo.IP,port,listenErr)
-                } else {
-                    tlsConfig,tlsErr:=tailscaleTLSConfig(tlsInfo)
-                    if tlsErr!=nil {
-                        _=raw.Close()
-                        tlsError=tlsErr.Error()
-                    } else {
-                        remoteListener=tls.NewListener(raw,tlsConfig)
-                        candidateTailscaleURL=fmt.Sprintf("https://%s:%d/",tlsInfo.DNSName,port)
-                        tailscaleMode="direct"
-                    }
-                }
-            } else if tlsInfo.Error!="" {
-                tlsError=tlsInfo.Error
-            }
+        } else if autoTailscaleIPv4Provider()!="" {
+            // Windows/Linux HTTPS setup can involve a slow first certificate
+            // provision. Publish the local service first and finish HTTPS in
+            // the background so startup success never depends on that latency.
+            directTLSPending=true
+            tailscaleMode="initializing"
         }
     } else {
         host,hostMode:=resolveWebHost(requestedHost)
@@ -544,19 +607,12 @@ func Run(config Config) error {
     ctx,err:=webContext(config.Project,config.Root)
     if err!=nil {
         _=primaryListener.Close()
-        if remoteListener!=nil { _=remoteListener.Close() }
         return err
     }
 
     server:=&http.Server{Handler:handler,ReadHeaderTimeout:5*time.Second}
-    errCh:=make(chan error,2)
-    go func(){ errCh<-server.Serve(primaryListener) }()
-    listeners:=1
-    if remoteListener!=nil {
-        listeners++
-        go func(){ errCh<-server.Serve(remoteListener) }()
-        tailscaleURL=candidateTailscaleURL
-    }
+    primaryErrCh:=make(chan error,1)
+    go func(){ primaryErrCh<-server.Serve(primaryListener) }()
 
     if runtime.GOOS=="darwin" && candidateTailscaleURL!="" && tailscaleDNS!="" && tailscaleIP!="" {
         verifyErr:=verifyTailscaleEndpoint(tailscaleDNS,tailscaleIP,port,config.InstanceID,2*time.Second)
@@ -597,7 +653,6 @@ func Run(config Config) error {
         Version:config.Version,Project:config.Project,StartedAt:config.StartedAt,Running:true,
     }); err!=nil {
         _=primaryListener.Close()
-        if remoteListener!=nil { _=remoteListener.Close() }
         return err
     }
     defer removeServiceState(config.InstanceID,os.Getpid())
@@ -606,6 +661,8 @@ func Run(config Config) error {
     if localURL!="" { fmt.Println("local:     "+localURL) }
     if tailscaleURL!="" {
         fmt.Println("tailscale: "+tailscaleURL)
+    } else if directTLSPending {
+        fmt.Println("tailscale HTTPS: initializing in background")
     } else if autoMode && tailscaleIPv4()!="" {
         fmt.Println("tailscale HTTPS: unavailable")
         if tlsError!="" { fmt.Println("  "+tlsError) }
@@ -637,33 +694,40 @@ func Run(config Config) error {
         go func(){ time.Sleep(200*time.Millisecond); openBrowser(localURL) }()
     }
 
-    go func(){
+    lifecycleDone:=make(chan struct{})
+    if directTLSPending {
+        go serveDirectTailscaleHTTPS(server,port,config.InstanceID,lifecycleDone)
+    }
+
+    shutdown:=func() error {
+        close(lifecycleDone)
+        shutdownCtx,cancel:=stdcontext.WithTimeout(stdcontext.Background(),2*time.Second)
+        shutdownErr:=server.Shutdown(shutdownCtx)
+        cancel()
+        serveErr:=<-primaryErrCh
+        if shutdownErr!=nil { return shutdownErr }
+        if serveErr!=nil && serveErr!=http.ErrServerClosed { return serveErr }
+        return nil
+    }
+
+    for {
         select {
         case result:=<-restartCh:
             time.Sleep(250*time.Millisecond)
             if restartErr:=scheduleWebRestart(result,config,port); restartErr!=nil {
                 fmt.Fprintln(os.Stderr,"Task Mecca Web restart failed:",restartErr)
-                return
+                continue
             }
+            return shutdown()
         case <-stopCh:
             time.Sleep(100*time.Millisecond)
-        }
-        shutdownCtx,cancel:=stdcontext.WithTimeout(stdcontext.Background(),2*time.Second)
-        defer cancel()
-        _=server.Shutdown(shutdownCtx)
-    }()
-
-
-    for i:=0;i<listeners;i++ {
-        serveErr:=<-errCh
-        if serveErr!=nil && serveErr!=http.ErrServerClosed {
-            shutdownCtx,cancel:=stdcontext.WithTimeout(stdcontext.Background(),2*time.Second)
-            _=server.Shutdown(shutdownCtx)
-            cancel()
-            return serveErr
+            return shutdown()
+        case serveErr:=<-primaryErrCh:
+            close(lifecycleDone)
+            if serveErr!=nil && serveErr!=http.ErrServerClosed { return serveErr }
+            return nil
         }
     }
-    return nil
 }
 
 func LogEnabled() bool { return os.Getenv("TASK_MECCA_WEB_LOG")=="1" }
