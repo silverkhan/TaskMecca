@@ -34,6 +34,10 @@ Worker는 Controller가 `## 핵심 요약`을 정확히 갱신할 수 있도록 
 
 Worker가 직접 canonical contract를 요약으로 덮어쓰지는 않는다.
 
+보고 문장은 Controller가 사용자-facing 백로그로 옮기기 쉬운 형태로 작성한다. 코드 심볼·API·필드명·실제 저장값은
+정확히 적되, `exact plan`, `safe projection`, `five-state diff` 같은 내부 shorthand만으로 결과를 설명하지 않는다.
+기술적으로 정확한 사실과 함께 “무엇을 어떻게 바꿨고, 안전하게 처리할 수 없을 때 어떤 동작을 하는지”를 자연어로 명시한다.
+
 ## 완료 보고
 
 즉시 Controller에 다음을 반환한다.

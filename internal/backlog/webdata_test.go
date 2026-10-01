@@ -120,6 +120,25 @@ func TestAttentionSnapshotDetectsCompletedRuntimeAndPersistsCompletion(t *testin
 }
 
 
+func TestBacklogRevisionIncludesDurableTaskStates(t *testing.T) {
+    project:=t.TempDir()
+    folder:=filepath.Join(project,"_task_mecca","data","backlog")
+    writeWebTask(t,folder,"000001.A-1.alpha.doing.md","# A-1 Alpha\n")
+    writeWebTask(t,folder,"000002.A-2.beta.done.md","# A-2 Beta\n")
+
+    revision,err:=BacklogRevision(project,folder)
+    if err!=nil { t.Fatal(err) }
+    states,ok:=revision["states"].([]map[string]any)
+    if !ok { t.Fatalf("states=%T %#v",revision["states"],revision["states"]) }
+    if len(states)!=2 { t.Fatalf("states=%+v",states) }
+    if states[0]["id"]!="A-1" || states[0]["file_state"]!="doing" || states[0]["title"]!="A-1 Alpha" {
+        t.Fatalf("first state=%+v",states[0])
+    }
+    if states[1]["id"]!="A-2" || states[1]["file_state"]!="done" {
+        t.Fatalf("second state=%+v",states[1])
+    }
+}
+
 func TestBacklogRevisionIgnoresMtimeOnlyTouchesButDetectsContentChange(t *testing.T) {
     project:=t.TempDir()
     folder:=filepath.Join(project,"_task_mecca","data","backlog")
