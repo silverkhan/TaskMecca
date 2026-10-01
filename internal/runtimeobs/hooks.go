@@ -68,6 +68,72 @@ func EnsureHooks(project,provider string) (HookSetup,error) {
     return status,nil
 }
 
+func DisableHooks(project,provider string) (HookSetup,error) {
+    provider=strings.ToLower(strings.TrimSpace(provider))
+    path,err:=HookConfigPath(project,provider); if err!=nil { return HookSetup{},err }
+    doc,exists,err:=readHookDocument(path); if err!=nil { return HookSetup{},err }
+    if !exists {
+        return HookStatus(project,provider)
+    }
+    hooks,ok:=doc["hooks"].(map[string]any)
+    if !ok || hooks==nil {
+        return HookStatus(project,provider)
+    }
+
+    changed:=false
+    for _,event:=range lifecycleHookEvents {
+        entries:=asSlice(hooks[event])
+        if len(entries)==0 { continue }
+        filteredEntries:=make([]any,0,len(entries))
+        for _,entry:=range entries {
+            row,ok:=entry.(map[string]any)
+            if !ok {
+                filteredEntries=append(filteredEntries,entry)
+                continue
+            }
+            commands:=asSlice(row["hooks"])
+            filteredCommands:=make([]any,0,len(commands))
+            removed:=false
+            for _,hook:=range commands {
+                item,ok:=hook.(map[string]any)
+                if ok && strings.TrimSpace(fmt.Sprint(item["command"]))=="task-mecca runtime observe "+provider {
+                    removed=true
+                    changed=true
+                    continue
+                }
+                filteredCommands=append(filteredCommands,hook)
+            }
+            if !removed || len(filteredCommands)>0 {
+                if removed {
+                    cloned:=map[string]any{}
+                    for key,value:=range row { cloned[key]=value }
+                    cloned["hooks"]=filteredCommands
+                    filteredEntries=append(filteredEntries,cloned)
+                } else {
+                    filteredEntries=append(filteredEntries,row)
+                }
+            }
+        }
+        if len(filteredEntries)==0 {
+            delete(hooks,event)
+        } else {
+            hooks[event]=filteredEntries
+        }
+    }
+
+    if changed {
+        if len(hooks)==0 { delete(doc,"hooks") }
+        data,err:=json.MarshalIndent(doc,"","  "); if err!=nil { return HookSetup{},err }
+        data=append(data,'\n')
+        mode:=os.FileMode(0644)
+        if info,statErr:=os.Stat(path); statErr==nil { mode=info.Mode().Perm() }
+        if err:=os.WriteFile(path,data,mode); err!=nil { return HookSetup{},err }
+    }
+    status,err:=HookStatus(project,provider); if err!=nil { return HookSetup{},err }
+    status.Changed=changed
+    return status,nil
+}
+
 func readHookDocument(path string) (map[string]any,bool,error) {
     data,err:=os.ReadFile(path)
     if errors.Is(err,os.ErrNotExist) { return map[string]any{},false,nil }
