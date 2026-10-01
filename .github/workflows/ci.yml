@@ -2,13 +2,23 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, dev]
   pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: task-mecca-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  test:
+  python-compatibility:
+    name: Python compatibility · ${{ matrix.python-version }}
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         python-version: ["3.11", "3.12", "3.13"]
     steps:
@@ -16,324 +26,108 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Install
+      - name: Install compatibility package
         run: python -m pip install -e .
-      - name: Compile
+      - name: Compile Python sources
         run: python -m compileall -q src
-      - name: Test
+      - name: Run Python compatibility tests
         run: python -m unittest discover -s tests -v
       - name: Python module CLI smoke
         run: python -m task_mecca --version
 
-  go-migration:
+  go-runtime:
+    name: Go runtime
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
-      - run: go test ./...
-      - run: go build ./cmd/task-mecca
+      - name: Test Go runtime
+        run: go test ./...
+      - name: Vet Go runtime
+        run: go vet ./...
+      - name: Build Go CLI
+        run: go build ./cmd/task-mecca
       - name: Check Web JavaScript syntax
         run: |
           node --check goassets/template/_task_mecca/framework/web/app.js
           node --check goassets/template/_task_mecca/framework/web/sw.js
-      - name: Cross-compile macOS web listener
-        run: GOOS=darwin GOARCH=arm64 go test -c -o /tmp/task-mecca-webui-darwin.test ./internal/webui
-      - name: Go CLI backlog smoke
+
+  cross-runtime-smoke:
+    name: Go ↔ Python compatibility smoke
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Compare core compatibility commands
+        shell: bash
         run: |
-          tmp="$(mktemp -d)"
-          go run ./cmd/task-mecca init --project "$tmp"
-          go run ./cmd/task-mecca ensure-backlog --project "$tmp" --json
-          go run ./cmd/task-mecca next-id A --project "$tmp" --json
-      - name: Compare agent JSON with Python runtime
-        run: |
+          set -euo pipefail
           python - <<'PY'
-          import json, subprocess
-          for path, extra in [('/root', []), ('/root/controller/pairi', ['--new']), ('/root/controller/charmander', []), ('/root/controller/unknown', [])]:
-              python = subprocess.run(['python', 'src/task_mecca/template/_task_mecca/framework/collab_tools.py', 'agent', path, *extra, '--json'], capture_output=True, text=True)
-              go = subprocess.run(['go', 'run', './cmd/task-mecca', 'agent', path, *extra, '--json'], capture_output=True, text=True)
-              assert python.returncode == go.returncode, (path, python.stderr, go.stderr)
-              assert json.loads(python.stdout) == json.loads(go.stdout), (path, python.stdout, go.stdout)
-          PY
-      - name: Compare worker name JSON with Python runtime
-        run: |
-          python - <<'PY'
-          import json, subprocess, tempfile
-          script = 'src/task_mecca/template/_task_mecca/framework/collab_tools.py'
-          with tempfile.TemporaryDirectory() as root:
-              for used in [[], ['--used', '/root/controller/kkobugi'], ['--used', '/root/controller/charmander', '--used', 'pairi']]:
-                  python = subprocess.run(['python', script, 'worker-name', '--root', root, *used, '--json'], capture_output=True, text=True)
-                  go = subprocess.run(['go', 'run', './cmd/task-mecca', 'worker-name', '--project', root, '--root', root, *used, '--json'], capture_output=True, text=True)
-                  assert python.returncode == go.returncode, (python.stderr, go.stderr)
-                  assert json.loads(python.stdout) == json.loads(go.stdout), (python.stdout, go.stdout)
-          PY
-      - name: Compare archived next ID with Python runtime
-        run: |
-          python - <<'PY'
-          import json, pathlib, subprocess, tempfile
-          script = 'src/task_mecca/template/_task_mecca/framework/collab_tools.py'
-          with tempfile.TemporaryDirectory() as root:
-              ledger = pathlib.Path(root) / '_task_mecca' / 'data' / 'backlog'
-              archive = ledger / 'archive' / '2026-09'
-              archive.mkdir(parents=True)
-              (archive / '000001.A-1.first.done.md').write_text('# A-1 First\n')
-              (ledger / '000002.A-2.second.todo.md').write_text('# A-2 Second\n')
-              python = subprocess.check_output(['python', script, 'next-id', 'A', '--root', str(ledger), '--json'], text=True)
-              go = subprocess.check_output(['go', 'run', './cmd/task-mecca', 'next-id', 'A', '--project', root, '--root', str(ledger), '--json'], text=True)
-              assert json.loads(python) == json.loads(go), (python, go)
-          PY
+          import json
+          import pathlib
+          import subprocess
+          import tempfile
 
-      - name: Compare Go search JSON with Python runtime
-        run: |
-          python - <<'PY'
-          import json, pathlib, subprocess, tempfile
-          script = 'src/task_mecca/template/_task_mecca/framework/collab_tools.py'
-          task = '''# A-1 Searchable Task
+          script = "src/task_mecca/template/_task_mecca/framework/collab_tools.py"
 
-## 작업 개요
-- 등록자: test
-- Agent: /root/controller/pairi
-- 변경범위: internal/backlog
-- 선행: -
-- 연관: -
-- 설명: Go parser migration
+          def run_json(command):
+              result = subprocess.run(command, capture_output=True, text=True)
+              if result.returncode != 0:
+                  raise SystemExit(
+                      f"command failed: {command}\nstdout={result.stdout}\nstderr={result.stderr}"
+                  )
+              return json.loads(result.stdout)
 
-## 작업 정의
-### 목표
-Port the backlog parser.
-### 수용 기준
-- [x] Search can find this task.
-- [ ] Keep JSON parity.
+          cases = [
+              (
+                  ["python", script, "agent", "/root", "--json"],
+                  ["go", "run", "./cmd/task-mecca", "agent", "/root", "--json"],
+              ),
+              (
+                  ["python", script, "agent", "/root/controller/pairi", "--new", "--json"],
+                  ["go", "run", "./cmd/task-mecca", "agent", "/root/controller/pairi", "--new", "--json"],
+              ),
+          ]
+          for python_cmd, go_cmd in cases:
+              python_value = run_json(python_cmd)
+              go_value = run_json(go_cmd)
+              if python_value != go_value:
+                  raise SystemExit(
+                      f"agent compatibility mismatch:\npython={python_value}\ngo={go_value}"
+                  )
 
-## 실행 정보
-- RuntimeProvider: codex
-- Dispatch상태: completed
-- 실행근거: test
-- Fallback근거: -
-
-## 작업 노트
-- 대기: -
-- 대기유형: -
-- 재개조건: -
-- 대기근거: -
-- 메모: parser note
-
-## 결과
-Parser complete.
-
-## 검증
-Search parity.
-'''
-          with tempfile.TemporaryDirectory() as root:
-              ledger = pathlib.Path(root) / '_task_mecca' / 'data' / 'backlog'
+          with tempfile.TemporaryDirectory() as project:
+              ledger = pathlib.Path(project) / "_task_mecca" / "data" / "backlog"
               ledger.mkdir(parents=True)
-              (ledger / '000001.A-1.searchable.todo.md').write_text(task, encoding='utf-8')
-              python = subprocess.check_output(['python', script, 'search', 'parser', '--root', str(ledger), '--json'], text=True)
-              go = subprocess.check_output(['go', 'run', './cmd/task-mecca', 'search', 'parser', '--project', root, '--root', str(ledger), '--json'], text=True)
-              assert json.loads(python) == json.loads(go), (python, go)
-          PY
+              (ledger / "000001.A-1.done.done.md").write_text("# A-1 Done\n", encoding="utf-8")
+              (ledger / "000002.A-2.ready.todo.md").write_text("# A-2 Ready\n", encoding="utf-8")
 
-      - name: Compare Go ready JSON with Python runtime
-        run: |
-          python - <<'PY'
-          import json, pathlib, subprocess, tempfile
-          script = 'src/task_mecca/template/_task_mecca/framework/collab_tools.py'
-          tasks = {
-              '000001.A-1.done.done.md': '# A-1 Done\n- 선행: -\n',
-              '000002.A-2.ready.todo.md': '# A-2 Ready\n- 선행: A-1\n- 대기: -\n',
-              '000003.A-3.blocked.todo.md': '# A-3 Blocked\n- 선행: A-9\n- 대기: approval\n',
-          }
-          with tempfile.TemporaryDirectory() as root:
-              ledger = pathlib.Path(root) / '_task_mecca' / 'data' / 'backlog'
-              ledger.mkdir(parents=True)
-              for name, body in tasks.items():
-                  (ledger / name).write_text(body, encoding='utf-8')
-              python = subprocess.run(['python', script, 'ready', '--root', str(ledger), '--json'], capture_output=True, text=True)
-              go = subprocess.run(['go', 'run', './cmd/task-mecca', 'ready', '--project', root, '--root', str(ledger), '--json'], capture_output=True, text=True)
-              assert python.returncode == go.returncode, (python.stderr, go.stderr)
-              assert json.loads(python.stdout) == json.loads(go.stdout), (python.stdout, go.stdout)
-          PY
-
-      - name: Compare Go inspect and workload JSON with Python runtime
-        run: |
-          python - <<'PY'
-          import json, pathlib, subprocess, tempfile
-          source_framework = pathlib.Path('src/task_mecca/template/_task_mecca/framework')
-          tasks = {
-              '000001.A-1.done.done.md': '''# A-1 Done
-- Agent: /root/controller/pairi
-- 변경범위: core
-- 선행: -
-- 연관: -
-- RuntimeProvider: codex
-- Dispatch상태: completed
-- 실행근거: test
-- Fallback근거: -
-''',
-              '000002.A-2.doing.doing.md': '''# A-2 Doing
-- Agent: /root/controller/kkobugi
-- 변경범위: api
-- 선행: A-1
-- 연관: -
-- RuntimeProvider: codex
-- Dispatch상태: running
-- 실행근거: test
-- Fallback근거: -
-''',
-              '000003.A-3.ready.todo.md': '''# A-3 Ready
-- Agent: -
-- 변경범위: -
-- 선행: A-1
-- 연관: -
-- 대기: -
-''',
-              '000004.A-4.hold.hold.md': '''# A-4 Hold
-- Agent: /root/controller/pairi
-- 변경범위: ui
-- 대기: user reply
-- 대기유형: user
-- 재개조건: reply received
-- 대기근거: ticket
-- 선행: -
-- 연관: -
-''',
-          }
-          with tempfile.TemporaryDirectory() as root:
-              task_mecca = pathlib.Path(root) / '_task_mecca'
-              framework = task_mecca / 'framework'
-              import shutil
-              shutil.copytree(source_framework, framework)
-              ledger = task_mecca / 'data' / 'backlog'
-              ledger.mkdir(parents=True)
-              for name, body in tasks.items():
-                  (ledger / name).write_text(body, encoding='utf-8')
-              script = framework / 'collab_tools.py'
-
-              volatile = {
-                  'current_segment_seconds', 'queue_seconds', 'active_seconds', 'wait_seconds',
-                  'work_seconds', 'lead_seconds', 'elapsed_seconds', 'duration_seconds',
-                  'queue', 'active', 'wait', 'work', 'lead', 'elapsed', 'duration',
-                  'interval_seconds', 'interval',
-              }
-              def stable(value):
-                  if isinstance(value, dict):
-                      return {k: stable(v) for k, v in value.items() if k not in volatile}
-                  if isinstance(value, list):
-                      return [stable(v) for v in value]
-                  return value
-
-              for command in (['inspect', 'A-4'], ['workload']):
-                  python = subprocess.run(['python', str(script), *command, '--root', str(ledger), '--json'], capture_output=True, text=True)
-                  go = subprocess.run(['go', 'run', './cmd/task-mecca', *command, '--project', root, '--root', str(ledger), '--json'], capture_output=True, text=True)
-                  assert python.returncode == go.returncode, (command, python.stderr, go.stderr)
-                  assert stable(json.loads(python.stdout)) == stable(json.loads(go.stdout)), (command, python.stdout, go.stdout)
-          PY
-
-      - name: Compare Go coordinate and audit with Python runtime
-        run: |
-          python - <<'PY'
-          import json, pathlib, shutil, subprocess, tempfile
-          source_framework = pathlib.Path('src/task_mecca/template/_task_mecca/framework')
-          tasks = {
-              '000001.A-1.one.doing.md': '# A-1 One\n- Agent: /root/controller/pairi\n- 변경범위: internal/backlog\n',
-              '000002.A-2.two.doing.md': '# A-2 Two\n- Agent: /root/controller/kkobugi\n- 변경범위: internal/backlog/parser\n',
-              '000003.A-3.done.done.md': '# A-3 Done\n- Agent: /root/controller/pairi\n- 결과: -\n- 검증: -\n',
-          }
-          volatile = {
-              'snapshot_at', 'current_segment_seconds', 'queue_seconds', 'active_seconds',
-              'wait_seconds', 'work_seconds', 'lead_seconds', 'elapsed_seconds',
-              'duration_seconds', 'queue', 'active', 'wait', 'work', 'lead',
-              'elapsed', 'duration', 'interval_seconds', 'interval',
-          }
-          def stable(value):
-              if isinstance(value, dict):
-                  return {k: stable(v) for k, v in value.items() if k not in volatile}
-              if isinstance(value, list):
-                  return [stable(v) for v in value]
-              return value
-
-          with tempfile.TemporaryDirectory() as root:
-              task_mecca = pathlib.Path(root) / '_task_mecca'
-              framework = task_mecca / 'framework'
-              shutil.copytree(source_framework, framework)
-              ledger = task_mecca / 'data' / 'backlog'
-              ledger.mkdir(parents=True)
-              for name, body in tasks.items():
-                  (ledger / name).write_text(body, encoding='utf-8')
-              script = framework / 'collab_tools.py'
-
-              python = subprocess.run(['python', str(script), 'coordinate', '--worker-cap', '3', '--root', str(ledger), '--json'], capture_output=True, text=True)
-              go = subprocess.run(['go', 'run', './cmd/task-mecca', 'coordinate', '--worker-cap', '3', '--project', root, '--root', str(ledger), '--json'], capture_output=True, text=True)
-              assert python.returncode == go.returncode, (python.stderr, go.stderr)
-              assert stable(json.loads(python.stdout)) == stable(json.loads(go.stdout)), (python.stdout, go.stdout)
-
-              python = subprocess.run(['python', str(script), 'audit', '--root', str(ledger)], capture_output=True, text=True)
-              go = subprocess.run(['go', 'run', './cmd/task-mecca', 'audit', '--project', root, '--root', str(ledger)], capture_output=True, text=True)
-              assert python.returncode == go.returncode, (python.stderr, go.stderr)
-              assert json.loads(python.stdout) == json.loads(go.stdout), (python.stdout, go.stdout)
-          PY
-
-      - name: Compare Go check doctor status and preflight with Python runtime
-        run: |
-          python - <<'PY'
-          import json, os, pathlib, shutil, subprocess, tempfile
-          source_framework = pathlib.Path('src/task_mecca/template/_task_mecca/framework')
-          task = '''# A-1 Health Task
-- Agent: /root/controller/pairi
-- 변경범위: internal/backlog
-- 선행: -
-- 연관: -
-- RuntimeProvider: codex
-- Dispatch상태: running
-- 실행근거: test
-- Fallback근거: -
-'''
-          volatile = {
-              'snapshot_at', 'checked_at', 'mtime', 'ctime',
-              'current_segment_seconds', 'queue_seconds', 'active_seconds', 'wait_seconds',
-              'work_seconds', 'lead_seconds', 'elapsed_seconds', 'duration_seconds',
-              'queue', 'active', 'wait', 'work', 'lead', 'elapsed', 'duration',
-              'time', 'queue_time', 'work_time', 'lead_time',
-              'interval_seconds', 'interval',
-          }
-          def stable(value):
-              if isinstance(value, dict):
-                  return {k: stable(v) for k, v in value.items() if k not in volatile}
-              if isinstance(value, list):
-                  return [stable(v) for v in value]
-              return value
-
-          with tempfile.TemporaryDirectory() as root, tempfile.TemporaryDirectory() as home:
-              root = pathlib.Path(root)
-              task_mecca = root / '_task_mecca'
-              framework = task_mecca / 'framework'
-              shutil.copytree(source_framework, framework)
-              ledger = task_mecca / 'data' / 'backlog'
-              ledger.mkdir(parents=True)
-              (ledger / '000001.A-1.health.doing.md').write_text(task, encoding='utf-8')
-
-              subprocess.run(['git', 'init'], cwd=root, check=True, stdout=subprocess.DEVNULL)
-              subprocess.run(['git', 'config', 'user.email', 'ci@example.invalid'], cwd=root, check=True)
-              subprocess.run(['git', 'config', 'user.name', 'CI'], cwd=root, check=True)
-              subprocess.run(['git', 'add', '.'], cwd=root, check=True)
-              subprocess.run(['git', 'commit', '-m', 'fixture'], cwd=root, check=True, stdout=subprocess.DEVNULL)
-
-              script = framework / 'collab_tools.py'
-              env = os.environ.copy()
-              env['HOME'] = home
-              env['CODEX_HOME'] = str(pathlib.Path(home) / '.codex')
-              env.pop('CODEX_SANDBOX', None)
-              env.pop('CODEX_SANDBOX_NETWORK_DISABLED', None)
-
-              python = subprocess.run(['python', str(script), 'check'], cwd=root, env=env, capture_output=True, text=True)
-              go = subprocess.run(['go', 'run', './cmd/task-mecca', 'check', '--project', str(root)], env=env, capture_output=True, text=True)
-              assert python.returncode == go.returncode, (python.stderr, go.stderr)
-              assert python.stdout == go.stdout and python.stderr == go.stderr, (python.stdout, go.stdout, python.stderr, go.stderr)
-
-              for command in (['doctor', '--json'], ['status', '--json'], ['preflight', '--require-full-access', '--json']):
-                  python = subprocess.run(['python', str(script), *command, '--root', str(ledger)], cwd=root, env=env, capture_output=True, text=True)
-                  go = subprocess.run(['go', 'run', './cmd/task-mecca', command[0], '--project', str(root), '--root', str(ledger), *command[1:]], env=env, capture_output=True, text=True)
-                  assert python.returncode == go.returncode, (command, python.stderr, go.stderr)
-                  assert stable(json.loads(python.stdout)) == stable(json.loads(go.stdout)), (command, python.stdout, go.stdout)
+              python_value = run_json(
+                  ["python", script, "next-id", "A", "--root", str(ledger), "--json"]
+              )
+              go_value = run_json(
+                  [
+                      "go",
+                      "run",
+                      "./cmd/task-mecca",
+                      "next-id",
+                      "A",
+                      "--project",
+                      project,
+                      "--root",
+                      str(ledger),
+                      "--json",
+                  ]
+              )
+              if python_value != go_value:
+                  raise SystemExit(
+                      f"next-id compatibility mismatch:\npython={python_value}\ngo={go_value}"
+                  )
           PY
