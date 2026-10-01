@@ -182,8 +182,13 @@ func run(args []string) int {
                 webState:=webui.ServiceStatus()
                 if webState.Running {
                     if result.Scheduled {
-                        fmt.Printf("Task Mecca Web is still running on %s. The Windows binary replacement completes after this command exits.\n", webState.Version)
-                        fmt.Println("Then run: task-mecca web restart")
+                        fmt.Printf("Task Mecca Web is running on %s. Stopping it so Windows can replace the executable after this command exits...\n", webState.Version)
+                        if _,stopErr:=webui.StopService(); stopErr!=nil {
+                            fmt.Fprintf(os.Stderr,"CLI update is staged, but Task Mecca Web could not be stopped: %v\n",stopErr)
+                            fmt.Fprintln(os.Stderr,"Close the running Task Mecca Web process, then run: task-mecca web restart")
+                        } else {
+                            fmt.Println("Task Mecca Web stopped. After the executable replacement completes, start it again with: task-mecca web")
+                        }
                     } else {
                         fmt.Printf("Task Mecca Web is running on %s; restarting it automatically...\n", webState.Version)
                         restarted,restartErr:=webui.RestartService(webui.Config{
