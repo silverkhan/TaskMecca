@@ -15,13 +15,14 @@ import (
     "github.com/silverkhan/TaskMecca/internal/webui"
 )
 
-const version = "0.2.44"
+var version = "0.2.45"
 
 func main() { os.Exit(run(os.Args[1:])) }
 
 func run(args []string) int {
     if len(args) == 1 && (args[0] == "--version" || args[0] == "-version" || args[0] == "version") {
         fmt.Printf("task-mecca %s\n", version)
+        fmt.Printf("channel %s\n", maintenance.CurrentChannel())
         info:=maintenance.RefreshVersionInfo(version)
         if info.UpdateAvailable {
             fmt.Printf("latest %s · update available\n",info.Latest)
@@ -134,6 +135,33 @@ func run(args []string) int {
         if err != nil { fmt.Fprintln(os.Stderr, err); return 2 }
     }
     switch command {
+    case "channel":
+        if len(positional)==0 {
+            fmt.Println(maintenance.CurrentChannel())
+            return 0
+        }
+        if len(positional)!=1 {
+            fmt.Fprintln(os.Stderr,"channel takes zero arguments or one of: stable, dev")
+            return 2
+        }
+        before:=maintenance.CurrentChannel()
+        if err=maintenance.SetChannel(positional[0]); err==nil {
+            after:=maintenance.CurrentChannel()
+            if before==after {
+                fmt.Printf("Update channel: %s\n",after)
+            } else {
+                fmt.Printf("Update channel changed: %s -> %s\n",before,after)
+            }
+            info:=maintenance.RefreshVersionInfo(version)
+            if info.Error!="" {
+                fmt.Fprintf(os.Stderr,"latest check failed: %s\n",info.Error)
+            } else if info.UpdateAvailable {
+                fmt.Printf("latest %s · update available\n",info.Latest)
+                fmt.Println("run: task-mecca upgrade")
+            } else if info.Latest!="" {
+                fmt.Printf("latest %s\n",info.Latest)
+            }
+        }
     case "worker-name":
         report, workerErr := backlog.WorkerName(root, rootOption, used)
         if workerErr != nil { err = workerErr; break }
@@ -782,7 +810,7 @@ func printWebState(prefix string,state webui.ServiceState) {
 
 func printUpdateHint(info maintenance.VersionInfo) {
     if !info.UpdateAvailable || info.Latest=="" { return }
-    fmt.Printf("\nUpdate available: %s → %s\n",info.Current,info.Latest)
+    fmt.Printf("\nUpdate available (%s): %s → %s\n",info.Channel,info.Current,info.Latest)
     fmt.Println("Run: task-mecca upgrade")
 }
 
