@@ -77,6 +77,25 @@ func TestTaskDetailLoadsOneTaskWithRawMarkdown(t *testing.T) {
     }
 }
 
+func TestTaskDetailCarriesSemanticSectionSummaries(t *testing.T) {
+    project:=t.TempDir()
+    folder:=filepath.Join(project,"_task_mecca","data","backlog")
+    body := "# A-37 Summary\n## 작업 정의\n### 목표\n> 요약: 전체 목표를 빠르게 파악한다.\n\n긴 목표 본문\n### 수용 기준\n- [ ] 짧은 기준\n"
+    writeWebTask(t,folder,"000037.A-37.summary.todo.md",body)
+
+    item,err:=TaskDetail(project,folder,"A-37")
+    if err!=nil { t.Fatal(err) }
+    doc:=item["document"].(map[string]any)
+    summaries:=doc["section_summaries"].(map[string]string)
+    if summaries["task_definition"]!="전체 목표를 빠르게 파악한다." {
+        t.Fatalf("section summaries=%+v",summaries)
+    }
+    req:=doc["requirements"].(map[string]any)
+    if req["goal"]!="긴 목표 본문" {
+        t.Fatalf("goal body=%v",req["goal"])
+    }
+}
+
 func TestAttentionSnapshotDetectsCompletedRuntimeAndPersistsCompletion(t *testing.T) {
     project:=t.TempDir()
     folder:=filepath.Join(project,"_task_mecca","data","backlog")
