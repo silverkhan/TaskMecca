@@ -8,11 +8,34 @@ import (
     "os"
     "path/filepath"
     "runtime"
+    "strings"
     "testing"
     "time"
+
+    "github.com/silverkhan/TaskMecca/internal/maintenance"
 )
 
 func TestHandlerServesDashboardAPIsAndAssets(t *testing.T) {
+    oldChannelOptionsProvider:=releaseChannelOptionsProvider
+    oldChannelSwitchProvider:=releaseChannelSwitchProvider
+    defer func(){
+        releaseChannelOptionsProvider=oldChannelOptionsProvider
+        releaseChannelSwitchProvider=oldChannelSwitchProvider
+    }()
+    releaseChannelOptionsProvider=func(current string) maintenance.ReleaseChannelOptions {
+        return maintenance.ReleaseChannelOptions{
+            CurrentVersion:current,CurrentChannel:"stable",
+            Stable:maintenance.ReleaseChannelTarget{Channel:"stable",Version:"0.2.50"},
+            Dev:maintenance.ReleaseChannelTarget{Channel:"dev",Version:"0.2.51-dev.1"},
+        }
+    }
+    releaseChannelSwitchProvider=func(current,target string)(maintenance.UpgradeResult,error){
+        return maintenance.UpgradeResult{
+            From:current,To:"0.2.51-dev.1",Channel:target,
+            FrameworkSync:[]maintenance.FrameworkSyncCandidate{{Name:"fixture",Path:"/tmp/fixture",FromVersion:"0.2.50",ToVersion:"0.2.51-dev.1"}},
+        },nil
+    }
+
     root:=t.TempDir()
     ledger:=filepath.Join(root,"_task_mecca","data","backlog")
     if err:=os.MkdirAll(ledger,0755); err!=nil { t.Fatal(err) }
@@ -36,6 +59,7 @@ func TestHandlerServesDashboardAPIsAndAssets(t *testing.T) {
         {"/api/backlog-folders",200,"application/json"},
         {"/api/revision",200,"application/json"},
         {"/api/version",200,"application/json"},
+        {"/api/channel-options",200,"application/json"},
         {"/api/snapshot",200,"application/json"},
         {"/api/attention",200,"application/json"},
         {"/api/workload",200,"application/json"},
@@ -92,6 +116,24 @@ func TestHandlerServesDashboardAPIsAndAssets(t *testing.T) {
     if manual["root_prompt_path"]!="_task_mecca/ROOT_PROMPT.md" {
         t.Fatalf("root_prompt_path=%v",manual["root_prompt_path"])
     }
+
+    req=httptest.NewRequest(http.MethodPost,"/api/channel-switch",strings.NewReader(`{"channel":"dev"}`))
+    req.Header.Set("Content-Type","application/json")
+    rec=httptest.NewRecorder()
+    handler.ServeHTTP(rec,req)
+    if rec.Code!=http.StatusForbidden { t.Fatalf("channel switch without action header status=%d",rec.Code) }
+
+    req=httptest.NewRequest(http.MethodPost,"/api/channel-switch",strings.NewReader(`{"channel":"dev"}`))
+    req.Header.Set("Content-Type","application/json")
+    req.Header.Set("X-Task-Mecca-Action","1")
+    rec=httptest.NewRecorder()
+    handler.ServeHTTP(rec,req)
+    if rec.Code!=http.StatusOK { t.Fatalf("channel switch status=%d body=%s",rec.Code,rec.Body.String()) }
+    switched:=map[string]any{}
+    if err:=json.Unmarshal(rec.Body.Bytes(),&switched); err!=nil { t.Fatal(err) }
+    if switched["channel"]!="dev" { t.Fatalf("channel switch payload=%+v",switched) }
+    syncRows,ok:=switched["framework_sync"].([]any)
+    if !ok || len(syncRows)!=1 { t.Fatalf("framework_sync=%T %+v",switched["framework_sync"],switched["framework_sync"]) }
 
     req=httptest.NewRequest(http.MethodGet,"/api/tasks/A-404",nil)
     rec=httptest.NewRecorder()
