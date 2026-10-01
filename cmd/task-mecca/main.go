@@ -12,6 +12,7 @@ import (
     "github.com/silverkhan/TaskMecca/internal/backlog"
     "github.com/silverkhan/TaskMecca/internal/install"
     "github.com/silverkhan/TaskMecca/internal/maintenance"
+    "github.com/silverkhan/TaskMecca/internal/runtimeobs"
     "github.com/silverkhan/TaskMecca/internal/webui"
 )
 
@@ -643,6 +644,147 @@ func run(args []string) int {
             fmt.Fprintln(os.Stderr,"unknown web action: "+action+" (use status, restart, stop, or logs)")
             return 2
         }
+    case "runtime":
+        if len(positional)==0 {
+            fmt.Fprintln(os.Stderr,"runtime requires an action: observe, list, reconcile, or bind")
+            return 2
+        }
+        action:=strings.ToLower(positional[0])
+        var runtimeProject string
+        runtimeProject,err=runtimeobs.ResolveProject(root)
+        if err!=nil { break }
+        switch action {
+        case "observe":
+            if len(positional)!=2 {
+                fmt.Fprintln(os.Stderr,"runtime observe requires a provider: codex or claude")
+                return 2
+            }
+            var event runtimeobs.ExecutionEvent
+            event,err=runtimeobs.ObserveHook(runtimeProject,positional[1],os.Stdin,time.Now())
+            if err==nil && jsonOutput { emitJSON(event) }
+        case "list","reconcile":
+            if len(positional)>2 {
+                fmt.Fprintf(os.Stderr,"runtime %s accepts at most one provider: codex or claude\n",action)
+                return 2
+            }
+            provider:=""
+            if len(positional)==2 {
+                provider=strings.ToLower(positional[1])
+                if provider!="codex" && provider!="claude" {
+                    fmt.Fprintln(os.Stderr,"runtime provider must be codex or claude")
+                    return 2
+                }
+            }
+            var ledger runtimeobs.Ledger
+            if action=="reconcile" {
+                ledger,err=runtimeobs.ReconcileLedger(runtimeProject,limit,time.Now())
+            } else {
+                ledger,err=runtimeobs.BuildLedger(runtimeProject,limit,time.Now())
+            }
+            if err==nil {
+                ledger=runtimeobs.FilterLedger(ledger,provider)
+                if jsonOutput { emitJSON(ledger) } else { printRuntimeLedger(ledger) }
+            }
+        case "bind":
+            if len(positional)<4 || len(positional)>5 {
+                fmt.Fprintln(os.Stderr,"runtime bind requires: <attempt-id> <task-id> <agent-path> [parent-attempt-id]")
+                return 2
+            }
+            parent:=""
+            if len(positional)==5 { parent=positional[4] }
+            var attempt runtimeobs.Attempt
+            attempt,err=runtimeobs.BindAttempt(runtimeProject,positional[1],positional[2],positional[3],"explicit",parent,nil,time.Now())
+            if err==nil {
+                if jsonOutput { emitJSON(attempt) } else {
+                    fmt.Printf("%s %s %s -> %s %s\n",attempt.AttemptID,attempt.BindingState,attempt.Provider,attempt.TaskID,attempt.AgentPath)
+                }
+            }
+        case "hooks":
+            if len(positional)<2 || len(positional)>3 {
+                fmt.Fprintln(os.Stderr,"runtime hooks requires: status|enable <codex|claude|all>")
+                return 2
+            }
+            hooksAction:=strings.ToLower(positional[1])
+            provider:="all"
+            if len(positional)==3 { provider=strings.ToLower(positional[2]) }
+            if provider!="codex" && provider!="claude" && provider!="all" {
+                fmt.Fprintln(os.Stderr,"runtime hooks provider must be codex, claude, or all")
+                return 2
+            }
+            providers:=[]string{"codex","claude"}
+            if provider!="all" { providers=[]string{provider} }
+            setups:=[]runtimeobs.HookSetup{}
+            for _,name:=range providers {
+                var setup runtimeobs.HookSetup
+                if hooksAction=="enable" {
+                    setup,err=runtimeobs.EnsureHooks(runtimeProject,name)
+                } else if hooksAction=="status" {
+                    setup,err=runtimeobs.HookStatus(runtimeProject,name)
+                } else {
+                    fmt.Fprintln(os.Stderr,"runtime hooks action must be status or enable")
+                    return 2
+                }
+                if err!=nil { break }
+                setups=append(setups,setup)
+            }
+            if err==nil {
+                if jsonOutput { emitJSON(setups) } else {
+                    for _,setup:=range setups {
+                        label:="not installed"
+                        if setup.Installed { label="installed" }
+                        changed:=""
+                        if setup.Changed { changed=" · updated" }
+                        fmt.Printf("%s  %s%s  %s\n",setup.Provider,label,changed,setup.Path)
+                    }
+                }
+            }
+        default:
+            fmt.Fprintln(os.Stderr,"unknown runtime action: "+action+" (use observe, list, reconcile, bind, or hooks)")
+            return 2
+        }
+    case "runtime-spike":
+        if len(positional)==0 {
+            fmt.Fprintln(os.Stderr,"runtime-spike requires an action: observe or report")
+            return 2
+        }
+        action:=strings.ToLower(positional[0])
+        switch action {
+        case "observe":
+            if len(positional)!=2 {
+                fmt.Fprintln(os.Stderr,"runtime-spike observe requires a provider: codex or claude")
+                return 2
+            }
+            var runtimeProject string
+            runtimeProject,err=runtimeobs.ResolveProject(root)
+            if err!=nil { break }
+            var event runtimeobs.SpikeEvent
+            event,err=runtimeobs.Observe(runtimeProject,positional[1],os.Stdin,time.Now())
+            if err==nil && jsonOutput { emitJSON(event) }
+        case "report":
+            if len(positional)>2 {
+                fmt.Fprintln(os.Stderr,"runtime-spike report accepts at most one provider: codex or claude")
+                return 2
+            }
+            var runtimeProject string
+            runtimeProject,err=runtimeobs.ResolveProject(root)
+            if err!=nil { break }
+            var report runtimeobs.SpikeReport
+            report,err=runtimeobs.Report(runtimeProject,limit)
+            if err==nil && len(positional)==2 {
+                provider:=strings.ToLower(positional[1])
+                if provider!="codex" && provider!="claude" {
+                    fmt.Fprintln(os.Stderr,"runtime-spike report provider must be codex or claude")
+                    return 2
+                }
+                report=runtimeobs.FilterReport(report,provider)
+            }
+            if err==nil {
+                if jsonOutput { emitJSON(report) } else { printRuntimeSpikeReport(report) }
+            }
+        default:
+            fmt.Fprintln(os.Stderr,"unknown runtime-spike action: "+action+" (use observe or report)")
+            return 2
+        }
     case "monitor":
         if len(positional) != 0 { fmt.Fprintln(os.Stderr, "monitor takes no positional arguments"); return 2 }
         if !once && !jsonOutput {
@@ -816,6 +958,68 @@ func printWebState(prefix string,state webui.ServiceState) {
         fmt.Println("Tailscale HTTPS unavailable: "+state.TLSError)
     }
     fmt.Printf("PID       %d\n",state.PID)
+}
+
+func printRuntimeLedger(ledger runtimeobs.Ledger) {
+    fmt.Printf("Task Mecca · Execution Lifecycle\nattempts=%d findings=%d\n",len(ledger.Attempts),len(ledger.Findings))
+    for _,attempt:=range ledger.Attempts {
+        binding:=string(attempt.BindingState)
+        target:="-"
+        if attempt.TaskID!="" || attempt.AgentPath!="" { target=strings.TrimSpace(attempt.TaskID+" "+attempt.AgentPath) }
+        elapsed:=time.Duration(attempt.ElapsedMillis)*time.Millisecond
+        last:=attempt.LastActivityAt
+        if last=="" { last=attempt.LastObservedAt }
+        fmt.Printf("%s %-7s %-16s %-12s binding=%-9s target=%s elapsed=%s last=%s\n",
+            attempt.AttemptID,attempt.Provider,attempt.RuntimeAgentID,attempt.CurrentState,binding,target,elapsed.Round(time.Second),last)
+        if len(attempt.RecentTransitions)>0 {
+            for _,transition:=range attempt.RecentTransitions {
+                label:=transition.Kind
+                if transition.State!="" { label=string(transition.State) }
+                fmt.Printf("  %s  %s  %s/%s\n",transition.At,label,transition.EvidenceSource,transition.ObservationQuality)
+            }
+        }
+    }
+    if len(ledger.Findings)>0 {
+        fmt.Println("\nFindings")
+        for _,finding:=range ledger.Findings {
+            target:=""
+            if finding.AttemptID!="" { target=" ["+finding.AttemptID+"]" }
+            fmt.Printf("- %s %s%s: %s\n",strings.ToUpper(finding.Severity),finding.Code,target,finding.Message)
+        }
+    }
+}
+
+func printRuntimeSpikeReport(report runtimeobs.SpikeReport) {
+    fmt.Println("Task Mecca · Runtime Observability Spike")
+    fmt.Println("journal="+report.JournalPath)
+    if !report.Exists {
+        fmt.Println("events=0 (아직 수집된 hook 이벤트 없음)")
+        return
+    }
+    fmt.Printf("events=%d agents=%d findings=%d\n",report.Events,len(report.Agents),len(report.Findings))
+    for _,provider:=range report.Providers {
+        fmt.Printf("%s: events=%d agents=%d start=%d stop=%d tool=%d attributed=%d unattributed=%d\n",
+            provider.Provider,provider.Events,provider.Agents,provider.Starts,provider.Stops,
+            provider.ToolActivityEvents,provider.AttributedToolActivity,provider.UnattributedToolActivity)
+    }
+    if len(report.Agents)>0 {
+        fmt.Println("\nAgents")
+        for _,agent:=range report.Agents {
+            status:="observed"
+            if agent.SawStart && agent.SawStop { status="start→stop" } else if agent.SawStart { status="start→?" }
+            fmt.Printf("%s %-24s %-11s events=%d activity=%d first=%s last=%s\n",
+                agent.Provider,agent.AgentID,status,agent.EventCount,agent.ActivityCount,agent.FirstObserved,agent.LastObserved)
+        }
+    }
+    if len(report.Findings)>0 {
+        fmt.Println("\nFindings")
+        for _,finding:=range report.Findings {
+            target:=finding.Provider
+            if finding.AgentID!="" { target+=":"+finding.AgentID }
+            if target!="" { target=" ["+target+"]" }
+            fmt.Printf("- %s %s%s: %s\n",strings.ToUpper(finding.Severity),finding.Code,target,finding.Message)
+        }
+    }
 }
 
 func printUpdateHint(info maintenance.VersionInfo) {
