@@ -1041,6 +1041,7 @@ function hubView() {
   const h=state.hub||{};
   const cli=h.cli||{};
   const projects=Array.isArray(h.projects)?h.projects:[];
+  const channelBadge=cli.channel==='dev' ? '<span class="badge warn">DEV</span>' : '';
   const cliStatus=cli.update_available
     ? `<span class="badge warn">${esc(cli.current||'-')} → ${esc(cli.latest||'-')}</span>`
     : `<span class="badge">${esc(cli.current||'-')}</span>`;
@@ -1054,7 +1055,7 @@ function hubView() {
       <div class="project-actions">${p?.migration_available?`<button class="action-btn secondary" data-migrate="${esc(p.path)}">Migrate</button>`:''}<button class="action-btn" data-open-project="${esc(p?.path||'')}">Open</button></div>
     </article>`;
   }).join('');
-  return `<div class="page-head"><div><div class="eyebrow">TASK MECCA</div><h1>Global Hub</h1><p class="summary">CLI와 등록 프로젝트의 framework 상태를 관리합니다.</p></div><div class="hub-cli"><strong>CLI</strong> ${cliStatus} ${cli.update_available?'<button class="action-btn" id="upgradeBtn">Upgrade</button>':''}</div></div>
+  return `<div class="page-head"><div><div class="eyebrow">TASK MECCA</div><h1>Global Hub</h1><p class="summary">CLI와 등록 프로젝트의 framework 상태를 관리합니다.</p></div><div class="hub-cli"><strong>CLI</strong> ${channelBadge} ${cliStatus} ${cli.update_available?'<button class="action-btn" id="upgradeBtn">Upgrade</button>':''}</div></div>
     ${cli.update_available?'<div class="timing-note"><strong>Upgrade</strong><span>업그레이드가 완료되면 Task Mecca Web이 자동으로 재시작되며, 현재 브라우저 페이지도 자동으로 새로고침됩니다.</span></div>':''}
     ${cli.error?`<div class="timing-note"><strong>Version check</strong><span>${esc(cli.error)}</span></div>`:''}
     <div class="project-grid">${cards||'<div class="empty">등록된 Task Mecca 프로젝트가 없습니다.</div>'}</div>`;
