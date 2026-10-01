@@ -122,6 +122,24 @@ func selectionPayload(ctx context, selected string, candidates []backlog.Candida
     }
 }
 
+func releaseNotesIndex() ([]map[string]any,error) {
+    data,err:=fs.ReadFile(goassets.Template,embeddedRoot+"/release-notes/index.json")
+    if err!=nil { return nil,err }
+    var payload struct{ Releases []map[string]any `json:"releases"` }
+    if err=json.Unmarshal(data,&payload); err!=nil { return nil,err }
+    return payload.Releases,nil
+}
+
+func safeReleaseNoteVersion(value string) bool {
+    value=strings.TrimSpace(value)
+    if value=="" { return false }
+    for _,r:=range value {
+        if (r>='0'&&r<='9')||(r>='A'&&r<='Z')||(r>='a'&&r<='z')||r=='.'||r=='-' { continue }
+        return false
+    }
+    return !strings.Contains(value,"..")
+}
+
 func Handler(project,root,version string) (http.Handler,error) {
     return handler(project,root,version,"","",nil,nil)
 }
@@ -167,6 +185,34 @@ func handler(project,root,version,instanceID,controlToken string,restartCh chan<
             break
         }
         writeJSON(w,map[string]any{"cli":info,"project":projectInfo},200)
+    })
+
+    mux.HandleFunc("/api/release-notes",func(w http.ResponseWriter,r *http.Request) {
+        releases,readErr:=releaseNotesIndex()
+        if readErr!=nil { writeJSON(w,map[string]any{"error":readErr.Error()},500); return }
+        offset:=0
+        if raw:=r.URL.Query().Get("offset"); raw!="" { if value,e:=strconv.Atoi(raw); e==nil && value>=0 { offset=value } }
+        limit:=20
+        if raw:=r.URL.Query().Get("limit"); raw!="" { if value,e:=strconv.Atoi(raw); e==nil && value>0 { limit=value } }
+        if limit>50 { limit=50 }
+        if offset>len(releases) { offset=len(releases) }
+        end:=offset+limit
+        if end>len(releases) { end=len(releases) }
+        items:=releases[offset:end]
+        writeJSON(w,map[string]any{"items":items,"offset":offset,"limit":limit,"total":len(releases),"has_more":end<len(releases)},200)
+    })
+
+    mux.HandleFunc("/api/release-notes/",func(w http.ResponseWriter,r *http.Request) {
+        version:=strings.TrimSpace(strings.TrimPrefix(r.URL.Path,"/api/release-notes/"))
+        if !safeReleaseNoteVersion(version) { writeJSON(w,map[string]any{"error":"invalid release note version"},400); return }
+        data,readErr:=fs.ReadFile(goassets.Template,embeddedRoot+"/release-notes/"+version+".json")
+        if readErr!=nil {
+            if errors.Is(readErr,fs.ErrNotExist) { writeJSON(w,map[string]any{"error":"release note not found","version":version},404); return }
+            writeJSON(w,map[string]any{"error":readErr.Error()},500); return
+        }
+        var payload map[string]any
+        if err:=json.Unmarshal(data,&payload); err!=nil { writeJSON(w,map[string]any{"error":err.Error()},500); return }
+        writeJSON(w,payload,200)
     })
 
     mux.HandleFunc("/api/revision",func(w http.ResponseWriter,r *http.Request) {
