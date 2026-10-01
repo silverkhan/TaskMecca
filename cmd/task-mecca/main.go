@@ -10,6 +10,7 @@ import (
     "time"
 
     "github.com/silverkhan/TaskMecca/internal/backlog"
+    "github.com/silverkhan/TaskMecca/internal/handoff"
     "github.com/silverkhan/TaskMecca/internal/install"
     "github.com/silverkhan/TaskMecca/internal/maintenance"
     "github.com/silverkhan/TaskMecca/internal/runtimeobs"
@@ -34,6 +35,9 @@ func run(args []string) int {
             fmt.Fprintf(os.Stderr,"latest check failed: %s\n",info.Error)
         }
         return 0
+    }
+    if len(args) > 0 && args[0] == "handoff" {
+        return handoff.RunCLI(args[1:], os.Stdout, os.Stderr)
     }
     if len(args) == 0 {
         root,err:=filepath.Abs(".")

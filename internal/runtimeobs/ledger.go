@@ -235,6 +235,15 @@ func (a *accumulator) apply(e ExecutionEvent) {
     case "activity":
         a.attempt.ActivityCount++; a.attempt.LastActivityAt=maxTimeString(a.attempt.LastActivityAt,e.ObservedAt)
     case "state":
+        if (e.State==StateStarting || e.State==StateRunning) && a.attempt.Terminal && a.attempt.EndedAt!="" {
+            ended,endedErr:=time.Parse(time.RFC3339Nano,a.attempt.EndedAt)
+            observed,observedErr:=time.Parse(time.RFC3339Nano,e.ObservedAt)
+            if endedErr==nil && observedErr==nil && observed.After(ended) {
+                a.attempt.Terminal=false
+                a.attempt.EndedAt=""
+                a.attempt.StartedAt=e.ObservedAt
+            }
+        }
         if e.State==StateStarting || e.State==StateRunning { if a.attempt.StartedAt=="" { a.attempt.StartedAt=e.ObservedAt } }
         if e.State==StateRunning { a.attempt.LastActivityAt=maxTimeString(a.attempt.LastActivityAt,e.ObservedAt) }
         if !a.attempt.Terminal || e.Terminal {

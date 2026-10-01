@@ -105,3 +105,38 @@ func TestStopReasonMapsInterruptAndError(t *testing.T) {
     errored:=hookExecutionEvent(t,"claude",`{"session_id":"s","hook_event_name":"SubagentStop","agent_id":"b","reason":"API error"}`,time.Now())
     if errored.State!=StateErrored { t.Fatalf("state=%s",errored.State) }
 }
+
+
+func TestCompletedRuntimeAgentCanResumeSameAttempt(t *testing.T) {
+    project:=t.TempDir()
+    base:=time.Date(2026,10,2,0,0,0,0,time.UTC)
+    sequence:=[]ExecutionEvent{
+        hookExecutionEvent(t,"codex",`{"session_id":"s1","turn_id":"t1","hook_event_name":"SubagentStart","agent_id":"controller-1"}`,base),
+        hookExecutionEvent(t,"codex",`{"session_id":"s1","turn_id":"t1","hook_event_name":"SubagentStop","agent_id":"controller-1"}`,base.Add(time.Second)),
+        hookExecutionEvent(t,"codex",`{"session_id":"s1","turn_id":"t2","hook_event_name":"SubagentStart","agent_id":"controller-1"}`,base.Add(2*time.Second)),
+    }
+    for _,event:=range sequence {
+        if err:=AppendExecutionEvent(project,event); err!=nil { t.Fatal(err) }
+    }
+    ledger,err:=BuildLedger(project,10,base.Add(3*time.Second))
+    if err!=nil { t.Fatal(err) }
+    if len(ledger.Attempts)!=1 { t.Fatalf("attempts=%+v",ledger.Attempts) }
+    got:=ledger.Attempts[0]
+    if got.CurrentState!=StateRunning || got.Terminal {
+        t.Fatalf("resumed agent must be running, got=%+v",got)
+    }
+    if got.TurnID!="t2" { t.Fatalf("turn_id=%q",got.TurnID) }
+    if got.EndedAt!="" { t.Fatalf("ended_at must be cleared after resume: %+v",got) }
+    if got.StartedAt!=base.Add(2*time.Second).Format(time.RFC3339Nano) {
+        t.Fatalf("started_at=%q",got.StartedAt)
+    }
+
+    stop:=hookExecutionEvent(t,"codex",`{"session_id":"s1","turn_id":"t2","hook_event_name":"SubagentStop","agent_id":"controller-1"}`,base.Add(4*time.Second))
+    if err:=AppendExecutionEvent(project,stop); err!=nil { t.Fatal(err) }
+    ledger,err=BuildLedger(project,10,base.Add(5*time.Second))
+    if err!=nil { t.Fatal(err) }
+    got=ledger.Attempts[0]
+    if got.CurrentState!=StateCompleted || !got.Terminal {
+        t.Fatalf("second stop must complete resumed agent: %+v",got)
+    }
+}
