@@ -32,7 +32,36 @@ task-mecca init
 
 초기화는 Task Mecca framework와 운영 문서를 설치합니다. 실제 backlog는 첫 작업이 등록될 때 생성됩니다.
 
-### 3. Web UI 실행
+### 3. 사용하는 LLM 세션을 Task Mecca Root로 활성화
+
+프로젝트 초기화가 끝나면 **같은 프로젝트 루트에서 Codex, Claude Code 등 자신이 사용하는 Agent/LLM 대화 세션을 엽니다.**
+
+Task Mecca를 사용자와 직접 대화하는 **Root 세션은 하나만 선택**합니다. 그 세션에 아래 프롬프트를 그대로 붙여넣습니다.
+
+```text
+이 세션에서는 Task Mecca의 Root로 동작해 주세요.
+먼저 _task_mecca/framework/SESSION_GUIDE.md, _task_mecca/framework/collab.md, _task_mecca/framework/roles/root.md를 읽고 그 규약을 따르세요.
+사용자에게 보이는 대화와 백로그의 제목·요약·요건·상태·결과는 사용자가 주로 쓰는 언어와 용어 감각을 기준으로 자연스럽게 작성하세요. 정확한 식별자·명령·경로·전문용어로 필요한 영문은 유지하되, 내부 영문 수식어·어순을 기계적으로 섞지 말고 전체 표현을 사용자 언어의 자연스러운 문장으로 재구성하세요.
+Linear, GitHub Issue 등 연결된 외부 업무 항목에서 시작된 작업은 원천 항목을 읽고 백로그에 클릭 가능한 출처를 보존하세요. 중요한 합의, 실제 작업 상태 변화, 완료 결과는 가능한 경우 같은 연결을 통해 원천 항목에도 의미 있게 반영하세요.
+실행형 작업을 subagent에 위임하기 전에는 SESSION_GUIDE의 Full Access preflight를 먼저 수행하세요.
+작업을 Simple Task와 Defined Task로 구분하세요. 추가 해석 없이 바로 검증 가능한 단순 작업은 목표와 수용 기준만 기록하고 바로 등록하며, 범위·설계·사용자 선택이 필요한 작업만 요건 정의서를 작성해 제 확인을 받은 뒤 Registrar에 lossless하게 등록하세요.
+아직 backlog가 없다면 Registrar가 첫 등록 시 _task_mecca/data/backlog를 생성하도록 하세요. data 아래의 내용은 project-owned이며 framework updater가 덮어쓰지 않습니다.
+등록 이후에는 Controller가 작업 연속성과 의존성을 고려해 Worker에 배분하도록 하고, Root는 사용자-facing 창구로 유지하세요.
+```
+
+이 프롬프트의 원본은 [`_task_mecca/ROOT_PROMPT.md`](goassets/template/_task_mecca/ROOT_PROMPT.md)에도 함께 설치됩니다. README와 Web User Manual에서는 처음 사용하는 사람이 파일을 찾아다니지 않아도 바로 복사할 수 있도록 본문을 제공합니다.
+
+프롬프트를 입력한 뒤에는 같은 세션에 자연어로 작업을 요청하면 됩니다.
+
+```text
+로그인 API 오류를 수정하고 관련 테스트까지 확인해 주세요.
+```
+
+Task Mecca가 작업의 성격에 따라 바로 실행 가능한 **Simple Task** 또는 논의와 합의가 필요한 **Defined Task**로 정리한 뒤 백로그 등록과 수행을 이어갑니다.
+
+### 4. Web UI 실행
+
+새 터미널 또는 현재 터미널에서 프로젝트 루트 기준으로 실행합니다.
 
 ```bash
 task-mecca web
@@ -51,22 +80,6 @@ Web UI에서 다음을 한눈에 볼 수 있습니다.
 - Root 프롬프트와 상세 사용자 매뉴얼
 
 기본 포트는 `18765`입니다. Tailscale이 준비된 환경에서는 별도 `tailscale serve` 없이 직접 HTTPS endpoint도 제공합니다.
-
-### 4. Root 세션 활성화
-
-Web UI의 **User Manual → 빠른 시작 → Root 세션 프롬프트**에서 프롬프트를 복사해, Task Mecca를 맡길 한 개의 사용자-facing AI 세션에 전달합니다.
-
-파일에서 직접 볼 수도 있습니다.
-
-[`_task_mecca/ROOT_PROMPT.md`](goassets/template/_task_mecca/ROOT_PROMPT.md)
-
-이후에는 Root에게 자연어로 작업을 요청하면 됩니다.
-
-```text
-로그인 API 오류를 수정하고 관련 테스트까지 확인해 주세요.
-```
-
-Task Mecca가 작업의 성격에 따라 바로 실행 가능한 **Simple Task** 또는 논의와 합의가 필요한 **Defined Task**로 정리한 뒤 백로그 등록과 수행을 이어갑니다.
 
 ## 어떻게 동작하나요?
 
