@@ -52,6 +52,7 @@ const state = {
   releaseNoteDetails: {},
   releaseNoteExpanded: '',
   releaseNotePopup: null,
+  releaseNotePopupMode: 'installed',
   releaseNotePopupCheckedVersion: '',
 };
 
@@ -227,6 +228,10 @@ Object.assign(I18N.ko,{
   whatsNew:'이번 업데이트', updatedToVersion:'Task Mecca {version}으로 업데이트되었습니다.',
   releaseClose:'닫기', releaseDetails:'자세히 보기', releaseConfirm:'확인', releaseMarkRead:'읽음 처리',
   releaseUnreadNotice:'이 버전의 업데이트 내용을 아직 확인하지 않았습니다.',
+  releaseUnreadBanner:'{version} 업데이트 내용을 아직 확인하지 않았습니다.',
+  releaseViewAgain:'보기', updateChanges:'변경사항 보기', updateNow:'업데이트',
+  updateChangesTitle:'Task Mecca {version} 업데이트 내용',
+  updateChangesUnavailable:'이 버전의 사용자용 변경사항은 제공되지 않습니다.',
   releaseNewFeature:'새 기능', releaseImproved:'개선', releaseFixed:'수정', releaseImportant:'중요 변경',
   releaseMigrationRequired:'프로젝트 업데이트 필요', releaseInstructionRefresh:'Root 운영 지침 재확인 필요',
   releaseNoEntries:'표시할 업데이트 기록이 없습니다.'
@@ -238,6 +243,10 @@ Object.assign(I18N.en,{
   whatsNew:"What's new", updatedToVersion:'Task Mecca was updated to {version}.',
   releaseClose:'Close', releaseDetails:'View details', releaseConfirm:'Got it', releaseMarkRead:'Mark as read',
   releaseUnreadNotice:'You have not marked this update as read yet.',
+  releaseUnreadBanner:'You have not reviewed the {version} update yet.',
+  releaseViewAgain:'View', updateChanges:'View changes', updateNow:'Update',
+  updateChangesTitle:'What changes in Task Mecca {version}',
+  updateChangesUnavailable:'User-facing changes are not available for this version.',
   releaseNewFeature:'New', releaseImproved:'Improved', releaseFixed:'Fixed', releaseImportant:'Important',
   releaseMigrationRequired:'Project update required', releaseInstructionRefresh:'Root operating instructions need review',
   releaseNoEntries:'No update history is available.'
@@ -328,16 +337,43 @@ function markReleaseNoteSeen(version) {
   localStorage.setItem('task-mecca-release-notes-seen-version',version);
   localStorage.setItem('task-mecca-release-notes-dismissed-version',version);
   if(state.releaseNotePopup?.version===version)state.releaseNotePopup=null;
+  state.releaseNotePopupMode='installed';
   renderReleaseNoteModal();
   renderReleaseNotesBadge();
+  renderReleaseUnreadPrompt();
   if(state.view==='release-notes')render();
 }
 function dismissReleaseNotePopup() {
   const version=state.releaseNotePopup?.version;
-  if(version)localStorage.setItem('task-mecca-release-notes-dismissed-version',version);
+  if(version&&state.releaseNotePopupMode!=='available'){
+    localStorage.setItem('task-mecca-release-notes-dismissed-version',version);
+  }
   state.releaseNotePopup=null;
+  state.releaseNotePopupMode='installed';
   renderReleaseNoteModal();
   renderReleaseNotesBadge();
+  renderReleaseUnreadPrompt();
+}
+function renderReleaseUnreadPrompt() {
+  const el=$('#releaseUnreadPrompt');
+  if(!el)return;
+  const version=currentReleaseVersion();
+  const dismissed=localStorage.getItem('task-mecca-release-notes-dismissed-version')===version;
+  const visible=Boolean(version)&&!version.includes('-dev.')&&dismissed&&releaseNoteUnread(version)&&!state.releaseNotePopup&&state.view!=='release-notes';
+  if(!visible){
+    el.innerHTML='';
+    return;
+  }
+  el.innerHTML='<div class="release-unread-copy"><span class="global-update-dot"></span><strong>'+esc(t('releaseUnreadBanner',{version}))+'</strong></div>'+
+    '<button type="button" class="release-unread-action" id="releaseUnreadViewBtn">'+esc(t('releaseViewAgain'))+'</button>';
+  $('#releaseUnreadViewBtn')?.addEventListener('click',async()=>{
+    const detail=await loadReleaseNoteDetail(version);
+    if(!detail)return;
+    state.releaseNotePopup=detail;
+    state.releaseNotePopupMode='installed';
+    renderReleaseUnreadPrompt();
+    renderReleaseNoteModal();
+  });
 }
 async function loadReleaseNoteDetail(version) {
   version=String(version||'').trim();
@@ -403,27 +439,57 @@ function renderReleaseNoteModal() {
     modal.hidden=true;
     modal.innerHTML='';
     document.body.classList.remove('release-modal-open');
+    renderReleaseUnreadPrompt();
     return;
   }
+  const available=state.releaseNotePopupMode==='available';
   modal.hidden=false;
   document.body.classList.add('release-modal-open');
+  const title=available?t('updateChangesTitle',{version:detail.version||''}):t('updatedToVersion',{version:detail.version||''});
+  const actions=available
+    ? '<button type="button" class="action-btn secondary" id="releaseModalClose">'+esc(t('releaseClose'))+'</button><button type="button" class="action-btn" id="releaseModalUpgrade">'+esc(t('updateNow'))+'</button>'
+    : '<button type="button" class="action-btn secondary" id="releaseModalDetails">'+esc(t('releaseDetails'))+'</button><button type="button" class="action-btn" id="releaseModalConfirm">'+esc(t('releaseConfirm'))+'</button>';
   modal.innerHTML='<div class="release-modal-backdrop" data-release-dismiss></div>'+
     '<section class="release-modal-card" role="dialog" aria-modal="true" aria-labelledby="releaseModalTitle">'+
       '<button class="release-modal-close" type="button" data-release-dismiss aria-label="'+esc(t('releaseClose'))+'" title="'+esc(t('releaseClose'))+'">×</button>'+
-      '<div class="eyebrow">'+esc(t('whatsNew'))+'</div>'+
-      '<h2 id="releaseModalTitle">'+esc(t('updatedToVersion',{version:detail.version||''}))+'</h2>'+
+      '<div class="eyebrow">'+esc(available?t('updateChanges'):t('whatsNew'))+'</div>'+
+      '<h2 id="releaseModalTitle">'+esc(title)+'</h2>'+
       releaseNoteDetailMarkup(detail,{compact:true})+
-      '<div class="release-modal-actions"><button type="button" class="action-btn secondary" id="releaseModalDetails">'+esc(t('releaseDetails'))+'</button><button type="button" class="action-btn" id="releaseModalConfirm">'+esc(t('releaseConfirm'))+'</button></div>'+
+      '<div class="release-modal-actions">'+actions+'</div>'+
     '</section>';
   modal.querySelectorAll('[data-release-dismiss]').forEach(el=>el.addEventListener('click',dismissReleaseNotePopup));
-  $('#releaseModalConfirm')?.addEventListener('click',()=>markReleaseNoteSeen(detail.version));
-  $('#releaseModalDetails')?.addEventListener('click',()=>{
-    localStorage.setItem('task-mecca-release-notes-dismissed-version',detail.version);
-    state.releaseNotePopup=null;
-    state.releaseNoteExpanded=detail.version;
-    renderReleaseNoteModal();
-    navigateView('release-notes');
-  });
+  if(available){
+    $('#releaseModalClose')?.addEventListener('click',dismissReleaseNotePopup);
+    $('#releaseModalUpgrade')?.addEventListener('click',()=>{
+      state.releaseNotePopup=null;
+      state.releaseNotePopupMode='installed';
+      renderReleaseNoteModal();
+      performUpgrade();
+    });
+  }else{
+    $('#releaseModalConfirm')?.addEventListener('click',()=>markReleaseNoteSeen(detail.version));
+    $('#releaseModalDetails')?.addEventListener('click',()=>{
+      localStorage.setItem('task-mecca-release-notes-dismissed-version',detail.version);
+      state.releaseNotePopup=null;
+      state.releaseNotePopupMode='installed';
+      renderReleaseNoteModal();
+      navigateView('release-notes');
+    });
+  }
+}
+async function showAvailableUpdateNotes() {
+  const cli=state.versionInfo?.cli||state.hub?.cli||{};
+  const version=normalizedVersion(cli.latest||'');
+  if(!version||cli.channel==='dev')return;
+  const detail=await loadReleaseNoteDetail(version);
+  if(!detail){
+    alert(t('updateChangesUnavailable'));
+    return;
+  }
+  state.releaseNotePopup=detail;
+  state.releaseNotePopupMode='available';
+  renderReleaseUnreadPrompt();
+  renderReleaseNoteModal();
 }
 async function maybeShowCurrentReleaseNote() {
   const version=currentReleaseVersion();
@@ -435,8 +501,13 @@ async function maybeShowCurrentReleaseNote() {
   renderReleaseNotesBadge();
   const seen=localStorage.getItem('task-mecca-release-notes-seen-version');
   const dismissed=localStorage.getItem('task-mecca-release-notes-dismissed-version');
-  if(seen===version||dismissed===version)return;
+  if(seen===version||dismissed===version){
+    renderReleaseUnreadPrompt();
+    return;
+  }
   state.releaseNotePopup=detail;
+  state.releaseNotePopupMode='installed';
+  renderReleaseUnreadPrompt();
   renderReleaseNoteModal();
 }
 
@@ -449,7 +520,12 @@ function renderGlobalUpdateIndicator() {
   const project=payload.project||{};
   const projectMatches=state.project && project.path===state.project;
   if(cli.update_available){
-    el.innerHTML=`<button type="button" class="global-update-pill available" id="globalUpgradeBtn" title="${esc(t('updateAvailable'))}"><span class="global-update-dot"></span><span>${esc(t('updateAvailable'))}</span><strong>${esc(cli.latest||'')}</strong></button>`;
+    const canShowChanges=cli.channel!=='dev';
+    el.innerHTML='<div class="global-update-group">'+
+      '<span class="global-update-pill available"><span class="global-update-dot"></span><span>'+esc(t('updateAvailable'))+'</span><strong>'+esc(cli.latest||'')+'</strong></span>'+
+      (canShowChanges?'<button type="button" class="global-update-link" id="globalUpdateChangesBtn">'+esc(t('updateChanges'))+'</button>':'')+
+      '<button type="button" class="global-update-link primary" id="globalUpgradeBtn">'+esc(t('updateNow'))+'</button></div>';
+    $('#globalUpdateChangesBtn')?.addEventListener('click',showAvailableUpdateNotes);
     $('#globalUpgradeBtn')?.addEventListener('click',e=>performUpgrade(e.currentTarget));
     return;
   }
@@ -1634,7 +1710,10 @@ function hubView() {
       <div class="project-actions">${p?.migration_available?`<button class="action-btn secondary" data-migrate="${esc(p.path)}">Migrate</button>`:''}<button class="action-btn" data-open-project="${esc(p?.path||'')}">Open</button></div>
     </article>`;
   }).join('');
-  return `<div class="page-head"><div><div class="eyebrow">TASK MECCA</div><h1>Global Hub</h1><p class="summary">CLI와 등록 프로젝트의 framework 상태를 관리합니다.</p></div><div class="hub-cli"><strong>CLI</strong> ${channelBadge} ${cliStatus} ${cli.update_available?'<button class="action-btn" id="upgradeBtn">Upgrade</button>':''}</div></div>
+  const updateActions=cli.update_available
+    ? (cli.channel!=='dev'?'<button class="action-btn secondary" id="hubUpdateChangesBtn">'+esc(t('updateChanges'))+'</button>':'')+'<button class="action-btn" id="upgradeBtn">'+esc(t('updateNow'))+'</button>'
+    : '';
+  return `<div class="page-head"><div><div class="eyebrow">TASK MECCA</div><h1>Global Hub</h1><p class="summary">CLI와 등록 프로젝트의 framework 상태를 관리합니다.</p></div><div class="hub-cli"><strong>CLI</strong> ${channelBadge} ${cliStatus} ${updateActions}</div></div>
     ${cli.update_available?'<div class="timing-note"><strong>Upgrade</strong><span>업그레이드가 완료되면 Task Mecca Web이 자동으로 재시작되며, 현재 브라우저 페이지도 자동으로 새로고침됩니다.</span></div>':''}
     ${cli.error?`<div class="timing-note"><strong>Version check</strong><span>${esc(cli.error)}</span></div>`:''}
     <div class="project-grid">${cards||'<div class="empty">등록된 Task Mecca 프로젝트가 없습니다.</div>'}</div>`;
@@ -1716,6 +1795,8 @@ function bindHubActions() {
     if(path)switchProject(path);
   }));
   document.querySelectorAll('[data-migrate]').forEach(btn=>btn.addEventListener('click',e=>performProjectMigration(btn.dataset.migrate,e.currentTarget)));
+  const changes=$('#hubUpdateChangesBtn');
+  if(changes)changes.addEventListener('click',showAvailableUpdateNotes);
   const up=$('#upgradeBtn');
   if(up)up.addEventListener('click',e=>performUpgrade(e.currentTarget));
   bindChannelGesture();
@@ -2200,7 +2281,7 @@ function toggleSidebar() {
 }
 
 function render() {
-  nav(); translateChrome(); renderAccess(); renderBacklogPicker(); applySidebarState(); updateNotificationIndicator(); renderGlobalUpdateIndicator(); renderContentUpdatePrompt();
+  nav(); translateChrome(); renderAccess(); renderBacklogPicker(); applySidebarState(); updateNotificationIndicator(); renderGlobalUpdateIndicator(); renderContentUpdatePrompt(); renderReleaseUnreadPrompt();
   const c=$('#content'), data=currentProjectData();
   if(state.view==='release-notes'){
     c.innerHTML=releaseNotesView();
@@ -2600,6 +2681,7 @@ async function setLanguage(value) {
   translateChrome();
   render();
   renderReleaseNoteModal();
+  renderReleaseUnreadPrompt();
   if(document.querySelector('.mermaid-wrap')) renderMermaidDiagrams(true);
 }
 
