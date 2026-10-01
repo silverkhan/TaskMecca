@@ -156,9 +156,16 @@ func backlogRevisionFromRows(rows []Record) string {
 func BacklogRevision(project,root string) (map[string]any,error) {
     rows,err:=CachedCatalog(project,root)
     if err!=nil { return nil,err }
+    byID:=preferredRows(rows)
+    states:=make([]map[string]any,0,len(byID))
+    for id,row:=range byID {
+        states=append(states,map[string]any{"id":id,"title":row.Title,"file_state":row.State})
+    }
+    sort.Slice(states,func(i,j int)bool{return toString(states[i]["id"])<toString(states[j]["id"])})
     return map[string]any{
         "revision":backlogRevisionFromRows(rows),
         "count":len(rows),
+        "states":states,
         "checked_at":time.Now().Format(time.RFC3339),
     },nil
 }
