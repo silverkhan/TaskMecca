@@ -46,7 +46,7 @@ legacy projection·rerun·Method 전환은 각각 별도 lineage와 fail-closed 
 또한 다음처럼 **실제 식별자는 유지하고 주변 설명만 자연스럽게** 쓴다.
 
 - 피함: `field_id 기반 five-state diff를 반환한다.`
-- 권장: ``field_id``를 기준으로 입력 차이를 비교하고 각 항목을 유지·추가·삭제·규칙 변경·자동 전환 불가 중 하나로 구분한다.
+- 권장: `field_id`를 기준으로 입력 차이를 비교하고 각 항목을 유지·추가·삭제·규칙 변경·자동 전환 불가 중 하나로 구분한다.
 - 피함: `legacy projection은 allowlist contract로 처리한다.`
 - 권장: 레거시 실험에서는 명시적인 허용 목록(allowlist)에 포함된 입력만 가져오도록 처리 규칙을 분리한다.
 - 피함: `incompatible 입력은 fail-closed한다.`
