@@ -4,6 +4,7 @@ import (
     stdcontext "context"
     "crypto/tls"
     "encoding/json"
+    "errors"
     "fmt"
     "io/fs"
     "mime"
