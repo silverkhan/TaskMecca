@@ -24,8 +24,8 @@ const (
     repo = "silverkhan/TaskMecca"
     stableChannel = "stable"
     devChannel = "dev"
-    stableReleaseTag = "go-main"
-    devReleaseTag = "go-dev"
+    stableReleaseTag = "release-stable"
+    devReleaseTag = "release-dev"
 )
 
 type Project struct {
