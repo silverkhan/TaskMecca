@@ -38,8 +38,8 @@ func TestUpdateChannelPersistenceAndReleaseTag(t *testing.T) {
         t.Fatalf("default channel=%q, want stable",got)
     }
     _,tag:=releaseLocation()
-    if tag!="go-main" {
-        t.Fatalf("stable release tag=%q, want go-main",tag)
+    if tag!="release-stable" {
+        t.Fatalf("stable release tag=%q, want release-stable",tag)
     }
 
     if err:=SetChannel("dev"); err!=nil { t.Fatal(err) }
@@ -47,8 +47,8 @@ func TestUpdateChannelPersistenceAndReleaseTag(t *testing.T) {
         t.Fatalf("persisted channel=%q, want dev",got)
     }
     _,tag=releaseLocation()
-    if tag!="go-dev" {
-        t.Fatalf("dev release tag=%q, want go-dev",tag)
+    if tag!="release-dev" {
+        t.Fatalf("dev release tag=%q, want release-dev",tag)
     }
     if got:=versionCachePath(); got!=filepath.Join(home,"update-check-dev.json") {
         t.Fatalf("dev cache path=%q",got)

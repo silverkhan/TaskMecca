@@ -1,4 +1,4 @@
-name: Publish rolling Go release
+name: Publish stable release
 
 on:
   push:
@@ -9,14 +9,14 @@ on:
       - "goassets/**"
       - "go.mod"
       - "install.sh"
-      - ".github/workflows/release-go-main.yml"
+      - ".github/workflows/release-stable.yml"
   workflow_dispatch:
 
 permissions:
   contents: write
 
 concurrency:
-  group: task-mecca-go-main-release
+  group: task-mecca-release-stable
   cancel-in-progress: true
 
 jobs:
@@ -71,40 +71,55 @@ jobs:
           ! grep -Fq '\\r' dist/VERSION.txt
           grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$' dist/VERSION.txt
           (cd dist && sha256sum task-mecca-* > SHA256SUMS.txt)
-      - name: Update rolling prerelease without deleting it
+      - name: Update stable release and legacy alias
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euxo pipefail
-          if ! gh release view go-main >/dev/null 2>&1; then
-            git tag -f go-main "$GITHUB_SHA"
-            git push origin refs/tags/go-main --force
-            gh release create go-main \
-              --target "$GITHUB_SHA" \
-              --title "Task Mecca Go rolling build" \
-              --notes "Rolling standalone build from main. Commit: $GITHUB_SHA" \
+
+          publish_release() {
+            tag="$1"
+            title="$2"
+            notes="$3"
+
+            git tag -f "$tag" "$GITHUB_SHA"
+            git push origin "refs/tags/$tag" --force
+
+            if ! gh release view "$tag" >/dev/null 2>&1; then
+              gh release create "$tag" \
+                --target "$GITHUB_SHA" \
+                --title "$title" \
+                --notes "$notes" \
+                --prerelease
+            fi
+
+            # Keep the old VERSION.txt available until every executable and checksum is ready.
+            gh release upload "$tag" \
+              dist/task-mecca-windows-amd64.exe \
+              dist/task-mecca-macos-amd64 \
+              dist/task-mecca-macos-arm64 \
+              dist/task-mecca-linux-amd64 \
+              dist/SHA256SUMS.txt \
+              --clobber
+
+            # Publish the new version marker last so clients never discover a half-published build.
+            gh release upload "$tag" dist/VERSION.txt --clobber
+            gh release edit "$tag" \
+              --title "$title" \
+              --notes "$notes" \
               --prerelease
-          fi
+          }
 
-          # Keep the old VERSION.txt available until every executable and checksum is ready.
-          gh release upload go-main \
-            dist/task-mecca-windows-amd64.exe \
-            dist/task-mecca-macos-amd64 \
-            dist/task-mecca-macos-arm64 \
-            dist/task-mecca-linux-amd64 \
-            dist/SHA256SUMS.txt \
-            --clobber
+          publish_release release-stable \
+            "Task Mecca Stable" \
+            "Stable standalone build from main. Commit: $GITHUB_SHA"
 
-          git tag -f go-main "$GITHUB_SHA"
-          git push origin refs/tags/go-main --force
+          # Compatibility bridge for clients released before the tag rename.
+          publish_release go-main \
+            "Task Mecca Stable (legacy alias)" \
+            "Legacy compatibility alias for release-stable. Commit: $GITHUB_SHA"
 
-          # Publish the new version marker last so clients never discover a half-published build.
-          gh release upload go-main dist/VERSION.txt --clobber
-          gh release edit go-main \
-            --title "Task Mecca Go rolling build" \
-            --notes "Rolling standalone build from main. Commit: $GITHUB_SHA" \
-            --prerelease
       - name: Smoke test one-line installer
         shell: bash
         run: |
@@ -113,7 +128,7 @@ jobs:
           mkdir -p "$HOME/.local/bin"
           export PATH="$HOME/.local/bin:$PATH"
           expected_version="$(tr -d '\r\n' < goassets/template/_task_mecca/VERSION)"
-          TASK_MECCA_RELEASE_TAG=go-main sh ./install.sh
+          TASK_MECCA_RELEASE_TAG=release-stable sh ./install.sh
           version_output="$(task-mecca --version)"
           printf '%s\n' "$version_output" | sed -n '1p' | grep -Fx "task-mecca $expected_version"
 

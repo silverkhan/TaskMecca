@@ -15,7 +15,7 @@ import (
     "github.com/silverkhan/TaskMecca/internal/webui"
 )
 
-var version = "0.2.45"
+var version = "0.2.46"
 
 func main() { os.Exit(run(os.Args[1:])) }
 
