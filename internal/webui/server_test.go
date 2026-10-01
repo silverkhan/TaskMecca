@@ -119,8 +119,8 @@ func TestHandlerServesDashboardAPIsAndAssets(t *testing.T) {
         if !contains(appJS,needle) { t.Fatalf("app.js missing release note UX marker %q",needle) }
     }
 
-    req:=httptest.NewRequest(http.MethodGet,"/api/snapshot",nil)
-    rec:=httptest.NewRecorder()
+    req=httptest.NewRequest(http.MethodGet,"/api/snapshot",nil)
+    rec=httptest.NewRecorder()
     handler.ServeHTTP(rec,req)
     payload:=map[string]any{}
     if err:=json.Unmarshal(rec.Body.Bytes(),&payload); err!=nil { t.Fatal(err) }
