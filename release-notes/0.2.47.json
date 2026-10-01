@@ -1,0 +1,32 @@
+{
+  "version": "0.2.47",
+  "date": "2026-10-01",
+  "summary": {
+    "ko": "Windows PowerShell 원라인 설치를 지원합니다.",
+    "en": "Added one-line Windows PowerShell installation."
+  },
+  "sections": [
+    {
+      "type": "new",
+      "items": [
+        {
+          "ko": "PowerShell에서 한 줄 명령으로 Task Mecca를 설치할 수 있습니다.",
+          "en": "Task Mecca can now be installed from PowerShell with a one-line command."
+        }
+      ]
+    },
+    {
+      "type": "improved",
+      "items": [
+        {
+          "ko": "설치 파일의 SHA-256을 검증하고 사용자 PATH에 자동 등록합니다.",
+          "en": "The installer verifies SHA-256 checksums and registers Task Mecca in the user PATH."
+        }
+      ]
+    }
+  ],
+  "migration": {
+    "required": false,
+    "instruction_refresh": false
+  }
+}
