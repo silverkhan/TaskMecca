@@ -701,7 +701,7 @@ func run(args []string) int {
             }
         case "hooks":
             if len(positional)<2 || len(positional)>3 {
-                fmt.Fprintln(os.Stderr,"runtime hooks requires: status|install <codex|claude|all>")
+                fmt.Fprintln(os.Stderr,"runtime hooks requires: status|enable <codex|claude|all>")
                 return 2
             }
             hooksAction:=strings.ToLower(positional[1])
@@ -716,12 +716,12 @@ func run(args []string) int {
             setups:=[]runtimeobs.HookSetup{}
             for _,name:=range providers {
                 var setup runtimeobs.HookSetup
-                if hooksAction=="install" {
+                if hooksAction=="enable" {
                     setup,err=runtimeobs.EnsureHooks(runtimeProject,name)
                 } else if hooksAction=="status" {
                     setup,err=runtimeobs.HookStatus(runtimeProject,name)
                 } else {
-                    fmt.Fprintln(os.Stderr,"runtime hooks action must be status or install")
+                    fmt.Fprintln(os.Stderr,"runtime hooks action must be status or enable")
                     return 2
                 }
                 if err!=nil { break }
