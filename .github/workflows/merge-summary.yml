@@ -1,0 +1,124 @@
+name: Merge and release summary
+
+on:
+  push:
+    branches: [main, dev]
+
+permissions:
+  actions: read
+  contents: read
+  pull-requests: read
+
+jobs:
+  summary:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Summarize merge and release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+          BRANCH: ${{ github.ref_name }}
+          BEFORE_SHA: ${{ github.event.before }}
+          SERVER_URL: ${{ github.server_url }}
+        run: |
+          set -euo pipefail
+
+          if [ "$BRANCH" = "main" ]; then
+            channel="Stable"
+            workflow="Publish stable release"
+            tag="release-stable"
+          else
+            channel="Dev"
+            workflow="Publish Dev release"
+            tag="release-dev"
+          fi
+
+          changed_file_list="$RUNNER_TEMP/changed-files.txt"
+          if [ "$BEFORE_SHA" = "0000000000000000000000000000000000000000" ]; then
+            : > "$changed_file_list"
+          else
+            gh api "repos/$REPO/compare/$BEFORE_SHA...$SHA" --jq '.files[].filename' > "$changed_file_list" || : > "$changed_file_list"
+          fi
+
+          if [ "$BRANCH" = "dev" ]; then
+            release_expected="yes"
+          elif grep -Eq '^(cmd/task-mecca/|internal/|goassets/|go\.mod$|install\.sh$|install\.ps1$)' "$changed_file_list"; then
+            release_expected="yes"
+          else
+            release_expected="no"
+          fi
+
+          pr_json="$(gh api -H 'Accept: application/vnd.github+json' "repos/$REPO/commits/$SHA/pulls" 2>/dev/null || echo '[]')"
+          pr_number="$(printf '%s' "$pr_json" | jq -r '.[0].number // empty')"
+          pr_title="$(printf '%s' "$pr_json" | jq -r '.[0].title // empty')"
+          pr_url="$(printf '%s' "$pr_json" | jq -r '.[0].html_url // empty')"
+          pr_author="$(printf '%s' "$pr_json" | jq -r '.[0].user.login // empty')"
+
+          run_status="not triggered"
+          run_conclusion="-"
+          run_url=""
+          release_version="-"
+
+          if [ "$release_expected" = "yes" ]; then
+            run_status="waiting"
+            for _ in $(seq 1 48); do
+              runs="$(gh run list --repo "$REPO" --workflow "$workflow" --branch "$BRANCH" --commit "$SHA" --limit 1 --json databaseId,status,conclusion,url 2>/dev/null || echo '[]')"
+              if [ "$(printf '%s' "$runs" | jq 'length')" -gt 0 ]; then
+                run_status="$(printf '%s' "$runs" | jq -r '.[0].status')"
+                run_conclusion="$(printf '%s' "$runs" | jq -r '.[0].conclusion // "-"')"
+                run_url="$(printf '%s' "$runs" | jq -r '.[0].url')"
+                if [ "$run_status" = "completed" ]; then
+                  break
+                fi
+              fi
+              sleep 5
+            done
+
+            if [ "$run_status" = "completed" ] && [ "$run_conclusion" = "success" ]; then
+              release_version="$(curl -fsSL --retry 3 --retry-delay 2 "$SERVER_URL/$REPO/releases/download/$tag/VERSION.txt?summary=$GITHUB_RUN_ID" 2>/dev/null | tr -d '\r\n' || true)"
+              [ -n "$release_version" ] || release_version="-"
+            fi
+          fi
+
+          escaped_title="$(printf '%s' "$pr_title" | sed 's/|/\\|/g')"
+          short_sha="$(printf '%s' "$SHA" | cut -c1-12)"
+          changed_count="$(wc -l < "$changed_file_list" | tr -d ' ')"
+
+          {
+            echo "## Merge & release summary"
+            echo
+            echo "| Item | Value |"
+            echo "| --- | --- |"
+            echo "| Branch | \`$BRANCH\` |"
+            echo "| Commit | [\`$short_sha\`]($SERVER_URL/$REPO/commit/$SHA) |"
+            if [ -n "$pr_number" ]; then
+              echo "| Pull request | [#$pr_number · $escaped_title]($pr_url) |"
+              echo "| Author | @$pr_author |"
+            else
+              echo "| Pull request | Direct push / no associated PR |"
+            fi
+            echo "| Changed files | $changed_count |"
+            echo "| Release channel | $channel |"
+            echo "| Release expected | **$release_expected** |"
+            echo "| Release workflow | $workflow |"
+            if [ -n "$run_url" ]; then
+              echo "| Release status | [$run_status / $run_conclusion]($run_url) |"
+            else
+              echo "| Release status | $run_status |"
+            fi
+            echo "| Published version | \`$release_version\` |"
+            echo
+            echo "<details><summary>Changed files</summary>"
+            echo
+            if [ -s "$changed_file_list" ]; then
+              while IFS= read -r file; do
+                echo "- \`$file\`"
+              done < "$changed_file_list"
+            else
+              echo "- No changed-file list available."
+            fi
+            echo
+            echo "</details>"
+          } >> "$GITHUB_STEP_SUMMARY"
