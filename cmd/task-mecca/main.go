@@ -15,7 +15,7 @@ import (
     "github.com/silverkhan/TaskMecca/internal/webui"
 )
 
-const version = "0.2.39"
+const version = "0.2.40"
 
 func main() { os.Exit(run(os.Args[1:])) }
 
@@ -174,7 +174,39 @@ func run(args []string) int {
         var result maintenance.UpgradeResult
         result, err = maintenance.Upgrade(version)
         if err == nil {
-            if result.To == "" || result.To == version { fmt.Printf("Task Mecca %s is already current\n", version) } else { fmt.Printf("Task Mecca upgraded %s -> %s\n", result.From, result.To); if result.RestartRequired { fmt.Println("Restart Task Mecca to use the new version.") } }
+            if result.To == "" || result.To == version {
+                fmt.Printf("Task Mecca %s is already current\n", version)
+            } else {
+                fmt.Printf("Task Mecca upgraded %s -> %s\n", result.From, result.To)
+                fmt.Printf("CLI update complete. New task-mecca commands will use %s; no CLI restart is required.\n", result.To)
+                webState:=webui.ServiceStatus()
+                if webState.Running {
+                    if result.Scheduled {
+                        fmt.Printf("Task Mecca Web is running on %s. Stopping it so Windows can replace the executable after this command exits...\n", webState.Version)
+                        if _,stopErr:=webui.StopService(); stopErr!=nil {
+                            fmt.Fprintf(os.Stderr,"CLI update is staged, but Task Mecca Web could not be stopped: %v\n",stopErr)
+                            fmt.Fprintln(os.Stderr,"Close the running Task Mecca Web process, then run: task-mecca web restart")
+                        } else {
+                            fmt.Println("Task Mecca Web stopped. After the executable replacement completes, start it again with: task-mecca web")
+                        }
+                    } else {
+                        fmt.Printf("Task Mecca Web is running on %s; restarting it automatically...\n", webState.Version)
+                        restarted,restartErr:=webui.RestartService(webui.Config{
+                            Project:webState.Project,
+                            Host:webui.NormalizeManagedHost(webState.Host),
+                            Port:webState.Port,
+                            OpenBrowser:false,
+                            Version:result.To,
+                        })
+                        if restartErr!=nil {
+                            fmt.Fprintf(os.Stderr,"CLI update succeeded, but Task Mecca Web restart failed: %v\n",restartErr)
+                            fmt.Fprintln(os.Stderr,"Run: task-mecca web restart")
+                        } else {
+                            fmt.Printf("Task Mecca Web restarted · version %s\n",restarted.Version)
+                        }
+                    }
+                }
+            }
         }
     case "ensure-backlog":
         var report map[string]any

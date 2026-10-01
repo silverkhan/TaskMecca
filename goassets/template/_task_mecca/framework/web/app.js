@@ -995,20 +995,24 @@ function hubView() {
     ${cli.error?`<div class="timing-note"><strong>Version check</strong><span>${esc(cli.error)}</span></div>`:''}
     <div class="project-grid">${cards||'<div class="empty">등록된 Task Mecca 프로젝트가 없습니다.</div>'}</div>`;
 }
+function normalizedVersion(value) {
+  return String(value??'').trim().replace(/(?:\\r|\\n)+$/g,'').trim();
+}
 async function waitForRestartedWeb(targetVersion) {
+  targetVersion=normalizedVersion(targetVersion);
   const started=Date.now();
   while(Date.now()-started<30000){
     try {
       const r=await fetch(`/api/health?restart_wait=${Date.now()}`,{cache:'no-store'});
       if(r.ok){
         const body=await r.json();
-        if(!targetVersion||body.version===targetVersion){ location.reload(); return; }
+        if(!targetVersion||normalizedVersion(body.version)===targetVersion){ location.reload(); return; }
       }
     } catch(_) {}
     await new Promise(resolve=>setTimeout(resolve,500));
   }
   const c=$('#content');
-  if(c)c.innerHTML=`<div class="load-error"><h2>Task Mecca 재시작 대기 시간 초과</h2><p>서버가 자동으로 다시 시작되지 않았습니다. 터미널에서 task-mecca web을 실행한 뒤 이 페이지를 새로고침하세요.</p></div>`;
+  if(c)c.innerHTML=`<div class="load-error"><h2>Task Mecca Web 재시작을 확인하지 못했습니다</h2><p>CLI 업데이트 자체는 완료됐을 수 있습니다. 터미널에서 <code>task-mecca web status</code>로 상태를 확인하고, 이전 버전이 계속 실행 중이면 <code>task-mecca web restart</code>를 실행한 뒤 이 페이지를 새로고침하세요.</p></div>`;
 }
 function migrationResyncPrompt(result) {
   const changed=(result.changed_instructions||[]).join(', ') || '-';

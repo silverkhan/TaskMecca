@@ -55,6 +55,16 @@ func policy(path string) string {
     return "framework"
 }
 
+func cleanVersion(value string) string {
+    value=strings.TrimSpace(value)
+    for {
+        previous:=value
+        value=strings.TrimSpace(strings.TrimSuffix(value,`\n`))
+        value=strings.TrimSpace(strings.TrimSuffix(value,`\r`))
+        if value==previous { return value }
+    }
+}
+
 func hash(data []byte) string {
     digest := sha256.Sum256(data)
     return hex.EncodeToString(digest[:])
@@ -148,7 +158,7 @@ func copyTree(source,destination string) error {
 func legacyBootstrapMigration(target,version string,files map[string][]byte,result MigrationResult) (MigrationResult,error) {
     result.LegacyBootstrap=true
     if raw,err:=os.ReadFile(filepath.Join(target,"VERSION")); err==nil {
-        if value:=strings.TrimSpace(string(raw)); value!="" { result.FromVersion=value }
+        if value:=cleanVersion(string(raw)); value!="" { result.FromVersion=value }
     }
     if result.FromVersion=="" { result.FromVersion="legacy" }
 
