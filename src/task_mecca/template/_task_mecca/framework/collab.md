@@ -1,6 +1,6 @@
 # Task Mecca 협업 규약
 
-Task Mecca는 **Markdown backlog + Git lifecycle**을 durable source of truth로 사용한다. standalone `task-mecca` runtime은
+Task Mecca는 **Markdown backlog + Git lifecycle**을 durable source of truth로 사용한다. `collab_tools.py`는
 원장을 읽고 검증하고 scheduling snapshot과 **local read-only Web UI**를 제공한다. agent 생성·메시지·대기는
 Codex/Claude 등 현재 런타임의 협업 기능이 담당한다.
 
@@ -104,27 +104,13 @@ Simple Task는 작은 작업이라는 이유만으로 정하는 것이 아니라
 
 등록 이후 Root는 routine scheduling과 구현 완료를 기다리는 polling으로 사용자 대화를 막지 않는다.
 
-### 이벤트 기반 인계
-
-실행까지 승인된 작업은 등록 이후 Root의 다음 사용자 턴을 기다리지 않는다. Root는 Registrar를 실행하기 전에 재사용 가능한 `/root/controller`의 정확한 runtime identity를 확보하고 Registrar에 함께 전달한다. 이후:
-
-- Registrar는 등록·검증 성공 후 `task-mecca handoff prepare`로 `registration_ready` 이벤트를 만들고 Controller에 직접 전달한다.
-- Worker는 DONE/BLOCKED 보고 시 `worker_done`/`worker_blocked` 이벤트를 만들고 Controller에 직접 전달한다.
-- 대상 Controller가 `running`이면 현재 turn에 message를 전달하고, `completed`이며 runtime이 resume을 지원하면 **새 turn 직전 fresh Full Access preflight** 후 같은 identity를 재개한다.
-- `target_missing`, `target_ambiguous`, user-cancelled, permission failure를 성공 인계로 기록하지 않는다.
-- `task-mecca handoff`는 transport를 직접 실행하지 않는다. 실제 `send_message` / `followup_task` / Claude `SendMessage`는 현재 Agent runtime이 수행하고, Task Mecca는 target resolution·계약 snapshot·claim·결과 evidence를 원장화한다.
-- handoff evidence는 `_task_mecca/.runtime/handoffs/events.jsonl`의 ephemeral append-only journal에 남긴다. canonical 작업 계약과 결과는 계속 backlog/Git 원장이 기준이다.
-- Root/Worker가 다음 단계를 깨우기 위해 polling하거나 heartbeat를 반복하는 구조는 사용하지 않는다.
-
-Runtime observability가 없어 exact target identity를 안전하게 확인할 수 없으면 autonomous handoff가 가능한 것처럼 가장하지 않는다. 그 경우 현재 Root turn에서 Controller 인계까지 완료하는 기존 fallback을 사용하고 제한을 명시한다.
-
 ## 2. Subagent 실행 전 effective Full Access gate
 
 Task Mecca는 **권한이 부족한 상태에서 worker를 먼저 띄워 보고 실패를 관찰하는 방식**을 사용하지 않는다.
 새 세션에서 실행형 작업 요청을 인지하면 Root는 긴 요구사항 정제나 subagent 생성보다 먼저 다음 gate를 실행한다.
 
 ```bash
-task-mecca preflight --require-full-access --json
+python _task_mecca/framework/collab_tools.py preflight --require-full-access --json
 ```
 
 `access.orchestration_ready == true`일 때만 위임을 시작한다. `restricted` 또는 `unknown`이면:
@@ -405,8 +391,8 @@ Controller가 바꿀 수 있는 것은 worker, 병렬화, 구현 순서, 변경�
 
 ## 9. Worker identity
 
-Worker 이름은 현재 task가 아니라 재사용되는 identity다. 신규 worker는 `task-mecca worker-name`이 제공하는
-정본 포켓몬 pool을 사용한다.
+Worker 이름은 현재 task가 아니라 재사용되는 identity다. 신규 worker는 `collab_tools.py`의
+`WORKER_ALIAS_POLICY` 정본 pool을 사용한다.
 
 ```text
 /root/controller/kkobugi
@@ -448,9 +434,9 @@ Worker의 DONE 선언만으로 완료하지 않는다. Controller가 해당 task
 사람용 기본 인터페이스는 terminal TUI가 아니라 local read-only Web UI다.
 
 ```bash
-task-mecca
+python _task_mecca/framework/collab_tools.py
 # 또는
-task-mecca web
+python _task_mecca/framework/collab_tools.py web
 ```
 
 기본 주소는 `http://127.0.0.1:8765`다. 포트가 사용 중이면 인접 포트를 선택한다.

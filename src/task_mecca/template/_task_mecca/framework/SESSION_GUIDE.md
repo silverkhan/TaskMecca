@@ -10,27 +10,11 @@ Task Mecca의 사용자 가이드는 **사용자가 실제로 무엇을 먼저 �
 프로젝트 루트에서 다음을 실행한다.
 
 ```bash
-task-mecca web
+python _task_mecca/framework/collab_tools.py web
 ```
 
-`task-mecca web`은 사용자 단위 singleton Web 서비스를 백그라운드로 실행하고 브라우저를 연다. 기본 포트는 `18765`이며 자동으로 다음 포트로 증가하지 않는다. 이미 Task Mecca Web이 실행 중이면 새 서버를 만들지 않고 기존 URL을 재사용한다. 기본 `--host auto`에서는 로컬 `127.0.0.1:18765`에 HTTP를 제공하고, Tailscale이 감지되면 같은 포트의 Tailscale 인터페이스에 Task Mecca가 직접 HTTPS를 제공한다. Windows/Linux에서는 로컬 Web을 먼저 즉시 사용할 수 있게 한 뒤 Tailscale HTTPS 인증서 준비를 백그라운드에서 완료하므로, 최초 인증서 발급이 오래 걸려도 로컬 Web 시작은 실패로 처리되지 않는다. 원격 주소는 `https://<machine>.<tailnet>.ts.net:18765` 형식이다. Tailscale Serve는 필요하지 않다. 필요하면 `--host <ip>` 또는 `--port <port>`로 명시할 수 있다. 대시보드는 read-only이며
+브라우저가 열리며 기본 주소는 `http://127.0.0.1:8765`다. 대시보드는 read-only/local-only이며
 backlog, Subagent Workload, lifecycle timer, Needs Attention, Full Access 상태를 보여준다.
-
-
-Web 서비스 제어 명령:
-
-```bash
-task-mecca web status
-task-mecca web restart
-task-mecca web stop
-task-mecca web logs
-task-mecca web logs --follow
-task-mecca web --foreground
-```
-
-백그라운드 로그와 상태는 사용자 전역 `~/.task-mecca/web/` 아래에서 관리한다. 기본 포트 `18765`가 다른 프로그램에 의해 사용 중이면 자동으로 `18766` 등으로 이동하지 않고 오류를 내며, 필요한 경우 사용자가 `--port`를 명시한다.
-
-Tailscale 직접 HTTPS를 사용하려면 Tailscale Admin의 DNS 설정에서 MagicDNS와 HTTPS Certificates가 활성화되어 있어야 한다. Task Mecca는 발급 인증서를 `~/.task-mecca/web/tls/` 아래에 보관하고 필요할 때만 갱신한다. HTTPS 준비에 실패하면 `task-mecca web status`에서 원인을 표시한다.
 
 대시보드는 `_task_mecca` 아래에서 백로그 원장을 자동 탐지한다. 신규 프로젝트의 canonical 위치는 `data/backlog/`이며, 기존 호환성을 위해 이름이 `backlog`로 시작하는 `data/backlog_b`, legacy `backlog_b` 같은 경로도 읽는다. canonical `data/backlog/`가 있으면 우선 선택한다. 상단 `Backlog` 선택기에서 다른 후보로 바꿀 수 있으며 수동 선택값은 브라우저에 유지된다. `Auto`를 선택하면 수동 고정을 해제하고 최근 변경 기준 자동 선택으로 돌아간다.
 
@@ -85,7 +69,7 @@ Web UI에서 백로그 상세를 열면 `Overview → Lifecycle → 작업 계�
 
 1. **Root 활성화** — `_task_mecca/ROOT_PROMPT.md`의 프롬프트를 선택한 user-facing 세션에 1회 입력
 2. **작업 부여** — 자연어 또는 Markdown으로 요구사항을 Root에게 전달
-3. **대시보드** — 필요할 때 `task-mecca web` 실행
+3. **대시보드** — 필요할 때 `python _task_mecca/framework/collab_tools.py web` 실행
 
 프로젝트 전역 `AGENTS.md` 연동은 Task Mecca의 기본 activation mechanism이 아니다.
 
@@ -102,7 +86,7 @@ Web UI에서 백로그 상세를 열면 `Overview → Lifecycle → 작업 계�
 3. 요구사항을 길게 정제하거나 Registrar/Controller를 생성하기 전에 다음 effective access gate를 먼저 실행한다.
 
 ```bash
-task-mecca preflight --require-full-access --json
+python _task_mecca/framework/collab_tools.py preflight --require-full-access --json
 ```
 
 4. `access.orchestration_ready == true`이면 요구사항 정제와 이후 Registrar/Controller/worker dispatch를 정상 진행한다.
@@ -112,20 +96,6 @@ task-mecca preflight --require-full-access --json
 
 단순 질의·설계 논의처럼 subagent 실행이 전혀 필요 없는 대화는 이 gate 때문에 막지 않는다. 그러나 실제 Task Mecca
 위임 단계로 넘어가기 전에는 반드시 통과해야 한다.
-
-### 이벤트 기반 실행 인계
-
-실행까지 승인된 작업은 Registrar/Worker 완료 뒤 Root의 다음 대화를 기다리지 않는다.
-
-- Root는 Registrar 실행 전에 `/root/controller`의 exact runtime identity를 준비하고 역할 경로 binding을 확인한다.
-- Registrar는 등록 성공 후 `registration_ready` handoff로 Controller에 직접 message/resume한다.
-- Worker는 DONE/BLOCKED 시 `worker_done`/`worker_blocked` handoff로 Controller에 직접 message/resume한다.
-- 종료된 agent의 **새 turn을 시작하는 resume**는 새 subagent dispatch와 동일하게 fresh Full Access preflight를 요구한다.
-- running agent에 기존 turn 메시지만 보내는 경우와 completed agent를 새 turn으로 재개하는 경우를 구분한다.
-- target identity/state가 없거나 모호하면 자동 인계 성공으로 간주하지 않는다.
-- 상세 명령과 역할별 책임은 `collab.md`와 `roles/*.md`를 따른다.
-
-`_task_mecca/.runtime/handoffs/events.jsonl`은 ephemeral orchestration evidence이며 backlog/Git contract를 대체하지 않는다.
 
 ## 5. Full Access가 확인되지 않을 때
 
@@ -329,27 +299,11 @@ For older completed tasks where no `doing` transition was ever committed or obse
 파일시스템 경계도 ownership을 그대로 반영한다.
 
 - `_task_mecca/framework/**`: Task Mecca framework 및 customizable policy/document
-- `_task_mecca/data/**`: project/agent가 축적하는 durable data. migrator가 절대 덮어쓰지 않는다.
+- `_task_mecca/data/**`: project/agent가 축적하는 durable data. updater가 절대 덮어쓰지 않는다.
 - `_task_mecca/.runtime/**`: ephemeral runtime state
-- `_task_mecca/backups/**`: migrator 안전 백업
+- `_task_mecca/backups/**`: updater 안전 백업
 - pre-0.2 `_task_mecca/backlog*/**`: legacy project-data compatibility
 
 Installer는 `data/`나 backlog를 미리 만들지 않는다. 첫 등록 시 Registrar가 `ensure-backlog`를 호출해 기존 ledger를 사용하거나, 없을 때만 canonical `data/backlog/`를 만든다. Agent가 audit/measurement/test evidence 같은 durable 부산물을 만들 필요가 있으면 framework와 섞지 말고 `data/` 아래에 둔다. 하위 폴더명 자체는 Task Mecca가 강제하지 않는다.
 
-upstream migration가 사용자가 수정한 managed Task Mecca 문서를 덮어쓰게 되는 경우 migrator는 대상 파일 목록을 보여주고, 백업을 권장하며, 동의 시 로컬 백업을 실제 생성한 뒤 수정본이 공식 새 버전으로 덮어써짐을 안내하고 최종 확인을 받아야 한다. 역할·정책 문서의 의미 기반 자동 merge는 시도하지 않는다.
-
-### 마이그레이션 후 Root 세션 재동기화
-
-현재 실행 중인 Root 세션은 마이그레이션 전에 읽은 지침을 계속 문맥으로 가지고 있을 수 있다. 따라서 migration이 다음 운영 지침 파일군을 실제로 변경했다면 현재 Root 세션을 **재동기화해야 한다.**
-
-- `_task_mecca/ROOT_PROMPT.md`
-- `_task_mecca/framework/SESSION_GUIDE.md`
-- `_task_mecca/framework/SESSION_GUIDE.en.md`
-- `_task_mecca/framework/collab.md`
-- `_task_mecca/framework/roles/*.md`
-
-단순 Web UI/CSS/runtime 구현 변경처럼 세션 행동 규칙이 바뀌지 않은 migration에는 재동기화를 요구하지 않는다.
-
-Web UI에서 migration을 실행하면 migrator가 실제 upstream instruction 변경 여부를 판정한다. 재동기화가 필요하면 완료 팝업에서 현재 Root 세션에 그대로 붙여넣을 수 있는 프롬프트를 제공한다. 사용자는 이 프롬프트를 복사해 **현재 Root 세션**에 전달한다. Root는 새 subagent dispatch나 새 실행 단계를 시작하기 전에 최신 `ROOT_PROMPT.md`, 현재 언어의 `SESSION_GUIDE`, `collab.md`, `roles/root.md`를 다시 읽고, 변경된 운영 규칙을 현재 세션에 재적용한 뒤 작업을 계속한다.
-
-Root 세션 자체를 새로 만들 필요는 없다. 최신 지침 재읽기와 재적용이 완료되면 기존 세션을 계속 사용할 수 있다.
+upstream 업데이트가 사용자가 수정한 managed Task Mecca 문서를 덮어쓰게 되는 경우 updater는 대상 파일 목록을 보여주고, 백업을 권장하며, 동의 시 로컬 백업을 실제 생성한 뒤 수정본이 공식 새 버전으로 덮어써짐을 안내하고 최종 확인을 받아야 한다. 역할·정책 문서의 의미 기반 자동 merge는 시도하지 않는다.
