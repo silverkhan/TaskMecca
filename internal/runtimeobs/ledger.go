@@ -137,6 +137,7 @@ func attemptIDFor(provider, sessionID, agentID string) string {
 
 func eventIDFor(e ExecutionEvent) string {
     parts:=[]string{e.EventKind,e.Provider,e.SessionID,e.TurnID,e.RuntimeAgentID,e.HookEventName,e.ToolUseID,string(e.State),e.RawSHA256,e.TaskID,e.AgentPath,e.ParentAttemptID,e.BindingSource}
+    if e.RawSHA256=="" { parts=append(parts,e.ObservedAt) }
     if e.EventKind=="binding" {
         keys:=make([]string,0,len(e.BindingEvidence))
         for k:=range e.BindingEvidence { keys=append(keys,k) }
@@ -246,6 +247,7 @@ func (a *accumulator) apply(e ExecutionEvent) {
         for k,v:=range e.BindingEvidence { if strings.TrimSpace(v)!="" { a.attempt.BindingEvidence[k]=v } }
         if len(a.taskIDs)>1 || len(a.agentPaths)>1 || len(a.parents)>1 {
             a.attempt.BindingState=BindingAmbiguous
+            a.attempt.TaskID=""; a.attempt.AgentPath=""; a.attempt.ParentAttemptID=""
         } else {
             a.attempt.BindingState=BindingBound; a.attempt.TaskID=onlyValue(a.taskIDs); a.attempt.AgentPath=onlyValue(a.agentPaths); a.attempt.ParentAttemptID=onlyValue(a.parents)
         }
