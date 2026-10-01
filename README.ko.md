@@ -154,6 +154,7 @@ macOS/Linux에서는 CLI 업데이트 중 Web이 실행 중이면 새 실행파�
 | `task-mecca web status` | Web 서비스 상태 확인 |
 | `task-mecca web restart` | Web 서비스 재시작 |
 | `task-mecca upgrade` | Task Mecca CLI 업데이트 |
+| `task-mecca channel [stable|dev]` | 업데이트 채널 확인/변경 |
 | `task-mecca migrate` | 프로젝트 framework 업데이트 |
 | `task-mecca status` | 현재 backlog 상태 요약 |
 | `task-mecca inspect <ID>` | 특정 작업 상세 확인 |
