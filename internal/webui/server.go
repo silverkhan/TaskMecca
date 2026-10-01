@@ -22,6 +22,7 @@ import (
     "github.com/silverkhan/TaskMecca/internal/backlog"
     "github.com/silverkhan/TaskMecca/internal/install"
     "github.com/silverkhan/TaskMecca/internal/maintenance"
+    "github.com/silverkhan/TaskMecca/internal/runtimeobs"
 )
 
 const embeddedRoot = "template/_task_mecca/framework"
@@ -299,6 +300,29 @@ func handler(project,root,version,instanceID,controlToken string,restartCh chan<
         snapshot["backlog_selection"]=selectionPayload(activeCtx,selected,candidates)
         snapshot["project_path"]=activeProject
         writeJSON(w,snapshot,200)
+    })
+
+    mux.HandleFunc("/api/runtime/hooks",func(w http.ResponseWriter,r *http.Request) {
+        if r.Method!="POST" { writeJSON(w,map[string]any{"error":"POST required"},405); return }
+        if r.Header.Get("X-Task-Mecca-Action")!="1" { writeJSON(w,map[string]any{"error":"maintenance action header required"},403); return }
+        activeProject:=projectFor(r)
+        var body struct{ Provider string `json:"provider"` }
+        if err:=json.NewDecoder(r.Body).Decode(&body); err!=nil { writeJSON(w,map[string]any{"error":"invalid JSON"},400); return }
+        provider:=strings.ToLower(strings.TrimSpace(body.Provider))
+        if provider=="" { provider="all" }
+        if provider!="all" && provider!="codex" && provider!="claude" {
+            writeJSON(w,map[string]any{"error":"provider must be codex, claude, or all"},400)
+            return
+        }
+        providers:=[]string{"codex","claude"}
+        if provider!="all" { providers=[]string{provider} }
+        results:=[]runtimeobs.HookSetup{}
+        for _,name:=range providers {
+            setup,err:=runtimeobs.EnsureHooks(activeProject,name)
+            if err!=nil { writeJSON(w,map[string]any{"error":err.Error(),"provider":name},500); return }
+            results=append(results,setup)
+        }
+        writeJSON(w,map[string]any{"ok":true,"hooks":results},200)
     })
 
     mux.HandleFunc("/api/issues",func(w http.ResponseWriter,r *http.Request) {
