@@ -14,15 +14,15 @@ _task_mecca/.runtime/executions/events.jsonl
 
 이 구조는 병렬 hook의 stale write를 피하고, Task Mecca 재시작 후에도 동일 원장에서 실행 상태를 복원하기 위한 것이다.
 
-## Hook 설치
+## Hook 활성화
 
 Task Mecca가 provider 설정을 덮어쓰지 않고 기존 JSON을 보존하면서 lifecycle hook만 병합한다.
 
 ```bash
 task-mecca runtime hooks status all
-task-mecca runtime hooks install codex
-task-mecca runtime hooks install claude
-task-mecca runtime hooks install all
+task-mecca runtime hooks enable codex
+task-mecca runtime hooks enable claude
+task-mecca runtime hooks enable all
 ```
 
 경로:
@@ -30,7 +30,7 @@ task-mecca runtime hooks install all
 - Codex: `.codex/hooks.json`
 - Claude Code: `.claude/settings.json`
 
-설치는 idempotent하며 이미 같은 Task Mecca command hook이 있으면 중복 추가하지 않는다.
+활성화는 idempotent하며 이미 같은 Task Mecca command hook이 있으면 중복 추가하지 않는다.
 
 ## Production hook
 
