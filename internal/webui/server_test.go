@@ -37,6 +37,9 @@ func TestHandlerServesDashboardAPIsAndAssets(t *testing.T) {
         {"/api/revision",200,"application/json"},
         {"/api/version",200,"application/json"},
         {"/api/snapshot",200,"application/json"},
+        {"/api/attention",200,"application/json"},
+        {"/api/workload",200,"application/json"},
+        {"/api/issues",200,"application/json"},
         {"/api/tasks/A-1",200,"application/json"},
         {"/api/manual?lang=en",200,"application/json"},
         {"/",200,"text/html"},
@@ -64,6 +67,17 @@ func TestHandlerServesDashboardAPIsAndAssets(t *testing.T) {
     if !ok { t.Fatalf("all_items=%T",payload["all_items"]) }
     if _,ok:=all["A-1"]; !ok { t.Fatalf("snapshot=%+v",payload) }
     if _,ok:=payload["backlog_selection"]; !ok { t.Fatalf("missing backlog_selection") }
+
+    for _,path:=range []string{"/api/attention","/api/workload","/api/issues"} {
+        req=httptest.NewRequest(http.MethodGet,path,nil)
+        rec=httptest.NewRecorder()
+        handler.ServeHTTP(rec,req)
+        if rec.Code!=http.StatusOK { t.Fatalf("%s status=%d body=%s",path,rec.Code,rec.Body.String()) }
+        viewPayload:=map[string]any{}
+        if err:=json.Unmarshal(rec.Body.Bytes(),&viewPayload); err!=nil { t.Fatal(err) }
+        if _,ok:=viewPayload["backlog_selection"]; !ok { t.Fatalf("%s missing backlog_selection",path) }
+        if viewPayload["project_path"]!=root { t.Fatalf("%s project_path=%v",path,viewPayload["project_path"]) }
+    }
 
     req=httptest.NewRequest(http.MethodGet,"/api/manual?lang=ko",nil)
     rec=httptest.NewRecorder()
