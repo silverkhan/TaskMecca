@@ -484,6 +484,10 @@
 .detail-disclosure[open] .detail-disclosure-chevron{transform:rotate(180deg)}
 .detail-disclosure-body{padding:0 0 24px}
 .detail-disclosure-body>h3:first-child{margin-top:0}
+.detail-static{padding:20px 0 24px}
+.detail-static-head{margin-bottom:12px}
+.detail-static-head h2{margin:0;font-size:17px}
+.detail-static-body>h3:first-child{margin-top:0}
 .relation-groups{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:28px}
 .relation-groups h3{margin-top:0}
 .relation-list{display:flex;gap:7px;flex-wrap:wrap}
