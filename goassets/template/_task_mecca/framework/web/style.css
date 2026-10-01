@@ -635,3 +635,38 @@
   .task-preview{font-size:9.5px}
 }
 
+
+/* AID-42 runtime execution observability */
+.runtime-observability{margin:0 0 34px;padding:20px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface)}
+.runtime-section-head{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;margin-bottom:16px}
+.runtime-section-head.compact{margin-top:34px}
+.runtime-section-head h2{margin:4px 0 0;font-size:19px}
+.runtime-hook-panel{display:grid;grid-template-columns:minmax(0,1fr) minmax(280px,.8fr);gap:20px;align-items:start;padding:14px 16px;border:1px solid var(--border);border-radius:10px;background:var(--surface2)}
+.runtime-hook-panel>div>strong{font-size:12px}.runtime-hook-panel p{margin:4px 0 0;color:var(--muted);font-size:11px;line-height:1.55}
+.runtime-hook-list{display:grid;gap:7px}.runtime-hook-row{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.runtime-hook-row>div{min-width:0}.runtime-hook-row strong{font-size:11px;margin-right:8px}.runtime-hook-row span:not(.badge){display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted);font-size:10px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.badge.ok{border-color:color-mix(in srgb,var(--ok) 38%,var(--border));color:var(--ok)}
+.runtime-metrics{margin-bottom:18px}
+.runtime-attempt-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.runtime-attempt-card{min-width:0;border:1px solid var(--border);border-radius:10px;background:var(--surface);padding:14px}
+.runtime-attempt-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding-bottom:12px;border-bottom:1px solid var(--border)}
+.runtime-attempt-name{font-weight:700;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:520px}
+.runtime-attempt-sub{margin-top:3px;color:var(--muted);font-size:11px}
+.runtime-attempt-badges{display:flex;align-items:center;justify-content:flex-end;gap:7px;flex-wrap:wrap}
+.runtime-attempt-badges .status{white-space:nowrap}
+.status.running:before,.status.starting:before{background:var(--accent)}
+.status.completed:before{background:var(--ok)}
+.status.interrupted:before,.status.errored:before,.status.shutdown:before{background:var(--danger)}
+.status.waiting_user:before,.status.waiting_approval:before{background:var(--warn)}
+.status.runtime_unknown:before{background:var(--muted)}
+.runtime-meta-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px 16px;padding:13px 0}
+.runtime-meta-grid>div{min-width:0}.runtime-meta-grid span{display:block;color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:.05em}
+.runtime-meta-grid strong{display:block;margin-top:2px;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
+.runtime-findings{display:flex;gap:6px;flex-wrap:wrap;padding:4px 0 10px}
+.runtime-history{border-top:1px solid var(--border);padding-top:10px}.runtime-history summary{cursor:pointer;color:var(--muted);font-size:11px;font-weight:650}
+.runtime-transition-list{display:grid;gap:5px;margin-top:9px}.runtime-transition{display:grid;grid-template-columns:96px minmax(0,1fr) auto;gap:8px;align-items:center;font-size:10px}
+.runtime-transition time,.runtime-transition span{color:var(--muted);font-variant-numeric:tabular-nums}.runtime-transition strong{font-size:10px}
+.runtime-empty{padding:28px 12px;text-align:center;color:var(--muted);font-size:12px;border:1px dashed var(--border);border-radius:10px}
+.assigned-workload-section{margin-top:28px}.worker-runtime-line{display:flex;align-items:center;gap:8px;margin-top:7px;color:var(--muted);font-size:10px}.worker-runtime-line .status{font-size:9px}
+@media(max-width:980px){.runtime-attempt-grid{grid-template-columns:1fr}.runtime-hook-panel{grid-template-columns:1fr}}
+@media(max-width:680px){.runtime-observability{padding:14px}.runtime-section-head{flex-direction:column}.runtime-attempt-head{flex-direction:column}.runtime-attempt-badges{justify-content:flex-start}.runtime-meta-grid{grid-template-columns:1fr}.runtime-transition{grid-template-columns:82px minmax(0,1fr)}.runtime-transition span{grid-column:2}}
