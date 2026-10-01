@@ -1,6 +1,10 @@
 package maintenance
 
-import "testing"
+import (
+    "os"
+    "path/filepath"
+    "testing"
+)
 
 func TestCompareVersions(t *testing.T) {
     cases:=[]struct{
@@ -37,5 +41,16 @@ func TestNormalizeVersionRepairsLiteralEscapedNewlines(t *testing.T) {
         if got:=normalizeVersion(raw); got!=want {
             t.Fatalf("normalizeVersion(%q)=%q want %q",raw,got,want)
         }
+    }
+}
+
+
+func TestFrameworkVersionNormalizesLegacyLiteralNewline(t *testing.T) {
+    project:=t.TempDir()
+    dir:=filepath.Join(project,"_task_mecca")
+    if err:=os.MkdirAll(dir,0755); err!=nil { t.Fatal(err) }
+    if err:=os.WriteFile(filepath.Join(dir,"VERSION"),[]byte("0.2.39\\n"),0644); err!=nil { t.Fatal(err) }
+    if got:=frameworkVersion(project); got!="0.2.39" {
+        t.Fatalf("frameworkVersion=%q",got)
     }
 }
