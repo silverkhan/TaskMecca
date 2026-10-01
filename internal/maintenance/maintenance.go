@@ -51,10 +51,18 @@ type VersionInfo struct {
 var versionCheckMu sync.Mutex
 var versionCheckRunning bool
 
+type FrameworkSyncCandidate struct {
+    Name string `json:"name"`
+    Path string `json:"path"`
+    FromVersion string `json:"from_version"`
+    ToVersion string `json:"to_version"`
+}
+
 type UpgradeResult struct {
     From string `json:"from"`
     To string `json:"to"`
     Channel string `json:"channel,omitempty"`
+    FrameworkSync []FrameworkSyncCandidate `json:"framework_sync,omitempty"`
     Executable string `json:"executable"`
     RestartRequired bool `json:"restart_required"`
     Scheduled bool `json:"scheduled,omitempty"`
@@ -63,6 +71,7 @@ type UpgradeResult struct {
 type ReleaseChannelTarget struct {
     Channel string `json:"channel"`
     Version string `json:"version,omitempty"`
+    FrameworkSync []FrameworkSyncCandidate `json:"framework_sync,omitempty"`
     Error string `json:"error,omitempty"`
 }
 
@@ -275,9 +284,40 @@ func GetReleaseChannelOptions(current string) ReleaseChannelOptions {
         Dev:ReleaseChannelTarget{Channel:devChannel},
         EnvironmentOverride:strings.TrimSpace(os.Getenv("TASK_MECCA_CHANNEL"))!="",
     }
-    if version,err:=latestVersionForChannel(stableChannel); err!=nil { out.Stable.Error=err.Error() } else { out.Stable.Version=version }
-    if version,err:=latestVersionForChannel(devChannel); err!=nil { out.Dev.Error=err.Error() } else { out.Dev.Version=version }
+    if version,err:=latestVersionForChannel(stableChannel); err!=nil {
+        out.Stable.Error=err.Error()
+    } else {
+        out.Stable.Version=version
+        out.Stable.FrameworkSync=frameworkSyncCandidates(current,version,stableChannel)
+    }
+    if version,err:=latestVersionForChannel(devChannel); err!=nil {
+        out.Dev.Error=err.Error()
+    } else {
+        out.Dev.Version=version
+        out.Dev.FrameworkSync=frameworkSyncCandidates(current,version,devChannel)
+    }
     return out
+}
+
+func frameworkSyncCandidates(currentVersion,targetVersion,targetChannel string) []FrameworkSyncCandidate {
+    currentVersion=normalizeVersion(currentVersion)
+    targetVersion=normalizeVersion(targetVersion)
+    candidates:=[]FrameworkSyncCandidate{}
+    for _,project:=range ListProjects() {
+        framework:=normalizeVersion(project.FrameworkVersion)
+        if framework=="" || framework==targetVersion { continue }
+        include:=false
+        if targetChannel==stableChannel {
+            include=strings.Contains(strings.ToLower(framework),"-dev.")
+        } else if targetChannel==devChannel {
+            include=framework==currentVersion || !strings.Contains(strings.ToLower(framework),"-dev.")
+        }
+        if !include { continue }
+        candidates=append(candidates,FrameworkSyncCandidate{
+            Name:project.Name,Path:project.Path,FromVersion:framework,ToVersion:targetVersion,
+        })
+    }
+    return candidates
 }
 
 func StableReleaseNotesIndex() ([]byte,error) {
@@ -541,6 +581,7 @@ func SwitchChannel(current,target string) (UpgradeResult,error) {
     if err!=nil { return result,err }
     result.To=targetVersion
     result.Channel=channel
+    result.FrameworkSync=frameworkSyncCandidates(current,targetVersion,channel)
 
     previous:=CurrentChannel()
     if previous==channel && targetVersion==current { return result,nil }
@@ -558,6 +599,7 @@ func SwitchChannel(current,target string) (UpgradeResult,error) {
     if err=SetChannel(channel); err!=nil { return result,err }
     installed,installErr:=installBinary(current,targetVersion,binary)
     installed.Channel=channel
+    installed.FrameworkSync=result.FrameworkSync
     if installErr!=nil {
         _=SetChannel(previous)
         return installed,installErr
