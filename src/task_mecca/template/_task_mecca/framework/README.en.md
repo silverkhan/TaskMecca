@@ -42,6 +42,15 @@ The dashboard's Full Access indicator is historical information. Task Mecca runs
 If the current filename state is ahead of committed Git lifecycle history, Task Mecca records a provisional observed transition in `.runtime/lifecycle_observations.json`. This keeps Active/Wait timing from resetting while state-transition commits are pending. Git evidence takes precedence when it later arrives.
 
 
+### Runtime observability and Hook trust
+
+**Subagent Workload → Runtime execution observability** uses project Hook configuration. Configured does not necessarily mean trusted or observed.
+
+- **Codex** may require Hook trust review after `.codex/hooks.json` is configured. Use `/hooks` in CLI/TUI and create a new subagent after approval because earlier Start/Stop events may not be recoverable.
+- **Claude Code** interactive sessions require workspace trust; `claude -p`/SDK may run settings Hooks without a separate trust dialog.
+
+Web distinguishes configuration from actual Activity / Start / Stop observation. Turning observation off removes only Task Mecca-managed Hooks and preserves the existing Execution Ledger.
+
 ## Framework / Data boundary
 
 Installation deploys only `framework/`; it does not create `data/`. On the first task registration Registrar uses `ensure-backlog` to select an existing ledger or create `_task_mecca/data/backlog/`. Durable artifacts created by agents belong under `data/`, not inside `framework/`.
