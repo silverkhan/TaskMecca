@@ -140,3 +140,37 @@ func TestCompletedRuntimeAgentCanResumeSameAttempt(t *testing.T) {
         t.Fatalf("second stop must complete resumed agent: %+v",got)
     }
 }
+
+
+func TestResumeWithoutTurnIDIsNotDeduplicated(t *testing.T) {
+    project:=t.TempDir()
+    base:=time.Date(2026,10,2,1,0,0,0,time.UTC)
+    startOne:=hookExecutionEvent(t,"codex",`{"session_id":"s1","hook_event_name":"SubagentStart","agent_id":"controller-1"}`,base)
+    stopOne:=hookExecutionEvent(t,"codex",`{"session_id":"s1","hook_event_name":"SubagentStop","agent_id":"controller-1"}`,base.Add(time.Second))
+    startTwo:=hookExecutionEvent(t,"codex",`{"session_id":"s1","hook_event_name":"SubagentStart","agent_id":"controller-1"}`,base.Add(2*time.Second))
+    if startOne.RawSHA256!=startTwo.RawSHA256 { t.Fatal("fixture must use identical raw start payload") }
+    if startOne.EventID==startTwo.EventID { t.Fatal("repeated start without turn_id must remain a distinct lifecycle event") }
+    for _,event:=range []ExecutionEvent{startOne,stopOne,startTwo} {
+        if err:=AppendExecutionEvent(project,event); err!=nil { t.Fatal(err) }
+    }
+    ledger,err:=BuildLedger(project,10,base.Add(3*time.Second)); if err!=nil { t.Fatal(err) }
+    if len(ledger.Attempts)!=1 { t.Fatalf("attempts=%+v",ledger.Attempts) }
+    got:=ledger.Attempts[0]
+    if got.CurrentState!=StateRunning || got.Terminal { t.Fatalf("resume was lost: %+v",got) }
+}
+
+func TestDuplicateTerminalStateDoesNotExtendEndedAt(t *testing.T) {
+    project:=t.TempDir()
+    base:=time.Date(2026,10,2,1,0,0,0,time.UTC)
+    start:=ExecutionEvent{EventKind:"state",ObservedAt:base.Format(time.RFC3339Nano),AttemptID:"run-a",Provider:"codex",State:StateRunning,EvidenceSource:EvidenceHook,ObservationQuality:QualityObserved}
+    stopOne:=ExecutionEvent{EventKind:"state",ObservedAt:base.Add(time.Second).Format(time.RFC3339Nano),AttemptID:"run-a",Provider:"codex",State:StateCompleted,Terminal:true,EvidenceSource:EvidenceHook,ObservationQuality:QualityObserved}
+    stopTwo:=stopOne
+    stopTwo.ObservedAt=base.Add(2*time.Second).Format(time.RFC3339Nano)
+    for _,event:=range []ExecutionEvent{start,stopOne,stopTwo} {
+        event.EventID=eventIDFor(event)
+        if err:=AppendExecutionEvent(project,event); err!=nil { t.Fatal(err) }
+    }
+    ledger,err:=BuildLedger(project,10,base.Add(3*time.Second)); if err!=nil { t.Fatal(err) }
+    got:=ledger.Attempts[0]
+    if got.EndedAt!=stopOne.ObservedAt { t.Fatalf("ended_at=%s want=%s",got.EndedAt,stopOne.ObservedAt) }
+}
