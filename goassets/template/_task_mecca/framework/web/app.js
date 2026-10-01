@@ -81,6 +81,36 @@ Object.assign(I18N.en,{
   notificationsUnsupportedGuide:'The current browser cannot use the system Notification API. Use a supported browser or HTTPS environment.',
   notificationPermissionError:'Notification permission request failed.',
 });
+Object.assign(I18N.ko,{
+  channelSwitchTitle:'릴리스 채널을 전환할까요?', channelCurrent:'현재', channelTarget:'전환 대상',
+  channelStable:'Stable', channelDev:'Dev', channelSwitchCancel:'취소', channelSwitchAction:'{channel}로 전환',
+  channelDevWarning:'Dev 채널에는 검증 중인 기능이 포함될 수 있습니다.',
+  channelStableNotice:'정식 Stable 채널의 최신 버전으로 돌아갑니다.',
+  channelSwitching:'채널 전환 중…', channelSwitchRestart:'Task Mecca Web을 재시작하고 있습니다.',
+  channelSwitchUnavailable:'대상 채널 정보를 확인할 수 없습니다.',
+  frameworkSyncPreview:'채널 전환 후 {n}개 프로젝트의 framework를 {channel} 버전에 맞춰야 합니다.',
+  frameworkSyncTitle:'프로젝트 framework를 {channel}에 맞출까요?',
+  frameworkSyncIntro:'실행 파일과 프로젝트 framework 버전을 맞추면 채널 전환을 안전하게 완료할 수 있습니다.',
+  frameworkSyncStableIntro:'Dev framework가 남아 있습니다. Stable 실행 파일과 호환되는 framework로 되돌리는 것을 권장합니다.',
+  frameworkSyncLater:'나중에', frameworkSyncAction:'{channel} framework로 동기화',
+  frameworkSyncing:'framework 동기화 중…', frameworkSyncDone:'프로젝트 framework 동기화를 완료했습니다.',
+  frameworkSyncFailed:'framework 동기화에 실패했습니다.'
+});
+Object.assign(I18N.en,{
+  channelSwitchTitle:'Switch release channel?', channelCurrent:'Current', channelTarget:'Target',
+  channelStable:'Stable', channelDev:'Dev', channelSwitchCancel:'Cancel', channelSwitchAction:'Switch to {channel}',
+  channelDevWarning:'The Dev channel may include features still under validation.',
+  channelStableNotice:'Return to the latest Stable release.',
+  channelSwitching:'Switching channel…', channelSwitchRestart:'Restarting Task Mecca Web.',
+  channelSwitchUnavailable:'The target channel is currently unavailable.',
+  frameworkSyncPreview:'After switching, {n} project framework(s) should be aligned with {channel}.',
+  frameworkSyncTitle:'Align project framework with {channel}?',
+  frameworkSyncIntro:'Aligning the executable and project framework versions safely completes the channel switch.',
+  frameworkSyncStableIntro:'Dev framework remains in the project. Align it with the Stable executable for compatibility.',
+  frameworkSyncLater:'Later', frameworkSyncAction:'Sync to {channel} framework',
+  frameworkSyncing:'Syncing framework…', frameworkSyncDone:'Project framework sync completed.',
+  frameworkSyncFailed:'Framework sync failed.'
+});
 
 Object.assign(I18N.ko,{
   humanSummary:'핵심 요약', summaryPurpose:'목적', summaryChange:'핵심 변경', summaryStatusResult:'상태·결과', summaryFollowUp:'확인·후속',
@@ -243,6 +273,7 @@ async function refreshVersionInfo(force=false) {
     if(!r.ok)throw new Error(`HTTP ${r.status}`);
     state.versionInfo=await r.json();
     renderGlobalUpdateIndicator();
+    queueMicrotask(()=>maybeShowPendingFrameworkSync());
   }catch(_){}
 }
 
@@ -1037,14 +1068,206 @@ function nav() {
   });
 }
 
+const channelGesture={phase:'first',taps:[],firstBatchAt:0,secondStartedAt:0};
+let frameworkSyncDismissedFor='';
+function resetChannelGesture(seedTime=0) {
+  channelGesture.phase='first';
+  channelGesture.taps=seedTime?[seedTime]:[];
+  channelGesture.firstBatchAt=0;
+  channelGesture.secondStartedAt=0;
+}
+function recordChannelGestureTap() {
+  const now=performance.now();
+  if(channelGesture.phase==='quiet'){
+    const waited=now-channelGesture.firstBatchAt;
+    if(waited<3000)return;
+    if(waited>5000){resetChannelGesture(now);return}
+    channelGesture.phase='second';
+    channelGesture.taps=[now];
+    channelGesture.secondStartedAt=now;
+    return;
+  }
+  if(channelGesture.phase==='second'){
+    if(now-channelGesture.secondStartedAt>3000){resetChannelGesture(now);return}
+    channelGesture.taps.push(now);
+    if(channelGesture.taps.length>=5){
+      resetChannelGesture();
+      showChannelSwitchModal();
+    }
+    return;
+  }
+  channelGesture.taps=channelGesture.taps.filter(at=>now-at<=3000);
+  channelGesture.taps.push(now);
+  if(channelGesture.taps.length>=5){
+    channelGesture.phase='quiet';
+    channelGesture.taps=[];
+    channelGesture.firstBatchAt=now;
+  }
+}
+function channelLabel(channel) {
+  return channel==='dev'?t('channelDev'):t('channelStable');
+}
+function savePendingFrameworkSync(body) {
+  const rows=Array.isArray(body?.framework_sync)?body.framework_sync:[];
+  if(!rows.length){
+    localStorage.removeItem('task-mecca-pending-framework-sync-v1');
+    return;
+  }
+  localStorage.setItem('task-mecca-pending-framework-sync-v1',JSON.stringify({
+    target_channel:body.channel||'',
+    target_version:body.to||'',
+    projects:rows
+  }));
+}
+function readPendingFrameworkSync() {
+  try{
+    const value=JSON.parse(localStorage.getItem('task-mecca-pending-framework-sync-v1')||'null');
+    return value&&Array.isArray(value.projects)?value:null;
+  }catch(_){ return null; }
+}
+async function showChannelSwitchModal() {
+  document.querySelector('.channel-switch-overlay')?.remove();
+  let options=null;
+  try{
+    const r=await fetch('/api/channel-options',{cache:'no-store'});
+    const body=await r.json();
+    if(!r.ok)throw new Error(body.error||'Channel lookup failed');
+    options=body;
+  }catch(e){
+    alert(String(e?.message||e));
+    return;
+  }
+  const current=options.current_channel||'stable';
+  const target=current==='dev'?'stable':'dev';
+  const targetInfo=options[target]||{};
+  const targetVersion=targetInfo.version||'';
+  const syncRows=Array.isArray(targetInfo.framework_sync)?targetInfo.framework_sync:[];
+  const unavailable=!targetVersion||targetInfo.error||options.environment_override;
+  const overlay=document.createElement('div');
+  overlay.className='channel-switch-overlay';
+  const notice=target==='dev'?t('channelDevWarning'):t('channelStableNotice');
+  const errorText=options.environment_override?'TASK_MECCA_CHANNEL environment override':(targetInfo.error||t('channelSwitchUnavailable'));
+  const syncPreview=syncRows.length?'<div class="channel-sync-preview">'+esc(t('frameworkSyncPreview',{n:syncRows.length,channel:channelLabel(target)}))+
+    '<div class="channel-sync-projects">'+syncRows.map(row=>'<span>'+esc(row.name||row.path||'-')+' · '+esc(row.from_version||'-')+' → '+esc(row.to_version||targetVersion)+'</span>').join('')+'</div></div>':'';
+  overlay.innerHTML='<div class="channel-switch-modal" role="dialog" aria-modal="true" aria-labelledby="channelSwitchTitle">'+
+    '<div class="eyebrow">TASK MECCA</div><h2 id="channelSwitchTitle">'+esc(t('channelSwitchTitle'))+'</h2>'+
+    '<div class="channel-switch-grid"><div><span>'+esc(t('channelCurrent'))+'</span><strong>'+esc(channelLabel(current))+' · '+esc(options.current_version||'-')+'</strong></div>'+
+    '<div class="channel-switch-arrow">→</div><div><span>'+esc(t('channelTarget'))+'</span><strong>'+esc(channelLabel(target))+' · '+esc(targetVersion||'-')+'</strong></div></div>'+
+    '<p class="channel-switch-note">'+esc(unavailable?errorText:notice)+'</p>'+syncPreview+
+    '<div class="channel-switch-actions"><button type="button" class="action-btn secondary" data-channel-cancel>'+esc(t('channelSwitchCancel'))+'</button>'+
+    '<button type="button" class="action-btn" data-channel-confirm '+(unavailable?'disabled':'')+'>'+esc(t('channelSwitchAction',{channel:channelLabel(target)}))+'</button></div></div>';
+  document.body.appendChild(overlay);
+  const close=()=>overlay.remove();
+  overlay.querySelector('[data-channel-cancel]')?.addEventListener('click',close);
+  overlay.addEventListener('click',e=>{if(e.target===overlay)close();});
+  overlay.querySelector('[data-channel-confirm]')?.addEventListener('click',async e=>{
+    const button=e.currentTarget;
+    button.disabled=true;
+    button.textContent=t('channelSwitching');
+    try{
+      const r=await fetch('/api/channel-switch',{method:'POST',headers:{'Content-Type':'application/json','X-Task-Mecca-Action':'1'},body:JSON.stringify({channel:target})});
+      const body=await r.json();
+      if(!r.ok)throw new Error(body.error||'Channel switch failed');
+      savePendingFrameworkSync(body);
+      if(body.restart_required&&body.to){
+        overlay.innerHTML='<div class="channel-switch-modal channel-switch-progress"><div class="upgrade-spinner"></div><h2>'+esc(channelLabel(target))+' · '+esc(body.to)+'</h2><p>'+esc(t('channelSwitchRestart'))+'</p></div>';
+        await waitForRestartedWeb(body.to);
+        return;
+      }
+      close();
+      await refreshVersionInfo(true);
+      await refreshHub(true);
+      render();
+      maybeShowPendingFrameworkSync();
+    }catch(err){
+      alert(String(err?.message||err));
+      button.disabled=false;
+      button.textContent=t('channelSwitchAction',{channel:channelLabel(target)});
+    }
+  });
+}
+function bindChannelGesture() {
+  const mark=$('#hubVersionMark');
+  if(mark)mark.addEventListener('click',recordChannelGestureTap);
+}
+async function maybeShowPendingFrameworkSync() {
+  const pending=readPendingFrameworkSync();
+  if(!pending||!pending.projects.length)return;
+  if(document.querySelector('.framework-sync-overlay'))return;
+  const cli=state.versionInfo?.cli||state.hub?.cli||{};
+  if(normalizedVersion(cli.current)!==normalizedVersion(pending.target_version))return;
+  if((cli.channel||'stable')!==(pending.target_channel||'stable'))return;
+  if(frameworkSyncDismissedFor===pending.target_version)return;
+
+  let projects=pending.projects;
+  try{
+    const hub=await refreshHub(true);
+    const currentByPath=new Map((hub?.projects||[]).map(row=>[row.path,row.framework_version]));
+    projects=projects.filter(row=>normalizedVersion(currentByPath.get(row.path))!==normalizedVersion(pending.target_version));
+  }catch(_){}
+  if(!projects.length){
+    localStorage.removeItem('task-mecca-pending-framework-sync-v1');
+    return;
+  }
+
+  const targetChannel=pending.target_channel||'stable';
+  const overlay=document.createElement('div');
+  overlay.className='framework-sync-overlay';
+  const intro=targetChannel==='stable'?t('frameworkSyncStableIntro'):t('frameworkSyncIntro');
+  overlay.innerHTML='<div class="framework-sync-modal" role="dialog" aria-modal="true" aria-labelledby="frameworkSyncTitle">'+
+    '<div class="eyebrow">FRAMEWORK SYNC</div><h2 id="frameworkSyncTitle">'+esc(t('frameworkSyncTitle',{channel:channelLabel(targetChannel)}))+'</h2>'+
+    '<p class="channel-switch-note">'+esc(intro)+'</p>'+
+    '<div class="framework-sync-list">'+projects.map(row=>'<div><strong>'+esc(row.name||String(row.path||'').split(/[\\/]/).pop()||'-')+'</strong><span>'+esc(row.from_version||'-')+' → '+esc(pending.target_version||row.to_version||'-')+'</span></div>').join('')+'</div>'+
+    '<div class="channel-switch-actions"><button type="button" class="action-btn secondary" data-framework-later>'+esc(t('frameworkSyncLater'))+'</button>'+
+    '<button type="button" class="action-btn" data-framework-sync>'+esc(t('frameworkSyncAction',{channel:channelLabel(targetChannel)}))+'</button></div></div>';
+  document.body.appendChild(overlay);
+  overlay.querySelector('[data-framework-later]')?.addEventListener('click',()=>{
+    frameworkSyncDismissedFor=pending.target_version;
+    overlay.remove();
+  });
+  overlay.addEventListener('click',e=>{
+    if(e.target===overlay){
+      frameworkSyncDismissedFor=pending.target_version;
+      overlay.remove();
+    }
+  });
+  overlay.querySelector('[data-framework-sync]')?.addEventListener('click',async e=>{
+    const button=e.currentTarget;
+    button.disabled=true;
+    button.textContent=t('frameworkSyncing');
+    let instructionResult=null;
+    for(const row of projects){
+      try{
+        const r=await fetch('/api/migrate',{method:'POST',headers:{'Content-Type':'application/json','X-Task-Mecca-Action':'1'},body:JSON.stringify({project:row.path})});
+        const body=await r.json();
+        if(!r.ok)throw new Error(body.error||'Migration failed');
+        if(body.instruction_refresh_required||body.legacy_bootstrap)instructionResult=body;
+      }catch(err){
+        alert(t('frameworkSyncFailed')+'\n'+(row.name||row.path||'')+'\n'+String(err?.message||err));
+        button.disabled=false;
+        button.textContent=t('frameworkSyncAction',{channel:channelLabel(targetChannel)});
+        return;
+      }
+    }
+    localStorage.removeItem('task-mecca-pending-framework-sync-v1');
+    frameworkSyncDismissedFor='';
+    overlay.remove();
+    await refreshHub(true);
+    await refreshVersionInfo(false);
+    if(state.view==='hub')render();
+    if(instructionResult)showMigrationResyncModal(instructionResult);
+  });
+}
+
 function hubView() {
   const h=state.hub||{};
   const cli=h.cli||{};
   const projects=Array.isArray(h.projects)?h.projects:[];
   const channelBadge=cli.channel==='dev' ? '<span class="badge warn">DEV</span>' : '';
+  const currentVersionMark='<button type="button" class="badge hub-version-mark" id="hubVersionMark">'+esc(cli.current||'-')+'</button>';
   const cliStatus=cli.update_available
-    ? `<span class="badge warn">${esc(cli.current||'-')} → ${esc(cli.latest||'-')}</span>`
-    : `<span class="badge">${esc(cli.current||'-')}</span>`;
+    ? currentVersionMark+'<span class="badge warn">→ '+esc(cli.latest||'-')+'</span>'
+    : currentVersionMark;
   const cards=projects.map(p=>{
     const c=p?.counts||{};
     const name=p?.name||String(p?.path||'Project').split(/[\\/]/).pop()||'Project';
@@ -1139,6 +1362,7 @@ function bindHubActions() {
   document.querySelectorAll('[data-migrate]').forEach(btn=>btn.addEventListener('click',e=>performProjectMigration(btn.dataset.migrate,e.currentTarget)));
   const up=$('#upgradeBtn');
   if(up)up.addEventListener('click',e=>performUpgrade(e.currentTarget));
+  bindChannelGesture();
 }
 
 function matchesStatusFilter(t, key) {
