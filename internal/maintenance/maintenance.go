@@ -64,10 +64,20 @@ func homeDir() string {
 
 func registryPath() string { return filepath.Join(homeDir(),"projects.json") }
 
+func normalizeVersion(value string) string {
+    value=strings.TrimSpace(value)
+    for {
+        previous:=value
+        value=strings.TrimSpace(strings.TrimSuffix(value,`\n`))
+        value=strings.TrimSpace(strings.TrimSuffix(value,`\r`))
+        if value==previous { return value }
+    }
+}
+
 func frameworkVersion(project string) string {
     data,err:=os.ReadFile(filepath.Join(project,"_task_mecca","VERSION"))
     if err!=nil { return "" }
-    return strings.TrimSpace(string(data))
+    return normalizeVersion(string(data))
 }
 
 func RegisterProject(project string) error {
@@ -140,11 +150,13 @@ func httpGet(url string) ([]byte,error) {
 func versionCachePath() string { return filepath.Join(homeDir(),"update-check.json") }
 
 func CachedVersionInfo(current string) VersionInfo {
+    current=normalizeVersion(current)
     info:=VersionInfo{Current:current}
     if data,err:=os.ReadFile(versionCachePath()); err==nil {
         var cached VersionInfo
         if json.Unmarshal(data,&cached)==nil {
             cached.Current=current
+            cached.Latest=normalizeVersion(cached.Latest)
             if at,err:=time.Parse(time.RFC3339,cached.CheckedAt); err==nil && time.Since(at)<5*time.Minute {
                 cached.UpdateAvailable=newerVersion(cached.Latest,current)
                 return cached
@@ -167,6 +179,8 @@ func CachedVersionInfo(current string) VersionInfo {
 }
 
 func compareVersions(left,right string) int {
+    left=normalizeVersion(left)
+    right=normalizeVersion(right)
     parse:=func(v string) []int {
         v=strings.TrimSpace(strings.TrimPrefix(v,"v"))
         core:=strings.SplitN(v,"-",2)[0]
@@ -189,11 +203,14 @@ func compareVersions(left,right string) int {
 }
 
 func newerVersion(latest,current string) bool {
-    if strings.TrimSpace(latest)=="" { return false }
+    latest=normalizeVersion(latest)
+    current=normalizeVersion(current)
+    if latest=="" { return false }
     return compareVersions(latest,current)>0
 }
 
 func RefreshVersionInfo(current string) VersionInfo {
+    current=normalizeVersion(current)
     fresh:=CheckLatest(current)
     _=os.MkdirAll(homeDir(),0755)
     if data,err:=json.MarshalIndent(fresh,"","  "); err==nil {
@@ -203,11 +220,13 @@ func RefreshVersionInfo(current string) VersionInfo {
 }
 
 func ReadCachedVersionInfo(current string) VersionInfo {
+    current=normalizeVersion(current)
     info:=VersionInfo{Current:current}
     if data,err:=os.ReadFile(versionCachePath()); err==nil {
         var cached VersionInfo
         if json.Unmarshal(data,&cached)==nil {
             cached.Current=current
+            cached.Latest=normalizeVersion(cached.Latest)
             cached.UpdateAvailable=newerVersion(cached.Latest,current)
             return cached
         }
@@ -216,10 +235,11 @@ func ReadCachedVersionInfo(current string) VersionInfo {
 }
 
 func CheckLatest(current string) VersionInfo {
+    current=normalizeVersion(current)
     info:=VersionInfo{Current:current,CheckedAt:time.Now().Format(time.RFC3339)}
     data,err:=httpGet(releaseBase()+"/VERSION.txt")
     if err!=nil { info.Error=err.Error(); return info }
-    info.Latest=strings.TrimSpace(string(data))
+    info.Latest=normalizeVersion(string(data))
     info.UpdateAvailable=newerVersion(info.Latest,current)
     return info
 }
@@ -256,6 +276,7 @@ func checksumFor(data []byte,asset string) (string,error) {
 }
 
 func Upgrade(current string) (UpgradeResult,error) {
+    current=normalizeVersion(current)
     result:=UpgradeResult{From:current}
     info:=CheckLatest(current)
     if info.Error!="" { return result,errors.New(info.Error) }
