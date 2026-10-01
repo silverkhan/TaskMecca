@@ -368,6 +368,7 @@ def _parse_fields(text: str) -> dict[str, str]:
 
 SECTION_RE = re.compile(r"^(?P<level>#{2,4})\s+(?P<title>.+?)\s*$")
 CHECKBOX_RE = re.compile(r"^-\s+\[(?P<checked>[ xX])\]\s+(?P<text>.+)$")
+SEMANTIC_SUMMARY_RE = re.compile(r"^>\s*(?:\*\*)?(?:요약|summary)(?:\*\*)?\s*:\s*(.*)$", re.IGNORECASE)
 
 
 def _section_map(text: str) -> dict[str, str]:
@@ -409,6 +410,36 @@ def _subsections(text: str, parent_heading: str) -> dict[str, str]:
         if current:
             result[current].append(line)
     return {name: "\n".join(lines).strip() for name, lines in result.items()}
+
+
+def _split_semantic_summary(value: str) -> tuple[str, str]:
+    lines = value.splitlines()
+    start = next((i for i, line in enumerate(lines) if line.strip()), -1)
+    if start < 0:
+        return "", ""
+    match = SEMANTIC_SUMMARY_RE.match(lines[start].strip())
+    if not match:
+        return "", value.strip()
+    parts: list[str] = []
+    first = match.group(1).strip()
+    if first:
+        parts.append(first)
+    end = start + 1
+    while end < len(lines):
+        stripped = lines[end].strip()
+        if not stripped.startswith(">"):
+            break
+        continuation = stripped[1:].strip()
+        if continuation:
+            parts.append(continuation)
+        end += 1
+    body = "\n".join(lines[:start] + lines[end:]).strip()
+    return " ".join(parts).strip(), body
+
+
+def _cleaned_semantic_section(value: str) -> tuple[str, str]:
+    summary, body = _split_semantic_summary(value)
+    return body, summary
 
 
 def _acceptance_items(value: str) -> list[dict[str, object]]:
@@ -497,8 +528,6 @@ def _document_model(text: str, fields: dict[str, str]) -> dict[str, object]:
     defined = _subsections(text, "요건 정의서")
     simple = _subsections(text, "작업 정의")
     scope = _subsections(text, "범위")
-    # Scope is normally nested under a Defined Task requirement document, so parse
-    # explicit #### labels while keeping Simple Task documents intentionally small.
     includes: list[str] = []
     excludes: list[str] = []
     bucket: list[str] | None = None
@@ -533,35 +562,59 @@ def _document_model(text: str, fields: dict[str, str]) -> dict[str, object]:
         contract_kind = "legacy"
         contract = {}
 
-    acceptance = contract.get("수용 기준", "")
+    background, background_summary = _cleaned_semantic_section(defined.get("배경 및 문제", ""))
+    goal, goal_summary = _cleaned_semantic_section(contract.get("목표", ""))
+    requirements, requirements_summary = _cleaned_semantic_section(defined.get("요구사항", ""))
+    _, scope_summary = _cleaned_semantic_section(defined.get("범위", ""))
+    constraints, constraints_summary = _cleaned_semantic_section(defined.get("제약 및 보존 조건", ""))
+    acceptance, acceptance_summary = _cleaned_semantic_section(contract.get("수용 기준", ""))
+    notes, notes_summary = _cleaned_semantic_section(sections.get("작업 노트", ""))
+    result, result_summary = _cleaned_semantic_section(sections.get("결과", "") or fields.get("결과", ""))
+    verification, verification_summary = _cleaned_semantic_section(sections.get("검증", "") or fields.get("검증", ""))
+    legacy_description, legacy_summary = _cleaned_semantic_section(fields.get("설명", ""))
+    if contract_kind != "defined":
+        scope_in = ""
+        scope_out = ""
+
     summary = _human_summary(sections.get("핵심 요약", ""))
+    section_summaries = {
+        "task_definition": goal_summary,
+        "background": background_summary,
+        "requirements": requirements_summary or goal_summary,
+        "scope": scope_summary or constraints_summary,
+        "acceptance": acceptance_summary,
+        "progress_result": result_summary or notes_summary,
+        "verification": verification_summary,
+        "legacy_task": legacy_summary,
+    }
     return {
         "schema": schema,
         "contract_kind": contract_kind,
         "sections": sections,
         "summary": summary,
         "summary_present": bool(sections.get("핵심 요약", "").strip()),
-        # Keep one normalized object for CLI/search/UI consumers. Simple Tasks only
-        # populate goal + acceptance; Defined Tasks populate the full structure.
+        "section_summaries": section_summaries,
         "requirements": {
-            "background": defined.get("배경 및 문제", ""),
-            "goal": contract.get("목표", ""),
-            "requirements": defined.get("요구사항", ""),
-            "scope_in": scope_in if contract_kind == "defined" else "",
-            "scope_out": scope_out if contract_kind == "defined" else "",
+            "background": background,
+            "goal": goal,
+            "requirements": requirements,
+            "scope_in": scope_in,
+            "scope_out": scope_out,
             "acceptance": acceptance,
             "acceptance_items": _acceptance_items(acceptance),
-            "constraints": defined.get("제약 및 보존 조건", ""),
+            "constraints": constraints,
         },
         "task_definition": {
-            "goal": simple.get("목표", ""),
-            "acceptance": simple.get("수용 기준", ""),
-            "acceptance_items": _acceptance_items(simple.get("수용 기준", "")),
+            "goal": goal,
+            "acceptance": acceptance,
+            "acceptance_items": _acceptance_items(acceptance),
         },
-        "result": sections.get("결과", fields.get("결과", "")),
-        "verification": sections.get("검증", fields.get("검증", "")),
-        "notes": sections.get("작업 노트", ""),
+        "result": result,
+        "verification": verification,
+        "notes": notes,
+        "legacy_description": legacy_description,
     }
+
 
 def _title(text: str) -> str:
     for line in text.splitlines():

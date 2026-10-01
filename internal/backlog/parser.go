@@ -7,6 +7,7 @@ import (
 
 var sectionLine = regexp.MustCompile(`^(#{2,4})\s+(.+?)\s*$`)
 var checkboxLine = regexp.MustCompile(`^-\s+\[([ xX])\]\s+(.+)$`)
+var semanticSummaryLine = regexp.MustCompile(`(?i)^>\s*(?:\*\*)?(요약|summary)(?:\*\*)?\s*:\s*(.*)$`)
 
 var fieldNames = map[string]bool{
     "등록자": true, "Agent": true, "변경범위": true, "대기": true, "대기유형": true,
@@ -104,6 +105,35 @@ func subsections(text,parent string) map[string]string {
     return out
 }
 
+func splitSemanticSummary(value string) (string,string) {
+    lines:=strings.Split(value,"\n")
+    start:=-1
+    for i,line:=range lines {
+        if strings.TrimSpace(line)!="" { start=i; break }
+    }
+    if start<0 { return "","" }
+    match:=semanticSummaryLine.FindStringSubmatch(strings.TrimSpace(lines[start]))
+    if match==nil { return "",strings.TrimSpace(value) }
+    parts:=[]string{}
+    if first:=strings.TrimSpace(match[2]); first!="" { parts=append(parts,first) }
+    end:=start+1
+    for end<len(lines) {
+        trimmed:=strings.TrimSpace(lines[end])
+        if !strings.HasPrefix(trimmed,">") { break }
+        continuation:=strings.TrimSpace(strings.TrimPrefix(trimmed,">"))
+        if continuation!="" { parts=append(parts,continuation) }
+        end++
+    }
+    bodyLines:=append([]string{},lines[:start]...)
+    bodyLines=append(bodyLines,lines[end:]...)
+    return strings.TrimSpace(strings.Join(parts," ")),strings.TrimSpace(strings.Join(bodyLines,"\n"))
+}
+
+func cleanedSemanticSection(value string) (string,string) {
+    summary,body:=splitSemanticSummary(value)
+    return body,summary
+}
+
 func acceptanceItems(value string) []map[string]any {
     items:=[]map[string]any{}
     for _,line:=range strings.Split(value,"\n") {
@@ -196,33 +226,56 @@ func documentModel(text string,fields map[string]string) map[string]any {
     } else if _,ok:=sections["작업 정의"]; ok {
         schema,kind,contract="simple-v2","simple",simple
     }
-    acceptance:=contract["수용 기준"]
+
+    background,backgroundSummary:=cleanedSemanticSection(defined["배경 및 문제"])
+    goal,goalSummary:=cleanedSemanticSection(contract["목표"])
+    requirements,requirementsSummary:=cleanedSemanticSection(defined["요구사항"])
+    _,scopeSummary:=cleanedSemanticSection(defined["범위"])
+    constraints,constraintsSummary:=cleanedSemanticSection(defined["제약 및 보존 조건"])
+    acceptance,acceptanceSummary:=cleanedSemanticSection(contract["수용 기준"])
+    notes,notesSummary:=cleanedSemanticSection(sections["작업 노트"])
+    result,resultSummary:=cleanedSemanticSection(firstNonEmpty(sections["결과"],fields["결과"]))
+    verification,verificationSummary:=cleanedSemanticSection(firstNonEmpty(sections["검증"],fields["검증"]))
+    legacyDescription,legacySummary:=cleanedSemanticSection(fields["설명"])
     if kind!="defined" { scopeIn=""; scopeOut="" }
+
     summary:=humanSummary(sections["핵심 요약"])
+    sectionSummaries:=map[string]string{
+        "task_definition":goalSummary,
+        "background":backgroundSummary,
+        "requirements":firstNonEmpty(requirementsSummary,goalSummary),
+        "scope":firstNonEmpty(scopeSummary,constraintsSummary),
+        "acceptance":acceptanceSummary,
+        "progress_result":firstNonEmpty(resultSummary,notesSummary),
+        "verification":verificationSummary,
+        "legacy_task":legacySummary,
+    }
     return map[string]any{
         "schema":schema,
         "contract_kind":kind,
         "sections":sections,
         "summary":summary,
         "summary_present":strings.TrimSpace(sections["핵심 요약"])!="",
+        "section_summaries":sectionSummaries,
         "requirements":map[string]any{
-            "background":defined["배경 및 문제"],
-            "goal":contract["목표"],
-            "requirements":defined["요구사항"],
+            "background":background,
+            "goal":goal,
+            "requirements":requirements,
             "scope_in":scopeIn,
             "scope_out":scopeOut,
             "acceptance":acceptance,
             "acceptance_items":acceptanceItems(acceptance),
-            "constraints":defined["제약 및 보존 조건"],
+            "constraints":constraints,
         },
         "task_definition":map[string]any{
-            "goal":simple["목표"],
-            "acceptance":simple["수용 기준"],
-            "acceptance_items":acceptanceItems(simple["수용 기준"]),
+            "goal":goal,
+            "acceptance":acceptance,
+            "acceptance_items":acceptanceItems(acceptance),
         },
-        "result":firstNonEmpty(sections["결과"],fields["결과"]),
-        "verification":firstNonEmpty(sections["검증"],fields["검증"]),
-        "notes":sections["작업 노트"],
+        "result":result,
+        "verification":verification,
+        "notes":notes,
+        "legacy_description":legacyDescription,
     }
 }
 

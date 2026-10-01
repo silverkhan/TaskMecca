@@ -527,6 +527,11 @@ function summaryPreview(value,max=150) {
 function detailDisclosure(id,label,preview,body,open=false) {
   return `<details class="section detail-section detail-disclosure" id="${esc(id)}" data-toc-label="${esc(label)}" ${open?'open':''}><summary><div><h2>${esc(label)}</h2>${preview?`<p>${esc(preview)}</p>`:''}</div><span class="detail-disclosure-chevron">⌄</span></summary><div class="detail-disclosure-body">${body}</div></details>`;
 }
+function semanticSection(id,label,summary,body) {
+  const value=summaryText(summary);
+  if(value)return detailDisclosure(id,label,value,body);
+  return `<section class="section detail-section detail-static" id="${esc(id)}" data-toc-label="${esc(label)}"><div class="detail-static-head"><h2>${esc(label)}</h2></div><div class="detail-static-body">${body}</div></section>`;
+}
 function relationBadges(ids,kind) {
   const rows=(ids||[]).filter(Boolean);
   if(!rows.length)return '<span class="summary">-</span>';
@@ -537,10 +542,11 @@ function humanSummaryCard(task) {
   const rows=[[t('summaryPurpose'),s.purpose],[t('summaryChange'),s.change],[t('summaryStatusResult'),s.status_result],[t('summaryFollowUp'),s.follow_up]].filter(([,value])=>Boolean(value));
   const links=[];
   const kind=task.document?.contract_kind||'legacy';
+  links.push(['related-work',t('relatedWork')],['operations',t('operationsEvidence')],['lifecycle',t('lifecycle')]);
   if(kind==='defined')links.push(['background',t('backgroundProblem')],['requirements',t('requirements')],['scope',t('workScope')],['acceptance',t('completionCriteria')]);
   else if(kind==='simple')links.push(['task-definition',t('taskDefinition')],['acceptance',t('completionCriteria')]);
   else links.push(['legacy-task',t('legacyDetails')]);
-  links.push(['progress-result',t('progressResult')],['verification',t('verificationDetail')],['related-work',t('relatedWork')],['operations',t('operationsEvidence')],['lifecycle',t('lifecycle')]);
+  links.push(['progress-result',t('progressResult')],['verification',t('verificationDetail')]);
   const urgent=reason?`<div class="summary-alert ${reason.severity==='danger'?'danger':''}"><strong>${esc(reason.title||t('needsAttention'))}</strong><span>${esc(reason.message||'')}</span>${reason.resume_condition?`<span>${esc(reason.resume_condition)}</span>`:''}</div>`:'';
   return `<section class="human-summary-card detail-section" id="human-summary" data-toc-label="${esc(t('humanSummary'))}"><div class="human-summary-head"><div><div class="eyebrow">${esc(t('humanSummary'))}</div>${!s.canonical?`<span class="summary-source">${esc(t('summaryFallback'))}</span>`:''}</div></div><div class="human-summary-grid">${rows.map(([label,value])=>`<div class="human-summary-row"><span>${esc(label)}</span><strong>${esc(value)}</strong></div>`).join('')}</div>${urgent}<div class="detail-jump-list"><span>${esc(t('detailLinks'))}</span>${links.map(([id,label])=>`<a href="#${esc(id)}" data-detail-target="${esc(id)}">${esc(label)}</a>`).join('')}</div></section>`;
 }
@@ -1214,21 +1220,21 @@ function sourceLink(source,compact=false) {
   return `<span class="${cls} muted"><span>${esc(label)}</span></span>`;
 }
 function contractSections(task) {
-  const doc=task.document||{}, req=doc.requirements||{}, kind=doc.contract_kind||'legacy';
+  const doc=task.document||{}, req=doc.requirements||{}, kind=doc.contract_kind||'legacy', ss=doc.section_summaries||{};
   if(kind==='simple'){
     const definition=`<div class="contract-note">${esc(t('simpleNote'))}</div><h3>${esc(t('goal'))}</h3><div class="markdown">${markdown(req.goal)}</div>`;
     const acceptance=`<div class="markdown">${markdown(req.acceptance)}</div>`;
-    return detailDisclosure('task-definition',t('taskDefinition'),summaryPreview(req.goal),definition)+detailDisclosure('acceptance',t('completionCriteria'),summaryPreview(req.acceptance),acceptance);
+    return semanticSection('task-definition',t('taskDefinition'),ss.task_definition,definition)+semanticSection('acceptance',t('completionCriteria'),ss.acceptance,acceptance);
   }
   if(kind==='defined'){
-    const background=detailDisclosure('background',t('backgroundProblem'),summaryPreview(req.background),`<div class="contract-note">${esc(t('definedNote'))}</div><div class="markdown">${markdown(req.background)}</div>`);
-    const requirements=detailDisclosure('requirements',t('requirementsAndConstraints'),summaryPreview(req.requirements||req.goal),`<h3>${esc(t('goal'))}</h3><div class="markdown">${markdown(req.goal)}</div><h3>${esc(t('requirements'))}</h3><div class="markdown">${markdown(req.requirements)}</div>`);
-    const scopePreview=[summaryPreview(req.scope_in,80),summaryPreview(req.scope_out,80)].filter(Boolean).join(' / ');
-    const scope=detailDisclosure('scope',t('workScope'),scopePreview,`<h3>${esc(t('scopeIn'))}</h3><div class="markdown">${markdown(req.scope_in)}</div><h3>${esc(t('scopeOut'))}</h3><div class="markdown">${markdown(req.scope_out)}</div><h3>${esc(t('constraints'))}</h3><div class="markdown">${markdown(req.constraints)}</div>`);
-    const acceptance=detailDisclosure('acceptance',t('completionCriteria'),summaryPreview(req.acceptance),`<div class="markdown">${markdown(req.acceptance)}</div>`);
+    const background=semanticSection('background',t('backgroundProblem'),ss.background,`<div class="contract-note">${esc(t('definedNote'))}</div><div class="markdown">${markdown(req.background)}</div>`);
+    const requirements=semanticSection('requirements',t('requirementsAndConstraints'),ss.requirements,`<h3>${esc(t('goal'))}</h3><div class="markdown">${markdown(req.goal)}</div><h3>${esc(t('requirements'))}</h3><div class="markdown">${markdown(req.requirements)}</div>`);
+    const scope=semanticSection('scope',t('workScope'),ss.scope,`<h3>${esc(t('scopeIn'))}</h3><div class="markdown">${markdown(req.scope_in)}</div><h3>${esc(t('scopeOut'))}</h3><div class="markdown">${markdown(req.scope_out)}</div><h3>${esc(t('constraints'))}</h3><div class="markdown">${markdown(req.constraints)}</div>`);
+    const acceptance=semanticSection('acceptance',t('completionCriteria'),ss.acceptance,`<div class="markdown">${markdown(req.acceptance)}</div>`);
     return background+requirements+scope+acceptance;
   }
-  return detailDisclosure('legacy-task',t('legacyDetails'),summaryPreview(task.fields?.설명),`<div class="contract-note">${esc(t('legacyNote'))}</div><div class="markdown">${markdown(task.fields?.설명)}</div>`);
+  const legacy=doc.legacy_description||task.fields?.설명;
+  return semanticSection('legacy-task',t('legacyDetails'),ss.legacy_task,`<div class="contract-note">${esc(t('legacyNote'))}</div><div class="markdown">${markdown(legacy)}</div>`);
 }
 function detailToc() {
   const icon=`<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/></svg>`;
@@ -1300,17 +1306,18 @@ function detailView(task) {
   const lifecycleBody=`${timingInferred?`<div class="timing-note"><strong>${esc(t('provisionalTiming'))}</strong><span>${esc(t('provisionalTimingDetail'))}</span></div>`:''}${timingIncomplete?`<div class="timing-note warning"><strong>${esc(t('incompleteHistory'))}</strong><span>${esc(t('incompleteHistoryDetail'))}</span></div>`:''}${events.length?`<div class="timeline">${events.map(e=>`<div class="timeline-event"><span class="timeline-dot"></span><span class="timeline-time">${esc(new Date(e.at).toLocaleString(localeCode()))}</span><div class="timeline-label"><strong>${esc(lifecycleEventLabel(e.label))}${e.provisional?` · ${esc(t('provisional'))}`:''}</strong><small>${e.interval&&e.interval!=='-'?`${esc(t('stayed'))} ${esc(e.interval)}`:''}${e.source&&e.source!=='git'?` · ${esc(e.source)}`:''}</small></div></div>`).join('')}</div>`:`<p class="summary">${esc(t('noLifecycle'))}</p>`}`;
   const lifecycle=detailDisclosure('lifecycle',t('lifecycle'),lifecyclePreview,lifecycleBody);
   const passiveAlert=!reason&&warn?`<div class="attention-banner ${['stale','worker_missing'].includes(act.health)?'danger':''}"><strong>${esc(healthLabel(act.health))}</strong><span>${esc(t('lastObservable',{ago:ago(act.last_activity_at),source:act.last_activity_source}))} ${esc(act.health==='worker_missing'?t('workerMissingDetail'):t('quietAdvisory'))}</span></div>`:'';
+  const sectionSummaries=task.document?.section_summaries||{};
   const progressBody=`<h3>${esc(t('workNotes'))}</h3><div class="markdown">${markdown(task.document?.notes||task.fields?.메모)}</div><h3>${esc(t('result'))}</h3><div class="markdown">${markdown(task.document?.result||task.fields?.결과)}</div>`;
-  const progress=detailDisclosure('progress-result',t('progressResult'),summaryPreview(hs.status_result),progressBody);
+  const progress=semanticSection('progress-result',t('progressResult'),sectionSummaries.progress_result,progressBody);
   const verificationValue=task.document?.verification||task.fields?.검증;
   const verificationBody=`<button id="rawToggle" class="raw-toggle">${esc(state.raw?t('rendered'):t('rawMarkdown'))}</button><div class="markdown">${markdown(verificationValue)}</div>${state.raw?`<pre class="raw">${esc(task.raw_markdown||'')}</pre>`:''}`;
-  const verification=detailDisclosure('verification',t('verificationDetail'),summaryPreview(verificationValue),verificationBody);
+  const verification=semanticSection('verification',t('verificationDetail'),sectionSummaries.verification,verificationBody);
   const relatedBody=`<div class="relation-groups"><div><h3>${esc(t('dependsOn'))}</h3><div class="relation-list">${relationBadges(task.depends_on,t('dependsOn'))}</div></div><div><h3>${esc(t('related'))}</h3><div class="relation-list">${relationBadges(task.related,t('related'))}</div></div></div>`;
   const related=detailDisclosure('related-work',t('relatedWork'),[...(task.depends_on||[]),...(task.related||[])].join(', '),relatedBody);
   const metricGrid=`<div class="detail-metrics embedded"><div><div class="value live-active">${fmtSec(runningSeconds(task,'active'))}</div><div class="label">${esc(t('activeTime'))}</div></div><div><div class="value live-wait">${fmtSec(runningSeconds(task,'wait'))}</div><div class="label">${esc(t('waitTime'))}</div></div><div><div class="value live-queue">${fmtSec(runningSeconds(task,'queue'))}</div><div class="label">${esc(t('queueTime'))}</div></div><div><div class="value live-lead">${fmtSec(runningSeconds(task,'lead'))}</div><div class="label">${esc(t('leadTime'))}</div></div></div>`;
   const operationsBody=`${metricGrid}<h3>${esc(t('overview'))}</h3><div class="meta-grid">${metaRow(t('registrant'),task.registrant)}${metaRow(t('agent'),task.agent)}${metaRow(t('changeScope'),task.scope)}${metaRow(t('location'),task.archive_month?`archive/${task.archive_month}`:task.location)}${metaRow(t('updated'),dateTimeLabel(updatedAt(task)))}${metaRow(t('completed'),dateTimeLabel(completionAt(task)))}${metaRow(t('activity'),healthLabel(act.health))}${metaRow(t('lastSignal'),act.last_activity_at?ago(act.last_activity_at):'-')}${metaRow(t('signalSource'),act.last_activity_source)}</div><h3>${esc(t('execution'))}</h3><div class="meta-grid">${metaRow(t('runtimeProvider'),task.fields?.RuntimeProvider||'unknown')}${metaRow(t('dispatchStatus'),task.fields?.Dispatch상태||task.fields?.실행상태||'unknown')}${metaRow(t('executionEvidence'),task.fields?.실행근거||'unknown')}${metaRow(t('fallbackEvidence'),task.fields?.Fallback근거||'-')}</div>`;
   const operations=detailDisclosure('operations',t('operationsEvidence'),`${task.agent||'-'} · ${healthLabel(act.health)}`,operationsBody);
-  const body=`<div class="detail"><button class="back" id="backBtn">${esc(t('backToBacklog'))}</button><div class="detail-head"><div class="detail-id">${esc(task.id)}</div><h1>${esc(titleOf(task))}</h1><div class="detail-status"><span class="status ${esc(task.state)}">${esc(stateLabel(task.state))}</span>${task.agent?`<span class="badge">${esc(task.agent)}</span>`:''}<span class="badge">${esc(task.document?.schema||'legacy')}</span>${task.archive_month?`<span class="badge">archive/${esc(task.archive_month)}</span>`:''}</div>${task.source?.label?`<div class="detail-source-row"><span>${esc(t('source'))}</span>${sourceLink(task.source)}</div>`:''}${(task.tags||[]).length?`<div class="detail-tag-row">${(task.tags||[]).map(tag=>tagChip(tag,true)).join('')}</div>`:''}</div>${humanSummaryCard(task)}${passiveAlert}${contractSections(task)}${progress}${verification}${related}${operations}${lifecycle}</div>`;
+  const body=`<div class="detail"><button class="back" id="backBtn">${esc(t('backToBacklog'))}</button><div class="detail-head"><div class="detail-id">${esc(task.id)}</div><h1>${esc(titleOf(task))}</h1><div class="detail-status"><span class="status ${esc(task.state)}">${esc(stateLabel(task.state))}</span>${task.agent?`<span class="badge">${esc(task.agent)}</span>`:''}<span class="badge">${esc(task.document?.schema||'legacy')}</span>${task.archive_month?`<span class="badge">archive/${esc(task.archive_month)}</span>`:''}</div>${task.source?.label?`<div class="detail-source-row"><span>${esc(t('source'))}</span>${sourceLink(task.source)}</div>`:''}${(task.tags||[]).length?`<div class="detail-tag-row">${(task.tags||[]).map(tag=>tagChip(tag,true)).join('')}</div>`:''}</div>${humanSummaryCard(task)}${related}${operations}${lifecycle}${passiveAlert}${contractSections(task)}${progress}${verification}</div>`;
   return `<div class="detail-layout">${body}${detailToc()}</div>`;
 }
 async function loadTaskDetail(id) {
