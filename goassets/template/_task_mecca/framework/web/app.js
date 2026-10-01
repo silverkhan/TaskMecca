@@ -44,6 +44,15 @@ const state = {
   eventStreamInitialized: false,
   attentionRevision: '',
   attentionRevisionKey: '',
+  releaseNotes: [],
+  releaseNotesTotal: 0,
+  releaseNotesHasMore: false,
+  releaseNotesLoaded: false,
+  releaseNotesLoading: false,
+  releaseNoteDetails: {},
+  releaseNoteExpanded: '',
+  releaseNotePopup: null,
+  releaseNotePopupCheckedVersion: '',
 };
 
 
@@ -211,6 +220,28 @@ Object.assign(I18N.en,{
   statusChanges:'Status changes', taskRegistered:'Registered', taskRemoved:'Removed from backlog', moreStatusChanges:'{n} more',
   upgrading:'Upgrading…', migrating:'Migrating…'
 });
+Object.assign(I18N.ko,{
+  releaseNotes:'업데이트 기록', releaseNotesIntro:'Task Mecca의 사용자용 변경사항을 버전별로 확인합니다.',
+  releaseNotesLoading:'업데이트 기록을 불러오는 중…', releaseNotesUnavailable:'업데이트 기록을 불러올 수 없습니다.',
+  releaseNotesMore:'이전 업데이트 더 보기', releaseNotesLatest:'최신', releaseNotesNew:'NEW',
+  whatsNew:'이번 업데이트', updatedToVersion:'Task Mecca {version}으로 업데이트되었습니다.',
+  releaseClose:'닫기', releaseDetails:'자세히 보기', releaseConfirm:'확인', releaseMarkRead:'읽음 처리',
+  releaseUnreadNotice:'이 버전의 업데이트 내용을 아직 확인하지 않았습니다.',
+  releaseNewFeature:'새 기능', releaseImproved:'개선', releaseFixed:'수정', releaseImportant:'중요 변경',
+  releaseMigrationRequired:'프로젝트 업데이트 필요', releaseInstructionRefresh:'Root 운영 지침 재확인 필요',
+  releaseNoEntries:'표시할 업데이트 기록이 없습니다.'
+});
+Object.assign(I18N.en,{
+  releaseNotes:'Update history', releaseNotesIntro:'Review user-facing Task Mecca changes by version.',
+  releaseNotesLoading:'Loading update history…', releaseNotesUnavailable:'Update history is unavailable.',
+  releaseNotesMore:'Load older updates', releaseNotesLatest:'Latest', releaseNotesNew:'NEW',
+  whatsNew:"What's new", updatedToVersion:'Task Mecca was updated to {version}.',
+  releaseClose:'Close', releaseDetails:'View details', releaseConfirm:'Got it', releaseMarkRead:'Mark as read',
+  releaseUnreadNotice:'You have not marked this update as read yet.',
+  releaseNewFeature:'New', releaseImproved:'Improved', releaseFixed:'Fixed', releaseImportant:'Important',
+  releaseMigrationRequired:'Project update required', releaseInstructionRefresh:'Root operating instructions need review',
+  releaseNoEntries:'No update history is available.'
+});
 function t(key, vars = {}) {
   const dict = I18N[state.language] || I18N.en;
   let value = dict[key] ?? I18N.en[key] ?? key;
@@ -221,6 +252,163 @@ function localeCode() { return LANGUAGES[state.language]?.locale || 'en-US'; }
 
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function releaseLocalized(value) {
+  if(value==null)return '';
+  if(typeof value==='string')return value;
+  return String(value[state.language]||value.en||value.ko||'');
+}
+function releaseSectionLabel(type) {
+  return t({new:'releaseNewFeature',improved:'releaseImproved',fixed:'releaseFixed',important:'releaseImportant'}[type]||type);
+}
+function releaseSectionMarkup(sections=[]) {
+  return (Array.isArray(sections)?sections:[]).map(section=>{
+    const items=(section.items||[]).map(item=>'<li>'+esc(releaseLocalized(item))+'</li>').join('');
+    if(!items)return '';
+    return '<section class="release-section release-'+esc(section.type||'improved')+'"><h3>'+esc(releaseSectionLabel(section.type))+'</h3><ul>'+items+'</ul></section>';
+  }).join('');
+}
+function currentReleaseVersion() {
+  return normalizedVersion(state.versionInfo?.cli?.current||state.hub?.cli?.current||'');
+}
+function releaseNoteKnown(version) {
+  return Boolean(state.releaseNoteDetails[version] || state.releaseNotes.some(item=>item.version===version));
+}
+function releaseNoteUnread(version=currentReleaseVersion()) {
+  const current=currentReleaseVersion();
+  if(!version||version!==current||!releaseNoteKnown(version))return false;
+  return localStorage.getItem('task-mecca-release-notes-seen-version')!==version;
+}
+function renderReleaseNotesBadge() {
+  const badge=$('#releaseNotesBadge');
+  if(!badge)return;
+  const current=currentReleaseVersion();
+  if(releaseNoteUnread(current)){
+    badge.textContent=t('releaseNotesNew');
+    badge.classList.add('new');
+    badge.removeAttribute('aria-hidden');
+  }else{
+    badge.textContent='';
+    badge.classList.remove('new');
+    badge.setAttribute('aria-hidden','true');
+  }
+}
+function markReleaseNoteSeen(version) {
+  if(!version)return;
+  localStorage.setItem('task-mecca-release-notes-seen-version',version);
+  localStorage.setItem('task-mecca-release-notes-dismissed-version',version);
+  if(state.releaseNotePopup?.version===version)state.releaseNotePopup=null;
+  renderReleaseNoteModal();
+  renderReleaseNotesBadge();
+  if(state.view==='release-notes')render();
+}
+function dismissReleaseNotePopup() {
+  const version=state.releaseNotePopup?.version;
+  if(version)localStorage.setItem('task-mecca-release-notes-dismissed-version',version);
+  state.releaseNotePopup=null;
+  renderReleaseNoteModal();
+  renderReleaseNotesBadge();
+}
+async function loadReleaseNoteDetail(version) {
+  version=String(version||'').trim();
+  if(!version)return null;
+  if(state.releaseNoteDetails[version])return state.releaseNoteDetails[version];
+  try{
+    const r=await fetch('/api/release-notes/'+encodeURIComponent(version),{cache:'no-store'});
+    if(!r.ok)return null;
+    const detail=await r.json();
+    state.releaseNoteDetails[version]=detail;
+    renderReleaseNotesBadge();
+    return detail;
+  }catch(_){ return null; }
+}
+async function loadReleaseNotes(reset=false) {
+  if(state.releaseNotesLoading)return;
+  if(reset){
+    state.releaseNotes=[];
+    state.releaseNotesTotal=0;
+    state.releaseNotesHasMore=false;
+    state.releaseNotesLoaded=false;
+  }else if(state.releaseNotesLoaded&&!state.releaseNotesHasMore){
+    return;
+  }
+  state.releaseNotesLoading=true;
+  if(state.view==='release-notes')render();
+  try{
+    const offset=reset?0:state.releaseNotes.length;
+    const r=await fetch('/api/release-notes?offset='+offset+'&limit=20',{cache:'no-store'});
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    const body=await r.json();
+    const items=Array.isArray(body.items)?body.items:[];
+    state.releaseNotes=reset?items:[...state.releaseNotes,...items.filter(item=>!state.releaseNotes.some(existing=>existing.version===item.version))];
+    state.releaseNotesTotal=Number(body.total)||state.releaseNotes.length;
+    state.releaseNotesHasMore=Boolean(body.has_more);
+    state.releaseNotesLoaded=true;
+  }catch(_){
+    state.releaseNotesLoaded=true;
+  }finally{
+    state.releaseNotesLoading=false;
+    renderReleaseNotesBadge();
+    if(state.view==='release-notes')render();
+  }
+}
+function releaseNoteDetailMarkup(detail,options={}) {
+  if(!detail)return '';
+  const compact=Boolean(options.compact);
+  const migration=detail.migration||{};
+  const flags=[
+    migration.required?'<span class="release-flag important">'+esc(t('releaseMigrationRequired'))+'</span>':'',
+    migration.instruction_refresh?'<span class="release-flag">'+esc(t('releaseInstructionRefresh'))+'</span>':''
+  ].filter(Boolean).join('');
+  return '<div class="release-detail '+(compact?'compact':'')+'">'+
+    '<div class="release-detail-head"><div><span class="release-version">v'+esc(detail.version||'')+'</span><span class="release-date">'+esc(detail.date||'')+'</span></div>'+(flags?'<div class="release-flags">'+flags+'</div>':'')+'</div>'+
+    '<p class="release-summary">'+esc(releaseLocalized(detail.summary))+'</p>'+
+    '<div class="release-sections">'+releaseSectionMarkup(detail.sections||[])+'</div></div>';
+}
+function renderReleaseNoteModal() {
+  const modal=$('#releaseNoteModal');
+  if(!modal)return;
+  const detail=state.releaseNotePopup;
+  if(!detail){
+    modal.hidden=true;
+    modal.innerHTML='';
+    document.body.classList.remove('release-modal-open');
+    return;
+  }
+  modal.hidden=false;
+  document.body.classList.add('release-modal-open');
+  modal.innerHTML='<div class="release-modal-backdrop" data-release-dismiss></div>'+
+    '<section class="release-modal-card" role="dialog" aria-modal="true" aria-labelledby="releaseModalTitle">'+
+      '<button class="release-modal-close" type="button" data-release-dismiss aria-label="'+esc(t('releaseClose'))+'" title="'+esc(t('releaseClose'))+'">×</button>'+
+      '<div class="eyebrow">'+esc(t('whatsNew'))+'</div>'+
+      '<h2 id="releaseModalTitle">'+esc(t('updatedToVersion',{version:detail.version||''}))+'</h2>'+
+      releaseNoteDetailMarkup(detail,{compact:true})+
+      '<div class="release-modal-actions"><button type="button" class="action-btn secondary" id="releaseModalDetails">'+esc(t('releaseDetails'))+'</button><button type="button" class="action-btn" id="releaseModalConfirm">'+esc(t('releaseConfirm'))+'</button></div>'+
+    '</section>';
+  modal.querySelectorAll('[data-release-dismiss]').forEach(el=>el.addEventListener('click',dismissReleaseNotePopup));
+  $('#releaseModalConfirm')?.addEventListener('click',()=>markReleaseNoteSeen(detail.version));
+  $('#releaseModalDetails')?.addEventListener('click',()=>{
+    localStorage.setItem('task-mecca-release-notes-dismissed-version',detail.version);
+    state.releaseNotePopup=null;
+    state.releaseNoteExpanded=detail.version;
+    renderReleaseNoteModal();
+    navigateView('release-notes');
+  });
+}
+async function maybeShowCurrentReleaseNote() {
+  const version=currentReleaseVersion();
+  if(!version||version.includes('-dev.')){ renderReleaseNotesBadge(); return; }
+  if(state.releaseNotePopupCheckedVersion===version){ renderReleaseNotesBadge(); return; }
+  state.releaseNotePopupCheckedVersion=version;
+  const detail=await loadReleaseNoteDetail(version);
+  if(!detail){ renderReleaseNotesBadge(); return; }
+  renderReleaseNotesBadge();
+  const seen=localStorage.getItem('task-mecca-release-notes-seen-version');
+  const dismissed=localStorage.getItem('task-mecca-release-notes-dismissed-version');
+  if(seen===version||dismissed===version)return;
+  state.releaseNotePopup=detail;
+  renderReleaseNoteModal();
+}
+
 
 function renderGlobalUpdateIndicator() {
   const el=$('#globalUpdateIndicator');
@@ -328,6 +516,8 @@ async function refreshVersionInfo(force=false) {
     if(!r.ok)throw new Error(`HTTP ${r.status}`);
     state.versionInfo=await r.json();
     renderGlobalUpdateIndicator();
+    renderReleaseNotesBadge();
+    queueMicrotask(()=>maybeShowCurrentReleaseNote());
   }catch(_){}
 }
 
@@ -1055,6 +1245,21 @@ function resolveProjectContext() {
   return projects[0]?.path||'';
 }
 function navigateView(view) {
+  if(view==='release-notes'){
+    state.project='';
+    state.snapshot=null;
+    state.listData=null;
+    state.detailTask=null;
+    closeAttentionStream();
+    state.loadError='';
+    state.view='release-notes';
+    state.detail=null;
+    state.projectMenuOpen=false;
+    history.pushState({},'','/?view=release-notes');
+    render();
+    loadReleaseNotes(!state.releaseNotesLoaded);
+    return;
+  }
   if(view==='hub'){
     state.project='';
     state.snapshot=null;
@@ -1137,6 +1342,54 @@ function nav() {
     b.classList.toggle('active', state.view === b.dataset.view);
     b.onclick = () => navigateView(b.dataset.view);
   });
+  renderReleaseNotesBadge();
+}
+
+function releaseNotesView() {
+  const head='<div class="page-head"><div><div class="eyebrow">TASK MECCA</div><h1>'+esc(t('releaseNotes'))+'</h1><p class="summary">'+esc(t('releaseNotesIntro'))+'</p></div></div>';
+  if(state.releaseNotesLoading&&!state.releaseNotes.length)return head+'<div class="loading">'+esc(t('releaseNotesLoading'))+'</div>';
+  if(state.releaseNotesLoaded&&!state.releaseNotes.length)return head+'<div class="empty">'+esc(t('releaseNoEntries'))+'</div>';
+
+  let previousYear='';
+  const rows=state.releaseNotes.map((item,index)=>{
+    const year=String(item.date||'').slice(0,4)||'—';
+    const yearHead=year!==previousYear?'<h2 class="release-year">'+esc(year)+'</h2>':'';
+    previousYear=year;
+    const expanded=state.releaseNoteExpanded===item.version;
+    const detail=expanded?state.releaseNoteDetails[item.version]:null;
+    const latest=index===0?'<span class="badge">'+esc(t('releaseNotesLatest'))+'</span>':'';
+    const unread=releaseNoteUnread(item.version)?'<span class="badge warn">'+esc(t('releaseNotesNew'))+'</span>':'';
+    const migration=item.migration?.required?'<span class="release-flag important">'+esc(t('releaseMigrationRequired'))+'</span>':'';
+    const detailHTML=expanded?'<div class="release-history-detail">'+(detail?releaseNoteDetailMarkup(detail):'<div class="loading">'+esc(t('releaseNotesLoading'))+'</div>')+(releaseNoteUnread(item.version)&&detail?'<div class="release-read-row"><span>'+esc(t('releaseUnreadNotice'))+'</span><button type="button" class="action-btn secondary" data-release-confirm="'+esc(item.version)+'">'+esc(t('releaseMarkRead'))+'</button></div>':'')+'</div>':'';
+    return yearHead+'<article class="release-history-item '+(expanded?'expanded':'')+'">'+
+      '<button type="button" class="release-history-toggle" data-release-version="'+esc(item.version)+'" aria-expanded="'+(expanded?'true':'false')+'">'+
+        '<span class="release-history-version"><strong>v'+esc(item.version)+'</strong><small>'+esc(item.date||'')+'</small></span>'+
+        '<span class="release-history-summary">'+esc(releaseLocalized(item.summary))+'</span>'+
+        '<span class="release-history-badges">'+latest+unread+migration+'</span>'+
+        '<span class="release-history-chevron">'+(expanded?'−':'+')+'</span>'+
+      '</button>'+detailHTML+'</article>';
+  }).join('');
+  const more=state.releaseNotesHasMore?'<div class="release-more"><button type="button" class="action-btn secondary" id="releaseNotesMore" '+(state.releaseNotesLoading?'disabled':'')+'>'+esc(t('releaseNotesMore'))+'</button></div>':'';
+  return head+'<div class="release-history">'+rows+'</div>'+more;
+}
+function bindReleaseNotesActions() {
+  document.querySelectorAll('[data-release-version]').forEach(btn=>btn.addEventListener('click',async()=>{
+    const version=btn.dataset.releaseVersion;
+    if(state.releaseNoteExpanded===version){
+      state.releaseNoteExpanded='';
+      render();
+      return;
+    }
+    state.releaseNoteExpanded=version;
+    render();
+    await loadReleaseNoteDetail(version);
+    if(state.view==='release-notes'&&state.releaseNoteExpanded===version)render();
+  }));
+  document.querySelectorAll('[data-release-confirm]').forEach(btn=>btn.addEventListener('click',e=>{
+    e.stopPropagation();
+    markReleaseNoteSeen(btn.dataset.releaseConfirm);
+  }));
+  $('#releaseNotesMore')?.addEventListener('click',()=>loadReleaseNotes(false));
 }
 
 function hubView() {
@@ -1724,6 +1977,12 @@ function toggleSidebar() {
 function render() {
   nav(); translateChrome(); renderAccess(); renderBacklogPicker(); applySidebarState(); updateNotificationIndicator(); renderGlobalUpdateIndicator(); renderContentUpdatePrompt();
   const c=$('#content'), data=currentProjectData();
+  if(state.view==='release-notes'){
+    c.innerHTML=releaseNotesView();
+    bindReleaseNotesActions();
+    renderReleaseNoteModal();
+    return;
+  }
   const manualReady=state.view==='manual';
   const snapshotView=['workload','attention','issues'].includes(state.view);
   const viewDataReady=manualReady || (snapshotView ? Boolean(state.snapshot) : Boolean(data));
@@ -1927,6 +2186,13 @@ async function refreshOnce() {
   if(targetProject)params.set('project',targetProject);
   const qs=params.toString()?`?${params}`:'';
 
+  if(targetView==='release-notes'){
+    closeAttentionStream();
+    await loadReleaseNotes(!state.releaseNotesLoaded);
+    if(state.view==='release-notes')render();
+    return;
+  }
+
   if(targetView==='hub'){
     closeAttentionStream();
     try {
@@ -2048,7 +2314,7 @@ function route(fromPop=false) {
   }
   if (!state.detail) {
     state.view=p.get('view')||(state.project?'backlog':'hub');
-    if(state.view==='hub') state.project='';
+    if(state.view==='hub'||state.view==='release-notes') state.project='';
     if (state.view === 'backlog') {
       const legacy=p.get('state');
       const raw=p.get('filter');
@@ -2090,9 +2356,9 @@ function translateChrome() {
   const brandSub=document.querySelector('.brand-copy small'); if(brandSub) brandSub.textContent=t('observatory');
   const ops=$('#operationsLabel'); if(ops) ops.textContent=t('operations').toUpperCase();
   const help=$('#helpLabel'); if(help) help.textContent=t('help').toUpperCase();
-  const pairs=[['#workloadText','workload'],['#attentionText','attention'],['#issuesText','issues'],['#manualText','manual']];
+  const pairs=[['#workloadText','workload'],['#attentionText','attention'],['#issuesText','issues'],['#manualText','manual'],['#releaseNotesText','releaseNotes']];
   pairs.forEach(([sel,key])=>{const el=$(sel);if(el)el.textContent=t(key)});
-  [['[data-view="workload"]','workload'],['[data-view="attention"]','attention'],['[data-view="issues"]','issues'],['[data-view="manual"]','manual']].forEach(([sel,key])=>{const el=document.querySelector(sel);if(el)el.title=t(key)});
+  [['[data-view="workload"]','workload'],['[data-view="attention"]','attention'],['[data-view="issues"]','issues'],['[data-view="manual"]','manual'],['[data-view="release-notes"]','releaseNotes']].forEach(([sel,key])=>{const el=document.querySelector(sel);if(el)el.title=t(key)});
   const sideBtn=$('#sidebarToggle');if(sideBtn){sideBtn.setAttribute('aria-label',state.sidebarCollapsed?t('expandSidebar'):t('collapseSidebar'));sideBtn.title=state.sidebarCollapsed?t('expandSidebar'):t('collapseSidebar')}
   const refresh=$('#refreshBtn'); if(refresh) refresh.title=t('refresh');
   const themeGroup=document.querySelector('.theme-switcher'); if(themeGroup){themeGroup.setAttribute('aria-label',t('theme'));themeGroup.title=t('theme');}
@@ -2108,6 +2374,7 @@ async function setLanguage(value) {
   await loadManual(next);
   translateChrome();
   render();
+  renderReleaseNoteModal();
   if(document.querySelector('.mermaid-wrap')) renderMermaidDiagrams(true);
 }
 
@@ -2147,6 +2414,7 @@ $('#sidebar')?.addEventListener('mouseenter',()=>{if(state.sidebarCollapsed){sta
 $('#sidebar')?.addEventListener('mouseleave',()=>{if(state.sidebarCollapsed){state.sidebarPeek=false;state.projectMenuOpen=false;applySidebarState();}});
 
 document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'&&state.releaseNotePopup){e.preventDefault();dismissReleaseNotePopup();return}
   const tag=document.activeElement?.tagName?.toLowerCase();
   const editing=['input','textarea','select','button'].includes(tag)||document.activeElement?.isContentEditable;
   if(e.key==='/'&&document.activeElement!==$('#search')){e.preventDefault();$('#search').focus();return}
@@ -2163,7 +2431,7 @@ document.addEventListener('keydown',e=>{
     return;
   }
   if(editing){if(e.key==='Escape')document.activeElement?.blur();return}
-  if(['manual','workload','attention','issues'].includes(state.view))return;
+  if(['manual','workload','attention','issues','release-notes'].includes(state.view))return;
   if(e.key==='ArrowDown'){e.preventDefault();highlightSelection(state.selectedIndex+1)}
   else if(e.key==='ArrowUp'){e.preventDefault();highlightSelection(state.selectedIndex-1)}
   else if(e.key==='Home'){e.preventDefault();highlightSelection(0)}
@@ -2210,4 +2478,5 @@ setInterval(()=>refreshVersionInfo(true),300000);
 if(window.isSecureContext&&'serviceWorker' in navigator)notificationWorker();
 route();refresh();
 refreshVersionInfo(false);
+loadReleaseNotes(true);
 setTimeout(()=>refreshVersionInfo(true),800);

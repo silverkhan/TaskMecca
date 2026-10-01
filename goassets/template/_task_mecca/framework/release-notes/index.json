@@ -1,0 +1,52 @@
+{
+  "releases": [
+    {
+      "version": "0.2.49",
+      "date": "2026-10-01",
+      "summary": {
+        "ko": "Web 보조 화면의 전환 속도와 응답성을 개선했습니다.",
+        "en": "Improved responsiveness when opening secondary Web views."
+      },
+      "migration": {
+        "required": false,
+        "instruction_refresh": false
+      }
+    },
+    {
+      "version": "0.2.48",
+      "date": "2026-10-01",
+      "summary": {
+        "ko": "Windows에서 Web 시작과 Tailscale HTTPS 초기화를 분리해 실행 안정성을 높였습니다.",
+        "en": "Improved Windows Web startup by decoupling local startup from Tailscale HTTPS initialization."
+      },
+      "migration": {
+        "required": false,
+        "instruction_refresh": false
+      }
+    },
+    {
+      "version": "0.2.47",
+      "date": "2026-10-01",
+      "summary": {
+        "ko": "Windows PowerShell 원라인 설치를 지원합니다.",
+        "en": "Added one-line Windows PowerShell installation."
+      },
+      "migration": {
+        "required": false,
+        "instruction_refresh": false
+      }
+    },
+    {
+      "version": "0.2.46",
+      "date": "2026-10-01",
+      "summary": {
+        "ko": "Stable/Dev 채널을 분리해 정식 버전과 개발 버전을 안전하게 운영할 수 있게 했습니다.",
+        "en": "Separated Stable and Dev channels for safer release and development workflows."
+      },
+      "migration": {
+        "required": false,
+        "instruction_refresh": false
+      }
+    }
+  ]
+}

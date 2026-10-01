@@ -51,6 +51,8 @@ func TestHandlerServesDashboardAPIsAndAssets(t *testing.T) {
         {"/api/backlog-folders",200,"application/json"},
         {"/api/revision",200,"application/json"},
         {"/api/version",200,"application/json"},
+        {"/api/release-notes?limit=2",200,"application/json"},
+        {"/api/release-notes/0.2.49",200,"application/json"},
         {"/api/snapshot",200,"application/json"},
         {"/api/attention",200,"application/json"},
         {"/api/workload",200,"application/json"},
@@ -133,6 +135,27 @@ func TestHandlerServesDashboardAPIsAndAssets(t *testing.T) {
     if manual["root_prompt_path"]!="_task_mecca/ROOT_PROMPT.md" {
         t.Fatalf("root_prompt_path=%v",manual["root_prompt_path"])
     }
+
+    req=httptest.NewRequest(http.MethodGet,"/api/release-notes?limit=2",nil)
+    rec=httptest.NewRecorder()
+    handler.ServeHTTP(rec,req)
+    if rec.Code!=http.StatusOK { t.Fatalf("release notes status=%d body=%s",rec.Code,rec.Body.String()) }
+    releaseIndex:=map[string]any{}
+    if err:=json.Unmarshal(rec.Body.Bytes(),&releaseIndex); err!=nil { t.Fatal(err) }
+    items,ok:=releaseIndex["items"].([]any)
+    if !ok || len(items)!=2 { t.Fatalf("release notes items=%T %+v",releaseIndex["items"],releaseIndex["items"]) }
+    if releaseIndex["has_more"]!=true { t.Fatalf("expected paginated release notes: %+v",releaseIndex) }
+
+    req=httptest.NewRequest(http.MethodGet,"/api/release-notes/0.2.49",nil)
+    rec=httptest.NewRecorder()
+    handler.ServeHTTP(rec,req)
+    if rec.Code!=http.StatusOK { t.Fatalf("release note detail status=%d body=%s",rec.Code,rec.Body.String()) }
+    releaseDetail:=map[string]any{}
+    if err:=json.Unmarshal(rec.Body.Bytes(),&releaseDetail); err!=nil { t.Fatal(err) }
+    if releaseDetail["version"]!="0.2.49" { t.Fatalf("release note version=%v",releaseDetail["version"]) }
+
+    if safeReleaseNoteVersion("../VERSION") { t.Fatal("unsafe release note version accepted") }
+    if !safeReleaseNoteVersion("0.2.49-dev.1") { t.Fatal("valid prerelease version rejected") }
 
     req=httptest.NewRequest(http.MethodGet,"/api/tasks/A-404",nil)
     rec=httptest.NewRecorder()
