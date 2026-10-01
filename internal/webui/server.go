@@ -275,6 +275,45 @@ func handler(project,root,version,instanceID,controlToken string,restartCh chan<
         writeJSON(w,snapshot,200)
     })
 
+    mux.HandleFunc("/api/attention",func(w http.ResponseWriter,r *http.Request) {
+        activeProject:=projectFor(r)
+        activeCtx,ctxErr:=webContext(activeProject,"")
+        if ctxErr!=nil { writeJSON(w,map[string]any{"error":ctxErr.Error()},500); return }
+        selected,candidates,err:=resolveBacklog(activeProject,activeCtx,r.URL.Query())
+        if err!=nil { writeJSON(w,map[string]any{"error":err.Error()},500); return }
+        snapshot,err:=backlog.AttentionSnapshot(activeProject,selected,true)
+        if err!=nil { writeJSON(w,map[string]any{"error":err.Error()},500); return }
+        snapshot["backlog_selection"]=selectionPayload(activeCtx,selected,candidates)
+        snapshot["project_path"]=activeProject
+        writeJSON(w,snapshot,200)
+    })
+
+    mux.HandleFunc("/api/workload",func(w http.ResponseWriter,r *http.Request) {
+        activeProject:=projectFor(r)
+        activeCtx,ctxErr:=webContext(activeProject,"")
+        if ctxErr!=nil { writeJSON(w,map[string]any{"error":ctxErr.Error()},500); return }
+        selected,candidates,err:=resolveBacklog(activeProject,activeCtx,r.URL.Query())
+        if err!=nil { writeJSON(w,map[string]any{"error":err.Error()},500); return }
+        snapshot,err:=backlog.WorkloadSnapshot(activeProject,selected)
+        if err!=nil { writeJSON(w,map[string]any{"error":err.Error()},500); return }
+        snapshot["backlog_selection"]=selectionPayload(activeCtx,selected,candidates)
+        snapshot["project_path"]=activeProject
+        writeJSON(w,snapshot,200)
+    })
+
+    mux.HandleFunc("/api/issues",func(w http.ResponseWriter,r *http.Request) {
+        activeProject:=projectFor(r)
+        activeCtx,ctxErr:=webContext(activeProject,"")
+        if ctxErr!=nil { writeJSON(w,map[string]any{"error":ctxErr.Error()},500); return }
+        selected,candidates,err:=resolveBacklog(activeProject,activeCtx,r.URL.Query())
+        if err!=nil { writeJSON(w,map[string]any{"error":err.Error()},500); return }
+        snapshot,err:=backlog.IssuesSnapshot(activeProject,selected)
+        if err!=nil { writeJSON(w,map[string]any{"error":err.Error()},500); return }
+        snapshot["backlog_selection"]=selectionPayload(activeCtx,selected,candidates)
+        snapshot["project_path"]=activeProject
+        writeJSON(w,snapshot,200)
+    })
+
     mux.HandleFunc("/api/manual",func(w http.ResponseWriter,r *http.Request) {
         lang:=strings.ToLower(r.URL.Query().Get("lang"))
         if lang=="" { lang="ko" }
