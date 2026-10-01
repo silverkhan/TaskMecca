@@ -44,6 +44,16 @@ const state = {
   eventStreamInitialized: false,
   attentionRevision: '',
   attentionRevisionKey: '',
+  releaseNotes: [],
+  releaseNotesTotal: 0,
+  releaseNotesHasMore: false,
+  releaseNotesLoaded: false,
+  releaseNotesLoading: false,
+  releaseNoteDetails: {},
+  releaseNoteExpanded: '',
+  releaseNotePopup: null,
+  releaseNotePopupMode: 'installed',
+  releaseNotePopupCheckedVersion: '',
 };
 
 
@@ -81,36 +91,6 @@ Object.assign(I18N.en,{
   notificationsUnsupportedGuide:'The current browser cannot use the system Notification API. Use a supported browser or HTTPS environment.',
   notificationPermissionError:'Notification permission request failed.',
 });
-Object.assign(I18N.ko,{
-  channelSwitchTitle:'릴리스 채널을 전환할까요?', channelCurrent:'현재', channelTarget:'전환 대상',
-  channelStable:'Stable', channelDev:'Dev', channelSwitchCancel:'취소', channelSwitchAction:'{channel}로 전환',
-  channelDevWarning:'Dev 채널에는 검증 중인 기능이 포함될 수 있습니다.',
-  channelStableNotice:'정식 Stable 채널의 최신 버전으로 돌아갑니다.',
-  channelSwitching:'채널 전환 중…', channelSwitchRestart:'Task Mecca Web을 재시작하고 있습니다.',
-  channelSwitchUnavailable:'대상 채널 정보를 확인할 수 없습니다.',
-  frameworkSyncPreview:'채널 전환 후 {n}개 프로젝트의 framework를 {channel} 버전에 맞춰야 합니다.',
-  frameworkSyncTitle:'프로젝트 framework를 {channel}에 맞출까요?',
-  frameworkSyncIntro:'실행 파일과 프로젝트 framework 버전을 맞추면 채널 전환을 안전하게 완료할 수 있습니다.',
-  frameworkSyncStableIntro:'Dev framework가 남아 있습니다. Stable 실행 파일과 호환되는 framework로 되돌리는 것을 권장합니다.',
-  frameworkSyncLater:'나중에', frameworkSyncAction:'{channel} framework로 동기화',
-  frameworkSyncing:'framework 동기화 중…', frameworkSyncDone:'프로젝트 framework 동기화를 완료했습니다.',
-  frameworkSyncFailed:'framework 동기화에 실패했습니다.'
-});
-Object.assign(I18N.en,{
-  channelSwitchTitle:'Switch release channel?', channelCurrent:'Current', channelTarget:'Target',
-  channelStable:'Stable', channelDev:'Dev', channelSwitchCancel:'Cancel', channelSwitchAction:'Switch to {channel}',
-  channelDevWarning:'The Dev channel may include features still under validation.',
-  channelStableNotice:'Return to the latest Stable release.',
-  channelSwitching:'Switching channel…', channelSwitchRestart:'Restarting Task Mecca Web.',
-  channelSwitchUnavailable:'The target channel is currently unavailable.',
-  frameworkSyncPreview:'After switching, {n} project framework(s) should be aligned with {channel}.',
-  frameworkSyncTitle:'Align project framework with {channel}?',
-  frameworkSyncIntro:'Aligning the executable and project framework versions safely completes the channel switch.',
-  frameworkSyncStableIntro:'Dev framework remains in the project. Align it with the Stable executable for compatibility.',
-  frameworkSyncLater:'Later', frameworkSyncAction:'Sync to {channel} framework',
-  frameworkSyncing:'Syncing framework…', frameworkSyncDone:'Project framework sync completed.',
-  frameworkSyncFailed:'Framework sync failed.'
-});
 
 Object.assign(I18N.ko,{
   humanSummary:'핵심 요약', summaryPurpose:'목적', summaryChange:'핵심 변경', summaryStatusResult:'상태·결과', summaryFollowUp:'확인·후속',
@@ -122,6 +102,91 @@ Object.assign(I18N.ko,{
   detailExpand:'상세 펼치기', detailCollapse:'상세 접기', requirementsAndConstraints:'요구사항·제약', legacyDetails:'기존 작업 상세',
   source:'출처', openSource:'외부 원본 열기'
 });
+Object.assign(I18N.ko,{
+  runtimeObservability:'Runtime 실행 관측',
+  runtimeObservabilityIntro:'Codex·Claude의 실제 Subagent 실행 lifecycle을 관측합니다. 이 정보는 백로그 상태를 직접 변경하지 않습니다.',
+  runtimeAttempts:'실행',
+  runtimeRunning:'실행 중',
+  runtimeTerminal:'종료',
+  runtimeUnbound:'미연결',
+  runtimeAmbiguous:'연결 모호',
+  runtimeStale:'관측 정체',
+  runtimeHookStatus:'Hook 상태',
+  runtimeHookNote:'Hook은 별도 프로그램이 아니라 Codex/Claude 설정에 Task Mecca 관측 명령을 연결하는 규칙입니다.',
+  runtimeHookEnabled:'활성화됨',
+  runtimeHookDisabled:'비활성',
+  runtimeEnableObservation:'Runtime 관측 활성화',
+  runtimeEnableConfirm:'현재 프로젝트의 Codex/Claude 설정에 Task Mecca lifecycle Hook 규칙을 추가합니다. 기존 설정은 유지됩니다. 계속할까요?',
+  runtimeEnabling:'활성화 중…',
+  runtimeNoAttempts:'아직 관측된 Agent 실행이 없습니다. Hook을 활성화한 뒤 Subagent를 실행하면 여기에 표시됩니다.',
+  runtimeAttempt:'Attempt',
+  runtimeId:'Runtime ID',
+  runtimeBinding:'Binding',
+  runtimeStarted:'시작',
+  runtimeLastActivity:'마지막 활동',
+  runtimeEnded:'종료',
+  runtimeElapsed:'경과',
+  runtimeObservedActive:'관측 Active',
+  runtimeWaiting:'명시적 대기',
+  runtimeUnavailable:'관측 불가',
+  runtimeRecentTransitions:'최근 상태 이력',
+  runtimeEvidence:'근거',
+  runtimeBound:'연결됨',
+  runtimeStateStarting:'시작 중',
+  runtimeStateRunning:'실행 중',
+  runtimeStateWaitingUser:'사용자 입력 대기',
+  runtimeStateWaitingApproval:'승인 대기',
+  runtimeStateInterrupted:'중단',
+  runtimeStateCompleted:'완료',
+  runtimeStateErrored:'오류',
+  runtimeStateShutdown:'종료됨',
+  runtimeStateUnknown:'런타임 미확인',
+  runtimeAssignedWorkload:'백로그 기반 워커 할당',
+  runtimeAssignedWorkloadIntro:'아래 영역은 기존 백로그/Git 기반 할당 정보입니다. 위 runtime 관측 정보와 독립적으로 유지됩니다.'
+});
+Object.assign(I18N.en,{
+  runtimeObservability:'Runtime execution observability',
+  runtimeObservabilityIntro:'Observes actual Codex/Claude subagent execution lifecycle. This does not directly mutate backlog state.',
+  runtimeAttempts:'Attempts',
+  runtimeRunning:'Running',
+  runtimeTerminal:'Terminal',
+  runtimeUnbound:'Unbound',
+  runtimeAmbiguous:'Ambiguous binding',
+  runtimeStale:'Stale evidence',
+  runtimeHookStatus:'Hook status',
+  runtimeHookNote:'Hooks are configuration rules that connect Codex/Claude lifecycle events to Task Mecca; they are not separate programs.',
+  runtimeHookEnabled:'Enabled',
+  runtimeHookDisabled:'Disabled',
+  runtimeEnableObservation:'Enable runtime observation',
+  runtimeEnableConfirm:'Add Task Mecca lifecycle hook rules to this project’s Codex/Claude settings while preserving existing configuration?',
+  runtimeEnabling:'Enabling…',
+  runtimeNoAttempts:'No Agent execution has been observed yet. Enable hooks and run subagents to see them here.',
+  runtimeAttempt:'Attempt',
+  runtimeId:'Runtime ID',
+  runtimeBinding:'Binding',
+  runtimeStarted:'Started',
+  runtimeLastActivity:'Last activity',
+  runtimeEnded:'Ended',
+  runtimeElapsed:'Elapsed',
+  runtimeObservedActive:'Observed active',
+  runtimeWaiting:'Explicit wait',
+  runtimeUnavailable:'Unavailable',
+  runtimeRecentTransitions:'Recent transitions',
+  runtimeEvidence:'Evidence',
+  runtimeBound:'Bound',
+  runtimeStateStarting:'Starting',
+  runtimeStateRunning:'Running',
+  runtimeStateWaitingUser:'Waiting for user',
+  runtimeStateWaitingApproval:'Waiting for approval',
+  runtimeStateInterrupted:'Interrupted',
+  runtimeStateCompleted:'Completed',
+  runtimeStateErrored:'Errored',
+  runtimeStateShutdown:'Shutdown',
+  runtimeStateUnknown:'Runtime unknown',
+  runtimeAssignedWorkload:'Backlog-based worker allocation',
+  runtimeAssignedWorkloadIntro:'This area is the existing backlog/Git allocation view and remains independent from runtime observations above.'
+});
+
 Object.assign(I18N.en,{
   humanSummary:'Summary', summaryPurpose:'Purpose', summaryChange:'Key change', summaryStatusResult:'Status / result', summaryFollowUp:'Checks / follow-up',
   summaryFallback:'Summary derived from legacy record', detailLinks:'Open details', backgroundProblem:'Background & problem', workScope:'Work scope',
@@ -156,6 +221,67 @@ Object.assign(I18N.en,{
   statusChanges:'Status changes', taskRegistered:'Registered', taskRemoved:'Removed from backlog', moreStatusChanges:'{n} more',
   upgrading:'Upgrading…', migrating:'Migrating…'
 });
+Object.assign(I18N.ko,{
+  releaseNotes:'업데이트 기록', releaseNotesIntro:'Task Mecca의 사용자용 변경사항을 버전별로 확인합니다.',
+  releaseNotesLoading:'업데이트 기록을 불러오는 중…', releaseNotesUnavailable:'업데이트 기록을 불러올 수 없습니다.',
+  releaseNotesMore:'이전 업데이트 더 보기', releaseNotesLatest:'최신', releaseNotesNew:'NEW',
+  whatsNew:'이번 업데이트', updatedToVersion:'Task Mecca {version}으로 업데이트되었습니다.',
+  releaseClose:'닫기', releaseDetails:'자세히 보기', releaseConfirm:'확인', releaseMarkRead:'읽음 처리',
+  releaseUnreadNotice:'이 버전의 업데이트 내용을 아직 확인하지 않았습니다.',
+  releaseUnreadBanner:'{version} 업데이트 내용을 아직 확인하지 않았습니다.',
+  releaseViewAgain:'보기', updateChanges:'변경사항 보기', updateNow:'업데이트',
+  updateChangesTitle:'Task Mecca {version} 업데이트 내용',
+  updateChangesUnavailable:'이 버전의 사용자용 변경사항은 제공되지 않습니다.',
+  releaseNewFeature:'새 기능', releaseImproved:'개선', releaseFixed:'수정', releaseImportant:'중요 변경',
+  releaseMigrationRequired:'프로젝트 업데이트 필요', releaseInstructionRefresh:'Root 운영 지침 재확인 필요',
+  releaseNoEntries:'표시할 업데이트 기록이 없습니다.'
+});
+Object.assign(I18N.en,{
+  releaseNotes:'Update history', releaseNotesIntro:'Review user-facing Task Mecca changes by version.',
+  releaseNotesLoading:'Loading update history…', releaseNotesUnavailable:'Update history is unavailable.',
+  releaseNotesMore:'Load older updates', releaseNotesLatest:'Latest', releaseNotesNew:'NEW',
+  whatsNew:"What's new", updatedToVersion:'Task Mecca was updated to {version}.',
+  releaseClose:'Close', releaseDetails:'View details', releaseConfirm:'Got it', releaseMarkRead:'Mark as read',
+  releaseUnreadNotice:'You have not marked this update as read yet.',
+  releaseUnreadBanner:'You have not reviewed the {version} update yet.',
+  releaseViewAgain:'View', updateChanges:'View changes', updateNow:'Update',
+  updateChangesTitle:'What changes in Task Mecca {version}',
+  updateChangesUnavailable:'User-facing changes are not available for this version.',
+  releaseNewFeature:'New', releaseImproved:'Improved', releaseFixed:'Fixed', releaseImportant:'Important',
+  releaseMigrationRequired:'Project update required', releaseInstructionRefresh:'Root operating instructions need review',
+  releaseNoEntries:'No update history is available.'
+});
+Object.assign(I18N.ko,{
+  channelSwitchTitle:'릴리스 채널을 전환할까요?', channelCurrent:'현재', channelTarget:'전환 대상',
+  channelStable:'Stable', channelDev:'Dev', channelSwitchCancel:'취소', channelSwitchAction:'{channel}로 전환',
+  channelDevWarning:'Dev 채널에는 검증 중인 기능이 포함될 수 있습니다.',
+  channelStableNotice:'정식 Stable 채널의 최신 버전으로 돌아갑니다.',
+  channelSwitching:'채널 전환 중…', channelSwitchRestart:'Task Mecca Web을 재시작하고 있습니다.',
+  channelSwitchUnavailable:'대상 채널 정보를 확인할 수 없습니다.',
+  frameworkSyncPreview:'채널 전환 후 {n}개 프로젝트의 framework를 {channel} 버전에 맞춰야 합니다.',
+  frameworkSyncTitle:'프로젝트 framework를 {channel}에 맞출까요?',
+  frameworkSyncIntro:'실행 파일과 프로젝트 framework 버전을 맞추면 채널 전환을 안전하게 완료할 수 있습니다.',
+  frameworkSyncStableIntro:'Dev framework가 남아 있습니다. Stable 실행 파일과 호환되는 framework로 되돌리는 것을 권장합니다.',
+  frameworkSyncLater:'나중에', frameworkSyncAction:'{channel} framework로 동기화',
+  frameworkSyncing:'framework 동기화 중…', frameworkSyncDone:'프로젝트 framework 동기화를 완료했습니다.',
+  frameworkSyncFailed:'framework 동기화에 실패했습니다.'
+});
+Object.assign(I18N.en,{
+  channelSwitchTitle:'Switch release channel?', channelCurrent:'Current', channelTarget:'Target',
+  channelStable:'Stable', channelDev:'Dev', channelSwitchCancel:'Cancel', channelSwitchAction:'Switch to {channel}',
+  channelDevWarning:'The Dev channel may include features still under validation.',
+  channelStableNotice:'Return to the latest Stable release.',
+  channelSwitching:'Switching channel…', channelSwitchRestart:'Restarting Task Mecca Web.',
+  channelSwitchUnavailable:'The target channel is currently unavailable.',
+  frameworkSyncPreview:'After switching, {n} project framework(s) should be aligned with {channel}.',
+  frameworkSyncTitle:'Align project framework with {channel}?',
+  frameworkSyncIntro:'Aligning the executable and project framework versions safely completes the channel switch.',
+  frameworkSyncStableIntro:'Dev framework remains in the project. Align it with the Stable executable for compatibility.',
+  frameworkSyncLater:'Later', frameworkSyncAction:'Sync to {channel} framework',
+  frameworkSyncing:'Syncing framework…', frameworkSyncDone:'Project framework sync completed.',
+  frameworkSyncFailed:'Framework sync failed.'
+});
+
 function t(key, vars = {}) {
   const dict = I18N[state.language] || I18N.en;
   let value = dict[key] ?? I18N.en[key] ?? key;
@@ -166,6 +292,225 @@ function localeCode() { return LANGUAGES[state.language]?.locale || 'en-US'; }
 
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function releaseLocalized(value) {
+  if(value==null)return '';
+  if(typeof value==='string')return value;
+  return String(value[state.language]||value.en||value.ko||'');
+}
+function releaseSectionLabel(type) {
+  return t({new:'releaseNewFeature',improved:'releaseImproved',fixed:'releaseFixed',important:'releaseImportant'}[type]||type);
+}
+function releaseSectionMarkup(sections=[]) {
+  return (Array.isArray(sections)?sections:[]).map(section=>{
+    const items=(section.items||[]).map(item=>'<li>'+esc(releaseLocalized(item))+'</li>').join('');
+    if(!items)return '';
+    return '<section class="release-section release-'+esc(section.type||'improved')+'"><h3>'+esc(releaseSectionLabel(section.type))+'</h3><ul>'+items+'</ul></section>';
+  }).join('');
+}
+function currentReleaseVersion() {
+  return normalizedVersion(state.versionInfo?.cli?.current||state.hub?.cli?.current||'');
+}
+function releaseNoteKnown(version) {
+  return Boolean(state.releaseNoteDetails[version] || state.releaseNotes.some(item=>item.version===version));
+}
+function releaseNoteUnread(version=currentReleaseVersion()) {
+  const current=currentReleaseVersion();
+  if(!version||version!==current||!releaseNoteKnown(version))return false;
+  return localStorage.getItem('task-mecca-release-notes-seen-version')!==version;
+}
+function renderReleaseNotesBadge() {
+  const badge=$('#releaseNotesBadge');
+  if(!badge)return;
+  const current=currentReleaseVersion();
+  if(releaseNoteUnread(current)){
+    badge.textContent=t('releaseNotesNew');
+    badge.classList.add('new');
+    badge.removeAttribute('aria-hidden');
+  }else{
+    badge.textContent='';
+    badge.classList.remove('new');
+    badge.setAttribute('aria-hidden','true');
+  }
+}
+function markReleaseNoteSeen(version) {
+  if(!version)return;
+  localStorage.setItem('task-mecca-release-notes-seen-version',version);
+  localStorage.setItem('task-mecca-release-notes-dismissed-version',version);
+  if(state.releaseNotePopup?.version===version)state.releaseNotePopup=null;
+  state.releaseNotePopupMode='installed';
+  renderReleaseNoteModal();
+  renderReleaseNotesBadge();
+  renderReleaseUnreadPrompt();
+  if(state.view==='release-notes')render();
+}
+function dismissReleaseNotePopup() {
+  const version=state.releaseNotePopup?.version;
+  if(version&&state.releaseNotePopupMode!=='available'){
+    localStorage.setItem('task-mecca-release-notes-dismissed-version',version);
+  }
+  state.releaseNotePopup=null;
+  state.releaseNotePopupMode='installed';
+  renderReleaseNoteModal();
+  renderReleaseNotesBadge();
+  renderReleaseUnreadPrompt();
+}
+function renderReleaseUnreadPrompt() {
+  const el=$('#releaseUnreadPrompt');
+  if(!el)return;
+  const version=currentReleaseVersion();
+  const dismissed=localStorage.getItem('task-mecca-release-notes-dismissed-version')===version;
+  const visible=Boolean(version)&&!version.includes('-dev.')&&dismissed&&releaseNoteUnread(version)&&!state.releaseNotePopup&&state.view!=='release-notes';
+  if(!visible){
+    el.innerHTML='';
+    return;
+  }
+  el.innerHTML='<div class="release-unread-copy"><span class="global-update-dot"></span><strong>'+esc(t('releaseUnreadBanner',{version}))+'</strong></div>'+
+    '<button type="button" class="release-unread-action" id="releaseUnreadViewBtn">'+esc(t('releaseViewAgain'))+'</button>';
+  $('#releaseUnreadViewBtn')?.addEventListener('click',async()=>{
+    const detail=await loadReleaseNoteDetail(version);
+    if(!detail)return;
+    state.releaseNotePopup=detail;
+    state.releaseNotePopupMode='installed';
+    renderReleaseUnreadPrompt();
+    renderReleaseNoteModal();
+  });
+}
+async function loadReleaseNoteDetail(version) {
+  version=String(version||'').trim();
+  if(!version)return null;
+  if(state.releaseNoteDetails[version])return state.releaseNoteDetails[version];
+  try{
+    const r=await fetch('/api/release-notes/'+encodeURIComponent(version),{cache:'no-store'});
+    if(!r.ok)return null;
+    const detail=await r.json();
+    state.releaseNoteDetails[version]=detail;
+    renderReleaseNotesBadge();
+    return detail;
+  }catch(_){ return null; }
+}
+async function loadReleaseNotes(reset=false) {
+  if(state.releaseNotesLoading)return;
+  if(reset){
+    state.releaseNotes=[];
+    state.releaseNotesTotal=0;
+    state.releaseNotesHasMore=false;
+    state.releaseNotesLoaded=false;
+  }else if(state.releaseNotesLoaded&&!state.releaseNotesHasMore){
+    return;
+  }
+  state.releaseNotesLoading=true;
+  if(state.view==='release-notes')render();
+  try{
+    const offset=reset?0:state.releaseNotes.length;
+    const r=await fetch('/api/release-notes?offset='+offset+'&limit=20',{cache:'no-store'});
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    const body=await r.json();
+    const items=Array.isArray(body.items)?body.items:[];
+    state.releaseNotes=reset?items:[...state.releaseNotes,...items.filter(item=>!state.releaseNotes.some(existing=>existing.version===item.version))];
+    state.releaseNotesTotal=Number(body.total)||state.releaseNotes.length;
+    state.releaseNotesHasMore=Boolean(body.has_more);
+    state.releaseNotesLoaded=true;
+  }catch(_){
+    state.releaseNotesLoaded=true;
+  }finally{
+    state.releaseNotesLoading=false;
+    renderReleaseNotesBadge();
+    if(state.view==='release-notes')render();
+  }
+}
+function releaseNoteDetailMarkup(detail,options={}) {
+  if(!detail)return '';
+  const compact=Boolean(options.compact);
+  const migration=detail.migration||{};
+  const flags=[
+    migration.required?'<span class="release-flag important">'+esc(t('releaseMigrationRequired'))+'</span>':'',
+    migration.instruction_refresh?'<span class="release-flag">'+esc(t('releaseInstructionRefresh'))+'</span>':''
+  ].filter(Boolean).join('');
+  return '<div class="release-detail '+(compact?'compact':'')+'">'+
+    '<div class="release-detail-head"><div><span class="release-version">v'+esc(detail.version||'')+'</span><span class="release-date">'+esc(detail.date||'')+'</span></div>'+(flags?'<div class="release-flags">'+flags+'</div>':'')+'</div>'+
+    '<p class="release-summary">'+esc(releaseLocalized(detail.summary))+'</p>'+
+    '<div class="release-sections">'+releaseSectionMarkup(detail.sections||[])+'</div></div>';
+}
+function renderReleaseNoteModal() {
+  const modal=$('#releaseNoteModal');
+  if(!modal)return;
+  const detail=state.releaseNotePopup;
+  if(!detail){
+    modal.hidden=true;
+    modal.innerHTML='';
+    document.body.classList.remove('release-modal-open');
+    renderReleaseUnreadPrompt();
+    return;
+  }
+  const available=state.releaseNotePopupMode==='available';
+  modal.hidden=false;
+  document.body.classList.add('release-modal-open');
+  const title=available?t('updateChangesTitle',{version:detail.version||''}):t('updatedToVersion',{version:detail.version||''});
+  const actions=available
+    ? '<button type="button" class="action-btn secondary" id="releaseModalClose">'+esc(t('releaseClose'))+'</button><button type="button" class="action-btn" id="releaseModalUpgrade">'+esc(t('updateNow'))+'</button>'
+    : '<button type="button" class="action-btn secondary" id="releaseModalDetails">'+esc(t('releaseDetails'))+'</button><button type="button" class="action-btn" id="releaseModalConfirm">'+esc(t('releaseConfirm'))+'</button>';
+  modal.innerHTML='<div class="release-modal-backdrop" data-release-dismiss></div>'+
+    '<section class="release-modal-card" role="dialog" aria-modal="true" aria-labelledby="releaseModalTitle">'+
+      '<button class="release-modal-close" type="button" data-release-dismiss aria-label="'+esc(t('releaseClose'))+'" title="'+esc(t('releaseClose'))+'">×</button>'+
+      '<div class="eyebrow">'+esc(available?t('updateChanges'):t('whatsNew'))+'</div>'+
+      '<h2 id="releaseModalTitle">'+esc(title)+'</h2>'+
+      releaseNoteDetailMarkup(detail,{compact:true})+
+      '<div class="release-modal-actions">'+actions+'</div>'+
+    '</section>';
+  modal.querySelectorAll('[data-release-dismiss]').forEach(el=>el.addEventListener('click',dismissReleaseNotePopup));
+  if(available){
+    $('#releaseModalClose')?.addEventListener('click',dismissReleaseNotePopup);
+    $('#releaseModalUpgrade')?.addEventListener('click',()=>{
+      state.releaseNotePopup=null;
+      state.releaseNotePopupMode='installed';
+      renderReleaseNoteModal();
+      performUpgrade();
+    });
+  }else{
+    $('#releaseModalConfirm')?.addEventListener('click',()=>markReleaseNoteSeen(detail.version));
+    $('#releaseModalDetails')?.addEventListener('click',()=>{
+      localStorage.setItem('task-mecca-release-notes-dismissed-version',detail.version);
+      state.releaseNotePopup=null;
+      state.releaseNotePopupMode='installed';
+      renderReleaseNoteModal();
+      navigateView('release-notes');
+    });
+  }
+}
+async function showAvailableUpdateNotes() {
+  const cli=state.versionInfo?.cli||state.hub?.cli||{};
+  const version=normalizedVersion(cli.latest||'');
+  if(!version||cli.channel==='dev')return;
+  const detail=await loadReleaseNoteDetail(version);
+  if(!detail){
+    alert(t('updateChangesUnavailable'));
+    return;
+  }
+  state.releaseNotePopup=detail;
+  state.releaseNotePopupMode='available';
+  renderReleaseUnreadPrompt();
+  renderReleaseNoteModal();
+}
+async function maybeShowCurrentReleaseNote() {
+  const version=currentReleaseVersion();
+  if(!version||version.includes('-dev.')){ renderReleaseNotesBadge(); return; }
+  if(state.releaseNotePopupCheckedVersion===version){ renderReleaseNotesBadge(); return; }
+  state.releaseNotePopupCheckedVersion=version;
+  const detail=await loadReleaseNoteDetail(version);
+  if(!detail){ renderReleaseNotesBadge(); return; }
+  renderReleaseNotesBadge();
+  const seen=localStorage.getItem('task-mecca-release-notes-seen-version');
+  const dismissed=localStorage.getItem('task-mecca-release-notes-dismissed-version');
+  if(seen===version||dismissed===version){
+    renderReleaseUnreadPrompt();
+    return;
+  }
+  state.releaseNotePopup=detail;
+  state.releaseNotePopupMode='installed';
+  renderReleaseUnreadPrompt();
+  renderReleaseNoteModal();
+}
+
 
 function renderGlobalUpdateIndicator() {
   const el=$('#globalUpdateIndicator');
@@ -175,7 +520,12 @@ function renderGlobalUpdateIndicator() {
   const project=payload.project||{};
   const projectMatches=state.project && project.path===state.project;
   if(cli.update_available){
-    el.innerHTML=`<button type="button" class="global-update-pill available" id="globalUpgradeBtn" title="${esc(t('updateAvailable'))}"><span class="global-update-dot"></span><span>${esc(t('updateAvailable'))}</span><strong>${esc(cli.latest||'')}</strong></button>`;
+    const canShowChanges=cli.channel!=='dev';
+    el.innerHTML='<div class="global-update-group">'+
+      '<span class="global-update-pill available"><span class="global-update-dot"></span><span>'+esc(t('updateAvailable'))+'</span><strong>'+esc(cli.latest||'')+'</strong></span>'+
+      (canShowChanges?'<button type="button" class="global-update-link" id="globalUpdateChangesBtn">'+esc(t('updateChanges'))+'</button>':'')+
+      '<button type="button" class="global-update-link primary" id="globalUpgradeBtn">'+esc(t('updateNow'))+'</button></div>';
+    $('#globalUpdateChangesBtn')?.addEventListener('click',showAvailableUpdateNotes);
     $('#globalUpgradeBtn')?.addEventListener('click',e=>performUpgrade(e.currentTarget));
     return;
   }
@@ -273,6 +623,8 @@ async function refreshVersionInfo(force=false) {
     if(!r.ok)throw new Error(`HTTP ${r.status}`);
     state.versionInfo=await r.json();
     renderGlobalUpdateIndicator();
+    renderReleaseNotesBadge();
+    queueMicrotask(()=>maybeShowCurrentReleaseNote());
     queueMicrotask(()=>maybeShowPendingFrameworkSync());
   }catch(_){}
 }
@@ -345,6 +697,23 @@ async function performUpgrade(button) {
   }catch(e){
     alert(String(e?.message||e));
     if(button){button.disabled=false;renderGlobalUpdateIndicator();}
+  }
+}
+
+async function performRuntimeHooksEnable(button) {
+  if(!window.confirm(t('runtimeEnableConfirm')))return;
+  if(button){button.disabled=true;button.textContent=t('runtimeEnabling');}
+  try{
+    const params=new URLSearchParams();
+    if(state.project)params.set('project',state.project);
+    const qs=params.toString()?`?${params}`:'';
+    const r=await fetch('/api/runtime/hooks'+qs,{method:'POST',headers:{'Content-Type':'application/json','X-Task-Mecca-Action':'1'},body:JSON.stringify({provider:'all'})});
+    const body=await r.json();
+    if(!r.ok)throw new Error(body.error||'Runtime hook activation failed');
+    await refresh();
+  }catch(e){
+    alert(String(e?.message||e));
+    if(button){button.disabled=false;button.textContent=t('runtimeEnableObservation');}
   }
 }
 
@@ -984,6 +1353,21 @@ function resolveProjectContext() {
   return projects[0]?.path||'';
 }
 function navigateView(view) {
+  if(view==='release-notes'){
+    state.project='';
+    state.snapshot=null;
+    state.listData=null;
+    state.detailTask=null;
+    closeAttentionStream();
+    state.loadError='';
+    state.view='release-notes';
+    state.detail=null;
+    state.projectMenuOpen=false;
+    history.pushState({},'','/?view=release-notes');
+    render();
+    loadReleaseNotes(!state.releaseNotesLoaded);
+    return;
+  }
   if(view==='hub'){
     state.project='';
     state.snapshot=null;
@@ -1066,6 +1450,54 @@ function nav() {
     b.classList.toggle('active', state.view === b.dataset.view);
     b.onclick = () => navigateView(b.dataset.view);
   });
+  renderReleaseNotesBadge();
+}
+
+function releaseNotesView() {
+  const head='<div class="page-head"><div><div class="eyebrow">TASK MECCA</div><h1>'+esc(t('releaseNotes'))+'</h1><p class="summary">'+esc(t('releaseNotesIntro'))+'</p></div></div>';
+  if(state.releaseNotesLoading&&!state.releaseNotes.length)return head+'<div class="loading">'+esc(t('releaseNotesLoading'))+'</div>';
+  if(state.releaseNotesLoaded&&!state.releaseNotes.length)return head+'<div class="empty">'+esc(t('releaseNoEntries'))+'</div>';
+
+  let previousYear='';
+  const rows=state.releaseNotes.map((item,index)=>{
+    const year=String(item.date||'').slice(0,4)||'—';
+    const yearHead=year!==previousYear?'<h2 class="release-year">'+esc(year)+'</h2>':'';
+    previousYear=year;
+    const expanded=state.releaseNoteExpanded===item.version;
+    const detail=expanded?state.releaseNoteDetails[item.version]:null;
+    const latest=index===0?'<span class="badge">'+esc(t('releaseNotesLatest'))+'</span>':'';
+    const unread=releaseNoteUnread(item.version)?'<span class="badge warn">'+esc(t('releaseNotesNew'))+'</span>':'';
+    const migration=item.migration?.required?'<span class="release-flag important">'+esc(t('releaseMigrationRequired'))+'</span>':'';
+    const detailHTML=expanded?'<div class="release-history-detail">'+(detail?releaseNoteDetailMarkup(detail):'<div class="loading">'+esc(t('releaseNotesLoading'))+'</div>')+(releaseNoteUnread(item.version)&&detail?'<div class="release-read-row"><span>'+esc(t('releaseUnreadNotice'))+'</span><button type="button" class="action-btn secondary" data-release-confirm="'+esc(item.version)+'">'+esc(t('releaseMarkRead'))+'</button></div>':'')+'</div>':'';
+    return yearHead+'<article class="release-history-item '+(expanded?'expanded':'')+'">'+
+      '<button type="button" class="release-history-toggle" data-release-version="'+esc(item.version)+'" aria-expanded="'+(expanded?'true':'false')+'">'+
+        '<span class="release-history-version"><strong>v'+esc(item.version)+'</strong><small>'+esc(item.date||'')+'</small></span>'+
+        '<span class="release-history-summary">'+esc(releaseLocalized(item.summary))+'</span>'+
+        '<span class="release-history-badges">'+latest+unread+migration+'</span>'+
+        '<span class="release-history-chevron">'+(expanded?'−':'+')+'</span>'+
+      '</button>'+detailHTML+'</article>';
+  }).join('');
+  const more=state.releaseNotesHasMore?'<div class="release-more"><button type="button" class="action-btn secondary" id="releaseNotesMore" '+(state.releaseNotesLoading?'disabled':'')+'>'+esc(t('releaseNotesMore'))+'</button></div>':'';
+  return head+'<div class="release-history">'+rows+'</div>'+more;
+}
+function bindReleaseNotesActions() {
+  document.querySelectorAll('[data-release-version]').forEach(btn=>btn.addEventListener('click',async()=>{
+    const version=btn.dataset.releaseVersion;
+    if(state.releaseNoteExpanded===version){
+      state.releaseNoteExpanded='';
+      render();
+      return;
+    }
+    state.releaseNoteExpanded=version;
+    render();
+    await loadReleaseNoteDetail(version);
+    if(state.view==='release-notes'&&state.releaseNoteExpanded===version)render();
+  }));
+  document.querySelectorAll('[data-release-confirm]').forEach(btn=>btn.addEventListener('click',e=>{
+    e.stopPropagation();
+    markReleaseNoteSeen(btn.dataset.releaseConfirm);
+  }));
+  $('#releaseNotesMore')?.addEventListener('click',()=>loadReleaseNotes(false));
 }
 
 const channelGesture={phase:'first',taps:[],firstBatchAt:0,secondStartedAt:0};
@@ -1278,7 +1710,10 @@ function hubView() {
       <div class="project-actions">${p?.migration_available?`<button class="action-btn secondary" data-migrate="${esc(p.path)}">Migrate</button>`:''}<button class="action-btn" data-open-project="${esc(p?.path||'')}">Open</button></div>
     </article>`;
   }).join('');
-  return `<div class="page-head"><div><div class="eyebrow">TASK MECCA</div><h1>Global Hub</h1><p class="summary">CLI와 등록 프로젝트의 framework 상태를 관리합니다.</p></div><div class="hub-cli"><strong>CLI</strong> ${channelBadge} ${cliStatus} ${cli.update_available?'<button class="action-btn" id="upgradeBtn">Upgrade</button>':''}</div></div>
+  const updateActions=cli.update_available
+    ? (cli.channel!=='dev'?'<button class="action-btn secondary" id="hubUpdateChangesBtn">'+esc(t('updateChanges'))+'</button>':'')+'<button class="action-btn" id="upgradeBtn">'+esc(t('updateNow'))+'</button>'
+    : '';
+  return `<div class="page-head"><div><div class="eyebrow">TASK MECCA</div><h1>Global Hub</h1><p class="summary">CLI와 등록 프로젝트의 framework 상태를 관리합니다.</p></div><div class="hub-cli"><strong>CLI</strong> ${channelBadge} ${cliStatus} ${updateActions}</div></div>
     ${cli.update_available?'<div class="timing-note"><strong>Upgrade</strong><span>업그레이드가 완료되면 Task Mecca Web이 자동으로 재시작되며, 현재 브라우저 페이지도 자동으로 새로고침됩니다.</span></div>':''}
     ${cli.error?`<div class="timing-note"><strong>Version check</strong><span>${esc(cli.error)}</span></div>`:''}
     <div class="project-grid">${cards||'<div class="empty">등록된 Task Mecca 프로젝트가 없습니다.</div>'}</div>`;
@@ -1360,6 +1795,8 @@ function bindHubActions() {
     if(path)switchProject(path);
   }));
   document.querySelectorAll('[data-migrate]').forEach(btn=>btn.addEventListener('click',e=>performProjectMigration(btn.dataset.migrate,e.currentTarget)));
+  const changes=$('#hubUpdateChangesBtn');
+  if(changes)changes.addEventListener('click',showAvailableUpdateNotes);
   const up=$('#upgradeBtn');
   if(up)up.addEventListener('click',e=>performUpgrade(e.currentTarget));
   bindChannelGesture();
@@ -1493,17 +1930,110 @@ function manualView() {
   const rootPrompt=tab==='quick'?manualRootPromptCard(m):'';
   return `<div class="manual-shell"><div class="manual-hero"><div class="eyebrow">${esc(t('help'))}</div><h1>${esc(t('manual'))}</h1><p class="summary">${esc(t('manualIntro'))}</p></div><div class="manual-callout"><strong>${esc(t('dashboardLaunch'))}</strong><div class="copy-code-wrap compact"><button class="copy-code-btn" type="button" aria-label="${esc(t('copyCode'))}" title="${esc(t('copyCode'))}">${COPY_ICON}</button><pre><code>task-mecca web</code></pre></div></div><div class="shortcut-manual"><strong>${esc(t('keyboard'))}</strong><span><kbd>↑/↓</kbd> ${esc(t('move'))}</span><span><kbd>Enter/→</kbd> ${esc(t('open'))}</span><span><kbd>←/Esc</kbd> ${esc(t('back'))}</span><span><kbd>/</kbd> ${esc(t('search'))}</span><span><kbd>PgUp/PgDn</kbd> ${esc(t('page'))}</span></div><div class="manual-tabs"><button class="manual-tab ${tab==='quick'?'active':''}" data-manual-tab="quick">${esc(t('quickStart'))}</button><button class="manual-tab ${tab==='operations'?'active':''}" data-manual-tab="operations">${esc(t('detailedGuide'))}</button></div>${rootPrompt}<div class="section markdown">${markdown(body||t('manualLoading'),{copyCode:true})}</div></div>`;
 }
+function runtimeStateLabel(value) {
+  return {
+    starting:t('runtimeStateStarting'),
+    running:t('runtimeStateRunning'),
+    waiting_user:t('runtimeStateWaitingUser'),
+    waiting_approval:t('runtimeStateWaitingApproval'),
+    interrupted:t('runtimeStateInterrupted'),
+    completed:t('runtimeStateCompleted'),
+    errored:t('runtimeStateErrored'),
+    shutdown:t('runtimeStateShutdown'),
+    runtime_unknown:t('runtimeStateUnknown'),
+  }[value]||value||t('runtimeStateUnknown');
+}
+function runtimeBindingLabel(value) {
+  return value==='bound'?t('runtimeBound'):value==='ambiguous'?t('runtimeAmbiguous'):t('runtimeUnbound');
+}
+function runtimeElapsedSeconds(attempt) {
+  if(attempt?.terminal || !attempt?.started_at)return Math.max(0,Number(attempt?.elapsed_ms||0)/1000);
+  const started=new Date(attempt.started_at).getTime();
+  if(Number.isNaN(started))return Math.max(0,Number(attempt?.elapsed_ms||0)/1000);
+  return Math.max(0,(Date.now()-started)/1000);
+}
+function runtimeTransitionLabel(row) {
+  if(row?.kind==='binding')return `${t('runtimeBinding')} · ${runtimeBindingLabel(row.reason)}`;
+  return runtimeStateLabel(row?.state);
+}
+function runtimeAttemptCard(attempt,findings) {
+  const name=attempt.agent_path||attempt.runtime_agent_id||attempt.attempt_id;
+  const task=attempt.task_id||'-';
+  const last=attempt.last_activity_at||attempt.last_observed_at||'';
+  const active=attempt.active_time_available&&attempt.observed_active_ms!=null?fmtSec(Number(attempt.observed_active_ms)/1000):t('runtimeUnavailable');
+  const waiting=fmtSec(Number(attempt.waiting_ms||0)/1000);
+  const transitions=(attempt.recent_transitions||[]).slice(-8);
+  const bindingClass=attempt.binding_state==='ambiguous'?'danger':attempt.binding_state==='unbound'?'warn':'ok';
+  const terminalClass=['errored','interrupted','shutdown'].includes(attempt.current_state)?'danger':attempt.current_state==='completed'?'ok':'';
+  const findingHTML=(findings||[]).map(x=>`<span class="badge ${x.severity==='warning'?'warn':''}">${esc(x.code)}</span>`).join('');
+  return `<article class="runtime-attempt-card">
+    <div class="runtime-attempt-head">
+      <div>
+        <div class="runtime-attempt-name">${esc(name)}</div>
+        <div class="runtime-attempt-sub">${esc(attempt.provider||'-')} · ${esc(task)}</div>
+      </div>
+      <div class="runtime-attempt-badges">
+        <span class="status ${esc(attempt.current_state||'runtime_unknown')} ${terminalClass}">${esc(runtimeStateLabel(attempt.current_state))}</span>
+        <span class="badge ${bindingClass}">${esc(runtimeBindingLabel(attempt.binding_state))}</span>
+      </div>
+    </div>
+    <div class="runtime-meta-grid">
+      <div><span>${esc(t('runtimeAttempt'))}</span><strong title="${esc(attempt.attempt_id||'')}">${esc(attempt.attempt_id||'-')}</strong></div>
+      <div><span>${esc(t('runtimeId'))}</span><strong title="${esc(attempt.runtime_agent_id||'')}">${esc(attempt.runtime_agent_id||'-')}</strong></div>
+      <div><span>${esc(t('runtimeStarted'))}</span><strong>${esc(dateTimeLabel(attempt.started_at,true))}</strong></div>
+      <div><span>${esc(t('runtimeLastActivity'))}</span><strong title="${esc(dateTimeLabel(last))}">${esc(last?ago(last):'-')}</strong></div>
+      <div><span>${esc(t('runtimeEnded'))}</span><strong>${esc(dateTimeLabel(attempt.ended_at,true))}</strong></div>
+      <div><span>${esc(t('runtimeElapsed'))}</span><strong class="runtime-elapsed" data-started-at="${esc(attempt.started_at||'')}" data-ended-at="${esc(attempt.ended_at||'')}" data-elapsed-ms="${Number(attempt.elapsed_ms||0)}">${esc(fmtSec(runtimeElapsedSeconds(attempt)))}</strong></div>
+      <div><span>${esc(t('runtimeObservedActive'))}</span><strong>${esc(active)}</strong></div>
+      <div><span>${esc(t('runtimeWaiting'))}</span><strong>${esc(waiting)}</strong></div>
+    </div>
+    ${findingHTML?`<div class="runtime-findings">${findingHTML}</div>`:''}
+    <details class="runtime-history" ${transitions.length<=4?'open':''}>
+      <summary>${esc(t('runtimeRecentTransitions'))} · ${transitions.length}</summary>
+      <div class="runtime-transition-list">
+        ${transitions.length?transitions.map(row=>`<div class="runtime-transition"><time>${esc(dateTimeLabel(row.at,true))}</time><strong>${esc(runtimeTransitionLabel(row))}</strong><span>${esc((row.evidence_source||'-')+'/'+(row.observation_quality||'-'))}</span></div>`).join(''):`<div class="worker-empty">-</div>`}
+      </div>
+    </details>
+  </article>`;
+}
 function workloadView() {
-  const w=state.snapshot?.workload||{}, agents=w.agents||[], all=state.snapshot?.all_items||{}, unassigned=w.unassigned_doing||[], released=w.released_holds||[];
+  const snapshot=state.snapshot||{}, w=snapshot.workload||{}, agents=w.agents||[], all=snapshot.all_items||{}, unassigned=w.unassigned_doing||[], released=w.released_holds||[];
+  const runtime=snapshot.runtime_observability||{}, attempts=runtime.attempts||[], findings=runtime.findings||[], hooks=runtime.hooks||[], rc=runtime.counts||{};
+  const findingsByAttempt={};
+  findings.forEach(row=>{if(row.attempt_id)(findingsByAttempt[row.attempt_id]??=[]).push(row)});
+  const latestByAgent={};
+  attempts.forEach(attempt=>{if(attempt.agent_path&&!latestByAgent[attempt.agent_path])latestByAgent[attempt.agent_path]=attempt});
+  const allHooksEnabled=hooks.length>=2&&hooks.every(h=>h.installed);
+  const hookCards=hooks.map(h=>`<div class="runtime-hook-row"><div><strong>${esc((h.provider||'').toUpperCase())}</strong><span title="${esc(h.path||'')}">${esc(h.path||'-')}</span></div><span class="badge ${h.installed?'ok':'warn'}">${esc(h.installed?t('runtimeHookEnabled'):t('runtimeHookDisabled'))}</span></div>`).join('');
+  const runtimePanel=`<section class="runtime-observability">
+    <div class="runtime-section-head">
+      <div><div class="eyebrow">Runtime</div><h2>${esc(t('runtimeObservability'))}</h2><p class="summary">${esc(t('runtimeObservabilityIntro'))}</p></div>
+      ${allHooksEnabled?'':`<button class="action-btn" id="runtimeHooksEnableBtn">${esc(t('runtimeEnableObservation'))}</button>`}
+    </div>
+    <div class="runtime-hook-panel"><div><strong>${esc(t('runtimeHookStatus'))}</strong><p>${esc(t('runtimeHookNote'))}</p></div><div class="runtime-hook-list">${hookCards||'-'}</div></div>
+    <div class="metrics runtime-metrics">
+      <div class="metric"><strong>${Number(rc.total||attempts.length)}</strong><span>${esc(t('runtimeAttempts'))}</span></div>
+      <div class="metric"><strong>${Number(rc.running||0)}</strong><span>${esc(t('runtimeRunning'))}</span></div>
+      <div class="metric"><strong>${Number(rc.terminal||0)}</strong><span>${esc(t('runtimeTerminal'))}</span></div>
+      <div class="metric"><strong>${Number(rc.unbound||0)}</strong><span>${esc(t('runtimeUnbound'))}</span></div>
+      <div class="metric"><strong>${Number(rc.ambiguous||0)}</strong><span>${esc(t('runtimeAmbiguous'))}</span></div>
+      <div class="metric"><strong>${Number(rc.stale||0)}</strong><span>${esc(t('runtimeStale'))}</span></div>
+    </div>
+    ${attempts.length?`<div class="runtime-attempt-grid">${attempts.map(a=>runtimeAttemptCard(a,findingsByAttempt[a.attempt_id]||[])).join('')}</div>`:`<div class="runtime-empty">${esc(t('runtimeNoAttempts'))}</div>`}
+  </section>`;
+
   const doingTotal=agents.reduce((n,a)=>n+(a.doing_count||0),0), blockingTotal=agents.reduce((n,a)=>n+(a.blocking_count||0),0), continuityTotal=agents.reduce((n,a)=>n+(a.ready_candidate_count||0),0);
   const cards=agents.map(a=>{
     const alias=String(a.agent||'').split('/').pop()||a.agent;
+    const live=latestByAgent[a.agent];
+    const liveLine=live?`<div class="worker-runtime-line"><span class="status ${esc(live.current_state||'runtime_unknown')}">${esc(runtimeStateLabel(live.current_state))}</span><span>${esc(live.provider||'-')} · ${esc(live.attempt_id||'-')}</span></div>`:'';
     const tasks=(a.doing||[]).map(id=>{const task=all[id]||{},act=task.activity||{},scope=a.change_scopes?.[id]||task.scope||'-';return `<div class="worker-task" data-id="${esc(id)}"><div class="task-id">${esc(id)}</div><div><div class="worker-task-title">${esc(titleOf(task)||id)}</div><div class="worker-health ${esc(act.health||'')}">${esc(healthLabel(act.health||'runtime_unknown'))}${act.last_activity_at?` · ${esc(ago(act.last_activity_at))}`:''}</div></div><div class="timer live-timer" data-id="${esc(id)}">${fmtSec(runningSeconds(task,'active'))}</div><div class="scope-text" title="${esc(scope)}">${esc(scope)}</div></div>`}).join('');
     const blocked=(a.blocking||[]).map(id=>`<span class="badge" data-id="${esc(id)}">${esc(t('blocks'))} ${esc(id)}</span>`).join('');
     const ready=(a.ready_candidates||[]).map(x=>`<span class="badge" data-id="${esc(x.id)}">${esc(t('continuity'))} ${esc(x.id)}</span>`).join('');
-    return `<article class="worker-card"><div class="worker-head"><div><div class="worker-name">${esc(a.agent)}</div><div class="worker-alias">${esc(alias)}</div></div><div class="worker-stats"><div><strong>${a.doing_count||0}</strong><span>${esc(t('doing'))}</span></div><div><strong>${a.blocking_count||0}</strong><span>${esc(t('downstreamBlocked'))}</span></div><div><strong>${a.ready_candidate_count||0}</strong><span>${esc(t('continuity'))}</span></div></div></div><div class="worker-body">${tasks||`<div class="worker-empty">${esc(t('noCurrentDoing'))}</div>`}${blocked?`<div class="mini-panel"><h3>${esc(t('downstreamBlocked'))}</h3><div class="mini-list">${blocked}</div></div>`:''}${ready?`<div class="mini-panel"><h3>${esc(t('readyContinuity'))}</h3><div class="mini-list">${ready}</div></div>`:''}</div></article>`;
+    return `<article class="worker-card"><div class="worker-head"><div><div class="worker-name">${esc(a.agent)}</div><div class="worker-alias">${esc(alias)}</div>${liveLine}</div><div class="worker-stats"><div><strong>${a.doing_count||0}</strong><span>${esc(t('doing'))}</span></div><div><strong>${a.blocking_count||0}</strong><span>${esc(t('downstreamBlocked'))}</span></div><div><strong>${a.ready_candidate_count||0}</strong><span>${esc(t('continuity'))}</span></div></div></div><div class="worker-body">${tasks||`<div class="worker-empty">${esc(t('noCurrentDoing'))}</div>`}${blocked?`<div class="mini-panel"><h3>${esc(t('downstreamBlocked'))}</h3><div class="mini-list">${blocked}</div></div>`:''}${ready?`<div class="mini-panel"><h3>${esc(t('readyContinuity'))}</h3><div class="mini-list">${ready}</div></div>`:''}</div></article>`;
   }).join('');
-  return `<div class="page-head"><div><div class="eyebrow">${esc(t('operationsEyebrow'))}</div><h1>${esc(t('workload'))}</h1><p class="summary">${esc(t('workloadIntro'))}</p></div></div><div class="metrics"><div class="metric"><strong>${agents.length}</strong><span>${esc(t('workers'))}</span></div><div class="metric"><strong>${doingTotal}</strong><span>${esc(t('doing'))}</span></div><div class="metric"><strong>${blockingTotal}</strong><span>${esc(t('downstreamBlocked'))}</span></div><div class="metric"><strong>${continuityTotal}</strong><span>${esc(t('readyContinuity'))}</span></div></div>${unassigned.length?`<div class="unassigned-warning"><strong>${esc(t('unassignedDoing'))}:</strong> ${esc(unassigned.join(', '))}</div>`:''}${cards?`<div class="workload-grid">${cards}</div>`:`<div class="empty">${esc(t('noWorkload'))}</div>`}${released.length?`<div class="workload-secondary"><div class="mini-panel"><h3>${esc(t('releasedHold'))}</h3><div class="mini-list">${released.map(x=>`<span class="badge" data-id="${esc(x.id)}">${esc(x.id)}</span>`).join('')}</div></div></div>`:''}`;
+  const backlogPanel=`<section class="assigned-workload-section"><div class="runtime-section-head compact"><div><div class="eyebrow">Backlog / Git</div><h2>${esc(t('runtimeAssignedWorkload'))}</h2><p class="summary">${esc(t('runtimeAssignedWorkloadIntro'))}</p></div></div><div class="metrics"><div class="metric"><strong>${agents.length}</strong><span>${esc(t('workers'))}</span></div><div class="metric"><strong>${doingTotal}</strong><span>${esc(t('doing'))}</span></div><div class="metric"><strong>${blockingTotal}</strong><span>${esc(t('downstreamBlocked'))}</span></div><div class="metric"><strong>${continuityTotal}</strong><span>${esc(t('readyContinuity'))}</span></div></div>${unassigned.length?`<div class="unassigned-warning"><strong>${esc(t('unassignedDoing'))}:</strong> ${esc(unassigned.join(', '))}</div>`:''}${cards?`<div class="workload-grid">${cards}</div>`:`<div class="empty">${esc(t('noWorkload'))}</div>`}${released.length?`<div class="workload-secondary"><div class="mini-panel"><h3>${esc(t('releasedHold'))}</h3><div class="mini-list">${released.map(x=>`<span class="badge" data-id="${esc(x.id)}">${esc(x.id)}</span>`).join('')}</div></div></div>`:''}</section>`;
+  return `<div class="page-head"><div><div class="eyebrow">${esc(t('operationsEyebrow'))}</div><h1>${esc(t('workload'))}</h1><p class="summary">${esc(t('workloadIntro'))}</p></div></div>${runtimePanel}${backlogPanel}`;
 }
 function issuesView() {
   const h=state.snapshot?.health||{}, rows=[];
@@ -1751,8 +2281,14 @@ function toggleSidebar() {
 }
 
 function render() {
-  nav(); translateChrome(); renderAccess(); renderBacklogPicker(); applySidebarState(); updateNotificationIndicator(); renderGlobalUpdateIndicator(); renderContentUpdatePrompt();
+  nav(); translateChrome(); renderAccess(); renderBacklogPicker(); applySidebarState(); updateNotificationIndicator(); renderGlobalUpdateIndicator(); renderContentUpdatePrompt(); renderReleaseUnreadPrompt();
   const c=$('#content'), data=currentProjectData();
+  if(state.view==='release-notes'){
+    c.innerHTML=releaseNotesView();
+    bindReleaseNotesActions();
+    renderReleaseNoteModal();
+    return;
+  }
   const manualReady=state.view==='manual';
   const snapshotView=['workload','attention','issues'].includes(state.view);
   const viewDataReady=manualReady || (snapshotView ? Boolean(state.snapshot) : Boolean(data));
@@ -1792,6 +2328,10 @@ function render() {
   }
   c.innerHTML=(state.view==='hub'?hubView():gate+(state.view==='manual'?manualView():state.view==='workload'?workloadView():state.view==='attention'?attentionView():state.view==='issues'?issuesView():listView()));
   bindRows(); if(state.view==='hub') bindHubActions();
+  if(state.view==='workload'){
+    const runtimeEnable=$('#runtimeHooksEnableBtn');
+    if(runtimeEnable)runtimeEnable.addEventListener('click',e=>performRuntimeHooksEnable(e.currentTarget));
+  }
   if(state.view==='backlog')scheduleAutoListPageSize();
   document.querySelectorAll('[data-manual-tab]').forEach(b=>b.onclick=()=>{state.manualTab=b.dataset.manualTab;render()});
   bindCopyButtons(); bindMermaidControls(); renderMermaidDiagrams();
@@ -1952,6 +2492,13 @@ async function refreshOnce() {
   if(targetProject)params.set('project',targetProject);
   const qs=params.toString()?`?${params}`:'';
 
+  if(targetView==='release-notes'){
+    closeAttentionStream();
+    await loadReleaseNotes(!state.releaseNotesLoaded);
+    if(state.view==='release-notes')render();
+    return;
+  }
+
   if(targetView==='hub'){
     closeAttentionStream();
     try {
@@ -2073,7 +2620,7 @@ function route(fromPop=false) {
   }
   if (!state.detail) {
     state.view=p.get('view')||(state.project?'backlog':'hub');
-    if(state.view==='hub') state.project='';
+    if(state.view==='hub'||state.view==='release-notes') state.project='';
     if (state.view === 'backlog') {
       const legacy=p.get('state');
       const raw=p.get('filter');
@@ -2115,9 +2662,9 @@ function translateChrome() {
   const brandSub=document.querySelector('.brand-copy small'); if(brandSub) brandSub.textContent=t('observatory');
   const ops=$('#operationsLabel'); if(ops) ops.textContent=t('operations').toUpperCase();
   const help=$('#helpLabel'); if(help) help.textContent=t('help').toUpperCase();
-  const pairs=[['#workloadText','workload'],['#attentionText','attention'],['#issuesText','issues'],['#manualText','manual']];
+  const pairs=[['#workloadText','workload'],['#attentionText','attention'],['#issuesText','issues'],['#manualText','manual'],['#releaseNotesText','releaseNotes']];
   pairs.forEach(([sel,key])=>{const el=$(sel);if(el)el.textContent=t(key)});
-  [['[data-view="workload"]','workload'],['[data-view="attention"]','attention'],['[data-view="issues"]','issues'],['[data-view="manual"]','manual']].forEach(([sel,key])=>{const el=document.querySelector(sel);if(el)el.title=t(key)});
+  [['[data-view="workload"]','workload'],['[data-view="attention"]','attention'],['[data-view="issues"]','issues'],['[data-view="manual"]','manual'],['[data-view="release-notes"]','releaseNotes']].forEach(([sel,key])=>{const el=document.querySelector(sel);if(el)el.title=t(key)});
   const sideBtn=$('#sidebarToggle');if(sideBtn){sideBtn.setAttribute('aria-label',state.sidebarCollapsed?t('expandSidebar'):t('collapseSidebar'));sideBtn.title=state.sidebarCollapsed?t('expandSidebar'):t('collapseSidebar')}
   const refresh=$('#refreshBtn'); if(refresh) refresh.title=t('refresh');
   const themeGroup=document.querySelector('.theme-switcher'); if(themeGroup){themeGroup.setAttribute('aria-label',t('theme'));themeGroup.title=t('theme');}
@@ -2133,6 +2680,8 @@ async function setLanguage(value) {
   await loadManual(next);
   translateChrome();
   render();
+  renderReleaseNoteModal();
+  renderReleaseUnreadPrompt();
   if(document.querySelector('.mermaid-wrap')) renderMermaidDiagrams(true);
 }
 
@@ -2172,6 +2721,7 @@ $('#sidebar')?.addEventListener('mouseenter',()=>{if(state.sidebarCollapsed){sta
 $('#sidebar')?.addEventListener('mouseleave',()=>{if(state.sidebarCollapsed){state.sidebarPeek=false;state.projectMenuOpen=false;applySidebarState();}});
 
 document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'&&state.releaseNotePopup){e.preventDefault();dismissReleaseNotePopup();return}
   const tag=document.activeElement?.tagName?.toLowerCase();
   const editing=['input','textarea','select','button'].includes(tag)||document.activeElement?.isContentEditable;
   if(e.key==='/'&&document.activeElement!==$('#search')){e.preventDefault();$('#search').focus();return}
@@ -2188,7 +2738,7 @@ document.addEventListener('keydown',e=>{
     return;
   }
   if(editing){if(e.key==='Escape')document.activeElement?.blur();return}
-  if(['manual','workload','attention','issues'].includes(state.view))return;
+  if(['manual','workload','attention','issues','release-notes'].includes(state.view))return;
   if(e.key==='ArrowDown'){e.preventDefault();highlightSelection(state.selectedIndex+1)}
   else if(e.key==='ArrowUp'){e.preventDefault();highlightSelection(state.selectedIndex-1)}
   else if(e.key==='Home'){e.preventDefault();highlightSelection(0)}
@@ -2212,6 +2762,12 @@ setInterval(()=>{
     (state.listData?.items||[]).forEach(task=>{byID[task.id]=task});
     Object.assign(byID,state.snapshot?.all_items||{});
     document.querySelectorAll('.live-timer').forEach(el=>{const task=byID[el.dataset.id];if(task)el.textContent=fmtSec(runningSeconds(task,'active'))});
+    document.querySelectorAll('.runtime-elapsed').forEach(el=>{
+      const ended=el.dataset.endedAt||'', started=el.dataset.startedAt||'';
+      if(ended||!started){el.textContent=fmtSec(Number(el.dataset.elapsedMs||0)/1000);return}
+      const ms=Date.now()-new Date(started).getTime();
+      el.textContent=fmtSec(Number.isFinite(ms)?Math.max(0,ms/1000):Number(el.dataset.elapsedMs||0)/1000);
+    });
     if(state.detail&&state.detailTask){
       const task=state.detailTask,a=document.querySelector('.live-active'),w=document.querySelector('.live-wait'),q=document.querySelector('.live-queue'),l=document.querySelector('.live-lead');
       if(a)a.textContent=fmtSec(runningSeconds(task,'active'));if(w)w.textContent=fmtSec(runningSeconds(task,'wait'));if(q)q.textContent=fmtSec(runningSeconds(task,'queue'));if(l)l.textContent=fmtSec(runningSeconds(task,'lead'));
@@ -2222,6 +2778,9 @@ setInterval(()=>{
   if(state.project)checkContentRevision(false);
   else if(state.view==='hub')refreshHub(true).then(()=>{if(state.view==='hub')render()}).catch(()=>{});
 },5000);
+setInterval(()=>{
+  if(state.project&&state.view==='workload'&&document.visibilityState!=='hidden'&&!refreshInFlight)refresh();
+},3000);
 setInterval(()=>refreshVersionInfo(true),300000);
 if(window.isSecureContext&&'serviceWorker' in navigator)notificationWorker();
 route();refresh();

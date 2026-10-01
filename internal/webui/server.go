@@ -22,6 +22,7 @@ import (
     "github.com/silverkhan/TaskMecca/internal/backlog"
     "github.com/silverkhan/TaskMecca/internal/install"
     "github.com/silverkhan/TaskMecca/internal/maintenance"
+    "github.com/silverkhan/TaskMecca/internal/runtimeobs"
 )
 
 const embeddedRoot = "template/_task_mecca/framework"
@@ -121,8 +122,54 @@ func selectionPayload(ctx context, selected string, candidates []backlog.Candida
     }
 }
 
+var stableReleaseNotesIndexProvider = maintenance.StableReleaseNotesIndex
+var stableReleaseNoteProvider = maintenance.StableReleaseNote
 var releaseChannelOptionsProvider = maintenance.GetReleaseChannelOptions
 var releaseChannelSwitchProvider = maintenance.SwitchChannel
+
+func currentReleaseNote() (map[string]any,error) {
+    data,err:=fs.ReadFile(goassets.Template,embeddedRoot+"/release-notes/current.json")
+    if err!=nil { return nil,err }
+    var payload map[string]any
+    if err=json.Unmarshal(data,&payload); err!=nil { return nil,err }
+    return payload,nil
+}
+
+func releaseNotesIndex() ([]map[string]any,error) {
+    data,err:=stableReleaseNotesIndexProvider()
+    if err==nil {
+        var payload struct{ Releases []map[string]any `json:"releases"` }
+        if decodeErr:=json.Unmarshal(data,&payload); decodeErr==nil { return payload.Releases,nil }
+        err=json.Unmarshal(data,&payload)
+    }
+    current,currentErr:=currentReleaseNote()
+    if currentErr==nil { return []map[string]any{current},nil }
+    if err!=nil { return nil,err }
+    return nil,currentErr
+}
+
+func releaseNoteDetail(version string) (map[string]any,error) {
+    current,currentErr:=currentReleaseNote()
+    if currentErr==nil && strings.TrimSpace(fmt.Sprint(current["version"]))==version { return current,nil }
+    data,err:=stableReleaseNoteProvider(version)
+    if err!=nil {
+        if currentErr!=nil { return nil,fmt.Errorf("local release note: %v; remote release note: %w",currentErr,err) }
+        return nil,err
+    }
+    var payload map[string]any
+    if err=json.Unmarshal(data,&payload); err!=nil { return nil,err }
+    return payload,nil
+}
+
+func safeReleaseNoteVersion(value string) bool {
+    value=strings.TrimSpace(value)
+    if value=="" { return false }
+    for _,r:=range value {
+        if (r>='0'&&r<='9')||(r>='A'&&r<='Z')||(r>='a'&&r<='z')||r=='.'||r=='-' { continue }
+        return false
+    }
+    return !strings.Contains(value,"..")
+}
 
 func Handler(project,root,version string) (http.Handler,error) {
     return handler(project,root,version,"","",nil,nil)
@@ -169,6 +216,47 @@ func handler(project,root,version,instanceID,controlToken string,restartCh chan<
             break
         }
         writeJSON(w,map[string]any{"cli":info,"project":projectInfo},200)
+    })
+
+    mux.HandleFunc("/api/release-notes",func(w http.ResponseWriter,r *http.Request) {
+        releases,readErr:=releaseNotesIndex()
+        if readErr!=nil { writeJSON(w,map[string]any{"error":readErr.Error()},500); return }
+        offset:=0
+        if raw:=r.URL.Query().Get("offset"); raw!="" { if value,e:=strconv.Atoi(raw); e==nil && value>=0 { offset=value } }
+        limit:=20
+        if raw:=r.URL.Query().Get("limit"); raw!="" { if value,e:=strconv.Atoi(raw); e==nil && value>0 { limit=value } }
+        if limit>50 { limit=50 }
+        if offset>len(releases) { offset=len(releases) }
+        end:=offset+limit
+        if end>len(releases) { end=len(releases) }
+        items:=releases[offset:end]
+        writeJSON(w,map[string]any{"items":items,"offset":offset,"limit":limit,"total":len(releases),"has_more":end<len(releases)},200)
+    })
+
+    mux.HandleFunc("/api/release-notes/",func(w http.ResponseWriter,r *http.Request) {
+        version:=strings.TrimSpace(strings.TrimPrefix(r.URL.Path,"/api/release-notes/"))
+        if !safeReleaseNoteVersion(version) { writeJSON(w,map[string]any{"error":"invalid release note version"},400); return }
+        payload,readErr:=releaseNoteDetail(version)
+        if readErr!=nil { writeJSON(w,map[string]any{"error":readErr.Error(),"version":version},404); return }
+        writeJSON(w,payload,200)
+    })
+
+    mux.HandleFunc("/api/channel-options",func(w http.ResponseWriter,r *http.Request) {
+        if r.Method!="GET" { writeJSON(w,map[string]any{"error":"GET required"},405); return }
+        writeJSON(w,releaseChannelOptionsProvider(version),200)
+    })
+
+    mux.HandleFunc("/api/channel-switch",func(w http.ResponseWriter,r *http.Request) {
+        if r.Method!="POST" { writeJSON(w,map[string]any{"error":"POST required"},405); return }
+        if r.Header.Get("X-Task-Mecca-Action")!="1" { writeJSON(w,map[string]any{"error":"maintenance action header required"},403); return }
+        var body struct{ Channel string `json:"channel"` }
+        if err:=json.NewDecoder(r.Body).Decode(&body); err!=nil { writeJSON(w,map[string]any{"error":"invalid JSON"},400); return }
+        result,switchErr:=releaseChannelSwitchProvider(version,body.Channel)
+        if switchErr!=nil { writeJSON(w,map[string]any{"error":switchErr.Error()},409); return }
+        writeJSON(w,result,200)
+        if result.RestartRequired && restartCh!=nil {
+            select { case restartCh<-result: default: }
+        }
     })
 
     mux.HandleFunc("/api/revision",func(w http.ResponseWriter,r *http.Request) {
@@ -304,6 +392,29 @@ func handler(project,root,version,instanceID,controlToken string,restartCh chan<
         writeJSON(w,snapshot,200)
     })
 
+    mux.HandleFunc("/api/runtime/hooks",func(w http.ResponseWriter,r *http.Request) {
+        if r.Method!="POST" { writeJSON(w,map[string]any{"error":"POST required"},405); return }
+        if r.Header.Get("X-Task-Mecca-Action")!="1" { writeJSON(w,map[string]any{"error":"maintenance action header required"},403); return }
+        activeProject:=projectFor(r)
+        var body struct{ Provider string `json:"provider"` }
+        if err:=json.NewDecoder(r.Body).Decode(&body); err!=nil { writeJSON(w,map[string]any{"error":"invalid JSON"},400); return }
+        provider:=strings.ToLower(strings.TrimSpace(body.Provider))
+        if provider=="" { provider="all" }
+        if provider!="all" && provider!="codex" && provider!="claude" {
+            writeJSON(w,map[string]any{"error":"provider must be codex, claude, or all"},400)
+            return
+        }
+        providers:=[]string{"codex","claude"}
+        if provider!="all" { providers=[]string{provider} }
+        results:=[]runtimeobs.HookSetup{}
+        for _,name:=range providers {
+            setup,err:=runtimeobs.EnsureHooks(activeProject,name)
+            if err!=nil { writeJSON(w,map[string]any{"error":err.Error(),"provider":name},500); return }
+            results=append(results,setup)
+        }
+        writeJSON(w,map[string]any{"ok":true,"hooks":results},200)
+    })
+
     mux.HandleFunc("/api/issues",func(w http.ResponseWriter,r *http.Request) {
         activeProject:=projectFor(r)
         activeCtx,ctxErr:=webContext(activeProject,"")
@@ -358,24 +469,6 @@ func handler(project,root,version,instanceID,controlToken string,restartCh chan<
         if r.Header.Get("X-Task-Mecca-Action")!="1" { writeJSON(w,map[string]any{"error":"maintenance action header required"},403); return }
         result,err:=maintenance.Upgrade(version)
         if err!=nil { writeJSON(w,map[string]any{"error":err.Error()},500); return }
-        writeJSON(w,result,200)
-        if result.RestartRequired && restartCh!=nil {
-            select { case restartCh<-result: default: }
-        }
-    })
-
-    mux.HandleFunc("/api/channel-options",func(w http.ResponseWriter,r *http.Request) {
-        if r.Method!="GET" { writeJSON(w,map[string]any{"error":"GET required"},405); return }
-        writeJSON(w,releaseChannelOptionsProvider(version),200)
-    })
-
-    mux.HandleFunc("/api/channel-switch",func(w http.ResponseWriter,r *http.Request) {
-        if r.Method!="POST" { writeJSON(w,map[string]any{"error":"POST required"},405); return }
-        if r.Header.Get("X-Task-Mecca-Action")!="1" { writeJSON(w,map[string]any{"error":"maintenance action header required"},403); return }
-        var body struct{ Channel string `json:"channel"` }
-        if err:=json.NewDecoder(r.Body).Decode(&body); err!=nil { writeJSON(w,map[string]any{"error":"invalid JSON"},400); return }
-        result,switchErr:=releaseChannelSwitchProvider(version,body.Channel)
-        if switchErr!=nil { writeJSON(w,map[string]any{"error":switchErr.Error()},409); return }
         writeJSON(w,result,200)
         if result.RestartRequired && restartCh!=nil {
             select { case restartCh<-result: default: }
