@@ -1,6 +1,7 @@
 package maintenance
 
 import (
+    "os"
     "path/filepath"
     "testing"
 )
@@ -79,5 +80,29 @@ func TestWebChannelSwitchRejectsEnvironmentOverride(t *testing.T) {
     t.Setenv("TASK_MECCA_CHANNEL","stable")
     if _,err:=SwitchChannel("0.2.49","dev"); err==nil {
         t.Fatal("expected environment override to block Web channel switch")
+    }
+}
+
+
+func TestFrameworkSyncCandidatesFollowChannel(t *testing.T) {
+    home:=t.TempDir()
+    t.Setenv("TASK_MECCA_HOME",home)
+    t.Setenv("TASK_MECCA_CHANNEL","")
+
+    stableProject:=filepath.Join(t.TempDir(),"stable-project")
+    devProject:=filepath.Join(t.TempDir(),"dev-project")
+    for _,item:=range []struct{ path,version string }{{stableProject,"0.2.50"},{devProject,"0.2.51-dev.3"}} {
+        if err:=os.MkdirAll(filepath.Join(item.path,"_task_mecca"),0755); err!=nil { t.Fatal(err) }
+        if err:=os.WriteFile(filepath.Join(item.path,"_task_mecca","VERSION"),[]byte(item.version+"\n"),0644); err!=nil { t.Fatal(err) }
+        if err:=RegisterProject(item.path); err!=nil { t.Fatal(err) }
+    }
+
+    down:=frameworkSyncCandidates("0.2.51-dev.4","0.2.50","stable")
+    if len(down)!=1 || down[0].Path!=devProject {
+        t.Fatalf("stable sync candidates=%+v",down)
+    }
+    up:=frameworkSyncCandidates("0.2.50","0.2.51-dev.4","dev")
+    if len(up)!=1 || up[0].Path!=stableProject {
+        t.Fatalf("dev sync candidates=%+v",up)
     }
 }
