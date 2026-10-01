@@ -76,8 +76,9 @@ jobs:
           export HOME="$RUNNER_TEMP/task-mecca-installer-home"
           mkdir -p "$HOME/.local/bin"
           export PATH="$HOME/.local/bin:$PATH"
+          expected_version="$(tr -d '\r\n' < goassets/template/_task_mecca/VERSION)"
           TASK_MECCA_RELEASE_TAG=go-main sh ./install.sh
-          task-mecca --version
+          task-mecca --version | head -n 1 | grep -Fx "task-mecca $expected_version"
 
           project="$RUNNER_TEMP/task-mecca-web-smoke"
           mkdir -p "$project"
