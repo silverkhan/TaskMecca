@@ -34,7 +34,7 @@ jobs:
         run: |
           set -euo pipefail
           current_version="$(tr -d '\r\n' < goassets/template/_task_mecca/VERSION)"
-          cli_version="$(sed -n 's/^const version = "\([^"]*\)"/\1/p' cmd/task-mecca/main.go)"
+          cli_version="$(sed -n 's/^var version = "\([^"]*\)"/\1/p' cmd/task-mecca/main.go)"
           test "$current_version" = "$cli_version"
           if git rev-parse HEAD^ >/dev/null 2>&1; then
             previous_version="$(git show HEAD^:goassets/template/_task_mecca/VERSION 2>/dev/null | tr -d '\r\n' || true)"
