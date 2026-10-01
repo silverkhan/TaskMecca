@@ -1,0 +1,107 @@
+package runtimeobs
+
+import (
+    "encoding/json"
+    "errors"
+    "fmt"
+    "os"
+    "path/filepath"
+    "strings"
+)
+
+var lifecycleHookEvents=[]string{"SubagentStart","SubagentStop","PreToolUse","PostToolUse"}
+
+type HookSetup struct {
+    Provider string `json:"provider"`
+    Path string `json:"path"`
+    Installed bool `json:"installed"`
+    Changed bool `json:"changed"`
+    Events map[string]bool `json:"events"`
+}
+
+func HookConfigPath(project,provider string) (string,error) {
+    switch strings.ToLower(strings.TrimSpace(provider)) {
+    case "codex": return filepath.Join(project,".codex","hooks.json"),nil
+    case "claude": return filepath.Join(project,".claude","settings.json"),nil
+    default: return "",fmt.Errorf("unsupported provider %q",provider)
+    }
+}
+
+func HookStatus(project,provider string) (HookSetup,error) {
+    provider=strings.ToLower(strings.TrimSpace(provider))
+    path,err:=HookConfigPath(project,provider); if err!=nil { return HookSetup{},err }
+    out:=HookSetup{Provider:provider,Path:path,Events:map[string]bool{}}
+    doc,exists,err:=readHookDocument(path); if err!=nil { return out,err }
+    if !exists { return out,nil }
+    hooks,_:=doc["hooks"].(map[string]any)
+    for _,event:=range lifecycleHookEvents { out.Events[event]=hasTaskMeccaHook(hooks[event],provider) }
+    out.Installed=true
+    for _,event:=range lifecycleHookEvents { if !out.Events[event] { out.Installed=false } }
+    return out,nil
+}
+
+func EnsureHooks(project,provider string) (HookSetup,error) {
+    provider=strings.ToLower(strings.TrimSpace(provider))
+    path,err:=HookConfigPath(project,provider); if err!=nil { return HookSetup{},err }
+    doc,_,err:=readHookDocument(path); if err!=nil { return HookSetup{},err }
+    hooks,ok:=doc["hooks"].(map[string]any)
+    if !ok || hooks==nil { hooks=map[string]any{}; doc["hooks"]=hooks }
+
+    changed:=false
+    for _,event:=range lifecycleHookEvents {
+        if hasTaskMeccaHook(hooks[event],provider) { continue }
+        current:=asSlice(hooks[event])
+        current=append(current,desiredHook(event,provider))
+        hooks[event]=current
+        changed=true
+    }
+    if changed {
+        data,err:=json.MarshalIndent(doc,"","  "); if err!=nil { return HookSetup{},err }
+        data=append(data,'\n')
+        if err:=os.MkdirAll(filepath.Dir(path),0755); err!=nil { return HookSetup{},err }
+        mode:=os.FileMode(0644)
+        if info,statErr:=os.Stat(path); statErr==nil { mode=info.Mode().Perm() }
+        if err:=os.WriteFile(path,data,mode); err!=nil { return HookSetup{},err }
+    }
+    status,err:=HookStatus(project,provider); if err!=nil { return HookSetup{},err }
+    status.Changed=changed
+    return status,nil
+}
+
+func readHookDocument(path string) (map[string]any,bool,error) {
+    data,err:=os.ReadFile(path)
+    if errors.Is(err,os.ErrNotExist) { return map[string]any{},false,nil }
+    if err!=nil { return nil,false,err }
+    if len(strings.TrimSpace(string(data)))==0 { return map[string]any{},true,nil }
+    doc:=map[string]any{}
+    if err:=json.Unmarshal(data,&doc); err!=nil { return nil,true,fmt.Errorf("invalid JSON in %s: %w",path,err) }
+    return doc,true,nil
+}
+
+func desiredHook(event,provider string) map[string]any {
+    command:=map[string]any{"type":"command","command":"task-mecca runtime observe "+provider,"timeout":3}
+    entry:=map[string]any{"hooks":[]any{command}}
+    if event=="PreToolUse" || event=="PostToolUse" {
+        entry["matcher"]="*"
+        command["async"]=true
+    }
+    return entry
+}
+
+func hasTaskMeccaHook(value any,provider string) bool {
+    command:="task-mecca runtime observe "+provider
+    for _,entry:=range asSlice(value) {
+        row,ok:=entry.(map[string]any); if !ok { continue }
+        for _,hook:=range asSlice(row["hooks"]) {
+            item,ok:=hook.(map[string]any); if !ok { continue }
+            if strings.TrimSpace(fmt.Sprint(item["command"]))==command { return true }
+        }
+    }
+    return false
+}
+
+func asSlice(value any) []any {
+    if value==nil { return []any{} }
+    if rows,ok:=value.([]any); ok { return append([]any{},rows...) }
+    return []any{value}
+}
