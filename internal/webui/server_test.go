@@ -166,6 +166,38 @@ func TestHandlerServesDashboardAPIsAndAssets(t *testing.T) {
     if rec.Code!=http.StatusOK { t.Fatalf("runtime hooks status=%d body=%s",rec.Code,rec.Body.String()) }
     if _,err:=os.Stat(filepath.Join(root,".codex","hooks.json")); err!=nil { t.Fatalf("codex hook config not written: %v",err) }
 
+    req=httptest.NewRequest(http.MethodGet,"/api/workload",nil)
+    rec=httptest.NewRecorder()
+    handler.ServeHTTP(rec,req)
+    configuredPayload:=map[string]any{}
+    if err:=json.Unmarshal(rec.Body.Bytes(),&configuredPayload); err!=nil { t.Fatal(err) }
+    configuredRuntime,ok:=configuredPayload["runtime_observability"].(map[string]any)
+    if !ok { t.Fatalf("configured runtime=%T",configuredPayload["runtime_observability"]) }
+    hookRows,ok:=configuredRuntime["hooks"].([]any)
+    if !ok || len(hookRows)!=2 { t.Fatalf("hook rows=%T %+v",configuredRuntime["hooks"],configuredRuntime["hooks"]) }
+    codexObserved:=false
+    for _,raw:=range hookRows {
+        row,ok:=raw.(map[string]any); if !ok { continue }
+        if row["provider"]=="codex" {
+            if row["configured"]!=true { t.Fatalf("codex not configured: %+v",row) }
+            if row["state"]!="observed" { t.Fatalf("codex state=%v row=%+v",row["state"],row) }
+            observedEvents,ok:=row["observed_events"].(map[string]any)
+            if !ok || observedEvents["start"]!=true { t.Fatalf("codex observed events=%+v",row["observed_events"]) }
+            codexObserved=true
+        }
+    }
+    if !codexObserved { t.Fatalf("codex hook status missing: %+v",hookRows) }
+
+    req=httptest.NewRequest(http.MethodPost,"/api/runtime/hooks",strings.NewReader(`{"provider":"codex","action":"disable"}`))
+    req.Header.Set("Content-Type","application/json")
+    req.Header.Set("X-Task-Mecca-Action","1")
+    rec=httptest.NewRecorder()
+    handler.ServeHTTP(rec,req)
+    if rec.Code!=http.StatusOK { t.Fatalf("runtime hooks disable status=%d body=%s",rec.Code,rec.Body.String()) }
+    disabledStatus,err:=runtimeobs.HookStatus(root,"codex")
+    if err!=nil { t.Fatal(err) }
+    if disabledStatus.Installed { t.Fatalf("codex hooks still installed after disable: %+v",disabledStatus) }
+
     req=httptest.NewRequest(http.MethodGet,"/api/manual?lang=ko",nil)
     rec=httptest.NewRecorder()
     handler.ServeHTTP(rec,req)
