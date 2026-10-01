@@ -267,6 +267,37 @@ func index(value,needle string) int {
 }
 
 
+func TestWorkloadHookStatusSeparatesConfiguredFromObserved(t *testing.T) {
+    root:=t.TempDir()
+    ledger:=filepath.Join(root,"_task_mecca","data","backlog")
+    if err:=os.MkdirAll(ledger,0755); err!=nil { t.Fatal(err) }
+    if err:=os.WriteFile(filepath.Join(ledger,"000001.A-1.todo.md"),[]byte("# A-1 Test\n- Agent: -\n- 변경범위: -\n- 선행: -\n- 연관: -\n"),0644); err!=nil { t.Fatal(err) }
+    if _,err:=runtimeobs.EnsureHooks(root,"codex"); err!=nil { t.Fatal(err) }
+
+    handler,err:=Handler(root,"","test")
+    if err!=nil { t.Fatal(err) }
+    req:=httptest.NewRequest(http.MethodGet,"/api/workload",nil)
+    rec:=httptest.NewRecorder()
+    handler.ServeHTTP(rec,req)
+    if rec.Code!=http.StatusOK { t.Fatalf("status=%d body=%s",rec.Code,rec.Body.String()) }
+
+    payload:=map[string]any{}
+    if err:=json.Unmarshal(rec.Body.Bytes(),&payload); err!=nil { t.Fatal(err) }
+    runtimeView,ok:=payload["runtime_observability"].(map[string]any)
+    if !ok { t.Fatalf("runtime_observability=%T",payload["runtime_observability"]) }
+    hooks,ok:=runtimeView["hooks"].([]any)
+    if !ok { t.Fatalf("hooks=%T",runtimeView["hooks"]) }
+    found:=false
+    for _,raw:=range hooks {
+        row,ok:=raw.(map[string]any); if !ok || row["provider"]!="codex" { continue }
+        found=true
+        if row["configured"]!=true { t.Fatalf("configured=%v row=%+v",row["configured"],row) }
+        if row["state"]!="verification_required" { t.Fatalf("state=%v row=%+v",row["state"],row) }
+        if row["observed"]!=false { t.Fatalf("observed=%v row=%+v",row["observed"],row) }
+    }
+    if !found { t.Fatalf("codex hook row missing: %+v",hooks) }
+}
+
 func TestTailscaleIPv4Range(t *testing.T) {
     cases:=[]struct{
         raw string
