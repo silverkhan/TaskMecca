@@ -103,3 +103,22 @@ func TestObserveRejectsUnknownProvider(t *testing.T) {
         t.Fatal("expected provider validation error")
     }
 }
+
+
+func TestResolveProjectWalksUpFromSubdirectory(t *testing.T) {
+    project := t.TempDir()
+    if err := os.MkdirAll(project+"/_task_mecca", 0o755); err != nil {
+        t.Fatal(err)
+    }
+    nested := project+"/a/b/c"
+    if err := os.MkdirAll(nested, 0o755); err != nil {
+        t.Fatal(err)
+    }
+    resolved, err := ResolveProject(nested)
+    if err != nil {
+        t.Fatal(err)
+    }
+    if resolved != project {
+        t.Fatalf("resolved=%q want=%q", resolved, project)
+    }
+}
