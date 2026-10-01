@@ -121,3 +121,17 @@ func TestLegacyBootstrapMigrationPreservesProjectDataAndBacksUpFramework(t *test
         t.Fatalf("legacy framework residue should be replaced, err=%v",err)
     }
 }
+
+
+func TestLegacyBootstrapNormalizesLiteralEscapedVersion(t *testing.T) {
+    project:=t.TempDir()
+    target:=filepath.Join(project,targetName)
+    if err:=os.MkdirAll(filepath.Join(target,"framework"),0755); err!=nil { t.Fatal(err) }
+    if err:=os.WriteFile(filepath.Join(target,"VERSION"),[]byte("0.2.39\\n"),0644); err!=nil { t.Fatal(err) }
+
+    result,err:=MigrateWithResult(project,"0.2.40")
+    if err!=nil { t.Fatal(err) }
+    if result.FromVersion!="0.2.39" {
+        t.Fatalf("from_version=%q",result.FromVersion)
+    }
+}
