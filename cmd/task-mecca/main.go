@@ -12,6 +12,7 @@ import (
     "github.com/silverkhan/TaskMecca/internal/backlog"
     "github.com/silverkhan/TaskMecca/internal/install"
     "github.com/silverkhan/TaskMecca/internal/maintenance"
+    "github.com/silverkhan/TaskMecca/internal/runtimeobs"
     "github.com/silverkhan/TaskMecca/internal/webui"
 )
 
@@ -643,6 +644,43 @@ func run(args []string) int {
             fmt.Fprintln(os.Stderr,"unknown web action: "+action+" (use status, restart, stop, or logs)")
             return 2
         }
+    case "runtime-spike":
+        if len(positional)==0 {
+            fmt.Fprintln(os.Stderr,"runtime-spike requires an action: observe or report")
+            return 2
+        }
+        action:=strings.ToLower(positional[0])
+        switch action {
+        case "observe":
+            if len(positional)!=2 {
+                fmt.Fprintln(os.Stderr,"runtime-spike observe requires a provider: codex or claude")
+                return 2
+            }
+            var event runtimeobs.SpikeEvent
+            event,err=runtimeobs.Observe(root,positional[1],os.Stdin,time.Now())
+            if err==nil && jsonOutput { emitJSON(event) }
+        case "report":
+            if len(positional)>2 {
+                fmt.Fprintln(os.Stderr,"runtime-spike report accepts at most one provider: codex or claude")
+                return 2
+            }
+            var report runtimeobs.SpikeReport
+            report,err=runtimeobs.Report(root,limit)
+            if err==nil && len(positional)==2 {
+                provider:=strings.ToLower(positional[1])
+                if provider!="codex" && provider!="claude" {
+                    fmt.Fprintln(os.Stderr,"runtime-spike report provider must be codex or claude")
+                    return 2
+                }
+                report=runtimeobs.FilterReport(report,provider)
+            }
+            if err==nil {
+                if jsonOutput { emitJSON(report) } else { printRuntimeSpikeReport(report) }
+            }
+        default:
+            fmt.Fprintln(os.Stderr,"unknown runtime-spike action: "+action+" (use observe or report)")
+            return 2
+        }
     case "monitor":
         if len(positional) != 0 { fmt.Fprintln(os.Stderr, "monitor takes no positional arguments"); return 2 }
         if !once && !jsonOutput {
@@ -816,6 +854,39 @@ func printWebState(prefix string,state webui.ServiceState) {
         fmt.Println("Tailscale HTTPS unavailable: "+state.TLSError)
     }
     fmt.Printf("PID       %d\n",state.PID)
+}
+
+func printRuntimeSpikeReport(report runtimeobs.SpikeReport) {
+    fmt.Println("Task Mecca · Runtime Observability Spike")
+    fmt.Println("journal="+report.JournalPath)
+    if !report.Exists {
+        fmt.Println("events=0 (아직 수집된 hook 이벤트 없음)")
+        return
+    }
+    fmt.Printf("events=%d agents=%d findings=%d\n",report.Events,len(report.Agents),len(report.Findings))
+    for _,provider:=range report.Providers {
+        fmt.Printf("%s: events=%d agents=%d start=%d stop=%d tool=%d attributed=%d unattributed=%d\n",
+            provider.Provider,provider.Events,provider.Agents,provider.Starts,provider.Stops,
+            provider.ToolActivityEvents,provider.AttributedToolActivity,provider.UnattributedToolActivity)
+    }
+    if len(report.Agents)>0 {
+        fmt.Println("\nAgents")
+        for _,agent:=range report.Agents {
+            status:="observed"
+            if agent.SawStart && agent.SawStop { status="start→stop" } else if agent.SawStart { status="start→?" }
+            fmt.Printf("%s %-24s %-11s events=%d activity=%d first=%s last=%s\n",
+                agent.Provider,agent.AgentID,status,agent.EventCount,agent.ActivityCount,agent.FirstObserved,agent.LastObserved)
+        }
+    }
+    if len(report.Findings)>0 {
+        fmt.Println("\nFindings")
+        for _,finding:=range report.Findings {
+            target:=finding.Provider
+            if finding.AgentID!="" { target+=":"+finding.AgentID }
+            if target!="" { target=" ["+target+"]" }
+            fmt.Printf("- %s %s%s: %s\n",strings.ToUpper(finding.Severity),finding.Code,target,finding.Message)
+        }
+    }
 }
 
 func printUpdateHint(info maintenance.VersionInfo) {
