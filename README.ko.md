@@ -21,7 +21,7 @@ macOS / Linux:
 curl -fsSL https://raw.githubusercontent.com/silverkhan/TaskMecca/main/install.sh | sh
 ```
 
-Windows는 [rolling release](https://github.com/silverkhan/TaskMecca/releases/tag/go-main)의 `task-mecca-windows-amd64.exe`를 내려받아 `task-mecca.exe`로 사용할 수 있는 PATH 위치에 둡니다.
+Windows는 [rolling release](https://github.com/silverkhan/TaskMecca/releases/tag/release-stable)의 `task-mecca-windows-amd64.exe`를 내려받아 `task-mecca.exe`로 사용할 수 있는 PATH 위치에 둡니다.
 
 최종 사용자는 Python, `uv`, Go toolchain을 설치할 필요가 없습니다.
 
@@ -115,8 +115,8 @@ Task Mecca Web UI
 
 Task Mecca는 **Stable / Dev** 두 업데이트 채널을 지원합니다.
 
-- `stable`은 기본 채널이며 `main → go-main` 정식 빌드만 받습니다.
-- `dev`는 명시적으로 선택한 개발자용 채널이며 `dev → go-dev` 개발 빌드를 받습니다.
+- `stable`은 기본 채널이며 `main → release-stable` 정식 빌드만 받습니다.
+- `dev`는 명시적으로 선택한 개발자용 채널이며 `dev → release-dev` 개발 빌드를 받습니다.
 - 개발 빌드는 다음 정식 버전을 기준으로 `0.2.46-dev.1`, `0.2.46-dev.2`처럼 증가하고, 정식 승격 시 `0.2.46`이 됩니다.
 
 현재 채널 확인/변경:
@@ -127,7 +127,7 @@ task-mecca channel dev
 task-mecca channel stable
 ```
 
-채널 선택은 로컬 설치에 저장되므로 일반 사용자는 별도 설정 없이 계속 Stable만 추적합니다.
+채널 선택은 로컬 설치에 저장되므로 일반 사용자는 별도 설정 없이 계속 Stable만 추적합니다. 기존 `go-main` / `go-dev` 태그는 구버전 클라이언트의 업데이트 호환을 위한 legacy alias로만 유지합니다.
 
 ### Web에서
 
