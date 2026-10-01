@@ -9,10 +9,26 @@ Task Mecca documentation starts with what the user needs to do first. Internal r
 From the project root:
 
 ```bash
-python _task_mecca/framework/collab_tools.py web
+task-mecca web
 ```
 
-The browser dashboard is read-only and localhost-only. It shows backlog state, subagent workload, lifecycle timing, Needs Attention, and access observations.
+`task-mecca web` starts a user-level singleton Web service in the background and opens the browser. The default port is `18765`; Task Mecca does not silently increment to another port. If the Web service is already running, the existing instance and URL are reused. With the default `--host auto`, Task Mecca serves local HTTP on `127.0.0.1:18765` and, when Tailscale is detected, directly serves HTTPS on the Tailscale interface using the same port. On Windows/Linux, the local Web service becomes available first while Tailscale HTTPS certificate setup finishes in the background, so a slow first certificate provision does not turn local startup into a false failure. The remote URL is `https://<machine>.<tailnet>.ts.net:18765`. Tailscale Serve is not required. Use `--host <ip>` or `--port <port>` to override explicitly. The dashboard is read-only and shows backlog state, subagent workload, lifecycle timing, Needs Attention, and access observations.
+
+
+Web service controls:
+
+```bash
+task-mecca web status
+task-mecca web restart
+task-mecca web stop
+task-mecca web logs
+task-mecca web logs --follow
+task-mecca web --foreground
+```
+
+Background state and logs are stored under the user-level `~/.task-mecca/web/` directory. If the default port `18765` is occupied by another program, Task Mecca reports an error instead of silently moving to `18766`; use `--port` when an explicit override is needed.
+
+For direct Tailscale HTTPS, MagicDNS and HTTPS Certificates must be enabled in the Tailscale admin DNS settings. Task Mecca stores the issued certificate under `~/.task-mecca/web/tls/` and renews it only when needed. If HTTPS provisioning is unavailable, `task-mecca web status` reports the reason.
 
 Backlog ledgers are detected automatically under `_task_mecca`. New projects use canonical `data/backlog/`; compatibility remains for names beginning with `backlog`, including `data/backlog_b` and legacy `backlog_b`. Canonical `data/backlog/` has highest priority. The top-bar **Backlog** selector can override the choice; **Auto** restores automatic selection.
 
@@ -69,13 +85,27 @@ At the first executable request of a session, Root performs the following automa
 3. Before spawning Registrar/Controller/Workers, run:
 
 ```bash
-python _task_mecca/framework/collab_tools.py preflight --require-full-access --json
+task-mecca preflight --require-full-access --json
 ```
 
 4. Proceed only when `access.orchestration_ready == true`.
 5. If status is `restricted` or `unknown`, do not spawn a subagent. Ask the user to enable Full Access, then rerun the effective probe.
 
 Non-executable discussion is not blocked by this gate.
+
+### Event-driven execution handoff
+
+Execution-authorized work must not wait for another Root user turn after Registrar or Worker completion.
+
+- Root prepares an exact `/root/controller` runtime identity before dispatching Registrar.
+- Registrar directly messages or resumes Controller after successful registration.
+- Worker directly messages or resumes Controller when reporting DONE/BLOCKED.
+- Resuming a completed agent starts a new turn and therefore requires a fresh Full Access preflight.
+- A message to a currently running agent is distinct from resuming a completed agent.
+- Missing, ambiguous, cancelled, or permission-blocked targets are not recorded as successful handoffs.
+- See `collab.md` and `roles/*.md` for the canonical protocol.
+
+`_task_mecca/.runtime/handoffs/events.jsonl` is ephemeral orchestration evidence and does not replace the backlog/Git contract.
 
 ## 5. When Full Access is not confirmed
 
@@ -222,11 +252,27 @@ The goal is to keep safety checks automatic and quiet, asking the user only when
 Filesystem layout mirrors ownership:
 
 - `_task_mecca/framework/**`: Task Mecca framework and customizable policy/docs
-- `_task_mecca/data/**`: durable project/agent data; never overwritten by the updater
+- `_task_mecca/data/**`: durable project/agent data; never overwritten by the migrator
 - `_task_mecca/.runtime/**`: ephemeral runtime state
-- `_task_mecca/backups/**`: updater safety backups
+- `_task_mecca/backups/**`: migrator safety backups
 - pre-0.2 `_task_mecca/backlog*/**`: legacy project-data compatibility
 
 The installer does not pre-create `data/` or a backlog. On first registration Registrar calls `ensure-backlog`, reuses an existing ledger when present, and otherwise creates canonical `data/backlog/`. Durable audit/measurement/test evidence created by agents belongs under `data/`; Task Mecca does not standardize arbitrary artifact subfolder names.
 
-When an upstream update would replace locally customized managed documents, the updater shows the affected files, recommends and creates a local backup when approved, explains that the customized copies will be overwritten, and asks for final confirmation. It does not attempt semantic auto-merge of role or policy documents.
+When an upstream update would replace locally customized managed documents, the migrator shows the affected files, recommends and creates a local backup when approved, explains that the customized copies will be overwritten, and asks for final confirmation. It does not attempt semantic auto-merge of role or policy documents.
+
+### Root-session resynchronization after migration
+
+An already-running Root session may still carry instructions that it read before migration. Therefore, if migration actually changes any of the following operational instruction files, the current Root session **must be resynchronized**:
+
+- `_task_mecca/ROOT_PROMPT.md`
+- `_task_mecca/framework/SESSION_GUIDE.md`
+- `_task_mecca/framework/SESSION_GUIDE.en.md`
+- `_task_mecca/framework/collab.md`
+- `_task_mecca/framework/roles/*.md`
+
+A migration that only changes Web UI/CSS/runtime implementation and does not alter session behavior does not require this resynchronization.
+
+When migration is run from the Web UI, the migrator determines whether upstream instruction files actually changed. If resynchronization is required, the completion dialog provides a copyable prompt that can be pasted directly into the **current Root session**. Before starting another subagent dispatch or execution step, Root rereads the latest `ROOT_PROMPT.md`, the session guide for the active language, `collab.md`, and `roles/root.md`, then reapplies the current operating rules.
+
+There is no need to create a new Root session solely because of migration. The existing session can continue after it has reread and reapplied the updated instructions.

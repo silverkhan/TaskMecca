@@ -41,6 +41,38 @@ Worker가 직접 canonical contract를 요약으로 덮어쓰지는 않는다.
 정확히 적되, `exact plan`, `safe projection`, `five-state diff` 같은 내부 shorthand만으로 결과를 설명하지 않는다.
 기술적으로 정확한 사실과 함께 “무엇을 어떻게 바꿨고, 안전하게 처리할 수 없을 때 어떤 동작을 하는지”를 자연어로 명시한다.
 
+## Controller 완료 이벤트 인계
+
+Controller가 Worker를 dispatch할 때 다음 handoff envelope를 함께 받아야 한다.
+
+- 현재 `controller_attempt_id`와 runtime agent identity
+- provider / session scope
+- dispatch 시점의 `contract_sha256`
+
+Worker는 DONE/BLOCKED 보고를 만든 뒤 Controller가 polling해서 발견할 것을 기대하지 않는다. 보고 JSON은 `_task_mecca/.runtime/handoffs/reports/` 같은 ephemeral 경로에 저장하고, 다음처럼 handoff를 준비한다.
+
+```bash
+task-mecca handoff prepare <ID> \
+  --event worker-done \
+  --from <worker-agent-path> \
+  --to /root/controller \
+  --source-attempt <worker-attempt-id> \
+  --target-attempt <controller-attempt-id> \
+  --contract-sha256 <dispatch-time-contract-sha256> \
+  --report-file <report.json> \
+  --json
+```
+
+BLOCKED면 `--event worker-blocked`를 사용한다.
+
+- `message_running`: 현재 Controller turn에 report/handoff ID를 전달한다.
+- `resume_completed`: fresh Full Access preflight 후 동일 Controller를 runtime 방식으로 재개한다.
+- `hold`: 새 Controller를 임의 생성하지 않는다. dispatch 실패 evidence와 남은 작업을 남긴다.
+
+실제 전달 결과는 `handoff mark <HANDOFF_ID> --step dispatch --result ...`로 기록한다. Claude background Worker처럼 agent discovery가 제한될 수 있으므로 Controller를 종료 시점에 다시 찾는 방식을 기본으로 삼지 않고, **spawn 시 전달받은 identity를 사용**한다.
+
+Worker의 DONE 선언이나 handoff 전달 성공 자체는 backlog `done`의 근거가 아니다. 최종 수용 기준 검증과 lifecycle write는 Controller가 수행한다.
+
 ## 완료 보고
 
 즉시 Controller에 다음을 반환한다.

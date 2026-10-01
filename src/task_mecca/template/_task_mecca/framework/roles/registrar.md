@@ -48,10 +48,10 @@ Registrar는 Root가 전달한 **태그 분류 결과를 등록 계약의 일부
 
 ## 원장 선택 및 생성
 
-1. `python _task_mecca/framework/collab_tools.py ensure-backlog --json`을 실행한다.
+1. `task-mecca ensure-backlog --json`을 실행한다.
 2. 기존 `backlog*` 원장이 있으면 그것을 그대로 사용한다. legacy/custom ledger를 임의로 새 이름으로 복제하지 않는다.
 3. 원장이 하나도 없을 때만 canonical `_task_mecca/data/backlog/`를 생성한다.
-4. `_task_mecca/data/**`는 project-owned이며 updater 대상이 아니다.
+4. `_task_mecca/data/**`는 project-owned이며 migrator 대상이 아니다.
 
 ## 등록 절차
 
@@ -67,6 +67,42 @@ Registrar는 Root가 전달한 **태그 분류 결과를 등록 계약의 일부
 10. `선행`에는 직접 blocker만, `연관`에는 비차단 맥락만 보완한다.
 11. `inspect`와 `doctor`로 생성 결과를 검증한다.
 12. Root에 새 ID를 반환한다. Root/Controller 계약에 따라 등록 사실이 Controller에 전달된다.
+
+## 등록 후 Controller 직접 인계
+
+Root가 `execution_authorized=true`와 Controller identity를 전달한 경우, Registrar는 등록 성공을 Root가 다시 중계해 줄 때까지 기다리지 않는다.
+
+등록 파일 생성 → `inspect` → `doctor`가 모두 성공한 뒤:
+
+```bash
+task-mecca handoff prepare <ID> \
+  --event registration-ready \
+  --from /root/registrar \
+  --to /root/controller \
+  --target-attempt <controller-attempt-id> \
+  --execution-authorized \
+  --json
+```
+
+반환된 `action`에 따라 현재 runtime의 협업 도구를 사용한다.
+
+- `message_running`: 실행 중인 Controller에 메시지만 전달한다. 새 instance를 만들지 않는다.
+- `resume_completed`: **fresh Full Access preflight를 다시 통과한 뒤** 종료된 동일 Controller를 새 turn으로 재개한다.
+  - Codex: `followup_task`
+  - Claude Code: 동일 Controller agent ID/name 대상 `SendMessage`
+- `hold`: target missing/ambiguous/cancelled/unknown 등을 성공으로 취급하지 않는다. 실패 근거와 복구 조건을 Root에 보고한다.
+
+실제 transport가 성공했을 때만:
+
+```bash
+task-mecca handoff mark <HANDOFF_ID> --step dispatch --result ok --evidence <runtime-evidence> --json
+```
+
+을 기록한다. 호출 실패 또는 성공 여부를 확인할 수 없으면 각각 `failed` / `unknown`으로 남긴다.
+
+`execution_authorized=false`인 등록은 Controller를 깨우지 않는다. 등록 충돌·taxonomy 오류·계약 등록 실패도 구현 handoff로 이어지지 않는다.
+
+Registrar는 Controller를 깨울 수 있지만 Worker 선택·doing claim·수용 기준 판정은 하지 않는다.
 
 ## 경계
 

@@ -691,13 +691,15 @@ func run(args []string) int {
             }
         case "bind":
             if len(positional)<4 || len(positional)>5 {
-                fmt.Fprintln(os.Stderr,"runtime bind requires: <attempt-id> <task-id> <agent-path> [parent-attempt-id]")
+                fmt.Fprintln(os.Stderr,"runtime bind requires: <attempt-id> <task-id|-> <agent-path> [parent-attempt-id]")
                 return 2
             }
             parent:=""
             if len(positional)==5 { parent=positional[4] }
+            taskID:=positional[2]
+            if taskID=="-" { taskID="" }
             var attempt runtimeobs.Attempt
-            attempt,err=runtimeobs.BindAttempt(runtimeProject,positional[1],positional[2],positional[3],"explicit",parent,nil,time.Now())
+            attempt,err=runtimeobs.BindAttempt(runtimeProject,positional[1],taskID,positional[3],"explicit",parent,nil,time.Now())
             if err==nil {
                 if jsonOutput { emitJSON(attempt) } else {
                     fmt.Printf("%s %s %s -> %s %s\n",attempt.AttemptID,attempt.BindingState,attempt.Provider,attempt.TaskID,attempt.AgentPath)
