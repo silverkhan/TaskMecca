@@ -396,23 +396,38 @@ func handler(project,root,version,instanceID,controlToken string,restartCh chan<
         if r.Method!="POST" { writeJSON(w,map[string]any{"error":"POST required"},405); return }
         if r.Header.Get("X-Task-Mecca-Action")!="1" { writeJSON(w,map[string]any{"error":"maintenance action header required"},403); return }
         activeProject:=projectFor(r)
-        var body struct{ Provider string `json:"provider"` }
+        var body struct{
+            Provider string `json:"provider"`
+            Action string `json:"action"`
+        }
         if err:=json.NewDecoder(r.Body).Decode(&body); err!=nil { writeJSON(w,map[string]any{"error":"invalid JSON"},400); return }
         provider:=strings.ToLower(strings.TrimSpace(body.Provider))
         if provider=="" { provider="all" }
+        action:=strings.ToLower(strings.TrimSpace(body.Action))
+        if action=="" { action="enable" }
         if provider!="all" && provider!="codex" && provider!="claude" {
             writeJSON(w,map[string]any{"error":"provider must be codex, claude, or all"},400)
+            return
+        }
+        if action!="enable" && action!="disable" {
+            writeJSON(w,map[string]any{"error":"action must be enable or disable"},400)
             return
         }
         providers:=[]string{"codex","claude"}
         if provider!="all" { providers=[]string{provider} }
         results:=[]runtimeobs.HookSetup{}
         for _,name:=range providers {
-            setup,err:=runtimeobs.EnsureHooks(activeProject,name)
+            var setup runtimeobs.HookSetup
+            var err error
+            if action=="disable" {
+                setup,err=runtimeobs.DisableHooks(activeProject,name)
+            } else {
+                setup,err=runtimeobs.EnsureHooks(activeProject,name)
+            }
             if err!=nil { writeJSON(w,map[string]any{"error":err.Error(),"provider":name},500); return }
             results=append(results,setup)
         }
-        writeJSON(w,map[string]any{"ok":true,"hooks":results},200)
+        writeJSON(w,map[string]any{"ok":true,"action":action,"hooks":results},200)
     })
 
     mux.HandleFunc("/api/issues",func(w http.ResponseWriter,r *http.Request) {

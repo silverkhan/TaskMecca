@@ -31,6 +31,29 @@ Task Mecca는 subagent를 실제 dispatch하기 직전에 fresh active preflight
 현재 파일 상태가 Git lifecycle의 마지막 commit보다 앞서 있는 경우(예: `todo → doing` rename은 됐지만 lifecycle commit 전), Web UI는 현재 파일 상태를 무시하지 않는다. 파일 시스템의 관측 시각으로 **provisional lifecycle event**를 만들어 Queue/Active/Wait를 임시 보정하고 Lifecycle에 `provisional`로 표시한다. 실제 state transition commit이 기록되면 이 임시 이벤트는 자동으로 Git 이벤트로 대체된다.
 
 
+### Runtime 실행 관측과 Hook 신뢰
+
+Web의 **서브에이전트 워크로드 → Runtime 실행 관측**은 Codex/Claude의 프로젝트 Hook 설정을 통해 실제 실행 이벤트를 수집한다. Hook은 별도 프로그램이 아니며, 프로젝트 설정에 `task-mecca runtime observe ...` 명령을 연결하는 규칙이다.
+
+**설정됨과 실제 관측 가능 상태는 다르다.**
+
+- **Codex**: Task Mecca가 `.codex/hooks.json`에 규칙을 추가한 뒤에도 Codex에서 Hook 신뢰 검토가 필요할 수 있다. CLI/TUI에서는 `/hooks`에서 Task Mecca Hook을 검토·승인한다. 승인 전에 이미 시작되거나 종료된 Subagent의 Start/Stop 이벤트는 소급 복원되지 않을 수 있으므로, 승인 후 **새 Subagent를 생성해 검증**한다. Hook 정의가 변경되면 다시 신뢰 검토가 필요할 수 있다.
+- **Claude Code**: `.claude/settings.json`의 개별 Hook마다 Codex식 별도 승인을 하는 구조가 아니라, interactive session에서는 프로젝트의 **workspace trust**가 선행 조건이다. `claude -p`/SDK 실행은 별도 trust dialog 없이 settings Hook이 실행될 수 있다.
+
+Web은 Provider별로 `미설정 / 확인 필요 / 관측 확인됨`을 구분하고, Activity / Start / Stop 이벤트가 실제로 수신됐는지도 따로 표시한다. Task Mecca가 provider trust 상태를 직접 확인할 수 없는 경우 승인 완료를 추정하지 않는다.
+
+CLI에서도 설정을 관리할 수 있다.
+
+```bash
+task-mecca runtime hooks status all
+task-mecca runtime hooks enable codex
+task-mecca runtime hooks enable claude
+task-mecca runtime hooks disable codex
+task-mecca runtime hooks disable claude
+```
+
+`disable`은 Task Mecca가 추가한 Hook handler만 제거하며 다른 Hook 설정은 보존한다. Runtime 관측을 꺼도 기존 Execution Ledger 기록은 삭제되지 않는다.
+
 ## Framework / Data 경계
 
 설치 시에는 `framework/`만 배포되고 `data/`는 만들지 않는다. 첫 task 등록 시 Registrar가 `ensure-backlog`를 통해 기존 원장을 선택하거나, 원장이 없으면 `_task_mecca/data/backlog/`를 생성한다. Agent가 만드는 durable 부산물도 framework와 섞지 말고 필요할 때 `data/` 아래에 둔다.

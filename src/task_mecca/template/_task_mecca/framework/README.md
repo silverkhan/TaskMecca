@@ -31,6 +31,17 @@ Task Mecca는 subagent를 실제 dispatch하기 직전에 fresh active preflight
 현재 파일 상태가 Git lifecycle의 마지막 commit보다 앞서 있는 경우(예: `todo → doing` rename은 됐지만 lifecycle commit 전), Web UI는 현재 파일 상태를 무시하지 않는다. 파일 시스템의 관측 시각으로 **provisional lifecycle event**를 만들어 Queue/Active/Wait를 임시 보정하고 Lifecycle에 `provisional`로 표시한다. 실제 state transition commit이 기록되면 이 임시 이벤트는 자동으로 Git 이벤트로 대체된다.
 
 
+### Runtime 실행 관측과 Hook 신뢰
+
+Web의 **서브에이전트 워크로드 → Runtime 실행 관측**은 Codex/Claude의 프로젝트 Hook 설정을 통해 실제 실행 이벤트를 수집한다. Hook은 별도 프로그램이 아니며, 프로젝트 설정에 `task-mecca runtime observe ...` 명령을 연결하는 규칙이다.
+
+**설정됨과 실제 관측 가능 상태는 다르다.**
+
+- **Codex**: `.codex/hooks.json` 설정 후 Codex의 Hook 신뢰 검토가 필요할 수 있다. CLI/TUI에서는 `/hooks`에서 Task Mecca Hook을 검토·승인한다. 승인 전 Agent의 Start/Stop 이벤트는 소급되지 않을 수 있으므로 승인 후 새 Subagent로 검증한다.
+- **Claude Code**: interactive session에서는 프로젝트 workspace trust가 선행 조건이다. `claude -p`/SDK는 별도 trust dialog 없이 settings Hook이 실행될 수 있다.
+
+Web은 `미설정 / 확인 필요 / 관측 확인됨`과 Activity / Start / Stop 실제 수신 여부를 구분한다. 관측을 끄면 Task Mecca Hook만 제거하고 기존 Execution Ledger는 보존한다.
+
 ## Framework / Data 경계
 
 설치 시에는 `framework/`만 배포되고 `data/`는 만들지 않는다. 첫 task 등록 시 Registrar가 `ensure-backlog`를 통해 기존 원장을 선택하거나, 원장이 없으면 `_task_mecca/data/backlog/`를 생성한다. Agent가 만드는 durable 부산물도 framework와 섞지 말고 필요할 때 `data/` 아래에 둔다.

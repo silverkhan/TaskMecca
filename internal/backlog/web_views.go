@@ -46,7 +46,7 @@ func WorkloadSnapshot(project, root string) (map[string]any, error) {
         }
     }
 
-    hookSetups := []runtimeobs.HookSetup{}
+    hookSetups := []map[string]any{}
     for _, provider := range []string{"codex", "claude"} {
         setup, hookErr := runtimeobs.HookStatus(project, provider)
         if hookErr != nil {
@@ -56,7 +56,52 @@ func WorkloadSnapshot(project, root string) (map[string]any, error) {
             })
             continue
         }
-        hookSetups = append(hookSetups, setup)
+        observedEvents := map[string]bool{
+            "activity": false,
+            "start":    false,
+            "stop":     false,
+        }
+        lastObservedAt := ""
+        for _, attempt := range runtimeLedger.Attempts {
+            if attempt.Provider != provider {
+                continue
+            }
+            if attempt.ActivityCount > 0 {
+                observedEvents["activity"] = true
+            }
+            if attempt.StartedAt != "" {
+                observedEvents["start"] = true
+            }
+            if attempt.EndedAt != "" {
+                observedEvents["stop"] = true
+            }
+            if attempt.LastObservedAt > lastObservedAt {
+                lastObservedAt = attempt.LastObservedAt
+            }
+        }
+        observed := observedEvents["activity"] || observedEvents["start"] || observedEvents["stop"]
+        state := "unconfigured"
+        if setup.Installed {
+            state = "verification_required"
+            if observed {
+                state = "observed"
+            }
+        }
+        trustModel := "workspace_trust"
+        if provider == "codex" {
+            trustModel = "hook_trust"
+        }
+        hookSetups = append(hookSetups, map[string]any{
+            "provider":          provider,
+            "path":              setup.Path,
+            "configured":        setup.Installed,
+            "configured_events": setup.Events,
+            "state":             state,
+            "observed":          observed,
+            "observed_events":   observedEvents,
+            "last_observed_at":  lastObservedAt,
+            "trust_model":       trustModel,
+        })
     }
 
     runtimeCounts := map[string]int{
