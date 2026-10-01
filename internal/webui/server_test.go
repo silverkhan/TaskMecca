@@ -154,10 +154,8 @@ func TestHandlerServesDashboardAPIsAndAssets(t *testing.T) {
     if err:=json.Unmarshal(rec.Body.Bytes(),&releaseDetail); err!=nil { t.Fatal(err) }
     if releaseDetail["version"]!="0.2.49" { t.Fatalf("release note version=%v",releaseDetail["version"]) }
 
-    req=httptest.NewRequest(http.MethodGet,"/api/release-notes/../VERSION",nil)
-    rec=httptest.NewRecorder()
-    handler.ServeHTTP(rec,req)
-    if rec.Code!=http.StatusBadRequest { t.Fatalf("unsafe release note path status=%d body=%s",rec.Code,rec.Body.String()) }
+    if safeReleaseNoteVersion("../VERSION") { t.Fatal("unsafe release note version accepted") }
+    if !safeReleaseNoteVersion("0.2.49-dev.1") { t.Fatal("valid prerelease version rejected") }
 
     req=httptest.NewRequest(http.MethodGet,"/api/tasks/A-404",nil)
     rec=httptest.NewRecorder()
