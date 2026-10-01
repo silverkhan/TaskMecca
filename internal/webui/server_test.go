@@ -12,10 +12,38 @@ import (
     "testing"
     "time"
 
+    "github.com/silverkhan/TaskMecca/internal/maintenance"
     "github.com/silverkhan/TaskMecca/internal/runtimeobs"
 )
 
 func TestHandlerServesDashboardAPIsAndAssets(t *testing.T) {
+    oldIndexProvider:=stableReleaseNotesIndexProvider
+    oldDetailProvider:=stableReleaseNoteProvider
+    oldChannelOptionsProvider:=releaseChannelOptionsProvider
+    oldChannelSwitchProvider:=releaseChannelSwitchProvider
+    defer func(){
+        stableReleaseNotesIndexProvider=oldIndexProvider
+        stableReleaseNoteProvider=oldDetailProvider
+        releaseChannelOptionsProvider=oldChannelOptionsProvider
+        releaseChannelSwitchProvider=oldChannelSwitchProvider
+    }()
+    stableReleaseNotesIndexProvider=func()([]byte,error){
+        return []byte(`{"releases":[{"version":"0.2.49"},{"version":"0.2.48"},{"version":"0.2.47"}]}`),nil
+    }
+    stableReleaseNoteProvider=func(version string)([]byte,error){
+        return []byte(`{"version":"`+version+`","date":"2026-10-01","summary":{"ko":"원격","en":"Remote"},"sections":[],"migration":{"required":false}}`),nil
+    }
+    releaseChannelOptionsProvider=func(current string) maintenance.ReleaseChannelOptions {
+        return maintenance.ReleaseChannelOptions{
+            CurrentVersion:current,CurrentChannel:"stable",
+            Stable:maintenance.ReleaseChannelTarget{Channel:"stable",Version:"0.2.49"},
+            Dev:maintenance.ReleaseChannelTarget{Channel:"dev",Version:"0.2.50-dev.4"},
+        }
+    }
+    releaseChannelSwitchProvider=func(current,target string)(maintenance.UpgradeResult,error){
+        return maintenance.UpgradeResult{From:current,To:"0.2.50-dev.4",Channel:target},nil
+    }
+
     root:=t.TempDir()
     ledger:=filepath.Join(root,"_task_mecca","data","backlog")
     if err:=os.MkdirAll(ledger,0755); err!=nil { t.Fatal(err) }
@@ -53,6 +81,7 @@ func TestHandlerServesDashboardAPIsAndAssets(t *testing.T) {
         {"/api/version",200,"application/json"},
         {"/api/release-notes?limit=2",200,"application/json"},
         {"/api/release-notes/0.2.49",200,"application/json"},
+        {"/api/channel-options",200,"application/json"},
         {"/api/snapshot",200,"application/json"},
         {"/api/attention",200,"application/json"},
         {"/api/workload",200,"application/json"},
@@ -156,6 +185,22 @@ func TestHandlerServesDashboardAPIsAndAssets(t *testing.T) {
 
     if safeReleaseNoteVersion("../VERSION") { t.Fatal("unsafe release note version accepted") }
     if !safeReleaseNoteVersion("0.2.49-dev.1") { t.Fatal("valid prerelease version rejected") }
+
+    req=httptest.NewRequest(http.MethodPost,"/api/channel-switch",strings.NewReader(`{"channel":"dev"}`))
+    req.Header.Set("Content-Type","application/json")
+    rec=httptest.NewRecorder()
+    handler.ServeHTTP(rec,req)
+    if rec.Code!=http.StatusForbidden { t.Fatalf("channel switch without action header status=%d",rec.Code) }
+
+    req=httptest.NewRequest(http.MethodPost,"/api/channel-switch",strings.NewReader(`{"channel":"dev"}`))
+    req.Header.Set("Content-Type","application/json")
+    req.Header.Set("X-Task-Mecca-Action","1")
+    rec=httptest.NewRecorder()
+    handler.ServeHTTP(rec,req)
+    if rec.Code!=http.StatusOK { t.Fatalf("channel switch status=%d body=%s",rec.Code,rec.Body.String()) }
+    switched:=map[string]any{}
+    if err:=json.Unmarshal(rec.Body.Bytes(),&switched); err!=nil { t.Fatal(err) }
+    if switched["channel"]!="dev" { t.Fatalf("channel switch payload=%+v",switched) }
 
     req=httptest.NewRequest(http.MethodGet,"/api/tasks/A-404",nil)
     rec=httptest.NewRecorder()

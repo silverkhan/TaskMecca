@@ -59,3 +59,25 @@ func TestUpdateChannelPersistenceAndReleaseTag(t *testing.T) {
         t.Fatalf("restored channel=%q, want stable",got)
     }
 }
+
+
+func TestExplicitReleaseChannelLocation(t *testing.T) {
+    t.Setenv("TASK_MECCA_REPO","silverkhan/TaskMecca")
+    t.Setenv("TASK_MECCA_RELEASE_TAG","custom-test-tag")
+
+    repoName,tag,err:=releaseLocationForChannel("dev")
+    if err!=nil { t.Fatal(err) }
+    if repoName!="silverkhan/TaskMecca" || tag!="release-dev" {
+        t.Fatalf("explicit dev release=%s %s",repoName,tag)
+    }
+    _,tag,err=releaseLocationForChannel("stable")
+    if err!=nil { t.Fatal(err) }
+    if tag!="release-stable" { t.Fatalf("explicit stable tag=%s",tag) }
+}
+
+func TestWebChannelSwitchRejectsEnvironmentOverride(t *testing.T) {
+    t.Setenv("TASK_MECCA_CHANNEL","stable")
+    if _,err:=SwitchChannel("0.2.49","dev"); err==nil {
+        t.Fatal("expected environment override to block Web channel switch")
+    }
+}
