@@ -1,6 +1,18 @@
 {
   "releases": [
     {
+      "version": "0.2.51",
+      "date": "2026-10-02",
+      "summary": {
+        "ko": "업데이트 기록과 서브에이전트 실행 관측 기능을 추가하고 Web 업데이트 흐름을 개선했습니다.",
+        "en": "Added update history and subagent runtime visibility, with an improved Web update flow."
+      },
+      "migration": {
+        "required": false,
+        "instruction_refresh": false
+      }
+    },
+    {
       "version": "0.2.49",
       "date": "2026-10-01",
       "summary": {
