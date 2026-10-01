@@ -738,8 +738,8 @@ func run(args []string) int {
             if err==nil {
                 if jsonOutput { emitJSON(setups) } else {
                     for _,setup:=range setups {
-                        label:="not installed"
-                        if setup.Installed { label="installed" }
+                        label:="not configured"
+                        if setup.Installed { label="configured" }
                         changed:=""
                         if setup.Changed { changed=" · updated" }
                         fmt.Printf("%s  %s%s  %s\n",setup.Provider,label,changed,setup.Path)
