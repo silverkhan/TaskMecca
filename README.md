@@ -469,13 +469,13 @@ The project-local framework contains more detailed operating contracts than this
 
 | Document | Purpose |
 |---|---|
-| `_task_mecca/ROOT_PROMPT.md` | Root activation prompt |
-| `framework/SESSION_GUIDE.md` | user quick start + operational rules |
-| `framework/collab.md` | roles, contracts, lifecycle, Source-linked Tasks |
-| `framework/HUMAN_READABLE_BACKLOG.md` | human-readable backlog principles |
-| `framework/TAGS.md` | taxonomy/tag policy |
-| `framework/roles/*.md` | Root / Registrar / Controller / Worker contracts |
-| `framework/_template.md` | canonical backlog template |
+| [`_task_mecca/ROOT_PROMPT.md`](goassets/template/_task_mecca/ROOT_PROMPT.md) | Root activation prompt |
+| [`framework/SESSION_GUIDE.md`](goassets/template/_task_mecca/framework/SESSION_GUIDE.md) | user quick start + operational rules |
+| [`framework/collab.md`](goassets/template/_task_mecca/framework/collab.md) | roles, contracts, lifecycle, Source-linked Tasks |
+| [`framework/HUMAN_READABLE_BACKLOG.md`](goassets/template/_task_mecca/framework/HUMAN_READABLE_BACKLOG.md) | human-readable backlog principles |
+| [`framework/TAGS.md`](goassets/template/_task_mecca/framework/TAGS.md) | taxonomy/tag policy |
+| [`framework/roles/`](goassets/template/_task_mecca/framework/roles/) | Root / Registrar / Controller / Worker contracts |
+| [`framework/_template.md`](goassets/template/_task_mecca/framework/_template.md) | canonical backlog template |
 
 The same user guidance is also exposed through the Web **User Manual**.
 
