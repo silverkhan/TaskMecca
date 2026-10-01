@@ -207,7 +207,7 @@ function renderContentUpdatePrompt() {
     return;
   }
   const reason=state.pendingContentReason==='runtime'?t('runtimeChanged'):t('contentChanged');
-  el.innerHTML=`<div class="content-update-copy"><strong>${esc(t('newContentAvailable'))}</strong><span>${esc(reason)} ${esc(t('refreshToSee'))}</span>${statusChangeMarkup(state.pendingContentChanges)}</div><button type="button" class="content-update-action" id="contentUpdateRefreshBtn">${esc(t('refreshNow'))}</button>`;
+  el.innerHTML=`<div class="content-update-copy"><strong>${esc(t('newContentAvailable'))}</strong><span class="content-update-reason">${esc(reason)} ${esc(t('refreshToSee'))}</span>${statusChangeMarkup(state.pendingContentChanges)}</div><button type="button" class="content-update-action" id="contentUpdateRefreshBtn">${esc(t('refreshNow'))}</button>`;
   $('#contentUpdateRefreshBtn')?.addEventListener('click',refreshVisibleContent);
 }
 
@@ -1964,7 +1964,7 @@ setInterval(()=>{
     }
   }
 },1000);
-setInterval(()=>{ if(state.project)checkContentRevision(false); },15000);
+setInterval(()=>{ if(state.project)checkContentRevision(false); },5000);
 setInterval(()=>refreshVersionInfo(true),300000);
 if(window.isSecureContext&&'serviceWorker' in navigator)notificationWorker();
 route();refresh();
