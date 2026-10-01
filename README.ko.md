@@ -493,13 +493,13 @@ Project-owned `data/**`는 migrate가 덮어쓰지 않습니다.
 
 | 문서 | 내용 |
 |---|---|
-| `_task_mecca/ROOT_PROMPT.md` | Root 세션 활성화 프롬프트 |
-| `framework/SESSION_GUIDE.md` | 사용자 Quick Start + 운영 규칙 |
-| `framework/collab.md` | 역할, 계약, lifecycle, source-linked task 등 협업 규약 |
-| `framework/HUMAN_READABLE_BACKLOG.md` | 사람이 읽기 편한 backlog 작성 원칙 |
-| `framework/TAGS.md` | taxonomy / tag 운영 규칙 |
-| `framework/roles/*.md` | Root / Registrar / Controller / Worker 역할 계약 |
-| `framework/_template.md` | canonical backlog template |
+| [`_task_mecca/ROOT_PROMPT.md`](goassets/template/_task_mecca/ROOT_PROMPT.md) | Root 세션 활성화 프롬프트 |
+| [`framework/SESSION_GUIDE.md`](goassets/template/_task_mecca/framework/SESSION_GUIDE.md) | 사용자 Quick Start + 운영 규칙 |
+| [`framework/collab.md`](goassets/template/_task_mecca/framework/collab.md) | 역할, 계약, lifecycle, Source-linked Task 등 협업 규약 |
+| [`framework/HUMAN_READABLE_BACKLOG.md`](goassets/template/_task_mecca/framework/HUMAN_READABLE_BACKLOG.md) | 사람이 읽기 편한 backlog 작성 원칙 |
+| [`framework/TAGS.md`](goassets/template/_task_mecca/framework/TAGS.md) | taxonomy / tag 운영 규칙 |
+| [`framework/roles/`](goassets/template/_task_mecca/framework/roles/) | Root / Registrar / Controller / Worker 역할 계약 |
+| [`framework/_template.md`](goassets/template/_task_mecca/framework/_template.md) | canonical backlog template |
 
 같은 내용은 Web의 **User Manual**에서도 확인할 수 있습니다.
 
