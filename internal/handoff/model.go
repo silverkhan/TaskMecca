@@ -98,8 +98,9 @@ type PrepareRequest struct {
 	TargetAgentPath     string
 	SourceAttemptID     string
 	TargetAttemptID     string
-	ReportFile          string
-	ExecutionAuthorized bool
+	ReportFile             string
+	ExpectedContractSHA256 string
+	ExecutionAuthorized    bool
 }
 
 type PrepareResult struct {
@@ -117,8 +118,11 @@ type ClaimResult struct {
 	Claimed        bool   `json:"claimed"`
 	AlreadyClaimed bool   `json:"already_claimed"`
 	AlreadyApplied bool   `json:"already_applied"`
-	ClaimConflict  bool   `json:"claim_conflict"`
-	ClaimedBy      string `json:"claimed_by,omitempty"`
+	ClaimConflict          bool   `json:"claim_conflict"`
+	ContractChanged        bool   `json:"contract_changed"`
+	CurrentContractSHA256  string `json:"current_contract_sha256,omitempty"`
+	Reason                 string `json:"reason,omitempty"`
+	ClaimedBy              string `json:"claimed_by,omitempty"`
 }
 
 type MarkResult struct {

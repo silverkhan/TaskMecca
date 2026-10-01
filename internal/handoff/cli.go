@@ -18,6 +18,7 @@ type cliOptions struct {
 	sourceAttempt       string
 	targetAttempt       string
 	reportFile          string
+	contractSHA256      string
 	executionAuthorized bool
 	as                  string
 	step                string
@@ -58,7 +59,7 @@ func RunCLI(args []string, stdout, stderr io.Writer) int {
 			Project: project, TaskID: opts.positionals[0], EventType: EventType(strings.ReplaceAll(opts.event, "-", "_")),
 			SourceAgentPath: opts.from, TargetAgentPath: opts.to,
 			SourceAttemptID: opts.sourceAttempt, TargetAttemptID: opts.targetAttempt,
-			ReportFile: opts.reportFile, ExecutionAuthorized: opts.executionAuthorized,
+			ReportFile: opts.reportFile, ExpectedContractSHA256: opts.contractSHA256, ExecutionAuthorized: opts.executionAuthorized,
 		}, now)
 		if callErr != nil {
 			fmt.Fprintln(stderr, callErr)
@@ -76,7 +77,7 @@ func RunCLI(args []string, stdout, stderr io.Writer) int {
 			return 1
 		}
 		printValue(stdout, result, opts.jsonOutput)
-		if result.ClaimConflict {
+		if result.ClaimConflict || result.ContractChanged {
 			return 1
 		}
 	case "mark":
@@ -132,7 +133,7 @@ func parseCLI(args []string) (cliOptions, error) {
 			opts.jsonOutput = true
 		case "--execution-authorized":
 			opts.executionAuthorized = true
-		case "--project", "--event", "--from", "--to", "--source-attempt", "--target-attempt", "--report-file", "--as", "--step", "--result", "--evidence":
+		case "--project", "--event", "--from", "--to", "--source-attempt", "--target-attempt", "--report-file", "--contract-sha256", "--as", "--step", "--result", "--evidence":
 			if i+1 >= len(args) {
 				return opts, fmt.Errorf("%s requires a value", arg)
 			}
@@ -153,6 +154,8 @@ func parseCLI(args []string) (cliOptions, error) {
 				opts.targetAttempt = value
 			case "--report-file":
 				opts.reportFile = value
+			case "--contract-sha256":
+				opts.contractSHA256 = value
 			case "--as":
 				opts.as = value
 			case "--step":
@@ -183,7 +186,7 @@ func printValue(w io.Writer, value any, jsonOutput bool) {
 	case PrepareResult:
 		fmt.Fprintf(w, "%s action=%s target=%s state=%s duplicate=%v\n", row.HandoffID, row.Action, row.Target.AgentPath, row.Target.State, row.Duplicate)
 	case ClaimResult:
-		fmt.Fprintf(w, "%s claimed=%v already_claimed=%v already_applied=%v conflict=%v\n", row.HandoffID, row.Claimed, row.AlreadyClaimed, row.AlreadyApplied, row.ClaimConflict)
+		fmt.Fprintf(w, "%s claimed=%v already_claimed=%v already_applied=%v conflict=%v contract_changed=%v\n", row.HandoffID, row.Claimed, row.AlreadyClaimed, row.AlreadyApplied, row.ClaimConflict, row.ContractChanged)
 	case MarkResult:
 		fmt.Fprintf(w, "%s step=%s result=%s duplicate=%v applied=%v\n", row.HandoffID, row.Step, row.Result, row.Duplicate, row.Applied)
 	default:

@@ -3,6 +3,7 @@ package handoff
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -168,5 +169,29 @@ func TestClaimAndMarkAreIdempotent(t *testing.T) {
 	}
 	if !post.AlreadyApplied {
 		t.Fatalf("claim=%+v", post)
+	}
+}
+
+
+func TestClaimRejectsChangedContract(t *testing.T) {
+	project := t.TempDir()
+	writeSimpleTask(t, project, "A-1")
+	now := time.Date(2026, 10, 2, 1, 0, 0, 0, time.UTC)
+	got, err := Prepare(PrepareRequest{
+		Project: project, TaskID: "A-1", EventType: EventRegistrationReady,
+		SourceAgentPath: "/root/registrar", TargetAgentPath: "/root/controller", ExecutionAuthorized: false,
+	}, now)
+	if err != nil { t.Fatal(err) }
+
+	path := filepath.Join(project, "_task_mecca", "data", "backlog", "000001.A-1.handoff-test.todo.md")
+	body, err := os.ReadFile(path); if err != nil { t.Fatal(err) }
+	changed := string(body)
+	changed = strings.Replace(changed, "이벤트 기반 인계를 검증한다.", "변경된 계약을 검증한다.", 1)
+	if err := os.WriteFile(path, []byte(changed), 0o644); err != nil { t.Fatal(err) }
+
+	claim, err := Claim(project, got.HandoffID, "/root/controller", now.Add(time.Second))
+	if err != nil { t.Fatal(err) }
+	if !claim.ContractChanged || claim.Claimed || claim.Reason != "contract_changed" {
+		t.Fatalf("claim=%+v", claim)
 	}
 }

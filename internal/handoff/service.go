@@ -41,12 +41,25 @@ func Prepare(req PrepareRequest, now time.Time) (PrepareResult, error) {
 		return PrepareResult{}, fmt.Errorf("task not found: %s", req.TaskID)
 	}
 	raw, _ := inspection["raw_markdown"].(string)
-	contractSHA, err := ContractFingerprint(raw)
+	currentContractSHA, err := ContractFingerprint(raw)
 	if err != nil {
 		return PrepareResult{}, fmt.Errorf("contract fingerprint: %w", err)
 	}
+	contractSHA := currentContractSHA
+	if expected := strings.ToLower(strings.TrimSpace(req.ExpectedContractSHA256)); expected != "" {
+		if len(expected) != 64 {
+			return PrepareResult{}, errors.New("expected contract sha256 must be 64 hex characters")
+		}
+		if _, decodeErr := hex.DecodeString(expected); decodeErr != nil {
+			return PrepareResult{}, errors.New("expected contract sha256 must be hexadecimal")
+		}
+		contractSHA = expected
+	}
 
 	evidence := map[string]string{}
+	if contractSHA != currentContractSHA {
+		evidence["current_contract_sha256"] = currentContractSHA
+	}
 	idParts := []string{req.TaskID, string(req.EventType), contractSHA}
 	switch req.EventType {
 	case EventRegistrationReady:
@@ -150,6 +163,28 @@ func Claim(project, handoffID, recipient string, now time.Time) (ClaimResult, er
 		if row.Applied {
 			result.AlreadyApplied = true
 			return nil
+		}
+		if row.TaskID != "" && row.ContractSHA256 != "" {
+			inspection, inspectErr := backlog.Inspect(project, "", row.TaskID)
+			if inspectErr != nil {
+				return inspectErr
+			}
+			if inspection["exists"] != true {
+				result.ContractChanged = true
+				result.Reason = "task_missing"
+				return nil
+			}
+			raw, _ := inspection["raw_markdown"].(string)
+			currentSHA, hashErr := ContractFingerprint(raw)
+			if hashErr != nil {
+				return hashErr
+			}
+			result.CurrentContractSHA256 = currentSHA
+			if currentSHA != row.ContractSHA256 {
+				result.ContractChanged = true
+				result.Reason = "contract_changed"
+				return nil
+			}
 		}
 		if row.Target.AgentPath != "" && row.Target.AgentPath != recipient {
 			result.ClaimConflict = true
