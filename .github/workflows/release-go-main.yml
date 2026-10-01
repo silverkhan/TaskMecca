@@ -53,6 +53,44 @@ jobs:
           CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -trimpath -ldflags="-s -w" -o dist/task-mecca-macos-arm64 ./cmd/task-mecca
           CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o dist/task-mecca-linux-amd64 ./cmd/task-mecca
           cp goassets/template/_task_mecca/VERSION dist/VERSION.txt
+          ! grep -Fq '\\n' dist/VERSION.txt
+          ! grep -Fq '\\r' dist/VERSION.txt
+          grep -Eq '^[0-9]+\\.[0-9]+\\.[0-9]+      - name: Replace rolling prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euxo pipefail
+          gh release delete go-main --cleanup-tag -y || true
+          gh release create go-main dist/* \
+            --target "$GITHUB_SHA" \
+            --title "Task Mecca Go rolling build" \
+            --notes "Rolling standalone build from main. Commit: $GITHUB_SHA" \
+            --prerelease
+      - name: Smoke test one-line installer
+        shell: bash
+        run: |
+          set -euxo pipefail
+          export HOME="$RUNNER_TEMP/task-mecca-installer-home"
+          mkdir -p "$HOME/.local/bin"
+          export PATH="$HOME/.local/bin:$PATH"
+          TASK_MECCA_RELEASE_TAG=go-main sh ./install.sh
+          task-mecca --version
+
+          project="$RUNNER_TEMP/task-mecca-web-smoke"
+          mkdir -p "$project"
+          cd "$project"
+          task-mecca init
+          task-mecca web --host 127.0.0.1 --no-open
+          before_pid="$(task-mecca web status | awk '/^PID/{print $2}')"
+          test -n "$before_pid"
+          curl -fsS http://127.0.0.1:18765/api/health
+          task-mecca web --host 127.0.0.1 --no-open
+          after_pid="$(task-mecca web status | awk '/^PID/{print $2}')"
+          test "$before_pid" = "$after_pid"
+          task-mecca web stop
+          ! curl -fsS --max-time 1 http://127.0.0.1:18765/api/health
+ dist/VERSION.txt
           (cd dist && sha256sum task-mecca-* > SHA256SUMS.txt)
       - name: Replace rolling prerelease
         env:
