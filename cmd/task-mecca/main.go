@@ -699,8 +699,47 @@ func run(args []string) int {
                     fmt.Printf("%s %s %s -> %s %s\n",attempt.AttemptID,attempt.BindingState,attempt.Provider,attempt.TaskID,attempt.AgentPath)
                 }
             }
+        case "hooks":
+            if len(positional)<2 || len(positional)>3 {
+                fmt.Fprintln(os.Stderr,"runtime hooks requires: status|install <codex|claude|all>")
+                return 2
+            }
+            hooksAction:=strings.ToLower(positional[1])
+            provider:="all"
+            if len(positional)==3 { provider=strings.ToLower(positional[2]) }
+            if provider!="codex" && provider!="claude" && provider!="all" {
+                fmt.Fprintln(os.Stderr,"runtime hooks provider must be codex, claude, or all")
+                return 2
+            }
+            providers:=[]string{"codex","claude"}
+            if provider!="all" { providers=[]string{provider} }
+            setups:=[]runtimeobs.HookSetup{}
+            for _,name:=range providers {
+                var setup runtimeobs.HookSetup
+                if hooksAction=="install" {
+                    setup,err=runtimeobs.EnsureHooks(runtimeProject,name)
+                } else if hooksAction=="status" {
+                    setup,err=runtimeobs.HookStatus(runtimeProject,name)
+                } else {
+                    fmt.Fprintln(os.Stderr,"runtime hooks action must be status or install")
+                    return 2
+                }
+                if err!=nil { break }
+                setups=append(setups,setup)
+            }
+            if err==nil {
+                if jsonOutput { emitJSON(setups) } else {
+                    for _,setup:=range setups {
+                        label:="not installed"
+                        if setup.Installed { label="installed" }
+                        changed:=""
+                        if setup.Changed { changed=" · updated" }
+                        fmt.Printf("%s  %s%s  %s\n",setup.Provider,label,changed,setup.Path)
+                    }
+                }
+            }
         default:
-            fmt.Fprintln(os.Stderr,"unknown runtime action: "+action+" (use observe, list, reconcile, or bind)")
+            fmt.Fprintln(os.Stderr,"unknown runtime action: "+action+" (use observe, list, reconcile, bind, or hooks)")
             return 2
         }
     case "runtime-spike":
