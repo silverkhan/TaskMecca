@@ -1244,8 +1244,8 @@ function listView() {
 }
 
 function attentionView() {
-  const arr=state.snapshot.attention||[];
-  return `<div class="page-head"><div><div class="eyebrow">${esc(t('operationsEyebrow'))}</div><h1>${esc(t('attention'))}</h1><p class="summary">${esc(t('advisory'))}</p></div></div>${arr.length?arr.map(a=>{const task=state.snapshot.all_items[a.id]||{},label=a.title||healthLabel(a.health),message=a.message||'',resume=a.resume_condition||'';return `<div class="attention-card" data-id="${esc(a.id)}"><div class="task-id">${esc(a.id)}</div><div><strong>${esc(titleOf(task))}</strong><p><b>${esc(label)}</b>${message?` · ${esc(message)}`:''}${resume?` · ${esc(resume)}`:''}</p></div><span class="badge ${a.severity==='danger'||a.health==='worker_missing'||a.health==='stale'?'danger':'warn'}">${esc(label)}</span></div>`}).join(''):`<div class="empty">${esc(t('noAttention'))}</div>`}`;
+  const snapshot=state.snapshot||{}, arr=snapshot.attention||[], all=snapshot.all_items||{};
+  return `<div class="page-head"><div><div class="eyebrow">${esc(t('operationsEyebrow'))}</div><h1>${esc(t('attention'))}</h1><p class="summary">${esc(t('advisory'))}</p></div></div>${arr.length?arr.map(a=>{const task=all[a.id]||{},label=a.title||healthLabel(a.health),message=a.message||'',resume=a.resume_condition||'';return `<div class="attention-card" data-id="${esc(a.id)}"><div class="task-id">${esc(a.id)}</div><div><strong>${esc(titleOf(task))}</strong><p><b>${esc(label)}</b>${message?` · ${esc(message)}`:''}${resume?` · ${esc(resume)}`:''}</p></div><span class="badge ${a.severity==='danger'||a.health==='worker_missing'||a.health==='stale'?'danger':'warn'}">${esc(label)}</span></div>`}).join(''):`<div class="empty">${esc(t('noAttention'))}</div>`}`;
 }
 function rootPromptForLanguage(raw,language=state.language) {
   raw=String(raw||'');
@@ -1282,7 +1282,7 @@ function workloadView() {
   return `<div class="page-head"><div><div class="eyebrow">${esc(t('operationsEyebrow'))}</div><h1>${esc(t('workload'))}</h1><p class="summary">${esc(t('workloadIntro'))}</p></div></div><div class="metrics"><div class="metric"><strong>${agents.length}</strong><span>${esc(t('workers'))}</span></div><div class="metric"><strong>${doingTotal}</strong><span>${esc(t('doing'))}</span></div><div class="metric"><strong>${blockingTotal}</strong><span>${esc(t('downstreamBlocked'))}</span></div><div class="metric"><strong>${continuityTotal}</strong><span>${esc(t('readyContinuity'))}</span></div></div>${unassigned.length?`<div class="unassigned-warning"><strong>${esc(t('unassignedDoing'))}:</strong> ${esc(unassigned.join(', '))}</div>`:''}${cards?`<div class="workload-grid">${cards}</div>`:`<div class="empty">${esc(t('noWorkload'))}</div>`}${released.length?`<div class="workload-secondary"><div class="mini-panel"><h3>${esc(t('releasedHold'))}</h3><div class="mini-list">${released.map(x=>`<span class="badge" data-id="${esc(x.id)}">${esc(x.id)}</span>`).join('')}</div></div></div>`:''}`;
 }
 function issuesView() {
-  const h=state.snapshot.health||{}, rows=[];
+  const h=state.snapshot?.health||{}, rows=[];
   Object.entries(h).forEach(([k,v])=>{if(Array.isArray(v))v.forEach(x=>rows.push([k,x]));else if(v)rows.push([k,v])});
   return `<div class="page-head"><div><div class="eyebrow">${esc(t('diagnostics'))}</div><h1>${esc(t('issues'))}</h1><p class="summary">${esc(t('issuesIntro'))}</p></div></div>${rows.length?`<div class="markdown"><pre><code>${esc(rows.map(([k,v])=>`${k}: ${JSON.stringify(v,null,2)}`).join('\n\n'))}</code></pre></div>`:`<div class="empty">${esc(t('noIssues'))}</div>`}`;
 }
@@ -1529,7 +1529,10 @@ function toggleSidebar() {
 function render() {
   nav(); translateChrome(); renderAccess(); renderBacklogPicker(); applySidebarState(); updateNotificationIndicator(); renderGlobalUpdateIndicator(); renderContentUpdatePrompt();
   const c=$('#content'), data=currentProjectData();
-  if (!data && !state.detailTask) {
+  const manualReady=state.view==='manual';
+  const snapshotView=['workload','attention','issues'].includes(state.view);
+  const viewDataReady=manualReady || (snapshotView ? Boolean(state.snapshot) : Boolean(data));
+  if (!viewDataReady && !state.detailTask) {
     if (state.view === 'hub' && state.hub) {
       c.innerHTML=hubView(); bindHubActions(); return;
     }
@@ -1755,32 +1758,51 @@ async function refreshOnce() {
   }
 
   refreshHub(false).catch(()=>{});
+
+  if(targetView==='manual'){
+    await loadManual(state.language);
+    if(targetProject!==state.project || state.view!==targetView)return;
+    state.loadError='';
+    $('#connectionDot').style.background='var(--ok)';
+    ensureAttentionStream();
+    render();
+    return;
+  }
+
+  const viewEndpoint={
+    workload:'/api/workload',
+    attention:'/api/attention',
+    issues:'/api/issues',
+  }[targetView];
+
+  if(!viewEndpoint){
+    render();
+    return;
+  }
+
   try {
-    const r=await fetch('/api/snapshot'+qs,{cache:'no-store'});
+    const r=await fetch(viewEndpoint+qs,{cache:'no-store'});
     if(!r.ok){
       let detail='';
       try { const body=await r.json(); detail=body.error||''; } catch(_) {}
       throw new Error(detail||`HTTP ${r.status}`);
     }
     const snapshot=await r.json();
-    if(targetProject!==state.project || state.view==='hub')return;
+    if(targetProject!==state.project || state.view!==targetView)return;
     state.snapshot=snapshot;
-    processTaskNotifications(state.snapshot);
+    if(targetView==='attention')processTaskNotifications(snapshot);
     state.loadError='';
     state.lastFetch=Date.now();
-    const candidates=state.snapshot?.backlog_selection?.candidates||[];
-    if(state.backlog && !candidates.some(c=>c.path===state.backlog)){
+    const candidates=snapshot?.backlog_selection?.candidates||[];
+    if(state.backlog && candidates.length && !candidates.some(c=>c.path===state.backlog)){
       state.backlog='';
       localStorage.removeItem('task-mecca-backlog-folder');
     }
     $('#connectionDot').style.background='var(--ok)';
-    await loadManual();
     ensureAttentionStream();
-    await checkContentRevision(true);
-    acceptContentRevision(state.contentRevision);
     render();
   } catch(e) {
-    if(targetProject!==state.project || state.view==='hub')return;
+    if(targetProject!==state.project || state.view!==targetView)return;
     state.snapshot=null;
     state.loadError=String(e?.message||e||'Unknown error');
     $('#connectionDot').style.background='var(--danger)';
