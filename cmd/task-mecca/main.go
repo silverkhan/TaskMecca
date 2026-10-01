@@ -656,16 +656,22 @@ func run(args []string) int {
                 fmt.Fprintln(os.Stderr,"runtime-spike observe requires a provider: codex or claude")
                 return 2
             }
+            var runtimeProject string
+            runtimeProject,err=runtimeobs.ResolveProject(root)
+            if err!=nil { break }
             var event runtimeobs.SpikeEvent
-            event,err=runtimeobs.Observe(root,positional[1],os.Stdin,time.Now())
+            event,err=runtimeobs.Observe(runtimeProject,positional[1],os.Stdin,time.Now())
             if err==nil && jsonOutput { emitJSON(event) }
         case "report":
             if len(positional)>2 {
                 fmt.Fprintln(os.Stderr,"runtime-spike report accepts at most one provider: codex or claude")
                 return 2
             }
+            var runtimeProject string
+            runtimeProject,err=runtimeobs.ResolveProject(root)
+            if err!=nil { break }
             var report runtimeobs.SpikeReport
-            report,err=runtimeobs.Report(root,limit)
+            report,err=runtimeobs.Report(runtimeProject,limit)
             if err==nil && len(positional)==2 {
                 provider:=strings.ToLower(positional[1])
                 if provider!="codex" && provider!="claude" {
