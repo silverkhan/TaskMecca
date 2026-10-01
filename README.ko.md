@@ -5,6 +5,10 @@
 
 [English README](README.md)
 
+> **프로젝트의 시작**  
+> Task Mecca는 동료가 공유한 초기 소스와 백로그 기반 협업 아이디어에서 출발해 발전한 프로젝트입니다.  
+> → [프로젝트의 시작과 감사](#project-origin)
+
 ## 빠른 시작
 
 사용하면서 구조를 익히는 것이 가장 빠릅니다.
@@ -175,6 +179,8 @@ README는 처음 사용하는 데 필요한 내용만 담습니다. 세부 운�
 - [사람이 읽기 편한 Backlog 가이드](goassets/template/_task_mecca/framework/HUMAN_READABLE_BACKLOG.md)
 - [Tags / Taxonomy](goassets/template/_task_mecca/framework/TAGS.md)
 - [역할별 규약](goassets/template/_task_mecca/framework/roles/)
+
+<a id="project-origin"></a>
 
 ## 프로젝트의 시작과 감사
 

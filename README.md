@@ -5,6 +5,10 @@ The user talks naturally to a single Root while Registrar, Controller, and Worke
 
 [한국어 README](README.ko.md)
 
+> **Project origin**  
+> Task Mecca grew from initial source material and a backlog-driven AI collaboration idea shared by a colleague.  
+> → [Project origin & acknowledgements](#project-origin)
+
 ## Quick Start
 
 The fastest way to learn Task Mecca is to use it.
@@ -175,6 +179,8 @@ This README is intentionally limited to what you need to start. Detailed operati
 - [Human-readable backlog guide](goassets/template/_task_mecca/framework/HUMAN_READABLE_BACKLOG.md)
 - [Tags / Taxonomy](goassets/template/_task_mecca/framework/TAGS.md)
 - [Role contracts](goassets/template/_task_mecca/framework/roles/)
+
+<a id="project-origin"></a>
 
 ## Project origin and acknowledgements
 
