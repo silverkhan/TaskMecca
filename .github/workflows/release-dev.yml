@@ -142,3 +142,20 @@ jobs:
           version_output="$(task-mecca --version)"
           printf '%s\n' "$version_output" | sed -n '1p' | grep -Fx "task-mecca $DEV_VERSION"
           printf '%s\n' "$version_output" | grep -Fx "channel dev"
+
+  windows-installer-smoke:
+    needs: release
+    runs-on: windows-latest
+    steps:
+      - name: Test PowerShell one-line installer
+        shell: powershell
+        env:
+          TASK_MECCA_RELEASE_TAG: release-dev
+          TASK_MECCA_CHANNEL: dev
+        run: |
+          irm https://raw.githubusercontent.com/silverkhan/TaskMecca/dev/install.ps1 | iex
+          $expected = (irm https://github.com/silverkhan/TaskMecca/releases/download/release-dev/VERSION.txt).Trim()
+          $output = @(task-mecca --version)
+          if ($output.Count -lt 2) { throw "Unexpected version output: $($output -join ' | ')" }
+          if ($output[0] -ne "task-mecca $expected") { throw "Installed version mismatch: $($output[0]) != task-mecca $expected" }
+          if ($output -notcontains "channel dev") { throw "Expected Dev channel, got: $($output -join ' | ')" }

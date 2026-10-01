@@ -21,7 +21,13 @@ macOS / Linux:
 curl -fsSL https://raw.githubusercontent.com/silverkhan/TaskMecca/main/install.sh | sh
 ```
 
-On Windows, download `task-mecca-windows-amd64.exe` from the [rolling release](https://github.com/silverkhan/TaskMecca/releases/tag/release-stable) and place it on PATH as `task-mecca.exe`.
+Windows PowerShell:
+
+```powershell
+irm https://raw.githubusercontent.com/silverkhan/TaskMecca/main/install.ps1 | iex
+```
+
+The Windows installer verifies the SHA-256 checksum of the Stable release, installs into the current user's profile, and registers the directory on PATH without requiring administrator privileges.
 
 End users do not need Python, `uv`, or the Go toolchain.
 
