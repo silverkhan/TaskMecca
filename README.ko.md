@@ -127,7 +127,7 @@ task-mecca channel dev
 task-mecca channel stable
 ```
 
-채널 선택은 로컬 설치에 저장되므로 일반 사용자는 별도 설정 없이 계속 Stable만 추적합니다. 기존 `go-main` / `go-dev` 태그는 구버전 클라이언트의 업데이트 호환을 위한 legacy alias로만 유지합니다.
+채널 선택은 로컬 설치에 저장되므로 일반 사용자는 별도 설정 없이 계속 Stable만 추적합니다.
 
 ### Web에서
 

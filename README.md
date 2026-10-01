@@ -127,7 +127,7 @@ task-mecca channel dev
 task-mecca channel stable
 ```
 
-The selected channel is stored locally, so normal users continue to follow Stable unless they explicitly opt into Dev. The old `go-main` / `go-dev` tags remain only as legacy aliases so older clients can transition safely.
+The selected channel is stored locally, so normal users continue to follow Stable unless they explicitly opt into Dev.
 
 ### From Web
 
