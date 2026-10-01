@@ -139,3 +139,19 @@ jobs:
           test "$before_pid" = "$after_pid"
           task-mecca web stop
           ! curl -fsS --max-time 1 http://127.0.0.1:18765/api/health
+
+  windows-installer-smoke:
+    needs: release
+    runs-on: windows-latest
+    steps:
+      - name: Test PowerShell one-line installer
+        shell: powershell
+        env:
+          TASK_MECCA_RELEASE_TAG: release-stable
+        run: |
+          irm https://raw.githubusercontent.com/silverkhan/TaskMecca/main/install.ps1 | iex
+          $expected = (irm https://github.com/silverkhan/TaskMecca/releases/download/release-stable/VERSION.txt).Trim()
+          $output = @(task-mecca --version)
+          if ($output.Count -lt 2) { throw "Unexpected version output: $($output -join ' | ')" }
+          if ($output[0] -ne "task-mecca $expected") { throw "Installed version mismatch: $($output[0]) != task-mecca $expected" }
+          if ($output -notcontains "channel stable") { throw "Expected Stable channel, got: $($output -join ' | ')" }
