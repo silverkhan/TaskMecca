@@ -7,7 +7,9 @@ import (
     "net/http/httptest"
     "os"
     "path/filepath"
+    "runtime"
     "testing"
+    "time"
 )
 
 func TestHandlerServesDashboardAPIsAndAssets(t *testing.T) {
@@ -177,5 +179,91 @@ func TestNormalizeManagedHostPromotesLegacyTailscaleIPToAuto(t *testing.T) {
     }
     if got:=NormalizeManagedHost("auto"); got!="auto" {
         t.Fatalf("NormalizeManagedHost auto=%q",got)
+    }
+}
+
+
+func TestRunAutoPublishesLocalStateBeforeDirectTLSReady(t *testing.T) {
+    if runtime.GOOS=="darwin" {
+        t.Skip("direct Tailscale TLS path is used on Windows/Linux")
+    }
+
+    home:=t.TempDir()
+    t.Setenv("TASK_MECCA_HOME",home)
+    project:=t.TempDir()
+    ledger:=filepath.Join(project,"_task_mecca","data","backlog")
+    if err:=os.MkdirAll(ledger,0755); err!=nil { t.Fatal(err) }
+
+    probe,err:=net.Listen("tcp","127.0.0.1:0")
+    if err!=nil { t.Fatal(err) }
+    port:=probe.Addr().(*net.TCPAddr).Port
+    _=probe.Close()
+
+    originalIP:=autoTailscaleIPv4Provider
+    originalTLS:=directTailscaleTLSProvider
+    tlsStarted:=make(chan struct{})
+    releaseTLS:=make(chan struct{})
+    autoTailscaleIPv4Provider=func() string { return "100.64.0.1" }
+    directTailscaleTLSProvider=func() TLSInfo {
+        close(tlsStarted)
+        <-releaseTLS
+        return TLSInfo{Error:"test delayed TLS"}
+    }
+    defer func() {
+        autoTailscaleIPv4Provider=originalIP
+        directTailscaleTLSProvider=originalTLS
+    }()
+
+    done:=make(chan error,1)
+    go func() {
+        done<-Run(Config{
+            Project:project,Host:"auto",Port:port,OpenBrowser:false,Version:"test",
+            InstanceID:"delayed-tls-instance",ControlToken:"delayed-tls-token",
+        })
+    }()
+
+    select {
+    case <-tlsStarted:
+    case <-time.After(2*time.Second):
+        close(releaseTLS)
+        t.Fatal("direct TLS initialization did not start")
+    }
+
+    deadline:=time.Now().Add(2*time.Second)
+    var state ServiceState
+    for time.Now().Before(deadline) {
+        state=ServiceStatus()
+        if state.Running && state.LocalURL!="" { break }
+        time.Sleep(25*time.Millisecond)
+    }
+    if !state.Running {
+        close(releaseTLS)
+        t.Fatal("local Web was not published while TLS initialization was blocked")
+    }
+    if state.TailscaleMode!="initializing" {
+        close(releaseTLS)
+        t.Fatalf("TailscaleMode=%q, want initializing",state.TailscaleMode)
+    }
+
+    close(releaseTLS)
+    deadline=time.Now().Add(2*time.Second)
+    for time.Now().Before(deadline) {
+        state=ServiceStatus()
+        if state.Running && state.TLSError=="test delayed TLS" { break }
+        time.Sleep(25*time.Millisecond)
+    }
+    if state.TLSError!="test delayed TLS" {
+        t.Fatalf("TLSError=%q, want delayed TLS failure",state.TLSError)
+    }
+    if !state.Running {
+        t.Fatal("local Web stopped after direct TLS failure")
+    }
+
+    if _,err:=StopService(); err!=nil { t.Fatal(err) }
+    select {
+    case err:=<-done:
+        if err!=nil { t.Fatal(err) }
+    case <-time.After(3*time.Second):
+        t.Fatal("Web did not stop after test")
     }
 }

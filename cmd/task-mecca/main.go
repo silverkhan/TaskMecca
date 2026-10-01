@@ -619,8 +619,13 @@ func run(args []string) int {
             if started,parseErr:=time.Parse(time.RFC3339,state.StartedAt); parseErr==nil { uptime=time.Since(started).Round(time.Second).String() }
             fmt.Printf("Task Mecca Web\nStatus    running\nPID       %d\nVersion   %s\nPort      %d\n",state.PID,state.Version,state.Port)
             if state.LocalURL!="" { fmt.Println("Local     "+state.LocalURL) }
-            if state.TailscaleURL!="" { fmt.Println("Tailscale "+state.TailscaleURL) }
-            if state.TLSError!="" && state.TailscaleURL=="" { fmt.Println("TLS       unavailable · "+state.TLSError) }
+            if state.TailscaleURL!="" {
+                fmt.Println("Tailscale "+state.TailscaleURL)
+            } else if state.TailscaleMode=="initializing" {
+                fmt.Println("TLS       initializing · Local Web is already available")
+            } else if state.TLSError!="" {
+                fmt.Println("TLS       unavailable · "+state.TLSError)
+            }
             fmt.Printf("Started   %s\nUptime    %s\n",state.StartedAt,uptime)
         case "restart":
             var state webui.ServiceState
@@ -803,8 +808,13 @@ func printStatus(report map[string]any) {
 func printWebState(prefix string,state webui.ServiceState) {
     if prefix!="" { fmt.Println(prefix) }
     if state.LocalURL!="" { fmt.Println("Local     "+state.LocalURL) }
-    if state.TailscaleURL!="" { fmt.Println("Tailscale "+state.TailscaleURL) }
-    if state.TLSError!="" && state.TailscaleURL=="" { fmt.Println("Tailscale HTTPS unavailable: "+state.TLSError) }
+    if state.TailscaleURL!="" {
+        fmt.Println("Tailscale "+state.TailscaleURL)
+    } else if state.TailscaleMode=="initializing" {
+        fmt.Println("Tailscale HTTPS initializing in background")
+    } else if state.TLSError!="" {
+        fmt.Println("Tailscale HTTPS unavailable: "+state.TLSError)
+    }
     fmt.Printf("PID       %d\n",state.PID)
 }
 
