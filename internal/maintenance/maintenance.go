@@ -388,13 +388,16 @@ func Upgrade(current string) (UpgradeResult,error) {
     result:=UpgradeResult{From:current}
     info:=CheckLatest(current)
     if info.Error!="" { return result,errors.New(info.Error) }
+    if !info.UpdateAvailable {
+        result.To=current
+        return result,nil
+    }
     result.To=info.Latest
     exe,err:=os.Executable()
     if err!=nil { return result,err }
     exe,err=filepath.EvalSymlinks(exe)
     if err!=nil { return result,err }
     result.Executable=exe
-    if !info.UpdateAvailable { return result,nil }
     asset,err:=assetName(); if err!=nil { return result,err }
     binary,err:=httpGet(releaseBase()+"/"+asset); if err!=nil { return result,err }
     sums,err:=httpGet(releaseBase()+"/SHA256SUMS.txt"); if err!=nil { return result,err }
