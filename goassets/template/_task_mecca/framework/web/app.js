@@ -92,6 +92,91 @@ Object.assign(I18N.ko,{
   detailExpand:'상세 펼치기', detailCollapse:'상세 접기', requirementsAndConstraints:'요구사항·제약', legacyDetails:'기존 작업 상세',
   source:'출처', openSource:'외부 원본 열기'
 });
+Object.assign(I18N.ko,{
+  runtimeObservability:'Runtime 실행 관측',
+  runtimeObservabilityIntro:'Codex·Claude의 실제 Subagent 실행 lifecycle을 관측합니다. 이 정보는 백로그 상태를 직접 변경하지 않습니다.',
+  runtimeAttempts:'실행',
+  runtimeRunning:'실행 중',
+  runtimeTerminal:'종료',
+  runtimeUnbound:'미연결',
+  runtimeAmbiguous:'연결 모호',
+  runtimeStale:'관측 정체',
+  runtimeHookStatus:'Hook 상태',
+  runtimeHookNote:'Hook은 별도 프로그램이 아니라 Codex/Claude 설정에 Task Mecca 관측 명령을 연결하는 규칙입니다.',
+  runtimeHookEnabled:'활성화됨',
+  runtimeHookDisabled:'비활성',
+  runtimeEnableObservation:'Runtime 관측 활성화',
+  runtimeEnableConfirm:'현재 프로젝트의 Codex/Claude 설정에 Task Mecca lifecycle Hook 규칙을 추가합니다. 기존 설정은 유지됩니다. 계속할까요?',
+  runtimeEnabling:'활성화 중…',
+  runtimeNoAttempts:'아직 관측된 Agent 실행이 없습니다. Hook을 활성화한 뒤 Subagent를 실행하면 여기에 표시됩니다.',
+  runtimeAttempt:'Attempt',
+  runtimeId:'Runtime ID',
+  runtimeBinding:'Binding',
+  runtimeStarted:'시작',
+  runtimeLastActivity:'마지막 활동',
+  runtimeEnded:'종료',
+  runtimeElapsed:'경과',
+  runtimeObservedActive:'관측 Active',
+  runtimeWaiting:'명시적 대기',
+  runtimeUnavailable:'관측 불가',
+  runtimeRecentTransitions:'최근 상태 이력',
+  runtimeEvidence:'근거',
+  runtimeBound:'연결됨',
+  runtimeStateStarting:'시작 중',
+  runtimeStateRunning:'실행 중',
+  runtimeStateWaitingUser:'사용자 입력 대기',
+  runtimeStateWaitingApproval:'승인 대기',
+  runtimeStateInterrupted:'중단',
+  runtimeStateCompleted:'완료',
+  runtimeStateErrored:'오류',
+  runtimeStateShutdown:'종료됨',
+  runtimeStateUnknown:'런타임 미확인',
+  runtimeAssignedWorkload:'백로그 기반 워커 할당',
+  runtimeAssignedWorkloadIntro:'아래 영역은 기존 백로그/Git 기반 할당 정보입니다. 위 runtime 관측 정보와 독립적으로 유지됩니다.'
+});
+Object.assign(I18N.en,{
+  runtimeObservability:'Runtime execution observability',
+  runtimeObservabilityIntro:'Observes actual Codex/Claude subagent execution lifecycle. This does not directly mutate backlog state.',
+  runtimeAttempts:'Attempts',
+  runtimeRunning:'Running',
+  runtimeTerminal:'Terminal',
+  runtimeUnbound:'Unbound',
+  runtimeAmbiguous:'Ambiguous binding',
+  runtimeStale:'Stale evidence',
+  runtimeHookStatus:'Hook status',
+  runtimeHookNote:'Hooks are configuration rules that connect Codex/Claude lifecycle events to Task Mecca; they are not separate programs.',
+  runtimeHookEnabled:'Enabled',
+  runtimeHookDisabled:'Disabled',
+  runtimeEnableObservation:'Enable runtime observation',
+  runtimeEnableConfirm:'Add Task Mecca lifecycle hook rules to this project’s Codex/Claude settings while preserving existing configuration?',
+  runtimeEnabling:'Enabling…',
+  runtimeNoAttempts:'No Agent execution has been observed yet. Enable hooks and run subagents to see them here.',
+  runtimeAttempt:'Attempt',
+  runtimeId:'Runtime ID',
+  runtimeBinding:'Binding',
+  runtimeStarted:'Started',
+  runtimeLastActivity:'Last activity',
+  runtimeEnded:'Ended',
+  runtimeElapsed:'Elapsed',
+  runtimeObservedActive:'Observed active',
+  runtimeWaiting:'Explicit wait',
+  runtimeUnavailable:'Unavailable',
+  runtimeRecentTransitions:'Recent transitions',
+  runtimeEvidence:'Evidence',
+  runtimeBound:'Bound',
+  runtimeStateStarting:'Starting',
+  runtimeStateRunning:'Running',
+  runtimeStateWaitingUser:'Waiting for user',
+  runtimeStateWaitingApproval:'Waiting for approval',
+  runtimeStateInterrupted:'Interrupted',
+  runtimeStateCompleted:'Completed',
+  runtimeStateErrored:'Errored',
+  runtimeStateShutdown:'Shutdown',
+  runtimeStateUnknown:'Runtime unknown',
+  runtimeAssignedWorkload:'Backlog-based worker allocation',
+  runtimeAssignedWorkloadIntro:'This area is the existing backlog/Git allocation view and remains independent from runtime observations above.'
+});
+
 Object.assign(I18N.en,{
   humanSummary:'Summary', summaryPurpose:'Purpose', summaryChange:'Key change', summaryStatusResult:'Status / result', summaryFollowUp:'Checks / follow-up',
   summaryFallback:'Summary derived from legacy record', detailLinks:'Open details', backgroundProblem:'Background & problem', workScope:'Work scope',
@@ -314,6 +399,23 @@ async function performUpgrade(button) {
   }catch(e){
     alert(String(e?.message||e));
     if(button){button.disabled=false;renderGlobalUpdateIndicator();}
+  }
+}
+
+async function performRuntimeHooksEnable(button) {
+  if(!window.confirm(t('runtimeEnableConfirm')))return;
+  if(button){button.disabled=true;button.textContent=t('runtimeEnabling');}
+  try{
+    const params=new URLSearchParams();
+    if(state.project)params.set('project',state.project);
+    const qs=params.toString()?`?${params}`:'';
+    const r=await fetch('/api/runtime/hooks'+qs,{method:'POST',headers:{'Content-Type':'application/json','X-Task-Mecca-Action':'1'},body:JSON.stringify({provider:'all'})});
+    const body=await r.json();
+    if(!r.ok)throw new Error(body.error||'Runtime hook activation failed');
+    await refresh();
+  }catch(e){
+    alert(String(e?.message||e));
+    if(button){button.disabled=false;button.textContent=t('runtimeEnableObservation');}
   }
 }
 
@@ -1269,17 +1371,110 @@ function manualView() {
   const rootPrompt=tab==='quick'?manualRootPromptCard(m):'';
   return `<div class="manual-shell"><div class="manual-hero"><div class="eyebrow">${esc(t('help'))}</div><h1>${esc(t('manual'))}</h1><p class="summary">${esc(t('manualIntro'))}</p></div><div class="manual-callout"><strong>${esc(t('dashboardLaunch'))}</strong><div class="copy-code-wrap compact"><button class="copy-code-btn" type="button" aria-label="${esc(t('copyCode'))}" title="${esc(t('copyCode'))}">${COPY_ICON}</button><pre><code>task-mecca web</code></pre></div></div><div class="shortcut-manual"><strong>${esc(t('keyboard'))}</strong><span><kbd>↑/↓</kbd> ${esc(t('move'))}</span><span><kbd>Enter/→</kbd> ${esc(t('open'))}</span><span><kbd>←/Esc</kbd> ${esc(t('back'))}</span><span><kbd>/</kbd> ${esc(t('search'))}</span><span><kbd>PgUp/PgDn</kbd> ${esc(t('page'))}</span></div><div class="manual-tabs"><button class="manual-tab ${tab==='quick'?'active':''}" data-manual-tab="quick">${esc(t('quickStart'))}</button><button class="manual-tab ${tab==='operations'?'active':''}" data-manual-tab="operations">${esc(t('detailedGuide'))}</button></div>${rootPrompt}<div class="section markdown">${markdown(body||t('manualLoading'),{copyCode:true})}</div></div>`;
 }
+function runtimeStateLabel(value) {
+  return {
+    starting:t('runtimeStateStarting'),
+    running:t('runtimeStateRunning'),
+    waiting_user:t('runtimeStateWaitingUser'),
+    waiting_approval:t('runtimeStateWaitingApproval'),
+    interrupted:t('runtimeStateInterrupted'),
+    completed:t('runtimeStateCompleted'),
+    errored:t('runtimeStateErrored'),
+    shutdown:t('runtimeStateShutdown'),
+    runtime_unknown:t('runtimeStateUnknown'),
+  }[value]||value||t('runtimeStateUnknown');
+}
+function runtimeBindingLabel(value) {
+  return value==='bound'?t('runtimeBound'):value==='ambiguous'?t('runtimeAmbiguous'):t('runtimeUnbound');
+}
+function runtimeElapsedSeconds(attempt) {
+  if(attempt?.terminal || !attempt?.started_at)return Math.max(0,Number(attempt?.elapsed_ms||0)/1000);
+  const started=new Date(attempt.started_at).getTime();
+  if(Number.isNaN(started))return Math.max(0,Number(attempt?.elapsed_ms||0)/1000);
+  return Math.max(0,(Date.now()-started)/1000);
+}
+function runtimeTransitionLabel(row) {
+  if(row?.kind==='binding')return `${t('runtimeBinding')} · ${runtimeBindingLabel(row.reason)}`;
+  return runtimeStateLabel(row?.state);
+}
+function runtimeAttemptCard(attempt,findings) {
+  const name=attempt.agent_path||attempt.runtime_agent_id||attempt.attempt_id;
+  const task=attempt.task_id||'-';
+  const last=attempt.last_activity_at||attempt.last_observed_at||'';
+  const active=attempt.active_time_available&&attempt.observed_active_ms!=null?fmtSec(Number(attempt.observed_active_ms)/1000):t('runtimeUnavailable');
+  const waiting=fmtSec(Number(attempt.waiting_ms||0)/1000);
+  const transitions=(attempt.recent_transitions||[]).slice(-8);
+  const bindingClass=attempt.binding_state==='ambiguous'?'danger':attempt.binding_state==='unbound'?'warn':'ok';
+  const terminalClass=['errored','interrupted','shutdown'].includes(attempt.current_state)?'danger':attempt.current_state==='completed'?'ok':'';
+  const findingHTML=(findings||[]).map(x=>`<span class="badge ${x.severity==='warning'?'warn':''}">${esc(x.code)}</span>`).join('');
+  return `<article class="runtime-attempt-card">
+    <div class="runtime-attempt-head">
+      <div>
+        <div class="runtime-attempt-name">${esc(name)}</div>
+        <div class="runtime-attempt-sub">${esc(attempt.provider||'-')} · ${esc(task)}</div>
+      </div>
+      <div class="runtime-attempt-badges">
+        <span class="status ${esc(attempt.current_state||'runtime_unknown')} ${terminalClass}">${esc(runtimeStateLabel(attempt.current_state))}</span>
+        <span class="badge ${bindingClass}">${esc(runtimeBindingLabel(attempt.binding_state))}</span>
+      </div>
+    </div>
+    <div class="runtime-meta-grid">
+      <div><span>${esc(t('runtimeAttempt'))}</span><strong title="${esc(attempt.attempt_id||'')}">${esc(attempt.attempt_id||'-')}</strong></div>
+      <div><span>${esc(t('runtimeId'))}</span><strong title="${esc(attempt.runtime_agent_id||'')}">${esc(attempt.runtime_agent_id||'-')}</strong></div>
+      <div><span>${esc(t('runtimeStarted'))}</span><strong>${esc(dateTimeLabel(attempt.started_at,true))}</strong></div>
+      <div><span>${esc(t('runtimeLastActivity'))}</span><strong title="${esc(dateTimeLabel(last))}">${esc(last?ago(last):'-')}</strong></div>
+      <div><span>${esc(t('runtimeEnded'))}</span><strong>${esc(dateTimeLabel(attempt.ended_at,true))}</strong></div>
+      <div><span>${esc(t('runtimeElapsed'))}</span><strong class="runtime-elapsed" data-started-at="${esc(attempt.started_at||'')}" data-ended-at="${esc(attempt.ended_at||'')}" data-elapsed-ms="${Number(attempt.elapsed_ms||0)}">${esc(fmtSec(runtimeElapsedSeconds(attempt)))}</strong></div>
+      <div><span>${esc(t('runtimeObservedActive'))}</span><strong>${esc(active)}</strong></div>
+      <div><span>${esc(t('runtimeWaiting'))}</span><strong>${esc(waiting)}</strong></div>
+    </div>
+    ${findingHTML?`<div class="runtime-findings">${findingHTML}</div>`:''}
+    <details class="runtime-history" ${transitions.length<=4?'open':''}>
+      <summary>${esc(t('runtimeRecentTransitions'))} · ${transitions.length}</summary>
+      <div class="runtime-transition-list">
+        ${transitions.length?transitions.map(row=>`<div class="runtime-transition"><time>${esc(dateTimeLabel(row.at,true))}</time><strong>${esc(runtimeTransitionLabel(row))}</strong><span>${esc((row.evidence_source||'-')+'/'+(row.observation_quality||'-'))}</span></div>`).join(''):`<div class="worker-empty">-</div>`}
+      </div>
+    </details>
+  </article>`;
+}
 function workloadView() {
-  const w=state.snapshot?.workload||{}, agents=w.agents||[], all=state.snapshot?.all_items||{}, unassigned=w.unassigned_doing||[], released=w.released_holds||[];
+  const snapshot=state.snapshot||{}, w=snapshot.workload||{}, agents=w.agents||[], all=snapshot.all_items||{}, unassigned=w.unassigned_doing||[], released=w.released_holds||[];
+  const runtime=snapshot.runtime_observability||{}, attempts=runtime.attempts||[], findings=runtime.findings||[], hooks=runtime.hooks||[], rc=runtime.counts||{};
+  const findingsByAttempt={};
+  findings.forEach(row=>{if(row.attempt_id)(findingsByAttempt[row.attempt_id]??=[]).push(row)});
+  const latestByAgent={};
+  attempts.forEach(attempt=>{if(attempt.agent_path&&!latestByAgent[attempt.agent_path])latestByAgent[attempt.agent_path]=attempt});
+  const allHooksEnabled=hooks.length>=2&&hooks.every(h=>h.installed);
+  const hookCards=hooks.map(h=>`<div class="runtime-hook-row"><div><strong>${esc((h.provider||'').toUpperCase())}</strong><span title="${esc(h.path||'')}">${esc(h.path||'-')}</span></div><span class="badge ${h.installed?'ok':'warn'}">${esc(h.installed?t('runtimeHookEnabled'):t('runtimeHookDisabled'))}</span></div>`).join('');
+  const runtimePanel=`<section class="runtime-observability">
+    <div class="runtime-section-head">
+      <div><div class="eyebrow">Runtime</div><h2>${esc(t('runtimeObservability'))}</h2><p class="summary">${esc(t('runtimeObservabilityIntro'))}</p></div>
+      ${allHooksEnabled?'':`<button class="action-btn" id="runtimeHooksEnableBtn">${esc(t('runtimeEnableObservation'))}</button>`}
+    </div>
+    <div class="runtime-hook-panel"><div><strong>${esc(t('runtimeHookStatus'))}</strong><p>${esc(t('runtimeHookNote'))}</p></div><div class="runtime-hook-list">${hookCards||'-'}</div></div>
+    <div class="metrics runtime-metrics">
+      <div class="metric"><strong>${Number(rc.total||attempts.length)}</strong><span>${esc(t('runtimeAttempts'))}</span></div>
+      <div class="metric"><strong>${Number(rc.running||0)}</strong><span>${esc(t('runtimeRunning'))}</span></div>
+      <div class="metric"><strong>${Number(rc.terminal||0)}</strong><span>${esc(t('runtimeTerminal'))}</span></div>
+      <div class="metric"><strong>${Number(rc.unbound||0)}</strong><span>${esc(t('runtimeUnbound'))}</span></div>
+      <div class="metric"><strong>${Number(rc.ambiguous||0)}</strong><span>${esc(t('runtimeAmbiguous'))}</span></div>
+      <div class="metric"><strong>${Number(rc.stale||0)}</strong><span>${esc(t('runtimeStale'))}</span></div>
+    </div>
+    ${attempts.length?`<div class="runtime-attempt-grid">${attempts.map(a=>runtimeAttemptCard(a,findingsByAttempt[a.attempt_id]||[])).join('')}</div>`:`<div class="runtime-empty">${esc(t('runtimeNoAttempts'))}</div>`}
+  </section>`;
+
   const doingTotal=agents.reduce((n,a)=>n+(a.doing_count||0),0), blockingTotal=agents.reduce((n,a)=>n+(a.blocking_count||0),0), continuityTotal=agents.reduce((n,a)=>n+(a.ready_candidate_count||0),0);
   const cards=agents.map(a=>{
     const alias=String(a.agent||'').split('/').pop()||a.agent;
+    const live=latestByAgent[a.agent];
+    const liveLine=live?`<div class="worker-runtime-line"><span class="status ${esc(live.current_state||'runtime_unknown')}">${esc(runtimeStateLabel(live.current_state))}</span><span>${esc(live.provider||'-')} · ${esc(live.attempt_id||'-')}</span></div>`:'';
     const tasks=(a.doing||[]).map(id=>{const task=all[id]||{},act=task.activity||{},scope=a.change_scopes?.[id]||task.scope||'-';return `<div class="worker-task" data-id="${esc(id)}"><div class="task-id">${esc(id)}</div><div><div class="worker-task-title">${esc(titleOf(task)||id)}</div><div class="worker-health ${esc(act.health||'')}">${esc(healthLabel(act.health||'runtime_unknown'))}${act.last_activity_at?` · ${esc(ago(act.last_activity_at))}`:''}</div></div><div class="timer live-timer" data-id="${esc(id)}">${fmtSec(runningSeconds(task,'active'))}</div><div class="scope-text" title="${esc(scope)}">${esc(scope)}</div></div>`}).join('');
     const blocked=(a.blocking||[]).map(id=>`<span class="badge" data-id="${esc(id)}">${esc(t('blocks'))} ${esc(id)}</span>`).join('');
     const ready=(a.ready_candidates||[]).map(x=>`<span class="badge" data-id="${esc(x.id)}">${esc(t('continuity'))} ${esc(x.id)}</span>`).join('');
-    return `<article class="worker-card"><div class="worker-head"><div><div class="worker-name">${esc(a.agent)}</div><div class="worker-alias">${esc(alias)}</div></div><div class="worker-stats"><div><strong>${a.doing_count||0}</strong><span>${esc(t('doing'))}</span></div><div><strong>${a.blocking_count||0}</strong><span>${esc(t('downstreamBlocked'))}</span></div><div><strong>${a.ready_candidate_count||0}</strong><span>${esc(t('continuity'))}</span></div></div></div><div class="worker-body">${tasks||`<div class="worker-empty">${esc(t('noCurrentDoing'))}</div>`}${blocked?`<div class="mini-panel"><h3>${esc(t('downstreamBlocked'))}</h3><div class="mini-list">${blocked}</div></div>`:''}${ready?`<div class="mini-panel"><h3>${esc(t('readyContinuity'))}</h3><div class="mini-list">${ready}</div></div>`:''}</div></article>`;
+    return `<article class="worker-card"><div class="worker-head"><div><div class="worker-name">${esc(a.agent)}</div><div class="worker-alias">${esc(alias)}</div>${liveLine}</div><div class="worker-stats"><div><strong>${a.doing_count||0}</strong><span>${esc(t('doing'))}</span></div><div><strong>${a.blocking_count||0}</strong><span>${esc(t('downstreamBlocked'))}</span></div><div><strong>${a.ready_candidate_count||0}</strong><span>${esc(t('continuity'))}</span></div></div></div><div class="worker-body">${tasks||`<div class="worker-empty">${esc(t('noCurrentDoing'))}</div>`}${blocked?`<div class="mini-panel"><h3>${esc(t('downstreamBlocked'))}</h3><div class="mini-list">${blocked}</div></div>`:''}${ready?`<div class="mini-panel"><h3>${esc(t('readyContinuity'))}</h3><div class="mini-list">${ready}</div></div>`:''}</div></article>`;
   }).join('');
-  return `<div class="page-head"><div><div class="eyebrow">${esc(t('operationsEyebrow'))}</div><h1>${esc(t('workload'))}</h1><p class="summary">${esc(t('workloadIntro'))}</p></div></div><div class="metrics"><div class="metric"><strong>${agents.length}</strong><span>${esc(t('workers'))}</span></div><div class="metric"><strong>${doingTotal}</strong><span>${esc(t('doing'))}</span></div><div class="metric"><strong>${blockingTotal}</strong><span>${esc(t('downstreamBlocked'))}</span></div><div class="metric"><strong>${continuityTotal}</strong><span>${esc(t('readyContinuity'))}</span></div></div>${unassigned.length?`<div class="unassigned-warning"><strong>${esc(t('unassignedDoing'))}:</strong> ${esc(unassigned.join(', '))}</div>`:''}${cards?`<div class="workload-grid">${cards}</div>`:`<div class="empty">${esc(t('noWorkload'))}</div>`}${released.length?`<div class="workload-secondary"><div class="mini-panel"><h3>${esc(t('releasedHold'))}</h3><div class="mini-list">${released.map(x=>`<span class="badge" data-id="${esc(x.id)}">${esc(x.id)}</span>`).join('')}</div></div></div>`:''}`;
+  const backlogPanel=`<section class="assigned-workload-section"><div class="runtime-section-head compact"><div><div class="eyebrow">Backlog / Git</div><h2>${esc(t('runtimeAssignedWorkload'))}</h2><p class="summary">${esc(t('runtimeAssignedWorkloadIntro'))}</p></div></div><div class="metrics"><div class="metric"><strong>${agents.length}</strong><span>${esc(t('workers'))}</span></div><div class="metric"><strong>${doingTotal}</strong><span>${esc(t('doing'))}</span></div><div class="metric"><strong>${blockingTotal}</strong><span>${esc(t('downstreamBlocked'))}</span></div><div class="metric"><strong>${continuityTotal}</strong><span>${esc(t('readyContinuity'))}</span></div></div>${unassigned.length?`<div class="unassigned-warning"><strong>${esc(t('unassignedDoing'))}:</strong> ${esc(unassigned.join(', '))}</div>`:''}${cards?`<div class="workload-grid">${cards}</div>`:`<div class="empty">${esc(t('noWorkload'))}</div>`}${released.length?`<div class="workload-secondary"><div class="mini-panel"><h3>${esc(t('releasedHold'))}</h3><div class="mini-list">${released.map(x=>`<span class="badge" data-id="${esc(x.id)}">${esc(x.id)}</span>`).join('')}</div></div></div>`:''}</section>`;
+  return `<div class="page-head"><div><div class="eyebrow">${esc(t('operationsEyebrow'))}</div><h1>${esc(t('workload'))}</h1><p class="summary">${esc(t('workloadIntro'))}</p></div></div>${runtimePanel}${backlogPanel}`;
 }
 function issuesView() {
   const h=state.snapshot?.health||{}, rows=[];
@@ -1568,6 +1763,10 @@ function render() {
   }
   c.innerHTML=(state.view==='hub'?hubView():gate+(state.view==='manual'?manualView():state.view==='workload'?workloadView():state.view==='attention'?attentionView():state.view==='issues'?issuesView():listView()));
   bindRows(); if(state.view==='hub') bindHubActions();
+  if(state.view==='workload'){
+    const runtimeEnable=$('#runtimeHooksEnableBtn');
+    if(runtimeEnable)runtimeEnable.addEventListener('click',e=>performRuntimeHooksEnable(e.currentTarget));
+  }
   if(state.view==='backlog')scheduleAutoListPageSize();
   document.querySelectorAll('[data-manual-tab]').forEach(b=>b.onclick=()=>{state.manualTab=b.dataset.manualTab;render()});
   bindCopyButtons(); bindMermaidControls(); renderMermaidDiagrams();
@@ -1988,6 +2187,12 @@ setInterval(()=>{
     (state.listData?.items||[]).forEach(task=>{byID[task.id]=task});
     Object.assign(byID,state.snapshot?.all_items||{});
     document.querySelectorAll('.live-timer').forEach(el=>{const task=byID[el.dataset.id];if(task)el.textContent=fmtSec(runningSeconds(task,'active'))});
+    document.querySelectorAll('.runtime-elapsed').forEach(el=>{
+      const ended=el.dataset.endedAt||'', started=el.dataset.startedAt||'';
+      if(ended||!started){el.textContent=fmtSec(Number(el.dataset.elapsedMs||0)/1000);return}
+      const ms=Date.now()-new Date(started).getTime();
+      el.textContent=fmtSec(Number.isFinite(ms)?Math.max(0,ms/1000):Number(el.dataset.elapsedMs||0)/1000);
+    });
     if(state.detail&&state.detailTask){
       const task=state.detailTask,a=document.querySelector('.live-active'),w=document.querySelector('.live-wait'),q=document.querySelector('.live-queue'),l=document.querySelector('.live-lead');
       if(a)a.textContent=fmtSec(runningSeconds(task,'active'));if(w)w.textContent=fmtSec(runningSeconds(task,'wait'));if(q)q.textContent=fmtSec(runningSeconds(task,'queue'));if(l)l.textContent=fmtSec(runningSeconds(task,'lead'));
@@ -1998,6 +2203,9 @@ setInterval(()=>{
   if(state.project)checkContentRevision(false);
   else if(state.view==='hub')refreshHub(true).then(()=>{if(state.view==='hub')render()}).catch(()=>{});
 },5000);
+setInterval(()=>{
+  if(state.project&&state.view==='workload'&&document.visibilityState!=='hidden'&&!refreshInFlight)refresh();
+},3000);
 setInterval(()=>refreshVersionInfo(true),300000);
 if(window.isSecureContext&&'serviceWorker' in navigator)notificationWorker();
 route();refresh();
