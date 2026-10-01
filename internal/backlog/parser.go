@@ -6,24 +6,8 @@ import (
 )
 
 var sectionLine = regexp.MustCompile(`^(#{2,4})\s+(.+?)\s*$`)
-var checkboxLine = regexp.MustCompile(`^-\s+\[([ xX])\]\s+(.+)package backlog
-
-import (
-    "regexp"
-    "strings"
-)
-
-var sectionLine = regexp.MustCompile(`^(#{2,4})\s+(.+?)\s*$`)
-)
-var semanticSummaryLine = regexp.MustCompile(`(?i)^>\s*(?:\*\*)?(요약|summary)(?:\*\*)?\s*:\s*(.*)package backlog
-
-import (
-    "regexp"
-    "strings"
-)
-
-var sectionLine = regexp.MustCompile(`^(#{2,4})\s+(.+?)\s*$`)
-)
+var checkboxLine = regexp.MustCompile(`^-\s+\[([ xX])\]\s+(.+)$`)
+var semanticSummaryLine = regexp.MustCompile(`(?i)^>\s*(?:\*\*)?(요약|summary)(?:\*\*)?\s*:\s*(.*)$`)
 
 var fieldNames = map[string]bool{
     "등록자": true, "Agent": true, "변경범위": true, "대기": true, "대기유형": true,
