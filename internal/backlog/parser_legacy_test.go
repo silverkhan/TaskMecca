@@ -1,6 +1,9 @@
 package backlog
 
-import (\n    "strings"\n    "testing"\n)
+import (
+    "strings"
+    "testing"
+)
 
 func TestParseFieldsKeepsLegacyRuntimeMetadataOutOfPreviousFields(t *testing.T) {
     text := `# B-311 legacy runtime metadata
