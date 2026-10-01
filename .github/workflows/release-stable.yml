@@ -9,6 +9,7 @@ on:
       - "goassets/**"
       - "go.mod"
       - "install.sh"
+      - "install.ps1"
   workflow_dispatch:
 
 permissions:
