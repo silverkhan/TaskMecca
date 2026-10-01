@@ -104,6 +104,21 @@ func TestHandlerServesDashboardAPIsAndAssets(t *testing.T) {
         }
     }
 
+    req:=httptest.NewRequest(http.MethodGet,"/",nil)
+    rec:=httptest.NewRecorder()
+    handler.ServeHTTP(rec,req)
+    if !contains(rec.Body.String(),"releaseUnreadPrompt") {
+        t.Fatal("release unread prompt container missing from Web shell")
+    }
+
+    req=httptest.NewRequest(http.MethodGet,"/app.js",nil)
+    rec=httptest.NewRecorder()
+    handler.ServeHTTP(rec,req)
+    appJS:=rec.Body.String()
+    for _,needle:=range []string{"renderReleaseUnreadPrompt","showAvailableUpdateNotes","globalUpdateChangesBtn"} {
+        if !contains(appJS,needle) { t.Fatalf("app.js missing release note UX marker %q",needle) }
+    }
+
     req:=httptest.NewRequest(http.MethodGet,"/api/snapshot",nil)
     rec:=httptest.NewRecorder()
     handler.ServeHTTP(rec,req)
