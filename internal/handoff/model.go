@@ -44,6 +44,7 @@ type Record struct {
 	Action                 Action            `json:"action,omitempty"`
 	RequiresFreshPreflight bool              `json:"requires_fresh_preflight,omitempty"`
 	ClaimedBy              string            `json:"claimed_by,omitempty"`
+	ClaimedAttemptID       string            `json:"claimed_attempt_id,omitempty"`
 	Step                   string            `json:"step,omitempty"`
 	Result                 string            `json:"result,omitempty"`
 	ObservedAt             string            `json:"observed_at"`
@@ -68,6 +69,7 @@ type Handoff struct {
 	RequiresFreshPreflight bool                 `json:"requires_fresh_preflight"`
 	PreparedAt             string               `json:"prepared_at,omitempty"`
 	ClaimedBy              string               `json:"claimed_by,omitempty"`
+	ClaimedAttemptID       string               `json:"claimed_attempt_id,omitempty"`
 	ClaimedAt              string               `json:"claimed_at,omitempty"`
 	Steps                  map[string]StepState `json:"steps"`
 	Applied                bool                 `json:"applied"`
@@ -123,6 +125,7 @@ type ClaimResult struct {
 	CurrentContractSHA256  string `json:"current_contract_sha256,omitempty"`
 	Reason                 string `json:"reason,omitempty"`
 	ClaimedBy              string `json:"claimed_by,omitempty"`
+	ClaimedAttemptID       string `json:"claimed_attempt_id,omitempty"`
 }
 
 type MarkResult struct {

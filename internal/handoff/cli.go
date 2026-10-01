@@ -67,11 +67,11 @@ func RunCLI(args []string, stdout, stderr io.Writer) int {
 		}
 		printValue(stdout, result, opts.jsonOutput)
 	case "claim":
-		if len(opts.positionals) != 1 || opts.as == "" {
-			fmt.Fprintln(stderr, "handoff claim requires <HANDOFF_ID> --as <agent-path>")
+		if len(opts.positionals) != 1 || opts.as == "" || opts.sourceAttempt == "" {
+			fmt.Fprintln(stderr, "handoff claim requires <HANDOFF_ID> --as <agent-path> --source-attempt <attempt-id>")
 			return 2
 		}
-		result, callErr := Claim(project, opts.positionals[0], opts.as, now)
+		result, callErr := Claim(project, opts.positionals[0], opts.as, opts.sourceAttempt, now)
 		if callErr != nil {
 			fmt.Fprintln(stderr, callErr)
 			return 1

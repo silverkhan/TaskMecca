@@ -142,11 +142,12 @@ func Prepare(req PrepareRequest, now time.Time) (PrepareResult, error) {
 	return result, err
 }
 
-func Claim(project, handoffID, recipient string, now time.Time) (ClaimResult, error) {
+func Claim(project, handoffID, recipient, claimantAttemptID string, now time.Time) (ClaimResult, error) {
 	handoffID = strings.TrimSpace(handoffID)
 	recipient = strings.TrimSpace(recipient)
-	if handoffID == "" || recipient == "" {
-		return ClaimResult{}, errors.New("handoff_id and recipient are required")
+	claimantAttemptID = strings.TrimSpace(claimantAttemptID)
+	if handoffID == "" || recipient == "" || claimantAttemptID == "" {
+		return ClaimResult{}, errors.New("handoff_id, recipient and claimant attempt_id are required")
 	}
 	var result ClaimResult
 	err := withLock(project, func() error {
@@ -160,6 +161,7 @@ func Claim(project, handoffID, recipient string, now time.Time) (ClaimResult, er
 		}
 		result.HandoffID = handoffID
 		result.ClaimedBy = row.ClaimedBy
+		result.ClaimedAttemptID = row.ClaimedAttemptID
 		if row.Applied {
 			result.AlreadyApplied = true
 			return nil
@@ -191,15 +193,16 @@ func Claim(project, handoffID, recipient string, now time.Time) (ClaimResult, er
 			return nil
 		}
 		if row.ClaimedBy != "" {
-			if row.ClaimedBy == recipient {
+			if row.ClaimedBy == recipient && row.ClaimedAttemptID == claimantAttemptID {
 				result.AlreadyClaimed = true
 			} else {
 				result.ClaimConflict = true
+				result.Reason = "claimed_by_other_runtime_attempt"
 			}
 			return nil
 		}
 		record := Record{
-			HandoffID: handoffID, RecordKind: "claimed", ClaimedBy: recipient,
+			HandoffID: handoffID, RecordKind: "claimed", ClaimedBy: recipient, ClaimedAttemptID: claimantAttemptID,
 			ObservedAt: now.UTC().Format(time.RFC3339Nano),
 		}
 		if err := appendRecordUnlocked(project, record); err != nil {
@@ -207,6 +210,7 @@ func Claim(project, handoffID, recipient string, now time.Time) (ClaimResult, er
 		}
 		result.Claimed = true
 		result.ClaimedBy = recipient
+		result.ClaimedAttemptID = claimantAttemptID
 		return nil
 	})
 	return result, err

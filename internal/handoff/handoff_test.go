@@ -117,21 +117,21 @@ func TestClaimAndMarkAreIdempotent(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	claim, err := Claim(project, got.HandoffID, "/root/controller", now.Add(time.Second))
+	claim, err := Claim(project, got.HandoffID, "/root/controller", "run-controller", now.Add(time.Second))
 	if err != nil {
 		t.Fatal(err)
 	}
 	if !claim.Claimed {
 		t.Fatalf("claim=%+v", claim)
 	}
-	again, err := Claim(project, got.HandoffID, "/root/controller", now.Add(2*time.Second))
+	again, err := Claim(project, got.HandoffID, "/root/controller", "run-controller", now.Add(2*time.Second))
 	if err != nil {
 		t.Fatal(err)
 	}
 	if !again.AlreadyClaimed {
 		t.Fatalf("claim=%+v", again)
 	}
-	conflict, err := Claim(project, got.HandoffID, "/root/other", now.Add(3*time.Second))
+	conflict, err := Claim(project, got.HandoffID, "/root/other", "run-other", now.Add(3*time.Second))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -163,7 +163,7 @@ func TestClaimAndMarkAreIdempotent(t *testing.T) {
 	if !applied.Applied {
 		t.Fatalf("mark=%+v", applied)
 	}
-	post, err := Claim(project, got.HandoffID, "/root/controller", now.Add(8*time.Second))
+	post, err := Claim(project, got.HandoffID, "/root/controller", "run-controller", now.Add(8*time.Second))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -189,9 +189,29 @@ func TestClaimRejectsChangedContract(t *testing.T) {
 	changed = strings.Replace(changed, "이벤트 기반 인계를 검증한다.", "변경된 계약을 검증한다.", 1)
 	if err := os.WriteFile(path, []byte(changed), 0o644); err != nil { t.Fatal(err) }
 
-	claim, err := Claim(project, got.HandoffID, "/root/controller", now.Add(time.Second))
+	claim, err := Claim(project, got.HandoffID, "/root/controller", "run-controller", now.Add(time.Second))
 	if err != nil { t.Fatal(err) }
 	if !claim.ContractChanged || claim.Claimed || claim.Reason != "contract_changed" {
 		t.Fatalf("claim=%+v", claim)
+	}
+}
+
+
+func TestClaimConflictsAcrossControllerAttempts(t *testing.T) {
+	project := t.TempDir()
+	writeSimpleTask(t, project, "A-1")
+	now := time.Date(2026, 10, 2, 1, 0, 0, 0, time.UTC)
+	got, err := Prepare(PrepareRequest{
+		Project: project, TaskID: "A-1", EventType: EventRegistrationReady,
+		SourceAgentPath: "/root/registrar", TargetAgentPath: "/root/controller", ExecutionAuthorized: false,
+	}, now)
+	if err != nil { t.Fatal(err) }
+	first, err := Claim(project, got.HandoffID, "/root/controller", "run-controller-1", now.Add(time.Second))
+	if err != nil { t.Fatal(err) }
+	if !first.Claimed { t.Fatalf("claim=%+v", first) }
+	second, err := Claim(project, got.HandoffID, "/root/controller", "run-controller-2", now.Add(2*time.Second))
+	if err != nil { t.Fatal(err) }
+	if !second.ClaimConflict || second.Reason != "claimed_by_other_runtime_attempt" {
+		t.Fatalf("claim=%+v", second)
 	}
 }

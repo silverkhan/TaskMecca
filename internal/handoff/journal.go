@@ -140,6 +140,7 @@ func buildLedgerUnlocked(project string, now time.Time) (Ledger, error) {
 		case "claimed":
 			if row.ClaimedBy == "" {
 				row.ClaimedBy = record.ClaimedBy
+				row.ClaimedAttemptID = record.ClaimedAttemptID
 				row.ClaimedAt = record.ObservedAt
 			}
 		case "step_succeeded", "step_failed", "step_unknown":
