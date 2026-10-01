@@ -56,3 +56,55 @@ func hasTaskMeccaHookFromBytes(t *testing.T,data []byte,provider string) bool {
     }
     return true
 }
+
+
+func TestDisableHooksRemovesOnlyTaskMeccaHandlers(t *testing.T) {
+    project:=t.TempDir()
+    path:=filepath.Join(project,".codex","hooks.json")
+    if err:=os.MkdirAll(filepath.Dir(path),0755); err!=nil { t.Fatal(err) }
+    original:=`{
+  "description": "keep me",
+  "hooks": {
+    "SubagentStart": [
+      {"hooks": [
+        {"type":"command","command":"echo existing"},
+        {"type":"command","command":"task-mecca runtime observe codex","timeout":3}
+      ]}
+    ],
+    "PreToolUse": [
+      {"matcher":"*","hooks":[{"type":"command","command":"task-mecca runtime observe codex","async":true,"timeout":3}]}
+    ]
+  }
+}`
+    if err:=os.WriteFile(path,[]byte(original),0644); err!=nil { t.Fatal(err) }
+
+    status,err:=DisableHooks(project,"codex")
+    if err!=nil { t.Fatal(err) }
+    if status.Installed { t.Fatalf("Task Mecca hooks should be disabled: %+v",status) }
+    if !status.Changed { t.Fatalf("expected changed status: %+v",status) }
+
+    data,err:=os.ReadFile(path); if err!=nil { t.Fatal(err) }
+    doc:=map[string]any{}; if err:=json.Unmarshal(data,&doc); err!=nil { t.Fatal(err) }
+    if doc["description"]!="keep me" { t.Fatalf("unrelated config lost: %s",data) }
+    hooks,_:=doc["hooks"].(map[string]any)
+    if hasTaskMeccaHook(hooks["SubagentStart"],"codex") || hasTaskMeccaHook(hooks["PreToolUse"],"codex") {
+        t.Fatalf("Task Mecca hook remained: %s",data)
+    }
+    foundExisting:=false
+    for _,entry:=range asSlice(hooks["SubagentStart"]) {
+        row,ok:=entry.(map[string]any); if !ok { continue }
+        for _,hook:=range asSlice(row["hooks"]) {
+            item,ok:=hook.(map[string]any); if ok && item["command"]=="echo existing" { foundExisting=true }
+        }
+    }
+    if !foundExisting { t.Fatalf("existing hook was removed: %s",data) }
+}
+
+func TestDisableHooksIsIdempotent(t *testing.T) {
+    project:=t.TempDir()
+    if _,err:=EnsureHooks(project,"claude"); err!=nil { t.Fatal(err) }
+    first,err:=DisableHooks(project,"claude"); if err!=nil { t.Fatal(err) }
+    if !first.Changed || first.Installed { t.Fatalf("first=%+v",first) }
+    second,err:=DisableHooks(project,"claude"); if err!=nil { t.Fatal(err) }
+    if second.Changed || second.Installed { t.Fatalf("second=%+v",second) }
+}
