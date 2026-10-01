@@ -1,0 +1,133 @@
+name: Publish rolling Go dev release
+
+on:
+  push:
+    branches: [dev]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: task-mecca-go-dev-release
+  cancel-in-progress: true
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Derive next dev version
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main --depth=1
+          stable_version="$(git show origin/main:goassets/template/_task_mecca/VERSION | tr -d '\r\n')"
+          if ! [[ "$stable_version" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+            echo "::error::main VERSION is not stable SemVer: $stable_version"
+            exit 1
+          fi
+
+          major="${BASH_REMATCH[1]}"
+          minor="${BASH_REMATCH[2]}"
+          patch="${BASH_REMATCH[3]}"
+          dev_base="${major}.${minor}.$((patch+1))"
+
+          git fetch origin refs/tags/go-dev:refs/tags/go-dev --force 2>/dev/null || true
+          previous="$(git show go-dev:goassets/template/_task_mecca/VERSION 2>/dev/null | tr -d '\r\n' || true)"
+          escaped_base="${dev_base//./\\.}"
+          if [[ "$previous" =~ ^${escaped_base}-dev\.([0-9]+)$ ]]; then
+            dev_number="$((BASH_REMATCH[1]+1))"
+          else
+            dev_number=1
+          fi
+
+          dev_version="${dev_base}-dev.${dev_number}"
+          printf '%s\n' "$dev_version" > goassets/template/_task_mecca/VERSION
+          echo "DEV_VERSION=$dev_version" >> "$GITHUB_ENV"
+          echo "SOURCE_SHA=$GITHUB_SHA" >> "$GITHUB_ENV"
+          echo "Dev version: $dev_version"
+
+      - name: Check Web UI JavaScript
+        run: |
+          node --check goassets/template/_task_mecca/framework/web/app.js
+          node --check goassets/template/_task_mecca/framework/web/sw.js
+
+      - name: Test Go runtime
+        run: go test ./...
+
+      - name: Build standalone dev binaries
+        shell: bash
+        run: |
+          set -euxo pipefail
+          mkdir -p dist
+          ldflags="-s -w -X main.version=${DEV_VERSION}"
+          CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -trimpath -ldflags="$ldflags" -o dist/task-mecca-windows-amd64.exe ./cmd/task-mecca
+          CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -trimpath -ldflags="$ldflags" -o dist/task-mecca-macos-amd64 ./cmd/task-mecca
+          CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -trimpath -ldflags="$ldflags" -o dist/task-mecca-macos-arm64 ./cmd/task-mecca
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="$ldflags" -o dist/task-mecca-linux-amd64 ./cmd/task-mecca
+          cp goassets/template/_task_mecca/VERSION dist/VERSION.txt
+          grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+-dev\.[0-9]+$' dist/VERSION.txt
+          (cd dist && sha256sum task-mecca-* > SHA256SUMS.txt)
+
+      - name: Create generated dev tag commit
+        shell: bash
+        run: |
+          set -euxo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add goassets/template/_task_mecca/VERSION
+          git commit -m "Dev build ${DEV_VERSION}"
+          echo "BUILD_COMMIT=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+
+      - name: Update rolling dev prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euxo pipefail
+          git tag -f go-dev "$BUILD_COMMIT"
+          git push origin refs/tags/go-dev --force
+
+          if ! gh release view go-dev >/dev/null 2>&1; then
+            gh release create go-dev \
+              --target "$BUILD_COMMIT" \
+              --title "Task Mecca Go dev build" \
+              --notes "Rolling Dev build from dev. Version: ${DEV_VERSION}. Source commit: ${SOURCE_SHA}" \
+              --prerelease
+          fi
+
+          gh release upload go-dev \
+            dist/task-mecca-windows-amd64.exe \
+            dist/task-mecca-macos-amd64 \
+            dist/task-mecca-macos-arm64 \
+            dist/task-mecca-linux-amd64 \
+            dist/SHA256SUMS.txt \
+            --clobber
+
+          # Publish the version marker last so clients never discover a half-published Dev build.
+          gh release upload go-dev dist/VERSION.txt --clobber
+          gh release edit go-dev \
+            --title "Task Mecca Go dev build" \
+            --notes "Rolling Dev build from dev. Version: ${DEV_VERSION}. Source commit: ${SOURCE_SHA}" \
+            --prerelease
+
+      - name: Smoke test dev installer
+        shell: bash
+        run: |
+          set -euxo pipefail
+          export HOME="$RUNNER_TEMP/task-mecca-dev-installer-home"
+          mkdir -p "$HOME/.local/bin"
+          export PATH="$HOME/.local/bin:$PATH"
+          export TASK_MECCA_CHANNEL=dev
+          TASK_MECCA_RELEASE_TAG=go-dev sh ./install.sh
+          version_output="$(task-mecca --version)"
+          printf '%s\n' "$version_output" | sed -n '1p' | grep -Fx "task-mecca $DEV_VERSION"
+          printf '%s\n' "$version_output" | grep -Fx "channel dev"
