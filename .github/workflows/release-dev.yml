@@ -42,8 +42,8 @@ jobs:
 
           previous=""
           for previous_tag in release-dev go-dev; do
-            git fetch origin "refs/tags/\${previous_tag}:refs/tags/\${previous_tag}" --force 2>/dev/null || true
-            previous="$(git show "\${previous_tag}:goassets/template/_task_mecca/VERSION" 2>/dev/null | tr -d '\r\n' || true)"
+            git fetch origin "refs/tags/${previous_tag}:refs/tags/${previous_tag}" --force 2>/dev/null || true
+            previous="$(git show "${previous_tag}:goassets/template/_task_mecca/VERSION" 2>/dev/null | tr -d '\r\n' || true)"
             if [ -n "$previous" ]; then
               break
             fi
@@ -95,7 +95,7 @@ jobs:
 
       - name: Update Dev release and legacy alias
         env:
-          GH_TOKEN: \${{ github.token }}
+          GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euxo pipefail
@@ -134,12 +134,12 @@ jobs:
 
           publish_release release-dev \
             "Task Mecca Dev" \
-            "Rolling Dev build from dev. Version: \${DEV_VERSION}. Source commit: \${SOURCE_SHA}"
+            "Rolling Dev build from dev. Version: ${DEV_VERSION}. Source commit: ${SOURCE_SHA}"
 
           # Compatibility bridge for clients released before the tag rename.
           publish_release go-dev \
             "Task Mecca Dev (legacy alias)" \
-            "Legacy compatibility alias for release-dev. Version: \${DEV_VERSION}. Source commit: \${SOURCE_SHA}"
+            "Legacy compatibility alias for release-dev. Version: ${DEV_VERSION}. Source commit: ${SOURCE_SHA}"
 
       - name: Smoke test dev installer
         shell: bash
