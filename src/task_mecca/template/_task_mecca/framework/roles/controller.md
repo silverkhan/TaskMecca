@@ -73,18 +73,28 @@ Worker DONE/BLOCKED마다 해당 backlog의 `### 수용 기준`과 실제 코드
 내부에서 실행 가능한 구현·통합·검증이 남으면 doing이다. 실제 hold에는 직접 사유, 유형, 재개조건, 근거를 기록한다.
 상태가 해소되면 오래된 대기 사유를 현재 상태처럼 남겨두지 않는다.
 
-## 외부 원천 상태 전달
+## 외부 원천 반영
 
-외부 원천 연결 작업의 `출처`가 있으면 Controller는 외부 시스템을 직접 동기화하는 polling loop를 만들지 않는다.
-대신 실제 lifecycle 전환이 확정된 시점에 Root가 외부 반영할 수 있도록 짧은 `SOURCE_STATUS_UPDATE <ID> <state>` 신호와
-그 상태를 설명할 최소 사실을 전달한다.
+외부 원천 연결 작업의 `출처`가 있으면 Controller는 **등록 이후 운영 반영의 단일 writer**다.
+Root를 다시 깨우거나 Root 중계를 기다리지 않고, 연결된 MCP/도구를 현재 Controller 런타임에서 사용할 수 있으면 실제 lifecycle 전환과
+완료 결과를 원천 이슈에 직접 반영한다. 외부 시스템을 주기적으로 감시하는 polling loop는 만들지 않는다.
 
-- `doing`: worker가 실제 dispatch되고 doing claim이 만들어진 뒤
-- `hold`: 사용자/외부 dependency처럼 협업자가 알아야 할 실질적 차단이 생겼을 때
-- `done`: 수용 기준 검증과 결과 기록이 끝나고 canonical backlog가 완료 처리된 뒤
+- `doing`: worker가 실제 dispatch되고 doing claim이 만들어진 뒤, 원천 workflow에서 의미가 가장 가까운 진행 상태로 갱신한다.
+- `hold`: 사용자/외부 dependency처럼 협업자가 알아야 할 실질적 차단이 생기면 가능한 상태를 사용하거나, 적합한 상태가 없으면 기존 상태를 유지하고 차단 이유를 코멘트로 남긴다.
+- `done`: 수용 기준 검증과 결과 기록이 끝나고 canonical backlog가 완료 처리된 뒤, 완료/종료에 대응되는 상태로 갱신하고 실제 변경 사항·검증 결과·PR/커밋 근거·남은 후속을 함께 요약한다.
 
-quiet/stale 같은 관제 신호나 내부 구현 단계마다 외부 이슈를 갱신하지 않는다. 외부 외부 반영 실패는 canonical backlog의
-상태 전환을 되돌리는 이유가 아니며, Root가 후속 반영 필요사항을 사용자-facing하게 남긴다.
+외부 시스템의 상태명은 하드코딩하지 않는다. 연결된 도구가 제공하는 현재 workflow/status를 확인해 `doing`, 의미 있는 `hold`, `done`과
+의미적으로 대응되는 상태를 선택한다.
+
+Worker가 같은 외부 이슈를 직접 갱신하게 하지 않는다. 여러 Worker가 하나의 원천 이슈에 동시에 쓰는 경쟁 상태와 중복 코멘트를 피하기 위해
+외부 운영 반영은 Controller가 직렬화한다. Worker는 구현·검증 근거만 Controller에 보고한다.
+
+quiet/stale 같은 관제 신호나 내부 구현 단계마다 외부 이슈를 갱신하지 않는다. 외부 반영 실패는 canonical backlog의 상태 전환을 되돌리는 이유가 아니다.
+연결된 MCP/도구가 현재 Controller 런타임에서 없거나 read-only라면 `확인·후속`에 어떤 외부 반영이 남았는지 기록하고 작업 자체는 계속 진행한다.
+
+외부 반영 시 원천 항목이 Task Mecca의 현재 계약과 충돌하도록 변경된 사실을 발견하면 Controller가 임의로 계약을 바꾸지 않는다.
+그 차이가 현재 구현·수용 기준 판단에 영향을 주는 경우 `hold`로 전환하고 `확인·후속`에 **원천 변경 확인 필요**, 구체적 차이, 필요한 사용자 판단,
+재개 조건을 기록한다. subagent가 Root를 다시 깨울 수 없는 런타임에서는 그 durable 상태가 다음 Root 대화의 입력이 된다.
 
 ## 관제와 Web UI
 

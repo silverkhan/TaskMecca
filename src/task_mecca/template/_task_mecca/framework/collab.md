@@ -33,10 +33,14 @@ Linear, GitHub Issue 등 연결된 업무 항목에서 시작된 태스크는 **
 External issue
 → Root가 연결된 도구/MCP로 원문과 현재 상태를 읽음
 → 사용자와 필요한 범위·설계·수용 기준을 논의
+→ Root가 등록 전 중요한 합의를 원천 이슈에 반영
 → 백로그에 출처 + Task Mecca 실행 계약 등록
 → Controller / Worker 실행
-→ Root가 중요한 결정·실제 상태 전환·완료 결과를 원천 이슈에 반영
+→ Controller가 실제 상태 전환과 완료 결과를 원천 이슈에 직접 반영
 ```
+
+등록 이후의 운영 반영이 Root의 재호출에 의존하지 않는 것이 핵심이다. Codex처럼 subagent가 사용자-facing Root 세션을
+다시 깨울 수 없는 런타임에서도 Controller가 연결된 도구를 사용할 수 있으면 외부 상태와 완료 결과를 독립적으로 마무리한다.
 
 백로그 `출처`의 권장 형식:
 
@@ -53,18 +57,23 @@ External issue
 
 - 외부 이슈: 사람과 조직이 공유하는 업무 원천 및 협업 창구
 - Task Mecca 백로그: Agent가 실행하는 현재의 확정 작업 계약과 lifecycle 원장
-- Root: 외부 원천 읽기, 중요한 결정 외부 반영, lifecycle 상태의 의미 기반 대응, 완료 결과 반영
+- Root: 외부 원천 읽기, 사용자와의 의미적 합의, 등록 전/활성 대화 중 중요한 결정 반영
 - Registrar: `출처`를 손실 없이 등록
-- Controller: 실제 lifecycle 전환을 Root에 알림
-- Worker: 외부 시스템을 임의 갱신하지 않고 canonical backlog 계약을 수행
+- Controller: 등록 이후 외부 원천의 **단일 운영 writer**. 실제 lifecycle 상태, 차단 사유, 완료 결과·검증·PR/커밋 근거를 직접 반영
+- Worker: canonical backlog 계약을 수행하고 외부 반영에 필요한 구현·검증 근거를 Controller에 보고. 외부 시스템은 직접 수정하지 않음
 
-등록 뒤 외부 원천이 바뀌어도 Task Mecca 계약을 자동 덮어쓰지 않는다. 변경이 현재 범위·수용 기준에 영향을 주면 Root가 차이를
-해석하고 사용자 판단이 필요한 경우 재합의한다. 반대로 Task Mecca의 매 내부 step을 외부 이슈에 쓰지 않고, 중요한 합의·차단·
-실제 상태 전환·완료처럼 협업 가치가 있는 사건만 반영한다.
+등록 뒤 외부 원천이 바뀌어도 Task Mecca 계약을 자동 덮어쓰지 않는다. Controller가 외부 반영 과정에서 현재 계약과 충돌하는
+변경을 발견하고 그 차이가 구현·수용 기준 판단에 영향을 주면 임의로 합치지 않는다. 사용자 판단이 필요하면 작업을 `hold`로 전환하고
+`확인·후속`에 차이, 필요한 결정, 재개 조건을 durable하게 기록한다. Root를 즉시 다시 깨울 수 없는 런타임에서는 다음 Root 대화가
+이 정보를 읽고 사용자와 재합의한다.
+
+Task Mecca의 매 내부 step을 외부 이슈에 쓰지 않고, 중요한 합의·실질적 차단·실제 상태 전환·완료처럼 협업 가치가 있는 사건만 반영한다.
+여러 Worker가 같은 원천 이슈에 동시에 쓰지 않도록 운영 write-back은 Controller가 직렬화한다.
 
 외부 status 이름은 Linear/GitHub/프로젝트마다 다를 수 있으므로 `todo = Todo` 같은 전역 고정 매핑을 만들지 않는다.
-Root는 연결된 시스템이 제공하는 현재 workflow/status를 확인해 `doing`, 의미 있는 `hold`, `done`과 의미적으로 대응되는 상태를
-선택한다. 적합한 상태가 없으면 기존 상태를 유지하고 코멘트로 의미를 전달할 수 있다.
+Controller는 연결된 시스템이 제공하는 현재 workflow/status를 확인해 `doing`, 의미 있는 `hold`, `done`과 의미적으로 대응되는 상태를
+선택한다. 적합한 상태가 없으면 기존 상태를 유지하고 코멘트로 의미를 전달할 수 있다. Controller에서 연결된 도구를 사용할 수 없거나
+쓰기 권한이 없으면 canonical backlog 상태는 그대로 진행하고, `확인·후속`에 남은 외부 반영을 기록한다.
 
 ## 1. 역할과 canonical flow
 

@@ -42,7 +42,7 @@ Task Mecca를 사용자와 직접 대화하는 **Root 세션은 하나만 선택
 이 세션에서는 Task Mecca의 Root로 동작해 주세요.
 먼저 _task_mecca/framework/SESSION_GUIDE.md, _task_mecca/framework/collab.md, _task_mecca/framework/roles/root.md를 읽고 그 규약을 따르세요.
 사용자에게 보이는 대화와 백로그의 제목·요약·요건·상태·결과는 사용자가 주로 쓰는 언어와 용어 감각을 기준으로 자연스럽게 작성하세요. 정확한 식별자·명령·경로·전문용어로 필요한 영문은 유지하되, 내부 영문 수식어·어순을 기계적으로 섞지 말고 전체 표현을 사용자 언어의 자연스러운 문장으로 재구성하세요.
-Linear, GitHub Issue 등 연결된 외부 업무 항목에서 시작된 작업은 원천 항목을 읽고 백로그에 클릭 가능한 출처를 보존하세요. 중요한 합의, 실제 작업 상태 변화, 완료 결과는 가능한 경우 같은 연결을 통해 원천 항목에도 의미 있게 반영하세요.
+Linear, GitHub Issue 등 연결된 외부 업무 항목에서 시작된 작업은 원천 항목을 읽고 백로그에 클릭 가능한 출처를 보존하세요. Root는 등록 전 또는 사용자와 활성 대화 중 확정된 중요한 합의를 원천 항목에 반영하고, 등록 이후 실제 작업 상태 변화와 완료 결과는 Controller가 연결된 도구를 통해 직접 반영하도록 하세요. Worker는 외부 이슈를 직접 수정하지 않으며 구현·검증 근거를 Controller에 보고하게 하세요. 외부 원천의 변경이 현재 Task Mecca 계약과 충돌해 사용자 판단이 필요하면 Controller가 임의로 합치지 말고 hold와 확인·후속에 차이와 재개 조건을 남기고, 다음 Root 대화에서 사용자와 재합의하세요.
 실행형 작업을 subagent에 위임하기 전에는 SESSION_GUIDE의 Full Access preflight를 먼저 수행하세요.
 작업을 Simple Task와 Defined Task로 구분하세요. 추가 해석 없이 바로 검증 가능한 단순 작업은 목표와 수용 기준만 기록하고 바로 등록하며, 범위·설계·사용자 선택이 필요한 작업만 요건 정의서를 작성해 제 확인을 받은 뒤 Registrar에 lossless하게 등록하세요.
 아직 backlog가 없다면 Registrar가 첫 등록 시 _task_mecca/data/backlog를 생성하도록 하세요. data 아래의 내용은 project-owned이며 framework updater가 덮어쓰지 않습니다.
@@ -104,7 +104,7 @@ Task Mecca Web UI
 - **작업 정의를 대화 속에만 두지 않습니다.** Markdown backlog에 durable하게 남깁니다.
 - **Worker는 전달받은 짧은 요약이 아니라 원래 작업 계약을 직접 읽습니다.**
 - **여러 Worker의 실행과 중단·재개·완료를 Controller가 관제합니다.**
-- **Linear / GitHub Issue에서 시작한 작업은 출처를 연결하고 중요한 결정·상태·결과를 원천 이슈에도 반영할 수 있습니다.**
+- **Linear / GitHub Issue에서 시작한 작업은 출처를 연결하고, Root가 중요한 합의를, Controller가 실제 상태 변화와 완료 결과를 원천 이슈에 반영합니다.**
 - **사용자가 읽는 내용은 사용자의 언어와 업무 맥락을 우선합니다.**
 
 ## 버전 Update
