@@ -7,7 +7,9 @@ import (
     "errors"
     "fmt"
     "io"
+    "os"
     "os/exec"
+    "runtime"
     "strings"
     "sync"
     "time"
@@ -77,7 +79,21 @@ func FilterLedger(ledger Ledger,provider string) Ledger {
 type CodexThreadMetadata struct { Name string; Title string }
 type codexRPCMessage struct { ID any `json:"id,omitempty"`; Result json.RawMessage `json:"result,omitempty"`; Error json.RawMessage `json:"error,omitempty"` }
 
-func codexAppServerCommand(ctx context.Context) *exec.Cmd { return exec.CommandContext(ctx,"codex","app-server","--listen","stdio://") }
+func codexAppServerCommand(ctx context.Context) *exec.Cmd {
+    // Web may be launched as a background service and therefore not inherit the
+    // interactive/login-shell PATH where Codex is installed. Prefer the current
+    // PATH, then fall back to a login shell on Unix so Web and Terminal resolve
+    // the same Codex CLI.
+    if path,err:=exec.LookPath("codex"); err==nil {
+        return exec.CommandContext(ctx,path,"app-server","--listen","stdio://")
+    }
+    if runtime.GOOS!="windows" {
+        shell:=strings.TrimSpace(os.Getenv("SHELL"))
+        if shell=="" { shell="/bin/sh" }
+        return exec.CommandContext(ctx,shell,"-lc","exec codex app-server --listen stdio://")
+    }
+    return exec.CommandContext(ctx,"codex","app-server","--listen","stdio://")
+}
 
 func readCodexRPC(reader *bufio.Reader,wantedID float64) (codexRPCMessage,error) {
     for {
