@@ -115,9 +115,21 @@ body.terminal-page {
   color: var(--muted, #9aa3b2);
   font-size: 11px;
 }
-.terminal-pill.ok { color: var(--ok, #39b980); }
-.terminal-pill.warn { color: var(--warn, #d49b37); }
-.terminal-pill.danger { color: var(--danger, #e45d68); }
+.terminal-pill.ok {
+  color: var(--ok);
+  border-color: color-mix(in srgb, var(--ok) 38%, var(--border));
+  background: color-mix(in srgb, var(--ok) 7%, var(--surface));
+}
+.terminal-pill.warn {
+  color: var(--warn);
+  border-color: color-mix(in srgb, var(--warn) 38%, var(--border));
+  background: color-mix(in srgb, var(--warn) 7%, var(--surface));
+}
+.terminal-pill.danger {
+  color: var(--danger);
+  border-color: color-mix(in srgb, var(--danger) 38%, var(--border));
+  background: color-mix(in srgb, var(--danger) 7%, var(--surface));
+}
 
 .terminal-btn {
   appearance: none;
@@ -310,7 +322,7 @@ body.terminal-page {
   display: grid;
   gap: 2px;
 }
-.terminal-emergency > summary strong { font-size: 13px; }
+.terminal-emergency > summary strong { font-size: 13px; color: var(--text); }
 .terminal-emergency > summary small {
   color: var(--muted, #9aa3b2);
   font-size: 11px;
@@ -337,6 +349,7 @@ body.terminal-page {
 }
 .terminal-emergency-os > summary {
   min-height: 40px;
+  color: var(--text);
   display: flex;
   align-items: center;
   gap: 8px;
@@ -357,7 +370,8 @@ body.terminal-page {
   border: 1px solid var(--border);
   border-radius: 9px;
   overflow: hidden;
-  background: rgba(0,0,0,.12);
+  background: var(--surface2);
+  color: var(--text);
 }
 .terminal-command.danger {
   border-color: color-mix(in srgb, var(--danger) 45%, var(--border));
