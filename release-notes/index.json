@@ -1,6 +1,18 @@
 {
   "releases": [
     {
+      "version": "0.2.52",
+      "date": "2026-10-02",
+      "summary": {
+        "ko": "Windows Stable 업그레이드와 Web 재시작 과정에서 발생하던 실행 오류를 수정했습니다.",
+        "en": "Fixed a Windows execution error during Stable upgrades and Web restarts."
+      },
+      "migration": {
+        "required": false,
+        "instruction_refresh": false
+      }
+    },
+    {
       "version": "0.2.51",
       "date": "2026-10-02",
       "summary": {

@@ -42,9 +42,10 @@ func detachedWebRestart(exe string,args []string,project string) error {
         body+="\r\ndel \"%~f0\"\r\n"
         if _,err=helper.WriteString(body); err!=nil { _=helper.Close(); return err }
         if err=helper.Close(); err!=nil { return err }
-        cmd:=exec.Command("cmd","/C","start","\"Task Mecca Web Restart\"","/MIN",helperPath)
+        cmd:=exec.Command("cmd.exe","/D","/C","start","","/MIN",helperPath)
         cmd.Dir=project
-        return cmd.Start()
+        if err=cmd.Start(); err!=nil { return err }
+        return cmd.Process.Release()
     }
 
     shellArgs:=append([]string{"-c","sleep 1; exec \"$@\"","task-mecca-web-restart",exe},args...)
