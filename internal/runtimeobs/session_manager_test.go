@@ -123,8 +123,7 @@ func TestHistoryRetentionRecordsEnforcesPhysicalAttemptLimit(t *testing.T) {
         }
         line,err:=json.Marshal(record); if err!=nil { t.Fatal(err) }
         payload=append(payload,line...)
-        payload=append(payload,'
-')
+        payload=append(payload,'\n')
     }
     if err:=os.WriteFile(path,payload,0600); err!=nil { t.Fatal(err) }
 
