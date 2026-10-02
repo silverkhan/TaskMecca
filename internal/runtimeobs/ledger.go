@@ -189,7 +189,8 @@ func AppendExecutionEvent(project string,e ExecutionEvent) error {
     if e.EventID=="" { e.EventID=eventIDFor(e) }
     if e.ObservedAt=="" { e.ObservedAt=time.Now().UTC().Format(time.RFC3339Nano) }
     if e.AttemptID=="" { return errors.New("execution event requires attempt_id") }
-    path:=ExecutionJournalPath(project)
+    at:=eventObservedTime(e.ObservedAt,time.Now())
+    path:=executionRawPathAt(project,at)
     if err:=os.MkdirAll(filepath.Dir(path),0700); err!=nil { return err }
     payload,err:=json.Marshal(e); if err!=nil { return err }
     payload=append(payload,'\n')
@@ -290,19 +291,57 @@ func (a *accumulator) finish(limit int,now time.Time) (Attempt,[]LedgerFinding) 
 }
 
 func BuildLedger(project string,recentLimit int,now time.Time) (Ledger,error) {
-    out:=Ledger{Version:1,GeneratedAt:now.UTC().Format(time.RFC3339Nano),JournalPath:ExecutionJournalPath(project),Attempts:[]Attempt{},Findings:[]LedgerFinding{}}
-    f,err:=os.Open(out.JournalPath); if errors.Is(err,os.ErrNotExist) { return out,nil }; if err!=nil { return out,err }; defer f.Close()
-    accs:=map[string]*accumulator{}; seen:=map[string]bool{}; scanner:=bufio.NewScanner(f); scanner.Buffer(make([]byte,65536),2*1024*1024); line:=0
-    for scanner.Scan() {
-        line++; raw:=strings.TrimSpace(scanner.Text()); if raw=="" { continue }
-        var e ExecutionEvent
-        if err:=json.Unmarshal([]byte(raw),&e); err!=nil { out.Findings=append(out.Findings,LedgerFinding{Severity:"warning",Code:"invalid_event_line",Message:fmt.Sprintf("execution journal line %d is invalid JSON: %v",line,err)}); continue }
-        if e.EventID=="" { e.EventID=eventIDFor(e) }; if seen[e.EventID] { continue }; seen[e.EventID]=true
-        a:=accs[e.AttemptID]; if a==nil { a=newAccumulator(e.AttemptID); accs[e.AttemptID]=a }; a.apply(e)
+    out:=Ledger{Version:1,GeneratedAt:now.UTC().Format(time.RFC3339Nano),JournalPath:ExecutionRootPath(project),Attempts:[]Attempt{},Findings:[]LedgerFinding{}}
+    files,err:=executionEventFiles(project)
+    if err!=nil { return out,err }
+
+    accs:=map[string]*accumulator{}
+    seen:=map[string]bool{}
+    for _,path:=range files {
+        file,openErr:=os.Open(path)
+        if openErr!=nil {
+            if errors.Is(openErr,os.ErrNotExist) { continue }
+            return out,openErr
+        }
+        scanner:=bufio.NewScanner(file)
+        scanner.Buffer(make([]byte,64*1024),2*1024*1024)
+        line:=0
+        for scanner.Scan() {
+            line++
+            raw:=strings.TrimSpace(scanner.Text())
+            if raw=="" { continue }
+            var e ExecutionEvent
+            if err:=json.Unmarshal([]byte(raw),&e); err!=nil {
+                out.Findings=append(out.Findings,LedgerFinding{
+                    Severity:"warning",
+                    Code:"invalid_event_line",
+                    Message:fmt.Sprintf("%s line %d is invalid JSON: %v",filepath.Base(path),line,err),
+                })
+                continue
+            }
+            if e.EventID=="" { e.EventID=eventIDFor(e) }
+            if seen[e.EventID] { continue }
+            seen[e.EventID]=true
+            a:=accs[e.AttemptID]
+            if a==nil { a=newAccumulator(e.AttemptID); accs[e.AttemptID]=a }
+            a.apply(e)
+        }
+        scanErr:=scanner.Err()
+        closeErr:=file.Close()
+        if scanErr!=nil { return out,scanErr }
+        if closeErr!=nil { return out,closeErr }
     }
-    if err:=scanner.Err(); err!=nil { return out,err }
-    for _,a:=range accs { attempt,findings:=a.finish(recentLimit,now); out.Attempts=append(out.Attempts,attempt); out.Findings=append(out.Findings,findings...) }
-    sort.Slice(out.Attempts,func(i,j int)bool { if out.Attempts[i].Terminal!=out.Attempts[j].Terminal { return !out.Attempts[i].Terminal }; if out.Attempts[i].LastObservedAt!=out.Attempts[j].LastObservedAt { return out.Attempts[i].LastObservedAt>out.Attempts[j].LastObservedAt }; return out.Attempts[i].AttemptID<out.Attempts[j].AttemptID })
+
+    for _,a:=range accs {
+        attempt,findings:=a.finish(recentLimit,now)
+        out.Attempts=append(out.Attempts,attempt)
+        out.Findings=append(out.Findings,findings...)
+    }
+    sort.Slice(out.Attempts,func(i,j int)bool {
+        if out.Attempts[i].Terminal!=out.Attempts[j].Terminal { return !out.Attempts[i].Terminal }
+        if out.Attempts[i].LastObservedAt!=out.Attempts[j].LastObservedAt { return out.Attempts[i].LastObservedAt>out.Attempts[j].LastObservedAt }
+        return out.Attempts[i].AttemptID<out.Attempts[j].AttemptID
+    })
     sortFindings(out.Findings)
     return out,nil
 }
