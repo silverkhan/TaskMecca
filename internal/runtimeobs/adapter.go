@@ -86,3 +86,24 @@ func readCodexRPC(reader *bufio.Reader,wantedID float64) (codexRPCMessage,error)
         return msg,nil
     }
 }
+
+func ResolveCodexThreadMetadata(ctx context.Context,sessionID string) (CodexThreadMetadata,error) {
+    sessionID=strings.TrimSpace(sessionID)
+    if sessionID=="" { return CodexThreadMetadata{},errors.New("empty Codex session_id") }
+    lookupCtx,cancel:=context.WithTimeout(ctx,4*time.Second); defer cancel()
+    cmd:=codexAppServerCommand(lookupCtx)
+    stdin,err:=cmd.StdinPipe(); if err!=nil { return CodexThreadMetadata{},err }
+    stdout,err:=cmd.StdoutPipe(); if err!=nil { return CodexThreadMetadata{},err }
+    if err=cmd.Start(); err!=nil { return CodexThreadMetadata{},err }
+    defer cmd.Wait()
+    enc:=json.NewEncoder(stdin); reader:=bufio.NewReader(stdout)
+    initRequest:=map[string]any{"jsonrpc":"2.0","id":1,"method":"initialize","params":map[string]any{"clientInfo":map[string]any{"name":"task_mecca","title":"Task Mecca","version":"0.1"}}}
+    if err=enc.Encode(initRequest); err!=nil { return CodexThreadMetadata{},err }
+    if _,err=readCodexRPC(reader,1); err!=nil { return CodexThreadMetadata{},fmt.Errorf("codex initialize: %w",err) }
+    if err=enc.Encode(map[string]any{"jsonrpc":"2.0","method":"initialized","params":map[string]any{}}); err!=nil { return CodexThreadMetadata{},err }
+    if err=enc.Encode(map[string]any{"jsonrpc":"2.0","id":2,"method":"thread/read","params":map[string]any{"threadId":sessionID}}); err!=nil { return CodexThreadMetadata{},err }
+    msg,err:=readCodexRPC(reader,2); if err!=nil { return CodexThreadMetadata{},fmt.Errorf("codex thread/read: %w",err) }
+    var result struct { Thread struct { ID string `json:"id"`; Name string `json:"name"`; Title string `json:"title"` } `json:"thread"` }
+    if err=json.Unmarshal(msg.Result,&result); err!=nil { return CodexThreadMetadata{},err }
+    return CodexThreadMetadata{Name:strings.TrimSpace(result.Thread.Name),Title:strings.TrimSpace(result.Thread.Title)},nil
+}
