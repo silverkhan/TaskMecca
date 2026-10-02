@@ -199,6 +199,8 @@ func handler(project,root,version,instanceID,controlToken string,restartCh chan<
         _,_=w.Write(body)
     }
 
+    registerTerminalRoutes(mux,projectFor,writeJSON)
+
     mux.HandleFunc("/api/health",func(w http.ResponseWriter,r *http.Request) {
         writeJSON(w,map[string]any{"ok":true,"version":version,"instance_id":instanceID,"pid":os.Getpid()},200)
     })
@@ -657,7 +659,7 @@ func handler(project,root,version,instanceID,controlToken string,restartCh chan<
         w.Header().Set("Content-Type",kind)
         w.Header().Set("Cache-Control","no-cache")
         w.Header().Set("X-Content-Type-Options","nosniff")
-        w.Header().Set("Content-Security-Policy","default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; img-src 'self' data:; connect-src 'self' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net")
+        w.Header().Set("Content-Security-Policy","default-src 'self'; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; script-src 'self' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; img-src 'self' data:; connect-src 'self' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net")
         _,_=w.Write(data)
     }
 
