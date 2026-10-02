@@ -39,17 +39,25 @@ func TestTerminalConnectionClassification(t *testing.T) {
     }
 }
 
-func TestTerminalRemoteAccessRequiresExplicitEnable(t *testing.T) {
+func TestTerminalRemoteAccessDefaultsToTailscale(t *testing.T) {
+    home := t.TempDir()
+    t.Setenv("TASK_MECCA_HOME", home)
+
+    settings := readTerminalSecuritySettings()
+    if !settings.RemoteEnabled {
+        t.Fatal("remote terminal should default to enabled when no explicit setting exists")
+    }
+
     req := httptest.NewRequest("GET", "https://node.tailnet.ts.net:18765/api/terminal/settings", nil)
     req.Host = "node.tailnet.ts.net:18765"
     req.RemoteAddr = "100.100.218.126:49152"
     req.TLS = &tls.ConnectionState{}
-
-    if terminalAccessAllowed(req, terminalSecuritySettings{}) {
-        t.Fatal("remote terminal must be disabled by default")
+    if !terminalAccessAllowed(req, settings) {
+        t.Fatal("default Tailscale HTTPS connection should be allowed")
     }
-    if !terminalAccessAllowed(req, terminalSecuritySettings{RemoteEnabled: true}) {
-        t.Fatal("enabled Tailscale connection should be allowed")
+
+    if terminalAccessAllowed(req, terminalSecuritySettings{RemoteEnabled: false}) {
+        t.Fatal("explicitly disabled remote terminal should remain blocked")
     }
 }
 
