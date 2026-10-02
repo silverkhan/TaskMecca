@@ -7,22 +7,6 @@ import (
     "testing"
 )
 
-kage webui
-
-import (
-    "crypto/tls"
-    "net/http/httptest"
-    "path/filepath"
-    "testing"
-)
-
-func terminalRequest(method, target, host, remote string) *http.Request {
-    req := httptest.NewRequest(method, target, nil)
-    req.Host = host
-    req.RemoteAddr = remote
-    return req
-}
-
 func TestTerminalConnectionClassification(t *testing.T) {
     local := httptest.NewRequest("GET", "http://127.0.0.1:18765/api/terminal/settings", nil)
     local.Host = "127.0.0.1:18765"
