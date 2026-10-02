@@ -30,8 +30,22 @@
       start:'Terminal 시작',
       restart:'재시작',
       close:'닫기',
+      copy:'복사',
       paste:'붙여넣기',
       pastePrompt:'클립보드 읽기 권한을 사용할 수 없습니다. 아래 입력창을 길게 눌러 붙여넣으세요.',
+      copySelectionEmpty:'복사할 Terminal 텍스트를 먼저 선택하세요.',
+      copyFailed:'클립보드에 자동 복사하지 못했습니다. 아래 내용을 직접 복사하세요.',
+      copied:'복사됨',
+      emergencyTitle:'긴급 명령어',
+      emergencyHint:'문제가 생겼을 때 명령을 복사해 Terminal에 붙여넣어 사용합니다.',
+      currentOS:'현재 OS',
+      processCheck:'Codex 프로세스 확인',
+      codexGracefulRestart:'Codex 정상 재시작',
+      codexForceRestart:'Codex 강제 재시작',
+      taskMeccaStatus:'Task Mecca Web 상태 확인',
+      taskMeccaRestart:'Task Mecca Web 재시작',
+      linuxCodexNote:'Linux는 Codex Desktop 재실행 경로가 표준화되어 있지 않아 프로세스 확인 명령만 제공합니다.',
+      forceWarning:'응답하지 않는 Codex를 강제 종료한 뒤 다시 실행합니다.',
       interrupt:'Ctrl+C',
       shell:'Shell',
       idleTitle:'Terminal 준비됨',
@@ -80,8 +94,22 @@
       start:'Start terminal',
       restart:'Restart',
       close:'Close',
+      copy:'Copy',
       paste:'Paste',
       pastePrompt:'Clipboard access is unavailable. Long-press the field below and paste your command.',
+      copySelectionEmpty:'Select Terminal text first, then press Copy.',
+      copyFailed:'Automatic clipboard copy failed. Copy the text below manually.',
+      copied:'Copied',
+      emergencyTitle:'Emergency commands',
+      emergencyHint:'Copy a recovery command, then paste it into the Terminal when needed.',
+      currentOS:'Current OS',
+      processCheck:'Check Codex process',
+      codexGracefulRestart:'Restart Codex normally',
+      codexForceRestart:'Force-restart Codex',
+      taskMeccaStatus:'Check Task Mecca Web status',
+      taskMeccaRestart:'Restart Task Mecca Web',
+      linuxCodexNote:'Codex Desktop relaunch is not standardized on Linux, so only the process-check command is provided.',
+      forceWarning:'Force-quits an unresponsive Codex process and starts it again.',
       interrupt:'Ctrl+C',
       shell:'Shell',
       idleTitle:'Terminal ready',
@@ -160,7 +188,7 @@
 
   function setBusy(busy) {
     state.busy = busy;
-    ['terminalStartBtn','terminalRestartBtn','terminalCloseBtn','terminalPasteBtn','terminalInterruptBtn'].forEach(id => {
+    ['terminalStartBtn','terminalRestartBtn','terminalCloseBtn','terminalCopyBtn','terminalPasteBtn','terminalInterruptBtn'].forEach(id => {
       const el = $('#' + id);
       if (el) el.disabled = busy;
     });
@@ -227,8 +255,10 @@
     $('#terminalStartBtn').textContent = t('start');
     $('#terminalRestartBtn').textContent = t('restart');
     $('#terminalCloseBtn').textContent = t('close');
+    $('#terminalCopyBtn').textContent = t('copy');
     $('#terminalPasteBtn').textContent = t('paste');
     $('#terminalInterruptBtn').textContent = t('interrupt');
+    renderEmergencyCommands();
     $('#terminalLifecycle').textContent = t('lifecycle');
 
     $('#remoteToggleBtn')?.addEventListener('click', toggleRemoteAccess);
@@ -380,6 +410,125 @@
   function sessionActionURL(action) {
     if (!state.session) return '';
     return '/api/terminal/sessions/' + encodeURIComponent(state.session.id) + '/' + action;
+  }
+
+  const EMERGENCY_COMMANDS = {
+    darwin: [
+      {title:'processCheck', command:'pgrep -fl Codex'},
+      {title:'codexGracefulRestart', command:'osascript -e \'quit app "Codex"\'; sleep 2; open -a "Codex"'},
+      {title:'codexForceRestart', command:'pkill -x Codex; sleep 2; open -a "Codex"', danger:true},
+      {title:'taskMeccaStatus', command:'task-mecca web status'},
+      {title:'taskMeccaRestart', command:'task-mecca web restart'}
+    ],
+    windows: [
+      {title:'processCheck', command:'Get-Process Codex -ErrorAction SilentlyContinue | Select-Object Id,ProcessName,Path'},
+      {title:'codexGracefulRestart', command:'$p=Get-Process Codex -ErrorAction SilentlyContinue | Select-Object -First 1; $exe=$p.Path; if($p){$p.CloseMainWindow()|Out-Null; Start-Sleep 2}; if($exe){Start-Process $exe}else{Write-Host "Codex executable path not found."}'},
+      {title:'codexForceRestart', command:'$p=Get-Process Codex -ErrorAction SilentlyContinue | Select-Object -First 1; $exe=$p.Path; if($p){$p|Stop-Process -Force}; Start-Sleep 2; if($exe){Start-Process $exe}else{Write-Host "Codex executable path not found."}', danger:true},
+      {title:'taskMeccaStatus', command:'task-mecca web status'},
+      {title:'taskMeccaRestart', command:'task-mecca web restart'}
+    ],
+    linux: [
+      {title:'processCheck', command:"pgrep -af '[Cc]odex'"},
+      {title:'taskMeccaStatus', command:'task-mecca web status'},
+      {title:'taskMeccaRestart', command:'task-mecca web restart'}
+    ]
+  };
+
+  function emergencyOSLabel(os) {
+    if (os === 'darwin') return 'macOS';
+    if (os === 'windows') return 'Windows';
+    if (os === 'linux') return 'Linux';
+    return os || '-';
+  }
+
+  function renderEmergencyCommands() {
+    const panel = $('#terminalEmergency');
+    const body = $('#terminalEmergencyBody');
+    if (!panel || !body) return;
+    $('#terminalEmergencyTitle').textContent = t('emergencyTitle');
+    $('#terminalEmergencyHint').textContent = t('emergencyHint');
+
+    const currentOS = state.settings?.os || '';
+    const order = ['darwin','windows','linux'];
+    body.innerHTML = order.map(os => {
+      const commands = EMERGENCY_COMMANDS[os] || [];
+      const current = os === currentOS;
+      const note = os === 'linux'
+        ? '<p class="terminal-emergency-note">' + escapeHTML(t('linuxCodexNote')) + '</p>'
+        : '';
+      const rows = commands.map((item, index) =>
+        '<div class="terminal-command' + (item.danger ? ' danger' : '') + '">' +
+          '<div class="terminal-command-head"><strong>' + escapeHTML(t(item.title)) + '</strong>' +
+          (item.danger ? '<span class="terminal-command-warning">' + escapeHTML(t('forceWarning')) + '</span>' : '') +
+          '</div>' +
+          '<div class="terminal-command-code"><code>' + escapeHTML(item.command) + '</code>' +
+          '<button type="button" class="terminal-command-copy" data-emergency-os="' + os + '" data-emergency-index="' + index + '">' + escapeHTML(t('copy')) + '</button></div>' +
+        '</div>'
+      ).join('');
+      return '<details class="terminal-emergency-os" ' + (current ? 'open' : '') + '>' +
+        '<summary><span>' + emergencyOSLabel(os) + '</span>' +
+        (current ? '<span class="terminal-pill ok">' + escapeHTML(t('currentOS')) + '</span>' : '') +
+        '</summary>' + note + rows + '</details>';
+    }).join('');
+
+    body.querySelectorAll('.terminal-command-copy').forEach(button => {
+      button.addEventListener('click', async () => {
+        const os = button.dataset.emergencyOs;
+        const index = Number(button.dataset.emergencyIndex);
+        const item = EMERGENCY_COMMANDS[os]?.[index];
+        if (!item) return;
+        const ok = await copyText(item.command);
+        if (!ok) return;
+        const original = button.textContent;
+        button.textContent = t('copied');
+        window.setTimeout(() => { button.textContent = original; }, 1200);
+      });
+    });
+  }
+
+  async function copyText(value) {
+    if (!value) return false;
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(value);
+        return true;
+      }
+    } catch (_) {}
+
+    const textarea = document.createElement('textarea');
+    textarea.value = value;
+    textarea.setAttribute('readonly','');
+    textarea.style.position = 'fixed';
+    textarea.style.opacity = '0';
+    textarea.style.pointerEvents = 'none';
+    document.body.appendChild(textarea);
+    textarea.select();
+    textarea.setSelectionRange(0, textarea.value.length);
+    let copied = false;
+    try { copied = document.execCommand('copy'); } catch (_) {}
+    textarea.remove();
+    if (copied) return true;
+
+    window.prompt(t('copyFailed'), value);
+    return false;
+  }
+
+  async function copyTerminalSelection() {
+    if (!state.session) return;
+    let value = '';
+    try { value = state.terminal?.getSelection?.() || ''; } catch (_) {}
+    if (!value) value = window.getSelection?.().toString() || '';
+    if (!value) {
+      alert(t('copySelectionEmpty'));
+      return;
+    }
+    const ok = await copyText(value);
+    if (!ok) return;
+    const button = $('#terminalCopyBtn');
+    if (!button) return;
+    const original = button.textContent;
+    button.textContent = t('copied');
+    window.setTimeout(() => { button.textContent = original; }, 1200);
   }
 
   async function pasteIntoTerminal() {
@@ -714,6 +863,7 @@
     $('#terminalStartBtn').hidden = active;
     $('#terminalRestartBtn').hidden = !active;
     $('#terminalCloseBtn').hidden = !active;
+    $('#terminalCopyBtn').hidden = !active;
     $('#terminalPasteBtn').hidden = !active;
     $('#terminalInterruptBtn').hidden = !active;
     $('#terminalIdle').hidden = active;
@@ -728,6 +878,7 @@
   $('#terminalStartBtn').addEventListener('click', startSession);
   $('#terminalRestartBtn').addEventListener('click', restartSession);
   $('#terminalCloseBtn').addEventListener('click', () => closeSession(false));
+  $('#terminalCopyBtn').addEventListener('click', copyTerminalSelection);
   $('#terminalPasteBtn').addEventListener('click', pasteIntoTerminal);
   $('#terminalInterruptBtn').addEventListener('click', () => sendInput('\x03'));
   window.addEventListener('beforeunload', stopStream);
@@ -739,5 +890,6 @@
   $('#terminalIdleTitle').textContent = t('idleTitle');
   $('#terminalIdleText').textContent = t('idleText');
   $('#terminalLifecycle').textContent = t('lifecycle');
+  renderEmergencyCommands();
   loadSettings();
 })();

@@ -30,6 +30,7 @@
             <span id="terminalCwd"></span>
           </div>
           <div class="terminal-toolbar-actions">
+            <button type="button" class="terminal-btn secondary" id="terminalCopyBtn" hidden>Copy</button>
             <button type="button" class="terminal-btn secondary" id="terminalPasteBtn" hidden>Paste</button>
             <button type="button" class="terminal-btn secondary" id="terminalInterruptBtn" hidden>Ctrl+C</button>
             <button type="button" class="terminal-btn secondary" id="terminalRestartBtn" hidden>Restart</button>
@@ -56,6 +57,17 @@
           <span id="terminalLifecycle">Detached sessions close automatically after 5 minutes.</span>
         </div>
       </section>
+
+      <details id="terminalEmergency" class="terminal-emergency">
+        <summary>
+          <span>
+            <strong id="terminalEmergencyTitle">Emergency commands</strong>
+            <small id="terminalEmergencyHint">Copy a command and paste it into the terminal when recovery is needed.</small>
+          </span>
+          <span class="terminal-emergency-chevron" aria-hidden="true">⌄</span>
+        </summary>
+        <div id="terminalEmergencyBody" class="terminal-emergency-body"></div>
+      </details>
     </main>
   </div>
   <script src="/terminal.js"></script>

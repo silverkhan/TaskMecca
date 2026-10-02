@@ -592,6 +592,7 @@ func registerTerminalRoutes(
             "can_disable_remote": kind == "local" || kind == "tailscale",
             "updated_at": settings.UpdatedAt,
             "project": projectFor(r),
+            "os": runtime.GOOS,
             "local_terminal_url": fmt.Sprintf("http://127.0.0.1:%d/terminal", port),
         }
     }
