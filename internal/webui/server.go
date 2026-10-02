@@ -392,6 +392,43 @@ func handler(project,root,version,instanceID,controlToken string,restartCh chan<
         writeJSON(w,snapshot,200)
     })
 
+    mux.HandleFunc("/api/runtime/storage",func(w http.ResponseWriter,r *http.Request) {
+        activeProject:=projectFor(r)
+        now:=time.Now()
+        ledger,err:=runtimeobs.ReconcileLedger(activeProject,10,now)
+        if err!=nil { writeJSON(w,map[string]any{"error":err.Error()},500); return }
+
+        if r.Method=="GET" {
+            report,reportErr:=runtimeobs.RuntimeStorageReport(activeProject,ledger,now)
+            if reportErr!=nil { writeJSON(w,map[string]any{"error":reportErr.Error()},500); return }
+            writeJSON(w,report,200)
+            return
+        }
+
+        if r.Method!="POST" {
+            writeJSON(w,map[string]any{"error":"GET or POST required"},405)
+            return
+        }
+        if r.Header.Get("X-Task-Mecca-Action")!="1" {
+            writeJSON(w,map[string]any{"error":"maintenance action header required"},403)
+            return
+        }
+        var body struct{ Action string `json:"action"` }
+        if err:=json.NewDecoder(r.Body).Decode(&body); err!=nil {
+            writeJSON(w,map[string]any{"error":"invalid JSON"},400)
+            return
+        }
+        if strings.ToLower(strings.TrimSpace(body.Action))!="cleanup" {
+            writeJSON(w,map[string]any{"error":"action must be cleanup"},400)
+            return
+        }
+        result,cleanupErr:=runtimeobs.CleanupRuntimeStorage(activeProject,ledger,now)
+        if cleanupErr!=nil { writeJSON(w,map[string]any{"error":cleanupErr.Error()},500); return }
+        refreshed,refreshErr:=runtimeobs.RuntimeStorageReport(activeProject,ledger,time.Now())
+        if refreshErr!=nil { writeJSON(w,map[string]any{"error":refreshErr.Error(),"result":result},500); return }
+        writeJSON(w,map[string]any{"ok":true,"result":result,"storage":refreshed},200)
+    })
+
     mux.HandleFunc("/api/runtime/history",func(w http.ResponseWriter,r *http.Request) {
         if r.Method!="GET" { writeJSON(w,map[string]any{"error":"GET required"},405); return }
         activeProject:=projectFor(r)

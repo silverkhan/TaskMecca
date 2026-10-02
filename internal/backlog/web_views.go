@@ -64,6 +64,8 @@ func WorkloadSnapshot(project, root string) (map[string]any, error) {
     }
     visibleAttempts := runtimeobs.VisibleWorkloadAttempts(runtimeLedger, 6)
     visibleFindings := runtimeobs.FilterFindingsForAttempts(runtimeLedger.Findings, visibleAttempts)
+    sessionGroups := runtimeobs.ClassifySessions(visibleAttempts, visibleFindings)
+    sessionGroups.Terminal = historyTotal
 
     hookSetups := []map[string]any{}
     for _, provider := range []string{"codex", "claude"} {
@@ -110,12 +112,14 @@ func WorkloadSnapshot(project, root string) (map[string]any, error) {
     activeCount := 0
     visibleTerminalCount := 0
     runtimeCounts := map[string]int{
-        "total":     0,
-        "running":   0,
-        "terminal":  historyTotal,
-        "unbound":   0,
-        "ambiguous": 0,
-        "stale":     0,
+        "total":       0,
+        "running":     0,
+        "current":     sessionGroups.Current,
+        "needs_check": sessionGroups.NeedsCheck,
+        "terminal":    historyTotal,
+        "unbound":     0,
+        "ambiguous":   0,
+        "stale":       0,
     }
     for _, attempt := range runtimeLedger.Attempts {
         if !attempt.Terminal {
@@ -184,6 +188,7 @@ func WorkloadSnapshot(project, root string) (map[string]any, error) {
             "findings": visibleFindings,
             "hooks":    hookSetups,
             "counts":   runtimeCounts,
+            "session_groups": sessionGroups,
             "history": map[string]any{
                 "total": historyTotal,
                 "shown_terminal": visibleTerminalCount,
