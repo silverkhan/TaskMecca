@@ -1,6 +1,7 @@
 package maintenance
 
 import (
+    "net/url"
     "os"
     "path/filepath"
     "testing"
@@ -104,5 +105,27 @@ func TestFrameworkSyncCandidatesFollowChannel(t *testing.T) {
     up:=frameworkSyncCandidates("0.2.50","0.2.51-dev.4","dev")
     if len(up)!=1 || up[0].Path!=stableProject {
         t.Fatalf("dev sync candidates=%+v",up)
+    }
+}
+
+
+func TestCacheBustURLReplacesTokenAndPreservesQuery(t *testing.T) {
+    raw:="https://github.com/silverkhan/TaskMecca/releases/download/release-dev/VERSION.txt?existing=1"
+    first:=cacheBustURL(raw,"0.2.52-dev.7")
+    parsed,err:=url.Parse(first)
+    if err!=nil { t.Fatal(err) }
+    if got:=parsed.Query().Get("_tm"); got!="0.2.52-dev.7" {
+        t.Fatalf("cache token=%q",got)
+    }
+    if got:=parsed.Query().Get("existing"); got!="1" {
+        t.Fatalf("existing query lost: %q",got)
+    }
+
+    second:=cacheBustURL(first,"0.2.52-dev.8")
+    parsed,err=url.Parse(second)
+    if err!=nil { t.Fatal(err) }
+    values:=parsed.Query()["_tm"]
+    if len(values)!=1 || values[0]!="0.2.52-dev.8" {
+        t.Fatalf("cache token should be replaced, got=%v",values)
     }
 }
