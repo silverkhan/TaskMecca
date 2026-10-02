@@ -545,6 +545,7 @@ func registerTerminalRoutes(
     settingsPayload := func(r *http.Request) map[string]any {
         settings := readTerminalSecuritySettings()
         kind := terminalConnectionKind(r)
+        port := terminalPortFromHost(r.Host)
         return map[string]any{
             "remote_enabled": settings.RemoteEnabled,
             "connection": kind,
@@ -554,6 +555,8 @@ func registerTerminalRoutes(
             "can_enable_remote": kind == "local",
             "can_disable_remote": kind == "local" || (kind == "tailscale" && settings.RemoteEnabled),
             "updated_at": settings.UpdatedAt,
+            "project": projectFor(r),
+            "local_terminal_url": fmt.Sprintf("http://127.0.0.1:%d/terminal", port),
         }
     }
 
