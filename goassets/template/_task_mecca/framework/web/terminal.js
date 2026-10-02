@@ -42,6 +42,8 @@
       processCheck:'Codex 프로세스 확인',
       codexGracefulRestart:'Codex 정상 재시작',
       codexForceRestart:'Codex 강제 재시작',
+      codexChatGPTRestart:'Codex + ChatGPT 함께 재시작',
+      codexChatGPTRestartWarning:'Codex가 ChatGPT 데스크톱 연결을 찾지 못할 때 두 앱을 종료하고 ChatGPT → Codex 순서로 다시 실행합니다.',
       taskMeccaStatus:'Task Mecca Web 상태 확인',
       taskMeccaRestart:'Task Mecca Web 재시작',
       linuxCodexNote:'Linux는 Codex Desktop 재실행 경로가 표준화되어 있지 않아 프로세스 확인 명령만 제공합니다.',
@@ -106,6 +108,8 @@
       processCheck:'Check Codex process',
       codexGracefulRestart:'Restart Codex normally',
       codexForceRestart:'Force-restart Codex',
+      codexChatGPTRestart:'Restart Codex + ChatGPT together',
+      codexChatGPTRestartWarning:'Use when Codex cannot find ChatGPT Desktop. Both apps are stopped, then ChatGPT starts before Codex.',
       taskMeccaStatus:'Check Task Mecca Web status',
       taskMeccaRestart:'Restart Task Mecca Web',
       linuxCodexNote:'Codex Desktop relaunch is not standardized on Linux, so only the process-check command is provided.',
@@ -417,6 +421,7 @@
       {title:'processCheck', command:'pgrep -fl Codex'},
       {title:'codexGracefulRestart', command:'osascript -e \'quit app "Codex"\'; sleep 2; open -a "Codex"'},
       {title:'codexForceRestart', command:'pkill -x Codex; sleep 2; open -a "Codex"', danger:true},
+      {title:'codexChatGPTRestart', command:'pkill -x Codex; pkill -x ChatGPT; sleep 3; open -a ChatGPT; sleep 5; open -a Codex', danger:true, warning:'codexChatGPTRestartWarning'},
       {title:'taskMeccaStatus', command:'task-mecca web status'},
       {title:'taskMeccaRestart', command:'task-mecca web restart'}
     ],
@@ -459,7 +464,7 @@
       const rows = commands.map((item, index) =>
         '<div class="terminal-command' + (item.danger ? ' danger' : '') + '">' +
           '<div class="terminal-command-head"><strong>' + escapeHTML(t(item.title)) + '</strong>' +
-          (item.danger ? '<span class="terminal-command-warning">' + escapeHTML(t('forceWarning')) + '</span>' : '') +
+          (item.danger ? '<span class="terminal-command-warning">' + escapeHTML(t(item.warning || 'forceWarning')) + '</span>' : '') +
           '</div>' +
           '<div class="terminal-command-code"><code>' + escapeHTML(item.command) + '</code>' +
           '<button type="button" class="terminal-command-copy" data-emergency-os="' + os + '" data-emergency-index="' + index + '">' + escapeHTML(t('copy')) + '</button></div>' +
