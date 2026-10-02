@@ -546,8 +546,9 @@ func installBinary(current,to string,binary []byte) (UpgradeResult,error) {
     script:=exe+".upgrade.cmd"
     body:=fmt.Sprintf("@echo off\r\n:wait\r\nmove /Y \"%s\" \"%s\" >nul 2>&1\r\nif errorlevel 1 (timeout /t 1 /nobreak >nul & goto wait)\r\ndel \"%%~f0\"\r\n",newPath,exe)
     if err=os.WriteFile(script,[]byte(body),0600); err!=nil { return result,err }
-    cmd:=exec.Command("cmd","/C","start","\"Task Mecca Upgrade\"","/MIN",script)
+    cmd:=exec.Command("cmd.exe","/D","/C","start","","/MIN",script)
     if err=cmd.Start(); err!=nil { return result,err }
+    _=cmd.Process.Release()
     result.RestartRequired=true
     result.Scheduled=true
     return result,nil
