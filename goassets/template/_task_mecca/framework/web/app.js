@@ -762,6 +762,36 @@ async function performUpgrade(button) {
   }
 }
 
+async function loadRuntimeHistory(page=1) {
+  state.runtimeHistoryLoading=true;
+  state.runtimeHistoryError='';
+  if(state.view==='workload')render();
+  try{
+    const params=new URLSearchParams();
+    if(state.project)params.set('project',state.project);
+    params.set('page',String(Math.max(1,Number(page)||1)));
+    params.set('page_size','20');
+    const r=await fetch('/api/runtime/history?'+params.toString(),{cache:'no-store'});
+    const body=await r.json();
+    if(!r.ok)throw new Error(body.error||`HTTP ${r.status}`);
+    state.runtimeHistory=body;
+    state.runtimeHistoryLoading=false;
+    state.runtimeHistoryError='';
+  }catch(e){
+    state.runtimeHistoryLoading=false;
+    state.runtimeHistoryError=String(e?.message||e||'Runtime history failed');
+  }
+  if(state.view==='workload')render();
+}
+async function toggleRuntimeHistory() {
+  state.runtimeHistoryOpen=!state.runtimeHistoryOpen;
+  if(state.runtimeHistoryOpen && !(state.runtimeHistory?.items||[]).length && !state.runtimeHistoryLoading) {
+    await loadRuntimeHistory(1);
+    return;
+  }
+  render();
+}
+
 async function performRuntimeHookAction(button) {
   const provider=button?.dataset?.provider||'all';
   const action=button?.dataset?.runtimeHookAction||'enable';
@@ -2116,9 +2146,52 @@ function runtimeHookCard(hook) {
     </div>
   </article>`;
 }
+function runtimeHistoryRow(attempt) {
+  const label=attempt.agent_path||attempt.runtime_agent_id||attempt.attempt_id||'-';
+  const ended=attempt.ended_at||attempt.last_observed_at||'';
+  const elapsed=fmtSec(Number(attempt.elapsed_ms||0)/1000);
+  return `<div class="runtime-history-row">
+    <div class="runtime-history-main"><strong title="${esc(label)}">${esc(label)}</strong><span>${esc((attempt.provider||'-').toUpperCase())} · ${esc(attempt.attempt_id||'-')}</span></div>
+    <span class="status ${esc(attempt.current_state||'runtime_unknown')}">${esc(runtimeStateLabel(attempt.current_state))}</span>
+    <div class="runtime-history-meta"><span>${esc(dateTimeLabel(ended,true))}</span><span>${esc(elapsed)}</span><span>${esc(runtimeBindingLabel(attempt.binding_state))}</span></div>
+  </div>`;
+}
+function runtimeHistoryPanel(meta={}) {
+  const history=state.runtimeHistory||{}, items=history.items||[];
+  if(!state.runtimeHistoryOpen)return '';
+  const retention=history.retention||meta.retention||{};
+  const page=Number(history.page||1), pages=Number(history.total_pages||0), total=Number(history.total||0);
+  const policy=t('runtimeHistoryRetention',{
+    raw:Number(retention.raw_days||7),
+    days:Number(retention.history_days||90),
+    max:Number(retention.history_max_attempts||2000)
+  });
+  const content=state.runtimeHistoryLoading
+    ? `<div class="runtime-history-loading">${esc(t('runtimeHistoryLoading'))}</div>`
+    : state.runtimeHistoryError
+      ? `<div class="runtime-history-error">${esc(state.runtimeHistoryError)}</div>`
+      : items.length
+        ? `<div class="runtime-history-list">${items.map(runtimeHistoryRow).join('')}</div>`
+        : `<div class="runtime-history-empty">${esc(t('runtimeHistoryEmpty'))}</div>`;
+  const pager=(!state.runtimeHistoryLoading&&!state.runtimeHistoryError&&pages>1)
+    ? `<div class="runtime-history-pager">
+        <button data-runtime-history-page="${Math.max(1,page-1)}" ${page<=1?'disabled':''}>←</button>
+        <span>${esc(t('runtimeHistoryPage',{page,pages,total}))}</span>
+        <button data-runtime-history-page="${Math.min(pages,page+1)}" ${page>=pages?'disabled':''}>→</button>
+      </div>`
+    : (!state.runtimeHistoryLoading&&!state.runtimeHistoryError
+        ? `<div class="runtime-history-page-label">${esc(t('runtimeHistoryPage',{page:pages?Math.min(page,pages):0,pages,total}))}</div>`
+        : '');
+  return `<section class="runtime-history-panel">
+    <div class="runtime-history-head"><div><h3>${esc(t('runtimeHistoryTitle'))}</h3><p>${esc(policy)}</p></div></div>
+    ${content}${pager}
+  </section>`;
+}
 function workloadView() {
   const snapshot=state.snapshot||{}, w=snapshot.workload||{}, agents=w.agents||[], all=snapshot.all_items||{}, unassigned=w.unassigned_doing||[], released=w.released_holds||[];
-  const runtime=snapshot.runtime_observability||{}, attempts=runtime.attempts||[], findings=runtime.findings||[], hooks=runtime.hooks||[], rc=runtime.counts||{};
+  const runtime=snapshot.runtime_observability||{}, attempts=runtime.attempts||[], findings=runtime.findings||[], hooks=runtime.hooks||[], rc=runtime.counts||{}, historyMeta=runtime.history||{};
+  const activeAttempts=attempts.filter(a=>!a.terminal);
+  const recentTerminalAttempts=attempts.filter(a=>a.terminal);
   const findingsByAttempt={};
   findings.forEach(row=>{if(row.attempt_id)(findingsByAttempt[row.attempt_id]??=[]).push(row)});
   const latestByAgent={};
@@ -2140,7 +2213,18 @@ function workloadView() {
       <div class="metric"><strong>${Number(rc.ambiguous||0)}</strong><span>${esc(t('runtimeAmbiguous'))}</span></div>
       <div class="metric"><strong>${Number(rc.stale||0)}</strong><span>${esc(t('runtimeStale'))}</span></div>
     </div>
-    ${attempts.length?`<div class="runtime-attempt-grid">${attempts.map(a=>runtimeAttemptCard(a,findingsByAttempt[a.attempt_id]||[])).join('')}</div>`:`<div class="runtime-empty">${esc(t('runtimeNoAttempts'))}</div>`}
+    <div class="runtime-attempt-section">
+      <div class="runtime-attempt-section-head"><h3>${esc(t('runtimeCurrentExecutions'))} · ${activeAttempts.length}</h3></div>
+      ${activeAttempts.length?`<div class="runtime-attempt-grid">${activeAttempts.map(a=>runtimeAttemptCard(a,findingsByAttempt[a.attempt_id]||[])).join('')}</div>`:`<div class="runtime-empty compact">${esc(t('runtimeNoCurrentExecutions'))}</div>`}
+    </div>
+    <div class="runtime-attempt-section">
+      <div class="runtime-attempt-section-head">
+        <h3>${esc(t('runtimeRecentCompleted'))} · ${recentTerminalAttempts.length}</h3>
+        ${Number(historyMeta.total||0)>0?`<button class="runtime-history-toggle" id="runtimeHistoryToggle">${esc(state.runtimeHistoryOpen?t('runtimeHistoryClose'):t('runtimeHistoryOpen'))} · ${Number(historyMeta.total||0)}</button>`:''}
+      </div>
+      ${recentTerminalAttempts.length?`<div class="runtime-attempt-grid">${recentTerminalAttempts.map(a=>runtimeAttemptCard(a,findingsByAttempt[a.attempt_id]||[])).join('')}</div>`:`<div class="runtime-empty compact">${esc(t('runtimeHistoryEmpty'))}</div>`}
+    </div>
+    ${runtimeHistoryPanel(historyMeta)}
   </section>`;
 
   const doingTotal=agents.reduce((n,a)=>n+(a.doing_count||0),0), blockingTotal=agents.reduce((n,a)=>n+(a.blocking_count||0),0), continuityTotal=agents.reduce((n,a)=>n+(a.ready_candidate_count||0),0);
@@ -2453,6 +2537,10 @@ function render() {
     document.querySelectorAll('[data-runtime-hook-action]').forEach(button=>{
       button.addEventListener('click',e=>performRuntimeHookAction(e.currentTarget));
     });
+    $('#runtimeHistoryToggle')?.addEventListener('click',()=>toggleRuntimeHistory());
+    document.querySelectorAll('[data-runtime-history-page]').forEach(button=>{
+      button.addEventListener('click',()=>loadRuntimeHistory(Number(button.dataset.runtimeHistoryPage||1)));
+    });
   }
   if(state.view==='backlog')scheduleAutoListPageSize();
   document.querySelectorAll('[data-manual-tab]').forEach(b=>b.onclick=()=>{state.manualTab=b.dataset.manualTab;render()});
@@ -2733,6 +2821,10 @@ function route(fromPop=false) {
     state.contentRevision='';
     state.pendingContentUpdate=false;
     state.pendingContentReason='';
+    state.runtimeHistoryOpen=false;
+    state.runtimeHistoryLoading=false;
+    state.runtimeHistoryError='';
+    state.runtimeHistory={items:[],page:1,page_size:20,total:0,total_pages:0,retention:{}};
     if(state.project)queueMicrotask(()=>refreshVersionInfo(false));
   }
   if(state.project){
