@@ -125,6 +125,12 @@ func TestHandlerServesDashboardAPIsAndAssets(t *testing.T) {
     if !contains(appJS,"t(confirmKey,{provider:providerLabel})") {
         t.Fatal("runtime Hook action confirmation must use the standard t() formatter")
     }
+    for _,needle:=range []string{"runtime-attempt-disclosure","runtime-attempt-summary","runtime-attempt-glance","openByDefault=attentionState||attentionFinding"} {
+        if !contains(appJS,needle) { t.Fatalf("app.js missing compact runtime card marker %q",needle) }
+    }
+    if contains(appJS,"transitions.length<=4?'open':''") {
+        t.Fatal("runtime transition history must not auto-expand routine sessions")
+    }
 
     req=httptest.NewRequest(http.MethodGet,"/api/snapshot",nil)
     rec=httptest.NewRecorder()
