@@ -509,6 +509,18 @@ func (h *terminalHub) create(project string, cols, rows int) (*terminalSession, 
     return session, nil
 }
 
+func (h *terminalHub) closeAll() {
+    h.mu.Lock()
+    sessions := make([]*terminalSession, 0, len(h.sessions))
+    for _, session := range h.sessions {
+        sessions = append(sessions, session)
+    }
+    h.mu.Unlock()
+    for _, session := range sessions {
+        session.close()
+    }
+}
+
 func (h *terminalHub) get(id, token string) (*terminalSession, bool) {
     h.mu.Lock()
     session := h.sessions[id]
@@ -581,6 +593,9 @@ func registerTerminalRoutes(
         if err := writeTerminalSecuritySettings(current); err != nil {
             writeJSON(w, map[string]any{"error": err.Error()}, http.StatusInternalServerError)
             return
+        }
+        if !body.RemoteEnabled {
+            hub.closeAll()
         }
         writeJSON(w, settingsPayload(r), http.StatusOK)
     })
