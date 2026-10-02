@@ -332,6 +332,7 @@ func BuildLedger(project string,recentLimit int,now time.Time) (Ledger,error) {
             if e.EventID=="" { e.EventID=eventIDFor(e) }
             if seen[e.EventID] { continue }
             seen[e.EventID]=true
+            if e.EventKind=="session_metadata" { continue }
             a:=accs[e.AttemptID]
             if a==nil { a=newAccumulator(e.AttemptID); accs[e.AttemptID]=a }
             a.apply(e)
