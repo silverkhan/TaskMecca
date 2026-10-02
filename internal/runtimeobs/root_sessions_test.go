@@ -1,11 +1,12 @@
 package runtimeobs
 
 import (
-    "strings"
+    "context"
+    "errors"
     "os"
+    "strings"
     "testing"
     "time"
-    "context"
 )
 
 func TestBuildRootSessionsGroupsByProviderSessionAndPrefersProviderName(t *testing.T) {
