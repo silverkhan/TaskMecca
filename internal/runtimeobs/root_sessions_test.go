@@ -270,3 +270,23 @@ func TestProviderMetadataRenameOutranksStaleAttemptName(t *testing.T) {
         t.Fatalf("root id changed: %s",root.RootSessionID)
     }
 }
+
+
+func TestRefreshCodexRootNamesIncludesTerminalRoot(t *testing.T) {
+    project:=t.TempDir()
+    now:=time.Date(2026,10,3,8,30,0,0,time.UTC)
+    old:=now.Add(-7*time.Hour)
+    event:=ExecutionEvent{EventKind:"state",ObservedAt:old.Format(time.RFC3339Nano),AttemptID:"run-stale-name",Provider:"codex",SessionID:"session-stale-name",RuntimeAgentID:"agent-stale-name",State:StateCompleted,EvidenceSource:EvidenceHook,ObservationQuality:QualityObserved}
+    if err:=AppendExecutionEvent(project,event); err!=nil { t.Fatal(err) }
+    ledger,err:=BuildLedger(project,10,now); if err!=nil { t.Fatal(err) }
+    original:=resolveCodexThreadMetadata
+    calls:=0
+    resolveCodexThreadMetadata=func(ctx context.Context,sessionID string)(CodexThreadMetadata,error){ calls++; return CodexThreadMetadata{Name:"대화 없이 바뀐 이름"},nil }
+    defer func(){ resolveCodexThreadMetadata=original }()
+    codexNameCacheMu.Lock(); codexNameCache=map[string]time.Time{}; codexNameCacheMu.Unlock()
+
+    changed,err:=RefreshCodexRootNames(project,ledger,now)
+    if err!=nil || !changed || calls!=1 { t.Fatalf("changed=%v calls=%d err=%v",changed,calls,err) }
+    roots,err:=BuildRootSessions(project,ledger,now); if err!=nil { t.Fatal(err) }
+    if len(roots.Items)!=1 || roots.Items[0].DisplayName!="대화 없이 바뀐 이름" { t.Fatalf("roots=%+v",roots.Items) }
+}
