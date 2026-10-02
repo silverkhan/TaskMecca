@@ -25,6 +25,8 @@ type SpikeEvent struct {
     ObservedAt          string         `json:"observed_at"`
     HookEventName       string         `json:"hook_event_name"`
     SessionID           string         `json:"session_id,omitempty"`
+    SessionName         string         `json:"session_name,omitempty"`
+    SessionTitle        string         `json:"session_title,omitempty"`
     TurnID              string         `json:"turn_id,omitempty"`
     AgentID             string         `json:"agent_id,omitempty"`
     AgentType           string         `json:"agent_type,omitempty"`
@@ -170,6 +172,8 @@ func normalizeEvent(provider string, payload map[string]any, raw []byte, now tim
         ObservedAt:          now.UTC().Format(time.RFC3339Nano),
         HookEventName:       eventName,
         SessionID:           firstString(payload, "session_id", "sessionId"),
+        SessionName:         firstString(payload, "session_name", "sessionName", "thread_name", "threadName"),
+        SessionTitle:        firstString(payload, "session_title", "sessionTitle", "thread_title", "threadTitle", "title"),
         TurnID:              firstString(payload, "turn_id", "turnId"),
         AgentID:             firstString(payload, "agent_id", "agentId"),
         AgentType:           firstString(payload, "agent_type", "agentType"),
