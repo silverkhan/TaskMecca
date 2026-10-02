@@ -108,3 +108,26 @@ func TestDisableHooksIsIdempotent(t *testing.T) {
     second,err:=DisableHooks(project,"claude"); if err!=nil { t.Fatal(err) }
     if second.Changed || second.Installed { t.Fatalf("second=%+v",second) }
 }
+
+
+func TestClaudeHooksIncludeSessionStartButCodexDoesNot(t *testing.T) {
+    claudeProject:=t.TempDir()
+    claude,err:=EnsureHooks(claudeProject,"claude")
+    if err!=nil { t.Fatal(err) }
+    claudeData,err:=os.ReadFile(claude.Path); if err!=nil { t.Fatal(err) }
+    claudeDoc:=map[string]any{}; if err:=json.Unmarshal(claudeData,&claudeDoc); err!=nil { t.Fatal(err) }
+    claudeHooks,_:=claudeDoc["hooks"].(map[string]any)
+    if !hasTaskMeccaHook(claudeHooks["SessionStart"],"claude") {
+        t.Fatalf("Claude SessionStart metadata hook missing: %s",claudeData)
+    }
+
+    codexProject:=t.TempDir()
+    codex,err:=EnsureHooks(codexProject,"codex")
+    if err!=nil { t.Fatal(err) }
+    codexData,err:=os.ReadFile(codex.Path); if err!=nil { t.Fatal(err) }
+    codexDoc:=map[string]any{}; if err:=json.Unmarshal(codexData,&codexDoc); err!=nil { t.Fatal(err) }
+    codexHooks,_:=codexDoc["hooks"].(map[string]any)
+    if hasTaskMeccaHook(codexHooks["SessionStart"],"codex") {
+        t.Fatalf("Codex SessionStart must not be treated as a name source: %s",codexData)
+    }
+}
