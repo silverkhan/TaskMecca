@@ -47,16 +47,39 @@ func TestSameAgentIDAcrossSessionsProducesDistinctAttempts(t *testing.T) {
     if ledger.Attempts[0].AttemptID==ledger.Attempts[1].AttemptID { t.Fatal("attempt ids must differ across sessions") }
 }
 
-func TestBindAttemptAndConflictBecomesAmbiguous(t *testing.T) {
+func TestNewerAuthoritativeBindingSupersedesOlderBinding(t *testing.T) {
     project:=t.TempDir(); base:=time.Date(2026,10,1,10,0,0,0,time.UTC)
     start:=hookExecutionEvent(t,"codex",`{"session_id":"s","hook_event_name":"SubagentStart","agent_id":"a"}`,base)
     if err:=AppendExecutionEvent(project,start); err!=nil { t.Fatal(err) }
-    bound,err:=BindAttempt(project,start.AttemptID,"AID-41","/root/controller/pairi","explicit","",map[string]string{"source":"test"},base.Add(time.Second))
+    first,err:=BindAttempt(project,start.AttemptID,"AID-41","/root/controller/pairi","explicit","",map[string]string{"source":"test"},base.Add(time.Second))
     if err!=nil { t.Fatal(err) }
-    if bound.BindingState!=BindingBound || bound.TaskID!="AID-41" || bound.AgentPath!="/root/controller/pairi" { t.Fatalf("bound=%+v",bound) }
-    conflicted,err:=BindAttempt(project,start.AttemptID,"AID-42","/root/controller/pairi","explicit","",nil,base.Add(2*time.Second))
+    if first.BindingState!=BindingBound || first.TaskID!="AID-41" || first.AgentPath!="/root/controller/pairi" { t.Fatalf("first=%+v",first) }
+    corrected,err:=BindAttempt(project,start.AttemptID,"AID-42","/root/controller/kkobugi","explicit","",map[string]string{"source":"correction"},base.Add(2*time.Second))
     if err!=nil { t.Fatal(err) }
-    if conflicted.BindingState!=BindingAmbiguous { t.Fatalf("binding=%+v",conflicted) }
+    if corrected.BindingState!=BindingBound || corrected.TaskID!="AID-42" || corrected.AgentPath!="/root/controller/kkobugi" {
+        t.Fatalf("new authoritative binding must supersede the old one: %+v",corrected)
+    }
+}
+
+func TestSameTimestampAuthoritativeConflictRemainsAmbiguous(t *testing.T) {
+    project:=t.TempDir(); base:=time.Date(2026,10,1,10,0,0,0,time.UTC)
+    start:=hookExecutionEvent(t,"codex",`{"session_id":"s","hook_event_name":"SubagentStart","agent_id":"a"}`,base)
+    if err:=AppendExecutionEvent(project,start); err!=nil { t.Fatal(err) }
+    at:=base.Add(time.Second)
+    first:=ExecutionEvent{EventKind:"binding",ObservedAt:at.Format(time.RFC3339Nano),AttemptID:start.AttemptID,TaskID:"AID-41",AgentPath:"/root/controller/pairi",BindingSource:"explicit",EvidenceSource:EvidenceManualBinding,ObservationQuality:QualityAuthoritative}
+    first.EventID=eventIDFor(first)
+    second:=first
+    second.TaskID="AID-42"
+    second.AgentPath="/root/controller/kkobugi"
+    second.EventID=eventIDFor(second)
+    for _,event:=range []ExecutionEvent{first,second} {
+        if err:=AppendExecutionEvent(project,event); err!=nil { t.Fatal(err) }
+    }
+    ledger,err:=BuildLedger(project,10,base.Add(2*time.Second)); if err!=nil { t.Fatal(err) }
+    got:=ledger.Attempts[0]
+    if got.BindingState!=BindingAmbiguous || got.TaskID!="" || got.AgentPath!="" {
+        t.Fatalf("same-time authoritative conflict must remain ambiguous: %+v",got)
+    }
 }
 
 func TestMissingStopBecomesStaleNotDead(t *testing.T) {
