@@ -357,6 +357,9 @@ Object.assign(I18N.en,{
   frameworkSyncFailed:'Framework sync failed.'
 });
 
+Object.assign(I18N.ko,{terminal:'터미널'});
+Object.assign(I18N.en,{terminal:'Terminal'});
+
 function t(key, vars = {}) {
   const dict = I18N[state.language] || I18N.en;
   let value = dict[key] ?? I18N.en[key] ?? key;
@@ -1651,6 +1654,13 @@ function resolveProjectContext() {
   const projects=state.hub?.projects||[];
   return projects[0]?.path||'';
 }
+function openWebTerminal() {
+  const project=state.project||resolveProjectContext();
+  const params=new URLSearchParams();
+  if(project)params.set('project',project);
+  params.set('lang',state.language);
+  location.href='/terminal'+(params.toString()?'?'+params.toString():'');
+}
 function navigateView(view) {
   if(view==='release-notes'){
     state.project='';
@@ -1745,6 +1755,7 @@ function nav() {
   document.querySelectorAll('[data-add-project]').forEach(btn=>btn.addEventListener('click',()=>{state.projectMenuOpen=false;switchProject(btn.dataset.addProject)}));
   $('#openProjectBtn')?.addEventListener('click',()=>{state.projectMenuOpen=!state.projectMenuOpen;render()});
   $('#hubNavBtn')?.addEventListener('click',()=>navigateView('hub'));
+  $('#terminalNavBtn')?.addEventListener('click',openWebTerminal);
   document.querySelectorAll('[data-view]').forEach(b => {
     b.classList.toggle('active', state.view === b.dataset.view);
     b.onclick = () => navigateView(b.dataset.view);
@@ -3391,9 +3402,9 @@ function translateChrome() {
   const brandSub=document.querySelector('.brand-copy small'); if(brandSub) brandSub.textContent=t('observatory');
   const ops=$('#operationsLabel'); if(ops) ops.textContent=t('operations').toUpperCase();
   const help=$('#helpLabel'); if(help) help.textContent=t('help').toUpperCase();
-  const pairs=[['#workloadText','workload'],['#attentionText','attention'],['#issuesText','issues'],['#manualText','manual'],['#releaseNotesText','releaseNotes']];
+  const pairs=[['#workloadText','workload'],['#attentionText','attention'],['#issuesText','issues'],['#terminalText','terminal'],['#manualText','manual'],['#releaseNotesText','releaseNotes']];
   pairs.forEach(([sel,key])=>{const el=$(sel);if(el)el.textContent=t(key)});
-  [['[data-view="workload"]','workload'],['[data-view="attention"]','attention'],['[data-view="issues"]','issues'],['[data-view="manual"]','manual'],['[data-view="release-notes"]','releaseNotes']].forEach(([sel,key])=>{const el=document.querySelector(sel);if(el)el.title=t(key)});
+  [['[data-view="workload"]','workload'],['[data-view="attention"]','attention'],['[data-view="issues"]','issues'],['#terminalNavBtn','terminal'],['[data-view="manual"]','manual'],['[data-view="release-notes"]','releaseNotes']].forEach(([sel,key])=>{const el=document.querySelector(sel);if(el)el.title=t(key)});
   const sideBtn=$('#sidebarToggle');if(sideBtn){sideBtn.setAttribute('aria-label',state.sidebarCollapsed?t('expandSidebar'):t('collapseSidebar'));sideBtn.title=state.sidebarCollapsed?t('expandSidebar'):t('collapseSidebar')}
   const refresh=$('#refreshBtn'); if(refresh) refresh.title=t('refresh');
   const themeGroup=document.querySelector('.theme-switcher'); if(themeGroup){themeGroup.setAttribute('aria-label',t('theme'));themeGroup.title=t('theme');}
