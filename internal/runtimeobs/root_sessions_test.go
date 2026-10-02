@@ -11,7 +11,7 @@ func TestBuildRootSessionsGroupsByProviderSessionAndPrefersProviderName(t *testi
     now:=time.Date(2026,10,10,12,0,0,0,time.UTC)
     events:=[]ExecutionEvent{
         {
-            EventKind:"state",ObservedAt:now.Add(-2*time.Hour).Format(time.RFC3339Nano),
+            EventKind:"state",ObservedAt:now.Add(-time.Minute).Format(time.RFC3339Nano),
             AttemptID:"run-a1",Provider:"codex",SessionID:"session-a",SessionName:"EMP 전략 개선",
             RuntimeAgentID:"agent-a1",AgentPath:"/root/controller/꼬부기",
             State:StateRunning,EvidenceSource:EvidenceHook,ObservationQuality:QualityObserved,
