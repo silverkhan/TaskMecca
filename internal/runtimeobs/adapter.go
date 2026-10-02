@@ -1,6 +1,9 @@
 package runtimeobs
 
 import (
+    "bufio"
+    "context"
+    "encoding/json"
     "errors"
     "fmt"
     "io"
@@ -68,4 +71,18 @@ func ObserveHook(project,provider string,input io.Reader,now time.Time) (Executi
     return filtered
 }
 
-func codexAppServerCommand() *exec.Cmd { return exec.Command("codex","app-server","--listen","stdio://") }
+type CodexThreadMetadata struct { Name string; Title string }
+type codexRPCMessage struct { ID any `json:"id,omitempty"`; Result json.RawMessage `json:"result,omitempty"`; Error json.RawMessage `json:"error,omitempty"` }
+
+func codexAppServerCommand(ctx context.Context) *exec.Cmd { return exec.CommandContext(ctx,"codex","app-server","--listen","stdio://") }
+
+func readCodexRPC(reader *bufio.Reader,wantedID float64) (codexRPCMessage,error) {
+    for {
+        line,err:=reader.ReadBytes('\n'); if err!=nil { return codexRPCMessage{},err }
+        var msg codexRPCMessage
+        if json.Unmarshal(line,&msg)!=nil || msg.ID==nil { continue }
+        id,ok:=msg.ID.(float64); if !ok || id!=wantedID { continue }
+        if len(msg.Error)>0 && string(msg.Error)!="null" { return msg,fmt.Errorf("%s",strings.TrimSpace(string(msg.Error))) }
+        return msg,nil
+    }
+}
