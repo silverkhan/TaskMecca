@@ -236,6 +236,7 @@ func rawFileMetadata(path string) (map[string]bool,time.Time,error) {
 
 func buildCleanupPlan(project string,ledger Ledger,now time.Time) (cleanupPlan,error) {
     plan:=cleanupPlan{RawPaths:[]string{},LegacyPaths:[]string{},RetainedHistory:map[string]HistoryRecord{}}
+    cleanupAttemptIDs:=map[string]bool{}
     currentNonTerminal:=map[string]bool{}
     for _,attempt:=range ledger.Attempts {
         if !attempt.Terminal { currentNonTerminal[attempt.AttemptID]=true }
@@ -266,6 +267,7 @@ func buildCleanupPlan(project string,ledger Ledger,now time.Time) (cleanupPlan,e
         plan.RawPaths=append(plan.RawPaths,path)
         plan.Preview.RawFiles++
         plan.Preview.RawBytes+=info.Size()
+        for id:=range ids { cleanupAttemptIDs[id]=true }
         updateOldestCandidate(&plan.Preview,latest)
     }
 
@@ -280,6 +282,7 @@ func buildCleanupPlan(project string,ledger Ledger,now time.Time) (cleanupPlan,e
             plan.LegacyPaths=append(plan.LegacyPaths,legacy)
             plan.Preview.LegacyFiles=1
             plan.Preview.LegacyBytes=info.Size()
+            for id:=range ids { cleanupAttemptIDs[id]=true }
             updateOldestCandidate(&plan.Preview,latest)
         }
     }
@@ -288,6 +291,13 @@ func buildCleanupPlan(project string,ledger Ledger,now time.Time) (cleanupPlan,e
     if err!=nil { return plan,err }
     plan.RetainedHistory=retained
     plan.Preview.HistoryRecords=removed
+    historyNeedsRewrite:=removed>0
+    for id,record:=range retained {
+        existing,ok:=detailed[id]
+        if !ok || terminalSortTime(record.Attempt)>terminalSortTime(existing.Record.Attempt) {
+            historyNeedsRewrite=true
+        }
+    }
     currentHistoryBucket,err:=directoryBucket(ExecutionHistoryDir(project)); if err!=nil { return plan,err }
     targetBytes:=int64(0)
     for _,record:=range retained {
@@ -298,12 +308,14 @@ func buildCleanupPlan(project string,ledger Ledger,now time.Time) (cleanupPlan,e
     if currentHistoryBucket.Bytes>targetBytes {
         plan.Preview.HistoryBytes=currentHistoryBucket.Bytes-targetBytes
     }
-    if removed>0 || plan.Preview.HistoryBytes>0 {
+    if historyNeedsRewrite || plan.Preview.HistoryBytes>0 {
         plan.RewriteHistory=true
     }
 
+    for id:=range cleanupAttemptIDs { cleanupAttemptIDs[id]=true }
     plan.Preview.CandidateFiles=plan.Preview.RawFiles+plan.Preview.LegacyFiles
-    plan.Preview.CandidateAttempts=plan.Preview.HistoryRecords
+    for id:=range cleanupAttemptIDs { _=id; plan.Preview.CandidateAttempts++ }
+    plan.Preview.CandidateAttempts+=plan.Preview.HistoryRecords
     plan.Preview.ReclaimableBytes=plan.Preview.RawBytes+plan.Preview.LegacyBytes+plan.Preview.HistoryBytes
     return plan,nil
 }
@@ -403,6 +415,14 @@ func CleanupRuntimeStorage(project string,ledger Ledger,now time.Time) (CleanupR
     if err!=nil { return CleanupResult{},err }
     result:=CleanupResult{PreviewBefore:plan.Preview}
 
+    // Persist/normalize terminal summaries first. Raw evidence is only removed
+    // after the compact history is safely written.
+    if plan.RewriteHistory {
+        rewritten,writeErr:=writeHistoryRecords(project,plan.RetainedHistory)
+        if writeErr!=nil { return result,writeErr }
+        result.HistoryFilesRewritten=rewritten
+    }
+
     for _,path:=range plan.RawPaths {
         if err:=os.Remove(path); err!=nil && !errors.Is(err,os.ErrNotExist) { return result,err }
         result.RawFilesRemoved++
@@ -411,12 +431,6 @@ func CleanupRuntimeStorage(project string,ledger Ledger,now time.Time) (CleanupR
         if err:=os.Remove(path); err!=nil && !errors.Is(err,os.ErrNotExist) { return result,err }
         result.LegacyFilesRemoved++
     }
-    if plan.RewriteHistory {
-        rewritten,writeErr:=writeHistoryRecords(project,plan.RetainedHistory)
-        if writeErr!=nil { return result,writeErr }
-        result.HistoryFilesRewritten=rewritten
-    }
-
     after,err:=RuntimeStorageReport(project,ledger,now)
     if err!=nil { return result,err }
     result.RemainingBytes=after.TotalBytes
