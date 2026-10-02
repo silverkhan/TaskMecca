@@ -240,10 +240,10 @@ func BacklogPage(project,root string,page,pageSize int,statuses,tags []string,se
         needs:=0; for _,row:=range rowsAtt { if toString(row["type"])!="quiet" { needs++ } }
         counts["needs_action"]=needs
     }
-    repoProbe:=root
-    if strings.TrimSpace(repoProbe)=="" { repoProbe=project }
+    repoName:=filepath.Base(project)
+    if strings.TrimSpace(root)!="" { repoName=filepath.Base(repoRoot(root)) }
     return map[string]any{
-        "snapshot_at":time.Now().Format(time.RFC3339),"root":root,"repo":filepath.Base(repoRoot(repoProbe)),
+        "snapshot_at":time.Now().Format(time.RFC3339),"root":root,"repo":repoName,
         "items":items,"page":page,"page_size":pageSize,"pages":pages,"total":total,
         "revision":backlogRevisionFromRows(rows),"backlog_presence":presence,
         "counts":counts,"tag_catalog":tagCatalog,"access":AccessObservation(project),
