@@ -157,9 +157,9 @@ func RefreshCodexRootNames(project string,ledger Ledger,now time.Time) (bool,err
             continue
         }
         if !wrote { continue }
-        if event.SessionName==root.DisplayName || (event.SessionName=="" && event.SessionTitle==root.DisplayName) {
-            continue
-        }
+        resolvedName:=event.SessionName
+        if resolvedName=="" { resolvedName=event.SessionTitle }
+        if resolvedName==root.DisplayName { continue }
         changed=true
     }
     return changed,nil
