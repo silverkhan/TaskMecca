@@ -51,6 +51,14 @@ If the current filename state is ahead of committed Git lifecycle history, Task 
 
 Web distinguishes configuration from actual Activity / Start / Stop observation. Turning observation off removes only Task Mecca-managed Hooks and preserves the existing Execution Ledger.
 
+### Root Session runtime management
+
+Runtime observations group Registrar / Controller / Worker / execution attempts under the provider Hook `session_id` as a Root Session. Reused worker names in different Roots remain separate.
+
+Web chooses provider session/thread name → provider title → `Root · YYYY-MM-DD HH:mm` fallback. When exact creation time is unavailable, the earliest Hook evidence is labeled **First observed**.
+
+Roots are classified as `active / needs_check / terminal / inactive_terminal`. Root-level cleanup is allowed only when all children are terminal and the Root has been inactive for at least 7 days. Any stale/runtime_unknown child keeps the Root protected.
+
 ## Framework / Data boundary
 
 Installation deploys only `framework/`; it does not create `data/`. On the first task registration Registrar uses `ensure-backlog` to select an existing ledger or create `_task_mecca/data/backlog/`. Durable artifacts created by agents belong under `data/`, not inside `framework/`.

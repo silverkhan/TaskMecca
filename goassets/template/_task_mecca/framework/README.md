@@ -54,6 +54,36 @@ task-mecca runtime hooks disable claude
 
 `disable`은 Task Mecca가 추가한 Hook handler만 제거하며 다른 Hook 설정은 보존한다. Runtime 관측을 꺼도 기존 Execution Ledger 기록은 삭제되지 않는다.
 
+### Root Session 단위 Runtime 관리
+
+Runtime 관측 정보는 개별 Agent를 평평하게 나열하지 않고 **Root Session**을 최상위 운영 단위로 묶는다.
+
+```text
+Project
+└─ Root Session
+   ├─ Registrar
+   ├─ Controller
+   └─ Worker
+      └─ Execution Attempt
+```
+
+Provider Hook의 `session_id`를 provider-native Root Session identity로 사용하며, Task Mecca는 provider와 session ID의 조합에서 안정적인 내부 `root_session_id`를 만든다. 같은 `/root/controller/꼬부기` 이름이 다른 Root에서 다시 사용되어도 서로 다른 Root Session 아래에 표시된다.
+
+Web은 Root Session의 사람이 읽기 쉬운 이름을 우선한다. Provider가 명시적 session/thread name을 제공하면 이를 사용하고, 그다음 provider title을 사용한다. 현재 관측 surface에서 이름을 안정적으로 얻을 수 없으면 `Root · YYYY-MM-DD HH:mm` 형식의 Task Mecca fallback 이름을 사용한다. 이름은 표시용 metadata이며 liveness 판단 근거가 아니다.
+
+Root의 실제 개설 시각을 provider metadata로 확인할 수 없을 때는 Hook으로 처음 확인한 시각을 **관측 시작**으로 표시하며, 이를 실제 개설 시각이라고 추정하지 않는다.
+
+Root Session 상태는 다음처럼 판정한다.
+
+- `active`: 현재 실행 근거가 있는 자식 attempt가 하나 이상 있음
+- `needs_check`: terminal이 확인되지 않은 `stale` / `runtime_unknown` 자식이 있음
+- `terminal`: 모든 관측 자식이 terminal
+- `inactive_terminal`: terminal이고 마지막 활동 후 7일 이상 경과
+
+새 Root Session이 생겼다는 이유만으로 이전 Root를 종료로 간주하지 않는다.
+
+**Root 단위 정리**는 마지막 활동 후 7일 이상 지난 `inactive_terminal` Root에만 허용한다. 해당 Root의 Controller/Registrar/Worker/attempt runtime evidence를 함께 제거하되, 다른 Root Session, canonical backlog/Git, Hook 설정은 보존한다. `stale` 또는 `runtime_unknown` 자식이 하나라도 있는 Root는 7일이 지나도 자동 정리하지 않는다.
+
 ## Framework / Data 경계
 
 설치 시에는 `framework/`만 배포되고 `data/`는 만들지 않는다. 첫 task 등록 시 Registrar가 `ensure-backlog`를 통해 기존 원장을 선택하거나, 원장이 없으면 `_task_mecca/data/backlog/`를 생성한다. Agent가 만드는 durable 부산물도 framework와 섞지 말고 필요할 때 `data/` 아래에 둔다.

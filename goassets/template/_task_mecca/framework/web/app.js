@@ -64,6 +64,11 @@ const state = {
   runtimeStorageLoading: false,
   runtimeStorageError: '',
   runtimeStorage: null,
+  runtimeRootDisclosure: {},
+  runtimeRootListOpen: false,
+  runtimeRootListLoading: false,
+  runtimeRootListError: '',
+  runtimeRootList: {items:[],page:1,page_size:10,total:0,total_pages:0,counts:{}},
 };
 
 
@@ -849,6 +854,65 @@ async function performRuntimeCleanup(button) {
     state.runtimeHistory={items:[],page:1,page_size:20,total:0,total_pages:0,retention:{}};
     if(state.runtimeHistoryOpen)await loadRuntimeHistory(1);
     await refresh();
+  }catch(e){
+    alert(String(e?.message||e));
+    if(button){button.disabled=false;button.textContent=original;}
+  }
+}
+
+async function loadRuntimeRootSessions(page=1) {
+  state.runtimeRootListLoading=true;
+  state.runtimeRootListError='';
+  if(state.view==='workload')render();
+  try{
+    const params=new URLSearchParams();
+    if(state.project)params.set('project',state.project);
+    params.set('page',String(Math.max(1,Number(page)||1)));
+    params.set('page_size','10');
+    params.set('status','previous');
+    params.set('include_storage','1');
+    const r=await fetch('/api/runtime/root-sessions?'+params.toString(),{cache:'no-store'});
+    const body=await r.json();
+    if(!r.ok)throw new Error(body.error||`HTTP ${r.status}`);
+    state.runtimeRootList=body;
+  }catch(e){
+    state.runtimeRootListError=String(e?.message||e||'Root Session load failed');
+  }finally{
+    state.runtimeRootListLoading=false;
+  }
+  if(state.view==='workload')render();
+}
+async function toggleRuntimeRootList() {
+  state.runtimeRootListOpen=!state.runtimeRootListOpen;
+  if(state.runtimeRootListOpen) {
+    await loadRuntimeRootSessions(1);
+    return;
+  }
+  render();
+}
+async function performRootSessionCleanup(button) {
+  const rootSessionID=button?.dataset?.runtimeRootCleanup||'';
+  const name=button?.dataset?.runtimeRootName||'Root Session';
+  const bytes=Number(button?.dataset?.runtimeRootBytes||0);
+  if(!rootSessionID)return;
+  if(!window.confirm(t('runtimeRootCleanupConfirm',{name,bytes:fmtBytes(bytes)})))return;
+  const original=button?.textContent||'';
+  if(button){button.disabled=true;button.textContent=t('runtimeCleanupRunning');}
+  try{
+    const params=new URLSearchParams();
+    if(state.project)params.set('project',state.project);
+    const qs=params.toString()?`?${params}`:'';
+    const r=await fetch('/api/runtime/root-sessions'+qs,{
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-Task-Mecca-Action':'1'},
+      body:JSON.stringify({action:'cleanup',root_session_id:rootSessionID})
+    });
+    const body=await r.json();
+    if(!r.ok)throw new Error(body.error||'Root Session cleanup failed');
+    alert(t('runtimeRootCleanupDone',{bytes:fmtBytes(body.result?.reclaimed_bytes||bytes)}));
+    await refresh();
+    if(state.runtimeRootListOpen)await loadRuntimeRootSessions(Number(state.runtimeRootList?.page||1));
+    if(state.runtimeStorageOpen)await loadRuntimeStorage(true);
   }catch(e){
     alert(String(e?.message||e));
     if(button){button.disabled=false;button.textContent=original;}
@@ -2126,6 +2190,33 @@ Object.assign(I18N.ko,{
   runtimeCleanupRunning:'정리 중…',
   runtimeCleanupDone:'Runtime 기록 {bytes}를 정리했습니다.',
   runtimeFiles:'파일 {n}개',
+  runtimeRootSessions:'Root Sessions',
+  runtimeRootActive:'현재 Root',
+  runtimeRootNeedsCheck:'확인 필요 Root',
+  runtimeRootPrevious:'이전 Root',
+  runtimeRootCleanupEligible:'정리 가능 Root',
+  runtimeRootAgents:'Agent {n}',
+  runtimeRootAttempts:'Attempt {n}',
+  runtimeRootCreated:'개설',
+  runtimeRootObservedStart:'관측 시작',
+  runtimeRootLastActivity:'마지막 활동',
+  runtimeRootID:'Root Session ID',
+  runtimeRootCurrentCount:'현재 {n}',
+  runtimeRootNeedsCount:'확인 필요 {n}',
+  runtimeRootTerminalCount:'종료 {n}',
+  runtimeRootShowPrevious:'이전 Root Sessions 보기',
+  runtimeRootHidePrevious:'이전 Root Sessions 닫기',
+  runtimeRootLoading:'Root Session 이력을 불러오는 중…',
+  runtimeRootEmpty:'이전 Root Session이 없습니다.',
+  runtimeRootPage:'{page} / {pages} 페이지 · {total}개 Root',
+  runtimeRootCleanup:'Root 기록 정리',
+  runtimeRootCleanupConfirm:'{name} Root Session과 그 하위 Runtime 기록 약 {bytes}를 정리할까요? canonical backlog/Git과 Hook 설정은 유지됩니다.',
+  runtimeRootCleanupDone:'Root Session 기록 {bytes}를 정리했습니다.',
+  runtimeRootInactiveTerminal:'7일 이상 미활동 · 정리 가능',
+  runtimeRootTerminal:'종료됨',
+  runtimeRootNeedsCheckStatus:'상태 확인 필요',
+  runtimeRootActiveStatus:'활성',
+  runtimeRootFallbackHint:'Provider 이름을 확인할 수 없어 Task Mecca fallback 이름을 사용 중입니다.',
 });
 Object.assign(I18N.en,{
   runtimeCurrentValid:'Current valid',
@@ -2151,6 +2242,33 @@ Object.assign(I18N.en,{
   runtimeCleanupRunning:'Cleaning…',
   runtimeCleanupDone:'Cleaned {bytes} of runtime records.',
   runtimeFiles:'{n} files',
+  runtimeRootSessions:'Root Sessions',
+  runtimeRootActive:'Current roots',
+  runtimeRootNeedsCheck:'Roots needing verification',
+  runtimeRootPrevious:'Previous roots',
+  runtimeRootCleanupEligible:'Cleanup eligible',
+  runtimeRootAgents:'{n} agents',
+  runtimeRootAttempts:'{n} attempts',
+  runtimeRootCreated:'Created',
+  runtimeRootObservedStart:'First observed',
+  runtimeRootLastActivity:'Last activity',
+  runtimeRootID:'Root Session ID',
+  runtimeRootCurrentCount:'Current {n}',
+  runtimeRootNeedsCount:'Needs check {n}',
+  runtimeRootTerminalCount:'Terminal {n}',
+  runtimeRootShowPrevious:'View previous Root Sessions',
+  runtimeRootHidePrevious:'Close previous Root Sessions',
+  runtimeRootLoading:'Loading Root Session history…',
+  runtimeRootEmpty:'No previous Root Sessions.',
+  runtimeRootPage:'Page {page} / {pages} · {total} roots',
+  runtimeRootCleanup:'Clean Root records',
+  runtimeRootCleanupConfirm:'Clean about {bytes} of runtime records for Root Session {name}? Canonical backlog/Git and Hook settings are preserved.',
+  runtimeRootCleanupDone:'Cleaned {bytes} of Root Session runtime records.',
+  runtimeRootInactiveTerminal:'Inactive for 7+ days · cleanup eligible',
+  runtimeRootTerminal:'Terminal',
+  runtimeRootNeedsCheckStatus:'Needs verification',
+  runtimeRootActiveStatus:'Active',
+  runtimeRootFallbackHint:'Task Mecca fallback name is shown because no provider session name was available.',
 });
 
 function fmtBytes(value) {
@@ -2349,14 +2467,94 @@ function runtimeHistoryPanel(meta={}) {
     ${content}${pager}
   </section>`;
 }
+function runtimeRootStatusLabel(status) {
+  return {
+    active:t('runtimeRootActiveStatus'),
+    needs_check:t('runtimeRootNeedsCheckStatus'),
+    terminal:t('runtimeRootTerminal'),
+    inactive_terminal:t('runtimeRootInactiveTerminal'),
+  }[status]||status||'-';
+}
+function runtimeRootStatusClass(status) {
+  return status==='active'?'ok':status==='needs_check'?'warn':status==='inactive_terminal'?'warn':'';
+}
+function runtimeRootCard(root,attempts,findingsByAttempt,attemptRootMap) {
+  const key=String(root.root_session_id||root.provider_session_id||root.display_name||'root');
+  const remembered=Object.prototype.hasOwnProperty.call(state.runtimeRootDisclosure,key);
+  const defaultOpen=root.status==='active'||root.status==='needs_check';
+  const open=remembered?Boolean(state.runtimeRootDisclosure[key]):defaultOpen;
+  const sessionAttempts=attempts.filter(a=>attemptRootMap[a.attempt_id]===root.root_session_id);
+  const createdLabel=root.created_at_source==='provider_metadata'?t('runtimeRootCreated'):t('runtimeRootObservedStart');
+  const providerID=root.provider_session_id||'-';
+  const fallbackHint=root.display_name_source==='task_mecca_fallback'
+    ? `<span class="runtime-root-fallback" title="${esc(t('runtimeRootFallbackHint'))}">fallback</span>`
+    : '';
+  const cleanupBadge=root.cleanup_eligible?`<span class="badge warn">${esc(t('runtimeRootCleanupEligible'))}</span>`:'';
+  return `<details class="runtime-root-card" data-runtime-root-key="${esc(key)}" ${open?'open':''}>
+    <summary class="runtime-root-summary">
+      <div class="runtime-root-title-wrap">
+        <div class="runtime-root-title">${esc(root.display_name||'Root Session')} ${fallbackHint}</div>
+        <div class="runtime-root-id">${esc(String(root.provider||'-').toUpperCase())} · ${esc(root.root_session_id||'-')} · <span title="${esc(providerID)}">${esc(providerID)}</span></div>
+      </div>
+      <div class="runtime-root-badges">
+        <span class="badge ${runtimeRootStatusClass(root.status)}">${esc(runtimeRootStatusLabel(root.status))}</span>
+        ${cleanupBadge}
+      </div>
+      <div class="runtime-root-meta">
+        <span>${esc(createdLabel)} <strong>${esc(dateTimeLabel(root.created_at,true))}</strong></span>
+        <span>${esc(t('runtimeRootLastActivity'))} <strong>${esc(root.last_activity_at?ago(root.last_activity_at):'-')}</strong></span>
+      </div>
+      <div class="runtime-root-counts">
+        <span>${esc(t('runtimeRootAgents',{n:Number(root.agent_count||0)}))}</span>
+        <span>${esc(t('runtimeRootCurrentCount',{n:Number(root.current_count||0)}))}</span>
+        <span>${esc(t('runtimeRootNeedsCount',{n:Number(root.needs_check_count||0)}))}</span>
+        <span>${esc(t('runtimeRootTerminalCount',{n:Number(root.terminal_count||0)}))}</span>
+      </div>
+      <span class="runtime-root-chevron" aria-hidden="true">›</span>
+    </summary>
+    <div class="runtime-root-body">
+      ${sessionAttempts.length?`<div class="runtime-attempt-grid">${sessionAttempts.map(a=>runtimeAttemptCard(a,findingsByAttempt[a.attempt_id]||[])).join('')}</div>`:`<div class="runtime-empty compact">-</div>`}
+    </div>
+  </details>`;
+}
+function runtimeRootListRow(root) {
+  const statusClass=runtimeRootStatusClass(root.status);
+  const cleanup=root.cleanup_eligible
+    ? `<button class="runtime-root-cleanup-btn" data-runtime-root-cleanup="${esc(root.root_session_id||'')}" data-runtime-root-name="${esc(root.display_name||'Root Session')}" data-runtime-root-bytes="${Number(root.cleanup_bytes||root.storage_bytes||0)}">${esc(t('runtimeRootCleanup'))}</button>`
+    : '';
+  return `<div class="runtime-root-list-row">
+    <div class="runtime-root-list-main">
+      <strong>${esc(root.display_name||'Root Session')}</strong>
+      <span>${esc(String(root.provider||'-').toUpperCase())} · ${esc(root.root_session_id||'-')}</span>
+      <small>${esc(root.provider_session_id||'-')}</small>
+    </div>
+    <span class="badge ${statusClass}">${esc(runtimeRootStatusLabel(root.status))}</span>
+    <div class="runtime-root-list-meta">
+      <span>${esc(root.last_activity_at?ago(root.last_activity_at):'-')}</span>
+      <span>${esc(fmtBytes(root.storage_bytes||0))}</span>
+    </div>
+    ${cleanup}
+  </div>`;
+}
+function runtimeRootListPanel() {
+  if(!state.runtimeRootListOpen)return '';
+  if(state.runtimeRootListLoading)return `<section class="runtime-root-list-panel"><div class="runtime-history-loading">${esc(t('runtimeRootLoading'))}</div></section>`;
+  if(state.runtimeRootListError)return `<section class="runtime-root-list-panel"><div class="runtime-history-error">${esc(state.runtimeRootListError)}</div></section>`;
+  const data=state.runtimeRootList||{}, items=data.items||[], page=Number(data.page||1), pages=Number(data.total_pages||0), total=Number(data.total||0);
+  const rows=items.length?items.map(runtimeRootListRow).join(''):`<div class="runtime-history-empty">${esc(t('runtimeRootEmpty'))}</div>`;
+  const pager=pages>1?`<div class="runtime-history-pager">
+    <button data-runtime-root-page="${Math.max(1,page-1)}" ${page<=1?'disabled':''}>←</button>
+    <span>${esc(t('runtimeRootPage',{page,pages,total}))}</span>
+    <button data-runtime-root-page="${Math.min(pages,page+1)}" ${page>=pages?'disabled':''}>→</button>
+  </div>`:`<div class="runtime-history-page-label">${esc(t('runtimeRootPage',{page:pages?1:0,pages,total}))}</div>`;
+  return `<section class="runtime-root-list-panel"><div class="runtime-root-list">${rows}</div>${pager}</section>`;
+}
 function workloadView() {
   const snapshot=state.snapshot||{}, w=snapshot.workload||{}, agents=w.agents||[], all=snapshot.all_items||{}, unassigned=w.unassigned_doing||[], released=w.released_holds||[];
-  const runtime=snapshot.runtime_observability||{}, attempts=runtime.attempts||[], findings=runtime.findings||[], hooks=runtime.hooks||[], rc=runtime.counts||{}, historyMeta=runtime.history||{}, groups=runtime.session_groups||{};
-  const currentIDs=new Set(groups.current_ids||[]);
-  const needsCheckIDs=new Set(groups.needs_check_ids||[]);
-  const currentAttempts=attempts.filter(a=>currentIDs.has(a.attempt_id));
-  const needsCheckAttempts=attempts.filter(a=>needsCheckIDs.has(a.attempt_id));
-  const recentTerminalAttempts=attempts.filter(a=>a.terminal);
+  const runtime=snapshot.runtime_observability||{}, attempts=runtime.attempts||[], findings=runtime.findings||[], hooks=runtime.hooks||[], rc=runtime.counts||{}, historyMeta=runtime.history||{};
+  const rootSessions=runtime.root_sessions||[], rootCounts=runtime.root_session_counts||{}, attemptRootMap=runtime.attempt_root_sessions||{};
+  const currentRoots=rootSessions.filter(r=>r.status==='active'||r.status==='needs_check');
+  const recentPreviousRoots=rootSessions.filter(r=>r.status==='terminal'||r.status==='inactive_terminal');
   const findingsByAttempt={};
   findings.forEach(row=>{if(row.attempt_id)(findingsByAttempt[row.attempt_id]??=[]).push(row)});
   const latestByAgent={};
@@ -2370,34 +2568,28 @@ function workloadView() {
       <div class="runtime-hook-explainer"><strong>${esc(t('runtimeHookStatus'))}</strong><p>${esc(t('runtimeHookNote'))}</p><p class="runtime-hook-history-note">${esc(t('runtimeHookHistoryPreserved'))}</p></div>
       <div class="runtime-hook-list">${hookCards||'-'}</div>
     </div>
-    <div class="metrics runtime-metrics">
-      <div class="metric"><strong>${Number(rc.current||0)}</strong><span>${esc(t('runtimeCurrentValid'))}</span></div>
-      <div class="metric"><strong>${Number(rc.needs_check||0)}</strong><span>${esc(t('runtimeNeedsCheck'))}</span></div>
-      <div class="metric"><strong>${Number(rc.terminal||0)}</strong><span>${esc(t('runtimeTerminalArchived'))}</span></div>
-      <div class="metric"><strong>${Number(rc.unbound||0)}</strong><span>${esc(t('runtimeUnbound'))}</span></div>
-      <div class="metric"><strong>${Number(rc.ambiguous||0)}</strong><span>${esc(t('runtimeAmbiguous'))}</span></div>
-      <div class="metric"><strong>${Number(rc.stale||0)}</strong><span>${esc(t('runtimeStale'))}</span></div>
+    <div class="metrics runtime-metrics runtime-root-metrics">
+      <div class="metric"><strong>${Number(rootCounts.active||0)}</strong><span>${esc(t('runtimeRootActive'))}</span></div>
+      <div class="metric"><strong>${Number(rootCounts.needs_check||0)}</strong><span>${esc(t('runtimeRootNeedsCheck'))}</span></div>
+      <div class="metric"><strong>${Number(rootCounts.terminal||0)}</strong><span>${esc(t('runtimeRootPrevious'))}</span></div>
+      <div class="metric"><strong>${Number(rootCounts.cleanup_eligible||0)}</strong><span>${esc(t('runtimeRootCleanupEligible'))}</span></div>
     </div>
     <div class="runtime-storage-toolbar">
       <button class="runtime-history-toggle" id="runtimeStorageToggle">${esc(state.runtimeStorageOpen?t('runtimeStorageClose'):t('runtimeStorageOpen'))}</button>
     </div>
     ${runtimeStoragePanel()}
-    <div class="runtime-attempt-section">
-      <div class="runtime-attempt-section-head"><h3>${esc(t('runtimeCurrentValid'))} · ${currentAttempts.length}</h3></div>
-      ${currentAttempts.length?`<div class="runtime-attempt-grid">${currentAttempts.map(a=>runtimeAttemptCard(a,findingsByAttempt[a.attempt_id]||[])).join('')}</div>`:`<div class="runtime-empty compact">${esc(t('runtimeNoCurrentExecutions'))}</div>`}
+    <div class="runtime-root-section">
+      <div class="runtime-attempt-section-head"><h3>${esc(t('runtimeRootSessions'))}</h3></div>
+      ${currentRoots.length?`<div class="runtime-root-stack">${currentRoots.map(root=>runtimeRootCard(root,attempts,findingsByAttempt,attemptRootMap)).join('')}</div>`:`<div class="runtime-empty compact">${esc(t('runtimeNoCurrentExecutions'))}</div>`}
     </div>
-    <div class="runtime-attempt-section runtime-needs-check">
-      <div class="runtime-attempt-section-head"><h3>${esc(t('runtimeNeedsCheck'))} · ${needsCheckAttempts.length}</h3></div>
-      ${needsCheckAttempts.length?`<div class="runtime-attempt-grid">${needsCheckAttempts.map(a=>runtimeAttemptCard(a,findingsByAttempt[a.attempt_id]||[])).join('')}</div>`:`<div class="runtime-empty compact">${esc(t('runtimeNoNeedsCheck'))}</div>`}
-    </div>
-    <div class="runtime-attempt-section">
+    <div class="runtime-root-section runtime-root-previous">
       <div class="runtime-attempt-section-head">
-        <h3>${esc(t('runtimeRecentCompleted'))} · ${recentTerminalAttempts.length}</h3>
-        ${Number(historyMeta.total||0)>0?`<button class="runtime-history-toggle" id="runtimeHistoryToggle">${esc(state.runtimeHistoryOpen?t('runtimeHistoryClose'):t('runtimeHistoryOpen'))} · ${Number(historyMeta.total||0)}</button>`:''}
+        <h3>${esc(t('runtimeRootPrevious'))} · ${Number(rootCounts.terminal||0)}</h3>
+        ${Number(rootCounts.terminal||0)>0?`<button class="runtime-history-toggle" id="runtimeRootListToggle">${esc(state.runtimeRootListOpen?t('runtimeRootHidePrevious'):t('runtimeRootShowPrevious'))}</button>`:''}
       </div>
-      ${recentTerminalAttempts.length?`<div class="runtime-attempt-grid">${recentTerminalAttempts.map(a=>runtimeAttemptCard(a,findingsByAttempt[a.attempt_id]||[])).join('')}</div>`:`<div class="runtime-empty compact">${esc(t('runtimeHistoryEmpty'))}</div>`}
+      ${recentPreviousRoots.length?`<div class="runtime-root-stack">${recentPreviousRoots.map(root=>runtimeRootCard(root,attempts,findingsByAttempt,attemptRootMap)).join('')}</div>`:`<div class="runtime-empty compact">${esc(t('runtimeRootEmpty'))}</div>`}
+      ${runtimeRootListPanel()}
     </div>
-    ${runtimeHistoryPanel(historyMeta)}
   </section>`;
 
   const doingTotal=agents.reduce((n,a)=>n+(a.doing_count||0),0), blockingTotal=agents.reduce((n,a)=>n+(a.blocking_count||0),0), continuityTotal=agents.reduce((n,a)=>n+(a.ready_candidate_count||0),0);
@@ -2713,6 +2905,18 @@ function render() {
     $('#runtimeHistoryToggle')?.addEventListener('click',()=>toggleRuntimeHistory());
     $('#runtimeStorageToggle')?.addEventListener('click',()=>toggleRuntimeStorage());
     $('#runtimeCleanupBtn')?.addEventListener('click',e=>performRuntimeCleanup(e.currentTarget));
+    $('#runtimeRootListToggle')?.addEventListener('click',()=>toggleRuntimeRootList());
+    document.querySelectorAll('[data-runtime-root-page]').forEach(button=>{
+      button.addEventListener('click',()=>loadRuntimeRootSessions(Number(button.dataset.runtimeRootPage||1)));
+    });
+    document.querySelectorAll('[data-runtime-root-cleanup]').forEach(button=>{
+      button.addEventListener('click',e=>performRootSessionCleanup(e.currentTarget));
+    });
+    document.querySelectorAll('.runtime-root-card[data-runtime-root-key]').forEach(details=>{
+      details.addEventListener('toggle',()=>{
+        state.runtimeRootDisclosure[details.dataset.runtimeRootKey]=details.open;
+      });
+    });
     document.querySelectorAll('[data-runtime-history-page]').forEach(button=>{
       button.addEventListener('click',()=>loadRuntimeHistory(Number(button.dataset.runtimeHistoryPage||1)));
     });
@@ -3016,6 +3220,11 @@ function route(fromPop=false) {
     state.runtimeStorageLoading=false;
     state.runtimeStorageError='';
     state.runtimeStorage=null;
+    state.runtimeRootDisclosure={};
+    state.runtimeRootListOpen=false;
+    state.runtimeRootListLoading=false;
+    state.runtimeRootListError='';
+    state.runtimeRootList={items:[],page:1,page_size:10,total:0,total_pages:0,counts:{}};
     if(state.project)queueMicrotask(()=>refreshVersionInfo(false));
   }
   if(state.project){
