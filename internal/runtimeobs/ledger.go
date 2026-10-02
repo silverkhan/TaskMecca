@@ -51,6 +51,8 @@ type ExecutionEvent struct {
     AttemptID string `json:"attempt_id"`
     Provider string `json:"provider,omitempty"`
     SessionID string `json:"session_id,omitempty"`
+    SessionName string `json:"session_name,omitempty"`
+    SessionTitle string `json:"session_title,omitempty"`
     TurnID string `json:"turn_id,omitempty"`
     RuntimeAgentID string `json:"runtime_agent_id,omitempty"`
     AgentType string `json:"agent_type,omitempty"`
@@ -83,6 +85,8 @@ type Attempt struct {
     AttemptID string `json:"attempt_id"`
     Provider string `json:"provider"`
     SessionID string `json:"session_id,omitempty"`
+    SessionName string `json:"session_name,omitempty"`
+    SessionTitle string `json:"session_title,omitempty"`
     TurnID string `json:"turn_id,omitempty"`
     RuntimeAgentID string `json:"runtime_agent_id,omitempty"`
     AgentType string `json:"agent_type,omitempty"`
@@ -94,6 +98,7 @@ type Attempt struct {
     BindingEvidence map[string]string `json:"binding_evidence,omitempty"`
     CurrentState CanonicalState `json:"current_state"`
     Terminal bool `json:"terminal"`
+    FirstObservedAt string `json:"first_observed_at,omitempty"`
     StartedAt string `json:"started_at,omitempty"`
     LastActivityAt string `json:"last_activity_at,omitempty"`
     EndedAt string `json:"ended_at,omitempty"`
@@ -153,7 +158,7 @@ func HookToExecutionEvent(e SpikeEvent) (ExecutionEvent,error) {
     if provider!="codex" && provider!="claude" { return ExecutionEvent{},fmt.Errorf("unsupported provider %q",provider) }
     if strings.TrimSpace(e.AgentID)=="" { return ExecutionEvent{},errors.New("hook event does not include agent_id") }
     out:=ExecutionEvent{
-        ObservedAt:e.ObservedAt,Provider:provider,SessionID:e.SessionID,TurnID:e.TurnID,
+        ObservedAt:e.ObservedAt,Provider:provider,SessionID:e.SessionID,SessionName:e.SessionName,SessionTitle:e.SessionTitle,TurnID:e.TurnID,
         RuntimeAgentID:e.AgentID,AgentType:e.AgentType,AttemptID:attemptIDFor(provider,e.SessionID,e.AgentID),
         HookEventName:e.HookEventName,ToolName:e.ToolName,ToolUseID:e.ToolUseID,Reason:e.Reason,
         EvidenceSource:EvidenceHook,ObservationQuality:QualityObserved,RawSHA256:e.RawSHA256,
@@ -229,8 +234,10 @@ func newAccumulator(id string) *accumulator {
 
 func (a *accumulator) apply(e ExecutionEvent) {
     a.attempt.EvidenceCount++
-    if e.Provider!="" { a.attempt.Provider=e.Provider }; if e.SessionID!="" { a.attempt.SessionID=e.SessionID }; if e.TurnID!="" { a.attempt.TurnID=e.TurnID }
+    if e.Provider!="" { a.attempt.Provider=e.Provider }; if e.SessionID!="" { a.attempt.SessionID=e.SessionID }
+    if e.SessionName!="" { a.attempt.SessionName=e.SessionName }; if e.SessionTitle!="" { a.attempt.SessionTitle=e.SessionTitle }; if e.TurnID!="" { a.attempt.TurnID=e.TurnID }
     if e.RuntimeAgentID!="" { a.attempt.RuntimeAgentID=e.RuntimeAgentID }; if e.AgentType!="" { a.attempt.AgentType=e.AgentType }
+    if a.attempt.FirstObservedAt=="" || e.ObservedAt<a.attempt.FirstObservedAt { a.attempt.FirstObservedAt=e.ObservedAt }
     a.attempt.LastObservedAt=maxTimeString(a.attempt.LastObservedAt,e.ObservedAt)
     switch e.EventKind {
     case "activity":
