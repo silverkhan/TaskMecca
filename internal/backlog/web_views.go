@@ -71,7 +71,7 @@ func WorkloadSnapshot(project, root string) (map[string]any, error) {
         rootSessions = runtimeobs.RootSessionCollection{Items: []runtimeobs.RootSession{}}
     }
     visibleRootSessions := runtimeobs.VisibleRootSessions(rootSessions, 3)
-    visibleAttempts, visibleAttemptErr := runtimeobs.AttemptsForRootSessions(project, runtimeLedger, visibleRootSessions.Items, runtimeNow)
+    visibleAttempts, visibleAttemptErr := runtimeobs.AttemptsForRootSessions(project, runtimeLedger, visibleRootSessions.Items, 6, runtimeNow)
     if visibleAttemptErr != nil {
         diagnostics = append(diagnostics, map[string]string{
             "component": "runtime_root_attempts",
