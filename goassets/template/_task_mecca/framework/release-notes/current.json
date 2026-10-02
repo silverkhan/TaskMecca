@@ -1,38 +1,21 @@
 {
-  "version": "0.2.51",
+  "version": "0.2.52",
   "date": "2026-10-02",
   "summary": {
-    "ko": "업데이트 기록과 서브에이전트 실행 관측 기능을 추가하고 Web 업데이트 흐름을 개선했습니다.",
-    "en": "Added update history and subagent runtime visibility, with an improved Web update flow."
+    "ko": "Windows Stable 업그레이드와 Web 재시작 과정에서 발생하던 실행 오류를 수정했습니다.",
+    "en": "Fixed a Windows execution error during Stable upgrades and Web restarts."
   },
   "sections": [
     {
-      "type": "new",
+      "type": "fixed",
       "items": [
         {
-          "ko": "업데이트 후 What's New 팝업과 버전별 업데이트 기록을 Web에서 확인할 수 있습니다.",
-          "en": "View a What's New popup after updates and browse user-facing changes by version in Web."
+          "ko": "Windows에서 업그레이드 helper를 시작할 때 cmd.exe가 'Mecca'를 실행 파일로 잘못 해석해 업그레이드가 중단되던 문제를 수정했습니다.",
+          "en": "Fixed an issue where cmd.exe could misinterpret 'Mecca' as an executable while launching the Windows upgrade helper."
         },
         {
-          "ko": "서브에이전트 워크로드에서 관측 가능한 실행 상태와 최근 실행 신호를 함께 확인할 수 있습니다.",
-          "en": "Subagent Workload can now show observable runtime state and recent execution signals."
-        }
-      ]
-    },
-    {
-      "type": "improved",
-      "items": [
-        {
-          "ko": "새 Stable 버전을 설치하기 전에 변경사항을 먼저 확인할 수 있습니다.",
-          "en": "Review the changes in a new Stable version before installing it."
-        },
-        {
-          "ko": "What's New를 닫아도 미확인 안내에서 다시 열 수 있으며, 확인 후에도 업데이트 기록에서 언제든 다시 볼 수 있습니다.",
-          "en": "If What's New is dismissed, an unread reminder can reopen it; acknowledged notes remain available in update history."
-        },
-        {
-          "ko": "과거 업데이트 상세는 필요한 버전만 불러오도록 해 기록이 늘어나도 초기 Web 로딩 부담을 줄였습니다.",
-          "en": "Older release details are loaded only when requested, keeping initial Web loading lightweight as history grows."
+          "ko": "업그레이드 후 Windows Web 자동 재시작 helper도 동일한 안전한 START 인자 형식을 사용하도록 수정했습니다.",
+          "en": "Updated the Windows Web restart helper to use the same safe START argument form after upgrades."
         }
       ]
     }
