@@ -118,6 +118,12 @@ func TestHandlerServesDashboardAPIsAndAssets(t *testing.T) {
     for _,needle:=range []string{"renderReleaseUnreadPrompt","showAvailableUpdateNotes","globalUpdateChangesBtn"} {
         if !contains(appJS,needle) { t.Fatalf("app.js missing release note UX marker %q",needle) }
     }
+    if contains(appJS,"tf(confirmKey") {
+        t.Fatal("runtime Hook action uses undefined tf() formatter")
+    }
+    if !contains(appJS,"t(confirmKey,{provider:providerLabel})") {
+        t.Fatal("runtime Hook action confirmation must use the standard t() formatter")
+    }
 
     req=httptest.NewRequest(http.MethodGet,"/api/snapshot",nil)
     rec=httptest.NewRecorder()

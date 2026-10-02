@@ -743,7 +743,7 @@ async function performRuntimeHookAction(button) {
   const action=button?.dataset?.runtimeHookAction||'enable';
   const providerLabel=String(provider).toUpperCase();
   const confirmKey=action==='disable'?'runtimeHookDisableConfirm':'runtimeHookEnableConfirm';
-  if(!window.confirm(tf(confirmKey,{provider:providerLabel})))return;
+  if(!window.confirm(t(confirmKey,{provider:providerLabel})))return;
   const original=button?.textContent||'';
   if(button){
     button.disabled=true;
