@@ -53,6 +53,7 @@ jobs:
         run: |
           node --check goassets/template/_task_mecca/framework/web/app.js
           node --check goassets/template/_task_mecca/framework/web/sw.js
+          node --check goassets/template/_task_mecca/framework/web/terminal.js
 
   cross-runtime-smoke:
     name: Go ↔ Python compatibility smoke
