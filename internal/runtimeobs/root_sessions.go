@@ -118,6 +118,13 @@ func unresolvedRootSessionID(provider, attemptID string) string {
     return "rs-unresolved-"+hex.EncodeToString(sum[:])[:12]
 }
 
+func RootSessionIDForAttempt(attempt Attempt) string {
+    provider:=strings.ToLower(strings.TrimSpace(attempt.Provider))
+    sessionID:=strings.TrimSpace(attempt.SessionID)
+    if sessionID!="" { return rootSessionIDFor(provider,sessionID) }
+    return unresolvedRootSessionID(provider,attempt.AttemptID)
+}
+
 func rootAttemptCreatedAt(attempt Attempt) string {
     return firstNonEmptyRuntime(attempt.FirstObservedAt,attempt.StartedAt,attempt.LastObservedAt,attempt.EndedAt)
 }
@@ -361,6 +368,26 @@ func QueryRootSessions(project string,ledger Ledger,page,pageSize int,status str
             "total":collection.Total,
         },
     },nil
+}
+
+func AttemptsForRootSessions(project string,ledger Ledger,roots []RootSession,now time.Time) ([]Attempt,error) {
+    allowed:=map[string]bool{}
+    for _,root:=range roots { allowed[root.RootSessionID]=true }
+    attempts,err:=rootSessionAttempts(project,ledger,now)
+    if err!=nil { return nil,err }
+    out:=[]Attempt{}
+    for _,attempt:=range attempts {
+        if allowed[RootSessionIDForAttempt(attempt)] { out=append(out,attempt) }
+    }
+    sort.SliceStable(out,func(i,j int)bool {
+        leftRoot,rightRoot:=RootSessionIDForAttempt(out[i]),RootSessionIDForAttempt(out[j])
+        if leftRoot!=rightRoot { return leftRoot<rightRoot }
+        if out[i].Terminal!=out[j].Terminal { return !out[i].Terminal }
+        left,right:=rootAttemptLastActivity(out[i]),rootAttemptLastActivity(out[j])
+        if left!=right { return left>right }
+        return out[i].AttemptID<out[j].AttemptID
+    })
+    return out,nil
 }
 
 func FindRootSession(project string,ledger Ledger,rootSessionID string,now time.Time) (RootSession,error) {
