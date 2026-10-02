@@ -39,6 +39,12 @@ func terminalSecurityPath() string {
 
 func readTerminalSecuritySettings() terminalSecuritySettings {
     data, err := os.ReadFile(terminalSecurityPath())
+    if errors.Is(err, os.ErrNotExist) {
+        // Tailscale HTTPS is the trusted remote-management boundary. New
+        // installs therefore allow Remote Terminal without a localhost
+        // activation ceremony. Users can still turn it off explicitly.
+        return terminalSecuritySettings{RemoteEnabled: true}
+    }
     if err != nil {
         return terminalSecuritySettings{}
     }
@@ -552,8 +558,8 @@ func registerTerminalRoutes(
             "local": kind == "local",
             "tailscale": kind == "tailscale",
             "access_allowed": terminalAccessAllowed(r, settings),
-            "can_enable_remote": kind == "local",
-            "can_disable_remote": kind == "local" || (kind == "tailscale" && settings.RemoteEnabled),
+            "can_enable_remote": kind == "local" || kind == "tailscale",
+            "can_disable_remote": kind == "local" || kind == "tailscale",
             "updated_at": settings.UpdatedAt,
             "project": projectFor(r),
             "local_terminal_url": fmt.Sprintf("http://127.0.0.1:%d/terminal", port),
@@ -584,12 +590,8 @@ func registerTerminalRoutes(
 
         current := readTerminalSecuritySettings()
         kind := terminalConnectionKind(r)
-        if body.RemoteEnabled && kind != "local" {
-            writeJSON(w, map[string]any{"error": "remote terminal can only be enabled from localhost"}, http.StatusForbidden)
-            return
-        }
-        if !body.RemoteEnabled && kind != "local" && !(kind == "tailscale" && current.RemoteEnabled) {
-            writeJSON(w, map[string]any{"error": "forbidden"}, http.StatusForbidden)
+        if kind != "local" && kind != "tailscale" {
+            writeJSON(w, map[string]any{"error": "remote terminal settings are available only from localhost or Tailscale HTTPS"}, http.StatusForbidden)
             return
         }
         current.RemoteEnabled = body.RemoteEnabled
