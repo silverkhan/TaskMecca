@@ -5,6 +5,7 @@ import (
     "os"
     "testing"
     "time"
+    "context"
 )
 
 func TestBuildRootSessionsGroupsByProviderSessionAndPrefersProviderName(t *testing.T) {
@@ -189,4 +190,44 @@ func TestClaudeSessionStartExplicitNameFeedsRootSession(t *testing.T) {
     if root.CreatedAtSource!="provider_metadata" || root.CreatedAt!=now.Format(time.RFC3339Nano) {
         t.Fatalf("created metadata=%+v",root)
     }
+}
+
+
+func TestRefreshCodexRootNamesThrottlesAndUpdatesSameRoot(t *testing.T) {
+    project:=t.TempDir()
+    now:=time.Date(2026,10,2,12,0,0,0,time.UTC)
+    event:=ExecutionEvent{EventKind:"state",ObservedAt:now.Format(time.RFC3339Nano),AttemptID:"run-refresh",Provider:"codex",SessionID:"session-refresh",RuntimeAgentID:"agent-refresh",State:StateRunning,EvidenceSource:EvidenceHook,ObservationQuality:QualityObserved}
+    if err:=AppendExecutionEvent(project,event); err!=nil { t.Fatal(err) }
+    ledger,err:=BuildLedger(project,10,now); if err!=nil { t.Fatal(err) }
+    original:=resolveCodexThreadMetadata
+    calls:=0
+    resolveCodexThreadMetadata=func(ctx context.Context,sessionID string)(CodexThreadMetadata,error){ calls++; return CodexThreadMetadata{Name:"새 이름"},nil }
+    defer func(){ resolveCodexThreadMetadata=original }()
+    codexNameCacheMu.Lock(); codexNameCache=map[string]time.Time{}; codexNameCacheMu.Unlock()
+
+    changed,err:=RefreshCodexRootNames(project,ledger,now); if err!=nil || !changed { t.Fatalf("refresh changed=%v err=%v",changed,err) }
+    if calls!=1 { t.Fatalf("calls=%d",calls) }
+    if changed,err=RefreshCodexRootNames(project,ledger,now.Add(time.Second)); err!=nil || changed || calls!=1 { t.Fatalf("throttle changed=%v calls=%d err=%v",changed,calls,err) }
+
+    roots,err:=BuildRootSessions(project,ledger,now.Add(2*time.Second)); if err!=nil { t.Fatal(err) }
+    if len(roots.Items)!=1 || roots.Items[0].DisplayName!="새 이름" || roots.Items[0].RootSessionID!=rootSessionIDFor("codex","session-refresh") { t.Fatalf("roots=%+v",roots.Items) }
+}
+
+func TestRefreshCodexRootNamesUsesShortNegativeTTL(t *testing.T) {
+    project:=t.TempDir()
+    now:=time.Date(2026,10,2,13,0,0,0,time.UTC)
+    event:=ExecutionEvent{EventKind:"state",ObservedAt:now.Format(time.RFC3339Nano),AttemptID:"run-negative",Provider:"codex",SessionID:"session-negative",RuntimeAgentID:"agent-negative",State:StateRunning,EvidenceSource:EvidenceHook,ObservationQuality:QualityObserved}
+    if err:=AppendExecutionEvent(project,event); err!=nil { t.Fatal(err) }
+    ledger,err:=BuildLedger(project,10,now); if err!=nil { t.Fatal(err) }
+    original:=resolveCodexThreadMetadata
+    calls:=0
+    resolveCodexThreadMetadata=func(ctx context.Context,sessionID string)(CodexThreadMetadata,error){ calls++; return CodexThreadMetadata{},errors.New("temporary") }
+    defer func(){ resolveCodexThreadMetadata=original }()
+    codexNameCacheMu.Lock(); codexNameCache=map[string]time.Time{}; codexNameCacheMu.Unlock()
+
+    _,_=RefreshCodexRootNames(project,ledger,now)
+    _,_=RefreshCodexRootNames(project,ledger,now.Add(5*time.Second))
+    if calls!=1 { t.Fatalf("negative cache calls=%d",calls) }
+    _,_=RefreshCodexRootNames(project,ledger,now.Add(11*time.Second))
+    if calls!=2 { t.Fatalf("retry calls=%d",calls) }
 }
