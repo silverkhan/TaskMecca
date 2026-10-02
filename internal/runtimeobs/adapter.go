@@ -1,6 +1,7 @@
 package runtimeobs
 
 import (
+    "errors"
     "io"
     "strings"
     "time"
@@ -9,6 +10,24 @@ import (
 func ObserveHook(project,provider string,input io.Reader,now time.Time) (ExecutionEvent,error) {
     spike,err:=ParseHookEvent(provider,input,now)
     if err!=nil { return ExecutionEvent{},err }
+    // SessionStart is session-level metadata, not an execution attempt. Keep it
+    // in the same append-only journal so Root Session aggregation can consume it,
+    // while BuildLedger deliberately excludes it from attempt accounting.
+    if strings.EqualFold(spike.HookEventName,"SessionStart") {
+        if strings.TrimSpace(spike.SessionID)=="" { return ExecutionEvent{},errors.New("SessionStart hook does not include session_id") }
+        event:=ExecutionEvent{
+            EventKind:"session_metadata",ObservedAt:spike.ObservedAt,
+            Provider:strings.ToLower(strings.TrimSpace(spike.Provider)),SessionID:spike.SessionID,
+            SessionName:spike.SessionName,SessionTitle:spike.SessionTitle,
+            AttemptID:"rootmeta-"+rootSessionIDFor(spike.Provider,spike.SessionID),
+            HookEventName:spike.HookEventName,EvidenceSource:EvidenceHook,
+            ObservationQuality:QualityObserved,RawSHA256:spike.RawSHA256,
+        }
+        event.EventID=eventIDFor(event)
+        if err:=AppendExecutionEvent(project,event); err!=nil { return ExecutionEvent{},err }
+        return event,nil
+    }
+
     event,err:=HookToExecutionEvent(spike)
     if err!=nil { return ExecutionEvent{},err }
 
