@@ -207,10 +207,22 @@ func defaultTerminalShell() (string, []string, error) {
         seen[candidate] = true
         path, err := exec.LookPath(candidate)
         if err == nil {
-            return path, nil, nil
+            return path, unixTerminalShellArgs(path), nil
         }
     }
     return "", nil, errors.New("no supported shell found")
+}
+
+func unixTerminalShellArgs(shell string) []string {
+    switch strings.ToLower(filepath.Base(shell)) {
+    case "zsh", "bash", "sh", "dash", "ksh", "fish":
+        // Match the login-shell startup used by normal macOS/Linux terminals.
+        // This is important for PATH setup in .zprofile/.profile (for example
+        // Homebrew under /opt/homebrew/bin on Apple Silicon).
+        return []string{"-l"}
+    default:
+        return nil
+    }
 }
 
 func terminalEnvironment() []string {
@@ -228,6 +240,24 @@ func terminalEnvironment() []string {
     set("TERM", "xterm-256color")
     set("COLORTERM", "truecolor")
     set("TASK_MECCA_TERMINAL", "1")
+    if runtime.GOOS == "darwin" {
+        // Background launch contexts can have a minimal PATH before the login
+        // shell reads the user's profile. Keep common Homebrew locations
+        // reachable during shell startup as well.
+        currentPath := ""
+        for _, item := range env {
+            parts := strings.SplitN(item, "=", 2)
+            if len(parts) == 2 && strings.EqualFold(parts[0], "PATH") {
+                currentPath = parts[1]
+                break
+            }
+        }
+        pathParts := []string{"/opt/homebrew/bin", "/opt/homebrew/sbin", "/usr/local/bin", "/usr/local/sbin"}
+        if currentPath != "" {
+            pathParts = append(pathParts, currentPath)
+        }
+        set("PATH", strings.Join(pathParts, string(os.PathListSeparator)))
+    }
     return env
 }
 
