@@ -107,3 +107,20 @@ func ResolveCodexThreadMetadata(ctx context.Context,sessionID string) (CodexThre
     if err=json.Unmarshal(msg.Result,&result); err!=nil { return CodexThreadMetadata{},err }
     return CodexThreadMetadata{Name:strings.TrimSpace(result.Thread.Name),Title:strings.TrimSpace(result.Thread.Title)},nil
 }
+
+func EnrichCodexSessionName(project,sessionID string,now time.Time) (ExecutionEvent,bool,error) {
+    meta,err:=ResolveCodexThreadMetadata(context.Background(),sessionID)
+    if err!=nil { return ExecutionEvent{},false,err }
+    if meta.Name=="" && meta.Title=="" { return ExecutionEvent{},false,nil }
+    event:=ExecutionEvent{
+        EventKind:"session_metadata",ObservedAt:now.UTC().Format(time.RFC3339Nano),
+        Provider:"codex",SessionID:strings.TrimSpace(sessionID),
+        SessionName:meta.Name,SessionTitle:meta.Title,
+        AttemptID:"rootmeta-"+rootSessionIDFor("codex",sessionID),
+        Reason:"codex_app_server",EvidenceSource:EvidenceReconciled,
+        ObservationQuality:QualityObserved,
+    }
+    event.EventID=eventIDFor(event)
+    if err=AppendExecutionEvent(project,event); err!=nil { return ExecutionEvent{},false,err }
+    return event,true,nil
+}
