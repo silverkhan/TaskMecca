@@ -110,3 +110,16 @@ func TestClampTerminalSize(t *testing.T) {
         t.Fatalf("ordinary=%dx%d", cols, rows)
     }
 }
+
+
+func TestUnixTerminalShellArgs(t *testing.T) {
+    for _, shell := range []string{"/bin/zsh", "/bin/bash", "/bin/sh", "/usr/local/bin/fish"} {
+        args := unixTerminalShellArgs(shell)
+        if len(args) != 1 || args[0] != "-l" {
+            t.Fatalf("login shell args for %q = %#v", shell, args)
+        }
+    }
+    if args := unixTerminalShellArgs("/custom/nonstandard-shell"); args != nil {
+        t.Fatalf("unknown shell args = %#v, want nil", args)
+    }
+}
