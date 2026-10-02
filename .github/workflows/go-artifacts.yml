@@ -34,6 +34,7 @@ jobs:
         run: |
           node --check goassets/template/_task_mecca/framework/web/app.js
           node --check goassets/template/_task_mecca/framework/web/sw.js
+          node --check goassets/template/_task_mecca/framework/web/terminal.js
       - name: Build standalone binaries
         shell: bash
         run: |
