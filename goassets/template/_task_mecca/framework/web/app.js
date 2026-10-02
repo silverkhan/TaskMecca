@@ -1302,13 +1302,47 @@ function diagnosticBanner() {
   if(!rows.length)return '';
   return `<div class="global-access"><div><strong>Partial diagnostics</strong><span>${esc(rows.map(x=>`${x.component}: ${x.error}`).join(' · '))}</span></div></div>`;
 }
+function runtimeHookProviderGuide(hook) {
+  const provider=String(hook?.provider||'').toLowerCase();
+  if(provider==='codex') {
+    return `<details class="runtime-hook-provider-guide">
+      <summary>${esc(t('runtimeHookAgentGuide',{provider:'Codex'}))}</summary>
+      <div><strong>${esc(t('runtimeHookDesktop'))}</strong><span>${esc(t('runtimeHookCodexDesktopGuide'))}</span></div>
+      <div><strong>${esc(t('runtimeHookCLI'))}</strong><span>${esc(t('runtimeHookCodexCLIGuide'))}</span></div>
+    </details>`;
+  }
+  if(provider==='claude') {
+    return `<details class="runtime-hook-provider-guide">
+      <summary>${esc(t('runtimeHookAgentGuide',{provider:'Claude Code'}))}</summary>
+      <div><strong>${esc(t('runtimeHookDesktopCLI'))}</strong><span>${esc(t('runtimeHookClaudeAppGuide'))}</span></div>
+    </details>`;
+  }
+  return '';
+}
 function runtimeHookOnboardingBanner() {
   if(!state.project || state.runtimeHookStatusLoading || !Array.isArray(state.runtimeHookStatus))return '';
   const hooks=state.runtimeHookStatus;
-  if(!hooks.length || hooks.some(h=>Boolean(h.installed)))return '';
-  const actions=hooks.map(h=>`<button class="runtime-hook-onboarding-action" data-runtime-hook-action="enable" data-provider="${esc(h.provider||'')}">${esc(t('runtimeHookOnboardingEnable',{provider:String(h.provider||'').toUpperCase()}))}</button>`).join('');
+  if(!hooks.length)return '';
+  const attention=hooks.filter(h=>Boolean(h.in_use)&&Boolean(h.needs_attention));
+  const noneConfigured=hooks.every(h=>!Boolean(h.configured));
+  if(!attention.length && !noneConfigured)return '';
+  const targets=attention.length?attention:hooks;
+  const providers=targets.map(h=>String(h.provider||'').toUpperCase()).filter(Boolean).join(' · ');
+  const title=attention.length
+    ? t('runtimeHookInUseTitle',{provider:providers})
+    : t('runtimeHookOnboardingTitle');
+  const body=attention.length
+    ? t('runtimeHookInUseBody',{provider:providers})
+    : t('runtimeHookOnboardingBody');
+  const actions=targets.map(h=>`<button class="runtime-hook-onboarding-action" data-runtime-hook-action="enable" data-provider="${esc(h.provider||'')}">${esc(t(h.configured?'runtimeHookReapply':'runtimeHookOnboardingEnable',{provider:String(h.provider||'').toUpperCase()}))}</button>`).join('');
+  const guides=targets.map(runtimeHookProviderGuide).join('');
   return `<div class="global-access runtime-hook-onboarding">
-    <div><strong>${esc(t('runtimeHookOnboardingTitle'))}</strong><span>${esc(t('runtimeHookOnboardingBody'))}</span></div>
+    <div class="runtime-hook-onboarding-copy">
+      <strong>${esc(title)}</strong>
+      <span>${esc(body)}</span>
+      <span class="runtime-hook-new-root">${esc(t('runtimeHookNewRootRequired'))}</span>
+      ${guides}
+    </div>
     <div class="runtime-hook-onboarding-actions">${actions}</div>
   </div>`;
 }
@@ -1320,6 +1354,7 @@ async function loadRuntimeHookStatus(force=false) {
   try{
     const params=new URLSearchParams();
     params.set('project',state.project);
+    if(state.backlog)params.set('backlog',state.backlog);
     const r=await fetch('/api/runtime/hooks?'+params.toString(),{cache:'no-store'});
     if(!r.ok)throw new Error(`HTTP ${r.status}`);
     const body=await r.json();
@@ -2253,13 +2288,39 @@ Object.assign(I18N.ko,{
 });
 Object.assign(I18N.ko,{
   runtimeHookOnboardingTitle:'Runtime 관측 설정이 아직 완료되지 않았습니다.',
-  runtimeHookOnboardingBody:'사용하는 Provider의 Hook을 지금 설정하세요. 설정 전에 시작된 Agent의 Start/Stop 이벤트는 나중에 소급 복구되지 않을 수 있습니다.',
-  runtimeHookOnboardingEnable:'{provider} Hook 설정'
+  runtimeHookOnboardingBody:'아직 실사용 Provider를 확정할 수 없습니다. 사용할 Provider의 Hook만 설정해도 되며, 사용하지 않는 Agent의 Hook은 켤 필요가 없습니다.',
+  runtimeHookOnboardingEnable:'{provider} Hook 설정',
+  runtimeHookReapply:'{provider} 설정 다시 적용',
+  runtimeHookInUseTitle:'현재 사용 중인 {provider}의 Runtime Hook을 확인하세요.',
+  runtimeHookInUseBody:'백로그/현재 Root 근거상 이 Provider가 실사용 중이지만 Hook이 꺼져 있거나 현재 세션에서 관측되지 않습니다. 다른 Agent의 Hook이 켜져 있어도 이 경고는 해제되지 않습니다.',
+  runtimeHookInUseUnconfigured:'{provider}가 현재 실사용 중이지만 Task Mecca Hook 설정이 없습니다.',
+  runtimeHookInUseNotObserved:'{provider}가 현재 실사용 중이고 설정 파일도 존재하지만 현재 Runtime Hook 신호가 확인되지 않습니다. Agent 앱에서 Hook 활성화·신뢰 상태를 확인하세요.',
+  runtimeHookNewRootRequired:'설정 또는 활성화 후에는 새 Root Session을 시작하세요. 이미 열려 있는 Root에는 SessionStart/기존 Agent Start 이벤트가 소급 적용되지 않습니다.',
+  runtimeHookAgentGuide:'{provider} 앱에서 켜는 방법',
+  runtimeHookDesktop:'Desktop',
+  runtimeHookCLI:'CLI',
+  runtimeHookDesktopCLI:'Desktop / CLI / IDE',
+  runtimeHookCodexDesktopGuide:'프롬프트 입력창 좌측 하단의 Hooks에서 Task Mecca Hook을 활성화하고, 새로 추가되거나 변경된 Hook이면 Review/Trust까지 완료하세요.',
+  runtimeHookCodexCLIGuide:'/hooks를 열어 Project Hook을 확인하고 Review/Trust/Enable 하세요. 전역 설정에 [features] hooks = false가 있으면 true로 바꾸거나 해당 비활성화를 제거해야 합니다.',
+  runtimeHookClaudeAppGuide:'Task Mecca의 설정 버튼은 프로젝트 .claude/settings.json에 Hook을 추가합니다. 프로젝트를 trusted 상태로 연 뒤 /hooks에서 설정 출처를 확인하세요(/hooks는 확인용 읽기 전용). Claude Code의 terminal, IDE, Desktop은 같은 Hook 이벤트를 사용합니다.'
 });
 Object.assign(I18N.en,{
   runtimeHookOnboardingTitle:'Runtime observation is not configured yet.',
-  runtimeHookOnboardingBody:'Configure Hooks for the provider you use now. Start/Stop events from agents launched before setup may not be recoverable later.',
-  runtimeHookOnboardingEnable:'Configure {provider} Hooks'
+  runtimeHookOnboardingBody:'Task Mecca cannot identify the active provider yet. Configure only the provider you actually use; unused agent Hooks do not need to be enabled.',
+  runtimeHookOnboardingEnable:'Configure {provider} Hooks',
+  runtimeHookReapply:'Reapply {provider} setup',
+  runtimeHookInUseTitle:'Check Runtime Hooks for the active provider: {provider}.',
+  runtimeHookInUseBody:'Backlog/current Root evidence shows this provider is in use, but its Hook is disabled or not being observed in the current session. Enabling a different agent does not clear this warning.',
+  runtimeHookInUseUnconfigured:'{provider} is currently in use but Task Mecca Hooks are not configured.',
+  runtimeHookInUseNotObserved:'{provider} is currently in use and the project Hook file exists, but no current Runtime Hook signal is observed. Check Hook enablement and trust in the agent app.',
+  runtimeHookNewRootRequired:'After setup or enablement, start a new Root Session. SessionStart and existing Agent Start events from an already-open Root are not backfilled.',
+  runtimeHookAgentGuide:'Enable in {provider}',
+  runtimeHookDesktop:'Desktop',
+  runtimeHookCLI:'CLI',
+  runtimeHookDesktopCLI:'Desktop / CLI / IDE',
+  runtimeHookCodexDesktopGuide:'Use Hooks at the lower-left of the prompt composer to enable the Task Mecca Hook. Review/Trust newly added or changed Hooks when prompted.',
+  runtimeHookCodexCLIGuide:'Open /hooks to inspect the Project Hook and Review/Trust/Enable it. If global config contains [features] hooks = false, set it to true or remove that disablement.',
+  runtimeHookClaudeAppGuide:'Task Mecca setup writes the project .claude/settings.json. Open the project as trusted, then use /hooks to verify the source (/hooks is read-only). Claude Code terminal, IDE, and Desktop use the same Hook events.'
 });
 
 Object.assign(I18N.en,{
@@ -2434,6 +2495,10 @@ function runtimeHookStateClass(stateValue) {
 function runtimeHookGuidance(hook) {
   const events=hook?.observed_events||{};
   const activityOnly=Boolean(events.activity)&&!events.start;
+  if(hook?.in_use&&hook?.needs_attention) {
+    if(!hook?.configured)return t('runtimeHookInUseUnconfigured',{provider:String(hook?.provider||'').toUpperCase()});
+    return t('runtimeHookInUseNotObserved',{provider:String(hook?.provider||'').toUpperCase()});
+  }
   if(hook?.provider==='codex') {
     if(!hook?.configured)return t('runtimeCodexUnconfigured');
     if(activityOnly)return t('runtimeCodexActivityOnly');
@@ -2465,6 +2530,7 @@ function runtimeHookCard(hook) {
       ${runtimeHookEventChip(t('runtimeHookStop'),Boolean(events.stop))}
     </div>
     ${last?`<div class="runtime-hook-last">${esc(t('runtimeHookLastObserved'))} · ${esc(ago(last))}</div>`:''}
+    ${hook?.in_use&&hook?.state!=='observed'?`<div class="runtime-hook-apply-note">${esc(t('runtimeHookNewRootRequired'))}</div>`:''}
     <div class="runtime-hook-actions">
       <button class="runtime-hook-action ${action==='disable'?'secondary':''}" data-runtime-hook-action="${action}" data-provider="${esc(hook?.provider||'')}">${esc(actionLabel)}</button>
     </div>
