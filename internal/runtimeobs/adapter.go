@@ -55,7 +55,9 @@ func ObserveHook(project,provider string,input io.Reader,now time.Time) (Executi
     return event,nil
 }
 
-// Codex Root Session display names are enriched through the official App Server only.\n// The resolver is optional and must never become a liveness or identity source.\nfunc FilterLedger(ledger Ledger,provider string) Ledger {
+// Codex Root Session display names are enriched through the official App Server only.
+// The resolver is optional and must never become a liveness or identity source.
+func FilterLedger(ledger Ledger,provider string) Ledger {
     provider=strings.ToLower(strings.TrimSpace(provider))
     if provider=="" { return ledger }
     filtered:=ledger
