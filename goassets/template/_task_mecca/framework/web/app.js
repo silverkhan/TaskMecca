@@ -69,6 +69,8 @@ const state = {
   runtimeRootListLoading: false,
   runtimeRootListError: '',
   runtimeRootList: {items:[],page:1,page_size:10,total:0,total_pages:0,counts:{}},
+  runtimeHookStatus: null,
+  runtimeHookStatusLoading: false,
 };
 
 
@@ -941,6 +943,7 @@ async function performRuntimeHookAction(button) {
     });
     const body=await r.json();
     if(!r.ok)throw new Error(body.error||'Runtime hook action failed');
+    await loadRuntimeHookStatus(true);
     await refresh();
   }catch(e){
     alert(String(e?.message||e));
@@ -1298,6 +1301,35 @@ function diagnosticBanner() {
   const rows=currentProjectData()?.diagnostics||[];
   if(!rows.length)return '';
   return `<div class="global-access"><div><strong>Partial diagnostics</strong><span>${esc(rows.map(x=>`${x.component}: ${x.error}`).join(' · '))}</span></div></div>`;
+}
+function runtimeHookOnboardingBanner() {
+  if(!state.project || state.runtimeHookStatusLoading || !Array.isArray(state.runtimeHookStatus))return '';
+  const hooks=state.runtimeHookStatus;
+  if(!hooks.length || hooks.some(h=>Boolean(h.installed)))return '';
+  const actions=hooks.map(h=>`<button class="runtime-hook-onboarding-action" data-runtime-hook-action="enable" data-provider="${esc(h.provider||'')}">${esc(t('runtimeHookOnboardingEnable',{provider:String(h.provider||'').toUpperCase()}))}</button>`).join('');
+  return `<div class="global-access runtime-hook-onboarding">
+    <div><strong>${esc(t('runtimeHookOnboardingTitle'))}</strong><span>${esc(t('runtimeHookOnboardingBody'))}</span></div>
+    <div class="runtime-hook-onboarding-actions">${actions}</div>
+  </div>`;
+}
+
+async function loadRuntimeHookStatus(force=false) {
+  if(!state.project)return;
+  if(state.runtimeHookStatusLoading&&!force)return;
+  state.runtimeHookStatusLoading=true;
+  try{
+    const params=new URLSearchParams();
+    params.set('project',state.project);
+    const r=await fetch('/api/runtime/hooks?'+params.toString(),{cache:'no-store'});
+    if(!r.ok)throw new Error(`HTTP ${r.status}`);
+    const body=await r.json();
+    state.runtimeHookStatus=Array.isArray(body.hooks)?body.hooks:[];
+  }catch(_){
+    state.runtimeHookStatus=null;
+  }finally{
+    state.runtimeHookStatusLoading=false;
+    render();
+  }
 }
 
 function isIOSDevice() {
@@ -2219,6 +2251,17 @@ Object.assign(I18N.ko,{
   runtimeRootActiveStatus:'활성',
   runtimeRootFallbackHint:'Provider 이름을 확인할 수 없어 Task Mecca fallback 이름을 사용 중입니다.',
 });
+Object.assign(I18N.ko,{
+  runtimeHookOnboardingTitle:'Runtime 관측 설정이 아직 완료되지 않았습니다.',
+  runtimeHookOnboardingBody:'사용하는 Provider의 Hook을 지금 설정하세요. 설정 전에 시작된 Agent의 Start/Stop 이벤트는 나중에 소급 복구되지 않을 수 있습니다.',
+  runtimeHookOnboardingEnable:'{provider} Hook 설정'
+});
+Object.assign(I18N.en,{
+  runtimeHookOnboardingTitle:'Runtime observation is not configured yet.',
+  runtimeHookOnboardingBody:'Configure Hooks for the provider you use now. Start/Stop events from agents launched before setup may not be recoverable later.',
+  runtimeHookOnboardingEnable:'Configure {provider} Hooks'
+});
+
 Object.assign(I18N.en,{
   runtimeCurrentValid:'Current valid',
   runtimeNeedsCheck:'Needs verification',
@@ -2875,7 +2918,7 @@ function render() {
     }
     c.innerHTML=`<div class="loading">${esc(t('loading'))}</div>`; return;
   }
-  const gate=accessBanner()+diagnosticBanner();
+  const gate=accessBanner()+runtimeHookOnboardingBanner()+diagnosticBanner();
   if (state.detail) {
     const task=state.detailTask;
     if(!task){
@@ -2899,10 +2942,10 @@ function render() {
   }
   c.innerHTML=(state.view==='hub'?hubView():gate+(state.view==='manual'?manualView():state.view==='workload'?workloadView():state.view==='attention'?attentionView():state.view==='issues'?issuesView():listView()));
   bindRows(); if(state.view==='hub') bindHubActions();
+  document.querySelectorAll('[data-runtime-hook-action]').forEach(button=>{
+    button.addEventListener('click',e=>performRuntimeHookAction(e.currentTarget));
+  });
   if(state.view==='workload'){
-    document.querySelectorAll('[data-runtime-hook-action]').forEach(button=>{
-      button.addEventListener('click',e=>performRuntimeHookAction(e.currentTarget));
-    });
     $('#runtimeHistoryToggle')?.addEventListener('click',()=>toggleRuntimeHistory());
     $('#runtimeStorageToggle')?.addEventListener('click',()=>toggleRuntimeStorage());
     $('#runtimeCleanupBtn')?.addEventListener('click',e=>performRuntimeCleanup(e.currentTarget));
@@ -3226,7 +3269,12 @@ function route(fromPop=false) {
     state.runtimeRootListLoading=false;
     state.runtimeRootListError='';
     state.runtimeRootList={items:[],page:1,page_size:10,total:0,total_pages:0,counts:{}};
-    if(state.project)queueMicrotask(()=>refreshVersionInfo(false));
+    state.runtimeHookStatus=null;
+    state.runtimeHookStatusLoading=false;
+    if(state.project){
+      queueMicrotask(()=>refreshVersionInfo(false));
+      queueMicrotask(()=>loadRuntimeHookStatus(false));
+    }
   }
   if(state.project){
     state.lastProject=state.project;
