@@ -159,7 +159,10 @@ func RefreshCodexRootNames(project string,ledger Ledger,now time.Time) (bool,err
     changed:=false
     for _,root:=range roots.Items {
         if root.Provider!="codex" || root.ProviderSessionID=="" { continue }
-        if root.Status!=RootSessionActive && root.Status!=RootSessionNeedsCheck { continue }
+        // A Codex Root can look terminal/stale when the user only chats and no
+        // tool hook fires. Do not gate provider metadata refresh on Task Mecca's
+        // activity-derived status; thread/read is the authoritative source for
+        // provider-side name changes.
         key:=project+"\x00"+root.ProviderSessionID
         codexNameCacheMu.Lock()
         next:=codexNameCache[key]
