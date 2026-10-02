@@ -42,6 +42,14 @@ Web의 **서브에이전트 워크로드 → Runtime 실행 관측**은 Codex/Cl
 
 Web은 `미설정 / 확인 필요 / 관측 확인됨`과 Activity / Start / Stop 실제 수신 여부를 구분한다. 관측을 끄면 Task Mecca Hook만 제거하고 기존 Execution Ledger는 보존한다.
 
+### Root Session 단위 Runtime 관리
+
+Runtime 실행 관측은 Provider Hook의 `session_id`를 기준으로 Root Session을 구성하고 그 아래에 Registrar / Controller / Worker / execution attempt를 묶는다. 같은 Worker 이름이 다른 Root에서 반복되어도 별도 Root Session으로 구분한다.
+
+Web은 provider session/thread name → provider title → `Root · YYYY-MM-DD HH:mm` fallback 순으로 표시 이름을 선택한다. 실제 개설 시각을 확인할 수 없으면 첫 Hook evidence를 **관측 시작**으로 표시한다.
+
+Root는 `active / needs_check / terminal / inactive_terminal`로 구분한다. 모든 자식이 terminal이고 마지막 활동 후 7일 이상 지난 Root만 Root 단위 안전 정리 대상이다. stale/runtime_unknown 자식이 있으면 기간과 관계없이 보호한다.
+
 ## Framework / Data 경계
 
 설치 시에는 `framework/`만 배포되고 `data/`는 만들지 않는다. 첫 task 등록 시 Registrar가 `ensure-backlog`를 통해 기존 원장을 선택하거나, 원장이 없으면 `_task_mecca/data/backlog/`를 생성한다. Agent가 만드는 durable 부산물도 framework와 섞지 말고 필요할 때 `data/` 아래에 둔다.
