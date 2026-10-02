@@ -23,8 +23,8 @@ body.terminal-page {
   align-items: center;
   gap: 16px;
   padding: 10px 18px;
-  border-bottom: 1px solid var(--line, rgba(128,128,128,.25));
-  background: var(--panel, rgba(20,24,33,.95));
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
 }
 .terminal-back {
   color: var(--text, #e7eaf0);
@@ -69,14 +69,16 @@ body.terminal-page {
 .terminal-main {
   min-height: 0;
   display: grid;
-  grid-template-rows: auto 1fr;
+  grid-template-rows: auto minmax(0,1fr) auto;
   gap: 12px;
   padding: 14px;
 }
 .terminal-security {
-  border: 1px solid var(--line, rgba(128,128,128,.25));
+  border: 1px solid var(--border);
   border-radius: 12px;
-  background: var(--panel, rgba(20,24,33,.88));
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow);
   padding: 12px 14px;
 }
 .terminal-security-row {
@@ -86,7 +88,7 @@ body.terminal-page {
   gap: 16px;
 }
 .terminal-security-copy { min-width: 0; }
-.terminal-security-copy strong { display: block; margin-bottom: 3px; }
+.terminal-security-copy strong { display: block; margin-bottom: 3px; color: var(--text); }
 .terminal-security-copy p {
   margin: 0;
   color: var(--muted, #9aa3b2);
@@ -107,7 +109,7 @@ body.terminal-page {
 .terminal-pill {
   display: inline-flex;
   align-items: center;
-  border: 1px solid var(--line, rgba(128,128,128,.25));
+  border: 1px solid var(--border);
   border-radius: 999px;
   padding: 4px 9px;
   color: var(--muted, #9aa3b2);
@@ -132,14 +134,22 @@ body.terminal-page {
 .terminal-btn:hover { filter: brightness(1.06); }
 .terminal-btn:disabled { opacity: .55; cursor: default; }
 .terminal-btn.secondary {
-  background: transparent;
-  border-color: var(--line, rgba(128,128,128,.35));
-  color: var(--text, #e7eaf0);
+  background: var(--surface);
+  border-color: var(--border);
+  color: var(--text);
+}
+.terminal-btn.secondary:hover {
+  background: var(--surface2);
+  filter: none;
 }
 .terminal-btn.danger {
-  background: transparent;
-  border-color: color-mix(in srgb, var(--danger, #e45d68) 65%, transparent);
-  color: var(--danger, #e45d68);
+  background: color-mix(in srgb, var(--danger) 7%, var(--surface));
+  border-color: color-mix(in srgb, var(--danger) 55%, var(--border));
+  color: var(--danger);
+}
+.terminal-btn.danger:hover {
+  background: color-mix(in srgb, var(--danger) 12%, var(--surface));
+  filter: none;
 }
 
 .terminal-workspace {
@@ -147,7 +157,7 @@ body.terminal-page {
   display: grid;
   grid-template-rows: auto minmax(0,1fr) auto;
   overflow: hidden;
-  border: 1px solid var(--line, rgba(128,128,128,.25));
+  border: 1px solid var(--border);
   border-radius: 12px;
   background: #0b0f16;
 }
@@ -276,9 +286,11 @@ body.terminal-page {
 .terminal-note { margin-top: 6px !important; font-size: 11px !important; }
 
 .terminal-emergency {
-  border: 1px solid var(--line, rgba(128,128,128,.25));
+  border: 1px solid var(--border);
   border-radius: 12px;
-  background: var(--panel, rgba(20,24,33,.92));
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow);
   overflow: hidden;
 }
 .terminal-emergency > summary {
@@ -321,7 +333,7 @@ body.terminal-page {
   padding: 0 10px 10px;
 }
 .terminal-emergency-os {
-  border-top: 1px solid var(--line, rgba(128,128,128,.22));
+  border-top: 1px solid var(--border);
 }
 .terminal-emergency-os > summary {
   min-height: 40px;
@@ -342,13 +354,13 @@ body.terminal-page {
 }
 .terminal-command {
   margin: 0 2px 8px;
-  border: 1px solid var(--line, rgba(128,128,128,.22));
+  border: 1px solid var(--border);
   border-radius: 9px;
   overflow: hidden;
   background: rgba(0,0,0,.12);
 }
 .terminal-command.danger {
-  border-color: color-mix(in srgb, var(--danger, #e45d68) 45%, transparent);
+  border-color: color-mix(in srgb, var(--danger) 45%, var(--border));
 }
 .terminal-command-head {
   display: flex;
@@ -366,7 +378,7 @@ body.terminal-page {
   display: grid;
   grid-template-columns: minmax(0,1fr) auto;
   align-items: stretch;
-  border-top: 1px solid var(--line, rgba(128,128,128,.16));
+  border-top: 1px solid var(--border);
   background: #080c12;
 }
 .terminal-command-code code {
