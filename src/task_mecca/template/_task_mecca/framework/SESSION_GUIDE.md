@@ -247,7 +247,7 @@ Web UI는 Markdown/Git 원장의 projection이며 직접 backlog를 수정하지
 - **Archive history**: `archive/YYYY-MM/` 재귀 읽기, `ID ↓` 기본 정렬, Auto page size 기본값 및 Updated 기준 정렬 변경
 - **Keyboard navigation**: `↑/↓`, `Enter/→`, `←/Esc`, `/`, `PgUp/PgDn`
 - **Web Terminal**: 좌측 `OPERATIONS → Terminal`에서 현재 프로젝트 루트를 working directory로 하는 실제 PTY 셸을 연다. macOS/Linux는 사용자 셸(zsh/bash/sh), Windows는 PowerShell/pwsh/cmd를 ConPTY로 연결한다.
-- **Terminal 원격 보안**: localhost에서는 바로 사용할 수 있지만 Tailscale 원격 Terminal은 기본 OFF다. 원격 허용은 반드시 해당 PC의 localhost 화면에서 먼저 켜야 하며, Tailscale HTTPS가 아닌 일반 LAN/공인망 접속에서는 Terminal API를 차단한다. 원격 화면에서는 다시 OFF로 끌 수 있다.
+- **Terminal 원격 보안**: localhost에서는 항상 사용할 수 있고, Tailscale HTTPS는 신뢰된 원격 관리 경로로 간주해 별도 localhost 사전 활성화 없이 원격 Terminal을 기본 허용한다. 원격 Terminal은 Tailscale HTTPS에서만 사용할 수 있으며 일반 LAN/공인망 접속의 Terminal API는 차단한다. 필요하면 localhost 또는 Tailscale 화면에서 원격 Terminal을 OFF/ON 할 수 있다.
 - **Terminal lifecycle**: 브라우저가 끊긴 세션은 5분 동안 재연결할 수 있고 이후 자동 종료한다. 같은 프로젝트에서 새 Terminal을 시작하면 기존 세션을 종료하고 교체한다. xterm.js를 사용할 수 있으면 ANSI/방향키/Ctrl+C/resize를 지원하고, 브라우저 런타임을 불러오지 못하면 기본 명령 입력 fallback을 사용한다.
 
 Web UI 시작은 active access probe를 강제하지 않는다. 마지막 preflight 관측값과 현재 프로세스에서 직접 보이는 restriction만
