@@ -189,6 +189,40 @@ func terminalHistoryAttempts(project string,current Ledger,now time.Time) ([]Att
     return rows,nil
 }
 
+type ProviderObservation struct {
+    Activity bool `json:"activity"`
+    Start bool `json:"start"`
+    Stop bool `json:"stop"`
+    LastObservedAt string `json:"last_observed_at,omitempty"`
+}
+
+func ExecutionHistoryStats(project string,current Ledger,now time.Time) (int,map[string]ProviderObservation,error) {
+    rows,err:=terminalHistoryAttempts(project,current,now)
+    if err!=nil { return 0,nil,err }
+    observations:=map[string]ProviderObservation{}
+    for _,attempt:=range rows {
+        provider:=strings.ToLower(strings.TrimSpace(attempt.Provider))
+        if provider=="" { continue }
+        item:=observations[provider]
+        if attempt.ActivityCount>0 { item.Activity=true }
+        if attempt.StartedAt!="" { item.Start=true }
+        if attempt.EndedAt!="" { item.Stop=true }
+        if attempt.LastObservedAt>item.LastObservedAt { item.LastObservedAt=attempt.LastObservedAt }
+        observations[provider]=item
+    }
+    for _,attempt:=range current.Attempts {
+        provider:=strings.ToLower(strings.TrimSpace(attempt.Provider))
+        if provider=="" { continue }
+        item:=observations[provider]
+        if attempt.ActivityCount>0 { item.Activity=true }
+        if attempt.StartedAt!="" { item.Start=true }
+        if attempt.EndedAt!="" { item.Stop=true }
+        if attempt.LastObservedAt>item.LastObservedAt { item.LastObservedAt=attempt.LastObservedAt }
+        observations[provider]=item
+    }
+    return len(rows),observations,nil
+}
+
 func QueryExecutionHistory(project string,current Ledger,page,pageSize int,provider,state string,now time.Time) (HistoryPage,error) {
     rows,err:=terminalHistoryAttempts(project,current,now); if err!=nil { return HistoryPage{},err }
     provider=strings.ToLower(strings.TrimSpace(provider))
