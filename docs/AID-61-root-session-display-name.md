@@ -56,3 +56,29 @@ Root Session 카드의 시각적 우선순위는 다음과 같다.
 - 안정성이 보장되지 않은 transcript JSON 구조에서 title 추출
 - 표시 이름을 canonical identity로 사용
 - dev 검증 전 main 승격
+
+
+## Hook 활성화·실사용 Provider 계약
+
+Hook 설치 여부와 실제 Runtime 관측 가능 여부를 분리한다.
+
+- `configured`: Task Mecca의 project Hook 정의가 파일에 존재한다.
+- `in_use`: 현재 doing 백로그의 `RuntimeProvider` 또는 현재/최근 비종료 Root Session 근거로 해당 Provider가 실사용 중이다.
+- `current_evidence`: 해당 Provider의 현재/최근 Root Runtime 신호가 실제로 관측되고 있다.
+- `needs_attention`: `in_use=true`인데 Hook이 미설정이거나 현재 관측 신호가 없다.
+
+다른 Agent의 Hook이 설정되어 있다는 이유만으로 경고를 해제하지 않는다. 예를 들어 Claude Hook만 설치되어 있고 현재 Codex가 실사용 중이면 Codex에 대해 경고한다.
+
+Hook 설정/활성화 뒤에는 **새 Root Session 시작을 권장이 아니라 적용 계약으로 안내**한다. 이미 열려 있는 Root에서 놓친 `SessionStart` 및 기존 Agent의 Start 이벤트를 소급 복원할 수 없기 때문이다.
+
+### Codex
+
+공식 문서 기준 프로젝트 Hook은 `<repo>/.codex/hooks.json` 또는 `<repo>/.codex/config.toml`에서 로드되며, project-local Hook은 프로젝트가 trusted 상태여야 한다. 새/변경 command Hook은 exact definition에 대한 review/trust가 완료되기 전까지 실행되지 않는다. CLI에서는 `/hooks`에서 source 확인, review/trust, 개별 enable/disable을 수행할 수 있다. `[features] hooks = false`이면 Hooks 자체가 비활성화된다.
+
+Codex Desktop에서는 현재 제품 UI 기준 프롬프트 입력창 좌측 하단의 Hooks 진입점을 안내한다. Task Mecca는 이 UI 위치를 Provider의 안정 API로 간주하지 않고 사용자 가이드 metadata로만 사용한다.
+
+### Claude Code
+
+Task Mecca는 프로젝트 `.claude/settings.json`에 Hook을 추가한다. Claude Code 공식 문서상 terminal, IDE extension, Desktop app은 같은 Hook events를 실행한다. 프로젝트 설정 Hook은 workspace trust가 필요한 실행 surface가 있으므로 설정 파일 존재와 실제 관측을 별도로 판정한다.
+
+Claude Code의 `/hooks`는 configured Hook과 source를 확인하는 **read-only browser**이므로, Task Mecca UI에서는 이를 검증 방법으로 안내하고 설정 자체는 Task Mecca의 Hook 설정 버튼 또는 settings JSON을 통해 수행하도록 안내한다.
