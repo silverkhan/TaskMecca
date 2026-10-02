@@ -35,7 +35,7 @@ func runtimeProviderUsageFrom(rows []Record, roots runtimeobs.RootSessionCollect
     cutoff:=now.Add(-30*time.Minute)
     for _,root:=range roots.Items {
         current:=root.Status=="active"
-        if !current && root.LastActivityAt!="" {
+        if !current && root.Status=="needs_check" && root.LastActivityAt!="" {
             if at,err:=time.Parse(time.RFC3339Nano,root.LastActivityAt); err==nil && at.After(cutoff) { current=true }
         }
         if current { add(root.Provider,"recent_root_session",true) }
