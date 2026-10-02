@@ -11,6 +11,16 @@ import (
 
 var lifecycleHookEvents=[]string{"SubagentStart","SubagentStop","PreToolUse","PostToolUse"}
 
+func hookEventsForProvider(provider string) []string {
+    events:=append([]string{},lifecycleHookEvents...)
+    // Claude Code officially exposes an explicit/custom session_title only on
+    // SessionStart. Codex SessionStart has no supported name/title field.
+    if strings.EqualFold(strings.TrimSpace(provider),"claude") {
+        events=append([]string{"SessionStart"},events...)
+    }
+    return events
+}
+
 type HookSetup struct {
     Provider string `json:"provider"`
     Path string `json:"path"`
@@ -34,9 +44,9 @@ func HookStatus(project,provider string) (HookSetup,error) {
     doc,exists,err:=readHookDocument(path); if err!=nil { return out,err }
     if !exists { return out,nil }
     hooks,_:=doc["hooks"].(map[string]any)
-    for _,event:=range lifecycleHookEvents { out.Events[event]=hasTaskMeccaHook(hooks[event],provider) }
+    for _,event:=range hookEventsForProvider(provider) { out.Events[event]=hasTaskMeccaHook(hooks[event],provider) }
     out.Installed=true
-    for _,event:=range lifecycleHookEvents { if !out.Events[event] { out.Installed=false } }
+    for _,event:=range hookEventsForProvider(provider) { if !out.Events[event] { out.Installed=false } }
     return out,nil
 }
 
@@ -48,7 +58,7 @@ func EnsureHooks(project,provider string) (HookSetup,error) {
     if !ok || hooks==nil { hooks=map[string]any{}; doc["hooks"]=hooks }
 
     changed:=false
-    for _,event:=range lifecycleHookEvents {
+    for _,event:=range hookEventsForProvider(provider) {
         if hasTaskMeccaHook(hooks[event],provider) { continue }
         current:=asSlice(hooks[event])
         current=append(current,desiredHook(event,provider))
@@ -81,7 +91,7 @@ func DisableHooks(project,provider string) (HookSetup,error) {
     }
 
     changed:=false
-    for _,event:=range lifecycleHookEvents {
+    for _,event:=range hookEventsForProvider(provider) {
         entries:=asSlice(hooks[event])
         if len(entries)==0 { continue }
         filteredEntries:=make([]any,0,len(entries))
