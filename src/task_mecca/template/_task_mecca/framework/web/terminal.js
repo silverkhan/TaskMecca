@@ -557,7 +557,7 @@
       bindFallbackComposer();
       scheduleResize();
     }
-    await startStream();
+    void startStream();
   }
 
   function stripAnsi(value) {

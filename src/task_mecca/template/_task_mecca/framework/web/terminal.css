@@ -6,6 +6,10 @@ body.terminal-page {
   background: var(--bg, #0b0e14);
   color: var(--text, #e7eaf0);
 }
+
+.terminal-page [hidden] {
+  display: none !important;
+}
 .terminal-app {
   height: 100vh;
   height: 100dvh;
