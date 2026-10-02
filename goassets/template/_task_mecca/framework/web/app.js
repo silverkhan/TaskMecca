@@ -798,6 +798,63 @@ async function toggleRuntimeHistory() {
   render();
 }
 
+async function loadRuntimeStorage(force=false) {
+  if(state.runtimeStorageLoading)return;
+  if(state.runtimeStorage&&!force)return;
+  state.runtimeStorageLoading=true;
+  state.runtimeStorageError='';
+  if(state.view==='workload')render();
+  try{
+    const params=new URLSearchParams();
+    if(state.project)params.set('project',state.project);
+    const qs=params.toString()?`?${params}`:'';
+    const r=await fetch('/api/runtime/storage'+qs,{cache:'no-store'});
+    const body=await r.json();
+    if(!r.ok)throw new Error(body.error||`HTTP ${r.status}`);
+    state.runtimeStorage=body;
+  }catch(e){
+    state.runtimeStorageError=String(e?.message||e||'Runtime storage failed');
+  }finally{
+    state.runtimeStorageLoading=false;
+  }
+  if(state.view==='workload')render();
+}
+async function toggleRuntimeStorage() {
+  state.runtimeStorageOpen=!state.runtimeStorageOpen;
+  if(state.runtimeStorageOpen) {
+    await loadRuntimeStorage(true);
+    return;
+  }
+  render();
+}
+async function performRuntimeCleanup(button) {
+  const reclaim=Number(state.runtimeStorage?.cleanup?.reclaimable_bytes||0);
+  if(reclaim<=0)return;
+  if(!window.confirm(t('runtimeCleanupConfirm',{bytes:fmtBytes(reclaim)})))return;
+  const original=button?.textContent||'';
+  if(button){button.disabled=true;button.textContent=t('runtimeCleanupRunning');}
+  try{
+    const params=new URLSearchParams();
+    if(state.project)params.set('project',state.project);
+    const qs=params.toString()?`?${params}`:'';
+    const r=await fetch('/api/runtime/storage'+qs,{
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-Task-Mecca-Action':'1'},
+      body:JSON.stringify({action:'cleanup'})
+    });
+    const body=await r.json();
+    if(!r.ok)throw new Error(body.error||'Runtime cleanup failed');
+    state.runtimeStorage=body.storage||null;
+    alert(t('runtimeCleanupDone',{bytes:fmtBytes(body.result?.reclaimed_bytes||0)}));
+    state.runtimeHistory={items:[],page:1,page_size:20,total:0,total_pages:0,retention:{}};
+    if(state.runtimeHistoryOpen)await loadRuntimeHistory(1);
+    await refresh();
+  }catch(e){
+    alert(String(e?.message||e));
+    if(button){button.disabled=false;button.textContent=original;}
+  }
+}
+
 async function performRuntimeHookAction(button) {
   const provider=button?.dataset?.provider||'all';
   const action=button?.dataset?.runtimeHookAction||'enable';
@@ -2650,6 +2707,8 @@ function render() {
       button.addEventListener('click',e=>performRuntimeHookAction(e.currentTarget));
     });
     $('#runtimeHistoryToggle')?.addEventListener('click',()=>toggleRuntimeHistory());
+    $('#runtimeStorageToggle')?.addEventListener('click',()=>toggleRuntimeStorage());
+    $('#runtimeCleanupBtn')?.addEventListener('click',e=>performRuntimeCleanup(e.currentTarget));
     document.querySelectorAll('[data-runtime-history-page]').forEach(button=>{
       button.addEventListener('click',()=>loadRuntimeHistory(Number(button.dataset.runtimeHistoryPage||1)));
     });
@@ -2949,6 +3008,10 @@ function route(fromPop=false) {
     state.runtimeHistory={items:[],page:1,page_size:20,total:0,total_pages:0,retention:{}};
     state.runtimeAttemptDisclosure={};
     state.runtimeTransitionDisclosure={};
+    state.runtimeStorageOpen=false;
+    state.runtimeStorageLoading=false;
+    state.runtimeStorageError='';
+    state.runtimeStorage=null;
     if(state.project)queueMicrotask(()=>refreshVersionInfo(false));
   }
   if(state.project){
