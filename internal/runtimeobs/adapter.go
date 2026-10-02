@@ -95,7 +95,7 @@ func ResolveCodexThreadMetadata(ctx context.Context,sessionID string) (CodexThre
     stdin,err:=cmd.StdinPipe(); if err!=nil { return CodexThreadMetadata{},err }
     stdout,err:=cmd.StdoutPipe(); if err!=nil { return CodexThreadMetadata{},err }
     if err=cmd.Start(); err!=nil { return CodexThreadMetadata{},err }
-    defer cmd.Wait()
+    defer func(){ _=stdin.Close(); cancel(); _=cmd.Wait() }()
     enc:=json.NewEncoder(stdin); reader:=bufio.NewReader(stdout)
     initRequest:=map[string]any{"jsonrpc":"2.0","id":1,"method":"initialize","params":map[string]any{"clientInfo":map[string]any{"name":"task_mecca","title":"Task Mecca","version":"0.1"}}}
     if err=enc.Encode(initRequest); err!=nil { return CodexThreadMetadata{},err }
