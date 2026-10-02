@@ -30,6 +30,8 @@
       start:'Terminal 시작',
       restart:'재시작',
       close:'닫기',
+      paste:'붙여넣기',
+      pastePrompt:'클립보드 읽기 권한을 사용할 수 없습니다. 아래 입력창을 길게 눌러 붙여넣으세요.',
       interrupt:'Ctrl+C',
       shell:'Shell',
       idleTitle:'Terminal 준비됨',
@@ -78,6 +80,8 @@
       start:'Start terminal',
       restart:'Restart',
       close:'Close',
+      paste:'Paste',
+      pastePrompt:'Clipboard access is unavailable. Long-press the field below and paste your command.',
       interrupt:'Ctrl+C',
       shell:'Shell',
       idleTitle:'Terminal ready',
@@ -156,7 +160,7 @@
 
   function setBusy(busy) {
     state.busy = busy;
-    ['terminalStartBtn','terminalRestartBtn','terminalCloseBtn','terminalInterruptBtn'].forEach(id => {
+    ['terminalStartBtn','terminalRestartBtn','terminalCloseBtn','terminalPasteBtn','terminalInterruptBtn'].forEach(id => {
       const el = $('#' + id);
       if (el) el.disabled = busy;
     });
@@ -223,6 +227,7 @@
     $('#terminalStartBtn').textContent = t('start');
     $('#terminalRestartBtn').textContent = t('restart');
     $('#terminalCloseBtn').textContent = t('close');
+    $('#terminalPasteBtn').textContent = t('paste');
     $('#terminalInterruptBtn').textContent = t('interrupt');
     $('#terminalLifecycle').textContent = t('lifecycle');
 
@@ -375,6 +380,33 @@
   function sessionActionURL(action) {
     if (!state.session) return '';
     return '/api/terminal/sessions/' + encodeURIComponent(state.session.id) + '/' + action;
+  }
+
+  async function pasteIntoTerminal() {
+    if (!state.session) return;
+    let value = '';
+    try {
+      if (navigator.clipboard?.readText) value = await navigator.clipboard.readText();
+    } catch (_) {}
+    if (!value) {
+      const manual = window.prompt(t('pastePrompt'), '');
+      if (manual == null || manual === '') return;
+      value = manual;
+    }
+    sendInput(value);
+    try { state.terminal?.focus(); } catch (_) {}
+  }
+
+  function bindNativePaste(target) {
+    if (!target || target.dataset.taskMeccaPasteBound === '1') return;
+    target.dataset.taskMeccaPasteBound = '1';
+    target.addEventListener('paste', event => {
+      const value = event.clipboardData?.getData('text');
+      if (!value) return;
+      event.preventDefault();
+      sendInput(value);
+      try { state.terminal?.focus(); } catch (_) {}
+    });
   }
 
   function sendInput(data) {
@@ -538,6 +570,7 @@
           : {background:'#080c12',foreground:'#e8edf5',cursor:'#dce5f2',selectionBackground:'#33415a'}
       });
       term.open(host);
+      bindNativePaste(host);
       state.terminal = term;
       state.terminalDataDisposable = term.onData(data => sendInput(data));
       state.runtimeMode = 'xterm';
@@ -681,6 +714,7 @@
     $('#terminalStartBtn').hidden = active;
     $('#terminalRestartBtn').hidden = !active;
     $('#terminalCloseBtn').hidden = !active;
+    $('#terminalPasteBtn').hidden = !active;
     $('#terminalInterruptBtn').hidden = !active;
     $('#terminalIdle').hidden = active;
     $('#terminalShellLabel').textContent = active ? (state.session.shell || t('shell')) : t('shell');
@@ -694,6 +728,7 @@
   $('#terminalStartBtn').addEventListener('click', startSession);
   $('#terminalRestartBtn').addEventListener('click', restartSession);
   $('#terminalCloseBtn').addEventListener('click', () => closeSession(false));
+  $('#terminalPasteBtn').addEventListener('click', pasteIntoTerminal);
   $('#terminalInterruptBtn').addEventListener('click', () => sendInput('\x03'));
   window.addEventListener('beforeunload', stopStream);
   window.addEventListener('resize', () => { if (state.session) scheduleResize(); });
