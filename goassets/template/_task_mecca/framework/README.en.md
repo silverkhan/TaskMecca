@@ -65,6 +65,35 @@ task-mecca runtime hooks disable claude
 
 `disable` removes only Task Mecca-managed Hook handlers and preserves unrelated Hooks. Turning observation off does not delete the existing Execution Ledger.
 
+### Root Session runtime management
+
+Runtime observations are grouped by **Root Session** instead of being presented as one flat list of agents.
+
+```text
+Project
+└─ Root Session
+   ├─ Registrar
+   ├─ Controller
+   └─ Worker
+      └─ Execution Attempt
+```
+
+The provider Hook `session_id` is used as the provider-native Root Session identity. Task Mecca derives a stable internal `root_session_id` from provider + session ID, so the same worker path in different Roots remains separated.
+
+Web prefers a human-readable provider session/thread name, then a provider title. If the current observation surface cannot reliably provide either, Task Mecca shows a deterministic fallback such as `Root · YYYY-MM-DD HH:mm`. The name is display metadata only and never liveness evidence.
+
+When exact creation time is unavailable, Web labels the earliest Hook evidence as **First observed** instead of pretending it is the actual creation time.
+
+Root Session states:
+- `active`: at least one child has current execution evidence
+- `needs_check`: a child is non-terminal but stale/runtime_unknown
+- `terminal`: all observed children are terminal
+- `inactive_terminal`: terminal and inactive for at least 7 days
+
+Creating a new Root does not automatically terminate an older Root.
+
+**Root-level cleanup** is allowed only for `inactive_terminal` Roots that have been inactive for at least 7 days. It removes that Root's Controller/Registrar/Worker/attempt runtime evidence as one unit while preserving other Roots, canonical backlog/Git, and Hook configuration. A Root with any stale/runtime_unknown child remains protected regardless of age.
+
 ## Framework / Data boundary
 
 Installation deploys only `framework/`; it does not create `data/`. On the first task registration Registrar uses `ensure-backlog` to select an existing ledger or create `_task_mecca/data/backlog/`. Durable artifacts created by agents belong under `data/`, not inside `framework/`.
