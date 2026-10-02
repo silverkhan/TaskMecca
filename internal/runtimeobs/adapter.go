@@ -4,6 +4,7 @@ import (
     "errors"
     "fmt"
     "io"
+    "os/exec"
     "strings"
     "time"
 )
@@ -66,3 +67,5 @@ func ObserveHook(project,provider string,input io.Reader,now time.Time) (Executi
     }
     return filtered
 }
+
+func codexAppServerCommand() *exec.Cmd { return exec.Command("codex","app-server","--listen","stdio://") }
