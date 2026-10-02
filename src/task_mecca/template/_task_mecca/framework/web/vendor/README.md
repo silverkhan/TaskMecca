@@ -18,4 +18,4 @@ Optional local paths:
 
 `_task_mecca/web/vendor/xterm.css`
 
-When both are available, Web Terminal uses the local xterm.js runtime. Otherwise it tries cdnjs and jsDelivr. If no xterm.js runtime can be loaded, Terminal stays usable through its built-in basic command-input fallback; full ANSI rendering and interactive terminal-key behavior require xterm.js.
+When both are available, Web Terminal uses the local xterm.js runtime. Otherwise it tries the exact-pinned @xterm/xterm 5.5.0 bundle from jsDelivr with Subresource Integrity (SRI) verification. If the verified runtime cannot be loaded, Terminal stays usable through its built-in basic command-input fallback; full ANSI rendering and interactive terminal-key behavior require xterm.js.
