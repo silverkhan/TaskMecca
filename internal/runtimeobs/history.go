@@ -280,6 +280,9 @@ func FilterFindingsForAttempts(findings []LedgerFinding,attempts []Attempt) []Le
 }
 
 func MaintainExecutionHistory(project string,ledger Ledger,now time.Time) (RetentionStats,error) {
+    executionStorageMu.Lock()
+    defer executionStorageMu.Unlock()
+
     stats:=RetentionStats{}
     history,err:=readHistoryAttempts(project); if err!=nil { return stats,err }
 
@@ -318,16 +321,15 @@ func MaintainExecutionHistory(project string,ledger Ledger,now time.Time) (Reten
         }
     }
 
-    historyCutoff:=now.UTC().AddDate(0,0,-historyRetentionDays)
-    files,err:=historyFiles(project); if err!=nil { return stats,err }
-    for _,path:=range files {
-        base:=strings.TrimSuffix(filepath.Base(path),".jsonl")
-        month,parseErr:=time.Parse("2006-01",base)
-        if parseErr!=nil { continue }
-        monthEnd:=month.AddDate(0,1,0)
-        if monthEnd.Before(historyCutoff) {
-            if err:=os.Remove(path); err==nil { stats.HistoryFilesRemoved++ }
-        }
+    retained,removed,err:=historyRetentionRecords(project,ledger,now)
+    if err!=nil { return stats,err }
+    if removed>0 {
+        existing,filesErr:=historyFiles(project)
+        if filesErr!=nil { return stats,filesErr }
+        rewritten,writeErr:=writeHistoryRecords(project,retained)
+        if writeErr!=nil { return stats,writeErr }
+        stats.HistoryFilesRemoved=len(existing)-rewritten
+        if stats.HistoryFilesRemoved<0 { stats.HistoryFilesRemoved=0 }
     }
     return stats,nil
 }
