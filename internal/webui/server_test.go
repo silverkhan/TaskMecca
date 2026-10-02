@@ -187,6 +187,15 @@ func TestHandlerServesDashboardAPIsAndAssets(t *testing.T) {
     firstAttempt,ok:=attempts[0].(map[string]any)
     if !ok || firstAttempt["runtime_agent_id"]!="agent-web" { t.Fatalf("attempt=%+v",attempts[0]) }
 
+    req=httptest.NewRequest(http.MethodGet,"/api/runtime/hooks",nil)
+    rec=httptest.NewRecorder()
+    handler.ServeHTTP(rec,req)
+    if rec.Code!=http.StatusOK { t.Fatalf("runtime hooks GET status=%d body=%s",rec.Code,rec.Body.String()) }
+    hookStatusPayload:=map[string]any{}
+    if err:=json.Unmarshal(rec.Body.Bytes(),&hookStatusPayload); err!=nil { t.Fatal(err) }
+    initialHookRows,ok:=hookStatusPayload["hooks"].([]any)
+    if !ok || len(initialHookRows)!=2 { t.Fatalf("runtime hooks GET rows=%T %+v",hookStatusPayload["hooks"],hookStatusPayload["hooks"]) }
+
     req=httptest.NewRequest(http.MethodPost,"/api/runtime/hooks",strings.NewReader(`{"provider":"codex"}`))
     req.Header.Set("Content-Type","application/json")
     rec=httptest.NewRecorder()
