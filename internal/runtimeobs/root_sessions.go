@@ -376,23 +376,41 @@ func QueryRootSessions(project string,ledger Ledger,page,pageSize int,status str
     },nil
 }
 
-func AttemptsForRootSessions(project string,ledger Ledger,roots []RootSession,now time.Time) ([]Attempt,error) {
+func AttemptsForRootSessions(project string,ledger Ledger,roots []RootSession,terminalPerRootLimit int,now time.Time) ([]Attempt,error) {
     allowed:=map[string]bool{}
     for _,root:=range roots { allowed[root.RootSessionID]=true }
     attempts,err:=rootSessionAttempts(project,ledger,now)
     if err!=nil { return nil,err }
-    out:=[]Attempt{}
+
+    grouped:=map[string][]Attempt{}
+    rootOrder:=[]string{}
+    seenRoot:=map[string]bool{}
     for _,attempt:=range attempts {
-        if allowed[RootSessionIDForAttempt(attempt)] { out=append(out,attempt) }
+        rootID:=RootSessionIDForAttempt(attempt)
+        if !allowed[rootID] { continue }
+        if !seenRoot[rootID] { seenRoot[rootID]=true; rootOrder=append(rootOrder,rootID) }
+        grouped[rootID]=append(grouped[rootID],attempt)
     }
-    sort.SliceStable(out,func(i,j int)bool {
-        leftRoot,rightRoot:=RootSessionIDForAttempt(out[i]),RootSessionIDForAttempt(out[j])
-        if leftRoot!=rightRoot { return leftRoot<rightRoot }
-        if out[i].Terminal!=out[j].Terminal { return !out[i].Terminal }
-        left,right:=rootAttemptLastActivity(out[i]),rootAttemptLastActivity(out[j])
-        if left!=right { return left>right }
-        return out[i].AttemptID<out[j].AttemptID
-    })
+
+    if terminalPerRootLimit<0 { terminalPerRootLimit=0 }
+    out:=[]Attempt{}
+    for _,rootID:=range rootOrder {
+        rows:=grouped[rootID]
+        sort.SliceStable(rows,func(i,j int)bool {
+            if rows[i].Terminal!=rows[j].Terminal { return !rows[i].Terminal }
+            left,right:=rootAttemptLastActivity(rows[i]),rootAttemptLastActivity(rows[j])
+            if left!=right { return left>right }
+            return rows[i].AttemptID<rows[j].AttemptID
+        })
+        terminalShown:=0
+        for _,attempt:=range rows {
+            if attempt.Terminal {
+                if terminalShown>=terminalPerRootLimit { continue }
+                terminalShown++
+            }
+            out=append(out,attempt)
+        }
+    }
     return out,nil
 }
 
