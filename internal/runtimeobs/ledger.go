@@ -141,7 +141,7 @@ func attemptIDFor(provider, sessionID, agentID string) string {
 }
 
 func eventIDFor(e ExecutionEvent) string {
-    parts:=[]string{e.EventKind,e.Provider,e.SessionID,e.TurnID,e.RuntimeAgentID,e.HookEventName,e.ToolUseID,string(e.State),e.RawSHA256,e.TaskID,e.AgentPath,e.ParentAttemptID,e.BindingSource}
+    parts:=[]string{e.EventKind,e.Provider,e.SessionID,e.SessionName,e.SessionTitle,e.TurnID,e.RuntimeAgentID,e.HookEventName,e.ToolUseID,string(e.State),e.RawSHA256,e.TaskID,e.AgentPath,e.ParentAttemptID,e.BindingSource}
     if e.RawSHA256=="" || (e.EventKind=="state" && e.TurnID=="") { parts=append(parts,e.ObservedAt) }
     if e.EventKind=="binding" {
         keys:=make([]string,0,len(e.BindingEvidence))
