@@ -43,6 +43,8 @@ type RootSession struct {
     CurrentCount        int               `json:"current_count"`
     NeedsCheckCount     int               `json:"needs_check_count"`
     TerminalCount       int               `json:"terminal_count"`
+    StorageBytes        int64             `json:"storage_bytes,omitempty"`
+    CleanupBytes        int64             `json:"cleanup_bytes,omitempty"`
     AttemptIDs          []string          `json:"attempt_ids,omitempty"`
 }
 
@@ -54,6 +56,15 @@ type RootSessionCollection struct {
     CleanupEligible int           `json:"cleanup_eligible"`
     Total           int           `json:"total"`
     GeneratedAt     string        `json:"generated_at"`
+}
+
+type RootSessionPage struct {
+    Items      []RootSession  `json:"items"`
+    Page       int            `json:"page"`
+    PageSize   int            `json:"page_size"`
+    Total      int            `json:"total"`
+    TotalPages int            `json:"total_pages"`
+    Counts     map[string]int `json:"counts"`
 }
 
 type RootSessionStorage struct {
@@ -289,6 +300,67 @@ func BuildRootSessions(project string,ledger Ledger,now time.Time) (RootSessionC
     })
     collection.Total=len(collection.Items)
     return collection,nil
+}
+
+func VisibleRootSessions(collection RootSessionCollection,recentTerminalLimit int) RootSessionCollection {
+    if recentTerminalLimit<0 { recentTerminalLimit=0 }
+    out:=collection
+    out.Items=[]RootSession{}
+    terminalShown:=0
+    for _,root:=range collection.Items {
+        if root.Status==RootSessionActive || root.Status==RootSessionNeedsCheck {
+            out.Items=append(out.Items,root)
+            continue
+        }
+        if terminalShown<recentTerminalLimit {
+            out.Items=append(out.Items,root)
+            terminalShown++
+        }
+    }
+    return out
+}
+
+func QueryRootSessions(project string,ledger Ledger,page,pageSize int,status string,includeStorage bool,now time.Time) (RootSessionPage,error) {
+    collection,err:=BuildRootSessions(project,ledger,now)
+    if err!=nil { return RootSessionPage{},err }
+    status=strings.ToLower(strings.TrimSpace(status))
+    rows:=[]RootSession{}
+    for _,root:=range collection.Items {
+        if status!="" && string(root.Status)!=status { continue }
+        rows=append(rows,root)
+    }
+    if page<1 { page=1 }
+    if pageSize<1 { pageSize=10 }
+    if pageSize>50 { pageSize=50 }
+    total:=len(rows)
+    totalPages:=0
+    if total>0 { totalPages=(total+pageSize-1)/pageSize }
+    if totalPages>0 && page>totalPages { page=totalPages }
+    start:=(page-1)*pageSize
+    if start<0 { start=0 }
+    if start>total { start=total }
+    end:=start+pageSize
+    if end>total { end=total }
+    items:=append([]RootSession{},rows[start:end]...)
+    if includeStorage {
+        for i:=range items {
+            if items[i].ProviderSessionID=="" { continue }
+            storage,storageErr:=RootSessionStorageUsage(project,items[i].Provider,items[i].ProviderSessionID)
+            if storageErr!=nil { return RootSessionPage{},storageErr }
+            items[i].StorageBytes=storage.TotalBytes
+            if items[i].CleanupEligible { items[i].CleanupBytes=storage.TotalBytes }
+        }
+    }
+    return RootSessionPage{
+        Items:items,Page:page,PageSize:pageSize,Total:total,TotalPages:totalPages,
+        Counts:map[string]int{
+            "active":collection.Active,
+            "needs_check":collection.NeedsCheck,
+            "terminal":collection.Terminal,
+            "cleanup_eligible":collection.CleanupEligible,
+            "total":collection.Total,
+        },
+    },nil
 }
 
 func FindRootSession(project string,ledger Ledger,rootSessionID string,now time.Time) (RootSession,error) {
