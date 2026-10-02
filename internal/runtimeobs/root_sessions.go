@@ -333,7 +333,13 @@ func QueryRootSessions(project string,ledger Ledger,page,pageSize int,status str
     status=strings.ToLower(strings.TrimSpace(status))
     rows:=[]RootSession{}
     for _,root:=range collection.Items {
-        if status!="" && string(root.Status)!=status { continue }
+        if status!="" {
+            if status=="previous" {
+                if root.Status!=RootSessionTerminal && root.Status!=RootSessionInactiveTerminal { continue }
+            } else if string(root.Status)!=status {
+                continue
+            }
+        }
         rows=append(rows,root)
     }
     if page<1 { page=1 }
