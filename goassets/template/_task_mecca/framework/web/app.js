@@ -2408,6 +2408,88 @@ function runtimeHistoryPanel(meta={}) {
     ${content}${pager}
   </section>`;
 }
+function runtimeRootStatusLabel(status) {
+  return {
+    active:t('runtimeRootActiveStatus'),
+    needs_check:t('runtimeRootNeedsCheckStatus'),
+    terminal:t('runtimeRootTerminal'),
+    inactive_terminal:t('runtimeRootInactiveTerminal'),
+  }[status]||status||'-';
+}
+function runtimeRootStatusClass(status) {
+  return status==='active'?'ok':status==='needs_check'?'warn':status==='inactive_terminal'?'warn':'';
+}
+function runtimeRootCard(root,attempts,findingsByAttempt,attemptRootMap) {
+  const key=String(root.root_session_id||root.provider_session_id||root.display_name||'root');
+  const remembered=Object.prototype.hasOwnProperty.call(state.runtimeRootDisclosure,key);
+  const defaultOpen=root.status==='active'||root.status==='needs_check';
+  const open=remembered?Boolean(state.runtimeRootDisclosure[key]):defaultOpen;
+  const sessionAttempts=attempts.filter(a=>attemptRootMap[a.attempt_id]===root.root_session_id);
+  const createdLabel=root.created_at_source==='provider_metadata'?t('runtimeRootCreated'):t('runtimeRootObservedStart');
+  const providerID=root.provider_session_id||'-';
+  const fallbackHint=root.display_name_source==='task_mecca_fallback'
+    ? `<span class="runtime-root-fallback" title="${esc(t('runtimeRootFallbackHint'))}">fallback</span>`
+    : '';
+  const cleanupBadge=root.cleanup_eligible?`<span class="badge warn">${esc(t('runtimeRootCleanupEligible'))}</span>`:'';
+  return `<details class="runtime-root-card" data-runtime-root-key="${esc(key)}" ${open?'open':''}>
+    <summary class="runtime-root-summary">
+      <div class="runtime-root-title-wrap">
+        <div class="runtime-root-title">${esc(root.display_name||'Root Session')} ${fallbackHint}</div>
+        <div class="runtime-root-id">${esc(String(root.provider||'-').toUpperCase())} · ${esc(root.root_session_id||'-')} · <span title="${esc(providerID)}">${esc(providerID)}</span></div>
+      </div>
+      <div class="runtime-root-badges">
+        <span class="badge ${runtimeRootStatusClass(root.status)}">${esc(runtimeRootStatusLabel(root.status))}</span>
+        ${cleanupBadge}
+      </div>
+      <div class="runtime-root-meta">
+        <span>${esc(createdLabel)} <strong>${esc(dateTimeLabel(root.created_at,true))}</strong></span>
+        <span>${esc(t('runtimeRootLastActivity'))} <strong>${esc(root.last_activity_at?ago(root.last_activity_at):'-')}</strong></span>
+      </div>
+      <div class="runtime-root-counts">
+        <span>${esc(t('runtimeRootAgents',{n:Number(root.agent_count||0)}))}</span>
+        <span>${esc(t('runtimeRootCurrentCount',{n:Number(root.current_count||0)}))}</span>
+        <span>${esc(t('runtimeRootNeedsCount',{n:Number(root.needs_check_count||0)}))}</span>
+        <span>${esc(t('runtimeRootTerminalCount',{n:Number(root.terminal_count||0)}))}</span>
+      </div>
+      <span class="runtime-root-chevron" aria-hidden="true">›</span>
+    </summary>
+    <div class="runtime-root-body">
+      ${sessionAttempts.length?`<div class="runtime-attempt-grid">${sessionAttempts.map(a=>runtimeAttemptCard(a,findingsByAttempt[a.attempt_id]||[])).join('')}</div>`:`<div class="runtime-empty compact">-</div>`}
+    </div>
+  </details>`;
+}
+function runtimeRootListRow(root) {
+  const statusClass=runtimeRootStatusClass(root.status);
+  const cleanup=root.cleanup_eligible
+    ? `<button class="runtime-root-cleanup-btn" data-runtime-root-cleanup="${esc(root.root_session_id||'')}" data-runtime-root-name="${esc(root.display_name||'Root Session')}" data-runtime-root-bytes="${Number(root.cleanup_bytes||root.storage_bytes||0)}">${esc(t('runtimeRootCleanup'))}</button>`
+    : '';
+  return `<div class="runtime-root-list-row">
+    <div class="runtime-root-list-main">
+      <strong>${esc(root.display_name||'Root Session')}</strong>
+      <span>${esc(String(root.provider||'-').toUpperCase())} · ${esc(root.root_session_id||'-')}</span>
+      <small>${esc(root.provider_session_id||'-')}</small>
+    </div>
+    <span class="badge ${statusClass}">${esc(runtimeRootStatusLabel(root.status))}</span>
+    <div class="runtime-root-list-meta">
+      <span>${esc(root.last_activity_at?ago(root.last_activity_at):'-')}</span>
+      <span>${esc(fmtBytes(root.storage_bytes||0))}</span>
+    </div>
+    ${cleanup}
+  </div>`;
+}
+function runtimeRootListPanel() {
+  if(!state.runtimeRootListOpen)return '';
+  if(state.runtimeRootListLoading)return `<section class="runtime-root-list-panel"><div class="runtime-history-loading">${esc(t('runtimeRootLoading'))}</div></section>`;
+  if(state.runtimeRootListError)return `<section class="runtime-root-list-panel"><div class="runtime-history-error">${esc(state.runtimeRootListError)}</div></section>`;
+  const data=state.runtimeRootList||{}, items=data.items||[], page=Number(data.page||1), pages=Number(data.total_pages||0), total=Number(data.total||0);
+  const rows=items.length?items.map(runtimeRootListRow).join(''):`<div class="runtime-history-empty">${esc(t('runtimeRootEmpty'))}</div>`;
+  const pager=pages>1?`<div class="runtime-history-pager">
+    <button data-runtime-root-page="${Math.max(1,page-1)}" ${page<=1?'disabled':''}>←</button>
+    <span>${esc(t('runtimeRootPage',{page,pages,total}))}</span>
+    <button data-runtime-root-page="${Math.min(pages,page+1)}" ${page>=pages?'disabled':''}>→</button>
+  </div>`:`<div class="runtime-history-page-label">${esc(t('runtimeRootPage',{page:pages?1:0,pages,total}))}</div>`;
+  return `<section class="runtime-root-list-panel"><div class="runtime-root-list">${rows}</div>${pager}</section>`;
+}
 function workloadView() {
   const snapshot=state.snapshot||{}, w=snapshot.workload||{}, agents=w.agents||[], all=snapshot.all_items||{}, unassigned=w.unassigned_doing||[], released=w.released_holds||[];
   const runtime=snapshot.runtime_observability||{}, attempts=runtime.attempts||[], findings=runtime.findings||[], hooks=runtime.hooks||[], rc=runtime.counts||{}, historyMeta=runtime.history||{}, groups=runtime.session_groups||{};
