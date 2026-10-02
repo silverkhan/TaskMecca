@@ -2201,6 +2201,7 @@ Object.assign(I18N.ko,{
   runtimeRootObservedStart:'관측 시작',
   runtimeRootLastActivity:'마지막 활동',
   runtimeRootID:'Root Session ID',
+  runtimeRootProvider:'Provider',
   runtimeRootCurrentCount:'현재 {n}',
   runtimeRootNeedsCount:'확인 필요 {n}',
   runtimeRootTerminalCount:'종료 {n}',
@@ -2494,7 +2495,7 @@ function runtimeRootCard(root,attempts,findingsByAttempt,attemptRootMap) {
     <summary class="runtime-root-summary">
       <div class="runtime-root-title-wrap">
         <div class="runtime-root-title">${esc(root.display_name||'Root Session')} ${fallbackHint}</div>
-        <div class="runtime-root-id">${esc(String(root.provider||'-').toUpperCase())} · ${esc(root.root_session_id||'-')} · <span title="${esc(providerID)}">${esc(providerID)}</span></div>
+        <div class="runtime-root-id"><span>${esc(t('runtimeRootProvider'))} <strong>${esc(String(root.provider||'-').toUpperCase())}</strong></span><span>${esc(t('runtimeRootID'))} <strong title="${esc(providerID)}">${esc(providerID)}</strong></span></div>
       </div>
       <div class="runtime-root-badges">
         <span class="badge ${runtimeRootStatusClass(root.status)}">${esc(runtimeRootStatusLabel(root.status))}</span>
@@ -2525,8 +2526,8 @@ function runtimeRootListRow(root) {
   return `<div class="runtime-root-list-row">
     <div class="runtime-root-list-main">
       <strong>${esc(root.display_name||'Root Session')}</strong>
-      <span>${esc(String(root.provider||'-').toUpperCase())} · ${esc(root.root_session_id||'-')}</span>
-      <small>${esc(root.provider_session_id||'-')}</small>
+      <span>${esc(t('runtimeRootProvider'))} ${esc(String(root.provider||'-').toUpperCase())}</span>
+      <small>${esc(t('runtimeRootID'))} ${esc(root.provider_session_id||'-')}</small>
     </div>
     <span class="badge ${statusClass}">${esc(runtimeRootStatusLabel(root.status))}</span>
     <div class="runtime-root-list-meta">
