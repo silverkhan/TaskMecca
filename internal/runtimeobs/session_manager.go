@@ -312,7 +312,6 @@ func buildCleanupPlan(project string,ledger Ledger,now time.Time) (cleanupPlan,e
         plan.RewriteHistory=true
     }
 
-    for id:=range cleanupAttemptIDs { cleanupAttemptIDs[id]=true }
     plan.Preview.CandidateFiles=plan.Preview.RawFiles+plan.Preview.LegacyFiles
     for id:=range cleanupAttemptIDs { _=id; plan.Preview.CandidateAttempts++ }
     plan.Preview.CandidateAttempts+=plan.Preview.HistoryRecords
