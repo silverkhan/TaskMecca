@@ -151,6 +151,26 @@ func WorkloadSnapshot(project, root string) (map[string]any, error) {
         historyTotal = 0
         historyObservations = map[string]runtimeobs.ProviderObservation{}
     }
+    // The Workload page renders current Root Sessions from this snapshot, not
+    // from /api/runtime/root-sessions. Refresh provider-side Codex names here
+    // as well so a rename is visible without opening the previous-root panel
+    // or sending another message to the Root.
+    if changed, refreshErr := runtimeobs.RefreshCodexRootNames(project, runtimeLedger, runtimeNow); refreshErr != nil {
+        diagnostics = append(diagnostics, map[string]string{
+            "component": "runtime_root_name_refresh",
+            "error":     refreshErr.Error(),
+        })
+    } else if changed {
+        if refreshed, reconcileErr := runtimeobs.ReconcileLedger(project, 10, time.Now()); reconcileErr == nil {
+            runtimeLedger = refreshed
+        } else {
+            diagnostics = append(diagnostics, map[string]string{
+                "component": "runtime_root_name_reconcile",
+                "error":     reconcileErr.Error(),
+            })
+        }
+    }
+
     rootSessions, rootErr := runtimeobs.BuildRootSessions(project, runtimeLedger, runtimeNow)
     if rootErr != nil {
         diagnostics = append(diagnostics, map[string]string{
