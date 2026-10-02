@@ -860,6 +860,65 @@ async function performRuntimeCleanup(button) {
   }
 }
 
+async function loadRuntimeRootSessions(page=1) {
+  state.runtimeRootListLoading=true;
+  state.runtimeRootListError='';
+  if(state.view==='workload')render();
+  try{
+    const params=new URLSearchParams();
+    if(state.project)params.set('project',state.project);
+    params.set('page',String(Math.max(1,Number(page)||1)));
+    params.set('page_size','10');
+    params.set('status','previous');
+    params.set('include_storage','1');
+    const r=await fetch('/api/runtime/root-sessions?'+params.toString(),{cache:'no-store'});
+    const body=await r.json();
+    if(!r.ok)throw new Error(body.error||`HTTP ${r.status}`);
+    state.runtimeRootList=body;
+  }catch(e){
+    state.runtimeRootListError=String(e?.message||e||'Root Session load failed');
+  }finally{
+    state.runtimeRootListLoading=false;
+  }
+  if(state.view==='workload')render();
+}
+async function toggleRuntimeRootList() {
+  state.runtimeRootListOpen=!state.runtimeRootListOpen;
+  if(state.runtimeRootListOpen) {
+    await loadRuntimeRootSessions(1);
+    return;
+  }
+  render();
+}
+async function performRootSessionCleanup(button) {
+  const rootSessionID=button?.dataset?.runtimeRootCleanup||'';
+  const name=button?.dataset?.runtimeRootName||'Root Session';
+  const bytes=Number(button?.dataset?.runtimeRootBytes||0);
+  if(!rootSessionID)return;
+  if(!window.confirm(t('runtimeRootCleanupConfirm',{name,bytes:fmtBytes(bytes)})))return;
+  const original=button?.textContent||'';
+  if(button){button.disabled=true;button.textContent=t('runtimeCleanupRunning');}
+  try{
+    const params=new URLSearchParams();
+    if(state.project)params.set('project',state.project);
+    const qs=params.toString()?`?${params}`:'';
+    const r=await fetch('/api/runtime/root-sessions'+qs,{
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-Task-Mecca-Action':'1'},
+      body:JSON.stringify({action:'cleanup',root_session_id:rootSessionID})
+    });
+    const body=await r.json();
+    if(!r.ok)throw new Error(body.error||'Root Session cleanup failed');
+    alert(t('runtimeRootCleanupDone',{bytes:fmtBytes(body.result?.reclaimed_bytes||bytes)}));
+    await refresh();
+    if(state.runtimeRootListOpen)await loadRuntimeRootSessions(Number(state.runtimeRootList?.page||1));
+    if(state.runtimeStorageOpen)await loadRuntimeStorage(true);
+  }catch(e){
+    alert(String(e?.message||e));
+    if(button){button.disabled=false;button.textContent=original;}
+  }
+}
+
 async function performRuntimeHookAction(button) {
   const provider=button?.dataset?.provider||'all';
   const action=button?.dataset?.runtimeHookAction||'enable';
@@ -2846,6 +2905,18 @@ function render() {
     $('#runtimeHistoryToggle')?.addEventListener('click',()=>toggleRuntimeHistory());
     $('#runtimeStorageToggle')?.addEventListener('click',()=>toggleRuntimeStorage());
     $('#runtimeCleanupBtn')?.addEventListener('click',e=>performRuntimeCleanup(e.currentTarget));
+    $('#runtimeRootListToggle')?.addEventListener('click',()=>toggleRuntimeRootList());
+    document.querySelectorAll('[data-runtime-root-page]').forEach(button=>{
+      button.addEventListener('click',()=>loadRuntimeRootSessions(Number(button.dataset.runtimeRootPage||1)));
+    });
+    document.querySelectorAll('[data-runtime-root-cleanup]').forEach(button=>{
+      button.addEventListener('click',e=>performRootSessionCleanup(e.currentTarget));
+    });
+    document.querySelectorAll('.runtime-root-card[data-runtime-root-key]').forEach(details=>{
+      details.addEventListener('toggle',()=>{
+        state.runtimeRootDisclosure[details.dataset.runtimeRootKey]=details.open;
+      });
+    });
     document.querySelectorAll('[data-runtime-history-page]').forEach(button=>{
       button.addEventListener('click',()=>loadRuntimeHistory(Number(button.dataset.runtimeHistoryPage||1)));
     });
@@ -3149,6 +3220,11 @@ function route(fromPop=false) {
     state.runtimeStorageLoading=false;
     state.runtimeStorageError='';
     state.runtimeStorage=null;
+    state.runtimeRootDisclosure={};
+    state.runtimeRootListOpen=false;
+    state.runtimeRootListLoading=false;
+    state.runtimeRootListError='';
+    state.runtimeRootList={items:[],page:1,page_size:10,total:0,total_pages:0,counts:{}};
     if(state.project)queueMicrotask(()=>refreshVersionInfo(false));
   }
   if(state.project){
