@@ -141,6 +141,12 @@ func TestHandlerServesDashboardAPIsAndAssets(t *testing.T) {
         "performRuntimeCleanup",
         "runtimeNeedsCheck",
         "runtimeCurrentValid",
+        "runtimeRootSessions",
+        "runtimeRootCard",
+        "runtimeRootListPanel",
+        "performRootSessionCleanup",
+        "runtimeRootDisclosure",
+        "data-runtime-root-key",
     } {
         if !contains(appJS,needle) { t.Fatalf("app.js missing compact runtime card state marker %q",needle) }
     }
@@ -462,6 +468,95 @@ func TestRuntimeSessionManagerClassifiesAndExposesStorageAPI(t *testing.T) {
     rec=httptest.NewRecorder()
     handler.ServeHTTP(rec,req)
     if rec.Code!=http.StatusOK { t.Fatalf("cleanup status=%d body=%s",rec.Code,rec.Body.String()) }
+}
+
+func TestRuntimeRootSessionAPIAndCleanup(t *testing.T) {
+    root:=t.TempDir()
+    backlogDir:=filepath.Join(root,"_task_mecca","data","backlog")
+    if err:=os.MkdirAll(backlogDir,0755); err!=nil { t.Fatal(err) }
+    if err:=os.WriteFile(filepath.Join(backlogDir,"000001.A-1.todo.md"),[]byte("# A-1 Test\n- Agent: -\n- 변경범위: -\n- 선행: -\n- 연관: -\n"),0644); err!=nil { t.Fatal(err) }
+
+    now:=time.Now().UTC()
+    old:=now.Add(-8*24*time.Hour)
+    recent:=now.Add(-time.Hour)
+    events:=[]runtimeobs.ExecutionEvent{
+        {
+            EventKind:"state",ObservedAt:old.Format(time.RFC3339Nano),AttemptID:"run-old-root",
+            Provider:"codex",SessionID:"session-old",SessionName:"오래된 Root",
+            RuntimeAgentID:"agent-old",State:runtimeobs.StateCompleted,Terminal:true,
+            EvidenceSource:runtimeobs.EvidenceHook,ObservationQuality:runtimeobs.QualityObserved,
+        },
+        {
+            EventKind:"state",ObservedAt:recent.Format(time.RFC3339Nano),AttemptID:"run-recent-root",
+            Provider:"codex",SessionID:"session-recent",SessionName:"최근 Root",
+            RuntimeAgentID:"agent-recent",State:runtimeobs.StateCompleted,Terminal:true,
+            EvidenceSource:runtimeobs.EvidenceHook,ObservationQuality:runtimeobs.QualityObserved,
+        },
+    }
+    for _,event:=range events {
+        if err:=runtimeobs.AppendExecutionEvent(root,event); err!=nil { t.Fatal(err) }
+    }
+    ledger,err:=runtimeobs.ReconcileLedger(root,10,now)
+    if err!=nil { t.Fatal(err) }
+    if _,err:=runtimeobs.MaintainExecutionHistory(root,ledger,now); err!=nil { t.Fatal(err) }
+
+    handler,err:=Handler(root,"","test")
+    if err!=nil { t.Fatal(err) }
+
+    req:=httptest.NewRequest(http.MethodGet,"/api/workload",nil)
+    rec:=httptest.NewRecorder()
+    handler.ServeHTTP(rec,req)
+    if rec.Code!=http.StatusOK { t.Fatalf("workload status=%d body=%s",rec.Code,rec.Body.String()) }
+    workload:=map[string]any{}
+    if err:=json.Unmarshal(rec.Body.Bytes(),&workload); err!=nil { t.Fatal(err) }
+    runtimeView,ok:=workload["runtime_observability"].(map[string]any)
+    if !ok { t.Fatalf("runtime=%T",workload["runtime_observability"]) }
+    rootRows,ok:=runtimeView["root_sessions"].([]any)
+    if !ok || len(rootRows)!=2 { t.Fatalf("root sessions=%T %+v",runtimeView["root_sessions"],runtimeView["root_sessions"]) }
+    counts,ok:=runtimeView["root_session_counts"].(map[string]any)
+    if !ok || counts["terminal"]!=float64(2) || counts["cleanup_eligible"]!=float64(1) {
+        t.Fatalf("root counts=%+v",counts)
+    }
+
+    req=httptest.NewRequest(http.MethodGet,"/api/runtime/root-sessions?status=previous&include_storage=1&page=1&page_size=10",nil)
+    rec=httptest.NewRecorder()
+    handler.ServeHTTP(rec,req)
+    if rec.Code!=http.StatusOK { t.Fatalf("root list status=%d body=%s",rec.Code,rec.Body.String()) }
+    page:=map[string]any{}
+    if err:=json.Unmarshal(rec.Body.Bytes(),&page); err!=nil { t.Fatal(err) }
+    items,ok:=page["items"].([]any)
+    if !ok || len(items)!=2 { t.Fatalf("root items=%T %+v",page["items"],page["items"]) }
+    cleanupID:=""
+    for _,raw:=range items {
+        row,ok:=raw.(map[string]any); if !ok { continue }
+        if row["cleanup_eligible"]==true {
+            cleanupID,_=row["root_session_id"].(string)
+            if row["display_name"]!="오래된 Root" { t.Fatalf("cleanup row=%+v",row) }
+            if row["storage_bytes"].(float64)<=0 { t.Fatalf("storage bytes missing: %+v",row) }
+        }
+    }
+    if cleanupID=="" { t.Fatalf("cleanup root id missing: %+v",items) }
+
+    body:=fmt.Sprintf(`{"action":"cleanup","root_session_id":%q}`,cleanupID)
+    req=httptest.NewRequest(http.MethodPost,"/api/runtime/root-sessions",strings.NewReader(body))
+    req.Header.Set("Content-Type","application/json")
+    rec=httptest.NewRecorder()
+    handler.ServeHTTP(rec,req)
+    if rec.Code!=http.StatusForbidden { t.Fatalf("root cleanup without action header=%d",rec.Code) }
+
+    req=httptest.NewRequest(http.MethodPost,"/api/runtime/root-sessions",strings.NewReader(body))
+    req.Header.Set("Content-Type","application/json")
+    req.Header.Set("X-Task-Mecca-Action","1")
+    rec=httptest.NewRecorder()
+    handler.ServeHTTP(rec,req)
+    if rec.Code!=http.StatusOK { t.Fatalf("root cleanup status=%d body=%s",rec.Code,rec.Body.String()) }
+
+    req=httptest.NewRequest(http.MethodGet,"/api/runtime/root-sessions?status=previous&include_storage=1",nil)
+    rec=httptest.NewRecorder()
+    handler.ServeHTTP(rec,req)
+    remaining:=map[string]any{}
+    if err:=json.Unmarshal(rec.Body.Bytes(),&remaining); err!=nil { t.Fatal(err) }
+    if remaining["total"]!=float64(1) { t.Fatalf("remaining=%+v",remaining) }
 }
 
 func TestTailscaleIPv4Range(t *testing.T) {
