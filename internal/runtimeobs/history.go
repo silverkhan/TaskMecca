@@ -367,7 +367,7 @@ func MaybeMaintainExecutionHistory(project string,ledger Ledger,now time.Time) (
     return stats,err
 }
 
-func retentionPolicy() map[string]int {
+func RetentionPolicy() map[string]int {
     return map[string]int{
         "raw_days":rawRetentionDays,
         "history_days":historyRetentionDays,
