@@ -689,6 +689,14 @@ func run(args []string) int {
                 ledger=runtimeobs.FilterLedger(ledger,provider)
                 if jsonOutput { emitJSON(ledger) } else { printRuntimeLedger(ledger) }
             }
+        case "enrich-name":
+            if len(positional)!=2 { fmt.Fprintln(os.Stderr,"runtime enrich-name requires a Codex session_id"); return 2 }
+            var event runtimeobs.ExecutionEvent
+            var changed bool
+            event,changed,err=runtimeobs.EnrichCodexSessionName(runtimeProject,positional[1],time.Now())
+            if err==nil {
+                if jsonOutput { emitJSON(map[string]any{"changed":changed,"event":event}) } else if changed { fmt.Println(event.SessionName) } else { fmt.Println("(Codex thread has no name/title)") }
+            }
         case "bind":
             if len(positional)<4 || len(positional)>5 {
                 fmt.Fprintln(os.Stderr,"runtime bind requires: <attempt-id> <task-id|-> <agent-path> [parent-attempt-id]")
