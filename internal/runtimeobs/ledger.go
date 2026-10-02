@@ -191,6 +191,9 @@ func stopState(reason string,extra map[string]any) CanonicalState {
 }
 
 func AppendExecutionEvent(project string,e ExecutionEvent) error {
+    executionStorageMu.Lock()
+    defer executionStorageMu.Unlock()
+
     if e.EventID=="" { e.EventID=eventIDFor(e) }
     if e.ObservedAt=="" { e.ObservedAt=time.Now().UTC().Format(time.RFC3339Nano) }
     if e.AttemptID=="" { return errors.New("execution event requires attempt_id") }
