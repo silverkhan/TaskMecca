@@ -58,6 +58,8 @@ const state = {
   runtimeHistoryLoading: false,
   runtimeHistoryError: '',
   runtimeHistory: {items:[],page:1,page_size:20,total:0,total_pages:0,retention:{}},
+  runtimeAttemptDisclosure: {},
+  runtimeTransitionDisclosure: {},
 };
 
 
@@ -2074,8 +2076,12 @@ function runtimeAttemptCard(attempt,findings) {
   const attentionState=['waiting_user','waiting_approval','errored','interrupted','shutdown'].includes(attempt.current_state);
   const attentionFinding=(findings||[]).some(x=>x.severity==='warning'||x.severity==='error');
   const openByDefault=attentionState||attentionFinding;
+  const disclosureKey=String(attempt.attempt_id||attempt.runtime_agent_id||name||'runtime-attempt');
+  const hasRememberedOpen=Object.prototype.hasOwnProperty.call(state.runtimeAttemptDisclosure,disclosureKey);
+  const isOpen=hasRememberedOpen?Boolean(state.runtimeAttemptDisclosure[disclosureKey]):openByDefault;
+  const historyOpen=Boolean(state.runtimeTransitionDisclosure[disclosureKey]);
   const elapsedAttrs=`class="runtime-elapsed" data-started-at="${esc(attempt.started_at||'')}" data-ended-at="${esc(attempt.ended_at||'')}" data-elapsed-ms="${Number(attempt.elapsed_ms||0)}"`;
-  return `<details class="runtime-attempt-card runtime-attempt-disclosure" ${openByDefault?'open':''}>
+  return `<details class="runtime-attempt-card runtime-attempt-disclosure" data-runtime-attempt-key="${esc(disclosureKey)}" ${isOpen?'open':''}>
     <summary class="runtime-attempt-summary">
       <div class="runtime-attempt-identity">
         <div class="runtime-attempt-name">${esc(name)}</div>
@@ -2101,7 +2107,7 @@ function runtimeAttemptCard(attempt,findings) {
         <div><span>${esc(t('runtimeWaiting'))}</span><strong>${esc(waiting)}</strong></div>
       </div>
       ${findingHTML?`<div class="runtime-findings">${findingHTML}</div>`:''}
-      <details class="runtime-history">
+      <details class="runtime-history" data-runtime-history-key="${esc(disclosureKey)}" ${historyOpen?'open':''}>
         <summary>${esc(t('runtimeRecentTransitions'))} · ${transitions.length}</summary>
         <div class="runtime-transition-list">
           ${transitions.length?transitions.map(row=>`<div class="runtime-transition"><time>${esc(dateTimeLabel(row.at,true))}</time><strong>${esc(runtimeTransitionLabel(row))}</strong><span>${esc((row.evidence_source||'-')+'/'+(row.observation_quality||'-'))}</span></div>`).join(''):`<div class="worker-empty">-</div>`}
@@ -2550,6 +2556,16 @@ function render() {
     document.querySelectorAll('[data-runtime-history-page]').forEach(button=>{
       button.addEventListener('click',()=>loadRuntimeHistory(Number(button.dataset.runtimeHistoryPage||1)));
     });
+    document.querySelectorAll('.runtime-attempt-disclosure[data-runtime-attempt-key]').forEach(details=>{
+      details.addEventListener('toggle',()=>{
+        state.runtimeAttemptDisclosure[details.dataset.runtimeAttemptKey]=details.open;
+      });
+    });
+    document.querySelectorAll('.runtime-history[data-runtime-history-key]').forEach(details=>{
+      details.addEventListener('toggle',()=>{
+        state.runtimeTransitionDisclosure[details.dataset.runtimeHistoryKey]=details.open;
+      });
+    });
   }
   if(state.view==='backlog')scheduleAutoListPageSize();
   document.querySelectorAll('[data-manual-tab]').forEach(b=>b.onclick=()=>{state.manualTab=b.dataset.manualTab;render()});
@@ -2834,6 +2850,8 @@ function route(fromPop=false) {
     state.runtimeHistoryLoading=false;
     state.runtimeHistoryError='';
     state.runtimeHistory={items:[],page:1,page_size:20,total:0,total_pages:0,retention:{}};
+    state.runtimeAttemptDisclosure={};
+    state.runtimeTransitionDisclosure={};
     if(state.project)queueMicrotask(()=>refreshVersionInfo(false));
   }
   if(state.project){
