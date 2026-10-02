@@ -400,6 +400,9 @@ func handler(project,root,version,instanceID,controlToken string,restartCh chan<
         if err!=nil { writeJSON(w,map[string]any{"error":err.Error()},500); return }
 
         if r.Method=="GET" {
+            if changed,_:=runtimeobs.RefreshCodexRootNames(activeProject,ledger,now); changed {
+                if refreshed,refreshErr:=runtimeobs.ReconcileLedger(activeProject,10,time.Now()); refreshErr==nil { ledger=refreshed }
+            }
             rootID:=strings.TrimSpace(r.URL.Query().Get("root_session_id"))
             if rootID!="" {
                 root,rootErr:=runtimeobs.FindRootSession(activeProject,ledger,rootID,now)
