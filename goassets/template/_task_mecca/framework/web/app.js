@@ -60,6 +60,10 @@ const state = {
   runtimeHistory: {items:[],page:1,page_size:20,total:0,total_pages:0,retention:{}},
   runtimeAttemptDisclosure: {},
   runtimeTransitionDisclosure: {},
+  runtimeStorageOpen: false,
+  runtimeStorageLoading: false,
+  runtimeStorageError: '',
+  runtimeStorage: null,
 };
 
 
@@ -2037,6 +2041,88 @@ function manualView() {
   const rootPrompt=tab==='quick'?manualRootPromptCard(m):'';
   return `<div class="manual-shell"><div class="manual-hero"><div class="eyebrow">${esc(t('help'))}</div><h1>${esc(t('manual'))}</h1><p class="summary">${esc(t('manualIntro'))}</p></div><div class="manual-callout"><strong>${esc(t('dashboardLaunch'))}</strong><div class="copy-code-wrap compact"><button class="copy-code-btn" type="button" aria-label="${esc(t('copyCode'))}" title="${esc(t('copyCode'))}">${COPY_ICON}</button><pre><code>task-mecca web</code></pre></div></div><div class="shortcut-manual"><strong>${esc(t('keyboard'))}</strong><span><kbd>↑/↓</kbd> ${esc(t('move'))}</span><span><kbd>Enter/→</kbd> ${esc(t('open'))}</span><span><kbd>←/Esc</kbd> ${esc(t('back'))}</span><span><kbd>/</kbd> ${esc(t('search'))}</span><span><kbd>PgUp/PgDn</kbd> ${esc(t('page'))}</span></div><div class="manual-tabs"><button class="manual-tab ${tab==='quick'?'active':''}" data-manual-tab="quick">${esc(t('quickStart'))}</button><button class="manual-tab ${tab==='operations'?'active':''}" data-manual-tab="operations">${esc(t('detailedGuide'))}</button></div>${rootPrompt}<div class="section markdown">${markdown(body||t('manualLoading'),{copyCode:true})}</div></div>`;
 }
+Object.assign(I18N.ko,{
+  runtimeCurrentValid:'현재 유효',
+  runtimeNeedsCheck:'상태 확인 필요',
+  runtimeNoNeedsCheck:'현재 상태 확인이 필요한 Runtime 세션이 없습니다.',
+  runtimeTerminalArchived:'종료·보관',
+  runtimeStorage:'Runtime 기록 저장소',
+  runtimeStorageOpen:'저장소 관리',
+  runtimeStorageClose:'저장소 닫기',
+  runtimeStorageLoading:'저장소 사용량을 계산하는 중…',
+  runtimeStorageTotal:'전체 사용량',
+  runtimeStorageRaw:'Raw 이벤트',
+  runtimeStorageHistory:'종료 실행 이력',
+  runtimeStorageLegacy:'Legacy 기록',
+  runtimeStorageProtected:'현재/미확정 보호 데이터',
+  runtimeStorageReclaimable:'안전 정리 가능',
+  runtimeStorageOldest:'가장 오래된 정리 후보',
+  runtimeStoragePolicy:'Raw {raw}일 · 종료 이력 {days}일 · 최대 {max}건',
+  runtimeCleanup:'안전 정리',
+  runtimeCleanupNone:'현재 정책 기준으로 안전하게 정리할 기록이 없습니다.',
+  runtimeCleanupPreview:'정리 대상: 파일 {files}개 · 이력 {attempts}건 · 약 {bytes}',
+  runtimeCleanupConfirm:'현재 실행 및 상태 미확정 세션은 보존합니다. 종료가 확정되고 보존 정책을 초과한 Runtime 기록 약 {bytes}를 정리할까요?',
+  runtimeCleanupRunning:'정리 중…',
+  runtimeCleanupDone:'Runtime 기록 {bytes}를 정리했습니다.',
+  runtimeFiles:'파일 {n}개',
+});
+Object.assign(I18N.en,{
+  runtimeCurrentValid:'Current valid',
+  runtimeNeedsCheck:'Needs verification',
+  runtimeNoNeedsCheck:'No runtime session currently needs verification.',
+  runtimeTerminalArchived:'Terminal / archived',
+  runtimeStorage:'Runtime record storage',
+  runtimeStorageOpen:'Manage storage',
+  runtimeStorageClose:'Close storage',
+  runtimeStorageLoading:'Calculating runtime storage usage…',
+  runtimeStorageTotal:'Total usage',
+  runtimeStorageRaw:'Raw events',
+  runtimeStorageHistory:'Terminal history',
+  runtimeStorageLegacy:'Legacy records',
+  runtimeStorageProtected:'Protected current/unknown data',
+  runtimeStorageReclaimable:'Safely reclaimable',
+  runtimeStorageOldest:'Oldest cleanup candidate',
+  runtimeStoragePolicy:'Raw {raw}d · terminal history {days}d · max {max}',
+  runtimeCleanup:'Safe cleanup',
+  runtimeCleanupNone:'No runtime records are safely cleanable under the current policy.',
+  runtimeCleanupPreview:'Cleanup: {files} files · {attempts} history records · about {bytes}',
+  runtimeCleanupConfirm:'Current and uncertain sessions will be preserved. Clean about {bytes} of terminal runtime records beyond retention?',
+  runtimeCleanupRunning:'Cleaning…',
+  runtimeCleanupDone:'Cleaned {bytes} of runtime records.',
+  runtimeFiles:'{n} files',
+});
+
+function fmtBytes(value) {
+  let n=Math.max(0,Number(value)||0);
+  const units=['B','KB','MB','GB'];
+  let i=0;
+  while(n>=1024&&i<units.length-1){n/=1024;i++;}
+  const digits=i===0?0:n>=100?0:n>=10?1:2;
+  return `${n.toFixed(digits)} ${units[i]}`;
+}
+function runtimeStoragePanel() {
+  if(!state.runtimeStorageOpen)return '';
+  if(state.runtimeStorageLoading)return `<section class="runtime-storage-panel"><div class="runtime-storage-loading">${esc(t('runtimeStorageLoading'))}</div></section>`;
+  if(state.runtimeStorageError)return `<section class="runtime-storage-panel"><div class="runtime-history-error">${esc(state.runtimeStorageError)}</div></section>`;
+  const r=state.runtimeStorage||{}, cleanup=r.cleanup||{}, policy=r.retention||{};
+  const reclaim=Number(cleanup.reclaimable_bytes||0);
+  return `<section class="runtime-storage-panel">
+    <div class="runtime-storage-head"><div><h3>${esc(t('runtimeStorage'))}</h3><p>${esc(t('runtimeStoragePolicy',{raw:policy.raw_days||7,days:policy.history_days||90,max:policy.history_max_attempts||2000}))}</p></div><strong>${esc(fmtBytes(r.total_bytes||0))}</strong></div>
+    <div class="runtime-storage-grid">
+      <div><span>${esc(t('runtimeStorageRaw'))}</span><strong>${esc(fmtBytes(r.raw?.bytes||0))}</strong><small>${esc(t('runtimeFiles',{n:r.raw?.files||0}))}</small></div>
+      <div><span>${esc(t('runtimeStorageHistory'))}</span><strong>${esc(fmtBytes(r.history?.bytes||0))}</strong><small>${Number(r.history_attempts||0)} attempts</small></div>
+      <div><span>${esc(t('runtimeStorageLegacy'))}</span><strong>${esc(fmtBytes(r.legacy?.bytes||0))}</strong><small>${esc(t('runtimeFiles',{n:r.legacy?.files||0}))}</small></div>
+      <div><span>${esc(t('runtimeStorageProtected'))}</span><strong>${esc(fmtBytes(r.protected_raw?.bytes||0))}</strong><small>${esc(t('runtimeFiles',{n:r.protected_raw?.files||0}))}</small></div>
+    </div>
+    <div class="runtime-cleanup-preview">
+      <div><span>${esc(t('runtimeStorageReclaimable'))}</span><strong>${esc(fmtBytes(reclaim))}</strong></div>
+      ${cleanup.oldest_candidate_at?`<div><span>${esc(t('runtimeStorageOldest'))}</span><strong>${esc(dateTimeLabel(cleanup.oldest_candidate_at,true))}</strong></div>`:''}
+    </div>
+    <p class="runtime-storage-note">${reclaim>0?esc(t('runtimeCleanupPreview',{files:cleanup.candidate_files||0,attempts:cleanup.candidate_attempts||0,bytes:fmtBytes(reclaim)})):esc(t('runtimeCleanupNone'))}</p>
+    <button class="runtime-cleanup-btn" id="runtimeCleanupBtn" ${reclaim<=0?'disabled':''}>${esc(t('runtimeCleanup'))}</button>
+  </section>`;
+}
+
 function runtimeStateLabel(value) {
   return {
     starting:t('runtimeStateStarting'),
