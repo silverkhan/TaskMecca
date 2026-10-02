@@ -430,7 +430,7 @@
     }, 100);
   }
 
-  function loadStylesheet(url) {
+  function loadStylesheet(url, integrity='') {
     return new Promise((resolve, reject) => {
       const existing = [...document.querySelectorAll('link[data-xterm-css]')].find(link => link.href === new URL(url, location.href).href);
       if (existing) { resolve(); return; }
@@ -438,19 +438,27 @@
       link.rel = 'stylesheet';
       link.href = url;
       link.dataset.xtermCss = '1';
+      if (integrity) {
+        link.integrity = integrity;
+        link.crossOrigin = 'anonymous';
+      }
       link.onload = () => resolve();
       link.onerror = () => { link.remove(); reject(new Error('CSS load failed')); };
       document.head.appendChild(link);
     });
   }
 
-  function loadScript(url) {
+  function loadScript(url, integrity='') {
     return new Promise((resolve, reject) => {
       if (window.Terminal) { resolve(); return; }
       const script = document.createElement('script');
       script.src = url;
       script.async = true;
       script.dataset.xtermScript = '1';
+      if (integrity) {
+        script.integrity = integrity;
+        script.crossOrigin = 'anonymous';
+      }
       script.onload = () => window.Terminal ? resolve() : reject(new Error('Terminal global missing'));
       script.onerror = () => { script.remove(); reject(new Error('script load failed')); };
       document.head.appendChild(script);
@@ -460,13 +468,17 @@
   async function loadXtermRuntime() {
     const sources = [
       {js:'/vendor/xterm.js', css:'/vendor/xterm.css'},
-      {js:'https://cdnjs.cloudflare.com/ajax/libs/xterm/5.5.0/xterm.js', css:'https://cdnjs.cloudflare.com/ajax/libs/xterm/5.5.0/xterm.min.css'},
-      {js:'https://cdn.jsdelivr.net/npm/xterm@5.5.0/lib/xterm.js', css:'https://cdn.jsdelivr.net/npm/xterm@5.5.0/css/xterm.css'}
+      {
+        js:'https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/lib/xterm.min.js',
+        jsIntegrity:'sha384-J4qzUjBl1FxyLsl/kQPQIOeINsmp17OHYXDOMpMxlKX53ZfYsL+aWHpgArvOuof9',
+        css:'https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/css/xterm.min.css',
+        cssIntegrity:'sha384-tStR1zLfWgsiXCF3IgfB3lBa8KmBe/lG287CL9WCeKgQYcp1bjb4/+mwN6oti4Co'
+      }
     ];
     for (const source of sources) {
       try {
-        await loadStylesheet(source.css);
-        if (!window.Terminal) await loadScript(source.js);
+        await loadStylesheet(source.css, source.cssIntegrity || '');
+        if (!window.Terminal) await loadScript(source.js, source.jsIntegrity || '');
         if (window.Terminal) return true;
       } catch (_) {}
     }
