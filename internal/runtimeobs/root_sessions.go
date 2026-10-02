@@ -105,6 +105,58 @@ type mutableRootSession struct {
     titleAt        string
 }
 
+type rootSessionMetadata struct {
+    provider      string
+    sessionID     string
+    explicitName  string
+    explicitAt    string
+    title         string
+    titleAt       string
+    createdAt     string
+}
+
+func loadRootSessionMetadata(project string) (map[string]rootSessionMetadata,error) {
+    files,err:=executionEventFiles(project)
+    if err!=nil { return nil,err }
+    out:=map[string]rootSessionMetadata{}
+    for _,path:=range files {
+        file,openErr:=os.Open(path)
+        if errors.Is(openErr,os.ErrNotExist) { continue }
+        if openErr!=nil { return nil,openErr }
+        scanner:=bufio.NewScanner(file)
+        scanner.Buffer(make([]byte,64*1024),2*1024*1024)
+        for scanner.Scan() {
+            var event ExecutionEvent
+            if json.Unmarshal(scanner.Bytes(),&event)!=nil || event.EventKind!="session_metadata" { continue }
+            provider:=strings.ToLower(strings.TrimSpace(event.Provider))
+            sessionID:=strings.TrimSpace(event.SessionID)
+            if provider=="" || sessionID=="" { continue }
+            key:=provider+"\x00"+sessionID
+            meta:=out[key]
+            meta.provider=provider
+            meta.sessionID=sessionID
+            if event.SessionName!="" && (meta.explicitAt=="" || event.ObservedAt>=meta.explicitAt) {
+                meta.explicitName=event.SessionName
+                meta.explicitAt=event.ObservedAt
+            }
+            if event.SessionTitle!="" && (meta.titleAt=="" || event.ObservedAt>=meta.titleAt) {
+                meta.title=event.SessionTitle
+                meta.titleAt=event.ObservedAt
+            }
+            if strings.EqualFold(strings.TrimSpace(event.Reason),"startup") &&
+                (meta.createdAt=="" || event.ObservedAt<meta.createdAt) {
+                meta.createdAt=event.ObservedAt
+            }
+            out[key]=meta
+        }
+        scanErr:=scanner.Err()
+        closeErr:=file.Close()
+        if scanErr!=nil { return nil,scanErr }
+        if closeErr!=nil { return nil,closeErr }
+    }
+    return out,nil
+}
+
 func rootSessionIDFor(provider, sessionID string) string {
     key:=strings.ToLower(strings.TrimSpace(provider))+"\x00"+strings.TrimSpace(sessionID)
     sum:=sha256.Sum256([]byte(key))
@@ -162,6 +214,8 @@ func rootSessionAttempts(project string,ledger Ledger,now time.Time) ([]Attempt,
 
 func BuildRootSessions(project string,ledger Ledger,now time.Time) (RootSessionCollection,error) {
     attempts,err:=rootSessionAttempts(project,ledger,now)
+    if err!=nil { return RootSessionCollection{},err }
+    metadata,err:=loadRootSessionMetadata(project)
     if err!=nil { return RootSessionCollection{},err }
 
     findingsByAttempt:=map[string][]LedgerFinding{}
@@ -236,6 +290,23 @@ func BuildRootSessions(project string,ledger Ledger,now time.Time) (RootSessionC
             group.session.NeedsCheckCount++
         default:
             group.session.TerminalCount++
+        }
+    }
+
+    for key,group:=range groups {
+        meta,ok:=metadata[key]
+        if !ok { continue }
+        if meta.explicitName!="" && (group.explicitNameAt=="" || meta.explicitAt>=group.explicitNameAt) {
+            group.explicitName=meta.explicitName
+            group.explicitNameAt=meta.explicitAt
+        }
+        if meta.title!="" && (group.titleAt=="" || meta.titleAt>=group.titleAt) {
+            group.title=meta.title
+            group.titleAt=meta.titleAt
+        }
+        if meta.createdAt!="" && (group.session.CreatedAt=="" || meta.createdAt<group.session.CreatedAt) {
+            group.session.CreatedAt=meta.createdAt
+            group.session.CreatedAtSource="provider_metadata"
         }
     }
 
