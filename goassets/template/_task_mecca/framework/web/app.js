@@ -2290,8 +2290,11 @@ function runtimeHistoryPanel(meta={}) {
 }
 function workloadView() {
   const snapshot=state.snapshot||{}, w=snapshot.workload||{}, agents=w.agents||[], all=snapshot.all_items||{}, unassigned=w.unassigned_doing||[], released=w.released_holds||[];
-  const runtime=snapshot.runtime_observability||{}, attempts=runtime.attempts||[], findings=runtime.findings||[], hooks=runtime.hooks||[], rc=runtime.counts||{}, historyMeta=runtime.history||{};
-  const activeAttempts=attempts.filter(a=>!a.terminal);
+  const runtime=snapshot.runtime_observability||{}, attempts=runtime.attempts||[], findings=runtime.findings||[], hooks=runtime.hooks||[], rc=runtime.counts||{}, historyMeta=runtime.history||{}, groups=runtime.session_groups||{};
+  const currentIDs=new Set(groups.current_ids||[]);
+  const needsCheckIDs=new Set(groups.needs_check_ids||[]);
+  const currentAttempts=attempts.filter(a=>currentIDs.has(a.attempt_id));
+  const needsCheckAttempts=attempts.filter(a=>needsCheckIDs.has(a.attempt_id));
   const recentTerminalAttempts=attempts.filter(a=>a.terminal);
   const findingsByAttempt={};
   findings.forEach(row=>{if(row.attempt_id)(findingsByAttempt[row.attempt_id]??=[]).push(row)});
@@ -2307,16 +2310,24 @@ function workloadView() {
       <div class="runtime-hook-list">${hookCards||'-'}</div>
     </div>
     <div class="metrics runtime-metrics">
-      <div class="metric"><strong>${Number(rc.total||attempts.length)}</strong><span>${esc(t('runtimeAttempts'))}</span></div>
-      <div class="metric"><strong>${Number(rc.running||0)}</strong><span>${esc(t('runtimeRunning'))}</span></div>
-      <div class="metric"><strong>${Number(rc.terminal||0)}</strong><span>${esc(t('runtimeTerminal'))}</span></div>
+      <div class="metric"><strong>${Number(rc.current||0)}</strong><span>${esc(t('runtimeCurrentValid'))}</span></div>
+      <div class="metric"><strong>${Number(rc.needs_check||0)}</strong><span>${esc(t('runtimeNeedsCheck'))}</span></div>
+      <div class="metric"><strong>${Number(rc.terminal||0)}</strong><span>${esc(t('runtimeTerminalArchived'))}</span></div>
       <div class="metric"><strong>${Number(rc.unbound||0)}</strong><span>${esc(t('runtimeUnbound'))}</span></div>
       <div class="metric"><strong>${Number(rc.ambiguous||0)}</strong><span>${esc(t('runtimeAmbiguous'))}</span></div>
       <div class="metric"><strong>${Number(rc.stale||0)}</strong><span>${esc(t('runtimeStale'))}</span></div>
     </div>
+    <div class="runtime-storage-toolbar">
+      <button class="runtime-history-toggle" id="runtimeStorageToggle">${esc(state.runtimeStorageOpen?t('runtimeStorageClose'):t('runtimeStorageOpen'))}</button>
+    </div>
+    ${runtimeStoragePanel()}
     <div class="runtime-attempt-section">
-      <div class="runtime-attempt-section-head"><h3>${esc(t('runtimeCurrentExecutions'))} · ${activeAttempts.length}</h3></div>
-      ${activeAttempts.length?`<div class="runtime-attempt-grid">${activeAttempts.map(a=>runtimeAttemptCard(a,findingsByAttempt[a.attempt_id]||[])).join('')}</div>`:`<div class="runtime-empty compact">${esc(t('runtimeNoCurrentExecutions'))}</div>`}
+      <div class="runtime-attempt-section-head"><h3>${esc(t('runtimeCurrentValid'))} · ${currentAttempts.length}</h3></div>
+      ${currentAttempts.length?`<div class="runtime-attempt-grid">${currentAttempts.map(a=>runtimeAttemptCard(a,findingsByAttempt[a.attempt_id]||[])).join('')}</div>`:`<div class="runtime-empty compact">${esc(t('runtimeNoCurrentExecutions'))}</div>`}
+    </div>
+    <div class="runtime-attempt-section runtime-needs-check">
+      <div class="runtime-attempt-section-head"><h3>${esc(t('runtimeNeedsCheck'))} · ${needsCheckAttempts.length}</h3></div>
+      ${needsCheckAttempts.length?`<div class="runtime-attempt-grid">${needsCheckAttempts.map(a=>runtimeAttemptCard(a,findingsByAttempt[a.attempt_id]||[])).join('')}</div>`:`<div class="runtime-empty compact">${esc(t('runtimeNoNeedsCheck'))}</div>`}
     </div>
     <div class="runtime-attempt-section">
       <div class="runtime-attempt-section-head">
