@@ -2,6 +2,7 @@ package runtimeobs
 
 import (
     "errors"
+    "fmt"
     "io"
     "strings"
     "time"
@@ -20,7 +21,7 @@ func ObserveHook(project,provider string,input io.Reader,now time.Time) (Executi
             Provider:strings.ToLower(strings.TrimSpace(spike.Provider)),SessionID:spike.SessionID,
             SessionName:spike.SessionName,SessionTitle:spike.SessionTitle,
             AttemptID:"rootmeta-"+rootSessionIDFor(spike.Provider,spike.SessionID),
-            HookEventName:spike.HookEventName,EvidenceSource:EvidenceHook,
+            HookEventName:spike.HookEventName,Reason:fmt.Sprint(spike.Extra["source"]),EvidenceSource:EvidenceHook,
             ObservationQuality:QualityObserved,RawSHA256:spike.RawSHA256,
         }
         event.EventID=eventIDFor(event)
