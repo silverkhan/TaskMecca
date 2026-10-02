@@ -663,6 +663,10 @@ func handler(project,root,version,instanceID,controlToken string,restartCh chan<
         _,_=w.Write(data)
     }
 
+    mux.HandleFunc("/terminal",func(w http.ResponseWriter,r *http.Request){ sendEmbedded(w,"terminal.html") })
+    mux.HandleFunc("/terminal/",func(w http.ResponseWriter,r *http.Request){ sendEmbedded(w,"terminal.html") })
+    mux.HandleFunc("/terminal.css",func(w http.ResponseWriter,r *http.Request){ sendEmbedded(w,"terminal.css") })
+    mux.HandleFunc("/terminal.js",func(w http.ResponseWriter,r *http.Request){ sendEmbedded(w,"terminal.js") })
     mux.HandleFunc("/style.css",func(w http.ResponseWriter,r *http.Request){ sendEmbedded(w,"style.css") })
     mux.HandleFunc("/app.js",func(w http.ResponseWriter,r *http.Request){ sendEmbedded(w,"app.js") })
     mux.HandleFunc("/sw.js",func(w http.ResponseWriter,r *http.Request){ sendEmbedded(w,"sw.js") })
