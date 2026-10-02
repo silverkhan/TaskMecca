@@ -62,7 +62,23 @@ func WorkloadSnapshot(project, root string) (map[string]any, error) {
         historyTotal = 0
         historyObservations = map[string]runtimeobs.ProviderObservation{}
     }
-    visibleAttempts := runtimeobs.VisibleWorkloadAttempts(runtimeLedger, 6)
+    rootSessions, rootErr := runtimeobs.BuildRootSessions(project, runtimeLedger, runtimeNow)
+    if rootErr != nil {
+        diagnostics = append(diagnostics, map[string]string{
+            "component": "runtime_root_sessions",
+            "error":     rootErr.Error(),
+        })
+        rootSessions = runtimeobs.RootSessionCollection{Items: []runtimeobs.RootSession{}}
+    }
+    visibleRootSessions := runtimeobs.VisibleRootSessions(rootSessions, 3)
+    visibleAttempts, visibleAttemptErr := runtimeobs.AttemptsForRootSessions(project, runtimeLedger, visibleRootSessions.Items, runtimeNow)
+    if visibleAttemptErr != nil {
+        diagnostics = append(diagnostics, map[string]string{
+            "component": "runtime_root_attempts",
+            "error":     visibleAttemptErr.Error(),
+        })
+        visibleAttempts = runtimeobs.VisibleWorkloadAttempts(runtimeLedger, 6)
+    }
     visibleFindings := runtimeobs.FilterFindingsForAttempts(runtimeLedger.Findings, visibleAttempts)
     sessionGroups := runtimeobs.ClassifySessions(visibleAttempts, visibleFindings)
     sessionGroups.Terminal = historyTotal
@@ -150,6 +166,12 @@ func WorkloadSnapshot(project, root string) (map[string]any, error) {
     runtimeCounts["stale"] = len(staleAttempts)
     hiddenHistory := historyTotal - visibleTerminalCount
     if hiddenHistory < 0 { hiddenHistory = 0 }
+    hiddenRootSessions := rootSessions.Total - len(visibleRootSessions.Items)
+    if hiddenRootSessions < 0 { hiddenRootSessions = 0 }
+    attemptRootSessions := map[string]string{}
+    for _, attempt := range visibleAttempts {
+        attemptRootSessions[attempt.AttemptID] = runtimeobs.RootSessionIDForAttempt(attempt)
+    }
 
     for id, row := range byID {
         if row.Location != "active" || row.State != "doing" {
@@ -189,6 +211,17 @@ func WorkloadSnapshot(project, root string) (map[string]any, error) {
             "hooks":    hookSetups,
             "counts":   runtimeCounts,
             "session_groups": sessionGroups,
+            "root_sessions": visibleRootSessions.Items,
+            "root_session_counts": map[string]any{
+                "active": rootSessions.Active,
+                "needs_check": rootSessions.NeedsCheck,
+                "terminal": rootSessions.Terminal,
+                "cleanup_eligible": rootSessions.CleanupEligible,
+                "total": rootSessions.Total,
+                "hidden": hiddenRootSessions,
+                "recent_terminal_limit": 3,
+            },
+            "attempt_root_sessions": attemptRootSessions,
             "history": map[string]any{
                 "total": historyTotal,
                 "shown_terminal": visibleTerminalCount,
