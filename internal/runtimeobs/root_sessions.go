@@ -274,13 +274,16 @@ func BuildRootSessions(project string,ledger Ledger,now time.Time) (RootSessionC
         last:=rootAttemptLastActivity(attempt)
         if last>group.session.LastActivityAt { group.session.LastActivityAt=last }
 
-        if attempt.SessionName!="" && (group.explicitNameAt=="" || last>=group.explicitNameAt) {
+        // Attempt-level names are a bootstrap hint captured with runtime activity.
+        // They must not outrank provider metadata just because the attempt had
+        // newer activity after a provider-side rename.
+        if attempt.SessionName!="" && group.explicitName=="" {
             group.explicitName=attempt.SessionName
-            group.explicitNameAt=last
+            group.explicitNameAt=rootAttemptCreatedAt(attempt)
         }
-        if attempt.SessionTitle!="" && (group.titleAt=="" || last>=group.titleAt) {
+        if attempt.SessionTitle!="" && group.title=="" {
             group.title=attempt.SessionTitle
-            group.titleAt=last
+            group.titleAt=rootAttemptCreatedAt(attempt)
         }
 
         switch SessionClassForAttempt(attempt,findingsByAttempt[attempt.AttemptID]) {
@@ -296,11 +299,14 @@ func BuildRootSessions(project string,ledger Ledger,now time.Time) (RootSessionC
     for key,group:=range groups {
         meta,ok:=metadata[key]
         if !ok { continue }
-        if meta.explicitName!="" && (group.explicitNameAt=="" || meta.explicitAt>=group.explicitNameAt) {
+        // session_metadata is the authoritative naming stream. A provider-side
+        // rename therefore wins over any stale name copied onto later attempt
+        // activity for the same immutable provider+session_id Root.
+        if meta.explicitName!="" {
             group.explicitName=meta.explicitName
             group.explicitNameAt=meta.explicitAt
         }
-        if meta.title!="" && (group.titleAt=="" || meta.titleAt>=group.titleAt) {
+        if meta.title!="" {
             group.title=meta.title
             group.titleAt=meta.titleAt
         }

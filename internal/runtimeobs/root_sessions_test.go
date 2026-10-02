@@ -232,3 +232,41 @@ func TestRefreshCodexRootNamesUsesShortNegativeTTL(t *testing.T) {
     _,_=RefreshCodexRootNames(project,ledger,now.Add(11*time.Second))
     if calls!=2 { t.Fatalf("retry calls=%d",calls) }
 }
+
+
+func TestProviderMetadataRenameOutranksStaleAttemptName(t *testing.T) {
+    project:=t.TempDir()
+    now:=time.Date(2026,10,3,1,0,0,0,time.UTC)
+    state:=ExecutionEvent{
+        EventKind:"state",ObservedAt:now.Add(-time.Minute).Format(time.RFC3339Nano),
+        AttemptID:"run-rename",Provider:"codex",SessionID:"session-rename",
+        SessionName:"이전 이름",RuntimeAgentID:"agent-rename",
+        State:StateRunning,EvidenceSource:EvidenceHook,ObservationQuality:QualityObserved,
+    }
+    if err:=AppendExecutionEvent(project,state); err!=nil { t.Fatal(err) }
+    meta:=ExecutionEvent{
+        EventKind:"session_metadata",ObservedAt:now.Format(time.RFC3339Nano),
+        AttemptID:"rootmeta-"+rootSessionIDFor("codex","session-rename"),
+        Provider:"codex",SessionID:"session-rename",SessionName:"변경된 이름",
+        Reason:"codex_app_server",EvidenceSource:EvidenceReconciled,ObservationQuality:QualityObserved,
+    }
+    meta.EventID=eventIDFor(meta)
+    if err:=AppendExecutionEvent(project,meta); err!=nil { t.Fatal(err) }
+
+    // Simulate later Root activity that still carries the old session name.
+    state.ObservedAt=now.Add(time.Minute).Format(time.RFC3339Nano)
+    state.EventID=""
+    state.EventID=eventIDFor(state)
+    if err:=AppendExecutionEvent(project,state); err!=nil { t.Fatal(err) }
+
+    ledger,err:=BuildLedger(project,10,now.Add(2*time.Minute)); if err!=nil { t.Fatal(err) }
+    roots,err:=BuildRootSessions(project,ledger,now.Add(2*time.Minute)); if err!=nil { t.Fatal(err) }
+    if len(roots.Items)!=1 { t.Fatalf("roots=%+v",roots.Items) }
+    root:=roots.Items[0]
+    if root.DisplayName!="변경된 이름" || root.DisplayNameSource!="provider_name" {
+        t.Fatalf("display=%q source=%q root=%+v",root.DisplayName,root.DisplayNameSource,root)
+    }
+    if root.RootSessionID!=rootSessionIDFor("codex","session-rename") {
+        t.Fatalf("root id changed: %s",root.RootSessionID)
+    }
+}
