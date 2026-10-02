@@ -32,7 +32,8 @@ func WorkloadSnapshot(project, root string) (map[string]any, error) {
     byID := preferredRows(rows)
     allItems := map[string]map[string]any{}
 
-    runtimeLedger, ledgerErr := runtimeobs.ReconcileLedger(project, 10, time.Now())
+    runtimeNow := time.Now()
+    runtimeLedger, ledgerErr := runtimeobs.ReconcileLedger(project, 10, runtimeNow)
     if ledgerErr != nil {
         diagnostics = append(diagnostics, map[string]string{
             "component": "runtime_observability",
@@ -40,11 +41,29 @@ func WorkloadSnapshot(project, root string) (map[string]any, error) {
         })
         runtimeLedger = runtimeobs.Ledger{
             Version:     1,
-            GeneratedAt: time.Now().Format(time.RFC3339Nano),
+            GeneratedAt: runtimeNow.Format(time.RFC3339Nano),
             Attempts:    []runtimeobs.Attempt{},
             Findings:    []runtimeobs.LedgerFinding{},
         }
     }
+
+    if _, retentionErr := runtimeobs.MaybeMaintainExecutionHistory(project, runtimeLedger, runtimeNow); retentionErr != nil {
+        diagnostics = append(diagnostics, map[string]string{
+            "component": "runtime_retention",
+            "error":     retentionErr.Error(),
+        })
+    }
+    historyTotal, historyObservations, historyErr := runtimeobs.ExecutionHistoryStats(project, runtimeLedger, runtimeNow)
+    if historyErr != nil {
+        diagnostics = append(diagnostics, map[string]string{
+            "component": "runtime_history",
+            "error":     historyErr.Error(),
+        })
+        historyTotal = 0
+        historyObservations = map[string]runtimeobs.ProviderObservation{}
+    }
+    visibleAttempts := runtimeobs.VisibleWorkloadAttempts(runtimeLedger, 6)
+    visibleFindings := runtimeobs.FilterFindingsForAttempts(runtimeLedger.Findings, visibleAttempts)
 
     hookSetups := []map[string]any{}
     for _, provider := range []string{"codex", "claude"} {
@@ -56,29 +75,13 @@ func WorkloadSnapshot(project, root string) (map[string]any, error) {
             })
             continue
         }
+        providerObservation := historyObservations[provider]
         observedEvents := map[string]bool{
-            "activity": false,
-            "start":    false,
-            "stop":     false,
+            "activity": providerObservation.Activity,
+            "start":    providerObservation.Start,
+            "stop":     providerObservation.Stop,
         }
-        lastObservedAt := ""
-        for _, attempt := range runtimeLedger.Attempts {
-            if attempt.Provider != provider {
-                continue
-            }
-            if attempt.ActivityCount > 0 {
-                observedEvents["activity"] = true
-            }
-            if attempt.StartedAt != "" {
-                observedEvents["start"] = true
-            }
-            if attempt.EndedAt != "" {
-                observedEvents["stop"] = true
-            }
-            if attempt.LastObservedAt > lastObservedAt {
-                lastObservedAt = attempt.LastObservedAt
-            }
-        }
+        lastObservedAt := providerObservation.LastObservedAt
         observed := observedEvents["activity"] || observedEvents["start"] || observedEvents["stop"]
         state := "unconfigured"
         if setup.Installed {
@@ -104,20 +107,26 @@ func WorkloadSnapshot(project, root string) (map[string]any, error) {
         })
     }
 
+    activeCount := 0
+    visibleTerminalCount := 0
     runtimeCounts := map[string]int{
-        "total":     len(runtimeLedger.Attempts),
+        "total":     0,
         "running":   0,
-        "terminal":  0,
+        "terminal":  historyTotal,
         "unbound":   0,
         "ambiguous": 0,
         "stale":     0,
     }
     for _, attempt := range runtimeLedger.Attempts {
-        if attempt.Terminal {
-            runtimeCounts["terminal"]++
-        } else if attempt.CurrentState == runtimeobs.StateRunning || attempt.CurrentState == runtimeobs.StateStarting {
-            runtimeCounts["running"]++
+        if !attempt.Terminal {
+            activeCount++
+            if attempt.CurrentState == runtimeobs.StateRunning || attempt.CurrentState == runtimeobs.StateStarting {
+                runtimeCounts["running"]++
+            }
         }
+    }
+    for _, attempt := range visibleAttempts {
+        if attempt.Terminal { visibleTerminalCount++ }
         switch attempt.BindingState {
         case runtimeobs.BindingUnbound:
             runtimeCounts["unbound"]++
@@ -125,13 +134,18 @@ func WorkloadSnapshot(project, root string) (map[string]any, error) {
             runtimeCounts["ambiguous"]++
         }
     }
+    runtimeCounts["total"] = activeCount + historyTotal
     staleAttempts := map[string]bool{}
-    for _, finding := range runtimeLedger.Findings {
-        if finding.Code == "stale" && finding.AttemptID != "" {
+    visibleIDs := map[string]bool{}
+    for _, attempt := range visibleAttempts { visibleIDs[attempt.AttemptID] = true }
+    for _, finding := range visibleFindings {
+        if finding.Code == "stale" && finding.AttemptID != "" && visibleIDs[finding.AttemptID] {
             staleAttempts[finding.AttemptID] = true
         }
     }
     runtimeCounts["stale"] = len(staleAttempts)
+    hiddenHistory := historyTotal - visibleTerminalCount
+    if hiddenHistory < 0 { hiddenHistory = 0 }
 
     for id, row := range byID {
         if row.Location != "active" || row.State != "doing" {
@@ -166,10 +180,17 @@ func WorkloadSnapshot(project, root string) (map[string]any, error) {
         "workload":    workload,
         "all_items":   allItems,
         "runtime_observability": map[string]any{
-            "attempts": runtimeLedger.Attempts,
-            "findings": runtimeLedger.Findings,
+            "attempts": visibleAttempts,
+            "findings": visibleFindings,
             "hooks":    hookSetups,
             "counts":   runtimeCounts,
+            "history": map[string]any{
+                "total": historyTotal,
+                "shown_terminal": visibleTerminalCount,
+                "hidden": hiddenHistory,
+                "recent_limit": 6,
+                "retention": runtimeobs.RetentionPolicy(),
+            },
             "generated_at": runtimeLedger.GeneratedAt,
         },
         "diagnostics": diagnostics,
