@@ -9,6 +9,7 @@ import (
     "fmt"
     "io"
     "net/http"
+    "net/url"
     "os"
     "os/exec"
     "path/filepath"
@@ -198,6 +199,15 @@ func releaseLocation() (string,string) {
     return repoName,tag
 }
 
+func cacheBustURL(rawURL, token string) string {
+    parsed,err:=url.Parse(rawURL)
+    if err!=nil { return rawURL }
+    query:=parsed.Query()
+    query.Set("_tm",token)
+    parsed.RawQuery=query.Encode()
+    return parsed.String()
+}
+
 func releaseBase() string {
     repoName,tag:=releaseLocation()
     return "https://github.com/"+repoName+"/releases/download/"+tag
@@ -266,12 +276,13 @@ func httpGet(url string) ([]byte,error) {
 func latestVersionForChannel(value string) (string,error) {
     base,err:=releaseBaseForChannel(value)
     if err!=nil { return "",err }
-    data,err:=httpGet(base+"/VERSION.txt")
+    token:=strconv.FormatInt(time.Now().UnixNano(),10)
+    data,err:=httpGet(cacheBustURL(base+"/VERSION.txt",token))
     if err==nil { return normalizeVersion(string(data)),nil }
     releaseErr:=err
     fallback,fallbackErr:=versionFallbackURLForChannel(value)
     if fallbackErr!=nil { return "",fallbackErr }
-    data,err=httpGet(fallback)
+    data,err=httpGet(cacheBustURL(fallback,token))
     if err!=nil { return "",fmt.Errorf("release version check failed: %v; fallback failed: %v",releaseErr,err) }
     return normalizeVersion(string(data)),nil
 }
@@ -459,10 +470,11 @@ func ReadCachedVersionInfo(current string) VersionInfo {
 func CheckLatest(current string) VersionInfo {
     current=normalizeVersion(current)
     info:=VersionInfo{Current:current,Channel:CurrentChannel(),CheckedAt:time.Now().Format(time.RFC3339)}
-    data,err:=httpGet(releaseBase()+"/VERSION.txt")
+    token:=strconv.FormatInt(time.Now().UnixNano(),10)
+    data,err:=httpGet(cacheBustURL(releaseBase()+"/VERSION.txt",token))
     if err!=nil {
         releaseErr:=err
-        data,err=httpGet(versionFallbackURL())
+        data,err=httpGet(cacheBustURL(versionFallbackURL(),token))
         if err!=nil {
             info.Error=fmt.Sprintf("release version check failed: %v; fallback failed: %v",releaseErr,err)
             return info
@@ -504,12 +516,14 @@ func checksumFor(data []byte,asset string) (string,error) {
     return "",fmt.Errorf("checksum entry missing for %s",asset)
 }
 
-func fetchReleaseBinary(base string) ([]byte,error) {
+func fetchReleaseBinary(base,targetVersion string) ([]byte,error) {
     asset,err:=assetName()
     if err!=nil { return nil,err }
-    binary,err:=httpGet(base+"/"+asset)
+    token:=strings.TrimSpace(targetVersion)
+    if token=="" { token=strconv.FormatInt(time.Now().UnixNano(),10) }
+    binary,err:=httpGet(cacheBustURL(base+"/"+asset,token))
     if err!=nil { return nil,err }
-    sums,err:=httpGet(base+"/SHA256SUMS.txt")
+    sums,err:=httpGet(cacheBustURL(base+"/SHA256SUMS.txt",token))
     if err!=nil { return nil,err }
     expected,err:=checksumFor(sums,asset)
     if err!=nil { return nil,err }
@@ -562,7 +576,7 @@ func Upgrade(current string) (UpgradeResult,error) {
         result.To=current
         return result,nil
     }
-    binary,err:=fetchReleaseBinary(releaseBase())
+    binary,err:=fetchReleaseBinary(releaseBase(),info.Latest)
     if err!=nil { return result,err }
     result,err=installBinary(current,info.Latest,binary)
     result.Channel=CurrentChannel()
