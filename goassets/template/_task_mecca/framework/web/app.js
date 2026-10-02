@@ -2070,10 +2070,14 @@ function runtimeAttemptCard(attempt,findings) {
   const transitions=(attempt.recent_transitions||[]).slice(-8);
   const bindingClass=attempt.binding_state==='ambiguous'?'danger':attempt.binding_state==='unbound'?'warn':'ok';
   const terminalClass=['errored','interrupted','shutdown'].includes(attempt.current_state)?'danger':attempt.current_state==='completed'?'ok':'';
-  const findingHTML=(findings||[]).map(x=>`<span class="badge ${x.severity==='warning'?'warn':''}">${esc(x.code)}</span>`).join('');
-  return `<article class="runtime-attempt-card">
-    <div class="runtime-attempt-head">
-      <div>
+  const findingHTML=(findings||[]).map(x=>`<span class="badge ${x.severity==='warning'?'warn':x.severity==='error'?'danger':''}">${esc(x.code)}</span>`).join('');
+  const attentionState=['waiting_user','waiting_approval','errored','interrupted','shutdown'].includes(attempt.current_state);
+  const attentionFinding=(findings||[]).some(x=>x.severity==='warning'||x.severity==='error');
+  const openByDefault=attentionState||attentionFinding;
+  const elapsedAttrs=`class="runtime-elapsed" data-started-at="${esc(attempt.started_at||'')}" data-ended-at="${esc(attempt.ended_at||'')}" data-elapsed-ms="${Number(attempt.elapsed_ms||0)}"`;
+  return `<details class="runtime-attempt-card runtime-attempt-disclosure" ${openByDefault?'open':''}>
+    <summary class="runtime-attempt-summary">
+      <div class="runtime-attempt-identity">
         <div class="runtime-attempt-name">${esc(name)}</div>
         <div class="runtime-attempt-sub">${esc(attempt.provider||'-')} · ${esc(task)}</div>
       </div>
@@ -2081,25 +2085,30 @@ function runtimeAttemptCard(attempt,findings) {
         <span class="status ${esc(attempt.current_state||'runtime_unknown')} ${terminalClass}">${esc(runtimeStateLabel(attempt.current_state))}</span>
         <span class="badge ${bindingClass}">${esc(runtimeBindingLabel(attempt.binding_state))}</span>
       </div>
-    </div>
-    <div class="runtime-meta-grid">
-      <div><span>${esc(t('runtimeAttempt'))}</span><strong title="${esc(attempt.attempt_id||'')}">${esc(attempt.attempt_id||'-')}</strong></div>
-      <div><span>${esc(t('runtimeId'))}</span><strong title="${esc(attempt.runtime_agent_id||'')}">${esc(attempt.runtime_agent_id||'-')}</strong></div>
-      <div><span>${esc(t('runtimeStarted'))}</span><strong>${esc(dateTimeLabel(attempt.started_at,true))}</strong></div>
-      <div><span>${esc(t('runtimeLastActivity'))}</span><strong title="${esc(dateTimeLabel(last))}">${esc(last?ago(last):'-')}</strong></div>
-      <div><span>${esc(t('runtimeEnded'))}</span><strong>${esc(dateTimeLabel(attempt.ended_at,true))}</strong></div>
-      <div><span>${esc(t('runtimeElapsed'))}</span><strong class="runtime-elapsed" data-started-at="${esc(attempt.started_at||'')}" data-ended-at="${esc(attempt.ended_at||'')}" data-elapsed-ms="${Number(attempt.elapsed_ms||0)}">${esc(fmtSec(runtimeElapsedSeconds(attempt)))}</strong></div>
-      <div><span>${esc(t('runtimeObservedActive'))}</span><strong>${esc(active)}</strong></div>
-      <div><span>${esc(t('runtimeWaiting'))}</span><strong>${esc(waiting)}</strong></div>
-    </div>
-    ${findingHTML?`<div class="runtime-findings">${findingHTML}</div>`:''}
-    <details class="runtime-history" ${transitions.length<=4?'open':''}>
-      <summary>${esc(t('runtimeRecentTransitions'))} · ${transitions.length}</summary>
-      <div class="runtime-transition-list">
-        ${transitions.length?transitions.map(row=>`<div class="runtime-transition"><time>${esc(dateTimeLabel(row.at,true))}</time><strong>${esc(runtimeTransitionLabel(row))}</strong><span>${esc((row.evidence_source||'-')+'/'+(row.observation_quality||'-'))}</span></div>`).join(''):`<div class="worker-empty">-</div>`}
+      <div class="runtime-attempt-glance">
+        <div><span>${esc(t('runtimeElapsed'))}</span><strong ${elapsedAttrs}>${esc(fmtSec(runtimeElapsedSeconds(attempt)))}</strong></div>
+        <div><span>${esc(t('runtimeLastActivity'))}</span><strong title="${esc(dateTimeLabel(last))}">${esc(last?ago(last):'-')}</strong></div>
       </div>
-    </details>
-  </article>`;
+      <span class="runtime-attempt-chevron" aria-hidden="true">›</span>
+    </summary>
+    <div class="runtime-attempt-detail">
+      <div class="runtime-meta-grid">
+        <div><span>${esc(t('runtimeAttempt'))}</span><strong title="${esc(attempt.attempt_id||'')}">${esc(attempt.attempt_id||'-')}</strong></div>
+        <div><span>${esc(t('runtimeId'))}</span><strong title="${esc(attempt.runtime_agent_id||'')}">${esc(attempt.runtime_agent_id||'-')}</strong></div>
+        <div><span>${esc(t('runtimeStarted'))}</span><strong>${esc(dateTimeLabel(attempt.started_at,true))}</strong></div>
+        <div><span>${esc(t('runtimeEnded'))}</span><strong>${esc(dateTimeLabel(attempt.ended_at,true))}</strong></div>
+        <div><span>${esc(t('runtimeObservedActive'))}</span><strong>${esc(active)}</strong></div>
+        <div><span>${esc(t('runtimeWaiting'))}</span><strong>${esc(waiting)}</strong></div>
+      </div>
+      ${findingHTML?`<div class="runtime-findings">${findingHTML}</div>`:''}
+      <details class="runtime-history">
+        <summary>${esc(t('runtimeRecentTransitions'))} · ${transitions.length}</summary>
+        <div class="runtime-transition-list">
+          ${transitions.length?transitions.map(row=>`<div class="runtime-transition"><time>${esc(dateTimeLabel(row.at,true))}</time><strong>${esc(runtimeTransitionLabel(row))}</strong><span>${esc((row.evidence_source||'-')+'/'+(row.observation_quality||'-'))}</span></div>`).join(''):`<div class="worker-empty">-</div>`}
+        </div>
+      </details>
+    </div>
+  </details>`;
 }
 function runtimeHookStateLabel(stateValue) {
   return stateValue==='observed'?t('runtimeHookObserved'):stateValue==='verification_required'?t('runtimeHookVerificationRequired'):t('runtimeHookUnconfigured');
