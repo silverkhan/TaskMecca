@@ -508,9 +508,19 @@ func handler(project,root,version,instanceID,controlToken string,restartCh chan<
     })
 
     mux.HandleFunc("/api/runtime/hooks",func(w http.ResponseWriter,r *http.Request) {
-        if r.Method!="POST" { writeJSON(w,map[string]any{"error":"POST required"},405); return }
-        if r.Header.Get("X-Task-Mecca-Action")!="1" { writeJSON(w,map[string]any{"error":"maintenance action header required"},403); return }
         activeProject:=projectFor(r)
+        if r.Method=="GET" {
+            results:=[]runtimeobs.HookSetup{}
+            for _,name:=range []string{"codex","claude"} {
+                setup,err:=runtimeobs.HookStatus(activeProject,name)
+                if err!=nil { writeJSON(w,map[string]any{"error":err.Error(),"provider":name},500); return }
+                results=append(results,setup)
+            }
+            writeJSON(w,map[string]any{"hooks":results},200)
+            return
+        }
+        if r.Method!="POST" { writeJSON(w,map[string]any{"error":"GET or POST required"},405); return }
+        if r.Header.Get("X-Task-Mecca-Action")!="1" { writeJSON(w,map[string]any{"error":"maintenance action header required"},403); return }
         var body struct{
             Provider string `json:"provider"`
             Action string `json:"action"`
