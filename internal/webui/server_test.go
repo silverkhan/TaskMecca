@@ -634,3 +634,52 @@ func TestRunAutoPublishesLocalStateBeforeDirectTLSReady(t *testing.T) {
         t.Fatal("Web did not stop after test")
     }
 }
+
+
+func TestHandlerServesUninitializedBacklogAsNormalProject(t *testing.T) {
+    root:=t.TempDir()
+    if err:=os.MkdirAll(filepath.Join(root,"_task_mecca"),0755); err!=nil { t.Fatal(err) }
+
+    handler,err:=Handler(root,"","test")
+    if err!=nil { t.Fatal(err) }
+
+    for _,path:=range []string{"/api/backlog/tasks","/api/snapshot","/api/attention","/api/workload","/api/issues"} {
+        req:=httptest.NewRequest(http.MethodGet,path,nil)
+        rec:=httptest.NewRecorder()
+        handler.ServeHTTP(rec,req)
+        if rec.Code!=http.StatusOK {
+            t.Fatalf("%s status=%d body=%s",path,rec.Code,rec.Body.String())
+        }
+        payload:=map[string]any{}
+        if err:=json.Unmarshal(rec.Body.Bytes(),&payload); err!=nil { t.Fatalf("%s: %v",path,err) }
+        selection,ok:=payload["backlog_selection"].(map[string]any)
+        if !ok { t.Fatalf("%s backlog_selection=%T",path,payload["backlog_selection"]) }
+        if selected,ok:=selection["selected"].(string); !ok || selected!="" {
+            t.Fatalf("%s selected=%#v",path,selection["selected"])
+        }
+    }
+
+    req:=httptest.NewRequest(http.MethodGet,"/api/backlog/tasks",nil)
+    rec:=httptest.NewRecorder()
+    handler.ServeHTTP(rec,req)
+    payload:=map[string]any{}
+    if err:=json.Unmarshal(rec.Body.Bytes(),&payload); err!=nil { t.Fatal(err) }
+    presence,ok:=payload["backlog_presence"].(map[string]any)
+    if !ok || presence["status"]!="uninitialized" {
+        t.Fatalf("backlog_presence=%T %+v",payload["backlog_presence"],payload["backlog_presence"])
+    }
+
+    req=httptest.NewRequest(http.MethodGet,"/app.js",nil)
+    rec=httptest.NewRecorder()
+    handler.ServeHTTP(rec,req)
+    appJS:=rec.Body.String()
+    for _,needle:=range []string{
+        "backlogUninitializedTitle:'아직 등록된 작업이 없습니다.'",
+        "backlogUninitializedBody:'첫 작업을 등록하면 백로그가 자동으로 생성됩니다.'",
+        "backlogUninitializedTitle:'No tasks have been registered yet.'",
+        "backlogUninitializedBody:'The backlog will be created automatically when the first task is registered.'",
+        "presence.status === 'uninitialized'",
+    } {
+        if !contains(appJS,needle) { t.Fatalf("app.js missing uninitialized backlog UX marker %q",needle) }
+    }
+}
