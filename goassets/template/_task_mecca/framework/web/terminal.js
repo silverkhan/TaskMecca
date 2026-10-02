@@ -15,18 +15,18 @@
       remoteOff:'원격 Terminal 꺼짐',
       enableRemote:'원격 Terminal 켜기',
       disableRemote:'원격 Terminal 끄기',
-      remoteEnableTitle:'원격 Terminal을 허용하시겠습니까?',
-      remoteEnableBody:'이 설정을 켜면 이 PC의 Task Mecca Tailscale HTTPS 주소에서 프로젝트 셸을 실행할 수 있습니다. Tailnet 접근 권한이 있는 기기만 사용하세요.',
+      remoteEnableTitle:'원격 Terminal을 켜시겠습니까?',
+      remoteEnableBody:'원격 Terminal은 Tailscale HTTPS로 접속한 기기에서만 사용할 수 있습니다. Tailnet 접근 권한이 있는 기기만 사용하세요.',
       remoteDisableBody:'원격 Terminal을 끄면 현재 Terminal 세션도 종료됩니다.',
       localAccessTitle:'로컬 Terminal 사용 가능',
       localAccessBody:'이 PC의 localhost에서 접속 중입니다. Terminal은 현재 프로젝트 루트에서 실행됩니다.',
       remoteAccessTitle:'Tailscale 원격 Terminal 사용 가능',
-      remoteAccessBody:'Tailscale HTTPS를 통해 연결되었습니다. 원격 Terminal 허용 설정이 켜져 있습니다.',
+      remoteAccessBody:'Tailscale HTTPS를 통해 연결되었습니다. 별도의 localhost 사전 활성화 없이 바로 사용할 수 있습니다.',
       remoteLockedTitle:'원격 Terminal이 꺼져 있습니다',
-      remoteLockedBody:'보안을 위해 원격 Terminal은 기본적으로 꺼져 있습니다. 이 PC에서 아래 localhost 주소로 Task Mecca를 열고 원격 Terminal을 한 번 활성화하세요.',
-      blockedTitle:'이 연결에서는 Terminal을 사용할 수 없습니다',
-      blockedBody:'Terminal은 localhost 또는 Task Mecca가 제공하는 Tailscale HTTPS 연결에서만 사용할 수 있습니다. 일반 LAN/공인망 접속은 차단됩니다.',
-      machineSetting:'원격 허용은 프로젝트가 아니라 이 PC의 Task Mecca Web 전체에 적용됩니다.',
+      remoteLockedBody:'이 PC의 원격 Terminal 설정이 꺼져 있습니다. Tailscale HTTPS로 접속한 현재 화면에서도 다시 켤 수 있습니다.',
+      blockedTitle:'원격 Terminal은 Tailscale에서만 사용할 수 있습니다',
+      blockedBody:'현재 연결은 Tailscale HTTPS로 확인되지 않았습니다. 원격에서는 Task Mecca의 Tailscale HTTPS 주소로 접속하세요. 일반 LAN/공인망 Terminal 접속은 차단됩니다.',
+      machineSetting:'원격 Terminal은 Tailscale HTTPS에서만 허용됩니다. localhost는 항상 사용할 수 있으며 일반 LAN/공인망에서는 차단됩니다.',
       start:'Terminal 시작',
       restart:'재시작',
       close:'닫기',
@@ -64,17 +64,17 @@
       enableRemote:'Enable Remote Terminal',
       disableRemote:'Disable Remote Terminal',
       remoteEnableTitle:'Enable Remote Terminal?',
-      remoteEnableBody:'This allows project shells through this machine’s Task Mecca Tailscale HTTPS address. Only devices authorized on your tailnet should have access.',
+      remoteEnableBody:'Remote Terminal is available only through Tailscale HTTPS. Use it only from devices authorized on your tailnet.',
       remoteDisableBody:'Turning Remote Terminal off also closes current Terminal sessions.',
       localAccessTitle:'Local Terminal available',
       localAccessBody:'You are connected through localhost. The shell starts at the current project root.',
       remoteAccessTitle:'Tailscale Remote Terminal available',
-      remoteAccessBody:'You are connected through Tailscale HTTPS and Remote Terminal is enabled.',
+      remoteAccessBody:'You are connected through Tailscale HTTPS. No prior localhost activation is required.',
       remoteLockedTitle:'Remote Terminal is off',
-      remoteLockedBody:'Remote Terminal is disabled by default. On this PC, open Task Mecca using the localhost address below and enable Remote Terminal once.',
-      blockedTitle:'Terminal is unavailable on this connection',
-      blockedBody:'Terminal is available only through localhost or Task Mecca Tailscale HTTPS. Ordinary LAN/public-network access is blocked.',
-      machineSetting:'Remote permission applies to Task Mecca Web on this machine, not to one project.',
+      remoteLockedBody:'Remote Terminal is disabled on this machine. You can enable it again directly from this Tailscale HTTPS page.',
+      blockedTitle:'Remote Terminal is available only through Tailscale',
+      blockedBody:'This connection was not verified as Tailscale HTTPS. For remote access, open Task Mecca through its Tailscale HTTPS address. Ordinary LAN/public-network Terminal access is blocked.',
+      machineSetting:'Remote Terminal is allowed only through Tailscale HTTPS. Localhost is always available; ordinary LAN/public-network access is blocked.',
       start:'Start terminal',
       restart:'Restart',
       close:'Close',
@@ -200,8 +200,9 @@
       setConnection('ok', t('tailscale'));
     } else if (s.connection === 'tailscale') {
       title = t('remoteLockedTitle');
-      body = t('remoteLockedBody') + '<br><code>' + escapeHTML(localTerminalURL()) + '</code>';
+      body = t('remoteLockedBody');
       pill = '<span class="terminal-pill warn">' + t('remoteOff') + '</span>';
+      actions = s.can_enable_remote ? '<button type="button" class="terminal-btn secondary" id="remoteToggleBtn">' + t('enableRemote') + '</button>' : '';
       setConnection('warn', t('tailscale'));
     } else {
       title = t('blockedTitle');
