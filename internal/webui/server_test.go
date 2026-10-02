@@ -136,6 +136,11 @@ func TestHandlerServesDashboardAPIsAndAssets(t *testing.T) {
         "data-runtime-history-key",
         "state.runtimeAttemptDisclosure[details.dataset.runtimeAttemptKey]=details.open",
         "state.runtimeTransitionDisclosure[details.dataset.runtimeHistoryKey]=details.open",
+        "runtimeStorageOpen",
+        "runtimeStoragePanel",
+        "performRuntimeCleanup",
+        "runtimeNeedsCheck",
+        "runtimeCurrentValid",
     } {
         if !contains(appJS,needle) { t.Fatalf("app.js missing compact runtime card state marker %q",needle) }
     }
@@ -389,6 +394,74 @@ func TestRuntimeWorkloadCapsTerminalCardsAndHistoryPaginates(t *testing.T) {
     if page["total"]!=float64(8) || page["total_pages"]!=float64(3) || page["page"]!=float64(2) {
         t.Fatalf("history page=%+v",page)
     }
+}
+
+func TestRuntimeSessionManagerClassifiesAndExposesStorageAPI(t *testing.T) {
+    root:=t.TempDir()
+    backlogDir:=filepath.Join(root,"_task_mecca","data","backlog")
+    if err:=os.MkdirAll(backlogDir,0755); err!=nil { t.Fatal(err) }
+    if err:=os.WriteFile(filepath.Join(backlogDir,"000001.A-1.todo.md"),[]byte("# A-1 Test\n- Agent: -\n- 변경범위: -\n- 선행: -\n- 연관: -\n"),0644); err!=nil { t.Fatal(err) }
+
+    now:=time.Now().UTC()
+    events:=[]runtimeobs.ExecutionEvent{
+        {
+            EventKind:"state",ObservedAt:now.Add(-time.Minute).Format(time.RFC3339Nano),
+            AttemptID:"run-current",Provider:"codex",RuntimeAgentID:"agent-current",
+            State:runtimeobs.StateRunning,EvidenceSource:runtimeobs.EvidenceHook,ObservationQuality:runtimeobs.QualityObserved,
+        },
+        {
+            EventKind:"state",ObservedAt:now.Add(-2*time.Hour).Format(time.RFC3339Nano),
+            AttemptID:"run-stale",Provider:"codex",RuntimeAgentID:"agent-stale",
+            State:runtimeobs.StateRunning,EvidenceSource:runtimeobs.EvidenceHook,ObservationQuality:runtimeobs.QualityObserved,
+        },
+        {
+            EventKind:"state",ObservedAt:now.Add(-20*time.Minute).Format(time.RFC3339Nano),
+            AttemptID:"run-done",Provider:"codex",RuntimeAgentID:"agent-done",
+            State:runtimeobs.StateCompleted,Terminal:true,EvidenceSource:runtimeobs.EvidenceHook,ObservationQuality:runtimeobs.QualityObserved,
+        },
+    }
+    for _,event:=range events {
+        if err:=runtimeobs.AppendExecutionEvent(root,event); err!=nil { t.Fatal(err) }
+    }
+
+    handler,err:=Handler(root,"","test")
+    if err!=nil { t.Fatal(err) }
+
+    req:=httptest.NewRequest(http.MethodGet,"/api/workload",nil)
+    rec:=httptest.NewRecorder()
+    handler.ServeHTTP(rec,req)
+    if rec.Code!=http.StatusOK { t.Fatalf("workload status=%d body=%s",rec.Code,rec.Body.String()) }
+    payload:=map[string]any{}
+    if err:=json.Unmarshal(rec.Body.Bytes(),&payload); err!=nil { t.Fatal(err) }
+    runtimeView,ok:=payload["runtime_observability"].(map[string]any)
+    if !ok { t.Fatalf("runtime_observability=%T",payload["runtime_observability"]) }
+    groups,ok:=runtimeView["session_groups"].(map[string]any)
+    if !ok { t.Fatalf("session_groups=%T %+v",runtimeView["session_groups"],runtimeView["session_groups"]) }
+    if groups["current"]!=float64(1) || groups["needs_check"]!=float64(1) || groups["terminal"]!=float64(1) {
+        t.Fatalf("session groups=%+v",groups)
+    }
+
+    req=httptest.NewRequest(http.MethodGet,"/api/runtime/storage",nil)
+    rec=httptest.NewRecorder()
+    handler.ServeHTTP(rec,req)
+    if rec.Code!=http.StatusOK { t.Fatalf("storage status=%d body=%s",rec.Code,rec.Body.String()) }
+    storage:=map[string]any{}
+    if err:=json.Unmarshal(rec.Body.Bytes(),&storage); err!=nil { t.Fatal(err) }
+    if storage["total_bytes"].(float64)<=0 { t.Fatalf("storage=%+v",storage) }
+    if _,ok:=storage["cleanup"].(map[string]any); !ok { t.Fatalf("cleanup preview missing: %+v",storage) }
+
+    req=httptest.NewRequest(http.MethodPost,"/api/runtime/storage",strings.NewReader(`{"action":"cleanup"}`))
+    req.Header.Set("Content-Type","application/json")
+    rec=httptest.NewRecorder()
+    handler.ServeHTTP(rec,req)
+    if rec.Code!=http.StatusForbidden { t.Fatalf("cleanup without action header status=%d",rec.Code) }
+
+    req=httptest.NewRequest(http.MethodPost,"/api/runtime/storage",strings.NewReader(`{"action":"cleanup"}`))
+    req.Header.Set("Content-Type","application/json")
+    req.Header.Set("X-Task-Mecca-Action","1")
+    rec=httptest.NewRecorder()
+    handler.ServeHTTP(rec,req)
+    if rec.Code!=http.StatusOK { t.Fatalf("cleanup status=%d body=%s",rec.Code,rec.Body.String()) }
 }
 
 func TestTailscaleIPv4Range(t *testing.T) {
