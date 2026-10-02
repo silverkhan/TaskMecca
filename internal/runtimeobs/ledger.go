@@ -229,10 +229,54 @@ type accumulator struct {
     taskIDs map[string]bool
     agentPaths map[string]bool
     parents map[string]bool
+    bindingPriority int
+    bindingAt string
 }
 
 func newAccumulator(id string) *accumulator {
     return &accumulator{attempt:Attempt{AttemptID:id,BindingState:BindingUnbound,CurrentState:StateRuntimeUnknown,BindingEvidence:map[string]string{}},taskIDs:map[string]bool{},agentPaths:map[string]bool{},parents:map[string]bool{}}
+}
+
+func bindingPriority(e ExecutionEvent) int {
+    source:=strings.ToLower(strings.TrimSpace(e.BindingSource))
+    switch {
+    case e.ObservationQuality==QualityAuthoritative || e.EvidenceSource==EvidenceManualBinding || source=="explicit":
+        return 300
+    case e.EvidenceSource==EvidenceReconciled || source=="reconciled":
+        return 200
+    default:
+        return 100
+    }
+}
+
+func resetBindingValues(a *accumulator,e ExecutionEvent) {
+    a.taskIDs=map[string]bool{}
+    a.agentPaths=map[string]bool{}
+    a.parents=map[string]bool{}
+    addValue(a.taskIDs,e.TaskID)
+    addValue(a.agentPaths,e.AgentPath)
+    addValue(a.parents,e.ParentAttemptID)
+    a.attempt.BindingEvidence=map[string]string{}
+    for k,v:=range e.BindingEvidence {
+        if strings.TrimSpace(v)!="" { a.attempt.BindingEvidence[k]=v }
+    }
+    a.attempt.BindingSource=e.BindingSource
+    a.bindingPriority=bindingPriority(e)
+    a.bindingAt=e.ObservedAt
+}
+
+func applyCurrentBinding(a *accumulator) {
+    if len(a.taskIDs)>1 || len(a.agentPaths)>1 || len(a.parents)>1 {
+        a.attempt.BindingState=BindingAmbiguous
+        a.attempt.TaskID=""
+        a.attempt.AgentPath=""
+        a.attempt.ParentAttemptID=""
+        return
+    }
+    a.attempt.BindingState=BindingBound
+    a.attempt.TaskID=onlyValue(a.taskIDs)
+    a.attempt.AgentPath=onlyValue(a.agentPaths)
+    a.attempt.ParentAttemptID=onlyValue(a.parents)
 }
 
 func (a *accumulator) apply(e ExecutionEvent) {
@@ -264,14 +308,20 @@ func (a *accumulator) apply(e ExecutionEvent) {
         }
         if e.Terminal && !terminalAlready { a.attempt.Terminal=true; a.attempt.EndedAt=e.ObservedAt }
     case "binding":
-        addValue(a.taskIDs,e.TaskID); addValue(a.agentPaths,e.AgentPath); addValue(a.parents,e.ParentAttemptID)
-        if e.BindingSource!="" { a.attempt.BindingSource=e.BindingSource }
-        for k,v:=range e.BindingEvidence { if strings.TrimSpace(v)!="" { a.attempt.BindingEvidence[k]=v } }
-        if len(a.taskIDs)>1 || len(a.agentPaths)>1 || len(a.parents)>1 {
-            a.attempt.BindingState=BindingAmbiguous
-            a.attempt.TaskID=""; a.attempt.AgentPath=""; a.attempt.ParentAttemptID=""
-        } else {
-            a.attempt.BindingState=BindingBound; a.attempt.TaskID=onlyValue(a.taskIDs); a.attempt.AgentPath=onlyValue(a.agentPaths); a.attempt.ParentAttemptID=onlyValue(a.parents)
+        priority:=bindingPriority(e)
+        switch {
+        case a.bindingAt=="" || priority>a.bindingPriority || (priority==a.bindingPriority && e.ObservedAt>a.bindingAt):
+            resetBindingValues(a,e)
+            applyCurrentBinding(a)
+        case priority==a.bindingPriority && e.ObservedAt==a.bindingAt:
+            addValue(a.taskIDs,e.TaskID)
+            addValue(a.agentPaths,e.AgentPath)
+            addValue(a.parents,e.ParentAttemptID)
+            for k,v:=range e.BindingEvidence { if strings.TrimSpace(v)!="" { a.attempt.BindingEvidence[k]=v } }
+            applyCurrentBinding(a)
+        default:
+            // Older or lower-confidence bindings remain in the append-only audit
+            // trail but do not poison the current effective binding.
         }
         a.transitions=append(a.transitions,Transition{At:e.ObservedAt,Kind:"binding",EvidenceSource:e.EvidenceSource,ObservationQuality:e.ObservationQuality,Reason:string(a.attempt.BindingState)})
     }
