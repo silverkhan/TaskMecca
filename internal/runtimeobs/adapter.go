@@ -9,6 +9,7 @@ import (
     "io"
     "os/exec"
     "strings"
+    "sync"
     "time"
 )
 
@@ -110,8 +111,16 @@ func ResolveCodexThreadMetadata(ctx context.Context,sessionID string) (CodexThre
     return CodexThreadMetadata{Name:strings.TrimSpace(result.Thread.Name),Title:strings.TrimSpace(result.Thread.Title)},nil
 }
 
+var (
+    codexNameCacheMu sync.Mutex
+    codexNameCache=map[string]time.Time{}
+    codexNameRefreshTTL=30*time.Second
+    codexNameNegativeTTL=10*time.Second
+    resolveCodexThreadMetadata=ResolveCodexThreadMetadata
+)
+
 func EnrichCodexSessionName(project,sessionID string,now time.Time) (ExecutionEvent,bool,error) {
-    meta,err:=ResolveCodexThreadMetadata(context.Background(),sessionID)
+    meta,err:=resolveCodexThreadMetadata(context.Background(),sessionID)
     if err!=nil { return ExecutionEvent{},false,err }
     if meta.Name=="" && meta.Title=="" { return ExecutionEvent{},false,nil }
     event:=ExecutionEvent{
@@ -125,4 +134,33 @@ func EnrichCodexSessionName(project,sessionID string,now time.Time) (ExecutionEv
     event.EventID=eventIDFor(event)
     if err=AppendExecutionEvent(project,event); err!=nil { return ExecutionEvent{},false,err }
     return event,true,nil
+}
+
+
+func RefreshCodexRootNames(project string,ledger Ledger,now time.Time) (bool,error) {
+    roots,err:=BuildRootSessions(project,ledger,now)
+    if err!=nil { return false,err }
+    changed:=false
+    for _,root:=range roots.Items {
+        if root.Provider!="codex" || root.ProviderSessionID=="" { continue }
+        if root.Status!=RootSessionActive && root.Status!=RootSessionNeedsCheck { continue }
+        key:=project+"\x00"+root.ProviderSessionID
+        codexNameCacheMu.Lock()
+        next:=codexNameCache[key]
+        if now.Before(next) { codexNameCacheMu.Unlock(); continue }
+        codexNameCache[key]=now.Add(codexNameRefreshTTL)
+        codexNameCacheMu.Unlock()
+
+        event,wrote,lookupErr:=EnrichCodexSessionName(project,root.ProviderSessionID,now)
+        if lookupErr!=nil {
+            codexNameCacheMu.Lock(); codexNameCache[key]=now.Add(codexNameNegativeTTL); codexNameCacheMu.Unlock()
+            continue
+        }
+        if !wrote { continue }
+        if event.SessionName==root.DisplayName || (event.SessionName=="" && event.SessionTitle==root.DisplayName) {
+            continue
+        }
+        changed=true
+    }
+    return changed,nil
 }
