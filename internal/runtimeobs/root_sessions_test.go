@@ -1,6 +1,7 @@
 package runtimeobs
 
 import (
+    "strings"
     "os"
     "testing"
     "time"
@@ -155,5 +156,37 @@ func TestCleanupRootSessionRemovesOnlySelectedRoot(t *testing.T) {
     // Cleanup must not delete the runtime directory or unrelated files.
     if _,err:=os.Stat(ExecutionRootPath(project)); err!=nil {
         t.Fatalf("execution root removed: %v",err)
+    }
+}
+
+
+func TestClaudeSessionStartExplicitNameFeedsRootSession(t *testing.T) {
+    project:=t.TempDir()
+    now:=time.Date(2026,10,2,7,0,0,0,time.UTC)
+    payload:=strings.NewReader(`{"hook_event_name":"SessionStart","source":"startup","session_id":"claude-root-1","session_title":"Runtime Observability 개선"}`)
+    meta,err:=ObserveHook(project,"claude",payload,now)
+    if err!=nil { t.Fatal(err) }
+    if meta.EventKind!="session_metadata" || meta.SessionName!="Runtime Observability 개선" || meta.SessionTitle!="" {
+        t.Fatalf("metadata=%+v",meta)
+    }
+    start:=ExecutionEvent{
+        EventKind:"state",ObservedAt:now.Add(time.Minute).Format(time.RFC3339Nano),
+        AttemptID:"run-claude-1",Provider:"claude",SessionID:"claude-root-1",
+        RuntimeAgentID:"agent-1",State:StateRunning,
+        EvidenceSource:EvidenceHook,ObservationQuality:QualityObserved,
+    }
+    if err:=AppendExecutionEvent(project,start); err!=nil { t.Fatal(err) }
+    ledger,err:=BuildLedger(project,10,now.Add(2*time.Minute))
+    if err!=nil { t.Fatal(err) }
+    if len(ledger.Attempts)!=1 { t.Fatalf("session metadata must not create an attempt: %+v",ledger.Attempts) }
+    roots,err:=BuildRootSessions(project,ledger,now.Add(2*time.Minute))
+    if err!=nil { t.Fatal(err) }
+    if len(roots.Items)!=1 { t.Fatalf("roots=%+v",roots.Items) }
+    root:=roots.Items[0]
+    if root.DisplayName!="Runtime Observability 개선" || root.DisplayNameSource!="provider_name" {
+        t.Fatalf("root name=%+v",root)
+    }
+    if root.CreatedAtSource!="provider_metadata" || root.CreatedAt!=now.Format(time.RFC3339Nano) {
+        t.Fatalf("created metadata=%+v",root)
     }
 }
