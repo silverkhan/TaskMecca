@@ -345,7 +345,7 @@ func TestRuntimeWorkloadCapsTerminalCardsAndHistoryPaginates(t *testing.T) {
         startAt:=now.Add(-time.Duration(20-i)*time.Minute)
         start:=runtimeobs.ExecutionEvent{
             EventKind:"state",ObservedAt:startAt.Format(time.RFC3339Nano),AttemptID:id,
-            Provider:"codex",RuntimeAgentID:id+"-agent",State:runtimeobs.StateRunning,
+            Provider:"codex",SessionID:"session-history",RuntimeAgentID:id+"-agent",State:runtimeobs.StateRunning,
             EvidenceSource:runtimeobs.EvidenceHook,ObservationQuality:runtimeobs.QualityObserved,
         }
         stop:=start
@@ -358,7 +358,7 @@ func TestRuntimeWorkloadCapsTerminalCardsAndHistoryPaginates(t *testing.T) {
     }
     active:=runtimeobs.ExecutionEvent{
         EventKind:"state",ObservedAt:now.Add(-time.Minute).Format(time.RFC3339Nano),
-        AttemptID:"run-active",Provider:"codex",RuntimeAgentID:"agent-active",
+        AttemptID:"run-active",Provider:"codex",SessionID:"session-history",RuntimeAgentID:"agent-active",
         State:runtimeobs.StateRunning,EvidenceSource:runtimeobs.EvidenceHook,ObservationQuality:runtimeobs.QualityObserved,
     }
     if err:=runtimeobs.AppendExecutionEvent(root,active); err!=nil { t.Fatal(err) }
