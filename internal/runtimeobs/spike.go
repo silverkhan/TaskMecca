@@ -167,13 +167,22 @@ func normalizeEvent(provider string, payload map[string]any, raw []byte, now tim
     }
     sort.Strings(fields)
     eventName := firstString(payload, "hook_event_name", "hookEventName", "event_name", "event")
+    sessionName := firstString(payload, "session_name", "sessionName", "thread_name", "threadName")
+    sessionTitle := firstString(payload, "session_title", "sessionTitle", "thread_title", "threadTitle", "title")
+    // Claude Code documents session_title on SessionStart as the explicit/custom
+    // session name (--name, /rename, hook sessionTitle, SDK renameSession).
+    // Treat it as provider_name, not as a generated provider title.
+    if provider == "claude" && strings.EqualFold(eventName, "SessionStart") && sessionName == "" {
+        sessionName = sessionTitle
+        sessionTitle = ""
+    }
     event := SpikeEvent{
         Provider:            provider,
         ObservedAt:          now.UTC().Format(time.RFC3339Nano),
         HookEventName:       eventName,
         SessionID:           firstString(payload, "session_id", "sessionId"),
-        SessionName:         firstString(payload, "session_name", "sessionName", "thread_name", "threadName"),
-        SessionTitle:        firstString(payload, "session_title", "sessionTitle", "thread_title", "threadTitle", "title"),
+        SessionName:         sessionName,
+        SessionTitle:        sessionTitle,
         TurnID:              firstString(payload, "turn_id", "turnId"),
         AgentID:             firstString(payload, "agent_id", "agentId"),
         AgentType:           firstString(payload, "agent_type", "agentType"),
