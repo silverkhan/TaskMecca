@@ -304,6 +304,75 @@ func TestWorkloadHookStatusSeparatesConfiguredFromObserved(t *testing.T) {
     if !found { t.Fatalf("codex hook row missing: %+v",hooks) }
 }
 
+func TestRuntimeWorkloadCapsTerminalCardsAndHistoryPaginates(t *testing.T) {
+    root:=t.TempDir()
+    backlogDir:=filepath.Join(root,"_task_mecca","data","backlog")
+    if err:=os.MkdirAll(backlogDir,0755); err!=nil { t.Fatal(err) }
+    if err:=os.WriteFile(filepath.Join(backlogDir,"000001.A-1.todo.md"),[]byte("# A-1 Test\n- Agent: -\n- 변경범위: -\n- 선행: -\n- 연관: -\n"),0644); err!=nil { t.Fatal(err) }
+
+    now:=time.Now().UTC()
+    for i:=0;i<8;i++ {
+        id:=fmt.Sprintf("run-history-%02d",i)
+        startAt:=now.Add(-time.Duration(20-i)*time.Minute)
+        start:=runtimeobs.ExecutionEvent{
+            EventKind:"state",ObservedAt:startAt.Format(time.RFC3339Nano),AttemptID:id,
+            Provider:"codex",RuntimeAgentID:id+"-agent",State:runtimeobs.StateRunning,
+            EvidenceSource:runtimeobs.EvidenceHook,ObservationQuality:runtimeobs.QualityObserved,
+        }
+        stop:=start
+        stop.ObservedAt=startAt.Add(time.Minute).Format(time.RFC3339Nano)
+        stop.State=runtimeobs.StateCompleted
+        stop.Terminal=true
+        for _,event:=range []runtimeobs.ExecutionEvent{start,stop} {
+            if err:=runtimeobs.AppendExecutionEvent(root,event); err!=nil { t.Fatal(err) }
+        }
+    }
+    active:=runtimeobs.ExecutionEvent{
+        EventKind:"state",ObservedAt:now.Add(-time.Minute).Format(time.RFC3339Nano),
+        AttemptID:"run-active",Provider:"codex",RuntimeAgentID:"agent-active",
+        State:runtimeobs.StateRunning,EvidenceSource:runtimeobs.EvidenceHook,ObservationQuality:runtimeobs.QualityObserved,
+    }
+    if err:=runtimeobs.AppendExecutionEvent(root,active); err!=nil { t.Fatal(err) }
+
+    handler,err:=Handler(root,"","test")
+    if err!=nil { t.Fatal(err) }
+
+    req:=httptest.NewRequest(http.MethodGet,"/api/workload",nil)
+    rec:=httptest.NewRecorder()
+    handler.ServeHTTP(rec,req)
+    if rec.Code!=http.StatusOK { t.Fatalf("workload status=%d body=%s",rec.Code,rec.Body.String()) }
+    payload:=map[string]any{}
+    if err:=json.Unmarshal(rec.Body.Bytes(),&payload); err!=nil { t.Fatal(err) }
+    runtimeView,ok:=payload["runtime_observability"].(map[string]any)
+    if !ok { t.Fatalf("runtime_observability=%T",payload["runtime_observability"]) }
+    attempts,ok:=runtimeView["attempts"].([]any)
+    if !ok || len(attempts)!=7 { t.Fatalf("visible attempts=%T len=%d payload=%+v",runtimeView["attempts"],len(attempts),runtimeView["attempts"]) }
+    activeCount:=0
+    terminalCount:=0
+    for _,raw:=range attempts {
+        row,ok:=raw.(map[string]any); if !ok { continue }
+        if row["terminal"]==true { terminalCount++ } else { activeCount++ }
+    }
+    if activeCount!=1 || terminalCount!=6 { t.Fatalf("active=%d terminal=%d",activeCount,terminalCount) }
+    historyMeta,ok:=runtimeView["history"].(map[string]any)
+    if !ok { t.Fatalf("history=%T",runtimeView["history"]) }
+    if historyMeta["total"]!=float64(8) || historyMeta["hidden"]!=float64(2) {
+        t.Fatalf("history metadata=%+v",historyMeta)
+    }
+
+    req=httptest.NewRequest(http.MethodGet,"/api/runtime/history?page=2&page_size=3",nil)
+    rec=httptest.NewRecorder()
+    handler.ServeHTTP(rec,req)
+    if rec.Code!=http.StatusOK { t.Fatalf("history status=%d body=%s",rec.Code,rec.Body.String()) }
+    page:=map[string]any{}
+    if err:=json.Unmarshal(rec.Body.Bytes(),&page); err!=nil { t.Fatal(err) }
+    items,ok:=page["items"].([]any)
+    if !ok || len(items)!=3 { t.Fatalf("history items=%T %+v",page["items"],page["items"]) }
+    if page["total"]!=float64(8) || page["total_pages"]!=float64(3) || page["page"]!=float64(2) {
+        t.Fatalf("history page=%+v",page)
+    }
+}
+
 func TestTailscaleIPv4Range(t *testing.T) {
     cases:=[]struct{
         raw string
