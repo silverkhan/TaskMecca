@@ -392,6 +392,26 @@ func handler(project,root,version,instanceID,controlToken string,restartCh chan<
         writeJSON(w,snapshot,200)
     })
 
+    mux.HandleFunc("/api/runtime/history",func(w http.ResponseWriter,r *http.Request) {
+        if r.Method!="GET" { writeJSON(w,map[string]any{"error":"GET required"},405); return }
+        activeProject:=projectFor(r)
+        page,_:=strconv.Atoi(r.URL.Query().Get("page"))
+        pageSize,_:=strconv.Atoi(r.URL.Query().Get("page_size"))
+        provider:=strings.ToLower(strings.TrimSpace(r.URL.Query().Get("provider")))
+        stateFilter:=strings.ToLower(strings.TrimSpace(r.URL.Query().Get("state")))
+        if provider!="" && provider!="codex" && provider!="claude" {
+            writeJSON(w,map[string]any{"error":"provider must be codex or claude"},400)
+            return
+        }
+        now:=time.Now()
+        ledger,err:=runtimeobs.ReconcileLedger(activeProject,10,now)
+        if err!=nil { writeJSON(w,map[string]any{"error":err.Error()},500); return }
+        _,_ = runtimeobs.MaybeMaintainExecutionHistory(activeProject,ledger,now)
+        history,err:=runtimeobs.QueryExecutionHistory(activeProject,ledger,page,pageSize,provider,stateFilter,now)
+        if err!=nil { writeJSON(w,map[string]any{"error":err.Error()},500); return }
+        writeJSON(w,history,200)
+    })
+
     mux.HandleFunc("/api/runtime/hooks",func(w http.ResponseWriter,r *http.Request) {
         if r.Method!="POST" { writeJSON(w,map[string]any{"error":"POST required"},405); return }
         if r.Header.Get("X-Task-Mecca-Action")!="1" { writeJSON(w,map[string]any{"error":"maintenance action header required"},403); return }
