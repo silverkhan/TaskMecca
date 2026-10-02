@@ -74,7 +74,6 @@ func webContext(project,root string) (context,error) {
     }
     selected:=explicit
     if selected=="" && len(candidates)>0 { selected=candidates[0].Path }
-    if selected=="" { selected=filepath.Join(project,"_task_mecca","data","backlog") }
     return context{scanRoot:scan,selected:selected,explicit:explicit!="",candidates:candidates},nil
 }
 
@@ -101,7 +100,7 @@ func resolveBacklog(project string, ctx context, query url.Values) (string,[]bac
         if len(candidates)==0 || allowed[filepath.Clean(absolute)] { return absolute,candidates,nil }
     }
     if len(candidates)>0 { return candidates[0].Path,candidates,nil }
-    return filepath.Join(project,"_task_mecca","data","backlog"),candidates,nil
+    return "",candidates,nil
 }
 
 func selectionPayload(ctx context, selected string, candidates []backlog.Candidate) map[string]any {

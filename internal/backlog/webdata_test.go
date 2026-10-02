@@ -162,3 +162,19 @@ func TestBacklogRevisionIgnoresMtimeOnlyTouchesButDetectsContentChange(t *testin
         t.Fatalf("content change did not change revision: %v",third["revision"])
     }
 }
+
+
+func TestBacklogPageTreatsMissingBacklogAsUninitialized(t *testing.T) {
+    project:=t.TempDir()
+    if err:=os.MkdirAll(filepath.Join(project,"_task_mecca"),0755); err!=nil { t.Fatal(err) }
+
+    page,err:=BacklogPage(project,"",1,20,nil,nil,"","id_desc")
+    if err!=nil { t.Fatal(err) }
+    if page["total"]!=0 { t.Fatalf("total=%v page=%+v",page["total"],page) }
+    items,ok:=page["items"].([]map[string]any)
+    if !ok || len(items)!=0 { t.Fatalf("items=%T %+v",page["items"],page["items"]) }
+    presence,ok:=page["backlog_presence"].(map[string]any)
+    if !ok { t.Fatalf("backlog_presence=%T %+v",page["backlog_presence"],page["backlog_presence"]) }
+    if presence["status"]!="uninitialized" { t.Fatalf("presence=%+v",presence) }
+    if page["repo"]!=filepath.Base(project) { t.Fatalf("repo=%v want=%s",page["repo"],filepath.Base(project)) }
+}
