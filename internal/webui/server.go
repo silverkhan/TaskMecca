@@ -391,6 +391,65 @@ func handler(project,root,version,instanceID,controlToken string,restartCh chan<
         writeJSON(w,snapshot,200)
     })
 
+    mux.HandleFunc("/api/runtime/root-sessions",func(w http.ResponseWriter,r *http.Request) {
+        activeProject:=projectFor(r)
+        now:=time.Now()
+        ledger,err:=runtimeobs.ReconcileLedger(activeProject,10,now)
+        if err!=nil { writeJSON(w,map[string]any{"error":err.Error()},500); return }
+
+        if r.Method=="GET" {
+            rootID:=strings.TrimSpace(r.URL.Query().Get("root_session_id"))
+            if rootID!="" {
+                root,rootErr:=runtimeobs.FindRootSession(activeProject,ledger,rootID,now)
+                if rootErr!=nil { writeJSON(w,map[string]any{"error":rootErr.Error()},404); return }
+                preview,previewErr:=runtimeobs.PreviewRootSessionCleanup(activeProject,ledger,rootID,now)
+                if previewErr!=nil { writeJSON(w,map[string]any{"error":previewErr.Error()},500); return }
+                writeJSON(w,map[string]any{"root_session":root,"cleanup":preview},200)
+                return
+            }
+            page,_:=strconv.Atoi(r.URL.Query().Get("page"))
+            pageSize,_:=strconv.Atoi(r.URL.Query().Get("page_size"))
+            includeStorage:=r.URL.Query().Get("include_storage")=="1" || strings.EqualFold(r.URL.Query().Get("include_storage"),"true")
+            pageData,pageErr:=runtimeobs.QueryRootSessions(activeProject,ledger,page,pageSize,r.URL.Query().Get("status"),includeStorage,now)
+            if pageErr!=nil { writeJSON(w,map[string]any{"error":pageErr.Error()},500); return }
+            writeJSON(w,pageData,200)
+            return
+        }
+
+        if r.Method!="POST" {
+            writeJSON(w,map[string]any{"error":"GET or POST required"},405)
+            return
+        }
+        if r.Header.Get("X-Task-Mecca-Action")!="1" {
+            writeJSON(w,map[string]any{"error":"maintenance action header required"},403)
+            return
+        }
+        var body struct{
+            Action string `json:"action"`
+            RootSessionID string `json:"root_session_id"`
+        }
+        if err:=json.NewDecoder(r.Body).Decode(&body); err!=nil {
+            writeJSON(w,map[string]any{"error":"invalid JSON"},400)
+            return
+        }
+        if strings.ToLower(strings.TrimSpace(body.Action))!="cleanup" {
+            writeJSON(w,map[string]any{"error":"action must be cleanup"},400)
+            return
+        }
+        rootID:=strings.TrimSpace(body.RootSessionID)
+        if rootID=="" {
+            writeJSON(w,map[string]any{"error":"root_session_id is required"},400)
+            return
+        }
+        result,cleanupErr:=runtimeobs.CleanupRootSession(activeProject,ledger,rootID,now)
+        if cleanupErr!=nil { writeJSON(w,map[string]any{"error":cleanupErr.Error()},409); return }
+        refreshedLedger,refreshErr:=runtimeobs.ReconcileLedger(activeProject,10,time.Now())
+        if refreshErr!=nil { writeJSON(w,map[string]any{"ok":true,"result":result},200); return }
+        refreshedRoots,rootsErr:=runtimeobs.BuildRootSessions(activeProject,refreshedLedger,time.Now())
+        if rootsErr!=nil { writeJSON(w,map[string]any{"ok":true,"result":result},200); return }
+        writeJSON(w,map[string]any{"ok":true,"result":result,"root_sessions":refreshedRoots},200)
+    })
+
     mux.HandleFunc("/api/runtime/storage",func(w http.ResponseWriter,r *http.Request) {
         activeProject:=projectFor(r)
         now:=time.Now()
