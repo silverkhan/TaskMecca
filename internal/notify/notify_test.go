@@ -48,7 +48,7 @@ func TestTelegramStatusDoesNotExposeToken(t *testing.T){
 
 func TestDefaultLifecycleKindsAreAllEnabled(t *testing.T){
  kinds:=defaultKinds()
- for _,kind:=range []string{"started","intervention","approval","stalled","interrupted","runtime_unknown","finalize","completed"} {
+ for _,kind:=range []string{"registered","started","intervention","approval","stalled","interrupted","runtime_unknown","finalize","completed"} {
   if !kinds[kind] { t.Fatalf("expected %s enabled by default: %v",kind,kinds) }
  }
 }

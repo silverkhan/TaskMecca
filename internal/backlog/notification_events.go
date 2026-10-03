@@ -66,6 +66,22 @@ func NotificationEvents(project string,items map[string]map[string]any) ([]map[s
         updatedAt:=toString(item["updated_at"])
         previous,seen:=journal.Items[id]
 
+        // First observation establishes a baseline so existing backlogs are
+        // never backfilled as "registered". Only genuinely new items observed
+        // after the journal already exists produce a registration event.
+        if !seen && len(journal.Items)>0 {
+            at:=updatedAt
+            if at=="" { at=now }
+            eventID:=notificationEventID(id,"registered",at)
+            if !notificationEventExists(journal.Events,eventID) {
+                journal.Events=append(journal.Events,map[string]any{
+                    "id":eventID,"task_id":id,"kind":"registered","at":at,
+                    "title":toString(item["title"]),"task_updated_at":updatedAt,
+                })
+                dirty=true
+            }
+        }
+
         if seen && fileState=="done" && previous.FileState!="done" {
             at:=toString(item["completed_at"])
             if at=="" { at=updatedAt }
