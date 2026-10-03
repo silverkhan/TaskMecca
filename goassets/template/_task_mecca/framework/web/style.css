@@ -1020,3 +1020,10 @@ body.release-modal-open{overflow:hidden}
     min-height:70dvh;
   }
 }
+
+/* Global identity / version controls */
+.brand-mark{border:0;padding:0;cursor:pointer;font:inherit;font-weight:800}
+.brand-mark:hover{filter:brightness(1.08)}
+.brand-mark:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.version-label,.version-update-label{font-variant-numeric:tabular-nums}
+.version-update-label{cursor:pointer}
