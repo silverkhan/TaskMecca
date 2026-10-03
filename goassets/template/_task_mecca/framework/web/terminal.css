@@ -446,3 +446,11 @@ body.terminal-page {
   .xterm-host { padding: 5px 6px; }
   .terminal-footer { display: none; }
 }
+
+.terminal-paste-sheet[hidden]{display:none}
+.terminal-paste-sheet{position:fixed;inset:0;z-index:1000;display:grid;place-items:end center;padding:12px;background:rgba(0,0,0,.45)}
+.terminal-paste-card{width:min(520px,100%);display:grid;gap:9px;padding:14px;border:1px solid var(--border);border-radius:14px;background:var(--surface);color:var(--text);box-shadow:var(--shadow)}
+.terminal-paste-card strong{font-size:14px}
+.terminal-paste-card p{margin:0;color:var(--muted);font-size:12px;line-height:1.45}
+.terminal-paste-card textarea{width:100%;box-sizing:border-box;min-height:96px;resize:vertical;padding:10px;border:1px solid var(--border);border-radius:9px;background:var(--surface2);color:var(--text);font:13px/1.45 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+.terminal-paste-actions{display:flex;justify-content:flex-end;gap:7px}
