@@ -152,7 +152,13 @@ func releaseNotesIndex() ([]map[string]any,error) {
 func releaseNoteDetail(version string) (map[string]any,error) {
     current,currentErr:=currentReleaseNote()
     if currentErr==nil && strings.TrimSpace(fmt.Sprint(current["version"]))==version { return current,nil }
-    data,err:=currentChannelReleaseNoteProvider(version)
+    var data []byte
+    var err error
+    if maintenance.CurrentChannel()=="dev" {
+        data,err=currentChannelReleaseNoteProvider(version)
+    } else {
+        data,err=stableReleaseNoteProvider(version)
+    }
     if err!=nil {
         if currentErr!=nil { return nil,fmt.Errorf("local release note: %v; remote release note: %w",currentErr,err) }
         return nil,err
