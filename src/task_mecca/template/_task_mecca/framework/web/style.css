@@ -165,3 +165,12 @@
 /* AID-62 user-selectable palette */
 .palette-picker{height:38px;display:flex;align-items:center;gap:7px;border:1px solid var(--border);background:var(--surface);border-radius:9px;padding:0 8px;color:var(--muted);font-size:10px;white-space:nowrap}.palette-picker span{text-transform:uppercase;letter-spacing:.06em;font-weight:700}.palette-picker select{border:0;outline:0;background:transparent;color:var(--text);font-size:11px;cursor:pointer}.palette-picker option{background:var(--surface);color:var(--text)}
 @media(max-width:900px){.palette-picker{order:4}.palette-picker span{display:none}}
+
+/* AID-62 Nocturne atmospheric gradient */
+:root[data-palette="nocturne"]{--nocturne-glow-a:rgba(91,74,133,.22);--nocturne-glow-b:rgba(121,64,101,.14);--nocturne-glow-c:rgba(52,74,116,.14)}
+:root[data-palette="nocturne"][data-theme="light"]{--nocturne-glow-a:rgba(112,91,154,.10);--nocturne-glow-b:rgba(159,99,134,.07);--nocturne-glow-c:rgba(82,106,153,.07)}
+:root[data-palette="nocturne"] body{background-color:var(--bg);background-image:radial-gradient(ellipse at 12% -8%,var(--nocturne-glow-a) 0,transparent 42%),radial-gradient(ellipse at 88% 4%,var(--nocturne-glow-b) 0,transparent 38%),linear-gradient(135deg,color-mix(in srgb,var(--bg) 94%,#26334f) 0%,var(--bg) 46%,color-mix(in srgb,var(--bg) 94%,#4a273e) 100%);background-attachment:fixed}
+:root[data-palette="nocturne"] .sidebar{background:linear-gradient(180deg,color-mix(in srgb,var(--surface) 88%,var(--nocturne-glow-a)) 0%,color-mix(in srgb,var(--surface) 96%,transparent) 52%,color-mix(in srgb,var(--surface) 90%,var(--nocturne-glow-b)) 100%);backdrop-filter:blur(18px)}
+:root[data-palette="nocturne"] .topbar{background:linear-gradient(90deg,color-mix(in srgb,var(--surface) 80%,transparent),color-mix(in srgb,var(--bg) 72%,transparent));backdrop-filter:blur(18px) saturate(115%)}
+:root[data-palette="nocturne"] .worker-card,:root[data-palette="nocturne"] .runtime-root-card,:root[data-palette="nocturne"] .mini-panel{background:linear-gradient(145deg,color-mix(in srgb,var(--surface) 96%,var(--nocturne-glow-a)),color-mix(in srgb,var(--surface) 97%,var(--nocturne-glow-b)))}
+@media(prefers-reduced-motion:reduce){:root[data-palette="nocturne"] body{background-attachment:scroll}}
