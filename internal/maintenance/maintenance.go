@@ -332,6 +332,21 @@ func StableReleaseNote(version string) ([]byte,error) {
     return httpGet(stableReleaseRawURL("release-notes/"+version+".json"))
 }
 
+// CurrentChannelReleaseNote returns the update note published with the active channel.
+// Stable keeps its versioned history; Dev publishes one rolling note alongside release-dev.
+func CurrentChannelReleaseNote(version string) ([]byte,error) {
+    version=normalizeVersion(version)
+    if CurrentChannel()!=devChannel { return StableReleaseNote(version) }
+    base,err:=releaseBaseForChannel(devChannel)
+    if err!=nil { return nil,err }
+    data,err:=httpGet(base+"/release-note.json")
+    if err!=nil { return nil,err }
+    var note struct { Version string `json:"version"` }
+    if err=json.Unmarshal(data,&note); err!=nil { return nil,fmt.Errorf("invalid dev release note: %w",err) }
+    if normalizeVersion(note.Version)!=version { return nil,fmt.Errorf("dev release note version mismatch: got %s, want %s",note.Version,version) }
+    return data,nil
+}
+
 func versionCachePath() string { return filepath.Join(homeDir(),"update-check-"+CurrentChannel()+".json") }
 
 func CachedVersionInfo(current string) VersionInfo {
