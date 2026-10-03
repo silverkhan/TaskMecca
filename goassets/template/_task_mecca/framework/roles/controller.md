@@ -21,7 +21,16 @@ active Full Access preflight를 자동 재실행**한다. fresh probe가 `full`�
 4. dispatch 직전 `preflight --require-full-access --json`을 자동 실행해 effective Full Access를 fresh probe로 확인한다.
 5. `inspect <ID> --json`으로 여전히 todo/ready인지 확인한다.
 6. 실제 spawn 직전에 doing 전환과 Agent/변경범위를 기록한다.
-7. Worker에게 **backlog ID를 canonical source로 직접 읽도록 지시**한다. Controller의 짧은 목표 설명은
+7. spawn 결과에서 **정확한 runtime agent ID**가 확인되면 즉시 해당 실행을 backlog와 binding한다.
+
+```bash
+task-mecca runtime bind-agent <runtime-agent-id> <BACKLOG_ID> /root/controller/<worker_name> --json
+```
+
+   - 이 명령은 동일 runtime agent ID에 live attempt가 정확히 하나일 때만 성공한다.
+   - 0개 또는 여러 개면 시간 순서로 추정하지 말고 binding을 보류한다.
+   - spawn 결과에서 exact runtime agent ID를 얻지 못한 runtime에서도 임의 매핑하지 않는다.
+8. Worker에게 **backlog ID를 canonical source로 직접 읽도록 지시**한다. Controller의 짧은 목표 설명은
    `## 작업 정의`나 `## 요건 정의서`를 대체하지 않는다.
 
 ## 계약 경계
