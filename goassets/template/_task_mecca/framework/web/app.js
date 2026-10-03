@@ -18,6 +18,7 @@ const state = {
   lastFetch: 0,
   lastHubFetch: 0,
   theme: localStorage.getItem('task-mecca-theme') || 'system',
+  palette: localStorage.getItem('task-mecca-palette') || 'mecca',
   manual: null,
   manualTab: 'quick',
   backlog: localStorage.getItem('task-mecca-backlog-folder') || '',
@@ -3448,6 +3449,7 @@ function translateChrome() {
   const sideBtn=$('#sidebarToggle');if(sideBtn){sideBtn.setAttribute('aria-label',state.sidebarCollapsed?t('expandSidebar'):t('collapseSidebar'));sideBtn.title=state.sidebarCollapsed?t('expandSidebar'):t('collapseSidebar')}
   const refresh=$('#refreshBtn'); if(refresh) refresh.title=t('refresh');
   const themeGroup=document.querySelector('.theme-switcher'); if(themeGroup){themeGroup.setAttribute('aria-label',t('theme'));themeGroup.title=t('theme');}
+  const palette=$('#palettePicker');if(palette){palette.value=state.palette;palette.setAttribute('aria-label',t('theme'));palette.closest('.palette-picker')?.setAttribute('title',t('theme'));}
   document.querySelectorAll('[data-theme-choice]').forEach(btn=>{const key={system:'themeSystem',light:'themeLight',dark:'themeDark'}[btn.dataset.themeChoice];const titleKey={system:'followSystemTheme',light:'useLightTheme',dark:'useDarkTheme'}[btn.dataset.themeChoice];if(key)btn.textContent=t(key);if(titleKey)btn.title=t(titleKey)});
   const sb=$('#shortcutBar'); if(sb) sb.innerHTML=`<span><kbd>↑</kbd><kbd>↓</kbd> ${esc(t('move'))}</span><span><kbd>Enter</kbd>/<kbd>→</kbd> ${esc(t('open'))}</span><span><kbd>←</kbd>/<kbd>Esc</kbd> ${esc(t('back'))}</span><span><kbd>/</kbd> ${esc(t('search'))}</span><span><kbd>PgUp</kbd>/<kbd>PgDn</kbd> ${esc(t('page'))}</span>`;
   renderLanguagePicker();
@@ -3465,6 +3467,14 @@ async function setLanguage(value) {
   if(document.querySelector('.mermaid-wrap')) renderMermaidDiagrams(true);
 }
 
+function applyPalette(value) {
+  state.palette=['mecca','nocturne'].includes(value)?value:'mecca';
+  document.documentElement.dataset.palette=state.palette;
+  localStorage.setItem('task-mecca-palette',state.palette);
+  const picker=$('#palettePicker');if(picker)picker.value=state.palette;
+  if (document.querySelector('.mermaid-wrap')) renderMermaidDiagrams(true);
+}
+
 function applyTheme(value) {
   state.theme=['system','light','dark'].includes(value)?value:'system';
   document.documentElement.dataset.theme=state.theme;
@@ -3473,8 +3483,10 @@ function applyTheme(value) {
   if (document.querySelector('.mermaid-wrap')) renderMermaidDiagrams(true);
 }
 translateChrome();
+applyPalette(state.palette);
 applyTheme(state.theme);
 document.querySelectorAll('[data-theme-choice]').forEach(b=>b.addEventListener('click',()=>applyTheme(b.dataset.themeChoice)));
+$('#palettePicker')?.addEventListener('change',e=>applyPalette(e.target.value));
 window.matchMedia?.('(prefers-color-scheme: dark)').addEventListener?.('change',()=>{if(state.theme==='system')renderMermaidDiagrams(true)});
 $('#languagePicker').addEventListener('change',e=>setLanguage(e.target.value));
 $('#backlogPicker').addEventListener('change',e=>{
