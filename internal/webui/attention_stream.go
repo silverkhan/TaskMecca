@@ -9,6 +9,7 @@ import (
     "time"
 
     "github.com/silverkhan/TaskMecca/internal/backlog"
+    "github.com/silverkhan/TaskMecca/internal/notify"
 )
 
 type attentionFeed struct {
@@ -24,6 +25,11 @@ var attentionFeeds = struct {
     sync.Mutex
     feeds map[string]*attentionFeed
 }{feeds:map[string]*attentionFeed{}}
+
+func notificationValue(v any) string {
+    if v==nil { return "" }
+    return fmt.Sprint(v)
+}
 
 func attentionRevision(payload map[string]any) string {
     parts:=[]string{}
@@ -58,6 +64,17 @@ func (f *attentionFeed) refresh() {
     payload,err:=backlog.AttentionSnapshot(f.project,f.root,true)
     if err!=nil { payload=map[string]any{"error":err.Error(),"attention":[]map[string]any{},"all_items":map[string]map[string]any{},"notification_events":[]map[string]any{}} }
     revision:=attentionRevision(payload)
+    if rows,ok:=payload["notification_events"].([]map[string]any); ok {
+        events:=make([]notify.Event,0,len(rows))
+        for _,row:=range rows {
+            events=append(events,notify.Event{
+                ID:notificationValue(row["id"]),TaskID:notificationValue(row["task_id"]),Kind:notificationValue(row["kind"]),
+                Title:notificationValue(row["title"]),Message:notificationValue(row["message"]),
+                ResumeCondition:notificationValue(row["resume_condition"]),At:notificationValue(row["at"]),
+            })
+        }
+        _=notify.Deliver(f.project,events)
+    }
     data,_:=json.Marshal(payload)
     f.mu.Lock()
     changed:=revision!=f.revision || f.latest==nil

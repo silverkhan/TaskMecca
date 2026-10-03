@@ -12,6 +12,7 @@ import (
 type notificationObservation struct {
     FileState string `json:"file_state"`
     UpdatedAt string `json:"updated_at,omitempty"`
+    AttentionKey string `json:"attention_key,omitempty"`
 }
 
 type notificationJournal struct {
@@ -57,7 +58,7 @@ func NotificationEvents(project string,items map[string]map[string]any) ([]map[s
         journal.Version=1
     }
 
-    now:=time.Now().Format(time.RFC3339)
+    now:=time.Now().Format(time.RFC3339Nano)
     dirty:=false
     for id,item:=range items {
         fileState:=toString(item["file_state"])
@@ -82,7 +83,28 @@ func NotificationEvents(project string,items map[string]map[string]any) ([]map[s
             }
         }
 
-        next:=notificationObservation{FileState:fileState,UpdatedAt:updatedAt}
+        attentionKey:=""
+        if reason,ok:=item["attention_reason"].(map[string]any); ok && len(reason)>0 {
+            reasonType:=toString(reason["type"])
+            kind:="intervention"
+            if reasonType=="runtime_stalled" { kind="stalled" }
+            attentionKey=kind+"\x00"+reasonType+"\x00"+toString(reason["message"])+"\x00"+toString(reason["resume_condition"])
+            if !seen || previous.AttentionKey!=attentionKey {
+                at:=now
+                eventID:=notificationEventID(id,kind,at)
+                if !notificationEventExists(journal.Events,eventID) {
+                    journal.Events=append(journal.Events,map[string]any{
+                        "id":eventID,"task_id":id,"kind":kind,"at":at,
+                        "title":toString(item["title"]),"reason_type":reasonType,
+                        "message":toString(reason["message"]),"resume_condition":toString(reason["resume_condition"]),
+                        "task_updated_at":updatedAt,
+                    })
+                    dirty=true
+                }
+            }
+        }
+
+        next:=notificationObservation{FileState:fileState,UpdatedAt:updatedAt,AttentionKey:attentionKey}
         if !seen || previous!=next {
             journal.Items[id]=next
             dirty=true

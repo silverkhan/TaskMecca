@@ -283,7 +283,7 @@
 .attention-banner span{color:var(--text);font-size:12px;line-height:1.5}
 .attention-banner.danger{border-color:color-mix(in srgb,var(--danger) 45%,var(--border));background:color-mix(in srgb,var(--danger) 7%,var(--surface));color:var(--danger)}
 .notification-wrap{position:relative;flex:0 0 auto}
-.notification-panel{display:none;position:absolute;right:0;top:46px;z-index:70;width:280px;padding:12px;border:1px solid var(--border);border-radius:11px;background:var(--surface);box-shadow:0 18px 48px rgba(0,0,0,.16)}
+.notification-panel{display:none;position:absolute;right:0;top:46px;z-index:70;width:min(360px,calc(100vw - 24px));padding:12px;border:1px solid var(--border);border-radius:11px;background:var(--surface);box-shadow:0 18px 48px rgba(0,0,0,.16)}
 .notification-panel.open{display:block}
 .notification-panel-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px}
 .notification-panel-head strong{font-size:12px}
@@ -952,3 +952,11 @@ body.release-modal-open{overflow:hidden}
   .runtime-root-meta strong{display:block;margin-top:1px}
   .runtime-root-counts{gap:4px}
 }
+
+.telegram-settings{display:grid;gap:8px;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)}
+.telegram-settings>strong{font-size:12px}
+.telegram-settings p{margin:0;color:var(--muted);font-size:11px;line-height:1.45}
+.telegram-settings input[type=password]{width:100%;box-sizing:border-box;padding:8px 9px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text)}
+.telegram-settings .notification-state{display:block;margin:0}
+.telegram-actions{display:flex;flex-wrap:wrap;gap:6px}
+.notification-browser-kinds{display:grid;gap:4px}
