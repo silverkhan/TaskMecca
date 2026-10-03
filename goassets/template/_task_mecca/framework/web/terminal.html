@@ -58,6 +58,18 @@
         </div>
       </section>
 
+      <div id="terminalPasteSheet" class="terminal-paste-sheet" hidden>
+        <div class="terminal-paste-card" role="dialog" aria-modal="true" aria-labelledby="terminalPasteTitle">
+          <strong id="terminalPasteTitle">Paste into Terminal</strong>
+          <p id="terminalPasteHelp">Long-press below and paste from your device.</p>
+          <textarea id="terminalPasteInput" rows="4" autocomplete="off" autocapitalize="off" spellcheck="false"></textarea>
+          <div class="terminal-paste-actions">
+            <button type="button" class="terminal-btn secondary" id="terminalPasteCancel">Cancel</button>
+            <button type="button" class="terminal-btn" id="terminalPasteSend">Paste</button>
+          </div>
+        </div>
+      </div>
+
       <details id="terminalEmergency" class="terminal-emergency">
         <summary>
           <span>
