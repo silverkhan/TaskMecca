@@ -90,3 +90,15 @@ func TestNotificationEventsPersistExecutionLifecycle(t *testing.T) {
  events,err=NotificationEvents(project,items);if err!=nil{t.Fatal(err)}
  if len(events)!=3||events[2]["kind"]!="completed"{t.Fatalf("completed events=%v",events)}
 }
+
+func TestNotificationEventsRegistrationBaselinesExistingItems(t *testing.T) {
+ project:=t.TempDir()
+ initial:=map[string]map[string]any{
+  "B-1":{"file_state":"backlog","updated_at":"2026-10-03T01:00:00Z","title":"existing"},
+ }
+ events,err:=NotificationEvents(project,initial);if err!=nil{t.Fatal(err)}
+ if len(events)!=0 { t.Fatalf("initial baseline must not backfill registration: %v",events) }
+ initial["B-2"]=map[string]any{"file_state":"backlog","updated_at":"2026-10-03T02:00:00Z","title":"new"}
+ events,err=NotificationEvents(project,initial);if err!=nil{t.Fatal(err)}
+ if len(events)!=1||events[0]["kind"]!="registered"||events[0]["task_id"]!="B-2"{t.Fatalf("registration events=%v",events)}
+}
