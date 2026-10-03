@@ -14,6 +14,7 @@ type notificationObservation struct {
     UpdatedAt string `json:"updated_at,omitempty"`
     AttentionKey string `json:"attention_key,omitempty"`
     RuntimeKey string `json:"runtime_key,omitempty"`
+    StartedAt string `json:"started_at,omitempty"`
 }
 
 type notificationJournal struct {
@@ -100,6 +101,25 @@ func NotificationEvents(project string,items map[string]map[string]any) ([]map[s
             }
         }
 
+        // Lifecycle is the canonical user-facing transition model. A start may be
+        // observed provisionally (runtime_observed) before an execution-ledger
+        // activity row exists, so notify from started_at as well.
+        startedAt:=""
+        if lifecycle,ok:=item["lifecycle"].(map[string]any); ok {
+            startedAt=toString(lifecycle["started_at"])
+        }
+        if startedAt!="" && (!seen || previous.StartedAt!=startedAt) {
+            eventID:=notificationEventID(id,"started",startedAt)
+            if !notificationEventExists(journal.Events,eventID) {
+                journal.Events=append(journal.Events,map[string]any{
+                    "id":eventID,"task_id":id,"kind":"started","at":startedAt,
+                    "title":toString(item["title"]),"message":"작업이 착수 상태로 전환되었습니다.",
+                    "task_updated_at":updatedAt,
+                })
+                dirty=true
+            }
+        }
+
         runtimeKey:=""
         if activity,ok:=item["activity"].(map[string]any); ok && toString(activity["source"])=="execution_ledger" {
             attemptID:=toString(activity["attempt_id"])
@@ -161,7 +181,7 @@ func NotificationEvents(project string,items map[string]map[string]any) ([]map[s
             }
         }
 
-        next:=notificationObservation{FileState:fileState,UpdatedAt:updatedAt,AttentionKey:attentionKey,RuntimeKey:runtimeKey}
+        next:=notificationObservation{FileState:fileState,UpdatedAt:updatedAt,AttentionKey:attentionKey,RuntimeKey:runtimeKey,StartedAt:startedAt}
         if !seen || previous!=next {
             journal.Items[id]=next
             dirty=true
