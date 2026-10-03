@@ -197,3 +197,24 @@ func TestDuplicateTerminalStateDoesNotExtendEndedAt(t *testing.T) {
     got:=ledger.Attempts[0]
     if got.EndedAt!=stopOne.ObservedAt { t.Fatalf("ended_at=%s want=%s",got.EndedAt,stopOne.ObservedAt) }
 }
+
+func TestBindRuntimeAgentRequiresUniqueLiveAttempt(t *testing.T) {
+    project:=t.TempDir()
+    base:=time.Date(2026,10,3,2,0,0,0,time.UTC)
+    start:=ExecutionEvent{EventKind:"state",ObservedAt:base.Format(time.RFC3339Nano),AttemptID:"run-dispatch",Provider:"codex",SessionID:"root-1",RuntimeAgentID:"agent-42",State:StateRunning,EvidenceSource:EvidenceHook,ObservationQuality:QualityObserved}
+    if err:=AppendExecutionEvent(project,start);err!=nil{t.Fatal(err)}
+    bound,err:=BindRuntimeAgent(project,"agent-42","AID-39","/root/controller/pairi","",base.Add(time.Second))
+    if err!=nil{t.Fatal(err)}
+    if bound.BindingState!=BindingBound||bound.TaskID!="AID-39"||bound.BindingSource!="dispatch"{t.Fatalf("bound=%+v",bound)}
+    if bound.BindingEvidence["correlation"]!="explicit_dispatch_result"{t.Fatalf("evidence=%v",bound.BindingEvidence)}
+}
+
+func TestBindRuntimeAgentRefusesAmbiguousLiveAttempts(t *testing.T) {
+    project:=t.TempDir()
+    base:=time.Date(2026,10,3,2,0,0,0,time.UTC)
+    for _,id:=range []string{"run-a","run-b"} {
+        event:=ExecutionEvent{EventKind:"state",ObservedAt:base.Format(time.RFC3339Nano),AttemptID:id,Provider:"codex",SessionID:id,RuntimeAgentID:"agent-shared",State:StateRunning,EvidenceSource:EvidenceHook,ObservationQuality:QualityObserved}
+        if err:=AppendExecutionEvent(project,event);err!=nil{t.Fatal(err)}
+    }
+    if _,err:=BindRuntimeAgent(project,"agent-shared","AID-39","/root/controller/pairi","",base.Add(time.Second));err==nil{t.Fatal("expected ambiguous binding error")}
+}
