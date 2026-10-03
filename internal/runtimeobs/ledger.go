@@ -223,6 +223,23 @@ func BindAttempt(project,attemptID,taskID,agentPath,source,parentAttemptID strin
     return Attempt{},fmt.Errorf("attempt disappeared after binding: %s",attemptID)
 }
 
+// BindRuntimeAgent binds a dispatch result only when the provider runtime agent
+// identity resolves to exactly one live attempt. It deliberately refuses
+// ambiguous matches instead of correlating by time order.
+func BindRuntimeAgent(project,runtimeAgentID,taskID,agentPath,parentAttemptID string,now time.Time) (Attempt,error) {
+    runtimeAgentID=strings.TrimSpace(runtimeAgentID)
+    if runtimeAgentID=="" { return Attempt{},errors.New("runtime_agent_id is required") }
+    ledger,err:=BuildLedger(project,20,now); if err!=nil { return Attempt{},err }
+    matches:=[]Attempt{}
+    for _,attempt:=range ledger.Attempts {
+        if attempt.RuntimeAgentID==runtimeAgentID && !attempt.Terminal { matches=append(matches,attempt) }
+    }
+    if len(matches)==0 { return Attempt{},fmt.Errorf("no live runtime attempt found for agent %s",runtimeAgentID) }
+    if len(matches)>1 { return Attempt{},fmt.Errorf("runtime agent %s matches %d live attempts; refusing ambiguous binding",runtimeAgentID,len(matches)) }
+    evidence:=map[string]string{"runtime_agent_id":runtimeAgentID,"correlation":"explicit_dispatch_result"}
+    return BindAttempt(project,matches[0].AttemptID,taskID,agentPath,"dispatch",parentAttemptID,evidence,now)
+}
+
 type accumulator struct {
     attempt Attempt
     transitions []Transition
