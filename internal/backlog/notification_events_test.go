@@ -74,3 +74,19 @@ func TestNotificationEventsPersistAttentionEpisode(t *testing.T) {
     resumed,err:=NotificationEvents(project,items); if err!=nil { t.Fatal(err) }
     if len(resumed)!=2 { t.Fatalf("reappearing attention should create a new episode, got %v",resumed) }
 }
+
+func TestNotificationEventsPersistExecutionLifecycle(t *testing.T) {
+ project:=t.TempDir()
+ items:=map[string]map[string]any{
+  "AID-39":{"file_state":"doing","updated_at":"2026-10-03T03:00:00Z","title":"Runtime sensing",
+   "activity":map[string]any{"source":"execution_ledger","attempt_id":"run-1","runtime_state":"running","health":"active"}},
+ }
+ events,err:=NotificationEvents(project,items);if err!=nil{t.Fatal(err)}
+ if len(events)!=1||events[0]["kind"]!="started"{t.Fatalf("start events=%v",events)}
+ items["AID-39"]["activity"]=map[string]any{"source":"execution_ledger","attempt_id":"run-1","runtime_state":"completed","health":"awaiting_finalize"}
+ events,err=NotificationEvents(project,items);if err!=nil{t.Fatal(err)}
+ if len(events)!=2||events[1]["kind"]!="finalize"{t.Fatalf("finalize events=%v",events)}
+ items["AID-39"]["file_state"]="done";items["AID-39"]["completed_at"]="2026-10-03T03:10:00Z"
+ events,err=NotificationEvents(project,items);if err!=nil{t.Fatal(err)}
+ if len(events)!=3||events[2]["kind"]!="completed"{t.Fatalf("completed events=%v",events)}
+}
