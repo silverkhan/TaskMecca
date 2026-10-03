@@ -123,6 +123,29 @@ func WorkloadSnapshot(project, root string) (map[string]any, error) {
     allItems := map[string]map[string]any{}
 
     runtimeNow := time.Now()
+    // Backlog assignment is the canonical Task Mecca dispatch record. When a
+    // provider hook has already exposed exactly one live runtime attempt for
+    // the assigned worker, bind it before projecting lifecycle notifications.
+    if preLedger, preErr := runtimeobs.ReconcileLedger(project, 10, runtimeNow); preErr == nil {
+        for id, row := range byID {
+            if row.Location != "active" || row.State != "doing" { continue }
+            agent := strings.TrimSpace(row.Fields["Agent"])
+            if agent == "" { continue }
+            workerName := agent
+            if slash := strings.LastIndex(workerName, "/"); slash >= 0 { workerName = workerName[slash+1:] }
+            candidates := []runtimeobs.Attempt{}
+            for _, attempt := range preLedger.Attempts {
+                if attempt.Terminal || attempt.BindingState == runtimeobs.BindingBound { continue }
+                runtimeID := strings.TrimSpace(attempt.RuntimeAgentID)
+                if runtimeID == "" { continue }
+                if runtimeID == workerName || runtimeID == agent { candidates = append(candidates, attempt) }
+            }
+            if len(candidates) == 1 {
+                evidence := map[string]string{"agent_path": agent, "correlation": "canonical_backlog_assignment"}
+                _, _ = runtimeobs.BindAttempt(project, candidates[0].AttemptID, id, agent, "backlog_assignment", "", evidence, runtimeNow)
+            }
+        }
+    }
     runtimeLedger, ledgerErr := runtimeobs.ReconcileLedger(project, 10, runtimeNow)
     if ledgerErr != nil {
         diagnostics = append(diagnostics, map[string]string{
