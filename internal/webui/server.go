@@ -21,7 +21,8 @@ import (
     "github.com/silverkhan/TaskMecca/goassets"
     "github.com/silverkhan/TaskMecca/internal/backlog"
     "github.com/silverkhan/TaskMecca/internal/install"
-    "github.com/silverkhan/TaskMecca/internal/maintenance"\n    "github.com/silverkhan/TaskMecca/internal/notify"
+    "github.com/silverkhan/TaskMecca/internal/maintenance"
+    "github.com/silverkhan/TaskMecca/internal/notify"
     "github.com/silverkhan/TaskMecca/internal/runtimeobs"
 )
 
