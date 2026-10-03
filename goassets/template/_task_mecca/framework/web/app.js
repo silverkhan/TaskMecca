@@ -1448,7 +1448,9 @@ function processTaskNotifications(snapshot) {
       rememberNotification(key);
       return;
     }
-    const kind=event.kind==='stalled'?'stalled':event.kind==='completed'?'completed':'intervention';\n    const reason=kind==='completed'?null:{title:event.reason_type||event.kind,message:event.message||'',resume_condition:event.resume_condition||''};\n    sendBrowserNotification(kind,task,reason,key);
+    const kind=event.kind==='stalled'?'stalled':event.kind==='completed'?'completed':'intervention';
+    const reason=kind==='completed'?null:{title:event.reason_type||event.kind,message:event.message||'',resume_condition:event.resume_condition||''};
+    sendBrowserNotification(kind,task,reason,key);
   });
 
   Object.values(current).forEach(task=>{
