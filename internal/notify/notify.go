@@ -46,7 +46,9 @@ func (t telegramChannel) Deliver(e Event) error {
  return telegramCall(t.cfg.Token,"sendMessage",map[string]any{"chat_id":t.cfg.ChatID,"text":strings.Join(lines,"\n")},nil)
 }
 
-var telegramMu sync.Mutex\nvar telegramAPIBase = "https://api.telegram.org"\nfunc telegramPath(project string) string { return filepath.Join(project,"_task_mecca",".runtime","notifications","telegram.json") }
+var telegramMu sync.Mutex
+var telegramAPIBase = "https://api.telegram.org"
+func telegramPath(project string) string { return filepath.Join(project,"_task_mecca",".runtime","notifications","telegram.json") }
 func defaultKinds() map[string]bool { return map[string]bool{"intervention":true,"completed":true,"stalled":true} }
 func loadTelegram(project string)(TelegramConfig,error){
  cfg:=TelegramConfig{Kinds:defaultKinds()}; data,err:=os.ReadFile(telegramPath(project))
