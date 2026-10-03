@@ -83,7 +83,7 @@ jobs:
               },
               sections:[{type:"improved",items:$items}],
               migration:{required:false,instruction_refresh:false}
-            }' > dist-release-note.json
+            }' > release-note.json
 
       - name: Check Web UI JavaScript
         run: |
@@ -146,7 +146,7 @@ jobs:
               dist/task-mecca-macos-arm64 \
               dist/task-mecca-linux-amd64 \
               dist/SHA256SUMS.txt \
-              dist-release-note.json#release-note.json \
+              release-note.json \
               --clobber
 
             # Publish the version marker last so clients never discover a half-published Dev build.
