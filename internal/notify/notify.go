@@ -46,7 +46,7 @@ func (t telegramChannel) Deliver(e Event) error {
  return telegramCall(t.cfg.Token,"sendMessage",map[string]any{"chat_id":t.cfg.ChatID,"text":strings.Join(lines,"\n")},nil)
 }
 
-var telegramMu sync.Mutex
+var telegramMu sync.Mutex\nvar telegramAPIBase = \"https://api.telegram.org\"
 func telegramPath(project string) string { return filepath.Join(project,"_task_mecca",".runtime","notifications","telegram.json") }
 func defaultKinds() map[string]bool { return map[string]bool{"intervention":true,"completed":true,"stalled":true} }
 func loadTelegram(project string)(TelegramConfig,error){
@@ -69,7 +69,7 @@ type telegramEnvelope struct{ OK bool `json:"ok"`; Description string `json:"des
 func telegramCall(token,method string,body,out any)error{
  token=strings.TrimSpace(token);if token==""{return errors.New("telegram bot token is empty")}
  data,err:=json.Marshal(body);if err!=nil{return err};client:=&http.Client{Timeout:8*time.Second}
- req,err:=http.NewRequest(http.MethodPost,"https://api.telegram.org/bot"+token+"/"+method,bytes.NewReader(data));if err!=nil{return err};req.Header.Set("Content-Type","application/json")
+ req,err:=http.NewRequest(http.MethodPost,strings.TrimRight(telegramAPIBase,"/")+"/bot"+token+"/"+method,bytes.NewReader(data));if err!=nil{return err};req.Header.Set("Content-Type","application/json")
  resp,err:=client.Do(req);if err!=nil{return err};defer resp.Body.Close();var env telegramEnvelope
  if err=json.NewDecoder(resp.Body).Decode(&env);err!=nil{return err};if !env.OK{if env.Description!=""{return errors.New(env.Description)};return fmt.Errorf("telegram %s failed",method)}
  if out!=nil&&len(env.Result)>0{return json.Unmarshal(env.Result,out)};return nil
