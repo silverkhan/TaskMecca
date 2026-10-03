@@ -10,6 +10,8 @@ import (
     "strings"
     "sync"
     "time"
+
+    "github.com/silverkhan/TaskMecca/internal/runtimeobs"
 )
 
 type lifecycleEvent struct {
@@ -186,6 +188,40 @@ func lifecycleTimings(project,root string,rows []Record) (map[string]map[string]
     if !ok { items=map[string]any{}; ledgerRow["items"]=items }
 
     now:=time.Now()
+
+    // Canonical execution-start evidence comes from the provider-neutral
+    // Execution Attempt Ledger. A backlog "doing" state is dispatch/workflow
+    // state; it is not, by itself, proof that the assigned worker executed.
+    runtimeStarts:=map[string]lifecycleEvent{}
+    if runtimeLedger,ledgerErr:=runtimeobs.ReconcileLedger(project,10,now); ledgerErr==nil {
+        for _,attempt:=range runtimeLedger.Attempts {
+            id:=strings.ToUpper(strings.TrimSpace(attempt.TaskID))
+            if id=="" || attempt.BindingState!=runtimeobs.BindingBound || attempt.StartedAt=="" { continue }
+            candidate:=lifecycleEvent{State:"doing",At:attempt.StartedAt,Source:"execution_ledger"}
+            existing,ok:=runtimeStarts[id]
+            if !ok {
+                runtimeStarts[id]=candidate
+                continue
+            }
+            oldAt,oldOK:=parseTime(existing.At); newAt,newOK:=parseTime(candidate.At)
+            if newOK && (!oldOK || newAt.Before(oldAt)) { runtimeStarts[id]=candidate }
+        }
+    }
+
+    // If the task explicitly targets a provider whose Task Mecca hook is
+    // installed, absence of runtime start evidence must remain "not started".
+    // This prevents a mere todo -> doing file move from becoming a false start.
+    runtimeExpected:=map[string]bool{}
+    hookInstalled:=map[string]bool{}
+    for _,provider:=range []string{"codex","claude"} {
+        if setup,hookErr:=runtimeobs.HookStatus(project,provider); hookErr==nil { hookInstalled[provider]=setup.Installed }
+    }
+    for id,row:=range currentRows {
+        metadata:=runtimeFromFields(row.Fields)
+        provider:=strings.ToLower(strings.TrimSpace(toString(metadata["runtime_provider"])))
+        if provider!="" && hookInstalled[provider] { runtimeExpected[id]=true }
+    }
+
     journalChanged:=false
     combinedEvents:=map[string][]lifecycleEvent{}
     for id,seq:=range events { combinedEvents[id]=append([]lifecycleEvent{},seq...) }
@@ -239,6 +275,29 @@ func lifecycleTimings(project,root string,rows []Record) (map[string]map[string]
             }
         }
         combined:=append([]lifecycleEvent{},durable...)
+
+        // For active work with observable runtime, remove workflow-state doing
+        // transitions and replace them with the first bound runtime start.
+        // Completed/history rows retain Git evidence for backward compatibility.
+        if row.Location=="active" && runtimeExpected[id] {
+            filtered:=make([]lifecycleEvent,0,len(combined))
+            for _,event:=range combined { if event.State!="doing" { filtered=append(filtered,event) } }
+            combined=filtered
+            filteredCached:=cached[:0]
+            for _,entry:=range cached { if entry["state"]!="doing" { filteredCached=append(filteredCached,entry) } }
+            cached=filteredCached
+            if start,ok:=runtimeStarts[id]; ok { combined=append(combined,start) }
+        } else if start,ok:=runtimeStarts[id]; ok {
+            // Runtime evidence outranks any inferred doing timestamp even when
+            // a durable Git transition also exists.
+            filtered:=make([]lifecycleEvent,0,len(combined))
+            for _,event:=range combined { if event.State!="doing" { filtered=append(filtered,event) } }
+            combined=append(filtered,start)
+            filteredCached:=cached[:0]
+            for _,entry:=range cached { if entry["state"]!="doing" { filteredCached=append(filteredCached,entry) } }
+            cached=filteredCached
+        }
+
         last:=""
         if len(combined)>0 { last=combined[len(combined)-1].State }
         for _,entry:=range cached {
