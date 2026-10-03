@@ -55,6 +55,36 @@ jobs:
           echo "SOURCE_SHA=$GITHUB_SHA" >> "$GITHUB_ENV"
           echo "Dev version: $dev_version"
 
+      - name: Generate Dev update note
+        shell: bash
+        run: |
+          set -euo pipefail
+          previous_source="$(git rev-parse release-dev^ 2>/dev/null || true)"
+          if [ -n "$previous_source" ]; then
+            mapfile -t changes < <(git log --no-merges --format='%s' "$previous_source..$GITHUB_SHA" | head -8)
+          else
+            mapfile -t changes < <(git log -1 --format='%s' "$GITHUB_SHA")
+          fi
+          if [ "${#changes[@]}" -eq 0 ]; then changes=("Dev build refresh"); fi
+          items='[]'
+          for change in "${changes[@]}"; do
+            items="$(jq --arg text "$change" '. + [{ko:$text,en:$text}]' <<<"$items")"
+          done
+          jq -n \
+            --arg version "$DEV_VERSION" \
+            --arg date "$(date -u +%F)" \
+            --argjson items "$items" \
+            '{
+              version:$version,
+              date:$date,
+              summary:{
+                ko:"직전 Dev 빌드 이후 변경사항입니다. Stable 배포 전 실제 업데이트 흐름을 검증할 수 있습니다.",
+                en:"Changes since the previous Dev build, available for validating the real update flow before Stable release."
+              },
+              sections:[{type:"improved",items:$items}],
+              migration:{required:false,instruction_refresh:false}
+            }' > dist-release-note.json
+
       - name: Check Web UI JavaScript
         run: |
           node --check goassets/template/_task_mecca/framework/web/app.js
@@ -116,6 +146,7 @@ jobs:
               dist/task-mecca-macos-arm64 \
               dist/task-mecca-linux-amd64 \
               dist/SHA256SUMS.txt \
+              dist-release-note.json#release-note.json \
               --clobber
 
             # Publish the version marker last so clients never discover a half-published Dev build.
