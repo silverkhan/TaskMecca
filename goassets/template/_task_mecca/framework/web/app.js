@@ -1556,13 +1556,15 @@ function renderNotificationPanel() {
       <div class="telegram-actions">${!tg.connected?`<button type="button" class="action-btn" id="telegramDiscover">${esc(t('telegramFindChat'))}</button>`:''}${tg.connected?`<button type="button" class="action-btn" id="telegramTest">${esc(t('telegramTest'))}</button>`:''}<button type="button" class="secondary-btn" id="telegramDisable">${esc(t('telegramDisconnect'))}</button></div></div>`;
   }
   panel.innerHTML=`<div class="notification-panel-head"><strong>${esc(t('notificationSettings'))}</strong><button type="button" id="notificationClose">×</button></div>
-    ${guide}
-    <div class="notification-browser-kinds">
-      <label><input type="checkbox" data-notification-setting="intervention" ${state.notificationSettings.intervention?'checked':''}> <span>${esc(t('notifyIntervention'))}</span></label>
-      <label><input type="checkbox" data-notification-setting="completed" ${state.notificationSettings.completed?'checked':''}> <span>${esc(t('notifyCompleted'))}</span></label>
-      <label><input type="checkbox" data-notification-setting="stalled" ${state.notificationSettings.stalled?'checked':''}> <span>${esc(t('notifyStalled'))}</span></label>
-      ${permission==='default'&&capability.canRequest?`<button type="button" class="action-btn notification-permission" id="notificationPermission">${esc(t('allowBrowserNotifications'))}</button>`:''}
-    </div>${telegram}`;
+    <div class="notification-panel-body">
+      ${guide}
+      <div class="notification-browser-kinds">
+        <label><input type="checkbox" data-notification-setting="intervention" ${state.notificationSettings.intervention?'checked':''}> <span>${esc(t('notifyIntervention'))}</span></label>
+        <label><input type="checkbox" data-notification-setting="completed" ${state.notificationSettings.completed?'checked':''}> <span>${esc(t('notifyCompleted'))}</span></label>
+        <label><input type="checkbox" data-notification-setting="stalled" ${state.notificationSettings.stalled?'checked':''}> <span>${esc(t('notifyStalled'))}</span></label>
+        ${permission==='default'&&capability.canRequest?`<button type="button" class="action-btn notification-permission" id="notificationPermission">${esc(t('allowBrowserNotifications'))}</button>`:''}
+      </div>${telegram}
+    </div>`;
   panel.querySelectorAll('[data-notification-setting]').forEach(input=>input.addEventListener('change',()=>{state.notificationSettings[input.dataset.notificationSetting]=input.checked;saveNotificationSettings();updateNotificationIndicator();renderNotificationPanel()}));
   panel.querySelectorAll('[data-telegram-kind]').forEach(input=>input.addEventListener('change',async()=>{try{const kinds={...state.telegramStatus.kinds,[input.dataset.telegramKind]:input.checked};await telegramAction('kinds',{kinds});renderNotificationPanel()}catch(e){alert(e.message)}}));
   $('#notificationClose')?.addEventListener('click',()=>panel.classList.remove('open'));
