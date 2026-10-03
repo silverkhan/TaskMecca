@@ -124,6 +124,7 @@ func selectionPayload(ctx context, selected string, candidates []backlog.Candida
 
 var stableReleaseNotesIndexProvider = maintenance.StableReleaseNotesIndex
 var stableReleaseNoteProvider = maintenance.StableReleaseNote
+var currentChannelReleaseNoteProvider = maintenance.CurrentChannelReleaseNote
 var releaseChannelOptionsProvider = maintenance.GetReleaseChannelOptions
 var releaseChannelSwitchProvider = maintenance.SwitchChannel
 
@@ -151,7 +152,7 @@ func releaseNotesIndex() ([]map[string]any,error) {
 func releaseNoteDetail(version string) (map[string]any,error) {
     current,currentErr:=currentReleaseNote()
     if currentErr==nil && strings.TrimSpace(fmt.Sprint(current["version"]))==version { return current,nil }
-    data,err:=stableReleaseNoteProvider(version)
+    data,err:=currentChannelReleaseNoteProvider(version)
     if err!=nil {
         if currentErr!=nil { return nil,fmt.Errorf("local release note: %v; remote release note: %w",currentErr,err) }
         return nil,err
