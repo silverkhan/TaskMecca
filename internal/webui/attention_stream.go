@@ -8,7 +8,7 @@ import (
     "sync"
     "time"
 
-    "github.com/silverkhan/TaskMecca/internal/backlog"
+    "github.com/silverkhan/TaskMecca/internal/backlog"\n    "github.com/silverkhan/TaskMecca/internal/notify"
 )
 
 type attentionFeed struct {
