@@ -3486,7 +3486,12 @@ $('#search').addEventListener('input',e=>{
   if(state.view==='backlog')searchRefreshTimer=setTimeout(refreshList,180); else render();
 });
 $('#refreshBtn').onclick=refreshVisibleContent;
-$('#notificationBtn')?.addEventListener('click',async()=>{const panel=$('#notificationPanel');panel?.classList.toggle('open');if(panel?.classList.contains('open')){await loadTelegramStatus();renderNotificationPanel();}});
+$('#notificationBtn')?.addEventListener('click',async()=>{
+  const panel=$('#notificationPanel'); if(!panel)return;
+  if(window.matchMedia('(max-width:680px)').matches && panel.parentElement!==document.body) document.body.appendChild(panel);
+  panel.classList.toggle('open');
+  if(panel.classList.contains('open')){await loadTelegramStatus();renderNotificationPanel();}
+});
 document.addEventListener('click',e=>{const panel=$('#notificationPanel');if(panel?.classList.contains('open')&&!panel.contains(e.target)&&!$('#notificationBtn')?.contains(e.target))panel.classList.remove('open')});
 $('#sidebarToggle').onclick=toggleSidebar;
 $('#sidebar')?.addEventListener('mouseenter',()=>{if(state.sidebarCollapsed){state.sidebarPeek=true;applySidebarState();}});
