@@ -559,7 +559,7 @@ function renderReleaseNoteModal() {
 async function showAvailableUpdateNotes() {
   const cli=state.versionInfo?.cli||state.hub?.cli||{};
   const version=normalizedVersion(cli.latest||'');
-  if(!version||cli.channel==='dev')return;
+  if(!version)return;
   const detail=await loadReleaseNoteDetail(version);
   if(!detail){
     alert(t('updateChangesUnavailable'));
@@ -601,14 +601,12 @@ function renderGlobalUpdateIndicator() {
   if(cli.update_available){
     const current=esc(cli.current||'-'), latest=esc(cli.latest||'-');
     el.innerHTML='<button type="button" class="global-update-pill available version-update-label" id="globalVersionUpdateBtn" title="'+esc(t('updateNow'))+'">'+
-      '<span class="global-update-dot"></span><strong>'+esc(t('updateLabel'))+'</strong><span>v'+current+'</span><strong>→ '+latest+'</strong></button>';
+      '<span class="global-update-dot"></span><strong>'+esc(t('updateLabel'))+'</strong>'+(cli.channel==='dev'?'<span class="badge">DEV</span>':'')+'<span>v'+current+'</span><strong>→ '+latest+'</strong></button>';
     $('#globalVersionUpdateBtn')?.addEventListener('click',async e=>{
-      if(cli.channel!=='dev'){
-        const detail=await loadReleaseNoteDetail(cli.latest||'');
-        if(detail){
-          state.releaseNotePopup=detail; state.releaseNotePopupMode='available';
-          renderReleaseNoteModal(); return;
-        }
+      const detail=await loadReleaseNoteDetail(cli.latest||'');
+      if(detail){
+        state.releaseNotePopup=detail; state.releaseNotePopupMode='available';
+        renderReleaseNoteModal(); return;
       }
       performUpgrade(e.currentTarget);
     });
