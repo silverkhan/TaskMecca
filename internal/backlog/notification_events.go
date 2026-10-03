@@ -13,6 +13,7 @@ type notificationObservation struct {
     FileState string `json:"file_state"`
     UpdatedAt string `json:"updated_at,omitempty"`
     AttentionKey string `json:"attention_key,omitempty"`
+    RuntimeKey string `json:"runtime_key,omitempty"`
 }
 
 type notificationJournal struct {
@@ -83,6 +84,46 @@ func NotificationEvents(project string,items map[string]map[string]any) ([]map[s
             }
         }
 
+        runtimeKey:=""
+        if activity,ok:=item["activity"].(map[string]any); ok && toString(activity["source"])=="execution_ledger" {
+            attemptID:=toString(activity["attempt_id"])
+            runtimeState:=toString(activity["runtime_state"])
+            health:=toString(activity["health"])
+            runtimeKey=attemptID+"\x00"+runtimeState+"\x00"+health
+            if attemptID!="" && (!seen || previous.RuntimeKey!=runtimeKey) {
+                kind:=""
+                message:=""
+                switch {
+                case health=="active" && (runtimeState=="starting" || runtimeState=="running"):
+                    kind="started"; message="Worker가 실제 실행을 시작했습니다."
+                case runtimeState=="waiting_approval":
+                    kind="approval"; message="Worker가 승인을 기다리고 있습니다."
+                case health=="needs_user":
+                    kind="intervention"; message="Worker가 사용자 입력을 기다리고 있습니다."
+                case health=="stale":
+                    kind="stalled"; message="실행 활동이 일정 시간 관측되지 않았습니다."
+                case health=="execution_interrupted":
+                    kind="interrupted"; message="실행이 정상 완료되지 않고 종료되었습니다."
+                case health=="runtime_unknown":
+                    kind="runtime_unknown"; message="현재 실행 상태를 신뢰성 있게 확인할 수 없습니다."
+                case health=="awaiting_finalize":
+                    kind="finalize"; message="Worker 실행은 끝났지만 백로그가 아직 doing 상태입니다."
+                }
+                if kind!="" {
+                    at:=now
+                    eventID:=notificationEventID(id,kind,at)
+                    if !notificationEventExists(journal.Events,eventID) {
+                        journal.Events=append(journal.Events,map[string]any{
+                            "id":eventID,"task_id":id,"kind":kind,"at":at,"title":toString(item["title"]),
+                            "message":message,"attempt_id":attemptID,"runtime_state":runtimeState,
+                            "task_updated_at":updatedAt,
+                        })
+                        dirty=true
+                    }
+                }
+            }
+        }
+
         attentionKey:=""
         if reason,ok:=item["attention_reason"].(map[string]any); ok && len(reason)>0 {
             reasonType:=toString(reason["type"])
@@ -104,7 +145,7 @@ func NotificationEvents(project string,items map[string]map[string]any) ([]map[s
             }
         }
 
-        next:=notificationObservation{FileState:fileState,UpdatedAt:updatedAt,AttentionKey:attentionKey}
+        next:=notificationObservation{FileState:fileState,UpdatedAt:updatedAt,AttentionKey:attentionKey,RuntimeKey:runtimeKey}
         if !seen || previous!=next {
             journal.Items[id]=next
             dirty=true
