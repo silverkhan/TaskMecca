@@ -57,7 +57,7 @@ func NotificationEvents(project string,items map[string]map[string]any) ([]map[s
         journal.Version=1
     }
 
-    now:=time.Now().Format(time.RFC3339)
+    now:=time.Now().Format(time.RFC3339Nano)
     dirty:=false
     for id,item:=range items {
         fileState:=toString(item["file_state"])
