@@ -90,7 +90,7 @@ func NotificationEvents(project string,items map[string]map[string]any) ([]map[s
             attentionKey=kind+"\x00"+reasonType+"\x00"+toString(reason["message"])+"\x00"+toString(reason["resume_condition"])
             if !seen || previous.AttentionKey!=attentionKey {
                 at:=now
-                eventID:=notificationEventID(id,kind,attentionKey)
+                eventID:=notificationEventID(id,kind,at)
                 if !notificationEventExists(journal.Events,eventID) {
                     journal.Events=append(journal.Events,map[string]any{
                         "id":eventID,"task_id":id,"kind":kind,"at":at,
