@@ -21,7 +21,7 @@ import (
     "github.com/silverkhan/TaskMecca/goassets"
     "github.com/silverkhan/TaskMecca/internal/backlog"
     "github.com/silverkhan/TaskMecca/internal/install"
-    "github.com/silverkhan/TaskMecca/internal/maintenance"
+    "github.com/silverkhan/TaskMecca/internal/maintenance"\n    "github.com/silverkhan/TaskMecca/internal/notify"
     "github.com/silverkhan/TaskMecca/internal/runtimeobs"
 )
 
@@ -558,6 +558,46 @@ func handler(project,root,version,instanceID,controlToken string,restartCh chan<
             results=append(results,setup)
         }
         writeJSON(w,map[string]any{"ok":true,"action":action,"hooks":results},200)
+    })
+
+    mux.HandleFunc("/api/notifications/telegram",func(w http.ResponseWriter,r *http.Request) {
+        activeProject:=projectFor(r)
+        if r.Method=="GET" {
+            status,err:=notify.TelegramStatusFor(activeProject)
+            if err!=nil { writeJSON(w,map[string]any{"error":err.Error()},500); return }
+            writeJSON(w,status,200); return
+        }
+        if r.Method!="POST" { writeJSON(w,map[string]any{"error":"GET or POST required"},405); return }
+        if r.Header.Get("X-Task-Mecca-Action")!="1" { writeJSON(w,map[string]any{"error":"maintenance action header required"},403); return }
+        var body struct {
+            Action string `json:"action"`
+            Token string `json:"token"`
+            Kinds map[string]bool `json:"kinds"`
+        }
+        if err:=json.NewDecoder(r.Body).Decode(&body); err!=nil { writeJSON(w,map[string]any{"error":"invalid JSON"},400); return }
+        action:=strings.ToLower(strings.TrimSpace(body.Action))
+        switch action {
+        case "configure":
+            status,err:=notify.ConfigureTelegram(activeProject,body.Token,body.Kinds)
+            if err!=nil { writeJSON(w,map[string]any{"error":err.Error()},400); return }
+            writeJSON(w,status,200)
+        case "discover":
+            status,err:=notify.DiscoverTelegramChat(activeProject)
+            if err!=nil { writeJSON(w,map[string]any{"error":err.Error()},400); return }
+            writeJSON(w,status,200)
+        case "test":
+            if err:=notify.TestTelegram(activeProject); err!=nil { writeJSON(w,map[string]any{"error":err.Error()},400); return }
+            writeJSON(w,map[string]any{"ok":true},200)
+        case "kinds":
+            status,err:=notify.UpdateTelegramKinds(activeProject,body.Kinds)
+            if err!=nil { writeJSON(w,map[string]any{"error":err.Error()},400); return }
+            writeJSON(w,status,200)
+        case "disable":
+            if err:=notify.DisableTelegram(activeProject); err!=nil { writeJSON(w,map[string]any{"error":err.Error()},500); return }
+            status,_:=notify.TelegramStatusFor(activeProject); writeJSON(w,status,200)
+        default:
+            writeJSON(w,map[string]any{"error":"action must be configure, discover, test, kinds, or disable"},400)
+        }
     })
 
     mux.HandleFunc("/api/issues",func(w http.ResponseWriter,r *http.Request) {
