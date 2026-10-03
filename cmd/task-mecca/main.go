@@ -650,7 +650,7 @@ func run(args []string) int {
         }
     case "runtime":
         if len(positional)==0 {
-            fmt.Fprintln(os.Stderr,"runtime requires an action: observe, list, reconcile, or bind")
+            fmt.Fprintln(os.Stderr,"runtime requires an action: observe, list, reconcile, bind, or bind-agent")
             return 2
         }
         action:=strings.ToLower(positional[0])
@@ -713,6 +713,22 @@ func run(args []string) int {
                     fmt.Printf("%s %s %s -> %s %s\n",attempt.AttemptID,attempt.BindingState,attempt.Provider,attempt.TaskID,attempt.AgentPath)
                 }
             }
+        case "bind-agent":
+            if len(positional)<4 || len(positional)>5 {
+                fmt.Fprintln(os.Stderr,"runtime bind-agent requires: <runtime-agent-id> <task-id|-> <agent-path> [parent-attempt-id]")
+                return 2
+            }
+            parent:=""
+            if len(positional)==5 { parent=positional[4] }
+            taskID:=positional[2]
+            if taskID=="-" { taskID="" }
+            var attempt runtimeobs.Attempt
+            attempt,err=runtimeobs.BindRuntimeAgent(runtimeProject,positional[1],taskID,positional[3],parent,time.Now())
+            if err==nil {
+                if jsonOutput { emitJSON(attempt) } else {
+                    fmt.Printf("%s %s %s -> %s %s\n",attempt.AttemptID,attempt.BindingState,attempt.RuntimeAgentID,attempt.TaskID,attempt.AgentPath)
+                }
+            }
         case "hooks":
             if len(positional)<2 || len(positional)>3 {
                 fmt.Fprintln(os.Stderr,"runtime hooks requires: status|enable|disable <codex|claude|all>")
@@ -755,7 +771,7 @@ func run(args []string) int {
                 }
             }
         default:
-            fmt.Fprintln(os.Stderr,"unknown runtime action: "+action+" (use observe, list, reconcile, bind, or hooks)")
+            fmt.Fprintln(os.Stderr,"unknown runtime action: "+action+" (use observe, list, reconcile, bind, bind-agent, or hooks)")
             return 2
         }
     case "runtime-spike":
