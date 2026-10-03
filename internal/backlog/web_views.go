@@ -116,7 +116,7 @@ func WorkloadSnapshot(project, root string) (map[string]any, error) {
         timings = map[string]map[string]any{}
     }
 
-    activity := runtimeActivity(project, rows, timings)
+    activity := runtimeActivity(project, rows, timings)\n    activity = mergeRuntimeSignals(activity, runtimeLedgerSignals(project, rows, time.Now()))
     workload := workloadFrom(rows, readyReport, timings)
     byID := preferredRows(rows)
     allItems := map[string]map[string]any{}
