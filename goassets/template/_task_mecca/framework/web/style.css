@@ -960,3 +960,18 @@ body.release-modal-open{overflow:hidden}
 .telegram-settings .notification-state{display:block;margin:0}
 .telegram-actions{display:flex;flex-wrap:wrap;gap:6px}
 .notification-browser-kinds{display:grid;gap:4px}
+
+.telegram-settings>label{min-width:0}
+.telegram-bulk-actions{display:flex;gap:6px}
+.telegram-actions{position:sticky;bottom:-12px;margin:4px -12px -12px;padding:10px 12px;background:var(--surface);border-top:1px solid var(--border);z-index:2}
+@media(max-width:680px){
+  .notification-panel{top:calc(env(safe-area-inset-top,0px) + 56px);bottom:12px;max-height:none;padding:0;overflow:auto;overscroll-behavior:contain}
+  .notification-panel-head{position:sticky;top:0;z-index:4;margin:0;padding:12px 14px;background:var(--surface);border-bottom:1px solid var(--border)}
+  .notification-panel>.notification-state,.notification-panel>.notification-browser-kinds,.notification-panel>.telegram-settings{margin-left:14px;margin-right:14px}
+  .notification-browser-kinds{grid-template-columns:repeat(3,minmax(0,1fr));gap:4px 8px}
+  .telegram-settings{grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 10px;padding-bottom:0}
+  .telegram-settings>strong,.telegram-settings>.notification-state,.telegram-settings>p,.telegram-settings>input[type=password],.telegram-settings>.telegram-bulk-actions,.telegram-settings>.telegram-actions{grid-column:1/-1}
+  .notification-panel label{padding:7px 0;min-height:28px}
+  .telegram-actions{bottom:0;margin:6px -14px 0;padding:10px 14px calc(10px + env(safe-area-inset-bottom,0px));}
+  .telegram-actions .action-btn,.telegram-actions .secondary-btn{flex:1 1 auto}
+}
