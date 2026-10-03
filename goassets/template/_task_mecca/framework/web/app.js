@@ -288,14 +288,14 @@ Object.assign(I18N.ko,{
   newContentAvailable:'새 내용이 업데이트되었습니다.', refreshToSee:'현재 읽고 있는 내용은 유지됩니다. 새 내용을 보려면 새로고침하세요.',
   refreshNow:'새로고침', runtimeChanged:'작업 상태가 변경되었습니다.', contentChanged:'백로그 내용이 변경되었습니다.',
   statusChanges:'상태 변화', taskRegistered:'등록됨', taskRemoved:'목록에서 제거됨', moreStatusChanges:'외 {n}건',
-  upgrading:'업그레이드 중…', migrating:'마이그레이션 중…'
+  upgrading:'업그레이드 중…', migrating:'마이그레이션 중…', updateLabel:'UPDATE', updateAgentContinuity:'업데이트해도 실행 중인 에이전트와 작업은 중단되지 않습니다.'
 });
 Object.assign(I18N.en,{
   updateAvailable:'Update available', currentVersion:'Current version', projectMigration:'Project migration required',
   newContentAvailable:'New content is available.', refreshToSee:'Your current reading position is preserved. Refresh when you want to see the update.',
   refreshNow:'Refresh', runtimeChanged:'Task status changed.', contentChanged:'Backlog content changed.',
   statusChanges:'Status changes', taskRegistered:'Registered', taskRemoved:'Removed from backlog', moreStatusChanges:'{n} more',
-  upgrading:'Upgrading…', migrating:'Migrating…'
+  upgrading:'Upgrading…', migrating:'Migrating…', updateLabel:'UPDATE', updateAgentContinuity:'Updating does not stop running agents or their work.'
 });
 Object.assign(I18N.ko,{
   releaseNotes:'업데이트 기록', releaseNotesIntro:'Task Mecca의 사용자용 변경사항을 버전별로 확인합니다.',
@@ -601,7 +601,7 @@ function renderGlobalUpdateIndicator() {
   if(cli.update_available){
     const current=esc(cli.current||'-'), latest=esc(cli.latest||'-');
     el.innerHTML='<button type="button" class="global-update-pill available version-update-label" id="globalVersionUpdateBtn" title="'+esc(t('updateNow'))+'">'+
-      '<span class="global-update-dot"></span><span>v'+current+'</span><strong>→ '+latest+'</strong></button>';
+      '<span class="global-update-dot"></span><strong>'+esc(t('updateLabel'))+'</strong><span>v'+current+'</span><strong>→ '+latest+'</strong></button>';
     $('#globalVersionUpdateBtn')?.addEventListener('click',async e=>{
       if(cli.channel!=='dev'){
         const detail=await loadReleaseNoteDetail(cli.latest||'');
