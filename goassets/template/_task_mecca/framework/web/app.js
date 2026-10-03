@@ -1544,9 +1544,14 @@ function renderNotificationPanel() {
   }else{
     const stateText=tg.connected?t('telegramConnected'):t('telegramConfigured');
     telegram=`<div class="telegram-settings"><strong>${esc(t('telegramNotifications'))}</strong><span class="notification-state ${tg.connected?'ok':'warning'}">${esc(stateText)}${tg.bot_username?' · @'+esc(tg.bot_username):''}</span>
+      <label><input type="checkbox" data-telegram-kind="started" ${tg.kinds?.started?'checked':''}> <span>${esc(t('notifyStarted'))}</span></label>
       <label><input type="checkbox" data-telegram-kind="intervention" ${tg.kinds?.intervention?'checked':''}> <span>${esc(t('notifyIntervention'))}</span></label>
-      <label><input type="checkbox" data-telegram-kind="completed" ${tg.kinds?.completed?'checked':''}> <span>${esc(t('notifyCompleted'))}</span></label>
+      <label><input type="checkbox" data-telegram-kind="approval" ${tg.kinds?.approval?'checked':''}> <span>${esc(t('notifyApproval'))}</span></label>
       <label><input type="checkbox" data-telegram-kind="stalled" ${tg.kinds?.stalled?'checked':''}> <span>${esc(t('notifyStalled'))}</span></label>
+      <label><input type="checkbox" data-telegram-kind="interrupted" ${tg.kinds?.interrupted?'checked':''}> <span>${esc(t('notifyInterrupted'))}</span></label>
+      <label><input type="checkbox" data-telegram-kind="runtime_unknown" ${tg.kinds?.runtime_unknown?'checked':''}> <span>${esc(t('notifyRuntimeUnknown'))}</span></label>
+      <label><input type="checkbox" data-telegram-kind="finalize" ${tg.kinds?.finalize?'checked':''}> <span>${esc(t('notifyFinalize'))}</span></label>
+      <label><input type="checkbox" data-telegram-kind="completed" ${tg.kinds?.completed?'checked':''}> <span>${esc(t('notifyCompleted'))}</span></label>
       <div class="telegram-actions">${!tg.connected?`<button type="button" class="action-btn" id="telegramDiscover">${esc(t('telegramFindChat'))}</button>`:''}${tg.connected?`<button type="button" class="action-btn" id="telegramTest">${esc(t('telegramTest'))}</button>`:''}<button type="button" class="secondary-btn" id="telegramDisable">${esc(t('telegramDisconnect'))}</button></div></div>`;
   }
   panel.innerHTML=`<div class="notification-panel-head"><strong>${esc(t('notificationSettings'))}</strong><button type="button" id="notificationClose">×</button></div>

@@ -39,7 +39,12 @@ func (t telegramChannel) Deliver(e Event) error {
  if !t.cfg.Enabled||t.cfg.ChatID==0||!t.cfg.Kinds[e.Kind] { return nil }
  head:="[Task Mecca] "+e.TaskID
  if e.Title!="" { head+=" · "+e.Title }
- label:="사용자 개입 필요"; if e.Kind=="completed" { label="완료 처리됨" }; if e.Kind=="stalled" { label="작업 정체 확인 필요" }
+ labels:=map[string]string{
+  "started":"작업 착수","intervention":"사용자 개입 필요","approval":"승인 필요",
+  "stalled":"작업 정체 확인 필요","interrupted":"실행 중단/오류","runtime_unknown":"실행 상태 확인 필요",
+  "finalize":"완료 처리 필요","completed":"작업 완료",
+ }
+ label:=labels[e.Kind]; if label=="" { label=e.Kind }
  lines:=[]string{head,label}
  if e.Message!="" { lines=append(lines,e.Message) }
  if e.ResumeCondition!="" { lines=append(lines,"다음 조치: "+e.ResumeCondition) }
@@ -49,11 +54,17 @@ func (t telegramChannel) Deliver(e Event) error {
 var telegramMu sync.Mutex
 var telegramAPIBase = "https://api.telegram.org"
 func telegramPath(project string) string { return filepath.Join(project,"_task_mecca",".runtime","notifications","telegram.json") }
-func defaultKinds() map[string]bool { return map[string]bool{"intervention":true,"completed":true,"stalled":true} }
+func defaultKinds() map[string]bool { return map[string]bool{
+ "started":true,"intervention":true,"approval":true,"stalled":true,
+ "interrupted":true,"runtime_unknown":true,"finalize":true,"completed":true,
+} }
+func mergeDefaultKinds(kinds map[string]bool) map[string]bool {
+ out:=defaultKinds(); for kind,enabled:=range kinds { out[kind]=enabled }; return out
+}
 func loadTelegram(project string)(TelegramConfig,error){
  cfg:=TelegramConfig{Kinds:defaultKinds()}; data,err:=os.ReadFile(telegramPath(project))
  if errors.Is(err,os.ErrNotExist){return cfg,nil}; if err!=nil{return cfg,err}
- if err=json.Unmarshal(data,&cfg);err!=nil{return cfg,err}; if cfg.Kinds==nil{cfg.Kinds=defaultKinds()}; return cfg,nil
+ if err=json.Unmarshal(data,&cfg);err!=nil{return cfg,err}; cfg.Kinds=mergeDefaultKinds(cfg.Kinds); return cfg,nil
 }
 func saveTelegram(project string,cfg TelegramConfig)error{
  path:=telegramPath(project); if err:=os.MkdirAll(filepath.Dir(path),0700);err!=nil{return err}

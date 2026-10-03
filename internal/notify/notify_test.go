@@ -45,3 +45,17 @@ func TestTelegramStatusDoesNotExposeToken(t *testing.T){
  data,_:=json.Marshal(st)
  if strings.Contains(string(data),"secret-token"){t.Fatalf("status leaked token: %s",data)}
 }
+
+func TestDefaultLifecycleKindsAreAllEnabled(t *testing.T){
+ kinds:=defaultKinds()
+ for _,kind:=range []string{"started","intervention","approval","stalled","interrupted","runtime_unknown","finalize","completed"} {
+  if !kinds[kind] { t.Fatalf("expected %s enabled by default: %v",kind,kinds) }
+ }
+}
+func TestExistingTelegramConfigGainsNewLifecycleDefaults(t *testing.T){
+ project:=t.TempDir()
+ if err:=saveTelegram(project,TelegramConfig{Token:"x",Kinds:map[string]bool{"stalled":false}});err!=nil{t.Fatal(err)}
+ cfg,err:=loadTelegram(project);if err!=nil{t.Fatal(err)}
+ if cfg.Kinds["stalled"] {t.Fatal("explicit disabled kind was overwritten")}
+ if !cfg.Kinds["started"]||!cfg.Kinds["finalize"]||!cfg.Kinds["approval"] {t.Fatalf("new defaults missing: %v",cfg.Kinds)}
+}
