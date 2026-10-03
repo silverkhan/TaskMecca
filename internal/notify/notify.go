@@ -40,14 +40,14 @@ func (t telegramChannel) Deliver(e Event) error {
  head:="[Task Mecca] "+e.TaskID
  if e.Title!="" { head+=" · "+e.Title }
  labels:=map[string]string{
-  "started":"작업 착수","intervention":"사용자 개입 필요","approval":"승인 필요",
-  "stalled":"작업 정체 확인 필요","interrupted":"실행 중단/오류","runtime_unknown":"실행 상태 확인 필요",
-  "finalize":"완료 처리 필요","completed":"작업 완료",
+  "registered":"📝 작업 등록","started":"▶️ 작업 착수","intervention":"🙋 사용자 개입 필요","approval":"🔐 승인 필요",
+  "stalled":"⏳ 작업 정체 확인 필요","interrupted":"⚠️ 실행 중단/오류","runtime_unknown":"❓ 실행 상태 확인 필요",
+  "finalize":"📌 완료 처리 필요","completed":"✅ 작업 완료",
  }
  label:=labels[e.Kind]; if label=="" { label=e.Kind }
- lines:=[]string{head,label}
+ lines:=[]string{label,head}
  if e.Message!="" { lines=append(lines,e.Message) }
- if e.ResumeCondition!="" { lines=append(lines,"다음 조치: "+e.ResumeCondition) }
+ if e.ResumeCondition!="" { lines=append(lines,"➡️ 다음 조치: "+e.ResumeCondition) }
  return telegramCall(t.cfg.Token,"sendMessage",map[string]any{"chat_id":t.cfg.ChatID,"text":strings.Join(lines,"\n")},nil)
 }
 
@@ -55,7 +55,7 @@ var telegramMu sync.Mutex
 var telegramAPIBase = "https://api.telegram.org"
 func telegramPath(project string) string { return filepath.Join(project,"_task_mecca",".runtime","notifications","telegram.json") }
 func defaultKinds() map[string]bool { return map[string]bool{
- "started":true,"intervention":true,"approval":true,"stalled":true,
+ "registered":true,"started":true,"intervention":true,"approval":true,"stalled":true,
  "interrupted":true,"runtime_unknown":true,"finalize":true,"completed":true,
 } }
 func mergeDefaultKinds(kinds map[string]bool) map[string]bool {
@@ -100,7 +100,7 @@ func DiscoverTelegramChat(project string)(TelegramStatus,error){
  if chatID==0{return TelegramStatus{},errors.New("no private Telegram chat found; send /start to the bot first")}
  cfg.ChatID=chatID;cfg.Enabled=true;if err=saveTelegram(project,cfg);err!=nil{return TelegramStatus{},err};return status(cfg),nil
 }
-func TestTelegram(project string)error{telegramMu.Lock();defer telegramMu.Unlock();cfg,err:=loadTelegram(project);if err!=nil{return err};if cfg.Token==""||cfg.ChatID==0{return errors.New("telegram bot is not connected")};return telegramCall(cfg.Token,"sendMessage",map[string]any{"chat_id":cfg.ChatID,"text":"[Task Mecca] Telegram 알림 연결이 정상입니다."},nil)}
+func TestTelegram(project string)error{telegramMu.Lock();defer telegramMu.Unlock();cfg,err:=loadTelegram(project);if err!=nil{return err};if cfg.Token==""||cfg.ChatID==0{return errors.New("telegram bot is not connected")};return telegramCall(cfg.Token,"sendMessage",map[string]any{"chat_id":cfg.ChatID,"text":"🔔 [Task Mecca] 테스트 알림\nTelegram 알림 연결이 정상입니다."},nil)}
 func DisableTelegram(project string)error{telegramMu.Lock();defer telegramMu.Unlock();err:=os.Remove(telegramPath(project));if errors.Is(err,os.ErrNotExist){return nil};return err}
 func UpdateTelegramKinds(project string,kinds map[string]bool)(TelegramStatus,error){telegramMu.Lock();defer telegramMu.Unlock();cfg,err:=loadTelegram(project);if err!=nil{return TelegramStatus{},err};if cfg.Token==""{return TelegramStatus{},errors.New("telegram bot is not configured")};cfg.Kinds=kinds;if err=saveTelegram(project,cfg);err!=nil{return TelegramStatus{},err};return status(cfg),nil}
 func Deliver(project string,events []Event)[]error{
