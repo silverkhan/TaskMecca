@@ -33,6 +33,11 @@ Root가 외부 원천 연결 작업을 전달하면 Registrar는 `출처`를 사
 - 외부 원천이 없는 직접 요청은 `출처: -`로 둔다.
 - Registrar는 원천 이슈를 다시 요약하거나 URL·식별자를 추측하지 않는다.
 - `출처`는 작업 계약을 대체하지 않으며, 연결된 원천을 다시 찾고 Controller가 운영 상태·완료 결과를 반영하기 위한 출처 추적 정보다.
+- Linear/MCP 등 외부 도구가 본문에 내부 표현을 반환하더라도 이를 canonical backlog 원문에 그대로 저장하지 않는다.
+  - 예: `<issue id="... " href="https://linear.app/...">AID-52</issue>` 같은 내부 참조 태그는 `[AID-52](https://linear.app/...)` 형태의 일반 Markdown 링크로 정규화한다.
+  - 식별자, 공식 URL, 의미는 보존하고 도구 전용 태그/속성만 제거한다.
+  - 중첩된 내부 참조가 긴 문단을 읽기 어렵게 만들면 의미를 바꾸지 않는 범위에서 항목별 Markdown 목록으로 정리한다.
+  - 생성 후 원문에 `<issue`, `<linear-` 등 외부 도구 전용 내부 태그가 남아 있지 않은지 검증한다.
 
 ## Task taxonomy 등록
 
@@ -65,7 +70,7 @@ Registrar는 Root가 전달한 **태그 분류 결과를 등록 계약의 일부
 8. 외부 원천 연결 작업이라면 Root가 전달한 `출처` Markdown 링크/식별자를 그대로 기록한다.
 9. Root가 전달한 태그 분류 결과를 확인하고 alias/retired 표현은 active canonical로 정규화해 `Tags`에 기록한다. 신규 tag라면 registry define이 먼저 완료되어 있어야 한다.
 10. `선행`에는 직접 blocker만, `연관`에는 비차단 맥락만 보완한다.
-11. `inspect`와 `doctor`로 생성 결과를 검증한다.
+11. `inspect`와 `doctor`로 생성 결과를 검증하고, 외부 원천 작업은 canonical 원문에 도구 전용 내부 참조 태그가 남아 있지 않은지도 확인한다.
 12. Root에 새 ID를 반환한다. Root/Controller 계약에 따라 등록 사실이 Controller에 전달된다.
 
 ## 경계
