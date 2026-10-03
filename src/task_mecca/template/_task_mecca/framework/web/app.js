@@ -732,7 +732,8 @@ function applyPalette(value) {
 
 function applyTheme(value) {
   state.theme=['system','light','dark'].includes(value)?value:'system';
-  document.documentElement.dataset.theme=state.theme;
+  document.documentElement.dataset.theme=effectiveTheme();
+  document.documentElement.dataset.themePreference=state.theme;
   localStorage.setItem('task-mecca-theme',state.theme);
   document.querySelectorAll('[data-theme-choice]').forEach(b=>{b.classList.toggle('active',b.dataset.themeChoice===state.theme);b.setAttribute('aria-pressed',b.dataset.themeChoice===state.theme?'true':'false')});
   if (document.querySelector('.mermaid-wrap')) renderMermaidDiagrams(true);
@@ -742,7 +743,7 @@ applyPalette(state.palette);
 applyTheme(state.theme);
 document.querySelectorAll('[data-theme-choice]').forEach(b=>b.addEventListener('click',()=>applyTheme(b.dataset.themeChoice)));
 $('#palettePicker')?.addEventListener('change',e=>applyPalette(e.target.value));
-window.matchMedia?.('(prefers-color-scheme: dark)').addEventListener?.('change',()=>{if(state.theme==='system')renderMermaidDiagrams(true)});
+window.matchMedia?.('(prefers-color-scheme: dark)').addEventListener?.('change',()=>{if(state.theme==='system'){document.documentElement.dataset.theme=effectiveTheme();renderMermaidDiagrams(true)}});
 $('#languagePicker').addEventListener('change',e=>setLanguage(e.target.value));
 $('#backlogPicker').addEventListener('change',e=>{
   const value=e.target.value;
