@@ -43,6 +43,10 @@ func webAttentionReason(row Record, review map[string]any, signal map[string]any
             reason=map[string]any{"type":"user_intervention","severity":"danger","title":"사용자 개입 필요","message":"워커 런타임이 사용자 입력 또는 조치를 기다리고 있습니다.","resume_condition":"필요한 사용자 판단 또는 입력을 제공한 뒤 작업을 재개하세요."}
         case "stale","worker_missing":
             reason=map[string]any{"type":"runtime_stalled","severity":"warning","title":"작업 정체 확인 필요","message":"진행 중 태스크의 런타임 활동이 중단되었거나 할당 워커를 찾을 수 없습니다.","resume_condition":"워커 상태와 남은 작업을 확인하고 재할당 또는 완료 처리 여부를 결정하세요."}
+        case "execution_interrupted":
+            reason=map[string]any{"type":"execution_interrupted","severity":"danger","title":"실행 복구 필요","message":"백로그는 doing 상태이지만 연결된 실행 attempt가 정상 완료되지 않고 종료되었습니다.","resume_condition":"실행 결과와 남은 작업을 확인한 뒤 재할당 또는 상태 정리를 수행하세요."}
+        case "runtime_unknown":
+            reason=map[string]any{"type":"runtime_unknown","severity":"warning","title":"실행 상태 확인 필요","message":"백로그에 연결된 실행 attempt의 현재 상태를 신뢰성 있게 확인할 수 없습니다.","resume_condition":"런타임과 hook 상태를 확인하고 필요하면 작업을 재개하세요."}
         }
     }
     return reason
@@ -65,7 +69,7 @@ func webSummaryItem(row Record,state string,waiting []string,review map[string]a
         switch toString(reason["type"]) {
         case "completion_pending": item["state"]="awaiting_finalize"
         case "user_intervention": item["state"]="needs_user"
-        case "runtime_stalled": item["state"]="stalled"
+        case "runtime_stalled","execution_interrupted","runtime_unknown": item["state"]="stalled"
         }
     }
     return item
@@ -92,6 +96,7 @@ func webStateMaps(project,root string,rows []Record) (map[string]bool,map[string
         if values,ok:=hold[key].([]map[string]any); ok { for _,x:=range values { reviewByPath[toString(x["path"])]=x } }
     }
     activity:=runtimeActivity(project,rows,map[string]map[string]any{})
+    activity=mergeRuntimeSignals(activity,runtimeLedgerSignals(project,rows,time.Now()))
     return readyIDs,blocked,reviewByPath,activity,hold
 }
 
@@ -104,6 +109,7 @@ func webAttentionMaps(project string,rows []Record) (map[string]map[string]any,m
         }
     }
     activity:=runtimeActivity(project,rows,map[string]map[string]any{})
+    activity=mergeRuntimeSignals(activity,runtimeLedgerSignals(project,rows,time.Now()))
     return reviewByPath,activity
 }
 
