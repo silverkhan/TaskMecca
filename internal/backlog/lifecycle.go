@@ -216,10 +216,14 @@ func lifecycleTimings(project,root string,rows []Record) (map[string]map[string]
     for _,provider:=range []string{"codex","claude"} {
         if setup,hookErr:=runtimeobs.HookStatus(project,provider); hookErr==nil { hookInstalled[provider]=setup.Installed }
     }
+    anyHookInstalled:=hookInstalled["codex"] || hookInstalled["claude"]
     for id,row:=range currentRows {
         metadata:=runtimeFromFields(row.Fields)
         provider:=strings.ToLower(strings.TrimSpace(toString(metadata["runtime_provider"])))
-        if provider!="" && hookInstalled[provider] { runtimeExpected[id]=true }
+        assigned:=strings.TrimSpace(row.Fields["Agent"])!=""
+        if (provider!="" && hookInstalled[provider]) || (provider=="" && assigned && anyHookInstalled) {
+            runtimeExpected[id]=true
+        }
     }
 
     journalChanged:=false
