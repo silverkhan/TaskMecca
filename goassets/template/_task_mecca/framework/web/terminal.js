@@ -32,7 +32,7 @@
       close:'닫기',
       copy:'복사',
       paste:'붙여넣기',
-      pastePrompt:'클립보드 읽기 권한을 사용할 수 없습니다. 아래 입력창을 길게 눌러 붙여넣으세요.',
+      pastePrompt:'클립보드 읽기 권한을 사용할 수 없습니다. 아래 입력창을 길게 눌러 붙여넣으세요.', pasteTitle:'Terminal에 붙여넣기', pasteHelp:'아래 입력창을 길게 눌러 기기의 붙여넣기를 선택하세요.', pasteSend:'Terminal에 입력', cancel:'취소',
       copySelectionEmpty:'복사할 Terminal 텍스트를 먼저 선택하세요.',
       copyFailed:'클립보드에 자동 복사하지 못했습니다. 아래 내용을 직접 복사하세요.',
       copied:'복사됨',
@@ -98,7 +98,7 @@
       close:'Close',
       copy:'Copy',
       paste:'Paste',
-      pastePrompt:'Clipboard access is unavailable. Long-press the field below and paste your command.',
+      pastePrompt:'Clipboard access is unavailable. Long-press the field below and paste your command.', pasteTitle:'Paste into Terminal', pasteHelp:'Long-press the field below and choose Paste from your device.', pasteSend:'Send to Terminal', cancel:'Cancel',
       copySelectionEmpty:'Select Terminal text first, then press Copy.',
       copyFailed:'Automatic clipboard copy failed. Copy the text below manually.',
       copied:'Copied',
@@ -264,6 +264,10 @@
     $('#terminalInterruptBtn').textContent = t('interrupt');
     renderEmergencyCommands();
     $('#terminalLifecycle').textContent = t('lifecycle');
+  $('#terminalPasteTitle').textContent = t('pasteTitle');
+  $('#terminalPasteHelp').textContent = t('pasteHelp');
+  $('#terminalPasteSend').textContent = t('pasteSend');
+  $('#terminalPasteCancel').textContent = t('cancel');
 
     $('#remoteToggleBtn')?.addEventListener('click', toggleRemoteAccess);
     updateSessionControls();
@@ -536,19 +540,35 @@
     window.setTimeout(() => { button.textContent = original; }, 1200);
   }
 
+  function closePasteSheet() {
+    const sheet=$('#terminalPasteSheet');
+    if (sheet) sheet.hidden=true;
+    const input=$('#terminalPasteInput');
+    if (input) input.value='';
+    try { state.terminal?.focus(); } catch (_) {}
+  }
+
+  function openPasteSheet() {
+    const sheet=$('#terminalPasteSheet');
+    const input=$('#terminalPasteInput');
+    if (!sheet || !input) return;
+    sheet.hidden=false;
+    input.value='';
+    window.setTimeout(()=>input.focus(),0);
+  }
+
   async function pasteIntoTerminal() {
     if (!state.session) return;
     let value = '';
     try {
       if (navigator.clipboard?.readText) value = await navigator.clipboard.readText();
     } catch (_) {}
-    if (!value) {
-      const manual = window.prompt(t('pastePrompt'), '');
-      if (manual == null || manual === '') return;
-      value = manual;
+    if (value) {
+      sendInput(value);
+      try { state.terminal?.focus(); } catch (_) {}
+      return;
     }
-    sendInput(value);
-    try { state.terminal?.focus(); } catch (_) {}
+    openPasteSheet();
   }
 
   function bindNativePaste(target) {
@@ -885,6 +905,16 @@
   $('#terminalCloseBtn').addEventListener('click', () => closeSession(false));
   $('#terminalCopyBtn').addEventListener('click', copyTerminalSelection);
   $('#terminalPasteBtn').addEventListener('click', pasteIntoTerminal);
+  $('#terminalPasteCancel')?.addEventListener('click', closePasteSheet);
+  $('#terminalPasteSend')?.addEventListener('click',()=>{
+    const input=$('#terminalPasteInput');
+    const value=input?.value||'';
+    if (!value) return;
+    sendInput(value);
+    closePasteSheet();
+  });
+  $('#terminalPasteInput')?.addEventListener('paste',()=>{});
+  $('#terminalPasteSheet')?.addEventListener('click',event=>{ if(event.target===event.currentTarget) closePasteSheet(); });
   $('#terminalInterruptBtn').addEventListener('click', () => sendInput('\x03'));
   window.addEventListener('beforeunload', stopStream);
   window.addEventListener('resize', () => { if (state.session) scheduleResize(); });
