@@ -25,7 +25,7 @@ var attentionFeeds = struct {
     feeds map[string]*attentionFeed
 }{feeds:map[string]*attentionFeed{}}
 
-func attentionRevision(payload map[string]any) string {
+func notificationValue(v any) string { if v==nil { return "" }; return fmt.Sprint(v) }\n\nfunc attentionRevision(payload map[string]any) string {
     parts:=[]string{}
     if rows,ok:=payload["attention"].([]map[string]any); ok {
         for _,row:=range rows {
