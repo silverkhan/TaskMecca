@@ -84,7 +84,9 @@ func NotificationEvents(project string,items map[string]map[string]any) ([]map[s
         }
 
         if seen && fileState=="done" && previous.FileState!="done" {
-            at:=toString(item["completed_at"])
+            at:=""
+            if lifecycle,ok:=item["lifecycle"].(map[string]any); ok { at=toString(lifecycle["completed_at"]) }
+            if at=="" { at=toString(item["completed_at"]) }
             if at=="" { at=updatedAt }
             if at=="" { at=now }
             eventID:=notificationEventID(id,"completed",at)
@@ -101,9 +103,8 @@ func NotificationEvents(project string,items map[string]map[string]any) ([]map[s
             }
         }
 
-        // Lifecycle is the canonical user-facing transition model. A start may be
-        // observed provisionally (runtime_observed) before an execution-ledger
-        // activity row exists, so notify from started_at as well.
+        // Notification is a consumer of the canonical lifecycle. It must not
+        // independently infer "started" from backlog state or runtime health.
         startedAt:=""
         if lifecycle,ok:=item["lifecycle"].(map[string]any); ok {
             startedAt=toString(lifecycle["started_at"])
@@ -131,7 +132,7 @@ func NotificationEvents(project string,items map[string]map[string]any) ([]map[s
                 message:=""
                 switch {
                 case health=="active" && (runtimeState=="starting" || runtimeState=="running"):
-                    kind="started"; message="Worker가 실제 실행을 시작했습니다."
+                    // started is emitted exclusively from canonical lifecycle.started_at
                 case runtimeState=="waiting_approval":
                     kind="approval"; message="Worker가 승인을 기다리고 있습니다."
                 case health=="needs_user":
