@@ -12,6 +12,7 @@ import (
 type notificationObservation struct {
     FileState string `json:"file_state"`
     UpdatedAt string `json:"updated_at,omitempty"`
+    AttentionKey string `json:"attention_key,omitempty"`
 }
 
 type notificationJournal struct {
