@@ -1009,3 +1009,14 @@ body.release-modal-open{overflow:hidden}
     padding:10px 14px calc(10px + env(safe-area-inset-bottom,0px));
   }
 }
+
+@media(max-width:680px){
+  body>.notification-panel.open{
+    top:max(8px,env(safe-area-inset-top,0px));
+    right:8px;
+    bottom:max(8px,env(safe-area-inset-bottom,0px));
+    left:8px;
+    height:calc(100dvh - max(8px,env(safe-area-inset-top,0px)) - max(8px,env(safe-area-inset-bottom,0px)));
+    min-height:70dvh;
+  }
+}
