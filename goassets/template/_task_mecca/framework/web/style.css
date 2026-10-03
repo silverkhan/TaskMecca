@@ -975,3 +975,37 @@ body.release-modal-open{overflow:hidden}
   .telegram-actions{bottom:0;margin:6px -14px 0;padding:10px 14px calc(10px + env(safe-area-inset-bottom,0px));}
   .telegram-actions .action-btn,.telegram-actions .secondary-btn{flex:1 1 auto}
 }
+
+/* Mobile notification dialog: viewport-contained, independently scrollable. */
+@media(max-width:680px){
+  body:has(.notification-panel.open){overflow:hidden}
+  .notification-panel.open{
+    display:flex;
+    flex-direction:column;
+    position:fixed;
+    inset:calc(env(safe-area-inset-top,0px) + 8px) 8px calc(env(safe-area-inset-bottom,0px) + 8px) 8px;
+    width:auto;
+    height:auto;
+    max-height:none;
+    padding:0;
+    overflow:hidden;
+    border-radius:14px;
+    z-index:1000;
+  }
+  .notification-panel-head{flex:0 0 auto}
+  .notification-panel-body{
+    flex:1 1 auto;
+    min-height:0;
+    overflow-y:auto;
+    overscroll-behavior:contain;
+    -webkit-overflow-scrolling:touch;
+    padding:12px 14px 0;
+  }
+  .notification-panel>.notification-state,.notification-panel>.notification-browser-kinds,.notification-panel>.telegram-settings{margin-left:0;margin-right:0}
+  .notification-panel .telegram-actions{
+    position:sticky;
+    bottom:0;
+    margin:8px -14px 0;
+    padding:10px 14px calc(10px + env(safe-area-inset-bottom,0px));
+  }
+}
