@@ -65,7 +65,7 @@ func webSummaryItem(row Record,state string,waiting []string,review map[string]a
         switch toString(reason["type"]) {
         case "completion_pending": item["state"]="awaiting_finalize"
         case "user_intervention": item["state"]="needs_user"
-        case "runtime_stalled": item["state"]="stalled"
+        case "runtime_stalled","execution_interrupted","runtime_unknown": item["state"]="stalled"
         }
     }
     return item
