@@ -1039,7 +1039,7 @@ body.release-modal-open{overflow:hidden}
 /* AID-62 Nocturne tonal chrome */
 :root[data-palette="nocturne"]{--nocturne-warm:#f1c77d;--nocturne-warm-soft:rgba(241,199,125,.075);--nocturne-edge:rgba(241,199,125,.48)}
 :root[data-palette="nocturne"][data-theme="dark"]{--bg:#0d1120;--surface:#121626;--surface2:#181b2d;--border:#25283a;--accent:#9a8ac4;--accent-soft:#211d35}
-:root[data-palette="nocturne"] body{background-color:var(--bg);background-image:linear-gradient(112deg,#0b1020 0%,#101426 48%,#171426 76%,#21151f 100%);background-attachment:fixed}
+:root[data-palette="nocturne"] body{background-color:var(--bg);background-image:radial-gradient(120% 72% at 112% 82%,rgba(239,184,93,.20) 0%,rgba(151,79,100,.14) 20%,rgba(86,55,123,.12) 38%,transparent 62%),linear-gradient(118deg,#091022 0%,#11162d 38%,#21183a 70%,#3a1f35 88%,#5b392d 100%);background-attachment:fixed}
 :root[data-palette="nocturne"] .sidebar{background:linear-gradient(180deg,color-mix(in srgb,var(--surface) 96%,#10162b),color-mix(in srgb,var(--surface) 97%,#251722));border-color:color-mix(in srgb,var(--border) 76%,transparent);backdrop-filter:none}
 :root[data-palette="nocturne"] .topbar{background:linear-gradient(90deg,color-mix(in srgb,var(--bg) 94%,#151b35),color-mix(in srgb,var(--bg) 94%,#281721));border-color:color-mix(in srgb,var(--border) 76%,transparent);backdrop-filter:none}
 :root[data-palette="nocturne"] .nav-item:hover{background:color-mix(in srgb,var(--surface2) 72%,transparent)}
@@ -1048,3 +1048,10 @@ body.release-modal-open{overflow:hidden}
 :root[data-palette="nocturne"] .worker-card,:root[data-palette="nocturne"] .runtime-root-card{background:color-mix(in srgb,var(--surface) 97%,#1d1830);border-color:color-mix(in srgb,var(--border) 82%,transparent)}
 :root[data-palette="nocturne"] .search-wrap,:root[data-palette="nocturne"] .icon-btn,:root[data-palette="nocturne"] .palette-picker{border-color:color-mix(in srgb,var(--border) 82%,transparent);background:color-mix(in srgb,var(--surface) 94%,transparent)}
 @media(prefers-reduced-motion:reduce){:root[data-palette="nocturne"] body{background-attachment:scroll}}
+
+/* Keep the Nocturne colour field visible through the mobile/Hub shell. */
+:root[data-palette="nocturne"] .main{background:transparent}
+:root[data-palette="nocturne"] .content{background:transparent}
+:root[data-palette="nocturne"] .hub-card{background:color-mix(in srgb,var(--surface) 88%,transparent);border-color:color-mix(in srgb,var(--border) 68%,transparent)}
+:root[data-palette="nocturne"] .primary-btn,:root[data-palette="nocturne"] .action-btn.primary{background:linear-gradient(135deg,color-mix(in srgb,var(--surface2) 92%,#382744),color-mix(in srgb,var(--surface2) 90%,#5b3c35));border:1px solid var(--nocturne-edge);box-shadow:0 0 12px rgba(241,199,125,.045);color:var(--text)}
+@media(max-width:680px){:root[data-palette="nocturne"] .sidebar{background:linear-gradient(115deg,rgba(12,17,36,.94) 0%,rgba(30,22,51,.91) 68%,rgba(67,37,43,.82) 100%)}:root[data-palette="nocturne"] .topbar{background:linear-gradient(110deg,rgba(10,15,33,.90) 0%,rgba(27,21,48,.86) 72%,rgba(70,40,39,.72) 100%)}}
