@@ -72,5 +72,5 @@ func TestNotificationEventsPersistAttentionEpisode(t *testing.T) {
     if _,err=NotificationEvents(project,items); err!=nil { t.Fatal(err) }
     items["AID-39"]["attention_reason"]=map[string]any{"type":"runtime_stalled","message":"no activity","resume_condition":"check worker"}
     resumed,err:=NotificationEvents(project,items); if err!=nil { t.Fatal(err) }
-    if len(resumed)!=1 { t.Fatalf("same evidence should keep durable event id, got %v",resumed) }
+    if len(resumed)!=2 { t.Fatalf("reappearing attention should create a new episode, got %v",resumed) }
 }
