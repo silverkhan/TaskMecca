@@ -150,3 +150,10 @@
 .timeline-label strong{display:flex;align-items:center;gap:4px}
 .timing-note{display:flex;gap:8px;align-items:flex-start;margin:-4px 0 22px;padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:var(--surface2);font-size:11px;color:var(--muted)}
 .timing-note strong{color:var(--text);white-space:nowrap}
+
+/* Global identity / version controls */
+.brand-mark{border:0;padding:0;cursor:pointer;font:inherit;font-weight:800}
+.brand-mark:hover{filter:brightness(1.08)}
+.brand-mark:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.version-label,.version-update-label{font-variant-numeric:tabular-nums}
+.version-update-label{cursor:pointer}

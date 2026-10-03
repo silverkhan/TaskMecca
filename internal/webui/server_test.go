@@ -116,7 +116,7 @@ func TestHandlerServesDashboardAPIsAndAssets(t *testing.T) {
     rec=httptest.NewRecorder()
     handler.ServeHTTP(rec,req)
     appJS:=rec.Body.String()
-    for _,needle:=range []string{"renderReleaseUnreadPrompt","showAvailableUpdateNotes","globalUpdateChangesBtn"} {
+    for _,needle:=range []string{"renderReleaseUnreadPrompt","showAvailableUpdateNotes","globalVersionUpdateBtn","channelSwitchMark"} {
         if !contains(appJS,needle) { t.Fatalf("app.js missing release note UX marker %q",needle) }
     }
     if contains(appJS,"tf(confirmKey") {

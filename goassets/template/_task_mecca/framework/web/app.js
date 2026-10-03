@@ -598,13 +598,19 @@ function renderGlobalUpdateIndicator() {
   const project=payload.project||{};
   const projectMatches=state.project && project.path===state.project;
   if(cli.update_available){
-    const canShowChanges=cli.channel!=='dev';
-    el.innerHTML='<div class="global-update-group">'+
-      '<span class="global-update-pill available"><span class="global-update-dot"></span><span>'+esc(t('updateAvailable'))+'</span><strong>'+esc(cli.latest||'')+'</strong></span>'+
-      (canShowChanges?'<button type="button" class="global-update-link" id="globalUpdateChangesBtn">'+esc(t('updateChanges'))+'</button>':'')+
-      '<button type="button" class="global-update-link primary" id="globalUpgradeBtn">'+esc(t('updateNow'))+'</button></div>';
-    $('#globalUpdateChangesBtn')?.addEventListener('click',showAvailableUpdateNotes);
-    $('#globalUpgradeBtn')?.addEventListener('click',e=>performUpgrade(e.currentTarget));
+    const current=esc(cli.current||'-'), latest=esc(cli.latest||'-');
+    el.innerHTML='<button type="button" class="global-update-pill available version-update-label" id="globalVersionUpdateBtn" title="'+esc(t('updateNow'))+'">'+
+      '<span class="global-update-dot"></span><span>v'+current+'</span><strong>→ '+latest+'</strong></button>';
+    $('#globalVersionUpdateBtn')?.addEventListener('click',async e=>{
+      if(cli.channel!=='dev'){
+        const detail=await loadReleaseNoteDetail(cli.latest||'');
+        if(detail){
+          state.releaseNotePopup=detail; state.releaseNotePopupMode='available';
+          renderReleaseNoteModal(); return;
+        }
+      }
+      performUpgrade(e.currentTarget);
+    });
     return;
   }
   if(projectMatches && project.migration_available){
@@ -612,7 +618,7 @@ function renderGlobalUpdateIndicator() {
     $('#globalMigrateBtn')?.addEventListener('click',e=>performProjectMigration(state.project,e.currentTarget));
     return;
   }
-  el.innerHTML='';
+  el.innerHTML='<span class="global-update-pill version-label"><span>v'+esc(cli.current||'-')+'</span></span>';
 }
 
 function revisionStateMap(rows=[]) {
@@ -1962,8 +1968,11 @@ async function showChannelSwitchModal() {
   });
 }
 function bindChannelGesture() {
-  const mark=$('#hubVersionMark');
-  if(mark)mark.addEventListener('click',recordChannelGestureTap);
+  const mark=$('#channelSwitchMark');
+  if(mark&&!mark.dataset.channelGestureBound){
+    mark.dataset.channelGestureBound='1';
+    mark.addEventListener('click',recordChannelGestureTap);
+  }
 }
 async function maybeShowPendingFrameworkSync() {
   const pending=readPendingFrameworkSync();
@@ -2039,7 +2048,7 @@ function hubView() {
   const cli=h.cli||{};
   const projects=Array.isArray(h.projects)?h.projects:[];
   const channelBadge=cli.channel==='dev' ? '<span class="badge warn">DEV</span>' : '';
-  const currentVersionMark='<button type="button" class="badge hub-version-mark" id="hubVersionMark">'+esc(cli.current||'-')+'</button>';
+  const currentVersionMark='<span class="badge hub-version-mark">'+esc(cli.current||'-')+'</span>';
   const cliStatus=cli.update_available
     ? currentVersionMark+'<span class="badge warn">→ '+esc(cli.latest||'-')+'</span>'
     : currentVersionMark;
@@ -2053,9 +2062,7 @@ function hubView() {
       <div class="project-actions">${p?.migration_available?`<button class="action-btn secondary" data-migrate="${esc(p.path)}">Migrate</button>`:''}<button class="action-btn" data-open-project="${esc(p?.path||'')}">Open</button></div>
     </article>`;
   }).join('');
-  const updateActions=cli.update_available
-    ? (cli.channel!=='dev'?'<button class="action-btn secondary" id="hubUpdateChangesBtn">'+esc(t('updateChanges'))+'</button>':'')+'<button class="action-btn" id="upgradeBtn">'+esc(t('updateNow'))+'</button>'
-    : '';
+  const updateActions='';
   return `<div class="page-head"><div><div class="eyebrow">TASK MECCA</div><h1>Global Hub</h1><p class="summary">CLI와 등록 프로젝트의 framework 상태를 관리합니다.</p></div><div class="hub-cli"><strong>CLI</strong> ${channelBadge} ${cliStatus} ${updateActions}</div></div>
     ${cli.update_available?'<div class="timing-note"><strong>Upgrade</strong><span>업그레이드가 완료되면 Task Mecca Web이 자동으로 재시작되며, 현재 브라우저 페이지도 자동으로 새로고침됩니다.</span></div>':''}
     ${cli.error?`<div class="timing-note"><strong>Version check</strong><span>${esc(cli.error)}</span></div>`:''}
