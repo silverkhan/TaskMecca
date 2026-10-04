@@ -93,6 +93,7 @@ func TestHandlerServesDashboardAPIsAndAssets(t *testing.T) {
         {"/app.js",200,"javascript"},
         {"/sw.js",200,"javascript"},
         {"/style.css",200,"text/css"},
+        {"/logo.svg",200,"image/svg+xml"},
         {"/tasks/A-1",200,"text/html"},
     }
     for _,tc:=range cases {
