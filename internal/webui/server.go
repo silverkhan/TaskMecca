@@ -808,7 +808,7 @@ func scheduleWebRestart(result maintenance.UpgradeResult,config Config,port int)
         // launchd owns the macOS background service with KeepAlive=true.
         // A detached watchdog verifies the upgraded Web and restores the
         // preserved executable before kickstarting launchd when health fails.
-        return launchdRollbackWatchdog(exe,result.PreviousExecutable,port)
+        return launchdRollbackWatchdog(exe,result.PreviousExecutable,config.InstanceID,port)
     }
     return detachedWebRestartWithRollback(exe,args,config.Project,result.PreviousExecutable,port)
 }
