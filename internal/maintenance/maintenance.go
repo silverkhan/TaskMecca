@@ -595,7 +595,9 @@ func installBinary(current,to string,binary []byte) (UpgradeResult,error) {
     _=os.Remove(newPath)
     if err=os.Rename(tmpPath,newPath); err!=nil { return result,err }
     script:=exe+".upgrade.cmd"
-    body:=fmt.Sprintf("@echo off\r\n:wait\r\nmove /Y \"%s\" \"%s\" >nul 2>&1\r\nif errorlevel 1 (timeout /t 1 /nobreak >nul & goto wait)\r\ndel \"%%~f0\"\r\n",newPath,exe)
+    marker:=exe+".upgrade.state"
+    _=os.Remove(marker)
+    body:=fmt.Sprintf("@echo off\r\nset tries=0\r\n:wait\r\nset /a tries+=1\r\nmove /Y \"%s\" \"%s\" >nul 2>&1\r\nif not errorlevel 1 (echo upgraded>\"%s\" & goto done)\r\nif %%tries%% GEQ 30 goto rollback\r\ntimeout /t 1 /nobreak >nul\r\ngoto wait\r\n:rollback\r\ncopy /Y \"%s\" \"%s\" >nul 2>&1\r\nif errorlevel 1 (echo failed>\"%s\") else (echo rolled_back>\"%s\")\r\n:done\r\ndel \"%%~f0\"\r\n",newPath,exe,marker,backup,exe,marker,marker)
     if err=os.WriteFile(script,[]byte(body),0600); err!=nil { return result,err }
     cmd:=exec.Command("cmd.exe","/D","/C","start","","/MIN",script)
     if err=cmd.Start(); err!=nil { return result,err }
