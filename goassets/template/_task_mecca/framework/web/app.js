@@ -697,6 +697,23 @@ function acceptContentRevision(revision='',states=null) {
   renderContentUpdatePrompt();
 }
 
+async function maybeShowUpgradeRecovery() {
+  try{
+    const r=await fetch('/api/upgrade-recovery',{cache:'no-store'});
+    if(!r.ok)return;
+    const body=await r.json(), recovery=body?.recovery;
+    if(!recovery?.id||recovery.status!=='rolled_back')return;
+    const seen=localStorage.getItem('task-mecca-upgrade-recovery-seen');
+    if(seen===recovery.id)return;
+    localStorage.setItem('task-mecca-upgrade-recovery-seen',recovery.id);
+    const attempted=recovery.attempted_version?(' '+recovery.attempted_version):'';
+    const message=state.language==='ko'
+      ? `Task Mecca${attempted} 업데이트 후 Web 서버를 정상적으로 시작하지 못해 이전 버전으로 자동 복구했습니다. 현재 Web은 계속 사용할 수 있습니다. 자세한 원인은 task-mecca web logs에서 확인할 수 있습니다.`
+      : `Task Mecca${attempted} could not start the Web server after the update, so the previous version was restored automatically. Web remains available. See task-mecca web logs for details.`;
+    alert(message);
+  }catch(_){}
+}
+
 async function refreshVersionInfo(force=false) {
   const params=new URLSearchParams();
   if(state.project)params.set('project',state.project);
@@ -709,6 +726,7 @@ async function refreshVersionInfo(force=false) {
     renderReleaseNotesBadge();
     queueMicrotask(()=>maybeShowCurrentReleaseNote());
     queueMicrotask(()=>maybeShowPendingFrameworkSync());
+    queueMicrotask(()=>maybeShowUpgradeRecovery());
   }catch(_){}
 }
 
