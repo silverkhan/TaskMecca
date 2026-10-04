@@ -879,7 +879,7 @@ func TestReleaseGateBrowserNotificationAndMobileContracts(t *testing.T) {
 
 
 func TestRuntimeUnknownWarningPolicyContract(t *testing.T) {
-    app:=readWebAsset(t,"app.js")
+    appBytes,err:=goassets.Template.ReadFile(embeddedRoot+"/web/app.js")\n    if err!=nil { t.Fatal(err) }\n    app:=string(appBytes)
     for _,marker:=range []string{
         "function effectiveAttentionReason(task)",
         "if(reason.type!=='runtime_unknown')return reason",
