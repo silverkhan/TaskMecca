@@ -38,6 +38,10 @@ func ObserveHook(project,provider string,input io.Reader,now time.Time) (Executi
 
     event,err:=HookToExecutionEvent(spike)
     if err!=nil { return ExecutionEvent{},err }
+    // Runtime agent identity is stable across worker reuse, but an execution
+    // attempt is not. Resolve the immutable episode before persisting the hook.
+    event.AttemptID=resolveAttemptID(project,spike)
+    event.EventID=eventIDFor(event)
 
     // Some provider/tool event variants may omit session_id. Reuse a unique
     // live runtime-agent match if one exists; never guess when multiple
