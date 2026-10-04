@@ -123,9 +123,13 @@ func prepareManagedWebRestart() (bool,error) {
 }
 
 func launchdRollbackScript(exe,previous string,port int) string {
+    return launchdRollbackScriptWithAttempts(exe,previous,port,30)
+}
+
+func launchdRollbackScriptWithAttempts(exe,previous string,port,attempts int) string {
     health:="http://127.0.0.1:"+strconv.Itoa(port)+"/api/health"
     notice:=upgradeRecoveryPath()
-    return "i=0; while [ $i -lt 30 ]; do sleep 1; if /usr/bin/curl -fsS --max-time 1 '"+health+"' >/dev/null 2>&1; then exit 0; fi; i=$((i+1)); done; " +
+    return "i=0; while [ $i -lt "+strconv.Itoa(attempts)+" ]; do sleep 1; if /usr/bin/curl -fsS --max-time 1 '"+health+"' >/dev/null 2>&1; then exit 0; fi; i=$((i+1)); done; " +
         "/bin/cp '"+previous+"' '"+exe+"'; /bin/chmod +x '"+exe+"'; /bin/mkdir -p '"+filepath.Dir(notice)+"'; " +
         "/usr/bin/printf '%s\\n' '{\"id\":\"rollback\",\"status\":\"rolled_back\",\"at\":\"'$(/bin/date -u +%Y-%m-%dT%H:%M:%SZ)'\",\"message\":\"Upgraded Web failed health check; previous binary restored.\"}' > '"+notice+"'; " +
         "/bin/launchctl kickstart -k '"+launchdWebTarget()+"'"
