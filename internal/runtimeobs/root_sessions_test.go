@@ -340,4 +340,9 @@ func TestRootSessionReactivatesWhenFreshActivityArrivesAfterTerminal(t *testing.
     if root.LastActivityAt!=activity.ObservedAt {
         t.Fatalf("last activity=%s want=%s",root.LastActivityAt,activity.ObservedAt)
     }
+    if len(after.Attempts)!=1 { t.Fatalf("attempts=%+v",after.Attempts) }
+    reopened:=after.Attempts[0]
+    if reopened.BindingState!=BindingUnbound || reopened.TaskID!="" {
+        t.Fatalf("new runtime episode must not inherit prior task binding: %+v",reopened)
+    }
 }
