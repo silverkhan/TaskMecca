@@ -805,7 +805,7 @@ func scheduleWebRestart(result maintenance.UpgradeResult,config Config,port int)
         // starts the upgraded executable independently of the terminal session.
         return nil
     }
-    return detachedWebRestart(exe,args,config.Project)
+    return detachedWebRestartWithRollback(exe,args,config.Project,result.PreviousExecutable,port)
 }
 
 var autoTailscaleIPv4Provider = tailscaleIPv4
