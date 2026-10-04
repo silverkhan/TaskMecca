@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Task Mecca">
+  <defs>
+    <linearGradient id="mecca-g" x1="8" y1="54" x2="54" y2="12" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#7137ff"/>
+      <stop offset=".5" stop-color="#a967f5"/>
+      <stop offset="1" stop-color="#efa2ed"/>
+    </linearGradient>
+  </defs>
+  <path fill="url(#mecca-g)" d="M7 52.5 25.4 13.8c1.2-2.5 4.7-2.6 6-.2l7 13.2-6.1 11.4-3.2-6.1-9.8 20.4H7Z"/>
+  <path fill="url(#mecca-g)" d="m37.7 29.5 4.7-8.8c1.3-2.4 4.7-2.4 6 0L60 52.5H46.9L37.7 29.5Z"/>
+  <path fill="url(#mecca-g)" d="m27.4 52.5 5.8-11c1.2-2.3 4.5-2.4 5.9-.2l7 11.2H27.4Z"/>
+</svg>
