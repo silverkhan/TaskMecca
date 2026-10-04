@@ -57,6 +57,10 @@ func windowsRollbackScript(exe string,args []string,project,previous string,port
     }
     b.WriteString("Start-Sleep -Seconds 1\r\n")
     if previous!="" {
+        marker:=psQuote(exe+".upgrade.state")
+        b.WriteString("$handoff=''; for($i=0;$i -lt 35;$i++){ if(Test-Path "+marker+"){ $handoff=(Get-Content -Raw "+marker+").Trim(); Remove-Item -Force "+marker+" -ErrorAction SilentlyContinue; break }; Start-Sleep -Seconds 1 }\r\n")
+        b.WriteString("if($handoff -eq 'rolled_back'){ Restore-Previous 'Upgrade replacement failed; previous binary restored.'; exit 0 }\r\n")
+        b.WriteString("if($handoff -eq 'failed' -or $handoff -eq ''){ Restore-Previous 'Upgrade replacement handoff failed; previous binary restored.'; exit 0 }\r\n")
         b.WriteString("try { $p=Start-Process -FilePath $exe -ArgumentList $args -WorkingDirectory $project -PassThru } catch { Restore-Previous 'Upgraded Web could not start; previous binary restored.'; exit 0 }\r\n")
         b.WriteString("$healthy=$false\r\nfor($i=0;$i -lt 30;$i++){ Start-Sleep -Seconds 1; try { $r=Invoke-WebRequest -UseBasicParsing -TimeoutSec 1 "+health+"; if($r.StatusCode -eq 200){$healthy=$true;break} } catch {} }\r\n")
         b.WriteString("if(-not $healthy){ try { Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue } catch {}; try { $p.WaitForExit() } catch {}; Restore-Previous 'Upgraded Web failed health check; previous binary restored.' }\r\n")
