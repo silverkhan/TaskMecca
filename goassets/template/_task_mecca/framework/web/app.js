@@ -17,8 +17,8 @@ const state = {
   raw: false,
   lastFetch: 0,
   lastHubFetch: 0,
-  theme: localStorage.getItem('task-mecca-theme') || 'system',
-  palette: localStorage.getItem('task-mecca-palette') || 'mecca',
+  theme: (()=>{ const saved=localStorage.getItem('task-mecca-theme'); const paletteVersion=localStorage.getItem('task-mecca-palette-version'); return saved || (paletteVersion ? 'system' : (localStorage.getItem('task-mecca-palette') ? 'system' : 'dark')); })(),
+  palette: (()=>{ const saved=localStorage.getItem('task-mecca-palette'); const version=localStorage.getItem('task-mecca-palette-version'); if(version==='2') return ['mecca','slate'].includes(saved)?saved:'mecca'; const migrated=saved==='nocturne'?'mecca':saved==='mecca'?'slate':'mecca'; localStorage.setItem('task-mecca-palette-version','2'); localStorage.setItem('task-mecca-palette',migrated); return migrated; })(),
   manual: null,
   manualTab: 'quick',
   backlog: localStorage.getItem('task-mecca-backlog-folder') || '',
@@ -3468,7 +3468,7 @@ async function setLanguage(value) {
 }
 
 function applyPalette(value) {
-  state.palette=['mecca','nocturne'].includes(value)?value:'mecca';
+  state.palette=['mecca','slate'].includes(value)?value:'mecca';
   document.documentElement.dataset.palette=state.palette;
   localStorage.setItem('task-mecca-palette',state.palette);
   const picker=$('#palettePicker');if(picker)picker.value=state.palette;
