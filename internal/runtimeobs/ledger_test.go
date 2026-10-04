@@ -238,3 +238,28 @@ func TestAuthoritativeBindingAndActivityRecoverMissingStartHook(t *testing.T) {
         t.Fatalf("missing start hook was not recovered from dispatch+activity: %+v",got)
     }
 }
+
+
+func TestReusedWorkerStartCreatesImmutableExecutionEpisode(t *testing.T) {
+    project:=t.TempDir()
+    t0:=time.Date(2026,10,5,8,0,0,0,time.UTC)
+    startPayload:=func(at time.Time) string {
+        return fmt.Sprintf(`{"hook_event_name":"SubagentStart","session_id":"root-1","agent_id":"worker-1"}`)
+    }
+    stopPayload:=`{"hook_event_name":"SubagentStop","session_id":"root-1","agent_id":"worker-1"}`
+    first,err:=ObserveHook(project,"codex",strings.NewReader(startPayload(t0)),t0); if err!=nil { t.Fatal(err) }
+    if _,err=BindAttempt(project,first.AttemptID,"B-OLD","/root/controller/worker","dispatch","",nil,t0.Add(time.Second)); err!=nil { t.Fatal(err) }
+    if _,err=ObserveHook(project,"codex",strings.NewReader(stopPayload),t0.Add(time.Minute)); err!=nil { t.Fatal(err) }
+
+    second,err:=ObserveHook(project,"codex",strings.NewReader(startPayload(t0.Add(2*time.Minute))),t0.Add(2*time.Minute)); if err!=nil { t.Fatal(err) }
+    if second.AttemptID==first.AttemptID { t.Fatalf("reused worker must create a new attempt episode: %s",second.AttemptID) }
+    if _,err=BindAttempt(project,second.AttemptID,"B-NEW","/root/controller/worker","dispatch","",nil,t0.Add(2*time.Minute+time.Second)); err!=nil { t.Fatal(err) }
+
+    ledger,err:=BuildLedger(project,20,t0.Add(3*time.Minute)); if err!=nil { t.Fatal(err) }
+    if len(ledger.Attempts)!=2 { t.Fatalf("attempts=%+v",ledger.Attempts) }
+    var old,new Attempt
+    for _,a:=range ledger.Attempts { if a.AttemptID==first.AttemptID { old=a }; if a.AttemptID==second.AttemptID { new=a } }
+    if !old.Terminal || old.TaskID!="B-OLD" || old.EndedAt=="" { t.Fatalf("completed episode mutated: %+v",old) }
+    if new.Terminal || new.TaskID!="B-NEW" || new.CurrentState!=StateRunning { t.Fatalf("new episode invalid: %+v",new) }
+    if old.StartedAt==new.StartedAt { t.Fatalf("episodes share lifecycle start: old=%s new=%s",old.StartedAt,new.StartedAt) }
+}
