@@ -42,6 +42,10 @@ func launchdRollbackWatchdog(exe,previous string,port int) error { return nil }
 func psQuote(value string) string { return "'" + strings.ReplaceAll(value,"'","''") + "'" }
 
 func windowsRollbackScript(exe string,args []string,project,previous string,port int) string {
+    return windowsRollbackScriptWithAttempts(exe,args,project,previous,port,30)
+}
+
+func windowsRollbackScriptWithAttempts(exe string,args []string,project,previous string,port,attempts int) string {
     quotedArgs:=make([]string,0,len(args))
     for _,arg:=range args { quotedArgs=append(quotedArgs,psQuote(arg)) }
     argList:="@("+strings.Join(quotedArgs,",")+")"
@@ -62,7 +66,7 @@ func windowsRollbackScript(exe string,args []string,project,previous string,port
         b.WriteString("if($handoff -eq 'rolled_back'){ Restore-Previous 'Upgrade replacement failed; previous binary restored.'; exit 0 }\r\n")
         b.WriteString("if($handoff -eq 'failed' -or $handoff -eq ''){ Restore-Previous 'Upgrade replacement handoff failed; previous binary restored.'; exit 0 }\r\n")
         b.WriteString("try { $p=Start-Process -FilePath $exe -ArgumentList $args -WorkingDirectory $project -PassThru } catch { Restore-Previous 'Upgraded Web could not start; previous binary restored.'; exit 0 }\r\n")
-        b.WriteString("$healthy=$false\r\nfor($i=0;$i -lt 30;$i++){ Start-Sleep -Seconds 1; try { $r=Invoke-WebRequest -UseBasicParsing -TimeoutSec 1 "+health+"; if($r.StatusCode -eq 200){$healthy=$true;break} } catch {} }\r\n")
+        b.WriteString("$healthy=$false\r\nfor($i=0;$i -lt "+strconv.Itoa(attempts)+";$i++){ Start-Sleep -Seconds 1; try { $r=Invoke-WebRequest -UseBasicParsing -TimeoutSec 1 "+health+"; if($r.StatusCode -eq 200){$healthy=$true;break} } catch {} }\r\n")
         b.WriteString("if(-not $healthy){ try { Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue } catch {}; try { $p.WaitForExit() } catch {}; Restore-Previous 'Upgraded Web failed health check; previous binary restored.' }\r\n")
     } else {
         b.WriteString("$p=Start-Process -FilePath $exe -ArgumentList $args -WorkingDirectory $project -PassThru\r\n")
