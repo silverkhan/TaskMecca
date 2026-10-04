@@ -140,6 +140,31 @@ func attemptIDFor(provider, sessionID, agentID string) string {
     return "run-"+hex.EncodeToString(sum[:])[:16]
 }
 
+func executionEpisodeID(provider,sessionID,agentID,observedAt string) string {
+    key:=strings.ToLower(strings.TrimSpace(provider))+"\x00"+strings.TrimSpace(sessionID)+"\x00"+strings.TrimSpace(agentID)+"\x00"+strings.TrimSpace(observedAt)
+    sum:=sha256.Sum256([]byte(key))
+    return "run-"+hex.EncodeToString(sum[:])[:16]
+}
+
+func resolveAttemptID(project string,e SpikeEvent) string {
+    base:=attemptIDFor(e.Provider,e.SessionID,e.AgentID)
+    ledger,err:=BuildLedger(project,1,time.Now())
+    if err!=nil { return base }
+    for _,a:=range ledger.Attempts {
+        if a.Provider!=strings.ToLower(strings.TrimSpace(e.Provider)) || a.SessionID!=e.SessionID || a.RuntimeAgentID!=e.AgentID { continue }
+        if !a.Terminal { return a.AttemptID }
+        // A start after a terminal attempt is a new immutable execution
+        // episode. Activity without an explicit start still attaches to the
+        // latest terminal attempt so the conservative reopen/recovery path can
+        // handle providers that omitted SubagentStart.
+        if strings.EqualFold(e.HookEventName,"SubagentStart") {
+            return executionEpisodeID(e.Provider,e.SessionID,e.AgentID,e.ObservedAt)
+        }
+        return a.AttemptID
+    }
+    return base
+}
+
 func eventIDFor(e ExecutionEvent) string {
     parts:=[]string{e.EventKind,e.Provider,e.SessionID,e.SessionName,e.SessionTitle,e.TurnID,e.RuntimeAgentID,e.HookEventName,e.ToolUseID,string(e.State),e.RawSHA256,e.TaskID,e.AgentPath,e.ParentAttemptID,e.BindingSource}
     if e.RawSHA256=="" || (e.EventKind=="state" && e.TurnID=="") { parts=append(parts,e.ObservedAt) }
