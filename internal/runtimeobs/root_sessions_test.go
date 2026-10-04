@@ -347,3 +347,26 @@ func TestRootSessionReactivatesWhenFreshActivityArrivesAfterTerminal(t *testing.
         t.Fatalf("new runtime episode must not inherit prior task binding: %+v",reopened)
     }
 }
+
+
+func TestReactivationKeepsNewDispatchBinding(t *testing.T) {
+    project:=t.TempDir()
+    ended:=time.Date(2026,10,5,6,0,0,0,time.UTC)
+    id:="run-reuse"
+    agent:="agent-reuse"
+    e:=ExecutionEvent{EventKind:"state",ObservedAt:ended.Format(time.RFC3339Nano),AttemptID:id,Provider:"codex",SessionID:"session-reuse",RuntimeAgentID:agent,AgentPath:"/root/controller/worker",State:StateCompleted,Terminal:true,EvidenceSource:EvidenceHook,ObservationQuality:QualityObserved}
+    e.EventID=eventIDFor(e)
+    if err:=AppendExecutionEvent(project,e); err!=nil { t.Fatal(err) }
+    boundAt:=ended.Add(time.Minute)
+    if _,err:=BindAttempt(project,id,"B-439","/root/controller/worker","dispatch","",map[string]string{"runtime_agent_id":agent},boundAt); err!=nil { t.Fatal(err) }
+    activityAt:=boundAt.Add(time.Second)
+    a:=ExecutionEvent{EventKind:"activity",ObservedAt:activityAt.Format(time.RFC3339Nano),AttemptID:id,Provider:"codex",SessionID:"session-reuse",RuntimeAgentID:agent,AgentPath:"/root/controller/worker",EvidenceSource:EvidenceHook,ObservationQuality:QualityObserved}
+    a.EventID=eventIDFor(a)
+    if err:=AppendExecutionEvent(project,a); err!=nil { t.Fatal(err) }
+    ledger,err:=ReconcileLedger(project,20,activityAt.Add(time.Second))
+    if err!=nil { t.Fatal(err) }
+    if len(ledger.Attempts)!=1 { t.Fatalf("attempts=%+v",ledger.Attempts) }
+    got:=ledger.Attempts[0]
+    if got.Terminal || got.CurrentState!=StateRunning { t.Fatalf("not reopened: %+v",got) }
+    if got.BindingState!=BindingBound || got.TaskID!="B-439" { t.Fatalf("new dispatch binding lost: %+v",got) }
+}
