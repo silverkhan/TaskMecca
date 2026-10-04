@@ -11,7 +11,7 @@ import (
 
 func TestLifecycleRejectsRuntimeStartBeforeRegistration(t *testing.T) {
     project:=t.TempDir()
-    backlogDir:=filepath.Join(project,"_task_mecca","data","backlog","doing")
+    backlogDir:=filepath.Join(project,"_task_mecca","data","backlog")
     if err:=os.MkdirAll(backlogDir,0755); err!=nil { t.Fatal(err) }
     task:=filepath.Join(backlogDir,"0001.B-436.test.doing.md")
     body:="---\nID: B-436\nTitle: Test\nAgent: /root/controller/pairi\nRuntimeProvider: codex\n---\n"
