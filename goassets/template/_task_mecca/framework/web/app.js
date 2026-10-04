@@ -1236,7 +1236,7 @@ function summaryText(value) {
     .trim();
 }
 function humanSummary(task) {
-  const doc=task.document||{}, raw=doc.summary||{}, req=doc.requirements||{}, reason=task.attention_reason||null;
+  const doc=task.document||{}, raw=doc.summary||{}, req=doc.requirements||{}, reason=effectiveAttentionReason(task);
   const result=summaryText(doc.result||task.fields?.결과);
   const notes=summaryText(doc.notes||task.fields?.메모);
   const purpose=summaryText(raw.purpose)||summaryText(req.goal)||summaryText(task.fields?.설명)||titleOf(task);
@@ -1275,8 +1275,29 @@ function relationBadges(ids,kind) {
   if(!rows.length)return '<span class="summary">-</span>';
   return rows.map(id=>`<button type="button" class="relation-link badge" data-relation-id="${esc(id)}">${esc(id)} · ${esc(kind)}</button>`).join(' ');
 }
+function runtimeObservationHealthy(task) {
+  if(task?.runtime_activity?.health==='active')return true;
+  const id=String(task?.id||'').toUpperCase();
+  const roots=state.workload?.root_sessions?.items||state.workload?.root_sessions||[];
+  return Array.isArray(roots)&&roots.some(root=>(root.attempts||[]).some(a=>String(a.task_id||'').toUpperCase()===id && !a.terminal && ['starting','running'].includes(String(a.current_state||'').toLowerCase())));
+}
+function effectiveAttentionReason(task) {
+  const reason=task?.attention_reason||null;
+  if(!reason)return null;
+  if(reason.type!=='runtime_unknown')return reason;
+  const hooks=Array.isArray(state.runtimeHookStatus)?state.runtimeHookStatus:[];
+  const metadata=task?.runtime_metadata||task?.document?.runtime||{};
+  const provider=String(metadata?.runtime_provider||task?.fields?.RuntimeProvider||'').toLowerCase();
+  const relevant=provider?hooks.filter(h=>String(h.provider||'').toLowerCase()===provider):hooks.filter(h=>Boolean(h.in_use));
+  const hookReady=relevant.some(h=>Boolean(h.configured)&&!Boolean(h.needs_attention));
+  // If hooks are healthy or Workload already observes this task running, the
+  // generic "check runtime/hook" warning is misleading. Keep correlation
+  // diagnostics internal; the user has no hook action to take.
+  if(hookReady||runtimeObservationHealthy(task))return null;
+  return reason;
+}
 function humanSummaryCard(task) {
-  const s=humanSummary(task), reason=task.attention_reason||null;
+  const s=humanSummary(task), reason=effectiveAttentionReason(task);
   const rows=[[t('summaryPurpose'),s.purpose],[t('summaryChange'),s.change],[t('summaryStatusResult'),s.status_result],[t('summaryFollowUp'),s.follow_up]].filter(([,value])=>Boolean(value));
   const links=[];
   const kind=task.document?.contract_kind||'legacy';
