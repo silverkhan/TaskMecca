@@ -15,8 +15,11 @@ func TestReleaseGateLifecycleRegistrationAssignmentRuntimeCompletion(t *testing.
     folder:=filepath.Join(project,"_task_mecca","data","backlog")
     if err:=os.MkdirAll(folder,0755); err!=nil { t.Fatal(err) }
 
-    // Establish notification baseline, then register a new task.
-    if _,err:=NotificationEvents(project,map[string]map[string]any{}); err!=nil { t.Fatal(err) }
+    // Establish a non-empty historical baseline, then register a new task.
+    // An empty first observation is intentionally not enough to distinguish
+    // a fresh installation from a genuinely new task.
+    baseline:=map[string]map[string]any{"RG-0":{"id":"RG-0","title":"Existing task","file_state":"done","updated_at":"2026-10-01T00:00:00Z"}}
+    if _,err:=NotificationEvents(project,baseline); err!=nil { t.Fatal(err) }
     todo:=filepath.Join(folder,"000001.RG-1.release-gate.todo.md")
     if err:=os.WriteFile(todo,[]byte("# RG-1 Release gate\n- Agent: -\n"),0644); err!=nil { t.Fatal(err) }
     rows,err:=CachedCatalog(project,folder); if err!=nil { t.Fatal(err) }
