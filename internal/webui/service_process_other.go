@@ -37,6 +37,8 @@ func detachedWebRestart(exe string,args []string,project string) error {
     return detachedWebRestartWithRollback(exe,args,project,"",DefaultPort)
 }
 
+func launchdRollbackWatchdog(exe,previous string,port int) error { return nil }
+
 func psQuote(value string) string { return "'" + strings.ReplaceAll(value,"'","''") + "'" }
 
 func windowsRollbackScript(exe string,args []string,project,previous string,port int) string {
