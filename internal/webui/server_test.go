@@ -842,3 +842,13 @@ func TestUpgradeRecoveryStatusReadsPersistentNotice(t *testing.T) {
         t.Fatalf("unexpected recovery notice: %#v",notice)
     }
 }
+
+
+func TestUpgradeRecoveryAPIAndClientContract(t *testing.T) {
+    appAsset,err:=goassets.Template.ReadFile(embeddedRoot+"/web/app.js")
+    if err!=nil { t.Fatal(err) }
+    app:=string(appAsset)
+    for _,needle:=range []string{"/api/upgrade-recovery","task-mecca-upgrade-recovery-seen","자동 복구","restored automatically"} {
+        if !contains(app,needle) { t.Fatalf("upgrade recovery UI missing %q",needle) }
+    }
+}
