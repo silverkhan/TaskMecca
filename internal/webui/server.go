@@ -806,9 +806,9 @@ func scheduleWebRestart(result maintenance.UpgradeResult,config Config,port int)
     if err!=nil { return err }
     if handled {
         // launchd owns the macOS background service with KeepAlive=true.
-        // The caller will gracefully shut this process down; launchd then
-        // starts the upgraded executable independently of the terminal session.
-        return nil
+        // A detached watchdog verifies the upgraded Web and restores the
+        // preserved executable before kickstarting launchd when health fails.
+        return launchdRollbackWatchdog(exe,result.PreviousExecutable,port)
     }
     return detachedWebRestartWithRollback(exe,args,config.Project,result.PreviousExecutable,port)
 }
