@@ -49,13 +49,19 @@ func windowsRollbackScript(exe string,args []string,project,previous string,port
     var b strings.Builder
     b.WriteString("$ErrorActionPreference='Stop'\r\n")
     b.WriteString("$exe="+psQuote(exe)+"\r\n$project="+psQuote(project)+"\r\n$args="+argList+"\r\n")
-    b.WriteString("Start-Sleep -Seconds 1\r\n")
-    b.WriteString("$p=Start-Process -FilePath $exe -ArgumentList $args -WorkingDirectory $project -PassThru\r\n")
     if previous!="" {
+        notice:=psQuote(upgradeRecoveryPath())
+        noticeDir:=psQuote(filepath.Dir(upgradeRecoveryPath()))
+        prev:=psQuote(previous)
+        b.WriteString("function Restore-Previous([string]$reason){ New-Item -ItemType Directory -Force -Path "+noticeDir+" | Out-Null; Copy-Item -Force "+prev+" $exe; $n=@{id=[guid]::NewGuid().ToString();status='rolled_back';at=(Get-Date).ToUniversalTime().ToString('o');message=$reason}|ConvertTo-Json -Compress; [IO.File]::WriteAllText("+notice+",$n); Start-Process -FilePath $exe -ArgumentList $args -WorkingDirectory $project }\r\n")
+    }
+    b.WriteString("Start-Sleep -Seconds 1\r\n")
+    if previous!="" {
+        b.WriteString("try { $p=Start-Process -FilePath $exe -ArgumentList $args -WorkingDirectory $project -PassThru } catch { Restore-Previous 'Upgraded Web could not start; previous binary restored.'; exit 0 }\r\n")
         b.WriteString("$healthy=$false\r\nfor($i=0;$i -lt 30;$i++){ Start-Sleep -Seconds 1; try { $r=Invoke-WebRequest -UseBasicParsing -TimeoutSec 1 "+health+"; if($r.StatusCode -eq 200){$healthy=$true;break} } catch {} }\r\n")
-        notice:=psQuote(filepath.Join(webServiceDir(),"upgrade-recovery.json"))
-        attempted:=psQuote(strings.TrimSuffix(filepath.Base(previous),".previous"))
-        b.WriteString("if(-not $healthy){ try { Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue } catch {}; $p.WaitForExit(); Copy-Item -Force "+psQuote(previous)+" $exe; $n=@{id=[guid]::NewGuid().ToString();status='rolled_back';attempted_version="+attempted+";at=(Get-Date).ToUniversalTime().ToString('o');message='Upgraded Web failed health check; previous binary restored.'}|ConvertTo-Json -Compress; [IO.File]::WriteAllText("+notice+",$n); Start-Process -FilePath $exe -ArgumentList $args -WorkingDirectory $project }\r\n")
+        b.WriteString("if(-not $healthy){ try { Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue } catch {}; try { $p.WaitForExit() } catch {}; Restore-Previous 'Upgraded Web failed health check; previous binary restored.' }\r\n")
+    } else {
+        b.WriteString("$p=Start-Process -FilePath $exe -ArgumentList $args -WorkingDirectory $project -PassThru\r\n")
     }
     return b.String()
 }
