@@ -218,3 +218,23 @@ func TestBindRuntimeAgentRefusesAmbiguousLiveAttempts(t *testing.T) {
     }
     if _,err:=BindRuntimeAgent(project,"agent-shared","AID-39","/root/controller/pairi","",base.Add(time.Second));err==nil{t.Fatal("expected ambiguous binding error")}
 }
+
+
+func TestAuthoritativeBindingAndActivityRecoverMissingStartHook(t *testing.T) {
+    project:=t.TempDir()
+    activityAt:=time.Date(2026,10,5,7,42,0,0,time.UTC)
+    attemptID:="run-missing-start"
+    activity:=ExecutionEvent{EventKind:"activity",ObservedAt:activityAt.Format(time.RFC3339Nano),AttemptID:attemptID,Provider:"codex",SessionID:"session-missing-start",RuntimeAgentID:"agent-worker",EvidenceSource:EvidenceHook,ObservationQuality:QualityObserved}
+    activity.EventID=eventIDFor(activity)
+    if err:=AppendExecutionEvent(project,activity); err!=nil { t.Fatal(err) }
+    boundAt:=activityAt.Add(time.Minute)
+    if _,err:=BindAttempt(project,attemptID,"B-441","/root/controller/worker","dispatch","",map[string]string{"runtime_agent_id":"agent-worker"},boundAt); err!=nil { t.Fatal(err) }
+    ledger,err:=ReconcileLedger(project,20,boundAt.Add(time.Second))
+    if err!=nil { t.Fatal(err) }
+    if len(ledger.Attempts)!=1 { t.Fatalf("attempts=%+v",ledger.Attempts) }
+    got:=ledger.Attempts[0]
+    if got.BindingState!=BindingBound || got.TaskID!="B-441" { t.Fatalf("binding=%+v",got) }
+    if got.StartedAt!=boundAt.Format(time.RFC3339Nano) || got.CurrentState!=StateRunning {
+        t.Fatalf("missing start hook was not recovered from dispatch+activity: %+v",got)
+    }
+}
