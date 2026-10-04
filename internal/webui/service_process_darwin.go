@@ -122,15 +122,18 @@ func prepareManagedWebRestart() (bool,error) {
     return true,nil
 }
 
-func launchdRollbackWatchdog(exe,previous string,port int) error {
-    if previous=="" { return nil }
+func launchdRollbackScript(exe,previous string,port int) string {
     health:="http://127.0.0.1:"+strconv.Itoa(port)+"/api/health"
     notice:=upgradeRecoveryPath()
-    script:="i=0; while [ $i -lt 30 ]; do sleep 1; if /usr/bin/curl -fsS --max-time 1 '"+health+"' >/dev/null 2>&1; then exit 0; fi; i=$((i+1)); done; " +
+    return "i=0; while [ $i -lt 30 ]; do sleep 1; if /usr/bin/curl -fsS --max-time 1 '"+health+"' >/dev/null 2>&1; then exit 0; fi; i=$((i+1)); done; " +
         "/bin/cp '"+previous+"' '"+exe+"'; /bin/chmod +x '"+exe+"'; /bin/mkdir -p '"+filepath.Dir(notice)+"'; " +
         "/usr/bin/printf '%s\\n' '{\"id\":\"rollback\",\"status\":\"rolled_back\",\"at\":\"'$(/bin/date -u +%Y-%m-%dT%H:%M:%SZ)'\",\"message\":\"Upgraded Web failed health check; previous binary restored.\"}' > '"+notice+"'; " +
         "/bin/launchctl kickstart -k '"+launchdWebTarget()+"'"
-    cmd:=exec.Command("/bin/sh","-c",script)
+}
+
+func launchdRollbackWatchdog(exe,previous string,port int) error {
+    if previous=="" { return nil }
+    cmd:=exec.Command("/bin/sh","-c",launchdRollbackScript(exe,previous,port))
     cmd.Stdout=os.Stdout
     cmd.Stderr=os.Stderr
     if err:=cmd.Start(); err!=nil { return err }
