@@ -5,6 +5,7 @@ package webui
 import (
     "os"
     "os/exec"
+    "path/filepath"
     "runtime"
     "strconv"
     "strings"
@@ -50,7 +51,9 @@ func windowsRollbackScript(exe string,args []string,project,previous string,port
     b.WriteString("$p=Start-Process -FilePath $exe -ArgumentList $args -WorkingDirectory $project -PassThru\r\n")
     if previous!="" {
         b.WriteString("$healthy=$false\r\nfor($i=0;$i -lt 30;$i++){ Start-Sleep -Seconds 1; try { $r=Invoke-WebRequest -UseBasicParsing -TimeoutSec 1 "+health+"; if($r.StatusCode -eq 200){$healthy=$true;break} } catch {} }\r\n")
-        b.WriteString("if(-not $healthy){ try { Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue } catch {}; $p.WaitForExit(); Copy-Item -Force "+psQuote(previous)+" $exe; Start-Process -FilePath $exe -ArgumentList $args -WorkingDirectory $project }\r\n")
+        notice:=psQuote(filepath.Join(webServiceDir(),"upgrade-recovery.json"))
+        attempted:=psQuote(strings.TrimSuffix(filepath.Base(previous),".previous"))
+        b.WriteString("if(-not $healthy){ try { Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue } catch {}; $p.WaitForExit(); Copy-Item -Force "+psQuote(previous)+" $exe; $n=@{id=[guid]::NewGuid().ToString();status='rolled_back';attempted_version="+attempted+";at=(Get-Date).ToUniversalTime().ToString('o');message='Upgraded Web failed health check; previous binary restored.'}|ConvertTo-Json -Compress; [IO.File]::WriteAllText("+notice+",$n); Start-Process -FilePath $exe -ArgumentList $args -WorkingDirectory $project }\r\n")
     }
     return b.String()
 }
@@ -71,7 +74,8 @@ func detachedWebRestartWithRollback(exe string,args []string,project,previous st
     script:="sleep 1; \"$@\" & child=$!; "
     if previous!="" {
         health:="http://127.0.0.1:"+strconv.Itoa(port)+"/api/health"
-        script+="i=0; while [ $i -lt 30 ]; do sleep 1; if curl -fsS --max-time 1 '"+health+"' >/dev/null 2>&1; then exit 0; fi; i=$((i+1)); done; kill $child >/dev/null 2>&1 || true; cp '"+previous+"' '"+exe+"'; chmod +x '"+exe+"'; exec \"$@\""
+        notice:=upgradeRecoveryPath()
+        script+="i=0; while [ $i -lt 30 ]; do sleep 1; if curl -fsS --max-time 1 '"+health+"' >/dev/null 2>&1; then exit 0; fi; i=$((i+1)); done; kill $child >/dev/null 2>&1 || true; cp '"+previous+"' '"+exe+"'; chmod +x '"+exe+"'; mkdir -p '"+filepath.Dir(notice)+"'; printf '%s\\n' '{\"id\":\"rollback\",\"status\":\"rolled_back\",\"at\":\"'$(date -u +%Y-%m-%dT%H:%M:%SZ)'\",\"message\":\"Upgraded Web failed health check; previous binary restored.\"}' > '"+notice+"'; exec \"$@\""
     } else {
         script+="wait $child"
     }
