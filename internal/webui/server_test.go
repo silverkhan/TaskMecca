@@ -839,3 +839,40 @@ func TestUpgradeRecoveryAPIAndClientContract(t *testing.T) {
         if !contains(app,needle) { t.Fatalf("upgrade recovery UI missing %q",needle) }
     }
 }
+
+
+func TestReleaseGateBrowserNotificationAndMobileContracts(t *testing.T) {
+    indexAsset,err:=goassets.Template.ReadFile(embeddedRoot+"/web/index.html")
+    if err!=nil { t.Fatal(err) }
+    indexHTML:=string(indexAsset)
+    if !contains(indexHTML,`name="viewport" content="width=device-width,initial-scale=1"`) {
+        t.Fatal("mobile viewport contract missing")
+    }
+
+    cssAsset,err:=goassets.Template.ReadFile(embeddedRoot+"/web/style.css")
+    if err!=nil { t.Fatal(err) }
+    css:=string(cssAsset)
+    for _,needle:=range []string{
+        "@media(max-width:680px){.app-shell{display:block}",
+        ".task-mobile-id{display:block}",
+        ".channel-switch-grid{grid-template-columns:1fr}",
+        ".channel-switch-actions{flex-direction:column-reverse}",
+    } {
+        if !contains(css,needle) { t.Fatalf("mobile responsive contract missing %q",needle) }
+    }
+
+    appAsset,err:=goassets.Template.ReadFile(embeddedRoot+"/web/app.js")
+    if err!=nil { t.Fatal(err) }
+    appJS:=string(appAsset)
+    for _,needle:=range []string{
+        "task-mecca-notification-seen",
+        "const key=`server:${state.project}:${event.id}`",
+        "if(notificationSeenSet().has(key))return",
+        "rememberNotification(key)",
+        "task-mecca-previous-tasks",
+        "task-mecca-stable-brand-intro-v1",
+        "if((cli.channel||'stable')!=='stable')return",
+    } {
+        if !contains(appJS,needle) { t.Fatalf("browser persistence contract missing %q",needle) }
+    }
+}
