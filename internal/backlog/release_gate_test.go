@@ -21,7 +21,7 @@ func TestReleaseGateLifecycleRegistrationAssignmentRuntimeCompletion(t *testing.
     if err:=os.WriteFile(todo,[]byte("# RG-1 Release gate\n- Agent: -\n"),0644); err!=nil { t.Fatal(err) }
     rows,err:=CachedCatalog(project,folder); if err!=nil { t.Fatal(err) }
     items:=map[string]map[string]any{}
-    for _,row:=range rows { items[row.ID]=map[string]any{"id":row.ID,"title":row.Title,"file_state":row.FileState,"updated_at":row.UpdatedAt} }
+    for _,row:=range rows { items[row.ID]=map[string]any{"id":row.ID,"title":row.Title,"file_state":row.State,"updated_at":row.Mtime} }
     events,err:=NotificationEvents(project,items); if err!=nil { t.Fatal(err) }
     if len(events)!=1 || events[0]["kind"]!="registered" { t.Fatalf("registration events=%+v",events) }
 
