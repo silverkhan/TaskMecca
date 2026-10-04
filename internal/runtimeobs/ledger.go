@@ -322,19 +322,28 @@ func (a *accumulator) apply(e ExecutionEvent) {
                 a.attempt.CurrentState=StateRunning
                 a.attempt.StateEvidenceSource=e.EvidenceSource
                 a.attempt.StateObservationQuality=e.ObservationQuality
-                // A reused runtime identity starts a new execution episode. Do
-                // not carry the previous task binding into that episode: doing
-                // so makes the old completed task appear both "awaiting finalize"
-                // and runtime-unknown while the worker is actually doing new work.
-                a.taskIDs=map[string]bool{}
-                a.parents=map[string]bool{}
-                a.attempt.TaskID=""
-                a.attempt.ParentAttemptID=""
-                a.attempt.BindingState=BindingUnbound
-                a.attempt.BindingSource=""
-                a.attempt.BindingEvidence=map[string]string{}
-                a.bindingPriority=0
-                a.bindingAt=""
+                // A reused runtime identity starts a new execution episode.
+                // Drop only a binding that belongs to the PREVIOUS episode.
+                // Controller dispatch may bind the new task before the first
+                // activity hook arrives; that authoritative binding is newer
+                // than EndedAt and must survive this reopen.
+                bindingIsNewEpisode:=false
+                if a.bindingAt!="" {
+                    if boundAt,err:=time.Parse(time.RFC3339Nano,a.bindingAt); err==nil && boundAt.After(ended) {
+                        bindingIsNewEpisode=true
+                    }
+                }
+                if !bindingIsNewEpisode {
+                    a.taskIDs=map[string]bool{}
+                    a.parents=map[string]bool{}
+                    a.attempt.TaskID=""
+                    a.attempt.ParentAttemptID=""
+                    a.attempt.BindingState=BindingUnbound
+                    a.attempt.BindingSource=""
+                    a.attempt.BindingEvidence=map[string]string{}
+                    a.bindingPriority=0
+                    a.bindingAt=""
+                }
                 a.transitions=append(a.transitions,Transition{At:e.ObservedAt,State:StateRunning,Kind:"state",EvidenceSource:e.EvidenceSource,ObservationQuality:e.ObservationQuality,Reason:"activity_after_terminal"})
             }
         }
