@@ -4,13 +4,14 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Task Mecca</title>
+  <link rel="icon" href="/logo.svg" type="image/svg+xml" />
   <link rel="stylesheet" href="/style.css" />
 </head>
 <body>
   <div class="app-shell">
     <aside class="sidebar" id="sidebar">
       <div class="sidebar-head">
-        <div class="brand"><button type="button" class="brand-mark" id="channelSwitchMark" aria-label="Task Mecca release channel" title="Task Mecca">TM</button><div class="brand-copy"><strong>Task Mecca</strong><small>Backlog Observatory</small></div></div>
+        <div class="brand"><button type="button" class="brand-mark" id="channelSwitchMark" aria-label="Task Mecca release channel" title="Task Mecca"><img src="/logo.svg" alt="" aria-hidden="true" /></button><div class="brand-copy"><strong>Task Mecca</strong><small>Backlog Observatory</small></div></div>
         <button id="sidebarToggle" class="sidebar-toggle" type="button" aria-label="Collapse sidebar" title="Collapse sidebar">‹</button>
       </div>
       <nav id="stateNav" class="nav"></nav>
@@ -33,7 +34,7 @@
         <label class="language-picker"><span id="languageLabel">Language</span><select id="languagePicker" aria-label="Language"></select></label>
         <div id="accessPill" class="access-pill unknown" title="Effective subagent dispatch access">Access unchecked</div>
         <div id="globalUpdateIndicator" class="global-update-indicator" aria-live="polite"></div>
-        <label class="palette-picker" title="Theme"><span>Theme</span><select id="palettePicker" aria-label="Theme"><option value="mecca">Mecca</option><option value="nocturne">Nocturne</option></select></label>
+        <label class="palette-picker" title="Theme"><span>Theme</span><select id="palettePicker" aria-label="Theme"><option value="mecca">Mecca</option><option value="slate">Slate</option></select></label>
         <div class="theme-switcher" role="group" aria-label="Color mode" title="Color mode">
           <button class="theme-btn" data-theme-choice="system" title="Follow system theme">System</button>
           <button class="theme-btn" data-theme-choice="light" title="Use light theme">Light</button>
