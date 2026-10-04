@@ -74,6 +74,13 @@ func windowsRollbackScriptWithAttempts(exe string,args []string,project,previous
     return b.String()
 }
 
+func unixRollbackScript(exe,previous string,port,attempts int) string {
+    health:="http://127.0.0.1:"+strconv.Itoa(port)+"/api/health"
+    notice:=upgradeRecoveryPath()
+    q:=func(v string) string { return "'" + strings.ReplaceAll(v,"'","'\\''") + "'" }
+    return "sleep 1; \"$@\" & child=$!; i=0; while [ $i -lt "+strconv.Itoa(attempts)+" ]; do sleep 1; if curl -fsS --max-time 1 "+q(health)+" >/dev/null 2>&1; then exit 0; fi; i=$((i+1)); done; kill $child >/dev/null 2>&1 || true; cp "+q(previous)+" "+q(exe)+"; chmod +x "+q(exe)+"; mkdir -p "+q(filepath.Dir(notice))+"; printf '%s\\n' '{\"id\":\"rollback\",\"status\":\"rolled_back\",\"at\":\"'$(date -u +%Y-%m-%dT%H:%M:%SZ)'\",\"message\":\"Upgraded Web failed health check; previous binary restored.\"}' > "+q(notice)+"; exec \"$@\"" 
+}
+
 func detachedWebRestartWithRollback(exe string,args []string,project,previous string,port int) error {
     if runtime.GOOS=="windows" {
         helper,err:=os.CreateTemp("","task-mecca-web-restart-*.ps1")
@@ -87,14 +94,8 @@ func detachedWebRestartWithRollback(exe string,args []string,project,previous st
         return cmd.Process.Release()
     }
 
-    script:="sleep 1; \"$@\" & child=$!; "
-    if previous!="" {
-        health:="http://127.0.0.1:"+strconv.Itoa(port)+"/api/health"
-        notice:=upgradeRecoveryPath()
-        script+="i=0; while [ $i -lt 30 ]; do sleep 1; if curl -fsS --max-time 1 '"+health+"' >/dev/null 2>&1; then exit 0; fi; i=$((i+1)); done; kill $child >/dev/null 2>&1 || true; cp '"+previous+"' '"+exe+"'; chmod +x '"+exe+"'; mkdir -p '"+filepath.Dir(notice)+"'; printf '%s\\n' '{\"id\":\"rollback\",\"status\":\"rolled_back\",\"at\":\"'$(date -u +%Y-%m-%dT%H:%M:%SZ)'\",\"message\":\"Upgraded Web failed health check; previous binary restored.\"}' > '"+notice+"'; exec \"$@\""
-    } else {
-        script+="wait $child"
-    }
+    script:=unixRollbackScript(exe,previous,port,30)
+    if previous=="" { script="sleep 1; \"$@\" & child=$!; wait $child" }
     shellArgs:=append([]string{"-c",script,"task-mecca-web-restart",exe},args...)
     cmd:=exec.Command("sh",shellArgs...)
     cmd.Dir=project
