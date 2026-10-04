@@ -131,9 +131,9 @@ func shQuote(value string) string { return "'" + strings.ReplaceAll(value,"'","'
 func launchdRollbackScriptWithAttempts(exe,previous string,port,attempts int) string {
     health:="http://127.0.0.1:"+strconv.Itoa(port)+"/api/health"
     notice:=upgradeRecoveryPath()
-    return "i=0; while [ $i -lt "+strconv.Itoa(attempts)+" ]; do sleep 1; if /usr/bin/curl -fsS --max-time 1 '"+health+"' >/dev/null 2>&1; then exit 0; fi; i=$((i+1)); done; " +
+    return "i=0; while [ $i -lt "+strconv.Itoa(attempts)+" ]; do sleep 1; if /usr/bin/curl -fsS --max-time 1 "+shQuote(health)+" >/dev/null 2>&1; then exit 0; fi; i=$((i+1)); done; " +
         "/bin/cp "+shQuote(previous)+" "+shQuote(exe)+"; /bin/chmod +x "+shQuote(exe)+"; /bin/mkdir -p "+shQuote(filepath.Dir(notice))+"; " +
-        "/usr/bin/printf '%s\\n' '{\"id\":\"rollback\",\"status\":\"rolled_back\",\"at\":\"'$(/bin/date -u +%Y-%m-%dT%H:%M:%SZ)'\",\"message\":\"Upgraded Web failed health check; previous binary restored.\"}' > '"+notice+"'; " +
+        "/usr/bin/printf '%s\\n' '{\"id\":\"rollback\",\"status\":\"rolled_back\",\"at\":\"'$(/bin/date -u +%Y-%m-%dT%H:%M:%SZ)'\",\"message\":\"Upgraded Web failed health check; previous binary restored.\"}' > "+shQuote(notice)+"; " +
         "/bin/launchctl kickstart -k "+shQuote(launchdWebTarget())
 }
 
