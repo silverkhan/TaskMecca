@@ -657,6 +657,11 @@ func handler(project,root,version,instanceID,controlToken string,restartCh chan<
         writeJSON(w,map[string]any{"cli":maintenance.CachedVersionInfo(version),"projects":rows,"current_project":project},200)
     })
 
+    mux.HandleFunc("/api/upgrade-recovery",func(w http.ResponseWriter,r *http.Request) {
+        if r.Method!="GET" { writeJSON(w,map[string]any{"error":"GET required"},405); return }
+        writeJSON(w,map[string]any{"recovery":UpgradeRecoveryStatus()},200)
+    })
+
     mux.HandleFunc("/api/upgrade",func(w http.ResponseWriter,r *http.Request) {
         if r.Method!="POST" { writeJSON(w,map[string]any{"error":"POST required"},405); return }
         if r.Header.Get("X-Task-Mecca-Action")!="1" { writeJSON(w,map[string]any{"error":"maintenance action header required"},403); return }
