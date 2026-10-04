@@ -122,24 +122,29 @@ func prepareManagedWebRestart() (bool,error) {
     return true,nil
 }
 
-func launchdRollbackScript(exe,previous string,port int) string {
-    return launchdRollbackScriptWithAttempts(exe,previous,port,30)
+func launchdRollbackScript(exe,previous,targetInstance string,port int) string {
+    return launchdRollbackScriptWithAttempts(exe,previous,targetInstance,port,30)
 }
 
 func shQuote(value string) string { return "'" + strings.ReplaceAll(value,"'","'\\''") + "'" }
 
-func launchdRollbackScriptWithAttempts(exe,previous string,port,attempts int) string {
+func launchdRollbackScriptWithAttempts(exe,previous,targetInstance string,port,attempts int) string {
     health:="http://127.0.0.1:"+strconv.Itoa(port)+"/api/health"
     notice:=upgradeRecoveryPath()
-    return "i=0; while [ $i -lt "+strconv.Itoa(attempts)+" ]; do sleep 1; if /usr/bin/curl -fsS --max-time 1 "+shQuote(health)+" >/dev/null 2>&1; then exit 0; fi; i=$((i+1)); done; " +
+    // The watchdog starts before the current server shuts down. A plain 200
+    // can therefore be the OLD process. Accept health only when the response
+    // carries the instance ID passed to the restarted Web process.
+    probe:="/usr/bin/curl -fsS --max-time 1 "+shQuote(health)+" 2>/dev/null | /usr/bin/grep -F "+shQuote("\\\"instance_id\\\":\\\""+targetInstance+"\\\"")+" >/dev/null 2>&1"
+    rollbackID:="rollback-$(/bin/date -u +%Y%m%dT%H%M%SZ)-$"
+    return "i=0; while [ $i -lt "+strconv.Itoa(attempts)+" ]; do sleep 1; if "+probe+"; then exit 0; fi; i=$((i+1)); done; " +
         "/bin/cp "+shQuote(previous)+" "+shQuote(exe)+"; /bin/chmod +x "+shQuote(exe)+"; /bin/mkdir -p "+shQuote(filepath.Dir(notice))+"; " +
-        "/usr/bin/printf '%s\\n' '{\"id\":\"rollback\",\"status\":\"rolled_back\",\"at\":\"'$(/bin/date -u +%Y-%m-%dT%H:%M:%SZ)'\",\"message\":\"Upgraded Web failed health check; previous binary restored.\"}' > "+shQuote(notice)+"; " +
+        "/usr/bin/printf '%s\\n' '{\"id\":\"'"+rollbackID+"'\",\"status\":\"rolled_back\",\"at\":\"'$(/bin/date -u +%Y-%m-%dT%H:%M:%SZ)'\",\"message\":\"Upgraded Web failed health check; previous binary restored.\"}' > "+shQuote(notice)+"; " +
         "/bin/launchctl kickstart -k "+shQuote(launchdWebTarget())
 }
 
-func launchdRollbackWatchdog(exe,previous string,port int) error {
+func launchdRollbackWatchdog(exe,previous,targetInstance string,port int) error {
     if previous=="" { return nil }
-    cmd:=exec.Command("/bin/sh","-c",launchdRollbackScript(exe,previous,port))
+    cmd:=exec.Command("/bin/sh","-c",launchdRollbackScript(exe,previous,targetInstance,port))
     cmd.Stdout=os.Stdout
     cmd.Stderr=os.Stderr
     if err:=cmd.Start(); err!=nil { return err }
