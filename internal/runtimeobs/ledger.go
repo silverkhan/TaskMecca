@@ -305,7 +305,26 @@ func (a *accumulator) apply(e ExecutionEvent) {
     a.attempt.LastObservedAt=maxTimeString(a.attempt.LastObservedAt,e.ObservedAt)
     switch e.EventKind {
     case "activity":
-        a.attempt.ActivityCount++; a.attempt.LastActivityAt=maxTimeString(a.attempt.LastActivityAt,e.ObservedAt)
+        a.attempt.ActivityCount++
+        a.attempt.LastActivityAt=maxTimeString(a.attempt.LastActivityAt,e.ObservedAt)
+        // A provider session/agent identity may be reused after its previous
+        // attempt reached a terminal state. Fresh observed runtime activity is
+        // evidence that the same immutable Root Session is active again.
+        // Reopen the effective attempt instead of leaving the Root permanently
+        // classified as "previous".
+        if a.attempt.Terminal && a.attempt.EndedAt!="" {
+            ended,endedErr:=time.Parse(time.RFC3339Nano,a.attempt.EndedAt)
+            observed,observedErr:=time.Parse(time.RFC3339Nano,e.ObservedAt)
+            if endedErr==nil && observedErr==nil && observed.After(ended) {
+                a.attempt.Terminal=false
+                a.attempt.EndedAt=""
+                a.attempt.StartedAt=e.ObservedAt
+                a.attempt.CurrentState=StateRunning
+                a.attempt.StateEvidenceSource=e.EvidenceSource
+                a.attempt.StateObservationQuality=e.ObservationQuality
+                a.transitions=append(a.transitions,Transition{At:e.ObservedAt,State:StateRunning,Kind:"state",EvidenceSource:e.EvidenceSource,ObservationQuality:e.ObservationQuality,Reason:"activity_after_terminal"})
+            }
+        }
     case "state":
         if (e.State==StateStarting || e.State==StateRunning) && a.attempt.Terminal && a.attempt.EndedAt!="" {
             ended,endedErr:=time.Parse(time.RFC3339Nano,a.attempt.EndedAt)
