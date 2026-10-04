@@ -55,6 +55,23 @@ jobs:
           node --check goassets/template/_task_mecca/framework/web/sw.js
           node --check goassets/template/_task_mecca/framework/web/terminal.js
 
+  platform-builds:
+    name: Platform build · ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Test platform runtime
+        run: go test ./internal/webui ./internal/maintenance
+      - name: Build Go CLI
+        run: go build ./cmd/task-mecca
+
   cross-runtime-smoke:
     name: Go ↔ Python compatibility smoke
     runs-on: ubuntu-latest
