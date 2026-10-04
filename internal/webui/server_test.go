@@ -18,28 +18,29 @@ import (
 )
 
 func TestSignatureThemeBranding(t *testing.T) {
-    project:=t.TempDir()
-    handler:=NewServer(project)
-    req:=httptest.NewRequest(http.MethodGet,"/",nil)
-    rec:=httptest.NewRecorder()
-    handler.ServeHTTP(rec,req)
-    html:=rec.Body.String()
+    indexHTML,err:=embeddedWeb.ReadFile("web/index.html")
+    if err!=nil { t.Fatal(err) }
+    html:=string(indexHTML)
     for _,needle:=range []string{"/logo.svg",`<option value="mecca">Mecca</option>`,`<option value="slate">Slate</option>`} {
         if !contains(html,needle) { t.Fatalf("index missing signature theme marker %q",needle) }
     }
-    req=httptest.NewRequest(http.MethodGet,"/app.js",nil)
-    rec=httptest.NewRecorder()
-    handler.ServeHTTP(rec,req)
-    appJS:=rec.Body.String()
+
+    appAsset,err:=embeddedWeb.ReadFile("web/app.js")
+    if err!=nil { t.Fatal(err) }
+    appJS:=string(appAsset)
     for _,needle:=range []string{"task-mecca-palette-version","localStorage.setItem('task-mecca-theme','dark')","localStorage.setItem('task-mecca-palette','mecca')"} {
         if !contains(appJS,needle) { t.Fatalf("app.js missing signature migration marker %q",needle) }
     }
-    req=httptest.NewRequest(http.MethodGet,"/style.css",nil)
-    rec=httptest.NewRecorder()
-    handler.ServeHTTP(rec,req)
-    css:=rec.Body.String()
+
+    cssAsset,err:=embeddedWeb.ReadFile("web/style.css")
+    if err!=nil { t.Fatal(err) }
+    css:=string(cssAsset)
     if !contains(css,`data-palette="mecca"`) { t.Fatal("style.css missing Mecca signature palette") }
     if contains(css,`data-palette="nocturne"`) { t.Fatal("style.css still exposes legacy Nocturne palette") }
+
+    logo,err:=embeddedWeb.ReadFile("web/logo.svg")
+    if err!=nil { t.Fatal(err) }
+    if !contains(string(logo),"<svg") { t.Fatal("logo.svg is not a valid SVG asset") }
 }
 
 func TestHandlerServesDashboardAPIsAndAssets(t *testing.T) {
