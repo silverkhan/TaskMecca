@@ -828,3 +828,17 @@ func TestPowerShellQuoteHandlesApostrophe(t *testing.T) {
     got:=psQuote(`C:\Users\O'Brien\Task Mecca`)
     if got!=`'C:\Users\O''Brien\Task Mecca'` { t.Fatalf("psQuote=%q",got) }
 }
+
+
+func TestUpgradeRecoveryStatusReadsPersistentNotice(t *testing.T) {
+    home:=t.TempDir()
+    t.Setenv("TASK_MECCA_HOME",home)
+    dir:=filepath.Join(home,"web")
+    if err:=os.MkdirAll(dir,0755); err!=nil { t.Fatal(err) }
+    raw:=[]byte(`{"id":"rollback-1","status":"rolled_back","attempted_version":"0.2.99","at":"2026-10-04T14:00:00Z"}`)
+    if err:=os.WriteFile(filepath.Join(dir,"upgrade-recovery.json"),raw,0600); err!=nil { t.Fatal(err) }
+    notice:=UpgradeRecoveryStatus()
+    if notice==nil || notice.ID!="rollback-1" || notice.Status!="rolled_back" || notice.AttemptedVersion!="0.2.99" {
+        t.Fatalf("unexpected recovery notice: %#v",notice)
+    }
+}
