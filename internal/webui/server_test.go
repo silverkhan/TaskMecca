@@ -29,7 +29,7 @@ func TestSignatureThemeBranding(t *testing.T) {
     appAsset,err:=goassets.Template.ReadFile(embeddedRoot+"/web/app.js")
     if err!=nil { t.Fatal(err) }
     appJS:=string(appAsset)
-    for _,needle:=range []string{"task-mecca-palette-version","localStorage.setItem('task-mecca-theme','dark')","localStorage.setItem('task-mecca-palette','mecca')"} {
+    for _,needle:=range []string{"task-mecca-palette-version","localStorage.setItem('task-mecca-theme','dark')","localStorage.setItem('task-mecca-palette','mecca')","task-mecca-stable-brand-intro-v1","if((cli.channel||'stable')!=='stable')return","localStorage.setItem(marker,'1')"} {
         if !contains(appJS,needle) { t.Fatalf("app.js missing signature migration marker %q",needle) }
     }
 
