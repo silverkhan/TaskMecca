@@ -719,6 +719,7 @@ func handler(project,root,version,instanceID,controlToken string,restartCh chan<
     mux.HandleFunc("/terminal.css",func(w http.ResponseWriter,r *http.Request){ sendEmbedded(w,"terminal.css") })
     mux.HandleFunc("/terminal.js",func(w http.ResponseWriter,r *http.Request){ sendEmbedded(w,"terminal.js") })
     mux.HandleFunc("/style.css",func(w http.ResponseWriter,r *http.Request){ sendEmbedded(w,"style.css") })
+    mux.HandleFunc("/logo.svg",func(w http.ResponseWriter,r *http.Request){ w.Header().Set("Content-Type","image/svg+xml; charset=utf-8"); sendEmbedded(w,"logo.svg") })
     mux.HandleFunc("/app.js",func(w http.ResponseWriter,r *http.Request){ sendEmbedded(w,"app.js") })
     mux.HandleFunc("/sw.js",func(w http.ResponseWriter,r *http.Request){ sendEmbedded(w,"sw.js") })
     mux.HandleFunc("/vendor/",func(w http.ResponseWriter,r *http.Request){
