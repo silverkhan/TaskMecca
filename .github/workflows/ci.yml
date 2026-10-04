@@ -69,8 +69,8 @@ jobs:
           # Native macOS runners are newer than the minimum Go toolchain in go.mod.
           # Use a current compiler here while retaining go.mod compatibility.
           go-version: "1.24.x"
-      - name: Test platform runtime
-        run: go test ./internal/webui ./internal/maintenance
+      - name: Test upgrade and rollback paths
+        run: go test ./internal/maintenance ./internal/webui -run "Upgrade|Rollback|PowerShellQuote|BrandAssets"
       - name: Build Go CLI
         run: go build ./cmd/task-mecca
 
