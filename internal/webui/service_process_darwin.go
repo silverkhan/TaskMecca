@@ -121,6 +121,14 @@ func prepareManagedWebRestart() (bool,error) {
     return true,nil
 }
 
+func detachedWebRestartWithRollback(exe string,args []string,project,previous string,port int) error {
+    // launchd-managed services are restarted by KeepAlive. For unmanaged
+    // foreground runs, use the detached handoff. The preserved previous
+    // executable remains available for explicit recovery if launchd cannot
+    // start the upgraded binary.
+    return detachedWebRestart(exe,args,project)
+}
+
 func detachedWebRestart(exe string,args []string,project string) error {
     shellArgs:=append([]string{"-c","sleep 1; exec \"$@\"" ,"task-mecca-web-restart",exe},args...)
     cmd:=exec.Command("/bin/sh",shellArgs...)
