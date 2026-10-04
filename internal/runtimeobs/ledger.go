@@ -382,6 +382,20 @@ func (a *accumulator) apply(e ExecutionEvent) {
             // trail but do not poison the current effective binding.
         }
         a.transitions=append(a.transitions,Transition{At:e.ObservedAt,Kind:"binding",EvidenceSource:e.EvidenceSource,ObservationQuality:e.ObservationQuality,Reason:string(a.attempt.BindingState)})
+        // Codex can miss the SubagentStart hook while subsequent tool activity
+        // is still observed. An authoritative dispatch binding plus observed
+        // activity is sufficient execution evidence for the bound task. Promote
+        // it to running at the later of first activity and binding time instead
+        // of leaving the task permanently runtime_unknown.
+        if a.attempt.BindingState==BindingBound && a.attempt.StartedAt=="" && a.attempt.ActivityCount>0 && a.attempt.LastActivityAt!="" {
+            startAt:=a.attempt.LastActivityAt
+            if e.ObservedAt>startAt { startAt=e.ObservedAt }
+            a.attempt.StartedAt=startAt
+            a.attempt.CurrentState=StateRunning
+            a.attempt.StateEvidenceSource=EvidenceReconciled
+            a.attempt.StateObservationQuality=QualityObserved
+            a.transitions=append(a.transitions,Transition{At:startAt,State:StateRunning,Kind:"state",EvidenceSource:EvidenceReconciled,ObservationQuality:QualityObserved,Reason:"authoritative_binding_with_observed_activity"})
+        }
     }
 }
 
