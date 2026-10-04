@@ -10,6 +10,7 @@ import (
     "os/exec"
     "path/filepath"
     "strings"
+    "strconv"
     "time"
 )
 
@@ -121,11 +122,22 @@ func prepareManagedWebRestart() (bool,error) {
     return true,nil
 }
 
+func launchdRollbackWatchdog(exe,previous string,port int) error {
+    if previous=="" { return nil }
+    health:="http://127.0.0.1:"+strconv.Itoa(port)+"/api/health"
+    notice:=upgradeRecoveryPath()
+    script:="i=0; while [ $i -lt 30 ]; do sleep 1; if /usr/bin/curl -fsS --max-time 1 '"+health+"' >/dev/null 2>&1; then exit 0; fi; i=$((i+1)); done; " +
+        "/bin/cp '"+previous+"' '"+exe+"'; /bin/chmod +x '"+exe+"'; /bin/mkdir -p '"+filepath.Dir(notice)+"'; " +
+        "/usr/bin/printf '%s\\n' '{\"id\":\"rollback\",\"status\":\"rolled_back\",\"at\":\"'$(/bin/date -u +%Y-%m-%dT%H:%M:%SZ)'\",\"message\":\"Upgraded Web failed health check; previous binary restored.\"}' > '"+notice+"'; " +
+        "/bin/launchctl kickstart -k '"+launchdWebTarget()+"'"
+    cmd:=exec.Command("/bin/sh","-c",script)
+    cmd.Stdout=os.Stdout
+    cmd.Stderr=os.Stderr
+    if err:=cmd.Start(); err!=nil { return err }
+    return cmd.Process.Release()
+}
+
 func detachedWebRestartWithRollback(exe string,args []string,project,previous string,port int) error {
-    // launchd-managed services are restarted by KeepAlive. For unmanaged
-    // foreground runs, use the detached handoff. The preserved previous
-    // executable remains available for explicit recovery if launchd cannot
-    // start the upgraded binary.
     return detachedWebRestart(exe,args,project)
 }
 
