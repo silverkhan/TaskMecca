@@ -47,6 +47,24 @@ func webHomeDir() string {
 func webServiceDir() string { return filepath.Join(webHomeDir(),"web") }
 func webStatePath() string { return filepath.Join(webServiceDir(),"state.json") }
 func WebLogPath() string { return filepath.Join(webServiceDir(),"web.log") }
+func upgradeRecoveryPath() string { return filepath.Join(webServiceDir(),"upgrade-recovery.json") }
+
+type UpgradeRecoveryNotice struct {
+    ID string `json:"id"`
+    Status string `json:"status"`
+    AttemptedVersion string `json:"attempted_version,omitempty"`
+    RecoveredVersion string `json:"recovered_version,omitempty"`
+    At string `json:"at"`
+    Message string `json:"message,omitempty"`
+}
+
+func UpgradeRecoveryStatus() *UpgradeRecoveryNotice {
+    data,err:=os.ReadFile(upgradeRecoveryPath())
+    if err!=nil { return nil }
+    var notice UpgradeRecoveryNotice
+    if json.Unmarshal(data,&notice)!=nil || notice.ID=="" { return nil }
+    return &notice
+}
 
 func randomHex(n int) (string,error) {
     raw:=make([]byte,n)
