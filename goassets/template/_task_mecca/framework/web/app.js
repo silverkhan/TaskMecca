@@ -714,6 +714,20 @@ async function maybeShowUpgradeRecovery() {
   }catch(_){}
 }
 
+function maybeApplyStableBrandIntro() {
+  const cli=state.versionInfo?.cli||state.hub?.cli||{};
+  if((cli.channel||'stable')!=='stable')return;
+  const marker='task-mecca-stable-brand-intro-v1';
+  if(localStorage.getItem(marker)==='1')return;
+  localStorage.setItem('task-mecca-palette-version','2');
+  localStorage.setItem('task-mecca-palette','mecca');
+  localStorage.setItem('task-mecca-theme','dark');
+  localStorage.setItem(marker,'1');
+  state.palette='mecca';
+  state.theme='dark';
+  applyTheme();
+}
+
 async function refreshVersionInfo(force=false) {
   const params=new URLSearchParams();
   if(state.project)params.set('project',state.project);
@@ -722,6 +736,7 @@ async function refreshVersionInfo(force=false) {
     const r=await fetch('/api/version?'+params.toString(),{cache:'no-store'});
     if(!r.ok)throw new Error(`HTTP ${r.status}`);
     state.versionInfo=await r.json();
+    maybeApplyStableBrandIntro();
     renderGlobalUpdateIndicator();
     renderReleaseNotesBadge();
     queueMicrotask(()=>maybeShowCurrentReleaseNote());
