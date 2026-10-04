@@ -7,6 +7,7 @@ import (
     "os/exec"
     "runtime"
     "strconv"
+    "strings"
 )
 
 func startManagedWebProcess(exe string,args []string,project string) error {
@@ -35,25 +36,33 @@ func detachedWebRestart(exe string,args []string,project string) error {
     return detachedWebRestartWithRollback(exe,args,project,"",DefaultPort)
 }
 
+func psQuote(value string) string { return "'" + strings.ReplaceAll(value,"'","''") + "'" }
+
+func windowsRollbackScript(exe string,args []string,project,previous string,port int) string {
+    quotedArgs:=make([]string,0,len(args))
+    for _,arg:=range args { quotedArgs=append(quotedArgs,psQuote(arg)) }
+    argList:="@("+strings.Join(quotedArgs,",")+")"
+    health:=psQuote("http://127.0.0.1:"+strconv.Itoa(port)+"/api/health")
+    var b strings.Builder
+    b.WriteString("$ErrorActionPreference='Stop'\r\n")
+    b.WriteString("$exe="+psQuote(exe)+"\r\n$project="+psQuote(project)+"\r\n$args="+argList+"\r\n")
+    b.WriteString("Start-Sleep -Seconds 1\r\n")
+    b.WriteString("$p=Start-Process -FilePath $exe -ArgumentList $args -WorkingDirectory $project -PassThru\r\n")
+    if previous!="" {
+        b.WriteString("$healthy=$false\r\nfor($i=0;$i -lt 30;$i++){ Start-Sleep -Seconds 1; try { $r=Invoke-WebRequest -UseBasicParsing -TimeoutSec 1 "+health+"; if($r.StatusCode -eq 200){$healthy=$true;break} } catch {} }\r\n")
+        b.WriteString("if(-not $healthy){ try { Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue } catch {}; $p.WaitForExit(); Copy-Item -Force "+psQuote(previous)+" $exe; Start-Process -FilePath $exe -ArgumentList $args -WorkingDirectory $project }\r\n")
+    }
+    return b.String()
+}
+
 func detachedWebRestartWithRollback(exe string,args []string,project,previous string,port int) error {
     if runtime.GOOS=="windows" {
-        helper,err:=os.CreateTemp("","task-mecca-web-restart-*.cmd")
+        helper,err:=os.CreateTemp("","task-mecca-web-restart-*.ps1")
         if err!=nil { return err }
         helperPath:=helper.Name()
-        health:="http://127.0.0.1:"+strconv.Itoa(port)+"/api/health"
-        body:="@echo off\r\ntimeout /t 1 /nobreak >nul\r\nstart \"\" /D \""+project+"\" \""+exe+"\""
-        for _,arg:=range args { body+=" \""+arg+"\"" }
-        body+="\r\n"
-        if previous!="" {
-            body+="for /L %%i in (1,1,30) do (\r\n  timeout /t 1 /nobreak >nul\r\n  powershell -NoProfile -Command \"try { if ((Invoke-WebRequest -UseBasicParsing -TimeoutSec 1 '"+health+"').StatusCode -eq 200) { exit 0 } } catch {}; exit 1\" && goto healthy\r\n)\r\n"
-            body+="copy /Y \""+previous+"\" \""+exe+"\" >nul\r\nstart \"\" /D \""+project+"\" \""+exe+"\""
-            for _,arg:=range args { body+=" \""+arg+"\"" }
-            body+="\r\n:healthy\r\n"
-        }
-        body+="del \"%~f0\"\r\n"
-        if _,err=helper.WriteString(body); err!=nil { _=helper.Close(); return err }
+        if _,err=helper.WriteString(windowsRollbackScript(exe,args,project,previous,port)); err!=nil { _=helper.Close(); return err }
         if err=helper.Close(); err!=nil { return err }
-        cmd:=exec.Command("cmd.exe","/D","/C","start","","/MIN",helperPath)
+        cmd:=exec.Command("powershell.exe","-NoProfile","-ExecutionPolicy","Bypass","-File",helperPath)
         cmd.Dir=project
         if err=cmd.Start(); err!=nil { return err }
         return cmd.Process.Release()
