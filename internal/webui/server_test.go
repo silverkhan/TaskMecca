@@ -17,6 +17,31 @@ import (
     "github.com/silverkhan/TaskMecca/internal/runtimeobs"
 )
 
+func TestSignatureThemeBranding(t *testing.T) {
+    project:=t.TempDir()
+    handler:=NewServer(project)
+    req:=httptest.NewRequest(http.MethodGet,"/",nil)
+    rec:=httptest.NewRecorder()
+    handler.ServeHTTP(rec,req)
+    html:=rec.Body.String()
+    for _,needle:=range []string{"/logo.svg",`<option value="mecca">Mecca</option>`,`<option value="slate">Slate</option>`} {
+        if !contains(html,needle) { t.Fatalf("index missing signature theme marker %q",needle) }
+    }
+    req=httptest.NewRequest(http.MethodGet,"/app.js",nil)
+    rec=httptest.NewRecorder()
+    handler.ServeHTTP(rec,req)
+    appJS:=rec.Body.String()
+    for _,needle:=range []string{"task-mecca-palette-version","localStorage.setItem('task-mecca-theme','dark')","localStorage.setItem('task-mecca-palette','mecca')"} {
+        if !contains(appJS,needle) { t.Fatalf("app.js missing signature migration marker %q",needle) }
+    }
+    req=httptest.NewRequest(http.MethodGet,"/style.css",nil)
+    rec=httptest.NewRecorder()
+    handler.ServeHTTP(rec,req)
+    css:=rec.Body.String()
+    if !contains(css,`data-palette="mecca"`) { t.Fatal("style.css missing Mecca signature palette") }
+    if contains(css,`data-palette="nocturne"`) { t.Fatal("style.css still exposes legacy Nocturne palette") }
+}
+
 func TestHandlerServesDashboardAPIsAndAssets(t *testing.T) {
     oldIndexProvider:=stableReleaseNotesIndexProvider
     oldDetailProvider:=stableReleaseNoteProvider
