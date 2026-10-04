@@ -876,3 +876,18 @@ func TestReleaseGateBrowserNotificationAndMobileContracts(t *testing.T) {
         if !contains(appJS,needle) { t.Fatalf("browser persistence contract missing %q",needle) }
     }
 }
+
+
+func TestRuntimeUnknownWarningPolicyContract(t *testing.T) {
+    app:=readWebAsset(t,"app.js")
+    for _,marker:=range []string{
+        "function effectiveAttentionReason(task)",
+        "if(reason.type!=='runtime_unknown')return reason",
+        "hookReady||runtimeObservationHealthy(task)",
+        "function runtimeObservationHealthy(task)",
+        "runtimeHookOnboardingBanner()",
+        "data-runtime-hook-action=\"enable\"",
+    } {
+        if !strings.Contains(app,marker) { t.Fatalf("runtime warning policy marker missing: %s",marker) }
+    }
+}
