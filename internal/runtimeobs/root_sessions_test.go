@@ -308,6 +308,7 @@ func TestRootSessionReactivatesWhenFreshActivityArrivesAfterTerminal(t *testing.
     }
     terminal.EventID=eventIDFor(terminal)
     if err:=AppendExecutionEvent(project,terminal); err!=nil { t.Fatal(err) }
+    if _,err:=BindAttempt(project,attemptID,"AID-OLD","/root/controller","explicit","",map[string]string{"dispatch":"old"},ended.Add(-time.Minute)); err!=nil { t.Fatal(err) }
 
     before,err:=ReconcileLedger(project,10,now.Add(-time.Minute))
     if err!=nil { t.Fatal(err) }
