@@ -197,7 +197,39 @@ func lifecycleTimings(project,root string,rows []Record) (map[string]map[string]
         for _,attempt:=range runtimeLedger.Attempts {
             id:=strings.ToUpper(strings.TrimSpace(attempt.TaskID))
             if id=="" || attempt.BindingState!=runtimeobs.BindingBound || attempt.StartedAt=="" { continue }
-            candidate:=lifecycleEvent{State:"doing",At:attempt.StartedAt,Source:"execution_ledger"}
+
+            // A binding can be written after an attempt has already existed for
+            // some time. Never backdate the task lifecycle to runtime activity
+            // that predates that task binding. The effective start is the later
+            // of runtime start and binding time.
+            effectiveStart:=attempt.StartedAt
+            for _,transition:=range attempt.RecentTransitions {
+                if transition.Kind!="binding" { continue }
+                if bindingAt,ok:=parseTime(transition.At); ok {
+                    if startAt,startOK:=parseTime(effectiveStart); !startOK || bindingAt.After(startAt) {
+                        effectiveStart=transition.At
+                    }
+                }
+            }
+
+            // Registration is an invariant boundary: a task cannot start before
+            // it exists. Reject stale/reused attempt evidence that would invert
+            // Registered -> Started ordering.
+            registeredAt:=""
+            if durable:=events[id]; len(durable)>0 {
+                for _,event:=range durable {
+                    if event.State=="todo" { registeredAt=event.At; break }
+                }
+            }
+            if registeredAt=="" {
+                if row,ok:=currentRows[id]; ok { registeredAt=firstNonEmpty(row.Ctime,row.Mtime) }
+            }
+            if regAt,regOK:=parseTime(registeredAt); regOK {
+                startAt,startOK:=parseTime(effectiveStart)
+                if !startOK || startAt.Before(regAt) { continue }
+            }
+
+            candidate:=lifecycleEvent{State:"doing",At:effectiveStart,Source:"execution_ledger"}
             existing,ok:=runtimeStarts[id]
             if !ok {
                 runtimeStarts[id]=candidate
