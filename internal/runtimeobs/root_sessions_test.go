@@ -290,3 +290,54 @@ func TestRefreshCodexRootNamesIncludesTerminalRoot(t *testing.T) {
     roots,err:=BuildRootSessions(project,ledger,now); if err!=nil { t.Fatal(err) }
     if len(roots.Items)!=1 || roots.Items[0].DisplayName!="대화 없이 바뀐 이름" { t.Fatalf("roots=%+v",roots.Items) }
 }
+
+
+func TestRootSessionReactivatesWhenFreshActivityArrivesAfterTerminal(t *testing.T) {
+    project:=t.TempDir()
+    now:=time.Date(2026,10,5,5,0,0,0,time.UTC)
+    attemptID:="run-reactivate"
+    sessionID:="session-reactivate"
+    agentID:="agent-reactivate"
+    ended:=now.Add(-time.Hour)
+    terminal:=ExecutionEvent{
+        EventKind:"state",ObservedAt:ended.Format(time.RFC3339Nano),
+        AttemptID:attemptID,Provider:"codex",SessionID:sessionID,
+        RuntimeAgentID:agentID,AgentPath:"/root/controller",
+        State:StateCompleted,Terminal:true,
+        EvidenceSource:EvidenceHook,ObservationQuality:QualityObserved,
+    }
+    terminal.EventID=eventIDFor(terminal)
+    if err:=AppendExecutionEvent(project,terminal); err!=nil { t.Fatal(err) }
+
+    before,err:=ReconcileLedger(project,10,now.Add(-time.Minute))
+    if err!=nil { t.Fatal(err) }
+    roots,err:=BuildRootSessions(project,before,now.Add(-time.Minute))
+    if err!=nil { t.Fatal(err) }
+    if len(roots.Items)!=1 || roots.Items[0].Status!=RootSessionTerminal {
+        t.Fatalf("root must initially be previous/terminal: %+v",roots.Items)
+    }
+    rootID:=roots.Items[0].RootSessionID
+
+    activity:=ExecutionEvent{
+        EventKind:"activity",ObservedAt:now.Format(time.RFC3339Nano),
+        AttemptID:attemptID,Provider:"codex",SessionID:sessionID,
+        RuntimeAgentID:agentID,AgentPath:"/root/controller",
+        EvidenceSource:EvidenceHook,ObservationQuality:QualityObserved,
+    }
+    activity.EventID=eventIDFor(activity)
+    if err:=AppendExecutionEvent(project,activity); err!=nil { t.Fatal(err) }
+
+    after,err:=ReconcileLedger(project,10,now.Add(time.Second))
+    if err!=nil { t.Fatal(err) }
+    roots,err=BuildRootSessions(project,after,now.Add(time.Second))
+    if err!=nil { t.Fatal(err) }
+    if len(roots.Items)!=1 { t.Fatalf("roots=%+v",roots.Items) }
+    root:=roots.Items[0]
+    if root.RootSessionID!=rootID { t.Fatalf("reactivation changed root identity: before=%s after=%s",rootID,root.RootSessionID) }
+    if root.Status!=RootSessionActive || root.CurrentCount!=1 || root.TerminalCount!=0 {
+        t.Fatalf("fresh activity must reactivate previous root: %+v",root)
+    }
+    if root.LastActivityAt!=activity.ObservedAt {
+        t.Fatalf("last activity=%s want=%s",root.LastActivityAt,activity.ObservedAt)
+    }
+}
