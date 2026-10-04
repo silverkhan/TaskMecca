@@ -5,6 +5,7 @@ import (
     "crypto/sha256"
     "encoding/hex"
     "encoding/json"
+    "debug/buildinfo"
     "errors"
     "fmt"
     "io"
@@ -66,6 +67,7 @@ type UpgradeResult struct {
     Executable string `json:"executable"`
     RestartRequired bool `json:"restart_required"`
     Scheduled bool `json:"scheduled,omitempty"`
+    PreviousExecutable string `json:"previous_executable,omitempty"`
 }
 
 type ReleaseChannelTarget struct {
@@ -533,6 +535,32 @@ func fetchReleaseBinary(base string) ([]byte,error) {
     return binary,nil
 }
 
+func preserveExecutable(exe string) (string,error) {
+    source,err:=os.Open(exe)
+    if err!=nil { return "",err }
+    defer source.Close()
+    backup:=exe+".previous"
+    tmp:=backup+".tmp"
+    _=os.Remove(tmp)
+    target,err:=os.OpenFile(tmp,os.O_CREATE|os.O_TRUNC|os.O_WRONLY,0755)
+    if err!=nil { return "",err }
+    _,copyErr:=io.Copy(target,source)
+    closeErr:=target.Close()
+    if copyErr!=nil { _=os.Remove(tmp); return "",copyErr }
+    if closeErr!=nil { _=os.Remove(tmp); return "",closeErr }
+    if err=os.Rename(tmp,backup); err!=nil { _=os.Remove(tmp); return "",err }
+    return backup,nil
+}
+
+func validateUpgradeBinary(path string) error {
+    info,err:=buildinfo.ReadFile(path)
+    if err!=nil { return fmt.Errorf("downloaded upgrade is not a valid Go executable: %w",err) }
+    if !strings.Contains(info.Path,"TaskMecca") && !strings.Contains(info.Path,"task-mecca") {
+        return fmt.Errorf("downloaded executable has unexpected Go main package %q",info.Path)
+    }
+    return nil
+}
+
 func installBinary(current,to string,binary []byte) (UpgradeResult,error) {
     result:=UpgradeResult{From:normalizeVersion(current),To:normalizeVersion(to)}
     exe,err:=os.Executable()
@@ -550,11 +578,19 @@ func installBinary(current,to string,binary []byte) (UpgradeResult,error) {
     if err=tmp.Close(); err!=nil { return result,err }
     if runtime.GOOS!="windows" {
         if err=os.Chmod(tmpPath,0755); err!=nil { return result,err }
+        if err=validateUpgradeBinary(tmpPath); err!=nil { return result,err }
+        backup,backupErr:=preserveExecutable(exe)
+        if backupErr!=nil { return result,fmt.Errorf("cannot preserve current executable for rollback: %w",backupErr) }
+        result.PreviousExecutable=backup
         if err=os.Rename(tmpPath,exe); err!=nil { return result,err }
         result.RestartRequired=true
         return result,nil
     }
 
+    if err=validateUpgradeBinary(tmpPath); err!=nil { return result,err }
+    backup,backupErr:=preserveExecutable(exe)
+    if backupErr!=nil { return result,fmt.Errorf("cannot preserve current executable for rollback: %w",backupErr) }
+    result.PreviousExecutable=backup
     newPath:=exe+".new"
     _=os.Remove(newPath)
     if err=os.Rename(tmpPath,newPath); err!=nil { return result,err }
