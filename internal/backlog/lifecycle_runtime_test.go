@@ -42,7 +42,7 @@ func TestCompletedLifecycleKeepsStartedAtFromImmutableEpisode(t *testing.T) {
     project:=t.TempDir()
     backlogDir:=filepath.Join(project,"_task_mecca","data","backlog")
     if err:=os.MkdirAll(backlogDir,0755); err!=nil { t.Fatal(err) }
-    task:=filepath.Join(backlogDir,"0441.B-441.lifecycle.done.md")
+    task:=filepath.Join(backlogDir,"0441.B-441.lifecycle.doing.md")
     body:="---\nID: B-441\nTitle: Lifecycle preservation\nAgent: /root/controller/worker\nRuntimeProvider: codex\n---\n"
     if err:=os.WriteFile(task,[]byte(body),0644); err!=nil { t.Fatal(err) }
     started:=time.Now().UTC().Add(-4*time.Minute)
