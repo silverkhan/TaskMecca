@@ -776,27 +776,6 @@ func TestHandlerServesUninitializedBacklogAsNormalProject(t *testing.T) {
     handler,err:=Handler(root,"","test")
     if err!=nil { t.Fatal(err) }
 
-    feedKey:=root+"\x00"
-    attentionFeeds.Lock()
-    feed:=attentionFeeds.feeds[feedKey]
-    attentionFeeds.Unlock()
-    if feed==nil { t.Fatal("control/notification feed must start before backlog initialization") }
-    // Establish the empty baseline, then create the canonical backlog after the
-    // server is already running. The same service feed must discover it without
-    // requiring a browser SSE subscription.
-    feed.refresh()
-    backlogDir:=filepath.Join(root,"_task_mecca","data","backlog")
-    if err:=os.MkdirAll(backlogDir,0755);err!=nil{t.Fatal(err)}
-    if err:=os.WriteFile(filepath.Join(backlogDir,"000001.B-1.first.todo.md"),[]byte("# B-1 First\n"),0644);err!=nil{t.Fatal(err)}
-    feed.refresh()
-    events,err:=backlog.ReadNotificationEvents(root)
-    if err!=nil{t.Fatal(err)}
-    registered:=false
-    for _,event:=range events{
-        if fmt.Sprint(event["task_id"])=="B-1" && fmt.Sprint(event["kind"])=="registered"{registered=true}
-    }
-    if !registered{t.Fatalf("service feed did not discover post-start backlog registration: %+v",events)}
-
     for _,path:=range []string{"/api/backlog/tasks","/api/snapshot","/api/attention","/api/workload","/api/issues"} {
         req:=httptest.NewRequest(http.MethodGet,path,nil)
         rec:=httptest.NewRecorder()
@@ -836,6 +815,24 @@ func TestHandlerServesUninitializedBacklogAsNormalProject(t *testing.T) {
     } {
         if !contains(appJS,needle) { t.Fatalf("app.js missing uninitialized backlog UX marker %q",needle) }
     }
+
+    feedKey:=root+"\x00"
+    attentionFeeds.Lock()
+    feed:=attentionFeeds.feeds[feedKey]
+    attentionFeeds.Unlock()
+    if feed==nil { t.Fatal("control/notification feed must start before backlog initialization") }
+    feed.refresh()
+    backlogDir:=filepath.Join(root,"_task_mecca","data","backlog")
+    if err:=os.MkdirAll(backlogDir,0755);err!=nil{t.Fatal(err)}
+    if err:=os.WriteFile(filepath.Join(backlogDir,"000001.B-1.first.todo.md"),[]byte("# B-1 First\n"),0644);err!=nil{t.Fatal(err)}
+    feed.refresh()
+    events,err:=backlog.ReadNotificationEvents(root)
+    if err!=nil{t.Fatal(err)}
+    registered:=false
+    for _,event:=range events{
+        if fmt.Sprint(event["task_id"])=="B-1" && fmt.Sprint(event["kind"])=="registered"{registered=true}
+    }
+    if !registered{t.Fatalf("service feed did not discover post-start backlog registration: %+v",events)}
 }
 
 
