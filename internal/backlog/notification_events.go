@@ -101,7 +101,10 @@ func NotificationEvents(project string, items map[string]map[string]any) ([]map[
     // a baseline pass. Reconciliation may recover historical lifecycle/runtime
     // truth, but baseline state must never be emitted as a new notification.
     baseline := !loaded || journal.Version < notificationJournalVersion || !itemsPresent
-    dirty := false
+    // Persist even an empty first baseline. Otherwise a service that starts
+    // before Registrar creates the first backlog keeps looking "uninitialized"
+    // to the notification journal and suppresses that first genuine registration.
+    dirty := !loaded || !itemsPresent
     if journal.Version != notificationJournalVersion {
         journal.Version = notificationJournalVersion
         dirty = true
