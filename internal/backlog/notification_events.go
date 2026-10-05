@@ -129,6 +129,7 @@ func NotificationEvents(project string,items map[string]map[string]any) ([]map[s
         }
 
         runtimeKey:=""
+        runtimeKind:=""
         if activity,ok:=item["activity"].(map[string]any); ok && toString(activity["source"])=="execution_ledger" {
             attemptID:=toString(activity["attempt_id"])
             runtimeState:=toString(activity["runtime_state"])
@@ -153,6 +154,7 @@ func NotificationEvents(project string,items map[string]map[string]any) ([]map[s
                 case health=="awaiting_finalize":
                     kind="finalize"; message="Worker 실행은 끝났지만 백로그가 아직 doing 상태입니다."
                 }
+                runtimeKind=kind
                 if kind!="" {
                     at:=now
                     eventID:=notificationEventID(id,kind,at)
@@ -172,9 +174,18 @@ func NotificationEvents(project string,items map[string]map[string]any) ([]map[s
         if reason,ok:=item["attention_reason"].(map[string]any); ok && len(reason)>0 {
             reasonType:=toString(reason["type"])
             kind:="intervention"
-            if reasonType=="runtime_stalled" { kind="stalled" }
+            switch reasonType {
+            case "completion_pending": kind="finalize"
+            case "user_intervention": kind="intervention"
+            case "runtime_stalled": kind="stalled"
+            case "execution_interrupted": kind="interrupted"
+            case "runtime_unknown": kind="runtime_unknown"
+            }
             attentionKey=kind+"\x00"+reasonType+"\x00"+toString(reason["message"])+"\x00"+toString(reason["resume_condition"])
-            if !seen || previous.AttentionKey!=attentionKey {
+            // runtime activity and attention_reason are two views of the same
+            // condition. When runtime already emitted the canonical kind in this
+            // reconciliation pass, do not manufacture a second notification.
+            if kind!=runtimeKind && (!seen || previous.AttentionKey!=attentionKey) {
                 at:=now
                 eventID:=notificationEventID(id,kind,at)
                 if !notificationEventExists(journal.Events,eventID) {
