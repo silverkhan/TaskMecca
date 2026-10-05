@@ -6,8 +6,11 @@ import (
     "encoding/json"
     "os"
     "path/filepath"
+    "sync"
     "time"
 )
+
+var notificationJournalMu sync.Mutex
 
 type notificationObservation struct {
     FileState string `json:"file_state"`
@@ -36,6 +39,8 @@ func notificationEventExists(events []map[string]any,id string) bool {
 }
 
 func ReadNotificationEvents(project string) ([]map[string]any,error) {
+    notificationJournalMu.Lock()
+    defer notificationJournalMu.Unlock()
     path:=filepath.Join(project,"_task_mecca",".runtime","notification_events.json")
     data,err:=os.ReadFile(path)
     if os.IsNotExist(err) { return []map[string]any{},nil }
@@ -47,6 +52,8 @@ func ReadNotificationEvents(project string) ([]map[string]any,error) {
 }
 
 func NotificationEvents(project string,items map[string]map[string]any) ([]map[string]any,error) {
+    notificationJournalMu.Lock()
+    defer notificationJournalMu.Unlock()
     path:=filepath.Join(project,"_task_mecca",".runtime","notification_events.json")
     journal:=notificationJournal{
         Version:1,
