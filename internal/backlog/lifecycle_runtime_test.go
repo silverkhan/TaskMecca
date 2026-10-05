@@ -51,8 +51,13 @@ func TestCompletedLifecycleKeepsStartedAtFromImmutableEpisode(t *testing.T) {
     start:=runtimeobs.ExecutionEvent{EventKind:"state",ObservedAt:started.Format(time.RFC3339Nano),AttemptID:attemptID,Provider:"codex",SessionID:"root-1",RuntimeAgentID:"worker-1",State:runtimeobs.StateRunning,EvidenceSource:runtimeobs.EvidenceHook,ObservationQuality:runtimeobs.QualityObserved}
     if err:=runtimeobs.AppendExecutionEvent(project,start); err!=nil { t.Fatal(err) }
     if _,err:=runtimeobs.BindAttempt(project,attemptID,"B-441","/root/controller/worker","dispatch","",nil,started); err!=nil { t.Fatal(err) }
+    activeRows,err:=Catalog(project,""); if err!=nil { t.Fatal(err) }
+    activeTimings,err:=lifecycleTimings(project,"",activeRows); if err!=nil { t.Fatal(err) }
+    if activeTimings["B-441"]==nil || activeTimings["B-441"]["started_at"]==nil { t.Fatalf("active lifecycle missing start: %+v",activeTimings["B-441"]) }
     stop:=runtimeobs.ExecutionEvent{EventKind:"state",ObservedAt:completed.Format(time.RFC3339Nano),AttemptID:attemptID,Provider:"codex",SessionID:"root-1",RuntimeAgentID:"worker-1",State:runtimeobs.StateCompleted,Terminal:true,EvidenceSource:runtimeobs.EvidenceHook,ObservationQuality:runtimeobs.QualityObserved}
     if err:=runtimeobs.AppendExecutionEvent(project,stop); err!=nil { t.Fatal(err) }
+    doneTask:=filepath.Join(backlogDir,"0441.B-441.lifecycle.done.md")
+    if err:=os.Rename(task,doneTask); err!=nil { t.Fatal(err) }
     rows,err:=Catalog(project,""); if err!=nil { t.Fatal(err) }
     timings,err:=lifecycleTimings(project,"",rows); if err!=nil { t.Fatal(err) }
     lifecycle:=timings["B-441"]; if lifecycle==nil { t.Fatal("missing lifecycle") }
