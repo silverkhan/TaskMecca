@@ -1,6 +1,7 @@
 package backlog
 
 import (
+    "sync"
     "testing"
 )
 
@@ -127,4 +128,39 @@ func TestCanonicalLifecycleEmitsStartedThenCompletedOnce(t *testing.T) {
     if len(events)!=2 || events[0]["kind"]!="started" || events[1]["kind"]!="completed" { t.Fatalf("lifecycle notification sequence=%+v",events) }
     again,err:=NotificationEvents(project,done); if err!=nil { t.Fatal(err) }
     if len(again)!=2 { t.Fatalf("lifecycle notifications duplicated: %+v",again) }
+}
+
+
+func TestNotificationEventsConcurrentReconcileKeepsStartedEventAndValidJournal(t *testing.T) {
+    project:=t.TempDir()
+    base:=map[string]map[string]any{
+        "B-500":{"file_state":"todo","updated_at":"2026-10-05T10:00:00Z","title":"Concurrent"},
+    }
+    if _,err:=NotificationEvents(project,base); err!=nil { t.Fatal(err) }
+
+    running:=map[string]map[string]any{
+        "B-500":{"file_state":"doing","updated_at":"2026-10-05T10:01:00Z","title":"Concurrent",
+            "lifecycle":map[string]any{"started_at":"2026-10-05T10:01:00Z"}},
+    }
+    var wg sync.WaitGroup
+    errs:=make(chan error,24)
+    for i:=0;i<24;i++ {
+        wg.Add(1)
+        go func(){
+            defer wg.Done()
+            _,err:=NotificationEvents(project,running)
+            errs<-err
+        }()
+    }
+    wg.Wait()
+    close(errs)
+    for err:=range errs { if err!=nil { t.Fatalf("concurrent reconcile failed: %v",err) } }
+
+    events,err:=ReadNotificationEvents(project)
+    if err!=nil { t.Fatalf("journal unreadable after concurrent reconcile: %v",err) }
+    starts:=0
+    for _,event:=range events {
+        if toString(event["task_id"])=="B-500" && toString(event["kind"])=="started" { starts++ }
+    }
+    if starts!=1 { t.Fatalf("started event count=%d events=%+v",starts,events) }
 }
