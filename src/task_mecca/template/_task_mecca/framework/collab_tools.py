@@ -2470,6 +2470,15 @@ def task_state_timings(repo: Path, root: Optional[Path] = None) -> dict[str, dic
             at = str(entry.get("at", ""))
             dt = _parse_iso(at)
             if state in {"todo", "doing", "hold", "done"} and dt is not None:
+                if (
+                    current_state == "done"
+                    and durable_last_state == "done"
+                    and durable_last_dt is not None
+                    and dt >= durable_last_dt.astimezone(dt.tzinfo)
+                    and state != "done"
+                ):
+                    journal_changed = True
+                    continue
                 # Once observed, a transition is historical evidence. A later
                 # Git commit of the current/final state must not erase an older
                 # registration/start transition that Git never recorded.
