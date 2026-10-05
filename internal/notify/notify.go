@@ -38,7 +38,8 @@ type telegramChannel struct{ cfg TelegramConfig }
 func (t telegramChannel) Name() string { return "telegram" }
 func (t telegramChannel) Deliver(e Event) error {
  if !t.cfg.Enabled||t.cfg.ChatID==0||!t.cfg.Kinds[e.Kind] { return nil }
- head:="[Task Mecca] "+e.TaskID
+ head:="[Task Mecca]"
+ if e.TaskID!="" { head+=" "+e.TaskID }
  if e.Title!="" { head+=" · "+e.Title }
  labels:=map[string]string{
   "registered":"📝 작업 등록","started":"▶️ 작업 착수","intervention":"🙋 사용자 개입 필요","approval":"🔐 승인 필요",
