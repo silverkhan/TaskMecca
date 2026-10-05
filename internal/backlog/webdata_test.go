@@ -201,3 +201,31 @@ func TestAttentionSnapshotPassesCanonicalLifecycleToNotificationEvents(t *testin
     for _,event:=range events { if toString(event["task_id"])=="B-444" && toString(event["kind"])=="started" { found=true } }
     if !found { t.Fatalf("canonical started lifecycle was not forwarded to notification events: %+v",events) }
 }
+
+
+func TestBindRuntimeAgentFlowsThroughLifecycleIntoStartedNotification(t *testing.T) {
+    project:=t.TempDir()
+    backlogDir:=filepath.Join(project,"_task_mecca","data","backlog")
+    if err:=os.MkdirAll(backlogDir,0755); err!=nil { t.Fatal(err) }
+    if err:=os.WriteFile(filepath.Join(backlogDir,"0001.B-001.base.todo.md"),[]byte("---\nID: B-001\nTitle: Base\n---\n"),0644); err!=nil { t.Fatal(err) }
+    if _,err:=AttentionSnapshot(project,"",true); err!=nil { t.Fatal(err) }
+
+    if err:=os.WriteFile(filepath.Join(backlogDir,"0501.B-501.actual.doing.md"),[]byte("---\nID: B-501\nTitle: Actual bind-agent path\nAgent: /root/controller/raichyu\nRuntimeProvider: codex\n---\n"),0644); err!=nil { t.Fatal(err) }
+    now:=time.Now().UTC()
+    episode:=runtimeobs.ExecutionEvent{
+        EventKind:"episode",ObservedAt:now.Add(-time.Second).Format(time.RFC3339Nano),AttemptID:"run-live-b501",
+        Provider:"codex",SessionID:"root-live",RuntimeAgentID:"raichyu",
+        EvidenceSource:runtimeobs.EvidenceHook,ObservationQuality:runtimeobs.QualityAuthoritative,
+    }
+    if err:=runtimeobs.AppendExecutionEvent(project,episode); err!=nil { t.Fatal(err) }
+    if _,err:=runtimeobs.BindRuntimeAgent(project,"raichyu","B-501","/root/controller/raichyu","",now); err!=nil { t.Fatal(err) }
+
+    snapshot,err:=AttentionSnapshot(project,"",true)
+    if err!=nil { t.Fatal(err) }
+    events:=snapshot["notification_events"].([]map[string]any)
+    starts:=0
+    for _,event:=range events {
+        if toString(event["task_id"])=="B-501" && toString(event["kind"])=="started" { starts++ }
+    }
+    if starts!=1 { t.Fatalf("bind-agent path produced %d started events: %+v",starts,events) }
+}
