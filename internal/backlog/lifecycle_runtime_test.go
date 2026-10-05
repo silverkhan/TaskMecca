@@ -212,3 +212,37 @@ func TestControlTowerDoesNotRecoverBindAmbiguousAttempt(t *testing.T) {
         }
     }
 }
+
+
+func TestControlTowerRecoveryBindingRespectsRuntimeProvider(t *testing.T) {
+    project:=t.TempDir()
+    now:=time.Now().UTC()
+    attemptID:="run-provider-mismatch"
+    start:=runtimeobs.ExecutionEvent{
+        EventKind:"state",ObservedAt:now.Add(-time.Minute).Format(time.RFC3339Nano),
+        AttemptID:attemptID,Provider:"claude",RuntimeAgentID:"worker-provider",
+        State:runtimeobs.StateRunning,EvidenceSource:runtimeobs.EvidenceHook,
+        ObservationQuality:runtimeobs.QualityObserved,
+    }
+    if err:=runtimeobs.AppendExecutionEvent(project,start);err!=nil{t.Fatal(err)}
+
+    rows:=[]Record{{
+        ID:"B-997",State:"doing",Location:"active",
+        Fields:map[string]string{
+            "Agent":"/root/controller/worker-provider",
+            "RuntimeProvider":"codex",
+        },
+    }}
+    recovered:=reconcileCanonicalBindings(project,rows,now)
+    if recovered["B-997"]{
+        t.Fatalf("provider-mismatched attempt must never be auto-bound: %+v",recovered)
+    }
+
+    ledger,err:=runtimeobs.ReconcileLedger(project,10,now)
+    if err!=nil{t.Fatal(err)}
+    for _,attempt:=range ledger.Attempts{
+        if attempt.AttemptID==attemptID && attempt.BindingState!=runtimeobs.BindingUnbound{
+            t.Fatalf("provider mismatch mutated binding: %+v",attempt)
+        }
+    }
+}
