@@ -312,7 +312,7 @@ func TestRootSessionStaysSameWhileNewEpisodeBecomesActive(t *testing.T) {
     roots,err=BuildRootSessions(project,after,now.Add(time.Second)); if err!=nil { t.Fatal(err) }
     if len(roots.Items)!=1 { t.Fatalf("roots=%+v",roots.Items) }
     root:=roots.Items[0]
-    if root.RootSessionID!=rootID || root.Status!=RootSessionActive || root.CurrentCount!=1 || root.TerminalCount!=1 {
+    if root.RootSessionID!=rootID || root.Status!=RootSessionNeedsCheck || root.NeedsCheckCount!=1 || root.TerminalCount!=1 {
         t.Fatalf("root/episode aggregation invalid: %+v",root)
     }
     if len(after.Attempts)!=2 { t.Fatalf("attempts=%+v",after.Attempts) }
