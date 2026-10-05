@@ -124,3 +124,81 @@ func TestTelegramAllSupportedKindsHaveUserFacingLabelsAndDedupe(t *testing.T){
   if !strings.HasPrefix(sent[i],row.prefix){t.Fatalf("kind=%s message=%q",row.kind,sent[i])}
  }
 }
+
+
+func TestTelegramLegacyConfigBaselinesExistingEvents(t *testing.T){
+ project:=t.TempDir()
+ sent:=0
+ server:=httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter,r *http.Request){
+  sent++
+  w.Header().Set("Content-Type","application/json")
+  json.NewEncoder(w).Encode(map[string]any{"ok":true,"result":map[string]any{"message_id":sent}})
+ }))
+ defer server.Close()
+ old:=telegramAPIBase;telegramAPIBase=server.URL;defer func(){telegramAPIBase=old}()
+
+ if err:=saveTelegram(project,TelegramConfig{Token:"token",ChatID:123,Enabled:true,Kinds:defaultKinds()});err!=nil{t.Fatal(err)}
+ oldEvent:=Event{ID:"old-1",TaskID:"B-900",Kind:"started",Title:"Old",At:"2026-10-05T10:00:00Z"}
+ if errs:=Deliver(project,[]Event{oldEvent});len(errs)>0{t.Fatal(errs)}
+ if sent!=0{t.Fatalf("legacy activation must not backfill; sent=%d",sent)}
+
+ cfg,err:=loadTelegram(project);if err!=nil{t.Fatal(err)}
+ if cfg.ActivatedAt==""{t.Fatal("activation watermark was not established")}
+ if len(cfg.Delivered)!=1||cfg.Delivered[0]!="old-1"{t.Fatalf("historical event was not consumed: %+v",cfg.Delivered)}
+
+ cutover,err:=time.Parse(time.RFC3339Nano,cfg.ActivatedAt);if err!=nil{t.Fatal(err)}
+ live:=Event{ID:"live-1",TaskID:"B-900",Kind:"completed",Title:"Live",At:cutover.Add(time.Second).Format(time.RFC3339Nano)}
+ if errs:=Deliver(project,[]Event{oldEvent,live});len(errs)>0{t.Fatal(errs)}
+ if sent!=1{t.Fatalf("live event after cutover should deliver once; sent=%d",sent)}
+}
+
+func TestTelegramDisabledKindIsConsumedWithoutLaterBackfill(t *testing.T){
+ project:=t.TempDir()
+ sent:=0
+ server:=httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter,r *http.Request){
+  sent++
+  w.Header().Set("Content-Type","application/json")
+  json.NewEncoder(w).Encode(map[string]any{"ok":true,"result":map[string]any{"message_id":sent}})
+ }))
+ defer server.Close()
+ old:=telegramAPIBase;telegramAPIBase=server.URL;defer func(){telegramAPIBase=old}()
+
+ kinds:=defaultKinds();kinds["started"]=false
+ if err:=saveTelegram(project,TelegramConfig{Token:"token",ChatID:123,Enabled:true,Kinds:kinds,ActivatedAt:"2026-10-05T09:00:00Z"});err!=nil{t.Fatal(err)}
+ event:=Event{ID:"disabled-1",TaskID:"B-901",Kind:"started",Title:"Disabled",At:"2026-10-05T10:00:00Z"}
+ if errs:=Deliver(project,[]Event{event});len(errs)>0{t.Fatal(errs)}
+ if sent!=0{t.Fatalf("disabled kind should not send; sent=%d",sent)}
+
+ cfg,err:=loadTelegram(project);if err!=nil{t.Fatal(err)}
+ cfg.Kinds["started"]=true
+ if err:=saveTelegram(project,cfg);err!=nil{t.Fatal(err)}
+ if errs:=Deliver(project,[]Event{event});len(errs)>0{t.Fatal(errs)}
+ if sent!=0{t.Fatalf("re-enabled kind must not backfill previously consumed event; sent=%d",sent)}
+}
+
+func TestTelegramDeliveryFailureRetriesSameEligibleEvent(t *testing.T){
+ project:=t.TempDir()
+ attempts:=0
+ server:=httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter,r *http.Request){
+  attempts++
+  w.Header().Set("Content-Type","application/json")
+  if attempts==1{
+   json.NewEncoder(w).Encode(map[string]any{"ok":false,"description":"temporary failure"})
+   return
+  }
+  json.NewEncoder(w).Encode(map[string]any{"ok":true,"result":map[string]any{"message_id":1}})
+ }))
+ defer server.Close()
+ old:=telegramAPIBase;telegramAPIBase=server.URL;defer func(){telegramAPIBase=old}()
+
+ if err:=saveTelegram(project,TelegramConfig{Token:"token",ChatID:123,Enabled:true,Kinds:defaultKinds(),ActivatedAt:"2026-10-05T09:00:00Z"});err!=nil{t.Fatal(err)}
+ event:=Event{ID:"retry-1",TaskID:"B-902",Kind:"completed",Title:"Retry",At:"2026-10-05T10:00:00Z"}
+ if errs:=Deliver(project,[]Event{event});len(errs)!=1{t.Fatalf("first failure errs=%v",errs)}
+ cfg,err:=loadTelegram(project);if err!=nil{t.Fatal(err)}
+ if len(cfg.Delivered)!=0{t.Fatalf("failed event must remain unconsumed: %+v",cfg.Delivered)}
+
+ if errs:=Deliver(project,[]Event{event});len(errs)>0{t.Fatal(errs)}
+ if attempts!=2{t.Fatalf("attempts=%d want 2",attempts)}
+ cfg,err=loadTelegram(project);if err!=nil{t.Fatal(err)}
+ if len(cfg.Delivered)!=1||cfg.Delivered[0]!="retry-1"{t.Fatalf("successful retry not persisted: %+v",cfg.Delivered)}
+}
