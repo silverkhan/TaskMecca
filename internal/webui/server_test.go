@@ -14,6 +14,7 @@ import (
     "time"
 
     "github.com/silverkhan/TaskMecca/goassets"
+    "github.com/silverkhan/TaskMecca/internal/backlog"
     "github.com/silverkhan/TaskMecca/internal/maintenance"
     "github.com/silverkhan/TaskMecca/internal/runtimeobs"
 )
