@@ -153,11 +153,11 @@ func resolveAttemptID(project string,e SpikeEvent) string {
     for _,a:=range ledger.Attempts {
         if a.Provider!=strings.ToLower(strings.TrimSpace(e.Provider)) || a.SessionID!=e.SessionID || a.RuntimeAgentID!=e.AgentID { continue }
         if !a.Terminal { return a.AttemptID }
-        // A start after a terminal attempt is a new immutable execution
-        // episode. Activity without an explicit start still attaches to the
-        // latest terminal attempt so the conservative reopen/recovery path can
-        // handle providers that omitted SubagentStart.
-        if strings.EqualFold(e.HookEventName,"SubagentStart") {
+        // A terminal attempt is immutable. Any later evidence that the worker
+        // is executing again starts a new episode, even when the provider
+        // omitted SubagentStart and the first evidence is tool activity.
+        hook:=strings.ToLower(strings.TrimSpace(e.HookEventName))
+        if hook=="subagentstart" || hook=="pretooluse" || hook=="posttooluse" || hook=="posttoolusefailure" {
             return executionEpisodeID(e.Provider,e.SessionID,e.AgentID,e.ObservedAt)
         }
         return a.AttemptID
@@ -337,40 +337,16 @@ func (a *accumulator) apply(e ExecutionEvent) {
         // evidence that the same immutable Root Session is active again.
         // Reopen the effective attempt instead of leaving the Root permanently
         // classified as "previous".
-        if a.attempt.Terminal && a.attempt.EndedAt!="" {
-            ended,endedErr:=time.Parse(time.RFC3339Nano,a.attempt.EndedAt)
-            observed,observedErr:=time.Parse(time.RFC3339Nano,e.ObservedAt)
-            if endedErr==nil && observedErr==nil && observed.After(ended) {
-                a.attempt.Terminal=false
-                a.attempt.EndedAt=""
-                a.attempt.StartedAt=e.ObservedAt
-                a.attempt.CurrentState=StateRunning
-                a.attempt.StateEvidenceSource=e.EvidenceSource
-                a.attempt.StateObservationQuality=e.ObservationQuality
-                // A reused runtime identity starts a new execution episode.
-                // Drop only a binding that belongs to the PREVIOUS episode.
-                // Controller dispatch may bind the new task before the first
-                // activity hook arrives; that authoritative binding is newer
-                // than EndedAt and must survive this reopen.
-                bindingIsNewEpisode:=false
-                if a.bindingAt!="" {
-                    if boundAt,err:=time.Parse(time.RFC3339Nano,a.bindingAt); err==nil && boundAt.After(ended) {
-                        bindingIsNewEpisode=true
-                    }
-                }
-                if !bindingIsNewEpisode {
-                    a.taskIDs=map[string]bool{}
-                    a.parents=map[string]bool{}
-                    a.attempt.TaskID=""
-                    a.attempt.ParentAttemptID=""
-                    a.attempt.BindingState=BindingUnbound
-                    a.attempt.BindingSource=""
-                    a.attempt.BindingEvidence=map[string]string{}
-                    a.bindingPriority=0
-                    a.bindingAt=""
-                }
-                a.transitions=append(a.transitions,Transition{At:e.ObservedAt,State:StateRunning,Kind:"state",EvidenceSource:e.EvidenceSource,ObservationQuality:e.ObservationQuality,Reason:"activity_after_terminal"})
-            }
+        // Completed attempts are immutable. ObserveHook routes post-terminal
+        // activity to a new execution episode instead of reopening this one.
+        if a.attempt.BindingState==BindingBound && a.attempt.StartedAt=="" {
+            startAt:=e.ObservedAt
+            if a.bindingAt!="" && a.bindingAt>startAt { startAt=a.bindingAt }
+            a.attempt.StartedAt=startAt
+            a.attempt.CurrentState=StateRunning
+            a.attempt.StateEvidenceSource=EvidenceReconciled
+            a.attempt.StateObservationQuality=QualityObserved
+            a.transitions=append(a.transitions,Transition{At:startAt,State:StateRunning,Kind:"state",EvidenceSource:EvidenceReconciled,ObservationQuality:QualityObserved,Reason:"authoritative_binding_with_observed_activity"})
         }
     case "state":
         if (e.State==StateStarting || e.State==StateRunning) && a.attempt.Terminal && a.attempt.EndedAt!="" {
