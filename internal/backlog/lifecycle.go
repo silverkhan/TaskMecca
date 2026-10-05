@@ -18,7 +18,6 @@ type lifecycleEvent struct {
     State string
     At string
     Source string
-    SuppressNotification bool
 }
 
 type lifecycleGitCacheEntry struct {
@@ -230,9 +229,7 @@ func lifecycleTimings(project,root string,rows []Record) (map[string]map[string]
                 if !startOK || startAt.Before(regAt) { continue }
             }
 
-            recoveredBinding:=strings.EqualFold(strings.TrimSpace(attempt.BindingSource),"backlog_assignment") &&
-                strings.EqualFold(strings.TrimSpace(attempt.BindingEvidence["correlation"]),"canonical_backlog_assignment")
-            candidate:=lifecycleEvent{State:"doing",At:effectiveStart,Source:"execution_ledger",SuppressNotification:recoveredBinding}
+            candidate:=lifecycleEvent{State:"doing",At:effectiveStart,Source:"execution_ledger"}
             existing,ok:=runtimeStarts[id]
             if !ok {
                 runtimeStarts[id]=candidate
@@ -369,7 +366,6 @@ func lifecycleTimings(project,root string,rows []Record) (map[string]map[string]
         if len(parsed)==0 { continue }
         createdAt:=parsed[0].event.At
         firstDoing:=""
-        firstDoingNotificationSuppressed:=false
         latestDoing:=""
         completedAt:=""
         hasDoing:=false
@@ -380,10 +376,7 @@ func lifecycleTimings(project,root string,rows []Record) (map[string]map[string]
         for i,entry:=range parsed {
             if entry.event.State=="doing" {
                 hasDoing=true
-                if firstDoing=="" {
-                    firstDoing=entry.event.At
-                    firstDoingNotificationSuppressed=entry.event.SuppressNotification
-                }
+                if firstDoing=="" { firstDoing=entry.event.At }
                 latestDoing=entry.event.At
             }
             if entry.event.State=="hold" { hasHold=true }
@@ -445,7 +438,6 @@ func lifecycleTimings(project,root string,rows []Record) (map[string]map[string]
             "current_segment_seconds":currentSegment,
             "created_at":createdAt,
             "started_at":nilIfEmpty(firstDoing),
-            "started_notification_suppressed":firstDoingNotificationSuppressed,
             "claimed_at":nilIfEmpty(latestDoing),
             "completed_at":nilIfEmpty(completedAt),
             "queue_seconds":queueSeconds,
