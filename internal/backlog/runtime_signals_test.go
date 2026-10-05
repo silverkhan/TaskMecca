@@ -36,10 +36,10 @@ func TestRuntimeLedgerSignalsIgnoreUnboundAttempt(t *testing.T) {
     if got:=runtimeLedgerSignals(project,rows,base.Add(time.Minute));len(got)!=0{t.Fatalf("unbound attempt leaked into backlog signal: %v",got)}
 }
 
-func TestWebAttentionReasonSupportsLedgerRecoveryStates(t *testing.T) {
+func TestControlTowerSupportsLedgerRecoveryStates(t *testing.T) {
     row:=Record{ID:"AID-39",State:"doing"}
-    interrupted:=webAttentionReason(row,nil,map[string]any{"health":"execution_interrupted"})
+    interrupted,_:=canonicalOperationalState(row,nil,map[string]any{"health":"execution_interrupted"})
     if interrupted["type"]!="execution_interrupted"{t.Fatalf("reason=%v",interrupted)}
-    unknown:=webAttentionReason(row,nil,map[string]any{"health":"runtime_unknown"})
+    unknown,_:=canonicalOperationalState(row,nil,map[string]any{"health":"runtime_unknown"})
     if unknown["type"]!="runtime_unknown"{t.Fatalf("reason=%v",unknown)}
 }
