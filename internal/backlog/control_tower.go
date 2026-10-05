@@ -130,16 +130,26 @@ func reconcileCanonicalBindings(project string,rows []Record,now time.Time) map[
     recovered:=map[string]bool{}
     ledger,err:=runtimeobs.ReconcileLedger(project,10,now)
     if err!=nil { return recovered }
+    staleAttempts:=map[string]bool{}
+    for _,finding:=range ledger.Findings {
+        if finding.Code=="stale" && strings.TrimSpace(finding.AttemptID)!="" {
+            staleAttempts[finding.AttemptID]=true
+        }
+    }
     byID:=preferredRows(rows)
     for id,row:=range byID {
         if row.Location!="active" || row.State!="doing" { continue }
         agent:=strings.TrimSpace(row.Fields["Agent"])
         if agent=="" { continue }
+        metadata:=runtimeFromFields(row.Fields)
+        expectedProvider:=strings.ToLower(strings.TrimSpace(toString(metadata["runtime_provider"])))
+        if expectedProvider=="unknown" { expectedProvider="" }
         workerName:=agent
         if slash:=strings.LastIndex(workerName,"/"); slash>=0 { workerName=workerName[slash+1:] }
         candidates:=[]runtimeobs.Attempt{}
         for _,attempt:=range ledger.Attempts {
-            if attempt.Terminal || attempt.BindingState==runtimeobs.BindingBound { continue }
+            if attempt.Terminal || attempt.BindingState!=runtimeobs.BindingUnbound || staleAttempts[attempt.AttemptID] { continue }
+            if expectedProvider!="" && !strings.EqualFold(strings.TrimSpace(attempt.Provider),expectedProvider) { continue }
             runtimeID:=strings.TrimSpace(attempt.RuntimeAgentID)
             if runtimeID!="" && (runtimeID==workerName || runtimeID==agent) { candidates=append(candidates,attempt) }
         }

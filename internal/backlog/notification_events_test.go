@@ -321,3 +321,97 @@ func TestNotificationEventsDeletedJournalRebaselinesInsteadOfReplaying(t *testin
     events,err=NotificationEvents(project,running);if err!=nil{t.Fatal(err)}
     if len(events)!=0{t.Fatalf("journal recovery must baseline current state, got %+v",events)}
 }
+
+
+func TestNotificationEventsNewTaskAlreadyCompletedEmitsAllCanonicalStages(t *testing.T) {
+    project:=t.TempDir()
+    base:=map[string]map[string]any{
+        "B-001":{"file_state":"todo","updated_at":"2026-10-05T01:00:00Z","title":"Baseline"},
+    }
+    if events,err:=NotificationEvents(project,base);err!=nil||len(events)!=0{
+        t.Fatalf("baseline events=%+v err=%v",events,err)
+    }
+
+    items:=map[string]map[string]any{
+        "B-001":{"file_state":"todo","updated_at":"2026-10-05T01:00:00Z","title":"Baseline"},
+        "B-002":{
+            "file_state":"done","updated_at":"2026-10-05T01:03:00Z","title":"Fast task",
+            "lifecycle":map[string]any{
+                "created_at":"2026-10-05T01:00:30Z",
+                "started_at":"2026-10-05T01:01:00Z",
+                "completed_at":"2026-10-05T01:02:00Z",
+            },
+        },
+    }
+    events,err:=NotificationEvents(project,items)
+    if err!=nil{t.Fatal(err)}
+    got:=[]map[string]any{}
+    for _,event:=range events{
+        if toString(event["task_id"])=="B-002"{got=append(got,event)}
+    }
+    if len(got)!=3{t.Fatalf("fast lifecycle events=%+v",got)}
+    want:=[]string{"registered","started","completed"}
+    for i,kind:=range want{
+        if toString(got[i]["kind"])!=kind{t.Fatalf("event[%d]=%+v want kind=%s",i,got[i],kind)}
+    }
+    if toString(got[0]["at"])!="2026-10-05T01:00:30Z"{
+        t.Fatalf("registration must use canonical created_at: %+v",got[0])
+    }
+
+    again,err:=NotificationEvents(project,items)
+    if err!=nil{t.Fatal(err)}
+    count:=0
+    for _,event:=range again{if toString(event["task_id"])=="B-002"{count++}}
+    if count!=3{t.Fatalf("fast lifecycle duplicated or lost: %+v",again)}
+}
+
+func TestNotificationEventsNewTaskCurrentConditionIsNotLost(t *testing.T) {
+    project:=t.TempDir()
+    if _,err:=NotificationEvents(project,map[string]map[string]any{
+        "B-001":{"file_state":"todo","updated_at":"2026-10-05T02:00:00Z","title":"Baseline"},
+    });err!=nil{t.Fatal(err)}
+
+    items:=map[string]map[string]any{
+        "B-001":{"file_state":"todo","updated_at":"2026-10-05T02:00:00Z","title":"Baseline"},
+        "B-003":{
+            "file_state":"doing","updated_at":"2026-10-05T02:02:00Z","title":"Approval fast path",
+            "lifecycle":map[string]any{
+                "created_at":"2026-10-05T02:00:30Z",
+                "started_at":"2026-10-05T02:01:00Z",
+            },
+            "notification_condition":map[string]any{
+                "kind":"approval","key":"runtime:approval:run-3","reason_type":"approval_required",
+                "message":"approval needed","attempt_id":"run-3","runtime_state":"waiting_approval",
+            },
+        },
+    }
+    events,err:=NotificationEvents(project,items)
+    if err!=nil{t.Fatal(err)}
+    kinds:=[]string{}
+    for _,event:=range events{
+        if toString(event["task_id"])=="B-003"{kinds=append(kinds,toString(event["kind"]))}
+    }
+    if len(kinds)!=3 || kinds[0]!="registered" || kinds[1]!="started" || kinds[2]!="approval"{
+        t.Fatalf("new task current condition was lost or reordered: %v events=%+v",kinds,events)
+    }
+}
+
+
+func TestNotificationEventsEmptyBaselinePersistsFirstRegistrationBoundary(t *testing.T) {
+    project:=t.TempDir()
+    events,err:=NotificationEvents(project,map[string]map[string]any{})
+    if err!=nil{t.Fatal(err)}
+    if len(events)!=0{t.Fatalf("empty baseline events=%+v",events)}
+
+    first:=map[string]map[string]any{
+        "B-004":{
+            "file_state":"todo","updated_at":"2026-10-05T03:00:00Z","title":"First real task",
+            "lifecycle":map[string]any{"created_at":"2026-10-05T03:00:00Z"},
+        },
+    }
+    events,err=NotificationEvents(project,first)
+    if err!=nil{t.Fatal(err)}
+    if len(events)!=1||toString(events[0]["kind"])!="registered"||toString(events[0]["task_id"])!="B-004"{
+        t.Fatalf("first registration after observed empty baseline was lost: %+v",events)
+    }
+}

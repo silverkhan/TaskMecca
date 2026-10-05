@@ -120,3 +120,129 @@ func TestControlTowerRecoveryBindingSuppressesStartedNotification(t *testing.T) 
         t.Fatalf("recovered historical start must not notify: %+v",events)
     }
 }
+
+
+func TestControlTowerDoesNotRecoverBindStaleUnboundAttempt(t *testing.T) {
+    project:=t.TempDir()
+    now:=time.Now().UTC()
+    attemptID:="run-stale-unbound"
+    start:=runtimeobs.ExecutionEvent{
+        EventKind:"state",
+        ObservedAt:now.Add(-2*time.Hour).Format(time.RFC3339Nano),
+        AttemptID:attemptID,
+        Provider:"codex",
+        RuntimeAgentID:"worker-stale",
+        State:runtimeobs.StateRunning,
+        EvidenceSource:runtimeobs.EvidenceHook,
+        ObservationQuality:runtimeobs.QualityObserved,
+    }
+    if err:=runtimeobs.AppendExecutionEvent(project,start);err!=nil{t.Fatal(err)}
+
+    rows:=[]Record{{
+        ID:"B-999",State:"doing",Location:"active",
+        Fields:map[string]string{"Agent":"/root/controller/worker-stale"},
+    }}
+    recovered:=reconcileCanonicalBindings(project,rows,now)
+    if recovered["B-999"]{
+        t.Fatalf("stale unbound attempt must never be auto-bound: %+v",recovered)
+    }
+
+    ledger,err:=runtimeobs.ReconcileLedger(project,10,now)
+    if err!=nil{t.Fatal(err)}
+    found:=false
+    for _,attempt:=range ledger.Attempts{
+        if attempt.AttemptID!=attemptID{continue}
+        found=true
+        if attempt.BindingState!=runtimeobs.BindingUnbound{
+            t.Fatalf("stale attempt binding was mutated: %+v",attempt)
+        }
+    }
+    if !found{t.Fatal("stale attempt missing from ledger")}
+}
+
+
+func TestControlTowerDoesNotRecoverBindAmbiguousAttempt(t *testing.T) {
+    project:=t.TempDir()
+    now:=time.Now().UTC()
+    attemptID:="run-ambiguous-unbound"
+    start:=runtimeobs.ExecutionEvent{
+        EventKind:"state",ObservedAt:now.Add(-time.Minute).Format(time.RFC3339Nano),
+        AttemptID:attemptID,Provider:"codex",RuntimeAgentID:"worker-ambiguous",
+        State:runtimeobs.StateRunning,EvidenceSource:runtimeobs.EvidenceHook,
+        ObservationQuality:runtimeobs.QualityObserved,
+    }
+    if err:=runtimeobs.AppendExecutionEvent(project,start);err!=nil{t.Fatal(err)}
+
+    at:=now.Add(-30*time.Second).Format(time.RFC3339Nano)
+    first:=runtimeobs.ExecutionEvent{
+        EventKind:"binding",ObservedAt:at,AttemptID:attemptID,
+        TaskID:"B-OLD-1",AgentPath:"/root/controller/worker-a",
+        BindingSource:"explicit",EvidenceSource:runtimeobs.EvidenceManualBinding,
+        ObservationQuality:runtimeobs.QualityAuthoritative,
+    }
+    second:=runtimeobs.ExecutionEvent{
+        EventKind:"binding",ObservedAt:at,AttemptID:attemptID,
+        TaskID:"B-OLD-2",AgentPath:"/root/controller/worker-b",
+        BindingSource:"explicit",EvidenceSource:runtimeobs.EvidenceManualBinding,
+        ObservationQuality:runtimeobs.QualityAuthoritative,
+    }
+    if err:=runtimeobs.AppendExecutionEvent(project,first);err!=nil{t.Fatal(err)}
+    if err:=runtimeobs.AppendExecutionEvent(project,second);err!=nil{t.Fatal(err)}
+
+    before,err:=runtimeobs.ReconcileLedger(project,10,now)
+    if err!=nil{t.Fatal(err)}
+    ambiguous:=false
+    for _,attempt:=range before.Attempts{
+        if attempt.AttemptID==attemptID && attempt.BindingState==runtimeobs.BindingAmbiguous{ambiguous=true}
+    }
+    if !ambiguous{t.Fatalf("test fixture did not produce ambiguous attempt: %+v",before.Attempts)}
+
+    rows:=[]Record{{
+        ID:"B-998",State:"doing",Location:"active",
+        Fields:map[string]string{"Agent":"/root/controller/worker-ambiguous"},
+    }}
+    recovered:=reconcileCanonicalBindings(project,rows,now)
+    if recovered["B-998"]{t.Fatalf("ambiguous attempt must never be auto-bound: %+v",recovered)}
+
+    after,err:=runtimeobs.ReconcileLedger(project,10,now)
+    if err!=nil{t.Fatal(err)}
+    for _,attempt:=range after.Attempts{
+        if attempt.AttemptID==attemptID && attempt.BindingState!=runtimeobs.BindingAmbiguous{
+            t.Fatalf("ambiguous binding was overwritten by recovery: %+v",attempt)
+        }
+    }
+}
+
+
+func TestControlTowerRecoveryBindingRespectsRuntimeProvider(t *testing.T) {
+    project:=t.TempDir()
+    now:=time.Now().UTC()
+    attemptID:="run-provider-mismatch"
+    start:=runtimeobs.ExecutionEvent{
+        EventKind:"state",ObservedAt:now.Add(-time.Minute).Format(time.RFC3339Nano),
+        AttemptID:attemptID,Provider:"claude",RuntimeAgentID:"worker-provider",
+        State:runtimeobs.StateRunning,EvidenceSource:runtimeobs.EvidenceHook,
+        ObservationQuality:runtimeobs.QualityObserved,
+    }
+    if err:=runtimeobs.AppendExecutionEvent(project,start);err!=nil{t.Fatal(err)}
+
+    rows:=[]Record{{
+        ID:"B-997",State:"doing",Location:"active",
+        Fields:map[string]string{
+            "Agent":"/root/controller/worker-provider",
+            "RuntimeProvider":"codex",
+        },
+    }}
+    recovered:=reconcileCanonicalBindings(project,rows,now)
+    if recovered["B-997"]{
+        t.Fatalf("provider-mismatched attempt must never be auto-bound: %+v",recovered)
+    }
+
+    ledger,err:=runtimeobs.ReconcileLedger(project,10,now)
+    if err!=nil{t.Fatal(err)}
+    for _,attempt:=range ledger.Attempts{
+        if attempt.AttemptID==attemptID && attempt.BindingState!=runtimeobs.BindingUnbound{
+            t.Fatalf("provider mismatch mutated binding: %+v",attempt)
+        }
+    }
+}
