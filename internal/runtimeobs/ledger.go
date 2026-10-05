@@ -259,8 +259,34 @@ func BindRuntimeAgent(project,runtimeAgentID,taskID,agentPath,parentAttemptID st
     for _,attempt:=range ledger.Attempts {
         if attempt.RuntimeAgentID==runtimeAgentID && !attempt.Terminal { matches=append(matches,attempt) }
     }
-    if len(matches)==0 { return Attempt{},fmt.Errorf("no live runtime attempt found for agent %s",runtimeAgentID) }
     if len(matches)>1 { return Attempt{},fmt.Errorf("runtime agent %s matches %d live attempts; refusing ambiguous binding",runtimeAgentID,len(matches)) }
+    if len(matches)==0 {
+        // Dispatch can arrive before the provider emits any start/activity hook.
+        // Reusing a terminal worker must create a fresh unstarted episode rather
+        // than rebinding (and later reopening) the completed attempt.
+        historical:=[]Attempt{}
+        for _,attempt:=range ledger.Attempts {
+            if attempt.RuntimeAgentID==runtimeAgentID && attempt.Terminal { historical=append(historical,attempt) }
+        }
+        if len(historical)==0 { return Attempt{},fmt.Errorf("no runtime attempt found for agent %s",runtimeAgentID) }
+        latest:=historical[0]
+        for _,attempt:=range historical[1:] {
+            if attempt.Provider!=latest.Provider || attempt.SessionID!=latest.SessionID {
+                return Attempt{},fmt.Errorf("runtime agent %s is ambiguous across provider sessions",runtimeAgentID)
+            }
+            if attempt.LastObservedAt>latest.LastObservedAt { latest=attempt }
+        }
+        episodeID:=executionEpisodeID(latest.Provider,latest.SessionID,runtimeAgentID,now.UTC().Format(time.RFC3339Nano))
+        identity:=ExecutionEvent{
+            EventKind:"episode",ObservedAt:now.UTC().Format(time.RFC3339Nano),AttemptID:episodeID,
+            Provider:latest.Provider,SessionID:latest.SessionID,SessionName:latest.SessionName,SessionTitle:latest.SessionTitle,
+            RuntimeAgentID:runtimeAgentID,AgentType:latest.AgentType,EvidenceSource:EvidenceReconciled,ObservationQuality:QualityAuthoritative,
+            Reason:"dispatch_after_terminal",
+        }
+        identity.EventID=eventIDFor(identity)
+        if err:=AppendExecutionEvent(project,identity); err!=nil { return Attempt{},err }
+        matches=[]Attempt{{AttemptID:episodeID}}
+    }
     evidence:=map[string]string{"runtime_agent_id":runtimeAgentID,"correlation":"explicit_dispatch_result"}
     return BindAttempt(project,matches[0].AttemptID,taskID,agentPath,"dispatch",parentAttemptID,evidence,now)
 }
