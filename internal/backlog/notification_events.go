@@ -6,8 +6,11 @@ import (
     "encoding/json"
     "os"
     "path/filepath"
+    "strings"
     "sync"
     "time"
+
+    "github.com/silverkhan/TaskMecca/internal/runtimeobs"
 )
 
 const notificationJournalVersion = 2
@@ -25,6 +28,8 @@ type notificationJournal struct {
     Version int `json:"version"`
     Items   map[string]notificationObservation `json:"items"`
     Events  []map[string]any `json:"events"`
+    SignalIDs []string `json:"signal_ids,omitempty"`
+    SignalsInitialized bool `json:"signals_initialized,omitempty"`
 }
 
 func notificationEventID(taskID, kind, at string) string {
@@ -227,6 +232,59 @@ func NotificationEvents(project string, items map[string]map[string]any) ([]map[
             journal.Items[id] = next
             dirty = true
         }
+    }
+
+    signalSeen:=map[string]bool{}
+    for _,id:=range journal.SignalIDs { signalSeen[id]=true }
+    signals,signalErr:=runtimeobs.ReadControlSignals(project,250)
+    if signalErr==nil {
+        initialized:=journal.SignalsInitialized
+        for _,signal:=range signals {
+            if signal.ID=="" || signalSeen[signal.ID] { continue }
+            signalSeen[signal.ID]=true
+            journal.SignalIDs=append(journal.SignalIDs,signal.ID)
+            dirty=true
+            // Existing signals establish their own baseline independently of
+            // task lifecycle observations. This prevents an upgrade/restart
+            // from replaying old approval prompts.
+            if !initialized || baseline { continue }
+            if signal.Kind!="approval" { continue }
+
+            title:=""
+            if item:=items[strings.ToUpper(strings.TrimSpace(signal.TaskID))];item!=nil {
+                title=toString(item["title"])
+            }
+            if title=="" {
+                provider:=strings.TrimSpace(signal.Provider)
+                if provider=="" { provider="runtime" }
+                title=strings.ToUpper(provider[:1])+provider[1:]+" 승인 요청"
+            }
+            message:=strings.TrimSpace(signal.Message)
+            if signal.ToolName!="" {
+                if message!="" { message+=" " }
+                message+="요청 도구: "+signal.ToolName
+            }
+            eventID:="runtime-signal-"+signal.ID
+            if !notificationEventExists(journal.Events,eventID) {
+                journal.Events=append(journal.Events,map[string]any{
+                    "id":eventID,"task_id":strings.ToUpper(strings.TrimSpace(signal.TaskID)),
+                    "kind":"approval","at":signal.ObservedAt,"title":title,
+                    "message":message,
+                    "resume_condition":"에이전트 앱에서 승인 요청을 확인하고 필요한 결정을 내려주세요.",
+                    "attempt_id":signal.AttemptID,"runtime_state":"waiting_approval",
+                    "provider":signal.Provider,"session_id":signal.SessionID,
+                })
+                dirty=true
+            }
+        }
+        if !journal.SignalsInitialized {
+            journal.SignalsInitialized=true
+            dirty=true
+        }
+    }
+    if len(journal.SignalIDs)>500 {
+        journal.SignalIDs=append([]string{},journal.SignalIDs[len(journal.SignalIDs)-500:]...)
+        dirty=true
     }
 
     if len(journal.Events) > 250 {
