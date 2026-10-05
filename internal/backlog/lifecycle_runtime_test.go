@@ -76,13 +76,18 @@ func TestControlTowerRecoveryBindingSuppressesStartedNotification(t *testing.T) 
 
     now:=time.Now().UTC()
     attemptID:="run-b900-recovery"
-    start:=runtimeobs.ExecutionEvent{
-        EventKind:"state",ObservedAt:now.Add(-5*time.Minute).Format(time.RFC3339Nano),
-        AttemptID:attemptID,Provider:"codex",RuntimeAgentID:"worker-900",
-        State:runtimeobs.StateRunning,EvidenceSource:runtimeobs.EvidenceHook,
-        ObservationQuality:runtimeobs.QualityObserved,
+    episode:=runtimeobs.ExecutionEvent{
+        EventKind:"episode",ObservedAt:now.Add(-6*time.Minute).Format(time.RFC3339Nano),
+        AttemptID:attemptID,Provider:"codex",SessionID:"root-recovery",RuntimeAgentID:"worker-900",
+        EvidenceSource:runtimeobs.EvidenceHook,ObservationQuality:runtimeobs.QualityAuthoritative,
     }
-    if err:=runtimeobs.AppendExecutionEvent(project,start);err!=nil{t.Fatal(err)}
+    if err:=runtimeobs.AppendExecutionEvent(project,episode);err!=nil{t.Fatal(err)}
+    activity:=runtimeobs.ExecutionEvent{
+        EventKind:"activity",ObservedAt:now.Add(-5*time.Minute).Format(time.RFC3339Nano),
+        AttemptID:attemptID,Provider:"codex",SessionID:"root-recovery",RuntimeAgentID:"worker-900",
+        EvidenceSource:runtimeobs.EvidenceHook,ObservationQuality:runtimeobs.QualityObserved,
+    }
+    if err:=runtimeobs.AppendExecutionEvent(project,activity);err!=nil{t.Fatal(err)}
 
     // The notification journal already knows the doing task, but there is no
     // canonical lifecycle start until the control tower recovers the binding.
