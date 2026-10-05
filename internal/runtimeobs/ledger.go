@@ -409,12 +409,22 @@ func (a *accumulator) apply(e ExecutionEvent) {
             // trail but do not poison the current effective binding.
         }
         a.transitions=append(a.transitions,Transition{At:e.ObservedAt,Kind:"binding",EvidenceSource:e.EvidenceSource,ObservationQuality:e.ObservationQuality,Reason:string(a.attempt.BindingState)})
-        // Codex can miss the SubagentStart hook while subsequent tool activity
-        // is still observed. An authoritative dispatch binding plus observed
-        // activity is sufficient execution evidence for the bound task. Promote
-        // it to running at the later of first activity and binding time instead
-        // of leaving the task permanently runtime_unknown.
-        if a.attempt.BindingState==BindingBound && a.attempt.StartedAt=="" && a.attempt.ActivityCount>0 && a.attempt.LastActivityAt!="" {
+        // A Task Mecca dispatch binding is itself authoritative evidence that
+        // execution was handed to a concrete runtime worker. Codex only exposes
+        // agent_id on SubagentStart/SubagentStop; tool hooks are not guaranteed
+        // to carry it, and a reused worker may resume without a new
+        // SubagentStart. Waiting for attributed tool activity therefore leaves
+        // valid reused-worker runs permanently runtime_unknown. Treat the
+        // explicit dispatch boundary as the canonical start of the new episode.
+        // Manual/reconciled bindings still require runtime evidence.
+        dispatch:=strings.EqualFold(strings.TrimSpace(e.BindingSource),"dispatch")
+        if a.attempt.BindingState==BindingBound && a.attempt.StartedAt=="" && dispatch && e.ObservationQuality==QualityAuthoritative {
+            a.attempt.StartedAt=e.ObservedAt
+            a.attempt.CurrentState=StateRunning
+            a.attempt.StateEvidenceSource=EvidenceManualBinding
+            a.attempt.StateObservationQuality=QualityAuthoritative
+            a.transitions=append(a.transitions,Transition{At:e.ObservedAt,State:StateRunning,Kind:"state",EvidenceSource:EvidenceManualBinding,ObservationQuality:QualityAuthoritative,Reason:"authoritative_dispatch"})
+        } else if a.attempt.BindingState==BindingBound && a.attempt.StartedAt=="" && a.attempt.ActivityCount>0 && a.attempt.LastActivityAt!="" {
             startAt:=a.attempt.LastActivityAt
             if e.ObservedAt>startAt { startAt=e.ObservedAt }
             a.attempt.StartedAt=startAt
