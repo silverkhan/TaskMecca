@@ -268,3 +268,56 @@ func TestNotificationEventsColdStartBaselinesHistoricalStartedAndCondition(t *te
     if err!=nil{t.Fatal(err)}
     if len(events)!=0{t.Fatalf("cold start must establish baseline without backfill: %+v",events)}
 }
+
+
+func TestNotificationEventsRecoveredBindingDoesNotEmitStarted(t *testing.T) {
+    project:=t.TempDir()
+    base:=map[string]map[string]any{
+        "B-802":{"file_state":"doing","updated_at":"2026-10-05T12:00:00Z","title":"Recovered"},
+    }
+    if events,err:=NotificationEvents(project,base);err!=nil||len(events)!=0{
+        t.Fatalf("baseline events=%+v err=%v",events,err)
+    }
+
+    recovered:=map[string]map[string]any{
+        "B-802":{
+            "file_state":"doing","updated_at":"2026-10-05T12:00:00Z","title":"Recovered",
+            "lifecycle":map[string]any{
+                "started_at":"2026-10-05T12:05:00Z",
+                "started_notification_suppressed":true,
+            },
+        },
+    }
+    events,err:=NotificationEvents(project,recovered)
+    if err!=nil{t.Fatal(err)}
+    if len(events)!=0{t.Fatalf("recovery binding must not emit started: %+v",events)}
+
+    recovered["B-802"]["lifecycle"]=map[string]any{
+        "started_at":"2026-10-05T12:05:00Z",
+        "started_notification_suppressed":false,
+    }
+    again,err:=NotificationEvents(project,recovered)
+    if err!=nil{t.Fatal(err)}
+    if len(again)!=0{t.Fatalf("same recovered start must remain consumed: %+v",again)}
+}
+
+func TestNotificationEventsDeletedJournalRebaselinesInsteadOfReplaying(t *testing.T) {
+    project:=t.TempDir()
+    base:=map[string]map[string]any{
+        "B-803":{"file_state":"todo","updated_at":"2026-10-05T12:00:00Z","title":"Rebaseline"},
+    }
+    if _,err:=NotificationEvents(project,base);err!=nil{t.Fatal(err)}
+    running:=map[string]map[string]any{
+        "B-803":{
+            "file_state":"doing","updated_at":"2026-10-05T12:01:00Z","title":"Rebaseline",
+            "lifecycle":map[string]any{"started_at":"2026-10-05T12:01:00Z"},
+        },
+    }
+    events,err:=NotificationEvents(project,running);if err!=nil{t.Fatal(err)}
+    if len(events)!=1||events[0]["kind"]!="started"{t.Fatalf("expected live start before deletion: %+v",events)}
+
+    journalPath:=filepath.Join(project,"_task_mecca",".runtime","notification_events.json")
+    if err:=os.Remove(journalPath);err!=nil{t.Fatal(err)}
+    events,err=NotificationEvents(project,running);if err!=nil{t.Fatal(err)}
+    if len(events)!=0{t.Fatalf("journal recovery must baseline current state, got %+v",events)}
+}
