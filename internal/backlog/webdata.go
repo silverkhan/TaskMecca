@@ -134,7 +134,7 @@ func BacklogPage(project,root string,page,pageSize int,statuses,tags []string,se
     if err!=nil { return nil,err }
     presence,err:=Presence(project,root,rows)
     if err!=nil { return nil,err }
-    readyIDs,blocked,_,_,_:=webStateMaps(project,root,rows)
+    readyIDs,blocked:=webWorkflowStateMaps(project,root,rows)
     control:=reconcileControlTower(project,root,rows)
     byID:=preferredRows(rows)
     all:=make([]map[string]any,0,len(byID))
@@ -214,7 +214,7 @@ func BacklogPage(project,root string,page,pageSize int,statuses,tags []string,se
 func TaskDetail(project,root,id string) (map[string]any,error) {
     rows,err:=CachedCatalog(project,root); if err!=nil { return nil,err }
     byID:=preferredRows(rows); row,ok:=byID[strings.ToUpper(strings.TrimSpace(id))]; if !ok { return nil,fmt.Errorf("task not found: %s",id) }
-    readyIDs,blocked,_,_,_:=webStateMaps(project,root,rows)
+    readyIDs,blocked:=webWorkflowStateMaps(project,root,rows)
     control:=reconcileControlTower(project,root,rows)
     timings:=control.Timings
     activity:=control.Activity
