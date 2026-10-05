@@ -251,3 +251,26 @@ func TestDispatchBeforeActivitySplitsTerminalWorkerEpisode(t *testing.T) {
     if !old.Terminal || old.TaskID!="B-OLD" { t.Fatalf("old episode mutated: %+v",old) }
     if new.TaskID!="B-NEW" || new.StartedAt=="" || new.CurrentState!=StateRunning { t.Fatalf("new episode did not recover start: %+v",new) }
 }
+
+
+func TestAuthoritativeDispatchStartsReusedWorkerWithoutNewStartHook(t *testing.T) {
+    project:=t.TempDir()
+    now:=time.Date(2026,10,5,8,23,0,0,time.UTC)
+    oldID:="run-old"
+    start:=ExecutionEvent{EventKind:"state",ObservedAt:now.Add(-10*time.Minute).Format(time.RFC3339Nano),AttemptID:oldID,Provider:"codex",SessionID:"root-1",RuntimeAgentID:"worker-1",State:StateRunning,EvidenceSource:EvidenceHook,ObservationQuality:QualityObserved}
+    if err:=AppendExecutionEvent(project,start); err!=nil { t.Fatal(err) }
+    if _,err:=BindAttempt(project,oldID,"B-442","/root/controller/raichyu","dispatch","",nil,now.Add(-9*time.Minute)); err!=nil { t.Fatal(err) }
+    stop:=ExecutionEvent{EventKind:"state",ObservedAt:now.Add(-time.Minute).Format(time.RFC3339Nano),AttemptID:oldID,Provider:"codex",SessionID:"root-1",RuntimeAgentID:"worker-1",State:StateCompleted,Terminal:true,EvidenceSource:EvidenceHook,ObservationQuality:QualityObserved}
+    if err:=AppendExecutionEvent(project,stop); err!=nil { t.Fatal(err) }
+
+    fresh,err:=BindRuntimeAgent(project,"worker-1","B-443","/root/controller/raichyu","",now)
+    if err!=nil { t.Fatal(err) }
+    if fresh.AttemptID==oldID { t.Fatal("reused worker mutated completed attempt") }
+    if fresh.TaskID!="B-443" || fresh.StartedAt=="" || fresh.CurrentState!=StateRunning || fresh.Terminal {
+        t.Fatalf("dispatch did not establish canonical start: %+v",fresh)
+    }
+    ledger,err:=BuildLedger(project,20,now); if err!=nil { t.Fatal(err) }
+    var old Attempt
+    for _,attempt:=range ledger.Attempts { if attempt.AttemptID==oldID { old=attempt } }
+    if !old.Terminal || old.TaskID!="B-442" { t.Fatalf("completed history changed: %+v",old) }
+}
