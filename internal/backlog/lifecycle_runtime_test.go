@@ -71,7 +71,7 @@ func TestControlTowerRecoveryBindingSuppressesStartedNotification(t *testing.T) 
     backlogDir:=filepath.Join(project,"_task_mecca","data","backlog")
     if err:=os.MkdirAll(backlogDir,0755);err!=nil{t.Fatal(err)}
     task:=filepath.Join(backlogDir,"0900.B-900.recovery.doing.md")
-    body:="---\nID: B-900\nTitle: Recovery binding\nAgent: /root/controller/worker-900\nRuntimeProvider: codex\n---\n"
+    body:="# B-900 Recovery binding\n- Agent: /root/controller/worker-900\n- RuntimeProvider: codex\n"
     if err:=os.WriteFile(task,[]byte(body),0644);err!=nil{t.Fatal(err)}
 
     now:=time.Now().UTC()
