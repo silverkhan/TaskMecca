@@ -113,3 +113,18 @@ func TestNotificationEventsRegistrationBaselinesExistingItems(t *testing.T) {
  events,err=NotificationEvents(project,initial);if err!=nil{t.Fatal(err)}
  if len(events)!=1||events[0]["kind"]!="registered"||events[0]["task_id"]!="B-2"{t.Fatalf("registration events=%v",events)}
 }
+
+
+func TestCanonicalLifecycleEmitsStartedThenCompletedOnce(t *testing.T) {
+    project:=t.TempDir()
+    base:=map[string]map[string]any{"B-442":{"file_state":"backlog","updated_at":"2026-10-05T01:31:00Z","title":"Task"}}
+    if _,err:=NotificationEvents(project,base); err!=nil { t.Fatal(err) }
+    running:=map[string]map[string]any{"B-442":{"file_state":"doing","updated_at":"2026-10-05T01:32:00Z","title":"Task","lifecycle":map[string]any{"started_at":"2026-10-05T01:32:00Z"}}}
+    events,err:=NotificationEvents(project,running); if err!=nil { t.Fatal(err) }
+    if len(events)!=1 || events[0]["kind"]!="started" { t.Fatalf("started event missing: %+v",events) }
+    done:=map[string]map[string]any{"B-442":{"file_state":"done","updated_at":"2026-10-05T01:35:00Z","title":"Task","completed_at":"2026-10-05T01:35:00Z","lifecycle":map[string]any{"started_at":"2026-10-05T01:32:00Z","completed_at":"2026-10-05T01:35:00Z"}}}
+    events,err=NotificationEvents(project,done); if err!=nil { t.Fatal(err) }
+    if len(events)!=2 || events[0]["kind"]!="started" || events[1]["kind"]!="completed" { t.Fatalf("lifecycle notification sequence=%+v",events) }
+    again,err:=NotificationEvents(project,done); if err!=nil { t.Fatal(err) }
+    if len(again)!=2 { t.Fatalf("lifecycle notifications duplicated: %+v",again) }
+}
