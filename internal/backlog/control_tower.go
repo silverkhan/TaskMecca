@@ -3,6 +3,8 @@ package backlog
 import (
     "strings"
     "time"
+
+    "github.com/silverkhan/TaskMecca/internal/runtimeobs"
 )
 
 // controlTowerSnapshot is the single reconciliation result for user-facing task
@@ -18,6 +20,10 @@ type controlTowerSnapshot struct {
 }
 
 func reconcileControlTower(project,root string,rows []Record) controlTowerSnapshot {
+    // Binding reconciliation belongs to the control plane, not to a view.
+    // This is the only compatibility fallback for a missed explicit bind-agent:
+    // exactly one live unbound attempt matching the canonical backlog assignment.
+    reconcileCanonicalBindings(project,rows,time.Now())
     timings,err:=lifecycleTimings(project,root,rows)
     if err!=nil { timings=map[string]map[string]any{} }
 
@@ -110,5 +116,28 @@ func effectiveStateFromControl(fileState string,reason map[string]any) string {
     case "user_intervention","approval_required": return "needs_user"
     case "runtime_stalled","execution_interrupted","runtime_unknown": return "stalled"
     default: return fileState
+    }
+}
+
+
+func reconcileCanonicalBindings(project string,rows []Record,now time.Time) {
+    ledger,err:=runtimeobs.ReconcileLedger(project,10,now)
+    if err!=nil { return }
+    byID:=preferredRows(rows)
+    for id,row:=range byID {
+        if row.Location!="active" || row.State!="doing" { continue }
+        agent:=strings.TrimSpace(row.Fields["Agent"])
+        if agent=="" { continue }
+        workerName:=agent
+        if slash:=strings.LastIndex(workerName,"/"); slash>=0 { workerName=workerName[slash+1:] }
+        candidates:=[]runtimeobs.Attempt{}
+        for _,attempt:=range ledger.Attempts {
+            if attempt.Terminal || attempt.BindingState==runtimeobs.BindingBound { continue }
+            runtimeID:=strings.TrimSpace(attempt.RuntimeAgentID)
+            if runtimeID!="" && (runtimeID==workerName || runtimeID==agent) { candidates=append(candidates,attempt) }
+        }
+        if len(candidates)!=1 { continue }
+        evidence:=map[string]string{"agent_path":agent,"correlation":"canonical_backlog_assignment"}
+        _,_=runtimeobs.BindAttempt(project,candidates[0].AttemptID,id,agent,"backlog_assignment","",evidence,now)
     }
 }
