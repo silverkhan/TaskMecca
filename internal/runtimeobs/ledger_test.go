@@ -244,7 +244,7 @@ func TestReusedWorkerStartCreatesImmutableExecutionEpisode(t *testing.T) {
     project:=t.TempDir()
     t0:=time.Date(2026,10,5,8,0,0,0,time.UTC)
     startPayload:=func(at time.Time) string {
-        return fmt.Sprintf(`{"hook_event_name":"SubagentStart","session_id":"root-1","agent_id":"worker-1"}`)
+        return `{"hook_event_name":"SubagentStart","session_id":"root-1","agent_id":"worker-1"}`
     }
     stopPayload:=`{"hook_event_name":"SubagentStop","session_id":"root-1","agent_id":"worker-1"}`
     first,err:=ObserveHook(project,"codex",strings.NewReader(startPayload(t0)),t0); if err!=nil { t.Fatal(err) }
