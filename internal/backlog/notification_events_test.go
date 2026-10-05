@@ -248,6 +248,99 @@ func TestRuntimeUnknownNotificationRequiresStableDwell(t *testing.T) {
     if len(again)!=len(events){t.Fatalf("runtime_unknown duplicated after consumption: %+v",again)}
 }
 
+func TestNotificationCompletedPhaseBlocksLateReplayAfterObservationLoss(t *testing.T) {
+    project:=t.TempDir()
+    base:=map[string]map[string]any{
+        "B-920":{"file_state":"todo","updated_at":"2026-10-06T00:00:00Z","title":"Monotonic"},
+    }
+    if events,err:=NotificationEvents(project,base);err!=nil||len(events)!=0{
+        t.Fatalf("baseline events=%+v err=%v",events,err)
+    }
+
+    running:=map[string]map[string]any{
+        "B-920":{
+            "file_state":"doing","updated_at":"2026-10-06T00:01:00Z","title":"Monotonic",
+            "lifecycle":map[string]any{"started_at":"2026-10-06T00:01:00Z"},
+        },
+    }
+    events,err:=NotificationEvents(project,running);if err!=nil{t.Fatal(err)}
+    if len(events)!=1||toString(events[0]["kind"])!="started"{t.Fatalf("running events=%+v",events)}
+
+    running["B-920"]["notification_condition"]=map[string]any{
+        "kind":"finalize","key":"runtime:finalize\x00run-920",
+        "reason_type":"completion_pending","message":"worker done",
+    }
+    events,err=NotificationEvents(project,running);if err!=nil{t.Fatal(err)}
+    if len(events)!=2||toString(events[1]["kind"])!="finalize"{t.Fatalf("finalize events=%+v",events)}
+
+    done:=map[string]map[string]any{
+        "B-920":{
+            "file_state":"done","updated_at":"2026-10-06T00:03:00Z","title":"Monotonic",
+            "lifecycle":map[string]any{
+                "started_at":"2026-10-06T00:01:00Z",
+                "completed_at":"2026-10-06T00:03:00Z",
+            },
+        },
+    }
+    events,err=NotificationEvents(project,done);if err!=nil{t.Fatal(err)}
+    if len(events)!=3||toString(events[2]["kind"])!="completed"{t.Fatalf("completed events=%+v",events)}
+
+    // Simulate a partial journal/snapshot loss: the task observation disappears,
+    // but durable phase/event history remains. Reappearance must not look new.
+    path:=filepath.Join(project,"_task_mecca",".runtime","notification_events.json")
+    data,err:=os.ReadFile(path);if err!=nil{t.Fatal(err)}
+    var journal notificationJournal
+    if err:=json.Unmarshal(data,&journal);err!=nil{t.Fatal(err)}
+    delete(journal.Items,"B-920")
+    encoded,err:=json.MarshalIndent(journal,"","  ");if err!=nil{t.Fatal(err)}
+    if err:=os.WriteFile(path,append(encoded,'\n'),0644);err!=nil{t.Fatal(err)}
+
+    replay:=map[string]map[string]any{
+        "B-920":{
+            "file_state":"done","updated_at":"2026-10-06T00:04:00Z","title":"Monotonic",
+            "lifecycle":map[string]any{
+                "created_at":"2026-10-06T00:00:00Z",
+                "started_at":"2026-10-06T00:01:00Z",
+                "completed_at":"2026-10-06T00:03:00Z",
+            },
+            "notification_condition":map[string]any{
+                "kind":"runtime_unknown","key":"runtime:unknown\x00run-920",
+                "reason_type":"runtime_unknown","message":"late stale signal",
+            },
+        },
+    }
+    again,err:=NotificationEvents(project,replay);if err!=nil{t.Fatal(err)}
+    if len(again)!=len(events){t.Fatalf("terminal task replayed notifications: before=%+v after=%+v",events,again)}
+    for _,event:=range again{
+        if toString(event["task_id"])=="B-920" && (toString(event["kind"])=="registered"||toString(event["kind"])=="runtime_unknown"){
+            t.Fatalf("terminal lifecycle regressed: %+v",event)
+        }
+    }
+}
+
+func TestNotificationFinalizeBlocksLateStartedRegression(t *testing.T) {
+    project:=t.TempDir()
+    base:=map[string]map[string]any{
+        "B-921":{"file_state":"doing","updated_at":"2026-10-06T01:00:00Z","title":"Finalize first"},
+    }
+    if events,err:=NotificationEvents(project,base);err!=nil||len(events)!=0{
+        t.Fatalf("baseline events=%+v err=%v",events,err)
+    }
+
+    base["B-921"]["notification_condition"]=map[string]any{
+        "kind":"finalize","key":"runtime:finalize\x00run-921",
+        "reason_type":"completion_pending","message":"worker done",
+    }
+    events,err:=NotificationEvents(project,base);if err!=nil{t.Fatal(err)}
+    if len(events)!=1||toString(events[0]["kind"])!="finalize"{t.Fatalf("finalize events=%+v",events)}
+
+    // If lifecycle start evidence is discovered late, it belongs in lifecycle
+    // history but must not become a push notification after finalize.
+    base["B-921"]["lifecycle"]=map[string]any{"started_at":"2026-10-06T00:59:00Z"}
+    events,err=NotificationEvents(project,base);if err!=nil{t.Fatal(err)}
+    if len(events)!=1{t.Fatalf("late started regressed notification stream: %+v",events)}
+}
+
 func TestControlTowerHoldUserProducesCanonicalIntervention(t *testing.T) {
     row:=Record{ID:"B-601",State:"hold",Location:"active"}
     reason,condition:=canonicalOperationalState(row,map[string]any{"wait_kind":"user","wait_note":"need answer","resume_condition":"reply"},nil)
