@@ -61,7 +61,7 @@ func TestNotificationEventsDoNotNotifyHistoricalDoneOnFirstObservation(t *testin
 func TestNotificationEventsPersistAttentionEpisode(t *testing.T) {
     project:=t.TempDir()
     items:=map[string]map[string]any{
-        "AID-39":{"file_state":"doing","updated_at":"2026-10-03T00:00:00Z","title":"Runtime sensing","attention_reason":map[string]any{"type":"runtime_stalled","message":"no activity","resume_condition":"check worker"}},
+        "AID-39":{"file_state":"doing","updated_at":"2026-10-03T00:00:00Z","title":"Runtime sensing","notification_condition":map[string]any{"kind":"stalled","key":"runtime:stalled","reason_type":"runtime_stalled","message":"no activity","resume_condition":"check worker"}},
     }
     events,err:=NotificationEvents(project,items); if err!=nil { t.Fatal(err) }
     if len(events)!=1 { t.Fatalf("events=%v",events) }
@@ -69,9 +69,9 @@ func TestNotificationEventsPersistAttentionEpisode(t *testing.T) {
     again,err:=NotificationEvents(project,items); if err!=nil { t.Fatal(err) }
     if len(again)!=1 { t.Fatalf("duplicate attention event: %v",again) }
 
-    items["AID-39"]["attention_reason"]=nil
+    items["AID-39"]["notification_condition"]=nil
     if _,err=NotificationEvents(project,items); err!=nil { t.Fatal(err) }
-    items["AID-39"]["attention_reason"]=map[string]any{"type":"runtime_stalled","message":"no activity","resume_condition":"check worker"}
+    items["AID-39"]["notification_condition"]=map[string]any{"kind":"stalled","key":"runtime:stalled","reason_type":"runtime_stalled","message":"no activity","resume_condition":"check worker"}
     resumed,err:=NotificationEvents(project,items); if err!=nil { t.Fatal(err) }
     if len(resumed)!=2 { t.Fatalf("reappearing attention should create a new episode, got %v",resumed) }
 }
@@ -94,7 +94,7 @@ func TestNotificationEventsConsumeCanonicalLifecycle(t *testing.T) {
  events,err=NotificationEvents(project,items);if err!=nil{t.Fatal(err)}
  if len(events)!=1{t.Fatalf("duplicate canonical start=%v",events)}
 
- items["AID-39"]["activity"]=map[string]any{"source":"execution_ledger","attempt_id":"run-1","runtime_state":"completed","health":"awaiting_finalize"}
+ items["AID-39"]["notification_condition"]=map[string]any{"kind":"finalize","key":"runtime:finalize\\x00run-1","reason_type":"completion_pending","message":"done"}
  events,err=NotificationEvents(project,items);if err!=nil{t.Fatal(err)}
  if len(events)!=2||events[1]["kind"]!="finalize"{t.Fatalf("finalize events=%v",events)}
  items["AID-39"]["file_state"]="done"
@@ -166,54 +166,38 @@ func TestNotificationEventsConcurrentReconcileKeepsStartedEventAndValidJournal(t
 }
 
 
-func TestNotificationEventsAllRuntimeKindsAreMappedExactlyOnce(t *testing.T) {
-    cases:=[]struct{health,state,kind,reason string}{
-        {"waiting","waiting_approval","approval",""},
-        {"needs_user","waiting_user","intervention","user_intervention"},
-        {"stale","running","stalled","runtime_stalled"},
-        {"execution_interrupted","failed","interrupted","execution_interrupted"},
-        {"runtime_unknown","runtime_unknown","runtime_unknown","runtime_unknown"},
-        {"awaiting_finalize","completed","finalize","completion_pending"},
+func TestControlTowerAllOperationalKindsJournalExactlyOnce(t *testing.T) {
+    cases:=[]struct{health,state,kind string}{
+        {"","waiting_approval","approval"},
+        {"needs_user","waiting_user","intervention"},
+        {"stale","running","stalled"},
+        {"execution_interrupted","failed","interrupted"},
+        {"runtime_unknown","runtime_unknown","runtime_unknown"},
+        {"awaiting_finalize","completed","finalize"},
     }
     for _,tc:=range cases {
         t.Run(tc.kind,func(t *testing.T){
             project:=t.TempDir()
             base:=map[string]map[string]any{"B-600":{"file_state":"doing","updated_at":"2026-10-05T11:00:00Z","title":"Kinds"}}
             if _,err:=NotificationEvents(project,base);err!=nil{t.Fatal(err)}
-            item:=map[string]any{
-                "file_state":"doing","updated_at":"2026-10-05T11:01:00Z","title":"Kinds",
-                "activity":map[string]any{"source":"execution_ledger","attempt_id":"run-600","runtime_state":tc.state,"health":tc.health},
-            }
-            if tc.reason!="" {
-                item["attention_reason"]=map[string]any{"type":tc.reason,"message":"same condition","resume_condition":"act"}
-            }
+            row:=Record{ID:"B-600",State:"doing",Location:"active"}
+            _,condition:=canonicalOperationalState(row,nil,map[string]any{"source":"execution_ledger","attempt_id":"run-600","runtime_state":tc.state,"health":tc.health})
+            item:=map[string]any{"file_state":"doing","updated_at":"2026-10-05T11:01:00Z","title":"Kinds","notification_condition":condition}
             events,err:=NotificationEvents(project,map[string]map[string]any{"B-600":item})
             if err!=nil{t.Fatal(err)}
             count:=0
             for _,event:=range events { if toString(event["kind"])==tc.kind { count++ } }
             if count!=1 { t.Fatalf("kind %s count=%d events=%+v",tc.kind,count,events) }
+            again,err:=NotificationEvents(project,map[string]map[string]any{"B-600":item});if err!=nil{t.Fatal(err)}
+            if len(again)!=len(events){t.Fatalf("kind %s duplicated: %+v",tc.kind,again)}
         })
     }
 }
 
-func TestAttentionReasonKindsWithoutRuntimeEvidenceKeepSemanticKind(t *testing.T) {
-    cases:=[]struct{reason,kind string}{
-        {"completion_pending","finalize"},
-        {"user_intervention","intervention"},
-        {"runtime_stalled","stalled"},
-        {"execution_interrupted","interrupted"},
-        {"runtime_unknown","runtime_unknown"},
-    }
-    for _,tc:=range cases {
-        t.Run(tc.reason,func(t *testing.T){
-            project:=t.TempDir()
-            base:=map[string]map[string]any{"B-601":{"file_state":"doing","updated_at":"2026-10-05T11:00:00Z","title":"Attention"}}
-            if _,err:=NotificationEvents(project,base);err!=nil{t.Fatal(err)}
-            item:=map[string]any{"file_state":"doing","updated_at":"2026-10-05T11:01:00Z","title":"Attention",
-                "attention_reason":map[string]any{"type":tc.reason,"message":"reason","resume_condition":"act"}}
-            events,err:=NotificationEvents(project,map[string]map[string]any{"B-601":item})
-            if err!=nil{t.Fatal(err)}
-            if len(events)!=1 || toString(events[0]["kind"])!=tc.kind { t.Fatalf("%s => %+v",tc.reason,events) }
-        })
+func TestControlTowerHoldUserProducesCanonicalIntervention(t *testing.T) {
+    row:=Record{ID:"B-601",State:"hold",Location:"active"}
+    reason,condition:=canonicalOperationalState(row,map[string]any{"wait_kind":"user","wait_note":"need answer","resume_condition":"reply"},nil)
+    if toString(reason["type"])!="user_intervention" || toString(condition["kind"])!="intervention" {
+        t.Fatalf("reason=%+v condition=%+v",reason,condition)
     }
 }
