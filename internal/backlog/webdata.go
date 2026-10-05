@@ -26,33 +26,7 @@ func compactFields(row Record) map[string]string {
     return out
 }
 
-func webAttentionReason(row Record, review map[string]any, signal map[string]any) map[string]any {
-    reason:=map[string]any{}
-    if row.State=="hold" && review!=nil && toString(review["wait_kind"])=="user" {
-        reason=map[string]any{
-            "type":"user_intervention","severity":"danger","title":"사용자 개입 필요",
-            "message":firstNonEmpty(toString(review["wait_note"]),"사용자 입력 또는 판단을 기다리고 있습니다."),
-            "resume_condition":toString(review["resume_condition"]),"evidence":toString(review["wait_evidence"]),
-        }
-    }
-    if signal!=nil {
-        switch toString(signal["health"]) {
-        case "awaiting_finalize":
-            reason=map[string]any{"type":"completion_pending","severity":"warning","title":"완료 처리 필요","message":"워커 런타임은 작업 완료를 보고했지만 백로그는 아직 doing 상태입니다.","resume_condition":"결과와 검증을 확인한 뒤 태스크를 done으로 완료 처리하세요."}
-        case "needs_user":
-            reason=map[string]any{"type":"user_intervention","severity":"danger","title":"사용자 개입 필요","message":"워커 런타임이 사용자 입력 또는 조치를 기다리고 있습니다.","resume_condition":"필요한 사용자 판단 또는 입력을 제공한 뒤 작업을 재개하세요."}
-        case "stale","worker_missing":
-            reason=map[string]any{"type":"runtime_stalled","severity":"warning","title":"작업 정체 확인 필요","message":"진행 중 태스크의 런타임 활동이 중단되었거나 할당 워커를 찾을 수 없습니다.","resume_condition":"워커 상태와 남은 작업을 확인하고 재할당 또는 완료 처리 여부를 결정하세요."}
-        case "execution_interrupted":
-            reason=map[string]any{"type":"execution_interrupted","severity":"danger","title":"실행 복구 필요","message":"백로그는 doing 상태이지만 연결된 실행 attempt가 정상 완료되지 않고 종료되었습니다.","resume_condition":"실행 결과와 남은 작업을 확인한 뒤 재할당 또는 상태 정리를 수행하세요."}
-        case "runtime_unknown":
-            reason=map[string]any{"type":"runtime_unknown","severity":"warning","title":"실행 상태 확인 필요","message":"백로그에 연결된 실행 attempt의 현재 상태를 신뢰성 있게 확인할 수 없습니다.","resume_condition":"런타임과 hook 상태를 확인하고 필요하면 작업을 재개하세요."}
-        }
-    }
-    return reason
-}
-
-func webSummaryItem(row Record,state string,waiting []string,review map[string]any,signal map[string]any) map[string]any {
+func webSummaryItem(row Record,state string,waiting []string,reason map[string]any,signal map[string]any) map[string]any {
     assignment:=assignmentView(row)
     item:=map[string]any{
         "id":row.ID,"sort_key":row.SortKey,"title":row.Title,"state":state,"file_state":row.State,
@@ -63,7 +37,6 @@ func webSummaryItem(row Record,state string,waiting []string,review map[string]a
         "activity":map[string]any{"health":"n/a"},
     }
     if signal!=nil { item["activity"]=signal }
-    reason:=webAttentionReason(row,review,signal)
     if len(reason)>0 {
         item["attention_reason"]=reason
         switch toString(reason["type"]) {
@@ -181,7 +154,8 @@ func BacklogPage(project,root string,page,pageSize int,statuses,tags []string,se
     if err!=nil { return nil,err }
     presence,err:=Presence(project,root,rows)
     if err!=nil { return nil,err }
-    readyIDs,blocked,reviewByPath,activity,_:=webStateMaps(project,root,rows)
+    readyIDs,blocked,_,_,_:=webStateMaps(project,root,rows)
+    control:=reconcileControlTower(project,root,rows)
     byID:=preferredRows(rows)
     all:=make([]map[string]any,0,len(byID))
     counts:=map[string]int{"all":len(byID),"working":0,"ready":0,"blocked":0,"hold":0,"done":0,"attention":0,"needs_action":0}
@@ -190,7 +164,7 @@ func BacklogPage(project,root string,page,pageSize int,statuses,tags []string,se
         if row.State=="todo" && readyIDs[id] { state="ready" }
         waiting:=[]string{}
         if b,ok:=blocked[id]; ok { state="blocked"; if v,ok:=b["waiting_for"].([]string); ok { waiting=v } }
-        item:=webSummaryItem(row,state,waiting,reviewByPath[row.Path],activity[id])
+        item:=webSummaryItem(row,state,waiting,control.Attention[id],control.Activity[id])
         switch row.State { case "doing": counts["working"]++; case "hold": counts["hold"]++; case "done": counts["done"]++ }
         if state=="ready" { counts["ready"]++ }; if state=="blocked" { counts["blocked"]++ }
         if reason,ok:=item["attention_reason"].(map[string]any); ok && len(reason)>0 { counts["attention"]++; counts["needs_action"]++ }
@@ -260,16 +234,17 @@ func BacklogPage(project,root string,page,pageSize int,statuses,tags []string,se
 func TaskDetail(project,root,id string) (map[string]any,error) {
     rows,err:=CachedCatalog(project,root); if err!=nil { return nil,err }
     byID:=preferredRows(rows); row,ok:=byID[strings.ToUpper(strings.TrimSpace(id))]; if !ok { return nil,fmt.Errorf("task not found: %s",id) }
-    readyIDs,blocked,reviewByPath,_,_:=webStateMaps(project,root,rows)
-    timings,timingErr:=lifecycleTimings(project,root,rows); if timingErr!=nil { timings=map[string]map[string]any{} }
-    activity:=runtimeActivity(project,rows,timings)
+    readyIDs,blocked,_,_,_:=webStateMaps(project,root,rows)
+    control:=reconcileControlTower(project,root,rows)
+    timings:=control.Timings
+    activity:=control.Activity
     state:=row.State; waiting:=[]string{}
     if row.State=="todo" && readyIDs[row.ID] { state="ready" }
     if b,ok:=blocked[row.ID]; ok { state="blocked"; if v,ok:=b["waiting_for"].([]string); ok { waiting=v } }
     timing:=map[string]any{}; if v,ok:=timings[row.ID]; ok { timing=v }
     item:=dashboardItem(row,state,waiting,timing,nil)
     if signal,ok:=activity[row.ID]; ok { item["activity"]=signal } else { item["activity"]=map[string]any{"health":"n/a"} }
-    reason:=webAttentionReason(row,reviewByPath[row.Path],activity[row.ID])
+    reason:=control.Attention[row.ID]
     if len(reason)>0 {
         item["attention_reason"]=reason
         switch toString(reason["type"]) { case "completion_pending": item["state"]="awaiting_finalize"; case "user_intervention": item["state"]="needs_user"; case "runtime_stalled": item["state"]="stalled" }
@@ -278,46 +253,47 @@ func TaskDetail(project,root,id string) (map[string]any,error) {
 }
 
 func AttentionSnapshotFromRows(project,root string,rows []Record,reconcile bool) (map[string]any,error) {
-    reviewByPath,activity:=webAttentionMaps(project,rows)
+    control:=reconcileControlTower(project,root,rows)
     byID:=preferredRows(rows)
     allItems:=map[string]map[string]any{}
     attention:=[]map[string]any{}
+    canonical:=map[string]map[string]any{}
+
     for id,row:=range byID {
-        if row.Location!="active" || (row.State!="doing" && row.State!="hold") { continue }
-        item:=webSummaryItem(row,row.State,nil,reviewByPath[row.Path],activity[id])
-        reason,_:=item["attention_reason"].(map[string]any)
-        if len(reason)==0 {
-            if signal:=activity[id]; signal!=nil && toString(signal["health"])=="quiet" {
+        reason:=control.Attention[id]
+        signal:=control.Activity[id]
+        if row.Location=="active" && (row.State=="doing" || row.State=="hold") {
+            item:=webSummaryItem(row,row.State,nil,reason,signal)
+            if len(reason)>0 {
+                rowAtt:=map[string]any{"id":id}
+                for k,v:=range reason { rowAtt[k]=v }
+                if signal!=nil { for k,v:=range signal { if _,exists:=rowAtt[k]; !exists { rowAtt[k]=v } } }
+                attention=append(attention,rowAtt); allItems[id]=item
+            } else if signal!=nil && toString(signal["health"])=="quiet" {
                 rowAtt:=map[string]any{"id":id,"type":"quiet","severity":"info","title":"활동 감소"}
-                for k,v:=range signal { rowAtt[k]=v }; attention=append(attention,rowAtt); allItems[id]=item
+                for k,v:=range signal { rowAtt[k]=v }
+                attention=append(attention,rowAtt); allItems[id]=item
             }
-            continue
         }
-        rowAtt:=map[string]any{"id":id}; for k,v:=range reason { rowAtt[k]=v }; if signal:=activity[id]; signal!=nil { for k,v:=range signal { if _,exists:=rowAtt[k]; !exists { rowAtt[k]=v } } }
-        attention=append(attention,rowAtt); allItems[id]=item
-    }
-    sort.Slice(attention,func(i,j int)bool{return toString(attention[i]["id"])<toString(attention[j]["id"])})
-    lightweight:=map[string]map[string]any{}
-    timings,timingErr:=lifecycleTimings(project,root,rows)
-    if timingErr!=nil { timings=map[string]map[string]any{} }
-    for id,row:=range byID {
-        item:=map[string]any{"id":id,"title":row.Title,"file_state":row.State,"state":row.State,"updated_at":row.Mtime,"mtime":row.Mtime,"completed_at":nil}
-        if lifecycle,ok:=timings[id]; ok {
+
+        item:=map[string]any{"id":id,"title":row.Title,"file_state":row.State,"state":effectiveStateFromControl(row.State,reason),"updated_at":row.Mtime,"mtime":row.Mtime,"completed_at":nil}
+        if lifecycle,ok:=control.Timings[id]; ok {
             item["lifecycle"]=lifecycle
             item["completed_at"]=lifecycle["completed_at"]
         }
-        if signal:=activity[id]; signal!=nil { item["activity"]=signal }
-        if reason:=webAttentionReason(row,reviewByPath[row.Path],activity[id]); len(reason)>0 { item["attention_reason"]=reason }
-        lightweight[id]=item
+        if condition:=control.NotificationCondition[id]; len(condition)>0 { item["notification_condition"]=condition }
+        canonical[id]=item
     }
+    sort.Slice(attention,func(i,j int)bool{return toString(attention[i]["id"])<toString(attention[j]["id"])})
+
     var events []map[string]any
     var err error
-    if reconcile { events,err=NotificationEvents(project,lightweight) } else { events,err=ReadNotificationEvents(project) }
+    if reconcile { events,err=NotificationEvents(project,canonical) } else { events,err=ReadNotificationEvents(project) }
     if err!=nil { events=[]map[string]any{} }
     for _,event:=range events {
         id:=strings.ToUpper(toString(event["task_id"])); if id=="" { continue }
         if _,exists:=allItems[id]; exists { continue }
-        if row,ok:=byID[id]; ok { allItems[id]=webSummaryItem(row,row.State,nil,nil,nil) }
+        if row,ok:=byID[id]; ok { allItems[id]=webSummaryItem(row,row.State,nil,control.Attention[id],control.Activity[id]) }
     }
     return map[string]any{"snapshot_at":time.Now().Format(time.RFC3339),"attention":attention,"all_items":allItems,"notification_events":events,"counts":map[string]any{"attention":len(attention)}},nil
 }
