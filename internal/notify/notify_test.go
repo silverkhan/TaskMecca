@@ -7,6 +7,7 @@ import (
  "net/http/httptest"
  "strings"
  "testing"
+ "time"
 )
 
 func TestTelegramWebSetupAndDurableDelivery(t *testing.T){
@@ -29,7 +30,7 @@ func TestTelegramWebSetupAndDurableDelivery(t *testing.T){
  if !st.Configured||st.Connected||st.BotUsername!="task_mecca_test_bot"{t.Fatalf("configured=%+v",st)}
  st,err=DiscoverTelegramChat(project);if err!=nil{t.Fatal(err)}
  if !st.Connected||!st.Enabled||st.ChatID!="12345"{t.Fatalf("connected=%+v",st)}
- event:=Event{ID:"event-1",TaskID:"AID-39",Kind:"stalled",Title:"Runtime sensing",Message:"no activity",At:"2026-10-03T00:00:00Z"}
+ event:=Event{ID:"event-1",TaskID:"AID-39",Kind:"stalled",Title:"Runtime sensing",Message:"no activity",At:time.Now().UTC().Add(time.Second).Format(time.RFC3339Nano)}
  if errs:=Deliver(project,[]Event{event});len(errs)>0{t.Fatal(errs)}
  if errs:=Deliver(project,[]Event{event});len(errs)>0{t.Fatal(errs)}
  if sent!=1{t.Fatalf("send count=%d want 1",sent)}
@@ -79,7 +80,7 @@ func TestTelegramDeliversLifecycleSequenceExactlyOnce(t *testing.T){
  }))
  defer server.Close()
  old:=telegramAPIBase;telegramAPIBase=server.URL;defer func(){telegramAPIBase=old}()
- if err:=saveTelegram(project,TelegramConfig{Token:"token",ChatID:123,Enabled:true,Kinds:defaultKinds()});err!=nil{t.Fatal(err)}
+ if err:=saveTelegram(project,TelegramConfig{Token:"token",ChatID:123,Enabled:true,Kinds:defaultKinds(),ActivatedAt:"2026-10-05T09:00:00Z"});err!=nil{t.Fatal(err)}
  events:=[]Event{
   {ID:"reg",TaskID:"B-500",Kind:"registered",Title:"Lifecycle",At:"2026-10-05T10:00:00Z"},
   {ID:"start",TaskID:"B-500",Kind:"started",Title:"Lifecycle",At:"2026-10-05T10:01:00Z"},
@@ -106,7 +107,7 @@ func TestTelegramAllSupportedKindsHaveUserFacingLabelsAndDedupe(t *testing.T){
  }))
  defer server.Close()
  old:=telegramAPIBase;telegramAPIBase=server.URL;defer func(){telegramAPIBase=old}()
- if err:=saveTelegram(project,TelegramConfig{Token:"token",ChatID:123,Enabled:true,Kinds:defaultKinds()});err!=nil{t.Fatal(err)}
+ if err:=saveTelegram(project,TelegramConfig{Token:"token",ChatID:123,Enabled:true,Kinds:defaultKinds(),ActivatedAt:"2026-10-05T11:00:00Z"});err!=nil{t.Fatal(err)}
  expected:=[]struct{kind,prefix string}{
   {"registered","📝 작업 등록"},{"started","▶️ 작업 착수"},{"intervention","🙋 사용자 개입 필요"},
   {"approval","🔐 승인 필요"},{"stalled","⏳ 작업 정체 확인 필요"},{"interrupted","⚠️ 실행 중단/오류"},
