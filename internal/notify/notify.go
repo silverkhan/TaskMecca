@@ -24,6 +24,7 @@ type TelegramConfig struct {
  Enabled bool `json:"enabled"`
  Kinds map[string]bool `json:"kinds,omitempty"`
  Delivered []string `json:"delivered,omitempty"`
+ ActivatedAt string `json:"activated_at,omitempty"`
 }
 type TelegramStatus struct {
  Configured bool `json:"configured"`
@@ -89,7 +90,7 @@ func telegramCall(token,method string,body,out any)error{
 func ConfigureTelegram(project,token string,kinds map[string]bool)(TelegramStatus,error){
  telegramMu.Lock();defer telegramMu.Unlock();var me struct{Username string `json:"username"`}
  if err:=telegramCall(token,"getMe",map[string]any{},&me);err!=nil{return TelegramStatus{},err};cfg,err:=loadTelegram(project);if err!=nil{return TelegramStatus{},err}
- cfg.Token=strings.TrimSpace(token);cfg.BotUsername=me.Username;cfg.ChatID=0;cfg.Enabled=false;cfg.Delivered=nil;if kinds!=nil{cfg.Kinds=kinds}
+ cfg.Token=strings.TrimSpace(token);cfg.BotUsername=me.Username;cfg.ChatID=0;cfg.Enabled=false;cfg.ActivatedAt="";if kinds!=nil{cfg.Kinds=kinds}
  if err=saveTelegram(project,cfg);err!=nil{return TelegramStatus{},err};return status(cfg),nil
 }
 func DiscoverTelegramChat(project string)(TelegramStatus,error){
@@ -98,15 +99,41 @@ func DiscoverTelegramChat(project string)(TelegramStatus,error){
  if err=telegramCall(cfg.Token,"getUpdates",map[string]any{"limit":100,"timeout":0,"allowed_updates":[]string{"message"}},&updates);err!=nil{return TelegramStatus{},err}
  var chatID int64;for i:=len(updates)-1;i>=0;i--{if updates[i].Message!=nil&&updates[i].Message.Chat.Type=="private"{chatID=updates[i].Message.Chat.ID;if strings.HasPrefix(strings.TrimSpace(updates[i].Message.Text),"/start"){break}}}
  if chatID==0{return TelegramStatus{},errors.New("no private Telegram chat found; send /start to the bot first")}
- cfg.ChatID=chatID;cfg.Enabled=true;if err=saveTelegram(project,cfg);err!=nil{return TelegramStatus{},err};return status(cfg),nil
+ cfg.ChatID=chatID;cfg.Enabled=true;cfg.ActivatedAt=time.Now().UTC().Format(time.RFC3339Nano);if err=saveTelegram(project,cfg);err!=nil{return TelegramStatus{},err};return status(cfg),nil
 }
 func TestTelegram(project string)error{telegramMu.Lock();defer telegramMu.Unlock();cfg,err:=loadTelegram(project);if err!=nil{return err};if cfg.Token==""||cfg.ChatID==0{return errors.New("telegram bot is not connected")};return telegramCall(cfg.Token,"sendMessage",map[string]any{"chat_id":cfg.ChatID,"text":"🔔 [Task Mecca] 테스트 알림\nTelegram 알림 연결이 정상입니다."},nil)}
 func DisableTelegram(project string)error{telegramMu.Lock();defer telegramMu.Unlock();err:=os.Remove(telegramPath(project));if errors.Is(err,os.ErrNotExist){return nil};return err}
 func UpdateTelegramKinds(project string,kinds map[string]bool)(TelegramStatus,error){telegramMu.Lock();defer telegramMu.Unlock();cfg,err:=loadTelegram(project);if err!=nil{return TelegramStatus{},err};if cfg.Token==""{return TelegramStatus{},errors.New("telegram bot is not configured")};cfg.Kinds=kinds;if err=saveTelegram(project,cfg);err!=nil{return TelegramStatus{},err};return status(cfg),nil}
+func notificationAfterActivation(at,activatedAt string)bool{
+ eventAt,err:=time.Parse(time.RFC3339Nano,strings.TrimSpace(at));if err!=nil{return false}
+ cutover,err:=time.Parse(time.RFC3339Nano,strings.TrimSpace(activatedAt));if err!=nil{return false}
+ return eventAt.After(cutover)
+}
 func Deliver(project string,events []Event)[]error{
  telegramMu.Lock();defer telegramMu.Unlock();cfg,err:=loadTelegram(project);if err!=nil{return []error{err}};if !cfg.Enabled||cfg.ChatID==0{return nil}
  seen:=map[string]bool{};for _,id:=range cfg.Delivered{seen[id]=true};errs:=[]error{};dirty:=false;ch:=telegramChannel{cfg}
+
+ // Existing installations predate the channel activation watermark. Their
+ // current event set is historical baseline, not a queue to replay.
+ if strings.TrimSpace(cfg.ActivatedAt)==""{
+  cfg.ActivatedAt=time.Now().UTC().Format(time.RFC3339Nano)
+  for _,e:=range events{if e.ID!=""&&!seen[e.ID]{seen[e.ID]=true;cfg.Delivered=append(cfg.Delivered,e.ID)}}
+  if len(cfg.Delivered)>250{cfg.Delivered=append([]string{},cfg.Delivered[len(cfg.Delivered)-250:]...)}
+  if err:=saveTelegram(project,cfg);err!=nil{return []error{err}}
+  return nil
+ }
+
  sort.Slice(events,func(i,j int)bool{return events[i].At<events[j].At})
- for _,e:=range events{if e.ID==""||seen[e.ID]||!cfg.Kinds[e.Kind]{continue};if err:=ch.Deliver(e);err!=nil{errs=append(errs,err);continue};seen[e.ID]=true;cfg.Delivered=append(cfg.Delivered,e.ID);dirty=true}
+ for _,e:=range events{
+  if e.ID==""||seen[e.ID]{continue}
+  // Events that predate channel activation, or occurred while a kind was
+  // disabled, are consumed without delivery so enabling/reconnecting cannot
+  // backfill them later. Delivery failures remain unconsumed and are retried.
+  if !notificationAfterActivation(e.At,cfg.ActivatedAt)||!cfg.Kinds[e.Kind]{
+   seen[e.ID]=true;cfg.Delivered=append(cfg.Delivered,e.ID);dirty=true;continue
+  }
+  if err:=ch.Deliver(e);err!=nil{errs=append(errs,err);continue}
+  seen[e.ID]=true;cfg.Delivered=append(cfg.Delivered,e.ID);dirty=true
+ }
  if len(cfg.Delivered)>250{cfg.Delivered=append([]string{},cfg.Delivered[len(cfg.Delivered)-250:]...);dirty=true};if dirty{if err:=saveTelegram(project,cfg);err!=nil{errs=append(errs,err)}};return errs
 }
