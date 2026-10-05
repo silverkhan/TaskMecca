@@ -64,3 +64,54 @@ func TestCompletedLifecycleKeepsStartedAtFromImmutableEpisode(t *testing.T) {
     if lifecycle["started_at"]==nil || lifecycle["completed_at"]==nil { t.Fatalf("completed lifecycle incomplete: %+v",lifecycle) }
     if incomplete,ok:=lifecycle["timing_incomplete"].(bool); ok && incomplete { t.Fatalf("completed lifecycle incorrectly incomplete: %+v",lifecycle) }
 }
+
+
+func TestControlTowerRecoveryBindingSuppressesStartedNotification(t *testing.T) {
+    project:=t.TempDir()
+    backlogDir:=filepath.Join(project,"_task_mecca","data","backlog")
+    if err:=os.MkdirAll(backlogDir,0755);err!=nil{t.Fatal(err)}
+    task:=filepath.Join(backlogDir,"0900.B-900.recovery.doing.md")
+    body:="---\nID: B-900\nTitle: Recovery binding\nAgent: /root/controller/worker-900\nRuntimeProvider: codex\n---\n"
+    if err:=os.WriteFile(task,[]byte(body),0644);err!=nil{t.Fatal(err)}
+
+    now:=time.Now().UTC()
+    attemptID:="run-b900-recovery"
+    start:=runtimeobs.ExecutionEvent{
+        EventKind:"state",ObservedAt:now.Add(-5*time.Minute).Format(time.RFC3339Nano),
+        AttemptID:attemptID,Provider:"codex",RuntimeAgentID:"worker-900",
+        State:runtimeobs.StateRunning,EvidenceSource:runtimeobs.EvidenceHook,
+        ObservationQuality:runtimeobs.QualityObserved,
+    }
+    if err:=runtimeobs.AppendExecutionEvent(project,start);err!=nil{t.Fatal(err)}
+
+    // The notification journal already knows the doing task, but there is no
+    // canonical lifecycle start until the control tower recovers the binding.
+    baseline:=map[string]map[string]any{
+        "B-900":{"file_state":"doing","updated_at":now.Add(-10*time.Minute).Format(time.RFC3339Nano),"title":"Recovery binding"},
+    }
+    if events,err:=NotificationEvents(project,baseline);err!=nil||len(events)!=0{
+        t.Fatalf("baseline events=%+v err=%v",events,err)
+    }
+
+    rows,err:=Catalog(project,"");if err!=nil{t.Fatal(err)}
+    control:=reconcileControlTower(project,"",rows)
+    lifecycle:=control.Timings["B-900"]
+    if lifecycle==nil||lifecycle["started_at"]==nil{
+        t.Fatalf("recovery binding did not produce canonical start: %+v",lifecycle)
+    }
+    suppressed,ok:=lifecycle["started_notification_suppressed"].(bool)
+    if !ok||!suppressed{
+        t.Fatalf("recovery start must be marked notification-suppressed: %+v",lifecycle)
+    }
+
+    current:=map[string]map[string]any{
+        "B-900":{
+            "file_state":"doing","updated_at":now.Format(time.RFC3339Nano),"title":"Recovery binding",
+            "lifecycle":lifecycle,
+        },
+    }
+    events,err:=NotificationEvents(project,current);if err!=nil{t.Fatal(err)}
+    if len(events)!=0{
+        t.Fatalf("recovered historical start must not notify: %+v",events)
+    }
+}
