@@ -112,10 +112,14 @@ func NotificationEvents(project string, items map[string]map[string]any) ([]map[
         fileState := toString(item["file_state"])
         updatedAt := toString(item["updated_at"])
         previous, seen := journal.Items[id]
+        lifecycle, _ := item["lifecycle"].(map[string]any)
         registeredNow := false
 
         if !baseline && !seen {
-            at := updatedAt
+            at := toString(lifecycle["created_at"])
+            if at == "" {
+                at = updatedAt
+            }
             if at == "" {
                 at = now
             }
@@ -130,41 +134,13 @@ func NotificationEvents(project string, items map[string]map[string]any) ([]map[
             registeredNow = true
         }
 
-        if !baseline && seen && fileState == "done" && previous.FileState != "done" {
-            at := ""
-            if lifecycle, ok := item["lifecycle"].(map[string]any); ok {
-                at = toString(lifecycle["completed_at"])
-            }
-            if at == "" {
-                at = toString(item["completed_at"])
-            }
-            if at == "" {
-                at = updatedAt
-            }
-            if at == "" {
-                at = now
-            }
-            eventID := notificationEventID(id, "completed", at)
-            if !notificationEventExists(journal.Events, eventID) {
-                journal.Events = append(journal.Events, map[string]any{
-                    "id": eventID,
-                    "task_id": id,
-                    "kind": "completed",
-                    "at": at,
-                    "title": toString(item["title"]),
-                    "task_updated_at": updatedAt,
-                })
-                dirty = true
-            }
-        }
-
         // Notification is a consumer of the canonical lifecycle. Historical
         // recovery bindings remain valid lifecycle evidence, but the control
         // tower marks them notification-suppressed so they cannot backfill
         // "started" messages.
         startedAt := ""
         startedSuppressed := false
-        if lifecycle, ok := item["lifecycle"].(map[string]any); ok {
+        if lifecycle != nil {
             startedAt = toString(lifecycle["started_at"])
             if suppressed, ok := lifecycle["started_notification_suppressed"].(bool); ok {
                 startedSuppressed = suppressed
@@ -194,7 +170,8 @@ func NotificationEvents(project string, items map[string]map[string]any) ([]map[
             // Operational conditions have no trustworthy historical transition
             // timestamp. Only changes from an already-observed canonical state
             // are live notification episodes; first observation is baseline.
-            if !baseline && seen && kind != "" && previous.ConditionKey != conditionKey {
+            conditionChanged := (seen && previous.ConditionKey != conditionKey) || (!seen && registeredNow)
+            if !baseline && kind != "" && conditionChanged {
                 at := now
                 eventID := notificationEventID(id, kind, at)
                 if !notificationEventExists(journal.Events, eventID) {
@@ -210,6 +187,33 @@ func NotificationEvents(project string, items map[string]map[string]any) ([]map[
                     })
                     dirty = true
                 }
+            }
+        }
+
+        completedChanged := fileState == "done" &&
+            ((seen && previous.FileState != "done") || (!seen && registeredNow))
+        if !baseline && completedChanged {
+            at := toString(lifecycle["completed_at"])
+            if at == "" {
+                at = toString(item["completed_at"])
+            }
+            if at == "" {
+                at = updatedAt
+            }
+            if at == "" {
+                at = now
+            }
+            eventID := notificationEventID(id, "completed", at)
+            if !notificationEventExists(journal.Events, eventID) {
+                journal.Events = append(journal.Events, map[string]any{
+                    "id": eventID,
+                    "task_id": id,
+                    "kind": "completed",
+                    "at": at,
+                    "title": toString(item["title"]),
+                    "task_updated_at": updatedAt,
+                })
+                dirty = true
             }
         }
 
