@@ -164,3 +164,56 @@ func TestNotificationEventsConcurrentReconcileKeepsStartedEventAndValidJournal(t
     }
     if starts!=1 { t.Fatalf("started event count=%d events=%+v",starts,events) }
 }
+
+
+func TestNotificationEventsAllRuntimeKindsAreMappedExactlyOnce(t *testing.T) {
+    cases:=[]struct{health,state,kind,reason string}{
+        {"waiting","waiting_approval","approval",""},
+        {"needs_user","waiting_user","intervention","user_intervention"},
+        {"stale","running","stalled","runtime_stalled"},
+        {"execution_interrupted","failed","interrupted","execution_interrupted"},
+        {"runtime_unknown","runtime_unknown","runtime_unknown","runtime_unknown"},
+        {"awaiting_finalize","completed","finalize","completion_pending"},
+    }
+    for _,tc:=range cases {
+        t.Run(tc.kind,func(t *testing.T){
+            project:=t.TempDir()
+            base:=map[string]map[string]any{"B-600":{"file_state":"doing","updated_at":"2026-10-05T11:00:00Z","title":"Kinds"}}
+            if _,err:=NotificationEvents(project,base);err!=nil{t.Fatal(err)}
+            item:=map[string]any{
+                "file_state":"doing","updated_at":"2026-10-05T11:01:00Z","title":"Kinds",
+                "activity":map[string]any{"source":"execution_ledger","attempt_id":"run-600","runtime_state":tc.state,"health":tc.health},
+            }
+            if tc.reason!="" {
+                item["attention_reason"]=map[string]any{"type":tc.reason,"message":"same condition","resume_condition":"act"}
+            }
+            events,err:=NotificationEvents(project,map[string]map[string]any{"B-600":item})
+            if err!=nil{t.Fatal(err)}
+            count:=0
+            for _,event:=range events { if toString(event["kind"])==tc.kind { count++ } }
+            if count!=1 { t.Fatalf("kind %s count=%d events=%+v",tc.kind,count,events) }
+        })
+    }
+}
+
+func TestAttentionReasonKindsWithoutRuntimeEvidenceKeepSemanticKind(t *testing.T) {
+    cases:=[]struct{reason,kind string}{
+        {"completion_pending","finalize"},
+        {"user_intervention","intervention"},
+        {"runtime_stalled","stalled"},
+        {"execution_interrupted","interrupted"},
+        {"runtime_unknown","runtime_unknown"},
+    }
+    for _,tc:=range cases {
+        t.Run(tc.reason,func(t *testing.T){
+            project:=t.TempDir()
+            base:=map[string]map[string]any{"B-601":{"file_state":"doing","updated_at":"2026-10-05T11:00:00Z","title":"Attention"}}
+            if _,err:=NotificationEvents(project,base);err!=nil{t.Fatal(err)}
+            item:=map[string]any{"file_state":"doing","updated_at":"2026-10-05T11:01:00Z","title":"Attention",
+                "attention_reason":map[string]any{"type":tc.reason,"message":"reason","resume_condition":"act"}}
+            events,err:=NotificationEvents(project,map[string]map[string]any{"B-601":item})
+            if err!=nil{t.Fatal(err)}
+            if len(events)!=1 || toString(events[0]["kind"])!=tc.kind { t.Fatalf("%s => %+v",tc.reason,events) }
+        })
+    }
+}
