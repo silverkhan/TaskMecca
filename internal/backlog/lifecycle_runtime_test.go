@@ -120,3 +120,42 @@ func TestControlTowerRecoveryBindingSuppressesStartedNotification(t *testing.T) 
         t.Fatalf("recovered historical start must not notify: %+v",events)
     }
 }
+
+
+func TestControlTowerDoesNotRecoverBindStaleUnboundAttempt(t *testing.T) {
+    project:=t.TempDir()
+    now:=time.Now().UTC()
+    attemptID:="run-stale-unbound"
+    start:=runtimeobs.ExecutionEvent{
+        EventKind:"state",
+        ObservedAt:now.Add(-2*time.Hour).Format(time.RFC3339Nano),
+        AttemptID:attemptID,
+        Provider:"codex",
+        RuntimeAgentID:"worker-stale",
+        State:runtimeobs.StateRunning,
+        EvidenceSource:runtimeobs.EvidenceHook,
+        ObservationQuality:runtimeobs.QualityObserved,
+    }
+    if err:=runtimeobs.AppendExecutionEvent(project,start);err!=nil{t.Fatal(err)}
+
+    rows:=[]Record{{
+        ID:"B-999",State:"doing",Location:"active",
+        Fields:map[string]string{"Agent":"/root/controller/worker-stale"},
+    }}
+    recovered:=reconcileCanonicalBindings(project,rows,now)
+    if recovered["B-999"]{
+        t.Fatalf("stale unbound attempt must never be auto-bound: %+v",recovered)
+    }
+
+    ledger,err:=runtimeobs.ReconcileLedger(project,10,now)
+    if err!=nil{t.Fatal(err)}
+    found:=false
+    for _,attempt:=range ledger.Attempts{
+        if attempt.AttemptID!=attemptID{continue}
+        found=true
+        if attempt.BindingState!=runtimeobs.BindingUnbound{
+            t.Fatalf("stale attempt binding was mutated: %+v",attempt)
+        }
+    }
+    if !found{t.Fatal("stale attempt missing from ledger")}
+}
