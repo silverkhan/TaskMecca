@@ -109,6 +109,31 @@ func notificationAfterActivation(at,activatedAt string)bool{
  cutover,err:=time.Parse(time.RFC3339Nano,strings.TrimSpace(activatedAt));if err!=nil{return false}
  return eventAt.After(cutover)
 }
+func notificationKindRank(kind string)int{
+ switch strings.ToLower(strings.TrimSpace(kind)){
+ case "registered": return 10
+ case "started": return 20
+ case "completed": return 40
+ default: return 30
+ }
+}
+func notificationEventLess(a,b Event)bool{
+ at,aErr:=time.Parse(time.RFC3339Nano,strings.TrimSpace(a.At))
+ bt,bErr:=time.Parse(time.RFC3339Nano,strings.TrimSpace(b.At))
+ if aErr==nil&&bErr==nil {
+  if !at.Equal(bt){return at.Before(bt)}
+ } else if aErr==nil {
+  return true
+ } else if bErr==nil {
+  return false
+ } else if a.At!=b.At {
+  return a.At<b.At
+ }
+ ar,br:=notificationKindRank(a.Kind),notificationKindRank(b.Kind)
+ if ar!=br{return ar<br}
+ if a.TaskID!=b.TaskID{return a.TaskID<b.TaskID}
+ return a.ID<b.ID
+}
 func Deliver(project string,events []Event)[]error{
  telegramMu.Lock();defer telegramMu.Unlock();cfg,err:=loadTelegram(project);if err!=nil{return []error{err}};if !cfg.Enabled||cfg.ChatID==0{return nil}
  seen:=map[string]bool{};for _,id:=range cfg.Delivered{seen[id]=true};errs:=[]error{};dirty:=false;ch:=telegramChannel{cfg}
@@ -123,7 +148,7 @@ func Deliver(project string,events []Event)[]error{
   return nil
  }
 
- sort.Slice(events,func(i,j int)bool{return events[i].At<events[j].At})
+ sort.SliceStable(events,func(i,j int)bool{return notificationEventLess(events[i],events[j])})
  for _,e:=range events{
   if e.ID==""||seen[e.ID]{continue}
   // Events that predate channel activation, or occurred while a kind was
