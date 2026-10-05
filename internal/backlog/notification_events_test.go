@@ -1,6 +1,9 @@
 package backlog
 
 import (
+    "encoding/json"
+    "os"
+    "path/filepath"
     "sync"
     "testing"
 )
@@ -61,9 +64,13 @@ func TestNotificationEventsDoNotNotifyHistoricalDoneOnFirstObservation(t *testin
 func TestNotificationEventsPersistAttentionEpisode(t *testing.T) {
     project:=t.TempDir()
     items:=map[string]map[string]any{
-        "AID-39":{"file_state":"doing","updated_at":"2026-10-03T00:00:00Z","title":"Runtime sensing","notification_condition":map[string]any{"kind":"stalled","key":"runtime:stalled","reason_type":"runtime_stalled","message":"no activity","resume_condition":"check worker"}},
+        "AID-39":{"file_state":"doing","updated_at":"2026-10-03T00:00:00Z","title":"Runtime sensing"},
     }
     events,err:=NotificationEvents(project,items); if err!=nil { t.Fatal(err) }
+    if len(events)!=0 { t.Fatalf("baseline events=%v",events) }
+
+    items["AID-39"]["notification_condition"]=map[string]any{"kind":"stalled","key":"runtime:stalled","reason_type":"runtime_stalled","message":"no activity","resume_condition":"check worker"}
+    events,err=NotificationEvents(project,items); if err!=nil { t.Fatal(err) }
     if len(events)!=1 { t.Fatalf("events=%v",events) }
     if events[0]["kind"]!="stalled" || events[0]["task_id"]!="AID-39" { t.Fatalf("event=%v",events[0]) }
     again,err:=NotificationEvents(project,items); if err!=nil { t.Fatal(err) }
