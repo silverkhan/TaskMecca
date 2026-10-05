@@ -205,6 +205,62 @@ func TestTelegramDeliveryFailureRetriesSameEligibleEvent(t *testing.T){
 }
 
 
+func TestTelegramSuppressesLateRegistrationAndWarningAfterCompleted(t *testing.T){
+ project:=t.TempDir()
+ sent:=0
+ server:=httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter,r *http.Request){
+  sent++
+  w.Header().Set("Content-Type","application/json")
+  json.NewEncoder(w).Encode(map[string]any{"ok":true,"result":map[string]any{"message_id":sent}})
+ }))
+ defer server.Close()
+ old:=telegramAPIBase;telegramAPIBase=server.URL;defer func(){telegramAPIBase=old}()
+
+ cfg:=TelegramConfig{
+  Token:"token",ChatID:123,Enabled:true,Kinds:defaultKinds(),
+  ActivatedAt:"2026-10-06T00:00:00Z",
+  Delivered:[]string{"done-920"},
+ }
+ if err:=saveTelegram(project,cfg);err!=nil{t.Fatal(err)}
+ events:=[]Event{
+  {ID:"done-920",TaskID:"B-920",Kind:"completed",Title:"Monotonic",At:"2026-10-06T00:10:00Z"},
+  {ID:"late-reg-920",TaskID:"B-920",Kind:"registered",Title:"Monotonic",At:"2026-10-06T00:11:00Z"},
+  {ID:"late-unknown-920",TaskID:"B-920",Kind:"runtime_unknown",Title:"Monotonic",At:"2026-10-06T00:12:00Z"},
+ }
+ if errs:=Deliver(project,events);len(errs)>0{t.Fatal(errs)}
+ if sent!=0{t.Fatalf("terminal regression was delivered: sent=%d",sent)}
+ stored,err:=loadTelegram(project);if err!=nil{t.Fatal(err)}
+ if stored.TaskPhases["B-920"]!=40{t.Fatalf("completed phase not reconstructed: %+v",stored.TaskPhases)}
+ if len(stored.Delivered)!=3{t.Fatalf("suppressed regressions must be consumed: %+v",stored.Delivered)}
+}
+
+func TestTelegramSuppressesLateStartedAfterFinalize(t *testing.T){
+ project:=t.TempDir()
+ sent:=0
+ server:=httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter,r *http.Request){
+  sent++
+  w.Header().Set("Content-Type","application/json")
+  json.NewEncoder(w).Encode(map[string]any{"ok":true,"result":map[string]any{"message_id":sent}})
+ }))
+ defer server.Close()
+ old:=telegramAPIBase;telegramAPIBase=server.URL;defer func(){telegramAPIBase=old}()
+
+ cfg:=TelegramConfig{
+  Token:"token",ChatID:123,Enabled:true,Kinds:defaultKinds(),
+  ActivatedAt:"2026-10-06T00:00:00Z",
+  Delivered:[]string{"finalize-921"},
+ }
+ if err:=saveTelegram(project,cfg);err!=nil{t.Fatal(err)}
+ events:=[]Event{
+  {ID:"finalize-921",TaskID:"B-921",Kind:"finalize",Title:"Finalize first",At:"2026-10-06T00:10:00Z"},
+  {ID:"late-start-921",TaskID:"B-921",Kind:"started",Title:"Finalize first",At:"2026-10-06T00:11:00Z"},
+ }
+ if errs:=Deliver(project,events);len(errs)>0{t.Fatal(errs)}
+ if sent!=0{t.Fatalf("late start after finalize was delivered: sent=%d",sent)}
+ stored,err:=loadTelegram(project);if err!=nil{t.Fatal(err)}
+ if stored.TaskPhases["B-921"]!=30{t.Fatalf("finalize phase not reconstructed: %+v",stored.TaskPhases)}
+}
+
 func TestNotificationEventOrderingUsesAbsoluteTimeAndLifecycleRank(t *testing.T){
  events:=[]Event{
   {ID:"done",TaskID:"B-910",Kind:"completed",At:"2026-10-05T01:00:01Z"},
