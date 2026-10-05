@@ -145,7 +145,7 @@ func reconcileCanonicalBindings(project string,rows []Record,now time.Time) map[
         if slash:=strings.LastIndex(workerName,"/"); slash>=0 { workerName=workerName[slash+1:] }
         candidates:=[]runtimeobs.Attempt{}
         for _,attempt:=range ledger.Attempts {
-            if attempt.Terminal || attempt.BindingState==runtimeobs.BindingBound || staleAttempts[attempt.AttemptID] { continue }
+            if attempt.Terminal || attempt.BindingState!=runtimeobs.BindingUnbound || staleAttempts[attempt.AttemptID] { continue }
             runtimeID:=strings.TrimSpace(attempt.RuntimeAgentID)
             if runtimeID!="" && (runtimeID==workerName || runtimeID==agent) { candidates=append(candidates,attempt) }
         }
