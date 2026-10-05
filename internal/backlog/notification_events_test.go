@@ -208,3 +208,63 @@ func TestControlTowerHoldUserProducesCanonicalIntervention(t *testing.T) {
         t.Fatalf("reason=%+v condition=%+v",reason,condition)
     }
 }
+
+
+func TestNotificationEventsLegacyJournalMigrationDoesNotBackfillCurrentState(t *testing.T) {
+    project:=t.TempDir()
+    path:=filepath.Join(project,"_task_mecca",".runtime","notification_events.json")
+    if err:=os.MkdirAll(filepath.Dir(path),0755);err!=nil{t.Fatal(err)}
+    legacy:=`{
+  "version": 1,
+  "items": {
+    "B-800": {
+      "file_state": "doing",
+      "updated_at": "2026-10-05T11:20:00Z",
+      "attention_key": "legacy-attention",
+      "runtime_key": "legacy-runtime",
+      "started_at": "2026-10-05T11:00:00Z"
+    }
+  },
+  "events": []
+}`
+    if err:=os.WriteFile(path,[]byte(legacy),0644);err!=nil{t.Fatal(err)}
+
+    items:=map[string]map[string]any{
+        "B-800":{
+            "file_state":"doing","updated_at":"2026-10-05T11:20:00Z","title":"Existing",
+            "lifecycle":map[string]any{"started_at":"2026-10-05T11:00:00Z"},
+            "notification_condition":map[string]any{
+                "kind":"stalled","key":"runtime:stalled:run-old",
+                "reason_type":"runtime_stalled","message":"existing condition",
+            },
+        },
+    }
+    events,err:=NotificationEvents(project,items)
+    if err!=nil{t.Fatal(err)}
+    if len(events)!=0{t.Fatalf("schema migration must baseline current state, got %+v",events)}
+
+    data,err:=os.ReadFile(path);if err!=nil{t.Fatal(err)}
+    var journal notificationJournal
+    if err:=json.Unmarshal(data,&journal);err!=nil{t.Fatal(err)}
+    if journal.Version!=notificationJournalVersion{t.Fatalf("version=%d",journal.Version)}
+    if journal.Items["B-800"].ConditionKey!="runtime:stalled:run-old"{
+        t.Fatalf("condition key not migrated into baseline: %+v",journal.Items["B-800"])
+    }
+}
+
+func TestNotificationEventsColdStartBaselinesHistoricalStartedAndCondition(t *testing.T) {
+    project:=t.TempDir()
+    items:=map[string]map[string]any{
+        "B-801":{
+            "file_state":"doing","updated_at":"2026-10-04T08:00:00Z","title":"Historical",
+            "lifecycle":map[string]any{"started_at":"2026-10-04T07:30:00Z"},
+            "notification_condition":map[string]any{
+                "kind":"finalize","key":"runtime:finalize:run-old",
+                "reason_type":"completion_pending","message":"historical",
+            },
+        },
+    }
+    events,err:=NotificationEvents(project,items)
+    if err!=nil{t.Fatal(err)}
+    if len(events)!=0{t.Fatalf("cold start must establish baseline without backfill: %+v",events)}
+}
