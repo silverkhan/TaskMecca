@@ -144,12 +144,9 @@ func DashboardSnapshot(project,root string,recentDoneLimit int) (map[string]any,
     } else {
         tagCatalog=catalog
     }
-    timings,err:=lifecycleTimings(project,root,rows)
-    if err!=nil {
-        diagnostics=append(diagnostics,map[string]string{"component":"lifecycle","error":err.Error()})
-        timings=map[string]map[string]any{}
-    }
-    activity:=runtimeActivity(project,rows,timings)
+    control:=reconcileControlTower(project,root,rows)
+    timings:=control.Timings
+    activity:=control.Activity
 
     readyIDs:=map[string]bool{}
     blocked:=map[string]map[string]any{}
@@ -168,10 +165,7 @@ func DashboardSnapshot(project,root string,recentDoneLimit int) (map[string]any,
         for _,entry:=range values { if entry["count"].(int)==top { picked=append(picked,entry) } }
         continuityMap[id]=picked
     }
-    reviewByPath:=map[string]map[string]any{}
-    for _,key:=range []string{"candidates","waiting"} {
-        if values,ok:=hold[key].([]map[string]any); ok { for _,x:=range values { reviewByPath[toString(x["path"])]=x } }
-    }
+    reviewByPath:=control.ReviewByPath
 
     allItems:=map[string]map[string]any{}
     for id,row:=range byID {
@@ -186,44 +180,12 @@ func DashboardSnapshot(project,root string,recentDoneLimit int) (map[string]any,
         item:=dashboardItem(row,state,waiting,timing,continuityMap[id])
         item["hold_review"]=reviewByPath[row.Path]
         if signal,ok:=activity[id]; ok { item["activity"]=signal } else { item["activity"]=map[string]any{"health":"n/a"} }
-        reason:=map[string]any{}
-        if row.State=="hold" {
-            if review:=reviewByPath[row.Path]; review!=nil && toString(review["wait_kind"])=="user" {
-                reason=map[string]any{
-                    "type":"user_intervention","severity":"danger","title":"사용자 개입 필요",
-                    "message":firstNonEmpty(toString(review["wait_note"]),"사용자 입력 또는 판단을 기다리고 있습니다."),
-                    "resume_condition":toString(review["resume_condition"]),
-                    "evidence":toString(review["wait_evidence"]),
-                }
-                item["state"]="needs_user"
-            }
+        reason:=control.Attention[id]
+        if len(reason)>0 {
+            item["attention_reason"]=reason
+            item["state"]=effectiveStateFromControl(row.State,reason)
         }
-        if signal,ok:=activity[id]; ok {
-            switch toString(signal["health"]) {
-            case "awaiting_finalize":
-                reason=map[string]any{
-                    "type":"completion_pending","severity":"warning","title":"완료 처리 필요",
-                    "message":"워커 런타임은 작업 완료를 보고했지만 백로그는 아직 doing 상태입니다.",
-                    "resume_condition":"결과와 검증을 확인한 뒤 태스크를 done으로 완료 처리하세요.",
-                }
-                item["state"]="awaiting_finalize"
-            case "needs_user":
-                reason=map[string]any{
-                    "type":"user_intervention","severity":"danger","title":"사용자 개입 필요",
-                    "message":"워커 런타임이 사용자 입력 또는 조치를 기다리고 있습니다.",
-                    "resume_condition":"필요한 사용자 판단 또는 입력을 제공한 뒤 작업을 재개하세요.",
-                }
-                item["state"]="needs_user"
-            case "stale","worker_missing":
-                reason=map[string]any{
-                    "type":"runtime_stalled","severity":"warning","title":"작업 정체 확인 필요",
-                    "message":"진행 중 태스크의 런타임 활동이 중단되었거나 할당 워커를 찾을 수 없습니다.",
-                    "resume_condition":"워커 상태와 남은 작업을 확인하고 재할당 또는 완료 처리 여부를 결정하세요.",
-                }
-                item["state"]="stalled"
-            }
-        }
-        if len(reason)>0 { item["attention_reason"]=reason }
+        if condition:=control.NotificationCondition[id]; len(condition)>0 { item["notification_condition"]=condition }
         allItems[id]=item
     }
 
