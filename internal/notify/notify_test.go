@@ -202,3 +202,26 @@ func TestTelegramDeliveryFailureRetriesSameEligibleEvent(t *testing.T){
  cfg,err=loadTelegram(project);if err!=nil{t.Fatal(err)}
  if len(cfg.Delivered)!=1||cfg.Delivered[0]!="retry-1"{t.Fatalf("successful retry not persisted: %+v",cfg.Delivered)}
 }
+
+
+func TestNotificationEventOrderingUsesAbsoluteTimeAndLifecycleRank(t *testing.T){
+ events:=[]Event{
+  {ID:"done",TaskID:"B-910",Kind:"completed",At:"2026-10-05T01:00:01Z"},
+  {ID:"start",TaskID:"B-910",Kind:"started",At:"2026-10-05T10:00:00+09:00"},
+  {ID:"reg",TaskID:"B-910",Kind:"registered",At:"2026-10-05T01:00:00Z"},
+ }
+ sort.SliceStable(events,func(i,j int)bool{return notificationEventLess(events[i],events[j])})
+ if events[0].Kind!="registered"||events[1].Kind!="started"||events[2].Kind!="completed"{
+  t.Fatalf("absolute-time lifecycle order=%+v",events)
+ }
+
+ same:=[]Event{
+  {ID:"done2",TaskID:"B-911",Kind:"completed",At:"2026-10-05T02:00:00Z"},
+  {ID:"start2",TaskID:"B-911",Kind:"started",At:"2026-10-05T11:00:00+09:00"},
+  {ID:"reg2",TaskID:"B-911",Kind:"registered",At:"2026-10-05T02:00:00Z"},
+ }
+ sort.SliceStable(same,func(i,j int)bool{return notificationEventLess(same[i],same[j])})
+ if same[0].Kind!="registered"||same[1].Kind!="started"||same[2].Kind!="completed"{
+  t.Fatalf("same-instant lifecycle rank order=%+v",same)
+ }
+}
