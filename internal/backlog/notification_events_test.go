@@ -395,3 +395,23 @@ func TestNotificationEventsNewTaskCurrentConditionIsNotLost(t *testing.T) {
         t.Fatalf("new task current condition was lost or reordered: %v events=%+v",kinds,events)
     }
 }
+
+
+func TestNotificationEventsEmptyBaselinePersistsFirstRegistrationBoundary(t *testing.T) {
+    project:=t.TempDir()
+    events,err:=NotificationEvents(project,map[string]map[string]any{})
+    if err!=nil{t.Fatal(err)}
+    if len(events)!=0{t.Fatalf("empty baseline events=%+v",events)}
+
+    first:=map[string]map[string]any{
+        "B-004":{
+            "file_state":"todo","updated_at":"2026-10-05T03:00:00Z","title":"First real task",
+            "lifecycle":map[string]any{"created_at":"2026-10-05T03:00:00Z"},
+        },
+    }
+    events,err=NotificationEvents(project,first)
+    if err!=nil{t.Fatal(err)}
+    if len(events)!=1||toString(events[0]["kind"])!="registered"||toString(events[0]["task_id"])!="B-004"{
+        t.Fatalf("first registration after observed empty baseline was lost: %+v",events)
+    }
+}
