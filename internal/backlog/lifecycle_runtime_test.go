@@ -36,3 +36,32 @@ func TestLifecycleRejectsRuntimeStartBeforeRegistration(t *testing.T) {
         }
     }
 }
+
+
+func TestCompletedLifecycleKeepsStartedAtFromImmutableEpisode(t *testing.T) {
+    project:=t.TempDir()
+    backlogDir:=filepath.Join(project,"_task_mecca","data","backlog")
+    archiveDir:=filepath.Join(project,"_task_mecca","data","archive")
+    if err:=os.MkdirAll(backlogDir,0755); err!=nil { t.Fatal(err) }
+    if err:=os.MkdirAll(archiveDir,0755); err!=nil { t.Fatal(err) }
+    registered:=time.Date(2026,10,5,1,0,0,0,time.UTC)
+    started:=registered.Add(time.Minute)
+    completed:=registered.Add(5*time.Minute)
+    task:=filepath.Join(archiveDir,"0441.B-441.lifecycle.done.md")
+    body:="---\nID: B-441\nTitle: Lifecycle preservation\nAgent: /root/controller/worker\nRuntimeProvider: codex\n---\n"
+    if err:=os.WriteFile(task,[]byte(body),0644); err!=nil { t.Fatal(err) }
+
+    attemptID:="run-b441"
+    start:=runtimeobs.ExecutionEvent{EventKind:"state",ObservedAt:started.Format(time.RFC3339Nano),AttemptID:attemptID,Provider:"codex",SessionID:"root-1",RuntimeAgentID:"worker-1",State:runtimeobs.StateRunning,EvidenceSource:runtimeobs.EvidenceHook,ObservationQuality:runtimeobs.QualityObserved}
+    if err:=runtimeobs.AppendExecutionEvent(project,start); err!=nil { t.Fatal(err) }
+    if _,err:=runtimeobs.BindAttempt(project,attemptID,"B-441","/root/controller/worker","dispatch","",nil,started); err!=nil { t.Fatal(err) }
+    stop:=runtimeobs.ExecutionEvent{EventKind:"state",ObservedAt:completed.Format(time.RFC3339Nano),AttemptID:attemptID,Provider:"codex",SessionID:"root-1",RuntimeAgentID:"worker-1",State:runtimeobs.StateCompleted,Terminal:true,EvidenceSource:runtimeobs.EvidenceHook,ObservationQuality:runtimeobs.QualityObserved}
+    if err:=runtimeobs.AppendExecutionEvent(project,stop); err!=nil { t.Fatal(err) }
+
+    rows,err:=Catalog(project,""); if err!=nil { t.Fatal(err) }
+    timings,err:=lifecycleTimings(project,"",rows); if err!=nil { t.Fatal(err) }
+    lifecycle:=timings["B-441"]; if lifecycle==nil { t.Fatal("missing lifecycle") }
+    if lifecycle["started_at"]==nil { t.Fatalf("completed lifecycle lost start: %+v",lifecycle) }
+    if lifecycle["completed_at"]==nil { t.Fatalf("completed lifecycle lost completion: %+v",lifecycle) }
+    if incomplete,ok:=lifecycle["timing_incomplete"].(bool); ok && incomplete { t.Fatalf("completed lifecycle incorrectly incomplete: %+v",lifecycle) }
+}
