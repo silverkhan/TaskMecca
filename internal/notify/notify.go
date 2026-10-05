@@ -24,6 +24,7 @@ type TelegramConfig struct {
  Enabled bool `json:"enabled"`
  Kinds map[string]bool `json:"kinds,omitempty"`
  Delivered []string `json:"delivered,omitempty"`
+ TaskPhases map[string]int `json:"task_phases,omitempty"`
  ActivatedAt string `json:"activated_at,omitempty"`
 }
 type TelegramStatus struct {
@@ -63,9 +64,11 @@ func mergeDefaultKinds(kinds map[string]bool) map[string]bool {
  out:=defaultKinds(); for kind,enabled:=range kinds { out[kind]=enabled }; return out
 }
 func loadTelegram(project string)(TelegramConfig,error){
- cfg:=TelegramConfig{Kinds:defaultKinds()}; data,err:=os.ReadFile(telegramPath(project))
+ cfg:=TelegramConfig{Kinds:defaultKinds(),TaskPhases:map[string]int{}}; data,err:=os.ReadFile(telegramPath(project))
  if errors.Is(err,os.ErrNotExist){return cfg,nil}; if err!=nil{return cfg,err}
- if err=json.Unmarshal(data,&cfg);err!=nil{return cfg,err}; cfg.Kinds=mergeDefaultKinds(cfg.Kinds); return cfg,nil
+ if err=json.Unmarshal(data,&cfg);err!=nil{return cfg,err}; cfg.Kinds=mergeDefaultKinds(cfg.Kinds)
+ if cfg.TaskPhases==nil { cfg.TaskPhases=map[string]int{} }
+ return cfg,nil
 }
 func saveTelegram(project string,cfg TelegramConfig)error{
  path:=telegramPath(project); if err:=os.MkdirAll(filepath.Dir(path),0700);err!=nil{return err}
@@ -109,6 +112,36 @@ func notificationAfterActivation(at,activatedAt string)bool{
  cutover,err:=time.Parse(time.RFC3339Nano,strings.TrimSpace(activatedAt));if err!=nil{return false}
  return eventAt.After(cutover)
 }
+func deliveryPhaseRank(kind string)int{
+ switch strings.ToLower(strings.TrimSpace(kind)){
+ case "registered": return 10
+ case "intervention","approval","stalled","interrupted","runtime_unknown": return 15
+ case "started": return 20
+ case "finalize": return 30
+ case "completed": return 40
+ default: return 0
+ }
+}
+func shouldSuppressRegression(kind string,phase int)bool{
+ kind=strings.ToLower(strings.TrimSpace(kind))
+ switch kind {
+ case "registered": return phase>=10
+ case "started": return phase>=20
+ case "finalize": return phase>=30
+ case "completed": return phase>=40
+ case "intervention","approval","stalled","interrupted","runtime_unknown":
+  return phase>=30
+ default:
+  return phase>=40
+ }
+}
+func advanceDeliveryPhase(cfg *TelegramConfig,e Event){
+ if cfg.TaskPhases==nil { cfg.TaskPhases=map[string]int{} }
+ task:=strings.ToUpper(strings.TrimSpace(e.TaskID)); if task=="" { return }
+ rank:=deliveryPhaseRank(e.Kind)
+ if rank>cfg.TaskPhases[task] { cfg.TaskPhases[task]=rank }
+}
+
 func notificationKindRank(kind string)int{
  switch strings.ToLower(strings.TrimSpace(kind)){
  case "registered": return 10
@@ -138,11 +171,24 @@ func Deliver(project string,events []Event)[]error{
  telegramMu.Lock();defer telegramMu.Unlock();cfg,err:=loadTelegram(project);if err!=nil{return []error{err}};if !cfg.Enabled||cfg.ChatID==0{return nil}
  seen:=map[string]bool{};for _,id:=range cfg.Delivered{seen[id]=true};errs:=[]error{};dirty:=false;ch:=telegramChannel{cfg}
 
+ // Reconstruct lifecycle floors from already-consumed event IDs so existing
+ // Telegram configs gain monotonic delivery semantics without replaying history.
+ beforePhases:=len(cfg.TaskPhases)
+ for _,e:=range events {
+  if e.ID!=""&&seen[e.ID] {
+   task:=strings.ToUpper(strings.TrimSpace(e.TaskID))
+   old:=cfg.TaskPhases[task]
+   advanceDeliveryPhase(&cfg,e)
+   if cfg.TaskPhases[task]!=old { dirty=true }
+  }
+ }
+ if len(cfg.TaskPhases)!=beforePhases { dirty=true }
+
  // Existing installations predate the channel activation watermark. Their
  // current event set is historical baseline, not a queue to replay.
  if strings.TrimSpace(cfg.ActivatedAt)==""{
   cfg.ActivatedAt=time.Now().UTC().Format(time.RFC3339Nano)
-  for _,e:=range events{if e.ID!=""&&!seen[e.ID]{seen[e.ID]=true;cfg.Delivered=append(cfg.Delivered,e.ID)}}
+  for _,e:=range events{if e.ID!=""&&!seen[e.ID]{seen[e.ID]=true;cfg.Delivered=append(cfg.Delivered,e.ID);advanceDeliveryPhase(&cfg,e)}}
   if len(cfg.Delivered)>250{cfg.Delivered=append([]string{},cfg.Delivered[len(cfg.Delivered)-250:]...)}
   if err:=saveTelegram(project,cfg);err!=nil{return []error{err}}
   return nil
@@ -151,14 +197,22 @@ func Deliver(project string,events []Event)[]error{
  sort.SliceStable(events,func(i,j int)bool{return notificationEventLess(events[i],events[j])})
  for _,e:=range events{
   if e.ID==""||seen[e.ID]{continue}
-  // Events that predate channel activation, or occurred while a kind was
-  // disabled, are consumed without delivery so enabling/reconnecting cannot
-  // backfill them later. Delivery failures remain unconsumed and are retried.
-  if !notificationAfterActivation(e.At,cfg.ActivatedAt)||!cfg.Kinds[e.Kind]{
+  task:=strings.ToUpper(strings.TrimSpace(e.TaskID))
+  phase:=cfg.TaskPhases[task]
+  // A later lifecycle stage is a durable delivery floor. Consume any newly
+  // discovered older-stage event instead of surfacing a chronological
+  // regression such as Completed -> Registered or Finalize -> Started.
+  if shouldSuppressRegression(e.Kind,phase){
    seen[e.ID]=true;cfg.Delivered=append(cfg.Delivered,e.ID);dirty=true;continue
   }
+  // Events that predate channel activation, or occurred while a kind was
+  // disabled, are consumed without delivery so enabling/reconnecting cannot
+  // backfill them later. They still advance the task lifecycle floor.
+  if !notificationAfterActivation(e.At,cfg.ActivatedAt)||!cfg.Kinds[e.Kind]{
+   seen[e.ID]=true;cfg.Delivered=append(cfg.Delivered,e.ID);advanceDeliveryPhase(&cfg,e);dirty=true;continue
+  }
   if err:=ch.Deliver(e);err!=nil{errs=append(errs,err);continue}
-  seen[e.ID]=true;cfg.Delivered=append(cfg.Delivered,e.ID);dirty=true
+  seen[e.ID]=true;cfg.Delivered=append(cfg.Delivered,e.ID);advanceDeliveryPhase(&cfg,e);dirty=true
  }
  if len(cfg.Delivered)>250{cfg.Delivered=append([]string{},cfg.Delivered[len(cfg.Delivered)-250:]...);dirty=true};if dirty{if err:=saveTelegram(project,cfg);err!=nil{errs=append(errs,err)}};return errs
 }
