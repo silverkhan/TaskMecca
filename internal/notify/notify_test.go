@@ -59,3 +59,35 @@ func TestExistingTelegramConfigGainsNewLifecycleDefaults(t *testing.T){
  if cfg.Kinds["stalled"] {t.Fatal("explicit disabled kind was overwritten")}
  if !cfg.Kinds["started"]||!cfg.Kinds["finalize"]||!cfg.Kinds["approval"] {t.Fatalf("new defaults missing: %v",cfg.Kinds)}
 }
+
+
+func TestTelegramDeliversLifecycleSequenceExactlyOnce(t *testing.T){
+ project:=t.TempDir()
+ sent:=[]string{}
+ server:=httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter,r *http.Request){
+  method:=r.URL.Path[strings.LastIndex(r.URL.Path,"/")+1:]
+  w.Header().Set("Content-Type","application/json")
+  switch method {
+  case "sendMessage":
+   var body map[string]any
+   if err:=json.NewDecoder(r.Body).Decode(&body);err!=nil{t.Fatal(err)}
+   sent=append(sent,body["text"].(string))
+   json.NewEncoder(w).Encode(map[string]any{"ok":true,"result":map[string]any{"message_id":len(sent)}})
+  default: http.Error(w,"unknown",404)
+  }
+ }))
+ defer server.Close()
+ old:=telegramAPIBase;telegramAPIBase=server.URL;defer func(){telegramAPIBase=old}()
+ if err:=saveTelegram(project,TelegramConfig{Token:"token",ChatID:123,Enabled:true,Kinds:defaultKinds()});err!=nil{t.Fatal(err)}
+ events:=[]Event{
+  {ID:"reg",TaskID:"B-500",Kind:"registered",Title:"Lifecycle",At:"2026-10-05T10:00:00Z"},
+  {ID:"start",TaskID:"B-500",Kind:"started",Title:"Lifecycle",At:"2026-10-05T10:01:00Z"},
+  {ID:"done",TaskID:"B-500",Kind:"completed",Title:"Lifecycle",At:"2026-10-05T10:02:00Z"},
+ }
+ if errs:=Deliver(project,events);len(errs)>0{t.Fatal(errs)}
+ if errs:=Deliver(project,events);len(errs)>0{t.Fatal(errs)}
+ if len(sent)!=3{t.Fatalf("sent=%d want 3: %v",len(sent),sent)}
+ if !strings.HasPrefix(sent[0],"📝 작업 등록")||!strings.HasPrefix(sent[1],"▶️ 작업 착수")||!strings.HasPrefix(sent[2],"✅ 작업 완료"){
+  t.Fatalf("unexpected lifecycle messages/order: %v",sent)
+ }
+}
