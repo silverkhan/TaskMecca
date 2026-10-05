@@ -39,11 +39,7 @@ func webSummaryItem(row Record,state string,waiting []string,reason map[string]a
     if signal!=nil { item["activity"]=signal }
     if len(reason)>0 {
         item["attention_reason"]=reason
-        switch toString(reason["type"]) {
-        case "completion_pending": item["state"]="awaiting_finalize"
-        case "user_intervention": item["state"]="needs_user"
-        case "runtime_stalled","execution_interrupted","runtime_unknown": item["state"]="stalled"
-        }
+        item["state"]=effectiveStateFromControl(state,reason)
     }
     return item
 }
@@ -227,7 +223,7 @@ func TaskDetail(project,root,id string) (map[string]any,error) {
     reason:=control.Attention[row.ID]
     if len(reason)>0 {
         item["attention_reason"]=reason
-        switch toString(reason["type"]) { case "completion_pending": item["state"]="awaiting_finalize"; case "user_intervention": item["state"]="needs_user"; case "runtime_stalled": item["state"]="stalled" }
+        item["state"]=effectiveStateFromControl(state,reason)
     }
     return item,nil
 }
