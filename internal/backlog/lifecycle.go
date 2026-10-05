@@ -272,18 +272,19 @@ func lifecycleTimings(project,root string,rows []Record) (map[string]map[string]
         }
 
         cached:=[]map[string]string{}
+        cacheFiltered:=false
         if raw,ok:=items[id].([]any); ok {
             for _,entryRaw:=range raw {
-                entry,ok:=entryRaw.(map[string]any); if !ok { continue }
+                entry,ok:=entryRaw.(map[string]any); if !ok { cacheFiltered=true; continue }
                 state,_:=entry["state"].(string); at,_:=entry["at"].(string)
                 dt,valid:=parseTime(at)
-                if !valid || (state!="todo"&&state!="doing"&&state!="hold"&&state!="done") { continue }
+                if !valid || (state!="todo"&&state!="doing"&&state!="hold"&&state!="done") { cacheFiltered=true; continue }
                 // Once a durable completion exists, no earlier-state observation
                 // at or after that completion can be part of the canonical
                 // history. Drop only those impossible tail entries; observations
                 // before completion remain valuable historical evidence.
                 if row.State=="done" && durableLastState=="done" && hasDurableLast && !dt.Before(durableLastTime) && state!="done" {
-                    journalChanged=true
+                    cacheFiltered=true
                     continue
                 }
                 // A provisional observation is historical evidence once seen.
@@ -292,6 +293,12 @@ func lifecycleTimings(project,root string,rows []Record) (map[string]map[string]
                 // registration/start transition that this observation proves.
                 cached=append(cached,map[string]string{"state":state,"at":at})
             }
+        }
+        if cacheFiltered {
+            raw:=[]any{}
+            for _,entry:=range cached { raw=append(raw,map[string]any{"state":entry["state"],"at":entry["at"]}) }
+            items[id]=raw
+            journalChanged=true
         }
 
         // Determine the latest state by timestamp across durable Git evidence
