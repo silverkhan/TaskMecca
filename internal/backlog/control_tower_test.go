@@ -27,3 +27,19 @@ func TestControlTowerConditionKeySeparatesExecutionEpisodes(t *testing.T) {
     _,second:=canonicalOperationalState(row,nil,map[string]any{"attempt_id":"run-b","health":"stale","runtime_state":"running"})
     if toString(first["key"])==toString(second["key"]) { t.Fatalf("episode keys collided: %+v %+v",first,second) }
 }
+
+
+func TestEffectiveStateProjectionCoversEveryCanonicalAttentionType(t *testing.T) {
+    cases:=[]struct{reason,want string}{
+        {"completion_pending","awaiting_finalize"},
+        {"user_intervention","needs_user"},
+        {"approval_required","needs_user"},
+        {"runtime_stalled","stalled"},
+        {"execution_interrupted","stalled"},
+        {"runtime_unknown","stalled"},
+    }
+    for _,tc:=range cases {
+        got:=effectiveStateFromControl("doing",map[string]any{"type":tc.reason})
+        if got!=tc.want { t.Fatalf("%s => %s want %s",tc.reason,got,tc.want) }
+    }
+}
