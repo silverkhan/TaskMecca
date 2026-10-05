@@ -9,7 +9,7 @@ import (
     "strings"
 )
 
-var lifecycleHookEvents=[]string{"SubagentStart","SubagentStop","PreToolUse","PostToolUse"}
+var lifecycleHookEvents=[]string{"SubagentStart","SubagentStop","PreToolUse","PermissionRequest","PostToolUse"}
 
 func hookEventsForProvider(provider string) []string {
     events:=append([]string{},lifecycleHookEvents...)
@@ -157,8 +157,10 @@ func readHookDocument(path string) (map[string]any,bool,error) {
 func desiredHook(event,provider string) map[string]any {
     command:=map[string]any{"type":"command","command":"task-mecca runtime observe "+provider,"timeout":3}
     entry:=map[string]any{"hooks":[]any{command}}
-    if event=="PreToolUse" || event=="PostToolUse" {
+    if event=="PreToolUse" || event=="PostToolUse" || event=="PermissionRequest" {
         entry["matcher"]="*"
+    }
+    if event=="PreToolUse" || event=="PostToolUse" {
         command["async"]=true
     }
     return entry
