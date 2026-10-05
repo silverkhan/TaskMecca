@@ -72,9 +72,9 @@ func Coordinate(project,root string,workerCap int) (map[string]any,error) {
     if err!=nil { return nil,err }
     readyReport,err:=Ready(project,root)
     if err!=nil { return nil,err }
-    timings,err:=LifecycleTimings(project,root)
-    if err!=nil { return nil,err }
-    activity:=runtimeActivity(project,rows,timings)
+    control:=reconcileControlTower(project,root,rows)
+    timings:=control.Timings
+    activity:=control.Activity
     workingChanges,workingTreeErr:=workingTreeChanges(project)
     continuityGaps:=[]map[string]any{}
     for _,row:=range rows {
