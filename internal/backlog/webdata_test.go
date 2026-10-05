@@ -178,3 +178,24 @@ func TestBacklogPageTreatsMissingBacklogAsUninitialized(t *testing.T) {
     if presence["status"]!="uninitialized" { t.Fatalf("presence=%+v",presence) }
     if page["repo"]!=filepath.Base(project) { t.Fatalf("repo=%v want=%s",page["repo"],filepath.Base(project)) }
 }
+
+
+func TestAttentionSnapshotPassesCanonicalLifecycleToNotificationEvents(t *testing.T) {
+    project:=t.TempDir()
+    backlogDir:=filepath.Join(project,"_task_mecca","data","backlog")
+    if err:=os.MkdirAll(backlogDir,0755); err!=nil { t.Fatal(err) }
+    // Establish an existing item so the next task receives a registration event.
+    if err:=os.WriteFile(filepath.Join(backlogDir,"0001.B-001.base.todo.md"),[]byte("---\nID: B-001\nTitle: Base\n---\n"),0644); err!=nil { t.Fatal(err) }
+    if _,err:=AttentionSnapshot(project,"",true); err!=nil { t.Fatal(err) }
+    task:=filepath.Join(backlogDir,"0444.B-444.started.doing.md")
+    if err:=os.WriteFile(task,[]byte("---\nID: B-444\nTitle: Started\nAgent: /root/controller/raichyu\nRuntimeProvider: codex\n---\n"),0644); err!=nil { t.Fatal(err) }
+    now:=time.Now().UTC()
+    episode:=runtimeobs.ExecutionEvent{EventKind:"episode",ObservedAt:now.Format(time.RFC3339Nano),AttemptID:"run-b444",Provider:"codex",SessionID:"root-1",RuntimeAgentID:"raichyu",EvidenceSource:runtimeobs.EvidenceReconciled,ObservationQuality:runtimeobs.QualityAuthoritative}
+    if err:=runtimeobs.AppendExecutionEvent(project,episode); err!=nil { t.Fatal(err) }
+    if _,err:=runtimeobs.BindAttempt(project,"run-b444","B-444","/root/controller/raichyu","dispatch","",nil,now); err!=nil { t.Fatal(err) }
+    snapshot,err:=AttentionSnapshot(project,"",true); if err!=nil { t.Fatal(err) }
+    events,_:=snapshot["notification_events"].([]map[string]any)
+    found:=false
+    for _,event:=range events { if toString(event["task_id"])=="B-444" && toString(event["kind"])=="started" { found=true } }
+    if !found { t.Fatalf("canonical started lifecycle was not forwarded to notification events: %+v",events) }
+}
