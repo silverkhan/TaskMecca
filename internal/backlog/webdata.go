@@ -57,33 +57,13 @@ func preferredRows(rows []Record) map[string]Record {
     return byID
 }
 
-func webStateMaps(project,root string,rows []Record) (map[string]bool,map[string]map[string]any,map[string]map[string]any,map[string]map[string]any,map[string]any) {
+func webWorkflowStateMaps(project,root string,rows []Record) (map[string]bool,map[string]map[string]any) {
     readyReport:=readyFromRows(project,root,rows)
     readyIDs:=map[string]bool{}
     blocked:=map[string]map[string]any{}
     if values,ok:=readyReport["ready"].([]map[string]any); ok { for _,x:=range values { readyIDs[toString(x["id"])]=true } }
     if values,ok:=readyReport["blocked"].([]map[string]any); ok { for _,x:=range values { blocked[toString(x["id"])]=x } }
-    hold:=HoldReview(rows)
-    reviewByPath:=map[string]map[string]any{}
-    for _,key:=range []string{"candidates","waiting"} {
-        if values,ok:=hold[key].([]map[string]any); ok { for _,x:=range values { reviewByPath[toString(x["path"])]=x } }
-    }
-    activity:=runtimeActivity(project,rows,map[string]map[string]any{})
-    activity=mergeRuntimeSignals(activity,runtimeLedgerSignals(project,rows,time.Now()))
-    return readyIDs,blocked,reviewByPath,activity,hold
-}
-
-func webAttentionMaps(project string,rows []Record) (map[string]map[string]any,map[string]map[string]any) {
-    hold:=HoldReview(rows)
-    reviewByPath:=map[string]map[string]any{}
-    for _,key:=range []string{"candidates","waiting"} {
-        if values,ok:=hold[key].([]map[string]any); ok {
-            for _,x:=range values { reviewByPath[toString(x["path"])]=x }
-        }
-    }
-    activity:=runtimeActivity(project,rows,map[string]map[string]any{})
-    activity=mergeRuntimeSignals(activity,runtimeLedgerSignals(project,rows,time.Now()))
-    return reviewByPath,activity
+    return readyIDs,blocked
 }
 
 func stateMatches(item map[string]any,statuses []string) bool {
