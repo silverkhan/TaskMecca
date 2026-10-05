@@ -10,15 +10,18 @@ import (
     "time"
 )
 
-const notificationJournalVersion = 2
+const notificationJournalVersion = 3
+const runtimeUnknownNotificationGrace = 60 * time.Second
 
 var notificationJournalMu sync.Mutex
 
 type notificationObservation struct {
-    FileState    string `json:"file_state"`
-    UpdatedAt    string `json:"updated_at,omitempty"`
-    ConditionKey string `json:"condition_key,omitempty"`
-    StartedAt    string `json:"started_at,omitempty"`
+    FileState         string `json:"file_state"`
+    UpdatedAt         string `json:"updated_at,omitempty"`
+    ConditionKey      string `json:"condition_key,omitempty"`
+    ConditionSince    string `json:"condition_since,omitempty"`
+    ConditionConsumed bool   `json:"condition_consumed,omitempty"`
+    StartedAt         string `json:"started_at,omitempty"`
 }
 
 type notificationJournal struct {
@@ -110,7 +113,8 @@ func NotificationEvents(project string, items map[string]map[string]any) ([]map[
         dirty = true
     }
 
-    now := time.Now().Format(time.RFC3339Nano)
+    nowTime := time.Now()
+    now := nowTime.Format(time.RFC3339Nano)
     for id, item := range items {
         fileState := toString(item["file_state"])
         updatedAt := toString(item["updated_at"])
@@ -163,6 +167,8 @@ func NotificationEvents(project string, items map[string]map[string]any) ([]map[
         }
 
         conditionKey := ""
+        conditionSince := ""
+        conditionConsumed := false
         if condition, ok := item["notification_condition"].(map[string]any); ok && len(condition) > 0 {
             kind := toString(condition["kind"])
             conditionKey = toString(condition["key"])
@@ -170,25 +176,58 @@ func NotificationEvents(project string, items map[string]map[string]any) ([]map[
                 conditionKey = kind + "\x00" + toString(condition["reason_type"])
             }
 
-            // Operational conditions have no trustworthy historical transition
-            // timestamp. Only changes from an already-observed canonical state
-            // are live notification episodes; first observation is baseline.
+            // User-actionable conditions are emitted immediately when a new
+            // episode is observed. runtime_unknown is different: it represents
+            // uncertainty in sensing, not a confirmed failure. Keep it visible
+            // in the UI immediately, but require a stable dwell before pushing
+            // an external alert so short hook gaps do not create false alarms.
             conditionChanged := (seen && previous.ConditionKey != conditionKey) || (!seen && registeredNow)
-            if !baseline && kind != "" && conditionChanged {
+            if conditionChanged {
+                conditionSince = now
+                conditionConsumed = false
+            } else if seen {
+                conditionSince = previous.ConditionSince
+                conditionConsumed = previous.ConditionConsumed
+                if conditionSince == "" {
+                    conditionSince = now
+                }
+            } else {
+                conditionSince = now
+            }
+
+            if baseline {
+                conditionConsumed = true
+            } else if kind != "" && !conditionConsumed {
+                emit := false
                 at := now
-                eventID := notificationEventID(id, kind, at)
-                if !notificationEventExists(journal.Events, eventID) {
-                    journal.Events = append(journal.Events, map[string]any{
-                        "id": eventID, "task_id": id, "kind": kind, "at": at,
-                        "title": toString(item["title"]),
-                        "reason_type": toString(condition["reason_type"]),
-                        "message": toString(condition["message"]),
-                        "resume_condition": toString(condition["resume_condition"]),
-                        "attempt_id": toString(condition["attempt_id"]),
-                        "runtime_state": toString(condition["runtime_state"]),
-                        "task_updated_at": updatedAt,
-                    })
-                    dirty = true
+                if kind == "runtime_unknown" {
+                    if since, parseErr := time.Parse(time.RFC3339Nano, conditionSince); parseErr == nil {
+                        threshold := since.Add(runtimeUnknownNotificationGrace)
+                        if !nowTime.Before(threshold) {
+                            emit = true
+                            at = threshold.Format(time.RFC3339Nano)
+                        }
+                    }
+                } else if conditionChanged || !conditionConsumed {
+                    emit = true
+                }
+
+                if emit {
+                    eventID := notificationEventID(id, kind, at)
+                    if !notificationEventExists(journal.Events, eventID) {
+                        journal.Events = append(journal.Events, map[string]any{
+                            "id": eventID, "task_id": id, "kind": kind, "at": at,
+                            "title": toString(item["title"]),
+                            "reason_type": toString(condition["reason_type"]),
+                            "message": toString(condition["message"]),
+                            "resume_condition": toString(condition["resume_condition"]),
+                            "attempt_id": toString(condition["attempt_id"]),
+                            "runtime_state": toString(condition["runtime_state"]),
+                            "task_updated_at": updatedAt,
+                        })
+                        dirty = true
+                    }
+                    conditionConsumed = true
                 }
             }
         }
@@ -221,7 +260,8 @@ func NotificationEvents(project string, items map[string]map[string]any) ([]map[
         }
 
         next := notificationObservation{
-            FileState: fileState, UpdatedAt: updatedAt, ConditionKey: conditionKey, StartedAt: startedAt,
+            FileState: fileState, UpdatedAt: updatedAt, ConditionKey: conditionKey,
+            ConditionSince: conditionSince, ConditionConsumed: conditionConsumed, StartedAt: startedAt,
         }
         if !seen || previous != next {
             journal.Items[id] = next

@@ -6,6 +6,7 @@ import (
     "path/filepath"
     "sync"
     "testing"
+    "time"
 )
 
 func TestNotificationEventsPersistCompletionTransition(t *testing.T) {
@@ -179,7 +180,6 @@ func TestControlTowerAllOperationalKindsJournalExactlyOnce(t *testing.T) {
         {"needs_user","waiting_user","intervention"},
         {"stale","running","stalled"},
         {"execution_interrupted","failed","interrupted"},
-        {"runtime_unknown","runtime_unknown","runtime_unknown"},
         {"awaiting_finalize","completed","finalize"},
     }
     for _,tc:=range cases {
@@ -199,6 +199,53 @@ func TestControlTowerAllOperationalKindsJournalExactlyOnce(t *testing.T) {
             if len(again)!=len(events){t.Fatalf("kind %s duplicated: %+v",tc.kind,again)}
         })
     }
+}
+
+
+func TestRuntimeUnknownNotificationRequiresStableDwell(t *testing.T) {
+    project:=t.TempDir()
+    base:=map[string]map[string]any{
+        "B-610":{"file_state":"doing","updated_at":"2026-10-06T00:00:00Z","title":"Transient hook gap"},
+    }
+    if events,err:=NotificationEvents(project,base);err!=nil||len(events)!=0{
+        t.Fatalf("baseline events=%+v err=%v",events,err)
+    }
+
+    unknown:=map[string]map[string]any{
+        "B-610":{
+            "file_state":"doing","updated_at":"2026-10-06T00:00:01Z","title":"Transient hook gap",
+            "notification_condition":map[string]any{
+                "kind":"runtime_unknown","key":"runtime:unknown\x00run-610",
+                "reason_type":"runtime_unknown","message":"temporarily unknown",
+                "attempt_id":"run-610","runtime_state":"runtime_unknown",
+            },
+        },
+    }
+    events,err:=NotificationEvents(project,unknown)
+    if err!=nil{t.Fatal(err)}
+    if len(events)!=0{t.Fatalf("runtime_unknown must not alert immediately: %+v",events)}
+
+    path:=filepath.Join(project,"_task_mecca",".runtime","notification_events.json")
+    data,err:=os.ReadFile(path);if err!=nil{t.Fatal(err)}
+    var journal notificationJournal
+    if err:=json.Unmarshal(data,&journal);err!=nil{t.Fatal(err)}
+    obs:=journal.Items["B-610"]
+    obs.ConditionSince=time.Now().Add(-runtimeUnknownNotificationGrace-time.Second).Format(time.RFC3339Nano)
+    obs.ConditionConsumed=false
+    journal.Items["B-610"]=obs
+    encoded,err:=json.MarshalIndent(journal,"","  ");if err!=nil{t.Fatal(err)}
+    if err:=os.WriteFile(path,append(encoded,'\n'),0644);err!=nil{t.Fatal(err)}
+
+    events,err=NotificationEvents(project,unknown)
+    if err!=nil{t.Fatal(err)}
+    count:=0
+    for _,event:=range events{
+        if toString(event["task_id"])=="B-610" && toString(event["kind"])=="runtime_unknown"{count++}
+    }
+    if count!=1{t.Fatalf("persistent runtime_unknown must alert once after dwell: %+v",events)}
+
+    again,err:=NotificationEvents(project,unknown);if err!=nil{t.Fatal(err)}
+    if len(again)!=len(events){t.Fatalf("runtime_unknown duplicated after consumption: %+v",again)}
 }
 
 func TestControlTowerHoldUserProducesCanonicalIntervention(t *testing.T) {

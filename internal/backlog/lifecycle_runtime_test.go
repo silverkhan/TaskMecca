@@ -122,6 +122,132 @@ func TestControlTowerRecoveryBindingSuppressesStartedNotification(t *testing.T) 
 }
 
 
+
+
+func TestFreshRecoveryBindingEmitsStartedNotification(t *testing.T) {
+    project:=t.TempDir()
+    backlogDir:=filepath.Join(project,"_task_mecca","data","backlog")
+    if err:=os.MkdirAll(backlogDir,0755);err!=nil{t.Fatal(err)}
+    task:=filepath.Join(backlogDir,"0902.B-902.fresh-recovery.doing.md")
+    body:="# B-902 Fresh recovery\n- Agent: /root/controller/worker-902\n- RuntimeProvider: codex\n"
+    if err:=os.WriteFile(task,[]byte(body),0644);err!=nil{t.Fatal(err)}
+
+    if events,err:=NotificationEvents(project,map[string]map[string]any{
+        "B-902":{"file_state":"doing","updated_at":time.Now().UTC().Format(time.RFC3339Nano),"title":"Fresh recovery"},
+    });err!=nil||len(events)!=0{
+        t.Fatalf("baseline events=%+v err=%v",events,err)
+    }
+
+    attemptID:="run-b902-fresh-recovery"
+    activityAt:=time.Now().UTC().Add(-5*time.Second)
+    activity:=runtimeobs.ExecutionEvent{
+        EventKind:"activity",ObservedAt:activityAt.Format(time.RFC3339Nano),
+        AttemptID:attemptID,Provider:"codex",SessionID:"root-fresh",RuntimeAgentID:"worker-902",
+        EvidenceSource:runtimeobs.EvidenceHook,ObservationQuality:runtimeobs.QualityObserved,
+    }
+    if err:=runtimeobs.AppendExecutionEvent(project,activity);err!=nil{t.Fatal(err)}
+
+    rows,err:=Catalog(project,"");if err!=nil{t.Fatal(err)}
+    control:=reconcileControlTower(project,"",rows)
+    lifecycle:=control.Timings["B-902"]
+    if lifecycle==nil||lifecycle["started_at"]==nil{
+        t.Fatalf("fresh recovery did not produce canonical start: %+v",lifecycle)
+    }
+    if suppressed,ok:=lifecycle["started_notification_suppressed"].(bool);ok&&suppressed{
+        t.Fatalf("fresh recovery start must remain notifyable: %+v",lifecycle)
+    }
+
+    events,err:=NotificationEvents(project,map[string]map[string]any{
+        "B-902":{
+            "file_state":"doing","updated_at":time.Now().UTC().Format(time.RFC3339Nano),"title":"Fresh recovery",
+            "lifecycle":lifecycle,
+        },
+    })
+    if err!=nil{t.Fatal(err)}
+    if len(events)!=1||toString(events[0]["kind"])!="started"{
+        t.Fatalf("fresh recovered start notification missing: %+v",events)
+    }
+}
+
+
+func TestRecoveredBindingThatStartsLaterEmitsStartedAndDropsTransientUnknown(t *testing.T) {
+    project:=t.TempDir()
+    if _,err:=runtimeobs.EnsureHooks(project,"codex");err!=nil{t.Fatal(err)}
+    backlogDir:=filepath.Join(project,"_task_mecca","data","backlog")
+    if err:=os.MkdirAll(backlogDir,0755);err!=nil{t.Fatal(err)}
+    task:=filepath.Join(backlogDir,"0901.B-901.live-recovery.doing.md")
+    body:="# B-901 Live recovery\n- Agent: /root/controller/worker-901\n- RuntimeProvider: codex\n"
+    if err:=os.WriteFile(task,[]byte(body),0644);err!=nil{t.Fatal(err)}
+
+    if events,err:=NotificationEvents(project,map[string]map[string]any{
+        "B-901":{"file_state":"doing","updated_at":time.Now().UTC().Format(time.RFC3339Nano),"title":"Live recovery"},
+    });err!=nil||len(events)!=0{
+        t.Fatalf("baseline events=%+v err=%v",events,err)
+    }
+
+    attemptID:="run-b901-live-recovery"
+    unknown:=runtimeobs.ExecutionEvent{
+        EventKind:"state",ObservedAt:time.Now().UTC().Add(-2*time.Second).Format(time.RFC3339Nano),
+        AttemptID:attemptID,Provider:"codex",SessionID:"root-live",RuntimeAgentID:"worker-901",
+        State:runtimeobs.StateRuntimeUnknown,EvidenceSource:runtimeobs.EvidenceHook,
+        ObservationQuality:runtimeobs.QualityObserved,
+    }
+    if err:=runtimeobs.AppendExecutionEvent(project,unknown);err!=nil{t.Fatal(err)}
+
+    rows,err:=Catalog(project,"");if err!=nil{t.Fatal(err)}
+    first:=reconcileControlTower(project,"",rows)
+    firstLifecycle:=first.Timings["B-901"]
+    if firstLifecycle!=nil && firstLifecycle["started_at"]!=nil{
+        t.Fatalf("runtime_unknown recovery must not manufacture a start: %+v",firstLifecycle)
+    }
+    firstEvents,err:=NotificationEvents(project,map[string]map[string]any{
+        "B-901":{
+            "file_state":"doing","updated_at":time.Now().UTC().Format(time.RFC3339Nano),"title":"Live recovery",
+            "lifecycle":firstLifecycle,"notification_condition":first.NotificationCondition["B-901"],
+        },
+    })
+    if err!=nil{t.Fatal(err)}
+    if len(firstEvents)!=0{
+        t.Fatalf("transient runtime_unknown must stay out of push notifications: %+v",firstEvents)
+    }
+
+    activity:=runtimeobs.ExecutionEvent{
+        EventKind:"activity",ObservedAt:time.Now().UTC().Format(time.RFC3339Nano),
+        AttemptID:attemptID,Provider:"codex",SessionID:"root-live",RuntimeAgentID:"worker-901",
+        EvidenceSource:runtimeobs.EvidenceHook,ObservationQuality:runtimeobs.QualityObserved,
+    }
+    if err:=runtimeobs.AppendExecutionEvent(project,activity);err!=nil{t.Fatal(err)}
+
+    rows,err=Catalog(project,"");if err!=nil{t.Fatal(err)}
+    second:=reconcileControlTower(project,"",rows)
+    lifecycle:=second.Timings["B-901"]
+    if lifecycle==nil||lifecycle["started_at"]==nil{
+        t.Fatalf("live recovery did not establish canonical start: %+v",lifecycle)
+    }
+    if suppressed,ok:=lifecycle["started_notification_suppressed"].(bool);ok&&suppressed{
+        t.Fatalf("later live start must not inherit recovery suppression: %+v",lifecycle)
+    }
+
+    events,err:=NotificationEvents(project,map[string]map[string]any{
+        "B-901":{
+            "file_state":"doing","updated_at":time.Now().UTC().Format(time.RFC3339Nano),"title":"Live recovery",
+            "lifecycle":lifecycle,
+        },
+    })
+    if err!=nil{t.Fatal(err)}
+    starts,unknowns:=0,0
+    for _,event:=range events{
+        if toString(event["task_id"])!="B-901"{continue}
+        switch toString(event["kind"]){
+        case "started": starts++
+        case "runtime_unknown": unknowns++
+        }
+    }
+    if starts!=1||unknowns!=0{
+        t.Fatalf("want one started and no transient runtime_unknown, got events=%+v",events)
+    }
+}
+
 func TestControlTowerDoesNotRecoverBindStaleUnboundAttempt(t *testing.T) {
     project:=t.TempDir()
     now:=time.Now().UTC()

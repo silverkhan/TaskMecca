@@ -23,12 +23,12 @@ func reconcileControlTower(project,root string,rows []Record) controlTowerSnapsh
     // Binding reconciliation belongs to the control plane, not to a view.
     // This is the only compatibility fallback for a missed explicit bind-agent:
     // exactly one live unbound attempt matching the canonical backlog assignment.
-    recoveredBindings:=reconcileCanonicalBindings(project,rows,time.Now())
+    now:=time.Now()
+    recoveredBindings:=reconcileCanonicalBindings(project,rows,now)
     timings,err:=lifecycleTimings(project,root,rows)
     if err!=nil { timings=map[string]map[string]any{} }
-    markRecoveryBindingStarts(project,timings)
     for id:=range recoveredBindings {
-        if lifecycle:=timings[id]; lifecycle!=nil {
+        if lifecycle:=timings[id]; lifecycle!=nil && lifecycle["started_at"]!=nil && !recoveredBindingStartIsLive(project,id,now) {
             lifecycle["started_notification_suppressed"]=true
         }
     }
@@ -126,6 +126,26 @@ func effectiveStateFromControl(fileState string,reason map[string]any) string {
 }
 
 
+const recoveredBindingStartLiveWindow = 60 * time.Second
+
+func recoveredBindingStartIsLive(project,taskID string,now time.Time) bool {
+    ledger,err:=runtimeobs.ReconcileLedger(project,10,now)
+    if err!=nil { return false }
+    taskID=strings.ToUpper(strings.TrimSpace(taskID))
+    for _,attempt:=range ledger.Attempts {
+        if strings.ToUpper(strings.TrimSpace(attempt.TaskID))!=taskID { continue }
+        if attempt.BindingState!=runtimeobs.BindingBound || !strings.EqualFold(strings.TrimSpace(attempt.BindingSource),"backlog_assignment") { continue }
+        if strings.TrimSpace(attempt.LastActivityAt)=="" { return false }
+        at,ok:=parseTime(attempt.LastActivityAt)
+        if !ok { return false }
+        age:=now.Sub(at)
+        if age<0 { age=0 }
+        return age<=recoveredBindingStartLiveWindow
+    }
+    return false
+}
+
+
 func reconcileCanonicalBindings(project string,rows []Record,now time.Time) map[string]bool {
     recovered:=map[string]bool{}
     ledger,err:=runtimeobs.ReconcileLedger(project,10,now)
@@ -162,20 +182,3 @@ func reconcileCanonicalBindings(project string,rows []Record,now time.Time) map[
     return recovered
 }
 
-
-func markRecoveryBindingStarts(project string,timings map[string]map[string]any) {
-    ledger,err:=runtimeobs.ReconcileLedger(project,10,time.Now())
-    if err!=nil { return }
-    for _,attempt:=range ledger.Attempts {
-        if attempt.Terminal || attempt.BindingState!=runtimeobs.BindingBound { continue }
-        if !strings.EqualFold(strings.TrimSpace(attempt.BindingSource),"backlog_assignment") { continue }
-        if !strings.EqualFold(strings.TrimSpace(attempt.BindingEvidence["correlation"]),"canonical_backlog_assignment") { continue }
-        id:=strings.ToUpper(strings.TrimSpace(attempt.TaskID))
-        if id=="" { continue }
-        lifecycle:=timings[id]
-        if lifecycle==nil || toString(lifecycle["started_at"])=="" { continue }
-        // Recovery binding repairs canonical truth for an already-existing
-        // execution. It is not a live user-facing transition.
-        lifecycle["started_notification_suppressed"]=true
-    }
-}
