@@ -298,7 +298,16 @@ func AttentionSnapshotFromRows(project,root string,rows []Record,reconcile bool)
     }
     sort.Slice(attention,func(i,j int)bool{return toString(attention[i]["id"])<toString(attention[j]["id"])})
     lightweight:=map[string]map[string]any{}
-    timings,timingErr:=lifecycleTimings(project,root,rows); if timingErr!=nil { timings=map[string]map[string]any{} }\n    for id,row:=range byID {\n        item:=map[string]any{"id":id,"title":row.Title,"file_state":row.State,"state":row.State,"updated_at":row.Mtime,"mtime":row.Mtime,"completed_at":nil}\n        if lifecycle,ok:=timings[id]; ok { item["lifecycle"]=lifecycle; item["completed_at"]=lifecycle["completed_at"] }\n        lightweight[id]=item\n    }
+    timings,timingErr:=lifecycleTimings(project,root,rows)
+    if timingErr!=nil { timings=map[string]map[string]any{} }
+    for id,row:=range byID {
+        item:=map[string]any{"id":id,"title":row.Title,"file_state":row.State,"state":row.State,"updated_at":row.Mtime,"mtime":row.Mtime,"completed_at":nil}
+        if lifecycle,ok:=timings[id]; ok {
+            item["lifecycle"]=lifecycle
+            item["completed_at"]=lifecycle["completed_at"]
+        }
+        lightweight[id]=item
+    }
     var events []map[string]any
     var err error
     if reconcile { events,err=NotificationEvents(project,lightweight) } else { events,err=ReadNotificationEvents(project) }
