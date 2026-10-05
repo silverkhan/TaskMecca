@@ -276,7 +276,16 @@ func lifecycleTimings(project,root string,rows []Record) (map[string]map[string]
             for _,entryRaw:=range raw {
                 entry,ok:=entryRaw.(map[string]any); if !ok { continue }
                 state,_:=entry["state"].(string); at,_:=entry["at"].(string)
-                if _,valid:=parseTime(at); !valid || (state!="todo"&&state!="doing"&&state!="hold"&&state!="done") { continue }
+                dt,valid:=parseTime(at)
+                if !valid || (state!="todo"&&state!="doing"&&state!="hold"&&state!="done") { continue }
+                // Once a durable completion exists, no earlier-state observation
+                // at or after that completion can be part of the canonical
+                // history. Drop only those impossible tail entries; observations
+                // before completion remain valuable historical evidence.
+                if row.State=="done" && durableLastState=="done" && hasDurableLast && !dt.Before(durableLastTime) && state!="done" {
+                    journalChanged=true
+                    continue
+                }
                 // A provisional observation is historical evidence once seen.
                 // Do not discard it merely because Git later records a newer
                 // terminal/current state; Git may never contain the earlier
