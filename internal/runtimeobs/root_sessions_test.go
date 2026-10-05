@@ -292,81 +292,51 @@ func TestRefreshCodexRootNamesIncludesTerminalRoot(t *testing.T) {
 }
 
 
-func TestRootSessionReactivatesWhenFreshActivityArrivesAfterTerminal(t *testing.T) {
+func TestRootSessionStaysSameWhileNewEpisodeBecomesActive(t *testing.T) {
     project:=t.TempDir()
     now:=time.Date(2026,10,5,5,0,0,0,time.UTC)
-    attemptID:="run-reactivate"
-    sessionID:="session-reactivate"
-    agentID:="agent-reactivate"
     ended:=now.Add(-time.Hour)
-    terminal:=ExecutionEvent{
-        EventKind:"state",ObservedAt:ended.Format(time.RFC3339Nano),
-        AttemptID:attemptID,Provider:"codex",SessionID:sessionID,
-        RuntimeAgentID:agentID,AgentPath:"/root/controller",
-        State:StateCompleted,Terminal:true,
-        EvidenceSource:EvidenceHook,ObservationQuality:QualityObserved,
-    }
+    terminal:=ExecutionEvent{EventKind:"state",ObservedAt:ended.Format(time.RFC3339Nano),AttemptID:"run-old",Provider:"codex",SessionID:"session-reactivate",RuntimeAgentID:"agent-reactivate",AgentPath:"/root/controller",State:StateCompleted,Terminal:true,EvidenceSource:EvidenceHook,ObservationQuality:QualityObserved}
     terminal.EventID=eventIDFor(terminal)
     if err:=AppendExecutionEvent(project,terminal); err!=nil { t.Fatal(err) }
-    if _,err:=BindAttempt(project,attemptID,"AID-OLD","/root/controller","explicit","",map[string]string{"dispatch":"old"},ended.Add(-time.Minute)); err!=nil { t.Fatal(err) }
-
-    before,err:=ReconcileLedger(project,10,now.Add(-time.Minute))
-    if err!=nil { t.Fatal(err) }
-    roots,err:=BuildRootSessions(project,before,now.Add(-time.Minute))
-    if err!=nil { t.Fatal(err) }
-    if len(roots.Items)!=1 || roots.Items[0].Status!=RootSessionTerminal {
-        t.Fatalf("root must initially be previous/terminal: %+v",roots.Items)
-    }
+    if _,err:=BindAttempt(project,"run-old","AID-OLD","/root/controller","explicit","",map[string]string{"dispatch":"old"},ended.Add(-time.Minute)); err!=nil { t.Fatal(err) }
+    before,err:=ReconcileLedger(project,10,now.Add(-time.Minute)); if err!=nil { t.Fatal(err) }
+    roots,err:=BuildRootSessions(project,before,now.Add(-time.Minute)); if err!=nil { t.Fatal(err) }
     rootID:=roots.Items[0].RootSessionID
 
-    activity:=ExecutionEvent{
-        EventKind:"activity",ObservedAt:now.Format(time.RFC3339Nano),
-        AttemptID:attemptID,Provider:"codex",SessionID:sessionID,
-        RuntimeAgentID:agentID,AgentPath:"/root/controller",
-        EvidenceSource:EvidenceHook,ObservationQuality:QualityObserved,
-    }
-    activity.EventID=eventIDFor(activity)
-    if err:=AppendExecutionEvent(project,activity); err!=nil { t.Fatal(err) }
+    payload:=`{"hook_event_name":"PreToolUse","session_id":"session-reactivate","agent_id":"agent-reactivate","tool_name":"shell","tool_use_id":"fresh"}`
+    fresh,err:=ObserveHook(project,"codex",strings.NewReader(payload),now); if err!=nil { t.Fatal(err) }
+    if fresh.AttemptID=="run-old" { t.Fatal("fresh activity must use a new immutable episode") }
 
-    after,err:=ReconcileLedger(project,10,now.Add(time.Second))
-    if err!=nil { t.Fatal(err) }
-    roots,err=BuildRootSessions(project,after,now.Add(time.Second))
-    if err!=nil { t.Fatal(err) }
+    after,err:=ReconcileLedger(project,10,now.Add(time.Second)); if err!=nil { t.Fatal(err) }
+    roots,err=BuildRootSessions(project,after,now.Add(time.Second)); if err!=nil { t.Fatal(err) }
     if len(roots.Items)!=1 { t.Fatalf("roots=%+v",roots.Items) }
     root:=roots.Items[0]
-    if root.RootSessionID!=rootID { t.Fatalf("reactivation changed root identity: before=%s after=%s",rootID,root.RootSessionID) }
-    if root.Status!=RootSessionActive || root.CurrentCount!=1 || root.TerminalCount!=0 {
-        t.Fatalf("fresh activity must reactivate previous root: %+v",root)
+    if root.RootSessionID!=rootID || root.Status!=RootSessionActive || root.CurrentCount!=1 || root.TerminalCount!=1 {
+        t.Fatalf("root/episode aggregation invalid: %+v",root)
     }
-    if root.LastActivityAt!=activity.ObservedAt {
-        t.Fatalf("last activity=%s want=%s",root.LastActivityAt,activity.ObservedAt)
-    }
-    if len(after.Attempts)!=1 { t.Fatalf("attempts=%+v",after.Attempts) }
-    reopened:=after.Attempts[0]
-    if reopened.BindingState!=BindingUnbound || reopened.TaskID!="" {
-        t.Fatalf("new runtime episode must not inherit prior task binding: %+v",reopened)
+    if len(after.Attempts)!=2 { t.Fatalf("attempts=%+v",after.Attempts) }
+    for _,a:=range after.Attempts {
+        if a.AttemptID=="run-old" && (!a.Terminal || a.TaskID!="AID-OLD") { t.Fatalf("old episode mutated: %+v",a) }
     }
 }
 
-
-func TestReactivationKeepsNewDispatchBinding(t *testing.T) {
+func TestNewDispatchEpisodeKeepsCompletedAttemptImmutable(t *testing.T) {
     project:=t.TempDir()
     ended:=time.Date(2026,10,5,6,0,0,0,time.UTC)
-    id:="run-reuse"
-    agent:="agent-reuse"
-    e:=ExecutionEvent{EventKind:"state",ObservedAt:ended.Format(time.RFC3339Nano),AttemptID:id,Provider:"codex",SessionID:"session-reuse",RuntimeAgentID:agent,AgentPath:"/root/controller/worker",State:StateCompleted,Terminal:true,EvidenceSource:EvidenceHook,ObservationQuality:QualityObserved}
-    e.EventID=eventIDFor(e)
-    if err:=AppendExecutionEvent(project,e); err!=nil { t.Fatal(err) }
-    boundAt:=ended.Add(time.Minute)
-    if _,err:=BindAttempt(project,id,"B-439","/root/controller/worker","dispatch","",map[string]string{"runtime_agent_id":agent},boundAt); err!=nil { t.Fatal(err) }
-    activityAt:=boundAt.Add(time.Second)
-    a:=ExecutionEvent{EventKind:"activity",ObservedAt:activityAt.Format(time.RFC3339Nano),AttemptID:id,Provider:"codex",SessionID:"session-reuse",RuntimeAgentID:agent,AgentPath:"/root/controller/worker",EvidenceSource:EvidenceHook,ObservationQuality:QualityObserved}
-    a.EventID=eventIDFor(a)
-    if err:=AppendExecutionEvent(project,a); err!=nil { t.Fatal(err) }
-    ledger,err:=ReconcileLedger(project,20,activityAt.Add(time.Second))
-    if err!=nil { t.Fatal(err) }
-    if len(ledger.Attempts)!=1 { t.Fatalf("attempts=%+v",ledger.Attempts) }
-    got:=ledger.Attempts[0]
-    if got.Terminal || got.CurrentState!=StateRunning { t.Fatalf("not reopened: %+v",got) }
-    if got.BindingState!=BindingBound || got.TaskID!="B-439" { t.Fatalf("new dispatch binding lost: %+v",got) }
+    old:=ExecutionEvent{EventKind:"state",ObservedAt:ended.Format(time.RFC3339Nano),AttemptID:"run-old",Provider:"codex",SessionID:"session-reuse",RuntimeAgentID:"agent-reuse",AgentPath:"/root/controller/worker",State:StateCompleted,Terminal:true,EvidenceSource:EvidenceHook,ObservationQuality:QualityObserved}
+    old.EventID=eventIDFor(old)
+    if err:=AppendExecutionEvent(project,old); err!=nil { t.Fatal(err) }
+    if _,err:=BindAttempt(project,"run-old","B-OLD","/root/controller/worker","dispatch","",nil,ended.Add(-time.Second)); err!=nil { t.Fatal(err) }
+    bound,err:=BindRuntimeAgent(project,"agent-reuse","B-439","/root/controller/worker","",ended.Add(time.Minute)); if err!=nil { t.Fatal(err) }
+    if bound.AttemptID=="run-old" { t.Fatal("dispatch reused terminal attempt") }
+    payload:=`{"hook_event_name":"PreToolUse","session_id":"session-reuse","agent_id":"agent-reuse","tool_name":"shell","tool_use_id":"fresh"}`
+    observed,err:=ObserveHook(project,"codex",strings.NewReader(payload),ended.Add(time.Minute+time.Second)); if err!=nil { t.Fatal(err) }
+    if observed.AttemptID!=bound.AttemptID { t.Fatalf("activity=%s binding=%s",observed.AttemptID,bound.AttemptID) }
+    ledger,err:=ReconcileLedger(project,20,ended.Add(2*time.Minute)); if err!=nil { t.Fatal(err) }
+    if len(ledger.Attempts)!=2 { t.Fatalf("attempts=%+v",ledger.Attempts) }
+    for _,a:=range ledger.Attempts {
+        if a.AttemptID=="run-old" && (!a.Terminal || a.TaskID!="B-OLD") { t.Fatalf("old episode mutated: %+v",a) }
+        if a.AttemptID==bound.AttemptID && (a.Terminal || a.TaskID!="B-439" || a.StartedAt=="") { t.Fatalf("new episode invalid: %+v",a) }
+    }
 }
