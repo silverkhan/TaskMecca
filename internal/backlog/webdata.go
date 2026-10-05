@@ -306,6 +306,8 @@ func AttentionSnapshotFromRows(project,root string,rows []Record,reconcile bool)
             item["lifecycle"]=lifecycle
             item["completed_at"]=lifecycle["completed_at"]
         }
+        if signal:=activity[id]; signal!=nil { item["activity"]=signal }
+        if reason:=webAttentionReason(row,reviewByPath[row.Path],activity[id]); len(reason)>0 { item["attention_reason"]=reason }
         lightweight[id]=item
     }
     var events []map[string]any
