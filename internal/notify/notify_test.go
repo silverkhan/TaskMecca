@@ -2,6 +2,7 @@ package notify
 
 import (
  "encoding/json"
+ "fmt"
  "net/http"
  "net/http/httptest"
  "strings"
@@ -89,5 +90,36 @@ func TestTelegramDeliversLifecycleSequenceExactlyOnce(t *testing.T){
  if len(sent)!=3{t.Fatalf("sent=%d want 3: %v",len(sent),sent)}
  if !strings.HasPrefix(sent[0],"📝 작업 등록")||!strings.HasPrefix(sent[1],"▶️ 작업 착수")||!strings.HasPrefix(sent[2],"✅ 작업 완료"){
   t.Fatalf("unexpected lifecycle messages/order: %v",sent)
+ }
+}
+
+
+func TestTelegramAllSupportedKindsHaveUserFacingLabelsAndDedupe(t *testing.T){
+ project:=t.TempDir()
+ sent:=[]string{}
+ server:=httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter,r *http.Request){
+  var body map[string]any
+  if err:=json.NewDecoder(r.Body).Decode(&body);err!=nil{t.Fatal(err)}
+  sent=append(sent,body["text"].(string))
+  w.Header().Set("Content-Type","application/json")
+  json.NewEncoder(w).Encode(map[string]any{"ok":true,"result":map[string]any{"message_id":len(sent)}})
+ }))
+ defer server.Close()
+ old:=telegramAPIBase;telegramAPIBase=server.URL;defer func(){telegramAPIBase=old}()
+ if err:=saveTelegram(project,TelegramConfig{Token:"token",ChatID:123,Enabled:true,Kinds:defaultKinds()});err!=nil{t.Fatal(err)}
+ expected:=[]struct{kind,prefix string}{
+  {"registered","📝 작업 등록"},{"started","▶️ 작업 착수"},{"intervention","🙋 사용자 개입 필요"},
+  {"approval","🔐 승인 필요"},{"stalled","⏳ 작업 정체 확인 필요"},{"interrupted","⚠️ 실행 중단/오류"},
+  {"runtime_unknown","❓ 실행 상태 확인 필요"},{"finalize","📌 완료 처리 필요"},{"completed","✅ 작업 완료"},
+ }
+ events:=make([]Event,0,len(expected))
+ for i,row:=range expected {
+  events=append(events,Event{ID:fmt.Sprintf("all-%d",i),TaskID:"B-700",Kind:row.kind,Title:"All kinds",At:fmt.Sprintf("2026-10-05T12:%02d:00Z",i)})
+ }
+ if errs:=Deliver(project,events);len(errs)>0{t.Fatal(errs)}
+ if errs:=Deliver(project,events);len(errs)>0{t.Fatal(errs)}
+ if len(sent)!=len(expected){t.Fatalf("sent=%d want=%d",len(sent),len(expected))}
+ for i,row:=range expected {
+  if !strings.HasPrefix(sent[i],row.prefix){t.Fatalf("kind=%s message=%q",row.kind,sent[i])}
  }
 }
