@@ -2204,7 +2204,6 @@ function bindHubActions() {
   if(changes)changes.addEventListener('click',showAvailableUpdateNotes);
   const up=$('#upgradeBtn');
   if(up)up.addEventListener('click',e=>performUpgrade(e.currentTarget));
-  bindChannelGesture();
 }
 
 function matchesStatusFilter(t, key) {
@@ -3569,6 +3568,7 @@ $('#notificationBtn')?.addEventListener('click',async()=>{
 });
 document.addEventListener('click',e=>{const panel=$('#notificationPanel');if(panel?.classList.contains('open')&&!panel.contains(e.target)&&!$('#notificationBtn')?.contains(e.target))panel.classList.remove('open')});
 $('#sidebarToggle').onclick=toggleSidebar;
+bindChannelGesture();
 $('#sidebar')?.addEventListener('mouseenter',()=>{if(state.sidebarCollapsed){state.sidebarPeek=true;applySidebarState();}});
 $('#sidebar')?.addEventListener('mouseleave',()=>{if(state.sidebarCollapsed){state.sidebarPeek=false;state.projectMenuOpen=false;applySidebarState();}});
 
