@@ -272,43 +272,62 @@ func lifecycleTimings(project,root string,rows []Record) (map[string]map[string]
         }
 
         cached:=[]map[string]string{}
+        cacheFiltered:=false
         if raw,ok:=items[id].([]any); ok {
             for _,entryRaw:=range raw {
-                entry,ok:=entryRaw.(map[string]any); if !ok { continue }
+                entry,ok:=entryRaw.(map[string]any); if !ok { cacheFiltered=true; continue }
                 state,_:=entry["state"].(string); at,_:=entry["at"].(string)
                 dt,valid:=parseTime(at)
-                if !valid || (state!="todo"&&state!="doing"&&state!="hold"&&state!="done") { continue }
-                if !hasDurableLast || !dt.Before(durableLastTime) {
-                    cached=append(cached,map[string]string{"state":state,"at":at})
+                if !valid || (state!="todo"&&state!="doing"&&state!="hold"&&state!="done") { cacheFiltered=true; continue }
+                // Once a durable completion exists, no earlier-state observation
+                // at or after that completion can be part of the canonical
+                // history. Drop only those impossible tail entries; observations
+                // before completion remain valuable historical evidence.
+                if row.State=="done" && durableLastState=="done" && hasDurableLast && !dt.Before(durableLastTime) && state!="done" {
+                    cacheFiltered=true
+                    continue
                 }
+                // A provisional observation is historical evidence once seen.
+                // Do not discard it merely because Git later records a newer
+                // terminal/current state; Git may never contain the earlier
+                // registration/start transition that this observation proves.
+                cached=append(cached,map[string]string{"state":state,"at":at})
             }
         }
-        if durableLastState==row.State {
-            if len(cached)>0 { delete(items,id); journalChanged=true }
-            cached=nil
-        } else {
-            known:=durableLastState
-            if len(cached)>0 { known=cached[len(cached)-1]["state"] }
-            if known!=row.State {
-                observedRaw:=row.Ctime
-                if observedRaw=="" { observedRaw=row.Mtime }
-                observed,valid:=parseTime(observedRaw)
-                if !valid { observed=now }
-                previous:=durableLastTime
-                hasPrevious:=hasDurableLast
-                if len(cached)>0 {
-                    if p,ok:=parseTime(cached[len(cached)-1]["at"]); ok { previous=p; hasPrevious=true }
-                }
-                if hasPrevious && observed.Before(previous) { observed=now }
-                cached=append(cached,map[string]string{
-                    "state":row.State,
-                    "at":observed.Format(time.RFC3339),
-                })
-                raw:=[]any{}
-                for _,entry:=range cached { raw=append(raw,map[string]any{"state":entry["state"],"at":entry["at"]}) }
-                items[id]=raw
-                journalChanged=true
+        if cacheFiltered {
+            raw:=[]any{}
+            for _,entry:=range cached { raw=append(raw,map[string]any{"state":entry["state"],"at":entry["at"]}) }
+            items[id]=raw
+            journalChanged=true
+        }
+
+        // Determine the latest state by timestamp across durable Git evidence
+        // and retained observations. Using cached[len-1] alone is unsafe after
+        // Git catches up because retained history can be older than Git.
+        known:=durableLastState
+        previous:=durableLastTime
+        hasPrevious:=hasDurableLast
+        for _,entry:=range cached {
+            if p,ok:=parseTime(entry["at"]); ok && (!hasPrevious || p.After(previous)) {
+                known=entry["state"]
+                previous=p
+                hasPrevious=true
             }
+        }
+        if durableLastState!=row.State && known!=row.State {
+            observedRaw:=row.Ctime
+            if observedRaw=="" { observedRaw=row.Mtime }
+            observed,valid:=parseTime(observedRaw)
+            if !valid { observed=now }
+            if hasPrevious && observed.Before(previous) { observed=now }
+            cached=append(cached,map[string]string{
+                "state":row.State,
+                "at":observed.Format(time.RFC3339),
+            })
+            raw:=[]any{}
+            for _,entry:=range cached { raw=append(raw,map[string]any{"state":entry["state"],"at":entry["at"]}) }
+            items[id]=raw
+            journalChanged=true
         }
         combined:=append([]lifecycleEvent{},durable...)
 
@@ -334,12 +353,8 @@ func lifecycleTimings(project,root string,rows []Record) (map[string]map[string]
             cached=filteredCached
         }
 
-        last:=""
-        if len(combined)>0 { last=combined[len(combined)-1].State }
         for _,entry:=range cached {
-            if entry["state"]==last { continue }
             combined=append(combined,lifecycleEvent{State:entry["state"],At:entry["at"],Source:"runtime_observed"})
-            last=entry["state"]
         }
         combinedEvents[id]=combined
     }
@@ -357,6 +372,7 @@ func lifecycleTimings(project,root string,rows []Record) (map[string]map[string]
         sort.SliceStable(seq,func(i,j int)bool {
             ti,_:=parseTime(seq[i].At); tj,_:=parseTime(seq[j].At); return ti.Before(tj)
         })
+        seq=collapseLifecycleEvents(seq)
         if len(seq)==0 { continue }
         type parsedEvent struct{ event lifecycleEvent; at time.Time }
         parsed:=[]parsedEvent{}
@@ -475,6 +491,33 @@ func lifecycleTimings(project,root string,rows []Record) (map[string]map[string]
         }
     }
     return result,nil
+}
+
+func lifecycleSourceRank(source string) int {
+    switch source {
+    case "execution_ledger": return 30
+    case "git": return 20
+    case "runtime_observed": return 10
+    default: return 0
+    }
+}
+
+func collapseLifecycleEvents(seq []lifecycleEvent) []lifecycleEvent {
+    if len(seq)==0 { return seq }
+    out:=make([]lifecycleEvent,0,len(seq))
+    for _,event:=range seq {
+        if len(out)>0 && out[len(out)-1].State==event.State {
+            // The same state observed twice without an intervening state is one
+            // transition. Prefer the stronger source, preserving runtime start
+            // over Git doing and Git over provisional filesystem observation.
+            if lifecycleSourceRank(event.Source)>lifecycleSourceRank(out[len(out)-1].Source) {
+                out[len(out)-1]=event
+            }
+            continue
+        }
+        out=append(out,event)
+    }
+    return out
 }
 
 func nilIfEmpty(value string) any {

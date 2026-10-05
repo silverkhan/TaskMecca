@@ -2470,43 +2470,47 @@ def task_state_timings(repo: Path, root: Optional[Path] = None) -> dict[str, dic
             at = str(entry.get("at", ""))
             dt = _parse_iso(at)
             if state in {"todo", "doing", "hold", "done"} and dt is not None:
-                if durable_last_dt is None or dt >= durable_last_dt.astimezone(dt.tzinfo):
-                    cached.append({"state": state, "at": at})
+                if (
+                    current_state == "done"
+                    and durable_last_state == "done"
+                    and durable_last_dt is not None
+                    and dt >= durable_last_dt.astimezone(dt.tzinfo)
+                    and state != "done"
+                ):
+                    journal_changed = True
+                    continue
+                # Once observed, a transition is historical evidence. A later
+                # Git commit of the current/final state must not erase an older
+                # registration/start transition that Git never recorded.
+                cached.append({"state": state, "at": at})
         if cached != cached_raw:
             _set_journal_events_for(journal, base, item_id, cached)
             journal_changed = True
 
-        # If Git already reflects the current state there is no unresolved worktree
-        # transition to observe.  Any older provisional journal is redundant.
-        if durable_last_state == current_state:
-            if cached:
-                _set_journal_events_for(journal, base, item_id, [])
-                journal_changed = True
-            cached = []
-        else:
-            known_state = cached[-1]["state"] if cached else durable_last_state
-            if known_state != current_state:
-                # Capture the first observable bound once.  Filesystem ctime/mtime is
-                # used only for this initial observation; subsequent backlog edits do
-                # not move the timer because the journal retains the original value.
-                observed_raw = str(row.get("ctime") or row.get("mtime") or "") if os.name != "nt" else str(row.get("mtime") or "")
-                observed_dt = _parse_iso(observed_raw) or now
-                observed_dt = observed_dt.astimezone(now.tzinfo)
-                previous_dt = _parse_iso(cached[-1]["at"]) if cached else durable_last_dt
-                if previous_dt is not None and observed_dt < previous_dt.astimezone(now.tzinfo):
-                    observed_dt = now
-                cached.append({"state": current_state, "at": observed_dt.isoformat(timespec="seconds")})
-                _set_journal_events_for(journal, base, item_id, cached)
-                journal_changed = True
+        known_state = durable_last_state
+        previous_dt = durable_last_dt
+        for entry in cached:
+            entry_dt = _parse_iso(entry["at"])
+            if entry_dt is not None and (previous_dt is None or entry_dt > previous_dt.astimezone(entry_dt.tzinfo)):
+                known_state = entry["state"]
+                previous_dt = entry_dt
+
+        if durable_last_state != current_state and known_state != current_state:
+            # Capture the first observable bound once. Filesystem ctime/mtime is
+            # used only for this initial observation; subsequent backlog edits do
+            # not move the timer because the journal retains the original value.
+            observed_raw = str(row.get("ctime") or row.get("mtime") or "") if os.name != "nt" else str(row.get("mtime") or "")
+            observed_dt = _parse_iso(observed_raw) or now
+            observed_dt = observed_dt.astimezone(now.tzinfo)
+            if previous_dt is not None and observed_dt < previous_dt.astimezone(now.tzinfo):
+                observed_dt = now
+            cached.append({"state": current_state, "at": observed_dt.isoformat(timespec="seconds")})
+            _set_journal_events_for(journal, base, item_id, cached)
+            journal_changed = True
 
         combined = list(durable)
-        last_combined_state = combined[-1][0] if combined else None
         for entry in cached:
-            state = entry["state"]
-            if state == last_combined_state:
-                continue
-            combined.append((state, entry["at"], "runtime_observed"))
-            last_combined_state = state
+            combined.append((entry["state"], entry["at"], "runtime_observed"))
         events[item_id] = combined
 
     if journal_changed:
@@ -2525,6 +2529,15 @@ def task_state_timings(repo: Path, root: Optional[Path] = None) -> dict[str, dic
         if not parsed:
             continue
         parsed.sort(key=lambda x: x[2])
+        collapsed: list[tuple[str, str, datetime, str]] = []
+        source_rank = {"runtime_observed": 10, "git": 20}
+        for event in parsed:
+            if collapsed and collapsed[-1][0] == event[0]:
+                if source_rank.get(event[3], 0) > source_rank.get(collapsed[-1][3], 0):
+                    collapsed[-1] = event
+                continue
+            collapsed.append(event)
+        parsed = collapsed
         created_at = parsed[0][1]
         has_doing = any(state == "doing" for state, _at, _dt, _source in parsed)
         has_hold = any(state == "hold" for state, _at, _dt, _source in parsed)

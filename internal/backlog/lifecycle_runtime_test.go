@@ -1,6 +1,7 @@
 package backlog
 
 import (
+    "encoding/json"
     "os"
     "path/filepath"
     "testing"
@@ -8,6 +9,63 @@ import (
 
     "github.com/silverkhan/TaskMecca/internal/runtimeobs"
 )
+
+func TestCompletedLifecyclePreservesObservedRegistrationAndStartWhenGitOnlyHasDone(t *testing.T) {
+    project:=t.TempDir()
+    gitRun(t,project,"init")
+    gitRun(t,project,"config","user.email","ci@example.invalid")
+    gitRun(t,project,"config","user.name","CI")
+
+    backlogDir:=filepath.Join(project,"_task_mecca","data","backlog")
+    if err:=os.MkdirAll(backlogDir,0755);err!=nil{t.Fatal(err)}
+    donePath:=filepath.Join(backlogDir,"0903.B-903.lifecycle.done.md")
+    if err:=os.WriteFile(donePath,[]byte("# B-903 Lifecycle preservation\n"),0644);err!=nil{t.Fatal(err)}
+
+    now:=time.Now().UTC()
+    journalPath:=filepath.Join(project,"_task_mecca",".runtime","lifecycle_observations.json")
+    if err:=os.MkdirAll(filepath.Dir(journalPath),0755);err!=nil{t.Fatal(err)}
+    absLedger,err:=filepath.Abs(backlogDir);if err!=nil{t.Fatal(err)}
+    journal:=map[string]any{
+        "version":float64(1),
+        "ledgers":map[string]any{
+            absLedger:map[string]any{
+                "items":map[string]any{
+                    "B-903":[]any{
+                        map[string]any{"state":"todo","at":now.Add(-2*time.Minute).Format(time.RFC3339)},
+                        map[string]any{"state":"doing","at":now.Add(-time.Minute).Format(time.RFC3339)},
+                    },
+                },
+            },
+        },
+    }
+    data,err:=json.MarshalIndent(journal,"","  ");if err!=nil{t.Fatal(err)}
+    if err:=os.WriteFile(journalPath,append(data,'\n'),0644);err!=nil{t.Fatal(err)}
+
+    gitRun(t,project,"add",".")
+    gitRun(t,project,"commit","-m","complete task")
+
+    rows,err:=Catalog(project,"");if err!=nil{t.Fatal(err)}
+    timings,err:=lifecycleTimings(project,"",rows);if err!=nil{t.Fatal(err)}
+    lifecycle:=timings["B-903"];if lifecycle==nil{t.Fatal("missing lifecycle")}
+    events,ok:=lifecycle["events"].([]map[string]any);if !ok{t.Fatalf("events=%T %+v",lifecycle["events"],lifecycle["events"])}
+    got:=[]string{}
+    for _,event:=range events{got=append(got,toString(event["state"]))}
+    want:=[]string{"todo","doing","done"}
+    if len(got)!=len(want){t.Fatalf("lifecycle states=%v want=%v lifecycle=%+v",got,want,lifecycle)}
+    for i:=range want{if got[i]!=want[i]{t.Fatalf("lifecycle states=%v want=%v",got,want)}}
+    if incomplete,ok:=lifecycle["timing_incomplete"].(bool);!ok||incomplete{
+        t.Fatalf("preserved observed start must keep completed lifecycle complete: %+v",lifecycle)
+    }
+
+    // A refresh after Git already matches the final state must not erase the
+    // historical observations from the journal.
+    again,err:=lifecycleTimings(project,"",rows);if err!=nil{t.Fatal(err)}
+    againEvents:=again["B-903"]["events"].([]map[string]any)
+    if len(againEvents)!=3{
+        t.Fatalf("completed lifecycle history disappeared on refresh: %+v",again["B-903"])
+    }
+}
+
 
 func TestLifecycleRejectsRuntimeStartBeforeRegistration(t *testing.T) {
     project:=t.TempDir()
