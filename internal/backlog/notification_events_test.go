@@ -1,6 +1,9 @@
 package backlog
 
 import (
+    "encoding/json"
+    "os"
+    "path/filepath"
     "sync"
     "testing"
 )
@@ -61,9 +64,13 @@ func TestNotificationEventsDoNotNotifyHistoricalDoneOnFirstObservation(t *testin
 func TestNotificationEventsPersistAttentionEpisode(t *testing.T) {
     project:=t.TempDir()
     items:=map[string]map[string]any{
-        "AID-39":{"file_state":"doing","updated_at":"2026-10-03T00:00:00Z","title":"Runtime sensing","notification_condition":map[string]any{"kind":"stalled","key":"runtime:stalled","reason_type":"runtime_stalled","message":"no activity","resume_condition":"check worker"}},
+        "AID-39":{"file_state":"doing","updated_at":"2026-10-03T00:00:00Z","title":"Runtime sensing"},
     }
     events,err:=NotificationEvents(project,items); if err!=nil { t.Fatal(err) }
+    if len(events)!=0 { t.Fatalf("baseline events=%v",events) }
+
+    items["AID-39"]["notification_condition"]=map[string]any{"kind":"stalled","key":"runtime:stalled","reason_type":"runtime_stalled","message":"no activity","resume_condition":"check worker"}
+    events,err=NotificationEvents(project,items); if err!=nil { t.Fatal(err) }
     if len(events)!=1 { t.Fatalf("events=%v",events) }
     if events[0]["kind"]!="stalled" || events[0]["task_id"]!="AID-39" { t.Fatalf("event=%v",events[0]) }
     again,err:=NotificationEvents(project,items); if err!=nil { t.Fatal(err) }
@@ -200,4 +207,117 @@ func TestControlTowerHoldUserProducesCanonicalIntervention(t *testing.T) {
     if toString(reason["type"])!="user_intervention" || toString(condition["kind"])!="intervention" {
         t.Fatalf("reason=%+v condition=%+v",reason,condition)
     }
+}
+
+
+func TestNotificationEventsLegacyJournalMigrationDoesNotBackfillCurrentState(t *testing.T) {
+    project:=t.TempDir()
+    path:=filepath.Join(project,"_task_mecca",".runtime","notification_events.json")
+    if err:=os.MkdirAll(filepath.Dir(path),0755);err!=nil{t.Fatal(err)}
+    legacy:=`{
+  "version": 1,
+  "items": {
+    "B-800": {
+      "file_state": "doing",
+      "updated_at": "2026-10-05T11:20:00Z",
+      "attention_key": "legacy-attention",
+      "runtime_key": "legacy-runtime",
+      "started_at": "2026-10-05T11:00:00Z"
+    }
+  },
+  "events": []
+}`
+    if err:=os.WriteFile(path,[]byte(legacy),0644);err!=nil{t.Fatal(err)}
+
+    items:=map[string]map[string]any{
+        "B-800":{
+            "file_state":"doing","updated_at":"2026-10-05T11:20:00Z","title":"Existing",
+            "lifecycle":map[string]any{"started_at":"2026-10-05T11:00:00Z"},
+            "notification_condition":map[string]any{
+                "kind":"stalled","key":"runtime:stalled:run-old",
+                "reason_type":"runtime_stalled","message":"existing condition",
+            },
+        },
+    }
+    events,err:=NotificationEvents(project,items)
+    if err!=nil{t.Fatal(err)}
+    if len(events)!=0{t.Fatalf("schema migration must baseline current state, got %+v",events)}
+
+    data,err:=os.ReadFile(path);if err!=nil{t.Fatal(err)}
+    var journal notificationJournal
+    if err:=json.Unmarshal(data,&journal);err!=nil{t.Fatal(err)}
+    if journal.Version!=notificationJournalVersion{t.Fatalf("version=%d",journal.Version)}
+    if journal.Items["B-800"].ConditionKey!="runtime:stalled:run-old"{
+        t.Fatalf("condition key not migrated into baseline: %+v",journal.Items["B-800"])
+    }
+}
+
+func TestNotificationEventsColdStartBaselinesHistoricalStartedAndCondition(t *testing.T) {
+    project:=t.TempDir()
+    items:=map[string]map[string]any{
+        "B-801":{
+            "file_state":"doing","updated_at":"2026-10-04T08:00:00Z","title":"Historical",
+            "lifecycle":map[string]any{"started_at":"2026-10-04T07:30:00Z"},
+            "notification_condition":map[string]any{
+                "kind":"finalize","key":"runtime:finalize:run-old",
+                "reason_type":"completion_pending","message":"historical",
+            },
+        },
+    }
+    events,err:=NotificationEvents(project,items)
+    if err!=nil{t.Fatal(err)}
+    if len(events)!=0{t.Fatalf("cold start must establish baseline without backfill: %+v",events)}
+}
+
+
+func TestNotificationEventsRecoveredBindingDoesNotEmitStarted(t *testing.T) {
+    project:=t.TempDir()
+    base:=map[string]map[string]any{
+        "B-802":{"file_state":"doing","updated_at":"2026-10-05T12:00:00Z","title":"Recovered"},
+    }
+    if events,err:=NotificationEvents(project,base);err!=nil||len(events)!=0{
+        t.Fatalf("baseline events=%+v err=%v",events,err)
+    }
+
+    recovered:=map[string]map[string]any{
+        "B-802":{
+            "file_state":"doing","updated_at":"2026-10-05T12:00:00Z","title":"Recovered",
+            "lifecycle":map[string]any{
+                "started_at":"2026-10-05T12:05:00Z",
+                "started_notification_suppressed":true,
+            },
+        },
+    }
+    events,err:=NotificationEvents(project,recovered)
+    if err!=nil{t.Fatal(err)}
+    if len(events)!=0{t.Fatalf("recovery binding must not emit started: %+v",events)}
+
+    recovered["B-802"]["lifecycle"]=map[string]any{
+        "started_at":"2026-10-05T12:05:00Z",
+        "started_notification_suppressed":false,
+    }
+    again,err:=NotificationEvents(project,recovered)
+    if err!=nil{t.Fatal(err)}
+    if len(again)!=0{t.Fatalf("same recovered start must remain consumed: %+v",again)}
+}
+
+func TestNotificationEventsDeletedJournalRebaselinesInsteadOfReplaying(t *testing.T) {
+    project:=t.TempDir()
+    base:=map[string]map[string]any{
+        "B-803":{"file_state":"todo","updated_at":"2026-10-05T12:00:00Z","title":"Rebaseline"},
+    }
+    if _,err:=NotificationEvents(project,base);err!=nil{t.Fatal(err)}
+    running:=map[string]map[string]any{
+        "B-803":{
+            "file_state":"doing","updated_at":"2026-10-05T12:01:00Z","title":"Rebaseline",
+            "lifecycle":map[string]any{"started_at":"2026-10-05T12:01:00Z"},
+        },
+    }
+    events,err:=NotificationEvents(project,running);if err!=nil{t.Fatal(err)}
+    if len(events)!=1||events[0]["kind"]!="started"{t.Fatalf("expected live start before deletion: %+v",events)}
+
+    journalPath:=filepath.Join(project,"_task_mecca",".runtime","notification_events.json")
+    if err:=os.Remove(journalPath);err!=nil{t.Fatal(err)}
+    events,err=NotificationEvents(project,running);if err!=nil{t.Fatal(err)}
+    if len(events)!=0{t.Fatalf("journal recovery must baseline current state, got %+v",events)}
 }
