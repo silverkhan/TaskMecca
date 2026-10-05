@@ -185,9 +185,15 @@ func Handler(project,root,version string) (http.Handler,error) {
 func handler(project,root,version,instanceID,controlToken string,restartCh chan<- maintenance.UpgradeResult,stopCh chan<- struct{}) (http.Handler,error) {
     initialCtx,initialErr:=webContext(project,root)
     if initialErr!=nil { return nil,initialErr }
-    if selected,_,selectErr:=resolveBacklog(project,initialCtx,url.Values{}); selectErr==nil {
-        ensureAttentionFeed(project,selected)
+    monitorRoot:=root
+    if selected,_,selectErr:=resolveBacklog(project,initialCtx,url.Values{}); selectErr==nil && selected!="" {
+        monitorRoot=selected
     }
+    // The control/notification feed is a service responsibility, not a browser
+    // subscription side effect. Start it even before a backlog exists; when
+    // root is empty the periodic snapshot will discover the canonical backlog
+    // as soon as Registrar creates it.
+    ensureAttentionFeed(project,monitorRoot)
     mux:=http.NewServeMux()
 
     projectFor:=func(r *http.Request) string {
