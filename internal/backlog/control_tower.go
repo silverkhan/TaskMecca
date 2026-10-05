@@ -26,6 +26,7 @@ func reconcileControlTower(project,root string,rows []Record) controlTowerSnapsh
     recoveredBindings:=reconcileCanonicalBindings(project,rows,time.Now())
     timings,err:=lifecycleTimings(project,root,rows)
     if err!=nil { timings=map[string]map[string]any{} }
+    markRecoveryBindingStarts(project,timings)
     for id:=range recoveredBindings {
         if lifecycle:=timings[id]; lifecycle!=nil {
             lifecycle["started_notification_suppressed"]=true
@@ -149,4 +150,22 @@ func reconcileCanonicalBindings(project string,rows []Record,now time.Time) map[
         }
     }
     return recovered
+}
+
+
+func markRecoveryBindingStarts(project string,timings map[string]map[string]any) {
+    ledger,err:=runtimeobs.ReconcileLedger(project,10,time.Now())
+    if err!=nil { return }
+    for _,attempt:=range ledger.Attempts {
+        if attempt.Terminal || attempt.BindingState!=runtimeobs.BindingBound { continue }
+        if !strings.EqualFold(strings.TrimSpace(attempt.BindingSource),"backlog_assignment") { continue }
+        if !strings.EqualFold(strings.TrimSpace(attempt.BindingEvidence["correlation"]),"canonical_backlog_assignment") { continue }
+        id:=strings.ToUpper(strings.TrimSpace(attempt.TaskID))
+        if id=="" { continue }
+        lifecycle:=timings[id]
+        if lifecycle==nil || toString(lifecycle["started_at"])=="" { continue }
+        // Recovery binding repairs canonical truth for an already-existing
+        // execution. It is not a live user-facing transition.
+        lifecycle["started_notification_suppressed"]=true
+    }
 }
