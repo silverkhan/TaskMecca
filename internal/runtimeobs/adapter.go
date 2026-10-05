@@ -21,6 +21,50 @@ func ObserveHook(project,provider string,input io.Reader,now time.Time) (Executi
     // SessionStart is session-level metadata, not an execution attempt. Keep it
     // in the same append-only journal so Root Session aggregation can consume it,
     // while BuildLedger deliberately excludes it from attempt accounting.
+    if strings.EqualFold(spike.HookEventName,"PermissionRequest") {
+        signal:=ControlSignal{
+            Kind:"approval",ObservedAt:spike.ObservedAt,
+            Provider:strings.ToLower(strings.TrimSpace(spike.Provider)),
+            SessionID:spike.SessionID,TurnID:spike.TurnID,
+            RuntimeAgentID:spike.AgentID,ToolName:spike.ToolName,
+        }
+        // PermissionRequest does not guarantee agent_id. Never infer task
+        // ownership from session/turn alone because parallel subagents may share
+        // both. Attribute only when the provider supplied an agent identity and
+        // exactly one live bound attempt matches it.
+        if strings.TrimSpace(spike.AgentID)!="" {
+            if ledger,readErr:=BuildLedger(project,20,now);readErr==nil {
+                matches:=[]Attempt{}
+                for _,attempt:=range ledger.Attempts {
+                    if attempt.Terminal || attempt.BindingState!=BindingBound { continue }
+                    if !strings.EqualFold(strings.TrimSpace(attempt.Provider),signal.Provider) { continue }
+                    if strings.TrimSpace(attempt.RuntimeAgentID)!=strings.TrimSpace(spike.AgentID) { continue }
+                    if spike.SessionID!="" && attempt.SessionID!="" && attempt.SessionID!=spike.SessionID { continue }
+                    matches=append(matches,attempt)
+                }
+                if len(matches)==1 {
+                    signal.AttemptID=matches[0].AttemptID
+                    signal.TaskID=matches[0].TaskID
+                    signal.AgentPath=matches[0].AgentPath
+                }
+            }
+        }
+        if signal.TaskID!="" {
+            signal.Message="할당된 Worker 실행에서 승인이 필요한 요청이 감지되었습니다."
+        } else {
+            signal.Message="실행 세션에서 승인이 필요한 요청이 감지되었습니다."
+        }
+        if err:=AppendControlSignal(project,signal);err!=nil{return ExecutionEvent{},err}
+        event:=ExecutionEvent{
+            EventID:signal.ID,EventKind:"control_signal",ObservedAt:signal.ObservedAt,
+            Provider:signal.Provider,SessionID:signal.SessionID,TurnID:signal.TurnID,
+            RuntimeAgentID:signal.RuntimeAgentID,AttemptID:signal.AttemptID,
+            TaskID:signal.TaskID,AgentPath:signal.AgentPath,ToolName:signal.ToolName,
+            Reason:signal.Message,EvidenceSource:EvidenceHook,ObservationQuality:QualityAuthoritative,
+        }
+        return event,nil
+    }
+
     if strings.EqualFold(spike.HookEventName,"SessionStart") {
         if strings.TrimSpace(spike.SessionID)=="" { return ExecutionEvent{},errors.New("SessionStart hook does not include session_id") }
         event:=ExecutionEvent{
