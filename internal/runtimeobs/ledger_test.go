@@ -263,3 +263,43 @@ func TestReusedWorkerStartCreatesImmutableExecutionEpisode(t *testing.T) {
     if new.Terminal || new.TaskID!="B-NEW" || new.CurrentState!=StateRunning { t.Fatalf("new episode invalid: %+v",new) }
     if old.StartedAt==new.StartedAt { t.Fatalf("episodes share lifecycle start: old=%s new=%s",old.StartedAt,new.StartedAt) }
 }
+
+
+func TestReusedWorkerActivityWithoutStartCreatesNewEpisode(t *testing.T) {
+    project:=t.TempDir()
+    t0:=time.Date(2026,10,5,12,0,0,0,time.UTC)
+    start:=`{"hook_event_name":"SubagentStart","session_id":"root-1","agent_id":"worker-1"}`
+    stop:=`{"hook_event_name":"SubagentStop","session_id":"root-1","agent_id":"worker-1"}`
+    activity:=`{"hook_event_name":"PreToolUse","session_id":"root-1","agent_id":"worker-1","tool_name":"shell","tool_use_id":"new-work"}`
+    first,err:=ObserveHook(project,"codex",strings.NewReader(start),t0); if err!=nil { t.Fatal(err) }
+    if _,err=BindAttempt(project,first.AttemptID,"B-OLD","/root/controller/worker","dispatch","",nil,t0.Add(time.Second)); err!=nil { t.Fatal(err) }
+    if _,err=ObserveHook(project,"codex",strings.NewReader(stop),t0.Add(time.Minute)); err!=nil { t.Fatal(err) }
+    second,err:=ObserveHook(project,"codex",strings.NewReader(activity),t0.Add(2*time.Minute)); if err!=nil { t.Fatal(err) }
+    if second.AttemptID==first.AttemptID { t.Fatal("post-terminal activity must create a new immutable episode") }
+    if _,err=BindAttempt(project,second.AttemptID,"B-NEW","/root/controller/worker","dispatch","",nil,t0.Add(2*time.Minute+time.Second)); err!=nil { t.Fatal(err) }
+    ledger,err:=BuildLedger(project,20,t0.Add(3*time.Minute)); if err!=nil { t.Fatal(err) }
+    var old,new Attempt
+    for _,a:=range ledger.Attempts { if a.AttemptID==first.AttemptID { old=a }; if a.AttemptID==second.AttemptID { new=a } }
+    if !old.Terminal || old.TaskID!="B-OLD" || old.EndedAt=="" { t.Fatalf("completed episode mutated: %+v",old) }
+    if new.Terminal || new.TaskID!="B-NEW" || new.StartedAt=="" || new.CurrentState!=StateRunning { t.Fatalf("new activity episode invalid: %+v",new) }
+}
+
+func TestDispatchBeforeActivitySplitsTerminalWorkerEpisode(t *testing.T) {
+    project:=t.TempDir()
+    t0:=time.Date(2026,10,5,13,0,0,0,time.UTC)
+    start:=`{"hook_event_name":"SubagentStart","session_id":"root-1","agent_id":"worker-1"}`
+    stop:=`{"hook_event_name":"SubagentStop","session_id":"root-1","agent_id":"worker-1"}`
+    activity:=`{"hook_event_name":"PreToolUse","session_id":"root-1","agent_id":"worker-1","tool_name":"shell","tool_use_id":"after-dispatch"}`
+    first,err:=ObserveHook(project,"codex",strings.NewReader(start),t0); if err!=nil { t.Fatal(err) }
+    if _,err=BindAttempt(project,first.AttemptID,"B-OLD","/root/controller/worker","dispatch","",nil,t0.Add(time.Second)); err!=nil { t.Fatal(err) }
+    if _,err=ObserveHook(project,"codex",strings.NewReader(stop),t0.Add(time.Minute)); err!=nil { t.Fatal(err) }
+    second,err:=BindRuntimeAgent(project,"worker-1","B-NEW","/root/controller/worker","",t0.Add(2*time.Minute)); if err!=nil { t.Fatal(err) }
+    if second.AttemptID==first.AttemptID { t.Fatal("dispatch after terminal must allocate a new episode") }
+    observed,err:=ObserveHook(project,"codex",strings.NewReader(activity),t0.Add(2*time.Minute+time.Second)); if err!=nil { t.Fatal(err) }
+    if observed.AttemptID!=second.AttemptID { t.Fatalf("activity routed to %s, want %s",observed.AttemptID,second.AttemptID) }
+    ledger,err:=BuildLedger(project,20,t0.Add(3*time.Minute)); if err!=nil { t.Fatal(err) }
+    var old,new Attempt
+    for _,a:=range ledger.Attempts { if a.AttemptID==first.AttemptID { old=a }; if a.AttemptID==second.AttemptID { new=a } }
+    if !old.Terminal || old.TaskID!="B-OLD" { t.Fatalf("old episode mutated: %+v",old) }
+    if new.TaskID!="B-NEW" || new.StartedAt=="" || new.CurrentState!=StateRunning { t.Fatalf("new episode did not recover start: %+v",new) }
+}
