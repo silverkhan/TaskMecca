@@ -240,6 +240,7 @@ func AttentionSnapshotFromRows(project,root string,rows []Record,reconcile bool)
         signal:=control.Activity[id]
         if row.Location=="active" && (row.State=="doing" || row.State=="hold") {
             item:=webSummaryItem(row,row.State,nil,reason,signal)
+            if lifecycle,ok:=control.Timings[id]; ok { item["lifecycle"]=lifecycle }
             if len(reason)>0 {
                 rowAtt:=map[string]any{"id":id}
                 for k,v:=range reason { rowAtt[k]=v }
@@ -269,7 +270,7 @@ func AttentionSnapshotFromRows(project,root string,rows []Record,reconcile bool)
     for _,event:=range events {
         id:=strings.ToUpper(toString(event["task_id"])); if id=="" { continue }
         if _,exists:=allItems[id]; exists { continue }
-        if row,ok:=byID[id]; ok { allItems[id]=webSummaryItem(row,row.State,nil,control.Attention[id],control.Activity[id]) }
+        if row,ok:=byID[id]; ok { item:=webSummaryItem(row,row.State,nil,control.Attention[id],control.Activity[id]); if lifecycle,ok:=control.Timings[id]; ok { item["lifecycle"]=lifecycle }; allItems[id]=item }
     }
     return map[string]any{"snapshot_at":time.Now().Format(time.RFC3339),"attention":attention,"all_items":allItems,"notification_events":events,"counts":map[string]any{"attention":len(attention)}},nil
 }

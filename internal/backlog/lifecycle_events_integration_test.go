@@ -227,3 +227,127 @@ func TestInterruptedFileTransitionRemainsExplicitlyUncertain(t *testing.T) {
 		t.Fatalf("interrupted transition was silently reconciled: %+v", row)
 	}
 }
+
+// The public projections must all carry the same immutable event identity;
+// no Web process or Hook is involved in this integration path.
+func TestGitlessCanonicalLifecycleFlowsToStatusWorkloadAttentionAndNotifications(t *testing.T) {
+	project := t.TempDir()
+	if _, err := AttentionSnapshot(project, "", true); err != nil {
+		t.Fatal(err)
+	}
+	backlogDir := filepath.Join(project, "_task_mecca", "data", "backlog")
+	if err := os.MkdirAll(backlogDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(backlogDir, "000001.B-1.flow.doing.md"), []byte("# B-1 Flow\n- Agent: /root/controller/worker\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	base := time.Now().UTC().Add(-time.Minute)
+	for i, event := range []LifecycleTransition{
+		{EventID: "flow-register", TaskID: "B-1", Kind: "registered", Actor: "/root/registrar", EvidenceSource: "registrar_report"},
+		{EventID: "flow-assign", TaskID: "B-1", Kind: "assigned", Actor: "/root/controller", EvidenceSource: "controller_report", AssignmentID: "flow-assignment"},
+		{EventID: "flow-start", TaskID: "B-1", Kind: "started", Actor: "/root/controller/worker", EvidenceSource: "worker_report", AssignmentID: "flow-assignment"},
+		{EventID: "flow-wait", TaskID: "B-1", Kind: "waiting", Actor: "/root/controller/worker", EvidenceSource: "worker_report", EvidenceRef: "user decision"},
+		{EventID: "flow-resume", TaskID: "B-1", Kind: "resumed", Actor: "/root/controller/worker", EvidenceSource: "worker_report"},
+	} {
+		event.OccurredAt = base.Add(time.Duration(i) * time.Second).Format(time.RFC3339Nano)
+		if _, err := RecordLifecycleTransition(project, event, base); err != nil {
+			t.Fatal(err)
+		}
+	}
+	check := func(name string, lifecycle map[string]any) {
+		t.Helper()
+		events, ok := lifecycle["events"].([]map[string]any)
+		if !ok || len(events) != 5 {
+			t.Fatalf("%s: canonical events missing: %+v", name, lifecycle)
+		}
+		if events[2]["event_id"] != "flow-start" || events[3]["event_id"] != "flow-wait" || events[4]["event_id"] != "flow-resume" {
+			t.Fatalf("%s: event identity changed: %+v", name, events)
+		}
+		if lifecycle["started_at"] != events[2]["at"] || lifecycle["lifecycle_inferred"] != false {
+			t.Fatalf("%s: timing inferred despite Worker report: %+v", name, lifecycle)
+		}
+	}
+	status, err := Status(project, "", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	active := status["active"].([]map[string]any)
+	if len(active) != 1 {
+		t.Fatalf("status active: %+v", active)
+	}
+	check("status", active[0]["lifecycle"].(map[string]any))
+	workload, err := WorkloadSnapshot(project, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	check("workload", workload["all_items"].(map[string]map[string]any)["B-1"]["lifecycle"].(map[string]any))
+	attention, err := AttentionSnapshot(project, "", true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	check("attention", attention["all_items"].(map[string]map[string]any)["B-1"]["lifecycle"].(map[string]any))
+	foundStart := false
+	for _, event := range attention["notification_events"].([]map[string]any) {
+		if event["kind"] == "started" && event["task_id"] == "B-1" {
+			foundStart = true
+			if event["lifecycle_event_id"] != "flow-start" {
+				t.Fatalf("notification lost canonical event ID: %+v", event)
+			}
+		}
+	}
+	if !foundStart {
+		t.Fatalf("Worker start did not reach notification projection: %+v", attention["notification_events"])
+	}
+}
+
+func TestSilentAssignmentDoesNotCreateStartTerminalOrHold(t *testing.T) {
+	project := t.TempDir()
+	backlogDir := filepath.Join(project, "_task_mecca", "data", "backlog")
+	if err := os.MkdirAll(backlogDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(backlogDir, "000001.B-1.silent.doing.md")
+	if err := os.WriteFile(path, []byte("# B-1 Silent\n- Agent: /root/controller/worker\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	old := time.Now().Add(-2 * time.Hour)
+	if err := os.Chtimes(path, old, old); err != nil {
+		t.Fatal(err)
+	}
+	for _, event := range []LifecycleTransition{
+		{EventID: "silent-register", TaskID: "B-1", Kind: "registered", Actor: "/root/registrar", EvidenceSource: "registrar_report", OccurredAt: old.Format(time.RFC3339Nano)},
+		{EventID: "silent-assign", TaskID: "B-1", Kind: "assigned", Actor: "/root/controller", EvidenceSource: "controller_report", OccurredAt: old.Add(time.Second).Format(time.RFC3339Nano)},
+	} {
+		if _, err := RecordLifecycleTransition(project, event, time.Now()); err != nil {
+			t.Fatal(err)
+		}
+	}
+	status, err := Status(project, "", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	active := status["active"].([]map[string]any)
+	if len(active) != 1 || active[0]["file_state"] != "doing" {
+		t.Fatalf("silence changed backlog state: %+v", active)
+	}
+	lifecycle := active[0]["lifecycle"].(map[string]any)
+	if lifecycle["started_at"] != nil || lifecycle["completed_at"] != nil {
+		t.Fatalf("silence fabricated start or terminal evidence: %+v", lifecycle)
+	}
+	workload, err := WorkloadSnapshot(project, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	activity := workload["all_items"].(map[string]map[string]any)["B-1"]["activity"].(map[string]any)
+	if activity["health"] == "execution_interrupted" || activity["health"] == "awaiting_finalize" {
+		t.Fatalf("silence was classified as explicit terminal evidence: %+v", activity)
+	}
+	info, err := os.Stat(path)
+	if err != nil || info.IsDir() {
+		t.Fatalf("doing backlog file changed after read: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(backlogDir, "000001.B-1.silent.hold.md")); !os.IsNotExist(err) {
+		t.Fatalf("silence created hold file: %v", err)
+	}
+}
