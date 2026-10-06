@@ -45,6 +45,10 @@ func TestDeliveryLedgerTracksFailureRetryAndRestart(t *testing.T) {
 	if errs := Deliver(project, []Event{e}); len(errs) != 0 {
 		t.Fatal(errs)
 	}
+	if attempts != 1 {
+		t.Fatalf("retry ran before its recorded deadline: attempts=%d", attempts)
+	}
+	forceRetryDue(t, project, e.ID)
 	if errs := Deliver(project, []Event{e}); len(errs) != 0 {
 		t.Fatal(errs)
 	}
@@ -144,8 +148,33 @@ func TestDeliveryLedgerRecoversUncertainAttempt(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if len(records) != 1 || records[0].State != "uncertain" || records[0].Attempts != 1 || !records[0].DuplicatePossible {
+		t.Fatalf("unanswered attempt should wait before retry: %+v", records)
+	}
+	forceRetryDue(t, project, e.ID)
+	if errs := Deliver(project, []Event{e}); len(errs) != 0 {
+		t.Fatal(errs)
+	}
+	records, err = DeliveryRecords(project, "B-2", e.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if len(records) != 1 || records[0].State != "sent" || records[0].Attempts != 2 || !records[0].DuplicatePossible {
 		t.Fatalf("uncertain recovery: %+v", records)
+	}
+}
+
+func forceRetryDue(t *testing.T, project, eventID string) {
+	t.Helper()
+	ledger, err := readLedger(project)
+	if err != nil {
+		t.Fatal(err)
+	}
+	record := ledger.Records[eventID]
+	record.NextRetryAt = time.Now().UTC().Add(-time.Second).Format(time.RFC3339Nano)
+	ledger.Records[eventID] = record
+	if err := saveLedger(project, ledger); err != nil {
+		t.Fatal(err)
 	}
 }
 

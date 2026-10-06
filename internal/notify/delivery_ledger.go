@@ -23,6 +23,7 @@ type DeliveryRecord struct {
 	LastAttemptAt     string            `json:"last_attempt_at,omitempty"`
 	LastResponseAt    string            `json:"last_response_at,omitempty"`
 	LastError         string            `json:"last_error,omitempty"`
+	NextRetryAt       string            `json:"next_retry_at,omitempty"`
 	DuplicatePossible bool              `json:"duplicate_possible,omitempty"`
 	AttemptHistory    []DeliveryAttempt `json:"attempt_history,omitempty"`
 }
@@ -114,6 +115,25 @@ func DeliveryRecords(project, taskID, eventID string) ([]DeliveryRecord, error) 
 
 func recordFor(e Event, now string) DeliveryRecord {
 	return DeliveryRecord{EventID: e.ID, TaskID: e.TaskID, Kind: e.Kind, Channel: "telegram", EventAt: e.At, State: "pending", CreatedAt: now}
+}
+
+func retryDelay(attempts int) time.Duration {
+	delay := 30 * time.Second
+	for i := 1; i < attempts && delay < 30*time.Minute; i++ {
+		delay *= 2
+	}
+	if delay > 30*time.Minute {
+		return 30 * time.Minute
+	}
+	return delay
+}
+
+func retryDue(record DeliveryRecord, now time.Time) bool {
+	if record.NextRetryAt == "" {
+		return true
+	}
+	due, err := time.Parse(time.RFC3339Nano, record.NextRetryAt)
+	return err != nil || !now.Before(due)
 }
 
 // Deliver reconciles canonical event IDs against durable channel outcomes.
@@ -212,6 +232,15 @@ func Deliver(project string, events []Event) []error {
 			if len(r.AttemptHistory) > 0 && r.AttemptHistory[len(r.AttemptHistory)-1].Outcome == "sending" {
 				r.AttemptHistory[len(r.AttemptHistory)-1].Outcome = "uncertain"
 			}
+			lastAttempt, parseErr := time.Parse(time.RFC3339Nano, r.LastAttemptAt)
+			if parseErr != nil {
+				lastAttempt = time.Now().UTC()
+			}
+			r.NextRetryAt = lastAttempt.Add(retryDelay(r.Attempts)).Format(time.RFC3339Nano)
+			ledger.Records[e.ID] = r
+			if err := saveLedger(project, ledger); err != nil {
+				return append(errs, err)
+			}
 		}
 		state := ""
 		switch {
@@ -236,6 +265,9 @@ func Deliver(project string, events []Event) []error {
 			dirty = true
 			continue
 		}
+		if !retryDue(r, time.Now().UTC()) {
+			continue
+		}
 		r.Attempts++
 		r.State = "sending"
 		r.LastAttemptAt = time.Now().UTC().Format(time.RFC3339Nano)
@@ -254,11 +286,13 @@ func Deliver(project string, events []Event) []error {
 			// Telegram descriptions or recipient identifiers.
 			r.LastError = "telegram request failed or response was unavailable"
 			r.DuplicatePossible = true
+			r.NextRetryAt = time.Now().UTC().Add(retryDelay(r.Attempts)).Format(time.RFC3339Nano)
 			errs = append(errs, sendErr)
 		} else {
 			r.State = "sent"
 			r.AttemptHistory[len(r.AttemptHistory)-1].Outcome = "sent"
 			r.LastError = ""
+			r.NextRetryAt = ""
 			advanceDeliveryPhase(&cfg, e)
 			if !seen[e.ID] {
 				cfg.Delivered = append(cfg.Delivered, e.ID)
