@@ -32,7 +32,7 @@ func ObserveHook(project,provider string,input io.Reader,now time.Time) (Executi
             ObservationQuality:QualityObserved,RawSHA256:spike.RawSHA256,
         }
         event.EventID=eventIDFor(event)
-        if err:=AppendExecutionEvent(project,event); err!=nil { return ExecutionEvent{},err }
+        if err:=appendHookEventOnce(project,&event); err!=nil { return ExecutionEvent{},err }
         return event,nil
     }
 
@@ -58,7 +58,7 @@ func ObserveHook(project,provider string,input io.Reader,now time.Time) (Executi
         }
     }
 
-    if err:=AppendExecutionEvent(project,event); err!=nil { return ExecutionEvent{},err }
+    if err:=appendHookEventOnce(project,&event); err!=nil { return ExecutionEvent{},err }
     return event,nil
 }
 

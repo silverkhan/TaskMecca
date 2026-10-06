@@ -48,11 +48,13 @@ func TestSignatureThemeBranding(t *testing.T) {
 func TestHandlerServesDashboardAPIsAndAssets(t *testing.T) {
     oldIndexProvider:=stableReleaseNotesIndexProvider
     oldDetailProvider:=stableReleaseNoteProvider
+    oldCurrentChannelDetailProvider:=currentChannelReleaseNoteProvider
     oldChannelOptionsProvider:=releaseChannelOptionsProvider
     oldChannelSwitchProvider:=releaseChannelSwitchProvider
     defer func(){
         stableReleaseNotesIndexProvider=oldIndexProvider
         stableReleaseNoteProvider=oldDetailProvider
+        currentChannelReleaseNoteProvider=oldCurrentChannelDetailProvider
         releaseChannelOptionsProvider=oldChannelOptionsProvider
         releaseChannelSwitchProvider=oldChannelSwitchProvider
     }()
@@ -62,6 +64,7 @@ func TestHandlerServesDashboardAPIsAndAssets(t *testing.T) {
     stableReleaseNoteProvider=func(version string)([]byte,error){
         return []byte(`{"version":"`+version+`","date":"2026-10-01","summary":{"ko":"원격","en":"Remote"},"sections":[],"migration":{"required":false}}`),nil
     }
+    currentChannelReleaseNoteProvider=stableReleaseNoteProvider
     releaseChannelOptionsProvider=func(current string) maintenance.ReleaseChannelOptions {
         return maintenance.ReleaseChannelOptions{
             CurrentVersion:current,CurrentChannel:"stable",
@@ -238,6 +241,25 @@ func TestHandlerServesDashboardAPIsAndAssets(t *testing.T) {
     handler.ServeHTTP(rec,req)
     if rec.Code!=http.StatusOK { t.Fatalf("runtime hooks status=%d body=%s",rec.Code,rec.Body.String()) }
     if _,err:=os.Stat(filepath.Join(root,".codex","hooks.json")); err!=nil { t.Fatalf("codex hook config not written: %v",err) }
+
+    // Historical runtime evidence cannot verify a hook configured only now.
+    req=httptest.NewRequest(http.MethodGet,"/api/workload",nil)
+    rec=httptest.NewRecorder()
+    handler.ServeHTTP(rec,req)
+    beforePayload:=map[string]any{}
+    if err:=json.Unmarshal(rec.Body.Bytes(),&beforePayload); err!=nil { t.Fatal(err) }
+    beforeRuntime:=beforePayload["runtime_observability"].(map[string]any)
+    for _,raw:=range beforeRuntime["hooks"].([]any) {
+        row:=raw.(map[string]any)
+        if row["provider"]=="codex" && row["state"]!="verification_required" {
+            t.Fatalf("historical event verified new hook: %+v",row)
+        }
+    }
+    config,err:=os.Stat(filepath.Join(root,".codex","hooks.json"))
+    if err!=nil { t.Fatal(err) }
+    observedAt:=time.Now().UTC()
+    if !observedAt.After(config.ModTime()) { observedAt=config.ModTime().Add(time.Nanosecond) }
+    if _,err:=runtimeobs.ObserveHook(root,"codex",strings.NewReader(`{"session_id":"web-hook-check","turn_id":"turn-1","hook_event_name":"SubagentStart","agent_id":"worker-web-hook-check"}`),observedAt); err!=nil { t.Fatal(err) }
 
     req=httptest.NewRequest(http.MethodGet,"/api/workload",nil)
     rec=httptest.NewRecorder()

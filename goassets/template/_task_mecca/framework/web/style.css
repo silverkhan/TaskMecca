@@ -761,6 +761,17 @@ body.release-modal-open{overflow:hidden}
 .runtime-hook-action{border:1px solid color-mix(in srgb,var(--accent) 42%,var(--border));border-radius:8px;background:color-mix(in srgb,var(--accent) 8%,var(--surface));color:var(--accent);font:inherit;font-size:10px;font-weight:700;padding:6px 9px;cursor:pointer}
 .runtime-hook-action.secondary{border-color:var(--border);background:var(--surface2);color:var(--muted)}
 .runtime-hook-action:disabled{opacity:.55;cursor:wait}
+.runtime-hook-scopes{display:grid;gap:0;margin-top:10px;border-top:1px solid var(--border)}
+.runtime-hook-scope{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid var(--border)}
+.runtime-hook-scope>div{min-width:0;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.runtime-hook-scope strong{font-size:11px}
+.runtime-hook-scope small{display:block;flex-basis:100%;min-width:0;color:var(--muted);font-size:10px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;overflow-wrap:anywhere}
+.runtime-hook-scope-note{margin:8px 0 0!important;color:var(--muted);font-size:10px!important;line-height:1.5!important}
+.runtime-hook-provider-guide:not([hidden]){margin-top:10px;padding-top:10px;border-top:1px solid var(--border);color:var(--text);font-size:11px;line-height:1.55}
+.runtime-hook-provider-guide ol{margin:7px 0;padding-left:18px;color:var(--muted)}
+.runtime-hook-provider-guide li+li{margin-top:5px}
+.runtime-hook-provider-guide a{color:var(--accent);text-decoration:underline;text-underline-offset:2px}
+.runtime-hook-action:focus-visible,.runtime-hook-onboarding-action:focus-visible,.runtime-hook-provider-guide a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 @media(max-width:680px){
   .runtime-hook-panel{grid-template-columns:1fr;padding:12px}
   .runtime-hook-card-head{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:start}
@@ -769,6 +780,7 @@ body.release-modal-open{overflow:hidden}
   .runtime-hook-event{justify-content:center;min-width:0;flex-wrap:wrap;text-align:center}
   .runtime-hook-actions{justify-content:stretch}
   .runtime-hook-action{width:100%;min-height:34px}
+  .runtime-hook-scope{align-items:stretch;flex-direction:column;gap:8px}
   .runtime-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
 }
 @media(max-width:390px){

@@ -53,21 +53,48 @@ func runtimeHookRows(project string, rows []Record, roots runtimeobs.RootSession
             diagnostics=append(diagnostics,map[string]string{"component":"runtime_hooks_"+provider,"error":hookErr.Error()})
             continue
         }
-        providerObservation:=observations[provider]
-        observedEvents:=map[string]bool{"activity":providerObservation.Activity,"start":providerObservation.Start,"stop":providerObservation.Stop}
-        observed:=observedEvents["activity"] || observedEvents["start"] || observedEvents["stop"]
+        globalSetup,globalErr:=runtimeobs.GlobalHookStatus(provider)
+        if globalErr!=nil {diagnostics=append(diagnostics,map[string]string{"component":"global_runtime_hooks_"+provider,"error":globalErr.Error()})}
+        scopeStatus:=func(config runtimeobs.HookSetup) map[string]any {
+            observedEvents:=map[string]bool{"activity":false,"start":false,"stop":false}
+            last:=""
+            if config.Installed && config.ConfiguredAt!="" {
+                var evidenceErr error
+                observedEvents,last,evidenceErr=runtimeobs.HookEvidenceSince(project,provider,config.ConfiguredAt)
+                if evidenceErr!=nil {diagnostics=append(diagnostics,map[string]string{"component":"hook_evidence_"+provider,"error":evidenceErr.Error()})}
+            }
+            observed:=observedEvents["activity"]||observedEvents["start"]||observedEvents["stop"]
+            state:="unconfigured"
+            if config.Installed {state="verification_required";if observed {state="observed"}}
+            return map[string]any{"path":config.Path,"configured":config.Installed,"configured_at":config.ConfiguredAt,"state":state,"observed":observed,"observed_events":observedEvents,"last_observed_at":last}
+        }
+        projectStatus:=scopeStatus(setup)
+        globalStatus:=scopeStatus(globalSetup)
+        // A provider event does not identify which configuration scope
+        // launched it when both are present. Do not certify either path.
+        if projectStatus["observed"]==true && globalStatus["observed"]==true {
+            for _,scoped:=range []map[string]any{projectStatus,globalStatus} {
+                if scoped["observed"]==true {scoped["state"]="source_unresolved";scoped["observed"]=false}
+            }
+        }
+        observedEvents:=map[string]bool{"activity":false,"start":false,"stop":false}
+        for _,kind:=range []string{"activity","start","stop"} {observedEvents[kind]=projectStatus["observed_events"].(map[string]bool)[kind]||globalStatus["observed_events"].(map[string]bool)[kind]}
+        observed:=observedEvents["activity"]||observedEvents["start"]||observedEvents["stop"]
+        lastObservedAt:=projectStatus["last_observed_at"].(string)
+        if globalLast:=globalStatus["last_observed_at"].(string);globalLast>lastObservedAt {lastObservedAt=globalLast}
         providerUsage:=usage[provider]
         state:="unconfigured"
-        if setup.Installed {
+        if setup.Installed||globalSetup.Installed {
             state="verification_required"
-            if providerUsage.CurrentEvidence || (!providerUsage.InUse && observed) { state="observed" }
+            if observed { state="observed" }
         }
         trustModel:="workspace_trust"
         if provider=="codex" { trustModel="hook_trust" }
         hookSetups=append(hookSetups,map[string]any{
-            "provider":provider,"path":setup.Path,"configured":setup.Installed,
+            "provider":provider,"path":setup.Path,"configured":setup.Installed||globalSetup.Installed,
+            "scopes":map[string]any{"project":projectStatus,"global":globalStatus},
             "configured_events":setup.Events,"state":state,"observed":observed,
-            "observed_events":observedEvents,"last_observed_at":providerObservation.LastObservedAt,
+            "observed_events":observedEvents,"last_observed_at":lastObservedAt,
             "trust_model":trustModel,"in_use":providerUsage.InUse,
             "usage_evidence":providerUsage.Sources,"current_evidence":providerUsage.CurrentEvidence,
             "needs_attention":providerUsage.InUse && state!="observed","applies_from":"new_root_session",
