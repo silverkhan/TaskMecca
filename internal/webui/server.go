@@ -574,6 +574,13 @@ func handler(project,root,version,instanceID,controlToken string,restartCh chan<
         writeJSON(w,map[string]any{"ok":true,"action":action,"hooks":results},200)
     })
 
+    mux.HandleFunc("/api/notifications/deliveries",func(w http.ResponseWriter,r *http.Request) {
+        activeProject:=projectFor(r)
+        if r.Method!="GET" { writeJSON(w,map[string]any{"error":"GET required"},405); return }
+        records,err:=notify.DeliveryRecords(activeProject,r.URL.Query().Get("task_id"),r.URL.Query().Get("event_id"))
+        if err!=nil { writeJSON(w,map[string]any{"error":err.Error()},500); return }
+        writeJSON(w,map[string]any{"deliveries":records},200)
+    })
     mux.HandleFunc("/api/notifications/telegram",func(w http.ResponseWriter,r *http.Request) {
         activeProject:=projectFor(r)
         if r.Method=="GET" {

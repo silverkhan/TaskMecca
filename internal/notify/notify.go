@@ -167,7 +167,7 @@ func notificationEventLess(a,b Event)bool{
  if a.TaskID!=b.TaskID{return a.TaskID<b.TaskID}
  return a.ID<b.ID
 }
-func Deliver(project string,events []Event)[]error{
+func deliverLegacy(project string,events []Event)[]error{
  telegramMu.Lock();defer telegramMu.Unlock();cfg,err:=loadTelegram(project);if err!=nil{return []error{err}};if !cfg.Enabled||cfg.ChatID==0{return nil}
  seen:=map[string]bool{};for _,id:=range cfg.Delivered{seen[id]=true};errs:=[]error{};dirty:=false;ch:=telegramChannel{cfg}
 
