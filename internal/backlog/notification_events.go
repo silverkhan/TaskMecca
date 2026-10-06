@@ -57,6 +57,35 @@ func notificationEventID(taskID, kind, at string) string {
     return hex.EncodeToString(sum[:12])
 }
 
+func lifecycleEventIdentity(lifecycle map[string]any, kind string) string {
+	if lifecycle == nil {
+		return ""
+	}
+	switch events := lifecycle["events"].(type) {
+	case []map[string]any:
+		for _, event := range events {
+			if toString(event["kind"]) == kind && toString(event["source"]) == "durable_lifecycle" {
+				return toString(event["event_id"])
+			}
+		}
+	case []any:
+		for _, raw := range events {
+			if event, ok := raw.(map[string]any); ok && toString(event["kind"]) == kind && toString(event["source"]) == "durable_lifecycle" {
+				return toString(event["event_id"])
+			}
+		}
+	}
+	return ""
+}
+
+func canonicalNotificationEventID(taskID, kind, at string, lifecycle map[string]any) (string, string) {
+	sourceID := lifecycleEventIdentity(lifecycle, kind)
+	if sourceID != "" {
+		return notificationEventID(taskID, kind, sourceID), sourceID
+	}
+	return notificationEventID(taskID, kind, at), ""
+}
+
 func notificationEventExists(events []map[string]any, id string) bool {
     for _, event := range events {
         if toString(event["id"]) == id {
@@ -148,13 +177,15 @@ func NotificationEvents(project string, items map[string]map[string]any) ([]map[
         id:=toString(event["task_id"])
         if id=="" { continue }
         rank:=notificationLifecyclePhase(toString(event["kind"]))
-        if rank>journal.Phases[id] { journal.Phases[id]=rank; dirty=true }
+        if rank>journal.Phases[id] { journal.Phases[id]=rank
+			dirty=true }
     }
     for id,obs:=range journal.Items {
         rank:=10
         if obs.StartedAt!="" { rank=20 }
         if obs.FileState=="done" { rank=40 }
-        if rank>journal.Phases[id] { journal.Phases[id]=rank; dirty=true }
+        if rank>journal.Phases[id] { journal.Phases[id]=rank
+			dirty=true }
     }
 
     nowTime := time.Now()
@@ -190,10 +221,11 @@ func NotificationEvents(project string, items map[string]map[string]any) ([]map[
             if at == "" {
                 at = now
             }
-            eventID := notificationEventID(id, "registered", at)
+            eventID, lifecycleID := canonicalNotificationEventID(id, "registered", at, lifecycle)
             if !notificationEventExists(journal.Events, eventID) {
                 journal.Events = append(journal.Events, map[string]any{
                     "id": eventID, "task_id": id, "kind": "registered", "at": at,
+					"lifecycle_event_id": lifecycleID,
                     "title": toString(item["title"]), "task_updated_at": updatedAt,
                 })
                 dirty = true
@@ -207,10 +239,11 @@ func NotificationEvents(project string, items map[string]map[string]any) ([]map[
         // must never regress after a later lifecycle stage was already observed.
         startedChanged := seen && previous.StartedAt != startedAt
         if !baseline && phase < 20 && startedAt != "" && !startedSuppressed && (startedChanged || !seen) {
-            eventID := notificationEventID(id, "started", startedAt)
+            eventID, lifecycleID := canonicalNotificationEventID(id, "started", startedAt, lifecycle)
             if !notificationEventExists(journal.Events, eventID) {
                 journal.Events = append(journal.Events, map[string]any{
                     "id": eventID, "task_id": id, "kind": "started", "at": startedAt,
+					"lifecycle_event_id": lifecycleID,
                     "title": toString(item["title"]), "message": "작업이 착수 상태로 전환되었습니다.",
                     "task_updated_at": updatedAt,
                 })
@@ -309,12 +342,13 @@ func NotificationEvents(project string, items map[string]map[string]any) ([]map[
             if at == "" {
                 at = now
             }
-            eventID := notificationEventID(id, "completed", at)
+            eventID, lifecycleID := canonicalNotificationEventID(id, "completed", at, lifecycle)
             if !notificationEventExists(journal.Events, eventID) {
                 journal.Events = append(journal.Events, map[string]any{
                     "id": eventID,
                     "task_id": id,
                     "kind": "completed",
+					"lifecycle_event_id": lifecycleID,
                     "at": at,
                     "title": toString(item["title"]),
                     "task_updated_at": updatedAt,

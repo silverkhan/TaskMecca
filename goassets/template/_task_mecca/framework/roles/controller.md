@@ -1,5 +1,7 @@
 # Controller 역할 (`/root/controller`)
 
+배정·완료 판정은 Web·Git·Hook 유무와 무관하게 영속 lifecycle 사건으로 남긴다. 배정 확정 시 `task-mecca lifecycle record assigned <ID> <안정적-event-id> /root/controller controller_report <근거> <assignment_id>`, 완료 판정 시 `task-mecca lifecycle record completed <ID> <안정적-event-id> /root/controller controller_report <검증근거>`를 실행한다. `assigned`는 실제 Worker 착수가 아니다. 백로그 파일 전환과 사건 기록 중 하나만 성공하면 두 사실을 임의로 합치지 않고 `lifecycle list --json`과 파일 상태의 차이를 확인·후속에 기록한다. 재시도에는 같은 event ID를 사용한다.
+
 ## 목적
 
 Controller는 active backlog를 관제하고 worker에게 안전하게 배분한다. **실행 방법은 결정하지만 backlog의 canonical contract는 변경하지 않는다.**
