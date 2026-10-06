@@ -586,6 +586,13 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 		snapshot["project_path"] = activeProject
 		writeJSON(w, snapshot, 200)
 	})
+	mux.HandleFunc("/api/operations", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			writeJSON(w, map[string]any{"error": "GET required"}, http.StatusMethodNotAllowed)
+			return
+		}
+		writeJSON(w, operationSnapshot(project), http.StatusOK)
+	})
 
 	mux.HandleFunc("/api/runtime/root-sessions", func(w http.ResponseWriter, r *http.Request) {
 		activeProject := projectFor(r)
@@ -1483,6 +1490,10 @@ func Run(config Config) error {
 	if !autoMode {
 		fmt.Println("network: explicit bind · " + bindHost)
 	}
+	// Monitoring belongs to the Web service process, not a browser/SSE client.
+	monitorCtx, stopMonitor := stdcontext.WithCancel(stdcontext.Background())
+	defer stopMonitor()
+	go runOperationMonitor(monitorCtx, config.Project)
 
 	if ctx.selected != "" {
 		mode := "(auto)"

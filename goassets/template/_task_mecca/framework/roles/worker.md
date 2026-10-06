@@ -1,5 +1,7 @@
 # Worker 역할 (`/root/controller/<pokemon>`)
 
+실제 작업을 시작할 때 `task-mecca lifecycle record started <ID> <안정적-event-id> <자신의 Agent 경로> worker_report <착수근거> <assignment_id> <attempt_id>`로 착수 사실을 기록한다. Hook을 사용할 수 없거나 승인되지 않아 attempt ID가 없으면 마지막 인자를 생략하고 실제 보고만 기록한다. 사용자를 기다리게 되면 `waiting`, 재개하면 `resumed` 사건을 각기 새 event ID로 기록한다. 단순한 `doing` 파일이나 무신호만으로 착수·종료를 주장하지 않는다. 같은 보고를 재시도할 때는 같은 event ID를 사용한다.
+
 ## 목적
 
 Controller가 배정한 bounded subtask를 수행한다. worker 이름은 task명이 아니라 재사용되는 안정적인 Pokémon identity다.
