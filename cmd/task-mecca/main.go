@@ -650,7 +650,7 @@ func run(args []string) int {
         }
     case "runtime":
         if len(positional)==0 {
-            fmt.Fprintln(os.Stderr,"runtime requires an action: observe, list, reconcile, bind, or bind-agent")
+		fmt.Fprintln(os.Stderr,"runtime requires an action: observe, list, reconcile, assign, bind, bind-agent, or bind-assignment")
             return 2
         }
         action:=strings.ToLower(positional[0])
@@ -713,7 +713,21 @@ func run(args []string) int {
                     fmt.Printf("%s %s %s -> %s %s\n",attempt.AttemptID,attempt.BindingState,attempt.Provider,attempt.TaskID,attempt.AgentPath)
                 }
             }
-        case "bind-agent":
+		case "assign":
+			if len(positional)<3 || len(positional)>4 { fmt.Fprintln(os.Stderr,"runtime assign requires: <task-id> <agent-path> [assignment-id]"); return 2 }
+			assignmentID:=""
+			if len(positional)==4 { assignmentID=positional[3] }
+			var assignment runtimeobs.Assignment
+			assignment,err=runtimeobs.RecordAssignment(runtimeProject,assignmentID,positional[1],positional[2],time.Now())
+			if err==nil { if jsonOutput { emitJSON(assignment) } else { fmt.Printf("%s %s %s %s\n",assignment.AssignmentID,assignment.TaskID,assignment.AgentPath,assignment.AssignedAt) } }
+		case "bind-assignment":
+			if len(positional)<3 || len(positional)>4 { fmt.Fprintln(os.Stderr,"runtime bind-assignment requires: <assignment-id> <runtime-agent-id> [parent-attempt-id]"); return 2 }
+			parent:=""
+			if len(positional)==4 { parent=positional[3] }
+			var attempt runtimeobs.Attempt
+			attempt,err=runtimeobs.BindRuntimeAgentForAssignment(runtimeProject,positional[1],positional[2],parent,time.Now())
+			if err==nil { if jsonOutput { emitJSON(attempt) } else { fmt.Printf("%s %s %s -> %s %s\n",attempt.AttemptID,attempt.BindingState,attempt.RuntimeAgentID,attempt.TaskID,attempt.AgentPath) } }
+		case "bind-agent":
             if len(positional)<4 || len(positional)>5 {
                 fmt.Fprintln(os.Stderr,"runtime bind-agent requires: <runtime-agent-id> <task-id|-> <agent-path> [parent-attempt-id]")
                 return 2
@@ -1059,4 +1073,3 @@ func printUpdateHint(info maintenance.VersionInfo) {
     fmt.Printf("\nUpdate available (%s): %s → %s\n",info.Channel,info.Current,info.Latest)
     fmt.Println("Run: task-mecca upgrade")
 }
-

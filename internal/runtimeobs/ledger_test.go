@@ -37,18 +37,21 @@ func TestExecutionLedgerFoldsStartActivityStop(t *testing.T) {
 }
 
 func TestSameAgentIDAcrossSessionsProducesDistinctAttempts(t *testing.T) {
-    project:=t.TempDir(); base:=time.Date(2026,10,1,10,0,0,0,time.UTC)
+    project:=t.TempDir()
+	base:=time.Date(2026,10,1,10,0,0,0,time.UTC)
     for i,session:=range []string{"s1","s2"} {
         event:=hookExecutionEvent(t,"claude","{\"session_id\":\""+session+"\",\"hook_event_name\":\"SubagentStart\",\"agent_id\":\"a1\"}",base.Add(time.Duration(i)*time.Minute))
         if err:=AppendExecutionEvent(project,event); err!=nil { t.Fatal(err) }
     }
-    ledger,err:=BuildLedger(project,10,base.Add(2*time.Minute)); if err!=nil { t.Fatal(err) }
+    ledger,err:=BuildLedger(project,10,base.Add(2*time.Minute))
+	if err!=nil { t.Fatal(err) }
     if len(ledger.Attempts)!=2 { t.Fatalf("attempts=%+v",ledger.Attempts) }
     if ledger.Attempts[0].AttemptID==ledger.Attempts[1].AttemptID { t.Fatal("attempt ids must differ across sessions") }
 }
 
 func TestNewerAuthoritativeBindingSupersedesOlderBinding(t *testing.T) {
-    project:=t.TempDir(); base:=time.Date(2026,10,1,10,0,0,0,time.UTC)
+    project:=t.TempDir()
+	base:=time.Date(2026,10,1,10,0,0,0,time.UTC)
     start:=hookExecutionEvent(t,"codex",`{"session_id":"s","hook_event_name":"SubagentStart","agent_id":"a"}`,base)
     if err:=AppendExecutionEvent(project,start); err!=nil { t.Fatal(err) }
     first,err:=BindAttempt(project,start.AttemptID,"AID-41","/root/controller/pairi","explicit","",map[string]string{"source":"test"},base.Add(time.Second))
@@ -62,7 +65,8 @@ func TestNewerAuthoritativeBindingSupersedesOlderBinding(t *testing.T) {
 }
 
 func TestSameTimestampAuthoritativeConflictRemainsAmbiguous(t *testing.T) {
-    project:=t.TempDir(); base:=time.Date(2026,10,1,10,0,0,0,time.UTC)
+    project:=t.TempDir()
+	base:=time.Date(2026,10,1,10,0,0,0,time.UTC)
     start:=hookExecutionEvent(t,"codex",`{"session_id":"s","hook_event_name":"SubagentStart","agent_id":"a"}`,base)
     if err:=AppendExecutionEvent(project,start); err!=nil { t.Fatal(err) }
     at:=base.Add(time.Second)
@@ -75,7 +79,8 @@ func TestSameTimestampAuthoritativeConflictRemainsAmbiguous(t *testing.T) {
     for _,event:=range []ExecutionEvent{first,second} {
         if err:=AppendExecutionEvent(project,event); err!=nil { t.Fatal(err) }
     }
-    ledger,err:=BuildLedger(project,10,base.Add(2*time.Second)); if err!=nil { t.Fatal(err) }
+    ledger,err:=BuildLedger(project,10,base.Add(2*time.Second))
+	if err!=nil { t.Fatal(err) }
     got:=ledger.Attempts[0]
     if got.BindingState!=BindingAmbiguous || got.TaskID!="" || got.AgentPath!="" {
         t.Fatalf("same-time authoritative conflict must remain ambiguous: %+v",got)
@@ -83,11 +88,13 @@ func TestSameTimestampAuthoritativeConflictRemainsAmbiguous(t *testing.T) {
 }
 
 func TestMissingStopBecomesStaleNotDead(t *testing.T) {
-    project:=t.TempDir(); t.Setenv("TASK_MECCA_STALE_WARN_SECONDS","60")
+    project:=t.TempDir()
+	t.Setenv("TASK_MECCA_STALE_WARN_SECONDS","60")
     base:=time.Date(2026,10,1,10,0,0,0,time.UTC)
     start:=hookExecutionEvent(t,"claude",`{"session_id":"s","hook_event_name":"SubagentStart","agent_id":"a"}`,base)
     if err:=AppendExecutionEvent(project,start); err!=nil { t.Fatal(err) }
-    ledger,err:=ReconcileLedger(project,10,base.Add(2*time.Minute)); if err!=nil { t.Fatal(err) }
+    ledger,err:=ReconcileLedger(project,10,base.Add(2*time.Minute))
+	if err!=nil { t.Fatal(err) }
     got:=ledger.Attempts[0]
     if got.CurrentState!=StateRunning || got.Terminal { t.Fatalf("must not infer death: %+v",got) }
     stale:=false
@@ -99,12 +106,15 @@ func TestMissingStopBecomesStaleNotDead(t *testing.T) {
 }
 
 func TestLedgerRebuildDeduplicatesAndSurvivesRestart(t *testing.T) {
-    project:=t.TempDir(); base:=time.Date(2026,10,1,10,0,0,0,time.UTC)
+    project:=t.TempDir()
+	base:=time.Date(2026,10,1,10,0,0,0,time.UTC)
     start:=hookExecutionEvent(t,"codex",`{"session_id":"s","hook_event_name":"SubagentStart","agent_id":"a"}`,base)
     if err:=AppendExecutionEvent(project,start); err!=nil { t.Fatal(err) }
     if err:=AppendExecutionEvent(project,start); err!=nil { t.Fatal(err) }
-    first,err:=BuildLedger(project,10,base.Add(time.Second)); if err!=nil { t.Fatal(err) }
-    second,err:=BuildLedger(project,10,base.Add(time.Second)); if err!=nil { t.Fatal(err) }
+    first,err:=BuildLedger(project,10,base.Add(time.Second))
+	if err!=nil { t.Fatal(err) }
+    second,err:=BuildLedger(project,10,base.Add(time.Second))
+	if err!=nil { t.Fatal(err) }
     if len(first.Attempts)!=1 || len(second.Attempts)!=1 { t.Fatalf("first=%+v second=%+v",first,second) }
     if first.Attempts[0].EvidenceCount!=1 || second.Attempts[0].EvidenceCount!=1 { t.Fatalf("duplicate event IDs must fold once") }
 }
@@ -133,7 +143,8 @@ func TestBindingAtSurvivesRecentTransitionTruncation(t *testing.T) {
         }
         if err:=AppendExecutionEvent(project,event);err!=nil{t.Fatal(err)}
     }
-    ledger,err:=BuildLedger(project,3,base.Add(20*time.Second));if err!=nil{t.Fatal(err)}
+    ledger,err:=BuildLedger(project,3,base.Add(20*time.Second))
+	if err!=nil{t.Fatal(err)}
     if len(ledger.Attempts)!=1{t.Fatalf("attempts=%+v",ledger.Attempts)}
     got:=ledger.Attempts[0]
     if got.BindingAt!=bindingAt.Format(time.RFC3339Nano){
@@ -145,14 +156,17 @@ func TestBindingAtSurvivesRecentTransitionTruncation(t *testing.T) {
 }
 
 func TestRecentTransitionLimitAndWaitingTime(t *testing.T) {
-    project:=t.TempDir(); base:=time.Date(2026,10,1,10,0,0,0,time.UTC); attempt:="run-test"
+    project:=t.TempDir()
+	base:=time.Date(2026,10,1,10,0,0,0,time.UTC)
+	attempt:="run-test"
     states:=[]CanonicalState{StateStarting,StateRunning,StateWaitingApproval,StateRunning,StateWaitingUser,StateRunning}
     for i,state:=range states {
         event:=ExecutionEvent{EventKind:"state",ObservedAt:base.Add(time.Duration(i)*time.Second).Format(time.RFC3339Nano),AttemptID:attempt,Provider:"codex",State:state,EvidenceSource:EvidenceReconciled,ObservationQuality:QualityAuthoritative}
         event.EventID=eventIDFor(event)
         if err:=AppendExecutionEvent(project,event); err!=nil { t.Fatal(err) }
     }
-    ledger,err:=BuildLedger(project,3,base.Add(10*time.Second)); if err!=nil { t.Fatal(err) }
+    ledger,err:=BuildLedger(project,3,base.Add(10*time.Second))
+	if err!=nil { t.Fatal(err) }
     if len(ledger.Attempts)!=1 || len(ledger.Attempts[0].RecentTransitions)!=3 { t.Fatalf("transitions=%+v",ledger.Attempts) }
     if ledger.Attempts[0].WaitingMillis!=2000 { t.Fatalf("waiting_ms=%d",ledger.Attempts[0].WaitingMillis) }
 }
@@ -176,7 +190,8 @@ func TestDuplicateTerminalStateDoesNotExtendEndedAt(t *testing.T) {
         event.EventID=eventIDFor(event)
         if err:=AppendExecutionEvent(project,event); err!=nil { t.Fatal(err) }
     }
-    ledger,err:=BuildLedger(project,10,base.Add(3*time.Second)); if err!=nil { t.Fatal(err) }
+    ledger,err:=BuildLedger(project,10,base.Add(3*time.Second))
+	if err!=nil { t.Fatal(err) }
     got:=ledger.Attempts[0]
     if got.EndedAt!=stopOne.ObservedAt { t.Fatalf("ended_at=%s want=%s",got.EndedAt,stopOne.ObservedAt) }
 }
@@ -230,18 +245,22 @@ func TestReusedWorkerStartCreatesImmutableExecutionEpisode(t *testing.T) {
         return `{"hook_event_name":"SubagentStart","session_id":"root-1","agent_id":"worker-1"}`
     }
     stopPayload:=`{"hook_event_name":"SubagentStop","session_id":"root-1","agent_id":"worker-1"}`
-    first,err:=ObserveHook(project,"codex",strings.NewReader(startPayload(t0)),t0); if err!=nil { t.Fatal(err) }
+    first,err:=ObserveHook(project,"codex",strings.NewReader(startPayload(t0)),t0)
+	if err!=nil { t.Fatal(err) }
     if _,err=BindAttempt(project,first.AttemptID,"B-OLD","/root/controller/worker","dispatch","",nil,t0.Add(time.Second)); err!=nil { t.Fatal(err) }
     if _,err=ObserveHook(project,"codex",strings.NewReader(stopPayload),t0.Add(time.Minute)); err!=nil { t.Fatal(err) }
 
-    second,err:=ObserveHook(project,"codex",strings.NewReader(startPayload(t0.Add(2*time.Minute))),t0.Add(2*time.Minute)); if err!=nil { t.Fatal(err) }
+    second,err:=ObserveHook(project,"codex",strings.NewReader(startPayload(t0.Add(2*time.Minute))),t0.Add(2*time.Minute))
+	if err!=nil { t.Fatal(err) }
     if second.AttemptID==first.AttemptID { t.Fatalf("reused worker must create a new attempt episode: %s",second.AttemptID) }
     if _,err=BindAttempt(project,second.AttemptID,"B-NEW","/root/controller/worker","dispatch","",nil,t0.Add(2*time.Minute+time.Second)); err!=nil { t.Fatal(err) }
 
-    ledger,err:=BuildLedger(project,20,t0.Add(3*time.Minute)); if err!=nil { t.Fatal(err) }
+    ledger,err:=BuildLedger(project,20,t0.Add(3*time.Minute))
+	if err!=nil { t.Fatal(err) }
     if len(ledger.Attempts)!=2 { t.Fatalf("attempts=%+v",ledger.Attempts) }
     var old,new Attempt
-    for _,a:=range ledger.Attempts { if a.AttemptID==first.AttemptID { old=a }; if a.AttemptID==second.AttemptID { new=a } }
+    for _,a:=range ledger.Attempts { if a.AttemptID==first.AttemptID { old=a }
+		if a.AttemptID==second.AttemptID { new=a } }
     if !old.Terminal || old.TaskID!="B-OLD" || old.EndedAt=="" { t.Fatalf("completed episode mutated: %+v",old) }
     if new.Terminal || new.TaskID!="B-NEW" || new.CurrentState!=StateRunning { t.Fatalf("new episode invalid: %+v",new) }
     if old.StartedAt==new.StartedAt { t.Fatalf("episodes share lifecycle start: old=%s new=%s",old.StartedAt,new.StartedAt) }
@@ -254,15 +273,19 @@ func TestReusedWorkerActivityWithoutStartCreatesNewEpisode(t *testing.T) {
     start:=`{"hook_event_name":"SubagentStart","session_id":"root-1","agent_id":"worker-1"}`
     stop:=`{"hook_event_name":"SubagentStop","session_id":"root-1","agent_id":"worker-1"}`
     activity:=`{"hook_event_name":"PreToolUse","session_id":"root-1","agent_id":"worker-1","tool_name":"shell","tool_use_id":"new-work"}`
-    first,err:=ObserveHook(project,"codex",strings.NewReader(start),t0); if err!=nil { t.Fatal(err) }
+    first,err:=ObserveHook(project,"codex",strings.NewReader(start),t0)
+	if err!=nil { t.Fatal(err) }
     if _,err=BindAttempt(project,first.AttemptID,"B-OLD","/root/controller/worker","dispatch","",nil,t0.Add(time.Second)); err!=nil { t.Fatal(err) }
     if _,err=ObserveHook(project,"codex",strings.NewReader(stop),t0.Add(time.Minute)); err!=nil { t.Fatal(err) }
-    second,err:=ObserveHook(project,"codex",strings.NewReader(activity),t0.Add(2*time.Minute)); if err!=nil { t.Fatal(err) }
+    second,err:=ObserveHook(project,"codex",strings.NewReader(activity),t0.Add(2*time.Minute))
+	if err!=nil { t.Fatal(err) }
     if second.AttemptID==first.AttemptID { t.Fatal("post-terminal activity must create a new immutable episode") }
     if _,err=BindAttempt(project,second.AttemptID,"B-NEW","/root/controller/worker","dispatch","",nil,t0.Add(2*time.Minute+time.Second)); err!=nil { t.Fatal(err) }
-    ledger,err:=BuildLedger(project,20,t0.Add(3*time.Minute)); if err!=nil { t.Fatal(err) }
+    ledger,err:=BuildLedger(project,20,t0.Add(3*time.Minute))
+	if err!=nil { t.Fatal(err) }
     var old,new Attempt
-    for _,a:=range ledger.Attempts { if a.AttemptID==first.AttemptID { old=a }; if a.AttemptID==second.AttemptID { new=a } }
+    for _,a:=range ledger.Attempts { if a.AttemptID==first.AttemptID { old=a }
+		if a.AttemptID==second.AttemptID { new=a } }
     if !old.Terminal || old.TaskID!="B-OLD" || old.EndedAt=="" { t.Fatalf("completed episode mutated: %+v",old) }
     if new.Terminal || new.TaskID!="B-NEW" || new.StartedAt=="" || new.CurrentState!=StateRunning { t.Fatalf("new activity episode invalid: %+v",new) }
 }
@@ -273,16 +296,21 @@ func TestDispatchBeforeActivitySplitsTerminalWorkerEpisode(t *testing.T) {
     start:=`{"hook_event_name":"SubagentStart","session_id":"root-1","agent_id":"worker-1"}`
     stop:=`{"hook_event_name":"SubagentStop","session_id":"root-1","agent_id":"worker-1"}`
     activity:=`{"hook_event_name":"PreToolUse","session_id":"root-1","agent_id":"worker-1","tool_name":"shell","tool_use_id":"after-dispatch"}`
-    first,err:=ObserveHook(project,"codex",strings.NewReader(start),t0); if err!=nil { t.Fatal(err) }
+    first,err:=ObserveHook(project,"codex",strings.NewReader(start),t0)
+	if err!=nil { t.Fatal(err) }
     if _,err=BindAttempt(project,first.AttemptID,"B-OLD","/root/controller/worker","dispatch","",nil,t0.Add(time.Second)); err!=nil { t.Fatal(err) }
     if _,err=ObserveHook(project,"codex",strings.NewReader(stop),t0.Add(time.Minute)); err!=nil { t.Fatal(err) }
-    second,err:=BindRuntimeAgent(project,"worker-1","B-NEW","/root/controller/worker","",t0.Add(2*time.Minute)); if err!=nil { t.Fatal(err) }
+    second,err:=BindRuntimeAgent(project,"worker-1","B-NEW","/root/controller/worker","",t0.Add(2*time.Minute))
+	if err!=nil { t.Fatal(err) }
     if second.AttemptID==first.AttemptID { t.Fatal("dispatch after terminal must allocate a new episode") }
-    observed,err:=ObserveHook(project,"codex",strings.NewReader(activity),t0.Add(2*time.Minute+time.Second)); if err!=nil { t.Fatal(err) }
+    observed,err:=ObserveHook(project,"codex",strings.NewReader(activity),t0.Add(2*time.Minute+time.Second))
+	if err!=nil { t.Fatal(err) }
     if observed.AttemptID!=second.AttemptID { t.Fatalf("activity routed to %s, want %s",observed.AttemptID,second.AttemptID) }
-    ledger,err:=BuildLedger(project,20,t0.Add(3*time.Minute)); if err!=nil { t.Fatal(err) }
+    ledger,err:=BuildLedger(project,20,t0.Add(3*time.Minute))
+	if err!=nil { t.Fatal(err) }
     var old,new Attempt
-    for _,a:=range ledger.Attempts { if a.AttemptID==first.AttemptID { old=a }; if a.AttemptID==second.AttemptID { new=a } }
+    for _,a:=range ledger.Attempts { if a.AttemptID==first.AttemptID { old=a }
+		if a.AttemptID==second.AttemptID { new=a } }
     if !old.Terminal || old.TaskID!="B-OLD" { t.Fatalf("old episode mutated: %+v",old) }
     if new.TaskID!="B-NEW" || new.StartedAt=="" || new.CurrentState!=StateRunning { t.Fatalf("new episode did not recover start: %+v",new) }
 }
@@ -304,8 +332,83 @@ func TestAuthoritativeDispatchStartsReusedWorkerWithoutNewStartHook(t *testing.T
     if fresh.TaskID!="B-443" || fresh.StartedAt=="" || fresh.CurrentState!=StateRunning || fresh.Terminal {
         t.Fatalf("dispatch did not establish canonical start: %+v",fresh)
     }
-    ledger,err:=BuildLedger(project,20,now); if err!=nil { t.Fatal(err) }
+    ledger,err:=BuildLedger(project,20,now)
+	if err!=nil { t.Fatal(err) }
     var old Attempt
     for _,attempt:=range ledger.Attempts { if attempt.AttemptID==oldID { old=attempt } }
     if !old.Terminal || old.TaskID!="B-442" { t.Fatalf("completed history changed: %+v",old) }
+}
+
+func TestDispatchBeforeFirstHookKeepsOneBoundAttempt(t *testing.T) {
+	project := t.TempDir()
+	assignedAt := time.Date(2026, 10, 6, 0, 21, 53, 0, time.UTC)
+	bound, err := BindRuntimeAgent(project, "worker-446", "B-446", "/root/controller/worker-446", "", assignedAt)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if bound.BindingState != BindingBound || bound.TaskID != "B-446" || bound.StartedAt != "" {
+		t.Fatalf("dispatch must be bound but not started: %+v", bound)
+	}
+	hookAt := assignedAt.Add(91 * time.Second)
+	spike, err := ParseHookEvent("codex", strings.NewReader(`{"session_id":"root-446","turn_id":"turn-1","hook_event_name":"SubagentStart","agent_id":"worker-446","agent_type":"worker"}`), hookAt)
+	if err != nil {
+		t.Fatal(err)
+	}
+	event, err := HookToExecutionEvent(spike)
+	if err != nil {
+		t.Fatal(err)
+	}
+	event.AttemptID = resolveAttemptID(project, spike)
+	if event.AttemptID != bound.AttemptID {
+		t.Fatalf("hook split assignment into a new attempt: %s != %s", event.AttemptID, bound.AttemptID)
+	}
+	if err := AppendExecutionEvent(project, event); err != nil {
+		t.Fatal(err)
+	}
+	ledger, err := BuildLedger(project, 20, hookAt)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(ledger.Attempts) != 1 {
+		t.Fatalf("expected one attempt: %+v", ledger.Attempts)
+	}
+	attempt := ledger.Attempts[0]
+	if attempt.TaskID != "B-446" || attempt.StartedAt != hookAt.Format(time.RFC3339Nano) || attempt.SessionID != "root-446" {
+		t.Fatalf("late hook did not enrich assigned attempt: %+v", attempt)
+	}
+}
+
+func TestLiveDispatchCannotBeSilentlyReassigned(t *testing.T) {
+	project := t.TempDir()
+	now := time.Date(2026, 10, 6, 1, 0, 0, 0, time.UTC)
+	first, err := BindRuntimeAgent(project, "worker-reused", "B-446", "/root/controller/worker-reused", "", now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := BindRuntimeAgent(project, "worker-reused", "B-447", "/root/controller/worker-reused", "", now.Add(time.Minute)); err == nil {
+		t.Fatal("live attempt was silently reassigned")
+	}
+	ledger, err := BuildLedger(project, 20, now.Add(time.Minute))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(ledger.Attempts) != 1 || ledger.Attempts[0].AttemptID != first.AttemptID || ledger.Attempts[0].TaskID != "B-446" {
+		t.Fatalf("failed reassignment changed original binding: %+v", ledger.Attempts)
+	}
+}
+
+func TestRepeatedDispatchBindingIsIdempotent(t *testing.T) {
+	project := t.TempDir()
+	now := time.Date(2026, 10, 6, 1, 0, 0, 0, time.UTC)
+	first, err := BindRuntimeAgent(project, "worker-retry", "B-448", "/root/controller/worker-retry", "", now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	repeated, err := BindRuntimeAgent(project, "worker-retry", "B-448", "/root/controller/worker-retry", "", now.Add(time.Minute))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if repeated.AttemptID != first.AttemptID || repeated.BindingAt != first.BindingAt || repeated.EvidenceCount != first.EvidenceCount {
+		t.Fatalf("retry changed binding: first=%+v repeated=%+v", first, repeated)
+	}
 }

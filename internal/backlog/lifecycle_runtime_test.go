@@ -24,7 +24,8 @@ func TestCompletedLifecyclePreservesObservedRegistrationAndStartWhenGitOnlyHasDo
     now:=time.Now().UTC()
     journalPath:=filepath.Join(project,"_task_mecca",".runtime","lifecycle_observations.json")
     if err:=os.MkdirAll(filepath.Dir(journalPath),0755);err!=nil{t.Fatal(err)}
-    absLedger,err:=filepath.Abs(backlogDir);if err!=nil{t.Fatal(err)}
+    absLedger,err:=filepath.Abs(backlogDir)
+	if err!=nil{t.Fatal(err)}
     journal:=map[string]any{
         "version":float64(1),
         "ledgers":map[string]any{
@@ -38,16 +39,21 @@ func TestCompletedLifecyclePreservesObservedRegistrationAndStartWhenGitOnlyHasDo
             },
         },
     }
-    data,err:=json.MarshalIndent(journal,"","  ");if err!=nil{t.Fatal(err)}
+    data,err:=json.MarshalIndent(journal,"","  ")
+	if err!=nil{t.Fatal(err)}
     if err:=os.WriteFile(journalPath,append(data,'\n'),0644);err!=nil{t.Fatal(err)}
 
     gitRun(t,project,"add",".")
     gitRun(t,project,"commit","-m","complete task")
 
-    rows,err:=Catalog(project,"");if err!=nil{t.Fatal(err)}
-    timings,err:=lifecycleTimings(project,"",rows);if err!=nil{t.Fatal(err)}
-    lifecycle:=timings["B-903"];if lifecycle==nil{t.Fatal("missing lifecycle")}
-    events,ok:=lifecycle["events"].([]map[string]any);if !ok{t.Fatalf("events=%T %+v",lifecycle["events"],lifecycle["events"])}
+    rows,err:=Catalog(project,"")
+	if err!=nil{t.Fatal(err)}
+    timings,err:=lifecycleTimings(project,"",rows)
+	if err!=nil{t.Fatal(err)}
+    lifecycle:=timings["B-903"]
+	if lifecycle==nil{t.Fatal("missing lifecycle")}
+    events,ok:=lifecycle["events"].([]map[string]any)
+	if !ok{t.Fatalf("events=%T %+v",lifecycle["events"],lifecycle["events"])}
     got:=[]string{}
     for _,event:=range events{got=append(got,toString(event["state"]))}
     want:=[]string{"todo","doing","done"}
@@ -59,7 +65,8 @@ func TestCompletedLifecyclePreservesObservedRegistrationAndStartWhenGitOnlyHasDo
 
     // A refresh after Git already matches the final state must not erase the
     // historical observations from the journal.
-    again,err:=lifecycleTimings(project,"",rows);if err!=nil{t.Fatal(err)}
+    again,err:=lifecycleTimings(project,"",rows)
+	if err!=nil{t.Fatal(err)}
     againEvents:=again["B-903"]["events"].([]map[string]any)
     if len(againEvents)!=3{
         t.Fatalf("completed lifecycle history disappeared on refresh: %+v",again["B-903"])
@@ -79,7 +86,8 @@ func TestLifecycleUsesPreservedRegistrationInsteadOfMutableFileCtime(t *testing.
     base:=time.Now().UTC().Add(-2*time.Minute)
     journalPath:=filepath.Join(project,"_task_mecca",".runtime","lifecycle_observations.json")
     if err:=os.MkdirAll(filepath.Dir(journalPath),0755);err!=nil{t.Fatal(err)}
-    absLedger,err:=filepath.Abs(backlogDir);if err!=nil{t.Fatal(err)}
+    absLedger,err:=filepath.Abs(backlogDir)
+	if err!=nil{t.Fatal(err)}
     journal:=map[string]any{
         "version":float64(1),
         "ledgers":map[string]any{
@@ -92,7 +100,8 @@ func TestLifecycleUsesPreservedRegistrationInsteadOfMutableFileCtime(t *testing.
             },
         },
     }
-    data,err:=json.MarshalIndent(journal,"","  ");if err!=nil{t.Fatal(err)}
+    data,err:=json.MarshalIndent(journal,"","  ")
+	if err!=nil{t.Fatal(err)}
     if err:=os.WriteFile(journalPath,append(data,'\n'),0644);err!=nil{t.Fatal(err)}
 
     attemptID:="run-b931"
@@ -107,7 +116,8 @@ func TestLifecycleUsesPreservedRegistrationInsteadOfMutableFileCtime(t *testing.
     bindingAt:=runtimeStart.Add(time.Second)
     if _,err:=runtimeobs.BindAttempt(project,attemptID,"B-931","/root/controller/worker-931","dispatch","",nil,bindingAt);err!=nil{t.Fatal(err)}
 
-    rows,err:=Catalog(project,"");if err!=nil{t.Fatal(err)}
+    rows,err:=Catalog(project,"")
+	if err!=nil{t.Fatal(err)}
     // The live file was created/renamed much later than the preserved
     // registration observation. Old code compared start against this mutable
     // ctime and incorrectly discarded the canonical runtime start.
@@ -116,12 +126,14 @@ func TestLifecycleUsesPreservedRegistrationInsteadOfMutableFileCtime(t *testing.
         t.Fatalf("fixture requires mutable file ctime after runtime start: ctime=%s binding=%s",row.Ctime,bindingAt)
     }
 
-    timings,err:=lifecycleTimings(project,"",rows);if err!=nil{t.Fatal(err)}
+    timings,err:=lifecycleTimings(project,"",rows)
+	if err!=nil{t.Fatal(err)}
     lifecycle:=timings["B-931"]
     if lifecycle==nil||lifecycle["started_at"]==nil{
         t.Fatalf("canonical start was rejected despite preserved registration: %+v",lifecycle)
     }
-    started,ok:=parseTime(toString(lifecycle["started_at"]));if !ok{t.Fatalf("invalid started_at: %+v",lifecycle)}
+    started,ok:=parseTime(toString(lifecycle["started_at"]))
+	if !ok{t.Fatalf("invalid started_at: %+v",lifecycle)}
     if started.Before(bindingAt){
         t.Fatalf("task lifecycle backdated before binding: started=%s binding=%s",started,bindingAt)
     }
@@ -174,16 +186,21 @@ func TestCompletedLifecycleKeepsStartedAtFromImmutableEpisode(t *testing.T) {
     start:=runtimeobs.ExecutionEvent{EventKind:"state",ObservedAt:started.Format(time.RFC3339Nano),AttemptID:attemptID,Provider:"codex",SessionID:"root-1",RuntimeAgentID:"worker-1",State:runtimeobs.StateRunning,EvidenceSource:runtimeobs.EvidenceHook,ObservationQuality:runtimeobs.QualityObserved}
     if err:=runtimeobs.AppendExecutionEvent(project,start); err!=nil { t.Fatal(err) }
     if _,err:=runtimeobs.BindAttempt(project,attemptID,"B-441","/root/controller/worker","dispatch","",nil,started); err!=nil { t.Fatal(err) }
-    activeRows,err:=Catalog(project,""); if err!=nil { t.Fatal(err) }
-    activeTimings,err:=lifecycleTimings(project,"",activeRows); if err!=nil { t.Fatal(err) }
+    activeRows,err:=Catalog(project,"")
+	if err!=nil { t.Fatal(err) }
+    activeTimings,err:=lifecycleTimings(project,"",activeRows)
+	if err!=nil { t.Fatal(err) }
     if activeTimings["B-441"]==nil || activeTimings["B-441"]["started_at"]==nil { t.Fatalf("active lifecycle missing start: %+v",activeTimings["B-441"]) }
     stop:=runtimeobs.ExecutionEvent{EventKind:"state",ObservedAt:completed.Format(time.RFC3339Nano),AttemptID:attemptID,Provider:"codex",SessionID:"root-1",RuntimeAgentID:"worker-1",State:runtimeobs.StateCompleted,Terminal:true,EvidenceSource:runtimeobs.EvidenceHook,ObservationQuality:runtimeobs.QualityObserved}
     if err:=runtimeobs.AppendExecutionEvent(project,stop); err!=nil { t.Fatal(err) }
     doneTask:=filepath.Join(backlogDir,"0441.B-441.lifecycle.done.md")
     if err:=os.Rename(task,doneTask); err!=nil { t.Fatal(err) }
-    rows,err:=Catalog(project,""); if err!=nil { t.Fatal(err) }
-    timings,err:=lifecycleTimings(project,"",rows); if err!=nil { t.Fatal(err) }
-    lifecycle:=timings["B-441"]; if lifecycle==nil { t.Fatal("missing lifecycle") }
+    rows,err:=Catalog(project,"")
+	if err!=nil { t.Fatal(err) }
+    timings,err:=lifecycleTimings(project,"",rows)
+	if err!=nil { t.Fatal(err) }
+    lifecycle:=timings["B-441"]
+	if lifecycle==nil { t.Fatal("missing lifecycle") }
     if lifecycle["started_at"]==nil || lifecycle["completed_at"]==nil { t.Fatalf("completed lifecycle incomplete: %+v",lifecycle) }
     if incomplete,ok:=lifecycle["timing_incomplete"].(bool); ok && incomplete { t.Fatalf("completed lifecycle incorrectly incomplete: %+v",lifecycle) }
 }
@@ -221,7 +238,8 @@ func TestControlTowerRecoveryBindingSuppressesStartedNotification(t *testing.T) 
         t.Fatalf("baseline events=%+v err=%v",events,err)
     }
 
-    rows,err:=Catalog(project,"");if err!=nil{t.Fatal(err)}
+    rows,err:=Catalog(project,"")
+	if err!=nil{t.Fatal(err)}
     control:=reconcileControlTower(project,"",rows)
     lifecycle:=control.Timings["B-900"]
     if lifecycle==nil||lifecycle["started_at"]==nil{
@@ -238,7 +256,8 @@ func TestControlTowerRecoveryBindingSuppressesStartedNotification(t *testing.T) 
             "lifecycle":lifecycle,
         },
     }
-    events,err:=NotificationEvents(project,current);if err!=nil{t.Fatal(err)}
+    events,err:=NotificationEvents(project,current)
+	if err!=nil{t.Fatal(err)}
     if len(events)!=0{
         t.Fatalf("recovered historical start must not notify: %+v",events)
     }
@@ -270,7 +289,8 @@ func TestFreshRecoveryBindingEmitsStartedNotification(t *testing.T) {
     }
     if err:=runtimeobs.AppendExecutionEvent(project,activity);err!=nil{t.Fatal(err)}
 
-    rows,err:=Catalog(project,"");if err!=nil{t.Fatal(err)}
+    rows,err:=Catalog(project,"")
+	if err!=nil{t.Fatal(err)}
     control:=reconcileControlTower(project,"",rows)
     lifecycle:=control.Timings["B-902"]
     if lifecycle==nil||lifecycle["started_at"]==nil{
@@ -317,7 +337,8 @@ func TestRecoveredBindingThatStartsLaterEmitsStartedAndDropsTransientUnknown(t *
     }
     if err:=runtimeobs.AppendExecutionEvent(project,unknown);err!=nil{t.Fatal(err)}
 
-    rows,err:=Catalog(project,"");if err!=nil{t.Fatal(err)}
+    rows,err:=Catalog(project,"")
+	if err!=nil{t.Fatal(err)}
     first:=reconcileControlTower(project,"",rows)
     firstLifecycle:=first.Timings["B-901"]
     if firstLifecycle!=nil && firstLifecycle["started_at"]!=nil{
@@ -341,7 +362,8 @@ func TestRecoveredBindingThatStartsLaterEmitsStartedAndDropsTransientUnknown(t *
     }
     if err:=runtimeobs.AppendExecutionEvent(project,activity);err!=nil{t.Fatal(err)}
 
-    rows,err=Catalog(project,"");if err!=nil{t.Fatal(err)}
+    rows,err=Catalog(project,"")
+	if err!=nil{t.Fatal(err)}
     second:=reconcileControlTower(project,"",rows)
     lifecycle:=second.Timings["B-901"]
     if lifecycle==nil||lifecycle["started_at"]==nil{
@@ -493,5 +515,87 @@ func TestControlTowerRecoveryBindingRespectsRuntimeProvider(t *testing.T) {
         if attempt.AttemptID==attemptID && attempt.BindingState!=runtimeobs.BindingUnbound{
             t.Fatalf("provider mismatch mutated binding: %+v",attempt)
         }
+    }
+}
+
+func TestControlTowerDoesNotGuessTaskForReusedWorker(t *testing.T) {
+	project := t.TempDir()
+	now := time.Now().UTC()
+	attemptID := "run-shared-worker"
+	if err := runtimeobs.AppendExecutionEvent(project, runtimeobs.ExecutionEvent{
+		EventKind: "state", ObservedAt: now.Add(-time.Second).Format(time.RFC3339Nano),
+		AttemptID: attemptID, Provider: "codex", RuntimeAgentID: "worker-shared",
+		State: runtimeobs.StateRunning, EvidenceSource: runtimeobs.EvidenceHook,
+		ObservationQuality: runtimeobs.QualityObserved,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	rows := []Record{
+		{ID: "B-446", State: "doing", Location: "active", Fields: map[string]string{"Agent": "/root/controller/worker-shared"}},
+		{ID: "B-447", State: "doing", Location: "active", Fields: map[string]string{"Agent": "/root/controller/worker-shared"}},
+	}
+	if recovered := reconcileCanonicalBindings(project, rows, now); len(recovered) != 0 {
+		t.Fatalf("shared attempt must not be bound arbitrarily: %+v", recovered)
+	}
+	ledger, err := runtimeobs.ReconcileLedger(project, 10, now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, attempt := range ledger.Attempts {
+		if attempt.AttemptID == attemptID && attempt.BindingState != runtimeobs.BindingUnbound {
+			t.Fatalf("shared attempt binding mutated: %+v", attempt)
+		}
+	}
+}
+
+func TestB446AssignmentGapAndLateStartShareCanonicalEvidence(t *testing.T) {
+    project:=t.TempDir()
+    if _,err:=runtimeobs.EnsureHooks(project,"codex");err!=nil { t.Fatal(err) }
+    backlogDir:=filepath.Join(project,"_task_mecca","data","backlog")
+    if err:=os.MkdirAll(backlogDir,0755);err!=nil { t.Fatal(err) }
+    body:="# B-446 delayed start\n- Agent: /root/controller/worker-446\n- RuntimeProvider: codex\n"
+    if err:=os.WriteFile(filepath.Join(backlogDir,"0446.B-446.delayed.doing.md"),[]byte(body),0644);err!=nil { t.Fatal(err) }
+    registeredAt:=time.Now().UTC().Add(-4*time.Minute)
+    assignedAt:=registeredAt.Add(47*time.Second)
+    startedAt:=assignedAt.Add(91*time.Second)
+    journalPath:=filepath.Join(project,"_task_mecca",".runtime","lifecycle_observations.json")
+    if err:=os.MkdirAll(filepath.Dir(journalPath),0755);err!=nil { t.Fatal(err) }
+    absLedger,err:=filepath.Abs(backlogDir)
+    if err!=nil { t.Fatal(err) }
+    journal:=map[string]any{"version":float64(1),"ledgers":map[string]any{absLedger:map[string]any{"items":map[string]any{"B-446":[]any{map[string]any{"state":"todo","at":registeredAt.Format(time.RFC3339Nano)}}}}}}
+    data,err:=json.Marshal(journal)
+    if err!=nil { t.Fatal(err) }
+    if err:=os.WriteFile(journalPath,data,0644);err!=nil { t.Fatal(err) }
+    assignment,err:=runtimeobs.RecordAssignment(project,"dispatch-b446","B-446","/root/controller/worker-446",assignedAt)
+    if err!=nil { t.Fatal(err) }
+    bound,err:=runtimeobs.BindRuntimeAgentForAssignment(project,assignment.AssignmentID,"worker-446","",assignedAt)
+    if err!=nil { t.Fatal(err) }
+    rows,err:=Catalog(project,"")
+    if err!=nil { t.Fatal(err) }
+    before,err:=lifecycleTimings(project,"",rows)
+    if err!=nil { t.Fatal(err) }
+    if before["B-446"]["started_at"]!=nil { t.Fatalf("dispatch was misreported as start: %+v",before["B-446"]) }
+    signal:=runtimeLedgerSignals(project,rows,assignedAt)["B-446"]
+    reason,_:=canonicalOperationalState(preferredRows(rows)["B-446"],nil,signal)
+    if reason["type"]!="awaiting_start" || reason["assignment_id"]!=assignment.AssignmentID || reason["attempt_id"]!=bound.AttemptID {
+        t.Fatalf("attention and workload lost binding evidence: signal=%+v reason=%+v",signal,reason)
+    }
+    tower:=reconcileControlTower(project,"",rows)
+    if tower.Timings["B-446"]["start_evidence_status"]!="awaiting_start" || tower.Attention["B-446"]["assignment_id"]!=assignment.AssignmentID {
+        t.Fatalf("lifecycle and attention disagree on start gap: timings=%+v attention=%+v",tower.Timings["B-446"],tower.Attention["B-446"])
+    }
+    if err:=runtimeobs.AppendExecutionEvent(project,runtimeobs.ExecutionEvent{
+        EventKind:"state",ObservedAt:startedAt.Format(time.RFC3339Nano),AttemptID:bound.AttemptID,
+        Provider:"codex",SessionID:"root-446",RuntimeAgentID:"worker-446",State:runtimeobs.StateRunning,
+        EvidenceSource:runtimeobs.EvidenceHook,ObservationQuality:runtimeobs.QualityObserved,
+    });err!=nil { t.Fatal(err) }
+    after,err:=lifecycleTimings(project,"",rows)
+    if err!=nil { t.Fatal(err) }
+    if after["B-446"]["started_at"]!=startedAt.Format(time.RFC3339Nano) {
+        t.Fatalf("lifecycle did not use first runtime evidence: %+v",after["B-446"])
+    }
+    signal=runtimeLedgerSignals(project,rows,startedAt)["B-446"]
+    if signal["attempt_id"]!=bound.AttemptID || signal["assignment_id"]!=assignment.AssignmentID || signal["health"]!="active" {
+        t.Fatalf("workload split from lifecycle attempt: %+v",signal)
     }
 }

@@ -15,6 +15,8 @@ active Full Access preflight를 자동 재실행**한다. fresh probe가 `full`�
 
 ## 배분
 
+Worker를 실제로 dispatch하기 직전에는 `task-mecca runtime assign <ID> <Agent 경로> --json`으로 배정 ID와 시각을 기록하고, 반환된 `assignment_id`를 보존한다. dispatch가 반환한 runtime agent ID를 받은 즉시 `task-mecca runtime bind-assignment <assignment_id> <runtime-agent-id> --json`으로 명시적으로 연결한다. 첫 hook이 아직 없어도 배정 기록과 pending attempt를 유지하며, `doing`만으로 실제 착수를 주장하지 않는다. 명시적 연결이 실패하면 후보를 추측하지 않고 원인과 배정 ID를 작업 노트에 기록한다. 이 순서는 현재 Controller의 명시적 CLI 호출이 필요하며 Codex subagent dispatch에 자동 삽입되지 않는다.
+
 1. 연관 작업과 continuity, 선행, 변경범위 충돌, live worker 상태를 함께 본다.
 2. 서로 독립인 ready와 여유 슬롯이 있으면 같은 pass에서 가능한 슬롯을 채운다.
 3. 기존 적임 worker가 idle이면 재사용하고, 부족하면 Pokémon worker를 추가한다.
