@@ -43,6 +43,7 @@ type Record struct {
 	TargetState            string            `json:"target_state,omitempty"`
 	Action                 Action            `json:"action,omitempty"`
 	RequiresFreshPreflight bool              `json:"requires_fresh_preflight,omitempty"`
+	HoldReason             string            `json:"hold_reason,omitempty"`
 	ClaimedBy              string            `json:"claimed_by,omitempty"`
 	ClaimedAttemptID       string            `json:"claimed_attempt_id,omitempty"`
 	Step                   string            `json:"step,omitempty"`
@@ -93,13 +94,13 @@ type Ledger struct {
 }
 
 type PrepareRequest struct {
-	Project             string
-	TaskID              string
-	EventType           EventType
-	SourceAgentPath     string
-	TargetAgentPath     string
-	SourceAttemptID     string
-	TargetAttemptID     string
+	Project                string
+	TaskID                 string
+	EventType              EventType
+	SourceAgentPath        string
+	TargetAgentPath        string
+	SourceAttemptID        string
+	TargetAttemptID        string
 	ReportFile             string
 	ExpectedContractSHA256 string
 	ExecutionAuthorized    bool
@@ -116,16 +117,16 @@ type PrepareResult struct {
 }
 
 type ClaimResult struct {
-	HandoffID      string `json:"handoff_id"`
-	Claimed        bool   `json:"claimed"`
-	AlreadyClaimed bool   `json:"already_claimed"`
-	AlreadyApplied bool   `json:"already_applied"`
-	ClaimConflict          bool   `json:"claim_conflict"`
-	ContractChanged        bool   `json:"contract_changed"`
-	CurrentContractSHA256  string `json:"current_contract_sha256,omitempty"`
-	Reason                 string `json:"reason,omitempty"`
-	ClaimedBy              string `json:"claimed_by,omitempty"`
-	ClaimedAttemptID       string `json:"claimed_attempt_id,omitempty"`
+	HandoffID             string `json:"handoff_id"`
+	Claimed               bool   `json:"claimed"`
+	AlreadyClaimed        bool   `json:"already_claimed"`
+	AlreadyApplied        bool   `json:"already_applied"`
+	ClaimConflict         bool   `json:"claim_conflict"`
+	ContractChanged       bool   `json:"contract_changed"`
+	CurrentContractSHA256 string `json:"current_contract_sha256,omitempty"`
+	Reason                string `json:"reason,omitempty"`
+	ClaimedBy             string `json:"claimed_by,omitempty"`
+	ClaimedAttemptID      string `json:"claimed_attempt_id,omitempty"`
 }
 
 type MarkResult struct {

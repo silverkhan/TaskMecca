@@ -172,7 +172,6 @@ func TestClaimAndMarkAreIdempotent(t *testing.T) {
 	}
 }
 
-
 func TestClaimRejectsChangedContract(t *testing.T) {
 	project := t.TempDir()
 	writeSimpleTask(t, project, "A-1")
@@ -181,21 +180,29 @@ func TestClaimRejectsChangedContract(t *testing.T) {
 		Project: project, TaskID: "A-1", EventType: EventRegistrationReady,
 		SourceAgentPath: "/root/registrar", TargetAgentPath: "/root/controller", ExecutionAuthorized: false,
 	}, now)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	path := filepath.Join(project, "_task_mecca", "data", "backlog", "000001.A-1.handoff-test.todo.md")
-	body, err := os.ReadFile(path); if err != nil { t.Fatal(err) }
+	body, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
 	changed := string(body)
 	changed = strings.Replace(changed, "이벤트 기반 인계를 검증한다.", "변경된 계약을 검증한다.", 1)
-	if err := os.WriteFile(path, []byte(changed), 0o644); err != nil { t.Fatal(err) }
+	if err := os.WriteFile(path, []byte(changed), 0o644); err != nil {
+		t.Fatal(err)
+	}
 
 	claim, err := Claim(project, got.HandoffID, "/root/controller", "run-controller", now.Add(time.Second))
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	if !claim.ContractChanged || claim.Claimed || claim.Reason != "contract_changed" {
 		t.Fatalf("claim=%+v", claim)
 	}
 }
-
 
 func TestClaimConflictsAcrossControllerAttempts(t *testing.T) {
 	project := t.TempDir()
@@ -205,17 +212,24 @@ func TestClaimConflictsAcrossControllerAttempts(t *testing.T) {
 		Project: project, TaskID: "A-1", EventType: EventRegistrationReady,
 		SourceAgentPath: "/root/registrar", TargetAgentPath: "/root/controller", ExecutionAuthorized: false,
 	}, now)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	first, err := Claim(project, got.HandoffID, "/root/controller", "run-controller-1", now.Add(time.Second))
-	if err != nil { t.Fatal(err) }
-	if !first.Claimed { t.Fatalf("claim=%+v", first) }
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !first.Claimed {
+		t.Fatalf("claim=%+v", first)
+	}
 	second, err := Claim(project, got.HandoffID, "/root/controller", "run-controller-2", now.Add(2*time.Second))
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	if !second.ClaimConflict || second.Reason != "claimed_by_other_runtime_attempt" {
 		t.Fatalf("claim=%+v", second)
 	}
 }
-
 
 func TestClaimRejectsWrongTargetAttempt(t *testing.T) {
 	project := t.TempDir()
@@ -227,9 +241,13 @@ func TestClaimRejectsWrongTargetAttempt(t *testing.T) {
 		SourceAgentPath: "/root/registrar", TargetAgentPath: "/root/controller",
 		TargetAttemptID: "run-controller", ExecutionAuthorized: true,
 	}, now.Add(time.Second))
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	claim, err := Claim(project, got.HandoffID, "/root/controller", "run-other-controller", now.Add(2*time.Second))
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	if !claim.ClaimConflict || claim.Reason != "claimant_attempt_mismatch" {
 		t.Fatalf("claim=%+v", claim)
 	}
@@ -243,12 +261,13 @@ func TestAppliedRequiresClaim(t *testing.T) {
 		Project: project, TaskID: "A-1", EventType: EventRegistrationReady,
 		SourceAgentPath: "/root/registrar", TargetAgentPath: "/root/controller", ExecutionAuthorized: false,
 	}, now)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	if _, err := Mark(project, got.HandoffID, "applied", "ok", "premature", now.Add(time.Second)); err == nil {
 		t.Fatal("applied must require a prior claim")
 	}
 }
-
 
 func TestCapabilityEvidenceCanDisableCompletedResume(t *testing.T) {
 	project := t.TempDir()
@@ -263,11 +282,16 @@ func TestCapabilityEvidenceCanDisableCompletedResume(t *testing.T) {
 		SourceAgentPath: "/root/registrar", TargetAgentPath: "/root/controller",
 		TargetAttemptID: "run-controller", ExecutionAuthorized: true,
 	}, now.Add(2*time.Second))
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	if got.Action != ActionHold || got.Reason != "resume_completed_capability_unsupported" {
 		t.Fatalf("prepare=%+v", got)
 	}
-	caps, err := LoadCapabilities(project, "codex"); if err != nil { t.Fatal(err) }
+	caps, err := LoadCapabilities(project, "codex")
+	if err != nil {
+		t.Fatal(err)
+	}
 	if caps.Source != "runtime_evidence" || caps.CanResumeCompleted != CapabilityUnsupported {
 		t.Fatalf("caps=%+v", caps)
 	}
@@ -282,18 +306,24 @@ func TestClaudeOneShotCompletedAgentIsNotResumed(t *testing.T) {
 		Provider: "claude", SessionID: "session-1", RuntimeAgentID: "controller-1", AgentType: "Explore",
 		State: runtimeobs.StateCompleted, Terminal: true, EvidenceSource: runtimeobs.EvidenceHook, ObservationQuality: runtimeobs.QualityObserved,
 	}
-	if err := runtimeobs.AppendExecutionEvent(project, state); err != nil { t.Fatal(err) }
+	if err := runtimeobs.AppendExecutionEvent(project, state); err != nil {
+		t.Fatal(err)
+	}
 	binding := runtimeobs.ExecutionEvent{
 		EventKind: "binding", ObservedAt: now.Add(time.Millisecond).Format(time.RFC3339Nano), AttemptID: "run-controller",
 		AgentPath: "/root/controller", BindingSource: "test", EvidenceSource: runtimeobs.EvidenceManualBinding, ObservationQuality: runtimeobs.QualityAuthoritative,
 	}
-	if err := runtimeobs.AppendExecutionEvent(project, binding); err != nil { t.Fatal(err) }
+	if err := runtimeobs.AppendExecutionEvent(project, binding); err != nil {
+		t.Fatal(err)
+	}
 	got, err := Prepare(PrepareRequest{
 		Project: project, TaskID: "A-1", EventType: EventRegistrationReady,
 		SourceAgentPath: "/root/registrar", TargetAgentPath: "/root/controller",
 		TargetAttemptID: "run-controller", ExecutionAuthorized: true,
 	}, now.Add(time.Second))
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	if got.Action != ActionHold || got.Reason != "claude_one_shot_agent_not_resumable" {
 		t.Fatalf("prepare=%+v", got)
 	}

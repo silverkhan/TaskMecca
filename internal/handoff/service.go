@@ -103,6 +103,32 @@ func Prepare(req PrepareRequest, now time.Time) (PrepareResult, error) {
 				Target: existing.Target, Action: existing.Action,
 				RequiresFreshPreflight: existing.RequiresFreshPreflight, Reason: "already_prepared",
 			}
+			if existing.Applied || existing.ClaimedBy != "" || strings.TrimSpace(req.TargetAttemptID) == "" || req.TargetAttemptID == existing.Target.AttemptID {
+				return nil
+			}
+
+			target, action, fresh, reason, resolveErr := resolveTarget(req.Project, req.TargetAgentPath, req.SourceAttemptID, req.TargetAttemptID, now)
+			if resolveErr != nil || !sameVerifiedRuntimeIdentity(existing.Target, target) {
+				if reason == "" {
+					reason = "retarget_identity_not_verified"
+				}
+				record := Record{HandoffID: handoffID, RecordKind: "retarget_hold", HoldReason: reason, ObservedAt: now.UTC().Format(time.RFC3339Nano)}
+				if err := appendRecordUnlocked(req.Project, record); err != nil {
+					return err
+				}
+				result.Action = ActionHold
+				result.RequiresFreshPreflight = false
+				result.Reason = reason
+				return nil
+			}
+			record := Record{HandoffID: handoffID, RecordKind: "retargeted", TargetAgentPath: target.AgentPath, TargetAttemptID: target.AttemptID, TargetRuntimeAgentID: target.RuntimeAgentID, TargetRuntimeName: target.RuntimeName, TargetSessionID: target.SessionID, Provider: target.Provider, TargetState: target.State, Action: action, RequiresFreshPreflight: fresh, ObservedAt: now.UTC().Format(time.RFC3339Nano)}
+			if err := appendRecordUnlocked(req.Project, record); err != nil {
+				return err
+			}
+			result.Target = target
+			result.Action = action
+			result.RequiresFreshPreflight = fresh
+			result.Reason = "retargeted_verified_runtime_identity"
 			return nil
 		}
 
@@ -164,6 +190,11 @@ func Claim(project, handoffID, recipient, claimantAttemptID string, now time.Tim
 		result.ClaimedAttemptID = row.ClaimedAttemptID
 		if row.Applied {
 			result.AlreadyApplied = true
+			return nil
+		}
+		if row.Action == ActionHold {
+			result.ClaimConflict = true
+			result.Reason = "handoff_on_hold"
 			return nil
 		}
 		if row.TaskID != "" && row.ContractSHA256 != "" {
@@ -334,6 +365,20 @@ func validEventType(value EventType) bool {
 func stableID(parts ...string) string {
 	sum := sha256.Sum256([]byte(strings.Join(parts, "\x00")))
 	return "handoff-" + hex.EncodeToString(sum[:])[:20]
+}
+
+// sameVerifiedRuntimeIdentity permits an attempt change only when both
+// attempts are tied to the same provider session and runtime agent. An agent
+// path alone is not sufficient authority to retarget a handoff.
+func sameVerifiedRuntimeIdentity(previous, next Target) bool {
+	return strings.TrimSpace(previous.AgentPath) != "" &&
+		previous.AgentPath == next.AgentPath &&
+		strings.TrimSpace(previous.Provider) != "" &&
+		strings.EqualFold(previous.Provider, next.Provider) &&
+		strings.TrimSpace(previous.SessionID) != "" &&
+		previous.SessionID == next.SessionID &&
+		strings.TrimSpace(previous.RuntimeAgentID) != "" &&
+		previous.RuntimeAgentID == next.RuntimeAgentID
 }
 
 func detailEvidence(value string) map[string]string {
