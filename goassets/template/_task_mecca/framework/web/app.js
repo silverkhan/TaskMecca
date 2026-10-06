@@ -3383,6 +3383,21 @@ function render() {
       catch(error) { alert(error.message); }
       finally { button.disabled=false; }
     }));
+    document.querySelectorAll('[data-configure-individual]').forEach(button=>{
+      const project=button.dataset.configureIndividual;
+      const row=(state.projectNotificationSettings||[]).find(item=>item.path===project);
+      if(!row?.status?.configured || row.status?.connected)return;
+      const discover=document.createElement('button');
+      discover.type='button'; discover.className='secondary-btn'; discover.textContent=t('telegramFindChat');
+      discover.setAttribute('aria-label',`${row.name||project} · ${t('telegramFindChat')}`);
+      discover.addEventListener('click',async()=>{
+        discover.disabled=true;
+        try { await projectTelegramAction(project,'discover'); await loadProjectNotificationSettings(); render(); }
+        catch(error) { alert(error.message); }
+        finally { discover.disabled=false; }
+      });
+      button.insertAdjacentElement('afterend',discover);
+    });
     $('#sharedTelegramConfigure')?.addEventListener('click',async()=>{
       const token=$('#sharedTelegramToken')?.value?.trim(); if(!token)return;
       try { await configureSharedTelegram($('#sharedTelegramConfigure').dataset.sharedProject,token); render(); } catch(error) { alert(error.message); }
