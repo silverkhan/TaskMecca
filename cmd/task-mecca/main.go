@@ -13,6 +13,7 @@ import (
     "github.com/silverkhan/TaskMecca/internal/handoff"
     "github.com/silverkhan/TaskMecca/internal/install"
     "github.com/silverkhan/TaskMecca/internal/maintenance"
+    "github.com/silverkhan/TaskMecca/internal/notify"
     "github.com/silverkhan/TaskMecca/internal/runtimeobs"
     "github.com/silverkhan/TaskMecca/internal/webui"
 )
@@ -140,6 +141,16 @@ func run(args []string) int {
         if err != nil { fmt.Fprintln(os.Stderr, err); return 2 }
     }
     switch command {
+    case "deliveries":
+        if len(positional)>2 {fmt.Fprintln(os.Stderr,"deliveries accepts [task-id] [event-id]");return 2}
+        taskID,eventID:="",""
+        if len(positional)>0 {taskID=positional[0]}
+        if len(positional)>1 {eventID=positional[1]}
+        records,deliveryErr:=notify.DeliveryRecords(root,taskID,eventID)
+        if deliveryErr!=nil {err=deliveryErr;break}
+        if jsonOutput {emitJSON(map[string]any{"deliveries":records})} else {
+            for _,record:=range records {fmt.Printf("%s %s %s %s attempts=%d duplicate_possible=%t\n",record.TaskID,record.EventID,record.Kind,record.State,record.Attempts,record.DuplicatePossible)}
+        }
     case "channel":
         if len(positional)==0 {
             fmt.Println(maintenance.CurrentChannel())
@@ -1059,4 +1070,3 @@ func printUpdateHint(info maintenance.VersionInfo) {
     fmt.Printf("\nUpdate available (%s): %s → %s\n",info.Channel,info.Current,info.Latest)
     fmt.Println("Run: task-mecca upgrade")
 }
-
