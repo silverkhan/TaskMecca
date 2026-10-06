@@ -1,5 +1,9 @@
 # Task Mecca Session Guide
 
+## 등록 후 Root 복귀와 독립 완료
+
+실행이 승인된 등록은 준비된 Controller identity로 직접 handoff한다. Root는 등록·인계가 확인되면 즉시 사용자 입력을 받을 상태로 복귀하며 Controller의 완료, 결과 통지, 응답, polling을 기다리거나 중계하지 않는다. Controller는 DONE/BLOCKED부터 검증·원장화·외부 반영까지 독립적으로 끝낸다. `root-reported`는 결과를 알릴 수 있을 때의 best-effort 기록일 뿐 완료 조건이 아니며, 통지 실패나 Root의 새 turn 부재는 done을 막지 않는다. 사용자 판단이 필요하면 Controller가 hold와 재개 조건을 durable하게 남겨 다음 Root 대화의 입력으로 삼는다.
+
 ## Git worktree integration procedure
 
 Before dispatch, record the canonical backlog root, original repository/workspace path, integration branch and base SHA, Worker worktree/branch, and prohibited scope. The sole canonical ledger is the original workspace's `_task_mecca/data/backlog/`; copied worktree backlog/runtime must neither be edited nor registered for monitoring. Workers report commits, pushes, and evidence only. The Controller is the sole integration writer: check latest target, dirty state, and active writers before serial merging. Put conflicts or unsafe trees on hold with a resume condition. Before DONE, record ancestry evidence that the designated local integration branch in the original repository contains the merged SHA, and verify PR/CI/remote-local sync when relevant. Clean up only an exactly identified worktree while preserving uncommitted and ignored files; never delete or reset the original workspace or canonical data.

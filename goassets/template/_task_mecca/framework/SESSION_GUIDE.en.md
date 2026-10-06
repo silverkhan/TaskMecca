@@ -1,5 +1,9 @@
 # Task Mecca Session Guide
 
+## Root return and independent completion after registration
+
+An execution-authorized registration hands off directly to the prepared Controller identity. Once registration and handoff are confirmed, Root immediately returns to receiving user input and does not wait for, poll, relay, or require an acknowledgement of Controller completion. The Controller independently finishes DONE/BLOCKED verification, durable ledger finalization, and external updates. `root-reported` is a best-effort record when a result can be announced, not a completion gate; a failed notification or no new Root turn never blocks done. If user judgment is needed, the Controller records a durable hold and resume condition for the next Root conversation.
+
 ## Git worktree integration
 
 Before dispatch, record the canonical backlog root, original repository/workspace path, integration branch and base SHA, Worker worktree/branch, and prohibited scope. The sole canonical ledger is the original workspace's `_task_mecca/data/backlog/`; copied worktree backlog/runtime must neither be edited nor registered for monitoring. Workers report commits, pushes, and evidence only. The Controller is the sole integration writer: check latest target, dirty state, and active writers before serial merging. Put conflicts or unsafe trees on hold with a resume condition. Before DONE, record ancestry evidence that the designated local integration branch in the original repository contains the merged SHA, and verify PR/CI/remote-local sync when relevant. Clean up only an exactly identified worktree while preserving uncommitted and ignored files; never delete or reset the original workspace or canonical data.

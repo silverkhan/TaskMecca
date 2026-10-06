@@ -1,5 +1,9 @@
 # Task Mecca 협업 규약
 
+## Root 대화와 Controller 완료의 분리
+
+실행 승인 등록 뒤 Registrar는 prepared Controller identity에 직접 `registration_ready`를 전달한다. Root는 인계 확인 후 즉시 사용자-facing 대화로 복귀하고, 완료 결과·응답·polling을 기다리거나 운영 중계자가 되지 않는다. Controller는 Worker DONE/BLOCKED를 직접 받아 검증, backlog/lifecycle 확정, 외부 원천 반영을 독립적으로 마친다. Root 통지는 선택적 best-effort이며 `root-reported` 실패·미실행은 완료를 막지 않는다. 사용자 판단이 필요할 때만 Controller가 durable hold와 구체적 재개 조건을 남긴다.
+
 ## Git worktree 통합 절차
 
 배정 전 Controller는 canonical backlog root, 원래 repository/workspace, integration branch·base SHA, Worker worktree·branch와 금지 범위를 확정해 전달한다. Worker는 격리 checkout에서 commit/push/evidence만 보고하고 복사 backlog/runtime을 수정하거나 monitor에 등록하지 않는다. Controller만 최신 target·dirty·다른 active writer 확인 후 serial merge한다. conflict 또는 불안전한 tree는 hold와 재개 조건을 남긴다. DONE 전 원래 repository의 지정 local integration branch가 merged SHA를 ancestry로 포함하는 근거 및 필요한 PR·CI·remote/local sync를 기록한다. cleanup은 exact worktree에서만 미커밋·ignored 파일을 보존하며 수행하고 원래 workspace·canonical data를 파괴하지 않는다.
