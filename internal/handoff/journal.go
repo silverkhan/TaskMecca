@@ -137,6 +137,12 @@ func buildLedgerUnlocked(project string, now time.Time) (Ledger, error) {
 			if row.PreparedAt == "" {
 				row.PreparedAt = record.ObservedAt
 			}
+		case "retargeted":
+			row.Target = Target{AgentPath: record.TargetAgentPath, AttemptID: record.TargetAttemptID, RuntimeAgentID: record.TargetRuntimeAgentID, RuntimeName: record.TargetRuntimeName, SessionID: record.TargetSessionID, Provider: record.Provider, State: record.TargetState}
+			row.Action = record.Action
+			row.RequiresFreshPreflight = record.RequiresFreshPreflight
+		case "retarget_hold":
+			row.Action = ActionHold
 		case "claimed":
 			if row.ClaimedBy == "" {
 				row.ClaimedBy = record.ClaimedBy
