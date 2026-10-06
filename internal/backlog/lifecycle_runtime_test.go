@@ -67,6 +67,71 @@ func TestCompletedLifecyclePreservesObservedRegistrationAndStartWhenGitOnlyHasDo
 }
 
 
+func TestLifecycleUsesPreservedRegistrationInsteadOfMutableFileCtime(t *testing.T) {
+    project:=t.TempDir()
+    if _,err:=runtimeobs.EnsureHooks(project,"codex");err!=nil{t.Fatal(err)}
+    backlogDir:=filepath.Join(project,"_task_mecca","data","backlog")
+    if err:=os.MkdirAll(backlogDir,0755);err!=nil{t.Fatal(err)}
+    task:=filepath.Join(backlogDir,"0931.B-931.mutable-ctime.doing.md")
+    body:="# B-931 Mutable ctime\n- Agent: /root/controller/worker-931\n- RuntimeProvider: codex\n"
+    if err:=os.WriteFile(task,[]byte(body),0644);err!=nil{t.Fatal(err)}
+
+    base:=time.Now().UTC().Add(-2*time.Minute)
+    journalPath:=filepath.Join(project,"_task_mecca",".runtime","lifecycle_observations.json")
+    if err:=os.MkdirAll(filepath.Dir(journalPath),0755);err!=nil{t.Fatal(err)}
+    absLedger,err:=filepath.Abs(backlogDir);if err!=nil{t.Fatal(err)}
+    journal:=map[string]any{
+        "version":float64(1),
+        "ledgers":map[string]any{
+            absLedger:map[string]any{
+                "items":map[string]any{
+                    "B-931":[]any{
+                        map[string]any{"state":"todo","at":base.Format(time.RFC3339)},
+                    },
+                },
+            },
+        },
+    }
+    data,err:=json.MarshalIndent(journal,"","  ");if err!=nil{t.Fatal(err)}
+    if err:=os.WriteFile(journalPath,append(data,'\n'),0644);err!=nil{t.Fatal(err)}
+
+    attemptID:="run-b931"
+    runtimeStart:=base.Add(30*time.Second)
+    start:=runtimeobs.ExecutionEvent{
+        EventKind:"state",ObservedAt:runtimeStart.Format(time.RFC3339Nano),
+        AttemptID:attemptID,Provider:"codex",RuntimeAgentID:"worker-931",
+        State:runtimeobs.StateRunning,EvidenceSource:runtimeobs.EvidenceHook,
+        ObservationQuality:runtimeobs.QualityObserved,
+    }
+    if err:=runtimeobs.AppendExecutionEvent(project,start);err!=nil{t.Fatal(err)}
+    bindingAt:=runtimeStart.Add(time.Second)
+    if _,err:=runtimeobs.BindAttempt(project,attemptID,"B-931","/root/controller/worker-931","dispatch","",nil,bindingAt);err!=nil{t.Fatal(err)}
+
+    rows,err:=Catalog(project,"");if err!=nil{t.Fatal(err)}
+    // The live file was created/renamed much later than the preserved
+    // registration observation. Old code compared start against this mutable
+    // ctime and incorrectly discarded the canonical runtime start.
+    row:=preferredRows(rows)["B-931"]
+    if ctime,ok:=parseTime(row.Ctime);ok && !ctime.After(bindingAt){
+        t.Fatalf("fixture requires mutable file ctime after runtime start: ctime=%s binding=%s",row.Ctime,bindingAt)
+    }
+
+    timings,err:=lifecycleTimings(project,"",rows);if err!=nil{t.Fatal(err)}
+    lifecycle:=timings["B-931"]
+    if lifecycle==nil||lifecycle["started_at"]==nil{
+        t.Fatalf("canonical start was rejected despite preserved registration: %+v",lifecycle)
+    }
+    started,ok:=parseTime(toString(lifecycle["started_at"]));if !ok{t.Fatalf("invalid started_at: %+v",lifecycle)}
+    if started.Before(bindingAt){
+        t.Fatalf("task lifecycle backdated before binding: started=%s binding=%s",started,bindingAt)
+    }
+    events:=lifecycle["events"].([]map[string]any)
+    if len(events)<2||toString(events[0]["state"])!="todo"||toString(events[1]["state"])!="doing"{
+        t.Fatalf("want registered -> started lifecycle, got %+v",events)
+    }
+}
+
+
 func TestLifecycleRejectsRuntimeStartBeforeRegistration(t *testing.T) {
     project:=t.TempDir()
     backlogDir:=filepath.Join(project,"_task_mecca","data","backlog")

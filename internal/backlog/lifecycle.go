@@ -112,6 +112,25 @@ func parseTime(value string) (time.Time,bool) {
     return parsed,err==nil
 }
 
+func observedLifecycleAt(items map[string]any,id,state string) string {
+    raw,ok:=items[id].([]any)
+    if !ok { return "" }
+    best:=""
+    var bestTime time.Time
+    for _,entryRaw:=range raw {
+        entry,ok:=entryRaw.(map[string]any)
+        if !ok || toString(entry["state"])!=state { continue }
+        at:=toString(entry["at"])
+        parsed,valid:=parseTime(at)
+        if !valid { continue }
+        if best=="" || parsed.Before(bestTime) {
+            best=at
+            bestTime=parsed
+        }
+    }
+    return best
+}
+
 func LifecycleTimings(project,root string) (map[string]map[string]any,error) {
     return lifecycleTimings(project,root,nil)
 }
@@ -200,26 +219,28 @@ func lifecycleTimings(project,root string,rows []Record) (map[string]map[string]
 
             // A binding can be written after an attempt has already existed for
             // some time. Never backdate the task lifecycle to runtime activity
-            // that predates that task binding. The effective start is the later
-            // of runtime start and binding time.
+            // that predates that task binding. BindingAt is a canonical folded
+            // field and does not disappear when RecentTransitions is truncated.
             effectiveStart:=attempt.StartedAt
-            for _,transition:=range attempt.RecentTransitions {
-                if transition.Kind!="binding" { continue }
-                if bindingAt,ok:=parseTime(transition.At); ok {
-                    if startAt,startOK:=parseTime(effectiveStart); !startOK || bindingAt.After(startAt) {
-                        effectiveStart=transition.At
-                    }
+            if bindingAt,ok:=parseTime(attempt.BindingAt); ok {
+                if startAt,startOK:=parseTime(effectiveStart); !startOK || bindingAt.After(startAt) {
+                    effectiveStart=attempt.BindingAt
                 }
             }
 
             // Registration is an invariant boundary: a task cannot start before
-            // it exists. Reject stale/reused attempt evidence that would invert
-            // Registered -> Started ordering.
+            // it exists. Prefer the immutable/provisional registration observation
+            // already captured in lifecycle_observations.json. Using the current
+            // file ctime here is unsafe because todo -> doing rename/edit advances
+            // ctime and can make a valid runtime start look older than registration.
             registeredAt:=""
             if durable:=events[id]; len(durable)>0 {
                 for _,event:=range durable {
                     if event.State=="todo" { registeredAt=event.At; break }
                 }
+            }
+            if registeredAt=="" {
+                registeredAt=observedLifecycleAt(items,id,"todo")
             }
             if registeredAt=="" {
                 if row,ok:=currentRows[id]; ok { registeredAt=firstNonEmpty(row.Ctime,row.Mtime) }

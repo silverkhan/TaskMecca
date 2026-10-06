@@ -109,6 +109,41 @@ func TestLedgerRebuildDeduplicatesAndSurvivesRestart(t *testing.T) {
     if first.Attempts[0].EvidenceCount!=1 || second.Attempts[0].EvidenceCount!=1 { t.Fatalf("duplicate event IDs must fold once") }
 }
 
+func TestBindingAtSurvivesRecentTransitionTruncation(t *testing.T) {
+    project:=t.TempDir()
+    base:=time.Date(2026,10,6,0,0,0,0,time.UTC)
+    attempt:="run-binding-at"
+    start:=ExecutionEvent{
+        EventKind:"state",ObservedAt:base.Format(time.RFC3339Nano),
+        AttemptID:attempt,Provider:"codex",RuntimeAgentID:"worker-binding-at",
+        State:StateRunning,EvidenceSource:EvidenceHook,ObservationQuality:QualityObserved,
+    }
+    if err:=AppendExecutionEvent(project,start);err!=nil{t.Fatal(err)}
+    bindingAt:=base.Add(time.Second)
+    if _,err:=BindAttempt(project,attempt,"B-930","/root/controller/worker-binding-at","dispatch","",nil,bindingAt);err!=nil{t.Fatal(err)}
+
+    // Push the binding transition out of RecentTransitions. BindingAt must
+    // remain available as folded canonical state, not depend on the UI history window.
+    states:=[]CanonicalState{StateWaitingApproval,StateRunning,StateWaitingUser,StateRunning,StateWaitingApproval,StateRunning}
+    for i,state:=range states{
+        event:=ExecutionEvent{
+            EventKind:"state",ObservedAt:base.Add(time.Duration(i+2)*time.Second).Format(time.RFC3339Nano),
+            AttemptID:attempt,Provider:"codex",RuntimeAgentID:"worker-binding-at",
+            State:state,EvidenceSource:EvidenceHook,ObservationQuality:QualityObserved,
+        }
+        if err:=AppendExecutionEvent(project,event);err!=nil{t.Fatal(err)}
+    }
+    ledger,err:=BuildLedger(project,3,base.Add(20*time.Second));if err!=nil{t.Fatal(err)}
+    if len(ledger.Attempts)!=1{t.Fatalf("attempts=%+v",ledger.Attempts)}
+    got:=ledger.Attempts[0]
+    if got.BindingAt!=bindingAt.Format(time.RFC3339Nano){
+        t.Fatalf("binding_at=%q want=%q attempt=%+v",got.BindingAt,bindingAt.Format(time.RFC3339Nano),got)
+    }
+    for _,transition:=range got.RecentTransitions{
+        if transition.Kind=="binding"{t.Fatalf("fixture did not truncate binding transition: %+v",got.RecentTransitions)}
+    }
+}
+
 func TestRecentTransitionLimitAndWaitingTime(t *testing.T) {
     project:=t.TempDir(); base:=time.Date(2026,10,1,10,0,0,0,time.UTC); attempt:="run-test"
     states:=[]CanonicalState{StateStarting,StateRunning,StateWaitingApproval,StateRunning,StateWaitingUser,StateRunning}

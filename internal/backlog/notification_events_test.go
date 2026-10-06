@@ -230,6 +230,8 @@ func TestRuntimeUnknownNotificationRequiresStableDwell(t *testing.T) {
     var journal notificationJournal
     if err:=json.Unmarshal(data,&journal);err!=nil{t.Fatal(err)}
     obs:=journal.Items["B-610"]
+    // One minute is enough for a previously-started runtime loss, but a task
+    // that has not established canonical start yet gets a longer startup grace.
     obs.ConditionSince=time.Now().Add(-runtimeUnknownNotificationGrace-time.Second).Format(time.RFC3339Nano)
     obs.ConditionConsumed=false
     journal.Items["B-610"]=obs
@@ -238,11 +240,28 @@ func TestRuntimeUnknownNotificationRequiresStableDwell(t *testing.T) {
 
     events,err=NotificationEvents(project,unknown)
     if err!=nil{t.Fatal(err)}
+    for _,event:=range events{
+        if toString(event["task_id"])=="B-610" && toString(event["kind"])=="runtime_unknown"{
+            t.Fatalf("startup runtime_unknown must not alert after only the active grace: %+v",events)
+        }
+    }
+
+    data,err=os.ReadFile(path);if err!=nil{t.Fatal(err)}
+    if err:=json.Unmarshal(data,&journal);err!=nil{t.Fatal(err)}
+    obs=journal.Items["B-610"]
+    obs.ConditionSince=time.Now().Add(-runtimeUnknownStartupNotificationGrace-time.Second).Format(time.RFC3339Nano)
+    obs.ConditionConsumed=false
+    journal.Items["B-610"]=obs
+    encoded,err=json.MarshalIndent(journal,"","  ");if err!=nil{t.Fatal(err)}
+    if err:=os.WriteFile(path,append(encoded,'\n'),0644);err!=nil{t.Fatal(err)}
+
+    events,err=NotificationEvents(project,unknown)
+    if err!=nil{t.Fatal(err)}
     count:=0
     for _,event:=range events{
         if toString(event["task_id"])=="B-610" && toString(event["kind"])=="runtime_unknown"{count++}
     }
-    if count!=1{t.Fatalf("persistent runtime_unknown must alert once after dwell: %+v",events)}
+    if count!=1{t.Fatalf("persistent startup runtime_unknown must alert once after startup dwell: %+v",events)}
 
     again,err:=NotificationEvents(project,unknown);if err!=nil{t.Fatal(err)}
     if len(again)!=len(events){t.Fatalf("runtime_unknown duplicated after consumption: %+v",again)}
