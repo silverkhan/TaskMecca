@@ -246,6 +246,8 @@ func Deliver(project string, events []Event) []error {
 		switch {
 		case !notificationAfterActivation(e.At, cfg.ActivatedAt):
 			state = "suppressed_before_activation"
+		case suppressedByProjectControl(e, cfg):
+			state = "suppressed_project_disabled"
 		case shouldSuppressRegression(e.Kind, cfg.TaskPhases[strings.ToUpper(strings.TrimSpace(e.TaskID))]):
 			state = "suppressed_regression"
 		case !cfg.Enabled || cfg.ChatID == 0 || !cfg.Kinds[e.Kind]:

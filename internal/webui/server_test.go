@@ -143,6 +143,7 @@ func TestHandlerServesDashboardAPIsAndAssets(t *testing.T) {
 		{"/api/snapshot", 200, "application/json"},
 		{"/api/attention", 200, "application/json"},
 		{"/api/workload", 200, "application/json"},
+		{"/api/notifications/projects", 200, "application/json"},
 		{"/api/issues", 200, "application/json"},
 		{"/api/tasks/A-1", 200, "application/json"},
 		{"/api/manual?lang=en", 200, "application/json"},
