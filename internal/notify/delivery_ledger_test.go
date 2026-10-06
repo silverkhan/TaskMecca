@@ -5,8 +5,11 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"os/exec"
 	"strings"
+	"sync/atomic"
 	"testing"
+	"time"
 )
 
 func TestDeliveryLedgerTracksFailureRetryAndRestart(t *testing.T) {
@@ -61,6 +64,58 @@ func TestDeliveryLedgerTracksFailureRetryAndRestart(t *testing.T) {
 	}
 	if strings.Contains(string(data), "secret-token") || strings.Contains(string(data), "secret-chat-123") || strings.Contains(string(data), "\"chat_id\"") {
 		t.Fatalf("delivery ledger contains secret: %s", data)
+	}
+}
+
+func TestCrossProcessDeliveryHelper(t *testing.T) {
+	if os.Getenv("TASK_MECCA_A2_CHILD") != "1" {
+		return
+	}
+	telegramAPIBase = os.Getenv("TASK_MECCA_A2_SERVER")
+	e := Event{ID: "shared-event", TaskID: "B-900", Kind: "completed", At: "2026-10-05T10:00:00Z"}
+	if errs := Deliver(os.Getenv("TASK_MECCA_A2_PROJECT"), []Event{e}); len(errs) != 0 {
+		t.Fatal(errs)
+	}
+}
+
+func TestTelegramCrossProcessConcurrentReconciliation(t *testing.T) {
+	project := t.TempDir()
+	var sends atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		sends.Add(1)
+		time.Sleep(150 * time.Millisecond)
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]any{"ok": true, "result": map[string]any{"message_id": 1}})
+	}))
+	defer server.Close()
+	if err := saveTelegram(project, TelegramConfig{Token: "token", ChatID: 7, Enabled: true, Kinds: defaultKinds(), ActivatedAt: "2026-10-05T09:00:00Z"}); err != nil {
+		t.Fatal(err)
+	}
+	binary, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	commands := []*exec.Cmd{exec.Command(binary, "-test.run=^TestCrossProcessDeliveryHelper$"), exec.Command(binary, "-test.run=^TestCrossProcessDeliveryHelper$")}
+	for _, command := range commands {
+		command.Env = append(os.Environ(), "TASK_MECCA_A2_CHILD=1", "TASK_MECCA_A2_PROJECT="+project, "TASK_MECCA_A2_SERVER="+server.URL)
+		if err := command.Start(); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, command := range commands {
+		if err := command.Wait(); err != nil {
+			t.Fatalf("child process: %v", err)
+		}
+	}
+	if got := sends.Load(); got != 1 {
+		t.Fatalf("Telegram sends=%d, want 1", got)
+	}
+	records, err := DeliveryRecords(project, "B-900", "shared-event")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(records) != 1 || records[0].State != "sent" || records[0].Attempts != 1 {
+		t.Fatalf("records=%+v", records)
 	}
 }
 

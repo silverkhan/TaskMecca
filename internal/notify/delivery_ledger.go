@@ -70,8 +70,21 @@ func saveLedger(project string, ledger deliveryLedger) error {
 	if err != nil {
 		return err
 	}
-	tmp := path + ".tmp"
-	if err = os.WriteFile(tmp, append(data, '\n'), 0600); err != nil {
+	file, err := os.CreateTemp(filepath.Dir(path), "delivery_ledger-*.tmp")
+	if err != nil {
+		return err
+	}
+	tmp := file.Name()
+	defer os.Remove(tmp)
+	if err = file.Chmod(0600); err != nil {
+		file.Close()
+		return err
+	}
+	if _, err = file.Write(append(data, '\n')); err != nil {
+		file.Close()
+		return err
+	}
+	if err = file.Close(); err != nil {
 		return err
 	}
 	return os.Rename(tmp, path)
@@ -109,6 +122,11 @@ func recordFor(e Event, now string) DeliveryRecord {
 func Deliver(project string, events []Event) []error {
 	telegramMu.Lock()
 	defer telegramMu.Unlock()
+	release, err := acquireDeliveryLock(project)
+	if err != nil {
+		return []error{err}
+	}
+	defer release()
 	cfg, err := loadTelegram(project)
 	if err != nil {
 		return []error{err}
