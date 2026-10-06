@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 )
 
 func TestProjectNotificationPauseIsLocalAndDoesNotBackfill(t *testing.T) {
@@ -77,5 +78,85 @@ func TestLegacyGlobalDisableMigratesToProjectDefault(t *testing.T) {
 	}
 	if !cfg.Enabled || cfg.ProjectEnabled != nil {
 		t.Fatalf("migration must retain a default project policy without inventing an explicit override: %+v", cfg)
+	}
+}
+
+func TestSharedRecipientPersistsForEachProjectWithoutStatusSecrets(t *testing.T) {
+	projectA, projectB := t.TempDir(), t.TempDir()
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/bottest/getMe" {
+			_ = json.NewEncoder(w).Encode(map[string]any{"ok": true, "result": map[string]any{"username": "shared_bot"}})
+			return
+		}
+		http.NotFound(w, r)
+	}))
+	defer server.Close()
+	old := telegramAPIBase
+	telegramAPIBase = server.URL
+	defer func() { telegramAPIBase = old }()
+	if _, err := ConfigureSharedTelegram([]string{projectA, projectB}, "test", nil); err != nil {
+		t.Fatal(err)
+	}
+	for _, project := range []string{projectA, projectB} {
+		cfg, err := loadTelegram(project)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if cfg.RecipientMode != "shared" || cfg.Token != "test" || cfg.ChatID != 0 {
+			t.Fatalf("shared config not safely persisted: %+v", cfg)
+		}
+		status, err := TelegramStatusFor(project)
+		if err != nil {
+			t.Fatal(err)
+		}
+		data, _ := json.Marshal(status)
+		if string(data) == "" || string(data) == "test" || string(data) == "1" || status.RecipientMode != "shared" {
+			t.Fatalf("unsafe or invalid status: %s", data)
+		}
+	}
+}
+
+func TestIndividualRecipientNeverFallsBackToSharedConfiguration(t *testing.T) {
+	project := t.TempDir()
+	if _, err := SetTelegramRecipientMode(project, "individual"); err != nil {
+		t.Fatal(err)
+	}
+	if errs := Deliver(project, []Event{{ID: "individual-missing", TaskID: "A-11", Kind: "started", At: time.Now().UTC().Format(time.RFC3339Nano)}}); len(errs) != 0 {
+		t.Fatal(errs)
+	}
+	records, err := DeliveryRecords(project, "A-11", "individual-missing")
+	if err != nil || len(records) != 1 || records[0].State != "suppressed_before_activation" {
+		t.Fatalf("incomplete individual setup must fail closed, records=%+v err=%v", records, err)
+	}
+}
+
+func TestSharedRecipientDiscoveryRoutesOneMockedChatToSharedProjects(t *testing.T) {
+	projectA, projectB := t.TempDir(), t.TempDir()
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/bottest/getMe":
+			_ = json.NewEncoder(w).Encode(map[string]any{"ok": true, "result": map[string]any{"username": "shared_bot"}})
+		case "/bottest/getUpdates":
+			updates := []any{map[string]any{"message": map[string]any{"text": "/start", "chat": map[string]any{"id": 44, "type": "private"}}}}
+			_ = json.NewEncoder(w).Encode(map[string]any{"ok": true, "result": updates})
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer server.Close()
+	old := telegramAPIBase
+	telegramAPIBase = server.URL
+	defer func() { telegramAPIBase = old }()
+	if _, err := ConfigureSharedTelegram([]string{projectA, projectB}, "test", nil); err != nil {
+		t.Fatal(err)
+	}
+	if status, err := DiscoverSharedTelegram([]string{projectA, projectB}, projectA); err != nil || !status.Connected {
+		t.Fatalf("shared discovery=%+v err=%v", status, err)
+	}
+	for _, project := range []string{projectA, projectB} {
+		cfg, err := loadTelegram(project)
+		if err != nil || cfg.ChatID != 44 || !cfg.Enabled || cfg.RecipientMode != "shared" {
+			t.Fatalf("shared route not persisted cfg=%+v err=%v", cfg, err)
+		}
 	}
 }

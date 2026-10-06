@@ -31,19 +31,27 @@ type TelegramConfig struct {
 	ActivatedAt    string          `json:"activated_at,omitempty"`
 	ProjectEnabled *bool           `json:"project_enabled,omitempty"`
 	SuppressBefore string          `json:"suppress_before,omitempty"`
+	RecipientMode  string          `json:"recipient_mode,omitempty"`
 }
 type TelegramStatus struct {
 	Configured     bool            `json:"configured"`
 	Connected      bool            `json:"connected"`
 	Enabled        bool            `json:"enabled"`
 	BotUsername    string          `json:"bot_username,omitempty"`
-	ChatID         string          `json:"chat_id,omitempty"`
 	Kinds          map[string]bool `json:"kinds"`
 	ProjectEnabled bool            `json:"project_enabled"`
+	RecipientMode  string          `json:"recipient_mode"`
 }
 
 func projectNotificationsEnabled(cfg TelegramConfig) bool {
 	return cfg.ProjectEnabled == nil || *cfg.ProjectEnabled
+}
+
+func recipientMode(cfg TelegramConfig) string {
+	if cfg.RecipientMode == "shared" || cfg.RecipientMode == "individual" {
+		return cfg.RecipientMode
+	}
+	return "individual"
 }
 
 type telegramChannel struct{ cfg TelegramConfig }
@@ -139,11 +147,7 @@ func saveTelegram(project string, cfg TelegramConfig) error {
 	return os.Chmod(path, 0600)
 }
 func status(cfg TelegramConfig) TelegramStatus {
-	chat := ""
-	if cfg.ChatID != 0 {
-		chat = fmt.Sprintf("%d", cfg.ChatID)
-	}
-	return TelegramStatus{Configured: cfg.Token != "", Connected: cfg.Token != "" && cfg.ChatID != 0, Enabled: cfg.Enabled, BotUsername: cfg.BotUsername, ChatID: chat, Kinds: cfg.Kinds, ProjectEnabled: projectNotificationsEnabled(cfg)}
+	return TelegramStatus{Configured: cfg.Token != "", Connected: cfg.Token != "" && cfg.ChatID != 0, Enabled: cfg.Enabled, BotUsername: cfg.BotUsername, Kinds: cfg.Kinds, ProjectEnabled: projectNotificationsEnabled(cfg), RecipientMode: recipientMode(cfg)}
 }
 func TelegramStatusFor(project string) (TelegramStatus, error) {
 	telegramMu.Lock()
@@ -229,6 +233,60 @@ func ConfigureTelegram(project, token string, kinds map[string]bool) (TelegramSt
 	}
 	return status(cfg), nil
 }
+
+// ConfigureSharedTelegram validates the token once, then persists the same
+// recipient setup for every monitored project. Credentials stay in 0600
+// project runtime files and are never included in TelegramStatus or logs.
+func ConfigureSharedTelegram(projects []string, token string, kinds map[string]bool) (TelegramStatus, error) {
+	telegramMu.Lock()
+	defer telegramMu.Unlock()
+	var me struct {
+		Username string `json:"username"`
+	}
+	if err := telegramCall(token, "getMe", map[string]any{}, &me); err != nil {
+		return TelegramStatus{}, err
+	}
+	for _, project := range projects {
+		cfg, err := loadTelegram(project)
+		if err != nil {
+			return TelegramStatus{}, err
+		}
+		cfg.Token = strings.TrimSpace(token)
+		cfg.BotUsername = me.Username
+		cfg.ChatID = 0
+		cfg.Enabled = false
+		cfg.ActivatedAt = ""
+		cfg.RecipientMode = "shared"
+		if kinds != nil {
+			cfg.Kinds = kinds
+		}
+		if err := saveTelegram(project, cfg); err != nil {
+			return TelegramStatus{}, err
+		}
+	}
+	return TelegramStatus{Configured: true, Connected: false, Enabled: false, BotUsername: me.Username, Kinds: mergeDefaultKinds(kinds), ProjectEnabled: true, RecipientMode: "shared"}, nil
+}
+
+func SetTelegramRecipientMode(project, mode string) (TelegramStatus, error) {
+	mode = strings.ToLower(strings.TrimSpace(mode))
+	if mode != "shared" && mode != "individual" {
+		return TelegramStatus{}, errors.New("recipient mode must be shared or individual")
+	}
+	telegramMu.Lock()
+	defer telegramMu.Unlock()
+	cfg, err := loadTelegram(project)
+	if err != nil {
+		return TelegramStatus{}, err
+	}
+	// Selecting individual never borrows another project's recipient. A missing
+	// local recipient is intentionally left unconfigured so delivery fails
+	// closed rather than silently falling back to a shared destination.
+	cfg.RecipientMode = mode
+	if err := saveTelegram(project, cfg); err != nil {
+		return TelegramStatus{}, err
+	}
+	return status(cfg), nil
+}
 func DiscoverTelegramChat(project string) (TelegramStatus, error) {
 	telegramMu.Lock()
 	defer telegramMu.Unlock()
@@ -271,6 +329,60 @@ func DiscoverTelegramChat(project string) (TelegramStatus, error) {
 		return TelegramStatus{}, err
 	}
 	return status(cfg), nil
+}
+
+// DiscoverSharedTelegram discovers the shared private chat once and writes it
+// to every shared-project config. It never falls back to an individual route.
+func DiscoverSharedTelegram(projects []string, sourceProject string) (TelegramStatus, error) {
+	telegramMu.Lock()
+	defer telegramMu.Unlock()
+	source, err := loadTelegram(sourceProject)
+	if err != nil {
+		return TelegramStatus{}, err
+	}
+	if source.Token == "" || recipientMode(source) != "shared" {
+		return TelegramStatus{}, errors.New("shared Telegram recipient is not configured")
+	}
+	var updates []struct {
+		Message *struct {
+			Text string `json:"text"`
+			Chat struct {
+				ID   int64  `json:"id"`
+				Type string `json:"type"`
+			} `json:"chat"`
+		} `json:"message"`
+	}
+	if err = telegramCall(source.Token, "getUpdates", map[string]any{"limit": 100, "timeout": 0, "allowed_updates": []string{"message"}}, &updates); err != nil {
+		return TelegramStatus{}, err
+	}
+	var chatID int64
+	for i := len(updates) - 1; i >= 0; i-- {
+		if updates[i].Message != nil && updates[i].Message.Chat.Type == "private" {
+			chatID = updates[i].Message.Chat.ID
+			if strings.HasPrefix(strings.TrimSpace(updates[i].Message.Text), "/start") {
+				break
+			}
+		}
+	}
+	if chatID == 0 {
+		return TelegramStatus{}, errors.New("no private Telegram chat found; send /start to the bot first")
+	}
+	activatedAt := time.Now().UTC().Format(time.RFC3339Nano)
+	for _, project := range projects {
+		cfg, loadErr := loadTelegram(project)
+		if loadErr != nil {
+			return TelegramStatus{}, loadErr
+		}
+		if recipientMode(cfg) != "shared" || cfg.Token == "" {
+			continue
+		}
+		cfg.ChatID, cfg.Enabled, cfg.ActivatedAt = chatID, true, activatedAt
+		if saveErr := saveTelegram(project, cfg); saveErr != nil {
+			return TelegramStatus{}, saveErr
+		}
+	}
+	source.ChatID, source.Enabled, source.ActivatedAt = chatID, true, activatedAt
+	return status(source), nil
 }
 func TestTelegram(project string) error {
 	telegramMu.Lock()

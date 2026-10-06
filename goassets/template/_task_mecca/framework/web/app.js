@@ -388,8 +388,8 @@ Object.assign(I18N.en,{
 
 Object.assign(I18N.ko,{terminal:'터미널'});
 Object.assign(I18N.en,{terminal:'Terminal'});
-Object.assign(I18N.ko,{projectNotifications:'프로젝트별 알림',projectNotificationsIntro:'감시 중인 프로젝트마다 이후 발생하는 Telegram 알림을 따로 켜거나 끕니다. 꺼진 동안의 과거 이벤트는 다시 보내지 않습니다.',projectNotificationEnabled:'활성',projectNotificationDisabled:'비활성',projectNotificationEmpty:'감시 중인 프로젝트가 없습니다.',projectNotificationPath:'경로'});
-Object.assign(I18N.en,{projectNotifications:'Project notifications',projectNotificationsIntro:'Enable or disable future Telegram notifications for each monitored project. Events from a disabled period are not replayed.',projectNotificationEnabled:'Enabled',projectNotificationDisabled:'Disabled',projectNotificationEmpty:'No monitored projects.',projectNotificationPath:'Path'});
+Object.assign(I18N.ko,{projectNotifications:'프로젝트별 알림',projectNotificationsIntro:'감시 중인 프로젝트마다 이후 발생하는 Telegram 알림을 따로 켜거나 끕니다. 꺼진 동안의 과거 이벤트는 다시 보내지 않습니다.',projectNotificationEnabled:'활성',projectNotificationDisabled:'비활성',projectNotificationEmpty:'감시 중인 프로젝트가 없습니다.',projectNotificationPath:'경로',projectRecipientMode:'수신처',projectRecipientShared:'통합 수신처',projectRecipientIndividual:'개별 수신처',projectIndividualIncomplete:'개별 수신처가 설정되지 않았습니다. 통합 수신처로 자동 전환하지 않습니다.',projectSharedRecipientGuide:'통합 수신처를 설정하면 감시 중인 모든 프로젝트에 같은 수신처를 안전하게 저장합니다. Token과 수신처 ID는 이 화면·API 응답·기록에 표시하지 않습니다.',projectSharedRecipientConfigure:'통합 수신처 확인'});
+Object.assign(I18N.en,{projectNotifications:'Project notifications',projectNotificationsIntro:'Enable or disable future Telegram notifications for each monitored project. Events from a disabled period are not replayed.',projectNotificationEnabled:'Enabled',projectNotificationDisabled:'Disabled',projectNotificationEmpty:'No monitored projects.',projectNotificationPath:'Path',projectRecipientMode:'Recipient',projectRecipientShared:'Shared recipient',projectRecipientIndividual:'Individual recipient',projectIndividualIncomplete:'Individual recipient is not configured; Task Mecca will not fall back to the shared recipient.',projectSharedRecipientGuide:'Shared recipient setup stores the same recipient safely for all monitored projects. Tokens and recipient IDs are never shown in this screen, API responses, or records.',projectSharedRecipientConfigure:'Verify shared recipient'});
 
 function t(key, vars = {}) {
   const dict = I18N[state.language] || I18N.en;
@@ -1736,15 +1736,36 @@ async function setProjectNotificationEnabled(project,enabled) {
   const row=state.projectNotificationSettings.find(item=>item.path===project);
   if(row)row.status=body;
 }
+async function projectTelegramAction(project,action,payload={}) {
+  const response=await fetch('/api/notifications/telegram?project='+encodeURIComponent(project),{
+    method:'POST',headers:{'Content-Type':'application/json','X-Task-Mecca-Action':'1'},body:JSON.stringify({action,...payload})
+  });
+  const body=await response.json().catch(()=>({}));
+  if(!response.ok)throw new Error(body.error||('HTTP '+response.status));
+  return body;
+}
+async function configureSharedTelegram(project,token) {
+  const response=await fetch('/api/notifications/telegram?project='+encodeURIComponent(project),{
+    method:'POST',headers:{'Content-Type':'application/json','X-Task-Mecca-Action':'1'},body:JSON.stringify({action:'configure_shared',token})
+  });
+  const body=await response.json().catch(()=>({}));
+  if(!response.ok)throw new Error(body.error||('HTTP '+response.status));
+  await loadProjectNotificationSettings();
+}
 function projectNotificationsView() {
   if(state.projectNotificationSettingsLoading)return `<div class="loading">${esc(t('loading'))}</div>`;
   if(state.projectNotificationSettingsError)return `<div class="load-error"><h2>${esc(t('projectNotifications'))}</h2><p>${esc(state.projectNotificationSettingsError)}</p></div>`;
   const rows=state.projectNotificationSettings||[];
+  const shared=rows.some(row=>row.status?.recipient_mode==='shared');
+  const sharedProject=rows.find(row=>row.status?.recipient_mode==='shared')?.path||rows[0]?.path||'';
+  const sharedSetup=`<section class="telegram-settings"><strong>${esc(t('telegramNotifications'))}</strong><p class="muted">${esc(t('projectSharedRecipientGuide'))}</p><label>${esc(t('telegramBotToken'))}<input id="sharedTelegramToken" type="password" autocomplete="off" placeholder="${esc(t('telegramBotToken'))}"></label><button type="button" class="action-btn" id="sharedTelegramConfigure" data-shared-project="${esc(sharedProject)}">${esc(t('projectSharedRecipientConfigure'))}</button>${shared&&rows.some(row=>!row.status?.connected)?`<button type="button" class="secondary-btn" id="sharedTelegramDiscover" data-shared-project="${esc(sharedProject)}">${esc(t('telegramFindChat'))}</button>`:''}</section>`;
   const body=rows.length?rows.map(row=>{
     const enabled=row.status?.project_enabled!==false;
-    return `<article class="mini-panel project-notification-row"><div><strong>${esc(row.name||row.path)}</strong><p class="muted">${esc(t('projectNotificationPath'))}: <code>${esc(row.path)}</code></p></div><label class="toggle-control"><input type="checkbox" data-project-notification="${esc(row.path)}" ${enabled?'checked':''}><span>${esc(enabled?t('projectNotificationEnabled'):t('projectNotificationDisabled'))}</span></label></article>`;
+    const mode=row.status?.recipient_mode==='shared'?'shared':'individual';
+    const stateLabel=mode==='individual'&&!row.status?.configured?t('projectIndividualIncomplete'):(row.status?.connected?t('telegramConnected'):(row.status?.configured?t('telegramConfigured'):t('telegramNotConfigured')));
+    return `<article class="mini-panel project-notification-row"><div><strong>${esc(row.name||row.path)}</strong><p class="muted">${esc(t('projectNotificationPath'))}: <code>${esc(row.path)}</code></p><p class="muted">${esc(stateLabel)}</p></div><div class="project-notification-controls"><label>${esc(t('projectRecipientMode'))}<select data-recipient-mode="${esc(row.path)}"><option value="shared" ${mode==='shared'?'selected':''}>${esc(t('projectRecipientShared'))}</option><option value="individual" ${mode==='individual'?'selected':''}>${esc(t('projectRecipientIndividual'))}</option></select></label>${mode==='individual'?`<label class="sr-only">${esc(t('telegramBotToken'))}</label><input data-individual-token="${esc(row.path)}" type="password" autocomplete="off" placeholder="${esc(t('telegramBotToken'))}"><button type="button" class="secondary-btn" data-configure-individual="${esc(row.path)}">${esc(t('telegramConnect'))}</button>`:''}<label class="toggle-control"><input type="checkbox" data-project-notification="${esc(row.path)}" ${enabled?'checked':''}><span>${esc(enabled?t('projectNotificationEnabled'):t('projectNotificationDisabled'))}</span></label></div></article>`;
   }).join(''):`<div class="empty">${esc(t('projectNotificationEmpty'))}</div>`;
-  return `<div class="page-head"><div><div class="eyebrow">${esc(t('operationsEyebrow'))}</div><h1>${esc(t('projectNotifications'))}</h1><p class="summary">${esc(t('projectNotificationsIntro'))}</p></div></div><section class="assigned-workload-section"><div class="project-notification-list">${body}</div></section>`;
+  return `<div class="page-head"><div><div class="eyebrow">${esc(t('operationsEyebrow'))}</div><h1>${esc(t('projectNotifications'))}</h1><p class="summary">${esc(t('projectNotificationsIntro'))}</p></div></div><section class="assigned-workload-section">${sharedSetup}<div class="project-notification-list">${body}</div></section>`;
 }
 function renderNotificationPanel() {
   const panel=$('#notificationPanel'); if(!panel)return;
@@ -3348,6 +3369,27 @@ function render() {
       catch(error) { input.checked=!input.checked; alert(error.message); }
       finally { input.disabled=false; }
     }));
+    document.querySelectorAll('[data-recipient-mode]').forEach(select=>select.addEventListener('change',async()=>{
+      select.disabled=true;
+      try { await projectTelegramAction(select.dataset.recipientMode,'recipient_mode',{recipient_mode:select.value}); await loadProjectNotificationSettings(); render(); }
+      catch(error) { alert(error.message); await loadProjectNotificationSettings(); render(); }
+      finally { select.disabled=false; }
+    }));
+    document.querySelectorAll('[data-configure-individual]').forEach(button=>button.addEventListener('click',async()=>{
+      const project=button.dataset.configureIndividual, token=[...document.querySelectorAll('[data-individual-token]')].find(input=>input.dataset.individualToken===project)?.value?.trim();
+      if(!token)return;
+      button.disabled=true;
+      try { await projectTelegramAction(project,'configure',{token}); await loadProjectNotificationSettings(); render(); }
+      catch(error) { alert(error.message); }
+      finally { button.disabled=false; }
+    }));
+    $('#sharedTelegramConfigure')?.addEventListener('click',async()=>{
+      const token=$('#sharedTelegramToken')?.value?.trim(); if(!token)return;
+      try { await configureSharedTelegram($('#sharedTelegramConfigure').dataset.sharedProject,token); render(); } catch(error) { alert(error.message); }
+    });
+    $('#sharedTelegramDiscover')?.addEventListener('click',async()=>{
+      try { await projectTelegramAction($('#sharedTelegramDiscover').dataset.sharedProject,'discover_shared'); await loadProjectNotificationSettings(); render(); } catch(error) { alert(error.message); }
+    });
   }
   if(state.view==='backlog')scheduleAutoListPageSize();
   document.querySelectorAll('[data-manual-tab]').forEach(b=>b.onclick=()=>{state.manualTab=b.dataset.manualTab;render()});
