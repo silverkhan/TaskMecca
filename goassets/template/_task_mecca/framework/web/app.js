@@ -1627,6 +1627,18 @@ function renderNotificationPanel() {
         ${permission==='default'&&capability.canRequest?`<button type="button" class="action-btn notification-permission" id="notificationPermission">${esc(t('allowBrowserNotifications'))}</button>`:''}
       </div>${telegram}
     </div>`;
+  panel.querySelector('.notification-panel-body')?.insertAdjacentHTML('beforeend',`<details class="telegram-settings"><summary>Telegram 전송 기록</summary><p>작업 ID와 이벤트 ID로 알림 생성·전송 결과를 조회합니다.</p><input id="deliveryTaskID" placeholder="작업 ID (예: A-2)"><input id="deliveryEventID" placeholder="이벤트 ID (선택)"><button type="button" class="secondary-btn" id="deliverySearch">조회</button><div id="deliveryResults" class="muted"></div></details>`);
+  $('#deliverySearch')?.addEventListener('click',async()=>{
+    const params=new URLSearchParams({project:state.project,task_id:$('#deliveryTaskID')?.value?.trim()||'',event_id:$('#deliveryEventID')?.value?.trim()||''});
+    const target=$('#deliveryResults');
+    try{
+      const response=await fetch('/api/notifications/deliveries?'+params,{cache:'no-store'});
+      const body=await response.json();
+      if(!response.ok)throw new Error(body.error||'전송 기록을 읽지 못했습니다.');
+      const records=body.deliveries||[];
+      target.innerHTML=records.length?records.map(row=>`<p><code>${esc(row.task_id)} · ${esc(row.event_id)}</code><br>${esc(row.kind)} · ${esc(row.state)} · 시도 ${Number(row.attempts)||0}회${row.duplicate_possible?' · 중복 수신 가능':''}<br>${esc(row.last_response_at||row.last_attempt_at||row.created_at||'')}</p>`).join(''):'일치하는 전송 기록이 없습니다.';
+    }catch(error){target.textContent=error.message}
+  });
   panel.querySelectorAll('[data-notification-setting]').forEach(input=>input.addEventListener('change',()=>{state.notificationSettings[input.dataset.notificationSetting]=input.checked;saveNotificationSettings();updateNotificationIndicator();renderNotificationPanel()}));
   panel.querySelectorAll('[data-telegram-kind]').forEach(input=>input.addEventListener('change',async()=>{try{const kinds={...state.telegramStatus.kinds,[input.dataset.telegramKind]:input.checked};await telegramAction('kinds',{kinds});renderNotificationPanel()}catch(e){alert(e.message)}}));
   $('#notificationClose')?.addEventListener('click',()=>panel.classList.remove('open'));
