@@ -95,6 +95,7 @@ type Attempt struct {
     ParentAttemptID string `json:"parent_attempt_id,omitempty"`
     BindingState BindingState `json:"binding_state"`
     BindingSource string `json:"binding_source,omitempty"`
+    BindingAt string `json:"binding_at,omitempty"`
     BindingEvidence map[string]string `json:"binding_evidence,omitempty"`
     CurrentState CanonicalState `json:"current_state"`
     Terminal bool `json:"terminal"`
@@ -339,12 +340,14 @@ func applyCurrentBinding(a *accumulator) {
         a.attempt.TaskID=""
         a.attempt.AgentPath=""
         a.attempt.ParentAttemptID=""
+        a.attempt.BindingAt=""
         return
     }
     a.attempt.BindingState=BindingBound
     a.attempt.TaskID=onlyValue(a.taskIDs)
     a.attempt.AgentPath=onlyValue(a.agentPaths)
     a.attempt.ParentAttemptID=onlyValue(a.parents)
+    a.attempt.BindingAt=a.bindingAt
 }
 
 func (a *accumulator) apply(e ExecutionEvent) {
