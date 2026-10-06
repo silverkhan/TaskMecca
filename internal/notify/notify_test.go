@@ -199,6 +199,9 @@ func TestTelegramDeliveryFailureRetriesSameEligibleEvent(t *testing.T){
  if len(cfg.Delivered)!=0{t.Fatalf("failed event must remain unconsumed: %+v",cfg.Delivered)}
 
  if errs:=Deliver(project,[]Event{event});len(errs)>0{t.Fatal(errs)}
+ if attempts!=1{t.Fatalf("retry ran before its deadline: attempts=%d",attempts)}
+ forceRetryDue(t,project,event.ID)
+ if errs:=Deliver(project,[]Event{event});len(errs)>0{t.Fatal(errs)}
  if attempts!=2{t.Fatalf("attempts=%d want 2",attempts)}
  cfg,err=loadTelegram(project);if err!=nil{t.Fatal(err)}
  if len(cfg.Delivered)!=1||cfg.Delivered[0]!="retry-1"{t.Fatalf("successful retry not persisted: %+v",cfg.Delivered)}
