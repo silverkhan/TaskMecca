@@ -316,7 +316,7 @@ func TestDispatchBeforeActivitySplitsTerminalWorkerEpisode(t *testing.T) {
 }
 
 
-func TestAuthoritativeDispatchStartsReusedWorkerWithoutNewStartHook(t *testing.T) {
+func TestReusedWorkerDispatchWaitsForExecutionEvidence(t *testing.T) {
     project:=t.TempDir()
     now:=time.Date(2026,10,5,8,23,0,0,time.UTC)
     oldID:="run-old"
@@ -329,8 +329,8 @@ func TestAuthoritativeDispatchStartsReusedWorkerWithoutNewStartHook(t *testing.T
     fresh,err:=BindRuntimeAgent(project,"worker-1","B-443","/root/controller/raichyu","",now)
     if err!=nil { t.Fatal(err) }
     if fresh.AttemptID==oldID { t.Fatal("reused worker mutated completed attempt") }
-    if fresh.TaskID!="B-443" || fresh.StartedAt=="" || fresh.CurrentState!=StateRunning || fresh.Terminal {
-        t.Fatalf("dispatch did not establish canonical start: %+v",fresh)
+    if fresh.TaskID!="B-443" || fresh.StartedAt !="" || fresh.CurrentState!= StateRuntimeUnknown || fresh.Terminal {
+        t.Fatalf("reused worker dispatch manufactured start: %+v",fresh)
     }
     ledger,err:=BuildLedger(project,20,now)
 	if err!=nil { t.Fatal(err) }

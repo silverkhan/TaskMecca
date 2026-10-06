@@ -489,22 +489,9 @@ func (a *accumulator) apply(e ExecutionEvent) {
             // trail but do not poison the current effective binding.
         }
         a.transitions=append(a.transitions,Transition{At:e.ObservedAt,Kind:"binding",EvidenceSource:e.EvidenceSource,ObservationQuality:e.ObservationQuality,Reason:string(a.attempt.BindingState)})
-        // A Task Mecca dispatch binding is itself authoritative evidence that
-        // execution was handed to a concrete runtime worker. Codex only exposes
-        // agent_id on SubagentStart/SubagentStop; tool hooks are not guaranteed
-        // to carry it, and a reused worker may resume without a new
-        // SubagentStart. Waiting for attributed tool activity therefore leaves
-        // valid reused-worker runs permanently runtime_unknown. Treat the
-        // explicit dispatch boundary as the canonical start of the new episode.
-        // Manual/reconciled bindings still require runtime evidence.
-        dispatch:=strings.EqualFold(strings.TrimSpace(e.BindingSource),"dispatch")
-        if a.attempt.BindingState==BindingBound && a.attempt.StartedAt=="" && dispatch && e.ObservationQuality==QualityAuthoritative && a.attempt.Provider != "" {
-            a.attempt.StartedAt=e.ObservedAt
-            a.attempt.CurrentState=StateRunning
-            a.attempt.StateEvidenceSource=EvidenceManualBinding
-            a.attempt.StateObservationQuality=QualityAuthoritative
-            a.transitions=append(a.transitions,Transition{At:e.ObservedAt,State:StateRunning,Kind:"state",EvidenceSource:EvidenceManualBinding,ObservationQuality:QualityAuthoritative,Reason:"authoritative_dispatch"})
-        } else if a.attempt.BindingState==BindingBound && a.attempt.StartedAt=="" && a.attempt.ActivityCount>0 && a.attempt.LastActivityAt!="" {
+		// Assignment is not proof of execution, even for a reused worker.
+		// A hook or attributable activity establishes the start boundary.
+		if a.attempt.BindingState==BindingBound && a.attempt.StartedAt=="" && a.attempt.ActivityCount>0 && a.attempt.LastActivityAt!="" {
             startAt:=a.attempt.LastActivityAt
             if e.ObservedAt>startAt { startAt=e.ObservedAt }
             a.attempt.StartedAt=startAt
