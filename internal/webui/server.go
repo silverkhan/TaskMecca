@@ -896,9 +896,10 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 			return
 		}
 		var body struct {
-			Action string          `json:"action"`
-			Token  string          `json:"token"`
-			Kinds  map[string]bool `json:"kinds"`
+			Action         string          `json:"action"`
+			Token          string          `json:"token"`
+			Kinds          map[string]bool `json:"kinds"`
+			ProjectEnabled *bool           `json:"project_enabled"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 			writeJSON(w, map[string]any{"error": "invalid JSON"}, 400)
@@ -933,6 +934,17 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 				return
 			}
 			writeJSON(w, status, 200)
+		case "project_enabled":
+			if body.ProjectEnabled == nil {
+				writeJSON(w, map[string]any{"error": "project_enabled is required"}, 400)
+				return
+			}
+			status, err := notify.SetProjectNotificationsEnabled(activeProject, *body.ProjectEnabled)
+			if err != nil {
+				writeJSON(w, map[string]any{"error": err.Error()}, 400)
+				return
+			}
+			writeJSON(w, status, 200)
 		case "disable":
 			if err := notify.DisableTelegram(activeProject); err != nil {
 				writeJSON(w, map[string]any{"error": err.Error()}, 500)
@@ -943,6 +955,23 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 		default:
 			writeJSON(w, map[string]any{"error": "action must be configure, discover, test, kinds, or disable"}, 400)
 		}
+	})
+	mux.HandleFunc("/api/notifications/projects", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			writeJSON(w, map[string]any{"error": "GET required"}, http.StatusMethodNotAllowed)
+			return
+		}
+		projects := maintenance.ListProjects()
+		rows := make([]map[string]any, 0, len(projects))
+		for _, item := range projects {
+			status, err := notify.TelegramStatusFor(item.Path)
+			if err != nil {
+				writeJSON(w, map[string]any{"error": err.Error()}, http.StatusInternalServerError)
+				return
+			}
+			rows = append(rows, map[string]any{"name": item.Name, "path": item.Path, "status": status})
+		}
+		writeJSON(w, map[string]any{"projects": rows}, http.StatusOK)
 	})
 
 	mux.HandleFunc("/api/issues", func(w http.ResponseWriter, r *http.Request) {

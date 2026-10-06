@@ -72,6 +72,9 @@ const state = {
   runtimeRootList: {items:[],page:1,page_size:10,total:0,total_pages:0,counts:{}},
   runtimeHookStatus: null,
   runtimeHookStatusLoading: false,
+  projectNotificationSettings: [],
+  projectNotificationSettingsLoading: false,
+  projectNotificationSettingsError: '',
   operationRevision: '',
 };
 
@@ -385,6 +388,8 @@ Object.assign(I18N.en,{
 
 Object.assign(I18N.ko,{terminal:'터미널'});
 Object.assign(I18N.en,{terminal:'Terminal'});
+Object.assign(I18N.ko,{projectNotifications:'프로젝트별 알림',projectNotificationsIntro:'감시 중인 프로젝트마다 이후 발생하는 Telegram 알림을 따로 켜거나 끕니다. 꺼진 동안의 과거 이벤트는 다시 보내지 않습니다.',projectNotificationEnabled:'활성',projectNotificationDisabled:'비활성',projectNotificationEmpty:'감시 중인 프로젝트가 없습니다.',projectNotificationPath:'경로'});
+Object.assign(I18N.en,{projectNotifications:'Project notifications',projectNotificationsIntro:'Enable or disable future Telegram notifications for each monitored project. Events from a disabled period are not replayed.',projectNotificationEnabled:'Enabled',projectNotificationDisabled:'Disabled',projectNotificationEmpty:'No monitored projects.',projectNotificationPath:'Path'});
 
 function t(key, vars = {}) {
   const dict = I18N[state.language] || I18N.en;
@@ -1705,6 +1710,41 @@ async function telegramAction(action,payload={}) {
   if(!r.ok)throw new Error(body.error||('HTTP '+r.status));
   if(action!=='test')state.telegramStatus=body;
   return body;
+}
+async function loadProjectNotificationSettings() {
+  if(state.projectNotificationSettingsLoading)return;
+  state.projectNotificationSettingsLoading=true;
+  state.projectNotificationSettingsError='';
+  try {
+    const response=await fetch('/api/notifications/projects',{cache:'no-store'});
+    const body=await response.json();
+    if(!response.ok)throw new Error(body.error||('HTTP '+response.status));
+    state.projectNotificationSettings=body.projects||[];
+  } catch(error) {
+    state.projectNotificationSettingsError=String(error?.message||error);
+  } finally {
+    state.projectNotificationSettingsLoading=false;
+  }
+}
+async function setProjectNotificationEnabled(project,enabled) {
+  const response=await fetch('/api/notifications/telegram?project='+encodeURIComponent(project),{
+    method:'POST',headers:{'Content-Type':'application/json','X-Task-Mecca-Action':'1'},
+    body:JSON.stringify({action:'project_enabled',project_enabled:enabled})
+  });
+  const body=await response.json().catch(()=>({}));
+  if(!response.ok)throw new Error(body.error||('HTTP '+response.status));
+  const row=state.projectNotificationSettings.find(item=>item.path===project);
+  if(row)row.status=body;
+}
+function projectNotificationsView() {
+  if(state.projectNotificationSettingsLoading)return `<div class="loading">${esc(t('loading'))}</div>`;
+  if(state.projectNotificationSettingsError)return `<div class="load-error"><h2>${esc(t('projectNotifications'))}</h2><p>${esc(state.projectNotificationSettingsError)}</p></div>`;
+  const rows=state.projectNotificationSettings||[];
+  const body=rows.length?rows.map(row=>{
+    const enabled=row.status?.project_enabled!==false;
+    return `<article class="mini-panel project-notification-row"><div><strong>${esc(row.name||row.path)}</strong><p class="muted">${esc(t('projectNotificationPath'))}: <code>${esc(row.path)}</code></p></div><label class="toggle-control"><input type="checkbox" data-project-notification="${esc(row.path)}" ${enabled?'checked':''}><span>${esc(enabled?t('projectNotificationEnabled'):t('projectNotificationDisabled'))}</span></label></article>`;
+  }).join(''):`<div class="empty">${esc(t('projectNotificationEmpty'))}</div>`;
+  return `<div class="page-head"><div><div class="eyebrow">${esc(t('operationsEyebrow'))}</div><h1>${esc(t('projectNotifications'))}</h1><p class="summary">${esc(t('projectNotificationsIntro'))}</p></div></div><section class="assigned-workload-section"><div class="project-notification-list">${body}</div></section>`;
 }
 function renderNotificationPanel() {
   const panel=$('#notificationPanel'); if(!panel)return;
@@ -3226,7 +3266,7 @@ function render() {
     renderReleaseNoteModal();
     return;
   }
-  const manualReady=state.view==='manual';
+  const manualReady=state.view==='manual'||state.view==='notifications';
   const snapshotView=['workload','attention','issues'].includes(state.view);
   const viewDataReady=manualReady || (snapshotView ? Boolean(state.snapshot) : Boolean(data));
   if (!viewDataReady && !state.detailTask) {
@@ -3263,7 +3303,7 @@ function render() {
     bindCopyButtons(); bindMermaidControls(); bindDetailToc(); bindDetailInteractions(); renderMermaidDiagrams();
     return;
   }
-  c.innerHTML=(state.view==='hub'?hubView():gate+(state.view==='manual'?manualView():state.view==='workload'?workloadView():state.view==='attention'?attentionView():state.view==='issues'?issuesView():listView()));
+  c.innerHTML=(state.view==='hub'?hubView():gate+(state.view==='manual'?manualView():state.view==='notifications'?projectNotificationsView():state.view==='workload'?workloadView():state.view==='attention'?attentionView():state.view==='issues'?issuesView():listView()));
   bindRows(); if(state.view==='hub') bindHubActions();
   document.querySelectorAll('[data-runtime-hook-action]').forEach(button=>{
     button.addEventListener('click',e=>performRuntimeHookAction(e.currentTarget));
@@ -3300,6 +3340,14 @@ function render() {
         state.runtimeTransitionDisclosure[details.dataset.runtimeHistoryKey]=details.open;
       });
     });
+  }
+  if(state.view==='notifications'){
+    document.querySelectorAll('[data-project-notification]').forEach(input=>input.addEventListener('change',async()=>{
+      input.disabled=true;
+      try { await setProjectNotificationEnabled(input.dataset.projectNotification,input.checked); render(); }
+      catch(error) { input.checked=!input.checked; alert(error.message); }
+      finally { input.disabled=false; }
+    }));
   }
   if(state.view==='backlog')scheduleAutoListPageSize();
   document.querySelectorAll('[data-manual-tab]').forEach(b=>b.onclick=()=>{state.manualTab=b.dataset.manualTab;render()});
@@ -3499,6 +3547,16 @@ async function refreshOnce() {
 
   refreshHub(false).catch(()=>{});
 
+  if(targetView==='notifications'){
+    closeAttentionStream();
+    await loadProjectNotificationSettings();
+    if(targetProject!==state.project || state.view!==targetView)return;
+    state.loadError=state.projectNotificationSettingsError;
+    if(!state.loadError)$('#connectionDot').style.background='var(--ok)';
+    render();
+    return;
+  }
+
   if(targetView==='manual'){
     await loadManual(state.language);
     if(targetProject!==state.project || state.view!==targetView)return;
@@ -3651,9 +3709,9 @@ function translateChrome() {
   const brandSub=document.querySelector('.brand-copy small'); if(brandSub) brandSub.textContent=t('observatory');
   const ops=$('#operationsLabel'); if(ops) ops.textContent=t('operations').toUpperCase();
   const help=$('#helpLabel'); if(help) help.textContent=t('help').toUpperCase();
-  const pairs=[['#workloadText','workload'],['#attentionText','attention'],['#issuesText','issues'],['#terminalText','terminal'],['#manualText','manual'],['#releaseNotesText','releaseNotes']];
+  const pairs=[['#workloadText','workload'],['#attentionText','attention'],['#issuesText','issues'],['#projectNotificationsText','projectNotifications'],['#terminalText','terminal'],['#manualText','manual'],['#releaseNotesText','releaseNotes']];
   pairs.forEach(([sel,key])=>{const el=$(sel);if(el)el.textContent=t(key)});
-  [['[data-view="workload"]','workload'],['[data-view="attention"]','attention'],['[data-view="issues"]','issues'],['#terminalNavBtn','terminal'],['[data-view="manual"]','manual'],['[data-view="release-notes"]','releaseNotes']].forEach(([sel,key])=>{const el=document.querySelector(sel);if(el)el.title=t(key)});
+  [['[data-view="workload"]','workload'],['[data-view="attention"]','attention'],['[data-view="issues"]','issues'],['[data-view="notifications"]','projectNotifications'],['#terminalNavBtn','terminal'],['[data-view="manual"]','manual'],['[data-view="release-notes"]','releaseNotes']].forEach(([sel,key])=>{const el=document.querySelector(sel);if(el)el.title=t(key)});
   const sideBtn=$('#sidebarToggle');if(sideBtn){sideBtn.setAttribute('aria-label',state.sidebarCollapsed?t('expandSidebar'):t('collapseSidebar'));sideBtn.title=state.sidebarCollapsed?t('expandSidebar'):t('collapseSidebar')}
   const refresh=$('#refreshBtn'); if(refresh) refresh.title=t('refresh');
   const themeGroup=document.querySelector('.theme-switcher'); if(themeGroup){themeGroup.setAttribute('aria-label',t('theme'));themeGroup.title=t('theme');}
