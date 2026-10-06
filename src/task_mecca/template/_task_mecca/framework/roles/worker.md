@@ -1,5 +1,9 @@
 # Worker 역할 (`/root/controller/<pokemon>`)
 
+## 완료 보고 경로
+
+DONE/BLOCKED 보고와 handoff는 Controller에 직접 전달한다. Root의 응답·재개·결과 확인을 기다리거나 완료 근거로 삼지 않는다. 사용자 판단이 필요하면 Controller가 durable hold를 만들 수 있게 근거와 재개에 필요한 정보를 보고한다.
+
 ## Git worktree 경계
 
 배정된 별도 worktree/branch에서만 구현한다. canonical backlog는 원래 workspace의 `_task_mecca/data/backlog/`이며 복사 backlog/runtime을 수정하거나 monitor에 등록하지 않는다. integration target을 직접 병합하지 말고 commit SHA·push 위치·검증 evidence·남은 위험을 Controller에 보고한다. conflict·dirty 상태는 hold 판단을 요청하며 cleanup은 exact worktree와 미커밋·ignored 파일 보존 상태를 보고할 뿐 파괴적으로 삭제하지 않는다.

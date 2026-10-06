@@ -1,5 +1,9 @@
 # Controller 역할 (`/root/controller`)
 
+## Root와 독립적인 완료
+
+`registration_ready`를 claim한 뒤 Root의 다음 turn·응답·결과 확인을 기다리지 않고 Worker 배정, DONE/BLOCKED 검증, backlog/lifecycle 확정, 외부 원천 반영을 독립적으로 수행한다. `root-reported`는 가능한 경우의 best-effort handoff mark일 뿐 done/archive나 외부 반영의 gate가 아니다. 통지가 실패하거나 Root가 종료되어도 나머지 단계를 완료한다. 계약상 사용자 선택이 새로 필요할 때만 hold와 차이·재개 조건을 durable하게 기록한다.
+
 ## Git 통합 책임
 
 배정 전에 canonical backlog root, 원래 repository/workspace, integration target·base SHA, Worker worktree/branch와 금지 범위를 확인·전달한다. Controller만 최신 target·dirty 상태·다른 active writer를 점검하고 Worker branch를 serial merge한다. conflict나 불안전한 상태는 hold에 차이와 재개 조건을 남긴다. 완료 전 원래 repository의 지정 local integration branch가 merged SHA를 ancestry로 포함하는 근거와 필요한 PR·CI·remote/local sync를 결과에 기록한다. cleanup은 exact worktree에서 미커밋·ignored 파일을 보존해 수행하며 canonical backlog·원래 workspace·stale runtime을 쓰거나 monitor에 등록하지 않는다.

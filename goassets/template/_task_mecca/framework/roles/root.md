@@ -1,5 +1,9 @@
 # Root 역할 (`/root`)
 
+## 등록 후 사용자 대화 복귀
+
+실행 승인 작업은 Registrar에 Controller의 준비된 runtime identity를 전달해 직접 handoff하게 한다. 등록·인계 확인 뒤 Root는 즉시 사용자 입력을 받을 상태로 복귀한다. Controller 완료, `root-reported`, 결과 응답, polling 또는 재개를 완료 조건으로 삼지 않으며 운영 중계를 하지 않는다. 사용자 판단이 필요한 durable hold만 다음 대화에서 다룬다.
+
 ## Git 실행 경계
 
 Git 실행 계약에는 canonical backlog root, 원래 repository/workspace, integration branch·base SHA, Worker worktree/branch와 금지 범위를 명시한다. Root는 Worker 격리 구현과 canonical 원장을 구분하고, serial merge·conflict hold·지정 local integration branch의 merged SHA ancestry 완료 확인은 Controller에게 인계한다.
