@@ -72,6 +72,7 @@ const state = {
   runtimeRootList: {items:[],page:1,page_size:10,total:0,total_pages:0,counts:{}},
   runtimeHookStatus: null,
   runtimeHookStatusLoading: false,
+  operationRevision: '',
 };
 
 
@@ -390,6 +391,72 @@ function t(key, vars = {}) {
   let value = dict[key] ?? I18N.en[key] ?? key;
   Object.entries(vars).forEach(([k,v]) => { value = value.replaceAll(`{${k}}`, String(v)); });
   return value;
+}
+const OPERATION_COPY = {
+  ko: { heading:'세션 운영 확인 필요', monitoring:'Web 세션 감시 중', targets:'개 프로젝트 감시', lastScan:'최근 확인', scope:'감시 대상 보기', gap:'Web 감시 공백', no_signal:'세션 무신호', runtime_unknown:'실행 상태 미확인', interrupted:'확인된 실행 중단', errored:'확인된 실행 오류', shutdown:'확인된 세션 종료', evidence:'근거', seen:'마지막 관측', detected:'최초 발견', ended:'확인된 종료', recovered:'감시 재개', action:'필요한 조치', project:'프로젝트', count:'건의 운영 사건', detail:'근거와 조치 보기' },
+  en: { heading:'Session operation needs review', monitoring:'Web session monitoring', targets:'projects monitored', lastScan:'Last scan', scope:'View monitored projects', gap:'Web monitoring gap', no_signal:'No session signal', runtime_unknown:'Runtime unverified', interrupted:'Confirmed interruption', errored:'Confirmed execution error', shutdown:'Confirmed session shutdown', evidence:'Evidence', seen:'Last observed', detected:'First detected', ended:'Confirmed end', recovered:'Monitoring resumed', action:'Next action', project:'Project', count:'operation incidents', detail:'View evidence and action' },
+};
+const OPERATION_EVIDENCE = {
+  ko: {
+    'doing assignment has no linked runtime attempt':'진행 중인 배정은 있지만 연결된 runtime attempt가 없습니다.',
+    'verified hook has no recent signal':'실제로 수신된 Hook에서 장시간 새 신호가 없습니다.',
+    'runtime identity or hook execution unverified':'runtime identity 또는 Hook 실행 여부를 확인하지 못했습니다.',
+    'terminal state lacks observed hook evidence':'종료 상태에 실제 Hook 수신 근거가 없습니다.',
+    'web server scan gap; exact session stop time is unknown':'Web 서버의 감시 공백이 있었습니다. 그 사이의 정확한 세션 중단 시각은 알 수 없습니다.',
+    'hook terminal state':'Hook이 종료 상태를 실제로 전달했습니다.',
+    'hook completed state':'Hook이 정상 완료 상태를 실제로 전달했습니다.',
+  },
+  en: {
+    'doing assignment has no linked runtime attempt':'A doing assignment has no linked runtime attempt.',
+    'verified hook has no recent signal':'A previously observed Hook has no recent signal.',
+    'runtime identity or hook execution unverified':'Runtime identity or Hook execution is unverified.',
+    'terminal state lacks observed hook evidence':'The terminal state lacks an observed Hook event.',
+    'web server scan gap; exact session stop time is unknown':'Web monitoring stopped; the exact session stop time is unknown.',
+    'hook terminal state':'A Hook reported the terminal state.',
+    'hook completed state':'A Hook reported normal completion.',
+  },
+};
+function operationText(key) { return (OPERATION_COPY[state.language]||OPERATION_COPY.en)[key]||key; }
+function operationEvidence(value) { return (OPERATION_EVIDENCE[state.language]||OPERATION_EVIDENCE.en)[value]||value; }
+function operationAction(item) {
+  if(state.language==='ko')return item.action;
+  if(item.kind==='no_signal')return 'Controller: check the session and Hook delivery. Silence alone does not confirm that the Worker stopped.';
+  if(item.kind==='monitor_gap')return 'Controller: verify session status with separate evidence for the monitoring gap.';
+  if(item.quality==='confirmed')return 'Controller: review the termination evidence and decide whether to resume or reassign the work.';
+  return 'Controller: compare assignment and runtime identity evidence. Do not infer Worker death or change backlog state automatically.';
+}
+function operationTime(value) { return value ? new Date(value).toLocaleString(localeCode()) : '—'; }
+function renderOperationBanner(payload) {
+  const host=$('#operationBanner'); if(!host)return;
+  const recentGap=(payload.recent||[]).filter(item=>item.kind==='monitor_gap'&&Date.now()-Date.parse(item.detected_at)<3600000);
+  const items=[...(payload.active||[]),...recentGap];
+  const projects=payload.projects||[];
+  const latestScan=projects.map(item=>item.last_scan_at||'').sort().at(-1)||'';
+  const revision=state.language+JSON.stringify([items,projects.map(item=>[item.path,item.error||''])]);
+  if(revision===state.operationRevision){
+    const scan=host.querySelector('.operation-last-scan');if(scan)scan.textContent=operationTime(latestScan);
+    host.querySelectorAll('.operation-project-scan').forEach((el,index)=>{el.textContent=operationTime(projects[index]?.last_scan_at)});
+    return;
+  }
+  state.operationRevision=revision;
+  host.hidden=projects.length===0&&items.length===0;
+  if(host.hidden){host.innerHTML='';return;}
+  const confirmed=items.some(item=>item.quality==='confirmed');
+  host.classList.toggle('confirmed',confirmed);
+  host.classList.toggle('clear',items.length===0);
+  const scope=`<details class="operation-scope"><summary>${esc(operationText('scope'))}</summary><ul>${projects.map(item=>`<li>${esc(item.path)} · ${esc(operationText('lastScan'))} <span class="operation-project-scan">${esc(operationTime(item.last_scan_at))}</span>${item.error?` · ${esc(item.error)}`:''}</li>`).join('')}</ul></details>`;
+  host.innerHTML=`<div class="operation-banner-head"><strong>${esc(operationText(items.length?'heading':'monitoring'))}</strong><span>${items.length?`${items.length} ${esc(operationText('count'))} · `:''}${projects.length} ${esc(operationText('targets'))} · ${esc(operationText('lastScan'))} <span class="operation-last-scan">${esc(operationTime(latestScan))}</span></span></div>${items.length?`<div class="operation-banner-list">${items.map(item=>{
+    const kind=item.kind==='monitor_gap'?'gap':item.kind;
+    const status=item.quality==='confirmed'?'confirmed':'review';
+    return `<details class="operation-incident ${status}"><summary><span class="operation-incident-type">${esc(operationText(kind))}</span><span class="operation-incident-subject">${esc(item.task_id||item.agent_path||item.attempt_id||item.project)}</span><span class="operation-incident-expand">${esc(operationText('detail'))}</span></summary><dl><div><dt>${esc(operationText('project'))}</dt><dd>${esc(item.project)}</dd></div><div><dt>${esc(operationText('evidence'))}</dt><dd>${esc(operationEvidence(item.evidence))}</dd></div><div><dt>${esc(operationText('seen'))}</dt><dd>${esc(operationTime(item.last_observed_at))}</dd></div><div><dt>${esc(operationText('detected'))}</dt><dd>${esc(operationTime(item.detected_at))}</dd></div>${item.ended_at?`<div><dt>${esc(operationText('ended'))}</dt><dd>${esc(operationTime(item.ended_at))}</dd></div>`:''}${item.recovered_at?`<div><dt>${esc(operationText('recovered'))}</dt><dd>${esc(operationTime(item.recovered_at))}</dd></div>`:''}<div class="operation-action"><dt>${esc(operationText('action'))}</dt><dd>${esc(operationAction(item))}</dd></div></dl></details>`;
+  }).join('')}</div>`:''}${scope}`;
+}
+async function refreshOperations() {
+  try {
+    const response=await fetch('/api/operations',{cache:'no-store'});
+    if(!response.ok)return;
+    renderOperationBanner(await response.json());
+  } catch (_) { /* Existing banner remains until the service reconnects. */ }
 }
 function localeCode() { return LANGUAGES[state.language]?.locale || 'en-US'; }
 
@@ -3715,5 +3782,7 @@ setInterval(()=>{
 },60000);
 if(window.isSecureContext&&'serviceWorker' in navigator)notificationWorker();
 route();refresh();
+refreshOperations();
+setInterval(refreshOperations,15000);
 refreshVersionInfo(false);
 setTimeout(()=>refreshVersionInfo(true),800);

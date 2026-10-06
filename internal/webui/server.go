@@ -381,6 +381,11 @@ func handler(project,root,version,instanceID,controlToken string,restartCh chan<
         writeJSON(w,snapshot,200)
     })
 
+    mux.HandleFunc("/api/operations",func(w http.ResponseWriter,r *http.Request) {
+        if r.Method!=http.MethodGet { writeJSON(w,map[string]any{"error":"GET required"},http.StatusMethodNotAllowed); return }
+        writeJSON(w,operationSnapshot(project),http.StatusOK)
+    })
+
     mux.HandleFunc("/api/attention",func(w http.ResponseWriter,r *http.Request) {
         activeProject:=projectFor(r)
         activeCtx,ctxErr:=webContext(activeProject,"")
@@ -1029,6 +1034,11 @@ func Run(config Config) error {
         return err
     }
     defer removeServiceState(config.InstanceID,os.Getpid())
+
+    // Monitoring belongs to the Web service process, not a browser/SSE client.
+    monitorCtx,stopMonitor:=stdcontext.WithCancel(stdcontext.Background())
+    defer stopMonitor()
+    go runOperationMonitor(monitorCtx,config.Project)
 
     fmt.Println("Task Mecca Web UI")
     if localURL!="" { fmt.Println("local:     "+localURL) }
