@@ -1,5 +1,9 @@
 # Task Mecca 협업 규약
 
+## Git worktree 통합 절차
+
+배정 전 Controller는 canonical backlog root, 원래 repository/workspace, integration branch·base SHA, Worker worktree·branch와 금지 범위를 확정해 전달한다. Worker는 격리 checkout에서 commit/push/evidence만 보고하고 복사 backlog/runtime을 수정하거나 monitor에 등록하지 않는다. Controller만 최신 target·dirty·다른 active writer 확인 후 serial merge한다. conflict 또는 불안전한 tree는 hold와 재개 조건을 남긴다. DONE 전 원래 repository의 지정 local integration branch가 merged SHA를 ancestry로 포함하는 근거 및 필요한 PR·CI·remote/local sync를 기록한다. cleanup은 exact worktree에서만 미커밋·ignored 파일을 보존하며 수행하고 원래 workspace·canonical data를 파괴하지 않는다.
+
 Task Mecca는 **Markdown backlog + Git lifecycle**을 durable source of truth로 사용한다. `collab_tools.py`는
 원장을 읽고 검증하고 scheduling snapshot과 **local read-only Web UI**를 제공한다. agent 생성·메시지·대기는
 Codex/Claude 등 현재 런타임의 협업 기능이 담당한다.

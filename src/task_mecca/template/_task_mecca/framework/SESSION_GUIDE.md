@@ -1,5 +1,9 @@
 # Task Mecca Session Guide
 
+## Git worktree integration procedure
+
+Before dispatch, record the canonical backlog root, original repository/workspace path, integration branch and base SHA, Worker worktree/branch, and prohibited scope. The sole canonical ledger is the original workspace's `_task_mecca/data/backlog/`; copied worktree backlog/runtime must neither be edited nor registered for monitoring. Workers report commits, pushes, and evidence only. The Controller is the sole integration writer: check latest target, dirty state, and active writers before serial merging. Put conflicts or unsafe trees on hold with a resume condition. Before DONE, record ancestry evidence that the designated local integration branch in the original repository contains the merged SHA, and verify PR/CI/remote-local sync when relevant. Clean up only an exactly identified worktree while preserving uncommitted and ignored files; never delete or reset the original workspace or canonical data.
+
 Task Mecca의 사용자 가이드는 **사용자가 실제로 무엇을 먼저 해야 하는가**를 기준으로 시작한다.
 내부 역할·권한·lifecycle 규칙은 Quick Start 뒤의 운영 규칙에서 설명한다.
 

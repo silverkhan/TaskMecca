@@ -1,5 +1,9 @@
 # Worker 역할 (`/root/controller/<pokemon>`)
 
+## Git worktree 경계
+
+배정된 별도 worktree/branch에서만 구현한다. canonical backlog는 원래 workspace의 `_task_mecca/data/backlog/`이며 복사 backlog/runtime을 수정하거나 monitor에 등록하지 않는다. integration target을 직접 병합하지 말고 commit SHA·push 위치·검증 evidence·남은 위험을 Controller에 보고한다. conflict·dirty 상태는 hold 판단을 요청하며 cleanup은 exact worktree와 미커밋·ignored 파일 보존 상태를 보고할 뿐 파괴적으로 삭제하지 않는다.
+
 ## 목적
 
 Controller가 배정한 bounded subtask를 수행한다. worker 이름은 task명이 아니라 재사용되는 안정적인 Pokémon identity다.
