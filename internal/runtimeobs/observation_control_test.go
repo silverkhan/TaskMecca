@@ -97,6 +97,10 @@ func TestObservationControlPreservesProvidersHooksAndHistory(t *testing.T) {
 	if err != nil || blocked.EventID != "" {
 		t.Fatalf("disabled event=%+v err=%v", blocked, err)
 	}
+	legacy, err := Observe(project, "codex", strings.NewReader(payload), time.Now())
+	if err != nil || legacy.ObservedAt != "" {
+		t.Fatalf("legacy spike recorded while disabled: %+v %v", legacy, err)
+	}
 	claude, err := ObserveHook(project, "claude", strings.NewReader(payload), time.Now())
 	if err != nil || claude.EventID == "" {
 		t.Fatalf("other provider blocked: %+v %v", claude, err)
