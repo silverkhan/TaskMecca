@@ -13,6 +13,27 @@ import (
 	"github.com/silverkhan/TaskMecca/internal/runtimeobs"
 )
 
+// Handler starts an attention feed. Stop it before TempDir removes its root,
+// otherwise the periodic refresh can recreate runtime files during cleanup.
+func stopProjectAttentionFeedsForTest(t *testing.T, project string) {
+	t.Helper()
+	t.Cleanup(func() {
+		var feeds []*attentionFeed
+		attentionFeeds.Lock()
+		for key, feed := range attentionFeeds.feeds {
+			if strings.HasPrefix(key, project+"\x00") {
+				delete(attentionFeeds.feeds, key)
+				feeds = append(feeds, feed)
+			}
+		}
+		attentionFeeds.Unlock()
+		for _, feed := range feeds {
+			close(feed.stopCh)
+			<-feed.doneCh
+		}
+	})
+}
+
 func TestRuntimeHookGlobalScopeAPI(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
@@ -24,6 +45,7 @@ func TestRuntimeHookGlobalScopeAPI(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	stopProjectAttentionFeedsForTest(t, project)
 	post := func(body string) *httptest.ResponseRecorder {
 		request := httptest.NewRequest(http.MethodPost, "/api/runtime/hooks", strings.NewReader(body))
 		request.Header.Set("X-Task-Mecca-Action", "1")
@@ -106,6 +128,7 @@ func TestRuntimeHookGlobalScopeAPI(t *testing.T) {
 }
 
 func TestRuntimeHookOverviewFlagsOnlyProviderActuallyInUse(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
 	root := t.TempDir()
 	backlogDir := filepath.Join(root, "_task_mecca", "data", "backlog")
 	if err := os.MkdirAll(backlogDir, 0755); err != nil {
@@ -123,6 +146,7 @@ func TestRuntimeHookOverviewFlagsOnlyProviderActuallyInUse(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	stopProjectAttentionFeedsForTest(t, root)
 	req := httptest.NewRequest(http.MethodGet, "/api/runtime/hooks", nil)
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, req)

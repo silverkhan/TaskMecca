@@ -509,7 +509,7 @@ func (a *accumulator) finish(limit int,now time.Time) (Attempt,[]LedgerFinding) 
     if a.attempt.BindingState==BindingAmbiguous { findings=append(findings,LedgerFinding{Severity:"warning",Code:"binding_ambiguous",AttemptID:a.attempt.AttemptID,Message:"conflicting binding evidence exists; do not use this attempt for automatic backlog transitions"}) }
     if a.attempt.StartedAt=="" && a.attempt.ActivityCount>0 { findings=append(findings,LedgerFinding{Severity:"info",Code:"activity_without_start",AttemptID:a.attempt.AttemptID,Message:"runtime activity was observed without a start event"}) }
     if a.attempt.StartedAt!="" && !a.attempt.Terminal {
-        if at,err:=time.Parse(time.RFC3339Nano,firstNonEmptyRuntime(a.attempt.LastActivityAt,a.attempt.StartedAt)); err==nil && now.Sub(at)>=staleWarnDuration() {
+        if at,err:=time.Parse(time.RFC3339Nano,firstNonEmptyRuntime(a.attempt.LastActivityAt,a.attempt.StartedAt)); err==nil && now.Sub(at)>=StaleWarnDuration() {
             findings=append(findings,LedgerFinding{Severity:"warning",Code:"stale",AttemptID:a.attempt.AttemptID,Message:"no runtime evidence was observed within the stale window; this is not proof that the agent is dead"})
         }
     }
@@ -611,7 +611,8 @@ func waitingMillis(transitions []Transition,endedAt string,now time.Time) int64 
     return total.Milliseconds()
 }
 
-func staleWarnDuration() time.Duration {
+// StaleWarnDuration is the shared advisory threshold for runtime silence.
+func StaleWarnDuration() time.Duration {
     seconds:=1800
     if raw:=strings.TrimSpace(os.Getenv("TASK_MECCA_STALE_WARN_SECONDS")); raw!="" { if parsed,err:=strconv.Atoi(raw); err==nil && parsed>0 { seconds=parsed } }
     return time.Duration(seconds)*time.Second
