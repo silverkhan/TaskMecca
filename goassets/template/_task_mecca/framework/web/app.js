@@ -92,6 +92,18 @@ const I18N = {
   }
 };
 Object.assign(I18N.ko,{
+  runtimeHookProjectScope:'현재 프로젝트',runtimeHookGlobalScope:'이 기기의 전체 프로젝트',
+  runtimeHookProjectConfigure:'{provider} · 현재 프로젝트에 설정',runtimeHookGlobalConfigure:'{provider} · 전역 설정',
+  runtimeHookGlobalEnableConfirm:'{provider} Hook을 이 기기의 사용자 전역 설정에 추가합니다. 다른 프로젝트의 {provider} 세션에도 로드될 수 있지만, Task Mecca가 설치된 프로젝트에서만 기록합니다. 계속할까요?',
+  runtimeHookGlobalDisableConfirm:'사용자 전역 설정에서 Task Mecca의 {provider} Hook만 제거합니다. 다른 Hook과 현재 프로젝트 설정은 유지합니다. 계속할까요?',
+  runtimeHookTrustAction:'{provider} 승인 진행',runtimeHookTrustGuideTitle:'{provider}에서 직접 확인하세요',
+  runtimeHookCodexTrustStep1:'Codex CLI에서 프로젝트를 연 다음 /hooks를 입력하세요. 새로 추가된 Task Mecca Hook을 찾아 Review/Trust를 완료하세요.',
+  runtimeHookCodexTrustStep2:'Codex가 신뢰한 Hook 정의만 실행합니다. 이 버튼은 Codex의 승인을 대신하지 않습니다.',
+  runtimeHookClaudeTrustStep1:'Claude Code에서 프로젝트를 열고 workspace trust 대화상자에서 신뢰를 확인하세요.',
+  runtimeHookClaudeTrustStep2:'/hooks에서 설정 출처를 확인하세요. /hooks 자체가 workspace trust 승인은 아닙니다.',
+  runtimeHookTrustStepVerify:'새 세션에서 실제 Hook 이벤트가 도착해야 ‘관측 확인됨’으로 바뀝니다. 이전 세션의 Start/Stop은 소급하지 않습니다.',
+  runtimeHookOfficialDocs:'공식 Hook 안내 열기',
+  runtimeHookScopeAmbiguous:'두 범위에 모두 설정되어 있습니다. 관측 이벤트는 확인했지만 어느 설정에서 실행됐는지는 구분하지 않습니다.',runtimeHookSourceUnresolved:'실행 경로 미확인',
   notificationsInsecureTitle:'시스템 알림을 사용할 수 없는 접속입니다.',
   notificationsInsecureGuide:'현재 페이지가 HTTPS 보안 연결이 아닙니다. 원격 브라우저의 시스템 알림 권한은 HTTPS에서만 사용할 수 있습니다. Task Mecca의 Tailscale HTTPS 주소로 접속한 뒤 다시 시도하세요.',
   notificationsIOSHomeTitle:'iPhone/iPad 알림 설정이 필요합니다.',
@@ -101,6 +113,18 @@ Object.assign(I18N.ko,{
   notificationPermissionError:'알림 권한 요청에 실패했습니다.',
 });
 Object.assign(I18N.en,{
+  runtimeHookProjectScope:'Current project',runtimeHookGlobalScope:'All projects on this device',
+  runtimeHookProjectConfigure:'Configure {provider} for this project',runtimeHookGlobalConfigure:'Configure {provider} globally',
+  runtimeHookGlobalEnableConfirm:'Add the {provider} Hook to this device’s user-level settings? It may load in other {provider} projects, but Task Mecca records events only where Task Mecca is installed.',
+  runtimeHookGlobalDisableConfirm:'Remove only the Task Mecca {provider} Hook from user-level settings? Other Hooks and this project’s configuration remain.',
+  runtimeHookTrustAction:'Continue {provider} trust review',runtimeHookTrustGuideTitle:'Complete the review in {provider}',
+  runtimeHookCodexTrustStep1:'Open the project in Codex CLI and enter /hooks. Find the new Task Mecca Hook, then complete Review/Trust.',
+  runtimeHookCodexTrustStep2:'Codex runs only trusted Hook definitions. This button does not approve a Hook in Codex.',
+  runtimeHookClaudeTrustStep1:'Open the project in Claude Code and accept its workspace trust dialog.',
+  runtimeHookClaudeTrustStep2:'Use /hooks to inspect the configuration source. The /hooks menu does not itself grant workspace trust.',
+  runtimeHookTrustStepVerify:'Start a new session. Only a Hook event actually received afterward changes the status to Observed; earlier Start/Stop events are not inferred.',
+  runtimeHookOfficialDocs:'Open official Hooks documentation',
+  runtimeHookScopeAmbiguous:'Both scopes are configured. A Hook event was received, but Task Mecca cannot attribute it to one scope.',runtimeHookSourceUnresolved:'Source unverified',
   notificationsInsecureTitle:'System notifications are unavailable on this connection.',
   notificationsInsecureGuide:'This page is not using a secure HTTPS connection. Remote browsers require HTTPS before notification permission can be requested. Reopen Task Mecca through its Tailscale HTTPS URL and try again.',
   notificationsIOSHomeTitle:'iPhone/iPad notification setup is required.',
@@ -965,9 +989,13 @@ async function performRootSessionCleanup(button) {
 async function performRuntimeHookAction(button) {
   const provider=button?.dataset?.provider||'all';
   const action=button?.dataset?.runtimeHookAction||'enable';
+  const scope=button?.dataset?.scope||'project';
   const providerLabel=String(provider).toUpperCase();
   const confirmKey=action==='disable'?'runtimeHookDisableConfirm':'runtimeHookEnableConfirm';
-  if(!window.confirm(t(confirmKey,{provider:providerLabel})))return;
+  const confirmation=scope==='global'
+    ?t(action==='disable'?'runtimeHookGlobalDisableConfirm':'runtimeHookGlobalEnableConfirm',{provider:providerLabel})
+    :t(confirmKey,{provider:providerLabel});
+  if(!window.confirm(confirmation))return;
   const original=button?.textContent||'';
   if(button){
     button.disabled=true;
@@ -980,16 +1008,23 @@ async function performRuntimeHookAction(button) {
     const r=await fetch('/api/runtime/hooks'+qs,{
       method:'POST',
       headers:{'Content-Type':'application/json','X-Task-Mecca-Action':'1'},
-      body:JSON.stringify({provider,action})
+      body:JSON.stringify({provider,action,scope})
     });
     const body=await r.json();
     if(!r.ok)throw new Error(body.error||'Runtime hook action failed');
     await loadRuntimeHookStatus(true);
     await refresh();
+    if(action==='enable')openRuntimeHookGuide(provider);
   }catch(e){
     alert(String(e?.message||e));
     if(button){button.disabled=false;button.textContent=original;}
   }
+}
+
+function openRuntimeHookGuide(provider) {
+  state.runtimeHookGuideProvider=provider;
+  document.querySelectorAll(`[data-runtime-hook-guide="${provider}"]`).forEach(guide=>{guide.hidden=false});
+  document.querySelector(`[data-runtime-hook-guide="${provider}"]`)?.scrollIntoView({block:'nearest',behavior:'auto'});
 }
 
 
@@ -1367,17 +1402,18 @@ function diagnosticBanner() {
 function runtimeHookProviderGuide(hook) {
   const provider=String(hook?.provider||'').toLowerCase();
   if(provider==='codex') {
-    return `<details class="runtime-hook-provider-guide">
-      <summary>${esc(t('runtimeHookAgentGuide',{provider:'Codex'}))}</summary>
-      <div><strong>${esc(t('runtimeHookDesktop'))}</strong><span>${esc(t('runtimeHookCodexDesktopGuide'))}</span></div>
-      <div><strong>${esc(t('runtimeHookCLI'))}</strong><span>${esc(t('runtimeHookCodexCLIGuide'))}</span></div>
-    </details>`;
+    return `<div class="runtime-hook-provider-guide" data-runtime-hook-guide="codex" ${state.runtimeHookGuideProvider==='codex'?'':'hidden'}>
+      <strong>${esc(t('runtimeHookTrustGuideTitle',{provider:'Codex'}))}</strong>
+      <ol><li>${esc(t('runtimeHookCodexTrustStep1'))}</li><li>${esc(t('runtimeHookCodexTrustStep2'))}</li><li>${esc(t('runtimeHookTrustStepVerify'))}</li></ol>
+      <a href="https://learn.chatgpt.com/docs/hooks#review-and-trust-hooks" target="_blank" rel="noopener noreferrer">${esc(t('runtimeHookOfficialDocs'))}</a>
+    </div>`;
   }
   if(provider==='claude') {
-    return `<details class="runtime-hook-provider-guide">
-      <summary>${esc(t('runtimeHookAgentGuide',{provider:'Claude Code'}))}</summary>
-      <div><strong>${esc(t('runtimeHookDesktopCLI'))}</strong><span>${esc(t('runtimeHookClaudeAppGuide'))}</span></div>
-    </details>`;
+    return `<div class="runtime-hook-provider-guide" data-runtime-hook-guide="claude" ${state.runtimeHookGuideProvider==='claude'?'':'hidden'}>
+      <strong>${esc(t('runtimeHookTrustGuideTitle',{provider:'Claude Code'}))}</strong>
+      <ol><li>${esc(t('runtimeHookClaudeTrustStep1'))}</li><li>${esc(t('runtimeHookClaudeTrustStep2'))}</li><li>${esc(t('runtimeHookTrustStepVerify'))}</li></ol>
+      <a href="https://code.claude.com/docs/en/hooks#workspace-trust" target="_blank" rel="noopener noreferrer">${esc(t('runtimeHookOfficialDocs'))}</a>
+    </div>`;
   }
   return '';
 }
@@ -1396,7 +1432,7 @@ function runtimeHookOnboardingBanner() {
   const body=attention.length
     ? t('runtimeHookInUseBody',{provider:providers})
     : t('runtimeHookOnboardingBody');
-  const actions=targets.map(h=>`<button class="runtime-hook-onboarding-action" data-runtime-hook-action="enable" data-provider="${esc(h.provider||'')}">${esc(t(h.configured?'runtimeHookReapply':'runtimeHookOnboardingEnable',{provider:String(h.provider||'').toUpperCase()}))}</button>`).join('');
+  const actions=targets.map(h=>`<button class="runtime-hook-onboarding-action" data-runtime-hook-action="enable" data-scope="project" data-provider="${esc(h.provider||'')}">${esc(t('runtimeHookProjectConfigure',{provider:String(h.provider||'').toUpperCase()}))}</button><button class="runtime-hook-onboarding-action" data-runtime-hook-action="enable" data-scope="global" data-provider="${esc(h.provider||'')}">${esc(t('runtimeHookGlobalConfigure',{provider:String(h.provider||'').toUpperCase()}))}</button>${h.configured?`<button class="runtime-hook-onboarding-action" data-runtime-hook-trust="${esc(h.provider||'')}">${esc(t('runtimeHookTrustAction',{provider:String(h.provider||'').toUpperCase()}))}</button>`:''}`).join('');
   const guides=targets.map(runtimeHookProviderGuide).join('');
   return `<div class="global-access runtime-hook-onboarding">
     <div class="runtime-hook-onboarding-copy">
@@ -2604,10 +2640,10 @@ function runtimeAttemptCard(attempt,findings) {
   </details>`;
 }
 function runtimeHookStateLabel(stateValue) {
-  return stateValue==='observed'?t('runtimeHookObserved'):stateValue==='verification_required'?t('runtimeHookVerificationRequired'):t('runtimeHookUnconfigured');
+  return stateValue==='observed'?t('runtimeHookObserved'):stateValue==='source_unresolved'?t('runtimeHookSourceUnresolved'):stateValue==='verification_required'?t('runtimeHookVerificationRequired'):t('runtimeHookUnconfigured');
 }
 function runtimeHookStateClass(stateValue) {
-  return stateValue==='observed'?'ok':stateValue==='verification_required'?'warn':'';
+  return stateValue==='observed'?'ok':stateValue==='verification_required'||stateValue==='source_unresolved'?'warn':'';
 }
 function runtimeHookGuidance(hook) {
   const events=hook?.observed_events||{};
@@ -2632,12 +2668,15 @@ function runtimeHookEventChip(label,received) {
 }
 function runtimeHookCard(hook) {
   const events=hook?.observed_events||{}, provider=String(hook?.provider||'').toUpperCase();
-  const action=hook?.configured?'disable':'enable';
-  const actionLabel=hook?.configured?t('runtimeHookDisable'):t('runtimeHookConfigure');
+  const scopes=hook?.scopes||{};
+  const scopeRow=(scope,label)=>{
+    const setup=scopes[scope]||{},action=setup.configured?'disable':'enable';
+    return `<div class="runtime-hook-scope"><div><strong>${esc(label)}</strong><span class="badge ${runtimeHookStateClass(setup.state)}">${esc(runtimeHookStateLabel(setup.state))}</span><small title="${esc(setup.path||'')}">${esc(setup.path||'-')}</small></div><button class="runtime-hook-action ${action==='disable'?'secondary':''}" data-runtime-hook-action="${action}" data-scope="${scope}" data-provider="${esc(hook?.provider||'')}">${esc(setup.configured?t('runtimeHookDisable'):t('runtimeHookConfigure'))}</button></div>`;
+  };
   const last=hook?.last_observed_at||'';
   return `<article class="runtime-hook-card">
     <div class="runtime-hook-card-head">
-      <div class="runtime-hook-identity"><strong>${esc(provider)}</strong><span title="${esc(hook?.path||'')}">${esc(hook?.path||'-')}</span></div>
+      <div class="runtime-hook-identity"><strong>${esc(provider)}</strong></div>
       <span class="badge ${runtimeHookStateClass(hook?.state)}">${esc(runtimeHookStateLabel(hook?.state))}</span>
     </div>
     <p class="runtime-hook-guidance">${esc(runtimeHookGuidance(hook))}</p>
@@ -2648,9 +2687,10 @@ function runtimeHookCard(hook) {
     </div>
     ${last?`<div class="runtime-hook-last">${esc(t('runtimeHookLastObserved'))} · ${esc(ago(last))}</div>`:''}
     ${hook?.in_use&&hook?.state!=='observed'?`<div class="runtime-hook-apply-note">${esc(t('runtimeHookNewRootRequired'))}</div>`:''}
-    <div class="runtime-hook-actions">
-      <button class="runtime-hook-action ${action==='disable'?'secondary':''}" data-runtime-hook-action="${action}" data-provider="${esc(hook?.provider||'')}">${esc(actionLabel)}</button>
-    </div>
+    <div class="runtime-hook-scopes">${scopeRow('project',t('runtimeHookProjectScope'))}${scopeRow('global',t('runtimeHookGlobalScope'))}</div>
+    ${scopes.project?.state==='source_unresolved'&&scopes.global?.state==='source_unresolved'?`<p class="runtime-hook-scope-note">${esc(t('runtimeHookScopeAmbiguous'))}</p>`:''}
+    <div class="runtime-hook-actions"><button class="runtime-hook-action secondary" data-runtime-hook-trust="${esc(hook?.provider||'')}">${esc(t('runtimeHookTrustAction',{provider}))}</button></div>
+    ${runtimeHookProviderGuide(hook)}
   </article>`;
 }
 function runtimeHistoryRow(attempt) {
@@ -3127,6 +3167,9 @@ function render() {
   bindRows(); if(state.view==='hub') bindHubActions();
   document.querySelectorAll('[data-runtime-hook-action]').forEach(button=>{
     button.addEventListener('click',e=>performRuntimeHookAction(e.currentTarget));
+  });
+  document.querySelectorAll('[data-runtime-hook-trust]').forEach(button=>{
+    button.addEventListener('click',()=>openRuntimeHookGuide(button.dataset.runtimeHookTrust));
   });
   if(state.view==='workload'){
     $('#runtimeHistoryToggle')?.addEventListener('click',()=>toggleRuntimeHistory());
