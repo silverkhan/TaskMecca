@@ -12,6 +12,7 @@ import (
 
 const notificationJournalVersion = 4
 const runtimeUnknownNotificationGrace = 60 * time.Second
+const runtimeUnknownStartupNotificationGrace = 2 * time.Minute
 
 var notificationJournalMu sync.Mutex
 
@@ -255,7 +256,13 @@ func NotificationEvents(project string, items map[string]map[string]any) ([]map[
                 at := now
                 if kind == "runtime_unknown" {
                     if since, parseErr := time.Parse(time.RFC3339Nano, conditionSince); parseErr == nil {
-                        threshold := since.Add(runtimeUnknownNotificationGrace)
+                        grace:=runtimeUnknownNotificationGrace
+                        // Before canonical start is established, runtime_unknown
+                        // commonly represents correlation/startup convergence.
+                        // Give that path a longer dwell so a normally starting
+                        // worker does not emit a false external warning.
+                        if startedAt=="" { grace=runtimeUnknownStartupNotificationGrace }
+                        threshold := since.Add(grace)
                         if !nowTime.Before(threshold) {
                             emit = true
                             at = threshold.Format(time.RFC3339Nano)
