@@ -18,6 +18,10 @@ type lifecycleEvent struct {
     State string
     At string
     Source string
+	ID     string
+	Kind   string
+	Actor  string
+	EvidenceSource string
 }
 
 type lifecycleGitCacheEntry struct {
@@ -136,7 +140,9 @@ func LifecycleTimings(project,root string) (map[string]map[string]any,error) {
 }
 
 func lifecycleTimings(project,root string,rows []Record) (map[string]map[string]any,error) {
-    ledger,err:=Select(project,root)
+	durableScan,scanErr:=ReadLifecycleTransitions(project)
+	if scanErr!=nil { return nil,scanErr }
+	ledger,err:=Select(project,root)
     if err!=nil { return nil,err }
     if ledger=="" {
         if root!="" { ledger=root } else { ledger=filepath.Join(project,"_task_mecca","data","backlog") }
@@ -199,12 +205,15 @@ func lifecycleTimings(project,root string,rows []Record) (map[string]map[string]
         _=json.Unmarshal(data,&journal)
     }
     ledgers,ok:=journal["ledgers"].(map[string]any)
-    if !ok { ledgers=map[string]any{}; journal["ledgers"]=ledgers }
+    if !ok { ledgers=map[string]any{}
+		journal["ledgers"]=ledgers }
     absLedger,_:=filepath.Abs(ledger)
     ledgerRow,ok:=ledgers[absLedger].(map[string]any)
-    if !ok { ledgerRow=map[string]any{"items":map[string]any{}}; ledgers[absLedger]=ledgerRow }
+    if !ok { ledgerRow=map[string]any{"items":map[string]any{}}
+		ledgers[absLedger]=ledgerRow }
     items,ok:=ledgerRow["items"].(map[string]any)
-    if !ok { items=map[string]any{}; ledgerRow["items"]=items }
+    if !ok { items=map[string]any{}
+		ledgerRow["items"]=items }
 
     now:=time.Now()
 
@@ -236,7 +245,8 @@ func lifecycleTimings(project,root string,rows []Record) (map[string]map[string]
             registeredAt:=""
             if durable:=events[id]; len(durable)>0 {
                 for _,event:=range durable {
-                    if event.State=="todo" { registeredAt=event.At; break }
+                    if event.State=="todo" { registeredAt=event.At
+						break }
                 }
             }
             if registeredAt=="" {
@@ -256,7 +266,8 @@ func lifecycleTimings(project,root string,rows []Record) (map[string]map[string]
                 runtimeStarts[id]=candidate
                 continue
             }
-            oldAt,oldOK:=parseTime(existing.At); newAt,newOK:=parseTime(candidate.At)
+            oldAt,oldOK:=parseTime(existing.At)
+			newAt,newOK:=parseTime(candidate.At)
             if newOK && (!oldOK || newAt.Before(oldAt)) { runtimeStarts[id]=candidate }
         }
     }
@@ -289,17 +300,22 @@ func lifecycleTimings(project,root string,rows []Record) (map[string]map[string]
         hasDurableLast:=false
         if len(durable)>0 {
             durableLastState=durable[len(durable)-1].State
-            if parsed,ok:=parseTime(durable[len(durable)-1].At); ok { durableLastTime=parsed; hasDurableLast=true }
+            if parsed,ok:=parseTime(durable[len(durable)-1].At); ok { durableLastTime=parsed
+				hasDurableLast=true }
         }
 
         cached:=[]map[string]string{}
         cacheFiltered:=false
         if raw,ok:=items[id].([]any); ok {
             for _,entryRaw:=range raw {
-                entry,ok:=entryRaw.(map[string]any); if !ok { cacheFiltered=true; continue }
-                state,_:=entry["state"].(string); at,_:=entry["at"].(string)
+                entry,ok:=entryRaw.(map[string]any)
+				if !ok { cacheFiltered=true
+					continue }
+                state,_:=entry["state"].(string)
+				at,_:=entry["at"].(string)
                 dt,valid:=parseTime(at)
-                if !valid || (state!="todo"&&state!="doing"&&state!="hold"&&state!="done") { cacheFiltered=true; continue }
+                if !valid || (state!="todo"&&state!="doing"&&state!="hold"&&state!="done") { cacheFiltered=true
+					continue }
                 // Once a durable completion exists, no earlier-state observation
                 // at or after that completion can be part of the canonical
                 // history. Drop only those impossible tail entries; observations
@@ -387,15 +403,44 @@ func lifecycleTimings(project,root string,rows []Record) (map[string]map[string]
         }
     }
 
-    result:=map[string]map[string]any{}
+	// Explicit role reports are the canonical source. Git and the legacy
+	// observation journal remain readable fallback evidence, never a reason to
+	// duplicate a phase or promote a late file observation to a real start.
+	directByID:=map[string][]LifecycleTransition{}
+	for _,event:=range durableScan.Events { directByID[event.TaskID]=append(directByID[event.TaskID],event) }
+	for id,direct:=range directByID {
+		stateFor:=func(kind string) string { switch kind { case "registered","assigned":return "todo"; case "started","resumed":return "doing"; case "waiting":return "hold"; case "completed":return "done" }; return "" }
+		directState:=map[string]bool{}
+		hasStart:=false
+		hasAssignment:=false
+		for _,event:=range direct { directState[stateFor(event.Kind)]=true; if event.Kind=="started" { hasStart=true }; if event.Kind=="assigned" { hasAssignment=true } }
+		filtered:=[]lifecycleEvent{}
+		for _,old:=range combinedEvents[id] {
+			if directState[old.State] { continue }
+			if hasAssignment && !hasStart && old.State=="doing" { continue }
+			filtered=append(filtered,old)
+		}
+		for _,event:=range direct {
+			filtered=append(filtered,lifecycleEvent{State:stateFor(event.Kind),At:event.OccurredAt,Source:"durable_lifecycle",ID:event.EventID,Kind:event.Kind,Actor:event.Actor,EvidenceSource:event.EvidenceSource})
+		}
+		combinedEvents[id]=filtered
+	}
+	result:=map[string]map[string]any{}
     labels:=map[string]string{"todo":"Registered","doing":"Started","hold":"Hold","done":"Completed"}
     for id,seq:=range combinedEvents {
         sort.SliceStable(seq,func(i,j int)bool {
-            ti,_:=parseTime(seq[i].At); tj,_:=parseTime(seq[j].At); return ti.Before(tj)
+            ti,_:=parseTime(seq[i].At)
+			tj,_:=parseTime(seq[j].At)
+			if ti.Equal(tj) {
+				order:=map[string]int{"registered":10,"assigned":20,"started":30,"waiting":40,"resumed":50,"completed":60}
+				return order[seq[i].Kind]<order[seq[j].Kind]
+			}
+			return ti.Before(tj)
         })
         seq=collapseLifecycleEvents(seq)
         if len(seq)==0 { continue }
-        type parsedEvent struct{ event lifecycleEvent; at time.Time }
+        type parsedEvent struct{ event lifecycleEvent
+			at time.Time }
         parsed:=[]parsedEvent{}
         for _,entry:=range seq {
             if dt,ok:=parseTime(entry.At); ok { parsed=append(parsed,parsedEvent{entry,dt}) }
@@ -427,14 +472,20 @@ func lifecycleTimings(project,root string,rows []Record) (map[string]map[string]
             if entry.event.State=="hold" { waitSeconds+=interval }
             intervalValue:="-"
             if interval>0 { intervalValue=formatDuration(interval) }
-            eventRows=append(eventRows,map[string]any{
+			label:=labels[entry.event.State]
+			if entry.event.Kind!="" { label=map[string]string{"registered":"Registered","assigned":"Assigned","started":"Started","waiting":"Waiting","resumed":"Resumed","completed":"Completed"}[entry.event.Kind] }
+			eventRows=append(eventRows,map[string]any{
                 "state":entry.event.State,
-                "label":labels[entry.event.State],
+                "label":            label,
+				"event_id":         entry.event.ID,
+				"kind":             entry.event.Kind,
+				"actor":            entry.event.Actor,
+				"evidence_source":  entry.event.EvidenceSource,
                 "at":entry.event.At,
                 "interval_seconds":interval,
                 "interval":intervalValue,
                 "source":entry.event.Source,
-                "provisional":entry.event.Source!="git",
+                "provisional":entry.event.Source == "runtime_observed",
             })
         }
         current:=parsed[len(parsed)-1]
@@ -445,20 +496,29 @@ func lifecycleTimings(project,root string,rows []Record) (map[string]map[string]
         }
         created:=parsed[0].at
         var started *time.Time
-        for _,entry:=range parsed { if entry.event.State=="doing" { v:=entry.at; started=&v; break } }
+        for _,entry:=range parsed { if entry.event.State=="doing" { v:=entry.at
+				started=&v
+				break } }
         var completed *time.Time
-        for i:=len(parsed)-1;i>=0;i-- { if parsed[i].event.State=="done" { v:=parsed[i].at; completed=&v; break } }
+        for i:=len(parsed)-1;i>=0;i-- { if parsed[i].event.State=="done" { v:=parsed[i].at
+				completed=&v
+				break } }
         var queueSeconds any
         if started!=nil {
-            q:=started.Sub(created).Seconds(); if q<0 { q=0 }; queueSeconds=q
+            q:=started.Sub(created).Seconds()
+			if q<0 { q=0 }
+			queueSeconds=q
         } else if completed==nil {
-            q:=now.Sub(created).Seconds(); if q<0 { q=0 }; queueSeconds=q
+            q:=now.Sub(created).Seconds()
+			if q<0 { q=0 }
+			queueSeconds=q
         } else {
             queueSeconds=nil
         }
         leadEnd:=now
         if completed!=nil { leadEnd=*completed }
-        leadSeconds:=leadEnd.Sub(created).Seconds(); if leadSeconds<0 { leadSeconds=0 }
+        leadSeconds:=leadEnd.Sub(created).Seconds()
+		if leadSeconds<0 { leadSeconds=0 }
         var activeValue any
         if hasDoing { activeValue=activeSeconds }
         var waitValue any
@@ -490,7 +550,8 @@ func lifecycleTimings(project,root string,rows []Record) (map[string]map[string]
             "work":formatDuration(activeValue),
             "lead":formatDuration(leadSeconds),
             "elapsed":formatDuration(elapsed),
-            "duration":func()string{ if current.event.State=="done" { return formatDuration(activeValue) }; return "-" }(),
+            "duration":func()string{ if current.event.State=="done" { return formatDuration(activeValue) }
+				return "-" }(),
             "events":eventRows,
             "lifecycle_inferred":func()bool{
                 for _,event:=range eventRows { if value,ok:=event["provisional"].(bool); ok && value { return true } }
@@ -511,12 +572,37 @@ func lifecycleTimings(project,root string,rows []Record) (map[string]map[string]
             }(),
         }
     }
-    return result,nil
+	for id,direct:=range directByID {
+		row:=result[id]
+		if row==nil || len(direct)==0 { continue }
+		if _,ok:=currentRows[id];!ok {
+			row["consistency_status"]="event_without_backlog_file"
+			row["consistency_note"]="영속 전환은 기록됐지만 백로그 파일을 찾을 수 없어 확인이 필요합니다."
+			continue
+		}
+		fileState:=currentRows[id].State
+		last:=direct[len(direct)-1]
+		if last.Kind=="assigned" && fileState=="doing" {
+			row["start_evidence_status"]="assigned_not_started"
+			row["file_observation"]="doing"
+			continue
+		}
+		expected:=map[string]string{"registered":"todo","assigned":"doing","started":"doing","waiting":"hold","resumed":"doing","completed":"done"}[last.Kind]
+		if expected!="" && fileState!=expected {
+			row["consistency_status"]="event_file_mismatch"
+			row["consistency_note"]="영속 전환과 현재 백로그 파일 상태가 달라 중단 또는 미반영 여부를 확인해야 합니다."
+			row["file_observation"]=fileState
+			row["last_lifecycle_event_id"]=last.EventID
+		}
+	}
+	return result,nil
 }
 
 func lifecycleSourceRank(source string) int {
     switch source {
-    case "execution_ledger": return 30
+	case "durable_lifecycle":
+		return 40
+	case "execution_ledger": return 30
     case "git": return 20
     case "runtime_observed": return 10
     default: return 0
@@ -527,7 +613,7 @@ func collapseLifecycleEvents(seq []lifecycleEvent) []lifecycleEvent {
     if len(seq)==0 { return seq }
     out:=make([]lifecycleEvent,0,len(seq))
     for _,event:=range seq {
-        if len(out)>0 && out[len(out)-1].State==event.State {
+        if len(out)>0 && out[len(out)-1].State==event.State && out[len(out)-1].Kind == event.Kind {
             // The same state observed twice without an intervening state is one
             // transition. Prefer the stronger source, preserving runtime start
             // over Git doing and Git over provisional filesystem observation.

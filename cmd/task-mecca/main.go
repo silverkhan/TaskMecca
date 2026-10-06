@@ -659,7 +659,29 @@ func run(args []string) int {
             fmt.Fprintln(os.Stderr,"unknown web action: "+action+" (use status, restart, stop, or logs)")
             return 2
         }
-    case "runtime":
+	case "lifecycle":
+		if len(positional)==0 { fmt.Fprintln(os.Stderr,"lifecycle requires record or list"); return 2 }
+		switch positional[0] {
+		case "record":
+			if len(positional)<6 || len(positional)>9 {
+				fmt.Fprintln(os.Stderr,"lifecycle record <kind> <task-id> <event-id> <actor> <evidence-source> [evidence-ref] [assignment-id] [attempt-id]")
+				return 2
+			}
+			event:=backlog.LifecycleTransition{Kind:positional[1],TaskID:positional[2],EventID:positional[3],Actor:positional[4],EvidenceSource:positional[5]}
+			if len(positional)>6 { event.EvidenceRef=positional[6] }
+			if len(positional)>7 { event.AssignmentID=positional[7] }
+			if len(positional)>8 { event.AttemptID=positional[8] }
+			var recorded backlog.LifecycleTransition
+			recorded,err=backlog.RecordLifecycleTransition(root,event,time.Now())
+			if err==nil { if jsonOutput { emitJSON(recorded) } else { fmt.Printf("%s %s %s %s\n",recorded.EventID,recorded.TaskID,recorded.Kind,recorded.OccurredAt) } }
+		case "list":
+			if len(positional)!=1 { fmt.Fprintln(os.Stderr,"lifecycle list takes no arguments"); return 2 }
+			var scan backlog.LifecycleEventScan
+			scan,err=backlog.ReadLifecycleTransitions(root)
+			if err==nil { if jsonOutput { emitJSON(scan) } else { for _,event:=range scan.Events { fmt.Printf("%s %s %s %s\n",event.EventID,event.TaskID,event.Kind,event.OccurredAt) }; for _,finding:=range scan.Findings { fmt.Fprintf(os.Stderr,"%s: %s\n",finding.EventID,finding.Message) } } }
+		default: fmt.Fprintln(os.Stderr,"unknown lifecycle action: "+positional[0]); return 2
+		}
+	case "runtime":
         if len(positional)==0 {
 		fmt.Fprintln(os.Stderr,"runtime requires an action: observe, list, reconcile, assign, bind, bind-agent, or bind-assignment")
             return 2
