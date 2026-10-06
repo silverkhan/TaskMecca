@@ -41,8 +41,18 @@ func reconcileControlTower(project,root string,rows []Record) controlTowerSnapsh
         }
     }
 
-    activity:=runtimeActivity(project,rows,timings)
-    activity=mergeRuntimeSignals(activity,runtimeLedgerSignals(project,rows,time.Now()))
+	activity:=runtimeActivity(project,rows,timings)
+	activity=mergeRuntimeSignals(activity,runtimeLedgerSignals(project,rows,time.Now()))
+	for id,signal:=range activity {
+		health:=toString(signal["health"])
+		if health!="assignment_unobserved" && health!="binding_pending" && health!="binding_ambiguous" && health!="awaiting_start" { continue }
+		lifecycle:=timings[id]
+		if lifecycle==nil { lifecycle=map[string]any{}; timings[id]=lifecycle }
+		lifecycle["start_evidence_status"]=health
+		lifecycle["assignment_id"]=signal["assignment_id"]
+		lifecycle["attempt_id"]=signal["attempt_id"]
+		lifecycle["candidate_attempt_ids"]=signal["candidate_attempt_ids"]
+	}
 
     attention:=map[string]map[string]any{}
     conditions:=map[string]map[string]any{}
@@ -77,7 +87,28 @@ func canonicalOperationalState(row Record,review,signal map[string]any) (map[str
     health:=strings.ToLower(strings.TrimSpace(toString(signal["health"])))
     runtimeState:=strings.ToLower(strings.TrimSpace(toString(signal["runtime_state"])))
     switch {
-    case runtimeState=="waiting_approval":
+	case health == "assignment_unobserved":
+		reason = map[string]any{"type": "assignment_unobserved", "severity": "warning", "title": "Worker 실행 대기",
+			"message":          "배정 기록은 있으나 실행 attempt가 아직 관측되지 않았습니다.",
+			"resume_condition": "배정된 Worker의 runtime identity와 첫 hook을 확인하세요.",
+			"assignment_id":    toString(signal["assignment_id"]), "assigned_at": toString(signal["assigned_at"])}
+	case health == "binding_pending" || health == "binding_ambiguous":
+		reason = map[string]any{"type": health, "severity": "warning", "title": "실행 연결 확인 필요",
+			"message":          "배정된 Worker의 실행 후보와 task 연결이 아직 확정되지 않았습니다.",
+			"resume_condition": "배정 ID와 runtime identity로 후보를 확인하고 명시적으로 연결하세요. 후보가 복수라면 임의로 선택하지 마세요.",
+			"assignment_id":    toString(signal["assignment_id"]), "candidate_attempt_ids": signal["candidate_attempt_ids"],
+			"candidate_count": signal["candidate_count"]}
+	case health == "awaiting_start":
+		reason = map[string]any{
+			"type": "awaiting_start", "severity": "warning", "title": "Worker 착수 확인 필요",
+			"message":          "배정과 실행 attempt는 연결됐지만 Worker 실행 증거가 아직 없습니다.",
+			"resume_condition": "해당 runtime agent의 hook 증거를 확인하거나, 실행이 시작되지 않았다면 재배정하세요.",
+			"attempt_id":       toString(signal["attempt_id"]), "runtime_agent_id": toString(signal["runtime_agent_id"]),
+			"binding_at": toString(signal["binding_at"]), "assignment_id": toString(signal["assignment_id"]),
+		}
+		// This is an attention signal, not an immediate push: hooks may arrive
+		// shortly after dispatch and should not create transient alerts.
+	case runtimeState=="waiting_approval":
         reason=map[string]any{"type":"approval_required","severity":"danger","title":"승인 필요","message":"Worker가 승인을 기다리고 있습니다.","resume_condition":"필요한 승인을 처리한 뒤 작업을 재개하세요."}
         condition=notificationCondition("approval","runtime:approval",reason,signal)
     case health=="awaiting_finalize":
@@ -157,7 +188,12 @@ func reconcileCanonicalBindings(project string,rows []Record,now time.Time) map[
         }
     }
     byID:=preferredRows(rows)
-    for id,row:=range byID {
+	// Resolve the complete candidate graph before writing a binding. A worker
+	// can own multiple doing tasks while only one runtime attempt is visible;
+	// iterating the backlog map and binding as we go would pick a task at random.
+	candidatesByTask := map[string][]runtimeobs.Attempt{}
+	tasksByAttempt := map[string][]string{}
+	for id,row:=range byID {
         if row.Location!="active" || row.State!="doing" { continue }
         agent:=strings.TrimSpace(row.Fields["Agent"])
         if agent=="" { continue }
@@ -173,12 +209,18 @@ func reconcileCanonicalBindings(project string,rows []Record,now time.Time) map[
             runtimeID:=strings.TrimSpace(attempt.RuntimeAgentID)
             if runtimeID!="" && (runtimeID==workerName || runtimeID==agent) { candidates=append(candidates,attempt) }
         }
-        if len(candidates)!=1 { continue }
-        evidence:=map[string]string{"agent_path":agent,"correlation":"canonical_backlog_assignment"}
+		candidatesByTask[id] = candidates
+		for _, candidate := range candidates {
+			tasksByAttempt[candidate.AttemptID] = append(tasksByAttempt[candidate.AttemptID], id)
+		}
+	}
+	for id, candidates := range candidatesByTask {
+		if len(candidates)!=1 || len(tasksByAttempt[candidates[0].AttemptID]) != 1 { continue }
+		agent := strings.TrimSpace(byID[id].Fields["Agent"])
+		evidence:=map[string]string{"agent_path":agent,"correlation":"canonical_backlog_assignment"}
         if _,err:=runtimeobs.BindAttempt(project,candidates[0].AttemptID,id,agent,"backlog_assignment","",evidence,now); err==nil {
             recovered[id]=true
         }
     }
     return recovered
 }
-

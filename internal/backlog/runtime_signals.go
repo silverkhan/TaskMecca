@@ -44,14 +44,71 @@ func runtimeLedgerSignals(project string,rows []Record,now time.Time) map[string
         default:
             if stale[attempt.AttemptID] { health="stale" }
         }
-        signal:=map[string]any{
+		if attempt.StartedAt == "" && !attempt.Terminal {
+			health = "awaiting_start"
+		}
+		signal:=map[string]any{
             "health":health,"source":"execution_ledger","attempt_id":attempt.AttemptID,
             "runtime_state":attempt.CurrentState,"last_activity_at":attempt.LastActivityAt,
             "binding_state":attempt.BindingState,"binding_source":attempt.BindingSource,
-            "evidence_source":attempt.StateEvidenceSource,"observation_quality":attempt.StateObservationQuality,
+			"binding_at": attempt.BindingAt, "started_at": attempt.StartedAt, "runtime_agent_id": attempt.RuntimeAgentID,
+			"assignment_id":   attempt.BindingEvidence["assignment_id"],
+			"evidence_source":attempt.StateEvidenceSource,"observation_quality":attempt.StateObservationQuality,
         }
         out[taskID]=signal
-    }
+	}
+	assignments, _ := runtimeobs.ListAssignments(project)
+	latestAssignment := map[string]runtimeobs.Assignment{}
+	for _, assignment := range assignments {
+		key := assignment.TaskID + "\x00" + assignment.AgentPath
+		if previous, ok := latestAssignment[key]; !ok || assignment.AssignedAt > previous.AssignedAt {
+			latestAssignment[key] = assignment
+		}
+	}
+	owners := map[string]int{}
+	for _, row := range rows {
+		if row.Location == "active" && row.State == "doing" {
+			owners[strings.TrimSpace(row.Fields["Agent"])]++
+		}
+	}
+	for _, row := range rows {
+		id := strings.ToUpper(strings.TrimSpace(row.ID))
+		if row.Location != "active" || row.State != "doing" || out[id] != nil {
+			continue
+		}
+		agent := strings.TrimSpace(row.Fields["Agent"])
+		if agent == "" {
+			continue
+		}
+		assignment, hasAssignment := latestAssignment[id+"\x00"+agent]
+		candidates := []string{}
+		ambiguousEvidence := false
+		workerName := agent
+		if slash := strings.LastIndex(workerName, "/"); slash >= 0 {
+			workerName = workerName[slash+1:]
+		}
+		for _, attempt := range ledger.Attempts {
+			if attempt.Terminal || (attempt.BindingState != runtimeobs.BindingUnbound && attempt.BindingState != runtimeobs.BindingAmbiguous) {
+				continue
+			}
+			if attempt.RuntimeAgentID == agent || attempt.RuntimeAgentID == workerName {
+				candidates = append(candidates, attempt.AttemptID)
+				if attempt.BindingState == runtimeobs.BindingAmbiguous { ambiguousEvidence = true }
+			}
+		}
+		if !hasAssignment && len(candidates) == 0 {
+			continue
+		}
+		health := "assignment_unobserved"
+		if len(candidates) > 0 {
+			health = "binding_pending"
+		}
+		if ambiguousEvidence || len(candidates) > 1 || (len(candidates) > 0 && owners[agent] > 1) {
+			health = "binding_ambiguous"
+		}
+		out[id] = map[string]any{"health": health, "source": "execution_ledger", "assignment_id": assignment.AssignmentID,
+			"assigned_at": assignment.AssignedAt, "candidate_attempt_ids": candidates, "candidate_count": len(candidates), "agent_path": agent}
+	}
     return out
 }
 
