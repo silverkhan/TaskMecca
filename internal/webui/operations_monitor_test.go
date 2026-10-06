@@ -175,6 +175,7 @@ func TestOperationClassifiesConfirmedStopUnverifiedRuntimeAndMonitoringGap(t *te
 }
 
 func TestOperationMonitorScansAllProjectsWithoutBrowserSubscription(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
 	t.Setenv("TASK_MECCA_HOME", t.TempDir())
 	primary := testOperationProject(t)
 	secondary := testOperationProject(t)

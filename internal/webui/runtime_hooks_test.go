@@ -128,6 +128,7 @@ func TestRuntimeHookGlobalScopeAPI(t *testing.T) {
 }
 
 func TestRuntimeHookOverviewFlagsOnlyProviderActuallyInUse(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
 	root := t.TempDir()
 	backlogDir := filepath.Join(root, "_task_mecca", "data", "backlog")
 	if err := os.MkdirAll(backlogDir, 0755); err != nil {
