@@ -900,6 +900,7 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 			Token          string          `json:"token"`
 			Kinds          map[string]bool `json:"kinds"`
 			ProjectEnabled *bool           `json:"project_enabled"`
+			RecipientMode  string          `json:"recipient_mode"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 			writeJSON(w, map[string]any{"error": "invalid JSON"}, 400)
@@ -907,6 +908,43 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 		}
 		action := strings.ToLower(strings.TrimSpace(body.Action))
 		switch action {
+		case "configure_shared":
+			projects := maintenance.ListProjects()
+			paths := make([]string, 0, len(projects))
+			for _, item := range projects {
+				paths = append(paths, item.Path)
+			}
+			if len(paths) == 0 {
+				paths = append(paths, activeProject)
+			}
+			status, err := notify.ConfigureSharedTelegram(paths, body.Token, body.Kinds)
+			if err != nil {
+				writeJSON(w, map[string]any{"error": "Telegram shared recipient verification failed"}, 400)
+				return
+			}
+			writeJSON(w, status, 200)
+		case "discover_shared":
+			projects := maintenance.ListProjects()
+			paths := make([]string, 0, len(projects))
+			for _, item := range projects {
+				paths = append(paths, item.Path)
+			}
+			if len(paths) == 0 {
+				paths = append(paths, activeProject)
+			}
+			status, err := notify.DiscoverSharedTelegram(paths, activeProject)
+			if err != nil {
+				writeJSON(w, map[string]any{"error": "Telegram shared recipient is not ready; send /start then try again"}, 400)
+				return
+			}
+			writeJSON(w, status, 200)
+		case "recipient_mode":
+			status, err := notify.SetTelegramRecipientMode(activeProject, body.RecipientMode)
+			if err != nil {
+				writeJSON(w, map[string]any{"error": err.Error()}, 400)
+				return
+			}
+			writeJSON(w, status, 200)
 		case "configure":
 			status, err := notify.ConfigureTelegram(activeProject, body.Token, body.Kinds)
 			if err != nil {
