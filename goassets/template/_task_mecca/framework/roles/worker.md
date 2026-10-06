@@ -1,5 +1,11 @@
 # Worker 역할 (`/root/controller/<pokemon>`)
 
+## Git worktree 경계
+
+배정된 별도 worktree/branch에서만 구현한다. canonical backlog는 원래 workspace의 `_task_mecca/data/backlog/`이며 복사 backlog/runtime을 수정하거나 monitor에 등록하지 않는다. integration target을 직접 병합하지 말고 commit SHA·push 위치·검증 evidence·남은 위험을 Controller에 보고한다. conflict·dirty 상태는 hold 판단을 요청하며 cleanup은 exact worktree와 미커밋·ignored 파일 보존 상태를 보고할 뿐 파괴적으로 삭제하지 않는다.
+
+Git Worker는 배정된 별도 worktree/branch에서만 구현한다. canonical backlog는 원래 workspace의 `_task_mecca/data/backlog/`이고 stale 복사본/runtime을 monitor에 등록하지 않는다. integration target 병합은 Controller에게 보고만 한다.
+
 실제 작업을 시작할 때 `task-mecca lifecycle record started <ID> <안정적-event-id> <자신의 Agent 경로> worker_report <착수근거> <assignment_id> <attempt_id>`로 착수 사실을 기록한다. Hook을 사용할 수 없거나 승인되지 않아 attempt ID가 없으면 마지막 인자를 생략하고 실제 보고만 기록한다. 사용자를 기다리게 되면 `waiting`, 재개하면 `resumed` 사건을 각기 새 event ID로 기록한다. 단순한 `doing` 파일이나 무신호만으로 착수·종료를 주장하지 않는다. 같은 보고를 재시도할 때는 같은 event ID를 사용한다.
 
 ## 목적

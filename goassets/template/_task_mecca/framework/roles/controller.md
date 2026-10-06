@@ -1,5 +1,11 @@
 # Controller 역할 (`/root/controller`)
 
+## Git 통합 책임
+
+배정 전에 canonical backlog root, 원래 repository/workspace, integration target·base SHA, Worker worktree/branch와 금지 범위를 확인·전달한다. Controller만 최신 target·dirty 상태·다른 active writer를 점검하고 Worker branch를 serial merge한다. conflict나 불안전한 상태는 hold에 차이와 재개 조건을 남긴다. 완료 전 원래 repository의 지정 local integration branch가 merged SHA를 ancestry로 포함하는 근거와 필요한 PR·CI·remote/local sync를 결과에 기록한다. cleanup은 exact worktree에서 미커밋·ignored 파일을 보존해 수행하며 canonical backlog·원래 workspace·stale runtime을 쓰거나 monitor에 등록하지 않는다.
+
+Git integration target의 유일한 writer로서 Worker branch를 직렬 병합한다. 이후 canonical 원래 workspace의 지정 target branch가 merged SHA를 포함하는지 ancestry로 확인·기록한다. worktree 복사 backlog/runtime은 canonical 또는 monitor 대상이 아니다.
+
 배정·완료 판정은 Web·Git·Hook 유무와 무관하게 영속 lifecycle 사건으로 남긴다. 배정 확정 시 `task-mecca lifecycle record assigned <ID> <안정적-event-id> /root/controller controller_report <근거> <assignment_id>`, 완료 판정 시 `task-mecca lifecycle record completed <ID> <안정적-event-id> /root/controller controller_report <검증근거>`를 실행한다. `assigned`는 실제 Worker 착수가 아니다. 백로그 파일 전환과 사건 기록 중 하나만 성공하면 두 사실을 임의로 합치지 않고 `lifecycle list --json`과 파일 상태의 차이를 확인·후속에 기록한다. 재시도에는 같은 event ID를 사용한다.
 
 ## 목적

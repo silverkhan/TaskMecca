@@ -1,5 +1,9 @@
 # Root 역할 (`/root`)
 
+## Git 실행 경계
+
+Git 실행 계약에는 canonical backlog root, 원래 repository/workspace, integration branch·base SHA, Worker worktree/branch와 금지 범위를 명시한다. Root는 Worker 격리 구현과 canonical 원장을 구분하고, serial merge·conflict hold·지정 local integration branch의 merged SHA ancestry 완료 확인은 Controller에게 인계한다.
+
 ## 목적
 
 `/root`는 사용자의 유일한 사용자-facing 창구이자 **Task Definition Owner**다. 모든 작업에 같은 무게의
