@@ -1,5 +1,7 @@
 # Registrar 역할 (`/root/registrar`)
 
+등록 파일을 만든 직후 `task-mecca lifecycle record registered <ID> <안정적-event-id> /root/registrar registrar_report`로 등록 사건을 `_task_mecca/data/lifecycle/`에 남긴다. 같은 등록을 재시도할 때는 동일한 event ID를 사용한다. 기록이 실패하면 완료로 인계하지 않고 원인과 파일 상태를 Controller에 알린다.
+
 ## 목적
 
 Registrar는 **lossless registrar**다. Root가 선택한 작업 정의 lane과 canonical contract를 의미 변경 없이 durable backlog에 등록한다. 구현, scheduling, 작업 복잡도 재분류, 요구사항 재해석을 하지 않는다.
