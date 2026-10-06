@@ -758,6 +758,11 @@ body.release-modal-open{overflow:hidden}
 .runtime-hook-event.received{border-color:color-mix(in srgb,var(--ok) 35%,var(--border));color:var(--ok)}
 .runtime-hook-last{margin-top:8px;color:var(--muted);font-size:10px}
 .runtime-hook-actions{display:flex;justify-content:flex-end;margin-top:10px}
+.runtime-hook-actions{gap:7px;flex-wrap:wrap}
+.runtime-hook-onboarding-action.secondary{border-color:var(--border);background:var(--surface);color:var(--text)}
+.runtime-hook-action:hover,.runtime-hook-onboarding-action:hover{filter:brightness(.96)}
+.runtime-hook-action[aria-expanded="true"],.runtime-hook-onboarding-action[aria-expanded="true"]{border-color:var(--accent);color:var(--accent)}
+@media(max-width:680px){.runtime-hook-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.runtime-hook-actions [data-runtime-hook-trust]{grid-column:1/-1}.runtime-hook-onboarding-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.runtime-hook-onboarding-actions [data-runtime-hook-trust]{grid-column:1/-1}}
 .runtime-hook-action{border:1px solid color-mix(in srgb,var(--accent) 42%,var(--border));border-radius:8px;background:color-mix(in srgb,var(--accent) 8%,var(--surface));color:var(--accent);font:inherit;font-size:10px;font-weight:700;padding:6px 9px;cursor:pointer}
 .runtime-hook-action.secondary{border-color:var(--border);background:var(--surface2);color:var(--muted)}
 .runtime-hook-action:disabled{opacity:.55;cursor:wait}

@@ -989,10 +989,12 @@ async function performRootSessionCleanup(button) {
 async function performRuntimeHookAction(button) {
   const provider=button?.dataset?.provider||'all';
   const action=button?.dataset?.runtimeHookAction||'enable';
-  const scope=button?.dataset?.scope||'project';
+  const scope=button?.dataset?.scope||'device';
   const providerLabel=String(provider).toUpperCase();
   const confirmKey=action==='disable'?'runtimeHookDisableConfirm':'runtimeHookEnableConfirm';
-  const confirmation=scope==='global'
+  const confirmation=scope==='device'
+    ?t(action==='disable'?'runtimeHookDeviceDisableConfirm':'runtimeHookDeviceEnableConfirm',{provider:providerLabel})
+    :scope==='global'
     ?t(action==='disable'?'runtimeHookGlobalDisableConfirm':'runtimeHookGlobalEnableConfirm',{provider:providerLabel})
     :t(confirmKey,{provider:providerLabel});
   if(!window.confirm(confirmation))return;
@@ -1022,9 +1024,20 @@ async function performRuntimeHookAction(button) {
 }
 
 function openRuntimeHookGuide(provider) {
-  state.runtimeHookGuideProvider=provider;
-  document.querySelectorAll(`[data-runtime-hook-guide="${provider}"]`).forEach(guide=>{guide.hidden=false});
+  setRuntimeHookGuide(provider,true);
   document.querySelector(`[data-runtime-hook-guide="${provider}"]`)?.scrollIntoView({block:'nearest',behavior:'auto'});
+}
+function setRuntimeHookGuide(provider,open) {
+  state.runtimeHookGuideProvider=open?provider:null;
+  document.querySelectorAll('[data-runtime-hook-guide]').forEach(guide=>{
+    guide.hidden=!open||guide.dataset.runtimeHookGuide!==provider;
+  });
+  document.querySelectorAll('[data-runtime-hook-trust]').forEach(button=>{
+    button.setAttribute('aria-expanded',String(open&&button.dataset.runtimeHookTrust===provider));
+  });
+}
+function toggleRuntimeHookGuide(provider) {
+  setRuntimeHookGuide(provider,state.runtimeHookGuideProvider!==provider);
 }
 
 
@@ -1399,17 +1412,18 @@ function diagnosticBanner() {
   if(!rows.length)return '';
   return `<div class="global-access"><div><strong>Partial diagnostics</strong><span>${esc(rows.map(x=>`${x.component}: ${x.error}`).join(' · '))}</span></div></div>`;
 }
-function runtimeHookProviderGuide(hook) {
+function runtimeHookProviderGuide(hook,location='workload') {
   const provider=String(hook?.provider||'').toLowerCase();
+  const guideId=`runtime-hook-guide-${location}-${provider}`;
   if(provider==='codex') {
-    return `<div class="runtime-hook-provider-guide" data-runtime-hook-guide="codex" ${state.runtimeHookGuideProvider==='codex'?'':'hidden'}>
+    return `<div id="${guideId}" class="runtime-hook-provider-guide" data-runtime-hook-guide="codex" ${state.runtimeHookGuideProvider==='codex'?'':'hidden'}>
       <strong>${esc(t('runtimeHookTrustGuideTitle',{provider:'Codex'}))}</strong>
       <ol><li>${esc(t('runtimeHookCodexTrustStep1'))}</li><li>${esc(t('runtimeHookCodexTrustStep2'))}</li><li>${esc(t('runtimeHookTrustStepVerify'))}</li></ol>
       <a href="https://learn.chatgpt.com/docs/hooks#review-and-trust-hooks" target="_blank" rel="noopener noreferrer">${esc(t('runtimeHookOfficialDocs'))}</a>
     </div>`;
   }
   if(provider==='claude') {
-    return `<div class="runtime-hook-provider-guide" data-runtime-hook-guide="claude" ${state.runtimeHookGuideProvider==='claude'?'':'hidden'}>
+    return `<div id="${guideId}" class="runtime-hook-provider-guide" data-runtime-hook-guide="claude" ${state.runtimeHookGuideProvider==='claude'?'':'hidden'}>
       <strong>${esc(t('runtimeHookTrustGuideTitle',{provider:'Claude Code'}))}</strong>
       <ol><li>${esc(t('runtimeHookClaudeTrustStep1'))}</li><li>${esc(t('runtimeHookClaudeTrustStep2'))}</li><li>${esc(t('runtimeHookTrustStepVerify'))}</li></ol>
       <a href="https://code.claude.com/docs/en/hooks#workspace-trust" target="_blank" rel="noopener noreferrer">${esc(t('runtimeHookOfficialDocs'))}</a>
@@ -1432,8 +1446,8 @@ function runtimeHookOnboardingBanner() {
   const body=attention.length
     ? t('runtimeHookInUseBody',{provider:providers})
     : t('runtimeHookOnboardingBody');
-  const actions=targets.map(h=>`<button class="runtime-hook-onboarding-action" data-runtime-hook-action="enable" data-scope="project" data-provider="${esc(h.provider||'')}">${esc(t('runtimeHookProjectConfigure',{provider:String(h.provider||'').toUpperCase()}))}</button><button class="runtime-hook-onboarding-action" data-runtime-hook-action="enable" data-scope="global" data-provider="${esc(h.provider||'')}">${esc(t('runtimeHookGlobalConfigure',{provider:String(h.provider||'').toUpperCase()}))}</button>${h.configured?`<button class="runtime-hook-onboarding-action" data-runtime-hook-trust="${esc(h.provider||'')}">${esc(t('runtimeHookTrustAction',{provider:String(h.provider||'').toUpperCase()}))}</button>`:''}`).join('');
-  const guides=targets.map(runtimeHookProviderGuide).join('');
+  const actions=targets.map(h=>`<button class="runtime-hook-onboarding-action" data-runtime-hook-action="enable" data-scope="device" data-provider="${esc(h.provider||'')}">${esc(t('runtimeHookApproveSetup'))}</button><button class="runtime-hook-onboarding-action secondary" data-runtime-hook-action="disable" data-scope="device" data-provider="${esc(h.provider||'')}">${esc(t('runtimeHookDisable'))}</button><button class="runtime-hook-onboarding-action secondary" data-runtime-hook-trust="${esc(h.provider||'')}" aria-expanded="${state.runtimeHookGuideProvider===h.provider}" aria-controls="runtime-hook-guide-onboarding-${esc(h.provider||'')}">${esc(t('runtimeHookTrustAction',{provider:String(h.provider||'').toUpperCase()}))}</button>`).join('');
+  const guides=targets.map(h=>runtimeHookProviderGuide(h,'onboarding')).join('');
   return `<div class="global-access runtime-hook-onboarding">
     <div class="runtime-hook-onboarding-copy">
       <strong>${esc(title)}</strong>
@@ -2529,6 +2543,21 @@ Object.assign(I18N.en,{
   runtimeRootFallbackHint:'Task Mecca fallback name is shown because no provider session name was available.',
 });
 
+Object.assign(I18N.ko,{
+  runtimeHookApproveSetup:'승인 설정',
+  runtimeHookDisabled:'관측 꺼짐',
+  runtimeHookDisabledGuide:'이 기기에서 해당 Provider의 새 관측 기록이 중단되었습니다. 기존 프로젝트 Hook이 남아 있어도 기록하지 않습니다.',
+  runtimeHookDeviceEnableConfirm:'{provider}의 사용자 전역 Task Mecca Hook을 설정하고 이 기기의 관측을 다시 켭니다. 신뢰 승인은 앱에서 직접 해야 합니다. 계속할까요?',
+  runtimeHookDeviceDisableConfirm:'이 기기에서 {provider} 관측을 끕니다. 기존 기록과 다른 Provider·다른 Hook은 유지됩니다. 계속할까요?'
+});
+Object.assign(I18N.en,{
+  runtimeHookApproveSetup:'Set up approval',
+  runtimeHookDisabled:'Observation off',
+  runtimeHookDisabledGuide:'New observations for this provider are paused on this device, even if a project Hook remains installed.',
+  runtimeHookDeviceEnableConfirm:'Install the user-level Task Mecca {provider} Hook and resume observation on this device? Trust approval still happens in the app.',
+  runtimeHookDeviceDisableConfirm:'Pause {provider} observation on this device? Existing history, other providers and other Hooks remain unchanged.'
+});
+
 function fmtBytes(value) {
   let n=Math.max(0,Number(value)||0);
   const units=['B','KB','MB','GB'];
@@ -2640,12 +2669,13 @@ function runtimeAttemptCard(attempt,findings) {
   </details>`;
 }
 function runtimeHookStateLabel(stateValue) {
-  return stateValue==='observed'?t('runtimeHookObserved'):stateValue==='source_unresolved'?t('runtimeHookSourceUnresolved'):stateValue==='verification_required'?t('runtimeHookVerificationRequired'):t('runtimeHookUnconfigured');
+  return stateValue==='disabled'?t('runtimeHookDisabled'):stateValue==='observed'?t('runtimeHookObserved'):stateValue==='source_unresolved'?t('runtimeHookSourceUnresolved'):stateValue==='verification_required'?t('runtimeHookVerificationRequired'):t('runtimeHookUnconfigured');
 }
 function runtimeHookStateClass(stateValue) {
   return stateValue==='observed'?'ok':stateValue==='verification_required'||stateValue==='source_unresolved'?'warn':'';
 }
 function runtimeHookGuidance(hook) {
+  if(hook?.observation_enabled===false)return t('runtimeHookDisabledGuide');
   const events=hook?.observed_events||{};
   const activityOnly=Boolean(events.activity)&&!events.start;
   if(hook?.in_use&&hook?.needs_attention) {
@@ -2668,11 +2698,6 @@ function runtimeHookEventChip(label,received) {
 }
 function runtimeHookCard(hook) {
   const events=hook?.observed_events||{}, provider=String(hook?.provider||'').toUpperCase();
-  const scopes=hook?.scopes||{};
-  const scopeRow=(scope,label)=>{
-    const setup=scopes[scope]||{},action=setup.configured?'disable':'enable';
-    return `<div class="runtime-hook-scope"><div><strong>${esc(label)}</strong><span class="badge ${runtimeHookStateClass(setup.state)}">${esc(runtimeHookStateLabel(setup.state))}</span><small title="${esc(setup.path||'')}">${esc(setup.path||'-')}</small></div><button class="runtime-hook-action ${action==='disable'?'secondary':''}" data-runtime-hook-action="${action}" data-scope="${scope}" data-provider="${esc(hook?.provider||'')}">${esc(setup.configured?t('runtimeHookDisable'):t('runtimeHookConfigure'))}</button></div>`;
-  };
   const last=hook?.last_observed_at||'';
   return `<article class="runtime-hook-card">
     <div class="runtime-hook-card-head">
@@ -2687,9 +2712,7 @@ function runtimeHookCard(hook) {
     </div>
     ${last?`<div class="runtime-hook-last">${esc(t('runtimeHookLastObserved'))} · ${esc(ago(last))}</div>`:''}
     ${hook?.in_use&&hook?.state!=='observed'?`<div class="runtime-hook-apply-note">${esc(t('runtimeHookNewRootRequired'))}</div>`:''}
-    <div class="runtime-hook-scopes">${scopeRow('project',t('runtimeHookProjectScope'))}${scopeRow('global',t('runtimeHookGlobalScope'))}</div>
-    ${scopes.project?.state==='source_unresolved'&&scopes.global?.state==='source_unresolved'?`<p class="runtime-hook-scope-note">${esc(t('runtimeHookScopeAmbiguous'))}</p>`:''}
-    <div class="runtime-hook-actions"><button class="runtime-hook-action secondary" data-runtime-hook-trust="${esc(hook?.provider||'')}">${esc(t('runtimeHookTrustAction',{provider}))}</button></div>
+    <div class="runtime-hook-actions"><button class="runtime-hook-action" data-runtime-hook-action="enable" data-scope="device" data-provider="${esc(hook?.provider||'')}">${esc(t('runtimeHookApproveSetup'))}</button><button class="runtime-hook-action secondary" data-runtime-hook-action="disable" data-scope="device" data-provider="${esc(hook?.provider||'')}">${esc(t('runtimeHookDisable'))}</button><button class="runtime-hook-action secondary" data-runtime-hook-trust="${esc(hook?.provider||'')}" aria-expanded="${state.runtimeHookGuideProvider===hook?.provider}" aria-controls="runtime-hook-guide-workload-${esc(hook?.provider||'')}">${esc(t('runtimeHookTrustAction',{provider}))}</button></div>
     ${runtimeHookProviderGuide(hook)}
   </article>`;
 }
@@ -3169,7 +3192,7 @@ function render() {
     button.addEventListener('click',e=>performRuntimeHookAction(e.currentTarget));
   });
   document.querySelectorAll('[data-runtime-hook-trust]').forEach(button=>{
-    button.addEventListener('click',()=>openRuntimeHookGuide(button.dataset.runtimeHookTrust));
+    button.addEventListener('click',()=>toggleRuntimeHookGuide(button.dataset.runtimeHookTrust));
   });
   if(state.view==='workload'){
     $('#runtimeHistoryToggle')?.addEventListener('click',()=>toggleRuntimeHistory());
