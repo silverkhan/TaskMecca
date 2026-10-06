@@ -52,6 +52,9 @@ func TestDeliveryLedgerTracksFailureRetryAndRestart(t *testing.T) {
 	if attempts != 2 || len(records) != 1 || records[0].State != "sent" || records[0].Attempts != 2 || records[0].LastResponseAt == "" {
 		t.Fatalf("final record: %+v, attempts=%d", records, attempts)
 	}
+	if len(records[0].AttemptHistory) != 2 || records[0].AttemptHistory[0].Outcome != "failed_or_uncertain" || records[0].AttemptHistory[1].Outcome != "sent" {
+		t.Fatalf("attempt history: %+v", records[0].AttemptHistory)
+	}
 	data, err := os.ReadFile(ledgerPath(project))
 	if err != nil {
 		t.Fatal(err)

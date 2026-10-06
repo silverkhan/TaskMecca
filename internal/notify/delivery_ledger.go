@@ -12,18 +12,26 @@ import (
 
 // DeliveryRecord contains no Telegram credentials or recipient identifiers.
 type DeliveryRecord struct {
-	EventID           string `json:"event_id"`
-	TaskID            string `json:"task_id"`
-	Kind              string `json:"kind"`
-	Channel           string `json:"channel"`
-	EventAt           string `json:"event_at"`
-	State             string `json:"state"`
-	Attempts          int    `json:"attempts"`
-	CreatedAt         string `json:"created_at"`
-	LastAttemptAt     string `json:"last_attempt_at,omitempty"`
-	LastResponseAt    string `json:"last_response_at,omitempty"`
-	LastError         string `json:"last_error,omitempty"`
-	DuplicatePossible bool   `json:"duplicate_possible,omitempty"`
+	EventID           string            `json:"event_id"`
+	TaskID            string            `json:"task_id"`
+	Kind              string            `json:"kind"`
+	Channel           string            `json:"channel"`
+	EventAt           string            `json:"event_at"`
+	State             string            `json:"state"`
+	Attempts          int               `json:"attempts"`
+	CreatedAt         string            `json:"created_at"`
+	LastAttemptAt     string            `json:"last_attempt_at,omitempty"`
+	LastResponseAt    string            `json:"last_response_at,omitempty"`
+	LastError         string            `json:"last_error,omitempty"`
+	DuplicatePossible bool              `json:"duplicate_possible,omitempty"`
+	AttemptHistory    []DeliveryAttempt `json:"attempt_history,omitempty"`
+}
+
+type DeliveryAttempt struct {
+	Number      int    `json:"number"`
+	StartedAt   string `json:"started_at"`
+	RespondedAt string `json:"responded_at,omitempty"`
+	Outcome     string `json:"outcome"`
 }
 
 type deliveryLedger struct {
@@ -183,6 +191,9 @@ func Deliver(project string, events []Event) []error {
 			r.State = "uncertain"
 			r.DuplicatePossible = true
 			r.LastError = "previous attempt ended without a recorded response"
+			if len(r.AttemptHistory) > 0 && r.AttemptHistory[len(r.AttemptHistory)-1].Outcome == "sending" {
+				r.AttemptHistory[len(r.AttemptHistory)-1].Outcome = "uncertain"
+			}
 		}
 		state := ""
 		switch {
@@ -210,14 +221,17 @@ func Deliver(project string, events []Event) []error {
 		r.Attempts++
 		r.State = "sending"
 		r.LastAttemptAt = time.Now().UTC().Format(time.RFC3339Nano)
+		r.AttemptHistory = append(r.AttemptHistory, DeliveryAttempt{Number: r.Attempts, StartedAt: r.LastAttemptAt, Outcome: "sending"})
 		ledger.Records[e.ID] = r
 		if err := saveLedger(project, ledger); err != nil {
 			return append(errs, err)
 		}
 		sendErr := (telegramChannel{cfg}).Deliver(e)
 		r.LastResponseAt = time.Now().UTC().Format(time.RFC3339Nano)
+		r.AttemptHistory[len(r.AttemptHistory)-1].RespondedAt = r.LastResponseAt
 		if sendErr != nil {
 			r.State = "failed"
+			r.AttemptHistory[len(r.AttemptHistory)-1].Outcome = "failed_or_uncertain"
 			// Error classes are deliberately fixed: HTTP errors can contain bot tokens,
 			// Telegram descriptions or recipient identifiers.
 			r.LastError = "telegram request failed or response was unavailable"
@@ -225,6 +239,7 @@ func Deliver(project string, events []Event) []error {
 			errs = append(errs, sendErr)
 		} else {
 			r.State = "sent"
+			r.AttemptHistory[len(r.AttemptHistory)-1].Outcome = "sent"
 			r.LastError = ""
 			advanceDeliveryPhase(&cfg, e)
 			if !seen[e.ID] {
