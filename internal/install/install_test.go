@@ -3,9 +3,26 @@ package install
 import (
     "encoding/json"
     "os"
-    "path/filepath"
-    "testing"
+	"path/filepath"
+	"strings"
+	"testing"
 )
+
+func TestInstalledControllerGuideRecordsAndBindsAssignment(t *testing.T) {
+	project := t.TempDir()
+	if err := Init(project, "0.2.1"); err != nil {
+		t.Fatal(err)
+	}
+	guide, err := os.ReadFile(filepath.Join(project, targetName, "framework", "roles", "controller.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, command := range []string{"task-mecca runtime assign", "task-mecca runtime bind-assignment"} {
+		if !strings.Contains(string(guide), command) {
+			t.Fatalf("installed Controller guide missing %q", command)
+		}
+	}
+}
 
 func TestInitAndPreserveData(t *testing.T) {
     root := t.TempDir()
