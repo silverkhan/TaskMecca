@@ -1,5 +1,7 @@
 # Task Mecca
 
+Verified task completion can resolve an old unverified-runtime warning without inventing a runtime completion. See [completed observation reconciliation](docs/A-23-completed-runtime-observation.md) for exact no-delivery CLI preview/apply and process-only Telegram maintenance safety.
+
 **Task Mecca records, executes, and manages subagent-based work through a durable backlog, with a Web UI for lifecycle and execution monitoring.**  
 The user talks naturally to a single Root while Registrar, Controller, and Workers preserve task definitions, coordinate parallel work, verify results, and keep execution history inside the project.
 

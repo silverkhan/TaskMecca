@@ -3,6 +3,7 @@
 package webui
 
 import (
+    "github.com/silverkhan/TaskMecca/internal/notify"
     "os"
     "os/exec"
     "net"
@@ -64,4 +65,42 @@ func TestLaunchdRollbackDoesNotAcceptOldHealthyInstance(t *testing.T) {
     got,err:=os.ReadFile(exe)
     if err!=nil { t.Fatal(err) }
     if string(got)!="previous" { t.Fatalf("old healthy instance was mistaken for upgraded Web: %q",got) }
+}
+
+func TestLaunchdMaintenanceActualChildReceivesGeneratedEnvironment(t *testing.T) {
+	if os.Getenv("TASK_MECCA_A23_ENV_CHILD") == "1" {
+		if !notify.TelegramTransportDisabled() {
+			t.Fatal("child transport safety missing")
+		}
+		return
+	}
+	t.Setenv("TASK_MECCA_HOME", t.TempDir())
+	t.Setenv("TASK_MECCA_TELEGRAM_TRANSPORT", "disabled")
+	plist := renderLaunchdPlist(os.Args[0], []string{"-test.run=TestLaunchdMaintenanceActualChildReceivesGeneratedEnvironment"}, t.TempDir())
+	extract := exec.Command("/usr/bin/plutil", "-extract", "EnvironmentVariables.TASK_MECCA_TELEGRAM_TRANSPORT", "raw", "-o", "-", "-")
+	extract.Stdin = strings.NewReader(plist)
+	value, err := extract.Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("TASK_MECCA_TELEGRAM_TRANSPORT", "")
+	child := exec.Command(os.Args[0], "-test.run=TestLaunchdMaintenanceActualChildReceivesGeneratedEnvironment")
+	child.Env = append(os.Environ(), "TASK_MECCA_A23_ENV_CHILD=1", "TASK_MECCA_TELEGRAM_TRANSPORT="+strings.TrimSpace(string(value)))
+	if output, err := child.CombinedOutput(); err != nil {
+		t.Fatalf("generated launchd environment child: %s %v", output, err)
+	}
+}
+
+func TestLaunchdMaintenanceEnvironmentIsExplicitEvenWithoutCustomHome(t *testing.T) {
+	t.Setenv("TASK_MECCA_HOME", "")
+	t.Setenv("TASK_MECCA_TELEGRAM_TRANSPORT", "disabled")
+	plist := renderLaunchdPlist("/fixture/task-mecca", []string{"web", "--foreground"}, "/fixture/project")
+	if !strings.Contains(plist, "<key>TASK_MECCA_TELEGRAM_TRANSPORT</key><string>disabled</string>") {
+		t.Fatal("managed child loses transport safety mode")
+	}
+	t.Setenv("TASK_MECCA_TELEGRAM_TRANSPORT", "")
+	normal := renderLaunchdPlist("/fixture/task-mecca", []string{"web", "--foreground"}, "/fixture/project")
+	if strings.Contains(normal, "TASK_MECCA_TELEGRAM_TRANSPORT") {
+		t.Fatal("normal service unexpectedly disabled")
+	}
 }

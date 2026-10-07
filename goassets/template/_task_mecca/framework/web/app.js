@@ -400,8 +400,8 @@ function t(key, vars = {}) {
   return value;
 }
 const OPERATION_COPY = {
-  ko: { heading:'세션 운영 확인 필요', monitoring:'Web 세션 감시 중', targets:'개 프로젝트 감시', lastScan:'최근 확인', scope:'감시 대상 보기', gap:'Web 감시 공백', no_signal:'세션 무신호', runtime_unknown:'실행 상태 미확인', interrupted:'확인된 실행 중단', errored:'확인된 실행 오류', shutdown:'확인된 세션 종료', evidence:'근거', seen:'마지막 관측', detected:'최초 발견', ended:'확인된 종료', recovered:'감시 재개', action:'필요한 조치', project:'프로젝트', count:'건의 운영 사건', detail:'근거와 조치 보기' },
-  en: { heading:'Session operation needs review', monitoring:'Web session monitoring', targets:'projects monitored', lastScan:'Last scan', scope:'View monitored projects', gap:'Web monitoring gap', no_signal:'No session signal', runtime_unknown:'Runtime unverified', interrupted:'Confirmed interruption', errored:'Confirmed execution error', shutdown:'Confirmed session shutdown', evidence:'Evidence', seen:'Last observed', detected:'First detected', ended:'Confirmed end', recovered:'Monitoring resumed', action:'Next action', project:'Project', count:'operation incidents', detail:'View evidence and action' },
+  ko: { heading:'세션 운영 확인 필요', monitoring:'Web 세션 감시 중', targets:'개 프로젝트 감시', lastScan:'최근 확인', scope:'감시 대상 보기', gap:'Web 감시 공백', no_signal:'세션 무신호', runtime_unknown:'실행 상태 미확인', interrupted:'확인된 실행 중단', errored:'확인된 실행 오류', shutdown:'확인된 세션 종료', evidence:'근거', seen:'마지막 관측', detected:'최초 발견', ended:'확인된 종료', recovered:'감시 재개', history:'과거 실행 관측', resolved:'현재 경고 해소', completedUnknown:'작업 완료 확인, 당시 실행 관측은 미확인', completionEvidence:'완료 확인 근거', completionAt:'작업 완료 시각', reconciliationAt:'경고 해소 시각', maintenance:'Telegram 전송 차단 · 유지보수 모드', action:'필요한 조치', project:'프로젝트', count:'건의 운영 사건', detail:'근거와 조치 보기' },
+  en: { heading:'Session operation needs review', monitoring:'Web session monitoring', targets:'projects monitored', lastScan:'Last scan', scope:'View monitored projects', gap:'Web monitoring gap', no_signal:'No session signal', runtime_unknown:'Runtime unverified', interrupted:'Confirmed interruption', errored:'Confirmed execution error', shutdown:'Confirmed session shutdown', evidence:'Evidence', seen:'Last observed', detected:'First detected', ended:'Confirmed end', recovered:'Monitoring resumed', history:'Past runtime observations', resolved:'Current warning resolved', completedUnknown:'Task completion verified; runtime observation at the time remains unverified', completionEvidence:'Completion evidence', completionAt:'Task completed at', reconciliationAt:'Warning resolved at', maintenance:'Telegram transport blocked · maintenance mode', action:'Next action', project:'Project', count:'operation incidents', detail:'View evidence and action' },
 };
 const OPERATION_EVIDENCE = {
   ko: {
@@ -433,20 +433,28 @@ function operationAction(item) {
   return 'Controller: compare assignment and runtime identity evidence. Do not infer Worker death or change backlog state automatically.';
 }
 function operationTime(value) { return value ? new Date(value).toLocaleString(localeCode()) : '—'; }
+function renderOperationHistory(items) {
+  if(!items.length)return '';
+  return `<details class="operation-scope operation-history"><summary>${esc(operationText('history'))} · ${items.length}</summary>${items.map(item=>{
+    const proof=item.resolution||{};
+    return `<details class="operation-incident history"><summary><span class="operation-incident-type">${esc(operationText('resolved'))}</span><span class="operation-incident-subject">${esc(item.task_id)}</span><span class="operation-incident-expand">${esc(operationText('detail'))}</span></summary><dl><div class="operation-action"><dt>${esc(operationText('resolved'))}</dt><dd>${esc(operationText('completedUnknown'))}</dd></div><div><dt>${esc(operationText('project'))}</dt><dd>${esc(item.project)}</dd></div><div><dt>${esc(operationText('evidence'))}</dt><dd>${esc(operationEvidence(item.evidence))}</dd></div><div><dt>${esc(operationText('seen'))}</dt><dd>${esc(operationTime(item.last_observed_at))}</dd></div><div><dt>${esc(operationText('detected'))}</dt><dd>${esc(operationTime(item.detected_at))}</dd></div><div><dt>${esc(operationText('completionAt'))}</dt><dd>${esc(operationTime(proof.completed_at))}</dd></div><div><dt>${esc(operationText('reconciliationAt'))}</dt><dd>${esc(operationTime(item.recovered_at))}</dd></div><div class="operation-action"><dt>${esc(operationText('completionEvidence'))}</dt><dd>${esc(proof.event_id)} · ${esc(proof.assignment_id)} · ${esc(proof.attempt_id)}<br>${esc(proof.task_path)}</dd></div></dl></details>`;
+  }).join('')}</details>`;
+}
 function renderOperationBanner(payload) {
   const host=$('#operationBanner'); if(!host)return;
   const recentGap=(payload.recent||[]).filter(item=>item.kind==='monitor_gap'&&Date.now()-Date.parse(item.detected_at)<3600000);
   const items=[...(payload.active||[]),...recentGap];
   const projects=payload.projects||[];
+  const history=payload.resolved_observations||[];
   const latestScan=projects.map(item=>item.last_scan_at||'').sort().at(-1)||'';
-  const revision=state.language+JSON.stringify([items,projects.map(item=>[item.path,item.error||''])]);
+  const revision=state.language+JSON.stringify([items,history,payload.telegram_transport_disabled,projects.map(item=>[item.path,item.error||''])]);
   if(revision===state.operationRevision){
     const scan=host.querySelector('.operation-last-scan');if(scan)scan.textContent=operationTime(latestScan);
     host.querySelectorAll('.operation-project-scan').forEach((el,index)=>{el.textContent=operationTime(projects[index]?.last_scan_at)});
     return;
   }
   state.operationRevision=revision;
-  host.hidden=projects.length===0&&items.length===0;
+  host.hidden=projects.length===0&&items.length===0&&history.length===0;
   if(host.hidden){host.innerHTML='';return;}
   const confirmed=items.some(item=>item.quality==='confirmed');
   host.classList.toggle('confirmed',confirmed);
@@ -456,7 +464,7 @@ function renderOperationBanner(payload) {
     const kind=item.kind==='monitor_gap'?'gap':item.kind;
     const status=item.quality==='confirmed'?'confirmed':'review';
     return `<details class="operation-incident ${status}"><summary><span class="operation-incident-type">${esc(operationText(kind))}</span><span class="operation-incident-subject">${esc(item.task_id||item.agent_path||item.attempt_id||item.project)}</span><span class="operation-incident-expand">${esc(operationText('detail'))}</span></summary><dl><div><dt>${esc(operationText('project'))}</dt><dd>${esc(item.project)}</dd></div><div><dt>${esc(operationText('evidence'))}</dt><dd>${esc(operationEvidence(item.evidence))}</dd></div><div><dt>${esc(operationText('seen'))}</dt><dd>${esc(operationTime(item.last_observed_at))}</dd></div><div><dt>${esc(operationText('detected'))}</dt><dd>${esc(operationTime(item.detected_at))}</dd></div>${item.ended_at?`<div><dt>${esc(operationText('ended'))}</dt><dd>${esc(operationTime(item.ended_at))}</dd></div>`:''}${item.recovered_at?`<div><dt>${esc(operationText('recovered'))}</dt><dd>${esc(operationTime(item.recovered_at))}</dd></div>`:''}<div class="operation-action"><dt>${esc(operationText('action'))}</dt><dd>${esc(operationAction(item))}</dd></div></dl></details>`;
-  }).join('')}</div>`:''}${scope}`;
+  }).join('')}</div>`:''}${renderOperationHistory(history)}${payload.telegram_transport_disabled?`<p class="operation-maintenance">${esc(operationText('maintenance'))}</p>`:''}${scope}`;
 }
 async function refreshOperations() {
   try {
@@ -3845,6 +3853,7 @@ async function setLanguage(value) {
   render();
   renderReleaseNoteModal();
   renderReleaseUnreadPrompt();
+  await refreshOperations();
   if(document.querySelector('.mermaid-wrap')) renderMermaidDiagrams(true);
 }
 

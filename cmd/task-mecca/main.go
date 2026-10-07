@@ -23,6 +23,7 @@ var version = "0.2.51"
 func main() { os.Exit(run(os.Args[1:])) }
 
 func run(args []string) int {
+    if len(args)>0 && args[0]=="operations" { return runOperationsCLI(args[1:],os.Stdout,os.Stderr) }
  if len(args)>0 && args[0]=="projects" { return runProjectCLI(args[1:],os.Stdout,os.Stderr) }
     if len(args) == 1 && (args[0] == "--version" || args[0] == "-version" || args[0] == "version") {
         fmt.Printf("task-mecca %s\n", version)
