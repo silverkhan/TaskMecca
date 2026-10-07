@@ -132,6 +132,12 @@ func launchdRollbackScript(exe,previous,targetInstance string,port int) string {
 func shQuote(value string) string { return "'" + strings.ReplaceAll(value,"'","'\\''") + "'" }
 
 func launchdRollbackScriptWithAttempts(exe,previous,targetInstance string,port,attempts int) string {
+    return launchdRollbackScriptWithKickstart(exe,previous,targetInstance,port,attempts,"/bin/launchctl kickstart -k "+shQuote(launchdWebTarget()))
+}
+// The production wrapper always supplies the fixed LaunchAgent restart command.
+// Execution fixtures inject a non-destructive command explicitly; management-home
+// isolation alone cannot isolate launchctl's fixed gui/UID/com.taskmecca.web job.
+func launchdRollbackScriptWithKickstart(exe,previous,targetInstance string,port,attempts int,kickstartCommand string) string {
     health:="http://127.0.0.1:"+strconv.Itoa(port)+"/api/health"
     notice:=upgradeRecoveryPath()
     // The watchdog starts before the current server shuts down. A plain 200
@@ -142,7 +148,7 @@ func launchdRollbackScriptWithAttempts(exe,previous,targetInstance string,port,a
     return "i=0; while [ $i -lt "+strconv.Itoa(attempts)+" ]; do sleep 1; if "+probe+"; then exit 0; fi; i=$((i+1)); done; " +
         "/bin/cp "+shQuote(previous)+" "+shQuote(exe)+"; /bin/chmod +x "+shQuote(exe)+"; /bin/mkdir -p "+shQuote(filepath.Dir(notice))+"; " +
         "/usr/bin/printf '%s\\n' '{\"id\":\"'"+rollbackID+"'\",\"status\":\"rolled_back\",\"at\":\"'$(/bin/date -u +%Y-%m-%dT%H:%M:%SZ)'\",\"message\":\"Upgraded Web failed health check; previous binary restored.\"}' > "+shQuote(notice)+"; " +
-        "/bin/launchctl kickstart -k "+shQuote(launchdWebTarget())
+      kickstartCommand
 }
 
 func launchdRollbackWatchdog(exe,previous,targetInstance string,port int) error {
