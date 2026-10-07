@@ -27,6 +27,7 @@ type DeliveryRecord struct {
 	NextRetryAt       string            `json:"next_retry_at,omitempty"`
 	DuplicatePossible bool              `json:"duplicate_possible,omitempty"`
 	AttemptHistory    []DeliveryAttempt `json:"attempt_history,omitempty"`
+	Suppression       *DeliverySuppression `json:"suppression,omitempty"`
 }
 
 type DeliveryAttempt struct {
@@ -39,6 +40,11 @@ type DeliveryAttempt struct {
 type deliveryLedger struct {
 	Version int                       `json:"version"`
 	Records map[string]DeliveryRecord `json:"records"`
+	ResumeBoundary *ResumeBoundary `json:"resume_boundary,omitempty"`
+	ResumeHistory []ResumeBoundary `json:"resume_history,omitempty"`
+	Preserved map[string]json.RawMessage `json:"-"`
+	RecordExtras map[string]map[string]json.RawMessage `json:"-"`
+	RecordFacts map[string]json.RawMessage `json:"-"`
 }
 
 func ledgerPath(project string) string {
@@ -60,10 +66,12 @@ func readLedger(project string) (deliveryLedger, error) {
 	if out.Records == nil {
 		out.Records = map[string]DeliveryRecord{}
 	}
+	if err := validateResumeBoundary(out.ResumeBoundary); err != nil { return out, err }
 	return out, nil
 }
 
 func saveLedger(project string, ledger deliveryLedger) error {
+	if err := safeResumePath(project, ledgerPath(project)); err != nil { return err }
 	releaseGuard, guardErr := projectguard.AcquireWrite(project)
 	if guardErr != nil {
 		return guardErr
@@ -92,6 +100,7 @@ func saveLedger(project string, ledger deliveryLedger) error {
 		file.Close()
 		return err
 	}
+	if err = file.Sync(); err != nil { file.Close(); return err }
 	if err = file.Close(); err != nil {
 		return err
 	}
@@ -190,6 +199,22 @@ func Deliver(project string, events []Event) []error {
 			r.State = "consumed_legacy"
 			ledger.Records[e.ID] = r
 			dirty = true
+		}
+	}
+	// A separately committed resume boundary applies even to events first seen
+	// after a restart. Reconcile before legacy activation and retry recovery.
+	if ledger.ResumeBoundary != nil {
+		for _, e := range events {
+			if e.ID == "" { continue }
+			r, exists := ledger.Records[e.ID]
+			if !exists { r = recordFor(e, now) }
+			if reason := resumeSuppressionReason(e, r, *ledger.ResumeBoundary); reason != "" && !terminalDelivery(r) {
+				ledger.Records[e.ID] = suppressForResume(r, *ledger.ResumeBoundary, now, reason)
+				dirty = true
+			}
+		}
+		if dirty {
+			if err := saveLedger(project, ledger); err != nil { return []error{err} }
 		}
 	}
 	// Old installations have no activation watermark. Their visible history is
