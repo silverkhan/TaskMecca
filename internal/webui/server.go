@@ -1140,6 +1140,8 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 				return
 			} else {
 				err = trashErr
+				writeJSON(w, map[string]any{"error": err.Error(), "result": "cleanup_failed_or_incomplete", "trash_path": trashPath, "staging_path": maintenance.TrashStagingPath(trashPath)}, http.StatusConflict)
+				return
 			}
 		case "delete_history":
 			err = maintenance.DeleteRemovalHistory(body.HistoryID)

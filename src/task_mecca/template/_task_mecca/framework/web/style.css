@@ -1161,3 +1161,13 @@ body.release-modal-open{overflow:hidden}
 .hub-confirm-overlay .project-path code{font-size:13px;color:var(--text)}
 .hub-confirm-overlay button:focus-visible,.project-actions button:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
 @media(max-width:680px){.project-grid{grid-template-columns:minmax(0,1fr)}.project-actions .action-btn,.icon-copy{min-height:44px;min-width:44px}.hub-confirm-overlay{padding:12px}.hub-confirm-overlay .channel-switch-modal{padding:20px}}
+.hub-history-toggle{display:flex;align-items:center;gap:10px;width:100%;min-height:44px;padding:6px 0;border:0;background:transparent;text-align:left;cursor:pointer;color:var(--text);font:inherit;border-radius:5px}
+.hub-history-toggle:hover{background:var(--surface2)}
+.hub-history-toggle:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.hub-history-toggle .badge{font-size:11px}
+.hub-history-action{margin-left:auto;font-size:12px;font-weight:400;color:var(--muted)}
+.hub-history-toggle svg{width:18px;height:18px;flex:0 0 auto;fill:none;stroke:currentColor;stroke-width:1.7}
+.hub-history-toggle[aria-expanded="true"] svg{transform:rotate(180deg)}
+.hub-history [hidden]{display:none!important}
+.history-row p{overflow-wrap:anywhere}
+.history-row .hub-cleanup-error{color:var(--danger)}

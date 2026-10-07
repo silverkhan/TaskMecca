@@ -215,3 +215,13 @@ go build ./cmd/task-mecca
 Python compatibility runtime도 유지합니다. 자세한 내용은 [CONTRIBUTING.md](CONTRIBUTING.md)를 참고하세요.
 
 MIT License · [LICENSE](LICENSE)
+
+## Hub 제거 이력과 복구 가능한 정리
+
+제거 이력은 기본 접힘이며 제목·건수·확인 필요 상태가 보입니다. 같은 브라우저의 접기/펼치기 선택을 유지합니다. Hub 등록 제거, 이력 삭제, 폴더 정리는 각각 별도 확인이며 이력 삭제는 파일을 지우지 않습니다.
+
+폴더 정리는 macOS Foundation 기본 휴지통 또는 Windows IFileOperation 시스템 휴지통(로컬 고정 드라이브만)을 사용합니다. identity와 덮어쓰기 방지를 확인하여 같은 볼륨의 고유 임시 폴더에 먼저 이동합니다. 시스템 휴지통에서 복원 후 기록된 임시 경로에서 원래 절대 경로로 옮기세요. 기존 폴더를 덮어쓰지 마세요. 원본 저장소·공용/관리 루트·심볼릭링크/reparse point·UNC/device/이동식 드라이브·미지원 OS는 거부하며 영구 삭제로 대체하지 않습니다. Linux는 명시적 미지원입니다.
+
+실패 이유와 재시도 조건을 이력에 남깁니다. 부분 실패/결과 미확인은 원본·임시 경로·시스템 휴지통을 먼저 확인해야 합니다. 이동 뒤 이력 저장 실패는 복구 위치를 알리며 성공으로 표시하거나 위험한 파일시스템 rollback을 하지 않습니다. macOS 개인정보 보호 거부는 실제 서비스 앱의 파일 및 폴더/전체 디스크 접근 허용 후 명시적 재시도가 필요할 수 있으며 앱이 권한을 바꾸지는 않습니다.
+
+CLI도 동일한 안전 규칙을 사용합니다: `task-mecca projects list|history`; 변경은 `pause|resume|remove|delete-history|trash --path ABSOLUTE`. 제거/이력 삭제/휴지통은 `--confirm-path EXACT`, 이력 삭제/휴지통은 `--history-id ID`도 필요합니다. macOS/Windows CI는 cross-build만이 아니라 고유 fixture 실제 휴지통 이동·복원 후 내용 hash를 검증합니다.
