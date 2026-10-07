@@ -9,8 +9,6 @@ const state = {
   view: 'hub',
   hub: null,
   hubManagement: {projects:[],archives:[]},
-  hubProjectDraft: '',
-  hubProjectAdding: false,
   hubHistoryExpanded: localStorage.getItem('task-mecca-hub-history-expanded-v1') === '1',
   loadError: '',
   project: new URLSearchParams(location.search).get('project') || '',
@@ -2497,7 +2495,7 @@ function hubView() {
   return `<div class="page-head"><div><h1>Global Hub</h1><p class="summary">${esc(hubText('intro'))}</p></div><div class="hub-cli"><strong>CLI</strong> ${channelBadge} ${cliStatus} ${updateActions}</div></div>
     ${cli.update_available?'<div class="timing-note"><strong>Upgrade</strong><span>업그레이드가 완료되면 Task Mecca Web이 자동으로 재시작되며, 현재 브라우저 페이지도 자동으로 새로고침됩니다.</span></div>':''}
     ${cli.error?`<div class="timing-note"><strong>Version check</strong><span>${esc(cli.error)}</span></div>`:''}
-    <form id="hubAddProject" class="hub-add-project"><label for="hubProjectPath">${esc(hubText('pathLabel'))}</label><div class="project-actions"><input id="hubProjectPath" name="projectPath" type="text" required autocomplete="off" spellcheck="false" value="${esc(state.hubProjectDraft)}"><button type="submit" class="action-btn secondary" ${state.hubProjectAdding?'disabled':''}>${esc(hubText('add'))}</button></div></form><p id="hubFeedback" role="status" class="timing-note" hidden></p><div class="project-grid">${cards||`<div class="empty">${esc(hubText('emptyProjects'))}</div>`}</div><section class="hub-history"><h2><button id="hubHistoryToggle" type="button" class="hub-history-toggle" aria-expanded="${state.hubHistoryExpanded}" aria-controls="hubHistoryItems"><span>${esc(hubText('history'))}</span><span class="badge">${(state.hubManagement?.archives||[]).length}</span><span class="hub-history-action">${esc(hubText(state.hubHistoryExpanded?'collapseHistory':'expandHistory'))}</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button></h2><p class="muted">${esc(hubText('historyInfo'))}</p><div id="hubHistoryItems" ${state.hubHistoryExpanded?'':'hidden'}>${history||`<div class="empty">${esc(hubText('emptyHistory'))}</div>`}</div></section>`;
+    <p id="hubFeedback" role="status" class="timing-note" hidden></p><div class="project-grid">${cards||`<div class="empty">${esc(hubText('emptyProjects'))}</div>`}</div><section class="hub-history"><h2><button id="hubHistoryToggle" type="button" class="hub-history-toggle" aria-expanded="${state.hubHistoryExpanded}" aria-controls="hubHistoryItems"><span>${esc(hubText('history'))}</span><span class="badge">${(state.hubManagement?.archives||[]).length}</span><span class="hub-history-action">${esc(hubText(state.hubHistoryExpanded?'collapseHistory':'expandHistory'))}</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button></h2><p class="muted">${esc(hubText('historyInfo'))}</p><div id="hubHistoryItems" ${state.hubHistoryExpanded?'':'hidden'}>${history||`<div class="empty">${esc(hubText('emptyHistory'))}</div>`}</div></section>`;
 }
 function normalizedVersion(value) {
   return String(value??'').trim().replace(/(?:\\r|\\n)+$/g,'').trim();
@@ -2577,14 +2575,6 @@ function bindHubActions() {
   }));
   document.querySelectorAll('[data-migrate]').forEach(btn=>btn.addEventListener('click',e=>performProjectMigration(btn.dataset.migrate,e.currentTarget)));
   document.querySelectorAll('[data-copy-path]').forEach(btn=>btn.addEventListener('click',async()=>{try{await copyText(btn.dataset.copyPath||'');btn.innerHTML=CHECK_ICON;btn.setAttribute('aria-label',t('copied'));hubFeedback(t('copied'));setTimeout(()=>{btn.innerHTML=COPY_ICON;btn.setAttribute('aria-label',hubText('copyPath'));},1500);}catch(_){hubFeedback(t('copyFailed'),true);}}));
-  document.querySelector('#hubProjectPath')?.addEventListener('input',event=>{state.hubProjectDraft=event.currentTarget.value;});
-  document.querySelector('#hubAddProject')?.addEventListener('submit',async event=>{
-    event.preventDefault();if(state.hubProjectAdding)return;const input=document.querySelector('#hubProjectPath'),button=event.currentTarget.querySelector('button'),path=input.value.trim();if(!path)return;
-    state.hubProjectAdding=true;
-    button.disabled=true;
-    try{const response=await fetch('/api/hub/projects',{method:'POST',headers:{'Content-Type':'application/json','X-Task-Mecca-Action':'1'},body:JSON.stringify({action:'add',path})});const payload=await response.json();if(!response.ok)throw Error(payload.error||'Request failed');state.hubProjectDraft='';state.hubProjectAdding=false;await refreshHub(true);render();hubFeedback(hubText('success')+' · '+path);}
-    catch(error){hubFeedback(hubText('failed')+' '+String(error?.message||error),true);}finally{state.hubProjectAdding=false;button.disabled=false;}
-  });
   document.querySelectorAll('[data-project-action]').forEach(btn=>btn.addEventListener('click',()=>manageHubProject(btn)));
   document.querySelector('#hubHistoryToggle')?.addEventListener('click',event=>{state.hubHistoryExpanded=!state.hubHistoryExpanded;localStorage.setItem('task-mecca-hub-history-expanded-v1',state.hubHistoryExpanded?'1':'0');event.currentTarget.setAttribute('aria-expanded',String(state.hubHistoryExpanded));event.currentTarget.querySelector('.hub-history-action').textContent=hubText(state.hubHistoryExpanded?'collapseHistory':'expandHistory');document.querySelector('#hubHistoryItems').hidden=!state.hubHistoryExpanded;});
   const changes=$('#hubUpdateChangesBtn');
@@ -4123,7 +4113,7 @@ setInterval(()=>{
 },1000);
 setInterval(()=>{
   if(state.project)checkContentRevision(false);
-  else if(state.view==='hub')refreshHub(true).then(()=>{if(state.view==='hub'&&document.activeElement?.id!=='hubProjectPath')render()}).catch(()=>{});
+  else if(state.view==='hub')refreshHub(true).then(()=>{if(state.view==='hub')render()}).catch(()=>{});
 },5000);
 function preserveViewportAndFocus(work) {
   const x=window.scrollX, y=window.scrollY;
