@@ -90,6 +90,11 @@ func TestProtocolCoversObservedRecoveryFailures(t *testing.T) {
 			t.Fatal(err)
 		}
 		doc := string(body)
+		for _, boundary := range []string{"ephemeral probe/cache", "handoff-evidence/", "durable report"} {
+			if !strings.Contains(doc, boundary) {
+				t.Errorf("protocol%s omits preflight/failure retention boundary %q", language, boundary)
+			}
+		}
 		// Both failure classes need an actionable recovery path. Queue projection
 		// alone missed completed agents; Worker final alone did not deliver a turn.
 		for _, evidence := range []string{"A-19 / A-20", "todo/unassigned", "recovery_queue", "collaboration.send_message", "collaboration.followup_task", "runtime bind-assignment", "lifecycle record assigned", "Root ACK/wake", "external-synced=unknown", "--step applied --result ok", "TM-WORKER-RESUME-20261007-1110", "run-c644efc406c0ceba", "01a11420-7e64-7b81-85ec-197e563a16a0"} {

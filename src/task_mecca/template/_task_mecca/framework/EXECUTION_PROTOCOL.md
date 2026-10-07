@@ -1,6 +1,6 @@
 # Canonical assignment and direct completion protocol
 
-이 문서는 SESSION_GUIDE 한국어·영어, collab 및 역할 문서의 공통 실행 절차다. Controller는 지정 원본 workspace의 canonical backlog/runtime의 단일 운영 writer다. Worker는 원본 계약을 읽고 구현·검증·실제 착수와 transport evidence를 Controller에 보고한다. Worker는 원본 또는 구현 worktree 사본 backlog/runtime을 생성·수정하거나 monitor에 등록하지 않는다. Git 구현/지정 dev 통합과 원본 상태 기록은 별개다. Controller는 dev merge를 기다리지 않고 실제 배정·실행·대기·결과를 원본에 기록한다.
+이 문서는 SESSION_GUIDE 한국어·영어, collab 및 역할 문서의 공통 실행 절차다. Controller는 지정 원본 workspace의 canonical backlog/runtime의 단일 운영 writer다. Worker는 원본 계약을 읽고 구현·검증·실제 착수와 transport evidence를 Controller에 보고한다. Worker는 원본 또는 구현 worktree 사본 backlog/lifecycle/handoff/runtime 운영원장을 수동 생성·수정하거나 monitor에 등록하지 않는다. 승인된 CLI preflight의 ephemeral probe/cache 관측 쓰기와 runtime hook의 자동 관측은 허용된 예외이며 Worker의 운영원장 쓰기 권한이 아니다. Git 구현/지정 dev 통합과 원본 상태 기록은 별개다. Controller는 dev merge를 기다리지 않고 실제 배정·실행·대기·결과를 원본에 기록한다.
 
 ## Assignment checklist
 
@@ -23,11 +23,11 @@ dispatch 전 어느 gate라도 실패하면 dispatch를 중단하고 원본에 �
 
 Worker final 또는 Root 보고는 transport 성공이 아니다. 같은 결과에는 안정적인 report/handoff ID를 사용하고 재시도에도 유지한다.
 
-1. 수용 기준별 결과, commit/push/PR/검증, 미커밋·ignored 파일, 잔여와 재개조건을 보고한다. 필요하면 `/tmp` 보고서에 저장한다. 원본 handoff prepare/mark와 durable 원장 기록은 Controller에게 위임한다.
+1. 수용 기준별 결과, commit/push/PR/검증, 미커밋·ignored 파일, 잔여와 재개조건을 보고한다. `/tmp`는 임시 전달용으로만 사용한다. 실패/unknown 증적은 dispatch에서 Controller가 지정한 보존 경로 또는 Worker 구현 worktree의 별도 `handoff-evidence/` 경로에 안정적인 report/handoff ID로 durable report 파일을 보존한다. 이 경로는 운영원장이 아니며 backlog/runtime 사본 안에 두지 않는다. 원본 handoff prepare/mark와 durable 원장 기록은 Controller에게 위임한다.
 2. dispatch envelope의 exact Controller native target을 종료 직전 native 목록에서 fresh 조회하고 runtime ID/attempt/provider/session과 대조한다. semantic path만 보고 stale completed target에 보내지 않는다.
 3. running이면 `collaboration.send_message`로 Controller에 DONE/BLOCKED와 stable report ID를 직접 전달한다. completed이면 지정 원본의 fresh Full Access preflight 후 `collaboration.followup_task`로 같은 exact native Controller를 실제 재개한다. 이 작업의 실행 승인과 runtime resume 지원이 있어야 한다.
 4. running 조회와 message 사이에 completed race가 생기면 같은 handoff ID로 bounded 확인한다. 즉시 조회하고 필요하면 한 번 더 확인하며 무한 polling하지 않는다. completed이면 fresh preflight 후 한 번의 followup_task를 실행하고 새 running turn/transport 결과를 확인한다. 이미 resume/소비가 확인된 report를 중복 dispatch하지 않는다. Controller claim/applied 상태도 중복 side effect를 막는다.
-5. 종료 전에 실제 send/resume 반환값, fresh 상태, exact target, report ID 및 확인된 새 turn을 근거로 남기고 Controller에 전달한다. tool acceptance와 processing completion은 구분한다. 실패·unknown은 성공으로 쓰지 않고 근거, 남은 작업과 재개조건을 남긴다. Controller에 전달 불가능하면 보고서 경로와 실패 evidence를 보존해 다음 recovery에서 확인하게 한다.
+5. 종료 전에 실제 send/resume 반환값, fresh 상태, exact target, report ID 및 확인된 새 turn을 근거로 남기고 Controller에 전달한다. tool acceptance와 processing completion은 구분한다. 실패·unknown은 성공으로 쓰지 않고 근거, 남은 작업과 재개조건을 남긴다. Controller에 전달 불가능하면 durable report에 실제 transport 반환/오류와 fresh target state, stable report/handoff ID, 남은 작업·재개조건을 기록하고 native final에 그 경로와 실패 근거를 남겨 다음 recovery에서 읽을 수 있게 한다. /tmp만으로 durable 실패 기록을 충족하지 않는다. cleanup 전에 Controller가 보고서를 회수·보존해야 하며, 성공 전달 뒤 Controller가 원본 운영원장에 보고/transport 근거를 복사·기록한 것이 확인되면 durable 인계가 완료된다.
 
 native runtime이 discovery/message/resume을 지원하지 않으면 capability/evidence와 fallback 제약을 명시한다. Task Mecca CLI는 native 자동 통지·재개 또는 turn 종료 강제를 보장하지 않는다. Root ACK/wake/지속 polling은 어느 단계의 gate도 아니다.
 
@@ -42,7 +42,7 @@ native runtime이 discovery/message/resume을 지원하지 않으면 capability/
 5. Go/Python 배포 지침의 동기화와 현재 설치 지침 refresh를 확인한다. 사용자 수정 managed 문서는 migration backup/동의 정책을 지키고 실제 설치 sync/재읽기 evidence를 기록한다.
 6. 원본 결과·검증·핵심 요약 및 실제 lifecycle completed를 기록하고 done/archive한다. stale completed Agent를 doing 담당자로 방치하지 않는다. 전체 queue가 남아 있어도 충족된 개별 항목은 완료한다.
 7. 출처가 있는 경우 승인된 외부 원천 writeback을 단일 writer로 수행한다. write 직후 local mark 전 중단이면 원격 evidence를 조회하고 blind retry하지 않는다. 확인 불가는 external-synced=unknown과 재개조건을 남긴다. 외부 도구 부재는 canonical 완료를 되돌리지 않는다.
-8. exact worktree를 확인해 미커밋·untracked·ignored·사용자 데이터를 보존한 뒤 안전 cleanup한다. 필요한 파일은 보존·인계하고 정리 evidence를 남긴다. 원래 workspace나 canonical data를 삭제/reset하지 않는다.
+8. exact worktree를 확인해 미커밋·untracked·ignored·사용자 데이터를 보존한 뒤 안전 cleanup한다. 필요한 파일과 handoff-evidence durable report는 cleanup 전에 Controller가 회수·보존·인계하고 정리 evidence를 남긴다. 원래 workspace나 canonical data를 삭제/reset하지 않는다.
 9. backlog-finalized/external-synced 및 transport/검증 근거와 잔여 상태를 각각 mark한 뒤 `handoff mark <HANDOFF_ID> --step applied --result ok --evidence <finalization-evidence> --json`으로 handoff를 마친다. Root 통지는 선택적 best-effort이며 Root ACK/wake는 필요 없다.
 
 ## Regression evidence: A-19 / A-20

@@ -2,6 +2,8 @@
 
 ## Shared execution checklist
 
+Distinguish forbidden manual Worker operational ledger writes from authorized CLI preflight ephemeral probe/cache and automatic runtime hook observations. Follow the shared protocol for durable failure/unknown report retention and retrieval before cleanup.
+
 The [execution protocol](EXECUTION_PROTOCOL.en.md) defines the single canonical writer, ordered assignment gates, exact native Controller message/resume transport, race and duplicate handling, and restart/finalization checks. The Controller writes the original canonical backlog/runtime as facts occur, independently of dev integration. Workers report evidence and do not write either the original or copied backlog/runtime. Root ACK/wake is never a completion gate. These are agent procedures, not CLI enforced automatic notification, resume, or turn termination.
 
 ## Root return and independent completion after registration

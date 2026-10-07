@@ -1,6 +1,6 @@
 # Canonical assignment and direct completion protocol
 
-This is the shared procedure for both SESSION_GUIDEs, collab, and roles. The Controller is the sole operational writer of the designated original canonical backlog/runtime. Workers read the original contract, implement in their assigned worktree, and report actual start/wait/resume/completion and transport evidence. Workers must not create, edit, or monitor-register original or copied backlog/runtime. Canonical state is recorded when facts occur; it is independent of Git/dev integration and must not wait for merge.
+This is the shared procedure for both SESSION_GUIDEs, collab, and roles. The Controller is the sole operational writer of the designated original canonical backlog/runtime. Workers read the original contract, implement in their assigned worktree, and report actual start/wait/resume/completion and transport evidence. Workers must not manually create, edit, or monitor-register original or copied backlog/lifecycle/handoff/runtime operational ledgers. Authorized CLI preflight ephemeral probe/cache observations and automatic runtime hooks are permitted exceptions, not Worker operational write authority. Canonical state is recorded when facts occur; it is independent of Git/dev integration and must not wait for merge.
 
 ## Assignment checklist
 
@@ -23,11 +23,11 @@ Preserve existing nonstandard active paths, native aliases and historical archiv
 
 Worker final or a Root report alone is not transport success. Use one stable report/handoff ID for the same result and all retries.
 
-1. Report each acceptance criterion, commit/push/PR/tests, uncommitted/ignored files, remaining work and resume condition. A report may be saved in /tmp. Delegate original handoff prepare/mark and durable writes to the Controller.
+1. Report each acceptance criterion, commit/push/PR/tests, uncommitted/ignored files, remaining work and resume condition. Use /tmp only for temporary delivery. Preserve failure/unknown evidence as a durable report file with a stable report/handoff ID in the retention path designated by the Controller at dispatch, or a separate handoff-evidence/ path in the Worker implementation worktree. This is evidence, not an operational ledger, and must not live in a copied backlog/runtime. Delegate original handoff prepare/mark and durable writes to the Controller.
 2. Immediately before exit, freshly query native state for the exact Controller target from the dispatch envelope and compare runtime ID/attempt/provider/session. Do not send to a stale completed semantic-path target when an actual native alias was assigned.
 3. If running, directly send DONE/BLOCKED and report ID with `collaboration.send_message`. If completed, run fresh Full Access preflight in the original project and actually resume the same exact native Controller using `collaboration.followup_task`, within existing execution authorization and supported runtime capability.
 4. Handle a running-to-completed race with bounded confirmation under the same handoff ID: query immediately and at most once more, without endless polling. If completed, fresh preflight precedes one followup_task; confirm transport/new running turn. Do not redispatch a report already resumed or consumed. Controller claim/applied prevents duplicate side effects.
-5. Before exit, preserve actual send/resume return value, fresh state, exact target, report ID and confirmed new turn; send evidence to Controller. Tool acceptance is distinct from completed processing. Record failure/unknown, cause, remaining work and resume condition rather than success. If delivery is unavailable, preserve report path and failure evidence for recovery.
+5. Before exit, preserve actual send/resume return value, fresh state, exact target, report ID and confirmed new turn; send evidence to Controller. Tool acceptance is distinct from completed processing. Record failure/unknown, cause, remaining work and resume condition rather than success. If delivery is unavailable, the durable report records actual transport return/error, fresh target state, stable report/handoff ID, remaining work and resume condition. Include its path and failure evidence in native final so the next recovery can read it. /tmp alone is not durable failure evidence. Before cleanup, Controller must retrieve and retain the report. After successful delivery, confirmed Controller copying/recording of report and transport evidence into the original operational ledger completes durable handoff.
 
 Unsupported native discovery/message/resume requires capability evidence and explicit fallback limits. Task Mecca CLI does not guarantee native automatic notification/resume or force turn termination. Root ACK/wake/continuous polling is never a gate.
 
@@ -42,7 +42,7 @@ On resume, do not merely acknowledge and exit. Reconcile first and prioritize co
 5. Verify Go/Python template synchronization and current installed instruction refresh. Follow migration backup/consent policy for customized managed files and record actual installation sync/re-read evidence.
 6. Record original results, validation, summary and actual lifecycle completed, then done/archive. Do not leave a stale completed Agent on doing. Finalize satisfied individual tasks even when the wider queue remains.
 7. For linked sources, perform authorized external writeback as sole writer. If interrupted after remote write but before local mark, check remote evidence rather than blindly retrying. Unverifiable writes remain external-synced=unknown with a resume condition; unavailable tools do not revert canonical completion.
-8. Identify the exact worktree, preserve uncommitted/untracked/ignored/user data, then clean up safely and record evidence. Never delete/reset original workspace or canonical data.
+8. Identify the exact worktree, preserve uncommitted/untracked/ignored/user data, retrieve and retain handoff-evidence durable reports before cleanup, then clean up safely and record evidence. Never delete/reset original workspace or canonical data.
 9. Record separate backlog-finalized/external-synced/transport/validation evidence and residual state, then `handoff mark <HANDOFF_ID> --step applied --result ok --evidence <finalization-evidence> --json`. Optional Root notification needs no ACK/wake.
 
 ## Regression evidence: A-19 / A-20
@@ -50,4 +50,3 @@ On resume, do not merely acknowledge and exit. Reconcile first and prioritize co
 Cover original todo/unassigned versus actual execution/completion, and missing direct Controller delivery leaving doing after Worker completion. Recover using fresh canonical/native/PR/handoff evidence and actual current observations, never fictional historical started/assignment/attempt values.
 
 Actual Codex smoke: kkobugi sent followup_task to a completed Controller after fresh preflight at 2026-10-07 11:10:22 KST and confirmed running. Token: `TM-WORKER-RESUME-20261007-1110`; actual attempt: `run-c644efc406c0ceba`; turn: `01a11420-7e64-7b81-85ec-197e563a16a0`. These are historical evidence, not reusable identities. Stale run3b4/turn01a113ba are not evidence for this smoke.
-

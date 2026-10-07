@@ -2,6 +2,8 @@
 
 ## 공통 실행 체크리스트
 
+Worker의 수동 운영원장 쓰기 금지와 승인된 CLI preflight ephemeral probe/cache·runtime hook 자동 관측 예외를 구분한다. 실패/unknown durable report 보존 경로와 cleanup 전 회수는 공통 절차를 따른다.
+
 [EXECUTION_PROTOCOL.md](../EXECUTION_PROTOCOL.md)의 단일 절차를 따른다. 원본 canonical backlog/runtime의 운영 writer는 Controller다. Worker는 원본·사본 원장을 쓰거나 monitor에 등록하지 않고 실제 착수·대기·완료 및 transport 근거를 Controller에 보고한다. 원본 상태 기록은 dev 통합과 별개이며 merge까지 미루지 않는다. 배정 gate, exact native Controller 전달/재개, race·중복 처리 및 restart/finalization 체크리스트를 모두 적용한다. Root ACK/wake는 완료 조건이 아니며 CLI가 자동 통지·재개·turn 종료를 강제한다고 주장하지 않는다.
 
 ## 완료 보고 경로
@@ -12,7 +14,7 @@ DONE/BLOCKED 보고와 handoff는 Controller에 직접 전달한다. Root의 응
 
 배정된 worktree/branch에서만 구현한다. 지정 원본 계약을 읽되 원본/사본 backlog/runtime을 쓰거나 monitor에 등록하지 않는다. integration target에 직접 merge하지 않고 commit/push/PR, 검증 및 미커밋·untracked·ignored 파일을 Controller에 보고한다. 안전 cleanup은 exact worktree와 보존 상태 확인 뒤 Controller가 수행한다.
 
-실제 started/waiting/resumed는 안정적인 event ID, assignment_id 및 직접 관측한 attempt/evidence로 Controller에 보고한다. Controller가 원본 lifecycle를 기록한다. Worker는 lifecycle/handoff/runtime 파일을 직접 쓰지 않는다.
+실제 started/waiting/resumed는 안정적인 event ID, assignment_id 및 직접 관측한 attempt/evidence로 Controller에 보고한다. Controller가 원본 lifecycle를 기록한다. Worker는 lifecycle/handoff/runtime 운영원장을 수동으로 쓰지 않는다. 승인된 CLI preflight의 ephemeral probe/cache 및 runtime hook 자동 관측은 공통 절차의 예외를 따른다.
 
 ## 목적
 
@@ -59,7 +61,7 @@ Worker가 직접 canonical contract를 요약으로 덮어쓰지는 않는다.
 
 [Worker transport checklist](../EXECUTION_PROTOCOL.md#worker-doneblocked-transport-checklist)를 따른다. dispatch envelope의 semantic role과 exact native target, attempt/runtime agent ID, provider/session 및 contract hash를 받는다. 종료 직전 fresh native 조회 후 running은 `collaboration.send_message`, completed는 원본 fresh Full Access preflight 후 `collaboration.followup_task`로 실제 재개한다. 같은 report/handoff ID로 bounded race 확인과 중복 보호를 수행하고, 종료 전 실제 transport/resume 증거를 Controller에 보낸다. 실패/unknown이면 원인·남은 작업·재개조건 및 보존 보고서 경로를 남긴다. Root 보고나 Worker final만으로 성공을 선언하지 않는다.
 
-원본 handoff prepare/mark 및 lifecycle write는 Controller가 단일 writer로 수행한다. Worker는 필요하면 /tmp 보고서를 보존해 전달한다. native 기능이 없으면 capability/evidence와 fallback 제약을 명시하며 자동 resume이나 CLI 강제 종료를 주장하지 않는다. Worker의 DONE이나 transport 성공은 backlog done의 근거가 아니며 Controller가 계약 검증과 finalization을 수행한다.
+원본 handoff prepare/mark 및 lifecycle write는 Controller가 단일 writer로 수행한다. Worker는 /tmp를 임시 전달에만 사용한다. 실패/unknown은 Controller 지정 보존 경로 또는 구현 worktree의 별도 handoff-evidence/ durable report에 실제 transport/state·stable ID·남은 작업·재개조건을 남기고 native final에 경로를 보고한다. cleanup 전에 Controller가 회수·보존한다. native 기능이 없으면 capability/evidence와 fallback 제약을 명시하며 자동 resume이나 CLI 강제 종료를 주장하지 않는다. Worker의 DONE이나 transport 성공은 backlog done의 근거가 아니며 Controller가 계약 검증과 finalization을 수행한다.
 
 ## 완료 보고
 
