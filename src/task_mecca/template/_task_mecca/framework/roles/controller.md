@@ -111,6 +111,10 @@ quiet/stale 같은 관제 신호나 내부 구현 단계마다 외부 이슈를 
 Web UI의 stale/quiet/worker-missing은 관제 보조 신호이지 자동 상태 전환 명령이 아니다. 특히 stale은 worker 사망을
 단정하지 않는다. 실제 runtime 상태와 작업 특성을 확인한 뒤 재배정·중단을 판단한다.
 
+## Handoff send/resume 경쟁 조건
+
+Controller는 handoff를 claim한 뒤 transport 결과와 handoff journal을 같은 ID로 대조한다. running Controller에는 message를 보내고, completed Controller는 capability가 지원하며 identity가 fresh일 때만 새 turn 직전 preflight 뒤 resume한다. send와 resume이 경쟁하면 먼저 성공한 claim/dispatch evidence를 canonical으로 삼고 중복 Worker 배정·중복 완료 처리를 하지 않는다. stale/unknown identity 또는 unsupported resume은 `hold`와 재개 조건으로 기록하며 새 identity를 추측하지 않는다.
+
 ## Continuity gap 복구
 
 Worker turn이 끝났는데 canonical backlog가 여전히 `doing`이면 다음 pass로 조용히 넘기지 않는다.
