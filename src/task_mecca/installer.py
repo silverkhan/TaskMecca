@@ -108,12 +108,14 @@ def load_manifest(target: Path) -> dict | None:
 
 
 def _write_manifest(target: Path, manifest: dict) -> None:
+    _safe_target_path(target, MANIFEST_NAME)
     (target / MANIFEST_NAME).write_text(
         json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
     )
 
 
 def _write_file(root: Path, rel: str, data: bytes) -> None:
+    _safe_target_path(root, rel)
     path = root / rel
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_bytes(data)
@@ -139,8 +141,26 @@ def file_hash(path: Path) -> str | None:
     return _sha256(path.read_bytes())
 
 
+def _safe_target_path(target: Path, rel: str) -> None:
+    path = target / rel
+    if path.is_absolute() != target.is_absolute() or ".." in Path(rel).parts:
+        raise RuntimeError("Path outside framework boundary")
+    for current in [path, *path.parents]:
+        if current.is_symlink():
+            raise RuntimeError(f"Symbolic-link framework boundary: {current}")
+        if current == target:
+            break
+
+
+def _managed_path(rel: str) -> bool:
+    path = Path(rel)
+    return (not path.is_absolute() and ".." not in path.parts and "\\" not in rel
+            and (rel in {"ROOT_PROMPT.md", "VERSION", ".gitignore", "collab_tools.py", "AGENTS_TASK_MECCA_SNIPPET.md"} or rel.startswith("framework/")))
+
+
 def update_plan(project_root: Path) -> dict:
     target = project_root / TARGET_DIR
+    _safe_target_path(target, MANIFEST_NAME)
     installed = load_manifest(target)
     if not installed:
         raise RuntimeError("Task Mecca manifest not found. Run `task-mecca init` first.")
@@ -152,13 +172,23 @@ def update_plan(project_root: Path) -> dict:
     conflicts: list[str] = []
     preserve: list[str] = []
     removals: list[str] = []
+    snapshot: dict[str, str | None] = {}
 
     for rel in paths:
+        if not _managed_path(rel):
+            raise RuntimeError(f"Manifest contains non-framework path: {rel}")
+        disk_path = target / rel
+        _safe_target_path(target, rel)
+        if disk_path.is_symlink() or (disk_path.exists() and not disk_path.is_file()):
+            raise RuntimeError(f"Managed file is not a regular file: {rel}")
         previous = previous_files.get(rel)
         incoming = current_files.get(rel)
         disk_hash = file_hash(target / rel)
+        snapshot[rel] = disk_hash
         baseline = previous.get("baseline_sha256") if previous else None
-        local_modified = previous is not None and disk_hash != baseline
+        local_modified = previous is not None and disk_hash is not None and disk_hash != baseline
+        if previous is None and incoming and disk_hash is not None and disk_hash != incoming.sha256:
+            local_modified = True
         upstream_changed = (
             previous is None
             or incoming is None
@@ -175,11 +205,11 @@ def update_plan(project_root: Path) -> dict:
         if incoming is None:
             continue
         if previous is None:
-            safe.append(rel)
+            (conflicts if local_modified else safe).append(rel)
             continue
         if not upstream_changed:
             if local_modified:
-                preserve.append(rel)
+                conflicts.append(rel)
             continue
         if local_modified:
             conflicts.append(rel)
@@ -193,17 +223,22 @@ def update_plan(project_root: Path) -> dict:
         "conflicts": conflicts,
         "preserve": preserve,
         "removals": removals,
+        "plan_digest": _sha256(json.dumps([installed, snapshot, PACKAGE_VERSION], sort_keys=True).encode()),
     }
 
 
 def create_backup(project_root: Path, files: Iterable[str], *, from_version: str, to_version: str) -> Path:
     target = project_root / TARGET_DIR
+    _safe_target_path(target, "backups")
     stamp = datetime.now().astimezone().strftime("%Y-%m-%d_%H%M%S")
     backup = target / "backups" / stamp
     backup.mkdir(parents=True, exist_ok=False)
     copied: list[str] = []
     for rel in sorted(set(files)):
         src = target / rel
+        _safe_target_path(target, rel)
+        if not _managed_path(rel) or src.is_symlink() or not src.is_file():
+            raise RuntimeError(f"Cannot back up modified framework file: {rel}")
         if src.is_file():
             dst = backup / rel
             dst.parent.mkdir(parents=True, exist_ok=True)
@@ -240,11 +275,23 @@ def _prune_empty_managed_dirs(target: Path, removed_files: Iterable[str]) -> Non
             pass
 
 
-def apply_update(project_root: Path, *, allow_conflicts: bool = False) -> dict:
+def apply_update(project_root: Path, *, allow_conflicts: bool = False, choice: str | None = None, expected_plan: str | None = None) -> dict:
     target = project_root / TARGET_DIR
+    if choice not in {None, "overwrite", "backup", "cancel"}:
+        raise ValueError("Invalid migration choice")
+    if choice == "cancel":
+        return {"status": "cancelled"}
     plan = update_plan(project_root)
-    if plan["conflicts"] and not allow_conflicts:
-        raise RuntimeError("Local modifications require explicit confirmation before update.")
+    if allow_conflicts and choice is None:
+        choice = "overwrite"  # Existing programmatic explicit opt-in compatibility.
+    if (plan["conflicts"] and choice is None) or (expected_plan and expected_plan != plan["plan_digest"]):
+        return {**plan, "status": "choice_required", "modified_files": plan["conflicts"],
+                "choices": ["overwrite", "backup", "cancel"]}
+    if plan["conflicts"] and choice == "backup":
+        plan["backup_path"] = str(create_backup(project_root, plan["conflicts"],
+            from_version=plan["installed_version"], to_version=plan["available_version"]))
+    if update_plan(project_root)["plan_digest"] != plan["plan_digest"]:
+        raise RuntimeError("Framework changed during migration; no framework files updated.")
 
     current_files = bundled_files()
     previous = load_manifest(target) or {}
@@ -269,4 +316,4 @@ def apply_update(project_root: Path, *, allow_conflicts: bool = False) -> dict:
 
     _prune_empty_managed_dirs(target, retired)
     _write_manifest(target, build_manifest(current_files))
-    return plan
+    return {**plan, "status": "migrated"}

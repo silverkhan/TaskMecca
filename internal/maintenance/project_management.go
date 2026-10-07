@@ -1,8 +1,6 @@
 package maintenance
 
-// Project management deliberately keeps registry changes and filesystem changes
-// separate.  Removing a Hub entry never removes its directory; a caller must
-// explicitly request the second, recoverable action.
+// Project management changes registry state only; it never moves or deletes files.
 
 import (
 	"encoding/json"
@@ -20,8 +18,8 @@ import (
 // twice or overwrite another action's removal record.
 var projectManagementMu sync.Mutex
 
-// Explicit suppression survives removal-history deletion. A normal project
-// that has never been managed retains the legacy primary-session behavior.
+// Background monitoring requires active registration. Forgetting an archive
+// entry retains durable suppression; Web opening never opts into monitoring.
 func projectMonitoringAllowed(path string) bool {
 	if !projectguard.Allowed(path) {
 		return false
@@ -38,7 +36,12 @@ func projectMonitoringAllowed(path string) bool {
 			return false
 		}
 	}
-	return true
+	for _, item := range reg.Projects {
+		if sameProjectIdentity(item.Path, path) {
+			return true
+		}
+	}
+	return false
 }
 
 func ProjectMonitoringAllowed(path string) bool {
@@ -59,46 +62,8 @@ func WithProjectMonitoring(path string, work func()) bool {
 	return true
 }
 
-// Opening or restarting Web must not silently register a removed project.
-// init/migrate are explicit registration actions and still use RegisterProject.
-func RegisterWebProject(path string) error {
-	projectManagementMu.Lock()
-	defer projectManagementMu.Unlock()
-	if !projectguard.Allowed(path) {
-		return nil
-	}
-	release, err := projectguard.AcquireManagement()
-	if err != nil {
-		return err
-	}
-	defer release()
-	if !projectguard.Allowed(path) {
-		return nil
-	}
-	if linkedGitWorktree(path) {
-		return nil
-	}
-	reg, err := readProjectRegistry()
-	if err != nil {
-		return err
-	}
-	for _, item := range reg.History {
-		if filepath.Clean(item.Path) == filepath.Clean(path) {
-			return nil
-		}
-	}
-	registered := false
-	for _, item := range reg.Projects {
-		if filepath.Clean(item.Path) == filepath.Clean(path) {
-			registered = true
-			break
-		}
-	}
-	if !registered && containsCleanPath(reg.Paused, path) {
-		return nil
-	}
-	return registerProject(path)
-}
+// Web opening/restarting never changes registration. Only explicit add/init does.
+func RegisterWebProject(path string) error { return nil }
 
 // Linked worktrees have a .git file pointing to an administrative directory
 // with commondir. Ordinary repositories use a .git directory; submodules may
@@ -120,27 +85,42 @@ func linkedGitWorktree(path string) bool {
 }
 
 type RemovalRecord struct {
-	ID                 string `json:"id"`
-	Name               string `json:"name"`
-	Path               string `json:"path"`
-	RemovedAt          string `json:"removed_at"`
-	FolderOutcome      string `json:"folder_outcome"`
-	TrashPath          string `json:"trash_path,omitempty"`
-	StagingPath        string `json:"staging_path,omitempty"`
-	CleanupError       string `json:"cleanup_error,omitempty"`
-	RetryHint          string `json:"retry_hint,omitempty"`
-	LastCheckedAt      string `json:"last_checked_at,omitempty"`
-	Presence           string `json:"presence,omitempty"`
-	SourceState        string `json:"source_state,omitempty"`
-	ParentHolderPath   string `json:"parent_holder_path,omitempty"`
-	StagingHolderPath  string `json:"staging_holder_path,omitempty"`
-	StagingHolderState string `json:"staging_holder_state,omitempty"`
+	ID        string `json:"id"`
+	Name      string `json:"name"`
+	Path      string `json:"path"`
+	RemovedAt string `json:"archived_at"`
+	Boundary  string `json:"canonical_path,omitempty"`
 }
 
 type projectRegistry struct {
 	Projects []Project       `json:"projects"`
-	History  []RemovalRecord `json:"removal_history,omitempty"`
+	History  []RemovalRecord `json:"archived_projects,omitempty"`
 	Paused   []string        `json:"paused_projects,omitempty"`
+	Preserved map[string]json.RawMessage `json:"-"`
+}
+
+// Legacy removal facts and unknown registry fields are immutable evidence.
+// Keep them opaque: no old folder actions or display are reintroduced.
+func (value *projectRegistry) UnmarshalJSON(data []byte) error {
+	type fields projectRegistry
+	var decoded fields
+	if err := json.Unmarshal(data, &decoded); err != nil { return err }
+	var raw map[string]json.RawMessage
+	if err := json.Unmarshal(data, &raw); err != nil { return err }
+	for _, key := range []string{"projects", "archived_projects", "paused_projects"} { delete(raw, key) }
+	decoded.Preserved = raw
+	*value = projectRegistry(decoded)
+	return nil
+}
+
+func (value projectRegistry) MarshalJSON() ([]byte, error) {
+	type fields projectRegistry
+	data, err := json.Marshal(fields(value))
+	if err != nil { return nil, err }
+	var raw map[string]json.RawMessage
+	if err := json.Unmarshal(data, &raw); err != nil { return nil, err }
+	for key, data := range value.Preserved { raw[key] = data }
+	return json.Marshal(raw)
 }
 
 func readProjectRegistry() (projectRegistry, error) {
@@ -205,58 +185,6 @@ func projectPresence(path string) string {
 	return "present"
 }
 
-// ProjectRemovalProjection examines only the exact original boundary and the
-// implementation's staging holder. It never inventories system Trash or cleans
-// a parent worktree. Historical move outcome is not rewritten by later presence.
-func projectRemovalProjection(item *RemovalRecord) {
-	item.SourceState = item.Presence
-	if item.FolderOutcome == "moved_to_trash" && item.Presence == "present" {
-		item.SourceState = "present_after_trash"
-	}
-	item.ParentHolderPath = filepath.Dir(item.Path)
-	item.StagingHolderPath = ""
-	item.StagingHolderState = ""
-	if item.StagingPath == "" {
-		return
-	}
-	staged := filepath.Clean(item.StagingPath)
-	holder := filepath.Dir(staged)
-	if !filepath.IsAbs(staged) || filepath.Base(staged) != filepath.Base(item.Path) || filepath.Dir(holder) != filepath.Dir(filepath.Clean(item.Path)) || !strings.HasPrefix(filepath.Base(holder), ".task-mecca-recycle-") {
-		item.StagingHolderState = "unavailable"
-		return
-	}
-	item.StagingHolderPath = holder
-	resolved, err := filepath.EvalSymlinks(holder)
-	if os.IsNotExist(err) {
-		item.StagingHolderState = "missing"
-		return
-	}
-	canonicalParent, parentErr := projectguard.CanonicalPath(filepath.Dir(item.Path))
-	if err != nil || parentErr != nil || filepath.Dir(filepath.Clean(resolved)) != canonicalParent {
-		item.StagingHolderState = "unavailable"
-		return
-	}
-	info, err := os.Lstat(holder)
-	if err != nil || !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
-		item.StagingHolderState = "unavailable"
-		return
-	}
-	entries, err := os.ReadDir(holder)
-	if err != nil {
-		item.StagingHolderState = "unavailable"
-		return
-	}
-	if len(entries) > 0 {
-		item.StagingHolderState = "contains_files"
-		return
-	}
-	if item.FolderOutcome == "moved_to_trash" {
-		item.StagingHolderState = "retained_for_restore"
-	} else {
-		item.StagingHolderState = "empty_preserved"
-	}
-}
-
 func ManagedProjects() ([]ProjectState, error) {
 	reg, err := readProjectRegistry()
 	if err != nil {
@@ -296,7 +224,7 @@ func SetProjectMonitoring(path string, enabled bool) error {
 		return err
 	}
 	for i := range reg.Projects {
-		if filepath.Clean(reg.Projects[i].Path) == filepath.Clean(abs) {
+		if sameProjectIdentity(reg.Projects[i].Path, abs) {
 			canonical, canonicalErr := projectguard.CanonicalPath(abs)
 			if canonicalErr != nil {
 				return canonicalErr
@@ -304,11 +232,7 @@ func SetProjectMonitoring(path string, enabled bool) error {
 			if enabled {
 				filtered := reg.Paused[:0]
 				for _, item := range reg.Paused {
-					candidate, candidateErr := projectguard.CanonicalPath(item)
-					if candidateErr != nil {
-						return candidateErr
-					}
-					if candidate != canonical {
+					if !projectguard.MatchesBoundary(item, abs) {
 						filtered = append(filtered, item)
 					}
 				}
@@ -342,12 +266,10 @@ func RemoveProject(path string) (RemovalRecord, error) {
 		return RemovalRecord{}, err
 	}
 	for i, p := range reg.Projects {
-		if filepath.Clean(p.Path) != filepath.Clean(abs) {
+		if !sameProjectIdentity(p.Path, abs) {
 			continue
 		}
-		record := RemovalRecord{ID: fmt.Sprintf("removed-%d", time.Now().UnixNano()), Name: p.Name, Path: p.Path, RemovedAt: time.Now().Format(time.RFC3339), FolderOutcome: "preserved"}
-		record.Presence = projectPresence(p.Path)
-		record.LastCheckedAt = time.Now().Format(time.RFC3339)
+		record := RemovalRecord{ID: fmt.Sprintf("archive-%d", time.Now().UnixNano()), Name: p.Name, Path: p.Path, RemovedAt: time.Now().Format(time.RFC3339)}
 		reg.Projects = append(reg.Projects[:i], reg.Projects[i+1:]...)
 		if !containsCleanPath(reg.Paused, abs) {
 			reg.Paused = append(reg.Paused, abs)
@@ -359,6 +281,7 @@ func RemoveProject(path string) (RemovalRecord, error) {
 		if !containsCleanPath(reg.Paused, canonical) {
 			reg.Paused = append(reg.Paused, canonical)
 		}
+		record.Boundary = canonical
 		reg.History = append([]RemovalRecord{record}, reg.History...)
 		return record, writeProjectRegistry(reg)
 	}
@@ -371,11 +294,6 @@ func RemovalHistory() ([]RemovalRecord, error) {
 		return nil, err
 	}
 	out := append([]RemovalRecord(nil), reg.History...)
-	for i := range out {
-		out[i].Presence = projectPresence(out[i].Path)
-		projectRemovalProjection(&out[i])
-		out[i].LastCheckedAt = time.Now().Format(time.RFC3339)
-	}
 	return out, nil
 }
 
@@ -403,171 +321,94 @@ func DeleteRemovalHistory(id string) error {
 	return fmt.Errorf("removal history not found")
 }
 
-func safeCleanupPath(path string) (string, error) {
-	abs, err := filepath.Abs(path)
+func ArchiveProject(path string) (RemovalRecord, error) { return RemoveProject(path) }
+func ArchivedProjects() ([]RemovalRecord, error)        { return RemovalHistory() }
+func IsManagedProject(path string) bool {
+	if IsRegisteredProject(path) {
+		return true
+	}
+	archives, err := ArchivedProjects()
 	if err != nil {
-		return "", err
+		return false
 	}
-	clean := filepath.Clean(abs)
-	home, _ := os.UserHomeDir()
-	for _, protected := range []string{homeDir(), filepath.Join(home, ".Trash")} {
-		if clean == filepath.Clean(protected) || strings.HasPrefix(clean, filepath.Clean(protected)+string(filepath.Separator)) {
-			return "", fmt.Errorf("management data or Trash cannot be cleaned")
+	for _, item := range archives {
+		if filepath.Clean(item.Path) == filepath.Clean(path) {
+			return true
 		}
 	}
-	for _, component := range strings.Split(clean, string(filepath.Separator)) {
-		if component == "_task_mecca" || component == ".Trash" {
-			return "", fmt.Errorf("management data or Trash cannot be cleaned")
-		}
-	}
-	for _, protected := range []string{homeDir(), os.TempDir(), "/Users", "/Users/Shared", "/Applications", "/System", "/Library", "/private", "/private/tmp", "/var", "/etc", "/usr", "/bin", "/sbin"} {
-		if clean == filepath.Clean(protected) || strings.HasPrefix(filepath.Clean(protected), clean+string(filepath.Separator)) {
-			return "", fmt.Errorf("protected shared or management path cannot be cleaned")
-		}
-	}
-	if clean == string(filepath.Separator) || clean == filepath.Clean(home) || clean == filepath.Clean(filepath.Dir(clean)) {
-		return "", fmt.Errorf("protected path cannot be cleaned")
-	}
-	info, err := os.Lstat(clean)
-	if err != nil {
-		return "", err
-	}
-	if info.Mode()&os.ModeSymlink != 0 {
-		return "", fmt.Errorf("symbolic-link project cannot be cleaned")
-	}
-	if !info.IsDir() {
-		return "", fmt.Errorf("only directories can be cleaned")
-	}
-	parent := filepath.Dir(clean)
-	resolvedParent, err := filepath.EvalSymlinks(parent)
-	if err != nil || filepath.Clean(resolvedParent) != filepath.Clean(parent) {
-		return "", fmt.Errorf("project under symbolic-link parent cannot be cleaned")
-	}
-	if _, err := os.Lstat(filepath.Join(clean, ".git")); err == nil {
-		return "", fmt.Errorf("repository root cannot be cleaned automatically")
-	}
-	for ancestor := filepath.Dir(clean); ancestor != filepath.Dir(ancestor); ancestor = filepath.Dir(ancestor) {
-		if _, err := os.Lstat(filepath.Join(ancestor, ".git")); err == nil {
-			return "", fmt.Errorf("folder inside an original repository cannot be cleaned automatically")
-		}
-	}
-	return clean, nil
+	return false
 }
-
-// MoveProjectToTrash moves only an explicitly named, non-repository directory.
-// It is intentionally recoverable and never performs permanent deletion.
-func MoveProjectToTrash(path string) (string, error) {
-	source, err := safeCleanupPath(path)
+func ForgetArchivedProject(id, path string) error {
+	items, err := ArchivedProjects()
 	if err != nil {
-		return "", err
+		return err
 	}
-	f, err := os.Open(source)
-	if err != nil {
-		return "", err
+	for _, item := range items {
+		if item.ID == id && filepath.Clean(item.Path) == filepath.Clean(path) {
+			return DeleteRemovalHistory(id)
+		}
 	}
-	expected, err := f.Stat()
-	_ = f.Close()
-	if err != nil {
-		return "", err
-	}
-	if err := validateTrashPlatform(source); err != nil {
-		return "", err
-	}
-	return stageAndRecycle(source, expected, moveProjectFolder, recycleStagedFolder)
+	return fmt.Errorf("exact archive ID and path required")
 }
-
-func RecordTrashResult(path, trashPath string) error {
+func RestoreArchivedProject(id, path string) error {
 	projectManagementMu.Lock()
 	defer projectManagementMu.Unlock()
-	release, lockErr := projectguard.AcquireManagement()
-	if lockErr != nil {
-		return lockErr
+	release, err := projectguard.AcquireManagement()
+	if err != nil {
+		return err
 	}
 	defer release()
 	reg, err := readProjectRegistry()
 	if err != nil {
 		return err
 	}
-	for i := range reg.History {
-		if filepath.Clean(reg.History[i].Path) == filepath.Clean(path) {
-			reg.History[i].FolderOutcome = "moved_to_trash"
-			reg.History[i].TrashPath = trashPath
-			reg.History[i].Presence = "missing"
-			reg.History[i].LastCheckedAt = time.Now().Format(time.RFC3339)
-			return writeProjectRegistry(reg)
-		}
-	}
-	return fmt.Errorf("removal history not found")
-}
-
-// MoveRemovedProjectToTrash only cleans a folder represented by the exact
-// removal-history record selected in the Hub. This keeps the destructive
-// follow-up action bound to a prior, explicit "Remove from Hub" operation
-// instead of accepting an arbitrary path from a browser request.
-func MoveRemovedProjectToTrash(historyID, path string) (string, error) {
-	projectManagementMu.Lock()
-	defer projectManagementMu.Unlock()
-	release, lockErr := projectguard.AcquireManagement()
-	if lockErr != nil {
-		return "", lockErr
-	}
-	defer release()
-	return moveRemovedProjectToTrash(historyID, path, MoveProjectToTrash, writeProjectRegistry)
-}
-
-func moveRemovedProjectToTrash(historyID, path string, move func(string) (string, error), write func(projectRegistry) error) (string, error) {
-	abs, err := filepath.Abs(path)
-	if err != nil {
-		return "", err
-	}
-	reg, err := readProjectRegistry()
-	if err != nil {
-		return "", err
-	}
-	for i := range reg.History {
-		item := &reg.History[i]
-		if item.ID != historyID || filepath.Clean(item.Path) != filepath.Clean(abs) {
+	for i, item := range reg.History {
+		if item.ID != id || filepath.Clean(item.Path) != filepath.Clean(path) {
 			continue
 		}
-		if item.FolderOutcome == "moved_to_trash" || item.FolderOutcome == "cleanup_unknown" || item.FolderOutcome == "cleanup_partial" {
-			return "", fmt.Errorf("folder cleanup already recorded")
+		if projectPresence(path) != "present" {
+			return fmt.Errorf("project path is unavailable")
 		}
-		trashPath, err := move(item.Path)
-		if err != nil {
-			item.FolderOutcome = "cleanup_failed"
-			item.CleanupError = err.Error()
-			item.RetryHint = "Check source and recovery locations; resolve permissions or files in use before retrying. Never retry an absent source."
-			if trashPath != "" {
-				item.FolderOutcome = "cleanup_partial"
-				if trashOutcomeUnknown(trashPath) {
-					item.FolderOutcome = "cleanup_unknown"
-				}
-				item.TrashPath = trashPath
-				item.StagingPath = trashStagingPath(trashPath)
-			}
-			item.Presence = projectPresence(item.Path)
-			item.LastCheckedAt = time.Now().Format(time.RFC3339)
-			if writeErr := write(reg); writeErr != nil {
-				return trashPath, fmt.Errorf("folder cleanup failed (%v); failure history could not be updated; retain recovery %s and original %s: %w", err, trashPath, item.Path, writeErr)
-			}
-			return trashPath, err
+		if _, err = os.Stat(filepath.Join(path, "_task_mecca")); err != nil {
+			return err
 		}
-		item.FolderOutcome = "moved_to_trash"
-		item.TrashPath = trashPath
-		item.StagingPath = trashStagingPath(trashPath)
-		item.CleanupError = ""
-		item.RetryHint = ""
-		item.Presence = projectPresence(item.Path)
-		item.LastCheckedAt = time.Now().Format(time.RFC3339)
-		if err := write(reg); err != nil {
-			if _, sourceErr := os.Lstat(item.Path); os.IsNotExist(sourceErr) {
-				if rollbackErr := rollbackTrashFolder(trashPath, item.Path); rollbackErr == nil {
-					return "", fmt.Errorf("removal history update failed; folder restored: %w", err)
-				}
-			}
-			return trashPath, fmt.Errorf("folder moved but removal history could not be updated; restore from %s: %w", trashPath, err)
+		canonical, canonicalErr := projectguard.CanonicalPath(path)
+		if canonicalErr != nil {
+			return canonicalErr
 		}
-		return trashPath, nil
+		if item.Boundary != "" && !projectguard.MatchesBoundary(item.Boundary, canonical) {
+			return fmt.Errorf("archived project identity changed; add the intended path explicitly")
+		}
+		filtered := reg.Paused[:0]
+		for _, paused := range reg.Paused {
+			if !projectguard.MatchesBoundary(paused, path) {
+				filtered = append(filtered, paused)
+			}
+		}
+		reg.Paused = filtered
+		reg.History = append(reg.History[:i], reg.History[i+1:]...)
+		found := false
+		for _, p := range reg.Projects {
+			if filepath.Clean(p.Path) == filepath.Clean(path) {
+				found = true
+			}
+		}
+		if !found {
+			reg.Projects = append(reg.Projects, Project{Name: item.Name, Path: path, FrameworkVersion: frameworkVersion(path), LastSeen: time.Now().Format(time.RFC3339)})
+		}
+		return writeProjectRegistry(reg)
 	}
-	return "", fmt.Errorf("removal history not found for folder cleanup")
+	return fmt.Errorf("archive not found")
+}
+
+func sameProjectIdentity(left, right string) bool {
+	if filepath.Clean(left) == filepath.Clean(right) {
+		return true
+	}
+	a, err := os.Lstat(left)
+	if err != nil || a.Mode()&os.ModeSymlink != 0 {
+		return false
+	}
+	b, err := os.Lstat(right)
+	return err == nil && b.Mode()&os.ModeSymlink == 0 && os.SameFile(a, b)
 }

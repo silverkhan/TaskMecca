@@ -146,6 +146,7 @@ func TestDurableLifecycleHTTPProjectionWithAndWithoutGit(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
+			registerWebFixture(t, project)
 			handler, err := Handler(project, "", "test")
 			if err != nil {
 				t.Fatal(err)

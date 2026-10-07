@@ -1,96 +1,89 @@
 package maintenance
 
 import (
-    "bufio"
-    "crypto/sha256"
-    "encoding/hex"
-    "encoding/json"
-    "debug/buildinfo"
-    "errors"
-    "fmt"
-    "io"
-    "net/http"
-    "os"
-    "os/exec"
-    "path/filepath"
-    "runtime"
-    "sort"
-    "strconv"
-    "strings"
-    "sync"
-    "time"
+	"bufio"
+	"crypto/sha256"
+	"debug/buildinfo"
+	"encoding/hex"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
+	"net/http"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"runtime"
+	"sort"
+	"strconv"
+	"strings"
+	"sync"
+	"time"
 
-    "github.com/silverkhan/TaskMecca/internal/projectguard"
+	"github.com/silverkhan/TaskMecca/internal/projectguard"
 )
 
 const (
-    repo = "silverkhan/TaskMecca"
-    stableChannel = "stable"
-    devChannel = "dev"
-    stableReleaseTag = "release-stable"
-    devReleaseTag = "release-dev"
+	repo             = "silverkhan/TaskMecca"
+	stableChannel    = "stable"
+	devChannel       = "dev"
+	stableReleaseTag = "release-stable"
+	devReleaseTag    = "release-dev"
 )
 
 type Project struct {
-	Name string `json:"name"`
-	Path string `json:"path"`
+	Name             string `json:"name"`
+	Path             string `json:"path"`
 	FrameworkVersion string `json:"framework_version"`
-	LastSeen string `json:"last_seen"`
-	Monitoring bool `json:"monitoring,omitempty"`
+	LastSeen         string `json:"last_seen"`
+	Monitoring       bool   `json:"monitoring,omitempty"`
 }
 
-type registry struct {
-    Projects []Project `json:"projects"`
-    // RegisterProject is also used by ordinary Web startup. Preserve Hub
-    // management state so that registration cannot reactivate a paused or
-    // removed monitoring target.
-    Paused []string `json:"paused_projects,omitempty"`
-    History []RemovalRecord `json:"removal_history,omitempty"`
-}
+type registry = projectRegistry
 
 type VersionInfo struct {
-    Current string `json:"current"`
-    Latest string `json:"latest,omitempty"`
-    Channel string `json:"channel"`
-    UpdateAvailable bool `json:"update_available"`
-    CheckedAt string `json:"checked_at,omitempty"`
-    Error string `json:"error,omitempty"`
+	Current         string `json:"current"`
+	Latest          string `json:"latest,omitempty"`
+	Channel         string `json:"channel"`
+	UpdateAvailable bool   `json:"update_available"`
+	CheckedAt       string `json:"checked_at,omitempty"`
+	Error           string `json:"error,omitempty"`
 }
 
 var versionCheckMu sync.Mutex
 var versionCheckRunning bool
 
 type FrameworkSyncCandidate struct {
-    Name string `json:"name"`
-    Path string `json:"path"`
-    FromVersion string `json:"from_version"`
-    ToVersion string `json:"to_version"`
+	Name        string `json:"name"`
+	Path        string `json:"path"`
+	FromVersion string `json:"from_version"`
+	ToVersion   string `json:"to_version"`
 }
 
 type UpgradeResult struct {
-    From string `json:"from"`
-    To string `json:"to"`
-    Channel string `json:"channel,omitempty"`
-    FrameworkSync []FrameworkSyncCandidate `json:"framework_sync,omitempty"`
-    Executable string `json:"executable"`
-    RestartRequired bool `json:"restart_required"`
-    Scheduled bool `json:"scheduled,omitempty"`
-    PreviousExecutable string `json:"previous_executable,omitempty"`
+	From               string                   `json:"from"`
+	To                 string                   `json:"to"`
+	Channel            string                   `json:"channel,omitempty"`
+	FrameworkSync      []FrameworkSyncCandidate `json:"framework_sync,omitempty"`
+	Executable         string                   `json:"executable"`
+	RestartRequired    bool                     `json:"restart_required"`
+	Scheduled          bool                     `json:"scheduled,omitempty"`
+	PreviousExecutable string                   `json:"previous_executable,omitempty"`
 }
 
 type ReleaseChannelTarget struct {
-    Channel string `json:"channel"`
-    Version string `json:"version,omitempty"`
-    FrameworkSync []FrameworkSyncCandidate `json:"framework_sync,omitempty"`
-    Error string `json:"error,omitempty"`
+	Channel       string                   `json:"channel"`
+	Version       string                   `json:"version,omitempty"`
+	FrameworkSync []FrameworkSyncCandidate `json:"framework_sync,omitempty"`
+	Error         string                   `json:"error,omitempty"`
 }
 
 type ReleaseChannelOptions struct {
-    CurrentVersion string `json:"current_version"`
-    CurrentChannel string `json:"current_channel"`
-    Stable ReleaseChannelTarget `json:"stable"`
-    Dev ReleaseChannelTarget `json:"dev"`
-    EnvironmentOverride bool `json:"environment_override,omitempty"`
+	CurrentVersion      string               `json:"current_version"`
+	CurrentChannel      string               `json:"current_channel"`
+	Stable              ReleaseChannelTarget `json:"stable"`
+	Dev                 ReleaseChannelTarget `json:"dev"`
+	EnvironmentOverride bool                 `json:"environment_override,omitempty"`
 }
 
 func homeDir() string {
@@ -156,30 +149,62 @@ func RegisterProject(project string) error {
     return registerProject(project)
 }
 func registerProject(project string) error {
-    abs,err:=filepath.Abs(project)
-    if err!=nil { return err }
-    if _,err=os.Stat(filepath.Join(abs,"_task_mecca")); err!=nil { return err }
-    _=os.MkdirAll(homeDir(),0755)
-    reg:=registry{}
-    if data,readErr:=os.ReadFile(registryPath()); readErr==nil { if err:=json.Unmarshal(data,&reg);err!=nil{return err} } else if !os.IsNotExist(readErr){return readErr}
-    now:=time.Now().Format(time.RFC3339)
-    found:=false
-    for i:=range reg.Projects {
-        if filepath.Clean(reg.Projects[i].Path)==filepath.Clean(abs) {
-            reg.Projects[i].Name=filepath.Base(abs)
-            reg.Projects[i].FrameworkVersion=frameworkVersion(abs)
-            reg.Projects[i].LastSeen=now
-            found=true
-            break
-        }
-    }
-    if !found {
-        reg.Projects=append(reg.Projects,Project{Name:filepath.Base(abs),Path:abs,FrameworkVersion:frameworkVersion(abs),LastSeen:now})
-    }
-    sort.Slice(reg.Projects,func(i,j int) bool { return strings.ToLower(reg.Projects[i].Name)<strings.ToLower(reg.Projects[j].Name) })
-    data,err:=json.MarshalIndent(reg,"","  ")
-    if err!=nil { return err }
-    return os.WriteFile(registryPath(),append(data,'\n'),0644)
+	abs, err := filepath.Abs(project)
+	if err != nil {
+		return err
+	}
+	if _, err = os.Stat(filepath.Join(abs, "_task_mecca")); err != nil {
+		return err
+	}
+	_, err = projectguard.CanonicalPath(abs)
+	if err != nil {
+		return err
+	}
+	_ = os.MkdirAll(homeDir(), 0755)
+	reg := registry{}
+	if data, readErr := os.ReadFile(registryPath()); readErr == nil {
+		if err := json.Unmarshal(data, &reg); err != nil {
+			return err
+		}
+	} else if !os.IsNotExist(readErr) {
+		return readErr
+	}
+	now := time.Now().Format(time.RFC3339)
+	paused := reg.Paused[:0]
+	for _, path := range reg.Paused {
+		if !projectguard.MatchesBoundary(path, abs) {
+			paused = append(paused, path)
+		}
+	}
+	reg.Paused = paused
+	history := reg.History[:0]
+	for _, item := range reg.History {
+		if !projectguard.MatchesBoundary(item.Path, abs) && (item.Boundary == "" || !projectguard.MatchesBoundary(item.Boundary, abs)) {
+			history = append(history, item)
+		}
+	}
+	reg.History = history
+	found := false
+	for i := range reg.Projects {
+		if sameProjectIdentity(reg.Projects[i].Path, abs) {
+			reg.Projects[i].Name = filepath.Base(abs)
+			reg.Projects[i].FrameworkVersion = frameworkVersion(abs)
+			reg.Projects[i].LastSeen = now
+			found = true
+			break
+		}
+	}
+	if !found {
+		reg.Projects = append(reg.Projects, Project{Name: filepath.Base(abs), Path: abs, FrameworkVersion: frameworkVersion(abs), LastSeen: now})
+	}
+	sort.Slice(reg.Projects, func(i, j int) bool {
+		return strings.ToLower(reg.Projects[i].Name) < strings.ToLower(reg.Projects[j].Name)
+	})
+	data, err := json.MarshalIndent(reg, "", "  ")
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(registryPath(), append(data, '\n'), 0644)
 }
 
 func ListProjects() []Project {

@@ -6,7 +6,9 @@ const state = {
   eventStreamKey: '',
   view: 'hub',
   hub: null,
-  hubManagement: {projects:[],history:[]},
+  hubManagement: {projects:[],archives:[]},
+  hubProjectDraft: '',
+  hubProjectAdding: false,
   hubHistoryExpanded: localStorage.getItem('task-mecca-hub-history-expanded-v1') === '1',
   loadError: '',
   project: new URLSearchParams(location.search).get('project') || '',
@@ -1125,18 +1127,45 @@ function toggleRuntimeHookGuide(provider) {
 
 async function performProjectMigration(project,button) {
   if(!project)return;
+  const previousLabel=button?.textContent;
   if(button){button.disabled=true;button.textContent=t('migrating');}
   try{
-    const r=await fetch('/api/migrate',{method:'POST',headers:{'Content-Type':'application/json','X-Task-Mecca-Action':'1'},body:JSON.stringify({project})});
-    const body=await r.json();
-    if(!r.ok)throw new Error(body.error||'Migration failed');
+  const body=await migrateProjectWithChoice(project,button);
+  if(body.status==='cancelled')return;
     await refreshVersionInfo(false);
     await refreshVisibleContent();
     if(body.instruction_refresh_required||body.legacy_bootstrap)showMigrationResyncModal(body);
   }catch(e){
     alert(String(e?.message||e));
     if(button){button.disabled=false;renderGlobalUpdateIndicator();}
+  }finally{
+    if(button?.isConnected){button.disabled=false;button.textContent=previousLabel;}
   }
+}
+async function migrateProjectWithChoice(project,trigger) {
+  let choice='',expectedPlan='';
+  for(;;){
+    const response=await fetch('/api/migrate',{method:'POST',headers:{'Content-Type':'application/json','X-Task-Mecca-Action':'1'},body:JSON.stringify({project,choice,expected_plan:expectedPlan})});
+    const result=await response.json();
+    if(response.ok)return result;
+    if(result.status!=='choice_required')throw Error(result.error||'Migration failed');
+    expectedPlan=result.plan_digest||'';
+    choice=await migrationChoiceDialog(project,result.modified_files||[],trigger);
+    if(choice==='cancel')return {status:'cancelled'};
+  }
+}
+function migrationChoiceDialog(project,files,trigger) {
+  const ko=state.language==='ko';
+  return new Promise(resolve=>{
+    const overlay=document.createElement('div');overlay.className='channel-switch-overlay hub-confirm-overlay';
+    const options=[['overwrite',ko?'새 버전으로 덮어쓰기':'Overwrite with the new version'],['backup',ko?'기존 수정사항을 백업하고 진행':'Back up modifications and migrate'],['cancel',ko?'취소':'Cancel']];
+    overlay.innerHTML=`<section class="channel-switch-modal migration-choice-modal" role="dialog" aria-modal="true" aria-labelledby="migrationChoiceTitle"><h2 id="migrationChoiceTitle">${esc(ko?'수정한 프레임워크 파일을 어떻게 처리할까요?':'How should modified framework files be handled?')}</h2><p>${esc(ko?'아직 변경된 파일은 없습니다. 백로그·프로젝트 설정·인증정보는 어떤 선택에서도 보존됩니다.':'No files have changed. Backlog, project settings and credentials are preserved for every choice.')}</p><div class="project-path"><code>${esc(project)}</code></div><ul class="migration-choice-files">${files.map(file=>`<li><code>${esc(file)}</code></li>`).join('')}</ul><div class="project-actions">${options.map(([value,label])=>`<button type="button" class="action-btn secondary" data-migration-choice="${value}">${esc(label)}</button>`).join('')}</div></section>`;
+    let finished=false;
+    const finish=value=>{if(finished)return;finished=true;overlay.remove();trigger?.focus();resolve(value);};
+    overlay.querySelectorAll('[data-migration-choice]').forEach(button=>button.addEventListener('click',()=>finish(button.dataset.migrationChoice)));
+    overlay.addEventListener('keydown',event=>{if(event.key==='Escape'){event.preventDefault();finish('cancel');}if(event.key==='Tab'){const buttons=[...overlay.querySelectorAll('button')];event.preventDefault();buttons[(buttons.indexOf(document.activeElement)+(event.shiftKey?-1:1)+buttons.length)%buttons.length].focus();}});
+    document.body.append(overlay);overlay.querySelector('[data-migration-choice="cancel"]').focus();
+  });
 }
 const fmtSec = n => {
   if (n == null || Number.isNaN(+n)) return '-';
@@ -2287,9 +2316,8 @@ async function maybeShowPendingFrameworkSync() {
     let instructionResult=null;
     for(const row of projects){
       try{
-        const r=await fetch('/api/migrate',{method:'POST',headers:{'Content-Type':'application/json','X-Task-Mecca-Action':'1'},body:JSON.stringify({project:row.path})});
-        const body=await r.json();
-        if(!r.ok)throw new Error(body.error||'Migration failed');
+        const body=await migrateProjectWithChoice(row.path,button);
+        if(body.status==='cancelled'){button.disabled=false;button.textContent=t('frameworkSyncAction',{channel:channelLabel(targetChannel)});return;}
         if(body.instruction_refresh_required||body.legacy_bootstrap)instructionResult=body;
       }catch(err){
         alert(t('frameworkSyncFailed')+'\n'+(row.name||row.path||'')+'\n'+String(err?.message||err));
@@ -2309,35 +2337,11 @@ async function maybeShowPendingFrameworkSync() {
 }
 
 function hubText(key) {
-  const messages={
-    ko:{collapseHistory:'이력 접기',expandHistory:'이력 펼치기',pendingHistory:'확인 필요',cleanup_partial:'정리 부분 실패 · 복구 위치 확인',cleanup_unknown:'휴지통 결과 미확인 · 재시도 금지',staging:'시스템 복원의 임시 경로',cleanupError:'실패 이유',retry:'재시도 조건',pause:'감시 중지',resume:'감시 재개',remove:'Hub 등록 제거',trash:'휴지통으로 이동',deleteHistory:'이력 삭제',copyPath:'전체 경로 복사',history:'제거 이력',historyInfo:'이력 삭제는 관리 기록만 지우며 파일에 영향을 주지 않습니다.',emptyHistory:'제거 이력이 없습니다.',present:'폴더 존재함',missing:'폴더 없음',unavailable:'확인 불가',preserved:'등록 제거 · 폴더 보존',moved_to_trash:'등록 제거 · 휴지통 이동',checked:'확인 시각',cancel:'취소',confirm:'확인',failed:'작업 실패 · 폴더와 잔존 이력을 확인하세요.',success:'작업을 완료했습니다.',restore:'시스템 휴지통에서 복원한 뒤 위 원래 절대 경로로 이동하세요. OS 복원은 아래 임시 경로로 돌아올 수 있습니다. 기존 폴더를 덮어쓰지 마세요.',trashInfo:'macOS 기본 휴지통 또는 Windows 로컬 고정 드라이브의 시스템 휴지통을 사용합니다. 먼저 같은 볼륨의 고유 임시 경로에 안전하게 이동합니다. OS 복원 후 원래 경로로 옮겨야 합니다. 권한·잠금·미지원 드라이브는 거부하며 영구 삭제로 대체하지 않습니다.',cleanup_failed:'폴더 정리 실패 · 잔존 상태 확인 필요',check:'잔존 확인',removed:'등록 제거 시각',emptyProjects:'등록된 Task Mecca 프로젝트가 없습니다.',intro:'등록 프로젝트의 감시, 폴더 보존 상태와 제거 이력을 관리합니다.'},
-    en:{collapseHistory:'Collapse history',expandHistory:'Expand history',pendingHistory:'need review',cleanup_partial:'Cleanup incomplete · check recovery location',cleanup_unknown:'Trash outcome unknown · do not retry',staging:'System restore staging path',cleanupError:'Failure reason',retry:'Retry conditions',pause:'Pause monitoring',resume:'Resume monitoring',remove:'Remove from Hub',trash:'Move to Trash',deleteHistory:'Delete history',copyPath:'Copy full path',history:'Removal history',historyInfo:'Deleting history removes only this management record, never files.',emptyHistory:'No removed project history.',present:'Folder exists',missing:'Folder absent',unavailable:'Unable to check',preserved:'Registration removed · folder preserved',moved_to_trash:'Registration removed · moved to Trash',checked:'Checked at',cancel:'Cancel',confirm:'Confirm',failed:'Action failed · check the folder and remaining history.',success:'Action completed.',restore:'Restore from system Trash, then move to the original absolute path above. OS Restore may return to the staging path below. Never overwrite an existing folder.',trashInfo:'Uses macOS native Trash or Windows system Recycle Bin on a local fixed drive. First stages safely in a unique same-volume path. After OS Restore, move back to the original path. Permissions, locks and unsupported drives are refused; never falls back to permanent deletion.',cleanup_failed:'Folder cleanup failed · check remaining files',check:'Check remaining folder',removed:'Removed at',emptyProjects:'No registered Task Mecca projects.',intro:'Manage project monitoring, preserved folders, and removal history.'}
-  };
-  return (messages[state.language]||messages.en)[key]||key;
-}
-function hubTrashLocation(location) {
-  if(!String(location).startsWith('system-trash:?'))return location;
-  return new URLSearchParams(String(location).slice('system-trash:?'.length)).get('location')||location;
-}
-
-function hubRemovalObservation(item) {
-  const ko=state.language==='ko';
-  const label=(kr,en)=>ko?kr:en;
-  const pathRow=(title,path)=>path?`<p>${esc(title)}</p><div class="project-path"><code>${esc(path)}</code></div>`:'';
-  const holderStates={
-    retained_for_restore:label('OS 복원을 위해 보관됨 · 삭제하지 않음','Retained for OS Restore · not deleted'),
-    contains_files:label('파일이 있음 · 수동 확인 필요','Contains files · manual review required'),
-    empty_preserved:label('빈 보관 폴더 유지','Empty holder preserved'),
-    missing:label('보관 폴더 없음','Holder absent'),
-    unavailable:label('보관 폴더 확인 불가','Unable to inspect holder')
-  };
-  return `<p>${esc(label('과거 처리 결과','Historical outcome'))}: ${esc(hubText(item.folder_outcome||'preserved'))}</p>
-    <p class="${item.source_state==='present_after_trash'?'hub-cleanup-error':''}">${esc(label('현재 원래 경로','Current original path'))}: ${esc(hubText(item.presence||'unavailable'))}</p>
-    ${item.source_state==='present_after_trash'?`<p class="hub-cleanup-error">${esc(label('휴지통 이동 후 경로가 다시 존재합니다. 재생성인지 복원인지 단정할 수 없습니다. 과거 이동 결과는 유지하며 자동으로 다시 삭제하지 않습니다.','The path exists again after the Trash move. It may have been recreated or restored. The historical outcome is preserved; it will not be deleted again automatically.'))}</p>`:''}
-    ${pathRow(label('상위 worktree 보관 경로 · 삭제 대상 아님','Containing worktree holder · not a deletion target'),item.parent_holder_path)}
-    ${pathRow(hubText('staging'),item.staging_path)}
-    ${pathRow(label('복원용 보관 폴더 경계','Restore holder boundary'),item.staging_holder_path)}
-    ${item.staging_holder_state?`<p>${esc(holderStates[item.staging_holder_state]||item.staging_holder_state)}</p>`:''}`;
+ const messages={
+ ko:{collapseHistory:'보관 목록 접기',expandHistory:'보관 목록 펼치기',unregister:'감시 해제',register:'감시 등록',archive:'보관하기',restore:'다시 편입',forget:'목록에서 제거',copyPath:'전체 경로 복사',history:'보관한 프로젝트',historyInfo:'보관 중에는 감시·알림·런타임 갱신이 중지됩니다. 파일과 폴더는 그대로 유지합니다.',emptyHistory:'보관한 프로젝트가 없습니다.',cancel:'취소',confirm:'확인',failed:'작업을 완료하지 못했습니다. 경로와 권한을 확인한 뒤 다시 시도하세요.',success:'작업을 완료했습니다.',archived:'보관 시각',emptyProjects:'등록된 Task Mecca 프로젝트가 없습니다.',intro:'프로젝트 감시와 보관을 관리합니다. 파일은 변경하거나 삭제하지 않습니다.',add:'프로젝트 추가',pathLabel:'프로젝트 전체 경로'},
+ en:{collapseHistory:'Collapse archive',expandHistory:'Expand archive',unregister:'Unregister monitoring',register:'Register monitoring',archive:'Archive',restore:'Restore to active',forget:'Remove from list',copyPath:'Copy full path',history:'Archived projects',historyInfo:'Archived projects stop monitoring, notifications and runtime updates. Files and folders stay unchanged.',emptyHistory:'No archived projects.',cancel:'Cancel',confirm:'Confirm',failed:'Action could not be completed. Check the path and permissions, then retry.',success:'Action completed.',archived:'Archived at',emptyProjects:'No registered Task Mecca projects.',intro:'Manage project monitoring and archiving without changing or deleting files.',add:'Add project',pathLabel:'Full project path'}
+ };
+ return (messages[state.language]||messages.en)[key]||key;
 }
 function hubFeedback(message,error=false) {
   const box=document.querySelector('#hubFeedback');
@@ -2345,9 +2349,9 @@ function hubFeedback(message,error=false) {
 }
 function confirmHubAction(action,path,trigger) {
   return new Promise(resolve=>{
-    const warnings=state.language==='ko'?{remove:'Hub 등록과 감시를 중지합니다. 목록에서는 제거되지만 폴더는 남습니다.',trash:'아래 전체 경로를 휴지통으로 이동합니다. 복구 가능한 별도 폴더 정리입니다. 저장소 루트, 심볼릭 링크, 보호 경로는 거부합니다.','delete-history':'관리 이력만 삭제합니다. 파일은 변경하지 않습니다. 폴더가 존재하거나 확인 불가이면 이력 삭제 후 Hub에서 이 위치를 확인할 수 없습니다.'}:{remove:'This removes the Hub registration and stops monitoring. The folder stays where it is.',trash:'Move the full path below to Trash. This is a separate, recoverable folder cleanup. Repository roots, symlinks, and protected paths are refused.','delete-history':'Delete only the history record. Files are not changed. If the folder exists or cannot be checked, its location will no longer be available in Hub.'};
+    const warnings=state.language==='ko'?{archive:'활성 목록에서 보관으로 옮기고 감시와 알림을 중지합니다. 파일과 폴더는 그대로 둡니다.',forget:'보관 목록에서만 제거합니다. 감시는 중지 상태로 유지되며 파일과 폴더는 변경하지 않습니다.'}:{archive:'Move to the archive and stop monitoring and notifications. Files and folders remain unchanged.',forget:'Remove only this archive entry. Monitoring stays stopped; files and folders remain unchanged.'};
     const overlay=document.createElement('div');overlay.className='channel-switch-overlay hub-confirm-overlay';
-    overlay.innerHTML=`<section class="channel-switch-modal" role="dialog" aria-modal="true" aria-labelledby="hubConfirmTitle" aria-describedby="hubConfirmWarning"><h2 id="hubConfirmTitle">${esc(hubText(action==='delete-history'?'deleteHistory':action))}</h2><p id="hubConfirmWarning">${esc(warnings[action])}</p><div class="project-path"><code>${esc(path)}</code></div>${action==='trash'?`<p>${esc(hubText('trashInfo'))}</p>`:''}<div class="project-actions"><button type="button" class="action-btn secondary" data-hub-cancel>${esc(hubText('cancel'))}</button><button type="button" class="action-btn secondary danger-action" data-hub-confirm>${esc(hubText('confirm'))}</button></div></section>`;
+    overlay.innerHTML=`<section class="channel-switch-modal" role="dialog" aria-modal="true" aria-labelledby="hubConfirmTitle" aria-describedby="hubConfirmWarning"><h2 id="hubConfirmTitle">${esc(hubText(action))}</h2><p id="hubConfirmWarning">${esc(warnings[action])}</p><div class="project-path"><code>${esc(path)}</code></div><div class="project-actions"><button type="button" class="action-btn secondary" data-hub-cancel>${esc(hubText('cancel'))}</button><button type="button" class="action-btn secondary danger-action" data-hub-confirm>${esc(hubText('confirm'))}</button></div></section>`;
     const finish=value=>{overlay.remove();const current=[...document.querySelectorAll('[data-project-action]')].find(button=>button.dataset.projectAction===action&&button.dataset.projectPath===path&&button.dataset.historyId===trigger?.dataset.historyId);(trigger?.isConnected?trigger:current)?.focus();resolve(value);};
     overlay.querySelector('[data-hub-cancel]').addEventListener('click',()=>finish(false));
     overlay.querySelector('[data-hub-confirm]').addEventListener('click',()=>finish(true));
@@ -2374,15 +2378,15 @@ function hubView() {
     return `<article class="project-card">
       <div class="project-card-head"><div><h2>${esc(name)}</h2><div class="project-path"><code>${esc(path)}</code><button class="icon-copy" type="button" data-copy-path="${esc(path)}" aria-label="${esc(hubText('copyPath'))}">${COPY_ICON}</button></div></div><span class="badge">${esc(framework)}</span></div>
       <div class="project-stats"><span><strong>${c.working||0}</strong> ${esc(t('working'))}</span><span><strong>${c.ready||0}</strong> ${esc(t('ready'))}</span><span><strong>${c.hold||0}</strong> ${esc(t('hold'))}</span></div>
-      <div class="project-actions">${p?.migration_available?`<button class="action-btn secondary" data-migrate="${esc(p.path)}">Migrate</button>`:''}<button class="action-btn secondary" data-project-action="${status.monitoring===false?'resume':'pause'}" data-project-path="${esc(path)}">${esc(hubText(status.monitoring===false?'resume':'pause'))}</button><button class="action-btn secondary danger-action" data-project-action="remove" data-project-path="${esc(path)}">${esc(hubText('remove'))}</button><button class="action-btn" data-open-project="${esc(path)}">${esc(t('open'))}</button></div>
+      <div class="project-actions">${p?.migration_available?`<button class="action-btn secondary" data-migrate="${esc(p.path)}">Migrate</button>`:''}<button class="action-btn secondary" data-project-action="${status.monitoring===false?'register':'unregister'}" data-project-path="${esc(path)}">${esc(hubText(status.monitoring===false?'register':'unregister'))}</button><button class="action-btn secondary danger-action" data-project-action="archive" data-project-path="${esc(path)}">${esc(hubText('archive'))}</button><button class="action-btn" data-open-project="${esc(path)}">${esc(t('open'))}</button></div>
     </article>`;
   }).join('');
-  const history=(state.hubManagement?.history||[]).map(item=>`<article class="history-row"><div><strong>${esc(item.name||'Project')}</strong><p>${esc(state.language==='ko'?'확인된 프로젝트 경계':'Confirmed project boundary')}</p><div class="project-path"><code>${esc(item.path)}</code><button class="icon-copy" type="button" data-copy-path="${esc(item.path)}" aria-label="${esc(hubText('copyPath'))}">${COPY_ICON}</button></div>${hubRemovalObservation(item)}<p>${esc(hubText('removed'))}: ${esc(item.removed_at||'—')}</p><p>${esc(hubText('checked'))}: ${esc(item.last_checked_at||'—')}</p>${item.cleanup_error?`<p class="hub-cleanup-error">${esc(hubText('cleanupError'))}: ${esc(item.cleanup_error)}</p><p>${esc(hubText('retry'))}: ${esc(item.retry_hint||'')}</p>`:''}${item.trash_path?`<p>${esc(hubText('restore'))}</p><div class="project-path"><code>${esc(hubTrashLocation(item.trash_path))}</code></div>`:''}</div><div class="project-actions"><button class="action-btn secondary" data-project-action="check" data-project-path="${esc(item.path)}">${esc(hubText('check'))}</button><button class="action-btn secondary" data-project-action="trash" data-history-id="${esc(item.id)}" ${['moved_to_trash','cleanup_partial','cleanup_unknown'].includes(item.folder_outcome)||item.presence!=='present'?'disabled':''} data-project-path="${esc(item.path)}">${esc(hubText('trash'))}</button><button class="action-btn secondary danger-action" data-project-action="delete-history" data-history-id="${esc(item.id)}" data-project-path="${esc(item.path)}">${esc(hubText('deleteHistory'))}</button></div></article>`).join('');
+  const history=(state.hubManagement?.archives||[]).map(item=>`<article class="history-row"><div><strong>${esc(item.name||'Project')}</strong><div class="project-path"><code>${esc(item.path)}</code><button class="icon-copy" type="button" data-copy-path="${esc(item.path)}" aria-label="${esc(hubText('copyPath'))}">${COPY_ICON}</button></div><p>${esc(hubText('archived'))}: ${esc(item.archived_at||'—')}</p></div><div class="project-actions"><button class="action-btn secondary" data-project-action="restore" data-history-id="${esc(item.id)}" data-project-path="${esc(item.path)}">${esc(hubText('restore'))}</button><button class="action-btn secondary" data-project-action="forget" data-history-id="${esc(item.id)}" data-project-path="${esc(item.path)}">${esc(hubText('forget'))}</button></div></article>`).join('');
   const updateActions='';
   return `<div class="page-head"><div><h1>Global Hub</h1><p class="summary">${esc(hubText('intro'))}</p></div><div class="hub-cli"><strong>CLI</strong> ${channelBadge} ${cliStatus} ${updateActions}</div></div>
     ${cli.update_available?'<div class="timing-note"><strong>Upgrade</strong><span>업그레이드가 완료되면 Task Mecca Web이 자동으로 재시작되며, 현재 브라우저 페이지도 자동으로 새로고침됩니다.</span></div>':''}
     ${cli.error?`<div class="timing-note"><strong>Version check</strong><span>${esc(cli.error)}</span></div>`:''}
-    <p id="hubFeedback" role="status" class="timing-note" hidden></p><div class="project-grid">${cards||`<div class="empty">${esc(hubText('emptyProjects'))}</div>`}</div><section class="hub-history"><h2><button id="hubHistoryToggle" type="button" class="hub-history-toggle" aria-expanded="${state.hubHistoryExpanded}" aria-controls="hubHistoryItems"><span>${esc(hubText('history'))}</span><span class="badge">${(state.hubManagement?.history||[]).length}</span><span class="hub-history-action">${esc(hubText(state.hubHistoryExpanded?'collapseHistory':'expandHistory'))}</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button></h2><p class="muted">${esc(hubText('historyInfo'))} · ${(state.hubManagement?.history||[]).filter(item=>item.folder_outcome!=='moved_to_trash').length} ${esc(hubText('pendingHistory'))}</p><div id="hubHistoryItems" ${state.hubHistoryExpanded?'':'hidden'}>${history||`<div class="empty">${esc(hubText('emptyHistory'))}</div>`}</div></section>`;
+    <form id="hubAddProject" class="hub-add-project"><label for="hubProjectPath">${esc(hubText('pathLabel'))}</label><div class="project-actions"><input id="hubProjectPath" name="projectPath" type="text" required autocomplete="off" spellcheck="false" value="${esc(state.hubProjectDraft)}"><button type="submit" class="action-btn secondary" ${state.hubProjectAdding?'disabled':''}>${esc(hubText('add'))}</button></div></form><p id="hubFeedback" role="status" class="timing-note" hidden></p><div class="project-grid">${cards||`<div class="empty">${esc(hubText('emptyProjects'))}</div>`}</div><section class="hub-history"><h2><button id="hubHistoryToggle" type="button" class="hub-history-toggle" aria-expanded="${state.hubHistoryExpanded}" aria-controls="hubHistoryItems"><span>${esc(hubText('history'))}</span><span class="badge">${(state.hubManagement?.archives||[]).length}</span><span class="hub-history-action">${esc(hubText(state.hubHistoryExpanded?'collapseHistory':'expandHistory'))}</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button></h2><p class="muted">${esc(hubText('historyInfo'))}</p><div id="hubHistoryItems" ${state.hubHistoryExpanded?'':'hidden'}>${history||`<div class="empty">${esc(hubText('emptyHistory'))}</div>`}</div></section>`;
 }
 function normalizedVersion(value) {
   return String(value??'').trim().replace(/(?:\\r|\\n)+$/g,'').trim();
@@ -2462,6 +2466,14 @@ function bindHubActions() {
   }));
   document.querySelectorAll('[data-migrate]').forEach(btn=>btn.addEventListener('click',e=>performProjectMigration(btn.dataset.migrate,e.currentTarget)));
   document.querySelectorAll('[data-copy-path]').forEach(btn=>btn.addEventListener('click',async()=>{try{await copyText(btn.dataset.copyPath||'');btn.innerHTML=CHECK_ICON;btn.setAttribute('aria-label',t('copied'));hubFeedback(t('copied'));setTimeout(()=>{btn.innerHTML=COPY_ICON;btn.setAttribute('aria-label',hubText('copyPath'));},1500);}catch(_){hubFeedback(t('copyFailed'),true);}}));
+  document.querySelector('#hubProjectPath')?.addEventListener('input',event=>{state.hubProjectDraft=event.currentTarget.value;});
+  document.querySelector('#hubAddProject')?.addEventListener('submit',async event=>{
+    event.preventDefault();if(state.hubProjectAdding)return;const input=document.querySelector('#hubProjectPath'),button=event.currentTarget.querySelector('button'),path=input.value.trim();if(!path)return;
+    state.hubProjectAdding=true;
+    button.disabled=true;
+    try{const response=await fetch('/api/hub/projects',{method:'POST',headers:{'Content-Type':'application/json','X-Task-Mecca-Action':'1'},body:JSON.stringify({action:'add',path})});const payload=await response.json();if(!response.ok)throw Error(payload.error||'Request failed');state.hubProjectDraft='';state.hubProjectAdding=false;await refreshHub(true);render();hubFeedback(hubText('success')+' · '+path);}
+    catch(error){hubFeedback(hubText('failed')+' '+String(error?.message||error),true);}finally{state.hubProjectAdding=false;button.disabled=false;}
+  });
   document.querySelectorAll('[data-project-action]').forEach(btn=>btn.addEventListener('click',()=>manageHubProject(btn)));
   document.querySelector('#hubHistoryToggle')?.addEventListener('click',event=>{state.hubHistoryExpanded=!state.hubHistoryExpanded;localStorage.setItem('task-mecca-hub-history-expanded-v1',state.hubHistoryExpanded?'1':'0');event.currentTarget.setAttribute('aria-expanded',String(state.hubHistoryExpanded));event.currentTarget.querySelector('.hub-history-action').textContent=hubText(state.hubHistoryExpanded?'collapseHistory':'expandHistory');document.querySelector('#hubHistoryItems').hidden=!state.hubHistoryExpanded;});
   const changes=$('#hubUpdateChangesBtn');
@@ -2472,17 +2484,16 @@ function bindHubActions() {
 
 async function manageHubProject(button) {
   const action=button.dataset.projectAction, path=button.dataset.projectPath||'', historyID=button.dataset.historyId||'';
-  if(action==='check'){await refreshHub(true);render();hubFeedback(hubText('checked')+' · '+path);return;}
-  if(['remove','trash','delete-history'].includes(action) && !await confirmHubAction(action,path,button))return;
+  if(['archive','forget'].includes(action) && !await confirmHubAction(action,path,button))return;
   button.disabled=true;
   try {
-    const body={action:action==='delete-history'?'delete_history':action,path,history_id:historyID};
-    if(action==='trash')body.confirm_path=path;
+    const body={action,path,archive_id:historyID};
+    if(['archive','forget'].includes(action))body.confirm_path=path;
     const r=await fetch('/api/hub/projects',{method:'POST',headers:{'Content-Type':'application/json','X-Task-Mecca-Action':'1'},body:JSON.stringify(body)});
     const payload=await r.json();
     if(!r.ok)throw Error(payload.error||'Request failed');
     await refreshHub(true);render();
-    hubFeedback(action==='remove'?hubText('preserved')+' · '+path:hubText('success'));
+    hubFeedback(hubText('success')+' · '+path);
     document.querySelector('#hubFeedback')?.setAttribute('tabindex','-1');document.querySelector('#hubFeedback')?.focus();
   } catch(error) { await refreshHub(true);render();hubFeedback(hubText('failed')+' '+String(error?.message||error),true); } finally { button.disabled=false; }
 }
@@ -3995,7 +4006,7 @@ setInterval(()=>{
 },1000);
 setInterval(()=>{
   if(state.project)checkContentRevision(false);
-  else if(state.view==='hub')refreshHub(true).then(()=>{if(state.view==='hub')render()}).catch(()=>{});
+  else if(state.view==='hub')refreshHub(true).then(()=>{if(state.view==='hub'&&document.activeElement?.id!=='hubProjectPath')render()}).catch(()=>{});
 },5000);
 function preserveViewportAndFocus(work) {
   const x=window.scrollX, y=window.scrollY;

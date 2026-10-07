@@ -120,6 +120,24 @@ func sameFileBoundary(project, root string) bool {
 	}
 }
 
+// MatchesBoundary compares a persisted lexical/canonical boundary without
+// retargeting it through a newly substituted symlink.
+func MatchesBoundary(stored, project string) bool {
+	root, err := storedBoundary(stored)
+	if err != nil {
+		return false
+	}
+	candidate, err := CanonicalPath(project)
+	if err != nil {
+		return false
+	}
+	lexical, err := storedBoundary(project)
+	if err != nil {
+		return false
+	}
+	return root == candidate || root == lexical || sameFileBoundary(candidate, root)
+}
+
 func Allowed(project string) bool {
 	canonical, err := CanonicalPath(project)
 	if err != nil {
@@ -149,12 +167,18 @@ func Allowed(project string) bool {
 		History []struct {
 			Path string `json:"path"`
 		} `json:"removal_history"`
+		Archived []struct {
+			Path string `json:"path"`
+		} `json:"archived_projects"`
 	}
 	if json.Unmarshal(raw, &reg) != nil {
 		return false
 	}
 	paths := append([]string(nil), reg.Paused...)
 	for _, item := range reg.History {
+		paths = append(paths, item.Path)
+	}
+	for _, item := range reg.Archived {
 		paths = append(paths, item.Path)
 	}
 	for _, path := range paths {

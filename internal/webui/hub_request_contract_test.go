@@ -34,7 +34,7 @@ func TestHubProtectsRecordedRootAndMissingPath(t *testing.T) {
 		req.Header.Set("X-Task-Mecca-Action", "1")
 		rec := httptest.NewRecorder()
 		handler.ServeHTTP(rec, req)
-		if rec.Code != http.StatusConflict {
+		if rec.Code != http.StatusBadRequest {
 			t.Fatalf("protected path %s accepted: %d %s", path, rec.Code, rec.Body.String())
 		}
 	}

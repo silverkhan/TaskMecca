@@ -218,12 +218,12 @@ Python compatibility runtime도 유지합니다. 자세한 내용은 [CONTRIBUTI
 
 MIT License · [LICENSE](LICENSE)
 
-## Hub 제거 이력과 복구 가능한 정리
+## 프로젝트 보관·감시·마이그레이션
 
-제거 이력은 기본 접힘이며 제목·건수·확인 필요 상태가 보입니다. 같은 브라우저의 접기/펼치기 선택을 유지합니다. Hub 등록 제거, 이력 삭제, 폴더 정리는 각각 별도 확인이며 이력 삭제는 파일을 지우지 않습니다.
+보관하기는 활성 목록에서 보관 목록으로 프로젝트를 옮기고 감시·감시 기반 알림·런타임 갱신을 중지합니다. 보관 목록은 기본 접힘이며 같은 브라우저의 펼치기 선택을 기억합니다. 다시 편입은 파일 갱신 없이 감시를 복원하고 중복 등록을 만들지 않습니다. 목록에서 제거는 보관 기록만 지우며 파일·폴더와 감시 중지 상태를 유지합니다. Web 열기·재시작만으로 등록하지 않습니다. 전체 경로를 지정해 프로젝트를 추가하거나 다시 편입해야 합니다.
 
-폴더 정리는 macOS Foundation 기본 휴지통 또는 Windows IFileOperation 시스템 휴지통(로컬 고정 드라이브만)을 사용합니다. identity와 덮어쓰기 방지를 확인하여 같은 볼륨의 고유 임시 폴더에 먼저 이동합니다. 시스템 휴지통에서 복원 후 기록된 임시 경로에서 원래 절대 경로로 옮기세요. 기존 폴더를 덮어쓰지 마세요. 원본 저장소·공용/관리 루트·심볼릭링크/reparse point·UNC/device/이동식 드라이브·미지원 OS는 거부하며 영구 삭제로 대체하지 않습니다. Linux는 명시적 미지원입니다.
+조회는 `task-mecca projects list|archived`, 변경은 `add|register|unregister|archive|restore|forget --path ABSOLUTE`입니다. 보관/목록 제거는 `--confirm-path EXACT`, 다시 편입/목록 제거는 `--archive-id ID`가 필요합니다. 폴더 삭제·휴지통 이동·잔존 확인 기능은 없습니다. 파일 관리는 사용자가 Finder·탐색기·터미널에서 수행합니다.
 
-실패 이유와 재시도 조건을 이력에 남깁니다. 부분 실패/결과 미확인은 원본·임시 경로·시스템 휴지통을 먼저 확인해야 합니다. 이동 뒤 이력 저장 실패는 복구 위치를 알리며 성공으로 표시하거나 위험한 파일시스템 rollback을 하지 않습니다. macOS 개인정보 보호 거부는 실제 서비스 앱의 파일 및 폴더/전체 디스크 접근 허용 후 명시적 재시도가 필요할 수 있으며 앱이 권한을 바꾸지는 않습니다.
+Go CLI `init`은 최초 framework 생성과 Web 감시 등록만 수행합니다. 기존 설치는 변경하지 않고 `migrate`를 안내합니다. 마이그레이션은 감시·보관 상태와 백로그·설정·인증정보·런타임 데이터를 보존합니다. 수정한 관리 파일이 있으면 새 버전 덮어쓰기 / 기존 수정사항 백업 후 진행 / 취소 중 하나를 선택해야 합니다. 선택 전에는 파일이나 백업을 만들지 않으며 백업 실패 시 framework 갱신을 중단합니다.
 
-CLI도 동일한 안전 규칙을 사용합니다: `task-mecca projects list|history`; 변경은 `pause|resume|remove|delete-history|trash --path ABSOLUTE`. 제거/이력 삭제/휴지통은 `--confirm-path EXACT`, 이력 삭제/휴지통은 `--history-id ID`도 필요합니다. macOS/Windows CI는 cross-build만이 아니라 고유 fixture 실제 휴지통 이동·복원 후 내용 hash를 검증합니다.
+에이전트는 `task-mecca migrate --json`의 exit 3, `status: choice_required`, `modified_files`, `choices`를 보고 사람에게 질문한 뒤 `--choice overwrite|backup|cancel`을 실행합니다. 비TTY는 대기하지 않습니다. Python 호환 CLI도 `migrate`(`update` 별칭)·`--json`·`--choice`를 제공하지만, 기존 framework-only 설치 역할을 유지하므로 global Web 등록은 수행하지 않습니다. manifest 없는 레거시 파일은 소유권을 단정할 수 없어 그대로 보존합니다.

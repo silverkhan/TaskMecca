@@ -76,9 +76,9 @@ class InstallerTests(unittest.TestCase):
                 encoding="utf-8",
             )
             plan = update_plan(root)
-            self.assertIn("framework/roles/root.md", plan["preserve"])
-            self.assertNotIn("framework/roles/root.md", plan["conflicts"])
-            apply_update(root)
+            self.assertIn("framework/roles/root.md", plan["conflicts"])
+            result = apply_update(root)
+            self.assertEqual(result["status"], "choice_required")
             self.assertIn("LOCAL CUSTOMIZATION", role.read_text(encoding="utf-8"))
 
     def test_conflicting_customization_can_be_backed_up_then_overwritten(self):

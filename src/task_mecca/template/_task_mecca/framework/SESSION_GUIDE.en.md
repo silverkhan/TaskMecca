@@ -271,7 +271,7 @@ Filesystem layout mirrors ownership:
 
 The installer does not pre-create `data/` or a backlog. On first registration Registrar calls `ensure-backlog`, reuses an existing ledger when present, and otherwise creates canonical `data/backlog/`. Durable audit/measurement/test evidence created by agents belongs under `data/`; Task Mecca does not standardize arbitrary artifact subfolder names.
 
-When an upstream update would replace locally customized managed documents, the migrator shows the affected files, recommends and creates a local backup when approved, explains that the customized copies will be overwritten, and asks for final confirmation. It does not attempt semantic auto-merge of role or policy documents.
+Migration updates framework files only, preserving monitoring/archive state, backlog, settings and credentials. Modified managed files require an explicit choice even when upstream is unchanged: overwrite, back up modifications and migrate, or cancel. No files or backups change before selection; backup failure stops migration. Non-TTY agents use `task-mecca migrate --json` (exit 3 / `status: choice_required`), ask the human, then run `--choice overwrite|backup|cancel`. No semantic auto-merge is attempted. First-time Go `init` still installs and registers monitoring; an existing installation stays unchanged and directs the user to migrate. Web opening/restarting and migration never register projects. Explicit `projects add|register|unregister|archive|restore|forget` or Hub actions manage state without changing project files. Users manage actual files themselves.
 
 ### Root-session resynchronization after migration
 

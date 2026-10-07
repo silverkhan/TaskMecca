@@ -4,6 +4,7 @@ import (
 	stdcontext "context"
 	"crypto/tls"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"io/fs"
@@ -1075,12 +1076,12 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 				writeJSON(w, map[string]any{"error": err.Error()}, http.StatusInternalServerError)
 				return
 			}
-			history, err := maintenance.RemovalHistory()
+			history, err := maintenance.ArchivedProjects()
 			if err != nil {
 				writeJSON(w, map[string]any{"error": err.Error()}, http.StatusInternalServerError)
 				return
 			}
-			writeJSON(w, map[string]any{"projects": projects, "history": history}, http.StatusOK)
+			writeJSON(w, map[string]any{"projects": projects, "archives": history}, http.StatusOK)
 			return
 		}
 		if r.Method != http.MethodPost || r.Header.Get("X-Task-Mecca-Action") != "1" {
@@ -1090,7 +1091,7 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 		var body struct {
 			Action      string `json:"action"`
 			Path        string `json:"path"`
-			HistoryID   string `json:"history_id"`
+			HistoryID   string `json:"archive_id"`
 			ConfirmPath string `json:"confirm_path"`
 		}
 		decoder := json.NewDecoder(r.Body)
@@ -1108,45 +1109,51 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 			return
 		}
 		var err error
+		if !filepath.IsAbs(body.Path) {
+			writeJSON(w, map[string]any{"error": "absolute project path required"}, 400)
+			return
+		}
+		if (body.Action == "archive" || body.Action == "forget") && body.ConfirmPath != body.Path {
+			writeJSON(w, map[string]any{"error": "exact full path confirmation required"}, 400)
+			return
+		}
 		switch body.Action {
-		case "pause":
+		case "unregister":
 			err := maintenance.SetProjectMonitoring(body.Path, false)
 			if err == nil {
 				writeJSON(w, map[string]any{"result": "monitoring_paused"}, 200)
 				return
 			}
-		case "resume":
+		case "register":
 			err := maintenance.SetProjectMonitoring(body.Path, true)
 			if err == nil {
 				writeJSON(w, map[string]any{"result": "monitoring_resumed"}, 200)
 				return
 			}
-		case "remove":
-			record, removeErr := maintenance.RemoveProject(body.Path)
+		case "archive":
+			record, removeErr := maintenance.ArchiveProject(body.Path)
 			if removeErr == nil {
 				writeJSON(w, record, 200)
 				return
 			} else {
 				err = removeErr
 			}
-		case "trash":
-			if body.ConfirmPath == "" || body.HistoryID == "" {
-				writeJSON(w, map[string]any{"error": "full path confirmation required"}, 400)
-				return
-			}
-			trashPath, trashErr := maintenance.MoveRemovedProjectToTrash(body.HistoryID, body.Path)
-			if trashErr == nil {
-				writeJSON(w, map[string]any{"result": "moved_to_trash", "trash_path": trashPath}, 200)
-				return
-			} else {
-				err = trashErr
-				writeJSON(w, map[string]any{"error": err.Error(), "result": "cleanup_failed_or_incomplete", "trash_path": trashPath, "staging_path": maintenance.TrashStagingPath(trashPath)}, http.StatusConflict)
-				return
-			}
-		case "delete_history":
-			err = maintenance.DeleteRemovalHistory(body.HistoryID)
+		case "add":
+			err = maintenance.RegisterProject(body.Path)
 			if err == nil {
-				writeJSON(w, map[string]any{"result": "history_deleted"}, 200)
+				writeJSON(w, map[string]any{"result": "registered"}, 200)
+				return
+			}
+		case "restore":
+			err = maintenance.RestoreArchivedProject(body.HistoryID, body.Path)
+			if err == nil {
+				writeJSON(w, map[string]any{"result": "restored"}, 200)
+				return
+			}
+		case "forget":
+			err = maintenance.ForgetArchivedProject(body.HistoryID, body.Path)
+			if err == nil {
+				writeJSON(w, map[string]any{"result": "forgotten"}, 200)
 				return
 			}
 		default:
@@ -1211,26 +1218,31 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 			return
 		}
 		var body struct {
-			Project string `json:"project"`
+			Project      string `json:"project"`
+			Choice       string `json:"choice"`
+			ExpectedPlan string `json:"expected_plan"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 			writeJSON(w, map[string]any{"error": "invalid JSON"}, 400)
 			return
 		}
 		target := strings.TrimSpace(body.Project)
-		if !maintenance.IsRegisteredProject(target) {
+		if !maintenance.IsManagedProject(target) {
 			writeJSON(w, map[string]any{"error": "project is not registered"}, 403)
 			return
 		}
-		result, err := install.MigrateWithResult(target, version)
+		result, err := install.MigrateWithPlan(target, version, body.Choice, body.ExpectedPlan)
 		if err != nil {
-			writeJSON(w, map[string]any{"error": err.Error()}, 409)
+			var required *install.ChoiceRequiredError
+			if errors.As(err, &required) {
+				writeJSON(w, result, 409)
+			} else {
+				writeJSON(w, map[string]any{"error": err.Error()}, 409)
+			}
 			return
 		}
-		_, _ = backlog.EnsureTagRegistry(target)
-		_ = maintenance.RegisterProject(target)
 		writeJSON(w, map[string]any{
-			"ok": true, "project": target, "framework_version": version,
+			"ok": true, "status": result.Status, "project": target, "framework_version": version,
 			"from_version": result.FromVersion, "to_version": result.ToVersion,
 			"instruction_refresh_required": result.InstructionRefreshRequired,
 			"changed_instructions":         result.ChangedInstructions,

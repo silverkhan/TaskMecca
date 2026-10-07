@@ -187,6 +187,8 @@ After replacing the binary with a newer release, update managed framework files 
 task-mecca migrate
 ```
 
+Migration preserves monitoring/archive state and user data. Modified managed files require overwrite, back up and migrate, or cancel. Non-TTY agents use `migrate --json` and its `choice_required` result to ask the human, then run `--choice overwrite|backup|cancel`. Existing installations stay unchanged on `init`. Web opening/restarting never registers projects; explicit Hub or `projects add|register|unregister|archive|restore|forget` actions manage state. Archive/forget always preserve files and folders.
+
 If migration changes instructions that affect the active session—such as `ROOT_PROMPT.md`, `SESSION_GUIDE*.md`, `collab.md`, or `roles/*.md`—**do not assume the current Root session automatically knows the new rules.** After migration, the Web UI reports whether Root-session resynchronization is required and provides a copyable prompt that can be pasted directly into the active Root session. Continue work after Root rereads the current instructions.
 
 End users do not need Python, `uv`, or the Go toolchain. The standalone binary directly provides the Web UI, doctor, preflight, and backlog operations.
