@@ -1,0 +1,251 @@
+package maintenance
+
+// Project management deliberately keeps registry changes and filesystem changes
+// separate.  Removing a Hub entry never removes its directory; a caller must
+// explicitly request the second, recoverable action.
+
+import (
+	"encoding/json"
+	"fmt"
+	"os"
+	"path/filepath"
+	"time"
+)
+
+type RemovalRecord struct {
+	ID            string `json:"id"`
+	Name          string `json:"name"`
+	Path          string `json:"path"`
+	RemovedAt     string `json:"removed_at"`
+	FolderOutcome string `json:"folder_outcome"`
+	TrashPath     string `json:"trash_path,omitempty"`
+	LastCheckedAt string `json:"last_checked_at,omitempty"`
+	Presence      string `json:"presence,omitempty"`
+}
+
+type projectRegistry struct {
+	Projects []Project       `json:"projects"`
+	History  []RemovalRecord `json:"removal_history,omitempty"`
+	Paused   []string        `json:"paused_projects,omitempty"`
+}
+
+func readProjectRegistry() (projectRegistry, error) {
+	var value projectRegistry
+	data, err := os.ReadFile(registryPath())
+	if os.IsNotExist(err) {
+		return value, nil
+	}
+	if err != nil {
+		return value, err
+	}
+	if err := json.Unmarshal(data, &value); err != nil {
+		return value, fmt.Errorf("project registry is invalid: %w", err)
+	}
+	return value, nil
+}
+
+func writeProjectRegistry(value projectRegistry) error {
+	if err := os.MkdirAll(homeDir(), 0755); err != nil {
+		return err
+	}
+	data, err := json.MarshalIndent(value, "", "  ")
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(registryPath(), append(data, '\n'), 0644)
+}
+
+// ProjectState is read-only status for the Hub.  It never creates a runtime
+// directory and never probes a missing project beyond lstat.
+type ProjectState struct {
+	Project
+	Presence   string `json:"presence"`
+	CheckedAt  string `json:"checked_at"`
+	Monitoring bool   `json:"monitoring"`
+}
+
+func projectPresence(path string) string {
+	info, err := os.Lstat(path)
+	if os.IsNotExist(err) {
+		return "missing"
+	}
+	if err != nil || info.Mode()&os.ModeSymlink != 0 {
+		return "unavailable"
+	}
+	return "present"
+}
+
+func ManagedProjects() ([]ProjectState, error) {
+	reg, err := readProjectRegistry()
+	if err != nil {
+		return nil, err
+	}
+	now := time.Now().Format(time.RFC3339)
+	out := make([]ProjectState, 0, len(reg.Projects))
+	for _, p := range reg.Projects {
+		out = append(out, ProjectState{Project: p, Presence: projectPresence(p.Path), CheckedAt: now, Monitoring: !containsCleanPath(reg.Paused, p.Path)})
+	}
+	return out, nil
+}
+
+func containsCleanPath(paths []string, path string) bool {
+	for _, candidate := range paths {
+		if filepath.Clean(candidate) == filepath.Clean(path) {
+			return true
+		}
+	}
+	return false
+}
+
+func SetProjectMonitoring(path string, enabled bool) error {
+	abs, err := filepath.Abs(path)
+	if err != nil {
+		return err
+	}
+	reg, err := readProjectRegistry()
+	if err != nil {
+		return err
+	}
+	for i := range reg.Projects {
+		if filepath.Clean(reg.Projects[i].Path) == filepath.Clean(abs) {
+			if enabled {
+				filtered := reg.Paused[:0]
+				for _, item := range reg.Paused {
+					if filepath.Clean(item) != filepath.Clean(abs) {
+						filtered = append(filtered, item)
+					}
+				}
+				reg.Paused = filtered
+			} else if !containsCleanPath(reg.Paused, abs) {
+				reg.Paused = append(reg.Paused, abs)
+			}
+			return writeProjectRegistry(reg)
+		}
+	}
+	return fmt.Errorf("registered project not found")
+}
+
+func RemoveProject(path string) (RemovalRecord, error) {
+	abs, err := filepath.Abs(path)
+	if err != nil {
+		return RemovalRecord{}, err
+	}
+	reg, err := readProjectRegistry()
+	if err != nil {
+		return RemovalRecord{}, err
+	}
+	for i, p := range reg.Projects {
+		if filepath.Clean(p.Path) != filepath.Clean(abs) {
+			continue
+		}
+		record := RemovalRecord{ID: fmt.Sprintf("removed-%d", time.Now().UnixNano()), Name: p.Name, Path: p.Path, RemovedAt: time.Now().Format(time.RFC3339), FolderOutcome: "preserved"}
+		record.Presence = projectPresence(p.Path)
+		record.LastCheckedAt = time.Now().Format(time.RFC3339)
+		reg.Projects = append(reg.Projects[:i], reg.Projects[i+1:]...)
+		filtered := reg.Paused[:0]
+		for _, item := range reg.Paused {
+			if filepath.Clean(item) != filepath.Clean(abs) {
+				filtered = append(filtered, item)
+			}
+		}
+		reg.Paused = filtered
+		reg.History = append([]RemovalRecord{record}, reg.History...)
+		return record, writeProjectRegistry(reg)
+	}
+	return RemovalRecord{}, fmt.Errorf("registered project not found")
+}
+
+func RemovalHistory() ([]RemovalRecord, error) {
+	reg, err := readProjectRegistry()
+	if err != nil {
+		return nil, err
+	}
+	out := append([]RemovalRecord(nil), reg.History...)
+	for i := range out {
+		out[i].Presence = projectPresence(out[i].Path)
+		out[i].LastCheckedAt = time.Now().Format(time.RFC3339)
+	}
+	return out, nil
+}
+
+func DeleteRemovalHistory(id string) error {
+	reg, err := readProjectRegistry()
+	if err != nil {
+		return err
+	}
+	for i, h := range reg.History {
+		if h.ID == id {
+			reg.History = append(reg.History[:i], reg.History[i+1:]...)
+			return writeProjectRegistry(reg)
+		}
+	}
+	return fmt.Errorf("removal history not found")
+}
+
+func safeCleanupPath(path string) (string, error) {
+	abs, err := filepath.Abs(path)
+	if err != nil {
+		return "", err
+	}
+	clean := filepath.Clean(abs)
+	home, _ := os.UserHomeDir()
+	if clean == string(filepath.Separator) || clean == filepath.Clean(home) || clean == filepath.Clean(filepath.Dir(clean)) {
+		return "", fmt.Errorf("protected path cannot be cleaned")
+	}
+	info, err := os.Lstat(clean)
+	if err != nil {
+		return "", err
+	}
+	if info.Mode()&os.ModeSymlink != 0 {
+		return "", fmt.Errorf("symbolic-link project cannot be cleaned")
+	}
+	if _, err := os.Lstat(filepath.Join(clean, ".git")); err == nil {
+		return "", fmt.Errorf("repository root cannot be cleaned automatically")
+	}
+	return clean, nil
+}
+
+// MoveProjectToTrash moves only an explicitly named, non-repository directory.
+// It is intentionally recoverable and never performs permanent deletion.
+func MoveProjectToTrash(path string) (string, error) {
+	source, err := safeCleanupPath(path)
+	if err != nil {
+		return "", err
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+	trash := filepath.Join(home, ".Trash")
+	if err := os.MkdirAll(trash, 0700); err != nil {
+		return "", err
+	}
+	destination := filepath.Join(trash, filepath.Base(source))
+	for n := 1; ; n++ {
+		if _, err := os.Lstat(destination); os.IsNotExist(err) {
+			break
+		}
+		destination = filepath.Join(trash, fmt.Sprintf("%s-%d", filepath.Base(source), n))
+	}
+	if err := os.Rename(source, destination); err != nil {
+		return "", err
+	}
+	return destination, nil
+}
+
+func RecordTrashResult(path, trashPath string) error {
+	reg, err := readProjectRegistry()
+	if err != nil {
+		return err
+	}
+	for i := range reg.History {
+		if filepath.Clean(reg.History[i].Path) == filepath.Clean(path) {
+			reg.History[i].FolderOutcome = "moved_to_trash"
+			reg.History[i].TrashPath = trashPath
+			reg.History[i].Presence = "missing"
+			reg.History[i].LastCheckedAt = time.Now().Format(time.RFC3339)
+			return writeProjectRegistry(reg)
+		}
+	}
+	return fmt.Errorf("removal history not found")
+}

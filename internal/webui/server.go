@@ -1067,6 +1067,89 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 		}, 200)
 	})
 
+	mux.HandleFunc("/api/hub/projects", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet {
+			projects, err := maintenance.ManagedProjects()
+			if err != nil {
+				writeJSON(w, map[string]any{"error": err.Error()}, http.StatusInternalServerError)
+				return
+			}
+			history, err := maintenance.RemovalHistory()
+			if err != nil {
+				writeJSON(w, map[string]any{"error": err.Error()}, http.StatusInternalServerError)
+				return
+			}
+			writeJSON(w, map[string]any{"projects": projects, "history": history}, http.StatusOK)
+			return
+		}
+		if r.Method != http.MethodPost || r.Header.Get("X-Task-Mecca-Action") != "1" {
+			writeJSON(w, map[string]any{"error": "POST with maintenance confirmation required"}, http.StatusMethodNotAllowed)
+			return
+		}
+		var body struct {
+			Action      string `json:"action"`
+			Path        string `json:"path"`
+			HistoryID   string `json:"history_id"`
+			ConfirmPath string `json:"confirm_path"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			writeJSON(w, map[string]any{"error": "invalid JSON"}, http.StatusBadRequest)
+			return
+		}
+		if body.Path != "" && body.ConfirmPath != "" && filepath.Clean(body.Path) != filepath.Clean(body.ConfirmPath) {
+			writeJSON(w, map[string]any{"error": "confirmation path does not match target"}, http.StatusBadRequest)
+			return
+		}
+		var err error
+		switch body.Action {
+		case "pause":
+			err := maintenance.SetProjectMonitoring(body.Path, false)
+			if err == nil {
+				writeJSON(w, map[string]any{"result": "monitoring_paused"}, 200)
+				return
+			}
+		case "resume":
+			err := maintenance.SetProjectMonitoring(body.Path, true)
+			if err == nil {
+				writeJSON(w, map[string]any{"result": "monitoring_resumed"}, 200)
+				return
+			}
+		case "remove":
+			record, removeErr := maintenance.RemoveProject(body.Path)
+			if removeErr == nil {
+				writeJSON(w, record, 200)
+				return
+			} else {
+				err = removeErr
+			}
+		case "trash":
+			if body.ConfirmPath == "" {
+				writeJSON(w, map[string]any{"error": "full path confirmation required"}, 400)
+				return
+			}
+			trashPath, trashErr := maintenance.MoveProjectToTrash(body.Path)
+			if trashErr == nil {
+				if recordErr := maintenance.RecordTrashResult(body.Path, trashPath); recordErr != nil {
+					writeJSON(w, map[string]any{"error": recordErr.Error(), "trash_path": trashPath}, http.StatusConflict)
+					return
+				}
+				writeJSON(w, map[string]any{"result": "moved_to_trash", "trash_path": trashPath}, 200)
+				return
+			} else {
+				err = trashErr
+			}
+		case "delete_history":
+			err = maintenance.DeleteRemovalHistory(body.HistoryID)
+			if err == nil {
+				writeJSON(w, map[string]any{"result": "history_deleted"}, 200)
+				return
+			}
+		default:
+			writeJSON(w, map[string]any{"error": "unsupported project action"}, http.StatusBadRequest)
+			return
+		}
+		writeJSON(w, map[string]any{"error": err.Error()}, http.StatusConflict)
+	})
 	mux.HandleFunc("/api/hub", func(w http.ResponseWriter, r *http.Request) {
 		projects := maintenance.ListProjects()
 		rows := make([]map[string]any, 0, len(projects))

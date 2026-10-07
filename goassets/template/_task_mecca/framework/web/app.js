@@ -6,6 +6,7 @@ const state = {
   eventStreamKey: '',
   view: 'hub',
   hub: null,
+  hubManagement: {projects:[],history:[]},
   loadError: '',
   project: new URLSearchParams(location.search).get('project') || '',
   lastProject: localStorage.getItem('task-mecca-last-project') || new URLSearchParams(location.search).get('project') || '',
@@ -2307,21 +2308,25 @@ function hubView() {
   const cliStatus=cli.update_available
     ? currentVersionMark+'<span class="badge warn">→ '+esc(cli.latest||'-')+'</span>'
     : currentVersionMark;
+  const managed=new Map((state.hubManagement?.projects||[]).map(p=>[p.path,p]));
   const cards=projects.map(p=>{
     const c=p?.counts||{};
     const name=p?.name||String(p?.path||'Project').split(/[\\/]/).pop()||'Project';
     const framework=p?.framework_version||'unknown';
+    const status=managed.get(p.path)||{};
+    const path=String(p?.path||'');
     return `<article class="project-card">
-      <div class="project-card-head"><div><div class="eyebrow">${esc(p?.path||'')}</div><h2>${esc(name)}</h2></div><span class="badge">${esc(framework)}</span></div>
+      <div class="project-card-head"><div><h2>${esc(name)}</h2><div class="project-path"><code>${esc(path)}</code><button class="icon-copy" type="button" data-copy-path="${esc(path)}" aria-label="${esc(t('copyCode'))}">⧉</button></div></div><span class="badge">${esc(framework)}</span></div>
       <div class="project-stats"><span><strong>${c.working||0}</strong> working</span><span><strong>${c.ready||0}</strong> ready</span><span><strong>${c.hold||0}</strong> hold</span></div>
-      <div class="project-actions">${p?.migration_available?`<button class="action-btn secondary" data-migrate="${esc(p.path)}">Migrate</button>`:''}<button class="action-btn" data-open-project="${esc(p?.path||'')}">Open</button></div>
+      <div class="project-actions">${p?.migration_available?`<button class="action-btn secondary" data-migrate="${esc(p.path)}">Migrate</button>`:''}<button class="action-btn secondary" data-project-action="${status.monitoring===false?'resume':'pause'}" data-project-path="${esc(path)}">${status.monitoring===false?'Resume monitoring':'Pause monitoring'}</button><button class="action-btn secondary danger-action" data-project-action="remove" data-project-path="${esc(path)}">Remove from Hub</button><button class="action-btn" data-open-project="${esc(path)}">Open</button></div>
     </article>`;
   }).join('');
+  const history=(state.hubManagement?.history||[]).map(item=>`<article class="history-row"><div><strong>${esc(item.name||'Project')}</strong><div class="project-path"><code>${esc(item.path)}</code><button class="icon-copy" type="button" data-copy-path="${esc(item.path)}" aria-label="${esc(t('copyCode'))}">⧉</button></div><p>${esc(item.folder_outcome||'preserved')} · ${esc(item.presence||'unavailable')}</p></div><div class="project-actions"><button class="action-btn secondary" data-project-action="trash" data-project-path="${esc(item.path)}">Move to Trash</button><button class="action-btn secondary danger-action" data-project-action="delete-history" data-history-id="${esc(item.id)}" data-project-path="${esc(item.path)}">Delete history</button></div></article>`).join('');
   const updateActions='';
   return `<div class="page-head"><div><div class="eyebrow">TASK MECCA</div><h1>Global Hub</h1><p class="summary">CLI와 등록 프로젝트의 framework 상태를 관리합니다.</p></div><div class="hub-cli"><strong>CLI</strong> ${channelBadge} ${cliStatus} ${updateActions}</div></div>
     ${cli.update_available?'<div class="timing-note"><strong>Upgrade</strong><span>업그레이드가 완료되면 Task Mecca Web이 자동으로 재시작되며, 현재 브라우저 페이지도 자동으로 새로고침됩니다.</span></div>':''}
     ${cli.error?`<div class="timing-note"><strong>Version check</strong><span>${esc(cli.error)}</span></div>`:''}
-    <div class="project-grid">${cards||'<div class="empty">등록된 Task Mecca 프로젝트가 없습니다.</div>'}</div>`;
+    <div class="project-grid">${cards||'<div class="empty">등록된 Task Mecca 프로젝트가 없습니다.</div>'}</div><section class="hub-history"><div><h2>Removal history</h2><p class="muted">Deleting history removes only this management record, never files.</p></div>${history||'<div class="empty">No removed project history.</div>'}</section>`;
 }
 function normalizedVersion(value) {
   return String(value??'').trim().replace(/(?:\\r|\\n)+$/g,'').trim();
@@ -2400,10 +2405,20 @@ function bindHubActions() {
     if(path)switchProject(path);
   }));
   document.querySelectorAll('[data-migrate]').forEach(btn=>btn.addEventListener('click',e=>performProjectMigration(btn.dataset.migrate,e.currentTarget)));
+  document.querySelectorAll('[data-copy-path]').forEach(btn=>btn.addEventListener('click',async()=>{try{await navigator.clipboard.writeText(btn.dataset.copyPath||'');btn.textContent='✓';setTimeout(()=>btn.textContent='⧉',1200)}catch(_){alert(btn.dataset.copyPath||'')}}));
+  document.querySelectorAll('[data-project-action]').forEach(btn=>btn.addEventListener('click',()=>manageHubProject(btn)));
   const changes=$('#hubUpdateChangesBtn');
   if(changes)changes.addEventListener('click',showAvailableUpdateNotes);
   const up=$('#upgradeBtn');
   if(up)up.addEventListener('click',e=>performUpgrade(e.currentTarget));
+}
+
+async function manageHubProject(button) {
+  const action=button.dataset.projectAction, path=button.dataset.projectPath||'', historyID=button.dataset.historyId||'';
+  const warnings={remove:'This removes the Hub registration and stops monitoring. The folder stays where it is.',trash:'This moves the exact path below to Trash (recoverable). Repository roots, symlinks, and protected paths are refused.', 'delete-history':'This deletes only the history record. Files are not changed and this path will no longer be shown in Hub.'};
+  if(['remove','trash','delete-history'].includes(action) && !confirm(`${warnings[action]}\n\n${path}`))return;
+  button.disabled=true;
+  try { const body={action,path,history_id:historyID}; if(action==='trash')body.confirm_path=path; const r=await fetch('/api/hub/projects',{method:'POST',headers:{'Content-Type':'application/json','X-Task-Mecca-Action':'1'},body:JSON.stringify(body)}); const payload=await r.json(); if(!r.ok)throw Error(payload.error||'Request failed'); await refreshHub(true); render(); } catch(error) { alert(String(error?.message||error)); } finally { button.disabled=false; }
 }
 
 function matchesStatusFilter(t, key) {
@@ -3439,9 +3454,10 @@ async function refreshHub(force=false) {
   if(hubFetchInFlight)return hubFetchInFlight;
   hubFetchInFlight=(async()=>{
     try {
-      const r=await fetch('/api/hub',{cache:'no-store'});
+      const [r, management]=await Promise.all([fetch('/api/hub',{cache:'no-store'}),fetch('/api/hub/projects',{cache:'no-store'})]);
       if(!r.ok)throw new Error(`HTTP ${r.status}`);
       state.hub=await r.json();
+      state.hubManagement=management.ok?await management.json():{projects:[],history:[]};
       state.lastHubFetch=Date.now();
       return state.hub;
     } finally {
