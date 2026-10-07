@@ -7,3 +7,7 @@ Test-only correction: the fixture intercepts api.telegram.org only and delegates
 Local validation: lifecycle projection -count=20 PASS; isolation plus lifecycle -race -count=10 PASS; full go test ./... PASS; git diff --check PASS. Prior UI evidence, original failures and isolated fixture remain preserved. Pending older CI was inspected before pushing; newer-head Linux artifact CI is authoritative.
 
 Resume identity: assignment-ccad7c5c08195c37384e024ae0e8067b; attempt run-92e30255a8eed691; runtime 01a11477-13aa-76e3-866a-a8d007002787; turn 01a11493-b31d-71a1-9d74-697e7a2c1fc4; session 01a1101a-cbfd-79e2-91ee-6018b9bf2924. Parent bound assignment and recorded observed activity/resumed; start Hook was not observed and no historical started event was fabricated.
+
+Linux artifact run 37570870044 at isolation head 583368da38d52d34123a0eea4ca435be72772771 completed SUCCESS (Go, Python, JavaScript, standalone cross-platform binaries and upload).
+
+Controller AC4 recheck found linked Git worktrees were not excluded from automatic registration. Minimal RegisterWebProject gate detects .git gitdir plus its administrative commondir marker; ordinary .git directories and submodule-style gitdir without commondir are not excluded. Explicit RegisterProject/init/migrate is unchanged. Actual git worktree fixture checks automatic omission, explicit inclusion and ordinary registration; separate relative gitdir fixture checks non-worktree registration. No new UI cycle or detector run.

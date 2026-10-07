@@ -60,6 +60,9 @@ func WithProjectMonitoring(path string, work func()) bool {
 func RegisterWebProject(path string) error {
 	projectManagementMu.Lock()
 	defer projectManagementMu.Unlock()
+	if linkedGitWorktree(path) {
+		return nil
+	}
 	reg, err := readProjectRegistry()
 	if err != nil {
 		return err
@@ -80,6 +83,25 @@ func RegisterWebProject(path string) error {
 		return nil
 	}
 	return RegisterProject(path)
+}
+
+// Linked worktrees have a .git file pointing to an administrative directory
+// with commondir. Ordinary repositories use a .git directory; submodules may
+// use a .git file but do not have the linked-worktree commondir marker.
+func linkedGitWorktree(path string) bool {
+	marker, err := os.ReadFile(filepath.Join(path, ".git"))
+	if err != nil || !strings.HasPrefix(strings.TrimSpace(string(marker)), "gitdir:") {
+		return false
+	}
+	gitdir := strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(string(marker)), "gitdir:"))
+	if gitdir == "" {
+		return false
+	}
+	if !filepath.IsAbs(gitdir) {
+		gitdir = filepath.Join(path, gitdir)
+	}
+	common, err := os.ReadFile(filepath.Join(gitdir, "commondir"))
+	return err == nil && strings.TrimSpace(string(common)) != ""
 }
 
 type RemovalRecord struct {
