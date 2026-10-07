@@ -206,6 +206,13 @@ func TestOperationStageDoesNotHideUnconfirmedTerminalError(t *testing.T) {
 
 func TestOperationStageResolvedOldAttemptDoesNotRecur(t *testing.T) {
 	project := testOperationProject(t)
+	task := filepath.Join(project, "_task_mecca", "data", "backlog", "000458.B-458.active.doing.md")
+	if err := os.MkdirAll(filepath.Dir(task), 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(task, []byte("# B-458 Active\n- Agent: /root/controller/worker\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
 	base := time.Now().UTC().Add(-time.Hour)
 	old, e := runtimeobs.RecordAssignment(project, "old-assignment", "B-458", "/root/controller/worker", base)
 	if e != nil {
@@ -266,6 +273,22 @@ func TestOperationStageResolvedOldAttemptDoesNotRecur(t *testing.T) {
 	}
 	if len(active) != 1 || active[0].Kind != "errored" || active[0].AttemptID != newHook.AttemptID {
 		t.Fatalf("new error hidden or old warning reappeared=%+v", active)
+	}
+	if err := os.Remove(task); err != nil {
+		t.Fatal(err)
+	}
+	j, err = scanOperationProject(project, base.Add(time.Minute+9*time.Second))
+	if err != nil {
+		t.Fatal(err)
+	}
+	foundUnknown := false
+	for _, i := range j.Incidents {
+		if i.Kind == "runtime_unknown" && i.RecoveredAt == "" {
+			foundUnknown = true
+		}
+	}
+	if !foundUnknown {
+		t.Fatal("unavailable canonical policy blindly trusted historical suppression")
 	}
 }
 

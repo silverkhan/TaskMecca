@@ -43,6 +43,7 @@ type operationIncident struct {
 	Action           string                         `json:"action"`
 	Resolution       *operationCompletionResolution `json:"resolution,omitempty"`
 	RecoveryEvidence string                         `json:"recovery_evidence,omitempty"`
+	PolicyResolution *operationPolicyResolution     `json:"policy_resolution,omitempty"`
 }
 
 type operationJournal struct {
@@ -206,7 +207,9 @@ func scanOperationProject(project string, now time.Time) (operationJournal, erro
 	}
 	nowText := now.UTC().Format(time.RFC3339Nano)
 	completions := operationCompletionEvidence(project, ledger, now)
-	stages := operationStages(project, ledger, now)
+	policies := operationPolicies(project, ledger, now)
+	recoveryPolicies := operationRecoveryPolicy(project, ledger, now)
+	stages := currentOperationStages(operationStages(project, ledger, now), policies)
 	for i := range stages {
 		if completion, ok := completions[stages[i].AttemptID]; ok && !stages[i].Failed {
 			stages[i].Stage = "controller_verified_complete"
@@ -225,7 +228,7 @@ func scanOperationProject(project string, now time.Time) (operationJournal, erro
 		if signal, ok := classifyOperation(project, attempt, now, verified[attempt.Provider]); ok {
 			// Suppress the same obsolete source on every scan, not only while
 			// its first incident is active. Otherwise resolution would recur.
-			if operationSourceAlreadyResolved(signal.incident, journal) || latestOperationRecovery(signal.incident, ledger.Attempts, stages, now) {
+			if recoveryPolicies[strings.ToUpper(signal.incident.TaskID)] && (operationSourceAlreadyResolved(signal.incident, journal) || latestOperationRecovery(signal.incident, ledger.Attempts, stages, now)) {
 				continue
 			}
 			if stageSuppresses(signal.incident, stages, now) {
@@ -319,6 +322,10 @@ func scanOperationProject(project string, now time.Time) (operationJournal, erro
 		signals[key] = operationSignal{key: key, alert: true, incident: operationIncident{Project: project, TaskID: stage.TaskID, AttemptID: stage.AttemptID, Kind: kind, Quality: "verification_required", Evidence: stage.Evidence, LastObservedAt: stage.Since, Action: "Controller: 인계 전달·완료검토 근거와 정체 원인을 확인하세요. 백로그 완료를 자동 추정하지 마세요."}}
 	}
 	for key, signal := range signals {
+		if operationPolicyForIncident(signal.incident, policies) != nil {
+			delete(signals, key)
+			continue
+		}
 		if stageSuppresses(signal.incident, stages, now) {
 			delete(signals, key)
 		}
@@ -340,7 +347,7 @@ func scanOperationProject(project string, now time.Time) (operationJournal, erro
 			item.RecoveryEvidence = "bounded normal handoff/review grace; runtime evidence unchanged"
 			continue
 		}
-		if latestOperationRecovery(*item, ledger.Attempts, stages, now) {
+		if recoveryPolicies[strings.ToUpper(item.TaskID)] && latestOperationRecovery(*item, ledger.Attempts, stages, now) {
 			item.RecoveredAt = nowText
 			item.RecoveryEvidence = "latest assignment has observed execution evidence; prior runtime evidence unchanged"
 			delete(signals, item.Key)
@@ -349,6 +356,13 @@ func scanOperationProject(project string, now time.Time) (operationJournal, erro
 		if resolution := operationCompletedUnknown(*item, completions); resolution != nil {
 			item.RecoveredAt = nowText
 			item.Resolution = resolution
+			delete(signals, item.Key)
+			continue
+		}
+		if proof := operationPolicyForIncident(*item, policies); proof != nil {
+			item.RecoveredAt = nowText
+			item.PolicyResolution = proof
+			item.RecoveryEvidence = proof.Reason + "; runtime evidence unchanged"
 			delete(signals, item.Key)
 			continue
 		}

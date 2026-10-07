@@ -97,7 +97,7 @@ func operationCompletionEvidence(project string, ledger runtimeobs.Ledger, now t
 			continue
 		}
 		assigned, err := time.Parse(time.RFC3339Nano, assignment.AssignedAt)
-		if err != nil {
+		if err != nil || assigned.IsZero() {
 			continue
 		}
 		var completion backlog.LifecycleTransition
@@ -112,11 +112,11 @@ func operationCompletionEvidence(project string, ledger runtimeobs.Ledger, now t
 			continue
 		}
 		completed, err := time.Parse(time.RFC3339Nano, completion.OccurredAt)
-		if err != nil || completed.Before(assigned) || completed.After(now) {
+		if err != nil || completed.IsZero() || completed.Before(assigned) || completed.After(now) {
 			continue
 		}
 		recorded, err := time.Parse(time.RFC3339Nano, completion.RecordedAt)
-		if err != nil || recorded.Before(completed) || recorded.After(now) {
+		if err != nil || recorded.IsZero() || recorded.Before(completed) || recorded.After(now) {
 			continue
 		}
 		valid := true
@@ -125,7 +125,7 @@ func operationCompletionEvidence(project string, ledger runtimeobs.Ledger, now t
 				continue
 			}
 			at, err := time.Parse(time.RFC3339Nano, event.OccurredAt)
-			if err != nil || !at.Before(completed) {
+			if err != nil || at.IsZero() || !at.Before(completed) {
 				valid = false
 			}
 		}
@@ -134,7 +134,7 @@ func operationCompletionEvidence(project string, ledger runtimeobs.Ledger, now t
 				continue
 			}
 			at, err := time.Parse(time.RFC3339Nano, item.AssignedAt)
-			if err != nil || !at.Before(assigned) {
+			if err != nil || at.IsZero() || !at.Before(assigned) {
 				valid = false
 			}
 		}
@@ -144,7 +144,7 @@ func operationCompletionEvidence(project string, ledger runtimeobs.Ledger, now t
 				continue
 			}
 			at, err := time.Parse(time.RFC3339Nano, value)
-			if err != nil || at.Before(assigned) || at.After(completed) {
+			if err != nil || at.IsZero() || at.Before(assigned) || at.After(completed) {
 				valid = false
 			}
 		}

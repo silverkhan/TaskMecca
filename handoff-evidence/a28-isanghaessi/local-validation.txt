@@ -1,0 +1,61 @@
+A28 local validation; implementation head 4f9c8d7281b428c7373c3d8a208a2c18d80a8477
+
+Final sequential go test ./... exit=0
+ok  	github.com/silverkhan/TaskMecca/cmd/task-mecca	(cached)
+?   	github.com/silverkhan/TaskMecca/goassets	[no test files]
+ok  	github.com/silverkhan/TaskMecca/internal/backlog	(cached)
+ok  	github.com/silverkhan/TaskMecca/internal/handoff	(cached)
+ok  	github.com/silverkhan/TaskMecca/internal/install	(cached)
+ok  	github.com/silverkhan/TaskMecca/internal/maintenance	(cached)
+ok  	github.com/silverkhan/TaskMecca/internal/notify	(cached)
+ok  	github.com/silverkhan/TaskMecca/internal/projectguard	(cached)
+ok  	github.com/silverkhan/TaskMecca/internal/runtimeobs	(cached)
+ok  	github.com/silverkhan/TaskMecca/internal/webui	15.034s
+
+Seven-package race exit=0
+ok  	github.com/silverkhan/TaskMecca/internal/webui	20.095s
+ok  	github.com/silverkhan/TaskMecca/internal/backlog	(cached)
+ok  	github.com/silverkhan/TaskMecca/internal/runtimeobs	(cached)
+ok  	github.com/silverkhan/TaskMecca/internal/handoff	(cached)
+ok  	github.com/silverkhan/TaskMecca/internal/maintenance	(cached)
+ok  	github.com/silverkhan/TaskMecca/internal/notify	(cached)
+ok  	github.com/silverkhan/TaskMecca/internal/projectguard	(cached)
+
+go vet ./...: exit=0
+git diff --check bbc4d191..HEAD: exit=0
+Python 3.12 PYTHONPATH=src unittest discover: 30 tests, OK
+Node syntax app.js / sw.js / terminal.js: exit=0
+Both Go/Python Web template trees unchanged; existing parity test PASS.
+
+Earlier concurrent fullGo run: known Web shutdown context2-second timeout, not modified. Raw failure:
+--- FAIL: TestOperationWebProcessContinuesAfterBrowserClose (2.27s)
+    operations_monitor_test.go:434: Web process exit: exit status 1
+        Task Mecca Web UI
+        local:     http://127.0.0.1:53134/
+        network: explicit bind · 127.0.0.1
+        backlog: /var/folders/07/q_8xp6j90zn8r_gdxk6sj5nm0000gn/T/TestOperationWebProcessContinuesAfterBrowserClose1218287310/002/_task_mecca/data/backlog (auto)
+        maintenance actions require explicit UI confirmation · Ctrl+C to stop
+        access: not yet observed · fresh active preflight runs automatically before dispatch
+        --- FAIL: TestOperationWebProcessContinuesAfterBrowserClose (2.26s)
+            operations_monitor_test.go:333: context deadline exceeded
+        FAIL
+FAIL
+FAIL	github.com/silverkhan/TaskMecca/internal/webui	16.615s
+FAIL
+
+
+Final explicit read-only actual-case diagnostic (no monitor scans/reconciliation/registration):
+=== RUN   TestA28ReadOnlyActualPolicyCases
+    operations_policy_test.go:384: task=A-7 accepted=true reason=canonical_task_completed event=completed-A-7-pr121-merged assignments=1 attempts=0
+    operations_policy_test.go:384: task=A-8 accepted=true reason=canonical_task_completed event=completed-A-8-project-notification-controls assignments=3 attempts=0
+    operations_policy_test.go:384: task=A-10 accepted=true reason=canonical_task_completed event=completed-A-10-verified-retarget assignments=1 attempts=0
+    operations_policy_test.go:384: task=A-11 accepted=true reason=canonical_task_completed event=completed-A-11-20261006-175926 assignments=1 attempts=0
+    operations_policy_test.go:384: task=A-19 accepted=true reason=canonical_task_completed event=completed-A19-recovery-pr134-full-final assignments=4 attempts=4
+    operations_policy_test.go:384: task=A-14 accepted=true reason=canonical_released_user_hold event=waiting-A14-immutable-id-user-decision assignments=1 attempts=1
+    operations_policy_test.go:384: task=A-26 accepted=true reason=canonical_task_completed event=completed-A26-pr140-dev71b9801 assignments=1 attempts=1
+    operations_policy_test.go:384: task=A-27 accepted=true reason=canonical_task_completed event=completed-A27-pr141-devbbc4d19 assignments=1 attempts=1
+    operations_policy_test.go:384: task=B-453 accepted=true reason=canonical_task_completed event=b453-controller-completed-20261006 assignments=3 attempts=1
+    operations_policy_test.go:384: task=B-456 accepted=true reason=canonical_task_completed event=completed-B-456-42c36208 assignments=1 attempts=0
+--- PASS: TestA28ReadOnlyActualPolicyCases (0.15s)
+PASS
+ok  	github.com/silverkhan/TaskMecca/internal/webui	0.442s
