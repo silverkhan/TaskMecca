@@ -104,7 +104,7 @@ func operationRecoveryPolicy(project string, ledger runtimeobs.Ledger, now time.
 				continue
 			}
 			t, e := time.Parse(time.RFC3339Nano, a.AssignedAt)
-			if e != nil || t.After(now) || t.Equal(at) {
+			if e != nil || t.IsZero() || t.After(now) || t.Equal(at) {
 				valid = false
 				break
 			}
@@ -123,7 +123,7 @@ func operationRecoveryPolicy(project string, ledger runtimeobs.Ledger, now time.
 			}
 			t, te := time.Parse(time.RFC3339Nano, e.OccurredAt)
 			r, re := time.Parse(time.RFC3339Nano, e.RecordedAt)
-			if te != nil || re != nil || t.After(now) || r.Before(t) || r.After(now) {
+			if te != nil || re != nil || t.IsZero() || r.IsZero() || t.After(now) || r.Before(t) || r.After(now) || t.Equal(lifecycleAt) {
 				valid = false
 				break
 			}
@@ -141,7 +141,7 @@ func operationRecoveryPolicy(project string, ledger runtimeobs.Ledger, now time.
 			}
 			count++
 			t, e := time.Parse(time.RFC3339Nano, a.LastObservedAt)
-			observed = e == nil && !t.Before(at) && !t.After(now) && a.StateEvidenceSource == runtimeobs.EvidenceHook && (a.StateObservationQuality == runtimeobs.QualityObserved || a.StateObservationQuality == runtimeobs.QualityAuthoritative)
+			observed = e == nil && !t.IsZero() && !t.Before(at) && !t.After(now) && a.StateEvidenceSource == runtimeobs.EvidenceHook && (a.StateObservationQuality == runtimeobs.QualityObserved || a.StateObservationQuality == runtimeobs.QualityAuthoritative)
 		}
 		out[id] = count == 1 && observed
 	}
@@ -193,7 +193,7 @@ func operationPolicies(project string, ledger runtimeobs.Ledger, now time.Time) 
 			}
 			at, e := time.Parse(time.RFC3339Nano, event.OccurredAt)
 			recorded, re := time.Parse(time.RFC3339Nano, event.RecordedAt)
-			if e != nil || re != nil || at.After(now) || recorded.Before(at) || recorded.After(now) {
+			if e != nil || re != nil || at.IsZero() || recorded.IsZero() || at.After(now) || recorded.Before(at) || recorded.After(now) {
 				valid = false
 				break
 			}
@@ -221,7 +221,7 @@ func operationPolicies(project string, ledger runtimeobs.Ledger, now time.Time) 
 				continue
 			}
 			at, e := time.Parse(time.RFC3339Nano, a.AssignedAt)
-			if e != nil || at.After(boundary) || p.assignments[a.AssignmentID] {
+			if e != nil || at.IsZero() || at.After(boundary) || p.assignments[a.AssignmentID] {
 				valid = false
 				break
 			}
@@ -255,7 +255,7 @@ func operationPolicies(project string, ledger runtimeobs.Ledger, now time.Time) 
 					continue
 				}
 				at, e := time.Parse(time.RFC3339Nano, value)
-				if e != nil || at.After(boundary) {
+				if e != nil || at.IsZero() || at.After(boundary) {
 					valid = false
 				}
 			}
@@ -266,7 +266,7 @@ func operationPolicies(project string, ledger runtimeobs.Ledger, now time.Time) 
 			// activity/new bindings and post-terminal activity still fail closed.
 			if latest.AttemptID == a.AttemptID && latest.AssignmentID == a.BindingEvidence["assignment_id"] && a.CurrentState == runtimeobs.StateCompleted && a.Terminal && a.StateEvidenceSource == runtimeobs.EvidenceHook && (a.StateObservationQuality == runtimeobs.QualityObserved || a.StateObservationQuality == runtimeobs.QualityAuthoritative) {
 				ended, e := time.Parse(time.RFC3339Nano, a.EndedAt)
-				if e != nil || ended.After(now) {
+				if e != nil || ended.IsZero() || ended.After(now) {
 					valid = false
 				} else if ended.After(boundary) {
 					endBoundary = ended
@@ -277,7 +277,7 @@ func operationPolicies(project string, ledger runtimeobs.Ledger, now time.Time) 
 					continue
 				}
 				at, e := time.Parse(time.RFC3339Nano, value)
-				if e != nil || at.After(endBoundary) {
+				if e != nil || at.IsZero() || at.After(endBoundary) {
 					valid = false
 				}
 			}
@@ -312,7 +312,7 @@ func operationPolicyForIncident(item operationIncident, policies map[string]oper
 	}
 	if item.LastObservedAt != "" {
 		at, err := time.Parse(time.RFC3339Nano, item.LastObservedAt)
-		if err != nil || at.After(p.boundary) {
+		if err != nil || at.IsZero() || at.After(p.boundary) {
 			return nil
 		}
 	}

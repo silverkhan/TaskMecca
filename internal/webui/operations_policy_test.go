@@ -315,6 +315,53 @@ func TestPolicyAssignmentOnlyRetirementDoesNotHideUnrelatedLegacyError(t *testin
 	}
 }
 
+func TestPolicyRejectsZeroTimesAndConflictingLatestLifecycle(t *testing.T) {
+	for _, tc := range []string{"zero", "tie", "crossed_identity"} {
+		t.Run(tc, func(t *testing.T) {
+			f := policyFixture(t, "done", "controller_report", true)
+			if err := runtimeobs.AppendExecutionEvent(f.project, runtimeobs.ExecutionEvent{EventKind: "state", State: runtimeobs.StateRunning, AttemptID: f.attemptID, ObservedAt: f.base.Add(2 * time.Second).Format(time.RFC3339Nano), EvidenceSource: runtimeobs.EvidenceHook, ObservationQuality: runtimeobs.QualityObserved}); err != nil {
+				t.Fatal(err)
+			}
+			at := f.base.Add(10*time.Minute + time.Second)
+			if tc == "zero" {
+				at = time.Time{}
+			}
+			event := backlog.LifecycleTransition{EventID: "edge-completed", TaskID: "A-5", Kind: "completed", Actor: "/root/controller", EvidenceSource: "controller_verified", EvidenceRef: "verified evidence", AssignmentID: f.assignmentID, AttemptID: f.attemptID, OccurredAt: at.Format(time.RFC3339Nano)}
+			if tc == "crossed_identity" {
+				if _, err := runtimeobs.RecordAssignment(f.project, "other-identity", "A-5", "/root/controller/other", f.base.Add(time.Minute)); err != nil {
+					t.Fatal(err)
+				}
+				event.AssignmentID = "other-identity"
+			}
+			if _, err := backlog.RecordLifecycleTransition(f.project, event, at); err != nil {
+				t.Fatal(err)
+			}
+			if tc == "tie" {
+				event.EventID, event.Kind = "edge-started", "started"
+				if _, err := backlog.RecordLifecycleTransition(f.project, event, at); err != nil {
+					t.Fatal(err)
+				}
+			}
+			now := f.base.Add(11 * time.Minute)
+			ledger, _ := runtimeobs.BuildLedger(f.project, 3, now)
+			if len(operationPolicies(f.project, ledger, now)) != 0 {
+				t.Fatal("unsafe completion policy accepted")
+			}
+			if len(operationCompletionEvidence(f.project, ledger, now)) != 0 {
+				t.Fatal("strict completion fallback bypassed rejection")
+			}
+			if tc != "crossed_identity" {
+				if err := os.Rename(f.taskPath, filepath.Join(filepath.Dir(f.taskPath), "000005.A-5.active.doing.md")); err != nil {
+					t.Fatal(err)
+				}
+				if operationRecoveryPolicy(f.project, ledger, now)["A-5"] {
+					t.Fatal("unsafe current recovery policy accepted")
+				}
+			}
+		})
+	}
+}
+
 // Opt-in diagnostic: only read canonical/lifecycle/assignment/runtime/handoff
 // evidence. Never invoke monitor scans, reconciliation, registration or writes
 // against these operational projects; output contains metadata, not payloads.
