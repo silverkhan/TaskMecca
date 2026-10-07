@@ -425,7 +425,7 @@ const OPERATION_EVIDENCE = {
     'hook completed state':'A Hook reported normal completion.',
   },
 };
-function operationText(key) { return (OPERATION_COPY[state.language]||OPERATION_COPY.en)[key]||key; }
+function operationText(key) { return (OPERATION_COPY[state.language]||OPERATION_COPY.en)[key]||(key.startsWith('handoff_')?operationStageLabel(key):key); }
 function operationEvidence(value) { return (OPERATION_EVIDENCE[state.language]||OPERATION_EVIDENCE.en)[value]||value; }
 function operationAction(item) {
   if(state.language==='ko')return item.action;
@@ -435,21 +435,32 @@ function operationAction(item) {
   return 'Controller: compare assignment and runtime identity evidence. Do not infer Worker death or change backlog state automatically.';
 }
 function operationTime(value) { return value ? new Date(value).toLocaleString(localeCode()) : '—'; }
+function operationStageLabel(stage) {
+  const labels=state.language==='ko'?{assignment_pending:'배정 후 실행 연결 대기',worker_running:'워커 실행 중',worker_report_pending:'워커 완료 · 보고 대기',handoff_pending:'워커 보고 완료 · 인계 대기',controller_review:'컨트롤러 완료검토 중',review_complete:'검토 완료 · 최종 처리 대기',handoff_applied:'인계 처리 완료',handoff_failed:'인계 실패',handoff_stalled:'인계·검토 유예 초과'}:{assignment_pending:'Awaiting execution binding',worker_running:'Worker running',worker_report_pending:'Worker completed · report pending',handoff_pending:'Worker reported · handoff pending',controller_review:'Controller completion review',review_complete:'Review complete · finalization pending',handoff_applied:'Handoff applied',handoff_failed:'Handoff failed',handoff_stalled:'Handoff / review grace expired'};
+  return labels[stage]||stage;
+}
+function renderOperationStages(stages) {
+  const pending=stages.filter(item=>item.stage!=='worker_running'&&item.stage!=='handoff_applied'&&item.stage!=='controller_verified_complete'&&item.stage!=='runtime_observation_pending');
+  if(!pending.length)return '';
+  const ko=state.language==='ko';
+  return `<details class="operation-scope operation-stages"><summary>${ko?'현재 인계·검토 단계':'Current handoff / review stages'} · ${pending.length}</summary>${pending.map(item=>`<div class="operation-stage"><strong>${esc(item.task_id)} · ${esc(operationStageLabel(item.stage))}</strong><span>${ko?'단계 시작':'Stage since'}: ${esc(operationTime(item.since))}${item.grace_until?` · ${ko?'유예 종료':'Grace until'}: ${esc(operationTime(item.grace_until))}`:''}</span><span>${esc(item.evidence)} · ${esc(item.assignment_id)}${item.handoff_id?` · ${esc(item.handoff_id)}`:''}</span></div>`).join('')}<p>${ko?'워커 완료와 검토 완료는 백로그 완료가 아닙니다. 최종 완료는 컨트롤러가 별도로 확인합니다.':'Worker or review completion is not backlog completion. The Controller verifies final completion separately.'}</p></details>`;
+}
 function renderOperationHistory(items) {
   if(!items.length)return '';
   return `<details class="operation-scope operation-history"><summary>${esc(operationText('history'))} · ${items.length}</summary>${items.map(item=>{
+    if(item.recovery_evidence)return `<details class="operation-incident history"><summary><span class="operation-incident-type">${esc(operationText('resolved'))}</span><span class="operation-incident-subject">${esc(item.task_id)}</span><span class="operation-incident-expand">${esc(operationText('detail'))}</span></summary><dl><div><dt>${esc(operationText('evidence'))}</dt><dd>${esc(operationEvidence(item.evidence))}</dd></div><div><dt>${esc(operationText('reconciliationAt'))}</dt><dd>${esc(operationTime(item.recovered_at))}</dd></div><div class="operation-action"><dt>${esc(operationText('resolved'))}</dt><dd>${esc(item.recovery_evidence)}</dd></div></dl></details>`;
     const proof=item.resolution||{};
-    return `<details class="operation-incident history"><summary><span class="operation-incident-type">${esc(operationText('resolved'))}</span><span class="operation-incident-subject">${esc(item.task_id)}</span><span class="operation-incident-expand">${esc(operationText('detail'))}</span></summary><dl><div class="operation-action"><dt>${esc(operationText('resolved'))}</dt><dd>${esc(operationText('completedUnknown'))}</dd></div><div><dt>${esc(operationText('project'))}</dt><dd>${esc(item.project)}</dd></div><div><dt>${esc(operationText('evidence'))}</dt><dd>${esc(operationEvidence(item.evidence))}</dd></div><div><dt>${esc(operationText('seen'))}</dt><dd>${esc(operationTime(item.last_observed_at))}</dd></div><div><dt>${esc(operationText('detected'))}</dt><dd>${esc(operationTime(item.detected_at))}</dd></div><div><dt>${esc(operationText('completionAt'))}</dt><dd>${esc(operationTime(proof.completed_at))}</dd></div><div><dt>${esc(operationText('reconciliationAt'))}</dt><dd>${esc(operationTime(item.recovered_at))}</dd></div><div class="operation-action"><dt>${esc(operationText('completionEvidence'))}</dt><dd>${esc(proof.event_id)} · ${esc(proof.assignment_id)} · ${esc(proof.attempt_id)}<br>${esc(proof.task_path)}</dd></div></dl></details>`;
+    return `<details class="operation-incident history"><summary><span class="operation-incident-type">${esc(operationText('resolved'))}</span><span class="operation-incident-subject">${esc(item.task_id)}</span><span class="operation-incident-expand">${esc(operationText('detail'))}</span></summary><dl><div class="operation-action"><dt>${esc(operationText('resolved'))}</dt><dd>${esc(proof.reason==='task_completed_runtime_observed'?(state.language==='ko'?'컨트롤러가 작업 완료를 확인했습니다. 관측된 실행 종료 근거를 보존합니다.':'Controller verified task completion; observed runtime completion is preserved.'):operationText('completedUnknown'))}</dd></div><div><dt>${esc(operationText('project'))}</dt><dd>${esc(item.project)}</dd></div><div><dt>${esc(operationText('evidence'))}</dt><dd>${esc(operationEvidence(item.evidence))}</dd></div><div><dt>${esc(operationText('seen'))}</dt><dd>${esc(operationTime(item.last_observed_at))}</dd></div><div><dt>${esc(operationText('detected'))}</dt><dd>${esc(operationTime(item.detected_at))}</dd></div><div><dt>${esc(operationText('completionAt'))}</dt><dd>${esc(operationTime(proof.completed_at))}</dd></div><div><dt>${esc(operationText('reconciliationAt'))}</dt><dd>${esc(operationTime(item.recovered_at))}</dd></div><div class="operation-action"><dt>${esc(operationText('completionEvidence'))}</dt><dd>${esc(proof.event_id)} · ${esc(proof.assignment_id)} · ${esc(proof.attempt_id)}<br>${esc(proof.task_path)}</dd></div></dl></details>`;
   }).join('')}</details>`;
 }
 function renderOperationBanner(payload) {
   const host=$('#operationBanner'); if(!host)return;
-  const recentGap=(payload.recent||[]).filter(item=>item.kind==='monitor_gap'&&Date.now()-Date.parse(item.detected_at)<3600000);
-  const items=[...(payload.active||[]),...recentGap];
+  const items=payload.active||[];
   const projects=payload.projects||[];
   const history=payload.resolved_observations||[];
   const latestScan=projects.map(item=>item.last_scan_at||'').sort().at(-1)||'';
-  const revision=state.language+JSON.stringify([items,history,payload.telegram_transport_disabled,projects.map(item=>[item.path,item.error||''])]);
+  const stages=payload.stages||[];
+  const revision=state.language+JSON.stringify([items,history,stages,payload.telegram_transport_disabled,projects.map(item=>[item.path,item.error||''])]);
   if(revision===state.operationRevision){
     const scan=host.querySelector('.operation-last-scan');if(scan)scan.textContent=operationTime(latestScan);
     host.querySelectorAll('.operation-project-scan').forEach((el,index)=>{el.textContent=operationTime(projects[index]?.last_scan_at)});
@@ -466,7 +477,7 @@ function renderOperationBanner(payload) {
     const kind=item.kind==='monitor_gap'?'gap':item.kind;
     const status=item.quality==='confirmed'?'confirmed':'review';
     return `<details class="operation-incident ${status}"><summary><span class="operation-incident-type">${esc(operationText(kind))}</span><span class="operation-incident-subject">${esc(item.task_id||item.agent_path||item.attempt_id||item.project)}</span><span class="operation-incident-expand">${esc(operationText('detail'))}</span></summary><dl><div><dt>${esc(operationText('project'))}</dt><dd>${esc(item.project)}</dd></div><div><dt>${esc(operationText('evidence'))}</dt><dd>${esc(operationEvidence(item.evidence))}</dd></div><div><dt>${esc(operationText('seen'))}</dt><dd>${esc(operationTime(item.last_observed_at))}</dd></div><div><dt>${esc(operationText('detected'))}</dt><dd>${esc(operationTime(item.detected_at))}</dd></div>${item.ended_at?`<div><dt>${esc(operationText('ended'))}</dt><dd>${esc(operationTime(item.ended_at))}</dd></div>`:''}${item.recovered_at?`<div><dt>${esc(operationText('recovered'))}</dt><dd>${esc(operationTime(item.recovered_at))}</dd></div>`:''}<div class="operation-action"><dt>${esc(operationText('action'))}</dt><dd>${esc(operationAction(item))}</dd></div></dl></details>`;
-  }).join('')}</div>`:''}${renderOperationHistory(history)}${payload.telegram_transport_disabled?`<p class="operation-maintenance">${esc(operationText('maintenance'))}</p>`:''}${scope}`;
+  }).join('')}</div>`:''}${renderOperationStages(stages)}${renderOperationHistory(history)}${payload.telegram_transport_disabled?`<p class="operation-maintenance">${esc(operationText('maintenance'))}</p>`:''}${scope}`;
 }
 async function refreshOperations() {
   try {

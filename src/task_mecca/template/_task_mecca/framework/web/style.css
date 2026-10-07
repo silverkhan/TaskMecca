@@ -1136,6 +1136,9 @@ body.release-modal-open{overflow:hidden}
 /* Server-observed incidents remain visible across every Web view. */
 .operation-banner{margin:14px 30px 0;padding:12px 16px;border:1px solid color-mix(in srgb,var(--warn) 38%,var(--border));border-radius:9px;background:color-mix(in srgb,var(--warn) 6%,var(--surface));color:var(--text)}
 .operation-banner[hidden]{display:none}
+.operation-stage{display:grid;gap:4px;padding:10px 0;overflow-wrap:anywhere;border-top:1px solid var(--border);color:var(--text)}
+.operation-stage span{font-size:12px;color:var(--muted);line-height:1.5}
+.operation-stages>p{line-height:1.5}
 .operation-history>summary,.operation-history .operation-incident summary{min-height:44px;display:flex;align-items:center;max-width:100%;overflow-wrap:anywhere}
 .operation-history .operation-incident-type{color:var(--text)}
 .operation-maintenance{margin:8px 0 0;color:var(--text);font-size:12px}
