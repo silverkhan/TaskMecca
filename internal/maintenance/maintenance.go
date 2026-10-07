@@ -30,10 +30,11 @@ const (
 )
 
 type Project struct {
-    Name string `json:"name"`
-    Path string `json:"path"`
-    FrameworkVersion string `json:"framework_version"`
-    LastSeen string `json:"last_seen"`
+	Name string `json:"name"`
+	Path string `json:"path"`
+	FrameworkVersion string `json:"framework_version"`
+	LastSeen string `json:"last_seen"`
+	Monitoring bool `json:"monitoring,omitempty"`
 }
 
 type registry struct {
