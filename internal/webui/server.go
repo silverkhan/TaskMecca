@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/fs"
 	"mime"
 	"net"
@@ -1092,8 +1093,14 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 			HistoryID   string `json:"history_id"`
 			ConfirmPath string `json:"confirm_path"`
 		}
-		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		decoder := json.NewDecoder(r.Body)
+		decoder.DisallowUnknownFields()
+		if err := decoder.Decode(&body); err != nil {
 			writeJSON(w, map[string]any{"error": "invalid JSON"}, http.StatusBadRequest)
+			return
+		}
+		if err := decoder.Decode(&struct{}{}); err != io.EOF {
+			writeJSON(w, map[string]any{"error": "one JSON object required"}, http.StatusBadRequest)
 			return
 		}
 		if body.Path != "" && body.ConfirmPath != "" && filepath.Clean(body.Path) != filepath.Clean(body.ConfirmPath) {
@@ -1122,14 +1129,14 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 			} else {
 				err = removeErr
 			}
-			case "trash":
-				if body.ConfirmPath == "" || body.HistoryID == "" {
-					writeJSON(w, map[string]any{"error": "full path confirmation required"}, 400)
-					return
-				}
-				trashPath, trashErr := maintenance.MoveRemovedProjectToTrash(body.HistoryID, body.Path)
-				if trashErr == nil {
-					writeJSON(w, map[string]any{"result": "moved_to_trash", "trash_path": trashPath}, 200)
+		case "trash":
+			if body.ConfirmPath == "" || body.HistoryID == "" {
+				writeJSON(w, map[string]any{"error": "full path confirmation required"}, 400)
+				return
+			}
+			trashPath, trashErr := maintenance.MoveRemovedProjectToTrash(body.HistoryID, body.Path)
+			if trashErr == nil {
+				writeJSON(w, map[string]any{"result": "moved_to_trash", "trash_path": trashPath}, 200)
 				return
 			} else {
 				err = trashErr
