@@ -1217,7 +1217,7 @@ body.release-modal-open{overflow:hidden}
 @media(max-width:700px){.user-attention{margin:12px 12px 0;padding:14px}.user-attention li{grid-template-columns:minmax(0,1fr);gap:8px}}
 
 /* Current notifications share one quiet, initially collapsed disclosure. */
-.user-attention{padding:0}
+.user-attention{padding:0;border:2px solid transparent;background:linear-gradient(var(--surface),var(--surface)) padding-box,linear-gradient(115deg,var(--accent),var(--warn),var(--accent)) border-box}
 .common-attention>summary{display:flex;flex-wrap:wrap;align-items:center;gap:8px 18px;padding:14px 20px;cursor:pointer;list-style:none;font-size:13px;line-height:1.5}
 .common-attention>summary::-webkit-details-marker{display:none}
 .common-attention>summary:before{content:'▸';color:var(--muted)}
