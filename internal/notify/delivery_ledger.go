@@ -321,7 +321,7 @@ func Deliver(project string, events []Event) []error {
 		if err := saveLedger(project, ledger); err != nil {
 			return append(errs, err)
 		}
-		sendErr := (telegramChannel{cfg}).Deliver(e)
+		sendErr := (telegramChannel{cfg: cfg, project: project}).Deliver(e)
 		r.LastResponseAt = time.Now().UTC().Format(time.RFC3339Nano)
 		r.AttemptHistory[len(r.AttemptHistory)-1].RespondedAt = r.LastResponseAt
 		if sendErr != nil {

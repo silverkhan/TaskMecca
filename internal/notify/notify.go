@@ -55,16 +55,20 @@ func recipientMode(cfg TelegramConfig) string {
 	return "individual"
 }
 
-type telegramChannel struct{ cfg TelegramConfig }
+type telegramChannel struct {
+	cfg     TelegramConfig
+	project string
+}
 
 func (t telegramChannel) Name() string { return "telegram" }
 func (t telegramChannel) Deliver(e Event) error {
 	if !t.cfg.Enabled || t.cfg.ChatID == 0 || !t.cfg.Kinds[e.Kind] {
 		return nil
 	}
-	head := "[Task Mecca] " + e.TaskID
-	if e.Title != "" {
-		head += " · " + e.Title
+	head := telegramProjectPrefix(t.project) + " " + e.TaskID
+	title := telegramTaskTitle(e.Title, e.TaskID)
+	if title != "" {
+		head += " · " + title
 	}
 	labels := map[string]string{
 		"registered": "📝 작업 등록", "started": "▶️ 작업 착수", "intervention": "🙋 사용자 개입 필요", "approval": "🔐 승인 필요",
@@ -436,7 +440,7 @@ func TestTelegram(project string) error {
 	if cfg.Token == "" || cfg.ChatID == 0 {
 		return errors.New("telegram bot is not connected")
 	}
-	return telegramCall(cfg.Token, "sendMessage", map[string]any{"chat_id": cfg.ChatID, "text": "🔔 [Task Mecca] 테스트 알림\nTelegram 알림 연결이 정상입니다."}, nil)
+	return telegramCall(cfg.Token, "sendMessage", map[string]any{"chat_id": cfg.ChatID, "text": "🔔 " + telegramProjectPrefix(project) + " 테스트 알림\nTelegram 알림 연결이 정상입니다."}, nil)
 }
 func DisableTelegram(project string) error {
 	telegramMu.Lock()
@@ -618,7 +622,7 @@ func deliverLegacy(project string, events []Event) []error {
 	}
 	errs := []error{}
 	dirty := false
-	ch := telegramChannel{cfg}
+	ch := telegramChannel{cfg: cfg, project: project}
 
 	// Reconstruct lifecycle floors from already-consumed event IDs so existing
 	// Telegram configs gain monotonic delivery semantics without replaying history.

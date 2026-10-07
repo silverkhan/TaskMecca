@@ -39,6 +39,17 @@ func TestReviewUsesRealAttentionTelegramConsumer(t *testing.T) {
 			var sent atomic.Int32
 			previous := http.DefaultTransport
 			http.DefaultTransport = lifecycleFakeTelegramTransport{fallback: previous, telegram: func(r *http.Request) (*http.Response, error) {
+				var payload map[string]any
+				if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+					t.Fatal(err)
+				}
+				text, _ := payload["text"].(string)
+				if !strings.Contains(text, "["+filepath.Base(project)+"] ") {
+					t.Errorf("wrong project identity: %q", text)
+				}
+				if strings.Contains(text, "A-33 · A-33") {
+					t.Errorf("redundant task label: %q", text)
+				}
 				sent.Add(1)
 				return &http.Response{StatusCode: 200, Header: http.Header{"Content-Type": []string{"application/json"}}, Body: io.NopCloser(strings.NewReader(`{"ok":true,"result":{"message_id":1}}`)), Request: r}, nil
 			}}
