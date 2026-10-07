@@ -8,6 +8,40 @@ import (
 	"testing"
 )
 
+func TestAnchoredCleanupNeverOverwritesRacingTrashDestination(t *testing.T) {
+	dir, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	source := filepath.Join(dir, "project")
+	destination := filepath.Join(dir, "fixture-trash", "project")
+	for _, path := range []string{source, filepath.Dir(destination)} {
+		if err := os.MkdirAll(path, 0755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	expected, err := os.Stat(source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = moveProjectFolderBeforeRename(source, destination, expected, func() {
+		if err := os.WriteFile(destination, []byte("must survive"), 0600); err != nil {
+			t.Fatal(err)
+		}
+	})
+	if err == nil {
+		t.Fatal("racing destination accepted")
+	}
+	data, err := os.ReadFile(destination)
+	if err != nil || string(data) != "must survive" {
+		t.Fatal("racing destination overwritten", err)
+	}
+	unchanged, err := os.Stat(source)
+	if err != nil || !os.SameFile(expected, unchanged) {
+		t.Fatal("source changed", err)
+	}
+}
+
 func TestAnchoredCleanupDoesNotFollowReplacedParent(t *testing.T) {
 	dir, err := filepath.EvalSymlinks(t.TempDir())
 	if err != nil {

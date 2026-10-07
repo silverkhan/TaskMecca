@@ -2315,7 +2315,7 @@ function confirmHubAction(action,path,trigger) {
     const warnings=state.language==='ko'?{remove:'Hub 등록과 감시를 중지합니다. 목록에서는 제거되지만 폴더는 남습니다.',trash:'아래 전체 경로를 휴지통으로 이동합니다. 복구 가능한 별도 폴더 정리입니다. 저장소 루트, 심볼릭 링크, 보호 경로는 거부합니다.','delete-history':'관리 이력만 삭제합니다. 파일은 변경하지 않습니다. 폴더가 존재하거나 확인 불가이면 이력 삭제 후 Hub에서 이 위치를 확인할 수 없습니다.'}:{remove:'This removes the Hub registration and stops monitoring. The folder stays where it is.',trash:'Move the full path below to Trash. This is a separate, recoverable folder cleanup. Repository roots, symlinks, and protected paths are refused.','delete-history':'Delete only the history record. Files are not changed. If the folder exists or cannot be checked, its location will no longer be available in Hub.'};
     const overlay=document.createElement('div');overlay.className='channel-switch-overlay hub-confirm-overlay';
     overlay.innerHTML=`<section class="channel-switch-modal" role="dialog" aria-modal="true" aria-labelledby="hubConfirmTitle" aria-describedby="hubConfirmWarning"><h2 id="hubConfirmTitle">${esc(hubText(action==='delete-history'?'deleteHistory':action))}</h2><p id="hubConfirmWarning">${esc(warnings[action])}</p><div class="project-path"><code>${esc(path)}</code></div>${action==='trash'?`<p>${esc(hubText('trashInfo'))}</p>`:''}<div class="project-actions"><button type="button" class="action-btn secondary" data-hub-cancel>${esc(hubText('cancel'))}</button><button type="button" class="action-btn danger-action" data-hub-confirm>${esc(hubText('confirm'))}</button></div></section>`;
-    const finish=value=>{overlay.remove();trigger?.focus();resolve(value);};
+    const finish=value=>{overlay.remove();const current=[...document.querySelectorAll('[data-project-action]')].find(button=>button.dataset.projectAction===action&&button.dataset.projectPath===path&&button.dataset.historyId===trigger?.dataset.historyId);(trigger?.isConnected?trigger:current)?.focus();resolve(value);};
     overlay.querySelector('[data-hub-cancel]').addEventListener('click',()=>finish(false));
     overlay.querySelector('[data-hub-confirm]').addEventListener('click',()=>finish(true));
     overlay.addEventListener('keydown',event=>{if(event.key==='Escape'){event.preventDefault();event.stopPropagation();finish(false);}if(event.key==='Tab'){const buttons=[...overlay.querySelectorAll('button')];event.preventDefault();buttons[(buttons.indexOf(document.activeElement)+(event.shiftKey?-1:1)+buttons.length)%buttons.length].focus();}});
@@ -3326,6 +3326,7 @@ function toggleSidebar() {
 }
 
 function render() {
+  if(document.querySelector('.hub-confirm-overlay'))return;
   nav(); translateChrome(); renderAccess(); renderBacklogPicker(); applySidebarState(); updateNotificationIndicator(); renderGlobalUpdateIndicator(); renderContentUpdatePrompt(); renderReleaseUnreadPrompt();
   const c=$('#content'), data=currentProjectData();
   if(state.view==='release-notes'){
@@ -3891,6 +3892,7 @@ $('#sidebar')?.addEventListener('mouseenter',()=>{if(state.sidebarCollapsed){sta
 $('#sidebar')?.addEventListener('mouseleave',()=>{if(state.sidebarCollapsed){state.sidebarPeek=false;state.projectMenuOpen=false;applySidebarState();}});
 
 document.addEventListener('keydown',e=>{
+  if(document.querySelector('.hub-confirm-overlay'))return;
   if(e.key==='Escape'&&state.releaseNotePopup){e.preventDefault();dismissReleaseNotePopup();return}
   const tag=document.activeElement?.tagName?.toLowerCase();
   const editing=['input','textarea','select','button'].includes(tag)||document.activeElement?.isContentEditable;

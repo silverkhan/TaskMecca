@@ -19,6 +19,69 @@ import (
 // twice or overwrite another action's removal record.
 var projectManagementMu sync.Mutex
 
+// Explicit suppression survives removal-history deletion. A normal project
+// that has never been managed retains the legacy primary-session behavior.
+func projectMonitoringAllowed(path string) bool {
+	reg, err := readProjectRegistry()
+	if err != nil || projectPresence(path) != "present" {
+		return false
+	}
+	if containsCleanPath(reg.Paused, path) {
+		return false
+	}
+	for _, item := range reg.History {
+		if filepath.Clean(item.Path) == filepath.Clean(path) {
+			return false
+		}
+	}
+	return true
+}
+
+func ProjectMonitoringAllowed(path string) bool {
+	projectManagementMu.Lock()
+	defer projectManagementMu.Unlock()
+	return projectMonitoringAllowed(path)
+}
+
+// Serialize the complete background write with pause/remove, rather than
+// check once and allow an already-running delivery to recreate a removed path.
+func WithProjectMonitoring(path string, work func()) bool {
+	projectManagementMu.Lock()
+	defer projectManagementMu.Unlock()
+	if !projectMonitoringAllowed(path) {
+		return false
+	}
+	work()
+	return true
+}
+
+// Opening or restarting Web must not silently register a removed project.
+// init/migrate are explicit registration actions and still use RegisterProject.
+func RegisterWebProject(path string) error {
+	projectManagementMu.Lock()
+	defer projectManagementMu.Unlock()
+	reg, err := readProjectRegistry()
+	if err != nil {
+		return err
+	}
+	for _, item := range reg.History {
+		if filepath.Clean(item.Path) == filepath.Clean(path) {
+			return nil
+		}
+	}
+	registered := false
+	for _, item := range reg.Projects {
+		if filepath.Clean(item.Path) == filepath.Clean(path) {
+			registered = true
+			break
+		}
+	}
+	if !registered && containsCleanPath(reg.Paused, path) {
+		return nil
+	}
+	return RegisterProject(path)
+}
+
 type RemovalRecord struct {
 	ID            string `json:"id"`
 	Name          string `json:"name"`
@@ -169,13 +232,9 @@ func RemoveProject(path string) (RemovalRecord, error) {
 		record.Presence = projectPresence(p.Path)
 		record.LastCheckedAt = time.Now().Format(time.RFC3339)
 		reg.Projects = append(reg.Projects[:i], reg.Projects[i+1:]...)
-		filtered := reg.Paused[:0]
-		for _, item := range reg.Paused {
-			if filepath.Clean(item) != filepath.Clean(abs) {
-				filtered = append(filtered, item)
-			}
+		if !containsCleanPath(reg.Paused, abs) {
+			reg.Paused = append(reg.Paused, abs)
 		}
-		reg.Paused = filtered
 		reg.History = append([]RemovalRecord{record}, reg.History...)
 		return record, writeProjectRegistry(reg)
 	}
@@ -204,6 +263,9 @@ func DeleteRemovalHistory(id string) error {
 	}
 	for i, h := range reg.History {
 		if h.ID == id {
+			if !containsCleanPath(reg.Paused, h.Path) {
+				reg.Paused = append(reg.Paused, h.Path)
+			}
 			reg.History = append(reg.History[:i], reg.History[i+1:]...)
 			return writeProjectRegistry(reg)
 		}

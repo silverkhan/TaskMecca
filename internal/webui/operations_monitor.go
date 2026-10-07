@@ -361,7 +361,7 @@ func operationProjects(primary string) []string {
 	// Preserve the old fallback only for an unregistered primary project.
 	// Registered-but-paused/missing and removed projects intentionally stay
 	// outside the monitor's collection.
-	if primary != "" && !primaryKnown && !seen[primary] {
+	if primary != "" && !primaryKnown && !seen[primary] && maintenance.ProjectMonitoringAllowed(primary) {
 		projects = append(projects, primary)
 	}
 	sort.Strings(projects)
@@ -370,11 +370,12 @@ func operationProjects(primary string) []string {
 
 func scanOperationProjects(primary string, now time.Time) {
 	for _, project := range operationProjects(primary) {
-		journal, err := scanOperationProject(project, now)
-		if err != nil {
-			continue
-		}
-		deliverOperationIncidents(project, journal)
+		maintenance.WithProjectMonitoring(project, func() {
+			journal, err := scanOperationProject(project, now)
+			if err == nil {
+				deliverOperationIncidents(project, journal)
+			}
+		})
 	}
 }
 

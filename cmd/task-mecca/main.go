@@ -43,7 +43,7 @@ func run(args []string) int {
     if len(args) == 0 {
         root,err:=filepath.Abs(".")
         if err!=nil { fmt.Fprintln(os.Stderr,err); return 2 }
-        _ = maintenance.RegisterProject(root)
+        _ = maintenance.RegisterWebProject(root)
         state,startErr:=webui.StartService(webui.Config{Project:root,Host:"auto",Port:webui.DefaultPort,OpenBrowser:true,Version:version})
         if startErr!=nil { fmt.Fprintln(os.Stderr,startErr); return 2 }
         printWebState("Task Mecca Web is running",state)
@@ -575,7 +575,7 @@ func run(args []string) int {
     case "status":
         if len(positional) != 0 { fmt.Fprintln(os.Stderr, "status takes no positional arguments"); return 2 }
         if watch && !jsonOutput {
-            _ = maintenance.RegisterProject(root)
+            _ = maintenance.RegisterWebProject(root)
             _,err=webui.StartService(webui.Config{Project:root,Root:rootOption,Host:"auto",Port:webui.DefaultPort,OpenBrowser:true,Version:version})
             break
         }
@@ -601,7 +601,7 @@ func run(args []string) int {
         if len(positional)>1 { fmt.Fprintln(os.Stderr, "web accepts at most one action: status, restart, stop, or logs"); return 2 }
         action:=""
         if len(positional)==1 { action=strings.ToLower(positional[0]) }
-        _ = maintenance.RegisterProject(root)
+        _ = maintenance.RegisterWebProject(root)
         config:=webui.Config{Project:root,Root:rootOption,Host:host,Port:port,OpenBrowser:!noOpen,Version:version,InstanceID:webInstanceID,ControlToken:webControlToken}
         switch action {
         case "", "start":
@@ -867,7 +867,7 @@ func run(args []string) int {
     case "monitor":
         if len(positional) != 0 { fmt.Fprintln(os.Stderr, "monitor takes no positional arguments"); return 2 }
         if !once && !jsonOutput {
-            _ = maintenance.RegisterProject(root)
+            _ = maintenance.RegisterWebProject(root)
             _,err=webui.StartService(webui.Config{Project:root,Root:rootOption,Host:host,Port:port,OpenBrowser:!noOpen,Version:version})
             break
         }

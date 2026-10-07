@@ -6,11 +6,33 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"syscall"
+	"unsafe"
 
 	"golang.org/x/sys/unix"
 )
+
+// Darwin's renameatx_np(RENAME_EXCL) provides atomic no-replacement semantics
+// for both the move and a rollback. SDK sys/stdio.h defines this flag as 0x4.
+func renameCleanupNoReplace(fromFD int, from string, toFD int, to string) error {
+	fromName, err := syscall.BytePtrFromString(from)
+	if err != nil {
+		return err
+	}
+	toName, err := syscall.BytePtrFromString(to)
+	if err != nil {
+		return err
+	}
+	_, _, errno := syscall.Syscall6(unix.SYS_RENAMEATX_NP, uintptr(fromFD), uintptr(unsafe.Pointer(fromName)), uintptr(toFD), uintptr(unsafe.Pointer(toName)), 0x4, 0)
+	runtime.KeepAlive(fromName)
+	runtime.KeepAlive(toName)
+	if errno != 0 {
+		return errno
+	}
+	return nil
+}
 
 // Open every parent component without following symlinks. Renameat stays bound
 // to the inspected directories even if an ancestor path is replaced later.
@@ -68,14 +90,14 @@ func moveProjectFolderBeforeRename(source, destination string, expected os.FileI
 	if before != nil {
 		before()
 	}
-	if err := unix.Renameat(sourceParent, sourceName, trashParent, destName); err != nil {
+	if err := renameCleanupNoReplace(sourceParent, sourceName, trashParent, destName); err != nil {
 		return fmt.Errorf("recoverable folder cleanup unavailable: %w", err)
 	}
 	if err := unix.Fstatat(trashParent, destName, &current, unix.AT_SYMLINK_NOFOLLOW); err != nil || !matches(&current) {
 		if err := unix.Fstatat(sourceParent, sourceName, &current, unix.AT_SYMLINK_NOFOLLOW); err != unix.ENOENT {
 			return fmt.Errorf("project changed during move; recovery required at %s", destination)
 		}
-		if err := unix.Renameat(trashParent, destName, sourceParent, sourceName); err != nil {
+		if err := renameCleanupNoReplace(trashParent, destName, sourceParent, sourceName); err != nil {
 			return fmt.Errorf("project changed during move; recovery required at %s: %w", destination, err)
 		}
 		return fmt.Errorf("project changed during move; moved item restored")

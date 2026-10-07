@@ -1300,7 +1300,20 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 	})
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) { sendEmbedded(w, "index.html") })
 
-	return mux, nil
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		path := r.URL.Path
+		// These projections reconcile lifecycle/notification/runtime state even
+		// on GET. Serialize them with pause/remove and refuse a stopped or absent
+		// project before any side effect. Hub and file-presence checks stay readable.
+		projectWrites := path == "/api/backlog/tasks" || path == "/api/snapshot" || path == "/api/attention" || path == "/api/workload" || path == "/api/issues" || strings.HasPrefix(path, "/api/tasks/") || strings.HasPrefix(path, "/api/runtime/") || path == "/api/notifications/deliveries" || path == "/api/notifications/telegram"
+		if projectWrites {
+			if !maintenance.WithProjectMonitoring(projectFor(r), func() { mux.ServeHTTP(w, r) }) {
+				writeJSON(w, map[string]any{"error": "project monitoring is stopped or the folder is unavailable; resume monitoring from Hub to use live projections", "monitoring": false}, http.StatusConflict)
+			}
+			return
+		}
+		mux.ServeHTTP(w, r)
+	}), nil
 }
 
 func isTailscaleIPv4(ip net.IP) bool {
