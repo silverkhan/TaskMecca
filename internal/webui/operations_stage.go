@@ -29,6 +29,20 @@ func (s operationStage) deferred(now time.Time) bool {
 	return !s.Failed && err == nil && now.Before(until)
 }
 
+// Retired assignments are historical policy evidence, not pending work.
+// Keep proof on recovered incidents, never present a released hold as task
+// completion. Failed handoffs remain independent actionable current stages.
+func currentOperationStages(stages []operationStage, policies map[string]operationPolicy) []operationStage {
+	out := make([]operationStage, 0, len(stages))
+	for _, stage := range stages {
+		if policy, ok := policies[strings.ToUpper(stage.TaskID)]; ok && policy.assignments[stage.AssignmentID] && !stage.Failed {
+			continue
+		}
+		out = append(out, stage)
+	}
+	return out
+}
+
 func operationStages(project string, ledger runtimeobs.Ledger, now time.Time) []operationStage {
 	for _, finding := range ledger.Findings {
 		if finding.Severity != "info" {
