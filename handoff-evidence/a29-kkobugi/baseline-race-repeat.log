@@ -1,0 +1,14 @@
+--- FAIL: TestOperationWebProcessContinuesAfterBrowserClose (2.28s)
+    operations_monitor_test.go:434: Web process exit: exit status 1
+        Task Mecca Web UI
+        local:     http://127.0.0.1:51645/
+        network: explicit bind · 127.0.0.1
+        backlog: /var/folders/07/q_8xp6j90zn8r_gdxk6sj5nm0000gn/T/TestOperationWebProcessContinuesAfterBrowserClose1034794079/002/_task_mecca/data/backlog (auto)
+        maintenance actions require explicit UI confirmation · Ctrl+C to stop
+        access: not yet observed · fresh active preflight runs automatically before dispatch
+        --- FAIL: TestOperationWebProcessContinuesAfterBrowserClose (2.26s)
+            operations_monitor_test.go:333: context deadline exceeded
+        FAIL
+FAIL
+FAIL	github.com/silverkhan/TaskMecca/internal/webui	7.703s
+FAIL
