@@ -1,0 +1,111 @@
+[
+  {
+    "case": "desktop-light-collapsed",
+    "result": {
+      "hidden": true,
+      "scroll": 1440,
+      "target": true,
+      "toggle": "false",
+      "width": 1440
+    }
+  },
+  {
+    "case": "keyboard-empty-expanded",
+    "result": {
+      "expanded": "true",
+      "focus": "hubHistoryToggle",
+      "hidden": false
+    }
+  },
+  {
+    "case": "remove-cancel-focus",
+    "initial": {
+      "dialog": "Hub 등록 제거Hub 등록과 감시를 중지합니다. 목록에서는 제거되지만 폴더는 남습니다./private/tmp/a22-raichyu-I8ZyWP/Projects/공백 있는 긴 프로젝트 경로/Alpha/Same Name취소확인",
+      "focus": "취소"
+    }
+  },
+  {
+    "case": "modal-tab",
+    "focus": "확인"
+  },
+  {
+    "case": "modal-escape",
+    "result": {
+      "cards": 3,
+      "dialog": false,
+      "focus": "Hub 등록 제거"
+    }
+  },
+  {
+    "case": "desktop-dark-expanded",
+    "result": {
+      "expanded": "true",
+      "items": 1,
+      "scroll": 1440,
+      "width": 1440
+    }
+  },
+  {
+    "case": "trash-confirmation",
+    "warning": "휴지통으로 이동아래 전체 경로를 휴지통으로 이동합니다. 복구 가능한 별도 폴더 정리입니다. 저장소 루트, 심볼릭 링크, 보호 경로는 거부합니다./private/tmp/a22-raichyu-I8ZyWP/Projects/공백 있는 긴 프로젝트 경로/Alpha/Same NamemacOS 기본 휴지통 또는 Windows 로컬 고정 드라이브의 시스템 휴지통을 사용합니다. 먼저 같은 볼륨의 고유 임시 경로에 안전하게 이동합니다. OS 복원 후 원래 경로로 옮겨야 합니다. 권한·잠금·미지원 드라이브는 거부하며 영구 삭제로 대체하지 않습니다.취소확인"
+  },
+  {
+    "case": "mobile-dark-confirm",
+    "result": {
+      "dialog": "Move to TrashMove the full path below to Trash. This is a separate, recoverable folder cleanup. Repository roots, symlinks, and protected paths are refused./private/tmp/a22-raichyu-I8ZyWP/Projects/공백 있는 긴 프로젝트 경로/Alpha/Same NameUses macOS native Trash or Windows system Recycle Bin on a local fixed drive. First stages safely in a unique same-volume path. After OS Restore, move back to the original path. Permissions, locks and unsupported drives are refused; never falls back to permanent deletion.CancelConfirm",
+      "focus": "Cancel",
+      "scroll": 375,
+      "width": 390
+    }
+  },
+  {
+    "case": "actual-native-trash",
+    "result": "Same Name/private/tmp/a22-raichyu-I8ZyWP/Projects/공백 있는 긴 프로젝트 경로/Alpha/Same NameRegistration removed · moved to Trash · Folder absentRemoved at: 2026-10-07T14:11:01+09:00Checked at: 2026-10-07T14:12:32+09:00Restore from system Trash, then move to the original absolute path above. OS Restore may return to the staging path below. Never overwrite an existing folder./Users/hanati/.Trash/Same NameSystem restore staging path/private/tmp/a22-raichyu-I8ZyWP/Projects/공백 있는 긴 프로젝트 경로/Alpha/.task-mecca-recycle-902719594/Same NameCheck remaining folderMove to TrashDelete history"
+  },
+  {
+    "case": "collapsed-choice-reload",
+    "result": {
+      "count": "1",
+      "expanded": "false",
+      "hidden": true
+    }
+  },
+  {
+    "case": "protected-repository-failure",
+    "result": "Locked/private/tmp/a22-raichyu-I8ZyWP/Projects/LockedFolder cleanup failed · check remaining files · Folder existsRemoved at: 2026-10-07T14:13:24+09:00Checked at: 2026-10-07T14:13:24+09:00Failure reason: repository root cannot be cleaned automaticallyRetry conditions: Check source and recovery locations; resolve permissions or files in use before retrying. Never retry an absent source.Check remaining folderMove to TrashDelete history"
+  },
+  {
+    "case": "copy-path-feedback",
+    "clipboard": ""
+  },
+  {
+    "case": "completed-error-visible",
+    "result": "Locked/private/tmp/a22-raichyu-I8ZyWP/Projects/LockedFolder cleanup failed · check remaining files · Folder existsRemoved at: 2026-10-07T14:13:24+09:00Checked at: 2026-10-07T14:13:52+09:00Failure reason: repository root cannot be cleaned automaticallyRetry conditions: Check source and recovery locations; resolve permissions or files in use before retrying. Never retry an absent source.Check remaining folderMove to TrashDelete history"
+  },
+  {
+    "case": "expanded-choice-reload",
+    "result": {
+      "controls": "hubHistoryItems",
+      "expanded": "true",
+      "hidden": false,
+      "targetExists": true
+    }
+  },
+  {
+    "case": "final-mobile-geometry",
+    "viewport": 390,
+    "scroll": 375,
+    "toggleHeight": 44,
+    "targetExists": true
+  },
+  {
+    "case": "delete-history-cancel-confirm",
+    "cancelCount": 2
+  },
+  {
+    "case": "delete-history-complete",
+    "remainingCount": 1,
+    "expanded": "true",
+    "copyClipboardVerified": false
+  }
+]

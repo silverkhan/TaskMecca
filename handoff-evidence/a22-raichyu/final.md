@@ -1,0 +1,19 @@
+# A22 final evidence
+
+PR 135 implements the canonical A22 contract; Controller owns merge and operational lifecycle. Original operational port 18765 and user project folders were not changed. Isolated fixture server 18922 stopped, its Chrome tab closed and viewport override reset. Fixture and evidence remain preserved at `/private/tmp/a22-raichyu-I8ZyWP`.
+
+## Native verification
+
+Actual Windows CI native recycle/restore/hash passed on head a11d0837ab2147c961cc338e61b7d19417128fce (job 112641627371), including fixed-drive payload SHA256 `617a7e0fd953c4f26128ed7abb522fb1da9a9559ca2ebf72399a4b9ba02c0b95`. All 10 checks passed. Local macOS native Foundation recycle/restore/hash integration passed again during final verification.
+
+The actual UI Alpha fixture was restored by opt-in `TestRecoverA22NativeUIFixture`, session 88140 exited 0. That test verifies native Trash payload SHA before restoring through Foundation to recorded staging, then exclusive move to original. Direct post-recovery SHA256 of original `payload.txt`: `b2340d6394d846e90ade5b15fc4b434bfb1d757505d3a5d2937182f00e521b09`. Original path: `/private/tmp/a22-raichyu-I8ZyWP/Projects/공백 있는 긴 프로젝트 경로/Alpha/Same Name`; native location `/Users/hanati/.Trash/Same Name`; staging `/private/tmp/a22-raichyu-I8ZyWP/Projects/공백 있는 긴 프로젝트 경로/Alpha/.task-mecca-recycle-902719594/Same Name`. Re-running correctly refused an original collision without moving anything. History still describes the earlier move while fresh presence reports restored folder exists.
+
+Earlier experimental JXA native bridge trials crashed retrieving output reference pointers. Known test-only name prefix: `TaskMecca recycle fixture 한글 space `. Exact suffixes/source/staging and original full bridge logs are not retained in this compacted worker context; no exact inventory is claimed. Read-only Foundation enumeration reports: `BRIDGE_TRIAL_INVENTORY_DENIED The file “Trash” couldn’t be opened because you don’t have permission to view it.` Possible residual isolated trial fixtures remain unresolved in system Trash. No permissions changed, no Trash clearing, no unrelated item moved. Production uses direct Foundation via purego, not the failed bridge.
+
+## UI and verification
+
+One initial batched desktop/mobile, light/dark, Korean/English QA and one final bounded viewport screenshot batch were performed. Final desktop screenshots show settled sidebar/main geometry. Initial fullPage screenshots suffered fixed-layout capture/resize artifacts and are not claimed as visual passes. Final mobile DOM measured viewport 390, scroll width 375, disclosure height 44, valid aria-controls target. Enter/Space disclosure and reload persistence, removal/Trash dialogs and cancellation, failure reason/retry instructions, native staging disclosure, focus on toggle, and history-only deletion were observed. Locked refusal is repository-protection reproduction, not a TCC reproduction. Locked history cancellation retained 2 records; confirmation reduced to 1, expanded choice retained and its payload file remained unchanged. Copy feedback appeared but clipboard readback was empty, so copied-value verification is not claimed.
+
+Detector ran exactly once, exit 2: eight incumbent duplicate CSS findings across Go/Python assets (Inter line 5, width transition line 240, margin-left transition line 246, side-tab border line 899); no JS findings and no new toggle findings. No polishing cycle or detector rerun.
+
+Final local checks: `go test ./...`, `go vet ./...`, `go test -race ./internal/maintenance`, opt-in native macOS integration, Python disclosure contract and web asset parity tests, JS syntax, `git diff --check` all passed. Source/UI assets remain synchronized. The added fixture recovery and read-only inventory tests are explicit opt-ins; normal tests do not touch system Trash.
