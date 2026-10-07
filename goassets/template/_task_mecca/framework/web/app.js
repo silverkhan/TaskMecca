@@ -2077,9 +2077,10 @@ function nav() {
   const projects=state.hub?.projects||[];
   const byPath=new Map(projects.map(p=>[p.path,p]));
   if(state.project)ensureOpenProject(state.project);
-  const sessions=state.openProjects.filter(path=>byPath.has(path)||path===state.project);
-  state.openProjects=sessions;
-  saveOpenProjects();
+  // Discovery is asynchronous and may temporarily omit projects. Only an
+  // explicit close should remove a saved session; missing metadata uses the
+  // path-based fallback below until the hub discovers the project again.
+  const sessions=state.openProjects;
   const closed=projects.filter(p=>!sessions.includes(p.path));
   const sessionRows=sessions.map(path=>{
     const p=byPath.get(path)||{name:path.split(/[\\/]/).pop()||path,counts:{}};
