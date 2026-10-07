@@ -475,11 +475,12 @@ async function refreshOperations() {
     await Promise.all(projects.map(async project=>{
       try{
         const params=new URLSearchParams({project});
-        const userRevision=state.commonUserRevision[project]||0;
+        const userRevisions={...state.commonUserRevision};
         const response=await fetch('/api/attention?'+params,{cache:'no-store'});
         if(!response.ok)return;
         const snapshot=await response.json();
-        if(request!==state.operationsRequest||userRevision!==(state.commonUserRevision[project]||0))return;
+        const snapshotScope=project+'|'+(snapshot.backlog_selection?.selected||'');
+        if(request!==state.operationsRequest||(userRevisions[snapshotScope]||0)!==(state.commonUserRevision[snapshotScope]||0))return;
         const scope=snapshot.backlog_selection;
         if(scope&&Array.isArray(scope.candidates)){
           const paths=new Set([scope.selected,...scope.candidates.map(candidate=>candidate.path)].filter(Boolean));
@@ -487,14 +488,14 @@ async function refreshOperations() {
         }
         storeCommonUserAttention(snapshot,project,'');
         const selected=snapshot.backlog_selection?.selected||'';
-        for(const candidate of (snapshot.backlog_selection?.candidates||[]).filter(candidate=>candidate.path&&candidate.path!==selected)){
+        await Promise.all((snapshot.backlog_selection?.candidates||[]).filter(candidate=>candidate.path&&candidate.path!==selected).map(async candidate=>{
           const scoped=new URLSearchParams({project,backlog:candidate.path});
-          const revision=state.commonUserRevision[project]||0;
-          const result=await fetch('/api/attention?'+scoped,{cache:'no-store'});if(!result.ok)continue;
+          const sourceKey=project+'|'+candidate.path,revision=state.commonUserRevision[sourceKey]||0;
+          const result=await fetch('/api/attention?'+scoped,{cache:'no-store'});if(!result.ok)return;
           const data=await result.json();
-          if(request!==state.operationsRequest||revision!==(state.commonUserRevision[project]||0))return;
+          if(request!==state.operationsRequest||revision!==(state.commonUserRevision[sourceKey]||0))return;
           storeCommonUserAttention(data,project,candidate.path);
-        }
+        }));
       }catch(_){/* Current projections retry with the next successful refresh. */}
     }));
   } catch (_) { /* Current projections retry with the next successful refresh. */ }
@@ -1669,7 +1670,7 @@ function storeCommonUserAttention(payload,project,backlog) {
     if(prior?.observed>0&&(!Number.isFinite(observed)||observed<prior.observed))return;
   const nextRows=currentUserAttention(payload);
   if(prior&&observed===prior.observed&&!prior.rows.length&&nextRows.length)return;
-  state.commonUserRevision[project]=(state.commonUserRevision[project]||0)+1;
+  state.commonUserRevision[key]=(state.commonUserRevision[key]||0)+1;
   state.commonUserAttention[key]={project,backlog:backlog||payload.backlog_selection?.selected||'',observed:Number.isFinite(observed)?observed:0,rows:nextRows};
   renderUserAttention();
 }

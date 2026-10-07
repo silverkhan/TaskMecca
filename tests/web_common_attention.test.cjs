@@ -40,7 +40,7 @@ test('global attention response started before a current resolution cannot overr
  let resolveAttention;
  const app=page(url=>url==='/api/operations'?Promise.resolve({ok:true,json:async()=>({active:[],projects:[{path:'/demo'}]})}):new Promise(resolve=>resolveAttention=resolve));
  const refresh=app.refreshOperations();await new Promise(setImmediate);
- app.storeCommonUserAttention(snapshot(false),'/demo','team');
+ app.storeCommonUserAttention(snapshot(false),'/demo','');
  resolveAttention({ok:true,json:async()=>snapshot()});await refresh;
  assert.equal(app.element.hidden,true);
 });
@@ -64,4 +64,32 @@ test('common notification controls retain native keyboard behavior',()=>{assert.
 test('global refresh reads each discovered folder and keeps same task IDs scoped',async()=>{
  const requests=[];const app=page(url=>{requests.push(url);return Promise.resolve({ok:true,json:async()=>{if(url==='/api/operations')return{projects:[{path:'/demo'}],active:[]};const folder=new URLSearchParams(url.split('?')[1]).get('backlog')||'first';return{...snapshot(),backlog_selection:{selected:folder,candidates:[{path:'first'},{path:'second'}]}}}})});
  await app.refreshOperations();assert.equal(requests.length,3);assert.match(requests[2],/backlog=second/);assert.match(app.element.innerHTML,/사용자 판단 2건/);assert.match(app.element.innerHTML,/backlog=first/);assert.match(app.element.innerHTML,/backlog=second/);
+});
+
+test('three folders survive both candidate completion orders and resolve independently',async()=>{
+ for(const order of [['second','third'],['third','second']]){
+  const pending={};let resolved=false;const app=page(url=>{const params=new URLSearchParams(url.split('?')[1]),folder=params.get('backlog');
+   if(url==='/api/operations')return Promise.resolve({ok:true,json:async()=>({projects:[{path:'/demo'}],active:[]})});
+   if(!folder)return Promise.resolve({ok:true,json:async()=>({...snapshot(!resolved,resolved?'2026-10-08T00:41:00Z':'2026-10-08T00:40:00Z'),backlog_selection:{selected:'first',candidates:['first','second','third'].map(path=>({path}))}})});
+   return new Promise(resolve=>pending[folder]=resolve);
+  });
+  for(const clear of [false,true]){resolved=clear;const refresh=app.refreshOperations();await new Promise(setImmediate);
+   for(const folder of order){pending[folder]({ok:true,json:async()=>({...snapshot(!clear,clear?'2026-10-08T00:41:00Z':'2026-10-08T00:40:00Z'),backlog_selection:{selected:folder}})});await new Promise(setImmediate)}await refresh;
+   if(clear)assert.equal(app.element.hidden,true);else{assert.match(app.element.innerHTML,/사용자 판단 3건/);for(const folder of ['first','second','third'])assert.match(app.element.innerHTML,new RegExp('backlog='+folder))}
+  }
+ }
+});
+test('an SSE resolution invalidates only its exact folder pending response',async()=>{
+ const pending={};const app=page(url=>{const folder=new URLSearchParams(url.split('?')[1]).get('backlog');if(url==='/api/operations')return Promise.resolve({ok:true,json:async()=>({projects:[{path:'/demo'}],active:[]})});if(!folder)return Promise.resolve({ok:true,json:async()=>({...snapshot(),backlog_selection:{selected:'first',candidates:['first','second','third'].map(path=>({path}))}})});return new Promise(resolve=>pending[folder]=resolve)});
+ const refresh=app.refreshOperations();await new Promise(setImmediate);app.storeCommonUserAttention(snapshot(false),'/demo','second');
+ for(const folder of ['third','second'])pending[folder]({ok:true,json:async()=>({...snapshot(),backlog_selection:{selected:folder}})});await refresh;
+ assert.match(app.element.innerHTML,/사용자 판단 2건/);assert.match(app.element.innerHTML,/backlog=first/);assert.match(app.element.innerHTML,/backlog=third/);assert.doesNotMatch(app.element.innerHTML,/backlog=second/);
+});
+
+test('unrelated folder SSE does not cancel the pending default selected snapshot',async()=>{
+ let reply;const app=page(url=>url==='/api/operations'?Promise.resolve({ok:true,json:async()=>({projects:[{path:'/demo'}],active:[]})}):new Promise(resolve=>reply=resolve));
+ const refresh=app.refreshOperations();await new Promise(setImmediate);app.storeCommonUserAttention(snapshot(false),'/demo','other');
+ reply({ok:true,json:async()=>({...snapshot(),backlog_selection:{selected:'first',candidates:[{path:'first'},{path:'other'}]}})});await new Promise(setImmediate);
+ // The other folder also refreshes; an equal empty snapshot remains empty.
+ reply({ok:true,json:async()=>({...snapshot(false),backlog_selection:{selected:'other'}})});await refresh;assert.match(app.element.innerHTML,/사용자 판단 1건/);assert.match(app.element.innerHTML,/backlog=first/);
 });
