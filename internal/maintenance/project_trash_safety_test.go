@@ -148,3 +148,24 @@ func TestStagingIdentityChangeDoesNotRecycleReplacement(t *testing.T) {
 		t.Fatal("replacement changed", err)
 	}
 }
+
+func TestPartialNativeFailureHistoryWriteStillReturnsRecovery(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("TASK_MECCA_HOME", filepath.Join(dir, "management"))
+	source := filepath.Join(dir, "project")
+	if err := os.MkdirAll(filepath.Join(source, "_task_mecca"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := RegisterProject(source); err != nil {
+		t.Fatal(err)
+	}
+	record, err := RemoveProject(source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	locator := systemTrashLocator("Outcome unknown; inspect native bin", filepath.Join(dir, "stage"))
+	result, err := moveRemovedProjectToTrash(record.ID, source, func(string) (string, error) { return locator, errors.New("native timeout") }, func(projectRegistry) error { return errors.New("registry unavailable") })
+	if err == nil || result != locator || trashStagingPath(result) == "" || !strings.Contains(err.Error(), "history could not be updated") {
+		t.Fatal(result, err)
+	}
+}

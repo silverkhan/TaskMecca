@@ -3,6 +3,7 @@
 package maintenance
 
 import (
+	"bytes"
 	"context"
 	_ "embed"
 	"encoding/base64"
@@ -63,9 +64,11 @@ func recycleStagedFolder(source string, expected os.FileInfo) (string, error) {
 	defer cancel()
 	cmd := exec.CommandContext(ctx, "powershell.exe", "-NoProfile", "-NonInteractive", "-EncodedCommand", encodedPowerShell(windowsRecycleScript))
 	cmd.Stdin = strings.NewReader(string(input))
-	output, err := cmd.CombinedOutput()
+	var diagnostics bytes.Buffer
+	cmd.Stderr = &diagnostics
+	output, err := cmd.Output()
 	if err != nil {
-		return "", fmt.Errorf("Windows native Recycle Bin refused (no permanent-delete fallback): %s: %w", strings.TrimSpace(string(output)), err)
+		return "", fmt.Errorf("Windows native Recycle Bin refused (no permanent-delete fallback): %s: %w", strings.TrimSpace(diagnostics.String()), err)
 	}
 	var result struct {
 		Location string `json:"location"`

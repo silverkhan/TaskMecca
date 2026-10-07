@@ -430,7 +430,7 @@ func moveRemovedProjectToTrash(historyID, path string, move func(string) (string
 			item.Presence = projectPresence(item.Path)
 			item.LastCheckedAt = time.Now().Format(time.RFC3339)
 			if writeErr := write(reg); writeErr != nil {
-				return "", fmt.Errorf("folder cleanup failed (%v); failure history could not be updated: %w", err, writeErr)
+				return trashPath, fmt.Errorf("folder cleanup failed (%v); failure history could not be updated; retain recovery %s and original %s: %w", err, trashPath, item.Path, writeErr)
 			}
 			return trashPath, err
 		}

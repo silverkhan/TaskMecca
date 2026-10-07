@@ -1,4 +1,5 @@
 $ErrorActionPreference = 'Stop'
+$ProgressPreference = 'SilentlyContinue'
 [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)
 $inputRecord = [Console]::In.ReadToEnd() | ConvertFrom-Json
 Add-Type -TypeDefinition @'

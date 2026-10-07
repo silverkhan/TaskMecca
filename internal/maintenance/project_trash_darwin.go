@@ -21,6 +21,7 @@ var foundationErr error
 var objectiveMessage uintptr
 var objectiveClass func(string) uintptr
 var objectiveSelector func(string) uintptr
+var objectiveUTF8String func(uintptr, uintptr) string
 
 func loadFoundation() error {
 	foundationOnce.Do(func() {
@@ -36,6 +37,9 @@ func loadFoundation() error {
 		purego.RegisterLibFunc(&objectiveClass, library, "objc_getClass")
 		purego.RegisterLibFunc(&objectiveSelector, library, "sel_registerName")
 		objectiveMessage, foundationErr = purego.Dlsym(library, "objc_msgSend")
+		if foundationErr == nil {
+			purego.RegisterFunc(&objectiveUTF8String, objectiveMessage)
+		}
 	})
 	return foundationErr
 }
@@ -57,19 +61,9 @@ func foundationText(value uintptr) string {
 	if value == 0 {
 		return ""
 	}
-	address := foundationMessage(value, "UTF8String")
-	if address == 0 {
-		return ""
-	}
-	var data []byte
-	for n := uintptr(0); n < 1024*1024; n++ {
-		character := *(*byte)(unsafe.Pointer(address + n))
-		if character == 0 {
-			break
-		}
-		data = append(data, character)
-	}
-	return string(data)
+	// purego's typed string return owns C-string decoding; do not reconstruct
+	// a Go pointer from a native integer address and walk it ourselves.
+	return objectiveUTF8String(value, objectiveSelector("UTF8String"))
 }
 
 // Native Foundation API: no compiler, Finder Automation, ~/.Trash enumeration
