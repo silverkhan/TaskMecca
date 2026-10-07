@@ -1,6 +1,6 @@
 const state = {
  userAttention:[],userAttentionContext:'',userAttentionObservedAt:0,
- commonUserAttention:{},commonUserRevision:{},commonAttentionOpen:false,sessionWarnings:[],operationsRequest:0,operationPayload:{},
+ attentionScopes:{},attentionScopeObserved:{},commonUserAttention:{},commonUserRevision:{},commonAttentionOpen:false,sessionWarnings:[],operationsRequest:0,operationPayload:{},
   snapshot: null,
   listData: null,
   detailTask: null,
@@ -1647,7 +1647,8 @@ function updateCurrentUserAttention(payload) {
   state.userAttentionContext=key;
   if(Number.isFinite(observed))state.userAttentionObservedAt=observed;
   state.userAttention=currentUserAttention(payload);
-  storeCommonUserAttention(payload,state.project,state.backlog);
+  const sourceBacklog=payload.backlog_selection?.selected||state.backlog||state.attentionScopes[state.project+'|']||'';
+  if(sourceBacklog)storeCommonUserAttention({...payload,backlog_selection:{...payload.backlog_selection,selected:sourceBacklog}},state.project,state.backlog);
   renderUserAttention();
 }
 function clearCurrentUserAttention() {
@@ -1663,11 +1664,21 @@ Object.assign(I18N.ko,{commonAttention:'현재 알림',commonUserCount:'사용�
 Object.assign(I18N.en,{commonAttention:'Current notifications',commonUserCount:'User decisions: {count}',commonSessionCount:'Session warnings: {count}',commonSessionHeading:'Current session warnings',commonSessionLink:'View related session',commonTaskLink:'View related task'});
 function storeCommonUserAttention(payload,project,backlog) {
   if(!project||!Array.isArray(payload?.attention))return;
-  backlog=payload.backlog_selection?.selected||backlog||'';
+  const requestedBacklog=backlog||'';
+  backlog=payload.backlog_selection?.selected||requestedBacklog;
   const key=project+'|'+backlog,observed=Date.parse(payload.snapshot_at||''),prior=state.commonUserAttention[key];
     if(prior?.observed>0&&(!Number.isFinite(observed)||observed<prior.observed))return;
   const nextRows=currentUserAttention(payload);
   if(prior&&observed===prior.observed&&!prior.rows.length&&nextRows.length)return;
+  if(payload.backlog_selection?.selected){
+    const context=project+'|'+requestedBacklog,changed=state.attentionScopes[context]!==backlog;
+    const priorScopeTime=state.attentionScopeObserved[context]||0;
+    if(!priorScopeTime||(Number.isFinite(observed)&&(observed>priorScopeTime||(!changed&&observed===priorScopeTime)))){
+      state.attentionScopes[context]=backlog;
+      if(Number.isFinite(observed))state.attentionScopeObserved[context]=observed;
+      if(changed&&project===state.project&&requestedBacklog===state.backlog)ensureAttentionStream();
+    }
+  }
   state.commonUserRevision[key]=(state.commonUserRevision[key]||0)+1;
   state.commonUserAttention[key]={project,backlog:backlog||payload.backlog_selection?.selected||'',observed:Number.isFinite(observed)?observed:0,rows:nextRows};
   renderUserAttention();
@@ -3634,7 +3645,7 @@ let listRefreshQueued=false;
 function listNotificationPayload(data) {
   const current={...(data?.attention_items||{})};
   (data?.items||[]).forEach(task=>{current[task.id]=task});
-  return {snapshot_at:data?.snapshot_at,all_items:current,notification_events:data?.notification_events||[],attention:data?.attention||[]};
+  return {snapshot_at:data?.snapshot_at,backlog_selection:data?.backlog_selection,project_path:data?.project_path,all_items:current,notification_events:data?.notification_events||[],attention:data?.attention||[]};
 }
 
 async function refreshHub(force=false) {
@@ -3734,8 +3745,11 @@ function ensureAttentionStream() {
   if(!state.project||typeof EventSource==='undefined')return;
   const params=new URLSearchParams();
   params.set('project',state.project);
-  if(state.backlog)params.set('backlog',state.backlog);
-  const key=state.project+'|'+state.backlog;
+  const requestedKey=state.project+'|'+state.backlog;
+  const sourceBacklog=state.backlog||state.attentionScopes[requestedKey];
+  if(!sourceBacklog)return;
+  params.set('backlog',sourceBacklog);
+  const key=requestedKey+'|'+sourceBacklog;
   if(state.eventSource&&state.eventStreamKey===key&&state.eventSource.readyState!==EventSource.CLOSED)return;
   closeAttentionStream();
   if(state.attentionRevisionKey!==key){
@@ -3746,10 +3760,10 @@ function ensureAttentionStream() {
   state.eventSource=source;
   state.eventStreamKey=key;
   source.addEventListener('attention',event=>{
-    if(state.eventStreamKey!==key||state.project+'|'+state.backlog!==key)return;
+    if(state.eventStreamKey!==key||state.project+'|'+state.backlog!==requestedKey||(state.backlog||state.attentionScopes[requestedKey])!==sourceBacklog)return;
     let payload=null;
     try{payload=JSON.parse(event.data)}catch(_){return}
-    processTaskNotifications(payload);
+    processTaskNotifications({...payload,backlog_selection:{...payload.backlog_selection,selected:sourceBacklog}});
     const nextRevision=attentionPayloadRevision(payload);
     const changed=Boolean(state.attentionRevision && nextRevision!==state.attentionRevision);
     state.attentionRevision=nextRevision;
