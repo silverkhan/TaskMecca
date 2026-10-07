@@ -61,4 +61,14 @@ ignored local `src/task_mecca/__pycache__/`, `tests/__pycache__/`와 baseline ev
 
 ## Delivery
 
-PR/exact implementation head/CI 및 race 재확인 결과는 완료 후 이 section을 갱신한다. final report 자기 commit SHA 삽입 순환을 피하기 위해 exact final report head/checks는 native DONE에서 함께 전달한다. Controller-only 운영 AC는 아직 Worker 완료로 주장하지 않는다.
+실제 PR: https://github.com/silverkhan/TaskMecca/pull/142 (base dev, OPEN/MERGEABLE).
+
+독립 A29 implementation head `45758f6c0bdaa3310af323772702a371f32b4b13`: CI37603355554 + standalone37603355549 모두 SUCCESS(10checks).
+
+A28 PR143 dev 통합 이후 origin/dev `1f4cbeee8e402fc0463d2172194e0df2c7aa4b2e`를 ordinary merge했다. A28 final head `3ac91a5` ancestry 포함, merge head `3902816b72112ad2762b969b4a363bb59cd61eb4`, conflict 없음/force reset/rebase 없음. A29-vs-dev에는 12개 notify/CLI/docs/evidence 파일만 있고 A28 source는 merge로 상속했을 뿐 추가 편집하지 않았다.
+
+combined head에서 fullGo PASS(Web29.237s), vet PASS, notify/cmd race PASS(6.725s/1.570s), Resume/Notification 경계 회귀 PASS(0.788s/0.824s), Python30 PASS(1.587s), diffcheck PASS. 환경 go1.27.1 darwin/arm64, Python3.12.14. 원형 stdout/command: `combined-validation.log`. 기존 full Web race shutdown 한계는 위 기록 그대로이며 combined ordinary tests 통과로 숨기지 않는다.
+
+combined exact head3902816의 CI37604991732 9jobs SUCCESS와 standalone37604991709 SUCCESS, all10checks를 직접 확인했다. https://github.com/silverkhan/TaskMecca/actions/runs/37604991732 및 https://github.com/silverkhan/TaskMecca/actions/runs/37604991709 . 실제 exact-head rollup은 `combined-ci.json`에 고정했다.
+
+이후 갱신은 evidence/report-only commit으로 code 변경이 없다. 자기 report commit SHA 삽입 순환을 피하기 위해 exact final report head/checks는 native DONE에서 함께 전달한다. original contract SHA d355469a 및 exact run/turn은 위 경계와 동일하다. Controller-only 운영 AC(실제 cutoff/config/gate/restart/minimal receive/Linear/dev/canonical/cleanup)는 Worker 완료로 주장하지 않는다.
