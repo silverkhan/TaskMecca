@@ -31,6 +31,40 @@ Worker final 또는 Root 보고는 transport 성공이 아니다. 같은 결과�
 
 native runtime이 discovery/message/resume을 지원하지 않으면 capability/evidence와 fallback 제약을 명시한다. Task Mecca CLI는 native 자동 통지·재개 또는 turn 종료 강제를 보장하지 않는다. Root ACK/wake/지속 polling은 어느 단계의 gate도 아니다.
 
+## Controller 완료 검토 기록 checklist
+
+[Controller 역할의 완료 검토 절차](roles/controller.md#완료-검토-착수와-중단-복구)를 공통으로 적용한다.
+
+1. DONE 인수 시 원본 계약·report/handoff·source Worker attempt·exact Controller target/claim을 확인하고, 긴 검증/merge 전에 원본 요약과 작업 노트에 실제 인수·검토 착수와 남은 일을 기록한다. Worker 완료만으로 done을 표시하지 않는다. 파일 상태는 `doing`, Worker `Agent`/assignment는 유지하고 Controller 연결은 handoff target/claim으로 보존한다.
+2. 지원 projection은 `controller_review_pending` → `controller_review` → `controller_finalizing`이며 실패/중단은 `controller_recovery`다. canonical 파일명이나 lifecycle에 같은 이름을 새로 만들지 않는다. 검토 착수는 `claimed_at`과 정확한 실행 evidence, 검증 완료는 `acceptance=ok`로 확인한다. 요약·상태 편집 전용 CLI와 검토용 lifecycle event는 없다. Controller 검토에 Worker `started`를 재사용하지 않는다.
+3. 검증 미충족은 원본에 차이·재개조건을 기록하고 Worker에게 직접 message/resume/reassign한다. completed Worker의 새 turn 직전에는 fresh Full Access preflight를 수행한다. 새 assignment/bind와 실제 started/resumed 근거를 기존 절차로 기록하고, 필요하면 canonical을 `doing`으로 환원한다. 단순 dispatch를 착수로 기록하지 않는다.
+4. 5/15/10분 유예는 각각 완료 보고/인계·claim·acceptance의 고정 원천시각 기준이다. 현재 projection의 `since`/`grace_until`, 실제 native runtime/journal과 `coordinate`를 함께 읽는다. 조회·요약 갱신으로 유예를 재설정하지 않는다. completed/resume 대기/quiet/unknown 자체를 즉시 dead로 판단하지 않는다. 실제 중단·인계 실패·identity/계약 불일치·유예 만료는 Controller 복구 대상으로 구분한다.
+5. 수용 기준 검증과 계약상 완료 처리를 마친 뒤에만 결과·검증·canonical done 및 lifecycle completed를 기록하고 external-synced/finalization을 마친다. Root ACK는 gate가 아니다. 현재 CLI/감시는 native 자동 wake/resume을 보장하지 않으므로, 중단 후 재개 시 아래 checklist부터 남은 일을 처리한다.
+
+### 현재 지원 명령과 기록 한계
+
+아래 `<...>`는 실제 원본/현재 identity/evidence 값으로 대체한다. 조회와 mutation 모두 canonical 원본을 `--project`로 지정한다.
+
+```bash
+task-mecca inspect <ID> --project <canonical-project> --json
+task-mecca runtime list --project <canonical-project> --json
+task-mecca handoff inspect <HANDOFF_ID> --project <canonical-project> --json
+task-mecca coordinate --project <canonical-project> --json
+task-mecca handoff claim <HANDOFF_ID> --as /root/controller --source-attempt <current-controller-attempt-id> --project <canonical-project> --json
+task-mecca handoff mark <HANDOFF_ID> --step acceptance --result ok --evidence <verified-acceptance-evidence> --project <canonical-project> --json
+```
+
+claim/mark는 실제 인수·검증 시에만 실행한다. mark 결과는 `ok|failed|unknown`이며 기존 step 결과를 다른 결과로 덮어쓰지 못한다. 실패/unknown을 삭제하거나 재시도로 성공 근거를 만들어내지 않는다. 후속 복구의 새 report/handoff와 원천 연결을 보존한다. `handoff mark --step applied --result ok`는 자동 검증·done 처리 명령이 아니다. Controller가 필요한 backlog-finalized/external-synced와 결과 evidence를 직접 확인한 뒤 finalization에 사용한다.
+
+lifecycle `record`는 `registered|assigned|started|waiting|resumed|completed`만 지원한다. 재작업의 실제 Worker 착수와 최종 종료에 기존 syntax를 사용한다.
+
+```bash
+task-mecca lifecycle record started <ID> <stable-event-id> <worker-agent-path> worker_report <actual-start-evidence> <assignment-id> <actual-worker-attempt-id> --project <canonical-project> --json
+task-mecca lifecycle record completed <ID> <stable-event-id> /root/controller controller_report <verified-finalization-evidence> <assignment-id> <worker-attempt-id> --project <canonical-project> --json
+```
+
+별도의 `review_started` lifecycle 종류, `review` 파일 상태, 요약 수정용 `task update`, native 자동 재개 명령은 현재 없다. handoff claim/mark의 시각과 원본 작업 노트로 Controller 검토 착수 evidence를 기록한다. 추가 자동화가 필요하면 사용자 승인 후 별도 후속 작업으로 정의한다.
+
 ## Controller restart and finalization checklist
 
 재개 Controller는 수신확인만 하고 종료하지 않는다. 다음 대조부터 시작하고 완료 결과와 merged PR 잔여를 ready 신규 구현보다 먼저 처리한다.

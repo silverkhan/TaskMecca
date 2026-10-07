@@ -117,6 +117,33 @@ Worker report를 claim한 뒤 다음 순서를 지킨다.
 
 Root에 결과를 보낸 사실과 Root가 실제 새 turn으로 재개된 사실은 별개다. Codex에서는 Root 자동 재개를 요구하지 않으며, Claude에서도 Root wake는 best-effort capability다.
 
+## 완료 검토 착수와 중단 복구
+
+Worker DONE을 인수하면 원격 병합이나 긴 검증을 시작하기 **전에** 다음을 기록한다. Worker의 완료는 Controller 검증 완료나 백로그 완료가 아니다.
+
+1. 원본 canonical `inspect`, 현재 계약, durable report/handoff ID와 source Worker attempt를 대조한다. 현재 Controller의 native ID·attempt·provider·session이 handoff target과 일치하는지 확인하고 해당 DONE을 claim한다. 무관한 Controller 활동으로 이 작업의 검토 착수를 추정하지 않는다.
+2. 원본 파일 상태는 `doing`으로 유지한다. `Agent`와 Worker assignment를 Controller로 바꿔 검토를 표현하지 않는다. 작업과 exact Controller의 연결은 해당 handoff의 target·claim에 남긴다. `## 핵심 요약`의 `상태·결과`에는 현재 완료 검토 단계, 인수한 보고, 완료된 검증과 남은 일을 즉시 반영한다. 작업 노트에는 report/handoff ID, source Worker attempt, Controller native ID·attempt·provider·session, 실제 검토 착수 근거와 현재 시각을 남긴다. 원본 기록은 Controller가 담당하며 Worker나 원격 merge까지 미루지 않는다.
+3. `claimed_at`과 정확한 실행 근거가 있는 claim은 현재 Web의 `controller_review` 원천이다. 단순 메시지 수신, role path, Worker final, runtime의 `completed`만으로 인수·검토가 완료됐다고 기록하지 않는다. 실제 검토가 시작되지 않았다면 검토 대기로 요약하고 미착수 사유를 남긴다.
+4. 수용 기준별 검증을 마친 뒤에만 `acceptance=ok`를 mark한다. 완료된 검증과 미완료 외부 반영·CI·배포·원장 처리를 요약에서 구분한다. 계약상 필요한 완료 처리를 마치기 전에는 `done`이나 lifecycle `completed`를 기록하지 않는다. Root 보고·응답은 완료 gate가 아니다.
+
+현재 지원되는 표시 흐름은 **작업 중 → 완료 검토 대기 → 완료 검토 중 → 완료 처리 중 → 완료 또는 재작업**이다. 검토 구간의 canonical 파일 상태는 모두 `doing`이다. Web의 `controller_review_pending`, `controller_review`, `controller_finalizing`, `controller_recovery`는 runtime/handoff 증거를 읽는 projection이며 새 파일명 상태가 아니다. 검토 전용 lifecycle 종류와 상태·핵심 요약을 갱신하는 CLI는 현재 없다. Controller가 기존 canonical 문서 쓰기 권한으로 요약·노트를 갱신하고 claim/mark를 근거로 보존한다. Worker의 실행 착수를 뜻하는 lifecycle `started`를 Controller 검토 착수에 재사용하지 않는다.
+
+### 재작업은 실제 Worker에게 직접 전달한다
+
+검증이 미충족이면 수용 기준별 차이·재작업 범위·필요 검증·재개 조건을 원본 결과/요약에 먼저 남긴다. 잘못 완료된 항목을 복구하는 경우에는 canonical을 `doing`으로 환원하고 실제 이유를 기록한다. 기존 목표·수용 기준은 바꾸지 않는다.
+
+- 현재 Worker의 정확한 native 상태를 조회해 running이면 직접 message한다. completed이면 새 turn을 재개하기 직전 fresh Full Access preflight 후 `followup_task`로 직접 재개한다. 재배정이 필요하면 기존 assignment checklist 전체를 따른다. Root를 중계하거나 실제 전달 없이 메시지를 보냈다고 기록하지 않는다.
+- 현재 assignment가 여전히 유효하면 같은 계약·report/handoff 연결을 보존한다. 새 assignment/attempt가 필요할 때만 실제 배정·bind를 기록한다. 새 runtime attempt를 기존 완료 attempt로 가장하지 않는다. 실제 Worker started 보고/hook을 확인한 뒤 lifecycle `started`를, 실제 대기에서 재개한 근거가 있으면 `resumed`를 기록한다. dispatch 성공은 착수 완료가 아니다.
+- 지원 primitive와 현재 runtime 상태가 일치하지 않거나 claim 충돌·계약 차이가 있으면 자동 resume/완료하지 않는다. 구체적 차이와 재개 조건을 남겨 Controller 복구 또는 사용자 재합의로 넘긴다.
+
+### 유예를 적용한 인수·검토 중단 확인
+
+미완료 백로그는 실제 native runtime/attempt·계약·handoff journal·canonical 기록과 `coordinate --json`의 복구 항목을 함께 대조한다. 완료 보고/인계 대기는 5분, 정확 Controller claim 이후 검토는 15분, `acceptance=ok` 이후 완료 처리는 10분의 기존 유예를 적용한다. 각각 Worker 완료 또는 유효 DONE report/prepared 시각, claim 시각, acceptance 시각이 anchor이며 조회·polling·요약 편집으로 연장하지 않는다. 실제 구현의 `since`/`grace_until`을 읽고 별도의 타이머 규칙을 만들지 않는다.
+
+Worker `completed`는 검토를 기다리는 정상 상태일 수 있다. Controller의 completed/새 turn 재개 대기나 quiet/unknown만으로 즉시 dead·재배정하지 않는다. 다만 exact Controller가 중단됐거나 인계 단계 실패, 계약·identity 불일치, 유예 만료로 `controller_recovery`가 나타나면 진단을 보존하고 실제 native 상태를 다시 조회해 남은 단계를 복구한다. 유예는 실패를 숨기거나 실제 종료 오류를 정상 완료로 바꾸는 근거가 아니다. 실제 사용자 판단/승인 대기만 `hold(user)`와 확인·후속으로 분리한다.
+
+자동 감시가 Controller의 새 turn을 보장하지는 않는다. 현재 실행 중인 Controller는 복구 항목을 독립적으로 처리하고, 중단 후 재개된 Controller는 [공통 restart/finalization 절차](../EXECUTION_PROTOCOL.md#controller-restart-and-finalization-checklist)부터 수행한다. 재개가 지원되지 않으면 미완료 단계·보존 보고 경로·정확한 재개 조건을 남긴다. 없는 watchdog/자동 resume 기능을 완료된 것처럼 주장하지 않는다.
+
 ## 완료 처리
 
 Worker DONE/BLOCKED마다 해당 backlog의 `### 수용 기준`과 실제 코드·검증 근거를 대조한다. Simple/Defined 여부와 무관하게
