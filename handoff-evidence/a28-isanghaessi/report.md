@@ -68,4 +68,3 @@ Report-bearing final SHA and its independently completed exact-head CI are suppl
 ## Controller handoff / 남은 역할
 
 Controller가 PR merge/dev ancestry/sync, 실제 operational Web 배포·재시작 후 API/상단 경고 before/after 확인, canonical/Linear done/archive 및 안전 cleanup을 수행한다. Worker는 운영 설치/프로세스/Telegram gate·전송/알림 원장/원본 또는 사본 operational backlog/runtime/lifecycle/handoff/EMPFUND/user folders/OS Trash를 변경하지 않았다. A29 notify/delivery ledger, A14 source/hold, A27 done을 변경하지 않았다. Worktree와 committed evidence를 유지하며 Worker cleanup은 실행하지 않았다.
-
