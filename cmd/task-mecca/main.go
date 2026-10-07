@@ -1,6 +1,9 @@
 package main
 
 import (
+	"bufio"
+	"errors"
+	"golang.org/x/term"
     "encoding/json"
     "fmt"
     "os"
@@ -55,6 +58,8 @@ func run(args []string) int {
     project := "."
     rootOption := ""
     jsonOutput := false
+    migrationChoice := ""
+    migrationExpectedPlan := ""
     newWorker := false
     used := []string{}
     limit := 10
@@ -75,7 +80,11 @@ func run(args []string) int {
     interval := 1.0
     positional := []string{}
     for i := 1; i < len(args); i++ {
-        if args[i] == "--project" && i+1 < len(args) {
+        if args[i] == "--expect-plan" && i+1 < len(args) {
+            migrationExpectedPlan=args[i+1]; i++
+        } else if args[i] == "--choice" && i+1 < len(args) {
+            migrationChoice=args[i+1]; i++
+        } else if args[i] == "--project" && i+1 < len(args) {
             project = args[i+1]
             i++
         } else if args[i] == "--root" && i+1 < len(args) {
@@ -203,21 +212,54 @@ func run(args []string) int {
     case "init":
         if err = install.Init(root, version); err == nil {
             _,_ = backlog.EnsureTagRegistry(root)
-            _ = maintenance.RegisterProject(root)
+            if registerErr := maintenance.RegisterProject(root); registerErr != nil { err = fmt.Errorf("framework installed; Web monitoring registration failed (framework preserved): %w", registerErr); break }
             fmt.Printf("Task Mecca %s installed to %s\n", version, filepath.Join(root, "_task_mecca"))
         }
-    case "migrate":
-        var migration install.MigrationResult
-        migration, err = install.MigrateWithResult(root, version)
-        if err == nil {
-            _,_ = backlog.EnsureTagRegistry(root)
-            _ = maintenance.RegisterProject(root)
-            fmt.Printf("Task Mecca %s migrated\n", version)
-            if migration.InstructionRefreshRequired {
-                fmt.Println("Root session refresh required: Task Mecca operating instructions changed.")
-                fmt.Println("Open the Web Global Hub migration result or ask the active Root session to reread the current Task Mecca instructions before continuing.")
-            }
-        }
+	case "migrate":
+		var migration install.MigrationResult
+		migration, err = install.MigrateWithPlan(root, version, migrationChoice,migrationExpectedPlan)
+		var required *install.ChoiceRequiredError
+		if errors.As(err, &required) {
+			if jsonOutput || !term.IsTerminal(int(os.Stdin.Fd())) {
+				emitJSON(migration)
+				return 3
+			}
+			fmt.Println("수정된 프레임워크 파일:")
+			for _, path := range migration.ModifiedFiles {
+				fmt.Println("  " + path)
+			}
+			fmt.Print("1 새 버전으로 덮어쓰기 / 2 기존 수정사항을 백업하고 진행 / 3 취소: ")
+			answer, readErr := bufio.NewReader(os.Stdin).ReadString('\n')
+			choice := "cancel"
+			if readErr == nil {
+				switch strings.TrimSpace(answer) {
+				case "1":
+					choice = "overwrite"
+				case "2":
+					choice = "backup"
+				}
+			}
+			migration, err = install.MigrateWithPlan(root, version, choice,migration.PlanDigest)
+		}
+		if errors.As(err, &required) {
+			emitJSON(migration)
+			return 3
+		}
+		if err == nil {
+			if jsonOutput {
+				emitJSON(migration)
+				return 0
+			}
+			if migration.Status == "cancelled" {
+				fmt.Println("Migration cancelled; no files changed.")
+				return 0
+			}
+			fmt.Printf("Task Mecca %s migrated\n", version)
+			if migration.InstructionRefreshRequired {
+				fmt.Println("Root session refresh required: Task Mecca operating instructions changed.")
+				fmt.Println("Open the Web Global Hub migration result or ask the active Root session to reread the current Task Mecca instructions before continuing.")
+			}
+		}
     case "upgrade":
         var result maintenance.UpgradeResult
         result, err = maintenance.Upgrade(version)

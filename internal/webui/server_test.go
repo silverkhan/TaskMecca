@@ -124,6 +124,8 @@ func TestHandlerServesDashboardAPIsAndAssets(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	registerWebFixture(t, root)
+
 	handler, err := Handler(root, "", "0.2.4")
 	if err != nil {
 		t.Fatal(err)
@@ -508,6 +510,8 @@ func TestWorkloadHookStatusSeparatesConfiguredFromObserved(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	registerWebFixture(t, root)
+
 	handler, err := Handler(root, "", "test")
 	if err != nil {
 		t.Fatal(err)
@@ -591,6 +595,8 @@ func TestRuntimeWorkloadCapsTerminalCardsAndHistoryPaginates(t *testing.T) {
 	if err := runtimeobs.AppendExecutionEvent(root, active); err != nil {
 		t.Fatal(err)
 	}
+
+	registerWebFixture(t, root)
 
 	handler, err := Handler(root, "", "test")
 	if err != nil {
@@ -691,6 +697,8 @@ func TestRuntimeSessionManagerClassifiesAndExposesStorageAPI(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
+
+	registerWebFixture(t, root)
 
 	handler, err := Handler(root, "", "test")
 	if err != nil {
@@ -793,6 +801,8 @@ func TestRuntimeRootSessionAPIAndCleanup(t *testing.T) {
 	if _, err := runtimeobs.MaintainExecutionHistory(root, ledger, now); err != nil {
 		t.Fatal(err)
 	}
+
+	registerWebFixture(t, root)
 
 	handler, err := Handler(root, "", "test")
 	if err != nil {
@@ -1090,6 +1100,8 @@ func TestHandlerServesUninitializedBacklogAsNormalProject(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(root, "_task_mecca"), 0755); err != nil {
 		t.Fatal(err)
 	}
+
+	registerWebFixture(t, root)
 
 	handler, err := Handler(root, "", "test")
 	if err != nil {

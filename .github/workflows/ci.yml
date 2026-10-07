@@ -14,8 +14,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  native-trash:
-    name: Native recycle and restore · ${{ matrix.os }}
+  project-management:
+    name: File-preserving project management · ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -26,10 +26,8 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: "1.24.x"
-      - name: Actual system Trash and native restore with payload hash
-        env:
-          TASK_MECCA_RUN_NATIVE_TRASH: "1"
-        run: go test ./internal/maintenance -run "NativeSystemTrashAndRestoreIntegration|Anchored|WindowsCleanup" -count=1 -v
+      - name: Archive and monitoring preserve files (no native Trash access)
+        run: go test ./internal/maintenance ./internal/projectguard -run "Archive|ProjectManagement|ProjectMonitoring|Suppression|ExplicitRegistration" -count=1 -v
 
   python-compatibility:
     name: Python compatibility · ${{ matrix.python-version }}

@@ -41,6 +41,7 @@ func TestRuntimeHookGlobalScopeAPI(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(project, "_task_mecca", "data", "backlog"), 0755); err != nil {
 		t.Fatal(err)
 	}
+	registerWebFixture(t, project)
 	handler, err := Handler(project, "", "test")
 	if err != nil {
 		t.Fatal(err)
@@ -141,6 +142,8 @@ func TestRuntimeHookOverviewFlagsOnlyProviderActuallyInUse(t *testing.T) {
 	if _, err := runtimeobs.EnsureHooks(root, "claude"); err != nil {
 		t.Fatal(err)
 	}
+
+	registerWebFixture(t, root)
 
 	handler, err := Handler(root, "", "test")
 	if err != nil {

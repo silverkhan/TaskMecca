@@ -79,8 +79,8 @@ class CliUpdateTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
             role = self._conflicting_project(root)
-            args = argparse.Namespace(project=str(root))
-            with patch("builtins.input", side_effect=["y", "y"]):
+            args = argparse.Namespace(project=str(root), choice=None, json=False, expect_plan=None)
+            with patch("sys.stdin.isatty", return_value=True), patch("builtins.input", side_effect=["2"]):
                 rc = cmd_update(args)
             self.assertEqual(rc, 0)
             self.assertNotEqual(role.read_text(encoding="utf-8"), "LOCAL ROLE EDIT\n")
@@ -98,10 +98,10 @@ class CliUpdateTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
             role = self._conflicting_project(root)
-            args = argparse.Namespace(project=str(root))
-            with patch("builtins.input", side_effect=["n"]):
+            args = argparse.Namespace(project=str(root), choice=None, json=False, expect_plan=None)
+            with patch("sys.stdin.isatty", return_value=True), patch("builtins.input", side_effect=["3"]):
                 rc = cmd_update(args)
-            self.assertEqual(rc, 1)
+            self.assertEqual(rc, 0)
             self.assertEqual(role.read_text(encoding="utf-8"), "LOCAL ROLE EDIT\n")
             self.assertFalse((root / "_task_mecca" / "backups").exists())
 

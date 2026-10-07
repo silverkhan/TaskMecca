@@ -356,7 +356,7 @@ For older completed tasks where no `doing` transition was ever committed or obse
 
 Installer는 `data/`나 backlog를 미리 만들지 않는다. 첫 등록 시 Registrar가 `ensure-backlog`를 호출해 기존 ledger를 사용하거나, 없을 때만 canonical `data/backlog/`를 만든다. Agent가 audit/measurement/test evidence 같은 durable 부산물을 만들 필요가 있으면 framework와 섞지 말고 `data/` 아래에 둔다. 하위 폴더명 자체는 Task Mecca가 강제하지 않는다.
 
-upstream migration가 사용자가 수정한 managed Task Mecca 문서를 덮어쓰게 되는 경우 migrator는 대상 파일 목록을 보여주고, 백업을 권장하며, 동의 시 로컬 백업을 실제 생성한 뒤 수정본이 공식 새 버전으로 덮어써짐을 안내하고 최종 확인을 받아야 한다. 역할·정책 문서의 의미 기반 자동 merge는 시도하지 않는다.
+migrate는 framework만 갱신하며 감시·보관 상태와 백로그·설정·인증정보를 보존한다. 수정한 관리 파일은 upstream 변경 여부와 무관하게 목록을 보여주고 ‘새 버전으로 덮어쓰기 / 기존 수정사항을 백업하고 진행 / 취소’를 선택하게 한다. 선택 전에는 파일이나 백업을 만들지 않고 백업 실패 시 중단한다. 비TTY·에이전트는 `task-mecca migrate --json`의 exit 3 / `status: choice_required`를 사람에게 전달한 뒤 `--choice overwrite|backup|cancel`로 실행한다. 의미 기반 자동 merge는 하지 않는다. Go `init`은 최초 설치와 Web 감시 등록을 유지하며 기존 설치는 변경 없이 migrate를 안내한다. Web 열기/재시작과 migrate는 등록하지 않는다. 프로젝트 관리는 `projects add|register|unregister|archive|restore|forget` 또는 Hub에서 명시 실행한다. 보관/목록 제거는 파일을 변경하지 않으며 실제 파일 관리는 사용자 책임이다.
 
 ### 마이그레이션 후 Root 세션 재동기화
 

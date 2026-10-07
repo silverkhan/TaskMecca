@@ -40,6 +40,7 @@ func TestDeviceHookActionsKeepProviderStatesIndependent(t *testing.T) {
 	if _, err := runtimeobs.EnsureHooks(project, "codex"); err != nil {
 		t.Fatal(err)
 	}
+	registerWebFixture(t, project)
 	handler, err := Handler(project, "", "test")
 	if err != nil {
 		t.Fatal(err)
@@ -99,10 +100,12 @@ func TestDeviceHookActionsKeepProviderStatesIndependent(t *testing.T) {
 	}
 	get = httptest.NewRecorder()
 	handler.ServeHTTP(get, httptest.NewRequest(http.MethodGet, "/api/runtime/hooks", nil))
-	if err := json.Unmarshal(get.Body.Bytes(), &payload); err != nil { t.Fatal(err) }
-	for _,hook := range payload.Hooks {
-		if hook.Provider=="codex" && (hook.State!="verification_required"||!hook.ObservationEnabled) {
-			t.Fatalf("setup claimed observation without a new event: %+v",hook)
+	if err := json.Unmarshal(get.Body.Bytes(), &payload); err != nil {
+		t.Fatal(err)
+	}
+	for _, hook := range payload.Hooks {
+		if hook.Provider == "codex" && (hook.State != "verification_required" || !hook.ObservationEnabled) {
+			t.Fatalf("setup claimed observation without a new event: %+v", hook)
 		}
 	}
 }
