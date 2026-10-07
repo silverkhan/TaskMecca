@@ -1,0 +1,13 @@
+364eda20a7c3ca86197035634a0fcfd1f58cac6fa6978b9e21d61df1b8d614a1  /Users/hanati/projects/TaskMecca/TaskMecca/_task_mecca/data/backlog/archive/2026-10/000007.A-7.merge-a6-into-dev.done.md
+3b45aa5de526ee6f0d569eb634e9e80005c67cf6dd5d127795910f3c74353b5a  /Users/hanati/projects/TaskMecca/TaskMecca/_task_mecca/data/backlog/archive/2026-10/000008.A-8.root-session-workload-and-project-notifications.done.md
+ced2a3fdd7cc4aec4256d6f114cbdc91a3a9b8b14abc7d6d9179701fd26a8ad2  /Users/hanati/projects/TaskMecca/TaskMecca/_task_mecca/data/backlog/archive/2026-10/000010.A-10.controller-handoff-attempt-retargeting.done.md
+3f47e4771473bda53d3f18313c355368d4c1a337de4c02c47f5d78f0d12def4a  /Users/hanati/projects/TaskMecca/TaskMecca/_task_mecca/data/backlog/archive/2026-10/000011.A-11.project-notification-telegram-routing.done.md
+421b78b61f0f41e218bae28ed657d8457c59310ae1b5bad642b9acdb1c11e44b  /Users/hanati/projects/TaskMecca/TaskMecca/_task_mecca/data/backlog/archive/2026-10/000019.A-19.global-hub-project-management-safe-cleanup-history.done.md
+b780c1c82edeeebe9eafd9355e934ac92b14832a60a04e98bbba3ba82ce90f2f  /Users/hanati/projects/empfund/_task_mecca/data/backlog_b/archive/2026-10/000453.B-453.improve-method-transition-impact-comparison-readability.done.md
+8693a368aa3af86e4afe9ed7db04864b6e68062f20c2fd3df8ab75224de8eabb  /Users/hanati/projects/empfund/_task_mecca/data/backlog_b/archive/2026-10/000456.B-456.reproduce-original-sjm-and-isolate-migration-factors.done.md
+2f964cca658ae9bcb0ccdadc0f1a818192829fa952289105bcf0583e0bac429a  /Users/hanati/projects/TaskMecca/TaskMecca/_task_mecca/data/backlog/000014.A-14.telegram-project-prefix-and-single-id.hold.md
+
+All eight after-read hashes exactly matched these before-read hashes.
+Original canonical/runtime/lifecycle/assignment/handoff files were not written.
+Operational diagnostic used read-only Catalog, ReadLifecycleTransitions, ListAssignments, BuildLedger and handoff.BuildLedger only.
+
