@@ -46,6 +46,7 @@ var customizable = map[string]bool{
     "ROOT_PROMPT.md": true, "framework/README.md": true,
     "framework/README.en.md": true, "framework/SESSION_GUIDE.md": true,
     "framework/SESSION_GUIDE.en.md": true, "framework/collab.md": true,
+    "framework/EXECUTION_PROTOCOL.md": true, "framework/EXECUTION_PROTOCOL.en.md": true,
     "framework/_template.md": true,
 }
 
@@ -124,7 +125,7 @@ func Init(project, version string) error {
 
 func sessionInstructionPath(path string) bool {
     switch path {
-    case "ROOT_PROMPT.md", "framework/SESSION_GUIDE.md", "framework/SESSION_GUIDE.en.md", "framework/collab.md":
+    case "ROOT_PROMPT.md", "framework/SESSION_GUIDE.md", "framework/SESSION_GUIDE.en.md", "framework/collab.md", "framework/EXECUTION_PROTOCOL.md", "framework/EXECUTION_PROTOCOL.en.md":
         return true
     }
     return strings.HasPrefix(path, "framework/roles/") && strings.HasSuffix(path, ".md")

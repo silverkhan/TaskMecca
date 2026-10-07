@@ -1,16 +1,18 @@
 # Controller 역할 (`/root/controller`)
 
+## 공통 실행 체크리스트
+
+[EXECUTION_PROTOCOL.md](../EXECUTION_PROTOCOL.md)의 단일 절차를 따른다. 원본 canonical backlog/runtime의 운영 writer는 Controller다. Worker는 원본·사본 원장을 쓰거나 monitor에 등록하지 않고 실제 착수·대기·완료 및 transport 근거를 Controller에 보고한다. 원본 상태 기록은 dev 통합과 별개이며 merge까지 미루지 않는다. 배정 gate, exact native Controller 전달/재개, race·중복 처리 및 restart/finalization 체크리스트를 모두 적용한다. Root ACK/wake는 완료 조건이 아니며 CLI가 자동 통지·재개·turn 종료를 강제한다고 주장하지 않는다.
+
 ## Root와 독립적인 완료
 
 `registration_ready`를 claim한 뒤 Root의 다음 turn·응답·결과 확인을 기다리지 않고 Worker 배정, DONE/BLOCKED 검증, backlog/lifecycle 확정, 외부 원천 반영을 독립적으로 수행한다. `root-reported`는 가능한 경우의 best-effort handoff mark일 뿐 done/archive나 외부 반영의 gate가 아니다. 통지가 실패하거나 Root가 종료되어도 나머지 단계를 완료한다. 계약상 사용자 선택이 새로 필요할 때만 hold와 차이·재개 조건을 durable하게 기록한다.
 
 ## Git 통합 책임
 
-배정 전에 canonical backlog root, 원래 repository/workspace, integration target·base SHA, Worker worktree/branch와 금지 범위를 확인·전달한다. Controller만 최신 target·dirty 상태·다른 active writer를 점검하고 Worker branch를 serial merge한다. conflict나 불안전한 상태는 hold에 차이와 재개 조건을 남긴다. 완료 전 원래 repository의 지정 local integration branch가 merged SHA를 ancestry로 포함하는 근거와 필요한 PR·CI·remote/local sync를 결과에 기록한다. cleanup은 exact worktree에서 미커밋·ignored 파일을 보존해 수행하며 canonical backlog·원래 workspace·stale runtime을 쓰거나 monitor에 등록하지 않는다.
+Controller는 지정 원본 canonical backlog/runtime과 통합의 단일 운영 writer다. 원본 상태를 dev merge까지 미루지 않는다. Worker 사본 원장 쓰기·monitor 등록만 금지한다. [restart/finalization 체크리스트](../EXECUTION_PROTOCOL.md#controller-restart-and-finalization-checklist)에 따라 원본/native/handoff/recovery_queue 대조, 완료 Worker·merged PR 잔여, AC·CI·직렬 merge·local dev ancestry·설치 sync·원본 결과/lifecycle/done/archive·외부 반영·보존 cleanup·handoff applied를 끝낸다.
 
-Git integration target의 유일한 writer로서 Worker branch를 직렬 병합한다. 이후 canonical 원래 workspace의 지정 target branch가 merged SHA를 포함하는지 ancestry로 확인·기록한다. worktree 복사 backlog/runtime은 canonical 또는 monitor 대상이 아니다.
-
-배정·완료 판정은 Web·Git·Hook 유무와 무관하게 영속 lifecycle 사건으로 남긴다. 배정 확정 시 `task-mecca lifecycle record assigned <ID> <안정적-event-id> /root/controller controller_report <근거> <assignment_id>`, 완료 판정 시 `task-mecca lifecycle record completed <ID> <안정적-event-id> /root/controller controller_report <검증근거>`를 실행한다. `assigned`는 실제 Worker 착수가 아니다. 백로그 파일 전환과 사건 기록 중 하나만 성공하면 두 사실을 임의로 합치지 않고 `lifecycle list --json`과 파일 상태의 차이를 확인·후속에 기록한다. 재시도에는 같은 event ID를 사용한다.
+실제 배정은 `task-mecca lifecycle record assigned <ID> <stable-event-id> /root/controller controller_report <evidence> <assignment_id>`, 최종 완료는 `task-mecca lifecycle record completed <ID> <stable-event-id> /root/controller controller_report <evidence>`로 원본에 기록한다. 실제 started/waiting/resumed Worker 보고는 Controller가 원본에 기록한다. 같은 사건 재시도에는 같은 event ID를 사용하고 가짜 attempt·시각을 만들지 않는다.
 
 ## 목적
 
@@ -27,25 +29,7 @@ active Full Access preflight를 자동 재실행**한다. fresh probe가 `full`�
 
 ## 배분
 
-Worker를 실제로 dispatch하기 직전에는 `task-mecca runtime assign <ID> <Agent 경로> --json`으로 배정 ID와 시각을 기록하고, 반환된 `assignment_id`를 보존한다. dispatch가 반환한 runtime agent ID를 받은 즉시 `task-mecca runtime bind-assignment <assignment_id> <runtime-agent-id> --json`으로 명시적으로 연결한다. 첫 hook이 아직 없어도 배정 기록과 pending attempt를 유지하며, `doing`만으로 실제 착수를 주장하지 않는다. 명시적 연결이 실패하면 후보를 추측하지 않고 원인과 배정 ID를 작업 노트에 기록한다. 이 순서는 현재 Controller의 명시적 CLI 호출이 필요하며 Codex subagent dispatch에 자동 삽입되지 않는다.
-
-1. 연관 작업과 continuity, 선행, 변경범위 충돌, live worker 상태를 함께 본다.
-2. 서로 독립인 ready와 여유 슬롯이 있으면 같은 pass에서 가능한 슬롯을 채운다.
-3. 기존 적임 worker가 idle이면 재사용하고, 부족하면 Pokémon worker를 추가한다.
-4. dispatch 직전 `preflight --require-full-access --json`을 자동 실행해 effective Full Access를 fresh probe로 확인한다.
-5. `inspect <ID> --json`으로 여전히 todo/ready인지 확인한다.
-6. 실제 spawn 직전에 doing 전환과 Agent/변경범위를 기록한다.
-7. spawn 결과에서 **정확한 runtime agent ID**가 확인되면 즉시 해당 실행을 backlog와 binding한다.
-
-```bash
-task-mecca runtime bind-assignment <assignment_id> <runtime-agent-id> --json
-```
-
-   - 이 명령은 동일 runtime agent ID에 live attempt가 정확히 하나일 때만 성공한다.
-   - 0개 또는 여러 개면 시간 순서로 추정하지 말고 binding을 보류한다.
-   - spawn 결과에서 exact runtime agent ID를 얻지 못한 runtime에서도 임의 매핑하지 않는다.
-8. Worker에게 **backlog ID를 canonical source로 직접 읽도록 지시**한다. Controller의 짧은 목표 설명은
-   `## 작업 정의`나 `## 요건 정의서`를 대체하지 않는다.
+[Assignment checklist](../EXECUTION_PROTOCOL.md#assignment-checklist)를 한 절차로 실행한다. fresh preflight → canonical inspect → identity/scope → doing/Agent/변경범위 → `task-mecca runtime assign` 및 lifecycle assigned → 실제 dispatch → `task-mecca runtime bind-assignment` → 원본 post-inspect 순서를 지킨다. 실패 전 dispatch 중단과 실패 후 복구 기록을 구분한다. 실제 Worker started를 Controller가 기록하고 가짜 착수·attempt를 만들지 않는다.
 
 ## 계약 경계
 
@@ -121,8 +105,8 @@ Worker report를 claim한 뒤 다음 순서를 지킨다.
 → 사용자 판단 필요면 hold(user)
 → 충족 시 결과·검증 기록 + done/archive
 → 외부 원천 write-back
-→ Root 결과 보고
-→ handoff applied
+→ 보존/안전 cleanup 및 handoff finalization
+→ 선택적 Root 결과 보고
 ```
 
 각 단계 결과는 `handoff mark`로 기록한다. 특히 `backlog-finalized`, `external-synced`, `root-reported`를 구분한다.

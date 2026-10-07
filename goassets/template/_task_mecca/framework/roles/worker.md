@@ -1,16 +1,18 @@
 # Worker 역할 (`/root/controller/<pokemon>`)
 
+## 공통 실행 체크리스트
+
+[EXECUTION_PROTOCOL.md](../EXECUTION_PROTOCOL.md)의 단일 절차를 따른다. 원본 canonical backlog/runtime의 운영 writer는 Controller다. Worker는 원본·사본 원장을 쓰거나 monitor에 등록하지 않고 실제 착수·대기·완료 및 transport 근거를 Controller에 보고한다. 원본 상태 기록은 dev 통합과 별개이며 merge까지 미루지 않는다. 배정 gate, exact native Controller 전달/재개, race·중복 처리 및 restart/finalization 체크리스트를 모두 적용한다. Root ACK/wake는 완료 조건이 아니며 CLI가 자동 통지·재개·turn 종료를 강제한다고 주장하지 않는다.
+
 ## 완료 보고 경로
 
 DONE/BLOCKED 보고와 handoff는 Controller에 직접 전달한다. Root의 응답·재개·결과 확인을 기다리거나 완료 근거로 삼지 않는다. 사용자 판단이 필요하면 Controller가 durable hold를 만들 수 있게 근거와 재개에 필요한 정보를 보고한다.
 
 ## Git worktree 경계
 
-배정된 별도 worktree/branch에서만 구현한다. canonical backlog는 원래 workspace의 `_task_mecca/data/backlog/`이며 복사 backlog/runtime을 수정하거나 monitor에 등록하지 않는다. integration target을 직접 병합하지 말고 commit SHA·push 위치·검증 evidence·남은 위험을 Controller에 보고한다. conflict·dirty 상태는 hold 판단을 요청하며 cleanup은 exact worktree와 미커밋·ignored 파일 보존 상태를 보고할 뿐 파괴적으로 삭제하지 않는다.
+배정된 worktree/branch에서만 구현한다. 지정 원본 계약을 읽되 원본/사본 backlog/runtime을 쓰거나 monitor에 등록하지 않는다. integration target에 직접 merge하지 않고 commit/push/PR, 검증 및 미커밋·untracked·ignored 파일을 Controller에 보고한다. 안전 cleanup은 exact worktree와 보존 상태 확인 뒤 Controller가 수행한다.
 
-Git Worker는 배정된 별도 worktree/branch에서만 구현한다. canonical backlog는 원래 workspace의 `_task_mecca/data/backlog/`이고 stale 복사본/runtime을 monitor에 등록하지 않는다. integration target 병합은 Controller에게 보고만 한다.
-
-실제 작업을 시작할 때 `task-mecca lifecycle record started <ID> <안정적-event-id> <자신의 Agent 경로> worker_report <착수근거> <assignment_id> <attempt_id>`로 착수 사실을 기록한다. Hook을 사용할 수 없거나 승인되지 않아 attempt ID가 없으면 마지막 인자를 생략하고 실제 보고만 기록한다. 사용자를 기다리게 되면 `waiting`, 재개하면 `resumed` 사건을 각기 새 event ID로 기록한다. 단순한 `doing` 파일이나 무신호만으로 착수·종료를 주장하지 않는다. 같은 보고를 재시도할 때는 같은 event ID를 사용한다.
+실제 started/waiting/resumed는 안정적인 event ID, assignment_id 및 직접 관측한 attempt/evidence로 Controller에 보고한다. Controller가 원본 lifecycle를 기록한다. Worker는 lifecycle/handoff/runtime 파일을 직접 쓰지 않는다.
 
 ## 목적
 
@@ -55,35 +57,9 @@ Worker가 직접 canonical contract를 요약으로 덮어쓰지는 않는다.
 
 ## Controller 완료 이벤트 인계
 
-Controller가 Worker를 dispatch할 때 다음 handoff envelope를 함께 받아야 한다.
+[Worker transport checklist](../EXECUTION_PROTOCOL.md#worker-doneblocked-transport-checklist)를 따른다. dispatch envelope의 semantic role과 exact native target, attempt/runtime agent ID, provider/session 및 contract hash를 받는다. 종료 직전 fresh native 조회 후 running은 `collaboration.send_message`, completed는 원본 fresh Full Access preflight 후 `collaboration.followup_task`로 실제 재개한다. 같은 report/handoff ID로 bounded race 확인과 중복 보호를 수행하고, 종료 전 실제 transport/resume 증거를 Controller에 보낸다. 실패/unknown이면 원인·남은 작업·재개조건 및 보존 보고서 경로를 남긴다. Root 보고나 Worker final만으로 성공을 선언하지 않는다.
 
-- 현재 `controller_attempt_id`와 runtime agent identity
-- provider / session scope
-- dispatch 시점의 `contract_sha256`
-
-Worker는 DONE/BLOCKED 보고를 만든 뒤 Controller가 polling해서 발견할 것을 기대하지 않는다. 보고 JSON은 `_task_mecca/.runtime/handoffs/reports/` 같은 ephemeral 경로에 저장하고, 다음처럼 handoff를 준비한다.
-
-```bash
-task-mecca handoff prepare <ID> \
-  --event worker-done \
-  --from <worker-agent-path> \
-  --to /root/controller \
-  --source-attempt <worker-attempt-id> \
-  --target-attempt <controller-attempt-id> \
-  --contract-sha256 <dispatch-time-contract-sha256> \
-  --report-file <report.json> \
-  --json
-```
-
-BLOCKED면 `--event worker-blocked`를 사용한다.
-
-- `message_running`: 현재 Controller turn에 report/handoff ID를 전달한다.
-- `resume_completed`: fresh Full Access preflight 후 동일 Controller를 runtime 방식으로 재개한다.
-- `hold`: 새 Controller를 임의 생성하지 않는다. dispatch 실패 evidence와 남은 작업을 남긴다.
-
-실제 전달 결과는 `handoff mark <HANDOFF_ID> --step dispatch --result ...`로 기록한다. Claude background Worker처럼 agent discovery가 제한될 수 있으므로 Controller를 종료 시점에 다시 찾는 방식을 기본으로 삼지 않고, **spawn 시 전달받은 identity를 사용**한다.
-
-Worker의 DONE 선언이나 handoff 전달 성공 자체는 backlog `done`의 근거가 아니다. 최종 수용 기준 검증과 lifecycle write는 Controller가 수행한다.
+원본 handoff prepare/mark 및 lifecycle write는 Controller가 단일 writer로 수행한다. Worker는 필요하면 /tmp 보고서를 보존해 전달한다. native 기능이 없으면 capability/evidence와 fallback 제약을 명시하며 자동 resume이나 CLI 강제 종료를 주장하지 않는다. Worker의 DONE이나 transport 성공은 backlog done의 근거가 아니며 Controller가 계약 검증과 finalization을 수행한다.
 
 ## 완료 보고
 
@@ -117,9 +93,8 @@ Worker는 남은 구현이 있는데 자기 자신에게 follow-up을 보내고 
 
 ## Handoff 경쟁 조건
 
-`worker_done`/`worker_blocked`는 Controller의 현재 runtime identity로 한 번만 전달한다. send 결과가 불확실하면 같은 handoff ID의 dispatch evidence를 확인해 중복 전송하지 않는다. Controller가 completed이면 capability와 stale identity를 확인하고 새 turn 직전 fresh Full Access preflight 뒤 같은 identity를 resume한다. resume 불가 또는 stale/unknown이면 새 Controller를 추측하지 말고 hold evidence와 재개 조건을 남긴다. Root ACK, UI quiet/stale, 자기 자신 follow-up은 전달 증거가 아니다.
+[공통 transport checklist](../EXECUTION_PROTOCOL.md#worker-doneblocked-transport-checklist)의 종료 직전 fresh 조회, running message/completed followup_task, bounded race 확인과 stable report ID 중복 보호를 따른다. 실제 transport evidence를 남기고 실패/unknown을 성공으로 처리하지 않는다.
 
 ## Liveness
 
-런타임/orchestration layer가 지원하면 `.runtime/agents/*.json` heartbeat를 갱신할 수 있다. worker 자신의 LLM 행동을
-heartbeat 유지에 낭비하지 않는다. Web UI의 quiet/stale 경고만으로 작업을 중단하거나 상태를 변하지 않는다.
+runtime/orchestration layer가 지원하면 Controller가 지정 원본 registry의 heartbeat를 관리한다. Worker는 보고만 하며 heartbeat 유지에 LLM 행동을 낭비하거나 원본/사본 runtime을 쓰지 않는다. Web UI quiet/stale 경고만으로 중단·상태 전환하지 않는다.
