@@ -25,6 +25,8 @@ CUSTOMIZABLE_FILES = {
     "framework/README.en.md",
     "framework/SESSION_GUIDE.md",
     "framework/SESSION_GUIDE.en.md",
+    "framework/EXECUTION_PROTOCOL.md",
+    "framework/EXECUTION_PROTOCOL.en.md",
     "framework/collab.md",
     "framework/_template.md",
 }

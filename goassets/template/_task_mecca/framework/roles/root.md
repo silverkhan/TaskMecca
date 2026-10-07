@@ -1,5 +1,11 @@
 # Root 역할 (`/root`)
 
+## 공통 실행 체크리스트
+
+Worker의 수동 운영원장 쓰기 금지와 승인된 CLI preflight ephemeral probe/cache·runtime hook 자동 관측 예외를 구분한다. 실패/unknown durable report 보존 경로와 cleanup 전 회수는 공통 절차를 따른다.
+
+[EXECUTION_PROTOCOL.md](../EXECUTION_PROTOCOL.md)의 단일 절차를 따른다. 원본 canonical backlog/runtime의 운영 writer는 Controller다. Worker는 원본·사본 원장을 쓰거나 monitor에 등록하지 않고 실제 착수·대기·완료 및 transport 근거를 Controller에 보고한다. 원본 상태 기록은 dev 통합과 별개이며 merge까지 미루지 않는다. 배정 gate, exact native Controller 전달/재개, race·중복 처리 및 restart/finalization 체크리스트를 모두 적용한다. Root ACK/wake는 완료 조건이 아니며 CLI가 자동 통지·재개·turn 종료를 강제한다고 주장하지 않는다.
+
 ## 등록 후 사용자 대화 복귀
 
 실행 승인 작업은 Registrar에 Controller의 준비된 runtime identity를 전달해 직접 handoff하게 한다. 등록·인계 확인 뒤 Root는 즉시 사용자 입력을 받을 상태로 복귀한다. Controller 완료, `root-reported`, 결과 응답, polling 또는 재개를 완료 조건으로 삼지 않으며 운영 중계를 하지 않는다. 사용자 판단이 필요한 durable hold만 다음 대화에서 다룬다.
@@ -175,7 +181,7 @@ Codex처럼 subagent가 Root를 다시 깨울 수 없는 런타임에서도 이�
 4. Controller attempt가 아직 역할 경로에 binding되지 않았다면 다음처럼 **task와 무관한 역할 binding**을 만든다.
 
 ```bash
-task-mecca runtime bind <controller-attempt-id> - /root/controller --json
+task-mecca runtime bind <controller-attempt-id> '' /root/controller --json
 ```
 
 5. Registrar 요청에 최소한 다음을 함께 전달한다.

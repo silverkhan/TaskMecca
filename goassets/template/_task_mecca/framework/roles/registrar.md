@@ -1,5 +1,11 @@
 # Registrar 역할 (`/root/registrar`)
 
+## 공통 실행 체크리스트
+
+Worker의 수동 운영원장 쓰기 금지와 승인된 CLI preflight ephemeral probe/cache·runtime hook 자동 관측 예외를 구분한다. 실패/unknown durable report 보존 경로와 cleanup 전 회수는 공통 절차를 따른다.
+
+[EXECUTION_PROTOCOL.md](../EXECUTION_PROTOCOL.md)의 단일 절차를 따른다. 원본 canonical backlog/runtime의 운영 writer는 Controller다. Worker는 원본·사본 원장을 쓰거나 monitor에 등록하지 않고 실제 착수·대기·완료 및 transport 근거를 Controller에 보고한다. 원본 상태 기록은 dev 통합과 별개이며 merge까지 미루지 않는다. 배정 gate, exact native Controller 전달/재개, race·중복 처리 및 restart/finalization 체크리스트를 모두 적용한다. Root ACK/wake는 완료 조건이 아니며 CLI가 자동 통지·재개·turn 종료를 강제한다고 주장하지 않는다.
+
 등록 파일을 만든 직후 `task-mecca lifecycle record registered <ID> <안정적-event-id> /root/registrar registrar_report`로 등록 사건을 `_task_mecca/data/lifecycle/`에 남긴다. 같은 등록을 재시도할 때는 동일한 event ID를 사용한다. 기록이 실패하면 완료로 인계하지 않고 원인과 파일 상태를 Controller에 알린다.
 
 ## 목적

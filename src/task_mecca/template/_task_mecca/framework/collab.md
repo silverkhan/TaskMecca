@@ -1,14 +1,20 @@
 # Task Mecca 협업 규약
 
+## 공통 실행 체크리스트
+
+Worker의 수동 운영원장 쓰기 금지와 승인된 CLI preflight ephemeral probe/cache·runtime hook 자동 관측 예외를 구분한다. 실패/unknown durable report 보존 경로와 cleanup 전 회수는 공통 절차를 따른다.
+
+[EXECUTION_PROTOCOL.md](EXECUTION_PROTOCOL.md)의 단일 절차를 따른다. 원본 canonical backlog/runtime의 운영 writer는 Controller다. Worker는 원본·사본 원장을 쓰거나 monitor에 등록하지 않고 실제 착수·대기·완료 및 transport 근거를 Controller에 보고한다. 원본 상태 기록은 dev 통합과 별개이며 merge까지 미루지 않는다. 배정 gate, exact native Controller 전달/재개, race·중복 처리 및 restart/finalization 체크리스트를 모두 적용한다. Root ACK/wake는 완료 조건이 아니며 CLI가 자동 통지·재개·turn 종료를 강제한다고 주장하지 않는다.
+
 ## Root 대화와 Controller 완료의 분리
 
 실행 승인 등록 뒤 Registrar는 prepared Controller identity에 직접 `registration_ready`를 전달한다. Root는 인계 확인 후 즉시 사용자-facing 대화로 복귀하고, 완료 결과·응답·polling을 기다리거나 운영 중계자가 되지 않는다. Controller는 Worker DONE/BLOCKED를 직접 받아 검증, backlog/lifecycle 확정, 외부 원천 반영을 독립적으로 마친다. Root 통지는 선택적 best-effort이며 `root-reported` 실패·미실행은 완료를 막지 않는다. 사용자 판단이 필요할 때만 Controller가 durable hold와 구체적 재개 조건을 남긴다.
 
 ## Git worktree 통합 절차
 
-배정 전 Controller는 canonical backlog root, 원래 repository/workspace, integration branch·base SHA, Worker worktree·branch와 금지 범위를 확정해 전달한다. Worker는 격리 checkout에서 commit/push/evidence만 보고하고 복사 backlog/runtime을 수정하거나 monitor에 등록하지 않는다. Controller만 최신 target·dirty·다른 active writer 확인 후 serial merge한다. conflict 또는 불안전한 tree는 hold와 재개 조건을 남긴다. DONE 전 원래 repository의 지정 local integration branch가 merged SHA를 ancestry로 포함하는 근거 및 필요한 PR·CI·remote/local sync를 기록한다. cleanup은 exact worktree에서만 미커밋·ignored 파일을 보존하며 수행하고 원래 workspace·canonical data를 파괴하지 않는다.
+Controller는 지정 원본 canonical backlog/runtime을 운영 writer로 즉시 갱신한다. Worker 구현 worktree의 사본 원장 생성·수정·monitor 등록은 금지한다. 원본 상태 기록과 지정 dev 통합은 별개다. [공통 절차](EXECUTION_PROTOCOL.md)에 따라 canonical root, 원래 repository/workspace, integration branch/base SHA, Worker worktree/branch와 scope를 기록한다. Controller가 최신 target·dirty·다른 writer를 점검하고 직렬 merge, local dev ancestry, 설치 sync와 안전 cleanup까지 완료한다. 사용자 미커밋·untracked·ignored 및 원본 데이터를 보존한다.
 
-Task Mecca는 **Markdown backlog + Git lifecycle**을 durable source of truth로 사용한다. `collab_tools.py`는
+Task Mecca는 **Markdown backlog + Git lifecycle**을 durable source of truth로 사용한다. standalone `task-mecca` runtime은
 원장을 읽고 검증하고 scheduling snapshot과 **local read-only Web UI**를 제공한다. agent 생성·메시지·대기는
 Codex/Claude 등 현재 런타임의 협업 기능이 담당한다.
 
@@ -112,13 +118,28 @@ Simple Task는 작은 작업이라는 이유만으로 정하는 것이 아니라
 
 등록 이후 Root는 routine scheduling과 구현 완료를 기다리는 polling으로 사용자 대화를 막지 않는다.
 
+### 이벤트 기반 인계
+
+실행까지 승인된 작업은 등록 이후 Root의 다음 사용자 턴을 기다리지 않는다. Root는 Registrar를 실행하기 전에 재사용 가능한 `/root/controller`의 정확한 runtime identity를 확보하고 Registrar에 함께 전달한다. 이후:
+
+- Registrar는 등록·검증 성공 후 `task-mecca handoff prepare`로 `registration_ready` 이벤트를 만들고 Controller에 직접 전달한다.
+- Worker는 DONE/BLOCKED 보고 시 `worker_done`/`worker_blocked` 이벤트를 만들고 Controller에 직접 전달한다.
+- 대상 Controller가 `running`이면 현재 turn에 message를 전달하고, `completed`이며 runtime이 resume을 지원하면 **새 turn 직전 fresh Full Access preflight** 후 같은 identity를 재개한다.
+- `target_missing`, `target_ambiguous`, user-cancelled, permission failure를 성공 인계로 기록하지 않는다.
+- `task-mecca handoff`는 transport를 직접 실행하지 않는다. 실제 `send_message` / `followup_task` / Claude `SendMessage`는 현재 Agent runtime이 수행하고, Task Mecca는 target resolution·계약 snapshot·claim·결과 evidence를 원장화한다.
+- handoff evidence는 `_task_mecca/.runtime/handoffs/events.jsonl`의 ephemeral append-only journal에 남긴다. canonical 작업 계약과 결과는 계속 backlog/Git 원장이 기준이다.
+- `task-mecca handoff capability show <provider> --json`으로 현재 capability baseline/evidence를 확인한다. runtime smoke test로 확인한 결과는 `task-mecca handoff capability record <provider> <capability> <supported|unsupported|unknown> --evidence <근거> --json`으로 기록하며, 저장된 runtime evidence가 builtin baseline보다 우선한다.
+- Root/Worker가 다음 단계를 깨우기 위해 polling하거나 heartbeat를 반복하는 구조는 사용하지 않는다.
+
+Runtime observability가 없어 exact target identity를 안전하게 확인할 수 없으면 autonomous handoff가 가능한 것처럼 가장하지 않는다. 그 경우 현재 Root turn에서 Controller 인계까지 완료하는 기존 fallback을 사용하고 제한을 명시한다.
+
 ## 2. Subagent 실행 전 effective Full Access gate
 
 Task Mecca는 **권한이 부족한 상태에서 worker를 먼저 띄워 보고 실패를 관찰하는 방식**을 사용하지 않는다.
 새 세션에서 실행형 작업 요청을 인지하면 Root는 긴 요구사항 정제나 subagent 생성보다 먼저 다음 gate를 실행한다.
 
 ```bash
-python _task_mecca/framework/collab_tools.py preflight --require-full-access --json
+task-mecca preflight --require-full-access --json
 ```
 
 `access.orchestration_ready == true`일 때만 위임을 시작한다. `restricted` 또는 `unknown`이면:
@@ -403,8 +424,8 @@ handoff는 같은 ID를 재사용해 send/claim/dispatch 결과를 기록한다.
 
 ## 9. Worker identity
 
-Worker 이름은 현재 task가 아니라 재사용되는 identity다. 신규 worker는 `collab_tools.py`의
-`WORKER_ALIAS_POLICY` 정본 pool을 사용한다.
+Worker 이름은 현재 task가 아니라 재사용되는 identity다. 신규 worker는 `task-mecca worker-name`이 제공하는
+정본 포켓몬 pool을 사용한다.
 
 ```text
 /root/controller/kkobugi
@@ -446,9 +467,9 @@ Worker의 DONE 선언만으로 완료하지 않는다. Controller가 해당 task
 사람용 기본 인터페이스는 terminal TUI가 아니라 local read-only Web UI다.
 
 ```bash
-python _task_mecca/framework/collab_tools.py
+task-mecca
 # 또는
-python _task_mecca/framework/collab_tools.py web
+task-mecca web
 ```
 
 기본 주소는 `http://127.0.0.1:8765`다. 포트가 사용 중이면 인접 포트를 선택한다.
