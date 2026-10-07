@@ -215,6 +215,67 @@ func TestOperationMonitorScansAllProjectsWithoutBrowserSubscription(t *testing.T
 	runOperationMonitor(ctx, primary)
 }
 
+func TestOperationMonitorExcludesPausedProjectWithoutRemovingIt(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	t.Setenv("TASK_MECCA_HOME", t.TempDir())
+	primary := testOperationProject(t)
+	paused := testOperationProject(t)
+	if err := maintenance.RegisterProject(primary); err != nil {
+		t.Fatal(err)
+	}
+	if err := maintenance.RegisterProject(paused); err != nil {
+		t.Fatal(err)
+	}
+	if err := maintenance.SetProjectMonitoring(paused, false); err != nil {
+		t.Fatal(err)
+	}
+	projects := operationProjects(primary)
+	if len(projects) != 1 || projects[0] != primary {
+		t.Fatalf("monitor targets=%v; paused project must stay registered but be excluded", projects)
+	}
+	if _, err := os.Stat(paused); err != nil {
+		t.Fatalf("pausing monitoring must preserve project folder: %v", err)
+	}
+}
+
+func TestOperationMonitorDoesNotReAddPausedMissingOrRemovedPrimary(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	t.Setenv("TASK_MECCA_HOME", t.TempDir())
+
+	paused := testOperationProject(t)
+	if err := maintenance.RegisterProject(paused); err != nil {
+		t.Fatal(err)
+	}
+	if err := maintenance.SetProjectMonitoring(paused, false); err != nil {
+		t.Fatal(err)
+	}
+	if got := operationProjects(paused); len(got) != 0 {
+		t.Fatalf("paused primary resurrected as monitor target: %v", got)
+	}
+
+	missing := testOperationProject(t)
+	if err := maintenance.RegisterProject(missing); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Rename(missing, missing+"-moved"); err != nil {
+		t.Fatal(err)
+	}
+	if got := operationProjects(missing); len(got) != 0 {
+		t.Fatalf("missing primary resurrected as monitor target: %v", got)
+	}
+
+	removed := testOperationProject(t)
+	if err := maintenance.RegisterProject(removed); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := maintenance.RemoveProject(removed); err != nil {
+		t.Fatal(err)
+	}
+	if got := operationProjects(removed); len(got) != 0 {
+		t.Fatalf("removed primary resurrected as monitor target: %v", got)
+	}
+}
+
 func TestOperationDoingAssignmentWithoutHookIsNotDeclaredDead(t *testing.T) {
 	project := testOperationProject(t)
 	path := filepath.Join(project, "_task_mecca", "data", "backlog", "000005.A-5.assigned.doing.md")

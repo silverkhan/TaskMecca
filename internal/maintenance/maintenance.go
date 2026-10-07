@@ -39,6 +39,11 @@ type Project struct {
 
 type registry struct {
     Projects []Project `json:"projects"`
+    // RegisterProject is also used by ordinary Web startup. Preserve Hub
+    // management state so that registration cannot reactivate a paused or
+    // removed monitoring target.
+    Paused []string `json:"paused_projects,omitempty"`
+    History []RemovalRecord `json:"removal_history,omitempty"`
 }
 
 type VersionInfo struct {

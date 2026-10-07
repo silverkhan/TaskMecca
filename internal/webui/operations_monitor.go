@@ -328,13 +328,40 @@ func deliverOperationIncidents(project string, journal operationJournal) {
 func operationProjects(primary string) []string {
 	seen := map[string]bool{}
 	projects := []string{}
-	for _, item := range maintenance.ListProjects() {
-		if item.Path != "" && !seen[item.Path] {
+	primaryKnown := false
+	managed, err := maintenance.ManagedProjects()
+	if err == nil {
+		for _, item := range managed {
+			if filepath.Clean(item.Path) == filepath.Clean(primary) {
+				primaryKnown = true
+			}
+			// A registry entry may be retained for safe removal history or be
+			// explicitly paused.  Neither is an active monitoring target, and
+			// scanning it would make a removed/stopped project look live again.
+			if !item.Monitoring || item.Presence != "present" || item.Path == "" || seen[item.Path] {
+				continue
+			}
 			seen[item.Path] = true
 			projects = append(projects, item.Path)
 		}
+		// A removed project is no longer managed, but its durable removal
+		// history still makes it a known non-target.  Do not resurrect it just
+		// because an old Web process still has it as its primary path.
+		if !primaryKnown {
+			if history, historyErr := maintenance.RemovalHistory(); historyErr == nil {
+				for _, item := range history {
+					if filepath.Clean(item.Path) == filepath.Clean(primary) {
+						primaryKnown = true
+						break
+					}
+				}
+			}
+		}
 	}
-	if primary != "" && !seen[primary] {
+	// Preserve the old fallback only for an unregistered primary project.
+	// Registered-but-paused/missing and removed projects intentionally stay
+	// outside the monitor's collection.
+	if primary != "" && !primaryKnown && !seen[primary] {
 		projects = append(projects, primary)
 	}
 	sort.Strings(projects)
