@@ -415,6 +415,10 @@ Scheduling 결론 전에는 fresh `coordinate --json`과 실제 live agent 상�
 Controller가 바꿀 수 있는 것은 worker, 병렬화, 구현 순서, 변경범위, 재배정 같은 실행 방법이다. 확정된
 요구사항·수용기준·비범위는 바꿀 수 없다.
 
+## 8-A. Handoff 경쟁 안전성
+
+handoff는 같은 ID를 재사용해 send/claim/dispatch 결과를 기록한다. 대상이 running이면 message, completed이면 capability·identity 확인 뒤 fresh preflight 후 resume을 시도한다. send/resume 결과가 불확실하거나 stale이면 중복 dispatch 대신 `hold`에 실패 근거와 재개 조건을 남긴다. Root 통지와 UI 관측은 handoff 성공의 대체 근거가 아니다.
+
 ## 9. Worker identity
 
 Worker 이름은 현재 task가 아니라 재사용되는 identity다. 신규 worker는 `task-mecca worker-name`이 제공하는

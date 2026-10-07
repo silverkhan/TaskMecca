@@ -115,6 +115,10 @@ Worker는 남은 구현이 있는데 자기 자신에게 follow-up을 보내고 
 현재 turn 종료 시 자신이 수정한 범위에 미커밋 변경이 남아 있다면 **그 사실과 변경 파일을 반드시 Controller에 명시**한다.
 "후속 작업을 나에게 전달했다", "다음 turn에서 계속한다" 같은 문장은 실제 fresh turn 생성의 증거가 아니며 DONE/BLOCKED 상태를 대체하지 않는다.
 
+## Handoff 경쟁 조건
+
+`worker_done`/`worker_blocked`는 Controller의 현재 runtime identity로 한 번만 전달한다. send 결과가 불확실하면 같은 handoff ID의 dispatch evidence를 확인해 중복 전송하지 않는다. Controller가 completed이면 capability와 stale identity를 확인하고 새 turn 직전 fresh Full Access preflight 뒤 같은 identity를 resume한다. resume 불가 또는 stale/unknown이면 새 Controller를 추측하지 말고 hold evidence와 재개 조건을 남긴다. Root ACK, UI quiet/stale, 자기 자신 follow-up은 전달 증거가 아니다.
+
 ## Liveness
 
 런타임/orchestration layer가 지원하면 `.runtime/agents/*.json` heartbeat를 갱신할 수 있다. worker 자신의 LLM 행동을

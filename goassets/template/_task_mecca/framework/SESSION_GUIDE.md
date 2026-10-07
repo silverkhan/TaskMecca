@@ -316,6 +316,10 @@ TASK_MECCA_STALE_CRITICAL_SECONDS=3600
 - `stale != dead`. 경고만으로 자동 hold/done 처리하지 않는다.
 - Controller는 실제 live agent 상태를 확인하고 필요하면 재배정한다.
 
+## 10. handoff 재개 확인
+
+최신 smoke evidence `run-c644efc406c0ceba` / turn `01a11420-7e64-7b81-85ec-197e563a16a0`는 Codex capability 판단의 근거다. completed Controller를 재개할 때는 stale identity 여부와 handoff claim 상태를 먼저 확인하고, 새 turn 직전에 fresh Full Access preflight를 실행한다. send가 이미 성공했거나 결과가 불확실하면 같은 handoff ID의 journal을 확인한다. 새 Controller/Worker를 추측해 중복 dispatch하지 않으며, unsupported·stale·unknown은 hold와 재개 조건으로 남긴다.
+
 ## 10. 세션 재개
 
 같은 세션이나 resume에서 이미 문서를 읽었다면 매 사용자 메시지마다 bootstrap을 반복하지 않는다. 다만 다음 경우
