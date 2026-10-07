@@ -806,12 +806,32 @@ function renderContentUpdatePrompt() {
   $('#contentUpdateRefreshBtn')?.addEventListener('click',refreshVisibleContent);
 }
 
+let liveListRefreshScheduled=false;
+function isLiveBacklogPage() {
+  return Boolean(state.project && state.view==='backlog' && !state.detail && state.listPage===1);
+}
+function updateLiveListRelativeTimes() {
+  if(!isLiveBacklogPage())return;
+  document.querySelectorAll('.live-updated').forEach(el=>{el.textContent=ago(el.dataset.updatedAt)});
+}
+function scheduleLiveListRefresh() {
+  if(liveListRefreshScheduled)return;
+  liveListRefreshScheduled=true;
+  const query=listQueryString();
+  queueMicrotask(()=>{
+    liveListRefreshScheduled=false;
+    if(!isLiveBacklogPage() || query!==listQueryString())return;
+    preserveViewportAndFocus(()=>refreshList(true));
+  });
+}
+
 function markContentUpdate(reason='content',changes=[]) {
   if(!state.project)return;
   if(state.view!=='backlog'){
     queueMicrotask(()=>refresh());
     return;
   }
+  if(isLiveBacklogPage()){ scheduleLiveListRefresh(); return; }
   const wasPending=state.pendingContentUpdate;
   const previousReason=state.pendingContentReason;
   state.pendingContentUpdate=true;
@@ -2715,7 +2735,7 @@ function listView() {
     const taskMeta=[task.source?.label?sourceLink(task.source,true):'',...visibleTags.map(tag=>tagChip(tag,true)),hiddenTags.length?`<span class="tag-overflow" title="${esc(hiddenTags.join(' · '))}">+${hiddenTags.length}</span>`:''].filter(Boolean).join('');
     const updated=updatedAt(task);
     const alias=(task.agent||'').split('/').pop()||'-';
-    return `<div class="task-row ${i===state.selectedIndex?'keyboard-selected':''}" data-id="${esc(task.id)}" data-row-index="${i}" tabindex="-1"><div class="task-id">${esc(task.id)}</div><div class="task-main"><div class="task-mobile-id">${esc(task.id)}</div><div class="task-title">${esc(titleOf(task))}</div>${taskMeta?`<div class="task-meta-row">${taskMeta}</div>`:''}${previewLine?`<div class="task-preview">${esc(previewLine)}</div>`:''}</div><div class="state-col"><span class="status ${esc(task.state)}">${esc(stateLabel(task.state))}</span>${statusSummary?`<div class="task-state-summary">${esc(statusSummary)}</div>`:''}${['quiet','stale','worker_missing'].includes(h)?`<div class="task-sub">${esc(healthLabel(h))}</div>`:''}</div><div class="task-agent"><div>${esc(alias)}</div>${task.archive_month?`<div class="task-sub">archive/${esc(task.archive_month)}</div>`:''}</div><div class="task-active timer live-timer" data-id="${esc(task.id)}">${time}</div><div class="task-updated" title="${esc(dateTimeLabel(updated))}"><strong>${esc(ago(updated))}</strong><span>${esc(dateTimeLabel(updated,true))}</span></div><div class="chev">›</div></div>`;
+    return `<div class="task-row ${i===state.selectedIndex?'keyboard-selected':''}" data-id="${esc(task.id)}" data-row-index="${i}" tabindex="-1"><div class="task-id">${esc(task.id)}</div><div class="task-main"><div class="task-mobile-id">${esc(task.id)}</div><div class="task-title">${esc(titleOf(task))}</div>${taskMeta?`<div class="task-meta-row">${taskMeta}</div>`:''}${previewLine?`<div class="task-preview">${esc(previewLine)}</div>`:''}</div><div class="state-col"><span class="status ${esc(task.state)}">${esc(stateLabel(task.state))}</span>${statusSummary?`<div class="task-state-summary">${esc(statusSummary)}</div>`:''}${['quiet','stale','worker_missing'].includes(h)?`<div class="task-sub">${esc(healthLabel(h))}</div>`:''}</div><div class="task-agent"><div>${esc(alias)}</div>${task.archive_month?`<div class="task-sub">archive/${esc(task.archive_month)}</div>`:''}</div><div class="task-active timer live-timer" data-id="${esc(task.id)}">${time}</div><div class="task-updated" title="${esc(dateTimeLabel(updated))}"><strong class="live-updated" data-updated-at="${esc(updated)}">${esc(ago(updated))}</strong><span>${esc(dateTimeLabel(updated,true))}</span></div><div class="chev">›</div></div>`;
   }).join('')}</div>`:`<div class="empty">${esc(t('noMatches'))}</div>`}`}`;
 }
 
@@ -3680,7 +3700,7 @@ function listQueryString() {
   return params.toString();
 }
 
-async function refreshList() {
+async function refreshList(preserveSelection=false) {
   if(!state.project)return;
   if(listRefreshInFlight){
     listRefreshQueued=true;
@@ -3688,16 +3708,21 @@ async function refreshList() {
   }
   const targetProject=state.project;
   const targetBacklog=state.backlog;
+  const targetQuery=listQueryString(), targetView=state.view, targetDetail=state.detail;
+  const selectedID=preserveSelection?state.listData?.items?.[state.selectedIndex]?.id:null;
+  const isCurrent=()=>targetProject===state.project && targetBacklog===state.backlog && targetQuery===listQueryString() && targetView===state.view && targetDetail===state.detail;
   listRefreshInFlight=(async()=>{
     try {
-      const r=await fetch('/api/backlog/tasks?'+listQueryString(),{cache:'no-store'});
+      const r=await fetch('/api/backlog/tasks?'+targetQuery,{cache:'no-store'});
       if(!r.ok){
         let detail=''; try { const body=await r.json(); detail=body.error||''; } catch(_) {}
         throw new Error(detail||`HTTP ${r.status}`);
       }
       const data=await r.json();
-      if(targetProject!==state.project||targetBacklog!==state.backlog)return;
+      if(!isCurrent())return;
       state.listData=data;
+      const selectedIndex=(data.items||[]).findIndex(task=>task.id===selectedID);
+      if(selectedIndex>=0)state.selectedIndex=selectedIndex;
       state.loadError='';
       state.lastFetch=Date.now();
       state.listPage=Math.max(1,Number(data.page)||1);
@@ -3712,7 +3737,7 @@ async function refreshList() {
       ensureAttentionStream();
       if(state.view==='backlog')render();
     } catch(e) {
-      if(targetProject!==state.project)return;
+      if(!isCurrent())return;
       state.loadError=String(e?.message||e||'Unknown error');
       $('#connectionDot').style.background='var(--danger)';
       if(!state.listData)render();
@@ -4107,6 +4132,7 @@ window.addEventListener('resize',()=>{
 window.addEventListener('popstate',()=>route(true));
 setInterval(()=>{
   const data=currentProjectData();
+  updateLiveListRelativeTimes();
   if(data){
     $('#snapshotAge').textContent=`${t('updated')} ${ago(new Date(state.lastFetch).toISOString())}`;
     const byID={};
