@@ -42,6 +42,11 @@ task-mecca init
 
 초기화는 Task Mecca framework와 운영 문서를 설치합니다. 실제 backlog는 첫 작업이 등록될 때 생성됩니다.
 
+
+### 운영 지침 업데이트
+
+설치 후 현재 원본의 `_task_mecca/framework/EXECUTION_PROTOCOL.md`와 역할 문서를 함께 적용합니다. 기존 설치는 지원되는 migration 흐름으로 갱신하고, 사용자 수정 managed 문서는 백업·동의 절차를 따릅니다. `data/`와 `.runtime/`을 배포 템플릿으로 덮어쓰지 않습니다. 지침 변경 뒤 Root뿐 아니라 재사용 Controller/Worker도 새 배정 전에 변경된 지침을 다시 읽습니다. canonical 원장은 원본에 유지하고 구현 worktree 사본은 등록하지 않습니다.
+
 ### 3. 사용하는 LLM 세션을 Task Mecca Root로 활성화
 
 프로젝트 초기화가 끝나면 **같은 프로젝트 루트에서 Codex, Claude Code 등 자신이 사용하는 Agent/LLM 대화 세션을 엽니다.**

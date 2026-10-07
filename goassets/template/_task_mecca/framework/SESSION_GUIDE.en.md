@@ -1,5 +1,11 @@
 # Task Mecca Session Guide
 
+## Shared execution checklist
+
+Distinguish forbidden manual Worker operational ledger writes from authorized CLI preflight ephemeral probe/cache and automatic runtime hook observations. Follow the shared protocol for durable failure/unknown report retention and retrieval before cleanup.
+
+The [execution protocol](EXECUTION_PROTOCOL.en.md) defines the single canonical writer, ordered assignment gates, exact native Controller message/resume transport, race and duplicate handling, and restart/finalization checks. The Controller writes the original canonical backlog/runtime as facts occur, independently of dev integration. Workers report evidence and do not write either the original or copied backlog/runtime. Root ACK/wake is never a completion gate. These are agent procedures, not CLI enforced automatic notification, resume, or turn termination.
+
 ## Root return and independent completion after registration
 
 An execution-authorized registration hands off directly to the prepared Controller identity. Once registration and handoff are confirmed, Root immediately returns to receiving user input and does not wait for, poll, relay, or require an acknowledgement of Controller completion. The Controller independently finishes DONE/BLOCKED verification, durable ledger finalization, and external updates. `root-reported` is a best-effort record when a result can be announced, not a completion gate; a failed notification or no new Root turn never blocks done. If user judgment is needed, the Controller records a durable hold and resume condition for the next Root conversation.
@@ -21,7 +27,6 @@ task-mecca web
 ```
 
 `task-mecca web` starts a user-level singleton Web service in the background and opens the browser. The default port is `18765`; Task Mecca does not silently increment to another port. If the Web service is already running, the existing instance and URL are reused. With the default `--host auto`, Task Mecca serves local HTTP on `127.0.0.1:18765` and, when Tailscale is detected, directly serves HTTPS on the Tailscale interface using the same port. On Windows/Linux, the local Web service becomes available first while Tailscale HTTPS certificate setup finishes in the background, so a slow first certificate provision does not turn local startup into a false failure. The remote URL is `https://<machine>.<tailnet>.ts.net:18765`. Tailscale Serve is not required. Use `--host <ip>` or `--port <port>` to override explicitly. The dashboard is read-only and shows backlog state, subagent workload, lifecycle timing, Needs Attention, and access observations.
-
 
 Web service controls:
 
@@ -51,7 +56,6 @@ Page size defaults to **Auto** and is calculated from viewport height and measur
 Keyboard navigation: `↑/↓`, `Enter/→`, `←/Esc`, `/`, and `PgUp/PgDn`.
 
 The top bar includes a **Language** dropdown. `한국어` and `English` are currently supported. The selected language is persisted in `localStorage`. UI text, generated states/messages, controls, and the User Manual follow the selection. Backlog Markdown authored by users is never machine-translated. Additional languages can be added through the language registry and matching localized manual files.
-
 
 ## 2. Activate the Root session
 
@@ -112,7 +116,8 @@ Execution-authorized work must not wait for another Root user turn after Registr
 - Worker directly messages or resumes Controller when reporting DONE/BLOCKED.
 - Resuming a completed agent starts a new turn and therefore requires a fresh Full Access preflight.
 - A message to a currently running agent is distinct from resuming a completed agent.
-- Missing, ambiguous, cancelled, or permission-blocked targets are not recorded as successful handoffs.\n- Use `task-mecca handoff capability show <provider> --json`; runtime smoke-test evidence recorded with `capability record` overrides builtin baselines, so dispatch does not rely on provider names alone.
+- Missing, ambiguous, cancelled, or permission-blocked targets are not recorded as successful handoffs.
+- Use `task-mecca handoff capability show <provider> --json`; runtime smoke-test evidence recorded with `capability record` overrides builtin baselines, so dispatch does not rely on provider names alone.
 - See `collab.md` and `roles/*.md` for the canonical protocol.
 
 `_task_mecca/.runtime/handoffs/events.jsonl` is ephemeral orchestration evidence and does not replace the backlog/Git contract.
@@ -183,16 +188,13 @@ Registrar never changes the lane chosen by Root.
 
 Every real worker dispatch must follow:
 
+Follow the complete [shared assignment checklist](EXECUTION_PROTOCOL.en.md#assignment-checklist) for the ordered gates.
+
 ```text
-fresh active Full Access preflight
-        +
-fresh backlog state confirmed
-        +
-worker identity/scope decided
-        ↓
-todo → doing + Agent claim
-        ↓
-subagent dispatch
+fresh preflight → canonical inspect → identity/scope
+→ doing + Agent + change scope → runtime assign + lifecycle assigned
+→ actual dispatch → exact runtime bind → canonical post-inspect
+→ actual started evidence (recorded separately)
 ```
 
 Never reverse this order.
@@ -279,6 +281,8 @@ An already-running Root session may still carry instructions that it read before
 - `_task_mecca/framework/SESSION_GUIDE.md`
 - `_task_mecca/framework/SESSION_GUIDE.en.md`
 - `_task_mecca/framework/collab.md`
+- `_task_mecca/framework/EXECUTION_PROTOCOL.md`
+- `_task_mecca/framework/EXECUTION_PROTOCOL.en.md`
 - `_task_mecca/framework/roles/*.md`
 
 A migration that only changes Web UI/CSS/runtime implementation and does not alter session behavior does not require this resynchronization.

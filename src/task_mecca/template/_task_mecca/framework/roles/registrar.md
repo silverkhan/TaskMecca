@@ -1,5 +1,13 @@
 # Registrar 역할 (`/root/registrar`)
 
+## 공통 실행 체크리스트
+
+Worker의 수동 운영원장 쓰기 금지와 승인된 CLI preflight ephemeral probe/cache·runtime hook 자동 관측 예외를 구분한다. 실패/unknown durable report 보존 경로와 cleanup 전 회수는 공통 절차를 따른다.
+
+[EXECUTION_PROTOCOL.md](../EXECUTION_PROTOCOL.md)의 단일 절차를 따른다. 원본 canonical backlog/runtime의 운영 writer는 Controller다. Worker는 원본·사본 원장을 쓰거나 monitor에 등록하지 않고 실제 착수·대기·완료 및 transport 근거를 Controller에 보고한다. 원본 상태 기록은 dev 통합과 별개이며 merge까지 미루지 않는다. 배정 gate, exact native Controller 전달/재개, race·중복 처리 및 restart/finalization 체크리스트를 모두 적용한다. Root ACK/wake는 완료 조건이 아니며 CLI가 자동 통지·재개·turn 종료를 강제한다고 주장하지 않는다.
+
+등록 파일을 만든 직후 `task-mecca lifecycle record registered <ID> <안정적-event-id> /root/registrar registrar_report`로 등록 사건을 `_task_mecca/data/lifecycle/`에 남긴다. 같은 등록을 재시도할 때는 동일한 event ID를 사용한다. 기록이 실패하면 완료로 인계하지 않고 원인과 파일 상태를 Controller에 알린다.
+
 ## 목적
 
 Registrar는 **lossless registrar**다. Root가 선택한 작업 정의 lane과 canonical contract를 의미 변경 없이 durable backlog에 등록한다. 구현, scheduling, 작업 복잡도 재분류, 요구사항 재해석을 하지 않는다.
@@ -53,10 +61,10 @@ Registrar는 Root가 전달한 **태그 분류 결과를 등록 계약의 일부
 
 ## 원장 선택 및 생성
 
-1. `python _task_mecca/framework/collab_tools.py ensure-backlog --json`을 실행한다.
+1. `task-mecca ensure-backlog --json`을 실행한다.
 2. 기존 `backlog*` 원장이 있으면 그것을 그대로 사용한다. legacy/custom ledger를 임의로 새 이름으로 복제하지 않는다.
 3. 원장이 하나도 없을 때만 canonical `_task_mecca/data/backlog/`를 생성한다.
-4. `_task_mecca/data/**`는 project-owned이며 updater 대상이 아니다.
+4. `_task_mecca/data/**`는 project-owned이며 migrator 대상이 아니다.
 
 ## 등록 절차
 
@@ -72,6 +80,42 @@ Registrar는 Root가 전달한 **태그 분류 결과를 등록 계약의 일부
 10. `선행`에는 직접 blocker만, `연관`에는 비차단 맥락만 보완한다.
 11. `inspect`와 `doctor`로 생성 결과를 검증하고, 외부 원천 작업은 canonical 원문에 도구 전용 내부 참조 태그가 남아 있지 않은지도 확인한다.
 12. Root에 새 ID를 반환한다. Root/Controller 계약에 따라 등록 사실이 Controller에 전달된다.
+
+## 등록 후 Controller 직접 인계
+
+Root가 `execution_authorized=true`와 Controller identity를 전달한 경우, Registrar는 등록 성공을 Root가 다시 중계해 줄 때까지 기다리지 않는다.
+
+등록 파일 생성 → `inspect` → `doctor`가 모두 성공한 뒤:
+
+```bash
+task-mecca handoff prepare <ID> \
+  --event registration-ready \
+  --from /root/registrar \
+  --to /root/controller \
+  --target-attempt <controller-attempt-id> \
+  --execution-authorized \
+  --json
+```
+
+반환된 `action`에 따라 현재 runtime의 협업 도구를 사용한다.
+
+- `message_running`: 실행 중인 Controller에 메시지만 전달한다. 새 instance를 만들지 않는다.
+- `resume_completed`: **fresh Full Access preflight를 다시 통과한 뒤** 종료된 동일 Controller를 새 turn으로 재개한다.
+  - Codex: `followup_task`
+  - Claude Code: 동일 Controller agent ID/name 대상 `SendMessage`
+- `hold`: target missing/ambiguous/cancelled/unknown 등을 성공으로 취급하지 않는다. 실패 근거와 복구 조건을 Root에 보고한다.
+
+실제 transport가 성공했을 때만:
+
+```bash
+task-mecca handoff mark <HANDOFF_ID> --step dispatch --result ok --evidence <runtime-evidence> --json
+```
+
+을 기록한다. 호출 실패 또는 성공 여부를 확인할 수 없으면 각각 `failed` / `unknown`으로 남긴다.
+
+`execution_authorized=false`인 등록은 Controller를 깨우지 않는다. 등록 충돌·taxonomy 오류·계약 등록 실패도 구현 handoff로 이어지지 않는다.
+
+Registrar는 Controller를 깨울 수 있지만 Worker 선택·doing claim·수용 기준 판정은 하지 않는다.
 
 ## 경계
 

@@ -42,6 +42,11 @@ task-mecca init
 
 Initialization installs the Task Mecca framework and operating manuals. The backlog itself is created when the first task is registered.
 
+
+### Refresh operating instructions
+
+Apply the installed original `_task_mecca/framework/EXECUTION_PROTOCOL.en.md` together with the role guides. Refresh existing installations through supported migration, following backup/consent policy for customized managed documents. Do not overwrite `data/` or `.runtime/` with distribution templates. After instruction changes, reused Controllers/Workers as well as Root re-read changed guides before new assignments. Keep the canonical ledger in the original project and do not register implementation-worktree copies.
+
 ### 3. Activate your LLM session as Task Mecca Root
 
 After initialization, **open the agent/LLM conversation you use—such as Codex or Claude Code—from the same project root.**

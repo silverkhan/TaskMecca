@@ -19,6 +19,28 @@ from task_mecca.installer import (
 
 
 class InstallerTests(unittest.TestCase):
+    def test_installed_execution_protocol_and_roles_are_synchronized(self):
+        with tempfile.TemporaryDirectory() as td:
+            target = install(Path(td))
+            source_root = Path(__file__).resolve().parents[1]
+            for name in (
+                "EXECUTION_PROTOCOL.md", "EXECUTION_PROTOCOL.en.md",
+                "SESSION_GUIDE.md", "SESSION_GUIDE.en.md", "collab.md",
+                "roles/root.md", "roles/registrar.md",
+                "roles/controller.md", "roles/worker.md",
+            ):
+                with self.subTest(name=name):
+                    installed = (target / "framework" / name).read_bytes()
+                    go_template = source_root / "goassets/template/_task_mecca/framework" / name
+                    self.assertEqual(installed, go_template.read_bytes())
+                    if name.startswith("EXECUTION_PROTOCOL"):
+                        manifest = load_manifest(target)
+                        self.assertEqual(manifest["managed_files"]["framework/" + name]["policy"], "customizable")
+            worker = (target / "framework/roles/worker.md").read_text()
+            self.assertIn("collaboration.followup_task", worker)
+            self.assertNotIn("task-mecca handoff prepare", worker)
+            self.assertNotIn("task-mecca lifecycle record started", worker)
+
     def test_install_creates_framework_and_manifest_but_not_data(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)

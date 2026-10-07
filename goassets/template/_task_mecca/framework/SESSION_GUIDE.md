@@ -1,5 +1,11 @@
 # Task Mecca Session Guide
 
+## 공통 실행 체크리스트
+
+Worker의 수동 운영원장 쓰기 금지와 승인된 CLI preflight ephemeral probe/cache·runtime hook 자동 관측 예외를 구분한다. 실패/unknown durable report 보존 경로와 cleanup 전 회수는 공통 절차를 따른다.
+
+[EXECUTION_PROTOCOL.md](EXECUTION_PROTOCOL.md)의 단일 절차를 따른다. 원본 canonical backlog/runtime의 운영 writer는 Controller다. Worker는 원본·사본 원장을 쓰거나 monitor에 등록하지 않고 실제 착수·대기·완료 및 transport 근거를 Controller에 보고한다. 원본 상태 기록은 dev 통합과 별개이며 merge까지 미루지 않는다. 배정 gate, exact native Controller 전달/재개, race·중복 처리 및 restart/finalization 체크리스트를 모두 적용한다. Root ACK/wake는 완료 조건이 아니며 CLI가 자동 통지·재개·turn 종료를 강제한다고 주장하지 않는다.
+
 ## 등록 후 Root 복귀와 독립 완료
 
 실행이 승인된 등록은 준비된 Controller identity로 직접 handoff한다. Root는 등록·인계가 확인되면 즉시 사용자 입력을 받을 상태로 복귀하며 Controller의 완료, 결과 통지, 응답, polling을 기다리거나 중계하지 않는다. Controller는 DONE/BLOCKED부터 검증·원장화·외부 반영까지 독립적으로 끝낸다. `root-reported`는 결과를 알릴 수 있을 때의 best-effort 기록일 뿐 완료 조건이 아니며, 통지 실패나 Root의 새 turn 부재는 done을 막지 않는다. 사용자 판단이 필요하면 Controller가 hold와 재개 조건을 durable하게 남겨 다음 Root 대화의 입력으로 삼는다.
@@ -28,7 +34,6 @@ task-mecca web
 `task-mecca web`은 사용자 단위 singleton Web 서비스를 백그라운드로 실행하고 브라우저를 연다. 기본 포트는 `18765`이며 자동으로 다음 포트로 증가하지 않는다. 이미 Task Mecca Web이 실행 중이면 새 서버를 만들지 않고 기존 URL을 재사용한다. 기본 `--host auto`에서는 로컬 `127.0.0.1:18765`에 HTTP를 제공하고, Tailscale이 감지되면 같은 포트의 Tailscale 인터페이스에 Task Mecca가 직접 HTTPS를 제공한다. Windows/Linux에서는 로컬 Web을 먼저 즉시 사용할 수 있게 한 뒤 Tailscale HTTPS 인증서 준비를 백그라운드에서 완료하므로, 최초 인증서 발급이 오래 걸려도 로컬 Web 시작은 실패로 처리되지 않는다. 원격 주소는 `https://<machine>.<tailnet>.ts.net:18765` 형식이다. Tailscale Serve는 필요하지 않다. 필요하면 `--host <ip>` 또는 `--port <port>`로 명시할 수 있다. 대시보드는 read-only이며
 backlog, Subagent Workload, lifecycle timer, Needs Attention, Full Access 상태를 보여준다.
 
-
 Web 서비스 제어 명령:
 
 ```bash
@@ -49,7 +54,6 @@ Tailscale 직접 HTTPS를 사용하려면 Tailscale Admin의 DNS 설정에서 Ma
 상단 **Language** 드롭다운에서 `한국어 / English`를 선택할 수 있다. 선택값은 브라우저에 저장되며 Task Mecca UI 문구·상태·메시지·User Manual이 선택 언어를 따른다. 사용자 작성 백로그 Markdown은 원문 그대로 유지한다. 향후 언어는 언어 레지스트리와 해당 번역/매뉴얼 파일을 추가하는 방식으로 확장한다.
 
 `archive/YYYY-MM/*.md`는 재귀적으로 읽는다. Web UI는 상태별 메뉴를 나누지 않고 **Backlog** 한 화면으로 통합한다. 기본은 `All` 단독 선택이며 전체 상태를 `ID ↓` 순으로 페이지 단위 표시한다. 페이지 크기의 기본값은 **Auto**이며 현재 브라우저 높이, 실제 backlog 행 높이, 하단 shortcut bar 여유 공간을 기준으로 한 화면에 들어갈 행 수를 자동 결정한다. 창 크기나 sidebar 폭이 바뀌면 다시 계산하며 `Per page`에서 `10 / 20 / 50`으로 고정할 수도 있다. `Ready / Working / Hold / Blocked / Done` 버튼은 여러 개를 동시에 선택할 수 있고, 개별 필터가 하나 이상 선택되면 `All`이 해제된다. `All`을 다시 누르면 나머지 필터를 모두 해제한다. `ID ↑ / Updated newest / Updated oldest` 정렬도 지원하며, Updated는 backlog 마지막 update 시각 기준이다. 목록에서는 `↑/↓` 이동, `Enter`/`→` 상세 진입, `←`/`Esc` 복귀, `/` 검색, `PgUp/PgDn` 페이지 이동을 사용할 수 있다.
-
 
 ## 2. Root 세션 활성화
 
@@ -134,7 +138,8 @@ task-mecca preflight --require-full-access --json
 - Worker는 DONE/BLOCKED 시 `worker_done`/`worker_blocked` handoff로 Controller에 직접 message/resume한다.
 - 종료된 agent의 **새 turn을 시작하는 resume**는 새 subagent dispatch와 동일하게 fresh Full Access preflight를 요구한다.
 - running agent에 기존 turn 메시지만 보내는 경우와 completed agent를 새 turn으로 재개하는 경우를 구분한다.
-- target identity/state가 없거나 모호하면 자동 인계 성공으로 간주하지 않는다.\n- `task-mecca handoff capability show <provider> --json`의 baseline/evidence를 사용하며, 실제 smoke test 결과는 `capability record`로 덮어써 provider 이름만으로 기능을 가정하지 않는다.
+- target identity/state가 없거나 모호하면 자동 인계 성공으로 간주하지 않는다.
+- `task-mecca handoff capability show <provider> --json`의 baseline/evidence를 사용하며, 실제 smoke test 결과는 `capability record`로 덮어써 provider 이름만으로 기능을 가정하지 않는다.
 - 상세 명령과 역할별 책임은 `collab.md`와 `roles/*.md`를 따른다.
 
 `_task_mecca/.runtime/handoffs/events.jsonl`은 ephemeral orchestration evidence이며 backlog/Git contract를 대체하지 않는다.
@@ -237,16 +242,13 @@ Defined Task는 Root가 필요한 만큼 사용자와 확인하고 `## 요건 �
 Root/Controller는 **worker를 실제 dispatch하기 직전에 자동으로 active preflight를 다시 실행**하고 다음을 만족해야 한다.
 사용자에게 수동 preflight 실행을 요구하는 것은 자동 재검증이 실패했을 때뿐이다.
 
+실제 전체 순서는 [공통 배정 체크리스트](EXECUTION_PROTOCOL.md#assignment-checklist)를 따른다.
+
 ```text
-fresh active Full Access preflight
-        +
-fresh backlog state confirmed
-        +
-worker identity/scope decided
-        ↓
-todo → doing + Agent claim
-        ↓
-subagent dispatch
+fresh preflight → canonical inspect → identity/scope
+→ doing + Agent + change scope → runtime assign + lifecycle assigned
+→ actual dispatch → exact runtime bind → canonical post-inspect
+→ actual started evidence (recorded separately)
 ```
 
 순서를 뒤집지 않는다. 특히 권한을 확인하기 전에 backlog를 doing으로 만들면 실제 worker 없이 작업만 진행 중으로 남을
@@ -334,7 +336,6 @@ Full Access preflight는 다시 실행한다.
 목표는 절차를 사용자에게 떠넘기는 것이 아니라 **Root가 조용히 안전 조건을 확인하고, 문제가 있을 때만 사용자에게
 필요한 한 가지 조치를 요청하는 것**이다.
 
-
 > Backlog detail TOC: wide screens show the right-side TOC rail. On narrower screens, use the floating list icon to open the same TOC; it is no longer hidden by viewport width.
 
 ### Lifecycle timing accuracy
@@ -365,6 +366,8 @@ upstream migration가 사용자가 수정한 managed Task Mecca 문서를 덮어
 - `_task_mecca/framework/SESSION_GUIDE.md`
 - `_task_mecca/framework/SESSION_GUIDE.en.md`
 - `_task_mecca/framework/collab.md`
+- `_task_mecca/framework/EXECUTION_PROTOCOL.md`
+- `_task_mecca/framework/EXECUTION_PROTOCOL.en.md`
 - `_task_mecca/framework/roles/*.md`
 
 단순 Web UI/CSS/runtime 구현 변경처럼 세션 행동 규칙이 바뀌지 않은 migration에는 재동기화를 요구하지 않는다.
