@@ -17,10 +17,60 @@ import (
 	"github.com/silverkhan/TaskMecca/internal/notify"
 )
 
-type lifecycleFakeTelegramTransport func(*http.Request) (*http.Response, error)
+type lifecycleFakeTelegramTransport struct {
+	telegram func(*http.Request) (*http.Response, error)
+	fallback http.RoundTripper
+}
 
 func (f lifecycleFakeTelegramTransport) RoundTrip(r *http.Request) (*http.Response, error) {
+	// Version checks can already be in flight when this fixture starts. Only
+	// intercept Telegram; redirects for unrelated background HTTP retain their
+	// original transport and must not enter this test's delivery assertions.
+	if r.URL.Host != "api.telegram.org" {
+		return f.fallback.RoundTrip(r)
+	}
+	return f.telegram(r)
+}
+
+type lifecycleRoundTripFunc func(*http.Request) (*http.Response, error)
+
+func (f lifecycleRoundTripFunc) RoundTrip(r *http.Request) (*http.Response, error) {
 	return f(r)
+}
+
+func TestLifecycleTelegramTransportIsolatesBackgroundVersionRequests(t *testing.T) {
+	var telegram, background int
+	response := func(r *http.Request) *http.Response {
+		return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader("ok")), Request: r}
+	}
+	transport := lifecycleFakeTelegramTransport{
+		telegram: func(r *http.Request) (*http.Response, error) {
+			telegram++
+			return response(r), nil
+		},
+		fallback: lifecycleRoundTripFunc(func(r *http.Request) (*http.Response, error) {
+			background++
+			return response(r), nil
+		}),
+	}
+	for _, target := range []string{
+		"https://github.com/silverkhan/TaskMecca/releases/latest/download/VERSION.txt",
+		"https://release-assets.githubusercontent.com/fixture/VERSION.txt",
+		"https://api.telegram.org/botlocal-test/sendMessage",
+	} {
+		req, err := http.NewRequest(http.MethodGet, target, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		resp, err := transport.RoundTrip(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		resp.Body.Close()
+	}
+	if telegram != 1 || background != 2 {
+		t.Fatalf("transport isolation: Telegram=%d background=%d", telegram, background)
+	}
 }
 
 func TestDurableLifecycleHTTPProjectionWithAndWithoutGit(t *testing.T) {
@@ -75,14 +125,14 @@ func TestDurableLifecycleHTTPProjectionWithAndWithoutGit(t *testing.T) {
 			}
 			var sent atomic.Int32
 			previousTransport := http.DefaultTransport
-			http.DefaultTransport = lifecycleFakeTelegramTransport(func(r *http.Request) (*http.Response, error) {
+			http.DefaultTransport = lifecycleFakeTelegramTransport{fallback: previousTransport, telegram: func(r *http.Request) (*http.Response, error) {
 				if r.URL.Host != "api.telegram.org" || !strings.HasSuffix(r.URL.Path, "/sendMessage") {
 					t.Errorf("unexpected Telegram request: %s", r.URL)
 					return nil, io.EOF
 				}
 				sent.Add(1)
 				return &http.Response{StatusCode: 200, Header: http.Header{"Content-Type": []string{"application/json"}}, Body: io.NopCloser(strings.NewReader(`{"ok":true,"result":{"message_id":1}}`)), Request: r}, nil
-			})
+			}}
 			defer func() { http.DefaultTransport = previousTransport }()
 			for i, event := range []backlog.LifecycleTransition{
 				{EventID: "http-register", TaskID: "B-1", Kind: "registered", Actor: "/root/registrar", EvidenceSource: "registrar_report"},
