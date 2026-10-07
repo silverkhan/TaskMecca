@@ -199,6 +199,14 @@ func safeCleanupPath(path string) (string, error) {
 	if info.Mode()&os.ModeSymlink != 0 {
 		return "", fmt.Errorf("symbolic-link project cannot be cleaned")
 	}
+	if !info.IsDir() {
+		return "", fmt.Errorf("only directories can be cleaned")
+	}
+	parent := filepath.Dir(clean)
+	resolvedParent, err := filepath.EvalSymlinks(parent)
+	if err != nil || filepath.Clean(resolvedParent) != filepath.Clean(parent) {
+		return "", fmt.Errorf("project under symbolic-link parent cannot be cleaned")
+	}
 	if _, err := os.Lstat(filepath.Join(clean, ".git")); err == nil {
 		return "", fmt.Errorf("repository root cannot be cleaned automatically")
 	}
@@ -248,4 +256,41 @@ func RecordTrashResult(path, trashPath string) error {
 		}
 	}
 	return fmt.Errorf("removal history not found")
+}
+
+// MoveRemovedProjectToTrash only cleans a folder represented by the exact
+// removal-history record selected in the Hub. This keeps the destructive
+// follow-up action bound to a prior, explicit "Remove from Hub" operation
+// instead of accepting an arbitrary path from a browser request.
+func MoveRemovedProjectToTrash(historyID, path string) (string, error) {
+	abs, err := filepath.Abs(path)
+	if err != nil {
+		return "", err
+	}
+	reg, err := readProjectRegistry()
+	if err != nil {
+		return "", err
+	}
+	for i := range reg.History {
+		item := &reg.History[i]
+		if item.ID != historyID || filepath.Clean(item.Path) != filepath.Clean(abs) {
+			continue
+		}
+		if item.FolderOutcome == "moved_to_trash" {
+			return "", fmt.Errorf("folder cleanup already recorded")
+		}
+		trashPath, err := MoveProjectToTrash(item.Path)
+		if err != nil {
+			return "", err
+		}
+		item.FolderOutcome = "moved_to_trash"
+		item.TrashPath = trashPath
+		item.Presence = "missing"
+		item.LastCheckedAt = time.Now().Format(time.RFC3339)
+		if err := writeProjectRegistry(reg); err != nil {
+			return trashPath, fmt.Errorf("folder moved but removal history could not be updated: %w", err)
+		}
+		return trashPath, nil
+	}
+	return "", fmt.Errorf("removal history not found for folder cleanup")
 }

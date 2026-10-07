@@ -1122,18 +1122,14 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 			} else {
 				err = removeErr
 			}
-		case "trash":
-			if body.ConfirmPath == "" {
-				writeJSON(w, map[string]any{"error": "full path confirmation required"}, 400)
-				return
-			}
-			trashPath, trashErr := maintenance.MoveProjectToTrash(body.Path)
-			if trashErr == nil {
-				if recordErr := maintenance.RecordTrashResult(body.Path, trashPath); recordErr != nil {
-					writeJSON(w, map[string]any{"error": recordErr.Error(), "trash_path": trashPath}, http.StatusConflict)
+			case "trash":
+				if body.ConfirmPath == "" || body.HistoryID == "" {
+					writeJSON(w, map[string]any{"error": "full path confirmation required"}, 400)
 					return
 				}
-				writeJSON(w, map[string]any{"result": "moved_to_trash", "trash_path": trashPath}, 200)
+				trashPath, trashErr := maintenance.MoveRemovedProjectToTrash(body.HistoryID, body.Path)
+				if trashErr == nil {
+					writeJSON(w, map[string]any{"result": "moved_to_trash", "trash_path": trashPath}, 200)
 				return
 			} else {
 				err = trashErr

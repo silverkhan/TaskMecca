@@ -2415,10 +2415,10 @@ function bindHubActions() {
 
 async function manageHubProject(button) {
   const action=button.dataset.projectAction, path=button.dataset.projectPath||'', historyID=button.dataset.historyId||'';
-  const warnings={remove:'This removes the Hub registration and stops monitoring. The folder stays where it is.',trash:'This moves the exact path below to Trash (recoverable). Repository roots, symlinks, and protected paths are refused.', 'delete-history':'This deletes only the history record. Files are not changed and this path will no longer be shown in Hub.'};
+  const warnings=state.language==='ko'?{remove:'Hub 등록과 감시를 중지합니다. 폴더는 현재 위치에 그대로 남습니다.',trash:'아래의 정확한 경로를 휴지통으로 옮깁니다(복구 가능). 저장소 루트, 심볼릭 링크, 보호 경로는 거부됩니다.','delete-history':'관리 이력만 삭제합니다. 파일은 변경하지 않으며 이 경로는 Hub에서 더 이상 확인할 수 없습니다.'}:{remove:'This removes the Hub registration and stops monitoring. The folder stays where it is.',trash:'This moves the exact path below to Trash (recoverable). Repository roots, symlinks, and protected paths are refused.', 'delete-history':'This deletes only the history record. Files are not changed and this path will no longer be shown in Hub.'};
   if(['remove','trash','delete-history'].includes(action) && !confirm(`${warnings[action]}\n\n${path}`))return;
   button.disabled=true;
-  try { const body={action,path,history_id:historyID}; if(action==='trash')body.confirm_path=path; const r=await fetch('/api/hub/projects',{method:'POST',headers:{'Content-Type':'application/json','X-Task-Mecca-Action':'1'},body:JSON.stringify(body)}); const payload=await r.json(); if(!r.ok)throw Error(payload.error||'Request failed'); await refreshHub(true); render(); } catch(error) { alert(String(error?.message||error)); } finally { button.disabled=false; }
+  try { const body={action:action==='delete-history'?'delete_history':action,path,history_id:historyID}; if(action==='trash')body.confirm_path=path; const r=await fetch('/api/hub/projects',{method:'POST',headers:{'Content-Type':'application/json','X-Task-Mecca-Action':'1'},body:JSON.stringify(body)}); const payload=await r.json(); if(!r.ok)throw Error(payload.error||'Request failed'); await refreshHub(true); render(); } catch(error) { alert(String(error?.message||error)); } finally { button.disabled=false; }
 }
 
 function matchesStatusFilter(t, key) {
