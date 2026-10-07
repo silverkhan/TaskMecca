@@ -1,5 +1,13 @@
 # A27 Worker DONE · A27-isanghaessi-20261007-01
 
+## 최종 A26 결합 검증
+
+Controller 요청으로 최신 origin/dev 71b9801c4390ebba08d58ec2de18680e8f34bb1b (A26 PR140)를 rebase/force-push 없이 일반 merge했다. 충돌은 없었으며 결합 구현 head는 87b0a27948f1e65215f9e93d2c2a23c23cc6a585이다. A26 Hub/Archive/migration 동작은 변경하지 않고 inherited registered fixture 경계를 유지했다.
+
+결합 fullGo PASS(webui28.838s), vet PASS(0 bytes), race8(webui/handoff/runtimeobs/backlog/notify/projectguard/maintenance/install) PASS, Python3.12 30/30 PASS(1.336s), both app.js Node syntax 및 Go/Python app/style/index parity PASS, origin/dev..HEAD committed range diffcheck PASS. UI는 Controller 요청에 따라 3차 QA/추가 polishing 없이 기존2 bounded rounds JPEG 증거를 유지한다.
+
+원래 구현 head CI10/10은 아래에 보존했다. 결합 후 report-bearing 최종 PR head 및 새10개 exact-head CI가 모두 완료된 상태에서만 실제 DONE envelope를 전달하며, commit 자체의 self-referential SHA는 보고서에 위조하지 않고 Controller 전달 메시지·PR checks로 별도 명시한다. 결합 검증 출력은 combined-verification.md에 보존한다.
+
 - 계약: A-27 / Linear AID-115; SHA256 4f1210ebffc8d68ab73e5a037a9bb5fad753e793db2fe4b9c6c946d5ee5b2fbd.
 - semantic /root/controller/isanghaessi; native /root/controller_recovery/isanghaessi.
 - assignment assignment-e347769600483fe21904c138f9a1cb0f; actual attempt run-3ca758cf24dd6563; runtime 01a11579-0096-7792-a078-473374637de0.
