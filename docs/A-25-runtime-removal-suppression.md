@@ -27,3 +27,5 @@ Failure/rollback cleanup can remove only the same owned, empty, nonsymlink stagi
 ## Compatibility boundary
 
 These guards protect cooperating updated processes. Already-running obsolete binaries do not implement the protocol and can recreate runtime directories after a native move. Stop narrowly identified obsolete writers before deployment; do not infer permission to remove recreated files, a containing worktree holder, or restore staging. Real-source validation is a separate read-only operational responsibility, not a fixture result.
+
+macOS service tests must also isolate the fixed LaunchAgent restart command explicitly. `TASK_MECCA_HOME` alone isolates files, not `/bin/launchctl kickstart -k gui/UID/com.taskmecca.web`. Production rendering retains that command; rollback execution fixtures inject a non-destructive local stub and assert its arguments/call count. Production-renderer checks remain string-only and must not execute the operational script.
