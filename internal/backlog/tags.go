@@ -1,6 +1,7 @@
 package backlog
 
 import (
+    "github.com/silverkhan/TaskMecca/internal/projectguard"
     "encoding/json"
     "errors"
     "fmt"
@@ -124,6 +125,10 @@ func defaultTagDefinitions(now string) []TagDefinition {
 }
 
 func saveTagRegistry(project string,registry TagRegistry) error {
+    releaseGuard, guardErr := projectguard.AcquireWrite(project)
+    if guardErr != nil { return guardErr }
+    defer releaseGuard()
+
     registry.Version=1
     sort.Slice(registry.Tags,func(i,j int)bool{return registry.Tags[i].Canonical<registry.Tags[j].Canonical})
     path:=tagRegistryPath(project)
@@ -513,6 +518,10 @@ func buildTagIndex(project,root string,rows []Record) (TagIndex,error) {
 }
 
 func RebuildTagIndex(project,root string) (TagIndex,error) {
+    releaseGuard, guardErr := projectguard.AcquireWrite(project)
+    if guardErr != nil { return TagIndex{}, guardErr }
+    defer releaseGuard()
+
     if _,err:=EnsureTagRegistry(project); err!=nil { return TagIndex{},err }
     rows,err:=Catalog(project,root)
     if err!=nil { return TagIndex{},err }

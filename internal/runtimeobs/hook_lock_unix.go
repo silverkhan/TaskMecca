@@ -3,12 +3,16 @@
 package runtimeobs
 
 import (
+	"github.com/silverkhan/TaskMecca/internal/projectguard"
 	"os"
 	"path/filepath"
 	"syscall"
 )
 
 func lockHookEvents(project string) (func(), error) {
+	releaseGuard,guardErr:=projectguard.AcquireWrite(project)
+	if guardErr!=nil{return nil,guardErr}
+	defer releaseGuard()
 	path := filepath.Join(ExecutionRootPath(project), "hook_events.lock")
 	if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
 		return nil, err

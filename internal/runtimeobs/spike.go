@@ -1,6 +1,7 @@
 package runtimeobs
 
 import (
+    "github.com/silverkhan/TaskMecca/internal/projectguard"
 	"bufio"
 	"crypto/sha256"
 	"encoding/hex"
@@ -131,6 +132,10 @@ func ParseHookEvent(provider string, input io.Reader, now time.Time) (SpikeEvent
 }
 
 func Observe(project, provider string, input io.Reader, now time.Time) (SpikeEvent, error) {
+    releaseGuard, guardErr := projectguard.AcquireWrite(project)
+    if guardErr != nil { return SpikeEvent{}, guardErr }
+    defer releaseGuard()
+
 	release, lockErr := lockObservationControl()
 	if lockErr != nil {
 		return SpikeEvent{}, lockErr

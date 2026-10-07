@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/silverkhan/TaskMecca/internal/projectguard"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -129,6 +130,12 @@ func loadTelegram(project string) (TelegramConfig, error) {
 	return cfg, nil
 }
 func saveTelegram(project string, cfg TelegramConfig) error {
+	releaseGuard, guardErr := projectguard.AcquireWrite(project)
+	if guardErr != nil {
+		return guardErr
+	}
+	defer releaseGuard()
+
 	path := telegramPath(project)
 	if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
 		return err
@@ -150,6 +157,12 @@ func status(cfg TelegramConfig) TelegramStatus {
 	return TelegramStatus{Configured: cfg.Token != "", Connected: cfg.Token != "" && cfg.ChatID != 0, Enabled: cfg.Enabled, BotUsername: cfg.BotUsername, Kinds: cfg.Kinds, ProjectEnabled: projectNotificationsEnabled(cfg), RecipientMode: recipientMode(cfg)}
 }
 func TelegramStatusFor(project string) (TelegramStatus, error) {
+	releaseGuard, guardErr := projectguard.AcquireWrite(project)
+	if guardErr != nil {
+		return TelegramStatus{}, guardErr
+	}
+	defer releaseGuard()
+
 	telegramMu.Lock()
 	defer telegramMu.Unlock()
 	cfg, err := loadTelegram(project)
@@ -217,6 +230,12 @@ func telegramCall(token, method string, body, out any) error {
 	return nil
 }
 func ConfigureTelegram(project, token string, kinds map[string]bool) (TelegramStatus, error) {
+	releaseGuard, guardErr := projectguard.AcquireWrite(project)
+	if guardErr != nil {
+		return TelegramStatus{}, guardErr
+	}
+	defer releaseGuard()
+
 	telegramMu.Lock()
 	defer telegramMu.Unlock()
 	var me struct {
@@ -247,6 +266,7 @@ func ConfigureTelegram(project, token string, kinds map[string]bool) (TelegramSt
 // recipient setup for every monitored project. Credentials stay in 0600
 // project runtime files and are never included in TelegramStatus or logs.
 func ConfigureSharedTelegram(projects []string, token string, kinds map[string]bool) (TelegramStatus, error) {
+	releaseGuard,guardErr:=projectguard.AcquireWrites(projects);if guardErr!=nil{return TelegramStatus{},guardErr};defer releaseGuard()
 	telegramMu.Lock()
 	defer telegramMu.Unlock()
 	var me struct {
@@ -297,6 +317,12 @@ func SetTelegramRecipientMode(project, mode string) (TelegramStatus, error) {
 	return status(cfg), nil
 }
 func DiscoverTelegramChat(project string) (TelegramStatus, error) {
+	releaseGuard, guardErr := projectguard.AcquireWrite(project)
+	if guardErr != nil {
+		return TelegramStatus{}, guardErr
+	}
+	defer releaseGuard()
+
 	telegramMu.Lock()
 	defer telegramMu.Unlock()
 	cfg, err := loadTelegram(project)
@@ -343,6 +369,7 @@ func DiscoverTelegramChat(project string) (TelegramStatus, error) {
 // DiscoverSharedTelegram discovers the shared private chat once and writes it
 // to every shared-project config. It never falls back to an individual route.
 func DiscoverSharedTelegram(projects []string, sourceProject string) (TelegramStatus, error) {
+	releaseGuard,guardErr:=projectguard.AcquireWrites(append(append([]string(nil),projects...),sourceProject));if guardErr!=nil{return TelegramStatus{},guardErr};defer releaseGuard()
 	telegramMu.Lock()
 	defer telegramMu.Unlock()
 	source, err := loadTelegram(sourceProject)
@@ -394,6 +421,12 @@ func DiscoverSharedTelegram(projects []string, sourceProject string) (TelegramSt
 	return status(source), nil
 }
 func TestTelegram(project string) error {
+	releaseGuard, guardErr := projectguard.AcquireWrite(project)
+	if guardErr != nil {
+		return guardErr
+	}
+	defer releaseGuard()
+
 	telegramMu.Lock()
 	defer telegramMu.Unlock()
 	cfg, err := loadTelegram(project)
@@ -564,6 +597,12 @@ func notificationEventLess(a, b Event) bool {
 	return a.ID < b.ID
 }
 func deliverLegacy(project string, events []Event) []error {
+	releaseGuard, guardErr := projectguard.AcquireWrite(project)
+	if guardErr != nil {
+		return []error{guardErr}
+	}
+	defer releaseGuard()
+
 	telegramMu.Lock()
 	defer telegramMu.Unlock()
 	cfg, err := loadTelegram(project)

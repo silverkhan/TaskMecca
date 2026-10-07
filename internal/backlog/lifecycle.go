@@ -1,6 +1,7 @@
 package backlog
 
 import (
+    "github.com/silverkhan/TaskMecca/internal/projectguard"
     "encoding/json"
     "os"
     "os/exec"
@@ -140,6 +141,10 @@ func LifecycleTimings(project,root string) (map[string]map[string]any,error) {
 }
 
 func lifecycleTimings(project,root string,rows []Record) (map[string]map[string]any,error) {
+    releaseGuard, guardErr := projectguard.AcquireWrite(project)
+    if guardErr != nil { return nil, guardErr }
+    defer releaseGuard()
+
 	durableScan,scanErr:=ReadLifecycleTransitions(project)
 	if scanErr!=nil { return nil,scanErr }
 	ledger,err:=Select(project,root)

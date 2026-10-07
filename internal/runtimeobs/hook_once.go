@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"github.com/silverkhan/TaskMecca/internal/projectguard"
 	"os"
 	"path/filepath"
 	"strings"
@@ -22,6 +23,12 @@ type hookClaim struct {
 // processes. A pending marker is recovered against the journal after a crash;
 // a completed marker prevents a second raw record for the same provider event.
 func appendHookEventOnce(project string, event *ExecutionEvent) error {
+	releaseGuard, guardErr := projectguard.AcquireWrite(project)
+	if guardErr != nil {
+		return guardErr
+	}
+	defer releaseGuard()
+
 	release, err := lockHookEvents(project)
 	if err != nil {
 		return err

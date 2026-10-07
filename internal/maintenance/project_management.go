@@ -12,6 +12,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/silverkhan/TaskMecca/internal/projectguard"
 )
 
 // Serialize management mutations so repeated Hub actions cannot move a folder
@@ -21,6 +23,9 @@ var projectManagementMu sync.Mutex
 // Explicit suppression survives removal-history deletion. A normal project
 // that has never been managed retains the legacy primary-session behavior.
 func projectMonitoringAllowed(path string) bool {
+	if !projectguard.Allowed(path) {
+		return false
+	}
 	reg, err := readProjectRegistry()
 	if err != nil || projectPresence(path) != "present" {
 		return false
@@ -59,6 +64,17 @@ func WithProjectMonitoring(path string, work func()) bool {
 func RegisterWebProject(path string) error {
 	projectManagementMu.Lock()
 	defer projectManagementMu.Unlock()
+	if !projectguard.Allowed(path) {
+		return nil
+	}
+	release, err := projectguard.AcquireManagement()
+	if err != nil {
+		return err
+	}
+	defer release()
+	if !projectguard.Allowed(path) {
+		return nil
+	}
 	if linkedGitWorktree(path) {
 		return nil
 	}
@@ -81,7 +97,7 @@ func RegisterWebProject(path string) error {
 	if !registered && containsCleanPath(reg.Paused, path) {
 		return nil
 	}
-	return RegisterProject(path)
+	return registerProject(path)
 }
 
 // Linked worktrees have a .git file pointing to an administrative directory
@@ -104,17 +120,21 @@ func linkedGitWorktree(path string) bool {
 }
 
 type RemovalRecord struct {
-	ID            string `json:"id"`
-	Name          string `json:"name"`
-	Path          string `json:"path"`
-	RemovedAt     string `json:"removed_at"`
-	FolderOutcome string `json:"folder_outcome"`
-	TrashPath     string `json:"trash_path,omitempty"`
-	StagingPath   string `json:"staging_path,omitempty"`
-	CleanupError  string `json:"cleanup_error,omitempty"`
-	RetryHint     string `json:"retry_hint,omitempty"`
-	LastCheckedAt string `json:"last_checked_at,omitempty"`
-	Presence      string `json:"presence,omitempty"`
+	ID                 string `json:"id"`
+	Name               string `json:"name"`
+	Path               string `json:"path"`
+	RemovedAt          string `json:"removed_at"`
+	FolderOutcome      string `json:"folder_outcome"`
+	TrashPath          string `json:"trash_path,omitempty"`
+	StagingPath        string `json:"staging_path,omitempty"`
+	CleanupError       string `json:"cleanup_error,omitempty"`
+	RetryHint          string `json:"retry_hint,omitempty"`
+	LastCheckedAt      string `json:"last_checked_at,omitempty"`
+	Presence           string `json:"presence,omitempty"`
+	SourceState        string `json:"source_state,omitempty"`
+	ParentHolderPath   string `json:"parent_holder_path,omitempty"`
+	StagingHolderPath  string `json:"staging_holder_path,omitempty"`
+	StagingHolderState string `json:"staging_holder_state,omitempty"`
 }
 
 type projectRegistry struct {
@@ -185,6 +205,58 @@ func projectPresence(path string) string {
 	return "present"
 }
 
+// ProjectRemovalProjection examines only the exact original boundary and the
+// implementation's staging holder. It never inventories system Trash or cleans
+// a parent worktree. Historical move outcome is not rewritten by later presence.
+func projectRemovalProjection(item *RemovalRecord) {
+	item.SourceState = item.Presence
+	if item.FolderOutcome == "moved_to_trash" && item.Presence == "present" {
+		item.SourceState = "present_after_trash"
+	}
+	item.ParentHolderPath = filepath.Dir(item.Path)
+	item.StagingHolderPath = ""
+	item.StagingHolderState = ""
+	if item.StagingPath == "" {
+		return
+	}
+	staged := filepath.Clean(item.StagingPath)
+	holder := filepath.Dir(staged)
+	if !filepath.IsAbs(staged) || filepath.Base(staged) != filepath.Base(item.Path) || filepath.Dir(holder) != filepath.Dir(filepath.Clean(item.Path)) || !strings.HasPrefix(filepath.Base(holder), ".task-mecca-recycle-") {
+		item.StagingHolderState = "unavailable"
+		return
+	}
+	item.StagingHolderPath = holder
+	resolved, err := filepath.EvalSymlinks(holder)
+	if os.IsNotExist(err) {
+		item.StagingHolderState = "missing"
+		return
+	}
+	canonicalParent, parentErr := projectguard.CanonicalPath(filepath.Dir(item.Path))
+	if err != nil || parentErr != nil || filepath.Dir(filepath.Clean(resolved)) != canonicalParent {
+		item.StagingHolderState = "unavailable"
+		return
+	}
+	info, err := os.Lstat(holder)
+	if err != nil || !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
+		item.StagingHolderState = "unavailable"
+		return
+	}
+	entries, err := os.ReadDir(holder)
+	if err != nil {
+		item.StagingHolderState = "unavailable"
+		return
+	}
+	if len(entries) > 0 {
+		item.StagingHolderState = "contains_files"
+		return
+	}
+	if item.FolderOutcome == "moved_to_trash" {
+		item.StagingHolderState = "retained_for_restore"
+	} else {
+		item.StagingHolderState = "empty_preserved"
+	}
+}
+
 func ManagedProjects() ([]ProjectState, error) {
 	reg, err := readProjectRegistry()
 	if err != nil {
@@ -210,6 +282,11 @@ func containsCleanPath(paths []string, path string) bool {
 func SetProjectMonitoring(path string, enabled bool) error {
 	projectManagementMu.Lock()
 	defer projectManagementMu.Unlock()
+	release, lockErr := projectguard.AcquireManagement()
+	if lockErr != nil {
+		return lockErr
+	}
+	defer release()
 	abs, err := filepath.Abs(path)
 	if err != nil {
 		return err
@@ -220,16 +297,27 @@ func SetProjectMonitoring(path string, enabled bool) error {
 	}
 	for i := range reg.Projects {
 		if filepath.Clean(reg.Projects[i].Path) == filepath.Clean(abs) {
+			canonical, canonicalErr := projectguard.CanonicalPath(abs)
+			if canonicalErr != nil {
+				return canonicalErr
+			}
 			if enabled {
 				filtered := reg.Paused[:0]
 				for _, item := range reg.Paused {
-					if filepath.Clean(item) != filepath.Clean(abs) {
+					candidate, candidateErr := projectguard.CanonicalPath(item)
+					if candidateErr != nil {
+						return candidateErr
+					}
+					if candidate != canonical {
 						filtered = append(filtered, item)
 					}
 				}
 				reg.Paused = filtered
 			} else if !containsCleanPath(reg.Paused, abs) {
 				reg.Paused = append(reg.Paused, abs)
+			}
+			if !enabled && !containsCleanPath(reg.Paused, canonical) {
+				reg.Paused = append(reg.Paused, canonical)
 			}
 			return writeProjectRegistry(reg)
 		}
@@ -240,6 +328,11 @@ func SetProjectMonitoring(path string, enabled bool) error {
 func RemoveProject(path string) (RemovalRecord, error) {
 	projectManagementMu.Lock()
 	defer projectManagementMu.Unlock()
+	release, lockErr := projectguard.AcquireManagement()
+	if lockErr != nil {
+		return RemovalRecord{}, lockErr
+	}
+	defer release()
 	abs, err := filepath.Abs(path)
 	if err != nil {
 		return RemovalRecord{}, err
@@ -259,6 +352,13 @@ func RemoveProject(path string) (RemovalRecord, error) {
 		if !containsCleanPath(reg.Paused, abs) {
 			reg.Paused = append(reg.Paused, abs)
 		}
+		canonical, canonicalErr := projectguard.CanonicalPath(abs)
+		if canonicalErr != nil {
+			return RemovalRecord{}, canonicalErr
+		}
+		if !containsCleanPath(reg.Paused, canonical) {
+			reg.Paused = append(reg.Paused, canonical)
+		}
 		reg.History = append([]RemovalRecord{record}, reg.History...)
 		return record, writeProjectRegistry(reg)
 	}
@@ -273,6 +373,7 @@ func RemovalHistory() ([]RemovalRecord, error) {
 	out := append([]RemovalRecord(nil), reg.History...)
 	for i := range out {
 		out[i].Presence = projectPresence(out[i].Path)
+		projectRemovalProjection(&out[i])
 		out[i].LastCheckedAt = time.Now().Format(time.RFC3339)
 	}
 	return out, nil
@@ -281,6 +382,11 @@ func RemovalHistory() ([]RemovalRecord, error) {
 func DeleteRemovalHistory(id string) error {
 	projectManagementMu.Lock()
 	defer projectManagementMu.Unlock()
+	release, lockErr := projectguard.AcquireManagement()
+	if lockErr != nil {
+		return lockErr
+	}
+	defer release()
 	reg, err := readProjectRegistry()
 	if err != nil {
 		return err
@@ -371,6 +477,13 @@ func MoveProjectToTrash(path string) (string, error) {
 }
 
 func RecordTrashResult(path, trashPath string) error {
+	projectManagementMu.Lock()
+	defer projectManagementMu.Unlock()
+	release, lockErr := projectguard.AcquireManagement()
+	if lockErr != nil {
+		return lockErr
+	}
+	defer release()
 	reg, err := readProjectRegistry()
 	if err != nil {
 		return err
@@ -394,6 +507,11 @@ func RecordTrashResult(path, trashPath string) error {
 func MoveRemovedProjectToTrash(historyID, path string) (string, error) {
 	projectManagementMu.Lock()
 	defer projectManagementMu.Unlock()
+	release, lockErr := projectguard.AcquireManagement()
+	if lockErr != nil {
+		return "", lockErr
+	}
+	defer release()
 	return moveRemovedProjectToTrash(historyID, path, MoveProjectToTrash, writeProjectRegistry)
 }
 
@@ -439,7 +557,7 @@ func moveRemovedProjectToTrash(historyID, path string, move func(string) (string
 		item.StagingPath = trashStagingPath(trashPath)
 		item.CleanupError = ""
 		item.RetryHint = ""
-		item.Presence = "missing"
+		item.Presence = projectPresence(item.Path)
 		item.LastCheckedAt = time.Now().Format(time.RFC3339)
 		if err := write(reg); err != nil {
 			if _, sourceErr := os.Lstat(item.Path); os.IsNotExist(sourceErr) {

@@ -19,6 +19,8 @@ import (
     "strings"
     "sync"
     "time"
+
+    "github.com/silverkhan/TaskMecca/internal/projectguard"
 )
 
 const (
@@ -148,12 +150,18 @@ func frameworkVersion(project string) string {
 }
 
 func RegisterProject(project string) error {
+    projectManagementMu.Lock()
+    defer projectManagementMu.Unlock()
+    release,lockErr:=projectguard.AcquireManagement();if lockErr!=nil{return lockErr};defer release()
+    return registerProject(project)
+}
+func registerProject(project string) error {
     abs,err:=filepath.Abs(project)
     if err!=nil { return err }
     if _,err=os.Stat(filepath.Join(abs,"_task_mecca")); err!=nil { return err }
     _=os.MkdirAll(homeDir(),0755)
     reg:=registry{}
-    if data,readErr:=os.ReadFile(registryPath()); readErr==nil { _=json.Unmarshal(data,&reg) }
+    if data,readErr:=os.ReadFile(registryPath()); readErr==nil { if err:=json.Unmarshal(data,&reg);err!=nil{return err} } else if !os.IsNotExist(readErr){return readErr}
     now:=time.Now().Format(time.RFC3339)
     found:=false
     for i:=range reg.Projects {

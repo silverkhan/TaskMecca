@@ -1,6 +1,7 @@
 package runtimeobs
 
 import (
+    "github.com/silverkhan/TaskMecca/internal/projectguard"
     "bufio"
     "crypto/sha256"
     "encoding/hex"
@@ -235,6 +236,10 @@ func stopState(reason string,extra map[string]any) CanonicalState {
 }
 
 func AppendExecutionEvent(project string,e ExecutionEvent) error {
+    releaseGuard, guardErr := projectguard.AcquireWrite(project)
+    if guardErr != nil { return guardErr }
+    defer releaseGuard()
+
     executionStorageMu.Lock()
     defer executionStorageMu.Unlock()
 

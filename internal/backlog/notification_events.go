@@ -1,6 +1,7 @@
 package backlog
 
 import (
+    "github.com/silverkhan/TaskMecca/internal/projectguard"
     "crypto/sha256"
     "encoding/hex"
     "encoding/json"
@@ -119,6 +120,10 @@ func ReadNotificationEvents(project string) ([]map[string]any, error) {
 }
 
 func NotificationEvents(project string, items map[string]map[string]any) ([]map[string]any, error) {
+    releaseGuard, guardErr := projectguard.AcquireWrite(project)
+    if guardErr != nil { return nil, guardErr }
+    defer releaseGuard()
+
     notificationJournalMu.Lock()
     defer notificationJournalMu.Unlock()
 

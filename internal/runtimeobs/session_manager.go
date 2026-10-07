@@ -1,6 +1,7 @@
 package runtimeobs
 
 import (
+    "github.com/silverkhan/TaskMecca/internal/projectguard"
     "bufio"
     "encoding/json"
     "errors"
@@ -365,6 +366,10 @@ func RuntimeStorageReport(project string,ledger Ledger,now time.Time) (StorageRe
 }
 
 func writeHistoryRecords(project string,records map[string]HistoryRecord) (int,error) {
+    releaseGuard, guardErr := projectguard.AcquireWrite(project)
+    if guardErr != nil { return 0, guardErr }
+    defer releaseGuard()
+
     grouped:=map[string][]HistoryRecord{}
     for _,record:=range records {
         at:=eventObservedTime(terminalSortTime(record.Attempt),time.Now())
@@ -405,6 +410,10 @@ func writeHistoryRecords(project string,records map[string]HistoryRecord) (int,e
 }
 
 func CleanupRuntimeStorage(project string,ledger Ledger,now time.Time) (CleanupResult,error) {
+    releaseGuard, guardErr := projectguard.AcquireWrite(project)
+    if guardErr != nil { return CleanupResult{}, guardErr }
+    defer releaseGuard()
+
     executionStorageMu.Lock()
     defer executionStorageMu.Unlock()
 

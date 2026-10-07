@@ -3,12 +3,16 @@
 package webui
 
 import (
+	"github.com/silverkhan/TaskMecca/internal/projectguard"
 	"os"
 	"path/filepath"
 	"syscall"
 )
 
 func lockOperationJournal(project string) (func(), error) {
+	releaseGuard,guardErr:=projectguard.AcquireWrite(project)
+	if guardErr!=nil{return nil,guardErr}
+	defer releaseGuard()
 	path := operationJournalPath(project) + ".lock"
 	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
 		return nil, err
