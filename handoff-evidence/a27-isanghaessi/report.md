@@ -58,4 +58,3 @@ Tracked implementation/evidence clean 이후 이 stable report commit만 추가�
 운영 설치/서버 재시작/실제 Telegram 송신 또는 process delivery gate 해제/외부 Linear 상태 반영/원본 canonical/backlog/runtime/lifecycle/handoff 수동 생성·편집은 하지 않았다. Telegram transport 차단은 변경하지 않았다. A14 사용자 판단 hold와 구현 보존 경계는 그대로다.
 
 한계: 명시적인 source assignment/attempt 및 durable handoff 없이 보고·검토 단계를 추정하지 않는다. malformed/ambiguous ledger는 grace를 얻지 못한다. 역사적 actual failures는 명시적 검토가 필요한 active 근거로 남는다. Controller가 PR exact final head/CI, 최신 dev ancestry·결합 회귀·운영 적용, 외부 writeback, verified completion·archive, 보존·cleanup을 맡는다. Root ACK는 gate가 아니다.
-
