@@ -69,3 +69,44 @@ func TestMoveProjectToTrashRejectsRepositoryAndSymlink(t *testing.T) {
 		t.Fatal("symlink must be rejected")
 	}
 }
+
+func TestMoveProjectToTrashRejectsFileAndSymlinkParent(t *testing.T) {
+	dir := t.TempDir()
+	file := filepath.Join(dir, "not-a-directory")
+	if err := os.WriteFile(file, []byte("fixture"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := MoveProjectToTrash(file); err == nil {
+		t.Fatal("file must be rejected")
+	}
+	target := filepath.Join(dir, "target")
+	if err := os.Mkdir(target, 0755); err != nil {
+		t.Fatal(err)
+	}
+	linkParent := filepath.Join(dir, "linked-parent")
+	if err := os.Symlink(target, linkParent); err != nil {
+		t.Fatal(err)
+	}
+	child := filepath.Join(linkParent, "child")
+	if err := os.Mkdir(filepath.Join(target, "child"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := MoveProjectToTrash(child); err == nil {
+		t.Fatal("symlink-parent child must be rejected")
+	}
+}
+
+func TestMoveRemovedProjectToTrashRejectsUnrecordedFolder(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("TASK_MECCA_HOME", filepath.Join(dir, "task-mecca-home"))
+	folder := filepath.Join(dir, "unrecorded")
+	if err := os.Mkdir(folder, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := MoveRemovedProjectToTrash("removed-missing", folder); err == nil {
+		t.Fatal("unrecorded folder cleanup must be rejected")
+	}
+	if _, err := os.Stat(folder); err != nil {
+		t.Fatalf("unrecorded folder was touched: %v", err)
+	}
+}

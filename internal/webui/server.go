@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/fs"
 	"mime"
 	"net"
@@ -1092,8 +1093,14 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 			HistoryID   string `json:"history_id"`
 			ConfirmPath string `json:"confirm_path"`
 		}
-		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		decoder := json.NewDecoder(r.Body)
+		decoder.DisallowUnknownFields()
+		if err := decoder.Decode(&body); err != nil {
 			writeJSON(w, map[string]any{"error": "invalid JSON"}, http.StatusBadRequest)
+			return
+		}
+		if err := decoder.Decode(&struct{}{}); err != io.EOF {
+			writeJSON(w, map[string]any{"error": "one JSON object required"}, http.StatusBadRequest)
 			return
 		}
 		if body.Path != "" && body.ConfirmPath != "" && filepath.Clean(body.Path) != filepath.Clean(body.ConfirmPath) {
@@ -1123,16 +1130,12 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 				err = removeErr
 			}
 		case "trash":
-			if body.ConfirmPath == "" {
+			if body.ConfirmPath == "" || body.HistoryID == "" {
 				writeJSON(w, map[string]any{"error": "full path confirmation required"}, 400)
 				return
 			}
-			trashPath, trashErr := maintenance.MoveProjectToTrash(body.Path)
+			trashPath, trashErr := maintenance.MoveRemovedProjectToTrash(body.HistoryID, body.Path)
 			if trashErr == nil {
-				if recordErr := maintenance.RecordTrashResult(body.Path, trashPath); recordErr != nil {
-					writeJSON(w, map[string]any{"error": recordErr.Error(), "trash_path": trashPath}, http.StatusConflict)
-					return
-				}
 				writeJSON(w, map[string]any{"result": "moved_to_trash", "trash_path": trashPath}, 200)
 				return
 			} else {
@@ -1297,7 +1300,20 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 	})
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) { sendEmbedded(w, "index.html") })
 
-	return mux, nil
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		path := r.URL.Path
+		// These projections reconcile lifecycle/notification/runtime state even
+		// on GET. Serialize them with pause/remove and refuse a stopped or absent
+		// project before any side effect. Hub and file-presence checks stay readable.
+		projectWrites := path == "/api/backlog/tasks" || path == "/api/snapshot" || path == "/api/attention" || path == "/api/workload" || path == "/api/issues" || strings.HasPrefix(path, "/api/tasks/") || strings.HasPrefix(path, "/api/runtime/") || path == "/api/notifications/deliveries" || path == "/api/notifications/telegram"
+		if projectWrites {
+			if !maintenance.WithProjectMonitoring(projectFor(r), func() { mux.ServeHTTP(w, r) }) {
+				writeJSON(w, map[string]any{"error": "project monitoring is stopped or the folder is unavailable; resume monitoring from Hub to use live projections", "monitoring": false}, http.StatusConflict)
+			}
+			return
+		}
+		mux.ServeHTTP(w, r)
+	}), nil
 }
 
 func isTailscaleIPv4(ip net.IP) bool {

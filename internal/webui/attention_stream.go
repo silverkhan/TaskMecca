@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/silverkhan/TaskMecca/internal/backlog"
+	"github.com/silverkhan/TaskMecca/internal/maintenance"
 	"github.com/silverkhan/TaskMecca/internal/notify"
 )
 
@@ -70,6 +71,10 @@ func ensureAttentionFeed(project, root string) *attentionFeed {
 }
 
 func (f *attentionFeed) refresh() {
+	maintenance.WithProjectMonitoring(f.project, f.refreshActive)
+}
+
+func (f *attentionFeed) refreshActive() {
 	payload, err := backlog.AttentionSnapshot(f.project, f.root, true)
 	if err != nil {
 		payload = map[string]any{"error": err.Error(), "attention": []map[string]any{}, "all_items": map[string]map[string]any{}, "notification_events": []map[string]any{}}
