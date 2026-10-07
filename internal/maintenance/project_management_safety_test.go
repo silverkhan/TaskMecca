@@ -107,7 +107,7 @@ func TestCleanupProtectsSharedManagementAndOriginalRoots(t *testing.T) {
 	}
 }
 
-func TestCleanupPartialHistoryFailureRestoresFolder(t *testing.T) {
+func TestCleanupPartialHistoryFailureReportsNativeRecovery(t *testing.T) {
 	dir := t.TempDir()
 	t.Setenv("TASK_MECCA_HOME", filepath.Join(dir, "home"))
 	source := filepath.Join(dir, "project")
@@ -122,12 +122,13 @@ func TestCleanupPartialHistoryFailureRestoresFolder(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	trash, err := moveRemovedProjectToTrash(record.ID, source, func(path string) (string, error) { return destination, os.Rename(path, destination) }, func(projectRegistry) error { return errors.New("fixture write failure") })
-	if err == nil || trash != "" || !strings.Contains(err.Error(), "folder restored") {
+	locator := systemTrashLocator(destination, source)
+	trash, err := moveRemovedProjectToTrash(record.ID, source, func(path string) (string, error) { return locator, os.Rename(path, destination) }, func(projectRegistry) error { return errors.New("fixture write failure") })
+	if err == nil || trash != locator || !strings.Contains(err.Error(), "history could not be updated") {
 		t.Fatalf("partial failure: %s %v", trash, err)
 	}
-	if _, err := os.Stat(source); err != nil {
-		t.Fatal("folder not restored", err)
+	if _, err := os.Stat(destination); err != nil {
+		t.Fatal("recovery folder not preserved", err)
 	}
 	history, err := RemovalHistory()
 	if err != nil || len(history) != 1 || history[0].FolderOutcome != "preserved" {

@@ -215,3 +215,13 @@ go build ./cmd/task-mecca
 A Python compatibility runtime is also maintained. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 MIT License · [LICENSE](LICENSE)
+
+## Hub removal history and recoverable cleanup
+
+Removal history is collapsed by default; its title/count and review status remain visible. The same browser remembers expanded/collapsed choice. Removal from Hub, history deletion and folder cleanup are separate confirmations. History deletion never deletes files.
+
+Folder cleanup uses macOS Foundation native Trash or Windows IFileOperation system Recycle Bin (local fixed drives only). It first stages the exact folder in a private same-volume sibling directory with identity checks and no-overwrite rename. Restore the item from system Trash, then move it from the recorded staging path to the original absolute path; never overwrite an existing folder. Original repositories, shared/management roots, symlinks/reparse points, UNC/device/removable drives and unsupported platforms are refused. No permanent-delete fallback. Linux remains explicitly unsupported.
+
+Errors retain the failure reason and retry conditions. Unknown/partial results require inspecting the original, staging and system Trash locations before any further action. History-write failure after native success reports the recovery locator, not false success or an unsafe filesystem rollback. macOS privacy denial may require granting the actual service application Files and Folders/Full Disk Access and explicitly retrying; Task Mecca does not change permissions itself.
+
+CLI uses the same safety/history rules: `task-mecca projects list|history`; mutations use `pause|resume|remove|delete-history|trash --path ABSOLUTE`. Remove/history deletion/trash additionally require `--confirm-path EXACT`; history deletion/trash require `--history-id ID`. Native recycle/restore CI verifies the unique fixture payload hash on macOS and Windows, not just cross-builds.

@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -111,6 +110,9 @@ type RemovalRecord struct {
 	RemovedAt     string `json:"removed_at"`
 	FolderOutcome string `json:"folder_outcome"`
 	TrashPath     string `json:"trash_path,omitempty"`
+	StagingPath   string `json:"staging_path,omitempty"`
+	CleanupError  string `json:"cleanup_error,omitempty"`
+	RetryHint     string `json:"retry_hint,omitempty"`
 	LastCheckedAt string `json:"last_checked_at,omitempty"`
 	Presence      string `json:"presence,omitempty"`
 }
@@ -353,34 +355,19 @@ func MoveProjectToTrash(path string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if runtime.GOOS != "darwin" {
-		return "", fmt.Errorf("recoverable folder cleanup is supported only by macOS Trash; folder preserved")
-	}
-	expected, err := os.Lstat(source)
+	f, err := os.Open(source)
 	if err != nil {
 		return "", err
 	}
-	home, err := os.UserHomeDir()
+	expected, err := f.Stat()
+	_ = f.Close()
 	if err != nil {
 		return "", err
 	}
-	trash := filepath.Join(home, ".Trash")
-	if info, err := os.Lstat(trash); err == nil && (!info.IsDir() || info.Mode()&os.ModeSymlink != 0) {
-		return "", fmt.Errorf("Trash must be a real directory; folder preserved")
-	}
-	if err := os.MkdirAll(trash, 0700); err != nil {
+	if err := validateTrashPlatform(source); err != nil {
 		return "", err
 	}
-	container, err := os.MkdirTemp(trash, "task-mecca-")
-	if err != nil {
-		return "", err
-	}
-	destination := filepath.Join(container, filepath.Base(source))
-	if err := moveProjectFolder(source, destination, expected); err != nil {
-		_ = os.Remove(container) // Only remove our empty private container.
-		return "", err
-	}
-	return destination, nil
+	return stageAndRecycle(source, expected, moveProjectFolder, recycleStagedFolder)
 }
 
 func RecordTrashResult(path, trashPath string) error {
@@ -424,26 +411,39 @@ func moveRemovedProjectToTrash(historyID, path string, move func(string) (string
 		if item.ID != historyID || filepath.Clean(item.Path) != filepath.Clean(abs) {
 			continue
 		}
-		if item.FolderOutcome == "moved_to_trash" {
+		if item.FolderOutcome == "moved_to_trash" || item.FolderOutcome == "cleanup_unknown" || item.FolderOutcome == "cleanup_partial" {
 			return "", fmt.Errorf("folder cleanup already recorded")
 		}
 		trashPath, err := move(item.Path)
 		if err != nil {
 			item.FolderOutcome = "cleanup_failed"
+			item.CleanupError = err.Error()
+			item.RetryHint = "Check source and recovery locations; resolve permissions or files in use before retrying. Never retry an absent source."
+			if trashPath != "" {
+				item.FolderOutcome = "cleanup_partial"
+				if trashOutcomeUnknown(trashPath) {
+					item.FolderOutcome = "cleanup_unknown"
+				}
+				item.TrashPath = trashPath
+				item.StagingPath = trashStagingPath(trashPath)
+			}
 			item.Presence = projectPresence(item.Path)
 			item.LastCheckedAt = time.Now().Format(time.RFC3339)
 			if writeErr := write(reg); writeErr != nil {
-				return "", fmt.Errorf("folder cleanup failed (%v); failure history could not be updated: %w", err, writeErr)
+				return trashPath, fmt.Errorf("folder cleanup failed (%v); failure history could not be updated; retain recovery %s and original %s: %w", err, trashPath, item.Path, writeErr)
 			}
-			return "", err
+			return trashPath, err
 		}
 		item.FolderOutcome = "moved_to_trash"
 		item.TrashPath = trashPath
+		item.StagingPath = trashStagingPath(trashPath)
+		item.CleanupError = ""
+		item.RetryHint = ""
 		item.Presence = "missing"
 		item.LastCheckedAt = time.Now().Format(time.RFC3339)
 		if err := write(reg); err != nil {
 			if _, sourceErr := os.Lstat(item.Path); os.IsNotExist(sourceErr) {
-				if rollbackErr := os.Rename(trashPath, item.Path); rollbackErr == nil {
+				if rollbackErr := rollbackTrashFolder(trashPath, item.Path); rollbackErr == nil {
 					return "", fmt.Errorf("removal history update failed; folder restored: %w", err)
 				}
 			}

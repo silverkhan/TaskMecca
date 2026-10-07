@@ -7,6 +7,7 @@ const state = {
   view: 'hub',
   hub: null,
   hubManagement: {projects:[],history:[]},
+  hubHistoryExpanded: localStorage.getItem('task-mecca-hub-history-expanded-v1') === '1',
   loadError: '',
   project: new URLSearchParams(location.search).get('project') || '',
   lastProject: localStorage.getItem('task-mecca-last-project') || new URLSearchParams(location.search).get('project') || '',
@@ -2301,11 +2302,16 @@ async function maybeShowPendingFrameworkSync() {
 
 function hubText(key) {
   const messages={
-    ko:{pause:'감시 중지',resume:'감시 재개',remove:'Hub 등록 제거',trash:'휴지통으로 이동',deleteHistory:'이력 삭제',copyPath:'전체 경로 복사',history:'제거 이력',historyInfo:'이력 삭제는 관리 기록만 지우며 파일에 영향을 주지 않습니다.',emptyHistory:'제거 이력이 없습니다.',present:'폴더 존재함',missing:'폴더 없음',unavailable:'확인 불가',preserved:'등록 제거 · 폴더 보존',moved_to_trash:'등록 제거 · 휴지통 이동',checked:'확인 시각',cancel:'취소',confirm:'확인',failed:'작업 실패 · 폴더와 잔존 이력을 확인하세요.',success:'작업을 완료했습니다.',restore:'아래 휴지통 위치에서 폴더를 원래 위치로 옮겨 복구하세요.',trashInfo:'이 기능은 macOS의 ~/.Trash 이동만 지원합니다. 다른 운영체제, 다른 볼륨, 권한 또는 사용 중 문제로 이동이 거부될 수 있습니다.',cleanup_failed:'폴더 정리 실패 · 잔존 상태 확인 필요',check:'잔존 확인',removed:'등록 제거 시각',emptyProjects:'등록된 Task Mecca 프로젝트가 없습니다.',intro:'등록 프로젝트의 감시, 폴더 보존 상태와 제거 이력을 관리합니다.'},
-    en:{pause:'Pause monitoring',resume:'Resume monitoring',remove:'Remove from Hub',trash:'Move to Trash',deleteHistory:'Delete history',copyPath:'Copy full path',history:'Removal history',historyInfo:'Deleting history removes only this management record, never files.',emptyHistory:'No removed project history.',present:'Folder exists',missing:'Folder absent',unavailable:'Unable to check',preserved:'Registration removed · folder preserved',moved_to_trash:'Registration removed · moved to Trash',checked:'Checked at',cancel:'Cancel',confirm:'Confirm',failed:'Action failed · check the folder and remaining history.',success:'Action completed.',restore:'Restore by moving the folder from the Trash location below to its original path.',trashInfo:'This action supports macOS ~/.Trash only. Other operating systems, volumes, permissions, or files in use may prevent the move.',cleanup_failed:'Folder cleanup failed · check remaining files',check:'Check remaining folder',removed:'Removed at',emptyProjects:'No registered Task Mecca projects.',intro:'Manage project monitoring, preserved folders, and removal history.'}
+    ko:{collapseHistory:'이력 접기',expandHistory:'이력 펼치기',pendingHistory:'확인 필요',cleanup_partial:'정리 부분 실패 · 복구 위치 확인',cleanup_unknown:'휴지통 결과 미확인 · 재시도 금지',staging:'시스템 복원의 임시 경로',cleanupError:'실패 이유',retry:'재시도 조건',pause:'감시 중지',resume:'감시 재개',remove:'Hub 등록 제거',trash:'휴지통으로 이동',deleteHistory:'이력 삭제',copyPath:'전체 경로 복사',history:'제거 이력',historyInfo:'이력 삭제는 관리 기록만 지우며 파일에 영향을 주지 않습니다.',emptyHistory:'제거 이력이 없습니다.',present:'폴더 존재함',missing:'폴더 없음',unavailable:'확인 불가',preserved:'등록 제거 · 폴더 보존',moved_to_trash:'등록 제거 · 휴지통 이동',checked:'확인 시각',cancel:'취소',confirm:'확인',failed:'작업 실패 · 폴더와 잔존 이력을 확인하세요.',success:'작업을 완료했습니다.',restore:'시스템 휴지통에서 복원한 뒤 위 원래 절대 경로로 이동하세요. OS 복원은 아래 임시 경로로 돌아올 수 있습니다. 기존 폴더를 덮어쓰지 마세요.',trashInfo:'macOS 기본 휴지통 또는 Windows 로컬 고정 드라이브의 시스템 휴지통을 사용합니다. 먼저 같은 볼륨의 고유 임시 경로에 안전하게 이동합니다. OS 복원 후 원래 경로로 옮겨야 합니다. 권한·잠금·미지원 드라이브는 거부하며 영구 삭제로 대체하지 않습니다.',cleanup_failed:'폴더 정리 실패 · 잔존 상태 확인 필요',check:'잔존 확인',removed:'등록 제거 시각',emptyProjects:'등록된 Task Mecca 프로젝트가 없습니다.',intro:'등록 프로젝트의 감시, 폴더 보존 상태와 제거 이력을 관리합니다.'},
+    en:{collapseHistory:'Collapse history',expandHistory:'Expand history',pendingHistory:'need review',cleanup_partial:'Cleanup incomplete · check recovery location',cleanup_unknown:'Trash outcome unknown · do not retry',staging:'System restore staging path',cleanupError:'Failure reason',retry:'Retry conditions',pause:'Pause monitoring',resume:'Resume monitoring',remove:'Remove from Hub',trash:'Move to Trash',deleteHistory:'Delete history',copyPath:'Copy full path',history:'Removal history',historyInfo:'Deleting history removes only this management record, never files.',emptyHistory:'No removed project history.',present:'Folder exists',missing:'Folder absent',unavailable:'Unable to check',preserved:'Registration removed · folder preserved',moved_to_trash:'Registration removed · moved to Trash',checked:'Checked at',cancel:'Cancel',confirm:'Confirm',failed:'Action failed · check the folder and remaining history.',success:'Action completed.',restore:'Restore from system Trash, then move to the original absolute path above. OS Restore may return to the staging path below. Never overwrite an existing folder.',trashInfo:'Uses macOS native Trash or Windows system Recycle Bin on a local fixed drive. First stages safely in a unique same-volume path. After OS Restore, move back to the original path. Permissions, locks and unsupported drives are refused; never falls back to permanent deletion.',cleanup_failed:'Folder cleanup failed · check remaining files',check:'Check remaining folder',removed:'Removed at',emptyProjects:'No registered Task Mecca projects.',intro:'Manage project monitoring, preserved folders, and removal history.'}
   };
   return (messages[state.language]||messages.en)[key]||key;
 }
+function hubTrashLocation(location) {
+  if(!String(location).startsWith('system-trash:?'))return location;
+  return new URLSearchParams(String(location).slice('system-trash:?'.length)).get('location')||location;
+}
+
 function hubFeedback(message,error=false) {
   const box=document.querySelector('#hubFeedback');
   if(box){box.textContent=message;box.setAttribute('role',error?'alert':'status');box.hidden=false;}
@@ -2344,12 +2350,12 @@ function hubView() {
       <div class="project-actions">${p?.migration_available?`<button class="action-btn secondary" data-migrate="${esc(p.path)}">Migrate</button>`:''}<button class="action-btn secondary" data-project-action="${status.monitoring===false?'resume':'pause'}" data-project-path="${esc(path)}">${esc(hubText(status.monitoring===false?'resume':'pause'))}</button><button class="action-btn secondary danger-action" data-project-action="remove" data-project-path="${esc(path)}">${esc(hubText('remove'))}</button><button class="action-btn" data-open-project="${esc(path)}">${esc(t('open'))}</button></div>
     </article>`;
   }).join('');
-  const history=(state.hubManagement?.history||[]).map(item=>`<article class="history-row"><div><strong>${esc(item.name||'Project')}</strong><div class="project-path"><code>${esc(item.path)}</code><button class="icon-copy" type="button" data-copy-path="${esc(item.path)}" aria-label="${esc(hubText('copyPath'))}">${COPY_ICON}</button></div><p>${esc(hubText(item.folder_outcome||'preserved'))} · ${esc(hubText(item.presence||'unavailable'))}</p><p>${esc(hubText('removed'))}: ${esc(item.removed_at||'—')}</p><p>${esc(hubText('checked'))}: ${esc(item.last_checked_at||'—')}</p>${item.trash_path?`<p>${esc(hubText('restore'))}</p><div class="project-path"><code>${esc(item.trash_path)}</code></div>`:''}</div><div class="project-actions"><button class="action-btn secondary" data-project-action="check" data-project-path="${esc(item.path)}">${esc(hubText('check'))}</button><button class="action-btn secondary" data-project-action="trash" data-history-id="${esc(item.id)}" ${item.folder_outcome==='moved_to_trash'||item.presence==='missing'?'disabled':''} data-project-path="${esc(item.path)}">${esc(hubText('trash'))}</button><button class="action-btn secondary danger-action" data-project-action="delete-history" data-history-id="${esc(item.id)}" data-project-path="${esc(item.path)}">${esc(hubText('deleteHistory'))}</button></div></article>`).join('');
+  const history=(state.hubManagement?.history||[]).map(item=>`<article class="history-row"><div><strong>${esc(item.name||'Project')}</strong><div class="project-path"><code>${esc(item.path)}</code><button class="icon-copy" type="button" data-copy-path="${esc(item.path)}" aria-label="${esc(hubText('copyPath'))}">${COPY_ICON}</button></div><p>${esc(hubText(item.folder_outcome||'preserved'))} · ${esc(hubText(item.presence||'unavailable'))}</p><p>${esc(hubText('removed'))}: ${esc(item.removed_at||'—')}</p><p>${esc(hubText('checked'))}: ${esc(item.last_checked_at||'—')}</p>${item.cleanup_error?`<p class="hub-cleanup-error">${esc(hubText('cleanupError'))}: ${esc(item.cleanup_error)}</p><p>${esc(hubText('retry'))}: ${esc(item.retry_hint||'')}</p>`:''}${item.trash_path?`<p>${esc(hubText('restore'))}</p><div class="project-path"><code>${esc(hubTrashLocation(item.trash_path))}</code></div>${item.staging_path?`<p>${esc(hubText('staging'))}</p><div class="project-path"><code>${esc(item.staging_path)}</code></div>`:''}`:''}</div><div class="project-actions"><button class="action-btn secondary" data-project-action="check" data-project-path="${esc(item.path)}">${esc(hubText('check'))}</button><button class="action-btn secondary" data-project-action="trash" data-history-id="${esc(item.id)}" ${['moved_to_trash','cleanup_partial','cleanup_unknown'].includes(item.folder_outcome)||item.presence!=='present'?'disabled':''} data-project-path="${esc(item.path)}">${esc(hubText('trash'))}</button><button class="action-btn secondary danger-action" data-project-action="delete-history" data-history-id="${esc(item.id)}" data-project-path="${esc(item.path)}">${esc(hubText('deleteHistory'))}</button></div></article>`).join('');
   const updateActions='';
   return `<div class="page-head"><div><h1>Global Hub</h1><p class="summary">${esc(hubText('intro'))}</p></div><div class="hub-cli"><strong>CLI</strong> ${channelBadge} ${cliStatus} ${updateActions}</div></div>
     ${cli.update_available?'<div class="timing-note"><strong>Upgrade</strong><span>업그레이드가 완료되면 Task Mecca Web이 자동으로 재시작되며, 현재 브라우저 페이지도 자동으로 새로고침됩니다.</span></div>':''}
     ${cli.error?`<div class="timing-note"><strong>Version check</strong><span>${esc(cli.error)}</span></div>`:''}
-    <p id="hubFeedback" role="status" class="timing-note" hidden></p><div class="project-grid">${cards||`<div class="empty">${esc(hubText('emptyProjects'))}</div>`}</div><section class="hub-history"><div><h2>${esc(hubText('history'))}</h2><p class="muted">${esc(hubText('historyInfo'))}</p></div>${history||`<div class="empty">${esc(hubText('emptyHistory'))}</div>`}</section>`;
+    <p id="hubFeedback" role="status" class="timing-note" hidden></p><div class="project-grid">${cards||`<div class="empty">${esc(hubText('emptyProjects'))}</div>`}</div><section class="hub-history"><h2><button id="hubHistoryToggle" type="button" class="hub-history-toggle" aria-expanded="${state.hubHistoryExpanded}" aria-controls="hubHistoryItems"><span>${esc(hubText('history'))}</span><span class="badge">${(state.hubManagement?.history||[]).length}</span><span class="hub-history-action">${esc(hubText(state.hubHistoryExpanded?'collapseHistory':'expandHistory'))}</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button></h2><p class="muted">${esc(hubText('historyInfo'))} · ${(state.hubManagement?.history||[]).filter(item=>item.folder_outcome!=='moved_to_trash').length} ${esc(hubText('pendingHistory'))}</p><div id="hubHistoryItems" ${state.hubHistoryExpanded?'':'hidden'}>${history||`<div class="empty">${esc(hubText('emptyHistory'))}</div>`}</div></section>`;
 }
 function normalizedVersion(value) {
   return String(value??'').trim().replace(/(?:\\r|\\n)+$/g,'').trim();
@@ -2430,6 +2436,7 @@ function bindHubActions() {
   document.querySelectorAll('[data-migrate]').forEach(btn=>btn.addEventListener('click',e=>performProjectMigration(btn.dataset.migrate,e.currentTarget)));
   document.querySelectorAll('[data-copy-path]').forEach(btn=>btn.addEventListener('click',async()=>{try{await copyText(btn.dataset.copyPath||'');btn.innerHTML=CHECK_ICON;btn.setAttribute('aria-label',t('copied'));hubFeedback(t('copied'));setTimeout(()=>{btn.innerHTML=COPY_ICON;btn.setAttribute('aria-label',hubText('copyPath'));},1500);}catch(_){hubFeedback(t('copyFailed'),true);}}));
   document.querySelectorAll('[data-project-action]').forEach(btn=>btn.addEventListener('click',()=>manageHubProject(btn)));
+  document.querySelector('#hubHistoryToggle')?.addEventListener('click',event=>{state.hubHistoryExpanded=!state.hubHistoryExpanded;localStorage.setItem('task-mecca-hub-history-expanded-v1',state.hubHistoryExpanded?'1':'0');event.currentTarget.setAttribute('aria-expanded',String(state.hubHistoryExpanded));event.currentTarget.querySelector('.hub-history-action').textContent=hubText(state.hubHistoryExpanded?'collapseHistory':'expandHistory');document.querySelector('#hubHistoryItems').hidden=!state.hubHistoryExpanded;});
   const changes=$('#hubUpdateChangesBtn');
   if(changes)changes.addEventListener('click',showAvailableUpdateNotes);
   const up=$('#upgradeBtn');
@@ -2450,7 +2457,7 @@ async function manageHubProject(button) {
     await refreshHub(true);render();
     hubFeedback(action==='remove'?hubText('preserved')+' · '+path:hubText('success'));
     document.querySelector('#hubFeedback')?.setAttribute('tabindex','-1');document.querySelector('#hubFeedback')?.focus();
-  } catch(error) { hubFeedback(hubText('failed')+' '+String(error?.message||error),true); } finally { button.disabled=false; }
+  } catch(error) { await refreshHub(true);render();hubFeedback(hubText('failed')+' '+String(error?.message||error),true); } finally { button.disabled=false; }
 }
 
 function matchesStatusFilter(t, key) {
@@ -3327,6 +3334,7 @@ function toggleSidebar() {
 
 function render() {
   if(document.querySelector('.hub-confirm-overlay'))return;
+  const hubHistoryFocus=document.activeElement?.id==='hubHistoryToggle';
   nav(); translateChrome(); renderAccess(); renderBacklogPicker(); applySidebarState(); updateNotificationIndicator(); renderGlobalUpdateIndicator(); renderContentUpdatePrompt(); renderReleaseUnreadPrompt();
   const c=$('#content'), data=currentProjectData();
   if(state.view==='release-notes'){
@@ -3340,7 +3348,7 @@ function render() {
   const viewDataReady=manualReady || (snapshotView ? Boolean(state.snapshot) : Boolean(data));
   if (!viewDataReady && !state.detailTask) {
     if (state.view === 'hub' && state.hub) {
-      c.innerHTML=hubView(); bindHubActions(); return;
+      c.innerHTML=hubView(); bindHubActions(); if(hubHistoryFocus)document.querySelector('#hubHistoryToggle')?.focus({preventScroll:true}); return;
     }
     if (state.loadError) {
       c.innerHTML=`<div class="load-error"><h2>Project dashboard could not be loaded</h2><p><strong>Project</strong> ${esc(state.project||'-')}</p><p>${esc(state.loadError)}</p><div class="project-actions"><button class="action-btn secondary" id="retryProjectBtn">Retry</button><button class="action-btn" id="backToHubBtn">Back to Projects</button></div></div>`;
@@ -3374,6 +3382,7 @@ function render() {
   }
   c.innerHTML=(state.view==='hub'?hubView():gate+(state.view==='manual'?manualView():state.view==='notifications'?projectNotificationsView():state.view==='workload'?workloadView():state.view==='attention'?attentionView():state.view==='issues'?issuesView():listView()));
   bindRows(); if(state.view==='hub') bindHubActions();
+  if(state.view==='hub'&&hubHistoryFocus)document.querySelector('#hubHistoryToggle')?.focus({preventScroll:true});
   document.querySelectorAll('[data-runtime-hook-action]').forEach(button=>{
     button.addEventListener('click',e=>performRuntimeHookAction(e.currentTarget));
   });
