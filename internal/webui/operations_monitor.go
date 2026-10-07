@@ -405,6 +405,16 @@ func scanOperationProject(project string, now time.Time) (operationJournal, erro
 func deliverOperationIncidents(project string, journal operationJournal) {
 	events := []notify.Event{}
 	for _, incident := range journal.Incidents {
+		controllerWork := false
+		for _, stage := range journal.Stages {
+			if stage.ControllerReview && strings.EqualFold(stage.TaskID, incident.TaskID) && (incident.AttemptID == "" || stage.AttemptID == incident.AttemptID) {
+				controllerWork = true
+				break
+			}
+		}
+		if controllerWork {
+			continue
+		}
 		if incident.Kind == "normal_exit" {
 			continue
 		}

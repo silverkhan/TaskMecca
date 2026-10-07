@@ -1,4 +1,5 @@
 const state = {
+ userAttention:[],userAttentionContext:'',userAttentionObservedAt:0,
   snapshot: null,
   listData: null,
   detailTask: null,
@@ -1479,8 +1480,10 @@ function humanSummaryCard(task) {
   const urgent=reason?`<div class="summary-alert ${reason.severity==='danger'?'danger':''}"><strong>${esc(reason.title||t('needsAttention'))}</strong><span>${esc(reason.message||'')}</span>${reason.resume_condition?`<span>${esc(reason.resume_condition)}</span>`:''}</div>`:'';
   return `<section class="human-summary-card detail-section" id="human-summary" data-toc-label="${esc(t('humanSummary'))}"><div class="human-summary-head"><div><div class="eyebrow">${esc(t('humanSummary'))}</div>${!s.canonical?`<span class="summary-source">${esc(t('summaryFallback'))}</span>`:''}</div></div><div class="human-summary-grid">${rows.map(([label,value])=>`<div class="human-summary-row"><span>${esc(label)}</span><strong>${esc(value)}</strong></div>`).join('')}</div>${urgent}<div class="detail-jump-list"><span>${esc(t('detailLinks'))}</span>${links.map(([id,label])=>`<a href="#${esc(id)}" data-detail-target="${esc(id)}">${esc(label)}</a>`).join('')}</div></section>`;
 }
-function healthLabel(h) { return ({healthy:t('active'),quiet:t('quiet'),stale:t('stale'),worker_missing:t('workerMissing'),runtime_unknown:t('runtimeUnknown'),awaiting_finalize:t('awaitingFinalize'),needs_user:t('needsUser'),'n/a':'-'})[h] || h; }
-function stateLabel(s) { return ({doing:t('working'),ready:t('ready'),blocked:t('blocked'),hold:t('hold'),done:t('done'),todo:t('todo'),needs_user:t('needsUser'),awaiting_finalize:t('awaitingFinalize'),stalled:t('stalled')})[s] || s; }
+Object.assign(I18N.ko,{controllerReviewPending:'Controller 검토 대기',controllerReview:'Controller 검토 중',controllerFinalizing:'Controller 완료 처리 중',controllerRecovery:'Controller 복구 필요'});
+Object.assign(I18N.en,{controllerReviewPending:'Controller review pending',controllerReview:'Controller review in progress',controllerFinalizing:'Controller finalization in progress',controllerRecovery:'Controller recovery needed'});
+function healthLabel(h) { if(String(h).startsWith('controller_'))return ({controller_review_pending:t('controllerReviewPending'),controller_review:t('controllerReview'),controller_finalizing:t('controllerFinalizing'),controller_recovery:t('controllerRecovery')})[h]||h; return ({healthy:t('active'),quiet:t('quiet'),stale:t('stale'),worker_missing:t('workerMissing'),runtime_unknown:t('runtimeUnknown'),awaiting_finalize:t('controllerReviewPending'),needs_user:t('needsUser'),'n/a':'-'})[h] || h; }
+function stateLabel(s) { if(String(s).startsWith('controller_'))return healthLabel(s); return ({doing:t('working'),ready:t('ready'),blocked:t('blocked'),hold:t('hold'),done:t('done'),todo:t('todo'),needs_user:t('needsUser'),awaiting_finalize:t('controllerReviewPending'),stalled:t('stalled')})[s] || s; }
 function lifecycleEventLabel(label) { return ({Registered:t('eventRegistered'),Assigned:t('eventAssigned'),Started:t('eventStarted'),Waiting:t('eventWaiting'),Resumed:t('eventResumed'),Hold:t('eventHold'),Completed:t('eventCompleted')})[label] || label; }
 function lifecycleEvidenceLabel(event) {
   const ko=state.language==='ko';
@@ -1611,6 +1614,54 @@ async function loadRuntimeHookStatus(force=false) {
   }
 }
 
+Object.assign(I18N.ko,{currentUserAttention:'사용자 판단이 필요한 작업',userAttentionAction:'필요한 판단·조치',userAttentionFallback:'백로그를 열어 필요한 판단을 확인해 주세요.'});
+Object.assign(I18N.en,{currentUserAttention:'Tasks awaiting your decision',userAttentionAction:'Decision or action needed',userAttentionFallback:'Open the backlog to review the decision needed.'});
+function currentUserAttention(payload) {
+  const items=payload?.all_items||{}, seen=new Set(), rows=[];
+  for(const reason of payload?.attention||[]){
+    if(reason.type!=='user_intervention'||reason.audience==='controller'||reason.resolved||reason.resolved_at||reason.history||reason.active===false||['resolved','closed','dismissed'].includes(reason.status||reason.state))continue;
+    const task=items[reason.id];
+    if(!task||!task.id||seen.has(task.id)||!['doing','hold'].includes(task.file_state)||(task.location&&task.location!=='active')||String(task.state||'').startsWith('controller_'))continue;
+    seen.add(task.id);
+    rows.push({id:task.id,title:titleOf(task),message:reason.message||'',action:reason.resume_condition||task.fields?.재개조건||task.document?.summary?.follow_up||t('userAttentionFallback')});
+  }
+  return rows.sort((a,b)=>a.id.localeCompare(b.id,undefined,{numeric:true}));
+}
+function updateCurrentUserAttention(payload) {
+  if(!Array.isArray(payload?.attention))return;
+  const key=state.project+'|'+state.backlog, observed=Date.parse(payload.snapshot_at||'');
+  if(state.userAttentionContext===key&&state.userAttentionObservedAt>0&&(!Number.isFinite(observed)||observed<state.userAttentionObservedAt))return;
+  if(state.userAttentionContext!==key)state.userAttentionObservedAt=0;
+  state.userAttentionContext=key;
+  if(Number.isFinite(observed))state.userAttentionObservedAt=observed;
+  state.userAttention=currentUserAttention(payload);
+  renderUserAttention();
+}
+function clearCurrentUserAttention() {
+  state.userAttention=[];state.userAttentionContext='';state.userAttentionObservedAt=0;
+  renderUserAttention();
+}
+function userAttentionMarkup(rows) {
+  const params=new URLSearchParams({project:state.project});
+  if(state.backlog)params.set('backlog',state.backlog);
+  return `<h2 id="userAttentionHeading">${esc(t('currentUserAttention'))}<span>${rows.length}</span></h2><ul>${rows.map(row=>`<li><a data-user-attention-task="${esc(row.id)}" href="/tasks/${encodeURIComponent(row.id)}?${esc(params.toString())}"><span class="user-attention-id">${esc(row.id)}</span><strong>${esc(row.title)}</strong></a><div class="user-attention-decision">${row.message?`<p>${esc(row.message)}</p>`:''}<p><b>${esc(t('userAttentionAction'))}</b> ${esc(row.action)}</p></div></li>`).join('')}</ul>`;
+}
+function renderUserAttention() {
+  const el=$('#userAttention');
+  if(!el)return;
+  const rows=state.userAttentionContext===state.project+'|'+state.backlog&&state.project?state.userAttention:[];
+  el.hidden=!rows.length;
+  if(!rows.length){el.innerHTML='';return;}
+  const markup=userAttentionMarkup(rows);
+  if(el.innerHTML===markup)return;
+  el.innerHTML=markup;
+  el.setAttribute('aria-labelledby','userAttentionHeading');
+  el.querySelectorAll('[data-user-attention-task]').forEach(link=>link.addEventListener('click',e=>{
+    if(e.button!==0||e.metaKey||e.ctrlKey||e.shiftKey||e.altKey)return;
+    e.preventDefault();openTask(link.dataset.userAttentionTask);
+  }));
+}
+
 function isIOSDevice() {
   return /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform==='MacIntel' && navigator.maxTouchPoints>1);
 }
@@ -1673,6 +1724,7 @@ async function sendBrowserNotification(kind,task,reason,key) {
 }
 function processTaskNotifications(snapshot) {
   if(!state.project||!snapshot)return;
+  updateCurrentUserAttention(snapshot);
   const current=snapshot.all_items||{};
   const previous=state.previousTasksByProject[state.project]||null;
   const serverEvents=Array.isArray(snapshot.notification_events)?snapshot.notification_events:[];
@@ -1680,6 +1732,8 @@ function processTaskNotifications(snapshot) {
 
   serverEvents.forEach(event=>{
     if(!event?.kind||!event.task_id||!event.id)return;
+    if(['finalize','completion_pending','controller_completion_review'].includes(event.kind)||['completion_pending','controller_completion_review'].includes(event.reason_type))return;
+    if(event.kind==='completed'&&current[event.task_id]?.file_state!=='done')return;
     if(event.kind==='completed')completedByServer.add(event.task_id);
     const task=current[event.task_id]||(snapshot.done_items||[]).find(x=>x.id===event.task_id);
     if(!task)return;
@@ -1696,7 +1750,7 @@ function processTaskNotifications(snapshot) {
 
   Object.values(current).forEach(task=>{
     const reason=task.attention_reason||null;
-    if(reason){
+    if(reason&&reason.audience!=='controller'&&!['completion_pending','controller_completion_review'].includes(reason.type)&&!String(task.state||'').startsWith('controller_')){
       const kind=reason.type==='runtime_stalled'?'stalled':'intervention';
       const key=`${state.project}:${task.id}:${kind}:${reason.type||''}:${task.updated_at||task.mtime||''}`;
       sendBrowserNotification(kind,task,reason,key);
@@ -1898,6 +1952,7 @@ function ensureOpenProject(path) {
   if(!state.openProjects.includes(path)){ state.openProjects.push(path); saveOpenProjects(); }
 }
 function switchProject(path) {
+ clearCurrentUserAttention();
   if(!path)return;
   ensureOpenProject(path);
   state.project=path;
@@ -2006,6 +2061,7 @@ function openWebTerminal() {
   location.href='/terminal'+(params.toString()?'?'+params.toString():'');
 }
 function navigateView(view) {
+ if(view==='hub'||view==='release-notes')clearCurrentUserAttention();
   if(view==='release-notes'){
     state.project='';
     state.snapshot=null;
@@ -3285,7 +3341,7 @@ async function loadTaskDetail(id) {
 function openTask(id) {
   if (!id) return;
   state.detail=id; state.detailTask=null; state.loadError=''; state.raw=false; state.view='backlog';
-  const p=new URLSearchParams(); if(state.project)p.set('project',state.project); if(state.tagFilters.length)p.set('tags',state.tagFilters.join(',')); history.pushState({},'',`/tasks/${encodeURIComponent(id)}${p.toString()?`?${p.toString()}`:''}`); render(); loadTaskDetail(id);
+  const p=new URLSearchParams(); if(state.project)p.set('project',state.project); if(state.backlog)p.set('backlog',state.backlog); if(state.tagFilters.length)p.set('tags',state.tagFilters.join(',')); history.pushState({},'',`/tasks/${encodeURIComponent(id)}${p.toString()?`?${p.toString()}`:''}`); render(); loadTaskDetail(id);
 }
 function closeTask() {
   state.detail=null; state.detailTask=null; state.loadError=''; history.pushState({},'',state.view==='backlog'?backlogUrl():`/?view=${state.view}`); render();
@@ -3387,6 +3443,7 @@ function toggleSidebar() {
 }
 
 function render() {
+ renderUserAttention();
   if(document.querySelector('.hub-confirm-overlay'))return;
   const hubHistoryFocus=document.activeElement?.id==='hubHistoryToggle';
   const searchFocus=document.activeElement?.id==='search' ? {start:document.activeElement.selectionStart,end:document.activeElement.selectionEnd} : null;
@@ -3543,7 +3600,7 @@ let listRefreshQueued=false;
 function listNotificationPayload(data) {
   const current={...(data?.attention_items||{})};
   (data?.items||[]).forEach(task=>{current[task.id]=task});
-  return {all_items:current,notification_events:data?.notification_events||[],attention:data?.attention||[]};
+  return {snapshot_at:data?.snapshot_at,all_items:current,notification_events:data?.notification_events||[],attention:data?.attention||[]};
 }
 
 async function refreshHub(force=false) {
@@ -3655,7 +3712,7 @@ function ensureAttentionStream() {
   state.eventSource=source;
   state.eventStreamKey=key;
   source.addEventListener('attention',event=>{
-    if(state.eventStreamKey!==key)return;
+    if(state.eventStreamKey!==key||state.project+'|'+state.backlog!==key)return;
     let payload=null;
     try{payload=JSON.parse(event.data)}catch(_){return}
     processTaskNotifications(payload);
@@ -3675,6 +3732,7 @@ function ensureAttentionStream() {
 async function refreshOnce() {
   const targetProject=state.project;
   const targetView=state.view;
+ const targetBacklog=state.backlog;
   const params=new URLSearchParams();
   if(state.backlog)params.set('backlog',state.backlog);
   if(targetProject)params.set('project',targetProject);
@@ -3721,7 +3779,7 @@ async function refreshOnce() {
   if(targetView==='notifications'){
     closeAttentionStream();
     await loadProjectNotificationSettings();
-    if(targetProject!==state.project || state.view!==targetView)return;
+    if(targetProject!==state.project || targetBacklog!==state.backlog || state.view!==targetView)return;
     state.loadError=state.projectNotificationSettingsError;
     if(!state.loadError)$('#connectionDot').style.background='var(--ok)';
     render();
@@ -3730,7 +3788,7 @@ async function refreshOnce() {
 
   if(targetView==='manual'){
     await loadManual(state.language);
-    if(targetProject!==state.project || state.view!==targetView)return;
+    if(targetProject!==state.project || targetBacklog!==state.backlog || state.view!==targetView)return;
     state.loadError='';
     $('#connectionDot').style.background='var(--ok)';
     ensureAttentionStream();
@@ -3757,7 +3815,7 @@ async function refreshOnce() {
       throw new Error(detail||`HTTP ${r.status}`);
     }
     const snapshot=await r.json();
-    if(targetProject!==state.project || state.view!==targetView)return;
+    if(targetProject!==state.project || targetBacklog!==state.backlog || state.view!==targetView)return;
     state.snapshot=snapshot;
     if(targetView==='attention')processTaskNotifications(snapshot);
     state.loadError='';
@@ -3771,7 +3829,7 @@ async function refreshOnce() {
     ensureAttentionStream();
     render();
   } catch(e) {
-    if(targetProject!==state.project || state.view!==targetView)return;
+    if(targetProject!==state.project || targetBacklog!==state.backlog || state.view!==targetView)return;
     state.snapshot=null;
     state.loadError=String(e?.message||e||'Unknown error');
     $('#connectionDot').style.background='var(--danger)';
@@ -3797,6 +3855,7 @@ async function refresh() {
   }
 }
 function route(fromPop=false) {
+ const previousAttentionContext=state.project+'|'+state.backlog;
   const previousDetail=state.detail;
   const previousProject=state.project;
   const m=location.pathname.match(/^\/tasks\/([^/]+)/);
@@ -3856,7 +3915,8 @@ function route(fromPop=false) {
     const rawTags=p.get('tags')||'';
     state.tagFilters=rawTags.split(',').map(x=>x.trim()).filter(Boolean);
   }
-  render();
+  if(previousAttentionContext!==state.project+'|'+state.backlog)clearCurrentUserAttention();
+ render();
   if(fromPop&&state.project&&state.view==='backlog'){
     queueMicrotask(()=>{
       refreshList();

@@ -50,7 +50,7 @@ func TestCoordinateSurfacesCompletedWorkerContinuityGap(t *testing.T) {
     if err!=nil { t.Fatal(err) }
     gaps:=report["continuity_gaps"].([]map[string]any)
     if len(gaps)!=1 { t.Fatalf("gaps=%+v",gaps) }
-    if gaps[0]["code"]!="worker_completed_backlog_doing" { t.Fatalf("gap=%+v",gaps[0]) }
+    if gaps[0]["code"]!="controller_completion_recovery" { t.Fatalf("gap=%+v",gaps[0]) }
     if report["controller_review_needed"]!=true { t.Fatalf("controller_review_needed=%v",report["controller_review_needed"]) }
 }
 
@@ -110,7 +110,7 @@ func TestCoordinateRecoversB415StyleOrphanedDoingWithDirtyScope(t *testing.T) {
     gaps:=report["continuity_gaps"].([]map[string]any)
     if len(gaps)!=1 { t.Fatalf("gaps=%+v",gaps) }
     gap:=gaps[0]
-    if gap["code"]!="worker_completed_backlog_doing" { t.Fatalf("gap=%+v",gap) }
+    if gap["code"]!="controller_completion_recovery" { t.Fatalf("gap=%+v",gap) }
     recovery:=gap["recovery"].(map[string]any)
     if recovery["requires_fresh_preflight"]!=true { t.Fatalf("recovery=%+v",recovery) }
     if recovery["uncommitted_change_count"]!=1 { t.Fatalf("recovery=%+v",recovery) }

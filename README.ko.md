@@ -156,6 +156,8 @@ task-mecca upgrade
 
 현재 프로젝트의 managed framework 업데이트:
 
+
+웹에서 Worker 완료 보고 후에는 Controller 검토 대기·검토 중·완료 처리 중을 구분합니다. 정상 검토와 Controller 복구는 사용자 조치 알림을 보내지 않으며, 실제 사용자 판단과 백로그 최종 완료는 알림을 유지합니다. 상단에는 현재 사용자 판단이 필요한 작업의 정확한 백로그 링크와 필요한 판단·조치만 표시합니다. 해소된 이력과 Controller 작업은 제외합니다. 명시적인 `대기유형: user`와 재개조건은 `hold_review`가 없어도 보존합니다.
 ```bash
 task-mecca migrate
 ```

@@ -2,13 +2,13 @@ package backlog
 
 import "testing"
 
-func TestControlTowerRuntimeEvidenceOverridesHoldSensor(t *testing.T) {
+func TestControlTowerUserHoldPreservesDecision(t *testing.T) {
     row:=Record{ID:"B-710",State:"hold",Location:"active"}
     review:=map[string]any{"wait_kind":"user","wait_note":"hold asks user"}
     signal:=map[string]any{"source":"execution_ledger","attempt_id":"run-710","runtime_state":"completed","health":"awaiting_finalize"}
     reason,condition:=canonicalOperationalState(row,review,signal)
-    if toString(reason["type"])!="completion_pending" { t.Fatalf("reason=%+v",reason) }
-    if toString(condition["kind"])!="finalize" { t.Fatalf("condition=%+v",condition) }
+    if toString(reason["type"])!="user_intervention" { t.Fatalf("reason=%+v",reason) }
+    if toString(condition["kind"])!="intervention" { t.Fatalf("condition=%+v",condition) }
 }
 
 func TestControlTowerApprovalIsFirstClassState(t *testing.T) {
@@ -31,7 +31,7 @@ func TestControlTowerConditionKeySeparatesExecutionEpisodes(t *testing.T) {
 
 func TestEffectiveStateProjectionCoversEveryCanonicalAttentionType(t *testing.T) {
     cases:=[]struct{reason,want string}{
-        {"completion_pending","awaiting_finalize"},
+        {"completion_pending","controller_recovery"},
         {"user_intervention","needs_user"},
         {"approval_required","needs_user"},
         {"runtime_stalled","stalled"},

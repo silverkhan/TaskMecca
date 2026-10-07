@@ -156,6 +156,8 @@ task-mecca upgrade
 
 Update the managed framework in the current project:
 
+
+After a Worker completion report, Web separates Controller review pending, review in progress, and finalization in progress. Normal review and Controller recovery do not request user action; actual user decisions and canonical backlog completion still notify. The header lists current user decisions with the exact backlog link and required action, excluding resolved history and Controller work. Explicit `대기유형: user` and resume conditions remain visible without `hold_review`.
 ```bash
 task-mecca migrate
 ```

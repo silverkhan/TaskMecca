@@ -85,7 +85,12 @@ func Coordinate(project,root string,workerCap int) (map[string]any,error) {
         code:=""
         action:=""
         switch health {
-        case "awaiting_finalize":
+		case "controller_review_pending", "controller_review", "controller_finalizing":
+			continue
+		case "controller_recovery":
+			code = "controller_completion_recovery"
+			action = "Controller가 인계·검토 근거를 확인하고 복구하세요."
+		case "awaiting_finalize":
             code="worker_completed_backlog_doing"
             action="verify acceptance; finalize done if satisfied, otherwise dispatch a fresh worker turn"
         case "worker_missing":

@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/silverkhan/TaskMecca/internal/backlog"
 	"github.com/silverkhan/TaskMecca/internal/handoff"
 	"github.com/silverkhan/TaskMecca/internal/runtimeobs"
 )
@@ -12,16 +13,17 @@ import (
 // Stage clocks are immutable source timestamps, not the monitor's polling time.
 // This projection never reports a backlog completion or edits runtime evidence.
 type operationStage struct {
-	Project      string `json:"project"`
-	TaskID       string `json:"task_id"`
-	AssignmentID string `json:"assignment_id"`
-	AttemptID    string `json:"attempt_id,omitempty"`
-	HandoffID    string `json:"handoff_id,omitempty"`
-	Stage        string `json:"stage"`
-	Evidence     string `json:"evidence"`
-	Since        string `json:"since"`
-	GraceUntil   string `json:"grace_until,omitempty"`
-	Failed       bool   `json:"failed,omitempty"`
+	Project          string `json:"project"`
+	TaskID           string `json:"task_id"`
+	AssignmentID     string `json:"assignment_id"`
+	AttemptID        string `json:"attempt_id,omitempty"`
+	HandoffID        string `json:"handoff_id,omitempty"`
+	Stage            string `json:"stage"`
+	Evidence         string `json:"evidence"`
+	Since            string `json:"since"`
+	GraceUntil       string `json:"grace_until,omitempty"`
+	ControllerReview bool   `json:"controller_review,omitempty"`
+	Failed           bool   `json:"failed,omitempty"`
 }
 
 func (s operationStage) deferred(now time.Time) bool {
@@ -57,7 +59,31 @@ func operationStages(project string, ledger runtimeobs.Ledger, now time.Time) []
 	if err != nil || len(transfers.Findings) != 0 {
 		return nil
 	}
-	return projectOperationStages(project, assignments, ledger.Attempts, transfers, now)
+	stages := projectOperationStages(project, assignments, ledger.Attempts, transfers, now)
+	reviews := backlog.CompletionReviewStates(project, "", now)
+	for i := range stages {
+		if r := reviews[stages[i].TaskID]; r != nil {
+			state, _ := r["state"].(string)
+			switch state {
+			case "controller_review_pending":
+				stages[i].Stage = "handoff_pending"
+			case "controller_review":
+				stages[i].Stage = "controller_review"
+			case "controller_finalizing":
+				stages[i].Stage = "review_complete"
+			case "controller_recovery":
+				stages[i].Stage = "handoff_failed"
+				stages[i].Failed = true
+			default:
+				continue
+			}
+			stages[i].ControllerReview = true
+			stages[i].Since, _ = r["since"].(string)
+			stages[i].GraceUntil, _ = r["grace_until"].(string)
+			stages[i].Evidence, _ = r["diagnostic"].(string)
+		}
+	}
+	return stages
 }
 
 func projectOperationStages(project string, assignments []runtimeobs.Assignment, attempts []runtimeobs.Attempt, transfers handoff.Ledger, now time.Time) []operationStage {

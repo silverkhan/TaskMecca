@@ -37,11 +37,12 @@ func webSummaryItem(row Record,state string,waiting []string,reason map[string]a
         "activity":map[string]any{"health":"n/a"},
     }
     if signal!=nil { item["activity"]=signal }
-    if len(reason)>0 {
+    if len(reason)>0 && toString(reason["audience"]) != "controller" {
         item["attention_reason"]=reason
         item["state"]=effectiveStateFromControl(state,reason)
     }
-    return item
+	applyCompletionReviewItem(item, signal)
+	return item
 }
 
 func preferredRows(rows []Record) map[string]Record {
@@ -233,15 +234,24 @@ func AttentionSnapshotFromRows(project,root string,rows []Record,reconcile bool)
     byID:=preferredRows(rows)
     allItems:=map[string]map[string]any{}
     attention:=[]map[string]any{}
-    canonical:=map[string]map[string]any{}
+	controllerReviews := []map[string]any{}
+	canonical:=map[string]map[string]any{}
 
     for id,row:=range byID {
         reason:=control.Attention[id]
         signal:=control.Activity[id]
         if row.Location=="active" && (row.State=="doing" || row.State=="hold") {
             item:=webSummaryItem(row,row.State,nil,reason,signal)
-            if lifecycle,ok:=control.Timings[id]; ok { item["lifecycle"]=lifecycle }
-            if len(reason)>0 {
+            if review, ok := item["completion_review"].(map[string]any); ok {
+				entry := map[string]any{"id": id}
+				for k, v := range review {
+					entry[k] = v
+				}
+				controllerReviews = append(controllerReviews, entry)
+				allItems[id] = item
+			}
+			if lifecycle,ok:=control.Timings[id]; ok { item["lifecycle"]=lifecycle }
+            if len(reason)>0 && toString(reason["audience"]) != "controller" {
                 rowAtt:=map[string]any{"id":id}
                 for k,v:=range reason { rowAtt[k]=v }
                 if signal!=nil { for k,v:=range signal { if _,exists:=rowAtt[k]; !exists { rowAtt[k]=v } } }
@@ -267,12 +277,27 @@ func AttentionSnapshotFromRows(project,root string,rows []Record,reconcile bool)
     var err error
     if reconcile { events,err=NotificationEvents(project,canonical) } else { events,err=ReadNotificationEvents(project) }
     if err!=nil { events=[]map[string]any{} }
-    for _,event:=range events {
+	filtered := []map[string]any{}
+	for _, event := range events {
+		kind := toString(event["kind"])
+		reason := toString(event["reason_type"])
+		id := strings.ToUpper(toString(event["task_id"]))
+		row, exists := byID[id]
+		if kind == "finalize" || reason == "completion_pending" || reason == "controller_completion_review" {
+			continue
+		}
+		if kind == "completed" && (!exists || row.State != "done") {
+			continue
+		}
+		filtered = append(filtered, event)
+	}
+	events = filtered
+	for _,event:=range events {
         id:=strings.ToUpper(toString(event["task_id"])); if id=="" { continue }
         if _,exists:=allItems[id]; exists { continue }
         if row,ok:=byID[id]; ok { item:=webSummaryItem(row,row.State,nil,control.Attention[id],control.Activity[id]); if lifecycle,ok:=control.Timings[id]; ok { item["lifecycle"]=lifecycle }; allItems[id]=item }
     }
-    return map[string]any{"snapshot_at":time.Now().Format(time.RFC3339),"attention":attention,"all_items":allItems,"notification_events":events,"counts":map[string]any{"attention":len(attention)}},nil
+    return map[string]any{"snapshot_at":time.Now().Format(time.RFC3339),"attention":attention, "controller_reviews": controllerReviews,"all_items":allItems,"notification_events":events,"counts":map[string]any{"attention":len(attention)}},nil
 }
 
 func AttentionSnapshot(project,root string,reconcile bool) (map[string]any,error) {

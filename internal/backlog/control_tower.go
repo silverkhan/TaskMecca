@@ -43,6 +43,7 @@ func reconcileControlTower(project,root string,rows []Record) controlTowerSnapsh
 
 	activity:=runtimeActivity(project,rows,timings)
 	activity=mergeRuntimeSignals(activity,runtimeLedgerSignals(project,rows,time.Now()))
+	applyCompletionReviews(project, rows, activity, now)
 	for id,signal:=range activity {
 		health:=toString(signal["health"])
 		if health!="assignment_unobserved" && health!="binding_pending" && health!="binding_ambiguous" && health!="awaiting_start" { continue }
@@ -72,18 +73,33 @@ func reconcileControlTower(project,root string,rows []Record) controlTowerSnapsh
 func canonicalOperationalState(row Record,review,signal map[string]any) (map[string]any,map[string]any) {
     reason:=map[string]any{}
     condition:=map[string]any{}
+	if row.Location == "archive" || (row.State != "doing" && row.State != "hold") {
+		return reason, condition
+	}
 
-    // Backlog hold is a sensor input. It is interpreted here exactly once.
-    if row.State=="hold" && review!=nil && toString(review["wait_kind"])=="user" {
+	// Backlog hold is a sensor input. It is interpreted here exactly once.
+	waitKind := strings.TrimSpace(row.Fields["대기유형"])
+	if waitKind == "" {
+		waitKind = toString(review["wait_kind"])
+	}
+	if row.State=="hold" && waitKind =="user" {
         reason=map[string]any{
             "type":"user_intervention","severity":"danger","title":"사용자 개입 필요",
-            "message":firstNonEmpty(toString(review["wait_note"]),"사용자 입력 또는 판단을 기다리고 있습니다."),
-            "resume_condition":toString(review["resume_condition"]),"evidence":toString(review["wait_evidence"]),
+            "message":firstNonEmpty(row.Fields["대기"], toString(review["wait_note"]),"사용자 입력 또는 판단을 기다리고 있습니다."),
+            "resume_condition": firstNonEmpty(row.Fields["재개조건"], toString(review["resume_condition"])),"evidence": firstNonEmpty(row.Fields["대기근거"], toString(review["wait_evidence"])),
         }
         condition=notificationCondition("intervention","hold:user",reason,signal)
     }
 
-    if signal==nil { return reason,condition }
+    if signal==nil || len(reason) > 0 { return reason,condition
+	}
+	if review, ok := signal["completion_review"].(map[string]any); ok {
+		if review["state"] == "needs_user" {
+			r := map[string]any{"type": "user_intervention", "severity": "danger", "message": review["diagnostic"], "resume_condition": "필요한 사용자 판단 또는 승인을 제공해 주세요."}
+			return r, notificationCondition("intervention", "controller:user", r, signal)
+		}
+		return map[string]any{"type": "controller_completion_review", "audience": "controller", "severity": "info", "state": review["state"], "message": review["diagnostic"], "completion_review": review}, nil
+	}
     health:=strings.ToLower(strings.TrimSpace(toString(signal["health"])))
     runtimeState:=strings.ToLower(strings.TrimSpace(toString(signal["runtime_state"])))
     switch {
@@ -149,8 +165,10 @@ func notificationCondition(kind,key string,reason,signal map[string]any) map[str
 
 func effectiveStateFromControl(fileState string,reason map[string]any) string {
     switch toString(reason["type"]) {
-    case "completion_pending": return "awaiting_finalize"
-    case "user_intervention","approval_required": return "needs_user"
+    case "controller_completion_review":
+		return toString(reason["state"])
+	case "completion_pending": return "controller_recovery"
+	case "user_intervention","approval_required": return "needs_user"
     case "runtime_stalled","execution_interrupted","runtime_unknown": return "stalled"
     default: return fileState
     }

@@ -109,7 +109,7 @@ func TestAttentionSnapshotDetectsCompletedRuntimeAndPersistsCompletion(t *testin
     first,err:=AttentionSnapshot(project,folder,true)
     if err!=nil { t.Fatal(err) }
     attention:=first["attention"].([]map[string]any)
-    if len(attention)!=1 || attention[0]["type"]!="completion_pending" { t.Fatalf("attention=%+v",attention) }
+    if len(attention)!=0 || len(first["controller_reviews"].([]map[string]any))!=1 { t.Fatalf("attention=%+v",first) }
 
     if err:=os.Remove(path); err!=nil { t.Fatal(err) }
     writeWebTask(t,folder,"000001.A-1.alpha.done.md","# A-1 Alpha\n- Agent: /root/controller/pairi\n- 결과: done\n")

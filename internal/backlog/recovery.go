@@ -55,7 +55,7 @@ func scopedWorkingTreeChanges(changes []string,scope string) []string {
 
 func continuityHealthConsumesWorkerSlot(health string) bool {
     switch health {
-    case "awaiting_finalize","worker_missing","needs_user":
+    case "controller_review_pending", "controller_review", "controller_finalizing", "controller_recovery", "awaiting_finalize","worker_missing","needs_user":
         return false
     default:
         return true

@@ -69,6 +69,8 @@ jobs:
           node --check goassets/template/_task_mecca/framework/web/app.js
           node --check goassets/template/_task_mecca/framework/web/sw.js
           node --check goassets/template/_task_mecca/framework/web/terminal.js
+      - name: Test Controller review and current user attention
+        run: node --test tests/web_completion_review.test.cjs tests/web_user_attention.test.cjs
       - name: Test Web project session persistence
         run: node --test tests/web_project_sessions.test.cjs
 

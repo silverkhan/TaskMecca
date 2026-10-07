@@ -181,11 +181,12 @@ func DashboardSnapshot(project,root string,recentDoneLimit int) (map[string]any,
         item["hold_review"]=reviewByPath[row.Path]
         if signal,ok:=activity[id]; ok { item["activity"]=signal } else { item["activity"]=map[string]any{"health":"n/a"} }
         reason:=control.Attention[id]
-        if len(reason)>0 {
+        if len(reason)>0 && toString(reason["audience"])!="controller" {
             item["attention_reason"]=reason
             item["state"]=effectiveStateFromControl(row.State,reason)
         }
         if condition:=control.NotificationCondition[id]; len(condition)>0 { item["notification_condition"]=condition }
+        applyCompletionReviewItem(item,activity[id])
         allItems[id]=item
     }
 
