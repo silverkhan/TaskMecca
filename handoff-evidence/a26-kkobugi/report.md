@@ -23,9 +23,9 @@
 
 ## 검증
 
-- `go test ./...`: 전체 PASS (최종 registry preservation 추가 후 재확인 중; 최종 결과는 아래 delivery 갱신).
+- `go test ./...`: 최종 registry preservation 추가 후 전체 PASS.
 - `go vet ./...`: PASS.
-- `go test -race ./internal/install ./internal/maintenance ./internal/projectguard ./internal/webui ./cmd/task-mecca`: PASS; 최종 registry 추가 후 재확인 중.
+- `go test -race ./internal/install ./internal/maintenance ./internal/projectguard ./internal/webui ./cmd/task-mecca`: 최종 registry 추가 후 PASS.
 - bundled Python 3.12.14, `PYTHONPATH=src python3 -m unittest discover -s tests`: 30 tests PASS.
 - Go stale human-choice/legacy no-choice/symlink/read-error/backup failure, maintenance substituted ancestor/Archive-Restore-Forget/legacy raw preservation, Web archived migration/no-primary-autoregistration 회귀 PASS.
 - `node --check` app.js, Go/Python app.js/style.css parity, `git diff --check`: PASS.
@@ -64,4 +64,8 @@ Round2: 이 Worker 재개 후 `mcp__cua_repl.js`의 아래 title별 inline JPEG�
 
 ## Delivery
 
-PR/head/CI의 최종 검증 결과는 구현 commit/push 후 이 section을 갱신한다. merge/dev integration 및 canonical done은 Controller 작업이다.
+Stable report ID: `A26-kkobugi-20261007-01`.
+
+실제 PR: https://github.com/silverkhan/TaskMecca/pull/140 (base `dev`). 구현 head: `25c0113abce93b58e8eeafe818d798466e0727c8`. 해당 exact SHA의 CI run37596117171에서 9개 jobs(Go runtime, Python3.11/3.12/3.13, Go-Python smoke, macOS/Windows preserving management, macOS/Windows build) 모두 PASS. 상세: https://github.com/silverkhan/TaskMecca/actions/runs/37596117171 . standalone artifacts run37596117107도 SUCCESS: https://github.com/silverkhan/TaskMecca/actions/runs/37596117107 .
+
+이 Delivery 갱신은 report-only commit이며 코드 변경은 없다. 자기 report commit SHA 본문 삽입 순환을 피하기 위해 final report commit SHA 및 해당 exact head CI는 native DONE에서 전달한다. original contract SHA는 위 작업 경계의 `cc6af5a8ef4797e2c8e636ade50da34725093ab7052ac4ea4105525e93aef18a`다. merge/dev integration 및 canonical done은 Controller 작업이다.
