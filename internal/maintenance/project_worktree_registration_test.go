@@ -48,7 +48,7 @@ func TestAutomaticRegistrationExcludesLinkedWorktreeButExplicitRegistrationAllow
 		t.Fatal(err)
 	}
 	reg, err = readProjectRegistry()
-	if err != nil || len(reg.Projects) != 2 {
+	if err != nil || len(reg.Projects) != 1 {
 		t.Fatalf("explicit/ordinary registration: %+v %v", reg, err)
 	}
 }
@@ -72,7 +72,7 @@ func TestGitFileWithoutCommonDirIsNotExcluded(t *testing.T) {
 		t.Fatal(err)
 	}
 	reg, err := readProjectRegistry()
-	if err != nil || len(reg.Projects) != 1 {
+	if err != nil || len(reg.Projects) != 0 {
 		t.Fatalf("gitdir registration: %+v %v", reg, err)
 	}
 }

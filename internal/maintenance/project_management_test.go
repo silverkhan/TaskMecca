@@ -30,14 +30,14 @@ func TestProjectManagementRemovalKeepsFolderAndHistory(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if record.FolderOutcome != "preserved" {
-		t.Fatalf("outcome = %q", record.FolderOutcome)
+	if record.ID == "" {
+		t.Fatalf("archive ID = %q", record.ID)
 	}
 	if _, err := os.Stat(project); err != nil {
 		t.Fatalf("removal must retain folder: %v", err)
 	}
 	history, err := RemovalHistory()
-	if err != nil || len(history) != 1 || history[0].Presence != "present" {
+	if err != nil || len(history) != 1 || history[0].Path != project {
 		t.Fatalf("history = %#v, %v", history, err)
 	}
 	if err := DeleteRemovalHistory(record.ID); err != nil {
@@ -45,68 +45,5 @@ func TestProjectManagementRemovalKeepsFolderAndHistory(t *testing.T) {
 	}
 	if _, err := os.Stat(project); err != nil {
 		t.Fatalf("history deletion must retain folder: %v", err)
-	}
-}
-
-func TestMoveProjectToTrashRejectsRepositoryAndSymlink(t *testing.T) {
-	dir := t.TempDir()
-	repo := filepath.Join(dir, "repo")
-	if err := os.MkdirAll(filepath.Join(repo, ".git"), 0755); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := MoveProjectToTrash(repo); err == nil {
-		t.Fatal("repository root must be rejected")
-	}
-	target := filepath.Join(dir, "target")
-	if err := os.Mkdir(target, 0755); err != nil {
-		t.Fatal(err)
-	}
-	link := filepath.Join(dir, "link")
-	if err := os.Symlink(target, link); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := MoveProjectToTrash(link); err == nil {
-		t.Fatal("symlink must be rejected")
-	}
-}
-
-func TestMoveProjectToTrashRejectsFileAndSymlinkParent(t *testing.T) {
-	dir := t.TempDir()
-	file := filepath.Join(dir, "not-a-directory")
-	if err := os.WriteFile(file, []byte("fixture"), 0600); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := MoveProjectToTrash(file); err == nil {
-		t.Fatal("file must be rejected")
-	}
-	target := filepath.Join(dir, "target")
-	if err := os.Mkdir(target, 0755); err != nil {
-		t.Fatal(err)
-	}
-	linkParent := filepath.Join(dir, "linked-parent")
-	if err := os.Symlink(target, linkParent); err != nil {
-		t.Fatal(err)
-	}
-	child := filepath.Join(linkParent, "child")
-	if err := os.Mkdir(filepath.Join(target, "child"), 0755); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := MoveProjectToTrash(child); err == nil {
-		t.Fatal("symlink-parent child must be rejected")
-	}
-}
-
-func TestMoveRemovedProjectToTrashRejectsUnrecordedFolder(t *testing.T) {
-	dir := t.TempDir()
-	t.Setenv("TASK_MECCA_HOME", filepath.Join(dir, "task-mecca-home"))
-	folder := filepath.Join(dir, "unrecorded")
-	if err := os.Mkdir(folder, 0755); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := MoveRemovedProjectToTrash("removed-missing", folder); err == nil {
-		t.Fatal("unrecorded folder cleanup must be rejected")
-	}
-	if _, err := os.Stat(folder); err != nil {
-		t.Fatalf("unrecorded folder was touched: %v", err)
 	}
 }

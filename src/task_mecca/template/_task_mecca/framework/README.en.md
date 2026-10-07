@@ -1,5 +1,7 @@
 # Task Mecca
 
+Go Global Hub archive, restore, and forget operations change registration/monitoring metadata only, never project files. The Python compatibility installer keeps its framework-only role. `task-mecca migrate --json` returns `choice_required` with modified files and overwrite/backup/cancel choices, without writing before selection. Pass the returned `plan_digest` using `--expect-plan DIGEST` to reject choices made against changed files. Backlogs, configuration, Telegram settings, and credentials are never migration targets.
+
 For first use, you only need the following three steps.
 
 ## 1. Launch the dashboard

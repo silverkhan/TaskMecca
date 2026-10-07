@@ -1185,5 +1185,17 @@ body.release-modal-open{overflow:hidden}
 .hub-history-toggle svg{width:18px;height:18px;flex:0 0 auto;fill:none;stroke:currentColor;stroke-width:1.7}
 .hub-history-toggle[aria-expanded="true"] svg{transform:rotate(180deg)}
 .hub-history [hidden]{display:none!important}
+.hub-add-project{margin:24px 0;max-width:900px}
+#hubFeedback[hidden]{display:none!important}
+.history-row>div:first-child{min-width:0;flex:1}
+.history-row strong{overflow-wrap:anywhere}
+.hub-add-project label{display:block;margin-bottom:8px;color:var(--muted);font-size:14px}
+.hub-add-project .project-actions{display:flex;flex-wrap:wrap;justify-content:flex-start}
+.hub-add-project input{flex:1 1 260px;min-width:0;min-height:44px;padding:10px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font:inherit;font-size:16px}
+.migration-choice-modal{max-height:calc(100dvh - 32px);overflow-y:auto}
+.migration-choice-files{max-height:220px;overflow:auto;padding-inline-start:24px}
+.migration-choice-files li{padding-block:4px;overflow-wrap:anywhere}
+.migration-choice-modal .project-actions{flex-wrap:wrap;justify-content:flex-start}
+.migration-choice-modal .action-btn{white-space:normal;min-height:44px;text-align:start}
 .history-row p{overflow-wrap:anywhere}
 .history-row .hub-cleanup-error{color:var(--danger)}

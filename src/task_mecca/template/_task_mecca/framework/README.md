@@ -1,5 +1,7 @@
 # Task Mecca
 
+Go Global Hub의 보관·다시 편입·목록 제거는 등록/감시 상태만 변경하며 파일을 삭제하지 않는다. Python 호환 설치는 기존 framework-only 역할을 유지한다. `task-mecca migrate --json`의 `choice_required`는 수정 파일 목록과 overwrite/backup/cancel 선택을 반환하며 선택 전에는 쓰지 않는다. 응답 `plan_digest`를 `--expect-plan DIGEST`와 함께 전달하면 선택 이후 변경된 파일을 덮어쓰지 않는다. 백로그·설정·Telegram·인증정보는 마이그레이션 대상이 아니다.
+
 처음 사용할 때는 아래 세 단계만 따르면 된다.
 
 ## 1. 대시보드 실행

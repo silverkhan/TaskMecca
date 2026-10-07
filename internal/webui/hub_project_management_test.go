@@ -29,7 +29,7 @@ func TestHubTrashRejectsPathWithoutRemovalHistory(t *testing.T) {
 	req.Header.Set("X-Task-Mecca-Action", "1")
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, req)
-	if rec.Code != http.StatusConflict {
+	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
 	}
 	if _, err := os.Stat(target); err != nil {

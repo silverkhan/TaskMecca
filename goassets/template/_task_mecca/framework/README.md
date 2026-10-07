@@ -187,6 +187,8 @@ task-mecca web
 task-mecca migrate
 ```
 
+마이그레이션은 감시·보관 상태와 사용자 데이터를 유지한다. 수정된 관리 파일이 있으면 덮어쓰기/백업 후 진행/취소를 선택하며, 비TTY·에이전트는 `migrate --json`의 `choice_required`를 사람에게 전달한 뒤 `--choice overwrite|backup|cancel`을 실행한다. 기존 설치에서 `init`은 변경하지 않는다. Web 열기·재시작은 등록하지 않으며 Hub나 `projects add|register|unregister|archive|restore|forget`에서 명시적으로 관리한다. 보관·목록 제거는 파일과 폴더를 그대로 둔다.
+
 마이그레이션 과정에서 `ROOT_PROMPT.md`, `SESSION_GUIDE*.md`, `collab.md`, `roles/*.md`처럼 현재 세션의 동작에 영향을 주는 지침이 바뀌었다면 **현재 Root 세션은 자동으로 새 지침을 알게 된 것으로 간주하지 않는다.** Web UI는 마이그레이션 완료 후 Root 세션 재동기화 필요 여부를 표시하고, 현재 세션에 그대로 붙여넣을 수 있는 복사 가능한 프롬프트를 제공한다. 이 프롬프트를 Root에 전달해 최신 지침을 다시 읽게 한 뒤 계속 작업한다.
 
 최종 사용자는 Python, `uv`, Go toolchain을 설치할 필요가 없다. Web UI, doctor, preflight, backlog 조작은 standalone binary가 직접 수행한다.

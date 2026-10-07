@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import subprocess
 import sys
@@ -42,7 +43,7 @@ def cmd_init(args: argparse.Namespace) -> int:
         target = install(root)
     except FileExistsError as exc:
         print(f"Not installed: {exc}")
-        print("If this is an existing Task Mecca project, use `task-mecca update`.")
+        print("If this is an existing Task Mecca project, use `task-mecca migrate`.")
         return 2
 
     print(f"Installed to {target}")
@@ -59,53 +60,36 @@ def cmd_init(args: argparse.Namespace) -> int:
 
 def cmd_update(args: argparse.Namespace) -> int:
     root = _project_root(args.project)
-    print("Task Mecca Update\n")
     try:
-        plan = update_plan(root)
-    except RuntimeError as exc:
-        print(str(exc))
-        return 2
-
-    print(f"Installed   {plan['installed_version']}")
-    print(f"Available   {plan['available_version']}\n")
-
-    if plan["installed_version"] == plan["available_version"] and not plan["safe"] and not plan["conflicts"] and not plan["removals"]:
-        print("Task Mecca is already up to date.")
+        result = apply_update(root, choice=args.choice, expected_plan=args.expect_plan)
+        if result.get("status") == "choice_required":
+            if args.json or not sys.stdin.isatty():
+                print(json.dumps(result, ensure_ascii=False))
+                return 3
+            print("수정된 프레임워크 파일:")
+            for rel in result["modified_files"]:
+                print("  " + rel)
+            try:
+                answer = input("1 새 버전으로 덮어쓰기 / 2 기존 수정사항을 백업하고 진행 / 3 취소: ").strip()
+            except EOFError:
+                answer = "3"
+            result = apply_update(root, choice={"1": "overwrite", "2": "backup"}.get(answer, "cancel"), expected_plan=result["plan_digest"])
+        if result.get("status") == "choice_required":
+            print(json.dumps(result, ensure_ascii=False))
+            return 3
+        if args.json:
+            print(json.dumps(result, ensure_ascii=False))
+        elif result["status"] == "cancelled":
+            print("Migration cancelled. No files were changed.")
+        else:
+            print(f"Task Mecca {result['available_version']} migrated.")
         return 0
-
-    if plan["preserve"]:
-        print("Local customizations preserved because upstream did not change these files:")
-        for rel in plan["preserve"]:
-            print(f"  • {rel}")
-        print()
-
-    if plan["conflicts"]:
-        print("Local modifications were detected in files that this update would replace or retire:")
-        for rel in plan["conflicts"]:
-            print(f"  • {rel}")
-        print("\nA backup is strongly recommended before updating.")
-        if not _yes_no("Create a backup of the modified files before updating?", default=True):
-            print("Update cancelled. No files were changed.")
-            return 1
-        backup = create_backup(
-            root,
-            plan["conflicts"],
-            from_version=plan["installed_version"],
-            to_version=plan["available_version"],
-        )
-        print(f"\nBackup created: {backup}")
-        print("\nThe modified project versions listed above will now be overwritten or retired by the official Task Mecca layout.")
-        print("The backup will remain available even if you cancel here.")
-        if not _yes_no("Continue with the update?", default=False):
-            print("Update cancelled. The backup was kept; no managed files were overwritten.")
-            return 1
-        result = apply_update(root, allow_conflicts=True)
-    else:
-        print("No conflicting local modifications detected. Updating...")
-        result = apply_update(root)
-
-    print(f"Task Mecca {result['available_version']} installed successfully.")
-    return 0
+    except (RuntimeError, OSError, ValueError) as exc:
+        if args.json:
+            print(json.dumps({"status": "failed", "error": str(exc)}, ensure_ascii=False))
+        else:
+            print(str(exc), file=sys.stderr)
+        return 2
 
 
 def _run_runtime(project_root: Path, argv: list[str]) -> int:
@@ -143,8 +127,11 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--project", help="Project root (defaults to current directory)")
     p.set_defaults(func=cmd_init)
 
-    p = sub.add_parser("update", help="Safely update an installed Task Mecca framework")
+    p = sub.add_parser("migrate", aliases=["update"], help="Safely migrate framework files without changing monitoring")
     p.add_argument("--project", help="Project root (defaults to current directory)")
+    p.add_argument("--choice", choices=["overwrite", "backup", "cancel"])
+    p.add_argument("--expect-plan", help="Require the plan_digest returned before the human choice")
+    p.add_argument("--json", action="store_true")
     p.set_defaults(func=cmd_update)
 
     p = sub.add_parser("doctor", help="Run the installed project's Task Mecca doctor")

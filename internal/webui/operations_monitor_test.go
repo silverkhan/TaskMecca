@@ -337,6 +337,9 @@ func TestOperationWebProcessContinuesAfterBrowserClose(t *testing.T) {
 	t.Setenv("TASK_MECCA_HOME", t.TempDir())
 	project := testOperationProject(t)
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err := maintenance.RegisterProject(project); err != nil {
+		t.Fatal(err)
+	}
 	if err != nil {
 		t.Fatal(err)
 	}
