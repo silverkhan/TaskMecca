@@ -169,8 +169,8 @@ func TestOperationClassifiesConfirmedStopUnverifiedRuntimeAndMonitoringGap(t *te
 	if err != nil {
 		t.Fatal(err)
 	}
-	if resumed.Incidents[1].RecoveredAt == "" {
-		t.Fatalf("new attempt did not close confirmed stop: %+v", resumed.Incidents)
+	if resumed.Incidents[1].RecoveredAt != "" {
+		t.Fatalf("mere new attempt hid confirmed failure: %+v", resumed.Incidents)
 	}
 }
 

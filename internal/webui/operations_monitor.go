@@ -27,21 +27,22 @@ const operationGapAfter = 2 * operationScanInterval
 
 // An operation incident is an observation, never a backlog lifecycle decision.
 type operationIncident struct {
-	ID             string                         `json:"id"`
-	Key            string                         `json:"key"`
-	Project        string                         `json:"project"`
-	AttemptID      string                         `json:"attempt_id,omitempty"`
-	TaskID         string                         `json:"task_id,omitempty"`
-	AgentPath      string                         `json:"agent_path,omitempty"`
-	Kind           string                         `json:"kind"`
-	Quality        string                         `json:"quality"`
-	Evidence       string                         `json:"evidence"`
-	LastObservedAt string                         `json:"last_observed_at,omitempty"`
-	DetectedAt     string                         `json:"detected_at"`
-	EndedAt        string                         `json:"ended_at,omitempty"`
-	RecoveredAt    string                         `json:"recovered_at,omitempty"`
-	Action         string                         `json:"action"`
-	Resolution     *operationCompletionResolution `json:"resolution,omitempty"`
+	ID               string                         `json:"id"`
+	Key              string                         `json:"key"`
+	Project          string                         `json:"project"`
+	AttemptID        string                         `json:"attempt_id,omitempty"`
+	TaskID           string                         `json:"task_id,omitempty"`
+	AgentPath        string                         `json:"agent_path,omitempty"`
+	Kind             string                         `json:"kind"`
+	Quality          string                         `json:"quality"`
+	Evidence         string                         `json:"evidence"`
+	LastObservedAt   string                         `json:"last_observed_at,omitempty"`
+	DetectedAt       string                         `json:"detected_at"`
+	EndedAt          string                         `json:"ended_at,omitempty"`
+	RecoveredAt      string                         `json:"recovered_at,omitempty"`
+	Action           string                         `json:"action"`
+	Resolution       *operationCompletionResolution `json:"resolution,omitempty"`
+	RecoveryEvidence string                         `json:"recovery_evidence,omitempty"`
 }
 
 type operationJournal struct {
@@ -50,6 +51,7 @@ type operationJournal struct {
 	LastScanAt   string              `json:"last_scan_at,omitempty"`
 	NextSequence int                 `json:"next_sequence"`
 	Incidents    []operationIncident `json:"incidents"`
+	Stages       []operationStage    `json:"stages,omitempty"`
 }
 
 var operationMu sync.Mutex
@@ -204,6 +206,16 @@ func scanOperationProject(project string, now time.Time) (operationJournal, erro
 	}
 	nowText := now.UTC().Format(time.RFC3339Nano)
 	completions := operationCompletionEvidence(project, ledger, now)
+	stages := operationStages(project, ledger, now)
+	for i := range stages {
+		if completion, ok := completions[stages[i].AttemptID]; ok && !stages[i].Failed {
+			stages[i].Stage = "controller_verified_complete"
+			stages[i].Since = completion.resolution.CompletedAt
+			stages[i].Evidence = "Controller verified backlog completion"
+			stages[i].GraceUntil = ""
+		}
+	}
+	journal.Stages = stages
 	signals := map[string]operationSignal{}
 	verified := map[string]bool{}
 	for _, attempt := range ledger.Attempts {
@@ -211,6 +223,14 @@ func scanOperationProject(project string, now time.Time) (operationJournal, erro
 			verified[attempt.Provider] = operationHookVerifier(project, attempt.Provider)
 		}
 		if signal, ok := classifyOperation(project, attempt, now, verified[attempt.Provider]); ok {
+			// Suppress the same obsolete source on every scan, not only while
+			// its first incident is active. Otherwise resolution would recur.
+			if operationSourceAlreadyResolved(signal.incident, journal) || latestOperationRecovery(signal.incident, ledger.Attempts, stages, now) {
+				continue
+			}
+			if stageSuppresses(signal.incident, stages, now) {
+				continue
+			}
 			if operationCompletedUnknown(signal.incident, completions) != nil {
 				continue
 			}
@@ -221,6 +241,11 @@ func scanOperationProject(project string, now time.Time) (operationJournal, erro
 	// earlier terminal episode. Keep both attempts' history, but close the old
 	// warning instead of leaving it active forever.
 	for _, prior := range ledger.Attempts {
+		// A later dispatch/start is not evidence that an actual failure was
+		// resolved. Preserve confirmed failure episodes for explicit review.
+		if prior.CurrentState == runtimeobs.StateErrored || prior.CurrentState == runtimeobs.StateInterrupted || prior.CurrentState == runtimeobs.StateShutdown {
+			continue
+		}
 		if prior.TaskID == "" || !prior.Terminal || prior.EndedAt == "" {
 			continue
 		}
@@ -233,7 +258,7 @@ func scanOperationProject(project string, now time.Time) (operationJournal, erro
 				continue
 			}
 			started, parseErr := time.Parse(time.RFC3339Nano, later.StartedAt)
-			if parseErr == nil && started.After(ended) {
+			if parseErr == nil && started.After(ended) && later.BindingState == runtimeobs.BindingBound && later.StateEvidenceSource == runtimeobs.EvidenceHook && (later.StateObservationQuality == runtimeobs.QualityObserved || later.StateObservationQuality == runtimeobs.QualityAuthoritative) && !later.Terminal {
 				delete(signals, "attempt:"+prior.AttemptID)
 				break
 			}
@@ -271,6 +296,33 @@ func scanOperationProject(project string, now time.Time) (operationJournal, erro
 			}
 		}
 	}
+	for _, stage := range stages {
+		if stage.Stage == "worker_running" || stage.Stage == "runtime_observation_pending" || stage.Stage == "handoff_applied" || stage.Stage == "controller_verified_complete" || stage.deferred(now) {
+			continue
+		}
+		kind := "handoff_stalled"
+		if stage.Failed {
+			kind = "handoff_failed"
+		}
+		key := "stage:" + stage.AssignmentID + ":" + stage.Stage
+		if stage.AttemptID != "" {
+			key = "attempt:" + stage.AttemptID
+			if existing, ok := signals[key]; ok && existing.incident.Kind != "runtime_unknown" && existing.incident.Kind != "no_signal" {
+				continue
+			}
+			if existing, ok := signals[key]; ok && existing.incident.Evidence == "terminal state lacks observed hook evidence" {
+				continue
+			}
+		} else {
+			delete(signals, "task:"+stage.TaskID)
+		}
+		signals[key] = operationSignal{key: key, alert: true, incident: operationIncident{Project: project, TaskID: stage.TaskID, AttemptID: stage.AttemptID, Kind: kind, Quality: "verification_required", Evidence: stage.Evidence, LastObservedAt: stage.Since, Action: "Controller: 인계 전달·완료검토 근거와 정체 원인을 확인하세요. 백로그 완료를 자동 추정하지 마세요."}}
+	}
+	for key, signal := range signals {
+		if stageSuppresses(signal.incident, stages, now) {
+			delete(signals, key)
+		}
+	}
 	if prior, err := time.Parse(time.RFC3339Nano, journal.LastScanAt); err == nil && now.Sub(prior) > operationGapAfter {
 		gap := operationIncident{Project: project, Kind: "monitor_gap", Quality: "monitoring_gap",
 			Evidence: "web server scan gap; exact session stop time is unknown", LastObservedAt: journal.LastScanAt,
@@ -281,6 +333,17 @@ func scanOperationProject(project string, now time.Time) (operationJournal, erro
 	for i := range journal.Incidents {
 		item := &journal.Incidents[i]
 		if item.RecoveredAt != "" {
+			continue
+		}
+		if stageSuppresses(*item, stages, now) {
+			item.RecoveredAt = nowText
+			item.RecoveryEvidence = "bounded normal handoff/review grace; runtime evidence unchanged"
+			continue
+		}
+		if latestOperationRecovery(*item, ledger.Attempts, stages, now) {
+			item.RecoveredAt = nowText
+			item.RecoveryEvidence = "latest assignment has observed execution evidence; prior runtime evidence unchanged"
+			delete(signals, item.Key)
 			continue
 		}
 		if resolution := operationCompletedUnknown(*item, completions); resolution != nil {
@@ -421,6 +484,7 @@ func operationSnapshot(primary string) map[string]any {
 	active := []operationIncident{}
 	recent := []operationIncident{}
 	resolved := []operationIncident{}
+	stages := []operationStage{}
 	for _, project := range operationProjects(primary) {
 		journal, err := readOperationJournal(project)
 		if err != nil {
@@ -428,8 +492,9 @@ func operationSnapshot(primary string) map[string]any {
 			continue
 		}
 		projects = append(projects, map[string]any{"path": project, "last_scan_at": journal.LastScanAt})
+		stages = append(stages, journal.Stages...)
 		for _, incident := range journal.Incidents {
-			if incident.Resolution != nil && incident.RecoveredAt != "" {
+			if (incident.Resolution != nil || incident.RecoveryEvidence != "") && incident.RecoveredAt != "" {
 				resolved = append(resolved, incident)
 			}
 			if incident.RecoveredAt == "" && incident.Kind != "normal_exit" {
@@ -446,5 +511,5 @@ func operationSnapshot(primary string) map[string]any {
 	if len(resolved) > 20 {
 		resolved = resolved[:20]
 	}
-	return map[string]any{"projects": projects, "active": active, "recent": recent, "resolved_observations": resolved, "telegram_transport_disabled": notify.TelegramTransportDisabled()}
+	return map[string]any{"projects": projects, "active": active, "recent": recent, "resolved_observations": resolved, "stages": stages, "telegram_transport_disabled": notify.TelegramTransportDisabled()}
 }

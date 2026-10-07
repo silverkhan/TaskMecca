@@ -75,7 +75,10 @@ func operationCompletionEvidence(project string, ledger runtimeobs.Ledger, now t
 			continue
 		}
 		// Even an unconfirmed error/interruption is not a mere identity gap.
-		if attempt.CurrentState != runtimeobs.StateRuntimeUnknown || attempt.Terminal {
+		if attempt.CurrentState != runtimeobs.StateRuntimeUnknown && attempt.CurrentState != runtimeobs.StateCompleted {
+			continue
+		}
+		if attempt.CurrentState == runtimeobs.StateRuntimeUnknown && attempt.Terminal {
 			continue
 		}
 		assignmentID := attempt.BindingEvidence["assignment_id"]
@@ -105,7 +108,7 @@ func operationCompletionEvidence(project string, ledger runtimeobs.Ledger, now t
 				count++
 			}
 		}
-		if count != 1 || completion.EvidenceSource != "controller_verified" || !operationMeaningfulEvidence(completion.EvidenceRef) {
+		if count != 1 || completion.Actor != "/root/controller" || completion.EvidenceSource != "controller_verified" || !operationMeaningfulEvidence(completion.EvidenceRef) {
 			continue
 		}
 		completed, err := time.Parse(time.RFC3339Nano, completion.OccurredAt)
@@ -148,8 +151,12 @@ func operationCompletionEvidence(project string, ledger runtimeobs.Ledger, now t
 		if attempt.FirstObservedAt == "" || attempt.BindingAt == "" || attempt.LastObservedAt == "" || !valid {
 			continue
 		}
+		reason := "task_completed_observation_unverified"
+		if attempt.CurrentState == runtimeobs.StateCompleted {
+			reason = "task_completed_runtime_observed"
+		}
 		out[attempt.AttemptID] = operationCompletion{project: project, taskID: id, agentPath: attempt.AgentPath, assignedAt: assigned, completedAt: completed,
-			resolution: operationCompletionResolution{Reason: "task_completed_observation_unverified", EventID: completion.EventID, CompletedAt: completion.OccurredAt,
+			resolution: operationCompletionResolution{Reason: reason, EventID: completion.EventID, CompletedAt: completion.OccurredAt,
 				AssignmentID: assignmentID, AttemptID: attempt.AttemptID, TaskPath: row.Path, RecordedAt: now.UTC().Format(time.RFC3339Nano)}}
 	}
 	return out
@@ -161,7 +168,28 @@ func operationMeaningfulEvidence(value string) bool {
 }
 
 func operationCompletedUnknown(incident operationIncident, completions map[string]operationCompletion) *operationCompletionResolution {
-	if incident.Kind != "runtime_unknown" || incident.Quality != "verification_required" || incident.Evidence != "runtime identity or hook execution unverified" || incident.AttemptID == "" {
+	if incident.AttemptID == "" && incident.Kind == "runtime_unknown" && incident.Quality == "verification_required" && incident.Evidence == "doing assignment has no linked runtime attempt" {
+		detected, err := time.Parse(time.RFC3339Nano, incident.DetectedAt)
+		if err != nil {
+			return nil
+		}
+		var proof *operationCompletionResolution
+		for _, completion := range completions {
+			if filepath.Clean(incident.Project) != filepath.Clean(completion.project) || !strings.EqualFold(incident.TaskID, completion.taskID) || detected.After(completion.completedAt) {
+				continue
+			}
+			if proof != nil {
+				return nil
+			}
+			copy := completion.resolution
+			copy.Reason = "latest_assignment_controller_verified_completion"
+			proof = &copy
+		}
+		return proof
+	}
+	eligible := incident.Kind == "runtime_unknown" && incident.Evidence == "runtime identity or hook execution unverified"
+	eligible = eligible || incident.Kind == "no_signal" || incident.Kind == "handoff_stalled"
+	if !eligible || incident.Quality != "verification_required" || incident.AttemptID == "" {
 		return nil
 	}
 	completion, ok := completions[incident.AttemptID]
