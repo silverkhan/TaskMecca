@@ -330,6 +330,24 @@ func WorkloadSnapshot(project, root string) (map[string]any, error) {
 	for _, attempt := range visibleAttempts {
 		attemptRootSessions[attempt.AttemptID] = runtimeobs.RootSessionIDForAttempt(attempt)
 	}
+	// A workload row and a runtime card must describe the same evidence.  Do
+	// not infer a session from the Worker name: a reusable Worker can have
+	// concurrent attempts in different projects or Root sessions.  Expose a
+	// session label only for the single, explicitly bound attempt for the task.
+	// This keeps an unobserved dispatch visibly unobserved instead of turning it
+	// into a plausible-looking (but wrong) session name.
+	rootNames := map[string]runtimeobs.RootSession{}
+	for _, root := range rootSessions.Items {
+		rootNames[root.RootSessionID] = root
+	}
+	taskAttempts := map[string][]runtimeobs.Attempt{}
+	for _, attempt := range runtimeLedger.Attempts {
+		if attempt.BindingState != runtimeobs.BindingBound || strings.TrimSpace(attempt.TaskID) == "" {
+			continue
+		}
+		taskID := strings.ToUpper(strings.TrimSpace(attempt.TaskID))
+		taskAttempts[taskID] = append(taskAttempts[taskID], attempt)
+	}
 
 	for id, row := range byID {
 		if row.Location != "active" || row.State != "doing" {
@@ -344,7 +362,7 @@ func WorkloadSnapshot(project, root string) (map[string]any, error) {
 		if value, ok := activity[id]; ok && value != nil {
 			signal = value
 		}
-		allItems[id] = map[string]any{
+		item := map[string]any{
 			"id":           id,
 			"title":        row.Title,
 			"state":        row.State,
@@ -357,6 +375,27 @@ func WorkloadSnapshot(project, root string) (map[string]any, error) {
 			"mtime":        row.Mtime,
 			"updated_at":   row.Mtime,
 		}
+		if attempts := taskAttempts[id]; len(attempts) == 1 {
+			attempt := attempts[0]
+			projection := map[string]any{
+				"attempt_id":       attempt.AttemptID,
+				"provider":         attempt.Provider,
+				"runtime_agent_id": attempt.RuntimeAgentID,
+				"current_state":    attempt.CurrentState,
+				"started_at":       attempt.StartedAt,
+				"last_activity_at": attempt.LastActivityAt,
+			}
+			// An unresolved Root Session is a safe grouping placeholder, not an
+			// observed provider session.  In particular, do not present its
+			// fallback label as the Worker's session name.
+			if root, ok := rootNames[runtimeobs.RootSessionIDForAttempt(attempt)]; ok && root.ProviderSessionID != "" {
+				projection["root_session_id"] = root.RootSessionID
+				projection["session_name"] = root.DisplayName
+				projection["session_name_source"] = root.DisplayNameSource
+			}
+			item["runtime_attempt"] = projection
+		}
+		allItems[id] = item
 	}
 
 	return map[string]any{
