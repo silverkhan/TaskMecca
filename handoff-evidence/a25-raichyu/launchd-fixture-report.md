@@ -2,12 +2,12 @@
 
 Stable report ID: `A25-launchd-fixture-raichyu-20261007-01`
 
-Assignment: `assignment-db99116870e69d9a1973eb265e470db2`  
-Attempt: `run-c51cd3e1b71a6f91`  
-Turn: `01a11530-900d-7d91-b4bb-cd07fcfb5435`  
-Runtime: `01a11477-13aa-76e3-866a-a8d007002787`  
-Contract SHA-256: `3918a32f37740c5841c808da4c3472a5973ed75ab450168bb625aa9c13513814`  
-Base: merged dev `6ca5b206785a62c501074ae4ae6c5e16980e8390`  
+Assignment: `assignment-db99116870e69d9a1973eb265e470db2`
+Attempt: `run-c51cd3e1b71a6f91`
+Turn: `01a11530-900d-7d91-b4bb-cd07fcfb5435`
+Runtime: `01a11477-13aa-76e3-866a-a8d007002787`
+Contract SHA-256: `3918a32f37740c5841c808da4c3472a5973ed75ab450168bb625aa9c13513814`
+Base: merged dev `6ca5b206785a62c501074ae4ae6c5e16980e8390`
 Branch: `codex/a25-launchd-fixture-isolation`
 
 ## Cause and correction
