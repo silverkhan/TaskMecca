@@ -1,6 +1,7 @@
 package runtimeobs
 
 import (
+    "github.com/silverkhan/TaskMecca/internal/projectguard"
     "encoding/json"
     "errors"
     "fmt"
@@ -71,6 +72,10 @@ func HookStatus(project,provider string) (HookSetup,error) {
 }
 
 func EnsureHooks(project,provider string) (HookSetup,error) {
+    releaseGuard, guardErr := projectguard.AcquireWrite(project)
+    if guardErr != nil { return HookSetup{}, guardErr }
+    defer releaseGuard()
+
     provider=strings.ToLower(strings.TrimSpace(provider))
     path,err:=HookConfigPath(project,provider); if err!=nil { return HookSetup{},err }
     doc,_,err:=readHookDocument(path); if err!=nil { return HookSetup{},err }

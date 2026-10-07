@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/silverkhan/TaskMecca/internal/projectguard"
 	"os"
 	"path/filepath"
 	"strings"
@@ -51,6 +52,12 @@ func ListAssignments(project string) ([]Assignment, error) {
 // RecordAssignment accepts a caller-supplied ID for retry-safe dispatch. When
 // omitted, it generates one and returns it to the Controller before spawning.
 func RecordAssignment(project, assignmentID, taskID, agentPath string, now time.Time) (Assignment, error) {
+	releaseGuard, guardErr := projectguard.AcquireWrite(project)
+	if guardErr != nil {
+		return Assignment{}, guardErr
+	}
+	defer releaseGuard()
+
 	taskID = strings.ToUpper(strings.TrimSpace(taskID))
 	agentPath = strings.TrimSpace(agentPath)
 	assignmentID = strings.TrimSpace(assignmentID)

@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/silverkhan/TaskMecca/internal/projectguard"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -78,6 +79,12 @@ func readOperationJournal(project string) (operationJournal, error) {
 }
 
 func writeOperationJournal(project string, journal operationJournal) error {
+	releaseGuard, guardErr := projectguard.AcquireWrite(project)
+	if guardErr != nil {
+		return guardErr
+	}
+	defer releaseGuard()
+
 	path := operationJournalPath(project)
 	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
 		return err

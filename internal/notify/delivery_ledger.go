@@ -3,6 +3,7 @@ package notify
 import (
 	"encoding/json"
 	"errors"
+	"github.com/silverkhan/TaskMecca/internal/projectguard"
 	"os"
 	"path/filepath"
 	"sort"
@@ -63,6 +64,12 @@ func readLedger(project string) (deliveryLedger, error) {
 }
 
 func saveLedger(project string, ledger deliveryLedger) error {
+	releaseGuard, guardErr := projectguard.AcquireWrite(project)
+	if guardErr != nil {
+		return guardErr
+	}
+	defer releaseGuard()
+
 	path := ledgerPath(project)
 	if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
 		return err
@@ -140,6 +147,12 @@ func retryDue(record DeliveryRecord, now time.Time) bool {
 // A response lost after Telegram accepts a message remains explicitly uncertain:
 // retrying it can duplicate the external message because Telegram has no idempotency key.
 func Deliver(project string, events []Event) []error {
+	releaseGuard, guardErr := projectguard.AcquireWrite(project)
+	if guardErr != nil {
+		return []error{guardErr}
+	}
+	defer releaseGuard()
+
 	// Process-scoped maintenance mode: no network, settings or delivery-ledger
 	// writes. A later normal process retains existing cutover/dedupe semantics.
 	if TelegramTransportDisabled() {

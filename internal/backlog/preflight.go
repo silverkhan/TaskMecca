@@ -1,6 +1,7 @@
 package backlog
 
 import (
+    "github.com/silverkhan/TaskMecca/internal/projectguard"
     "encoding/json"
     "fmt"
     "os"
@@ -66,6 +67,10 @@ func codexConfigHints() map[string]any {
 }
 
 func AccessPreflight(project,root string) map[string]any {
+    releaseGuard, guardErr := projectguard.AcquireWrite(project)
+    if guardErr != nil { return map[string]any{"project":project,"dispatch_allowed":false,"error":guardErr.Error(),"checked_at":time.Now().Format(time.RFC3339)} }
+    defer releaseGuard()
+
     now:=time.Now()
     sandboxEnv:=strings.TrimSpace(os.Getenv("CODEX_SANDBOX"))
     marker:=sandboxMarkerState(sandboxEnv)

@@ -2320,6 +2320,25 @@ function hubTrashLocation(location) {
   return new URLSearchParams(String(location).slice('system-trash:?'.length)).get('location')||location;
 }
 
+function hubRemovalObservation(item) {
+  const ko=state.language==='ko';
+  const label=(kr,en)=>ko?kr:en;
+  const pathRow=(title,path)=>path?`<p>${esc(title)}</p><div class="project-path"><code>${esc(path)}</code></div>`:'';
+  const holderStates={
+    retained_for_restore:label('OS 복원을 위해 보관됨 · 삭제하지 않음','Retained for OS Restore · not deleted'),
+    contains_files:label('파일이 있음 · 수동 확인 필요','Contains files · manual review required'),
+    empty_preserved:label('빈 보관 폴더 유지','Empty holder preserved'),
+    missing:label('보관 폴더 없음','Holder absent'),
+    unavailable:label('보관 폴더 확인 불가','Unable to inspect holder')
+  };
+  return `<p>${esc(label('과거 처리 결과','Historical outcome'))}: ${esc(hubText(item.folder_outcome||'preserved'))}</p>
+    <p class="${item.source_state==='present_after_trash'?'hub-cleanup-error':''}">${esc(label('현재 원래 경로','Current original path'))}: ${esc(hubText(item.presence||'unavailable'))}</p>
+    ${item.source_state==='present_after_trash'?`<p class="hub-cleanup-error">${esc(label('휴지통 이동 후 경로가 다시 존재합니다. 재생성인지 복원인지 단정할 수 없습니다. 과거 이동 결과는 유지하며 자동으로 다시 삭제하지 않습니다.','The path exists again after the Trash move. It may have been recreated or restored. The historical outcome is preserved; it will not be deleted again automatically.'))}</p>`:''}
+    ${pathRow(label('상위 worktree 보관 경로 · 삭제 대상 아님','Containing worktree holder · not a deletion target'),item.parent_holder_path)}
+    ${pathRow(hubText('staging'),item.staging_path)}
+    ${pathRow(label('복원용 보관 폴더 경계','Restore holder boundary'),item.staging_holder_path)}
+    ${item.staging_holder_state?`<p>${esc(holderStates[item.staging_holder_state]||item.staging_holder_state)}</p>`:''}`;
+}
 function hubFeedback(message,error=false) {
   const box=document.querySelector('#hubFeedback');
   if(box){box.textContent=message;box.setAttribute('role',error?'alert':'status');box.hidden=false;}
@@ -2358,7 +2377,7 @@ function hubView() {
       <div class="project-actions">${p?.migration_available?`<button class="action-btn secondary" data-migrate="${esc(p.path)}">Migrate</button>`:''}<button class="action-btn secondary" data-project-action="${status.monitoring===false?'resume':'pause'}" data-project-path="${esc(path)}">${esc(hubText(status.monitoring===false?'resume':'pause'))}</button><button class="action-btn secondary danger-action" data-project-action="remove" data-project-path="${esc(path)}">${esc(hubText('remove'))}</button><button class="action-btn" data-open-project="${esc(path)}">${esc(t('open'))}</button></div>
     </article>`;
   }).join('');
-  const history=(state.hubManagement?.history||[]).map(item=>`<article class="history-row"><div><strong>${esc(item.name||'Project')}</strong><div class="project-path"><code>${esc(item.path)}</code><button class="icon-copy" type="button" data-copy-path="${esc(item.path)}" aria-label="${esc(hubText('copyPath'))}">${COPY_ICON}</button></div><p>${esc(hubText(item.folder_outcome||'preserved'))} · ${esc(hubText(item.presence||'unavailable'))}</p><p>${esc(hubText('removed'))}: ${esc(item.removed_at||'—')}</p><p>${esc(hubText('checked'))}: ${esc(item.last_checked_at||'—')}</p>${item.cleanup_error?`<p class="hub-cleanup-error">${esc(hubText('cleanupError'))}: ${esc(item.cleanup_error)}</p><p>${esc(hubText('retry'))}: ${esc(item.retry_hint||'')}</p>`:''}${item.trash_path?`<p>${esc(hubText('restore'))}</p><div class="project-path"><code>${esc(hubTrashLocation(item.trash_path))}</code></div>${item.staging_path?`<p>${esc(hubText('staging'))}</p><div class="project-path"><code>${esc(item.staging_path)}</code></div>`:''}`:''}</div><div class="project-actions"><button class="action-btn secondary" data-project-action="check" data-project-path="${esc(item.path)}">${esc(hubText('check'))}</button><button class="action-btn secondary" data-project-action="trash" data-history-id="${esc(item.id)}" ${['moved_to_trash','cleanup_partial','cleanup_unknown'].includes(item.folder_outcome)||item.presence!=='present'?'disabled':''} data-project-path="${esc(item.path)}">${esc(hubText('trash'))}</button><button class="action-btn secondary danger-action" data-project-action="delete-history" data-history-id="${esc(item.id)}" data-project-path="${esc(item.path)}">${esc(hubText('deleteHistory'))}</button></div></article>`).join('');
+  const history=(state.hubManagement?.history||[]).map(item=>`<article class="history-row"><div><strong>${esc(item.name||'Project')}</strong><p>${esc(state.language==='ko'?'확인된 프로젝트 경계':'Confirmed project boundary')}</p><div class="project-path"><code>${esc(item.path)}</code><button class="icon-copy" type="button" data-copy-path="${esc(item.path)}" aria-label="${esc(hubText('copyPath'))}">${COPY_ICON}</button></div>${hubRemovalObservation(item)}<p>${esc(hubText('removed'))}: ${esc(item.removed_at||'—')}</p><p>${esc(hubText('checked'))}: ${esc(item.last_checked_at||'—')}</p>${item.cleanup_error?`<p class="hub-cleanup-error">${esc(hubText('cleanupError'))}: ${esc(item.cleanup_error)}</p><p>${esc(hubText('retry'))}: ${esc(item.retry_hint||'')}</p>`:''}${item.trash_path?`<p>${esc(hubText('restore'))}</p><div class="project-path"><code>${esc(hubTrashLocation(item.trash_path))}</code></div>`:''}</div><div class="project-actions"><button class="action-btn secondary" data-project-action="check" data-project-path="${esc(item.path)}">${esc(hubText('check'))}</button><button class="action-btn secondary" data-project-action="trash" data-history-id="${esc(item.id)}" ${['moved_to_trash','cleanup_partial','cleanup_unknown'].includes(item.folder_outcome)||item.presence!=='present'?'disabled':''} data-project-path="${esc(item.path)}">${esc(hubText('trash'))}</button><button class="action-btn secondary danger-action" data-project-action="delete-history" data-history-id="${esc(item.id)}" data-project-path="${esc(item.path)}">${esc(hubText('deleteHistory'))}</button></div></article>`).join('');
   const updateActions='';
   return `<div class="page-head"><div><h1>Global Hub</h1><p class="summary">${esc(hubText('intro'))}</p></div><div class="hub-cli"><strong>CLI</strong> ${channelBadge} ${cliStatus} ${updateActions}</div></div>
     ${cli.update_available?'<div class="timing-note"><strong>Upgrade</strong><span>업그레이드가 완료되면 Task Mecca Web이 자동으로 재시작되며, 현재 브라우저 페이지도 자동으로 새로고침됩니다.</span></div>':''}

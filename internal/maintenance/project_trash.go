@@ -16,8 +16,14 @@ func stageAndRecycle(source string, expected os.FileInfo, move func(string, stri
 		return "", fmt.Errorf("cannot create private recycle staging; folder preserved: %w", err)
 	}
 	staged := filepath.Join(container, filepath.Base(source))
+	containerIdentity, identityErr := os.Lstat(container)
+	if identityErr != nil {
+		return "", fmt.Errorf("cannot verify recycle staging identity at %s: %w", container, identityErr)
+	}
 	if err := move(source, staged, expected); err != nil {
-		_ = os.Remove(container) // Only our empty container.
+		if cleanupErr := removeOwnedEmptyStaging(container, containerIdentity); cleanupErr != nil {
+			return container, fmt.Errorf("staging move failed (%v); holder preserved at %s: %w", err, container, cleanupErr)
+		}
 		return "", err
 	}
 	location, err := recycle(staged, expected)
@@ -25,7 +31,9 @@ func stageAndRecycle(source string, expected os.FileInfo, move func(string, stri
 		if location == "" {
 			if info, statErr := os.Lstat(staged); statErr == nil && os.SameFile(expected, info) {
 				if rollbackErr := move(staged, source, info); rollbackErr == nil {
-					_ = os.Remove(container)
+					if cleanupErr := removeOwnedEmptyStaging(container, containerIdentity); cleanupErr != nil {
+						return container, fmt.Errorf("native Trash refused (%v); source restored at %s; holder preserved at %s: %w", err, source, container, cleanupErr)
+					}
 					return "", fmt.Errorf("native Trash refused; folder restored at %s; fix permissions (macOS Files and Folders/Full Disk Access) or files in use before retrying: %w", source, err)
 				}
 			}
@@ -45,6 +53,26 @@ func stageAndRecycle(source string, expected os.FileInfo, move func(string, stri
 	}
 	// Keep this empty, uniquely owned parent for the OS's Put Back/Restore action.
 	return systemTrashLocator(location, staged), nil
+}
+
+// Only the same empty directory created by this invocation may be removed on
+// failure/rollback. Success deliberately retains the OS restore destination.
+func removeOwnedEmptyStaging(path string, expected os.FileInfo) error {
+	info, err := os.Lstat(path)
+	if err != nil {
+		return err
+	}
+	if expected == nil || !info.IsDir() || info.Mode()&os.ModeSymlink != 0 || !os.SameFile(expected, info) {
+		return fmt.Errorf("staging identity changed; preserved %s", path)
+	}
+	entries, err := os.ReadDir(path)
+	if err != nil {
+		return err
+	}
+	if len(entries) != 0 {
+		return fmt.Errorf("staging contains files; preserved %s", path)
+	}
+	return os.Remove(path)
 }
 
 func systemTrashLocator(location, staged string) string {

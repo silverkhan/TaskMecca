@@ -1,6 +1,7 @@
 package runtimeobs
 
 import (
+    "github.com/silverkhan/TaskMecca/internal/projectguard"
     "bufio"
     "encoding/json"
     "errors"
@@ -110,6 +111,10 @@ func historyFiles(project string) ([]string,error) {
 }
 
 func appendHistoryAttempt(project string, attempt Attempt, now time.Time) error {
+    releaseGuard, guardErr := projectguard.AcquireWrite(project)
+    if guardErr != nil { return guardErr }
+    defer releaseGuard()
+
     if !attempt.Terminal || strings.TrimSpace(attempt.AttemptID)=="" { return nil }
     at:=eventObservedTime(firstNonEmptyRuntime(attempt.EndedAt,attempt.LastObservedAt),now)
     path:=executionHistoryPathAt(project,at)
