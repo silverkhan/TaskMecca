@@ -89,4 +89,7 @@ task-mecca lifecycle record completed <ID> <stable-event-id> /root/controller co
 
 Controller는 검증한 공식 bundle의 `init`/`migrate`로 설치를 반영한다. 소스 직접 복사나 manifest baseline 수동 수정으로 경고를 숨기지 않는다. 배포본 버전·checksum·소스 commit과 승인된 파일의 source/destination hash를 기록하고, 당시 명령이 없으면 추정 명령을 실행 사실로 말하지 않는다. 오래된 CLI로 최신 설치를 되돌리지 않는다. 적용 전 전체 managed 파일과 manifest를 별도 백업하며 프로젝트 소유 data·backlog·runtime·설정과 출처 불명 변경을 보존한다.
 
+
+`migrate --json`은 읽기 전용 조회가 아니다. modified 파일이 있으면 `choice_required`와 계획을 반환하여 선택을 기다리지만, modified 파일이 없으면 첫 호출에서도 자동 적용한다. 따라서 공식 bundle의 전체 교체 범위·출처 대조, 전체 managed 파일과 manifest 백업, 프로젝트 소유 데이터 보존 스냅샷을 어떤 `migrate` 호출보다 먼저 준비한다. modified가 있을 때 반환된 계획을 확인하고 승인된 선택에 `--expect-plan`을 사용한다. `--choice cancel`은 계획을 만들지 않고 즉시 취소하므로 계획 조회 명령으로 사용하지 않는다.
+
 `migrate --project <project> --json`으로 `modified_files`·전체 managed 교체 범위·`plan_digest`를 승인 범위 및 출처와 대조한다. 출처 불명 변경은 판단과 재개 조건을 기록하고 적용을 멈춘다. 같은 검증 binary로 `migrate --project <project> --choice backup --expect-plan <plan_digest> --json`을 수행한다. 내장 backup은 충돌 파일의 백업이며 전체 managed 파일·manifest 사전 백업을 대신하지 않는다. 계획이 달라지면 새 계획을 검토한다. 같은 bundle로 다시 migration 검사하여 baseline과 hash를 확인하고 데이터 보존 결과를 기록한다. `instruction_refresh_required`이면 지침을 다시 읽는다. 배포 소스 문서 변경을 설치에도 반영하려면 그 문서가 포함된 새 공식 배포본을 검증하고 이 절차를 다시 사용한다. 먼저 직접 복사하여 동기화하지 않는다.
