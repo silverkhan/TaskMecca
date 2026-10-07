@@ -2538,11 +2538,14 @@ function tagExplorerPanel(stats) {
   const registry=new Map((currentProjectData()?.tag_catalog?.registry||[]).map(x=>[x.canonical,x]));
   return `<div class="tag-explorer">${Object.keys(groups).sort().map(ns=>`<section><h3>${esc(ns.toUpperCase())}</h3><div class="tag-stat-list">${groups[ns].sort((a,b)=>b.total-a.total||a.tag.localeCompare(b.tag)).map(row=>{const def=registry.get(row.tag)||{};return `<button type="button" class="tag-stat-row ${state.tagFilters.includes(row.tag)?'active':''}" data-tag-filter="${esc(row.tag)}"><span><strong>${esc(row.tag.split(':')[1]||row.tag)}</strong><small>${esc(def.description||row.description||'')}</small></span><span class="tag-stat-counts"><b>${row.total||0}</b><small>A ${row.active||0} · H ${row.hold||0} · D ${row.done||0}</small></span></button>`}).join('')}</div></section>`).join('')}</div>`;
 }
+function backlogListTools() {
+  return `<div class="backlog-list-tools"><div class="search-wrap"><span class="search-icon" aria-hidden="true">⌕</span><input id="search" value="${esc(state.query)}" placeholder="${esc(t('searchPlaceholder'))}" aria-label="${esc(t('search'))}" autocomplete="off"/><kbd>/</kbd></div><label class="backlog-picker" title="${esc(t('selectBacklog'))}"><span id="backlogLabel">${esc(t('backlogFolder'))}</span><select id="backlogPicker" aria-label="${esc(t('selectBacklog'))}"></select></label></div>`;
+}
 function listControls(info) {
   const autoSelected = state.listPageMode === 'auto';
   const pageValue = autoSelected ? 'auto' : String(state.listPageSize);
   const pageText=t('pageSummary',{page:info.page,pages:info.pages,total:info.total})+(autoSelected?t('autoRowsSummary',{n:info.pageSize}):'');
-  return `${statusFilterBar()}${tagFilterBar()}<div class="list-controls"><div class="control-group"><label>${esc(t('sort'))}<select id="listSort"><option value="id_desc" ${state.listSort==='id_desc'?'selected':''}>ID ↓</option><option value="id_asc" ${state.listSort==='id_asc'?'selected':''}>ID ↑</option><option value="updated_desc" ${state.listSort==='updated_desc'?'selected':''}>${esc(t('updatedNewest'))}</option><option value="updated_asc" ${state.listSort==='updated_asc'?'selected':''}>${esc(t('updatedOldest'))}</option></select></label><label>${esc(t('perPage'))}<select id="listPageSize"><option value="auto" ${pageValue==='auto'?'selected':''}>${esc(t('autoRows',{n:info.pageSize}))}</option><option value="10" ${pageValue==='10'?'selected':''}>10</option><option value="20" ${pageValue==='20'?'selected':''}>20</option><option value="50" ${pageValue==='50'?'selected':''}>50</option></select></label></div><div class="pager"><button id="prevPage" ${info.page<=1?'disabled':''}>←</button><span>${esc(pageText)}</span><button id="nextPage" ${info.page>=info.pages?'disabled':''}>→</button></div></div>`;
+  return `${statusFilterBar()}${tagFilterBar()}<div class="backlog-list-controls">${backlogListTools()}<div class="list-controls"><div class="control-group"><label>${esc(t('sort'))}<select id="listSort"><option value="id_desc" ${state.listSort==='id_desc'?'selected':''}>ID ↓</option><option value="id_asc" ${state.listSort==='id_asc'?'selected':''}>ID ↑</option><option value="updated_desc" ${state.listSort==='updated_desc'?'selected':''}>${esc(t('updatedNewest'))}</option><option value="updated_asc" ${state.listSort==='updated_asc'?'selected':''}>${esc(t('updatedOldest'))}</option></select></label><label>${esc(t('perPage'))}<select id="listPageSize"><option value="auto" ${pageValue==='auto'?'selected':''}>${esc(t('autoRows',{n:info.pageSize}))}</option><option value="10" ${pageValue==='10'?'selected':''}>10</option><option value="20" ${pageValue==='20'?'selected':''}>20</option><option value="50" ${pageValue==='50'?'selected':''}>50</option></select></label></div><div class="pager"><button id="prevPage" ${info.page<=1?'disabled':''}>←</button><span>${esc(pageText)}</span><button id="nextPage" ${info.page>=info.pages?'disabled':''}>→</button></div></div></div>`;
 }
 
 function listView() {
@@ -2556,7 +2559,7 @@ function listView() {
   const head=`<div class="task-list-head"><div>${esc(t('id'))}</div><div>${esc(t('taskColumn'))}</div><div>${esc(t('statusColumn'))}</div><div>${esc(t('agentColumn'))}</div><div>${esc(t('activeColumn'))}</div><div>${esc(t('updatedColumn'))}</div><div></div></div>`;
   const summary = uninitialized ? t('backlogUninitializedSummary') : `${meta.selected ? String(meta.selected).split(/[\\/]/).pop() : ''} · ${info.total} ${t('items')} · ${filterLabel}`;
   const emptyState = `<div class="empty"><strong>${esc(t('backlogUninitializedTitle'))}</strong><div>${esc(t('backlogUninitializedBody'))}</div></div>`;
-  return `<div class="page-head"><div><div class="eyebrow">${esc(data.repo||t('repository'))}</div><h1>${esc(t('backlog'))}</h1><p class="summary">${esc(summary)}</p></div></div><div class="metrics"><div class="metric"><strong>${c.working||0}</strong><span>${esc(t('working'))}</span></div><div class="metric"><strong>${c.ready||0}</strong><span>${esc(t('ready'))}</span></div><div class="metric"><strong>${c.hold||0}</strong><span>${esc(t('hold'))}</span></div><div class="metric"><strong>${c.attention||0}</strong><span>${esc(t('needsAttention'))}</span></div></div>${uninitialized?emptyState:`${listControls(info)}${rows.length?`${head}<div class="task-list">${rows.map((task,i)=>{
+  return `<div class="page-head"><div><div class="eyebrow">${esc(data.repo||t('repository'))}</div><h1>${esc(t('backlog'))}</h1><p class="summary">${esc(summary)}</p></div></div><div class="metrics"><div class="metric"><strong>${c.working||0}</strong><span>${esc(t('working'))}</span></div><div class="metric"><strong>${c.ready||0}</strong><span>${esc(t('ready'))}</span></div><div class="metric"><strong>${c.hold||0}</strong><span>${esc(t('hold'))}</span></div><div class="metric"><strong>${c.attention||0}</strong><span>${esc(t('needsAttention'))}</span></div></div>${uninitialized?`${listControls(info)}${emptyState}`:`${listControls(info)}${rows.length?`${head}<div class="task-list">${rows.map((task,i)=>{
     const act=task.activity||{}, h=act.health;
     const time=task.file_state==='doing'?fmtSec(runningSeconds(task,'active')):(task.file_state==='done'?fmtSec(task.active_seconds):'-');
     const hs=humanSummary(task);
@@ -3246,6 +3249,7 @@ function closeTask() {
   state.detail=null; state.detailTask=null; state.loadError=''; history.pushState({},'',state.view==='backlog'?backlogUrl():`/?view=${state.view}`); render();
 }
 function bindRows() {
+  bindBacklogListTools();
   document.querySelectorAll('[data-id]').forEach(el => el.onclick = e => {
     if(e.target?.closest?.('[data-external-source]'))return;
     if (el.dataset.rowIndex != null) state.selectedIndex = Number(el.dataset.rowIndex) || 0;
@@ -3343,7 +3347,8 @@ function toggleSidebar() {
 function render() {
   if(document.querySelector('.hub-confirm-overlay'))return;
   const hubHistoryFocus=document.activeElement?.id==='hubHistoryToggle';
-  nav(); translateChrome(); renderAccess(); renderBacklogPicker(); applySidebarState(); updateNotificationIndicator(); renderGlobalUpdateIndicator(); renderContentUpdatePrompt(); renderReleaseUnreadPrompt();
+  const searchFocus=document.activeElement?.id==='search' ? {start:document.activeElement.selectionStart,end:document.activeElement.selectionEnd} : null;
+  nav(); translateChrome(); renderAccess(); applySidebarState(); updateNotificationIndicator(); renderGlobalUpdateIndicator(); renderContentUpdatePrompt(); renderReleaseUnreadPrompt();
   const c=$('#content'), data=currentProjectData();
   if(state.view==='release-notes'){
     c.innerHTML=releaseNotesView();
@@ -3390,6 +3395,7 @@ function render() {
   }
   c.innerHTML=(state.view==='hub'?hubView():gate+(state.view==='manual'?manualView():state.view==='notifications'?projectNotificationsView():state.view==='workload'?workloadView():state.view==='attention'?attentionView():state.view==='issues'?issuesView():listView()));
   bindRows(); if(state.view==='hub') bindHubActions();
+  if(searchFocus && state.view==='backlog' && !state.detail){const search=$('#search');search?.focus({preventScroll:true});search?.setSelectionRange(searchFocus.start,searchFocus.end);}
   if(state.view==='hub'&&hubHistoryFocus)document.querySelector('#hubHistoryToggle')?.focus({preventScroll:true});
   document.querySelectorAll('[data-runtime-hook-action]').forEach(button=>{
     button.addEventListener('click',e=>performRuntimeHookAction(e.currentTarget));
@@ -3880,7 +3886,11 @@ document.querySelectorAll('[data-theme-choice]').forEach(b=>b.addEventListener('
 $('#palettePicker')?.addEventListener('change',e=>applyPalette(e.target.value));
 window.matchMedia?.('(prefers-color-scheme: dark)').addEventListener?.('change',()=>{if(state.theme==='system'){document.documentElement.dataset.theme=effectiveTheme();renderMermaidDiagrams(true)}});
 $('#languagePicker').addEventListener('change',e=>setLanguage(e.target.value));
-$('#backlogPicker').addEventListener('change',e=>{
+let searchRefreshTimer=0;
+function bindBacklogListTools() {
+  if(state.view!=='backlog'||state.detail)return;
+  renderBacklogPicker();
+  $('#backlogPicker')?.addEventListener('change',e=>{
   const value=e.target.value;
   if(value===state.backlog)return;
   state.backlog=value;
@@ -3890,12 +3900,12 @@ $('#backlogPicker').addEventListener('change',e=>{
   if(value)localStorage.setItem('task-mecca-backlog-folder',value);else localStorage.removeItem('task-mecca-backlog-folder');
   state.detail=null;state.listPage=1;state.selectedIndex=0;refresh();
 });
-let searchRefreshTimer=0;
-$('#search').addEventListener('input',e=>{
+  $('#search')?.addEventListener('input',e=>{
   state.query=e.target.value; state.detail=null; state.detailTask=null; state.listPage=1; state.selectedIndex=0;
   clearTimeout(searchRefreshTimer);
-  if(state.view==='backlog')searchRefreshTimer=setTimeout(refreshList,180); else render();
+  searchRefreshTimer=setTimeout(()=>{if(state.view==='backlog'&&!state.detail)refreshList();},180);
 });
+}
 $('#refreshBtn').onclick=refreshVisibleContent;
 $('#notificationBtn')?.addEventListener('click',async()=>{
   const panel=$('#notificationPanel'); if(!panel)return;
@@ -3914,7 +3924,7 @@ document.addEventListener('keydown',e=>{
   if(e.key==='Escape'&&state.releaseNotePopup){e.preventDefault();dismissReleaseNotePopup();return}
   const tag=document.activeElement?.tagName?.toLowerCase();
   const editing=['input','textarea','select','button'].includes(tag)||document.activeElement?.isContentEditable;
-  if(e.key==='/'&&document.activeElement!==$('#search')){e.preventDefault();$('#search').focus();return}
+  if(e.key==='/'&&!editing&&state.view==='backlog'&&!state.detail){const search=$('#search');if(search){e.preventDefault();search.focus();return}}
   if(e.key==='?'&&!editing&&!state.detail){e.preventDefault();navigateView('manual');return}
   if(state.detail){
     const detailLayout=document.querySelector('.detail-layout');
