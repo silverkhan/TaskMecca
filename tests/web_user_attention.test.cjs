@@ -35,8 +35,8 @@ test('resolution replaces snapshot and stale or undated responses cannot resurre
  assert.equal(app.element.hidden,true);assert.equal(app.element.innerHTML,'');
  app.updateCurrentUserAttention(snapshot());app.updateCurrentUserAttention(snapshot(''));
  assert.equal(app.element.hidden,true);
- app.clearCurrentUserAttention();app.updateCurrentUserAttention(snapshot(''));assert.equal(app.element.hidden,false);
- app.state.project='/other';app.renderUserAttention();assert.equal(app.element.hidden,true);
+ app.clearCurrentUserAttention();app.updateCurrentUserAttention(snapshot('2026-10-07T14:02:00Z'));assert.equal(app.element.hidden,false);
+ app.state.project='/other';app.renderUserAttention();assert.equal(app.element.hidden,false);
 });
 test('global attention survives pagination and safely escapes all visible source text',()=>{
  const app=page(),data=snapshot();const task=data.all_items['A-14'];

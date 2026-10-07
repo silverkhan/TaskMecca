@@ -1219,3 +1219,19 @@ body.release-modal-open{overflow:hidden}
 .user-attention-decision p:last-child{margin-bottom:0}
 .user-attention-decision b{font-weight:650;margin-right:6px}
 @media(max-width:700px){.user-attention{margin:12px 12px 0;padding:14px}.user-attention li{grid-template-columns:minmax(0,1fr);gap:8px}}
+
+/* Current notifications share one quiet, initially collapsed disclosure. */
+.user-attention{padding:0}
+.common-attention>summary{display:flex;flex-wrap:wrap;align-items:center;gap:8px 18px;padding:14px 20px;cursor:pointer;list-style:none;font-size:13px;line-height:1.5}
+.common-attention>summary::-webkit-details-marker{display:none}
+.common-attention>summary:before{content:'▸';color:var(--muted)}
+.common-attention[open]>summary:before{content:'▾'}
+.common-attention>summary span{color:var(--muted)}
+.common-attention>summary:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:10px}
+.common-attention-body{padding:0 20px 18px}
+.common-attention-body h2{margin:20px 0 12px}
+.common-attention-body h2:first-child{margin-top:4px}
+.common-attention-project{color:var(--muted);overflow-wrap:anywhere}
+.common-attention-links{display:flex;flex-wrap:wrap;gap:8px 18px;margin-top:8px}
+.common-attention-links a{color:var(--accent)}
+@media(max-width:700px){.common-attention>summary{padding:12px 14px;gap:6px 12px}.common-attention-body{padding:0 14px 14px}.user-attention{padding:0}}

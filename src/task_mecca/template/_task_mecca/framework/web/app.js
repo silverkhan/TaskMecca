@@ -1,5 +1,6 @@
 const state = {
  userAttention:[],userAttentionContext:'',userAttentionObservedAt:0,
+ commonUserAttention:{},commonUserRevision:{},commonAttentionOpen:false,sessionWarnings:[],operationsRequest:0,operationPayload:{},
   snapshot: null,
   listData: null,
   detailTask: null,
@@ -455,38 +456,50 @@ function renderOperationHistory(items) {
   }).join('')}</details>`;
 }
 function renderOperationBanner(payload) {
-  const host=$('#operationBanner'); if(!host)return;
-  const items=payload.active||[];
-  const projects=payload.projects||[];
-  const history=payload.resolved_observations||[];
-  const latestScan=projects.map(item=>item.last_scan_at||'').sort().at(-1)||'';
-  const stages=payload.stages||[];
-  const revision=state.language+JSON.stringify([items,history,stages,payload.telegram_transport_disabled,projects.map(item=>[item.path,item.error||''])]);
-  if(revision===state.operationRevision){
-    const scan=host.querySelector('.operation-last-scan');if(scan)scan.textContent=operationTime(latestScan);
-    host.querySelectorAll('.operation-project-scan').forEach((el,index)=>{el.textContent=operationTime(projects[index]?.last_scan_at)});
-    return;
-  }
-  state.operationRevision=revision;
-  host.hidden=projects.length===0&&items.length===0&&history.length===0;
-  if(host.hidden){host.innerHTML='';return;}
-  const confirmed=items.some(item=>item.quality==='confirmed');
-  host.classList.toggle('confirmed',confirmed);
-  host.classList.toggle('clear',items.length===0);
-  const scope=`<details class="operation-scope"><summary>${esc(operationText('scope'))}</summary><ul>${projects.map(item=>`<li>${esc(item.path)} · ${esc(operationText('lastScan'))} <span class="operation-project-scan">${esc(operationTime(item.last_scan_at))}</span>${item.error?` · ${esc(item.error)}`:''}</li>`).join('')}</ul></details>`;
-  host.innerHTML=`<div class="operation-banner-head"><strong>${esc(operationText(items.length?'heading':'monitoring'))}</strong><span>${items.length?`${items.length} ${esc(operationText('count'))} · `:''}${projects.length} ${esc(operationText('targets'))} · ${esc(operationText('lastScan'))} <span class="operation-last-scan">${esc(operationTime(latestScan))}</span></span></div>${items.length?`<div class="operation-banner-list">${items.map(item=>{
-    const kind=item.kind==='monitor_gap'?'gap':item.kind;
-    const status=item.quality==='confirmed'?'confirmed':'review';
-    return `<details class="operation-incident ${status}"><summary><span class="operation-incident-type">${esc(operationText(kind))}</span><span class="operation-incident-subject">${esc(item.task_id||item.agent_path||item.attempt_id||item.project)}</span><span class="operation-incident-expand">${esc(operationText('detail'))}</span></summary><dl><div><dt>${esc(operationText('project'))}</dt><dd>${esc(item.project)}</dd></div><div><dt>${esc(operationText('evidence'))}</dt><dd>${esc(operationEvidence(item.evidence))}</dd></div><div><dt>${esc(operationText('seen'))}</dt><dd>${esc(operationTime(item.last_observed_at))}</dd></div><div><dt>${esc(operationText('detected'))}</dt><dd>${esc(operationTime(item.detected_at))}</dd></div>${item.ended_at?`<div><dt>${esc(operationText('ended'))}</dt><dd>${esc(operationTime(item.ended_at))}</dd></div>`:''}${item.recovered_at?`<div><dt>${esc(operationText('recovered'))}</dt><dd>${esc(operationTime(item.recovered_at))}</dd></div>`:''}<div class="operation-action"><dt>${esc(operationText('action'))}</dt><dd>${esc(operationAction(item))}</dd></div></dl></details>`;
-  }).join('')}</div>`:''}${renderOperationStages(stages)}${renderOperationHistory(history)}${payload.telegram_transport_disabled?`<p class="operation-maintenance">${esc(operationText('maintenance'))}</p>`:''}${scope}`;
+ state.operationPayload={projects:payload.projects||[],stages:payload.stages||[],resolved_observations:payload.resolved_observations||[],telegram_transport_disabled:Boolean(payload.telegram_transport_disabled)};
+  state.sessionWarnings=(payload.active||[]).filter(item=>!item.recovered_at&&!item.resolution&&!item.recovery_evidence&&!item.policy_resolution&&item.kind!=='normal_exit'&&!item.history&&item.active!==false);
+  renderUserAttention();
+ if(state.view==='workload')render();
 }
 async function refreshOperations() {
+  const request=++state.operationsRequest;
   try {
     const response=await fetch('/api/operations',{cache:'no-store'});
     if(!response.ok)return;
-    renderOperationBanner(await response.json());
-  } catch (_) { /* Existing banner remains until the service reconnects. */ }
+    const payload=await response.json();
+    if(request!==state.operationsRequest)return;
+    renderOperationBanner(payload);
+    const projects=[...new Set((payload.projects||[]).filter(item=>!item.error).map(item=>item.path).filter(Boolean))];
+    for(const key of Object.keys(state.commonUserAttention)){if(!projects.includes(state.commonUserAttention[key].project))delete state.commonUserAttention[key];}
+    renderUserAttention();
+    await Promise.all(projects.map(async project=>{
+      try{
+        const params=new URLSearchParams({project});
+        const userRevision=state.commonUserRevision[project]||0;
+        const response=await fetch('/api/attention?'+params,{cache:'no-store'});
+        if(!response.ok)return;
+        const snapshot=await response.json();
+        if(request!==state.operationsRequest||userRevision!==(state.commonUserRevision[project]||0))return;
+        const scope=snapshot.backlog_selection;
+        if(scope&&Array.isArray(scope.candidates)){
+          const paths=new Set([scope.selected,...scope.candidates.map(candidate=>candidate.path)].filter(Boolean));
+          for(const key of Object.keys(state.commonUserAttention)){const source=state.commonUserAttention[key];if(source.project===project&&!paths.has(source.backlog))delete state.commonUserAttention[key];}
+        }
+        storeCommonUserAttention(snapshot,project,'');
+        const selected=snapshot.backlog_selection?.selected||'';
+        for(const candidate of (snapshot.backlog_selection?.candidates||[]).filter(candidate=>candidate.path&&candidate.path!==selected)){
+          const scoped=new URLSearchParams({project,backlog:candidate.path});
+          const revision=state.commonUserRevision[project]||0;
+          const result=await fetch('/api/attention?'+scoped,{cache:'no-store'});if(!result.ok)continue;
+          const data=await result.json();
+          if(request!==state.operationsRequest||revision!==(state.commonUserRevision[project]||0))return;
+          storeCommonUserAttention(data,project,candidate.path);
+        }
+      }catch(_){/* Current projections retry with the next successful refresh. */}
+    }));
+  } catch (_) { /* Current projections retry with the next successful refresh. */ }
 }
+
 function localeCode() { return LANGUAGES[state.language]?.locale || 'en-US'; }
 
 const $ = s => document.querySelector(s);
@@ -1635,6 +1648,7 @@ function updateCurrentUserAttention(payload) {
   state.userAttentionContext=key;
   if(Number.isFinite(observed))state.userAttentionObservedAt=observed;
   state.userAttention=currentUserAttention(payload);
+  storeCommonUserAttention(payload,state.project,state.backlog);
   renderUserAttention();
 }
 function clearCurrentUserAttention() {
@@ -1646,20 +1660,48 @@ function userAttentionMarkup(rows) {
   if(state.backlog)params.set('backlog',state.backlog);
   return `<h2 id="userAttentionHeading">${esc(t('currentUserAttention'))}<span>${rows.length}</span></h2><ul>${rows.map(row=>`<li><a data-user-attention-task="${esc(row.id)}" href="/tasks/${encodeURIComponent(row.id)}?${esc(params.toString())}"><span class="user-attention-id">${esc(row.id)}</span><strong>${esc(row.title)}</strong></a><div class="user-attention-decision">${row.message?`<p>${esc(row.message)}</p>`:''}<p><b>${esc(t('userAttentionAction'))}</b> ${esc(row.action)}</p></div></li>`).join('')}</ul>`;
 }
+Object.assign(I18N.ko,{commonAttention:'현재 알림',commonUserCount:'사용자 판단 {count}건',commonSessionCount:'세션 경고 {count}건',commonSessionHeading:'현재 세션 경고',commonSessionLink:'관련 세션 보기',commonTaskLink:'관련 작업 보기'});
+Object.assign(I18N.en,{commonAttention:'Current notifications',commonUserCount:'User decisions: {count}',commonSessionCount:'Session warnings: {count}',commonSessionHeading:'Current session warnings',commonSessionLink:'View related session',commonTaskLink:'View related task'});
+function storeCommonUserAttention(payload,project,backlog) {
+  if(!project||!Array.isArray(payload?.attention))return;
+  backlog=payload.backlog_selection?.selected||backlog||'';
+  const key=project+'|'+backlog,observed=Date.parse(payload.snapshot_at||''),prior=state.commonUserAttention[key];
+    if(prior?.observed>0&&(!Number.isFinite(observed)||observed<prior.observed))return;
+  const nextRows=currentUserAttention(payload);
+  if(prior&&observed===prior.observed&&!prior.rows.length&&nextRows.length)return;
+  state.commonUserRevision[project]=(state.commonUserRevision[project]||0)+1;
+  state.commonUserAttention[key]={project,backlog:backlog||payload.backlog_selection?.selected||'',observed:Number.isFinite(observed)?observed:0,rows:nextRows};
+  renderUserAttention();
+}
+function commonAttentionUsers() {
+ const rows=[],seen=new Set();
+ for(const source of Object.values(state.commonUserAttention)){
+  for(const row of source.rows){const key=source.project+'|'+source.backlog+'|'+row.id;if(seen.has(key))continue;seen.add(key);rows.push({...row,project:source.project,backlog:source.backlog});}
+ }
+ return rows;
+}
+function commonAttentionMarkup(users,warnings) {
+ const userRows=users.map(row=>{
+  const params=new URLSearchParams({project:row.project});if(row.backlog)params.set('backlog',row.backlog);
+  return `<li><a data-user-attention-task="${esc(row.id)}" href="/tasks/${encodeURIComponent(row.id)}?${esc(params.toString())}"><span class="user-attention-id">${esc(row.id)}</span><strong>${esc(row.title)}</strong></a><div class="user-attention-decision"><p class="common-attention-project">${esc(row.project)}</p>${row.message?`<p>${esc(row.message)}</p>`:''}<p><b>${esc(t('userAttentionAction'))}</b> ${esc(row.action)}</p></div></li>`;
+ }).join('');
+ const sessionRows=warnings.map(item=>{
+  const params=new URLSearchParams({project:item.project||''});
+  const taskLink=item.task_id?`<a href="/tasks/${encodeURIComponent(item.task_id)}?${esc(params.toString())}">${esc(t('commonTaskLink'))} · ${esc(item.task_id)}</a>`:'';
+  params.set('view','workload');
+  return `<li><div><strong>${esc(operationText(item.kind==='monitor_gap'?'gap':item.kind))}</strong><p>${esc(item.task_id||item.agent_path||item.attempt_id||item.project)}</p></div><div class="user-attention-decision"><p class="common-attention-project">${esc(item.project||'')}</p><p>${esc(operationEvidence(item.evidence||''))}</p>${item.agent_path?`<p>${esc(item.agent_path)}</p>`:''}${item.attempt_id?`<p>${esc(item.attempt_id)}</p>`:''}<p><b>${esc(operationText('action'))}</b> ${esc(operationAction(item)||'')}</p><div class="common-attention-links">${taskLink}<a href="/?${esc(params.toString())}${item.attempt_id?'#runtime-attempt-'+encodeURIComponent(item.attempt_id):''}">${esc(t('commonSessionLink'))}</a></div></div></li>`;
+ }).join('');
+ return `<details class="common-attention"${state.commonAttentionOpen?' open':''}><summary><strong>${esc(t('commonAttention'))}</strong><span>${esc(t('commonUserCount',{count:users.length}))}</span><span>${esc(t('commonSessionCount',{count:warnings.length}))}</span></summary><div class="common-attention-body">${users.length?`<h2>${esc(t('currentUserAttention'))}</h2><ul>${userRows}</ul>`:''}${warnings.length?`<h2>${esc(t('commonSessionHeading'))}</h2><ul>${sessionRows}</ul>`:''}</div></details>`;
+}
 function renderUserAttention() {
-  const el=$('#userAttention');
-  if(!el)return;
-  const rows=state.userAttentionContext===state.project+'|'+state.backlog&&state.project?state.userAttention:[];
-  el.hidden=!rows.length;
-  if(!rows.length){el.innerHTML='';return;}
-  const markup=userAttentionMarkup(rows);
-  if(el.innerHTML===markup)return;
-  el.innerHTML=markup;
-  el.setAttribute('aria-labelledby','userAttentionHeading');
-  el.querySelectorAll('[data-user-attention-task]').forEach(link=>link.addEventListener('click',e=>{
-    if(e.button!==0||e.metaKey||e.ctrlKey||e.shiftKey||e.altKey)return;
-    e.preventDefault();openTask(link.dataset.userAttentionTask);
-  }));
+ const el=$('#userAttention');if(!el)return;
+ const users=commonAttentionUsers(),warnings=state.sessionWarnings;
+ el.hidden=!users.length&&!warnings.length;
+ if(el.hidden){el.innerHTML='';state.commonAttentionOpen=false;return;}
+ const markup=commonAttentionMarkup(users,warnings);
+ if(el.innerHTML===markup)return;
+ el.innerHTML=markup;
+ el.querySelector?.('details')?.addEventListener('toggle',event=>{state.commonAttentionOpen=event.target.open;});
 }
 
 function isIOSDevice() {
@@ -2934,7 +2976,7 @@ function runtimeAttemptCard(attempt,findings) {
   const isOpen=hasRememberedOpen?Boolean(state.runtimeAttemptDisclosure[disclosureKey]):openByDefault;
   const historyOpen=Boolean(state.runtimeTransitionDisclosure[disclosureKey]);
   const elapsedAttrs=`class="runtime-elapsed" data-started-at="${esc(attempt.started_at||'')}" data-ended-at="${esc(attempt.ended_at||'')}" data-elapsed-ms="${Number(attempt.elapsed_ms||0)}"`;
-  return `<details class="runtime-attempt-card runtime-attempt-disclosure" data-runtime-attempt-key="${esc(disclosureKey)}" ${isOpen?'open':''}>
+  return `<details id="runtime-attempt-${esc(encodeURIComponent(disclosureKey))}" class="runtime-attempt-card runtime-attempt-disclosure" data-runtime-attempt-key="${esc(disclosureKey)}" ${isOpen?'open':''}>
     <summary class="runtime-attempt-summary">
       <div class="runtime-attempt-identity">
         <div class="runtime-attempt-name">${esc(name)}</div>
@@ -3194,7 +3236,7 @@ function workloadView() {
     return `<article class="worker-card"><div class="worker-head"><div><div class="worker-name">${esc(a.agent)}</div><div class="worker-alias">${esc(alias)}</div>${liveLine}</div><div class="worker-stats"><div><strong>${a.doing_count||0}</strong><span>${esc(t('doing'))}</span></div><div><strong>${a.blocking_count||0}</strong><span>${esc(t('downstreamBlocked'))}</span></div><div><strong>${a.ready_candidate_count||0}</strong><span>${esc(t('continuity'))}</span></div></div></div><div class="worker-body">${tasks||`<div class="worker-empty">${esc(t('noCurrentDoing'))}</div>`}${blocked?`<div class="mini-panel"><h3>${esc(t('downstreamBlocked'))}</h3><div class="mini-list">${blocked}</div></div>`:''}${ready?`<div class="mini-panel"><h3>${esc(t('readyContinuity'))}</h3><div class="mini-list">${ready}</div></div>`:''}</div></article>`;
   }).join('');
   const backlogPanel=`<section class="assigned-workload-section"><div class="runtime-section-head compact"><div><div class="eyebrow">Backlog / Git</div><h2>${esc(t('runtimeAssignedWorkload'))}</h2><p class="summary">${esc(t('runtimeAssignedWorkloadIntro'))}</p></div></div><div class="metrics"><div class="metric"><strong>${agents.length}</strong><span>${esc(t('workers'))}</span></div><div class="metric"><strong>${doingTotal}</strong><span>${esc(t('doing'))}</span></div><div class="metric"><strong>${blockingTotal}</strong><span>${esc(t('downstreamBlocked'))}</span></div><div class="metric"><strong>${continuityTotal}</strong><span>${esc(t('readyContinuity'))}</span></div></div>${unassigned.length?`<div class="unassigned-warning"><strong>${esc(t('unassignedDoing'))}:</strong> ${esc(unassigned.join(', '))}</div>`:''}${cards?`<div class="workload-grid">${cards}</div>`:`<div class="empty">${esc(t('noWorkload'))}</div>`}${released.length?`<div class="workload-secondary"><div class="mini-panel"><h3>${esc(t('releasedHold'))}</h3><div class="mini-list">${released.map(x=>`<span class="badge" data-id="${esc(x.id)}">${esc(x.id)}</span>`).join('')}</div></div></div>`:''}</section>`;
-  return `<div class="page-head"><div><div class="eyebrow">${esc(t('operationsEyebrow'))}</div><h1>${esc(t('workload'))}</h1><p class="summary">${esc(t('workloadIntro'))}</p></div></div>${runtimePanel}${backlogPanel}`;
+  return `<div class="page-head"><div><div class="eyebrow">${esc(t('operationsEyebrow'))}</div><h1>${esc(t('workload'))}</h1><p class="summary">${esc(t('workloadIntro'))}</p></div></div>${runtimePanel}${renderOperationStages(state.operationPayload.stages||[])}${backlogPanel}`;
 }
 function issuesView() {
   const h=state.snapshot?.health||{}, rows=[];
@@ -3445,6 +3487,7 @@ function toggleSidebar() {
 function render() {
  renderUserAttention();
   if(document.querySelector('.hub-confirm-overlay'))return;
+  if(document.activeElement?.closest?.('#userAttention'))return;
   const hubHistoryFocus=document.activeElement?.id==='hubHistoryToggle';
   const searchFocus=document.activeElement?.id==='search' ? {start:document.activeElement.selectionStart,end:document.activeElement.selectionEnd} : null;
   nav(); translateChrome(); renderAccess(); applySidebarState(); updateNotificationIndicator(); renderGlobalUpdateIndicator(); renderContentUpdatePrompt(); renderReleaseUnreadPrompt();
@@ -4023,6 +4066,7 @@ $('#sidebar')?.addEventListener('mouseleave',()=>{if(state.sidebarCollapsed){sta
 
 document.addEventListener('keydown',e=>{
   if(document.querySelector('.hub-confirm-overlay'))return;
+  if(document.activeElement?.closest?.('#userAttention'))return;
   if(e.key==='Escape'&&state.releaseNotePopup){e.preventDefault();dismissReleaseNotePopup();return}
   const tag=document.activeElement?.tagName?.toLowerCase();
   const editing=['input','textarea','select','button'].includes(tag)||document.activeElement?.isContentEditable;
