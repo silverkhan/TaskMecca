@@ -172,7 +172,16 @@ type telegramEnvelope struct {
 	Result      json.RawMessage `json:"result,omitempty"`
 }
 
+// TelegramTransportDisabled is a process-only safety switch for maintenance.
+// It does not alter any saved token, recipient, enabled kind or cutover.
+func TelegramTransportDisabled() bool {
+	return os.Getenv("TASK_MECCA_TELEGRAM_TRANSPORT") == "disabled"
+}
+
 func telegramCall(token, method string, body, out any) error {
+	if TelegramTransportDisabled() {
+		return errors.New("Telegram transport disabled for this process")
+	}
 	token = strings.TrimSpace(token)
 	if token == "" {
 		return errors.New("telegram bot token is empty")

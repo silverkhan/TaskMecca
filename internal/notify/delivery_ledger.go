@@ -140,6 +140,11 @@ func retryDue(record DeliveryRecord, now time.Time) bool {
 // A response lost after Telegram accepts a message remains explicitly uncertain:
 // retrying it can duplicate the external message because Telegram has no idempotency key.
 func Deliver(project string, events []Event) []error {
+	// Process-scoped maintenance mode: no network, settings or delivery-ledger
+	// writes. A later normal process retains existing cutover/dedupe semantics.
+	if TelegramTransportDisabled() {
+		return nil
+	}
 	telegramMu.Lock()
 	defer telegramMu.Unlock()
 	release, err := acquireDeliveryLock(project)

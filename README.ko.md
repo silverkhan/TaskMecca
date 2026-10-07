@@ -1,5 +1,7 @@
 # Task Mecca
 
+작업 완료 근거로 과거 실행 관측 미확인 경고를 해소하되 runtime 완료 사실을 만들지 않습니다. 정확한 사건의 무전송 CLI preview/적용과 process-only Telegram 유지보수 안전 절차는 [완료 작업의 실행 관측 재조정](docs/A-23-completed-runtime-observation.md)을 참고하세요.
+
 **Task Mecca는 서브에이전트 기반 작업을 백로그로 기록·수행·관리하고, Web UI에서 진행 상태와 lifecycle을 모니터링하는 local-first AI 협업 도구입니다.**  
 사용자는 한 개의 Root와 자연어로 대화하고, Task Mecca는 Registrar·Controller·Worker 역할을 통해 작업 정의가 흐트러지지 않도록 등록·병렬 수행·검증·완료 기록을 이어갑니다.
 

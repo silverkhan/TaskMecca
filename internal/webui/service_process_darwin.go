@@ -57,9 +57,12 @@ func renderLaunchdPlist(exe string,args []string,project string) string {
     b.WriteString("  <key>ThrottleInterval</key><integer>2</integer>\n")
     b.WriteString("  <key>StandardOutPath</key><string>"+xmlText(WebLogPath())+"</string>\n")
     b.WriteString("  <key>StandardErrorPath</key><string>"+xmlText(WebLogPath())+"</string>\n")
-    if home:=strings.TrimSpace(os.Getenv("TASK_MECCA_HOME")); home!="" {
+    home:=strings.TrimSpace(os.Getenv("TASK_MECCA_HOME"))
+    transport:=os.Getenv("TASK_MECCA_TELEGRAM_TRANSPORT")
+    if home!="" || transport=="disabled" {
         b.WriteString("  <key>EnvironmentVariables</key>\n  <dict>\n")
-        b.WriteString("    <key>TASK_MECCA_HOME</key><string>"+xmlText(home)+"</string>\n")
+        if home!="" { b.WriteString("    <key>TASK_MECCA_HOME</key><string>"+xmlText(home)+"</string>\n") }
+        if transport=="disabled" { b.WriteString("    <key>TASK_MECCA_TELEGRAM_TRANSPORT</key><string>disabled</string>\n") }
         b.WriteString("  </dict>\n")
     }
     b.WriteString("</dict>\n</plist>\n")

@@ -26,20 +26,21 @@ const operationGapAfter = 2 * operationScanInterval
 
 // An operation incident is an observation, never a backlog lifecycle decision.
 type operationIncident struct {
-	ID             string `json:"id"`
-	Key            string `json:"key"`
-	Project        string `json:"project"`
-	AttemptID      string `json:"attempt_id,omitempty"`
-	TaskID         string `json:"task_id,omitempty"`
-	AgentPath      string `json:"agent_path,omitempty"`
-	Kind           string `json:"kind"`
-	Quality        string `json:"quality"`
-	Evidence       string `json:"evidence"`
-	LastObservedAt string `json:"last_observed_at,omitempty"`
-	DetectedAt     string `json:"detected_at"`
-	EndedAt        string `json:"ended_at,omitempty"`
-	RecoveredAt    string `json:"recovered_at,omitempty"`
-	Action         string `json:"action"`
+	ID             string                         `json:"id"`
+	Key            string                         `json:"key"`
+	Project        string                         `json:"project"`
+	AttemptID      string                         `json:"attempt_id,omitempty"`
+	TaskID         string                         `json:"task_id,omitempty"`
+	AgentPath      string                         `json:"agent_path,omitempty"`
+	Kind           string                         `json:"kind"`
+	Quality        string                         `json:"quality"`
+	Evidence       string                         `json:"evidence"`
+	LastObservedAt string                         `json:"last_observed_at,omitempty"`
+	DetectedAt     string                         `json:"detected_at"`
+	EndedAt        string                         `json:"ended_at,omitempty"`
+	RecoveredAt    string                         `json:"recovered_at,omitempty"`
+	Action         string                         `json:"action"`
+	Resolution     *operationCompletionResolution `json:"resolution,omitempty"`
 }
 
 type operationJournal struct {
@@ -181,6 +182,11 @@ func operationID(project, key string, sequence int) string {
 func scanOperationProject(project string, now time.Time) (operationJournal, error) {
 	operationMu.Lock()
 	defer operationMu.Unlock()
+	release, err := lockOperationJournal(project)
+	if err != nil {
+		return operationJournal{}, err
+	}
+	defer release()
 	journal, err := readOperationJournal(project)
 	if err != nil {
 		return journal, err
@@ -190,6 +196,7 @@ func scanOperationProject(project string, now time.Time) (operationJournal, erro
 		return journal, err
 	}
 	nowText := now.UTC().Format(time.RFC3339Nano)
+	completions := operationCompletionEvidence(project, ledger, now)
 	signals := map[string]operationSignal{}
 	verified := map[string]bool{}
 	for _, attempt := range ledger.Attempts {
@@ -197,6 +204,9 @@ func scanOperationProject(project string, now time.Time) (operationJournal, erro
 			verified[attempt.Provider] = operationHookVerifier(project, attempt.Provider)
 		}
 		if signal, ok := classifyOperation(project, attempt, now, verified[attempt.Provider]); ok {
+			if operationCompletedUnknown(signal.incident, completions) != nil {
+				continue
+			}
 			signals[signal.key] = signal
 		}
 	}
@@ -266,6 +276,12 @@ func scanOperationProject(project string, now time.Time) (operationJournal, erro
 		if item.RecoveredAt != "" {
 			continue
 		}
+		if resolution := operationCompletedUnknown(*item, completions); resolution != nil {
+			item.RecoveredAt = nowText
+			item.Resolution = resolution
+			delete(signals, item.Key)
+			continue
+		}
 		key := item.Key
 		if key == "" && item.AttemptID != "" {
 			key = "attempt:" + item.AttemptID
@@ -277,7 +293,7 @@ func scanOperationProject(project string, now time.Time) (operationJournal, erro
 		if signal, ok := signals[key]; ok && signal.incident.Kind == item.Kind {
 			item.LastObservedAt = signal.incident.LastObservedAt
 			delete(signals, key)
-		} else {
+		} else if _, present := signals[key]; present || item.Kind != "runtime_unknown" {
 			item.RecoveredAt = nowText
 			delete(active, key)
 		}
@@ -397,6 +413,7 @@ func operationSnapshot(primary string) map[string]any {
 	projects := []map[string]any{}
 	active := []operationIncident{}
 	recent := []operationIncident{}
+	resolved := []operationIncident{}
 	for _, project := range operationProjects(primary) {
 		journal, err := readOperationJournal(project)
 		if err != nil {
@@ -405,6 +422,9 @@ func operationSnapshot(primary string) map[string]any {
 		}
 		projects = append(projects, map[string]any{"path": project, "last_scan_at": journal.LastScanAt})
 		for _, incident := range journal.Incidents {
+			if incident.Resolution != nil && incident.RecoveredAt != "" {
+				resolved = append(resolved, incident)
+			}
 			if incident.RecoveredAt == "" && incident.Kind != "normal_exit" {
 				active = append(active, incident)
 			}
@@ -415,5 +435,9 @@ func operationSnapshot(primary string) map[string]any {
 	if len(recent) > 50 {
 		recent = recent[:50]
 	}
-	return map[string]any{"projects": projects, "active": active, "recent": recent}
+	sort.Slice(resolved, func(i, j int) bool { return resolved[i].RecoveredAt > resolved[j].RecoveredAt })
+	if len(resolved) > 20 {
+		resolved = resolved[:20]
+	}
+	return map[string]any{"projects": projects, "active": active, "recent": recent, "resolved_observations": resolved, "telegram_transport_disabled": notify.TelegramTransportDisabled()}
 }

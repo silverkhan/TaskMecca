@@ -268,7 +268,7 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 	registerTerminalRoutes(mux, projectFor, writeJSON)
 
 	mux.HandleFunc("/api/health", func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, map[string]any{"ok": true, "version": version, "instance_id": instanceID, "pid": os.Getpid()}, 200)
+		writeJSON(w, map[string]any{"ok": true, "version": version, "instance_id": instanceID, "pid": os.Getpid(), "telegram_transport_disabled": notify.TelegramTransportDisabled()}, 200)
 	})
 
 	mux.HandleFunc("/api/version", func(w http.ResponseWriter, r *http.Request) {
