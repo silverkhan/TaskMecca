@@ -2497,8 +2497,74 @@ function notificationHistoryMarkup(){
 function notificationCenterView(){return `<div class="notification-center-tabs" role="tablist"><button type="button" role="tab" data-center-tab="history" aria-selected="${state.notificationCenterTab==='history'}">${esc(t('notificationHistory'))}<span id="centerHistoryBadge">${state.notificationHistoryNew?` · ${state.notificationHistoryNew}`:''}</span></button><button type="button" role="tab" data-center-tab="settings" aria-selected="${state.notificationCenterTab==='settings'}">${esc(t('notificationSettings'))}</button></div>${state.notificationCenterTab==='settings'?'<section id="notificationSettingsBody" class="notification-settings-body"></section>':`<p class="summary">${esc(t('notificationHistoryGuide'))}</p><section id="centerHistory">${notificationHistoryMarkup()}</section>`}`;}
 function bindNotificationHistoryActions(){document.querySelectorAll('[data-history-page]').forEach(button=>button.addEventListener('click',()=>{state.notificationHistoryPage=Number(button.dataset.historyPage);if(state.notificationHistoryPage===1)captureHistoryWindow();updateNotificationHistoryDOM();}));document.querySelectorAll('[data-history-latest]').forEach(button=>button.addEventListener('click',()=>{state.notificationHistoryPage=1;captureHistoryWindow();updateNotificationHistoryDOM();}));}
 function updateNotificationHistoryDOM(){if(state.view!=='notifications')return;const badge=$('#centerHistoryBadge');if(badge)badge.textContent=state.notificationHistoryNew?' · '+state.notificationHistoryNew:'';const region=$('#centerHistory');if(!region)return;const scroll=region.querySelector('.notification-history-scroll'),left=scroll?.scrollLeft||0,top=window.scrollY,open=[...region.querySelectorAll('details[open]')].map(item=>item.dataset.historyDisclosure),active=document.activeElement,focusRow=active?.closest?.('[data-history-row]')?.dataset.historyRow,focusPage=active?.dataset?.historyPage;region.innerHTML=notificationHistoryMarkup();for(const details of region.querySelectorAll('details'))details.open=open.includes(details.dataset.historyDisclosure);const nextScroll=region.querySelector('.notification-history-scroll');if(nextScroll)nextScroll.scrollLeft=left;bindNotificationHistoryActions();const focus=focusRow?[...region.querySelectorAll('[data-history-row]')].find(row=>row.dataset.historyRow===focusRow)?.querySelector(active?.tagName==='SUMMARY'?'summary':'a'):focusPage?[...region.querySelectorAll('[data-history-page]')].find(button=>button.dataset.historyPage===focusPage):null;focus?.focus({preventScroll:true});window.scrollTo?.(0,top);}
-function projectChannelSettingsMarkup(){const settings=webNotificationSettings();return `<section class="center-channel-settings"><h2>${esc(state.language==='ko'?'프로젝트별 채널·유형':'Channels and types by project')}</h2>${(state.projectNotificationSettings||[]).map(row=>`<details class="center-project-settings"><summary>${esc(row.name||row.path)}</summary><p class="muted">${esc(row.path)}</p><fieldset><legend>Telegram</legend><label><input type="checkbox" data-center-channel="telegram" data-center-project="${esc(row.path)}" ${row.status?.project_enabled!==false?'checked':''}>${esc(t('telegramNotifications'))}</label>${notificationKinds.map(kind=>`<label><input type="checkbox" data-center-telegram-kind="${kind}" data-center-project="${esc(row.path)}" ${row.status?.kinds?.[kind]?'checked':''} ${!row.status?.configured?'disabled':''}>${esc(notificationKindLabel(kind))}</label>`).join('')}</fieldset><fieldset><legend>${esc(t('notificationWebProject'))}</legend><label><input type="checkbox" data-center-channel="web" data-center-project="${esc(row.path)}" ${settings.projects?.[row.path]?.enabled!==false?'checked':''}>${esc(t('notificationWebProject'))}</label>${notificationKinds.map(kind=>`<label><input type="checkbox" data-center-web-kind="${kind}" data-center-project="${esc(row.path)}" ${(settings.projects?.[row.path]?.kinds?.[kind]??state.notificationSettings[['completed','stalled'].includes(kind)?kind:'intervention'])!==false?'checked':''}>${esc(notificationKindLabel(kind))}</label>`).join('')}</fieldset></details>`).join('')}</section>`;}
-function bindCenterChannelSettings(panel){panel.querySelectorAll('[data-center-channel],[data-center-telegram-kind],[data-center-web-kind]').forEach(input=>input.addEventListener('change',async()=>{const project=input.dataset.centerProject;input.disabled=true;try{if(input.dataset.centerChannel==='telegram')await setProjectNotificationEnabled(project,input.checked);else if(input.dataset.centerTelegramKind){const row=state.projectNotificationSettings.find(row=>row.path===project),kinds={...row.status.kinds,[input.dataset.centerTelegramKind]:input.checked};row.status=await projectTelegramAction(project,'kinds',{kinds});}else changeWebNotificationSetting(project,input.dataset.centerWebKind||'enabled',input.checked);}catch(error){input.checked=!input.checked;alert(error.message);}finally{input.disabled=false;}}));}
+function notificationSwitch(attrs,on,label,disabled=false){
+ return '<button type="button" role="switch" class="notice-switch'+(on?' is-on':'')+'" aria-checked="'+Boolean(on)+'" aria-label="'+esc(label)+'" '+attrs+(disabled?' disabled':'')+'><span class="notice-switch-track" aria-hidden="true"></span><span class="sr-only">'+esc(on?'On':'Off')+'</span></button>';
+}
+function notificationOverviewMarkup(){
+ const rows=state.projectNotificationSettings||[],ko=state.language==='ko',webOn=webNotificationSettings().enabled!==false;
+ const telegramOn=rows.length>0&&rows.every(r=>r.status?.project_enabled!==false);
+ const active=rows.filter(r=>r.status?.project_enabled!==false).length,connected=rows.filter(r=>r.status?.connected).length;
+ const top=(name,detail,note,attributes,on,disabled=false)=>'<article class="notice-channel-card"><div class="notice-channel-heading"><div><strong>'+esc(name)+'</strong><small>'+esc(detail)+'</small></div>'+notificationSwitch(attributes,on,name,disabled)+'</div><p>'+esc(note)+'</p></article>';
+ return '<section class="notice-overview">'+
+ top(ko?'웹 알림':'Web notifications',ko?'현재 브라우저':'This browser',ko?'열린 탭과 백그라운드 Push의 전체 수신을 제어합니다.':'Control foreground and background Push.', 'id="centerGlobalWebChannel"',webOn)+
+ top('Telegram',(ko?'연결된 프로젝트 ':'Connected projects ')+connected+'/'+rows.length,(ko?'채널 사용 프로젝트 ':'Enabled projects ')+active+'/'+rows.length,'id="centerGlobalTelegramChannel"',telegramOn,rows.length===0)+'</section>';
+}
+function projectChannelSettingsMarkup(){
+ const rows=state.projectNotificationSettings||[],settings=webNotificationSettings(),ko=state.language==='ko';
+ const groups=[
+  {name:ko?'작업 진행':'Progress',kinds:['registered','started']},
+  {name:ko?'확인 및 대응':'Needs attention',kinds:['intervention','approval','stalled','interrupted','runtime_unknown','finalize']},
+  {name:ko?'작업 결과':'Results',kinds:['completed']}
+ ];
+ const content=rows.map(row=>{
+  const project=row.path,web=settings.projects?.[project]||{},webOn=web.enabled!==false,tgOn=row.status?.project_enabled!==false;
+  const tgReady=Boolean(row.status?.configured||row.status?.connected),name=row.name||project;
+  const entry=(channel,kind,on,disabled=false)=>notificationSwitch('data-center-project="'+esc(project)+'" data-center-'+channel+'-kind="'+esc(kind)+'"',on,name+' · '+notificationKindLabel(kind)+' · '+channel,disabled);
+  const kinds=groups.map(group=>'<div class="notice-type-group" role="group" aria-label="'+esc(group.name)+'"><div class="notice-type-caption">'+esc(group.name)+'</div>'+
+   group.kinds.map(kind=>'<div class="notice-matrix-row"><span>'+esc(notificationKindLabel(kind))+'</span><span>'+entry('web',kind,web.kinds?.[kind]??state.notificationSettings[kind]??true)+'</span><span>'+entry('telegram',kind,row.status?.kinds?.[kind]??true,!tgReady)+'</span></div>').join('')+'</div>').join('');
+  return '<details class="notice-project" '+(project===state.project?'open':'')+'><summary><span class="notice-project-name">'+esc(name)+'</span><span class="notice-project-summary">Web '+(webOn?'ON':'OFF')+' · Telegram '+(tgOn?'ON':'OFF')+'</span></summary>'+
+  '<div class="notice-project-content"><p class="notice-project-path">'+esc(project)+'</p>'+
+  '<div class="notice-per-project-channels"><div><strong>Web</strong>'+notificationSwitch('data-center-project="'+esc(project)+'" data-center-channel="web"',webOn,name+' · Web')+'</div><div><strong>Telegram</strong>'+notificationSwitch('data-center-project="'+esc(project)+'" data-center-channel="telegram"',tgOn,name+' · Telegram')+'</div></div>'+
+  '<p class="notice-project-connection">'+esc(ko?'텔레그램 상태: ':'Telegram status: ')+esc(row.status?.connected?(ko?'연결됨':'Connected'):row.status?.configured?(ko?'봇 설정됨 · 채팅 연결 필요':'Bot configured · chat pending'):(ko?'봇 연결 필요':'Bot not connected'))+'</p>'+
+  '<div class="notice-matrix" role="group" aria-label="'+esc(name)+'"><div class="notice-matrix-head"><span>'+esc(ko?'알림 유형':'Event type')+'</span><span>Web</span><span>Telegram</span></div>'+kinds+'</div></div></details>';
+ }).join('');
+ return '<section class="center-channel-settings"><div class="notice-section-heading"><h2>'+esc(ko?'프로젝트별 채널·유형':'Channels and event types')+'</h2><p>'+esc(ko?'프로젝트를 펼쳐 설정하세요. 채널을 꺼도 유형 선택은 유지됩니다.':'Expand a project. Turning a channel off preserves its event preferences.')+'</p></div>'+(content||'<p class="muted">'+esc(ko?'등록된 프로젝트가 없습니다.':'No projects.')+'</p>')+'</section>';
+}
+async function setAllTelegramChannelsEnabled(enabled){
+ const rows=state.projectNotificationSettings||[],errors=[];
+ for(const row of rows){
+  if((row.status?.project_enabled!==false)===enabled)continue;
+  try{await setProjectNotificationEnabled(row.path,enabled)}catch(error){errors.push((row.name||row.path)+': '+error.message)}
+ }
+ await refreshNotificationConfiguration();
+ if(errors.length)throw Error(errors.join('\n'));
+}
+async function setNotificationSwitch(input){
+ const project=input.dataset.centerProject,channel=input.dataset.centerChannel,next=input.getAttribute('aria-checked')!=='true';
+ input.disabled=true;
+ try{
+  if(input.id==='centerGlobalTelegramChannel')await setAllTelegramChannelsEnabled(next);
+  else if(input.id==='centerGlobalWebChannel'){
+   const settings=webNotificationSettings();settings.enabled=next;localStorage.setItem('task-mecca-web-notification-settings-v1',JSON.stringify(settings));
+   await syncBackgroundPush(true);
+  }else if(channel==='telegram')await setProjectNotificationEnabled(project,next);
+  else if(channel==='web'){changeWebNotificationSetting(project,'enabled',next);await syncBackgroundPush(true);}
+  else if(input.dataset.centerTelegramKind){
+   const row=state.projectNotificationSettings.find(r=>r.path===project);
+   await projectTelegramAction(project,'kinds',{kinds:{...row?.status?.kinds,[input.dataset.centerTelegramKind]:next}});
+  }else if(input.dataset.centerWebKind){
+   changeWebNotificationSetting(project,input.dataset.centerWebKind,next);await syncBackgroundPush(true);
+  }
+ }catch(error){alert(error.message);}
+ finally{
+  const projectOpen=[...document.querySelectorAll('.notice-project[open]')].map(d=>d.querySelector('.notice-project-path')?.textContent);
+  renderNotificationPanel();
+  [...document.querySelectorAll('.notice-project')].forEach(d=>{if(projectOpen.includes(d.querySelector('.notice-project-path')?.textContent))d.open=true;});
+ }
+}
+function bindCenterChannelSettings(panel){
+ panel.querySelectorAll('#centerGlobalWebChannel,#centerGlobalTelegramChannel,[data-center-channel],[data-center-telegram-kind],[data-center-web-kind]').forEach(button=>button.addEventListener('click',()=>void setNotificationSwitch(button)));
+}
 
 function bindProjectRecipientControls(){
     document.querySelectorAll('[data-project-notification]').forEach(input=>input.addEventListener('change',async()=>{
