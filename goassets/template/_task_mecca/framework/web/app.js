@@ -2070,12 +2070,18 @@ function notificationCapability() {
   if(typeof Notification==='undefined') return {mode:'unsupported',canRequest:false};
   return {mode:'supported',canRequest:true,permission:Notification.permission};
 }
+let notificationWorkerPromise=null;
 async function notificationWorker() {
   if(!('serviceWorker' in navigator)||!window.isSecureContext)return null;
-  try{
-    await navigator.serviceWorker.register('/sw.js',{scope:'/'});
-    return await navigator.serviceWorker.ready;
-  }catch(_){ return null; }
+  // Registration and ready may involve disk/worker startup on mobile.
+  // Share one promise instead of repeating it for every event and toggle.
+  if(!notificationWorkerPromise){
+    notificationWorkerPromise=(async()=>{
+      await navigator.serviceWorker.register('/sw.js',{scope:'/'});
+      return navigator.serviceWorker.ready;
+    })().catch(()=>{notificationWorkerPromise=null;return null});
+  }
+  return notificationWorkerPromise;
 }
 
 // Background Push is opt-in and distinct from the open-page Notification API.
@@ -2114,6 +2120,16 @@ async function pushRequest(project,body){
 function pushProjects(){
  return [...new Set([state.project,...(state.projectNotificationSettings||[]).map(row=>row.path)].filter(Boolean))];
 }
+let cachedPushSubscriptionPromise=null;
+async function activePushSubscription(){
+ if(!cachedPushSubscriptionPromise){
+  cachedPushSubscriptionPromise=(async()=>{
+   const worker=await notificationWorker();
+   return worker?.pushManager?.getSubscription()||null;
+  })().catch(error=>{cachedPushSubscriptionPromise=null;throw error});
+ }
+ return cachedPushSubscriptionPromise;
+}
 async function enableBackgroundPush(){
  if(pushSupport()!=='supported')throw Error(state.language==='ko'?'이 브라우저에서는 백그라운드 알림을 사용할 수 없습니다. HTTPS 및 iOS 홈 화면 앱 조건을 확인하세요.':'Background Push is unavailable. Check HTTPS and iOS installed app requirements.');
  // Safari/iOS requires this request to originate from a direct user gesture.
@@ -2135,6 +2151,7 @@ async function enableBackgroundPush(){
   }
  }
  if(!subscription)subscription=await worker.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:serverKey});
+ cachedPushSubscriptionPromise=Promise.resolve(subscription);
  const details=pushSubscriptionJSON(subscription);
  for(const path of pushProjects()){
   await pushRequest(path,{action:'subscribe',...details,enabled:webNotificationSettings().enabled!==false&&webNotificationSettings().projects?.[path]?.enabled!==false,kinds:currentPushKinds(path)});
@@ -2142,19 +2159,21 @@ async function enableBackgroundPush(){
  localStorage.setItem('task-mecca-push-enabled-v1','1');
  webPushFeedback=state.language==='ko'?'백그라운드 Push 구독이 연결됐습니다. 테스트 전송으로 확인하세요.':'Background Push subscription is registered. Run a test to verify delivery.';
 }
-async function syncBackgroundPush(force=false,strict=false){
+async function syncBackgroundPush(force=false,strict=false,projects=null){
  if(pushSupport()!=='supported'||Notification.permission!=='granted'||localStorage.getItem('task-mecca-push-enabled-v1')!=='1')return;
  if(!force&&Date.now()-webPushHeartbeatAt<30000)return;
  webPushHeartbeatAt=Date.now();
- const worker=await notificationWorker();
- const sub=await worker?.pushManager?.getSubscription();
+ const sub=await activePushSubscription();
  if(!sub)return;
- const details=pushSubscriptionJSON(sub),failures=[];
- for(const project of pushProjects()){
-  try{await pushRequest(project,{action:'subscribe',...details,enabled:webNotificationSettings().enabled!==false&&webNotificationSettings().projects?.[project]?.enabled!==false,kinds:currentPushKinds(project)});}
-  catch(error){if(strict)failures.push(project+': '+error.message);}
- }
- if(failures.length)throw Error(failures.join('\n'));
+ const details=pushSubscriptionJSON(sub),projectsToSync=projects||pushProjects();
+ // Parallel independent project writes; never serialize round trips on a click.
+ const results=await Promise.allSettled(projectsToSync.map(project=>pushRequest(project,{
+  action:'subscribe',...details,
+  enabled:webNotificationSettings().enabled!==false&&webNotificationSettings().projects?.[project]?.enabled!==false,
+  kinds:currentPushKinds(project)
+ })));
+ const failures=results.flatMap((result,index)=>result.status==='rejected'?[projectsToSync[index]+': '+(result.reason?.message||result.reason)]:[]);
+ if(strict&&failures.length)throw Error(failures.join('\n'));
 }
 async function disableBackgroundPush(){
  const worker=await notificationWorker(),sub=await worker?.pushManager?.getSubscription();
@@ -2164,6 +2183,7 @@ async function disableBackgroundPush(){
   }
   await sub.unsubscribe();
  }
+ cachedPushSubscriptionPromise=null;
  localStorage.removeItem('task-mecca-push-enabled-v1');
  webPushFeedback=state.language==='ko'?'백그라운드 Push 구독을 해제했습니다.':'Background Push subscription removed.';
 }
