@@ -2403,7 +2403,9 @@ async function telegramAction(action,payload={}) {
   if(!r.ok)throw new Error(body.error||('HTTP '+r.status));
   if(action!=='test'){
     applyTelegramStatus(project,body);
-    await refreshNotificationConfiguration();
+    // The mutation response is authoritative. Avoid an extra two GET round trips
+    // on every simple toggle; only connection/setup changes need a fresh inventory.
+    if(!['kinds','project_enabled'].includes(action))void refreshNotificationConfiguration().catch(()=>{});
   }
   return body;
 }
@@ -2433,6 +2435,10 @@ async function loadProjectNotificationSettings() {
 
 async function setProjectNotificationEnabled(project,enabled) {
   state.projectNotificationSettingsRevision=(state.projectNotificationSettingsRevision||0)+1;
+  const existing=(state.projectNotificationSettings||[]).find(row=>row.path===project)?.status;
+  const prior=existing?{...existing,kinds:{...existing.kinds}}:null;
+  if(existing)applyTelegramStatus(project,{...existing,project_enabled:enabled});
+  try {
   const response=await fetch('/api/notifications/telegram?project='+encodeURIComponent(project),{
     method:'POST',headers:{'Content-Type':'application/json','X-Task-Mecca-Action':'1'},
     body:JSON.stringify({action:'project_enabled',project_enabled:enabled})
@@ -2440,18 +2446,29 @@ async function setProjectNotificationEnabled(project,enabled) {
   const body=await response.json().catch(()=>({}));
   if(!response.ok)throw new Error(body.error||('HTTP '+response.status));
   applyTelegramStatus(project,body);
-  await refreshNotificationConfiguration();
+  } catch(error) {
+    if(prior)applyTelegramStatus(project,prior);
+    throw error;
+  }
 }
 async function projectTelegramAction(project,action,payload={}) {
   state.projectNotificationSettingsRevision=(state.projectNotificationSettingsRevision||0)+1;
+  const existing=(state.projectNotificationSettings||[]).find(row=>row.path===project)?.status;
+  const prior=existing?{...existing,kinds:{...existing.kinds}}:null;
+  if(action==='kinds'&&existing)applyTelegramStatus(project,{...existing,kinds:{...payload.kinds}});
+  try {
   const response=await fetch('/api/notifications/telegram?project='+encodeURIComponent(project),{
     method:'POST',headers:{'Content-Type':'application/json','X-Task-Mecca-Action':'1'},body:JSON.stringify({action,...payload})
   });
   const body=await response.json().catch(()=>({}));
   if(!response.ok)throw new Error(body.error||('HTTP '+response.status));
   applyTelegramStatus(project,body);
-  await refreshNotificationConfiguration();
+  if(!['kinds','project_enabled'].includes(action))void refreshNotificationConfiguration().catch(()=>{});
   return body;
+  } catch(error) {
+    if(prior)applyTelegramStatus(project,prior);
+    throw error;
+  }
 }
 async function configureSharedTelegram(project,token) {
   state.projectNotificationSettingsRevision=(state.projectNotificationSettingsRevision||0)+1;
@@ -2461,7 +2478,7 @@ async function configureSharedTelegram(project,token) {
   const body=await response.json().catch(()=>({}));
   if(!response.ok)throw new Error(body.error||('HTTP '+response.status));
   applyTelegramStatus(project,body);
-  await refreshNotificationConfiguration();
+  void refreshNotificationConfiguration().catch(()=>{});
 }
 const browserNotificationsPending=new Set();
 const notificationKinds=['registered','started','intervention','approval','stalled','interrupted','runtime_unknown','finalize','completed'];
