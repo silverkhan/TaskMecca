@@ -458,6 +458,7 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 	})
 
 	mux.HandleFunc("/api/backlog/tasks", func(w http.ResponseWriter, r *http.Request) {
+        requestStart:=time.Now()
 		activeProject := projectFor(r)
 		activeCtx, ctxErr := webContext(activeProject, "")
 		if ctxErr != nil {
@@ -496,7 +497,10 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 		}
 		statuses := split(r.URL.Query().Get("status"))
 		tags := split(r.URL.Query().Get("tags"))
+        selectionDuration:=time.Since(requestStart)
+        listStart:=time.Now()
 		result, err := backlog.BacklogPage(activeProject, selected, page, pageSize, statuses, tags, r.URL.Query().Get("q"), r.URL.Query().Get("sort"), r.URL.Query().Get("projection"))
+        w.Header().Set("Server-Timing",fmt.Sprintf("selection;dur=%.1f, backlog;dur=%.1f",selectionDuration.Seconds()*1000,time.Since(listStart).Seconds()*1000))
 		if err != nil {
 			writeJSON(w, map[string]any{"error": err.Error()}, 500)
 			return
