@@ -142,6 +142,9 @@ func selectionPayload(ctx context, selected string, candidates []backlog.Candida
 	}
 }
 
+// Replaceable only in isolated HTTP tests; real Web uses maintenance.UpgradeWithProgress.
+var webUpgradeRunner=maintenance.UpgradeWithProgress
+
 var stableReleaseNotesIndexProvider = maintenance.StableReleaseNotesIndex
 var stableReleaseNoteProvider = maintenance.StableReleaseNote
 var currentChannelReleaseNoteProvider = maintenance.CurrentChannelReleaseNote
@@ -1248,7 +1251,7 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
             writeJSON(w,map[string]any{"error":"update already in progress","status":upgradeTracker.snapshot()},409)
             return
         }
-		result, err := maintenance.UpgradeWithProgress(version,upgradeTracker.step)
+		result, err := webUpgradeRunner(version,upgradeTracker.step)
 		if err != nil {
             upgradeTracker.finish("failed",err)
 			writeJSON(w, map[string]any{"error": err.Error()}, 500)
