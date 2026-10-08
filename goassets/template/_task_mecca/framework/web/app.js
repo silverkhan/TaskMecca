@@ -10,6 +10,7 @@ const state = {
   eventStreamKey: '',
   view: 'hub',
   hub: null,
+  logStorage: null, logStorageBusy:false, logStorageProject:'', logStorageError:'', logStorageMessage:'',
   hubManagement: {projects:[],archives:[]},
   hubHistoryExpanded: localStorage.getItem('task-mecca-hub-history-expanded-v1') === '1',
   loadError: '',
@@ -2747,6 +2748,109 @@ function confirmHubAction(action,path,trigger) {
     document.body.append(overlay);overlay.querySelector('[data-hub-cancel]').focus();
   });
 }
+// AID-118: log usage inspection. Only the explicit safe categories returned
+// by the backend can be cleared. Event ledgers are always read-only.
+function logStorageLabels() {
+  const ko=state.language==='ko';
+  return ko
+    ? {title:'로그 데이터 관리',intro:'서비스 및 프로젝트 런타임 로그의 실제 파일 용량입니다. 실행 원장·알림 이력·라이프사이클 기록은 삭제할 수 없습니다.',project:'조회 프로젝트',reload:'용량 다시 확인',clear:'로그 비우기',protected:'보호됨',none:'기록 없음',total:'조회한 로그 총량',reclaim:'정리 가능한 용량',confirm:'로그 내용을 영구히 비웁니다. 다시 복구할 수 없습니다.',cancel:'취소',confirmAction:'비우기',success:'정리 완료',failed:'정리 실패',loading:'로그 용량 확인 중…',projectMissing:'등록된 프로젝트가 없습니다.',names:{'web-service':'웹 서비스 출력 로그','hook-diagnostics':'Hook 진단 이벤트','execution-ledger':'실행 이벤트 원장','notification-events':'알림 이력','lifecycle-observations':'라이프사이클 관측 이력'}}
+    : {title:'Log storage',intro:'Actual disk usage of Web and project runtime logs. Execution, notification and lifecycle ledgers are protected.',project:'Project',reload:'Refresh usage',clear:'Clear log',protected:'Protected',none:'No log file',total:'Measured total',reclaim:'Clearable logs',confirm:'The log contents will be permanently cleared and cannot be restored.',cancel:'Cancel',confirmAction:'Clear',success:'Log cleared',failed:'Could not clear log',loading:'Checking log sizes…',projectMissing:'No registered projects',names:{'web-service':'Web service output','hook-diagnostics':'Hook diagnostic events','execution-ledger':'Execution event ledger','notification-events':'Notification history','lifecycle-observations':'Lifecycle observations'}};
+}
+function logBytes(value){
+  const n=Math.max(0,Number(value)||0);
+  if(n<1024)return n+' B';
+  const units=['KB','MB','GB','TB'];let size=n,index=-1;
+  do{size/=1024;index++}while(size>=1024&&index<units.length-1);
+  return size.toFixed(size>=10?1:2)+' '+units[index];
+}
+function logStorageSection(){
+  const words=logStorageLabels(),data=state.logStorage;
+  const projects=(state.hub?.projects||[]).filter(p=>p?.path);
+  const selected=state.logStorageProject||projects[0]?.path||state.lastProject||'';
+  const choices=projects.map(p=>`<option value="${esc(p.path)}" ${p.path===selected?'selected':''}>${esc(p.name||p.path.split(/[\\/]/).pop()||p.path)}</option>`).join('');
+  const status=state.logStorageError?`<p class="log-storage-alert" role="alert">${esc(state.logStorageError)}</p>`:state.logStorageMessage?`<p class="log-storage-alert" role="status">${esc(state.logStorageMessage)}</p>`:'';
+  const rows=(data?.items||[]).map(item=>`<div class="log-storage-row">
+      <div class="log-storage-details"><strong>${esc(words.names[item.id]||item.label)}</strong><small>${esc(item.scope==='global'?(state.language==='ko'?'전체 서비스':'Global service'):(state.language==='ko'?'선택한 프로젝트':'Selected project'))} · ${esc(item.note||'')}</small></div>
+      <strong class="log-storage-size">${logBytes(item.size_bytes)}</strong>
+      ${item.can_clear?`<button type="button" class="action-btn secondary log-clear-btn" data-clear-log="${esc(item.id)}" ${!item.size_bytes||state.logStorageBusy?'disabled':''}>${esc(words.clear)}</button>`:`<span class="log-storage-protected">${esc(words.protected)}</span>`}
+    </div>`).join('');
+  return `<section class="log-storage" aria-labelledby="logStorageHeading">
+    <div class="log-storage-head"><div><h2 id="logStorageHeading">${esc(words.title)}</h2><p class="muted">${esc(words.intro)}</p></div></div>
+    <div class="log-storage-controls"><label>${esc(words.project)} <select id="logStorageProject" ${state.logStorageBusy?'disabled':''}>${choices||`<option value="">${esc(words.projectMissing)}</option>`}</select></label>
+      <button id="logStorageRefresh" type="button" class="action-btn secondary" ${state.logStorageBusy?'disabled':''}>${esc(words.reload)}</button></div>
+    <div id="logStorageFeedback" aria-live="polite">${status}</div>
+    ${data?`<div class="log-storage-totals"><span>${esc(words.total)} <strong>${logBytes(data.total_bytes)}</strong></span><span>${esc(words.reclaim)} <strong>${logBytes(data.reclaimable_bytes)}</strong></span></div><div class="log-storage-items">${rows}</div>`:`<p class="muted">${esc(words.loading)}</p>`}
+  </section>`;
+}
+function refreshLogStoragePanel(){
+  const element=$('#logStoragePanel');
+  if(!element||state.view!=='hub')return;
+  element.innerHTML=logStorageSection();
+  bindLogStorageActions();
+}
+async function loadLogStorage(){
+  if(state.logStorageBusy)return;
+  state.logStorageBusy=true;
+  state.logStorageError='';
+  refreshLogStoragePanel();
+  try {
+    const project=state.logStorageProject||(state.hub?.projects||[])[0]?.path||state.lastProject||'';
+    const r=await fetch('/api/storage/logs?project='+encodeURIComponent(project),{cache:'no-store'});
+    const payload=await r.json();
+    if(!r.ok)throw Error(payload.error||'HTTP '+r.status);
+    state.logStorage=payload;
+  }catch(error){state.logStorageError=String(error?.message||error);}
+  finally{state.logStorageBusy=false;refreshLogStoragePanel();}
+}
+function confirmLogCleanup(id,label,size){
+  return new Promise(resolve=>{
+    const words=logStorageLabels();
+    const overlay=document.createElement('div');
+    overlay.className='channel-switch-overlay log-confirm-overlay';
+    overlay.innerHTML=`<section class="channel-switch-modal" role="dialog" aria-modal="true" aria-labelledby="logCleanupTitle">
+      <h2 id="logCleanupTitle">${esc(label)} · ${logBytes(size)}</h2><p>${esc(words.confirm)}</p>
+      <div class="project-actions"><button type="button" class="action-btn secondary" data-log-cancel>${esc(words.cancel)}</button><button type="button" class="action-btn danger-action" data-log-confirm>${esc(words.confirmAction)}</button></div></section>`;
+    const done=value=>{overlay.remove();resolve(value);};
+    overlay.querySelector('[data-log-cancel]').addEventListener('click',()=>done(false));
+    overlay.querySelector('[data-log-confirm]').addEventListener('click',()=>done(true));
+    overlay.addEventListener('keydown',e=>{
+      if(e.key==='Escape'){e.preventDefault();done(false);}
+      if(e.key==='Tab'){const buttons=[...overlay.querySelectorAll('button')];e.preventDefault();buttons[(buttons.indexOf(document.activeElement)+(e.shiftKey?-1:1)+buttons.length)%buttons.length].focus();}
+    });
+    document.body.append(overlay);
+    overlay.querySelector('[data-log-cancel]').focus();
+  });
+}
+function bindLogStorageActions(){
+  $('#logStorageRefresh')?.addEventListener('click',()=>loadLogStorage());
+  $('#logStorageProject')?.addEventListener('change',event=>{
+    state.logStorageProject=event.currentTarget.value;
+    state.logStorage=null;
+    state.logStorageMessage='';
+    loadLogStorage();
+  });
+  document.querySelectorAll('[data-clear-log]').forEach(button=>button.addEventListener('click',async()=>{
+    const id=button.dataset.clearLog;
+    const item=(state.logStorage?.items||[]).find(entry=>entry.id===id && entry.can_clear);
+    if(!item||state.logStorageBusy)return;
+    if(!await confirmLogCleanup(id,logStorageLabels().names[id]||item.label,item.size_bytes))return;
+    state.logStorageBusy=true;refreshLogStoragePanel();
+    try{
+      const project=state.logStorageProject||(state.hub?.projects||[])[0]?.path||state.lastProject||'';
+      const r=await fetch('/api/storage/logs?project='+encodeURIComponent(project),{
+        method:'POST',headers:{'Content-Type':'application/json','X-Task-Mecca-Action':'1'},
+        body:JSON.stringify({id})
+      });
+      const payload=await r.json();
+      if(!r.ok)throw Error(payload.error||'HTTP '+r.status);
+      state.logStorage=payload;
+      state.logStorageError='';
+      state.logStorageMessage=logStorageLabels().success+' · '+logBytes(payload.released_bytes);
+    }catch(err){state.logStorageError=logStorageLabels().failed+': '+String(err?.message||err);}
+    finally{state.logStorageBusy=false;refreshLogStoragePanel();}
+  }));
+}
+
 function hubView() {
   const h=state.hub||{};
   const cli=h.cli||{};
@@ -2774,7 +2878,7 @@ function hubView() {
   return `<div class="page-head"><div><h1>Global Hub</h1><p class="summary">${esc(hubText('intro'))}</p></div><div class="hub-cli"><strong>CLI</strong> ${channelBadge} ${cliStatus} ${updateActions}</div></div>
     ${cli.update_available?'<div class="timing-note"><strong>Upgrade</strong><span>업그레이드가 완료되면 Task Mecca Web이 자동으로 재시작되며, 현재 브라우저 페이지도 자동으로 새로고침됩니다.</span></div>':''}
     ${cli.error?`<div class="timing-note"><strong>Version check</strong><span>${esc(cli.error)}</span></div>`:''}
-    <p id="hubFeedback" role="status" class="timing-note" hidden></p><div class="project-grid">${cards||`<div class="empty">${esc(hubText('emptyProjects'))}</div>`}</div><section class="hub-history"><h2><button id="hubHistoryToggle" type="button" class="hub-history-toggle" aria-expanded="${state.hubHistoryExpanded}" aria-controls="hubHistoryItems"><span>${esc(hubText('history'))}</span><span class="badge">${(state.hubManagement?.archives||[]).length}</span><span class="hub-history-action">${esc(hubText(state.hubHistoryExpanded?'collapseHistory':'expandHistory'))}</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button></h2><p class="muted">${esc(hubText('historyInfo'))}</p><div id="hubHistoryItems" ${state.hubHistoryExpanded?'':'hidden'}>${history||`<div class="empty">${esc(hubText('emptyHistory'))}</div>`}</div></section>`;
+    <p id="hubFeedback" role="status" class="timing-note" hidden></p><div class="project-grid">${cards||`<div class="empty">${esc(hubText('emptyProjects'))}</div>`}</div><section class="hub-history"><h2><button id="hubHistoryToggle" type="button" class="hub-history-toggle" aria-expanded="${state.hubHistoryExpanded}" aria-controls="hubHistoryItems"><span>${esc(hubText('history'))}</span><span class="badge">${(state.hubManagement?.archives||[]).length}</span><span class="hub-history-action">${esc(hubText(state.hubHistoryExpanded?'collapseHistory':'expandHistory'))}</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button></h2><p class="muted">${esc(hubText('historyInfo'))}</p><div id="hubHistoryItems" ${state.hubHistoryExpanded?'':'hidden'}>${history||`<div class="empty">${esc(hubText('emptyHistory'))}</div>`}</div></section><div id="logStoragePanel">${logStorageSection()}</div>`;
 }
 function normalizedVersion(value) {
   return String(value??'').trim().replace(/(?:\\r|\\n)+$/g,'').trim();
@@ -2848,6 +2952,8 @@ function showMigrationResyncModal(result) {
   overlay.addEventListener('click',e=>{if(e.target===overlay)close();});
 }
 function bindHubActions() {
+  bindLogStorageActions();
+  if(!state.logStorage&&!state.logStorageBusy)queueMicrotask(()=>loadLogStorage());
   document.querySelectorAll('[data-open-project]').forEach(btn=>btn.addEventListener('click',()=>{
     const path=btn.dataset.openProject||'';
     if(path)switchProject(path);
