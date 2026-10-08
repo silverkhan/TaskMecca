@@ -99,3 +99,15 @@ func TestWebPushProviderAckSharesDeliveryLedger(t *testing.T){
  if err!=nil||browser.Granted||browser.State!="push_accepted"{t.Fatalf("duplicate foreground alert %+v %v",browser,err)}
  if _,err:=time.Parse(time.RFC3339Nano,time.Now().UTC().Format(time.RFC3339Nano));err!=nil{t.Fatal(err)}
 }
+
+func TestPushChannelAndKindFilters(t *testing.T){
+ if !allowedPushKind("finalize"){t.Fatal("Web Push must support same finalize type as Telegram")}
+ disabled:=false
+ sub:=pushSubscription{Enabled:&disabled,Kinds:map[string]bool{"completed":true}}
+ if pushKindEnabled(sub,"completed"){t.Fatal("disabled web channel must not deliver Push")}
+ enabled:=true;sub.Enabled=&enabled
+ if !pushKindEnabled(sub,"completed"){t.Fatal("enabled channel should deliver configured type")}
+ sub.Kinds["completed"]=false
+ if pushKindEnabled(sub,"completed"){t.Fatal("disabled type must not deliver Push")}
+ if !pushKindEnabled(sub,"finalize"){t.Fatal("newly supported type defaults to true")}
+}
