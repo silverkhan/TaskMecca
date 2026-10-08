@@ -74,6 +74,10 @@ const state = {
   runtimeStorageLoading: false,
   runtimeStorageError: '',
   runtimeStorage: null,
+  storageBusy: false,
+  storageError: '',
+  storageRuntime: null,
+  storageProject: '',
   runtimeRootDisclosure: {},
   runtimeRootListOpen: false,
   runtimeRootListLoading: false,
@@ -2978,6 +2982,11 @@ function navigateView(view) {
     return;
   }
   if(view==='attention')view='notifications';
+  if(view==='storage'){
+    state.view='storage';state.detail=null;state.detailTask=null;state.projectMenuOpen=false;
+    history.pushState({},'','/?view=storage');
+    render();void loadStorageManagement(true);return;
+  }
   const needsProject=['backlog','workload','issues','manual'].includes(view);
   if(needsProject && !state.project){
     const project=resolveProjectContext();
@@ -3035,7 +3044,7 @@ function nav() {
   }).join('');
   const menu=state.projectMenuOpen?`<div class="project-open-menu">${closed.length?closed.map(p=>`<button type="button" data-add-project="${esc(p.path)}"><span>${esc(p.name)}</span><small>${esc(p.path)}</small></button>`).join(''):'<div class="project-open-empty">No closed projects</div>'}</div>`:'';
   $('#stateNav').innerHTML =
-    `<div class="sidebar-label">SYSTEM</div><button class="nav-item ${state.view==='hub'?'active':''}" id="hubNavBtn" type="button"><span class="nav-main"><span class="nav-icon">⌂</span><span class="nav-text">Global Hub</span></span></button><div class="sidebar-label">BACKLOGS</div><div class="session-list">${sessionRows||'<div class="session-empty">No open backlogs</div>'}</div><button class="nav-item session-add" id="openProjectBtn" type="button"><span class="nav-main"><span class="nav-icon">＋</span><span class="nav-text">Open Project</span></span></button>${menu}`;
+    `<div class="sidebar-label">SYSTEM</div><button class="nav-item ${state.view==='hub'?'active':''}" id="hubNavBtn" type="button"><span class="nav-main"><span class="nav-icon">⌂</span><span class="nav-text">Global Hub</span></span></button><button class="nav-item ${state.view==='storage'?'active':''}" id="storageNavBtn" type="button"><span class="nav-main"><span class="nav-icon">▤</span><span class="nav-text">${esc(state.language==='ko'?'저장소 관리':'Storage management')}</span></span></button><div class="sidebar-label">BACKLOGS</div><div class="session-list">${sessionRows||'<div class="session-empty">No open backlogs</div>'}</div><button class="nav-item session-add" id="openProjectBtn" type="button"><span class="nav-main"><span class="nav-icon">＋</span><span class="nav-text">Open Project</span></span></button>${menu}`;
   const sidebarModes=[
     ['auto',state.language==='ko'?'자동':'Auto',state.language==='ko'?'마우스를 올리거나 포커스를 옮기면 임시로 펼침':'Temporarily expand on hover or focus'],
     ['expanded',state.language==='ko'?'펼침':'Expanded',state.language==='ko'?'항상 펼친 상태로 고정':'Keep the sidebar expanded'],
@@ -3056,6 +3065,7 @@ function nav() {
   document.querySelectorAll('[data-add-project]').forEach(btn=>btn.addEventListener('click',()=>{state.projectMenuOpen=false;switchProject(btn.dataset.addProject)}));
   $('#openProjectBtn')?.addEventListener('click',()=>{state.projectMenuOpen=!state.projectMenuOpen;render()});
   $('#hubNavBtn')?.addEventListener('click',()=>navigateView('hub'));
+  $('#storageNavBtn')?.addEventListener('click',()=>navigateView('storage'));
   $('#terminalNavBtn')?.addEventListener('click',openWebTerminal);
   document.querySelectorAll('[data-view]').forEach(b => {
     b.classList.toggle('active', state.view === b.dataset.view);
@@ -3329,6 +3339,103 @@ function confirmHubAction(action,path,trigger) {
 }
 // AID-118: log usage inspection. Only the explicit safe categories returned
 // by the backend can be cleared. Event ledgers are always read-only.
+
+function storageSelectedProject(){
+ const projects=state.hub?.projects||[];
+ const available=new Set(projects.map(row=>row.path));
+ const selected=state.storageProject||state.logStorageProject||state.lastProject||projects[0]?.path||'';
+ return available.has(selected)?selected:(projects[0]?.path||'');
+}
+let storageFetchEpoch=0;
+async function loadStorageManagement(refreshHubFirst=false){
+ const epoch=++storageFetchEpoch;
+ state.storageBusy=true;state.storageError='';
+ if(state.view==='storage')render();
+ try{
+  if(refreshHubFirst||!state.hub)await refreshHub(Boolean(refreshHubFirst));
+  if(epoch!==storageFetchEpoch)return;
+  const project=storageSelectedProject();
+  if(!project){state.storageError=state.language==='ko'?'등록된 프로젝트가 없습니다.':'No registered projects.';return;}
+  state.storageProject=project;state.logStorageProject=project;
+  const query='?project='+encodeURIComponent(project);
+  const [logs,runtime]=await Promise.all([
+   fetch('/api/storage/logs'+query,{cache:'no-store'}),
+   fetch('/api/runtime/storage'+query,{cache:'no-store'})
+  ]);
+  const [logBody,runtimeBody]=await Promise.all([logs.json(),runtime.json()]);
+  if(!logs.ok)throw Error(logBody.error||'Log usage HTTP '+logs.status);
+  if(!runtime.ok)throw Error(runtimeBody.error||'Runtime usage HTTP '+runtime.status);
+  if(epoch!==storageFetchEpoch||project!==storageSelectedProject())return;
+  state.logStorage=logBody;state.storageRuntime=runtimeBody;
+ }catch(error){
+  if(epoch===storageFetchEpoch)state.storageError=String(error?.message||error);
+ }finally{
+  if(epoch===storageFetchEpoch){state.storageBusy=false;if(state.view==='storage')render();}
+ }
+}
+function storageManagementView(){
+ const ko=state.language==='ko';
+ const projects=state.hub?.projects||[],selected=storageSelectedProject();
+ const options=projects.map(project=>'<option value="'+esc(project.path)+'" '+(project.path===selected?'selected':'')+'>'+esc(project.name||project.path)+'</option>').join('');
+ const logs=state.logStorage||{},runtime=state.storageRuntime||{};
+ const logTotal=Number(logs.total_bytes||0),runtimeTotal=Number(runtime.total_bytes||0);
+ const reclaimLog=Number(logs.reclaimable_bytes||0),reclaimRuntime=Number(runtime.cleanup?.reclaimable_bytes||0);
+ const cards=[
+  {label:ko?'측정된 로그':'Measured logs',value:logTotal,extra:ko?'선택 프로젝트 + 서비스 로그':'Project + service logs'},
+  {label:ko?'Runtime 기록':'Runtime records',value:runtimeTotal,extra:ko?'실행 관측 데이터':'Execution observation'},
+  {label:ko?'안전 정리 후보':'Safe cleanup candidates',value:reclaimLog+reclaimRuntime,extra:ko?'진단 로그 + 종료가 확인된 기록':'Diagnostic logs + terminal records'}
+ ].map(item=>'<div class="storage-overview-card"><span>'+esc(item.label)+'</span><strong>'+esc(fmtBytes(item.value))+'</strong><small>'+esc(item.extra)+'</small></div>').join('');
+ const errors=state.storageError?'<p role="alert" class="log-storage-alert">'+esc(state.storageError)+'</p>':'';
+ const runtimeContent=!state.storageRuntime?'<p class="muted">'+esc(ko?'Runtime 데이터를 조회하면 안전 정리 미리보기가 표시됩니다.':'Load Runtime usage to see safe cleanup candidates.')+'</p>':
+  '<div class="storage-runtime-grid">'+[
+   [ko?'Raw 이벤트':'Raw events',runtime.raw?.bytes||0],
+   [ko?'종료 실행 이력':'Terminal history',runtime.history?.bytes||0],
+   [ko?'보호 중인 실행 데이터':'Protected execution',runtime.protected_raw?.bytes||0],
+   [ko?'Legacy 기록':'Legacy records',runtime.legacy?.bytes||0]
+  ].map(([label,value])=>'<div><span>'+esc(label)+'</span><strong>'+esc(fmtBytes(value))+'</strong></div>').join('')+'</div>'+
+  '<div class="storage-runtime-summary">'+esc(ko?'기존 Runtime 안전 정리 정책':'Existing Runtime retention')+
+  ' · '+esc(t('runtimeStoragePolicy',{raw:runtime.retention?.raw_days||7,days:runtime.retention?.history_days||90,max:runtime.retention?.history_max_attempts||2000}))+
+  '</div><div class="storage-runtime-actions"><strong>'+esc(ko?'정리 후보':'Cleanup candidates')+' · '+esc(fmtBytes(reclaimRuntime))+'</strong>'+
+  '<button type="button" id="storageRuntimeCleanup" class="action-btn secondary" '+(reclaimRuntime>0&&!state.storageBusy?'':'disabled')+'>'+esc(ko?'안전 정리':'Safe cleanup')+'</button></div>'+
+  '<p class="muted">'+esc(ko?'현재 실행 중이거나 상태가 불확실한 세션은 정리 대상에서 제외됩니다.':'Running and uncertain sessions are never cleanup candidates.')+'</p>';
+ return '<div class="storage-management"><div class="page-head"><div><h1>'+esc(ko?'저장소 관리':'Storage management')+'</h1><p class="summary">'+esc(ko?'진단 로그와 Runtime 사용량, 보호 기록, 안전 정리 범위를 확인합니다.':'Review diagnostic logs, Runtime usage, protected records, and safe cleanup.')+'</p></div></div>'+
+  '<div class="storage-toolbar"><label>'+esc(ko?'프로젝트':'Project')+' <select id="storageManagementProject" '+(state.storageBusy?'disabled':'')+'>'+options+'</select></label>'+
+  '<button id="storageManagementRefresh" type="button" class="action-btn secondary" '+(state.storageBusy?'disabled':'')+'>'+esc(ko?'사용량 갱신':'Refresh usage')+'</button></div>'+
+  errors+(state.storageBusy?'<p role="status" class="muted">'+esc(ko?'사용량 확인 중…':'Checking storage usage…')+'</p>':'')+
+  '<div class="storage-overview-grid">'+cards+'</div><p class="storage-scope-note">'+esc(ko?'측정 범위: 선택한 프로젝트의 로그 및 Runtime 기록과 공용 웹 서비스 로그. 범주별 측정치가 일부 중복될 수 있으므로 디스크 전체 사용량의 합계가 아닙니다. 브라우저/Push 데이터는 별도 후속 항목입니다.':'Scope: selected project logs and Runtime records, plus the shared Web service log. Categories may overlap; this is not total disk usage. Browser/Push data is a separate follow-up.')+'</p>'+
+  '<section class="storage-management-section"><h2>'+esc(ko?'진단 로그와 보호 원장':'Diagnostic logs and protected ledgers')+'</h2><div id="logStoragePanel">'+logStorageSection()+'</div></section>'+
+  '<section class="storage-management-section"><h2>'+esc(ko?'Runtime 안전 정리':'Runtime safe cleanup')+'</h2>'+runtimeContent+'</section></div>';
+}
+function bindStorageManagementActions(){
+ const selector=$('#storageManagementProject');
+ selector?.addEventListener('change',e=>{
+  state.storageProject=e.currentTarget.value;state.logStorageProject=state.storageProject;
+  state.logStorage=null;state.storageRuntime=null;
+  void loadStorageManagement(false);
+ });
+ $('#storageManagementRefresh')?.addEventListener('click',()=>loadStorageManagement(true));
+ $('#storageRuntimeCleanup')?.addEventListener('click',async event=>{
+  if(state.storageBusy)return;
+  const project=storageSelectedProject(),reclaim=Number(state.storageRuntime?.cleanup?.reclaimable_bytes||0);
+  if(!project||reclaim<=0)return;
+  if(!window.confirm(t('runtimeCleanupConfirm',{bytes:fmtBytes(reclaim)})))return;
+  const button=event.currentTarget;button.disabled=true;state.storageBusy=true;
+  try{
+   const response=await fetch('/api/runtime/storage?project='+encodeURIComponent(project),{
+    method:'POST',headers:{'Content-Type':'application/json','X-Task-Mecca-Action':'1'},
+    body:JSON.stringify({action:'cleanup'})
+   });
+   const result=await response.json();
+   if(!response.ok)throw Error(result.error||'Runtime cleanup failed');
+   state.storageRuntime=result.storage||null;
+   state.runtimeStorage=null;
+   alert(t('runtimeCleanupDone',{bytes:fmtBytes(result.result?.reclaimed_bytes||0)}));
+  }catch(error){state.storageError=String(error?.message||error);}
+  finally{state.storageBusy=false;void loadStorageManagement(false);}
+ });
+ bindLogStorageActions();
+}
+
 function logStorageLabels() {
   const ko=state.language==='ko';
   return ko
@@ -3363,7 +3470,7 @@ function logStorageSection(){
 }
 function refreshLogStoragePanel(){
   const element=$('#logStoragePanel');
-  if(!element||state.view!=='hub')return;
+  if(!element||state.view!=='storage')return;
   element.innerHTML=logStorageSection();
   bindLogStorageActions();
 }
@@ -3457,7 +3564,7 @@ function hubView() {
   return `<div class="page-head"><div><h1>Global Hub</h1><p class="summary">${esc(hubText('intro'))}</p></div><div class="hub-cli"><strong>CLI</strong> ${channelBadge} ${cliStatus} ${updateActions}</div></div>
     ${cli.update_available?'<div class="timing-note"><strong>Upgrade</strong><span>업그레이드가 완료되면 Task Mecca Web이 자동으로 재시작되며, 현재 브라우저 페이지도 자동으로 새로고침됩니다.</span></div>':''}
     ${cli.error?`<div class="timing-note"><strong>Version check</strong><span>${esc(cli.error)}</span></div>`:''}
-    <p id="hubFeedback" role="status" class="timing-note" hidden></p><div class="project-grid">${cards||`<div class="empty">${esc(hubText('emptyProjects'))}</div>`}</div><section class="hub-history"><h2><button id="hubHistoryToggle" type="button" class="hub-history-toggle" aria-expanded="${state.hubHistoryExpanded}" aria-controls="hubHistoryItems"><span>${esc(hubText('history'))}</span><span class="badge">${(state.hubManagement?.archives||[]).length}</span><span class="hub-history-action">${esc(hubText(state.hubHistoryExpanded?'collapseHistory':'expandHistory'))}</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button></h2><p class="muted">${esc(hubText('historyInfo'))}</p><div id="hubHistoryItems" ${state.hubHistoryExpanded?'':'hidden'}>${history||`<div class="empty">${esc(hubText('emptyHistory'))}</div>`}</div></section><div id="logStoragePanel">${logStorageSection()}</div>`;
+    <p id="hubFeedback" role="status" class="timing-note" hidden></p><div class="project-grid">${cards||`<div class="empty">${esc(hubText('emptyProjects'))}</div>`}</div><section class="hub-history"><h2><button id="hubHistoryToggle" type="button" class="hub-history-toggle" aria-expanded="${state.hubHistoryExpanded}" aria-controls="hubHistoryItems"><span>${esc(hubText('history'))}</span><span class="badge">${(state.hubManagement?.archives||[]).length}</span><span class="hub-history-action">${esc(hubText(state.hubHistoryExpanded?'collapseHistory':'expandHistory'))}</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button></h2><p class="muted">${esc(hubText('historyInfo'))}</p><div id="hubHistoryItems" ${state.hubHistoryExpanded?'':'hidden'}>${history||`<div class="empty">${esc(hubText('emptyHistory'))}</div>`}</div></section><div class="hub-storage-link"><strong>${esc(state.language==='ko'?'저장소 관리':'Storage management')}</strong><p>${esc(state.language==='ko'?'로그·Runtime 데이터 사용량과 안전 정리 기능이 시스템 메뉴로 이동했습니다.':'Log and Runtime usage and safe cleanup are now in the System menu.')}</p><button type="button" class="action-btn secondary" id="openStorageFromHub">${esc(state.language==='ko'?'저장소 관리 열기':'Open storage management')}</button></div>`;
 }
 function normalizedVersion(value) {
   return String(value??'').trim().replace(/(?:\\r|\\n)+$/g,'').trim();
@@ -3532,8 +3639,7 @@ function showMigrationResyncModal(result) {
   overlay.addEventListener('click',e=>{if(e.target===overlay)close();});
 }
 function bindHubActions() {
-  bindLogStorageActions();
-  if(!state.logStorage&&!state.logStorageBusy)queueMicrotask(()=>loadLogStorage());
+  $('#openStorageFromHub')?.addEventListener('click',()=>navigateView('storage'));
   document.querySelectorAll('[data-open-project]').forEach(btn=>btn.addEventListener('click',()=>{
     const path=btn.dataset.openProject||'';
     if(path)switchProject(path);
@@ -4523,7 +4629,7 @@ function render() {
     renderReleaseNoteModal();
     return;
   }
-  const manualReady=state.view==='manual'||state.view==='notifications'||state.view==='issues';
+  const manualReady=state.view==='manual'||state.view==='notifications'||state.view==='issues'||state.view==='storage';
   const snapshotView=['workload','attention'].includes(state.view);
   const viewDataReady=manualReady || (snapshotView ? Boolean(state.snapshot) : Boolean(data));
   if (!viewDataReady && !state.detailTask) {
@@ -4560,8 +4666,8 @@ function render() {
     bindCopyButtons(); bindMermaidControls(); bindDetailToc(); bindDetailInteractions(); renderMermaidDiagrams();
     return;
   }
-  c.innerHTML=(state.view==='hub'?hubView():gate+(state.view==='manual'?manualView():state.view==='notifications'?notificationCenterView():state.view==='workload'?workloadView():state.view==='attention'?attentionView():state.view==='issues'?backlogDiagnosticsView():listView()));
-  bindRows(); if(state.view==='hub') bindHubActions();
+  c.innerHTML=(state.view==='hub'?hubView():state.view==='storage'?storageManagementView():gate+(state.view==='manual'?manualView():state.view==='notifications'?notificationCenterView():state.view==='workload'?workloadView():state.view==='attention'?attentionView():state.view==='issues'?backlogDiagnosticsView():listView()));
+  bindRows(); if(state.view==='hub') bindHubActions();if(state.view==='storage')bindStorageManagementActions();
   if(searchFocus && state.view==='backlog' && !state.detail){const search=$('#search');search?.focus({preventScroll:true});search?.setSelectionRange(searchFocus.start,searchFocus.end);}
   if(state.view==='hub'&&hubHistoryFocus)document.querySelector('#hubHistoryToggle')?.focus({preventScroll:true});
   document.querySelectorAll('[data-runtime-hook-action]').forEach(button=>{
@@ -4868,6 +4974,9 @@ async function refreshOnce() {
     return;
   }
 
+  if(targetView==='storage'){
+    closeAttentionStream();await loadStorageManagement(true);return;
+  }
   if(targetView==='hub'){
     closeAttentionStream();
     try {
@@ -5026,7 +5135,7 @@ function route(fromPop=false) {
   if (!state.detail) {
     state.view=p.get('view')||(state.project?'backlog':'hub');
     if(state.view==='attention')state.view='notifications';
-    if(state.view==='hub'||state.view==='release-notes') state.project='';
+    if(state.view==='hub'||state.view==='storage'||state.view==='release-notes') state.project='';
     if (state.view === 'backlog') {
       const legacy=p.get('state');
       const raw=p.get('filter');
@@ -5046,6 +5155,7 @@ function route(fromPop=false) {
   }
   if(previousAttentionContext!==state.project+'|'+state.backlog)clearCurrentUserAttention();
  render();
+  if(fromPop&&state.view==='storage')queueMicrotask(()=>loadStorageManagement(true));
   if(fromPop&&state.project&&state.view==='backlog'){
     queueMicrotask(()=>{
       refreshList();
