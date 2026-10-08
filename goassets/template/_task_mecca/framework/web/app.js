@@ -2110,7 +2110,8 @@ async function webNotificationDelivery(project,action,eventID='',token=''){
 async function sendBrowserNotification(kind,task,reason,key,eventKind=kind,eventID='',deliveryProject=state.project,sourceBacklog='',sourceValidity=null) {
   // Legacy snapshot-delta alerts have no canonical event ID and cannot be
   // deduplicated across devices. The server journal is the sole push source.
-  if(!eventID||notificationSeenSet().has(key)||browserNotificationsPending.has(key))return;
+  if(notificationSeenSet().has(key)||browserNotificationsPending.has(key))return;
+  if(!eventID)return; // do not push noncanonical, per-browser snapshot deltas
   if(!webNotificationEnabled(deliveryProject,eventKind,kind)){
     rememberNotification(key);
     return;
