@@ -1307,29 +1307,34 @@ body.release-modal-open{overflow:hidden}
   .app-shell.sidebar-collapsed .sidebar .brand{
     justify-content:flex-start;padding:0;
   }
-  .app-shell.mobile-nav-open.sidebar-collapsed .sidebar{padding:14px 12px}
-  .app-shell.mobile-nav-open.sidebar-collapsed .sidebar .nav{display:flex}
-  .app-shell.mobile-nav-open.sidebar-collapsed .sidebar-section{display:block}
-  .app-shell.mobile-nav-open.sidebar-collapsed .sidebar-footer{display:flex}
-  .app-shell.mobile-nav-open.sidebar-collapsed .brand-copy,
-  .app-shell.mobile-nav-open.sidebar-collapsed .sidebar-label,
-  .app-shell.mobile-nav-open.sidebar-collapsed .nav-text,
-  .app-shell.mobile-nav-open.sidebar-collapsed .count,
-  .app-shell.mobile-nav-open.sidebar-collapsed .sidebar-footer-text,
-  .app-shell.mobile-nav-open.sidebar-collapsed .session-name,
-  .app-shell.mobile-nav-open.sidebar-collapsed .session-count,
-  .app-shell.mobile-nav-open.sidebar-collapsed .session-close,
-  .app-shell.mobile-nav-open.sidebar-collapsed .session-empty{
+  .app-shell.mobile-nav-open .sidebar{padding:14px 12px;min-width:0}
+  .app-shell.mobile-nav-open .sidebar-section{width:100%;min-width:0}
+  .app-shell.mobile-nav-open .sidebar .nav-item{width:100%}
+  .app-shell.mobile-nav-open .sidebar .nav{
+    display:flex;flex-direction:column;align-items:stretch;gap:2px;
+    width:100%;min-width:0;
+  }
+  .app-shell.mobile-nav-open .sidebar-section{display:block}
+  .app-shell.mobile-nav-open .sidebar-footer{display:flex}
+  .app-shell.mobile-nav-open .brand-copy,
+  .app-shell.mobile-nav-open .sidebar-label,
+  .app-shell.mobile-nav-open .nav-text,
+  .app-shell.mobile-nav-open .count,
+  .app-shell.mobile-nav-open .sidebar-footer-text,
+  .app-shell.mobile-nav-open .session-name,
+  .app-shell.mobile-nav-open .session-count,
+  .app-shell.mobile-nav-open .session-close,
+  .app-shell.mobile-nav-open .session-empty{
     display:block;
   }
-  .app-shell.mobile-nav-open.sidebar-collapsed .nav-item,
-  .app-shell.mobile-nav-open.sidebar-collapsed .session-row{
+  .app-shell.mobile-nav-open .nav-item,
+  .app-shell.mobile-nav-open .session-row{
     justify-content:space-between;
   }
-  .app-shell.mobile-nav-open.sidebar-collapsed .nav-main{
+  .app-shell.mobile-nav-open .nav-main{
     justify-content:flex-start;gap:10px;
   }
-  .app-shell.mobile-nav-open.sidebar-collapsed .session-open{
+  .app-shell.mobile-nav-open .session-open{
     flex:1 1 auto;min-width:0;padding:8px;justify-content:flex-start;
   }
 }
