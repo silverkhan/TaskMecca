@@ -104,6 +104,15 @@ func (f *attentionFeed) refreshActive() {
 	}
 	f.mu.Unlock()
 	if changed {
+		// Let foreground SSE consume a fresh canonical event first; background
+		// Push shares exactly the same AID-119 claim ledger.
+		if rows, ok := payload["notification_events"].([]map[string]any); ok && len(rows)>0 {
+			current, _ := payload["all_items"].(map[string]map[string]any)
+			go func(events []map[string]any,items map[string]map[string]any){
+				time.Sleep(800*time.Millisecond)
+				deliverWebPush(f.project,events,items)
+			}(rows,current)
+		}
 		for _, ch := range subscribers {
 			select {
 			case ch <- append([]byte{}, data...):
