@@ -34,6 +34,7 @@ type pushSubscription struct {
  Client string `json:"client"`
  RegisteredAt string `json:"registered_at"`
  SeenAt string `json:"seen_at"`
+ Enabled *bool `json:"enabled,omitempty"`
  Kinds map[string]bool `json:"kinds,omitempty"`
 }
 type pushRegistry struct {
@@ -48,6 +49,7 @@ type pushSubscriptionRequest struct {
  P256DH string `json:"p256dh"`
  Auth string `json:"auth"`
  Client string `json:"client"`
+ Enabled *bool `json:"enabled,omitempty"`
  Kinds map[string]bool `json:"kinds"`
 }
 func pushRegistryPath(project string)string{
@@ -139,7 +141,7 @@ func validPushEndpoint(raw string)bool{
  return false
 }
 func allowedPushKind(k string)bool{
- switch k{case "registered","started","intervention","approval","stalled","interrupted","runtime_unknown","completed":return true}
+ switch k{case "registered","started","intervention","approval","stalled","interrupted","runtime_unknown","finalize","completed":return true}
  return false
 }
 func webPushSubscription(project string,request pushSubscriptionRequest)(map[string]any,error){
@@ -162,7 +164,10 @@ func webPushSubscription(project string,request pushSubscriptionRequest)(map[str
    for kind,on:=range request.Kinds{if allowedPushKind(kind){kinds[kind]=on}}
    if len(reg.Subscriptions)>=24&&!exists{return false,errors.New("maximum push subscriptions reached")}
    registeredAt:=now;if exists{registeredAt=old.RegisteredAt}
-   reg.Subscriptions[id]=pushSubscription{ID:id,Endpoint:request.Endpoint,P256DH:request.P256DH,Auth:request.Auth,Client:webClient(request.Client),RegisteredAt:registeredAt,SeenAt:now,Kinds:kinds}
+   // Channel-level disable persists on the server and gates closed-tab Push.
+   enabled:=request.Enabled
+   if enabled==nil&&exists{enabled=old.Enabled}
+   reg.Subscriptions[id]=pushSubscription{ID:id,Endpoint:request.Endpoint,P256DH:request.P256DH,Auth:request.Auth,Client:webClient(request.Client),RegisteredAt:registeredAt,SeenAt:now,Enabled:enabled,Kinds:kinds}
    return true,nil
   case "heartbeat":
    if !exists{return false,errors.New("subscription not registered")}
@@ -191,6 +196,7 @@ func removeInvalidPushEndpoint(project,endpoint string){
  })
 }
 func pushKindEnabled(sub pushSubscription,kind string)bool{
+ if sub.Enabled!=nil&&!*sub.Enabled{return false}
  if len(sub.Kinds)==0{return true}
  on,ok:=sub.Kinds[kind]
  if !ok{return true}
