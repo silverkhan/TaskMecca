@@ -733,6 +733,8 @@ let upgradeFlowTarget='';
 let upgradeFlowTimer=null;
 let upgradeFlowPollTimer=null;
 let upgradeFlowPollBusy=false;
+let upgradeFlowOwnRequest=false;
+let upgradeFlowRestartWatching=false;
 let upgradeFlowError='';
 
 function upgradeFlowCopy(){
@@ -859,6 +861,8 @@ function stopUpgradeFlowTimers(){
 function closeUpgradeFlow(){
  if(['checking','downloading','verifying','installing','restarting'].includes(upgradeFlowMode))return;
  upgradeFlowSession++;
+ upgradeFlowOwnRequest=false;
+ upgradeFlowRestartWatching=false;
  stopUpgradeFlowTimers();
  $('#upgradeFlowOverlay')?.remove();
  document.body.classList.toggle('release-modal-open',Boolean(state.releaseNotePopup));
@@ -882,24 +886,63 @@ async function openUpgradeDetails(version){
   setUpgradeFlowStage('no-notes');
  }
 }
+async function observeUpgradeRestart(session){
+ if(upgradeFlowRestartWatching || upgradeFlowOwnRequest)return;
+ upgradeFlowRestartWatching=true;
+ const target=String(upgradeFlowTarget.split(' → ').pop()||'');
+ const ready=await waitForRestartedWeb(target);
+ if(ready===false && session===upgradeFlowSession){
+  stopUpgradeFlowTimers();
+  setUpgradeFlowStage('failed',upgradeFlowCopy().restartError);
+ }
+ upgradeFlowRestartWatching=false;
+}
 function startUpgradeFlowPolling(session){
  if(upgradeFlowPollTimer)clearInterval(upgradeFlowPollTimer);
  upgradeFlowPollTimer=setInterval(async()=>{
-  if(session!==upgradeFlowSession || upgradeFlowPollBusy || !['checking','downloading','verifying','installing','restarting'].includes(upgradeFlowMode))return;
+  if(session!==upgradeFlowSession || upgradeFlowPollBusy || !upgradeFlowPhases.includes(upgradeFlowMode))return;
   upgradeFlowPollBusy=true;
   try{
    const r=await fetch('/api/upgrade-status',{cache:'no-store'});
    if(!r.ok)return;
    const status=await r.json();
-   if(session!==upgradeFlowSession)return;
-   if(status.active && upgradeFlowPhases.includes(status.phase) &&
-      upgradeFlowPhases.includes(upgradeFlowMode) &&
-      upgradeFlowPhases.indexOf(status.phase)>upgradeFlowPhases.indexOf(upgradeFlowMode)){
-    setUpgradeFlowStage(status.phase);
+   if(session!==upgradeFlowSession || !upgradeFlowPhases.includes(upgradeFlowMode))return;
+   if(status.active && upgradeFlowPhases.includes(status.phase)){
+    if(upgradeFlowPhases.indexOf(status.phase)>upgradeFlowPhases.indexOf(upgradeFlowMode)){
+     setUpgradeFlowStage(status.phase);
+    }
+    if(status.phase==='restarting')void observeUpgradeRestart(session);
+   }else if(!status.active && !upgradeFlowOwnRequest){
+    if(status.phase==='failed'){
+     stopUpgradeFlowTimers();
+     setUpgradeFlowStage('failed',String(status.error||'Update failed'));
+    }else if(status.phase==='completed'){
+     stopUpgradeFlowTimers();
+     setUpgradeFlowStage('completed');
+     void refreshVersionInfo(true);
+    }
    }
   }catch(_){/* Server restart may temporarily interrupt status polling. */}
   finally{upgradeFlowPollBusy=false;}
  },900);
+}
+async function resumeActiveUpgrade(){
+ if(upgradeFlowMode!=='idle')return;
+ try{
+  const r=await fetch('/api/upgrade-status',{cache:'no-store'});
+  if(!r.ok)return;
+  const status=await r.json();
+  if(!status.active || !upgradeFlowPhases.includes(status.phase) || upgradeFlowMode!=='idle')return;
+  const cli=state.versionInfo?.cli||state.hub?.cli||{};
+  upgradeFlowTarget=String(cli.current||'-')+' → '+String(cli.latest||'-');
+  upgradeFlowStartedAt=Date.parse(status.started_at)||Date.now();
+  const session=++upgradeFlowSession;
+  state.releaseNotePopup=null;
+  renderReleaseNoteModal();
+  setUpgradeFlowStage(status.phase);
+  startUpgradeFlowPolling(session);
+  if(status.phase==='restarting')void observeUpgradeRestart(session);
+ }catch(_){/* Older server versions have no status endpoint. */}
 }
 
 function renderGlobalUpdateIndicator() {
@@ -1200,6 +1243,7 @@ async function performUpgrade() {
  const session=++upgradeFlowSession;
  stopUpgradeFlowTimers();
  upgradeFlowStartedAt=Date.now();
+ upgradeFlowOwnRequest=true;
  const cli=state.versionInfo?.cli||state.hub?.cli||{};
  upgradeFlowTarget=String(cli.current||'-')+' → '+String(cli.latest||'-');
  state.releaseNotePopup=null;
@@ -1210,8 +1254,15 @@ async function performUpgrade() {
  try{
   const r=await fetch('/api/upgrade',{method:'POST',headers:{'X-Task-Mecca-Action':'1'}});
   const body=await r.json();
+  if(r.status===409 && body.status?.active){
+   upgradeFlowOwnRequest=false;
+   if(upgradeFlowPhases.includes(body.status.phase))setUpgradeFlowStage(body.status.phase);
+   if(body.status.phase==='restarting')void observeUpgradeRestart(session);
+   return;
+  }
   if(!r.ok)throw new Error(body.error||'Upgrade failed');
   if(session!==upgradeFlowSession)return;
+  upgradeFlowOwnRequest=false;
   stopUpgradeFlowTimers();
   if(body.restart_required && body.to && body.to!==body.from){
    setUpgradeFlowStage('restarting');
@@ -1226,6 +1277,7 @@ async function performUpgrade() {
   await refreshVersionInfo(true);
  }catch(error){
   if(session!==upgradeFlowSession)return;
+  upgradeFlowOwnRequest=false;
   stopUpgradeFlowTimers();
   setUpgradeFlowStage('failed',String(error?.message||error));
  }
@@ -4881,4 +4933,5 @@ const initialForeground=refresh();
 Promise.resolve(initialForeground).finally(()=>refreshOperations());
 setInterval(refreshOperations,15000);
 refreshVersionInfo(false);
+void resumeActiveUpgrade();
 setTimeout(()=>refreshVersionInfo(true),800);
