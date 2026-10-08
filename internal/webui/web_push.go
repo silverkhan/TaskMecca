@@ -74,16 +74,46 @@ func savePushRegistry(project string,registry pushRegistry)error{
  if err:=os.Rename(temp,path);err!=nil{return err}
  return os.Chmod(path,0600)
 }
+type vapidIdentity struct{
+ Private string `json:"private"`
+ Public string `json:"public"`
+}
+// One VAPID application server identity is shared by all Task Mecca projects
+// on this installation: PushManager subscriptions are origin/scope-wide.
+func sharedPushIdentity()(vapidIdentity,error){
+ path:=filepath.Join(projectguard.Home(),"webpush-vapid.json")
+ data,err:=os.ReadFile(path)
+ if err==nil{
+  var result vapidIdentity
+  if err:=json.Unmarshal(data,&result);err!=nil{return vapidIdentity{},err}
+  if len(mustPushDecode(result.Private))!=32||len(mustPushDecode(result.Public))!=65{return vapidIdentity{},errors.New("invalid shared VAPID identity")}
+  return result,nil
+ }
+ if !errors.Is(err,os.ErrNotExist){return vapidIdentity{},err}
+ private,err:=ecdsa.GenerateKey(elliptic.P256(),rand.Reader);if err!=nil{return vapidIdentity{},err}
+ result:=vapidIdentity{
+  Private:base64.RawURLEncoding.EncodeToString(private.D.FillBytes(make([]byte,32))),
+  Public:base64.RawURLEncoding.EncodeToString(elliptic.Marshal(elliptic.P256(),private.PublicKey.X,private.PublicKey.Y)),
+ }
+ if err:=os.MkdirAll(filepath.Dir(path),0700);err!=nil{return vapidIdentity{},err}
+ raw,err:=json.Marshal(result);if err!=nil{return vapidIdentity{},err}
+ // Write once under the global projectguard file lock. Refuse to regenerate
+ // a damaged or inaccessible identity, as old subscriptions would break.
+ tmp:=path+".tmp"
+ if err:=os.WriteFile(tmp,raw,0600);err!=nil{return vapidIdentity{},err}
+ if err:=os.Rename(tmp,path);err!=nil{return vapidIdentity{},err}
+ return result,nil
+}
 func withPushRegistry(project string, f func(*pushRegistry)(bool,error))(pushRegistry,error){
  pushRegistryMu.Lock();defer pushRegistryMu.Unlock()
  unlock,err:=projectguard.AcquireWrite(project);if err!=nil{return pushRegistry{},err};defer unlock()
  reg,err:=readPushRegistry(project);if err!=nil{return pushRegistry{},err}
  dirty:=false
+ identity,err:=sharedPushIdentity();if err!=nil{return pushRegistry{},err}
  if reg.Private==""{
-  priv,err:=ecdsa.GenerateKey(elliptic.P256(),rand.Reader);if err!=nil{return pushRegistry{},err}
-  reg.Private=base64.RawURLEncoding.EncodeToString(priv.D.FillBytes(make([]byte,32)))
-  reg.Public=base64.RawURLEncoding.EncodeToString(elliptic.Marshal(elliptic.P256(),priv.PublicKey.X,priv.PublicKey.Y))
-  dirty=true
+  reg.Private=identity.Private;reg.Public=identity.Public;dirty=true
+ }else if reg.Private!=identity.Private||reg.Public!=identity.Public{
+  return pushRegistry{},errors.New("VAPID identity mismatch: refusing silent key rotation")
  }
  changed,err:=f(&reg);if err!=nil{return pushRegistry{},err}
  if dirty||changed{if err:=savePushRegistry(project,reg);err!=nil{return pushRegistry{},err}}
