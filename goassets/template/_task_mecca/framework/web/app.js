@@ -769,21 +769,17 @@ function renderGlobalUpdateIndicator() {
     return;
   }
   if(projectMatches && project.migration_available){
-    const from=String(project.framework_version||'?'),to=String(cli.current||'?');
-    const full=`${from} → ${to}`;
-    const compact=`${from} → ${compactUpdateTargetVersion(from,to)}`;
-    const shortSource=from.match(/-(dev|rc|beta)\.(\d+)$/);
-    const tiny=`${shortSource?shortSource[1]+'.'+shortSource[2]:from} → ${compactUpdateTargetVersion(from,to)}`;
-    const description=`${t('projectMigration')} · ${full}`;
-    const migrationIcon='<svg class="update-arrow-icon migration-arrow-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"/><path d="M8 11l4-4 4 4m-4-4v10"/></svg>';
+    const from=String(project.framework_version||'?');
+    const to=String(cli.current||'?');
+    const description=`Project Migration · ${from} → ${to}`;
+    // Distinct from software-update (arrow-up) and refresh (circular arrow):
+    // layered project assets moving to the target framework.
+    const migrationIcon='<svg class="migration-transfer-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">'+
+      '<path d="m2.5 6 7-3.5 7 3.5-7 3.5zM2.5 10l7 3.5 4.5-2.25M2.5 14l7 3.5 4-2"/>'+
+      '<path d="M14 17h7m-3-3 3 3-3 3"/></svg>';
     el.innerHTML='<button type="button" class="global-update-pill migration" id="globalMigrateBtn" title="'+esc(description)+'" aria-label="'+esc(description)+'">'+
-      migrationIcon+
-      '<span class="migration-label-full">'+esc(t('projectMigration'))+'</span>'+
-      '<span class="migration-label-short" aria-hidden="true">'+esc(state.language==='ko'?'프로젝트 마이그레이션':'Project migration')+'</span>'+
-      '<span class="migration-label-tiny" aria-hidden="true">'+esc(state.language==='ko'?'마이그레이션':'Migration')+'</span>'+
-      '<span class="migration-version-full">'+esc(full)+'</span>'+
-      '<span class="migration-version-compact" aria-hidden="true">'+esc(compact)+'</span>'+
-      '<span class="migration-version-tiny" aria-hidden="true">'+esc(tiny)+'</span></button>';
+      '<span class="migration-title">'+migrationIcon+'<span>Project Migration</span></span>'+
+      '<span class="migration-versions"><span class="migration-from">'+esc(from)+'</span><span class="migration-separator">→</span><span class="migration-to">'+esc(to)+'</span></span></button>';
     $('#globalMigrateBtn')?.addEventListener('click',e=>performProjectMigration(state.project,e.currentTarget));
     return;
   }
