@@ -3425,7 +3425,7 @@ function storageManagementView(){
   '<div class="storage-runtime-actions"><strong>'+esc(ko?'안전하게 정리 가능한 실행 기록':'Execution records eligible for cleanup')+' · '+esc(fmtBytes(reclaimRuntime))+'</strong>'+
   '<button type="button" id="storageRuntimeCleanup" class="action-btn secondary" '+(reclaimRuntime>0&&!state.storageBusy?'':'disabled')+'>'+esc(ko?'안전 정리':'Safe cleanup')+'</button></div>'+
   '<p class="storage-runtime-note">'+esc(reclaimRuntime===0?
-   (ko?'현재 기준에 맞는 정리 대상이 없습니다. 7일 이내의 기록이거나, 미종료 실행 또는 종료 증거가 부족한 기록이 같은 파일에 포함되어 있을 수 있습니다. 이 수치만으로 정확한 원인을 단정할 수는 없습니다.':'No records meet all cleanup conditions. Reasons may include files inside the retention period, active attempts, or missing terminal evidence. The exact cause cannot be determined from this total alone.'):
+   (ko?'현재 기준에 맞는 정리 대상이 없습니다. 최근 '+rawDays+'일 이내의 기록이거나, 미종료 실행 또는 종료 증거가 부족한 기록이 같은 파일에 포함되어 있을 수 있습니다. 이 수치만으로 정확한 원인을 단정할 수는 없습니다.':'No records meet all cleanup conditions. Reasons may include files inside the '+rawDays+'-day retention period, active attempts, or missing terminal evidence. The exact cause cannot be determined from this total alone.'):
    (ko?'정리 대상은 보존 기간과 종료 증거를 모두 검증한 기록만 포함합니다. 상태가 불확실하거나 실행 중인 세션은 제외됩니다.':'Only records satisfying the retention and terminal-evidence checks are eligible. Running or uncertain sessions remain protected.'))+'</p>'+
   '<details class="storage-runtime-explain"><summary>'+esc(ko?'실행 기록을 보호하는 이유와 정리 조건':'Why records are protected and when cleanup is allowed')+'</summary>'+
   '<div>'+esc(ko?'상세 이벤트는 날짜별 파일로 저장됩니다. 파일의 마지막 활동이 보존 기간보다 오래되고, 파일에 포함된 실행이 모두 종료 확인을 거친 경우에만 안전 정리 대상으로 검토됩니다. 종료된 실행의 요약은 별도 보존 규칙을 적용합니다. 정리 보호 대상은 현재/미확정 실행이 섞인 원본 파일이므로 삭제하면 상태 재구성에 필요한 증거가 손실될 수 있습니다.':'Detailed events are stored as dated files. A raw file is considered for cleanup only after the retention period and after every execution within it has terminal evidence. Completed summaries have their own retention limits. Files with active or uncertain executions must stay intact for state reconstruction.')+'</div></details>';
@@ -4006,6 +4006,7 @@ function runtimeStoragePanel() {
   if(state.runtimeStorageLoading)return `<section class="runtime-storage-panel"><div class="runtime-storage-loading">${esc(t('runtimeStorageLoading'))}</div></section>`;
   if(state.runtimeStorageError)return `<section class="runtime-storage-panel"><div class="runtime-history-error">${esc(state.runtimeStorageError)}</div></section>`;
   const r=state.runtimeStorage||{}, cleanup=r.cleanup||{}, policy=r.retention||{};
+  const ko=state.language==='ko';
   const reclaim=Number(cleanup.reclaimable_bytes||0);
   return `<section class="runtime-storage-panel">
     <div class="runtime-storage-head"><div><h3>${esc(t('runtimeStorage'))}</h3><p>${esc(t('runtimeStoragePolicy',{raw:policy.raw_days||7,days:policy.history_days||90,max:policy.history_max_attempts||2000}))}</p></div><strong>${esc(fmtBytes(r.total_bytes||0))}</strong></div>
@@ -4015,11 +4016,12 @@ function runtimeStoragePanel() {
       <div><span>${esc(t('runtimeStorageLegacy'))}</span><strong>${esc(fmtBytes(r.legacy?.bytes||0))}</strong><small>${esc(t('runtimeFiles',{n:r.legacy?.files||0}))}</small></div>
       <div><span>${esc(t('runtimeStorageProtected'))}</span><strong>${esc(fmtBytes(r.protected_raw?.bytes||0))}</strong><small>${esc(t('runtimeFiles',{n:r.protected_raw?.files||0}))}</small></div>
     </div>
+    <p class="runtime-storage-note">${esc(ko?'정리 보호 대상 Raw 파일은 상세 실행 이벤트에 이미 포함됩니다. 활성·미확정 실행이 하나라도 포함된 날짜별 파일 전체가 보호될 수 있습니다.':'Protected raw files are already included in detailed events. A dated file containing any active or uncertain execution may be protected in full.')}</p>
     <div class="runtime-cleanup-preview">
       <div><span>${esc(t('runtimeStorageReclaimable'))}</span><strong>${esc(fmtBytes(reclaim))}</strong></div>
       ${cleanup.oldest_candidate_at?`<div><span>${esc(t('runtimeStorageOldest'))}</span><strong>${esc(dateTimeLabel(cleanup.oldest_candidate_at,true))}</strong></div>`:''}
     </div>
-    <p class="runtime-storage-note">${reclaim>0?esc(t('runtimeCleanupPreview',{files:cleanup.candidate_files||0,attempts:cleanup.candidate_attempts||0,bytes:fmtBytes(reclaim)})):esc(t('runtimeCleanupNone'))}</p>
+    <p class="runtime-storage-note">${reclaim>0?esc(t('runtimeCleanupPreview',{files:cleanup.candidate_files||0,attempts:cleanup.candidate_attempts||0,bytes:fmtBytes(reclaim)})):esc(ko?'현재 정리 조건을 충족한 기록이 없습니다. 최신 기록이거나 미종료 실행이 섞인 날짜별 파일일 수 있습니다.':'No records currently qualify for cleanup. The files may be recent or contain unfinished executions.')}</p>
     <button class="runtime-cleanup-btn" id="runtimeCleanupBtn" ${reclaim<=0?'disabled':''}>${esc(t('runtimeCleanup'))}</button>
   </section>`;
 }
