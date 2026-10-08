@@ -592,10 +592,19 @@ func checksumFor(data []byte,asset string) (string,error) {
 }
 
 func fetchReleaseBinary(base string) ([]byte,error) {
+    return fetchReleaseBinaryWithProgress(base,nil)
+}
+
+func reportUpgradeProgress(report func(string),phase string) {
+    if report!=nil { report(phase) }
+}
+
+func fetchReleaseBinaryWithProgress(base string,report func(string)) ([]byte,error) {
     asset,err:=assetName()
     if err!=nil { return nil,err }
     binary,err:=httpGetWithPolicy(base+"/"+asset,releaseBinaryTimeout,releaseBinaryMaxBytes,3)
     if err!=nil { return nil,fmt.Errorf("downloading executable %s: %w",asset,err) }
+    reportUpgradeProgress(report,"verifying")
     sums,err:=httpGet(base+"/SHA256SUMS.txt")
     if err!=nil { return nil,fmt.Errorf("downloading checksum manifest: %w",err) }
     expected,err:=checksumFor(sums,asset)
@@ -678,16 +687,25 @@ func installBinary(current,to string,binary []byte) (UpgradeResult,error) {
 }
 
 func Upgrade(current string) (UpgradeResult,error) {
+    return UpgradeWithProgress(current,nil)
+}
+
+// Progress reports observed stages, never fabricated download percentages.
+// Existing CLI callers remain compatible with Upgrade.
+func UpgradeWithProgress(current string,report func(string)) (UpgradeResult,error) {
     current=normalizeVersion(current)
     result:=UpgradeResult{From:current,Channel:CurrentChannel()}
+    reportUpgradeProgress(report,"checking")
     info:=CheckLatest(current)
     if info.Error!="" { return result,errors.New(info.Error) }
     if !info.UpdateAvailable {
         result.To=current
         return result,nil
     }
-    binary,err:=fetchReleaseBinary(releaseBase())
+    reportUpgradeProgress(report,"downloading")
+    binary,err:=fetchReleaseBinaryWithProgress(releaseBase(),report)
     if err!=nil { return result,err }
+    reportUpgradeProgress(report,"installing")
     result,err=installBinary(current,info.Latest,binary)
     result.Channel=CurrentChannel()
     return result,err
