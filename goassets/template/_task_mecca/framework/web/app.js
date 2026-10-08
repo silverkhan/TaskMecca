@@ -2584,22 +2584,25 @@ function projectChannelSettingsMarkup(){
  return '<section class="center-channel-settings"><div class="notice-section-heading"><h2>'+esc(ko?'프로젝트별 채널·유형':'Channels and event types')+'</h2><p>'+esc(ko?'프로젝트를 펼쳐 설정하세요. 채널을 꺼도 유형 선택은 유지됩니다.':'Expand a project. Turning a channel off preserves its event preferences.')+'</p></div>'+(content||'<p class="muted">'+esc(ko?'등록된 프로젝트가 없습니다.':'No projects.')+'</p>')+'</section>';
 }
 async function setAllTelegramChannelsEnabled(enabled){
- const rows=state.projectNotificationSettings||[],errors=[];
- for(const row of rows){
-  if((row.status?.project_enabled!==false)===enabled)continue;
-  try{await setProjectNotificationEnabled(row.path,enabled)}catch(error){errors.push((row.name||row.path)+': '+error.message)}
- }
- await refreshNotificationConfiguration();
+ const rows=(state.projectNotificationSettings||[]).filter(row=>(row.status?.project_enabled!==false)!==enabled);
+ // Dispatch writes concurrently. Keep individual server-confirmed failures
+ // visible and never roll back a successful project's settings.
+ const result=await Promise.allSettled(rows.map(row=>setProjectNotificationEnabled(row.path,enabled)));
+ const errors=result.flatMap((entry,i)=>entry.status==='rejected'
+  ?[(rows[i].name||rows[i].path)+': '+entry.reason?.message]:[]);
  if(errors.length)throw Error(errors.join('\n'));
 }
-async function commitWebNotificationSetting(apply){
+async function commitWebNotificationSetting(apply,project=null){
  const key='task-mecca-web-notification-settings-v1',previous=localStorage.getItem(key);
  apply();
- try{await syncBackgroundPush(true,true);}
+ const targets=project?[project]:null;
+ try{await syncBackgroundPush(true,true,targets);}
  catch(error){
   if(previous==null)localStorage.removeItem(key);
   else localStorage.setItem(key,previous);
-  try{await syncBackgroundPush(true,true);}catch(_){}
+  // Restore the provider state asynchronously; do not prolong the failed
+  // interaction with a second blocking round trip.
+  void syncBackgroundPush(true,false,targets).catch(()=>{});
   throw error;
  }
 }
@@ -2624,12 +2627,12 @@ async function setNotificationSwitch(input){
     const settings=webNotificationSettings();settings.enabled=next;localStorage.setItem('task-mecca-web-notification-settings-v1',JSON.stringify(settings));
    });
   else if(channel==='telegram')await setProjectNotificationEnabled(project,next);
-  else if(channel==='web')await commitWebNotificationSetting(()=>changeWebNotificationSetting(project,'enabled',next));
+  else if(channel==='web')await commitWebNotificationSetting(()=>changeWebNotificationSetting(project,'enabled',next),project);
   else if(input.dataset.centerTelegramKind){
    const row=state.projectNotificationSettings.find(r=>r.path===project);
    await projectTelegramAction(project,'kinds',{kinds:{...row?.status?.kinds,[input.dataset.centerTelegramKind]:next}});
   }else if(input.dataset.centerWebKind){
-   await commitWebNotificationSetting(()=>changeWebNotificationSetting(project,input.dataset.centerWebKind,next));
+   await commitWebNotificationSetting(()=>changeWebNotificationSetting(project,input.dataset.centerWebKind,next),project);
   }
  }catch(error){alert(error.message);}
  finally{
