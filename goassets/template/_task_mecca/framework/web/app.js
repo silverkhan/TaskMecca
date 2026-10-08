@@ -2097,7 +2097,7 @@ function pushSubscriptionJSON(subscription){
 }
 function currentPushKinds(project){
  const kinds={};
- for(const kind of ['registered','started','intervention','approval','stalled','interrupted','runtime_unknown','completed']){
+ for(const kind of notificationKinds){
   kinds[kind]=webNotificationEnabled(project,kind,kind);
  }
  return kinds;
@@ -2137,7 +2137,7 @@ async function enableBackgroundPush(){
  if(!subscription)subscription=await worker.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:serverKey});
  const details=pushSubscriptionJSON(subscription);
  for(const path of pushProjects()){
-  await pushRequest(path,{action:'subscribe',...details,kinds:currentPushKinds(path)});
+  await pushRequest(path,{action:'subscribe',...details,enabled:webNotificationSettings().enabled!==false&&webNotificationSettings().projects?.[path]?.enabled!==false,kinds:currentPushKinds(path)});
  }
  localStorage.setItem('task-mecca-push-enabled-v1','1');
  webPushFeedback=state.language==='ko'?'백그라운드 Push 구독이 연결됐습니다. 테스트 전송으로 확인하세요.':'Background Push subscription is registered. Run a test to verify delivery.';
@@ -2151,7 +2151,7 @@ async function syncBackgroundPush(force=false){
  if(!sub)return;
  const details=pushSubscriptionJSON(sub);
  for(const project of pushProjects()){
-  try{await pushRequest(project,{action:'subscribe',...details,kinds:currentPushKinds(project)});}catch(_){}
+  try{await pushRequest(project,{action:'subscribe',...details,enabled:webNotificationSettings().enabled!==false&&webNotificationSettings().projects?.[project]?.enabled!==false,kinds:currentPushKinds(project)});}catch(_){}
  }
 }
 async function disableBackgroundPush(){
@@ -2460,7 +2460,7 @@ Object.assign(I18N.ko,{projectNotifications:'알림센터',issues:'백로그 진
 Object.assign(I18N.en,{projectNotifications:'Notification center',issues:'Backlog diagnostics',notificationCenter:'Notification center',notificationCurrent:'Current actions',notificationHistory:'Delivery history',notificationHistoryEmpty:'No delivery evidence is available for these projects or this browser.',notificationHistoryGuide:'Telegram shows server delivery evidence; Web shows this browser’s display-request result. Neither confirms receipt or reading.',notificationUnknown:'No evidence',notificationAccepted:'Display request accepted',notificationSent:'Sent',notificationNotSent:'Not sent',notificationChannel:'Channel',notificationContent:'Task content',notificationTime:'Time',notificationLoading:'Loading delivery evidence…',notificationHistoryError:'Delivery evidence is unavailable.',notificationWebProject:'Web on this browser',backlogDiagnostics:'Backlog diagnostics',diagnosticCopy:'Copy Agent recovery request',diagnosticCopyDone:'Recovery request copied. Send it to an Agent yourself.',diagnosticUnavailable:'Check unavailable',diagnosticNone:'No unresolved backlog diagnostics.'});
 function notificationKindLabel(kind){return t(({registered:'notifyRegistered',started:'notifyStarted',intervention:'notifyIntervention',approval:'notifyApproval',stalled:'notifyStalled',interrupted:'notifyInterrupted',runtime_unknown:'notifyRuntimeUnknown',finalize:'notifyFinalize',completed:'notifyCompleted'})[kind]||kind);}
 function webNotificationSettings(){try{const saved=JSON.parse(localStorage.getItem('task-mecca-web-notification-settings-v1')||'{}');return saved&&typeof saved==='object'?saved:{};}catch(_){return {};}}
-function webNotificationEnabled(project,kind,legacyKind){const settings=webNotificationSettings(),specific=settings.projects?.[project];return settings.enabled!==false&&specific?.enabled!==false&&(specific?.kinds?.[kind]??state.notificationSettings[legacyKind||(['stalled','completed'].includes(kind)?kind:'intervention')])!==false;}
+function webNotificationEnabled(project,kind){const settings=webNotificationSettings(),specific=settings.projects?.[project];return settings.enabled!==false&&specific?.enabled!==false&&(specific?.kinds?.[kind]??state.notificationSettings[kind]??true)!==false;}
 function changeWebNotificationSetting(project,kind,enabled){const settings=webNotificationSettings();settings.projects||={};settings.projects[project]||={};if(kind==='enabled')settings.projects[project].enabled=enabled;else{settings.projects[project].kinds||={};settings.projects[project].kinds[kind]=enabled;}localStorage.setItem('task-mecca-web-notification-settings-v1',JSON.stringify(settings));}
 function browserDeliveryHistory(){try{const rows=JSON.parse(localStorage.getItem('task-mecca-browser-deliveries-v1')||'[]');return Array.isArray(rows)?rows:[];}catch(_){return [];}}
 function recordBrowserDelivery(project,task,kind,key,eventID){const rows=browserDeliveryHistory();if(rows.some(row=>row.key===key))return;rows.push({key,event_id:eventID||key,project,task_id:task.id,kind,title:titleOf(task),sent_at:new Date().toISOString(),state:'display_requested'});try{localStorage.setItem('task-mecca-browser-deliveries-v1',JSON.stringify(rows));acceptHistoryUpdate();}catch(_){/* No durable evidence means unknown, never inferred success. */}}
@@ -2668,27 +2668,18 @@ function renderNotificationPanel() {
       <div class="telegram-bulk-actions"><button type="button" class="secondary-btn" id="telegramAllOn">${esc(t('telegramAllOn'))}</button><button type="button" class="secondary-btn" id="telegramAllOff">${esc(t('telegramAllOff'))}</button></div>
       <div class="telegram-actions">${!tg.connected?`<button type="button" class="action-btn" id="telegramDiscover">${esc(t('telegramFindChat'))}</button>`:''}${tg.connected?`<button type="button" class="action-btn" id="telegramTest">${esc(t('telegramTest'))}</button>`:''}<button type="button" class="secondary-btn" id="telegramDisable">${esc(t('telegramDisconnect'))}</button></div></div>`;
   }
-  panel.innerHTML=`<div class="notification-panel-head"><strong>${esc(t('notificationSettings'))}</strong><a href="/?view=notifications">${esc(t('notificationCenter'))}</a><button type="button" id="notificationClose" aria-label="${esc(state.language==='ko'?'알림 설정 닫기':'Close notification settings')}">×</button></div>
-    <div class="notification-panel-body">
-      ${guide}
-      <div class="notification-browser-kinds">
-        <strong>${esc(t('browserNotifications'))}</strong>
-        <p class="muted">${esc(t('browserNotificationsGuide'))}</p>
-        <label><input type="checkbox" id="centerGlobalWebChannel" ${webNotificationSettings().enabled!==false?'checked':''}>${esc(t('browserNotifications'))}</label>
-        <label><input type="checkbox" data-notification-setting="intervention" ${state.notificationSettings.intervention?'checked':''}> <span>${esc(t('notifyIntervention'))}</span></label>
-        <label><input type="checkbox" data-notification-setting="completed" ${state.notificationSettings.completed?'checked':''}> <span>${esc(t('notifyCompleted'))}</span></label>
-        <label><input type="checkbox" data-notification-setting="stalled" ${state.notificationSettings.stalled?'checked':''}> <span>${esc(t('notifyStalled'))}</span></label>
-        ${permission==='default'&&capability.canRequest?`<button type="button" class="action-btn notification-permission" id="notificationPermission">${esc(t('allowBrowserNotifications'))}</button>`:''}
-      </div>${(state.projectNotificationSettings||[]).length?'':telegram}
-    </div>`;
-  panel.querySelector('.notification-browser-kinds')?.insertAdjacentHTML('beforeend',pushStatusMarkup());
-  panel.querySelector('.notification-panel-body')?.insertAdjacentHTML('beforeend',projectChannelSettingsMarkup());
+  panel.innerHTML='<div class="notification-panel-head"><strong>'+esc(t('notificationSettings'))+'</strong><a href="/?view=notifications">'+esc(t('notificationCenter'))+'</a><button type="button" id="notificationClose" aria-label="'+esc(state.language==='ko'?'알림 설정 닫기':'Close notification settings')+'">×</button></div>'+
+  '<div class="notification-panel-body">'+guide+notificationOverviewMarkup()+
+  '<div class="notice-push-wrap">'+pushStatusMarkup()+'</div>'+
+  ((state.projectNotificationSettings||[]).length?'':telegram)+projectChannelSettingsMarkup()+
+  (permission==='default'&&capability.canRequest?'<button type="button" class="action-btn notification-permission" id="notificationPermission">'+esc(t('allowBrowserNotifications'))+'</button>':'')+'</div>';
+
   const recipientMarkup=projectNotificationsView();
   panel.querySelector('.notification-panel-body')?.insertAdjacentHTML('beforeend',`<details class="center-project-settings"><summary>${esc(state.language==='ko'?'Telegram 수신처 연결':'Telegram recipient setup')}</summary>${recipientMarkup.includes('<section class="assigned-workload-section">')?recipientMarkup.slice(recipientMarkup.indexOf('<section class="assigned-workload-section">')):recipientMarkup}</details>`);
   if(panel.id==='notificationSettingsBody')panel.querySelector('.notification-panel-head')?.remove();
   bindCenterChannelSettings(panel);
   bindProjectRecipientControls();
-  $('#centerGlobalWebChannel')?.addEventListener('change',event=>{const settings=webNotificationSettings();settings.enabled=event.target.checked;localStorage.setItem('task-mecca-web-notification-settings-v1',JSON.stringify(settings));});
+
   panel.querySelectorAll('[data-notification-setting]').forEach(input=>input.addEventListener('change',()=>{state.notificationSettings[input.dataset.notificationSetting]=input.checked;saveNotificationSettings();updateNotificationIndicator();renderNotificationPanel()}));
   panel.querySelectorAll('[data-telegram-kind]').forEach(input=>input.addEventListener('change',async()=>{try{const kinds={...state.telegramStatus.kinds,[input.dataset.telegramKind]:input.checked};await telegramAction('kinds',{kinds});renderNotificationPanel()}catch(e){alert(e.message)}}));
   $('#notificationClose')?.addEventListener('click',()=>{panel.classList.remove('open');restoreNotificationPanelFocus();});
