@@ -1274,6 +1274,9 @@ body.release-modal-open{overflow:hidden}
 }
 /* Narrow mobile: two compact rows. Controls keep intrinsic widths, never stretch. */
 @media(max-width:680px){
+  .app-shell .sidebar,.app-shell.sidebar-collapsed .sidebar,.app-shell.mobile-nav-open .sidebar{
+    padding:10px 12px;
+  }
   .topbar{
     display:grid;width:100%;max-width:100%;box-sizing:border-box;
     grid-template-columns:max-content max-content minmax(0,1fr) 36px;
