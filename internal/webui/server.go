@@ -142,6 +142,9 @@ func selectionPayload(ctx context, selected string, candidates []backlog.Candida
 	}
 }
 
+// Replaceable only in isolated HTTP tests; real Web uses maintenance.UpgradeWithProgress.
+var webUpgradeRunner=maintenance.UpgradeWithProgress
+
 var stableReleaseNotesIndexProvider = maintenance.StableReleaseNotesIndex
 var stableReleaseNoteProvider = maintenance.StableReleaseNote
 var currentChannelReleaseNoteProvider = maintenance.CurrentChannelReleaseNote
@@ -1226,6 +1229,15 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 		writeJSON(w, map[string]any{"recovery": UpgradeRecoveryStatus()}, 200)
 	})
 
+    upgradeTracker:=&upgradeProgressTracker{}
+    mux.HandleFunc("/api/upgrade-status",func(w http.ResponseWriter,r *http.Request){
+        if r.Method!=http.MethodGet {
+            writeJSON(w,map[string]any{"error":"GET required"},405)
+            return
+        }
+        writeJSON(w,upgradeTracker.snapshot(),200)
+    })
+
 	mux.HandleFunc("/api/upgrade", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "POST" {
 			writeJSON(w, map[string]any{"error": "POST required"}, 405)
@@ -1235,11 +1247,21 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 			writeJSON(w, map[string]any{"error": "maintenance action header required"}, 403)
 			return
 		}
-		result, err := maintenance.Upgrade(version)
+        if !upgradeTracker.begin() {
+            writeJSON(w,map[string]any{"error":"update already in progress","status":upgradeTracker.snapshot()},409)
+            return
+        }
+		result, err := webUpgradeRunner(version,upgradeTracker.step)
 		if err != nil {
+            upgradeTracker.finish("failed",err)
 			writeJSON(w, map[string]any{"error": err.Error()}, 500)
 			return
 		}
+        if result.RestartRequired && restartCh!=nil {
+            upgradeTracker.finish("restarting",nil)
+        }else{
+            upgradeTracker.finish("completed",nil)
+        }
 		writeJSON(w, result, 200)
 		if result.RestartRequired && restartCh != nil {
 			select {

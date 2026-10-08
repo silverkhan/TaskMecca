@@ -1446,3 +1446,91 @@ body.release-modal-open{overflow:hidden}
   .log-storage-size{text-align:left}
   .log-storage-protected,.log-clear-btn{justify-self:end}
 }
+
+/* Continuous software update feedback, aligned with release-note modal chrome. */
+.upgrade-flow-overlay{
+  position:fixed;inset:0;z-index:1300;display:grid;place-items:center;
+  padding:20px;isolation:isolate;
+}
+.upgrade-flow-backdrop{
+  position:absolute;inset:0;background:rgba(7,10,16,.62);backdrop-filter:blur(5px);
+}
+.upgrade-flow-card{
+  width:min(540px,calc(100vw - 32px));max-height:min(84vh,720px);
+  overflow:auto;border-color:color-mix(in srgb,var(--warn) 32%,var(--border));
+  box-shadow:0 26px 85px rgba(0,0,0,.34),0 0 0 1px color-mix(in srgb,var(--warn) 7%,transparent);
+}
+.upgrade-flow-eyebrow{color:var(--warn);font-size:10px;font-weight:800;letter-spacing:.12em}
+.upgrade-flow-heading{display:flex;align-items:center;gap:14px;margin:14px 0}
+.upgrade-flow-card h2{margin:0;font-size:20px;line-height:1.25;letter-spacing:-.025em}
+.upgrade-flow-version{
+  margin:6px 0 0;color:var(--muted);font-size:11px;
+  overflow-wrap:anywhere;font-variant-numeric:tabular-nums;
+}
+.upgrade-flow-spinner{
+  flex:0 0 34px;width:34px;height:34px;border-radius:50%;
+  border:3px solid color-mix(in srgb,var(--warn) 15%,var(--border));
+  border-top-color:var(--warn);animation:task-mecca-spin .9s linear infinite;
+}
+.upgrade-flow-spinner[hidden],.upgrade-flow-meter[hidden],.upgrade-flow-error[hidden]{display:none}
+.upgrade-flow-description{margin:18px 0 12px;font-size:14px;font-weight:700;color:var(--text);line-height:1.55}
+.upgrade-flow-meter{
+  position:relative;height:4px;border-radius:999px;overflow:hidden;
+  background:color-mix(in srgb,var(--warn) 13%,var(--surface2));
+}
+.upgrade-flow-meter span{
+  position:absolute;top:0;bottom:0;left:-38%;width:38%;border-radius:999px;
+  background:linear-gradient(90deg,transparent,var(--warn),var(--accent));
+  animation:upgrade-flow-slide 1.7s ease-in-out infinite;
+}
+@keyframes upgrade-flow-slide{from{left:-38%}to{left:100%}}
+.upgrade-flow-stages{
+  display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:5px;
+  padding:0;margin:23px 0 12px;list-style:none;
+}
+.upgrade-flow-stages li{
+  min-width:0;display:flex;flex-direction:column;align-items:center;
+  gap:7px;color:var(--muted);font-size:10px;text-align:center;font-weight:650;
+}
+.upgrade-step-dot{
+  display:grid;place-items:center;width:27px;height:27px;border-radius:50%;
+  border:1px solid var(--border);background:var(--surface2);
+  font-size:11px;line-height:1;font-variant-numeric:tabular-nums;
+}
+.upgrade-flow-stages li.done .upgrade-step-dot{
+  color:var(--ok);border-color:color-mix(in srgb,var(--ok) 50%,var(--border));
+  background:color-mix(in srgb,var(--ok) 10%,var(--surface));
+}
+.upgrade-flow-stages li.current{color:var(--text)}
+.upgrade-flow-stages li.current .upgrade-step-dot{
+  color:var(--warn);border-color:var(--warn);
+  background:color-mix(in srgb,var(--warn) 12%,var(--surface));
+  box-shadow:0 0 0 3px color-mix(in srgb,var(--warn) 9%,transparent);
+}
+.upgrade-flow-help{min-height:32px;margin:8px 0 10px;color:var(--muted);font-size:11px;line-height:1.5}
+.upgrade-flow-error{
+  background:color-mix(in srgb,var(--danger) 7%,var(--surface));
+  border:1px solid color-mix(in srgb,var(--danger) 42%,var(--border));
+  color:var(--danger);padding:10px 12px;border-radius:9px;
+  font-size:12px;overflow-wrap:anywhere;
+}
+.upgrade-flow-footer{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:16px;border-top:1px solid var(--border);padding-top:15px}
+.upgrade-flow-elapsed{font-size:11px;font-variant-numeric:tabular-nums;color:var(--muted);white-space:nowrap}
+.upgrade-flow-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px}
+.upgrade-flow-overlay[data-phase="failed"] .upgrade-flow-card{border-color:color-mix(in srgb,var(--danger) 38%,var(--border))}
+.upgrade-flow-overlay[data-phase="completed"] .upgrade-flow-card{border-color:color-mix(in srgb,var(--ok) 35%,var(--border))}
+.global-update-pill.available:disabled{cursor:wait;opacity:.75;filter:none}
+@media(max-width:680px){
+ .upgrade-flow-overlay{padding:12px}
+ .upgrade-flow-card{padding:20px;width:min(540px,calc(100vw - 24px))}
+ .upgrade-flow-card h2{font-size:18px}
+ .upgrade-flow-stages{gap:2px}
+ .upgrade-flow-stages li{font-size:9px}
+ .upgrade-step-dot{width:24px;height:24px}
+ .upgrade-flow-footer{align-items:stretch;flex-direction:column}
+ .upgrade-flow-actions{justify-content:flex-end}
+ .upgrade-flow-actions .action-btn{flex:1 1 0;min-width:0}
+}
+@media(prefers-reduced-motion:reduce){
+ .upgrade-flow-spinner,.upgrade-flow-meter span{animation-duration:4s}
+}

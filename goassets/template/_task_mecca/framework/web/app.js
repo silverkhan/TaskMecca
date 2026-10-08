@@ -685,9 +685,6 @@ function renderReleaseNoteModal() {
   if(available){
     $('#releaseModalClose')?.addEventListener('click',dismissReleaseNotePopup);
     $('#releaseModalUpgrade')?.addEventListener('click',()=>{
-      state.releaseNotePopup=null;
-      state.releaseNotePopupMode='installed';
-      renderReleaseNoteModal();
       performUpgrade();
     });
   }else{
@@ -704,16 +701,7 @@ function renderReleaseNoteModal() {
 async function showAvailableUpdateNotes() {
   const cli=state.versionInfo?.cli||state.hub?.cli||{};
   const version=normalizedVersion(cli.latest||'');
-  if(!version)return;
-  const detail=await loadReleaseNoteDetail(version);
-  if(!detail){
-    alert(t('updateChangesUnavailable'));
-    return;
-  }
-  state.releaseNotePopup=detail;
-  state.releaseNotePopupMode='available';
-  renderReleaseUnreadPrompt();
-  renderReleaseNoteModal();
+  if(version)await openUpgradeDetails(version);
 }
 async function maybeShowCurrentReleaseNote() {
   const version=currentReleaseVersion();
@@ -736,6 +724,229 @@ async function maybeShowCurrentReleaseNote() {
 }
 
 
+// The update flow has one continuous visual surface: checking notes, an
+// explicit decision, server-confirmed install phases, restart and errors.
+let upgradeFlowMode='idle';
+let upgradeFlowSession=0;
+let upgradeFlowStartedAt=0;
+let upgradeFlowTarget='';
+let upgradeFlowTimer=null;
+let upgradeFlowPollTimer=null;
+let upgradeFlowPollBusy=false;
+let upgradeFlowOwnRequest=false;
+let upgradeFlowRestartWatching=false;
+let upgradeFlowError='';
+
+function upgradeFlowCopy(){
+ const ko=state.language==='ko';
+ return ko?{
+  eyebrow:'TASK MECCA · SOFTWARE UPDATE',title:'Task Mecca 업데이트',
+  notes:'업데이트 내용을 확인하고 있습니다',checking:'최신 버전과 설치 환경을 확인하고 있습니다',
+  downloading:'업데이트 파일을 다운로드하고 있습니다',verifying:'다운로드 파일을 검증하고 있습니다',
+  installing:'검증된 업데이트를 설치하고 있습니다',restarting:'웹 서비스를 재시작하고 있습니다',
+  completed:'업데이트를 완료했습니다',failed:'업데이트를 완료하지 못했습니다',
+  noNotes:'업데이트 상세 내용을 확인할 수 없습니다',noNotesHelp:'릴리스 노트를 불러오지 못했습니다. 계속 진행할지 선택해 주세요.',
+  waiting:'진행 중입니다. 업데이트 버튼을 다시 누르지 않아도 됩니다.',
+  restartHelp:'연결이 잠시 끊길 수 있습니다. 준비되면 자동으로 다시 연결합니다.',
+  longWait:'네트워크 상태에 따라 시간이 걸릴 수 있습니다. 작업이 계속 진행 중입니다.',
+  cancel:'취소',close:'닫기',continue:'업데이트 진행',retry:'다시 시도',
+  elapsed:'경과',stages:['확인','다운로드','검증','설치','재시작'],
+  restartError:'웹 서버의 재시작을 확인하지 못했습니다. 웹 상태를 확인한 뒤 다시 접속해 주세요.'
+ }:{
+  eyebrow:'TASK MECCA · SOFTWARE UPDATE',title:'Task Mecca update',
+  notes:'Checking update details',checking:'Checking the latest version and installation environment',
+  downloading:'Downloading the update',verifying:'Verifying the downloaded file',
+  installing:'Installing the verified update',restarting:'Restarting the Web service',
+  completed:'Update completed',failed:'The update could not be completed',
+  noNotes:'Update details are unavailable',noNotesHelp:'Release notes could not be loaded. Choose whether to continue.',
+  waiting:'In progress. You do not need to press Update again.',
+  restartHelp:'The connection may briefly drop. This page will reconnect when ready.',
+  longWait:'This can take longer on slower connections. The update is still running.',
+  cancel:'Cancel',close:'Close',continue:'Continue update',retry:'Retry',
+  elapsed:'Elapsed',stages:['Check','Download','Verify','Install','Restart'],
+  restartError:'Could not confirm the Web service restart. Check its status, then reconnect.'
+ };
+}
+const upgradeFlowPhases=['checking','downloading','verifying','installing','restarting'];
+function upgradeFlowOverlay(){
+ let overlay=$('#upgradeFlowOverlay');
+ if(overlay)return overlay;
+ overlay=document.createElement('div');
+ overlay.id='upgradeFlowOverlay';
+ overlay.className='upgrade-flow-overlay';
+ overlay.innerHTML='<div class="upgrade-flow-backdrop"></div>'+
+  '<section class="release-modal-card upgrade-flow-card" role="dialog" aria-modal="true" aria-labelledby="upgradeFlowTitle" aria-describedby="upgradeFlowDescription">'+
+  '<div class="eyebrow upgrade-flow-eyebrow"></div>'+
+  '<div class="upgrade-flow-heading"><span class="upgrade-flow-spinner" aria-hidden="true"></span><div><h2 id="upgradeFlowTitle"></h2><p class="upgrade-flow-version"></p></div></div>'+
+  '<p id="upgradeFlowDescription" class="upgrade-flow-description" role="status" aria-live="polite" aria-atomic="true"></p>'+
+  '<div class="upgrade-flow-meter" aria-hidden="true"><span></span></div>'+
+  '<ol class="upgrade-flow-stages"></ol>'+
+  '<p class="upgrade-flow-help"></p>'+
+  '<p class="upgrade-flow-error" role="alert" hidden></p>'+
+  '<div class="upgrade-flow-footer"><span class="upgrade-flow-elapsed" aria-hidden="true"></span><div class="upgrade-flow-actions"></div></div>'+
+  '</section>';
+ document.body.appendChild(overlay);
+ document.body.classList.add('release-modal-open');
+ const dialog=overlay.querySelector('[role="dialog"]');
+ dialog.setAttribute('tabindex','-1');
+ overlay.addEventListener('keydown',event=>{
+  if(event.key==='Escape' && ['notes','no-notes','failed','completed'].includes(upgradeFlowMode)){
+   event.preventDefault();closeUpgradeFlow();return;
+  }
+  if(event.key!=='Tab')return;
+  const controls=[...dialog.querySelectorAll('button:not([disabled])')];
+  if(!controls.length){event.preventDefault();dialog.focus();return;}
+  const first=controls[0],last=controls[controls.length-1];
+  if(event.shiftKey&&(document.activeElement===first||document.activeElement===dialog)){event.preventDefault();last.focus();}
+  else if(!event.shiftKey&&(document.activeElement===last||document.activeElement===dialog)){event.preventDefault();first.focus();}
+ });
+ dialog.focus();
+ return overlay;
+}
+function updateFlowElapsed(){
+ const overlay=$('#upgradeFlowOverlay');if(!overlay)return;
+ const seconds=Math.max(0,Math.floor((Date.now()-upgradeFlowStartedAt)/1000));
+ const minutes=String(Math.floor(seconds/60)).padStart(2,'0');
+ const secs=String(seconds%60).padStart(2,'0');
+ const element=overlay.querySelector('.upgrade-flow-elapsed');
+ if(element)element.textContent=upgradeFlowCopy().elapsed+' '+minutes+':'+secs;
+ if(upgradeFlowMode!=='failed'&&upgradeFlowMode!=='completed'&&seconds>=20){
+  const help=overlay.querySelector('.upgrade-flow-help');
+  if(help && upgradeFlowMode!=='no-notes')help.textContent=upgradeFlowCopy().longWait;
+ }
+}
+function setUpgradeFlowStage(phase,error=''){
+ upgradeFlowMode=phase;
+ upgradeFlowError=error;
+ const overlay=upgradeFlowOverlay(),copy=upgradeFlowCopy();
+ overlay.dataset.phase=phase;
+ overlay.querySelector('.upgrade-flow-eyebrow').textContent=copy.eyebrow;
+ overlay.querySelector('#upgradeFlowTitle').textContent=copy.title;
+ overlay.querySelector('.upgrade-flow-version').textContent=upgradeFlowTarget;
+ const message=copy[phase]||copy.checking;
+ overlay.querySelector('#upgradeFlowDescription').textContent=message;
+ const errorEl=overlay.querySelector('.upgrade-flow-error');
+ errorEl.hidden=!error;
+ errorEl.textContent=error;
+ overlay.querySelector('.upgrade-flow-spinner').hidden=['no-notes','failed','completed'].includes(phase);
+ overlay.querySelector('.upgrade-flow-meter').hidden=['no-notes','failed','completed'].includes(phase);
+ overlay.querySelector('.upgrade-flow-help').textContent=phase==='no-notes'?copy.noNotesHelp:phase==='restarting'?copy.restartHelp:phase==='failed'||phase==='completed'?'':copy.waiting;
+ const current=phase==='notes'?0:upgradeFlowPhases.indexOf(phase);
+ overlay.querySelector('.upgrade-flow-stages').innerHTML=copy.stages.map((label,i)=>
+  '<li class="'+(current<0?'':i<current?'done':i===current?'current':'pending')+'">'+
+  '<span class="upgrade-step-dot">'+(i<current?'✓':String(i+1))+'</span><span>'+esc(label)+'</span></li>').join('');
+ const actions=overlay.querySelector('.upgrade-flow-actions');
+ if(phase==='notes'||phase==='no-notes'){
+  actions.innerHTML='<button type="button" class="action-btn secondary" data-upgrade-flow-cancel>'+esc(copy.cancel)+'</button>'+
+   (phase==='no-notes'?'<button type="button" class="action-btn" data-upgrade-flow-continue>'+esc(copy.continue)+'</button>':'');
+  actions.querySelector('[data-upgrade-flow-cancel]').addEventListener('click',closeUpgradeFlow);
+  actions.querySelector('[data-upgrade-flow-continue]')?.addEventListener('click',()=>performUpgrade());
+ }else if(phase==='failed'||phase==='completed'){
+  actions.innerHTML='<button type="button" class="action-btn secondary" data-upgrade-flow-close>'+esc(copy.close)+'</button>'+
+   (phase==='failed'?'<button type="button" class="action-btn" data-upgrade-flow-retry>'+esc(copy.retry)+'</button>':'');
+  actions.querySelector('[data-upgrade-flow-close]').addEventListener('click',closeUpgradeFlow);
+  actions.querySelector('[data-upgrade-flow-retry]')?.addEventListener('click',()=>performUpgrade());
+ }else actions.innerHTML='';
+ updateFlowElapsed();
+ renderGlobalUpdateIndicator();
+ if(!upgradeFlowTimer && phase!=='completed' && phase!=='failed'){
+  upgradeFlowTimer=setInterval(updateFlowElapsed,1000);
+ }
+}
+function stopUpgradeFlowTimers(){
+ if(upgradeFlowTimer){clearInterval(upgradeFlowTimer);upgradeFlowTimer=null;}
+ if(upgradeFlowPollTimer){clearInterval(upgradeFlowPollTimer);upgradeFlowPollTimer=null;}
+ upgradeFlowPollBusy=false;
+}
+function closeUpgradeFlow(){
+ if(['checking','downloading','verifying','installing','restarting'].includes(upgradeFlowMode))return;
+ upgradeFlowSession++;
+ upgradeFlowOwnRequest=false;
+ upgradeFlowRestartWatching=false;
+ stopUpgradeFlowTimers();
+ $('#upgradeFlowOverlay')?.remove();
+ document.body.classList.toggle('release-modal-open',Boolean(state.releaseNotePopup));
+ upgradeFlowMode='idle';
+ upgradeFlowError='';
+ renderGlobalUpdateIndicator();
+}
+async function openUpgradeDetails(version){
+ if(upgradeFlowMode!=='idle')return;
+ const session=++upgradeFlowSession;
+ upgradeFlowStartedAt=Date.now();
+ upgradeFlowTarget=String(version||'');
+ setUpgradeFlowStage('notes');
+ const detail=await loadReleaseNoteDetail(version);
+ if(session!==upgradeFlowSession||upgradeFlowMode!=='notes')return;
+ if(detail){
+  closeUpgradeFlow();
+  state.releaseNotePopup=detail;state.releaseNotePopupMode='available';
+  renderReleaseNoteModal();
+ }else{
+  setUpgradeFlowStage('no-notes');
+ }
+}
+async function observeUpgradeRestart(session){
+ if(upgradeFlowRestartWatching || upgradeFlowOwnRequest)return;
+ upgradeFlowRestartWatching=true;
+ const target=String(upgradeFlowTarget.split(' → ').pop()||'');
+ const ready=await waitForRestartedWeb(target);
+ if(ready===false && session===upgradeFlowSession){
+  stopUpgradeFlowTimers();
+  setUpgradeFlowStage('failed',upgradeFlowCopy().restartError);
+ }
+ upgradeFlowRestartWatching=false;
+}
+function startUpgradeFlowPolling(session){
+ if(upgradeFlowPollTimer)clearInterval(upgradeFlowPollTimer);
+ upgradeFlowPollTimer=setInterval(async()=>{
+  if(session!==upgradeFlowSession || upgradeFlowPollBusy || !upgradeFlowPhases.includes(upgradeFlowMode))return;
+  upgradeFlowPollBusy=true;
+  try{
+   const r=await fetch('/api/upgrade-status',{cache:'no-store'});
+   if(!r.ok)return;
+   const status=await r.json();
+   if(session!==upgradeFlowSession || !upgradeFlowPhases.includes(upgradeFlowMode))return;
+   if(status.active && upgradeFlowPhases.includes(status.phase)){
+    if(upgradeFlowPhases.indexOf(status.phase)>upgradeFlowPhases.indexOf(upgradeFlowMode)){
+     setUpgradeFlowStage(status.phase);
+    }
+    if(status.phase==='restarting')void observeUpgradeRestart(session);
+   }else if(!status.active && !upgradeFlowOwnRequest){
+    if(status.phase==='failed'){
+     stopUpgradeFlowTimers();
+     setUpgradeFlowStage('failed',String(status.error||'Update failed'));
+    }else if(status.phase==='completed'){
+     stopUpgradeFlowTimers();
+     setUpgradeFlowStage('completed');
+     void refreshVersionInfo(true);
+    }
+   }
+  }catch(_){/* Server restart may temporarily interrupt status polling. */}
+  finally{upgradeFlowPollBusy=false;}
+ },900);
+}
+async function resumeActiveUpgrade(){
+ if(upgradeFlowMode!=='idle')return;
+ try{
+  const r=await fetch('/api/upgrade-status',{cache:'no-store'});
+  if(!r.ok)return;
+  const status=await r.json();
+  if(!status.active || !upgradeFlowPhases.includes(status.phase) || upgradeFlowMode!=='idle')return;
+  const cli=state.versionInfo?.cli||state.hub?.cli||{};
+  upgradeFlowTarget=cli.current&&cli.latest
+   ? String(cli.current)+' → '+String(cli.latest)
+   : (state.language==='ko'?'진행 중인 업데이트에 다시 연결합니다':'Reconnecting to an active update');
+  upgradeFlowStartedAt=Date.parse(status.started_at)||Date.now();
+  const session=++upgradeFlowSession;
+  state.releaseNotePopup=null;
+  renderReleaseNoteModal();
+  setUpgradeFlowStage(status.phase);
+  startUpgradeFlowPolling(session);
+  if(status.phase==='restarting')void observeUpgradeRestart(session);
+ }catch(_){/* Older server versions have no status endpoint. */}
+}
+
 function renderGlobalUpdateIndicator() {
   const el=$('#globalUpdateIndicator');
   if(!el)return;
@@ -747,17 +958,10 @@ function renderGlobalUpdateIndicator() {
     const from=String(cli.current||'-'), to=String(cli.latest||'-');
     const fullLabel=`${from} → ${to}`;
     const updateIcon='<svg class="update-arrow-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"/><path d="M12 17V7m0 0-4 4m4-4 4 4"/></svg>';
-    el.innerHTML='<button type="button" class="global-update-pill available version-update-label" id="globalVersionUpdateBtn" title="'+esc(t('updateNow')+' · '+fullLabel)+'" aria-label="'+esc(t('updateNow')+' · '+fullLabel)+'">'+
+    el.innerHTML='<button type="button" class="global-update-pill available version-update-label" id="globalVersionUpdateBtn" '+(upgradeFlowMode!=='idle'?'disabled aria-busy="true" ':'')+'title="'+esc(t('updateNow')+' · '+fullLabel)+'" aria-label="'+esc(t('updateNow')+' · '+fullLabel)+'">'+
       '<span class="update-title">'+updateIcon+(cli.channel==='dev'?'<span class="badge update-channel">DEV</span>':'')+'</span>'+
       '<span class="update-versions"><span class="update-from">'+esc(from)+'</span><span class="update-separator">→</span><span class="update-to">'+esc(to)+'</span></span></button>';
-    $('#globalVersionUpdateBtn')?.addEventListener('click',async e=>{
-      const detail=await loadReleaseNoteDetail(cli.latest||'');
-      if(detail){
-        state.releaseNotePopup=detail; state.releaseNotePopupMode='available';
-        renderReleaseNoteModal(); return;
-      }
-      performUpgrade(e.currentTarget);
-    });
+    $('#globalVersionUpdateBtn')?.addEventListener('click',()=>openUpgradeDetails(cli.latest||''));
     return;
   }
   if(projectMatches && project.migration_available){
@@ -1034,23 +1238,51 @@ async function refreshAndCheckUpdates(){
   manualRefreshInFlight=false;
 }
 
-async function performUpgrade(button) {
-  if(button){button.disabled=true;button.textContent=t('upgrading');}
-  const content=$('#content');
-  try{
-    const r=await fetch('/api/upgrade',{method:'POST',headers:{'X-Task-Mecca-Action':'1'}});
-    const body=await r.json();
-    if(!r.ok)throw new Error(body.error||'Upgrade failed');
-    if(body.restart_required && body.to && body.to!==body.from){
-      if(content)content.innerHTML=`<div class="upgrade-restart"><div class="upgrade-spinner"></div><h2>Task Mecca ${esc(body.to)}로 업그레이드했습니다</h2><p>Web 서버를 재시작하고 있습니다. 완료되면 이 페이지가 자동으로 새로고침됩니다.</p></div>`;
-      await waitForRestartedWeb(body.to);
-      return;
-    }
-    await refreshVersionInfo(true);
-  }catch(e){
-    alert(String(e?.message||e));
-    if(button){button.disabled=false;renderGlobalUpdateIndicator();}
+async function performUpgrade() {
+ // One click must create one transaction. Even if the DOM is re-rendered
+ // during a long download, another click cannot start a second attempt.
+ if(['notes','checking','downloading','verifying','installing','restarting'].includes(upgradeFlowMode))return;
+ const session=++upgradeFlowSession;
+ stopUpgradeFlowTimers();
+ upgradeFlowStartedAt=Date.now();
+ upgradeFlowOwnRequest=true;
+ const cli=state.versionInfo?.cli||state.hub?.cli||{};
+ upgradeFlowTarget=String(cli.current||'-')+' → '+String(cli.latest||'-');
+ state.releaseNotePopup=null;
+ state.releaseNotePopupMode='installed';
+ renderReleaseNoteModal();
+ setUpgradeFlowStage('checking');
+ startUpgradeFlowPolling(session);
+ try{
+  const r=await fetch('/api/upgrade',{method:'POST',headers:{'X-Task-Mecca-Action':'1'}});
+  const body=await r.json();
+  if(r.status===409 && body.status?.active){
+   upgradeFlowOwnRequest=false;
+   if(upgradeFlowPhases.includes(body.status.phase))setUpgradeFlowStage(body.status.phase);
+   if(body.status.phase==='restarting')void observeUpgradeRestart(session);
+   return;
   }
+  if(!r.ok)throw new Error(body.error||'Upgrade failed');
+  if(session!==upgradeFlowSession)return;
+  upgradeFlowOwnRequest=false;
+  stopUpgradeFlowTimers();
+  if(body.restart_required && body.to && body.to!==body.from){
+   setUpgradeFlowStage('restarting');
+   const recovered=await waitForRestartedWeb(body.to);
+   if(recovered===false && session===upgradeFlowSession){
+    stopUpgradeFlowTimers();
+    setUpgradeFlowStage('failed',upgradeFlowCopy().restartError);
+   }
+   return;
+  }
+  setUpgradeFlowStage('completed');
+  await refreshVersionInfo(true);
+ }catch(error){
+  if(session!==upgradeFlowSession)return;
+  upgradeFlowOwnRequest=false;
+  stopUpgradeFlowTimers();
+  setUpgradeFlowStage('failed',String(error?.message||error));
+ }
 }
 
 async function loadRuntimeHistory(page=1) {
@@ -2882,13 +3114,14 @@ async function waitForRestartedWeb(targetVersion) {
       const r=await fetch(`/api/health?restart_wait=${Date.now()}`,{cache:'no-store'});
       if(r.ok){
         const body=await r.json();
-        if(!targetVersion||normalizedVersion(body.version)===targetVersion){ location.reload(); return; }
+        if(!targetVersion||normalizedVersion(body.version)===targetVersion){ location.reload(); return true; }
       }
     } catch(_) {}
     await new Promise(resolve=>setTimeout(resolve,500));
   }
   const c=$('#content');
   if(c)c.innerHTML=`<div class="load-error"><h2>Task Mecca Web 재시작을 확인하지 못했습니다</h2><p>CLI 업데이트 자체는 완료됐을 수 있습니다. 터미널에서 <code>task-mecca web status</code>로 상태를 확인하고, 이전 버전이 계속 실행 중이면 <code>task-mecca web restart</code>를 실행한 뒤 이 페이지를 새로고침하세요.</p></div>`;
+  return false;
 }
 function migrationResyncPrompt(result) {
   const changed=(result.changed_instructions||[]).join(', ') || '-';
@@ -2956,7 +3189,7 @@ function bindHubActions() {
   const changes=$('#hubUpdateChangesBtn');
   if(changes)changes.addEventListener('click',showAvailableUpdateNotes);
   const up=$('#upgradeBtn');
-  if(up)up.addEventListener('click',e=>performUpgrade(e.currentTarget));
+  if(up)up.addEventListener('click',showAvailableUpdateNotes);
 }
 
 async function manageHubProject(button) {
@@ -4702,4 +4935,5 @@ const initialForeground=refresh();
 Promise.resolve(initialForeground).finally(()=>refreshOperations());
 setInterval(refreshOperations,15000);
 refreshVersionInfo(false);
+void resumeActiveUpgrade();
 setTimeout(()=>refreshVersionInfo(true),800);
