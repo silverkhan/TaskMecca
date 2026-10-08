@@ -1433,6 +1433,7 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 	})
 	mux.HandleFunc("/app.js", func(w http.ResponseWriter, r *http.Request) { sendEmbedded(w, "app.js") })
 	mux.HandleFunc("/sw.js", func(w http.ResponseWriter, r *http.Request) { sendEmbedded(w, "sw.js") })
+	mux.HandleFunc("/manifest.webmanifest", func(w http.ResponseWriter, r *http.Request) { w.Header().Set("Content-Type","application/manifest+json; charset=utf-8");sendEmbedded(w,"manifest.webmanifest") })
 	mux.HandleFunc("/vendor/", func(w http.ResponseWriter, r *http.Request) {
 		name := strings.TrimPrefix(r.URL.Path, "/")
 		clean := filepath.ToSlash(filepath.Clean(name))
