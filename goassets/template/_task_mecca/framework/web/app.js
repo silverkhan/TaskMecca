@@ -2648,26 +2648,11 @@ function renderNotificationPanel() {
   else guide=`<div class="notification-state warning"><strong>${esc(t('notificationsPermissionNeeded'))}</strong><span>${esc(t('allowBrowserNotifications'))}</span></div>`;
 
   const tg=state.telegramStatus;
-  let telegram='';
-  if(!tg){
-    telegram=`<div class="telegram-settings"><strong>${esc(t('telegramNotifications'))}</strong><span class="muted">${esc(t('telegramNotConfigured'))}</span><p>${esc(t('telegramGuide'))}</p><input id="telegramToken" type="password" autocomplete="off" placeholder="${esc(t('telegramBotToken'))}"><button type="button" class="action-btn" id="telegramConfigure">${esc(t('telegramConnect'))}</button></div>`;
-  }else if(!tg.configured){
-    telegram=`<div class="telegram-settings"><strong>${esc(t('telegramNotifications'))}</strong><p>${esc(t('telegramGuide'))}</p><input id="telegramToken" type="password" autocomplete="off" placeholder="${esc(t('telegramBotToken'))}"><button type="button" class="action-btn" id="telegramConfigure">${esc(t('telegramConnect'))}</button></div>`;
-  }else{
-    const stateText=tg.connected?t('telegramConnected'):t('telegramConfigured');
-    telegram=`<div class="telegram-settings"><strong>${esc(t('telegramNotifications'))}</strong><span class="notification-state ${tg.connected?'ok':'warning'}">${esc(stateText)}${tg.bot_username?' · @'+esc(tg.bot_username):''}</span>
-      <label><input type="checkbox" data-telegram-kind="registered" ${tg.kinds?.registered?'checked':''}> <span>${esc(t('notifyRegistered'))}</span></label>
-      <label><input type="checkbox" data-telegram-kind="started" ${tg.kinds?.started?'checked':''}> <span>${esc(t('notifyStarted'))}</span></label>
-      <label><input type="checkbox" data-telegram-kind="intervention" ${tg.kinds?.intervention?'checked':''}> <span>${esc(t('notifyIntervention'))}</span></label>
-      <label><input type="checkbox" data-telegram-kind="approval" ${tg.kinds?.approval?'checked':''}> <span>${esc(t('notifyApproval'))}</span></label>
-      <label><input type="checkbox" data-telegram-kind="stalled" ${tg.kinds?.stalled?'checked':''}> <span>${esc(t('notifyStalled'))}</span></label>
-      <label><input type="checkbox" data-telegram-kind="interrupted" ${tg.kinds?.interrupted?'checked':''}> <span>${esc(t('notifyInterrupted'))}</span></label>
-      <label><input type="checkbox" data-telegram-kind="runtime_unknown" ${tg.kinds?.runtime_unknown?'checked':''}> <span>${esc(t('notifyRuntimeUnknown'))}</span></label>
-      <label><input type="checkbox" data-telegram-kind="finalize" ${tg.kinds?.finalize?'checked':''}> <span>${esc(t('notifyFinalize'))}</span></label>
-      <label><input type="checkbox" data-telegram-kind="completed" ${tg.kinds?.completed?'checked':''}> <span>${esc(t('notifyCompleted'))}</span></label>
-      <div class="telegram-bulk-actions"><button type="button" class="secondary-btn" id="telegramAllOn">${esc(t('telegramAllOn'))}</button><button type="button" class="secondary-btn" id="telegramAllOff">${esc(t('telegramAllOff'))}</button></div>
-      <div class="telegram-actions">${!tg.connected?`<button type="button" class="action-btn" id="telegramDiscover">${esc(t('telegramFindChat'))}</button>`:''}${tg.connected?`<button type="button" class="action-btn" id="telegramTest">${esc(t('telegramTest'))}</button>`:''}<button type="button" class="secondary-btn" id="telegramDisable">${esc(t('telegramDisconnect'))}</button></div></div>`;
-  }
+  const telegram=tg?.configured
+   ? '<section class="telegram-settings"><strong>'+esc(t('telegramNotifications'))+'</strong><p>'+esc(tg.connected?t('telegramConnected'):t('telegramConfigured'))+(tg.bot_username?' · @'+esc(tg.bot_username):'')+'</p><div class="telegram-actions">'+
+     (!tg.connected?'<button type="button" class="action-btn" id="telegramDiscover">'+esc(t('telegramFindChat'))+'</button>':'<button type="button" class="action-btn" id="telegramTest">'+esc(t('telegramTest'))+'</button>')+
+     '<button type="button" class="secondary-btn" id="telegramDisable">'+esc(t('telegramDisconnect'))+'</button></div></section>'
+   : '<section class="telegram-settings"><strong>'+esc(t('telegramNotifications'))+'</strong><p>'+esc(t('telegramGuide'))+'</p><input id="telegramToken" type="password" autocomplete="off" placeholder="'+esc(t('telegramBotToken'))+'"><button type="button" class="action-btn" id="telegramConfigure">'+esc(t('telegramConnect'))+'</button></section>';
   panel.innerHTML='<div class="notification-panel-head"><strong>'+esc(t('notificationSettings'))+'</strong><a href="/?view=notifications">'+esc(t('notificationCenter'))+'</a><button type="button" id="notificationClose" aria-label="'+esc(state.language==='ko'?'알림 설정 닫기':'Close notification settings')+'">×</button></div>'+
   '<div class="notification-panel-body">'+guide+notificationOverviewMarkup()+
   '<div class="notice-push-wrap">'+pushStatusMarkup()+'</div>'+
