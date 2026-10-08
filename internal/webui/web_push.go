@@ -264,3 +264,19 @@ func deliverWebPush(project string,rows []map[string]any,current map[string]map[
   }
  }
 }
+
+func testWebPush(project,endpoint string)(int,error){
+ reg,err:=pushRegistrySnapshot(project)
+ if err!=nil{return 0,err}
+ sub,ok:=reg.Subscriptions[pushSubscriptionID(endpoint)]
+ if !ok||sub.Endpoint!=endpoint{return 0,errors.New("push subscription not registered")}
+ payload,_:=json.Marshal(map[string]string{
+  "title":"Task Mecca · 알림 연결 테스트",
+  "body":"Web Push 테스트 알림입니다.",
+  "url":"/?view=notifications",
+  "tag":"task-mecca-push-test",
+ })
+ status,err:=postWebPush(reg,sub,payload)
+ if status==404||status==410{removeInvalidPushEndpoint(project,endpoint)}
+ return status,err
+}
