@@ -2394,6 +2394,11 @@ function applyTelegramStatus(project,status){
  const projectRow=(state.projectNotificationSettings||[]).find(row=>row.path===project);
  if(projectRow)projectRow.status=status;
 }
+function scheduleNotificationConfigurationRefresh(){
+ // Setup/connect actions need fresh recipients, but should not keep their
+ // buttons waiting. Repaint only after the non-blocking refresh settles.
+ void refreshNotificationConfiguration().then(()=>renderNotificationPanel()).catch(()=>{});
+}
 async function refreshNotificationConfiguration(){
  // Do not block a successful POST behind a stale GET that may still be
  // pending. The POST response already updated the visible local cache.
@@ -2425,7 +2430,7 @@ async function telegramAction(action,payload={}) {
     applyTelegramStatus(project,body);
     // The mutation response is authoritative. Avoid an extra two GET round trips
     // on every simple toggle; only connection/setup changes need a fresh inventory.
-    if(!['kinds','project_enabled'].includes(action))void refreshNotificationConfiguration().catch(()=>{});
+    if(!['kinds','project_enabled'].includes(action))scheduleNotificationConfigurationRefresh();
   }
   return body;
 }
@@ -2483,7 +2488,7 @@ async function projectTelegramAction(project,action,payload={}) {
   const body=await response.json().catch(()=>({}));
   if(!response.ok)throw new Error(body.error||('HTTP '+response.status));
   applyTelegramStatus(project,body);
-  if(!['kinds','project_enabled'].includes(action))void refreshNotificationConfiguration().catch(()=>{});
+  if(!['kinds','project_enabled'].includes(action))scheduleNotificationConfigurationRefresh();
   return body;
   } catch(error) {
     if(prior)applyTelegramStatus(project,prior);
@@ -2498,7 +2503,7 @@ async function configureSharedTelegram(project,token) {
   const body=await response.json().catch(()=>({}));
   if(!response.ok)throw new Error(body.error||('HTTP '+response.status));
   applyTelegramStatus(project,body);
-  void refreshNotificationConfiguration().catch(()=>{});
+  scheduleNotificationConfigurationRefresh();
 }
 const browserNotificationsPending=new Set();
 const notificationKinds=['registered','started','intervention','approval','stalled','interrupted','runtime_unknown','finalize','completed'];
