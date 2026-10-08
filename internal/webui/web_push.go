@@ -236,6 +236,9 @@ func postWebPush(reg pushRegistry,sub pushSubscription,payload []byte)(int,error
 // The same AID-119 claim ledger arbitrates foreground and background delivery.
 func deliverWebPush(project string,rows []map[string]any,current map[string]map[string]any){
  if len(rows)==0{return}
+ // Background monitoring should not generate key material or runtime files
+ // for projects whose users never opted in to Web Push.
+ if _,err:=os.Stat(pushRegistryPath(project));err!=nil{return}
  reg,err:=pushRegistrySnapshot(project);if err!=nil||len(reg.Subscriptions)==0{return}
  for _,event:=range rows{
   id,_:=event["id"].(string);kind,_:=event["kind"].(string);task,_:=event["task_id"].(string)
