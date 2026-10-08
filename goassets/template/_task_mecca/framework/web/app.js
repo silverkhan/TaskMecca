@@ -934,7 +934,9 @@ async function resumeActiveUpgrade(){
   const status=await r.json();
   if(!status.active || !upgradeFlowPhases.includes(status.phase) || upgradeFlowMode!=='idle')return;
   const cli=state.versionInfo?.cli||state.hub?.cli||{};
-  upgradeFlowTarget=String(cli.current||'-')+' → '+String(cli.latest||'-');
+  upgradeFlowTarget=cli.current&&cli.latest
+   ? String(cli.current)+' → '+String(cli.latest)
+   : (state.language==='ko'?'진행 중인 업데이트에 다시 연결합니다':'Reconnecting to an active update');
   upgradeFlowStartedAt=Date.parse(status.started_at)||Date.now();
   const session=++upgradeFlowSession;
   state.releaseNotePopup=null;
