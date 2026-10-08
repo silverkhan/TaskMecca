@@ -1409,3 +1409,33 @@ body.release-modal-open{overflow:hidden}
   opacity:1;visibility:visible;transform:translate(-50%,0);
 }
 @media(prefers-reduced-motion:reduce){.topbar .refresh-feedback{transition:none}}
+
+
+/* AID-118: small, project-scoped log storage report in Global Hub. */
+.log-storage{margin:25px 0 12px;padding:18px;border:1px solid var(--border);border-radius:14px;background:color-mix(in srgb,var(--surface) 85%,transparent)}
+.log-storage-head h2{margin:0 0 6px;font-size:17px;font-weight:760}
+.log-storage-head .muted{margin:0 0 14px;font-size:12px;line-height:1.55}
+.log-storage-controls{display:flex;flex-wrap:wrap;align-items:end;gap:8px;margin-bottom:14px}
+.log-storage-controls label{display:flex;flex-direction:column;gap:5px;flex:1 1 220px;min-width:0;color:var(--muted);font-size:11px}
+.log-storage-controls select{width:100%;max-width:450px;min-width:0;padding:9px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font:inherit;font-size:12px}
+.log-storage-controls .action-btn{height:34px;flex:0 0 auto}
+.log-storage-totals{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:12px}
+.log-storage-totals span{border-radius:9px;border:1px solid var(--border);padding:8px 11px;color:var(--muted);font-size:11px}
+.log-storage-totals strong{color:var(--text);font-size:13px;margin-left:6px;font-variant-numeric:tabular-nums}
+.log-storage-items{border-top:1px solid var(--border)}
+.log-storage-row{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--border)}
+.log-storage-details{min-width:0}
+.log-storage-details strong{display:block;color:var(--text);font-size:12px}
+.log-storage-details small{display:block;margin-top:5px;color:var(--muted);font-size:10px;line-height:1.5;overflow-wrap:anywhere}
+.log-storage-size{white-space:nowrap;text-align:right;font-size:12px;font-variant-numeric:tabular-nums}
+.log-storage-protected{display:inline-flex;align-items:center;justify-content:center;min-width:65px;padding:6px 8px;border:1px solid var(--border);border-radius:8px;color:var(--muted);font-size:10px}
+.log-clear-btn{min-width:80px;font-size:11px}
+.log-clear-btn:disabled{opacity:.43;cursor:default}
+.log-storage-alert{margin:8px 0 12px;font-size:12px;color:var(--text)}
+@media(max-width:680px){
+  .log-storage{padding:12px}
+  .log-storage-row{grid-template-columns:minmax(0,1fr) auto;gap:6px}
+  .log-storage-details{grid-column:1/-1}
+  .log-storage-size{text-align:left}
+  .log-storage-protected,.log-clear-btn{justify-self:end}
+}
