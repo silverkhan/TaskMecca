@@ -1250,7 +1250,7 @@ func TestReleaseGateBrowserNotificationAndMobileContracts(t *testing.T) {
 	appJS := string(appAsset)
 	for _, needle := range []string{
 		"task-mecca-notification-seen",
-		"const key=`server:${state.project}:${event.id}`",
+		"const key=`server:${project}:${event.id}`",
 		"if(notificationSeenSet().has(key)||browserNotificationsPending.has(key))return",
 		"rememberNotification(key)",
 		"task-mecca-previous-tasks",

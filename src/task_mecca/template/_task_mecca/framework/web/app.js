@@ -492,6 +492,7 @@ async function refreshOperations() {
           for(const key of Object.keys(state.commonUserAttention)){const source=state.commonUserAttention[key];if(source.project===project&&!paths.has(source.backlog))delete state.commonUserAttention[key];}
         }
         storeCommonUserAttention(snapshot,project,'');
+        processTaskNotifications(snapshot,{project,backlog:'',updateCurrent:false});
         const selected=snapshot.backlog_selection?.selected||'';
         await Promise.all((snapshot.backlog_selection?.candidates||[]).filter(candidate=>candidate.path&&candidate.path!==selected).map(async candidate=>{
           const scoped=new URLSearchParams({project,backlog:candidate.path});
@@ -500,6 +501,7 @@ async function refreshOperations() {
           const data=await result.json();
           if(request!==state.operationsRequest||revision!==(state.commonUserRevision[sourceKey]||0))return;
           storeCommonUserAttention(data,project,candidate.path);
+          processTaskNotifications(data,{project,backlog:candidate.path,updateCurrent:false});
         }));
       }catch(_){/* Current projections retry with the next successful refresh. */}
     }));
@@ -1781,8 +1783,7 @@ function rememberNotification(key) {
   if(!seen.includes(key))seen.push(key);
   localStorage.setItem('task-mecca-notification-seen',JSON.stringify(seen.slice(-250)));
 }
-async function sendBrowserNotification(kind,task,reason,key,eventKind=kind,eventID='') {
-  const deliveryProject=state.project;
+async function sendBrowserNotification(kind,task,reason,key,eventKind=kind,eventID='',deliveryProject=state.project,sourceBacklog='',sourceValidity=null) {
   if(notificationSeenSet().has(key)||browserNotificationsPending.has(key))return;
   if(!webNotificationEnabled(deliveryProject,eventKind,kind)){
     rememberNotification(key);
@@ -1790,18 +1791,26 @@ async function sendBrowserNotification(kind,task,reason,key,eventKind=kind,event
   }
   const capability=notificationCapability();
   if(capability.mode!=='supported'||Notification.permission!=='granted')return;
-  const projectName=(state.project||'').split(/[\\/]/).pop()||'Task Mecca';
+  const projectName=(deliveryProject||'').split(/[\\/]/).pop()||'Task Mecca';
   const title=kind==='completed'
     ? `${projectName} · ${task.id} 완료`
     : `${projectName} · ${task.id} · ${reason?.title||t(kind==='stalled'?'notifyStalled':'notifyIntervention')}`;
   const body=kind==='completed'
     ? (titleOf(task)||task.id)
     : [titleOf(task),reason?.message,reason?.resume_condition].filter(Boolean).join(' · ');
-  const tag=`task-mecca:${state.project}:${task.id}:${kind}`;
-  const target=`/tasks/${encodeURIComponent(task.id)}?project=${encodeURIComponent(state.project||'')}`;
+  const tag=`task-mecca:${deliveryProject}:${sourceBacklog}:${task.id}:${kind}`;
+  const targetParams=new URLSearchParams({project:deliveryProject||''});if(sourceBacklog)targetParams.set('backlog',sourceBacklog);
+  const target=`/tasks/${encodeURIComponent(task.id)}?${targetParams}`;
   browserNotificationsPending.add(key);
   try {
     const registration=await notificationWorker();
+    if(!webNotificationEnabled(deliveryProject,eventKind,kind)){rememberNotification(key);return;}
+    if(notificationCapability().mode!=='supported'||Notification.permission!=='granted')return;
+    const latest=sourceValidity&&state.notificationSnapshots?.[sourceValidity.sourceKey];
+    if(latest){
+      const current=latest.tasks?.[task.id];
+      if((sourceValidity.reasonType&&current?.reason_type!==sourceValidity.reasonType)||(eventKind==='completed'&&current&&current.file_state!=='done')){rememberNotification(key);return;}
+    }
     if(registration){
       await registration.showNotification(title,{body,tag,data:{url:target}});
       recordBrowserDelivery(deliveryProject,task,eventKind,key,eventID);
@@ -1814,21 +1823,25 @@ async function sendBrowserNotification(kind,task,reason,key,eventKind=kind,event
     rememberNotification(key);
   } catch(_) {} finally { browserNotificationsPending.delete(key); }
 }
-function processTaskNotifications(snapshot) {
-  if(!state.project||!snapshot)return;
-  const sourceBacklog=snapshot.backlog_selection?.selected||state.backlog||state.attentionScopes[state.project+'|']||'';
-  const sourceKey=state.project+'|'+sourceBacklog,observed=Date.parse(snapshot.snapshot_at||'');
+function processTaskNotifications(snapshot,context={}) {
+  const project=context.project??state.project,requestedBacklog=context.backlog??state.backlog;
+  if(!project||!snapshot||(snapshot.project_path&&snapshot.project_path!==project))return;
+  if(requestedBacklog&&snapshot.backlog_selection?.selected&&snapshot.backlog_selection.selected!==requestedBacklog)return;
+  const sourceBacklog=snapshot.backlog_selection?.selected||requestedBacklog||state.attentionScopes[project+'|']||'';
+  const sourceKey=project+'|'+sourceBacklog,observed=Date.parse(snapshot.snapshot_at||'');
   state.notificationSnapshots||={};
+  const scopeAt=state.attentionScopeObserved[project+'|'+requestedBacklog]||0;
+  if(scopeAt&&(!Number.isFinite(observed)||observed<scopeAt))return;
   const prior=state.notificationSnapshots[sourceKey],common=state.commonUserAttention[sourceKey],latest=Math.max(prior?.observed||0,common?.observed||0);
   if(latest&&(!Number.isFinite(observed)||observed<latest))return;
   const activeReasons=Object.values(snapshot.all_items||{}).filter(task=>task.attention_reason&&task.attention_reason.audience!=='controller').length;
   if(prior?.observed&&observed===prior.observed&&!prior.activeReasons&&activeReasons)return;
-  state.notificationSnapshots[sourceKey]={observed:Number.isFinite(observed)?observed:0,activeReasons};
-  updateCurrentUserAttention(snapshot);
+  state.notificationSnapshots[sourceKey]={observed:Number.isFinite(observed)?observed:0,activeReasons,tasks:Object.fromEntries(Object.values(snapshot.all_items||{}).map(task=>[task.id,{file_state:task.file_state,reason_type:task.attention_reason?.type}]))};
+  if(context.updateCurrent!==false&&project===state.project)updateCurrentUserAttention(snapshot);
   const current=snapshot.all_items||{};
-  const previous=state.previousTasksByProject[state.project]||null;
+  const previous=state.previousTasksByProject[sourceKey]||null;
   const serverEvents=Array.isArray(snapshot.notification_events)?snapshot.notification_events:[];
-  const completedByServer=new Set();
+  const completedByServer=new Set(),reasonsByServer=new Set();
 
   serverEvents.forEach(event=>{
     if(!event?.kind||!event.task_id||!event.id)return;
@@ -1837,36 +1850,39 @@ function processTaskNotifications(snapshot) {
     if(event.kind==='completed')completedByServer.add(event.task_id);
     const task=current[event.task_id]||(snapshot.done_items||[]).find(x=>x.id===event.task_id);
     if(!task)return;
-    const key=`server:${state.project}:${event.id}`;
-    if(event.reason_type==='assignment_unobserved'&&task.attention_reason?.type!=='assignment_unobserved'){rememberNotification(key);return;}
+    const key=`server:${project}:${event.id}`;
+    if(event.reason_type&&['intervention','approval','stalled','interrupted','runtime_unknown'].includes(event.kind)&&task.attention_reason?.type!==event.reason_type){rememberNotification(key);return;}
     const eventAt=Date.parse(event.at||'');
     if(Number.isFinite(eventAt) && Date.now()-eventAt>24*60*60*1000){
       rememberNotification(key);
       return;
     }
+    if(event.reason_type)reasonsByServer.add(event.task_id+'|'+event.reason_type);
     const kind=event.kind==='stalled'?'stalled':event.kind==='completed'?'completed':'intervention';
     const reason=kind==='completed'?null:{title:event.reason_type||event.kind,message:event.message||'',resume_condition:event.resume_condition||''};
-    sendBrowserNotification(kind,task,reason,key,event.kind,event.id);
+    sendBrowserNotification(kind,task,reason,key,event.kind,event.id,project,sourceBacklog,{sourceKey,reasonType:event.reason_type});
   });
 
   Object.values(current).forEach(task=>{
     const reason=task.attention_reason||null;
-    if(reason&&reason.audience!=='controller'&&!['completion_pending','controller_completion_review'].includes(reason.type)&&!String(task.state||'').startsWith('controller_')){
+    if(reason&&!reasonsByServer.has(task.id+'|'+reason.type)&&reason.audience!=='controller'&&!['completion_pending','controller_completion_review'].includes(reason.type)&&!String(task.state||'').startsWith('controller_')){
       const kind=reason.type==='runtime_stalled'?'stalled':'intervention';
-      const key=`${state.project}:${task.id}:${kind}:${reason.type||''}:${task.updated_at||task.mtime||''}`;
-      sendBrowserNotification(kind,task,reason,key);
+      const key=`${sourceKey}:${task.id}:${kind}:${reason.type||''}:${task.updated_at||task.mtime||''}`;
+      if(notificationSeenSet().has(key.replace(sourceKey+':',project+':'))){rememberNotification(key);return;}
+      sendBrowserNotification(kind,task,reason,key,kind,'',project,sourceBacklog,{sourceKey,reasonType:reason.type});
     }
     if(previous&&!completedByServer.has(task.id)){
       const before=previous[task.id];
       if(task.file_state==='done' && before && before.file_state!=='done'){
-        const key=`${state.project}:${task.id}:completed:${task.completed_at||task.mtime||task.updated_at||''}`;
-        sendBrowserNotification('completed',task,null,key);
+        const key=`${sourceKey}:${task.id}:completed:${task.completed_at||task.mtime||task.updated_at||''}`;
+        if(notificationSeenSet().has(key.replace(sourceKey+':',project+':'))){rememberNotification(key);return;}
+        sendBrowserNotification('completed',task,null,key,'completed','',project,sourceBacklog,{sourceKey});
       }
     }
   });
   const compact={...(previous||{})};
   Object.values(current).forEach(task=>compact[task.id]={file_state:task.file_state,state:task.state,updated_at:task.updated_at});
-  state.previousTasksByProject[state.project]=compact;
+  state.previousTasksByProject[sourceKey]=compact;
   localStorage.setItem('task-mecca-previous-tasks',JSON.stringify(state.previousTasksByProject));
 }
 function updateNotificationIndicator() {
