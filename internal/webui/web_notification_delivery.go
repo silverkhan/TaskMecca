@@ -104,9 +104,12 @@ func applyWebDelivery(project,action,eventID,token,client string)(webDeliveryDec
  if action=="init"{return webDeliveryDecision{State:"ready"},nil}
  if eventID==""||len(eventID)>128{return webDeliveryDecision{},errors.New("invalid event id")}
  entry,wasSeen:=ledger.Entries[eventID]
- if action=="ack"||action=="fail"{
+ if action=="ack"||action=="fail"||action=="push_ack"||action=="uncertain"{
   if !wasSeen||token==""||entry.Token!=token||entry.State!="claimed"{return webDeliveryDecision{State:"not_claimed"},nil}
-  if action=="ack"{entry.State="display_requested";entry.SentAt=now.Format(time.RFC3339Nano)}else{entry.State="failed"}
+  switch action{case "ack":entry.State="display_requested";entry.SentAt=now.Format(time.RFC3339Nano)
+  case "push_ack":entry.State="push_accepted";entry.SentAt=now.Format(time.RFC3339Nano)
+  case "uncertain":entry.State="uncertain"
+  default:entry.State="failed"}
   entry.Token=""
   ledger.Entries[eventID]=entry
   if err:=saveWebDelivery(project,ledger);err!=nil{return webDeliveryDecision{},err}
@@ -114,7 +117,7 @@ func applyWebDelivery(project,action,eventID,token,client string)(webDeliveryDec
  }
  if action!="claim"{return webDeliveryDecision{},errors.New("invalid action")}
  if wasSeen {
-  if entry.State=="display_requested"||entry.State=="uncertain"{return webDeliveryDecision{State:entry.State},nil}
+  if entry.State=="display_requested"||entry.State=="push_accepted"||entry.State=="uncertain"{return webDeliveryDecision{State:entry.State},nil}
   if entry.State=="claimed"{
    expires,err:=time.Parse(time.RFC3339Nano,entry.ExpiresAt)
    if err==nil&&now.Before(expires){return webDeliveryDecision{State:"claimed"},nil}
