@@ -2551,6 +2551,13 @@ function notificationPendingKey(input){
  const value=input.dataset.centerChannel||input.dataset.centerWebKind||input.dataset.centerTelegramKind||'';
  return 'data-center-project="'+project+'" data-center-'+which+'="'+esc(value)+'"';
 }
+function notificationChannelPending(project,channel){
+ const prefix='data-center-project="'+esc(project)+'" ';
+ const channelKey='data-center-channel="'+channel+'"';
+ const typeKey='data-center-'+channel+'-kind="';
+ return notificationSwitchPending.has('id="centerGlobal'+(channel==='web'?'Web':'Telegram')+'Channel"')||
+  [...notificationSwitchPending].some(key=>key.startsWith(prefix)&&(key.includes(channelKey)||key.includes(typeKey)));
+}
 function notificationSwitch(attrs,on,label,disabled=false){
  const pending=notificationSwitchPending.has(attrs);
  disabled=disabled||pending;
@@ -2582,12 +2589,12 @@ function projectChannelSettingsMarkup(){
   const lockNotes=[];
   if(webLocked)lockNotes.push(ko?'Web 채널이 꺼져 있어 Web 유형을 변경할 수 없습니다.':'Web types are locked while the Web channel is off.');
   if(!tgOn)lockNotes.push(ko?'Telegram 채널이 꺼져 있어 Telegram 유형을 변경할 수 없습니다.':'Telegram types are locked while the channel is off.');
-  const entry=(channel,kind,on,disabled=false)=>notificationSwitch('data-center-project="'+esc(project)+'" data-center-'+channel+'-kind="'+esc(kind)+'"',on,name+' · '+notificationKindLabel(kind)+' · '+channel,disabled);
+  const entry=(channel,kind,on,disabled=false)=>notificationSwitch('data-center-project="'+esc(project)+'" data-center-'+channel+'-kind="'+esc(kind)+'"',on,name+' · '+notificationKindLabel(kind)+' · '+channel,disabled||notificationChannelPending(project,channel));
   const kinds=groups.map(group=>'<div class="notice-type-group" role="group" aria-label="'+esc(group.name)+'"><div class="notice-type-caption">'+esc(group.name)+'</div>'+
    group.kinds.map(kind=>'<div class="notice-matrix-row"><span>'+esc(notificationKindLabel(kind))+'</span><span>'+entry('web',kind,web.kinds?.[kind]??state.notificationSettings[kind]??true,webLocked)+'</span><span>'+entry('telegram',kind,row.status?.kinds?.[kind]??true,tgLocked)+'</span></div>').join('')+'</div>').join('');
   return '<details class="notice-project" '+(project===state.project?'open':'')+'><summary><span class="notice-project-name">'+esc(name)+'</span><span class="notice-project-summary">Web '+(webOn?'ON':'OFF')+' · Telegram '+(tgOn?'ON':'OFF')+'</span></summary>'+
   '<div class="notice-project-content"><p class="notice-project-path">'+esc(project)+'</p>'+
-  '<div class="notice-per-project-channels"><div><strong>Web</strong>'+notificationSwitch('data-center-project="'+esc(project)+'" data-center-channel="web"',webOn,name+' · Web',!webGlobalOn)+'</div><div><strong>Telegram</strong>'+notificationSwitch('data-center-project="'+esc(project)+'" data-center-channel="telegram"',tgOn,name+' · Telegram')+'</div></div>'+
+  '<div class="notice-per-project-channels"><div><strong>Web</strong>'+notificationSwitch('data-center-project="'+esc(project)+'" data-center-channel="web"',webOn,name+' · Web',!webGlobalOn||notificationChannelPending(project,'web'))+'</div><div><strong>Telegram</strong>'+notificationSwitch('data-center-project="'+esc(project)+'" data-center-channel="telegram"',tgOn,name+' · Telegram',notificationChannelPending(project,'telegram'))+'</div></div>'+
   '<p class="notice-project-connection">'+esc(ko?'텔레그램 상태: ':'Telegram status: ')+esc(row.status?.connected?(ko?'연결됨':'Connected'):row.status?.configured?(ko?'봇 설정됨 · 채팅 연결 필요':'Bot configured · chat pending'):(ko?'봇 연결 필요':'Bot not connected'))+'</p>'+ (lockNotes.length?'<p class="notice-disabled-hint" role="status">'+esc(lockNotes.join(' '))+'</p>':'')+
   '<div class="notice-matrix" role="group" aria-label="'+esc(name)+'" data-web-locked="'+String(webLocked)+'" data-telegram-locked="'+String(tgLocked)+'"><div class="notice-matrix-head"><span>'+esc(ko?'알림 유형':'Event type')+'</span><span>Web'+(webLocked?'<small>OFF</small>':'')+'</span><span>Telegram'+(tgLocked?'<small>'+(tgOn?(ko?'미연결':'SETUP'):'OFF')+'</small>':'')+'</span></div>'+kinds+'</div></div></details>';
  }).join('');
@@ -2641,7 +2648,11 @@ async function setNotificationSwitch(input){
  if(input.dataset.centerTelegramKind&&(telegramLocked||!projectRow?.status?.configured&&!projectRow?.status?.connected))return;
 
  const pendingKey=notificationPendingKey(input);
+ const affected=input.id==='centerGlobalWebChannel'?'web':input.id==='centerGlobalTelegramChannel'?'telegram':channel|| (input.dataset.centerWebKind?'web':'telegram');
  if(notificationSwitchPending.has(pendingKey))return;
+ // Disable adjacent switches in the affected channel while the write is
+ // pending so an older response cannot overwrite a newer choice.
+ if(project&&notificationChannelPending(project,affected))return;
  notificationSwitchPending.add(pendingKey);
  input.setAttribute('aria-checked',String(next));
  input.classList.toggle('is-on',next);
