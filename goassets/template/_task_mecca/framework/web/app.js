@@ -2078,6 +2078,117 @@ async function notificationWorker() {
   }catch(_){ return null; }
 }
 
+// Background Push is opt-in and distinct from the open-page Notification API.
+let webPushHeartbeatAt=0;
+let webPushFeedback='';
+function pushSupport(){
+ const capability=notificationCapability();
+ if(capability.mode!=='supported')return capability.mode;
+ if(!('serviceWorker' in navigator)||!('PushManager' in window))return 'no-push';
+ return 'supported';
+}
+function pushKeyBytes(key){
+ const raw=atob(key.replace(/-/g,'+').replace(/_/g,'/').padEnd(Math.ceil(key.length/4)*4,'='));
+ return Uint8Array.from(raw,character=>character.charCodeAt(0));
+}
+function pushSubscriptionJSON(subscription){
+ const json=subscription.toJSON();
+ return {endpoint:json.endpoint,p256dh:json.keys?.p256dh||'',auth:json.keys?.auth||'',client:notificationBrowserClient()};
+}
+function currentPushKinds(project){
+ const kinds={};
+ for(const kind of ['registered','started','intervention','approval','stalled','interrupted','runtime_unknown','completed']){
+  kinds[kind]=webNotificationEnabled(project,kind,kind);
+ }
+ return kinds;
+}
+async function pushRequest(project,body){
+ const response=await fetch('/api/notifications/push?project='+encodeURIComponent(project),{
+  method:'POST',headers:{'Content-Type':'application/json','X-Task-Mecca-Action':'1'},
+  body:JSON.stringify(body),cache:'no-store'
+ });
+ const data=await response.json().catch(()=>({}));
+ if(!response.ok)throw Error(data.error||'Push HTTP '+response.status);
+ return data;
+}
+function pushProjects(){
+ return [...new Set([state.project,...(state.projectNotificationSettings||[]).map(row=>row.path)].filter(Boolean))];
+}
+async function enableBackgroundPush(){
+ if(pushSupport()!=='supported')throw Error(state.language==='ko'?'이 브라우저에서는 백그라운드 알림을 사용할 수 없습니다. HTTPS 및 iOS 홈 화면 앱 조건을 확인하세요.':'Background Push is unavailable. Check HTTPS and iOS installed app requirements.');
+ // Safari/iOS requires this request to originate from a direct user gesture.
+ const permission=Notification.permission==='granted'?'granted':await Notification.requestPermission();
+ if(permission!=='granted')throw Error(state.language==='ko'?'브라우저 알림 권한이 허용되지 않았습니다.':'Notification permission was not granted.');
+ const worker=await notificationWorker();
+ if(!worker?.pushManager)throw Error('PushManager unavailable');
+ const project=state.project||pushProjects()[0];
+ if(!project)throw Error('Select a project before enabling Push');
+ const response=await fetch('/api/notifications/push?project='+encodeURIComponent(project),{cache:'no-store'});
+ if(!response.ok)throw Error('Unable to obtain VAPID public key');
+ const config=await response.json();
+ let subscription=await worker.pushManager.getSubscription();
+ const serverKey=pushKeyBytes(config.public_key);
+ if(subscription?.options?.applicationServerKey){
+  const current=new Uint8Array(subscription.options.applicationServerKey);
+  if(current.length!==serverKey.length||current.some((v,i)=>v!==serverKey[i])){
+   await subscription.unsubscribe();subscription=null;
+  }
+ }
+ if(!subscription)subscription=await worker.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:serverKey});
+ const details=pushSubscriptionJSON(subscription);
+ for(const path of pushProjects()){
+  await pushRequest(path,{action:'subscribe',...details,kinds:currentPushKinds(path)});
+ }
+ localStorage.setItem('task-mecca-push-enabled-v1','1');
+ webPushFeedback=state.language==='ko'?'백그라운드 Push 구독이 연결됐습니다. 테스트 전송으로 확인하세요.':'Background Push subscription is registered. Run a test to verify delivery.';
+}
+async function syncBackgroundPush(force=false){
+ if(pushSupport()!=='supported'||Notification.permission!=='granted'||localStorage.getItem('task-mecca-push-enabled-v1')!=='1')return;
+ if(!force&&Date.now()-webPushHeartbeatAt<30000)return;
+ webPushHeartbeatAt=Date.now();
+ const worker=await notificationWorker();
+ const sub=await worker?.pushManager?.getSubscription();
+ if(!sub)return;
+ const details=pushSubscriptionJSON(sub);
+ for(const project of pushProjects()){
+  try{await pushRequest(project,{action:'subscribe',...details,kinds:currentPushKinds(project)});}catch(_){}
+ }
+}
+async function disableBackgroundPush(){
+ const worker=await notificationWorker(),sub=await worker?.pushManager?.getSubscription();
+ if(sub){
+  for(const project of pushProjects()){
+   await pushRequest(project,{action:'unsubscribe',endpoint:sub.endpoint});
+  }
+  await sub.unsubscribe();
+ }
+ localStorage.removeItem('task-mecca-push-enabled-v1');
+ webPushFeedback=state.language==='ko'?'백그라운드 Push 구독을 해제했습니다.':'Background Push subscription removed.';
+}
+async function testBackgroundPush(){
+ const worker=await notificationWorker(),sub=await worker?.pushManager?.getSubscription();
+ if(!sub||!state.project)throw Error('Enable Push for a selected project first');
+ const response=await pushRequest(state.project,{action:'test',endpoint:sub.endpoint});
+ if(!response.accepted)throw Error('Push service did not accept the test');
+ webPushFeedback=state.language==='ko'?'Push 서비스가 테스트 요청을 접수했습니다. OS 알림 표시를 확인하세요.':'Push service accepted the test. Verify OS notification display.';
+}
+function pushStatusMarkup(){
+ const mode=pushSupport(),connected=localStorage.getItem('task-mecca-push-enabled-v1')==='1';
+ const reason=mode==='supported'
+  ?(connected?'브라우저에 백그라운드 Push가 연결되어 있습니다.':'현재 페이지 알림과 별개로 탭이 닫혀도 받을 Push를 설정할 수 있습니다.')
+  :mode==='ios-home'?'iPhone/iPad에서는 홈 화면에 추가한 웹앱에서만 Push를 사용할 수 있습니다.'
+  :mode==='insecure'?'Push는 HTTPS 보안 접속에서만 사용할 수 있습니다.'
+  :'이 브라우저에서는 Push API가 지원되지 않습니다.';
+ const buttons=mode==='supported'
+  ?'<div class="telegram-actions"><button type="button" class="action-btn" id="pushEnable">'+(connected?'재연결':'백그라운드 알림 켜기')+'</button>'+
+    (connected?'<button type="button" class="secondary-btn" id="pushTest">테스트</button><button type="button" class="secondary-btn" id="pushDisable">해제</button>':'')+'</div>'
+  :'';
+ return '<div class="mini-panel push-settings"><strong>Web Push · 백그라운드 알림</strong><p class="muted">'+esc(state.language==='ko'?reason:
+   mode==='supported'?(connected?'Push subscription is enabled.':'Enable background notifications even when the tab is closed.'):'Push requires HTTPS and a supported browser; iOS needs a Home Screen web app.')+
+   '</p>'+buttons+(webPushFeedback?'<p role="status">'+esc(webPushFeedback)+'</p>':'')+
+   '<p class="muted">'+esc(state.language==='ko'?'알림 권한, 운영체제 설정과 인터넷 연결이 필요합니다. 서버의 전송 성공은 기기 표시·읽음 보장이 아닙니다.':'Requires permission, OS settings and connectivity. Server acceptance does not confirm device display.')+'</p></div>';
+}
+
 function saveNotificationSettings() {
   localStorage.setItem('task-mecca-notifications',JSON.stringify(state.notificationSettings));
 }
@@ -2330,7 +2441,7 @@ function webNotificationEnabled(project,kind,legacyKind){const settings=webNotif
 function changeWebNotificationSetting(project,kind,enabled){const settings=webNotificationSettings();settings.projects||={};settings.projects[project]||={};if(kind==='enabled')settings.projects[project].enabled=enabled;else{settings.projects[project].kinds||={};settings.projects[project].kinds[kind]=enabled;}localStorage.setItem('task-mecca-web-notification-settings-v1',JSON.stringify(settings));}
 function browserDeliveryHistory(){try{const rows=JSON.parse(localStorage.getItem('task-mecca-browser-deliveries-v1')||'[]');return Array.isArray(rows)?rows:[];}catch(_){return [];}}
 function recordBrowserDelivery(project,task,kind,key,eventID){const rows=browserDeliveryHistory();if(rows.some(row=>row.key===key))return;rows.push({key,event_id:eventID||key,project,task_id:task.id,kind,title:titleOf(task),sent_at:new Date().toISOString(),state:'display_requested'});try{localStorage.setItem('task-mecca-browser-deliveries-v1',JSON.stringify(rows));acceptHistoryUpdate();}catch(_){/* No durable evidence means unknown, never inferred success. */}}
-function notificationDeliveryLabel(channel){if(!channel)return t('notificationUnknown');if(channel.state==='display_requested')return t('notificationAccepted');if(channel.state==='sent')return t('notificationSent');if(String(channel.state||'').startsWith('suppressed'))return state.language==='ko'?'미전송 · 설정/정책':'Not sent · settings/policy';if(channel.state==='consumed_legacy')return state.language==='ko'?'과거 기록 · 송신 근거 없음':'Legacy record · no delivery evidence';const labels=state.language==='ko'?{pending:'대기',retry:'재시도 대기',failed:'실패',suppressed:'억제됨',uncertain:'결과 불확실',unknown:'근거 없음'}:{pending:'Pending',retry:'Retry pending',failed:'Failed',suppressed:'Suppressed',uncertain:'Uncertain',unknown:'No evidence'};return labels[channel.state]||channel.state||t('notificationUnknown');}
+function notificationDeliveryLabel(channel){if(channel?.state==='push_accepted')return state.language==='ko'?'Push 서비스 접수':'Push accepted by provider';if(!channel)return t('notificationUnknown');if(channel.state==='display_requested')return t('notificationAccepted');if(channel.state==='sent')return t('notificationSent');if(String(channel.state||'').startsWith('suppressed'))return state.language==='ko'?'미전송 · 설정/정책':'Not sent · settings/policy';if(channel.state==='consumed_legacy')return state.language==='ko'?'과거 기록 · 송신 근거 없음':'Legacy record · no delivery evidence';const labels=state.language==='ko'?{pending:'대기',retry:'재시도 대기',failed:'실패',suppressed:'억제됨',uncertain:'결과 불확실',unknown:'근거 없음'}:{pending:'Pending',retry:'Retry pending',failed:'Failed',suppressed:'Suppressed',uncertain:'Uncertain',unknown:'No evidence'};return labels[channel.state]||channel.state||t('notificationUnknown');}
 function historyRowTime(row){return [row.telegram?.state==='sent'?row.telegram.sent_at:'',row.web?.sent_at].filter(value=>Number.isFinite(Date.parse(value))).sort((a,b)=>Date.parse(a)-Date.parse(b)).pop()||row.event_at||'';}
 function historyRowMillis(row){const time=Date.parse(historyRowTime(row));return Number.isFinite(time)?time:0;}
 function historyRowKey(row){return row.project+'|'+row.event_id;}
@@ -2481,6 +2592,7 @@ function renderNotificationPanel() {
         ${permission==='default'&&capability.canRequest?`<button type="button" class="action-btn notification-permission" id="notificationPermission">${esc(t('allowBrowserNotifications'))}</button>`:''}
       </div>${(state.projectNotificationSettings||[]).length?'':telegram}
     </div>`;
+  panel.querySelector('.notification-browser-kinds')?.insertAdjacentHTML('beforeend',pushStatusMarkup());
   panel.querySelector('.notification-panel-body')?.insertAdjacentHTML('beforeend',projectChannelSettingsMarkup());
   const recipientMarkup=projectNotificationsView();
   panel.querySelector('.notification-panel-body')?.insertAdjacentHTML('beforeend',`<details class="center-project-settings"><summary>${esc(state.language==='ko'?'Telegram 수신처 연결':'Telegram recipient setup')}</summary>${recipientMarkup.includes('<section class="assigned-workload-section">')?recipientMarkup.slice(recipientMarkup.indexOf('<section class="assigned-workload-section">')):recipientMarkup}</details>`);
@@ -2492,6 +2604,9 @@ function renderNotificationPanel() {
   panel.querySelectorAll('[data-telegram-kind]').forEach(input=>input.addEventListener('change',async()=>{try{const kinds={...state.telegramStatus.kinds,[input.dataset.telegramKind]:input.checked};await telegramAction('kinds',{kinds});renderNotificationPanel()}catch(e){alert(e.message)}}));
   $('#notificationClose')?.addEventListener('click',()=>{panel.classList.remove('open');restoreNotificationPanelFocus();});
   $('#notificationPermission')?.addEventListener('click',async()=>{try{await Notification.requestPermission();if(Notification.permission==='granted')await notificationWorker()}catch(_){alert(t('notificationPermissionError'))}updateNotificationIndicator();renderNotificationPanel()});
+  $('#pushEnable')?.addEventListener('click',async()=>{try{await enableBackgroundPush()}catch(error){webPushFeedback=error.message}renderNotificationPanel()});
+  $('#pushDisable')?.addEventListener('click',async()=>{try{await disableBackgroundPush()}catch(error){webPushFeedback=error.message}renderNotificationPanel()});
+  $('#pushTest')?.addEventListener('click',async()=>{try{await testBackgroundPush()}catch(error){webPushFeedback=error.message}renderNotificationPanel()});
   $('#telegramConfigure')?.addEventListener('click',async()=>{const token=$('#telegramToken')?.value?.trim();if(!token)return;try{await telegramAction('configure',{token});renderNotificationPanel()}catch(e){alert(e.message)}});
   $('#telegramDiscover')?.addEventListener('click',async()=>{try{await telegramAction('discover');renderNotificationPanel()}catch(e){alert(e.message)}});
   $('#telegramTest')?.addEventListener('click',async()=>{try{await telegramAction('test');alert(t('notificationTestSent'))}catch(e){alert(e.message)}});
@@ -4966,6 +5081,7 @@ setInterval(()=>{
   if(document.visibilityState!=='hidden')refreshVersionInfo(true);
 },60000);
 if(window.isSecureContext&&'serviceWorker' in navigator)notificationWorker();
+setInterval(()=>{if(document.visibilityState!=='hidden')void syncBackgroundPush()},60000);
 route();
 const initialForeground=refresh();
 Promise.resolve(initialForeground).finally(()=>refreshOperations());
