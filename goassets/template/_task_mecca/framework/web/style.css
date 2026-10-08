@@ -1613,3 +1613,79 @@ body.release-modal-open{overflow:hidden}
 @media(prefers-reduced-motion:reduce){
  .notice-switch::before,.notice-switch::after,.notice-project>summary:before{transition:none}
 }
+
+
+/* AID-121 follow-up: OFF must remain legible in Mecca Dark and system Dark.
+   Child settings retain their saved states but are disabled by the parent. */
+.notice-switch:not(.is-on)::before{
+ background:#dce0e8;
+ border-color:#8e97a9;
+}
+.notice-switch:not(.is-on)::after{
+ background:#fff;
+ box-shadow:0 1px 3px rgba(0,0,0,.26);
+}
+:root[data-theme="dark"] .notice-switch:not(.is-on)::before{
+ background:#524a60;
+ border-color:#9d92af;
+}
+:root[data-theme="dark"] .notice-switch:not(.is-on)::after{
+ background:#e7dfed;
+ box-shadow:0 1px 3px rgba(0,0,0,.42);
+}
+@media(prefers-color-scheme:dark){
+ :root:not([data-theme]) .notice-switch:not(.is-on)::before,
+ :root[data-theme="system"] .notice-switch:not(.is-on)::before{
+  background:#524a60;border-color:#9d92af;
+ }
+ :root:not([data-theme]) .notice-switch:not(.is-on)::after,
+ :root[data-theme="system"] .notice-switch:not(.is-on)::after{
+  background:#e7dfed;box-shadow:0 1px 3px rgba(0,0,0,.42);
+ }
+}
+.notice-disabled-hint{
+ margin:0 0 12px;
+ padding:9px 11px;
+ border-left:3px solid var(--muted);
+ border-radius:0 8px 8px 0;
+ background:var(--surface2);
+ color:var(--muted);
+ font-size:11px;
+ line-height:1.5;
+}
+.notice-matrix-head small{
+ display:block;
+ margin-top:2px;
+ color:var(--muted);
+ font-size:9px;
+ font-weight:700;
+ line-height:1.1;
+ letter-spacing:.02em;
+}
+.notice-matrix[data-web-locked="true"] .notice-matrix-row>span:nth-child(2),
+.notice-matrix[data-telegram-locked="true"] .notice-matrix-row>span:nth-child(3){
+ background:var(--surface2);
+}
+.notice-matrix[data-web-locked="true"] .notice-matrix-head>span:nth-child(2),
+.notice-matrix[data-telegram-locked="true"] .notice-matrix-head>span:nth-child(3){
+ color:var(--muted);
+}
+.notice-matrix .notice-switch:disabled,
+.notice-per-project-channels .notice-switch:disabled{
+ opacity:.75;
+ cursor:not-allowed;
+}
+.notice-matrix .notice-switch:disabled::before,
+.notice-per-project-channels .notice-switch:disabled::before{
+ background:var(--surface2);
+ border-color:var(--muted);
+}
+.notice-matrix .notice-switch:disabled::after,
+.notice-per-project-channels .notice-switch:disabled::after{
+ background:var(--muted);
+ box-shadow:none;
+}
+.notice-matrix .notice-switch:disabled.is-on::after,
+.notice-per-project-channels .notice-switch:disabled.is-on::after{
+ transform:translateX(20px);
+}
