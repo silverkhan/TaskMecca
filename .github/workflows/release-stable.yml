@@ -58,7 +58,7 @@ jobs:
           grep -q "function hubView()" goassets/template/_task_mecca/framework/web/app.js
           grep -q "function bindHubActions()" goassets/template/_task_mecca/framework/web/app.js
           grep -q "function switchProject(path)" goassets/template/_task_mecca/framework/web/app.js
-          grep -q "function processTaskNotifications(snapshot)" goassets/template/_task_mecca/framework/web/app.js
+          grep -Fq "function processTaskNotifications(snapshot,context={})" goassets/template/_task_mecca/framework/web/app.js
           grep -q "function renderNotificationPanel()" goassets/template/_task_mecca/framework/web/app.js
           grep -q "function notificationCapability()" goassets/template/_task_mecca/framework/web/app.js
           test -f goassets/template/_task_mecca/framework/web/sw.js
