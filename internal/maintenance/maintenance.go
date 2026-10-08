@@ -281,7 +281,7 @@ func stableReleaseRawURL(path string) string {
 // megabytes and may be downloaded across slow VPN/mobile connections.
 // http.Client.Timeout includes the complete response body, not only the dial.
 const (
-    releaseMetadataTimeout = 5*time.Second
+    releaseMetadataTimeout = 12*time.Second
     releaseBinaryTimeout = 120*time.Second
     releaseMetadataMaxBytes int64 = 2 << 20
     releaseBinaryMaxBytes int64 = 128 << 20
