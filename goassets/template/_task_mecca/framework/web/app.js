@@ -2373,6 +2373,13 @@ function applyTelegramStatus(project,status){
  if(projectRow)projectRow.status=status;
 }
 async function refreshNotificationConfiguration(){
+ // Do not block a successful POST behind a stale GET that may still be
+ // pending. The POST response already updated the visible local cache.
+ if(state.projectNotificationSettingsLoading){
+   const pending=state.projectNotificationSettingsPromise;
+   void Promise.resolve(pending).then(()=>refreshNotificationConfiguration()).catch(()=>{});
+   return;
+ }
  await loadProjectNotificationSettings();
  if(state.project)await loadTelegramStatus();
 }
