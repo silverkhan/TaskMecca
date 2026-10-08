@@ -785,6 +785,20 @@ function upgradeFlowOverlay(){
   '</section>';
  document.body.appendChild(overlay);
  document.body.classList.add('release-modal-open');
+ const dialog=overlay.querySelector('[role="dialog"]');
+ dialog.setAttribute('tabindex','-1');
+ overlay.addEventListener('keydown',event=>{
+  if(event.key==='Escape' && ['notes','no-notes','failed','completed'].includes(upgradeFlowMode)){
+   event.preventDefault();closeUpgradeFlow();return;
+  }
+  if(event.key!=='Tab')return;
+  const controls=[...dialog.querySelectorAll('button:not([disabled])')];
+  if(!controls.length){event.preventDefault();dialog.focus();return;}
+  const first=controls[0],last=controls[controls.length-1];
+  if(event.shiftKey&&(document.activeElement===first||document.activeElement===dialog)){event.preventDefault();last.focus();}
+  else if(!event.shiftKey&&(document.activeElement===last||document.activeElement===dialog)){event.preventDefault();first.focus();}
+ });
+ dialog.focus();
  return overlay;
 }
 function updateFlowElapsed(){
@@ -878,7 +892,9 @@ function startUpgradeFlowPolling(session){
    if(!r.ok)return;
    const status=await r.json();
    if(session!==upgradeFlowSession)return;
-   if(status.active && upgradeFlowPhases.includes(status.phase) && status.phase!==upgradeFlowMode){
+   if(status.active && upgradeFlowPhases.includes(status.phase) &&
+      upgradeFlowPhases.includes(upgradeFlowMode) &&
+      upgradeFlowPhases.indexOf(status.phase)>upgradeFlowPhases.indexOf(upgradeFlowMode)){
     setUpgradeFlowStage(status.phase);
    }
   }catch(_){/* Server restart may temporarily interrupt status polling. */}
