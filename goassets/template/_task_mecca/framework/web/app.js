@@ -2502,6 +2502,17 @@ async function configureSharedTelegram(project,token) {
   });
   const body=await response.json().catch(()=>({}));
   if(!response.ok)throw new Error(body.error||('HTTP '+response.status));
+  // One shared token applies to every monitored project. Update the local
+  // inventory immediately, while preserving each project's enabled/kinds
+  // preferences; then reconcile from the server in the background.
+  for(const row of state.projectNotificationSettings||[]){
+    applyTelegramStatus(row.path,{
+      ...row.status,
+      configured:true,connected:false,enabled:false,
+      bot_username:body.bot_username,
+      recipient_mode:'shared'
+    });
+  }
   applyTelegramStatus(project,body);
   scheduleNotificationConfigurationRefresh();
 }
