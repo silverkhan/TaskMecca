@@ -93,3 +93,19 @@ test('unrelated folder SSE does not cancel the pending default selected snapshot
  // The other folder also refreshes; an equal empty snapshot remains empty.
  reply({ok:true,json:async()=>({...snapshot(false),backlog_selection:{selected:'other'}})});await refresh;assert.match(app.element.innerHTML,/사용자 판단 1건/);assert.match(app.element.innerHTML,/backlog=first/);
 });
+
+test('recovered scan gaps never reach browser or common alerts while actual unresolved warnings remain',()=>{
+ const app=page();
+ const gap={...warning,id:'scan-gap',kind:'monitor_gap',evidence:'recovered scan gap diagnostic',recovered_at:'2026-10-08T00:40:00Z'};
+ for(const payload of [
+  {active:[],recent:[gap]},
+  {active:[gap],recent:[gap],resolved_observations:[gap]},
+  {active:[gap,warning],recent:[gap]},
+ ]){
+  app.renderOperationBanner(payload);
+  assert.doesNotMatch(app.element.innerHTML,/recovered scan gap diagnostic/);
+  assert.equal(app.state.sessionWarnings.length,payload.active.includes(warning)?1:0);
+ }
+ app.renderOperationBanner({active:[],recent:[gap]});
+ assert.equal(app.element.hidden,true);
+});

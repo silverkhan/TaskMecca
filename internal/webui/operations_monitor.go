@@ -418,7 +418,8 @@ func deliverOperationIncidents(project string, journal operationJournal) {
 		if incident.Kind == "normal_exit" {
 			continue
 		}
-		if incident.RecoveredAt != "" && incident.Kind != "monitor_gap" {
+		// Recovered scan gaps remain diagnostic history, never actionable alerts.
+		if incident.RecoveredAt != "" {
 			continue
 		}
 		kind := "runtime_unknown"
