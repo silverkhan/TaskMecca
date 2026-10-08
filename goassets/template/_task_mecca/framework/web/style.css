@@ -1263,3 +1263,24 @@ body.release-modal-open{overflow:hidden}
 @media(max-width:680px){.notification-panel.open{inset:8px;width:auto;height:calc(100dvh - 16px);max-height:calc(100dvh - 16px)}.notification-panel-head{padding:12px 14px;margin:0;border-bottom:1px solid var(--border)}.notification-panel-body{padding:12px 14px}.notification-center-tabs button,.notification-center-current summary,.diagnostic-entry .action-btn{min-height:44px}}
 .notification-history-scroll:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
 .notification-panel .project-notification-row{display:block}.notification-panel .project-notification-controls{margin-top:12px}.notification-panel .project-notification-controls input{max-width:100%}
+
+/* AID-112: pinned and automatic sidebar modes, accessible project identity */
+.sidebar-mode-selector{display:flex;gap:3px;padding:6px 4px;margin-bottom:10px;border:1px solid var(--border);border-radius:9px}
+.sidebar-mode-option{min-width:0;flex:1;padding:6px 3px;background:transparent;border:1px solid transparent;border-radius:6px;color:var(--text);font-size:10px;cursor:pointer}
+.sidebar-mode-option.selected{border-color:var(--border);background:var(--surface2);font-weight:700}
+.sidebar-mode-option:focus-visible,.session-open:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.session-initial{display:grid;place-items:center;flex:0 0 28px;width:28px;height:28px;border-radius:8px;font-size:14px;font-weight:750;color:var(--text);border:1px solid var(--border);background:var(--surface2)}
+.session-state-working .session-initial{background:color-mix(in srgb,#4585e9 18%,var(--surface));border-color:color-mix(in srgb,#4585e9 35%,var(--border))}
+.session-state-done .session-initial{background:color-mix(in srgb,var(--ok) 17%,var(--surface))}
+.session-state-warning .session-initial{background:color-mix(in srgb,var(--warn) 18%,var(--surface))}
+.session-state-error .session-initial{background:color-mix(in srgb,var(--danger) 18%,var(--surface))}
+.session-state-registered .session-initial,.session-state-unknown .session-initial{background:var(--surface2)}
+.session-row.active .session-initial{outline:2px solid var(--text);outline-offset:2px}
+.session-state-error .session-initial:after,.session-state-warning .session-initial:after{content:"!";position:absolute;transform:translate(14px,-13px);font-size:10px;font-weight:800;color:var(--danger)}
+.session-state-warning .session-initial:after{color:var(--warn)}
+.app-shell.sidebar-collapsed:not(.sidebar-peek) .sidebar-mode-selector{display:none}
+.app-shell.sidebar-collapsed:not(.sidebar-peek) .session-open{min-width:0}
+:root[data-theme="light"] .status.ready,:root[data-theme="light"] .status.todo{color:#454b55}
+:root[data-theme="dark"] .status.ready,:root[data-theme="dark"] .status.todo{color:#c9cdd6}
+.status.ready:before,.status.todo:before{background:#858b96}
+@media(max-width:680px){.sidebar-mode-selector{display:none}}
