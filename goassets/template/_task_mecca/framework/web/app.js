@@ -2142,17 +2142,19 @@ async function enableBackgroundPush(){
  localStorage.setItem('task-mecca-push-enabled-v1','1');
  webPushFeedback=state.language==='ko'?'백그라운드 Push 구독이 연결됐습니다. 테스트 전송으로 확인하세요.':'Background Push subscription is registered. Run a test to verify delivery.';
 }
-async function syncBackgroundPush(force=false){
+async function syncBackgroundPush(force=false,strict=false){
  if(pushSupport()!=='supported'||Notification.permission!=='granted'||localStorage.getItem('task-mecca-push-enabled-v1')!=='1')return;
  if(!force&&Date.now()-webPushHeartbeatAt<30000)return;
  webPushHeartbeatAt=Date.now();
  const worker=await notificationWorker();
  const sub=await worker?.pushManager?.getSubscription();
  if(!sub)return;
- const details=pushSubscriptionJSON(sub);
+ const details=pushSubscriptionJSON(sub),failures=[];
  for(const project of pushProjects()){
-  try{await pushRequest(project,{action:'subscribe',...details,enabled:webNotificationSettings().enabled!==false&&webNotificationSettings().projects?.[project]?.enabled!==false,kinds:currentPushKinds(project)});}catch(_){}
+  try{await pushRequest(project,{action:'subscribe',...details,enabled:webNotificationSettings().enabled!==false&&webNotificationSettings().projects?.[project]?.enabled!==false,kinds:currentPushKinds(project)});}
+  catch(error){if(strict)failures.push(project+': '+error.message);}
  }
+ if(failures.length)throw Error(failures.join('\n'));
 }
 async function disableBackgroundPush(){
  const worker=await notificationWorker(),sub=await worker?.pushManager?.getSubscription();
@@ -2546,6 +2548,17 @@ async function setAllTelegramChannelsEnabled(enabled){
  await refreshNotificationConfiguration();
  if(errors.length)throw Error(errors.join('\n'));
 }
+async function commitWebNotificationSetting(apply){
+ const key='task-mecca-web-notification-settings-v1',previous=localStorage.getItem(key);
+ apply();
+ try{await syncBackgroundPush(true,true);}
+ catch(error){
+  if(previous==null)localStorage.removeItem(key);
+  else localStorage.setItem(key,previous);
+  try{await syncBackgroundPush(true,true);}catch(_){}
+  throw error;
+ }
+}
 async function setNotificationSwitch(input){
  const project=input.dataset.centerProject,channel=input.dataset.centerChannel,next=input.getAttribute('aria-checked')!=='true';
  input.setAttribute('aria-checked',String(next));
@@ -2554,16 +2567,16 @@ async function setNotificationSwitch(input){
  input.disabled=true;
  try{
   if(input.id==='centerGlobalTelegramChannel')await setAllTelegramChannelsEnabled(next);
-  else if(input.id==='centerGlobalWebChannel'){
-   const settings=webNotificationSettings();settings.enabled=next;localStorage.setItem('task-mecca-web-notification-settings-v1',JSON.stringify(settings));
-   await syncBackgroundPush(true);
-  }else if(channel==='telegram')await setProjectNotificationEnabled(project,next);
-  else if(channel==='web'){changeWebNotificationSetting(project,'enabled',next);await syncBackgroundPush(true);}
+  else if(input.id==='centerGlobalWebChannel')await commitWebNotificationSetting(()=>{
+    const settings=webNotificationSettings();settings.enabled=next;localStorage.setItem('task-mecca-web-notification-settings-v1',JSON.stringify(settings));
+   });
+  else if(channel==='telegram')await setProjectNotificationEnabled(project,next);
+  else if(channel==='web')await commitWebNotificationSetting(()=>changeWebNotificationSetting(project,'enabled',next));
   else if(input.dataset.centerTelegramKind){
    const row=state.projectNotificationSettings.find(r=>r.path===project);
    await projectTelegramAction(project,'kinds',{kinds:{...row?.status?.kinds,[input.dataset.centerTelegramKind]:next}});
   }else if(input.dataset.centerWebKind){
-   changeWebNotificationSetting(project,input.dataset.centerWebKind,next);await syncBackgroundPush(true);
+   await commitWebNotificationSetting(()=>changeWebNotificationSetting(project,input.dataset.centerWebKind,next));
   }
  }catch(error){alert(error.message);}
  finally{
