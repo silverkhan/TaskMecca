@@ -52,7 +52,7 @@
 .manual-callout{border:1px solid var(--border);background:var(--surface);border-radius:10px;padding:14px 16px;margin:14px 0 22px}
 .manual-callout strong{display:block;margin-bottom:4px}
 .manual-callout code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px}
-@media(max-width:900px){.theme-switcher{order:4}.theme-btn{padding:0 7px}.topbar{flex-wrap:wrap;height:auto;padding-top:10px;padding-bottom:10px}}
+@media(max-width:900px){.topbar{flex-wrap:wrap;height:auto}}
 
 /* v2.5 backlog discovery, archive history and keyboard navigation */
 .language-picker{height:38px;display:flex;align-items:center;gap:7px;border:1px solid var(--border);background:var(--surface);border-radius:9px;padding:0 8px;color:var(--muted);font-size:10px;white-space:nowrap}.language-picker span{text-transform:uppercase;letter-spacing:.06em;font-weight:700}.language-picker select{border:0;outline:0;background:transparent;color:var(--text);font-size:11px;cursor:pointer;min-width:76px}.language-picker option{background:var(--surface);color:var(--text)}
@@ -351,133 +351,15 @@
 .migration-resync-actions{display:flex;justify-content:flex-end;margin-top:16px}
 @media(max-width:680px){.migration-resync-overlay{padding:12px}.migration-resync-modal{width:100%;max-height:88vh;padding:16px}.migration-resync-head h2{font-size:19px}}
 
-/* Mobile topbar + notification panel containment */
+/* Mobile notification panel remains independent of compact topbar rows. */
 @media(max-width:680px){
-  .topbar{
-    display:grid;
-    grid-template-columns:minmax(0,1fr) auto auto;
-    align-items:center;
-    gap:8px;
-    padding:10px 12px;
-    height:auto;
-    min-height:72px;
-    overflow:visible;
-  }
-  .search-wrap{
-    grid-column:1 / -1;
-    width:100%;
-    max-width:none;
-    min-width:0;
-    order:1;
-  }
-  .language-picker{
-    grid-column:1;
-    justify-self:end;
-    min-width:0;
-    max-width:92px;
-    order:2;
-  }
-  .language-picker select{
-    min-width:0;
-    max-width:82px;
-  }
-  .theme-switcher{
-    grid-column:2;
-    order:2;
-    justify-self:end;
-    max-width:156px;
-    min-width:0;
-  }
-  .theme-btn{
-    padding:0 6px;
-    font-size:10px;
-  }
-  .notification-wrap{
-    grid-column:3;
-    order:2;
-    justify-self:end;
-  }
-  #refreshBtn{
-    grid-column:3;
-    order:2;
-    justify-self:end;
-  }
   .notification-panel{
-    position:fixed;
-    left:12px;
-    right:12px;
-    top:118px;
-    width:auto;
-    max-width:none;
-    max-height:calc(100vh - 136px);
-    overflow:auto;
-    z-index:120;
+    position:fixed;top:calc(env(safe-area-inset-top,0px) + 72px);
+    left:12px;right:12px;width:auto;max-width:none;
+    max-height:calc(100dvh - 92px);overflow:auto;z-index:100;
   }
+  .notification-note,.notification-state span{overflow-wrap:anywhere;word-break:keep-all}
 }
-
-/* Mobile topbar containment and notification panel */
-@media(max-width:680px){
-  .topbar{
-    display:grid;
-    grid-template-columns:minmax(0,1fr) auto auto;
-    gap:8px;
-    width:100%;
-    max-width:100vw;
-    padding:10px 12px;
-    overflow:visible;
-    align-items:center;
-  }
-  .search-wrap{
-    grid-column:1 / -1;
-    grid-row:1;
-    max-width:none;
-    min-width:0;
-    width:100%;
-  }
-  .backlog-picker{display:none}
-  .language-picker{
-    grid-column:1;
-    grid-row:2;
-    min-width:0;
-    justify-self:start;
-  }
-  .theme-switcher{
-    grid-column:2;
-    grid-row:2;
-    order:initial;
-    min-width:0;
-    max-width:132px;
-  }
-  .theme-btn{
-    padding:0 6px;
-    font-size:10px;
-  }
-  .notification-wrap{
-    grid-column:3;
-    grid-row:2;
-    position:static;
-  }
-  #refreshBtn{
-    grid-column:3;
-    grid-row:2;
-  }
-  .notification-panel{
-    position:fixed;
-    top:calc(env(safe-area-inset-top,0px) + 72px);
-    left:12px;
-    right:12px;
-    width:auto;
-    max-width:none;
-    max-height:calc(100dvh - 92px);
-    overflow:auto;
-    z-index:100;
-  }
-  .notification-note,.notification-state span{
-    overflow-wrap:anywhere;
-    word-break:keep-all;
-  }
-}
-
 
 /* Human-readable backlog hierarchy */
 .task-summary-preview{margin-top:3px;color:var(--muted);font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -608,13 +490,9 @@
 .content-update-action{flex:0 0 auto;height:32px;padding:0 11px;border:1px solid color-mix(in srgb,var(--accent) 45%,var(--border));border-radius:8px;background:color-mix(in srgb,var(--accent) 10%,var(--surface));color:var(--text);font-size:11px;font-weight:750;cursor:pointer}
 
 @media(max-width:900px){
-  .global-update-indicator{grid-column:1 / -1;order:5;justify-self:start;width:100%}
   .global-update-pill{max-width:100%;overflow:hidden;text-overflow:ellipsis}
 }
 @media(max-width:680px){
-  .global-update-indicator{grid-column:1 / -1;grid-row:3;order:initial}
-  .global-update-group{width:100%;flex-wrap:wrap}
-  .global-update-group .global-update-pill{flex:1 1 auto}
   .release-unread-prompt{margin:10px 12px 0}
   .release-unread-copy strong{white-space:normal}
   .content-update-prompt{left:12px;right:12px;bottom:38px;transform:none;max-width:none;justify-content:space-between}
@@ -1062,7 +940,7 @@ body.release-modal-open{overflow:hidden}
 
 /* AID-62 user-selectable palette */
 .palette-picker{height:38px;display:flex;align-items:center;gap:7px;border:1px solid var(--border);background:var(--surface);border-radius:9px;padding:0 8px;color:var(--muted);font-size:10px;white-space:nowrap}.palette-picker span{text-transform:uppercase;letter-spacing:.06em;font-weight:700}.palette-picker select{border:0;outline:0;background:transparent;color:var(--text);font-size:11px;cursor:pointer}.palette-picker option{background:var(--surface);color:var(--text)}
-@media(max-width:900px){.palette-picker{order:4}.palette-picker span{display:none}}
+@media(max-width:900px){.palette-picker span{display:none}}
 
 /* AID-62 Nocturne tonal chrome */
 :root[data-palette="mecca"]{--mecca-warm:#f3c978;--mecca-warm-soft:rgba(243,201,120,.10);--mecca-edge:rgba(243,201,120,.58);--mecca-violet:#4b315f;--mecca-wine:#5a293f}
@@ -1372,21 +1250,107 @@ body.release-modal-open{overflow:hidden}
 @media(max-width:680px){.center-page-numbers{display:none;}.center-pagination{justify-content:space-between;}}
 
 
-/* AID-117: the manual refresh control is always the rightmost topbar action. */
-#refreshBtn{order:100;margin-left:auto;flex:0 0 38px}
-#refreshBtn.checking{opacity:.65;cursor:progress}
-.refresh-feedback{
-  position:absolute;z-index:30;top:calc(100% + 8px);right:14px;
-  max-width:min(350px,calc(100vw - 28px));padding:9px 12px;
-  border:1px solid var(--border);border-radius:9px;
-  background:var(--surface);color:var(--text);
-  box-shadow:var(--shadow);font-size:12px;line-height:1.5;
-  overflow-wrap:anywhere;opacity:0;visibility:hidden;
-  pointer-events:none;transition:opacity .15s ease,visibility .15s ease;
+/* Compact responsive control strip (desktop, tablet and narrow portrait). */
+.topbar{height:auto;min-height:60px;display:flex;flex-wrap:wrap;align-content:center;align-items:center;gap:8px;padding:9px 16px}
+.topbar .palette-picker{order:1;flex:0 0 auto}
+.topbar .language-picker{order:2;flex:0 0 auto}
+.topbar .theme-switcher{order:3;flex:0 0 auto;width:max-content;max-width:100%}
+.topbar .theme-btn{flex:0 0 auto}
+.topbar #accessPill{order:4}
+.topbar #globalUpdateIndicator{
+  order:5;flex:0 1 auto;min-width:0;max-width:100%;width:auto;
+  margin-left:auto;justify-self:auto;overflow:hidden;
 }
-.refresh-feedback.visible{opacity:1;visibility:visible}
-.refresh-feedback.error{border-color:color-mix(in srgb,var(--danger) 40%,var(--border));color:var(--danger)}
+.topbar .global-update-pill{max-width:100%;overflow:hidden;text-overflow:ellipsis}
+.topbar #refreshBtn{
+  order:6;flex:0 0 38px;width:38px;height:38px;
+  margin-left:0;justify-self:end;
+}
+.topbar #refreshBtn.checking{opacity:.65;cursor:progress}
+@media(min-width:681px) and (max-width:1000px){
+  .topbar{padding:8px 14px;gap:7px}
+  .topbar .theme-btn{padding:0 6px}
+  .topbar .global-update-pill{height:32px;padding:0 8px}
+}
+/* Narrow mobile: two compact rows. Controls keep intrinsic widths, never stretch. */
 @media(max-width:680px){
-  #refreshBtn{grid-column:3;grid-row:2;justify-self:end;margin-left:0}
+  .topbar{
+    display:grid;width:100%;max-width:100%;box-sizing:border-box;
+    grid-template-columns:max-content max-content minmax(0,1fr) 36px;
+    grid-template-areas:"palette language . refresh" "theme theme version version";
+    grid-template-rows:34px 32px;
+    justify-content:stretch;align-content:center;align-items:center;
+    height:auto;min-height:0;gap:6px;padding:7px 10px;
+  }
+  .topbar .palette-picker{
+    grid-area:palette;order:initial;height:34px;padding:0 7px;
+    justify-self:start;min-width:0;max-width:100%;
+  }
+  .topbar .language-picker{
+    grid-area:language;order:initial;height:34px;padding:0 6px;
+    justify-self:start;min-width:0;max-width:100%;
+  }
+  .topbar .language-picker select{min-width:65px;max-width:95px}
+  .topbar .theme-switcher{
+    grid-area:theme;order:initial;justify-self:start;
+    width:max-content;max-width:100%;min-width:0;
+    height:32px;padding:2px;gap:1px;
+  }
+  .topbar .theme-btn{height:26px;padding:0 5px;font-size:10px}
+  .topbar #globalUpdateIndicator{
+    grid-area:version;order:initial;justify-self:end;
+    margin:0;max-width:100%;min-width:0;width:auto;
+    overflow:hidden;
+  }
+  .topbar .global-update-pill{
+    height:30px;padding:0 7px;gap:4px;font-size:9px;
+    min-width:0;max-width:100%;overflow:hidden;text-overflow:ellipsis;
+  }
+  .topbar .global-update-group{max-width:100%;min-width:0;width:auto;flex-wrap:nowrap;overflow:hidden}
+  .topbar #refreshBtn{
+    grid-area:refresh;order:initial;justify-self:end;
+    flex:none;margin:0;width:34px;height:34px;
+  }
+  .topbar #accessPill{display:none}
 }
-@media(prefers-reduced-motion:reduce){.refresh-feedback{transition:none}}
+@media(min-width:560px) and (max-width:680px){
+  .topbar{
+    grid-template-columns:max-content max-content max-content minmax(0,1fr) 36px;
+    grid-template-areas:"palette language theme version refresh";
+    grid-template-rows:36px;min-height:0;padding:9px 12px;
+  }
+}
+@media(max-width:350px){
+  .topbar{
+    grid-template-areas:"palette language . refresh" "theme theme . ." "version version version version";
+    grid-template-rows:34px 32px 30px;
+  }
+  .topbar #globalUpdateIndicator{justify-self:start}
+}
+/* Ephemeral, non-interactive status text: no outlined button or drop shadow. */
+.topbar .refresh-feedback{
+  position:fixed;z-index:90;top:auto;right:auto;
+  bottom:calc(64px + env(safe-area-inset-bottom,0px));left:50%;
+  transform:translate(-50%,7px);
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  width:max-content;max-width:min(440px,calc(100vw - 32px));
+  padding:7px 10px;box-sizing:border-box;
+  border:0;border-radius:4px;
+  background:color-mix(in srgb,var(--surface) 90%,transparent);
+  color:var(--text);box-shadow:none;
+  font-size:12px;line-height:1.4;font-weight:500;
+  overflow-wrap:anywhere;text-align:center;opacity:0;visibility:hidden;
+  pointer-events:none;user-select:none;
+  transition:opacity .18s ease,transform .18s ease,visibility .18s ease;
+}
+.topbar .refresh-feedback::before{
+  content:"";display:block;flex:0 0 6px;width:6px;height:6px;
+  border-radius:50%;background:var(--ok);
+}
+.topbar .refresh-feedback.pending::before{background:var(--accent)}
+.topbar .refresh-feedback.error::before{background:var(--danger)}
+.topbar .refresh-feedback.error{color:var(--text)}
+.topbar .refresh-feedback.visible{
+  opacity:1;visibility:visible;transform:translate(-50%,0);
+}
+@media(prefers-reduced-motion:reduce){.topbar .refresh-feedback{transition:none}}
