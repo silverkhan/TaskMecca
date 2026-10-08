@@ -241,6 +241,9 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 	// root is empty the periodic snapshot will discover the canonical backlog
 	// as soon as Registrar creates it.
 	ensureAttentionFeed(project, monitorRoot)
+	// A persistent cutover suppresses replay of notifications predating this deployment.
+	// A damaged ledger fails closed in its API; it does not prevent the Web UI starting.
+	_ = initWebDelivery(project)
 	mux := http.NewServeMux()
 
 	projectFor := func(r *http.Request) string {
@@ -908,6 +911,28 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 		rows, err := historyCache.read(projectFor(r),r.URL.Query().Get("since"))
 		if err != nil { writeJSON(w, map[string]any{"error": err.Error()}, http.StatusInternalServerError); return }
 		writeJSON(w, rows, http.StatusOK)
+	})
+	mux.HandleFunc("/api/notifications/web", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			writeJSON(w, map[string]any{"error":"POST required"}, http.StatusMethodNotAllowed)
+			return
+		}
+		if r.Header.Get("X-Task-Mecca-Action") != "1" {
+			writeJSON(w, map[string]any{"error":"action header required"}, http.StatusForbidden)
+			return
+		}
+		var payload map[string]string
+		if err:=json.NewDecoder(io.LimitReader(r.Body,2048)).Decode(&payload);err!=nil {
+			writeJSON(w,map[string]any{"error":"invalid JSON"},http.StatusBadRequest)
+			return
+		}
+		action:=payload["action"]
+		decision,err:=applyWebDelivery(projectFor(r),action,payload["event_id"],payload["token"],payload["client"])
+		if err!=nil {
+			writeJSON(w,map[string]any{"error":err.Error()},http.StatusInternalServerError)
+			return
+		}
+		writeJSON(w,decision,http.StatusOK)
 	})
 	mux.HandleFunc("/api/notifications/deliveries", func(w http.ResponseWriter, r *http.Request) {
 		activeProject := projectFor(r)
