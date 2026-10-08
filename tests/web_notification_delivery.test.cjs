@@ -1,9 +1,16 @@
 const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
 const source=fs.readFileSync('goassets/template/_task_mecca/framework/web/app.js','utf8');
-function app({fetch=async()=>({ok:true,json:async()=>({projects:[]})}),registration=null,construct=()=>{}}={}){
+function app({fetch=async()=>({ok:true,json:async()=>({projects:[]})}),delivery=null,registration=null,construct=()=>{}}={}){
  const storage=new Map(),elements=new Map(),document={querySelector:selector=>elements.get(selector)||null,querySelectorAll:()=>[],documentElement:{},activeElement:null};
  const Notification=function(...args){construct(...args);this.close=()=>{}};Notification.permission='granted';
- const context=vm.createContext({fetch,URLSearchParams,location:{search:'?project=/demo'},navigator:{language:'ko',...(registration?{serviceWorker:{register:async()=>{},ready:registration}}:{})},Notification,window:{isSecureContext:true,focus(){},location:{}},document,localStorage:{getItem:key=>storage.get(key)||null,setItem:(key,value)=>storage.set(key,String(value)),removeItem:key=>storage.delete(key)},queueMicrotask,alert(){},setTimeout,clearTimeout});
+ const brokerFetch=async(url,options)=>{
+  if(String(url).startsWith('/api/notifications/web')){
+   const payload=JSON.parse(options.body);
+   return {ok:true,json:async()=>delivery?delivery(payload):payload.action==='claim'?{granted:true,state:'claimed',token:'test-lease-'+payload.event_id}:{state:payload.action==='ack'?'display_requested':'failed'}};
+  }
+  return fetch(url,options);
+ };
+ const context=vm.createContext({fetch:brokerFetch,URLSearchParams,location:{search:'?project=/demo'},navigator:{language:'ko',...(registration?{serviceWorker:{register:async()=>{},ready:registration}}:{})},Notification,window:{isSecureContext:true,focus(){},location:{}},document,localStorage:{getItem:key=>storage.get(key)||null,setItem:(key,value)=>storage.set(key,String(value)),removeItem:key=>storage.delete(key)},queueMicrotask,alert(){},setTimeout,clearTimeout});
  vm.runInContext(source.slice(0,source.indexOf('\ntranslateChrome();'))+'\nrender=()=>{};globalThis.app={state,sendBrowserNotification,browserDeliveryHistory,mergedNotificationHistory,notificationCenterView,changeWebNotificationSetting,webNotificationEnabled,projectChannelSettingsMarkup,loadNotificationHistory,refreshDiagnostics,diagnosticEntries,diagnosticRecoveryRequest,updateDiagnosticNavigation,renderOperationBanner,processTaskNotifications,refreshOperations};',context);
  context.app.state.project='/demo';return {...context.app,context,storage,elements};
 }
@@ -35,7 +42,7 @@ test('folder-scoped previous rows do not fabricate completion of another same-ID
  const calls=[];const a=app({construct:(...args)=>calls.push(args)});const at=new Date().toISOString();
  a.processTaskNotifications(snapshot('/demo','one',{'A-1':{id:'A-1',file_state:'doing'}}),{backlog:'one'});
  a.processTaskNotifications(snapshot('/demo','two',{'A-1':{id:'A-1',file_state:'done'}}),{backlog:'two'});await tick();assert.equal(calls.length,0);
- a.processTaskNotifications(snapshot('/demo','one',{'A-1':{id:'A-1',file_state:'done'}}),{backlog:'one'});await tick();assert.equal(calls.length,1);
+ a.processTaskNotifications(snapshot('/demo','one',{'A-1':{id:'A-1',file_state:'done'}}),{backlog:'one'});await tick();assert.equal(calls.length,0); // Noncanonical fallback is history-only.
 });
 test('denied unsupported insecure and display failure never create successful evidence',async()=>{
  for(const mode of ['denied','unsupported','insecure','failure']){
@@ -94,4 +101,38 @@ test('pending display rechecks settings and service-worker failure records no su
 test('legacy seen reason stays consumed after introducing explicit folder source',async()=>{
  const calls=[],a=app({construct:(...args)=>calls.push(args)});a.storage.set('task-mecca-notification-seen',JSON.stringify(['/demo:A-1:intervention:user_intervention:stamp']));
  a.processTaskNotifications(snapshot('/demo','folder',{'A-1':{id:'A-1',file_state:'doing',updated_at:'stamp',attention_reason:{type:'user_intervention'}}}),{backlog:'folder'});await tick();assert.equal(calls.length,0);
+});
+
+test('shared browser claim permits one device and prevents replay on another',async()=>{
+ const delivered=new Set(),calls=[];
+ const delivery=payload=>{
+  if(payload.action==='claim'){
+   if(delivered.has(payload.event_id))return {state:'display_requested',granted:false};
+   delivered.add(payload.event_id);
+   return {state:'claimed',granted:true,token:'claim'};
+  }
+  return {state:payload.action==='ack'?'display_requested':'failed'};
+ };
+ const a=app({delivery,construct:(...args)=>calls.push(['A',...args])});
+ const b=app({delivery,construct:(...args)=>calls.push(['B',...args])});
+ await Promise.all([
+  a.sendBrowserNotification('completed',{id:'A-7'},null,'server:/source:event-7','completed','event-7','/source','folder'),
+  b.sendBrowserNotification('completed',{id:'A-7'},null,'server:/source:event-7','completed','event-7','/source','folder')
+ ]);
+ assert.equal(calls.length,1);
+ assert.equal(a.browserDeliveryHistory().length+b.browserDeliveryHistory().length,1);
+});
+test('claim rejection, broker failure and unknown canonical ID never send OS notifications',async()=>{
+ for(const mode of ['historical','claimed','server-error']){
+  const calls=[];
+  const a=app({construct:(...args)=>calls.push(args),delivery:()=>({granted:false,state:mode})});
+  // A broker network error is represented here by the mock throwing.
+  if(mode==='server-error'){
+   const b=app({construct:(...args)=>calls.push(args),delivery:()=>{throw Error('coordinator unavailable')}});
+   await b.sendBrowserNotification('completed',{id:'A-7'},null,'k','completed','e','/source','folder');
+  }else{
+   await a.sendBrowserNotification('completed',{id:'A-7'},null,'k','completed','e','/source','folder');
+  }
+  assert.equal(calls.length,0);
+ }
 });

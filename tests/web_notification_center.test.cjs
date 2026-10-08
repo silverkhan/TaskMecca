@@ -3,7 +3,14 @@ const source=fs.readFileSync('goassets/template/_task_mecca/framework/web/app.js
 function app({fetch=async()=>({ok:true,json:async()=>({projects:[]})}),registration=null,construct=()=>{}}={}){
  const storage=new Map(),elements=new Map(),document={querySelector:selector=>elements.get(selector)||null,querySelectorAll:()=>[],documentElement:{},activeElement:null};
  const Notification=function(...args){construct(...args);this.close=()=>{}};Notification.permission='granted';
- const context=vm.createContext({fetch,URLSearchParams,location:{search:'?project=/demo'},navigator:{language:'ko',...(registration?{serviceWorker:{register:async()=>{},ready:registration}}:{})},Notification,window:{isSecureContext:true,focus(){},location:{}},document,localStorage:{getItem:key=>storage.get(key)||null,setItem:(key,value)=>storage.set(key,String(value)),removeItem:key=>storage.delete(key)},queueMicrotask,alert(){},setTimeout,clearTimeout});
+ const brokerFetch=async(url,options)=>{
+  if(String(url).startsWith('/api/notifications/web')){
+   const request=JSON.parse(options.body);
+   return {ok:true,json:async()=>request.action==='claim'?{granted:true,state:'claimed',token:'fixture-lease'}:{state:request.action==='ack'?'display_requested':'failed'}};
+  }
+  return fetch(url,options);
+ };
+ const context=vm.createContext({fetch:brokerFetch,URLSearchParams,location:{search:'?project=/demo'},navigator:{language:'ko',...(registration?{serviceWorker:{register:async()=>{},ready:registration}}:{})},Notification,window:{isSecureContext:true,focus(){},location:{}},document,localStorage:{getItem:key=>storage.get(key)||null,setItem:(key,value)=>storage.set(key,String(value)),removeItem:key=>storage.delete(key)},queueMicrotask,alert(){},setTimeout,clearTimeout});
  vm.runInContext(source.slice(0,source.indexOf('\ntranslateChrome();'))+'\nrender=()=>{};globalThis.app={state,sendBrowserNotification,browserDeliveryHistory,mergedNotificationHistory,notificationCenterView,changeWebNotificationSetting,webNotificationEnabled,projectChannelSettingsMarkup,loadNotificationHistory,refreshDiagnostics,diagnosticEntries,diagnosticRecoveryRequest,updateDiagnosticNavigation,renderOperationBanner};',context);
  context.app.state.project='/demo';return {...context.app,context,storage,elements};
 }
@@ -38,7 +45,10 @@ test('hook resolution prevents stale, undated or equal-time assignment warnings 
  a.context.app.processTaskNotifications({snapshot_at:'2026-10-08T00:01:00Z',all_items:{'A-44':{...warning,attention_reason:null,state:'doing'}}});
  for(const at of ['2026-10-08T00:00:00Z','','2026-10-08T00:01:00Z'])a.context.app.processTaskNotifications({snapshot_at:at,all_items:{'A-44':warning}});
  await new Promise(setImmediate);assert.equal(emitted.length,0);
- a.context.app.processTaskNotifications({snapshot_at:'2026-10-08T00:02:00Z',all_items:{'A-44':warning}});await new Promise(setImmediate);assert.equal(emitted.length,1);
+ a.context.app.processTaskNotifications({snapshot_at:'2026-10-08T00:02:00Z',all_items:{'A-44':warning}});await new Promise(setImmediate);assert.equal(emitted.length,0);
+ // Only a durable server event can trigger the current warning as a push.
+ a.context.app.processTaskNotifications({snapshot_at:'2026-10-08T00:03:00Z',all_items:{'A-44':warning},notification_events:[{id:'warning-event',task_id:'A-44',kind:'intervention',reason_type:'assignment_unobserved',at:new Date().toISOString()}]});
+ await new Promise(setImmediate);assert.equal(emitted.length,1);
 });
 test('packaged shell includes settings dialog and mobile center entry, and has no separate attention menu',()=>{
  const html=fs.readFileSync('goassets/template/_task_mecca/framework/web/index.html','utf8');assert.match(html,/id="notificationPanel"[^>]*role="dialog"/);assert.match(html,/id="projectNotificationsNav"/);assert.doesNotMatch(html,/id="notificationCenterTop"/);assert.doesNotMatch(html,/data-view="attention"/);assert.match(html,/data-view="issues"[^>]*hidden/);

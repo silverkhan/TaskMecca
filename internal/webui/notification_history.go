@@ -34,6 +34,17 @@ func notificationHistory(project string) ([]map[string]any, error) {
 		// Do not include LastError, opaque ledger fields or recipient identity.
 		row["telegram"] = map[string]any{"state": record.State, "attempts": record.Attempts, "sent_at": record.LastResponseAt, "last_attempt_at": record.LastAttemptAt, "duplicate_possible": record.DuplicatePossible}
 	}
+	// Browser delivery evidence is shared across devices; per-browser local
+	// history is only a fallback and must never overwrite this server result.
+	webRecords, err := webDeliveryHistory(project)
+	if err != nil {
+		return nil, err
+	}
+	for id, delivery := range webRecords {
+		if row := byID[id]; row != nil {
+			row["web"] = delivery
+		}
+	}
 	rows := make([]map[string]any, 0, len(byID))
 	for _, row := range byID {
 		rows = append(rows, row)
