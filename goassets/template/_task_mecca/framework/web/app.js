@@ -3,6 +3,7 @@ const state = {
  attentionScopes:{},attentionScopeObserved:{},commonUserAttention:{},commonUserRevision:{},commonAttentionOpen:false,sessionWarnings:[],operationsRequest:0,operationPayload:{},
   snapshot: null,
   listData: null,
+  listRevalidating:false,listDataContext:'',
   detailTask: null,
   eventSource: null,
   eventStreamKey: '',
@@ -827,6 +828,7 @@ function scheduleLiveListRefresh() {
 
 function markContentUpdate(reason='content',changes=[]) {
   if(!state.project)return;
+  invalidateListPages();
   if(state.view!=='backlog'){
     queueMicrotask(()=>refresh());
     return;
@@ -838,6 +840,7 @@ function markContentUpdate(reason='content',changes=[]) {
   if(reason==='runtime' || !state.pendingContentReason)state.pendingContentReason=reason;
   if(Array.isArray(changes) && changes.length)state.pendingContentChanges=changes;
   if(!wasPending || previousReason!==state.pendingContentReason || changes.length)renderContentUpdatePrompt();
+  if(!state.detail)refreshListSummary();
 }
 
 function acceptContentRevision(revision='',states=null) {
@@ -1694,11 +1697,16 @@ function storeCommonUserAttention(payload,project,backlog) {
     const context=project+'|'+requestedBacklog,changed=state.attentionScopes[context]!==backlog;
     const priorScopeTime=state.attentionScopeObserved[context]||0;
     if(!priorScopeTime||(Number.isFinite(observed)&&(observed>priorScopeTime||(!changed&&observed===priorScopeTime)))){
+      if(changed&&priorScopeTime)invalidateProjectPages(project,payload._listSnapshot?listContextKey():null);
       state.attentionScopes[context]=backlog;
       if(Number.isFinite(observed))state.attentionScopeObserved[context]=observed;
       if(changed&&project===state.project&&requestedBacklog===state.backlog)ensureAttentionStream();
     }
   }
+  const signature=String(payload.content_revision||'')+'|'+attentionPayloadRevision(payload);
+  const previousSignature=listSourceSignatures.get(key);
+  if(previousSignature!==undefined&&previousSignature!==signature&&!payload._listSnapshot)invalidateProjectPages(project);
+  listSourceSignatures.set(key,signature);
   state.commonUserRevision[key]=(state.commonUserRevision[key]||0)+1;
   state.commonUserAttention[key]={project,backlog:backlog||payload.backlog_selection?.selected||'',observed:Number.isFinite(observed)?observed:0,rows:nextRows};
   renderUserAttention();
@@ -2045,6 +2053,8 @@ function switchProject(path) {
   closeAttentionStream();
   localStorage.removeItem('task-mecca-backlog-folder');
   history.pushState({},'',`/?project=${encodeURIComponent(path)}&view=backlog`);
+  const remembered=listPageCaches.get(listContextKey());
+  if(remembered)state.listPage=remembered.current;
   render();
   refreshList();
   ensureAttentionStream();
@@ -2665,7 +2675,6 @@ function pageInfo() {
     const page=Math.max(1,Number(state.listData.page)||1);
     const pages=Math.max(1,Number(state.listData.pages)||1);
     const pageSize=Math.max(1,Number(state.listData.page_size)||effectiveListPageSize());
-    state.listPage=page;
     return {items,pageItems:items,page,pages,total:Number(state.listData.total)||0,pageSize};
   }
   const pageSize = effectiveListPageSize();
@@ -2706,7 +2715,7 @@ function backlogListTools() {
 function listControls(info) {
   const autoSelected = state.listPageMode === 'auto';
   const pageValue = autoSelected ? 'auto' : String(state.listPageSize);
-  const pageText=t('pageSummary',{page:info.page,pages:info.pages,total:info.total})+(autoSelected?t('autoRowsSummary',{n:info.pageSize}):'');
+  const pageText=t('pageSummary',{page:info.page,pages:info.pages,total:info.total})+(autoSelected?t('autoRowsSummary',{n:info.pageSize}):'')+(state.listRevalidating?(state.language==='ko'?' · 최신 상태 확인 중':' · Checking latest state'):'');
   return `${statusFilterBar()}${tagFilterBar()}<div class="backlog-list-controls">${backlogListTools()}<div class="list-controls"><div class="control-group"><label>${esc(t('sort'))}<select id="listSort"><option value="id_desc" ${state.listSort==='id_desc'?'selected':''}>ID ↓</option><option value="id_asc" ${state.listSort==='id_asc'?'selected':''}>ID ↑</option><option value="updated_desc" ${state.listSort==='updated_desc'?'selected':''}>${esc(t('updatedNewest'))}</option><option value="updated_asc" ${state.listSort==='updated_asc'?'selected':''}>${esc(t('updatedOldest'))}</option></select></label><label>${esc(t('perPage'))}<select id="listPageSize"><option value="auto" ${pageValue==='auto'?'selected':''}>${esc(t('autoRows',{n:info.pageSize}))}</option><option value="10" ${pageValue==='10'?'selected':''}>10</option><option value="20" ${pageValue==='20'?'selected':''}>20</option><option value="50" ${pageValue==='50'?'selected':''}>50</option></select></label></div><div class="pager"><button id="prevPage" ${info.page<=1?'disabled':''}>←</button><span>${esc(pageText)}</span><button id="nextPage" ${info.page>=info.pages?'disabled':''}>→</button></div></div></div>`;
 }
 
@@ -3469,8 +3478,9 @@ function measuredTaskRowHeight() {
   if(!heights.length)return 66;
   return heights[Math.floor(heights.length/2)];
 }
-function updateAutoListPageSize() {
+function updateAutoListPageSize(force=false) {
   if(state.listPageMode!=='auto'||state.view!=='backlog'||state.detail)return;
+  if(state.listData&&!force)return;
   const list=document.querySelector('.task-list');
   if(!list)return;
   const shortcut=document.querySelector('.shortcut-bar');
@@ -3485,12 +3495,12 @@ function updateAutoListPageSize() {
   state.autoListPageSize=next;
   state.listPage=Math.floor(firstIndex/next)+1;
   state.selectedIndex=0;
-  if(Date.now()-state.lastFetch<1500 && !state.pendingContentUpdate)refreshList();
+  if(state.listData && !state.pendingContentUpdate)refreshList();
 }
-function scheduleAutoListPageSize() {
+function scheduleAutoListPageSize(force=false) {
   if(state.listPageMode!=='auto')return;
   cancelAnimationFrame(autoPageMeasureRaf);
-  autoPageMeasureRaf=requestAnimationFrame(()=>requestAnimationFrame(updateAutoListPageSize));
+  autoPageMeasureRaf=requestAnimationFrame(()=>requestAnimationFrame(()=>updateAutoListPageSize(force)));
 }
 
 function applySidebarState() {
@@ -3670,7 +3680,7 @@ let listRefreshQueued=false;
 function listNotificationPayload(data) {
   const current={...(data?.attention_items||{})};
   (data?.items||[]).forEach(task=>{current[task.id]=task});
-  return {snapshot_at:data?.snapshot_at,backlog_selection:data?.backlog_selection,project_path:data?.project_path,all_items:current,notification_events:data?.notification_events||[],attention:data?.attention||[]};
+  return {_listSnapshot:true,content_revision:data?.revision,snapshot_at:data?.snapshot_at,backlog_selection:data?.backlog_selection,project_path:data?.project_path,all_items:current,notification_events:data?.notification_events||[],attention:data?.attention||[]};
 }
 
 async function refreshHub(force=false) {
@@ -3705,56 +3715,119 @@ function listQueryString() {
   return params.toString();
 }
 
+// Cache rows only. Notification/current-attention snapshots always come from a
+// fresh response; cached pages must never resurrect resolved user alerts.
+const listPageCaches=new Map();
+const listCacheEpochs=new Map();
+const listSourceSignatures=new Map();
+function invalidateProjectPages(project,keepKey=null){
+ for(const [key,cache] of listPageCaches){if(cache.project!==project||key===keepKey)continue;const source=listSourceKey(cache.project,cache.backlog);listCacheEpochs.set(source,listCacheEpoch(source)+1);listPageCaches.delete(key);listSummaryLatest.delete(key);}
+}
+let listSummarySerial=0;
+let listSummaryInFlight=null,listSummaryQueued=false;
+const listSummaryObserved=new Map();
+const listSummaryLatest=new Map();
+function cachedListRows(data,key){const latest=listSummaryLatest.get(key);return latest?{...data,counts:latest.counts,tag_catalog:latest.tag_catalog,access:latest.access}:data;}
+function listContextKey(query=listQueryString()) {
+ const params=new URLSearchParams(query); params.delete('page');
+ for(const field of ['status','tags'])if(params.has(field))params.set(field,params.get(field).split(',').sort().join(','));
+ params.sort(); return params.toString();
+}
+function listSourceKey(project=state.project,backlog=state.backlog){return JSON.stringify([project,backlog]);}
+function listCacheEpoch(source=listSourceKey()){return listCacheEpochs.get(source)||0;}
+function invalidateListPages(){
+ const source=listSourceKey();listCacheEpochs.set(source,listCacheEpoch(source)+1);
+ for(const [key,cache] of listPageCaches)if(cache.project===state.project){listPageCaches.delete(key);listSummaryLatest.delete(key);}
+}
+function pageCache(key,project=state.project,backlog=state.backlog){
+ let cache=listPageCaches.get(key);
+ if(!cache){cache={project,backlog,pages:new Map(),pending:new Map(),current:1};listPageCaches.set(key,cache);}
+ // Bound inactive contexts as well as pages within each context.
+ if(listPageCaches.size>12){const oldest=listPageCaches.keys().next().value;if(oldest!==key)listPageCaches.delete(oldest);}
+ return cache;
+}
+function pruneListPages(cache,current,pages){
+ cache.current=current;
+ for(const page of cache.pages.keys())if(page<1||page>pages||Math.abs(page-current)>1)cache.pages.delete(page);
+}
+function storeListPage(key,data,epoch,source){
+ if(listCacheEpoch(source)!==epoch)return;
+ const cache=pageCache(key);const page=Math.max(1,Number(data.page)||1);
+ const prior=cache.pages.get(page);
+ if(prior && Date.parse(prior.snapshot_at)>Date.parse(data.snapshot_at))return;
+ if(data.revision&&cache.revision&&data.revision!==cache.revision)cache.pages.clear();
+ if(data.revision)cache.revision=data.revision;
+ if(Math.abs(page-cache.current)<=1)cache.pages.set(page,data);
+ pruneListPages(cache,cache.current,Math.max(1,Number(data.pages)||1));
+}
+function prefetchListPages(query,data,epoch,source){
+ if(!Number(data.pages)||!Number(data.page_size))return;
+ const key=listContextKey(query),cache=pageCache(key);
+ const current=Number(data.page)||1,pages=Number(data.pages)||1;
+ pruneListPages(cache,current,pages);
+ for(const page of [current-1,current+1]){
+  if(page<1||page>pages||cache.pages.has(page)||cache.pending.has(page))continue;
+  const params=new URLSearchParams(query);params.set('page',String(page));params.set('prefetch','1');
+  const promise=(async()=>{try{
+   const r=await fetch('/api/backlog/tasks?'+params,{cache:'no-store'});if(!r.ok)return;
+   const response=await r.json();
+   if(listCacheEpoch(source)!==epoch||listPageCaches.get(key)!==cache)return;
+   if(cache.revision&&response.revision!==cache.revision)return;
+   storeListPage(key,response,epoch,source);
+  }catch(_){}finally{cache.pending.delete(page);}})();cache.pending.set(page,promise);
+ }
+}
+async function refreshListSummary(){
+ if(!state.project||state.view!=='backlog'||state.detail)return;
+ if(listSummaryInFlight){listSummaryQueued=true;return listSummaryInFlight;}
+ const query=listQueryString(),key=listContextKey(query),source=listSourceKey(),epoch=listCacheEpoch(source),serial=++listSummarySerial;
+ listSummaryInFlight=(async()=>{try{
+  const r=await fetch('/api/backlog/tasks?'+query+'&projection=summary',{cache:'no-store'});if(!r.ok)return;
+  const data=await r.json();
+  if(serial!==listSummarySerial||listContextKey()!==key||listCacheEpoch(source)!==epoch||state.view!=='backlog'||state.detail)return;
+  const observed=Date.parse(data.snapshot_at)||0;if(observed<(listSummaryObserved.get(key)||0))return;listSummaryObserved.set(key,observed);listSummaryLatest.set(key,data);
+  if(state.listData){state.listData={...state.listData,counts:data.counts,tag_catalog:data.tag_catalog,access:data.access};}
+  processTaskNotifications(listNotificationPayload(data));
+  render();
+ }catch(_){}finally{listSummaryInFlight=null;if(listSummaryQueued){listSummaryQueued=false;queueMicrotask(()=>{if(!isLiveBacklogPage())refreshListSummary();});}}})();return listSummaryInFlight;
+}
 async function refreshList(preserveSelection=false) {
-  if(!state.project)return;
-  if(listRefreshInFlight){
-    listRefreshQueued=true;
-    return listRefreshInFlight;
-  }
-  const targetProject=state.project;
-  const targetBacklog=state.backlog;
-  const targetQuery=listQueryString(), targetView=state.view, targetDetail=state.detail;
-  const selectedID=preserveSelection?state.listData?.items?.[state.selectedIndex]?.id:null;
-  const isCurrent=()=>targetProject===state.project && targetBacklog===state.backlog && targetQuery===listQueryString() && targetView===state.view && targetDetail===state.detail;
-  listRefreshInFlight=(async()=>{
-    try {
-      const r=await fetch('/api/backlog/tasks?'+targetQuery,{cache:'no-store'});
-      if(!r.ok){
-        let detail=''; try { const body=await r.json(); detail=body.error||''; } catch(_) {}
-        throw new Error(detail||`HTTP ${r.status}`);
-      }
-      const data=await r.json();
-      if(!isCurrent())return;
-      state.listData=data;
-      const selectedIndex=(data.items||[]).findIndex(task=>task.id===selectedID);
-      if(selectedIndex>=0)state.selectedIndex=selectedIndex;
-      state.loadError='';
-      state.lastFetch=Date.now();
-      state.listPage=Math.max(1,Number(data.page)||1);
-      acceptContentRevision(data.revision||state.contentRevision);
-      processTaskNotifications(listNotificationPayload(data));
-      const candidates=data?.backlog_selection?.candidates||[];
-      if(state.backlog && !candidates.some(x=>x.path===state.backlog)){
-        state.backlog='';
-        localStorage.removeItem('task-mecca-backlog-folder');
-      }
-      $('#connectionDot').style.background='var(--ok)';
-      ensureAttentionStream();
-      if(state.view==='backlog')render();
-    } catch(e) {
-      if(!isCurrent())return;
-      state.loadError=String(e?.message||e||'Unknown error');
-      $('#connectionDot').style.background='var(--danger)';
-      if(!state.listData)render();
-    } finally {
-      listRefreshInFlight=null;
-      if(listRefreshQueued){
-        listRefreshQueued=false;
-        queueMicrotask(()=>refreshList());
-      }
-    }
-  })();
-  return listRefreshInFlight;
+ if(!state.project)return;
+ const currentContext=listContextKey();
+ if(state.listData&&state.listDataContext&&state.listDataContext!==currentContext){state.listData=null;state.listRevalidating=true;if(state.view==='backlog')render();}
+ if(listRefreshInFlight){
+  const cache=listPageCaches.get(listContextKey()),cached=cache?.pages.get(state.listPage||1);
+  if(cached&&!preserveSelection){state.listData=cachedListRows(cached,listContextKey());state.listDataContext=listContextKey();state.listRevalidating=true;if(state.view==='backlog')render();}
+  listRefreshQueued=true;return listRefreshInFlight;
+ }
+ const targetProject=state.project,targetBacklog=state.backlog;
+ const targetQuery=listQueryString(),targetView=state.view,targetDetail=state.detail;
+ const key=listContextKey(targetQuery),source=listSourceKey(),epoch=listCacheEpoch(source);
+ const cache=pageCache(key,targetProject,targetBacklog),requestedPage=Math.max(1,state.listPage||1);
+ cache.current=requestedPage;pruneListPages(cache,requestedPage,Infinity);
+ const selectedID=preserveSelection?state.listData?.items?.[state.selectedIndex]?.id:null;
+ const isCurrent=()=>targetProject===state.project&&targetBacklog===state.backlog&&targetQuery===listQueryString()&&targetView===state.view&&targetDetail===state.detail&&listCacheEpoch(source)===epoch&&listPageCaches.get(key)===cache;
+ const cached=cache.pages.get(requestedPage);
+ if(cached && !preserveSelection){state.listData=cachedListRows(cached,listContextKey());state.listDataContext=listContextKey();state.listRevalidating=true;state.loadError='';if(state.view==='backlog')render();}
+ listRefreshInFlight=(async()=>{try{
+  const r=await fetch('/api/backlog/tasks?'+targetQuery,{cache:'no-store'});
+  if(!r.ok){let detail='';try{detail=(await r.json()).error||'';}catch(_){}throw new Error(detail||`HTTP ${r.status}`);}
+  const data=await r.json();if(!isCurrent())return;
+  cache.current=Math.max(1,Number(data.page)||1);storeListPage(key,data,epoch,source);
+  const observed=Date.parse(data.snapshot_at)||0;if(observed<(listSummaryObserved.get(key)||0)){if(observed)listRefreshQueued=true;return;}listSummaryObserved.set(key,observed);listSummaryLatest.set(key,data);
+  state.listData=data;state.listDataContext=key;state.listRevalidating=false;
+  const selectedIndex=(data.items||[]).findIndex(task=>task.id===selectedID);if(selectedIndex>=0)state.selectedIndex=selectedIndex;
+  state.loadError='';state.lastFetch=Date.now();state.listPage=Math.max(1,Number(data.page)||1);
+  acceptContentRevision(data.revision||state.contentRevision);
+  processTaskNotifications(listNotificationPayload(data));
+  const candidates=data.backlog_selection?.candidates||[];
+  if(state.backlog&& !candidates.some(x=>x.path===state.backlog)){state.backlog='';localStorage.removeItem('task-mecca-backlog-folder');}
+  $('#connectionDot').style.background='var(--ok)';if(state.view==='backlog')render();
+  // Start adjacent requests only after the foreground rows have rendered.
+  const acceptedQuery=listQueryString();
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{if(targetProject===state.project&&targetBacklog===state.backlog&&acceptedQuery===listQueryString()&&targetView===state.view&&targetDetail===state.detail&&listCacheEpoch(source)===epoch&&listPageCaches.get(key)===cache)prefetchListPages(acceptedQuery,data,epoch,source);}));
+ }catch(e){if(!isCurrent())return;state.listRevalidating=false;state.loadError=String(e?.message||e||'Unknown error');$('#connectionDot').style.background='var(--danger)';if(!state.listData)render();}
+ finally{listRefreshInFlight=null;if(listRefreshQueued){listRefreshQueued=false;queueMicrotask(()=>refreshList());}}})();return listRefreshInFlight;
 }
 
 function closeAttentionStream() {
@@ -4132,7 +4205,7 @@ let autoPageResizeTimer=0;
 window.addEventListener('resize',()=>{
   if(state.listPageMode!=='auto')return;
   clearTimeout(autoPageResizeTimer);
-  autoPageResizeTimer=setTimeout(scheduleAutoListPageSize,100);
+  autoPageResizeTimer=setTimeout(()=>scheduleAutoListPageSize(true),100);
 });
 window.addEventListener('popstate',()=>route(true));
 setInterval(()=>{
@@ -4193,8 +4266,9 @@ setInterval(()=>{
   if(document.visibilityState!=='hidden')refreshVersionInfo(true);
 },60000);
 if(window.isSecureContext&&'serviceWorker' in navigator)notificationWorker();
-route();refresh();
-refreshOperations();
+route();
+const initialForeground=refresh();
+Promise.resolve(initialForeground).finally(()=>refreshOperations());
 setInterval(refreshOperations,15000);
 refreshVersionInfo(false);
 setTimeout(()=>refreshVersionInfo(true),800);

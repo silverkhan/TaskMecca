@@ -24,11 +24,14 @@ func reconcileControlTower(project,root string,rows []Record) controlTowerSnapsh
     // This is the only compatibility fallback for a missed explicit bind-agent:
     // exactly one live unbound attempt matching the canonical backlog assignment.
     now:=time.Now()
-    recoveredBindings:=reconcileCanonicalBindings(project,rows,now)
-    timings,err:=lifecycleTimings(project,root,rows)
+    ledger,ledgerErr:=runtimeobs.ReconcileLedger(project,20,now)
+    shared:=requestRuntime{ledger,ledgerErr}
+    recoveredBindings:=reconcileCanonicalBindings(project,rows,now,shared)
+    if len(recoveredBindings)>0 { ledger,ledgerErr=runtimeobs.ReconcileLedger(project,20,now); shared=requestRuntime{ledger,ledgerErr} }
+    timings,err:=lifecycleTimings(project,root,rows,shared)
     if err!=nil { timings=map[string]map[string]any{} }
     for id:=range recoveredBindings {
-        if lifecycle:=timings[id]; lifecycle!=nil && lifecycle["started_at"]!=nil && !recoveredBindingStartIsLive(project,id,now) {
+        if lifecycle:=timings[id]; lifecycle!=nil && lifecycle["started_at"]!=nil && !recoveredBindingStartIsLive(project,id,now,shared) {
             lifecycle["started_notification_suppressed"]=true
         }
     }
@@ -42,8 +45,8 @@ func reconcileControlTower(project,root string,rows []Record) controlTowerSnapsh
     }
 
 	activity:=runtimeActivity(project,rows,timings)
-	activity=mergeRuntimeSignals(activity,runtimeLedgerSignals(project,rows,time.Now()))
-	applyCompletionReviews(project, rows, activity, now)
+	activity=mergeRuntimeSignals(activity,runtimeLedgerSignals(project,rows,now,shared))
+	applyCompletionReviews(project, rows, activity, now,shared)
 	for id,signal:=range activity {
 		health:=toString(signal["health"])
 		if health!="assignment_unobserved" && health!="binding_pending" && health!="binding_ambiguous" && health!="awaiting_start" { continue }
@@ -177,8 +180,8 @@ func effectiveStateFromControl(fileState string,reason map[string]any) string {
 
 const recoveredBindingStartLiveWindow = 60 * time.Second
 
-func recoveredBindingStartIsLive(project,taskID string,now time.Time) bool {
-    ledger,err:=runtimeobs.ReconcileLedger(project,10,now)
+func recoveredBindingStartIsLive(project,taskID string,now time.Time,shared ...requestRuntime) bool {
+    ledger,err:=readRequestRuntime(project,10,now,shared...)
     if err!=nil { return false }
     taskID=strings.ToUpper(strings.TrimSpace(taskID))
     for _,attempt:=range ledger.Attempts {
@@ -195,9 +198,9 @@ func recoveredBindingStartIsLive(project,taskID string,now time.Time) bool {
 }
 
 
-func reconcileCanonicalBindings(project string,rows []Record,now time.Time) map[string]bool {
+func reconcileCanonicalBindings(project string,rows []Record,now time.Time,shared ...requestRuntime) map[string]bool {
     recovered:=map[string]bool{}
-    ledger,err:=runtimeobs.ReconcileLedger(project,10,now)
+    ledger,err:=readRequestRuntime(project,10,now,shared...)
     if err!=nil { return recovered }
     staleAttempts:=map[string]bool{}
     for _,finding:=range ledger.Findings {

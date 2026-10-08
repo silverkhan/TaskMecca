@@ -10,6 +10,25 @@ import (
     "time"
 )
 
+func summaryPreviewText(value any) string {
+ text:=toString(value); runes:=[]rune(text)
+ if len(runes)>600 { return string(runes[:600])+"…" }; return text
+}
+func compactListDocument(row Record) map[string]any {
+ doc:=row.Document; out:=map[string]any{}
+ for _,key:=range []string{"schema","contract_kind","summary","summary_present"} { if value,ok:=doc[key]; ok { out[key]=value } }
+ for _,key:=range []string{"result","notes"} { if value,ok:=doc[key]; ok { out[key]=summaryPreviewText(value) } }
+ if req,ok:=doc["requirements"].(map[string]any); ok { out["requirements"]=map[string]any{"goal":summaryPreviewText(req["goal"])} }
+ return out
+}
+
+func compactListFields(row Record) map[string]string {
+    keys:=[]string{"설명","메모","결과","대기","재개조건","Agent","변경범위","등록자","출처"}
+    out:=map[string]string{}
+    for _,key:=range keys { if value:=row.Fields[key]; value!="" { out[key]=summaryPreviewText(value) } }
+    return out
+}
+
 func compactDocument(row Record) map[string]any {
     doc:=row.Document
     out:=map[string]any{}
@@ -122,11 +141,11 @@ func BacklogRevision(project,root string) (map[string]any,error) {
         "revision":backlogRevisionFromRows(rows),
         "count":len(rows),
         "states":states,
-        "checked_at":time.Now().Format(time.RFC3339),
+        "checked_at":time.Now().Format(time.RFC3339Nano),
     },nil
 }
 
-func BacklogPage(project,root string,page,pageSize int,statuses,tags []string,search,sortKey string) (map[string]any,error) {
+func BacklogPage(project,root string,page,pageSize int,statuses,tags []string,search,sortKey string,projection ...string) (map[string]any,error) {
     rows,err:=CachedCatalog(project,root)
     if err!=nil { return nil,err }
     presence,err:=Presence(project,root,rows)
@@ -142,6 +161,7 @@ func BacklogPage(project,root string,page,pageSize int,statuses,tags []string,se
         waiting:=[]string{}
         if b,ok:=blocked[id]; ok { state="blocked"; if v,ok:=b["waiting_for"].([]string); ok { waiting=v } }
         item:=webSummaryItem(row,state,waiting,control.Attention[id],control.Activity[id])
+        item["document"]=compactListDocument(row);item["fields"]=compactListFields(row)
         switch row.State { case "doing": counts["working"]++; case "hold": counts["hold"]++; case "done": counts["done"]++ }
         if state=="ready" { counts["ready"]++ }; if state=="blocked" { counts["blocked"]++ }
         if reason,ok:=item["attention_reason"].(map[string]any); ok && len(reason)>0 { counts["attention"]++; counts["needs_action"]++ }
@@ -149,19 +169,19 @@ func BacklogPage(project,root string,page,pageSize int,statuses,tags []string,se
     }
     q:=strings.ToLower(strings.TrimSpace(search))
     filtered:=make([]map[string]any,0,len(all))
+    counts=map[string]int{"all":0,"working":0,"ready":0,"blocked":0,"hold":0,"done":0,"attention":0,"needs_action":0}
+    scopeIDs:=map[string]bool{}
     for _,item:=range all {
-        if !stateMatches(item,statuses) || !tagsMatchAll(item,tags) { continue }
-        if q!="" {
-            id:=toString(item["id"]); row:=byID[id]
-            hay:=strings.ToLower(id+"\n"+row.Title+"\n"+row.RawMarkdown+"\n"+row.ArchiveMonth)
-            if !strings.Contains(hay,q) { continue }
-        }
-        filtered=append(filtered,item)
+        if !tagsMatchAll(item,tags) { continue }
+        id:=toString(item["id"]); row:=byID[id]
+        if q!="" { hay:=strings.ToLower(id+"\n"+row.Title+"\n"+row.RawMarkdown+"\n"+row.ArchiveMonth); if !strings.Contains(hay,q) { continue } }
+        scopeIDs[id]=true; counts["all"]++
+        switch row.State { case "doing": counts["working"]++; case "hold": counts["hold"]++; case "done": counts["done"]++ }
+        workflowState:=row.State;if row.State=="todo"&&readyIDs[id] {workflowState="ready"};if _,ok:=blocked[id];ok {workflowState="blocked"}
+        if workflowState=="ready" { counts["ready"]++ }; if workflowState=="blocked" { counts["blocked"]++ }
+        if stateMatches(item,statuses) { filtered=append(filtered,item) }
     }
-    cmpUpdated:=func(i,j int)bool {
-        li:=toString(filtered[i]["updated_at"]); lj:=toString(filtered[j]["updated_at"])
-        if li!=lj { return li<lj }; return toString(filtered[i]["sort_key"])<toString(filtered[j]["sort_key"])
-    }
+    cmpUpdated:=func(i,j int)bool { li:=toString(filtered[i]["updated_at"]); lj:=toString(filtered[j]["updated_at"]); if li!=lj { return li<lj }; return toString(filtered[i]["sort_key"])<toString(filtered[j]["sort_key"]) }
     switch sortKey {
     case "updated_asc":
         sort.Slice(filtered,cmpUpdated)
@@ -191,20 +211,20 @@ func BacklogPage(project,root string,page,pageSize int,statuses,tags []string,se
     start:=(page-1)*pageSize; end:=start+pageSize; if end>total { end=total }
     items:=[]map[string]any{}; if start<total { items=filtered[start:end] }
     tagCatalog,tagErr:=TagCatalog(project,root,rows); if tagErr!=nil { tagCatalog=map[string]any{} }
-    attention,attErr:=AttentionSnapshotFromRows(project,root,rows,true); if attErr!=nil { attention=map[string]any{"attention":[]map[string]any{},"all_items":map[string]map[string]any{},"notification_events":[]map[string]any{}} }
+    attention,attErr:=AttentionSnapshotFromRows(project,root,rows,true,control); if attErr!=nil { attention=map[string]any{"attention":[]map[string]any{},"all_items":map[string]map[string]any{},"notification_events":[]map[string]any{}} }
     if rowsAtt,ok:=attention["attention"].([]map[string]any); ok {
-        counts["attention"]=len(rowsAtt)
-        needs:=0; for _,row:=range rowsAtt { if toString(row["type"])!="quiet" { needs++ } }
+        needs:=0; for _,row:=range rowsAtt { if !scopeIDs[toString(row["id"])] { continue }; counts["attention"]++; if toString(row["type"])!="quiet" { needs++ } }
         counts["needs_action"]=needs
     }
+    if len(projection)>0 && projection[0]=="summary" { items=[]map[string]any{} }
     repoName:=filepath.Base(project)
     if strings.TrimSpace(root)!="" { repoName=filepath.Base(repoRoot(root)) }
     return map[string]any{
-        "snapshot_at":time.Now().Format(time.RFC3339),"root":root,"repo":repoName,
+        "snapshot_at":time.Now().Format(time.RFC3339Nano),"root":root,"repo":repoName,
         "items":items,"page":page,"page_size":pageSize,"pages":pages,"total":total,
         "revision":backlogRevisionFromRows(rows),"backlog_presence":presence,
         "counts":counts,"tag_catalog":tagCatalog,"access":AccessObservation(project),
-        "attention":attention["attention"],"attention_items":attention["all_items"],"notification_events":attention["notification_events"],
+        "attention":attention["attention"],"attention_items":pagedNotificationItems(attention["all_items"]),"notification_events":attention["notification_events"],
     },nil
 }
 
@@ -229,8 +249,9 @@ func TaskDetail(project,root,id string) (map[string]any,error) {
     return item,nil
 }
 
-func AttentionSnapshotFromRows(project,root string,rows []Record,reconcile bool) (map[string]any,error) {
-    control:=reconcileControlTower(project,root,rows)
+func AttentionSnapshotFromRows(project,root string,rows []Record,reconcile bool,shared ...controlTowerSnapshot) (map[string]any,error) {
+    var control controlTowerSnapshot
+ if len(shared)>0 { control=shared[0] } else { control=reconcileControlTower(project,root,rows) }
     byID:=preferredRows(rows)
     allItems:=map[string]map[string]any{}
     attention:=[]map[string]any{}
@@ -297,10 +318,25 @@ func AttentionSnapshotFromRows(project,root string,rows []Record,reconcile bool)
         if _,exists:=allItems[id]; exists { continue }
         if row,ok:=byID[id]; ok { item:=webSummaryItem(row,row.State,nil,control.Attention[id],control.Activity[id]); if lifecycle,ok:=control.Timings[id]; ok { item["lifecycle"]=lifecycle }; allItems[id]=item }
     }
-    return map[string]any{"snapshot_at":time.Now().Format(time.RFC3339),"attention":attention, "controller_reviews": controllerReviews,"all_items":allItems,"notification_events":events,"counts":map[string]any{"attention":len(attention)}},nil
+    return map[string]any{"snapshot_at":time.Now().Format(time.RFC3339Nano),"attention":attention, "content_revision":backlogRevisionFromRows(rows),"controller_reviews": controllerReviews,"all_items":allItems,"notification_events":events,"counts":map[string]any{"attention":len(attention)}},nil
 }
 
 func AttentionSnapshot(project,root string,reconcile bool) (map[string]any,error) {
     rows,err:=CachedCatalog(project,root); if err!=nil { return nil,err }
     return AttentionSnapshotFromRows(project,root,rows,reconcile)
+}
+
+// List notifications need state identity and actionable reasons, not every
+// completed document's requirements/notes. Full detail and attention APIs remain
+// available independently.
+func pagedNotificationItems(value any) map[string]map[string]any {
+ out:=map[string]map[string]any{}
+ items,_:=value.(map[string]map[string]any)
+ for id,item:=range items {
+  small:=map[string]any{}
+  for _,key:=range []string{"id","title","state","file_state","mtime","updated_at","completed_at","attention_reason","activity","completion_review"} { if v,ok:=item[key];ok { small[key]=v } }
+  if _,ok:=item["attention_reason"];ok { if fields,ok:=item["fields"].(map[string]string);ok {small["fields"]=compactListFields(Record{Fields:fields})};if doc,ok:=item["document"].(map[string]any);ok {small["document"]=compactListDocument(Record{Document:doc})} }
+  out[id]=small
+ }
+ return out
 }

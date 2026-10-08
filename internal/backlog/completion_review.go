@@ -230,8 +230,14 @@ func reportedCompletionAt(row Record, worker *runtimeobs.Attempt, handoffs map[s
 	return result
 }
 
-func applyCompletionReviews(project string, rows []Record, activity map[string]map[string]any, now time.Time) {
-	ledger, ledgerErr := runtimeobs.BuildLedger(project, 10, now)
+func applyCompletionReviews(project string, rows []Record, activity map[string]map[string]any, now time.Time, shared ...requestRuntime) {
+	var ledger runtimeobs.Ledger
+	var ledgerErr error
+	if len(shared) > 0 {
+		ledger, ledgerErr = readRequestRuntime(project, 10, now, shared...)
+	} else {
+		ledger, ledgerErr = runtimeobs.BuildLedger(project, 10, now)
+	}
 	handoffs, handoffErr := readCompletionHandoffs(project)
 	for _, row := range rows {
 		if row.Location != "active" || row.State != "doing" {

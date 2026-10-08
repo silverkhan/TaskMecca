@@ -9,9 +9,9 @@ import (
 
 // runtimeLedgerSignals projects only explicitly/reliably bound execution attempts
 // into backlog health. Unbound or ambiguous attempts are never guessed onto tasks.
-func runtimeLedgerSignals(project string,rows []Record,now time.Time) map[string]map[string]any {
+func runtimeLedgerSignals(project string,rows []Record,now time.Time,shared ...requestRuntime) map[string]map[string]any {
     out:=map[string]map[string]any{}
-    ledger,err:=runtimeobs.ReconcileLedger(project,20,now)
+    ledger,err:=readRequestRuntime(project,20,now,shared...)
     if err!=nil { return out }
 
     doing:=map[string]bool{}

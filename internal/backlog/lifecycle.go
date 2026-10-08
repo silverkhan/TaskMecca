@@ -140,7 +140,7 @@ func LifecycleTimings(project,root string) (map[string]map[string]any,error) {
     return lifecycleTimings(project,root,nil)
 }
 
-func lifecycleTimings(project,root string,rows []Record) (map[string]map[string]any,error) {
+func lifecycleTimings(project,root string,rows []Record,shared ...requestRuntime) (map[string]map[string]any,error) {
     releaseGuard, guardErr := projectguard.AcquireWrite(project)
     if guardErr != nil { return nil, guardErr }
     defer releaseGuard()
@@ -226,7 +226,7 @@ func lifecycleTimings(project,root string,rows []Record) (map[string]map[string]
     // Execution Attempt Ledger. A backlog "doing" state is dispatch/workflow
     // state; it is not, by itself, proof that the assigned worker executed.
     runtimeStarts:=map[string]lifecycleEvent{}
-    if runtimeLedger,ledgerErr:=runtimeobs.ReconcileLedger(project,10,now); ledgerErr==nil {
+    if runtimeLedger,ledgerErr:=readRequestRuntime(project,10,now,shared...); ledgerErr==nil {
         for _,attempt:=range runtimeLedger.Attempts {
             id:=strings.ToUpper(strings.TrimSpace(attempt.TaskID))
             if id=="" || attempt.BindingState!=runtimeobs.BindingBound || attempt.StartedAt=="" { continue }

@@ -466,7 +466,7 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 		}
 		statuses := split(r.URL.Query().Get("status"))
 		tags := split(r.URL.Query().Get("tags"))
-		result, err := backlog.BacklogPage(activeProject, selected, page, pageSize, statuses, tags, r.URL.Query().Get("q"), r.URL.Query().Get("sort"))
+		result, err := backlog.BacklogPage(activeProject, selected, page, pageSize, statuses, tags, r.URL.Query().Get("q"), r.URL.Query().Get("sort"), r.URL.Query().Get("projection"))
 		if err != nil {
 			writeJSON(w, map[string]any{"error": err.Error()}, 500)
 			return
