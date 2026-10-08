@@ -2089,8 +2089,28 @@ function rememberNotification(key) {
   if(!seen.includes(key))seen.push(key);
   localStorage.setItem('task-mecca-notification-seen',JSON.stringify(seen.slice(-250)));
 }
+function notificationBrowserClient(){
+ const agent=navigator.userAgent||'';
+ if(/SamsungBrowser/i.test(agent))return 'samsung';
+ if(/Edg\//i.test(agent))return 'edge';
+ if(/Firefox|FxiOS/i.test(agent))return 'firefox';
+ if(/Chrome|CriOS/i.test(agent))return 'chrome';
+ if(/Safari/i.test(agent))return 'safari';
+ return 'other';
+}
+async function webNotificationDelivery(project,action,eventID='',token=''){
+ const response=await fetch('/api/notifications/web?project='+encodeURIComponent(project),{
+  method:'POST',
+  headers:{'Content-Type':'application/json','X-Task-Mecca-Action':'1'},
+  body:JSON.stringify({action,event_id:eventID,token,client:notificationBrowserClient()})
+ });
+ if(!response.ok)throw Error('Web notification coordination unavailable (HTTP '+response.status+')');
+ return response.json();
+}
 async function sendBrowserNotification(kind,task,reason,key,eventKind=kind,eventID='',deliveryProject=state.project,sourceBacklog='',sourceValidity=null) {
-  if(notificationSeenSet().has(key)||browserNotificationsPending.has(key))return;
+  // Legacy snapshot-delta alerts have no canonical event ID and cannot be
+  // deduplicated across devices. The server journal is the sole push source.
+  if(!eventID||notificationSeenSet().has(key)||browserNotificationsPending.has(key))return;
   if(!webNotificationEnabled(deliveryProject,eventKind,kind)){
     rememberNotification(key);
     return;
@@ -2108,6 +2128,7 @@ async function sendBrowserNotification(kind,task,reason,key,eventKind=kind,event
   const targetParams=new URLSearchParams({project:deliveryProject||''});if(sourceBacklog)targetParams.set('backlog',sourceBacklog);
   const target=`/tasks/${encodeURIComponent(task.id)}?${targetParams}`;
   browserNotificationsPending.add(key);
+  let lease="",displayRequested=false;
   try {
     const registration=await notificationWorker();
     if(!webNotificationEnabled(deliveryProject,eventKind,kind)){rememberNotification(key);return;}
@@ -2117,17 +2138,31 @@ async function sendBrowserNotification(kind,task,reason,key,eventKind=kind,event
       const current=latest.tasks?.[task.id];
       if((sourceValidity.reasonType&&current?.reason_type!==sourceValidity.reasonType)||(eventKind==='completed'&&current&&current.file_state!=='done')){rememberNotification(key);return;}
     }
-    if(registration){
-      await registration.showNotification(title,{body,tag,data:{url:target}});
-      recordBrowserDelivery(deliveryProject,task,eventKind,key,eventID);
-      rememberNotification(key);
+    // Claim must be shared by every tab and device. It is obtained immediately
+    // before display, after permissions and obsolete-reason checks.
+    const claim=await webNotificationDelivery(deliveryProject,'claim',eventID);
+    if(!claim.granted){
+      if(claim.state!=='claimed'&&claim.state!=='failed')rememberNotification(key);
       return;
     }
-    const n=new Notification(title,{body,tag});
+    lease=claim.token;
+    if(registration){
+      await registration.showNotification(title,{body,tag,data:{url:target}});
+    }else{
+      const n=new Notification(title,{body,tag});
+      n.onclick=()=>{ window.focus(); window.location.href=target; n.close(); };
+    }
+    displayRequested=true;
     recordBrowserDelivery(deliveryProject,task,eventKind,key,eventID);
-    n.onclick=()=>{ window.focus(); window.location.href=target; n.close(); };
     rememberNotification(key);
-  } catch(_) {} finally { browserNotificationsPending.delete(key); }
+    // Ack loss is *not* a failed display. Server treats an expired claim as
+    // uncertain rather than blindly replaying a possible OS notification.
+    await webNotificationDelivery(deliveryProject,'ack',eventID,lease);
+  } catch(_) {
+    if(lease&&!displayRequested){
+      try{await webNotificationDelivery(deliveryProject,'fail',eventID,lease)}catch(_){}
+    }
+  } finally { browserNotificationsPending.delete(key); }
 }
 function processTaskNotifications(snapshot,context={}) {
   const project=context.project??state.project,requestedBacklog=context.backlog??state.backlog;
@@ -2298,7 +2333,7 @@ function notificationDeliveryLabel(channel){if(!channel)return t('notificationUn
 function historyRowTime(row){return [row.telegram?.state==='sent'?row.telegram.sent_at:'',row.web?.sent_at].filter(value=>Number.isFinite(Date.parse(value))).sort((a,b)=>Date.parse(a)-Date.parse(b)).pop()||row.event_at||'';}
 function historyRowMillis(row){const time=Date.parse(historyRowTime(row));return Number.isFinite(time)?time:0;}
 function historyRowKey(row){return row.project+'|'+row.event_id;}
-function mergedNotificationHistory(){const rows=new Map();for(const row of state.notificationHistory||[])rows.set(historyRowKey(row),{...row});for(const local of browserDeliveryHistory()){const key=historyRowKey(local),prior=rows.get(key);rows.set(key,{...local,...prior,web:local,event_at:prior?.event_at||local.sent_at});}return [...rows.values()].sort((a,b)=>historyRowMillis(b)-historyRowMillis(a)||historyRowKey(a).localeCompare(historyRowKey(b)));}
+function mergedNotificationHistory(){const rows=new Map();for(const row of state.notificationHistory||[])rows.set(historyRowKey(row),{...row});for(const local of browserDeliveryHistory()){const key=historyRowKey(local),prior=rows.get(key);rows.set(key,{...local,...prior,web:prior?.web||local,event_at:prior?.event_at||local.sent_at});}return [...rows.values()].sort((a,b)=>historyRowMillis(b)-historyRowMillis(a)||historyRowKey(a).localeCompare(historyRowKey(b)));}
 function notificationHistoryContext(){return state.project+'|'+state.backlog+'|'+(state.projectNotificationSettings||[]).map(row=>row.path).sort().join('|');}
 function captureHistoryWindow(){state.notificationHistoryWindow=mergedNotificationHistory();state.notificationHistoryBaseline=new Map(state.notificationHistoryWindow.map(row=>[historyRowKey(row),historyRowMillis(row)]));state.notificationHistoryNew=0;}
 function acceptHistoryUpdate(){const rows=mergedNotificationHistory();if(!state.notificationHistoryWindow)captureHistoryWindow();state.notificationHistoryNew=rows.filter(row=>!state.notificationHistoryBaseline.has(historyRowKey(row))||historyRowMillis(row)>state.notificationHistoryBaseline.get(historyRowKey(row))).length;if(state.notificationHistoryPage===1&&state.notificationCenterTab==='history')captureHistoryWindow();updateNotificationHistoryDOM();}
