@@ -3381,30 +3381,61 @@ function storageManagementView(){
  const logTotal=Number(logs.total_bytes||0),runtimeTotal=Number(runtime.total_bytes||0);
  const reclaimLog=Number(logs.reclaimable_bytes||0),reclaimRuntime=Number(runtime.cleanup?.reclaimable_bytes||0);
  const cards=[
-  {label:ko?'측정된 로그':'Measured logs',value:logTotal,extra:ko?'선택 프로젝트 + 서비스 로그':'Project + service logs'},
-  {label:ko?'Runtime 기록':'Runtime records',value:runtimeTotal,extra:ko?'실행 관측 데이터':'Execution observation'},
-  {label:ko?'안전 정리 후보':'Safe cleanup candidates',value:reclaimLog+reclaimRuntime,extra:ko?'진단 로그 + 종료가 확인된 기록':'Diagnostic logs + terminal records'}
+  {label:ko?'측정된 로그':'Measured logs',value:logTotal,extra:ko?'선택 프로젝트의 진단·보호 로그':'Project diagnostic and protected logs'},
+  {label:ko?'에이전트 실행 기록':'Agent execution records',value:runtimeTotal,extra:ko?'상태·활동 관측 기록과 종료된 실행 요약':'State/activity events and completed summaries'},
+  {label:ko?'안전 정리 가능':'Eligible for safe cleanup',value:reclaimLog+reclaimRuntime,extra:ko?'수동 정리 가능 로그 + 조건을 충족한 실행 기록':'Clearable logs + eligible execution records'}
  ].map(item=>'<div class="storage-overview-card"><span>'+esc(item.label)+'</span><strong>'+esc(fmtBytes(item.value))+'</strong><small>'+esc(item.extra)+'</small></div>').join('');
  const errors=state.storageError?'<p role="alert" class="log-storage-alert">'+esc(state.storageError)+'</p>':'';
- const runtimeContent=!state.storageRuntime?'<p class="muted">'+esc(ko?'Runtime 데이터를 조회하면 안전 정리 미리보기가 표시됩니다.':'Load Runtime usage to see safe cleanup candidates.')+'</p>':
-  '<div class="storage-runtime-grid">'+[
-   [ko?'Raw 이벤트':'Raw events',runtime.raw?.bytes||0],
-   [ko?'종료 실행 이력':'Terminal history',runtime.history?.bytes||0],
-   [ko?'보호 중인 실행 데이터':'Protected execution',runtime.protected_raw?.bytes||0],
-   [ko?'Legacy 기록':'Legacy records',runtime.legacy?.bytes||0]
-  ].map(([label,value])=>'<div><span>'+esc(label)+'</span><strong>'+esc(fmtBytes(value))+'</strong></div>').join('')+'</div>'+
-  '<div class="storage-runtime-summary">'+esc(ko?'기존 Runtime 안전 정리 정책':'Existing Runtime retention')+
-  ' · '+esc(t('runtimeStoragePolicy',{raw:runtime.retention?.raw_days||7,days:runtime.retention?.history_days||90,max:runtime.retention?.history_max_attempts||2000}))+
-  '</div><div class="storage-runtime-actions"><strong>'+esc(ko?'정리 후보':'Cleanup candidates')+' · '+esc(fmtBytes(reclaimRuntime))+'</strong>'+
+ const policy=runtime.retention||{},cleanup=runtime.cleanup||{};
+ const rawDays=Number.isFinite(Number(policy.raw_days))?Number(policy.raw_days):7;
+ const historyDays=Number.isFinite(Number(policy.history_days))?Number(policy.history_days):90;
+ const historyMax=Number.isFinite(Number(policy.history_max_attempts))?Number(policy.history_max_attempts):2000;
+ const executionTerms=[
+  {
+   label:ko?'상세 실행 이벤트':'Detailed execution events',
+   bytes:runtime.raw?.bytes||0,
+   files:runtime.raw?.files||0,
+   note:ko?'에이전트의 시작·진행·도구 활동·상태 전환을 기록한 날짜별 원본 파일입니다.':'Dated source files containing agent starts, tool activity and status transitions.'
+  },
+  {
+   label:ko?'종료된 실행 요약':'Completed execution summaries',
+   bytes:runtime.history?.bytes||0,
+   files:runtime.history?.files||0,
+   note:ko?'종료가 확인된 실행의 상태와 활동 이력을 요약해 저장합니다.':'Compact summaries of executions confirmed as terminated.'
+  },
+  {
+   label:ko?'정리 보호 대상 Raw 파일':'Raw files protected from cleanup',
+   bytes:runtime.protected_raw?.bytes||0,
+   files:runtime.protected_raw?.files||0,
+   note:ko?'상세 실행 이벤트 전체에 포함된 용량입니다. 종료가 확인되지 않은 실행이 하나라도 들어 있으면 파일 전체를 보호합니다. 별도 용량으로 더하지 마세요.':'Already included in detailed execution events. One unconfirmed running execution can protect an entire daily file. Do not add this twice.'
+  },
+  {
+   label:ko?'이전 형식 실행 기록':'Legacy-format execution records',
+   bytes:runtime.legacy?.bytes||0,
+   files:runtime.legacy?.files||0,
+   note:ko?'이전 버전의 단일 실행 이벤트 파일입니다.':'Older single-file execution event format.'
+  }
+ ];
+ const runtimeContent=!state.storageRuntime?'<p class="muted">'+esc(ko?'에이전트 실행 기록을 조회하면 상세 기록과 안전 정리 조건이 표시됩니다.':'Load agent execution records to see details and safe cleanup conditions.')+'</p>':
+  '<p class="storage-runtime-intro">'+esc(ko?'Codex·Claude 등 에이전트가 작업하는 동안 Task Mecca가 관측한 실행 상태·활동·종료 증거입니다. 대화 전문이나 코드 파일 자체를 저장한 용량은 아닙니다.':'Observed agent activity, execution states and terminal evidence from tools such as Codex and Claude. This usage does not represent full chat transcripts or source code files.')+'</p>'+
+  '<div class="storage-runtime-grid">'+executionTerms.map(item=>'<div class="storage-runtime-metric"><span>'+esc(item.label)+'</span><strong>'+esc(fmtBytes(item.bytes))+'</strong><small>'+esc(item.note)+'</small><small>'+esc(ko?'파일 '+Number(item.files).toLocaleString()+'개':Number(item.files).toLocaleString()+' files')+'</small></div>').join('')+'</div>'+
+  '<p class="storage-runtime-inclusion">'+esc(ko?'※ 보호 대상 Raw 파일은 상세 실행 이벤트에 이미 포함됩니다. 네 항목을 더하면 실제 사용량보다 크게 계산됩니다.':'Protected raw files are a subset of detailed execution events. Adding all four categories would double-count storage.')+'</p>'+
+  '<div class="storage-runtime-summary">'+esc(ko?'에이전트 실행 기록 보존 기준':'Agent execution record retention')+' · '+
+  esc(t('runtimeStoragePolicy',{raw:rawDays,days:historyDays,max:historyMax}))+'</div>'+
+  '<div class="storage-runtime-actions"><strong>'+esc(ko?'안전하게 정리 가능한 실행 기록':'Execution records eligible for cleanup')+' · '+esc(fmtBytes(reclaimRuntime))+'</strong>'+
   '<button type="button" id="storageRuntimeCleanup" class="action-btn secondary" '+(reclaimRuntime>0&&!state.storageBusy?'':'disabled')+'>'+esc(ko?'안전 정리':'Safe cleanup')+'</button></div>'+
-  '<p class="muted">'+esc(ko?'현재 실행 중이거나 상태가 불확실한 세션은 정리 대상에서 제외됩니다.':'Running and uncertain sessions are never cleanup candidates.')+'</p>';
- return '<div class="storage-management"><div class="page-head"><div><h1>'+esc(ko?'저장소 관리':'Storage management')+'</h1><p class="summary">'+esc(ko?'진단 로그와 Runtime 사용량, 보호 기록, 안전 정리 범위를 확인합니다.':'Review diagnostic logs, Runtime usage, protected records, and safe cleanup.')+'</p></div></div>'+
+  '<p class="storage-runtime-note">'+esc(reclaimRuntime===0?
+   (ko?'현재 기준에 맞는 정리 대상이 없습니다. 최근 '+rawDays+'일 이내의 기록이거나, 미종료 실행 또는 종료 증거가 부족한 기록이 같은 파일에 포함되어 있을 수 있습니다. 이 수치만으로 정확한 원인을 단정할 수는 없습니다.':'No records meet all cleanup conditions. Reasons may include files inside the '+rawDays+'-day retention period, active attempts, or missing terminal evidence. The exact cause cannot be determined from this total alone.'):
+   (ko?'정리 대상은 보존 기간과 종료 증거를 모두 검증한 기록만 포함합니다. 상태가 불확실하거나 실행 중인 세션은 제외됩니다.':'Only records satisfying the retention and terminal-evidence checks are eligible. Running or uncertain sessions remain protected.'))+'</p>'+
+  '<details class="storage-runtime-explain"><summary>'+esc(ko?'실행 기록을 보호하는 이유와 정리 조건':'Why records are protected and when cleanup is allowed')+'</summary>'+
+  '<div>'+esc(ko?'상세 이벤트는 날짜별 파일로 저장됩니다. 파일의 마지막 활동이 보존 기간보다 오래되고, 파일에 포함된 실행이 모두 종료 확인을 거친 경우에만 안전 정리 대상으로 검토됩니다. 종료된 실행의 요약은 별도 보존 규칙을 적용합니다. 정리 보호 대상은 현재/미확정 실행이 섞인 원본 파일이므로 삭제하면 상태 재구성에 필요한 증거가 손실될 수 있습니다.':'Detailed events are stored as dated files. A raw file is considered for cleanup only after the retention period and after every execution within it has terminal evidence. Completed summaries have their own retention limits. Files with active or uncertain executions must stay intact for state reconstruction.')+'</div></details>';
+ return '<div class="storage-management"><div class="page-head"><div><h1>'+esc(ko?'저장소 관리':'Storage management')+'</h1><p class="summary">'+esc(ko?'진단 로그와 에이전트 실행 기록의 사용량, 보호 이유 및 안전 정리 범위를 확인합니다.':'Review diagnostic logs, agent execution records, protection reasons, and safe cleanup.')+'</p></div></div>'+
   '<div class="storage-toolbar"><label>'+esc(ko?'프로젝트':'Project')+' <select id="storageManagementProject" '+(state.storageBusy?'disabled':'')+'>'+options+'</select></label>'+
   '<button id="storageManagementRefresh" type="button" class="action-btn secondary" '+(state.storageBusy?'disabled':'')+'>'+esc(ko?'사용량 갱신':'Refresh usage')+'</button></div>'+
   errors+(state.storageBusy?'<p role="status" class="muted">'+esc(ko?'사용량 확인 중…':'Checking storage usage…')+'</p>':'')+
-  '<div class="storage-overview-grid">'+cards+'</div><p class="storage-scope-note">'+esc(ko?'측정 범위: 선택한 프로젝트의 로그 및 Runtime 기록과 공용 웹 서비스 로그. 범주별 측정치가 일부 중복될 수 있으므로 디스크 전체 사용량의 합계가 아닙니다. 브라우저/Push 데이터는 별도 후속 항목입니다.':'Scope: selected project logs and Runtime records, plus the shared Web service log. Categories may overlap; this is not total disk usage. Browser/Push data is a separate follow-up.')+'</p>'+
+  '<div class="storage-overview-grid">'+cards+'</div><p class="storage-scope-note">'+esc(ko?'측정 범위: 선택한 프로젝트의 로그 및 에이전트 실행 기록과 공용 웹 서비스 로그. 범주별 측정치가 일부 중복될 수 있으므로 디스크 전체 사용량의 합계가 아닙니다. 브라우저/Push 데이터는 별도 후속 항목입니다.':'Scope: selected project logs and agent execution records, plus the shared Web service log. Categories may overlap; this is not total disk usage. Browser/Push data is a separate follow-up.')+'</p>'+
   '<section class="storage-management-section"><h2>'+esc(ko?'진단 로그와 보호 원장':'Diagnostic logs and protected ledgers')+'</h2><div id="logStoragePanel">'+logStorageSection()+'</div></section>'+
-  '<section class="storage-management-section"><h2>'+esc(ko?'Runtime 안전 정리':'Runtime safe cleanup')+'</h2>'+runtimeContent+'</section></div>';
+  '<section class="storage-management-section"><h2>'+esc(ko?'에이전트 실행 기록 관리':'Agent execution record management')+'</h2>'+runtimeContent+'</section></div>';
 }
 function bindStorageManagementActions(){
  const selector=$('#storageManagementProject');
@@ -3439,8 +3470,8 @@ function bindStorageManagementActions(){
 function logStorageLabels() {
   const ko=state.language==='ko';
   return ko
-    ? {title:'로그 데이터 관리',intro:'서비스 및 프로젝트 런타임 로그의 실제 파일 용량입니다. 실행 원장·알림 이력·라이프사이클 기록은 삭제할 수 없습니다.',project:'조회 프로젝트',reload:'용량 다시 확인',clear:'로그 비우기',protected:'보호됨',none:'기록 없음',total:'조회한 로그 총량',reclaim:'정리 가능한 용량',confirm:'로그 내용을 영구히 비웁니다. 다시 복구할 수 없습니다.',cancel:'취소',confirmAction:'비우기',success:'정리 완료',failed:'정리 실패',loading:'로그 용량 확인 중…',projectMissing:'등록된 프로젝트가 없습니다.',names:{'web-service':'웹 서비스 출력 로그','hook-diagnostics':'Hook 진단 이벤트','execution-ledger':'실행 이벤트 원장','notification-events':'알림 이력','lifecycle-observations':'라이프사이클 관측 이력'},notes:{'web-service':'웹 실행 로그입니다. 비운 뒤에도 새 로그는 계속 기록됩니다.','hook-diagnostics':'진단용 Hook 원본 관측 기록입니다. 비우면 이전 진단 자료를 복구할 수 없습니다.','execution-ledger':'실행 상태와 이력 복원에 필요한 원장으로 보호됩니다.','notification-events':'알림 중복 방지와 전송 이력을 위해 보호됩니다.','lifecycle-observations':'작업 라이프사이클 증거를 보존하기 위해 보호됩니다.'}}
-    : {title:'Log storage',intro:'Actual disk usage of Web and project runtime logs. Execution, notification and lifecycle ledgers are protected.',project:'Project',reload:'Refresh usage',clear:'Clear log',protected:'Protected',none:'No log file',total:'Measured total',reclaim:'Clearable logs',confirm:'The log contents will be permanently cleared and cannot be restored.',cancel:'Cancel',confirmAction:'Clear',success:'Log cleared',failed:'Could not clear log',loading:'Checking log sizes…',projectMissing:'No registered projects',names:{'web-service':'Web service output','hook-diagnostics':'Hook diagnostic events','execution-ledger':'Execution event ledger','notification-events':'Notification history','lifecycle-observations':'Lifecycle observations'}};
+    ? {title:'로그 데이터 관리',intro:'서비스와 프로젝트에서 생성된 진단 로그의 실제 파일 용량입니다. 실행 원장·알림 이력·라이프사이클 기록은 삭제할 수 없습니다.',project:'조회 프로젝트',reload:'용량 다시 확인',clear:'로그 비우기',protected:'보호됨',none:'기록 없음',total:'조회한 로그 총량',reclaim:'정리 가능한 용량',confirm:'로그 내용을 영구히 비웁니다. 다시 복구할 수 없습니다.',cancel:'취소',confirmAction:'비우기',success:'정리 완료',failed:'정리 실패',loading:'로그 용량 확인 중…',projectMissing:'등록된 프로젝트가 없습니다.',names:{'web-service':'웹 서비스 출력 로그','hook-diagnostics':'Hook 진단 이벤트','execution-ledger':'실행 이벤트 원장','notification-events':'알림 이력','lifecycle-observations':'라이프사이클 관측 이력'},notes:{'web-service':'웹 실행 로그입니다. 비운 뒤에도 새 로그는 계속 기록됩니다.','hook-diagnostics':'진단용 Hook 원본 관측 기록입니다. 비우면 이전 진단 자료를 복구할 수 없습니다.','execution-ledger':'실행 상태와 이력 복원에 필요한 원장으로 보호됩니다.','notification-events':'알림 중복 방지와 전송 이력을 위해 보호됩니다.','lifecycle-observations':'작업 라이프사이클 증거를 보존하기 위해 보호됩니다.'}}
+    : {title:'Log storage',intro:'Actual disk usage of Web service and project diagnostic logs. Execution, notification and lifecycle ledgers are protected.',project:'Project',reload:'Refresh usage',clear:'Clear log',protected:'Protected',none:'No log file',total:'Measured total',reclaim:'Clearable logs',confirm:'The log contents will be permanently cleared and cannot be restored.',cancel:'Cancel',confirmAction:'Clear',success:'Log cleared',failed:'Could not clear log',loading:'Checking log sizes…',projectMissing:'No registered projects',names:{'web-service':'Web service output','hook-diagnostics':'Hook diagnostic events','execution-ledger':'Execution event ledger','notification-events':'Notification history','lifecycle-observations':'Lifecycle observations'}};
 }
 function logBytes(value){
   const n=Math.max(0,Number(value)||0);
@@ -3809,24 +3840,24 @@ Object.assign(I18N.ko,{
   runtimeNeedsCheck:'상태 확인 필요',
   runtimeNoNeedsCheck:'현재 상태 확인이 필요한 Runtime 세션이 없습니다.',
   runtimeTerminalArchived:'종료·보관',
-  runtimeStorage:'Runtime 기록 저장소',
+  runtimeStorage:'에이전트 실행 기록 저장소',
   runtimeStorageOpen:'저장소 관리',
   runtimeStorageClose:'저장소 닫기',
   runtimeStorageLoading:'저장소 사용량을 계산하는 중…',
   runtimeStorageTotal:'전체 사용량',
-  runtimeStorageRaw:'Raw 이벤트',
-  runtimeStorageHistory:'종료 실행 이력',
-  runtimeStorageLegacy:'Legacy 기록',
-  runtimeStorageProtected:'현재/미확정 보호 데이터',
+  runtimeStorageRaw:'상세 실행 이벤트',
+  runtimeStorageHistory:'종료된 실행 요약',
+  runtimeStorageLegacy:'이전 형식 실행 기록',
+  runtimeStorageProtected:'정리 보호 대상 Raw 파일',
   runtimeStorageReclaimable:'안전 정리 가능',
   runtimeStorageOldest:'가장 오래된 정리 후보',
-  runtimeStoragePolicy:'Raw {raw}일 · 종료 이력 {days}일 · 최대 {max}건',
+  runtimeStoragePolicy:'상세 실행 이벤트 {raw}일 · 종료 요약 {days}일 · 최대 {max}건',
   runtimeCleanup:'안전 정리',
   runtimeCleanupNone:'현재 정책 기준으로 안전하게 정리할 기록이 없습니다.',
   runtimeCleanupPreview:'정리 대상: 파일 {files}개 · 이력 {attempts}건 · 약 {bytes}',
-  runtimeCleanupConfirm:'현재 실행 및 상태 미확정 세션은 보존합니다. 종료가 확정되고 보존 정책을 초과한 Runtime 기록 약 {bytes}를 정리할까요?',
+  runtimeCleanupConfirm:'현재 실행 중이거나 상태가 불확실한 세션의 기록은 보호합니다. 정리 조건이 확인된 에이전트 실행 기록 약 {bytes}를 정리할까요?',
   runtimeCleanupRunning:'정리 중…',
-  runtimeCleanupDone:'Runtime 기록 {bytes}를 정리했습니다.',
+  runtimeCleanupDone:'에이전트 실행 기록 {bytes}를 정리했습니다.',
   runtimeFiles:'파일 {n}개',
   runtimeRootSessions:'Root Sessions',
   runtimeRootActive:'현재 Root',
@@ -3899,24 +3930,24 @@ Object.assign(I18N.en,{
   runtimeNeedsCheck:'Needs verification',
   runtimeNoNeedsCheck:'No runtime session currently needs verification.',
   runtimeTerminalArchived:'Terminal / archived',
-  runtimeStorage:'Runtime record storage',
+  runtimeStorage:'Agent execution record storage',
   runtimeStorageOpen:'Manage storage',
   runtimeStorageClose:'Close storage',
   runtimeStorageLoading:'Calculating runtime storage usage…',
   runtimeStorageTotal:'Total usage',
-  runtimeStorageRaw:'Raw events',
-  runtimeStorageHistory:'Terminal history',
-  runtimeStorageLegacy:'Legacy records',
-  runtimeStorageProtected:'Protected current/unknown data',
+  runtimeStorageRaw:'Detailed execution events',
+  runtimeStorageHistory:'Completed execution summaries',
+  runtimeStorageLegacy:'Legacy-format execution records',
+  runtimeStorageProtected:'Raw files protected from cleanup',
   runtimeStorageReclaimable:'Safely reclaimable',
   runtimeStorageOldest:'Oldest cleanup candidate',
-  runtimeStoragePolicy:'Raw {raw}d · terminal history {days}d · max {max}',
+  runtimeStoragePolicy:'Detailed events {raw} days · finished summaries {days} days · max {max} records',
   runtimeCleanup:'Safe cleanup',
   runtimeCleanupNone:'No runtime records are safely cleanable under the current policy.',
   runtimeCleanupPreview:'Cleanup: {files} files · {attempts} history records · about {bytes}',
-  runtimeCleanupConfirm:'Current and uncertain sessions will be preserved. Clean about {bytes} of terminal runtime records beyond retention?',
+  runtimeCleanupConfirm:'Active and uncertain session records stay protected. Clean about {bytes} of agent execution records that satisfy retention conditions?',
   runtimeCleanupRunning:'Cleaning…',
-  runtimeCleanupDone:'Cleaned {bytes} of runtime records.',
+  runtimeCleanupDone:'Cleaned {bytes} of agent execution records.',
   runtimeFiles:'{n} files',
   runtimeRootSessions:'Root Sessions',
   runtimeRootActive:'Current roots',
@@ -3975,6 +4006,7 @@ function runtimeStoragePanel() {
   if(state.runtimeStorageLoading)return `<section class="runtime-storage-panel"><div class="runtime-storage-loading">${esc(t('runtimeStorageLoading'))}</div></section>`;
   if(state.runtimeStorageError)return `<section class="runtime-storage-panel"><div class="runtime-history-error">${esc(state.runtimeStorageError)}</div></section>`;
   const r=state.runtimeStorage||{}, cleanup=r.cleanup||{}, policy=r.retention||{};
+  const ko=state.language==='ko';
   const reclaim=Number(cleanup.reclaimable_bytes||0);
   return `<section class="runtime-storage-panel">
     <div class="runtime-storage-head"><div><h3>${esc(t('runtimeStorage'))}</h3><p>${esc(t('runtimeStoragePolicy',{raw:policy.raw_days||7,days:policy.history_days||90,max:policy.history_max_attempts||2000}))}</p></div><strong>${esc(fmtBytes(r.total_bytes||0))}</strong></div>
@@ -3984,11 +4016,12 @@ function runtimeStoragePanel() {
       <div><span>${esc(t('runtimeStorageLegacy'))}</span><strong>${esc(fmtBytes(r.legacy?.bytes||0))}</strong><small>${esc(t('runtimeFiles',{n:r.legacy?.files||0}))}</small></div>
       <div><span>${esc(t('runtimeStorageProtected'))}</span><strong>${esc(fmtBytes(r.protected_raw?.bytes||0))}</strong><small>${esc(t('runtimeFiles',{n:r.protected_raw?.files||0}))}</small></div>
     </div>
+    <p class="runtime-storage-note">${esc(ko?'정리 보호 대상 Raw 파일은 상세 실행 이벤트에 이미 포함됩니다. 활성·미확정 실행이 하나라도 포함된 날짜별 파일 전체가 보호될 수 있습니다.':'Protected raw files are already included in detailed events. A dated file containing any active or uncertain execution may be protected in full.')}</p>
     <div class="runtime-cleanup-preview">
       <div><span>${esc(t('runtimeStorageReclaimable'))}</span><strong>${esc(fmtBytes(reclaim))}</strong></div>
       ${cleanup.oldest_candidate_at?`<div><span>${esc(t('runtimeStorageOldest'))}</span><strong>${esc(dateTimeLabel(cleanup.oldest_candidate_at,true))}</strong></div>`:''}
     </div>
-    <p class="runtime-storage-note">${reclaim>0?esc(t('runtimeCleanupPreview',{files:cleanup.candidate_files||0,attempts:cleanup.candidate_attempts||0,bytes:fmtBytes(reclaim)})):esc(t('runtimeCleanupNone'))}</p>
+    <p class="runtime-storage-note">${reclaim>0?esc(t('runtimeCleanupPreview',{files:cleanup.candidate_files||0,attempts:cleanup.candidate_attempts||0,bytes:fmtBytes(reclaim)})):esc(ko?'현재 정리 조건을 충족한 기록이 없습니다. 최신 기록이거나 미종료 실행이 섞인 날짜별 파일일 수 있습니다.':'No records currently qualify for cleanup. The files may be recent or contain unfinished executions.')}</p>
     <button class="runtime-cleanup-btn" id="runtimeCleanupBtn" ${reclaim<=0?'disabled':''}>${esc(t('runtimeCleanup'))}</button>
   </section>`;
 }
