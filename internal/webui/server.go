@@ -912,6 +912,47 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 		if err != nil { writeJSON(w, map[string]any{"error": err.Error()}, http.StatusInternalServerError); return }
 		writeJSON(w, rows, http.StatusOK)
 	})
+	mux.HandleFunc("/api/notifications/push", func(w http.ResponseWriter,r *http.Request){
+		activeProject:=projectFor(r)
+		if r.Method==http.MethodGet {
+			key,err:=webPushPublicKey(activeProject)
+			if err!=nil{writeJSON(w,map[string]any{"error":err.Error()},500);return}
+			reg,err:=pushRegistrySnapshot(activeProject)
+			if err!=nil{writeJSON(w,map[string]any{"error":err.Error()},500);return}
+			writeJSON(w,map[string]any{"available":true,"public_key":key,"subscription_count":len(reg.Subscriptions)},200)
+			return
+		}
+		if r.Method!=http.MethodPost {
+			w.Header().Set("Allow","GET, POST")
+			writeJSON(w,map[string]any{"error":"method not allowed"},405);return
+		}
+		if r.Header.Get("X-Task-Mecca-Action")!="1"{
+			writeJSON(w,map[string]any{"error":"action header required"},403);return
+		}
+		// Reject cross-origin writes even when DNS rebinding or permissive
+		// browser CORS defaults would otherwise allow same-network requests.
+		if origin:=r.Header.Get("Origin"); origin!=""{
+			parsed,err:=url.Parse(origin)
+			if err!=nil||parsed.Host!=r.Host|| (parsed.Scheme!="https"&&parsed.Scheme!="http"){
+				writeJSON(w,map[string]any{"error":"cross-origin push management forbidden"},403);return
+			}
+		}
+		var payload pushSubscriptionRequest
+		if err:=json.NewDecoder(io.LimitReader(r.Body,8192)).Decode(&payload);err!=nil{
+			writeJSON(w,map[string]any{"error":"invalid subscription JSON"},400);return
+		}
+		if payload.Action=="test"{
+			status,err:=testWebPush(activeProject,payload.Endpoint)
+			if err!=nil{writeJSON(w,map[string]any{"error":"push transport unavailable"},502);return}
+			if status!=201&&status!=202{
+				writeJSON(w,map[string]any{"error":"push service rejected test notification","status":status},502);return
+			}
+			writeJSON(w,map[string]any{"accepted":true,"status":status},200);return
+		}
+		result,err:=webPushSubscription(activeProject,payload)
+		if err!=nil{writeJSON(w,map[string]any{"error":err.Error()},400);return}
+		writeJSON(w,result,200)
+	})
 	mux.HandleFunc("/api/notifications/web", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			writeJSON(w, map[string]any{"error":"POST required"}, http.StatusMethodNotAllowed)
@@ -1408,7 +1449,7 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 		// These projections reconcile lifecycle/notification/runtime state even
 		// on GET. Serialize them with pause/remove and refuse a stopped or absent
 		// project before any side effect. Hub and file-presence checks stay readable.
-		projectWrites := path == "/api/backlog/tasks" || path == "/api/snapshot" || path == "/api/attention" || path == "/api/workload" || path == "/api/issues" || strings.HasPrefix(path, "/api/tasks/") || strings.HasPrefix(path, "/api/runtime/") || path == "/api/notifications/deliveries" || path == "/api/notifications/telegram"
+		projectWrites := path == "/api/backlog/tasks" || path == "/api/snapshot" || path == "/api/attention" || path == "/api/workload" || path == "/api/issues" || strings.HasPrefix(path, "/api/tasks/") || strings.HasPrefix(path, "/api/runtime/") || path == "/api/notifications/deliveries" || path == "/api/notifications/telegram" || path == "/api/notifications/push" || path == "/api/notifications/web"
 		if projectWrites {
 			if !maintenance.WithProjectMonitoring(projectFor(r), func() { mux.ServeHTTP(w, r) }) {
 				writeJSON(w, map[string]any{"error": "project monitoring is stopped or the folder is unavailable; resume monitoring from Hub to use live projections", "monitoring": false}, http.StatusConflict)
