@@ -735,6 +735,13 @@ async function maybeShowCurrentReleaseNote() {
 }
 
 
+// Keep the complete version in the accessible name and tooltip; only the
+// visually repeated prefix is shortened when a narrow update badge needs it.
+function compactUpdateTargetVersion(current,latest) {
+  const from=String(current||''),to=String(latest||'');
+  const a=from.match(/^(.*-(?:dev|rc|beta)\.)(\d+)$/),b=to.match(/^(.*-(?:dev|rc|beta)\.)(\d+)$/);
+  return a&&b&&a[1]===b[1]?'.'+b[2]:to;
+}
 function renderGlobalUpdateIndicator() {
   const el=$('#globalUpdateIndicator');
   if(!el)return;
@@ -743,9 +750,14 @@ function renderGlobalUpdateIndicator() {
   const project=payload.project||{};
   const projectMatches=state.project && project.path===state.project;
   if(cli.update_available){
-    const current=esc(cli.current||'-'), latest=esc(cli.latest||'-');
-    el.innerHTML='<button type="button" class="global-update-pill available version-update-label" id="globalVersionUpdateBtn" title="'+esc(t('updateNow'))+'">'+
-      '<span class="global-update-dot"></span><strong>'+esc(t('updateLabel'))+'</strong>'+(cli.channel==='dev'?'<span class="badge">DEV</span>':'')+'<span>v'+current+'</span><strong>→ '+latest+'</strong></button>';
+    const from=String(cli.current||'-'), to=String(cli.latest||'-');
+    const fullLabel=`v${from} → ${to}`;
+    const compactLabel=`v${from} → ${compactUpdateTargetVersion(from,to)}`;
+    const updateIcon='<svg class="update-arrow-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"/><path d="M12 17V7m0 0-4 4m4-4 4 4"/></svg>';
+    el.innerHTML='<button type="button" class="global-update-pill available version-update-label" id="globalVersionUpdateBtn" title="'+esc(t('updateNow')+' · '+fullLabel)+'" aria-label="'+esc(t('updateNow')+' · '+fullLabel)+'">'+
+      updateIcon+(cli.channel==='dev'?'<span class="badge update-channel">DEV</span>':'')+
+      '<span class="update-version-full">'+esc(fullLabel)+'</span>'+
+      '<span class="update-version-compact" aria-hidden="true">'+esc(compactLabel)+'</span></button>';
     $('#globalVersionUpdateBtn')?.addEventListener('click',async e=>{
       const detail=await loadReleaseNoteDetail(cli.latest||'');
       if(detail){
