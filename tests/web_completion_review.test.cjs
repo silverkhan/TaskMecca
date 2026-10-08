@@ -18,6 +18,11 @@ function page() {
   const context = vm.createContext({
     URLSearchParams, location: { search: '?project=/repos/demo' }, navigator: { language: 'ko', userAgent: 'test', platform: 'MacIntel' },
     window: { isSecureContext: true, focus() {} }, Notification,
+    fetch: async (url, options) => {
+      if (!String(url).startsWith('/api/notifications/web')) throw Error('Unexpected URL '+url);
+      const request=JSON.parse(options.body);
+      return {ok:true,json:async()=>request.action==='claim'?{granted:true,state:'claimed',token:'fixture-lease'}:{state:'display_requested'}};
+    },
     localStorage: { getItem: key => storage.get(key) ?? null, setItem: (key, value) => storage.set(key, String(value)) },
   });
   vm.runInContext(source.slice(0, startup) + `
@@ -56,7 +61,7 @@ test('old completion_pending and Controller recovery attention reasons cannot be
 
 test('explicit user intervention is still delivered', async () => {
   const app = page();
-  await app.notify({ all_items: { 'A-31': { id: 'A-31', file_state: 'doing', state: 'needs_user', attention_reason: { type: 'user_intervention', title: '사용자 개입 필요' } } } });
+  await app.notify({ all_items: { 'A-31': { id: 'A-31', file_state: 'doing', state: 'needs_user', attention_reason: { type: 'user_intervention', title: '사용자 개입 필요' } } }, notification_events:[{id:'user-event',task_id:'A-31',kind:'intervention',reason_type:'user_intervention',at:new Date().toISOString()}] });
   assert.equal(app.emitted.length, 1);
   assert.match(app.emitted[0].tag, /:intervention$/);
 });
@@ -73,11 +78,13 @@ test('server completion events cannot notify before canonical file state is done
   assert.match(app.emitted[0].tag, /:completed$/);
 });
 
-test('ordinary file-state completion still notifies after review', async () => {
+test('file-state completion requires a canonical completed event', async () => {
   const app = page();
   await app.notify({ all_items: { 'A-31': { id: 'A-31', file_state: 'doing', state: 'controller_review' } } });
   assert.equal(app.emitted.length, 0);
   await app.notify({ all_items: { 'A-31': { id: 'A-31', file_state: 'done', state: 'done' } } });
+  assert.equal(app.emitted.length, 0); // legacy delta is history-only, never a push
+  await app.notify({ all_items: { 'A-31': { id: 'A-31', file_state: 'done', state: 'done' } }, notification_events:[{id:'done-canonical',task_id:'A-31',kind:'completed',at:new Date().toISOString()}] });
   assert.equal(app.emitted.length, 1);
   assert.match(app.emitted[0].tag, /:completed$/);
 });
