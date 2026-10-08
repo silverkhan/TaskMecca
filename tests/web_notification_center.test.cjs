@@ -41,5 +41,5 @@ test('hook resolution prevents stale, undated or equal-time assignment warnings 
  a.context.app.processTaskNotifications({snapshot_at:'2026-10-08T00:02:00Z',all_items:{'A-44':warning}});await new Promise(setImmediate);assert.equal(emitted.length,1);
 });
 test('packaged shell includes settings dialog and mobile center entry, and has no separate attention menu',()=>{
- const html=fs.readFileSync('goassets/template/_task_mecca/framework/web/index.html','utf8');assert.match(html,/id="notificationPanel"[^>]*role="dialog"/);assert.match(html,/id="notificationCenterTop"/);assert.doesNotMatch(html,/data-view="attention"/);assert.match(html,/data-view="issues"[^>]*hidden/);
+ const html=fs.readFileSync('goassets/template/_task_mecca/framework/web/index.html','utf8');assert.match(html,/id="notificationPanel"[^>]*role="dialog"/);assert.match(html,/id="projectNotificationsNav"/);assert.doesNotMatch(html,/id="notificationCenterTop"/);assert.doesNotMatch(html,/data-view="attention"/);assert.match(html,/data-view="issues"[^>]*hidden/);
 });
