@@ -9,11 +9,16 @@ import (
  "os"
  "path/filepath"
  "strings"
+ "sync"
  "time"
 
  "github.com/silverkhan/TaskMecca/internal/backlog"
  "github.com/silverkhan/TaskMecca/internal/projectguard"
 )
+
+// projectguard serializes other processes; this mutex also serializes goroutines
+// in this server process (OS file locks alone are not goroutine locks).
+var webDeliveryMu sync.Mutex
 
 const webDeliveryTTL = 5 * time.Minute
 const webDeliveryLease = 45 * time.Second
@@ -66,6 +71,7 @@ func saveWebDelivery(project string,ledger webDeliveryLedger)error{
  return os.Chmod(path,0600)
 }
 func initWebDelivery(project string)error{
+ webDeliveryMu.Lock();defer webDeliveryMu.Unlock()
  unlock,err:=projectguard.AcquireWrite(project);if err!=nil{return err};defer unlock()
  ledger,exists,err:=readWebDelivery(project);if err!=nil||exists{return err}
  // Installing the new protocol must never replay any pre-existing events.
@@ -87,6 +93,7 @@ func webClient(value string)string{
 // proves only showNotification/new Notification was requested successfully,
 // not receipt or reading by the operating system.
 func applyWebDelivery(project,action,eventID,token,client string)(webDeliveryDecision,error){
+ webDeliveryMu.Lock();defer webDeliveryMu.Unlock()
  unlock,err:=projectguard.AcquireWrite(project);if err!=nil{return webDeliveryDecision{},err};defer unlock()
  ledger,exists,err:=readWebDelivery(project);if err!=nil{return webDeliveryDecision{},err}
  now:=time.Now().UTC()
@@ -139,6 +146,7 @@ func applyWebDelivery(project,action,eventID,token,client string)(webDeliveryDec
  return webDeliveryDecision{State:"claimed",Granted:true,Token:nextToken},nil
 }
 func webDeliveryHistory(project string)(map[string]map[string]any,error){
+ webDeliveryMu.Lock();defer webDeliveryMu.Unlock()
  unlock,err:=projectguard.AcquireWrite(project);if err!=nil{return nil,err};defer unlock()
  ledger,_,err:=readWebDelivery(project);if err!=nil{return nil,err}
  out:=make(map[string]map[string]any,len(ledger.Entries))
