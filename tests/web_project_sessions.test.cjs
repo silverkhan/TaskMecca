@@ -13,17 +13,30 @@ const storageKey = 'task-mecca-open-projects';
 
 function page(storage, project = '') {
   const elements = new Map();
-  const document = {
-    querySelector(selector) {
-      if (!elements.has(selector)) elements.set(selector, {
-        innerHTML: '', textContent: '', addEventListener() {}, setAttribute() {},
-        classList: { toggle() {}, add() {}, remove() {} },
-      });
-      return elements.get(selector);
-    },
-    querySelectorAll() { return []; },
-  };
-  const context = vm.createContext({
+  function element(tagName = 'div') {
+ const node = { tagName: tagName.toUpperCase(), innerHTML: '', textContent: '', dataset: {}, children: [], attributes: {}, listeners: {},
+ addEventListener(type, listener) { this.listeners[type] = listener; },
+ setAttribute(name, value) { this.attributes[name] = value; },
+ prepend(child) { this.children.unshift(child); },
+ classList: { toggle() {}, add() {}, remove() {} },
+ querySelectorAll(selector) {
+ if (selector !== '[data-sidebar-mode]') return [];
+ return [...this.innerHTML.matchAll(/data-sidebar-mode="([^"]+)"/g)].map(match => {
+ const button = element('button'); button.dataset.sidebarMode = match[1]; return button;
+ });
+ },
+ };
+ return node;
+ }
+ const document = {
+ createElement: element,
+ querySelector(selector) {
+ if (!elements.has(selector)) elements.set(selector, element());
+ return elements.get(selector);
+ },
+ querySelectorAll() { return []; },
+ };
+ const context = vm.createContext({
     URLSearchParams, location: { search: project ? `?project=${encodeURIComponent(project)}` : '' },
     navigator: { language: 'ko' }, document,
     history: { pushState() {} },
@@ -38,7 +51,7 @@ function page(storage, project = '') {
     refresh = refreshList = ensureAttentionStream = refreshVersionInfo = () => {};
     globalThis.session = { state, nav, switchProject, closeProjectSession };
   `, context);
-  return { ...context.session, menu: () => elements.get('#stateNav').innerHTML };
+  return { ...context.session, sidebarSelector: () => elements.get('#stateNav').children[0], menu: () => elements.get('#stateNav').innerHTML };
 }
 
 function saved(storage) { return JSON.parse(storage.get(storageKey)); }
@@ -111,3 +124,18 @@ test('closing active project switches to remaining project; closing last project
   page(storage).nav();
   assert.deepEqual(saved(storage), []);
 });
+
+ test('navigation prepends the real sidebar mode selector without removing project sessions', () => {
+ const storage = new Map();
+ opened(storage, '/repos/alpha', '/repos/beta');
+ const app = page(storage, '/repos/alpha');
+ app.nav();
+ const selector = app.sidebarSelector();
+ assert.equal(selector.tagName, 'DIV');
+ assert.equal(selector.className, 'sidebar-mode-selector');
+ assert.equal(selector.attributes.role, 'group');
+ assert.ok(selector.attributes['aria-label']);
+ assert.deepEqual(selector.querySelectorAll('[data-sidebar-mode]').map(button => button.dataset.sidebarMode), ['auto', 'expanded', 'compact']);
+ assert.match(app.menu(), /data-session-project="\/repos\/beta"/);
+ assert.deepEqual(saved(storage), ['/repos/alpha', '/repos/beta']);
+ });
