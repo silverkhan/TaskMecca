@@ -739,8 +739,8 @@ async function maybeShowCurrentReleaseNote() {
 // visually repeated prefix is shortened when a narrow update badge needs it.
 function compactUpdateTargetVersion(current,latest) {
   const from=String(current||''),to=String(latest||'');
-  const a=from.match(/^(.*[.-])(\d+)$/),b=to.match(/^(.*[.-])(\d+)$/);
-  return a&&b&&a[1]===b[1]?a[1].slice(-1)+b[2]:to;
+  const a=from.match(/^(.*-(?:dev|rc|beta)\.)(\d+)$/),b=to.match(/^(.*-(?:dev|rc|beta)\.)(\d+)$/);
+  return a&&b&&a[1]===b[1]?'.'+b[2]:to;
 }
 function renderGlobalUpdateIndicator() {
   const el=$('#globalUpdateIndicator');
