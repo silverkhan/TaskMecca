@@ -277,28 +277,59 @@ func stableReleaseRawURL(path string) string {
     return "https://raw.githubusercontent.com/"+repoName+"/"+stableReleaseTag+"/"+strings.TrimPrefix(path,"/")
 }
 
+// Metadata requests are small, while standalone release binaries are several
+// megabytes and may be downloaded across slow VPN/mobile connections.
+// http.Client.Timeout includes the complete response body, not only the dial.
+const (
+    releaseMetadataTimeout = 5*time.Second
+    releaseBinaryTimeout = 120*time.Second
+    releaseMetadataMaxBytes int64 = 2 << 20
+    releaseBinaryMaxBytes int64 = 128 << 20
+)
+
 func httpGet(url string) ([]byte,error) {
-    client:=&http.Client{Timeout:5*time.Second}
+    return httpGetWithPolicy(url,releaseMetadataTimeout,releaseMetadataMaxBytes,3)
+}
+
+// The caller explicitly selects a timeout and size ceiling for the asset type.
+// Partial and oversized responses never escape as successful downloads, and
+// transient read errors can be retried without touching the installed binary.
+func httpGetWithPolicy(url string,timeout time.Duration,maxBytes int64,attempts int) ([]byte,error) {
+    client:=&http.Client{Timeout:timeout}
     var lastErr error
-    for attempt:=0; attempt<3; attempt++ {
+    for attempt:=0;attempt<attempts;attempt++ {
         req,err:=http.NewRequest(http.MethodGet,url,nil)
         if err!=nil { return nil,err }
         req.Header.Set("User-Agent","task-mecca")
         resp,err:=client.Do(req)
-        if err==nil {
-            data,readErr:=io.ReadAll(resp.Body)
-            _=resp.Body.Close()
-            if readErr==nil && resp.StatusCode>=200 && resp.StatusCode<300 { return data,nil }
-            if readErr!=nil {
-                lastErr=readErr
-            } else {
-                lastErr=fmt.Errorf("HTTP %d",resp.StatusCode)
-                if resp.StatusCode!=404 && resp.StatusCode!=429 && resp.StatusCode<500 { return nil,lastErr }
-            }
-        } else {
+        if err!=nil {
             lastErr=err
+        } else {
+            if resp.StatusCode<200 || resp.StatusCode>=300 {
+                _=resp.Body.Close()
+                lastErr=fmt.Errorf("HTTP %d",resp.StatusCode)
+                // Missing or unauthorized release assets will not become
+                // available merely by retrying the same request.
+                if resp.StatusCode!=404 && resp.StatusCode!=429 && resp.StatusCode<500 { return nil,lastErr }
+                if resp.StatusCode==404 { return nil,lastErr }
+            } else if resp.ContentLength>maxBytes {
+                _=resp.Body.Close()
+                return nil,fmt.Errorf("response exceeds maximum download size (%d bytes)",maxBytes)
+            } else {
+                data,readErr:=io.ReadAll(io.LimitReader(resp.Body,maxBytes+1))
+                closeErr:=resp.Body.Close()
+                if int64(len(data))>maxBytes {
+                    return nil,fmt.Errorf("response exceeds maximum download size (%d bytes)",maxBytes)
+                }
+                if readErr==nil && closeErr==nil { return data,nil }
+                if readErr!=nil {
+                    lastErr=fmt.Errorf("reading response body: %w",readErr)
+                } else {
+                    lastErr=fmt.Errorf("closing response body: %w",closeErr)
+                }
+            }
         }
-        if attempt<2 { time.Sleep(time.Duration(attempt+1)*500*time.Millisecond) }
+        if attempt<attempts-1 { time.Sleep(time.Duration(attempt+1)*500*time.Millisecond) }
     }
     if lastErr==nil { lastErr=errors.New("request failed") }
     return nil,lastErr
@@ -563,10 +594,10 @@ func checksumFor(data []byte,asset string) (string,error) {
 func fetchReleaseBinary(base string) ([]byte,error) {
     asset,err:=assetName()
     if err!=nil { return nil,err }
-    binary,err:=httpGet(base+"/"+asset)
-    if err!=nil { return nil,err }
+    binary,err:=httpGetWithPolicy(base+"/"+asset,releaseBinaryTimeout,releaseBinaryMaxBytes,3)
+    if err!=nil { return nil,fmt.Errorf("downloading executable %s: %w",asset,err) }
     sums,err:=httpGet(base+"/SHA256SUMS.txt")
-    if err!=nil { return nil,err }
+    if err!=nil { return nil,fmt.Errorf("downloading checksum manifest: %w",err) }
     expected,err:=checksumFor(sums,asset)
     if err!=nil { return nil,err }
     digest:=sha256.Sum256(binary)
