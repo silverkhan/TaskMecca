@@ -2366,6 +2366,16 @@ function updateNotificationIndicator() {
     btn.setAttribute('aria-label',btn.title);
   }
 }
+function applyTelegramStatus(project,status){
+ if(!status||typeof status!=='object')return;
+ if(project===state.project)state.telegramStatus=status;
+ const projectRow=(state.projectNotificationSettings||[]).find(row=>row.path===project);
+ if(projectRow)projectRow.status=status;
+}
+async function refreshNotificationConfiguration(){
+ await loadProjectNotificationSettings();
+ if(state.project)await loadTelegramStatus();
+}
 async function loadTelegramStatus() {
  const project=state.project;if(!project||(state.telegramLoading&&state.telegramLoadingProject===project))return;
  const request=(state.telegramStatusRequest||0)+1;state.telegramStatusRequest=request;state.telegramLoadingProject=project;state.telegramLoading=true;const revision=state.projectNotificationSettingsRevision||0;
@@ -2382,26 +2392,36 @@ async function telegramAction(action,payload={}) {
   });
   const body=await r.json().catch(()=>({}));
   if(!r.ok)throw new Error(body.error||('HTTP '+r.status));
-  if(action!=='test'&&project===state.project)state.telegramStatus=body;
+  if(action!=='test'){
+    applyTelegramStatus(project,body);
+    await refreshNotificationConfiguration();
+  }
   return body;
 }
 async function loadProjectNotificationSettings() {
-  if(state.projectNotificationSettingsLoading)return;
+  if(state.projectNotificationSettingsLoading){
+    await state.projectNotificationSettingsPromise;
+    if(state.projectNotificationSettingsLoadedRevision===(state.projectNotificationSettingsRevision||0))return;
+  }
   const revision=state.projectNotificationSettingsRevision||0;
   state.projectNotificationSettingsLoading=true;
   state.projectNotificationSettingsError='';
-  try {
-    const response=await fetch('/api/notifications/projects',{cache:'no-store'});
-    const body=await response.json();
-    if(!response.ok)throw new Error(body.error||('HTTP '+response.status));
-    if(revision!==(state.projectNotificationSettingsRevision||0))return;
-    state.projectNotificationSettings=body.projects||[];
-  } catch(error) {
-    state.projectNotificationSettingsError=String(error?.message||error);
-  } finally {
-    state.projectNotificationSettingsLoading=false;
-  }
+  const promise=(async()=>{
+    try{
+      const response=await fetch('/api/notifications/projects',{cache:'no-store'});
+      const body=await response.json();
+      if(!response.ok)throw new Error(body.error||('HTTP '+response.status));
+      if(revision!==(state.projectNotificationSettingsRevision||0))return;
+      state.projectNotificationSettings=body.projects||[];
+      state.projectNotificationSettingsLoadedRevision=revision;
+    }catch(error){
+      if(revision===(state.projectNotificationSettingsRevision||0))state.projectNotificationSettingsError=String(error?.message||error);
+    }
+  })();
+  state.projectNotificationSettingsPromise=promise;
+  try{await promise;}finally{state.projectNotificationSettingsLoading=false;}
 }
+
 async function setProjectNotificationEnabled(project,enabled) {
   state.projectNotificationSettingsRevision=(state.projectNotificationSettingsRevision||0)+1;
   const response=await fetch('/api/notifications/telegram?project='+encodeURIComponent(project),{
@@ -2410,8 +2430,8 @@ async function setProjectNotificationEnabled(project,enabled) {
   });
   const body=await response.json().catch(()=>({}));
   if(!response.ok)throw new Error(body.error||('HTTP '+response.status));
-  const row=state.projectNotificationSettings.find(item=>item.path===project);
-  if(row)row.status=body;
+  applyTelegramStatus(project,body);
+  await refreshNotificationConfiguration();
 }
 async function projectTelegramAction(project,action,payload={}) {
   state.projectNotificationSettingsRevision=(state.projectNotificationSettingsRevision||0)+1;
@@ -2420,6 +2440,8 @@ async function projectTelegramAction(project,action,payload={}) {
   });
   const body=await response.json().catch(()=>({}));
   if(!response.ok)throw new Error(body.error||('HTTP '+response.status));
+  applyTelegramStatus(project,body);
+  await refreshNotificationConfiguration();
   return body;
 }
 async function configureSharedTelegram(project,token) {
@@ -2429,7 +2451,8 @@ async function configureSharedTelegram(project,token) {
   });
   const body=await response.json().catch(()=>({}));
   if(!response.ok)throw new Error(body.error||('HTTP '+response.status));
-  await loadProjectNotificationSettings();
+  applyTelegramStatus(project,body);
+  await refreshNotificationConfiguration();
 }
 const browserNotificationsPending=new Set();
 const notificationKinds=['registered','started','intervention','approval','stalled','interrupted','runtime_unknown','finalize','completed'];
