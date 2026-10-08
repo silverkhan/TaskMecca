@@ -41,6 +41,9 @@ func notificationHistory(project string) ([]map[string]any, error) {
 	sort.Slice(rows, func(i, j int) bool {
 		a, _ := rows[i]["event_at"].(string)
 		b, _ := rows[j]["event_at"].(string)
+		if a == b {
+			return historyEventID(rows[i]) < historyEventID(rows[j])
+		}
 		return a > b
 	})
 	return rows, nil

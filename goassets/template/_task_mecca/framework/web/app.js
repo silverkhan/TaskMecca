@@ -1,7 +1,7 @@
 const state = {
  userAttention:[],userAttentionContext:'',userAttentionObservedAt:0,
  attentionScopes:{},attentionScopeObserved:{},commonUserAttention:{},commonUserRevision:{},commonAttentionOpen:false,sessionWarnings:[],operationsRequest:0,operationPayload:{},
-  notificationCenterTab:'current',notificationHistory:[],notificationHistoryRequest:0,notificationHistoryLoading:false,notificationHistoryErrors:[],diagnosticSnapshots:{},diagnosticRequests:{},
+  notificationCenterTab:'history',notificationHistoryPage:1,notificationHistoryNew:0,notificationHistoryVersions:{},notificationHistoryLoaded:false,notificationHistory:[],notificationHistoryRequest:0,notificationHistoryLoading:false,notificationHistoryErrors:[],diagnosticSnapshots:{},diagnosticRequests:{},
   snapshot: null,
   listData: null,
   listRevalidating:false,listDataContext:'',
@@ -466,7 +466,7 @@ function renderOperationBanner(payload) {
  state.operationPayload={projects:payload.projects||[],stages:payload.stages||[],resolved_observations:payload.resolved_observations||[],telegram_transport_disabled:Boolean(payload.telegram_transport_disabled)};
   state.sessionWarnings=(payload.active||[]).filter(item=>!state.operationTombstones[item.id]&&!item.recovered_at&&!item.resolution&&!item.recovery_evidence&&!item.policy_resolution&&item.kind!=='normal_exit'&&!item.history&&item.active!==false);
   renderUserAttention();
- if(state.view==='workload'||(state.view==='notifications'&&state.notificationCenterTab==='current'))render();
+ if(state.view==='workload')render();
 }
 async function refreshOperations() {
   const request=++state.operationsRequest;
@@ -508,6 +508,7 @@ async function refreshOperations() {
       }catch(_){/* Current projections retry with the next successful refresh. */}
     }));
   } catch (_) { /* Current projections retry with the next successful refresh. */ }
+  if(state.view==='notifications')loadNotificationHistory();
 }
 
 function localeCode() { return LANGUAGES[state.language]?.locale || 'en-US'; }
@@ -1720,7 +1721,7 @@ function storeCommonUserAttention(payload,project,backlog) {
   state.commonUserRevision[key]=(state.commonUserRevision[key]||0)+1;
   state.commonUserAttention[key]={project,backlog:backlog||payload.backlog_selection?.selected||'',observed:Number.isFinite(observed)?observed:0,rows:nextRows};
   renderUserAttention();
-  if(state.view==='notifications'&&state.notificationCenterTab==='current')render();
+
   if(document.querySelector('[data-view="issues"]')&&project===state.project&&(requestedBacklog===state.backlog||backlog===state.backlog)){const selectedContext=state.backlog;queueMicrotask(()=>{if(project===state.project&&selectedContext===state.backlog)refreshDiagnostics(project,selectedContext,backlog+'|'+String(payload.content_revision||''));});}
 }
 function commonAttentionUsers() {
@@ -1916,32 +1917,34 @@ function updateNotificationIndicator() {
   }
 }
 async function loadTelegramStatus() {
-  if(!state.project||state.telegramLoading)return;
-  state.telegramLoading=true;
-  try{
-    const r=await fetch('/api/notifications/telegram?project='+encodeURIComponent(state.project),{cache:'no-store'});
-    state.telegramStatus=r.ok?await r.json():null;
-  }catch(_){state.telegramStatus=null}finally{state.telegramLoading=false}
+ const project=state.project;if(!project||(state.telegramLoading&&state.telegramLoadingProject===project))return;
+ const request=(state.telegramStatusRequest||0)+1;state.telegramStatusRequest=request;state.telegramLoadingProject=project;state.telegramLoading=true;const revision=state.projectNotificationSettingsRevision||0;
+ try{const response=await fetch('/api/notifications/telegram?project='+encodeURIComponent(project),{cache:'no-store'});const status=response.ok?await response.json():null;if(request===state.telegramStatusRequest&&project===state.project&&revision===(state.projectNotificationSettingsRevision||0))state.telegramStatus=status;}
+ catch(_){if(request===state.telegramStatusRequest&&project===state.project&&revision===(state.projectNotificationSettingsRevision||0))state.telegramStatus=null;}
+ finally{if(request===state.telegramStatusRequest)state.telegramLoading=false;}
 }
 async function telegramAction(action,payload={}) {
-  if(!state.project)return;
-  const r=await fetch('/api/notifications/telegram?project='+encodeURIComponent(state.project),{
+  const project=state.project;if(!project)return;
+  if(action!=='test')state.projectNotificationSettingsRevision=(state.projectNotificationSettingsRevision||0)+1;
+  const r=await fetch('/api/notifications/telegram?project='+encodeURIComponent(project),{
     method:'POST',headers:{'Content-Type':'application/json','X-Task-Mecca-Action':'1'},
     body:JSON.stringify({action,...payload})
   });
   const body=await r.json().catch(()=>({}));
   if(!r.ok)throw new Error(body.error||('HTTP '+r.status));
-  if(action!=='test')state.telegramStatus=body;
+  if(action!=='test'&&project===state.project)state.telegramStatus=body;
   return body;
 }
 async function loadProjectNotificationSettings() {
   if(state.projectNotificationSettingsLoading)return;
+  const revision=state.projectNotificationSettingsRevision||0;
   state.projectNotificationSettingsLoading=true;
   state.projectNotificationSettingsError='';
   try {
     const response=await fetch('/api/notifications/projects',{cache:'no-store'});
     const body=await response.json();
     if(!response.ok)throw new Error(body.error||('HTTP '+response.status));
+    if(revision!==(state.projectNotificationSettingsRevision||0))return;
     state.projectNotificationSettings=body.projects||[];
   } catch(error) {
     state.projectNotificationSettingsError=String(error?.message||error);
@@ -1950,6 +1953,7 @@ async function loadProjectNotificationSettings() {
   }
 }
 async function setProjectNotificationEnabled(project,enabled) {
+  state.projectNotificationSettingsRevision=(state.projectNotificationSettingsRevision||0)+1;
   const response=await fetch('/api/notifications/telegram?project='+encodeURIComponent(project),{
     method:'POST',headers:{'Content-Type':'application/json','X-Task-Mecca-Action':'1'},
     body:JSON.stringify({action:'project_enabled',project_enabled:enabled})
@@ -1960,6 +1964,7 @@ async function setProjectNotificationEnabled(project,enabled) {
   if(row)row.status=body;
 }
 async function projectTelegramAction(project,action,payload={}) {
+  state.projectNotificationSettingsRevision=(state.projectNotificationSettingsRevision||0)+1;
   const response=await fetch('/api/notifications/telegram?project='+encodeURIComponent(project),{
     method:'POST',headers:{'Content-Type':'application/json','X-Task-Mecca-Action':'1'},body:JSON.stringify({action,...payload})
   });
@@ -1968,6 +1973,7 @@ async function projectTelegramAction(project,action,payload={}) {
   return body;
 }
 async function configureSharedTelegram(project,token) {
+  state.projectNotificationSettingsRevision=(state.projectNotificationSettingsRevision||0)+1;
   const response=await fetch('/api/notifications/telegram?project='+encodeURIComponent(project),{
     method:'POST',headers:{'Content-Type':'application/json','X-Task-Mecca-Action':'1'},body:JSON.stringify({action:'configure_shared',token})
   });
@@ -1984,23 +1990,40 @@ function webNotificationSettings(){try{const saved=JSON.parse(localStorage.getIt
 function webNotificationEnabled(project,kind,legacyKind){const settings=webNotificationSettings(),specific=settings.projects?.[project];return settings.enabled!==false&&specific?.enabled!==false&&(specific?.kinds?.[kind]??state.notificationSettings[legacyKind||(['stalled','completed'].includes(kind)?kind:'intervention')])!==false;}
 function changeWebNotificationSetting(project,kind,enabled){const settings=webNotificationSettings();settings.projects||={};settings.projects[project]||={};if(kind==='enabled')settings.projects[project].enabled=enabled;else{settings.projects[project].kinds||={};settings.projects[project].kinds[kind]=enabled;}localStorage.setItem('task-mecca-web-notification-settings-v1',JSON.stringify(settings));}
 function browserDeliveryHistory(){try{const rows=JSON.parse(localStorage.getItem('task-mecca-browser-deliveries-v1')||'[]');return Array.isArray(rows)?rows:[];}catch(_){return [];}}
-function recordBrowserDelivery(project,task,kind,key,eventID){const rows=browserDeliveryHistory();if(rows.some(row=>row.key===key))return;rows.push({key,event_id:eventID||key,project,task_id:task.id,kind,title:titleOf(task),sent_at:new Date().toISOString(),state:'display_requested'});try{localStorage.setItem('task-mecca-browser-deliveries-v1',JSON.stringify(rows));}catch(_){/* No durable evidence means unknown, never inferred success. */}}
-function mergedNotificationHistory(){const rows=new Map();for(const row of state.notificationHistory||[]){rows.set(row.project+'|'+row.event_id,{...row});}for(const local of browserDeliveryHistory()){const key=local.project+'|'+local.event_id,prior=rows.get(key);rows.set(key,{...local,...prior,web:local,event_at:prior?.event_at||local.sent_at});}return [...rows.values()].sort((a,b)=>String(b.event_at||'').localeCompare(String(a.event_at||'')));}
-async function loadNotificationHistory(){
- if(state.notificationHistoryLoading)return state.notificationHistoryPromise;
- const request=++state.notificationHistoryRequest;state.notificationHistoryLoading=true;state.notificationHistoryErrors=[];
- state.notificationHistoryPromise=(async()=>{
-  try{await loadProjectNotificationSettings();const projects=[...new Set((state.projectNotificationSettings||[]).map(row=>row.path).concat(state.project?[state.project]:[]))];
-   const results=await Promise.all(projects.map(async project=>{try{const response=await fetch('/api/notifications/history?'+new URLSearchParams({project}),{cache:'no-store'});if(!response.ok)throw Error('HTTP '+response.status);const data=await response.json();return {project,rows:data.history||[]};}catch(_){return {project,error:true};}}));
-   if(request!==state.notificationHistoryRequest)return;
-   // Failed reads preserve prior evidence and surface uncertainty separately.
-   const failures=new Set(results.filter(result=>result.error).map(result=>result.project));
-   state.notificationHistory=[...(state.notificationHistory||[]).filter(row=>failures.has(row.project)),...results.flatMap(result=>result.rows||[])];state.notificationHistoryErrors=[...failures];
-  }finally{if(request===state.notificationHistoryRequest){state.notificationHistoryLoading=false;if(state.view==='notifications')render();}}
- })();return state.notificationHistoryPromise;
-}
+function recordBrowserDelivery(project,task,kind,key,eventID){const rows=browserDeliveryHistory();if(rows.some(row=>row.key===key))return;rows.push({key,event_id:eventID||key,project,task_id:task.id,kind,title:titleOf(task),sent_at:new Date().toISOString(),state:'display_requested'});try{localStorage.setItem('task-mecca-browser-deliveries-v1',JSON.stringify(rows));acceptHistoryUpdate();}catch(_){/* No durable evidence means unknown, never inferred success. */}}
 function notificationDeliveryLabel(channel){if(!channel)return t('notificationUnknown');if(channel.state==='display_requested')return t('notificationAccepted');if(channel.state==='sent')return t('notificationSent');if(String(channel.state||'').startsWith('suppressed'))return state.language==='ko'?'미전송 · 설정/정책':'Not sent · settings/policy';if(channel.state==='consumed_legacy')return state.language==='ko'?'과거 기록 · 송신 근거 없음':'Legacy record · no delivery evidence';const labels=state.language==='ko'?{pending:'대기',retry:'재시도 대기',failed:'실패',suppressed:'억제됨',uncertain:'결과 불확실',unknown:'근거 없음'}:{pending:'Pending',retry:'Retry pending',failed:'Failed',suppressed:'Suppressed',uncertain:'Uncertain',unknown:'No evidence'};return labels[channel.state]||channel.state||t('notificationUnknown');}
-function notificationCenterView(){const users=commonAttentionUsers(),warnings=state.sessionWarnings||[],rows=mergedNotificationHistory();const historyRows=rows.map(row=>{const params=new URLSearchParams({project:row.project});return `<tr><td>${esc(operationTime(row.telegram?.state==='sent'?row.telegram.sent_at:row.web?.sent_at||row.event_at))}</td><td title="${esc(row.project)}">${esc(String(row.project||'').split(/[\\/]/).pop())}</td><td>${row.task_id?`<a href="/tasks/${encodeURIComponent(row.task_id)}?${esc(params.toString())}">${esc(row.task_id)}</a>`:'—'}</td><td>${esc(notificationKindLabel(row.kind))}</td><td>${esc(notificationDeliveryLabel(row.telegram))}${row.telegram?.attempts?`<small>${Number(row.telegram.attempts)}${state.language==='ko'?'회 시도':' attempts'}</small>`:''}</td><td>${esc(notificationDeliveryLabel(row.web))}</td><td>${esc(row.title||row.message||(state.language==='ko'?'내용 기록 없음':'Content not recorded'))}${row.title&&row.message?`<small>${esc(row.message)}</small>`:''}</td></tr>`;}).join('');return `<div class="page-head"><div><h1>${esc(t('notificationCenter'))}</h1><p class="summary">${esc(t('notificationHistoryGuide'))}</p></div><button type="button" class="action-btn secondary" id="centerNotificationSettings">${esc(t('notificationSettings'))}</button></div><div class="notification-center-tabs" role="tablist"><button type="button" role="tab" data-center-tab="current" aria-selected="${state.notificationCenterTab==='current'}">${esc(t('notificationCurrent'))} · ${users.length+warnings.length}</button><button type="button" role="tab" data-center-tab="history" aria-selected="${state.notificationCenterTab==='history'}">${esc(t('notificationHistory'))}</button></div>${state.notificationCenterTab==='history'?`${state.notificationHistoryLoading?`<p role="status">${esc(t('notificationLoading'))}</p>`:''}${state.notificationHistoryErrors.length?`<p class="load-error">${esc(t('notificationHistoryError'))} ${state.notificationHistoryErrors.map(esc).join(' · ')}</p>`:''}${rows.length?`<div class="notification-history-scroll" role="region" aria-label="${esc(t('notificationHistory'))}" tabindex="0"><table class="notification-history-table"><thead><tr>${['notificationTime','operationProject','id','notificationType','telegramNotifications','browserNotifications','notificationContent'].map(key=>`<th scope="col">${esc(key==='operationProject'?(state.language==='ko'?'프로젝트':'Project'):key==='notificationType'?(state.language==='ko'?'유형':'Type'):t(key))}</th>`).join('')}</tr></thead><tbody>${historyRows}</tbody></table></div>`:`<div class="empty">${esc(t('notificationHistoryEmpty'))}</div>`}`:users.length||warnings.length?`<section class="user-attention notification-center-current">${commonAttentionMarkup(users,warnings,true)}</section>`:`<div class="empty">${esc(t('noAttention'))}</div>`}`;}
+function historyRowTime(row){return [row.telegram?.state==='sent'?row.telegram.sent_at:'',row.web?.sent_at].filter(value=>Number.isFinite(Date.parse(value))).sort((a,b)=>Date.parse(a)-Date.parse(b)).pop()||row.event_at||'';}
+function historyRowMillis(row){const time=Date.parse(historyRowTime(row));return Number.isFinite(time)?time:0;}
+function historyRowKey(row){return row.project+'|'+row.event_id;}
+function mergedNotificationHistory(){const rows=new Map();for(const row of state.notificationHistory||[])rows.set(historyRowKey(row),{...row});for(const local of browserDeliveryHistory()){const key=historyRowKey(local),prior=rows.get(key);rows.set(key,{...local,...prior,web:local,event_at:prior?.event_at||local.sent_at});}return [...rows.values()].sort((a,b)=>historyRowMillis(b)-historyRowMillis(a)||historyRowKey(a).localeCompare(historyRowKey(b)));}
+function notificationHistoryContext(){return state.project+'|'+state.backlog+'|'+(state.projectNotificationSettings||[]).map(row=>row.path).sort().join('|');}
+function captureHistoryWindow(){state.notificationHistoryWindow=mergedNotificationHistory();state.notificationHistoryBaseline=new Map(state.notificationHistoryWindow.map(row=>[historyRowKey(row),historyRowMillis(row)]));state.notificationHistoryNew=0;}
+function acceptHistoryUpdate(){const rows=mergedNotificationHistory();if(!state.notificationHistoryWindow)captureHistoryWindow();state.notificationHistoryNew=rows.filter(row=>!state.notificationHistoryBaseline.has(historyRowKey(row))||historyRowMillis(row)>state.notificationHistoryBaseline.get(historyRowKey(row))).length;if(state.notificationHistoryPage===1&&state.notificationCenterTab==='history')captureHistoryWindow();updateNotificationHistoryDOM();}
+async function loadNotificationHistory(){
+ const context=notificationHistoryContext();if(state.notificationHistoryLoading&&state.notificationHistoryContext===context)return state.notificationHistoryPromise;
+ if(state.notificationHistoryContext&&state.notificationHistoryContext!==context){state.notificationHistoryPage=1;state.notificationHistoryWindow=null;state.notificationHistoryNew=0;state.notificationHistoryLoaded=false;}
+ const request=++state.notificationHistoryRequest;state.notificationHistoryContext=context;state.notificationHistoryLoading=true;updateNotificationHistoryDOM();
+ state.notificationHistoryPromise=(async()=>{try{
+  const projects=[...new Set((state.projectNotificationSettings||[]).map(row=>row.path).concat(state.project?[state.project]:[]))];
+  const results=await Promise.all(projects.map(async project=>{try{const params=new URLSearchParams({project});const revision=state.notificationHistoryVersions?.[project];if(revision)params.set('since',revision);const response=await fetch('/api/notifications/history?'+params,{cache:'no-store'});if(!response.ok)throw Error('HTTP '+response.status);return {project,data:await response.json()};}catch(_){return {project,error:true};}}));
+  if(request!==state.notificationHistoryRequest||context!==notificationHistoryContext())return;
+  state.notificationHistoryVersions||={};const byKey=new Map((state.notificationHistory||[]).filter(row=>projects.includes(row.project)).map(row=>[historyRowKey(row),row]));
+  for(const result of results){if(result.error||result.data.unchanged)continue;const {project,data}=result;if(data.reset||!data.revision){for(const [key,row]of byKey)if(row.project===project)byKey.delete(key);}for(const id of data.removed||[])byKey.delete(project+'|'+id);for(const row of data.history||[])byKey.set(historyRowKey(row),row);if(data.revision)state.notificationHistoryVersions[project]=data.revision;}
+  state.notificationHistory=[...byKey.values()];state.notificationHistoryErrors=results.filter(result=>result.error).map(result=>result.project);state.notificationHistoryLoaded=true;acceptHistoryUpdate();
+ }finally{if(request===state.notificationHistoryRequest){state.notificationHistoryLoading=false;updateNotificationHistoryDOM();}}})();return state.notificationHistoryPromise;
+}
+function historyPagination(total){const pages=Math.max(1,Math.ceil(total/30)),page=state.notificationHistoryPage;return `<nav class="center-pagination" aria-label="${esc(state.language==='ko'?'송신 이력 페이지':'History pages')}"><button data-history-page="${page-1}" ${page<=1?'disabled':''}>${esc(state.language==='ko'?'이전':'Previous')}</button><span class="center-page-numbers">${Array.from({length:pages},(_,index)=>index+1).filter(number=>number===1||number===pages||Math.abs(number-page)<=2).map(number=>`<button data-history-page="${number}" ${number===page?'aria-current="page"':''}>${number}</button>`).join('')}</span><span class="center-page-position">${page} / ${pages}</span><button data-history-page="${page+1}" ${page>=pages?'disabled':''}>${esc(state.language==='ko'?'다음':'Next')}</button></nav>`;}
+function notificationHistoryMarkup(){
+ const rows=state.notificationHistoryWindow||[],page=state.notificationHistoryPage||1,visible=rows.slice((page-1)*30,page*30);
+ const notice=state.notificationHistoryNew?`<button class="action-btn" data-history-latest>${esc(state.language==='ko'?`새 알림 ${state.notificationHistoryNew}건 · 최신 보기`:`${state.notificationHistoryNew} new · Latest`)}</button>`:'';
+ const status=state.notificationHistoryLoading&&!state.notificationHistoryLoaded?`<p role="status">${esc(t('notificationLoading'))}</p>`:'';
+ const error=state.notificationHistoryErrors.length?`<p class="load-error">${esc(t('notificationHistoryError'))} ${state.notificationHistoryErrors.map(esc).join(' · ')}</p>`:'';
+ const table=visible.length?`${historyPagination(rows.length)}<div class="notification-history-scroll" role="region" aria-label="${esc(t('notificationHistory'))}" tabindex="0"><table class="notification-history-table"><thead><tr>${['notificationTime','operationProject','id','notificationType','telegramNotifications','browserNotifications','notificationContent'].map(key=>`<th scope="col">${esc(key==='operationProject'?(state.language==='ko'?'프로젝트':'Project'):key==='notificationType'?(state.language==='ko'?'유형':'Type'):t(key))}</th>`).join('')}</tr></thead><tbody>${visible.map(row=>{const params=new URLSearchParams({project:row.project});return `<tr data-history-row="${esc(historyRowKey(row))}"><td>${esc(operationTime(historyRowTime(row)))}</td><td title="${esc(row.project)}">${esc(String(row.project||'').split(/[\\/]/).pop())}</td><td>${row.task_id?`<a href="/tasks/${encodeURIComponent(row.task_id)}?${esc(params)}">${esc(row.task_id)}</a>`:'—'}</td><td>${esc(notificationKindLabel(row.kind))}</td><td>${esc(notificationDeliveryLabel(row.telegram))}</td><td>${esc(notificationDeliveryLabel(row.web))}</td><td>${esc(row.title||row.message||(state.language==='ko'?'내용 없음':'Content not recorded'))}${row.title&&row.message?`<details data-history-disclosure="${esc(historyRowKey(row))}"><summary>${esc(state.language==='ko'?'작업 내용':'Content')}</summary>${esc(row.message)}</details>`:''}</td></tr>`;}).join('')}</tbody></table></div>`:state.notificationHistoryLoaded&&!state.notificationHistoryErrors.length?`<div class="empty">${esc(t('notificationHistoryEmpty'))}</div>`:'';
+ return notice+status+error+table;
+}
+function notificationCenterView(){return `<div class="notification-center-tabs" role="tablist"><button type="button" role="tab" data-center-tab="history" aria-selected="${state.notificationCenterTab==='history'}">${esc(t('notificationHistory'))}<span id="centerHistoryBadge">${state.notificationHistoryNew?` · ${state.notificationHistoryNew}`:''}</span></button><button type="button" role="tab" data-center-tab="settings" aria-selected="${state.notificationCenterTab==='settings'}">${esc(t('notificationSettings'))}</button></div>${state.notificationCenterTab==='settings'?'<section id="notificationSettingsBody" class="notification-settings-body"></section>':`<p class="summary">${esc(t('notificationHistoryGuide'))}</p><section id="centerHistory">${notificationHistoryMarkup()}</section>`}`;}
+function bindNotificationHistoryActions(){document.querySelectorAll('[data-history-page]').forEach(button=>button.addEventListener('click',()=>{state.notificationHistoryPage=Number(button.dataset.historyPage);if(state.notificationHistoryPage===1)captureHistoryWindow();updateNotificationHistoryDOM();}));document.querySelectorAll('[data-history-latest]').forEach(button=>button.addEventListener('click',()=>{state.notificationHistoryPage=1;captureHistoryWindow();updateNotificationHistoryDOM();}));}
+function updateNotificationHistoryDOM(){if(state.view!=='notifications')return;const badge=$('#centerHistoryBadge');if(badge)badge.textContent=state.notificationHistoryNew?' · '+state.notificationHistoryNew:'';const region=$('#centerHistory');if(!region)return;const scroll=region.querySelector('.notification-history-scroll'),left=scroll?.scrollLeft||0,top=window.scrollY,open=[...region.querySelectorAll('details[open]')].map(item=>item.dataset.historyDisclosure),active=document.activeElement,focusRow=active?.closest?.('[data-history-row]')?.dataset.historyRow,focusPage=active?.dataset?.historyPage;region.innerHTML=notificationHistoryMarkup();for(const details of region.querySelectorAll('details'))details.open=open.includes(details.dataset.historyDisclosure);const nextScroll=region.querySelector('.notification-history-scroll');if(nextScroll)nextScroll.scrollLeft=left;bindNotificationHistoryActions();const focus=focusRow?[...region.querySelectorAll('[data-history-row]')].find(row=>row.dataset.historyRow===focusRow)?.querySelector(active?.tagName==='SUMMARY'?'summary':'a'):focusPage?[...region.querySelectorAll('[data-history-page]')].find(button=>button.dataset.historyPage===focusPage):null;focus?.focus({preventScroll:true});window.scrollTo?.(0,top);}
 function projectChannelSettingsMarkup(){const settings=webNotificationSettings();return `<section class="center-channel-settings"><h2>${esc(state.language==='ko'?'프로젝트별 채널·유형':'Channels and types by project')}</h2>${(state.projectNotificationSettings||[]).map(row=>`<details class="center-project-settings"><summary>${esc(row.name||row.path)}</summary><p class="muted">${esc(row.path)}</p><fieldset><legend>Telegram</legend><label><input type="checkbox" data-center-channel="telegram" data-center-project="${esc(row.path)}" ${row.status?.project_enabled!==false?'checked':''}>${esc(t('telegramNotifications'))}</label>${notificationKinds.map(kind=>`<label><input type="checkbox" data-center-telegram-kind="${kind}" data-center-project="${esc(row.path)}" ${row.status?.kinds?.[kind]?'checked':''} ${!row.status?.configured?'disabled':''}>${esc(notificationKindLabel(kind))}</label>`).join('')}</fieldset><fieldset><legend>${esc(t('notificationWebProject'))}</legend><label><input type="checkbox" data-center-channel="web" data-center-project="${esc(row.path)}" ${settings.projects?.[row.path]?.enabled!==false?'checked':''}>${esc(t('notificationWebProject'))}</label>${notificationKinds.map(kind=>`<label><input type="checkbox" data-center-web-kind="${kind}" data-center-project="${esc(row.path)}" ${(settings.projects?.[row.path]?.kinds?.[kind]??state.notificationSettings[['completed','stalled'].includes(kind)?kind:'intervention'])!==false?'checked':''}>${esc(notificationKindLabel(kind))}</label>`).join('')}</fieldset></details>`).join('')}</section>`;}
 function bindCenterChannelSettings(panel){panel.querySelectorAll('[data-center-channel],[data-center-telegram-kind],[data-center-web-kind]').forEach(input=>input.addEventListener('change',async()=>{const project=input.dataset.centerProject;input.disabled=true;try{if(input.dataset.centerChannel==='telegram')await setProjectNotificationEnabled(project,input.checked);else if(input.dataset.centerTelegramKind){const row=state.projectNotificationSettings.find(row=>row.path===project),kinds={...row.status.kinds,[input.dataset.centerTelegramKind]:input.checked};row.status=await projectTelegramAction(project,'kinds',{kinds});}else changeWebNotificationSetting(project,input.dataset.centerWebKind||'enabled',input.checked);}catch(error){input.checked=!input.checked;alert(error.message);}finally{input.disabled=false;}}));}
 
@@ -2065,9 +2088,13 @@ function projectNotificationsView() {
   return `<div class="page-head"><div><div class="eyebrow">${esc(t('operationsEyebrow'))}</div><h1>${esc(t('projectNotifications'))}</h1><p class="summary">${esc(t('projectNotificationsIntro'))}</p></div></div><section class="assigned-workload-section">${sharedSetup}<div class="project-notification-list">${body}</div></section>`;
 }
 function restoreNotificationPanelFocus(){const previous=state.notificationPanelReturnFocus;(previous?.id?document.getElementById(previous.id):previous)?.focus();}
+function settingsInputKey(input,index){const data=Object.entries(input.dataset||{}).sort(([a],[b])=>a.localeCompare(b));return input.id||data.length?input.id||JSON.stringify(data):'input:'+index;}
+function preserveNotificationSettings(panel){const inputs=[...panel.querySelectorAll('input,textarea')],active=document.activeElement;return {text:Object.fromEntries(inputs.filter(input=>['password','text'].includes(input.type)||input.tagName==='TEXTAREA').map(input=>[settingsInputKey(input,inputs.indexOf(input)),input.value])),focus:active&&inputs.includes(active)?settingsInputKey(active,inputs.indexOf(active)):null,selection:active?.selectionStart,open:[...panel.querySelectorAll('details')].map(item=>item.open)};}
+function restoreNotificationSettings(panel,draft){const inputs=[...panel.querySelectorAll('input,textarea')];inputs.forEach((input,index)=>{const key=settingsInputKey(input,index);if(Object.hasOwn(draft.text,key))input.value=draft.text[key];});[...panel.querySelectorAll('details')].forEach((item,index)=>{if(draft.open[index]!==undefined)item.open=draft.open[index];});const focus=inputs.find((input,index)=>settingsInputKey(input,index)===draft.focus);focus?.focus({preventScroll:true});if(focus&&draft.selection!=null&&['password','text'].includes(focus.type))focus.setSelectionRange(draft.selection,draft.selection);}
 function renderNotificationPanel() {
-  const panel=$('#notificationPanel'); if(!panel)return;
-  panel.setAttribute('role','dialog');panel.setAttribute('aria-label',t('notificationSettings'));panel.setAttribute('aria-modal','false');
+  const panel=$('#notificationSettingsBody')||$('#notificationPanel'); if(!panel)return;
+  const draft=preserveNotificationSettings(panel);
+  panel.setAttribute('role',panel.id==='notificationSettingsBody'?'region':'dialog');panel.setAttribute('aria-label',t('notificationSettings'));panel.setAttribute('aria-modal','false');
   const capability=notificationCapability();
   const permission=capability.mode==='supported'?Notification.permission:capability.mode;
   const enabled=Object.values(state.notificationSettings).some(Boolean);
@@ -2117,7 +2144,8 @@ function renderNotificationPanel() {
     </div>`;
   panel.querySelector('.notification-panel-body')?.insertAdjacentHTML('beforeend',projectChannelSettingsMarkup());
   const recipientMarkup=projectNotificationsView();
-  panel.querySelector('.notification-panel-body')?.insertAdjacentHTML('beforeend',`<details class="center-project-settings"><summary>${esc(state.language==='ko'?'Telegram 수신처 연결':'Telegram recipient setup')}</summary>${recipientMarkup.slice(recipientMarkup.indexOf('<section class="assigned-workload-section">'))}</details>`);
+  panel.querySelector('.notification-panel-body')?.insertAdjacentHTML('beforeend',`<details class="center-project-settings"><summary>${esc(state.language==='ko'?'Telegram 수신처 연결':'Telegram recipient setup')}</summary>${recipientMarkup.includes('<section class="assigned-workload-section">')?recipientMarkup.slice(recipientMarkup.indexOf('<section class="assigned-workload-section">')):recipientMarkup}</details>`);
+  if(panel.id==='notificationSettingsBody')panel.querySelector('.notification-panel-head')?.remove();
   bindCenterChannelSettings(panel);
   bindProjectRecipientControls();
   $('#centerGlobalWebChannel')?.addEventListener('change',event=>{const settings=webNotificationSettings();settings.enabled=event.target.checked;localStorage.setItem('task-mecca-web-notification-settings-v1',JSON.stringify(settings));});
@@ -2131,6 +2159,7 @@ function renderNotificationPanel() {
   const setAllTelegramKinds=async enabled=>{try{const kinds={};Object.keys(state.telegramStatus?.kinds||{}).forEach(kind=>kinds[kind]=enabled);await telegramAction('kinds',{kinds});renderNotificationPanel()}catch(e){alert(e.message)}};
   $('#telegramAllOn')?.addEventListener('click',()=>setAllTelegramKinds(true));
   $('#telegramAllOff')?.addEventListener('click',()=>setAllTelegramKinds(false));
+  restoreNotificationSettings(panel,draft);
   $('#telegramDisable')?.addEventListener('click',async()=>{if(!confirm(t('telegramDisconnect')+'?'))return;try{await telegramAction('disable');renderNotificationPanel()}catch(e){alert(e.message)}});
   updateNotificationIndicator();
 }
@@ -3682,7 +3711,10 @@ function toggleSidebar() {
   setSidebarMode(state.sidebarMode==='expanded'?'compact':'expanded');
 }
 
+let notificationSettingsDraft=null;
 function render() {
+  const settingsElement=$('#notificationSettingsBody');
+  const settingsDraft=settingsElement?.dataset.context===notificationHistoryContext()?preserveNotificationSettings(settingsElement):notificationSettingsDraft?.context===notificationHistoryContext()?notificationSettingsDraft.draft:null;
  renderUserAttention();
   if(document.querySelector('.hub-confirm-overlay'))return;
   if(document.activeElement?.closest?.('#userAttention'))return;
@@ -3775,9 +3807,9 @@ function render() {
   }
   if(state.view==='issues')bindDiagnosticActions();
   if(state.view==='notifications'){
-    document.querySelectorAll('[data-center-tab]').forEach(button=>button.addEventListener('click',()=>{state.notificationCenterTab=button.dataset.centerTab;render();if(state.notificationCenterTab==='history')loadNotificationHistory();}));
-    $('#centerNotificationSettings')?.addEventListener('click',async event=>{state.notificationPanelReturnFocus=event.currentTarget;await loadProjectNotificationSettings();await loadTelegramStatus();renderNotificationPanel();$('#notificationPanel')?.classList.add('open');$('#notificationClose')?.focus();});
-    bindProjectRecipientControls();
+    document.querySelectorAll('[data-center-tab]').forEach(button=>button.addEventListener('click',()=>{const body=$('#notificationSettingsBody');if(body)notificationSettingsDraft={context:notificationHistoryContext(),draft:preserveNotificationSettings(body)};state.notificationCenterTab=button.dataset.centerTab;if(state.notificationCenterTab==='history'&&state.notificationHistoryPage===1)captureHistoryWindow();render();document.querySelector(`[data-center-tab="${state.notificationCenterTab}"]`)?.focus({preventScroll:true});if(state.notificationCenterTab==='history')loadNotificationHistory();}));
+    if(state.notificationCenterTab==='settings'){renderNotificationPanel();const body=$('#notificationSettingsBody');if(body){body.dataset.context=notificationHistoryContext();if(settingsDraft)restoreNotificationSettings(body,settingsDraft);}}
+    bindNotificationHistoryActions();
   }
   if(state.view==='backlog')scheduleAutoListPageSize();
   document.querySelectorAll('[data-manual-tab]').forEach(b=>b.onclick=()=>{state.manualTab=b.dataset.manualTab;render()});
@@ -4052,6 +4084,8 @@ async function refreshOnce() {
 
   if(targetView==='notifications'){
     closeAttentionStream();
+    await loadProjectNotificationSettings();
+    await loadTelegramStatus();
     await loadNotificationHistory();
     if(targetProject!==state.project || targetBacklog!==state.backlog || state.view!==targetView)return;
     state.loadError=state.projectNotificationSettingsError;
@@ -4288,13 +4322,7 @@ function bindBacklogListTools() {
 });
 }
 $('#refreshBtn').onclick=refreshVisibleContent;
-$('#notificationBtn')?.addEventListener('click',async event=>{
-  state.notificationPanelReturnFocus=event.currentTarget;
-  const panel=$('#notificationPanel'); if(!panel)return;
-  if(window.matchMedia('(max-width:680px)').matches && panel.parentElement!==document.body) document.body.appendChild(panel);
-  panel.classList.toggle('open');
-  if(panel.classList.contains('open')){await loadProjectNotificationSettings();await loadTelegramStatus();renderNotificationPanel();$('#notificationClose')?.focus();}
-});
+$('#notificationBtn')?.addEventListener('click',()=>{state.notificationCenterTab='settings';navigate(null,'notifications');});
 document.addEventListener('click',e=>{const panel=$('#notificationPanel');if(panel?.classList.contains('open')&&!panel.contains(e.target)&&!$('#notificationBtn')?.contains(e.target))panel.classList.remove('open')});
 $('#sidebarToggle').onclick=toggleSidebar;
 $('#sidebar')?.addEventListener('click',event=>{

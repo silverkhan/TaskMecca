@@ -1333,3 +1333,13 @@ body.release-modal-open{overflow:hidden}
     flex:1 1 auto;min-width:0;padding:8px;justify-content:flex-start;
   }
 }
+/* Notification center: in-page settings and stable history navigation. */
+.notification-settings-body .notification-panel-body{max-height:none;overflow:visible;padding:20px 0;}
+.notification-settings-body{max-width:960px;}
+.center-pagination{display:flex;align-items:center;justify-content:center;gap:12px;margin:20px 0;}
+.center-pagination button{min-width:40px;min-height:40px;padding:8px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg-elevated);color:var(--text);cursor:pointer;}
+.center-pagination button:disabled{opacity:.45;cursor:default;}
+.center-pagination [aria-current="page"]{border-color:var(--accent);color:var(--accent);font-weight:700;}
+.center-page-numbers{display:flex;gap:6px;}
+.notification-history-table details{margin-top:6px;}
+@media(max-width:680px){.center-page-numbers{display:none;}.center-pagination{justify-content:space-between;}}
