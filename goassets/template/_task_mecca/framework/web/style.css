@@ -1279,28 +1279,34 @@ body.release-modal-open{overflow:hidden}
   }
   .topbar{
     display:grid;width:100%;max-width:100%;box-sizing:border-box;
-    grid-template-columns:max-content max-content minmax(0,1fr) 36px;
+    grid-template-columns:minmax(0,.9fr) minmax(0,1fr) minmax(0,1.45fr) 36px;
     grid-template-areas:"palette language theme theme"
                         "version version version refresh";
-    grid-template-rows:34px 34px;
+    grid-template-rows:36px 34px;
     align-content:center;align-items:center;gap:6px;
     height:auto;min-height:0;padding:8px 10px;
   }
   .topbar .palette-picker{
-    grid-area:palette;order:initial;height:34px;padding:0 7px;
-    justify-self:start;min-width:0;max-width:100%;
+    grid-area:palette;order:initial;height:36px;padding:0 5px;
+    justify-self:stretch;width:100%;box-sizing:border-box;min-width:0;
   }
   .topbar .language-picker{
-    grid-area:language;order:initial;height:34px;padding:0 6px;
-    justify-self:start;min-width:0;max-width:100%;
+    grid-area:language;order:initial;height:36px;padding:0 5px;
+    justify-self:stretch;width:100%;box-sizing:border-box;min-width:0;
   }
-  .topbar .language-picker select{min-width:65px;max-width:95px}
+  .topbar .palette-picker select,.topbar .language-picker select{
+    flex:1 1 auto;min-width:0;max-width:100%;width:100%;font-size:11px;
+    text-overflow:ellipsis;
+  }
   .topbar .theme-switcher{
-    grid-area:theme;order:initial;justify-self:end;
-    width:max-content;max-width:100%;min-width:0;
-    height:32px;padding:2px;gap:1px;
+    grid-area:theme;order:initial;justify-self:stretch;
+    width:100%;max-width:100%;box-sizing:border-box;min-width:0;
+    height:36px;padding:3px;gap:2px;
   }
-  .topbar .theme-btn{height:26px;padding:0 5px;font-size:10px}
+  .topbar .theme-btn{
+    flex:1 1 0;min-width:0;height:28px;padding:0 3px;
+    font-size:11px;font-weight:650;
+  }
   .topbar #globalUpdateIndicator{
     grid-area:version;order:initial;justify-self:stretch;
     margin:0;width:100%;max-width:100%;min-width:0;
@@ -1311,7 +1317,7 @@ body.release-modal-open{overflow:hidden}
     min-width:0;max-width:100%;box-sizing:border-box;
   }
   .topbar .global-update-pill.available{
-    width:100%;justify-content:flex-start;overflow:hidden;
+    width:fit-content;max-width:100%;justify-content:flex-start;overflow:hidden;
   }
   .topbar #refreshBtn{
     grid-area:refresh;order:initial;justify-self:end;
@@ -1321,12 +1327,10 @@ body.release-modal-open{overflow:hidden}
 }
 @media(max-width:360px){
   .topbar{padding:7px 8px;gap:4px}
-  .topbar .palette-picker{padding:0 4px}
-  .topbar .palette-picker select{font-size:10px}
-  .topbar .language-picker{padding:0 4px}
-  .topbar .language-picker select{min-width:55px;max-width:75px;font-size:10px}
-  .topbar .theme-btn{padding:0 3px;font-size:9px}
-  .topbar .theme-switcher{gap:0}
+  .topbar .palette-picker,.topbar .language-picker{padding:0 3px}
+  .topbar .palette-picker select,.topbar .language-picker select{font-size:10px}
+  .topbar .theme-btn{padding:0 2px;font-size:10px}
+  .topbar .theme-switcher{gap:1px;padding:2px}
 }
 /* Share one label and tooltip between both layouts. The text switches based
    on actual update-badge width rather than the device's outer viewport. */
@@ -1353,7 +1357,7 @@ body.release-modal-open{overflow:hidden}
 .migration-version-compact,.migration-version-tiny{display:none}
 @media(max-width:680px){
   .topbar .global-update-pill.migration{
-    width:100%;min-width:0;max-width:100%;display:flex;
+    width:fit-content;min-width:0;max-width:100%;display:inline-flex;
     align-items:center;justify-content:flex-start;gap:5px;
     overflow:hidden;
   }
@@ -1370,7 +1374,7 @@ body.release-modal-open{overflow:hidden}
   .migration-version-compact{display:none}
   .migration-version-tiny{display:inline}
 }
-@container update-badge (max-width:295px){
+@container update-badge (max-width:355px){
   .update-version-full{display:none}
   .update-version-compact{display:inline}
 }
