@@ -62,7 +62,7 @@ func TestWebPushVAPIDJWTES256(t *testing.T){
 func TestPushEndpointValidationAndProjectIsolation(t *testing.T){
  t.Setenv("TASK_MECCA_HOME",t.TempDir())
  first:=t.TempDir();second:=t.TempDir()
- for _,value:=range []string{"https://localhost/push","http://fcm.googleapis.com","https://10.0.0.1/push","https://fcm.googleapis.com.attacker.example","https://fcm.googleapis.com:443/","https://fcm.googleapis.com/?evil=yes"}{
+ for _,value:=range []string{"https://localhost/push","http://fcm.googleapis.com","https://10.0.0.1/push","https://fcm.googleapis.com.attacker.example","https://fcm.googleapis.com:443/","https://fcm.googleapis.com@evil.example/path"}{
   if validPushEndpoint(value){t.Fatalf("SSRF-prone push endpoint accepted: %s",value)}
  }
  for _,value:=range []string{"https://fcm.googleapis.com/fcm/send/a","https://web.push.apple.com/a","https://updates.push.services.mozilla.com/wpush/a","https://wns2-by3p.notify.windows.com/w/?a"}{
