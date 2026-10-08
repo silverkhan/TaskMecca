@@ -22,6 +22,7 @@ type RawFileCondition struct {
 	ReasonCodes []string `json:"reason_codes"`
 	UnfinishedAttempts int `json:"unfinished_attempts"`
 	MissingEvidenceAttempts int `json:"missing_evidence_attempts"`
+	BlockingAttemptIDs []string `json:"blocking_attempt_ids,omitempty"`
 	SafeNow bool `json:"safe_now"`
 	ConditionalBytes int64 `json:"conditional_bytes"`
 }
@@ -102,13 +103,19 @@ func AnalyzeRawProtection(project string, ledger Ledger, now time.Time) (RawProt
 		row.LastObservedAt=latest.UTC().Format(time.RFC3339Nano)
 		row.RetentionEligibleAfter=latest.AddDate(0,0,rawRetentionDays).UTC().Format(time.RFC3339Nano)
 		if !latest.Before(cutoff) {row.ReasonCodes=append(row.ReasonCodes,"retention")}
+		var blocking []string
 		for id:=range ids {
 			if active[id] {
 				row.UnfinishedAttempts++
+				blocking=append(blocking,id)
 			} else if !terminalKnown[id] {
 				row.MissingEvidenceAttempts++
+				blocking=append(blocking,id)
 			}
 		}
+		sort.Strings(blocking)
+		if len(blocking)>3 {blocking=blocking[:3]}
+		row.BlockingAttemptIDs=blocking
 		if row.UnfinishedAttempts>0 {row.ReasonCodes=append(row.ReasonCodes,"unfinished")}
 		if row.MissingEvidenceAttempts>0 {row.ReasonCodes=append(row.ReasonCodes,"missing_terminal")}
 		if len(row.ReasonCodes)==0 {
