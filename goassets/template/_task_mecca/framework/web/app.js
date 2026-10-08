@@ -979,12 +979,12 @@ function showManualRefreshFeedback(message,kind='info',temporary=true){
   if(!element)return;
   clearTimeout(manualRefreshFeedbackTimer);
   element.textContent=message;
-  element.className='refresh-feedback visible'+(kind==='error'?' error':'');
+  element.className='refresh-feedback visible'+(kind==='error'?' error':kind==='pending'?' pending':'');
   if(temporary){
     manualRefreshFeedbackTimer=setTimeout(()=>{
       element.className='refresh-feedback';
       element.textContent='';
-    },4500);
+    },kind==='error'?4500:3200);
   }
 }
 async function refreshAndCheckUpdates(){
@@ -996,7 +996,7 @@ async function refreshAndCheckUpdates(){
     button.classList.add('checking');
     button.setAttribute('aria-busy','true');
   }
-  showManualRefreshFeedback(t('refreshChecking'),'info',false);
+  showManualRefreshFeedback(t('refreshChecking'),'pending',false);
   // Independent operations: a failed data reload must not skip the update check.
   const [contentResult,versionResult]=await Promise.allSettled([
     refreshVisibleContent(),refreshVersionInfo(true)
