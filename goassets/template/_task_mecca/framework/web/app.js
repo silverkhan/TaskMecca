@@ -2543,11 +2543,21 @@ function notificationHistoryMarkup(){
 function notificationCenterView(){return `<div class="notification-center-tabs" role="tablist"><button type="button" role="tab" data-center-tab="history" aria-selected="${state.notificationCenterTab==='history'}">${esc(t('notificationHistory'))}<span id="centerHistoryBadge">${state.notificationHistoryNew?` · ${state.notificationHistoryNew}`:''}</span></button><button type="button" role="tab" data-center-tab="settings" aria-selected="${state.notificationCenterTab==='settings'}">${esc(t('notificationSettings'))}</button></div>${state.notificationCenterTab==='settings'?'<section id="notificationSettingsBody" class="notification-settings-body"></section>':`<p class="summary">${esc(t('notificationHistoryGuide'))}</p><section id="centerHistory">${notificationHistoryMarkup()}</section>`}`;}
 function bindNotificationHistoryActions(){document.querySelectorAll('[data-history-page]').forEach(button=>button.addEventListener('click',()=>{state.notificationHistoryPage=Number(button.dataset.historyPage);if(state.notificationHistoryPage===1)captureHistoryWindow();updateNotificationHistoryDOM();}));document.querySelectorAll('[data-history-latest]').forEach(button=>button.addEventListener('click',()=>{state.notificationHistoryPage=1;captureHistoryWindow();updateNotificationHistoryDOM();}));}
 function updateNotificationHistoryDOM(){if(state.view!=='notifications')return;const badge=$('#centerHistoryBadge');if(badge)badge.textContent=state.notificationHistoryNew?' · '+state.notificationHistoryNew:'';const region=$('#centerHistory');if(!region)return;const scroll=region.querySelector('.notification-history-scroll'),left=scroll?.scrollLeft||0,top=window.scrollY,open=[...region.querySelectorAll('details[open]')].map(item=>item.dataset.historyDisclosure),active=document.activeElement,focusRow=active?.closest?.('[data-history-row]')?.dataset.historyRow,focusPage=active?.dataset?.historyPage;region.innerHTML=notificationHistoryMarkup();for(const details of region.querySelectorAll('details'))details.open=open.includes(details.dataset.historyDisclosure);const nextScroll=region.querySelector('.notification-history-scroll');if(nextScroll)nextScroll.scrollLeft=left;bindNotificationHistoryActions();const focus=focusRow?[...region.querySelectorAll('[data-history-row]')].find(row=>row.dataset.historyRow===focusRow)?.querySelector(active?.tagName==='SUMMARY'?'summary':'a'):focusPage?[...region.querySelectorAll('[data-history-page]')].find(button=>button.dataset.historyPage===focusPage):null;focus?.focus({preventScroll:true});window.scrollTo?.(0,top);}
+const notificationSwitchPending=new Set();
+function notificationPendingKey(input){
+ if(input.id)return 'id="'+input.id+'"';
+ const project=esc(input.dataset.centerProject||'');
+ const which=input.dataset.centerChannel?'channel':input.dataset.centerWebKind?'web-kind':'telegram-kind';
+ const value=input.dataset.centerChannel||input.dataset.centerWebKind||input.dataset.centerTelegramKind||'';
+ return 'data-center-project="'+project+'" data-center-'+which+'="'+esc(value)+'"';
+}
 function notificationSwitch(attrs,on,label,disabled=false){
+ const pending=notificationSwitchPending.has(attrs);
+ disabled=disabled||pending;
  // Keep the switch as a single semantic button. The previous visible
  // "sr-only" span lacked a hiding CSS utility and squeezed the track on mobile.
  // The track and thumb are painted by CSS pseudo-elements instead.
- return '<button type="button" role="switch" class="notice-switch'+(on?' is-on':'')+'" aria-checked="'+Boolean(on)+'" aria-label="'+esc(label)+'" '+attrs+(disabled?' disabled':'')+'></button>';
+ return '<button type="button" role="switch" class="notice-switch'+(on?' is-on':'')+'" aria-checked="'+Boolean(on)+'" aria-label="'+esc(label)+'" aria-busy="'+pending+'" '+attrs+(disabled?' disabled':'')+'></button>';
 }
 function notificationOverviewMarkup(){
  const rows=state.projectNotificationSettings||[],ko=state.language==='ko',webOn=webNotificationSettings().enabled!==false;
@@ -2606,46 +2616,65 @@ async function commitWebNotificationSetting(apply,project=null){
   throw error;
  }
 }
+function repaintNotificationSwitch(input){
+ const project=input.dataset.centerProject,channel=input.dataset.centerChannel;
+ const opened=[...document.querySelectorAll('.notice-project[open]')].map(d=>d.querySelector('.notice-project-path')?.textContent);
+ renderNotificationPanel();
+ [...document.querySelectorAll('.notice-project')].forEach(d=>{
+  if(opened.includes(d.querySelector('.notice-project-path')?.textContent))d.open=true;
+ });
+ const controls=[...document.querySelectorAll('.notice-switch')];
+ const focus=controls.find(button=>input.id?button.id===input.id:
+  button.dataset.centerProject===project&&
+  (channel?button.dataset.centerChannel===channel:input.dataset.centerWebKind?button.dataset.centerWebKind===input.dataset.centerWebKind:button.dataset.centerTelegramKind===input.dataset.centerTelegramKind));
+ focus?.focus?.({preventScroll:true});
+}
 async function setNotificationSwitch(input){
  if(input.disabled)return;
  const project=input.dataset.centerProject,channel=input.dataset.centerChannel,next=input.getAttribute('aria-checked')!=='true';
- // Disabled controls are not merely visual: even stale/programmatic events
- // cannot mutate settings while their parent channel is switched off.
+ // A stale click must never bypass a disabled parent channel.
  const projectRow=(state.projectNotificationSettings||[]).find(row=>row.path===project);
  const webSettings=webNotificationSettings();
  const webLocked=webSettings.enabled===false||webSettings.projects?.[project]?.enabled===false;
  const telegramLocked=projectRow?.status?.project_enabled===false;
  if((input.dataset.centerWebKind&&webLocked)||(channel==='web'&&webSettings.enabled===false))return;
  if(input.dataset.centerTelegramKind&&(telegramLocked||!projectRow?.status?.configured&&!projectRow?.status?.connected))return;
+
+ const pendingKey=notificationPendingKey(input);
+ if(notificationSwitchPending.has(pendingKey))return;
+ notificationSwitchPending.add(pendingKey);
  input.setAttribute('aria-checked',String(next));
  input.classList.toggle('is-on',next);
  input.setAttribute('aria-busy','true');
  input.disabled=true;
- try{
-  if(input.id==='centerGlobalTelegramChannel')await setAllTelegramChannelsEnabled(next);
-  else if(input.id==='centerGlobalWebChannel')await commitWebNotificationSetting(()=>{
-    const settings=webNotificationSettings();settings.enabled=next;localStorage.setItem('task-mecca-web-notification-settings-v1',JSON.stringify(settings));
-   });
-  else if(channel==='telegram')await setProjectNotificationEnabled(project,next);
-  else if(channel==='web')await commitWebNotificationSetting(()=>changeWebNotificationSetting(project,'enabled',next),project);
+
+ // Create the promise BEFORE repainting: the mutation updates the local
+ // cache synchronously, and the new DOM shows the requested state immediately.
+ let task;
+ try {
+  if(input.id==='centerGlobalTelegramChannel')task=setAllTelegramChannelsEnabled(next);
+  else if(input.id==='centerGlobalWebChannel')task=commitWebNotificationSetting(()=>{
+   const settings=webNotificationSettings();settings.enabled=next;
+   localStorage.setItem('task-mecca-web-notification-settings-v1',JSON.stringify(settings));
+  });
+  else if(channel==='telegram')task=setProjectNotificationEnabled(project,next);
+  else if(channel==='web')task=commitWebNotificationSetting(()=>changeWebNotificationSetting(project,'enabled',next),project);
   else if(input.dataset.centerTelegramKind){
    const row=state.projectNotificationSettings.find(r=>r.path===project);
-   await projectTelegramAction(project,'kinds',{kinds:{...row?.status?.kinds,[input.dataset.centerTelegramKind]:next}});
+   task=projectTelegramAction(project,'kinds',{kinds:{...row?.status?.kinds,[input.dataset.centerTelegramKind]:next}});
   }else if(input.dataset.centerWebKind){
-   await commitWebNotificationSetting(()=>changeWebNotificationSetting(project,input.dataset.centerWebKind,next),project);
+   task=commitWebNotificationSetting(()=>changeWebNotificationSetting(project,input.dataset.centerWebKind,next),project);
   }
- }catch(error){alert(error.message);}
- finally{
-  const projectOpen=[...document.querySelectorAll('.notice-project[open]')].map(d=>d.querySelector('.notice-project-path')?.textContent);
-  renderNotificationPanel();
-  [...document.querySelectorAll('.notice-project')].forEach(d=>{if(projectOpen.includes(d.querySelector('.notice-project-path')?.textContent))d.open=true;});
-  const controls=[...document.querySelectorAll('.notice-switch')];
-  const focus=controls.find(button=>input.id?button.id===input.id:
-    button.dataset.centerProject===project&&
-    (channel?button.dataset.centerChannel===channel:input.dataset.centerWebKind?button.dataset.centerWebKind===input.dataset.centerWebKind:button.dataset.centerTelegramKind===input.dataset.centerTelegramKind));
-  focus?.focus?.({preventScroll:true});
+  repaintNotificationSwitch(input);
+  await task;
+ }catch(error){
+  alert(error.message);
+ }finally{
+  notificationSwitchPending.delete(pendingKey);
+  repaintNotificationSwitch(input);
  }
 }
+
 function bindCenterChannelSettings(panel){
  panel.querySelectorAll('#centerGlobalWebChannel,#centerGlobalTelegramChannel,[data-center-channel],[data-center-telegram-kind],[data-center-web-kind]').forEach(button=>button.addEventListener('click',()=>void setNotificationSwitch(button)));
 }
