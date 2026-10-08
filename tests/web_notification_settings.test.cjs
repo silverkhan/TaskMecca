@@ -26,7 +26,7 @@ function page({beforePost=async()=>{}}={}){
   return {ok:true,json:async()=>({})};
  };
  const Notification=function(){};Notification.permission='granted';
- const context=vm.createContext({fetch,URLSearchParams,location:{search:'?project=/demo'},navigator:{language:'ko',userAgent:'Chrome'},Notification,window:{isSecureContext:true},localStorage:{
+ const context=vm.createContext({fetch,URLSearchParams,location:{search:'?project=/demo'},navigator:{language:'ko',userAgent:'Chrome'},Notification,window:{isSecureContext:true},alert:()=>{},localStorage:{
   getItem:k=>store.get(k)||null,setItem:(k,v)=>store.set(k,String(v)),removeItem:k=>store.delete(k)
  },document:{querySelector:()=>null,querySelectorAll:()=>[]},setTimeout,clearTimeout});
  vm.runInContext(source.slice(0,source.indexOf('\ntranslateChrome();'))+
@@ -190,18 +190,18 @@ test('Telegram toggle visibly updates without waiting for a slow POST or full pr
  assert.equal(app.state.projectNotificationSettings[0].status.project_enabled,false);
  assert.equal(app.updates.length,1,'no redundant settings POST');
 });
-test('Telegram optimistic toggle rolls back on server failure',async()=>{
- let resolvePost;const slow=new Promise(resolve=>resolvePost=resolve);
- const app=page({beforePost:async body=>{if(body.action==='project_enabled')await slow}});
+test('Telegram optimistic toggle rolls back on network failure',async()=>{
+ let rejectPost;const blocked=new Promise((_,reject)=>rejectPost=reject);
+ const app=page({beforePost:async body=>{if(body.action==='project_enabled')await blocked}});
  app.statuses['/demo'].configured=true;await app.loadProjectNotificationSettings();
  const original=app.state.projectNotificationSettings[0].status.project_enabled;
  const job=app.setNotificationSwitch(toggleFixture({channel:'telegram'}));
  assert.equal(app.state.projectNotificationSettings[0].status.project_enabled,false);
- // Simulate a failed backend rather than a normal persisted response.
- // The test below verifies that the saved status can still recover.
- resolvePost();await job;
- assert.notEqual(original,app.state.projectNotificationSettings[0].status.project_enabled);
+ rejectPost(new Error('network failure'));await job;
+ assert.equal(app.state.projectNotificationSettings[0].status.project_enabled,original,'failed save restores previous server-confirmed value');
+ assert.equal(app.notificationSwitchPending.size,0,'pending state always clears');
 });
+
 test('global Telegram toggle starts requests for all projects before their responses resolve',async()=>{
  let resolve;const slow=new Promise(done=>resolve=done);
  const app=page({beforePost:async body=>{if(body.action==='project_enabled')await slow}});
