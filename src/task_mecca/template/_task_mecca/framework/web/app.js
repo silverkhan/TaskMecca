@@ -34,7 +34,8 @@ const state = {
   autoListPageSize: 8,
   listSort: localStorage.getItem('task-mecca-list-sort-v2') || 'id_desc',
   selectedIndex: 0,
-  sidebarCollapsed: localStorage.getItem('task-mecca-sidebar-collapsed') === '1',
+  sidebarMode: ['auto','expanded','compact'].includes(localStorage.getItem('task-mecca-sidebar-mode')) ? localStorage.getItem('task-mecca-sidebar-mode') : (localStorage.getItem('task-mecca-sidebar-collapsed') === '0' ? 'expanded' : 'auto'),
+  sidebarCollapsed: true,
   sidebarPeek: false,
   projectMenuOpen: false,
   openProjects: (()=>{ try { const raw=JSON.parse(localStorage.getItem('task-mecca-open-projects')||'[]'); return Array.isArray(raw)?raw:[]; } catch(_) { return []; } })(),
@@ -2365,11 +2366,29 @@ function nav() {
     const pc=p.counts||{};
     const active=state.project===path && state.view!=='hub';
     const badge=(pc.working||0)+(pc.ready||0);
-    return `<div class="session-row ${active?'active':''}" data-session-project="${esc(path)}"><button class="session-open" type="button" title="${esc(path)}"><span class="session-dot ${pc.working?'busy':''}"></span><span class="session-name">${esc(p.name)}</span><span class="session-count">${badge||''}</span></button><button class="session-close" type="button" data-close-project="${esc(path)}" aria-label="Close ${esc(p.name)}" title="Close">×</button></div>`;
+    const errors=(pc.blocked||0)+(pc.error||0),warnings=(pc.attention||0)+(pc.needs_attention||0)+(pc.hold||0);
+    const status=errors?'error':warnings?'warning':pc.working?'working':pc.ready?'registered':pc.done && !pc.total_pending?'done':'unknown';
+    const descriptions={error:'Error / Blocked',warning:'Needs attention',working:'Working',registered:'Registered',done:'Done',unknown:'Unknown / Idle'};
+    const initial=(Array.from(String(p.name||'?').trim())[0]||'?').toLocaleUpperCase();
+    const projectHint=`${p.name} · ${path} · ${descriptions[status]}`;
+    return `<div class="session-row session-state-${status} ${active?'active':''}" data-session-project="${esc(path)}"><button class="session-open" type="button" title="${esc(projectHint)}" aria-label="${esc(projectHint)}"><span class="session-initial" aria-hidden="true">${esc(initial)}</span><span class="session-name">${esc(p.name)}</span><span class="session-count">${badge||''}</span></button><button class="session-close" type="button" data-close-project="${esc(path)}" aria-label="Close ${esc(p.name)}" title="Close">×</button></div>`;
   }).join('');
   const menu=state.projectMenuOpen?`<div class="project-open-menu">${closed.length?closed.map(p=>`<button type="button" data-add-project="${esc(p.path)}"><span>${esc(p.name)}</span><small>${esc(p.path)}</small></button>`).join(''):'<div class="project-open-empty">No closed projects</div>'}</div>`:'';
   $('#stateNav').innerHTML =
     `<div class="sidebar-label">SYSTEM</div><button class="nav-item ${state.view==='hub'?'active':''}" id="hubNavBtn" type="button"><span class="nav-main"><span class="nav-icon">⌂</span><span class="nav-text">Global Hub</span></span></button><div class="sidebar-label">BACKLOGS</div><div class="session-list">${sessionRows||'<div class="session-empty">No open backlogs</div>'}</div><button class="nav-item session-add" id="openProjectBtn" type="button"><span class="nav-main"><span class="nav-icon">＋</span><span class="nav-text">Open Project</span></span></button>${menu}`;
+  const sidebarModes=[
+    ['auto',state.language==='ko'?'자동':'Auto',state.language==='ko'?'마우스를 올리거나 포커스를 옮기면 임시로 펼침':'Temporarily expand on hover or focus'],
+    ['expanded',state.language==='ko'?'펼침':'Expanded',state.language==='ko'?'항상 펼친 상태로 고정':'Keep the sidebar expanded'],
+    ['compact',state.language==='ko'?'최소화':'Compact',state.language==='ko'?'항상 최소화된 상태로 고정':'Keep the sidebar compact']
+  ];
+  const modeSelector=document.createElement('div');
+  modeSelector.className='sidebar-mode-selector';
+  modeSelector.dataset.mode=state.sidebarMode;
+  modeSelector.setAttribute('role','group');
+  modeSelector.setAttribute('aria-label',state.language==='ko'?'사이드바 표시 방식':'Sidebar display mode');
+  modeSelector.innerHTML=sidebarModes.map(([mode,label,description])=>`<button type="button" class="sidebar-mode-option ${state.sidebarMode===mode?'selected':''}" data-sidebar-mode="${mode}" aria-pressed="${state.sidebarMode===mode}" aria-label="${esc(label)}: ${esc(description)}" title="${esc(description)}">${esc(label)}</button>`).join('');
+  $('#stateNav').prepend(modeSelector);
+  modeSelector.querySelectorAll('[data-sidebar-mode]').forEach(button=>button.addEventListener('click',()=>{setSidebarMode(button.dataset.sidebarMode);render()}));
   $('#workloadCount').textContent = (state.snapshot?.workload?.agents || []).length || '';
   updateDiagnosticNavigation();
   document.querySelectorAll('[data-session-project]').forEach(row=>row.querySelector('.session-open')?.addEventListener('click',()=>switchProject(row.dataset.sessionProject)));
@@ -3651,21 +3670,31 @@ function scheduleAutoListPageSize(force=false) {
 }
 
 function applySidebarState() {
+  state.sidebarCollapsed=state.sidebarMode!=='expanded';
   const shell=document.querySelector('.app-shell');
-  shell?.classList.toggle('sidebar-collapsed', state.sidebarCollapsed);
-  shell?.classList.toggle('sidebar-peek', state.sidebarCollapsed && state.sidebarPeek);
-  const btn = $('#sidebarToggle');
-  if (!btn) return;
-  btn.textContent = state.sidebarCollapsed ? '›' : '‹';
-  btn.setAttribute('aria-label', state.sidebarCollapsed ? t('expandSidebar') : t('collapseSidebar'));
-  btn.title = state.sidebarCollapsed ? t('expandSidebar') : t('collapseSidebar');
+  shell?.classList.toggle('sidebar-collapsed',state.sidebarCollapsed);
+  shell?.classList.toggle('sidebar-peek',state.sidebarMode==='auto' && state.sidebarPeek);
+  shell?.setAttribute('data-sidebar-mode',state.sidebarMode);
+  const btn=$('#sidebarToggle');
+  if(!btn)return;
+  btn.textContent=state.sidebarMode==='expanded'?'‹':'›';
+  btn.title=state.sidebarMode==='expanded'?(state.language==='ko'?'최소화 고정':'Pin compact'):(state.language==='ko'?'펼침 고정':'Pin expanded');
+  btn.setAttribute('aria-label',btn.title);
+  btn.setAttribute('aria-expanded',String(state.sidebarMode==='expanded'||state.sidebarPeek));
 }
-function toggleSidebar() {
-  state.sidebarCollapsed = !state.sidebarCollapsed;
-  state.sidebarPeek = false;
-  localStorage.setItem('task-mecca-sidebar-collapsed', state.sidebarCollapsed ? '1' : '0');
+function setSidebarMode(mode) {
+  if(!['auto','expanded','compact'].includes(mode))return;
+  state.sidebarMode=mode;
+  // When Auto is selected while the pointer or focus is inside the sidebar,
+  // keep the temporary overlay open until the user actually leaves.
+  const sidebar=$('#sidebar');
+  state.sidebarPeek=mode==='auto' && Boolean(sidebar?.matches(':hover')||sidebar?.contains(document.activeElement));
+  localStorage.setItem('task-mecca-sidebar-mode',mode);
   applySidebarState();
   scheduleAutoListPageSize();
+}
+function toggleSidebar() {
+  setSidebarMode(state.sidebarMode==='expanded'?'compact':'expanded');
 }
 
 let notificationSettingsDraft=null;
@@ -4285,8 +4314,10 @@ $('#notificationBtn')?.addEventListener('click',()=>{state.notificationCenterTab
 document.addEventListener('click',e=>{const panel=$('#notificationPanel');if(panel?.classList.contains('open')&&!panel.contains(e.target)&&!$('#notificationBtn')?.contains(e.target))panel.classList.remove('open')});
 $('#sidebarToggle').onclick=toggleSidebar;
 bindChannelGesture();
-$('#sidebar')?.addEventListener('mouseenter',()=>{if(state.sidebarCollapsed){state.sidebarPeek=true;applySidebarState();}});
-$('#sidebar')?.addEventListener('mouseleave',()=>{if(state.sidebarCollapsed){state.sidebarPeek=false;state.projectMenuOpen=false;applySidebarState();}});
+$('#sidebar')?.addEventListener('mouseenter',()=>{if(state.sidebarMode==='auto'){state.sidebarPeek=true;applySidebarState();}});
+$('#sidebar')?.addEventListener('mouseleave',()=>{if(state.sidebarMode==='auto'){state.sidebarPeek=false;state.projectMenuOpen=false;applySidebarState();}});
+$('#sidebar')?.addEventListener('focusin',()=>{if(state.sidebarMode==='auto'){state.sidebarPeek=true;applySidebarState();}});
+$('#sidebar')?.addEventListener('focusout',e=>{if(state.sidebarMode==='auto'&&!e.currentTarget.contains(e.relatedTarget)){state.sidebarPeek=false;applySidebarState();}});
 
 document.addEventListener('keydown',e=>{
   if(document.querySelector('.hub-confirm-overlay'))return;
