@@ -736,6 +736,168 @@ async function maybeShowCurrentReleaseNote() {
 }
 
 
+// The update flow has one continuous visual surface: checking notes, an
+// explicit decision, server-confirmed install phases, restart and errors.
+let upgradeFlowMode='idle';
+let upgradeFlowSession=0;
+let upgradeFlowStartedAt=0;
+let upgradeFlowTarget='';
+let upgradeFlowTimer=null;
+let upgradeFlowPollTimer=null;
+let upgradeFlowPollBusy=false;
+let upgradeFlowError='';
+
+function upgradeFlowCopy(){
+ const ko=state.language==='ko';
+ return ko?{
+  eyebrow:'TASK MECCA · SOFTWARE UPDATE',title:'Task Mecca 업데이트',
+  notes:'업데이트 내용을 확인하고 있습니다',checking:'최신 버전과 설치 환경을 확인하고 있습니다',
+  downloading:'업데이트 파일을 다운로드하고 있습니다',verifying:'다운로드 파일을 검증하고 있습니다',
+  installing:'검증된 업데이트를 설치하고 있습니다',restarting:'웹 서비스를 재시작하고 있습니다',
+  completed:'업데이트를 완료했습니다',failed:'업데이트를 완료하지 못했습니다',
+  noNotes:'업데이트 상세 내용을 확인할 수 없습니다',noNotesHelp:'릴리스 노트를 불러오지 못했습니다. 계속 진행할지 선택해 주세요.',
+  waiting:'진행 중입니다. 업데이트 버튼을 다시 누르지 않아도 됩니다.',
+  restartHelp:'연결이 잠시 끊길 수 있습니다. 준비되면 자동으로 다시 연결합니다.',
+  longWait:'네트워크 상태에 따라 시간이 걸릴 수 있습니다. 작업이 계속 진행 중입니다.',
+  cancel:'취소',close:'닫기',continue:'업데이트 진행',retry:'다시 시도',
+  elapsed:'경과',stages:['확인','다운로드','검증','설치','재시작'],
+  restartError:'웹 서버의 재시작을 확인하지 못했습니다. 웹 상태를 확인한 뒤 다시 접속해 주세요.'
+ }:{
+  eyebrow:'TASK MECCA · SOFTWARE UPDATE',title:'Task Mecca update',
+  notes:'Checking update details',checking:'Checking the latest version and installation environment',
+  downloading:'Downloading the update',verifying:'Verifying the downloaded file',
+  installing:'Installing the verified update',restarting:'Restarting the Web service',
+  completed:'Update completed',failed:'The update could not be completed',
+  noNotes:'Update details are unavailable',noNotesHelp:'Release notes could not be loaded. Choose whether to continue.',
+  waiting:'In progress. You do not need to press Update again.',
+  restartHelp:'The connection may briefly drop. This page will reconnect when ready.',
+  longWait:'This can take longer on slower connections. The update is still running.',
+  cancel:'Cancel',close:'Close',continue:'Continue update',retry:'Retry',
+  elapsed:'Elapsed',stages:['Check','Download','Verify','Install','Restart'],
+  restartError:'Could not confirm the Web service restart. Check its status, then reconnect.'
+ };
+}
+const upgradeFlowPhases=['checking','downloading','verifying','installing','restarting'];
+function upgradeFlowOverlay(){
+ let overlay=$('#upgradeFlowOverlay');
+ if(overlay)return overlay;
+ overlay=document.createElement('div');
+ overlay.id='upgradeFlowOverlay';
+ overlay.className='upgrade-flow-overlay';
+ overlay.innerHTML='<div class="upgrade-flow-backdrop"></div>'+
+  '<section class="release-modal-card upgrade-flow-card" role="dialog" aria-modal="true" aria-labelledby="upgradeFlowTitle" aria-describedby="upgradeFlowDescription">'+
+  '<div class="eyebrow upgrade-flow-eyebrow"></div>'+
+  '<div class="upgrade-flow-heading"><span class="upgrade-flow-spinner" aria-hidden="true"></span><div><h2 id="upgradeFlowTitle"></h2><p class="upgrade-flow-version"></p></div></div>'+
+  '<p id="upgradeFlowDescription" class="upgrade-flow-description" role="status" aria-live="polite" aria-atomic="true"></p>'+
+  '<div class="upgrade-flow-meter" aria-hidden="true"><span></span></div>'+
+  '<ol class="upgrade-flow-stages"></ol>'+
+  '<p class="upgrade-flow-help"></p>'+
+  '<p class="upgrade-flow-error" role="alert" hidden></p>'+
+  '<div class="upgrade-flow-footer"><span class="upgrade-flow-elapsed" aria-hidden="true"></span><div class="upgrade-flow-actions"></div></div>'+
+  '</section>';
+ document.body.appendChild(overlay);
+ document.body.classList.add('release-modal-open');
+ return overlay;
+}
+function updateFlowElapsed(){
+ const overlay=$('#upgradeFlowOverlay');if(!overlay)return;
+ const seconds=Math.max(0,Math.floor((Date.now()-upgradeFlowStartedAt)/1000));
+ const minutes=String(Math.floor(seconds/60)).padStart(2,'0');
+ const secs=String(seconds%60).padStart(2,'0');
+ const element=overlay.querySelector('.upgrade-flow-elapsed');
+ if(element)element.textContent=upgradeFlowCopy().elapsed+' '+minutes+':'+secs;
+ if(upgradeFlowMode!=='failed'&&upgradeFlowMode!=='completed'&&seconds>=20){
+  const help=overlay.querySelector('.upgrade-flow-help');
+  if(help && upgradeFlowMode!=='no-notes')help.textContent=upgradeFlowCopy().longWait;
+ }
+}
+function setUpgradeFlowStage(phase,error=''){
+ upgradeFlowMode=phase;
+ upgradeFlowError=error;
+ const overlay=upgradeFlowOverlay(),copy=upgradeFlowCopy();
+ overlay.dataset.phase=phase;
+ overlay.querySelector('.upgrade-flow-eyebrow').textContent=copy.eyebrow;
+ overlay.querySelector('#upgradeFlowTitle').textContent=copy.title;
+ overlay.querySelector('.upgrade-flow-version').textContent=upgradeFlowTarget;
+ const message=copy[phase]||copy.checking;
+ overlay.querySelector('#upgradeFlowDescription').textContent=message;
+ const errorEl=overlay.querySelector('.upgrade-flow-error');
+ errorEl.hidden=!error;
+ errorEl.textContent=error;
+ overlay.querySelector('.upgrade-flow-spinner').hidden=['no-notes','failed','completed'].includes(phase);
+ overlay.querySelector('.upgrade-flow-meter').hidden=['no-notes','failed','completed'].includes(phase);
+ overlay.querySelector('.upgrade-flow-help').textContent=phase==='no-notes'?copy.noNotesHelp:phase==='restarting'?copy.restartHelp:phase==='failed'||phase==='completed'?'':copy.waiting;
+ const current=phase==='notes'?0:upgradeFlowPhases.indexOf(phase);
+ overlay.querySelector('.upgrade-flow-stages').innerHTML=copy.stages.map((label,i)=>
+  '<li class="'+(current<0?'':i<current?'done':i===current?'current':'pending')+'">'+
+  '<span class="upgrade-step-dot">'+(i<current?'✓':String(i+1))+'</span><span>'+esc(label)+'</span></li>').join('');
+ const actions=overlay.querySelector('.upgrade-flow-actions');
+ if(phase==='notes'||phase==='no-notes'){
+  actions.innerHTML='<button type="button" class="action-btn secondary" data-upgrade-flow-cancel>'+esc(copy.cancel)+'</button>'+
+   (phase==='no-notes'?'<button type="button" class="action-btn" data-upgrade-flow-continue>'+esc(copy.continue)+'</button>':'');
+  actions.querySelector('[data-upgrade-flow-cancel]').addEventListener('click',closeUpgradeFlow);
+  actions.querySelector('[data-upgrade-flow-continue]')?.addEventListener('click',()=>performUpgrade());
+ }else if(phase==='failed'||phase==='completed'){
+  actions.innerHTML='<button type="button" class="action-btn secondary" data-upgrade-flow-close>'+esc(copy.close)+'</button>'+
+   (phase==='failed'?'<button type="button" class="action-btn" data-upgrade-flow-retry>'+esc(copy.retry)+'</button>':'');
+  actions.querySelector('[data-upgrade-flow-close]').addEventListener('click',closeUpgradeFlow);
+  actions.querySelector('[data-upgrade-flow-retry]')?.addEventListener('click',()=>performUpgrade());
+ }else actions.innerHTML='';
+ updateFlowElapsed();
+ renderGlobalUpdateIndicator();
+ if(!upgradeFlowTimer && phase!=='completed' && phase!=='failed'){
+  upgradeFlowTimer=setInterval(updateFlowElapsed,1000);
+ }
+}
+function stopUpgradeFlowTimers(){
+ if(upgradeFlowTimer){clearInterval(upgradeFlowTimer);upgradeFlowTimer=null;}
+ if(upgradeFlowPollTimer){clearInterval(upgradeFlowPollTimer);upgradeFlowPollTimer=null;}
+ upgradeFlowPollBusy=false;
+}
+function closeUpgradeFlow(){
+ if(['checking','downloading','verifying','installing','restarting'].includes(upgradeFlowMode))return;
+ upgradeFlowSession++;
+ stopUpgradeFlowTimers();
+ $('#upgradeFlowOverlay')?.remove();
+ document.body.classList.toggle('release-modal-open',Boolean(state.releaseNotePopup));
+ upgradeFlowMode='idle';
+ upgradeFlowError='';
+ renderGlobalUpdateIndicator();
+}
+async function openUpgradeDetails(version){
+ if(upgradeFlowMode!=='idle')return;
+ const session=++upgradeFlowSession;
+ upgradeFlowStartedAt=Date.now();
+ upgradeFlowTarget=String(version||'');
+ setUpgradeFlowStage('notes');
+ const detail=await loadReleaseNoteDetail(version);
+ if(session!==upgradeFlowSession||upgradeFlowMode!=='notes')return;
+ if(detail){
+  closeUpgradeFlow();
+  state.releaseNotePopup=detail;state.releaseNotePopupMode='available';
+  renderReleaseNoteModal();
+ }else{
+  setUpgradeFlowStage('no-notes');
+ }
+}
+function startUpgradeFlowPolling(session){
+ if(upgradeFlowPollTimer)clearInterval(upgradeFlowPollTimer);
+ upgradeFlowPollTimer=setInterval(async()=>{
+  if(session!==upgradeFlowSession || upgradeFlowPollBusy || !['checking','downloading','verifying','installing','restarting'].includes(upgradeFlowMode))return;
+  upgradeFlowPollBusy=true;
+  try{
+   const r=await fetch('/api/upgrade-status',{cache:'no-store'});
+   if(!r.ok)return;
+   const status=await r.json();
+   if(session!==upgradeFlowSession)return;
+   if(status.active && upgradeFlowPhases.includes(status.phase) && status.phase!==upgradeFlowMode){
+    setUpgradeFlowStage(status.phase);
+   }
+  }catch(_){/* Server restart may temporarily interrupt status polling. */}
+  finally{upgradeFlowPollBusy=false;}
+ },900);
+}
+
 function renderGlobalUpdateIndicator() {
   const el=$('#globalUpdateIndicator');
   if(!el)return;
