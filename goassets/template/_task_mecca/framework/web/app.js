@@ -2522,7 +2522,7 @@ function notificationOverviewMarkup(){
  top('Telegram',(ko?'연결된 프로젝트 ':'Connected projects ')+connected+'/'+rows.length,(ko?'채널 사용 프로젝트 ':'Enabled projects ')+active+'/'+rows.length,'id="centerGlobalTelegramChannel"',telegramOn,rows.length===0)+'</section>';
 }
 function projectChannelSettingsMarkup(){
- const rows=state.projectNotificationSettings||[],settings=webNotificationSettings(),ko=state.language==='ko';
+ const rows=state.projectNotificationSettings||[],settings=webNotificationSettings(),ko=state.language==='ko',webGlobalOn=settings.enabled!==false;
  const groups=[
   {name:ko?'작업 진행':'Progress',kinds:['registered','started']},
   {name:ko?'확인 및 대응':'Needs attention',kinds:['intervention','approval','stalled','interrupted','runtime_unknown','finalize']},
@@ -2531,14 +2531,18 @@ function projectChannelSettingsMarkup(){
  const content=rows.map(row=>{
   const project=row.path,web=settings.projects?.[project]||{},webOn=web.enabled!==false,tgOn=row.status?.project_enabled!==false;
   const tgReady=Boolean(row.status?.configured||row.status?.connected),name=row.name||project;
+  const webLocked=!webGlobalOn||!webOn,tgLocked=!tgOn||!tgReady;
+  const lockNotes=[];
+  if(webLocked)lockNotes.push(ko?'Web 채널이 꺼져 있어 Web 유형을 변경할 수 없습니다.':'Web types are locked while the Web channel is off.');
+  if(!tgOn)lockNotes.push(ko?'Telegram 채널이 꺼져 있어 Telegram 유형을 변경할 수 없습니다.':'Telegram types are locked while the channel is off.');
   const entry=(channel,kind,on,disabled=false)=>notificationSwitch('data-center-project="'+esc(project)+'" data-center-'+channel+'-kind="'+esc(kind)+'"',on,name+' · '+notificationKindLabel(kind)+' · '+channel,disabled);
   const kinds=groups.map(group=>'<div class="notice-type-group" role="group" aria-label="'+esc(group.name)+'"><div class="notice-type-caption">'+esc(group.name)+'</div>'+
-   group.kinds.map(kind=>'<div class="notice-matrix-row"><span>'+esc(notificationKindLabel(kind))+'</span><span>'+entry('web',kind,web.kinds?.[kind]??state.notificationSettings[kind]??true)+'</span><span>'+entry('telegram',kind,row.status?.kinds?.[kind]??true,!tgReady)+'</span></div>').join('')+'</div>').join('');
+   group.kinds.map(kind=>'<div class="notice-matrix-row"><span>'+esc(notificationKindLabel(kind))+'</span><span>'+entry('web',kind,web.kinds?.[kind]??state.notificationSettings[kind]??true,webLocked)+'</span><span>'+entry('telegram',kind,row.status?.kinds?.[kind]??true,tgLocked)+'</span></div>').join('')+'</div>').join('');
   return '<details class="notice-project" '+(project===state.project?'open':'')+'><summary><span class="notice-project-name">'+esc(name)+'</span><span class="notice-project-summary">Web '+(webOn?'ON':'OFF')+' · Telegram '+(tgOn?'ON':'OFF')+'</span></summary>'+
   '<div class="notice-project-content"><p class="notice-project-path">'+esc(project)+'</p>'+
-  '<div class="notice-per-project-channels"><div><strong>Web</strong>'+notificationSwitch('data-center-project="'+esc(project)+'" data-center-channel="web"',webOn,name+' · Web')+'</div><div><strong>Telegram</strong>'+notificationSwitch('data-center-project="'+esc(project)+'" data-center-channel="telegram"',tgOn,name+' · Telegram')+'</div></div>'+
-  '<p class="notice-project-connection">'+esc(ko?'텔레그램 상태: ':'Telegram status: ')+esc(row.status?.connected?(ko?'연결됨':'Connected'):row.status?.configured?(ko?'봇 설정됨 · 채팅 연결 필요':'Bot configured · chat pending'):(ko?'봇 연결 필요':'Bot not connected'))+'</p>'+
-  '<div class="notice-matrix" role="group" aria-label="'+esc(name)+'"><div class="notice-matrix-head"><span>'+esc(ko?'알림 유형':'Event type')+'</span><span>Web</span><span>Telegram</span></div>'+kinds+'</div></div></details>';
+  '<div class="notice-per-project-channels"><div><strong>Web</strong>'+notificationSwitch('data-center-project="'+esc(project)+'" data-center-channel="web"',webOn,name+' · Web',!webGlobalOn)+'</div><div><strong>Telegram</strong>'+notificationSwitch('data-center-project="'+esc(project)+'" data-center-channel="telegram"',tgOn,name+' · Telegram')+'</div></div>'+
+  '<p class="notice-project-connection">'+esc(ko?'텔레그램 상태: ':'Telegram status: ')+esc(row.status?.connected?(ko?'연결됨':'Connected'):row.status?.configured?(ko?'봇 설정됨 · 채팅 연결 필요':'Bot configured · chat pending'):(ko?'봇 연결 필요':'Bot not connected'))+'</p>'+ (lockNotes.length?'<p class="notice-disabled-hint" role="status">'+esc(lockNotes.join(' '))+'</p>':'')+
+  '<div class="notice-matrix" role="group" aria-label="'+esc(name)+'" data-web-locked="'+String(webLocked)+'" data-telegram-locked="'+String(tgLocked)+'"><div class="notice-matrix-head"><span>'+esc(ko?'알림 유형':'Event type')+'</span><span>Web'+(webLocked?'<small>OFF</small>':'')+'</span><span>Telegram'+(tgLocked?'<small>'+(tgOn?(ko?'미연결':'SETUP'):'OFF')+'</small>':'')+'</span></div>'+kinds+'</div></div></details>';
  }).join('');
  return '<section class="center-channel-settings"><div class="notice-section-heading"><h2>'+esc(ko?'프로젝트별 채널·유형':'Channels and event types')+'</h2><p>'+esc(ko?'프로젝트를 펼쳐 설정하세요. 채널을 꺼도 유형 선택은 유지됩니다.':'Expand a project. Turning a channel off preserves its event preferences.')+'</p></div>'+(content||'<p class="muted">'+esc(ko?'등록된 프로젝트가 없습니다.':'No projects.')+'</p>')+'</section>';
 }
@@ -2563,7 +2567,16 @@ async function commitWebNotificationSetting(apply){
  }
 }
 async function setNotificationSwitch(input){
+ if(input.disabled)return;
  const project=input.dataset.centerProject,channel=input.dataset.centerChannel,next=input.getAttribute('aria-checked')!=='true';
+ // Disabled controls are not merely visual: even stale/programmatic events
+ // cannot mutate settings while their parent channel is switched off.
+ const projectRow=(state.projectNotificationSettings||[]).find(row=>row.path===project);
+ const webSettings=webNotificationSettings();
+ const webLocked=webSettings.enabled===false||webSettings.projects?.[project]?.enabled===false;
+ const telegramLocked=projectRow?.status?.project_enabled===false;
+ if((input.dataset.centerWebKind&&webLocked)||(channel==='web'&&webSettings.enabled===false))return;
+ if(input.dataset.centerTelegramKind&&(telegramLocked||!projectRow?.status?.configured&&!projectRow?.status?.connected))return;
  input.setAttribute('aria-checked',String(next));
  input.classList.toggle('is-on',next);
  input.setAttribute('aria-busy','true');
