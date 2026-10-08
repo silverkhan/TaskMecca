@@ -1259,12 +1259,12 @@ body.release-modal-open{overflow:hidden}
 .topbar #accessPill{order:4}
 .topbar #globalUpdateIndicator{
   order:5;flex:0 1 auto;min-width:0;max-width:100%;width:auto;
-  margin-left:auto;justify-self:auto;overflow:hidden;
+  margin-left:0;justify-self:auto;overflow:hidden;
 }
 .topbar .global-update-pill{max-width:100%;overflow:hidden;text-overflow:ellipsis}
 .topbar #refreshBtn{
   order:6;flex:0 0 38px;width:38px;height:38px;
-  margin-left:0;justify-self:end;
+  margin-left:auto;justify-self:end;
 }
 .topbar #refreshBtn.checking{opacity:.65;cursor:progress}
 @media(min-width:681px) and (max-width:1000px){
