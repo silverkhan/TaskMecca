@@ -1272,7 +1272,7 @@ body.release-modal-open{overflow:hidden}
   .topbar .theme-btn{padding:0 6px}
   .topbar .global-update-pill{height:32px;padding:0 8px}
 }
-/* Narrow mobile: two compact rows. Controls keep intrinsic widths, never stretch. */
+/* Mobile: preferences on row one; full-width version and refresh on row two. */
 @media(max-width:680px){
   .app-shell .sidebar,.app-shell.sidebar-collapsed .sidebar,.app-shell.mobile-nav-open .sidebar{
     padding:10px 12px;
@@ -1280,10 +1280,11 @@ body.release-modal-open{overflow:hidden}
   .topbar{
     display:grid;width:100%;max-width:100%;box-sizing:border-box;
     grid-template-columns:max-content max-content minmax(0,1fr) 36px;
-    grid-template-areas:"palette language . refresh" "theme theme version version";
-    grid-template-rows:34px 32px;
-    justify-content:stretch;align-content:center;align-items:center;
-    height:auto;min-height:0;gap:6px;padding:7px 10px;
+    grid-template-areas:"palette language theme theme"
+                        "version version version refresh";
+    grid-template-rows:34px 34px;
+    align-content:center;align-items:center;gap:6px;
+    height:auto;min-height:0;padding:8px 10px;
   }
   .topbar .palette-picker{
     grid-area:palette;order:initial;height:34px;padding:0 7px;
@@ -1295,34 +1296,56 @@ body.release-modal-open{overflow:hidden}
   }
   .topbar .language-picker select{min-width:65px;max-width:95px}
   .topbar .theme-switcher{
-    grid-area:theme;order:initial;justify-self:start;
+    grid-area:theme;order:initial;justify-self:end;
     width:max-content;max-width:100%;min-width:0;
     height:32px;padding:2px;gap:1px;
   }
   .topbar .theme-btn{height:26px;padding:0 5px;font-size:10px}
   .topbar #globalUpdateIndicator{
-    grid-area:version;order:initial;justify-self:end;
-    margin:0;max-width:100%;min-width:0;width:auto;
-    overflow:hidden;
+    grid-area:version;order:initial;justify-self:stretch;
+    margin:0;width:100%;max-width:100%;min-width:0;
+    overflow:visible;container-type:inline-size;container-name:update-badge;
   }
   .topbar .global-update-pill{
-    height:30px;padding:0 7px;gap:4px;font-size:9px;
-    min-width:0;max-width:100%;overflow:hidden;text-overflow:ellipsis;
+    height:32px;padding:0 8px;gap:5px;font-size:10px;
+    min-width:0;max-width:100%;box-sizing:border-box;
   }
-  .topbar .global-update-group{max-width:100%;min-width:0;width:auto;flex-wrap:nowrap;overflow:hidden}
+  .topbar .global-update-pill.available{
+    width:100%;justify-content:flex-start;overflow:hidden;
+  }
   .topbar #refreshBtn{
     grid-area:refresh;order:initial;justify-self:end;
     flex:none;margin:0;width:34px;height:34px;
   }
   .topbar #accessPill{display:none}
 }
-@media(min-width:560px) and (max-width:680px){
-  .topbar{
-    grid-template-columns:max-content max-content max-content minmax(0,1fr) 36px;
-    grid-template-areas:"palette language theme version refresh";
-    grid-template-rows:36px;min-height:0;padding:9px 12px;
-  }
+@media(max-width:360px){
+  .topbar{padding:7px 8px;gap:4px}
+  .topbar .palette-picker{padding:0 4px}
+  .topbar .palette-picker select{font-size:10px}
+  .topbar .language-picker{padding:0 4px}
+  .topbar .language-picker select{min-width:55px;max-width:75px;font-size:10px}
+  .topbar .theme-btn{padding:0 3px;font-size:9px}
+  .topbar .theme-switcher{gap:0}
 }
+/* Share one label and tooltip between both layouts. The text switches based
+   on actual update-badge width rather than the device's outer viewport. */
+.update-arrow-icon{
+  display:block;flex:0 0 19px;width:19px;height:19px;
+  fill:none;stroke:currentColor;stroke-width:1.8;
+  stroke-linecap:round;stroke-linejoin:round;
+}
+.update-version-full,.update-version-compact{
+  min-width:0;white-space:nowrap;font-variant-numeric:tabular-nums;
+  font-weight:650;color:var(--text);
+}
+.update-version-compact{display:none}
+.update-channel{flex:0 0 auto}
+@container update-badge (max-width:295px){
+  .update-version-full{display:none}
+  .update-version-compact{display:inline}
+}
+/* A stable, accessible title always exposes the complete source and target. */
 /* Ephemeral, non-interactive status text: no outlined button or drop shadow. */
 .topbar .refresh-feedback{
   position:fixed;z-index:90;top:auto;right:auto;
