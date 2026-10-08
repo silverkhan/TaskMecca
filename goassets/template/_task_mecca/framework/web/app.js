@@ -2070,12 +2070,18 @@ function notificationCapability() {
   if(typeof Notification==='undefined') return {mode:'unsupported',canRequest:false};
   return {mode:'supported',canRequest:true,permission:Notification.permission};
 }
+let notificationWorkerPromise=null;
 async function notificationWorker() {
   if(!('serviceWorker' in navigator)||!window.isSecureContext)return null;
-  try{
-    await navigator.serviceWorker.register('/sw.js',{scope:'/'});
-    return await navigator.serviceWorker.ready;
-  }catch(_){ return null; }
+  // Registration and ready may involve disk/worker startup on mobile.
+  // Share one promise instead of repeating it for every event and toggle.
+  if(!notificationWorkerPromise){
+    notificationWorkerPromise=(async()=>{
+      await navigator.serviceWorker.register('/sw.js',{scope:'/'});
+      return navigator.serviceWorker.ready;
+    })().catch(()=>{notificationWorkerPromise=null;return null});
+  }
+  return notificationWorkerPromise;
 }
 
 // Background Push is opt-in and distinct from the open-page Notification API.
@@ -2114,6 +2120,16 @@ async function pushRequest(project,body){
 function pushProjects(){
  return [...new Set([state.project,...(state.projectNotificationSettings||[]).map(row=>row.path)].filter(Boolean))];
 }
+let cachedPushSubscriptionPromise=null;
+async function activePushSubscription(){
+ if(!cachedPushSubscriptionPromise){
+  cachedPushSubscriptionPromise=(async()=>{
+   const worker=await notificationWorker();
+   return worker?.pushManager?.getSubscription()||null;
+  })().catch(error=>{cachedPushSubscriptionPromise=null;throw error});
+ }
+ return cachedPushSubscriptionPromise;
+}
 async function enableBackgroundPush(){
  if(pushSupport()!=='supported')throw Error(state.language==='ko'?'이 브라우저에서는 백그라운드 알림을 사용할 수 없습니다. HTTPS 및 iOS 홈 화면 앱 조건을 확인하세요.':'Background Push is unavailable. Check HTTPS and iOS installed app requirements.');
  // Safari/iOS requires this request to originate from a direct user gesture.
@@ -2135,6 +2151,7 @@ async function enableBackgroundPush(){
   }
  }
  if(!subscription)subscription=await worker.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:serverKey});
+ cachedPushSubscriptionPromise=Promise.resolve(subscription);
  const details=pushSubscriptionJSON(subscription);
  for(const path of pushProjects()){
   await pushRequest(path,{action:'subscribe',...details,enabled:webNotificationSettings().enabled!==false&&webNotificationSettings().projects?.[path]?.enabled!==false,kinds:currentPushKinds(path)});
@@ -2142,19 +2159,21 @@ async function enableBackgroundPush(){
  localStorage.setItem('task-mecca-push-enabled-v1','1');
  webPushFeedback=state.language==='ko'?'백그라운드 Push 구독이 연결됐습니다. 테스트 전송으로 확인하세요.':'Background Push subscription is registered. Run a test to verify delivery.';
 }
-async function syncBackgroundPush(force=false,strict=false){
+async function syncBackgroundPush(force=false,strict=false,projects=null){
  if(pushSupport()!=='supported'||Notification.permission!=='granted'||localStorage.getItem('task-mecca-push-enabled-v1')!=='1')return;
  if(!force&&Date.now()-webPushHeartbeatAt<30000)return;
  webPushHeartbeatAt=Date.now();
- const worker=await notificationWorker();
- const sub=await worker?.pushManager?.getSubscription();
+ const sub=await activePushSubscription();
  if(!sub)return;
- const details=pushSubscriptionJSON(sub),failures=[];
- for(const project of pushProjects()){
-  try{await pushRequest(project,{action:'subscribe',...details,enabled:webNotificationSettings().enabled!==false&&webNotificationSettings().projects?.[project]?.enabled!==false,kinds:currentPushKinds(project)});}
-  catch(error){if(strict)failures.push(project+': '+error.message);}
- }
- if(failures.length)throw Error(failures.join('\n'));
+ const details=pushSubscriptionJSON(sub),projectsToSync=projects||pushProjects();
+ // Parallel independent project writes; never serialize round trips on a click.
+ const results=await Promise.allSettled(projectsToSync.map(project=>pushRequest(project,{
+  action:'subscribe',...details,
+  enabled:webNotificationSettings().enabled!==false&&webNotificationSettings().projects?.[project]?.enabled!==false,
+  kinds:currentPushKinds(project)
+ })));
+ const failures=results.flatMap((result,index)=>result.status==='rejected'?[projectsToSync[index]+': '+(result.reason?.message||result.reason)]:[]);
+ if(strict&&failures.length)throw Error(failures.join('\n'));
 }
 async function disableBackgroundPush(){
  const worker=await notificationWorker(),sub=await worker?.pushManager?.getSubscription();
@@ -2164,6 +2183,7 @@ async function disableBackgroundPush(){
   }
   await sub.unsubscribe();
  }
+ cachedPushSubscriptionPromise=null;
  localStorage.removeItem('task-mecca-push-enabled-v1');
  webPushFeedback=state.language==='ko'?'백그라운드 Push 구독을 해제했습니다.':'Background Push subscription removed.';
 }
@@ -2374,6 +2394,11 @@ function applyTelegramStatus(project,status){
  const projectRow=(state.projectNotificationSettings||[]).find(row=>row.path===project);
  if(projectRow)projectRow.status=status;
 }
+function scheduleNotificationConfigurationRefresh(){
+ // Setup/connect actions need fresh recipients, but should not keep their
+ // buttons waiting. Repaint only after the non-blocking refresh settles.
+ void refreshNotificationConfiguration().then(()=>renderNotificationPanel()).catch(()=>{});
+}
 async function refreshNotificationConfiguration(){
  // Do not block a successful POST behind a stale GET that may still be
  // pending. The POST response already updated the visible local cache.
@@ -2403,7 +2428,9 @@ async function telegramAction(action,payload={}) {
   if(!r.ok)throw new Error(body.error||('HTTP '+r.status));
   if(action!=='test'){
     applyTelegramStatus(project,body);
-    await refreshNotificationConfiguration();
+    // The mutation response is authoritative. Avoid an extra two GET round trips
+    // on every simple toggle; only connection/setup changes need a fresh inventory.
+    if(!['kinds','project_enabled'].includes(action))scheduleNotificationConfigurationRefresh();
   }
   return body;
 }
@@ -2433,6 +2460,10 @@ async function loadProjectNotificationSettings() {
 
 async function setProjectNotificationEnabled(project,enabled) {
   state.projectNotificationSettingsRevision=(state.projectNotificationSettingsRevision||0)+1;
+  const existing=(state.projectNotificationSettings||[]).find(row=>row.path===project)?.status;
+  const prior=existing?{...existing,kinds:{...existing.kinds}}:null;
+  if(existing)applyTelegramStatus(project,{...existing,project_enabled:enabled});
+  try {
   const response=await fetch('/api/notifications/telegram?project='+encodeURIComponent(project),{
     method:'POST',headers:{'Content-Type':'application/json','X-Task-Mecca-Action':'1'},
     body:JSON.stringify({action:'project_enabled',project_enabled:enabled})
@@ -2440,18 +2471,29 @@ async function setProjectNotificationEnabled(project,enabled) {
   const body=await response.json().catch(()=>({}));
   if(!response.ok)throw new Error(body.error||('HTTP '+response.status));
   applyTelegramStatus(project,body);
-  await refreshNotificationConfiguration();
+  } catch(error) {
+    if(prior)applyTelegramStatus(project,prior);
+    throw error;
+  }
 }
 async function projectTelegramAction(project,action,payload={}) {
   state.projectNotificationSettingsRevision=(state.projectNotificationSettingsRevision||0)+1;
+  const existing=(state.projectNotificationSettings||[]).find(row=>row.path===project)?.status;
+  const prior=existing?{...existing,kinds:{...existing.kinds}}:null;
+  if(action==='kinds'&&existing)applyTelegramStatus(project,{...existing,kinds:{...payload.kinds}});
+  try {
   const response=await fetch('/api/notifications/telegram?project='+encodeURIComponent(project),{
     method:'POST',headers:{'Content-Type':'application/json','X-Task-Mecca-Action':'1'},body:JSON.stringify({action,...payload})
   });
   const body=await response.json().catch(()=>({}));
   if(!response.ok)throw new Error(body.error||('HTTP '+response.status));
   applyTelegramStatus(project,body);
-  await refreshNotificationConfiguration();
+  if(!['kinds','project_enabled'].includes(action))scheduleNotificationConfigurationRefresh();
   return body;
+  } catch(error) {
+    if(prior)applyTelegramStatus(project,prior);
+    throw error;
+  }
 }
 async function configureSharedTelegram(project,token) {
   state.projectNotificationSettingsRevision=(state.projectNotificationSettingsRevision||0)+1;
@@ -2460,8 +2502,19 @@ async function configureSharedTelegram(project,token) {
   });
   const body=await response.json().catch(()=>({}));
   if(!response.ok)throw new Error(body.error||('HTTP '+response.status));
+  // One shared token applies to every monitored project. Update the local
+  // inventory immediately, while preserving each project's enabled/kinds
+  // preferences; then reconcile from the server in the background.
+  for(const row of state.projectNotificationSettings||[]){
+    applyTelegramStatus(row.path,{
+      ...row.status,
+      configured:true,connected:false,enabled:false,
+      bot_username:body.bot_username,
+      recipient_mode:'shared'
+    });
+  }
   applyTelegramStatus(project,body);
-  await refreshNotificationConfiguration();
+  scheduleNotificationConfigurationRefresh();
 }
 const browserNotificationsPending=new Set();
 const notificationKinds=['registered','started','intervention','approval','stalled','interrupted','runtime_unknown','finalize','completed'];
@@ -2506,11 +2559,28 @@ function notificationHistoryMarkup(){
 function notificationCenterView(){return `<div class="notification-center-tabs" role="tablist"><button type="button" role="tab" data-center-tab="history" aria-selected="${state.notificationCenterTab==='history'}">${esc(t('notificationHistory'))}<span id="centerHistoryBadge">${state.notificationHistoryNew?` · ${state.notificationHistoryNew}`:''}</span></button><button type="button" role="tab" data-center-tab="settings" aria-selected="${state.notificationCenterTab==='settings'}">${esc(t('notificationSettings'))}</button></div>${state.notificationCenterTab==='settings'?'<section id="notificationSettingsBody" class="notification-settings-body"></section>':`<p class="summary">${esc(t('notificationHistoryGuide'))}</p><section id="centerHistory">${notificationHistoryMarkup()}</section>`}`;}
 function bindNotificationHistoryActions(){document.querySelectorAll('[data-history-page]').forEach(button=>button.addEventListener('click',()=>{state.notificationHistoryPage=Number(button.dataset.historyPage);if(state.notificationHistoryPage===1)captureHistoryWindow();updateNotificationHistoryDOM();}));document.querySelectorAll('[data-history-latest]').forEach(button=>button.addEventListener('click',()=>{state.notificationHistoryPage=1;captureHistoryWindow();updateNotificationHistoryDOM();}));}
 function updateNotificationHistoryDOM(){if(state.view!=='notifications')return;const badge=$('#centerHistoryBadge');if(badge)badge.textContent=state.notificationHistoryNew?' · '+state.notificationHistoryNew:'';const region=$('#centerHistory');if(!region)return;const scroll=region.querySelector('.notification-history-scroll'),left=scroll?.scrollLeft||0,top=window.scrollY,open=[...region.querySelectorAll('details[open]')].map(item=>item.dataset.historyDisclosure),active=document.activeElement,focusRow=active?.closest?.('[data-history-row]')?.dataset.historyRow,focusPage=active?.dataset?.historyPage;region.innerHTML=notificationHistoryMarkup();for(const details of region.querySelectorAll('details'))details.open=open.includes(details.dataset.historyDisclosure);const nextScroll=region.querySelector('.notification-history-scroll');if(nextScroll)nextScroll.scrollLeft=left;bindNotificationHistoryActions();const focus=focusRow?[...region.querySelectorAll('[data-history-row]')].find(row=>row.dataset.historyRow===focusRow)?.querySelector(active?.tagName==='SUMMARY'?'summary':'a'):focusPage?[...region.querySelectorAll('[data-history-page]')].find(button=>button.dataset.historyPage===focusPage):null;focus?.focus({preventScroll:true});window.scrollTo?.(0,top);}
+const notificationSwitchPending=new Set();
+function notificationPendingKey(input){
+ if(input.id)return 'id="'+input.id+'"';
+ const project=esc(input.dataset.centerProject||'');
+ const which=input.dataset.centerChannel?'channel':input.dataset.centerWebKind?'web-kind':'telegram-kind';
+ const value=input.dataset.centerChannel||input.dataset.centerWebKind||input.dataset.centerTelegramKind||'';
+ return 'data-center-project="'+project+'" data-center-'+which+'="'+esc(value)+'"';
+}
+function notificationChannelPending(project,channel){
+ const prefix='data-center-project="'+esc(project)+'" ';
+ const channelKey='data-center-channel="'+channel+'"';
+ const typeKey='data-center-'+channel+'-kind="';
+ return notificationSwitchPending.has('id="centerGlobal'+(channel==='web'?'Web':'Telegram')+'Channel"')||
+  [...notificationSwitchPending].some(key=>key.startsWith(prefix)&&(key.includes(channelKey)||key.includes(typeKey)));
+}
 function notificationSwitch(attrs,on,label,disabled=false){
+ const pending=notificationSwitchPending.has(attrs);
+ disabled=disabled||pending;
  // Keep the switch as a single semantic button. The previous visible
  // "sr-only" span lacked a hiding CSS utility and squeezed the track on mobile.
  // The track and thumb are painted by CSS pseudo-elements instead.
- return '<button type="button" role="switch" class="notice-switch'+(on?' is-on':'')+'" aria-checked="'+Boolean(on)+'" aria-label="'+esc(label)+'" '+attrs+(disabled?' disabled':'')+'></button>';
+ return '<button type="button" role="switch" class="notice-switch'+(on?' is-on':'')+'" aria-checked="'+Boolean(on)+'" aria-label="'+esc(label)+'" aria-busy="'+pending+'" '+attrs+(disabled?' disabled':'')+'></button>';
 }
 function notificationOverviewMarkup(){
  const rows=state.projectNotificationSettings||[],ko=state.language==='ko',webOn=webNotificationSettings().enabled!==false;
@@ -2535,77 +2605,103 @@ function projectChannelSettingsMarkup(){
   const lockNotes=[];
   if(webLocked)lockNotes.push(ko?'Web 채널이 꺼져 있어 Web 유형을 변경할 수 없습니다.':'Web types are locked while the Web channel is off.');
   if(!tgOn)lockNotes.push(ko?'Telegram 채널이 꺼져 있어 Telegram 유형을 변경할 수 없습니다.':'Telegram types are locked while the channel is off.');
-  const entry=(channel,kind,on,disabled=false)=>notificationSwitch('data-center-project="'+esc(project)+'" data-center-'+channel+'-kind="'+esc(kind)+'"',on,name+' · '+notificationKindLabel(kind)+' · '+channel,disabled);
+  const entry=(channel,kind,on,disabled=false)=>notificationSwitch('data-center-project="'+esc(project)+'" data-center-'+channel+'-kind="'+esc(kind)+'"',on,name+' · '+notificationKindLabel(kind)+' · '+channel,disabled||notificationChannelPending(project,channel));
   const kinds=groups.map(group=>'<div class="notice-type-group" role="group" aria-label="'+esc(group.name)+'"><div class="notice-type-caption">'+esc(group.name)+'</div>'+
    group.kinds.map(kind=>'<div class="notice-matrix-row"><span>'+esc(notificationKindLabel(kind))+'</span><span>'+entry('web',kind,web.kinds?.[kind]??state.notificationSettings[kind]??true,webLocked)+'</span><span>'+entry('telegram',kind,row.status?.kinds?.[kind]??true,tgLocked)+'</span></div>').join('')+'</div>').join('');
   return '<details class="notice-project" '+(project===state.project?'open':'')+'><summary><span class="notice-project-name">'+esc(name)+'</span><span class="notice-project-summary">Web '+(webOn?'ON':'OFF')+' · Telegram '+(tgOn?'ON':'OFF')+'</span></summary>'+
   '<div class="notice-project-content"><p class="notice-project-path">'+esc(project)+'</p>'+
-  '<div class="notice-per-project-channels"><div><strong>Web</strong>'+notificationSwitch('data-center-project="'+esc(project)+'" data-center-channel="web"',webOn,name+' · Web',!webGlobalOn)+'</div><div><strong>Telegram</strong>'+notificationSwitch('data-center-project="'+esc(project)+'" data-center-channel="telegram"',tgOn,name+' · Telegram')+'</div></div>'+
+  '<div class="notice-per-project-channels"><div><strong>Web</strong>'+notificationSwitch('data-center-project="'+esc(project)+'" data-center-channel="web"',webOn,name+' · Web',!webGlobalOn||notificationChannelPending(project,'web'))+'</div><div><strong>Telegram</strong>'+notificationSwitch('data-center-project="'+esc(project)+'" data-center-channel="telegram"',tgOn,name+' · Telegram',notificationChannelPending(project,'telegram'))+'</div></div>'+
   '<p class="notice-project-connection">'+esc(ko?'텔레그램 상태: ':'Telegram status: ')+esc(row.status?.connected?(ko?'연결됨':'Connected'):row.status?.configured?(ko?'봇 설정됨 · 채팅 연결 필요':'Bot configured · chat pending'):(ko?'봇 연결 필요':'Bot not connected'))+'</p>'+ (lockNotes.length?'<p class="notice-disabled-hint" role="status">'+esc(lockNotes.join(' '))+'</p>':'')+
   '<div class="notice-matrix" role="group" aria-label="'+esc(name)+'" data-web-locked="'+String(webLocked)+'" data-telegram-locked="'+String(tgLocked)+'"><div class="notice-matrix-head"><span>'+esc(ko?'알림 유형':'Event type')+'</span><span>Web'+(webLocked?'<small>OFF</small>':'')+'</span><span>Telegram'+(tgLocked?'<small>'+(tgOn?(ko?'미연결':'SETUP'):'OFF')+'</small>':'')+'</span></div>'+kinds+'</div></div></details>';
  }).join('');
  return '<section class="center-channel-settings"><div class="notice-section-heading"><h2>'+esc(ko?'프로젝트별 채널·유형':'Channels and event types')+'</h2><p>'+esc(ko?'프로젝트를 펼쳐 설정하세요. 채널을 꺼도 유형 선택은 유지됩니다.':'Expand a project. Turning a channel off preserves its event preferences.')+'</p></div>'+(content||'<p class="muted">'+esc(ko?'등록된 프로젝트가 없습니다.':'No projects.')+'</p>')+'</section>';
 }
 async function setAllTelegramChannelsEnabled(enabled){
- const rows=state.projectNotificationSettings||[],errors=[];
- for(const row of rows){
-  if((row.status?.project_enabled!==false)===enabled)continue;
-  try{await setProjectNotificationEnabled(row.path,enabled)}catch(error){errors.push((row.name||row.path)+': '+error.message)}
- }
- await refreshNotificationConfiguration();
+ const rows=(state.projectNotificationSettings||[]).filter(row=>(row.status?.project_enabled!==false)!==enabled);
+ // Dispatch writes concurrently. Keep individual server-confirmed failures
+ // visible and never roll back a successful project's settings.
+ const result=await Promise.allSettled(rows.map(row=>setProjectNotificationEnabled(row.path,enabled)));
+ const errors=result.flatMap((entry,i)=>entry.status==='rejected'
+  ?[(rows[i].name||rows[i].path)+': '+entry.reason?.message]:[]);
  if(errors.length)throw Error(errors.join('\n'));
 }
-async function commitWebNotificationSetting(apply){
+async function commitWebNotificationSetting(apply,project=null){
  const key='task-mecca-web-notification-settings-v1',previous=localStorage.getItem(key);
  apply();
- try{await syncBackgroundPush(true,true);}
+ const targets=project?[project]:null;
+ try{await syncBackgroundPush(true,true,targets);}
  catch(error){
   if(previous==null)localStorage.removeItem(key);
   else localStorage.setItem(key,previous);
-  try{await syncBackgroundPush(true,true);}catch(_){}
+  // Restore the provider state asynchronously; do not prolong the failed
+  // interaction with a second blocking round trip.
+  void syncBackgroundPush(true,false,targets).catch(()=>{});
   throw error;
  }
+}
+function repaintNotificationSwitch(input){
+ const project=input.dataset.centerProject,channel=input.dataset.centerChannel;
+ const opened=[...document.querySelectorAll('.notice-project[open]')].map(d=>d.querySelector('.notice-project-path')?.textContent);
+ renderNotificationPanel();
+ [...document.querySelectorAll('.notice-project')].forEach(d=>{
+  if(opened.includes(d.querySelector('.notice-project-path')?.textContent))d.open=true;
+ });
+ const controls=[...document.querySelectorAll('.notice-switch')];
+ const focus=controls.find(button=>input.id?button.id===input.id:
+  button.dataset.centerProject===project&&
+  (channel?button.dataset.centerChannel===channel:input.dataset.centerWebKind?button.dataset.centerWebKind===input.dataset.centerWebKind:button.dataset.centerTelegramKind===input.dataset.centerTelegramKind));
+ focus?.focus?.({preventScroll:true});
 }
 async function setNotificationSwitch(input){
  if(input.disabled)return;
  const project=input.dataset.centerProject,channel=input.dataset.centerChannel,next=input.getAttribute('aria-checked')!=='true';
- // Disabled controls are not merely visual: even stale/programmatic events
- // cannot mutate settings while their parent channel is switched off.
+ // A stale click must never bypass a disabled parent channel.
  const projectRow=(state.projectNotificationSettings||[]).find(row=>row.path===project);
  const webSettings=webNotificationSettings();
  const webLocked=webSettings.enabled===false||webSettings.projects?.[project]?.enabled===false;
  const telegramLocked=projectRow?.status?.project_enabled===false;
  if((input.dataset.centerWebKind&&webLocked)||(channel==='web'&&webSettings.enabled===false))return;
  if(input.dataset.centerTelegramKind&&(telegramLocked||!projectRow?.status?.configured&&!projectRow?.status?.connected))return;
+
+ const pendingKey=notificationPendingKey(input);
+ const affected=input.id==='centerGlobalWebChannel'?'web':input.id==='centerGlobalTelegramChannel'?'telegram':channel|| (input.dataset.centerWebKind?'web':'telegram');
+ if(notificationSwitchPending.has(pendingKey))return;
+ // Disable adjacent switches in the affected channel while the write is
+ // pending so an older response cannot overwrite a newer choice.
+ if(project&&notificationChannelPending(project,affected))return;
+ notificationSwitchPending.add(pendingKey);
  input.setAttribute('aria-checked',String(next));
  input.classList.toggle('is-on',next);
  input.setAttribute('aria-busy','true');
  input.disabled=true;
- try{
-  if(input.id==='centerGlobalTelegramChannel')await setAllTelegramChannelsEnabled(next);
-  else if(input.id==='centerGlobalWebChannel')await commitWebNotificationSetting(()=>{
-    const settings=webNotificationSettings();settings.enabled=next;localStorage.setItem('task-mecca-web-notification-settings-v1',JSON.stringify(settings));
-   });
-  else if(channel==='telegram')await setProjectNotificationEnabled(project,next);
-  else if(channel==='web')await commitWebNotificationSetting(()=>changeWebNotificationSetting(project,'enabled',next));
+
+ // Create the promise BEFORE repainting: the mutation updates the local
+ // cache synchronously, and the new DOM shows the requested state immediately.
+ let task;
+ try {
+  if(input.id==='centerGlobalTelegramChannel')task=setAllTelegramChannelsEnabled(next);
+  else if(input.id==='centerGlobalWebChannel')task=commitWebNotificationSetting(()=>{
+   const settings=webNotificationSettings();settings.enabled=next;
+   localStorage.setItem('task-mecca-web-notification-settings-v1',JSON.stringify(settings));
+  });
+  else if(channel==='telegram')task=setProjectNotificationEnabled(project,next);
+  else if(channel==='web')task=commitWebNotificationSetting(()=>changeWebNotificationSetting(project,'enabled',next),project);
   else if(input.dataset.centerTelegramKind){
    const row=state.projectNotificationSettings.find(r=>r.path===project);
-   await projectTelegramAction(project,'kinds',{kinds:{...row?.status?.kinds,[input.dataset.centerTelegramKind]:next}});
+   task=projectTelegramAction(project,'kinds',{kinds:{...row?.status?.kinds,[input.dataset.centerTelegramKind]:next}});
   }else if(input.dataset.centerWebKind){
-   await commitWebNotificationSetting(()=>changeWebNotificationSetting(project,input.dataset.centerWebKind,next));
+   task=commitWebNotificationSetting(()=>changeWebNotificationSetting(project,input.dataset.centerWebKind,next),project);
   }
- }catch(error){alert(error.message);}
- finally{
-  const projectOpen=[...document.querySelectorAll('.notice-project[open]')].map(d=>d.querySelector('.notice-project-path')?.textContent);
-  renderNotificationPanel();
-  [...document.querySelectorAll('.notice-project')].forEach(d=>{if(projectOpen.includes(d.querySelector('.notice-project-path')?.textContent))d.open=true;});
-  const controls=[...document.querySelectorAll('.notice-switch')];
-  const focus=controls.find(button=>input.id?button.id===input.id:
-    button.dataset.centerProject===project&&
-    (channel?button.dataset.centerChannel===channel:input.dataset.centerWebKind?button.dataset.centerWebKind===input.dataset.centerWebKind:button.dataset.centerTelegramKind===input.dataset.centerTelegramKind));
-  focus?.focus?.({preventScroll:true});
+  repaintNotificationSwitch(input);
+  await task;
+ }catch(error){
+  alert(error.message);
+ }finally{
+  notificationSwitchPending.delete(pendingKey);
+  repaintNotificationSwitch(input);
  }
 }
+
 function bindCenterChannelSettings(panel){
  panel.querySelectorAll('#centerGlobalWebChannel,#centerGlobalTelegramChannel,[data-center-channel],[data-center-telegram-kind],[data-center-web-kind]').forEach(button=>button.addEventListener('click',()=>void setNotificationSwitch(button)));
 }

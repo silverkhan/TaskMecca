@@ -4,7 +4,7 @@ const fs=require('node:fs');
 const vm=require('node:vm');
 const source=fs.readFileSync('goassets/template/_task_mecca/framework/web/app.js','utf8');
 
-function page(){
+function page({beforePost=async()=>{}}={}){
  const store=new Map(),projects=['/demo','/second'],updates=[];
  const status={configured:false,connected:false,project_enabled:true,recipient_mode:'individual',kinds:Object.fromEntries(['registered','started','intervention','approval','stalled','interrupted','runtime_unknown','finalize','completed'].map(k=>[k,true]))};
  const statuses=Object.fromEntries(projects.map(project=>[project,{...status,kinds:{...status.kinds}}]));
@@ -14,6 +14,7 @@ function page(){
   if(path.startsWith('/api/notifications/telegram')){
    if(options.method!=='POST')return {ok:true,json:async()=>({...statuses[project],kinds:{...statuses[project].kinds}})};
    const body=JSON.parse(options.body);updates.push({project,...body});
+   await beforePost({project,...body});
    if(body.action==='configure'){
     statuses[project]={...statuses[project],configured:true,enabled:false,bot_username:'robot'};
    }else if(body.action==='configure_shared'){
@@ -25,11 +26,11 @@ function page(){
   return {ok:true,json:async()=>({})};
  };
  const Notification=function(){};Notification.permission='granted';
- const context=vm.createContext({fetch,URLSearchParams,location:{search:'?project=/demo'},navigator:{language:'ko',userAgent:'Chrome'},Notification,window:{isSecureContext:true},localStorage:{
+ const context=vm.createContext({fetch,URLSearchParams,location:{search:'?project=/demo'},navigator:{language:'ko',userAgent:'Chrome'},Notification,window:{isSecureContext:true},alert:()=>{},localStorage:{
   getItem:k=>store.get(k)||null,setItem:(k,v)=>store.set(k,String(v)),removeItem:k=>store.delete(k)
  },document:{querySelector:()=>null,querySelectorAll:()=>[]},setTimeout,clearTimeout});
  vm.runInContext(source.slice(0,source.indexOf('\ntranslateChrome();'))+
- '\nglobalThis.app={state,telegramAction,projectTelegramAction,configureSharedTelegram,loadProjectNotificationSettings,loadTelegramStatus,projectChannelSettingsMarkup,notificationOverviewMarkup,webNotificationEnabled,changeWebNotificationSetting,currentPushKinds,setAllTelegramChannelsEnabled,setNotificationSwitch};',context);
+ '\nglobalThis.app={state,telegramAction,projectTelegramAction,configureSharedTelegram,loadProjectNotificationSettings,loadTelegramStatus,projectChannelSettingsMarkup,notificationOverviewMarkup,webNotificationEnabled,changeWebNotificationSetting,currentPushKinds,setAllTelegramChannelsEnabled,setNotificationSwitch,notificationSwitchPending};',context);
  context.app.state.project='/demo';return {...context.app,updates,statuses,store};
 }
 test('individual token setup refreshes configured status immediately without browser reload',async()=>{
@@ -158,4 +159,56 @@ test('OFF switch has distinct dark-theme border and child lock visuals',()=>{
  assert.match(css,/\.notice-matrix\[data-web-locked="true"\]/);
  assert.match(css,/\.notice-matrix\[data-telegram-locked="true"\]/);
  assert.match(css,/\.notice-matrix \.notice-switch:disabled::before/);
+});
+
+function toggleFixture({id='',project='/demo',channel='',telegramKind='',webKind='',checked=true}={}){
+ const attrs={ 'aria-checked':String(checked)};
+ return {
+  id,disabled:false,
+  dataset:{centerProject:project,centerChannel:channel,centerTelegramKind:telegramKind,centerWebKind:webKind},
+  getAttribute:name=>attrs[name],
+  setAttribute:(name,value)=>{attrs[name]=value},
+  classList:{toggle(){}}
+ };
+}
+test('Telegram toggle visibly updates without waiting for a slow POST or full projects reload',async()=>{
+ let complete;const slow=new Promise(resolve=>complete=resolve);
+ const app=page({beforePost:async body=>{if(body.action==='project_enabled')await slow}});
+ app.statuses['/demo'].configured=true;
+ await app.loadProjectNotificationSettings();
+ const toggle=toggleFixture({channel:'telegram'});
+ let finished=false;const action=app.setNotificationSwitch(toggle).then(()=>{finished=true});
+ assert.equal(finished,false,'the slow POST is still pending');
+ assert.equal(app.state.projectNotificationSettings[0].status.project_enabled,false,'immediate optimistic status');
+ assert.match(app.projectChannelSettingsMarkup(),/data-telegram-locked="true"/);
+ assert.match(app.projectChannelSettingsMarkup(),/data-center-channel="telegram"/);
+ assert.ok(app.notificationSwitchPending.size>0,'pending control guarded against duplicate interactions');
+ assert.equal(app.updates.filter(x=>x.action==='project_enabled').length,1);
+ complete();await action;
+ assert.equal(finished,true);
+ assert.equal(app.notificationSwitchPending.size,0);
+ assert.equal(app.state.projectNotificationSettings[0].status.project_enabled,false);
+ assert.equal(app.updates.length,1,'no redundant settings POST');
+});
+test('Telegram optimistic toggle rolls back on network failure',async()=>{
+ let rejectPost;const blocked=new Promise((_,reject)=>rejectPost=reject);
+ const app=page({beforePost:async body=>{if(body.action==='project_enabled')await blocked}});
+ app.statuses['/demo'].configured=true;await app.loadProjectNotificationSettings();
+ const original=app.state.projectNotificationSettings[0].status.project_enabled;
+ const job=app.setNotificationSwitch(toggleFixture({channel:'telegram'}));
+ assert.equal(app.state.projectNotificationSettings[0].status.project_enabled,false);
+ rejectPost(new Error('network failure'));await job;
+ assert.equal(app.state.projectNotificationSettings[0].status.project_enabled,original,'failed save restores previous server-confirmed value');
+ assert.equal(app.notificationSwitchPending.size,0,'pending state always clears');
+});
+
+test('global Telegram toggle starts requests for all projects before their responses resolve',async()=>{
+ let resolve;const slow=new Promise(done=>resolve=done);
+ const app=page({beforePost:async body=>{if(body.action==='project_enabled')await slow}});
+ await app.loadProjectNotificationSettings();
+ const action=app.setAllTelegramChannelsEnabled(false);
+ assert.equal(app.updates.filter(x=>x.action==='project_enabled').length,2,'project updates should be concurrent');
+ assert.ok(app.state.projectNotificationSettings.every(x=>x.status.project_enabled===false));
+ resolve();await action;
+ assert.ok(app.state.projectNotificationSettings.every(x=>x.status.project_enabled===false));
 });
