@@ -769,7 +769,21 @@ function renderGlobalUpdateIndicator() {
     return;
   }
   if(projectMatches && project.migration_available){
-    el.innerHTML=`<button type="button" class="global-update-pill migration" id="globalMigrateBtn" title="${esc(t('projectMigration'))}"><span class="global-update-dot"></span><span>${esc(t('projectMigration'))}</span><strong>${esc(project.framework_version||'?')} → ${esc(cli.current||'')}</strong></button>`;
+    const from=String(project.framework_version||'?'),to=String(cli.current||'?');
+    const full=`${from} → ${to}`;
+    const compact=`${from} → ${compactUpdateTargetVersion(from,to)}`;
+    const shortSource=from.match(/-(dev|rc|beta)\.(\d+)$/);
+    const tiny=`${shortSource?shortSource[1]+'.'+shortSource[2]:from} → ${compactUpdateTargetVersion(from,to)}`;
+    const description=`${t('projectMigration')} · ${full}`;
+    const migrationIcon='<svg class="update-arrow-icon migration-arrow-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"/><path d="M8 11l4-4 4 4m-4-4v10"/></svg>';
+    el.innerHTML='<button type="button" class="global-update-pill migration" id="globalMigrateBtn" title="'+esc(description)+'" aria-label="'+esc(description)+'">'+
+      migrationIcon+
+      '<span class="migration-label-full">'+esc(t('projectMigration'))+'</span>'+
+      '<span class="migration-label-short" aria-hidden="true">'+esc(state.language==='ko'?'마이그레이션':'Migrate')+'</span>'+
+      '<span class="migration-label-tiny" aria-hidden="true">'+esc(state.language==='ko'?'갱신':'Sync')+'</span>'+
+      '<span class="migration-version-full">'+esc(full)+'</span>'+
+      '<span class="migration-version-compact" aria-hidden="true">'+esc(compact)+'</span>'+
+      '<span class="migration-version-tiny" aria-hidden="true">'+esc(tiny)+'</span></button>';
     $('#globalMigrateBtn')?.addEventListener('click',e=>performProjectMigration(state.project,e.currentTarget));
     return;
   }
