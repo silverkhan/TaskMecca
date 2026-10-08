@@ -1295,29 +1295,33 @@ body.release-modal-open{overflow:hidden}
     justify-self:stretch;width:100%;box-sizing:border-box;min-width:0;
   }
   .topbar .palette-picker select,.topbar .language-picker select{
-    flex:1 1 auto;min-width:0;max-width:100%;width:100%;font-size:11px;
-    text-overflow:ellipsis;
+    flex:1 1 auto;min-width:0;max-width:100%;width:100%;
+    font-size:12px;line-height:1.2;font-weight:500;text-overflow:ellipsis;
   }
   .topbar .theme-switcher{
     grid-area:theme;order:initial;justify-self:stretch;
     width:100%;max-width:100%;box-sizing:border-box;min-width:0;
-    height:36px;padding:3px;gap:2px;
+    height:36px;padding:1px;gap:2px;
   }
   .topbar .theme-btn{
-    flex:1 1 0;min-width:0;height:28px;padding:0 3px;
-    font-size:11px;font-weight:650;
+    flex:1 1 0;min-width:0;height:32px;padding:0 2px;
+    font-size:12px;line-height:1.2;font-weight:500;
   }
+  .topbar .theme-btn.active{font-weight:700}
   .topbar #globalUpdateIndicator{
     grid-area:version;order:initial;justify-self:stretch;
     margin:0;width:100%;max-width:100%;min-width:0;
-    overflow:visible;container-type:inline-size;container-name:update-badge;
+    justify-content:flex-start;overflow:visible;
+    container-type:inline-size;container-name:update-badge;
   }
   .topbar .global-update-pill{
     height:32px;padding:0 8px;gap:5px;font-size:10px;
     min-width:0;max-width:100%;box-sizing:border-box;
   }
-  .topbar .global-update-pill.available{
-    width:fit-content;max-width:100%;justify-content:flex-start;overflow:hidden;
+  .topbar .global-update-pill.available,
+  .topbar .global-update-pill.migration{
+    flex:0 1 auto;width:max-content;max-width:100%;
+    min-width:0;justify-content:flex-start;overflow:hidden;
   }
   .topbar #refreshBtn{
     grid-area:refresh;order:initial;justify-self:end;
@@ -1328,9 +1332,9 @@ body.release-modal-open{overflow:hidden}
 @media(max-width:360px){
   .topbar{padding:7px 8px;gap:4px}
   .topbar .palette-picker,.topbar .language-picker{padding:0 3px}
-  .topbar .palette-picker select,.topbar .language-picker select{font-size:10px}
-  .topbar .theme-btn{padding:0 2px;font-size:10px}
-  .topbar .theme-switcher{gap:1px;padding:2px}
+  .topbar .palette-picker select,.topbar .language-picker select{font-size:11px}
+  .topbar .theme-btn{padding:0 1px;font-size:11px}
+  .topbar .theme-switcher{gap:1px;padding:1px}
 }
 /* Share one label and tooltip between both layouts. The text switches based
    on actual update-badge width rather than the device's outer viewport. */
@@ -1357,22 +1361,20 @@ body.release-modal-open{overflow:hidden}
 .migration-version-compact,.migration-version-tiny{display:none}
 @media(max-width:680px){
   .topbar .global-update-pill.migration{
-    width:fit-content;min-width:0;max-width:100%;display:inline-flex;
-    align-items:center;justify-content:flex-start;gap:5px;
-    overflow:hidden;
+    display:inline-flex;align-items:center;gap:5px;
   }
 }
 @container update-badge (max-width:540px){
   .migration-label-full,.migration-version-full{display:none}
   .migration-label-short,.migration-version-compact{display:inline}
 }
-@container update-badge (max-width:310px){
-  .migration-label-short{display:none}
-  .migration-label-tiny{display:inline}
-}
-@container update-badge (max-width:265px){
+@container update-badge (max-width:400px){
   .migration-version-compact{display:none}
   .migration-version-tiny{display:inline}
+}
+@container update-badge (max-width:285px){
+  .migration-label-short{display:none}
+  .migration-label-tiny{display:inline}
 }
 @container update-badge (max-width:355px){
   .update-version-full{display:none}
