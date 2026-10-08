@@ -1139,6 +1139,12 @@ func TestHandlerServesUninitializedBacklogAsNormalProject(t *testing.T) {
 		if rec.Code != http.StatusOK {
 			t.Fatalf("%s status=%d body=%s", path, rec.Code, rec.Body.String())
 		}
+        if path=="/api/backlog/tasks" {
+            timing:=rec.Header().Get("Server-Timing")
+            if !strings.Contains(timing,"selection;dur=")||!strings.Contains(timing,"backlog;dur=") {
+                t.Fatalf("backlog response missing diagnostic timings: %q",timing)
+            }
+        }
 		payload := map[string]any{}
 		if err := json.Unmarshal(rec.Body.Bytes(), &payload); err != nil {
 			t.Fatalf("%s: %v", path, err)
