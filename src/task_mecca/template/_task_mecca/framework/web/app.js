@@ -3366,7 +3366,12 @@ function detailView(task) {
   const hs=humanSummary(task);
   const timingInferred=Boolean(lc.lifecycle_inferred), timingIncomplete=Boolean(lc.timing_incomplete);
   const lifecyclePreview=events.length?`${lifecycleEventLabel(events[events.length-1].label)} · ${dateTimeLabel(events[events.length-1].at,true)}`:t('noLifecycle');
-  const lifecycleBody=`${timingInferred?`<div class="timing-note"><strong>${esc(t('provisionalTiming'))}</strong><span>${esc(t('provisionalTimingDetail'))}</span></div>`:''}${timingIncomplete?`<div class="timing-note warning"><strong>${esc(t('incompleteHistory'))}</strong><span>${esc(t('incompleteHistoryDetail'))}</span></div>`:''}${events.length?`<div class="timeline">${events.map(e=>`<div class="timeline-event"><span class="timeline-dot"></span><span class="timeline-time">${esc(new Date(e.at).toLocaleString(localeCode()))}</span><div class="timeline-label"><strong>${esc(lifecycleEventLabel(e.label))}${e.provisional?` · ${esc(t('provisional'))}`:''}</strong><small>${e.interval&&e.interval!=='-'?`${esc(t('stayed'))} ${esc(e.interval)}`:''}${lifecycleEvidenceLabel(e)?` · ${esc(lifecycleEvidenceLabel(e))}`:''}</small></div></div>`).join('')}</div>`:`<p class="summary">${esc(t('noLifecycle'))}</p>`}`;
+  const lifecycleBody=`${timingInferred?`<div class="timing-note"><strong>${esc(t('provisionalTiming'))}</strong><span>${esc(t('provisionalTimingDetail'))}</span></div>`:''}${timingIncomplete?`<div class="timing-note warning"><strong>${esc(t('incompleteHistory'))}</strong><span>${esc(t('incompleteHistoryDetail'))}</span></div>`:''}${events.length?`<div class="timeline">${events.map((e,i)=>{
+    const isCurrent=i===events.length-1 && e.state!=='done' && Boolean(e.at) && Number.isFinite(new Date(e.at).getTime());
+    const duration=isCurrent?fmtSec(Math.max(0,(Date.now()-new Date(e.at).getTime())/1000)):(e.interval||'-');
+    const durationHTML=duration&&duration!=='-'?`${esc(t('stayed'))} <span${isCurrent?` class="live-lifecycle-interval" data-state-at="${esc(e.at)}"`:''}>${esc(duration)}</span>`:'';
+    return `<div class="timeline-event"><span class="timeline-dot"></span><span class="timeline-time">${esc(new Date(e.at).toLocaleString(localeCode()))}</span><div class="timeline-label"><strong>${esc(lifecycleEventLabel(e.label))}${e.provisional?` · ${esc(t('provisional'))}`:''}</strong><small>${durationHTML}${lifecycleEvidenceLabel(e)?` · ${esc(lifecycleEvidenceLabel(e))}`:''}</small></div></div>`;
+  }).join('')}</div>`:`<p class="summary">${esc(t('noLifecycle'))}</p>`}`;
   const lifecycle=`<section class="section detail-section lifecycle-section" id="lifecycle" data-toc-label="${esc(t('lifecycle'))}"><h2>${esc(t('lifecycle'))}</h2>${lifecycleBody}</section>`;
   const passiveAlert=!reason&&warn?`<div class="attention-banner ${['stale','worker_missing'].includes(act.health)?'danger':''}"><strong>${esc(healthLabel(act.health))}</strong><span>${esc(t('lastObservable',{ago:ago(act.last_activity_at),source:act.last_activity_source}))} ${esc(act.health==='worker_missing'?t('workerMissingDetail'):t('quietAdvisory'))}</span></div>`:'';
   const sectionSummaries=task.document?.section_summaries||{};
@@ -4212,6 +4217,10 @@ setInterval(()=>{
     (state.listData?.items||[]).forEach(task=>{byID[task.id]=task});
     Object.assign(byID,state.snapshot?.all_items||{});
     document.querySelectorAll('.live-timer').forEach(el=>{const task=byID[el.dataset.id];if(task)el.textContent=fmtSec(runningSeconds(task,'active'))});
+    document.querySelectorAll('.live-lifecycle-interval').forEach(el=>{
+      const started=new Date(el.dataset.stateAt||'').getTime();
+      if(Number.isFinite(started))el.textContent=fmtSec(Math.max(0,(Date.now()-started)/1000));
+    });
     document.querySelectorAll('.runtime-elapsed').forEach(el=>{
       const ended=el.dataset.endedAt||'', started=el.dataset.startedAt||'';
       if(ended||!started){el.textContent=fmtSec(Number(el.dataset.elapsedMs||0)/1000);return}
