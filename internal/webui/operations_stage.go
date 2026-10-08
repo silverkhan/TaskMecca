@@ -110,7 +110,7 @@ func projectOperationStages(project string, assignments []runtimeobs.Assignment,
 			continue
 		}
 		s := operationStage{Project: project, TaskID: id, AssignmentID: a.AssignmentID, Stage: "assignment_pending", Evidence: "latest durable assignment", Since: a.AssignedAt}
-		duration := 2 * time.Minute
+		duration := runtimeobs.AssignmentObservationGrace
 		matched := []runtimeobs.Attempt{}
 		for _, attempt := range attempts {
 			if attempt.BindingState == runtimeobs.BindingBound && strings.EqualFold(attempt.TaskID, id) && attempt.AgentPath == a.AgentPath && attempt.BindingEvidence["assignment_id"] == a.AssignmentID {

@@ -865,6 +865,12 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 		writeJSON(w, map[string]any{"ok": true, "action": action, "scope": scope, "hooks": results}, 200)
 	})
 
+	mux.HandleFunc("/api/notifications/history", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet { writeJSON(w, map[string]any{"error": "GET required"}, http.StatusMethodNotAllowed); return }
+		rows, err := notificationHistory(projectFor(r))
+		if err != nil { writeJSON(w, map[string]any{"error": err.Error()}, http.StatusInternalServerError); return }
+		writeJSON(w, map[string]any{"history": rows}, http.StatusOK)
+	})
 	mux.HandleFunc("/api/notifications/deliveries", func(w http.ResponseWriter, r *http.Request) {
 		activeProject := projectFor(r)
 		if r.Method != "GET" {

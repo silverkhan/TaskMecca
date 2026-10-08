@@ -536,5 +536,5 @@ func operationSnapshot(primary string) map[string]any {
 	if len(resolved) > 20 {
 		resolved = resolved[:20]
 	}
-	return map[string]any{"projects": projects, "active": active, "recent": recent, "resolved_observations": resolved, "stages": stages, "telegram_transport_disabled": notify.TelegramTransportDisabled()}
+	return map[string]any{"snapshot_at": time.Now().Format(time.RFC3339Nano), "projects": projects, "active": active, "recent": recent, "resolved_observations": resolved, "stages": stages, "telegram_transport_disabled": notify.TelegramTransportDisabled()}
 }

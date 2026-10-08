@@ -63,7 +63,7 @@ func reconcileControlTower(project,root string,rows []Record) controlTowerSnapsh
     for _,row:=range rows {
         if row.Location!="active" { continue }
         signal:=activity[row.ID]
-        reason,condition:=canonicalOperationalState(row,reviewByPath[row.Path],signal)
+        reason,condition:=canonicalOperationalState(row,reviewByPath[row.Path],signal,now)
         if len(reason)>0 { attention[row.ID]=reason }
         if len(condition)>0 { conditions[row.ID]=condition }
     }
@@ -73,7 +73,7 @@ func reconcileControlTower(project,root string,rows []Record) controlTowerSnapsh
     }
 }
 
-func canonicalOperationalState(row Record,review,signal map[string]any) (map[string]any,map[string]any) {
+func canonicalOperationalState(row Record,review,signal map[string]any,observedAt ...time.Time) (map[string]any,map[string]any) {
     reason:=map[string]any{}
     condition:=map[string]any{}
 	if row.Location == "archive" || (row.State != "doing" && row.State != "hold") {
@@ -107,6 +107,11 @@ func canonicalOperationalState(row Record,review,signal map[string]any) (map[str
     runtimeState:=strings.ToLower(strings.TrimSpace(toString(signal["runtime_state"])))
     switch {
 	case health == "assignment_unobserved":
+        now:=time.Now(); if len(observedAt)>0 { now=observedAt[0] }
+        if assigned,err:=time.Parse(time.RFC3339Nano,toString(signal["assigned_at"])); err==nil && !assigned.After(now) && now.Before(assigned.Add(runtimeobs.AssignmentObservationGrace)) {
+            return reason,condition
+        }
+
 		reason = map[string]any{"type": "assignment_unobserved", "severity": "warning", "title": "Worker 실행 대기",
 			"message":          "배정 기록은 있으나 실행 attempt가 아직 관측되지 않았습니다.",
 			"resume_condition": "배정된 Worker의 runtime identity와 첫 hook을 확인하세요.",

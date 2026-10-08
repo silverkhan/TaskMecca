@@ -1231,3 +1231,35 @@ body.release-modal-open{overflow:hidden}
 .common-attention-links{display:flex;flex-wrap:wrap;gap:8px 18px;margin-top:8px}
 .common-attention-links a{color:var(--accent)}
 @media(max-width:700px){.common-attention>summary{padding:12px 14px;gap:6px 12px}.common-attention-body{padding:0 14px 14px}.user-attention{padding:0}}
+
+/* Notification center uses the backlog's compact, readable table vocabulary. */
+.notification-center-tabs{display:flex;gap:8px;margin:0 0 20px;border-bottom:1px solid var(--border)}
+.notification-center-tabs button{background:transparent;border:0;border-bottom:2px solid transparent;padding:10px 12px;color:var(--muted);font:inherit;cursor:pointer}
+.notification-center-tabs button[aria-selected="true"]{color:var(--text);border-bottom-color:var(--accent)}
+.notification-center-tabs button:focus-visible,.common-center-link:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.notification-history-scroll{overflow:auto;max-width:100%}
+.notification-history-table{border-collapse:collapse;width:100%;font-size:12px;text-align:left}
+.notification-history-table th,.notification-history-table td{padding:12px 10px;border-bottom:1px solid var(--border);vertical-align:top;overflow-wrap:anywhere}
+.notification-history-table th{color:var(--muted);font-weight:600;white-space:nowrap}
+.notification-history-table td:nth-child(1){min-width:130px}.notification-history-table td:nth-child(7){min-width:200px;max-width:420px}
+.notification-history-table small{display:block;margin-top:4px;color:var(--muted)}
+.common-center-link{display:inline-block;margin-bottom:16px;color:var(--accent)}
+.center-channel-settings{margin-top:20px}.center-channel-settings h2{font-size:14px;margin-bottom:12px}
+.center-project-settings{border-top:1px solid var(--border);padding:12px 0}.center-project-settings summary{cursor:pointer;font-weight:600;overflow-wrap:anywhere}
+.center-project-settings fieldset{border:1px solid var(--border);border-radius:8px;margin:12px 0;padding:10px}.center-project-settings legend{font-size:12px;font-weight:600}
+.diagnostic-entry{margin:24px 0}.diagnostic-entry h2{font-size:15px}.diagnostic-entry pre{padding:14px;background:var(--surface);border-radius:8px;overflow:auto;max-width:100%;white-space:pre-wrap;overflow-wrap:anywhere}
+.diagnostic-copy-status{color:var(--muted)}
+@media(max-width:680px){.notification-center-tabs{gap:0}.notification-center-tabs button{padding:10px 8px}.notification-history-table{font-size:11px}.notification-history-table th,.notification-history-table td{padding:10px 8px}.notification-history-table td:nth-child(7){min-width:170px}}
+[data-view="issues"][hidden]{display:none!important}
+.notification-panel-head a{font-size:12px;color:var(--accent)}
+.notification-history-table{min-width:940px}.notification-history-table td:nth-child(2){min-width:110px}.notification-history-table td:nth-child(3){min-width:60px;white-space:nowrap}.notification-history-table td:nth-child(4){min-width:90px}.notification-history-table td:nth-child(5),.notification-history-table td:nth-child(6){min-width:110px}
+.notification-center-current{margin:0}
+.notification-panel.open{display:flex;flex-direction:column;position:fixed;top:72px;right:20px;width:min(520px,calc(100vw - 40px));max-height:calc(100dvh - 92px);overflow:hidden;z-index:1000}
+.notification-panel-body{min-height:0;overflow:auto;overscroll-behavior:contain}
+.notification-panel .secondary-btn{height:34px;padding:0 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font:inherit;font-size:11px;cursor:pointer}.notification-panel .secondary-btn:disabled{opacity:.55;cursor:default}
+.notification-panel-head{flex:0 0 auto}.notification-panel-head button:focus-visible,.notification-panel .secondary-btn:focus-visible,.center-project-settings summary:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.notification-center-current .common-center-link{display:none}
+#notificationCenterTop svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+@media(max-width:680px){.notification-panel.open{inset:8px;width:auto;height:calc(100dvh - 16px);max-height:calc(100dvh - 16px)}.notification-panel-head{padding:12px 14px;margin:0;border-bottom:1px solid var(--border)}.notification-panel-body{padding:12px 14px}.notification-center-tabs button,.notification-center-current summary,.diagnostic-entry .action-btn{min-height:44px}}
+.notification-history-scroll:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.notification-panel .project-notification-row{display:block}.notification-panel .project-notification-controls{margin-top:12px}.notification-panel .project-notification-controls input{max-width:100%}

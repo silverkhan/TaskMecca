@@ -459,7 +459,7 @@ func IssuesSnapshot(project, root string) (map[string]any, error) {
 	health["runtime_metadata"] = runtimeFindings(rows)
 
 	return map[string]any{
-		"snapshot_at": time.Now().Format(time.RFC3339),
+		"snapshot_at": time.Now().Format(time.RFC3339Nano),
 		"health":      health,
 		"diagnostics": diagnostics,
 	}, nil

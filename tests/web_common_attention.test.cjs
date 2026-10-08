@@ -11,7 +11,7 @@ function page(fetch){
 const snapshot=(attention=true,time='2026-10-08T00:40:00Z')=>({snapshot_at:time,all_items:{'A-14':{id:'A-14',title:'정책 선택',file_state:'hold',state:'needs_user'}},attention:attention?[{id:'A-14',type:'user_intervention',message:'정책을 선택해 주세요.',resume_condition:'두 선택지를 확인해 주세요.'}]:[]});
 const warning={id:'incident',project:'/demo',task_id:'A-35',attempt_id:'run-current',kind:'no_signal',evidence:'Hook 신호 확인 필요',action:'Controller가 실제 실행 근거를 확인하세요.'};
 test('one disclosure defaults closed, separates types and retains choice across every common view',()=>{
- const app=page();app.storeCommonUserAttention(snapshot(),'/demo','team');app.renderOperationBanner({active:[warning],resolved_observations:[{...warning,recovered_at:'now'}],stages:[{stage:'controller_review'}]});
+ const app=page();app.storeCommonUserAttention(snapshot(),'/demo','team');app.renderOperationBanner({active:[warning],resolved_observations:[{...warning,id:'historical-incident',recovered_at:'now'}],stages:[{stage:'controller_review'}]});
  assert.doesNotMatch(app.element.innerHTML,/<details class="common-attention" open/);
  assert.match(app.element.innerHTML,/사용자 판단 1건/);assert.match(app.element.innerHTML,/세션 경고 1건/);
  assert.match(app.element.innerHTML,/backlog=team/);assert.match(app.element.innerHTML,/#runtime-attempt-run-current/);
