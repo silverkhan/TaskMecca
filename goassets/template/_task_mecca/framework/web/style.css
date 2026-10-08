@@ -1348,3 +1348,23 @@ body.release-modal-open{overflow:hidden}
 .center-page-numbers{display:flex;gap:6px;}
 .notification-history-table details{margin-top:6px;}
 @media(max-width:680px){.center-page-numbers{display:none;}.center-pagination{justify-content:space-between;}}
+
+
+/* AID-117: the manual refresh control is always the rightmost topbar action. */
+#refreshBtn{order:100;margin-left:auto;flex:0 0 38px}
+#refreshBtn.checking{opacity:.65;cursor:progress}
+.refresh-feedback{
+  position:absolute;z-index:30;top:calc(100% + 8px);right:14px;
+  max-width:min(350px,calc(100vw - 28px));padding:9px 12px;
+  border:1px solid var(--border);border-radius:9px;
+  background:var(--surface);color:var(--text);
+  box-shadow:var(--shadow);font-size:12px;line-height:1.5;
+  overflow-wrap:anywhere;opacity:0;visibility:hidden;
+  pointer-events:none;transition:opacity .15s ease,visibility .15s ease;
+}
+.refresh-feedback.visible{opacity:1;visibility:visible}
+.refresh-feedback.error{border-color:color-mix(in srgb,var(--danger) 40%,var(--border));color:var(--danger)}
+@media(max-width:680px){
+  #refreshBtn{grid-column:3;grid-row:2;justify-self:end;margin-left:0}
+}
+@media(prefers-reduced-motion:reduce){.refresh-feedback{transition:none}}
