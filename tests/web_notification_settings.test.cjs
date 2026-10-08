@@ -29,8 +29,8 @@ function page(){
   getItem:k=>store.get(k)||null,setItem:(k,v)=>store.set(k,String(v)),removeItem:k=>store.delete(k)
  },document:{querySelector:()=>null,querySelectorAll:()=>[]},setTimeout,clearTimeout});
  vm.runInContext(source.slice(0,source.indexOf('\ntranslateChrome();'))+
- '\nglobalThis.app={state,telegramAction,projectTelegramAction,configureSharedTelegram,loadProjectNotificationSettings,loadTelegramStatus,projectChannelSettingsMarkup,notificationOverviewMarkup,webNotificationEnabled,changeWebNotificationSetting,currentPushKinds,setAllTelegramChannelsEnabled};',context);
- context.app.state.project='/demo';return {...context.app,updates,statuses};
+ '\nglobalThis.app={state,telegramAction,projectTelegramAction,configureSharedTelegram,loadProjectNotificationSettings,loadTelegramStatus,projectChannelSettingsMarkup,notificationOverviewMarkup,webNotificationEnabled,changeWebNotificationSetting,currentPushKinds,setAllTelegramChannelsEnabled,setNotificationSwitch};',context);
+ context.app.state.project='/demo';return {...context.app,updates,statuses,store};
 }
 test('individual token setup refreshes configured status immediately without browser reload',async()=>{
  const app=page();
@@ -92,4 +92,70 @@ test('mobile notification switches are atomic and never leak accessibility text'
  assert.match(css,/\.notice-switch::after\s*\{/);
  assert.match(css,/\.notice-switch\.is-on::after\s*\{/);
  assert.doesNotMatch(css,/\.notice-switch-track/);
+});
+
+function switchTag(markup,attribute,value,project){
+ const tags=markup.match(/<button\b[^>]*role="switch"[^>]*>/g)||[];
+ return tags.find(tag=>tag.includes(attribute+'="'+value+'"')&&(!project||tag.includes('data-center-project="'+project+'"')));
+}
+test('turning Telegram channel off disables and visually marks all its child kinds, retaining stored selections',async()=>{
+ const app=page();
+ app.statuses['/demo'].configured=true;
+ app.statuses['/demo'].kinds.registered=false;
+ await app.loadProjectNotificationSettings();
+ let html=app.projectChannelSettingsMarkup();
+ assert.doesNotMatch(switchTag(html,'data-center-telegram-kind','completed','/demo'),/\sdisabled(?:\s|>)/);
+ await app.setAllTelegramChannelsEnabled(false);
+ html=app.projectChannelSettingsMarkup();
+ const onType=switchTag(html,'data-center-telegram-kind','completed','/demo');
+ const offType=switchTag(html,'data-center-telegram-kind','registered','/demo');
+ assert.match(onType,/\sdisabled(?:\s|>)/);
+ assert.match(onType,/aria-checked="true"/);
+ assert.match(offType,/\sdisabled(?:\s|>)/);
+ assert.match(offType,/aria-checked="false"/);
+ assert.match(html,/data-telegram-locked="true"/);
+ assert.match(html,/Telegram types are locked|Telegram 채널이 꺼져 있어/);
+ const callCount=app.updates.length;
+ await app.setNotificationSwitch({
+  disabled:false,dataset:{centerProject:'/demo',centerTelegramKind:'completed'},
+  getAttribute:()=> 'true',setAttribute:()=>{throw Error('mutated disabled child');}
+ });
+ assert.equal(app.updates.length,callCount,'programmatic events must not toggle kinds while channel is off');
+ await app.setAllTelegramChannelsEnabled(true);
+ html=app.projectChannelSettingsMarkup();
+ assert.doesNotMatch(switchTag(html,'data-center-telegram-kind','completed','/demo'),/\sdisabled(?:\s|>)/);
+ assert.match(switchTag(html,'data-center-telegram-kind','registered','/demo'),/aria-checked="false"/);
+});
+test('project Web OFF and global Web OFF lock dependent settings without clearing saved event kinds',async()=>{
+ const app=page();await app.loadProjectNotificationSettings();
+ app.changeWebNotificationSetting('/demo','started',false);
+ app.changeWebNotificationSetting('/demo','enabled',false);
+ let html=app.projectChannelSettingsMarkup();
+ assert.match(switchTag(html,'data-center-web-kind','completed','/demo'),/\sdisabled(?:\s|>)/);
+ assert.match(switchTag(html,'data-center-web-kind','started','/demo'),/aria-checked="false"/);
+ assert.doesNotMatch(switchTag(html,'data-center-channel','web','/demo'),/\sdisabled(?:\s|>)/);
+ const before=app.store.get('task-mecca-web-notification-settings-v1');
+ await app.setNotificationSwitch({
+  disabled:false,dataset:{centerProject:'/demo',centerWebKind:'completed'},
+  getAttribute:()=> 'true',setAttribute:()=>{throw Error('mutated disabled child');}
+ });
+ assert.equal(app.store.get('task-mecca-web-notification-settings-v1'),before);
+ app.changeWebNotificationSetting('/demo','enabled',true);
+ html=app.projectChannelSettingsMarkup();
+ assert.doesNotMatch(switchTag(html,'data-center-web-kind','completed','/demo'),/\sdisabled(?:\s|>)/);
+ assert.match(switchTag(html,'data-center-web-kind','started','/demo'),/aria-checked="false"/);
+ app.store.set('task-mecca-web-notification-settings-v1',JSON.stringify({enabled:false}));
+ html=app.projectChannelSettingsMarkup();
+ assert.match(switchTag(html,'data-center-channel','web','/demo'),/\sdisabled(?:\s|>)/);
+ assert.match(switchTag(html,'data-center-web-kind','completed','/demo'),/\sdisabled(?:\s|>)/);
+ assert.match(html,/data-web-locked="true"/);
+});
+test('OFF switch has distinct dark-theme border and child lock visuals',()=>{
+ const css=fs.readFileSync('goassets/template/_task_mecca/framework/web/style.css','utf8');
+ assert.match(css,/:root\[data-theme="dark"\]\s+\.notice-switch:not\(\.is-on\)::before/);
+ assert.match(css,/border-color:#9d92af/);
+ assert.match(css,/background:#e7dfed/);
+ assert.match(css,/\.notice-matrix\[data-web-locked="true"\]/);
+ assert.match(css,/\.notice-matrix\[data-telegram-locked="true"\]/);
+ assert.match(css,/\.notice-matrix \.notice-switch:disabled::before/);
 });
