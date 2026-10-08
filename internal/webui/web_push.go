@@ -129,7 +129,7 @@ func pushSubscriptionID(endpoint string)string{
 func validPushEndpoint(raw string)bool{
  if len(raw)>2048||len(raw)<15{return false}
  u,err:=url.Parse(raw)
- if err!=nil||u.Scheme!="https"||u.User!=nil||u.RawQuery!=""||u.Fragment!=""||u.Port()!=""||u.Hostname()==""{return false}
+ if err!=nil||u.Scheme!="https"||u.User!=nil||u.Fragment!=""||u.Port()!=""||u.Hostname()==""{return false}
  host:=strings.ToLower(u.Hostname())
  if net.ParseIP(host)!=nil {return false}
  if host=="fcm.googleapis.com"||host=="updates.push.services.mozilla.com"||host=="web.push.apple.com"||host=="push.services.mozilla.com"{return true}
