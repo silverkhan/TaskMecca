@@ -54,6 +54,7 @@ type StorageReport struct {
     History           StorageBucket  `json:"history"`
     Legacy            StorageBucket  `json:"legacy"`
     ProtectedRaw      StorageBucket  `json:"protected_raw"`
+    RawProtection     RawProtectionAnalysis `json:"raw_protection"`
     HistoryAttempts   int            `json:"history_attempts"`
     Retention         map[string]int `json:"retention"`
     Cleanup           CleanupPreview `json:"cleanup"`
@@ -357,9 +358,10 @@ func RuntimeStorageReport(project string,ledger Ledger,now time.Time) (StorageRe
     protectedBucket,err:=protectedRawBucket(project,ledger); if err!=nil { return StorageReport{},err }
     history,err:=readHistoryAttempts(project); if err!=nil { return StorageReport{},err }
     plan,err:=buildCleanupPlan(project,ledger,now); if err!=nil { return StorageReport{},err }
+    diagnostic,err:=AnalyzeRawProtection(project,ledger,now); if err!=nil { return StorageReport{},err }
     return StorageReport{
         TotalBytes:rawBucket.Bytes+historyBucket.Bytes+legacyBucket.Bytes,
-        Raw:rawBucket,History:historyBucket,Legacy:legacyBucket,ProtectedRaw:protectedBucket,
+        Raw:rawBucket,History:historyBucket,Legacy:legacyBucket,ProtectedRaw:protectedBucket,RawProtection:diagnostic,
         HistoryAttempts:len(history),Retention:RetentionPolicy(),Cleanup:plan.Preview,
         GeneratedAt:now.UTC().Format(time.RFC3339Nano),
     },nil
