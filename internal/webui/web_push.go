@@ -69,8 +69,7 @@ func savePushRegistry(project string,registry pushRegistry)error{
  body,err:=json.MarshalIndent(registry,"","  ");if err!=nil{return err}
  // Atomic replace under projectguard and in-process mutex.
  temp:=path+".tmp"
- if err:=os.WriteFile(temp,append(body,'
-'),0600);err!=nil{return err}
+ if err:=os.WriteFile(temp,append(body,byte(10)),0600);err!=nil{return err}
  if err:=os.Rename(temp,path);err!=nil{return err}
  return os.Chmod(path,0600)
 }
