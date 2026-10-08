@@ -3,7 +3,7 @@ const {test}=require('node:test');
 const source=fs.readFileSync('goassets/template/_task_mecca/framework/web/app.js','utf8');
 function page(fetch){
  const prompt={innerHTML:''},dot={style:{}},active={id:'search',selectionStart:2,selectionEnd:4,focus(){this.focused=true},setSelectionRange(a,b){this.range=[a,b]}};
- const scroll=[],context=vm.createContext({fetch,URLSearchParams,location:{search:'?project=/demo'},navigator:{language:'ko'},queueMicrotask,requestAnimationFrame:fn=>fn(),window:{scrollX:3,scrollY:120,scrollTo:args=>scroll.push(args)},document:{activeElement:active,contains:()=>true,getElementById:()=>active,querySelector:selector=>selector==='#connectionDot'?dot:selector==='#contentUpdatePrompt'?prompt:null},localStorage:{getItem:()=>null,setItem(){},removeItem(){}}});
+ const scroll=[],context=vm.createContext({fetch,URLSearchParams,AbortController,location:{search:'?project=/demo'},navigator:{language:'ko'},queueMicrotask,requestAnimationFrame:fn=>fn(),window:{scrollX:3,scrollY:120,scrollTo:args=>scroll.push(args)},document:{activeElement:active,contains:()=>true,getElementById:()=>active,querySelector:selector=>selector==='#connectionDot'?dot:selector==='#contentUpdatePrompt'?prompt:null},localStorage:{getItem:()=>null,setItem(){},removeItem(){}}});
  vm.runInContext(source.slice(0,source.indexOf('\ntranslateChrome();'))+source.slice(source.indexOf('function preserveViewportAndFocus('),source.indexOf('\nsetInterval(()=>{',source.indexOf('function preserveViewportAndFocus(')))+`\nrender=()=>{};processTaskNotifications=payload=>(globalThis.notifications||(globalThis.notifications=[])).push(payload);globalThis.app={state,refreshList,markContentUpdate,checkContentRevision,ensureAttentionStream,updateLiveListRelativeTimes,runningSeconds,listPageCaches,invalidateListPages,listContextKey};`,context);
  context.app.state.view='backlog';context.app.state.listPageMode='manual';context.app.state.listPageSize=20;
  return {...context.app,prompt,scroll,active,context};
@@ -102,4 +102,22 @@ test('newer automatic folder selection invalidates a cached default source even 
 test('changing a displayed query context hides previous rows before a different-context response',async()=>{
  let resolve;let second=false;const app=page(()=>second?new Promise(r=>resolve=r):Promise.resolve(json({...packet(1),pages:1})));
  await app.refreshList();assert.equal(app.state.listData.items[0].id,'A-1');second=true;app.state.query='different';const next=app.refreshList();assert.equal(app.state.listData,null);resolve(json({...packet(1),pages:1,items:[{id:'different'}]}));await next;assert.equal(app.state.listData.items[0].id,'different');
+});
+
+test('new project starts immediately instead of waiting for a previous project response',async()=>{
+ const requests=[];
+ const app=page((url,{signal}={})=>new Promise((resolve,reject)=>{
+  requests.push({url,resolve,signal});
+  signal?.addEventListener('abort',()=>reject(new Error('aborted')),{once:true});
+ }));
+ const first=app.refreshList();
+ app.state.project='/different-project';
+ const next=app.refreshList();
+ assert.equal(requests.length,2);
+ assert.equal(requests[0].signal.aborted,true);
+ assert.match(requests[1].url,/different-project/);
+ requests[1].resolve(reply(1,['B-1']));
+ await Promise.all([first,next]);
+ assert.equal(app.state.listData.items[0].id,'B-1');
+ assert.equal(app.state.loadError,'');
 });
