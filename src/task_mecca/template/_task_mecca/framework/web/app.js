@@ -37,6 +37,7 @@ const state = {
   sidebarMode: ['auto','expanded','compact'].includes(localStorage.getItem('task-mecca-sidebar-mode')) ? localStorage.getItem('task-mecca-sidebar-mode') : (localStorage.getItem('task-mecca-sidebar-collapsed') === '0' ? 'expanded' : 'auto'),
   sidebarCollapsed: true,
   sidebarPeek: false,
+  mobileNavOpen: false,
   projectMenuOpen: false,
   openProjects: (()=>{ try { const raw=JSON.parse(localStorage.getItem('task-mecca-open-projects')||'[]'); return Array.isArray(raw)?raw:[]; } catch(_) { return []; } })(),
   language: localStorage.getItem('task-mecca-language') || (navigator.language?.toLowerCase().startsWith('ko') ? 'ko' : 'en'),
@@ -2386,7 +2387,7 @@ function nav() {
   modeSelector.dataset.mode=state.sidebarMode;
   modeSelector.setAttribute('role','group');
   modeSelector.setAttribute('aria-label',state.language==='ko'?'사이드바 표시 방식':'Sidebar display mode');
-  modeSelector.innerHTML=sidebarModes.map(([mode,label,description])=>`<button type="button" class="sidebar-mode-option ${state.sidebarMode===mode?'selected':''}" data-sidebar-mode="${mode}" aria-pressed="${state.sidebarMode===mode}" aria-label="${esc(label)}: ${esc(description)}" title="${esc(description)}">${esc(label)}</button>`).join('');
+  modeSelector.innerHTML=sidebarModes.map(([mode,label,description])=>`<button type="button" class="sidebar-mode-option theme-btn ${state.sidebarMode===mode?'active':''}" data-sidebar-mode="${mode}" aria-pressed="${state.sidebarMode===mode}" aria-label="${esc(label)}: ${esc(description)}" title="${esc(description)}">${esc(label)}</button>`).join('');
   $('#stateNav').prepend(modeSelector);
   modeSelector.querySelectorAll('[data-sidebar-mode]').forEach(button=>button.addEventListener('click',()=>{setSidebarMode(button.dataset.sidebarMode);render()}));
   $('#workloadCount').textContent = (state.snapshot?.workload?.agents || []).length || '';
@@ -3675,12 +3676,20 @@ function applySidebarState() {
   shell?.classList.toggle('sidebar-collapsed',state.sidebarCollapsed);
   shell?.classList.toggle('sidebar-peek',state.sidebarMode==='auto' && state.sidebarPeek);
   shell?.setAttribute('data-sidebar-mode',state.sidebarMode);
+  const isMobile=window.matchMedia('(max-width:680px)').matches;
+  shell?.classList.toggle('mobile-nav-open',isMobile && state.mobileNavOpen);
   const btn=$('#sidebarToggle');
   if(!btn)return;
-  btn.textContent=state.sidebarMode==='expanded'?'‹':'›';
-  btn.title=state.sidebarMode==='expanded'?(state.language==='ko'?'최소화 고정':'Pin compact'):(state.language==='ko'?'펼침 고정':'Pin expanded');
+  if(isMobile){
+    btn.textContent=state.mobileNavOpen?'×':'☰';
+    btn.title=state.mobileNavOpen?(state.language==='ko'?'메뉴 닫기':'Close menu'):(state.language==='ko'?'메뉴 열기':'Open menu');
+    btn.setAttribute('aria-expanded',String(state.mobileNavOpen));
+  }else{
+    btn.textContent=state.sidebarMode==='expanded'?'‹':'›';
+    btn.title=state.sidebarMode==='expanded'?(state.language==='ko'?'최소화 고정':'Pin compact'):(state.language==='ko'?'펼침 고정':'Pin expanded');
+    btn.setAttribute('aria-expanded',String(state.sidebarMode==='expanded'||state.sidebarPeek));
+  }
   btn.setAttribute('aria-label',btn.title);
-  btn.setAttribute('aria-expanded',String(state.sidebarMode==='expanded'||state.sidebarPeek));
 }
 function setSidebarMode(mode) {
   if(!['auto','expanded','compact'].includes(mode))return;
@@ -3694,6 +3703,11 @@ function setSidebarMode(mode) {
   scheduleAutoListPageSize();
 }
 function toggleSidebar() {
+  if(window.matchMedia('(max-width:680px)').matches){
+    state.mobileNavOpen=!state.mobileNavOpen;
+    applySidebarState();
+    return;
+  }
   setSidebarMode(state.sidebarMode==='expanded'?'compact':'expanded');
 }
 
@@ -4241,7 +4255,6 @@ function translateChrome() {
   const pairs=[['#workloadText','workload'],['#attentionText','attention'],['#issuesText','issues'],['#projectNotificationsText','projectNotifications'],['#terminalText','terminal'],['#manualText','manual'],['#releaseNotesText','releaseNotes']];
   pairs.forEach(([sel,key])=>{const el=$(sel);if(el)el.textContent=t(key)});
   [['[data-view="workload"]','workload'],['[data-view="attention"]','attention'],['[data-view="issues"]','issues'],['[data-view="notifications"]','projectNotifications'],['#terminalNavBtn','terminal'],['[data-view="manual"]','manual'],['[data-view="release-notes"]','releaseNotes']].forEach(([sel,key])=>{const el=document.querySelector(sel);if(el)el.title=t(key)});
-  const centerTop=$('#notificationCenterTop');if(centerTop){centerTop.title=t('notificationCenter');centerTop.setAttribute('aria-label',t('notificationCenter'));}
   const centerNav=$('#projectNotificationsNav');if(centerNav)centerNav.setAttribute('aria-label',t('notificationCenter'));
   const sideBtn=$('#sidebarToggle');if(sideBtn){sideBtn.setAttribute('aria-label',state.sidebarCollapsed?t('expandSidebar'):t('collapseSidebar'));sideBtn.title=state.sidebarCollapsed?t('expandSidebar'):t('collapseSidebar')}
   const refresh=$('#refreshBtn'); if(refresh) refresh.title=t('refresh');
@@ -4309,10 +4322,15 @@ function bindBacklogListTools() {
 });
 }
 $('#refreshBtn').onclick=refreshVisibleContent;
-$('#notificationCenterTop')?.addEventListener('click',()=>navigateView('notifications'));
 $('#notificationBtn')?.addEventListener('click',()=>{state.notificationCenterTab='settings';navigate(null,'notifications');});
 document.addEventListener('click',e=>{const panel=$('#notificationPanel');if(panel?.classList.contains('open')&&!panel.contains(e.target)&&!$('#notificationBtn')?.contains(e.target))panel.classList.remove('open')});
 $('#sidebarToggle').onclick=toggleSidebar;
+$('#sidebar')?.addEventListener('click',event=>{
+  if(window.matchMedia('(max-width:680px)').matches && event.target.closest('.nav-item,.session-open')){
+    state.mobileNavOpen=false;
+    applySidebarState();
+  }
+});
 bindChannelGesture();
 $('#sidebar')?.addEventListener('mouseenter',()=>{if(state.sidebarMode==='auto'){state.sidebarPeek=true;applySidebarState();}});
 $('#sidebar')?.addEventListener('mouseleave',()=>{if(state.sidebarMode==='auto'){state.sidebarPeek=false;state.projectMenuOpen=false;applySidebarState();}});

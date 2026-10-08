@@ -355,7 +355,7 @@
 @media(max-width:680px){
   .topbar{
     display:grid;
-    grid-template-columns:minmax(0,1fr) auto auto auto;
+    grid-template-columns:minmax(0,1fr) auto auto;
     align-items:center;
     gap:8px;
     padding:10px 12px;
@@ -398,7 +398,7 @@
     justify-self:end;
   }
   #refreshBtn{
-    grid-column:4;
+    grid-column:3;
     order:2;
     justify-self:end;
   }
@@ -419,7 +419,7 @@
 @media(max-width:680px){
   .topbar{
     display:grid;
-    grid-template-columns:minmax(0,1fr) auto auto auto;
+    grid-template-columns:minmax(0,1fr) auto auto;
     gap:8px;
     width:100%;
     max-width:100vw;
@@ -458,7 +458,7 @@
     position:static;
   }
   #refreshBtn{
-    grid-column:4;
+    grid-column:3;
     grid-row:2;
   }
   .notification-panel{
@@ -1259,37 +1259,26 @@ body.release-modal-open{overflow:hidden}
 .notification-panel .secondary-btn{height:34px;padding:0 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font:inherit;font-size:11px;cursor:pointer}.notification-panel .secondary-btn:disabled{opacity:.55;cursor:default}
 .notification-panel-head{flex:0 0 auto}.notification-panel-head button:focus-visible,.notification-panel .secondary-btn:focus-visible,.center-project-settings summary:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
 .notification-center-current .common-center-link{display:none}
-#notificationCenterTop svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 @media(max-width:680px){.notification-panel.open{inset:8px;width:auto;height:calc(100dvh - 16px);max-height:calc(100dvh - 16px)}.notification-panel-head{padding:12px 14px;margin:0;border-bottom:1px solid var(--border)}.notification-panel-body{padding:12px 14px}.notification-center-tabs button,.notification-center-current summary,.diagnostic-entry .action-btn{min-height:44px}}
 .notification-history-scroll:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
 .notification-panel .project-notification-row{display:block}.notification-panel .project-notification-controls{margin-top:12px}.notification-panel .project-notification-controls input{max-width:100%}
 
 /* AID-112: pinned and automatic sidebar modes, accessible project identity */
-/* One three-position switch, not three separate outlined buttons. */
+/* Match the system/light/dark switch: each segment owns its active surface.
+   No translated pseudo-element: resizing and compact-to-expanded transitions cannot overlap. */
 .sidebar-mode-selector{
-  position:relative;isolation:isolate;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
-  height:38px;gap:0;padding:3px;margin-bottom:12px;
-  border:1px solid var(--border);border-radius:11px;background:var(--surface2);
+  display:flex;align-items:center;gap:2px;width:100%;min-width:0;
+  height:38px;padding:3px;margin-bottom:12px;
+  box-sizing:border-box;border:1px solid var(--border);
+  background:var(--surface);border-radius:9px;white-space:nowrap;
 }
-.sidebar-mode-selector::before{
-  content:"";position:absolute;z-index:0;left:3px;top:3px;bottom:3px;
-  width:calc(33.333333% - 2px);border:1px solid var(--border);border-radius:8px;
-  background:var(--surface);box-shadow:0 1px 4px rgba(0,0,0,.08);
-  pointer-events:none;transition:transform .2s ease;
-}
-.sidebar-mode-selector[data-mode="expanded"]::before{transform:translateX(100%)}
-.sidebar-mode-selector[data-mode="compact"]::before{transform:translateX(200%)}
 .sidebar-mode-option{
-  position:relative;z-index:1;min-width:0;padding:6px 1px;
-  border:0;border-radius:7px;background:transparent;color:var(--muted);
-  font-size:11px;font-weight:600;white-space:nowrap;cursor:pointer;
-  transition:color .18s ease;
+  flex:1 1 0;min-width:0;height:30px;padding:0 4px;
+  overflow:hidden;text-overflow:ellipsis;
+  font-size:11px;white-space:nowrap;
 }
-.sidebar-mode-option.selected{color:var(--text);font-weight:750}
-.sidebar-mode-option:hover{color:var(--text)}
-.sidebar-mode-option:focus-visible,.session-open:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
-@media(prefers-reduced-motion:reduce){
-  .sidebar-mode-selector::before,.sidebar-mode-option{transition:none}
+.sidebar-mode-option:focus-visible,.session-open:focus-visible{
+  outline:2px solid var(--accent);outline-offset:-2px;
 }
 .session-initial{display:grid;place-items:center;flex:0 0 28px;width:28px;height:28px;border-radius:8px;font-size:14px;font-weight:750;color:var(--text);border:1px solid var(--border);background:var(--surface2)}
 .session-state-working .session-initial{background:color-mix(in srgb,#4585e9 18%,var(--surface));border-color:color-mix(in srgb,#4585e9 35%,var(--border))}
@@ -1307,6 +1296,43 @@ body.release-modal-open{overflow:hidden}
 .status.ready:before,.status.todo:before{background:#858b96}
 @media(max-width:680px){.sidebar-mode-selector{display:none}}
 
+
+/* The sidebar navigation remains available at mobile widths after removing
+   the duplicate notification bell from the top bar. */
+@media(max-width:680px){
+  .app-shell .sidebar-toggle{display:grid;flex:0 0 36px;width:36px;height:36px;margin:0}
+  .app-shell .sidebar-head,.app-shell.sidebar-collapsed .sidebar-head{
+    display:flex;align-items:center;justify-content:space-between;
+  }
+  .app-shell.sidebar-collapsed .sidebar .brand{
+    justify-content:flex-start;padding:0;
+  }
+  .app-shell.mobile-nav-open.sidebar-collapsed .sidebar{padding:14px 12px}
+  .app-shell.mobile-nav-open.sidebar-collapsed .sidebar .nav{display:flex}
+  .app-shell.mobile-nav-open.sidebar-collapsed .sidebar-section{display:block}
+  .app-shell.mobile-nav-open.sidebar-collapsed .sidebar-footer{display:flex}
+  .app-shell.mobile-nav-open.sidebar-collapsed .brand-copy,
+  .app-shell.mobile-nav-open.sidebar-collapsed .sidebar-label,
+  .app-shell.mobile-nav-open.sidebar-collapsed .nav-text,
+  .app-shell.mobile-nav-open.sidebar-collapsed .count,
+  .app-shell.mobile-nav-open.sidebar-collapsed .sidebar-footer-text,
+  .app-shell.mobile-nav-open.sidebar-collapsed .session-name,
+  .app-shell.mobile-nav-open.sidebar-collapsed .session-count,
+  .app-shell.mobile-nav-open.sidebar-collapsed .session-close,
+  .app-shell.mobile-nav-open.sidebar-collapsed .session-empty{
+    display:block;
+  }
+  .app-shell.mobile-nav-open.sidebar-collapsed .nav-item,
+  .app-shell.mobile-nav-open.sidebar-collapsed .session-row{
+    justify-content:space-between;
+  }
+  .app-shell.mobile-nav-open.sidebar-collapsed .nav-main{
+    justify-content:flex-start;gap:10px;
+  }
+  .app-shell.mobile-nav-open.sidebar-collapsed .session-open{
+    flex:1 1 auto;min-width:0;padding:8px;justify-content:flex-start;
+  }
+}
 /* Notification center: in-page settings and stable history navigation. */
 .notification-settings-body .notification-panel-body{max-height:none;overflow:visible;padding:20px 0;}
 .notification-settings-body{max-width:960px;}
