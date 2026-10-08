@@ -51,7 +51,7 @@ test('dashboard differentiates measured categories and never offers protected-le
  assert.match(html,/저장소 관리/);
  assert.match(html,/진단 로그와 보호 원장/);
  assert.match(html,/에이전트 실행 기록 관리/);
- assert.match(html,/안전 정리 후보/);
+ assert.match(html,/안전 정리 가능/);
  assert.match(html,/50 B/); // 20B clearable logs + 30B eligible runtime records
  assert.match(html,/data-clear-log="web-service"/);
  assert.match(html,/알림 이력/);
