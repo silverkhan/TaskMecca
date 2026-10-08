@@ -145,6 +145,17 @@ func BacklogRevision(project,root string) (map[string]any,error) {
     },nil
 }
 
+// backlogPageRow keeps the minimum information needed to filter and sort.
+// The expensive browser-facing document/assignment projection is built only
+// after selecting the requested page.
+type backlogPageRow struct {
+    row Record
+    state string
+    waiting []string
+    reason map[string]any
+    signal map[string]any
+}
+
 func BacklogPage(project,root string,page,pageSize int,statuses,tags []string,search,sortKey string,projection ...string) (map[string]any,error) {
     rows,err:=CachedCatalog(project,root)
     if err!=nil { return nil,err }
@@ -153,63 +164,94 @@ func BacklogPage(project,root string,page,pageSize int,statuses,tags []string,se
     readyIDs,blocked:=webWorkflowStateMaps(project,root,rows)
     control:=reconcileControlTower(project,root,rows)
     byID:=preferredRows(rows)
-    all:=make([]map[string]any,0,len(byID))
-    counts:=map[string]int{"all":len(byID),"working":0,"ready":0,"blocked":0,"hold":0,"done":0,"attention":0,"needs_action":0}
+
+    // Counts and scope still cover every matching backlog item, independently
+    // of the chosen status filter and pagination. Controller sensing and
+    // notification-event reconciliation remain complete and authoritative.
+    counts:=map[string]int{"all":0,"working":0,"ready":0,"blocked":0,"hold":0,"done":0,"attention":0,"needs_action":0}
+    q:=strings.ToLower(strings.TrimSpace(search))
+    filtered:=make([]backlogPageRow,0,len(byID))
+    scopeIDs:=map[string]bool{}
     for id,row:=range byID {
+        if len(tags)>0 && !tagsMatchAll(map[string]any{"tags":parseTagList(row.Fields["Tags"])},tags) { continue }
+        if q!="" {
+            hay:=strings.ToLower(id+"\n"+row.Title+"\n"+row.RawMarkdown+"\n"+row.ArchiveMonth)
+            if !strings.Contains(hay,q) { continue }
+        }
+        scopeIDs[id]=true
+        counts["all"]++
+        switch row.State {
+        case "doing": counts["working"]++
+        case "hold": counts["hold"]++
+        case "done": counts["done"]++
+        }
         state:=row.State
         if row.State=="todo" && readyIDs[id] { state="ready" }
-        waiting:=[]string{}
-        if b,ok:=blocked[id]; ok { state="blocked"; if v,ok:=b["waiting_for"].([]string); ok { waiting=v } }
-        item:=webSummaryItem(row,state,waiting,control.Attention[id],control.Activity[id])
-        item["document"]=compactListDocument(row);item["fields"]=compactListFields(row)
-        switch row.State { case "doing": counts["working"]++; case "hold": counts["hold"]++; case "done": counts["done"]++ }
-        if state=="ready" { counts["ready"]++ }; if state=="blocked" { counts["blocked"]++ }
-        if reason,ok:=item["attention_reason"].(map[string]any); ok && len(reason)>0 { counts["attention"]++; counts["needs_action"]++ }
-        all=append(all,item)
+        var waiting []string
+        if b,ok:=blocked[id]; ok {
+            state="blocked"
+            if values,ok:=b["waiting_for"].([]string); ok { waiting=values }
+        }
+        if state=="ready" { counts["ready"]++ }
+        if state=="blocked" { counts["blocked"]++ }
+        reason,signal:=control.Attention[id],control.Activity[id]
+        // Reuse the same state transformation as webSummaryItem, including
+        // controller completion-review semantics, without allocating its
+        // document, assignment, fields and other bulky payloads.
+        stateView:=map[string]any{"state":state,"file_state":row.State}
+        if len(reason)>0 && toString(reason["audience"])!="controller" {
+            stateView["state"]=effectiveStateFromControl(state,reason)
+        }
+        applyCompletionReviewItem(stateView,signal)
+        if stateMatches(stateView,statuses) {
+            filtered=append(filtered,backlogPageRow{
+                row:row,state:state,waiting:waiting,reason:reason,signal:signal,
+            })
+        }
     }
-    q:=strings.ToLower(strings.TrimSpace(search))
-    filtered:=make([]map[string]any,0,len(all))
-    counts=map[string]int{"all":0,"working":0,"ready":0,"blocked":0,"hold":0,"done":0,"attention":0,"needs_action":0}
-    scopeIDs:=map[string]bool{}
-    for _,item:=range all {
-        if !tagsMatchAll(item,tags) { continue }
-        id:=toString(item["id"]); row:=byID[id]
-        if q!="" { hay:=strings.ToLower(id+"\n"+row.Title+"\n"+row.RawMarkdown+"\n"+row.ArchiveMonth); if !strings.Contains(hay,q) { continue } }
-        scopeIDs[id]=true; counts["all"]++
-        switch row.State { case "doing": counts["working"]++; case "hold": counts["hold"]++; case "done": counts["done"]++ }
-        workflowState:=row.State;if row.State=="todo"&&readyIDs[id] {workflowState="ready"};if _,ok:=blocked[id];ok {workflowState="blocked"}
-        if workflowState=="ready" { counts["ready"]++ }; if workflowState=="blocked" { counts["blocked"]++ }
-        if stateMatches(item,statuses) { filtered=append(filtered,item) }
+    cmpUpdated:=func(i,j int)bool {
+        li,lj:=filtered[i].row.Mtime,filtered[j].row.Mtime
+        if li!=lj { return li<lj }
+        return filtered[i].row.SortKey<filtered[j].row.SortKey
     }
-    cmpUpdated:=func(i,j int)bool { li:=toString(filtered[i]["updated_at"]); lj:=toString(filtered[j]["updated_at"]); if li!=lj { return li<lj }; return toString(filtered[i]["sort_key"])<toString(filtered[j]["sort_key"]) }
     switch sortKey {
     case "updated_asc":
         sort.Slice(filtered,cmpUpdated)
     case "updated_desc":
         sort.Slice(filtered,func(i,j int)bool {
-            li:=toString(filtered[i]["updated_at"]); lj:=toString(filtered[j]["updated_at"])
+            li,lj:=filtered[i].row.Mtime,filtered[j].row.Mtime
             if li!=lj { return li>lj }
-            si:=toString(filtered[i]["sort_key"]); sj:=toString(filtered[j]["sort_key"])
+            si,sj:=filtered[i].row.SortKey,filtered[j].row.SortKey
             if si!=sj { return si>sj }
-            return toString(filtered[i]["id"])>toString(filtered[j]["id"])
+            return filtered[i].row.ID>filtered[j].row.ID
         })
     case "id_asc":
         sort.Slice(filtered,func(i,j int)bool {
-            si:=toString(filtered[i]["sort_key"]); sj:=toString(filtered[j]["sort_key"])
+            si,sj:=filtered[i].row.SortKey,filtered[j].row.SortKey
             if si!=sj { return si<sj }
-            return toString(filtered[i]["id"])<toString(filtered[j]["id"])
+            return filtered[i].row.ID<filtered[j].row.ID
         })
     default:
         sort.Slice(filtered,func(i,j int)bool {
-            si:=toString(filtered[i]["sort_key"]); sj:=toString(filtered[j]["sort_key"])
+            si,sj:=filtered[i].row.SortKey,filtered[j].row.SortKey
             if si!=sj { return si>sj }
-            return toString(filtered[i]["id"])>toString(filtered[j]["id"])
+            return filtered[i].row.ID>filtered[j].row.ID
         })
     }
     if pageSize<1 { pageSize=20 }; if pageSize>100 { pageSize=100 }; if page<1 { page=1 }
     total:=len(filtered); pages:=(total+pageSize-1)/pageSize; if pages<1 { pages=1 }; if page>pages { page=pages }
     start:=(page-1)*pageSize; end:=start+pageSize; if end>total { end=total }
-    items:=[]map[string]any{}; if start<total { items=filtered[start:end] }
+    items:=[]map[string]any{}
+    isSummary:=len(projection)>0 && projection[0]=="summary"
+    if !isSummary && start<total {
+        items=make([]map[string]any,0,end-start)
+        for _,selected:=range filtered[start:end] {
+            item:=webSummaryItem(selected.row,selected.state,selected.waiting,selected.reason,selected.signal)
+            item["document"]=compactListDocument(selected.row)
+            item["fields"]=compactListFields(selected.row)
+            items=append(items,item)
+        }
+    }
     tagCatalog,tagErr:=TagCatalog(project,root,rows); if tagErr!=nil { tagCatalog=map[string]any{} }
     attention,attErr:=AttentionSnapshotFromRows(project,root,rows,true,control); if attErr!=nil { attention=map[string]any{"attention":[]map[string]any{},"all_items":map[string]map[string]any{},"notification_events":[]map[string]any{}} }
     if rowsAtt,ok:=attention["attention"].([]map[string]any); ok {
