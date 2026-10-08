@@ -1297,46 +1297,68 @@ body.release-modal-open{overflow:hidden}
 @media(max-width:680px){.sidebar-mode-selector{display:none}}
 
 
-/* The sidebar navigation remains available at mobile widths after removing
-   the duplicate notification bell from the top bar. */
+/* Desktop: the extra wrapper is layout-transparent and preserves the sidebar. */
+.mobile-sidebar-panel{display:contents}
+.mobile-sidebar-scrim{display:none}
+
+/* Mobile: a floating menu below the header. Never reflow the page content. */
 @media(max-width:680px){
-  .app-shell .sidebar-toggle{display:grid;flex:0 0 36px;width:36px;height:36px;margin:0}
+  .app-shell .sidebar,
+  .app-shell.sidebar-collapsed .sidebar,
+  .app-shell.mobile-nav-open .sidebar{
+    position:relative;width:100%;height:auto;box-sizing:border-box;
+    padding:16px 14px;
+  }
+  .app-shell.mobile-nav-open .sidebar{z-index:81}
   .app-shell .sidebar-head,.app-shell.sidebar-collapsed .sidebar-head{
     display:flex;align-items:center;justify-content:space-between;
   }
-  .app-shell.sidebar-collapsed .sidebar .brand{
-    justify-content:flex-start;padding:0;
+  .app-shell .sidebar .brand,.app-shell.sidebar-collapsed .sidebar .brand{
+    padding:0;justify-content:flex-start;
   }
-  .app-shell.mobile-nav-open .sidebar{padding:14px 12px;min-width:0}
-  .app-shell.mobile-nav-open .sidebar-section{width:100%;min-width:0}
-  .app-shell.mobile-nav-open .sidebar .nav-item{width:100%}
-  .app-shell.mobile-nav-open .sidebar .nav{
-    display:flex;flex-direction:column;align-items:stretch;gap:2px;
-    width:100%;min-width:0;
+  .app-shell .sidebar .brand-mark,.app-shell.sidebar-collapsed .sidebar .brand-mark{
+    width:32px;height:32px;
   }
-  .app-shell.mobile-nav-open .sidebar-section{display:block}
-  .app-shell.mobile-nav-open .sidebar-footer{display:flex}
-  .app-shell.mobile-nav-open .brand-copy,
-  .app-shell.mobile-nav-open .sidebar-label,
-  .app-shell.mobile-nav-open .nav-text,
-  .app-shell.mobile-nav-open .count,
-  .app-shell.mobile-nav-open .sidebar-footer-text,
-  .app-shell.mobile-nav-open .session-name,
-  .app-shell.mobile-nav-open .session-count,
-  .app-shell.mobile-nav-open .session-close,
-  .app-shell.mobile-nav-open .session-empty{
-    display:block;
+  .app-shell .sidebar-toggle{display:grid;flex:0 0 36px;width:36px;height:36px;margin:0}
+  .mobile-sidebar-panel{display:none}
+  .app-shell.mobile-nav-open .mobile-sidebar-panel{
+    display:flex;flex-direction:column;
+    position:absolute;top:calc(100% - 2px);right:12px;z-index:82;
+    box-sizing:border-box;width:min(340px,calc(100vw - 24px));
+    max-height:min(75dvh,640px);min-width:0;
+    overflow-y:auto;overscroll-behavior:contain;
+    padding:12px;border:1px solid var(--border);border-radius:14px;
+    background:var(--surface);color:var(--text);
+    box-shadow:0 18px 50px rgba(0,0,0,.28);
   }
-  .app-shell.mobile-nav-open .nav-item,
-  .app-shell.mobile-nav-open .session-row{
+  .app-shell.mobile-nav-open .mobile-sidebar-panel .nav{
+    display:flex;flex-direction:column;align-items:stretch;gap:2px;width:100%;min-width:0;
+  }
+  .app-shell.mobile-nav-open .mobile-sidebar-panel .sidebar-section{
+    display:block;width:100%;min-width:0;
+  }
+  .app-shell.mobile-nav-open .mobile-sidebar-panel .sidebar-footer{display:flex;width:100%}
+  .app-shell.mobile-nav-open .mobile-sidebar-panel .sidebar-label,
+  .app-shell.mobile-nav-open .mobile-sidebar-panel .nav-text,
+  .app-shell.mobile-nav-open .mobile-sidebar-panel .count,
+  .app-shell.mobile-nav-open .mobile-sidebar-panel .sidebar-footer-text,
+  .app-shell.mobile-nav-open .mobile-sidebar-panel .session-name,
+  .app-shell.mobile-nav-open .mobile-sidebar-panel .session-count,
+  .app-shell.mobile-nav-open .mobile-sidebar-panel .session-close,
+  .app-shell.mobile-nav-open .mobile-sidebar-panel .session-empty{display:block}
+  .app-shell.mobile-nav-open .mobile-sidebar-panel .nav-item,
+  .app-shell.mobile-nav-open .mobile-sidebar-panel .session-row{
     justify-content:space-between;
   }
-  .app-shell.mobile-nav-open .nav-main{
-    justify-content:flex-start;gap:10px;
-  }
-  .app-shell.mobile-nav-open .session-open{
+  .app-shell.mobile-nav-open .mobile-sidebar-panel .nav-main{justify-content:flex-start;gap:10px}
+  .app-shell.mobile-nav-open .mobile-sidebar-panel .session-open{
     flex:1 1 auto;min-width:0;padding:8px;justify-content:flex-start;
   }
+  .mobile-sidebar-scrim:not([hidden]){
+    display:block;position:fixed;inset:0;z-index:80;
+    background:rgba(9,10,20,.36);
+  }
+  body.mobile-nav-visible{overflow:hidden}
 }
 /* Notification center: in-page settings and stable history navigation. */
 .notification-settings-body .notification-panel-body{max-height:none;overflow:visible;padding:20px 0;}

@@ -12,8 +12,9 @@
     <aside class="sidebar" id="sidebar">
       <div class="sidebar-head">
         <div class="brand"><button type="button" class="brand-mark" id="channelSwitchMark" aria-label="Task Mecca release channel" title="Task Mecca"><img src="/logo.svg" alt="" aria-hidden="true" /></button><div class="brand-copy"><strong>Task Mecca</strong><small>Backlog Observatory</small></div></div>
-        <button id="sidebarToggle" class="sidebar-toggle" type="button" aria-label="Collapse sidebar" title="Collapse sidebar">‹</button>
+        <button id="sidebarToggle" class="sidebar-toggle" type="button" aria-label="Collapse sidebar" title="Collapse sidebar" aria-controls="mobileSidebarPanel" aria-expanded="false">‹</button>
       </div>
+      <div id="mobileSidebarPanel" class="mobile-sidebar-panel">
       <nav id="stateNav" class="nav"></nav>
       <div class="sidebar-section"><div class="sidebar-label" id="operationsLabel">OPERATIONS</div>
         <button class="nav-item" data-view="workload" title="Subagent Workload"><span class="nav-main"><span class="nav-icon" aria-hidden="true">◫</span><span class="nav-text" id="workloadText">Subagent Workload</span></span><span id="workloadCount" class="count"></span></button>
@@ -26,6 +27,7 @@
       </div>
       <button class="nav-item" data-view="issues" title="Backlog diagnostics" hidden><span class="nav-main"><span class="nav-icon" aria-hidden="true">!</span><span class="nav-text" id="issuesText">Backlog diagnostics</span></span><span id="issueCount" class="count"></span></button>
   <div class="sidebar-footer"><span id="connectionDot" class="dot"></span><span id="snapshotAge" class="sidebar-footer-text">Loading…</span></div>
+      </div>
     </aside>
     <main class="main">
       <header class="topbar">
@@ -49,6 +51,7 @@
       <div class="shortcut-bar" id="shortcutBar"><span><kbd>↑</kbd><kbd>↓</kbd> move</span><span><kbd>Enter</kbd>/<kbd>→</kbd> open</span><span><kbd>←</kbd>/<kbd>Esc</kbd> back</span><span><kbd>/</kbd> search</span><span><kbd>PgUp</kbd>/<kbd>PgDn</kbd> page</span></div>
     </main>
   </div>
+  <div id="mobileSidebarScrim" class="mobile-sidebar-scrim" aria-hidden="true" hidden></div>
   <div id="releaseNoteModal" class="release-note-modal" hidden></div>
   <div id="notificationPanel" class="notification-panel" role="dialog" aria-label="Notification settings"></div>
 <script src="/app.js"></script>
