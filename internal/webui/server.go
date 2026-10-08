@@ -1303,6 +1303,7 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 	mux.HandleFunc("/terminal/", func(w http.ResponseWriter, r *http.Request) { sendEmbedded(w, "terminal.html") })
 	mux.HandleFunc("/terminal.css", func(w http.ResponseWriter, r *http.Request) { sendEmbedded(w, "terminal.css") })
 	mux.HandleFunc("/terminal.js", func(w http.ResponseWriter, r *http.Request) { sendEmbedded(w, "terminal.js") })
+	mux.HandleFunc("/theme-boot.js", func(w http.ResponseWriter, r *http.Request) { sendEmbedded(w, "theme-boot.js") })
 	mux.HandleFunc("/style.css", func(w http.ResponseWriter, r *http.Request) { sendEmbedded(w, "style.css") })
 	mux.HandleFunc("/logo.svg", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "image/svg+xml; charset=utf-8")
