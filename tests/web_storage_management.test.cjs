@@ -54,7 +54,7 @@ test('dashboard differentiates measured categories and never offers protected-le
  assert.match(html,/안전 정리 후보/);
  assert.match(html,/50 B/); // 20B clearable logs + 30B eligible runtime records
  assert.match(html,/data-clear-log="web-service"/);
- assert.match(html,/notification-events/);
+ assert.match(html,/알림 이력/);
  assert.match(html,/보호됨/);
  assert.doesNotMatch(html,/data-clear-log="notification-events"/);
  assert.doesNotMatch(html,/id="logStorageProject"/); // one project selector
