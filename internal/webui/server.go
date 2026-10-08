@@ -268,6 +268,36 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 
 	registerTerminalRoutes(mux, projectFor, writeJSON)
 
+    // Storage management is restricted to application-owned log categories.
+    // The existing maintenance header is required for every destructive call.
+    mux.HandleFunc("/api/storage/logs",func(w http.ResponseWriter,r *http.Request){
+        activeProject:=projectFor(r)
+        switch r.Method {
+        case http.MethodGet:
+            report,err:=LogStorageReport(activeProject)
+            if err!=nil { writeJSON(w,map[string]any{"error":err.Error()},500);return }
+            writeJSON(w,report,200)
+        case http.MethodPost:
+            if r.Header.Get("X-Task-Mecca-Action")!="1" {
+                writeJSON(w,map[string]any{"error":"maintenance action header required"},403);return
+            }
+            var request struct { ID string `json:"id"` }
+            if err:=json.NewDecoder(io.LimitReader(r.Body,1024)).Decode(&request);err!=nil {
+                writeJSON(w,map[string]any{"error":"invalid JSON"},400);return
+            }
+            released,err:=ClearLogStorage(activeProject,request.ID)
+            if err!=nil { writeJSON(w,map[string]any{"error":err.Error()},400);return }
+            report,err:=LogStorageReport(activeProject)
+            if err!=nil { writeJSON(w,map[string]any{"error":err.Error()},500);return }
+            report["released_bytes"]=released
+            writeJSON(w,report,200)
+        default:
+            w.Header().Set("Allow","GET, POST")
+            writeJSON(w,map[string]any{"error":"method not allowed"},405)
+        }
+    })
+
+
 	mux.HandleFunc("/api/health", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, map[string]any{"ok": true, "version": version, "instance_id": instanceID, "pid": os.Getpid(), "telegram_transport_disabled": notify.TelegramTransportDisabled()}, 200)
 	})
