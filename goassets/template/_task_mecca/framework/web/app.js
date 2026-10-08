@@ -685,9 +685,6 @@ function renderReleaseNoteModal() {
   if(available){
     $('#releaseModalClose')?.addEventListener('click',dismissReleaseNotePopup);
     $('#releaseModalUpgrade')?.addEventListener('click',()=>{
-      state.releaseNotePopup=null;
-      state.releaseNotePopupMode='installed';
-      renderReleaseNoteModal();
       performUpgrade();
     });
   }else{
@@ -704,16 +701,7 @@ function renderReleaseNoteModal() {
 async function showAvailableUpdateNotes() {
   const cli=state.versionInfo?.cli||state.hub?.cli||{};
   const version=normalizedVersion(cli.latest||'');
-  if(!version)return;
-  const detail=await loadReleaseNoteDetail(version);
-  if(!detail){
-    alert(t('updateChangesUnavailable'));
-    return;
-  }
-  state.releaseNotePopup=detail;
-  state.releaseNotePopupMode='available';
-  renderReleaseUnreadPrompt();
-  renderReleaseNoteModal();
+  if(version)await openUpgradeDetails(version);
 }
 async function maybeShowCurrentReleaseNote() {
   const version=currentReleaseVersion();
@@ -909,17 +897,10 @@ function renderGlobalUpdateIndicator() {
     const from=String(cli.current||'-'), to=String(cli.latest||'-');
     const fullLabel=`${from} → ${to}`;
     const updateIcon='<svg class="update-arrow-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"/><path d="M12 17V7m0 0-4 4m4-4 4 4"/></svg>';
-    el.innerHTML='<button type="button" class="global-update-pill available version-update-label" id="globalVersionUpdateBtn" title="'+esc(t('updateNow')+' · '+fullLabel)+'" aria-label="'+esc(t('updateNow')+' · '+fullLabel)+'">'+
+    el.innerHTML='<button type="button" class="global-update-pill available version-update-label" id="globalVersionUpdateBtn" '+(upgradeFlowMode!=='idle'?'disabled aria-busy="true" ':'')+'title="'+esc(t('updateNow')+' · '+fullLabel)+'" aria-label="'+esc(t('updateNow')+' · '+fullLabel)+'">'+
       '<span class="update-title">'+updateIcon+(cli.channel==='dev'?'<span class="badge update-channel">DEV</span>':'')+'</span>'+
       '<span class="update-versions"><span class="update-from">'+esc(from)+'</span><span class="update-separator">→</span><span class="update-to">'+esc(to)+'</span></span></button>';
-    $('#globalVersionUpdateBtn')?.addEventListener('click',async e=>{
-      const detail=await loadReleaseNoteDetail(cli.latest||'');
-      if(detail){
-        state.releaseNotePopup=detail; state.releaseNotePopupMode='available';
-        renderReleaseNoteModal(); return;
-      }
-      performUpgrade(e.currentTarget);
-    });
+    $('#globalVersionUpdateBtn')?.addEventListener('click',()=>openUpgradeDetails(cli.latest||''));
     return;
   }
   if(projectMatches && project.migration_available){
@@ -1196,23 +1177,42 @@ async function refreshAndCheckUpdates(){
   manualRefreshInFlight=false;
 }
 
-async function performUpgrade(button) {
-  if(button){button.disabled=true;button.textContent=t('upgrading');}
-  const content=$('#content');
-  try{
-    const r=await fetch('/api/upgrade',{method:'POST',headers:{'X-Task-Mecca-Action':'1'}});
-    const body=await r.json();
-    if(!r.ok)throw new Error(body.error||'Upgrade failed');
-    if(body.restart_required && body.to && body.to!==body.from){
-      if(content)content.innerHTML=`<div class="upgrade-restart"><div class="upgrade-spinner"></div><h2>Task Mecca ${esc(body.to)}로 업그레이드했습니다</h2><p>Web 서버를 재시작하고 있습니다. 완료되면 이 페이지가 자동으로 새로고침됩니다.</p></div>`;
-      await waitForRestartedWeb(body.to);
-      return;
-    }
-    await refreshVersionInfo(true);
-  }catch(e){
-    alert(String(e?.message||e));
-    if(button){button.disabled=false;renderGlobalUpdateIndicator();}
+async function performUpgrade() {
+ // One click must create one transaction. Even if the DOM is re-rendered
+ // during a long download, another click cannot start a second attempt.
+ if(['notes','checking','downloading','verifying','installing','restarting'].includes(upgradeFlowMode))return;
+ const session=++upgradeFlowSession;
+ stopUpgradeFlowTimers();
+ upgradeFlowStartedAt=Date.now();
+ const cli=state.versionInfo?.cli||state.hub?.cli||{};
+ upgradeFlowTarget=String(cli.current||'-')+' → '+String(cli.latest||'-');
+ state.releaseNotePopup=null;
+ state.releaseNotePopupMode='installed';
+ renderReleaseNoteModal();
+ setUpgradeFlowStage('checking');
+ startUpgradeFlowPolling(session);
+ try{
+  const r=await fetch('/api/upgrade',{method:'POST',headers:{'X-Task-Mecca-Action':'1'}});
+  const body=await r.json();
+  if(!r.ok)throw new Error(body.error||'Upgrade failed');
+  if(session!==upgradeFlowSession)return;
+  stopUpgradeFlowTimers();
+  if(body.restart_required && body.to && body.to!==body.from){
+   setUpgradeFlowStage('restarting');
+   const recovered=await waitForRestartedWeb(body.to);
+   if(recovered===false && session===upgradeFlowSession){
+    stopUpgradeFlowTimers();
+    setUpgradeFlowStage('failed',upgradeFlowCopy().restartError);
+   }
+   return;
   }
+  setUpgradeFlowStage('completed');
+  await refreshVersionInfo(true);
+ }catch(error){
+  if(session!==upgradeFlowSession)return;
+  stopUpgradeFlowTimers();
+  setUpgradeFlowStage('failed',String(error?.message||error));
+ }
 }
 
 async function loadRuntimeHistory(page=1) {
@@ -3044,13 +3044,14 @@ async function waitForRestartedWeb(targetVersion) {
       const r=await fetch(`/api/health?restart_wait=${Date.now()}`,{cache:'no-store'});
       if(r.ok){
         const body=await r.json();
-        if(!targetVersion||normalizedVersion(body.version)===targetVersion){ location.reload(); return; }
+        if(!targetVersion||normalizedVersion(body.version)===targetVersion){ location.reload(); return true; }
       }
     } catch(_) {}
     await new Promise(resolve=>setTimeout(resolve,500));
   }
   const c=$('#content');
   if(c)c.innerHTML=`<div class="load-error"><h2>Task Mecca Web 재시작을 확인하지 못했습니다</h2><p>CLI 업데이트 자체는 완료됐을 수 있습니다. 터미널에서 <code>task-mecca web status</code>로 상태를 확인하고, 이전 버전이 계속 실행 중이면 <code>task-mecca web restart</code>를 실행한 뒤 이 페이지를 새로고침하세요.</p></div>`;
+  return false;
 }
 function migrationResyncPrompt(result) {
   const changed=(result.changed_instructions||[]).join(', ') || '-';
@@ -3118,7 +3119,7 @@ function bindHubActions() {
   const changes=$('#hubUpdateChangesBtn');
   if(changes)changes.addEventListener('click',showAvailableUpdateNotes);
   const up=$('#upgradeBtn');
-  if(up)up.addEventListener('click',e=>performUpgrade(e.currentTarget));
+  if(up)up.addEventListener('click',showAvailableUpdateNotes);
 }
 
 async function manageHubProject(button) {
