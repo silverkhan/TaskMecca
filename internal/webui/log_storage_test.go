@@ -1,8 +1,12 @@
 package webui
 
 import (
+    "encoding/json"
+    "net/http"
+    "net/http/httptest"
     "os"
     "path/filepath"
+    "strings"
     "testing"
 )
 
@@ -80,4 +84,37 @@ func TestLogStorageTruncateKeepsWriterDescriptor(t *testing.T) {
     if _,err=writer.WriteString("new log\n");err!=nil { t.Fatal(err) }
     data,err:=os.ReadFile(path)
     if err!=nil||string(data)!="new log\n" { t.Fatalf("append fd invalid: %q %v",data,err) }
+}
+
+func TestLogStorageHTTPAccessControls(t *testing.T) {
+    t.Setenv("TASK_MECCA_HOME",t.TempDir())
+    project:=t.TempDir()
+    if err:=os.MkdirAll(filepath.Join(project,"_task_mecca","data","backlog"),0700);err!=nil { t.Fatal(err) }
+    registerWebFixture(t,project)
+    handler,err:=Handler(project,"","test")
+    if err!=nil { t.Fatal(err) }
+    stopProjectAttentionFeedsForTest(t,project)
+    if err:=os.MkdirAll(filepath.Dir(WebLogPath()),0700);err!=nil { t.Fatal(err) }
+    if err:=os.WriteFile(WebLogPath(),[]byte("log to clear"),0600);err!=nil { t.Fatal(err) }
+    run:=func(method,body string, authorized bool)*httptest.ResponseRecorder {
+        req:=httptest.NewRequest(method,"/api/storage/logs",strings.NewReader(body))
+        if authorized { req.Header.Set("X-Task-Mecca-Action","1") }
+        response:=httptest.NewRecorder()
+        handler.ServeHTTP(response,req)
+        return response
+    }
+    response:=run(http.MethodGet,"",false)
+    if response.Code!=200 { t.Fatalf("GET status %d: %s",response.Code,response.Body.String()) }
+    var report struct { Items []LogStorageItem `json:"items"` }
+    if err:=json.Unmarshal(response.Body.Bytes(),&report);err!=nil||len(report.Items)!=5 {
+        t.Fatalf("report decoding: %+v %v",report,err)
+    }
+    response=run(http.MethodPost,`{"id":"web-service"}`,false)
+    if response.Code!=403 { t.Fatalf("unguarded write status %d",response.Code) }
+    response=run(http.MethodPost,`{"id":"execution-ledger"}`,true)
+    if response.Code!=400 { t.Fatalf("protected ledger status %d",response.Code) }
+    response=run(http.MethodPost,`{"id":"web-service"}`,true)
+    if response.Code!=200 { t.Fatalf("allowed cleanup %d: %s",response.Code,response.Body.String()) }
+    data,err:=os.ReadFile(WebLogPath())
+    if err!=nil||len(data)!=0 { t.Fatalf("cleanup failed: %q %v",data,err) }
 }
