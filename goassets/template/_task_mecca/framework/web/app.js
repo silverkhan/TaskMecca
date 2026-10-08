@@ -23,8 +23,8 @@ const state = {
   raw: false,
   lastFetch: 0,
   lastHubFetch: 0,
-  theme: (()=>{ const version=localStorage.getItem('task-mecca-palette-version'); if(version!=='2'){ localStorage.setItem('task-mecca-theme','dark'); return 'dark'; } return localStorage.getItem('task-mecca-theme') || 'dark'; })(),
-  palette: (()=>{ const saved=localStorage.getItem('task-mecca-palette'); const version=localStorage.getItem('task-mecca-palette-version'); if(version==='2') return ['mecca','slate'].includes(saved)?saved:'mecca'; localStorage.setItem('task-mecca-palette-version','2'); localStorage.setItem('task-mecca-palette','mecca'); return 'mecca'; })(),
+  theme: (()=>{ const preference=localStorage.getItem('task-mecca-theme'); return ['dark','light','system'].includes(preference)?preference:'dark'; })(),
+  palette: (()=>{ const saved=localStorage.getItem('task-mecca-palette'); const palette=['mecca','slate'].includes(saved)?saved:'mecca'; if(localStorage.getItem('task-mecca-palette-version')!=='2')localStorage.setItem('task-mecca-palette-version','2'); return palette; })(),
   manual: null,
   manualTab: 'quick',
   backlog: localStorage.getItem('task-mecca-backlog-folder') || '',
@@ -885,13 +885,12 @@ function maybeApplyStableBrandIntro() {
   if((cli.channel||'stable')!=='stable')return;
   const marker='task-mecca-stable-brand-intro-v1';
   if(localStorage.getItem(marker)==='1')return;
+  // The one-time branding migration must not overwrite an explicit choice.
+  // The initial default is already Mecca Dark; existing preferences win.
   localStorage.setItem('task-mecca-palette-version','2');
-  localStorage.setItem('task-mecca-palette','mecca');
-  localStorage.setItem('task-mecca-theme','dark');
   localStorage.setItem(marker,'1');
-  state.palette='mecca';
-  state.theme='dark';
-  applyTheme();
+  applyPalette(state.palette);
+  applyTheme(state.theme);
 }
 
 async function refreshVersionInfo(force=false) {
@@ -4366,19 +4365,32 @@ async function setLanguage(value) {
   if(document.querySelector('.mermaid-wrap')) renderMermaidDiagrams(true);
 }
 
+function syncThemeBrowserChrome() {
+  const effective=effectiveTheme(),mecca=state.palette==='mecca';
+  const background=mecca
+    ?(effective==='dark'?'#0a0e1b':'#f7f3f8')
+    :(effective==='dark'?'#111318':'#f7f8fa');
+  document.documentElement.style.colorScheme=effective;
+  // The inline background only protects the first paint. Once app.js is
+  // loaded, stylesheet colors and the body gradient take over.
+  document.documentElement.style.removeProperty('background-color');
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content',background);
+}
 function applyPalette(value) {
   state.palette=['mecca','slate'].includes(value)?value:'mecca';
   document.documentElement.dataset.palette=state.palette;
   localStorage.setItem('task-mecca-palette',state.palette);
+  syncThemeBrowserChrome();
   const picker=$('#palettePicker');if(picker)picker.value=state.palette;
   if (document.querySelector('.mermaid-wrap')) renderMermaidDiagrams(true);
 }
 
 function applyTheme(value) {
-  state.theme=['system','light','dark'].includes(value)?value:'system';
+  state.theme=['system','light','dark'].includes(value)?value:'dark';
   document.documentElement.dataset.theme=effectiveTheme();
   document.documentElement.dataset.themePreference=state.theme;
   localStorage.setItem('task-mecca-theme',state.theme);
+  syncThemeBrowserChrome();
   document.querySelectorAll('[data-theme-choice]').forEach(b=>{b.classList.toggle('active',b.dataset.themeChoice===state.theme);b.setAttribute('aria-pressed',b.dataset.themeChoice===state.theme?'true':'false')});
   if (document.querySelector('.mermaid-wrap')) renderMermaidDiagrams(true);
 }
@@ -4387,7 +4399,7 @@ applyPalette(state.palette);
 applyTheme(state.theme);
 document.querySelectorAll('[data-theme-choice]').forEach(b=>b.addEventListener('click',()=>applyTheme(b.dataset.themeChoice)));
 $('#palettePicker')?.addEventListener('change',e=>applyPalette(e.target.value));
-window.matchMedia?.('(prefers-color-scheme: dark)').addEventListener?.('change',()=>{if(state.theme==='system'){document.documentElement.dataset.theme=effectiveTheme();renderMermaidDiagrams(true)}});
+window.matchMedia?.('(prefers-color-scheme: dark)').addEventListener?.('change',()=>{if(state.theme==='system'){document.documentElement.dataset.theme=effectiveTheme();syncThemeBrowserChrome();renderMermaidDiagrams(true)}});
 $('#languagePicker').addEventListener('change',e=>setLanguage(e.target.value));
 let searchRefreshTimer=0;
 function bindBacklogListTools() {

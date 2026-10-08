@@ -36,9 +36,23 @@ func TestSignatureThemeBranding(t *testing.T) {
 		t.Fatal(err)
 	}
 	appJS := string(appAsset)
-	for _, needle := range []string{"task-mecca-palette-version", "localStorage.setItem('task-mecca-theme','dark')", "localStorage.setItem('task-mecca-palette','mecca')", "task-mecca-stable-brand-intro-v1", "if((cli.channel||'stable')!=='stable')return", "localStorage.setItem(marker,'1')"} {
+	for _, needle := range []string{"task-mecca-palette-version", "['dark','light','system'].includes(preference)", "syncThemeBrowserChrome()", "task-mecca-stable-brand-intro-v1", "if((cli.channel||'stable')!=='stable')return", "localStorage.setItem(marker,'1')"} {
 		if !contains(appJS, needle) {
 			t.Fatalf("app.js missing signature migration marker %q", needle)
+		}
+	}
+
+	// The bootstrap must run before the stylesheet is parsed.
+	if strings.Index(html, "/theme-boot.js") < 0 || strings.Index(html, "/theme-boot.js") > strings.Index(html, "/style.css") {
+		t.Fatal("theme bootstrap must precede the stylesheet")
+	}
+	boot, err := goassets.Template.ReadFile(embeddedRoot + "/web/theme-boot.js")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, needle := range []string{"task-mecca-theme", "task-mecca-palette", "themePreference", "prefers-color-scheme: dark"} {
+		if !contains(string(boot), needle) {
+			t.Fatalf("theme bootstrap missing %q", needle)
 		}
 	}
 
@@ -150,6 +164,7 @@ func TestHandlerServesDashboardAPIsAndAssets(t *testing.T) {
 		{"/api/tasks/A-1", 200, "application/json"},
 		{"/api/manual?lang=en", 200, "application/json"},
 		{"/", 200, "text/html"},
+		{"/theme-boot.js", 200, "javascript"},
 		{"/app.js", 200, "javascript"},
 		{"/sw.js", 200, "javascript"},
 		{"/style.css", 200, "text/css"},
@@ -173,6 +188,15 @@ func TestHandlerServesDashboardAPIsAndAssets(t *testing.T) {
 	handler.ServeHTTP(rec, req)
 	if !contains(rec.Body.String(), "releaseUnreadPrompt") {
 		t.Fatal("release unread prompt container missing from Web shell")
+	}
+
+	// The existing self-only CSP must allow the bootstrap without unsafe-inline.
+	req = httptest.NewRequest(http.MethodGet, "/", nil)
+	rec = httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	csp := rec.Header().Get("Content-Security-Policy")
+	if !contains(csp, "script-src 'self'") || contains(csp, "'unsafe-eval'") || contains(csp, "script-src 'unsafe-inline'") {
+		t.Fatalf("theme bootstrap requires the existing self-only CSP, got %q", csp)
 	}
 
 	req = httptest.NewRequest(http.MethodGet, "/app.js", nil)
