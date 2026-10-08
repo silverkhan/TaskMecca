@@ -76,3 +76,20 @@ test('Web types are independent and support finalize in Push type synchronizatio
  assert.equal(app.currentPushKinds('/demo').finalize,false);
  assert.equal(Object.keys(app.currentPushKinds('/demo')).length,9);
 });
+
+test('mobile notification switches are atomic and never leak accessibility text',async()=>{
+ const app=page();
+ await app.loadProjectNotificationSettings();
+ const markup=app.projectChannelSettingsMarkup()+app.notificationOverviewMarkup();
+ assert.match(markup,/role="switch"/);
+ assert.match(markup,/aria-checked="(?:true|false)"/);
+ assert.match(markup,/aria-label="/);
+ assert.doesNotMatch(markup,/notice-switch-track|class="sr-only"|>Off<\/span>|>On<\/span>/);
+ // Nine event types across two channels and two projects plus masters.
+ assert.equal((markup.match(/role="switch"/g)||[]).length,2*(9*2+2)+2);
+ const css=fs.readFileSync('goassets/template/_task_mecca/framework/web/style.css','utf8');
+ assert.match(css,/\.notice-switch::before\s*\{/);
+ assert.match(css,/\.notice-switch::after\s*\{/);
+ assert.match(css,/\.notice-switch\.is-on::after\s*\{/);
+ assert.doesNotMatch(css,/\.notice-switch-track/);
+});
