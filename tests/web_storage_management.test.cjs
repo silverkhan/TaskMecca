@@ -107,6 +107,6 @@ test('storage language uses accurate English agent record labels and inclusion n
  assert.match(html,/Detailed execution events/);
  assert.match(html,/Completed execution summaries/);
  assert.match(html,/Raw files protected from cleanup/);
- assert.match(html,/already included in detailed execution events/);
+ assert.match(html,/already included in detailed execution events/i);
  assert.match(html,/No records meet all cleanup conditions|Why records are protected/);
 });
