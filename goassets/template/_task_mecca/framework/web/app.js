@@ -2541,6 +2541,9 @@ async function setAllTelegramChannelsEnabled(enabled){
 }
 async function setNotificationSwitch(input){
  const project=input.dataset.centerProject,channel=input.dataset.centerChannel,next=input.getAttribute('aria-checked')!=='true';
+ input.setAttribute('aria-checked',String(next));
+ input.classList.toggle('is-on',next);
+ input.setAttribute('aria-busy','true');
  input.disabled=true;
  try{
   if(input.id==='centerGlobalTelegramChannel')await setAllTelegramChannelsEnabled(next);
@@ -2560,6 +2563,11 @@ async function setNotificationSwitch(input){
   const projectOpen=[...document.querySelectorAll('.notice-project[open]')].map(d=>d.querySelector('.notice-project-path')?.textContent);
   renderNotificationPanel();
   [...document.querySelectorAll('.notice-project')].forEach(d=>{if(projectOpen.includes(d.querySelector('.notice-project-path')?.textContent))d.open=true;});
+  const controls=[...document.querySelectorAll('.notice-switch')];
+  const focus=controls.find(button=>input.id?button.id===input.id:
+    button.dataset.centerProject===project&&
+    (channel?button.dataset.centerChannel===channel:input.dataset.centerWebKind?button.dataset.centerWebKind===input.dataset.centerWebKind:button.dataset.centerTelegramKind===input.dataset.centerTelegramKind));
+  focus?.focus?.({preventScroll:true});
  }
 }
 function bindCenterChannelSettings(panel){
