@@ -3735,7 +3735,23 @@ function applySidebarState() {
   shell?.classList.toggle('sidebar-peek',state.sidebarMode==='auto' && state.sidebarPeek);
   shell?.setAttribute('data-sidebar-mode',state.sidebarMode);
   const isMobile=window.matchMedia('(max-width:680px)').matches;
-  shell?.classList.toggle('mobile-nav-open',isMobile && state.mobileNavOpen);
+  const mobileOpen=isMobile && state.mobileNavOpen;
+  shell?.classList.toggle('mobile-nav-open',mobileOpen);
+  document.body.classList.toggle('mobile-nav-visible',mobileOpen);
+  const scrim=$('#mobileSidebarScrim');
+  if(scrim)scrim.hidden=!mobileOpen;
+  const panel=$('#mobileSidebarPanel');
+  if(panel){
+    if(mobileOpen){
+      panel.setAttribute('role','dialog');
+      panel.setAttribute('aria-modal','true');
+      panel.setAttribute('aria-label',state.language==='ko'?'모바일 메뉴':'Mobile navigation');
+    }else{
+      panel.removeAttribute('role');
+      panel.removeAttribute('aria-modal');
+      panel.removeAttribute('aria-label');
+    }
+  }
   const btn=$('#sidebarToggle');
   if(!btn)return;
   if(isMobile){
@@ -3760,10 +3776,24 @@ function setSidebarMode(mode) {
   applySidebarState();
   scheduleAutoListPageSize();
 }
+function closeMobileNav(restoreFocus=false){
+  if(!state.mobileNavOpen)return;
+  state.mobileNavOpen=false;
+  state.projectMenuOpen=false;
+  applySidebarState();
+  if(restoreFocus)$('#sidebarToggle')?.focus({preventScroll:true});
+}
 function toggleSidebar() {
   if(window.matchMedia('(max-width:680px)').matches){
-    state.mobileNavOpen=!state.mobileNavOpen;
-    applySidebarState();
+    if(state.mobileNavOpen){
+      closeMobileNav();
+    }else{
+      state.mobileNavOpen=true;
+      applySidebarState();
+      const panel=$('#mobileSidebarPanel');
+      const selected=panel?.querySelector('.nav-item.active');
+      (selected||panel?.querySelector('#hubNavBtn')||panel?.querySelector('button'))?.focus({preventScroll:true});
+    }
     return;
   }
   setSidebarMode(state.sidebarMode==='expanded'?'compact':'expanded');
@@ -4383,11 +4413,15 @@ $('#refreshBtn').onclick=refreshAndCheckUpdates;
 $('#notificationBtn')?.addEventListener('click',()=>{state.notificationCenterTab='settings';navigate(null,'notifications');});
 document.addEventListener('click',e=>{const panel=$('#notificationPanel');if(panel?.classList.contains('open')&&!panel.contains(e.target)&&!$('#notificationBtn')?.contains(e.target))panel.classList.remove('open')});
 $('#sidebarToggle').onclick=toggleSidebar;
+$('#mobileSidebarScrim')?.addEventListener('click',()=>closeMobileNav(true));
 $('#sidebar')?.addEventListener('click',event=>{
-  if(window.matchMedia('(max-width:680px)').matches && event.target.closest('.nav-item,.session-open')){
-    state.mobileNavOpen=false;
-    applySidebarState();
-  }
+  if(!window.matchMedia('(max-width:680px)').matches)return;
+  const item=event.target.closest('.nav-item,.session-open,[data-add-project]');
+  // Opening the project picker does not navigate and must keep the panel visible.
+  if(item && item.id!=='openProjectBtn')closeMobileNav();
+});
+window.addEventListener('resize',()=>{
+  if(state.mobileNavOpen && !window.matchMedia('(max-width:680px)').matches)closeMobileNav();
 });
 bindChannelGesture();
 $('#sidebar')?.addEventListener('mouseenter',()=>{if(state.sidebarMode==='auto'){state.sidebarPeek=true;applySidebarState();}});
@@ -4396,6 +4430,26 @@ $('#sidebar')?.addEventListener('focusin',()=>{if(state.sidebarMode==='auto'){st
 $('#sidebar')?.addEventListener('focusout',e=>{if(state.sidebarMode==='auto'&&!e.currentTarget.contains(e.relatedTarget)){state.sidebarPeek=false;applySidebarState();}});
 
 document.addEventListener('keydown',e=>{
+  if(state.mobileNavOpen && window.matchMedia('(max-width:680px)').matches){
+    if(e.key==='Escape'){
+      e.preventDefault();
+      closeMobileNav(true);
+      return;
+    }
+    if(e.key==='Tab'){
+      const panel=$('#mobileSidebarPanel');
+      const focusables=Array.from(panel?.querySelectorAll('button:not([disabled]),a[href],input:not([disabled]),select:not([disabled])')||[])
+        .filter(item=>item.getClientRects().length>0 && !item.closest('[hidden]'));
+      if(focusables.length){
+        const first=focusables[0],last=focusables[focusables.length-1],active=document.activeElement;
+        if(e.shiftKey && (active===first || !panel.contains(active))){
+          e.preventDefault();last.focus();
+        }else if(!e.shiftKey && (active===last || !panel.contains(active))){
+          e.preventDefault();first.focus();
+        }
+      }
+    }
+  }
   if(document.querySelector('.hub-confirm-overlay'))return;
   if(document.activeElement?.closest?.('#userAttention'))return;
   if(e.key==='Escape'&&$('#notificationPanel')?.classList.contains('open')){e.preventDefault();$('#notificationPanel').classList.remove('open');restoreNotificationPanelFocus();return;}
