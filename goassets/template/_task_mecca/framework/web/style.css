@@ -1320,13 +1320,6 @@ body.release-modal-open{overflow:hidden}
     grid-template-rows:36px;min-height:0;padding:9px 12px;
   }
 }
-@media(max-width:350px){
-  .topbar{
-    grid-template-areas:"palette language . refresh" "theme theme . ." "version version version version";
-    grid-template-rows:34px 32px 30px;
-  }
-  .topbar #globalUpdateIndicator{justify-self:start}
-}
 /* Ephemeral, non-interactive status text: no outlined button or drop shadow. */
 .topbar .refresh-feedback{
   position:fixed;z-index:90;top:auto;right:auto;
