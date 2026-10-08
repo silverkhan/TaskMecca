@@ -4037,6 +4037,8 @@ let refreshQueued=false;
 let hubFetchInFlight=null;
 let listRefreshInFlight=null;
 let listRefreshQueued=false;
+let listRefreshContext='';
+let listRefreshAbort=null;
 
 function listNotificationPayload(data) {
   const current={...(data?.attention_items||{})};
@@ -4155,6 +4157,16 @@ async function refreshListSummary(){
 async function refreshList(preserveSelection=false) {
  if(!state.project)return;
  const currentContext=listContextKey();
+ // A former project's in-flight fetch must never delay opening a new one.
+ // Abort only when the query context changes; same-context refreshes keep
+ // their existing coalescing semantics.
+ if(listRefreshInFlight && listRefreshContext!==currentContext){
+  listRefreshAbort?.abort();
+  listRefreshInFlight=null;
+  listRefreshAbort=null;
+  listRefreshContext='';
+  listRefreshQueued=false;
+ }
  if(state.listData&&state.listDataContext&&state.listDataContext!==currentContext){state.listData=null;state.listRevalidating=true;if(state.view==='backlog')render();}
  if(listRefreshInFlight){
   const cache=listPageCaches.get(listContextKey()),cached=cache?.pages.get(state.listPage||1);
@@ -4170,8 +4182,10 @@ async function refreshList(preserveSelection=false) {
  const isCurrent=()=>targetProject===state.project&&targetBacklog===state.backlog&&targetQuery===listQueryString()&&targetView===state.view&&targetDetail===state.detail&&listCacheEpoch(source)===epoch&&listPageCaches.get(key)===cache;
  const cached=cache.pages.get(requestedPage);
  if(cached && !preserveSelection){state.listData=cachedListRows(cached,listContextKey());state.listDataContext=listContextKey();state.listRevalidating=true;state.loadError='';if(state.view==='backlog')render();}
- listRefreshInFlight=(async()=>{try{
-  const r=await fetch('/api/backlog/tasks?'+targetQuery,{cache:'no-store'});
+ const controller=new AbortController();
+ listRefreshAbort=controller;listRefreshContext=key;
+ const request=(async()=>{try{
+  const r=await fetch('/api/backlog/tasks?'+targetQuery,{cache:'no-store',signal:controller.signal});
   if(!r.ok){let detail='';try{detail=(await r.json()).error||'';}catch(_){}throw new Error(detail||`HTTP ${r.status}`);}
   const data=await r.json();if(!isCurrent())return;
   cache.current=Math.max(1,Number(data.page)||1);storeListPage(key,data,epoch,source);
@@ -4188,7 +4202,15 @@ async function refreshList(preserveSelection=false) {
   const acceptedQuery=listQueryString();
   requestAnimationFrame(()=>requestAnimationFrame(()=>{if(targetProject===state.project&&targetBacklog===state.backlog&&acceptedQuery===listQueryString()&&targetView===state.view&&targetDetail===state.detail&&listCacheEpoch(source)===epoch&&listPageCaches.get(key)===cache)prefetchListPages(acceptedQuery,data,epoch,source);}));
  }catch(e){if(!isCurrent())return;state.listRevalidating=false;state.loadError=String(e?.message||e||'Unknown error');$('#connectionDot').style.background='var(--danger)';if(!state.listData)render();}
- finally{listRefreshInFlight=null;if(listRefreshQueued){listRefreshQueued=false;queueMicrotask(()=>refreshList());}}})();return listRefreshInFlight;
+ finally{
+  // A canceled earlier request must not clear or queue over a newer one.
+  if(listRefreshInFlight===request){
+   listRefreshInFlight=null;listRefreshAbort=null;listRefreshContext='';
+   if(listRefreshQueued){listRefreshQueued=false;queueMicrotask(()=>refreshList());}
+  }
+ }})();
+ listRefreshInFlight=request;
+ return request;
 }
 
 function closeAttentionStream() {
