@@ -1689,3 +1689,42 @@ body.release-modal-open{overflow:hidden}
 .notice-per-project-channels .notice-switch:disabled.is-on::after{
  transform:translateX(20px);
 }
+
+
+/* Release 0-2 / AID-123: a single system-level storage management page. */
+.storage-management{display:grid;gap:18px;width:100%;max-width:1100px;margin:0 auto;padding-bottom:30px}
+.storage-management .page-head{margin-bottom:0}
+.storage-toolbar{display:flex;justify-content:space-between;align-items:end;flex-wrap:wrap;gap:12px}
+.storage-toolbar label{display:grid;gap:5px;color:var(--muted);font-size:12px;flex:1;min-width:190px;max-width:520px}
+.storage-toolbar select{width:100%;min-width:0;padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:var(--surface);color:var(--text)}
+.storage-toolbar .action-btn{min-height:39px}
+.storage-overview-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.storage-overview-card{display:grid;gap:8px;min-width:0;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px}
+.storage-overview-card>span{font-size:12px;color:var(--muted);font-weight:600}
+.storage-overview-card strong{font-size:clamp(18px,2vw,25px);font-variant-numeric:tabular-nums;color:var(--text);overflow-wrap:anywhere}
+.storage-overview-card small{font-size:11px;color:var(--muted);line-height:1.5}
+.storage-scope-note{margin:-6px 0 0;padding:11px 12px;border-left:3px solid var(--accent);border-radius:0 8px 8px 0;background:var(--surface2);font-size:12px;line-height:1.55;color:var(--muted)}
+.storage-management-section{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px;min-width:0}
+.storage-management-section>h2{margin:0 0 13px;font-size:15px;font-weight:750}
+.storage-management-section .log-storage{margin:0;max-width:none;border:0;padding:0;background:transparent}
+.storage-management-section .log-storage-head h2{font-size:13px}
+.storage-runtime-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}
+.storage-runtime-grid>div{display:grid;gap:6px;padding:13px;border:1px solid var(--border);border-radius:10px;background:var(--surface2);min-width:0}
+.storage-runtime-grid span{font-size:11px;color:var(--muted);line-height:1.4}
+.storage-runtime-grid strong{font-size:16px;word-break:break-word;font-variant-numeric:tabular-nums}
+.storage-runtime-summary{margin:13px 0;color:var(--muted);font-size:12px;line-height:1.6}
+.storage-runtime-actions{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px}
+.storage-runtime-actions strong{font-size:13px}
+.hub-storage-link{display:flex;flex-direction:column;align-items:flex-start;gap:8px;margin-top:18px;padding:17px;border:1px solid var(--border);border-radius:12px;background:var(--surface)}
+.hub-storage-link strong{font-size:14px}
+.hub-storage-link p{margin:0;color:var(--muted);font-size:12px}
+@media(max-width:680px){
+ .storage-overview-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+ .storage-overview-card{padding:12px}
+ .storage-overview-card:last-child{grid-column:1/-1}
+ .storage-runtime-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .storage-management-section{padding:12px}
+ .storage-toolbar{align-items:stretch}
+ .storage-toolbar label{max-width:none}
+ .storage-toolbar .action-btn{width:100%}
+}
