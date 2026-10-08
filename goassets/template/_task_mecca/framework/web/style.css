@@ -1273,7 +1273,7 @@ body.release-modal-open{overflow:hidden}
 }
 .sidebar-mode-selector::before{
   content:"";position:absolute;z-index:0;left:3px;top:3px;bottom:3px;
-  width:calc((100% - 6px)/3);border:1px solid var(--border);border-radius:8px;
+  width:calc(33.333333% - 2px);border:1px solid var(--border);border-radius:8px;
   background:var(--surface);box-shadow:0 1px 4px rgba(0,0,0,.08);
   pointer-events:none;transition:transform .2s ease;
 }
