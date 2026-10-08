@@ -3358,7 +3358,9 @@ function detailView(task) {
   const timingInferred=Boolean(lc.lifecycle_inferred), timingIncomplete=Boolean(lc.timing_incomplete);
   const lifecyclePreview=events.length?`${lifecycleEventLabel(events[events.length-1].label)} · ${dateTimeLabel(events[events.length-1].at,true)}`:t('noLifecycle');
   const lifecycleBody=`${timingInferred?`<div class="timing-note"><strong>${esc(t('provisionalTiming'))}</strong><span>${esc(t('provisionalTimingDetail'))}</span></div>`:''}${timingIncomplete?`<div class="timing-note warning"><strong>${esc(t('incompleteHistory'))}</strong><span>${esc(t('incompleteHistoryDetail'))}</span></div>`:''}${events.length?`<div class="timeline">${events.map(e=>`<div class="timeline-event"><span class="timeline-dot"></span><span class="timeline-time">${esc(new Date(e.at).toLocaleString(localeCode()))}</span><div class="timeline-label"><strong>${esc(lifecycleEventLabel(e.label))}${e.provisional?` · ${esc(t('provisional'))}`:''}</strong><small>${e.interval&&e.interval!=='-'?`${esc(t('stayed'))} ${esc(e.interval)}`:''}${lifecycleEvidenceLabel(e)?` · ${esc(lifecycleEvidenceLabel(e))}`:''}</small></div></div>`).join('')}</div>`:`<p class="summary">${esc(t('noLifecycle'))}</p>`}`;
-  const lifecycle=`<section class="section detail-section lifecycle-section" id="lifecycle" data-toc-label="${esc(t('lifecycle'))}"><h2>${esc(t('lifecycle'))}</h2>${lifecycleBody}</section>`;
+  const lifecycleLiveAt=lc.current_state_at && !['done','completed','cancelled','canceled'].includes(lc.current_state||task.file_state) ? new Date(lc.current_state_at).getTime() : NaN;
+  const lifecycleLive=Number.isFinite(lifecycleLiveAt) ? `<div class="lifecycle-current-elapsed"><span>${esc(state.language==='ko'?'현재 단계 경과':'Current stage elapsed')}</span> <strong class="live-lifecycle-elapsed" data-state-at="${esc(lc.current_state_at)}">${esc(fmtSec(Math.max(0,(Date.now()-lifecycleLiveAt)/1000)))}</strong></div>` : '';
+  const lifecycle=`<section class="section detail-section lifecycle-section" id="lifecycle" data-toc-label="${esc(t('lifecycle'))}"><h2>${esc(t('lifecycle'))}</h2>${lifecycleLive}${lifecycleBody}</section>`;
   const passiveAlert=!reason&&warn?`<div class="attention-banner ${['stale','worker_missing'].includes(act.health)?'danger':''}"><strong>${esc(healthLabel(act.health))}</strong><span>${esc(t('lastObservable',{ago:ago(act.last_activity_at),source:act.last_activity_source}))} ${esc(act.health==='worker_missing'?t('workerMissingDetail'):t('quietAdvisory'))}</span></div>`:'';
   const sectionSummaries=task.document?.section_summaries||{};
   const progressBody=`<h3>${esc(t('workNotes'))}</h3><div class="markdown">${markdown(task.document?.notes||task.fields?.메모)}</div><h3>${esc(t('result'))}</h3><div class="markdown">${markdown(task.document?.result||task.fields?.결과)}</div>`;
@@ -4139,6 +4141,10 @@ setInterval(()=>{
     (state.listData?.items||[]).forEach(task=>{byID[task.id]=task});
     Object.assign(byID,state.snapshot?.all_items||{});
     document.querySelectorAll('.live-timer').forEach(el=>{const task=byID[el.dataset.id];if(task)el.textContent=fmtSec(runningSeconds(task,'active'))});
+    document.querySelectorAll('.live-lifecycle-elapsed').forEach(el=>{
+      const started=new Date(el.dataset.stateAt||'').getTime();
+      if(Number.isFinite(started))el.textContent=fmtSec(Math.max(0,(Date.now()-started)/1000));
+    });
     document.querySelectorAll('.runtime-elapsed').forEach(el=>{
       const ended=el.dataset.endedAt||'', started=el.dataset.startedAt||'';
       if(ended||!started){el.textContent=fmtSec(Number(el.dataset.elapsedMs||0)/1000);return}
