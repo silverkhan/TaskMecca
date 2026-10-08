@@ -1341,6 +1341,35 @@ body.release-modal-open{overflow:hidden}
 }
 .update-version-compact{display:none}
 .update-channel{flex:0 0 auto}
+/* Project migration shares the same available width and two-row placement as
+   software updates, but preserves the purple migration status treatment. */
+.migration-arrow-icon{color:var(--accent)}
+.migration-label-full,.migration-label-short,.migration-label-tiny{flex:0 0 auto;font-weight:700}
+.migration-label-short,.migration-label-tiny{display:none}
+.migration-version-full,.migration-version-compact,.migration-version-tiny{
+  white-space:nowrap;min-width:0;font-variant-numeric:tabular-nums;
+  color:var(--text);font-weight:700;
+}
+.migration-version-compact,.migration-version-tiny{display:none}
+@media(max-width:680px){
+  .topbar .global-update-pill.migration{
+    width:100%;min-width:0;max-width:100%;display:flex;
+    align-items:center;justify-content:flex-start;gap:5px;
+    overflow:hidden;
+  }
+}
+@container update-badge (max-width:540px){
+  .migration-label-full,.migration-version-full{display:none}
+  .migration-label-short,.migration-version-compact{display:inline}
+}
+@container update-badge (max-width:310px){
+  .migration-label-short{display:none}
+  .migration-label-tiny{display:inline}
+}
+@container update-badge (max-width:265px){
+  .migration-version-compact{display:none}
+  .migration-version-tiny{display:inline}
+}
 @container update-badge (max-width:295px){
   .update-version-full{display:none}
   .update-version-compact{display:inline}
