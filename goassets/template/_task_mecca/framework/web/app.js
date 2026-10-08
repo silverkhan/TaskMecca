@@ -2347,12 +2347,17 @@ function nav() {
   const menu=state.projectMenuOpen?`<div class="project-open-menu">${closed.length?closed.map(p=>`<button type="button" data-add-project="${esc(p.path)}"><span>${esc(p.name)}</span><small>${esc(p.path)}</small></button>`).join(''):'<div class="project-open-empty">No closed projects</div>'}</div>`:'';
   $('#stateNav').innerHTML =
     `<div class="sidebar-label">SYSTEM</div><button class="nav-item ${state.view==='hub'?'active':''}" id="hubNavBtn" type="button"><span class="nav-main"><span class="nav-icon">⌂</span><span class="nav-text">Global Hub</span></span></button><div class="sidebar-label">BACKLOGS</div><div class="session-list">${sessionRows||'<div class="session-empty">No open backlogs</div>'}</div><button class="nav-item session-add" id="openProjectBtn" type="button"><span class="nav-main"><span class="nav-icon">＋</span><span class="nav-text">Open Project</span></span></button>${menu}`;
-  const sidebarModes=[['auto',state.language==='ko'?'자동 펼침':'Auto expand'],['expanded',state.language==='ko'?'펼침 고정':'Pin expanded'],['compact',state.language==='ko'?'최소화 고정':'Pin compact']];
+  const sidebarModes=[
+    ['auto',state.language==='ko'?'자동':'Auto',state.language==='ko'?'마우스를 올리거나 포커스를 옮기면 임시로 펼침':'Temporarily expand on hover or focus'],
+    ['expanded',state.language==='ko'?'펼침':'Expanded',state.language==='ko'?'항상 펼친 상태로 고정':'Keep the sidebar expanded'],
+    ['compact',state.language==='ko'?'최소화':'Compact',state.language==='ko'?'항상 최소화된 상태로 고정':'Keep the sidebar compact']
+  ];
   const modeSelector=document.createElement('div');
   modeSelector.className='sidebar-mode-selector';
+  modeSelector.dataset.mode=state.sidebarMode;
   modeSelector.setAttribute('role','group');
   modeSelector.setAttribute('aria-label',state.language==='ko'?'사이드바 표시 방식':'Sidebar display mode');
-  modeSelector.innerHTML=sidebarModes.map(([mode,label])=>`<button type="button" class="sidebar-mode-option ${state.sidebarMode===mode?'selected':''}" data-sidebar-mode="${mode}" aria-pressed="${state.sidebarMode===mode}" title="${esc(label)}">${esc(label)}</button>`).join('');
+  modeSelector.innerHTML=sidebarModes.map(([mode,label,description])=>`<button type="button" class="sidebar-mode-option ${state.sidebarMode===mode?'selected':''}" data-sidebar-mode="${mode}" aria-pressed="${state.sidebarMode===mode}" aria-label="${esc(label)}: ${esc(description)}" title="${esc(description)}">${esc(label)}</button>`).join('');
   $('#stateNav').prepend(modeSelector);
   modeSelector.querySelectorAll('[data-sidebar-mode]').forEach(button=>button.addEventListener('click',()=>{setSidebarMode(button.dataset.sidebarMode);render()}));
   $('#workloadCount').textContent = (state.snapshot?.workload?.agents || []).length || '';
@@ -3651,7 +3656,10 @@ function applySidebarState() {
 function setSidebarMode(mode) {
   if(!['auto','expanded','compact'].includes(mode))return;
   state.sidebarMode=mode;
-  state.sidebarPeek=false;
+  // When Auto is selected while the pointer or focus is inside the sidebar,
+  // keep the temporary overlay open until the user actually leaves.
+  const sidebar=$('#sidebar');
+  state.sidebarPeek=mode==='auto' && Boolean(sidebar?.matches(':hover')||sidebar?.contains(document.activeElement));
   localStorage.setItem('task-mecca-sidebar-mode',mode);
   applySidebarState();
   scheduleAutoListPageSize();
