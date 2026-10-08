@@ -3462,8 +3462,8 @@ function logStorageSection(){
     </div>`).join('');
   return `<section class="log-storage" aria-labelledby="logStorageHeading">
     <div class="log-storage-head"><div><h2 id="logStorageHeading">${esc(words.title)}</h2><p class="muted">${esc(words.intro)}</p></div></div>
-    <div class="log-storage-controls"><label>${esc(words.project)} <select id="logStorageProject" ${state.logStorageBusy?'disabled':''}>${choices||`<option value="">${esc(words.projectMissing)}</option>`}</select></label>
-      <button id="logStorageRefresh" type="button" class="action-btn secondary" ${state.logStorageBusy?'disabled':''}>${esc(words.reload)}</button></div>
+    ${state.view==='storage'?'':`    <div class="log-storage-controls"><label>${esc(words.project)} <select id="logStorageProject" ${state.logStorageBusy?'disabled':''}>${choices||`<option value="">${esc(words.projectMissing)}</option>`}</select></label>
+      <button id="logStorageRefresh" type="button" class="action-btn secondary" ${state.logStorageBusy?'disabled':''}>${esc(words.reload)}</button></div>`}
     <div id="logStorageFeedback" aria-live="polite">${status}</div>
     ${data?`<div class="log-storage-totals"><span>${esc(words.total)} <strong>${logBytes(data.total_bytes)}</strong></span><span>${esc(words.reclaim)} <strong>${logBytes(data.reclaimable_bytes)}</strong></span></div><div class="log-storage-items">${rows}</div>`:`<p class="muted">${esc(words.loading)}</p>`}
   </section>`;
@@ -3533,7 +3533,7 @@ function bindLogStorageActions(){
       state.logStorageError='';
       state.logStorageMessage=logStorageLabels().success+' · '+logBytes(payload.released_bytes);
     }catch(err){state.logStorageError=logStorageLabels().failed+': '+String(err?.message||err);}
-    finally{state.logStorageBusy=false;refreshLogStoragePanel();}
+    finally{state.logStorageBusy=false;refreshLogStoragePanel();if(state.view==='storage')void loadStorageManagement(false);}
   }));
 }
 
