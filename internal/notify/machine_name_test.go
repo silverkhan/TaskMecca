@@ -53,6 +53,7 @@ func TestTelegramSameBotIdentifiesMachineWithoutChangingDeliveryIdentity(t *test
  for i,machine:=range []string{"회사-Mac","집-Windows"}{
   t.Setenv("TASK_MECCA_MACHINE_NAME",machine)
   project:=filepath.Join(t.TempDir(),"프로젝트-동일명")
+  if err:=os.MkdirAll(project,0755);err!=nil{t.Fatal(err)}
   if err:=saveTelegram(project,TelegramConfig{Token:"same-bot",ChatID:321,Enabled:true,Kinds:defaultKinds(),ActivatedAt:now.Add(-time.Minute).Format(time.RFC3339Nano)});err!=nil{t.Fatal(err)}
   evt:=Event{ID:"same-event",TaskID:"B-8",Kind:"completed",Title:"B-8 완료 보고",Message:"상태 변경",At:now.Add(time.Duration(i)*time.Second).Format(time.RFC3339Nano)}
   if errs:=Deliver(project,[]Event{evt});len(errs)!=0{t.Fatal(errs)}
