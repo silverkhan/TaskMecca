@@ -1,6 +1,7 @@
 package install
 
 import (
+	"github.com/silverkhan/TaskMecca/goassets"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -47,8 +48,8 @@ func TestProtocolOnlyMigrationRequestsInstructionRefresh(t *testing.T) {
 	}
 }
 
-// Check the delivered instructions, including the Python package, rather than
-// just the source document: an omitted asset or stale role loses the procedure.
+// Check that installed instructions match the canonical framework embedded in
+// the standalone Go executable: an omitted asset or stale role loses the procedure.
 func TestDeliveredExecutionProtocol(t *testing.T) {
 	project := t.TempDir()
 	if err := Init(project, "0.2.1"); err != nil {
@@ -61,12 +62,12 @@ func TestDeliveredExecutionProtocol(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			python, err := os.ReadFile(filepath.Join("..", "..", "src", "task_mecca", "template", targetName, "framework", name))
+			canonical, err := goassets.Template.ReadFile("template/" + targetName + "/framework/" + name)
 			if err != nil {
 				t.Fatal(err)
 			}
-			if string(installed) != string(python) {
-				t.Fatalf("Go install and Python template differ: %s", name)
+			if string(installed) != string(canonical) {
+				t.Fatalf("installed framework differs from embedded Go template: %s", name)
 			}
 			if !strings.HasPrefix(name, "EXECUTION_PROTOCOL") && !strings.Contains(string(installed), "EXECUTION_PROTOCOL") {
 				t.Fatalf("role/guide lacks shared procedure: %s", name)
