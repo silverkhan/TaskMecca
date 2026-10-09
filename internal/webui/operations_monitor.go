@@ -479,9 +479,27 @@ func operationProjects(primary string) []string {
 	return projects
 }
 
+// Each active project needs the canonical registration/start/completion feed,
+// even when no browser tab is open. The operation scanner already discovers
+// registered projects, but its incident delivery covers only runtime alerts.
+func ensureOperationNotificationFeed(project string) {
+	ctx, err := webContext(project, "")
+	if err != nil {
+		return
+	}
+	selected, _, err := resolveBacklog(project, ctx, url.Values{})
+	if err != nil {
+		return
+	}
+	ensureAttentionFeed(project, selected)
+}
+
 func scanOperationProjects(primary string, now time.Time) {
 	for _, project := range operationProjects(primary) {
 		maintenance.WithProjectMonitoring(project, func() {
+			// The guard excludes stopped/archived/missing projects. Feed startup
+			// is idempotent and never depends on an SSE subscriber.
+			ensureOperationNotificationFeed(project)
 			journal, err := scanOperationProject(project, now)
 			if err == nil {
 				deliverOperationIncidents(project, journal)
