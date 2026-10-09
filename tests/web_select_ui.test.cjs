@@ -117,7 +117,7 @@ test('responsive picker label rules cannot hide the themed select wrapper (mobil
  for(const name of labels){
   // The old broad ".language-picker span{display:none}" also hid
   // <span class="tm-combo">, leaving only an empty box on Android.
-  assert.doesNotMatch(styles,new RegExp('\\.'+name+'\\s+span\\s*\\{\\s*display\\s*:\\s*none\\b'));
+  assert.doesNotMatch(styles,new RegExp('\\.'+name+'\\s+span(?=\\s*[,\\{])'));
   assert.match(styles,new RegExp('\\.'+name+'\\s*>\\s*span:not\\(\\.tm-combo\\)'));
  }
  assert.match(styles,/\.topbar \.language-picker > \.tm-combo/);
