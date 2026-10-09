@@ -1804,3 +1804,35 @@ body.release-modal-open{overflow:hidden}
 .storage-project-summary>small,.storage-project-summary>button{grid-column:1;grid-row:auto}
 .storage-project-summary>button{justify-self:start}
 }
+
+
+/* AID-130: one web-themed combobox on every device; native selects are kept
+   as the underlying value/change model and as the no-script fallback. */
+.tm-combo{position:relative;display:inline-flex;align-items:center;min-width:0;max-width:100%;font:inherit;vertical-align:middle}
+select.tm-combo-native{position:absolute!important;width:1px!important;height:1px!important;max-width:1px!important;min-width:0!important;clip-path:inset(50%)!important;opacity:0!important;pointer-events:none!important;border:0!important;padding:0!important;margin:0!important;overflow:hidden!important}
+.tm-combo-trigger{position:relative;display:block;width:100%;min-width:0;max-width:100%;padding:8px 29px 8px 10px;border:1px solid var(--border);border-radius:9px;background:var(--surface);color:var(--text);text-align:left;font:inherit;font-size:inherit;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;box-sizing:border-box}
+.tm-combo-trigger::after{content:"";position:absolute;right:12px;top:calc(50% - 4px);width:7px;height:7px;border-right:1.5px solid var(--muted);border-bottom:1.5px solid var(--muted);transform:rotate(45deg)}
+.tm-combo-trigger:hover:not(:disabled){border-color:var(--accent)}
+.tm-combo-trigger[aria-expanded="true"]{border-color:var(--accent);box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 25%,transparent)}
+.tm-combo-trigger:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.tm-combo-trigger:disabled{opacity:.45;cursor:not-allowed}
+.tm-combo-popup{position:fixed;z-index:12000;padding:5px;border:1px solid var(--border);border-radius:13px;background:var(--surface);box-shadow:0 16px 44px rgba(0,0,0,.30);color:var(--text);display:flex;flex-direction:column;overflow:hidden;min-width:0;max-width:calc(100vw - 18px);font-size:13px}
+.tm-combo-items{overflow:auto;overscroll-behavior:contain;flex:1;min-height:0;scrollbar-width:thin}
+.tm-combo-option{position:relative;display:flex;align-items:center;min-height:39px;padding:9px 31px 9px 12px;border-radius:8px;color:var(--text);line-height:1.4;overflow-wrap:anywhere;cursor:pointer}
+.tm-combo-option[aria-disabled="true"]{opacity:.35;cursor:not-allowed}
+.tm-combo-option.active:not([aria-disabled="true"]){background:var(--surface2)}
+.tm-combo-option.selected{font-weight:700;color:var(--text)}
+.tm-combo-option.selected::after{content:"✓";position:absolute;right:12px;color:var(--accent);font-weight:800}
+.tm-combo-option.active.selected{background:color-mix(in srgb,var(--accent) 15%,var(--surface))}
+.tm-combo-search{display:block;flex:none;width:100%;min-width:0;min-height:38px;padding:9px 10px;margin-bottom:5px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);font:inherit}
+.tm-combo-search:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.tm-combo-empty{margin:0;padding:12px;color:var(--muted);font-size:12px}
+.language-picker .tm-combo,.palette-picker .tm-combo{min-width:72px;flex:1}
+.language-picker .tm-combo-trigger,.palette-picker .tm-combo-trigger{border:0;background:transparent;padding:6px 18px 6px 2px;font-size:11px}
+.language-picker .tm-combo-trigger::after,.palette-picker .tm-combo-trigger::after{right:4px}
+.project-picker .tm-combo,.backlog-picker .tm-combo{flex:1;min-width:0}
+.project-picker .tm-combo-trigger,.backlog-picker .tm-combo-trigger{border:0;background:transparent;font-size:11px}
+.control-group .tm-combo,.storage-toolbar .tm-combo,.log-storage-controls .tm-combo{width:100%;max-width:100%}
+.control-group .tm-combo-trigger,.storage-toolbar .tm-combo-trigger,.log-storage-controls .tm-combo-trigger{min-height:39px}
+@media(max-width:680px){.tm-combo-popup{max-height:min(50vh,340px)}.tm-combo-option{min-height:43px}.tm-combo-trigger{min-height:35px}}
+@media(prefers-reduced-motion:reduce){.tm-combo-trigger,.tm-combo-popup{transition:none}}
