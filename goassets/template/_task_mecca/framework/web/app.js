@@ -89,6 +89,7 @@ const state = {
   projectNotificationSettings: [],
   projectNotificationSettingsLoading: false,
   projectNotificationSettingsLoaded: false,
+  telegramSetupInstance:'',telegramSetupBootPending:false,telegramSetupBootShown:false,
   projectNotificationSettingsError: '',
   operationRevision: '',
 };
@@ -2397,13 +2398,44 @@ function processTaskNotifications(snapshot,context={}) {
 // Telegram onboarding reflects confirmed server-side status only; it does not
 // read credentials or change delivery policy. Disabled projects are excluded.
 const TELEGRAM_SETUP_PREF_KEY='task-mecca-telegram-onboarding-v1';
-const TELEGRAM_SETUP_SNOOZE_MS=7*24*60*60*1000;
+// This key is per browser tab and per running Web service instance.
+// A browser reload must not replay the first-start guide.
+const TELEGRAM_SETUP_SEEN_KEY='task-mecca-telegram-onboarding-seen-instance-v2';
 function telegramSetupPreference(){
  try{const x=JSON.parse(localStorage.getItem(TELEGRAM_SETUP_PREF_KEY)||'{}');return x&&typeof x==='object'?x:{};}catch(_){return {};}
 }
 function telegramSetupMayPrompt(){
- const p=telegramSetupPreference();return p.mode!=='never'&&!(p.mode==='later'&&Number(p.until)>Date.now());
+ return state.telegramSetupBootPending&&telegramSetupPreference().mode!=='never';
 }
+function telegramSetupAlreadySeen(instance){
+ try{return typeof sessionStorage!=='undefined'&&sessionStorage.getItem(TELEGRAM_SETUP_SEEN_KEY)===instance;}catch(_){return false;}
+}
+function telegramSetupMarkSeen(){
+ const instance=state.telegramSetupInstance;
+ if(!instance||state.telegramSetupBootShown)return;
+ try{if(typeof sessionStorage!=='undefined')sessionStorage.setItem(TELEGRAM_SETUP_SEEN_KEY,instance);}catch(_){}
+ state.telegramSetupBootShown=true;
+}
+async function checkTelegramSetupInstance(){
+ try{
+  const response=await fetch('/api/health',{cache:'no-store'});
+  if(!response.ok)return;
+  const health=await response.json();
+  const instance=String(health.instance_id||'').trim();
+  if(!instance||instance===state.telegramSetupInstance)return;
+  state.telegramSetupInstance=instance;
+  state.telegramSetupBootShown=false;
+  state.telegramSetupBootPending=!telegramSetupAlreadySeen(instance);
+  // Service restarts can invalidate all cached settings. Refresh inventory.
+  await loadProjectNotificationSettings();
+  updateTelegramSetupGuideDOM();
+  if(state.view==='hub')render();
+ }catch(_){/* Never show an unverified setup prompt on a health failure. */}
+}
+function closeTelegramSetupOnNavigation(nextView){
+ if(state.telegramSetupBootShown&&state.view!==nextView)state.telegramSetupBootPending=false;
+}
+
 function telegramSetupSummary(){
  if(!state.projectNotificationSettingsLoaded)return null;
  const all=state.projectNotificationSettings||[];
@@ -2414,7 +2446,14 @@ function telegramSetupSummary(){
  const kind=target?(ready?'partial':target.status?.configured?'pending':'missing'):'ready';
  return {kind,ready,total:enabled.length,target};
 }
-function telegramSetupNeed(){const s=telegramSetupSummary();return s?.target&&telegramSetupMayPrompt()?s:null;}
+function telegramSetupNeed(){
+ const summary=telegramSetupSummary();
+ if(!summary?.target||!telegramSetupMayPrompt())return null;
+ // The automatic once-per-start onboarding is only for completely absent
+ // credentials. Partial connections are explained in notification settings.
+ if((state.projectNotificationSettings||[]).some(row=>row.status?.configured))return null;
+ return summary;
+}
 function telegramSetupGuideMarkup(hub=false){
  const s=telegramSetupNeed();if(!s)return '';
  const target=s.target,token=Boolean(target.status?.configured),connected=Boolean(target.status?.connected);
@@ -2440,16 +2479,27 @@ function updateTelegramSetupNavIndicator(){
  nav.title=description;nav.setAttribute('aria-label',description);
 }
 function setTelegramSetupPreference(action){
- const prefs=action==='never'?{mode:'never'}:{mode:'later',until:Date.now()+TELEGRAM_SETUP_SNOOZE_MS};
- try{localStorage.setItem(TELEGRAM_SETUP_PREF_KEY,JSON.stringify(prefs));}catch(_){}
+ // Later only dismisses this service-start prompt. A later Web service
+ // restart gets one new opportunity; explicit "never" stays persistent.
+ if(action==='never'){
+  try{localStorage.setItem(TELEGRAM_SETUP_PREF_KEY,JSON.stringify({mode:'never'}));}catch(_){}
+ }
+ state.telegramSetupBootPending=false;
  updateTelegramSetupNavIndicator();
  if(state.view==='hub')render();else updateTelegramSetupGuideDOM();
 }
 function updateTelegramSetupGuideDOM(){
- updateTelegramSetupNavIndicator();if(state.view!=='notifications')return;
- const guide=$('#telegramSetupGuide'),markup=telegramSetupGuideMarkup();
- if(guide){if(!markup)guide.remove();else if(guide.outerHTML!==markup)guide.outerHTML=markup;}
- else if(markup)document.querySelector('.notification-center-tabs')?.insertAdjacentHTML('afterend',markup);
+ updateTelegramSetupNavIndicator();
+ const hub=state.view==='hub',notification=state.view==='notifications';
+ const guide=$('#telegramSetupGuide')||$('#telegramHubOnboarding');
+ const markup=telegramSetupGuideMarkup(!notification);
+ if(guide){
+  if(!markup)guide.remove();
+  else if(guide.outerHTML!==markup)guide.outerHTML=markup;
+ }else if(markup){
+  if(notification)document.querySelector('.notification-center-tabs')?.insertAdjacentHTML('afterend',markup);
+  else $('#content')?.insertAdjacentHTML('afterbegin',markup);
+ }
  bindTelegramSetupActions();
 }
 function openTelegramSetupGuide(){
@@ -2469,7 +2519,9 @@ function openTelegramSetupGuide(){
  }
 }
 function bindTelegramSetupActions(){
- document.querySelectorAll('[data-telegram-onboard]').forEach(el=>{el.onclick=()=>{const a=el.dataset.telegramOnboard;if(a==='setup')openTelegramSetupGuide();else setTelegramSetupPreference(a);};});
+ const buttons=document.querySelectorAll('[data-telegram-onboard]');
+ if(buttons.length&&telegramSetupNeed())telegramSetupMarkSeen();
+ buttons.forEach(el=>{el.onclick=()=>{const a=el.dataset.telegramOnboard;if(a==='setup')openTelegramSetupGuide();else setTelegramSetupPreference(a);};});
 }
 function updateNotificationIndicator() {
   const btn=$('#notificationBtn'),badge=$('#notificationBadge');
