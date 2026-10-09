@@ -232,6 +232,11 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 	if initialErr != nil {
 		return nil, initialErr
 	}
+	// A fresh boot identifier distinguishes each actual Web process start.
+	// The managed service control identity intentionally remains stable across
+	// launchd KeepAlive restarts and must not be reused for onboarding.
+	bootID, bootErr := randomHex(12)
+	if bootErr != nil { return nil, bootErr }
 	monitorRoot := root
 	if selected, _, selectErr := resolveBacklog(project, initialCtx, url.Values{}); selectErr == nil && selected != "" {
 		monitorRoot = selected
@@ -305,7 +310,7 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 
 
 	mux.HandleFunc("/api/health", func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, map[string]any{"ok": true, "version": version, "instance_id": instanceID, "pid": os.Getpid(), "telegram_transport_disabled": notify.TelegramTransportDisabled()}, 200)
+		writeJSON(w, map[string]any{"ok": true, "version": version, "instance_id": instanceID, "boot_id": bootID, "pid": os.Getpid(), "telegram_transport_disabled": notify.TelegramTransportDisabled()}, 200)
 	})
 
 	mux.HandleFunc("/api/version", func(w http.ResponseWriter, r *http.Request) {
@@ -407,6 +412,34 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 			case restartCh <- result:
 			default:
 			}
+		}
+	})
+
+	// Reuse the same managed/detached restart handoff as upgrades without
+	// invoking the updater or changing the executable. Never restart a Web
+	// service as a child of the shell it is about to terminate.
+	mux.HandleFunc("/api/admin/restart", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			writeJSON(w, map[string]any{"error": "POST required"}, http.StatusMethodNotAllowed)
+			return
+		}
+		if r.Header.Get("X-Task-Mecca-Action") != "1" ||
+			!terminalAccessAllowed(r, readTerminalSecuritySettings()) ||
+			!terminalOriginAllowed(r) {
+			writeJSON(w, map[string]any{"error": "restart requires an authorized local or Tailscale terminal connection"}, http.StatusForbidden)
+			return
+		}
+		if restartCh == nil {
+			writeJSON(w, map[string]any{"error": "Web restart unavailable in this server mode"}, http.StatusServiceUnavailable)
+			return
+		}
+		// Enqueue before replying. The RunWeb loop schedules a detached
+		// launcher only after this response has been accepted by the browser.
+		select {
+		case restartCh <- maintenance.UpgradeResult{RestartRequired: true}:
+			writeJSON(w, map[string]any{"accepted": true, "boot_id": bootID}, http.StatusAccepted)
+		default:
+			writeJSON(w, map[string]any{"error": "Web restart already in progress"}, http.StatusConflict)
 		}
 	})
 

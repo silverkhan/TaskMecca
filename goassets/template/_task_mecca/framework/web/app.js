@@ -2421,7 +2421,7 @@ async function checkTelegramSetupInstance(){
   const response=await fetch('/api/health',{cache:'no-store'});
   if(!response.ok)return;
   const health=await response.json();
-  const instance=String(health.instance_id||'').trim();
+  const instance=String(health.boot_id||health.instance_id||'').trim();
   if(!instance||instance===state.telegramSetupInstance)return;
   state.telegramSetupInstance=instance;
   state.telegramSetupBootShown=false;
