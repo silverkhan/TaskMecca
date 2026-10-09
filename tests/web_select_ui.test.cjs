@@ -111,3 +111,24 @@ test('mobile theme and all-selector integration are wired into every page',()=>{
  assert.match(source,/aria-haspopup/);
  assert.match(source,/if\(current&&event.target===searchField\)keys\(event\)/);
 });
+
+test('responsive picker label rules cannot hide the themed select wrapper (mobile regression AID-131)',()=>{
+ const labels=['language-picker','palette-picker','project-picker','backlog-picker'];
+ for(const name of labels){
+  // The old broad ".language-picker span{display:none}" also hid
+  // <span class="tm-combo">, leaving only an empty box on Android.
+  assert.doesNotMatch(styles,new RegExp('\\.'+name+'\\s+span\\s*\\{\\s*display\\s*:\\s*none\\b'));
+  assert.match(styles,new RegExp('\\.'+name+'\\s*>\\s*span:not\\(\\.tm-combo\\)'));
+ }
+ assert.match(styles,/\.topbar \.language-picker > \.tm-combo/);
+ assert.match(styles,/\.topbar \.palette-picker > \.tm-combo/);
+ assert.match(styles,/\.topbar \.palette-picker \.tm-combo-trigger.*color:var\(--text\)/);
+ assert.match(styles,/@media\(max-width:680px\)[\s\S]*?\.topbar \.palette-picker > \.tm-combo/);
+});
+test('theme and language controls remain visible while captions are mobile-hidden',()=>{
+ const header=index.slice(index.indexOf('<header class="topbar">'),index.indexOf('</header>'));
+ assert.match(header,/<label class="language-picker">.*<select id="languagePicker"/);
+ assert.match(header,/<label class="palette-picker".*<select id="palettePicker"/);
+ assert.match(styles,/@media\(max-width:1050px\)\{\.backlog-picker > span:not\(\.tm-combo\),\.language-picker > span:not\(\.tm-combo\)\{display:none\}/);
+ assert.match(styles,/@media\(max-width:900px\)\{\.palette-picker > span:not\(\.tm-combo\)\{display:none\}/);
+});
