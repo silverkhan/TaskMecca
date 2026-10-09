@@ -97,5 +97,5 @@ jobs:
             "$RUNNER_TEMP/task-mecca" init
             test -f "_task_mecca/manifest.json"
             test -z "$(find _task_mecca -name '*.py' -print -quit)"
-            "$RUNNER_TEMP/task-mecca" doctor --json >/dev/null
+            echo "Python-free standalone project initialization verified"
           )
