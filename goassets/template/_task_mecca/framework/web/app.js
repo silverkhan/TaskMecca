@@ -2841,8 +2841,17 @@ function bindProjectRecipientControls(){
       button.insertAdjacentElement('afterend',discover);
     });
     $('#sharedTelegramConfigure')?.addEventListener('click',async()=>{
-      const token=$('#sharedTelegramToken')?.value?.trim(); if(!token)return;
-      try { await configureSharedTelegram($('#sharedTelegramConfigure').dataset.sharedProject,token); renderNotificationPanel(); } catch(error) { alert(error.message); }
+      const button=$('#sharedTelegramConfigure'),input=$('#sharedTelegramToken'),token=input?.value?.trim();
+      if(!token){telegramSettingsFeedback={projectLabel:t('telegramSharedBotTitle'),message:t('telegramSharedTokenRequired'),error:true};renderNotificationPanel();return;}
+      if((state.projectNotificationSettings||[]).some(row=>row.status?.configured)&&!confirm(t('telegramSharedReplacementWarning')))return;
+      button.disabled=true;button.setAttribute('aria-busy','true');
+      try{
+        await configureSharedTelegram(button.dataset.sharedProject,token);
+        if(input)input.value='';
+        telegramSettingsFeedback={projectLabel:t('telegramSharedBotTitle'),message:t('telegramSharedTokenSuccess'),error:false};
+      }catch(error){
+        telegramSettingsFeedback={projectLabel:t('telegramSharedBotTitle'),message:String(error?.message||error),error:true};
+      }finally{renderNotificationPanel();}
     });
     $('#sharedTelegramDiscover')?.addEventListener('click',async()=>{
       try { await projectTelegramAction($('#sharedTelegramDiscover').dataset.sharedProject,'discover_shared'); await loadProjectNotificationSettings(); renderNotificationPanel(); } catch(error) { alert(error.message); }
@@ -2855,12 +2864,20 @@ function projectNotificationsView() {
   const rows=state.projectNotificationSettings||[];
   const shared=rows.some(row=>row.status?.recipient_mode==='shared');
   const sharedProject=rows.find(row=>row.status?.recipient_mode==='shared')?.path||rows[0]?.path||'';
-  const sharedSetup=`<section class="telegram-settings"><strong>${esc(t('telegramNotifications'))}</strong><p class="muted">${esc(t('projectSharedRecipientGuide'))}</p><label>${esc(t('telegramBotToken'))}<input id="sharedTelegramToken" type="password" autocomplete="off" placeholder="${esc(t('telegramBotToken'))}"></label><button type="button" class="action-btn" id="sharedTelegramConfigure" data-shared-project="${esc(sharedProject)}">${esc(t('projectSharedRecipientConfigure'))}</button>${shared&&rows.some(row=>!row.status?.connected)?`<button type="button" class="secondary-btn" id="sharedTelegramDiscover" data-shared-project="${esc(sharedProject)}">${esc(t('telegramFindChat'))}</button>`:''}</section>`;
+  const sharedRegistered=rows.filter(row=>row.status?.recipient_mode==='shared'&&row.status?.configured).length;
+  const sharedBotNames=[...new Set(rows.filter(row=>row.status?.recipient_mode==='shared'&&row.status?.configured&&row.status?.bot_username).map(row=>row.status.bot_username))];
+  const sharedAccount=sharedBotNames.length===1?' · @'+esc(sharedBotNames[0]):'';
+  const hasAnyExistingToken=rows.some(row=>row.status?.configured);
+  const sharedSetup=`<section class="telegram-settings telegram-shared-setup"><strong>${esc(t('telegramSharedBotTitle'))}</strong><p class="muted">${esc(t('projectSharedRecipientGuide'))}</p>
+   <div class="telegram-bot-registration" role="status"><span>${esc(t('telegramBotTokenStatus'))}</span><strong>${esc(t('telegramBotSharedCount',{count:sharedRegistered,total:rows.length}))}${sharedAccount}</strong></div>
+   <label>${esc(t('telegramBotToken'))}<input id="sharedTelegramToken" type="password" autocomplete="off" placeholder="${esc(t('telegramTokenReplacementPlaceholder'))}"></label>
+   <button type="button" class="action-btn telegram-token-submit" id="sharedTelegramConfigure" data-shared-project="${esc(sharedProject)}" ${rows.length?'':'disabled'}>${esc(t(hasAnyExistingToken?'telegramSharedTokenEdit':'projectSharedRecipientConfigure'))}</button>
+   ${shared&&rows.some(row=>!row.status?.connected)?`<button type="button" class="action-btn secondary" id="sharedTelegramDiscover" data-shared-project="${esc(sharedProject)}">${esc(t('telegramFindChat'))}</button>`:''}</section>`;
   const body=rows.length?rows.map(row=>{
     const enabled=row.status?.project_enabled!==false;
     const mode=row.status?.recipient_mode==='shared'?'shared':'individual';
     const stateLabel=mode==='individual'&&!row.status?.configured?t('projectIndividualIncomplete'):(row.status?.connected?t('telegramConnected'):(row.status?.configured?t('telegramConfigured'):t('telegramNotConfigured')));
-    return `<article class="mini-panel project-notification-row"><div><strong>${esc(row.name||row.path)}</strong><p class="muted">${esc(t('projectNotificationPath'))}: <code>${esc(row.path)}</code></p><p class="muted">${esc(stateLabel)}</p></div><div class="project-notification-controls"><label>${esc(t('projectRecipientMode'))}<select data-recipient-mode="${esc(row.path)}"><option value="shared" ${mode==='shared'?'selected':''}>${esc(t('projectRecipientShared'))}</option><option value="individual" ${mode==='individual'?'selected':''}>${esc(t('projectRecipientIndividual'))}</option></select></label>${mode==='individual'?`<label class="sr-only">${esc(t('telegramBotToken'))}</label><input data-individual-token="${esc(row.path)}" type="password" autocomplete="off" placeholder="${esc(t('telegramBotToken'))}"><button type="button" class="secondary-btn" data-configure-individual="${esc(row.path)}">${esc(t('telegramConnect'))}</button>`:''}<span class="muted">${esc(state.language==='ko'?'채널 전환은 위의 프로젝트별 알림에서 설정하세요.':'Use the project channel switches above.')}</span></div></article>`;
+    return `<article class="mini-panel project-notification-row"><div><strong>${esc(row.name||row.path)}</strong><p class="muted">${esc(t('projectNotificationPath'))}: <code>${esc(row.path)}</code></p><p class="muted">${esc(stateLabel)} · ${esc(t('telegramBotTokenStatus'))} ${esc(t(row.status?.configured?'telegramBotRegistered':'telegramBotNotRegistered'))}${row.status?.configured&&row.status?.bot_username?' · @'+esc(row.status.bot_username):''}</p></div><div class="project-notification-controls"><label>${esc(t('projectRecipientMode'))}<select data-recipient-mode="${esc(row.path)}"><option value="shared" ${mode==='shared'?'selected':''}>${esc(t('projectRecipientShared'))}</option><option value="individual" ${mode==='individual'?'selected':''}>${esc(t('projectRecipientIndividual'))}</option></select></label>${mode==='individual'?`<label class="sr-only">${esc(t('telegramBotToken'))}</label><input data-individual-token="${esc(row.path)}" type="password" autocomplete="off" placeholder="${esc(t('telegramBotToken'))}"><button type="button" class="action-btn secondary" data-configure-individual="${esc(row.path)}">${esc(t(row.status?.configured?'telegramIndividualTokenEdit':'telegramIndividualTokenRegister'))}</button>`:''}<span class="muted">${esc(state.language==='ko'?'채널 전환은 위의 프로젝트별 알림에서 설정하세요.':'Use the project channel switches above.')}</span></div></article>`;
   }).join(''):`<div class="empty">${esc(t('projectNotificationEmpty'))}</div>`;
   return `<div class="page-head"><div><div class="eyebrow">${esc(t('operationsEyebrow'))}</div><h1>${esc(t('projectNotifications'))}</h1><p class="summary">${esc(t('projectNotificationsIntro'))}</p></div></div><section class="assigned-workload-section">${sharedSetup}<div class="project-notification-list">${body}</div></section>`;
 }
