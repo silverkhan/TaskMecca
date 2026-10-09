@@ -1095,6 +1095,18 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 				return
 			}
 			writeJSON(w, status, 200)
+		case "disable_all":
+			projects := maintenance.ListProjects()
+			paths := make([]string, 0, len(projects))
+			for _, item := range projects {
+				paths = append(paths, item.Path)
+			}
+			removed, err := notify.DisableAllTelegram(paths)
+			if err != nil {
+				writeJSON(w, map[string]any{"error": err.Error(), "removed": removed}, 500)
+				return
+			}
+			writeJSON(w, map[string]any{"ok": true, "removed": removed}, 200)
 		case "disable":
 			if err := notify.DisableTelegram(activeProject); err != nil {
 				writeJSON(w, map[string]any{"error": err.Error()}, 500)
@@ -1103,7 +1115,7 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 			status, _ := notify.TelegramStatusFor(activeProject)
 			writeJSON(w, status, 200)
 		default:
-			writeJSON(w, map[string]any{"error": "action must be configure, discover, test, kinds, or disable"}, 400)
+			writeJSON(w, map[string]any{"error": "action must be configure, discover, test, kinds, disable, or disable_all"}, 400)
 		}
 	})
 	mux.HandleFunc("/api/notifications/projects", func(w http.ResponseWriter, r *http.Request) {

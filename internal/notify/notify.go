@@ -442,6 +442,44 @@ func TestTelegram(project string) error {
 	}
 	return telegramCall(cfg.Token, "sendMessage", map[string]any{"chat_id": cfg.ChatID, "text": "🔔 " + telegramProjectPrefix(project) + " 테스트 알림\nTelegram 알림 연결이 정상입니다."}, nil)
 }
+// DisableAllTelegram deletes saved Telegram recipient configurations for all
+// monitored projects. It does not touch browser notifications or delivery logs.
+// A missing file is idempotently ignored; partial errors report the count.
+func DisableAllTelegram(projects []string) (int, error) {
+ if len(projects) == 0 { return 0, nil }
+ release, err := projectguard.AcquireWrites(projects)
+ if err != nil { return 0, err }
+ defer release()
+ telegramMu.Lock()
+ defer telegramMu.Unlock()
+ // Check access and validity before any deletion.
+ seen := make(map[string]bool, len(projects))
+ paths := make([]string, 0, len(projects))
+ for _, project := range projects {
+  path := telegramPath(project)
+  if seen[path] { continue }
+  seen[path] = true
+  if _, statErr := os.Stat(path); statErr != nil {
+   if errors.Is(statErr, os.ErrNotExist) { continue }
+   return 0, statErr
+  }
+  cfg, loadErr := loadTelegram(project)
+  if loadErr != nil { return 0, loadErr }
+  // A project may store "notifications off" without a bot token. Removing
+  // such a file would unexpectedly erase that explicit user preference.
+  if cfg.Token == "" { continue }
+  paths = append(paths, path)
+ }
+ removed := 0
+ for _, path := range paths {
+  if err := os.Remove(path); err != nil {
+   return removed, fmt.Errorf("cleared %d Telegram configurations before error: %w", removed, err)
+  }
+  removed++
+ }
+ return removed, nil
+}
+
 func DisableTelegram(project string) error {
 	telegramMu.Lock()
 	defer telegramMu.Unlock()

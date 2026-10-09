@@ -1907,3 +1907,12 @@ select.tm-combo-native{position:absolute!important;width:1px!important;height:1p
  .telegram-onboarding-actions .action-btn{flex:1 1 100%;min-height:42px}
  .telegram-onboarding-dismiss{text-align:center}
 }
+
+
+/* Credential deletion is deliberately secondary and distinguishable from setup. */
+.telegram-delete-action{height:auto;min-height:38px;padding:9px 13px!important;white-space:normal;line-height:1.45;text-align:center;color:var(--danger)!important;border-color:color-mix(in srgb,var(--danger) 36%,var(--border))!important;background:transparent!important;font-weight:700}
+.telegram-delete-action:hover:not(:disabled){background:color-mix(in srgb,var(--danger) 7%,var(--surface))!important;border-color:var(--danger)!important}
+.telegram-delete-action:focus-visible{outline:2px solid var(--danger);outline-offset:3px}
+.telegram-delete-action:disabled{opacity:.55;cursor:wait}
+.telegram-shared-setup .telegram-delete-action{width:fit-content;max-width:100%}
+@media(max-width:680px){.telegram-shared-setup .telegram-delete-action,.project-notification-controls .telegram-delete-action{min-height:44px;width:100%}}

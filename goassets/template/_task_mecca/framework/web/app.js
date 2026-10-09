@@ -89,6 +89,7 @@ const state = {
   projectNotificationSettings: [],
   projectNotificationSettingsLoading: false,
   projectNotificationSettingsLoaded: false,
+  telegramSetupInstance:'',telegramSetupBootPending:false,telegramSetupBootShown:false,
   projectNotificationSettingsError: '',
   operationRevision: '',
 };
@@ -2397,13 +2398,44 @@ function processTaskNotifications(snapshot,context={}) {
 // Telegram onboarding reflects confirmed server-side status only; it does not
 // read credentials or change delivery policy. Disabled projects are excluded.
 const TELEGRAM_SETUP_PREF_KEY='task-mecca-telegram-onboarding-v1';
-const TELEGRAM_SETUP_SNOOZE_MS=7*24*60*60*1000;
+// This key is per browser tab and per running Web service instance.
+// A browser reload must not replay the first-start guide.
+const TELEGRAM_SETUP_SEEN_KEY='task-mecca-telegram-onboarding-seen-instance-v2';
 function telegramSetupPreference(){
  try{const x=JSON.parse(localStorage.getItem(TELEGRAM_SETUP_PREF_KEY)||'{}');return x&&typeof x==='object'?x:{};}catch(_){return {};}
 }
 function telegramSetupMayPrompt(){
- const p=telegramSetupPreference();return p.mode!=='never'&&!(p.mode==='later'&&Number(p.until)>Date.now());
+ return state.telegramSetupBootPending&&telegramSetupPreference().mode!=='never';
 }
+function telegramSetupAlreadySeen(instance){
+ try{return typeof sessionStorage!=='undefined'&&sessionStorage.getItem(TELEGRAM_SETUP_SEEN_KEY)===instance;}catch(_){return false;}
+}
+function telegramSetupMarkSeen(){
+ const instance=state.telegramSetupInstance;
+ if(!instance||state.telegramSetupBootShown)return;
+ try{if(typeof sessionStorage!=='undefined')sessionStorage.setItem(TELEGRAM_SETUP_SEEN_KEY,instance);}catch(_){}
+ state.telegramSetupBootShown=true;
+}
+async function checkTelegramSetupInstance(){
+ try{
+  const response=await fetch('/api/health',{cache:'no-store'});
+  if(!response.ok)return;
+  const health=await response.json();
+  const instance=String(health.instance_id||'').trim();
+  if(!instance||instance===state.telegramSetupInstance)return;
+  state.telegramSetupInstance=instance;
+  state.telegramSetupBootShown=false;
+  state.telegramSetupBootPending=!telegramSetupAlreadySeen(instance);
+  // Service restarts can invalidate all cached settings. Refresh inventory.
+  await loadProjectNotificationSettings();
+  updateTelegramSetupGuideDOM();
+  if(state.view==='hub')render();
+ }catch(_){/* Never show an unverified setup prompt on a health failure. */}
+}
+function closeTelegramSetupOnNavigation(nextView){
+ if(state.telegramSetupBootShown&&state.view!==nextView)state.telegramSetupBootPending=false;
+}
+
 function telegramSetupSummary(){
  if(!state.projectNotificationSettingsLoaded)return null;
  const all=state.projectNotificationSettings||[];
@@ -2414,7 +2446,14 @@ function telegramSetupSummary(){
  const kind=target?(ready?'partial':target.status?.configured?'pending':'missing'):'ready';
  return {kind,ready,total:enabled.length,target};
 }
-function telegramSetupNeed(){const s=telegramSetupSummary();return s?.target&&telegramSetupMayPrompt()?s:null;}
+function telegramSetupNeed(){
+ if(!state.projectNotificationSettingsLoaded||!telegramSetupMayPrompt())return null;
+ const rows=state.projectNotificationSettings||[];
+ if(!rows.length||rows.some(row=>row.status?.configured))return null;
+ // An explicit channel-off preference controls delivery, not whether an
+ // absent token is discoverable at the next Web service startup.
+ return {kind:'missing',ready:0,total:rows.length,target:rows[0]};
+}
 function telegramSetupGuideMarkup(hub=false){
  const s=telegramSetupNeed();if(!s)return '';
  const target=s.target,token=Boolean(target.status?.configured),connected=Boolean(target.status?.connected);
@@ -2440,16 +2479,27 @@ function updateTelegramSetupNavIndicator(){
  nav.title=description;nav.setAttribute('aria-label',description);
 }
 function setTelegramSetupPreference(action){
- const prefs=action==='never'?{mode:'never'}:{mode:'later',until:Date.now()+TELEGRAM_SETUP_SNOOZE_MS};
- try{localStorage.setItem(TELEGRAM_SETUP_PREF_KEY,JSON.stringify(prefs));}catch(_){}
+ // Later only dismisses this service-start prompt. A later Web service
+ // restart gets one new opportunity; explicit "never" stays persistent.
+ if(action==='never'){
+  try{localStorage.setItem(TELEGRAM_SETUP_PREF_KEY,JSON.stringify({mode:'never'}));}catch(_){}
+ }
+ state.telegramSetupBootPending=false;
  updateTelegramSetupNavIndicator();
  if(state.view==='hub')render();else updateTelegramSetupGuideDOM();
 }
 function updateTelegramSetupGuideDOM(){
- updateTelegramSetupNavIndicator();if(state.view!=='notifications')return;
- const guide=$('#telegramSetupGuide'),markup=telegramSetupGuideMarkup();
- if(guide){if(!markup)guide.remove();else if(guide.outerHTML!==markup)guide.outerHTML=markup;}
- else if(markup)document.querySelector('.notification-center-tabs')?.insertAdjacentHTML('afterend',markup);
+ updateTelegramSetupNavIndicator();
+ const hub=state.view==='hub',notification=state.view==='notifications';
+ const guide=$('#telegramSetupGuide')||$('#telegramHubOnboarding');
+ const markup=telegramSetupGuideMarkup(!notification);
+ if(guide){
+  if(!markup)guide.remove();
+  else if(guide.outerHTML!==markup)guide.outerHTML=markup;
+ }else if(markup){
+  if(notification)document.querySelector('.notification-center-tabs')?.insertAdjacentHTML('afterend',markup);
+  else $('#content')?.insertAdjacentHTML('afterbegin',markup);
+ }
  bindTelegramSetupActions();
 }
 function openTelegramSetupGuide(){
@@ -2469,7 +2519,56 @@ function openTelegramSetupGuide(){
  }
 }
 function bindTelegramSetupActions(){
- document.querySelectorAll('[data-telegram-onboard]').forEach(el=>{el.onclick=()=>{const a=el.dataset.telegramOnboard;if(a==='setup')openTelegramSetupGuide();else setTelegramSetupPreference(a);};});
+ const buttons=document.querySelectorAll('[data-telegram-onboard]');
+ if(buttons.length&&telegramSetupNeed())telegramSetupMarkSeen();
+ buttons.forEach(el=>{el.onclick=()=>{const a=el.dataset.telegramOnboard;if(a==='setup')openTelegramSetupGuide();else setTelegramSetupPreference(a);};});
+}
+Object.assign(I18N.ko,{
+ telegramClearAll:'전체 프로젝트 Telegram 봇 토큰 삭제',
+ telegramClearProject:'이 프로젝트 봇 토큰 삭제',
+ telegramClearAllConfirm:'전체 {count}개 프로젝트의 Telegram 봇 토큰과 채팅 연결 정보를 삭제합니다. Telegram 알림이 중단되며, 브라우저 알림과 작업 이력은 유지됩니다. 진행하시겠습니까?',
+ telegramClearProjectConfirm:'{project} 프로젝트의 Telegram 봇 토큰과 채팅 연결 정보를 삭제합니다. 해당 프로젝트의 Telegram 알림이 중단됩니다. 진행하시겠습니까?',
+ telegramClearAllSuccess:'{count}개 프로젝트의 Telegram 설정을 삭제했습니다. 다음 웹 서비스 시작 시 토큰이 없다면 온보딩을 한 번 표시합니다.',
+ telegramClearProjectSuccess:'해당 프로젝트의 Telegram 봇 토큰과 수신처 정보를 삭제했습니다.',
+ telegramClearWorking:'Telegram 설정 삭제 중…'
+});
+Object.assign(I18N.en,{
+ telegramClearAll:'Delete Telegram bot tokens for all projects',
+ telegramClearProject:'Delete this project bot token',
+ telegramClearAllConfirm:'Delete bot tokens and recipient chats for {count} projects? Telegram delivery will stop, while browser alerts and task history are preserved.',
+ telegramClearProjectConfirm:'Delete the Telegram bot token and recipient chat for {project}? Telegram delivery for that project will stop.',
+ telegramClearAllSuccess:'Removed Telegram settings for {count} projects. On the next Web service start, onboarding appears once if no token is registered.',
+ telegramClearProjectSuccess:'Telegram bot token and recipient information removed for the selected project.',
+ telegramClearWorking:'Deleting Telegram settings…'
+});
+async function clearTelegramSettings(project='',all=false){
+ const rows=state.projectNotificationSettings||[];
+ const affected=all?rows.filter(r=>r.status?.configured):rows.filter(r=>r.path===project&&r.status?.configured);
+ if(!affected.length)return false;
+ if(!confirm(all?t('telegramClearAllConfirm',{count:affected.length}):t('telegramClearProjectConfirm',{project:affected[0].name||project})))return false;
+ state.projectNotificationSettingsRevision=(state.projectNotificationSettingsRevision||0)+1;
+ const active=all?(affected.find(r=>r.path===state.project)||affected[0]).path:project;
+ const response=await fetch('/api/notifications/telegram?project='+encodeURIComponent(active),{
+  method:'POST',headers:{'Content-Type':'application/json','X-Task-Mecca-Action':'1'},
+  body:JSON.stringify({action:all?'disable_all':'disable'})
+ });
+ const payload=await response.json().catch(()=>({}));
+ if(!response.ok){
+  await loadProjectNotificationSettings();
+  throw new Error(payload.error||('HTTP '+response.status));
+ }
+ await loadProjectNotificationSettings();
+ if(state.project)await loadTelegramStatus();
+ if(all){
+  // Reset explicit opt-out for intentional onboarding retests, but do not
+  // replay this prompt until the Web service's next instance starts.
+  try{localStorage.removeItem(TELEGRAM_SETUP_PREF_KEY);}catch(_){}
+  state.telegramSetupBootPending=false;
+ }
+ telegramSettingsFeedback={projectLabel:all?t('telegramSharedBotTitle'):(affected[0].name||project),
+  message:all?t('telegramClearAllSuccess',{count:payload.removed??affected.length}):t('telegramClearProjectSuccess'),error:false};
+ renderNotificationPanel();
+ return true;
 }
 function updateNotificationIndicator() {
   const btn=$('#notificationBtn'),badge=$('#notificationBadge');
@@ -2909,6 +3008,20 @@ function bindCenterChannelSettings(panel){
  panel.querySelectorAll('#centerGlobalWebChannel,#centerGlobalTelegramChannel,[data-center-channel],[data-center-telegram-kind],[data-center-web-kind]').forEach(button=>button.addEventListener('click',()=>void setNotificationSwitch(button)));
 }
 
+function bindTelegramDeletionActions(panel){
+ panel.querySelectorAll('[data-telegram-clear-project],[data-telegram-clear-all]').forEach(button=>{
+  button.addEventListener('click',async()=>{
+   if(button.disabled)return;
+   const project=button.dataset.telegramClearProject||'';
+   const all=button.hasAttribute('data-telegram-clear-all');
+   button.disabled=true;button.setAttribute('aria-busy','true');
+   const prior=button.textContent;button.textContent=t('telegramClearWorking');
+   try{await clearTelegramSettings(project,all);}
+   catch(error){telegramSettingsFeedback={projectLabel:all?t('telegramSharedBotTitle'):project,message:String(error?.message||error),error:true};renderNotificationPanel();}
+   finally{if(button.isConnected){button.disabled=false;button.removeAttribute('aria-busy');button.textContent=prior;}}
+  });
+ });
+}
 function bindProjectRecipientControls(){
     document.querySelectorAll('[data-project-notification]').forEach(input=>input.addEventListener('change',async()=>{
       input.disabled=true;
@@ -2977,12 +3090,13 @@ function projectNotificationsView() {
    <div class="telegram-bot-registration" role="status"><span>${esc(t('telegramBotTokenStatus'))}</span><strong>${esc(t('telegramBotSharedCount',{count:sharedRegistered,total:rows.length}))}${sharedAccount}</strong></div>
    <label>${esc(t('telegramBotToken'))}<input id="sharedTelegramToken" type="password" autocomplete="off" placeholder="${esc(t('telegramTokenReplacementPlaceholder'))}"></label>
    <button type="button" class="action-btn telegram-token-submit" id="sharedTelegramConfigure" data-shared-project="${esc(sharedProject)}" ${rows.length?'':'disabled'}>${esc(t(hasAnyExistingToken?'telegramSharedTokenEdit':'projectSharedRecipientConfigure'))}</button>
+    ${hasAnyExistingToken?'<button type="button" class="action-btn secondary telegram-delete-action" data-telegram-clear-all="1">'+esc(t('telegramClearAll'))+'</button>':''}
    ${shared&&rows.some(row=>!row.status?.connected)?`<button type="button" class="action-btn secondary" id="sharedTelegramDiscover" data-shared-project="${esc(sharedProject)}">${esc(t('telegramFindChat'))}</button>`:''}</section>`;
   const body=rows.length?rows.map(row=>{
     const enabled=row.status?.project_enabled!==false;
     const mode=row.status?.recipient_mode==='shared'?'shared':'individual';
     const stateLabel=mode==='individual'&&!row.status?.configured?t('projectIndividualIncomplete'):(row.status?.connected?t('telegramConnected'):(row.status?.configured?t('telegramConfigured'):t('telegramNotConfigured')));
-    return `<article class="mini-panel project-notification-row"><div><strong>${esc(row.name||row.path)}</strong><p class="muted">${esc(t('projectNotificationPath'))}: <code>${esc(row.path)}</code></p><p class="muted">${esc(stateLabel)} · ${esc(t('telegramBotTokenStatus'))} ${esc(t(row.status?.configured?'telegramBotRegistered':'telegramBotNotRegistered'))}${row.status?.configured&&row.status?.bot_username?' · @'+esc(row.status.bot_username):''}</p></div><div class="project-notification-controls"><label>${esc(t('projectRecipientMode'))}<select data-recipient-mode="${esc(row.path)}"><option value="shared" ${mode==='shared'?'selected':''}>${esc(t('projectRecipientShared'))}</option><option value="individual" ${mode==='individual'?'selected':''}>${esc(t('projectRecipientIndividual'))}</option></select></label>${mode==='individual'?`<label class="sr-only">${esc(t('telegramBotToken'))}</label><input data-individual-token="${esc(row.path)}" type="password" autocomplete="off" placeholder="${esc(t('telegramBotToken'))}"><button type="button" class="action-btn secondary" data-configure-individual="${esc(row.path)}">${esc(t(row.status?.configured?'telegramIndividualTokenEdit':'telegramIndividualTokenRegister'))}</button>`:''}<span class="muted">${esc(state.language==='ko'?'채널 전환은 위의 프로젝트별 알림에서 설정하세요.':'Use the project channel switches above.')}</span></div></article>`;
+    return `<article class="mini-panel project-notification-row"><div><strong>${esc(row.name||row.path)}</strong><p class="muted">${esc(t('projectNotificationPath'))}: <code>${esc(row.path)}</code></p><p class="muted">${esc(stateLabel)} · ${esc(t('telegramBotTokenStatus'))} ${esc(t(row.status?.configured?'telegramBotRegistered':'telegramBotNotRegistered'))}${row.status?.configured&&row.status?.bot_username?' · @'+esc(row.status.bot_username):''}</p></div><div class="project-notification-controls"><label>${esc(t('projectRecipientMode'))}<select data-recipient-mode="${esc(row.path)}"><option value="shared" ${mode==='shared'?'selected':''}>${esc(t('projectRecipientShared'))}</option><option value="individual" ${mode==='individual'?'selected':''}>${esc(t('projectRecipientIndividual'))}</option></select></label>${mode==='individual'?`<label class="sr-only">${esc(t('telegramBotToken'))}</label><input data-individual-token="${esc(row.path)}" type="password" autocomplete="off" placeholder="${esc(t('telegramBotToken'))}"><button type="button" class="action-btn secondary" data-configure-individual="${esc(row.path)}">${esc(t(row.status?.configured?'telegramIndividualTokenEdit':'telegramIndividualTokenRegister'))}</button>${row.status?.configured?'<button type="button" class="action-btn secondary telegram-delete-action" data-telegram-clear-project="'+esc(row.path)+'">'+esc(t('telegramClearProject'))+'</button>':''}`:''}<span class="muted">${esc(state.language==='ko'?'채널 전환은 위의 프로젝트별 알림에서 설정하세요.':'Use the project channel switches above.')}</span></div></article>`;
   }).join(''):`<div class="empty">${esc(t('projectNotificationEmpty'))}</div>`;
   return `<div class="page-head"><div><div class="eyebrow">${esc(t('operationsEyebrow'))}</div><h1>${esc(t('projectNotifications'))}</h1><p class="summary">${esc(t('projectNotificationsIntro'))}</p></div></div><section class="assigned-workload-section">${sharedSetup}<div class="project-notification-list">${body}</div></section>`;
 }
@@ -3025,6 +3139,7 @@ function renderNotificationPanel() {
   bindCenterChannelSettings(panel);
   bindProjectRecipientControls();
   bindTelegramSettingsActions(panel);
+  bindTelegramDeletionActions(panel);
   syncTelegramConnectionWatch();
 
   panel.querySelectorAll('[data-notification-setting]').forEach(input=>input.addEventListener('change',()=>{state.notificationSettings[input.dataset.notificationSetting]=input.checked;saveNotificationSettings();updateNotificationIndicator();renderNotificationPanel()}));
@@ -3042,7 +3157,7 @@ function renderNotificationPanel() {
   $('#telegramAllOff')?.addEventListener('click',()=>setAllTelegramKinds(false));
   restoreNotificationSettings(panel,draft);
   updateTelegramSetupGuideDOM();
-  $('#telegramDisable')?.addEventListener('click',async()=>{if(!confirm(t('telegramDisconnect')+'?'))return;try{await telegramAction('disable');renderNotificationPanel()}catch(e){alert(e.message)}});
+  $('#telegramDisable')?.addEventListener('click',async()=>{try{await clearTelegramSettings(state.project,false)}catch(e){alert(e.message)}});
   updateNotificationIndicator();
 }
 function saveOpenProjects() {
@@ -3053,6 +3168,7 @@ function ensureOpenProject(path) {
   if(!state.openProjects.includes(path)){ state.openProjects.push(path); saveOpenProjects(); }
 }
 function switchProject(path) {
+  closeTelegramSetupOnNavigation('backlog');
  clearCurrentUserAttention();
   if(!path)return;
   ensureOpenProject(path);
@@ -3164,6 +3280,7 @@ function openWebTerminal() {
   location.href='/terminal'+(params.toString()?'?'+params.toString():'');
 }
 function navigateView(view) {
+  closeTelegramSetupOnNavigation(view==='attention'?'notifications':view);
  if(view==='hub'||view==='release-notes')clearCurrentUserAttention();
   if(view==='release-notes'){
     state.project='';
@@ -5059,7 +5176,7 @@ function render() {
     return;
   }
   c.innerHTML=(state.view==='hub'?telegramSetupGuideMarkup(true)+hubView():state.view==='storage'?storageManagementView():gate+(state.view==='manual'?manualView():state.view==='notifications'?notificationCenterView():state.view==='workload'?workloadView():state.view==='attention'?attentionView():state.view==='issues'?backlogDiagnosticsView():listView()));
-  bindRows(); if(state.view==='hub'){bindHubActions();bindTelegramSetupActions();}if(state.view==='storage')bindStorageManagementActions();
+  bindRows(); if(state.view==='hub'){bindHubActions();bindTelegramSetupActions();}else updateTelegramSetupGuideDOM();if(state.view==='storage')bindStorageManagementActions();
   if(searchFocus && state.view==='backlog' && !state.detail){const search=$('#search');search?.focus({preventScroll:true});search?.setSelectionRange(searchFocus.start,searchFocus.end);}
   if(state.view==='hub'&&hubHistoryFocus)document.querySelector('#hubHistoryToggle')?.focus({preventScroll:true});
   document.querySelectorAll('[data-runtime-hook-action]').forEach(button=>{
@@ -5484,6 +5601,7 @@ async function refresh() {
   }
 }
 function route(fromPop=false) {
+  if(fromPop&&state.telegramSetupBootShown)state.telegramSetupBootPending=false;
  const previousAttentionContext=state.project+'|'+state.backlog;
   const previousDetail=state.detail;
   const previousProject=state.project;
@@ -5795,11 +5913,8 @@ route();
 const initialForeground=refresh();
 // One lightweight read-only inventory lookup supports initial Hub guidance
 // and sidebar setup state without requiring a browser page refresh.
-void loadProjectNotificationSettings().then(()=>{
- updateTelegramSetupNavIndicator();
- if(state.view==='hub'&&state.hub&&!document.activeElement?.matches?.('input,textarea,select'))render();
- else updateTelegramSetupGuideDOM();
-}).catch(()=>{});
+void checkTelegramSetupInstance();
+setInterval(()=>{if(document.visibilityState!=='hidden')void checkTelegramSetupInstance();},60000);
 
 Promise.resolve(initialForeground).finally(()=>refreshOperations());
 setInterval(refreshOperations,15000);
