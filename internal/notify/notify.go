@@ -463,6 +463,11 @@ func DisableAllTelegram(projects []string) (int, error) {
    if errors.Is(statErr, os.ErrNotExist) { continue }
    return 0, statErr
   }
+  cfg, loadErr := loadTelegram(project)
+  if loadErr != nil { return 0, loadErr }
+  // A project may store "notifications off" without a bot token. Removing
+  // such a file would unexpectedly erase that explicit user preference.
+  if cfg.Token == "" { continue }
   paths = append(paths, path)
  }
  removed := 0
