@@ -69,7 +69,7 @@
 .shortcut-bar span{display:flex;align-items:center;gap:4px}.shortcut-bar kbd,.shortcut-manual kbd{border:1px solid var(--border);border-bottom-width:2px;background:var(--surface2);border-radius:4px;padding:1px 4px;font:inherit;color:var(--text)}
 .shortcut-manual{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;margin:0 0 18px;padding:12px 14px;border:1px solid var(--border);border-radius:10px;background:var(--surface)}.shortcut-manual strong{margin-right:4px}.shortcut-manual span{font-size:11px;color:var(--muted)}
 .content{padding-bottom:58px}
-@media(max-width:1050px){.backlog-picker span,.language-picker > span:not(.tm-combo){display:none}.backlog-picker select{max-width:160px}.shortcut-bar{gap:10px}.shortcut-bar span:nth-child(4),.shortcut-bar span:nth-child(5){display:none}}
+@media(max-width:1050px){.backlog-picker > span:not(.tm-combo),.language-picker > span:not(.tm-combo){display:none}.backlog-picker select{max-width:160px}.shortcut-bar{gap:10px}.shortcut-bar span:nth-child(4),.shortcut-bar span:nth-child(5){display:none}}
 @media(max-width:680px){.backlog-picker{display:none}.language-picker{height:34px;padding:0 6px}.language-picker select{min-width:70px}.shortcut-bar{left:0}.shortcut-bar span:nth-child(3){display:none}.list-controls{align-items:stretch;flex-direction:column}.pager{justify-content:space-between}}
 
 /* Backlog-only tools share the list control surface, including narrow screens. */
