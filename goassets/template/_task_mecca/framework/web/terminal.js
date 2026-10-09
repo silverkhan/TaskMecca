@@ -46,6 +46,14 @@
       codexChatGPTRestartWarning:'Codex가 ChatGPT 데스크톱 연결을 찾지 못할 때 두 앱을 종료하고 ChatGPT → Codex 순서로 다시 실행합니다.',
       taskMeccaStatus:'Task Mecca Web 상태 확인',
       taskMeccaRestart:'Task Mecca Web 재시작',
+      webRestartAction:'웹 서비스 재시작',
+      webRestartConfirm:'Task Mecca 웹 서비스를 재시작하시겠습니까? 기존 웹 터미널 연결이 끊어지며, 새 웹 서버가 준비되면 이 페이지를 자동으로 다시 연결합니다.',
+      webRestartStarting:'웹 서비스 재시작을 요청하고 있습니다…',
+      webRestartReconnecting:'웹 서비스 재시작 중 · 새 연결을 확인하고 있습니다…',
+      webRestartSuccess:'웹 서비스 재시작 완료 · 화면을 다시 연결합니다.',
+      webRestartFailure:'웹 서비스가 다시 실행되는 것을 확인하지 못했습니다. 서버 로그와 재시작 상태를 확인하세요.',
+      webRestartNotSupported:'서버에서 웹 서비스 재시작 기능을 제공하지 않습니다. Dev 버전을 업데이트하세요.',
+      webRestartUseButton:'웹 터미널 안에서 재시작 명령어를 실행하면 서버가 종료될 수 있습니다. 상단의 ‘웹 서비스 재시작’ 버튼을 사용하세요.',
       linuxCodexNote:'Linux는 Codex Desktop 재실행 경로가 표준화되어 있지 않아 프로세스 확인 명령만 제공합니다.',
       forceWarning:'응답하지 않는 Codex를 강제 종료한 뒤 다시 실행합니다.',
       interrupt:'Ctrl+C',
@@ -112,6 +120,14 @@
       codexChatGPTRestartWarning:'Use when Codex cannot find ChatGPT Desktop. Both apps are stopped, then ChatGPT starts before Codex.',
       taskMeccaStatus:'Check Task Mecca Web status',
       taskMeccaRestart:'Restart Task Mecca Web',
+      webRestartAction:'Restart Web service',
+      webRestartConfirm:'Restart the Task Mecca Web service? Existing terminal connections will close. This page will automatically reconnect when the new service is ready.',
+      webRestartStarting:'Requesting Web service restart…',
+      webRestartReconnecting:'Restarting Web service · waiting for the new connection…',
+      webRestartSuccess:'Web service restarted · reconnecting the page.',
+      webRestartFailure:'Could not confirm the new Web service. Check service status and logs.',
+      webRestartNotSupported:'Web restart is not available on this server. Update to the latest Dev version.',
+      webRestartUseButton:'Running a restart command inside the Web terminal can terminate the service. Use the Restart Web service button instead.',
       linuxCodexNote:'Codex Desktop relaunch is not standardized on Linux, so only the process-check command is provided.',
       forceWarning:'Force-quits an unresponsive Codex process and starts it again.',
       interrupt:'Ctrl+C',
@@ -156,6 +172,7 @@
     fallbackHistoryIndex: 0,
     runtimeMode: '',
     busy: false,
+    restartingWeb: false,
   };
 
   function applyTheme() {
@@ -192,7 +209,7 @@
 
   function setBusy(busy) {
     state.busy = busy;
-    ['terminalStartBtn','terminalRestartBtn','terminalCloseBtn','terminalCopyBtn','terminalPasteBtn','terminalInterruptBtn'].forEach(id => {
+    ['terminalStartBtn','terminalRestartBtn','terminalCloseBtn','terminalCopyBtn','terminalPasteBtn','terminalInterruptBtn','terminalWebRestartBtn'].forEach(id => {
       const el = $('#' + id);
       if (el) el.disabled = busy;
     });
@@ -220,6 +237,7 @@
     $('#terminalProject').textContent = state.project || project || '-';
     $('#terminalBack').textContent = '← ' + t('back');
     $('#terminalBack').href = dashboardURL();
+    const restartButton=$('#terminalWebRestartBtn');if(restartButton)restartButton.hidden=!s.access_allowed;
 
     let title = '', body = '', pill = '', actions = '';
     if (s.connection === 'local') {
@@ -282,6 +300,66 @@
     try { body = await response.json(); } catch (_) {}
     if (!response.ok) throw new Error(body.error || ('HTTP ' + response.status));
     return body;
+  }
+
+
+  function setWebRestartStatus(text,kind='info'){
+    const status=$('#terminalWebRestartStatus');
+    if(!status)return;
+    status.hidden=!text;
+    status.textContent=text;
+    status.dataset.kind=kind;
+  }
+  function waitWebRestartTick(ms){
+    return new Promise(resolve=>window.setTimeout(resolve,ms));
+  }
+  async function webHealthSnapshot(){
+    const resp=await fetch('/api/health?restart_watch='+Date.now(),{
+      cache:'no-store',signal:AbortSignal.timeout(2400)
+    });
+    return jsonResponse(resp);
+  }
+  async function restartWebService(){
+    if(state.restartingWeb||!state.settings?.access_allowed)return;
+    if(!window.confirm(t('webRestartConfirm')))return;
+    state.restartingWeb=true;
+    const button=$('#terminalWebRestartBtn');
+    if(button){button.disabled=true;button.setAttribute('aria-busy','true');}
+    setWebRestartStatus(t('webRestartStarting'));
+    try {
+      const before=await webHealthSnapshot();
+      if(!before.boot_id)throw new Error(t('webRestartNotSupported'));
+      const resp=await fetch('/api/admin/restart',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','X-Task-Mecca-Action':'1'},
+        body:'{}'
+      });
+      const result=await jsonResponse(resp);
+      if(!result.accepted)throw new Error(t('webRestartFailure'));
+      setWebRestartStatus(t('webRestartReconnecting'));
+      // The old server may answer briefly after 202. Only a *different*
+      // boot ID confirms a successful restart; HTTP 200 alone is not enough.
+      for(let i=0;i<75;i++){
+        await waitWebRestartTick(1100);
+        try {
+          const after=await webHealthSnapshot();
+          if(after.ok && after.boot_id && after.boot_id!==before.boot_id){
+            setWebRestartStatus(t('webRestartSuccess'),'ok');
+            setConnection('ok',t('connected'));
+            try{sessionStorage.removeItem(sessionStorageKey());}catch(_){}
+            window.location.reload();
+            return;
+          }
+        }catch(_){/* Outage is expected while the listener is shutting down. */}
+      }
+      throw new Error(t('webRestartFailure'));
+    }catch(error){
+      setWebRestartStatus(String(error?.message||error),'error');
+      setConnection('error',t('disconnected'));
+    }finally{
+      state.restartingWeb=false;
+      if(button){button.disabled=false;button.removeAttribute('aria-busy');}
+    }
   }
 
   async function loadSettings() {
@@ -427,19 +505,19 @@
       {title:'codexForceRestart', command:'pkill -x Codex; sleep 2; open -a "Codex"', danger:true},
       {title:'codexChatGPTRestart', command:'pkill -x Codex; pkill -x ChatGPT; sleep 3; open -a ChatGPT; sleep 5; open -a Codex', danger:true, warning:'codexChatGPTRestartWarning'},
       {title:'taskMeccaStatus', command:'task-mecca web status'},
-      {title:'taskMeccaRestart', command:'task-mecca web restart'}
+      {title:'webRestartUseButton', informational:true}
     ],
     windows: [
       {title:'processCheck', command:'Get-Process Codex -ErrorAction SilentlyContinue | Select-Object Id,ProcessName,Path'},
       {title:'codexGracefulRestart', command:'$p=Get-Process Codex -ErrorAction SilentlyContinue | Select-Object -First 1; $exe=$p.Path; if($p){$p.CloseMainWindow()|Out-Null; Start-Sleep 2}; if($exe){Start-Process $exe}else{Write-Host "Codex executable path not found."}'},
       {title:'codexForceRestart', command:'$p=Get-Process Codex -ErrorAction SilentlyContinue | Select-Object -First 1; $exe=$p.Path; if($p){$p|Stop-Process -Force}; Start-Sleep 2; if($exe){Start-Process $exe}else{Write-Host "Codex executable path not found."}', danger:true},
       {title:'taskMeccaStatus', command:'task-mecca web status'},
-      {title:'taskMeccaRestart', command:'task-mecca web restart'}
+      {title:'webRestartUseButton', informational:true}
     ],
     linux: [
       {title:'processCheck', command:"pgrep -af '[Cc]odex'"},
       {title:'taskMeccaStatus', command:'task-mecca web status'},
-      {title:'taskMeccaRestart', command:'task-mecca web restart'}
+      {title:'webRestartUseButton', informational:true}
     ]
   };
 
@@ -466,6 +544,7 @@
         ? '<p class="terminal-emergency-note">' + escapeHTML(t('linuxCodexNote')) + '</p>'
         : '';
       const rows = commands.map((item, index) =>
+        item.informational ? '<div class="terminal-command terminal-command-note"><p>' + escapeHTML(t(item.title)) + '</p></div>' :
         '<div class="terminal-command' + (item.danger ? ' danger' : '') + '">' +
           '<div class="terminal-command-head"><strong>' + escapeHTML(t(item.title)) + '</strong>' +
           (item.danger ? '<span class="terminal-command-warning">' + escapeHTML(t(item.warning || 'forceWarning')) + '</span>' : '') +
@@ -900,6 +979,8 @@
     }
   }
 
+  $('#terminalWebRestartBtn')?.addEventListener('click',restartWebService);
+  $('#terminalWebRestartBtn').textContent=t('webRestartAction');
   $('#terminalStartBtn').addEventListener('click', startSession);
   $('#terminalRestartBtn').addEventListener('click', restartSession);
   $('#terminalCloseBtn').addEventListener('click', () => closeSession(false));
