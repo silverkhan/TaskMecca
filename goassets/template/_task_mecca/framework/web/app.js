@@ -2447,12 +2447,12 @@ function telegramSetupSummary(){
  return {kind,ready,total:enabled.length,target};
 }
 function telegramSetupNeed(){
- const summary=telegramSetupSummary();
- if(!summary?.target||!telegramSetupMayPrompt())return null;
- // The automatic once-per-start onboarding is only for completely absent
- // credentials. Partial connections are explained in notification settings.
- if((state.projectNotificationSettings||[]).some(row=>row.status?.configured))return null;
- return summary;
+ if(!state.projectNotificationSettingsLoaded||!telegramSetupMayPrompt())return null;
+ const rows=state.projectNotificationSettings||[];
+ if(!rows.length||rows.some(row=>row.status?.configured))return null;
+ // An explicit channel-off preference controls delivery, not whether an
+ // absent token is discoverable at the next Web service startup.
+ return {kind:'missing',ready:0,total:rows.length,target:rows[0]};
 }
 function telegramSetupGuideMarkup(hub=false){
  const s=telegramSetupNeed();if(!s)return '';
@@ -5601,7 +5601,7 @@ async function refresh() {
   }
 }
 function route(fromPop=false) {
-  if(fromPop)state.telegramSetupBootPending=false;
+  if(fromPop&&state.telegramSetupBootShown)state.telegramSetupBootPending=false;
  const previousAttentionContext=state.project+'|'+state.backlog;
   const previousDetail=state.detail;
   const previousProject=state.project;
