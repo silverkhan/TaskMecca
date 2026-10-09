@@ -35,7 +35,7 @@ function page({beforePost=async()=>{}}={}){
   getItem:k=>store.get(k)||null,setItem:(k,v)=>store.set(k,String(v)),removeItem:k=>store.delete(k)
  },document:{querySelector:()=>null,querySelectorAll:()=>[]},setTimeout,clearTimeout});
  vm.runInContext(source.slice(0,source.indexOf('\ntranslateChrome();'))+
- '\nglobalThis.app={state,telegramAction,projectTelegramAction,configureSharedTelegram,loadProjectNotificationSettings,loadTelegramStatus,projectChannelSettingsMarkup,notificationOverviewMarkup,webNotificationEnabled,changeWebNotificationSetting,currentPushKinds,setAllTelegramChannelsEnabled,setNotificationSwitch,notificationSwitchPending,pollTelegramConnectionStatus};',context);
+ '\nglobalThis.app={state,telegramAction,projectTelegramAction,configureSharedTelegram,loadProjectNotificationSettings,loadTelegramStatus,projectChannelSettingsMarkup,notificationOverviewMarkup,webNotificationEnabled,changeWebNotificationSetting,currentPushKinds,setAllTelegramChannelsEnabled,setNotificationSwitch,notificationSwitchPending,pollTelegramConnectionStatus,telegramSetupSummary,telegramSetupGuideMarkup,telegramSetupMayPrompt,setTelegramSetupPreference,telegramSetupNeed,telegramOnboardingChoice:telegramSetupPreference};',context);
  context.app.state.project='/demo';return {...context.app,updates,statuses,store};
 }
 test('individual token setup refreshes configured status immediately without browser reload',async()=>{
@@ -276,4 +276,70 @@ test('Registered Telegram bot shows name even when recipient chat is still pendi
  assert.match(html,/data-telegram-discover-project="\/demo"/);
  assert.match(html,/연결 대기/);
  assert.doesNotMatch(html,/data-telegram-test-project="\/demo"/);
+});
+
+test('optional Telegram guide appears only after server configuration is fetched',async()=>{
+ const app=page();
+ assert.equal(app.telegramSetupSummary(),null);
+ assert.equal(app.telegramSetupGuideMarkup(),'' ,'no false initial unconfigured warning');
+ await app.loadProjectNotificationSettings();
+ const s=app.telegramSetupSummary();
+ assert.equal(s.kind,'missing');assert.equal(s.total,2);
+ const html=app.telegramSetupGuideMarkup();
+ assert.match(html,/Telegram 알림을 설정해 보세요/);
+ assert.match(html,/전체 프로젝트 알림용 봇 토큰 등록/);
+ for(const step of ['봇 토큰 등록','\/start','수신처 연결 확인','테스트 메시지 발송'])assert.match(html,new RegExp(step));
+ assert.match(html,/data-telegram-onboard="later"/);
+ assert.match(html,/data-telegram-onboard="never"/);
+});
+test('recipient connection waiting is distinct from missing token and no step is prematurely completed',async()=>{
+ const app=page();app.statuses['/demo'].configured=true;app.statuses['/demo'].connected=false;
+ app.statuses['/second'].project_enabled=false;
+ await app.loadProjectNotificationSettings();
+ const state=app.telegramSetupSummary();
+ assert.equal(state.kind,'pending');assert.equal(state.total,1);assert.equal(state.ready,0);
+ const html=app.telegramSetupGuideMarkup();
+ assert.match(html,/채팅 수신처 연결 대기/);
+ assert.match(html,/연결 설정 계속하기/);
+ assert.match(html,/연결 전 확인 필요/);
+ assert.equal((html.match(/is-done/g)||[]).length,1,'only token registration is confirmed');
+});
+test('partially connected projects need attention, fully connected ones do not',async()=>{
+ const app=page();
+ app.statuses['/demo'].configured=true;app.statuses['/demo'].connected=true;
+ await app.loadProjectNotificationSettings();
+ assert.equal(app.telegramSetupSummary().kind,'partial');
+ assert.match(app.telegramSetupGuideMarkup(),/일부 프로젝트 미연결/);
+ app.statuses['/second'].configured=true;app.statuses['/second'].connected=true;
+ await app.loadProjectNotificationSettings();
+ assert.equal(app.telegramSetupSummary().kind,'ready');
+ assert.equal(app.telegramSetupGuideMarkup(),'');
+});
+test('explicitly disabled Telegram projects are not treated as setup failures',async()=>{
+ const app=page();app.statuses['/demo'].project_enabled=false;app.statuses['/second'].project_enabled=false;
+ await app.loadProjectNotificationSettings();
+ assert.equal(app.telegramSetupSummary(),null);
+ assert.equal(app.telegramSetupGuideMarkup(),'');
+ assert.equal(app.telegramSetupNeed(),null);
+});
+test('Later snoozes Telegram onboarding and never suppresses reminders persistently',async()=>{
+ const app=page();await app.loadProjectNotificationSettings();
+ app.state.view='backlog';
+ app.setTelegramSetupPreference('later');
+ assert.equal(app.telegramSetupGuideMarkup(),'');
+ assert.equal(app.telegramOnboardingChoice().mode,'later');
+ assert.ok(app.telegramOnboardingChoice().until>Date.now());
+ app.store.set('task-mecca-telegram-onboarding-v1',JSON.stringify({mode:'later',until:Date.now()-1000}));
+ assert.ok(app.telegramSetupGuideMarkup());
+ app.setTelegramSetupPreference('never');
+ assert.equal(app.telegramSetupGuideMarkup(),'');
+ assert.equal(app.telegramOnboardingChoice().mode,'never');
+});
+test('sidebar indicator uses a separate marker rather than overriding browser notification permission',()=>{
+ assert.match(source,/function updateTelegramSetupNavIndicator/);
+ assert.match(source,/projectNotificationsNav/);
+ assert.match(source,/telegram-setup-nav-indicator/);
+ assert.match(source,/function updateNotificationIndicator/);
+ assert.match(source,/telegramSetupGuideMarkup\(true\)\+hubView/);
+ assert.match(source,/\$\{telegramSetupGuideMarkup\(\)\}/);
 });

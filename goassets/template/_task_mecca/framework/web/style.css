@@ -1875,3 +1875,35 @@ select.tm-combo-native{position:absolute!important;width:1px!important;height:1p
  .notice-telegram-credentials{flex-direction:column;gap:8px}
  .notice-telegram-quick .telegram-message-action,.notice-connection-row .telegram-message-action,.telegram-shared-setup .telegram-token-submit{width:100%;min-height:42px}
 }
+
+
+/* Optional Telegram onboarding: quiet, dismissible and separate from browser alerts. */
+.telegram-onboarding-card{display:grid;gap:12px;margin:14px 0 18px;padding:18px;border:1px solid var(--border);border-radius:13px;background:var(--surface);max-width:100%}
+.telegram-onboarding-card.is-hub{margin:0 0 18px}
+.telegram-onboarding-intro{display:flex;gap:12px;align-items:flex-start;min-width:0}
+.telegram-onboarding-glyph{display:grid;place-items:center;flex:0 0 34px;height:34px;border:1px solid var(--border);border-radius:9px;color:var(--accent);font-size:19px;background:var(--surface2)}
+.telegram-onboarding-intro>div{min-width:0}
+.telegram-onboarding-intro strong{font-size:14px;font-weight:750}
+.telegram-onboarding-intro p{margin:5px 0 0;font-size:12px;line-height:1.65;color:var(--muted)}
+.telegram-onboarding-status{display:flex;gap:8px 14px;align-items:center;flex-wrap:wrap;padding:9px 12px;border:1px solid var(--border);border-radius:9px}
+.telegram-onboarding-status strong{font-size:12px;font-weight:700;color:var(--text)}
+.telegram-onboarding-status span{font-size:11px;color:var(--muted)}
+.telegram-setup-steps{list-style:none;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin:0;padding:0}
+.telegram-setup-step{display:flex;align-items:flex-start;gap:10px;padding:10px;border:1px solid var(--border);border-radius:9px;font-size:12px;color:var(--text)}
+.telegram-setup-step>span:first-child{display:grid;place-items:center;flex:0 0 19px;width:19px;height:19px;border:1px solid var(--border);border-radius:50%;color:var(--muted);line-height:1;font-size:12px}
+.telegram-setup-step.is-done>span:first-child{color:var(--ok);border-color:var(--ok)}
+.telegram-setup-step small{display:block;margin-top:3px;font-size:10px;color:var(--muted)}
+.telegram-onboarding-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.telegram-onboarding-actions .action-btn{min-height:38px;height:auto;padding:8px 12px;white-space:normal;line-height:1.4}
+.telegram-onboarding-dismiss{padding:6px 8px;border:0;background:transparent;color:var(--muted);font:inherit;font-size:11px;cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+.telegram-onboarding-dismiss:hover{color:var(--text)}
+.telegram-onboarding-actions button:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.telegram-onboarding-foot{margin:0;font-size:10px;color:var(--muted)}
+#projectNotificationsNav .telegram-setup-nav-indicator{display:inline-flex;align-items:center;justify-content:center;min-width:14px;height:14px;border-radius:50%;background:var(--surface2);border:1px solid var(--border);font-size:17px;line-height:0;color:var(--muted)}
+@media(max-width:680px){
+ .telegram-onboarding-card{padding:14px;gap:10px}
+ .telegram-setup-steps{grid-template-columns:1fr}
+ .telegram-onboarding-actions{align-items:stretch}
+ .telegram-onboarding-actions .action-btn{flex:1 1 100%;min-height:42px}
+ .telegram-onboarding-dismiss{text-align:center}
+}
