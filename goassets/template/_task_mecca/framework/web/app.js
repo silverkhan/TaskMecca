@@ -77,7 +77,8 @@ const state = {
   storageBusy: false,
   storageError: '',
   storageRuntime: null,
-  storageProject: '',
+  storageProject: '__all__',
+  storageGlobal: null,
   runtimeRootDisclosure: {},
   runtimeRootListOpen: false,
   runtimeRootListLoading: false,
@@ -3354,6 +3355,24 @@ async function loadStorageManagement(refreshHubFirst=false){
  try{
   if(refreshHubFirst||!state.hub)await refreshHub(Boolean(refreshHubFirst));
   if(epoch!==storageFetchEpoch)return;
+  if(state.storageProject==='__all__'){
+   const projects=(state.hub?.projects||[]).filter(p=>p?.path),outcomes=new Array(projects.length);
+   let cursor=0;
+   async function worker(){
+    while(cursor<projects.length){
+     const i=cursor++,row=projects[i],query='?project='+encodeURIComponent(row.path);
+     try{
+      const [logs,runtime]=await Promise.all([fetch('/api/storage/logs'+query,{cache:'no-store'}),fetch('/api/runtime/storage'+query,{cache:'no-store'})]);
+      const [l,v]=await Promise.all([logs.json(),runtime.json()]);
+      if(!logs.ok||!runtime.ok)throw Error(l.error||v.error||'HTTP '+(!logs.ok?logs.status:runtime.status));
+      outcomes[i]={project:row.path,name:row.name||row.path,logs:l,runtime:v};
+     }catch(error){outcomes[i]={project:row.path,name:row.name||row.path,error:String(error?.message||error)};}
+    }
+   }
+   await Promise.all(Array.from({length:Math.min(4,projects.length)},()=>worker()));
+   if(epoch!==storageFetchEpoch||state.storageProject!=='__all__')return;
+   state.storageGlobal=storageGlobalSummary(outcomes);state.logStorage=null;state.storageRuntime=null;return;
+  }
   const project=storageSelectedProject();
   if(!project){state.storageError=state.language==='ko'?'등록된 프로젝트가 없습니다.':'No registered projects.';return;}
   state.storageProject=project;state.logStorageProject=project;
@@ -3373,6 +3392,51 @@ async function loadStorageManagement(refreshHubFirst=false){
   if(epoch===storageFetchEpoch){state.storageBusy=false;if(state.view==='storage')render();}
  }
 }
+function storageGlobalSummary(outcomes){
+ const rows=(outcomes||[]).filter(Boolean),valid=rows.filter(r=>!r.error),failed=rows.filter(r=>r.error);
+ let seenGlobal=false,logBytes=0,clearableBytes=0,runtimeBytes=0,eligibleRuntime=0,conditionalRuntime=0,unverifiableBytes=0;
+ const logsByID={};
+ for(const row of valid){
+  for(const item of row.logs?.items||[]){
+   if(item.scope==='global'){if(seenGlobal)continue;seenGlobal=true;}
+   const bytes=Math.max(0,Number(item.size_bytes)||0);
+   logBytes+=bytes;if(item.can_clear)clearableBytes+=bytes;
+   const group=logsByID[item.id]||(logsByID[item.id]={id:item.id,bytes:0,canClear:!!item.can_clear});
+   group.bytes+=bytes;
+  }
+  runtimeBytes+=Math.max(0,Number(row.runtime?.total_bytes)||0);
+  eligibleRuntime+=Math.max(0,Number(row.runtime?.cleanup?.reclaimable_bytes)||0);
+  conditionalRuntime+=Math.max(0,Number(row.runtime?.raw_protection?.conditional_bytes)||0);
+  unverifiableBytes+=Math.max(0,Number(row.runtime?.raw_protection?.unverifiable_bytes)||0);
+ }
+ return {rows,valid,failed,logBytes,clearableBytes,runtimeBytes,eligibleRuntime,conditionalRuntime,unverifiableBytes,logsByID};
+}
+function storageGlobalView(){
+ const ko=state.language==='ko',all=state.storageGlobal;
+ if(!all)return '<p class="muted">'+esc(ko?'전체 프로젝트 조회 중…':'Loading all projects…')+'</p>';
+ const cards=[
+  [ko?'진단·보호 로그':'Diagnostic and protected logs',all.logBytes],
+  [ko?'에이전트 실행 기록':'Agent execution records',all.runtimeBytes],
+  [ko?'현재 정리 가능':'Eligible now',all.clearableBytes+all.eligibleRuntime],
+  [ko?'조건 충족 시 추가 가능':'Potential additional reclaim',all.conditionalRuntime]
+ ].map(([label,bytes])=>'<div class="storage-overview-card"><span>'+esc(label)+'</span><strong>'+esc(fmtBytes(bytes))+'</strong></div>').join('');
+ const status=all.failed.length?'<p role="alert" class="log-storage-alert">'+esc(ko?'일부 프로젝트의 조회가 실패했습니다. 합계는 성공한 프로젝트의 측정치만 포함합니다.':'Some projects failed; totals include only successfully measured projects.')+'</p>':'';
+ const entries=all.rows.map(row=>row.error?
+  '<div class="storage-project-summary"><strong>'+esc(row.name)+'</strong><span role="alert">'+esc(row.error)+'</span><button type="button" data-storage-manage="'+esc(row.project)+'">'+esc(ko?'재조회':'Retry')+'</button></div>':
+  '<div class="storage-project-summary"><strong>'+esc(row.name)+'</strong><span>'+esc(fmtBytes(Number(row.runtime?.total_bytes||0)))+' + '+esc(fmtBytes(Number(row.logs?.total_bytes||0)))+'</span>'+
+  '<small>'+esc(ko?'현재 정리 가능 ':'Eligible now ')+esc(fmtBytes(Number(row.logs?.reclaimable_bytes||0)+Number(row.runtime?.cleanup?.reclaimable_bytes||0)))+
+  ' · '+esc(ko?'조건부 추가 ':'Conditional ')+esc(fmtBytes(row.runtime?.raw_protection?.conditional_bytes||0))+'</small>'+
+  '<button type="button" data-storage-manage="'+esc(row.project)+'">'+esc(ko?'프로젝트 관리':'Manage project')+'</button></div>').join('');
+ const byType=Object.values(all.logsByID).map(item=>
+  '<div class="storage-global-log"><strong>'+esc(logStorageLabels().names[item.id]||item.id)+'</strong><span>'+esc(fmtBytes(item.bytes))+'</span>'+
+  '<small>'+esc(item.canClear?(ko?'수동 정리 가능':'Manually clearable'):(ko?'보호 중 · 삭제 정책 미승인':'Protected; no approved deletion policy'))+'</small></div>').join('');
+ return status+'<div class="storage-overview-grid storage-global-overview">'+cards+'</div>'+
+ '<p class="storage-scope-note">'+esc(ko?'전체 프로젝트의 관측 용량이며 공용 웹 서비스 로그는 한 번만 셉니다. 로그와 실행 기록이 일부 중복될 수 있어 전체 디스크 사용량으로 단순 합산할 수 없습니다. 조건부 확보량은 보장되지 않습니다.':'Observed usage across projects; the shared service log is counted once. Log and execution measurements may overlap and must not be added as a disk total. Conditional savings are not guaranteed.')+'</p>'+
+ '<section class="storage-management-section"><h2>'+esc(ko?'진단 로그·보호 원장별 현황':'Diagnostics and protected ledgers')+'</h2><div class="storage-global-log-grid">'+byType+'</div></section>'+
+ '<section class="storage-management-section"><h2>'+esc(ko?'프로젝트별 관리':'Manage by project')+'</h2><p class="muted">'+esc(ko?'전체 현황은 읽기 전용입니다. 안전 정리는 프로젝트를 선택해 기존 보호 검사를 통과한 기록에만 실행할 수 있습니다.':'All-project view is read-only. Select a project to run its guarded safe cleanup.')+'</p>'+
+ '<div class="storage-global-projects">'+entries+'</div></section>';
+}
+
 function storageRawProtectionMarkup(report,ko){
  const analysis=report?.raw_protection;
  if(!analysis)return '<p class="muted">'+esc(ko?'보호 조건별 용량 분석은 서버가 제공하는 버전에서 표시됩니다.':'File-level protection estimates require server support.')+'</p>';
