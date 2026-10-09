@@ -55,8 +55,8 @@ test('individual token setup refreshes configured status immediately without bro
  assert.equal(app.state.telegramStatus.configured,true);
  assert.equal(app.state.projectNotificationSettings.find(x=>x.path==='/demo').status.configured,true);
  const html=app.projectChannelSettingsMarkup();
- assert.match(html,/봇 토큰: <\/b>등록됨/);
- assert.match(html,/채팅 수신처: <\/b>연결 대기/);
+ assert.match(html,/봇 토큰:<\/b>\s*등록됨/);
+ assert.match(html,/채팅 수신처:<\/b>\s*연결 대기/);
  assert.equal((html.match(/data-telegram-discover-project="\/demo"/g)||[]).length,1,'only one discovery action per project');
 });
 test('shared token setup refreshes every project without reloading the browser',async()=>{
@@ -231,20 +231,49 @@ test('global Telegram toggle starts requests for all projects before their respo
  assert.ok(app.state.projectNotificationSettings.every(x=>x.status.project_enabled===false));
 });
 
-test('pending Telegram connection has an obvious confirmation action outside recipient details',async()=>{
+test('pending Telegram connection has a visible confirmation button and no overview action',async()=>{
  const app=page();app.statuses['/demo'].configured=true;await app.loadProjectNotificationSettings();
  const list=app.projectChannelSettingsMarkup(),overview=app.notificationOverviewMarkup();
  assert.match(list,/data-telegram-discover-project="\/demo"/);
- assert.match(overview,/data-telegram-discover-project="\/demo"/);
+ assert.doesNotMatch(overview,/data-telegram-discover-project/);
  assert.match(list,/\/start/);
  assert.doesNotMatch(overview,/data-telegram-test-project/);
 });
-test('connected Telegram recipient has test-message action on overview and project detail',async()=>{
+test('connected Telegram recipient has one project test button and no duplicated overview button',async()=>{
  const app=page();app.statuses['/demo'].configured=true;app.statuses['/demo'].connected=true;await app.loadProjectNotificationSettings();
  const list=app.projectChannelSettingsMarkup(),overview=app.notificationOverviewMarkup();
- assert.match(list,/data-telegram-test-project="\/demo"/);
- assert.match(overview,/data-telegram-test-project="\/demo"/);
- assert.match(overview,/테스트 메시지 발송/);
+ assert.equal((list.match(/data-telegram-test-project="\/demo"/g)||[]).length,1);
+ assert.doesNotMatch(overview,/data-telegram-test-project/);
+ assert.doesNotMatch(overview,/data-telegram-discover-project/);
+ assert.doesNotMatch(overview,/테스트 메시지 발송/);
+});
+test('project channels, connection status and test action are visible before expanding event kinds',async()=>{
+ const app=page();app.statuses['/demo'].configured=true;app.statuses['/demo'].connected=true;
+ app.statuses['/demo'].bot_username='TaskMeccaBot';
+ await app.loadProjectNotificationSettings();
+ const list=app.projectChannelSettingsMarkup();
+ const card=list.slice(list.indexOf('data-notice-project="/demo"'),list.indexOf('</article>')+10);
+ assert.match(card,/class="notice-project-primary"/);
+ assert.match(card,/data-center-channel="web"/);
+ assert.match(card,/data-center-channel="telegram"/);
+ assert.match(card,/class="notice-project-secondary"/);
+ assert.match(card,/@TaskMeccaBot/);
+ assert.match(card,/채팅 수신처:<\/b> 연결됨/);
+ assert.match(card,/data-telegram-test-project="\/demo"/);
+ assert.match(card,/data-notice-project-toggle="\/demo" aria-expanded="false"/);
+ assert.match(card,/data-notice-project-content hidden/);
+ assert.ok(card.indexOf('data-telegram-test-project')<card.indexOf('data-notice-project-content'));
+ assert.equal((card.match(/data-center-channel="web"/g)||[]).length,1);
+ assert.equal((card.match(/data-center-channel="telegram"/g)||[]).length,1);
+});
+test('missing-token project keeps channel switches and setup status, without test action',async()=>{
+ const app=page();await app.loadProjectNotificationSettings();
+ const markup=app.projectChannelSettingsMarkup(),card=markup.slice(markup.indexOf('data-notice-project="/second"'));
+ assert.match(card,/봇 토큰:<\/b> 미등록/);
+ assert.match(card,/채팅 수신처:<\/b> 연결 대기/);
+ assert.match(card,/data-notice-project-toggle="\/second"/);
+ assert.doesNotMatch(card,/data-telegram-test-project="\/second"/);
+ assert.doesNotMatch(card,/data-telegram-discover-project="\/second"/);
 });
 test('test action never overwrites persisted connection with its acknowledgement payload',async()=>{
  const app=page();app.statuses['/demo'].configured=true;app.statuses['/demo'].connected=true;await app.loadProjectNotificationSettings();
