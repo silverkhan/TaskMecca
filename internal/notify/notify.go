@@ -79,7 +79,7 @@ func (t telegramChannel) Deliver(e Event) error {
 	if label == "" {
 		label = e.Kind
 	}
-	lines := []string{label, head}
+	lines := []string{label, telegramMachineLine(), head}
 	if e.Message != "" {
 		lines = append(lines, e.Message)
 	}
@@ -440,7 +440,7 @@ func TestTelegram(project string) error {
 	if cfg.Token == "" || cfg.ChatID == 0 {
 		return errors.New("telegram bot is not connected")
 	}
-	return telegramCall(cfg.Token, "sendMessage", map[string]any{"chat_id": cfg.ChatID, "text": "🔔 " + telegramProjectPrefix(project) + " 테스트 알림\nTelegram 알림 연결이 정상입니다."}, nil)
+	return telegramCall(cfg.Token, "sendMessage", map[string]any{"chat_id": cfg.ChatID, "text": "🔔 " + telegramProjectPrefix(project) + " 테스트 알림\n" + telegramMachineLine() + "\nTelegram 알림 연결이 정상입니다."}, nil)
 }
 // DisableAllTelegram deletes saved Telegram recipient configurations for all
 // monitored projects. It does not touch browser notifications or delivery logs.
