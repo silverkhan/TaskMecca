@@ -67,7 +67,7 @@ function harness(){
  const context=vm.createContext({document,window:{innerWidth:360,innerHeight:700,addEventListener(){}},
   MutationObserver:MO,queueMicrotask:fn=>Promise.resolve().then(fn),Event:class Event{constructor(type,opts){this.type=type;this.bubbles=opts?.bubbles}}});
  vm.runInContext(source,context);
- return {document,container,native,notify:()=>observer?.([])};
+ return {document,container,native,window:context.window,notify:()=>observer?.([])};
 }
 test('every select is enhanced while native change event continues powering existing handlers',()=>{
  const h=harness(),wrapper=h.container.querySelector('.tm-combo');
@@ -110,4 +110,31 @@ test('mobile theme and all-selector integration are wired into every page',()=>{
  assert.match(source,/new MutationObserver\(schedule\)/);
  assert.match(source,/aria-haspopup/);
  assert.match(source,/if\(current&&event.target===searchField\)keys\(event\)/);
+});
+
+test('mobile header media query hides picker captions only, not inserted select wrappers',()=>{
+ // Regresses dev.165: mobile '.language-picker span' and '.palette-picker span'
+ // selectors matched ALL descendant spans, including our new .tm-combo span,
+ // leaving both topbar dropdowns visually empty.
+ for(const klass of ['language-picker','palette-picker','backlog-picker','project-picker']){
+  assert.doesNotMatch(styles,new RegExp('\\.'+klass+' span\\{display:none\\}'));
+  assert.match(styles,new RegExp('\\.'+klass+' > span\\{display:none\\}'));
+ }
+ assert.match(styles,/\.language-picker \.tm-combo,\.palette-picker \.tm-combo\{min-width:72px;flex:1\}/);
+ assert.match(styles,/\.tm-combo-trigger\{[^}]*color:var\(--text\)/);
+});
+test('programmatic native select changes immediately synchronize visible label',()=>{
+ const h=harness(),button=h.container.querySelector('.tm-combo-trigger');
+ assert.equal(button.textContent,'empfund');
+ h.native.selectedIndex=1;
+ // Initial preference restoration does not emit a change event.
+ assert.equal(button.textContent,'empfund');
+ h.window.TaskMeccaSelectUI.sync();
+ assert.equal(button.textContent,'TaskMecca');
+ assert.equal(button.getAttribute('aria-expanded'),'false');
+});
+test('language and palette initialization explicitly synchronize themed picker text',()=>{
+ const app=fs.readFileSync('goassets/template/_task_mecca/framework/web/app.js','utf8');
+ assert.match(app,/renderLanguagePicker\(\);\s*window\.TaskMeccaSelectUI\?\.sync\(\)/);
+ assert.match(app,/picker\.value=state\.palette;\s*window\.TaskMeccaSelectUI\?\.sync\(\)/);
 });
