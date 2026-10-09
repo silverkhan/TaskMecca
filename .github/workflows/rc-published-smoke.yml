@@ -44,9 +44,27 @@ jobs:
           grep -q 'custom-project-doc' _task_mecca/backups/migration-*/framework/README.md
           test -f _task_mecca/manifest.json
           test -z "$(find _task_mecca/framework -name '*.py' -print -quit)"
-          task-mecca web --host 127.0.0.1 --no-open
-          curl -fsS --retry 6 --retry-delay 1 http://127.0.0.1:18765/api/health
-          task-mecca web stop
+          if [ "$(uname -s)" = "Darwin" ]; then
+            # Hosted macOS agents are not signed-in GUI launchd sessions.
+            # Exercise the real HTTP runtime without assuming LaunchAgents.
+            task-mecca web --foreground --host 127.0.0.1 --no-open > "$RUNNER_TEMP/web-foreground.log" 2>&1 &
+            web_pid=$!
+            healthy=0
+            for attempt in 1 2 3 4 5 6 7 8 9 10; do
+              if curl -fsS --max-time 2 http://127.0.0.1:18765/api/health; then healthy=1; break; fi
+              sleep 1
+            done
+            if [ "$healthy" != "1" ]; then
+              cat "$RUNNER_TEMP/web-foreground.log"
+              exit 1
+            fi
+            kill "$web_pid" || true
+            wait "$web_pid" || true
+          else
+            task-mecca web --host 127.0.0.1 --no-open
+            curl -fsS --retry 6 --retry-delay 1 http://127.0.0.1:18765/api/health
+            task-mecca web stop
+          fi
           echo "Published immutable RC passed install, migration, data preservation and Web health checks."
       - name: Install previous Stable, install published RC, preserve project data (Windows)
         if: runner.os == 'Windows'
