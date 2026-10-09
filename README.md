@@ -218,7 +218,7 @@ go test ./...
 go build ./cmd/task-mecca
 ```
 
-A Python compatibility runtime is also maintained. See [CONTRIBUTING.md](CONTRIBUTING.md).
+Go is the only supported application runtime; Python compatibility is no longer maintained. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 MIT License · [LICENSE](LICENSE)
 
@@ -230,4 +230,4 @@ Archive moves a project from the active list into a collapsed, browser-remembere
 
 First-time Go CLI `init` creates framework files and registers the project for Web. Existing installations stay unchanged and are directed to `migrate`. Migration never registers, unregisters or restores projects, and never modifies backlog, configuration, credentials or runtime data. Any modified managed file requires a choice: overwrite, back up modifications and migrate, or cancel. No choice means no writes or backup creation. Backup failure stops before framework changes.
 
-Use `task-mecca migrate --json` for agents: exit 3 with `status: choice_required`, `modified_files` and `choices` asks the human. Then run `--choice overwrite|backup|cancel`. Non-TTY execution never prompts. The legacy Python CLI also supports `migrate` (`update` alias), `--json` and `--choice`, but retains its historical framework-only installation role, with no global Web registration. Unmanifested legacy files are preserved because their ownership cannot safely be inferred.
+Use `task-mecca migrate --json` for agents: exit 3 with `status: choice_required`, `modified_files` and `choices` asks the human. Then run `--choice overwrite|backup|cancel`. Non-TTY execution never prompts. Python CLI compatibility is retired. Existing project data and unmanifested legacy files are preserved during Go migration because their ownership cannot safely be inferred.

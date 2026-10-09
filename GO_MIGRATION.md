@@ -1,6 +1,6 @@
-# Go runtime migration (in progress)
+# Go runtime migration (completed; historical checkpoints)
 
-This branch migrates Task Mecca to a standalone Go runtime. The Python implementation remains in `src/` only as a compatibility/parity reference. The Go implementation and `goassets/template` are the canonical product runtime and install assets; new product behavior must not be implemented in the Python template. The embedded project install template is Python-free.
+Task Mecca now runs only as a standalone Go application. The historical Python compatibility implementation and parity tests have been retired. `goassets/template` is the only canonical project framework source. This document keeps historical migration checkpoints for reference; references below to Python files, parity checks, and remaining tasks are not current maintenance commitments. Existing user projects and unmanifested files remain protected during migrations.
 
 ## Compatibility boundary
 

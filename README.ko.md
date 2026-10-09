@@ -218,7 +218,7 @@ go test ./...
 go build ./cmd/task-mecca
 ```
 
-Python compatibility runtime도 유지합니다. 자세한 내용은 [CONTRIBUTING.md](CONTRIBUTING.md)를 참고하세요.
+공식 실행 환경은 Go 기반 독립 실행 파일 하나이며 Python 레거시 호환성은 더 이상 유지하지 않습니다. 자세한 내용은 [CONTRIBUTING.md](CONTRIBUTING.md)를 참고하세요.
 
 MIT License · [LICENSE](LICENSE)
 
@@ -230,4 +230,4 @@ MIT License · [LICENSE](LICENSE)
 
 Go CLI `init`은 최초 framework 생성과 Web 감시 등록만 수행합니다. 기존 설치는 변경하지 않고 `migrate`를 안내합니다. 마이그레이션은 감시·보관 상태와 백로그·설정·인증정보·런타임 데이터를 보존합니다. 수정한 관리 파일이 있으면 새 버전 덮어쓰기 / 기존 수정사항 백업 후 진행 / 취소 중 하나를 선택해야 합니다. 선택 전에는 파일이나 백업을 만들지 않으며 백업 실패 시 framework 갱신을 중단합니다.
 
-에이전트는 `task-mecca migrate --json`의 exit 3, `status: choice_required`, `modified_files`, `choices`를 보고 사람에게 질문한 뒤 `--choice overwrite|backup|cancel`을 실행합니다. 비TTY는 대기하지 않습니다. Python 호환 CLI도 `migrate`(`update` 별칭)·`--json`·`--choice`를 제공하지만, 기존 framework-only 설치 역할을 유지하므로 global Web 등록은 수행하지 않습니다. manifest 없는 레거시 파일은 소유권을 단정할 수 없어 그대로 보존합니다.
+에이전트는 `task-mecca migrate --json`의 exit 3, `status: choice_required`, `modified_files`, `choices`를 보고 사람에게 질문한 뒤 `--choice overwrite|backup|cancel`을 실행합니다. 비TTY는 대기하지 않습니다. Python CLI 호환성 지원은 종료했습니다. 기존 프로젝트의 데이터와 manifest 없는 레거시 파일은 소유권을 단정할 수 없어 Go 마이그레이션에서도 그대로 보존합니다.
