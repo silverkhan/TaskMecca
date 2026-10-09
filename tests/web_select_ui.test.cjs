@@ -118,7 +118,7 @@ test('mobile header media query hides picker captions only, not inserted select 
  // leaving both topbar dropdowns visually empty.
  for(const klass of ['language-picker','palette-picker','backlog-picker','project-picker']){
   assert.doesNotMatch(styles,new RegExp('\\.'+klass+' span\\{display:none\\}'));
-  assert.match(styles,new RegExp('\\.'+klass+' > span(?:,|\\{display:none\\})'));
+  assert.match(styles,new RegExp('\\.'+klass+' > span:not\\(\\.tm-combo\\)(?:,|\\{display:none\\})'));
  }
  assert.match(styles,/\.language-picker \.tm-combo,\.palette-picker \.tm-combo\{min-width:72px;flex:1\}/);
  assert.match(styles,/\.tm-combo-trigger\{[^}]*color:var\(--text\)/);
