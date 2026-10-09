@@ -1,8 +1,12 @@
 {
   "releases": [
     {
-      "version": "0.3.0-rc.1",
+      "version": "0.3.0",
       "date": "2026-10-09",
+      "title": {
+        "ko": "관제·운영 경험 개편",
+        "en": "Operations and Monitoring Overhaul"
+      },
       "summary": {
         "ko": "여러 에이전트의 작업 상태와 알림을 한곳에서 관리하도록 관제·운영 기능을 확장했습니다. 프로젝트·저장소 관리와 업데이트 안정성, 대규모 백로그 성능 및 웹 사용성을 함께 개선했습니다.",
         "en": "Expanded unified agent monitoring and notifications. Improved project and storage management, update resilience, large-backlog performance, and the Web experience."
@@ -10,10 +14,6 @@
       "migration": {
         "required": true,
         "instruction_refresh": true
-      },
-      "title": {
-        "ko": "관제·운영 경험 개편",
-        "en": "Operations and Monitoring Overhaul"
       }
     },
     {

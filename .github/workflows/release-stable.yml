@@ -101,6 +101,27 @@ jobs:
           ! grep -Fq '\\r' dist/VERSION.txt
           grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$' dist/VERSION.txt
           (cd dist && sha256sum task-mecca-* > SHA256SUMS.txt)
+      - name: Generate public release description
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="$(tr -d '\r\n' < goassets/template/_task_mecca/VERSION)"
+          note="release-notes/${version}.json"
+          {
+            printf '# Task Mecca %s — %s\n\n' "$version" "$(jq -r '.title.ko // .summary.ko' "$note")"
+            jq -r '.summary.ko' "$note"
+            echo
+            echo '## 주요 변경 사항'
+            jq -r '(.highlights // [])[] | "- " + .ko' "$note"
+            echo
+            echo '## 분야별 상세'
+            jq -r '(.categories // [])[] | "### " + .title.ko + "\n" + ((.items | map("- " + .ko)) | join("\n")) + "\n"' "$note"
+            echo '## 업데이트 후 확인'
+            jq -r '(.after_update // [])[] | "- " + .ko' "$note"
+            echo
+            echo '설치·업데이트 전에 사용자 데이터 백업 및 프레임워크 마이그레이션 안내를 확인하세요.'
+          } > release-description.md
+
       - name: Update Stable release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -111,7 +132,6 @@ jobs:
           publish_release() {
             tag="$1"
             title="$2"
-            notes="$3"
 
             git tag -f "$tag" "$GITHUB_SHA"
             git push origin "refs/tags/$tag" --force
@@ -142,8 +162,7 @@ jobs:
           }
 
           publish_release release-stable \
-            "Task Mecca Stable" \
-            "Stable standalone build from main. Commit: $GITHUB_SHA"
+            "Task Mecca Stable 0.3.0 — 관제·운영 경험 개편"
 
       - name: Smoke test one-line installer
         shell: bash

@@ -4,13 +4,13 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 const root = path.join(__dirname, '..');
-const note = JSON.parse(fs.readFileSync(path.join(root, 'release-notes/0.3.0-rc.1.json'), 'utf8'));
+const note = JSON.parse(fs.readFileSync(path.join(root, 'release-notes/0.3.0.json'), 'utf8'));
 const embedded = JSON.parse(fs.readFileSync(path.join(root, 'goassets/template/_task_mecca/framework/release-notes/current.json'), 'utf8'));
 const source = fs.readFileSync(path.join(root, 'goassets/template/_task_mecca/framework/web/app.js'), 'utf8');
 
 test('release candidate note has identical canonical and embedded contracts', () => {
   assert.deepEqual(embedded, note);
-  assert.equal(note.version, '0.3.0-rc.1');
+  assert.equal(note.version, '0.3.0');
   assert.equal(note.highlights.length, 5);
   assert.equal(note.categories.length, 6);
   assert.equal(note.migration.required, true);

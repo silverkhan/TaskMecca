@@ -2,6 +2,18 @@
 
 All notable public releases will be documented here.
 
+## 0.3.0 - 2026-10-09 — Operations and Monitoring Overhaul
+
+- **Unified agent observation:** Root Session history, canonical task lifecycle ledger, Controller/Worker state monitoring, Hook onboarding.
+- **Notifications:** integrated notification center, per-project Telegram settings, browser push, durable replay/duplicate protection.
+- **Project and storage management:** archive/restore, cross-project usage diagnostics, protected retention and safe cleanup.
+- **Performance and design:** paged large-backlog views, less disruptive refreshes, Mecca Dark, responsive mobile controls.
+- **Update resilience and tools:** update progress phases, safer rollback and Windows restart, Web Terminal and remote operations.
+- **Runtime:** Go standalone application is the only supported runtime. Python legacy support has been retired.
+- **After upgrading:** migrate project framework instructions with explicit backup/consent for user modifications; confirm active provider Hooks and restart Root Sessions when enabling Hooks.
+
+Detailed bilingual release notes: [0.3.0](release-notes/0.3.0.json). Verification evidence is documented with the Stable promotion review. The release is not published until release gates are approved.
+
 ## 0.2.1 - 2026-09-28
 
 - make Python 3.11+ and Git the core requirements; `uv` / `uvx` are optional conveniences only
