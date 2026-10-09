@@ -1778,3 +1778,29 @@ body.release-modal-open{overflow:hidden}
 .storage-protection-details p{margin:0;color:var(--muted);font-size:11px;line-height:1.65;overflow-wrap:anywhere}
 .storage-protection-ids{word-break:break-all}
 @media(max-width:680px){.storage-protection-summary{grid-template-columns:minmax(0,1fr)}.storage-protection-analysis{padding:10px}.storage-protection-metric{padding:10px}.storage-protection-file>summary{align-items:baseline}}
+
+
+/* AID-128/129: all-project storage insights, scoped cleanup and retention */
+.storage-global-overview{grid-template-columns:repeat(4,minmax(0,1fr))}
+.storage-global-log-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.storage-global-log{display:grid;gap:5px;min-width:0;padding:12px;border:1px solid var(--border);border-radius:10px;background:var(--surface2)}
+.storage-global-log strong{font-size:12px;overflow-wrap:anywhere}
+.storage-global-log span{font-size:17px;font-weight:750;font-variant-numeric:tabular-nums}
+.storage-global-log small{font-size:11px;line-height:1.45;color:var(--muted)}
+.storage-global-projects{display:grid;gap:9px;margin-top:12px}
+.storage-project-summary{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:5px 12px;border:1px solid var(--border);border-radius:10px;padding:12px}
+.storage-project-summary>strong{overflow-wrap:anywhere;font-size:13px}
+.storage-project-summary>span{font-variant-numeric:tabular-nums;color:var(--text)}
+.storage-project-summary>small{grid-column:1;font-size:11px;color:var(--muted);line-height:1.5}
+.storage-project-summary>button{grid-column:2;grid-row:2;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:9px;padding:7px 12px;font-size:12px;cursor:pointer}
+.storage-project-summary>button:hover{border-color:var(--accent)}
+.storage-project-summary>button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.storage-log-condition{font-weight:650;color:var(--text)!important}
+.storage-retention-warning{padding:8px 10px;background:var(--surface2);border-radius:8px}
+@media(max-width:760px){.storage-global-overview{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:480px){
+.storage-global-log-grid{grid-template-columns:minmax(0,1fr)}
+.storage-project-summary{grid-template-columns:minmax(0,1fr)}
+.storage-project-summary>small,.storage-project-summary>button{grid-column:1;grid-row:auto}
+.storage-project-summary>button{justify-self:start}
+}
