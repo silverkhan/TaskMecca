@@ -1095,6 +1095,7 @@ function scheduleLiveListRefresh() {
 function markContentUpdate(reason='content',changes=[]) {
   if(!state.project)return;
   invalidateListPages();
+  invalidateTaskDetailCache();
   if(state.view!=='backlog'){
     queueMicrotask(()=>refresh());
     return;
@@ -1110,6 +1111,7 @@ function markContentUpdate(reason='content',changes=[]) {
 }
 
 function acceptContentRevision(revision='',states=null) {
+  if(revision&&state.contentRevision&&revision!==state.contentRevision)invalidateTaskDetailCache();
   if(revision)state.contentRevision=revision;
   if(Array.isArray(states))state.contentStateSnapshot=states;
   state.pendingContentUpdate=false;
@@ -3179,6 +3181,7 @@ function ensureOpenProject(path) {
   if(!state.openProjects.includes(path)){ state.openProjects.push(path); saveOpenProjects(); }
 }
 function switchProject(path) {
+  invalidateTaskDetailCache();
   closeTelegramSetupOnNavigation('backlog');
  clearCurrentUserAttention();
   if(!path)return;
@@ -4949,25 +4952,95 @@ function detailView(task) {
   const body=`<div class="detail"><button class="back" id="backBtn">${esc(t('backToBacklog'))}</button>${detailHead}${state.raw?rawPanel:rendered}</div>`;
   return `<div class="detail-layout ${state.raw?'raw-mode':''}">${body}${state.raw?'':detailToc()}</div>`;
 }
+// Adjacent page prefetch (prefetchListPages) caches only list summaries.
+// Full body data is intentionally fetched for at most a few likely targets,
+// never for an entire page of 20-50 tasks.
+const taskDetailCache=new Map();
+const taskDetailPending=new Map();
+const TASK_DETAIL_CACHE_MS=12000;
+const TASK_DETAIL_CACHE_MAX=8;
+let taskDetailCacheGeneration=0;
+function taskDetailKey(id,project=state.project,backlog=state.backlog) {
+  return JSON.stringify([project,backlog,String(id||'').toUpperCase()]);
+}
+function invalidateTaskDetailCache() {
+  taskDetailCacheGeneration++;
+  taskDetailCache.clear();
+}
+function cachedTaskDetail(id,project=state.project,backlog=state.backlog) {
+  const key=taskDetailKey(id,project,backlog),entry=taskDetailCache.get(key);
+  if(!entry)return null;
+  if(Date.now()-entry.at>TASK_DETAIL_CACHE_MS || entry.revision!==state.contentRevision) {
+    taskDetailCache.delete(key);return null;
+  }
+  // Touch for a bounded, recency-ordered cache.
+  taskDetailCache.delete(key);taskDetailCache.set(key,entry);
+  return entry.task;
+}
+function requestTaskDetail(id,project=state.project,backlog=state.backlog) {
+  const fresh=cachedTaskDetail(id,project,backlog);
+  if(fresh)return Promise.resolve(fresh);
+  const key=taskDetailKey(id,project,backlog),pending=taskDetailPending.get(key);
+  if(pending&&pending.generation===taskDetailCacheGeneration)return pending.promise;
+  const generation=taskDetailCacheGeneration,revision=state.contentRevision;
+  const params=new URLSearchParams({project});
+  if(backlog)params.set('backlog',backlog);
+  const promise=(async()=>{
+    const response=await fetch(`/api/tasks/${encodeURIComponent(id)}?${params.toString()}`,{cache:'no-store'});
+    if(!response.ok){
+      let detail='';try{detail=(await response.json()).error||'';}catch(_){}
+      throw new Error(detail||`HTTP ${response.status}`);
+    }
+    const task=await response.json();
+    // Late or obsolete prefetches must never poison a newer revision's cache.
+    if(generation===taskDetailCacheGeneration&&revision===state.contentRevision){
+      taskDetailCache.delete(key);taskDetailCache.set(key,{task,at:Date.now(),revision});
+      while(taskDetailCache.size>TASK_DETAIL_CACHE_MAX)taskDetailCache.delete(taskDetailCache.keys().next().value);
+    }
+    return task;
+  })();
+  taskDetailPending.set(key,{promise,generation});
+  promise.finally(()=>{if(taskDetailPending.get(key)?.promise===promise)taskDetailPending.delete(key);}).catch(()=>{});
+  return promise;
+}
+function prefetchTaskDetail(id) {
+  if(!id||state.view!=='backlog'||state.detail||!state.project)return;
+  if(cachedTaskDetail(id)||taskDetailPending.has(taskDetailKey(id)))return;
+  // Keep background detail requests bounded; clicks bypass this limit.
+  if(taskDetailPending.size>=1)return;
+  requestTaskDetail(id).catch(()=>{}); // Prefetch failures must not produce UI errors.
+}
+function scheduleTaskDetailPrefetch(query) {
+  // One foreground-relevant row, after list paint/adjacent page scheduling.
+  // Never prefetch all 20-50 bodies: that would amplify expensive server scans.
+  const project=state.project,backlog=state.backlog,id=state.listData?.items?.[0]?.id;
+  if(!id)return;
+  const run=()=>{
+    if(state.project!==project||state.backlog!==backlog||state.view!=='backlog'||state.detail||listQueryString()!==query)return;
+    if(typeof document!=='undefined'&&document.visibilityState==='hidden')return;
+    prefetchTaskDetail(id);
+  };
+  if(typeof requestIdleCallback==='function')requestIdleCallback(run,{timeout:1200});
+  else if(typeof setTimeout==='function')setTimeout(run,800);
+}
 async function loadTaskDetail(id) {
   if(!id||!state.project)return;
-  const targetProject=state.project, targetID=id;
-  const params=new URLSearchParams();
-  params.set('project',targetProject);
-  if(state.backlog)params.set('backlog',state.backlog);
+  const targetProject=state.project,targetBacklog=state.backlog,targetID=id;
+  const current=()=>state.project===targetProject&&state.backlog===targetBacklog&&state.detail===targetID;
   try {
-    const r=await fetch(`/api/tasks/${encodeURIComponent(targetID)}?${params.toString()}`,{cache:'no-store'});
-    if(!r.ok){
-      let detail=''; try { const body=await r.json(); detail=body.error||''; } catch(_) {}
-      throw new Error(detail||`HTTP ${r.status}`);
-    }
-    const task=await r.json();
-    if(state.project!==targetProject||state.detail!==targetID)return;
-    state.detailTask=task;
+    const task=await requestTaskDetail(targetID,targetProject,targetBacklog);
+    if(!current())return;
+    // A revision transition while the request was in flight must not display
+    // stale content; refresh once rather than replaying a prior observation.
+    if(!cachedTaskDetail(targetID,targetProject,targetBacklog)){
+      const updated=await requestTaskDetail(targetID,targetProject,targetBacklog);
+      if(!current())return;
+      state.detailTask=updated;
+    }else state.detailTask=task;
     state.loadError='';
     render();
   } catch(e) {
-    if(state.project!==targetProject||state.detail!==targetID)return;
+    if(!current())return;
     state.detailTask=null;
     state.loadError=String(e?.message||e||'Unknown error');
     render();
@@ -4975,7 +5048,7 @@ async function loadTaskDetail(id) {
 }
 function openTask(id) {
   if (!id) return;
-  state.detail=id; state.detailTask=null; state.loadError=''; state.raw=false; state.view='backlog';
+  state.detail=id; state.detailTask=cachedTaskDetail(id); state.loadError=''; state.raw=false; state.view='backlog';
   const p=new URLSearchParams(); if(state.project)p.set('project',state.project); if(state.backlog)p.set('backlog',state.backlog); if(state.tagFilters.length)p.set('tags',state.tagFilters.join(',')); history.pushState({},'',`/tasks/${encodeURIComponent(id)}${p.toString()?`?${p.toString()}`:''}`); render(); loadTaskDetail(id);
 }
 function closeTask() {
@@ -4987,6 +5060,13 @@ function bindRows() {
     if(e.target?.closest?.('[data-external-source]'))return;
     if (el.dataset.rowIndex != null) state.selectedIndex = Number(el.dataset.rowIndex) || 0;
     openTask(el.dataset.id);
+  });
+  // Desktop hover/keyboard focus and mobile touch intent share one pending
+  // request with the eventual click; only focused rows receive full bodies.
+  document.querySelectorAll('.task-list .task-row[data-id]').forEach(el=>{
+    el.addEventListener('pointerenter',e=>{if(e.pointerType!=='touch')prefetchTaskDetail(el.dataset.id);},{passive:true});
+    el.addEventListener('focusin',()=>prefetchTaskDetail(el.dataset.id));
+    el.addEventListener('touchstart',()=>prefetchTaskDetail(el.dataset.id),{passive:true});
   });
   document.querySelectorAll('[data-status-filter]').forEach(b=>b.addEventListener('click',()=>setStatusFilter(b.dataset.statusFilter)));
   document.querySelectorAll('[data-tag-filter]').forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();setTagFilter(b.dataset.tagFilter)}));
@@ -5415,7 +5495,7 @@ async function refreshList(preserveSelection=false) {
   $('#connectionDot').style.background='var(--ok)';if(state.view==='backlog')render();
   // Start adjacent requests only after the foreground rows have rendered.
   const acceptedQuery=listQueryString();
-  requestAnimationFrame(()=>requestAnimationFrame(()=>{if(targetProject===state.project&&targetBacklog===state.backlog&&acceptedQuery===listQueryString()&&targetView===state.view&&targetDetail===state.detail&&listCacheEpoch(source)===epoch&&listPageCaches.get(key)===cache)prefetchListPages(acceptedQuery,data,epoch,source);}));
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{if(targetProject===state.project&&targetBacklog===state.backlog&&acceptedQuery===listQueryString()&&targetView===state.view&&targetDetail===state.detail&&listCacheEpoch(source)===epoch&&listPageCaches.get(key)===cache){prefetchListPages(acceptedQuery,data,epoch,source);scheduleTaskDetailPrefetch(acceptedQuery);}}));
  }catch(e){if(!isCurrent())return;state.listRevalidating=false;state.loadError=String(e?.message||e||'Unknown error');$('#connectionDot').style.background='var(--danger)';if(!state.listData)render();}
  finally{
   // A canceled earlier request must not clear or queue over a newer one.
@@ -5771,6 +5851,7 @@ function bindBacklogListTools() {
   $('#backlogPicker')?.addEventListener('change',e=>{
   const value=e.target.value;
   if(value===state.backlog)return;
+  invalidateTaskDetailCache();
   state.backlog=value;
   state.contentRevision='';
   state.pendingContentUpdate=false;
