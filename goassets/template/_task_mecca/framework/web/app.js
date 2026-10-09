@@ -536,6 +536,23 @@ function releaseSectionMarkup(sections=[]) {
     return '<section class="release-section release-'+esc(section.type||'improved')+'"><h3>'+esc(releaseSectionLabel(section.type))+'</h3><ul>'+items+'</ul></section>';
   }).join('');
 }
+// Schema extension for milestone releases: five concise highlights in the
+// update dialog; topic-based detail and action items in Update history.
+function releaseCategoryMarkup(categories=[]) {
+  return (Array.isArray(categories)?categories:[]).map(category=>{
+    const entries=(Array.isArray(category.items)?category.items:[]).map(item=>'<li>'+esc(releaseLocalized(item))+'</li>').join('');
+    if(!entries)return '';
+    return '<section class="release-category"><h3>'+esc(releaseLocalized(category.title))+'</h3><ul>'+entries+'</ul></section>';
+  }).join('');
+}
+function releaseHighlightsMarkup(items=[]) {
+  const entries=(Array.isArray(items)?items:[]).slice(0,5).map(item=>'<li>'+esc(releaseLocalized(item))+'</li>').join('');
+  return entries?'<ul class="release-highlights">'+entries+'</ul>':'';
+}
+function releaseActionsMarkup(items=[]) {
+  const entries=(Array.isArray(items)?items:[]).map(item=>'<li>'+esc(releaseLocalized(item))+'</li>').join('');
+  return entries?'<section class="release-actions-note"><h3>'+esc(state.language==='ko'?'업데이트 후 확인 사항':'After updating')+'</h3><ul>'+entries+'</ul></section>':'';
+}
 function currentReleaseVersion() {
   return normalizedVersion(state.versionInfo?.cli?.current||state.hub?.cli?.current||'');
 }
@@ -655,10 +672,15 @@ function releaseNoteDetailMarkup(detail,options={}) {
     migration.required?'<span class="release-flag important">'+esc(t('releaseMigrationRequired'))+'</span>':'',
     migration.instruction_refresh?'<span class="release-flag">'+esc(t('releaseInstructionRefresh'))+'</span>':''
   ].filter(Boolean).join('');
+  const highlights=releaseHighlightsMarkup(detail.highlights);
+  const categories=releaseCategoryMarkup(detail.categories);
+  const changes=compact&&highlights?highlights:(categories?'<div class="release-categories">'+categories+'</div>':'<div class="release-sections">'+releaseSectionMarkup(detail.sections||[])+'</div>');
+  const detailsLink=compact&&categories?'<p class="release-details-hint">'+esc(state.language==='ko'?'영역별 전체 변경사항은 업데이트 기록 상세에서 확인할 수 있습니다.':'See Update history for all changes by category.')+'</p>':'';
   return '<div class="release-detail '+(compact?'compact':'')+'">'+
     '<div class="release-detail-head"><div><span class="release-version">v'+esc(detail.version||'')+'</span><span class="release-date">'+esc(detail.date||'')+'</span></div>'+(flags?'<div class="release-flags">'+flags+'</div>':'')+'</div>'+
+    (detail.title?'<h3 class="release-detail-title">'+esc(releaseLocalized(detail.title))+'</h3>':'')+
     '<p class="release-summary">'+esc(releaseLocalized(detail.summary))+'</p>'+
-    '<div class="release-sections">'+releaseSectionMarkup(detail.sections||[])+'</div></div>';
+    changes+detailsLink+releaseActionsMarkup(detail.after_update)+'</div>';
 }
 function renderReleaseNoteModal() {
   const modal=$('#releaseNoteModal');

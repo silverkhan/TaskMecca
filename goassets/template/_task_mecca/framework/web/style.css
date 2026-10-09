@@ -1836,3 +1836,17 @@ select.tm-combo-native{position:absolute!important;width:1px!important;height:1p
 .control-group .tm-combo-trigger,.storage-toolbar .tm-combo-trigger,.log-storage-controls .tm-combo-trigger{min-height:39px}
 @media(max-width:680px){.tm-combo-popup{max-height:min(50vh,340px)}.tm-combo-option{min-height:43px}.tm-combo-trigger{min-height:35px}}
 @media(prefers-reduced-motion:reduce){.tm-combo-trigger,.tm-combo-popup{transition:none}}
+
+/* Milestone update notes: concise preview, categorized detail, explicit next steps. */
+.release-detail-title{margin:8px 0 6px;font-size:17px;font-weight:750;color:var(--text)}
+.release-highlights{padding-left:20px;margin:10px 0 0;display:grid;gap:8px}
+.release-highlights li{font-size:13px;line-height:1.6;color:var(--text)}
+.release-categories{display:grid;gap:14px}
+.release-category{padding:14px;border:1px solid var(--border);border-radius:12px;background:var(--surface)}
+.release-category h3{margin:0 0 8px;font-size:14px;color:var(--text)}
+.release-category ul,.release-actions-note ul{padding-left:20px;margin:6px 0}
+.release-category li,.release-actions-note li{font-size:13px;line-height:1.55;margin:5px 0}
+.release-actions-note{margin-top:16px;padding:14px;border-top:1px solid var(--border);background:var(--surface2);border-radius:10px}
+.release-actions-note h3{margin:0 0 8px;font-size:13px;font-weight:700}
+.release-details-hint{margin:12px 0 0;color:var(--muted);font-size:12px;line-height:1.5}
+.release-detail.compact .release-actions-note{padding:12px;margin-top:12px}

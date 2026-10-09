@@ -170,6 +170,24 @@ func releaseNotesIndex() ([]map[string]any, error) {
 			Releases []map[string]any `json:"releases"`
 		}
 		if decodeErr := json.Unmarshal(data, &payload); decodeErr == nil {
+			// An immutable RC can be newer than the remotely published Stable
+			// index. Keep the candidate visible in Update history without
+			// exposing a Dev source-template version as a Stable release.
+			if current, currentErr := currentReleaseNote(); currentErr == nil {
+				version := strings.TrimSpace(fmt.Sprint(current["version"]))
+				if strings.Contains(version, "-rc.") {
+					present := false
+					for _, item := range payload.Releases {
+						if strings.TrimSpace(fmt.Sprint(item["version"])) == version {
+							present = true
+							break
+						}
+					}
+					if !present {
+						payload.Releases = append([]map[string]any{current}, payload.Releases...)
+					}
+				}
+			}
 			return payload.Releases, nil
 		}
 		err = json.Unmarshal(data, &payload)

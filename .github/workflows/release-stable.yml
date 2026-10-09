@@ -20,7 +20,23 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  platform-gate:
+    name: Pre-release native update and rollback gate · ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.24.x"
+      - name: Verify native upgrade, rollback and data-safety paths
+        run: go test ./internal/maintenance ./internal/webui ./internal/install -run "Upgrade|Rollback|Migration|Installed|BrandAssets" -count=1
+
   release:
+    needs: platform-gate
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -64,8 +80,13 @@ jobs:
           test -f goassets/template/_task_mecca/framework/web/sw.js
           grep -q "function migrationResyncPrompt(result)" goassets/template/_task_mecca/framework/web/app.js
           grep -q "function showMigrationResyncModal(result)" goassets/template/_task_mecca/framework/web/app.js
-      - name: Test Go runtime
-        run: go test ./...
+      - name: Test Go runtime and vet
+        run: |
+          go test ./...
+          go vet ./...
+      - name: Test Web update, UI, notification and release-note behavior
+        run: |
+          node --test tests/web_release_notes_030.test.cjs tests/web_select_ui.test.cjs tests/web_storage_management.test.cjs tests/web_notification_delivery.test.cjs tests/web_update_flow.test.cjs
       - name: Build standalone binaries
         shell: bash
         run: |
