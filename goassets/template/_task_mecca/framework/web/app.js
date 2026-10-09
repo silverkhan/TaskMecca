@@ -3105,6 +3105,7 @@ function ensureOpenProject(path) {
   if(!state.openProjects.includes(path)){ state.openProjects.push(path); saveOpenProjects(); }
 }
 function switchProject(path) {
+  closeTelegramSetupOnNavigation('backlog');
  clearCurrentUserAttention();
   if(!path)return;
   ensureOpenProject(path);
@@ -3216,6 +3217,7 @@ function openWebTerminal() {
   location.href='/terminal'+(params.toString()?'?'+params.toString():'');
 }
 function navigateView(view) {
+  closeTelegramSetupOnNavigation(view==='attention'?'notifications':view);
  if(view==='hub'||view==='release-notes')clearCurrentUserAttention();
   if(view==='release-notes'){
     state.project='';
@@ -5111,7 +5113,7 @@ function render() {
     return;
   }
   c.innerHTML=(state.view==='hub'?telegramSetupGuideMarkup(true)+hubView():state.view==='storage'?storageManagementView():gate+(state.view==='manual'?manualView():state.view==='notifications'?notificationCenterView():state.view==='workload'?workloadView():state.view==='attention'?attentionView():state.view==='issues'?backlogDiagnosticsView():listView()));
-  bindRows(); if(state.view==='hub'){bindHubActions();bindTelegramSetupActions();}if(state.view==='storage')bindStorageManagementActions();
+  bindRows(); if(state.view==='hub'){bindHubActions();bindTelegramSetupActions();}else updateTelegramSetupGuideDOM();if(state.view==='storage')bindStorageManagementActions();
   if(searchFocus && state.view==='backlog' && !state.detail){const search=$('#search');search?.focus({preventScroll:true});search?.setSelectionRange(searchFocus.start,searchFocus.end);}
   if(state.view==='hub'&&hubHistoryFocus)document.querySelector('#hubHistoryToggle')?.focus({preventScroll:true});
   document.querySelectorAll('[data-runtime-hook-action]').forEach(button=>{
@@ -5536,6 +5538,7 @@ async function refresh() {
   }
 }
 function route(fromPop=false) {
+  if(fromPop)state.telegramSetupBootPending=false;
  const previousAttentionContext=state.project+'|'+state.backlog;
   const previousDetail=state.detail;
   const previousProject=state.project;
@@ -5847,11 +5850,8 @@ route();
 const initialForeground=refresh();
 // One lightweight read-only inventory lookup supports initial Hub guidance
 // and sidebar setup state without requiring a browser page refresh.
-void loadProjectNotificationSettings().then(()=>{
- updateTelegramSetupNavIndicator();
- if(state.view==='hub'&&state.hub&&!document.activeElement?.matches?.('input,textarea,select'))render();
- else updateTelegramSetupGuideDOM();
-}).catch(()=>{});
+void checkTelegramSetupInstance();
+setInterval(()=>{if(document.visibilityState!=='hidden')void checkTelegramSetupInstance();},60000);
 
 Promise.resolve(initialForeground).finally(()=>refreshOperations());
 setInterval(refreshOperations,15000);
