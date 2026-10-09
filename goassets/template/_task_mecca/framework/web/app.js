@@ -3489,7 +3489,8 @@ function storageRawProtectionMarkup(report,ko){
 function storageManagementView(){
  const ko=state.language==='ko';
  const projects=state.hub?.projects||[],selected=storageSelectedProject();
- const options=projects.map(project=>'<option value="'+esc(project.path)+'" '+(project.path===selected?'selected':'')+'>'+esc(project.name||project.path)+'</option>').join('');
+ const options='<option value="__all__" '+(state.storageProject==='__all__'?'selected':'')+'>'+esc(ko?'모든 프로젝트':'All projects')+'</option>'+
+  projects.map(project=>'<option value="'+esc(project.path)+'" '+(state.storageProject===project.path?'selected':'')+'>'+esc(project.name||project.path)+'</option>').join('');
  const logs=state.logStorage||{},runtime=state.storageRuntime||{};
  const logTotal=Number(logs.total_bytes||0),runtimeTotal=Number(runtime.total_bytes||0);
  const reclaimLog=Number(logs.reclaimable_bytes||0),reclaimRuntime=Number(runtime.cleanup?.reclaimable_bytes||0);
@@ -3546,18 +3547,23 @@ function storageManagementView(){
   '<div class="storage-toolbar"><label>'+esc(ko?'프로젝트':'Project')+' <select id="storageManagementProject" '+(state.storageBusy?'disabled':'')+'>'+options+'</select></label>'+
   '<button id="storageManagementRefresh" type="button" class="action-btn secondary" '+(state.storageBusy?'disabled':'')+'>'+esc(ko?'사용량 갱신':'Refresh usage')+'</button></div>'+
   errors+(state.storageBusy?'<p role="status" class="muted">'+esc(ko?'사용량 확인 중…':'Checking storage usage…')+'</p>':'')+
-  '<div class="storage-overview-grid">'+cards+'</div><p class="storage-scope-note">'+esc(ko?'측정 범위: 선택한 프로젝트의 로그 및 에이전트 실행 기록과 공용 웹 서비스 로그. 범주별 측정치가 일부 중복될 수 있으므로 디스크 전체 사용량의 합계가 아닙니다. 브라우저/Push 데이터는 별도 후속 항목입니다.':'Scope: selected project logs and agent execution records, plus the shared Web service log. Categories may overlap; this is not total disk usage. Browser/Push data is a separate follow-up.')+'</p>'+
+  (state.storageProject==='__all__'?storageGlobalView():'<div class="storage-overview-grid">'+cards+'</div><p class="storage-scope-note">'+esc(ko?'측정 범위: 선택한 프로젝트의 로그 및 에이전트 실행 기록과 공용 웹 서비스 로그. 범주별 측정치가 일부 중복될 수 있으므로 디스크 전체 사용량의 합계가 아닙니다. 브라우저/Push 데이터는 별도 후속 항목입니다.':'Scope: selected project logs and agent execution records, plus the shared Web service log. Categories may overlap; this is not total disk usage. Browser/Push data is a separate follow-up.')+'</p>'+
   '<section class="storage-management-section"><h2>'+esc(ko?'진단 로그와 보호 원장':'Diagnostic logs and protected ledgers')+'</h2><div id="logStoragePanel">'+logStorageSection()+'</div></section>'+
-  '<section class="storage-management-section"><h2>'+esc(ko?'에이전트 실행 기록 관리':'Agent execution record management')+'</h2>'+runtimeContent+'</section></div>';
+  '<section class="storage-management-section"><h2>'+esc(ko?'에이전트 실행 기록 관리':'Agent execution record management')+'</h2>'+runtimeContent+'</section>')+'</div>';
 }
 function bindStorageManagementActions(){
  const selector=$('#storageManagementProject');
  selector?.addEventListener('change',e=>{
   state.storageProject=e.currentTarget.value;state.logStorageProject=state.storageProject;
-  state.logStorage=null;state.storageRuntime=null;
+  state.logStorage=null;state.storageRuntime=null;state.storageGlobal=null;
   void loadStorageManagement(false);
  });
  $('#storageManagementRefresh')?.addEventListener('click',()=>loadStorageManagement(true));
+ document.querySelectorAll('[data-storage-manage]').forEach(button=>button.addEventListener('click',()=>{
+  state.storageProject=button.dataset.storageManage;state.logStorageProject=state.storageProject;
+  state.storageRuntime=null;state.logStorage=null;state.storageGlobal=null;
+  void loadStorageManagement(false);
+ }));
  $('#storageRuntimeCleanup')?.addEventListener('click',async event=>{
   if(state.storageBusy)return;
   const project=storageSelectedProject(),reclaim=Number(state.storageRuntime?.cleanup?.reclaimable_bytes||0);
