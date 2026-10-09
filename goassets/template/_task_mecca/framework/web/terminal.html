@@ -30,6 +30,7 @@
             <span id="terminalCwd"></span>
           </div>
           <div class="terminal-toolbar-actions">
+            <button type="button" class="terminal-btn secondary terminal-web-restart-btn" id="terminalWebRestartBtn" hidden>Restart Web service</button>
             <button type="button" class="terminal-btn secondary" id="terminalCopyBtn" hidden>Copy</button>
             <button type="button" class="terminal-btn secondary" id="terminalPasteBtn" hidden>Paste</button>
             <button type="button" class="terminal-btn secondary" id="terminalInterruptBtn" hidden>Ctrl+C</button>
@@ -38,6 +39,7 @@
             <button type="button" class="terminal-btn" id="terminalStartBtn">Start terminal</button>
           </div>
         </div>
+        <div class="terminal-web-restart-status" id="terminalWebRestartStatus" role="status" aria-live="polite" hidden></div>
         <div class="terminal-surface" id="terminalSurface">
           <div id="xtermHost" class="xterm-host" hidden></div>
           <pre id="terminalFallbackOutput" class="terminal-fallback-output" hidden></pre>
