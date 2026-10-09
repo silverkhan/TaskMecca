@@ -175,9 +175,38 @@
     restartingWeb: false,
   };
 
+  // xterm is canvas-based: resolve shared semantic tokens into actual colors.
+  function terminalTheme() {
+    const surface = window.getComputedStyle($('#terminalSurface'));
+    const root = window.getComputedStyle(document.documentElement);
+    return {
+      background: surface.backgroundColor,
+      foreground: surface.color,
+      cursor: root.getPropertyValue('--accent').trim() || surface.color,
+      selectionBackground: root.getPropertyValue('--accent-soft').trim() || surface.backgroundColor,
+    };
+  }
+
   function applyTheme() {
-    const saved = localStorage.getItem('task-mecca-theme') || 'system';
-    document.documentElement.dataset.theme = saved;
+    let storedTheme = '', storedPalette = '';
+    try {
+      storedTheme = localStorage.getItem('task-mecca-theme') || '';
+      storedPalette = localStorage.getItem('task-mecca-palette') || '';
+    } catch (_) {}
+    const preference = ['dark', 'light', 'system'].includes(storedTheme) ? storedTheme : 'dark';
+    const palette = ['mecca', 'slate'].includes(storedPalette) ? storedPalette : 'mecca';
+    const isDark = window.matchMedia?.('(prefers-color-scheme: dark)')?.matches ?? false;
+    const effective = preference === 'system' ? (isDark ? 'dark' : 'light') : preference;
+    const root = document.documentElement;
+    root.dataset.themePreference = preference;
+    root.dataset.theme = effective;
+    root.dataset.palette = palette;
+    root.style.colorScheme = effective;
+    root.style.removeProperty('background-color');
+    document.querySelector('meta[name="theme-color"]')?.setAttribute(
+      'content', window.getComputedStyle(root).getPropertyValue('--bg').trim()
+    );
+    if (state.terminal) state.terminal.options.theme = terminalTheme();
   }
 
   function projectQuery() {
@@ -809,8 +838,7 @@
     if (xtermAvailable) {
       const host = $('#xtermHost');
       host.hidden = false;
-      const prefersDark = document.documentElement.dataset.theme === 'dark' ||
-        (document.documentElement.dataset.theme === 'system' && window.matchMedia?.('(prefers-color-scheme: dark)').matches);
+
       const term = new window.Terminal({
         cursorBlink:true,
         convertEol:false,
@@ -818,9 +846,7 @@
         fontFamily:'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
         fontSize:14,
         lineHeight:1.15,
-        theme: prefersDark
-          ? {background:'#080c12',foreground:'#e8edf5',cursor:'#dce5f2',selectionBackground:'#33415a'}
-          : {background:'#080c12',foreground:'#e8edf5',cursor:'#dce5f2',selectionBackground:'#33415a'}
+        theme: terminalTheme()
       });
       term.open(host);
       bindNativePaste(host);
@@ -1002,6 +1028,10 @@
 
   document.documentElement.lang = language;
   applyTheme();
+  window.addEventListener('storage', event => {
+    if (!event.key || ['task-mecca-theme', 'task-mecca-palette'].includes(event.key)) applyTheme();
+  });
+  window.matchMedia?.('(prefers-color-scheme: dark)')?.addEventListener?.('change', applyTheme);
   $('#terminalBack').textContent = '← ' + t('back');
   $('#terminalIdleTitle').textContent = t('idleTitle');
   $('#terminalIdleText').textContent = t('idleText');

@@ -3,6 +3,12 @@ body.terminal-page {
   min-height: 100vh;
   min-height: 100dvh;
   overflow: hidden;
+  --terminal-console-bg: color-mix(in srgb, var(--bg) 84%, var(--surface2));
+  --terminal-console-text: var(--text);
+  --terminal-console-muted: var(--muted);
+  --terminal-console-toolbar: var(--surface2);
+  --terminal-console-border: var(--border);
+  --terminal-control-bg: color-mix(in srgb, var(--surface2) 82%, var(--bg));
   background: var(--bg, #0b0e14);
   color: var(--text, #e7eaf0);
 }
@@ -171,7 +177,7 @@ body.terminal-page {
   overflow: hidden;
   border: 1px solid var(--border);
   border-radius: 12px;
-  background: #0b0f16;
+  background: var(--terminal-console-bg);
 }
 .terminal-toolbar {
   min-height: 48px;
@@ -180,9 +186,9 @@ body.terminal-page {
   justify-content: space-between;
   gap: 12px;
   padding: 8px 10px 8px 14px;
-  border-bottom: 1px solid rgba(255,255,255,.1);
-  background: #101620;
-  color: #e7edf5;
+  border-bottom: 1px solid var(--terminal-console-border);
+  background: var(--terminal-console-toolbar);
+  color: var(--terminal-console-text);
 }
 .terminal-toolbar-main {
   min-width: 0;
@@ -196,7 +202,7 @@ body.terminal-page {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: #8d9aac;
+  color: var(--terminal-console-muted);
   font-size: 11px;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
@@ -208,8 +214,8 @@ body.terminal-page {
 .terminal-surface {
   position: relative;
   min-height: 0;
-  background: #080c12;
-  color: #e8edf5;
+  background: var(--terminal-console-bg);
+  color: var(--terminal-console-text);
   overflow: hidden;
 }
 .xterm-host {
@@ -229,13 +235,13 @@ body.terminal-page {
   gap: 8px;
   padding: 24px;
   text-align: center;
-  color: #93a0b2;
+  color: var(--terminal-console-muted);
 }
 .terminal-idle-mark {
   font: 700 30px/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  color: #dce5f2;
+  color: var(--terminal-console-text);
 }
-.terminal-idle strong { color: #dce5f2; }
+.terminal-idle strong { color: var(--terminal-console-text); }
 .terminal-idle p { margin: 0; max-width: 520px; line-height: 1.45; font-size: 13px; }
 
 .terminal-fallback-output {
@@ -246,8 +252,8 @@ body.terminal-page {
   white-space: pre-wrap;
   word-break: break-word;
   padding: 12px;
-  color: #e8edf5;
-  background: #080c12;
+  color: var(--terminal-console-text);
+  background: var(--terminal-console-bg);
   font: 13px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 .terminal-fallback-composer {
@@ -261,9 +267,9 @@ body.terminal-page {
   align-items: center;
   gap: 8px;
   padding: 6px 10px;
-  border-top: 1px solid rgba(255,255,255,.1);
-  background: #101620;
-  color: #9cabbd;
+  border-top: 1px solid var(--terminal-console-border);
+  background: var(--terminal-console-toolbar);
+  color: var(--terminal-console-muted);
 }
 .terminal-fallback-composer input {
   min-width: 0;
@@ -271,15 +277,15 @@ body.terminal-page {
   border: 0;
   outline: 0;
   background: transparent;
-  color: #eef3f9;
+  color: var(--terminal-console-text);
   font: 13px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 .terminal-fallback-composer button {
   height: 30px;
-  border: 1px solid rgba(255,255,255,.16);
+  border: 1px solid var(--terminal-console-border);
   border-radius: 7px;
-  background: #1b2431;
-  color: #e9eef6;
+  background: var(--terminal-control-bg);
+  color: var(--terminal-console-text);
 }
 .terminal-footer {
   min-height: 34px;
@@ -288,9 +294,9 @@ body.terminal-page {
   gap: 16px;
   align-items: center;
   padding: 6px 12px;
-  border-top: 1px solid rgba(255,255,255,.1);
-  background: #101620;
-  color: #7f8b9d;
+  border-top: 1px solid var(--terminal-console-border);
+  background: var(--terminal-console-toolbar);
+  color: var(--terminal-console-muted);
   font-size: 11px;
 }
 .terminal-loading { color: var(--muted, #9aa3b2); font-size: 13px; }
@@ -393,7 +399,7 @@ body.terminal-page {
   grid-template-columns: minmax(0,1fr) auto;
   align-items: stretch;
   border-top: 1px solid var(--border);
-  background: #080c12;
+  background: var(--terminal-console-bg);
 }
 .terminal-command-code code {
   min-width: 0;
@@ -401,15 +407,15 @@ body.terminal-page {
   overflow-x: auto;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
-  color: #dfe7f2;
+  color: var(--terminal-console-text);
   font: 11px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 .terminal-command-copy {
   border: 0;
-  border-left: 1px solid rgba(255,255,255,.1);
+  border-left: 1px solid var(--terminal-console-border);
   padding: 0 11px;
-  background: #141b26;
-  color: #dfe7f2;
+  background: var(--terminal-control-bg);
+  color: var(--terminal-console-text);
   font: 700 11px/1 sans-serif;
   cursor: pointer;
 }
