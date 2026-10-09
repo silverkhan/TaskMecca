@@ -15,6 +15,11 @@ function page({beforePost=async()=>{}}={}){
    if(options.method!=='POST')return {ok:true,json:async()=>({...statuses[project],kinds:{...statuses[project].kinds}})};
    const body=JSON.parse(options.body);updates.push({project,...body});
    await beforePost({project,...body});
+   if(body.action==='test')return {ok:true,json:async()=>({ok:true})};
+   if(body.action==='discover'||body.action==='discover_shared'){
+    if(body.action==='discover_shared'){for(const p of projects)statuses[p]={...statuses[p],connected:true,enabled:true};}
+    else statuses[project]={...statuses[project],connected:true,enabled:true};
+   }
    if(body.action==='configure'){
     statuses[project]={...statuses[project],configured:true,enabled:false,bot_username:'robot'};
    }else if(body.action==='configure_shared'){
@@ -30,7 +35,7 @@ function page({beforePost=async()=>{}}={}){
   getItem:k=>store.get(k)||null,setItem:(k,v)=>store.set(k,String(v)),removeItem:k=>store.delete(k)
  },document:{querySelector:()=>null,querySelectorAll:()=>[]},setTimeout,clearTimeout});
  vm.runInContext(source.slice(0,source.indexOf('\ntranslateChrome();'))+
- '\nglobalThis.app={state,telegramAction,projectTelegramAction,configureSharedTelegram,loadProjectNotificationSettings,loadTelegramStatus,projectChannelSettingsMarkup,notificationOverviewMarkup,webNotificationEnabled,changeWebNotificationSetting,currentPushKinds,setAllTelegramChannelsEnabled,setNotificationSwitch,notificationSwitchPending};',context);
+ '\nglobalThis.app={state,telegramAction,projectTelegramAction,configureSharedTelegram,loadProjectNotificationSettings,loadTelegramStatus,projectChannelSettingsMarkup,notificationOverviewMarkup,webNotificationEnabled,changeWebNotificationSetting,currentPushKinds,setAllTelegramChannelsEnabled,setNotificationSwitch,notificationSwitchPending,pollTelegramConnectionStatus};',context);
  context.app.state.project='/demo';return {...context.app,updates,statuses,store};
 }
 test('individual token setup refreshes configured status immediately without browser reload',async()=>{
@@ -211,4 +216,40 @@ test('global Telegram toggle starts requests for all projects before their respo
  assert.ok(app.state.projectNotificationSettings.every(x=>x.status.project_enabled===false));
  resolve();await action;
  assert.ok(app.state.projectNotificationSettings.every(x=>x.status.project_enabled===false));
+});
+
+test('pending Telegram connection has an obvious confirmation action outside recipient details',async()=>{
+ const app=page();app.statuses['/demo'].configured=true;await app.loadProjectNotificationSettings();
+ const list=app.projectChannelSettingsMarkup(),overview=app.notificationOverviewMarkup();
+ assert.match(list,/data-telegram-discover-project="\/demo"/);
+ assert.match(overview,/data-telegram-discover-project="\/demo"/);
+ assert.match(list,/\/start/);
+ assert.doesNotMatch(overview,/data-telegram-test-project/);
+});
+test('connected Telegram recipient has test-message action on overview and project detail',async()=>{
+ const app=page();app.statuses['/demo'].configured=true;app.statuses['/demo'].connected=true;await app.loadProjectNotificationSettings();
+ const list=app.projectChannelSettingsMarkup(),overview=app.notificationOverviewMarkup();
+ assert.match(list,/data-telegram-test-project="\/demo"/);
+ assert.match(overview,/data-telegram-test-project="\/demo"/);
+ assert.match(overview,/테스트 메시지 발송/);
+});
+test('test action never overwrites persisted connection with its acknowledgement payload',async()=>{
+ const app=page();app.statuses['/demo'].configured=true;app.statuses['/demo'].connected=true;await app.loadProjectNotificationSettings();
+ const before=JSON.stringify(app.state.projectNotificationSettings),rev=app.state.projectNotificationSettingsRevision||0;
+ const result=await app.projectTelegramAction('/demo','test');
+ assert.equal(result.ok,true);
+ assert.deepEqual(app.updates.filter(x=>x.action==='test').map(x=>x.project),['/demo']);
+ assert.equal(JSON.stringify(app.state.projectNotificationSettings),before);
+ assert.equal(app.state.projectNotificationSettingsRevision||0,rev);
+});
+test('read-only watch refreshes live connection without reloading page and stops off settings view',async()=>{
+ const app=page();app.statuses['/demo'].configured=true;await app.loadProjectNotificationSettings();
+ app.state.view='notifications';app.state.notificationCenterTab='settings';
+ app.statuses['/demo'].connected=true;
+ await app.pollTelegramConnectionStatus();
+ assert.equal(app.state.projectNotificationSettings[0].status.connected,true);
+ assert.equal(app.state.telegramStatus.connected,true);
+ app.state.view='backlog';app.statuses['/demo'].connected=false;
+ await app.pollTelegramConnectionStatus();
+ assert.equal(app.state.projectNotificationSettings[0].status.connected,true);
 });
