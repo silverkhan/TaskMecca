@@ -2668,9 +2668,16 @@ function notificationOverviewMarkup(){
  const telegramOn=rows.length>0&&rows.every(r=>r.status?.project_enabled!==false);
  const active=rows.filter(r=>r.status?.project_enabled!==false).length,connected=rows.filter(r=>r.status?.connected).length;
  const top=(name,detail,note,attributes,on,disabled=false)=>'<article class="notice-channel-card"><div class="notice-channel-heading"><div><strong>'+esc(name)+'</strong><small>'+esc(detail)+'</small></div>'+notificationSwitch(attributes,on,name,disabled)+'</div><p>'+esc(note)+'</p></article>';
+ const selected=rows.find(row=>row.path===state.project&&row.status?.connected)||rows.find(row=>row.status?.connected)||
+    rows.find(row=>row.path===state.project&&row.status?.configured)||rows.find(row=>row.status?.configured);
+ const action=selected?(selected.status?.connected?'test':'discover'):'';
+ const project=selected?.path||'';
+ const quick=action?'<div class="notice-telegram-quick"><span>'+esc(selected.name||project)+'</span>'+
+  '<button type="button" class="secondary-btn" '+(action==='test'?'data-telegram-test-project':'data-telegram-discover-project')+'="'+esc(project)+'"'+(telegramSettingsActionInFlight.has(project)?' disabled':'')+'>'+
+  esc(t(action==='test'?'telegramTestAction':'telegramDiscoverAction'))+'</button></div>':'';
  return '<section class="notice-overview">'+
- top(ko?'웹 알림':'Web notifications',ko?'현재 브라우저':'This browser',ko?'열린 탭과 백그라운드 Push의 전체 수신을 제어합니다.':'Control foreground and background Push.', 'id="centerGlobalWebChannel"',webOn)+
- top('Telegram',(ko?'연결된 프로젝트 ':'Connected projects ')+connected+'/'+rows.length,(ko?'채널 사용 프로젝트 ':'Enabled projects ')+active+'/'+rows.length,'id="centerGlobalTelegramChannel"',telegramOn,rows.length===0)+'</section>';
+  top(ko?'웹 알림':'Web notifications',ko?'현재 브라우저':'This browser',ko?'열린 탭과 백그라운드 Push의 전체 수신을 제어합니다.':'Control foreground and background Push.', 'id="centerGlobalWebChannel"',webOn)+
+  top('Telegram',(ko?'연결된 프로젝트 ':'Connected projects ')+connected+'/'+rows.length,(ko?'채널 사용 프로젝트 ':'Enabled projects ')+active+'/'+rows.length,'id="centerGlobalTelegramChannel"',telegramOn,rows.length===0)+quick+'</section>'+telegramSettingsFeedbackMarkup();
 }
 function projectChannelSettingsMarkup(){
  const rows=state.projectNotificationSettings||[],settings=webNotificationSettings(),ko=state.language==='ko',webGlobalOn=settings.enabled!==false;
@@ -2692,7 +2699,9 @@ function projectChannelSettingsMarkup(){
   return '<details class="notice-project" '+(project===state.project?'open':'')+'><summary><span class="notice-project-name">'+esc(name)+'</span><span class="notice-project-summary">Web '+(webOn?'ON':'OFF')+' · Telegram '+(tgOn?'ON':'OFF')+'</span></summary>'+
   '<div class="notice-project-content"><p class="notice-project-path">'+esc(project)+'</p>'+
   '<div class="notice-per-project-channels"><div><strong>Web</strong>'+notificationSwitch('data-center-project="'+esc(project)+'" data-center-channel="web"',webOn,name+' · Web',!webGlobalOn||notificationChannelPending(project,'web'))+'</div><div><strong>Telegram</strong>'+notificationSwitch('data-center-project="'+esc(project)+'" data-center-channel="telegram"',tgOn,name+' · Telegram',notificationChannelPending(project,'telegram'))+'</div></div>'+
-  '<p class="notice-project-connection">'+esc(ko?'텔레그램 상태: ':'Telegram status: ')+esc(row.status?.connected?(ko?'연결됨':'Connected'):row.status?.configured?(ko?'봇 설정됨 · 채팅 연결 필요':'Bot configured · chat pending'):(ko?'봇 연결 필요':'Bot not connected'))+'</p>'+ (lockNotes.length?'<p class="notice-disabled-hint" role="status">'+esc(lockNotes.join(' '))+'</p>':'')+
+   '<div class="notice-connection-row"><p class="notice-project-connection">'+esc(ko?'텔레그램 상태: ':'Telegram status: ')+esc(row.status?.connected?(ko?'연결됨':'Connected'):row.status?.configured?(ko?'봇 설정됨 · 채팅 연결 필요':'Bot configured · chat pending'):(ko?'봇 연결 필요':'Bot not connected'))+'</p>'+
+   (row.status?.configured?'<button type="button" class="secondary-btn" '+(row.status?.connected?'data-telegram-test-project':'data-telegram-discover-project')+'="'+esc(project)+'"'+(telegramSettingsActionInFlight.has(project)?' disabled':'')+'>'+esc(t(row.status?.connected?'telegramTestAction':'telegramDiscoverAction'))+'</button>':'')+'</div>'+
+   (row.status?.configured&&!row.status?.connected?'<p class="notice-telegram-help">'+esc(t('telegramDiscoverHelp'))+'</p>':'')+ (lockNotes.length?'<p class="notice-disabled-hint" role="status">'+esc(lockNotes.join(' '))+'</p>':'')+
   '<div class="notice-matrix" role="group" aria-label="'+esc(name)+'" data-web-locked="'+String(webLocked)+'" data-telegram-locked="'+String(tgLocked)+'"><div class="notice-matrix-head"><span>'+esc(ko?'알림 유형':'Event type')+'</span><span>Web'+(webLocked?'<small>OFF</small>':'')+'</span><span>Telegram'+(tgLocked?'<small>'+(tgOn?(ko?'미연결':'SETUP'):'OFF')+'</small>':'')+'</span></div>'+kinds+'</div></div></details>';
  }).join('');
  return '<section class="center-channel-settings"><div class="notice-section-heading"><h2>'+esc(ko?'프로젝트별 채널·유형':'Channels and event types')+'</h2><p>'+esc(ko?'프로젝트를 펼쳐 설정하세요. 채널을 꺼도 유형 선택은 유지됩니다.':'Expand a project. Turning a channel off preserves its event preferences.')+'</p></div>'+(content||'<p class="muted">'+esc(ko?'등록된 프로젝트가 없습니다.':'No projects.')+'</p>')+'</section>';
