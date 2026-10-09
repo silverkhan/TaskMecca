@@ -3,7 +3,9 @@ package webui
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"sort"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -21,6 +23,7 @@ type attentionFeed struct {
 	mu          sync.Mutex
 	latest      []byte
 	revision    string
+	lastDeliveryWarning time.Time
 	subscribers map[chan []byte]struct{}
 }
 
@@ -89,7 +92,20 @@ func (f *attentionFeed) refreshActive() {
 				ResumeCondition: notificationValue(row["resume_condition"]), At: notificationValue(row["at"]),
 			})
 		}
-		_ = notify.Deliver(f.project, events)
+		if errs := notify.Deliver(f.project, events); len(errs) > 0 {
+			// HTTP errors can include credentials in request URLs. Never log
+			// the raw error, bot token, destination or message contents.
+			f.mu.Lock()
+			now := time.Now()
+			loggable := now.Sub(f.lastDeliveryWarning) >= time.Minute
+			if loggable {
+				f.lastDeliveryWarning = now
+			}
+			f.mu.Unlock()
+			if loggable {
+				log.Printf("Task Mecca automatic Telegram delivery issue in project %q: %d events, %d failures; inspect notification delivery ledger", filepath.Base(f.project), len(events), len(errs))
+			}
+		}
 	}
 	data, _ := json.Marshal(payload)
 	f.mu.Lock()
