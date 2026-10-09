@@ -403,6 +403,8 @@ Object.assign(I18N.en,{
 Object.assign(I18N.ko,{terminal:'터미널'});
 Object.assign(I18N.en,{terminal:'Terminal'});
 Object.assign(I18N.ko,{projectNotifications:'프로젝트별 알림',projectNotificationsIntro:'감시 중인 프로젝트마다 이후 발생하는 Telegram 알림을 따로 켜거나 끕니다. 꺼진 동안의 과거 이벤트는 다시 보내지 않습니다.',projectNotificationEnabled:'활성',projectNotificationDisabled:'비활성',projectNotificationEmpty:'감시 중인 프로젝트가 없습니다.',projectNotificationPath:'경로',projectRecipientMode:'수신처',projectRecipientShared:'통합 수신처',projectRecipientIndividual:'개별 수신처',projectIndividualIncomplete:'개별 수신처가 설정되지 않았습니다. 통합 수신처로 자동 전환하지 않습니다.',projectSharedRecipientGuide:'통합 수신처를 설정하면 감시 중인 모든 프로젝트에 같은 수신처를 안전하게 저장합니다. Token과 수신처 ID는 이 화면·API 응답·기록에 표시하지 않습니다.',projectSharedRecipientConfigure:'통합 수신처 확인'});
+Object.assign(I18N.ko,{telegramTestAction:'테스트 메시지 발송',telegramTestBusy:'테스트 메시지 발송 중…',telegramTestAccepted:'Telegram이 테스트 메시지를 접수했습니다. 실제 대화방에서 수신 여부를 확인하세요.',telegramDiscoverAction:'연결 확인',telegramDiscoverBusy:'연결 확인 중…',telegramDiscoverHelp:'봇 대화방에서 /start를 보낸 다음 연결 확인을 누르세요.',telegramDiscoverSuccess:'Telegram 수신처 연결을 확인했습니다.'});
+Object.assign(I18N.en,{telegramTestAction:'Send test message',telegramTestBusy:'Sending test…',telegramTestAccepted:'Telegram accepted the test message. Check your chat for delivery.',telegramDiscoverAction:'Check connection',telegramDiscoverBusy:'Checking connection…',telegramDiscoverHelp:'Send /start to your Telegram bot, then check the connection.',telegramDiscoverSuccess:'Telegram recipient connection confirmed.'});
 Object.assign(I18N.en,{projectNotifications:'Project notifications',projectNotificationsIntro:'Enable or disable future Telegram notifications for each monitored project. Events from a disabled period are not replayed.',projectNotificationEnabled:'Enabled',projectNotificationDisabled:'Disabled',projectNotificationEmpty:'No monitored projects.',projectNotificationPath:'Path',projectRecipientMode:'Recipient',projectRecipientShared:'Shared recipient',projectRecipientIndividual:'Individual recipient',projectIndividualIncomplete:'Individual recipient is not configured; Task Mecca will not fall back to the shared recipient.',projectSharedRecipientGuide:'Shared recipient setup stores the same recipient safely for all monitored projects. Tokens and recipient IDs are never shown in this screen, API responses, or records.',projectSharedRecipientConfigure:'Verify shared recipient'});
 
 function t(key, vars = {}) {
@@ -2463,6 +2465,78 @@ async function loadProjectNotificationSettings() {
   try{await promise;}finally{state.projectNotificationSettingsLoading=false;}
 }
 
+// Read-only status watch: never consume Telegram updates or auto-bind a chat.
+let telegramConnectionWatchTimer=null;
+let telegramConnectionWatchInFlight=false;
+function telegramConnectionWatchActive(){
+ return (state.view==='notifications'&&state.notificationCenterTab==='settings')||
+  Boolean($('#notificationPanel')?.classList?.contains('open'));
+}
+function syncTelegramConnectionWatch(){
+ if(telegramConnectionWatchActive()){
+  if(!telegramConnectionWatchTimer)telegramConnectionWatchTimer=setInterval(()=>void pollTelegramConnectionStatus(),6000);
+ }else if(telegramConnectionWatchTimer){
+  clearInterval(telegramConnectionWatchTimer);
+  telegramConnectionWatchTimer=null;
+ }
+}
+async function pollTelegramConnectionStatus(){
+ if(!telegramConnectionWatchActive()||document.visibilityState==='hidden'||telegramConnectionWatchInFlight||
+    state.projectNotificationSettingsLoading||notificationSwitchPending.size||
+    telegramSettingsActionInFlight.size)return;
+ const revision=state.projectNotificationSettingsRevision||0;
+ telegramConnectionWatchInFlight=true;
+ try{
+  const response=await fetch('/api/notifications/projects',{cache:'no-store'});
+  if(!response.ok)return;
+  const body=await response.json();
+  if(revision!==(state.projectNotificationSettingsRevision||0)||!telegramConnectionWatchActive())return;
+  const next=Array.isArray(body.projects)?body.projects:[];
+  const current=state.projectNotificationSettings||[];
+  const fingerprint=rows=>JSON.stringify(rows.map(row=>[row.path,row.name,row.status]));
+  if(fingerprint(current)===fingerprint(next))return;
+  state.projectNotificationSettings=next;
+  state.projectNotificationSettingsError='';
+  const selected=next.find(row=>row.path===state.project);
+  if(selected)state.telegramStatus=selected.status;
+  renderNotificationPanel();
+ }catch(_){/* Keep the prior confirmed state and retry next interval. */}
+ finally{telegramConnectionWatchInFlight=false;}
+}
+let telegramSettingsFeedback=null;
+const telegramSettingsActionInFlight=new Set();
+function telegramSettingsFeedbackMarkup(){
+ if(!telegramSettingsFeedback)return '';
+ const f=telegramSettingsFeedback;
+ return '<p class="telegram-settings-feedback '+(f.error?'is-error':'is-success')+'" role="status">'+esc(f.projectLabel)+' · '+esc(f.message)+'</p>';
+}
+async function handleTelegramSettingsAction(button,project,action){
+ const row=(state.projectNotificationSettings||[]).find(item=>item.path===project);
+ if(!row||telegramSettingsActionInFlight.has(project))return;
+ if(action==='test'&&!row.status?.connected)return;
+ if(action==='discover'&&!row.status?.configured)return;
+ telegramSettingsActionInFlight.add(project);
+ button.disabled=true;button.setAttribute('aria-busy','true');
+ button.textContent=t(action==='test'?'telegramTestBusy':'telegramDiscoverBusy');
+ const projectLabel=row.name||project;
+ try{
+  const command=action==='discover'&&row.status?.recipient_mode==='shared'?'discover_shared':action;
+  await projectTelegramAction(project,command);
+  if(action==='discover')await refreshNotificationConfiguration();
+  telegramSettingsFeedback={projectLabel,message:t(action==='test'?'telegramTestAccepted':'telegramDiscoverSuccess'),error:false};
+ }catch(error){
+  telegramSettingsFeedback={projectLabel,message:String(error?.message||error),error:true};
+ }finally{
+  telegramSettingsActionInFlight.delete(project);
+  renderNotificationPanel();
+ }
+}
+function bindTelegramSettingsActions(panel){
+ panel.querySelectorAll('[data-telegram-test-project],[data-telegram-discover-project]').forEach(button=>
+  button.addEventListener('click',()=>void handleTelegramSettingsAction(button,
+   button.dataset.telegramTestProject||button.dataset.telegramDiscoverProject,
+   button.dataset.telegramTestProject?'test':'discover')));
+}
 async function setProjectNotificationEnabled(project,enabled) {
   state.projectNotificationSettingsRevision=(state.projectNotificationSettingsRevision||0)+1;
   const existing=(state.projectNotificationSettings||[]).find(row=>row.path===project)?.status;
