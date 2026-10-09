@@ -35,9 +35,10 @@ function fixture({failRuntime=false}={}){
   getItem:k=>store.get(k)||null,setItem:(k,v)=>store.set(k,String(v)),removeItem:k=>store.delete(k)
  },setTimeout,clearTimeout,queueMicrotask,alert(){},console});
  const code=source.slice(0,source.indexOf('\ntranslateChrome();'))+
-  '\nrender=()=>{}; globalThis.api={state,navigateView,storageSelectedProject,storageManagementView,loadStorageManagement,logStorageSection};';
+  '\nrender=()=>{}; globalThis.api={state,navigateView,storageSelectedProject,storageManagementView,loadStorageManagement,logStorageSection,storageGlobalSummary,storageRetentionCountdown};';
  vm.runInContext(code,context);
  context.api.state.hub={projects:[{path:project,name:'Demo'}]};
+ context.api.state.storageProject=project;
  return {api:context.api,requests,historyPaths};
 }
 test('storage management has its own navigation and isolates project data',async()=>{
@@ -156,4 +157,51 @@ test('English explanations distinguish future potential from guaranteed savings'
  assert.match(html,/Additional if conditions are met/);
  assert.match(html,/hypothetical upper bound/);
  assert.match(html,/no approved deletion\/restoration contract/);
+});
+
+test('storage global view counts shared Web service log only once across projects',async()=>{
+ const a=fixture();a.api.state.view='storage';
+ a.api.state.hub={projects:[{path:'/demo',name:'Demo'},{path:'/second',name:'Second'}]};
+ a.api.state.storageProject='__all__';
+ await a.api.loadStorageManagement(false);
+ const all=a.api.state.storageGlobal;
+ assert.equal(all.valid.length,2);
+ assert.equal(all.failed.length,0);
+ assert.equal(all.logBytes,180,'global web service 20B + 2 * protected 80B');
+ assert.equal(all.clearableBytes,20,'shared diagnostic reclaim not double counted');
+ assert.equal(all.runtimeBytes,400);
+ assert.equal(all.eligibleRuntime,60);
+ assert.equal(all.conditionalRuntime,160);
+ assert.equal(all.unverifiableBytes,24);
+ const html=a.api.storageManagementView();
+ assert.match(html,/모든 프로젝트/);
+ assert.match(html,/공용 웹 서비스 로그는 한 번만 셉니다/);
+ assert.match(html,/프로젝트별 관리/);
+ assert.match(html,/data-storage-manage="\/demo"/);
+ assert.match(html,/data-storage-manage="\/second"/);
+ assert.doesNotMatch(html,/id="storageRuntimeCleanup"/,'global mode must not expose bulk delete control');
+ assert.doesNotMatch(html,/data-clear-log=/,'global mode must not expose unconfirmed bulk delete');
+});
+test('all-project partial load failures warn that totals are incomplete',async()=>{
+ const a=fixture({failRuntime:true});a.api.state.view='storage';
+ a.api.state.storageProject='__all__';
+ await a.api.loadStorageManagement(false);
+ assert.equal(a.api.state.storageGlobal.failed.length,1);
+ assert.match(a.api.storageManagementView(),/일부 프로젝트의 조회가 실패했습니다/);
+});
+test('log release conditions separate clearable diagnostics from protected canonical ledgers',async()=>{
+ const a=fixture();a.api.state.view='storage';await a.api.loadStorageManagement(false);
+ const html=a.api.storageManagementView();
+ assert.match(html,/수동 비우기 가능 · 대기 조건 없음/);
+ assert.match(html,/보호 원장 · 승인된 삭제 및 복원 조건 없음/);
+ assert.match(html,/향후 확보 가능량은 정책 승인 전 산정 불가/);
+ assert.match(html,/현재 확보 가능/);
+});
+test('dated Raw retention countdown distinguishes wait duration from actual deletion eligibility',()=>{
+ const now=new Date('2026-10-09T12:00:00Z');
+ assert.equal(aDay('2026-10-12T12:00:00Z',now),'3일 남음');
+ assert.equal(aDay('2026-10-09T19:00:00Z',now),'1일 미만 남음');
+ assert.equal(aDay('2026-10-08T12:00:00Z',now),'보존 기간 경과');
+ assert.equal(aDay('',now),'산정 불가');
+ function aDay(date,at){return fixture().api.storageRetentionCountdown({retention_eligible_after:date},true,at);}
 });

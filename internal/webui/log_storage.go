@@ -18,6 +18,9 @@ type LogStorageItem struct {
     Exists bool `json:"exists"`
     CanClear bool `json:"can_clear"`
     Note string `json:"note"`
+    ReleaseCondition string `json:"release_condition"`
+    ReclaimableNowBytes int64 `json:"reclaimable_now_bytes"`
+    ConditionalReclaimBytes int64 `json:"conditional_reclaim_bytes"`
 }
 
 type logStorageTarget struct {
@@ -56,6 +59,14 @@ func LogStorageReport(project string) (map[string]any,error) {
         item:=target.item
         item.SizeBytes=size
         item.Exists=exists
+        // Protected canonical ledgers have no approved release condition. No
+        // portion of their bytes may be advertised as hypothetically reclaimable.
+        if item.CanClear {
+            item.ReleaseCondition="explicit_manual_clear"
+            item.ReclaimableNowBytes=size
+        } else {
+            item.ReleaseCondition="no_approved_deletion_policy"
+        }
         items=append(items,item)
         total+=size
         if item.CanClear { reclaimable+=size }

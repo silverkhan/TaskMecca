@@ -77,7 +77,8 @@ const state = {
   storageBusy: false,
   storageError: '',
   storageRuntime: null,
-  storageProject: '',
+  storageProject: '__all__',
+  storageGlobal: null,
   runtimeRootDisclosure: {},
   runtimeRootListOpen: false,
   runtimeRootListLoading: false,
@@ -3354,6 +3355,24 @@ async function loadStorageManagement(refreshHubFirst=false){
  try{
   if(refreshHubFirst||!state.hub)await refreshHub(Boolean(refreshHubFirst));
   if(epoch!==storageFetchEpoch)return;
+  if(state.storageProject==='__all__'){
+   const projects=(state.hub?.projects||[]).filter(p=>p?.path),outcomes=new Array(projects.length);
+   let cursor=0;
+   async function worker(){
+    while(cursor<projects.length){
+     const i=cursor++,row=projects[i],query='?project='+encodeURIComponent(row.path);
+     try{
+      const [logs,runtime]=await Promise.all([fetch('/api/storage/logs'+query,{cache:'no-store'}),fetch('/api/runtime/storage'+query,{cache:'no-store'})]);
+      const [l,v]=await Promise.all([logs.json(),runtime.json()]);
+      if(!logs.ok||!runtime.ok)throw Error(l.error||v.error||'HTTP '+(!logs.ok?logs.status:runtime.status));
+      outcomes[i]={project:row.path,name:row.name||row.path,logs:l,runtime:v};
+     }catch(error){outcomes[i]={project:row.path,name:row.name||row.path,error:String(error?.message||error)};}
+    }
+   }
+   await Promise.all(Array.from({length:Math.min(4,projects.length)},()=>worker()));
+   if(epoch!==storageFetchEpoch||state.storageProject!=='__all__')return;
+   state.storageGlobal=storageGlobalSummary(outcomes);state.logStorage=null;state.storageRuntime=null;return;
+  }
   const project=storageSelectedProject();
   if(!project){state.storageError=state.language==='ko'?'등록된 프로젝트가 없습니다.':'No registered projects.';return;}
   state.storageProject=project;state.logStorageProject=project;
@@ -3372,6 +3391,62 @@ async function loadStorageManagement(refreshHubFirst=false){
  }finally{
   if(epoch===storageFetchEpoch){state.storageBusy=false;if(state.view==='storage')render();}
  }
+}
+function storageGlobalSummary(outcomes){
+ const rows=(outcomes||[]).filter(Boolean),valid=rows.filter(r=>!r.error),failed=rows.filter(r=>r.error);
+ let seenGlobal=false,logBytes=0,clearableBytes=0,runtimeBytes=0,eligibleRuntime=0,conditionalRuntime=0,unverifiableBytes=0;
+ const logsByID={};
+ for(const row of valid){
+  for(const item of row.logs?.items||[]){
+   if(item.scope==='global'){if(seenGlobal)continue;seenGlobal=true;}
+   const bytes=Math.max(0,Number(item.size_bytes)||0);
+   logBytes+=bytes;if(item.can_clear)clearableBytes+=bytes;
+   const group=logsByID[item.id]||(logsByID[item.id]={id:item.id,bytes:0,canClear:!!item.can_clear});
+   group.bytes+=bytes;
+  }
+  runtimeBytes+=Math.max(0,Number(row.runtime?.total_bytes)||0);
+  eligibleRuntime+=Math.max(0,Number(row.runtime?.cleanup?.reclaimable_bytes)||0);
+  conditionalRuntime+=Math.max(0,Number(row.runtime?.raw_protection?.conditional_bytes)||0);
+  unverifiableBytes+=Math.max(0,Number(row.runtime?.raw_protection?.unverifiable_bytes)||0);
+ }
+ return {rows,valid,failed,logBytes,clearableBytes,runtimeBytes,eligibleRuntime,conditionalRuntime,unverifiableBytes,logsByID};
+}
+function storageGlobalView(){
+ const ko=state.language==='ko',all=state.storageGlobal;
+ if(!all)return '<p class="muted">'+esc(ko?'전체 프로젝트 조회 중…':'Loading all projects…')+'</p>';
+ const cards=[
+  [ko?'진단·보호 로그':'Diagnostic and protected logs',all.logBytes],
+  [ko?'에이전트 실행 기록':'Agent execution records',all.runtimeBytes],
+  [ko?'현재 정리 가능':'Eligible now',all.clearableBytes+all.eligibleRuntime],
+  [ko?'조건 충족 시 추가 가능':'Potential additional reclaim',all.conditionalRuntime]
+ ].map(([label,bytes])=>'<div class="storage-overview-card"><span>'+esc(label)+'</span><strong>'+esc(fmtBytes(bytes))+'</strong></div>').join('');
+ const status=all.failed.length?'<p role="alert" class="log-storage-alert">'+esc(ko?'일부 프로젝트의 조회가 실패했습니다. 합계는 성공한 프로젝트의 측정치만 포함합니다.':'Some projects failed; totals include only successfully measured projects.')+'</p>':'';
+ const entries=all.rows.map(row=>row.error?
+  '<div class="storage-project-summary"><strong>'+esc(row.name)+'</strong><span role="alert">'+esc(row.error)+'</span><button type="button" data-storage-manage="'+esc(row.project)+'">'+esc(ko?'재조회':'Retry')+'</button></div>':
+  '<div class="storage-project-summary"><strong>'+esc(row.name)+'</strong><span>'+esc(fmtBytes(Number(row.runtime?.total_bytes||0)))+' + '+esc(fmtBytes(Number(row.logs?.total_bytes||0)))+'</span>'+
+  '<small>'+esc(ko?'현재 정리 가능 ':'Eligible now ')+esc(fmtBytes(Number(row.logs?.reclaimable_bytes||0)+Number(row.runtime?.cleanup?.reclaimable_bytes||0)))+
+  ' · '+esc(ko?'조건부 추가 ':'Conditional ')+esc(fmtBytes(row.runtime?.raw_protection?.conditional_bytes||0))+'</small>'+
+  '<button type="button" data-storage-manage="'+esc(row.project)+'">'+esc(ko?'프로젝트 관리':'Manage project')+'</button></div>').join('');
+ const byType=Object.values(all.logsByID).map(item=>
+  '<div class="storage-global-log"><strong>'+esc(logStorageLabels().names[item.id]||item.id)+'</strong><span>'+esc(fmtBytes(item.bytes))+'</span>'+
+  '<small>'+esc(item.canClear?(ko?'수동 정리 가능':'Manually clearable'):(ko?'보호 중 · 삭제 정책 미승인':'Protected; no approved deletion policy'))+'</small></div>').join('');
+ return status+'<div class="storage-overview-grid storage-global-overview">'+cards+'</div>'+
+ '<p class="storage-scope-note">'+esc(ko?'전체 프로젝트의 관측 용량이며 공용 웹 서비스 로그는 한 번만 셉니다. 로그와 실행 기록이 일부 중복될 수 있어 전체 디스크 사용량으로 단순 합산할 수 없습니다. 조건부 확보량은 보장되지 않습니다.':'Observed usage across projects; the shared service log is counted once. Log and execution measurements may overlap and must not be added as a disk total. Conditional savings are not guaranteed.')+'</p>'+
+ '<section class="storage-management-section"><h2>'+esc(ko?'진단 로그·보호 원장별 현황':'Diagnostics and protected ledgers')+'</h2><div class="storage-global-log-grid">'+byType+'</div></section>'+
+ '<section class="storage-management-section"><h2>'+esc(ko?'프로젝트별 관리':'Manage by project')+'</h2><p class="muted">'+esc(ko?'전체 현황은 읽기 전용입니다. 안전 정리는 프로젝트를 선택해 기존 보호 검사를 통과한 기록에만 실행할 수 있습니다.':'All-project view is read-only. Select a project to run its guarded safe cleanup.')+'</p>'+
+ '<div class="storage-global-projects">'+entries+'</div></section>';
+}
+
+function storageRetentionCountdown(file,ko,now=new Date()){
+ if(!file||!file.retention_eligible_after)return ko?'산정 불가':'Unavailable';
+ const at=Date.parse(file.retention_eligible_after),current=now.getTime();
+ if(!Number.isFinite(at))return ko?'산정 불가':'Unavailable';
+ const remaining=at-current;
+ if(remaining<0)return ko?'보존 기간 경과':'Retention satisfied';
+ if(remaining===0)return ko?'보존 기간 만료 시점':'At retention threshold';
+ if(remaining<86400000)return ko?'1일 미만 남음':'Less than 1 day remaining';
+ const days=Math.ceil(remaining/86400000);
+ return ko?days+'일 남음':days+' days remaining';
 }
 function storageRawProtectionMarkup(report,ko){
  const analysis=report?.raw_protection;
@@ -3404,9 +3479,14 @@ function storageRawProtectionMarkup(report,ko){
   const conditions=reasonText(file);
   const latest=file.last_observed_at?dateTimeLabel(file.last_observed_at,true):(ko?'확인 불가':'Unavailable');
   const after=file.retention_eligible_after?dateTimeLabel(file.retention_eligible_after,true):(ko?'확인 불가':'Unavailable');
+  const waiting=storageRetentionCountdown(file,ko);
   return '<details class="storage-protection-file"><summary><span class="storage-protection-name">'+esc(file.file||'—')+'</span><strong>'+esc(fmtBytes(file.bytes||0))+'</strong><span class="storage-protection-status">'+esc(status)+'</span></summary>'+
    '<div class="storage-protection-details"><p>'+esc(ko?'보호·정리 판정: ':'Protection / release conditions: ')+esc(conditions)+'</p>'+
-   '<p>'+esc(ko?'최근 관측: ':'Last observed: ')+esc(latest)+' · '+esc(ko?'보존 기간 통과 시점: ':'Retention expiry after: ')+esc(after)+'</p>'+
+   '<p>'+esc(ko?'최근 관측: ':'Last observed: ')+esc(latest)+' · '+esc(ko?'보존 기간 통과 시점: ':'Retention expiry after: ')+esc(after)+' · '+esc(ko?'잔여 대기 기간: ':'Remaining wait: ')+esc(waiting)+'</p>'+
+   '<p class="storage-retention-warning">'+esc(file.safe_now?(ko?'현재 조건 충족 · 정리 전 재검증 필요':'Currently eligible; recheck before cleanup'):
+    (Array.isArray(file.reason_codes)&&file.reason_codes.includes('unfinished')||Array.isArray(file.reason_codes)&&file.reason_codes.includes('missing_terminal'))?
+     (ko?'보존 기간이 지나더라도 모든 실행의 종료 증거가 확인되기 전에는 정리할 수 없습니다.':'Retention expiry alone does not permit cleanup until every execution has terminal evidence.'):
+     (ko?'표시된 대기 기간은 보존 기준만 의미하며 실제 정리 가능 시점은 아닙니다.':'Countdown covers retention only, not guaranteed cleanup eligibility.'))+'</p>'+
    '<p>'+esc(ko?'이벤트 건수: ':'Events: ')+Number(file.event_count||0)+' · '+
    esc(ko?'조건 충족 후 추가 검토 가능: ':'Conditional additional estimate: ')+esc(fmtBytes(file.conditional_bytes||0))+'</p>'+
    (idList.length?'<p class="storage-protection-ids">'+esc(ko?'확인이 필요한 실행 ID(최대 3건): ':'Blocking execution IDs (up to 3): ')+esc(idList.join(', '))+'</p>':'')+
@@ -3425,7 +3505,8 @@ function storageRawProtectionMarkup(report,ko){
 function storageManagementView(){
  const ko=state.language==='ko';
  const projects=state.hub?.projects||[],selected=storageSelectedProject();
- const options=projects.map(project=>'<option value="'+esc(project.path)+'" '+(project.path===selected?'selected':'')+'>'+esc(project.name||project.path)+'</option>').join('');
+ const options='<option value="__all__" '+(state.storageProject==='__all__'?'selected':'')+'>'+esc(ko?'모든 프로젝트':'All projects')+'</option>'+
+  projects.map(project=>'<option value="'+esc(project.path)+'" '+(state.storageProject===project.path?'selected':'')+'>'+esc(project.name||project.path)+'</option>').join('');
  const logs=state.logStorage||{},runtime=state.storageRuntime||{};
  const logTotal=Number(logs.total_bytes||0),runtimeTotal=Number(runtime.total_bytes||0);
  const reclaimLog=Number(logs.reclaimable_bytes||0),reclaimRuntime=Number(runtime.cleanup?.reclaimable_bytes||0);
@@ -3482,18 +3563,23 @@ function storageManagementView(){
   '<div class="storage-toolbar"><label>'+esc(ko?'프로젝트':'Project')+' <select id="storageManagementProject" '+(state.storageBusy?'disabled':'')+'>'+options+'</select></label>'+
   '<button id="storageManagementRefresh" type="button" class="action-btn secondary" '+(state.storageBusy?'disabled':'')+'>'+esc(ko?'사용량 갱신':'Refresh usage')+'</button></div>'+
   errors+(state.storageBusy?'<p role="status" class="muted">'+esc(ko?'사용량 확인 중…':'Checking storage usage…')+'</p>':'')+
-  '<div class="storage-overview-grid">'+cards+'</div><p class="storage-scope-note">'+esc(ko?'측정 범위: 선택한 프로젝트의 로그 및 에이전트 실행 기록과 공용 웹 서비스 로그. 범주별 측정치가 일부 중복될 수 있으므로 디스크 전체 사용량의 합계가 아닙니다. 브라우저/Push 데이터는 별도 후속 항목입니다.':'Scope: selected project logs and agent execution records, plus the shared Web service log. Categories may overlap; this is not total disk usage. Browser/Push data is a separate follow-up.')+'</p>'+
+  (state.storageProject==='__all__'?storageGlobalView():'<div class="storage-overview-grid">'+cards+'</div><p class="storage-scope-note">'+esc(ko?'측정 범위: 선택한 프로젝트의 로그 및 에이전트 실행 기록과 공용 웹 서비스 로그. 범주별 측정치가 일부 중복될 수 있으므로 디스크 전체 사용량의 합계가 아닙니다. 브라우저/Push 데이터는 별도 후속 항목입니다.':'Scope: selected project logs and agent execution records, plus the shared Web service log. Categories may overlap; this is not total disk usage. Browser/Push data is a separate follow-up.')+'</p>'+
   '<section class="storage-management-section"><h2>'+esc(ko?'진단 로그와 보호 원장':'Diagnostic logs and protected ledgers')+'</h2><div id="logStoragePanel">'+logStorageSection()+'</div></section>'+
-  '<section class="storage-management-section"><h2>'+esc(ko?'에이전트 실행 기록 관리':'Agent execution record management')+'</h2>'+runtimeContent+'</section></div>';
+  '<section class="storage-management-section"><h2>'+esc(ko?'에이전트 실행 기록 관리':'Agent execution record management')+'</h2>'+runtimeContent+'</section>')+'</div>';
 }
 function bindStorageManagementActions(){
  const selector=$('#storageManagementProject');
  selector?.addEventListener('change',e=>{
   state.storageProject=e.currentTarget.value;state.logStorageProject=state.storageProject;
-  state.logStorage=null;state.storageRuntime=null;
+  state.logStorage=null;state.storageRuntime=null;state.storageGlobal=null;
   void loadStorageManagement(false);
  });
  $('#storageManagementRefresh')?.addEventListener('click',()=>loadStorageManagement(true));
+ document.querySelectorAll('[data-storage-manage]').forEach(button=>button.addEventListener('click',()=>{
+  state.storageProject=button.dataset.storageManage;state.logStorageProject=state.storageProject;
+  state.storageRuntime=null;state.logStorage=null;state.storageGlobal=null;
+  void loadStorageManagement(false);
+ }));
  $('#storageRuntimeCleanup')?.addEventListener('click',async event=>{
   if(state.storageBusy)return;
   const project=storageSelectedProject(),reclaim=Number(state.storageRuntime?.cleanup?.reclaimable_bytes||0);
@@ -3536,7 +3622,12 @@ function logStorageSection(){
   const choices=projects.map(p=>`<option value="${esc(p.path)}" ${p.path===selected?'selected':''}>${esc(p.name||p.path.split(/[\\/]/).pop()||p.path)}</option>`).join('');
   const status=state.logStorageError?`<p class="log-storage-alert" role="alert">${esc(state.logStorageError)}</p>`:state.logStorageMessage?`<p class="log-storage-alert" role="status">${esc(state.logStorageMessage)}</p>`:'';
   const rows=(data?.items||[]).map(item=>`<div class="log-storage-row">
-      <div class="log-storage-details"><strong>${esc(words.names[item.id]||item.label)}</strong><small>${esc(item.scope==='global'?(state.language==='ko'?'전체 서비스':'Global service'):(state.language==='ko'?'선택한 프로젝트':'Selected project'))} · ${esc(words.notes?.[item.id]||item.note||'')}</small></div>
+      <div class="log-storage-details"><strong>${esc(words.names[item.id]||item.label)}</strong><small>${esc(item.scope==='global'?(state.language==='ko'?'전체 서비스':'Global service'):(state.language==='ko'?'선택한 프로젝트':'Selected project'))} · ${esc(words.notes?.[item.id]||item.note||'')}</small>
+      <small class="storage-log-condition">${esc(item.can_clear?
+       (state.language==='ko'?'수동 비우기 가능 · 대기 조건 없음':'Manual clearing allowed; no waiting period'):
+       (state.language==='ko'?'보호 원장 · 승인된 삭제 및 복원 조건 없음':'Protected ledger; no approved deletion/restoration policy'))}</small>
+      <small>${esc(state.language==='ko'?'현재 확보 가능 ':'Reclaimable now ')}<strong>${logBytes(item.can_clear?item.reclaimable_now_bytes??item.size_bytes:0)}</strong>
+       ${item.can_clear?'':esc(state.language==='ko'?' · 향후 확보 가능량은 정책 승인 전 산정 불가':' · Future reclaim cannot be estimated without an approved policy')}</small></div>
       <strong class="log-storage-size">${logBytes(item.size_bytes)}</strong>
       ${item.can_clear?`<button type="button" class="action-btn secondary log-clear-btn" data-clear-log="${esc(item.id)}" ${!item.size_bytes||state.logStorageBusy?'disabled':''}>${esc(words.clear)}</button>`:`<span class="log-storage-protected">${esc(words.protected)}</span>`}
     </div>`).join('');
