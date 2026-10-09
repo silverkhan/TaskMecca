@@ -320,10 +320,13 @@ test('connected and partially connected recipients do not show the missing-token
  assert.equal(app.telegramSetupSummary().kind,'ready');
  assert.equal(app.telegramSetupGuideMarkup(),'');
 });
-test('explicitly disabled Telegram projects are not prompted',async()=>{
+test('absence of all bot tokens prompts once even when channel switches were turned off',async()=>{
  const app=page();app.statuses['/demo'].project_enabled=false;app.statuses['/second'].project_enabled=false;
  await app.checkTelegramSetupInstance();
- assert.equal(app.telegramSetupSummary(),null);
+ assert.equal(app.telegramSetupSummary(),null,'delivery state may be disabled');
+ assert.match(app.telegramSetupGuideMarkup(),/봇 토큰 미등록/,'credential absence still merits one startup guide');
+ app.telegramSetupMarkSeen();
+ app.setTelegramSetupPreference('later');
  assert.equal(app.telegramSetupGuideMarkup(),'');
 });
 test('startup guide is shown only once per service instance and honors explicit never',async()=>{
