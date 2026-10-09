@@ -5363,6 +5363,7 @@ function translateChrome() {
   document.querySelectorAll('[data-theme-choice]').forEach(btn=>{const key={system:'themeSystem',light:'themeLight',dark:'themeDark'}[btn.dataset.themeChoice];const titleKey={system:'followSystemTheme',light:'useLightTheme',dark:'useDarkTheme'}[btn.dataset.themeChoice];if(key)btn.textContent=t(key);if(titleKey)btn.title=t(titleKey)});
   const sb=$('#shortcutBar'); if(sb) sb.innerHTML=`<span><kbd>↑</kbd><kbd>↓</kbd> ${esc(t('move'))}</span><span><kbd>Enter</kbd>/<kbd>→</kbd> ${esc(t('open'))}</span><span><kbd>←</kbd>/<kbd>Esc</kbd> ${esc(t('back'))}</span><span><kbd>/</kbd> ${esc(t('search'))}</span><span><kbd>PgUp</kbd>/<kbd>PgDn</kbd> ${esc(t('page'))}</span>`;
   renderLanguagePicker();
+  window.TaskMeccaSelectUI?.sync();
 }
 async function setLanguage(value) {
   const next=LANGUAGES[value]?value:'en';
@@ -5395,6 +5396,7 @@ function applyPalette(value) {
   localStorage.setItem('task-mecca-palette',state.palette);
   syncThemeBrowserChrome();
   const picker=$('#palettePicker');if(picker)picker.value=state.palette;
+  window.TaskMeccaSelectUI?.sync();
   if (document.querySelector('.mermaid-wrap')) renderMermaidDiagrams(true);
 }
 
