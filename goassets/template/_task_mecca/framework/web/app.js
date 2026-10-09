@@ -3373,6 +3373,55 @@ async function loadStorageManagement(refreshHubFirst=false){
   if(epoch===storageFetchEpoch){state.storageBusy=false;if(state.view==='storage')render();}
  }
 }
+function storageRawProtectionMarkup(report,ko){
+ const analysis=report?.raw_protection;
+ if(!analysis)return '<p class="muted">'+esc(ko?'보호 조건별 용량 분석은 서버가 제공하는 버전에서 표시됩니다.':'File-level protection estimates require server support.')+'</p>';
+ const now=Math.max(0,Number(analysis.safe_now_bytes)||0);
+ const conditional=Math.max(0,Number(analysis.conditional_bytes)||0);
+ const unknown=Math.max(0,Number(analysis.unverifiable_bytes)||0);
+ const cards=[
+  [ko?'현재 정리 가능한 Raw':'Raw eligible now',now,ko?'현재 안전 정리 후보에 포함됨':'Already included in current cleanup'],
+  [ko?'조건 충족 시 추가 가능':'Additional if conditions are met',conditional,ko?'현재 파일 크기 기준의 조건부 상한':'Conditional upper bound at current size'],
+  [ko?'분석 불가':'Unverifiable',unknown,ko?'예상 확보량에서 제외':'Excluded from reclaim estimate']
+ ].map(([name,bytes,note])=>'<div class="storage-protection-metric"><span>'+esc(name)+'</span><strong>'+esc(fmtBytes(bytes))+'</strong><small>'+esc(note)+'</small></div>').join('');
+ const rawFiles=Array.isArray(analysis.files)?analysis.files:[],maxRows=60;
+ const reasonText=(file)=>{
+  const reasons=Array.isArray(file.reason_codes)?file.reason_codes:[];
+  return reasons.map(reason=>{
+   switch(reason){
+    case 'retention':return ko?'보존 기간 미도래':'Within retention period';
+    case 'unfinished':return (ko?'종료되지 않은 실행 ':'Unfinished executions ')+Number(file.unfinished_attempts||0);
+    case 'missing_terminal':return (ko?'종료 증거 부족 ':'Missing terminal evidence ')+Number(file.missing_evidence_attempts||0);
+    case 'unverifiable':return ko?'파일 안전성·내용 검증 불가':'File cannot be safely verified';
+    default:return ko?'확인되지 않은 조건':'Unknown condition';
+   }
+  }).join(' · ')||(ko?'현재 안전 정리 조건 충족':'Currently satisfies cleanup conditions');
+ };
+ const rows=rawFiles.slice(0,maxRows).map(file=>{
+  const status=file.safe_now?(ko?'현재 정리 가능':'Eligible now'):
+   (Array.isArray(file.reason_codes)&&file.reason_codes.includes('unverifiable')?(ko?'분석 불가':'Unverifiable'):(ko?'조건 미충족':'Conditions pending'));
+  const idList=(file.blocking_attempt_ids||[]).slice(0,3);
+  const conditions=reasonText(file);
+  const latest=file.last_observed_at?dateTimeLabel(file.last_observed_at,true):(ko?'확인 불가':'Unavailable');
+  const after=file.retention_eligible_after?dateTimeLabel(file.retention_eligible_after,true):(ko?'확인 불가':'Unavailable');
+  return '<details class="storage-protection-file"><summary><span class="storage-protection-name">'+esc(file.file||'—')+'</span><strong>'+esc(fmtBytes(file.bytes||0))+'</strong><span class="storage-protection-status">'+esc(status)+'</span></summary>'+
+   '<div class="storage-protection-details"><p>'+esc(ko?'보호·정리 판정: ':'Protection / release conditions: ')+esc(conditions)+'</p>'+
+   '<p>'+esc(ko?'최근 관측: ':'Last observed: ')+esc(latest)+' · '+esc(ko?'보존 기간 통과 시점: ':'Retention expiry after: ')+esc(after)+'</p>'+
+   '<p>'+esc(ko?'이벤트 건수: ':'Events: ')+Number(file.event_count||0)+' · '+
+   esc(ko?'조건 충족 후 추가 검토 가능: ':'Conditional additional estimate: ')+esc(fmtBytes(file.conditional_bytes||0))+'</p>'+
+   (idList.length?'<p class="storage-protection-ids">'+esc(ko?'확인이 필요한 실행 ID(최대 3건): ':'Blocking execution IDs (up to 3): ')+esc(idList.join(', '))+'</p>':'')+
+   '</div></details>';
+ }).join('');
+ return '<section class="storage-protection-analysis"><h3>'+esc(ko?'보호 해제 조건과 확보 가능 용량':'Release conditions and reclaim potential')+'</h3>'+
+  '<p class="muted">'+esc(ko?'파일별 마지막 관측 시각과 실행 종료 증거를 비교한 읽기 전용 분석입니다.':'Read-only analysis of each file’s last observation and terminal evidence.')+'</p>'+
+  '<div class="storage-protection-summary">'+cards+'</div>'+
+  '<p class="storage-protection-caution">'+esc(ko?'※ 추가 확보 가능량은 현재 파일 크기 기준의 가정상 상한입니다. 보존 기간 경과, 모든 실행의 종료 확인, 필요한 요약 이력의 보존이 충족되어야 하며, 실제 확보량·시점은 보장되지 않습니다. 현재 정리 가능량과 추가 가능량은 서로 중복되지 않습니다.':'Additional reclaim is a hypothetical upper bound based on current file sizes, not a guaranteed saving or date. Retention, terminal evidence for every execution, and safe history preservation must all be satisfied. Current and conditional bytes do not overlap.')+'</p>'+
+  '<details class="storage-protection-list"><summary>'+esc(ko?'날짜별 파일 및 보호 사유 보기':'Inspect dated files and protection reasons')+' ('+rawFiles.length+')</summary>'+
+  '<div class="storage-protection-rows">'+(rows||'<p class="muted">'+esc(ko?'Raw 이벤트 파일이 없습니다.':'No raw event files.')+'</p>')+
+  (rawFiles.length>maxRows?'<p class="muted">'+esc(ko?'최신 60개 파일만 표시합니다. 집계는 전체 파일 기준입니다.':'Showing 60 latest files; totals include all files.')+'</p>':'')+'</div></details>'+
+  '<p class="storage-protection-caution">'+esc(ko?'실행 이벤트 원장, 알림 전송 원장, 라이프사이클 원장은 별도 삭제·복원 계약이 정해지지 않아 여기서 확보 가능 용량을 계산하거나 삭제 대상으로 제공하지 않습니다.':'Execution, notification delivery and lifecycle ledgers have no approved deletion/restoration contract. No reclaim estimate or deletion action is offered for them.')+'</p></section>';
+}
+
 function storageManagementView(){
  const ko=state.language==='ko';
  const projects=state.hub?.projects||[],selected=storageSelectedProject();
@@ -3428,7 +3477,7 @@ function storageManagementView(){
    (ko?'현재 기준에 맞는 정리 대상이 없습니다. 최근 '+rawDays+'일 이내의 기록이거나, 미종료 실행 또는 종료 증거가 부족한 기록이 같은 파일에 포함되어 있을 수 있습니다. 이 수치만으로 정확한 원인을 단정할 수는 없습니다.':'No records meet all cleanup conditions. Reasons may include files inside the '+rawDays+'-day retention period, active attempts, or missing terminal evidence. The exact cause cannot be determined from this total alone.'):
    (ko?'정리 대상은 보존 기간과 종료 증거를 모두 검증한 기록만 포함합니다. 상태가 불확실하거나 실행 중인 세션은 제외됩니다.':'Only records satisfying the retention and terminal-evidence checks are eligible. Running or uncertain sessions remain protected.'))+'</p>'+
   '<details class="storage-runtime-explain"><summary>'+esc(ko?'실행 기록을 보호하는 이유와 정리 조건':'Why records are protected and when cleanup is allowed')+'</summary>'+
-  '<div>'+esc(ko?'상세 이벤트는 날짜별 파일로 저장됩니다. 파일의 마지막 활동이 보존 기간보다 오래되고, 파일에 포함된 실행이 모두 종료 확인을 거친 경우에만 안전 정리 대상으로 검토됩니다. 종료된 실행의 요약은 별도 보존 규칙을 적용합니다. 정리 보호 대상은 현재/미확정 실행이 섞인 원본 파일이므로 삭제하면 상태 재구성에 필요한 증거가 손실될 수 있습니다.':'Detailed events are stored as dated files. A raw file is considered for cleanup only after the retention period and after every execution within it has terminal evidence. Completed summaries have their own retention limits. Files with active or uncertain executions must stay intact for state reconstruction.')+'</div></details>';
+  '<div>'+esc(ko?'상세 이벤트는 날짜별 파일로 저장됩니다. 파일의 마지막 활동이 보존 기간보다 오래되고, 파일에 포함된 실행이 모두 종료 확인을 거친 경우에만 안전 정리 대상으로 검토됩니다. 종료된 실행의 요약은 별도 보존 규칙을 적용합니다. 정리 보호 대상은 현재/미확정 실행이 섞인 원본 파일이므로 삭제하면 상태 재구성에 필요한 증거가 손실될 수 있습니다.':'Detailed events are stored as dated files. A raw file is considered for cleanup only after the retention period and after every execution within it has terminal evidence. Completed summaries have their own retention limits. Files with active or uncertain executions must stay intact for state reconstruction.')+'</div></details>'+storageRawProtectionMarkup(runtime,ko);
  return '<div class="storage-management"><div class="page-head"><div><h1>'+esc(ko?'저장소 관리':'Storage management')+'</h1><p class="summary">'+esc(ko?'진단 로그와 에이전트 실행 기록의 사용량, 보호 이유 및 안전 정리 범위를 확인합니다.':'Review diagnostic logs, agent execution records, protection reasons, and safe cleanup.')+'</p></div></div>'+
   '<div class="storage-toolbar"><label>'+esc(ko?'프로젝트':'Project')+' <select id="storageManagementProject" '+(state.storageBusy?'disabled':'')+'>'+options+'</select></label>'+
   '<button id="storageManagementRefresh" type="button" class="action-btn secondary" '+(state.storageBusy?'disabled':'')+'>'+esc(ko?'사용량 갱신':'Refresh usage')+'</button></div>'+

@@ -1753,3 +1753,28 @@ body.release-modal-open{overflow:hidden}
  .storage-runtime-metric{gap:6px!important}
  .storage-runtime-metric>strong{font-size:20px}
 }
+
+
+/* AID-127: file-level reclaim diagnostics; never mistaken for a delete control. */
+.storage-protection-analysis{margin-top:16px;padding:14px;border:1px solid var(--border);border-radius:12px;display:grid;gap:10px;min-width:0}
+.storage-protection-analysis h3{margin:0;font-size:14px;font-weight:750}
+.storage-protection-analysis>p{margin:0;font-size:12px;line-height:1.6}
+.storage-protection-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.storage-protection-metric{display:grid;gap:7px;border:1px solid var(--border);border-radius:10px;background:var(--surface2);padding:12px;min-width:0}
+.storage-protection-metric span{font-size:11px;color:var(--muted);font-weight:600}
+.storage-protection-metric strong{font-size:19px;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+.storage-protection-metric small{font-size:11px;color:var(--muted);line-height:1.5}
+.storage-protection-caution{border-left:3px solid var(--border);padding:9px 11px;background:var(--surface2);border-radius:0 8px 8px 0;color:var(--muted);overflow-wrap:anywhere}
+.storage-protection-list{border:1px solid var(--border);border-radius:10px;min-width:0}
+.storage-protection-list>summary{font-size:12px;font-weight:700;cursor:pointer;padding:12px 14px}
+.storage-protection-rows{padding:0 10px 10px;display:grid;gap:6px}
+.storage-protection-file{border:1px solid var(--border);border-radius:9px;min-width:0}
+.storage-protection-file>summary{cursor:pointer;display:flex;align-items:center;gap:8px;padding:11px;font-size:12px;flex-wrap:wrap}
+.storage-protection-file>summary:focus-visible,.storage-protection-list>summary:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.storage-protection-name{font-weight:650;overflow-wrap:anywhere;flex:1;min-width:110px}
+.storage-protection-file>summary strong{white-space:nowrap;font-variant-numeric:tabular-nums}
+.storage-protection-status{color:var(--muted);font-size:11px;white-space:nowrap}
+.storage-protection-details{border-top:1px solid var(--border);padding:10px 12px;display:grid;gap:7px}
+.storage-protection-details p{margin:0;color:var(--muted);font-size:11px;line-height:1.65;overflow-wrap:anywhere}
+.storage-protection-ids{word-break:break-all}
+@media(max-width:680px){.storage-protection-summary{grid-template-columns:minmax(0,1fr)}.storage-protection-analysis{padding:10px}.storage-protection-metric{padding:10px}.storage-protection-file>summary{align-items:baseline}}
