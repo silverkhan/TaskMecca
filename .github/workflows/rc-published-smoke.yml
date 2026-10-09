@@ -1,0 +1,87 @@
+name: Validate published 0.3.0-rc.1 artifacts
+
+on:
+  push:
+    branches: ["qa/0.3.0-rc.1-immutable-smoke"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  published-candidate-smoke:
+    name: Stable to published RC · ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install previous Stable, install published RC, preserve project data (Unix)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          set -euo pipefail
+          export HOME="$RUNNER_TEMP/task-mecca-qa-home"
+          mkdir -p "$HOME/.local/bin"
+          export PATH="$HOME/.local/bin:$PATH"
+          TASK_MECCA_RELEASE_TAG=release-stable sh "$GITHUB_WORKSPACE/install.sh"
+          stable_version="$(task-mecca --version)"
+          printf '%s\n' "$stable_version" | sed -n '1p' | grep -Fx "task-mecca 0.2.52"
+          project="$RUNNER_TEMP/project-before-upgrade"
+          mkdir -p "$project"
+          cd "$project"
+          task-mecca init
+          mkdir -p _task_mecca/data/backlog
+          printf 'preserve-owned-data\n' > _task_mecca/data/backlog/keep.txt
+          printf '\ncustom-project-doc\n' >> _task_mecca/framework/README.md
+          TASK_MECCA_RELEASE_TAG=v0.3.0-rc.1 sh "$GITHUB_WORKSPACE/install.sh"
+          candidate_version="$(task-mecca --version)"
+          printf '%s\n' "$candidate_version" | sed -n '1p' | grep -Fx "task-mecca 0.3.0-rc.1"
+          task-mecca migrate --choice backup --json > "$RUNNER_TEMP/migration.json"
+          grep -Fx "preserve-owned-data" _task_mecca/data/backlog/keep.txt
+          grep -q 'custom-project-doc' _task_mecca/backups/*/*/framework/README.md
+          test -f _task_mecca/manifest.json
+          test -z "$(find _task_mecca/framework -name '*.py' -print -quit)"
+          task-mecca web --host 127.0.0.1 --no-open
+          curl -fsS --retry 6 --retry-delay 1 http://127.0.0.1:18765/api/health
+          task-mecca web stop
+          echo "Published immutable RC passed install, migration, data preservation and Web health checks."
+      - name: Install previous Stable, install published RC, preserve project data (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $env:TASK_MECCA_INSTALL_DIR = Join-Path $env:RUNNER_TEMP "task-mecca-qa-bin"
+          $env:TASK_MECCA_RELEASE_TAG = "release-stable"
+          & "$env:GITHUB_WORKSPACE/install.ps1"
+          $exe = Join-Path $env:TASK_MECCA_INSTALL_DIR "task-mecca.exe"
+          $stable = @(& $exe --version)
+          if ($stable[0] -ne "task-mecca 0.2.52") { throw "Unexpected previous Stable: $($stable[0])" }
+          $project = Join-Path $env:RUNNER_TEMP "project-before-upgrade"
+          New-Item -ItemType Directory -Force -Path $project | Out-Null
+          Push-Location $project
+          try {
+            & $exe init
+            $backlog = Join-Path $project "_task_mecca/data/backlog"
+            New-Item -ItemType Directory -Force -Path $backlog | Out-Null
+            Set-Content -LiteralPath (Join-Path $backlog "keep.txt") -Value "preserve-owned-data"
+            $readme = Join-Path $project "_task_mecca/framework/README.md"
+            Add-Content -LiteralPath $readme -Value "custom-project-doc"
+            $env:TASK_MECCA_RELEASE_TAG = "v0.3.0-rc.1"
+            & "$env:GITHUB_WORKSPACE/install.ps1"
+            $candidate = @(& $exe --version)
+            if ($candidate[0] -ne "task-mecca 0.3.0-rc.1") { throw "RC version mismatch: $($candidate[0])" }
+            & $exe migrate --choice backup --json
+            if ((Get-Content -LiteralPath (Join-Path $backlog "keep.txt")).Trim() -ne "preserve-owned-data") { throw "Project-owned data lost" }
+            $backedUp = @(Get-ChildItem -Path (Join-Path $project "_task_mecca/backups") -Recurse -Filter README.md -ErrorAction SilentlyContinue)
+            if ($backedUp.Count -eq 0) { throw "Customized project document was not backed up" }
+            & $exe web --host 127.0.0.1 --no-open
+            $health = Invoke-RestMethod -Uri "http://127.0.0.1:18765/api/health" -TimeoutSec 10
+            if ($null -eq $health) { throw "Web health unavailable" }
+            & $exe web stop
+            Write-Host "Published RC Windows validation passed."
+          } finally {
+            Pop-Location
+          }
