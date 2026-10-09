@@ -41,7 +41,7 @@ jobs:
           printf '%s\n' "$candidate_version" | sed -n '1p' | grep -Fx "task-mecca 0.3.0-rc.1"
           task-mecca migrate --choice backup --json > "$RUNNER_TEMP/migration.json"
           grep -Fx "preserve-owned-data" _task_mecca/data/backlog/keep.txt
-          grep -q 'custom-project-doc' _task_mecca/backups/*/*/framework/README.md
+          grep -q 'custom-project-doc' _task_mecca/backups/migration-*/framework/README.md
           test -f _task_mecca/manifest.json
           test -z "$(find _task_mecca/framework -name '*.py' -print -quit)"
           task-mecca web --host 127.0.0.1 --no-open
