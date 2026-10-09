@@ -253,3 +253,24 @@ test('read-only watch refreshes live connection without reloading page and stops
  await app.pollTelegramConnectionStatus();
  assert.equal(app.state.projectNotificationSettings[0].status.connected,true);
 });
+
+test('Telegram test action matches the main notification UI button pattern',async()=>{
+ const app=page();app.statuses['/demo'].configured=true;app.statuses['/demo'].connected=true;
+ await app.loadProjectNotificationSettings();
+ const html=app.notificationOverviewMarkup()+app.projectChannelSettingsMarkup();
+ assert.match(html,/class="action-btn telegram-message-action" data-telegram-test-project="\/demo"/);
+ assert.match(html,/봇 토큰/);
+ assert.match(html,/채팅 수신처/);
+ assert.match(html,/등록 프로젝트 1\/2/);
+ assert.match(html,/연결 프로젝트 1\/2/);
+});
+test('Registered Telegram bot shows name even when recipient chat is still pending',async()=>{
+ const app=page();app.statuses['/demo'].configured=true;app.statuses['/demo'].connected=false;
+ app.statuses['/demo'].bot_username='company_bot';
+ await app.loadProjectNotificationSettings();
+ const html=app.projectChannelSettingsMarkup();
+ assert.match(html,/@company_bot/);
+ assert.match(html,/data-telegram-discover-project="\/demo"/);
+ assert.match(html,/연결 대기/);
+ assert.doesNotMatch(html,/data-telegram-test-project="\/demo"/);
+});
