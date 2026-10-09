@@ -273,13 +273,18 @@ func BacklogPage(project,root string,page,pageSize int,statuses,tags []string,se
 func TaskDetail(project,root,id string) (map[string]any,error) {
     rows,err:=CachedCatalog(project,root); if err!=nil { return nil,err }
     byID:=preferredRows(rows); row,ok:=byID[strings.ToUpper(strings.TrimSpace(id))]; if !ok { return nil,fmt.Errorf("task not found: %s",id) }
-    readyIDs,blocked:=webWorkflowStateMaps(project,root,rows)
+    // Readiness/dependency analysis covers the entire backlog. It cannot
+    // change the display state of a doing/hold/done task, so avoid it when
+    // opening those details (the common case for old/completed backlogs).
+    state:=row.State; waiting:=[]string{}
+    if row.State=="todo" {
+        readyIDs,blocked:=webWorkflowStateMaps(project,root,rows)
+        if readyIDs[row.ID] { state="ready" }
+        if b,ok:=blocked[row.ID]; ok { state="blocked"; if v,ok:=b["waiting_for"].([]string); ok { waiting=v } }
+    }
     control:=reconcileControlTower(project,root,rows)
     timings:=control.Timings
     activity:=control.Activity
-    state:=row.State; waiting:=[]string{}
-    if row.State=="todo" && readyIDs[row.ID] { state="ready" }
-    if b,ok:=blocked[row.ID]; ok { state="blocked"; if v,ok:=b["waiting_for"].([]string); ok { waiting=v } }
     timing:=map[string]any{}; if v,ok:=timings[row.ID]; ok { timing=v }
     item:=dashboardItem(row,state,waiting,timing,nil)
     if signal,ok:=activity[row.ID]; ok { item["activity"]=signal } else { item["activity"]=map[string]any{"health":"n/a"} }

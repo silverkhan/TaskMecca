@@ -1426,6 +1426,7 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 	})
 
 	mux.HandleFunc("/api/tasks/", func(w http.ResponseWriter, r *http.Request) {
+		started := time.Now()
 		activeProject := projectFor(r)
 		activeCtx, ctxErr := webContext(activeProject, "")
 		if ctxErr != nil {
@@ -1437,8 +1438,11 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 			writeJSON(w, map[string]any{"error": err.Error()}, 500)
 			return
 		}
+		selectionMS := time.Since(started).Seconds() * 1000
+		detailStarted := time.Now()
 		id := strings.ToUpper(strings.TrimSpace(strings.TrimPrefix(r.URL.Path, "/api/tasks/")))
 		item, err := backlog.TaskDetail(activeProject, selected, id)
+		w.Header().Set("Server-Timing", fmt.Sprintf("selection;dur=%.1f, detail;dur=%.1f", selectionMS, time.Since(detailStarted).Seconds()*1000))
 		if err != nil {
 			writeJSON(w, map[string]any{"error": err.Error(), "id": id}, 404)
 			return
