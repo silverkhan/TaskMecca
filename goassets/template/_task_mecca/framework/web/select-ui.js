@@ -7,7 +7,7 @@
  if(!document?.body||typeof MutationObserver==='undefined')return;
  const SELECT_SELECTOR='select:not([data-tm-enhanced])';
  let current=null,popup=null,activeIndex=-1,searchField=null,filter='',serial=0,ticking=false;
- const visibleOptions=()=>current?[...current.select.options].filter(o=>!o.hidden):[];
+ const visibleOptions=()=>current?[...current.select.options].map((option,index)=>({option,index})).filter(row=>!row.option.hidden):[];
  const isDisabled=o=>Boolean(o.disabled||o.parentElement?.disabled);
  const make=(tag,cls,text)=>{
   const el=document.createElement(tag);
@@ -32,7 +32,8 @@
   if(!wrapper?.isConnected)return;
   const select=wrapper.querySelector('select'),button=wrapper.querySelector('button.tm-combo-trigger');
   if(!select||!button)return;
-  button.textContent=labelFor(select);
+  const value=labelFor(select);
+  if(button.textContent!==value)button.textContent=value;
   button.disabled=select.disabled;
   button.setAttribute('aria-label',select.getAttribute('aria-label')||select.closest('label')?.querySelector('span')?.textContent?.trim()||select.id||'Select');
   const names=select.options.length;
@@ -66,7 +67,7 @@
  }
  function filtered(){
   const q=filter.toLocaleLowerCase();
-  return visibleOptions().map((option,index)=>({option,index}))
+  return visibleOptions()
    .filter(row=>!q||row.option.textContent.toLocaleLowerCase().includes(q));
  }
  function commit(index){
@@ -182,7 +183,7 @@
  }
  function schedule(){if(ticking)return;ticking=true;queueMicrotask(scan);}
  document.addEventListener('keydown',event=>{
-  if(current&&(event.target===searchField||event.target===current.button))keys(event);
+  if(current&&event.target===searchField)keys(event);
  },true);
  document.addEventListener('pointerdown',event=>{
   if(current&&!current.wrapper.contains(event.target)&&!popup?.contains(event.target))close();
