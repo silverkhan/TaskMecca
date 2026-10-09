@@ -140,7 +140,7 @@ jobs:
               gh release create "$tag" \
                 --target "$GITHUB_SHA" \
                 --title "$title" \
-                --notes "$notes" \
+                --notes-file release-description.md \
                 --prerelease
             fi
 
@@ -157,7 +157,7 @@ jobs:
             gh release upload "$tag" dist/VERSION.txt --clobber
             gh release edit "$tag" \
               --title "$title" \
-              --notes "$notes" \
+              --notes-file release-description.md \
               --prerelease
           }
 
