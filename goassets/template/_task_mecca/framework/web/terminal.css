@@ -466,3 +466,6 @@ body.terminal-page {
 .terminal-command-note{font-size:12px;color:var(--muted);line-height:1.65}
 .terminal-command-note p{margin:0}
 @media(max-width:680px){.terminal-web-restart-btn{min-height:42px}.terminal-web-restart-status{margin:8px}}
+
+/* Reserve a row for the optional restart status so PTY retains flex space. */
+.terminal-workspace{grid-template-rows:auto auto minmax(0,1fr) auto}
