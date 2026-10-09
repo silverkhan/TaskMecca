@@ -3437,6 +3437,17 @@ function storageGlobalView(){
  '<div class="storage-global-projects">'+entries+'</div></section>';
 }
 
+function storageRetentionCountdown(file,ko,now=new Date()){
+ if(!file||!file.retention_eligible_after)return ko?'산정 불가':'Unavailable';
+ const at=Date.parse(file.retention_eligible_after),current=now.getTime();
+ if(!Number.isFinite(at))return ko?'산정 불가':'Unavailable';
+ const remaining=at-current;
+ if(remaining<0)return ko?'보존 기간 경과':'Retention satisfied';
+ if(remaining===0)return ko?'보존 기간 만료 시점':'At retention threshold';
+ if(remaining<86400000)return ko?'1일 미만 남음':'Less than 1 day remaining';
+ const days=Math.ceil(remaining/86400000);
+ return ko?days+'일 남음':days+' days remaining';
+}
 function storageRawProtectionMarkup(report,ko){
  const analysis=report?.raw_protection;
  if(!analysis)return '<p class="muted">'+esc(ko?'보호 조건별 용량 분석은 서버가 제공하는 버전에서 표시됩니다.':'File-level protection estimates require server support.')+'</p>';
@@ -3468,9 +3479,14 @@ function storageRawProtectionMarkup(report,ko){
   const conditions=reasonText(file);
   const latest=file.last_observed_at?dateTimeLabel(file.last_observed_at,true):(ko?'확인 불가':'Unavailable');
   const after=file.retention_eligible_after?dateTimeLabel(file.retention_eligible_after,true):(ko?'확인 불가':'Unavailable');
+  const waiting=storageRetentionCountdown(file,ko);
   return '<details class="storage-protection-file"><summary><span class="storage-protection-name">'+esc(file.file||'—')+'</span><strong>'+esc(fmtBytes(file.bytes||0))+'</strong><span class="storage-protection-status">'+esc(status)+'</span></summary>'+
    '<div class="storage-protection-details"><p>'+esc(ko?'보호·정리 판정: ':'Protection / release conditions: ')+esc(conditions)+'</p>'+
-   '<p>'+esc(ko?'최근 관측: ':'Last observed: ')+esc(latest)+' · '+esc(ko?'보존 기간 통과 시점: ':'Retention expiry after: ')+esc(after)+'</p>'+
+   '<p>'+esc(ko?'최근 관측: ':'Last observed: ')+esc(latest)+' · '+esc(ko?'보존 기간 통과 시점: ':'Retention expiry after: ')+esc(after)+' · '+esc(ko?'잔여 대기 기간: ':'Remaining wait: ')+esc(waiting)+'</p>'+
+   '<p class="storage-retention-warning">'+esc(file.safe_now?(ko?'현재 조건 충족 · 정리 전 재검증 필요':'Currently eligible; recheck before cleanup'):
+    (Array.isArray(file.reason_codes)&&file.reason_codes.includes('unfinished')||Array.isArray(file.reason_codes)&&file.reason_codes.includes('missing_terminal'))?
+     (ko?'보존 기간이 지나더라도 모든 실행의 종료 증거가 확인되기 전에는 정리할 수 없습니다.':'Retention expiry alone does not permit cleanup until every execution has terminal evidence.'):
+     (ko?'표시된 대기 기간은 보존 기준만 의미하며 실제 정리 가능 시점은 아닙니다.':'Countdown covers retention only, not guaranteed cleanup eligibility.'))+'</p>'+
    '<p>'+esc(ko?'이벤트 건수: ':'Events: ')+Number(file.event_count||0)+' · '+
    esc(ko?'조건 충족 후 추가 검토 가능: ':'Conditional additional estimate: ')+esc(fmtBytes(file.conditional_bytes||0))+'</p>'+
    (idList.length?'<p class="storage-protection-ids">'+esc(ko?'확인이 필요한 실행 ID(최대 3건): ':'Blocking execution IDs (up to 3): ')+esc(idList.join(', '))+'</p>':'')+
