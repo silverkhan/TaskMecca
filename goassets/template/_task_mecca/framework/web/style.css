@@ -1916,3 +1916,47 @@ select.tm-combo-native{position:absolute!important;width:1px!important;height:1p
 .telegram-delete-action:disabled{opacity:.55;cursor:wait}
 .telegram-shared-setup .telegram-delete-action{width:fit-content;max-width:100%}
 @media(max-width:680px){.telegram-shared-setup .telegram-delete-action,.project-notification-controls .telegram-delete-action{min-height:44px;width:100%}}
+
+
+/* Compact project notification controls: two persistent rows on desktop.
+   Only the event type matrix is collapsible; recipient actions remain visible. */
+.notice-project{padding:9px 14px 10px;overflow:visible}
+.notice-project-primary,.notice-project-secondary{display:flex;align-items:center;justify-content:space-between;gap:10px;min-width:0}
+.notice-project-primary{min-height:42px}
+.notice-project-secondary{min-height:42px;padding-top:3px;border-top:1px solid color-mix(in srgb,var(--border) 58%,transparent)}
+.notice-project-name{font-size:13px;flex:1 1 auto;min-width:0;word-break:break-word}
+.notice-project-channels{display:flex;flex:0 0 auto;align-items:center;gap:14px}
+.notice-project-channel{display:inline-flex;align-items:center;gap:5px;white-space:nowrap;color:var(--text);font-size:11px;font-weight:650}
+.notice-project-channel .notice-switch{flex:none}
+.notice-project-secondary .notice-project-status{display:flex;flex:1 1 auto;flex-wrap:wrap;align-items:center;gap:5px 15px;min-width:0;line-height:1.4;font-size:11px}
+.notice-project-status>span{overflow-wrap:anywhere}
+.notice-project-secondary .notice-project-status b{font-weight:650}
+.notice-project-actions{display:flex;flex:0 0 auto;align-items:center;justify-content:flex-end;gap:8px;min-width:0}
+.notice-project-actions.notice-connection-row{margin:0;flex-wrap:nowrap}
+.notice-project-actions.notice-connection-row .telegram-message-action{min-height:34px;padding:6px 11px;white-space:nowrap;font-size:11px;width:auto}
+.notice-project-toggle{appearance:none;display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:34px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);font:inherit;font-size:11px;font-weight:650;padding:6px 10px;cursor:pointer;white-space:nowrap}
+.notice-project-toggle:hover{background:var(--surface)}
+.notice-project-toggle:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.notice-project-chevron{font-size:15px;transition:transform .16s}
+.notice-project-toggle[aria-expanded="true"] .notice-project-chevron{transform:rotate(180deg)}
+.notice-project .notice-project-content{margin-top:9px;padding:12px 0 4px;border-top:1px solid var(--border)}
+.notice-project .notice-project-content[hidden]{display:none!important}
+.notice-project .notice-project-path{margin-bottom:10px}
+@media(max-width:760px){
+ .notice-project{padding:9px 11px}
+ .notice-project-primary{gap:7px}
+ .notice-project-channels{gap:5px}
+ .notice-project-channel{gap:2px;font-size:10px}
+ .notice-project-secondary{flex-wrap:wrap;gap:7px}
+ .notice-project-secondary .notice-project-status{flex:1 1 220px;gap:3px 10px}
+ .notice-project-actions{margin-left:auto}
+ .notice-project-actions.notice-connection-row .telegram-message-action{min-height:38px}
+ .notice-project-toggle{min-height:38px}
+}
+@media(max-width:380px){
+ .notice-project-channels{gap:2px}
+ .notice-project-channel{font-size:10px}
+ .notice-project-primary{flex-wrap:wrap}
+ .notice-project-actions{flex-wrap:wrap}
+}
+@media(prefers-reduced-motion:reduce){.notice-project-chevron{transition:none}}
