@@ -1894,7 +1894,7 @@ ${a.checked_at ? `${t('accessLastChecked')} ${ago(a.checked_at)}` : t('notChecke
 function accessBanner() {
   const a = currentProjectData()?.access || {};
   if (!a.restriction_current) return '';
-  return `<div class="global-access danger"><div><strong>${esc(t('dispatchDisabled'))}</strong><span>${esc(t('enableFullAccess'))}</span></div><code>uv run _task_mecca/collab_tools.py preflight --require-full-access --json</code></div>`;
+  return `<div class="global-access danger"><div><strong>${esc(t('dispatchDisabled'))}</strong><span>${esc(t('enableFullAccess'))}</span></div><code>task-mecca preflight --require-full-access --json</code></div>`;
 }
 function diagnosticBanner() {
   const rows=currentProjectData()?.diagnostics||[];
