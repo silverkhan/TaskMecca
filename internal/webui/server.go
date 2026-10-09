@@ -1432,6 +1432,7 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 		sendEmbedded(w, "logo.svg")
 	})
 	mux.HandleFunc("/app.js", func(w http.ResponseWriter, r *http.Request) { sendEmbedded(w, "app.js") })
+	mux.HandleFunc("/select-ui.js", func(w http.ResponseWriter, r *http.Request) { sendEmbedded(w, "select-ui.js") })
 	mux.HandleFunc("/sw.js", func(w http.ResponseWriter, r *http.Request) { sendEmbedded(w, "sw.js") })
 	mux.HandleFunc("/manifest.webmanifest", func(w http.ResponseWriter, r *http.Request) { w.Header().Set("Content-Type","application/manifest+json; charset=utf-8");sendEmbedded(w,"manifest.webmanifest") })
 	mux.HandleFunc("/vendor/", func(w http.ResponseWriter, r *http.Request) {
