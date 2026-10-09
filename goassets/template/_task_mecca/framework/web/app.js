@@ -2511,8 +2511,8 @@ function openTelegramSetupGuide(){
  const body=$('#notificationSettingsBody')||$('#notificationPanel');
  if(!body)return;
  if(target.status?.configured){
-  const details=[...document.querySelectorAll('.notice-project')].find(el=>el.querySelector('.notice-project-path')?.textContent===target.path);
-  if(details){details.open=true;details.querySelector('[data-telegram-discover-project]')?.focus({preventScroll:true});}
+  const card=[...document.querySelectorAll('.notice-project')].find(el=>el.dataset.noticeProject===target.path);
+  card?.querySelector('[data-telegram-discover-project]')?.focus({preventScroll:true});
  }else{
   const details=body.querySelector('.center-project-settings');if(details)details.open=true;
   const individual=target.status?.recipient_mode==='individual'&&(state.projectNotificationSettings||[]).some(row=>row.status?.configured);
