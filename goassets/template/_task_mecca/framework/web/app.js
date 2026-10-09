@@ -2556,7 +2556,7 @@ async function setProjectNotificationEnabled(project,enabled) {
   }
 }
 async function projectTelegramAction(project,action,payload={}) {
-  state.projectNotificationSettingsRevision=(state.projectNotificationSettingsRevision||0)+1;
+  if(action!=='test')state.projectNotificationSettingsRevision=(state.projectNotificationSettingsRevision||0)+1;
   const existing=(state.projectNotificationSettings||[]).find(row=>row.path===project)?.status;
   const prior=existing?{...existing,kinds:{...existing.kinds}}:null;
   if(action==='kinds'&&existing)applyTelegramStatus(project,{...existing,kinds:{...payload.kinds}});
@@ -2566,11 +2566,13 @@ async function projectTelegramAction(project,action,payload={}) {
   });
   const body=await response.json().catch(()=>({}));
   if(!response.ok)throw new Error(body.error||('HTTP '+response.status));
-  applyTelegramStatus(project,body);
-  if(!['kinds','project_enabled'].includes(action))scheduleNotificationConfigurationRefresh();
+  if(action!=='test'){
+   applyTelegramStatus(project,body);
+   if(!['kinds','project_enabled'].includes(action))scheduleNotificationConfigurationRefresh();
+  }
   return body;
   } catch(error) {
-    if(prior)applyTelegramStatus(project,prior);
+    if(action!=='test'&&prior)applyTelegramStatus(project,prior);
     throw error;
   }
 }
@@ -2883,6 +2885,8 @@ function renderNotificationPanel() {
   if(panel.id==='notificationSettingsBody')panel.querySelector('.notification-panel-head')?.remove();
   bindCenterChannelSettings(panel);
   bindProjectRecipientControls();
+  bindTelegramSettingsActions(panel);
+  syncTelegramConnectionWatch();
 
   panel.querySelectorAll('[data-notification-setting]').forEach(input=>input.addEventListener('change',()=>{state.notificationSettings[input.dataset.notificationSetting]=input.checked;saveNotificationSettings();updateNotificationIndicator();renderNotificationPanel()}));
   panel.querySelectorAll('[data-telegram-kind]').forEach(input=>input.addEventListener('change',async()=>{try{const kinds={...state.telegramStatus.kinds,[input.dataset.telegramKind]:input.checked};await telegramAction('kinds',{kinds});renderNotificationPanel()}catch(e){alert(e.message)}}));
@@ -4861,6 +4865,7 @@ function toggleSidebar() {
 
 let notificationSettingsDraft=null;
 function render() {
+  syncTelegramConnectionWatch();
   const settingsElement=$('#notificationSettingsBody');
   const settingsDraft=settingsElement?.dataset.context===notificationHistoryContext()?preserveNotificationSettings(settingsElement):notificationSettingsDraft?.context===notificationHistoryContext()?notificationSettingsDraft.draft:null;
  renderUserAttention();
