@@ -35,6 +35,15 @@ test('project changes cannot display previous project detail or reuse its cache'
  a.openTask('A-2');assert.equal(pending.length,1);
  pending.shift()(reply({...task('A-2'),title:'from other'}));await tick();assert.equal(a.state.detailTask.title,'from other');
 });
+test('cached long detail is rendered only once on reentry',async()=>{
+ let renders=0;
+ const a=app(()=>Promise.resolve(reply(task('A-1'))));
+ a.ctx.render=()=>{renders++;};
+ await a.requestTaskDetail('A-1');
+ a.openTask('A-1');await tick();
+ assert.equal(renders,1,'a cache hit must not render the same Markdown twice');
+});
+
 test('content revision invalidation prevents stale prefetch reuse',async()=>{
  let n=0;const a=app(()=>{n++;return Promise.resolve(reply({...task('A-3'),title:'revision '+n}))});
  await a.requestTaskDetail('A-3');assert.equal(a.cachedTaskDetail('A-3').title,'revision 1');

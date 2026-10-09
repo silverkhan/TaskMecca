@@ -5036,7 +5036,12 @@ async function loadTaskDetail(id) {
       const updated=await requestTaskDetail(targetID,targetProject,targetBacklog);
       if(!current())return;
       state.detailTask=updated;
-    }else state.detailTask=task;
+    }else {
+      // Cached detail was already rendered by openTask. Rebuilding a long
+      // Markdown document a second time immediately makes navigation slower.
+      if(state.detailTask===task&&!state.loadError)return;
+      state.detailTask=task;
+    }
     state.loadError='';
     render();
   } catch(e) {
