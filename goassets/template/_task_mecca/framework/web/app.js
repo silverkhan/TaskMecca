@@ -88,6 +88,7 @@ const state = {
   runtimeHookStatusLoading: false,
   projectNotificationSettings: [],
   projectNotificationSettingsLoading: false,
+  projectNotificationSettingsLoaded: false,
   projectNotificationSettingsError: '',
   operationRevision: '',
 };
@@ -409,6 +410,30 @@ Object.assign(I18N.en,{telegramBotTokenStatus:'Bot token',telegramBotRegistered:
 Object.assign(I18N.en,{telegramTestAction:'Send test message',telegramTestBusy:'Sending test…',telegramTestAccepted:'Telegram accepted the test message. Check your chat for delivery.',telegramDiscoverAction:'Check connection',telegramDiscoverBusy:'Checking connection…',telegramDiscoverHelp:'Send /start to your Telegram bot, then check the connection.',telegramDiscoverSuccess:'Telegram recipient connection confirmed.'});
 Object.assign(I18N.en,{projectNotifications:'Project notifications',projectNotificationsIntro:'Enable or disable future Telegram notifications for each monitored project. Events from a disabled period are not replayed.',projectNotificationEnabled:'Enabled',projectNotificationDisabled:'Disabled',projectNotificationEmpty:'No monitored projects.',projectNotificationPath:'Path',projectRecipientMode:'Recipient',projectRecipientShared:'Shared recipient',projectRecipientIndividual:'Individual recipient',projectIndividualIncomplete:'Individual recipient is not configured; Task Mecca will not fall back to the shared recipient.',projectSharedRecipientGuide:'Register one Telegram bot token to send notifications for all projects. Registering a new token resets existing chat links. Tokens and chat IDs are never displayed.',projectSharedRecipientConfigure:'Register bot token for all projects'});
 
+Object.assign(I18N.ko,{
+ telegramSetupTitle:'Telegram 알림을 설정해 보세요',
+ telegramSetupDescription:'작업 등록·착수·완료와 확인이 필요한 상황을 앱을 열어두지 않아도 Telegram에서 받아볼 수 있습니다. 브라우저 알림과 별개인 선택 기능입니다.',
+ telegramSetupMissing:'봇 토큰 미등록',telegramSetupPending:'채팅 수신처 연결 대기',telegramSetupPartial:'일부 프로젝트 미연결',
+ telegramSetupCount:'알림 수신 가능 {ready}/{total}개 프로젝트',telegramSetupNav:'Telegram 알림 설정 필요',
+ telegramSetupStart:'전체 프로젝트 알림용 봇 토큰 등록',telegramSetupContinue:'연결 설정 계속하기',
+ telegramSetupLater:'나중에',telegramSetupNever:'다시 알리지 않기',
+ telegramSetupStepToken:'봇 토큰 등록',telegramSetupStepStart:'봇 대화방에서 /start 전송',
+ telegramSetupStepChat:'수신처 연결 확인',telegramSetupStepTest:'테스트 메시지 발송',
+ telegramSetupStepWaiting:'연결 전 확인 필요',telegramSetupStepOptional:'연결 후 직접 확인',
+ telegramSetupOptional:'Telegram 알림은 선택 사항이며 나중에 설정할 수 있습니다.'
+});
+Object.assign(I18N.en,{
+ telegramSetupTitle:'Set up Telegram notifications',
+ telegramSetupDescription:'Get task registrations, starts, completions and requests for attention via Telegram without keeping Task Mecca open. This is optional and separate from browser notifications.',
+ telegramSetupMissing:'Bot token missing',telegramSetupPending:'Recipient chat not connected',telegramSetupPartial:'Some projects not connected',
+ telegramSetupCount:'Ready to notify: {ready}/{total} projects',telegramSetupNav:'Telegram setup needed',
+ telegramSetupStart:'Register bot token for all projects',telegramSetupContinue:'Continue connecting Telegram',
+ telegramSetupLater:'Later',telegramSetupNever:"Don't remind me again",
+ telegramSetupStepToken:'Register bot token',telegramSetupStepStart:'Send /start to the bot',
+ telegramSetupStepChat:'Confirm recipient chat',telegramSetupStepTest:'Send a test message',
+ telegramSetupStepWaiting:'Check before confirming connection',telegramSetupStepOptional:'Check manually after connecting',
+ telegramSetupOptional:'Telegram notifications are optional. You can configure them later.'
+});
 function t(key, vars = {}) {
   const dict = I18N[state.language] || I18N.en;
   let value = dict[key] ?? I18N.en[key] ?? key;
@@ -2368,6 +2393,83 @@ function processTaskNotifications(snapshot,context={}) {
   Object.values(current).forEach(task=>compact[task.id]={file_state:task.file_state,state:task.state,updated_at:task.updated_at});
   state.previousTasksByProject[sourceKey]=compact;
   localStorage.setItem('task-mecca-previous-tasks',JSON.stringify(state.previousTasksByProject));
+}
+// Telegram onboarding reflects confirmed server-side status only; it does not
+// read credentials or change delivery policy. Disabled projects are excluded.
+const TELEGRAM_SETUP_PREF_KEY='task-mecca-telegram-onboarding-v1';
+const TELEGRAM_SETUP_SNOOZE_MS=7*24*60*60*1000;
+function telegramSetupPreference(){
+ try{const x=JSON.parse(localStorage.getItem(TELEGRAM_SETUP_PREF_KEY)||'{}');return x&&typeof x==='object'?x:{};}catch(_){return {};}
+}
+function telegramSetupMayPrompt(){
+ const p=telegramSetupPreference();return p.mode!=='never'&&!(p.mode==='later'&&Number(p.until)>Date.now());
+}
+function telegramSetupSummary(){
+ if(!state.projectNotificationSettingsLoaded)return null;
+ const all=state.projectNotificationSettings||[];
+ const enabled=all.filter(row=>row.status?.project_enabled!==false);
+ if(!all.length||!enabled.length)return null;
+ const ready=enabled.filter(row=>row.status?.connected).length;
+ const target=enabled.find(row=>!row.status?.configured)||enabled.find(row=>!row.status?.connected)||null;
+ const kind=target?(ready?'partial':target.status?.configured?'pending':'missing'):'ready';
+ return {kind,ready,total:enabled.length,target};
+}
+function telegramSetupNeed(){const s=telegramSetupSummary();return s?.target&&telegramSetupMayPrompt()?s:null;}
+function telegramSetupGuideMarkup(hub=false){
+ const s=telegramSetupNeed();if(!s)return '';
+ const target=s.target,token=Boolean(target.status?.configured),connected=Boolean(target.status?.connected);
+ const status=t(s.kind==='partial'?'telegramSetupPartial':token?'telegramSetupPending':'telegramSetupMissing');
+ const cta=t(token?'telegramSetupContinue':'telegramSetupStart');
+ const item=(label,done,note)=>'<li class="telegram-setup-step'+(done?' is-done':'')+'"><span aria-hidden="true">'+(done?'✓':'○')+'</span><div>'+esc(t(label))+(note?'<small>'+esc(t(note))+'</small>':'')+'</div></li>';
+ return '<section class="telegram-onboarding-card'+(hub?' is-hub':'')+'" id="'+(hub?'telegramHubOnboarding':'telegramSetupGuide')+'">'+
+ '<div class="telegram-onboarding-intro"><span class="telegram-onboarding-glyph" aria-hidden="true">↗</span><div><strong>'+esc(t('telegramSetupTitle'))+'</strong><p>'+esc(t('telegramSetupDescription'))+'</p></div></div>'+
+ '<div class="telegram-onboarding-status"><strong>'+esc(status)+'</strong><span>'+esc(t('telegramSetupCount',{ready:s.ready,total:s.total}))+'</span></div>'+
+ (hub?'':'<ol class="telegram-setup-steps" aria-label="'+esc(t('telegramSetupTitle'))+'">'+
+ item('telegramSetupStepToken',token,'')+item('telegramSetupStepStart',connected,connected?'':'telegramSetupStepWaiting')+
+ item('telegramSetupStepChat',connected,'')+item('telegramSetupStepTest',false,'telegramSetupStepOptional')+'</ol>')+
+ '<div class="telegram-onboarding-actions"><button type="button" class="action-btn" data-telegram-onboard="setup">'+esc(cta)+'</button>'+
+ '<button type="button" class="action-btn secondary" data-telegram-onboard="later">'+esc(t('telegramSetupLater'))+'</button>'+
+ '<button type="button" class="telegram-onboarding-dismiss" data-telegram-onboard="never">'+esc(t('telegramSetupNever'))+'</button></div>'+
+ '<p class="telegram-onboarding-foot">'+esc(t('telegramSetupOptional'))+'</p></section>';
+}
+function updateTelegramSetupNavIndicator(){
+ const nav=$('#projectNotificationsNav');if(!nav)return;
+ const badge=nav.querySelector('.count'),summary=telegramSetupNeed();
+ if(badge){badge.textContent=summary?'·':'';badge.classList.toggle('telegram-setup-nav-indicator',Boolean(summary));badge.setAttribute('aria-hidden','true');}
+ const description=summary?t('telegramSetupNav')+' · '+t('telegramSetupCount',{ready:summary.ready,total:summary.total}):t('notificationCenter');
+ nav.title=description;nav.setAttribute('aria-label',description);
+}
+function setTelegramSetupPreference(action){
+ const prefs=action==='never'?{mode:'never'}:{mode:'later',until:Date.now()+TELEGRAM_SETUP_SNOOZE_MS};
+ try{localStorage.setItem(TELEGRAM_SETUP_PREF_KEY,JSON.stringify(prefs));}catch(_){}
+ updateTelegramSetupNavIndicator();
+ if(state.view==='hub')render();else updateTelegramSetupGuideDOM();
+}
+function updateTelegramSetupGuideDOM(){
+ updateTelegramSetupNavIndicator();if(state.view!=='notifications')return;
+ const guide=$('#telegramSetupGuide'),markup=telegramSetupGuideMarkup();
+ if(guide){if(!markup)guide.remove();else if(guide.outerHTML!==markup)guide.outerHTML=markup;}
+ else if(markup)document.querySelector('.notification-center-tabs')?.insertAdjacentHTML('afterend',markup);
+ bindTelegramSetupActions();
+}
+function openTelegramSetupGuide(){
+ const target=telegramSetupSummary()?.target;if(!target)return;
+ state.notificationCenterTab='settings';
+ if(state.view!=='notifications')navigateView('notifications');else render();
+ const body=$('#notificationSettingsBody')||$('#notificationPanel');
+ if(!body)return;
+ if(target.status?.configured){
+  const details=[...document.querySelectorAll('.notice-project')].find(el=>el.querySelector('.notice-project-path')?.textContent===target.path);
+  if(details){details.open=true;details.querySelector('[data-telegram-discover-project]')?.focus({preventScroll:true});}
+ }else{
+  const details=body.querySelector('.center-project-settings');if(details)details.open=true;
+  const individual=target.status?.recipient_mode==='individual';
+  const input=individual?[...body.querySelectorAll('[data-individual-token]')].find(el=>el.dataset.individualToken===target.path):body.querySelector('#sharedTelegramToken');
+  input?.focus({preventScroll:true});
+ }
+}
+function bindTelegramSetupActions(){
+ document.querySelectorAll('[data-telegram-onboard]').forEach(el=>{el.onclick=()=>{const a=el.dataset.telegramOnboard;if(a==='setup')openTelegramSetupGuide();else setTelegramSetupPreference(a);};});
 }
 function updateNotificationIndicator() {
   const btn=$('#notificationBtn'),badge=$('#notificationBadge');
