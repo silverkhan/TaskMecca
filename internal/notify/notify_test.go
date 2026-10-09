@@ -466,3 +466,15 @@ func TestDisableAllTelegramRemovesTokensAcrossProjectsOnly(t *testing.T) {
  n, err = DisableAllTelegram([]string{a, b})
  if err != nil || n != 0 { t.Fatalf("idempotent removal: %d, %v", n, err) }
 }
+
+func TestDisableAllTelegramKeepsDisabledPreferenceWithoutToken(t *testing.T) {
+ configured, disabled := t.TempDir(), t.TempDir()
+ if err := saveTelegram(configured, TelegramConfig{Token: "token", Kinds: defaultKinds()}); err != nil { t.Fatal(err) }
+ off := false
+ if err := saveTelegram(disabled, TelegramConfig{ProjectEnabled: &off, Kinds: defaultKinds()}); err != nil { t.Fatal(err) }
+ n, err := DisableAllTelegram([]string{configured, disabled})
+ if err != nil || n != 1 { t.Fatalf("removed=%d err=%v", n, err) }
+ got, err := TelegramStatusFor(disabled)
+ if err != nil { t.Fatal(err) }
+ if got.ProjectEnabled || got.Configured { t.Fatalf("unconfigured opt-out was erased: %+v", got) }
+}
