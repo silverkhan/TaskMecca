@@ -44,7 +44,10 @@ test('individual token setup refreshes configured status immediately without bro
  await app.telegramAction('configure',{token:'testing-only'});
  assert.equal(app.state.telegramStatus.configured,true);
  assert.equal(app.state.projectNotificationSettings.find(x=>x.path==='/demo').status.configured,true);
- assert.match(app.projectChannelSettingsMarkup(),/봇 설정됨/);
+ const html=app.projectChannelSettingsMarkup();
+ assert.match(html,/봇 토큰: <\/b>등록됨/);
+ assert.match(html,/채팅 수신처: <\/b>연결 대기/);
+ assert.equal((html.match(/data-telegram-discover-project="\/demo"/g)||[]).length,1,'only one discovery action per project');
 });
 test('shared token setup refreshes every project without reloading the browser',async()=>{
  const app=page();await app.loadProjectNotificationSettings();
