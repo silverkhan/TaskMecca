@@ -450,3 +450,19 @@ func TestNotificationEventOrderingUsesAbsoluteTimeAndLifecycleRank(t *testing.T)
 		t.Fatalf("same-instant lifecycle rank order=%+v", same)
 	}
 }
+
+func TestDisableAllTelegramRemovesTokensAcrossProjectsOnly(t *testing.T) {
+ a, b := t.TempDir(), t.TempDir()
+ for _, path := range []string{a, b} {
+  cfg := TelegramConfig{Token: "sensitive", ChatID: 123, Enabled: true, Kinds: defaultKinds()}
+  if err := saveTelegram(path, cfg); err != nil { t.Fatal(err) }
+ }
+ n, err := DisableAllTelegram([]string{a, b, a})
+ if err != nil || n != 2 { t.Fatalf("removed=%d err=%v", n, err) }
+ for _, path := range []string{a, b} {
+  result, err := TelegramStatusFor(path)
+  if err != nil || result.Configured || result.Connected { t.Fatalf("project %s status=%+v err=%v", path, result, err) }
+ }
+ n, err = DisableAllTelegram([]string{a, b})
+ if err != nil || n != 0 { t.Fatalf("idempotent removal: %d, %v", n, err) }
+}
