@@ -307,8 +307,8 @@ test('first Web startup with zero Telegram tokens displays guided setup once',as
 test('token configured but chat pending does not retrigger the automatic startup guide',async()=>{
  const app=page();app.statuses['/demo'].configured=true;app.statuses['/demo'].connected=false;
  await app.checkTelegramSetupInstance();
- assert.equal(app.telegramSetupSummary().kind,'pending');
- assert.equal(app.telegramSetupGuideMarkup(),'');
+ assert.equal(app.telegramSetupSummary().total,2);
+ assert.equal(app.telegramSetupGuideMarkup(),'','existing bot token must prevent a first-start prompt');
 });
 test('connected and partially connected recipients do not show the missing-token guide',async()=>{
  const app=page();app.statuses['/demo'].configured=true;app.statuses['/demo'].connected=true;
