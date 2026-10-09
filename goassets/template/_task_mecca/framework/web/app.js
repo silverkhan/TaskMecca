@@ -2523,6 +2523,53 @@ function bindTelegramSetupActions(){
  if(buttons.length&&telegramSetupNeed())telegramSetupMarkSeen();
  buttons.forEach(el=>{el.onclick=()=>{const a=el.dataset.telegramOnboard;if(a==='setup')openTelegramSetupGuide();else setTelegramSetupPreference(a);};});
 }
+Object.assign(I18N.ko,{
+ telegramClearAll:'전체 프로젝트 Telegram 봇 토큰 삭제',
+ telegramClearProject:'이 프로젝트 봇 토큰 삭제',
+ telegramClearAllConfirm:'전체 {count}개 프로젝트의 Telegram 봇 토큰과 채팅 연결 정보를 삭제합니다. Telegram 알림이 중단되며, 브라우저 알림과 작업 이력은 유지됩니다. 진행하시겠습니까?',
+ telegramClearProjectConfirm:'{project} 프로젝트의 Telegram 봇 토큰과 채팅 연결 정보를 삭제합니다. 해당 프로젝트의 Telegram 알림이 중단됩니다. 진행하시겠습니까?',
+ telegramClearAllSuccess:'{count}개 프로젝트의 Telegram 설정을 삭제했습니다. 다음 웹 서비스 시작 시 토큰이 없다면 온보딩을 한 번 표시합니다.',
+ telegramClearProjectSuccess:'해당 프로젝트의 Telegram 봇 토큰과 수신처 정보를 삭제했습니다.',
+ telegramClearWorking:'Telegram 설정 삭제 중…'
+});
+Object.assign(I18N.en,{
+ telegramClearAll:'Delete Telegram bot tokens for all projects',
+ telegramClearProject:'Delete this project bot token',
+ telegramClearAllConfirm:'Delete bot tokens and recipient chats for {count} projects? Telegram delivery will stop, while browser alerts and task history are preserved.',
+ telegramClearProjectConfirm:'Delete the Telegram bot token and recipient chat for {project}? Telegram delivery for that project will stop.',
+ telegramClearAllSuccess:'Removed Telegram settings for {count} projects. On the next Web service start, onboarding appears once if no token is registered.',
+ telegramClearProjectSuccess:'Telegram bot token and recipient information removed for the selected project.',
+ telegramClearWorking:'Deleting Telegram settings…'
+});
+async function clearTelegramSettings(project='',all=false){
+ const rows=state.projectNotificationSettings||[];
+ const affected=all?rows.filter(r=>r.status?.configured):rows.filter(r=>r.path===project&&r.status?.configured);
+ if(!affected.length)return false;
+ if(!confirm(all?t('telegramClearAllConfirm',{count:affected.length}):t('telegramClearProjectConfirm',{project:affected[0].name||project})))return false;
+ state.projectNotificationSettingsRevision=(state.projectNotificationSettingsRevision||0)+1;
+ const active=all?(affected.find(r=>r.path===state.project)||affected[0]).path:project;
+ const response=await fetch('/api/notifications/telegram?project='+encodeURIComponent(active),{
+  method:'POST',headers:{'Content-Type':'application/json','X-Task-Mecca-Action':'1'},
+  body:JSON.stringify({action:all?'disable_all':'disable'})
+ });
+ const payload=await response.json().catch(()=>({}));
+ if(!response.ok){
+  await loadProjectNotificationSettings();
+  throw new Error(payload.error||('HTTP '+response.status));
+ }
+ await loadProjectNotificationSettings();
+ if(state.project)await loadTelegramStatus();
+ if(all){
+  // Reset explicit opt-out for intentional onboarding retests, but do not
+  // replay this prompt until the Web service's next instance starts.
+  try{localStorage.removeItem(TELEGRAM_SETUP_PREF_KEY);}catch(_){}
+  state.telegramSetupBootPending=false;
+ }
+ telegramSettingsFeedback={projectLabel:all?t('telegramSharedBotTitle'):(affected[0].name||project),
+  message:all?t('telegramClearAllSuccess',{count:payload.removed??affected.length}):t('telegramClearProjectSuccess'),error:false};
+ renderNotificationPanel();
+ return true;
+}
 function updateNotificationIndicator() {
   const btn=$('#notificationBtn'),badge=$('#notificationBadge');
   if(!btn||!badge)return;
@@ -2961,6 +3008,20 @@ function bindCenterChannelSettings(panel){
  panel.querySelectorAll('#centerGlobalWebChannel,#centerGlobalTelegramChannel,[data-center-channel],[data-center-telegram-kind],[data-center-web-kind]').forEach(button=>button.addEventListener('click',()=>void setNotificationSwitch(button)));
 }
 
+function bindTelegramDeletionActions(panel){
+ panel.querySelectorAll('[data-telegram-clear-project],[data-telegram-clear-all]').forEach(button=>{
+  button.addEventListener('click',async()=>{
+   if(button.disabled)return;
+   const project=button.dataset.telegramClearProject||'';
+   const all=button.hasAttribute('data-telegram-clear-all');
+   button.disabled=true;button.setAttribute('aria-busy','true');
+   const prior=button.textContent;button.textContent=t('telegramClearWorking');
+   try{await clearTelegramSettings(project,all);}
+   catch(error){telegramSettingsFeedback={projectLabel:all?t('telegramSharedBotTitle'):project,message:String(error?.message||error),error:true};renderNotificationPanel();}
+   finally{if(button.isConnected){button.disabled=false;button.removeAttribute('aria-busy');button.textContent=prior;}}
+  });
+ });
+}
 function bindProjectRecipientControls(){
     document.querySelectorAll('[data-project-notification]').forEach(input=>input.addEventListener('change',async()=>{
       input.disabled=true;
@@ -3077,6 +3138,7 @@ function renderNotificationPanel() {
   bindCenterChannelSettings(panel);
   bindProjectRecipientControls();
   bindTelegramSettingsActions(panel);
+  bindTelegramDeletionActions(panel);
   syncTelegramConnectionWatch();
 
   panel.querySelectorAll('[data-notification-setting]').forEach(input=>input.addEventListener('change',()=>{state.notificationSettings[input.dataset.notificationSetting]=input.checked;saveNotificationSettings();updateNotificationIndicator();renderNotificationPanel()}));
