@@ -3622,7 +3622,12 @@ function logStorageSection(){
   const choices=projects.map(p=>`<option value="${esc(p.path)}" ${p.path===selected?'selected':''}>${esc(p.name||p.path.split(/[\\/]/).pop()||p.path)}</option>`).join('');
   const status=state.logStorageError?`<p class="log-storage-alert" role="alert">${esc(state.logStorageError)}</p>`:state.logStorageMessage?`<p class="log-storage-alert" role="status">${esc(state.logStorageMessage)}</p>`:'';
   const rows=(data?.items||[]).map(item=>`<div class="log-storage-row">
-      <div class="log-storage-details"><strong>${esc(words.names[item.id]||item.label)}</strong><small>${esc(item.scope==='global'?(state.language==='ko'?'전체 서비스':'Global service'):(state.language==='ko'?'선택한 프로젝트':'Selected project'))} · ${esc(words.notes?.[item.id]||item.note||'')}</small></div>
+      <div class="log-storage-details"><strong>${esc(words.names[item.id]||item.label)}</strong><small>${esc(item.scope==='global'?(state.language==='ko'?'전체 서비스':'Global service'):(state.language==='ko'?'선택한 프로젝트':'Selected project'))} · ${esc(words.notes?.[item.id]||item.note||'')}</small>
+      <small class="storage-log-condition">${esc(item.can_clear?
+       (state.language==='ko'?'수동 비우기 가능 · 대기 조건 없음':'Manual clearing allowed; no waiting period'):
+       (state.language==='ko'?'보호 원장 · 승인된 삭제 및 복원 조건 없음':'Protected ledger; no approved deletion/restoration policy'))}</small>
+      <small>${esc(state.language==='ko'?'현재 확보 가능 ':'Reclaimable now ')}<strong>${logBytes(item.can_clear?item.reclaimable_now_bytes??item.size_bytes:0)}</strong>
+       ${item.can_clear?'':esc(state.language==='ko'?' · 향후 확보 가능량은 정책 승인 전 산정 불가':' · Future reclaim cannot be estimated without an approved policy')}</small></div>
       <strong class="log-storage-size">${logBytes(item.size_bytes)}</strong>
       ${item.can_clear?`<button type="button" class="action-btn secondary log-clear-btn" data-clear-log="${esc(item.id)}" ${!item.size_bytes||state.logStorageBusy?'disabled':''}>${esc(words.clear)}</button>`:`<span class="log-storage-protected">${esc(words.protected)}</span>`}
     </div>`).join('');
