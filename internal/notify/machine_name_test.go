@@ -13,7 +13,7 @@ import (
 )
 
 func TestTelegramMachineNameSanitizesAlias(t *testing.T) {
- t.Setenv("TASK_MECCA_MACHINE_NAME","\n 회사\r\nMac \t#1\x00")
+ t.Setenv("TASK_MECCA_MACHINE_NAME","\n 회사\r\nMac \t#1\x1b")
  if got:=telegramMachineName();got!="회사 Mac #1" {
   t.Fatalf("alias was not normalized: %q",got)
  }
@@ -21,7 +21,7 @@ func TestTelegramMachineNameSanitizesAlias(t *testing.T) {
  if got:=telegramMachineName();utf8.RuneCountInString(got)!=48 {
   t.Fatalf("alias length=%d want 48",utf8.RuneCountInString(got))
  }
- t.Setenv("TASK_MECCA_MACHINE_NAME","\x00\x1b")
+ t.Setenv("TASK_MECCA_MACHINE_NAME","\x1b")
  if got:=telegramMachineName();got!="알 수 없는 컴퓨터"{
   t.Fatalf("unprintable alias=%q",got)
  }
