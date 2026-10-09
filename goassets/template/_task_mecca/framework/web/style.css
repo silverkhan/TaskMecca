@@ -1836,3 +1836,16 @@ select.tm-combo-native{position:absolute!important;width:1px!important;height:1p
 .control-group .tm-combo-trigger,.storage-toolbar .tm-combo-trigger,.log-storage-controls .tm-combo-trigger{min-height:39px}
 @media(max-width:680px){.tm-combo-popup{max-height:min(50vh,340px)}.tm-combo-option{min-height:43px}.tm-combo-trigger{min-height:35px}}
 @media(prefers-reduced-motion:reduce){.tm-combo-trigger,.tm-combo-popup{transition:none}}
+
+
+/* Telegram recipients: explicit status, discovery and test actions in the main settings view. */
+.notice-telegram-quick,.notice-connection-row{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px}
+.notice-telegram-quick{grid-column:1/-1;padding:11px 14px;border:1px solid var(--border);border-radius:10px;background:var(--surface2)}
+.notice-telegram-quick span{font-size:12px;overflow-wrap:anywhere}
+.notice-connection-row{margin:8px 0}
+.notice-connection-row .notice-project-connection{margin:0}
+.notice-telegram-help{font-size:12px;color:var(--muted);margin:3px 0 12px}
+.telegram-settings-feedback{margin:8px 0 12px;font-size:12px;line-height:1.5;border-radius:8px;padding:10px 12px;background:var(--surface2);color:var(--text)}
+.telegram-settings-feedback.is-error{border:1px solid var(--danger)}
+.notice-telegram-quick .secondary-btn,.notice-connection-row .secondary-btn{min-height:34px;max-width:100%}
+@media(max-width:680px){.notice-telegram-quick .secondary-btn,.notice-connection-row .secondary-btn{width:100%}}
