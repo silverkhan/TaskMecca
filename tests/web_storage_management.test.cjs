@@ -18,7 +18,17 @@ function fixture({failRuntime=false}={}){
    json:async()=>failRuntime?{error:'Runtime unavailable'}:{
     total_bytes:200,retention:{raw_days:7,history_days:90,history_max_attempts:2000},
     raw:{bytes:120,files:3},history:{bytes:80,files:1},legacy:{bytes:0,files:0},protected_raw:{bytes:100,files:2},
-    cleanup:{reclaimable_bytes:30,candidate_files:1,candidate_attempts:3}}};
+    cleanup:{reclaimable_bytes:30,candidate_files:1,candidate_attempts:3},
+    raw_protection:{safe_now_bytes:20,conditional_bytes:80,unverifiable_bytes:12,conditional_files:2,
+     generated_at:'2026-10-20T12:00:00Z',
+     files:[
+      {file:'2026-10-18.jsonl',bytes:40,event_count:12,reason_codes:['retention'],
+       last_observed_at:'2026-10-18T11:00:00Z',retention_eligible_after:'2026-10-25T11:00:00Z',conditional_bytes:40},
+      {file:'2026-10-01.jsonl',bytes:40,event_count:15,reason_codes:['unfinished','missing_terminal'],
+       unfinished_attempts:1,missing_evidence_attempts:1,blocking_attempt_ids:['run-unfinished'],conditional_bytes:40},
+      {file:'broken.jsonl',bytes:12,event_count:0,reason_codes:['unverifiable'],conditional_bytes:0},
+      {file:'2026-09-29.jsonl',bytes:20,event_count:2,reason_codes:[],safe_now:true,conditional_bytes:0}
+     ]}}};
   throw Error('Unexpected URL: '+url);
  };
  const context=vm.createContext({fetch,URLSearchParams,location:{search:'',pathname:'/'},navigator:{language:'ko'},window:{isSecureContext:true,matchMedia:()=>({matches:false})},document:{querySelector:()=>null,querySelectorAll:()=>[],activeElement:null},history:{pushState:(_a,_b,url)=>historyPaths.push(url)},localStorage:{
@@ -109,4 +119,41 @@ test('storage language uses accurate English agent record labels and inclusion n
  assert.match(html,/Raw files protected from cleanup/);
  assert.match(html,/already included in detailed execution events/i);
  assert.match(html,/No records meet all cleanup conditions|Why records are protected/);
+});
+
+test('storage diagnostics separates immediate cleanup from conditional estimates and unsafe files',async()=>{
+ const a=fixture();a.api.state.view='storage';await a.api.loadStorageManagement(false);
+ const html=a.api.storageManagementView();
+ assert.match(html,/보호 해제 조건과 확보 가능 용량/);
+ assert.match(html,/현재 정리 가능한 Raw/);
+ assert.match(html,/조건 충족 시 추가 가능/);
+ assert.match(html,/80 B/);
+ assert.match(html,/분석 불가/);
+ assert.match(html,/12 B/);
+ assert.match(html,/가정상 상한/);
+ assert.match(html,/실제 확보량·시점은 보장되지 않습니다/);
+ assert.match(html,/서로 중복되지 않습니다/);
+ assert.match(html,/보존 기간 미도래/);
+ assert.match(html,/종료되지 않은 실행 1/);
+ assert.match(html,/종료 증거 부족 1/);
+ assert.match(html,/run-unfinished/);
+ assert.match(html,/broken\.jsonl/);
+ assert.match(html,/실행 이벤트 원장, 알림 전송 원장, 라이프사이클 원장/);
+ assert.doesNotMatch(html,/data-delete-raw|id="forceDelete"/);
+});
+test('unavailable file diagnostics show missing support rather than invented zero results',async()=>{
+ const a=fixture();a.api.state.view='storage';await a.api.loadStorageManagement(false);
+ delete a.api.state.storageRuntime.raw_protection;
+ const html=a.api.storageManagementView();
+ assert.match(html,/보호 조건별 용량 분석은 서버가 제공하는 버전에서 표시됩니다/);
+ assert.doesNotMatch(html,/조건 충족 시 추가 가능/);
+});
+test('English explanations distinguish future potential from guaranteed savings',async()=>{
+ const a=fixture();a.api.state.view='storage';await a.api.loadStorageManagement(false);
+ a.api.state.language='en';
+ const html=a.api.storageManagementView();
+ assert.match(html,/Release conditions and reclaim potential/);
+ assert.match(html,/Additional if conditions are met/);
+ assert.match(html,/hypothetical upper bound/);
+ assert.match(html,/no approved deletion\/restoration contract/);
 });
