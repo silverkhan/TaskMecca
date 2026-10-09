@@ -194,5 +194,8 @@
  },true);
  const observer=new MutationObserver(schedule);
  observer.observe(document.body,{childList:true,subtree:true});
+ // Host code sometimes sets <select>.value programmatically (initial theme
+ // restore) without a change event or DOM mutation. Keep button text in sync.
+ window.TaskMeccaSelectUI={sync:scan};
  scan();
 })();
