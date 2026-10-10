@@ -270,6 +270,29 @@ func BacklogPage(project,root string,page,pageSize int,statuses,tags []string,se
     },nil
 }
 
+// TaskContent reads only the persisted task document and static fields. It
+// must stay free of control-tower/lifecycle reconciliation, Git subprocesses,
+// notification delivery and runtime journal mutations. Reading content should
+// not wait for background monitoring to finish computing an unrelated state.
+func TaskContent(project, root, id string) (map[string]any, error) {
+    rows,err:=CachedCatalog(project,root)
+    if err!=nil {return nil,err}
+    byID:=preferredRows(rows)
+    row,ok:=byID[strings.ToUpper(strings.TrimSpace(id))]
+    if !ok {return nil,fmt.Errorf("task not found: %s",id)}
+    state:=row.State
+    waiting:=[]string{}
+    if state=="todo" {
+        blockers:=claimBlockers(row.Fields,groupedByID(rows))
+        if values,ok:=blockers["waiting_for"].([]string);ok {waiting=values}
+        if reasons,ok:=blockers["blocked_by"].([]string);ok&&len(reasons)>0 {state="blocked"} else {state="ready"}
+    }
+    item:=dashboardItem(row,state,waiting,map[string]any{},nil)
+    item["activity"]=map[string]any{"health":"n/a"}
+    item["content_only"]=true
+    return item,nil
+}
+
 // TaskDetailTimings identifies which server-side phase is expensive. The
 // timings are request-local: no mutable global counters or background writes.
 type TaskDetailTimings struct {
