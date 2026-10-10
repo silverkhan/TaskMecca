@@ -1449,6 +1449,22 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 		selectionMS := time.Since(started).Seconds() * 1000
 		detailStarted := time.Now()
 		id := strings.ToUpper(strings.TrimSpace(strings.TrimPrefix(r.URL.Path, "/api/tasks/")))
+		if r.Method == http.MethodGet && r.URL.Query().Get("projection") == "content" {
+			// Static document read: no controller/runtime reconciliation and no
+			// notification/lifecycle write. The outer handler checks project
+			// registration before allowing this route outside monitoring locks.
+			contentStarted := time.Now()
+			item, err := backlog.TaskContent(activeProject, selected, id)
+			w.Header().Set("Cache-Control", "no-store")
+			w.Header().Set("Server-Timing", fmt.Sprintf("selection;dur=%.1f, content;dur=%.1f",
+				selectionMS, time.Since(contentStarted).Seconds()*1000))
+			if err != nil {
+				writeJSON(w, map[string]any{"error": err.Error(), "id": id}, http.StatusNotFound)
+				return
+			}
+			writeJSON(w, item, http.StatusOK)
+			return
+		}
 		item, profile, err := backlog.TaskDetailWithTimings(activeProject, selected, id)
 		w.Header().Set("Server-Timing", fmt.Sprintf("monitor_wait;dur=%.1f, selection;dur=%.1f, catalog;dur=%.1f, readiness;dur=%.1f, control;dur=%.1f, projection;dur=%.1f, detail;dur=%.1f",
 			monitorWaitMS, selectionMS, profile.CatalogMS, profile.ReadinessMS, profile.ControlMS, profile.ProjectionMS, time.Since(detailStarted).Seconds()*1000))
@@ -1509,6 +1525,18 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 		// These projections reconcile lifecycle/notification/runtime state even
 		// on GET. Serialize them with pause/remove and refuse a stopped or absent
 		// project before any side effect. Hub and file-presence checks stay readable.
+		// A read-only content projection never writes lifecycle/notification
+		// state. Its permission check uses the management gate but deliberately
+		// avoids the per-project monitoring mutex held by expensive scans.
+		// Paused, removed and unregistered projects are still rejected.
+		if strings.HasPrefix(path, "/api/tasks/") && r.Method == http.MethodGet && r.URL.Query().Get("projection") == "content" {
+			if !maintenance.ProjectMonitoringAllowed(projectFor(r)) {
+				writeJSON(w, map[string]any{"error": "project monitoring is stopped or the folder is unavailable", "monitoring": false}, http.StatusConflict)
+				return
+			}
+			mux.ServeHTTP(w, r)
+			return
+		}
 		projectWrites := path == "/api/backlog/tasks" || path == "/api/snapshot" || path == "/api/attention" || path == "/api/workload" || path == "/api/issues" || strings.HasPrefix(path, "/api/tasks/") || strings.HasPrefix(path, "/api/runtime/") || path == "/api/notifications/deliveries" || path == "/api/notifications/telegram" || path == "/api/notifications/push" || path == "/api/notifications/web"
 		if projectWrites {
 			r = r.WithContext(stdcontext.WithValue(r.Context(), projectMonitoringStartKey{}, time.Now()))
