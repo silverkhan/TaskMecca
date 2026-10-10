@@ -687,10 +687,27 @@ function releaseNoteDetailMarkup(detail,options={}) {
     migration.required?'<span class="release-flag important">'+esc(t('releaseMigrationRequired'))+'</span>':'',
     migration.instruction_refresh?'<span class="release-flag">'+esc(t('releaseInstructionRefresh'))+'</span>':''
   ].filter(Boolean).join('');
+  const categories=Array.isArray(detail.categories)?detail.categories:[];
+  const highlights=Array.isArray(detail.highlights)?detail.highlights:[];
+  const afterUpdate=Array.isArray(detail.after_update)?detail.after_update:[];
+  const ko=state.language==='ko';
+  const list=items=>'<ul>'+items.map(item=>'<li>'+esc(releaseLocalized(item))+'</li>').join('')+'</ul>';
+  // Structured major releases: short pre-install decision (five changes and
+  // after-update actions), six topical categories in historical detail view.
+  // Older releases without this schema retain the existing section renderer.
+  const editorial=categories.length&&highlights.length;
+  const actionItems=afterUpdate.length?
+    '<section class="release-next-actions"><h3>'+esc(ko?'업데이트 후 확인 사항':'After updating')+'</h3>'+list(afterUpdate)+'</section>':'';
+  const content=editorial?
+    (compact?
+      '<section class="release-highlights"><h3>'+esc(ko?'주요 변경 사항':'Key changes')+'</h3>'+list(highlights)+'</section>'+actionItems:
+      '<div class="release-categories">'+categories.map(category=>
+        '<section class="release-category"><h3>'+esc(releaseLocalized(category.title))+'</h3>'+list(category.items||[])+'</section>'
+      ).join('')+'</div>'+actionItems
+    ):'<div class="release-sections">'+releaseSectionMarkup(detail.sections||[])+'</div>';
   return '<div class="release-detail '+(compact?'compact':'')+'">'+
     '<div class="release-detail-head"><div><span class="release-version">v'+esc(detail.version||'')+'</span><span class="release-date">'+esc(detail.date||'')+'</span></div>'+(flags?'<div class="release-flags">'+flags+'</div>':'')+'</div>'+
-    '<p class="release-summary">'+esc(releaseLocalized(detail.summary))+'</p>'+
-    '<div class="release-sections">'+releaseSectionMarkup(detail.sections||[])+'</div></div>';
+    '<p class="release-summary">'+esc(releaseLocalized(detail.summary))+'</p>'+content+'</div>';
 }
 function renderReleaseNoteModal() {
   const modal=$('#releaseNoteModal');
