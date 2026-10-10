@@ -20,7 +20,41 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  platform-gate:
+    name: Pre-release native update and rollback gate · ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.24.x"
+      - name: Verify native upgrade, rollback and data-safety paths
+        run: go test ./internal/maintenance ./internal/webui ./internal/install -run "Upgrade|Rollback|Migration|Installed|BrandAssets" -count=1
+      - name: Smoke test candidate native executable before publishing
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $suffix = if ($IsWindows) { '.exe' } else { '' }
+          $binary = Join-Path $env:RUNNER_TEMP ("task-mecca" + $suffix)
+          go build -o $binary ./cmd/task-mecca
+          if ($LASTEXITCODE -ne 0) { throw 'native build failed' }
+          $project = Join-Path $env:RUNNER_TEMP 'task-mecca-stable-preflight'
+          New-Item -Force -ItemType Directory -Path $project | Out-Null
+          $env:TASK_MECCA_HOME = Join-Path $env:RUNNER_TEMP 'task-mecca-preflight-home'
+          New-Item -Force -ItemType Directory -Path $env:TASK_MECCA_HOME | Out-Null
+          Push-Location $project
+          try {
+            & $binary init
+            if ($LASTEXITCODE -ne 0) { throw 'native init failed' }
+            if (-not (Test-Path (Join-Path $project '_task_mecca/manifest.json'))) { throw 'project manifest missing' }
+          } finally { Pop-Location }
+
   release:
+    needs: platform-gate
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -64,8 +98,13 @@ jobs:
           test -f goassets/template/_task_mecca/framework/web/sw.js
           grep -q "function migrationResyncPrompt(result)" goassets/template/_task_mecca/framework/web/app.js
           grep -q "function showMigrationResyncModal(result)" goassets/template/_task_mecca/framework/web/app.js
-      - name: Test Go runtime
-        run: go test ./...
+      - name: Test Go runtime and vet
+        run: |
+          go test ./...
+          go vet ./...
+      - name: Test Web update, UI, notification and release-note behavior
+        run: |
+          node --test tests/web_release_notes_030.test.cjs tests/web_task_detail_prefetch.test.cjs tests/web_notification_center.test.cjs tests/web_notification_delivery.test.cjs tests/web_telegram_controls_ui.test.cjs tests/web_select_ui.test.cjs tests/web_storage_management.test.cjs tests/web_update_flow.test.cjs tests/web_terminal_service_restart.test.cjs
       - name: Build standalone binaries
         shell: bash
         run: |
@@ -80,6 +119,47 @@ jobs:
           ! grep -Fq '\\r' dist/VERSION.txt
           grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$' dist/VERSION.txt
           (cd dist && sha256sum task-mecca-* > SHA256SUMS.txt)
+      - name: Generate public release description
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="$(tr -d '\r\n' < goassets/template/_task_mecca/VERSION)"
+          note="release-notes/${version}.json"
+          {
+            printf '# Task Mecca %s — %s\n\n' "$version" "$(jq -r '.title.ko // .summary.ko' "$note")"
+            jq -r '.summary.ko' "$note"
+            echo
+            echo '## 주요 변경 사항'
+            jq -r '(.highlights // [])[] | "- " + .ko' "$note"
+            echo
+            echo '## 분야별 상세'
+            jq -r '(.categories // [])[] | "### " + .title.ko + "\n" + ((.items | map("- " + .ko)) | join("\n")) + "\n"' "$note"
+            echo '## 업데이트 후 확인'
+            jq -r '(.after_update // [])[] | "- " + .ko' "$note"
+            echo
+            echo '설치·업데이트 전에 사용자 데이터 백업 및 프레임워크 마이그레이션 안내를 확인하세요.'
+          } > release-description.md
+
+      - name: Smoke test unpublished Linux release binary and Web health
+        shell: bash
+        run: |
+          set -euxo pipefail
+          test "$(./dist/task-mecca-linux-amd64 --version | sed -n '1p')" = "task-mecca 0.3.0"
+          export TASK_MECCA_HOME="$RUNNER_TEMP/task-mecca-prepublish-home"
+          mkdir -p "$TASK_MECCA_HOME"
+          project="$RUNNER_TEMP/task-mecca-prepublish-project"
+          mkdir -p "$project"
+          binary="$GITHUB_WORKSPACE/dist/task-mecca-linux-amd64"
+          (
+            cd "$project"
+            "$binary" init
+            test -f _task_mecca/manifest.json
+            "$binary" web --host 127.0.0.1 --no-open
+            curl --fail --silent --show-error --retry 8 --retry-delay 1 http://127.0.0.1:18765/api/health
+            "$binary" web stop
+          )
+          ( cd dist && sha256sum -c SHA256SUMS.txt )
+
       - name: Update Stable release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -90,7 +170,6 @@ jobs:
           publish_release() {
             tag="$1"
             title="$2"
-            notes="$3"
 
             git tag -f "$tag" "$GITHUB_SHA"
             git push origin "refs/tags/$tag" --force
@@ -99,7 +178,7 @@ jobs:
               gh release create "$tag" \
                 --target "$GITHUB_SHA" \
                 --title "$title" \
-                --notes "$notes" \
+                --notes-file release-description.md \
                 --prerelease
             fi
 
@@ -116,13 +195,12 @@ jobs:
             gh release upload "$tag" dist/VERSION.txt --clobber
             gh release edit "$tag" \
               --title "$title" \
-              --notes "$notes" \
+              --notes-file release-description.md \
               --prerelease
           }
 
           publish_release release-stable \
-            "Task Mecca Stable" \
-            "Stable standalone build from main. Commit: $GITHUB_SHA"
+            "Task Mecca Stable 0.3.0 — 관제·운영 경험 개편"
 
       - name: Smoke test one-line installer
         shell: bash
