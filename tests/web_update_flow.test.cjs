@@ -20,7 +20,7 @@ function createFlow(fetch,loadReleaseNoteDetail=async()=>({version:'0.2.53-dev.2
    setUpgradeFlowStage:phase=>{stages.push(phase);vm.runInContext('upgradeFlowMode='+JSON.stringify(phase),context)},
    closeUpgradeFlow:()=>vm.runInContext("upgradeFlowMode='idle';upgradeFlowSession++",context)
  });
- const init="let upgradeFlowMode='idle',upgradeFlowSession=0,upgradeFlowStartedAt=0,upgradeFlowTarget='',upgradeFlowPollTimer=null,upgradeFlowPollBusy=false,upgradeFlowOwnRequest=false,upgradeFlowRestartWatching=false;";
+ const init="let upgradeFlowMode='idle',upgradeFlowSession=0,upgradeFlowStartedAt=0,upgradeFlowTarget='',upgradeFlowPollTimer=null,upgradeFlowPollBusy=false,upgradeFlowOwnRequest=false,upgradeFlowRestartWatching=false; const upgradeFlowPhases=['checking','downloading','verifying','installing','restarting'];";
  vm.runInContext(init+'\n'+source.slice(start,end)+'\n'+source.slice(performStart,performEnd)+
    '\nglobalThis.api={openUpgradeDetails,performUpgrade,mode:()=>upgradeFlowMode,session:()=>upgradeFlowSession};',context);
  return {state,stages,modal,api:context.api,context};
