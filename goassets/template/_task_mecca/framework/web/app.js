@@ -4926,7 +4926,7 @@ function detailView(task) {
   const hs=humanSummary(task);
   const timingInferred=Boolean(lc.lifecycle_inferred), timingIncomplete=Boolean(lc.timing_incomplete);
   const lifecyclePreview=events.length?`${lifecycleEventLabel(events[events.length-1].label)} · ${dateTimeLabel(events[events.length-1].at,true)}`:t('noLifecycle');
-  const lifecycleBody=`${timingInferred?`<div class="timing-note"><strong>${esc(t('provisionalTiming'))}</strong><span>${esc(t('provisionalTimingDetail'))}</span></div>`:''}${timingIncomplete?`<div class="timing-note warning"><strong>${esc(t('incompleteHistory'))}</strong><span>${esc(t('incompleteHistoryDetail'))}</span></div>`:''}${events.length?`<div class="timeline">${events.map((e,i)=>{
+  const lifecycleBody=`${task.content_only?`<p class="summary">${esc(state.language==='ko'?'실행·라이프사이클 정보 확인 중…':'Checking lifecycle and runtime details…')}</p>`:''}${timingInferred?`<div class="timing-note"><strong>${esc(t('provisionalTiming'))}</strong><span>${esc(t('provisionalTimingDetail'))}</span></div>`:''}${timingIncomplete?`<div class="timing-note warning"><strong>${esc(t('incompleteHistory'))}</strong><span>${esc(t('incompleteHistoryDetail'))}</span></div>`:''}${events.length?`<div class="timeline">${events.map((e,i)=>{
     const isCurrent=i===events.length-1 && e.state!=='done' && Boolean(e.at) && Number.isFinite(new Date(e.at).getTime());
     const duration=isCurrent?fmtSec(Math.max(0,(Date.now()-new Date(e.at).getTime())/1000)):(e.interval||'-');
     const durationHTML=duration&&duration!=='-'?`${esc(t('stayed'))} <span${isCurrent?` class="live-lifecycle-interval" data-state-at="${esc(e.at)}"`:''}>${esc(duration)}</span>`:'';
@@ -4957,6 +4957,10 @@ function detailView(task) {
 // never for an entire page of 20-50 tasks.
 const taskDetailCache=new Map();
 const taskDetailPending=new Map();
+// The canonical runtime/lifecycle projection is deliberately separate from
+// the fast, read-only Markdown document request.
+const taskLiveCache=new Map();
+const taskLivePending=new Map();
 const TASK_DETAIL_CACHE_MS=12000;
 const TASK_DETAIL_CACHE_MAX=8;
 let taskDetailCacheGeneration=0;
@@ -4966,9 +4970,14 @@ function taskDetailKey(id,project=state.project,backlog=state.backlog) {
 function invalidateTaskDetailCache() {
   taskDetailCacheGeneration++;
   taskDetailCache.clear();
+  taskLiveCache.clear();
 }
 function cachedTaskDetail(id,project=state.project,backlog=state.backlog) {
-  const key=taskDetailKey(id,project,backlog),entry=taskDetailCache.get(key);
+  const key=taskDetailKey(id,project,backlog);
+  const live=taskLiveCache.get(key);
+  if(live && Date.now()-live.at<=TASK_DETAIL_CACHE_MS && live.revision===state.contentRevision)return live.task;
+  if(live)taskLiveCache.delete(key);
+  const entry=taskDetailCache.get(key);
   if(!entry)return null;
   if(Date.now()-entry.at>TASK_DETAIL_CACHE_MS || entry.revision!==state.contentRevision) {
     taskDetailCache.delete(key);return null;
@@ -4985,6 +4994,7 @@ function requestTaskDetail(id,project=state.project,backlog=state.backlog) {
   const generation=taskDetailCacheGeneration,revision=state.contentRevision;
   const params=new URLSearchParams({project});
   if(backlog)params.set('backlog',backlog);
+  params.set('projection','content');
   const promise=(async()=>{
     const response=await fetch(`/api/tasks/${encodeURIComponent(id)}?${params.toString()}`,{cache:'no-store'});
     if(!response.ok){
@@ -5002,6 +5012,61 @@ function requestTaskDetail(id,project=state.project,backlog=state.backlog) {
   taskDetailPending.set(key,{promise,generation});
   promise.finally(()=>{if(taskDetailPending.get(key)?.promise===promise)taskDetailPending.delete(key);}).catch(()=>{});
   return promise;
+}
+// Enrich the visible document only AFTER the Markdown has been painted.
+// A slow control-tower reconciliation is never in the critical rendering path.
+function restoreLiveDetailReadingState(task) {
+  const opened=typeof document!=='undefined'&&document.querySelectorAll
+    ? [...document.querySelectorAll('.detail-layout details[open][id]')].map(node=>node.id) : [];
+  const scrollX=typeof window!=='undefined'?window.scrollX:0;
+  const scrollY=typeof window!=='undefined'?window.scrollY:0;
+  const activeId=typeof document!=='undefined'?document.activeElement?.id:'';
+  state.detailTask=task;
+  render();
+  for(const id of opened){
+    const section=document.getElementById?.(id);
+    if(section?.tagName==='DETAILS')section.open=true;
+  }
+  if(typeof requestAnimationFrame==='function'&&typeof window!=='undefined'){
+    requestAnimationFrame(()=>{
+      window.scrollTo?.({left:scrollX,top:scrollY,behavior:'auto'});
+      if(activeId)document.getElementById?.(activeId)?.focus?.({preventScroll:true});
+    });
+  }
+}
+function scheduleTaskLiveEnrichment(id,project=state.project,backlog=state.backlog) {
+  if(!state.detailTask?.content_only)return;
+  const source=state.detailTask, revision=state.contentRevision,generation=taskDetailCacheGeneration;
+  const key=taskDetailKey(id,project,backlog);
+  const current=()=>state.project===project&&state.backlog===backlog&&state.detail===id&&state.detailTask===source&&state.contentRevision===revision&&taskDetailCacheGeneration===generation;
+  const cached=taskLiveCache.get(key);
+  if(cached&&cached.revision===revision&&Date.now()-cached.at<=TASK_DETAIL_CACHE_MS&&cached.task.raw_markdown===source.raw_markdown){
+    restoreLiveDetailReadingState(cached.task);
+    return;
+  }
+  if(taskLivePending.has(key))return;
+  // Let a browser paint the text and tables before beginning any heavy work.
+  setTimeout(()=>{
+    if(!current())return;
+    const params=new URLSearchParams({project});
+    if(backlog)params.set('backlog',backlog);
+    const promise=(async()=>{
+      const response=await fetch(`/api/tasks/${encodeURIComponent(id)}?${params.toString()}`,{cache:'no-store'});
+      if(!response.ok)return;
+      const full=await response.json();
+      if(taskDetailCacheGeneration!==generation||state.contentRevision!==revision)return;
+      if(full.raw_markdown!==source.raw_markdown) {
+        // New file content is never silently swapped out while being read.
+        if(current())markContentUpdate('content');
+        return;
+      }
+      taskLiveCache.set(key,{task:full,at:Date.now(),revision});
+      while(taskLiveCache.size>TASK_DETAIL_CACHE_MAX)taskLiveCache.delete(taskLiveCache.keys().next().value);
+      if(current())restoreLiveDetailReadingState(full);
+    })();
+    taskLivePending.set(key,promise);
+    promise.finally(()=>{if(taskLivePending.get(key)===promise)taskLivePending.delete(key);}).catch(()=>{});
+  },60);
 }
 function prefetchTaskDetail(id) {
   if(!id||state.view!=='backlog'||state.detail||!state.project)return;
@@ -5030,20 +5095,14 @@ async function loadTaskDetail(id) {
   try {
     const task=await requestTaskDetail(targetID,targetProject,targetBacklog);
     if(!current())return;
-    // A revision transition while the request was in flight must not display
-    // stale content; refresh once rather than replaying a prior observation.
-    if(!cachedTaskDetail(targetID,targetProject,targetBacklog)){
-      const updated=await requestTaskDetail(targetID,targetProject,targetBacklog);
-      if(!current())return;
-      state.detailTask=updated;
-    }else {
-      // Cached detail was already rendered by openTask. Rebuilding a long
-      // Markdown document a second time immediately makes navigation slower.
-      if(state.detailTask===task&&!state.loadError)return;
+    // The fast document is the first visible result. A subsequent read of the
+    // runtime ledger can take seconds without holding the document hostage.
+    if(state.detailTask!==task||state.loadError){
       state.detailTask=task;
+      state.loadError='';
+      render();
     }
-    state.loadError='';
-    render();
+    scheduleTaskLiveEnrichment(targetID,targetProject,targetBacklog);
   } catch(e) {
     if(!current())return;
     state.detailTask=null;
