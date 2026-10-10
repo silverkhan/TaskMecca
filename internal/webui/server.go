@@ -1441,8 +1441,9 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 		selectionMS := time.Since(started).Seconds() * 1000
 		detailStarted := time.Now()
 		id := strings.ToUpper(strings.TrimSpace(strings.TrimPrefix(r.URL.Path, "/api/tasks/")))
-		item, err := backlog.TaskDetail(activeProject, selected, id)
-		w.Header().Set("Server-Timing", fmt.Sprintf("selection;dur=%.1f, detail;dur=%.1f", selectionMS, time.Since(detailStarted).Seconds()*1000))
+		item, profile, err := backlog.TaskDetailWithTimings(activeProject, selected, id)
+		w.Header().Set("Server-Timing", fmt.Sprintf("selection;dur=%.1f, catalog;dur=%.1f, readiness;dur=%.1f, control;dur=%.1f, projection;dur=%.1f, detail;dur=%.1f",
+			selectionMS, profile.CatalogMS, profile.ReadinessMS, profile.ControlMS, profile.ProjectionMS, time.Since(detailStarted).Seconds()*1000))
 		if err != nil {
 			writeJSON(w, map[string]any{"error": err.Error(), "id": id}, 404)
 			return
