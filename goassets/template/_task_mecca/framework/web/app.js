@@ -1874,14 +1874,17 @@ function healthLabel(h) { if(String(h).startsWith('controller_'))return ({contro
 function stateLabel(s) { if(String(s).startsWith('controller_'))return healthLabel(s); return ({doing:t('working'),ready:t('ready'),blocked:t('blocked'),hold:t('hold'),done:t('done'),todo:t('todo'),needs_user:t('needsUser'),awaiting_finalize:t('controllerReviewPending'),stalled:t('stalled')})[s] || s; }
 function lifecycleEventLabel(label) { return ({Registered:t('eventRegistered'),Assigned:t('eventAssigned'),Started:t('eventStarted'),Waiting:t('eventWaiting'),Resumed:t('eventResumed'),Hold:t('eventHold'),Completed:t('eventCompleted')})[label] || label; }
 function lifecycleEvidenceLabel(event) {
+  // Confirmed history already carries a timestamp and state. Exposing its
+  // persistence source, actor and opaque event ID on every row is UI noise.
+  // Keep the underlying evidence intact for diagnostics; signal uncertainty
+  // on the timeline only when a fallback observation is involved.
+  if(event.source==='durable_lifecycle'||event.source==='execution_ledger')return '';
+  // "Provisional" is already shown next to the phase label.
+  if(event.provisional)return '';
   const ko=state.language==='ko';
-  const source=event.source==='durable_lifecycle'?(ko?'영속 기록':'Durable record'):
-    event.source==='runtime_observed'?(ko?'파일 상태 관측':'File observation'):
-    event.source==='execution_ledger'?(ko?'실행 증거':'Execution evidence'):
-    event.source==='git'?(ko?'Git 이력':'Git history'):(event.source||'');
-  const actor=event.actor?` · ${event.actor}`:'';
-  const id=event.event_id?` · ID ${event.event_id}`:'';
-  return `${source}${actor}${id}`;
+  if(event.source==='runtime_observed')return ko?'파일 상태 관측':'File observation';
+  if(event.source==='git')return ko?'Git 이력':'Git history';
+  return event.source||'';
 }
 function completionAt(t) { return t.completion_sort_at || t.completed_at || t.mtime || ''; }
 function updatedAt(t) { return t.updated_at || t.mtime || t.completed_at || ''; }

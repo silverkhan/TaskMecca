@@ -5,7 +5,7 @@ function app(fetch, options={}){
  const ctx=vm.createContext({fetch,URLSearchParams,location:{search:'?project=/demo'},history:{pushState(){}},navigator:{language:'ko'},queueMicrotask,document:{visibilityState:'visible',querySelector:()=>null,querySelectorAll:()=>[]},localStorage:{getItem:()=>null,setItem(){},removeItem(){}},setTimeout:options.setTimeout||(()=>1),requestIdleCallback:options.requestIdleCallback});
  vm.runInContext(source.slice(0,source.indexOf('\ntranslateChrome();'))+`
  render=()=>{};
- globalThis.api={state,openTask,loadTaskDetail,prefetchTaskDetail,requestTaskDetail,cachedTaskDetail,taskDetailPending,taskDetailCache,taskLiveCache,taskLivePending,taskDetailKey,acceptContentRevision,invalidateTaskDetailCache,scheduleTaskDetailPrefetch,scheduleTaskLiveEnrichment};
+ globalThis.api={state,openTask,loadTaskDetail,prefetchTaskDetail,requestTaskDetail,cachedTaskDetail,taskDetailPending,taskDetailCache,taskLiveCache,taskLivePending,taskDetailKey,acceptContentRevision,invalidateTaskDetailCache,scheduleTaskDetailPrefetch,scheduleTaskLiveEnrichment,lifecycleEvidenceLabel};
  `,ctx);
  const a=ctx.api;Object.assign(a.state,{project:'/demo',backlog:'/demo/backlog',view:'backlog',contentRevision:'r1',detail:null,detailTask:null,statusFilters:['all'],tagFilters:[],listPage:1,listSort:'id_desc',listPageMode:'manual',listPageSize:20,query:''});
  return {...a,ctx};
@@ -133,4 +133,22 @@ test('outdated canonical result never silently swaps changed Markdown',async()=>
  assert.equal(a.state.detailTask.raw_markdown,'# A-4');
  assert.equal(a.state.pendingContentUpdate,true);
  assert.equal(a.cachedTaskDetail('A-4'),null);
+});
+
+test('confirmed lifecycle rows omit internal source, actor and ID while preserving evidence',()=>{
+ const a=app(()=>Promise.resolve(reply(task('A-1'))));
+ a.state.language='ko';
+ const confirmed={source:'durable_lifecycle',actor:'worker/abc',event_id:'lifecycle-long-event-id',label:'Started',at:'2026-10-10T01:00:00Z'};
+ const execution={source:'execution_ledger',actor:'runtime',event_id:'attempt-long-id',label:'Started'};
+ assert.equal(a.lifecycleEvidenceLabel(confirmed),'','canonical durable record needs no provenance on the normal timeline');
+ assert.equal(a.lifecycleEvidenceLabel(execution),'','verified execution ledger also needs no provenance label');
+ assert.equal(confirmed.actor,'worker/abc');
+ assert.equal(confirmed.event_id,'lifecycle-long-event-id','the model keeps diagnostic evidence intact');
+ const inferred={source:'runtime_observed',provisional:true,event_id:'observation'};
+ assert.equal(a.lifecycleEvidenceLabel(inferred),'','the phase label already marks provisional evidence');
+ assert.equal(a.lifecycleEvidenceLabel({source:'git'}),'Git 이력','Git fallback remains identifiable');
+ assert.equal(a.lifecycleEvidenceLabel({source:'runtime_observed'}),'파일 상태 관측','unflagged file observation remains distinguishable');
+ a.state.language='en';
+ assert.equal(a.lifecycleEvidenceLabel({source:'git'}),'Git history');
+ assert.equal(a.lifecycleEvidenceLabel({source:'durable_lifecycle'}),'');
 });
