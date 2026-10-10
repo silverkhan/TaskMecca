@@ -14,9 +14,44 @@ import (
 	"github.com/silverkhan/TaskMecca/internal/projectguard"
 )
 
-// Serialize management mutations so repeated Hub actions cannot move a folder
-// twice or overwrite another action's removal record.
-var projectManagementMu sync.Mutex
+// Management mutations (pause, remove, restore) remain exclusive with all
+// monitored work. Ordinary work from different projects may run concurrently;
+// it must not serialize on one machine-wide mutex.
+var projectManagementMu sync.RWMutex
+
+// Monitored operations in the SAME canonical project remain exclusive. The
+// reference count includes waiters so releasing the last user can safely
+// remove entries without splitting one project into two lock identities.
+var projectMonitoringLocks = struct {
+ sync.Mutex
+ entries map[string]*projectMonitoringLock
+}{entries: map[string]*projectMonitoringLock{}}
+
+type projectMonitoringLock struct {
+ mu sync.Mutex
+ users int
+}
+
+func acquireProjectMonitoringLock(path string) (func(), error) {
+ canonical,err:=projectguard.CanonicalPath(path)
+ if err!=nil { return nil,err }
+ projectMonitoringLocks.Lock()
+ entry:=projectMonitoringLocks.entries[canonical]
+ if entry==nil {
+  entry=&projectMonitoringLock{}
+  projectMonitoringLocks.entries[canonical]=entry
+ }
+ entry.users++
+ projectMonitoringLocks.Unlock()
+ entry.mu.Lock()
+ return func() {
+  entry.mu.Unlock()
+  projectMonitoringLocks.Lock()
+  entry.users--
+  if entry.users==0 {delete(projectMonitoringLocks.entries,canonical)}
+  projectMonitoringLocks.Unlock()
+ },nil
+}
 
 // Background monitoring requires active registration. Forgetting an archive
 // entry retains durable suppression; Web opening never opts into monitoring.
@@ -45,21 +80,24 @@ func projectMonitoringAllowed(path string) bool {
 }
 
 func ProjectMonitoringAllowed(path string) bool {
-	projectManagementMu.Lock()
-	defer projectManagementMu.Unlock()
+	projectManagementMu.RLock()
+	defer projectManagementMu.RUnlock()
 	return projectMonitoringAllowed(path)
 }
 
-// Serialize the complete background write with pause/remove, rather than
-// check once and allow an already-running delivery to recreate a removed path.
+// A management write waits until all active project operations finish. New
+// monitored operations cannot pass an ongoing pause/remove. Different
+// projects run concurrently, while canonical aliases of the same project
+// share one lock and cannot race their lifecycle/notification journals.
 func WithProjectMonitoring(path string, work func()) bool {
-	projectManagementMu.Lock()
-	defer projectManagementMu.Unlock()
-	if !projectMonitoringAllowed(path) {
-		return false
-	}
-	work()
-	return true
+ projectManagementMu.RLock()
+ defer projectManagementMu.RUnlock()
+ release,err:=acquireProjectMonitoringLock(path)
+ if err!=nil{return false}
+ defer release()
+ if !projectMonitoringAllowed(path) {return false}
+ work()
+ return true
 }
 
 // Web opening/restarting never changes registration. Only explicit add/init does.
