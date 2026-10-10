@@ -82,8 +82,19 @@ jobs:
           if git rev-parse HEAD^ >/dev/null 2>&1; then
             previous_version="$(git show HEAD^:goassets/template/_task_mecca/VERSION 2>/dev/null | tr -d '\r\n' || true)"
             if [ -n "$previous_version" ] && [ "$previous_version" = "$current_version" ]; then
-              echo "::error::Release-triggering change requires a version bump (still $current_version)."
-              exit 1
+              # A gate can fail after main is merged but BEFORE any Stable
+              # asset is published. Allow a same-version retry only when the
+              # public VERSION.txt still identifies an older Stable build.
+              published_version="$(curl -fLsS --retry 2 https://github.com/silverkhan/TaskMecca/releases/download/release-stable/VERSION.txt | tr -d '\r\n')"
+              if [ -z "$published_version" ] || [ "$published_version" = "$current_version" ]; then
+                echo "::error::Stable $current_version has already been published, or published version cannot be verified."
+                exit 1
+              fi
+              if ! [[ "$published_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+                echo "::error::Invalid published Stable version: $published_version"
+                exit 1
+              fi
+              echo "::notice::Retrying an unpublished Stable candidate $current_version (public: $published_version) after pre-publish validation failure."
             fi
           fi
       - name: Check Web UI JavaScript
