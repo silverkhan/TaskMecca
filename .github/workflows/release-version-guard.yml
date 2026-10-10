@@ -56,11 +56,28 @@ jobs:
             exit 1
           fi
 
-          python - "$base_version" "$head_version" <<'PY'
+          # A main merge can be blocked by a PRE-PUBLISH OS safety gate.
+          # In that case 0.3.0 is present in source, but public Stable is
+          # still 0.2.52. Permit a same-version fix only until publication.
+          published_version=""
+          if [ "$head_version" = "$base_version" ]; then
+            published_version="$(curl -fLsS --retry 2 https://github.com/silverkhan/TaskMecca/releases/download/release-stable/VERSION.txt | tr -d '\r\n')"
+          fi
+          python - "$base_version" "$head_version" "$published_version" <<'PY'
           import sys
           base = tuple(map(int, sys.argv[1].split('.')))
           head = tuple(map(int, sys.argv[2].split('.')))
-          if head <= base:
+          if head > base:
+              pass
+          elif head == base and sys.argv[3]:
+              try:
+                  published = tuple(map(int, sys.argv[3].split('.')))
+              except ValueError:
+                  raise SystemExit(f"::error::Invalid public Stable version: {sys.argv[3]}")
+              if len(published) != 3 or not published < head:
+                  raise SystemExit(f"::error::Stable {sys.argv[2]} is already published or public version is newer")
+              print(f"::notice::Same-version pre-publish gate repair permitted: published {sys.argv[3]} < candidate {sys.argv[2]}")
+          else:
               raise SystemExit(
                   f"::error::Stable product changes require a version increase: {sys.argv[1]} -> {sys.argv[2]}"
               )
