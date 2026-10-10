@@ -1,5 +1,7 @@
 # Task Mecca
 
+Verified task completion can resolve an old unverified-runtime warning without inventing a runtime completion. See [completed observation reconciliation](docs/A-23-completed-runtime-observation.md) for exact no-delivery CLI preview/apply and process-only Telegram maintenance safety.
+
 **Task Mecca records, executes, and manages subagent-based work through a durable backlog, with a Web UI for lifecycle and execution monitoring.**  
 The user talks naturally to a single Root while Registrar, Controller, and Workers preserve task definitions, coordinate parallel work, verify results, and keep execution history inside the project.
 
@@ -41,6 +43,11 @@ task-mecca init
 ```
 
 Initialization installs the Task Mecca framework and operating manuals. The backlog itself is created when the first task is registered.
+
+
+### Refresh operating instructions
+
+Apply the installed original `_task_mecca/framework/EXECUTION_PROTOCOL.en.md` together with the role guides. Refresh existing installations through supported migration, following backup/consent policy for customized managed documents. Do not overwrite `data/` or `.runtime/` with distribution templates. After instruction changes, reused Controllers/Workers as well as Root re-read changed guides before new assignments. Keep the canonical ledger in the original project and do not register implementation-worktree copies.
 
 ### 3. Activate your LLM session as Task Mecca Root
 
@@ -149,6 +156,10 @@ task-mecca upgrade
 
 Update the managed framework in the current project:
 
+
+After a Worker completion report, Web separates Controller review pending, review in progress, and finalization in progress. Normal review and Controller recovery do not request user action; actual user decisions and canonical backlog completion still notify. The header lists current user decisions with the exact backlog link and required action, excluding resolved history and Controller work. Explicit `대기유형: user` and resume conditions remain visible without `hold_review`.
+
+A shared notification area starts collapsed on every view. Expand it to see current user decisions and session warnings, counts, next actions, and related task/session links. Resolved items disappear on refresh; observation history stays in the server ledger without appearing in the UI.
 ```bash
 task-mecca migrate
 ```
@@ -207,6 +218,16 @@ go test ./...
 go build ./cmd/task-mecca
 ```
 
-A Python compatibility runtime is also maintained. See [CONTRIBUTING.md](CONTRIBUTING.md).
+Go is the only supported application runtime; Python compatibility is no longer maintained. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 MIT License · [LICENSE](LICENSE)
+
+## Project archive, monitoring and migration
+
+Archive moves a project from the active list into a collapsed, browser-remembered archive. Monitoring, monitoring-based notifications and runtime writes stop. Restore to active registers monitoring without changing framework files or creating duplicate entries. Remove from list forgets the archive entry only; files stay in place and monitoring stays stopped. Opening or restarting Web never registers projects. Add an explicit absolute path or restore an archived entry to register it.
+
+`task-mecca projects list|archived` reads management state. Use `add|register|unregister|archive|restore|forget --path ABSOLUTE`; archive/forget require `--confirm-path EXACT`, restore/forget require `--archive-id ID`. Task Mecca has no folder deletion, Trash or residue-check action. Manage files yourself with Finder, Explorer or a terminal.
+
+First-time Go CLI `init` creates framework files and registers the project for Web. Existing installations stay unchanged and are directed to `migrate`. Migration never registers, unregisters or restores projects, and never modifies backlog, configuration, credentials or runtime data. Any modified managed file requires a choice: overwrite, back up modifications and migrate, or cancel. No choice means no writes or backup creation. Backup failure stops before framework changes.
+
+Use `task-mecca migrate --json` for agents: exit 3 with `status: choice_required`, `modified_files` and `choices` asks the human. Then run `--choice overwrite|backup|cancel`. Non-TTY execution never prompts. Python CLI compatibility is retired. Existing project data and unmanifested legacy files are preserved during Go migration because their ownership cannot safely be inferred.

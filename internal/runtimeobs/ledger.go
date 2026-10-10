@@ -1,6 +1,7 @@
 package runtimeobs
 
 import (
+    "github.com/silverkhan/TaskMecca/internal/projectguard"
     "bufio"
     "crypto/sha256"
     "encoding/hex"
@@ -51,6 +52,8 @@ type ExecutionEvent struct {
     AttemptID string `json:"attempt_id"`
     Provider string `json:"provider,omitempty"`
     SessionID string `json:"session_id,omitempty"`
+    SessionName string `json:"session_name,omitempty"`
+    SessionTitle string `json:"session_title,omitempty"`
     TurnID string `json:"turn_id,omitempty"`
     RuntimeAgentID string `json:"runtime_agent_id,omitempty"`
     AgentType string `json:"agent_type,omitempty"`
@@ -83,6 +86,8 @@ type Attempt struct {
     AttemptID string `json:"attempt_id"`
     Provider string `json:"provider"`
     SessionID string `json:"session_id,omitempty"`
+    SessionName string `json:"session_name,omitempty"`
+    SessionTitle string `json:"session_title,omitempty"`
     TurnID string `json:"turn_id,omitempty"`
     RuntimeAgentID string `json:"runtime_agent_id,omitempty"`
     AgentType string `json:"agent_type,omitempty"`
@@ -91,9 +96,11 @@ type Attempt struct {
     ParentAttemptID string `json:"parent_attempt_id,omitempty"`
     BindingState BindingState `json:"binding_state"`
     BindingSource string `json:"binding_source,omitempty"`
+    BindingAt string `json:"binding_at,omitempty"`
     BindingEvidence map[string]string `json:"binding_evidence,omitempty"`
     CurrentState CanonicalState `json:"current_state"`
     Terminal bool `json:"terminal"`
+    FirstObservedAt string `json:"first_observed_at,omitempty"`
     StartedAt string `json:"started_at,omitempty"`
     LastActivityAt string `json:"last_activity_at,omitempty"`
     EndedAt string `json:"ended_at,omitempty"`
@@ -135,9 +142,49 @@ func attemptIDFor(provider, sessionID, agentID string) string {
     return "run-"+hex.EncodeToString(sum[:])[:16]
 }
 
+func executionEpisodeID(provider,sessionID,agentID,observedAt string) string {
+    key:=strings.ToLower(strings.TrimSpace(provider))+"\x00"+strings.TrimSpace(sessionID)+"\x00"+strings.TrimSpace(agentID)+"\x00"+strings.TrimSpace(observedAt)
+    sum:=sha256.Sum256([]byte(key))
+    return "run-"+hex.EncodeToString(sum[:])[:16]
+}
+
+func resolveAttemptID(project string,e SpikeEvent) string {
+    base:=attemptIDFor(e.Provider,e.SessionID,e.AgentID)
+    ledger,err:=BuildLedger(project,1,time.Now())
+    if err!=nil { return base }
+	// An explicit dispatch may precede all provider hooks. Only a single
+	// live, provider-less attempt with this exact runtime agent ID can claim
+	// the first hook. Never infer identity from worker name or timing alone.
+	pending := []Attempt{}
+	for _, a := range ledger.Attempts {
+		if !a.Terminal && a.Provider == "" && a.SessionID == "" && a.RuntimeAgentID == e.AgentID && a.BindingState == BindingBound && a.BindingSource == "dispatch" {
+			pending = append(pending, a)
+		}
+	}
+	if len(pending) == 1 {
+		return pending[0].AttemptID
+	}
+	if len(pending) > 1 {
+		return base
+	}
+	for _,a:=range ledger.Attempts {
+        if a.Provider!=strings.ToLower(strings.TrimSpace(e.Provider)) || a.SessionID!=e.SessionID || a.RuntimeAgentID!=e.AgentID { continue }
+        if !a.Terminal { return a.AttemptID }
+        // A terminal attempt is immutable. Any later evidence that the worker
+        // is executing again starts a new episode, even when the provider
+        // omitted SubagentStart and the first evidence is tool activity.
+        hook:=strings.ToLower(strings.TrimSpace(e.HookEventName))
+        if hook=="subagentstart" || hook=="pretooluse" || hook=="posttooluse" || hook=="posttoolusefailure" {
+            return executionEpisodeID(e.Provider,e.SessionID,e.AgentID,e.ObservedAt)
+        }
+        return a.AttemptID
+    }
+    return base
+}
+
 func eventIDFor(e ExecutionEvent) string {
-    parts:=[]string{e.EventKind,e.Provider,e.SessionID,e.TurnID,e.RuntimeAgentID,e.HookEventName,e.ToolUseID,string(e.State),e.RawSHA256,e.TaskID,e.AgentPath,e.ParentAttemptID,e.BindingSource}
-    if e.RawSHA256=="" { parts=append(parts,e.ObservedAt) }
+    parts:=[]string{e.EventKind,e.Provider,e.SessionID,e.SessionName,e.SessionTitle,e.TurnID,e.RuntimeAgentID,e.HookEventName,e.ToolUseID,string(e.State),e.RawSHA256,e.TaskID,e.AgentPath,e.ParentAttemptID,e.BindingSource}
+    if e.RawSHA256=="" || (e.EventKind=="state" && e.TurnID=="") { parts=append(parts,e.ObservedAt) }
     if e.EventKind=="binding" {
         keys:=make([]string,0,len(e.BindingEvidence))
         for k:=range e.BindingEvidence { keys=append(keys,k) }
@@ -153,16 +200,19 @@ func HookToExecutionEvent(e SpikeEvent) (ExecutionEvent,error) {
     if provider!="codex" && provider!="claude" { return ExecutionEvent{},fmt.Errorf("unsupported provider %q",provider) }
     if strings.TrimSpace(e.AgentID)=="" { return ExecutionEvent{},errors.New("hook event does not include agent_id") }
     out:=ExecutionEvent{
-        ObservedAt:e.ObservedAt,Provider:provider,SessionID:e.SessionID,TurnID:e.TurnID,
+        ObservedAt:e.ObservedAt,Provider:provider,SessionID:e.SessionID,SessionName:e.SessionName,SessionTitle:e.SessionTitle,TurnID:e.TurnID,
         RuntimeAgentID:e.AgentID,AgentType:e.AgentType,AttemptID:attemptIDFor(provider,e.SessionID,e.AgentID),
         HookEventName:e.HookEventName,ToolName:e.ToolName,ToolUseID:e.ToolUseID,Reason:e.Reason,
         EvidenceSource:EvidenceHook,ObservationQuality:QualityObserved,RawSHA256:e.RawSHA256,
     }
     switch strings.ToLower(strings.TrimSpace(e.HookEventName)) {
     case "subagentstart":
-        out.EventKind="state"; out.State=StateRunning
+        out.EventKind="state"
+		out.State=StateRunning
     case "subagentstop":
-        out.EventKind="state"; out.State=stopState(e.Reason,e.Extra); out.Terminal=true
+        out.EventKind="state"
+		out.State=stopState(e.Reason,e.Extra)
+		out.Terminal=true
     case "pretooluse","posttooluse","posttoolusefailure":
         out.EventKind="activity"
     default:
@@ -186,32 +236,135 @@ func stopState(reason string,extra map[string]any) CanonicalState {
 }
 
 func AppendExecutionEvent(project string,e ExecutionEvent) error {
+    releaseGuard, guardErr := projectguard.AcquireWrite(project)
+    if guardErr != nil { return guardErr }
+    defer releaseGuard()
+
+    executionStorageMu.Lock()
+    defer executionStorageMu.Unlock()
+
     if e.EventID=="" { e.EventID=eventIDFor(e) }
     if e.ObservedAt=="" { e.ObservedAt=time.Now().UTC().Format(time.RFC3339Nano) }
     if e.AttemptID=="" { return errors.New("execution event requires attempt_id") }
-    path:=ExecutionJournalPath(project)
+    at:=eventObservedTime(e.ObservedAt,time.Now())
+    path:=executionRawPathAt(project,at)
     if err:=os.MkdirAll(filepath.Dir(path),0700); err!=nil { return err }
-    payload,err:=json.Marshal(e); if err!=nil { return err }
+    payload,err:=json.Marshal(e)
+	if err!=nil { return err }
     payload=append(payload,'\n')
-    f,err:=os.OpenFile(path,os.O_CREATE|os.O_WRONLY|os.O_APPEND,0600); if err!=nil { return err }
-    _,writeErr:=f.Write(payload); closeErr:=f.Close()
-    if writeErr!=nil { return writeErr }; return closeErr
+    f,err:=os.OpenFile(path,os.O_CREATE|os.O_WRONLY|os.O_APPEND,0600)
+	if err!=nil { return err }
+    _,writeErr:=f.Write(payload)
+	closeErr:=f.Close()
+    if writeErr!=nil { return writeErr }
+	return closeErr
 }
 
 func BindAttempt(project,attemptID,taskID,agentPath,source,parentAttemptID string,evidence map[string]string,now time.Time) (Attempt,error) {
-    attemptID=strings.TrimSpace(attemptID); taskID=strings.ToUpper(strings.TrimSpace(taskID)); agentPath=strings.TrimSpace(agentPath)
+    attemptID=strings.TrimSpace(attemptID)
+	taskID=strings.ToUpper(strings.TrimSpace(taskID))
+	agentPath=strings.TrimSpace(agentPath)
     if attemptID=="" { return Attempt{},errors.New("attempt_id is required") }
     if taskID=="" && agentPath=="" { return Attempt{},errors.New("task_id or agent_path is required") }
-    ledger,err:=BuildLedger(project,20,now); if err!=nil { return Attempt{},err }
-    found:=false; for _,a:=range ledger.Attempts { if a.AttemptID==attemptID { found=true; break } }
+    ledger,err:=BuildLedger(project,20,now)
+	if err!=nil { return Attempt{},err }
+    found:=false
+	for _,a:=range ledger.Attempts { if a.AttemptID==attemptID { found=true
+			break } }
     if !found { return Attempt{},fmt.Errorf("attempt not found: %s",attemptID) }
     if source=="" { source="explicit" }
     e:=ExecutionEvent{EventKind:"binding",ObservedAt:now.UTC().Format(time.RFC3339Nano),AttemptID:attemptID,TaskID:taskID,AgentPath:agentPath,ParentAttemptID:strings.TrimSpace(parentAttemptID),BindingSource:source,BindingEvidence:evidence,EvidenceSource:EvidenceManualBinding,ObservationQuality:QualityAuthoritative}
     e.EventID=eventIDFor(e)
     if err:=AppendExecutionEvent(project,e); err!=nil { return Attempt{},err }
-    ledger,err=BuildLedger(project,20,now); if err!=nil { return Attempt{},err }
+    ledger,err=BuildLedger(project,20,now)
+	if err!=nil { return Attempt{},err }
     for _,a:=range ledger.Attempts { if a.AttemptID==attemptID { return a,nil } }
     return Attempt{},fmt.Errorf("attempt disappeared after binding: %s",attemptID)
+}
+
+// BindRuntimeAgent binds a dispatch result only when the provider runtime agent
+// identity resolves to exactly one live attempt. It deliberately refuses
+// ambiguous matches instead of correlating by time order.
+func BindRuntimeAgent(project,runtimeAgentID,taskID,agentPath,parentAttemptID string,now time.Time) (Attempt,error) {
+	return bindRuntimeAgent(project, runtimeAgentID, taskID, agentPath, parentAttemptID, "", now)
+}
+
+// BindRuntimeAgentForAssignment carries the dispatch identifier into the
+// attempt binding without inferring a task from worker name or timing.
+func BindRuntimeAgentForAssignment(project, assignmentID, runtimeAgentID, parentAttemptID string, now time.Time) (Attempt, error) {
+	assignment, err := FindAssignment(project, assignmentID)
+	if err != nil { return Attempt{}, err }
+	return bindRuntimeAgent(project, runtimeAgentID, assignment.TaskID, assignment.AgentPath, parentAttemptID, assignment.AssignmentID, now)
+}
+
+func bindRuntimeAgent(project, runtimeAgentID, taskID, agentPath, parentAttemptID, assignmentID string, now time.Time) (Attempt, error) {
+	runtimeAgentID=strings.TrimSpace(runtimeAgentID)
+    if runtimeAgentID=="" { return Attempt{},errors.New("runtime_agent_id is required") }
+    ledger,err:=BuildLedger(project,20,now)
+	if err!=nil { return Attempt{},err }
+    matches:=[]Attempt{}
+    for _,attempt:=range ledger.Attempts {
+        if attempt.RuntimeAgentID==runtimeAgentID && !attempt.Terminal { matches=append(matches,attempt) }
+    }
+    if len(matches)>1 { return Attempt{},fmt.Errorf("runtime agent %s matches %d live attempts; refusing ambiguous binding",runtimeAgentID,len(matches)) }
+    if len(matches)== 1 && matches[0].BindingState == BindingBound && matches[0].TaskID != "" && matches[0].TaskID != strings.ToUpper(strings.TrimSpace(taskID)) {
+		return Attempt{}, fmt.Errorf("runtime agent %s still has a live attempt bound to %s; refusing reassignment to %s", runtimeAgentID, matches[0].TaskID, taskID)
+	}
+	if len(matches)==1 && matches[0].BindingState==BindingAmbiguous { return Attempt{},fmt.Errorf("runtime agent %s has an ambiguous live binding",runtimeAgentID) }
+	if len(matches)==1 && matches[0].BindingState==BindingBound {
+		if matches[0].AgentPath!=strings.TrimSpace(agentPath) { return Attempt{},fmt.Errorf("runtime agent %s has a live binding to agent %s",runtimeAgentID,matches[0].AgentPath) }
+		if assignmentID!="" && matches[0].BindingEvidence["assignment_id"]!=assignmentID {
+			return Attempt{},fmt.Errorf("runtime agent %s live attempt is not bound to assignment %s",runtimeAgentID,assignmentID)
+		}
+		return matches[0],nil
+	}
+	if len(matches) == 0 {
+        // Dispatch can arrive before the provider emits any start/activity hook.
+        // Reusing a terminal worker must create a fresh unstarted episode rather
+        // than rebinding (and later reopening) the completed attempt.
+        historical:=[]Attempt{}
+        for _,attempt:=range ledger.Attempts {
+            if attempt.RuntimeAgentID==runtimeAgentID && attempt.Terminal { historical=append(historical,attempt) }
+        }
+        if len(historical)==0 {
+			// The dispatch result can arrive before the provider's first hook.
+			// Preserve that explicit identity now; the first matching hook will
+			// enrich this attempt instead of creating an unrelated one.
+			observedAt := now.UTC().Format(time.RFC3339Nano)
+			episodeID := executionEpisodeID("pending_dispatch", "", runtimeAgentID, observedAt)
+			identity := ExecutionEvent{
+				EventKind: "episode", ObservedAt: observedAt, AttemptID: episodeID,
+				RuntimeAgentID: runtimeAgentID, EvidenceSource: EvidenceReconciled,
+				ObservationQuality: QualityAuthoritative, Reason: "dispatch_before_hook",
+			}
+			identity.EventID = eventIDFor(identity)
+			if err := AppendExecutionEvent(project, identity); err != nil {
+				return Attempt{}, err
+			}
+			matches = []Attempt{{AttemptID: episodeID}}
+		} else {
+			latest:=historical[0]
+        for _,attempt:=range historical[1:] {
+            if attempt.Provider!=latest.Provider || attempt.SessionID!=latest.SessionID {
+                return Attempt{},fmt.Errorf("runtime agent %s is ambiguous across provider sessions",runtimeAgentID)
+            }
+            if attempt.LastObservedAt>latest.LastObservedAt { latest=attempt }
+        }
+        episodeID:=executionEpisodeID(latest.Provider,latest.SessionID,runtimeAgentID,now.UTC().Format(time.RFC3339Nano))
+        identity:=ExecutionEvent{
+            EventKind:"episode",ObservedAt:now.UTC().Format(time.RFC3339Nano),AttemptID:episodeID,
+            Provider:latest.Provider,SessionID:latest.SessionID,SessionName:latest.SessionName,SessionTitle:latest.SessionTitle,
+            RuntimeAgentID:runtimeAgentID,AgentType:latest.AgentType,EvidenceSource:EvidenceReconciled,ObservationQuality:QualityAuthoritative,
+            Reason:"dispatch_after_terminal",
+        }
+        identity.EventID=eventIDFor(identity)
+        if err:=AppendExecutionEvent(project,identity); err!=nil { return Attempt{},err }
+        matches=[]Attempt{{AttemptID:episodeID}}
+    }
+	}
+	evidence:=map[string]string{"runtime_agent_id":runtimeAgentID,"correlation":"explicit_dispatch_result"}
+	if assignmentID != "" { evidence["assignment_id"] = assignmentID }
+    return BindAttempt(project,matches[0].AttemptID,taskID,agentPath,"dispatch",parentAttemptID,evidence,now)
 }
 
 type accumulator struct {
@@ -220,39 +373,138 @@ type accumulator struct {
     taskIDs map[string]bool
     agentPaths map[string]bool
     parents map[string]bool
+    bindingPriority int
+    bindingAt string
 }
 
 func newAccumulator(id string) *accumulator {
     return &accumulator{attempt:Attempt{AttemptID:id,BindingState:BindingUnbound,CurrentState:StateRuntimeUnknown,BindingEvidence:map[string]string{}},taskIDs:map[string]bool{},agentPaths:map[string]bool{},parents:map[string]bool{}}
 }
 
+func bindingPriority(e ExecutionEvent) int {
+    source:=strings.ToLower(strings.TrimSpace(e.BindingSource))
+    switch {
+    case e.ObservationQuality==QualityAuthoritative || e.EvidenceSource==EvidenceManualBinding || source=="explicit":
+        return 300
+    case e.EvidenceSource==EvidenceReconciled || source=="reconciled":
+        return 200
+    default:
+        return 100
+    }
+}
+
+func resetBindingValues(a *accumulator,e ExecutionEvent) {
+    a.taskIDs=map[string]bool{}
+    a.agentPaths=map[string]bool{}
+    a.parents=map[string]bool{}
+    addValue(a.taskIDs,e.TaskID)
+    addValue(a.agentPaths,e.AgentPath)
+    addValue(a.parents,e.ParentAttemptID)
+    a.attempt.BindingEvidence=map[string]string{}
+    for k,v:=range e.BindingEvidence {
+        if strings.TrimSpace(v)!="" { a.attempt.BindingEvidence[k]=v }
+    }
+    a.attempt.BindingSource=e.BindingSource
+    a.bindingPriority=bindingPriority(e)
+    a.bindingAt=e.ObservedAt
+}
+
+func applyCurrentBinding(a *accumulator) {
+    if len(a.taskIDs)>1 || len(a.agentPaths)>1 || len(a.parents)>1 {
+        a.attempt.BindingState=BindingAmbiguous
+        a.attempt.TaskID=""
+        a.attempt.AgentPath=""
+        a.attempt.ParentAttemptID=""
+        a.attempt.BindingAt=""
+        return
+    }
+    a.attempt.BindingState=BindingBound
+    a.attempt.TaskID=onlyValue(a.taskIDs)
+    a.attempt.AgentPath=onlyValue(a.agentPaths)
+    a.attempt.ParentAttemptID=onlyValue(a.parents)
+    a.attempt.BindingAt=a.bindingAt
+}
+
 func (a *accumulator) apply(e ExecutionEvent) {
     a.attempt.EvidenceCount++
-    if e.Provider!="" { a.attempt.Provider=e.Provider }; if e.SessionID!="" { a.attempt.SessionID=e.SessionID }; if e.TurnID!="" { a.attempt.TurnID=e.TurnID }
-    if e.RuntimeAgentID!="" { a.attempt.RuntimeAgentID=e.RuntimeAgentID }; if e.AgentType!="" { a.attempt.AgentType=e.AgentType }
+    if e.Provider!="" { a.attempt.Provider=e.Provider }
+	if e.SessionID!="" { a.attempt.SessionID=e.SessionID }
+    if e.SessionName!="" { a.attempt.SessionName=e.SessionName }
+	if e.SessionTitle!="" { a.attempt.SessionTitle=e.SessionTitle }
+	if e.TurnID!="" { a.attempt.TurnID=e.TurnID }
+    if e.RuntimeAgentID!="" { a.attempt.RuntimeAgentID=e.RuntimeAgentID }
+	if e.AgentType!="" { a.attempt.AgentType=e.AgentType }
+    if a.attempt.FirstObservedAt=="" || e.ObservedAt<a.attempt.FirstObservedAt { a.attempt.FirstObservedAt=e.ObservedAt }
     a.attempt.LastObservedAt=maxTimeString(a.attempt.LastObservedAt,e.ObservedAt)
     switch e.EventKind {
     case "activity":
-        a.attempt.ActivityCount++; a.attempt.LastActivityAt=maxTimeString(a.attempt.LastActivityAt,e.ObservedAt)
+        a.attempt.ActivityCount++
+        a.attempt.LastActivityAt=maxTimeString(a.attempt.LastActivityAt,e.ObservedAt)
+        // A provider session/agent identity may be reused after its previous
+        // attempt reached a terminal state. Fresh observed runtime activity is
+        // evidence that the same immutable Root Session is active again.
+        // Reopen the effective attempt instead of leaving the Root permanently
+        // classified as "previous".
+        // Completed attempts are immutable. ObserveHook routes post-terminal
+        // activity to a new execution episode instead of reopening this one.
+        if a.attempt.BindingState==BindingBound && a.attempt.StartedAt=="" {
+            startAt:=e.ObservedAt
+            if a.bindingAt!="" && a.bindingAt>startAt { startAt=a.bindingAt }
+            a.attempt.StartedAt=startAt
+            a.attempt.CurrentState=StateRunning
+            a.attempt.StateEvidenceSource=EvidenceReconciled
+            a.attempt.StateObservationQuality=QualityObserved
+            a.transitions=append(a.transitions,Transition{At:startAt,State:StateRunning,Kind:"state",EvidenceSource:EvidenceReconciled,ObservationQuality:QualityObserved,Reason:"authoritative_binding_with_observed_activity"})
+        }
     case "state":
+        if (e.State==StateStarting || e.State==StateRunning) && a.attempt.Terminal && a.attempt.EndedAt!="" {
+            ended,endedErr:=time.Parse(time.RFC3339Nano,a.attempt.EndedAt)
+            observed,observedErr:=time.Parse(time.RFC3339Nano,e.ObservedAt)
+            if endedErr==nil && observedErr==nil && observed.After(ended) {
+                a.attempt.Terminal=false
+                a.attempt.EndedAt=""
+                a.attempt.StartedAt=e.ObservedAt
+            }
+        }
         if e.State==StateStarting || e.State==StateRunning { if a.attempt.StartedAt=="" { a.attempt.StartedAt=e.ObservedAt } }
         if e.State==StateRunning { a.attempt.LastActivityAt=maxTimeString(a.attempt.LastActivityAt,e.ObservedAt) }
-        if !a.attempt.Terminal || e.Terminal {
+        terminalAlready := e.Terminal && a.attempt.Terminal && a.attempt.CurrentState==e.State
+        if !a.attempt.Terminal || (e.Terminal && !terminalAlready) {
             if a.attempt.CurrentState!=e.State { a.transitions=append(a.transitions,Transition{At:e.ObservedAt,State:e.State,Kind:"state",EvidenceSource:e.EvidenceSource,ObservationQuality:e.ObservationQuality,Reason:e.Reason}) }
-            a.attempt.CurrentState=e.State; a.attempt.StateEvidenceSource=e.EvidenceSource; a.attempt.StateObservationQuality=e.ObservationQuality
+            a.attempt.CurrentState=e.State
+			a.attempt.StateEvidenceSource=e.EvidenceSource
+			a.attempt.StateObservationQuality=e.ObservationQuality
         }
-        if e.Terminal { a.attempt.Terminal=true; a.attempt.EndedAt=e.ObservedAt }
+        if e.Terminal && !terminalAlready { a.attempt.Terminal=true
+			a.attempt.EndedAt=e.ObservedAt }
     case "binding":
-        addValue(a.taskIDs,e.TaskID); addValue(a.agentPaths,e.AgentPath); addValue(a.parents,e.ParentAttemptID)
-        if e.BindingSource!="" { a.attempt.BindingSource=e.BindingSource }
-        for k,v:=range e.BindingEvidence { if strings.TrimSpace(v)!="" { a.attempt.BindingEvidence[k]=v } }
-        if len(a.taskIDs)>1 || len(a.agentPaths)>1 || len(a.parents)>1 {
-            a.attempt.BindingState=BindingAmbiguous
-            a.attempt.TaskID=""; a.attempt.AgentPath=""; a.attempt.ParentAttemptID=""
-        } else {
-            a.attempt.BindingState=BindingBound; a.attempt.TaskID=onlyValue(a.taskIDs); a.attempt.AgentPath=onlyValue(a.agentPaths); a.attempt.ParentAttemptID=onlyValue(a.parents)
+        priority:=bindingPriority(e)
+        switch {
+        case a.bindingAt=="" || priority>a.bindingPriority || (priority==a.bindingPriority && e.ObservedAt>a.bindingAt):
+            resetBindingValues(a,e)
+            applyCurrentBinding(a)
+        case priority==a.bindingPriority && e.ObservedAt==a.bindingAt:
+            addValue(a.taskIDs,e.TaskID)
+            addValue(a.agentPaths,e.AgentPath)
+            addValue(a.parents,e.ParentAttemptID)
+            for k,v:=range e.BindingEvidence { if strings.TrimSpace(v)!="" { a.attempt.BindingEvidence[k]=v } }
+            applyCurrentBinding(a)
+        default:
+            // Older or lower-confidence bindings remain in the append-only audit
+            // trail but do not poison the current effective binding.
         }
         a.transitions=append(a.transitions,Transition{At:e.ObservedAt,Kind:"binding",EvidenceSource:e.EvidenceSource,ObservationQuality:e.ObservationQuality,Reason:string(a.attempt.BindingState)})
+		// Assignment is not proof of execution, even for a reused worker.
+		// A hook or attributable activity establishes the start boundary.
+		if a.attempt.BindingState==BindingBound && a.attempt.StartedAt=="" && a.attempt.ActivityCount>0 && a.attempt.LastActivityAt!="" {
+            startAt:=a.attempt.LastActivityAt
+            if e.ObservedAt>startAt { startAt=e.ObservedAt }
+            a.attempt.StartedAt=startAt
+            a.attempt.CurrentState=StateRunning
+            a.attempt.StateEvidenceSource=EvidenceReconciled
+            a.attempt.StateObservationQuality=QualityObserved
+            a.transitions=append(a.transitions,Transition{At:startAt,State:StateRunning,Kind:"state",EvidenceSource:EvidenceReconciled,ObservationQuality:QualityObserved,Reason:"authoritative_binding_with_observed_activity"})
+        }
     }
 }
 
@@ -262,72 +514,135 @@ func (a *accumulator) finish(limit int,now time.Time) (Attempt,[]LedgerFinding) 
     if a.attempt.BindingState==BindingAmbiguous { findings=append(findings,LedgerFinding{Severity:"warning",Code:"binding_ambiguous",AttemptID:a.attempt.AttemptID,Message:"conflicting binding evidence exists; do not use this attempt for automatic backlog transitions"}) }
     if a.attempt.StartedAt=="" && a.attempt.ActivityCount>0 { findings=append(findings,LedgerFinding{Severity:"info",Code:"activity_without_start",AttemptID:a.attempt.AttemptID,Message:"runtime activity was observed without a start event"}) }
     if a.attempt.StartedAt!="" && !a.attempt.Terminal {
-        if at,err:=time.Parse(time.RFC3339Nano,firstNonEmptyRuntime(a.attempt.LastActivityAt,a.attempt.StartedAt)); err==nil && now.Sub(at)>=staleWarnDuration() {
+        if at,err:=time.Parse(time.RFC3339Nano,firstNonEmptyRuntime(a.attempt.LastActivityAt,a.attempt.StartedAt)); err==nil && now.Sub(at)>=StaleWarnDuration() {
             findings=append(findings,LedgerFinding{Severity:"warning",Code:"stale",AttemptID:a.attempt.AttemptID,Message:"no runtime evidence was observed within the stale window; this is not proof that the agent is dead"})
         }
     }
     if a.attempt.StartedAt!="" {
-        end:=now; if a.attempt.EndedAt!="" { if parsed,err:=time.Parse(time.RFC3339Nano,a.attempt.EndedAt); err==nil { end=parsed } }
+        end:=now
+		if a.attempt.EndedAt!="" { if parsed,err:=time.Parse(time.RFC3339Nano,a.attempt.EndedAt); err==nil { end=parsed } }
         if start,err:=time.Parse(time.RFC3339Nano,a.attempt.StartedAt); err==nil && end.After(start) { a.attempt.ElapsedMillis=end.Sub(start).Milliseconds() }
     }
     sort.SliceStable(a.transitions,func(i,j int)bool { return a.transitions[i].At<a.transitions[j].At })
     a.attempt.ActiveTimeAvailable=false
     a.attempt.ActiveTimeNote="hook lifecycle does not provide authoritative active intervals; observed_active_ms is unset"
     a.attempt.WaitingMillis=waitingMillis(a.transitions,a.attempt.EndedAt,now)
-    if limit<1 { limit=10 }; if len(a.transitions)>limit { a.attempt.RecentTransitions=append([]Transition{},a.transitions[len(a.transitions)-limit:]...) } else { a.attempt.RecentTransitions=append([]Transition{},a.transitions...) }
+    if limit<1 { limit=10 }
+	if len(a.transitions)>limit { a.attempt.RecentTransitions=append([]Transition{},a.transitions[len(a.transitions)-limit:]...) } else { a.attempt.RecentTransitions=append([]Transition{},a.transitions...) }
     if len(a.attempt.BindingEvidence)==0 { a.attempt.BindingEvidence=nil }
     return a.attempt,findings
 }
 
 func BuildLedger(project string,recentLimit int,now time.Time) (Ledger,error) {
-    out:=Ledger{Version:1,GeneratedAt:now.UTC().Format(time.RFC3339Nano),JournalPath:ExecutionJournalPath(project),Attempts:[]Attempt{},Findings:[]LedgerFinding{}}
-    f,err:=os.Open(out.JournalPath); if errors.Is(err,os.ErrNotExist) { return out,nil }; if err!=nil { return out,err }; defer f.Close()
-    accs:=map[string]*accumulator{}; seen:=map[string]bool{}; scanner:=bufio.NewScanner(f); scanner.Buffer(make([]byte,65536),2*1024*1024); line:=0
-    for scanner.Scan() {
-        line++; raw:=strings.TrimSpace(scanner.Text()); if raw=="" { continue }
-        var e ExecutionEvent
-        if err:=json.Unmarshal([]byte(raw),&e); err!=nil { out.Findings=append(out.Findings,LedgerFinding{Severity:"warning",Code:"invalid_event_line",Message:fmt.Sprintf("execution journal line %d is invalid JSON: %v",line,err)}); continue }
-        if e.EventID=="" { e.EventID=eventIDFor(e) }; if seen[e.EventID] { continue }; seen[e.EventID]=true
-        a:=accs[e.AttemptID]; if a==nil { a=newAccumulator(e.AttemptID); accs[e.AttemptID]=a }; a.apply(e)
+    out:=Ledger{Version:1,GeneratedAt:now.UTC().Format(time.RFC3339Nano),JournalPath:ExecutionRootPath(project),Attempts:[]Attempt{},Findings:[]LedgerFinding{}}
+    files,err:=executionEventFiles(project)
+    if err!=nil { return out,err }
+
+    accs:=map[string]*accumulator{}
+    seen:=map[string]bool{}
+    for _,path:=range files {
+        file,openErr:=os.Open(path)
+        if openErr!=nil {
+            if errors.Is(openErr,os.ErrNotExist) { continue }
+            return out,openErr
+        }
+        scanner:=bufio.NewScanner(file)
+        scanner.Buffer(make([]byte,64*1024),2*1024*1024)
+        line:=0
+        for scanner.Scan() {
+            line++
+            raw:=strings.TrimSpace(scanner.Text())
+            if raw=="" { continue }
+            var e ExecutionEvent
+            if err:=json.Unmarshal([]byte(raw),&e); err!=nil {
+                out.Findings=append(out.Findings,LedgerFinding{
+                    Severity:"warning",
+                    Code:"invalid_event_line",
+                    Message:fmt.Sprintf("%s line %d is invalid JSON: %v",filepath.Base(path),line,err),
+                })
+                continue
+            }
+            if e.EventID=="" { e.EventID=eventIDFor(e) }
+            if seen[e.EventID] { continue }
+            seen[e.EventID]=true
+            if e.EventKind=="session_metadata" { continue }
+            a:=accs[e.AttemptID]
+            if a==nil { a=newAccumulator(e.AttemptID)
+				accs[e.AttemptID]=a }
+            a.apply(e)
+        }
+        scanErr:=scanner.Err()
+        closeErr:=file.Close()
+        if scanErr!=nil { return out,scanErr }
+        if closeErr!=nil { return out,closeErr }
     }
-    if err:=scanner.Err(); err!=nil { return out,err }
-    for _,a:=range accs { attempt,findings:=a.finish(recentLimit,now); out.Attempts=append(out.Attempts,attempt); out.Findings=append(out.Findings,findings...) }
-    sort.Slice(out.Attempts,func(i,j int)bool { if out.Attempts[i].Terminal!=out.Attempts[j].Terminal { return !out.Attempts[i].Terminal }; if out.Attempts[i].LastObservedAt!=out.Attempts[j].LastObservedAt { return out.Attempts[i].LastObservedAt>out.Attempts[j].LastObservedAt }; return out.Attempts[i].AttemptID<out.Attempts[j].AttemptID })
+
+    for _,a:=range accs {
+        attempt,findings:=a.finish(recentLimit,now)
+        out.Attempts=append(out.Attempts,attempt)
+        out.Findings=append(out.Findings,findings...)
+    }
+    sort.Slice(out.Attempts,func(i,j int)bool {
+        if out.Attempts[i].Terminal!=out.Attempts[j].Terminal { return !out.Attempts[i].Terminal }
+        if out.Attempts[i].LastObservedAt!=out.Attempts[j].LastObservedAt { return out.Attempts[i].LastObservedAt>out.Attempts[j].LastObservedAt }
+        return out.Attempts[i].AttemptID<out.Attempts[j].AttemptID
+    })
     sortFindings(out.Findings)
     return out,nil
 }
 
 func ReconcileLedger(project string,recentLimit int,now time.Time) (Ledger,error) {
-    out,err:=BuildLedger(project,recentLimit,now); if err!=nil { return Ledger{},err }
+    out,err:=BuildLedger(project,recentLimit,now)
+	if err!=nil { return Ledger{},err }
     for _,a:=range out.Attempts {
         if a.BindingState!=BindingAmbiguous && a.CurrentState==StateRuntimeUnknown { out.Findings=append(out.Findings,LedgerFinding{Severity:"info",Code:"runtime_unknown",AttemptID:a.AttemptID,Message:"runtime evidence is insufficient to establish a current execution state"}) }
     }
-    sortFindings(out.Findings); return out,nil
+    sortFindings(out.Findings)
+	return out,nil
 }
 
 func waitingMillis(transitions []Transition,endedAt string,now time.Time) int64 {
     var total time.Duration
     for i,t:=range transitions {
         if t.Kind!="state" || (t.State!=StateWaitingUser && t.State!=StateWaitingApproval) { continue }
-        start,err:=time.Parse(time.RFC3339Nano,t.At); if err!=nil { continue }; end:=now
-        for j:=i+1;j<len(transitions);j++ { if transitions[j].Kind=="state" { if parsed,err:=time.Parse(time.RFC3339Nano,transitions[j].At); err==nil { end=parsed }; break } }
+        start,err:=time.Parse(time.RFC3339Nano,t.At)
+		if err!=nil { continue }
+		end:=now
+        for j:=i+1;j<len(transitions);j++ { if transitions[j].Kind=="state" { if parsed,err:=time.Parse(time.RFC3339Nano,transitions[j].At); err==nil { end=parsed }
+				break } }
         if endedAt!="" { if parsed,err:=time.Parse(time.RFC3339Nano,endedAt); err==nil && parsed.Before(end) { end=parsed } }
         if end.After(start) { total+=end.Sub(start) }
     }
     return total.Milliseconds()
 }
 
-func staleWarnDuration() time.Duration {
+// StaleWarnDuration is the shared advisory threshold for runtime silence.
+func StaleWarnDuration() time.Duration {
     seconds:=1800
     if raw:=strings.TrimSpace(os.Getenv("TASK_MECCA_STALE_WARN_SECONDS")); raw!="" { if parsed,err:=strconv.Atoi(raw); err==nil && parsed>0 { seconds=parsed } }
     return time.Duration(seconds)*time.Second
 }
 
-func addValue(values map[string]bool,value string) { value=strings.TrimSpace(value); if value!="" { values[value]=true } }
-func onlyValue(values map[string]bool) string { if len(values)!=1 { return "" }; for v:=range values { return v }; return "" }
-func firstNonEmptyRuntime(values ...string) string { for _,v:=range values { if strings.TrimSpace(v)!="" { return v } }; return "" }
+func addValue(values map[string]bool,value string) { value=strings.TrimSpace(value)
+	if value!="" { values[value]=true } }
+func onlyValue(values map[string]bool) string { if len(values)!=1 { return "" }
+	for v:=range values { return v }
+	return "" }
+func firstNonEmptyRuntime(values ...string) string { for _,v:=range values { if strings.TrimSpace(v)!="" { return v } }
+	return "" }
 func maxTimeString(current,candidate string) string {
-    if current=="" { return candidate }; a,ea:=time.Parse(time.RFC3339Nano,current); b,eb:=time.Parse(time.RFC3339Nano,candidate)
-    if ea!=nil { return candidate }; if eb!=nil { return current }; if b.After(a) { return candidate }; return current
+    if current=="" { return candidate }
+	a,ea:=time.Parse(time.RFC3339Nano,current)
+	b,eb:=time.Parse(time.RFC3339Nano,candidate)
+    if ea!=nil { return candidate }
+	if eb!=nil { return current }
+	if b.After(a) { return candidate }
+	return current
 }
-func sortFindings(rows []LedgerFinding) { sort.SliceStable(rows,func(i,j int)bool { rank:=func(v string)int { if v=="error" { return 0 }; if v=="warning" { return 1 }; return 2 }; ri,rj:=rank(rows[i].Severity),rank(rows[j].Severity); if ri!=rj { return ri<rj }; if rows[i].AttemptID!=rows[j].AttemptID { return rows[i].AttemptID<rows[j].AttemptID }; return rows[i].Code<rows[j].Code }) }
+func sortFindings(rows []LedgerFinding) { sort.SliceStable(rows,func(i,j int)bool { rank:=func(v string)int { if v=="error" { return 0 }
+			if v=="warning" { return 1 }
+			return 2 }
+		ri,rj:=rank(rows[i].Severity),rank(rows[j].Severity)
+		if ri!=rj { return ri<rj }
+		if rows[i].AttemptID!=rows[j].AttemptID { return rows[i].AttemptID<rows[j].AttemptID }
+		return rows[i].Code<rows[j].Code }) }

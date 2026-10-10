@@ -1,6 +1,7 @@
 package maintenance
 
 import (
+    "encoding/json"
     "os"
     "path/filepath"
     "testing"
@@ -105,4 +106,36 @@ func TestFrameworkSyncCandidatesFollowChannel(t *testing.T) {
     if len(up)!=1 || up[0].Path!=stableProject {
         t.Fatalf("dev sync candidates=%+v",up)
     }
+}
+
+
+func TestReleaseChannelSurvivesRestartAndKeepsCachesIsolated(t *testing.T) {
+    home:=t.TempDir()
+    t.Setenv("TASK_MECCA_HOME",home)
+    t.Setenv("TASK_MECCA_CHANNEL","")
+    t.Setenv("TASK_MECCA_RELEASE_TAG","")
+
+    stable:=VersionInfo{Current:"0.2.50",Latest:"0.2.51",Channel:"stable",CheckedAt:"2026-10-05T00:00:00Z"}
+    dev:=VersionInfo{Current:"0.2.50",Latest:"0.2.52-dev.4",Channel:"dev",CheckedAt:"2026-10-05T00:01:00Z"}
+    for name,info:=range map[string]VersionInfo{"update-check-stable.json":stable,"update-check-dev.json":dev} {
+        data,err:=json.Marshal(info); if err!=nil { t.Fatal(err) }
+        if err:=os.WriteFile(filepath.Join(home,name),data,0644); err!=nil { t.Fatal(err) }
+    }
+
+    if err:=SetChannel("dev"); err!=nil { t.Fatal(err) }
+    // CurrentChannel reads the durable channel file on every call; this models
+    // a new process after Web restart rather than relying on in-memory state.
+    if got:=CurrentChannel(); got!="dev" { t.Fatalf("channel after restart=%q",got) }
+    gotDev:=ReadCachedVersionInfo("0.2.50")
+    if gotDev.Channel!="dev" || gotDev.Latest!="0.2.52-dev.4" {
+        t.Fatalf("dev cache leaked or was lost: %+v",gotDev)
+    }
+
+    if err:=SetChannel("stable"); err!=nil { t.Fatal(err) }
+    if got:=CurrentChannel(); got!="stable" { t.Fatalf("stable channel after restart=%q",got) }
+    gotStable:=ReadCachedVersionInfo("0.2.50")
+    if gotStable.Channel!="stable" || gotStable.Latest!="0.2.51" {
+        t.Fatalf("stable cache leaked or was lost: %+v",gotStable)
+    }
+    if gotDev.Latest==gotStable.Latest { t.Fatal("stable/dev update caches must remain isolated") }
 }

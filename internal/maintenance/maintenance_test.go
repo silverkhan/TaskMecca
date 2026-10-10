@@ -54,3 +54,24 @@ func TestFrameworkVersionNormalizesLegacyLiteralNewline(t *testing.T) {
         t.Fatalf("frameworkVersion=%q",got)
     }
 }
+
+
+func TestPreserveExecutableCreatesRollbackCopy(t *testing.T) {
+    dir:=t.TempDir()
+    exe:=filepath.Join(dir,"task-mecca")
+    want:=[]byte("current-binary")
+    if err:=os.WriteFile(exe,want,0755); err!=nil { t.Fatal(err) }
+    backup,err:=preserveExecutable(exe)
+    if err!=nil { t.Fatal(err) }
+    got,err:=os.ReadFile(backup)
+    if err!=nil { t.Fatal(err) }
+    if string(got)!=string(want) { t.Fatalf("rollback copy=%q want %q",got,want) }
+}
+
+func TestValidateUpgradeBinaryRejectsCorruptDownload(t *testing.T) {
+    path:=filepath.Join(t.TempDir(),"task-mecca")
+    if err:=os.WriteFile(path,[]byte("<html>gateway error</html>"),0755); err!=nil { t.Fatal(err) }
+    if err:=validateUpgradeBinary(path); err==nil {
+        t.Fatal("corrupt/non-Go upgrade binary must be rejected before replacement")
+    }
+}

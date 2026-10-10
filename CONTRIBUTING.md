@@ -8,18 +8,24 @@ Thanks for contributing to Task Mecca.
 - Do not move project-owned backlog data into a central database.
 - Preserve backward compatibility for legacy backlog formats when practical.
 - Keep the Web UI localhost-only and read-only unless a future design explicitly changes that boundary.
-- Prefer standard-library Python for the installed runtime.
+- Maintain a single Go runtime and `goassets/template` as the canonical installed framework. Do not add a Python runtime dependency.
 
 ## Development setup
 
 ```bash
-python -m pip install -e .
-python -m unittest discover -s tests -v
+go test ./...
+go vet ./...
+go build ./cmd/task-mecca
+node --test tests/web_*.test.cjs
 ```
+
+The production runtime is a compiled standalone Go executable. End users do not install Go, Python, or `uv`.
 
 ## Changing managed template files
 
-Files under `src/task_mecca/template/_task_mecca/` become the runtime installed into user projects. The updater records baseline hashes for these files. When adding a new file, decide whether it is framework-managed, customizable-managed, or project-owned and update `src/task_mecca/installer.py` when necessary.
+Files under `goassets/template/_task_mecca/` are embedded into the Go binary and installed into user projects. The installer and updater live under `internal/install/`. When adding or changing a template file, distinguish framework-managed, customizable-managed and project-owned files, and preserve their migration, backup, and consent rules. Never delete user-owned data or unknown legacy files as part of retiring Python support.
+
+Python packaging (`pyproject.toml` / `src/task_mecca/`) and Python/Go parity CI have been retired. New behavior and tests belong in Go and the canonical Web assets.
 
 ## Pull requests
 

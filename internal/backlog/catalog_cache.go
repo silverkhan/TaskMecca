@@ -20,9 +20,25 @@ type catalogCacheEntry struct {
 
 var catalogCache = struct {
     sync.Mutex
-    Refresh sync.Mutex
+    RefreshLocks map[string]*sync.Mutex
     Entries map[string]catalogCacheEntry
-}{Entries:map[string]catalogCacheEntry{}}
+}{
+    RefreshLocks:map[string]*sync.Mutex{},
+    Entries:map[string]catalogCacheEntry{},
+}
+
+// Serialize refreshes for the same backlog only. A background sensor reading
+// a different project's files must not block the foreground project open.
+func catalogRefreshLock(key string) *sync.Mutex {
+    catalogCache.Lock()
+    defer catalogCache.Unlock()
+    lock:=catalogCache.RefreshLocks[key]
+    if lock==nil {
+        lock=&sync.Mutex{}
+        catalogCache.RefreshLocks[key]=lock
+    }
+    return lock
+}
 
 func parseRecordFile(folder,path string) (Record,error) {
     match:=itemName.FindStringSubmatch(filepath.Base(path))
@@ -60,14 +76,16 @@ func parseRecordFile(folder,path string) (Record,error) {
 }
 
 func CachedCatalog(project,root string) ([]Record,error) {
-    catalogCache.Refresh.Lock()
-    defer catalogCache.Refresh.Unlock()
     folder,err:=Select(project,root)
     if err!=nil { return nil,err }
     if folder=="" { return []Record{},nil }
+    key,err:=filepath.Abs(folder)
+    if err!=nil { return nil,err }
+    refresh:=catalogRefreshLock(key)
+    refresh.Lock()
+    defer refresh.Unlock()
     paths,err:=History(folder)
     if err!=nil { return nil,err }
-    key,_:=filepath.Abs(folder)
     catalogCache.Lock()
     previous:=catalogCache.Entries[key]
     catalogCache.Unlock()

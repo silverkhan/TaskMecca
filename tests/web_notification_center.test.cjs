@@ -1,0 +1,55 @@
+const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
+const source=fs.readFileSync('goassets/template/_task_mecca/framework/web/app.js','utf8');
+function app({fetch=async()=>({ok:true,json:async()=>({projects:[]})}),registration=null,construct=()=>{}}={}){
+ const storage=new Map(),elements=new Map(),document={querySelector:selector=>elements.get(selector)||null,querySelectorAll:()=>[],documentElement:{},activeElement:null};
+ const Notification=function(...args){construct(...args);this.close=()=>{}};Notification.permission='granted';
+ const brokerFetch=async(url,options)=>{
+  if(String(url).startsWith('/api/notifications/web')){
+   const request=JSON.parse(options.body);
+   return {ok:true,json:async()=>request.action==='claim'?{granted:true,state:'claimed',token:'fixture-lease'}:{state:request.action==='ack'?'display_requested':'failed'}};
+  }
+  return fetch(url,options);
+ };
+ const context=vm.createContext({fetch:brokerFetch,URLSearchParams,location:{search:'?project=/demo'},navigator:{language:'ko',...(registration?{serviceWorker:{register:async()=>{},ready:registration}}:{})},Notification,window:{isSecureContext:true,focus(){},location:{}},document,localStorage:{getItem:key=>storage.get(key)||null,setItem:(key,value)=>storage.set(key,String(value)),removeItem:key=>storage.delete(key)},queueMicrotask,alert(){},setTimeout,clearTimeout});
+ vm.runInContext(source.slice(0,source.indexOf('\ntranslateChrome();'))+'\nrender=()=>{};globalThis.app={state,sendBrowserNotification,browserDeliveryHistory,mergedNotificationHistory,notificationCenterView,changeWebNotificationSetting,webNotificationEnabled,projectChannelSettingsMarkup,loadNotificationHistory,refreshDiagnostics,diagnosticEntries,diagnosticRecoveryRequest,updateDiagnosticNavigation,renderOperationBanner};',context);
+ context.app.state.project='/demo';return {...context.app,context,storage,elements};
+}
+const task={id:'A-44',title:'알림 내용 <script>'};
+test('browser evidence follows accepted display request, preserves project and deduplicates in-flight calls',async()=>{
+ let done,calls=0;const ready=new Promise(resolve=>done=resolve);const a=app({registration:ready});const first=a.sendBrowserNotification('completed',task,null,'server:/demo:e1','completed','e1');const duplicate=a.sendBrowserNotification('completed',task,null,'server:/demo:e1','completed','e1');assert.equal(a.browserDeliveryHistory().length,0);a.state.project='/other';done({showNotification:async()=>calls++});await Promise.all([first,duplicate]);const rows=a.browserDeliveryHistory();assert.equal(calls,1);assert.equal(rows.length,1);assert.equal(rows[0].event_id,'e1');assert.equal(rows[0].project,'/demo');assert.equal(rows[0].state,'display_requested');await a.sendBrowserNotification('completed',task,null,'server:/demo:e1','completed','e1');assert.equal(calls,1);
+});
+test('failure and disabled settings produce no false browser success; legacy and project off survive',async()=>{
+ const a=app({construct:()=>{throw Error('display rejected')}});await a.sendBrowserNotification('completed',task,null,'failed');assert.equal(a.browserDeliveryHistory().length,0);a.state.notificationSettings.completed=false;assert.equal(a.webNotificationEnabled('/demo','completed'),false);a.changeWebNotificationSetting('/demo','registered',false);a.changeWebNotificationSetting('/demo','enabled',false);assert.equal(a.webNotificationEnabled('/demo','started'),false);assert.equal(a.webNotificationEnabled('/other','started'),true);assert.equal(a.webNotificationEnabled('/demo','registered'),false);a.changeWebNotificationSetting('/demo','enabled',true);assert.equal(a.webNotificationEnabled('/demo','registered'),false);await a.sendBrowserNotification('completed',task,null,'disabled');assert.equal(a.browserDeliveryHistory().length,0);
+});
+test('history joins exact project/event ID and never claims unknown/failed/suppressed delivery success',()=>{
+ const a=app();a.state.notificationCenterTab='history';a.state.notificationHistory=[{event_id:'e1',project:'/demo',task_id:'A-44',kind:'completed',title:'safe <script>',telegram:{state:'sent',sent_at:'2026-10-08T00:01:00Z'}},{event_id:'e2',project:'/demo',kind:'started',telegram:{state:'failed'}},{event_id:'e3',project:'/other',kind:'registered',telegram:{state:'suppressed_project_disabled'}}];a.storage.set('task-mecca-browser-deliveries-v1',JSON.stringify([{event_id:'e1',project:'/demo',task_id:'A-44',state:'display_requested',sent_at:'2026-10-08T00:01:01Z'}]));const rows=a.mergedNotificationHistory();assert.equal(rows.length,3);assert.equal(rows.find(row=>row.event_id==='e1').web.state,'display_requested');a.state.notificationHistoryWindow=rows;a.state.notificationHistoryLoaded=true;const html=a.notificationCenterView();assert.match(html,/전송 성공/);assert.match(html,/표시 요청 성공/);assert.match(html,/실패/);assert.match(html,/근거 없음/);assert.match(html,/safe &lt;script&gt;/);assert.doesNotMatch(html,/<script>/);
+});
+test('resolved operation tombstone prevents same incident reappearing after stale or undated payload',()=>{
+ const a=app(),warning={id:'incident',project:'/demo',task_id:'A-44',kind:'no_signal'};a.renderOperationBanner({snapshot_at:'2026-10-08T00:00:00Z',active:[warning]});assert.equal(a.state.sessionWarnings.length,1);a.renderOperationBanner({snapshot_at:'2026-10-08T00:01:00Z',active:[],recent:[{...warning,recovered_at:'2026-10-08T00:01:00Z'}]});for(const at of ['2026-10-08T00:00:00Z','','2026-10-08T00:02:00Z'])a.renderOperationBanner({snapshot_at:at,active:[warning]});assert.equal(a.state.sessionWarnings.length,0);a.renderOperationBanner({snapshot_at:'2026-10-08T00:03:00Z',active:[{...warning,id:'new-episode'}]});assert.equal(a.state.sessionWarnings.length,1);
+});
+test('diagnostic menu keeps failures visible, removes resolved entries and clipboard text requests no execution',async()=>{
+ let fail=true;const a=app({fetch:async()=>fail?{ok:false,status:500}:{ok:true,json:async()=>({snapshot_at:'2026-10-08T00:00:01Z',health:{contracts:[]},diagnostics:[]})}}),button={hidden:true},count={};a.elements.set('[data-view="issues"]',button);a.elements.set('#issueCount',count);await a.refreshDiagnostics();assert.equal(button.hidden,false);assert.equal(count.textContent,'!');fail=false;await a.refreshDiagnostics();assert.equal(button.hidden,true);const request=a.diagnosticRecoveryRequest({type:'contracts',item:{file:'A-44.md',evidence:'missing acceptance'}});assert.match(request,/A-44.md/);assert.match(request,/자동 복원.*승인하거나 수행한 것은 아닙니다/);assert.equal(a.diagnosticEntries({diagnostics:[{component:'doctor',error:'unavailable'}]}).length,1);
+});
+test('diagnostic late response cannot restore resolved state; project/folder remain isolated and same revision polls refresh',async()=>{
+ const responses=[];const a=app({fetch:()=>new Promise(resolve=>responses.push(resolve))});const first=a.refreshDiagnostics('/demo','folder','r1'),second=a.refreshDiagnostics('/demo','folder','r1');responses[1]({ok:true,json:async()=>({snapshot_at:'2026-10-08T00:01:00Z',health:{contracts:[]}})});await second;responses[0]({ok:true,json:async()=>({snapshot_at:'2026-10-08T00:00:00Z',health:{contracts:['old']}})});await first;assert.equal(a.diagnosticEntries(a.state.diagnosticSnapshots['/demo|folder'].snapshot).length,0);a.state.diagnosticSnapshots['/demo|folder'].checkedAt=Date.now()-16000;const third=a.refreshDiagnostics('/demo','folder','r1');assert.equal(responses.length,3);responses[2]({ok:true,json:async()=>({snapshot_at:'2026-10-08T00:02:00Z',health:{runtime_metadata:['new']}})});await third;assert.equal(a.diagnosticEntries(a.state.diagnosticSnapshots['/demo|folder'].snapshot).length,1);assert.equal(a.state.diagnosticSnapshots['/other|folder'],undefined);
+});
+test('automatic source remap invalidates an in-flight diagnostic success or failure',async()=>{
+ for(const failed of [false,true]){let finish;const a=app({fetch:()=>new Promise(resolve=>finish=resolve)});a.state.attentionScopes['/demo|']='folder-old';const pending=a.refreshDiagnostics('/demo','','r1');a.state.attentionScopes['/demo|']='folder-new';finish(failed?{ok:false,status:500}:{ok:true,json:async()=>({snapshot_at:'2026-10-08T00:00:00Z',health:{contracts:['old-folder']}})});await pending;assert.equal(a.state.diagnosticSnapshots['/demo|'],undefined);}
+});
+test('delivery history coalesces loads and preserves records when subsequent server read fails',async()=>{
+ let finish,fail=false,calls=0;const a=app({fetch:async url=>url.startsWith('/api/notifications/projects')?{ok:true,json:async()=>({projects:[{path:'/demo'}]})}:(calls++,fail?{ok:false,status:500}:new Promise(resolve=>finish=resolve))});const first=a.loadNotificationHistory(),second=a.loadNotificationHistory();await new Promise(setImmediate);assert.equal(calls,1);finish({ok:true,json:async()=>({history:[{project:'/demo',event_id:'original',telegram:{state:'sent'}}]})});await Promise.all([first,second]);fail=true;await a.loadNotificationHistory();assert.equal(a.state.notificationHistory.length,1);assert.equal(a.state.notificationHistoryErrors[0],'/demo');
+});
+test('hook resolution prevents stale, undated or equal-time assignment warnings from reaching browser consumer',async()=>{
+ const emitted=[],a=app({construct:(...args)=>emitted.push(args)});vm.runInContext('globalThis.app.processTaskNotifications=processTaskNotifications',a.context);
+ const warning={...task,file_state:'doing',state:'assignment_unobserved',attention_reason:{type:'assignment_unobserved',message:'first hook missing'},updated_at:'original-assignment'};
+ a.context.app.processTaskNotifications({snapshot_at:'2026-10-08T00:01:00Z',all_items:{'A-44':{...warning,attention_reason:null,state:'doing'}}});
+ for(const at of ['2026-10-08T00:00:00Z','','2026-10-08T00:01:00Z'])a.context.app.processTaskNotifications({snapshot_at:at,all_items:{'A-44':warning}});
+ await new Promise(setImmediate);assert.equal(emitted.length,0);
+ a.context.app.processTaskNotifications({snapshot_at:'2026-10-08T00:02:00Z',all_items:{'A-44':warning}});await new Promise(setImmediate);assert.equal(emitted.length,0);
+ // Only a durable server event can trigger the current warning as a push.
+ a.context.app.processTaskNotifications({snapshot_at:'2026-10-08T00:03:00Z',all_items:{'A-44':warning},notification_events:[{id:'warning-event',task_id:'A-44',kind:'intervention',reason_type:'assignment_unobserved',at:new Date().toISOString()}]});
+ await new Promise(setImmediate);assert.equal(emitted.length,1);
+});
+test('packaged shell includes settings dialog and mobile center entry, and has no separate attention menu',()=>{
+ const html=fs.readFileSync('goassets/template/_task_mecca/framework/web/index.html','utf8');assert.match(html,/id="notificationPanel"[^>]*role="dialog"/);assert.match(html,/id="projectNotificationsNav"/);assert.doesNotMatch(html,/id="notificationCenterTop"/);assert.doesNotMatch(html,/data-view="attention"/);assert.match(html,/data-view="issues"[^>]*hidden/);
+});

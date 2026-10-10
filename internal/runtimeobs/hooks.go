@@ -1,15 +1,27 @@
 package runtimeobs
 
 import (
+    "github.com/silverkhan/TaskMecca/internal/projectguard"
     "encoding/json"
     "errors"
     "fmt"
     "os"
     "path/filepath"
     "strings"
+    "time"
 )
 
 var lifecycleHookEvents=[]string{"SubagentStart","SubagentStop","PreToolUse","PostToolUse"}
+
+func hookEventsForProvider(provider string) []string {
+    events:=append([]string{},lifecycleHookEvents...)
+    // Claude Code officially exposes an explicit/custom session_title only on
+    // SessionStart. Codex SessionStart has no supported name/title field.
+    if strings.EqualFold(strings.TrimSpace(provider),"claude") {
+        events=append([]string{"SessionStart"},events...)
+    }
+    return events
+}
 
 type HookSetup struct {
     Provider string `json:"provider"`
@@ -17,6 +29,24 @@ type HookSetup struct {
     Installed bool `json:"installed"`
     Changed bool `json:"changed"`
     Events map[string]bool `json:"events"`
+    ConfiguredAt string `json:"configured_at,omitempty"`
+}
+
+// Codex and Claude both load their user-level hook file below the user's
+// home directory. Keep this separate from the currently selected project.
+func GlobalHookHome() (string,error) { return os.UserHomeDir() }
+
+func GlobalHookStatus(provider string) (HookSetup,error) {
+    home,err:=GlobalHookHome();if err!=nil{return HookSetup{},err}
+    return HookStatus(home,provider)
+}
+func EnsureGlobalHooks(provider string) (HookSetup,error) {
+    home,err:=GlobalHookHome();if err!=nil{return HookSetup{},err}
+    return EnsureHooks(home,provider)
+}
+func DisableGlobalHooks(provider string) (HookSetup,error) {
+    home,err:=GlobalHookHome();if err!=nil{return HookSetup{},err}
+    return DisableHooks(home,provider)
 }
 
 func HookConfigPath(project,provider string) (string,error) {
@@ -33,14 +63,19 @@ func HookStatus(project,provider string) (HookSetup,error) {
     out:=HookSetup{Provider:provider,Path:path,Events:map[string]bool{}}
     doc,exists,err:=readHookDocument(path); if err!=nil { return out,err }
     if !exists { return out,nil }
+    if info,statErr:=os.Stat(path);statErr==nil {out.ConfiguredAt=info.ModTime().UTC().Format(time.RFC3339Nano)}
     hooks,_:=doc["hooks"].(map[string]any)
-    for _,event:=range lifecycleHookEvents { out.Events[event]=hasTaskMeccaHook(hooks[event],provider) }
+    for _,event:=range hookEventsForProvider(provider) { out.Events[event]=hasTaskMeccaHook(hooks[event],provider) }
     out.Installed=true
-    for _,event:=range lifecycleHookEvents { if !out.Events[event] { out.Installed=false } }
+    for _,event:=range hookEventsForProvider(provider) { if !out.Events[event] { out.Installed=false } }
     return out,nil
 }
 
 func EnsureHooks(project,provider string) (HookSetup,error) {
+    releaseGuard, guardErr := projectguard.AcquireWrite(project)
+    if guardErr != nil { return HookSetup{}, guardErr }
+    defer releaseGuard()
+
     provider=strings.ToLower(strings.TrimSpace(provider))
     path,err:=HookConfigPath(project,provider); if err!=nil { return HookSetup{},err }
     doc,_,err:=readHookDocument(path); if err!=nil { return HookSetup{},err }
@@ -48,7 +83,7 @@ func EnsureHooks(project,provider string) (HookSetup,error) {
     if !ok || hooks==nil { hooks=map[string]any{}; doc["hooks"]=hooks }
 
     changed:=false
-    for _,event:=range lifecycleHookEvents {
+    for _,event:=range hookEventsForProvider(provider) {
         if hasTaskMeccaHook(hooks[event],provider) { continue }
         current:=asSlice(hooks[event])
         current=append(current,desiredHook(event,provider))
@@ -61,11 +96,92 @@ func EnsureHooks(project,provider string) (HookSetup,error) {
         if err:=os.MkdirAll(filepath.Dir(path),0755); err!=nil { return HookSetup{},err }
         mode:=os.FileMode(0644)
         if info,statErr:=os.Stat(path); statErr==nil { mode=info.Mode().Perm() }
-        if err:=os.WriteFile(path,data,mode); err!=nil { return HookSetup{},err }
+        if err:=writeHookDocument(path,data,mode); err!=nil { return HookSetup{},err }
     }
     status,err:=HookStatus(project,provider); if err!=nil { return HookSetup{},err }
     status.Changed=changed
     return status,nil
+}
+
+func DisableHooks(project,provider string) (HookSetup,error) {
+    provider=strings.ToLower(strings.TrimSpace(provider))
+    path,err:=HookConfigPath(project,provider); if err!=nil { return HookSetup{},err }
+    doc,exists,err:=readHookDocument(path); if err!=nil { return HookSetup{},err }
+    if !exists {
+        return HookStatus(project,provider)
+    }
+    hooks,ok:=doc["hooks"].(map[string]any)
+    if !ok || hooks==nil {
+        return HookStatus(project,provider)
+    }
+
+    changed:=false
+    for _,event:=range hookEventsForProvider(provider) {
+        entries:=asSlice(hooks[event])
+        if len(entries)==0 { continue }
+        filteredEntries:=make([]any,0,len(entries))
+        for _,entry:=range entries {
+            row,ok:=entry.(map[string]any)
+            if !ok {
+                filteredEntries=append(filteredEntries,entry)
+                continue
+            }
+            commands:=asSlice(row["hooks"])
+            filteredCommands:=make([]any,0,len(commands))
+            removed:=false
+            for _,hook:=range commands {
+                item,ok:=hook.(map[string]any)
+                if ok && strings.TrimSpace(fmt.Sprint(item["command"]))=="task-mecca runtime observe "+provider {
+                    removed=true
+                    changed=true
+                    continue
+                }
+                filteredCommands=append(filteredCommands,hook)
+            }
+            if !removed || len(filteredCommands)>0 {
+                if removed {
+                    cloned:=map[string]any{}
+                    for key,value:=range row { cloned[key]=value }
+                    cloned["hooks"]=filteredCommands
+                    filteredEntries=append(filteredEntries,cloned)
+                } else {
+                    filteredEntries=append(filteredEntries,row)
+                }
+            }
+        }
+        if len(filteredEntries)==0 {
+            delete(hooks,event)
+        } else {
+            hooks[event]=filteredEntries
+        }
+    }
+
+    if changed {
+        if len(hooks)==0 { delete(doc,"hooks") }
+        data,err:=json.MarshalIndent(doc,"","  "); if err!=nil { return HookSetup{},err }
+        data=append(data,'\n')
+        mode:=os.FileMode(0644)
+        if info,statErr:=os.Stat(path); statErr==nil { mode=info.Mode().Perm() }
+        if err:=writeHookDocument(path,data,mode); err!=nil { return HookSetup{},err }
+    }
+    status,err:=HookStatus(project,provider); if err!=nil { return HookSetup{},err }
+    status.Changed=changed
+    return status,nil
+}
+
+func writeHookDocument(path string,data []byte,mode os.FileMode) error {
+    // Preserve dotfile symlinks and never leave a partially written user config.
+    target:=path
+    if resolved,err:=filepath.EvalSymlinks(path);err==nil {target=resolved}
+    if err:=os.MkdirAll(filepath.Dir(target),0755);err!=nil{return err}
+    file,err:=os.CreateTemp(filepath.Dir(target),".task-mecca-hooks-*.tmp")
+    if err!=nil{return err}
+    defer os.Remove(file.Name())
+    if err:=file.Chmod(mode);err!=nil{file.Close();return err}
+    if _,err:=file.Write(data);err!=nil{file.Close();return err}
+    if err:=file.Sync();err!=nil{file.Close();return err}
+    if err:=file.Close();err!=nil{return err}
+    return os.Rename(file.Name(),target)
 }
 
 func readHookDocument(path string) (map[string]any,bool,error) {

@@ -1,0 +1,5 @@
+Command: go test -race ./internal/webui -run '^TestOperationWebProcessContinuesAfterBrowserClose$' -count=1
+Source: untouched git archive bbc4d1919eb4da44edfbfba27bf3afe406d3a964
+Working directory: /tmp/task-mecca-a29-baseline-jFLEqF
+
+ok  	github.com/silverkhan/TaskMecca/internal/webui	4.194s

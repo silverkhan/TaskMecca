@@ -1,0 +1,23 @@
+Combined source head: 3902816b72112ad2762b969b4a363bb59cd61eb4
+Inherited origin/dev: 1f4cbeee8e402fc0463d2172194e0df2c7aa4b2e (A28 final 3ac91a5 ancestry)
+Environment: go1.27.1 darwin/arm64; bundled Python3.12.14
+Commands: go test ./...; go vet ./...; go test -race ./internal/notify ./cmd/task-mecca -count=1; go test ./internal/notify ./cmd/task-mecca -run 'Resume|Notification' -count=1
+Exit status: 0; go vet output empty/success
+
+ok  	github.com/silverkhan/TaskMecca/cmd/task-mecca	0.407s
+?   	github.com/silverkhan/TaskMecca/goassets	[no test files]
+ok  	github.com/silverkhan/TaskMecca/internal/backlog	(cached)
+ok  	github.com/silverkhan/TaskMecca/internal/handoff	(cached)
+ok  	github.com/silverkhan/TaskMecca/internal/install	(cached)
+ok  	github.com/silverkhan/TaskMecca/internal/maintenance	(cached)
+ok  	github.com/silverkhan/TaskMecca/internal/notify	(cached)
+ok  	github.com/silverkhan/TaskMecca/internal/projectguard	(cached)
+ok  	github.com/silverkhan/TaskMecca/internal/runtimeobs	(cached)
+ok  	github.com/silverkhan/TaskMecca/internal/webui	29.237s
+ok  	github.com/silverkhan/TaskMecca/internal/notify	6.725s
+ok  	github.com/silverkhan/TaskMecca/cmd/task-mecca	1.570s
+ok  	github.com/silverkhan/TaskMecca/internal/notify	0.788s
+ok  	github.com/silverkhan/TaskMecca/cmd/task-mecca	0.824s
+Python unittest: 30 tests PASS (1.587s), exit0
+git diff --check: PASS
+git diff origin/dev: only 12 A29 notify/CLI/docs/handoff evidence files; no UI/server/renderer/operations patch.

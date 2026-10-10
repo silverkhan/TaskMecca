@@ -1,0 +1,6 @@
+{"id":"handoff-98c11b793f35c7b93cd0","kind":"prepared","event":"worker_done","task":"A-11","source_agent":"/root/controller/isanghaessi","source_attempt":"run-1366f4977107adb4","at":"2026-10-06T17:49:49.582951Z"}
+{"id":"handoff-98c11b793f35c7b93cd0","kind":"step_succeeded","step":"dispatch","result":"ok","at":"2026-10-06T17:49:54.091079Z"}
+{"id":"handoff-98c11b793f35c7b93cd0","kind":"retargeted","at":"2026-10-06T17:52:29.054161Z"}
+{"id":"handoff-98c11b793f35c7b93cd0","kind":"claimed","at":"2026-10-06T17:52:29.118515Z"}
+{"id":"handoff-98c11b793f35c7b93cd0","kind":"step_failed","step":"contract-verified","result":"failed","at":"2026-10-06T17:53:13.43088Z"}
+{"id":"handoff-98c11b793f35c7b93cd0","kind":"applied","step":"applied","result":"ok","at":"2026-10-06T18:02:23.88756Z"}

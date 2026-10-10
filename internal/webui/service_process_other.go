@@ -5,7 +5,10 @@ package webui
 import (
     "os"
     "os/exec"
+    "path/filepath"
     "runtime"
+    "strconv"
+    "strings"
 )
 
 func startManagedWebProcess(exe string,args []string,project string) error {
@@ -31,24 +34,71 @@ func stopManagedWebProcess() error { return nil }
 func prepareManagedWebRestart() (bool,error) { return false,nil }
 
 func detachedWebRestart(exe string,args []string,project string) error {
+    return detachedWebRestartWithRollback(exe,args,project,"",DefaultPort)
+}
+
+func launchdRollbackWatchdog(exe,previous,targetInstance string,port int) error { return nil }
+
+func psQuote(value string) string { return "'" + strings.ReplaceAll(value,"'","''") + "'" }
+
+func windowsRollbackScript(exe string,args []string,project,previous string,port int) string {
+    return windowsRollbackScriptWithAttempts(exe,args,project,previous,port,30)
+}
+
+func windowsRollbackScriptWithAttempts(exe string,args []string,project,previous string,port,attempts int) string {
+    quotedArgs:=make([]string,0,len(args))
+    for _,arg:=range args { quotedArgs=append(quotedArgs,psQuote(arg)) }
+    argList:="@("+strings.Join(quotedArgs,",")+")"
+    startArgs:=""
+    if len(args)>0 { startArgs=" -ArgumentList $args" }
+    health:=psQuote("http://127.0.0.1:"+strconv.Itoa(port)+"/api/health")
+    var b strings.Builder
+    b.WriteString("$ErrorActionPreference='Stop'\r\n")
+    b.WriteString("$exe="+psQuote(exe)+"\r\n$project="+psQuote(project)+"\r\n$args="+argList+"\r\n")
+    if previous!="" {
+        notice:=psQuote(upgradeRecoveryPath())
+        noticeDir:=psQuote(filepath.Dir(upgradeRecoveryPath()))
+        prev:=psQuote(previous)
+        b.WriteString("function Restore-Previous([string]$reason){ New-Item -ItemType Directory -Force -Path "+noticeDir+" | Out-Null; Copy-Item -Force "+prev+" $exe; $n=@{id=[guid]::NewGuid().ToString();status='rolled_back';at=(Get-Date).ToUniversalTime().ToString('o');message=$reason}|ConvertTo-Json -Compress; [IO.File]::WriteAllText("+notice+",$n); Start-Process -FilePath $exe"+startArgs+" -WorkingDirectory $project }\r\n")
+    }
+    b.WriteString("Start-Sleep -Seconds 1\r\n")
+    if previous!="" {
+        marker:=psQuote(exe+".upgrade.state")
+        b.WriteString("$handoff=''; for($i=0;$i -lt 35;$i++){ if(Test-Path "+marker+"){ $handoff=(Get-Content -Raw "+marker+").Trim(); Remove-Item -Force "+marker+" -ErrorAction SilentlyContinue; break }; Start-Sleep -Seconds 1 }\r\n")
+        b.WriteString("if($handoff -eq 'rolled_back'){ Restore-Previous 'Upgrade replacement failed; previous binary restored.'; exit 0 }\r\n")
+        b.WriteString("if($handoff -eq 'failed' -or $handoff -eq ''){ Restore-Previous 'Upgrade replacement handoff failed; previous binary restored.'; exit 0 }\r\n")
+        b.WriteString("try { $p=Start-Process -FilePath $exe"+startArgs+" -WorkingDirectory $project -PassThru } catch { Restore-Previous 'Upgraded Web could not start; previous binary restored.'; exit 0 }\r\n")
+        b.WriteString("$healthy=$false\r\nfor($i=0;$i -lt "+strconv.Itoa(attempts)+";$i++){ Start-Sleep -Seconds 1; try { $r=Invoke-WebRequest -UseBasicParsing -TimeoutSec 1 "+health+"; if($r.StatusCode -eq 200){$healthy=$true;break} } catch {} }\r\n")
+        b.WriteString("if(-not $healthy){ try { Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue } catch {}; try { $p.WaitForExit() } catch {}; Restore-Previous 'Upgraded Web failed health check; previous binary restored.' }\r\n")
+    } else {
+        b.WriteString("$p=Start-Process -FilePath $exe"+startArgs+" -WorkingDirectory $project -PassThru\r\n")
+    }
+    return b.String()
+}
+
+func unixRollbackScript(exe,previous string,port,attempts int) string {
+    health:="http://127.0.0.1:"+strconv.Itoa(port)+"/api/health"
+    notice:=upgradeRecoveryPath()
+    q:=func(v string) string { return "'" + strings.ReplaceAll(v,"'","'\\''") + "'" }
+    return "sleep 1; \"$@\" & child=$!; i=0; while [ $i -lt "+strconv.Itoa(attempts)+" ]; do sleep 1; if curl -fsS --max-time 1 "+q(health)+" >/dev/null 2>&1; then exit 0; fi; i=$((i+1)); done; kill $child >/dev/null 2>&1 || true; cp "+q(previous)+" "+q(exe)+"; chmod +x "+q(exe)+"; mkdir -p "+q(filepath.Dir(notice))+"; printf '%s\\n' '{\"id\":\"rollback-'$(date -u +%Y%m%dT%H%M%SZ)'-$\",\"status\":\"rolled_back\",\"at\":\"'$(date -u +%Y-%m-%dT%H:%M:%SZ)'\",\"message\":\"Upgraded Web failed health check; previous binary restored.\"}' > "+q(notice)+"; exec \"$@\"" 
+}
+
+func detachedWebRestartWithRollback(exe string,args []string,project,previous string,port int) error {
     if runtime.GOOS=="windows" {
-        helper,err:=os.CreateTemp("","task-mecca-web-restart-*.cmd")
+        helper,err:=os.CreateTemp("","task-mecca-web-restart-*.ps1")
         if err!=nil { return err }
         helperPath:=helper.Name()
-        body:="@echo off\r\ntimeout /t 1 /nobreak >nul\r\nstart \"\" /D \""+project+"\" \""+exe+"\""
-        for _,arg:=range args {
-            body+=" \""+arg+"\""
-        }
-        body+="\r\ndel \"%~f0\"\r\n"
-        if _,err=helper.WriteString(body); err!=nil { _=helper.Close(); return err }
+        if _,err=helper.WriteString(windowsRollbackScript(exe,args,project,previous,port)); err!=nil { _=helper.Close(); return err }
         if err=helper.Close(); err!=nil { return err }
-        cmd:=exec.Command("cmd.exe","/D","/C","start","","/MIN",helperPath)
+        cmd:=exec.Command("powershell.exe","-NoProfile","-ExecutionPolicy","Bypass","-File",helperPath)
         cmd.Dir=project
         if err=cmd.Start(); err!=nil { return err }
         return cmd.Process.Release()
     }
 
-    shellArgs:=append([]string{"-c","sleep 1; exec \"$@\"","task-mecca-web-restart",exe},args...)
+    script:=unixRollbackScript(exe,previous,port,30)
+    if previous=="" { script="sleep 1; \"$@\" & child=$!; wait $child" }
+    shellArgs:=append([]string{"-c",script,"task-mecca-web-restart",exe},args...)
     cmd:=exec.Command("sh",shellArgs...)
     cmd.Dir=project
     cmd.Stdout=os.Stdout

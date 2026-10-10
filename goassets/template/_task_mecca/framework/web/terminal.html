@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>Task Mecca Terminal</title>
+  <meta name="theme-color" content="#0a0e1b" />
+  <script src="/theme-boot.js"></script>
+  <link rel="stylesheet" href="/style.css" />
+  <link rel="stylesheet" href="/terminal.css" />
+</head>
+<body class="terminal-page">
+  <div class="terminal-app">
+    <header class="terminal-header">
+      <a class="terminal-back" id="terminalBack" href="/">← Task Mecca</a>
+      <div class="terminal-heading">
+        <strong>Terminal</strong>
+        <span id="terminalProject">Loading…</span>
+      </div>
+      <div class="terminal-connection" id="terminalConnection"><span class="terminal-dot"></span><span>Checking…</span></div>
+    </header>
+
+    <main class="terminal-main">
+      <section id="terminalSecurity" class="terminal-security">
+        <div class="terminal-loading">Checking terminal access…</div>
+      </section>
+
+      <section id="terminalWorkspace" class="terminal-workspace" hidden>
+        <div class="terminal-toolbar">
+          <div class="terminal-toolbar-main">
+            <strong id="terminalShellLabel">Shell</strong>
+            <span id="terminalCwd"></span>
+          </div>
+          <div class="terminal-toolbar-actions">
+            <button type="button" class="terminal-btn secondary terminal-web-restart-btn" id="terminalWebRestartBtn" hidden>Restart Web service</button>
+            <button type="button" class="terminal-btn secondary" id="terminalCopyBtn" hidden>Copy</button>
+            <button type="button" class="terminal-btn secondary" id="terminalPasteBtn" hidden>Paste</button>
+            <button type="button" class="terminal-btn secondary" id="terminalInterruptBtn" hidden>Ctrl+C</button>
+            <button type="button" class="terminal-btn secondary" id="terminalRestartBtn" hidden>Restart</button>
+            <button type="button" class="terminal-btn danger" id="terminalCloseBtn" hidden>Close</button>
+            <button type="button" class="terminal-btn" id="terminalStartBtn">Start terminal</button>
+          </div>
+        </div>
+        <div class="terminal-web-restart-status" id="terminalWebRestartStatus" role="status" aria-live="polite" hidden></div>
+        <div class="terminal-surface" id="terminalSurface">
+          <div id="xtermHost" class="xterm-host" hidden></div>
+          <pre id="terminalFallbackOutput" class="terminal-fallback-output" hidden></pre>
+          <div id="terminalFallbackComposer" class="terminal-fallback-composer" hidden>
+            <span>&gt;</span>
+            <input id="terminalFallbackInput" autocomplete="off" autocapitalize="off" spellcheck="false" />
+            <button type="button" id="terminalFallbackSend">Send</button>
+          </div>
+          <div id="terminalIdle" class="terminal-idle">
+            <div class="terminal-idle-mark">&gt;_</div>
+            <strong id="terminalIdleTitle">Terminal ready</strong>
+            <p id="terminalIdleText">Start a shell in the selected project directory.</p>
+          </div>
+        </div>
+        <div class="terminal-footer">
+          <span id="terminalRuntime">PTY: ready</span>
+          <span id="terminalLifecycle">Detached sessions close automatically after 5 minutes.</span>
+        </div>
+      </section>
+
+      <div id="terminalPasteSheet" class="terminal-paste-sheet" hidden>
+        <div class="terminal-paste-card" role="dialog" aria-modal="true" aria-labelledby="terminalPasteTitle">
+          <strong id="terminalPasteTitle">Paste into Terminal</strong>
+          <p id="terminalPasteHelp">Long-press below and paste from your device.</p>
+          <textarea id="terminalPasteInput" rows="4" autocomplete="off" autocapitalize="off" spellcheck="false"></textarea>
+          <div class="terminal-paste-actions">
+            <button type="button" class="terminal-btn secondary" id="terminalPasteCancel">Cancel</button>
+            <button type="button" class="terminal-btn" id="terminalPasteSend">Paste</button>
+          </div>
+        </div>
+      </div>
+
+      <details id="terminalEmergency" class="terminal-emergency">
+        <summary>
+          <span>
+            <strong id="terminalEmergencyTitle">Emergency commands</strong>
+            <small id="terminalEmergencyHint">Copy a command and paste it into the terminal when recovery is needed.</small>
+          </span>
+          <span class="terminal-emergency-chevron" aria-hidden="true">⌄</span>
+        </summary>
+        <div id="terminalEmergencyBody" class="terminal-emergency-body"></div>
+      </details>
+    </main>
+  </div>
+  <script src="/terminal.js"></script>
+</body>
+</html>

@@ -1,0 +1,11 @@
+# A22 validation progress
+
+Contract hash 693c97e8b07b5be2c79c5e2a1007ce75d847e18bd4cd598ea83cb34b6f7b4f8a. Assignment assignment-d8eb99b1fc4da14b527ef7cbd538b65f; observed attempt run-188db30778effde0; runtime 01a11477-13aa-76e3-866a-a8d007002787; turn 01a114ae-28bb-7663-9778-34f4f5eb3250; session 01a1101a-cbfd-79e2-91ee-6018b9bf2924. Parent owns operational lifecycle/merge.
+
+Read-only operational diagnosis: history cleanup_failed source exists and has no .git marker in leaf/ancestors tested. ~/.Trash stat succeeds but listing returns Operation not permitted. Historical exact syscall is unavailable because old history omitted errors. Served assets match baseline per Controller; backend binary not independently SHA-correlated. Operational18765 was not restarted or mutated.
+
+Native implementation stages through existing Darwin fd-anchored exclusive rename or Windows handle-relative exclusive rename, then native recoverable Trash. Native success records opaque recovery locator plus staging path; OS Restore returns to staging, then user moves to original full path without overwrite. Missing callback/output/timeout never becomes false success; unknown state blocks retry. Original repo/shared/management safety is retained. Native APIs do not guarantee adversarial same-user content mutation atomicity; identity is checked again immediately before native transfer and shell callbacks.
+
+macOS JXA bridge trial crashed while retrieving native output pointers. Test-only unique TaskMecca recycle fixtures may remain in system Trash; native listing read is denied, exact recovery inventory not yet obtained. Production code now uses purego direct Foundation NSURL**/NSError** pointers (no compiler/Finder/Automation dependency). Actual macOS native recycle, native restore and payload hash integration passed. Windows support is not yet PASS until actual mandatory native CI recycle/restore/hash job succeeds. No permanent-delete fallback is used.
+
+UI skill: impeccable/polish/craft-floor read directly; narrow incumbent refinement. Context script invoked once; absent PRODUCT/DESIGN uses existing UI. One batched responsive/theme/interaction QA, at most one confirmation, and detector once remain pending.

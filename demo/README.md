@@ -5,5 +5,5 @@ This folder contains small example backlog files showing Simple, Defined, and ar
 To explore them with a local Task Mecca runtime, initialize Task Mecca in a scratch project and copy `demo/data/backlog/` to that project's `_task_mecca/data/backlog/`, then run:
 
 ```bash
-uv run _task_mecca/framework/collab_tools.py web
+task-mecca web
 ```

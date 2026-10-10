@@ -1,5 +1,19 @@
 # Task Mecca Session Guide
 
+## Shared execution checklist
+
+Distinguish forbidden manual Worker operational ledger writes from authorized CLI preflight ephemeral probe/cache and automatic runtime hook observations. Follow the shared protocol for durable failure/unknown report retention and retrieval before cleanup.
+
+The [execution protocol](EXECUTION_PROTOCOL.en.md) defines the single canonical writer, ordered assignment gates, exact native Controller message/resume transport, race and duplicate handling, and restart/finalization checks. The Controller writes the original canonical backlog/runtime as facts occur, independently of dev integration. Workers report evidence and do not write either the original or copied backlog/runtime. Root ACK/wake is never a completion gate. These are agent procedures, not CLI enforced automatic notification, resume, or turn termination.
+
+## Root return and independent completion after registration
+
+An execution-authorized registration hands off directly to the prepared Controller identity. Once registration and handoff are confirmed, Root immediately returns to receiving user input and does not wait for, poll, relay, or require an acknowledgement of Controller completion. The Controller independently finishes DONE/BLOCKED verification, durable ledger finalization, and external updates. `root-reported` is a best-effort record when a result can be announced, not a completion gate; a failed notification or no new Root turn never blocks done. If user judgment is needed, the Controller records a durable hold and resume condition for the next Root conversation.
+
+## Git worktree integration
+
+Before dispatch, record the canonical backlog root, original repository/workspace path, integration branch and base SHA, Worker worktree/branch, and prohibited scope. The sole canonical ledger is the original workspace's `_task_mecca/data/backlog/`; copied worktree backlog/runtime must neither be edited nor registered for monitoring. Workers report commits, pushes, and evidence only. The Controller is the sole integration writer: check latest target, dirty state, and active writers before serial merging. Put conflicts or unsafe trees on hold with a resume condition. Before DONE, record ancestry evidence that the designated local integration branch in the original repository contains the merged SHA, and verify PR/CI/remote-local sync when relevant. Clean up only an exactly identified worktree while preserving uncommitted and ignored files; never delete or reset the original workspace or canonical data.
+
 Task Mecca documentation starts with what the user needs to do first. Internal role, permission, and lifecycle rules follow the Quick Start.
 
 # Quick Start — User workflow
@@ -14,7 +28,6 @@ task-mecca web
 
 `task-mecca web` starts a user-level singleton Web service in the background and opens the browser. The default port is `18765`; Task Mecca does not silently increment to another port. If the Web service is already running, the existing instance and URL are reused. With the default `--host auto`, Task Mecca serves local HTTP on `127.0.0.1:18765` and, when Tailscale is detected, directly serves HTTPS on the Tailscale interface using the same port. On Windows/Linux, the local Web service becomes available first while Tailscale HTTPS certificate setup finishes in the background, so a slow first certificate provision does not turn local startup into a false failure. The remote URL is `https://<machine>.<tailnet>.ts.net:18765`. Tailscale Serve is not required. Use `--host <ip>` or `--port <port>` to override explicitly. The dashboard is read-only and shows backlog state, subagent workload, lifecycle timing, Needs Attention, and access observations.
 
-
 Web service controls:
 
 ```bash
@@ -27,6 +40,8 @@ task-mecca web --foreground
 ```
 
 Background state and logs are stored under the user-level `~/.task-mecca/web/` directory. If the default port `18765` is occupied by another program, Task Mecca reports an error instead of silently moving to `18766`; use `--port` when an explicit override is needed.
+
+The sidebar **OPERATIONS → Terminal** opens a real PTY shell with the selected project root as its working directory. macOS/Linux use the user shell (zsh/bash/sh); Windows uses pwsh/PowerShell/cmd through ConPTY. Localhost access is always available. Task Mecca treats its verified Tailscale HTTPS path as the trusted remote-management boundary, so Remote Terminal is available there by default without a prior localhost activation step. Remote Terminal is available **only through Tailscale HTTPS**; ordinary LAN/public-network requests are rejected. The remote setting can be turned off or back on from localhost or the verified Tailscale page. Detached browser sessions are retained for five minutes for reconnection and are then closed automatically. xterm.js provides ANSI, interactive keys, Ctrl+C, and resizing when available; a basic command-input fallback remains available when the browser runtime cannot be loaded.
 
 For direct Tailscale HTTPS, MagicDNS and HTTPS Certificates must be enabled in the Tailscale admin DNS settings. Task Mecca stores the issued certificate under `~/.task-mecca/web/tls/` and renews it only when needed. If HTTPS provisioning is unavailable, `task-mecca web status` reports the reason.
 
@@ -41,7 +56,6 @@ Page size defaults to **Auto** and is calculated from viewport height and measur
 Keyboard navigation: `↑/↓`, `Enter/→`, `←/Esc`, `/`, and `PgUp/PgDn`.
 
 The top bar includes a **Language** dropdown. `한국어` and `English` are currently supported. The selected language is persisted in `localStorage`. UI text, generated states/messages, controls, and the User Manual follow the selection. Backlog Markdown authored by users is never machine-translated. Additional languages can be added through the language registry and matching localized manual files.
-
 
 ## 2. Activate the Root session
 
@@ -92,6 +106,21 @@ task-mecca preflight --require-full-access --json
 5. If status is `restricted` or `unknown`, do not spawn a subagent. Ask the user to enable Full Access, then rerun the effective probe.
 
 Non-executable discussion is not blocked by this gate.
+
+### Event-driven execution handoff
+
+Execution-authorized work must not wait for another Root user turn after Registrar or Worker completion.
+
+- Root prepares an exact `/root/controller` runtime identity before dispatching Registrar.
+- Registrar directly messages or resumes Controller after successful registration.
+- Worker directly messages or resumes Controller when reporting DONE/BLOCKED.
+- Resuming a completed agent starts a new turn and therefore requires a fresh Full Access preflight.
+- A message to a currently running agent is distinct from resuming a completed agent.
+- Missing, ambiguous, cancelled, or permission-blocked targets are not recorded as successful handoffs.
+- Use `task-mecca handoff capability show <provider> --json`; runtime smoke-test evidence recorded with `capability record` overrides builtin baselines, so dispatch does not rely on provider names alone.
+- See `collab.md` and `roles/*.md` for the canonical protocol.
+
+`_task_mecca/.runtime/handoffs/events.jsonl` is ephemeral orchestration evidence and does not replace the backlog/Git contract.
 
 ## 5. When Full Access is not confirmed
 
@@ -159,16 +188,13 @@ Registrar never changes the lane chosen by Root.
 
 Every real worker dispatch must follow:
 
+Follow the complete [shared assignment checklist](EXECUTION_PROTOCOL.en.md#assignment-checklist) for the ordered gates.
+
 ```text
-fresh active Full Access preflight
-        +
-fresh backlog state confirmed
-        +
-worker identity/scope decided
-        ↓
-todo → doing + Agent claim
-        ↓
-subagent dispatch
+fresh preflight → canonical inspect → identity/scope
+→ doing + Agent + change scope → runtime assign + lifecycle assigned
+→ actual dispatch → exact runtime bind → canonical post-inspect
+→ actual started evidence (recorded separately)
 ```
 
 Never reverse this order.
@@ -245,7 +271,7 @@ Filesystem layout mirrors ownership:
 
 The installer does not pre-create `data/` or a backlog. On first registration Registrar calls `ensure-backlog`, reuses an existing ledger when present, and otherwise creates canonical `data/backlog/`. Durable audit/measurement/test evidence created by agents belongs under `data/`; Task Mecca does not standardize arbitrary artifact subfolder names.
 
-When an upstream update would replace locally customized managed documents, the migrator shows the affected files, recommends and creates a local backup when approved, explains that the customized copies will be overwritten, and asks for final confirmation. It does not attempt semantic auto-merge of role or policy documents.
+Migration updates framework files only, preserving monitoring/archive state, backlog, settings and credentials. Modified managed files require an explicit choice even when upstream is unchanged: overwrite, back up modifications and migrate, or cancel. No files or backups change before selection; backup failure stops migration. Non-TTY agents use `task-mecca migrate --json` (exit 3 / `status: choice_required`), ask the human, then run `--choice overwrite|backup|cancel`. No semantic auto-merge is attempted. First-time Go `init` still installs and registers monitoring; an existing installation stays unchanged and directs the user to migrate. Web opening/restarting and migration never register projects. Explicit `projects add|register|unregister|archive|restore|forget` or Hub actions manage state without changing project files. Users manage actual files themselves.
 
 ### Root-session resynchronization after migration
 
@@ -255,6 +281,8 @@ An already-running Root session may still carry instructions that it read before
 - `_task_mecca/framework/SESSION_GUIDE.md`
 - `_task_mecca/framework/SESSION_GUIDE.en.md`
 - `_task_mecca/framework/collab.md`
+- `_task_mecca/framework/EXECUTION_PROTOCOL.md`
+- `_task_mecca/framework/EXECUTION_PROTOCOL.en.md`
 - `_task_mecca/framework/roles/*.md`
 
 A migration that only changes Web UI/CSS/runtime implementation and does not alter session behavior does not require this resynchronization.

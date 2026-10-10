@@ -1,6 +1,6 @@
-# Go runtime migration (in progress)
+# Go runtime migration (completed; historical checkpoints)
 
-This branch migrates Task Mecca to a standalone Go runtime. The Python implementation remains in `src/` as the behavior/parity reference during the migration, but the embedded project install template is now Python-free. Keep the PR Draft until cross-platform artifact and parity verification is complete.
+Task Mecca now runs only as a standalone Go application. The historical Python compatibility implementation and parity tests have been retired. `goassets/template` is the only canonical project framework source. This document keeps historical migration checkpoints for reference; references below to Python files, parity checks, and remaining tasks are not current maintenance commitments. Existing user projects and unmanifested files remain protected during migrations.
 
 ## Compatibility boundary
 
@@ -9,7 +9,7 @@ This branch migrates Task Mecca to a standalone Go runtime. The Python implement
 - Preserve JSON fields and ordering where callers consume them. Compare against the Python implementation using the existing fixtures and Git-history tests.
 - Preserve the local Web UI routes `/api/backlog-folders`, `/api/snapshot`, `/api/manual`, and `/api/tasks/{id}`, static assets, backlog selection, and read-only behavior.
 - Preserve direct worker identity `/root/controller/<worker_name>`, registrar/controller roles, Controller Drain, Parallel Fill, and Adaptive Worker Allocation.
-- Installed projects must remain Python-free; keep the Python reference implementation only in the repository until final parity sign-off.
+- Installed projects must remain Python-free. `src/task_mecca/template` is compatibility/parity reference material only; it is not a second product source of truth. Lifecycle semantics, Web behavior, and new runtime features are owned by the Go implementation and `goassets/template`.
 
 ## Current migration status
 

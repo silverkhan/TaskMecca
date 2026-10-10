@@ -1,5 +1,7 @@
 # Task Mecca
 
+작업 완료 근거로 과거 실행 관측 미확인 경고를 해소하되 runtime 완료 사실을 만들지 않습니다. 정확한 사건의 무전송 CLI preview/적용과 process-only Telegram 유지보수 안전 절차는 [완료 작업의 실행 관측 재조정](docs/A-23-completed-runtime-observation.md)을 참고하세요.
+
 **Task Mecca는 서브에이전트 기반 작업을 백로그로 기록·수행·관리하고, Web UI에서 진행 상태와 lifecycle을 모니터링하는 local-first AI 협업 도구입니다.**  
 사용자는 한 개의 Root와 자연어로 대화하고, Task Mecca는 Registrar·Controller·Worker 역할을 통해 작업 정의가 흐트러지지 않도록 등록·병렬 수행·검증·완료 기록을 이어갑니다.
 
@@ -41,6 +43,11 @@ task-mecca init
 ```
 
 초기화는 Task Mecca framework와 운영 문서를 설치합니다. 실제 backlog는 첫 작업이 등록될 때 생성됩니다.
+
+
+### 운영 지침 업데이트
+
+설치 후 현재 원본의 `_task_mecca/framework/EXECUTION_PROTOCOL.md`와 역할 문서를 함께 적용합니다. 기존 설치는 지원되는 migration 흐름으로 갱신하고, 사용자 수정 managed 문서는 백업·동의 절차를 따릅니다. `data/`와 `.runtime/`을 배포 템플릿으로 덮어쓰지 않습니다. 지침 변경 뒤 Root뿐 아니라 재사용 Controller/Worker도 새 배정 전에 변경된 지침을 다시 읽습니다. canonical 원장은 원본에 유지하고 구현 worktree 사본은 등록하지 않습니다.
 
 ### 3. 사용하는 LLM 세션을 Task Mecca Root로 활성화
 
@@ -149,6 +156,10 @@ task-mecca upgrade
 
 현재 프로젝트의 managed framework 업데이트:
 
+
+웹에서 Worker 완료 보고 후에는 Controller 검토 대기·검토 중·완료 처리 중을 구분합니다. 정상 검토와 Controller 복구는 사용자 조치 알림을 보내지 않으며, 실제 사용자 판단과 백로그 최종 완료는 알림을 유지합니다. 사용자 판단 항목에는 정확한 백로그 링크와 필요한 판단·조치를 표시합니다. 해소된 이력과 Controller 작업은 제외합니다. 명시적인 `대기유형: user`와 재개조건은 `hold_review`가 없어도 보존합니다.
+
+모든 화면의 공통 알림 영역은 기본적으로 접혀 있으며, 펼치면 현재 사용자 판단과 세션 경고의 건수·내용·다음 행동 및 관련 작업/세션 링크를 확인할 수 있습니다. 해소된 항목은 최신 갱신에서 제거하며, 관측 이력은 원장에 보존하고 화면에는 표시하지 않습니다.
 ```bash
 task-mecca migrate
 ```
@@ -207,6 +218,16 @@ go test ./...
 go build ./cmd/task-mecca
 ```
 
-Python compatibility runtime도 유지합니다. 자세한 내용은 [CONTRIBUTING.md](CONTRIBUTING.md)를 참고하세요.
+공식 실행 환경은 Go 기반 독립 실행 파일 하나이며 Python 레거시 호환성은 더 이상 유지하지 않습니다. 자세한 내용은 [CONTRIBUTING.md](CONTRIBUTING.md)를 참고하세요.
 
 MIT License · [LICENSE](LICENSE)
+
+## 프로젝트 보관·감시·마이그레이션
+
+보관하기는 활성 목록에서 보관 목록으로 프로젝트를 옮기고 감시·감시 기반 알림·런타임 갱신을 중지합니다. 보관 목록은 기본 접힘이며 같은 브라우저의 펼치기 선택을 기억합니다. 다시 편입은 파일 갱신 없이 감시를 복원하고 중복 등록을 만들지 않습니다. 목록에서 제거는 보관 기록만 지우며 파일·폴더와 감시 중지 상태를 유지합니다. Web 열기·재시작만으로 등록하지 않습니다. 전체 경로를 지정해 프로젝트를 추가하거나 다시 편입해야 합니다.
+
+조회는 `task-mecca projects list|archived`, 변경은 `add|register|unregister|archive|restore|forget --path ABSOLUTE`입니다. 보관/목록 제거는 `--confirm-path EXACT`, 다시 편입/목록 제거는 `--archive-id ID`가 필요합니다. 폴더 삭제·휴지통 이동·잔존 확인 기능은 없습니다. 파일 관리는 사용자가 Finder·탐색기·터미널에서 수행합니다.
+
+Go CLI `init`은 최초 framework 생성과 Web 감시 등록만 수행합니다. 기존 설치는 변경하지 않고 `migrate`를 안내합니다. 마이그레이션은 감시·보관 상태와 백로그·설정·인증정보·런타임 데이터를 보존합니다. 수정한 관리 파일이 있으면 새 버전 덮어쓰기 / 기존 수정사항 백업 후 진행 / 취소 중 하나를 선택해야 합니다. 선택 전에는 파일이나 백업을 만들지 않으며 백업 실패 시 framework 갱신을 중단합니다.
+
+에이전트는 `task-mecca migrate --json`의 exit 3, `status: choice_required`, `modified_files`, `choices`를 보고 사람에게 질문한 뒤 `--choice overwrite|backup|cancel`을 실행합니다. 비TTY는 대기하지 않습니다. Python CLI 호환성 지원은 종료했습니다. 기존 프로젝트의 데이터와 manifest 없는 레거시 파일은 소유권을 단정할 수 없어 Go 마이그레이션에서도 그대로 보존합니다.

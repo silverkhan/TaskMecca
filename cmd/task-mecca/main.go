@@ -1,6 +1,9 @@
 package main
 
 import (
+	"bufio"
+	"errors"
+	"golang.org/x/term"
     "encoding/json"
     "fmt"
     "os"
@@ -10,17 +13,22 @@ import (
     "time"
 
     "github.com/silverkhan/TaskMecca/internal/backlog"
+    "github.com/silverkhan/TaskMecca/internal/handoff"
     "github.com/silverkhan/TaskMecca/internal/install"
     "github.com/silverkhan/TaskMecca/internal/maintenance"
+    "github.com/silverkhan/TaskMecca/internal/notify"
     "github.com/silverkhan/TaskMecca/internal/runtimeobs"
     "github.com/silverkhan/TaskMecca/internal/webui"
 )
 
-var version = "0.2.52"
+var version = "0.3.0"
 
 func main() { os.Exit(run(os.Args[1:])) }
 
 func run(args []string) int {
+    if len(args)>0 && args[0]=="notifications" { return runNotificationCLI(args[1:],os.Stdout,os.Stderr) }
+    if len(args)>0 && args[0]=="operations" { return runOperationsCLI(args[1:],os.Stdout,os.Stderr) }
+ if len(args)>0 && args[0]=="projects" { return runProjectCLI(args[1:],os.Stdout,os.Stderr) }
     if len(args) == 1 && (args[0] == "--version" || args[0] == "-version" || args[0] == "version") {
         fmt.Printf("task-mecca %s\n", version)
         fmt.Printf("channel %s\n", maintenance.CurrentChannel())
@@ -35,10 +43,13 @@ func run(args []string) int {
         }
         return 0
     }
+    if len(args) > 0 && args[0] == "handoff" {
+        return handoff.RunCLI(args[1:], os.Stdout, os.Stderr)
+    }
     if len(args) == 0 {
         root,err:=filepath.Abs(".")
         if err!=nil { fmt.Fprintln(os.Stderr,err); return 2 }
-        _ = maintenance.RegisterProject(root)
+        _ = maintenance.RegisterWebProject(root)
         state,startErr:=webui.StartService(webui.Config{Project:root,Host:"auto",Port:webui.DefaultPort,OpenBrowser:true,Version:version})
         if startErr!=nil { fmt.Fprintln(os.Stderr,startErr); return 2 }
         printWebState("Task Mecca Web is running",state)
@@ -48,6 +59,8 @@ func run(args []string) int {
     project := "."
     rootOption := ""
     jsonOutput := false
+    migrationChoice := ""
+    migrationExpectedPlan := ""
     newWorker := false
     used := []string{}
     limit := 10
@@ -68,7 +81,11 @@ func run(args []string) int {
     interval := 1.0
     positional := []string{}
     for i := 1; i < len(args); i++ {
-        if args[i] == "--project" && i+1 < len(args) {
+        if args[i] == "--expect-plan" && i+1 < len(args) {
+            migrationExpectedPlan=args[i+1]; i++
+        } else if args[i] == "--choice" && i+1 < len(args) {
+            migrationChoice=args[i+1]; i++
+        } else if args[i] == "--project" && i+1 < len(args) {
             project = args[i+1]
             i++
         } else if args[i] == "--root" && i+1 < len(args) {
@@ -136,6 +153,16 @@ func run(args []string) int {
         if err != nil { fmt.Fprintln(os.Stderr, err); return 2 }
     }
     switch command {
+    case "deliveries":
+        if len(positional)>2 {fmt.Fprintln(os.Stderr,"deliveries accepts [task-id] [event-id]");return 2}
+        taskID,eventID:="",""
+        if len(positional)>0 {taskID=positional[0]}
+        if len(positional)>1 {eventID=positional[1]}
+        records,deliveryErr:=notify.DeliveryRecords(root,taskID,eventID)
+        if deliveryErr!=nil {err=deliveryErr;break}
+        if jsonOutput {emitJSON(map[string]any{"deliveries":records})} else {
+            for _,record:=range records {fmt.Printf("%s %s %s %s attempts=%d duplicate_possible=%t\n",record.TaskID,record.EventID,record.Kind,record.State,record.Attempts,record.DuplicatePossible)}
+        }
     case "channel":
         if len(positional)==0 {
             fmt.Println(maintenance.CurrentChannel())
@@ -186,21 +213,54 @@ func run(args []string) int {
     case "init":
         if err = install.Init(root, version); err == nil {
             _,_ = backlog.EnsureTagRegistry(root)
-            _ = maintenance.RegisterProject(root)
+            if registerErr := maintenance.RegisterProject(root); registerErr != nil { err = fmt.Errorf("framework installed; Web monitoring registration failed (framework preserved): %w", registerErr); break }
             fmt.Printf("Task Mecca %s installed to %s\n", version, filepath.Join(root, "_task_mecca"))
         }
-    case "migrate":
-        var migration install.MigrationResult
-        migration, err = install.MigrateWithResult(root, version)
-        if err == nil {
-            _,_ = backlog.EnsureTagRegistry(root)
-            _ = maintenance.RegisterProject(root)
-            fmt.Printf("Task Mecca %s migrated\n", version)
-            if migration.InstructionRefreshRequired {
-                fmt.Println("Root session refresh required: Task Mecca operating instructions changed.")
-                fmt.Println("Open the Web Global Hub migration result or ask the active Root session to reread the current Task Mecca instructions before continuing.")
-            }
-        }
+	case "migrate":
+		var migration install.MigrationResult
+		migration, err = install.MigrateWithPlan(root, version, migrationChoice,migrationExpectedPlan)
+		var required *install.ChoiceRequiredError
+		if errors.As(err, &required) {
+			if jsonOutput || !term.IsTerminal(int(os.Stdin.Fd())) {
+				emitJSON(migration)
+				return 3
+			}
+			fmt.Println("수정된 프레임워크 파일:")
+			for _, path := range migration.ModifiedFiles {
+				fmt.Println("  " + path)
+			}
+			fmt.Print("1 새 버전으로 덮어쓰기 / 2 기존 수정사항을 백업하고 진행 / 3 취소: ")
+			answer, readErr := bufio.NewReader(os.Stdin).ReadString('\n')
+			choice := "cancel"
+			if readErr == nil {
+				switch strings.TrimSpace(answer) {
+				case "1":
+					choice = "overwrite"
+				case "2":
+					choice = "backup"
+				}
+			}
+			migration, err = install.MigrateWithPlan(root, version, choice,migration.PlanDigest)
+		}
+		if errors.As(err, &required) {
+			emitJSON(migration)
+			return 3
+		}
+		if err == nil {
+			if jsonOutput {
+				emitJSON(migration)
+				return 0
+			}
+			if migration.Status == "cancelled" {
+				fmt.Println("Migration cancelled; no files changed.")
+				return 0
+			}
+			fmt.Printf("Task Mecca %s migrated\n", version)
+			if migration.InstructionRefreshRequired {
+				fmt.Println("Root session refresh required: Task Mecca operating instructions changed.")
+				fmt.Println("Open the Web Global Hub migration result or ask the active Root session to reread the current Task Mecca instructions before continuing.")
+			}
+		}
     case "upgrade":
         var result maintenance.UpgradeResult
         result, err = maintenance.Upgrade(version)
@@ -560,7 +620,7 @@ func run(args []string) int {
     case "status":
         if len(positional) != 0 { fmt.Fprintln(os.Stderr, "status takes no positional arguments"); return 2 }
         if watch && !jsonOutput {
-            _ = maintenance.RegisterProject(root)
+            _ = maintenance.RegisterWebProject(root)
             _,err=webui.StartService(webui.Config{Project:root,Root:rootOption,Host:"auto",Port:webui.DefaultPort,OpenBrowser:true,Version:version})
             break
         }
@@ -586,7 +646,7 @@ func run(args []string) int {
         if len(positional)>1 { fmt.Fprintln(os.Stderr, "web accepts at most one action: status, restart, stop, or logs"); return 2 }
         action:=""
         if len(positional)==1 { action=strings.ToLower(positional[0]) }
-        _ = maintenance.RegisterProject(root)
+        _ = maintenance.RegisterWebProject(root)
         config:=webui.Config{Project:root,Root:rootOption,Host:host,Port:port,OpenBrowser:!noOpen,Version:version,InstanceID:webInstanceID,ControlToken:webControlToken}
         switch action {
         case "", "start":
@@ -644,9 +704,31 @@ func run(args []string) int {
             fmt.Fprintln(os.Stderr,"unknown web action: "+action+" (use status, restart, stop, or logs)")
             return 2
         }
-    case "runtime":
+	case "lifecycle":
+		if len(positional)==0 { fmt.Fprintln(os.Stderr,"lifecycle requires record or list"); return 2 }
+		switch positional[0] {
+		case "record":
+			if len(positional)<6 || len(positional)>9 {
+				fmt.Fprintln(os.Stderr,"lifecycle record <kind> <task-id> <event-id> <actor> <evidence-source> [evidence-ref] [assignment-id] [attempt-id]")
+				return 2
+			}
+			event:=backlog.LifecycleTransition{Kind:positional[1],TaskID:positional[2],EventID:positional[3],Actor:positional[4],EvidenceSource:positional[5]}
+			if len(positional)>6 { event.EvidenceRef=positional[6] }
+			if len(positional)>7 { event.AssignmentID=positional[7] }
+			if len(positional)>8 { event.AttemptID=positional[8] }
+			var recorded backlog.LifecycleTransition
+			recorded,err=backlog.RecordLifecycleTransition(root,event,time.Now())
+			if err==nil { if jsonOutput { emitJSON(recorded) } else { fmt.Printf("%s %s %s %s\n",recorded.EventID,recorded.TaskID,recorded.Kind,recorded.OccurredAt) } }
+		case "list":
+			if len(positional)!=1 { fmt.Fprintln(os.Stderr,"lifecycle list takes no arguments"); return 2 }
+			var scan backlog.LifecycleEventScan
+			scan,err=backlog.ReadLifecycleTransitions(root)
+			if err==nil { if jsonOutput { emitJSON(scan) } else { for _,event:=range scan.Events { fmt.Printf("%s %s %s %s\n",event.EventID,event.TaskID,event.Kind,event.OccurredAt) }; for _,finding:=range scan.Findings { fmt.Fprintf(os.Stderr,"%s: %s\n",finding.EventID,finding.Message) } } }
+		default: fmt.Fprintln(os.Stderr,"unknown lifecycle action: "+positional[0]); return 2
+		}
+	case "runtime":
         if len(positional)==0 {
-            fmt.Fprintln(os.Stderr,"runtime requires an action: observe, list, reconcile, or bind")
+		fmt.Fprintln(os.Stderr,"runtime requires an action: observe, list, reconcile, assign, bind, bind-agent, or bind-assignment")
             return 2
         }
         action:=strings.ToLower(positional[0])
@@ -685,23 +767,63 @@ func run(args []string) int {
                 ledger=runtimeobs.FilterLedger(ledger,provider)
                 if jsonOutput { emitJSON(ledger) } else { printRuntimeLedger(ledger) }
             }
+        case "enrich-name":
+            if len(positional)!=2 { fmt.Fprintln(os.Stderr,"runtime enrich-name requires a Codex session_id"); return 2 }
+            var event runtimeobs.ExecutionEvent
+            var changed bool
+            event,changed,err=runtimeobs.EnrichCodexSessionName(runtimeProject,positional[1],time.Now())
+            if err==nil {
+                if jsonOutput { emitJSON(map[string]any{"changed":changed,"event":event}) } else if changed { fmt.Println(event.SessionName) } else { fmt.Println("(Codex thread has no name/title)") }
+            }
         case "bind":
             if len(positional)<4 || len(positional)>5 {
-                fmt.Fprintln(os.Stderr,"runtime bind requires: <attempt-id> <task-id> <agent-path> [parent-attempt-id]")
+                fmt.Fprintln(os.Stderr,"runtime bind requires: <attempt-id> <task-id|-> <agent-path> [parent-attempt-id]")
                 return 2
             }
             parent:=""
             if len(positional)==5 { parent=positional[4] }
+            taskID:=positional[2]
+            if taskID=="-" { taskID="" }
             var attempt runtimeobs.Attempt
-            attempt,err=runtimeobs.BindAttempt(runtimeProject,positional[1],positional[2],positional[3],"explicit",parent,nil,time.Now())
+            attempt,err=runtimeobs.BindAttempt(runtimeProject,positional[1],taskID,positional[3],"explicit",parent,nil,time.Now())
             if err==nil {
                 if jsonOutput { emitJSON(attempt) } else {
                     fmt.Printf("%s %s %s -> %s %s\n",attempt.AttemptID,attempt.BindingState,attempt.Provider,attempt.TaskID,attempt.AgentPath)
                 }
             }
+		case "assign":
+			if len(positional)<3 || len(positional)>4 { fmt.Fprintln(os.Stderr,"runtime assign requires: <task-id> <agent-path> [assignment-id]"); return 2 }
+			assignmentID:=""
+			if len(positional)==4 { assignmentID=positional[3] }
+			var assignment runtimeobs.Assignment
+			assignment,err=runtimeobs.RecordAssignment(runtimeProject,assignmentID,positional[1],positional[2],time.Now())
+			if err==nil { if jsonOutput { emitJSON(assignment) } else { fmt.Printf("%s %s %s %s\n",assignment.AssignmentID,assignment.TaskID,assignment.AgentPath,assignment.AssignedAt) } }
+		case "bind-assignment":
+			if len(positional)<3 || len(positional)>4 { fmt.Fprintln(os.Stderr,"runtime bind-assignment requires: <assignment-id> <runtime-agent-id> [parent-attempt-id]"); return 2 }
+			parent:=""
+			if len(positional)==4 { parent=positional[3] }
+			var attempt runtimeobs.Attempt
+			attempt,err=runtimeobs.BindRuntimeAgentForAssignment(runtimeProject,positional[1],positional[2],parent,time.Now())
+			if err==nil { if jsonOutput { emitJSON(attempt) } else { fmt.Printf("%s %s %s -> %s %s\n",attempt.AttemptID,attempt.BindingState,attempt.RuntimeAgentID,attempt.TaskID,attempt.AgentPath) } }
+		case "bind-agent":
+            if len(positional)<4 || len(positional)>5 {
+                fmt.Fprintln(os.Stderr,"runtime bind-agent requires: <runtime-agent-id> <task-id|-> <agent-path> [parent-attempt-id]")
+                return 2
+            }
+            parent:=""
+            if len(positional)==5 { parent=positional[4] }
+            taskID:=positional[2]
+            if taskID=="-" { taskID="" }
+            var attempt runtimeobs.Attempt
+            attempt,err=runtimeobs.BindRuntimeAgent(runtimeProject,positional[1],taskID,positional[3],parent,time.Now())
+            if err==nil {
+                if jsonOutput { emitJSON(attempt) } else {
+                    fmt.Printf("%s %s %s -> %s %s\n",attempt.AttemptID,attempt.BindingState,attempt.RuntimeAgentID,attempt.TaskID,attempt.AgentPath)
+                }
+            }
         case "hooks":
             if len(positional)<2 || len(positional)>3 {
-                fmt.Fprintln(os.Stderr,"runtime hooks requires: status|enable <codex|claude|all>")
+                fmt.Fprintln(os.Stderr,"runtime hooks requires: status|enable|disable <codex|claude|all>")
                 return 2
             }
             hooksAction:=strings.ToLower(positional[1])
@@ -718,10 +840,12 @@ func run(args []string) int {
                 var setup runtimeobs.HookSetup
                 if hooksAction=="enable" {
                     setup,err=runtimeobs.EnsureHooks(runtimeProject,name)
+                } else if hooksAction=="disable" {
+                    setup,err=runtimeobs.DisableHooks(runtimeProject,name)
                 } else if hooksAction=="status" {
                     setup,err=runtimeobs.HookStatus(runtimeProject,name)
                 } else {
-                    fmt.Fprintln(os.Stderr,"runtime hooks action must be status or enable")
+                    fmt.Fprintln(os.Stderr,"runtime hooks action must be status, enable, or disable")
                     return 2
                 }
                 if err!=nil { break }
@@ -730,8 +854,8 @@ func run(args []string) int {
             if err==nil {
                 if jsonOutput { emitJSON(setups) } else {
                     for _,setup:=range setups {
-                        label:="not installed"
-                        if setup.Installed { label="installed" }
+                        label:="not configured"
+                        if setup.Installed { label="configured" }
                         changed:=""
                         if setup.Changed { changed=" · updated" }
                         fmt.Printf("%s  %s%s  %s\n",setup.Provider,label,changed,setup.Path)
@@ -739,7 +863,7 @@ func run(args []string) int {
                 }
             }
         default:
-            fmt.Fprintln(os.Stderr,"unknown runtime action: "+action+" (use observe, list, reconcile, bind, or hooks)")
+            fmt.Fprintln(os.Stderr,"unknown runtime action: "+action+" (use observe, list, reconcile, bind, bind-agent, or hooks)")
             return 2
         }
     case "runtime-spike":
@@ -788,7 +912,7 @@ func run(args []string) int {
     case "monitor":
         if len(positional) != 0 { fmt.Fprintln(os.Stderr, "monitor takes no positional arguments"); return 2 }
         if !once && !jsonOutput {
-            _ = maintenance.RegisterProject(root)
+            _ = maintenance.RegisterWebProject(root)
             _,err=webui.StartService(webui.Config{Project:root,Root:rootOption,Host:host,Port:port,OpenBrowser:!noOpen,Version:version})
             break
         }
@@ -1027,4 +1151,3 @@ func printUpdateHint(info maintenance.VersionInfo) {
     fmt.Printf("\nUpdate available (%s): %s → %s\n",info.Channel,info.Current,info.Latest)
     fmt.Println("Run: task-mecca upgrade")
 }
-

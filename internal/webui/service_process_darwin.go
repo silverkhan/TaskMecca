@@ -10,6 +10,7 @@ import (
     "os/exec"
     "path/filepath"
     "strings"
+    "strconv"
     "time"
 )
 
@@ -56,9 +57,12 @@ func renderLaunchdPlist(exe string,args []string,project string) string {
     b.WriteString("  <key>ThrottleInterval</key><integer>2</integer>\n")
     b.WriteString("  <key>StandardOutPath</key><string>"+xmlText(WebLogPath())+"</string>\n")
     b.WriteString("  <key>StandardErrorPath</key><string>"+xmlText(WebLogPath())+"</string>\n")
-    if home:=strings.TrimSpace(os.Getenv("TASK_MECCA_HOME")); home!="" {
+    home:=strings.TrimSpace(os.Getenv("TASK_MECCA_HOME"))
+    transport:=os.Getenv("TASK_MECCA_TELEGRAM_TRANSPORT")
+    if home!="" || transport=="disabled" {
         b.WriteString("  <key>EnvironmentVariables</key>\n  <dict>\n")
-        b.WriteString("    <key>TASK_MECCA_HOME</key><string>"+xmlText(home)+"</string>\n")
+        if home!="" { b.WriteString("    <key>TASK_MECCA_HOME</key><string>"+xmlText(home)+"</string>\n") }
+        if transport=="disabled" { b.WriteString("    <key>TASK_MECCA_TELEGRAM_TRANSPORT</key><string>disabled</string>\n") }
         b.WriteString("  </dict>\n")
     }
     b.WriteString("</dict>\n</plist>\n")
@@ -119,6 +123,45 @@ func prepareManagedWebRestart() (bool,error) {
     // The LaunchAgent uses KeepAlive=true. Once the current web process
     // exits after a graceful shutdown, launchd starts the upgraded binary.
     return true,nil
+}
+
+func launchdRollbackScript(exe,previous,targetInstance string,port int) string {
+    return launchdRollbackScriptWithAttempts(exe,previous,targetInstance,port,30)
+}
+
+func shQuote(value string) string { return "'" + strings.ReplaceAll(value,"'","'\\''") + "'" }
+
+func launchdRollbackScriptWithAttempts(exe,previous,targetInstance string,port,attempts int) string {
+    return launchdRollbackScriptWithKickstart(exe,previous,targetInstance,port,attempts,"/bin/launchctl kickstart -k "+shQuote(launchdWebTarget()))
+}
+// The production wrapper always supplies the fixed LaunchAgent restart command.
+// Execution fixtures inject a non-destructive command explicitly; management-home
+// isolation alone cannot isolate launchctl's fixed gui/UID/com.taskmecca.web job.
+func launchdRollbackScriptWithKickstart(exe,previous,targetInstance string,port,attempts int,kickstartCommand string) string {
+    health:="http://127.0.0.1:"+strconv.Itoa(port)+"/api/health"
+    notice:=upgradeRecoveryPath()
+    // The watchdog starts before the current server shuts down. A plain 200
+    // can therefore be the OLD process. Accept health only when the response
+    // carries the instance ID passed to the restarted Web process.
+    probe:="/usr/bin/curl -fsS --max-time 1 "+shQuote(health)+" 2>/dev/null | /usr/bin/grep -F "+shQuote("\\\"instance_id\\\":\\\""+targetInstance+"\\\"")+" >/dev/null 2>&1"
+    rollbackID:="rollback-$(/bin/date -u +%Y%m%dT%H%M%SZ)-$"
+    return "i=0; while [ $i -lt "+strconv.Itoa(attempts)+" ]; do sleep 1; if "+probe+"; then exit 0; fi; i=$((i+1)); done; " +
+        "/bin/cp "+shQuote(previous)+" "+shQuote(exe)+"; /bin/chmod +x "+shQuote(exe)+"; /bin/mkdir -p "+shQuote(filepath.Dir(notice))+"; " +
+        "/usr/bin/printf '%s\\n' '{\"id\":\"'"+rollbackID+"'\",\"status\":\"rolled_back\",\"at\":\"'$(/bin/date -u +%Y-%m-%dT%H:%M:%SZ)'\",\"message\":\"Upgraded Web failed health check; previous binary restored.\"}' > "+shQuote(notice)+"; " +
+      kickstartCommand
+}
+
+func launchdRollbackWatchdog(exe,previous,targetInstance string,port int) error {
+    if previous=="" { return nil }
+    cmd:=exec.Command("/bin/sh","-c",launchdRollbackScript(exe,previous,targetInstance,port))
+    cmd.Stdout=os.Stdout
+    cmd.Stderr=os.Stderr
+    if err:=cmd.Start(); err!=nil { return err }
+    return cmd.Process.Release()
+}
+
+func detachedWebRestartWithRollback(exe string,args []string,project,previous string,port int) error {
+    return detachedWebRestart(exe,args,project)
 }
 
 func detachedWebRestart(exe string,args []string,project string) error {

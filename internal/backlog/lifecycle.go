@@ -1,6 +1,7 @@
 package backlog
 
 import (
+    "github.com/silverkhan/TaskMecca/internal/projectguard"
     "encoding/json"
     "os"
     "os/exec"
@@ -10,12 +11,18 @@ import (
     "strings"
     "sync"
     "time"
+
+    "github.com/silverkhan/TaskMecca/internal/runtimeobs"
 )
 
 type lifecycleEvent struct {
     State string
     At string
     Source string
+	ID     string
+	Kind   string
+	Actor  string
+	EvidenceSource string
 }
 
 type lifecycleGitCacheEntry struct {
@@ -110,12 +117,37 @@ func parseTime(value string) (time.Time,bool) {
     return parsed,err==nil
 }
 
+func observedLifecycleAt(items map[string]any,id,state string) string {
+    raw,ok:=items[id].([]any)
+    if !ok { return "" }
+    best:=""
+    var bestTime time.Time
+    for _,entryRaw:=range raw {
+        entry,ok:=entryRaw.(map[string]any)
+        if !ok || toString(entry["state"])!=state { continue }
+        at:=toString(entry["at"])
+        parsed,valid:=parseTime(at)
+        if !valid { continue }
+        if best=="" || parsed.Before(bestTime) {
+            best=at
+            bestTime=parsed
+        }
+    }
+    return best
+}
+
 func LifecycleTimings(project,root string) (map[string]map[string]any,error) {
     return lifecycleTimings(project,root,nil)
 }
 
-func lifecycleTimings(project,root string,rows []Record) (map[string]map[string]any,error) {
-    ledger,err:=Select(project,root)
+func lifecycleTimings(project,root string,rows []Record,shared ...requestRuntime) (map[string]map[string]any,error) {
+    releaseGuard, guardErr := projectguard.AcquireWrite(project)
+    if guardErr != nil { return nil, guardErr }
+    defer releaseGuard()
+
+	durableScan,scanErr:=ReadLifecycleTransitions(project)
+	if scanErr!=nil { return nil,scanErr }
+	ledger,err:=Select(project,root)
     if err!=nil { return nil,err }
     if ledger=="" {
         if root!="" { ledger=root } else { ledger=filepath.Join(project,"_task_mecca","data","backlog") }
@@ -178,14 +210,91 @@ func lifecycleTimings(project,root string,rows []Record) (map[string]map[string]
         _=json.Unmarshal(data,&journal)
     }
     ledgers,ok:=journal["ledgers"].(map[string]any)
-    if !ok { ledgers=map[string]any{}; journal["ledgers"]=ledgers }
+    if !ok { ledgers=map[string]any{}
+		journal["ledgers"]=ledgers }
     absLedger,_:=filepath.Abs(ledger)
     ledgerRow,ok:=ledgers[absLedger].(map[string]any)
-    if !ok { ledgerRow=map[string]any{"items":map[string]any{}}; ledgers[absLedger]=ledgerRow }
+    if !ok { ledgerRow=map[string]any{"items":map[string]any{}}
+		ledgers[absLedger]=ledgerRow }
     items,ok:=ledgerRow["items"].(map[string]any)
-    if !ok { items=map[string]any{}; ledgerRow["items"]=items }
+    if !ok { items=map[string]any{}
+		ledgerRow["items"]=items }
 
     now:=time.Now()
+
+    // Canonical execution-start evidence comes from the provider-neutral
+    // Execution Attempt Ledger. A backlog "doing" state is dispatch/workflow
+    // state; it is not, by itself, proof that the assigned worker executed.
+    runtimeStarts:=map[string]lifecycleEvent{}
+    if runtimeLedger,ledgerErr:=readRequestRuntime(project,10,now,shared...); ledgerErr==nil {
+        for _,attempt:=range runtimeLedger.Attempts {
+            id:=strings.ToUpper(strings.TrimSpace(attempt.TaskID))
+            if id=="" || attempt.BindingState!=runtimeobs.BindingBound || attempt.StartedAt=="" { continue }
+
+            // A binding can be written after an attempt has already existed for
+            // some time. Never backdate the task lifecycle to runtime activity
+            // that predates that task binding. BindingAt is a canonical folded
+            // field and does not disappear when RecentTransitions is truncated.
+            effectiveStart:=attempt.StartedAt
+            if bindingAt,ok:=parseTime(attempt.BindingAt); ok {
+                if startAt,startOK:=parseTime(effectiveStart); !startOK || bindingAt.After(startAt) {
+                    effectiveStart=attempt.BindingAt
+                }
+            }
+
+            // Registration is an invariant boundary: a task cannot start before
+            // it exists. Prefer the immutable/provisional registration observation
+            // already captured in lifecycle_observations.json. Using the current
+            // file ctime here is unsafe because todo -> doing rename/edit advances
+            // ctime and can make a valid runtime start look older than registration.
+            registeredAt:=""
+            if durable:=events[id]; len(durable)>0 {
+                for _,event:=range durable {
+                    if event.State=="todo" { registeredAt=event.At
+						break }
+                }
+            }
+            if registeredAt=="" {
+                registeredAt=observedLifecycleAt(items,id,"todo")
+            }
+            if registeredAt=="" {
+                if row,ok:=currentRows[id]; ok { registeredAt=firstNonEmpty(row.Ctime,row.Mtime) }
+            }
+            if regAt,regOK:=parseTime(registeredAt); regOK {
+                startAt,startOK:=parseTime(effectiveStart)
+                if !startOK || startAt.Before(regAt) { continue }
+            }
+
+            candidate:=lifecycleEvent{State:"doing",At:effectiveStart,Source:"execution_ledger"}
+            existing,ok:=runtimeStarts[id]
+            if !ok {
+                runtimeStarts[id]=candidate
+                continue
+            }
+            oldAt,oldOK:=parseTime(existing.At)
+			newAt,newOK:=parseTime(candidate.At)
+            if newOK && (!oldOK || newAt.Before(oldAt)) { runtimeStarts[id]=candidate }
+        }
+    }
+
+    // If the task explicitly targets a provider whose Task Mecca hook is
+    // installed, absence of runtime start evidence must remain "not started".
+    // This prevents a mere todo -> doing file move from becoming a false start.
+    runtimeExpected:=map[string]bool{}
+    hookInstalled:=map[string]bool{}
+    for _,provider:=range []string{"codex","claude"} {
+        if setup,hookErr:=runtimeobs.HookStatus(project,provider); hookErr==nil { hookInstalled[provider]=setup.Installed }
+    }
+    anyHookInstalled:=hookInstalled["codex"] || hookInstalled["claude"]
+    for id,row:=range currentRows {
+        metadata:=runtimeFromFields(row.Fields)
+        provider:=strings.ToLower(strings.TrimSpace(toString(metadata["runtime_provider"])))
+        assigned:=strings.TrimSpace(row.Fields["Agent"])!=""
+        if (provider!="" && hookInstalled[provider]) || (provider=="" && assigned && anyHookInstalled) {
+            runtimeExpected[id]=true
+        }
+    }
+
     journalChanged:=false
     combinedEvents:=map[string][]lifecycleEvent{}
     for id,seq:=range events { combinedEvents[id]=append([]lifecycleEvent{},seq...) }
@@ -196,55 +305,98 @@ func lifecycleTimings(project,root string,rows []Record) (map[string]map[string]
         hasDurableLast:=false
         if len(durable)>0 {
             durableLastState=durable[len(durable)-1].State
-            if parsed,ok:=parseTime(durable[len(durable)-1].At); ok { durableLastTime=parsed; hasDurableLast=true }
+            if parsed,ok:=parseTime(durable[len(durable)-1].At); ok { durableLastTime=parsed
+				hasDurableLast=true }
         }
 
         cached:=[]map[string]string{}
+        cacheFiltered:=false
         if raw,ok:=items[id].([]any); ok {
             for _,entryRaw:=range raw {
-                entry,ok:=entryRaw.(map[string]any); if !ok { continue }
-                state,_:=entry["state"].(string); at,_:=entry["at"].(string)
+                entry,ok:=entryRaw.(map[string]any)
+				if !ok { cacheFiltered=true
+					continue }
+                state,_:=entry["state"].(string)
+				at,_:=entry["at"].(string)
                 dt,valid:=parseTime(at)
-                if !valid || (state!="todo"&&state!="doing"&&state!="hold"&&state!="done") { continue }
-                if !hasDurableLast || !dt.Before(durableLastTime) {
-                    cached=append(cached,map[string]string{"state":state,"at":at})
+                if !valid || (state!="todo"&&state!="doing"&&state!="hold"&&state!="done") { cacheFiltered=true
+					continue }
+                // Once a durable completion exists, no earlier-state observation
+                // at or after that completion can be part of the canonical
+                // history. Drop only those impossible tail entries; observations
+                // before completion remain valuable historical evidence.
+                if row.State=="done" && durableLastState=="done" && hasDurableLast && !dt.Before(durableLastTime) && state!="done" {
+                    cacheFiltered=true
+                    continue
                 }
+                // A provisional observation is historical evidence once seen.
+                // Do not discard it merely because Git later records a newer
+                // terminal/current state; Git may never contain the earlier
+                // registration/start transition that this observation proves.
+                cached=append(cached,map[string]string{"state":state,"at":at})
             }
         }
-        if durableLastState==row.State {
-            if len(cached)>0 { delete(items,id); journalChanged=true }
-            cached=nil
-        } else {
-            known:=durableLastState
-            if len(cached)>0 { known=cached[len(cached)-1]["state"] }
-            if known!=row.State {
-                observedRaw:=row.Ctime
-                if observedRaw=="" { observedRaw=row.Mtime }
-                observed,valid:=parseTime(observedRaw)
-                if !valid { observed=now }
-                previous:=durableLastTime
-                hasPrevious:=hasDurableLast
-                if len(cached)>0 {
-                    if p,ok:=parseTime(cached[len(cached)-1]["at"]); ok { previous=p; hasPrevious=true }
-                }
-                if hasPrevious && observed.Before(previous) { observed=now }
-                cached=append(cached,map[string]string{
-                    "state":row.State,
-                    "at":observed.Format(time.RFC3339),
-                })
-                raw:=[]any{}
-                for _,entry:=range cached { raw=append(raw,map[string]any{"state":entry["state"],"at":entry["at"]}) }
-                items[id]=raw
-                journalChanged=true
+        if cacheFiltered {
+            raw:=[]any{}
+            for _,entry:=range cached { raw=append(raw,map[string]any{"state":entry["state"],"at":entry["at"]}) }
+            items[id]=raw
+            journalChanged=true
+        }
+
+        // Determine the latest state by timestamp across durable Git evidence
+        // and retained observations. Using cached[len-1] alone is unsafe after
+        // Git catches up because retained history can be older than Git.
+        known:=durableLastState
+        previous:=durableLastTime
+        hasPrevious:=hasDurableLast
+        for _,entry:=range cached {
+            if p,ok:=parseTime(entry["at"]); ok && (!hasPrevious || p.After(previous)) {
+                known=entry["state"]
+                previous=p
+                hasPrevious=true
             }
+        }
+        if durableLastState!=row.State && known!=row.State {
+            observedRaw:=row.Ctime
+            if observedRaw=="" { observedRaw=row.Mtime }
+            observed,valid:=parseTime(observedRaw)
+            if !valid { observed=now }
+            if hasPrevious && observed.Before(previous) { observed=now }
+            cached=append(cached,map[string]string{
+                "state":row.State,
+                "at":observed.Format(time.RFC3339),
+            })
+            raw:=[]any{}
+            for _,entry:=range cached { raw=append(raw,map[string]any{"state":entry["state"],"at":entry["at"]}) }
+            items[id]=raw
+            journalChanged=true
         }
         combined:=append([]lifecycleEvent{},durable...)
-        last:=""
-        if len(combined)>0 { last=combined[len(combined)-1].State }
+
+        // For active work with observable runtime, remove workflow-state doing
+        // transitions and replace them with the first bound runtime start.
+        // Completed/history rows retain Git evidence for backward compatibility.
+        if row.Location=="active" && runtimeExpected[id] {
+            filtered:=make([]lifecycleEvent,0,len(combined))
+            for _,event:=range combined { if event.State!="doing" { filtered=append(filtered,event) } }
+            combined=filtered
+            filteredCached:=cached[:0]
+            for _,entry:=range cached { if entry["state"]!="doing" { filteredCached=append(filteredCached,entry) } }
+            cached=filteredCached
+            if start,ok:=runtimeStarts[id]; ok { combined=append(combined,start) }
+        } else if start,ok:=runtimeStarts[id]; ok {
+            // Runtime evidence outranks any inferred doing timestamp even when
+            // a durable Git transition also exists.
+            filtered:=make([]lifecycleEvent,0,len(combined))
+            for _,event:=range combined { if event.State!="doing" { filtered=append(filtered,event) } }
+            combined=append(filtered,start)
+            filteredCached:=cached[:0]
+            for _,entry:=range cached { if entry["state"]!="doing" { filteredCached=append(filteredCached,entry) } }
+            cached=filteredCached
+        }
+
         for _,entry:=range cached {
-            if entry["state"]==last { continue }
             combined=append(combined,lifecycleEvent{State:entry["state"],At:entry["at"],Source:"runtime_observed"})
-            last=entry["state"]
         }
         combinedEvents[id]=combined
     }
@@ -256,14 +408,44 @@ func lifecycleTimings(project,root string,rows []Record) (map[string]map[string]
         }
     }
 
-    result:=map[string]map[string]any{}
+	// Explicit role reports are the canonical source. Git and the legacy
+	// observation journal remain readable fallback evidence, never a reason to
+	// duplicate a phase or promote a late file observation to a real start.
+	directByID:=map[string][]LifecycleTransition{}
+	for _,event:=range durableScan.Events { directByID[event.TaskID]=append(directByID[event.TaskID],event) }
+	for id,direct:=range directByID {
+		stateFor:=func(kind string) string { switch kind { case "registered","assigned":return "todo"; case "started","resumed":return "doing"; case "waiting":return "hold"; case "completed":return "done" }; return "" }
+		directState:=map[string]bool{}
+		hasStart:=false
+		hasAssignment:=false
+		for _,event:=range direct { directState[stateFor(event.Kind)]=true; if event.Kind=="started" { hasStart=true }; if event.Kind=="assigned" { hasAssignment=true } }
+		filtered:=[]lifecycleEvent{}
+		for _,old:=range combinedEvents[id] {
+			if directState[old.State] { continue }
+			if hasAssignment && !hasStart && old.State=="doing" { continue }
+			filtered=append(filtered,old)
+		}
+		for _,event:=range direct {
+			filtered=append(filtered,lifecycleEvent{State:stateFor(event.Kind),At:event.OccurredAt,Source:"durable_lifecycle",ID:event.EventID,Kind:event.Kind,Actor:event.Actor,EvidenceSource:event.EvidenceSource})
+		}
+		combinedEvents[id]=filtered
+	}
+	result:=map[string]map[string]any{}
     labels:=map[string]string{"todo":"Registered","doing":"Started","hold":"Hold","done":"Completed"}
     for id,seq:=range combinedEvents {
         sort.SliceStable(seq,func(i,j int)bool {
-            ti,_:=parseTime(seq[i].At); tj,_:=parseTime(seq[j].At); return ti.Before(tj)
+            ti,_:=parseTime(seq[i].At)
+			tj,_:=parseTime(seq[j].At)
+			if ti.Equal(tj) {
+				order:=map[string]int{"registered":10,"assigned":20,"started":30,"waiting":40,"resumed":50,"completed":60}
+				return order[seq[i].Kind]<order[seq[j].Kind]
+			}
+			return ti.Before(tj)
         })
+        seq=collapseLifecycleEvents(seq)
         if len(seq)==0 { continue }
-        type parsedEvent struct{ event lifecycleEvent; at time.Time }
+        type parsedEvent struct{ event lifecycleEvent
+			at time.Time }
         parsed:=[]parsedEvent{}
         for _,entry:=range seq {
             if dt,ok:=parseTime(entry.At); ok { parsed=append(parsed,parsedEvent{entry,dt}) }
@@ -295,14 +477,20 @@ func lifecycleTimings(project,root string,rows []Record) (map[string]map[string]
             if entry.event.State=="hold" { waitSeconds+=interval }
             intervalValue:="-"
             if interval>0 { intervalValue=formatDuration(interval) }
-            eventRows=append(eventRows,map[string]any{
+			label:=labels[entry.event.State]
+			if entry.event.Kind!="" { label=map[string]string{"registered":"Registered","assigned":"Assigned","started":"Started","waiting":"Waiting","resumed":"Resumed","completed":"Completed"}[entry.event.Kind] }
+			eventRows=append(eventRows,map[string]any{
                 "state":entry.event.State,
-                "label":labels[entry.event.State],
+                "label":            label,
+				"event_id":         entry.event.ID,
+				"kind":             entry.event.Kind,
+				"actor":            entry.event.Actor,
+				"evidence_source":  entry.event.EvidenceSource,
                 "at":entry.event.At,
                 "interval_seconds":interval,
                 "interval":intervalValue,
                 "source":entry.event.Source,
-                "provisional":entry.event.Source!="git",
+                "provisional":entry.event.Source == "runtime_observed",
             })
         }
         current:=parsed[len(parsed)-1]
@@ -313,20 +501,29 @@ func lifecycleTimings(project,root string,rows []Record) (map[string]map[string]
         }
         created:=parsed[0].at
         var started *time.Time
-        for _,entry:=range parsed { if entry.event.State=="doing" { v:=entry.at; started=&v; break } }
+        for _,entry:=range parsed { if entry.event.State=="doing" { v:=entry.at
+				started=&v
+				break } }
         var completed *time.Time
-        for i:=len(parsed)-1;i>=0;i-- { if parsed[i].event.State=="done" { v:=parsed[i].at; completed=&v; break } }
+        for i:=len(parsed)-1;i>=0;i-- { if parsed[i].event.State=="done" { v:=parsed[i].at
+				completed=&v
+				break } }
         var queueSeconds any
         if started!=nil {
-            q:=started.Sub(created).Seconds(); if q<0 { q=0 }; queueSeconds=q
+            q:=started.Sub(created).Seconds()
+			if q<0 { q=0 }
+			queueSeconds=q
         } else if completed==nil {
-            q:=now.Sub(created).Seconds(); if q<0 { q=0 }; queueSeconds=q
+            q:=now.Sub(created).Seconds()
+			if q<0 { q=0 }
+			queueSeconds=q
         } else {
             queueSeconds=nil
         }
         leadEnd:=now
         if completed!=nil { leadEnd=*completed }
-        leadSeconds:=leadEnd.Sub(created).Seconds(); if leadSeconds<0 { leadSeconds=0 }
+        leadSeconds:=leadEnd.Sub(created).Seconds()
+		if leadSeconds<0 { leadSeconds=0 }
         var activeValue any
         if hasDoing { activeValue=activeSeconds }
         var waitValue any
@@ -358,7 +555,8 @@ func lifecycleTimings(project,root string,rows []Record) (map[string]map[string]
             "work":formatDuration(activeValue),
             "lead":formatDuration(leadSeconds),
             "elapsed":formatDuration(elapsed),
-            "duration":func()string{ if current.event.State=="done" { return formatDuration(activeValue) }; return "-" }(),
+            "duration":func()string{ if current.event.State=="done" { return formatDuration(activeValue) }
+				return "-" }(),
             "events":eventRows,
             "lifecycle_inferred":func()bool{
                 for _,event:=range eventRows { if value,ok:=event["provisional"].(bool); ok && value { return true } }
@@ -379,7 +577,59 @@ func lifecycleTimings(project,root string,rows []Record) (map[string]map[string]
             }(),
         }
     }
-    return result,nil
+	for id,direct:=range directByID {
+		row:=result[id]
+		if row==nil || len(direct)==0 { continue }
+		if _,ok:=currentRows[id];!ok {
+			row["consistency_status"]="event_without_backlog_file"
+			row["consistency_note"]="영속 전환은 기록됐지만 백로그 파일을 찾을 수 없어 확인이 필요합니다."
+			continue
+		}
+		fileState:=currentRows[id].State
+		last:=direct[len(direct)-1]
+		if last.Kind=="assigned" && fileState=="doing" {
+			row["start_evidence_status"]="assigned_not_started"
+			row["file_observation"]="doing"
+			continue
+		}
+		expected:=map[string]string{"registered":"todo","assigned":"doing","started":"doing","waiting":"hold","resumed":"doing","completed":"done"}[last.Kind]
+		if expected!="" && fileState!=expected {
+			row["consistency_status"]="event_file_mismatch"
+			row["consistency_note"]="영속 전환과 현재 백로그 파일 상태가 달라 중단 또는 미반영 여부를 확인해야 합니다."
+			row["file_observation"]=fileState
+			row["last_lifecycle_event_id"]=last.EventID
+		}
+	}
+	return result,nil
+}
+
+func lifecycleSourceRank(source string) int {
+    switch source {
+	case "durable_lifecycle":
+		return 40
+	case "execution_ledger": return 30
+    case "git": return 20
+    case "runtime_observed": return 10
+    default: return 0
+    }
+}
+
+func collapseLifecycleEvents(seq []lifecycleEvent) []lifecycleEvent {
+    if len(seq)==0 { return seq }
+    out:=make([]lifecycleEvent,0,len(seq))
+    for _,event:=range seq {
+        if len(out)>0 && out[len(out)-1].State==event.State && out[len(out)-1].Kind == event.Kind {
+            // The same state observed twice without an intervening state is one
+            // transition. Prefer the stronger source, preserving runtime start
+            // over Git doing and Git over provisional filesystem observation.
+            if lifecycleSourceRank(event.Source)>lifecycleSourceRank(out[len(out)-1].Source) {
+                out[len(out)-1]=event
+            }
+            continue
+        }
+        out=append(out,event)
+    }
+    return out
 }
 
 func nilIfEmpty(value string) any {

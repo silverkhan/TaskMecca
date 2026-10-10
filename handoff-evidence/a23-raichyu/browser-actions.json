@@ -1,0 +1,31 @@
+[
+  {
+    "case": "desktop-ko-history",
+    "text": "과거 실행 관측 · 1\n현재 경고 해소\nA-5\n근거와 조치 보기\n현재 경고 해소\n작업 완료 확인, 당시 실행 관측은 미확인\n프로젝트\n/private/tmp/a23-raichyu-IoIzWE/project\n근거\nruntime identity 또는 Hook 실행 여부를 확인하지 못했습니다.\n마지막 관측\n2026. 10. 7. 오후 1:41:10\n최초 발견\n2026. 10. 7. 오후 1:41:11\n작업 완료 시각\n2026. 10. 7. 오후 1:41:19\n경고 해소 시각\n2026. 10. 7. 오후 1:41:20\n완료 확인 근거\ncompleted-fixture · assignment-completion · run-8663d1dad40acb05\n/private/tmp/a23-raichyu-IoIzWE/project/_task_mecca/data/backlog/archive/2026-10/000005.A-5.completed.done.md",
+    "focus": "SUMMARY"
+  },
+  {
+    "case": "mobile-en-history",
+    "text": "Past runtime observations · 1\nCurrent warning resolved\nA-5\nView evidence and action\nCurrent warning resolved\nTask completion verified; runtime observation at the time remains unverified\nProject\n/private/tmp/a23-raichyu-IoIzWE/project\nEvidence\nRuntime identity or Hook execution is unverified.\nLast observed\n10/7/2026, 1:41:10 PM\nFirst detected\n10/7/2026, 1:41:11 PM\nTask completed at\n10/7/2026, 1:41:19 PM\nWarning resolved at\n10/7/2026, 1:41:20 PM\nCompletion evidence\ncompleted-fixture · assignment-completion · run-8663d1dad40acb05\n/private/tmp/a23-raichyu-IoIzWE/project/_task_mecca/data/backlog/archive/2026-10/000005.A-5.completed.done.md",
+    "geometry": {
+      "height": 44,
+      "scroll": 375,
+      "viewport": 390
+    }
+  },
+  {
+    "case": "final-localization",
+    "history": "Past runtime observations · 1\nCurrent warning resolved\nA-5\nView evidence and action\nCurrent warning resolved\nTask completion verified; runtime observation at the time remains unverified\nProject\n/private/tmp/a23-raichyu-IoIzWE/project\nEvidence\nRuntime identity or Hook execution is unverified.\nLast observed\n10/7/2026, 1:41:10 PM\nFirst detected\n10/7/2026, 1:41:11 PM\nTask completed at\n10/7/2026, 1:41:19 PM\nWarning resolved at\n10/7/2026, 1:41:20 PM\nCompletion evidence\ncompleted-fixture · assignment-completion · run-8663d1dad40acb05\n/private/tmp/a23-raichyu-IoIzWE/project/_task_mecca/data/backlog/archive/2026-10/000005.A-5.completed.done.md",
+    "banner": "Session operation needs review\n3 operation incidents · 1 projects monitored · Last scan 10/7/2026, 2:44:46 PM\nRuntime unverified\nA-7\nView evidence and action\nConfirmed execution error\nA-6\nView evidence and action\nWeb monitoring gap\n/private/tmp/a23-raichyu-IoIzWE/project\nView evidence and action\nPast runtime observations · 1\nCurrent warning resolved\nA-5\nView evidence and action\nCurrent warning resolved\nTask completion verified; runtime observation at the time remains unverified\nProject\n/private/tmp/a23-raichyu-IoIzWE/project\nEvidence\nRuntime identity or Hook execution is unverified.\nLast observed\n10/7/2026, 1:41:10 PM\nFirst detected\n10/7/2026, 1:41:11 PM\nTask completed at\n10/7/2026, 1:41:19 PM\nWarning resolved at\n10/7/2026, 1:41:20 PM\nCompletion evidence\ncompleted-fixture · assignment-completion · run-8663d1dad40acb05\n/private/tmp/a23-raichyu-IoIzWE/project/_task_mecca/data/backlog/archive/2026-10/000005.A-5.completed.done.md\n\nTelegram transport blocked · maintenance mode\n\nView monitored projects"
+  },
+  {
+    "case": "final-mobile",
+    "history": "과거 실행 관측 · 1\n현재 경고 해소\nA-5\n근거와 조치 보기\n현재 경고 해소\n작업 완료 확인, 당시 실행 관측은 미확인\n프로젝트\n/private/tmp/a23-raichyu-IoIzWE/project\n근거\nruntime identity 또는 Hook 실행 여부를 확인하지 못했습니다.\n마지막 관측\n2026. 10. 7. 오후 1:41:10\n최초 발견\n2026. 10. 7. 오후 1:41:11\n작업 완료 시각\n2026. 10. 7. 오후 1:41:19\n경고 해소 시각\n2026. 10. 7. 오후 1:41:20\n완료 확인 근거\ncompleted-fixture · assignment-completion · run-8663d1dad40acb05\n/private/tmp/a23-raichyu-IoIzWE/project/_task_mecca/data/backlog/archive/2026-10/000005.A-5.completed.done.md",
+    "geometry": {
+      "focus": "SUMMARY",
+      "scroll": 375,
+      "touchHeight": 44,
+      "viewport": 390
+    }
+  }
+]

@@ -1,86 +1,89 @@
 package maintenance
 
 import (
-    "bufio"
-    "crypto/sha256"
-    "encoding/hex"
-    "encoding/json"
-    "errors"
-    "fmt"
-    "io"
-    "net/http"
-    "os"
-    "os/exec"
-    "path/filepath"
-    "runtime"
-    "sort"
-    "strconv"
-    "strings"
-    "sync"
-    "time"
+	"bufio"
+	"crypto/sha256"
+	"debug/buildinfo"
+	"encoding/hex"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
+	"net/http"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"runtime"
+	"sort"
+	"strconv"
+	"strings"
+	"sync"
+	"time"
+
+	"github.com/silverkhan/TaskMecca/internal/projectguard"
 )
 
 const (
-    repo = "silverkhan/TaskMecca"
-    stableChannel = "stable"
-    devChannel = "dev"
-    stableReleaseTag = "release-stable"
-    devReleaseTag = "release-dev"
+	repo             = "silverkhan/TaskMecca"
+	stableChannel    = "stable"
+	devChannel       = "dev"
+	stableReleaseTag = "release-stable"
+	devReleaseTag    = "release-dev"
 )
 
 type Project struct {
-    Name string `json:"name"`
-    Path string `json:"path"`
-    FrameworkVersion string `json:"framework_version"`
-    LastSeen string `json:"last_seen"`
+	Name             string `json:"name"`
+	Path             string `json:"path"`
+	FrameworkVersion string `json:"framework_version"`
+	LastSeen         string `json:"last_seen"`
+	Monitoring       bool   `json:"monitoring,omitempty"`
 }
 
-type registry struct {
-    Projects []Project `json:"projects"`
-}
+type registry = projectRegistry
 
 type VersionInfo struct {
-    Current string `json:"current"`
-    Latest string `json:"latest,omitempty"`
-    Channel string `json:"channel"`
-    UpdateAvailable bool `json:"update_available"`
-    CheckedAt string `json:"checked_at,omitempty"`
-    Error string `json:"error,omitempty"`
+	Current         string `json:"current"`
+	Latest          string `json:"latest,omitempty"`
+	Channel         string `json:"channel"`
+	UpdateAvailable bool   `json:"update_available"`
+	CheckedAt       string `json:"checked_at,omitempty"`
+	Error           string `json:"error,omitempty"`
 }
 
 var versionCheckMu sync.Mutex
 var versionCheckRunning bool
 
 type FrameworkSyncCandidate struct {
-    Name string `json:"name"`
-    Path string `json:"path"`
-    FromVersion string `json:"from_version"`
-    ToVersion string `json:"to_version"`
+	Name        string `json:"name"`
+	Path        string `json:"path"`
+	FromVersion string `json:"from_version"`
+	ToVersion   string `json:"to_version"`
 }
 
 type UpgradeResult struct {
-    From string `json:"from"`
-    To string `json:"to"`
-    Channel string `json:"channel,omitempty"`
-    FrameworkSync []FrameworkSyncCandidate `json:"framework_sync,omitempty"`
-    Executable string `json:"executable"`
-    RestartRequired bool `json:"restart_required"`
-    Scheduled bool `json:"scheduled,omitempty"`
+	From               string                   `json:"from"`
+	To                 string                   `json:"to"`
+	Channel            string                   `json:"channel,omitempty"`
+	FrameworkSync      []FrameworkSyncCandidate `json:"framework_sync,omitempty"`
+	Executable         string                   `json:"executable"`
+	RestartRequired    bool                     `json:"restart_required"`
+	Scheduled          bool                     `json:"scheduled,omitempty"`
+	PreviousExecutable string                   `json:"previous_executable,omitempty"`
 }
 
 type ReleaseChannelTarget struct {
-    Channel string `json:"channel"`
-    Version string `json:"version,omitempty"`
-    FrameworkSync []FrameworkSyncCandidate `json:"framework_sync,omitempty"`
-    Error string `json:"error,omitempty"`
+	Channel       string                   `json:"channel"`
+	Version       string                   `json:"version,omitempty"`
+	FrameworkSync []FrameworkSyncCandidate `json:"framework_sync,omitempty"`
+	Error         string                   `json:"error,omitempty"`
 }
 
 type ReleaseChannelOptions struct {
-    CurrentVersion string `json:"current_version"`
-    CurrentChannel string `json:"current_channel"`
-    Stable ReleaseChannelTarget `json:"stable"`
-    Dev ReleaseChannelTarget `json:"dev"`
-    EnvironmentOverride bool `json:"environment_override,omitempty"`
+	CurrentVersion      string               `json:"current_version"`
+	CurrentChannel      string               `json:"current_channel"`
+	Stable              ReleaseChannelTarget `json:"stable"`
+	Dev                 ReleaseChannelTarget `json:"dev"`
+	EnvironmentOverride bool                 `json:"environment_override,omitempty"`
 }
 
 func homeDir() string {
@@ -140,30 +143,68 @@ func frameworkVersion(project string) string {
 }
 
 func RegisterProject(project string) error {
-    abs,err:=filepath.Abs(project)
-    if err!=nil { return err }
-    if _,err=os.Stat(filepath.Join(abs,"_task_mecca")); err!=nil { return err }
-    _=os.MkdirAll(homeDir(),0755)
-    reg:=registry{}
-    if data,readErr:=os.ReadFile(registryPath()); readErr==nil { _=json.Unmarshal(data,&reg) }
-    now:=time.Now().Format(time.RFC3339)
-    found:=false
-    for i:=range reg.Projects {
-        if filepath.Clean(reg.Projects[i].Path)==filepath.Clean(abs) {
-            reg.Projects[i].Name=filepath.Base(abs)
-            reg.Projects[i].FrameworkVersion=frameworkVersion(abs)
-            reg.Projects[i].LastSeen=now
-            found=true
-            break
-        }
-    }
-    if !found {
-        reg.Projects=append(reg.Projects,Project{Name:filepath.Base(abs),Path:abs,FrameworkVersion:frameworkVersion(abs),LastSeen:now})
-    }
-    sort.Slice(reg.Projects,func(i,j int) bool { return strings.ToLower(reg.Projects[i].Name)<strings.ToLower(reg.Projects[j].Name) })
-    data,err:=json.MarshalIndent(reg,"","  ")
-    if err!=nil { return err }
-    return os.WriteFile(registryPath(),append(data,'\n'),0644)
+    projectManagementMu.Lock()
+    defer projectManagementMu.Unlock()
+    release,lockErr:=projectguard.AcquireManagement();if lockErr!=nil{return lockErr};defer release()
+    return registerProject(project)
+}
+func registerProject(project string) error {
+	abs, err := filepath.Abs(project)
+	if err != nil {
+		return err
+	}
+	if _, err = os.Stat(filepath.Join(abs, "_task_mecca")); err != nil {
+		return err
+	}
+	_, err = projectguard.CanonicalPath(abs)
+	if err != nil {
+		return err
+	}
+	_ = os.MkdirAll(homeDir(), 0755)
+	reg := registry{}
+	if data, readErr := os.ReadFile(registryPath()); readErr == nil {
+		if err := json.Unmarshal(data, &reg); err != nil {
+			return err
+		}
+	} else if !os.IsNotExist(readErr) {
+		return readErr
+	}
+	now := time.Now().Format(time.RFC3339)
+	paused := reg.Paused[:0]
+	for _, path := range reg.Paused {
+		if !projectguard.MatchesBoundary(path, abs) {
+			paused = append(paused, path)
+		}
+	}
+	reg.Paused = paused
+	history := reg.History[:0]
+	for _, item := range reg.History {
+		if !projectguard.MatchesBoundary(item.Path, abs) && (item.Boundary == "" || !projectguard.MatchesBoundary(item.Boundary, abs)) {
+			history = append(history, item)
+		}
+	}
+	reg.History = history
+	found := false
+	for i := range reg.Projects {
+		if sameProjectIdentity(reg.Projects[i].Path, abs) {
+			reg.Projects[i].Name = filepath.Base(abs)
+			reg.Projects[i].FrameworkVersion = frameworkVersion(abs)
+			reg.Projects[i].LastSeen = now
+			found = true
+			break
+		}
+	}
+	if !found {
+		reg.Projects = append(reg.Projects, Project{Name: filepath.Base(abs), Path: abs, FrameworkVersion: frameworkVersion(abs), LastSeen: now})
+	}
+	sort.Slice(reg.Projects, func(i, j int) bool {
+		return strings.ToLower(reg.Projects[i].Name) < strings.ToLower(reg.Projects[j].Name)
+	})
+	data, err := json.MarshalIndent(reg, "", "  ")
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(registryPath(), append(data, '\n'), 0644)
 }
 
 func ListProjects() []Project {
@@ -236,28 +277,59 @@ func stableReleaseRawURL(path string) string {
     return "https://raw.githubusercontent.com/"+repoName+"/"+stableReleaseTag+"/"+strings.TrimPrefix(path,"/")
 }
 
+// Metadata requests are small, while standalone release binaries are several
+// megabytes and may be downloaded across slow VPN/mobile connections.
+// http.Client.Timeout includes the complete response body, not only the dial.
+const (
+    releaseMetadataTimeout = 12*time.Second
+    releaseBinaryTimeout = 120*time.Second
+    releaseMetadataMaxBytes int64 = 2 << 20
+    releaseBinaryMaxBytes int64 = 128 << 20
+)
+
 func httpGet(url string) ([]byte,error) {
-    client:=&http.Client{Timeout:5*time.Second}
+    return httpGetWithPolicy(url,releaseMetadataTimeout,releaseMetadataMaxBytes,3)
+}
+
+// The caller explicitly selects a timeout and size ceiling for the asset type.
+// Partial and oversized responses never escape as successful downloads, and
+// transient read errors can be retried without touching the installed binary.
+func httpGetWithPolicy(url string,timeout time.Duration,maxBytes int64,attempts int) ([]byte,error) {
+    client:=&http.Client{Timeout:timeout}
     var lastErr error
-    for attempt:=0; attempt<3; attempt++ {
+    for attempt:=0;attempt<attempts;attempt++ {
         req,err:=http.NewRequest(http.MethodGet,url,nil)
         if err!=nil { return nil,err }
         req.Header.Set("User-Agent","task-mecca")
         resp,err:=client.Do(req)
-        if err==nil {
-            data,readErr:=io.ReadAll(resp.Body)
-            _=resp.Body.Close()
-            if readErr==nil && resp.StatusCode>=200 && resp.StatusCode<300 { return data,nil }
-            if readErr!=nil {
-                lastErr=readErr
-            } else {
-                lastErr=fmt.Errorf("HTTP %d",resp.StatusCode)
-                if resp.StatusCode!=404 && resp.StatusCode!=429 && resp.StatusCode<500 { return nil,lastErr }
-            }
-        } else {
+        if err!=nil {
             lastErr=err
+        } else {
+            if resp.StatusCode<200 || resp.StatusCode>=300 {
+                _=resp.Body.Close()
+                lastErr=fmt.Errorf("HTTP %d",resp.StatusCode)
+                // Missing or unauthorized release assets will not become
+                // available merely by retrying the same request.
+                if resp.StatusCode!=404 && resp.StatusCode!=429 && resp.StatusCode<500 { return nil,lastErr }
+                if resp.StatusCode==404 { return nil,lastErr }
+            } else if resp.ContentLength>maxBytes {
+                _=resp.Body.Close()
+                return nil,fmt.Errorf("response exceeds maximum download size (%d bytes)",maxBytes)
+            } else {
+                data,readErr:=io.ReadAll(io.LimitReader(resp.Body,maxBytes+1))
+                closeErr:=resp.Body.Close()
+                if int64(len(data))>maxBytes {
+                    return nil,fmt.Errorf("response exceeds maximum download size (%d bytes)",maxBytes)
+                }
+                if readErr==nil && closeErr==nil { return data,nil }
+                if readErr!=nil {
+                    lastErr=fmt.Errorf("reading response body: %w",readErr)
+                } else {
+                    lastErr=fmt.Errorf("closing response body: %w",closeErr)
+                }
+            }
         }
-        if attempt<2 { time.Sleep(time.Duration(attempt+1)*500*time.Millisecond) }
+        if attempt<attempts-1 { time.Sleep(time.Duration(attempt+1)*500*time.Millisecond) }
     }
     if lastErr==nil { lastErr=errors.New("request failed") }
     return nil,lastErr
@@ -330,6 +402,21 @@ func StableReleaseNote(version string) ([]byte,error) {
         return nil,errors.New("invalid release note version")
     }
     return httpGet(stableReleaseRawURL("release-notes/"+version+".json"))
+}
+
+// CurrentChannelReleaseNote returns the update note published with the active channel.
+// Stable keeps its versioned history; Dev publishes one rolling note alongside release-dev.
+func CurrentChannelReleaseNote(version string) ([]byte,error) {
+    version=normalizeVersion(version)
+    if CurrentChannel()!=devChannel { return StableReleaseNote(version) }
+    base,err:=releaseBaseForChannel(devChannel)
+    if err!=nil { return nil,err }
+    data,err:=httpGet(base+"/release-note.json")
+    if err!=nil { return nil,err }
+    var note struct { Version string `json:"version"` }
+    if err=json.Unmarshal(data,&note); err!=nil { return nil,fmt.Errorf("invalid dev release note: %w",err) }
+    if normalizeVersion(note.Version)!=version { return nil,fmt.Errorf("dev release note version mismatch: got %s, want %s",note.Version,version) }
+    return data,nil
 }
 
 func versionCachePath() string { return filepath.Join(homeDir(),"update-check-"+CurrentChannel()+".json") }
@@ -505,17 +592,52 @@ func checksumFor(data []byte,asset string) (string,error) {
 }
 
 func fetchReleaseBinary(base string) ([]byte,error) {
+    return fetchReleaseBinaryWithProgress(base,nil)
+}
+
+func reportUpgradeProgress(report func(string),phase string) {
+    if report!=nil { report(phase) }
+}
+
+func fetchReleaseBinaryWithProgress(base string,report func(string)) ([]byte,error) {
     asset,err:=assetName()
     if err!=nil { return nil,err }
-    binary,err:=httpGet(base+"/"+asset)
-    if err!=nil { return nil,err }
+    binary,err:=httpGetWithPolicy(base+"/"+asset,releaseBinaryTimeout,releaseBinaryMaxBytes,3)
+    if err!=nil { return nil,fmt.Errorf("downloading executable %s: %w",asset,err) }
+    reportUpgradeProgress(report,"verifying")
     sums,err:=httpGet(base+"/SHA256SUMS.txt")
-    if err!=nil { return nil,err }
+    if err!=nil { return nil,fmt.Errorf("downloading checksum manifest: %w",err) }
     expected,err:=checksumFor(sums,asset)
     if err!=nil { return nil,err }
     digest:=sha256.Sum256(binary)
     if hex.EncodeToString(digest[:])!=expected { return nil,errors.New("SHA-256 verification failed") }
     return binary,nil
+}
+
+func preserveExecutable(exe string) (string,error) {
+    source,err:=os.Open(exe)
+    if err!=nil { return "",err }
+    defer source.Close()
+    backup:=exe+".previous"
+    tmp:=backup+".tmp"
+    _=os.Remove(tmp)
+    target,err:=os.OpenFile(tmp,os.O_CREATE|os.O_TRUNC|os.O_WRONLY,0755)
+    if err!=nil { return "",err }
+    _,copyErr:=io.Copy(target,source)
+    closeErr:=target.Close()
+    if copyErr!=nil { _=os.Remove(tmp); return "",copyErr }
+    if closeErr!=nil { _=os.Remove(tmp); return "",closeErr }
+    if err=os.Rename(tmp,backup); err!=nil { _=os.Remove(tmp); return "",err }
+    return backup,nil
+}
+
+func validateUpgradeBinary(path string) error {
+    info,err:=buildinfo.ReadFile(path)
+    if err!=nil { return fmt.Errorf("downloaded upgrade is not a valid Go executable: %w",err) }
+    if !strings.Contains(info.Path,"TaskMecca") && !strings.Contains(info.Path,"task-mecca") {
+        return fmt.Errorf("downloaded executable has unexpected Go main package %q",info.Path)
+    }
+    return nil
 }
 
 func installBinary(current,to string,binary []byte) (UpgradeResult,error) {
@@ -535,16 +657,26 @@ func installBinary(current,to string,binary []byte) (UpgradeResult,error) {
     if err=tmp.Close(); err!=nil { return result,err }
     if runtime.GOOS!="windows" {
         if err=os.Chmod(tmpPath,0755); err!=nil { return result,err }
+        if err=validateUpgradeBinary(tmpPath); err!=nil { return result,err }
+        backup,backupErr:=preserveExecutable(exe)
+        if backupErr!=nil { return result,fmt.Errorf("cannot preserve current executable for rollback: %w",backupErr) }
+        result.PreviousExecutable=backup
         if err=os.Rename(tmpPath,exe); err!=nil { return result,err }
         result.RestartRequired=true
         return result,nil
     }
 
+    if err=validateUpgradeBinary(tmpPath); err!=nil { return result,err }
+    backup,backupErr:=preserveExecutable(exe)
+    if backupErr!=nil { return result,fmt.Errorf("cannot preserve current executable for rollback: %w",backupErr) }
+    result.PreviousExecutable=backup
     newPath:=exe+".new"
     _=os.Remove(newPath)
     if err=os.Rename(tmpPath,newPath); err!=nil { return result,err }
     script:=exe+".upgrade.cmd"
-    body:=fmt.Sprintf("@echo off\r\n:wait\r\nmove /Y \"%s\" \"%s\" >nul 2>&1\r\nif errorlevel 1 (timeout /t 1 /nobreak >nul & goto wait)\r\ndel \"%%~f0\"\r\n",newPath,exe)
+    marker:=exe+".upgrade.state"
+    _=os.Remove(marker)
+    body:=fmt.Sprintf("@echo off\r\nset tries=0\r\n:wait\r\nset /a tries+=1\r\nmove /Y \"%s\" \"%s\" >nul 2>&1\r\nif not errorlevel 1 (echo upgraded>\"%s\" & goto done)\r\nif %%tries%% GEQ 30 goto rollback\r\ntimeout /t 1 /nobreak >nul\r\ngoto wait\r\n:rollback\r\ncopy /Y \"%s\" \"%s\" >nul 2>&1\r\nif errorlevel 1 (echo failed>\"%s\") else (echo rolled_back>\"%s\")\r\n:done\r\ndel \"%%~f0\"\r\n",newPath,exe,marker,backup,exe,marker,marker)
     if err=os.WriteFile(script,[]byte(body),0600); err!=nil { return result,err }
     cmd:=exec.Command("cmd.exe","/D","/C","start","","/MIN",script)
     if err=cmd.Start(); err!=nil { return result,err }
@@ -555,16 +687,25 @@ func installBinary(current,to string,binary []byte) (UpgradeResult,error) {
 }
 
 func Upgrade(current string) (UpgradeResult,error) {
+    return UpgradeWithProgress(current,nil)
+}
+
+// Progress reports observed stages, never fabricated download percentages.
+// Existing CLI callers remain compatible with Upgrade.
+func UpgradeWithProgress(current string,report func(string)) (UpgradeResult,error) {
     current=normalizeVersion(current)
     result:=UpgradeResult{From:current,Channel:CurrentChannel()}
+    reportUpgradeProgress(report,"checking")
     info:=CheckLatest(current)
     if info.Error!="" { return result,errors.New(info.Error) }
     if !info.UpdateAvailable {
         result.To=current
         return result,nil
     }
-    binary,err:=fetchReleaseBinary(releaseBase())
+    reportUpgradeProgress(report,"downloading")
+    binary,err:=fetchReleaseBinaryWithProgress(releaseBase(),report)
     if err!=nil { return result,err }
+    reportUpgradeProgress(report,"installing")
     result,err=installBinary(current,info.Latest,binary)
     result.Channel=CurrentChannel()
     return result,err

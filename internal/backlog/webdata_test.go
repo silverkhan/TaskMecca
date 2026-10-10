@@ -5,6 +5,8 @@ import (
     "path/filepath"
     "testing"
     "time"
+
+    "github.com/silverkhan/TaskMecca/internal/runtimeobs"
 )
 
 func writeWebTask(t *testing.T,folder,name,body string) string {
@@ -107,7 +109,7 @@ func TestAttentionSnapshotDetectsCompletedRuntimeAndPersistsCompletion(t *testin
     first,err:=AttentionSnapshot(project,folder,true)
     if err!=nil { t.Fatal(err) }
     attention:=first["attention"].([]map[string]any)
-    if len(attention)!=1 || attention[0]["type"]!="completion_pending" { t.Fatalf("attention=%+v",attention) }
+    if len(attention)!=0 || len(first["controller_reviews"].([]map[string]any))!=1 { t.Fatalf("attention=%+v",first) }
 
     if err:=os.Remove(path); err!=nil { t.Fatal(err) }
     writeWebTask(t,folder,"000001.A-1.alpha.done.md","# A-1 Alpha\n- Agent: /root/controller/pairi\n- 결과: done\n")
@@ -161,4 +163,69 @@ func TestBacklogRevisionIgnoresMtimeOnlyTouchesButDetectsContentChange(t *testin
     if third["revision"]==firstRevision {
         t.Fatalf("content change did not change revision: %v",third["revision"])
     }
+}
+
+
+func TestBacklogPageTreatsMissingBacklogAsUninitialized(t *testing.T) {
+    project:=t.TempDir()
+    if err:=os.MkdirAll(filepath.Join(project,"_task_mecca"),0755); err!=nil { t.Fatal(err) }
+
+    page,err:=BacklogPage(project,"",1,20,nil,nil,"","id_desc")
+    if err!=nil { t.Fatal(err) }
+    if page["total"]!=0 { t.Fatalf("total=%v page=%+v",page["total"],page) }
+    items,ok:=page["items"].([]map[string]any)
+    if !ok || len(items)!=0 { t.Fatalf("items=%T %+v",page["items"],page["items"]) }
+    presence,ok:=page["backlog_presence"].(map[string]any)
+    if !ok { t.Fatalf("backlog_presence=%T %+v",page["backlog_presence"],page["backlog_presence"]) }
+    if presence["status"]!="uninitialized" { t.Fatalf("presence=%+v",presence) }
+    if page["repo"]!=filepath.Base(project) { t.Fatalf("repo=%v want=%s",page["repo"],filepath.Base(project)) }
+}
+
+
+func TestAttentionSnapshotPassesCanonicalLifecycleToNotificationEvents(t *testing.T) {
+    project:=t.TempDir()
+    backlogDir:=filepath.Join(project,"_task_mecca","data","backlog")
+    if err:=os.MkdirAll(backlogDir,0755); err!=nil { t.Fatal(err) }
+    // Establish an existing item so the next task receives a registration event.
+    if err:=os.WriteFile(filepath.Join(backlogDir,"0001.B-001.base.todo.md"),[]byte("---\nID: B-001\nTitle: Base\n---\n"),0644); err!=nil { t.Fatal(err) }
+    if _,err:=AttentionSnapshot(project,"",true); err!=nil { t.Fatal(err) }
+    task:=filepath.Join(backlogDir,"0444.B-444.started.doing.md")
+    if err:=os.WriteFile(task,[]byte("---\nID: B-444\nTitle: Started\nAgent: /root/controller/raichyu\nRuntimeProvider: codex\n---\n"),0644); err!=nil { t.Fatal(err) }
+    now:=time.Now().UTC()
+    episode:=runtimeobs.ExecutionEvent{EventKind:"episode",ObservedAt:now.Format(time.RFC3339Nano),AttemptID:"run-b444",Provider:"codex",SessionID:"root-1",RuntimeAgentID:"raichyu",EvidenceSource:runtimeobs.EvidenceReconciled,ObservationQuality:runtimeobs.QualityAuthoritative}
+    if err:=runtimeobs.AppendExecutionEvent(project,episode); err!=nil { t.Fatal(err) }
+    if _,err:=runtimeobs.BindAttempt(project,"run-b444","B-444","/root/controller/raichyu","dispatch","",nil,now); err!=nil { t.Fatal(err) }
+    snapshot,err:=AttentionSnapshot(project,"",true); if err!=nil { t.Fatal(err) }
+    events,_:=snapshot["notification_events"].([]map[string]any)
+    found:=false
+    for _,event:=range events { if toString(event["task_id"])=="B-444" && toString(event["kind"])=="started" { found=true } }
+    if !found { t.Fatalf("canonical started lifecycle was not forwarded to notification events: %+v",events) }
+}
+
+
+func TestBindRuntimeAgentFlowsThroughLifecycleIntoStartedNotification(t *testing.T) {
+    project:=t.TempDir()
+    backlogDir:=filepath.Join(project,"_task_mecca","data","backlog")
+    if err:=os.MkdirAll(backlogDir,0755); err!=nil { t.Fatal(err) }
+    if err:=os.WriteFile(filepath.Join(backlogDir,"0001.B-001.base.todo.md"),[]byte("---\nID: B-001\nTitle: Base\n---\n"),0644); err!=nil { t.Fatal(err) }
+    if _,err:=AttentionSnapshot(project,"",true); err!=nil { t.Fatal(err) }
+
+    if err:=os.WriteFile(filepath.Join(backlogDir,"0501.B-501.actual.doing.md"),[]byte("---\nID: B-501\nTitle: Actual bind-agent path\nAgent: /root/controller/raichyu\nRuntimeProvider: codex\n---\n"),0644); err!=nil { t.Fatal(err) }
+    now:=time.Now().UTC()
+    episode:=runtimeobs.ExecutionEvent{
+        EventKind:"episode",ObservedAt:now.Add(-time.Second).Format(time.RFC3339Nano),AttemptID:"run-live-b501",
+        Provider:"codex",SessionID:"root-live",RuntimeAgentID:"raichyu",
+        EvidenceSource:runtimeobs.EvidenceHook,ObservationQuality:runtimeobs.QualityAuthoritative,
+    }
+    if err:=runtimeobs.AppendExecutionEvent(project,episode); err!=nil { t.Fatal(err) }
+    if _,err:=runtimeobs.BindRuntimeAgent(project,"raichyu","B-501","/root/controller/raichyu","",now); err!=nil { t.Fatal(err) }
+
+    snapshot,err:=AttentionSnapshot(project,"",true)
+    if err!=nil { t.Fatal(err) }
+    events:=snapshot["notification_events"].([]map[string]any)
+    starts:=0
+    for _,event:=range events {
+        if toString(event["task_id"])=="B-501" && toString(event["kind"])=="started" { starts++ }
+    }
+    if starts!=1 { t.Fatalf("bind-agent path produced %d started events: %+v",starts,events) }
 }

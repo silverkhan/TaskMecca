@@ -14,26 +14,20 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  python-compatibility:
-    name: Python compatibility · ${{ matrix.python-version }}
-    runs-on: ubuntu-latest
+  project-management:
+    name: File-preserving project management · ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.11", "3.12", "3.13"]
+        os: [macos-latest, windows-latest]
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-go@v5
         with:
-          python-version: ${{ matrix.python-version }}
-      - name: Install compatibility package
-        run: python -m pip install -e .
-      - name: Compile Python sources
-        run: python -m compileall -q src
-      - name: Run Python compatibility tests
-        run: python -m unittest discover -s tests -v
-      - name: Python module CLI smoke
-        run: python -m task_mecca --version
+          go-version: "1.24.x"
+      - name: Archive and monitoring preserve files (no native Trash access)
+        run: go test ./internal/maintenance ./internal/projectguard -run "Archive|ProjectManagement|ProjectMonitoring|Suppression|ExplicitRegistration" -count=1 -v
 
   go-runtime:
     name: Go runtime
@@ -52,82 +46,63 @@ jobs:
       - name: Check Web JavaScript syntax
         run: |
           node --check goassets/template/_task_mecca/framework/web/app.js
+          node --check goassets/template/_task_mecca/framework/web/select-ui.js
           node --check goassets/template/_task_mecca/framework/web/sw.js
+          node --check goassets/template/_task_mecca/framework/web/terminal.js
+      - name: Test Controller review and current user attention
+        run: node --test tests/web_completion_review.test.cjs tests/web_user_attention.test.cjs tests/web_common_attention.test.cjs tests/web_live_list.test.cjs tests/web_task_detail_prefetch.test.cjs tests/web_notification_center.test.cjs tests/web_notification_delivery.test.cjs tests/web_notification_pagination.test.cjs tests/web_push_service_worker.test.cjs tests/web_notification_settings.test.cjs tests/web_telegram_controls_ui.test.cjs tests/web_storage_management.test.cjs tests/web_terminal_service_restart.test.cjs tests/web_terminal_theme.test.cjs tests/web_select_ui.test.cjs
+      - name: Verify Python-free Web guidance
+        run: node --test tests/web_go_only_runtime.test.cjs
+      - name: Test Web project session persistence
+        run: node --test tests/web_project_sessions.test.cjs
+      - name: Verify Stable 0.3.0 release note and update flow
+        run: |
+          node --test tests/web_release_notes_030.test.cjs tests/web_update_flow.test.cjs
+          test "$(sed -n 's/^var version = "\([^"]*\)"/\1/p' cmd/task-mecca/main.go)" = "0.3.0"
+          test "$(tr -d '\r\n' < goassets/template/_task_mecca/VERSION)" = "0.3.0"
+          diff -u <(jq -S . release-notes/0.3.0.json) <(jq -S . goassets/template/_task_mecca/framework/release-notes/current.json)
 
-  cross-runtime-smoke:
-    name: Go ↔ Python compatibility smoke
+
+  platform-builds:
+    name: Platform build · ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          # Native macOS runners are newer than the minimum Go toolchain in go.mod.
+          # Use a current compiler here while retaining go.mod compatibility.
+          go-version: "1.24.x"
+      - name: Test upgrade and rollback paths
+        run: go test ./internal/maintenance ./internal/webui -run "Upgrade|Rollback|PowerShellQuote|BrandAssets"
+      - name: Build Go CLI
+        run: go build ./cmd/task-mecca
+
+  standalone-smoke:
+    name: Standalone CLI · Python-free project installation
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - name: Compare core compatibility commands
+      - name: Verify standalone installer output without Python
         shell: bash
         run: |
           set -euo pipefail
-          python - <<'PY'
-          import json
-          import pathlib
-          import subprocess
-          import tempfile
-
-          script = "src/task_mecca/template/_task_mecca/framework/collab_tools.py"
-
-          def run_json(command):
-              result = subprocess.run(command, capture_output=True, text=True)
-              if result.returncode != 0:
-                  raise SystemExit(
-                      f"command failed: {command}\nstdout={result.stdout}\nstderr={result.stderr}"
-                  )
-              return json.loads(result.stdout)
-
-          cases = [
-              (
-                  ["python", script, "agent", "/root", "--json"],
-                  ["go", "run", "./cmd/task-mecca", "agent", "/root", "--json"],
-              ),
-              (
-                  ["python", script, "agent", "/root/controller/pairi", "--new", "--json"],
-                  ["go", "run", "./cmd/task-mecca", "agent", "/root/controller/pairi", "--new", "--json"],
-              ),
-          ]
-          for python_cmd, go_cmd in cases:
-              python_value = run_json(python_cmd)
-              go_value = run_json(go_cmd)
-              if python_value != go_value:
-                  raise SystemExit(
-                      f"agent compatibility mismatch:\npython={python_value}\ngo={go_value}"
-                  )
-
-          with tempfile.TemporaryDirectory() as project:
-              ledger = pathlib.Path(project) / "_task_mecca" / "data" / "backlog"
-              ledger.mkdir(parents=True)
-              (ledger / "000001.A-1.done.done.md").write_text("# A-1 Done\n", encoding="utf-8")
-              (ledger / "000002.A-2.ready.todo.md").write_text("# A-2 Ready\n", encoding="utf-8")
-
-              python_value = run_json(
-                  ["python", script, "next-id", "A", "--root", str(ledger), "--json"]
-              )
-              go_value = run_json(
-                  [
-                      "go",
-                      "run",
-                      "./cmd/task-mecca",
-                      "next-id",
-                      "A",
-                      "--project",
-                      project,
-                      "--root",
-                      str(ledger),
-                      "--json",
-                  ]
-              )
-              if python_value != go_value:
-                  raise SystemExit(
-                      f"next-id compatibility mismatch:\npython={python_value}\ngo={go_value}"
-                  )
-          PY
+          go build -o "$RUNNER_TEMP/task-mecca" ./cmd/task-mecca
+          "$RUNNER_TEMP/task-mecca" --version
+          project="$(mktemp -d)"
+          mkdir -p "$RUNNER_TEMP/task-mecca-smoke-home"
+          (
+            export HOME="$RUNNER_TEMP/task-mecca-smoke-home"
+            cd "$project"
+            "$RUNNER_TEMP/task-mecca" init
+            test -f "_task_mecca/manifest.json"
+            test -z "$(find _task_mecca -name '*.py' -print -quit)"
+            echo "Python-free standalone project initialization verified"
+          )
