@@ -4931,7 +4931,7 @@ function detailView(task) {
     const duration=isCurrent?fmtSec(Math.max(0,(Date.now()-new Date(e.at).getTime())/1000)):(e.interval||'-');
     const durationHTML=duration&&duration!=='-'?`${esc(t('stayed'))} <span${isCurrent?` class="live-lifecycle-interval" data-state-at="${esc(e.at)}"`:''}>${esc(duration)}</span>`:'';
     return `<div class="timeline-event"><span class="timeline-dot"></span><span class="timeline-time">${esc(new Date(e.at).toLocaleString(localeCode()))}</span><div class="timeline-label"><strong>${esc(lifecycleEventLabel(e.label))}${e.provisional?` · ${esc(t('provisional'))}`:''}</strong><small>${durationHTML}${lifecycleEvidenceLabel(e)?` · ${esc(lifecycleEvidenceLabel(e))}`:''}</small></div></div>`;
-  }).join('')}</div>`:`<p class="summary">${esc(t('noLifecycle'))}</p>`}`;
+  }).join('')}</div>`:task.content_only?'':`<p class="summary">${esc(t('noLifecycle'))}</p>`}`;
   const lifecycle=`<section class="section detail-section lifecycle-section" id="lifecycle" data-toc-label="${esc(t('lifecycle'))}"><h2>${esc(t('lifecycle'))}</h2>${lifecycleBody}</section>`;
   const passiveAlert=!reason&&warn?`<div class="attention-banner ${['stale','worker_missing'].includes(act.health)?'danger':''}"><strong>${esc(healthLabel(act.health))}</strong><span>${esc(t('lastObservable',{ago:ago(act.last_activity_at),source:act.last_activity_source}))} ${esc(act.health==='worker_missing'?t('workerMissingDetail'):t('quietAdvisory'))}</span></div>`:'';
   const sectionSummaries=task.document?.section_summaries||{};
