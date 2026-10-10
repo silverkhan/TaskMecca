@@ -30,6 +30,10 @@ import (
 
 const embeddedRoot = "template/_task_mecca/framework"
 
+// The timestamp is placed on a request before the project monitoring guard.
+// Detail timing can then distinguish lock queueing from actual rendering work.
+type projectMonitoringStartKey struct{}
+
 type Config struct {
 	Project      string
 	Root         string
@@ -1426,6 +1430,10 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 	})
 
 	mux.HandleFunc("/api/tasks/", func(w http.ResponseWriter, r *http.Request) {
+		monitorWaitMS := 0.0
+		if guardedAt, ok := r.Context().Value(projectMonitoringStartKey{}).(time.Time); ok {
+			monitorWaitMS = time.Since(guardedAt).Seconds() * 1000
+		}
 		started := time.Now()
 		activeProject := projectFor(r)
 		activeCtx, ctxErr := webContext(activeProject, "")
@@ -1442,8 +1450,8 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 		detailStarted := time.Now()
 		id := strings.ToUpper(strings.TrimSpace(strings.TrimPrefix(r.URL.Path, "/api/tasks/")))
 		item, profile, err := backlog.TaskDetailWithTimings(activeProject, selected, id)
-		w.Header().Set("Server-Timing", fmt.Sprintf("selection;dur=%.1f, catalog;dur=%.1f, readiness;dur=%.1f, control;dur=%.1f, projection;dur=%.1f, detail;dur=%.1f",
-			selectionMS, profile.CatalogMS, profile.ReadinessMS, profile.ControlMS, profile.ProjectionMS, time.Since(detailStarted).Seconds()*1000))
+		w.Header().Set("Server-Timing", fmt.Sprintf("monitor_wait;dur=%.1f, selection;dur=%.1f, catalog;dur=%.1f, readiness;dur=%.1f, control;dur=%.1f, projection;dur=%.1f, detail;dur=%.1f",
+			monitorWaitMS, selectionMS, profile.CatalogMS, profile.ReadinessMS, profile.ControlMS, profile.ProjectionMS, time.Since(detailStarted).Seconds()*1000))
 		if err != nil {
 			writeJSON(w, map[string]any{"error": err.Error(), "id": id}, 404)
 			return
@@ -1503,6 +1511,7 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 		// project before any side effect. Hub and file-presence checks stay readable.
 		projectWrites := path == "/api/backlog/tasks" || path == "/api/snapshot" || path == "/api/attention" || path == "/api/workload" || path == "/api/issues" || strings.HasPrefix(path, "/api/tasks/") || strings.HasPrefix(path, "/api/runtime/") || path == "/api/notifications/deliveries" || path == "/api/notifications/telegram" || path == "/api/notifications/push" || path == "/api/notifications/web"
 		if projectWrites {
+			r = r.WithContext(stdcontext.WithValue(r.Context(), projectMonitoringStartKey{}, time.Now()))
 			if !maintenance.WithProjectMonitoring(projectFor(r), func() { mux.ServeHTTP(w, r) }) {
 				writeJSON(w, map[string]any{"error": "project monitoring is stopped or the folder is unavailable; resume monitoring from Hub to use live projections", "monitoring": false}, http.StatusConflict)
 			}
