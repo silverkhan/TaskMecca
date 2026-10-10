@@ -55,6 +55,13 @@ jobs:
         run: node --test tests/web_go_only_runtime.test.cjs
       - name: Test Web project session persistence
         run: node --test tests/web_project_sessions.test.cjs
+      - name: Verify Stable 0.3.0 release note and update flow
+        run: |
+          node --test tests/web_release_notes_030.test.cjs tests/web_update_flow.test.cjs
+          test "$(sed -n 's/^var version = "\([^"]*\)"/\1/p' cmd/task-mecca/main.go)" = "0.3.0"
+          test "$(tr -d '\r\n' < goassets/template/_task_mecca/VERSION)" = "0.3.0"
+          diff -u <(jq -S . release-notes/0.3.0.json) <(jq -S . goassets/template/_task_mecca/framework/release-notes/current.json)
+
 
   platform-builds:
     name: Platform build · ${{ matrix.os }}
