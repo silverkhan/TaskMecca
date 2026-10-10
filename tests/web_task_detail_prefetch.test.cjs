@@ -135,20 +135,21 @@ test('outdated canonical result never silently swaps changed Markdown',async()=>
  assert.equal(a.cachedTaskDetail('A-4'),null);
 });
 
-test('confirmed lifecycle rows omit internal source, actor and ID while preserving evidence',()=>{
+test('confirmed lifecycle hides redundant persistence source but retains Worker and event ID',()=>{
  const a=app(()=>Promise.resolve(reply(task('A-1'))));
  a.state.language='ko';
  const confirmed={source:'durable_lifecycle',actor:'worker/abc',event_id:'lifecycle-long-event-id',label:'Started',at:'2026-10-10T01:00:00Z'};
  const execution={source:'execution_ledger',actor:'runtime',event_id:'attempt-long-id',label:'Started'};
- assert.equal(a.lifecycleEvidenceLabel(confirmed),'','canonical durable record needs no provenance on the normal timeline');
- assert.equal(a.lifecycleEvidenceLabel(execution),'','verified execution ledger also needs no provenance label');
- assert.equal(confirmed.actor,'worker/abc');
- assert.equal(confirmed.event_id,'lifecycle-long-event-id','the model keeps diagnostic evidence intact');
- const inferred={source:'runtime_observed',provisional:true,event_id:'observation'};
- assert.equal(a.lifecycleEvidenceLabel(inferred),'','the phase label already marks provisional evidence');
- assert.equal(a.lifecycleEvidenceLabel({source:'git'}),'Git 이력','Git fallback remains identifiable');
- assert.equal(a.lifecycleEvidenceLabel({source:'runtime_observed'}),'파일 상태 관측','unflagged file observation remains distinguishable');
+ assert.equal(a.lifecycleEvidenceLabel(confirmed),'worker/abc · ID lifecycle-long-event-id','canonical record must retain its Worker and event ID');
+ assert.equal(a.lifecycleEvidenceLabel(execution),'runtime · ID attempt-long-id','runtime ledger event still identifies its source actor and ID');
+ assert.equal(a.lifecycleEvidenceLabel({source:'durable_lifecycle',actor:'worker-only'}),'worker-only');
+ assert.equal(a.lifecycleEvidenceLabel({source:'durable_lifecycle',event_id:'event-only'}),'ID event-only');
+ assert.equal(a.lifecycleEvidenceLabel({source:'durable_lifecycle'}),'','empty metadata never produces dangling separators');
+ const inferred={source:'runtime_observed',provisional:true,actor:'worker/xyz',event_id:'observation'};
+ assert.equal(a.lifecycleEvidenceLabel(inferred),'worker/xyz · ID observation','provisional marker is separate; actor and ID must remain');
+ assert.equal(a.lifecycleEvidenceLabel({source:'git',event_id:'historical-id'}),'Git 이력 · ID historical-id');
+ assert.equal(a.lifecycleEvidenceLabel({source:'runtime_observed'}),'파일 상태 관측');
  a.state.language='en';
  assert.equal(a.lifecycleEvidenceLabel({source:'git'}),'Git history');
- assert.equal(a.lifecycleEvidenceLabel({source:'durable_lifecycle'}),'');
+ assert.equal(a.lifecycleEvidenceLabel(confirmed),'worker/abc · ID lifecycle-long-event-id');
 });
