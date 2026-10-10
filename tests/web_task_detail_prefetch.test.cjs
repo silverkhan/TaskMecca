@@ -5,7 +5,7 @@ function app(fetch, options={}){
  const ctx=vm.createContext({fetch,URLSearchParams,location:{search:'?project=/demo'},history:{pushState(){}},navigator:{language:'ko'},queueMicrotask,document:{visibilityState:'visible',querySelector:()=>null,querySelectorAll:()=>[]},localStorage:{getItem:()=>null,setItem(){},removeItem(){}},setTimeout:options.setTimeout||(()=>1),requestIdleCallback:options.requestIdleCallback});
  vm.runInContext(source.slice(0,source.indexOf('\ntranslateChrome();'))+`
  render=()=>{};
- globalThis.api={state,openTask,loadTaskDetail,prefetchTaskDetail,requestTaskDetail,cachedTaskDetail,taskDetailPending,taskDetailCache,taskDetailKey,acceptContentRevision,invalidateTaskDetailCache,scheduleTaskDetailPrefetch};
+ globalThis.api={state,openTask,loadTaskDetail,prefetchTaskDetail,requestTaskDetail,cachedTaskDetail,taskDetailPending,taskDetailCache,taskLiveCache,taskLivePending,taskDetailKey,acceptContentRevision,invalidateTaskDetailCache,scheduleTaskDetailPrefetch,scheduleTaskLiveEnrichment};
  `,ctx);
  const a=ctx.api;Object.assign(a.state,{project:'/demo',backlog:'/demo/backlog',view:'backlog',contentRevision:'r1',detail:null,detailTask:null,statusFilters:['all'],tagFilters:[],listPage:1,listSort:'id_desc',listPageMode:'manual',listPageSize:20,query:''});
  return {...a,ctx};
@@ -64,4 +64,73 @@ test('idle preload limits work to one current row and never crosses changed quer
  a.state.query='';a.scheduleTaskDetailPrefetch(query);callbacks.shift()();await tick();
  assert.equal(urls.length,1);assert.match(urls[0],/A-1/);
  a.scheduleTaskDetailPrefetch(query);callbacks.shift()();assert.equal(urls.length,1);
+});
+
+test('content-first detail paints Markdown before a deliberately slow full reconciliation',async()=>{
+ const timers=[],requests=[];
+ let releaseContent,releaseFull;
+ const a=app(url=>{
+  requests.push(url);
+  if(url.includes('projection=content'))return new Promise(resolve=>releaseContent=resolve);
+  return new Promise(resolve=>releaseFull=resolve);
+ },{setTimeout:fn=>{timers.push(fn);return timers.length;}});
+ let renders=0;
+ a.ctx.render=()=>{renders++};
+ a.openTask('A-7');
+ assert.equal(requests.length,1);
+ assert.match(requests[0],/projection=content/);
+ releaseContent(reply({...task('A-7'),content_only:true}));
+ await tick();
+ assert.equal(a.state.detailTask.raw_markdown,'# A-7');
+ assert.equal(a.state.detailTask.content_only,true);
+ assert.equal(renders,2,'click paints loading once, then actual Markdown');
+ assert.equal(requests.length,1,'slow full request has not blocked the initial document');
+ assert.equal(timers.length,1,'reconciliation is delayed until after body paint');
+ timers.shift()();
+ assert.equal(requests.length,2);
+ assert.doesNotMatch(requests[1],/projection=content/);
+ assert.equal(a.state.detailTask.content_only,true,'body remains available while control tower is slow');
+ releaseFull(reply({...task('A-7'),content_only:false,activity:{health:'healthy'},lifecycle:{events:[{label:'Registered',at:'2026-10-01T00:00:00Z'}]}}));
+ await tick();
+ assert.equal(a.state.detailTask.content_only,false);
+ assert.equal(a.state.detailTask.activity.health,'healthy');
+ assert.equal(renders,3,'lifecycle info is enriched separately');
+});
+test('late full response cannot replace the body from a different task',async()=>{
+ const timers=[],fullRequests=[];
+ const a=app(url=>{
+  if(url.includes('projection=content')){
+   const id=url.includes('A-1')?'A-1':'A-2';
+   return Promise.resolve(reply({...task(id),content_only:true}));
+  }
+  return new Promise(resolve=>fullRequests.push(resolve));
+ },{setTimeout:fn=>{timers.push(fn);return timers.length;}});
+ a.openTask('A-1');await tick();
+ timers.shift()();
+ assert.equal(fullRequests.length,1);
+ a.openTask('A-2');await tick();
+ timers.shift()();
+ assert.equal(fullRequests.length,2);
+ fullRequests[0](reply({...task('A-1'),content_only:false}));
+ await tick();
+ assert.equal(a.state.detail,'A-2');
+ assert.equal(a.state.detailTask.raw_markdown,'# A-2');
+ fullRequests[1](reply({...task('A-2'),content_only:false,activity:{health:'healthy'}}));
+ await tick();
+ assert.equal(a.state.detailTask.id,'A-2');
+ assert.equal(a.state.detailTask.content_only,false);
+});
+test('outdated canonical result never silently swaps changed Markdown',async()=>{
+ const timers=[];let fullResolve;
+ const a=app(url=>url.includes('projection=content')
+  ?Promise.resolve(reply({...task('A-4'),content_only:true}))
+  :new Promise(resolve=>fullResolve=resolve),
+  {setTimeout:fn=>{timers.push(fn);return timers.length;}});
+ a.openTask('A-4');await tick();
+ timers.shift()();
+ fullResolve(reply({...task('A-4'),raw_markdown:'# A-4 newer',content_only:false}));
+ await tick();
+ assert.equal(a.state.detailTask.raw_markdown,'# A-4');
+ assert.equal(a.state.pendingContentUpdate,true);
+ assert.equal(a.cachedTaskDetail('A-4'),null);
 });
