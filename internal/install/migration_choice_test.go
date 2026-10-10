@@ -108,8 +108,17 @@ func TestMigrationBackupFailureAndReadErrorStopBeforeWrites(t *testing.T) {
 		t.Fatal("backup failure overwrote framework")
 	}
 	if os.Geteuid() != 0 {
-		os.Chmod(file, 0200)
+		if err := os.Chmod(file, 0200); err != nil {
+			t.Skipf("cannot simulate unreadable file with chmod: %v", err)
+		}
 		defer os.Chmod(file, 0600)
+		// On Windows the chmod write-bit setting does not revoke read
+		// permission. Do not treat a readable file as an unreadable fixture.
+		// The backup-failure and no-data-loss assertions above still run.
+		if _, err := os.ReadFile(file); err == nil {
+			t.Log("filesystem does not enforce read denial through chmod; unreadable-file subcase not applicable")
+			return
+		}
 		if _, err := MigrateWithChoice(root, "new", "overwrite"); err == nil {
 			t.Fatal("unreadable existing file treated as missing")
 		}
