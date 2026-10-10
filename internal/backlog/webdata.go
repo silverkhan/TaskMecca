@@ -270,30 +270,51 @@ func BacklogPage(project,root string,page,pageSize int,statuses,tags []string,se
     },nil
 }
 
+// TaskDetailTimings identifies which server-side phase is expensive. The
+// timings are request-local: no mutable global counters or background writes.
+type TaskDetailTimings struct {
+ CatalogMS float64
+ ReadinessMS float64
+ ControlMS float64
+ ProjectionMS float64
+}
+
 func TaskDetail(project,root,id string) (map[string]any,error) {
-    rows,err:=CachedCatalog(project,root); if err!=nil { return nil,err }
-    byID:=preferredRows(rows); row,ok:=byID[strings.ToUpper(strings.TrimSpace(id))]; if !ok { return nil,fmt.Errorf("task not found: %s",id) }
-    // Readiness/dependency analysis covers the entire backlog. It cannot
-    // change the display state of a doing/hold/done task, so avoid it when
-    // opening those details (the common case for old/completed backlogs).
+ item,_,err:=TaskDetailWithTimings(project,root,id)
+ return item,err
+}
+
+func TaskDetailWithTimings(project,root,id string) (map[string]any,TaskDetailTimings,error) {
+    var profile TaskDetailTimings
+    catalogStart:=time.Now()
+    rows,err:=CachedCatalog(project,root)
+    profile.CatalogMS=time.Since(catalogStart).Seconds()*1000
+    if err!=nil { return nil,profile,err }
+    byID:=preferredRows(rows); row,ok:=byID[strings.ToUpper(strings.TrimSpace(id))]
+    if !ok { return nil,profile,fmt.Errorf("task not found: %s",id) }
     state:=row.State; waiting:=[]string{}
     if row.State=="todo" {
+        readinessStart:=time.Now()
         readyIDs,blocked:=webWorkflowStateMaps(project,root,rows)
         if readyIDs[row.ID] { state="ready" }
         if b,ok:=blocked[row.ID]; ok { state="blocked"; if v,ok:=b["waiting_for"].([]string); ok { waiting=v } }
+        profile.ReadinessMS=time.Since(readinessStart).Seconds()*1000
     }
+    controlStart:=time.Now()
     control:=reconcileControlTower(project,root,rows)
-    timings:=control.Timings
-    activity:=control.Activity
-    timing:=map[string]any{}; if v,ok:=timings[row.ID]; ok { timing=v }
+    profile.ControlMS=time.Since(controlStart).Seconds()*1000
+    projectionStart:=time.Now()
+    timing:=map[string]any{}
+    if v,ok:=control.Timings[row.ID]; ok { timing=v }
     item:=dashboardItem(row,state,waiting,timing,nil)
-    if signal,ok:=activity[row.ID]; ok { item["activity"]=signal } else { item["activity"]=map[string]any{"health":"n/a"} }
+    if signal,ok:=control.Activity[row.ID]; ok { item["activity"]=signal } else { item["activity"]=map[string]any{"health":"n/a"} }
     reason:=control.Attention[row.ID]
     if len(reason)>0 {
         item["attention_reason"]=reason
         item["state"]=effectiveStateFromControl(state,reason)
     }
-    return item,nil
+    profile.ProjectionMS=time.Since(projectionStart).Seconds()*1000
+    return item,profile,nil
 }
 
 func AttentionSnapshotFromRows(project,root string,rows []Record,reconcile bool,shared ...controlTowerSnapshot) (map[string]any,error) {

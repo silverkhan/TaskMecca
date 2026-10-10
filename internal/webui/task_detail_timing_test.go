@@ -21,8 +21,8 @@ func TestTaskDetailExposesTimingWithoutLosingBody(t *testing.T) {
  handler.ServeHTTP(response,httptest.NewRequest(http.MethodGet,"/api/tasks/A-1",nil))
  if response.Code!=200{t.Fatalf("status=%d body=%s",response.Code,response.Body.String())}
  timing:=response.Header().Get("Server-Timing")
- if !strings.Contains(timing,"selection;dur=")||!strings.Contains(timing,"detail;dur="){
-  t.Fatalf("detail timing not exposed: %q",timing)
+ for _,phase:=range []string{"monitor_wait;dur=","selection;dur=","catalog;dur=","readiness;dur=","control;dur=","projection;dur=","detail;dur="}{
+  if !strings.Contains(timing,phase){t.Fatalf("missing %s in detail timing: %q",phase,timing)}
  }
  if !strings.Contains(response.Body.String(),"Full detail")||!strings.Contains(response.Body.String(),"raw_markdown"){
   t.Fatalf("full body not returned: %s",response.Body.String())
