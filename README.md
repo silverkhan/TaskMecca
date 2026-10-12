@@ -1,59 +1,73 @@
 # Task Mecca
 
-Verified task completion can resolve an old unverified-runtime warning without inventing a runtime completion. See [completed observation reconciliation](docs/A-23-completed-runtime-observation.md) for exact no-delivery CLI preview/apply and process-only Telegram maintenance safety.
+**Manage AI-agent work in a persistent backlog and monitor execution and results from the Web UI.**  
+Talk to one Root in natural language; Registrar, Controller, and Workers handle registration, execution, and verification.
 
-**Task Mecca records, executes, and manages subagent-based work through a durable backlog, with a Web UI for lifecycle and execution monitoring.**  
-The user talks naturally to a single Root while Registrar, Controller, and Workers preserve task definitions, coordinate parallel work, verify results, and keep execution history inside the project.
+[한국어](README.ko.md) · [User manual](goassets/template/_task_mecca/framework/README.en.md)
 
-[한국어 README](README.ko.md)
+> [!IMPORTANT]
+> **Project origin & acknowledgements**  
+> Task Mecca began with **initial source code and a backlog-driven collaboration idea** shared by my colleague [gyusu](https://github.com/gyusu). [Read more →](#project-origin)
 
-> **Project origin**  
-> Task Mecca grew from initial source material and a backlog-driven AI collaboration idea shared by a colleague.  
-> → [Project origin & acknowledgements](#project-origin)
-
-## Quick Start
-
-The fastest way to learn Task Mecca is to use it.
+## Quick start
 
 ### 1. Install
 
-macOS / Linux:
-
+**macOS / Linux**
 ```bash
 curl -fsSL https://raw.githubusercontent.com/silverkhan/TaskMecca/main/install.sh | sh
 ```
 
-Windows PowerShell:
-
+**Windows PowerShell**
 ```powershell
 irm https://raw.githubusercontent.com/silverkhan/TaskMecca/main/install.ps1 | iex
 ```
 
-The Windows installer verifies the SHA-256 checksum of the Stable release, installs into the current user's profile, and registers the directory on PATH without requiring administrator privileges.
+### 2. Start the Web UI
 
-End users do not need Python, `uv`, or the Go toolchain.
+```bash
+task-mecca web
+```
 
-### 2. Initialize a project
+Open **http://127.0.0.1:18765/** in your browser. Initialize a working project in step 3.
 
-Move to the project root:
+The Web UI brings together **backlog progress**, **Root/Worker sessions and recent activity**, and **execution stages and actionable warnings**. You can configure project-level **Telegram and browser notifications**, manage projects, and update Task Mecca.
+
+![Task Mecca Web UI — English project backlog list](handoff-evidence/a24-raichyu/final-desktop-dark-en.jpg)
+
+<sub>English · Dark theme · Backlog list for a sample project (Needs attention: 0). Actual capture from an earlier development build; the current UI may differ.</sub>
+
+### 3. Initialize a project
+
+Run this in the **folder you want to manage**.
 
 ```bash
 cd /path/to/your/project
 task-mecca init
 ```
 
-Initialization installs the Task Mecca framework and operating manuals. The backlog itself is created when the first task is registered.
+Key installed files:
 
+```text
+project/
+└── _task_mecca/
+    ├── ROOT_PROMPT.md           # Root startup prompt
+    └── framework/
+        ├── SESSION_GUIDE.md     # Session guide
+        ├── EXECUTION_PROTOCOL.md # Execution and handoff rules
+        ├── collab.md            # Collaboration rules
+        └── roles/               # Root, Registrar, Controller, Worker
+```
 
-### Refresh operating instructions
+> [!NOTE]
+> **The task backlog (`data/backlog/`) is created when the first task is registered, not by initialization.** For an existing installation, use migration in step 5 instead of rerunning `init`.
 
-Apply the installed original `_task_mecca/framework/EXECUTION_PROTOCOL.en.md` together with the role guides. Refresh existing installations through supported migration, following backup/consent policy for customized managed documents. Do not overwrite `data/` or `.runtime/` with distribution templates. After instruction changes, reused Controllers/Workers as well as Root re-read changed guides before new assignments. Keep the canonical ledger in the original project and do not register implementation-worktree copies.
+### 4. Activate your Root
 
-### 3. Activate your LLM session as Task Mecca Root
+Open Codex or Claude Code **in the same project folder**. Designate **one user-facing session** as Root, paste the prompt below, and describe work naturally.
 
-After initialization, **open the agent/LLM conversation you use—such as Codex or Claude Code—from the same project root.**
-
-Choose exactly one user-facing session to act as the **Root**, then paste the prompt below into that session.
+<details>
+<summary><strong>Expand & copy Root prompt</strong></summary>
 
 ```text
 Act as the Task Mecca Root for this session.
@@ -63,171 +77,85 @@ When work originates from a connected external item such as a Linear or GitHub i
 Before delegating executable work to subagents, run the Full Access preflight described in SESSION_GUIDE.
 Classify work as Simple Task or Defined Task. For a simple task that is directly verifiable without additional interpretation, record only the goal and acceptance criteria and register it immediately. For work requiring scope, design, or user choices, prepare a requirement definition, get my confirmation, and then ask Registrar to register it losslessly.
 If no backlog exists yet, Registrar creates _task_mecca/data/backlog on the first registration. Everything under data is project-owned and is never overwritten by the framework updater.
+Before sending execution-authorized work to Registrar, prepare an exact reusable Controller runtime identity and pass it to Registrar so successful registration can hand off directly to Controller without another Root turn. Workers must likewise hand DONE/BLOCKED events directly back to Controller, and any resume that starts a completed agent's new turn requires a fresh Full Access preflight.
 After registration, let Controller allocate work to Workers based on dependency and continuity, while Root remains the user-facing interface.
 ```
 
-The same source prompt is installed at [`_task_mecca/ROOT_PROMPT.md`](goassets/template/_task_mecca/ROOT_PROMPT.md). README and the Web User Manual expose the prompt body directly so a first-time user does not need to navigate files before starting.
+</details>
 
-After sending the prompt, just describe work naturally in the same session:
+Example: `Fix the login API error and verify the relevant tests.`
 
-```text
-Fix the login API bug and verify the related tests.
-```
+### 5. Migrate an existing project
 
-Task Mecca classifies the request as a directly executable **Simple Task** or a **Defined Task** that needs scope/design agreement, then continues through backlog registration and execution.
-
-### 4. Launch the Web UI
-
-From the project root, in a new terminal or the current one:
+Use migration **after a Task Mecca update when the project's installed operating instructions need refreshing**. The Web UI or an `init` attempt in an existing project will guide you when migration is needed.
 
 ```bash
-task-mecca web
-```
-
-![Task Mecca Web UI](docs/task-mecca-web-en.svg)
-
-The Web UI gives you a direct view of:
-
-- `Ready / Working / Hold / Done` backlog state;
-- subagent workload and assignments;
-- Queue / Active / Wait / Lead Time and lifecycle history;
-- **Needs Attention** signals such as user intervention, finalization, or runtime stalls;
-- external issue sources, recent updates, task detail, and verification;
-- version Update and project framework migration;
-- the Root prompt and detailed User Manual.
-
-The default port is `18765`. In a configured Tailscale environment, Task Mecca can also expose its own HTTPS endpoint without a separate `tailscale serve`.
-
-## How it works
-
-```text
-User
-  ↕
-Root                discussion · task definition
-  ├─ Registrar      lossless backlog registration
-  └─ Controller     scheduling · parallel work · Worker supervision
-       ├─ Worker
-       ├─ Worker
-       └─ ...
-
-        ↓
-Markdown backlog + Git lifecycle
-        ↓
-Task Mecca Web UI
-```
-
-The core ideas are intentionally small:
-
-- **Task definitions do not live only in chat.** They are persisted in the Markdown backlog.
-- **Workers read the original task contract**, not just a relay summary.
-- **Controller supervises parallel execution, waiting, recovery, and completion.**
-- **Linear / GitHub Issue work keeps its source link**: Root writes back important decisions, while Controller writes real lifecycle changes and completion results.
-- **User-facing language follows the user’s language and work context**, rather than exposing internal agent jargon.
-
-## Version Update
-
-Task Mecca supports **Stable / Dev** update channels.
-
-- `stable` is the default and follows formal `main → release-stable` builds.
-- `dev` is opt-in for development and follows `dev → release-dev` builds.
-- Dev builds use the next stable version as their base, for example `0.2.46-dev.1`, `0.2.46-dev.2`, and are promoted to `0.2.46` when released.
-
-Check or change the local channel:
-
-```bash
-task-mecca channel
-task-mecca channel dev
-task-mecca channel stable
-```
-
-The selected channel is stored locally, so normal users continue to follow Stable unless they explicitly opt into Dev.
-
-### From Web
-
-When a newer version is available, Web shows the Update state and can launch the upgrade. If the project framework also needs migration, Web guides that step as well.
-
-### From the terminal
-
-Upgrade the CLI:
-
-```bash
-task-mecca upgrade
-```
-
-Update the managed framework in the current project:
-
-
-After a Worker completion report, Web separates Controller review pending, review in progress, and finalization in progress. Normal review and Controller recovery do not request user action; actual user decisions and canonical backlog completion still notify. The header lists current user decisions with the exact backlog link and required action, excluding resolved history and Controller work. Explicit `대기유형: user` and resume conditions remain visible without `hold_review`.
-
-A shared notification area starts collapsed on every view. Expand it to see current user decisions and session warnings, counts, next actions, and related task/session links. Resolved items disappear on refresh; observation history stays in the server ledger without appearing in the UI.
-```bash
+cd /path/to/your/project
 task-mecca migrate
 ```
 
-On macOS/Linux, a running Task Mecca Web service is restarted with the upgraded executable. Windows provides the required stop/restart guidance when executable replacement requires it.
+- **Updated:** Task Mecca-managed instructions and framework files
+- **Preserved:** Your backlog, work history, configuration, notifications, and execution data
+- **Customized files:** Choose overwrite / back up changes and continue / cancel
 
-## Common commands
+Use `task-mecca upgrade` to **update the application**, and `task-mecca migrate` to **update a project's instructions**.
+
+## How it works
+
+```mermaid
+%%{init: {"theme": "base", "themeVariables": {"fontFamily": "Inter, sans-serif", "primaryColor": "#241b39", "primaryTextColor": "#ffffff", "primaryBorderColor": "#9b79d2", "lineColor": "#9477c6", "background": "#141426"}}}%%
+flowchart LR
+    U(["You<br/>Natural-language request"]):::person --> R["Root<br/>Discuss & define"]:::root
+    R --> G["Registrar<br/>Register work"]:::agent
+    G --> B[("Markdown backlog<br/>Source & history")]:::record
+    B --> C["Controller<br/>Assign · verify · finalize"]:::controller
+    C <--> W["Workers<br/>Read source & execute"]:::worker
+    C --> B
+    B --> V["Web UI<br/>Sessions · status · alerts"]:::web
+    R -. Decisions .-> E["Linear · GitHub<br/>Source issues"]:::external
+    C -. Results .-> E
+
+    classDef person fill:#FFF0C2,stroke:#E3AC3B,color:#43300A,stroke-width:2px
+    classDef root fill:#EADFFF,stroke:#9A66D2,color:#48216C,stroke-width:2px
+    classDef agent fill:#F2EAFE,stroke:#B49AE6,color:#45336A,stroke-width:2px
+    classDef controller fill:#56417D,stroke:#A78BFA,color:#FFFFFF,stroke-width:2px
+    classDef worker fill:#DAF5EF,stroke:#56BDA7,color:#165C50,stroke-width:2px
+    classDef record fill:#DFEAFD,stroke:#719DE5,color:#233D72,stroke-width:2px
+    classDef web fill:#241B3B,stroke:#D6AEFF,color:#FFFFFF,stroke-width:2px
+    classDef external fill:#F7E7F2,stroke:#BD78AE,color:#733B62,stroke-width:2px
+```
+
+## Updates & help
+
+- **Update:** Web UI update menu or `task-mecca upgrade`
+- **Channels:** `task-mecca channel` / `task-mecca channel dev` / `task-mecca channel stable`
+- **Service status:** `task-mecca web status` · **Diagnostics:** `task-mecca doctor`
+- **Further reading:** Web **User Manual**, [session guide](goassets/template/_task_mecca/framework/SESSION_GUIDE.en.md), [collaboration rules](goassets/template/_task_mecca/framework/collab.md)
+
+<details>
+<summary>Advanced commands & project management</summary>
 
 | Command | Purpose |
-|---|---|
-| `task-mecca init` | initialize the current project |
-| `task-mecca web` | launch Web UI |
-| `task-mecca web status` | inspect Web service status |
-| `task-mecca web restart` | restart Web service |
-| `task-mecca upgrade` | update the Task Mecca CLI |
-| `task-mecca channel [stable|dev]` | Show or change the update channel |
-| `task-mecca migrate` | update the project framework |
-| `task-mecca status` | summarize backlog state |
-| `task-mecca inspect <ID>` | inspect one task |
-| `task-mecca ready` | show executable work |
-| `task-mecca workload` | show Worker workload |
-| `task-mecca coordinate` | show Controller scheduling snapshot |
-| `task-mecca doctor` | validate backlog and operating state |
+| --- | --- |
+| `task-mecca web restart` | Restart the Web service |
+| `task-mecca status` | Backlog status |
+| `task-mecca inspect <ID>` | Task details |
+| `task-mecca workload` | Agent workload |
+| `task-mecca coordinate` | Scheduling snapshot |
+| `task-mecca projects list` | Managed projects |
 
-Most users should not need to compose these commands manually. The normal workflow is to **talk to Root in natural language and let the agents use Task Mecca commands underneath**.
+**Archive** stops monitoring and related alerts; **Restore** resumes monitoring. Removing a project from the list does not delete its folder.
 
-## Detailed documentation
-
-This README is intentionally limited to what you need to start. Detailed operating rules are installed with each project and are also available in the Web **User Manual**.
-
-- [Root Prompt](goassets/template/_task_mecca/ROOT_PROMPT.md)
-- [Session Guide](goassets/template/_task_mecca/framework/SESSION_GUIDE.en.md)
-- [Collaboration contract](goassets/template/_task_mecca/framework/collab.md)
-- [Human-readable backlog guide](goassets/template/_task_mecca/framework/HUMAN_READABLE_BACKLOG.md)
-- [Tags / Taxonomy](goassets/template/_task_mecca/framework/TAGS.md)
-- [Role contracts](goassets/template/_task_mecca/framework/roles/)
+</details>
 
 <a id="project-origin"></a>
 
-## Project origin and acknowledgements
+## Project origin & acknowledgements
 
-Task Mecca began with ideas and inspiration shared by my colleague [gyusu](https://github.com/gyusu).
+Task Mecca grew from an **idea and usable initial source code** shared by my colleague [gyusu](https://github.com/gyusu): separate backlog registration and execution sessions, and let Workers continue through remaining tasks. The idea evolved into today's Root, Registrar, Controller, and Worker collaboration model.
 
-The initial concept separated a backlog-registration session from Worker sessions that execute backlog items, with Workers repeatedly selecting and performing remaining work in a `/goal`-style loop until the backlog was exhausted. Reference source material for exploring and implementing that collaboration pattern was also shared with me.
+Many thanks to [gyusu](https://github.com/gyusu) for sharing the inspiration and source material that started this project.
 
-That idea became an important starting point for Task Mecca.
+## Development & license
 
-Task Mecca has since expanded the original concept into the Root / Registrar / Controller / Worker role model, task orchestration and parallel execution, backlog lifecycle management, Web UI, external-source integration, and installation/release infrastructure.
-
-Many thanks to [gyusu](https://github.com/gyusu) for sharing the early ideas and inspiration that helped start this project.
-
-## Development / License
-
-```bash
-go test ./...
-go build ./cmd/task-mecca
-```
-
-Go is the only supported application runtime; Python compatibility is no longer maintained. See [CONTRIBUTING.md](CONTRIBUTING.md).
-
-MIT License · [LICENSE](LICENSE)
-
-## Project archive, monitoring and migration
-
-Archive moves a project from the active list into a collapsed, browser-remembered archive. Monitoring, monitoring-based notifications and runtime writes stop. Restore to active registers monitoring without changing framework files or creating duplicate entries. Remove from list forgets the archive entry only; files stay in place and monitoring stays stopped. Opening or restarting Web never registers projects. Add an explicit absolute path or restore an archived entry to register it.
-
-`task-mecca projects list|archived` reads management state. Use `add|register|unregister|archive|restore|forget --path ABSOLUTE`; archive/forget require `--confirm-path EXACT`, restore/forget require `--archive-id ID`. Task Mecca has no folder deletion, Trash or residue-check action. Manage files yourself with Finder, Explorer or a terminal.
-
-First-time Go CLI `init` creates framework files and registers the project for Web. Existing installations stay unchanged and are directed to `migrate`. Migration never registers, unregisters or restores projects, and never modifies backlog, configuration, credentials or runtime data. Any modified managed file requires a choice: overwrite, back up modifications and migrate, or cancel. No choice means no writes or backup creation. Backup failure stops before framework changes.
-
-Use `task-mecca migrate --json` for agents: exit 3 with `status: choice_required`, `modified_files` and `choices` asks the human. Then run `--choice overwrite|backup|cancel`. Non-TTY execution never prompts. Python CLI compatibility is retired. Existing project data and unmanifested legacy files are preserved during Go migration because their ownership cannot safely be inferred.
+See [CONTRIBUTING.md](CONTRIBUTING.md) · [MIT License](LICENSE)
