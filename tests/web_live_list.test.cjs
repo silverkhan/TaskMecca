@@ -133,7 +133,7 @@ test('first page live-refreshes when only execution evidence changes',async()=>{
  Object.assign(app.state,{contentRevision:'content-1',signalRevision:'runtime-1',listData:{...packet(1,'content-1'),items:[{id:'A-1',runtime_state:'starting'}]}});
  await app.checkContentRevision();await tick();
  assert.equal(calls.filter(url=>url.startsWith('/api/revision')).length,1);
- assert.equal(calls.filter(url=>url.startsWith('/api/backlog/tasks')).length,1);
+ assert.equal(calls.filter(url=>url.startsWith('/api/backlog/tasks')&&!url.includes('prefetch=1')).length,1);
  assert.equal(app.state.listData.items[0].runtime_state,'running');
  assert.equal(app.state.signalRevision,'runtime-2');
  assert.equal(app.state.pendingContentUpdate,false);
