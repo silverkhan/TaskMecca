@@ -197,11 +197,18 @@ func completionReview(row Record, worker *runtimeobs.Attempt, assignmentID, comp
 				reason, quality, action, severity = "controller_claim_unverified", "insufficient", "verify_exact_controller_binding", "warning"
 				diagnostic = "인계를 받은 Controller의 정확한 실행 근거를 확인할 수 없습니다."
 			} else {
+				lastActivity, activityOK := parseTime(controller.LastActivityAt)
+				activityPlausible := activityOK && !lastActivity.After(now) && !lastActivity.Before(claimAt.Add(-15*time.Minute))
 				state, since, grace, diagnostic = "controller_review", c.At, 15*time.Minute, "Controller가 결과와 수용 기준을 검토하고 있습니다."
 				reason, quality, action, severity = "exact_controller_claim_running", "observed", "review_worker_result", "info"
-				if controller.CurrentState == runtimeobs.StateWaitingUser || controller.CurrentState == runtimeobs.StateWaitingApproval {
+				if !activityPlausible {
+					state = "controller_recovery"
+					reason, quality, action, severity = "controller_runtime_activity_unverified", "insufficient", "verify_controller_runtime_activity", "warning"
+					diagnostic = "정확한 Controller 런타임 활동 시각을 확인할 수 없어 내부 검토를 복구 대기 상태로 표시합니다."
+				}
+				if state != "controller_recovery" && (controller.CurrentState == runtimeobs.StateWaitingUser || controller.CurrentState == runtimeobs.StateWaitingApproval) {
 					state, diagnostic = "needs_user", "Controller가 명시적으로 사용자 판단 또는 승인을 기다리고 있습니다."
-				} else if controller.CurrentState != runtimeobs.StateRunning || controller.Terminal {
+				} else if state != "controller_recovery" && (controller.CurrentState != runtimeobs.StateRunning || controller.Terminal) {
 					state = "controller_recovery"
 					if controller.Terminal && controller.StateEvidenceSource == runtimeobs.EvidenceHook && (controller.StateObservationQuality == runtimeobs.QualityObserved || controller.StateObservationQuality == runtimeobs.QualityAuthoritative) && (controller.CurrentState == runtimeobs.StateErrored || controller.CurrentState == runtimeobs.StateInterrupted || controller.CurrentState == runtimeobs.StateShutdown) {
 						reason, quality, action, severity, confirmedFailure = "controller_execution_failed", "confirmed", "investigate_controller_execution", "error", true

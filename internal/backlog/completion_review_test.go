@@ -15,7 +15,7 @@ func reviewFixture() (Record, runtimeobs.Attempt, runtimeobs.Attempt, *completio
 	now := time.Date(2026, 10, 7, 12, 0, 0, 0, time.UTC)
 	row := Record{ID: "A-31", State: "doing", Location: "active", Fields: map[string]string{"Agent": "/root/controller/kkobugi"}, RawMarkdown: "# A-31 Review\n- Agent: /root/controller/kkobugi\n## 작업 정의\n- 목표: 검토\n## 결과\n- 대기\n"}
 	worker := runtimeobs.Attempt{AttemptID: "worker-1", TaskID: row.ID, AgentPath: row.Fields["Agent"], BindingState: runtimeobs.BindingBound, BindingEvidence: map[string]string{"assignment_id": "assignment-test"}, StartedAt: now.Add(-time.Minute).Format(time.RFC3339Nano), EndedAt: now.Format(time.RFC3339Nano), CurrentState: runtimeobs.StateCompleted, Terminal: true, StateEvidenceSource: runtimeobs.EvidenceHook, StateObservationQuality: runtimeobs.QualityObserved}
-	controller := runtimeobs.Attempt{AttemptID: "controller-1", AgentPath: "/root/controller", RuntimeAgentID: "controller-native", SessionID: "session-1", Provider: "codex", CurrentState: runtimeobs.StateRunning, BindingState: runtimeobs.BindingBound, StateEvidenceSource: runtimeobs.EvidenceHook, StateObservationQuality: runtimeobs.QualityObserved}
+	controller := runtimeobs.Attempt{AttemptID: "controller-1", AgentPath: "/root/controller", RuntimeAgentID: "controller-native", SessionID: "session-1", Provider: "codex", CurrentState: runtimeobs.StateRunning, BindingState: runtimeobs.BindingBound, StateEvidenceSource: runtimeobs.EvidenceHook, StateObservationQuality: runtimeobs.QualityObserved, LastActivityAt: now.Add(3 * time.Second).Format(time.RFC3339Nano)}
 	h := &completionHandoff{prepared: completionHandoffRecord{HandoffID: "handoff-1", Kind: "prepared", Event: "worker_done", TaskID: row.ID, Contract: completionContract(row.RawMarkdown), SourceAgent: worker.AgentPath, SourceAttempt: worker.AttemptID, TargetAgent: controller.AgentPath, TargetAttempt: controller.AttemptID, TargetRuntimeID: controller.RuntimeAgentID, TargetSession: controller.SessionID, Provider: controller.Provider, At: now.Add(time.Second).Format(time.RFC3339Nano)}}
 	return row, worker, controller, h, now
 }
@@ -39,6 +39,9 @@ func TestCompletionReviewPhaseBoundariesDoNotMoveWithPolling(t *testing.T) {
 	for _, stage := range stages {
 		t.Run(stage.name, func(t *testing.T) {
 			stage.configure()
+			if stage.name == "claimed" || stage.name == "acceptance recorded" {
+				controller.LastActivityAt = stage.since.Add(-11 * time.Minute).Format(time.RFC3339Nano)
+			}
 			handoffs := map[string]*completionHandoff{"handoff-1": h}
 			if stage.name == "worker completed" {
 				handoffs = nil
@@ -291,6 +294,7 @@ func TestCompletionReviewActualEventsAcrossWebAndRecoveryAPIs(t *testing.T) {
 			worker.StartedAt = now.Add(-time.Minute).Format(time.RFC3339Nano)
 			worker.EndedAt = now.Format(time.RFC3339Nano)
 			controller.StartedAt = worker.StartedAt
+			controller.LastActivityAt = now.Format(time.RFC3339Nano)
 			controller.CurrentState = mode.controllerState
 			controller.Terminal = mode.controllerState == runtimeobs.StateCompleted
 			if mode.workerRunning {
@@ -308,6 +312,12 @@ func TestCompletionReviewActualEventsAcrossWebAndRecoveryAPIs(t *testing.T) {
 			}
 			appendReviewAttempt(t, project, worker, now)
 			appendReviewAttempt(t, project, controller, now)
+			if mode.name != "DONE before journal" {
+				activity := runtimeobs.ExecutionEvent{EventKind: "activity", ObservedAt: now.Format(time.RFC3339Nano), AttemptID: controller.AttemptID, Provider: controller.Provider, SessionID: controller.SessionID, RuntimeAgentID: controller.RuntimeAgentID, EvidenceSource: runtimeobs.EvidenceHook, ObservationQuality: runtimeobs.QualityObserved}
+				if err := runtimeobs.AppendExecutionEvent(project, activity); err != nil {
+					t.Fatal(err)
+				}
+			}
 			if mode.name != "DONE before journal" {
 				h.prepared.At = now.Add(-2 * time.Second).Format(time.RFC3339Nano)
 				claim := completionHandoffRecord{HandoffID: h.prepared.HandoffID, Kind: "claimed", ClaimedBy: controller.AgentPath, ClaimedAttempt: controller.AttemptID, At: now.Add(-time.Second).Format(time.RFC3339Nano)}

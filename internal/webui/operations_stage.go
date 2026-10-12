@@ -50,6 +50,29 @@ func currentOperationStages(stages []operationStage, policies map[string]operati
 	return out
 }
 
+func exactControllerStageLive(h handoff.Handoff, attempts []runtimeobs.Attempt, now time.Time) bool {
+	claimedAt, err := time.Parse(time.RFC3339Nano, h.ClaimedAt)
+	if err != nil || claimedAt.After(now) {
+		return false
+	}
+	var exact *runtimeobs.Attempt
+	for i := range attempts {
+		a := &attempts[i]
+		if a.AttemptID != h.Target.AttemptID {
+			continue
+		}
+		if exact != nil {
+			return false
+		}
+		exact = a
+	}
+	if exact == nil || exact.AgentPath != h.Target.AgentPath || exact.RuntimeAgentID != h.Target.RuntimeAgentID || exact.SessionID != h.Target.SessionID || exact.Provider != h.Target.Provider || exact.BindingState != runtimeobs.BindingBound || exact.StateEvidenceSource != runtimeobs.EvidenceHook || (exact.StateObservationQuality != runtimeobs.QualityObserved && exact.StateObservationQuality != runtimeobs.QualityAuthoritative) || exact.CurrentState != runtimeobs.StateRunning || exact.Terminal {
+		return false
+	}
+	last, err := time.Parse(time.RFC3339Nano, exact.LastActivityAt)
+	return err == nil && !last.Before(claimedAt.Add(-15*time.Minute)) && !last.After(now)
+}
+
 func operationStages(project string, ledger runtimeobs.Ledger, now time.Time) []operationStage {
 	for _, finding := range ledger.Findings {
 		if finding.Severity != "info" {
@@ -192,7 +215,7 @@ func projectOperationStages(project string, assignments []runtimeobs.Assignment,
 				s.Since = h.PreparedAt
 				s.Evidence = "durable worker_done handoff"
 				duration = 5 * time.Minute
-				if h.Target.AgentPath == "/root/controller" && h.ClaimedBy == h.Target.AgentPath && h.ClaimedAttemptID != "" && (h.Target.AttemptID == "" || h.Target.AttemptID == h.ClaimedAttemptID) {
+				if h.Target.AgentPath == "/root/controller" && h.ClaimedBy == h.Target.AgentPath && h.ClaimedAttemptID != "" && h.Target.AttemptID != "" && h.Target.RuntimeAgentID != "" && h.Target.SessionID != "" && h.Target.Provider != "" && h.Target.AttemptID == h.ClaimedAttemptID && exactControllerStageLive(h, attempts, now) {
 					s.Stage = "controller_review"
 					s.Since = h.ClaimedAt
 					s.Evidence = "handoff claimed by Controller"
