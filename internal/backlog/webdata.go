@@ -4,6 +4,7 @@ import (
     "crypto/sha256"
     "encoding/hex"
     "fmt"
+    "os"
     "path/filepath"
     "sort"
     "strings"
@@ -128,6 +129,42 @@ func backlogRevisionFromRows(rows []Record) string {
     return hex.EncodeToString(h.Sum(nil))[:20]
 }
 
+// backlogSignalRevision fingerprints only local evidence file metadata. It is a
+// read-only, bounded change detector, not a task-state inference. The expensive
+// control-tower and Git projections remain in the paged backlog endpoint.
+func backlogSignalRevision(project string) string {
+    base:=filepath.Join(project,"_task_mecca")
+    h:=sha256.New()
+    stamp:=func(path string) {
+        info,err:=os.Stat(path)
+        if os.IsNotExist(err) { return }
+        if err!=nil { fmt.Fprintf(h,"%s:unreadable:%T;",path,err); return }
+        fmt.Fprintf(h,"%s:%d:%d;",path,info.ModTime().UnixNano(),info.Size())
+    }
+    // Explicit lifecycle events use one new directory per event. Reading the
+    // directory metadata detects event registration without scanning all tasks.
+    for _,rel:=range []string{
+        "data/lifecycle/events",
+        "data/assignments/events.jsonl",
+        ".runtime/lifecycle_observations.json",
+        ".runtime/handoffs/events.jsonl",
+        ".runtime/executions/events.jsonl",
+    } { stamp(filepath.Join(base,filepath.FromSlash(rel))) }
+    // Execution Hooks append to daily raw journals; agent heartbeats live in
+    // a small flat directory. Check file metadata, never parse full journals.
+    for _,rel:=range []string{".runtime/executions/raw",".runtime/agents"} {
+        dir:=filepath.Join(base,filepath.FromSlash(rel))
+        entries,err:=os.ReadDir(dir)
+        if os.IsNotExist(err) { continue }
+        if err!=nil { fmt.Fprintf(h,"%s:unreadable:%T;",dir,err); continue }
+        for _,entry:=range entries {
+            if entry.IsDir() || !(strings.HasSuffix(entry.Name(),".json") || strings.HasSuffix(entry.Name(),".jsonl")) { continue }
+            stamp(filepath.Join(dir,entry.Name()))
+        }
+    }
+    return hex.EncodeToString(h.Sum(nil))[:20]
+}
+
 func BacklogRevision(project,root string) (map[string]any,error) {
     rows,err:=CachedCatalog(project,root)
     if err!=nil { return nil,err }
@@ -139,6 +176,7 @@ func BacklogRevision(project,root string) (map[string]any,error) {
     sort.Slice(states,func(i,j int)bool{return toString(states[i]["id"])<toString(states[j]["id"])})
     return map[string]any{
         "revision":backlogRevisionFromRows(rows),
+        "signal_revision":backlogSignalRevision(project),
         "count":len(rows),
         "states":states,
         "checked_at":time.Now().Format(time.RFC3339Nano),
@@ -264,7 +302,7 @@ func BacklogPage(project,root string,page,pageSize int,statuses,tags []string,se
     return map[string]any{
         "snapshot_at":time.Now().Format(time.RFC3339Nano),"root":root,"repo":repoName,
         "items":items,"page":page,"page_size":pageSize,"pages":pages,"total":total,
-        "revision":backlogRevisionFromRows(rows),"backlog_presence":presence,
+        "revision":backlogRevisionFromRows(rows),"signal_revision":backlogSignalRevision(project),"backlog_presence":presence,
         "counts":counts,"tag_catalog":tagCatalog,"access":AccessObservation(project),
         "attention":attention["attention"],"attention_items":pagedNotificationItems(attention["all_items"]),"notification_events":attention["notification_events"],
     },nil
