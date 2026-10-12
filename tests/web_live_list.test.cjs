@@ -176,3 +176,22 @@ test('initial project backlog fetch subscribes to realtime updates after its fol
  assert.match(app.state.eventSource.url,/backlog=team/);
 });
 
+test('backlog Active column displays known completed and live durations but not fabricated history',()=>{
+ const app=page(()=>{throw Error('render should not fetch')});
+ app.state.listData={
+  page:1,pages:1,page_size:20,total:4,counts:{working:1,ready:1,done:2,attention:0},
+  backlog_selection:{selected:'demo'},items:[
+   {id:'B-4',title:'New',file_state:'todo',state:'ready',active_seconds:null},
+   {id:'B-3',title:'Running',file_state:'doing',state:'doing',
+    active_seconds:80,lifecycle:{current_state:'doing',current_state_at:new Date(Date.now()-120000).toISOString(),current_segment_seconds:80}},
+   {id:'B-2',title:'Old done',file_state:'done',state:'done',active_seconds:null},
+   {id:'B-1',title:'Completed',file_state:'done',state:'done',active_seconds:125}
+  ]
+ };
+ const html=vm.runInContext('listView()',app.context);
+ assert.match(html,/<div class="task-active timer live-timer" data-id="B-4">-<\/div>/);
+ assert.match(html,/<div class="task-active timer live-timer" data-id="B-3">\d\d:\d\d<\/div>/);
+ assert.match(html,/<div class="task-active timer live-timer" data-id="B-2">-<\/div>/);
+ assert.match(html,/<div class="task-active timer live-timer" data-id="B-1">02:05<\/div>/);
+});
+
