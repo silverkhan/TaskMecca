@@ -33,9 +33,9 @@ Open **http://127.0.0.1:18765/** in your browser. Initialize a working project i
 
 The Web UI brings together **backlog progress**, **Root/Worker sessions and recent activity**, and **execution stages and actionable warnings**. You can configure project-level **Telegram and browser notifications**, manage projects, and update Task Mecca.
 
-![Task Mecca Web UI — actual dark-mode capture](handoff-evidence/a27-isanghaessi/ui/desktop-dark.jpg)
+![Task Mecca Web UI — English project backlog list](handoff-evidence/a24-raichyu/final-desktop-dark-en.jpg)
 
-<sub>Actual development UI capture using a synthetic sample project. Screens and menus may vary by installed version.</sub>
+<sub>English · Dark theme · Backlog list for a sample project (Needs attention: 0). Actual capture from an earlier development build; the current UI may differ.</sub>
 
 ### 3. Initialize a project
 
