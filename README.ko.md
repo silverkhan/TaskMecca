@@ -1,59 +1,83 @@
 # Task Mecca
 
-작업 완료 근거로 과거 실행 관측 미확인 경고를 해소하되 runtime 완료 사실을 만들지 않습니다. 정확한 사건의 무전송 CLI preview/적용과 process-only Telegram 유지보수 안전 절차는 [완료 작업의 실행 관측 재조정](docs/A-23-completed-runtime-observation.md)을 참고하세요.
+**AI 에이전트가 함께 수행하는 작업을 백로그로 관리하고, 실행 상태와 결과를 Web에서 확인하는 도구입니다.**  
+Root와 자연어로 대화하면 Registrar·Controller·Worker가 등록부터 실행·검증까지 역할을 나눠 진행합니다.
 
-**Task Mecca는 서브에이전트 기반 작업을 백로그로 기록·수행·관리하고, Web UI에서 진행 상태와 lifecycle을 모니터링하는 local-first AI 협업 도구입니다.**  
-사용자는 한 개의 Root와 자연어로 대화하고, Task Mecca는 Registrar·Controller·Worker 역할을 통해 작업 정의가 흐트러지지 않도록 등록·병렬 수행·검증·완료 기록을 이어갑니다.
+[English](README.md) · [사용자 매뉴얼](goassets/template/_task_mecca/framework/README.md)
 
-[English README](README.md)
-
-> **프로젝트의 시작**  
-> Task Mecca는 동료가 공유한 초기 소스와 백로그 기반 협업 아이디어에서 출발해 발전한 프로젝트입니다.  
-> → [프로젝트의 시작과 감사](#project-origin)
+> [!IMPORTANT]
+> **프로젝트의 시작과 감사**  
+> Task Mecca는 동료 [gyusu](https://github.com/gyusu)가 공유한 **초기 소스와 백로그 기반 협업 아이디어**에서 출발했습니다. [이야기 더 보기 →](#project-origin)
 
 ## 빠른 시작
 
-사용하면서 구조를 익히는 것이 가장 빠릅니다.
-
 ### 1. 설치
 
-macOS / Linux:
-
+**macOS / Linux**
 ```bash
 curl -fsSL https://raw.githubusercontent.com/silverkhan/TaskMecca/main/install.sh | sh
 ```
 
-Windows PowerShell:
-
+**Windows PowerShell**
 ```powershell
 irm https://raw.githubusercontent.com/silverkhan/TaskMecca/main/install.ps1 | iex
 ```
 
-Windows 설치 스크립트는 정식 배포 파일의 SHA-256을 검증한 뒤 사용자 영역에 설치하고 PATH를 자동 등록하므로 관리자 권한이 필요하지 않습니다.
+### 2. Web UI 실행
 
-최종 사용자는 Python, `uv`, Go toolchain을 설치할 필요가 없습니다.
+```bash
+task-mecca web
+```
 
-### 2. 프로젝트 초기화
+브라우저에서 **http://127.0.0.1:18765/** 로 접속합니다. 처음 사용할 프로젝트는 아래 3단계에서 초기화합니다.
 
-Task Mecca를 사용할 프로젝트 루트로 이동합니다.
+Web은 **백로그 진행 상황**, **Root/Worker 세션과 최근 활동**, **실행 단계와 확인이 필요한 경고**를 한곳에 모읍니다. 프로젝트별 알림을 설정하면 **Telegram·브라우저 알림**도 받을 수 있으며, 업데이트와 프로젝트 관리도 지원합니다.
+
+**Web 관리 명령어**
+
+| 명령어 | 기능 |
+| --- | --- |
+| `task-mecca web` | Web 실행 · 브라우저 열기 |
+| `task-mecca web status` | 실행 여부·버전·접속 주소 확인 |
+| `task-mecca web restart` | Web 재시작 |
+| `task-mecca web stop` | Web 종료 |
+| `task-mecca web logs` | Web 로그 확인 (`--follow`로 계속 보기) |
+
+![Task Mecca Web UI — 영문 프로젝트 백로그 목록](handoff-evidence/a24-raichyu/final-desktop-dark-en.jpg)
+
+<sub>영문 · 다크 테마 · 샘플 프로젝트의 백로그 목록(Needs attention 0건). 이전 개발판의 실제 캡처로, 현재 화면과 일부 차이가 있을 수 있습니다.</sub>
+
+### 3. 프로젝트 초기화
+
+작업을 관리할 **프로젝트 폴더**에서 실행합니다.
 
 ```bash
 cd /path/to/your/project
 task-mecca init
 ```
 
-초기화는 Task Mecca framework와 운영 문서를 설치합니다. 실제 backlog는 첫 작업이 등록될 때 생성됩니다.
+다음은 주요 생성 파일입니다.
 
+```text
+프로젝트/
+└── _task_mecca/
+    ├── ROOT_PROMPT.md         # Root를 시작할 때 사용하는 프롬프트
+    └── framework/
+        ├── SESSION_GUIDE.md   # 세션 사용 안내
+        ├── EXECUTION_PROTOCOL.md # 작업 수행·인계 규칙
+        ├── collab.md          # 에이전트 협업 규칙
+        └── roles/             # Root·Registrar·Controller·Worker 역할별 안내
+```
 
-### 운영 지침 업데이트
+> [!NOTE]
+> **작업 목록(`data/backlog/`)은 초기화할 때 비어 있으며, 첫 작업을 등록할 때 생성됩니다.** 기존 프로젝트에서 `init`을 다시 실행하지 말고 5단계의 마이그레이션을 이용하세요.
 
-설치 후 현재 원본의 `_task_mecca/framework/EXECUTION_PROTOCOL.md`와 역할 문서를 함께 적용합니다. 기존 설치는 지원되는 migration 흐름으로 갱신하고, 사용자 수정 managed 문서는 백업·동의 절차를 따릅니다. `data/`와 `.runtime/`을 배포 템플릿으로 덮어쓰지 않습니다. 지침 변경 뒤 Root뿐 아니라 재사용 Controller/Worker도 새 배정 전에 변경된 지침을 다시 읽습니다. canonical 원장은 원본에 유지하고 구현 worktree 사본은 등록하지 않습니다.
+### 4. Root 시작하기
 
-### 3. 사용하는 LLM 세션을 Task Mecca Root로 활성화
+같은 프로젝트 폴더에서 Codex 또는 Claude Code를 열고, **사용자와 대화할 세션 하나**를 Root로 지정합니다. 아래 프롬프트를 복사해 해당 세션에 붙여넣은 뒤 자연어로 작업을 요청하세요.
 
-프로젝트 초기화가 끝나면 **같은 프로젝트 루트에서 Codex, Claude Code 등 자신이 사용하는 Agent/LLM 대화 세션을 엽니다.**
-
-Task Mecca를 사용자와 직접 대화하는 **Root 세션은 하나만 선택**합니다. 그 세션에 아래 프롬프트를 그대로 붙여넣습니다.
+<details>
+<summary><strong>Root 시작 프롬프트 펼치기 · 복사</strong></summary>
 
 ```text
 이 세션에서는 Task Mecca의 Root로 동작해 주세요.
@@ -63,171 +87,130 @@ Linear, GitHub Issue 등 연결된 외부 업무 항목에서 시작된 작업�
 실행형 작업을 subagent에 위임하기 전에는 SESSION_GUIDE의 Full Access preflight를 먼저 수행하세요.
 작업을 Simple Task와 Defined Task로 구분하세요. 추가 해석 없이 바로 검증 가능한 단순 작업은 목표와 수용 기준만 기록하고 바로 등록하며, 범위·설계·사용자 선택이 필요한 작업만 요건 정의서를 작성해 제 확인을 받은 뒤 Registrar에 lossless하게 등록하세요.
 아직 backlog가 없다면 Registrar가 첫 등록 시 _task_mecca/data/backlog를 생성하도록 하세요. data 아래의 내용은 project-owned이며 framework updater가 덮어쓰지 않습니다.
+실행까지 승인된 작업을 Registrar에 넘기기 전에는 재사용 가능한 Controller의 정확한 runtime identity를 먼저 준비해 Registrar에 전달하고, Registrar가 등록 성공 직후 Root를 거치지 않고 Controller에 직접 인계하도록 하세요. Worker도 DONE/BLOCKED 시 같은 방식으로 Controller에 직접 인계하며, completed agent의 새 turn을 재개하기 직전에는 fresh Full Access preflight를 다시 수행하세요.
 등록 이후에는 Controller가 작업 연속성과 의존성을 고려해 Worker에 배분하도록 하고, Root는 사용자-facing 창구로 유지하세요.
 ```
 
-이 프롬프트의 원본은 [`_task_mecca/ROOT_PROMPT.md`](goassets/template/_task_mecca/ROOT_PROMPT.md)에도 함께 설치됩니다. README와 Web User Manual에서는 처음 사용하는 사람이 파일을 찾아다니지 않아도 바로 복사할 수 있도록 본문을 제공합니다.
+</details>
 
-프롬프트를 입력한 뒤에는 같은 세션에 자연어로 작업을 요청하면 됩니다.
+예: `로그인 API 오류를 수정하고 관련 테스트까지 확인해 줘.`
 
-```text
-로그인 API 오류를 수정하고 관련 테스트까지 확인해 주세요.
-```
+### 5. 프로젝트 마이그레이션
 
-Task Mecca가 작업의 성격에 따라 바로 실행 가능한 **Simple Task** 또는 논의와 합의가 필요한 **Defined Task**로 정리한 뒤 백로그 등록과 수행을 이어갑니다.
-
-### 4. Web UI 실행
-
-새 터미널 또는 현재 터미널에서 프로젝트 루트 기준으로 실행합니다.
+**Task Mecca를 업데이트한 뒤 기존 프로젝트의 작업 규칙·안내 파일도 새 버전에 맞춰야 할 때** 사용합니다. Web에 프로젝트 업데이트 안내가 나타나거나 기존 프로젝트에 `init`을 실행했을 때 마이그레이션을 안내받았다면 진행하세요.
 
 ```bash
-task-mecca web
-```
-
-![Task Mecca Web UI](docs/task-mecca-web.svg)
-
-Web UI에서 다음을 한눈에 볼 수 있습니다.
-
-- Backlog의 `Ready / Working / Hold / Done` 상태
-- 현재 서브에이전트 작업량과 담당 작업
-- Queue / Active / Wait / Lead Time 및 lifecycle
-- 사용자 확인, 완료 처리, runtime 정체 등 **Needs Attention**
-- 외부 이슈 출처, 최근 업데이트, 작업 상세와 검증 결과
-- 버전 Update / 프로젝트 framework migration
-- Root 프롬프트와 상세 사용자 매뉴얼
-
-기본 포트는 `18765`입니다. Tailscale이 준비된 환경에서는 별도 `tailscale serve` 없이 직접 HTTPS endpoint도 제공합니다.
-
-## 어떻게 동작하나요?
-
-```text
-사용자
-  ↕
-Root                작업 논의·정의
-  ├─ Registrar      확정 내용을 백로그에 그대로 등록
-  └─ Controller     작업 순서·병렬 실행·Worker 관제
-       ├─ Worker
-       ├─ Worker
-       └─ ...
-
-        ↓
-Markdown backlog + Git lifecycle
-        ↓
-Task Mecca Web UI
-```
-
-핵심 원칙은 단순합니다.
-
-- **작업 정의를 대화 속에만 두지 않습니다.** Markdown backlog에 durable하게 남깁니다.
-- **Worker는 전달받은 짧은 요약이 아니라 원래 작업 계약을 직접 읽습니다.**
-- **여러 Worker의 실행과 중단·재개·완료를 Controller가 관제합니다.**
-- **Linear / GitHub Issue에서 시작한 작업은 출처를 연결하고, Root가 중요한 합의를, Controller가 실제 상태 변화와 완료 결과를 원천 이슈에 반영합니다.**
-- **사용자가 읽는 내용은 사용자의 언어와 업무 맥락을 우선합니다.**
-
-## 버전 Update
-
-Task Mecca는 **Stable / Dev** 두 업데이트 채널을 지원합니다.
-
-- `stable`은 기본 채널이며 `main → release-stable` 정식 빌드만 받습니다.
-- `dev`는 명시적으로 선택한 개발자용 채널이며 `dev → release-dev` 개발 빌드를 받습니다.
-- 개발 빌드는 다음 정식 버전을 기준으로 `0.2.46-dev.1`, `0.2.46-dev.2`처럼 증가하고, 정식 승격 시 `0.2.46`이 됩니다.
-
-현재 채널 확인/변경:
-
-```bash
-task-mecca channel
-task-mecca channel dev
-task-mecca channel stable
-```
-
-채널 선택은 로컬 설치에 저장되므로 일반 사용자는 별도 설정 없이 계속 Stable만 추적합니다.
-
-### Web에서
-
-새 버전이 있으면 Web UI에 Update 상태가 표시됩니다. Web에서 업데이트를 실행할 수 있으며, 프로젝트 framework가 함께 갱신되어야 하는 경우 migration도 안내합니다.
-
-### 터미널에서
-
-CLI 업데이트:
-
-```bash
-task-mecca upgrade
-```
-
-현재 프로젝트의 managed framework 업데이트:
-
-
-웹에서 Worker 완료 보고 후에는 Controller 검토 대기·검토 중·완료 처리 중을 구분합니다. 정상 검토와 Controller 복구는 사용자 조치 알림을 보내지 않으며, 실제 사용자 판단과 백로그 최종 완료는 알림을 유지합니다. 사용자 판단 항목에는 정확한 백로그 링크와 필요한 판단·조치를 표시합니다. 해소된 이력과 Controller 작업은 제외합니다. 명시적인 `대기유형: user`와 재개조건은 `hold_review`가 없어도 보존합니다.
-
-모든 화면의 공통 알림 영역은 기본적으로 접혀 있으며, 펼치면 현재 사용자 판단과 세션 경고의 건수·내용·다음 행동 및 관련 작업/세션 링크를 확인할 수 있습니다. 해소된 항목은 최신 갱신에서 제거하며, 관측 이력은 원장에 보존하고 화면에는 표시하지 않습니다.
-```bash
+cd /path/to/your/project
 task-mecca migrate
 ```
 
-macOS/Linux에서는 CLI 업데이트 중 Web이 실행 중이면 새 실행파일로 자동 재시작합니다. Windows는 실행 중인 실행파일 교체 제약 때문에 필요한 종료/재실행 절차를 안내합니다.
+- **바뀌는 것:** Task Mecca가 설치한 작업 규칙과 안내 파일
+- **그대로 남는 것:** 기존 백로그, 작업 이력, 설정, 알림 정보, 실행 기록
+- **직접 수정한 안내 파일이 있다면:** 덮어쓰기 / 수정본 백업 후 진행 / 취소 중 선택
 
-## 기본 명령어
+프로그램 자체 업데이트는 `task-mecca upgrade`, **프로젝트 안내·규칙 업데이트는 `task-mecca migrate`** 입니다.
 
-| 명령 | 용도 |
-|---|---|
-| `task-mecca init` | 현재 프로젝트 초기화 |
-| `task-mecca web` | Web UI 실행 |
-| `task-mecca web status` | Web 서비스 상태 확인 |
-| `task-mecca web restart` | Web 서비스 재시작 |
-| `task-mecca upgrade` | Task Mecca CLI 업데이트 |
-| `task-mecca channel [stable|dev]` | 업데이트 채널 확인/변경 |
-| `task-mecca migrate` | 프로젝트 framework 업데이트 |
-| `task-mecca status` | 현재 backlog 상태 요약 |
-| `task-mecca inspect <ID>` | 특정 작업 상세 확인 |
-| `task-mecca ready` | 실행 가능한 작업 확인 |
-| `task-mecca workload` | Worker 작업량 확인 |
-| `task-mecca coordinate` | Controller scheduling snapshot 확인 |
-| `task-mecca doctor` | backlog 및 운영 상태 점검 |
+## 작동 구조
 
-대부분의 작업에서 사용자가 이 명령을 직접 조합할 필요는 없습니다. 일반적인 사용 방식은 **Root와 자연어로 대화하고, Agent가 필요한 Task Mecca 명령을 사용하는 것**입니다.
+```mermaid
+%%{init: {"theme": "base", "themeVariables": {"fontFamily": "Pretendard, Inter, sans-serif", "primaryColor": "#241b39", "primaryTextColor": "#ffffff", "primaryBorderColor": "#9b79d2", "lineColor": "#9477c6", "background": "#141426"}}}%%
+flowchart LR
+    U(["사용자<br/>자연어 요청"]):::person --> R["Root<br/>논의·요건 확정"]:::root
+    R --> G["Registrar<br/>작업 등록"]:::agent
+    G --> B[("Markdown 백로그<br/>원문·진행 이력")]:::record
+    B --> C["Controller<br/>배정·검증·완료"]:::controller
+    C <--> W["Workers<br/>원문 읽고 병렬 수행"]:::worker
+    C --> B
+    B --> V["Web UI<br/>세션·상태·알림"]:::web
+    R -. 합의 .-> E["Linear · GitHub<br/>원천 이슈"]:::external
+    C -. 실제 결과 .-> E
 
-## 더 자세히
+    classDef person fill:#FFF0C2,stroke:#E3AC3B,color:#43300A,stroke-width:2px
+    classDef root fill:#EADFFF,stroke:#9A66D2,color:#48216C,stroke-width:2px
+    classDef agent fill:#F2EAFE,stroke:#B49AE6,color:#45336A,stroke-width:2px
+    classDef controller fill:#56417D,stroke:#A78BFA,color:#FFFFFF,stroke-width:2px
+    classDef worker fill:#DAF5EF,stroke:#56BDA7,color:#165C50,stroke-width:2px
+    classDef record fill:#DFEAFD,stroke:#719DE5,color:#233D72,stroke-width:2px
+    classDef web fill:#241B3B,stroke:#D6AEFF,color:#FFFFFF,stroke-width:2px
+    classDef external fill:#F7E7F2,stroke:#BD78AE,color:#733B62,stroke-width:2px
+```
 
-README는 처음 사용하는 데 필요한 내용만 담습니다. 세부 운영 규칙은 프로젝트에 함께 설치되는 문서와 Web의 **User Manual**에서 확인할 수 있습니다.
+## 버전 확인·업데이트
 
-- [Root 프롬프트](goassets/template/_task_mecca/ROOT_PROMPT.md)
-- [Session Guide](goassets/template/_task_mecca/framework/SESSION_GUIDE.md)
-- [협업 규약](goassets/template/_task_mecca/framework/collab.md)
-- [사람이 읽기 편한 Backlog 가이드](goassets/template/_task_mecca/framework/HUMAN_READABLE_BACKLOG.md)
-- [Tags / Taxonomy](goassets/template/_task_mecca/framework/TAGS.md)
-- [역할별 규약](goassets/template/_task_mecca/framework/roles/)
+| 명령어 | 기능 |
+| --- | --- |
+| `task-mecca --version` | 설치 버전·채널·최신 버전 확인 |
+| `task-mecca upgrade` | 현재 채널의 최신 버전으로 업데이트 |
+| `task-mecca channel` | 업데이트 채널 확인 |
+| `task-mecca channel stable` | 정식 버전 채널 선택 |
+| `task-mecca channel dev` | 개발 버전 채널 선택 |
+| `task-mecca migrate` | 기존 프로젝트의 작업 규칙 업데이트 (5단계 참고) |
+
+자세한 사용법: Web의 **사용자 매뉴얼**, [세션 안내](goassets/template/_task_mecca/framework/SESSION_GUIDE.md) · [협업 규칙](goassets/template/_task_mecca/framework/collab.md).
 
 <a id="project-origin"></a>
 
 ## 프로젝트의 시작과 감사
 
-Task Mecca는 제 동료인 [gyusu](https://github.com/gyusu)로부터 받은 아이디어와 영감에서 시작되었습니다.
+Task Mecca는 동료 [gyusu](https://github.com/gyusu)가 공유한 **백로그 등록·수행 세션을 분리하는 협업 아이디어**와 **활용 가능한 초기 소스**에서 시작되었습니다. Worker가 남은 백로그를 이어서 수행하는 구상은 현재의 Root·Registrar·Controller·Worker 협업 구조로 발전했습니다.
 
-초기에는 백로그를 등록하는 세션과 백로그를 수행하는 Worker 세션을 분리하고, Worker가 `/goal` 방식으로 남아 있는 백로그를 계속 선택·수행하여 백로그가 소진될 때까지 작업을 이어가는 AI 협업 구조에 대한 아이디어를 공유받았습니다. 또한 이러한 방식을 실제로 탐색하고 구현하는 데 참고할 수 있는 소스도 함께 제공받았습니다.
+프로젝트의 출발점이 된 아이디어와 소스를 나누어 준 [gyusu](https://github.com/gyusu)에게 감사드립니다.
 
-이 아이디어는 Task Mecca를 만들게 된 중요한 출발점이 되었습니다.
+## 개발·라이선스
 
-이후 Task Mecca는 이 초기 개념을 바탕으로 Root, Registrar, Controller, Worker의 역할 체계, 작업 관제와 병렬 실행, 백로그 생명주기 관리, Web UI, 외부 업무 원천 연결, 설치 및 배포 체계 등으로 지속적으로 확장되며 현재의 구조로 발전했습니다.
+개발 환경 및 기여 방법: [CONTRIBUTING.md](CONTRIBUTING.md) · [MIT License](LICENSE)
 
-초기의 아이디어와 영감을 나누어 준 [gyusu](https://github.com/gyusu)에게 감사드립니다.
+## 전체 CLI 명령어
 
-## 개발 / 라이선스
+**자주 쓰는 명령어**는 위에서 설명했습니다. 아래는 현재 CLI에서 제공하는 명령어의 전체 목록입니다. 하위 명령은 `|`로 구분합니다.
 
-```bash
-go test ./...
-go build ./cmd/task-mecca
-```
+### 실행·업데이트
 
-공식 실행 환경은 Go 기반 독립 실행 파일 하나이며 Python 레거시 호환성은 더 이상 유지하지 않습니다. 자세한 내용은 [CONTRIBUTING.md](CONTRIBUTING.md)를 참고하세요.
+| 명령어 | 기능 |
+| --- | --- |
+| `task-mecca` | 기본 Web 실행 |
+| `task-mecca web [start\|status\|restart\|stop\|logs]` | Web 실행·상태·재시작·종료·로그 |
+| `task-mecca --version` (또는 `version`) | 설치/최신 버전과 채널 확인 |
+| `task-mecca upgrade` | 애플리케이션 업데이트 |
+| `task-mecca channel [stable\|dev]` | 채널 확인·전환 |
+| `task-mecca init` | 새 프로젝트 초기화 |
+| `task-mecca migrate` | 기존 프로젝트 작업 규칙 업데이트 |
 
-MIT License · [LICENSE](LICENSE)
+### 백로그·프로젝트 관리
 
-## 프로젝트 보관·감시·마이그레이션
+| 명령어 | 기능 |
+| --- | --- |
+| `task-mecca status` | 백로그 진행 상태 |
+| `task-mecca ready` | 착수 가능한 작업 |
+| `task-mecca search <검색어>` | 백로그 검색 |
+| `task-mecca inspect <ID>` | 작업 상세 조회 |
+| `task-mecca workload` | 에이전트별 작업량 |
+| `task-mecca coordinate` | 작업 배정 현황 |
+| `task-mecca projects list\|archived\|add\|register\|unregister\|archive\|restore\|forget` | 프로젝트 등록·감시·보관 관리 |
+| `task-mecca tags list\|search\|discover\|show\|resolve\|tasks\|query\|stats\|catalog\|assign\|remove\|set\|define\|rename\|merge\|retire\|rebuild` | 태그 조회·검색·관리 |
+| `task-mecca task tags\|tag-add\|tag-remove\|tag-set` | 개별 작업 태그 관리 |
+| `task-mecca audit` | 작업 항목 필수 정보 검사 |
+| `task-mecca check` | 문서 링크·작업 관계 검사 |
+| `task-mecca doctor` | 프로젝트 종합 진단 |
 
-보관하기는 활성 목록에서 보관 목록으로 프로젝트를 옮기고 감시·감시 기반 알림·런타임 갱신을 중지합니다. 보관 목록은 기본 접힘이며 같은 브라우저의 펼치기 선택을 기억합니다. 다시 편입은 파일 갱신 없이 감시를 복원하고 중복 등록을 만들지 않습니다. 목록에서 제거는 보관 기록만 지우며 파일·폴더와 감시 중지 상태를 유지합니다. Web 열기·재시작만으로 등록하지 않습니다. 전체 경로를 지정해 프로젝트를 추가하거나 다시 편입해야 합니다.
+### 에이전트·실행 기록 (고급)
 
-조회는 `task-mecca projects list|archived`, 변경은 `add|register|unregister|archive|restore|forget --path ABSOLUTE`입니다. 보관/목록 제거는 `--confirm-path EXACT`, 다시 편입/목록 제거는 `--archive-id ID`가 필요합니다. 폴더 삭제·휴지통 이동·잔존 확인 기능은 없습니다. 파일 관리는 사용자가 Finder·탐색기·터미널에서 수행합니다.
+| 명령어 | 기능 |
+| --- | --- |
+| `task-mecca monitor` | Web 기반 모니터링 (`--once`로 1회 조회) |
+| `task-mecca preflight` | 실행 환경 및 접근 권한 사전 확인 |
+| `task-mecca worker-name` | 사용 가능한 Worker 이름 선정 |
+| `task-mecca agent <경로>` | Agent 경로 유효성 확인 |
+| `task-mecca ensure-backlog` | 백로그 생성·존재 확인 |
+| `task-mecca next-id <접두어>` | 신규 작업 ID 발급 |
+| `task-mecca lifecycle list\|record` | 작업 이벤트 이력 조회·기록 |
+| `task-mecca runtime list\|reconcile\|observe\|enrich-name\|assign\|bind\|bind-assignment\|bind-agent\|hooks` | 실행 관측·연결·Hook 관리 |
+| `task-mecca runtime-spike observe\|report` | 실행 관측 진단 |
+| `task-mecca handoff prepare\|claim\|mark\|inspect\|reconcile\|capability` | Agent 인계 기록·확인 |
+| `task-mecca deliveries [작업 ID] [이벤트 ID]` | 알림 전송 이력 조회 |
+| `task-mecca notifications resume-status\|suppress-before-resume` | Telegram 재개 상태·안전 조치 |
+| `task-mecca operations reconcile` | 실행 관측 경고와 완료 근거 재조정 |
 
-Go CLI `init`은 최초 framework 생성과 Web 감시 등록만 수행합니다. 기존 설치는 변경하지 않고 `migrate`를 안내합니다. 마이그레이션은 감시·보관 상태와 백로그·설정·인증정보·런타임 데이터를 보존합니다. 수정한 관리 파일이 있으면 새 버전 덮어쓰기 / 기존 수정사항 백업 후 진행 / 취소 중 하나를 선택해야 합니다. 선택 전에는 파일이나 백업을 만들지 않으며 백업 실패 시 framework 갱신을 중단합니다.
+> [!NOTE]
+> `|`는 **선택 가능한 하위 명령**이며 실제 입력 시 하나만 사용합니다. 고급 명령 일부는 별도 인자와 권한이 필요하므로 Root/Controller가 규약에 따라 실행하는 것을 권장합니다.
 
-에이전트는 `task-mecca migrate --json`의 exit 3, `status: choice_required`, `modified_files`, `choices`를 보고 사람에게 질문한 뒤 `--choice overwrite|backup|cancel`을 실행합니다. 비TTY는 대기하지 않습니다. Python CLI 호환성 지원은 종료했습니다. 기존 프로젝트의 데이터와 manifest 없는 레거시 파일은 소유권을 단정할 수 없어 Go 마이그레이션에서도 그대로 보존합니다.
