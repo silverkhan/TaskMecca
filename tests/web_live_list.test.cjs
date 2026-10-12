@@ -121,3 +121,58 @@ test('new project starts immediately instead of waiting for a previous project r
  assert.equal(app.state.listData.items[0].id,'B-1');
  assert.equal(app.state.loadError,'');
 });
+
+test('first page live-refreshes when only execution evidence changes',async()=>{
+ const calls=[];
+ const app=page(url=>{
+  calls.push(url);
+  return Promise.resolve(json(url.startsWith('/api/revision')
+   ?{revision:'content-1',signal_revision:'runtime-2',states:[{id:'A-1',title:'Alpha',file_state:'doing'}]}
+   :{...packet(1,'content-1'),signal_revision:'runtime-2',items:[{id:'A-1',runtime_state:'running'}]}));
+ });
+ Object.assign(app.state,{contentRevision:'content-1',signalRevision:'runtime-1',listData:{...packet(1,'content-1'),items:[{id:'A-1',runtime_state:'starting'}]}});
+ await app.checkContentRevision();await tick();
+ assert.equal(calls.filter(url=>url.startsWith('/api/revision')).length,1);
+ assert.equal(calls.filter(url=>url.startsWith('/api/backlog/tasks')&&!url.includes('prefetch=1')).length,1);
+ assert.equal(app.state.listData.items[0].runtime_state,'running');
+ assert.equal(app.state.signalRevision,'runtime-2');
+ assert.equal(app.state.pendingContentUpdate,false);
+ assert.equal(app.prompt.innerHTML,'');
+});
+
+test('runtime-only evidence change on page two prompts once without moving rows',async()=>{
+ const calls=[];
+ const app=page(url=>{
+  calls.push(url);
+  return Promise.resolve(json(url.startsWith('/api/revision')
+   ?{revision:'content-1',signal_revision:'runtime-2',states:[]}
+   :{...packet(2,'content-1'),signal_revision:'runtime-2',items:[],counts:{all:101},attention:[]}));
+ });
+ Object.assign(app.state,{listPage:2,contentRevision:'content-1',signalRevision:'runtime-1',listData:{...packet(2,'content-1'),items:[{id:'reading'}]}});
+ await app.checkContentRevision();await tick();
+ assert.equal(app.state.listData.items[0].id,'reading');
+ assert.equal(app.state.pendingContentUpdate,true);
+ assert.match(app.prompt.innerHTML,/contentUpdateRefreshBtn/);
+ await app.checkContentRevision();await tick();
+ assert.equal(calls.filter(url=>url.includes('projection=summary')).length,1,'repeated checks must not repeatedly reload summary');
+ assert.equal(calls.filter(url=>url.startsWith('/api/backlog/tasks')&&!url.includes('projection=summary')).length,0);
+});
+
+test('unchanged content and execution revision does not request a list refresh',async()=>{
+ const calls=[],app=page(url=>{calls.push(url);return Promise.resolve(json({revision:'content-1',signal_revision:'runtime-1',states:[]}));});
+ Object.assign(app.state,{contentRevision:'content-1',signalRevision:'runtime-1'});
+ await app.checkContentRevision();await tick();
+ assert.equal(calls.length,1);
+ assert.equal(app.state.pendingContentUpdate,false);
+});
+
+test('initial project backlog fetch subscribes to realtime updates after its folder is resolved',async()=>{
+ const app=page(()=>Promise.resolve(json({...packet(1,'content-1'),backlog_selection:{selected:'team',candidates:[]},signal_revision:'runtime-1'})));
+ vm.runInContext(`globalThis.EventSource=class {static CLOSED=2;constructor(url){this.url=url;this.readyState=1}addEventListener(){}close(){}}`,app.context);
+ // The production notification processing resolves the automatic folder.
+ app.state.attentionScopes['/demo|']='team';
+ await app.refreshList();
+ assert.ok(app.state.eventSource,'the initial list fetch must establish SSE');
+ assert.match(app.state.eventSource.url,/backlog=team/);
+});
+

@@ -47,6 +47,8 @@ const state = {
   previousTasksByProject: (()=>{ try { const raw=JSON.parse(localStorage.getItem('task-mecca-previous-tasks')||'{}'); return raw&&typeof raw==='object'?raw:{}; } catch(_) { return {}; } })(),
   versionInfo: null,
   contentRevision: '',
+  signalRevision: '',
+  pendingObservedRevision: '',
   contentStateSnapshot: [],
   pendingContentUpdate: false,
   pendingContentReason: '',
@@ -1110,12 +1112,14 @@ function markContentUpdate(reason='content',changes=[]) {
   if(!state.detail)refreshListSummary();
 }
 
-function acceptContentRevision(revision='',states=null) {
+function acceptContentRevision(revision='',states=null,signalRevision=null) {
   if(revision&&state.contentRevision&&revision!==state.contentRevision)invalidateTaskDetailCache();
   if(revision)state.contentRevision=revision;
+  if(signalRevision!==null)state.signalRevision=signalRevision;
   if(Array.isArray(states))state.contentStateSnapshot=states;
   state.pendingContentUpdate=false;
   state.pendingContentReason='';
+  state.pendingObservedRevision='';
   state.pendingContentChanges=[];
   renderContentUpdatePrompt();
 }
@@ -1190,17 +1194,23 @@ async function checkContentRevision(establishOnly=false) {
       if(!r.ok)return;
       const body=await r.json();
       if(project!==state.project || backlog!==state.backlog)return;
-      const revision=body.revision||'', states=Array.isArray(body.states)?body.states:[];
+      const revision=body.revision||'', signalRevision=body.signal_revision||'', states=Array.isArray(body.states)?body.states:[];
       if(!revision)return;
       if(!state.contentRevision || establishOnly){
-        acceptContentRevision(revision,states);
+        acceptContentRevision(revision,states,signalRevision);
         return;
       }
-      if(revision!==state.contentRevision){
+      const fingerprint=revision+'|'+signalRevision;
+      if(revision!==state.contentRevision || signalRevision!==state.signalRevision){
+        // A later page must keep its snapshot until the user refreshes.
+        // Repeated 5-second checks for the same revision do not re-query a
+        // heavy summary or repeatedly rebuild the refresh prompt.
+        if(state.pendingContentUpdate && state.pendingObservedRevision===fingerprint)return;
+        state.pendingObservedRevision=fingerprint;
         const changes=diffRevisionStates(state.contentStateSnapshot,states);
-        if(state.view==='backlog')markContentUpdate('content',changes);
+        if(state.view==='backlog')markContentUpdate(revision!==state.contentRevision?'content':'runtime',changes);
         else {
-          acceptContentRevision(revision,states);
+          acceptContentRevision(revision,states,signalRevision);
           queueMicrotask(()=>refresh());
         }
       } else if(!state.pendingContentUpdate && states.length) {
@@ -1216,6 +1226,7 @@ async function refreshVisibleContent() {
   const scrollY=window.scrollY;
   state.pendingContentUpdate=false;
   state.pendingContentReason='';
+  state.pendingObservedRevision='';
   renderContentUpdatePrompt();
   if(state.view==='backlog'){
     await refreshList();
@@ -3197,6 +3208,8 @@ function switchProject(path) {
   state.listData=null;
   state.detailTask=null;
   state.contentRevision='';
+  state.signalRevision='';
+  state.pendingObservedRevision='';
   state.pendingContentUpdate=false;
   state.pendingContentReason='';
   state.loadError='';
@@ -5555,8 +5568,11 @@ async function refreshList(preserveSelection=false) {
   state.listData=data;state.listDataContext=key;state.listRevalidating=false;
   const selectedIndex=(data.items||[]).findIndex(task=>task.id===selectedID);if(selectedIndex>=0)state.selectedIndex=selectedIndex;
   state.loadError='';state.lastFetch=Date.now();state.listPage=Math.max(1,Number(data.page)||1);
-  acceptContentRevision(data.revision||state.contentRevision);
+  acceptContentRevision(data.revision||state.contentRevision,null,data.signal_revision||'');
   processTaskNotifications(listNotificationPayload(data));
+  // First direct backlog entry must connect after its actual backlog folder
+  // is resolved. Otherwise no SSE callback can request a live list refresh.
+  if(targetView==='backlog' && !targetDetail)ensureAttentionStream();
   const candidates=data.backlog_selection?.candidates||[];
   if(state.backlog&& !candidates.some(x=>x.path===state.backlog)){state.backlog='';localStorage.removeItem('task-mecca-backlog-folder');}
   $('#connectionDot').style.background='var(--ok)';if(state.view==='backlog')render();
@@ -5668,6 +5684,7 @@ async function refreshOnce() {
   if(targetView==='backlog'){
     refreshHub(false).catch(()=>{});
     await refreshList();
+    if(targetProject!==state.project || targetBacklog!==state.backlog || state.view!==targetView)return;
     if(state.detail)await loadTaskDetail(state.detail);
     await checkContentRevision(true);
     return;
@@ -5771,6 +5788,8 @@ function route(fromPop=false) {
   state.project=p.get('project')||'';
   if(previousProject!==state.project){
     state.contentRevision='';
+    state.signalRevision='';
+    state.pendingObservedRevision='';
     state.pendingContentUpdate=false;
     state.pendingContentReason='';
     state.runtimeHistoryOpen=false;
@@ -5921,6 +5940,8 @@ function bindBacklogListTools() {
   invalidateTaskDetailCache();
   state.backlog=value;
   state.contentRevision='';
+  state.signalRevision='';
+  state.pendingObservedRevision='';
   state.pendingContentUpdate=false;
   state.pendingContentReason='';
   if(value)localStorage.setItem('task-mecca-backlog-folder',value);else localStorage.removeItem('task-mecca-backlog-folder');
