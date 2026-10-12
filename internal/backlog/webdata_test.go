@@ -274,10 +274,10 @@ func TestBacklogRevisionTracksExecutionAndLifecycleEvidenceWithoutChangingMarkdo
 func TestBacklogPageActiveColumnUsesRealLifecycleEvidence(t *testing.T) {
     project:=t.TempDir()
     folder:=filepath.Join(project,"_task_mecca","data","backlog")
-    writeWebTask(t,folder,"000001.B-1.finished.done.md","# B-1 Finished\\n- Agent: /root/controller/worker\\n")
-    writeWebTask(t,folder,"000002.B-2.unknown.done.md","# B-2 Historical completion without start\\n")
-    writeWebTask(t,folder,"000003.B-3.running.doing.md","# B-3 Running\\n- Agent: /root/controller/worker\\n")
-    writeWebTask(t,folder,"000004.B-4.new.todo.md","# B-4 Registered only\\n")
+    writeWebTask(t,folder,"000001.B-1.finished.done.md","# B-1 Finished\n- Agent: /root/controller/worker\n")
+    writeWebTask(t,folder,"000002.B-2.unknown.done.md","# B-2 Historical completion without start\n")
+    writeWebTask(t,folder,"000003.B-3.running.doing.md","# B-3 Running\n- Agent: /root/controller/worker\n")
+    writeWebTask(t,folder,"000004.B-4.new.todo.md","# B-4 Registered only\n")
 
     now:=time.Now().UTC().Truncate(time.Second)
     base:=now.Add(-15*time.Minute)
