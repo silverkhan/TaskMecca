@@ -33,6 +33,16 @@ task-mecca web
 
 Web은 **백로그 진행 상황**, **Root/Worker 세션과 최근 활동**, **실행 단계와 확인이 필요한 경고**를 한곳에 모읍니다. 프로젝트별 알림을 설정하면 **Telegram·브라우저 알림**도 받을 수 있으며, 업데이트와 프로젝트 관리도 지원합니다.
 
+**Web 관리 명령어**
+
+| 명령어 | 기능 |
+| --- | --- |
+| `task-mecca web` | Web 실행 · 브라우저 열기 |
+| `task-mecca web status` | 실행 여부·버전·접속 주소 확인 |
+| `task-mecca web restart` | Web 재시작 |
+| `task-mecca web stop` | Web 종료 |
+| `task-mecca web logs` | Web 로그 확인 (`--follow`로 계속 보기) |
+
 ![Task Mecca Web UI — 영문 프로젝트 백로그 목록](handoff-evidence/a24-raichyu/final-desktop-dark-en.jpg)
 
 <sub>영문 · 다크 테마 · 샘플 프로젝트의 백로그 목록(Needs attention 0건). 이전 개발판의 실제 캡처로, 현재 화면과 일부 차이가 있을 수 있습니다.</sub>
@@ -125,28 +135,18 @@ flowchart LR
     classDef external fill:#F7E7F2,stroke:#BD78AE,color:#733B62,stroke-width:2px
 ```
 
-## 업데이트·도움말
+## 버전 확인·업데이트
 
-- **업데이트:** Web의 업데이트 메뉴 또는 `task-mecca upgrade`
-- **채널 확인·변경:** `task-mecca channel` / `task-mecca channel dev` / `task-mecca channel stable`
-- **상태 확인:** `task-mecca web status` · **진단:** `task-mecca doctor`
-- **자세한 사용법:** Web의 **사용자 매뉴얼**, [세션 안내](goassets/template/_task_mecca/framework/SESSION_GUIDE.md), [협업 규칙](goassets/template/_task_mecca/framework/collab.md)
-
-<details>
-<summary>고급 명령어 및 프로젝트 관리</summary>
-
-| 명령 | 용도 |
+| 명령어 | 기능 |
 | --- | --- |
-| `task-mecca web restart` | Web 서비스 재시작 |
-| `task-mecca status` | 백로그 상태 조회 |
-| `task-mecca inspect <ID>` | 작업 상세 조회 |
-| `task-mecca workload` | 에이전트 작업량 조회 |
-| `task-mecca coordinate` | 작업 배정 상태 확인 |
-| `task-mecca projects list` | 관리 중인 프로젝트 목록 |
+| `task-mecca --version` | 설치 버전·채널·최신 버전 확인 |
+| `task-mecca upgrade` | 현재 채널의 최신 버전으로 업데이트 |
+| `task-mecca channel` | 업데이트 채널 확인 |
+| `task-mecca channel stable` | 정식 버전 채널 선택 |
+| `task-mecca channel dev` | 개발 버전 채널 선택 |
+| `task-mecca migrate` | 기존 프로젝트의 작업 규칙 업데이트 (5단계 참고) |
 
-Web에서 프로젝트를 **보관**하면 감시와 해당 알림이 중지되고, **다시 편입**하면 감시를 재개합니다. 목록에서 제거해도 원래 프로젝트 폴더는 삭제되지 않습니다.
-
-</details>
+자세한 사용법: Web의 **사용자 매뉴얼**, [세션 안내](goassets/template/_task_mecca/framework/SESSION_GUIDE.md) · [협업 규칙](goassets/template/_task_mecca/framework/collab.md).
 
 <a id="project-origin"></a>
 
@@ -159,3 +159,58 @@ Task Mecca는 동료 [gyusu](https://github.com/gyusu)가 공유한 **백로그 
 ## 개발·라이선스
 
 개발 환경 및 기여 방법: [CONTRIBUTING.md](CONTRIBUTING.md) · [MIT License](LICENSE)
+
+## 전체 CLI 명령어
+
+**자주 쓰는 명령어**는 위에서 설명했습니다. 아래는 현재 CLI에서 제공하는 명령어의 전체 목록입니다. 하위 명령은 `|`로 구분합니다.
+
+### 실행·업데이트
+
+| 명령어 | 기능 |
+| --- | --- |
+| `task-mecca` | 기본 Web 실행 |
+| `task-mecca web [start\|status\|restart\|stop\|logs]` | Web 실행·상태·재시작·종료·로그 |
+| `task-mecca --version` (또는 `version`) | 설치/최신 버전과 채널 확인 |
+| `task-mecca upgrade` | 애플리케이션 업데이트 |
+| `task-mecca channel [stable\|dev]` | 채널 확인·전환 |
+| `task-mecca init` | 새 프로젝트 초기화 |
+| `task-mecca migrate` | 기존 프로젝트 작업 규칙 업데이트 |
+
+### 백로그·프로젝트 관리
+
+| 명령어 | 기능 |
+| --- | --- |
+| `task-mecca status` | 백로그 진행 상태 |
+| `task-mecca ready` | 착수 가능한 작업 |
+| `task-mecca search <검색어>` | 백로그 검색 |
+| `task-mecca inspect <ID>` | 작업 상세 조회 |
+| `task-mecca workload` | 에이전트별 작업량 |
+| `task-mecca coordinate` | 작업 배정 현황 |
+| `task-mecca projects list\|archived\|add\|register\|unregister\|archive\|restore\|forget` | 프로젝트 등록·감시·보관 관리 |
+| `task-mecca tags list\|search\|discover\|show\|resolve\|tasks\|query\|stats\|catalog\|assign\|remove\|set\|define\|rename\|merge\|retire\|rebuild` | 태그 조회·검색·관리 |
+| `task-mecca task tags\|tag-add\|tag-remove\|tag-set` | 개별 작업 태그 관리 |
+| `task-mecca audit` | 작업 항목 필수 정보 검사 |
+| `task-mecca check` | 문서 링크·작업 관계 검사 |
+| `task-mecca doctor` | 프로젝트 종합 진단 |
+
+### 에이전트·실행 기록 (고급)
+
+| 명령어 | 기능 |
+| --- | --- |
+| `task-mecca monitor` | Web 기반 모니터링 (`--once`로 1회 조회) |
+| `task-mecca preflight` | 실행 환경 및 접근 권한 사전 확인 |
+| `task-mecca worker-name` | 사용 가능한 Worker 이름 선정 |
+| `task-mecca agent <경로>` | Agent 경로 유효성 확인 |
+| `task-mecca ensure-backlog` | 백로그 생성·존재 확인 |
+| `task-mecca next-id <접두어>` | 신규 작업 ID 발급 |
+| `task-mecca lifecycle list\|record` | 작업 이벤트 이력 조회·기록 |
+| `task-mecca runtime list\|reconcile\|observe\|enrich-name\|assign\|bind\|bind-assignment\|bind-agent\|hooks` | 실행 관측·연결·Hook 관리 |
+| `task-mecca runtime-spike observe\|report` | 실행 관측 진단 |
+| `task-mecca handoff prepare\|claim\|mark\|inspect\|reconcile\|capability` | Agent 인계 기록·확인 |
+| `task-mecca deliveries [작업 ID] [이벤트 ID]` | 알림 전송 이력 조회 |
+| `task-mecca notifications resume-status\|suppress-before-resume` | Telegram 재개 상태·안전 조치 |
+| `task-mecca operations reconcile` | 실행 관측 경고와 완료 근거 재조정 |
+
+> [!NOTE]
+> `|`는 **선택 가능한 하위 명령**이며 실제 입력 시 하나만 사용합니다. 고급 명령 일부는 별도 인자와 권한이 필요하므로 Root/Controller가 규약에 따라 실행하는 것을 권장합니다.
+
