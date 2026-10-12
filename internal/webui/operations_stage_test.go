@@ -321,3 +321,39 @@ func TestOperationStageLatestAssignmentAndHistoricalRecovery(t *testing.T) {
 		t.Fatalf("reassignment=%+v", stages)
 	}
 }
+
+func TestCompletionReviewStageSeparatesUnverifiedEvidenceFromFailure(t *testing.T) {
+	base := time.Date(2026, 10, 12, 0, 0, 0, 0, time.UTC).Format(time.RFC3339Nano)
+	cases := []struct {
+		name         string
+		confirmed    bool
+		wantStage    string
+		wantFailed   bool
+		wantSeverity string
+	}{
+		{name: "unverified linkage", wantStage: "handoff_evidence_unverified", wantSeverity: "warning"},
+		{name: "confirmed failure", confirmed: true, wantStage: "handoff_failed", wantFailed: true, wantSeverity: "error"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			stage := operationStage{Project: "fixture", TaskID: "SYNTH-47", AssignmentID: "assignment-synthetic-47"}
+			ok := applyCompletionReviewStage(&stage, map[string]any{
+				"state":               "controller_recovery",
+				"since":               base,
+				"diagnostic":          "synthetic evidence",
+				"reason":              "synthetic_reason",
+				"observation_quality": "insufficient",
+				"action_required":     true,
+				"action":              "inspect_exact_linkage",
+				"severity":            "warning",
+				"confirmed_failure":   tc.confirmed,
+			})
+			if !ok || stage.Stage != tc.wantStage || stage.Failed != tc.wantFailed || stage.Severity != tc.wantSeverity {
+				t.Fatalf("stage=%+v", stage)
+			}
+			if stage.Reason != "synthetic_reason" || stage.ObservationQuality != "insufficient" || !stage.ActionRequired || stage.Action != "inspect_exact_linkage" {
+				t.Fatalf("classification evidence lost: %+v", stage)
+			}
+		})
+	}
+}

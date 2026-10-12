@@ -24,9 +24,13 @@ func TestReviewUsesRealAttentionTelegramConsumer(t *testing.T) {
 			folder := filepath.Join(project, "_task_mecca", "data", "backlog")
 			os.MkdirAll(folder, 0755)
 			body := "# A-33 검토 테스트\n- Agent: /root/controller/worker\n## 작업 정의\n- 목표: 실제 소비자 검증\n"
+			assignment, err := runtimeobs.RecordAssignment(project, "assignment-test", "A-33", "/root/controller/worker", now.Add(-2*time.Minute))
+			if err != nil {
+				t.Fatal(err)
+			}
 			file := filepath.Join(folder, "000033.A-33.delivery.doing.md")
 			os.WriteFile(file, []byte(body), 0644)
-			events := []runtimeobs.ExecutionEvent{{EventKind: "state", AttemptID: "w1", Provider: "codex", RuntimeAgentID: "wn", SessionID: "s1", ObservedAt: now.Add(-time.Minute).Format(time.RFC3339Nano), State: runtimeobs.StateRunning, EvidenceSource: runtimeobs.EvidenceHook, ObservationQuality: runtimeobs.QualityObserved}, {EventKind: "binding", AttemptID: "w1", TaskID: "A-33", AgentPath: "/root/controller/worker", ObservedAt: now.Add(-time.Minute).Format(time.RFC3339Nano), EvidenceSource: runtimeobs.EvidenceManualBinding, ObservationQuality: runtimeobs.QualityAuthoritative}}
+			events := []runtimeobs.ExecutionEvent{{EventKind: "state", AttemptID: "w1", Provider: "codex", RuntimeAgentID: "wn", SessionID: "s1", ObservedAt: now.Add(-time.Minute).Format(time.RFC3339Nano), State: runtimeobs.StateRunning, EvidenceSource: runtimeobs.EvidenceHook, ObservationQuality: runtimeobs.QualityObserved}, {EventKind: "binding", AttemptID: "w1", TaskID: "A-33", AgentPath: "/root/controller/worker", BindingEvidence: map[string]string{"assignment_id": assignment.AssignmentID}, ObservedAt: now.Add(-time.Minute).Format(time.RFC3339Nano), EvidenceSource: runtimeobs.EvidenceManualBinding, ObservationQuality: runtimeobs.QualityAuthoritative}}
 			for _, e := range events {
 				if err := runtimeobs.AppendExecutionEvent(project, e); err != nil {
 					t.Fatal(err)

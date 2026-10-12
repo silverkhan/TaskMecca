@@ -38,12 +38,13 @@ type completionHandoffRecord struct {
 }
 
 type completionHandoff struct {
-	prepared   completionHandoffRecord
-	claim      completionHandoffRecord
-	acceptance completionHandoffRecord
-	applied    completionHandoffRecord
-	failed     bool
-	steps      map[string]string
+	prepared    completionHandoffRecord
+	claim       completionHandoffRecord
+	acceptance  completionHandoffRecord
+	applied     completionHandoffRecord
+	failed      bool
+	failureStep string
+	steps       map[string]string
 }
 
 func readCompletionHandoffs(project string) (map[string]*completionHandoff, error) {
@@ -66,6 +67,9 @@ func readCompletionHandoffs(project string) (map[string]*completionHandoff, erro
 			h.steps[name] = step.Result
 			if step.Result != "ok" {
 				h.failed = true
+				if step.Result == "failed" && h.failureStep == "" {
+					h.failureStep = name
+				}
 			}
 			if name == "acceptance" && step.Result == "ok" {
 				h.acceptance = completionHandoffRecord{At: step.ObservedAt}
@@ -111,16 +115,31 @@ func completionTimeBefore(left, right string) bool {
 	return lOK && rOK && l.Before(r)
 }
 
-func completionReview(row Record, worker *runtimeobs.Attempt, completedAt string, handoffs map[string]*completionHandoff, readErr error, attempts []runtimeobs.Attempt, now time.Time) map[string]any {
+func completionReviewProjection(state, since string, grace time.Duration, diagnostic, reason, quality, action, severity string, failed bool, handoffID, contract string) map[string]any {
+	graceUntil := ""
+	if at, ok := parseTime(since); ok {
+		graceUntil = at.Add(grace).Format(time.RFC3339Nano)
+	}
+	return map[string]any{
+		"state": state, "since": since, "grace_until": graceUntil, "diagnostic": diagnostic,
+		"reason": reason, "observation_quality": quality, "action_required": action != "",
+		"action": action, "severity": severity, "confirmed_failure": failed,
+		"handoff_id": handoffID, "contract_sha256": contract, "audience": "controller",
+	}
+}
+
+func completionReview(row Record, worker *runtimeobs.Attempt, assignmentID, completedAt string, handoffs map[string]*completionHandoff, readErr error, attempts []runtimeobs.Attempt, now time.Time) map[string]any {
 	state, since, diagnostic := "controller_review_pending", completedAt, "Controller 인계 확인을 기다리고 있습니다."
+	reason, quality, action, severity := "controller_claim_missing", "insufficient", "verify_controller_claim", "info"
+	confirmedFailure := false
 	grace := 5 * time.Minute
 	handoffID := ""
 	if readErr != nil && !os.IsNotExist(readErr) {
 		state = "controller_recovery"
-		diagnostic = "인계 근거를 읽을 수 없습니다: " + readErr.Error()
+		diagnostic = "인계 원천 근거를 읽을 수 없어 내부 검토가 필요합니다."
 	}
 	var selected *completionHandoff
-	if worker != nil {
+	if worker != nil && assignmentID != "" && worker.BindingEvidence["assignment_id"] == assignmentID {
 		contract := completionContract(row.RawMarkdown)
 		for id, h := range handoffs {
 			p := h.prepared
@@ -145,9 +164,18 @@ func completionReview(row Record, worker *runtimeobs.Attempt, completedAt string
 	if selected != nil {
 		p, c := selected.prepared, selected.claim
 		since = p.At
-		if selected.failed || p.Action == "hold" {
+		if selected.failureStep != "" {
 			state = "controller_recovery"
-			diagnostic = "Controller 인계 또는 검토 단계가 실패하거나 확인되지 않았습니다."
+			reason, quality, action, severity, confirmedFailure = "handoff_step_failed", "confirmed", "investigate_failed_handoff_step", "error", true
+			diagnostic = fmt.Sprintf("인계 단계 %q의 실패가 명시적으로 기록되었습니다.", selected.failureStep)
+		} else if selected.failed {
+			state = "controller_review_pending"
+			reason, quality, action, severity = "handoff_step_outcome_unknown", "insufficient", "inspect_handoff_step_result", "warning"
+			diagnostic = "인계 단계 결과가 확정되지 않아 내부 검토가 필요합니다."
+		} else if p.Action == "hold" {
+			state = "needs_user"
+			reason, quality, action, severity = "handoff_on_user_hold", "observed", "wait_for_user_decision", "warning"
+			diagnostic = "인계가 사용자 판단을 기다리는 hold 상태입니다."
 		}
 		if c.At != "" && state != "controller_recovery" {
 			var controller *runtimeobs.Attempt
@@ -166,14 +194,22 @@ func completionReview(row Record, worker *runtimeobs.Attempt, completedAt string
 			preparedAt, _ := parseTime(p.At)
 			if !valid || !claimOK || claimAt.Before(preparedAt) || claimAt.After(now) {
 				state = "controller_recovery"
+				reason, quality, action, severity = "controller_claim_unverified", "insufficient", "verify_exact_controller_binding", "warning"
 				diagnostic = "인계를 받은 Controller의 정확한 실행 근거를 확인할 수 없습니다."
 			} else {
 				state, since, grace, diagnostic = "controller_review", c.At, 15*time.Minute, "Controller가 결과와 수용 기준을 검토하고 있습니다."
+				reason, quality, action, severity = "exact_controller_claim_running", "observed", "review_worker_result", "info"
 				if controller.CurrentState == runtimeobs.StateWaitingUser || controller.CurrentState == runtimeobs.StateWaitingApproval {
 					state, diagnostic = "needs_user", "Controller가 명시적으로 사용자 판단 또는 승인을 기다리고 있습니다."
 				} else if controller.CurrentState != runtimeobs.StateRunning || controller.Terminal {
 					state = "controller_recovery"
-					diagnostic = "완료 검토를 맡은 Controller 실행이 중단되었거나 종료되었습니다."
+					if controller.Terminal && controller.StateEvidenceSource == runtimeobs.EvidenceHook && (controller.StateObservationQuality == runtimeobs.QualityObserved || controller.StateObservationQuality == runtimeobs.QualityAuthoritative) && (controller.CurrentState == runtimeobs.StateErrored || controller.CurrentState == runtimeobs.StateInterrupted || controller.CurrentState == runtimeobs.StateShutdown) {
+						reason, quality, action, severity, confirmedFailure = "controller_execution_failed", "confirmed", "investigate_controller_execution", "error", true
+						diagnostic = "Controller 실행의 오류 또는 중단이 Hook 상태로 관측되었습니다."
+					} else {
+						reason, quality, action, severity = "controller_claim_not_running", "insufficient", "verify_controller_execution_state", "warning"
+						diagnostic = "Controller claim은 확인됐지만 running 또는 명시적 실패 근거가 없습니다."
+					}
 				}
 				if state == "controller_review" {
 					accepted := selected.acceptance.At
@@ -194,18 +230,17 @@ func completionReview(row Record, worker *runtimeobs.Attempt, completedAt string
 		}
 	}
 	at, ok := parseTime(since)
-	deadline := ""
 	if !ok || at.After(now) {
-		state = "controller_recovery"
-		diagnostic = "완료 보고의 원천 시각을 확인할 수 없습니다."
+		state = "controller_review_pending"
+		reason, quality, action, severity = "source_timestamp_unverified", "insufficient", "verify_source_timestamp", "warning"
+		diagnostic = "완료 보고의 원천 시각이 유효하지 않거나 미래 시각이어서 내부 검토가 필요합니다."
 	} else {
-		deadline = at.Add(grace).Format(time.RFC3339Nano)
 		if !now.Before(at.Add(grace)) && state != "controller_recovery" && state != "needs_user" {
 			state = "controller_recovery"
 			diagnostic = "Controller 인계·검토의 정상 대기 시간을 초과했습니다. Controller가 실행 근거를 확인하고 복구해야 합니다."
 		}
 	}
-	return map[string]any{"state": state, "since": since, "grace_until": deadline, "diagnostic": diagnostic, "handoff_id": handoffID, "audience": "controller"}
+	return completionReviewProjection(state, since, grace, diagnostic, reason, quality, action, severity, confirmedFailure, handoffID, completionContract(row.RawMarkdown))
 }
 
 func reportedCompletionAt(row Record, worker *runtimeobs.Attempt, handoffs map[string]*completionHandoff, now time.Time) string {
@@ -230,6 +265,31 @@ func reportedCompletionAt(row Record, worker *runtimeobs.Attempt, handoffs map[s
 	return result
 }
 
+func latestCompletionAssignment(assignments []runtimeobs.Assignment, taskID string, now time.Time) (string, bool) {
+	var latest *runtimeobs.Assignment
+	var latestAt time.Time
+	ambiguous := false
+	for i := range assignments {
+		a := &assignments[i]
+		if !strings.EqualFold(a.TaskID, taskID) {
+			continue
+		}
+		at, ok := parseTime(a.AssignedAt)
+		if !ok || at.After(now) {
+			continue
+		}
+		if latest == nil || at.After(latestAt) {
+			latest, latestAt, ambiguous = a, at, false
+		} else if at.Equal(latestAt) && a.AssignmentID != latest.AssignmentID {
+			ambiguous = true
+		}
+	}
+	if latest == nil || ambiguous {
+		return "", false
+	}
+	return latest.AssignmentID, true
+}
+
 func applyCompletionReviews(project string, rows []Record, activity map[string]map[string]any, now time.Time, shared ...requestRuntime) {
 	var ledger runtimeobs.Ledger
 	var ledgerErr error
@@ -239,11 +299,16 @@ func applyCompletionReviews(project string, rows []Record, activity map[string]m
 		ledger, ledgerErr = runtimeobs.BuildLedger(project, 10, now)
 	}
 	handoffs, handoffErr := readCompletionHandoffs(project)
+	assignments, assignmentErr := runtimeobs.ListAssignments(project)
 	for _, row := range rows {
 		if row.Location != "active" || row.State != "doing" {
 			continue
 		}
 		signal := activity[row.ID]
+		assignmentID, assignmentOK := latestCompletionAssignment(assignments, row.ID, now)
+		if !assignmentOK {
+			assignmentID = ""
+		}
 		if signal == nil || toString(signal["health"]) == "needs_user" {
 			continue
 		}
@@ -262,7 +327,7 @@ func applyCompletionReviews(project string, rows []Record, activity map[string]m
 			}
 		}
 		completedAt := toString(signal["last_activity_at"])
-		var workerErr error
+		workerFailed := false
 		if worker != nil && !ambiguous {
 			if worker.CurrentState == runtimeobs.StateWaitingUser || worker.CurrentState == runtimeobs.StateWaitingApproval {
 				signal["health"] = "needs_user"
@@ -281,7 +346,7 @@ func applyCompletionReviews(project string, rows []Record, activity map[string]m
 			if !terminalDone {
 				completedAt = reportAt
 				if worker.CurrentState != runtimeobs.StateRunning || worker.Terminal {
-					workerErr = fmt.Errorf("완료 보고 이후 Worker 실행이 오류 또는 중단 상태입니다: %s", worker.CurrentState)
+					workerFailed = worker.Terminal && worker.StateEvidenceSource == runtimeobs.EvidenceHook && (worker.StateObservationQuality == runtimeobs.QualityObserved || worker.StateObservationQuality == runtimeobs.QualityAuthoritative) && (worker.CurrentState == runtimeobs.StateErrored || worker.CurrentState == runtimeobs.StateInterrupted || worker.CurrentState == runtimeobs.StateShutdown)
 				}
 			}
 			signal["runtime_state"] = string(worker.CurrentState)
@@ -292,13 +357,22 @@ func applyCompletionReviews(project string, rows []Record, activity map[string]m
 		if ledgerErr != nil {
 			readErr = ledgerErr
 		}
-		if workerErr != nil {
-			readErr = workerErr
-		}
+		review := completionReview(row, worker, assignmentID, completedAt, handoffs, readErr, ledger.Attempts, now)
 		if ambiguous {
-			readErr = fmt.Errorf("Worker execution identity is ambiguous")
+			review["reason"], review["observation_quality"], review["action"], review["action_required"], review["severity"] = "worker_attempt_ambiguous", "conflicting", "inspect_worker_attempts", true, "warning"
+			review["diagnostic"] = "동일 작업에 연결된 Worker attempt가 모호해 정확한 실행을 선택할 수 없습니다."
 		}
-		review := completionReview(row, worker, completedAt, handoffs, readErr, ledger.Attempts, now)
+		if workerFailed {
+			review["state"], review["reason"], review["observation_quality"], review["action"], review["action_required"], review["severity"], review["confirmed_failure"] = "controller_recovery", "worker_execution_failed", "confirmed", "investigate_worker_execution", true, "error", true
+			review["diagnostic"] = "Worker 실행의 오류 또는 중단이 Hook 상태로 관측되었습니다."
+		}
+		if assignmentErr != nil {
+			review["reason"] = "assignment_evidence_unavailable"
+			review["observation_quality"] = "insufficient"
+			review["action"] = "inspect_assignment_evidence"
+			review["action_required"] = true
+			review["severity"] = "warning"
+		}
 		signal["completion_review"] = review
 		signal["health"] = review["state"]
 	}

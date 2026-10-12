@@ -14,7 +14,7 @@ import (
 func reviewFixture() (Record, runtimeobs.Attempt, runtimeobs.Attempt, *completionHandoff, time.Time) {
 	now := time.Date(2026, 10, 7, 12, 0, 0, 0, time.UTC)
 	row := Record{ID: "A-31", State: "doing", Location: "active", Fields: map[string]string{"Agent": "/root/controller/kkobugi"}, RawMarkdown: "# A-31 Review\n- Agent: /root/controller/kkobugi\n## 작업 정의\n- 목표: 검토\n## 결과\n- 대기\n"}
-	worker := runtimeobs.Attempt{AttemptID: "worker-1", TaskID: row.ID, AgentPath: row.Fields["Agent"], BindingState: runtimeobs.BindingBound, StartedAt: now.Add(-time.Minute).Format(time.RFC3339Nano), EndedAt: now.Format(time.RFC3339Nano), CurrentState: runtimeobs.StateCompleted, Terminal: true, StateEvidenceSource: runtimeobs.EvidenceHook, StateObservationQuality: runtimeobs.QualityObserved}
+	worker := runtimeobs.Attempt{AttemptID: "worker-1", TaskID: row.ID, AgentPath: row.Fields["Agent"], BindingState: runtimeobs.BindingBound, BindingEvidence: map[string]string{"assignment_id": "assignment-test"}, StartedAt: now.Add(-time.Minute).Format(time.RFC3339Nano), EndedAt: now.Format(time.RFC3339Nano), CurrentState: runtimeobs.StateCompleted, Terminal: true, StateEvidenceSource: runtimeobs.EvidenceHook, StateObservationQuality: runtimeobs.QualityObserved}
 	controller := runtimeobs.Attempt{AttemptID: "controller-1", AgentPath: "/root/controller", RuntimeAgentID: "controller-native", SessionID: "session-1", Provider: "codex", CurrentState: runtimeobs.StateRunning, BindingState: runtimeobs.BindingBound, StateEvidenceSource: runtimeobs.EvidenceHook, StateObservationQuality: runtimeobs.QualityObserved}
 	h := &completionHandoff{prepared: completionHandoffRecord{HandoffID: "handoff-1", Kind: "prepared", Event: "worker_done", TaskID: row.ID, Contract: completionContract(row.RawMarkdown), SourceAgent: worker.AgentPath, SourceAttempt: worker.AttemptID, TargetAgent: controller.AgentPath, TargetAttempt: controller.AttemptID, TargetRuntimeID: controller.RuntimeAgentID, TargetSession: controller.SessionID, Provider: controller.Provider, At: now.Add(time.Second).Format(time.RFC3339Nano)}}
 	return row, worker, controller, h, now
@@ -45,7 +45,7 @@ func TestCompletionReviewPhaseBoundariesDoNotMoveWithPolling(t *testing.T) {
 			}
 			for _, elapsed := range []time.Duration{time.Second, stage.grace - time.Nanosecond, stage.grace, stage.grace + time.Minute} {
 				now := stage.since.Add(elapsed)
-				review := completionReview(row, &worker, worker.EndedAt, handoffs, nil, []runtimeobs.Attempt{controller}, now)
+				review := completionReview(row, &worker, "assignment-test", worker.EndedAt, handoffs, nil, []runtimeobs.Attempt{controller}, now)
 				want := stage.want
 				if elapsed >= stage.grace {
 					want = "controller_recovery"
@@ -109,14 +109,18 @@ func TestCompletionReviewRequiresExactContractAndExecutions(t *testing.T) {
 			c.CurrentState = runtimeobs.StateWaitingUser
 			return c
 		}, "needs_user"},
-		{"handoff failed", func(h *completionHandoff, c runtimeobs.Attempt) runtimeobs.Attempt { h.failed = true; return c }, "controller_recovery"},
+		{"handoff failed", func(h *completionHandoff, c runtimeobs.Attempt) runtimeobs.Attempt {
+			h.failed = true
+			h.failureStep = "dispatch"
+			return c
+		}, "controller_recovery"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			row, worker, controller, h, base := reviewFixture()
 			h.claim = completionHandoffRecord{ClaimedBy: controller.AgentPath, ClaimedAttempt: controller.AttemptID, At: base.Add(2 * time.Second).Format(time.RFC3339Nano)}
 			controller = tc.change(h, controller)
-			got := completionReview(row, &worker, worker.EndedAt, map[string]*completionHandoff{"handoff-1": h}, nil, []runtimeobs.Attempt{controller}, base.Add(time.Minute))
+			got := completionReview(row, &worker, "assignment-test", worker.EndedAt, map[string]*completionHandoff{"handoff-1": h}, nil, []runtimeobs.Attempt{controller}, base.Add(time.Minute))
 			if got["state"] != tc.want {
 				t.Fatalf("got %v want %s", got, tc.want)
 			}
@@ -127,7 +131,7 @@ func TestCompletionReviewRequiresExactContractAndExecutions(t *testing.T) {
 func TestCompletionReviewMissingOrUnreadableEvidenceNeverRequestsUser(t *testing.T) {
 	row, worker, controller, _, now := reviewFixture()
 	for _, err := range []error{os.ErrNotExist, errors.New("invalid JSON")} {
-		got := completionReview(row, &worker, worker.EndedAt, nil, err, []runtimeobs.Attempt{controller}, now.Add(time.Minute))
+		got := completionReview(row, &worker, "assignment-test", worker.EndedAt, nil, err, []runtimeobs.Attempt{controller}, now.Add(time.Minute))
 		want := "controller_review_pending"
 		if !os.IsNotExist(err) {
 			want = "controller_recovery"
@@ -137,10 +141,39 @@ func TestCompletionReviewMissingOrUnreadableEvidenceNeverRequestsUser(t *testing
 		}
 	}
 	for _, at := range []string{"", now.Add(time.Hour).Format(time.RFC3339Nano)} {
-		got := completionReview(row, nil, at, nil, nil, nil, now)
-		if got["state"] != "controller_recovery" {
+		got := completionReview(row, nil, "", at, nil, nil, nil, now)
+		if got["state"] != "controller_review_pending" || got["confirmed_failure"] != false {
 			t.Fatalf("bad source timestamp: %v", got)
 		}
+	}
+}
+
+func TestCompletionReviewUnverifiedAssignmentAndTimestampStayInternal(t *testing.T) {
+	row, worker, controller, h, now := reviewFixture()
+	h.claim = completionHandoffRecord{ClaimedBy: controller.AgentPath, ClaimedAttempt: controller.AttemptID, At: now.Add(2 * time.Second).Format(time.RFC3339Nano)}
+	worker.BindingEvidence = map[string]string{"assignment_id": "old-assignment"}
+	got := completionReview(row, &worker, "current-assignment", worker.EndedAt, map[string]*completionHandoff{h.prepared.HandoffID: h}, nil, []runtimeobs.Attempt{controller}, now.Add(time.Minute))
+	if got["state"] != "controller_review_pending" || got["confirmed_failure"] != false || got["audience"] != "controller" {
+		t.Fatalf("assignment mismatch must stay internal: %v", got)
+	}
+	got = completionReview(row, &worker, "old-assignment", now.Add(time.Hour).Format(time.RFC3339Nano), nil, nil, nil, now)
+	if got["state"] != "controller_review_pending" || got["confirmed_failure"] != false {
+		t.Fatalf("future timestamp must stay unverified: %v", got)
+	}
+}
+
+func TestCompletionReviewHookTerminalFailuresAreConfirmed(t *testing.T) {
+	for _, state := range []runtimeobs.CanonicalState{runtimeobs.StateErrored, runtimeobs.StateInterrupted, runtimeobs.StateShutdown} {
+		t.Run(string(state), func(t *testing.T) {
+			row, worker, controller, h, now := reviewFixture()
+			h.claim = completionHandoffRecord{ClaimedBy: controller.AgentPath, ClaimedAttempt: controller.AttemptID, At: now.Add(2 * time.Second).Format(time.RFC3339Nano)}
+			controller.CurrentState = state
+			controller.Terminal = true
+			got := completionReview(row, &worker, "assignment-test", worker.EndedAt, map[string]*completionHandoff{h.prepared.HandoffID: h}, nil, []runtimeobs.Attempt{controller}, now.Add(time.Minute))
+			if got["state"] != "controller_recovery" || got["confirmed_failure"] != true || got["severity"] != "error" {
+				t.Fatalf("terminal Hook failure was not confirmed: %v", got)
+			}
+		})
 	}
 }
 
@@ -221,7 +254,7 @@ func appendReviewAttempt(t *testing.T, project string, a runtimeobs.Attempt, end
 	t.Helper()
 	events := []runtimeobs.ExecutionEvent{
 		{EventKind: "state", AttemptID: a.AttemptID, Provider: "codex", RuntimeAgentID: a.RuntimeAgentID, SessionID: a.SessionID, ObservedAt: a.StartedAt, State: runtimeobs.StateRunning, EvidenceSource: runtimeobs.EvidenceHook, ObservationQuality: runtimeobs.QualityObserved},
-		{EventKind: "binding", AttemptID: a.AttemptID, ObservedAt: a.StartedAt, TaskID: a.TaskID, AgentPath: a.AgentPath, EvidenceSource: runtimeobs.EvidenceManualBinding, ObservationQuality: runtimeobs.QualityAuthoritative},
+		{EventKind: "binding", AttemptID: a.AttemptID, ObservedAt: a.StartedAt, TaskID: a.TaskID, AgentPath: a.AgentPath, BindingEvidence: map[string]string{"assignment_id": "assignment-test"}, EvidenceSource: runtimeobs.EvidenceManualBinding, ObservationQuality: runtimeobs.QualityAuthoritative},
 	}
 	if a.CurrentState != runtimeobs.StateRunning {
 		events = append(events, runtimeobs.ExecutionEvent{EventKind: "state", AttemptID: a.AttemptID, Provider: "codex", RuntimeAgentID: a.RuntimeAgentID, SessionID: a.SessionID, ObservedAt: ended.Format(time.RFC3339Nano), State: a.CurrentState, Terminal: a.Terminal, EvidenceSource: runtimeobs.EvidenceHook, ObservationQuality: runtimeobs.QualityObserved})
@@ -270,6 +303,9 @@ func TestCompletionReviewActualEventsAcrossWebAndRecoveryAPIs(t *testing.T) {
 			}
 			folder := filepath.Join(project, "_task_mecca", "data", "backlog")
 			file := writeWebTask(t, folder, "000031.A-31.review.doing.md", row.RawMarkdown)
+			if _, err := runtimeobs.RecordAssignment(project, "assignment-test", row.ID, worker.AgentPath, now.Add(-2*time.Minute)); err != nil {
+				t.Fatal(err)
+			}
 			appendReviewAttempt(t, project, worker, now)
 			appendReviewAttempt(t, project, controller, now)
 			if mode.name != "DONE before journal" {
