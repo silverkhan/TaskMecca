@@ -295,6 +295,32 @@ func TestOperationDoingAssignmentWithoutHookIsNotDeclaredDead(t *testing.T) {
 	}
 }
 
+func BenchmarkOperationScanSyntheticProject(b *testing.B) {
+	project := b.TempDir()
+	backlogDir := filepath.Join(project, "_task_mecca", "data", "backlog")
+	if err := os.MkdirAll(backlogDir, 0755); err != nil {
+		b.Fatal(err)
+	}
+	for i := 1; i <= 25; i++ {
+		body := fmt.Sprintf("# A-%d Synthetic\n- Agent: /root/controller/worker-%d\n- 변경범위: benchmark fixture\n- 선행: -\n- 연관: -\n", i, i)
+		path := filepath.Join(backlogDir, fmt.Sprintf("%06d.A-%d.synthetic.doing.md", i, i))
+		if err := os.WriteFile(path, []byte(body), 0600); err != nil {
+			b.Fatal(err)
+		}
+		if _, err := runtimeobs.RecordAssignment(project, fmt.Sprintf("assignment-%d", i), fmt.Sprintf("A-%d", i), fmt.Sprintf("/root/controller/worker-%d", i), time.Date(2026, 10, 12, 0, 0, 0, 0, time.UTC)); err != nil {
+			b.Fatal(err)
+		}
+	}
+	now := time.Date(2026, 10, 12, 1, 0, 0, 0, time.UTC)
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		if _, err := scanOperationProject(project, now.Add(time.Duration(i)*time.Second)); err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
 func TestOperationExplicitOutcomesHaveDistinctEvidenceAndSeverity(t *testing.T) {
 	now := time.Now().UTC()
 	for _, tc := range []struct {
