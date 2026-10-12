@@ -304,12 +304,37 @@ func operationSourceAlreadyResolved(signal operationIncident, journal operationJ
 		return false
 	}
 	for _, prior := range journal.Incidents {
-		if prior.RecoveredAt == "" || prior.RecoveryEvidence != "latest assignment has observed execution evidence; prior runtime evidence unchanged" {
+		if prior.RecoveredAt == "" || prior.RecoveryEvidence != "same assignment has recent observed Hook execution; prior runtime evidence unchanged" {
 			continue
 		}
-		if prior.Project == signal.Project && prior.AttemptID == signal.AttemptID && prior.TaskID == signal.TaskID && prior.AgentPath == signal.AgentPath && prior.Kind == signal.Kind && prior.Evidence == signal.Evidence && prior.LastObservedAt == signal.LastObservedAt {
+		sameSourceClock := prior.LastObservedAt == signal.LastObservedAt || (prior.RecoveryEvidence == "same assignment has recent observed Hook execution; prior runtime evidence unchanged" && prior.RecoveredAt == signal.LastObservedAt)
+		if prior.Project == signal.Project && prior.AttemptID == signal.AttemptID && prior.AssignmentID == signal.AssignmentID && prior.TaskID == signal.TaskID && prior.AgentPath == signal.AgentPath && prior.Kind == signal.Kind && prior.Evidence == signal.Evidence && sameSourceClock {
 			return true
 		}
 	}
 	return false
+}
+
+func operationLatestAssignmentSourceAlreadyResolved(signal operationIncident, journal operationJournal) bool {
+	if signal.Kind != "runtime_unknown" && signal.Kind != "no_signal" {
+		return false
+	}
+	for _, prior := range journal.Incidents {
+		if prior.RecoveredAt == "" || prior.RecoveryEvidence != "latest assignment has observed execution evidence; prior runtime evidence unchanged" {
+			continue
+		}
+		if prior.Project == signal.Project && prior.AttemptID == signal.AttemptID && prior.AssignmentID == signal.AssignmentID && prior.TaskID == signal.TaskID && prior.AgentPath == signal.AgentPath && prior.Kind == signal.Kind && prior.Evidence == signal.Evidence && prior.LastObservedAt == signal.LastObservedAt {
+			return true
+		}
+	}
+	return false
+}
+
+func operationCanonicalTaskIsDoing(project, taskID string) bool {
+	rows, ok := operationCanonicalRows(project)
+	if !ok {
+		return false
+	}
+	matches := rows[strings.ToUpper(strings.TrimSpace(taskID))]
+	return len(matches) == 1 && matches[0].Location == "active" && matches[0].State == "doing"
 }

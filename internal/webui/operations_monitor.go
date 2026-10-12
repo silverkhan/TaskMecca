@@ -31,10 +31,12 @@ type operationIncident struct {
 	Key              string                         `json:"key"`
 	Project          string                         `json:"project"`
 	AttemptID        string                         `json:"attempt_id,omitempty"`
+	AssignmentID     string                         `json:"assignment_id,omitempty"`
 	TaskID           string                         `json:"task_id,omitempty"`
 	AgentPath        string                         `json:"agent_path,omitempty"`
 	Kind             string                         `json:"kind"`
 	Quality          string                         `json:"quality"`
+	Severity         string                         `json:"severity,omitempty"`
 	Evidence         string                         `json:"evidence"`
 	LastObservedAt   string                         `json:"last_observed_at,omitempty"`
 	DetectedAt       string                         `json:"detected_at"`
@@ -77,6 +79,11 @@ func readOperationJournal(project string) (operationJournal, error) {
 	}
 	if out.Incidents == nil {
 		out.Incidents = []operationIncident{}
+	}
+	for i := range out.Incidents {
+		if out.Incidents[i].Severity == "" {
+			out.Incidents[i].Severity = operationIncidentSeverity(out.Incidents[i])
+		}
 	}
 	return out, nil
 }
@@ -145,7 +152,7 @@ func classifyOperation(project string, attempt runtimeobs.Attempt, now time.Time
 	if attempt.AttemptID == "" {
 		return operationSignal{}, false
 	}
-	base := operationIncident{Project: project, AttemptID: attempt.AttemptID, TaskID: attempt.TaskID,
+	base := operationIncident{Project: project, AttemptID: attempt.AttemptID, AssignmentID: attempt.BindingEvidence["assignment_id"], TaskID: attempt.TaskID,
 		AgentPath: attempt.AgentPath, LastObservedAt: attempt.LastObservedAt, EndedAt: attempt.EndedAt}
 	key := "attempt:" + attempt.AttemptID
 	confirmed := attempt.StateEvidenceSource == runtimeobs.EvidenceHook &&
@@ -189,6 +196,54 @@ func operationID(project, key string, sequence int) string {
 	return "ops-" + hex.EncodeToString(sum[:8])
 }
 
+func operationIncidentSeverity(item operationIncident) string {
+	if item.Quality == "confirmed" {
+		return "error"
+	}
+	if item.Kind == "monitor_gap" {
+		return "info"
+	}
+	return "warning"
+}
+
+func operationNotificationKind(item operationIncident) string {
+	if item.Quality == "confirmed" {
+		return "interrupted"
+	}
+	if item.Kind == "no_signal" || item.Kind == "handoff_stalled" {
+		return "stalled"
+	}
+	return "runtime_unknown"
+}
+
+func operationEvidenceRecovery(item operationIncident, attempts []runtimeobs.Attempt, now time.Time) (string, bool) {
+	if item.Quality == "confirmed" || (item.Kind != "runtime_unknown" && item.Kind != "no_signal") || item.AssignmentID == "" {
+		return "", false
+	}
+	anchor := item.LastObservedAt
+	if anchor == "" {
+		anchor = item.DetectedAt
+	}
+	since, err := time.Parse(time.RFC3339Nano, anchor)
+	if err != nil || since.IsZero() {
+		return "", false
+	}
+	for _, attempt := range attempts {
+		if (item.AttemptID != "" && attempt.AttemptID != item.AttemptID) || !strings.EqualFold(attempt.TaskID, item.TaskID) || attempt.AgentPath != item.AgentPath || attempt.BindingState != runtimeobs.BindingBound || attempt.BindingEvidence["assignment_id"] != item.AssignmentID {
+			continue
+		}
+		if attempt.CurrentState != runtimeobs.StateRunning || attempt.Terminal || attempt.StateEvidenceSource != runtimeobs.EvidenceHook || (attempt.StateObservationQuality != runtimeobs.QualityObserved && attempt.StateObservationQuality != runtimeobs.QualityAuthoritative) {
+			continue
+		}
+		observed, parseErr := time.Parse(time.RFC3339Nano, attempt.LastActivityAt)
+		if parseErr != nil || observed.IsZero() || !observed.After(since) || observed.After(now) || now.Sub(observed) >= runtimeobs.StaleWarnDuration() {
+			continue
+		}
+		return observed.UTC().Format(time.RFC3339Nano), true
+	}
+	return "", false
+}
+
 func scanOperationProject(project string, now time.Time) (operationJournal, error) {
 	operationMu.Lock()
 	defer operationMu.Unlock()
@@ -228,7 +283,8 @@ func scanOperationProject(project string, now time.Time) (operationJournal, erro
 		if signal, ok := classifyOperation(project, attempt, now, verified[attempt.Provider]); ok {
 			// Suppress the same obsolete source on every scan, not only while
 			// its first incident is active. Otherwise resolution would recur.
-			if recoveryPolicies[strings.ToUpper(signal.incident.TaskID)] && (operationSourceAlreadyResolved(signal.incident, journal) || latestOperationRecovery(signal.incident, ledger.Attempts, stages, now)) {
+			latestAssignmentStillCanonical := operationLatestAssignmentSourceAlreadyResolved(signal.incident, journal) && operationCanonicalTaskIsDoing(project, signal.incident.TaskID)
+			if operationSourceAlreadyResolved(signal.incident, journal) || latestAssignmentStillCanonical || (recoveryPolicies[strings.ToUpper(signal.incident.TaskID)] && latestOperationRecovery(signal.incident, ledger.Attempts, stages, now)) {
 				continue
 			}
 			if stageSuppresses(signal.incident, stages, now) {
@@ -290,7 +346,7 @@ func scanOperationProject(project string, now time.Time) (operationJournal, erro
 						}
 						key := "task:" + id
 						signals[key] = operationSignal{key: key, alert: true, incident: operationIncident{
-							Project: project, TaskID: id, AgentPath: agent, Kind: "runtime_unknown", Quality: "verification_required",
+							Project: project, TaskID: id, AgentPath: agent, AssignmentID: strings.TrimSpace(fmt.Sprint(item["assignment_id"])), Kind: "runtime_unknown", Quality: "verification_required",
 							Evidence: "doing assignment has no linked runtime attempt",
 							Action:   "Controller: 배정 기록과 runtime identity를 대조하세요. Worker 종료를 단정하거나 백로그 상태를 자동 변경하지 마세요.",
 						}}
@@ -319,7 +375,7 @@ func scanOperationProject(project string, now time.Time) (operationJournal, erro
 		} else {
 			delete(signals, "task:"+stage.TaskID)
 		}
-		signals[key] = operationSignal{key: key, alert: true, incident: operationIncident{Project: project, TaskID: stage.TaskID, AttemptID: stage.AttemptID, Kind: kind, Quality: "verification_required", Evidence: stage.Evidence, LastObservedAt: stage.Since, Action: "Controller: 인계 전달·완료검토 근거와 정체 원인을 확인하세요. 백로그 완료를 자동 추정하지 마세요."}}
+		signals[key] = operationSignal{key: key, alert: true, incident: operationIncident{Project: project, TaskID: stage.TaskID, AttemptID: stage.AttemptID, AssignmentID: stage.AssignmentID, Kind: kind, Quality: "verification_required", Evidence: stage.Evidence, LastObservedAt: stage.Since, Action: "Controller: 인계 전달·완료검토 근거와 정체 원인을 확인하세요. 백로그 완료를 자동 추정하지 마세요."}}
 	}
 	for key, signal := range signals {
 		if operationPolicyForIncident(signal.incident, policies) != nil {
@@ -345,6 +401,12 @@ func scanOperationProject(project string, now time.Time) (operationJournal, erro
 		if stageSuppresses(*item, stages, now) {
 			item.RecoveredAt = nowText
 			item.RecoveryEvidence = "bounded normal handoff/review grace; runtime evidence unchanged"
+			continue
+		}
+		if at, recovered := operationEvidenceRecovery(*item, ledger.Attempts, now); recovered {
+			item.RecoveredAt = at
+			item.RecoveryEvidence = "same assignment has recent observed Hook execution; prior runtime evidence unchanged"
+			delete(signals, item.Key)
 			continue
 		}
 		if recoveryPolicies[strings.ToUpper(item.TaskID)] && latestOperationRecovery(*item, ledger.Attempts, stages, now) {
@@ -393,6 +455,7 @@ func scanOperationProject(project string, now time.Time) (operationJournal, erro
 		signal.incident.ID = operationID(project, key, journal.NextSequence)
 		signal.incident.Key = key
 		signal.incident.DetectedAt = nowText
+		signal.incident.Severity = operationIncidentSeverity(signal.incident)
 		journal.Incidents = append(journal.Incidents, signal.incident)
 	}
 	journal.LastScanAt = nowText
@@ -422,13 +485,7 @@ func deliverOperationIncidents(project string, journal operationJournal) {
 		if incident.RecoveredAt != "" {
 			continue
 		}
-		kind := "runtime_unknown"
-		if incident.Quality == "confirmed" {
-			kind = "interrupted"
-		}
-		if incident.Kind == "no_signal" {
-			kind = "stalled"
-		}
+		kind := operationNotificationKind(incident)
 		events = append(events, notify.Event{ID: incident.ID, TaskID: incident.TaskID, Kind: kind,
 			Title: strings.ReplaceAll(incident.Kind, "_", " "), Message: incident.Evidence,
 			ResumeCondition: incident.Action, At: incident.DetectedAt})

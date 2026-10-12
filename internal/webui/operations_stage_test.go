@@ -11,6 +11,29 @@ import (
 	"time"
 )
 
+func TestOperationSourceAlreadyResolvedSuppressesSameObservedAssignmentAfterRestart(t *testing.T) {
+	observedAt := "2026-10-12T11:01:00Z"
+	signal := operationIncident{
+		Project: "/project", AttemptID: "run-1", AssignmentID: "assignment-1",
+		TaskID: "A-5", AgentPath: "/root/controller/worker", Kind: "runtime_unknown",
+		Evidence: "runtime identity or hook execution unverified", LastObservedAt: observedAt,
+	}
+	journal := operationJournal{Incidents: []operationIncident{{
+		Project: signal.Project, AttemptID: signal.AttemptID, AssignmentID: signal.AssignmentID,
+		TaskID: signal.TaskID, AgentPath: signal.AgentPath, Kind: signal.Kind,
+		Evidence: signal.Evidence, LastObservedAt: "2026-10-12T11:00:00Z",
+		RecoveredAt:      observedAt,
+		RecoveryEvidence: "same assignment has recent observed Hook execution; prior runtime evidence unchanged",
+	}}}
+	if !operationSourceAlreadyResolved(signal, journal) {
+		t.Fatal("same source observation should stay resolved after a journal reload")
+	}
+	signal.AssignmentID = "assignment-2"
+	if operationSourceAlreadyResolved(signal, journal) {
+		t.Fatal("a distinct assignment must create a new warning episode")
+	}
+}
+
 func TestOperationStagesBoundedGraceAndFailures(t *testing.T) {
 	base := time.Date(2026, 10, 7, 8, 0, 0, 0, time.UTC)
 	stamp := func(d time.Duration) string { return base.Add(d).Format(time.RFC3339Nano) }
@@ -288,7 +311,8 @@ func TestOperationStageResolvedOldAttemptDoesNotRecur(t *testing.T) {
 		}
 	}
 	if !foundUnknown {
-		t.Fatal("unavailable canonical policy blindly trusted historical suppression")
+		encoded, _ := json.Marshal(j.Incidents)
+		t.Fatalf("unavailable canonical policy blindly trusted historical suppression: incidents=%s", encoded)
 	}
 }
 
