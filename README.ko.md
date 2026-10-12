@@ -33,9 +33,9 @@ task-mecca web
 
 Web은 **백로그 진행 상황**, **Root/Worker 세션과 최근 활동**, **실행 단계와 확인이 필요한 경고**를 한곳에 모읍니다. 프로젝트별 알림을 설정하면 **Telegram·브라우저 알림**도 받을 수 있으며, 업데이트와 프로젝트 관리도 지원합니다.
 
-![Task Mecca Web UI — 실제 다크 모드 화면](handoff-evidence/a27-isanghaessi/ui/desktop-dark.jpg)
+![Task Mecca Web UI — 영문 프로젝트 백로그 목록](handoff-evidence/a24-raichyu/final-desktop-dark-en.jpg)
 
-<sub>실제 개발판 Web UI 캡처(검증용 샘플 프로젝트). 화면과 메뉴는 설치 버전에 따라 달라질 수 있습니다.</sub>
+<sub>영문 · 다크 테마 · 샘플 프로젝트의 백로그 목록(Needs attention 0건). 이전 개발판의 실제 캡처로, 현재 화면과 일부 차이가 있을 수 있습니다.</sub>
 
 ### 3. 프로젝트 초기화
 
