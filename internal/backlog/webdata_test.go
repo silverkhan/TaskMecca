@@ -229,3 +229,44 @@ func TestBindRuntimeAgentFlowsThroughLifecycleIntoStartedNotification(t *testing
     }
     if starts!=1 { t.Fatalf("bind-agent path produced %d started events: %+v",starts,events) }
 }
+
+
+func TestBacklogRevisionTracksExecutionAndLifecycleEvidenceWithoutChangingMarkdown(t *testing.T) {
+    project:=t.TempDir()
+    folder:=filepath.Join(project,"_task_mecca","data","backlog")
+    writeWebTask(t,folder,"000001.A-1.alpha.doing.md","# A-1 Alpha\n- Agent: /root/controller/worker\n")
+    first,err:=BacklogRevision(project,folder)
+    if err!=nil { t.Fatal(err) }
+    contentRevision:=first["revision"]
+    signalRevision:=first["signal_revision"]
+    if signalRevision=="" { t.Fatal("missing runtime signal revision") }
+
+    // Hook events in today's partition can change effective list state even
+    // while neither the Markdown file nor its content revision changes.
+    raw:=filepath.Join(project,"_task_mecca",".runtime","executions","raw","2026-10-12.jsonl")
+    if err:=os.MkdirAll(filepath.Dir(raw),0755);err!=nil{t.Fatal(err)}
+    if err:=os.WriteFile(raw,[]byte("{\"event_kind\":\"started\"}\n"),0600);err!=nil{t.Fatal(err)}
+    started,err:=BacklogRevision(project,folder)
+    if err!=nil { t.Fatal(err) }
+    if started["revision"]!=contentRevision || started["signal_revision"]==signalRevision {
+        t.Fatalf("execution event was missed: initial=%v started=%v",first,started)
+    }
+
+    // A lifecycle report can be created independently of a task rename.
+    eventDir:=filepath.Join(project,"_task_mecca","data","lifecycle","events")
+    if err:=os.MkdirAll(eventDir,0755);err!=nil{t.Fatal(err)}
+    if err:=os.Mkdir(filepath.Join(eventDir,"event-1"),0755);err!=nil{t.Fatal(err)}
+    after,err:=BacklogRevision(project,folder)
+    if err!=nil { t.Fatal(err) }
+    if after["revision"]!=contentRevision || after["signal_revision"]==started["signal_revision"] {
+        t.Fatalf("lifecycle event directory was missed: before=%v after=%v",started,after)
+    }
+
+    // Time passing, without changes to evidence, must not induce refresh.
+    again,err:=BacklogRevision(project,folder)
+    if err!=nil { t.Fatal(err) }
+    if again["signal_revision"]!=after["signal_revision"] {
+        t.Fatalf("unchanged evidence produced a different revision: before=%v after=%v",after,again)
+    }
+}
+
