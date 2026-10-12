@@ -33,6 +33,16 @@ Open **http://127.0.0.1:18765/** in your browser. Initialize a working project i
 
 The Web UI brings together **backlog progress**, **Root/Worker sessions and recent activity**, and **execution stages and actionable warnings**. You can configure project-level **Telegram and browser notifications**, manage projects, and update Task Mecca.
 
+**Web service commands**
+
+| Command | Purpose |
+| --- | --- |
+| `task-mecca web` | Start Web UI and open browser |
+| `task-mecca web status` | Check service status, version and URLs |
+| `task-mecca web restart` | Restart Web service |
+| `task-mecca web stop` | Stop Web service |
+| `task-mecca web logs` | View logs (`--follow` for live output) |
+
 ![Task Mecca Web UI — English project backlog list](handoff-evidence/a24-raichyu/final-desktop-dark-en.jpg)
 
 <sub>English · Dark theme · Backlog list for a sample project (Needs attention: 0). Actual capture from an earlier development build; the current UI may differ.</sub>
@@ -125,28 +135,18 @@ flowchart LR
     classDef external fill:#F7E7F2,stroke:#BD78AE,color:#733B62,stroke-width:2px
 ```
 
-## Updates & help
-
-- **Update:** Web UI update menu or `task-mecca upgrade`
-- **Channels:** `task-mecca channel` / `task-mecca channel dev` / `task-mecca channel stable`
-- **Service status:** `task-mecca web status` · **Diagnostics:** `task-mecca doctor`
-- **Further reading:** Web **User Manual**, [session guide](goassets/template/_task_mecca/framework/SESSION_GUIDE.en.md), [collaboration rules](goassets/template/_task_mecca/framework/collab.md)
-
-<details>
-<summary>Advanced commands & project management</summary>
+## Version & updates
 
 | Command | Purpose |
 | --- | --- |
-| `task-mecca web restart` | Restart the Web service |
-| `task-mecca status` | Backlog status |
-| `task-mecca inspect <ID>` | Task details |
-| `task-mecca workload` | Agent workload |
-| `task-mecca coordinate` | Scheduling snapshot |
-| `task-mecca projects list` | Managed projects |
+| `task-mecca --version` | Installed version, channel and latest release |
+| `task-mecca upgrade` | Update from the selected channel |
+| `task-mecca channel` | Show update channel |
+| `task-mecca channel stable` | Select stable releases |
+| `task-mecca channel dev` | Select development releases |
+| `task-mecca migrate` | Refresh an existing project's operating instructions (step 5) |
 
-**Archive** stops monitoring and related alerts; **Restore** resumes monitoring. Removing a project from the list does not delete its folder.
-
-</details>
+For more details, see the Web **User Manual**, [session guide](goassets/template/_task_mecca/framework/SESSION_GUIDE.en.md) and [collaboration rules](goassets/template/_task_mecca/framework/collab.md).
 
 <a id="project-origin"></a>
 
@@ -159,3 +159,58 @@ Many thanks to [gyusu](https://github.com/gyusu) for sharing the inspiration and
 ## Development & license
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) · [MIT License](LICENSE)
+
+## Complete CLI command reference
+
+Common commands are covered above. This is the complete list of CLI command families and subcommands; `|` separates alternatives.
+
+### Start & update
+
+| Command | Purpose |
+| --- | --- |
+| `task-mecca` | Start Web UI (default) |
+| `task-mecca web [start\|status\|restart\|stop\|logs]` | Start, inspect, restart, stop Web or read logs |
+| `task-mecca --version` (or `version`) | Installed/latest version and channel |
+| `task-mecca upgrade` | Update the application |
+| `task-mecca channel [stable\|dev]` | View or switch update channel |
+| `task-mecca init` | Initialize a new project |
+| `task-mecca migrate` | Refresh an existing project's framework |
+
+### Backlog & project management
+
+| Command | Purpose |
+| --- | --- |
+| `task-mecca status` | Backlog progress |
+| `task-mecca ready` | Ready tasks |
+| `task-mecca search <query>` | Search the backlog |
+| `task-mecca inspect <ID>` | Task details |
+| `task-mecca workload` | Agent workload |
+| `task-mecca coordinate` | Scheduling snapshot |
+| `task-mecca projects list\|archived\|add\|register\|unregister\|archive\|restore\|forget` | Register, monitor and archive projects |
+| `task-mecca tags list\|search\|discover\|show\|resolve\|tasks\|query\|stats\|catalog\|assign\|remove\|set\|define\|rename\|merge\|retire\|rebuild` | Search and manage tags |
+| `task-mecca task tags\|tag-add\|tag-remove\|tag-set` | Manage task tags |
+| `task-mecca audit` | Required backlog fields |
+| `task-mecca check` | Documentation links and dependencies |
+| `task-mecca doctor` | Project diagnostics |
+
+### Agents & execution records (advanced)
+
+| Command | Purpose |
+| --- | --- |
+| `task-mecca monitor` | Web-backed monitoring (`--once` for one snapshot) |
+| `task-mecca preflight` | Check permissions and execution readiness |
+| `task-mecca worker-name` | Select available Worker identity |
+| `task-mecca agent <path>` | Validate Agent path |
+| `task-mecca ensure-backlog` | Check or create backlog |
+| `task-mecca next-id <prefix>` | Allocate a task ID |
+| `task-mecca lifecycle list\|record` | Inspect or record lifecycle events |
+| `task-mecca runtime list\|reconcile\|observe\|enrich-name\|assign\|bind\|bind-assignment\|bind-agent\|hooks` | Observe and bind runtimes, manage Hooks |
+| `task-mecca runtime-spike observe\|report` | Runtime diagnostic reports |
+| `task-mecca handoff prepare\|claim\|mark\|inspect\|reconcile\|capability` | Manage Agent handoff evidence |
+| `task-mecca deliveries [task ID] [event ID]` | Notification delivery history |
+| `task-mecca notifications resume-status\|suppress-before-resume` | Telegram resumption controls |
+| `task-mecca operations reconcile` | Reconcile execution warnings with completion evidence |
+
+> [!NOTE]
+> `|` means **choose one subcommand**, not a literal pipe. Some advanced commands require additional parameters and permissions; use them through your Root/Controller under the established operating rules.
+
