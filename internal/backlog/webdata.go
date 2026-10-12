@@ -285,6 +285,21 @@ func BacklogPage(project,root string,page,pageSize int,statuses,tags []string,se
         items=make([]map[string]any,0,end-start)
         for _,selected:=range filtered[start:end] {
             item:=webSummaryItem(selected.row,selected.state,selected.waiting,selected.reason,selected.signal)
+            // The backlog list uses a compact projection, but Active must use
+            // the same canonical lifecycle evidence as task detail. Project
+            // only the visible rows, and never synthesize a missing start.
+            if timing:=control.Timings[selected.row.ID]; len(timing)>0 {
+                item["active_seconds"]=timing["active_seconds"]
+                if selected.row.State=="doing" {
+                    // The browser extends a genuinely active segment between
+                    // refreshes without reloading the full lifecycle history.
+                    item["lifecycle"]=map[string]any{
+                        "current_state":timing["current_state"],
+                        "current_state_at":timing["current_state_at"],
+                        "current_segment_seconds":timing["current_segment_seconds"],
+                    }
+                }
+            }
             item["document"]=compactListDocument(selected.row)
             item["fields"]=compactListFields(selected.row)
             items=append(items,item)
