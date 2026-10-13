@@ -5,7 +5,7 @@ function app(fetch, options={}){
  const ctx=vm.createContext({fetch,URLSearchParams,location:{search:'?project=/demo'},history:{pushState(){}},navigator:{language:'ko'},queueMicrotask,document:{visibilityState:'visible',querySelector:()=>null,querySelectorAll:()=>[]},localStorage:{getItem:()=>null,setItem(){},removeItem(){}},setTimeout:options.setTimeout||(()=>1),requestIdleCallback:options.requestIdleCallback});
  vm.runInContext(source.slice(0,source.indexOf('\ntranslateChrome();'))+`
  render=()=>{};
- globalThis.api={state,openTask,loadTaskDetail,prefetchTaskDetail,requestTaskDetail,cachedTaskDetail,taskDetailPending,taskDetailCache,taskLiveCache,taskLivePending,taskDetailKey,acceptContentRevision,invalidateTaskDetailCache,scheduleTaskDetailPrefetch,scheduleTaskLiveEnrichment,lifecycleEvidenceLabel};
+ globalThis.api={state,openTask,loadTaskDetail,prefetchTaskDetail,requestTaskDetail,cachedTaskDetail,taskDetailPending,taskDetailCache,taskLiveCache,taskLivePending,taskDetailKey,acceptContentRevision,invalidateTaskDetailCache,scheduleTaskDetailPrefetch,scheduleTaskLiveEnrichment,lifecycleEventLabel,lifecycleEvidenceLabel};
  `,ctx);
  const a=ctx.api;Object.assign(a.state,{project:'/demo',backlog:'/demo/backlog',view:'backlog',contentRevision:'r1',detail:null,detailTask:null,statusFilters:['all'],tagFilters:[],listPage:1,listSort:'id_desc',listPageMode:'manual',listPageSize:20,query:''});
  return {...a,ctx};
@@ -13,6 +13,13 @@ function app(fetch, options={}){
 const task=id=>({id,title:'full '+id,raw_markdown:'# '+id,document:{requirements:{goal:'Complete'}}});
 const reply=value=>({ok:true,json:async()=>value});
 const tick=()=>new Promise(setImmediate);
+
+test('Controller review lifecycle label is localized in Korean and English',()=>{
+ const a=app(()=>Promise.resolve(reply(task('A-51'))));
+ assert.equal(a.lifecycleEventLabel('Controller review started'),'Controller 검토 시작');
+ a.state.language='en';
+ assert.equal(a.lifecycleEventLabel('Controller review started'),'Controller review started');
+});
 
 test('adjacent list pages only contain summary, while hover prefetch shares click and paints body',async()=>{
  const pending=[],urls=[],a=app(url=>{urls.push(url);return new Promise(resolve=>pending.push(resolve))});
