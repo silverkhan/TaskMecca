@@ -184,6 +184,24 @@ func TestOperationStageScanTransitionDedupAndBacklogPreservation(t *testing.T) {
 		t.Fatalf("duplicate notification episode=%+v", repeat)
 	}
 	appendSyntheticStageRecord(t, project, handoff.Record{HandoffID: "synthetic-done", RecordKind: "claimed", ClaimedBy: "/root/controller", ClaimedAttemptID: "controller-run", ObservedAt: stamp(6 * time.Minute)})
+	// A verified running Controller also needs provider Hook evidence newer
+	// than the configured Hook timestamp. The exact bound attempt events below
+	// alone do not prove that the provider hooks remain installed.
+	// Install provider hooks with a configuration timestamp on the same
+	// synthetic clock as this scenario; hookVerified requires post-config
+	// evidence, so wall-clock timestamps would invalidate this fixture.
+	hookSetup, err := runtimeobs.EnsureHooks(project, "codex")
+	if err != nil {
+		t.Fatal(err)
+	}
+	configuredAt := base.Add(5 * time.Minute)
+	if err := os.Chtimes(hookSetup.Path, configuredAt, configuredAt); err != nil {
+		t.Fatal(err)
+	}
+	hookSetup, err = runtimeobs.HookStatus(project, "codex")
+	if err != nil {
+		t.Fatal(err)
+	}
 	controllerEvent := runtimeobs.ExecutionEvent{EventKind: "state", ObservedAt: stamp(-5 * time.Minute), AttemptID: "controller-run", Provider: "codex", SessionID: "controller-session", RuntimeAgentID: "controller-id", State: runtimeobs.StateRunning, EvidenceSource: runtimeobs.EvidenceHook, ObservationQuality: runtimeobs.QualityObserved}
 	if err := runtimeobs.AppendExecutionEvent(project, controllerEvent); err != nil {
 		t.Fatal(err)
@@ -193,6 +211,10 @@ func TestOperationStageScanTransitionDedupAndBacklogPreservation(t *testing.T) {
 	}
 	controllerActivity := runtimeobs.ExecutionEvent{EventKind: "activity", ObservedAt: stamp(-5*time.Minute + time.Second), AttemptID: "controller-run", Provider: "codex", SessionID: "controller-session", RuntimeAgentID: "controller-id", EvidenceSource: runtimeobs.EvidenceHook, ObservationQuality: runtimeobs.QualityObserved}
 	if err := runtimeobs.AppendExecutionEvent(project, controllerActivity); err != nil {
+		t.Fatal(err)
+	}
+	hookProofAt := configuredAt.Add(time.Second)
+	if err := runtimeobs.AppendExecutionEvent(project, runtimeobs.ExecutionEvent{EventKind: "activity", ObservedAt: hookProofAt.Format(time.RFC3339Nano), AttemptID: "controller-run", Provider: "codex", SessionID: "controller-session", RuntimeAgentID: "controller-id", EvidenceSource: runtimeobs.EvidenceHook, ObservationQuality: runtimeobs.QualityObserved}); err != nil {
 		t.Fatal(err)
 	}
 	if err := runtimeobs.AppendExecutionEvent(project, controllerEvent); err != nil {
