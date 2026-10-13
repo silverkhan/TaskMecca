@@ -5,6 +5,7 @@ import (
     "time"
 
     "github.com/silverkhan/TaskMecca/internal/runtimeobs"
+    "github.com/silverkhan/TaskMecca/internal/handoffjournal"
 )
 
 // controlTowerSnapshot is the single reconciliation result for user-facing task
@@ -47,6 +48,7 @@ func reconcileControlTower(project,root string,rows []Record) controlTowerSnapsh
 	activity:=runtimeActivity(project,rows,timings)
 	activity=mergeRuntimeSignals(activity,runtimeLedgerSignals(project,rows,now,shared))
 	applyCompletionReviews(project, rows, activity, now,shared)
+	suppressLiveControllerReviewSignals(project, rows, activity, now, shared)
 	for id,signal:=range activity {
 		health:=toString(signal["health"])
 		if health!="assignment_unobserved" && health!="binding_pending" && health!="binding_ambiguous" && health!="awaiting_start" { continue }
@@ -71,6 +73,41 @@ func reconcileControlTower(project,root string,rows []Record) controlTowerSnapsh
         Timings:timings,Activity:activity,ReviewByPath:reviewByPath,
         Attention:attention,NotificationCondition:conditions,
     }
+}
+
+func suppressLiveControllerReviewSignals(project string, rows []Record, activity map[string]map[string]any, now time.Time, shared ...requestRuntime) {
+	handoffs, err := handoffjournal.BuildLedger(project, now)
+	if err != nil || len(handoffs.Findings) != 0 { return }
+	ledger, err := readRequestRuntime(project, 20, now, shared...)
+	if err != nil { return }
+	assignments, err := runtimeobs.ListAssignments(project)
+	if err != nil { return }
+	byID := preferredRows(rows)
+	for _, h := range handoffs.Handoffs {
+		if h.EventType != handoffjournal.EventWorkerDone || h.Target.AgentPath != "/root/controller" || h.ClaimedBy != h.Target.AgentPath || h.Target.AttemptID == "" || h.ClaimedAttemptID != h.Target.AttemptID || h.Target.RuntimeAgentID == "" || h.Target.SessionID == "" || h.Target.Provider == "" || h.Applied { continue }
+		if _, accepted := h.Steps["acceptance"]; accepted { continue }
+		claimedAt, ok := parseTime(h.ClaimedAt); if !ok || claimedAt.After(now) { continue }
+		row, ok := byID[strings.ToUpper(h.TaskID)]; if !ok || row.Location != "active" || row.State != "doing" { continue }
+		assignmentID, assignmentMatches := "", 0
+		for _, a := range assignments {
+			if !strings.EqualFold(a.TaskID, h.TaskID) || a.AgentPath != h.SourceAgentPath { continue }
+			for _, attempt := range ledger.Attempts { if attempt.AttemptID == h.SourceAttemptID && attempt.BindingState == runtimeobs.BindingBound && strings.EqualFold(attempt.TaskID, h.TaskID) && attempt.AgentPath == h.SourceAgentPath && attempt.BindingEvidence["assignment_id"] == a.AssignmentID { assignmentID, assignmentMatches = a.AssignmentID, assignmentMatches+1 } }
+		}
+		if assignmentMatches != 1 { continue }
+		live := 0
+		for _, attempt := range ledger.Attempts {
+			if attempt.AttemptID != h.Target.AttemptID || attempt.AgentPath != h.Target.AgentPath || attempt.RuntimeAgentID != h.Target.RuntimeAgentID || attempt.SessionID != h.Target.SessionID || attempt.Provider != h.Target.Provider || attempt.BindingState != runtimeobs.BindingBound || attempt.BindingEvidence["assignment_id"] != assignmentID || attempt.StateEvidenceSource != runtimeobs.EvidenceHook || (attempt.StateObservationQuality != runtimeobs.QualityObserved && attempt.StateObservationQuality != runtimeobs.QualityAuthoritative) || attempt.CurrentState != runtimeobs.StateRunning || attempt.Terminal { continue }
+			last, valid := parseTime(attempt.LastActivityAt); if valid && !last.Before(claimedAt.Add(-15*time.Minute)) && !last.After(now) { live++ }
+		}
+		if live != 1 { continue }
+		if signal := activity[strings.ToUpper(h.TaskID)]; signal != nil {
+			health := toString(signal["health"])
+			if health == "stale" || health == "worker_missing" || health == "runtime_unknown" {
+				signal["health"] = "controller_review"
+				signal["controller_review"] = map[string]any{"handoff_id": h.HandoffID, "assignment_id": assignmentID, "attempt_id": h.Target.AttemptID, "actor": h.ClaimedBy, "claimed_at": h.ClaimedAt}
+			}
+		}
+	}
 }
 
 func canonicalOperationalState(row Record,review,signal map[string]any,observedAt ...time.Time) (map[string]any,map[string]any) {

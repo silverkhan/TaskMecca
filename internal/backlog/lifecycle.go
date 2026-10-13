@@ -13,6 +13,7 @@ import (
     "time"
 
     "github.com/silverkhan/TaskMecca/internal/runtimeobs"
+    "github.com/silverkhan/TaskMecca/internal/handoffjournal"
 )
 
 type lifecycleEvent struct {
@@ -23,6 +24,8 @@ type lifecycleEvent struct {
 	Kind   string
 	Actor  string
 	EvidenceSource string
+	AssignmentID string
+	AttemptID string
 }
 
 type lifecycleGitCacheEntry struct {
@@ -430,6 +433,30 @@ func lifecycleTimings(project,root string,rows []Record,shared ...requestRuntime
 		}
 		combinedEvents[id]=filtered
 	}
+	if handoffs, handoffErr := handoffjournal.BuildLedger(project, now); handoffErr == nil && len(handoffs.Findings) == 0 {
+		attempts, attemptErr := readRequestRuntime(project, 20, now, shared...)
+		assignments, assignmentErr := runtimeobs.ListAssignments(project)
+		if attemptErr == nil && assignmentErr == nil {
+			for _, h := range handoffs.Handoffs {
+				if h.EventType != handoffjournal.EventWorkerDone || h.Target.AgentPath != "/root/controller" || h.ClaimedBy != h.Target.AgentPath || h.Target.AttemptID == "" || h.ClaimedAttemptID != h.Target.AttemptID || h.Target.RuntimeAgentID == "" || h.Target.SessionID == "" || h.Target.Provider == "" || h.Applied { continue }
+				if _, accepted := h.Steps["acceptance"]; accepted { continue }
+				claimedAt, valid := parseTime(h.ClaimedAt); if !valid || claimedAt.After(now) { continue }
+				id := strings.ToUpper(h.TaskID); row, exists := currentRows[id]; if !exists || row.Location != "active" || row.State != "doing" { continue }
+				assignmentID, matches := "", 0
+				for _, a := range assignments {
+					if !strings.EqualFold(a.TaskID, id) || a.AgentPath != h.SourceAgentPath { continue }
+					for _, attempt := range attempts.Attempts { if attempt.AttemptID == h.SourceAttemptID && attempt.BindingState == runtimeobs.BindingBound && strings.EqualFold(attempt.TaskID, id) && attempt.AgentPath == h.SourceAgentPath && attempt.BindingEvidence["assignment_id"] == a.AssignmentID { assignmentID, matches = a.AssignmentID, matches+1 } }
+				}
+				if matches != 1 { continue }
+				live := 0
+				for _, attempt := range attempts.Attempts {
+					if attempt.AttemptID != h.Target.AttemptID || attempt.AgentPath != h.Target.AgentPath || attempt.RuntimeAgentID != h.Target.RuntimeAgentID || attempt.SessionID != h.Target.SessionID || attempt.Provider != h.Target.Provider || attempt.BindingState != runtimeobs.BindingBound || attempt.StateEvidenceSource != runtimeobs.EvidenceHook || (attempt.StateObservationQuality != runtimeobs.QualityObserved && attempt.StateObservationQuality != runtimeobs.QualityAuthoritative) || attempt.CurrentState != runtimeobs.StateRunning || attempt.Terminal { continue }
+					last, ok := parseTime(attempt.LastActivityAt); if ok && !last.Before(claimedAt.Add(-15*time.Minute)) && !last.After(now) { live++ }
+				}
+				if live == 1 { combinedEvents[id] = append(combinedEvents[id], lifecycleEvent{State:"doing", At:h.ClaimedAt, Source:"handoff_projection", ID:h.HandoffID, Kind:"review_started", Actor:h.ClaimedBy, EvidenceSource:"exact_controller_claim", AssignmentID:assignmentID, AttemptID:h.Target.AttemptID}) }
+			}
+		}
+	}
 	result:=map[string]map[string]any{}
     labels:=map[string]string{"todo":"Registered","doing":"Started","hold":"Hold","done":"Completed"}
     for id,seq:=range combinedEvents {
@@ -437,12 +464,16 @@ func lifecycleTimings(project,root string,rows []Record,shared ...requestRuntime
             ti,_:=parseTime(seq[i].At)
 			tj,_:=parseTime(seq[j].At)
 			if ti.Equal(tj) {
-				order:=map[string]int{"registered":10,"assigned":20,"started":30,"waiting":40,"resumed":50,"completed":60}
+				order:=map[string]int{"registered":10,"assigned":20,"started":30,"review_started":35,"waiting":40,"resumed":50,"completed":60}
 				return order[seq[i].Kind]<order[seq[j].Kind]
 			}
 			return ti.Before(tj)
         })
         seq=collapseLifecycleEvents(seq)
+        reviewEvents:=[]lifecycleEvent{}
+        lifecycleEvents:=seq[:0]
+        for _,event:=range seq { if event.Kind=="review_started" { reviewEvents=append(reviewEvents,event) } else { lifecycleEvents=append(lifecycleEvents,event) } }
+        seq=lifecycleEvents
         if len(seq)==0 { continue }
         type parsedEvent struct{ event lifecycleEvent
 			at time.Time }
@@ -478,7 +509,7 @@ func lifecycleTimings(project,root string,rows []Record,shared ...requestRuntime
             intervalValue:="-"
             if interval>0 { intervalValue=formatDuration(interval) }
 			label:=labels[entry.event.State]
-			if entry.event.Kind!="" { label=map[string]string{"registered":"Registered","assigned":"Assigned","started":"Started","waiting":"Waiting","resumed":"Resumed","completed":"Completed"}[entry.event.Kind] }
+			if entry.event.Kind!="" { label=map[string]string{"registered":"Registered","assigned":"Assigned","started":"Started","review_started":"Controller review started","waiting":"Waiting","resumed":"Resumed","completed":"Completed"}[entry.event.Kind] }
 			eventRows=append(eventRows,map[string]any{
                 "state":entry.event.State,
                 "label":            label,
@@ -486,6 +517,8 @@ func lifecycleTimings(project,root string,rows []Record,shared ...requestRuntime
 				"kind":             entry.event.Kind,
 				"actor":            entry.event.Actor,
 				"evidence_source":  entry.event.EvidenceSource,
+                "assignment_id": entry.event.AssignmentID,
+                "attempt_id": entry.event.AttemptID,
                 "at":entry.event.At,
                 "interval_seconds":interval,
                 "interval":intervalValue,
@@ -533,6 +566,10 @@ func lifecycleTimings(project,root string,rows []Record,shared ...requestRuntime
         var duration any
         if current.event.State=="done" { duration=activeValue }
 
+        for _, review := range reviewEvents {
+            eventRows=append(eventRows,map[string]any{"state":"doing","label":"Controller review started","event_id":review.ID,"kind":review.Kind,"actor":review.Actor,"evidence_source":review.EvidenceSource,"assignment_id":review.AssignmentID,"attempt_id":review.AttemptID,"at":review.At,"interval_seconds":0.0,"interval":"-","source":review.Source,"provisional":false})
+        }
+        sort.SliceStable(eventRows,func(i,j int)bool{return toString(eventRows[i]["at"])<toString(eventRows[j]["at"])})
         result[id]=map[string]any{
             "current_state":current.event.State,
             "current_state_at":current.event.At,
