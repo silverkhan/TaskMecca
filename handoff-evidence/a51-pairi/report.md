@@ -36,3 +36,13 @@
 - 2026-10-13 15:33 KST에 fresh `task-mecca preflight --require-full-access --json` 실행: `status=full`, `orchestration_ready=true`.
 - 현재 worktree runtime 조회에는 등록된 attempt가 없어 `run-b80c5261a87b61ad`의 live/completed target을 검증할 수 없었고, `task-mecca agent /root/controller --json`에서 Controller identity 경로는 유효함을 확인했습니다.
 - 이 환경의 native `collaboration` transport 대상은 root child agent로 한정되어 있어 `/root/controller`에 직접 message/follow-up을 전송할 API가 없습니다. Root ACK나 CLI 성공으로 꾸미지 않았으며, handoff는 미확인/미전달 상태입니다.
+
+## 2026-10-14 Controller review 보완
+
+- 추가 회귀 테스트: exact live Controller claim의 `stale`/`worker_missing`/`runtime_unknown`만 억제, task/source attempt/target attempt/claimant/agent path/runtime ID/session/provider 및 최신 Worker assignment 불일치 fail-closed, 중복 claim·claim 시각 역전·미래 claim·Controller Hook 누락·unknown Controller 상태 fail-closed, confirmed Worker error와 사용자 hold 보존.
+- valid timestamps를 보존한 역순 journal line은 원본 시각으로 재구성하며, 완료 상태를 추론하지 않습니다.
+- duplicate/contradictory record가 포함되면 `RecordCount != 2` 기준으로 routine alert를 억제하지 않습니다. Controller target attempt는 handoff가 명시한 exact identity tuple로 검증하며 Worker assignment ID와의 등치를 요구하지 않습니다. Worker source attempt는 task/worker path의 유일한 최신 assignment와 일치해야 합니다.
+- UI Lifecycle `Controller review started` label에 한국어 `Controller 검토 시작`, 영어 `Controller review started` 번역을 추가했습니다.
+- PASS: `node --test tests/web_task_detail_prefetch.test.cjs` (11 tests), `go test ./internal/backlog -count=1`, `go vet ./internal/backlog`, `git diff --check`.
+- Full Access fresh preflight: PASS, 2026-10-14 17:18 KST.
+- canonical root의 runtime observation: attempt `run-f5b677d5acb23949`, agent `/root/controller/kkobugi`, assignment `assignment-e63d73aa77759960dabd6156c5ea9366`, session `01a12d9b-726d-74c0-b3f7-178b44ee6026`, runtime agent `01a12dbf-3c80-7661-9e39-2b850bc2083a`. `started_at`/binding은 `2026-10-13T23:20:41.775677Z`; 현재 state는 `running`, 근거는 `reconciled/observed` authoritative binding 뒤 관측된 Hook activity입니다. 이 attempt에는 별도 start state Hook이 아니라 실제 `PreToolUse` activity hook들이 관측됩니다.
