@@ -1094,8 +1094,20 @@ body.release-modal-open{overflow:hidden}
 .user-attention-decision b{font-weight:650;margin-right:6px}
 @media(max-width:700px){.user-attention{margin:12px 12px 0;padding:14px}.user-attention li{grid-template-columns:minmax(0,1fr);gap:8px}}
 
-/* Current notifications share one quiet, initially collapsed disclosure. */
-.user-attention{padding:0;border:2px solid transparent;background:linear-gradient(var(--surface),var(--surface)) padding-box,linear-gradient(115deg,var(--accent),var(--warn),var(--accent)) border-box}
+/* The collapsed summary and expanded flyout form one continuous outlined surface.
+   A horizontal theme gradient gives both halves identical colors at their seam. */
+.user-attention{
+  --attention-outline:linear-gradient(90deg,var(--accent),color-mix(in srgb,var(--accent) 80%,var(--warn)),var(--accent));
+  padding:0;border:2px solid transparent;
+  background:linear-gradient(var(--surface),var(--surface)) padding-box,var(--attention-outline) border-box;
+}
+/* Keep the collapsed summary's footprint, but remove its lower stroke/corners
+   so the flyout's sides become a single uninterrupted perimeter. */
+.user-attention:has(.common-attention[open]){
+  border-bottom-width:0;
+  padding-bottom:2px;
+  border-radius:10px 10px 0 0;
+}
 .common-attention>summary{display:flex;flex-wrap:wrap;align-items:center;gap:8px 18px;padding:14px 20px;cursor:pointer;list-style:none;font-size:13px;line-height:1.5}
 .common-attention>summary::-webkit-details-marker{display:none}
 .common-attention>summary:before{content:'▸';color:var(--muted)}
@@ -1110,15 +1122,17 @@ body.release-modal-open{overflow:hidden}
 .common-attention-links a{color:var(--accent)}
 @media(max-width:700px){.common-attention>summary{padding:12px 14px;gap:6px 12px}.common-attention-body{padding:0 14px 14px}.user-attention{padding:0}}
 
-/* Keep the current-notification disclosure out of document flow.
-   The collapsed summary retains its normal height; the expanded list floats above content. */
+/* Keep the panel floating: expanding must not reduce the backlog viewport.
+   The flyout starts inside the reserved 2px seam and reuses the header's outline. */
 .user-attention{position:relative;z-index:25}
 .common-attention{position:relative}
 .common-attention-body{
   position:absolute;top:100%;left:-2px;right:-2px;z-index:26;
   max-height:min(65vh,560px);overflow-y:auto;overscroll-behavior:contain;
-  padding:12px 20px 18px;border:1px solid var(--border);
-  border-radius:0 0 10px 10px;background:var(--surface);
+  padding:12px 20px 18px;
+  border:2px solid transparent;border-top:0;
+  border-radius:0 0 10px 10px;
+  background:linear-gradient(var(--surface),var(--surface)) padding-box,var(--attention-outline) border-box;
   box-shadow:0 18px 42px rgba(0,0,0,.2);
 }
 @media(max-width:700px){.common-attention-body{padding:12px 14px 14px;max-height:60vh}}
