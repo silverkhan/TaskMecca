@@ -73,3 +73,21 @@ test('Preview identity accepts only exact PR, SHA, verified local Dev origin',()
  p.state.versionInfo={cli:{channel:'dev'}};
  assert.equal(p.devPreviewAvailable(),false,'nested child must never expose Preview manager menu');
 });
+
+test('old PR with no matching artifact has a rebuild action but no executable button',()=>{
+ const p=setup();p.state.versionInfo={cli:{channel:'dev'}};
+ p.state.previewLoaded=true;
+ p.state.previewBuilds=[{
+  number:100,title:'Legacy PR',head_sha:'a'.repeat(40),
+  branch:'fix-legacy',build_status:'none',reason:'no successful artifact matches the current PR head SHA'
+ }];
+ const html=p.previewBuildsView();
+ assert.match(html,/data-preview-action="rebuild" data-preview-number="100"/);
+ assert.match(html,/data-preview-action="start" data-preview-number="100" disabled/);
+ assert.match(html,/GitHub에서 직접 빌드/);
+ assert.match(source,/\/api\/preview\/rebuild/);
+ p.state.previewBuilds=[{
+  number:101,title:'External PR',head_sha:'b'.repeat(40),build_status:'blocked'
+ }];
+ assert.doesNotMatch(p.previewBuildsView(),/data-preview-action="rebuild"/);
+});
