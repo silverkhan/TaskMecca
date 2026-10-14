@@ -3596,9 +3596,12 @@ async function refreshPreviewInstances(){
     if(!response.ok)throw Error('Preview instances HTTP '+response.status);
     const payload=await response.json();
     if(epoch!==(state.previewInstanceEpoch||0))return;
-    state.previewInstances=Array.isArray(payload.instances)?payload.instances:[];
+    const next=Array.isArray(payload.instances)?payload.instances:[];
+    const changed=JSON.stringify(next)!==JSON.stringify(state.previewInstances||[]);
+    state.previewInstances=next;
     state.previewInstancesError='';
-    if(state.view==='preview')render();
+    // Polling must not steal focus from PR search or unnecessarily repaint.
+    if(changed&&state.view==='preview')render();
   }catch(error){
     state.previewInstancesError=String(error?.message||error);
   }finally{state.previewInstancesRefreshing=false}
@@ -3686,6 +3689,8 @@ async function previewAction(number,action){
     state.previewMessage=(state.language==='ko'?'Preview 작업 실패: ':'Preview action failed: ')+String(error?.message||error);
   }finally{
     state.previewActionBusy=0;
+    // Allow Run immediately after Stop, even if reconciliation fails.
+    if(state.view==='preview')render();
     // Local state must not wait for slow GitHub catalog refreshes.
     await refreshPreviewInstances();
     if(!state.previewLoaded)await refreshPreviewData();
