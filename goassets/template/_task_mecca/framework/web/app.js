@@ -93,6 +93,8 @@ const state = {
   projectNotificationSettingsLoaded: false,
   telegramSetupInstance:'',telegramSetupBootPending:false,telegramSetupBootShown:false,
   projectNotificationSettingsError: '',
+  previewBuilds:[],previewInstances:[],previewLoading:false,previewLoaded:false,
+  previewError:'',previewMessage:'',previewSearch:'',previewFilter:'all',previewActionBusy:0,
   operationRevision: '',
 };
 
@@ -1167,7 +1169,9 @@ async function refreshVersionInfo(force=false) {
     if(force && (payload?.cli?.error || !payload?.cli?.latest)){
       return {ok:false,error:payload?.cli?.error || 'Latest version unavailable'};
     }
+    const priorPreviewAvailability=devPreviewAvailable();
     state.versionInfo=payload;
+    if(devPreviewAvailable()!==priorPreviewAvailability)nav();
     maybeApplyStableBrandIntro();
     renderGlobalUpdateIndicator();
     renderReleaseNotesBadge();
@@ -3348,6 +3352,13 @@ function navigateView(view) {
     return;
   }
   if(view==='attention')view='notifications';
+  if(view==='preview'){
+    if(!devPreviewAvailable())return;
+    state.project='';state.detail=null;state.detailTask=null;state.projectMenuOpen=false;
+    closeAttentionStream();state.view='preview';
+    history.pushState({},'','/?view=preview');
+    render();void refreshPreviewData();return;
+  }
   if(view==='storage'){
     state.view='storage';state.detail=null;state.detailTask=null;state.projectMenuOpen=false;
     history.pushState({},'','/?view=storage');
@@ -3386,6 +3397,7 @@ function navigateView(view) {
     render();
   }
 }
+function devPreviewAvailable(){return (state.versionInfo?.cli?.channel||state.hub?.cli?.channel||'')==='dev';}
 function nav() {
   const c = currentProjectData()?.counts || {};
   const projects=state.hub?.projects||[];
@@ -3410,7 +3422,7 @@ function nav() {
   }).join('');
   const menu=state.projectMenuOpen?`<div class="project-open-menu">${closed.length?closed.map(p=>`<button type="button" data-add-project="${esc(p.path)}"><span>${esc(p.name)}</span><small>${esc(p.path)}</small></button>`).join(''):'<div class="project-open-empty">No closed projects</div>'}</div>`:'';
   $('#stateNav').innerHTML =
-    `<div class="sidebar-label">SYSTEM</div><button class="nav-item ${state.view==='hub'?'active':''}" id="hubNavBtn" type="button"><span class="nav-main"><span class="nav-icon">⌂</span><span class="nav-text">Global Hub</span></span></button><button class="nav-item ${state.view==='storage'?'active':''}" id="storageNavBtn" type="button"><span class="nav-main"><span class="nav-icon">▤</span><span class="nav-text">${esc(state.language==='ko'?'저장소 관리':'Storage management')}</span></span></button><div class="sidebar-label">BACKLOGS</div><div class="session-list">${sessionRows||'<div class="session-empty">No open backlogs</div>'}</div><button class="nav-item session-add" id="openProjectBtn" type="button"><span class="nav-main"><span class="nav-icon">＋</span><span class="nav-text">Open Project</span></span></button>${menu}`;
+    `<div class="sidebar-label">SYSTEM</div><button class="nav-item ${state.view==='hub'?'active':''}" id="hubNavBtn" type="button"><span class="nav-main"><span class="nav-icon">⌂</span><span class="nav-text">Global Hub</span></span></button><button class="nav-item ${state.view==='storage'?'active':''}" id="storageNavBtn" type="button"><span class="nav-main"><span class="nav-icon">▤</span><span class="nav-text">${esc(state.language==='ko'?'저장소 관리':'Storage management')}</span></span></button>${devPreviewAvailable()?`<button class="nav-item ${state.view==='preview'?'active':''}" id="previewNavBtn" type="button"><span class="nav-main"><span class="nav-icon" aria-hidden="true">⑂</span><span class="nav-text">Preview Builds</span></span></button>`:''}<div class="sidebar-label">BACKLOGS</div><div class="session-list">${sessionRows||'<div class="session-empty">No open backlogs</div>'}</div><button class="nav-item session-add" id="openProjectBtn" type="button"><span class="nav-main"><span class="nav-icon">＋</span><span class="nav-text">Open Project</span></span></button>${menu}`;
   const sidebarModes=[
     ['auto',state.language==='ko'?'자동':'Auto',state.language==='ko'?'마우스를 올리거나 포커스를 옮기면 임시로 펼침':'Temporarily expand on hover or focus'],
     ['expanded',state.language==='ko'?'펼침':'Expanded',state.language==='ko'?'항상 펼친 상태로 고정':'Keep the sidebar expanded'],
@@ -3432,6 +3444,7 @@ function nav() {
   $('#openProjectBtn')?.addEventListener('click',()=>{state.projectMenuOpen=!state.projectMenuOpen;render()});
   $('#hubNavBtn')?.addEventListener('click',()=>navigateView('hub'));
   $('#storageNavBtn')?.addEventListener('click',()=>navigateView('storage'));
+  $('#previewNavBtn')?.addEventListener('click',()=>navigateView('preview'));
   $('#terminalNavBtn')?.addEventListener('click',openWebTerminal);
   document.querySelectorAll('[data-view]').forEach(b => {
     b.classList.toggle('active', state.view === b.dataset.view);
@@ -5320,6 +5333,9 @@ function render() {
   const searchFocus=document.activeElement?.id==='search' ? {start:document.activeElement.selectionStart,end:document.activeElement.selectionEnd} : null;
   nav(); translateChrome(); renderAccess(); applySidebarState(); updateNotificationIndicator(); updateTelegramSetupNavIndicator(); renderGlobalUpdateIndicator(); renderContentUpdatePrompt(); renderReleaseUnreadPrompt();
   const c=$('#content'), data=currentProjectData();
+  if(state.view==='preview'){
+    c.innerHTML=previewBuildsView();bindPreviewBuildsActions();return;
+  }
   if(state.view==='release-notes'){
     c.innerHTML=releaseNotesView();
     bindReleaseNotesActions();
@@ -5667,6 +5683,9 @@ async function refreshOnce() {
   if(targetProject)params.set('project',targetProject);
   const qs=params.toString()?`?${params}`:'';
 
+  if(targetView==='preview'){
+    closeAttentionStream();await refreshPreviewData();return;
+  }
   if(targetView==='release-notes'){
     closeAttentionStream();
     await loadReleaseNotes(!state.releaseNotesLoaded);
@@ -5839,7 +5858,7 @@ function route(fromPop=false) {
   if (!state.detail) {
     state.view=p.get('view')||(state.project?'backlog':'hub');
     if(state.view==='attention')state.view='notifications';
-    if(state.view==='hub'||state.view==='storage'||state.view==='release-notes') state.project='';
+    if(state.view==='hub'||state.view==='storage'||state.view==='release-notes'||state.view==='preview') state.project='';
     if (state.view === 'backlog') {
       const legacy=p.get('state');
       const raw=p.get('filter');
