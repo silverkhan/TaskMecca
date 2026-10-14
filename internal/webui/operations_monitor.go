@@ -553,7 +553,7 @@ func ensureOperationNotificationFeed(project string) {
 
 func scanOperationProjects(primary string, now time.Time) {
 	for _, project := range operationProjects(primary) {
-		maintenance.WithProjectMonitoring(project, func() {
+		maintenance.TryWithProjectMonitoring(project, func() {
 			// The guard excludes stopped/archived/missing projects. Feed startup
 			// is idempotent and never depends on an SSE subscriber.
 			ensureOperationNotificationFeed(project)
