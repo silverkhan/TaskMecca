@@ -25,10 +25,17 @@ import (
 	"github.com/silverkhan/TaskMecca/internal/install"
 	"github.com/silverkhan/TaskMecca/internal/maintenance"
 	"github.com/silverkhan/TaskMecca/internal/notify"
+	"github.com/silverkhan/TaskMecca/internal/preview"
 	"github.com/silverkhan/TaskMecca/internal/runtimeobs"
 )
 
 const embeddedRoot = "template/_task_mecca/framework"
+
+// Override only in isolated tests; the production endpoint never executes a PR.
+var previewBuildsProvider = func(ctx stdcontext.Context, limit int) ([]preview.Build,error) {
+    return preview.NewClient().ListBuilds(ctx,limit)
+}
+
 
 // The timestamp is placed on a request before the project monitoring guard.
 // Detail timing can then distinguish lock queueing from actual rendering work.
@@ -312,6 +319,32 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
         }
     })
 
+
+    // Preview discovery is read-only and exclusive to the Dev release channel.
+    // Preview executable launch is deliberately NOT exposed until AID-148/149
+    // establish a verified runtime isolation boundary.
+    mux.HandleFunc("/api/preview/builds", func(w http.ResponseWriter,r *http.Request){
+        if maintenance.CurrentChannel()!="dev" {
+            writeJSON(w,map[string]any{"error":"Preview Builds is available only in the Dev channel"},http.StatusForbidden)
+            return
+        }
+        if r.Method!=http.MethodGet {
+            w.Header().Set("Allow","GET")
+            writeJSON(w,map[string]any{"error":"method not allowed"},http.StatusMethodNotAllowed)
+            return
+        }
+        limit:=20
+        if raw:=r.URL.Query().Get("limit");raw!=""{
+            n,err:=strconv.Atoi(raw)
+            if err!=nil || n<1||n>30 {writeJSON(w,map[string]any{"error":"limit must be between 1 and 30"},400);return}
+            limit=n
+        }
+        ctx,cancel:=stdcontext.WithTimeout(r.Context(),25*time.Second)
+        defer cancel()
+        builds,err:=previewBuildsProvider(ctx,limit)
+        if err!=nil {writeJSON(w,map[string]any{"error":err.Error(),"builds":[]preview.Build{}},http.StatusBadGateway);return}
+        writeJSON(w,map[string]any{"repository":preview.Repository,"builds":builds,"execution_available":false},200)
+    })
 
 	mux.HandleFunc("/api/health", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, map[string]any{"ok": true, "version": version, "instance_id": instanceID, "boot_id": bootID, "pid": os.Getpid(), "telegram_transport_disabled": notify.TelegramTransportDisabled()}, 200)
