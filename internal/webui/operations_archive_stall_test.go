@@ -100,14 +100,21 @@ func TestArchivedDoneDoesNotConcealActualFailure(t *testing.T){
  archive:=filepath.Join(folder,"archive","2026-10")
  if err:=os.MkdirAll(archive,0755);err!=nil{t.Fatal(err)}
  done:=filepath.Join(archive,"000464.B-464.regime.done.md")
- if err:=os.WriteFile(done,[]byte("# B-464 regime\n- 결과: done\n"),0600);err!=nil{t.Fatal(err)}
+ if err:=os.WriteFile(done,[]byte("# B-464 regime\\n- 결과: done\\n"),0600);err!=nil{t.Fatal(err)}
  now:=time.Now().UTC()
- initial:=operationJournal{Version:1,Project:project,Incidents:[]operationIncident{{
-  ID:"confirmed-failure",Key:"attempt:run-failed",Project:project,TaskID:"B-464",AttemptID:"run-failed",
-  Kind:"errored",Quality:"confirmed",Evidence:"hook terminal state",DetectedAt:now.Add(-time.Minute).Format(time.RFC3339Nano),
- }}}
- if err:=writeOperationJournal(project,initial);err!=nil{t.Fatal(err)}
- after,err:=scanOperationProject(project,now.Add(time.Second))
+ hook:=testOperationHook(t,project,`{"session_id":"failed-session","hook_event_name":"SubagentStart","agent_id":"failed-worker"}`,now.Add(-time.Minute))
+ if _,err:=runtimeobs.BindAttempt(project,hook.AttemptID,"B-464","/root/controller/worker","explicit","",nil,now.Add(-59*time.Second));err!=nil{t.Fatal(err)}
+ if err:=runtimeobs.AppendExecutionEvent(project,runtimeobs.ExecutionEvent{
+  EventKind:"state",ObservedAt:now.Add(-30*time.Second).Format(time.RFC3339Nano),
+  AttemptID:hook.AttemptID,Provider:"codex",RuntimeAgentID:"failed-worker",
+  State:runtimeobs.StateErrored,Terminal:true,EvidenceSource:runtimeobs.EvidenceHook,
+  ObservationQuality:runtimeobs.QualityObserved,
+ });err!=nil{t.Fatal(err)}
+ after,err:=scanOperationProject(project,now)
  if err!=nil{t.Fatal(err)}
- if len(after.Incidents)==0||after.Incidents[0].RecoveredAt!=""{t.Fatalf("confirmed failure was concealed by archive: %+v",after.Incidents)}
+ found:=false
+ for _,warning:=range after.Incidents{
+  if warning.AttemptID==hook.AttemptID && warning.Kind=="errored" && warning.Quality=="confirmed" && warning.RecoveredAt==""{found=true}
+ }
+ if !found{t.Fatalf("observed errored Hook failure concealed by canonical archive: %+v",after.Incidents)}
 }
