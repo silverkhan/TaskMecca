@@ -3487,19 +3487,7 @@ async function loadPreviewIdentity(){
     nav();
   }catch(_){}
 }
-async function maybeConfirmPreviewStop(){
-  const query=new URLSearchParams(location.search);
-  const raw=query.get('stop_preview');
-  if(!raw||!devPreviewAvailable()||state.view!=='preview')return;
-  query.delete('stop_preview');
-  history.replaceState({},'','/?'+query.toString());
-  const number=Number(raw);
-  if(!Number.isSafeInteger(number)||number<1)return;
-  const ko=state.language==='ko';
-  const prompt=ko?'PR #'+number+' Preview를 종료하시겠습니까?':'Stop PR #'+number+' Preview?';
-  if(!window.confirm(prompt))return;
-  await previewAction(number,'stop');
-}
+async function maybeConfirmPreviewStop(){ /* Retired child-process Preview stop link. */ }
 
 function previewCaption(value){
   if(!value)return '-';
@@ -3603,6 +3591,32 @@ async function refreshPreviewData(){
     if(state.view==='preview')render();
   }
 }
+async function currentEnvironmentBoot(){
+  try{
+    const response=await fetch('/api/health',{cache:'no-store'});
+    if(!response.ok)return '';
+    const body=await response.json();
+    return body.boot_id||'';
+  }catch(_){return ''}
+}
+async function waitForEnvironmentRestart(previousBoot,kind,sha){
+  const started=Date.now();
+  while(Date.now()-started<45000){
+    try{
+      const response=await fetch('/api/health?env_wait='+Date.now(),{cache:'no-store'});
+      if(response.ok){
+        const body=await response.json(),target=body.execution_target;
+        if(body.boot_id&&(!previousBoot||body.boot_id!==previousBoot)&&
+          target?.kind===kind&&(kind!=='pr'||target.head_sha===sha)){
+          location.reload();
+          return true;
+        }
+      }
+    }catch(_){}
+    await new Promise(resolve=>setTimeout(resolve,600));
+  }
+  throw Error('Web restart/PR identity not confirmed. Check task-mecca web status and logs.');
+}
 async function refreshExecutionTarget(){
   try{
     const response=await fetch('/api/environment',{cache:'no-store'});
@@ -3620,6 +3634,7 @@ async function executePRSwitch(number){
     ?'PR #'+number+' ('+item.head_sha.slice(0,10)+')로 전체 실행 환경을 전환합니다.\\n\\n기존 프로젝트, Hook, 워크로드 감시, Telegram 알림이 이 PR 코드로 실행됩니다. Dev 바이너리는 복귀용으로 보관하지만 PR의 데이터 변경은 자동으로 되돌릴 수 없습니다.\\n\\n외부 또는 신뢰하지 않는 PR 코드는 실행하지 마세요. 로컬 컴퓨터에서 진행하시겠습니까?'
     :'Switch the entire installation to PR #'+number+' ('+item.head_sha.slice(0,10)+')? Monitoring, Hooks, projects and notifications run under that code. Restoring Dev does not undo PR data changes. Only run trusted PR code on the local computer.';
   if(!window.confirm(warning))return;
+  const oldBoot=await currentEnvironmentBoot();
   state.previewActionBusy=number;state.previewMessage='';state.previewError='';render();
   try{
     const response=await fetch('/api/environment/enter-pr',{method:'POST',
@@ -3629,8 +3644,7 @@ async function executePRSwitch(number){
     if(!response.ok)throw Error(payload.error||'PR switch failed');
     state.previewMessage=ko?'PR 실행 파일을 적용했습니다. 웹 재시작을 확인합니다.':'PR installed. Checking Web restart.';
     render();
-    await waitForRestartedWeb();
-    location.reload();
+    await waitForEnvironmentRestart(oldBoot,'pr',item.head_sha);
   }catch(error){
     state.previewError=String(error?.message||error);
   }finally{state.previewActionBusy=0;render()}
@@ -3640,13 +3654,13 @@ async function returnToPinnedDev(){
   if(!target||target.kind!=='pr')return;
   const ko=state.language==='ko';
   if(!window.confirm(ko?'PR #'+target.pr_number+'에서 진입 직전 Dev 버전으로 복귀하시겠습니까? PR 실행 중 변경된 프로젝트 데이터는 자동 복원되지 않습니다.':'Restore the exact Dev version from before this PR? Project data changes are not reverted.'))return;
+  const oldBoot=await currentEnvironmentBoot();
   const response=await fetch('/api/environment/return-dev',{method:'POST',
     headers:{'Content-Type':'application/json','X-Task-Mecca-Action':'1'},
     body:JSON.stringify({approve:true})});
   const payload=await response.json();
   if(!response.ok)throw Error(payload.error||'Dev restore failed');
-  await waitForRestartedWeb();
-  location.reload();
+  await waitForEnvironmentRestart(oldBoot,'dev','');
 }
 function bindPreviewBuildsActions(){
   $('#previewReloadBtn')?.addEventListener('click',()=>refreshPreviewData());
@@ -4308,7 +4322,8 @@ function hubView() {
   const cli=h.cli||{};
   const projects=Array.isArray(h.projects)?h.projects:[];
   const channelBadge=cli.channel==='dev' ? '<span class="badge warn">DEV</span>' : '';
-  const currentVersionMark='<span class="badge hub-version-mark">'+esc(cli.current||'-')+'</span>';
+  const activePR=state.executionTarget?.kind==='pr'?state.executionTarget:null;
+  const currentVersionMark='<span class="badge hub-version-mark">'+esc(activePR?('PR #'+activePR.pr_number+' · '+String(activePR.head_sha||'').slice(0,10)):cli.current||'-')+'</span>';
   const cliStatus=cli.update_available
     ? currentVersionMark+'<span class="badge warn">→ '+esc(cli.latest||'-')+'</span>'
     : currentVersionMark;
