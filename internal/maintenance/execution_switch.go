@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"runtime"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -105,6 +106,12 @@ func EnterPR(currentVersion string,number int,headSHA,binaryPath string)(Upgrade
 	executionSwitchMu.Lock()
 	defer executionSwitchMu.Unlock()
 	result:=UpgradeResult{From:currentVersion,Channel:devChannel}
+	// The existing Windows upgrade helper stages an asynchronous .new move.
+	// Until that helper can prove ordering before Web health, do not risk an
+	// ambiguous PR/dev executable during a channel transition.
+	if runtime.GOOS=="windows" {
+		return result,errors.New("Windows PR switching awaits a verified staged-install/restart handoff; Dev/Stable switching remains available")
+	}
 	if CurrentChannel()!=devChannel || strings.TrimSpace(os.Getenv("TASK_MECCA_CHANNEL"))!=""{
 		return result,errors.New("PR execution requires a locally managed Dev release channel")
 	}
@@ -158,6 +165,9 @@ func ReturnFromPR(currentVersion string)(UpgradeResult,error){
 	executionSwitchMu.Lock()
 	defer executionSwitchMu.Unlock()
 	result:=UpgradeResult{From:currentVersion,Channel:devChannel}
+	if runtime.GOOS=="windows" {
+		return result,errors.New("Windows PR restore requires the staged-install/restart contract; no mutation performed")
+	}
 	target,err:=InstalledExecutionTarget()
 	if err!=nil{return result,err}
 	if target.Kind!="pr"{return result,errors.New("current execution target is not a PR")}
