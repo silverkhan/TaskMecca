@@ -3525,7 +3525,7 @@ function previewBuildsView(){
   }).join('');
   const filters=[['all',ko?'전체':'All'],['running',ko?'실행 중':'Running'],['success',ko?'빌드 성공':'Build succeeded'],['failed',ko?'오류·만료':'Errors']];
   return header+
-    '<div class="timing-note"><strong>Docker Preview</strong><span>'+esc(ko?'Docker Desktop/Engine 및 alpine:3.20 이미지가 필요합니다. 실행은 로컬 컴퓨터에서만 허용되며 외부 프로젝트 데이터는 연결되지 않습니다.':'Requires local Docker Desktop/Engine and alpine:3.20. Execution is local-only with synthetic project data.')+'</span></div>'+
+    '<div class="timing-note"><strong>Native Preview</strong><span>'+esc(ko?'추가 설치 없이 별도 Go 프로세스로 실행합니다. 자체 저장소의 신뢰된 PR만 실행하세요. 실행 파일은 현재 사용자와 동일한 OS 권한을 가지며, 별도 HOME은 악성 코드 격리가 아닙니다.':'No Docker required. Only run trusted first-party PRs. Native Preview processes share your OS account permissions; a separate HOME is not a security sandbox.')+'</span></div>'+
     '<div class="preview-build-tools"><input id="previewSearch" type="search" autocomplete="off" placeholder="'+(ko?'PR 번호, 제목, 브랜치 검색':'Search PR number, title, branch')+'" value="'+esc(state.previewSearch)+'" aria-label="'+(ko?'PR 검색':'Search PR')+'"/>'+
     '<div class="preview-build-filters">'+filters.map(([v,label])=>'<button type="button" class="action-btn secondary '+(state.previewFilter===v?'active':'')+'" data-preview-filter="'+v+'" aria-pressed="'+(state.previewFilter===v)+'">'+label+'</button>').join('')+'</div></div>'+
     (state.previewError?'<div class="load-error" role="alert">'+esc(state.previewError)+'</div>':'')+
@@ -3565,6 +3565,14 @@ async function previewAction(number,action){
     const url=previewSafeLocalURL(instance?.url);
     if(url)window.open(url,'_blank','noopener');
     return;
+  }
+  // Native PR code has ordinary filesystem access under the current user.
+  // Ask for explicit consent before starting an untrusted executable.
+  if(action==='start'){
+    const warning=state.language==='ko'
+      ?'PR #'+number+'의 코드를 현재 사용자 권한으로 실행합니다. Docker/VM 격리가 없으므로 이 PR을 신뢰할 때만 진행하세요. 실행하시겠습니까?'
+      :'Run PR #'+number+' with your current OS user permissions? No Docker/VM sandbox is used. Continue only if you trust this PR.';
+    if(!window.confirm(warning))return;
   }
   let tab=null;
   // Reserve the new tab directly on click so browsers can open it after
