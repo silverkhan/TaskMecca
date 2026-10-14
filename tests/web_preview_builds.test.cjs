@@ -70,3 +70,22 @@ test('execution switch uses approved local API and health identity',()=>{
   assert.match(source,/body\.boot_id!==previousBoot/);
   assert.match(source,/target\.head_sha===sha/);
 });
+
+test('a Dev PR with missing or expired build offers a SHA-pinned rebuild, never runs a child Preview',()=>{
+ const h=setup();
+ h.state.versionInfo={cli:{channel:'dev'}};
+ h.state.previewLoaded=true;
+ h.state.previewBuilds=[
+  {number:155,title:'Missing artifact',head_sha:'a'.repeat(40),branch:'fix',build_status:'none'},
+  {number:156,title:'Expired artifact',head_sha:'b'.repeat(40),branch:'fix',build_status:'expired'},
+  {number:157,title:'Unsafe fork',head_sha:'c'.repeat(40),branch:'outside',build_status:'blocked'}
+ ];
+ const html=h.previewBuildsView();
+ assert.match(html,/data-pr-rebuild="155"/);
+ assert.match(html,/data-pr-rebuild="156"/);
+ assert.doesNotMatch(html,/data-pr-rebuild="157"/);
+ assert.match(html,/GitHub Actions에서 직접 빌드/);
+ assert.match(source,/\/api\/preview\/rebuild/);
+ assert.match(source,/body:JSON\.stringify\(\{number,sha:item\.head_sha\}\)/);
+ assert.doesNotMatch(html,/data-preview-action="start"/);
+});
