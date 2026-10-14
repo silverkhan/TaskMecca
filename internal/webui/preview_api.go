@@ -100,6 +100,28 @@ func registerPreviewRoutes(mux *http.ServeMux,writeJSON func(http.ResponseWriter
    writeJSON(w,map[string]any{"ok":true,"instance":stopped},200)
   }
  }
+ mux.HandleFunc("/api/preview/rebuild",func(w http.ResponseWriter,r *http.Request){
+  if !permitted(w,r){return}
+  if !approvedDevPRMutation(r){
+   writeJSON(w,map[string]any{"error":"PR build creation requires a local same-origin action or authorized Tailscale administrator"},403)
+   return
+  }
+  var input struct {
+   Number int `json:"number"`
+   SHA string `json:"sha"`
+  }
+  decoder:=json.NewDecoder(http.MaxBytesReader(w,r.Body,2048))
+  decoder.DisallowUnknownFields()
+  if err:=decoder.Decode(&input);err!=nil||input.Number<1||len(input.SHA)!=40{
+   writeJSON(w,map[string]any{"error":"valid PR number and full SHA required"},400);return
+  }
+  ctx,cancel:=stdcontext.WithTimeout(r.Context(),30*time.Second)
+  defer cancel()
+  if err:=preview.NewClient().RequestBuild(ctx,input.Number,input.SHA);err!=nil{
+   writeJSON(w,map[string]any{"error":err.Error()},409);return
+  }
+  writeJSON(w,map[string]any{"ok":true,"message":"PR build requested; GitHub Actions will create an immutable SHA-pinned artifact"},202)
+ })
  mux.HandleFunc("/api/preview/start",func(w http.ResponseWriter,r *http.Request){action(w,r,true)})
  mux.HandleFunc("/api/preview/stop",func(w http.ResponseWriter,r *http.Request){action(w,r,false)})
 }
