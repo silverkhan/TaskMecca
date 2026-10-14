@@ -1073,7 +1073,11 @@ function renderContentUpdatePrompt() {
     el.innerHTML='';
     return;
   }
-  const reason=state.pendingContentReason==='runtime'?t('runtimeChanged'):t('contentChanged');
+  const reason=state.detail&&state.pendingContentReason==='content'
+    ? (state.language==='ko'
+        ? '현재 보고 있는 '+state.detail+' 백로그 본문이 실제 변경되었습니다.'
+        : 'The open task '+state.detail+' Markdown content has changed.')
+    : state.pendingContentReason==='runtime'?t('runtimeChanged'):t('contentChanged');
   el.innerHTML=`<div class="content-update-copy"><strong>${esc(t('newContentAvailable'))}</strong><span class="content-update-reason">${esc(reason)} ${esc(t('refreshToSee'))}</span>${statusChangeMarkup(state.pendingContentChanges)}</div><button type="button" class="content-update-action" id="contentUpdateRefreshBtn">${esc(t('refreshNow'))}</button>`;
   $('#contentUpdateRefreshBtn')?.addEventListener('click',refreshVisibleContent);
 }
@@ -1276,13 +1280,14 @@ async function checkContentRevision(establishOnly=false) {
         const stillCurrent=()=>project===state.project&&backlog===state.backlog&&
           state.view==='backlog'&&state.detail===id&&
           state.detailTask?.raw_markdown===displayed.raw_markdown;
-        if(revision!==state.contentRevision){
+        if(revision!==state.contentRevision &&
+          !(state.pendingContentUpdate&&state.pendingContentReason==='content'&&state.pendingObservedRevision===fingerprint)){
           try{
             const changed=await viewedTaskMarkdownChanged(project,backlog,id,displayed.raw_markdown);
             if(!stillCurrent())return;
             if(changed){
               state.pendingObservedRevision=fingerprint;
-              if(!state.pendingContentUpdate)markContentUpdate('content',diffRevisionStates(state.contentStateSnapshot,states));
+              if(!state.pendingContentUpdate)markContentUpdate('content',diffRevisionStates(state.contentStateSnapshot,states).filter(change=>change.id===id));
             }else{
               invalidateListPages();
               state.contentRevision=revision;
