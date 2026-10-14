@@ -59,7 +59,7 @@ jobs:
             --argjson pr "$PR_NUMBER" \
             --arg sha "$HEAD_SHA" \
             --argjson run "$WORKFLOW_RUN" \
-            '{repository:$repo,pr_number:$pr,head_sha:$sha,run_id:$run,workflow:"go-artifacts.yml",schema_version:1}' \
+            '{repository:$repo,pr_number:$pr,head_sha:$sha,run_id:$run,workflow:"go-artifacts.yml",schema_version:1,execution_switch_protocol:1}' \
             > dist/preview-build.json
       - uses: actions/upload-artifact@v4
         with:
