@@ -3574,13 +3574,42 @@ function previewBuildsView(){
     '<div class="preview-build-tools"><input id="previewSearch" type="search" autocomplete="off" placeholder="'+(ko?'PR 번호, 제목, 브랜치 검색':'Search PR number, title, branch')+'" value="'+esc(state.previewSearch)+'" aria-label="'+(ko?'PR 검색':'Search PR')+'"/>'+
     '<div class="preview-build-filters">'+filters.map(([v,label])=>'<button type="button" class="action-btn secondary '+(state.previewFilter===v?'active':'')+'" data-preview-filter="'+v+'" aria-pressed="'+(state.previewFilter===v)+'">'+label+'</button>').join('')+'</div></div>'+
     (state.previewError?'<div class="load-error" role="alert">'+esc(state.previewError)+'</div>':'')+
+    (state.previewInstancesError?'<div class="load-error" role="status">'+esc(state.language==='ko'?'실행 상태 조회 실패: ':'Instance refresh failed: ')+esc(state.previewInstancesError)+'</div>':'')+
     (state.previewMessage?'<p class="timing-note" role="status">'+esc(state.previewMessage)+'</p>':'')+
     (state.previewLoading&&!state.previewLoaded?'<div class="loading">'+(ko?'PR 빌드 조회 중…':'Loading PR builds…')+'</div>':
       '<div class="preview-build-list">'+(rows||'<div class="empty">'+(ko?'표시할 PR이 없습니다.':'No matching PR builds.')+'</div>')+'</div>');
 }
+// Local process state is independent from GitHub build metadata.
+function applyPreviewInstance(instance){
+  if(!instance||!Number.isSafeInteger(Number(instance.pr_number))||Number(instance.pr_number)<1)return;
+  const number=Number(instance.pr_number);
+  state.previewInstanceEpoch=(state.previewInstanceEpoch||0)+1;
+  state.previewInstances=(state.previewInstances||[]).filter(item=>Number(item.pr_number)!==number).concat([instance]);
+  if(state.view==='preview')render();
+}
+async function refreshPreviewInstances(){
+  if(state.previewInstancesRefreshing||state.previewActionBusy)return;
+  state.previewInstancesRefreshing=true;
+  const epoch=state.previewInstanceEpoch||0;
+  try{
+    const response=await fetch('/api/preview/instances',{cache:'no-store'});
+    if(!response.ok)throw Error('Preview instances HTTP '+response.status);
+    const payload=await response.json();
+    if(epoch!==(state.previewInstanceEpoch||0))return;
+    const next=Array.isArray(payload.instances)?payload.instances:[];
+    const changed=JSON.stringify(next)!==JSON.stringify(state.previewInstances||[]);
+    state.previewInstances=next;
+    state.previewInstancesError='';
+    // Polling must not steal focus from PR search or unnecessarily repaint.
+    if(changed&&state.view==='preview')render();
+  }catch(error){
+    state.previewInstancesError=String(error?.message||error);
+  }finally{state.previewInstancesRefreshing=false}
+}
 async function refreshPreviewData(){
   if(state.previewLoading)return;
   state.previewLoading=true;
+  const epoch=state.previewInstanceEpoch||0;
   if(state.view==='preview')render();
   try{
     const [builds,instances]=await Promise.all([
@@ -3590,7 +3619,10 @@ async function refreshPreviewData(){
     const [buildBody,instanceBody]=await Promise.all([builds.json(),instances.json()]);
     if(!builds.ok||!instances.ok)throw Error(buildBody.error||instanceBody.error||'Preview API unavailable');
     state.previewBuilds=Array.isArray(buildBody.builds)?buildBody.builds:[];
-    state.previewInstances=Array.isArray(instanceBody.instances)?instanceBody.instances:[];
+    // Ignore a stale instance GET that started before Stop/Start completed.
+    if(epoch===(state.previewInstanceEpoch||0)){
+      state.previewInstances=Array.isArray(instanceBody.instances)?instanceBody.instances:[];
+    }
     state.previewLoaded=true;
     state.previewError='';
   }catch(error){
@@ -3641,6 +3673,8 @@ async function previewAction(number,action){
     });
     const payload=await response.json();
     if(!response.ok)throw Error(payload.error||'Preview action failed');
+    // Successful mutation returns the authoritative instance.
+    if(payload.instance)applyPreviewInstance(payload.instance);
     if(action==='start'){
       const address=previewSafeLocalURL(payload.open_url);
       if(!address)throw Error('Preview URL failed validation');
@@ -3655,7 +3689,11 @@ async function previewAction(number,action){
     state.previewMessage=(state.language==='ko'?'Preview 작업 실패: ':'Preview action failed: ')+String(error?.message||error);
   }finally{
     state.previewActionBusy=0;
-    await refreshPreviewData();
+    // Allow Run immediately after Stop, even if reconciliation fails.
+    if(state.view==='preview')render();
+    // Local state must not wait for slow GitHub catalog refreshes.
+    await refreshPreviewInstances();
+    if(!state.previewLoaded)await refreshPreviewData();
   }
 }
 function bindPreviewBuildsActions(){
@@ -6315,6 +6353,10 @@ setInterval(()=>{
 setInterval(()=>{
   if(state.project)checkContentRevision(false);
   else if(state.view==='hub')refreshHub(true).then(()=>{if(state.view==='hub')render()}).catch(()=>{});
+  // Stop from another tab or unexpected child exit must update the row.
+  if(state.view==='preview'&&document.visibilityState!=='hidden'){
+    void refreshPreviewInstances();
+  }
 },5000);
 function preserveViewportAndFocus(work) {
   const x=window.scrollX, y=window.scrollY;
