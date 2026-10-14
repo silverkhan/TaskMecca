@@ -25,11 +25,11 @@ func TestOperationSourceAlreadyResolvedSuppressesSameObservedAssignmentAfterRest
 		RecoveredAt:      observedAt,
 		RecoveryEvidence: "same assignment has recent observed Hook execution; prior runtime evidence unchanged",
 	}}}
-	if !operationSourceAlreadyResolved(signal, journal) {
+	if !operationSourceAlreadyResolved(signal, journal, time.Date(2026,10,12,11,1,1,0,time.UTC)) {
 		t.Fatal("same source observation should stay resolved after a journal reload")
 	}
 	signal.AssignmentID = "assignment-2"
-	if operationSourceAlreadyResolved(signal, journal) {
+	if operationSourceAlreadyResolved(signal, journal, time.Date(2026,10,12,11,1,1,0,time.UTC)) {
 		t.Fatal("a distinct assignment must create a new warning episode")
 	}
 }

@@ -322,15 +322,30 @@ func latestOperationRecovery(item operationIncident, attempts []runtimeobs.Attem
 	return false
 }
 
-func operationSourceAlreadyResolved(signal operationIncident, journal operationJournal) bool {
+func operationSourceAlreadyResolved(signal operationIncident, journal operationJournal, now time.Time) bool {
 	if signal.Kind != "runtime_unknown" && signal.Kind != "no_signal" {
 		return false
 	}
 	for _, prior := range journal.Incidents {
-		if prior.RecoveredAt == "" || prior.RecoveryEvidence != "same assignment has recent observed Hook execution; prior runtime evidence unchanged" {
+		if prior.RecoveredAt == "" {continue}
+		switch prior.RecoveryEvidence {
+		case "same assignment has recent observed Hook execution; prior runtime evidence unchanged",
+			"same attempt has later observed Hook running state; previous warning retired without changing runtime evidence",
+			"same attempt has confirmed Hook completion; previous warning retired without changing runtime evidence":
+		default:
 			continue
 		}
-		sameSourceClock := prior.LastObservedAt == signal.LastObservedAt || (prior.RecoveryEvidence == "same assignment has recent observed Hook execution; prior runtime evidence unchanged" && prior.RecoveredAt == signal.LastObservedAt)
+		// An unchanged source is not a new warning just because Hook setup
+		// verification toggled after the observed recovery. A fresh signal time,
+		// different failure kind or different attempt remains a distinct episode.
+		sameSourceClock := prior.LastObservedAt == signal.LastObservedAt || prior.RecoveredAt == signal.LastObservedAt
+		// A previous recovery does not grant permanent immunity: if that same
+		// source has now gone quiet for a full stale interval, this is a new
+		// observable no-signal episode and needs a new warning.
+		if prior.RecoveredAt == signal.LastObservedAt {
+			at,err:=time.Parse(time.RFC3339Nano,prior.RecoveredAt)
+			if err!=nil || at.After(now) || now.Sub(at)>=runtimeobs.StaleWarnDuration(){continue}
+		}
 		if prior.Project == signal.Project && prior.AttemptID == signal.AttemptID && prior.AssignmentID == signal.AssignmentID && prior.TaskID == signal.TaskID && prior.AgentPath == signal.AgentPath && prior.Kind == signal.Kind && prior.Evidence == signal.Evidence && sameSourceClock {
 			return true
 		}
