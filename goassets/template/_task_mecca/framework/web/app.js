@@ -1407,7 +1407,10 @@ async function performUpgrade() {
  setUpgradeFlowStage('checking');
  startUpgradeFlowPolling(session);
  try{
-  const r=await fetch('/api/upgrade',{method:'POST',headers:{'X-Task-Mecca-Action':'1'}});
+  const selectedVersion=normalizedVersion(cli.latest||'');
+  const r=await fetch('/api/upgrade',{method:'POST',
+    headers:{'X-Task-Mecca-Action':'1','Content-Type':'application/json'},
+    body:JSON.stringify({expected_version:selectedVersion})});
   const body=await r.json();
   if(r.status===409 && body.status?.active){
    upgradeFlowOwnRequest=false;
