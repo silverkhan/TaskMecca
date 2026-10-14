@@ -1773,6 +1773,48 @@ func serveDirectTailscaleHTTPS(server *http.Server, port int, instanceID string,
 	}
 }
 
+// configureMacTailscaleAsync runs after the local HTTP listener and service
+// identity are available. A slow or broken Tailscale Serve must never delay
+// task-mecca web start/restart or its local health check.
+func configureMacTailscaleAsync(port int, instanceID string) {
+	publish:=func(url,mode,message string,managed bool) {
+		_ = updateServiceState(instanceID,func(state *ServiceState){
+			state.TailscaleURL=url
+			state.TLSEnabled=url!=""
+			state.TLSError=message
+			state.TailscaleManaged=managed && url!=""
+			state.TailscaleMode=mode
+		})
+	}
+	dns,ip,err:=tailscaleStatusInfo()
+	if err!=nil {publish("","unavailable",err.Error(),false);return}
+	url,managed,err:=ensureTailscaleServe(dns,port)
+	if err!=nil {publish("","unavailable",err.Error(),false);return}
+	if url==""||dns==""||ip==""{
+		publish("","unavailable","Tailscale Serve address unavailable",false)
+		return
+	}
+	verifyErr:=verifyTailscaleEndpoint(dns,ip,port,instanceID,2*time.Second)
+	if verifyErr!=nil {
+		firstErr:=verifyErr
+		if _,applyErr:=applyTailscaleServe(port);applyErr==nil{
+			verifyErr=verifyTailscaleEndpoint(dns,ip,port,instanceID,2*time.Second)
+		}else{
+			verifyErr=fmt.Errorf("Serve reapply failed after verification (%v): %w",firstErr,applyErr)
+		}
+		if verifyErr!=nil && managed {
+			beforeReset:=verifyErr
+			if resetErr:=refreshOwnedTailscaleServe(dns,port);resetErr==nil{
+				verifyErr=verifyTailscaleEndpoint(dns,ip,port,instanceID,2*time.Second)
+			}else{
+				verifyErr=fmt.Errorf("Serve reset failed after verification (%v): %w",beforeReset,resetErr)
+			}
+		}
+	}
+	if verifyErr!=nil{publish("","unavailable",verifyErr.Error(),false);return}
+	publish(url,"serve","",managed)
+}
+
 func Run(config Config) error {
     // The Preview listener must never enter the normal Tailscale/auto-host
     // management path. Explicit loopback is mandatory for a Preview child.
@@ -1810,14 +1852,12 @@ func Run(config Config) error {
 	var primaryListener net.Listener
 	localURL := ""
 	tailscaleURL := ""
-	candidateTailscaleURL := ""
-	tailscaleDNS := ""
-	tailscaleIP := ""
 	tailscaleManaged := false
 	tailscaleMode := ""
 	tlsError := ""
 	bindHost := ""
 	directTLSPending := false
+	macTLSPending := false
 	port := config.Port
 
 	if autoMode {
@@ -1829,21 +1869,10 @@ func Run(config Config) error {
 		localURL = fmt.Sprintf("http://127.0.0.1:%d/", port)
 
 		if runtime.GOOS == "darwin" {
-			dns, ip, statusErr := tailscaleStatusInfo()
-			if statusErr != nil {
-				tlsError = statusErr.Error()
-			} else {
-				serveURL, managed, serveErr := ensureTailscaleServe(dns, port)
-				if serveErr != nil {
-					tlsError = serveErr.Error()
-				} else {
-					candidateTailscaleURL = serveURL
-					tailscaleDNS = dns
-					tailscaleIP = ip
-					tailscaleManaged = managed
-					tailscaleMode = "serve"
-				}
-			}
+			// Publish the local listener and health before querying/reconfiguring
+			// Tailscale. On failure, the existing local Web must remain usable.
+			macTLSPending = true
+			tailscaleMode = "initializing"
 		} else if autoTailscaleIPv4Provider() != "" {
 			// Windows/Linux HTTPS setup can involve a slow first certificate
 			// provision. Publish the local service first and finish HTTPS in
@@ -1874,34 +1903,6 @@ func Run(config Config) error {
 	primaryErrCh := make(chan error, 1)
 	go func() { primaryErrCh <- server.Serve(primaryListener) }()
 
-	if runtime.GOOS == "darwin" && candidateTailscaleURL != "" && tailscaleDNS != "" && tailscaleIP != "" {
-		verifyErr := verifyTailscaleEndpoint(tailscaleDNS, tailscaleIP, port, config.InstanceID, 2*time.Second)
-		if verifyErr != nil {
-			firstErr := verifyErr
-			_, applyErr := applyTailscaleServe(port)
-			if applyErr == nil {
-				verifyErr = verifyTailscaleEndpoint(tailscaleDNS, tailscaleIP, port, config.InstanceID, 2*time.Second)
-			} else {
-				verifyErr = fmt.Errorf("Serve reapply failed after health check error (%v): %w", firstErr, applyErr)
-			}
-
-			if verifyErr != nil && tailscaleManaged {
-				beforeResetErr := verifyErr
-				if resetErr := refreshOwnedTailscaleServe(tailscaleDNS, port); resetErr == nil {
-					verifyErr = verifyTailscaleEndpoint(tailscaleDNS, tailscaleIP, port, config.InstanceID, 2*time.Second)
-				} else {
-					verifyErr = fmt.Errorf("Serve hard reset failed after health check error (%v): %w", beforeResetErr, resetErr)
-				}
-			}
-		}
-		if verifyErr == nil {
-			tailscaleURL = candidateTailscaleURL
-			tlsError = ""
-		} else {
-			tailscaleURL = ""
-			tlsError = verifyErr.Error()
-		}
-	}
 
 	preferredURL := localURL
 	if preferredURL == "" {
@@ -1918,6 +1919,9 @@ func Run(config Config) error {
 		return err
 	}
 	defer removeServiceState(config.InstanceID, os.Getpid())
+	if macTLSPending {
+		go configureMacTailscaleAsync(port,config.InstanceID)
+	}
 
 	fmt.Println("Task Mecca Web UI")
 	if localURL != "" {
@@ -1925,7 +1929,7 @@ func Run(config Config) error {
 	}
 	if tailscaleURL != "" {
 		fmt.Println("tailscale: " + tailscaleURL)
-	} else if directTLSPending {
+	} else if directTLSPending || macTLSPending {
 		fmt.Println("tailscale HTTPS: initializing in background")
 	} else if autoMode && tailscaleIPv4() != "" {
 		fmt.Println("tailscale HTTPS: unavailable")
