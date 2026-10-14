@@ -19,6 +19,7 @@ type Environment struct {
     Home string `json:"home"`
     Project string `json:"project"`
     Logs string `json:"logs"`
+    ParentURL string `json:"-"`
 }
 
 func PrepareEnvironment(base string,pr int,sha string)(Environment,error){
