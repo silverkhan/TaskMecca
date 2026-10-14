@@ -69,8 +69,13 @@ func registerPreviewRoutes(mux *http.ServeMux,writeJSON func(http.ResponseWriter
   if err:=dec.Decode(&request);err!=nil||request.Number<1 {
    writeJSON(w,map[string]any{"error":"invalid PR number"},400);return
   }
+  if start {
+   // The separate-process Preview path is retired. Keep Stop temporarily
+   // available for cleanup of already-running legacy instances.
+   writeJSON(w,map[string]any{"error":"separate Preview launch is retired; use Dev → PR environment switching"},410)
+   return
+  }
   timeout:=75*time.Second
-  if start{timeout=120*time.Second} // artifact download + Preview health readiness
   ctx,cancel:=stdcontext.WithTimeout(r.Context(),timeout)
   defer cancel()
   if start{
