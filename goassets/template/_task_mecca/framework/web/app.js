@@ -935,7 +935,7 @@ async function observeUpgradeRestart(session){
  const ready=await waitForRestartedWeb(target);
  if(ready===false && session===upgradeFlowSession){
   stopUpgradeFlowTimers();
-  setUpgradeFlowStage('failed',upgradeFlowCopy().restartError);
+  setUpgradeFlowStage('failed',state.upgradeRestartDiagnostic||upgradeFlowCopy().restartError);
  }
  upgradeFlowRestartWatching=false;
 }
@@ -1302,6 +1302,7 @@ async function performUpgrade() {
  const session=++upgradeFlowSession;
  stopUpgradeFlowTimers();
  upgradeFlowStartedAt=Date.now();
+ state.upgradeRestartDiagnostic='';
  upgradeFlowOwnRequest=true;
  const cli=state.versionInfo?.cli||state.hub?.cli||{};
  upgradeFlowTarget=String(cli.current||'-')+' → '+String(cli.latest||'-');
@@ -1325,10 +1326,10 @@ async function performUpgrade() {
   stopUpgradeFlowTimers();
   if(body.restart_required && body.to && body.to!==body.from){
    setUpgradeFlowStage('restarting');
-   const recovered=await waitForRestartedWeb(body.to);
+   const recovered=await waitForRestartedWeb(body.to,state.webBootID||'');
    if(recovered===false && session===upgradeFlowSession){
     stopUpgradeFlowTimers();
-    setUpgradeFlowStage('failed',upgradeFlowCopy().restartError);
+    setUpgradeFlowStage('failed',state.upgradeRestartDiagnostic||upgradeFlowCopy().restartError);
    }
    return;
   }
@@ -3470,7 +3471,9 @@ async function loadPreviewIdentity(){
   try{
     const r=await fetch('/api/health',{cache:'no-store'});
     if(!r.ok)return;
-    const identity=previewIdentityFromHealth(await r.json());
+    const health=await r.json();
+    if(health.boot_id)state.webBootID=String(health.boot_id);
+    const identity=previewIdentityFromHealth(health);
     if(!identity)return;
     state.previewIdentity=identity;
     const banner=$('#previewIdentityBanner');
@@ -4383,23 +4386,45 @@ function hubView() {
 function normalizedVersion(value) {
   return String(value??'').trim().replace(/(?:\\r|\\n)+$/g,'').trim();
 }
-async function waitForRestartedWeb(targetVersion) {
+async function waitForRestartedWeb(targetVersion,previousBoot='') {
   targetVersion=normalizedVersion(targetVersion);
   const started=Date.now();
+  let changedBootMismatchSince=0,observedVersion='',observedBoot='';
   while(Date.now()-started<30000){
     try {
-      const r=await fetch(`/api/health?restart_wait=${Date.now()}`,{cache:'no-store'});
+      const r=await fetch('/api/health?restart_wait='+Date.now(),{cache:'no-store'});
       if(r.ok){
         const body=await r.json();
-        if(!targetVersion||normalizedVersion(body.version)===targetVersion){ location.reload(); return true; }
+        const runningVersion=normalizedVersion(body.version||'');
+        const runningBoot=String(body.boot_id||'');
+        const bootChanged=!previousBoot||!runningBoot||runningBoot!==previousBoot;
+        observedVersion=runningVersion;observedBoot=runningBoot;
+        if(bootChanged&&(!targetVersion||runningVersion===targetVersion)){
+          state.webBootID=runningBoot||state.webBootID;
+          location.reload();
+          return true;
+        }
+        if(previousBoot&&runningBoot&&runningBoot!==previousBoot&&targetVersion&&runningVersion!==targetVersion){
+          if(!changedBootMismatchSince)changedBootMismatchSince=Date.now();
+          // A new process is running, but its embedded version does not
+          // match the expected version. Don't show a fake 30-second restart.
+          if(Date.now()-changedBootMismatchSince>2000){
+            const reason='Web is running a different version ('+runningVersion+') than the requested update ('+targetVersion+'). Check upgrade logs and retained binary.';
+            state.upgradeRestartDiagnostic=reason;
+            return false;
+          }
+        }else{
+          changedBootMismatchSince=0;
+        }
       }
-    } catch(_) {}
+    }catch(_){}
     await new Promise(resolve=>setTimeout(resolve,500));
   }
-  const c=$('#content');
-  if(c)c.innerHTML=`<div class="load-error"><h2>Task Mecca Web 재시작을 확인하지 못했습니다</h2><p>CLI 업데이트 자체는 완료됐을 수 있습니다. 터미널에서 <code>task-mecca web status</code>로 상태를 확인하고, 이전 버전이 계속 실행 중이면 <code>task-mecca web restart</code>를 실행한 뒤 이 페이지를 새로고침하세요.</p></div>`;
+  const detail=observedVersion?(' Observed version: '+observedVersion+'; expected: '+targetVersion+'; boot: '+observedBoot+'.'):' The new HTTP health endpoint did not respond.';
+  state.upgradeRestartDiagnostic='Web restart check failed.'+detail+' Check task-mecca web status and logs.';
   return false;
 }
+
 function migrationResyncPrompt(result) {
   const changed=(result.changed_instructions||[]).join(', ') || '-';
   if(state.language==='ko'){
@@ -5797,6 +5822,9 @@ function storeListPage(key,data,epoch,source){
  pruneListPages(cache,cache.current,Math.max(1,Number(data.pages)||1));
 }
 function prefetchListPages(query,data,epoch,source){
+ // A slow foreground list must not trigger two more full control-tower
+ // reconciliations. Keep the normal adjacent-page prefetch for fast projects.
+ if(state.listLoadSlow)return;
  if(!Number(data.pages)||!Number(data.page_size))return;
  const key=listContextKey(query),cache=pageCache(key);
  const current=Number(data.page)||1,pages=Number(data.pages)||1;
@@ -5815,6 +5843,7 @@ function prefetchListPages(query,data,epoch,source){
 }
 async function refreshListSummary(){
  if(!state.project||state.view!=='backlog'||state.detail)return;
+ if(listRefreshInFlight||state.listRevalidating)return;
  if(listSummaryInFlight){listSummaryQueued=true;return listSummaryInFlight;}
  const query=listQueryString(),key=listContextKey(query),source=listSourceKey(),epoch=listCacheEpoch(source),serial=++listSummarySerial;
  listSummaryInFlight=(async()=>{try{
@@ -5856,11 +5885,13 @@ async function refreshList(preserveSelection=false) {
  const cached=cache.pages.get(requestedPage);
  if(cached && !preserveSelection){state.listData=cachedListRows(cached,listContextKey());state.listDataContext=listContextKey();state.listRevalidating=true;state.loadError='';if(state.view==='backlog')render();}
  const controller=new AbortController();
+ const listRequestStartedAt=Date.now();
  listRefreshAbort=controller;listRefreshContext=key;
  const request=(async()=>{try{
   const r=await fetch('/api/backlog/tasks?'+targetQuery,{cache:'no-store',signal:controller.signal});
   if(!r.ok){let detail='';try{detail=(await r.json()).error||'';}catch(_){}throw new Error(detail||`HTTP ${r.status}`);}
   const data=await r.json();if(!isCurrent())return;
+  state.listLoadSlow=Date.now()-listRequestStartedAt>2000;
   cache.current=Math.max(1,Number(data.page)||1);storeListPage(key,data,epoch,source);
   const observed=Date.parse(data.snapshot_at)||0;if(observed<(listSummaryObserved.get(key)||0)){if(observed)listRefreshQueued=true;return;}listSummaryObserved.set(key,observed);listSummaryLatest.set(key,data);
   state.listData=data;state.listDataContext=key;state.listRevalidating=false;
@@ -5876,7 +5907,7 @@ async function refreshList(preserveSelection=false) {
   $('#connectionDot').style.background='var(--ok)';if(state.view==='backlog')render();
   // Start adjacent requests only after the foreground rows have rendered.
   const acceptedQuery=listQueryString();
-  requestAnimationFrame(()=>requestAnimationFrame(()=>{if(targetProject===state.project&&targetBacklog===state.backlog&&acceptedQuery===listQueryString()&&targetView===state.view&&targetDetail===state.detail&&listCacheEpoch(source)===epoch&&listPageCaches.get(key)===cache){prefetchListPages(acceptedQuery,data,epoch,source);scheduleTaskDetailPrefetch(acceptedQuery);}}));
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{if(targetProject===state.project&&targetBacklog===state.backlog&&acceptedQuery===listQueryString()&&targetView===state.view&&targetDetail===state.detail&&listCacheEpoch(source)===epoch&&listPageCaches.get(key)===cache){if(!state.listLoadSlow){prefetchListPages(acceptedQuery,data,epoch,source);scheduleTaskDetailPrefetch(acceptedQuery);}}}));
  }catch(e){if(!isCurrent())return;state.listRevalidating=false;state.loadError=String(e?.message||e||'Unknown error');$('#connectionDot').style.background='var(--danger)';if(!state.listData)render();}
  finally{
   // A canceled earlier request must not clear or queue over a newer one.

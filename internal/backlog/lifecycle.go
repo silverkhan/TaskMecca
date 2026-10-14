@@ -3,6 +3,9 @@ package backlog
 import (
     "github.com/silverkhan/TaskMecca/internal/projectguard"
     "encoding/json"
+    "crypto/sha256"
+    "encoding/hex"
+    "io"
     "os"
     "os/exec"
     "path/filepath"
@@ -38,22 +41,85 @@ var lifecycleGitCache = struct {
     entries map[string]lifecycleGitCacheEntry
 }{entries: map[string]lifecycleGitCacheEntry{}}
 
+// Keep the full Git rename/lifecycle evidence; cache the expensive historical
+// log across Web process restarts, keyed to the last Git commit touching the backlog paths and
+// pathspecs. No canonical evidence or notification journal is modified.
+const lifecycleLogCacheMax = 64 << 20
+
+type persistedLifecycleGitLog struct {
+    Head string `json:"head"`
+    Output string `json:"output"`
+}
+
+func lifecycleGitLogCachePath(repo string,pathspecs []string) (string,error) {
+    directory,err:=os.UserCacheDir()
+    if err!=nil {return "",err}
+    digest:=sha256.Sum256([]byte(repo+"\\x00"+strings.Join(pathspecs,"\\x00")))
+    return filepath.Join(directory,"task-mecca","lifecycle-git",hex.EncodeToString(digest[:])+".json"),nil
+}
+
+func loadPersistedLifecycleGitLog(path,head string) (string,bool) {
+    info,err:=os.Lstat(path)
+    if err!=nil||!info.Mode().IsRegular()||info.Size()<1||info.Size()>lifecycleLogCacheMax {return "",false}
+    file,err:=os.Open(path)
+    if err!=nil{return "",false}
+    defer file.Close()
+    var cached persistedLifecycleGitLog
+    decoder:=json.NewDecoder(io.LimitReader(file,lifecycleLogCacheMax+1))
+    if decoder.Decode(&cached)!=nil||cached.Head!=head{return "",false}
+    return cached.Output,true
+}
+
+func persistLifecycleGitLog(path,head,output string) {
+    if len(output)==0||len(output)>lifecycleLogCacheMax-1024{return}
+    directory:=filepath.Dir(path)
+    if err:=os.MkdirAll(directory,0700);err!=nil{return}
+    if info,err:=os.Lstat(path);err==nil&&(!info.Mode().IsRegular()){return}
+    data,err:=json.Marshal(persistedLifecycleGitLog{Head:head,Output:output})
+    if err!=nil||len(data)>lifecycleLogCacheMax{return}
+    temp,err:=os.CreateTemp(directory,".lifecycle-")
+    if err!=nil{return}
+    defer os.Remove(temp.Name())
+    if err=temp.Chmod(0600);err!=nil{temp.Close();return}
+    if _,err=temp.Write(data);err!=nil{temp.Close();return}
+    if err=temp.Sync();err!=nil{temp.Close();return}
+    if err=temp.Close();err!=nil{return}
+    _=os.Rename(temp.Name(),path)
+}
+
 func lifecycleGitLog(repo string,pathspecs []string) string {
-    head:=strings.TrimSpace(gitOutput(repo,"rev-parse","HEAD"))
-    key:=repo+"\x00"+strings.Join(pathspecs,"\x00")
+    // The latest commit touching either backlog path is a stronger cache
+    // identity than repository HEAD: Dev/PR commits elsewhere do not force a
+    // 400+ backlog Git history replay, while path updates still invalidate.
+    revisionArgs:=append([]string{"log","-1","--format=%H","--"},pathspecs...)
+    head:=strings.TrimSpace(gitOutput(repo,revisionArgs...))
+    key:=repo+"\\x00"+strings.Join(pathspecs,"\\x00")
     if head!="" {
         lifecycleGitCache.Lock()
         cached,ok:=lifecycleGitCache.entries[key]
         lifecycleGitCache.Unlock()
-        if ok && cached.head==head { return cached.output }
+        if ok && cached.head==head {return cached.output}
+        // Loading a persisted cache avoids running git log -M across the
+        // entire historical backlog after each Web/update restart or unrelated PR.
+        if path,err:=lifecycleGitLogCachePath(repo,pathspecs);err==nil{
+            if out,ok:=loadPersistedLifecycleGitLog(path,head);ok{
+                lifecycleGitCache.Lock()
+                lifecycleGitCache.entries[key]=lifecycleGitCacheEntry{head:head,output:out}
+                lifecycleGitCache.Unlock()
+                return out
+            }
+        }
     }
     args:=[]string{"log","--reverse","-M","--format=@@COLLAB@@%cI","--name-status","--"}
     args=append(args,pathspecs...)
     out:=gitOutput(repo,args...)
-    if head!="" {
+    if head!="" && out!="" {
         lifecycleGitCache.Lock()
         lifecycleGitCache.entries[key]=lifecycleGitCacheEntry{head:head,output:out}
         lifecycleGitCache.Unlock()
+        if path,err:=lifecycleGitLogCachePath(repo,pathspecs);err==nil{
+            persistLifecycleGitLog(path,head,out)
+        }
     }
     return out
 }

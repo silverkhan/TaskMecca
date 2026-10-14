@@ -21,7 +21,7 @@ import (
     "github.com/silverkhan/TaskMecca/internal/webui"
 )
 
-// AID-154: non-functional PR environment switching smoke marker.
+// AID-154: PR switch smoke build marker (no runtime behavior change).
 var version = "0.2.51"
 
 // A PR binary is built from its source without Dev release ldflags. Preserve

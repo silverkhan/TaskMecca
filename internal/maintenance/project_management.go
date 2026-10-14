@@ -30,6 +30,7 @@ var projectMonitoringLocks = struct {
 type projectMonitoringLock struct {
  mu sync.Mutex
  users int
+ foregroundWaiters int
 }
 
 func acquireProjectMonitoringLock(path string) (func(), error) {
@@ -42,8 +43,12 @@ func acquireProjectMonitoringLock(path string) (func(), error) {
   projectMonitoringLocks.entries[canonical]=entry
  }
  entry.users++
+ entry.foregroundWaiters++
  projectMonitoringLocks.Unlock()
  entry.mu.Lock()
+ projectMonitoringLocks.Lock()
+ entry.foregroundWaiters--
+ projectMonitoringLocks.Unlock()
  return func() {
   entry.mu.Unlock()
   projectMonitoringLocks.Lock()
@@ -51,6 +56,45 @@ func acquireProjectMonitoringLock(path string) (func(), error) {
   if entry.users==0 {delete(projectMonitoringLocks.entries,canonical)}
   projectMonitoringLocks.Unlock()
  },nil
+}
+
+// Background scans are best effort. They never join the queue ahead of a
+// foreground HTTP backlog/detail request. This prevents a 3-second attention
+// tick and 15-second operation scan from indefinitely overtaking the UI.
+func tryAcquireProjectMonitoringLock(path string) (func(), bool) {
+ canonical,err:=projectguard.CanonicalPath(path)
+ if err!=nil{return nil,false}
+ projectMonitoringLocks.Lock()
+ entry:=projectMonitoringLocks.entries[canonical]
+ if entry==nil {
+  entry=&projectMonitoringLock{}
+  projectMonitoringLocks.entries[canonical]=entry
+ }
+ if entry.foregroundWaiters>0 || !entry.mu.TryLock() {
+  if entry.users==0 {delete(projectMonitoringLocks.entries,canonical)}
+  projectMonitoringLocks.Unlock()
+  return nil,false
+ }
+ entry.users++
+ projectMonitoringLocks.Unlock()
+ return func(){
+  entry.mu.Unlock()
+  projectMonitoringLocks.Lock()
+  entry.users--
+  if entry.users==0 {delete(projectMonitoringLocks.entries,canonical)}
+  projectMonitoringLocks.Unlock()
+ },true
+}
+
+func TryWithProjectMonitoring(path string, work func()) bool {
+ if !projectManagementMu.TryRLock(){return false}
+ defer projectManagementMu.RUnlock()
+ release,ok:=tryAcquireProjectMonitoringLock(path)
+ if !ok{return false}
+ defer release()
+ if !projectMonitoringAllowed(path){return false}
+ work()
+ return true
 }
 
 // Background monitoring requires active registration. Forgetting an archive

@@ -73,3 +73,44 @@ test('restart displays its own phase and a distinct timeout error',async()=>{
  await f.api.performUpgrade();
  assert.deepEqual(f.stages,['checking','restarting','failed']);
 });
+
+test('restart confirmation detects a new Web boot with the wrong installed version without waiting 30 seconds',async()=>{
+ const start=source.indexOf('async function waitForRestartedWeb(');
+ const end=source.indexOf('\nfunction migrationResyncPrompt(',start);
+ assert.ok(start>=0&&end>start);
+ let now=0,calls=0,loads=0;
+ const state={webBootID:'old-boot',upgradeRestartDiagnostic:''};
+ const context=vm.createContext({
+   state,Promise,Date:{now:()=>{now+=750;return now}},
+   setTimeout:callback=>callback(),
+   normalizedVersion:value=>String(value).replace(/^v/,''),
+   location:{reload:()=>loads++},
+   fetch:async()=>{
+     calls++;
+     return {ok:true,json:async()=>({boot_id:'new-boot',version:'0.3.1-dev.24'})};
+   }
+ });
+ vm.runInContext(source.slice(start,end)+'\nglobalThis.confirmRestart=waitForRestartedWeb;',context);
+ const ok=await context.confirmRestart('0.3.1-dev.25','old-boot');
+ assert.equal(ok,false);
+ assert.equal(loads,0);
+ assert.ok(calls<15,'new boot/version mismatch waited through the full timeout');
+ assert.match(state.upgradeRestartDiagnostic,/0.3.1-dev.24/);
+ assert.match(state.upgradeRestartDiagnostic,/0.3.1-dev.25/);
+});
+
+test('restart confirmation accepts correct new process and reloads',async()=>{
+ const start=source.indexOf('async function waitForRestartedWeb(');
+ const end=source.indexOf('\nfunction migrationResyncPrompt(',start);
+ let loads=0;
+ const state={webBootID:'old-boot',upgradeRestartDiagnostic:''};
+ const context=vm.createContext({
+   state,Promise,Date:{now:()=>0},setTimeout:callback=>callback(),
+   normalizedVersion:value=>String(value),location:{reload:()=>loads++},
+   fetch:async()=>({ok:true,json:async()=>({boot_id:'new-boot',version:'0.3.1-dev.25'})})
+ });
+ vm.runInContext(source.slice(start,end)+'\nglobalThis.confirmRestart=waitForRestartedWeb;',context);
+ assert.equal(await context.confirmRestart('0.3.1-dev.25','old-boot'),true);
+ assert.equal(loads,1);
+ assert.equal(state.webBootID,'new-boot');
+});
