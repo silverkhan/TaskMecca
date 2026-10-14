@@ -17,6 +17,7 @@ func TestPreviewMutationRequiresSameOriginAndLocalClient(t *testing.T){
  if !previewLocalMutation(base){t.Fatal("trusted local action unexpectedly denied")}
  for name,mutate:=range map[string]func(*http.Request){
   "remote":func(r *http.Request){r.RemoteAddr="100.100.218.126:51000"},
+  "proxied":func(r *http.Request){r.Host="aiden-macbookpro.tailnet.ts.net:18765";r.Header.Set("Origin","https://aiden-macbookpro.tailnet.ts.net:18765")},
   "bad_origin":func(r *http.Request){r.Header.Set("Origin","https://evil.example")},
   "missing_origin":func(r *http.Request){r.Header.Del("Origin")},
   "no_header":func(r *http.Request){r.Header.Del("X-Task-Mecca-Action")},
