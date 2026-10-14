@@ -15,6 +15,7 @@ import (
     "path/filepath"
     "strconv"
     "strings"
+    "time"
 )
 
 const maxArtifactArchiveBytes int64 = 150 << 20
@@ -77,17 +78,44 @@ func (c *Client) DownloadVerified(ctx context.Context, build Build,cacheRoot,goo
     if err!=nil{return "",err}
 
     archiveURL:=strings.TrimRight(c.APIURL,"/")+fmt.Sprintf("/repos/%s/actions/artifacts/%d/zip",Repository,build.ArtifactID)
-    req,err:=http.NewRequestWithContext(ctx,http.MethodGet,archiveURL,nil)
-    if err!=nil{return "",err}
-    req.Header.Set("Accept","application/vnd.github+json")
-    req.Header.Set("X-GitHub-Api-Version","2022-11-28")
-    if c.Token!=""{req.Header.Set("Authorization","Bearer "+c.Token)}
+    // ZIP downloads require an Actions:read credential even when the public
+    // PR metadata and artifact listing were accessible anonymously.
     client:=c.HTTP
-    if client==nil{client=&http.Client{}}
-    resp,err:=client.Do(req)
+    if client==nil{client=&http.Client{Timeout:65*time.Second}}
+    fetch:=func(token string)(*http.Response,error){
+        req,err:=http.NewRequestWithContext(ctx,http.MethodGet,archiveURL,nil)
+        if err!=nil{return nil,err}
+        req.Header.Set("Accept","application/vnd.github+json")
+        req.Header.Set("X-GitHub-Api-Version","2022-11-28")
+        if token!=""{req.Header.Set("Authorization","Bearer "+token)}
+        return client.Do(req)
+    }
+    resp,err:=fetch(c.Token)
     if err!=nil{return "",fmt.Errorf("Preview artifact download failed: %w",err)}
+    if resp.StatusCode==http.StatusUnauthorized&&c.Token==""&&c.TokenFallback!=nil {
+        _=resp.Body.Close()
+        // Existing gh CLI sign-in can supply credentials without making gh
+        // a mandatory runtime dependency or forwarding secrets to PR code.
+        fallback,tokenErr:=c.TokenFallback(ctx)
+        if tokenErr==nil&&fallback!="" {
+            resp,err=fetch(fallback)
+            if err!=nil{return "",fmt.Errorf("Preview authenticated download failed: %w",err)}
+        }else{
+            return "",errors.New("GitHub Actions artifact download requires Actions:read authentication. Sign in using 'gh auth login -h github.com' (optional GitHub CLI), or set TASK_MECCA_GITHUB_TOKEN for the Dev Web service")
+        }
+    }
     defer resp.Body.Close()
-    if resp.StatusCode!=http.StatusOK{return "",fmt.Errorf("Preview artifact download status %d",resp.StatusCode)}
+    switch resp.StatusCode {
+    case http.StatusOK:
+    case http.StatusUnauthorized:
+        return "",errors.New("GitHub rejected Preview artifact credentials (HTTP 401). Provide a valid TASK_MECCA_GITHUB_TOKEN with Actions:read, or sign in using 'gh auth login -h github.com'")
+    case http.StatusForbidden:
+        return "",errors.New("GitHub denied Preview artifact access (HTTP 403). Confirm Actions:read permission and repository access for the Dev Web credentials")
+    case http.StatusGone:
+        return "",errors.New("GitHub Preview artifact has expired (HTTP 410); regenerate the PR build")
+    default:
+        return "",fmt.Errorf("Preview artifact download failed (HTTP %d)",resp.StatusCode)
+    }
     if resp.ContentLength>maxArtifactArchiveBytes{return "",errors.New("Preview artifact archive too large")}
     archive,err:=io.ReadAll(io.LimitReader(resp.Body,maxArtifactArchiveBytes+1))
     if err!=nil{return "",err}
