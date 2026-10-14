@@ -90,6 +90,7 @@ func ChildEnvironment(parent []string,env Environment) ([]string,error) {
     passed["XDG_CACHE_HOME"]=filepath.Join(env.Home,".cache")
     passed["TASK_MECCA_HOME"]=filepath.Join(env.Home,".task-mecca")
     passed["TASK_MECCA_PREVIEW_MODE"]="1"
+    passed["TASK_MECCA_TELEGRAM_TRANSPORT"]="disabled"
     passed["TASK_MECCA_CHANNEL"]="dev"
     keys:=make([]string,0,len(passed))
     for k:=range passed{keys=append(keys,k)}
