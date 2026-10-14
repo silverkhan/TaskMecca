@@ -3623,6 +3623,16 @@ async function refreshExecutionTarget(){
     if(!response.ok)return;
     const payload=await response.json();
     state.executionTarget=payload.target||null;
+    const banner=$('#prExecutionBanner'),target=state.executionTarget;
+    if(banner){
+      banner.hidden=target?.kind!=='pr';
+      if(target?.kind==='pr'){
+        banner.innerHTML='<strong>PR #'+Number(target.pr_number)+' · '+esc(String(target.head_sha||'').slice(0,10))+'</strong> · '+
+          esc(state.language==='ko'?'전체 실행 환경':'Full execution environment')+
+          ' <button id="prReturnDev" type="button" class="action-btn secondary">'+esc(state.language==='ko'?'Dev 복귀':'Return to Dev')+'</button>';
+        $('#prReturnDev')?.addEventListener('click',()=>{void returnToPinnedDev().catch(e=>alert(String(e?.message||e)))});
+      }
+    }
   }catch(_){}
 }
 async function executePRSwitch(number){
