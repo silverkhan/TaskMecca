@@ -4,6 +4,7 @@ import (
     "net/http"
     "os"
     "strings"
+    "strconv"
 )
 
 // PreviewMode is a defense-in-depth guard for builds which support it.
@@ -40,4 +41,13 @@ func previewGuard(next http.Handler) http.Handler {
         }
         next.ServeHTTP(w,r)
     })
+}
+
+func previewIdentity() (int,string) {
+    if !PreviewMode(){return 0,""}
+    pr,err:=strconv.Atoi(os.Getenv("TASK_MECCA_PREVIEW_PR"))
+    sha:=strings.TrimSpace(os.Getenv("TASK_MECCA_PREVIEW_SHA"))
+    if err!=nil||pr<=0||len(sha)!=40{return 0,""}
+    for _,r:=range sha{if !(r>='0'&&r<='9'||r>='a'&&r<='f'){return 0,""}}
+    return pr,sha
 }
