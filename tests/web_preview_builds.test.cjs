@@ -8,6 +8,7 @@ function setup(){
   const store=new Map();
   const prompts=[];
   const ctx=vm.createContext({
+    prompts,
     window:{confirm(value){prompts.push(value);return false}},
     URLSearchParams,
     location:{search:'?view=preview',pathname:'/',reload(){}},
