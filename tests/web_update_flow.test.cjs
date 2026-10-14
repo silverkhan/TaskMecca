@@ -8,11 +8,11 @@ const performStart=source.indexOf('async function performUpgrade()');
 const performEnd=source.indexOf('async function loadRuntimeHistory(',performStart);
 if(start<0||end<0||performStart<0||performEnd<0)throw Error('Missing upgrade flow sources');
 
-function createFlow(fetch,loadReleaseNoteDetail=async()=>({version:'0.2.53-dev.200'})){
+function createFlow(fetch,loadReleaseNoteDetail=async()=>({version:'0.2.53-dev.200'}),scheduleTimeout=()=>{}){
  const stages=[],modal=[];
  const state={releaseNotePopup:null,releaseNotePopupMode:'installed',versionInfo:{cli:{current:'0.2.53-dev.199',latest:'0.2.53-dev.200'}}};
  const context=vm.createContext({state,fetch,loadReleaseNoteDetail,stages,modal,
-   setInterval:()=>17,clearInterval:()=>{},setTimeout:()=>{},Date,Promise,
+   setInterval:()=>17,clearInterval:()=>{},setTimeout:scheduleTimeout,Date,Promise,
    renderGlobalUpdateIndicator:()=>{},renderReleaseNoteModal:()=>modal.push(state.releaseNotePopupMode),
    waitForRestartedWeb:async()=>false,refreshVersionInfo:async()=>({ok:true}),
    upgradeFlowCopy:()=>({restartError:'Web restart failed'}),
@@ -113,4 +113,41 @@ test('restart confirmation accepts correct new process and reloads',async()=>{
  assert.equal(await context.confirmRestart('0.3.1-dev.25','old-boot'),true);
  assert.equal(loads,1);
  assert.equal(state.webBootID,'new-boot');
+});
+
+test('slow release note lookup stops blocking update confirmation after a bounded wait',async()=>{
+ let finish,timeoutFn,noteCalls=0;
+ const f=createFlow(()=>{throw Error('user has not approved install')},()=>{
+  noteCalls++;
+  return new Promise(resolve=>{finish=resolve});
+ },fn=>{timeoutFn=fn});
+ const pending=f.api.openUpgradeDetails('0.2.53-dev.200');
+ assert.equal(f.api.mode(),'notes');
+ assert.equal(noteCalls,1);
+ assert.equal(typeof timeoutFn,'function');
+ timeoutFn();
+ await pending;
+ assert.equal(f.api.mode(),'no-notes');
+ assert.deepEqual(f.stages,['notes','no-notes']);
+ assert.equal(f.modal.length,0);
+ // Late metadata can fill the browser cache but must not pop up a modal
+ // after the user has already been offered a decision.
+ finish({version:'0.2.53-dev.200'});
+ await tick();
+ assert.equal(f.api.mode(),'no-notes');
+ assert.equal(f.modal.length,0);
+});
+
+test('update POST passes already displayed latest release as a hint, not a forced refresh',async()=>{
+ const calls=[];
+ const f=createFlow(async (url,options)=>{
+  calls.push({url,options});
+  return {ok:true,status:200,json:async()=>({from:'0.2.53-dev.199',to:'0.2.53-dev.200',restart_required:false})};
+ });
+ await f.api.performUpgrade();
+ assert.equal(calls.length,1);
+ assert.equal(calls[0].url,'/api/upgrade');
+ assert.equal(calls[0].options.headers['Content-Type'],'application/json');
+ assert.deepEqual(JSON.parse(calls[0].options.body),{expected_version:'0.2.53-dev.200'});
+ assert.deepEqual(f.stages,['checking','completed']);
 });
