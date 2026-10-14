@@ -5799,7 +5799,7 @@ function storeListPage(key,data,epoch,source){
 function prefetchListPages(query,data,epoch,source){
  // A slow foreground list must not trigger two more full control-tower
  // reconciliations. Keep the normal adjacent-page prefetch for fast projects.
- if(state.listLoadSlow||listRefreshInFlight||state.listRevalidating)return;
+ if(state.listLoadSlow)return;
  if(!Number(data.pages)||!Number(data.page_size))return;
  const key=listContextKey(query),cache=pageCache(key);
  const current=Number(data.page)||1,pages=Number(data.pages)||1;
