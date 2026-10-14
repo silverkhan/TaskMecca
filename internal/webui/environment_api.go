@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"time"
 
 	"github.com/silverkhan/TaskMecca/internal/maintenance"
@@ -39,6 +40,7 @@ func registerEnvironmentRoutes(
 		// Mere reverse-proxy loopback is not authorization; the existing
 		// terminal identity/origin policy must approve such requests.
 		trustedRemote:=r.Method==http.MethodPost && r.Header.Get("X-Task-Mecca-Action")=="1" &&
+			strings.TrimSpace(r.Header.Get("Origin"))!="" &&
 			terminalAccessAllowed(r,readTerminalSecuritySettings()) && terminalOriginAllowed(r)
 		if !previewLocalMutation(r)&&!trustedRemote{
 			writeJSON(w,map[string]any{"error":"PR version switching requires local access or an authorized Tailscale administration connection"},403)
