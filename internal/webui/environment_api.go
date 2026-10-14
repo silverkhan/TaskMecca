@@ -3,7 +3,6 @@ package webui
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -81,7 +80,7 @@ func registerEnvironmentRoutes(
 			}
 			cache,cacheErr:=os.UserCacheDir()
 			if cacheErr!=nil{writeJSON(w,map[string]any{"error":cacheErr.Error()},500);return}
-			path,downloadErr:=client.DownloadVerified(ctx,match,filepath.Join(cache,"task-mecca","environment-switch"),runtime.GOOS,runtime.GOARCH)
+			path,downloadErr:=client.DownloadVerified(ctx,match,filepath.Join(cache,"task-mecca","environment-switch"),runtime.GOOS,runtime.GOARCH,true)
 			if downloadErr!=nil{writeJSON(w,map[string]any{"error":downloadErr.Error()},409);return}
 			// Requery immediately before installation; a PR that gained a
 			// commit during downloading must not be installed as "current".
@@ -106,12 +105,7 @@ func registerEnvironmentRoutes(
 		}
 		writeJSON(w,map[string]any{"ok":true,"result":result,"restarting":true},200)
 		if result.RestartRequired {
-			select {case restartCh<-result:default:
-				// Should be unreachable for the normal exclusive server
-				// restart handoff. Persisted checkpoint prevents false
-				// success if a channel consumer is unexpectedly absent.
-				_ = errors.New("restart handoff unavailable")
-			}
+			select {case restartCh<-result:default:}
 		}
 	}
 	mux.HandleFunc("/api/environment/enter-pr",func(w http.ResponseWriter,r *http.Request){mutate(w,r,true)})
