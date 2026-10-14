@@ -244,6 +244,45 @@ func operationEvidenceRecovery(item operationIncident, attempts []runtimeobs.Att
 	return "", false
 }
 
+// A verified, later Hook event for the *same attempt* can retire an
+// unverified warning even when the original binding had no assignment ID.
+// It cannot retire a confirmed error, interruption, or shutdown.
+func operationExactAttemptRecovered(item operationIncident, attempts []runtimeobs.Attempt, now time.Time) (string, string, bool) {
+ if item.Quality!="verification_required" || (item.Kind!="runtime_unknown" && item.Kind!="no_signal") || item.AttemptID=="" {return "","",false}
+ detected,err:=time.Parse(time.RFC3339Nano,item.DetectedAt)
+ if err!=nil || detected.IsZero(){return "","",false}
+ for _,a:=range attempts {
+  if a.AttemptID!=item.AttemptID || !strings.EqualFold(a.TaskID,item.TaskID) ||
+   a.AgentPath!=item.AgentPath || (item.AssignmentID!="" && a.BindingEvidence["assignment_id"]!=item.AssignmentID) ||
+   a.StateEvidenceSource!=runtimeobs.EvidenceHook ||
+   (a.StateObservationQuality!=runtimeobs.QualityObserved && a.StateObservationQuality!=runtimeobs.QualityAuthoritative){continue}
+  switch a.CurrentState {
+  case runtimeobs.StateCompleted:
+   if !a.Terminal{continue}
+   at,err:=time.Parse(time.RFC3339Nano,a.EndedAt)
+   if err==nil&&at.After(detected)&&!at.After(now){
+    return at.UTC().Format(time.RFC3339Nano),"same attempt has confirmed Hook completion; previous warning retired without changing runtime evidence",true
+   }
+  case runtimeobs.StateRunning:
+   if a.Terminal{continue}
+   at,err:=time.Parse(time.RFC3339Nano,a.LastObservedAt)
+   if err==nil&&at.After(detected)&&!at.After(now)&&now.Sub(at)<runtimeobs.StaleWarnDuration(){
+    return at.UTC().Format(time.RFC3339Nano),"same attempt has later observed Hook running state; previous warning retired without changing runtime evidence",true
+   }
+  }
+ }
+ return "","",false
+}
+
+// A canonical done task makes its previous *verification-required* assignment
+// or silence warning no longer actionable. This is not proof of Worker death
+// or success and never applies to actual confirmed terminal failures.
+// Read only after a successful, unambiguous canonical inventory.
+func operationCanonicalDoneRows(rows map[string][]backlog.Record, taskID string) bool {
+ matches:=rows[strings.ToUpper(strings.TrimSpace(taskID))]
+ return len(matches)==1 && matches[0].State=="done"
+}
+
 func scanOperationProject(project string, now time.Time) (operationJournal, error) {
 	operationMu.Lock()
 	defer operationMu.Unlock()
@@ -265,6 +304,18 @@ func scanOperationProject(project string, now time.Time) (operationJournal, erro
 	policies := operationPolicies(project, ledger, now)
 	recoveryPolicies := operationRecoveryPolicy(project, ledger, now)
 	stages := currentOperationStages(operationStages(project, ledger, now), policies)
+	// Lazily load only when an unverified session warning actually needs
+	// resolution. Unavailable or ambiguous catalogs cannot close warnings.
+	var canonicalRows map[string][]backlog.Record
+	var canonicalLoaded, canonicalAvailable bool
+	canonicalDone := func(taskID string) bool {
+		if taskID == "" { return false }
+		if !canonicalLoaded {
+			canonicalRows, canonicalAvailable = operationCanonicalRows(project)
+			canonicalLoaded = true
+		}
+		return canonicalAvailable && operationCanonicalDoneRows(canonicalRows, taskID)
+	}
 	for i := range stages {
 		if completion, ok := completions[stages[i].AttemptID]; ok && !stages[i].Failed {
 			stages[i].Stage = "controller_verified_complete"
@@ -281,6 +332,9 @@ func scanOperationProject(project string, now time.Time) (operationJournal, erro
 			verified[attempt.Provider] = operationHookVerifier(project, attempt.Provider)
 		}
 		if signal, ok := classifyOperation(project, attempt, now, verified[attempt.Provider]); ok {
+			// Completed canonical tasks no longer need unverified active-session
+			// warnings. Confirmed failures remain actionable independently.
+			if signal.alert && signal.incident.Quality=="verification_required" && canonicalDone(signal.incident.TaskID) {continue}
 			// Suppress the same obsolete source on every scan, not only while
 			// its first incident is active. Otherwise resolution would recur.
 			latestAssignmentStillCanonical := operationLatestAssignmentSourceAlreadyResolved(signal.incident, journal) && operationCanonicalTaskIsDoing(project, signal.incident.TaskID)
@@ -344,6 +398,7 @@ func scanOperationProject(project string, now time.Time) (operationJournal, erro
 						if matched {
 							continue
 						}
+						if canonicalDone(id){continue}
 						key := "task:" + id
 						signals[key] = operationSignal{key: key, alert: true, incident: operationIncident{
 							Project: project, TaskID: id, AgentPath: agent, AssignmentID: strings.TrimSpace(fmt.Sprint(item["assignment_id"])), Kind: "runtime_unknown", Quality: "verification_required",
@@ -403,6 +458,18 @@ func scanOperationProject(project string, now time.Time) (operationJournal, erro
 			item.RecoveryEvidence = "bounded normal handoff/review grace; runtime evidence unchanged"
 			continue
 		}
+		if at,evidence,recovered:=operationExactAttemptRecovered(*item,ledger.Attempts,now);recovered{
+			item.RecoveredAt=at
+			item.RecoveryEvidence=evidence
+			if signal,ok:=signals[item.Key];ok&&signal.incident.Quality=="verification_required"{delete(signals,item.Key)}
+			continue
+		}
+		if item.Quality=="verification_required" && (item.Kind=="runtime_unknown"||item.Kind=="no_signal") && canonicalDone(item.TaskID) {
+			item.RecoveredAt=nowText
+			item.RecoveryEvidence="canonical task is done; unverified session warning no longer actionable, runtime terminal evidence unchanged"
+			if signal,ok:=signals[item.Key];ok&&signal.incident.Quality=="verification_required"{delete(signals,item.Key)}
+			continue
+		}
 		if at, recovered := operationEvidenceRecovery(*item, ledger.Attempts, now); recovered {
 			item.RecoveredAt = at
 			item.RecoveryEvidence = "same assignment has recent observed Hook execution; prior runtime evidence unchanged"
@@ -439,10 +506,17 @@ func scanOperationProject(project string, now time.Time) (operationJournal, erro
 		if signal, ok := signals[key]; ok && signal.incident.Kind == item.Kind {
 			item.LastObservedAt = signal.incident.LastObservedAt
 			delete(signals, key)
-		} else if _, present := signals[key]; present || item.Kind != "runtime_unknown" {
+		} else if _, present := signals[key]; present {
+			// A changed kind at the same attempt key is a new episode.
+			item.RecoveredAt = nowText
+			delete(active, key)
+		} else if item.Kind != "runtime_unknown" {
 			item.RecoveredAt = nowText
 			delete(active, key)
 		}
+		// For runtime_unknown, missing a signal is not itself proof of
+		// resolution (a sensor may simply have stopped reporting). The exact
+		// Hook/canonical checks above retire it when evidence is available.
 	}
 	keys := make([]string, 0, len(signals))
 	for key := range signals {
