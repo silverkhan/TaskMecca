@@ -146,7 +146,7 @@ test('project tiles use theme-muted selection and anchored alert badges', () => 
   const initial = css.match(/\.session-initial\{([^}]+)\}/)?.[1] || '';
   const selected = css.match(/\.session-row\.active \.session-initial\{([^}]+)\}/)?.[1] || '';
   const badge = css.match(/\.session-state-error \.session-initial::after,\.session-state-warning \.session-initial::after\{([^}]+)\}/)?.[1] || '';
-  const warning = css.match(/\.session-state-warning \.session-initial::after\{([^}]+)\}/)?.[1] || '';
+  const warning = css.match(/\n\.session-state-warning \.session-initial::after\{([^}]+)\}/)?.[1] || '';
   assert.match(initial, /position:relative/, 'badge must anchor to the initial tile');
   assert.match(selected, /outline:0/, 'selection must not use the old bright 2px outline');
   assert.match(selected, /border-color:color-mix\(in srgb,var\(--accent\)/);
