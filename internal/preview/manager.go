@@ -107,6 +107,7 @@ func (Docker) Start(ctx context.Context,binary,digest string,env Environment,por
   "--env","HOME=/tmp",
   "--env","TASK_MECCA_HOME=/tmp/task-mecca",
   "--env","TASK_MECCA_PREVIEW_MODE=1",
+  "--env","TASK_MECCA_PREVIEW_SANDBOX=docker",
   "--env","TASK_MECCA_TELEGRAM_TRANSPORT=disabled",
   "--env","TASK_MECCA_CHANNEL=dev",
   "--entrypoint","/opt/task-mecca",
@@ -271,4 +272,3 @@ func (m *Manager) Stop(ctx context.Context,number int)error{
 
 // Restart/recovery of unmanaged containers belongs to AID-153; the first
 // manager version deliberately does not kill unknown containers or host PIDs.
-var _=strconv.Itoa
