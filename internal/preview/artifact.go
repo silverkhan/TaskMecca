@@ -28,6 +28,7 @@ type manifest struct {
     RunID int64 `json:"run_id"`
     Workflow string `json:"workflow"`
     SchemaVersion int `json:"schema_version"`
+    ExecutionSwitchProtocol int `json:"execution_switch_protocol"`
 }
 
 func assetForPlatform(goos,arch string)(string,error){
@@ -81,7 +82,7 @@ func checksumEntry(manifest []byte,name string)(string,error) {
 // DownloadVerified prepares an artifact as non-executable cached bytes.
 // The caller must obtain Build from ListBuilds, not untrusted browser input.
 // No call to this function executes a binary or touches an operating project.
-func (c *Client) DownloadVerified(ctx context.Context, build Build,cacheRoot,goos,arch string)(string,error){
+func (c *Client) DownloadVerified(ctx context.Context, build Build,cacheRoot,goos,arch string,requireSwitchProtocol ...bool)(string,error){
     if build.BuildStatus!="success" || build.ArtifactID<=0 || build.RunID<=0 ||
         build.Number<=0 || !validSHA(build.HeadSHA) ||
         build.ArtifactName!="task-mecca-preview-pr-"+strconv.Itoa(build.Number)+"-"+build.HeadSHA {
@@ -166,6 +167,9 @@ func (c *Client) DownloadVerified(ctx context.Context, build Build,cacheRoot,goo
     if id.Repository!=Repository||id.PRNumber!=build.Number||id.HeadSHA!=build.HeadSHA||
         id.RunID!=build.RunID||id.Workflow!=workflow||id.SchemaVersion!=1 {
         return "",errors.New("Preview provenance does not match PR head, repository or CI run")
+    }
+    if len(requireSwitchProtocol)>0 && requireSwitchProtocol[0] && id.ExecutionSwitchProtocol!=1 {
+        return "",errors.New("this PR build predates the Dev/PR return protocol; rebuild it from current Dev before environment switching")
     }
     checks,err:=get("SHA256SUMS.txt",32<<10)
     if err!=nil{return "",err}

@@ -20,11 +20,12 @@ import (
 func testArchive(t *testing.T,pr int,sha string,run int64,corruptChecksum,wrongManifest,unsafePath bool)[]byte {
     return testArchiveWithChecksumPath(t,pr,sha,run,corruptChecksum,wrongManifest,unsafePath,"task-mecca-linux-amd64")
 }
-func testArchiveWithChecksumPath(t *testing.T,pr int,sha string,run int64,corruptChecksum,wrongManifest,unsafePath bool,checksumPath string)[]byte {
+func testArchiveWithChecksumPath(t *testing.T,pr int,sha string,run int64,corruptChecksum,wrongManifest,unsafePath bool,checksumPath string,protocol ...int)[]byte {
     t.Helper()
     var raw bytes.Buffer
     writer:=zip.NewWriter(&raw)
     m:=manifest{Repository:Repository,PRNumber:pr,HeadSHA:sha,RunID:run,Workflow:workflow,SchemaVersion:1}
+    if len(protocol)>0 {m.ExecutionSwitchProtocol=protocol[0]}
     if wrongManifest{m.HeadSHA=strings.Repeat("d",40)}
     manifestBytes,_:=json.Marshal(m)
     fileName:="task-mecca-linux-amd64"
@@ -260,4 +261,23 @@ func TestDownloadVerifiedLegacyDistChecksumStillRejectsTampering(t *testing.T) {
     if entries,err:=os.ReadDir(cache);err!=nil||len(entries)!=0{
         t.Fatalf("rejected artifact created cached data: %v %v",entries,err)
     }
+}
+
+func TestDownloadVerifiedRequiresPRReturnProtocol(t *testing.T){
+  const sha="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  build:=Build{Number:217,HeadSHA:sha,RunID:500,BuildStatus:"success",
+    ArtifactID:300,ArtifactName:"task-mecca-preview-pr-217-"+sha}
+  for _,tc:=range []struct{protocol int;ok bool}{{0,false},{1,true}}{
+    t.Run(fmt.Sprintf("protocol-%d",tc.protocol),func(t *testing.T){
+      archive:=testArchiveWithChecksumPath(t,217,sha,500,false,false,false,
+        "task-mecca-linux-amd64",tc.protocol)
+      server:=httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter,r *http.Request){
+        _,_=w.Write(archive)
+      }))
+      defer server.Close()
+      client:=Client{HTTP:server.Client(),APIURL:server.URL}
+      _,err:=client.DownloadVerified(context.Background(),build,t.TempDir(),"linux","amd64",true)
+      if (err==nil)!=tc.ok{t.Fatalf("protocol=%d error=%v",tc.protocol,err)}
+    })
+  }
 }

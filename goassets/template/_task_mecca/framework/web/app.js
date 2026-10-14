@@ -95,6 +95,7 @@ const state = {
   projectNotificationSettingsError: '',
   previewBuilds:[],previewInstances:[],previewLoading:false,previewLoaded:false,
   previewError:'',previewMessage:'',previewSearch:'',previewFilter:'all',previewActionBusy:0,
+  executionTarget:null,executionSwitchSupported:true,executionSwitchOS:'',
   operationRevision: '',
 };
 
@@ -1171,6 +1172,7 @@ async function refreshVersionInfo(force=false) {
     }
     const priorPreviewAvailability=devPreviewAvailable();
     state.versionInfo=payload;
+    await refreshExecutionTarget();
     if(devPreviewAvailable()!==priorPreviewAvailability)nav();
     if(state.view==='preview')queueMicrotask(()=>void maybeConfirmPreviewStop());
     maybeApplyStableBrandIntro();
@@ -3398,7 +3400,7 @@ function navigateView(view) {
     render();
   }
 }
-function devPreviewAvailable(){return !state.previewIdentity&&(state.versionInfo?.cli?.channel||state.hub?.cli?.channel||'')==='dev';}
+function devPreviewAvailable(){return !state.previewIdentity&&state.executionTarget?.kind!=='pr'&&(state.versionInfo?.cli?.channel||state.hub?.cli?.channel||'')==='dev';}
 function nav() {
   const c = currentProjectData()?.counts || {};
   const projects=state.hub?.projects||[];
@@ -3486,17 +3488,25 @@ async function loadPreviewIdentity(){
   }catch(_){}
 }
 async function maybeConfirmPreviewStop(){
-  const query=new URLSearchParams(location.search);
-  const raw=query.get('stop_preview');
-  if(!raw||!devPreviewAvailable()||state.view!=='preview')return;
-  query.delete('stop_preview');
-  history.replaceState({},'','/?'+query.toString());
+  // Historical Preview tabs can still request cleanup after the new
+  // environment-switch UI has replaced the child-process launcher.
+  const params=new URLSearchParams(location.search),raw=params.get('stop_preview');
+  if(!raw||!devPreviewAvailable())return;
+  params.delete('stop_preview');
+  history.replaceState({},'','/?'+params.toString());
   const number=Number(raw);
   if(!Number.isSafeInteger(number)||number<1)return;
-  const ko=state.language==='ko';
-  const prompt=ko?'PR #'+number+' Preview를 종료하시겠습니까?':'Stop PR #'+number+' Preview?';
-  if(!window.confirm(prompt))return;
-  await previewAction(number,'stop');
+  if(!window.confirm(state.language==='ko'?'이전 PR #'+number+' Preview 인스턴스를 종료하시겠습니까?':'Stop legacy Preview #'+number+'?'))return;
+  try{
+    const response=await fetch('/api/preview/stop',{method:'POST',
+      headers:{'Content-Type':'application/json','X-Task-Mecca-Action':'1'},
+      body:JSON.stringify({number})});
+    const payload=await response.json();
+    if(!response.ok)throw Error(payload.error||'Stop failed');
+    state.previewMessage=state.language==='ko'?'이전 Preview 종료 완료':'Legacy Preview stopped';
+    await refreshPreviewInstances();
+  }catch(e){state.previewError=String(e?.message||e)}
+  if(state.view==='preview')render();
 }
 
 function previewCaption(value){
@@ -3505,79 +3515,49 @@ function previewCaption(value){
   return Number.isNaN(date.getTime())?String(value):date.toLocaleString(state.language==='ko'?'ko-KR':'en-US');
 }
 function previewBuildsView(){
-  const ko=state.language==='ko';
-  const dev=devPreviewAvailable();
-  const header='<div class="page-head"><div><div class="eyebrow">DEV WORKSPACE</div><h1>Preview Builds</h1><p class="summary">'+
-    (ko?'PR별 독립 실행·검증 환경 · 기존 Dev와 운영 프로젝트는 변경하지 않습니다.':'Run and compare isolated PR builds without changing your Dev installation or operating projects.')+
-    '</p></div><button class="action-btn secondary" id="previewReloadBtn" type="button" '+(state.previewLoading?'disabled':'')+'>'+ (ko?'목록 새로고침':'Refresh builds')+'</button></div>';
-  if(!dev)return header+'<div class="empty">'+(ko?'Preview Builds는 Dev 채널에서만 사용할 수 있습니다.':'Preview Builds is available only in the Dev channel.')+'</div>';
-  const indexed=new Map((state.previewInstances||[]).map(item=>[Number(item.pr_number),item]));
-  const builds=[...(state.previewBuilds||[])];
-  for(const instance of state.previewInstances||[]){
-    if(!builds.some(item=>Number(item.number)===Number(instance.pr_number)))
-      builds.push({number:instance.pr_number,title:ko?'열려 있는 PR 목록에서 제외된 Preview':'Preview not in open PR list',
-        head_sha:instance.head_sha,build_status:'none',updated_at:instance.started_at});
-  }
+  const ko=state.language==='ko',dev=devPreviewAvailable();
+  const current=state.executionTarget||{kind:'dev'};
+  const header='<div class="page-head"><div><div class="eyebrow">DEV WORKSPACE</div><h1>'+(ko?'PR 실행 환경':'PR Environments')+'</h1><p class="summary">'+
+    (ko?'기존 Dev 설치를 선택한 PR의 정확한 커밋으로 전환합니다. 기존 프로젝트와 관제 기능이 그대로 실행됩니다.':'Switch the installed Dev app to a pinned PR commit. Existing projects and monitoring continue under that code.')+
+    '</p></div><button class="action-btn secondary" id="previewReloadBtn" type="button" '+(state.previewLoading?'disabled':'')+'>'+(ko?'목록 새로고침':'Refresh')+'</button></div>';
+  if(!dev)return header+'<div class="empty">'+(ko?'PR 환경 전환은 Dev에서만 가능합니다.':'PR switching is available only from Dev.')+'</div>';
   const search=String(state.previewSearch||'').toLowerCase().trim();
-  const visible=builds.filter(item=>{
-    const instance=indexed.get(Number(item.number));
-    const text=[item.number,item.title,item.branch,item.head_sha].join(' ').toLowerCase();
-    if(search&&!text.includes(search))return false;
-    const f=state.previewFilter||'all';
-    if(f==='running')return instance?.status==='running';
-    if(f==='success')return item.build_status==='success';
-    if(f==='failed')return ['failure','expired','unavailable','blocked'].includes(item.build_status);
+  const visible=[...(state.previewBuilds||[])].filter(item=>{
+    if(search&&![item.number,item.title,item.branch,item.head_sha].join(' ').toLowerCase().includes(search))return false;
+    if(state.previewFilter==='success')return item.build_status==='success';
+    if(state.previewFilter==='failed')return ['failure','expired','unavailable','blocked'].includes(item.build_status);
     return true;
   });
-  const buildStatus={
-    none:ko?'빌드 없음':'No build',queued:ko?'대기 중':'Queued',in_progress:ko?'빌드 중':'Building',
-    success:ko?'빌드 성공':'Build succeeded',failure:ko?'빌드 실패':'Build failed',
-    expired:ko?'빌드 만료':'Expired',unavailable:ko?'조회 실패':'Unavailable',
-    blocked:ko?'실행 차단':'Blocked'
-  };
-  const runtimeStatus={
-    stopped:ko?'미실행':'Stopped',preparing:ko?'준비 중':'Preparing',
-    downloading:ko?'다운로드 중':'Downloading',starting:ko?'시작 중':'Starting',
-    running:ko?'실행 중':'Running',stopping:ko?'종료 중':'Stopping',
-    error:ko?'실행 오류':'Error'
-  };
+  const status={none:ko?'빌드 없음':'No build',queued:ko?'대기 중':'Queued',in_progress:ko?'빌드 중':'Building',
+    success:ko?'빌드 성공':'Built',failure:ko?'빌드 실패':'Failed',expired:ko?'만료':'Expired',
+    unavailable:ko?'조회 실패':'Unavailable',blocked:ko?'차단':'Blocked'};
   const rows=visible.map(item=>{
-    const number=Number(item.number),instance=indexed.get(number)||{},build=item.build_status||'none';
-    const running=instance.status==='running';
-    const busy=state.previewActionBusy===number||['preparing','downloading','starting','stopping'].includes(instance.status);
-    const available=build==='success'&&!busy&&instance.status!=='running';
-    const sha=String(running?instance.head_sha||item.head_sha:item.head_sha||'');
-    const runLink=/^https:\/\/github\.com\/silverkhan\/TaskMecca\/actions\/runs\/\d+(?:\/.*)?$/.test(String(item.run_url||''))
-      ?'<a class="preview-ci-link" href="'+esc(item.run_url)+'" target="_blank" rel="noopener noreferrer">'+(ko?'CI 보기':'View CI')+'</a>':'';
+    const number=Number(item.number),sha=String(item.head_sha||'');
+    const valid=/^[a-f0-9]{40}$/.test(sha);
+    const available=item.build_status==='success'&&valid&&state.executionSwitchSupported&&!state.previewActionBusy;
     const prLink=/^https:\/\/github\.com\/silverkhan\/TaskMecca\/pull\/\d+$/.test(String(item.url||''))
       ?'<a href="'+esc(item.url)+'" target="_blank" rel="noopener noreferrer">PR #'+number+'</a>':'PR #'+number;
     return '<article class="preview-build-row" data-preview-pr="'+number+'">'+
       '<div class="preview-build-info"><div class="preview-build-title"><strong>'+prLink+' · '+esc(item.title||'-')+'</strong></div>'+
-      '<div class="preview-build-meta"><span>'+esc(item.branch||'-')+'</span><code>'+esc(sha.slice(0,10)||'-')+'</code>'+
+      '<div class="preview-build-meta"><span>'+esc(item.branch||'-')+'</span><code>'+esc(sha.slice(0,10))+'</code>'+
       '<span>'+esc(previewCaption(item.build_finished_at||item.updated_at))+'</span></div>'+
-      '<div class="preview-build-status"><span class="badge '+(build==='success'?'ok':build==='failure'||build==='blocked'?'warn':'')+'">'+esc(buildStatus[build]||build)+'</span>'+
-      '<span class="badge '+(running?'ok':'')+'">'+esc(runtimeStatus[instance.status]||(ko?'미실행':'Stopped'))+'</span>'+
-      (running?'<code>:'+Number(instance.port||0)+'</code>':'')+
-      (instance.error?'<span class="preview-error">'+esc(instance.error)+'</span>':'')+
-      (item.reason&&build!=='success'?'<span class="preview-error">'+esc(item.reason)+'</span>':'')+
-      runLink+'</div></div>'+
-      '<div class="preview-build-actions">'+
-      (running?
-        '<button type="button" class="action-btn" data-preview-action="open" data-preview-number="'+number+'">'+(ko?'열기':'Open')+'</button>'+
-        '<button type="button" class="action-btn secondary danger-action" data-preview-action="stop" data-preview-number="'+number+'" '+(busy?'disabled':'')+'>'+(ko?'종료':'Stop')+'</button>':
-        '<button type="button" class="action-btn" data-preview-action="start" data-preview-number="'+number+'" '+(available?'':'disabled')+'>'+(busy?(ko?'처리 중':'Working'):(ko?'실행':'Run'))+'</button>')+
-      '</div></article>';
+      '<div class="preview-build-status"><span class="badge '+(item.build_status==='success'?'ok':'')+'">'+esc(status[item.build_status]||item.build_status||'-')+'</span></div></div>'+
+      '<div class="preview-build-actions"><button type="button" class="action-btn" data-pr-switch="'+number+'" '+(available?'':'disabled')+'>'+
+      (state.previewActionBusy===number?(ko?'전환 중…':'Switching…'):(ko?'이 PR로 전환':'Switch to PR'))+'</button></div></article>';
   }).join('');
-  const filters=[['all',ko?'전체':'All'],['running',ko?'실행 중':'Running'],['success',ko?'빌드 성공':'Build succeeded'],['failed',ko?'오류·만료':'Errors']];
   return header+
-    '<div class="timing-note"><strong>Native Preview</strong><span>'+esc(ko?'추가 설치 없이 별도 Go 프로세스로 실행합니다. 자체 저장소의 신뢰된 PR만 실행하세요. 실행 파일은 현재 사용자와 동일한 OS 권한을 가지며, 별도 HOME은 악성 코드 격리가 아닙니다.':'No Docker required. Only run trusted first-party PRs. Native Preview processes share your OS account permissions; a separate HOME is not a security sandbox.')+'</span></div>'+
-    '<div class="preview-build-tools"><input id="previewSearch" type="search" autocomplete="off" placeholder="'+(ko?'PR 번호, 제목, 브랜치 검색':'Search PR number, title, branch')+'" value="'+esc(state.previewSearch)+'" aria-label="'+(ko?'PR 검색':'Search PR')+'"/>'+
-    '<div class="preview-build-filters">'+filters.map(([v,label])=>'<button type="button" class="action-btn secondary '+(state.previewFilter===v?'active':'')+'" data-preview-filter="'+v+'" aria-pressed="'+(state.previewFilter===v)+'">'+label+'</button>').join('')+'</div></div>'+
+    '<div class="timing-note"><strong>'+(ko?'전체 환경 전환':'Full environment switch')+'</strong><span>'+
+    esc(ko?'동시에 실행되는 별도의 Preview 프로세스는 생성하지 않습니다. 설치된 실행 파일을 교체하고 웹을 재시작합니다. PR 코드는 현재 사용자 권한으로 실행됩니다. 신뢰된 PR만 선택하세요.':'No extra Preview process is started. The installed executable is replaced and Web restarts. Only run code you trust under your OS user permissions.')+
+    '</span></div>'+
+    (!state.executionSwitchSupported?'<p class="load-error">'+esc(ko?'Windows PR 전환은 안전한 재시작 절차가 검증될 때까지 사용할 수 없습니다.':'PR switching on Windows is disabled until staged restart verification is completed.')+'</p>':'')+
+    '<div class="preview-build-tools"><input id="previewSearch" type="search" autocomplete="off" placeholder="'+(ko?'PR 번호, 제목, 브랜치 검색':'Search PR')+'" value="'+esc(state.previewSearch)+'"/>'+
+    '<div class="preview-build-filters">'+[['all',ko?'전체':'All'],['success',ko?'빌드 성공':'Built'],['failed',ko?'오류·만료':'Errors']].map(([value,label])=>
+      '<button type="button" class="action-btn secondary '+(state.previewFilter===value?'active':'')+'" data-preview-filter="'+value+'">'+label+'</button>').join('')+
+    '</div></div>'+
     (state.previewError?'<div class="load-error" role="alert">'+esc(state.previewError)+'</div>':'')+
-    (state.previewInstancesError?'<div class="load-error" role="status">'+esc(state.language==='ko'?'실행 상태 조회 실패: ':'Instance refresh failed: ')+esc(state.previewInstancesError)+'</div>':'')+
     (state.previewMessage?'<p class="timing-note" role="status">'+esc(state.previewMessage)+'</p>':'')+
-    (state.previewLoading&&!state.previewLoaded?'<div class="loading">'+(ko?'PR 빌드 조회 중…':'Loading PR builds…')+'</div>':
-      '<div class="preview-build-list">'+(rows||'<div class="empty">'+(ko?'표시할 PR이 없습니다.':'No matching PR builds.')+'</div>')+'</div>');
+    (state.previewLoading&&!state.previewLoaded?'<div class="loading">'+(ko?'PR 빌드 조회 중…':'Loading builds…')+'</div>':
+    '<div class="preview-build-list">'+(rows||'<div class="empty">'+(ko?'표시할 PR이 없습니다.':'No matching PR builds.')+'</div>')+'</div>');
 }
 // Local process state is independent from GitHub build metadata.
 function applyPreviewInstance(instance){
@@ -3632,69 +3612,88 @@ async function refreshPreviewData(){
     if(state.view==='preview')render();
   }
 }
-function previewSafeLocalURL(value){
-  return /^http:\/\/127\.0\.0\.1:\d{2,5}\/$/.test(String(value||''))?String(value):'';
-}
-async function previewAction(number,action){
-  if(!devPreviewAvailable()||state.previewActionBusy)return;
-  const instance=state.previewInstances.find(i=>Number(i.pr_number)===number);
-  if(action==='open'){
-    const url=previewSafeLocalURL(instance?.url);
-    if(url)window.open(url,'_blank','noopener');
-    return;
-  }
-  // Native PR code has ordinary filesystem access under the current user.
-  // Ask for explicit consent before starting an untrusted executable.
-  if(action==='start'){
-    const warning=state.language==='ko'
-      ?'PR #'+number+'의 코드를 현재 사용자 권한으로 실행합니다. Docker/VM 격리가 없으므로 이 PR을 신뢰할 때만 진행하세요. 실행하시겠습니까?'
-      :'Run PR #'+number+' with your current OS user permissions? No Docker/VM sandbox is used. Continue only if you trust this PR.';
-    if(!window.confirm(warning))return;
-  }
-  let tab=null;
-  // Reserve the new tab directly on click so browsers can open it after
-  // downloading and booting the Preview process.
-  if(action==='start'){
-    tab=window.open('about:blank','_blank');
-    if(tab){
-      // The PR Web must not retain access to its Dev launcher through opener.
-      tab.opener=null;
-      tab.document.title='Task Mecca Preview';
-      tab.document.body.textContent=state.language==='ko'?'Preview 환경을 준비하고 있습니다…':'Preparing the Preview environment…';
-    }
-  }
-  state.previewActionBusy=number;
-  state.previewMessage='';
-  render();
+async function currentEnvironmentBoot(){
   try{
-    const response=await fetch('/api/preview/'+(action==='stop'?'stop':'start'),{
-      method:'POST',headers:{'Content-Type':'application/json','X-Task-Mecca-Action':'1'},
-      body:JSON.stringify({number})
-    });
-    const payload=await response.json();
-    if(!response.ok)throw Error(payload.error||'Preview action failed');
-    // Successful mutation returns the authoritative instance.
-    if(payload.instance)applyPreviewInstance(payload.instance);
-    if(action==='start'){
-      const address=previewSafeLocalURL(payload.open_url);
-      if(!address)throw Error('Preview URL failed validation');
-      if(tab)tab.location.replace(address);
-      state.previewMessage=state.language==='ko'?'Preview 실행 완료 · 새 탭으로 열었습니다.':'Preview is running. Open it in the new tab.';
-    }else{
-      if(tab)tab.close();
-      state.previewMessage=state.language==='ko'?'Preview 종료 완료':'Preview stopped';
-    }
-  }catch(error){
-    if(tab)tab.close();
-    state.previewMessage=(state.language==='ko'?'Preview 작업 실패: ':'Preview action failed: ')+String(error?.message||error);
-  }finally{
-    state.previewActionBusy=0;
-    // Allow Run immediately after Stop, even if reconciliation fails.
-    if(state.view==='preview')render();
-    // Local state must not wait for slow GitHub catalog refreshes.
-    await refreshPreviewInstances();
-    if(!state.previewLoaded)await refreshPreviewData();
+    const response=await fetch('/api/health',{cache:'no-store'});
+    if(!response.ok)return '';
+    const body=await response.json();
+    return body.boot_id||'';
+  }catch(_){return ''}
+}
+async function waitForEnvironmentRestart(previousBoot,kind,sha){
+  const started=Date.now();
+  while(Date.now()-started<45000){
+    try{
+      const response=await fetch('/api/health?env_wait='+Date.now(),{cache:'no-store'});
+      if(response.ok){
+        const body=await response.json(),target=body.execution_target;
+        if(body.boot_id&&(!previousBoot||body.boot_id!==previousBoot)&&
+          target?.kind===kind&&(kind!=='pr'||target.head_sha===sha)){
+          location.reload();
+          return true;
+        }
+      }
+    }catch(_){}
+    await new Promise(resolve=>setTimeout(resolve,600));
   }
+  throw Error('Web restart/PR identity not confirmed. Check task-mecca web status and logs.');
+}
+async function refreshExecutionTarget(){
+  try{
+    const response=await fetch('/api/environment',{cache:'no-store'});
+    if(!response.ok)return;
+    const payload=await response.json();
+    state.executionTarget=payload.target||null;
+    state.executionSwitchSupported=payload.switch_supported!==false;
+    state.executionSwitchOS=payload.os||'';
+    const banner=$('#prExecutionBanner'),target=state.executionTarget;
+    if(banner){
+      banner.hidden=target?.kind!=='pr';
+      if(target?.kind==='pr'){
+        banner.innerHTML='<strong>PR #'+Number(target.pr_number)+' · '+esc(String(target.head_sha||'').slice(0,10))+'</strong> · '+
+          esc(state.language==='ko'?'전체 실행 환경':'Full execution environment')+
+          ' <button id="prReturnDev" type="button" class="action-btn secondary">'+esc(state.language==='ko'?'Dev 복귀':'Return to Dev')+'</button>';
+        $('#prReturnDev')?.addEventListener('click',()=>{void returnToPinnedDev().catch(e=>alert(String(e?.message||e)))});
+      }
+    }
+  }catch(_){}
+}
+async function executePRSwitch(number){
+  if(state.previewActionBusy||!devPreviewAvailable())return;
+  const item=state.previewBuilds.find(row=>Number(row.number)===number);
+  if(!item||item.build_status!=='success'||!/^[a-f0-9]{40}$/.test(String(item.head_sha||'')))return;
+  const ko=state.language==='ko';
+  const warning=ko
+    ?'PR #'+number+' ('+item.head_sha.slice(0,10)+')로 전체 실행 환경을 전환합니다.\\n\\n기존 프로젝트, Hook, 워크로드 감시, Telegram 알림이 이 PR 코드로 실행됩니다. Dev 바이너리는 복귀용으로 보관하지만 PR의 데이터 변경은 자동으로 되돌릴 수 없습니다.\\n\\n외부 또는 신뢰하지 않는 PR 코드는 실행하지 마세요. 로컬 컴퓨터에서 진행하시겠습니까?'
+    :'Switch the entire installation to PR #'+number+' ('+item.head_sha.slice(0,10)+')? Monitoring, Hooks, projects and notifications run under that code. Restoring Dev does not undo PR data changes. Only run trusted PR code on the local computer.';
+  if(!window.confirm(warning))return;
+  const oldBoot=await currentEnvironmentBoot();
+  state.previewActionBusy=number;state.previewMessage='';state.previewError='';render();
+  try{
+    const response=await fetch('/api/environment/enter-pr',{method:'POST',
+      headers:{'Content-Type':'application/json','X-Task-Mecca-Action':'1'},
+      body:JSON.stringify({number,sha:item.head_sha,approve:true})});
+    const payload=await response.json();
+    if(!response.ok)throw Error(payload.error||'PR switch failed');
+    state.previewMessage=ko?'PR 실행 파일을 적용했습니다. 웹 재시작을 확인합니다.':'PR installed. Checking Web restart.';
+    render();
+    await waitForEnvironmentRestart(oldBoot,'pr',item.head_sha);
+  }catch(error){
+    state.previewError=String(error?.message||error);
+  }finally{state.previewActionBusy=0;render()}
+}
+async function returnToPinnedDev(){
+  const target=state.executionTarget;
+  if(!target||target.kind!=='pr')return;
+  const ko=state.language==='ko';
+  if(!window.confirm(ko?'PR #'+target.pr_number+'에서 진입 직전 Dev 버전으로 복귀하시겠습니까? PR 실행 중 변경된 프로젝트 데이터는 자동 복원되지 않습니다.':'Restore the exact Dev version from before this PR? Project data changes are not reverted.'))return;
+  const oldBoot=await currentEnvironmentBoot();
+  const response=await fetch('/api/environment/return-dev',{method:'POST',
+    headers:{'Content-Type':'application/json','X-Task-Mecca-Action':'1'},
+    body:JSON.stringify({approve:true})});
+  const payload=await response.json();
+  if(!response.ok)throw Error(payload.error||'Dev restore failed');
+  await waitForEnvironmentRestart(oldBoot,'dev','');
 }
 function bindPreviewBuildsActions(){
   $('#previewReloadBtn')?.addEventListener('click',()=>refreshPreviewData());
@@ -3707,8 +3706,8 @@ function bindPreviewBuildsActions(){
   document.querySelectorAll('[data-preview-filter]').forEach(button=>button.addEventListener('click',()=>{
     state.previewFilter=button.dataset.previewFilter;render();
   }));
-  document.querySelectorAll('[data-preview-action]').forEach(button=>button.addEventListener('click',()=>{
-    void previewAction(Number(button.dataset.previewNumber),button.dataset.previewAction);
+  document.querySelectorAll('[data-pr-switch]').forEach(button=>button.addEventListener('click',()=>{
+    void executePRSwitch(Number(button.dataset.prSwitch));
   }));
 }
 
@@ -3826,6 +3825,12 @@ async function showChannelSwitchModal() {
     options=body;
   }catch(e){
     alert(String(e?.message||e));
+    return;
+  }
+  if(options.execution_target?.kind==='pr'){
+    if(!window.confirm(state.language==='ko'
+      ?'PR #'+options.execution_target.pr_number+'에서 Dev로 복귀하시겠습니까?':'Return to pinned Dev from the active PR?'))return;
+    try{await returnToPinnedDev()}catch(e){alert(String(e?.message||e))}
     return;
   }
   const current=options.current_channel||'stable';
@@ -4350,7 +4355,8 @@ function hubView() {
   const cli=h.cli||{};
   const projects=Array.isArray(h.projects)?h.projects:[];
   const channelBadge=cli.channel==='dev' ? '<span class="badge warn">DEV</span>' : '';
-  const currentVersionMark='<span class="badge hub-version-mark">'+esc(cli.current||'-')+'</span>';
+  const activePR=state.executionTarget?.kind==='pr'?state.executionTarget:null;
+  const currentVersionMark='<span class="badge hub-version-mark">'+esc(activePR?('PR #'+activePR.pr_number+' · '+String(activePR.head_sha||'').slice(0,10)):cli.current||'-')+'</span>';
   const cliStatus=cli.update_available
     ? currentVersionMark+'<span class="badge warn">→ '+esc(cli.latest||'-')+'</span>'
     : currentVersionMark;
