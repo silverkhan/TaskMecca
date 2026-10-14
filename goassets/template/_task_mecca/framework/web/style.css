@@ -1110,6 +1110,18 @@ body.release-modal-open{overflow:hidden}
 .common-attention-links a{color:var(--accent)}
 @media(max-width:700px){.common-attention>summary{padding:12px 14px;gap:6px 12px}.common-attention-body{padding:0 14px 14px}.user-attention{padding:0}}
 
+/* Keep the current-notification disclosure out of document flow.
+   The collapsed summary retains its normal height; the expanded list floats above content. */
+.user-attention{position:relative;z-index:25}
+.common-attention{position:relative}
+.common-attention-body{
+  position:absolute;top:100%;left:-2px;right:-2px;z-index:26;
+  max-height:min(65vh,560px);overflow-y:auto;overscroll-behavior:contain;
+  padding:12px 20px 18px;border:1px solid var(--border);
+  border-radius:0 0 10px 10px;background:var(--surface);
+  box-shadow:0 18px 42px rgba(0,0,0,.2);
+}
+@media(max-width:700px){.common-attention-body{padding:12px 14px 14px;max-height:60vh}}
 /* Notification center uses the backlog's compact, readable table vocabulary. */
 .notification-center-tabs{display:flex;gap:8px;margin:0 0 20px;border-bottom:1px solid var(--border)}
 .notification-center-tabs button{background:transparent;border:0;border-bottom:2px solid transparent;padding:10px 12px;color:var(--muted);font:inherit;cursor:pointer}
