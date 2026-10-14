@@ -72,6 +72,8 @@ type ghRun struct {
     Status string `json:"status"`
     Conclusion string `json:"conclusion"`
     Event string `json:"event"`
+    DisplayTitle string `json:"display_title"`
+    HeadBranch string `json:"head_branch"`
     CreatedAt string `json:"created_at"`
     UpdatedAt string `json:"updated_at"`
     RunAttempt int `json:"run_attempt"`
@@ -120,10 +122,16 @@ func validSHA(sha string) bool {
     return true
 }
 
-func runMatchesPR(run ghRun, number int) bool {
-    if run.Event!="pull_request" {return false}
-    for _,pr:=range run.PullRequests {if pr.Number==number{return true}}
-    return false
+func runMatchesPR(run ghRun, number int, sha string) bool {
+    if run.Event=="pull_request" {
+        for _,pr:=range run.PullRequests {if pr.Number==number{return true}}
+        return false
+    }
+    // A manual rebuild must be dispatched from the trusted dev workflow and
+    // explicitly identify the PR's *current* SHA in its run name. The artifact
+    // is subsequently reverified by its manifest and checksum at download.
+    return run.Event=="workflow_dispatch" && run.HeadBranch=="dev" &&
+        run.DisplayTitle==fmt.Sprintf("Preview PR #%d %s",number,sha)
 }
 
 func dateKey(value string) time.Time {
@@ -140,7 +148,7 @@ func (c *Client) ListBuilds(ctx context.Context, limit int) ([]Build,error) {
     path:="/repos/"+Repository+"/pulls?state=open&sort=updated&direction=desc&per_page=100"
     if err:=c.get(ctx,path,&prs);err!=nil{return nil,err}
     var runs ghRuns
-    runPath:="/repos/"+Repository+"/actions/workflows/"+url.PathEscape(workflow)+"/runs?event=pull_request&per_page=100"
+    runPath:="/repos/"+Repository+"/actions/workflows/"+url.PathEscape(workflow)+"/runs?per_page=100"
     if err:=c.get(ctx,runPath,&runs);err!=nil{return nil,err}
 
     result:=make([]Build,0,limit)
@@ -185,7 +193,7 @@ func (c *Client) findBuild(ctx context.Context, number int, sha string, runs []g
     item:=Build{BuildStatus:"none",ExecutionAllowed:false}
     expected:="task-mecca-preview-pr-"+strconv.Itoa(number)+"-"+sha
     for _,run:=range runs {
-        if !runMatchesPR(run,number) {continue}
+        if !runMatchesPR(run,number,sha) {continue}
         if run.Status!="completed" {
             // A still-running build is informative, but never usable.
             if item.BuildStatus=="none" {
@@ -227,10 +235,10 @@ func (c *Client) findBuild(ctx context.Context, number int, sha string, runs []g
                 item.Reason="GitHub artifact retention expired"
             }else{
                 item.BuildStatus="success"
-                // This is only discovery. M2 enables execution after
-                // manifest/checksum, runtime sandbox and consent checks.
-                item.ExecutionAllowed=false
-                item.Reason="execution is disabled pending sandbox and integrity verification"
+                // A successful artifact is not a trust verdict. Runtime launch
+                // still checks the zip provenance and Preview health identity.
+                item.ExecutionAllowed=true
+                item.Reason=""
             }
             return item
         }
