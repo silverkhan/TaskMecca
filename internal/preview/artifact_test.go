@@ -7,7 +7,6 @@ import (
     "crypto/sha256"
     "encoding/hex"
     "encoding/json"
-    "io"
     "net/http"
     "net/http/httptest"
     "os"
@@ -105,5 +104,4 @@ func TestDownloadVerifiedRejectsUnknownOrMismatchedBuild(t *testing.T) {
     }
     _,err:=assetForPlatform("linux","arm64")
     if err==nil{t.Fatal("unsupported platform was accepted")}
-    if _,err:=io.Copy(io.Discard,strings.NewReader("test"));err!=nil{t.Fatal(err)}
 }
