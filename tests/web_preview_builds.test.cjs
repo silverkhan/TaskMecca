@@ -115,3 +115,25 @@ test('native PR switch and rebuild dialogs render real line breaks, not escaped 
   assert.match(h.prompts[1],/빌드할까요\?\n이 요청은/);
   assert.doesNotMatch(h.prompts[1],/\\n/);
 });
+
+test('mobile PR refresh control keeps a compact single-line label and independent full-width description',()=>{
+ const h=setup();
+ h.state.versionInfo={cli:{channel:'dev'}};
+ const html=h.previewBuildsView();
+ assert.match(html,/class="page-head pr-environment-head"/);
+ assert.match(html,/class="pr-environment-title"/);
+ assert.match(html,/class="summary pr-environment-summary"/);
+ assert.match(html,/id="previewReloadBtn"/);
+ assert.match(html,/aria-label="PR 목록 새로고침"/);
+ assert.match(html,/class="pr-refresh-long">목록 새로고침/);
+ assert.match(html,/class="pr-refresh-short">새로고침/);
+ assert.ok(html.indexOf('pr-environment-summary')>html.indexOf('</button></div>'));
+ const css=fs.readFileSync('goassets/template/_task_mecca/framework/web/style.css','utf8');
+ const control=css.match(/\.pr-environment-refresh\{[^}]+\}/)?.[0]||'';
+ assert.match(control,/flex:0 0 auto/);
+ assert.match(control,/white-space:nowrap/);
+ assert.match(control,/word-break:keep-all/);
+ assert.match(css,/\.pr-environment-summary\{margin-top:12px\}/);
+ assert.match(css,/@media\(max-width:700px\)\{[\s\S]*?\.pr-refresh-long\{display:none\}/);
+ assert.match(css,/\.pr-refresh-short\{display:inline\}/);
+});
