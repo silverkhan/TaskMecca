@@ -1,7 +1,7 @@
 package webui
 
 import (
- "context"
+ stdcontext "context"
  "encoding/json"
  "net"
  "net/http"
@@ -63,7 +63,7 @@ func registerPreviewRoutes(mux *http.ServeMux,writeJSON func(http.ResponseWriter
   if err:=dec.Decode(&request);err!=nil||request.Number<1 {
    writeJSON(w,map[string]any{"error":"invalid PR number"},400);return
   }
-  ctx,cancel:=context.WithTimeout(r.Context(),75*time.Second)
+  ctx,cancel:=stdcontext.WithTimeout(r.Context(),75*time.Second)
   defer cancel()
   if start{
    instance,err:=getManager().Start(ctx,request.Number)
