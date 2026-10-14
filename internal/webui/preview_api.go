@@ -8,8 +8,6 @@ import (
  "net/url"
  "os"
  "path/filepath"
- "strconv"
- "strings"
  "time"
 
  "github.com/silverkhan/TaskMecca/internal/maintenance"
@@ -82,6 +80,3 @@ func registerPreviewRoutes(mux *http.ServeMux,writeJSON func(http.ResponseWriter
  mux.HandleFunc("/api/preview/stop",func(w http.ResponseWriter,r *http.Request){action(w,r,false)})
 }
 
-// Retain this compile-time guard to keep API request numbers strictly numeric.
-var _=strconv.Itoa
-var _=strings.TrimSpace
