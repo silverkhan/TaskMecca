@@ -3487,7 +3487,27 @@ async function loadPreviewIdentity(){
     nav();
   }catch(_){}
 }
-async function maybeConfirmPreviewStop(){ /* Retired child-process Preview stop link. */ }
+async function maybeConfirmPreviewStop(){
+  // Historical Preview tabs can still request cleanup after the new
+  // environment-switch UI has replaced the child-process launcher.
+  const params=new URLSearchParams(location.search),raw=params.get('stop_preview');
+  if(!raw||!devPreviewAvailable())return;
+  params.delete('stop_preview');
+  history.replaceState({},'','/?'+params.toString());
+  const number=Number(raw);
+  if(!Number.isSafeInteger(number)||number<1)return;
+  if(!window.confirm(state.language==='ko'?'이전 PR #'+number+' Preview 인스턴스를 종료하시겠습니까?':'Stop legacy Preview #'+number+'?'))return;
+  try{
+    const response=await fetch('/api/preview/stop',{method:'POST',
+      headers:{'Content-Type':'application/json','X-Task-Mecca-Action':'1'},
+      body:JSON.stringify({number})});
+    const payload=await response.json();
+    if(!response.ok)throw Error(payload.error||'Stop failed');
+    state.previewMessage=state.language==='ko'?'이전 Preview 종료 완료':'Legacy Preview stopped';
+    await refreshPreviewInstances();
+  }catch(e){state.previewError=String(e?.message||e)}
+  if(state.view==='preview')render();
+}
 
 function previewCaption(value){
   if(!value)return '-';
