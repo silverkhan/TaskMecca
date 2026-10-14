@@ -342,7 +342,7 @@ func scanOperationProject(project string, now time.Time) (operationJournal, erro
 			// Suppress the same obsolete source on every scan, not only while
 			// its first incident is active. Otherwise resolution would recur.
 			latestAssignmentStillCanonical := operationLatestAssignmentSourceAlreadyResolved(signal.incident, journal) && operationCanonicalTaskIsDoing(project, signal.incident.TaskID)
-			if operationSourceAlreadyResolved(signal.incident, journal) || latestAssignmentStillCanonical || (recoveryPolicies[strings.ToUpper(signal.incident.TaskID)] && latestOperationRecovery(signal.incident, ledger.Attempts, stages, now)) {
+			if operationSourceAlreadyResolved(signal.incident, journal, now) || latestAssignmentStillCanonical || (recoveryPolicies[strings.ToUpper(signal.incident.TaskID)] && latestOperationRecovery(signal.incident, ledger.Attempts, stages, now)) {
 				continue
 			}
 			if stageSuppresses(signal.incident, stages, now) {
