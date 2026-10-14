@@ -1336,8 +1336,8 @@ async function refreshVisibleContent() {
   state.pendingObservedRevision='';
   renderContentUpdatePrompt();
   if(state.view==='backlog'){
-    await refreshList();
     if(state.detail)await loadTaskDetail(state.detail);
+    else await refreshList();
     await checkContentRevision(true);
   } else {
     await refresh();
@@ -4742,7 +4742,10 @@ function listView() {
   const head=`<div class="task-list-head"><div>${esc(t('id'))}</div><div>${esc(t('taskColumn'))}</div><div>${esc(t('statusColumn'))}</div><div>${esc(t('agentColumn'))}</div><div>${esc(t('activeColumn'))}</div><div>${esc(t('updatedColumn'))}</div><div></div></div>`;
   const summary = uninitialized ? t('backlogUninitializedSummary') : `${meta.selected ? String(meta.selected).split(/[\\/]/).pop() : ''} · ${info.total} ${t('items')} · ${filterLabel}`;
   const emptyState = `<div class="empty"><strong>${esc(t('backlogUninitializedTitle'))}</strong><div>${esc(t('backlogUninitializedBody'))}</div></div>`;
-  return `<div class="page-head"><div><div class="eyebrow">${esc(data.repo||t('repository'))}</div><h1>${esc(t('backlog'))}</h1><p class="summary">${esc(summary)}</p></div></div><div class="metrics"><div class="metric"><strong>${c.working||0}</strong><span>${esc(t('working'))}</span></div><div class="metric"><strong>${c.ready||0}</strong><span>${esc(t('ready'))}</span></div><div class="metric"><strong>${c.hold||0}</strong><span>${esc(t('hold'))}</span></div><div class="metric"><strong>${c.attention||0}</strong><span>${esc(t('needsAttention'))}</span></div></div>${uninitialized?`${listControls(info)}${emptyState}`:`${listControls(info)}${rows.length?`${head}<div class="task-list">${rows.map((task,i)=>{
+  const preliminary=Boolean(data.pending_reconciliation);
+  const metricValue=key=>preliminary?'—':String(c[key]||0);
+  const summaryText=summary+(preliminary?(state.language==='ko'?' · 실행 상태 확인 중':' · Verifying execution state'):'');
+  return `<div class="page-head"><div><div class="eyebrow">${esc(data.repo||t('repository'))}</div><h1>${esc(t('backlog'))}</h1><p class="summary">${esc(summaryText)}</p></div></div><div class="metrics"><div class="metric"><strong>${metricValue('working')}</strong><span>${esc(t('working'))}</span></div><div class="metric"><strong>${metricValue('ready')}</strong><span>${esc(t('ready'))}</span></div><div class="metric"><strong>${metricValue('hold')}</strong><span>${esc(t('hold'))}</span></div><div class="metric"><strong>${metricValue('attention')}</strong><span>${esc(t('needsAttention'))}</span></div></div>${uninitialized?`${listControls(info)}${emptyState}`:`${listControls(info)}${rows.length?`${head}<div class="task-list">${rows.map((task,i)=>{
     const act=task.activity||{}, h=act.health;
     const time=task.file_state==='doing'?fmtSec(runningSeconds(task,'active')):(task.file_state==='done'?fmtSec(task.active_seconds):'-');
     const hs=humanSummary(task);
@@ -4756,7 +4759,7 @@ function listView() {
     const taskMeta=[task.source?.label?sourceLink(task.source,true):'',...visibleTags.map(tag=>tagChip(tag,true)),hiddenTags.length?`<span class="tag-overflow" title="${esc(hiddenTags.join(' · '))}">+${hiddenTags.length}</span>`:''].filter(Boolean).join('');
     const updated=updatedAt(task);
     const alias=(task.agent||'').split('/').pop()||'-';
-    return `<div class="task-row ${i===state.selectedIndex?'keyboard-selected':''}" data-id="${esc(task.id)}" data-row-index="${i}" tabindex="-1"><div class="task-id">${esc(task.id)}</div><div class="task-main"><div class="task-mobile-id">${esc(task.id)}</div><div class="task-title">${esc(titleOf(task))}</div>${taskMeta?`<div class="task-meta-row">${taskMeta}</div>`:''}${previewLine?`<div class="task-preview">${esc(previewLine)}</div>`:''}</div><div class="state-col"><span class="status ${esc(task.state)}">${esc(stateLabel(task.state))}</span>${statusSummary?`<div class="task-state-summary">${esc(statusSummary)}</div>`:''}${['quiet','stale','worker_missing'].includes(h)?`<div class="task-sub">${esc(healthLabel(h))}</div>`:''}</div><div class="task-agent"><div>${esc(alias)}</div>${task.archive_month?`<div class="task-sub">archive/${esc(task.archive_month)}</div>`:''}</div><div class="task-active timer live-timer" data-id="${esc(task.id)}">${time}</div><div class="task-updated" title="${esc(dateTimeLabel(updated))}"><strong class="live-updated" data-updated-at="${esc(updated)}">${esc(ago(updated))}</strong><span>${esc(dateTimeLabel(updated,true))}</span></div><div class="chev">›</div></div>`;
+    return `<div class="task-row ${i===state.selectedIndex?'keyboard-selected':''}" data-id="${esc(task.id)}" data-row-index="${i}" tabindex="-1"><div class="task-id">${esc(task.id)}</div><div class="task-main"><div class="task-mobile-id">${esc(task.id)}</div><div class="task-title">${esc(titleOf(task))}</div>${taskMeta?`<div class="task-meta-row">${taskMeta}</div>`:''}${previewLine?`<div class="task-preview">${esc(previewLine)}</div>`:''}</div><div class="state-col"><span class="status ${preliminary?'todo':esc(task.state)}">${esc(preliminary?(state.language==='ko'?'확인 중':'Checking'):stateLabel(task.state))}</span>${!preliminary&&statusSummary?`<div class="task-state-summary">${esc(statusSummary)}</div>`:''}${['quiet','stale','worker_missing'].includes(h)?`<div class="task-sub">${esc(healthLabel(h))}</div>`:''}</div><div class="task-agent"><div>${esc(alias)}</div>${task.archive_month?`<div class="task-sub">archive/${esc(task.archive_month)}</div>`:''}</div><div class="task-active timer live-timer" data-id="${esc(task.id)}">${time}</div><div class="task-updated" title="${esc(dateTimeLabel(updated))}"><strong class="live-updated" data-updated-at="${esc(updated)}">${esc(ago(updated))}</strong><span>${esc(dateTimeLabel(updated,true))}</span></div><div class="chev">›</div></div>`;
   }).join('')}</div>`:`<div class="empty">${esc(t('noMatches'))}</div>`}`}`;
 }
 
@@ -5587,6 +5590,9 @@ function openTask(id) {
 }
 function closeTask() {
   state.detail=null; state.detailTask=null; state.loadError=''; history.pushState({},'',state.view==='backlog'?backlogUrl():`/?view=${state.view}`); render();
+  // A direct-link detail page never needed the heavy list before its first paint.
+  // Fetch the list only when the user actually returns to it.
+  void refreshList();
 }
 function bindRows() {
   bindBacklogListTools();
@@ -6037,11 +6043,28 @@ async function refreshList(preserveSelection=false) {
  if(cached && !preserveSelection){state.listData=cachedListRows(cached,listContextKey());state.listDataContext=listContextKey();state.listRevalidating=true;state.loadError='';if(state.view==='backlog')render();}
  const controller=new AbortController();
  const listRequestStartedAt=Date.now();
+ let reconciled=false;
+ // First paint is strictly a read-only FILE snapshot. Runtime health, ready/
+ // blocked and notification counts are explicitly pending, not guessed.
+ // Keep the authoritative request running; it replaces every provisional row.
+ if(!cached&&!state.listData&&!state.detail&&state.statusFilters.includes('all')){
+   const fastParams=new URLSearchParams(targetQuery);
+   fastParams.set('projection','initial');
+   void (async()=>{try{
+     const response=await fetch('/api/backlog/tasks?'+fastParams.toString(),{cache:'no-store',signal:controller.signal});
+     if(!response.ok)return;
+     const first=await response.json();
+     if(reconciled||!isCurrent()||state.listData||!first.pending_reconciliation)return;
+     state.listData=first;state.listDataContext=key;state.listRevalidating=true;
+     state.loadError='';state.lastFetch=Date.now();
+     if(state.view==='backlog')render();
+   }catch(_){/* Authoritative request still reports the real error. */}})();
+ }
  listRefreshAbort=controller;listRefreshContext=key;
  const request=(async()=>{try{
   const r=await fetch('/api/backlog/tasks?'+targetQuery,{cache:'no-store',signal:controller.signal});
   if(!r.ok){let detail='';try{detail=(await r.json()).error||'';}catch(_){}throw new Error(detail||`HTTP ${r.status}`);}
-  const data=await r.json();if(!isCurrent())return;
+  const data=await r.json();reconciled=true;if(!isCurrent())return;
   state.listLoadSlow=Date.now()-listRequestStartedAt>2000;
   cache.current=Math.max(1,Number(data.page)||1);storeListPage(key,data,epoch,source);
   const observed=Date.parse(data.snapshot_at)||0;if(observed<(listSummaryObserved.get(key)||0)){if(observed)listRefreshQueued=true;return;}listSummaryObserved.set(key,observed);listSummaryLatest.set(key,data);
@@ -6059,8 +6082,9 @@ async function refreshList(preserveSelection=false) {
   // Start adjacent requests only after the foreground rows have rendered.
   const acceptedQuery=listQueryString();
   requestAnimationFrame(()=>requestAnimationFrame(()=>{if(targetProject===state.project&&targetBacklog===state.backlog&&acceptedQuery===listQueryString()&&targetView===state.view&&targetDetail===state.detail&&listCacheEpoch(source)===epoch&&listPageCaches.get(key)===cache){if(!state.listLoadSlow){prefetchListPages(acceptedQuery,data,epoch,source);scheduleTaskDetailPrefetch(acceptedQuery);}}}));
- }catch(e){if(!isCurrent())return;state.listRevalidating=false;state.loadError=String(e?.message||e||'Unknown error');$('#connectionDot').style.background='var(--danger)';if(!state.listData)render();}
+ }catch(e){if(!isCurrent())return;state.listRevalidating=false;state.loadError=String(e?.message||e||'Unknown error');$('#connectionDot').style.background='var(--danger)';if(state.listData?.pending_reconciliation)state.listData=null;if(!state.listData)render();}
  finally{
+  reconciled=true;
   // A canceled earlier request must not clear or queue over a newer one.
   if(listRefreshInFlight===request){
    listRefreshInFlight=null;listRefreshAbort=null;listRefreshContext='';
@@ -6165,10 +6189,17 @@ async function refreshOnce() {
   }
 
   if(targetView==='backlog'){
+    // Deep links and reloads must show the selected Markdown before any
+    // unrelated list/control-tower reconciliation can run.
+    if(state.detail){
+      await loadTaskDetail(state.detail);
+      if(targetProject!==state.project || targetBacklog!==state.backlog || state.view!==targetView)return;
+      void checkContentRevision(true);
+      return;
+    }
     refreshHub(false).catch(()=>{});
     await refreshList();
     if(targetProject!==state.project || targetBacklog!==state.backlog || state.view!==targetView)return;
-    if(state.detail)await loadTaskDetail(state.detail);
     await checkContentRevision(true);
     return;
   }
@@ -6328,9 +6359,8 @@ function route(fromPop=false) {
   if(fromPop&&state.view==='storage')queueMicrotask(()=>loadStorageManagement(true));
   if(fromPop&&state.project&&state.view==='backlog'){
     queueMicrotask(()=>{
-      refreshList();
-      ensureAttentionStream();
       if(state.detail)loadTaskDetail(state.detail);
+      else {refreshList();ensureAttentionStream();}
     });
   }
 }
