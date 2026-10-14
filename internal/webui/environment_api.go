@@ -1,7 +1,7 @@
 package webui
 
 import (
-	"context"
+	stdcontext "context"
 	"encoding/json"
 	"net/http"
 	"os"
@@ -53,7 +53,7 @@ func registerEnvironmentRoutes(
 		if !enter&&(input.Number!=0||input.SHA!=""){
 			writeJSON(w,map[string]any{"error":"return does not accept a target PR"},400);return
 		}
-		ctx,cancel:=context.WithTimeout(r.Context(),115*time.Second)
+		ctx,cancel:=stdcontext.WithTimeout(r.Context(),115*time.Second)
 		defer cancel()
 		var result maintenance.UpgradeResult
 		var err error
