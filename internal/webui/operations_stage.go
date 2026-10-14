@@ -322,7 +322,7 @@ func latestOperationRecovery(item operationIncident, attempts []runtimeobs.Attem
 	return false
 }
 
-func operationSourceAlreadyResolved(signal operationIncident, journal operationJournal) bool {
+func operationSourceAlreadyResolved(signal operationIncident, journal operationJournal, now time.Time) bool {
 	if signal.Kind != "runtime_unknown" && signal.Kind != "no_signal" {
 		return false
 	}
@@ -339,6 +339,13 @@ func operationSourceAlreadyResolved(signal operationIncident, journal operationJ
 		// verification toggled after the observed recovery. A fresh signal time,
 		// different failure kind or different attempt remains a distinct episode.
 		sameSourceClock := prior.LastObservedAt == signal.LastObservedAt || prior.RecoveredAt == signal.LastObservedAt
+		// A previous recovery does not grant permanent immunity: if that same
+		// source has now gone quiet for a full stale interval, this is a new
+		// observable no-signal episode and needs a new warning.
+		if prior.RecoveredAt == signal.LastObservedAt {
+			at,err:=time.Parse(time.RFC3339Nano,prior.RecoveredAt)
+			if err!=nil || at.After(now) || now.Sub(at)>=runtimeobs.StaleWarnDuration(){continue}
+		}
 		if prior.Project == signal.Project && prior.AttemptID == signal.AttemptID && prior.AssignmentID == signal.AssignmentID && prior.TaskID == signal.TaskID && prior.AgentPath == signal.AgentPath && prior.Kind == signal.Kind && prior.Evidence == signal.Evidence && sameSourceClock {
 			return true
 		}
