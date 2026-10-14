@@ -95,7 +95,7 @@ const state = {
   projectNotificationSettingsError: '',
   previewBuilds:[],previewInstances:[],previewLoading:false,previewLoaded:false,
   previewError:'',previewMessage:'',previewSearch:'',previewFilter:'all',previewActionBusy:0,
-  executionTarget:null,
+  executionTarget:null,executionSwitchSupported:true,executionSwitchOS:'',
   operationRevision: '',
 };
 
@@ -3514,7 +3514,7 @@ function previewBuildsView(){
   const rows=visible.map(item=>{
     const number=Number(item.number),sha=String(item.head_sha||'');
     const valid=/^[a-f0-9]{40}$/.test(sha);
-    const available=item.build_status==='success'&&valid&&!state.previewActionBusy;
+    const available=item.build_status==='success'&&valid&&state.executionSwitchSupported&&!state.previewActionBusy;
     const prLink=/^https:\/\/github\.com\/silverkhan\/TaskMecca\/pull\/\d+$/.test(String(item.url||''))
       ?'<a href="'+esc(item.url)+'" target="_blank" rel="noopener noreferrer">PR #'+number+'</a>':'PR #'+number;
     return '<article class="preview-build-row" data-preview-pr="'+number+'">'+
@@ -3529,6 +3529,7 @@ function previewBuildsView(){
     '<div class="timing-note"><strong>'+(ko?'전체 환경 전환':'Full environment switch')+'</strong><span>'+
     esc(ko?'동시에 실행되는 별도의 Preview 프로세스는 생성하지 않습니다. 설치된 실행 파일을 교체하고 웹을 재시작합니다. PR 코드는 현재 사용자 권한으로 실행됩니다. 신뢰된 PR만 선택하세요.':'No extra Preview process is started. The installed executable is replaced and Web restarts. Only run code you trust under your OS user permissions.')+
     '</span></div>'+
+    (!state.executionSwitchSupported?'<p class="load-error">'+esc(ko?'Windows PR 전환은 안전한 재시작 절차가 검증될 때까지 사용할 수 없습니다.':'PR switching on Windows is disabled until staged restart verification is completed.')+'</p>':'')+
     '<div class="preview-build-tools"><input id="previewSearch" type="search" autocomplete="off" placeholder="'+(ko?'PR 번호, 제목, 브랜치 검색':'Search PR')+'" value="'+esc(state.previewSearch)+'"/>'+
     '<div class="preview-build-filters">'+[['all',ko?'전체':'All'],['success',ko?'빌드 성공':'Built'],['failed',ko?'오류·만료':'Errors']].map(([value,label])=>
       '<button type="button" class="action-btn secondary '+(state.previewFilter===value?'active':'')+'" data-preview-filter="'+value+'">'+label+'</button>').join('')+
@@ -3623,6 +3624,8 @@ async function refreshExecutionTarget(){
     if(!response.ok)return;
     const payload=await response.json();
     state.executionTarget=payload.target||null;
+    state.executionSwitchSupported=payload.switch_supported!==false;
+    state.executionSwitchOS=payload.os||'';
     const banner=$('#prExecutionBanner'),target=state.executionTarget;
     if(banner){
       banner.hidden=target?.kind!=='pr';
