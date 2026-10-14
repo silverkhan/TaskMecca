@@ -26,6 +26,12 @@ func previewLocalMutation(r *http.Request) bool {
  if r.Method!=http.MethodPost || r.Header.Get("X-Task-Mecca-Action")!="1" {return false}
  host,_,err:=net.SplitHostPort(r.RemoteAddr)
  if err!=nil||!net.ParseIP(host).IsLoopback(){return false}
+ // Reverse proxies (including Tailscale Serve) may forward a remote
+ // browser via 127.0.0.1. The requested origin itself must be local too.
+ requestedHost:=r.Host
+ if host,_,err:=net.SplitHostPort(requestedHost);err==nil{requestedHost=host}
+ address:=net.ParseIP(requestedHost)
+ if requestedHost!="localhost"&&(address==nil||!address.IsLoopback()){return false}
  origin:=r.Header.Get("Origin")
  if origin==""{return false}
  parsed,err:=url.Parse(origin)
