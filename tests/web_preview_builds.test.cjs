@@ -9,6 +9,7 @@ function setup(){
     URLSearchParams,
     location:{search:'?view=preview',pathname:'/'},
     navigator:{language:'ko'},
+    document:{readyState:'loading',addEventListener(){},querySelector(){return null}},
     localStorage:{getItem:key=>store.get(key)||null,setItem:(key,val)=>store.set(key,String(val))},
   });
   const body=source.slice(0,source.indexOf('\ntranslateChrome();'));
