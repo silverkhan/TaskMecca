@@ -741,21 +741,62 @@ func Upgrade(current string) (UpgradeResult,error) {
 // Progress reports observed stages, never fabricated download percentages.
 // Existing CLI callers remain compatible with Upgrade.
 func UpgradeWithProgress(current string,report func(string)) (UpgradeResult,error) {
+    return upgradeWithSelectedTarget(current,"",report)
+}
+
+// UpgradeWithSelectedTarget trusts only the chosen VERSION identifier, not
+// the downloaded bytes. The SHA256 manifest and an independent live VERSION
+// check inside fetchReleaseBinaryWithProgress remain mandatory. This saves
+// the duplicate network check after a user has already selected the release
+// from the Web update indicator. CLI callers retain ordinary discovery.
+func UpgradeWithSelectedTarget(current,target string,report func(string)) (UpgradeResult,error) {
+    return upgradeWithSelectedTarget(current,target,report)
+}
+
+func validSelectedUpgradeTarget(current,target,channel string) bool {
+    target=normalizeVersion(target)
+    if target=="" || !newerVersion(target,current) {return false}
+    // Do not let arbitrary browser input turn a rolling-tag updater into an
+    // unvalidated installer. Only release-generated semver tags are valid.
+    parts:=strings.Split(target,"-")
+    if len(parts)<1||len(parts)>2 {return false}
+    core:=strings.Split(parts[0],".")
+    if len(core)!=3{return false}
+    for _,number:=range core{
+        if number=="" {return false}
+        for _,r:=range number{if r<'0'||r>'9'{return false}}
+    }
+    if channel==stableChannel{return len(parts)==1}
+    if channel!=devChannel || len(parts)!=2 || !strings.HasPrefix(parts[1],"dev.") {return false}
+    sequence:=strings.TrimPrefix(parts[1],"dev.")
+    if sequence=="" {return false}
+    for _,r:=range sequence{if r<'0'||r>'9'{return false}}
+    return true
+}
+
+func upgradeWithSelectedTarget(current,target string,report func(string)) (UpgradeResult,error) {
     current=normalizeVersion(current)
     result:=UpgradeResult{From:current,Channel:CurrentChannel()}
     if err:=ensureReleaseTransitionAllowed();err!=nil{return result,err}
     reportUpgradeProgress(report,"checking")
-    info:=CheckLatest(current)
-    if info.Error!="" { return result,errors.New(info.Error) }
-    if !info.UpdateAvailable {
-        result.To=current
-        return result,nil
+    target=normalizeVersion(target)
+    if target!="" {
+        if !validSelectedUpgradeTarget(current,target,CurrentChannel()) {
+            return result,fmt.Errorf("invalid or obsolete selected %s release %q; refresh update information",CurrentChannel(),target)
+        }
+    }else{
+        // Only CLI and legacy clients without a selected version must
+        // discover the latest version again.
+        info:=CheckLatest(current)
+        if info.Error!="" {return result,errors.New(info.Error)}
+        if !info.UpdateAvailable {result.To=current;return result,nil}
+        target=info.Latest
     }
     reportUpgradeProgress(report,"downloading")
-    binary,err:=fetchReleaseBinaryWithProgress(releaseBase(),report,info.Latest)
-    if err!=nil { return result,err }
+    binary,err:=fetchReleaseBinaryWithProgress(releaseBase(),report,target)
+    if err!=nil {return result,err}
     reportUpgradeProgress(report,"installing")
-    result,err=installBinary(current,info.Latest,binary)
+    result,err=installBinary(current,target,binary)
     result.Channel=CurrentChannel()
     return result,err
 }
