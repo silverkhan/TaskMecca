@@ -1534,6 +1534,19 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 			writeJSON(w, map[string]any{"error": err.Error(), "id": id}, 404)
 			return
 		}
+		if r.Method == http.MethodGet && r.URL.Query().Get("projection") == "lifecycle" {
+			// Runtime projection retains the same canonical control-tower evidence
+			// as full detail, but never sends Markdown or unrelated sections.
+			// It remains under the normal monitoring guard unlike content-only.
+			writeJSON(w, map[string]any{
+				"id": item["id"],
+				"lifecycle": item["lifecycle"],
+				"activity": item["activity"],
+				"state": item["state"],
+				"file_state": item["file_state"],
+			}, 200)
+			return
+		}
 		writeJSON(w, item, 200)
 	})
 

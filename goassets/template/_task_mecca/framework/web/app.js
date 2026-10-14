@@ -1073,7 +1073,11 @@ function renderContentUpdatePrompt() {
     el.innerHTML='';
     return;
   }
-  const reason=state.pendingContentReason==='runtime'?t('runtimeChanged'):t('contentChanged');
+  const reason=state.detail&&state.pendingContentReason==='content'
+    ? (state.language==='ko'
+        ? '현재 보고 있는 '+state.detail+' 백로그 본문이 실제 변경되었습니다.'
+        : 'The open task '+state.detail+' Markdown content has changed.')
+    : state.pendingContentReason==='runtime'?t('runtimeChanged'):t('contentChanged');
   el.innerHTML=`<div class="content-update-copy"><strong>${esc(t('newContentAvailable'))}</strong><span class="content-update-reason">${esc(reason)} ${esc(t('refreshToSee'))}</span>${statusChangeMarkup(state.pendingContentChanges)}</div><button type="button" class="content-update-action" id="contentUpdateRefreshBtn">${esc(t('refreshNow'))}</button>`;
   $('#contentUpdateRefreshBtn')?.addEventListener('click',refreshVisibleContent);
 }
@@ -1187,6 +1191,69 @@ async function refreshVersionInfo(force=false) {
   }
 }
 
+// The current task's raw Markdown and canonical lifecycle have separate
+// refresh contracts. Heartbeats in unrelated sessions are not text edits.
+async function viewedTaskMarkdownChanged(project,backlog,id,displayedMarkdown) {
+  const params=new URLSearchParams({project,projection:'content'});
+  if(backlog)params.set('backlog',backlog);
+  const response=await fetch('/api/tasks/'+encodeURIComponent(id)+'?'+params.toString(),{cache:'no-store'});
+  if(!response.ok)throw new Error('Cannot validate visible Markdown');
+  const body=await response.json();
+  return String(body.raw_markdown||'')!==String(displayedMarkdown||'');
+}
+
+function lifecycleVisualFingerprint(value) {
+  const lifecycle=value||{};
+  const events=(lifecycle.events||[]).map(event=>{
+    const copy={...event};
+    delete copy.interval; // live duration ticks already update locally
+    return copy;
+  });
+  return JSON.stringify({events,current_state:lifecycle.current_state||'',
+    current_state_at:lifecycle.current_state_at||'',
+    lifecycle_inferred:Boolean(lifecycle.lifecycle_inferred),
+    timing_incomplete:Boolean(lifecycle.timing_incomplete)});
+}
+
+let viewedLifecycleLastFetchAt=0;
+async function refreshViewedTaskLifecycle(project,backlog,id) {
+  if(state.view!=='backlog'||state.detail!==id||state.project!==project||
+    state.backlog!==backlog||!state.detailTask||state.detailTask.content_only)return false;
+  if(typeof document!=='undefined'&&document.visibilityState==='hidden')return false;
+  const now=Date.now();
+  if(now-viewedLifecycleLastFetchAt<10000)return false;
+  viewedLifecycleLastFetchAt=now;
+  const old=state.detailTask;
+  const params=new URLSearchParams({project,projection:'lifecycle'});
+  if(backlog)params.set('backlog',backlog);
+  const response=await fetch('/api/tasks/'+encodeURIComponent(id)+'?'+params.toString(),{cache:'no-store'});
+  if(!response.ok)throw new Error('Could not load lifecycle projection');
+  const payload=await response.json();
+  if(state.view!=='backlog'||state.detail!==id||state.project!==project||
+    state.backlog!==backlog||!state.detailTask||
+    state.detailTask.raw_markdown!==old.raw_markdown)return false;
+  const before=lifecycleVisualFingerprint(state.detailTask.lifecycle);
+  const after=lifecycleVisualFingerprint(payload.lifecycle);
+  const newer={...state.detailTask,lifecycle:payload.lifecycle||{},activity:payload.activity||{}};
+  state.detailTask=newer;
+  if(before===after)return true;
+  const section=typeof document!=='undefined'?document.getElementById?.('lifecycle'):null;
+  if(section&&!state.raw){
+    const rect=section.getBoundingClientRect?.();
+    const previouslyAbove=rect&&rect.bottom<=0;
+    const oldHeight=rect?.height||0;
+    const previousScroll=typeof window!=='undefined'?window.scrollY:0;
+    // Patch only lifecycle children. Keep section identity for TOC observer,
+    // preserve Markdown, open disclosures, focus and reading position.
+    section.innerHTML='<h2>'+esc(t('lifecycle'))+'</h2>'+detailLifecycleBody(newer);
+    if(previouslyAbove&&typeof window!=='undefined'){
+      const delta=(section.getBoundingClientRect?.().height||0)-oldHeight;
+      if(delta)window.scrollTo?.({left:window.scrollX,top:previousScroll+delta,behavior:'auto'});
+    }
+  }
+  return true;
+}
+
 let revisionCheckInFlight=null;
 async function checkContentRevision(establishOnly=false) {
   if(!state.project)return;
@@ -1208,6 +1275,34 @@ async function checkContentRevision(establishOnly=false) {
         return;
       }
       const fingerprint=revision+'|'+signalRevision;
+      if(state.view==='backlog'&&state.detail&&state.detailTask){
+        const id=state.detail, displayed=state.detailTask;
+        const stillCurrent=()=>project===state.project&&backlog===state.backlog&&
+          state.view==='backlog'&&state.detail===id&&
+          state.detailTask?.raw_markdown===displayed.raw_markdown;
+        if(revision!==state.contentRevision &&
+          !(state.pendingContentUpdate&&state.pendingContentReason==='content'&&state.pendingObservedRevision===fingerprint)){
+          try{
+            const changed=await viewedTaskMarkdownChanged(project,backlog,id,displayed.raw_markdown);
+            if(!stillCurrent())return;
+            if(changed){
+              state.pendingObservedRevision=fingerprint;
+              if(!state.pendingContentUpdate)markContentUpdate('content',diffRevisionStates(state.contentStateSnapshot,states).filter(change=>change.id===id));
+            }else{
+              invalidateListPages();
+              state.contentRevision=revision;
+              state.contentStateSnapshot=states;
+            }
+          }catch(_){return}
+        }
+        if(signalRevision!==state.signalRevision){
+          try{
+            const updated=await refreshViewedTaskLifecycle(project,backlog,id);
+            if(updated&&stillCurrent())state.signalRevision=signalRevision;
+          }catch(_){}
+        }
+        return;
+      }
       if(revision!==state.contentRevision || signalRevision!==state.signalRevision){
         // A later page must keep its snapshot until the user refreshes.
         // Repeated 5-second checks for the same revision do not re-query a
@@ -5281,17 +5376,25 @@ function bindDetailInteractions() {
     history.pushState({},'',backlogUrl()); refreshList();
   }));
 }
-function detailView(task) {
-  const act=task.activity||{}, lc=task.lifecycle||{}, reason=task.attention_reason||null, warn=Boolean(reason)||['quiet','stale','worker_missing'].includes(act.health), events=lc.events||[];
-  const hs=humanSummary(task);
+// Canonical lifecycle markup is independently replaceable without rebuilding
+// the task document, resetting disclosures or disturbing the reading position.
+function detailLifecycleBody(task) {
+  const lc=task.lifecycle||{}, events=lc.events||[];
   const timingInferred=Boolean(lc.lifecycle_inferred), timingIncomplete=Boolean(lc.timing_incomplete);
-  const lifecyclePreview=events.length?`${lifecycleEventLabel(events[events.length-1].label)} · ${dateTimeLabel(events[events.length-1].at,true)}`:t('noLifecycle');
   const lifecycleBody=`${task.content_only?`<p class="summary">${esc(state.language==='ko'?'실행·라이프사이클 정보 확인 중…':'Checking lifecycle and runtime details…')}</p>`:''}${timingInferred?`<div class="timing-note"><strong>${esc(t('provisionalTiming'))}</strong><span>${esc(t('provisionalTimingDetail'))}</span></div>`:''}${timingIncomplete?`<div class="timing-note warning"><strong>${esc(t('incompleteHistory'))}</strong><span>${esc(t('incompleteHistoryDetail'))}</span></div>`:''}${events.length?`<div class="timeline">${events.map((e,i)=>{
     const isCurrent=i===events.length-1 && e.state!=='done' && Boolean(e.at) && Number.isFinite(new Date(e.at).getTime());
     const duration=isCurrent?fmtSec(Math.max(0,(Date.now()-new Date(e.at).getTime())/1000)):(e.interval||'-');
     const durationHTML=duration&&duration!=='-'?`${esc(t('stayed'))} <span${isCurrent?` class="live-lifecycle-interval" data-state-at="${esc(e.at)}"`:''}>${esc(duration)}</span>`:'';
     return `<div class="timeline-event"><span class="timeline-dot"></span><span class="timeline-time">${esc(new Date(e.at).toLocaleString(localeCode()))}</span><div class="timeline-label"><strong>${esc(lifecycleEventLabel(e.label))}${e.provisional?` · ${esc(t('provisional'))}`:''}</strong><small>${durationHTML}${lifecycleEvidenceLabel(e)?` · ${esc(lifecycleEvidenceLabel(e))}`:''}</small></div></div>`;
   }).join('')}</div>`:task.content_only?'':`<p class="summary">${esc(t('noLifecycle'))}</p>`}`;
+  return lifecycleBody;
+}
+function detailView(task) {
+  const act=task.activity||{}, lc=task.lifecycle||{}, reason=task.attention_reason||null, warn=Boolean(reason)||['quiet','stale','worker_missing'].includes(act.health), events=lc.events||[];
+  const hs=humanSummary(task);
+  const timingInferred=Boolean(lc.lifecycle_inferred), timingIncomplete=Boolean(lc.timing_incomplete);
+  const lifecyclePreview=events.length?`${lifecycleEventLabel(events[events.length-1].label)} · ${dateTimeLabel(events[events.length-1].at,true)}`:t('noLifecycle');
+  const lifecycleBody=detailLifecycleBody(task);
   const lifecycle=`<section class="section detail-section lifecycle-section" id="lifecycle" data-toc-label="${esc(t('lifecycle'))}"><h2>${esc(t('lifecycle'))}</h2>${lifecycleBody}</section>`;
   const passiveAlert=!reason&&warn?`<div class="attention-banner ${['stale','worker_missing'].includes(act.health)?'danger':''}"><strong>${esc(healthLabel(act.health))}</strong><span>${esc(t('lastObservable',{ago:ago(act.last_activity_at),source:act.last_activity_source}))} ${esc(act.health==='worker_missing'?t('workerMissingDetail'):t('quietAdvisory'))}</span></div>`:'';
   const sectionSummaries=task.document?.section_summaries||{};
