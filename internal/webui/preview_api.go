@@ -69,7 +69,9 @@ func registerPreviewRoutes(mux *http.ServeMux,writeJSON func(http.ResponseWriter
   if err:=dec.Decode(&request);err!=nil||request.Number<1 {
    writeJSON(w,map[string]any{"error":"invalid PR number"},400);return
   }
-  ctx,cancel:=stdcontext.WithTimeout(r.Context(),75*time.Second)
+  timeout:=75*time.Second
+  if start{timeout=120*time.Second} // artifact download + Preview health readiness
+  ctx,cancel:=stdcontext.WithTimeout(r.Context(),timeout)
   defer cancel()
   if start{
    instance,err:=getManager().Start(ctx,request.Number,r.Header.Get("Origin"))
