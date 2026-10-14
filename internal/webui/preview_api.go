@@ -82,6 +82,27 @@ func registerPreviewRoutes(mux *http.ServeMux,writeJSON func(http.ResponseWriter
    writeJSON(w,map[string]any{"ok":true},200)
   }
  }
+ mux.HandleFunc("/api/preview/rebuild",func(w http.ResponseWriter,r *http.Request){
+  if !permitted(w,r){return}
+  if !previewLocalMutation(r){
+   writeJSON(w,map[string]any{"error":"Preview rebuild requires a local same-origin action"},403);return
+  }
+  var body struct{
+   Number int `json:"number"`
+   SHA string `json:"sha"`
+  }
+  decoder:=json.NewDecoder(http.MaxBytesReader(w,r.Body,2048))
+  decoder.DisallowUnknownFields()
+  if err:=decoder.Decode(&body);err!=nil||body.Number<1||len(body.SHA)!=40{
+   writeJSON(w,map[string]any{"error":"invalid PR or SHA"},400);return
+  }
+  ctx,cancel:=stdcontext.WithTimeout(r.Context(),25*time.Second)
+  defer cancel()
+  if err:=preview.NewClient().RequestBuild(ctx,body.Number,body.SHA);err!=nil{
+   writeJSON(w,map[string]any{"error":err.Error()},409);return
+  }
+  writeJSON(w,map[string]any{"ok":true,"message":"Preview build has been queued in GitHub Actions"},202)
+ })
  mux.HandleFunc("/api/preview/start",func(w http.ResponseWriter,r *http.Request){action(w,r,true)})
  mux.HandleFunc("/api/preview/stop",func(w http.ResponseWriter,r *http.Request){action(w,r,false)})
 }
