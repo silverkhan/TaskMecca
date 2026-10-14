@@ -21,6 +21,7 @@ import (
     "github.com/silverkhan/TaskMecca/internal/webui"
 )
 
+// AID-154: non-functional PR environment switching smoke marker.
 var version = "0.2.51"
 
 func main() { os.Exit(run(os.Args[1:])) }
