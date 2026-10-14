@@ -787,7 +787,7 @@ function upgradeFlowCopy(){
   downloading:'업데이트 파일을 다운로드하고 있습니다',verifying:'다운로드 파일을 검증하고 있습니다',
   installing:'검증된 업데이트를 설치하고 있습니다',restarting:'웹 서비스를 재시작하고 있습니다',
   completed:'업데이트를 완료했습니다',failed:'업데이트를 완료하지 못했습니다',
-  noNotes:'업데이트 상세 내용을 확인할 수 없습니다',noNotesHelp:'릴리스 노트를 불러오지 못했습니다. 계속 진행할지 선택해 주세요.',
+  noNotes:'업데이트 상세 내용을 확인할 수 없습니다',noNotesHelp:'릴리스 노트 조회가 지연되거나 제공되지 않았습니다. 최신 버전으로 계속 진행할지 선택해 주세요.',
   waiting:'진행 중입니다. 업데이트 버튼을 다시 누르지 않아도 됩니다.',
   restartHelp:'연결이 잠시 끊길 수 있습니다. 준비되면 자동으로 다시 연결합니다.',
   longWait:'네트워크 상태에 따라 시간이 걸릴 수 있습니다. 작업이 계속 진행 중입니다.',
@@ -800,7 +800,7 @@ function upgradeFlowCopy(){
   downloading:'Downloading the update',verifying:'Verifying the downloaded file',
   installing:'Installing the verified update',restarting:'Restarting the Web service',
   completed:'Update completed',failed:'The update could not be completed',
-  noNotes:'Update details are unavailable',noNotesHelp:'Release notes could not be loaded. Choose whether to continue.',
+  noNotes:'Update details are unavailable',noNotesHelp:'Release notes are delayed or unavailable. You can still choose to update.',
   waiting:'In progress. You do not need to press Update again.',
   restartHelp:'The connection may briefly drop. This page will reconnect when ready.',
   longWait:'This can take longer on slower connections. The update is still running.',
@@ -918,7 +918,12 @@ async function openUpgradeDetails(version){
  upgradeFlowStartedAt=Date.now();
  upgradeFlowTarget=String(version||'');
  setUpgradeFlowStage('notes');
- const detail=await loadReleaseNoteDetail(version);
+ // Showing the update decision must not wait for a slow GitHub/CDN
+ // release-note request. Late notes are cached for a future click.
+ const detail=await Promise.race([
+  loadReleaseNoteDetail(version),
+  new Promise(resolve=>setTimeout(()=>resolve(null),1200))
+ ]);
  if(session!==upgradeFlowSession||upgradeFlowMode!=='notes')return;
  if(detail){
   closeUpgradeFlow();
@@ -1407,7 +1412,9 @@ async function performUpgrade() {
  setUpgradeFlowStage('checking');
  startUpgradeFlowPolling(session);
  try{
-  const r=await fetch('/api/upgrade',{method:'POST',headers:{'X-Task-Mecca-Action':'1'}});
+  const r=await fetch('/api/upgrade',{method:'POST',
+    headers:{'X-Task-Mecca-Action':'1','Content-Type':'application/json'},
+    body:JSON.stringify({expected_version:String(cli.latest||'')})});
   const body=await r.json();
   if(r.status===409 && body.status?.active){
    upgradeFlowOwnRequest=false;

@@ -156,6 +156,7 @@ func selectionPayload(ctx context, selected string, candidates []backlog.Candida
 
 // Replaceable only in isolated HTTP tests; real Web uses maintenance.UpgradeWithProgress.
 var webUpgradeRunner=maintenance.UpgradeWithProgress
+var webUpgradeRunnerExpected=maintenance.UpgradeWithProgressExpected
 
 var stableReleaseNotesIndexProvider = maintenance.StableReleaseNotesIndex
 var stableReleaseNoteProvider = maintenance.StableReleaseNote
@@ -1424,11 +1425,32 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 			writeJSON(w, map[string]any{"error": "maintenance action header required"}, 403)
 			return
 		}
+        // New clients send the target already shown in the version badge.
+        // Keep empty-body legacy callers working. This is a hint only: the
+        // maintenance layer validates a fresh server-side cache and performs
+        // an independent live VERSION/SHA256 verification before install.
+        expectedVersion:=""
+        if r.Body!=nil{
+            var request struct{ExpectedVersion string `json:"expected_version"`}
+            decoder:=json.NewDecoder(http.MaxBytesReader(w,r.Body,2048))
+            decoder.DisallowUnknownFields()
+            if decodeErr:=decoder.Decode(&request);decodeErr!=nil && !errors.Is(decodeErr,io.EOF){
+                writeJSON(w,map[string]any{"error":"invalid update request"},400)
+                return
+            }
+            expectedVersion=request.ExpectedVersion
+        }
         if !upgradeTracker.begin() {
             writeJSON(w,map[string]any{"error":"update already in progress","status":upgradeTracker.snapshot()},409)
             return
         }
-		result, err := webUpgradeRunner(version,upgradeTracker.step)
+        var result maintenance.UpgradeResult
+        var err error
+        if expectedVersion!=""{
+            result,err=webUpgradeRunnerExpected(version,expectedVersion,upgradeTracker.step)
+        }else{
+            result,err=webUpgradeRunner(version,upgradeTracker.step)
+        }
 		if err != nil {
             upgradeTracker.finish("failed",err)
 			writeJSON(w, map[string]any{"error": err.Error()}, 500)
