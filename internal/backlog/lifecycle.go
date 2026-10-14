@@ -42,7 +42,7 @@ var lifecycleGitCache = struct {
 }{entries: map[string]lifecycleGitCacheEntry{}}
 
 // Keep the full Git rename/lifecycle evidence; cache the expensive historical
-// log across Web process restarts, keyed to the precise repository HEAD and
+// log across Web process restarts, keyed to the last Git commit touching the backlog paths and
 // pathspecs. No canonical evidence or notification journal is modified.
 const lifecycleLogCacheMax = 64 << 20
 
@@ -88,7 +88,11 @@ func persistLifecycleGitLog(path,head,output string) {
 }
 
 func lifecycleGitLog(repo string,pathspecs []string) string {
-    head:=strings.TrimSpace(gitOutput(repo,"rev-parse","HEAD"))
+    // The latest commit touching either backlog path is a stronger cache
+    // identity than repository HEAD: Dev/PR commits elsewhere do not force a
+    // 400+ backlog Git history replay, while path updates still invalidate.
+    revisionArgs:=append([]string{"log","-1","--format=%H","--"},pathspecs...)
+    head:=strings.TrimSpace(gitOutput(repo,revisionArgs...))
     key:=repo+"\\x00"+strings.Join(pathspecs,"\\x00")
     if head!="" {
         lifecycleGitCache.Lock()
@@ -96,7 +100,7 @@ func lifecycleGitLog(repo string,pathspecs []string) string {
         lifecycleGitCache.Unlock()
         if ok && cached.head==head {return cached.output}
         // Loading a persisted cache avoids running git log -M across the
-        // entire historical backlog after each Web/update restart.
+        // entire historical backlog after each Web/update restart or unrelated PR.
         if path,err:=lifecycleGitLogCachePath(repo,pathspecs);err==nil{
             if out,ok:=loadPersistedLifecycleGitLog(path,head);ok{
                 lifecycleGitCache.Lock()
