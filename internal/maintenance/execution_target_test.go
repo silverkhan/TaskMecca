@@ -106,3 +106,40 @@ func TestExecutionTransitionCheckpoint(t *testing.T) {
 	if err := writeExecutionJSON(executionTransitionPath(), cp); err != nil { t.Fatal(err) }
 	if _, err := PendingExecutionTransition(); err == nil { t.Fatal("unknown phase accepted") }
 }
+
+func TestReleaseSwitchAndUpgradeRefuseActivePR(t *testing.T) {
+	t.Setenv("TASK_MECCA_HOME", t.TempDir())
+	t.Setenv("TASK_MECCA_CHANNEL", "dev")
+	pinned := ExecutionTarget{
+		Kind: "pr", Channel: "dev", PRNumber: 213,
+		HeadSHA: strings.Repeat("a",40),
+		OriginalDevVersion: "0.3.1-dev.16",
+		OriginalDevSHA256: strings.Repeat("b",64),
+		OriginalDevBackup: filepath.Join(t.TempDir(), "dev-original"),
+		InstalledAt: time.Now().UTC().Format(time.RFC3339),
+	}
+	if err := writeExecutionJSON(executionTargetPath(), pinned); err != nil { t.Fatal(err) }
+	if _, err := SwitchChannel("0.3.1-dev.16", "stable"); err == nil {
+		t.Fatal("Stable switch must be blocked while PR is active")
+	}
+	if _, err := UpgradeWithProgress("0.3.1-dev.16", nil); err == nil {
+		t.Fatal("upgrade must be blocked while PR is active")
+	}
+	options := GetReleaseChannelOptions("0.3.1-dev.16")
+	if options.ExecutionTarget == nil || options.ExecutionTarget.Kind != "pr" {
+		t.Fatalf("channel options do not expose PR state: %+v",options.ExecutionTarget)
+	}
+}
+
+func TestTransitionCheckpointBlocksReleaseMutations(t *testing.T) {
+	t.Setenv("TASK_MECCA_HOME", t.TempDir())
+	t.Setenv("TASK_MECCA_CHANNEL", "dev")
+	cp := ExecutionTransition{
+		Schema:1, Phase:"restarting",
+		From:ExecutionTarget{Kind:"dev",Channel:"dev"},
+		To:ExecutionTarget{Kind:"dev",Channel:"dev"},
+		UpdatedAt:time.Now().UTC().Format(time.RFC3339),
+	}
+	if err := writeExecutionJSON(executionTransitionPath(), cp); err != nil { t.Fatal(err) }
+	if err := ensureReleaseTransitionAllowed(); err == nil { t.Fatal("pending transition ignored") }
+}
