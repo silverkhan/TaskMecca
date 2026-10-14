@@ -1,7 +1,17 @@
 name: Go standalone artifacts
+run-name: Preview PR #${{ inputs.preview_pr || github.event.pull_request.number || 'manual' }} ${{ inputs.preview_sha || github.event.pull_request.head.sha || github.sha }}
 
 on:
   workflow_dispatch:
+    inputs:
+      preview_pr:
+        description: "Existing same-repository PR number (optional for ordinary manual builds)"
+        required: false
+        type: string
+      preview_sha:
+        description: "Exact current PR head SHA when preview_pr is set"
+        required: false
+        type: string
   pull_request:
     paths:
       - "cmd/task-mecca/**"
@@ -11,17 +21,43 @@ on:
       - "go.mod"
       - ".github/workflows/go-artifacts.yml"
 
+permissions:
+  contents: read
+  pull-requests: read
+
 jobs:
   build:
     # A preview build must never execute code from an arbitrary fork PR.
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     steps:
+      - name: Validate requested Preview PR before checkout
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.preview_pr != '' }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PREVIEW_PR: ${{ inputs.preview_pr }}
+          PREVIEW_SHA: ${{ inputs.preview_sha }}
+        run: |
+          set -euo pipefail
+          [[ "$PREVIEW_PR" =~ ^[1-9][0-9]*$ ]] || { echo "::error::Invalid PR number"; exit 1; }
+          [[ "$PREVIEW_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::Invalid Preview head SHA"; exit 1; }
+          gh api "repos/$REPO/pulls/$PREVIEW_PR" | jq -e \
+            --arg repo "$REPO" --arg sha "$PREVIEW_SHA" \
+            '.state=="open" and .base.ref=="dev" and .head.repo.full_name==$repo and .head.sha==$sha' >/dev/null || {
+            echo "::error::Preview PR must be open, from this repository, targeting dev, and at its current head SHA"; exit 1;
+          }
+      - name: Reject incomplete manual Preview inputs
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.preview_pr == '' && inputs.preview_sha != '' }}
+        run: |
+          echo "::error::preview_sha requires preview_pr"
+          exit 1
       - uses: actions/checkout@v4
         with:
           # pull_request's default checkout is a temporary merge commit;
           # Preview must identify the exact PR head revision instead.
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          ref: ${{ github.event.pull_request.head.sha || inputs.preview_sha || github.sha }}
           persist-credentials: false
       - uses: actions/setup-go@v5
         with:
@@ -49,8 +85,8 @@ jobs:
           sha256sum dist/task-mecca-* > dist/SHA256SUMS.txt
       - name: Write Preview provenance
         env:
-          PR_NUMBER: ${{ github.event.pull_request.number || '0' }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number || inputs.preview_pr || '0' }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || inputs.preview_sha || github.sha }}
           WORKFLOW_RUN: ${{ github.run_id }}
           REPOSITORY: ${{ github.repository }}
         run: |
@@ -63,6 +99,6 @@ jobs:
             > dist/preview-build.json
       - uses: actions/upload-artifact@v4
         with:
-          name: task-mecca-preview-pr-${{ github.event.pull_request.number || 'manual' }}-${{ github.event.pull_request.head.sha || github.sha }}
+          name: task-mecca-preview-pr-${{ github.event.pull_request.number || inputs.preview_pr || 'manual' }}-${{ github.event.pull_request.head.sha || inputs.preview_sha || github.sha }}
           path: dist/*
           if-no-files-found: error
