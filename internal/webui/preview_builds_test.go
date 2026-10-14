@@ -1,7 +1,7 @@
 package webui
 
 import (
-    "context"
+    stdcontext "context"
     "encoding/json"
     "errors"
     "net/http"
@@ -22,7 +22,7 @@ func TestPreviewBuildListServerDevOnlyAndNeverExecutes(t *testing.T) {
     original:=previewBuildsProvider
     defer func(){previewBuildsProvider=original}()
     called:=0
-    previewBuildsProvider=func(_ context.Context,limit int)([]preview.Build,error){
+    previewBuildsProvider=func(_ stdcontext.Context,limit int)([]preview.Build,error){
         called++
         if limit!=7 {t.Fatalf("unexpected limit %d",limit)}
         return []preview.Build{{Number:218,Title:"Preview",HeadSHA:"0123456789012345678901234567890123456789",BuildStatus:"success",ExecutionAllowed:false}},nil
@@ -56,7 +56,7 @@ func TestPreviewBuildListServerDevOnlyAndNeverExecutes(t *testing.T) {
     if len(response.Builds)!=1||response.Builds[0].ExecutionAllowed||response.ExecutionAvailable {
         t.Fatalf("preview execution incorrectly exposed: %+v",response)
     }
-    previewBuildsProvider=func(context.Context,int)([]preview.Build,error){return nil,errors.New("fixture GitHub timeout")}
+    previewBuildsProvider=func(stdcontext.Context,int)([]preview.Build,error){return nil,errors.New("fixture GitHub timeout")}
     w=httptest.NewRecorder()
     h.ServeHTTP(w,httptest.NewRequest("GET","/api/preview/builds",nil))
     if w.Code!=http.StatusBadGateway{t.Fatalf("discovery failure status=%d",w.Code)}
