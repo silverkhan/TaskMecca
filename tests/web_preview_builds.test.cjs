@@ -13,7 +13,7 @@ function setup(){
     localStorage:{getItem:key=>store.get(key)||null,setItem:(key,val)=>store.set(key,String(val))},
   });
   const body=source.slice(0,source.indexOf('\ntranslateChrome();'));
-  vm.runInContext(body+'\nglobalThis.previewTests={state,previewBuildsView,devPreviewAvailable,previewSafeLocalURL};',context);
+  vm.runInContext(body+'\nglobalThis.previewTests={state,previewBuildsView,devPreviewAvailable,previewSafeLocalURL,previewIdentityFromHealth};',context);
   return context.previewTests;
 }
 test('Preview Builds is visible only with Dev channel from version API',()=>{
@@ -57,4 +57,19 @@ test('only local preview URLs may open and actions use backend routes',()=>{
  for(const url of ['https://evil.example','file:///etc/passwd','http://0.0.0.0:18766/','http://127.0.0.1:18766/abc'])
    assert.equal(p.previewSafeLocalURL(url),'');
  assert.match(source,/'\/api\/preview\/'\+\(action==='stop'\?'stop':'start'\)/);
+});
+
+test('Preview identity accepts only exact PR, SHA, verified local Dev origin',()=>{
+ const p=setup();
+ const valid={preview_mode:true,preview_pr:214,preview_sha:'a'.repeat(40),
+   preview_parent_url:'http://127.0.0.1:18765'};
+ assert.equal(p.previewIdentityFromHealth(valid).number,214);
+ assert.equal(p.previewIdentityFromHealth(valid).parent,'http://127.0.0.1:18765');
+ assert.equal(p.previewIdentityFromHealth({...valid,preview_mode:false}),null);
+ assert.equal(p.previewIdentityFromHealth({...valid,preview_sha:'abcd'}),null);
+ assert.equal(p.previewIdentityFromHealth({...valid,preview_parent_url:'https://evil.example'}),null);
+ assert.equal(p.previewIdentityFromHealth({...valid,preview_parent_url:'http://127.0.0.1:99999'}),null);
+ p.state.previewIdentity={number:214,sha:'a'.repeat(40)};
+ p.state.versionInfo={cli:{channel:'dev'}};
+ assert.equal(p.devPreviewAvailable(),false,'nested child must never expose Preview manager menu');
 });

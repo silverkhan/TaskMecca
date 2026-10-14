@@ -85,7 +85,10 @@ func (Native) Start(ctx context.Context,binary,sha string,env Environment,port i
  if err!=nil{return ProcessHandle{},err}
  childEnv,err:=ChildEnvironment(os.Environ(),env)
  if err!=nil{return ProcessHandle{},err}
- childEnv=append(childEnv,"TASK_MECCA_PREVIEW_PR="+strconv.Itoa(env.PRNumber),"TASK_MECCA_PREVIEW_SHA="+sha)
+ parentURL,err:=previewParentOrigin(env.ParentURL)
+ if err!=nil{return ProcessHandle{},err}
+ childEnv=append(childEnv,"TASK_MECCA_PREVIEW_PR="+strconv.Itoa(env.PRNumber),
+   "TASK_MECCA_PREVIEW_SHA="+sha,"TASK_MECCA_PREVIEW_PARENT_URL="+parentURL)
  id,err:=randomInstanceID()
  if err!=nil{return ProcessHandle{},err}
  logs,err:=os.OpenFile(filepath.Join(env.Logs,"web.log"),os.O_CREATE|os.O_APPEND|os.O_WRONLY,0600)

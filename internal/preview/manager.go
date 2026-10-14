@@ -5,6 +5,8 @@ import (
  "encoding/json"
  "errors"
  "net/http"
+ "net/url"
+ "strconv"
  "path/filepath"
  "runtime"
  "sort"
@@ -51,7 +53,18 @@ func (m *Manager) setStatus(number int,change func(*Instance)){
  change(&item)
  m.current[number]=item
 }
-func (m *Manager) Start(ctx context.Context,number int)(Instance,error){
+func previewParentOrigin(value string)(string,error){
+ if value==""{value="http://127.0.0.1:18765"}
+ u,err:=url.Parse(value)
+ if err!=nil||u.Scheme!="http"||(u.Hostname()!="127.0.0.1"&&u.Hostname()!="localhost")||
+    u.User!=nil||u.RawQuery!=""||u.Fragment!=""||(u.Path!=""&&u.Path!="/"){
+    return "",errors.New("Preview parent must use a local HTTP origin")
+ }
+ n,err:=strconv.Atoi(u.Port())
+ if err!=nil||n<1||n>65535{return "",errors.New("invalid Preview parent port")}
+ return u.Scheme+"://"+u.Host,nil
+}
+func (m *Manager) Start(ctx context.Context,number int,parentOrigin ...string)(Instance,error){
  if number<=0{return Instance{},errors.New("invalid PR number")}
  m.mu.Lock()
  if m.busy[number] {v:=m.current[number];m.mu.Unlock();return v,errors.New("Preview start or stop already in progress")}
@@ -78,6 +91,10 @@ func (m *Manager) Start(ctx context.Context,number int)(Instance,error){
  binary,err:=m.Client.DownloadVerified(ctx,selected,filepath.Join(m.Base,"artifacts"),runtime.GOOS,runtime.GOARCH)
  if err!=nil{return fail(err)}
  env,err:=PrepareEnvironment(filepath.Join(m.Base,"instances"),number,selected.HeadSHA)
+ if err!=nil{return fail(err)}
+ requestedOrigin:=""
+ if len(parentOrigin)>0{requestedOrigin=parentOrigin[0]}
+ env.ParentURL,err=previewParentOrigin(requestedOrigin)
  if err!=nil{return fail(err)}
  m.setStatus(number,func(v *Instance){v.Status="starting"})
  // Native staging is single-use per instance. Retry after a failed

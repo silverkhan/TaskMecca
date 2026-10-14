@@ -5,6 +5,7 @@ import (
     "os"
     "strings"
     "strconv"
+    "net/url"
 )
 
 // PreviewMode is a defense-in-depth guard for builds which support it.
@@ -50,4 +51,15 @@ func previewIdentity() (int,string) {
  if err!=nil||number<1||len(sha)!=40{return 0,""}
  for _,r:=range sha{if !((r>='0'&&r<='9')||(r>='a'&&r<='f')){return 0,""}}
  return number,sha
+}
+
+func previewParentURL() string {
+ if !PreviewMode(){return ""}
+ parsed,err:=url.Parse(os.Getenv("TASK_MECCA_PREVIEW_PARENT_URL"))
+ if err!=nil||parsed.Scheme!="http"||parsed.User!=nil||parsed.RawQuery!=""||parsed.Fragment!=""||
+   (parsed.Hostname()!="127.0.0.1"&&parsed.Hostname()!="localhost")||
+   (parsed.Path!=""&&parsed.Path!="/"){return ""}
+ port,err:=strconv.Atoi(parsed.Port())
+ if err!=nil||port<1||port>65535{return ""}
+ return parsed.Scheme+"://"+parsed.Host
 }

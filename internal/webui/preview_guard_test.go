@@ -68,3 +68,22 @@ func TestPreviewEnvironmentUsesTelegramTransportKillSwitch(t *testing.T){
         t.Fatalf("Preview child transport not safe: %s",all)
     }
 }
+
+func TestPreviewHealthIdentityAndParentOriginAreStrictlyLocal(t *testing.T) {
+ t.Setenv("TASK_MECCA_PREVIEW_MODE","1")
+ t.Setenv("TASK_MECCA_PREVIEW_PR","214")
+ t.Setenv("TASK_MECCA_PREVIEW_SHA",strings.Repeat("a",40))
+ t.Setenv("TASK_MECCA_PREVIEW_PARENT_URL","http://127.0.0.1:18765")
+ pr,sha:=previewIdentity()
+ if pr!=214||sha!=strings.Repeat("a",40){t.Fatalf("wrong Preview identity: %d %s",pr,sha)}
+ if got:=previewParentURL();got!="http://127.0.0.1:18765"{t.Fatalf("wrong parent: %q",got)}
+ for _,value:=range []string{
+  "https://evil.example","http://127.0.0.1:99999","http://localhost:18765/evil",
+  "http://127.0.0.1:18765/?cmd=stop","http://user@127.0.0.1:18765",
+ } {
+  t.Setenv("TASK_MECCA_PREVIEW_PARENT_URL",value)
+  if got:=previewParentURL();got!=""{t.Fatalf("unsafe parent %q accepted: %q",value,got)}
+ }
+ t.Setenv("TASK_MECCA_PREVIEW_SHA","invalid")
+ if n,sha:=previewIdentity();n!=0||sha!=""{t.Fatal("invalid sha accepted")}
+}
