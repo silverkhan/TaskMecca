@@ -114,3 +114,19 @@ test('restart confirmation accepts correct new process and reloads',async()=>{
  assert.equal(loads,1);
  assert.equal(state.webBootID,'new-boot');
 });
+
+test('install request passes the version already displayed rather than requesting latest a second time',async()=>{
+ let payload,headers;
+ const f=createFlow(async (url,init)=>{
+  assert.equal(url,'/api/upgrade');
+  assert.equal(init.method,'POST');
+  payload=JSON.parse(init.body);
+  headers=init.headers;
+  return {ok:true,status:200,json:async()=>({from:'0.2.53-dev.199',to:'0.2.53-dev.199',restart_required:false})};
+ });
+ await f.api.performUpgrade();
+ assert.deepEqual(payload,{expected_version:'0.2.53-dev.200'});
+ assert.equal(headers['X-Task-Mecca-Action'],'1');
+ assert.equal(headers['Content-Type'],'application/json');
+ assert.deepEqual(f.stages,['checking','completed']);
+});
