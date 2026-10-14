@@ -3676,7 +3676,7 @@ async function rebuildPRArtifact(number){
     !/^[a-f0-9]{40}$/.test(String(item.head_sha||'')))return;
   const ko=state.language==='ko';
   if(!window.confirm(ko
-    ?'PR #'+number+'의 현재 SHA '+item.head_sha.slice(0,10)+'를 GitHub Actions에서 다시 빌드할까요?\\n이 요청은 PR 코드를 실행하지 않고 CI 빌드만 시작합니다.'
+    ?'PR #'+number+'의 현재 SHA '+item.head_sha.slice(0,10)+'를 GitHub Actions에서 다시 빌드할까요?\n이 요청은 PR 코드를 실행하지 않고 CI 빌드만 시작합니다.'
     :'Request a GitHub Actions build for PR #'+number+' at '+item.head_sha.slice(0,10)+'? No PR code runs on this machine.'))return;
   state.previewActionBusy=number;
   state.previewMessage='';state.previewError='';render();
@@ -3699,8 +3699,8 @@ async function executePRSwitch(number){
   if(!item||item.build_status!=='success'||!/^[a-f0-9]{40}$/.test(String(item.head_sha||'')))return;
   const ko=state.language==='ko';
   const warning=ko
-    ?'PR #'+number+' ('+item.head_sha.slice(0,10)+')로 전체 실행 환경을 전환합니다.\\n\\n기존 프로젝트, Hook, 워크로드 감시, Telegram 알림이 이 PR 코드로 실행됩니다. Dev 바이너리는 복귀용으로 보관하지만 PR의 데이터 변경은 자동으로 되돌릴 수 없습니다.\\n\\n외부 또는 신뢰하지 않는 PR 코드는 실행하지 마세요. 로컬 컴퓨터에서 진행하시겠습니까?'
-    :'Switch the entire installation to PR #'+number+' ('+item.head_sha.slice(0,10)+')? Monitoring, Hooks, projects and notifications run under that code. Restoring Dev does not undo PR data changes. Only run trusted PR code on the local computer.';
+    ?'PR #'+number+' ('+item.head_sha.slice(0,10)+')로 전체 실행 환경을 전환합니다.\n\n기존 프로젝트, Hook, 워크로드 감시, Telegram 알림이 이 PR 코드로 실행됩니다. Dev 바이너리는 복귀용으로 보관하지만 PR의 데이터 변경은 자동으로 되돌릴 수 없습니다.\n\n외부 또는 신뢰하지 않는 PR 코드는 실행하지 마세요. 로컬 컴퓨터에서 진행하시겠습니까?'
+    :'Switch the entire installation to PR #'+number+' ('+item.head_sha.slice(0,10)+')?\n\nMonitoring, Hooks, projects and notifications run under that code. Restoring Dev does not undo PR data changes.\n\nOnly run trusted PR code on the local computer.';
   if(!window.confirm(warning))return;
   const oldBoot=await currentEnvironmentBoot();
   state.previewActionBusy=number;state.previewMessage='';state.previewError='';render();
