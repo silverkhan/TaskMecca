@@ -2015,3 +2015,23 @@ select.tm-combo-native{position:absolute!important;width:1px!important;height:1p
  .preview-build-filters{width:100%}
  .preview-build-tools input{flex-basis:100%}
 }
+
+
+/* Always visible only in Preview child Web: attached to its document flow. */
+.preview-identity-banner{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
+  padding:12px 17px;margin:10px 15px;border:2px solid transparent;border-radius:11px;
+  background:linear-gradient(var(--surface),var(--surface)) padding-box,
+    linear-gradient(90deg,var(--accent),color-mix(in srgb,var(--accent) 65%,var(--warn)),var(--accent)) border-box;
+  box-shadow:0 6px 18px rgba(0,0,0,.08);
+}
+.preview-identity-banner[hidden]{display:none!important}
+.preview-identity-copy{min-width:0;display:flex;flex-direction:column;gap:5px;overflow-wrap:anywhere}
+.preview-identity-copy strong{font-size:13px;letter-spacing:.025em}
+.preview-identity-copy span{font-size:12px;color:var(--muted)}
+.preview-identity-actions{display:flex;flex-wrap:wrap;gap:7px}
+.preview-identity-actions .action-btn{min-height:34px;font-size:12px;text-decoration:none;display:inline-flex;align-items:center}
+@media(max-width:700px){
+ .preview-identity-banner{margin:8px 10px;padding:11px;align-items:flex-start}
+ .preview-identity-actions{width:100%}
+}
