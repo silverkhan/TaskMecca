@@ -24,6 +24,16 @@ type Docker struct{}
 
 func dockerCommand(ctx context.Context, args ...string) (string,error) {
  cmd:=exec.CommandContext(ctx,"docker",args...)
+ // Never let an injected DOCKER_HOST/DOCKER_CONTEXT redirect launch to an
+ // arbitrary remote engine, even if the user's active local context is safe.
+ for _,entry:=range os.Environ() {
+  key:=strings.ToUpper(strings.SplitN(entry,"=",2)[0])
+  switch key {
+  case "DOCKER_HOST","DOCKER_CONTEXT","DOCKER_TLS_VERIFY","DOCKER_CERT_PATH","DOCKER_TLS_CERTDIR":
+   continue
+  }
+  cmd.Env=append(cmd.Env,entry)
+ }
  out,err:=cmd.CombinedOutput()
  if err!=nil {
   message:=strings.TrimSpace(string(out))
