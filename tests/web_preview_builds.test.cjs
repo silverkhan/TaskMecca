@@ -6,7 +6,9 @@ const {test}=require('node:test');
 const source=fs.readFileSync('goassets/template/_task_mecca/framework/web/app.js','utf8');
 function setup(){
   const store=new Map();
+  const prompts=[];
   const ctx=vm.createContext({
+    window:{confirm(value){prompts.push(value);return false}},
     URLSearchParams,
     location:{search:'?view=preview',pathname:'/',reload(){}},
     navigator:{language:'ko'},
@@ -14,7 +16,7 @@ function setup(){
     localStorage:{getItem:key=>store.get(key)||null,setItem:(key,val)=>store.set(key,String(val))}
   });
   const body=source.slice(0,source.indexOf('\ntranslateChrome();'));
-  vm.runInContext(body+'\nglobalThis.harness={state,previewBuildsView,devPreviewAvailable,previewIdentityFromHealth};',ctx);
+  vm.runInContext(body+'\nglobalThis.harness={state,previewBuildsView,devPreviewAvailable,previewIdentityFromHealth,executePRSwitch,rebuildPRArtifact,prompts};',ctx);
   return ctx.harness;
 }
 
@@ -88,4 +90,27 @@ test('a Dev PR with missing or expired build offers a SHA-pinned rebuild, never 
  assert.match(source,/\/api\/preview\/rebuild/);
  assert.match(source,/body:JSON\.stringify\(\{number,sha:item\.head_sha\}\)/);
  assert.doesNotMatch(html,/data-preview-action="start"/);
+});
+
+test('native PR switch and rebuild dialogs render real line breaks, not escaped newline characters',async()=>{
+  const h=setup();
+  h.state.versionInfo={cli:{channel:'dev'}};
+  h.state.language='ko';
+  h.state.previewBuilds=[
+    {number:218,head_sha:'a'.repeat(40),build_status:'success'},
+    {number:219,head_sha:'b'.repeat(40),build_status:'none'}
+  ];
+
+  // The stub rejects consent; no installation, network or GitHub workflow
+  // runs during this test. We assert the actual string passed to confirm().
+  await h.executePRSwitch(218);
+  assert.equal(h.prompts.length,1);
+  assert.match(h.prompts[0],/전환합니다\.\n\n기존 프로젝트/);
+  assert.match(h.prompts[0],/없습니다\.\n\n외부 또는/);
+  assert.doesNotMatch(h.prompts[0],/\\n/);
+
+  await h.rebuildPRArtifact(219);
+  assert.equal(h.prompts.length,2);
+  assert.match(h.prompts[1],/빌드할까요\?\n이 요청은/);
+  assert.doesNotMatch(h.prompts[1],/\\n/);
 });
