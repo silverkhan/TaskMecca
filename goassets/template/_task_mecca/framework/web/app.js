@@ -3569,7 +3569,15 @@ async function previewAction(number,action){
   let tab=null;
   // Reserve the new tab directly on click so browsers can open it after
   // downloading and booting the Preview process.
-  if(action==='start')tab=window.open('about:blank','_blank');
+  if(action==='start'){
+    tab=window.open('about:blank','_blank');
+    if(tab){
+      // The PR Web must not retain access to its Dev launcher through opener.
+      tab.opener=null;
+      tab.document.title='Task Mecca Preview';
+      tab.document.body.textContent=state.language==='ko'?'Preview 환경을 준비하고 있습니다…':'Preparing the Preview environment…';
+    }
+  }
   state.previewActionBusy=number;
   state.previewMessage='';
   render();
