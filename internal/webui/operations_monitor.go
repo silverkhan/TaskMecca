@@ -283,6 +283,36 @@ func operationCanonicalDoneRows(rows map[string][]backlog.Record, taskID string)
  return len(matches)==1 && matches[0].State=="done"
 }
 
+// The canonical archive is proof that an old *unbound assignment stage*
+// is no longer pending. It is NOT proof that the Worker ran, reported or
+// completed. Match one recorded assignment and reject post-archive claims.
+// Attempts and failed handoffs are intentionally outside this predicate.
+func operationArchivedAssignmentRetired(rows map[string][]backlog.Record, assignments []runtimeobs.Assignment, taskID, assignmentID, since string, now time.Time) bool {
+ if strings.TrimSpace(taskID)=="" || strings.TrimSpace(assignmentID)=="" || strings.TrimSpace(since)=="" {return false}
+ matches:=rows[strings.ToUpper(strings.TrimSpace(taskID))]
+ if len(matches)!=1 || matches[0].State!="done" || matches[0].Location!="archive" || matches[0].ArchiveMonth=="" {return false}
+ archive:=matches[0]
+ archivedAt:=time.Time{}
+ for _,stamp:=range []string{archive.Mtime,archive.Ctime}{
+  at,err:=time.Parse(time.RFC3339Nano,stamp)
+  if err==nil && !at.IsZero() && !at.After(now) && at.After(archivedAt){archivedAt=at}
+ }
+ if archivedAt.IsZero(){return false}
+ source,err:=time.Parse(time.RFC3339Nano,since)
+ if err!=nil||source.IsZero()||source.After(archivedAt){return false}
+ found:=false
+ for _,a:=range assignments{
+  if !strings.EqualFold(a.TaskID,taskID){continue}
+  at,err:=time.Parse(time.RFC3339Nano,a.AssignedAt)
+  if err!=nil||at.IsZero()||at.After(archivedAt)||at.After(now){return false}
+  if a.AssignmentID==assignmentID {
+   if found||!at.Equal(source){return false}
+   found=true
+  }
+ }
+ return found
+}
+
 func scanOperationProject(project string, now time.Time) (operationJournal, error) {
 	operationMu.Lock()
 	defer operationMu.Unlock()
@@ -316,6 +346,25 @@ func scanOperationProject(project string, now time.Time) (operationJournal, erro
 		}
 		return canonicalAvailable && operationCanonicalDoneRows(canonicalRows, taskID)
 	}
+	// Use the same canonical inventory for stage retirement, but require an
+	// archived done file and the exact historical assignment. Never infer
+	// actual runtime completion from the archive.
+	var assignmentList []runtimeobs.Assignment
+	var assignmentsLoaded, assignmentsAvailable bool
+	archiveRetires := func(taskID, assignmentID, since string) bool {
+		if !canonicalLoaded {
+			canonicalRows, canonicalAvailable = operationCanonicalRows(project)
+			canonicalLoaded = true
+		}
+		if !canonicalAvailable { return false }
+		if !assignmentsLoaded {
+			var err error
+			assignmentList, err = runtimeobs.ListAssignments(project)
+			assignmentsAvailable = err == nil
+			assignmentsLoaded = true
+		}
+		return assignmentsAvailable && operationArchivedAssignmentRetired(canonicalRows,assignmentList,taskID,assignmentID,since,now)
+	}
 	for i := range stages {
 		if completion, ok := completions[stages[i].AttemptID]; ok && !stages[i].Failed {
 			stages[i].Stage = "controller_verified_complete"
@@ -324,6 +373,17 @@ func scanOperationProject(project string, now time.Time) (operationJournal, erro
 			stages[i].GraceUntil = ""
 		}
 	}
+	// The stage builder includes the latest durable assignment even when
+	// that task has subsequently moved to archive. The archive retires only
+	// its unbound assignment_pending stage, not any actual handoff failure.
+	currentStages:=make([]operationStage,0,len(stages))
+	for _,stage:=range stages{
+		if stage.Stage=="assignment_pending" && !stage.Failed && stage.AttemptID=="" &&
+			stage.Evidence=="latest durable assignment" &&
+			archiveRetires(stage.TaskID,stage.AssignmentID,stage.Since) {continue}
+		currentStages=append(currentStages,stage)
+	}
+	stages=currentStages
 	journal.Stages = stages
 	signals := map[string]operationSignal{}
 	verified := map[string]bool{}
@@ -455,6 +515,14 @@ func scanOperationProject(project string, now time.Time) (operationJournal, erro
 	for i := range journal.Incidents {
 		item := &journal.Incidents[i]
 		if item.RecoveredAt != "" {
+			continue
+		}
+		if item.Kind=="handoff_stalled" && item.Quality=="verification_required" &&
+			item.AttemptID=="" && item.Evidence=="latest durable assignment" &&
+			archiveRetires(item.TaskID,item.AssignmentID,item.LastObservedAt){
+			item.RecoveredAt=nowText
+			item.RecoveryEvidence="exact durable assignment retired by unique canonical archived done record; Worker/runtime completion not inferred"
+			delete(signals,item.Key)
 			continue
 		}
 		if stageSuppresses(*item, stages, now) {
