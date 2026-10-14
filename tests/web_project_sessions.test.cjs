@@ -139,3 +139,41 @@ test('closing active project switches to remaining project; closing last project
  assert.match(app.menu(), /data-session-project="\/repos\/beta"/);
  assert.deepEqual(saved(storage), ['/repos/alpha', '/repos/beta']);
  });
+
+
+test('project tiles use theme-muted selection and anchored alert badges', () => {
+  const css = fs.readFileSync(path.join(__dirname, '../goassets/template/_task_mecca/framework/web/style.css'), 'utf8');
+  const initial = css.match(/\.session-initial\{([^}]+)\}/)?.[1] || '';
+  const selected = css.match(/\.session-row\.active \.session-initial\{([^}]+)\}/)?.[1] || '';
+  const badge = css.match(/\.session-state-error \.session-initial::after,\.session-state-warning \.session-initial::after\{([^}]+)\}/)?.[1] || '';
+  const warning = css.match(/\.session-state-warning \.session-initial::after\{([^}]+)\}/)?.[1] || '';
+  assert.match(initial, /position:relative/, 'badge must anchor to the initial tile');
+  assert.match(selected, /outline:0/, 'selection must not use the old bright 2px outline');
+  assert.match(selected, /border-color:color-mix\(in srgb,var\(--accent\)/);
+  assert.match(selected, /box-shadow:/);
+  assert.match(badge, /position:absolute;top:-5px;right:-5px/);
+  assert.match(badge, /width:14px;height:14px/);
+  assert.match(badge, /border-radius:50%/);
+  assert.match(badge, /background:color-mix\(in srgb,var\(--danger\)/);
+  assert.match(warning, /background:color-mix\(in srgb,var\(--warn\)/);
+  assert.doesNotMatch(badge, /transform:translate/, 'badge must not rely on a text glyph offset');
+  assert.match(css, /\.session-open:focus-visible\{/, 'keyboard focus must remain independently visible');
+
+  const storage = new Map();
+  opened(storage, '/repos/error', '/repos/warning', '/repos/working');
+  const app = page(storage, '/repos/error');
+  app.state.view = 'backlog';
+  app.state.hub = { projects: [
+    { path: '/repos/error', name: 'Error', counts: { blocked: 1 } },
+    { path: '/repos/warning', name: 'Warning', counts: { attention: 1 } },
+    { path: '/repos/working', name: 'Working', counts: { working: 1 } },
+  ] };
+  app.nav();
+  const html = app.menu();
+  assert.match(html, /session-row session-state-error active/);
+  assert.match(html, /session-row session-state-warning /);
+  assert.match(html, /session-row session-state-working /);
+  assert.match(html, /aria-label="[^"]*Error \/ Blocked"/);
+  assert.match(html, /aria-label="[^"]*Needs attention"/);
+  assert.match(html, /aria-label="[^"]*Working"/);
+});
