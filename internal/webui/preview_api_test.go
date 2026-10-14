@@ -4,6 +4,7 @@ import (
  "encoding/json"
  "net/http"
  "net/http/httptest"
+ "strings"
  "testing"
 
  "github.com/silverkhan/TaskMecca/internal/preview"
@@ -74,4 +75,35 @@ func TestPreviewInstancesReadAndDevOnlyAPI(t *testing.T){
  w=httptest.NewRecorder()
  mux.ServeHTTP(w,httptest.NewRequest("GET","/api/preview/instances",nil))
  if w.Code!=403{t.Fatalf("child API leaked status %d",w.Code)}
+}
+
+func TestPRRebuildRequiresDevOriginAndGitHubWriteAuthorization(t *testing.T){
+ t.Setenv("TASK_MECCA_CHANNEL","dev")
+ t.Setenv("TASK_MECCA_PREVIEW_MODE","")
+ t.Setenv("TASK_MECCA_GITHUB_TOKEN","")
+ mux:=http.NewServeMux()
+ writer:=func(w http.ResponseWriter,obj any,status int){
+  w.Header().Set("Content-Type","application/json");w.WriteHeader(status)
+  _=json.NewEncoder(w).Encode(obj)
+ }
+ registerPreviewRoutes(mux,writer)
+ sha:=strings.Repeat("a",40)
+ raw:=`{"number":218,"sha":"`+sha+`"}`
+ send:=func(origin,remote string)int{
+  req:=httptest.NewRequest("POST","http://127.0.0.1:18765/api/preview/rebuild",strings.NewReader(raw))
+  req.RemoteAddr=remote
+  req.Header.Set("Origin",origin)
+  req.Header.Set("X-Task-Mecca-Action","1")
+  w:=httptest.NewRecorder();mux.ServeHTTP(w,req)
+  return w.Code
+ }
+ if code:=send("https://evil.example","127.0.0.1:51000");code!=403{t.Fatalf("evil origin status=%d",code)}
+ if code:=send("","127.0.0.1:51000");code!=403{t.Fatalf("no origin status=%d",code)}
+ if code:=send("http://127.0.0.1:18765","127.0.0.1:51000");code!=409{
+  t.Fatalf("unconfigured Actions:write token status=%d",code)
+ }
+ t.Setenv("TASK_MECCA_CHANNEL","stable")
+ if code:=send("http://127.0.0.1:18765","127.0.0.1:51000");code!=403{
+  t.Fatalf("stable PR rebuild should be disabled, got %d",code)
+ }
 }
