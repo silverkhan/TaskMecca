@@ -935,7 +935,7 @@ async function observeUpgradeRestart(session){
  const ready=await waitForRestartedWeb(target);
  if(ready===false && session===upgradeFlowSession){
   stopUpgradeFlowTimers();
-  setUpgradeFlowStage('failed',upgradeFlowCopy().restartError);
+  setUpgradeFlowStage('failed',state.upgradeRestartDiagnostic||upgradeFlowCopy().restartError);
  }
  upgradeFlowRestartWatching=false;
 }
@@ -1302,6 +1302,7 @@ async function performUpgrade() {
  const session=++upgradeFlowSession;
  stopUpgradeFlowTimers();
  upgradeFlowStartedAt=Date.now();
+ state.upgradeRestartDiagnostic='';
  upgradeFlowOwnRequest=true;
  const cli=state.versionInfo?.cli||state.hub?.cli||{};
  upgradeFlowTarget=String(cli.current||'-')+' → '+String(cli.latest||'-');
@@ -1328,7 +1329,7 @@ async function performUpgrade() {
    const recovered=await waitForRestartedWeb(body.to,state.webBootID||'');
    if(recovered===false && session===upgradeFlowSession){
     stopUpgradeFlowTimers();
-    setUpgradeFlowStage('failed',upgradeFlowCopy().restartError);
+    setUpgradeFlowStage('failed',state.upgradeRestartDiagnostic||upgradeFlowCopy().restartError);
    }
    return;
   }
@@ -4409,8 +4410,7 @@ async function waitForRestartedWeb(targetVersion,previousBoot='') {
           // match the expected version. Don't show a fake 30-second restart.
           if(Date.now()-changedBootMismatchSince>2000){
             const reason='Web is running a different version ('+runningVersion+') than the requested update ('+targetVersion+'). Check upgrade logs and retained binary.';
-            const panel=$('#content');
-            if(panel)panel.innerHTML='<div class="load-error">'+esc(reason)+'</div>';
+            state.upgradeRestartDiagnostic=reason;
             return false;
           }
         }else{
@@ -4421,8 +4421,7 @@ async function waitForRestartedWeb(targetVersion,previousBoot='') {
     await new Promise(resolve=>setTimeout(resolve,500));
   }
   const detail=observedVersion?(' Observed version: '+observedVersion+'; expected: '+targetVersion+'; boot: '+observedBoot+'.'):' The new HTTP health endpoint did not respond.';
-  const panel=$('#content');
-  if(panel)panel.innerHTML='<div class="load-error"><h2>Task Mecca Web 재시작을 확인하지 못했습니다</h2><p>'+esc(detail)+' CLI 업데이트는 별도로 성공했을 수 있습니다. <code>task-mecca web status</code>와 <code>task-mecca web logs</code>를 확인하세요.</p></div>';
+  state.upgradeRestartDiagnostic='Web restart check failed.'+detail+' Check task-mecca web status and logs.';
   return false;
 }
 
