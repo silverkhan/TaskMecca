@@ -81,7 +81,14 @@ func (c *Client) DownloadVerified(ctx context.Context, build Build,cacheRoot,goo
     // ZIP downloads require an Actions:read credential even when the public
     // PR metadata and artifact listing were accessible anonymously.
     client:=c.HTTP
-    if client==nil{client=&http.Client{Timeout:65*time.Second}}
+    if client==nil{
+        client=&http.Client{Timeout:65*time.Second}
+    }else if client.Timeout>0&&client.Timeout<65*time.Second{
+        // Metadata calls should stay quick; a 15MB+ binary ZIP needs longer.
+        copyClient:=*client
+        copyClient.Timeout=65*time.Second
+        client=&copyClient
+    }
     fetch:=func(token string)(*http.Response,error){
         req,err:=http.NewRequestWithContext(ctx,http.MethodGet,archiveURL,nil)
         if err!=nil{return nil,err}
