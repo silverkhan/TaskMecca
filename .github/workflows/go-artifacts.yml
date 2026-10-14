@@ -54,12 +54,17 @@ jobs:
           WORKFLOW_RUN: ${{ github.run_id }}
           REPOSITORY: ${{ github.repository }}
         run: |
+          SWITCH_PROTOCOL=0
+          if [ "$(dist/task-mecca-linux-amd64 environment capability 2>/dev/null)" = "task-mecca-execution-switch-protocol=1" ]; then
+            SWITCH_PROTOCOL=1
+          fi
           jq -n \
+            --argjson switch_protocol "$SWITCH_PROTOCOL" \
             --arg repo "$REPOSITORY" \
             --argjson pr "$PR_NUMBER" \
             --arg sha "$HEAD_SHA" \
             --argjson run "$WORKFLOW_RUN" \
-            '{repository:$repo,pr_number:$pr,head_sha:$sha,run_id:$run,workflow:"go-artifacts.yml",schema_version:1,execution_switch_protocol:1}' \
+            '{repository:$repo,pr_number:$pr,head_sha:$sha,run_id:$run,workflow:"go-artifacts.yml",schema_version:1,execution_switch_protocol:$switch_protocol}' \
             > dist/preview-build.json
       - uses: actions/upload-artifact@v4
         with:
