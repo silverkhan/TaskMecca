@@ -256,10 +256,12 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 	// subscription side effect. Start it even before a backlog exists; when
 	// root is empty the periodic snapshot will discover the canonical backlog
 	// as soon as Registrar creates it.
-	ensureAttentionFeed(project, monitorRoot)
-	// A persistent cutover suppresses replay of notifications predating this deployment.
-	// A damaged ledger fails closed in its API; it does not prevent the Web UI starting.
-	_ = initWebDelivery(project)
+    if !PreviewMode() {
+        ensureAttentionFeed(project, monitorRoot)
+        // Never initialize the live Web delivery transport inside a Preview.
+        // Its project is synthetic, but avoiding background loops is safer.
+        _ = initWebDelivery(project)
+    }
 	mux := http.NewServeMux()
 
 	projectFor := func(r *http.Request) string {
@@ -347,7 +349,7 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
     })
 
 	mux.HandleFunc("/api/health", func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, map[string]any{"ok": true, "version": version, "instance_id": instanceID, "boot_id": bootID, "pid": os.Getpid(), "telegram_transport_disabled": notify.TelegramTransportDisabled()}, 200)
+		writeJSON(w, map[string]any{"ok": true, "version": version, "instance_id": instanceID, "boot_id": bootID, "pid": os.Getpid(), "telegram_transport_disabled": notify.TelegramTransportDisabled(), "preview_mode": PreviewMode()}, 200)
 	})
 
 	mux.HandleFunc("/api/version", func(w http.ResponseWriter, r *http.Request) {
@@ -1553,7 +1555,7 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 	})
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) { sendEmbedded(w, "index.html") })
 
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	return previewGuard(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		path := r.URL.Path
 		// These projections reconcile lifecycle/notification/runtime state even
 		// on GET. Serialize them with pause/remove and refuse a stopped or absent
@@ -1579,7 +1581,7 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 			return
 		}
 		mux.ServeHTTP(w, r)
-	}), nil
+	})), nil
 }
 
 func isTailscaleIPv4(ip net.IP) bool {
@@ -1764,6 +1766,11 @@ func serveDirectTailscaleHTTPS(server *http.Server, port int, instanceID string,
 }
 
 func Run(config Config) error {
+    // The Preview listener must never enter the normal Tailscale/auto-host
+    // management path. Explicit loopback is mandatory for a Preview child.
+    if PreviewMode() && config.Host!="127.0.0.1" && config.Host!="localhost" {
+        return errors.New("Preview Web must bind to an explicit local loopback host")
+    }
 	if config.Port <= 0 {
 		config.Port = DefaultPort
 	}
