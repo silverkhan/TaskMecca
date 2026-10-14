@@ -324,6 +324,19 @@ func scanOperationProject(project string, now time.Time) (operationJournal, erro
 			stages[i].GraceUntil = ""
 		}
 	}
+	// A uniquely completed legacy/archived task may not have the modern
+	// Controller review event. Only retire its unbound assignment stage:
+	// this neither claims a Worker completed nor touches observed Hook errors.
+	retiredStageKeys := map[string]bool{}
+	filteredStages := make([]operationStage, 0, len(stages))
+	for _, stage := range stages {
+		if retiredUnlinkedAssignmentStage(stage, canonicalDone) {
+			retiredStageKeys["stage:"+stage.AssignmentID+":"+stage.Stage] = true
+			continue
+		}
+		filteredStages = append(filteredStages, stage)
+	}
+	stages = filteredStages
 	journal.Stages = stages
 	signals := map[string]operationSignal{}
 	verified := map[string]bool{}
@@ -455,6 +468,15 @@ func scanOperationProject(project string, now time.Time) (operationJournal, erro
 	for i := range journal.Incidents {
 		item := &journal.Incidents[i]
 		if item.RecoveredAt != "" {
+			continue
+		}
+		if item.Kind == "handoff_stalled" && item.Quality == "verification_required" &&
+			item.AttemptID == "" && item.HandoffID == "" &&
+			item.Evidence == "latest durable assignment" &&
+			retiredStageKeys[item.Key] {
+			item.RecoveredAt = nowText
+			item.RecoveryEvidence = "unique canonical task is done; unbound durable assignment stage retired (runtime/Controller completion not inferred)"
+			delete(signals, item.Key)
 			continue
 		}
 		if stageSuppresses(*item, stages, now) {
