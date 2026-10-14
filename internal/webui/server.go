@@ -591,6 +591,18 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 		tags := split(r.URL.Query().Get("tags"))
         selectionDuration:=time.Since(requestStart)
         listStart:=time.Now()
+        if r.Method==http.MethodGet && r.URL.Query().Get("projection")=="initial" {
+            // Read-only first paint: file-backed rows only, no controller,
+            // runtime, lifecycle or notification reconciliation.
+            result,quickErr:=backlog.BacklogInitialPage(activeProject,selected,page,pageSize,tags,r.URL.Query().Get("q"),r.URL.Query().Get("sort"))
+            w.Header().Set("Cache-Control","no-store")
+            w.Header().Set("Server-Timing",fmt.Sprintf("selection;dur=%.1f, initial;dur=%.1f",selectionDuration.Seconds()*1000,time.Since(listStart).Seconds()*1000))
+            if quickErr!=nil {writeJSON(w,map[string]any{"error":quickErr.Error()},500);return}
+            result["backlog_selection"]=selectionPayload(activeCtx,selected,candidates)
+            result["project_path"]=activeProject
+            writeJSON(w,result,200)
+            return
+        }
 		result, err := backlog.BacklogPage(activeProject, selected, page, pageSize, statuses, tags, r.URL.Query().Get("q"), r.URL.Query().Get("sort"), r.URL.Query().Get("projection"))
         elapsedMS:=time.Since(listStart).Seconds()*1000
         profile:=map[string]float64{}
@@ -1626,7 +1638,8 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 		// state. Its permission check uses the management gate but deliberately
 		// avoids the per-project monitoring mutex held by expensive scans.
 		// Paused, removed and unregistered projects are still rejected.
-		if strings.HasPrefix(path, "/api/tasks/") && r.Method == http.MethodGet && r.URL.Query().Get("projection") == "content" {
+		if r.Method == http.MethodGet && ((strings.HasPrefix(path, "/api/tasks/") && r.URL.Query().Get("projection") == "content") ||
+            (path == "/api/backlog/tasks" && r.URL.Query().Get("projection") == "initial")) {
 			if !maintenance.ProjectMonitoringAllowed(projectFor(r)) {
 				writeJSON(w, map[string]any{"error": "project monitoring is stopped or the folder is unavailable", "monitoring": false}, http.StatusConflict)
 				return

@@ -1,9 +1,18 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
 const {test}=require('node:test');
 const source=fs.readFileSync('goassets/template/_task_mecca/framework/web/app.js','utf8');
-function page(fetch){
+function page(fetch,{quickFetch=null}={}){
+ // Existing reconciliation tests model the authoritative endpoint. The
+ // independent provisional first-paint request defaults to an unavailable
+ // optional optimization; dedicated tests below exercise its successful path.
+ const effectiveFetch=(url,options)=>{
+  if(url.startsWith('/api/backlog/tasks?')&&new URLSearchParams(url.split('?')[1]).get('projection')==='initial'){
+   return quickFetch?quickFetch(url,options):Promise.resolve({ok:false});
+  }
+  return fetch(url,options);
+ };
  const prompt={innerHTML:''},dot={style:{}},active={id:'search',selectionStart:2,selectionEnd:4,focus(){this.focused=true},setSelectionRange(a,b){this.range=[a,b]}};
- const scroll=[],context=vm.createContext({fetch,URLSearchParams,AbortController,location:{search:'?project=/demo'},navigator:{language:'ko'},queueMicrotask,requestAnimationFrame:fn=>fn(),window:{scrollX:3,scrollY:120,scrollTo:args=>scroll.push(args)},document:{activeElement:active,contains:()=>true,getElementById:()=>active,querySelector:selector=>selector==='#connectionDot'?dot:selector==='#contentUpdatePrompt'?prompt:null},localStorage:{getItem:()=>null,setItem(){},removeItem(){}}});
+ const scroll=[],context=vm.createContext({fetch:effectiveFetch,URLSearchParams,AbortController,location:{search:'?project=/demo'},navigator:{language:'ko'},queueMicrotask,requestAnimationFrame:fn=>fn(),window:{scrollX:3,scrollY:120,scrollTo:args=>scroll.push(args)},document:{activeElement:active,contains:()=>true,getElementById:()=>active,querySelector:selector=>selector==='#connectionDot'?dot:selector==='#contentUpdatePrompt'?prompt:null},localStorage:{getItem:()=>null,setItem(){},removeItem(){}}});
  vm.runInContext(source.slice(0,source.indexOf('\ntranslateChrome();'))+source.slice(source.indexOf('function preserveViewportAndFocus('),source.indexOf('\nsetInterval(()=>{',source.indexOf('function preserveViewportAndFocus(')))+`\nrender=()=>{};processTaskNotifications=payload=>(globalThis.notifications||(globalThis.notifications=[])).push(payload);globalThis.app={state,refreshList,markContentUpdate,checkContentRevision,ensureAttentionStream,updateLiveListRelativeTimes,runningSeconds,listPageCaches,invalidateListPages,listContextKey};`,context);
  context.app.state.view='backlog';context.app.state.listPageMode='manual';context.app.state.listPageSize=20;
  return {...context.app,prompt,scroll,active,context};
@@ -195,3 +204,25 @@ test('backlog Active column displays known completed and live durations but not 
  assert.match(html,/<div class="task-active timer live-timer" data-id="B-1">02:05<\/div>/);
 });
 
+
+test('provisional list is visible before the authoritative reconciliation finishes',async()=>{
+ let complete;
+ const official=url=>new Promise(resolve=>{complete=resolve});
+ const fast=()=>Promise.resolve({ok:true,json:async()=>({
+  pending_reconciliation:true,page:1,pages:1,page_size:20,total:1,
+  items:[{id:'B-1',file_state:'todo',state:'todo',state_provisional:true}],
+  backlog_selection:{selected:'backlog',candidates:[]}
+ })});
+ const app=page(official,{quickFetch:fast});
+ const running=app.refreshList();
+ await tick();
+ assert.equal(app.state.listData.pending_reconciliation,true);
+ assert.equal(app.state.listRevalidating,true);
+ assert.equal(app.state.listData.items[0].id,'B-1');
+ assert.equal(app.context.notifications,undefined,'provisional file rows cannot deliver notifications');
+ complete(json({...packet(1,'official'),items:[{id:'B-1',state:'blocked',file_state:'todo'}]}));
+ await running;
+ assert.equal(app.state.listData.pending_reconciliation,undefined);
+ assert.equal(app.state.listData.items[0].state,'blocked');
+ assert.equal(app.context.notifications.length,1);
+});
