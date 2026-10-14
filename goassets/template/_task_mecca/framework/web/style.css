@@ -1196,15 +1196,31 @@ body.release-modal-open{overflow:hidden}
 .sidebar-mode-option:focus-visible,.session-open:focus-visible{
   outline:2px solid var(--accent);outline-offset:-2px;
 }
-.session-initial{display:grid;place-items:center;flex:0 0 28px;width:28px;height:28px;border-radius:8px;font-size:14px;font-weight:750;color:var(--text);border:1px solid var(--border);background:var(--surface2)}
+.session-initial{position:relative;display:grid;place-items:center;flex:0 0 28px;width:28px;height:28px;border-radius:8px;font-size:14px;font-weight:750;color:var(--text);border:1px solid var(--border);background:var(--surface2)}
 .session-state-working .session-initial{background:color-mix(in srgb,#4585e9 18%,var(--surface));border-color:color-mix(in srgb,#4585e9 35%,var(--border))}
 .session-state-done .session-initial{background:color-mix(in srgb,var(--ok) 17%,var(--surface))}
 .session-state-warning .session-initial{background:color-mix(in srgb,var(--warn) 18%,var(--surface))}
 .session-state-error .session-initial{background:color-mix(in srgb,var(--danger) 18%,var(--surface))}
 .session-state-registered .session-initial,.session-state-unknown .session-initial{background:var(--surface2)}
-.session-row.active .session-initial{outline:2px solid var(--text);outline-offset:2px}
-.session-state-error .session-initial:after,.session-state-warning .session-initial:after{content:"!";position:absolute;transform:translate(14px,-13px);font-size:10px;font-weight:800;color:var(--danger)}
-.session-state-warning .session-initial:after{color:var(--warn)}
+/* The selected project should read as part of the theme, not as a high-contrast focus ring.
+   Keyboard focus remains independently visible on .session-open:focus-visible. */
+.session-row.active .session-initial{
+  outline:0;
+  border-color:color-mix(in srgb,var(--accent) 50%,var(--border));
+  box-shadow:0 0 0 1px color-mix(in srgb,var(--accent) 23%,transparent),0 2px 7px rgba(17,12,25,.09);
+}
+/* Small app-style status badges: only warning/error states, anchored to each tile. */
+.session-state-error .session-initial::after,.session-state-warning .session-initial::after{
+  content:"!";position:absolute;top:-5px;right:-5px;
+  display:grid;place-items:center;box-sizing:border-box;
+  width:14px;height:14px;border:1px solid var(--surface);border-radius:50%;
+  background:color-mix(in srgb,var(--danger) 73%,#ffadaf);color:#281820;
+  font-size:9px;font-weight:900;line-height:1;
+  box-shadow:0 1px 4px rgba(17,12,25,.20);pointer-events:none;
+}
+.session-state-warning .session-initial::after{
+  background:color-mix(in srgb,var(--warn) 73%,#ffcf7d);color:#2b1d12;
+}
 .app-shell.sidebar-collapsed:not(.sidebar-peek) .sidebar-mode-selector{display:none}
 .app-shell.sidebar-collapsed:not(.sidebar-peek) .session-open{min-width:0}
 :root[data-theme="light"] .status.ready,:root[data-theme="light"] .status.todo{color:#454b55}
