@@ -783,7 +783,7 @@ function upgradeFlowCopy(){
  const ko=state.language==='ko';
  return ko?{
   eyebrow:'TASK MECCA · SOFTWARE UPDATE',title:'Task Mecca 업데이트',
-  notes:'업데이트 내용을 확인하고 있습니다',checking:'최신 버전과 설치 환경을 확인하고 있습니다',
+  notes:'업데이트 내용을 확인하고 있습니다',checking:'선택한 버전의 설치 조건을 확인하고 있습니다',
   downloading:'업데이트 파일을 다운로드하고 있습니다',verifying:'다운로드 파일을 검증하고 있습니다',
   installing:'검증된 업데이트를 설치하고 있습니다',restarting:'웹 서비스를 재시작하고 있습니다',
   completed:'업데이트를 완료했습니다',failed:'업데이트를 완료하지 못했습니다',
@@ -796,7 +796,7 @@ function upgradeFlowCopy(){
   restartError:'웹 서버의 재시작을 확인하지 못했습니다. 웹 상태를 확인한 뒤 다시 접속해 주세요.'
  }:{
   eyebrow:'TASK MECCA · SOFTWARE UPDATE',title:'Task Mecca update',
-  notes:'Checking update details',checking:'Checking the latest version and installation environment',
+  notes:'Checking update details',checking:'Checking installation conditions for the selected version',
   downloading:'Downloading the update',verifying:'Verifying the downloaded file',
   installing:'Installing the verified update',restarting:'Restarting the Web service',
   completed:'Update completed',failed:'The update could not be completed',
