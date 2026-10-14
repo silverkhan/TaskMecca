@@ -36,6 +36,25 @@ func (s operationStage) deferred(now time.Time) bool {
 	return !s.Failed && err == nil && now.Before(until)
 }
 
+// A task can be canonically done even when historical Controller-review
+// metadata was not recorded (e.g. archived backlog upgraded from an older
+// framework).  An unbound durable assignment cannot remain a live handoff
+// obligation for that unique completed task.  This is a UI/incident stage
+// retirement only, NOT verified Worker/Controller execution completion.
+//
+// Linked attempts, actual handoffs and confirmed failures require their own
+// explicit evidence and must never be dismissed on a filename alone.
+func retiredUnlinkedAssignmentStage(s operationStage, canonicalDone func(string) bool) bool {
+	return s.Stage == "assignment_pending" &&
+		s.Evidence == "latest durable assignment" &&
+		s.AssignmentID != "" &&
+		s.TaskID != "" &&
+		s.AttemptID == "" &&
+		s.HandoffID == "" &&
+		!s.Failed && !s.ControllerReview &&
+		canonicalDone(s.TaskID)
+}
+
 // Retired assignments are historical policy evidence, not pending work.
 // Keep proof on recovered incidents, never present a released hold as task
 // completion. Failed handoffs remain independent actionable current stages.
