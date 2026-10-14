@@ -93,6 +93,8 @@ const state = {
   projectNotificationSettingsLoaded: false,
   telegramSetupInstance:'',telegramSetupBootPending:false,telegramSetupBootShown:false,
   projectNotificationSettingsError: '',
+  previewBuilds:[],previewInstances:[],previewLoading:false,previewLoaded:false,
+  previewError:'',previewMessage:'',previewSearch:'',previewFilter:'all',previewActionBusy:0,
   operationRevision: '',
 };
 
@@ -1167,7 +1169,9 @@ async function refreshVersionInfo(force=false) {
     if(force && (payload?.cli?.error || !payload?.cli?.latest)){
       return {ok:false,error:payload?.cli?.error || 'Latest version unavailable'};
     }
+    const priorPreviewAvailability=devPreviewAvailable();
     state.versionInfo=payload;
+    if(devPreviewAvailable()!==priorPreviewAvailability)nav();
     maybeApplyStableBrandIntro();
     renderGlobalUpdateIndicator();
     renderReleaseNotesBadge();
@@ -3348,6 +3352,13 @@ function navigateView(view) {
     return;
   }
   if(view==='attention')view='notifications';
+  if(view==='preview'){
+    if(!devPreviewAvailable())return;
+    state.project='';state.detail=null;state.detailTask=null;state.projectMenuOpen=false;
+    closeAttentionStream();state.view='preview';
+    history.pushState({},'','/?view=preview');
+    render();void refreshPreviewData();return;
+  }
   if(view==='storage'){
     state.view='storage';state.detail=null;state.detailTask=null;state.projectMenuOpen=false;
     history.pushState({},'','/?view=storage');
@@ -3386,6 +3397,7 @@ function navigateView(view) {
     render();
   }
 }
+function devPreviewAvailable(){return (state.versionInfo?.cli?.channel||state.hub?.cli?.channel||'')==='dev';}
 function nav() {
   const c = currentProjectData()?.counts || {};
   const projects=state.hub?.projects||[];
@@ -3410,7 +3422,7 @@ function nav() {
   }).join('');
   const menu=state.projectMenuOpen?`<div class="project-open-menu">${closed.length?closed.map(p=>`<button type="button" data-add-project="${esc(p.path)}"><span>${esc(p.name)}</span><small>${esc(p.path)}</small></button>`).join(''):'<div class="project-open-empty">No closed projects</div>'}</div>`:'';
   $('#stateNav').innerHTML =
-    `<div class="sidebar-label">SYSTEM</div><button class="nav-item ${state.view==='hub'?'active':''}" id="hubNavBtn" type="button"><span class="nav-main"><span class="nav-icon">⌂</span><span class="nav-text">Global Hub</span></span></button><button class="nav-item ${state.view==='storage'?'active':''}" id="storageNavBtn" type="button"><span class="nav-main"><span class="nav-icon">▤</span><span class="nav-text">${esc(state.language==='ko'?'저장소 관리':'Storage management')}</span></span></button><div class="sidebar-label">BACKLOGS</div><div class="session-list">${sessionRows||'<div class="session-empty">No open backlogs</div>'}</div><button class="nav-item session-add" id="openProjectBtn" type="button"><span class="nav-main"><span class="nav-icon">＋</span><span class="nav-text">Open Project</span></span></button>${menu}`;
+    `<div class="sidebar-label">SYSTEM</div><button class="nav-item ${state.view==='hub'?'active':''}" id="hubNavBtn" type="button"><span class="nav-main"><span class="nav-icon">⌂</span><span class="nav-text">Global Hub</span></span></button><button class="nav-item ${state.view==='storage'?'active':''}" id="storageNavBtn" type="button"><span class="nav-main"><span class="nav-icon">▤</span><span class="nav-text">${esc(state.language==='ko'?'저장소 관리':'Storage management')}</span></span></button>${devPreviewAvailable()?`<button class="nav-item ${state.view==='preview'?'active':''}" id="previewNavBtn" type="button"><span class="nav-main"><span class="nav-icon" aria-hidden="true">⑂</span><span class="nav-text">Preview Builds</span></span></button>`:''}<div class="sidebar-label">BACKLOGS</div><div class="session-list">${sessionRows||'<div class="session-empty">No open backlogs</div>'}</div><button class="nav-item session-add" id="openProjectBtn" type="button"><span class="nav-main"><span class="nav-icon">＋</span><span class="nav-text">Open Project</span></span></button>${menu}`;
   const sidebarModes=[
     ['auto',state.language==='ko'?'자동':'Auto',state.language==='ko'?'마우스를 올리거나 포커스를 옮기면 임시로 펼침':'Temporarily expand on hover or focus'],
     ['expanded',state.language==='ko'?'펼침':'Expanded',state.language==='ko'?'항상 펼친 상태로 고정':'Keep the sidebar expanded'],
@@ -3432,12 +3444,181 @@ function nav() {
   $('#openProjectBtn')?.addEventListener('click',()=>{state.projectMenuOpen=!state.projectMenuOpen;render()});
   $('#hubNavBtn')?.addEventListener('click',()=>navigateView('hub'));
   $('#storageNavBtn')?.addEventListener('click',()=>navigateView('storage'));
+  $('#previewNavBtn')?.addEventListener('click',()=>navigateView('preview'));
   $('#terminalNavBtn')?.addEventListener('click',openWebTerminal);
   document.querySelectorAll('[data-view]').forEach(b => {
     b.classList.toggle('active', state.view === b.dataset.view);
     b.onclick = () => navigateView(b.dataset.view);
   });
   renderReleaseNotesBadge();
+}
+
+
+function previewCaption(value){
+  if(!value)return '-';
+  const date=new Date(value);
+  return Number.isNaN(date.getTime())?String(value):date.toLocaleString(state.language==='ko'?'ko-KR':'en-US');
+}
+function previewBuildsView(){
+  const ko=state.language==='ko';
+  const dev=devPreviewAvailable();
+  const header='<div class="page-head"><div><div class="eyebrow">DEV WORKSPACE</div><h1>Preview Builds</h1><p class="summary">'+
+    (ko?'PR별 독립 실행·검증 환경 · 기존 Dev와 운영 프로젝트는 변경하지 않습니다.':'Run and compare isolated PR builds without changing your Dev installation or operating projects.')+
+    '</p></div><button class="action-btn secondary" id="previewReloadBtn" type="button" '+(state.previewLoading?'disabled':'')+'>'+ (ko?'목록 새로고침':'Refresh builds')+'</button></div>';
+  if(!dev)return header+'<div class="empty">'+(ko?'Preview Builds는 Dev 채널에서만 사용할 수 있습니다.':'Preview Builds is available only in the Dev channel.')+'</div>';
+  const indexed=new Map((state.previewInstances||[]).map(item=>[Number(item.pr_number),item]));
+  const builds=[...(state.previewBuilds||[])];
+  for(const instance of state.previewInstances||[]){
+    if(!builds.some(item=>Number(item.number)===Number(instance.pr_number)))
+      builds.push({number:instance.pr_number,title:ko?'열려 있는 PR 목록에서 제외된 Preview':'Preview not in open PR list',
+        head_sha:instance.head_sha,build_status:'none',updated_at:instance.started_at});
+  }
+  const search=String(state.previewSearch||'').toLowerCase().trim();
+  const visible=builds.filter(item=>{
+    const instance=indexed.get(Number(item.number));
+    const text=[item.number,item.title,item.branch,item.head_sha].join(' ').toLowerCase();
+    if(search&&!text.includes(search))return false;
+    const f=state.previewFilter||'all';
+    if(f==='running')return instance?.status==='running';
+    if(f==='success')return item.build_status==='success';
+    if(f==='failed')return ['failure','expired','unavailable','blocked'].includes(item.build_status);
+    return true;
+  });
+  const buildStatus={
+    none:ko?'빌드 없음':'No build',queued:ko?'대기 중':'Queued',in_progress:ko?'빌드 중':'Building',
+    success:ko?'빌드 성공':'Build succeeded',failure:ko?'빌드 실패':'Build failed',
+    expired:ko?'빌드 만료':'Expired',unavailable:ko?'조회 실패':'Unavailable',
+    blocked:ko?'실행 차단':'Blocked'
+  };
+  const runtimeStatus={
+    stopped:ko?'미실행':'Stopped',preparing:ko?'준비 중':'Preparing',
+    downloading:ko?'다운로드 중':'Downloading',starting:ko?'시작 중':'Starting',
+    running:ko?'실행 중':'Running',stopping:ko?'종료 중':'Stopping',
+    error:ko?'실행 오류':'Error'
+  };
+  const rows=visible.map(item=>{
+    const number=Number(item.number),instance=indexed.get(number)||{},build=item.build_status||'none';
+    const running=instance.status==='running';
+    const busy=state.previewActionBusy===number||['preparing','downloading','starting','stopping'].includes(instance.status);
+    const available=build==='success'&&!busy&&instance.status!=='running';
+    const sha=String(running?instance.head_sha||item.head_sha:item.head_sha||'');
+    const runLink=/^https:\/\/github\.com\/silverkhan\/TaskMecca\/actions\/runs\/\d+(?:\/.*)?$/.test(String(item.run_url||''))
+      ?'<a class="preview-ci-link" href="'+esc(item.run_url)+'" target="_blank" rel="noopener noreferrer">'+(ko?'CI 보기':'View CI')+'</a>':'';
+    const prLink=/^https:\/\/github\.com\/silverkhan\/TaskMecca\/pull\/\d+$/.test(String(item.url||''))
+      ?'<a href="'+esc(item.url)+'" target="_blank" rel="noopener noreferrer">PR #'+number+'</a>':'PR #'+number;
+    return '<article class="preview-build-row" data-preview-pr="'+number+'">'+
+      '<div class="preview-build-info"><div class="preview-build-title"><strong>'+prLink+' · '+esc(item.title||'-')+'</strong></div>'+
+      '<div class="preview-build-meta"><span>'+esc(item.branch||'-')+'</span><code>'+esc(sha.slice(0,10)||'-')+'</code>'+
+      '<span>'+esc(previewCaption(item.build_finished_at||item.updated_at))+'</span></div>'+
+      '<div class="preview-build-status"><span class="badge '+(build==='success'?'ok':build==='failure'||build==='blocked'?'warn':'')+'">'+esc(buildStatus[build]||build)+'</span>'+
+      '<span class="badge '+(running?'ok':'')+'">'+esc(runtimeStatus[instance.status]||(ko?'미실행':'Stopped'))+'</span>'+
+      (running?'<code>:'+Number(instance.port||0)+'</code>':'')+
+      (instance.error?'<span class="preview-error">'+esc(instance.error)+'</span>':'')+
+      (item.reason&&build!=='success'?'<span class="preview-error">'+esc(item.reason)+'</span>':'')+
+      runLink+'</div></div>'+
+      '<div class="preview-build-actions">'+
+      (running?
+        '<button type="button" class="action-btn" data-preview-action="open" data-preview-number="'+number+'">'+(ko?'열기':'Open')+'</button>'+
+        '<button type="button" class="action-btn secondary danger-action" data-preview-action="stop" data-preview-number="'+number+'" '+(busy?'disabled':'')+'>'+(ko?'종료':'Stop')+'</button>':
+        '<button type="button" class="action-btn" data-preview-action="start" data-preview-number="'+number+'" '+(available?'':'disabled')+'>'+(busy?(ko?'처리 중':'Working'):(ko?'실행':'Run'))+'</button>')+
+      '</div></article>';
+  }).join('');
+  const filters=[['all',ko?'전체':'All'],['running',ko?'실행 중':'Running'],['success',ko?'빌드 성공':'Build succeeded'],['failed',ko?'오류·만료':'Errors']];
+  return header+
+    '<div class="timing-note"><strong>Docker Preview</strong><span>'+esc(ko?'Docker Desktop/Engine 및 alpine:3.20 이미지가 필요합니다. 실행은 로컬 컴퓨터에서만 허용되며 외부 프로젝트 데이터는 연결되지 않습니다.':'Requires local Docker Desktop/Engine and alpine:3.20. Execution is local-only with synthetic project data.')+'</span></div>'+
+    '<div class="preview-build-tools"><input id="previewSearch" type="search" autocomplete="off" placeholder="'+(ko?'PR 번호, 제목, 브랜치 검색':'Search PR number, title, branch')+'" value="'+esc(state.previewSearch)+'" aria-label="'+(ko?'PR 검색':'Search PR')+'"/>'+
+    '<div class="preview-build-filters">'+filters.map(([v,label])=>'<button type="button" class="action-btn secondary '+(state.previewFilter===v?'active':'')+'" data-preview-filter="'+v+'" aria-pressed="'+(state.previewFilter===v)+'">'+label+'</button>').join('')+'</div></div>'+
+    (state.previewError?'<div class="load-error" role="alert">'+esc(state.previewError)+'</div>':'')+
+    (state.previewMessage?'<p class="timing-note" role="status">'+esc(state.previewMessage)+'</p>':'')+
+    (state.previewLoading&&!state.previewLoaded?'<div class="loading">'+(ko?'PR 빌드 조회 중…':'Loading PR builds…')+'</div>':
+      '<div class="preview-build-list">'+(rows||'<div class="empty">'+(ko?'표시할 PR이 없습니다.':'No matching PR builds.')+'</div>')+'</div>');
+}
+async function refreshPreviewData(){
+  if(state.previewLoading)return;
+  state.previewLoading=true;
+  if(state.view==='preview')render();
+  try{
+    const [builds,instances]=await Promise.all([
+      fetch('/api/preview/builds?limit=30',{cache:'no-store'}),
+      fetch('/api/preview/instances',{cache:'no-store'})
+    ]);
+    const [buildBody,instanceBody]=await Promise.all([builds.json(),instances.json()]);
+    if(!builds.ok||!instances.ok)throw Error(buildBody.error||instanceBody.error||'Preview API unavailable');
+    state.previewBuilds=Array.isArray(buildBody.builds)?buildBody.builds:[];
+    state.previewInstances=Array.isArray(instanceBody.instances)?instanceBody.instances:[];
+    state.previewLoaded=true;
+    state.previewError='';
+  }catch(error){
+    state.previewError=String(error?.message||error);
+  }finally{
+    state.previewLoading=false;
+    if(state.view==='preview')render();
+  }
+}
+function previewSafeLocalURL(value){
+  return /^http:\/\/127\.0\.0\.1:\d{2,5}\/$/.test(String(value||''))?String(value):'';
+}
+async function previewAction(number,action){
+  if(!devPreviewAvailable()||state.previewActionBusy)return;
+  const instance=state.previewInstances.find(i=>Number(i.pr_number)===number);
+  if(action==='open'){
+    const url=previewSafeLocalURL(instance?.url);
+    if(url)window.open(url,'_blank','noopener');
+    return;
+  }
+  let tab=null;
+  // Reserve the new tab directly on click so browsers can open it after
+  // downloading and booting the Preview process.
+  if(action==='start'){
+    tab=window.open('about:blank','_blank');
+    if(tab){
+      // The PR Web must not retain access to its Dev launcher through opener.
+      tab.opener=null;
+      tab.document.title='Task Mecca Preview';
+      tab.document.body.textContent=state.language==='ko'?'Preview 환경을 준비하고 있습니다…':'Preparing the Preview environment…';
+    }
+  }
+  state.previewActionBusy=number;
+  state.previewMessage='';
+  render();
+  try{
+    const response=await fetch('/api/preview/'+(action==='stop'?'stop':'start'),{
+      method:'POST',headers:{'Content-Type':'application/json','X-Task-Mecca-Action':'1'},
+      body:JSON.stringify({number})
+    });
+    const payload=await response.json();
+    if(!response.ok)throw Error(payload.error||'Preview action failed');
+    if(action==='start'){
+      const address=previewSafeLocalURL(payload.open_url);
+      if(!address)throw Error('Preview URL failed validation');
+      if(tab)tab.location.replace(address);
+      state.previewMessage=state.language==='ko'?'Preview 실행 완료 · 새 탭으로 열었습니다.':'Preview is running. Open it in the new tab.';
+    }else{
+      if(tab)tab.close();
+      state.previewMessage=state.language==='ko'?'Preview 종료 완료':'Preview stopped';
+    }
+  }catch(error){
+    if(tab)tab.close();
+    state.previewMessage=(state.language==='ko'?'Preview 작업 실패: ':'Preview action failed: ')+String(error?.message||error);
+  }finally{
+    state.previewActionBusy=0;
+    await refreshPreviewData();
+  }
+}
+function bindPreviewBuildsActions(){
+  $('#previewReloadBtn')?.addEventListener('click',()=>refreshPreviewData());
+  $('#previewSearch')?.addEventListener('input',event=>{
+    const value=event.target.value,pos=event.target.selectionStart;
+    state.previewSearch=value;render();
+    const next=$('#previewSearch');next?.focus({preventScroll:true});
+    if(pos!=null)next?.setSelectionRange(pos,pos);
+  });
+  document.querySelectorAll('[data-preview-filter]').forEach(button=>button.addEventListener('click',()=>{
+    state.previewFilter=button.dataset.previewFilter;render();
+  }));
+  document.querySelectorAll('[data-preview-action]').forEach(button=>button.addEventListener('click',()=>{
+    void previewAction(Number(button.dataset.previewNumber),button.dataset.previewAction);
+  }));
 }
 
 function releaseNotesView() {
@@ -5320,6 +5501,9 @@ function render() {
   const searchFocus=document.activeElement?.id==='search' ? {start:document.activeElement.selectionStart,end:document.activeElement.selectionEnd} : null;
   nav(); translateChrome(); renderAccess(); applySidebarState(); updateNotificationIndicator(); updateTelegramSetupNavIndicator(); renderGlobalUpdateIndicator(); renderContentUpdatePrompt(); renderReleaseUnreadPrompt();
   const c=$('#content'), data=currentProjectData();
+  if(state.view==='preview'){
+    c.innerHTML=previewBuildsView();bindPreviewBuildsActions();return;
+  }
   if(state.view==='release-notes'){
     c.innerHTML=releaseNotesView();
     bindReleaseNotesActions();
@@ -5667,6 +5851,9 @@ async function refreshOnce() {
   if(targetProject)params.set('project',targetProject);
   const qs=params.toString()?`?${params}`:'';
 
+  if(targetView==='preview'){
+    closeAttentionStream();await refreshPreviewData();return;
+  }
   if(targetView==='release-notes'){
     closeAttentionStream();
     await loadReleaseNotes(!state.releaseNotesLoaded);
@@ -5839,7 +6026,7 @@ function route(fromPop=false) {
   if (!state.detail) {
     state.view=p.get('view')||(state.project?'backlog':'hub');
     if(state.view==='attention')state.view='notifications';
-    if(state.view==='hub'||state.view==='storage'||state.view==='release-notes') state.project='';
+    if(state.view==='hub'||state.view==='storage'||state.view==='release-notes'||state.view==='preview') state.project='';
     if (state.view === 'backlog') {
       const legacy=p.get('state');
       const raw=p.get('filter');

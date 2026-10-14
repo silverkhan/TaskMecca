@@ -1986,3 +1986,32 @@ select.tm-combo-native{position:absolute!important;width:1px!important;height:1p
  .notice-project-actions{flex-wrap:wrap}
 }
 @media(prefers-reduced-motion:reduce){.notice-project-chevron{transition:none}}
+
+
+/* DEV-only Preview Builds — reuse the project/action styling and theme tokens. */
+.preview-build-tools{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:14px 0 18px}
+.preview-build-tools input{min-width:200px;flex:1 1 270px;min-height:40px;border:1px solid var(--border);border-radius:9px;background:var(--surface);color:var(--text);padding:8px 12px;outline-offset:2px}
+.preview-build-filters{display:flex;flex-wrap:wrap;align-items:center;gap:5px}
+.preview-build-filters .action-btn{min-height:34px;padding:6px 11px;font-size:12px}
+.preview-build-filters .action-btn.active{border-color:var(--accent);color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.preview-build-list{display:flex;flex-direction:column;gap:10px}
+.preview-build-row{display:flex;justify-content:space-between;align-items:center;gap:15px;flex-wrap:wrap;min-width:0;padding:15px 17px;border:1px solid var(--border);border-radius:12px;background:var(--surface);box-shadow:0 3px 12px rgba(0,0,0,.04)}
+.preview-build-info{flex:1 1 360px;min-width:0;display:flex;flex-direction:column;gap:8px}
+.preview-build-title{overflow-wrap:anywhere;font-size:14px;line-height:1.5}
+.preview-build-title a{color:var(--accent);text-decoration:none}
+.preview-build-title a:hover{text-decoration:underline}
+.preview-build-meta{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;font-size:12px;color:var(--muted)}
+.preview-build-meta code,.preview-build-status code{font-size:11px;border-radius:5px;padding:2px 5px;background:var(--surface-raised,var(--surface));color:var(--muted)}
+.preview-build-status{display:flex;flex-wrap:wrap;align-items:center;gap:7px}
+.preview-build-status .badge{font-size:11px}
+.preview-ci-link{font-size:12px;color:var(--accent)}
+.preview-error{max-width:100%;font-size:12px;color:var(--danger);overflow-wrap:anywhere}
+.preview-build-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+.preview-build-actions .action-btn{white-space:nowrap;min-width:66px}
+@media(max-width:700px){
+ .preview-build-row{padding:12px;gap:12px}
+ .preview-build-info{flex-basis:100%}
+ .preview-build-actions{width:100%;justify-content:flex-end}
+ .preview-build-filters{width:100%}
+ .preview-build-tools input{flex-basis:100%}
+}
