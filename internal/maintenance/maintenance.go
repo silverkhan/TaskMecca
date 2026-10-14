@@ -738,14 +738,44 @@ func Upgrade(current string) (UpgradeResult,error) {
     return UpgradeWithProgress(current,nil)
 }
 
-// Progress reports observed stages, never fabricated download percentages.
-// Existing CLI callers remain compatible with Upgrade.
+// A click on an already-known update should not reissue a redundant mutable
+// GitHub VERSION request. The server cache is authoritative only within its
+// short freshness window; browser-supplied target versions never suffice.
+// fetchReleaseBinaryWithProgress independently checks live VERSION after
+// checksum verification, and rejects changed release generations.
+func cachedUpgradeTarget(current,expected string) (VersionInfo,bool) {
+    expected=normalizeVersion(expected)
+    current=normalizeVersion(current)
+    if expected==""||!newerVersion(expected,current){return VersionInfo{},false}
+    data,err:=os.ReadFile(versionCachePath())
+    if err!=nil{return VersionInfo{},false}
+    var cached VersionInfo
+    if json.Unmarshal(data,&cached)!=nil || cached.Error!="" ||
+        normalizeVersion(cached.Current)!=current ||
+        cached.Channel!=CurrentChannel() ||
+        normalizeVersion(cached.Latest)!=expected{return VersionInfo{},false}
+    at,err:=time.Parse(time.RFC3339,cached.CheckedAt)
+    if err!=nil||time.Since(at)<0||time.Since(at)>=5*time.Minute{return VersionInfo{},false}
+    cached.Current=current
+    cached.Latest=expected
+    cached.UpdateAvailable=true
+    return cached,true
+}
+
 func UpgradeWithProgress(current string,report func(string)) (UpgradeResult,error) {
+    return UpgradeWithProgressExpected(current,"",report)
+}
+
+// Expected is a performance hint, never a security or freshness override.
+// Older callers can omit it; cached/expired/mismatched targets fall back to
+// the original full latest-version check.
+func UpgradeWithProgressExpected(current,expected string,report func(string)) (UpgradeResult,error) {
     current=normalizeVersion(current)
     result:=UpgradeResult{From:current,Channel:CurrentChannel()}
     if err:=ensureReleaseTransitionAllowed();err!=nil{return result,err}
     reportUpgradeProgress(report,"checking")
-    info:=CheckLatest(current)
+    info,ok:=cachedUpgradeTarget(current,expected)
+    if !ok { info=CheckLatest(current) }
     if info.Error!="" { return result,errors.New(info.Error) }
     if !info.UpdateAvailable {
         result.To=current
