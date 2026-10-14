@@ -340,15 +340,17 @@ func BacklogPage(project,root string,page,pageSize int,statuses,tags []string,se
 // notification delivery and runtime journal mutations. Reading content should
 // not wait for background monitoring to finish computing an unrelated state.
 func TaskContent(project, root, id string) (map[string]any, error) {
-    // The fast document projection must not queue behind a full 400+ file
-    // catalog scan after the user selects a row. Pending/todo rows still
-    // use the full dependency graph for accurate readiness and blocked state.
+    // Paint persisted Markdown without an all-task scan, even for todo.
+    // A todo document is shown as provisional until the independent canonical
+    // controller projection establishes its ready/blocked state. Never infer
+    // readiness from a single file or synthesize a runtime start here.
     if cached,ok,err:=CachedTaskRecord(project,root,id);err!=nil {
         return nil,err
-    } else if ok && cached.State!="todo" {
+    } else if ok {
         item:=dashboardItem(cached,cached.State,nil,map[string]any{},nil)
         item["activity"]=map[string]any{"health":"n/a"}
         item["content_only"]=true
+        if cached.State=="todo" {item["state_provisional"]=true}
         return item,nil
     }
     rows,err:=CachedCatalog(project,root)
