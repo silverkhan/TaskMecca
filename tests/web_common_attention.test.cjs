@@ -128,3 +128,18 @@ test('expanded alerts retain one continuous outlined floating surface',()=>{
  assert.match(css,/@media\(max-width:700px\)\{\.common-attention-body\{[^}]*max-height:60vh/,'mobile scrolling remains bounded');
  assert.match(source,/<details class="common-attention"/,'native disclosure preserves keyboard behavior');
 });
+
+test('Mecca attention keeps original visible accent-to-warm-gold gradient while floating',()=>{
+ const css=fs.readFileSync('goassets/template/_task_mecca/framework/web/style.css','utf8');
+ const header=css.match(/\.user-attention\{\s*\/\*[\s\S]*?--attention-outline:linear-gradient\(90deg,[^}]+\}/)?.[0]||
+   css.match(/\.user-attention\{\s*--attention-outline:[^}]+\}/)?.[0]||'';
+ const flyout=css.match(/\.common-attention-body\{\s*position:absolute;[^}]+\}/)?.[0]||'';
+ assert.match(header,/var\(--warn\) 50%/,'gold stop must remain distinct from the purple accent');
+ assert.match(header,/var\(--accent\) 0%/);
+ assert.match(header,/var\(--accent\) 100%/);
+ assert.match(header,/--attention-fill:linear-gradient\(90deg,/);
+ assert.match(header,/background:var\(--attention-fill\) padding-box,var\(--attention-outline\) border-box/);
+ assert.match(flyout,/position:absolute;top:100%;left:-2px;right:-2px/,'expanded content must float');
+ assert.match(flyout,/background:var\(--attention-fill\) padding-box,var\(--attention-outline\) border-box/,'flyout must use identical border and fill to summary');
+ assert.match(css,/\.user-attention:has\(\.common-attention\[open\]\)\{[^}]*border-bottom-width:0/,'no double border at join');
+});

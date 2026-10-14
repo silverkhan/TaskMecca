@@ -3520,9 +3520,15 @@ function previewCaption(value){
 function previewBuildsView(){
   const ko=state.language==='ko',dev=devPreviewAvailable();
   const current=state.executionTarget||{kind:'dev'};
-  const header='<div class="page-head"><div><div class="eyebrow">DEV WORKSPACE</div><h1>'+(ko?'PR 실행 환경':'PR Environments')+'</h1><p class="summary">'+
+  const header='<div class="pr-environment-heading"><div class="page-head pr-environment-head">'+
+    '<div class="pr-environment-title"><div class="eyebrow">DEV WORKSPACE</div><h1>'+(ko?'PR 실행 환경':'PR Environments')+'</h1></div>'+
+    '<button class="action-btn secondary pr-environment-refresh" id="previewReloadBtn" type="button" '+
+    'aria-label="'+(ko?'PR 목록 새로고침':'Refresh PR list')+'" '+(state.previewLoading?'disabled':'')+'>'+
+    '<span class="pr-refresh-long">'+(ko?'목록 새로고침':'Refresh list')+'</span>'+
+    '<span class="pr-refresh-short">'+(ko?'새로고침':'Refresh')+'</span></button></div>'+
+    '<p class="summary pr-environment-summary">'+
     (ko?'기존 Dev 설치를 선택한 PR의 정확한 커밋으로 전환합니다. 기존 프로젝트와 관제 기능이 그대로 실행됩니다.':'Switch the installed Dev app to a pinned PR commit. Existing projects and monitoring continue under that code.')+
-    '</p></div><button class="action-btn secondary" id="previewReloadBtn" type="button" '+(state.previewLoading?'disabled':'')+'>'+(ko?'목록 새로고침':'Refresh')+'</button></div>';
+    '</p></div>';
   if(!dev)return header+'<div class="empty">'+(ko?'PR 환경 전환은 Dev에서만 가능합니다.':'PR switching is available only from Dev.')+'</div>';
   const search=String(state.previewSearch||'').toLowerCase().trim();
   const visible=[...(state.previewBuilds||[])].filter(item=>{
