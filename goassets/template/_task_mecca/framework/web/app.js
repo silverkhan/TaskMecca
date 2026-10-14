@@ -1172,6 +1172,7 @@ async function refreshVersionInfo(force=false) {
     const priorPreviewAvailability=devPreviewAvailable();
     state.versionInfo=payload;
     if(devPreviewAvailable()!==priorPreviewAvailability)nav();
+    if(state.view==='preview')queueMicrotask(()=>void maybeConfirmPreviewStop());
     maybeApplyStableBrandIntro();
     renderGlobalUpdateIndicator();
     renderReleaseNotesBadge();
@@ -3397,7 +3398,7 @@ function navigateView(view) {
     render();
   }
 }
-function devPreviewAvailable(){return (state.versionInfo?.cli?.channel||state.hub?.cli?.channel||'')==='dev';}
+function devPreviewAvailable(){return !state.previewIdentity&&(state.versionInfo?.cli?.channel||state.hub?.cli?.channel||'')==='dev';}
 function nav() {
   const c = currentProjectData()?.counts || {};
   const projects=state.hub?.projects||[];
@@ -3453,6 +3454,50 @@ function nav() {
   renderReleaseNotesBadge();
 }
 
+
+
+function previewIdentityFromHealth(payload){
+  const number=Number(payload?.preview_pr),sha=String(payload?.preview_sha||'');
+  const parent=String(payload?.preview_parent_url||'');
+  const port=Number(parent.match(/^http:\/\/(?:127\.0\.0\.1|localhost):([1-9]\d{0,4})$/)?.[1]||0);
+  if(payload?.preview_mode!==true||!Number.isSafeInteger(number)||number<1||
+    !/^[a-f0-9]{40}$/.test(sha)||port<1||port>65535)return null;
+  return {number,sha,parent};
+}
+async function loadPreviewIdentity(){
+  try{
+    const r=await fetch('/api/health',{cache:'no-store'});
+    if(!r.ok)return;
+    const identity=previewIdentityFromHealth(await r.json());
+    if(!identity)return;
+    state.previewIdentity=identity;
+    const banner=$('#previewIdentityBanner');
+    if(!banner)return;
+    const ko=state.language==='ko';
+    const base=identity.parent+'/?view=preview';
+    banner.innerHTML='<div class="preview-identity-copy"><strong>PREVIEW · PR #'+identity.number+' · '+esc(identity.sha.slice(0,10))+'</strong>'+
+      '<span>'+esc(ko?'별도 테스트 프로젝트를 사용하지만, 현재 사용자와 동일한 OS 권한으로 실행 중입니다.':'Separate test project; process still shares your OS account permissions.')+'</span></div>'+
+      '<div class="preview-identity-actions">'+
+      '<a class="action-btn secondary" href="'+esc(base)+'">'+(ko?'Dev로 돌아가기':'Back to Dev')+'</a>'+
+      '<a class="action-btn secondary danger-action" href="'+esc(base+'&stop_preview='+identity.number)+'">'+(ko?'Preview 종료':'Stop Preview')+'</a></div>';
+    banner.hidden=false;
+    document.title='PREVIEW · PR #'+identity.number+' · Task Mecca';
+    nav();
+  }catch(_){}
+}
+async function maybeConfirmPreviewStop(){
+  const query=new URLSearchParams(location.search);
+  const raw=query.get('stop_preview');
+  if(!raw||!devPreviewAvailable()||state.view!=='preview')return;
+  query.delete('stop_preview');
+  history.replaceState({},'','/?'+query.toString());
+  const number=Number(raw);
+  if(!Number.isSafeInteger(number)||number<1)return;
+  const ko=state.language==='ko';
+  const prompt=ko?'PR #'+number+' Preview를 종료하시겠습니까?':'Stop PR #'+number+' Preview?';
+  if(!window.confirm(prompt))return;
+  await previewAction(number,'stop');
+}
 
 function previewCaption(value){
   if(!value)return '-';
@@ -6311,5 +6356,6 @@ setInterval(()=>{if(document.visibilityState!=='hidden')void checkTelegramSetupI
 Promise.resolve(initialForeground).finally(()=>refreshOperations());
 setInterval(refreshOperations,15000);
 refreshVersionInfo(false);
+void loadPreviewIdentity();
 void resumeActiveUpgrade();
 setTimeout(()=>refreshVersionInfo(true),800);
