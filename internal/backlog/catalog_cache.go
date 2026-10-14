@@ -122,9 +122,10 @@ func InvalidateCachedCatalog(root string) {
     }
 }
 
-// CachedTaskRecord reads only one known task file instead of repeating a full
-// archive walk and per-file stat for a task the list has already discovered.
-// A moved/deleted task forces the caller to rescan, preserving rename changes.
+// CachedTaskRecord reads one file using the catalog index when available.
+// Direct detail links with no prior list scan discover file NAMES only, then
+// parse the selected document. A rename/deletion is resolved from disk, never
+// served from a stale in-memory record.
 func CachedTaskRecord(project,root,id string) (Record,bool,error) {
     folder,err:=Select(project,root)
     if err!=nil{return Record{},false,err}
@@ -135,22 +136,38 @@ func CachedTaskRecord(project,root,id string) (Record,bool,error) {
     catalogCache.Lock()
     snapshot,exists:=catalogCache.Entries[abs]
     catalogCache.Unlock()
-    if !exists {return Record{},false,nil}
     var chosen catalogCacheFile
     chosenPath:=""
-    for path,candidate:=range snapshot.Files {
-        if candidate.Record.ID!=id {continue}
-        if chosenPath=="" || (candidate.Record.Location=="active" && chosen.Record.Location!="active") {
-            chosenPath=path;chosen=candidate
+    if exists {
+        for path,candidate:=range snapshot.Files {
+            if candidate.Record.ID!=id {continue}
+            if chosenPath=="" || (candidate.Record.Location=="active" && chosen.Record.Location!="active") {
+                chosenPath=path;chosen=candidate
+            }
+        }
+        if chosenPath!="" && chosen.Record.Location=="active" {
+            if info,statErr:=os.Stat(chosenPath);statErr==nil && info.Mode().IsRegular(){
+                if info.Size()==chosen.Size && info.ModTime().UnixNano()==chosen.ModTime {
+                    return chosen.Record,true,nil
+                }
+                if updated,readErr:=parseRecordFile(abs,chosenPath);readErr==nil && updated.ID==id {
+                    return updated,true,nil
+                }
+            }
         }
     }
-    if chosenPath=="" || chosen.Record.Location!="active" {return Record{},false,nil}
-    info,err:=os.Stat(chosenPath)
-    if err!=nil || !info.Mode().IsRegular(){return Record{},false,nil}
-    if info.Size()==chosen.Size && info.ModTime().UnixNano()==chosen.ModTime {
-        return chosen.Record,true,nil
+    paths,err:=History(abs)
+    if err!=nil{return Record{},false,err}
+    found:=""
+    for _,path:=range paths {
+        match:=itemName.FindStringSubmatch(filepath.Base(path))
+        if match==nil || strings.ToUpper(match[2])!=id {continue}
+        // Prefer the same active document as the canonical full catalog.
+        if filepath.Dir(path)==abs {found=path;break}
+        if found=="" {found=path}
     }
-    updated,err:=parseRecordFile(abs,chosenPath)
-    if err!=nil || updated.ID!=id {return Record{},false,nil}
-    return updated,true,nil
+    if found=="" || filepath.Dir(found)!=abs{return Record{},false,nil}
+    row,err:=parseRecordFile(abs,found)
+    if err!=nil{return Record{},false,nil}
+    return row,true,nil
 }
