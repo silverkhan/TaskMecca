@@ -81,7 +81,18 @@ func registerPreviewRoutes(mux *http.ServeMux,writeJSON func(http.ResponseWriter
    if err:=getManager().Stop(ctx,request.Number);err!=nil{
     writeJSON(w,map[string]any{"error":err.Error()},409);return
    }
-   writeJSON(w,map[string]any{"ok":true},200)
+   // Return the authoritative post-stop instance so the browser can
+   // immediately switch its row from Open/Stop to Run, without waiting for
+   // the GitHub build catalog or a potentially already-active list request.
+   var stopped *preview.Instance
+   for _,instance:=range getManager().List(){
+    if instance.PRNumber==request.Number{
+     copy:=instance
+     stopped=&copy
+     break
+    }
+   }
+   writeJSON(w,map[string]any{"ok":true,"instance":stopped},200)
   }
  }
  mux.HandleFunc("/api/preview/start",func(w http.ResponseWriter,r *http.Request){action(w,r,true)})
