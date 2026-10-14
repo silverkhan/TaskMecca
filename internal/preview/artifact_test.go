@@ -18,6 +18,9 @@ import (
 )
 
 func testArchive(t *testing.T,pr int,sha string,run int64,corruptChecksum,wrongManifest,unsafePath bool)[]byte {
+    return testArchiveWithChecksumPath(t,pr,sha,run,corruptChecksum,wrongManifest,unsafePath,"task-mecca-linux-amd64")
+}
+func testArchiveWithChecksumPath(t *testing.T,pr int,sha string,run int64,corruptChecksum,wrongManifest,unsafePath bool,checksumPath string)[]byte {
     t.Helper()
     var raw bytes.Buffer
     writer:=zip.NewWriter(&raw)
@@ -31,7 +34,7 @@ func testArchive(t *testing.T,pr int,sha string,run int64,corruptChecksum,wrongM
     if corruptChecksum{checksum[0]^=0xff}
     entries:=map[string][]byte{
         "preview-build.json":manifestBytes,
-        "SHA256SUMS.txt":[]byte(hex.EncodeToString(checksum[:])+"  task-mecca-linux-amd64\n"),
+        "SHA256SUMS.txt":[]byte(hex.EncodeToString(checksum[:])+"  "+checksumPath+"\n"),
         fileName:binary,
     }
     for _,key:=range []string{"preview-build.json","SHA256SUMS.txt",fileName}{
@@ -185,5 +188,76 @@ func TestPreviewArtifactPermissionAndExpirationErrors(t *testing.T) {
             _,err:=client.DownloadVerified(context.Background(),build,t.TempDir(),"linux","amd64")
             if err==nil||!strings.Contains(err.Error(),tc.term){t.Fatalf("wrong status error: %v",err)}
         })
+    }
+}
+
+func TestChecksumEntryAcceptsOnlyExactRootOrLegacyDistPaths(t *testing.T) {
+    hash:=strings.Repeat("a",64)
+    for _,platform:=range []struct{os,arch string}{
+        {"darwin","arm64"},{"darwin","amd64"},{"windows","amd64"},{"linux","amd64"},
+    }{
+        name,err:=assetForPlatform(platform.os,platform.arch)
+        if err!=nil{t.Fatal(err)}
+        for _,entry:=range []string{name,"dist/"+name}{
+            sums:=[]byte(hash+"  "+entry+"\n")
+            got,err:=checksumEntry(sums,name)
+            if err!=nil||got!=hash{t.Fatalf("platform=%s/%s entry=%s: %q %v",platform.os,platform.arch,entry,got,err)}
+        }
+        for _,bad:=range []string{
+            hash+"  ../dist/"+name+"\n",
+            hash+"  other/"+name+"\n",
+            hash+"  dist/../"+name+"\n",
+            hash+"  "+name+".old\n",
+        }{
+            if _,err=checksumEntry([]byte(bad),name);err==nil{
+                t.Fatalf("ambiguous checksum path accepted: %q",bad)
+            }
+        }
+        duplicate:=hash+"  "+name+"\n"+hash+"  dist/"+name+"\n"
+        if _,err=checksumEntry([]byte(duplicate),name);err==nil{
+            t.Fatalf("duplicate platform entry accepted for %s",name)
+        }
+        if _,err=checksumEntry([]byte("bad-hash  dist/"+name+"\n"),name);err==nil{
+            t.Fatalf("invalid SHA accepted for %s",name)
+        }
+    }
+}
+
+func TestDownloadVerifiedLegacyDistChecksumWorksWithoutRebuild(t *testing.T) {
+    const sha="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    archive:=testArchiveWithChecksumPath(t,213,sha,500,false,false,false,"dist/task-mecca-linux-amd64")
+    server:=httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter,r *http.Request){
+        w.Header().Set("Content-Type","application/zip")
+        _,_=w.Write(archive)
+    }))
+    defer server.Close()
+    client:=Client{HTTP:server.Client(),APIURL:server.URL}
+    build:=Build{Number:213,HeadSHA:sha,RunID:500,BuildStatus:"success",
+        ArtifactID:300,ArtifactName:"task-mecca-preview-pr-213-"+sha}
+    file,err:=client.DownloadVerified(context.Background(),build,t.TempDir(),"linux","amd64")
+    if err!=nil{t.Fatalf("PR #213 style artifact rejected: %v",err)}
+    actual,err:=os.ReadFile(file)
+    if err!=nil||string(actual)!="fake standalone preview executable fixture"{
+        t.Fatalf("bad verified binary: %v %q",err,actual)
+    }
+}
+
+func TestDownloadVerifiedLegacyDistChecksumStillRejectsTampering(t *testing.T) {
+    const sha="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    artifact:=testArchiveWithChecksumPath(t,213,sha,500,true,false,false,"dist/task-mecca-linux-amd64")
+    server:=httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter,r *http.Request){
+        _,_=w.Write(artifact)
+    }))
+    defer server.Close()
+    client:=Client{HTTP:server.Client(),APIURL:server.URL}
+    build:=Build{Number:213,HeadSHA:sha,RunID:500,BuildStatus:"success",
+        ArtifactID:300,ArtifactName:"task-mecca-preview-pr-213-"+sha}
+    cache:=t.TempDir()
+    if _,err:=client.DownloadVerified(context.Background(),build,cache,"linux","amd64");err==nil||
+       !strings.Contains(err.Error(),"checksum mismatch"){
+        t.Fatalf("legacy checksum permitted altered binary: %v",err)
+    }
+    if entries,err:=os.ReadDir(cache);err!=nil||len(entries)!=0{
+        t.Fatalf("rejected artifact created cached data: %v %v",entries,err)
     }
 }
