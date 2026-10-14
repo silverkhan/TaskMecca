@@ -355,7 +355,9 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 	registerEnvironmentRoutes(mux,version,restartCh,writeJSON)
 
 	mux.HandleFunc("/api/health", func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, map[string]any{"ok": true, "version": version, "instance_id": instanceID, "boot_id": bootID, "pid": os.Getpid(), "telegram_transport_disabled": notify.TelegramTransportDisabled(), "preview_mode": PreviewMode(), "preview_pr": func()int{n,_:=previewIdentity();return n}(), "preview_sha": func()string{_,sha:=previewIdentity();return sha}(), "preview_parent_url": previewParentURL()}, 200)
+		execution,executionErr:=maintenance.InstalledExecutionTarget()
+		if executionErr!=nil {writeJSON(w,map[string]any{"ok":false,"error":executionErr.Error()},503);return}
+		writeJSON(w, map[string]any{"execution_target":execution,"ok": true, "version": version, "instance_id": instanceID, "boot_id": bootID, "pid": os.Getpid(), "telegram_transport_disabled": notify.TelegramTransportDisabled(), "preview_mode": PreviewMode(), "preview_pr": func()int{n,_:=previewIdentity();return n}(), "preview_sha": func()string{_,sha:=previewIdentity();return sha}(), "preview_parent_url": previewParentURL()}, 200)
 	})
 
 	mux.HandleFunc("/api/version", func(w http.ResponseWriter, r *http.Request) {
