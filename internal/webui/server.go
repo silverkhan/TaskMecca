@@ -239,6 +239,9 @@ func Handler(project, root, version string) (http.Handler, error) {
 }
 
 func handler(project, root, version, instanceID, controlToken string, restartCh chan<- maintenance.UpgradeResult, stopCh chan<- struct{}) (http.Handler, error) {
+	if err:=maintenance.ReconcileExecutionOnBoot();err!=nil {
+		return nil,fmt.Errorf("environment transition recovery requires attention: %w",err)
+	}
 	initialCtx, initialErr := webContext(project, root)
 	if initialErr != nil {
 		return nil, initialErr
@@ -349,6 +352,7 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
     })
 
     registerPreviewRoutes(mux,writeJSON)
+	registerEnvironmentRoutes(mux,version,restartCh,writeJSON)
 
 	mux.HandleFunc("/api/health", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, map[string]any{"ok": true, "version": version, "instance_id": instanceID, "boot_id": bootID, "pid": os.Getpid(), "telegram_transport_disabled": notify.TelegramTransportDisabled(), "preview_mode": PreviewMode(), "preview_pr": func()int{n,_:=previewIdentity();return n}(), "preview_sha": func()string{_,sha:=previewIdentity();return sha}(), "preview_parent_url": previewParentURL()}, 200)
