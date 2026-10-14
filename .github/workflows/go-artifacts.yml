@@ -13,9 +13,16 @@ on:
 
 jobs:
   build:
+    # A preview build must never execute code from an arbitrary fork PR.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # pull_request's default checkout is a temporary merge commit;
+          # Preview must identify the exact PR head revision instead.
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
@@ -39,9 +46,23 @@ jobs:
           CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o dist/task-mecca-macos-amd64 ./cmd/task-mecca
           CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -trimpath -ldflags="-s -w" -o dist/task-mecca-macos-arm64 ./cmd/task-mecca
           CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o dist/task-mecca-linux-amd64 ./cmd/task-mecca
-          sha256sum dist/* > dist/SHA256SUMS.txt
+          sha256sum dist/task-mecca-* > dist/SHA256SUMS.txt
+      - name: Write Preview provenance
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number || '0' }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          WORKFLOW_RUN: ${{ github.run_id }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          jq -n \
+            --arg repo "$REPOSITORY" \
+            --argjson pr "$PR_NUMBER" \
+            --arg sha "$HEAD_SHA" \
+            --argjson run "$WORKFLOW_RUN" \
+            '{repository:$repo,pr_number:$pr,head_sha:$sha,run_id:$run,workflow:"go-artifacts.yml",schema_version:1}' \
+            > dist/preview-build.json
       - uses: actions/upload-artifact@v4
         with:
-          name: task-mecca-standalone-${{ github.sha }}
+          name: task-mecca-preview-pr-${{ github.event.pull_request.number || 'manual' }}-${{ github.event.pull_request.head.sha || github.sha }}
           path: dist/*
           if-no-files-found: error
