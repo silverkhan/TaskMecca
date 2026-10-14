@@ -122,6 +122,7 @@ func CurrentChannel() string {
 }
 
 func SetChannel(value string) error {
+    if err:=ensureReleaseTransitionAllowed();err!=nil{return err}
     channel,err:=normalizeChannel(value)
     if err!=nil { return err }
     if err=os.MkdirAll(homeDir(),0755); err!=nil { return err }
