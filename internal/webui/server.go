@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"io"
 	"io/fs"
 	"mime"
@@ -545,6 +546,10 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 
 	mux.HandleFunc("/api/backlog/tasks", func(w http.ResponseWriter, r *http.Request) {
         requestStart:=time.Now()
+        monitorWaitMS:=0.0
+        if queuedAt,ok:=r.Context().Value(projectMonitoringStartKey{}).(time.Time);ok{
+            monitorWaitMS=time.Since(queuedAt).Seconds()*1000
+        }
 		activeProject := projectFor(r)
 		activeCtx, ctxErr := webContext(activeProject, "")
 		if ctxErr != nil {
@@ -586,7 +591,21 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
         selectionDuration:=time.Since(requestStart)
         listStart:=time.Now()
 		result, err := backlog.BacklogPage(activeProject, selected, page, pageSize, statuses, tags, r.URL.Query().Get("q"), r.URL.Query().Get("sort"), r.URL.Query().Get("projection"))
-        w.Header().Set("Server-Timing",fmt.Sprintf("selection;dur=%.1f, backlog;dur=%.1f",selectionDuration.Seconds()*1000,time.Since(listStart).Seconds()*1000))
+        elapsedMS:=time.Since(listStart).Seconds()*1000
+        profile:=map[string]float64{}
+        if result!=nil{
+            if actual,ok:=result["_server_profile"].(map[string]float64);ok{
+                profile=actual
+                delete(result,"_server_profile")
+            }
+        }
+        w.Header().Set("Server-Timing",fmt.Sprintf("monitor_wait;dur=%.1f, selection;dur=%.1f, catalog;dur=%.1f, state;dur=%.1f, control;dur=%.1f, notification;dur=%.1f, backlog;dur=%.1f",
+            monitorWaitMS,selectionDuration.Seconds()*1000,profile["catalog"],profile["state"],profile["control"],profile["notification"],elapsedMS))
+        if monitorWaitMS+selectionDuration.Seconds()*1000+elapsedMS>1500{
+            log.Printf("Task Mecca slow backlog API project=%q page=%d wait_ms=%.0f selection_ms=%.0f catalog_ms=%.0f control_ms=%.0f notification_ms=%.0f total_ms=%.0f failed=%t",
+                filepath.Base(activeProject),page,monitorWaitMS,selectionDuration.Seconds()*1000,
+                profile["catalog"],profile["control"],profile["notification"],monitorWaitMS+selectionDuration.Seconds()*1000+elapsedMS,err!=nil)
+        }
 		if err != nil {
 			writeJSON(w, map[string]any{"error": err.Error()}, 500)
 			return
