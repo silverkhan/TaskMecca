@@ -538,9 +538,16 @@ func BuildLedger(project string,recentLimit int,now time.Time) (Ledger,error) {
     files,err:=executionEventFiles(project)
     if err!=nil { return out,err }
 
-    accs:=map[string]*accumulator{}
-    seen:=map[string]bool{}
-    for _,path:=range files {
+    // Reuse the immutable event fold while source journals are unchanged.
+    // Each request still recomputes time-dependent state from the current clock.
+    stamps, stampsOK := executionFileFingerprints(files)
+    accs, parsedFindings, cached := cachedExecutionAccumulators(project, stamps, stampsOK)
+    if cached {
+        out.Findings = append(out.Findings, parsedFindings...)
+    } else {
+        accs=map[string]*accumulator{}
+        seen:=map[string]bool{}
+        for _,path:=range files {
         file,openErr:=os.Open(path)
         if openErr!=nil {
             if errors.Is(openErr,os.ErrNotExist) { continue }
@@ -577,7 +584,27 @@ func BuildLedger(project string,recentLimit int,now time.Time) (Ledger,error) {
         if closeErr!=nil { return out,closeErr }
     }
 
-    for _,a:=range accs {
+        // A concurrent hook may append or rotate a journal while it is read.
+        // Never cache such a partial fold; the next request will read it afresh.
+        if stampsOK {
+            freshFiles, listErr := executionEventFiles(project)
+            freshStamps, freshOK := executionFileFingerprints(freshFiles)
+            if listErr == nil && freshOK && sameExecutionFileFingerprints(stamps, freshStamps) {
+                rememberExecutionAccumulators(project, stamps, accs, out.Findings)
+            }
+        }
+    }
+
+    for _,source:=range accs {
+        // finish mutates durations, transition order and the projected attempt.
+        // Do not mutate cached evidence or share its maps with API consumers.
+        a:=*source
+        a.transitions=append([]Transition(nil),source.transitions...)
+        if source.attempt.BindingEvidence!=nil {
+            evidence:=make(map[string]string,len(source.attempt.BindingEvidence))
+            for key,value:=range source.attempt.BindingEvidence { evidence[key]=value }
+            a.attempt.BindingEvidence=evidence
+        }
         attempt,findings:=a.finish(recentLimit,now)
         out.Attempts=append(out.Attempts,attempt)
         out.Findings=append(out.Findings,findings...)
