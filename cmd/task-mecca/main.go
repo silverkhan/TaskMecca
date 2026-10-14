@@ -26,6 +26,12 @@ var version = "0.2.51"
 func main() { os.Exit(run(os.Args[1:])) }
 
 func run(args []string) int {
+    // A side-effect-free capability handshake is checked by CI before it
+    // advertises that this exact PR binary can return to pinned Dev.
+    if len(args)==2 && args[0]=="environment" && args[1]=="capability" {
+        fmt.Println("task-mecca-execution-switch-protocol=1")
+        return 0
+    }
     if len(args)>0 && args[0]=="notifications" { return runNotificationCLI(args[1:],os.Stdout,os.Stderr) }
     if len(args)>0 && args[0]=="operations" { return runOperationsCLI(args[1:],os.Stdout,os.Stderr) }
  if len(args)>0 && args[0]=="projects" { return runProjectCLI(args[1:],os.Stdout,os.Stderr) }
