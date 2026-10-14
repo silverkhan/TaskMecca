@@ -156,6 +156,7 @@ func selectionPayload(ctx context, selected string, candidates []backlog.Candida
 
 // Replaceable only in isolated HTTP tests; real Web uses maintenance.UpgradeWithProgress.
 var webUpgradeRunner=maintenance.UpgradeWithProgress
+var webUpgradeTargetRunner=maintenance.UpgradeWithSelectedTarget
 
 var stableReleaseNotesIndexProvider = maintenance.StableReleaseNotesIndex
 var stableReleaseNoteProvider = maintenance.StableReleaseNote
@@ -1424,11 +1425,28 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 			writeJSON(w, map[string]any{"error": "maintenance action header required"}, 403)
 			return
 		}
+        // Modern Web sends its already chosen target. Legacy clients with
+        // empty bodies retain independent latest-version discovery.
+        var request struct {
+            ExpectedVersion string `json:"expected_version"`
+        }
+        decoder:=json.NewDecoder(http.MaxBytesReader(w,r.Body,512))
+        decoder.DisallowUnknownFields()
+        if err:=decoder.Decode(&request);err!=nil && !errors.Is(err,io.EOF){
+            writeJSON(w,map[string]any{"error":"invalid upgrade request"},400)
+            return
+        }
         if !upgradeTracker.begin() {
             writeJSON(w,map[string]any{"error":"update already in progress","status":upgradeTracker.snapshot()},409)
             return
         }
-		result, err := webUpgradeRunner(version,upgradeTracker.step)
+		var result maintenance.UpgradeResult
+        var err error
+        if selected:=strings.TrimSpace(request.ExpectedVersion);selected!=""{
+            result,err=webUpgradeTargetRunner(version,selected,upgradeTracker.step)
+        }else{
+            result,err=webUpgradeRunner(version,upgradeTracker.step)
+        }
 		if err != nil {
             upgradeTracker.finish("failed",err)
 			writeJSON(w, map[string]any{"error": err.Error()}, 500)
