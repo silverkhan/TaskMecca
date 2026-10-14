@@ -3538,6 +3538,7 @@ function previewBuildsView(){
     const number=Number(item.number),sha=String(item.head_sha||'');
     const valid=/^[a-f0-9]{40}$/.test(sha);
     const available=item.build_status==='success'&&valid&&state.executionSwitchSupported&&!state.previewActionBusy;
+    const rebuildable=['none','failure','expired','unavailable'].includes(item.build_status)&&valid&&!state.previewActionBusy;
     const prLink=/^https:\/\/github\.com\/silverkhan\/TaskMecca\/pull\/\d+$/.test(String(item.url||''))
       ?'<a href="'+esc(item.url)+'" target="_blank" rel="noopener noreferrer">PR #'+number+'</a>':'PR #'+number;
     return '<article class="preview-build-row" data-preview-pr="'+number+'">'+
@@ -3546,12 +3547,19 @@ function previewBuildsView(){
       '<span>'+esc(previewCaption(item.build_finished_at||item.updated_at))+'</span></div>'+
       '<div class="preview-build-status"><span class="badge '+(item.build_status==='success'?'ok':'')+'">'+esc(status[item.build_status]||item.build_status||'-')+'</span></div></div>'+
       '<div class="preview-build-actions"><button type="button" class="action-btn" data-pr-switch="'+number+'" '+(available?'':'disabled')+'>'+
-      (state.previewActionBusy===number?(ko?'전환 중…':'Switching…'):(ko?'이 PR로 전환':'Switch to PR'))+'</button></div></article>';
+      (state.previewActionBusy===number?(ko?'처리 중…':'Working…'):(ko?'이 PR로 전환':'Switch to PR'))+'</button>'+
+      (['none','failure','expired','unavailable'].includes(item.build_status)?
+      '<button type="button" class="action-btn secondary" data-pr-rebuild="'+number+'" '+(rebuildable?'':'disabled')+'>'+
+      (state.previewActionBusy===number?(ko?'빌드 요청 중…':'Requesting…'):(ko?'빌드 생성':'Create build'))+'</button>':'')+
+      '</div></article>';
   }).join('');
   return header+
     '<div class="timing-note"><strong>'+(ko?'전체 환경 전환':'Full environment switch')+'</strong><span>'+
     esc(ko?'동시에 실행되는 별도의 Preview 프로세스는 생성하지 않습니다. 설치된 실행 파일을 교체하고 웹을 재시작합니다. PR 코드는 현재 사용자 권한으로 실행됩니다. 신뢰된 PR만 선택하세요.':'No extra Preview process is started. The installed executable is replaced and Web restarts. Only run code you trust under your OS user permissions.')+
     '</span></div>'+
+    '<p class="timing-note">'+esc(ko?'과거 PR은 복귀 프로토콜을 지원하지 않을 수 있습니다. 빌드 성공만으로 PR 전환 가능성이 보장되지는 않습니다.':'Legacy PR code may lack the Dev return protocol. A successful build alone does not authorize execution.')+
+    ' <a href="https://github.com/silverkhan/TaskMecca/actions/workflows/go-artifacts.yml" target="_blank" rel="noopener noreferrer">'+
+    esc(ko?'GitHub Actions에서 직접 빌드':'Build manually in GitHub Actions')+'</a></p>'+
     (!state.executionSwitchSupported?'<p class="load-error">'+esc(ko?'Windows PR 전환은 안전한 재시작 절차가 검증될 때까지 사용할 수 없습니다.':'PR switching on Windows is disabled until staged restart verification is completed.')+'</p>':'')+
     '<div class="preview-build-tools"><input id="previewSearch" type="search" autocomplete="off" placeholder="'+(ko?'PR 번호, 제목, 브랜치 검색':'Search PR')+'" value="'+esc(state.previewSearch)+'"/>'+
     '<div class="preview-build-filters">'+[['all',ko?'전체':'All'],['success',ko?'빌드 성공':'Built'],['failed',ko?'오류·만료':'Errors']].map(([value,label])=>
@@ -3661,6 +3669,30 @@ async function refreshExecutionTarget(){
     }
   }catch(_){}
 }
+async function rebuildPRArtifact(number){
+  if(state.previewActionBusy||!devPreviewAvailable())return;
+  const item=state.previewBuilds.find(row=>Number(row.number)===number);
+  if(!item||!['none','failure','expired','unavailable'].includes(item.build_status)||
+    !/^[a-f0-9]{40}$/.test(String(item.head_sha||'')))return;
+  const ko=state.language==='ko';
+  if(!window.confirm(ko
+    ?'PR #'+number+'의 현재 SHA '+item.head_sha.slice(0,10)+'를 GitHub Actions에서 다시 빌드할까요?\\n이 요청은 PR 코드를 실행하지 않고 CI 빌드만 시작합니다.'
+    :'Request a GitHub Actions build for PR #'+number+' at '+item.head_sha.slice(0,10)+'? No PR code runs on this machine.'))return;
+  state.previewActionBusy=number;
+  state.previewMessage='';state.previewError='';render();
+  try{
+    const response=await fetch('/api/preview/rebuild',{method:'POST',
+      headers:{'Content-Type':'application/json','X-Task-Mecca-Action':'1'},
+      body:JSON.stringify({number,sha:item.head_sha})});
+    const payload=await response.json();
+    if(!response.ok)throw Error(payload.error||'PR build request failed');
+    state.previewMessage=ko?'PR #'+number+' 빌드를 GitHub Actions에 요청했습니다. 잠시 후 목록을 새로고침하여 확인하세요.':
+      'GitHub Actions build queued for PR #'+number+'. Refresh to check progress.';
+    await refreshPreviewData();
+  }catch(error){
+    state.previewError=String(error?.message||error);
+  }finally{state.previewActionBusy=0;render()}
+}
 async function executePRSwitch(number){
   if(state.previewActionBusy||!devPreviewAvailable())return;
   const item=state.previewBuilds.find(row=>Number(row.number)===number);
@@ -3711,6 +3743,9 @@ function bindPreviewBuildsActions(){
   }));
   document.querySelectorAll('[data-pr-switch]').forEach(button=>button.addEventListener('click',()=>{
     void executePRSwitch(Number(button.dataset.prSwitch));
+  }));
+  document.querySelectorAll('[data-pr-rebuild]').forEach(button=>button.addEventListener('click',()=>{
+    void rebuildPRArtifact(Number(button.dataset.prRebuild));
   }));
 }
 
