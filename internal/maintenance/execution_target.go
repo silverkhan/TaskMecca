@@ -169,3 +169,18 @@ func writeExecutionJSON(path string, value any) error {
 	if err := file.Close(); err != nil { return err }
 	return os.Rename(file.Name(), path)
 }
+
+// ensureReleaseTransitionAllowed is a shared fail-closed gate for Stable/Dev
+// updates and channel changes. A later PR-switch executor will use its own
+// journaled transition path instead of changing a PR process in-place.
+func ensureReleaseTransitionAllowed() error {
+	target, err := InstalledExecutionTarget()
+	if err != nil { return fmt.Errorf("cannot change release while execution target is invalid: %w", err) }
+	pending, err := PendingExecutionTransition()
+	if err != nil { return fmt.Errorf("cannot change release with invalid transition journal: %w", err) }
+	if pending != nil { return fmt.Errorf("environment transition is still %s; recover it first", pending.Phase) }
+	if target.Kind == "pr" {
+		return fmt.Errorf("PR #%d (%s) is active; return to the pinned Dev version before updating or switching channels", target.PRNumber, target.HeadSHA[:10])
+	}
+	return nil
+}
