@@ -33,6 +33,7 @@ type ExecutionTransition struct {
 	Phase string `json:"phase"` // preparing | installing | restarting | verifying | rollback_required
 	From ExecutionTarget `json:"from"`
 	To ExecutionTarget `json:"to"`
+	SourceSHA256 string `json:"source_sha256,omitempty"`
 	TargetSHA256 string `json:"target_sha256,omitempty"`
 	UpdatedAt string `json:"updated_at"`
 }
