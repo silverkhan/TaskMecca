@@ -13,6 +13,7 @@ import (
  "os/exec"
  "path/filepath"
  "strings"
+ "strconv"
  "sync"
  "time"
 )
@@ -117,6 +118,8 @@ func (Docker) Start(ctx context.Context,binary,digest string,env Environment,por
   "--env","TASK_MECCA_HOME=/tmp/task-mecca",
   "--env","TASK_MECCA_PREVIEW_MODE=1",
   "--env","TASK_MECCA_PREVIEW_SANDBOX=docker",
+  "--env","TASK_MECCA_PREVIEW_PR="+strconv.Itoa(env.PRNumber),
+  "--env","TASK_MECCA_PREVIEW_SHA="+env.HeadSHA,
   "--env","TASK_MECCA_TELEGRAM_TRANSPORT=disabled",
   "--env","TASK_MECCA_CHANNEL=dev",
   "--entrypoint","/opt/task-mecca",
