@@ -35,8 +35,13 @@ func registerEnvironmentRoutes(
 			writeJSON(w,map[string]any{"error":"PR switching requires the managed Dev Web"},403)
 			return
 		}
-		if !previewLocalMutation(r){
-			writeJSON(w,map[string]any{"error":"PR version switching requires a local same-origin action"},403)
+		// Reuse the Web restart authorization for a trusted Tailscale admin.
+		// Mere reverse-proxy loopback is not authorization; the existing
+		// terminal identity/origin policy must approve such requests.
+		trustedRemote:=r.Method==http.MethodPost && r.Header.Get("X-Task-Mecca-Action")=="1" &&
+			terminalAccessAllowed(r,readTerminalSecuritySettings()) && terminalOriginAllowed(r)
+		if !previewLocalMutation(r)&&!trustedRemote{
+			writeJSON(w,map[string]any{"error":"PR version switching requires local access or an authorized Tailscale administration connection"},403)
 			return
 		}
 		var input struct {
