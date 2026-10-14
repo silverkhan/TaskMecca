@@ -1096,10 +1096,10 @@ body.release-modal-open{overflow:hidden}
 
 /* The collapsed summary and expanded flyout form one continuous outlined surface.
    A horizontal theme gradient gives both halves identical colors at their seam. */
+/* Restore the original purple → warm-gold → purple tonal journey.
+   Keep a horizontal gradient so the floating flyout and summary share
+   precisely the same border color at their vertical seam. */
 .user-attention{
-  /* Restore the original purple → warm-gold → purple tonal journey.
-     Keep a horizontal gradient so the floating flyout and summary share
-     precisely the same border color at their vertical seam. */
   --attention-outline:linear-gradient(90deg,
     var(--accent) 0%,
     color-mix(in srgb,var(--accent) 48%,var(--warn)) 28%,
