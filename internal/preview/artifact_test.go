@@ -7,6 +7,8 @@ import (
     "crypto/sha256"
     "encoding/hex"
     "encoding/json"
+    "errors"
+    "fmt"
     "net/http"
     "net/http/httptest"
     "os"
@@ -104,4 +106,84 @@ func TestDownloadVerifiedRejectsUnknownOrMismatchedBuild(t *testing.T) {
     }
     _,err:=assetForPlatform("linux","arm64")
     if err==nil{t.Fatal("unsupported platform was accepted")}
+}
+
+func TestPreviewArtifact401UsesExistingGitHubCLILogin(t *testing.T) {
+    const sha="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    archive:=testArchive(t,213,sha,500,false,false,false)
+    attempts:=0
+    server:=httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter,r *http.Request){
+        attempts++
+        if r.Header.Get("Authorization")!="Bearer existing-gh-token"{
+            w.WriteHeader(http.StatusUnauthorized)
+            return
+        }
+        w.Header().Set("Content-Type","application/zip")
+        _,_=w.Write(archive)
+    }))
+    defer server.Close()
+    fallbackCalls:=0
+    client:=Client{HTTP:server.Client(),APIURL:server.URL,
+        TokenFallback:func(ctx context.Context)(string,error){
+            fallbackCalls++
+            return "existing-gh-token",nil
+        },
+    }
+    build:=Build{Number:213,HeadSHA:sha,RunID:500,BuildStatus:"success",
+        ArtifactID:300,ArtifactName:"task-mecca-preview-pr-213-"+sha}
+    path,err:=client.DownloadVerified(context.Background(),build,t.TempDir(),"linux","amd64")
+    if err!=nil{t.Fatal(err)}
+    data,err:=os.ReadFile(path)
+    if err!=nil||string(data)!="fake standalone preview executable fixture"{
+        t.Fatalf("authenticated download content: %v %q",err,data)
+    }
+    if attempts!=2||fallbackCalls!=1{
+        t.Fatalf("expected one anonymous 401 then authenticated retry: attempts=%d fallback=%d",attempts,fallbackCalls)
+    }
+}
+
+func TestPreviewArtifact401ExplainsCredentialSetupWithoutToken(t *testing.T){
+    const sha="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    server:=httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter,r *http.Request){
+        w.WriteHeader(http.StatusUnauthorized)
+    }))
+    defer server.Close()
+    build:=Build{Number:213,HeadSHA:sha,RunID:500,BuildStatus:"success",
+        ArtifactID:300,ArtifactName:"task-mecca-preview-pr-213-"+sha}
+    client:=Client{HTTP:server.Client(),APIURL:server.URL,
+        TokenFallback:func(context.Context)(string,error){return "",errors.New("not signed in")},
+    }
+    _,err:=client.DownloadVerified(context.Background(),build,t.TempDir(),"linux","amd64")
+    if err==nil||!strings.Contains(err.Error(),"Actions:read")||
+        !strings.Contains(err.Error(),"TASK_MECCA_GITHUB_TOKEN")||
+        !strings.Contains(err.Error(),"gh auth login"){
+        t.Fatalf("missing credential must be actionable; got %v",err)
+    }
+    client.Token="invalid"
+    fallbackCalls:=0
+    client.TokenFallback=func(context.Context)(string,error){fallbackCalls++;return "different-token",nil}
+    _,err=client.DownloadVerified(context.Background(),build,t.TempDir(),"linux","amd64")
+    if err==nil||!strings.Contains(err.Error(),"401")||!strings.Contains(err.Error(),"Actions:read")||fallbackCalls!=0{
+        t.Fatalf("invalid explicit token must fail without retrying another credential; got %v",err)
+    }
+}
+
+func TestPreviewArtifactPermissionAndExpirationErrors(t *testing.T) {
+    const sha="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    for _,tc:=range []struct{code int;term string}{
+        {http.StatusForbidden,"Actions:read"},
+        {http.StatusGone,"expired"},
+    } {
+        t.Run(fmt.Sprintf("%d",tc.code),func(t *testing.T){
+            server:=httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter,r *http.Request){
+                w.WriteHeader(tc.code)
+            }))
+            defer server.Close()
+            client:=Client{HTTP:server.Client(),APIURL:server.URL}
+            build:=Build{Number:213,HeadSHA:sha,RunID:500,BuildStatus:"success",
+                ArtifactID:300,ArtifactName:"task-mecca-preview-pr-213-"+sha}
+            _,err:=client.DownloadVerified(context.Background(),build,t.TempDir(),"linux","amd64")
+            if err==nil||!strings.Contains(err.Error(),tc.term){t.Fatalf("wrong status error: %v",err)}
+        })
+    }
 }
