@@ -48,6 +48,7 @@ func TestChildEnvironmentDropsAllCredentialsAndParentPaths(t *testing.T){
     }
     required:=[]string{
         "TASK_MECCA_PREVIEW_MODE=1",
+        "TASK_MECCA_TELEGRAM_TRANSPORT=disabled",
         "TASK_MECCA_CHANNEL=dev",
         "TASK_MECCA_HOME="+filepath.Join(a.Home,".task-mecca"),
         "HOME="+a.Home,"USERPROFILE="+a.Home,"LANG=ko_KR.UTF-8",
