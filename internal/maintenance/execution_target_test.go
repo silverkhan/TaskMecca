@@ -143,3 +143,46 @@ func TestTransitionCheckpointBlocksReleaseMutations(t *testing.T) {
 	if err := writeExecutionJSON(executionTransitionPath(), cp); err != nil { t.Fatal(err) }
 	if err := ensureReleaseTransitionAllowed(); err == nil { t.Fatal("pending transition ignored") }
 }
+
+func TestDevBaselinePreservedAndReused(t *testing.T) {
+	t.Setenv("TASK_MECCA_HOME", t.TempDir())
+	exe,err:=os.Executable()
+	if err!=nil{t.Fatal(err)}
+	exe,err=filepath.EvalSymlinks(exe)
+	if err!=nil{t.Fatal(err)}
+	path,hash,err:=exactDevBaseline(exe)
+	if err!=nil{t.Fatal(err)}
+	if path==exe||!validSHA256(hash){t.Fatalf("invalid baseline %q",path)}
+	again,againHash,err:=exactDevBaseline(exe)
+	if err!=nil||again!=path||againHash!=hash{t.Fatalf("baseline changed %v %q",err,again)}
+	if _,err:=os.Stat(path);err!=nil{t.Fatal(err)}
+}
+
+func TestBootReconcileVerifiedReturnToDev(t *testing.T){
+	t.Setenv("TASK_MECCA_HOME",t.TempDir())
+	t.Setenv("TASK_MECCA_CHANNEL","dev")
+	exe,err:=os.Executable()
+	if err!=nil{t.Fatal(err)}
+	exe,err=filepath.EvalSymlinks(exe)
+	if err!=nil{t.Fatal(err)}
+	digest,err:=executableDigest(exe)
+	if err!=nil{t.Fatal(err)}
+	pr:=ExecutionTarget{
+		Kind:"pr",Channel:"dev",PRNumber:217,HeadSHA:strings.Repeat("a",40),
+		OriginalDevVersion:"0.3.1-dev.16",OriginalDevSHA256:digest,
+		OriginalDevBackup:filepath.Join(t.TempDir(),"baseline"),
+		InstalledAt:time.Now().UTC().Format(time.RFC3339),
+	}
+	if err:=writeExecutionJSON(executionTargetPath(),pr);err!=nil{t.Fatal(err)}
+	cp:=ExecutionTransition{
+		Schema:1,Phase:"restarting",From:pr,To:ExecutionTarget{Kind:"dev",Channel:"dev"},
+		SourceSHA256:strings.Repeat("b",64),TargetSHA256:digest,
+		UpdatedAt:time.Now().UTC().Format(time.RFC3339),
+	}
+	if err:=writeExecutionJSON(executionTransitionPath(),cp);err!=nil{t.Fatal(err)}
+	if err:=ReconcileExecutionOnBoot();err!=nil{t.Fatal(err)}
+	got,err:=InstalledExecutionTarget()
+	if err!=nil||got.Kind!="dev"{t.Fatalf("return failed: %+v %v",got,err)}
+	pending,err:=PendingExecutionTransition()
+	if err!=nil||pending!=nil{t.Fatalf("return checkpoint not cleared: %+v %v",pending,err)}
+}
