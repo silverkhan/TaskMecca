@@ -14,9 +14,19 @@ import (
 	"github.com/silverkhan/TaskMecca/internal/preview"
 )
 
-// This is a release replacement, not another child Preview process.
-// Mutations are localhost-only; a remote browser cannot replace the host
-// executable merely by possessing the public Web URL.
+// PR build and installed-environment mutations share the same authorization
+// boundary. Remote Tailscale admin access is permitted only under the existing
+// terminal identity and origin policy; plain reverse-proxy loopback is unsafe.
+func approvedDevPRMutation(r *http.Request) bool {
+    if previewLocalMutation(r){return true}
+    return r.Method==http.MethodPost &&
+        r.Header.Get("X-Task-Mecca-Action")=="1" &&
+        strings.TrimSpace(r.Header.Get("Origin"))!="" &&
+        terminalAccessAllowed(r,readTerminalSecuritySettings()) &&
+        terminalOriginAllowed(r)
+}
+
+// This replaces one current executable; it does not launch another Preview.
 func registerEnvironmentRoutes(
 	mux *http.ServeMux,
 	version string,
@@ -36,13 +46,7 @@ func registerEnvironmentRoutes(
 			writeJSON(w,map[string]any{"error":"PR switching requires the managed Dev Web"},403)
 			return
 		}
-		// Reuse the Web restart authorization for a trusted Tailscale admin.
-		// Mere reverse-proxy loopback is not authorization; the existing
-		// terminal identity/origin policy must approve such requests.
-		trustedRemote:=r.Method==http.MethodPost && r.Header.Get("X-Task-Mecca-Action")=="1" &&
-			strings.TrimSpace(r.Header.Get("Origin"))!="" &&
-			terminalAccessAllowed(r,readTerminalSecuritySettings()) && terminalOriginAllowed(r)
-		if !previewLocalMutation(r)&&!trustedRemote{
+		if !approvedDevPRMutation(r){
 			writeJSON(w,map[string]any{"error":"PR version switching requires local access or an authorized Tailscale administration connection"},403)
 			return
 		}

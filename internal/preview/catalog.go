@@ -76,6 +76,8 @@ type ghRun struct {
     Status string `json:"status"`
     Conclusion string `json:"conclusion"`
     Event string `json:"event"`
+    DisplayTitle string `json:"display_title"`
+    HeadBranch string `json:"head_branch"`
     CreatedAt string `json:"created_at"`
     UpdatedAt string `json:"updated_at"`
     RunAttempt int `json:"run_attempt"`
@@ -124,10 +126,17 @@ func validSHA(sha string) bool {
     return true
 }
 
-func runMatchesPR(run ghRun, number int) bool {
-    if run.Event!="pull_request" {return false}
-    for _,pr:=range run.PullRequests {if pr.Number==number{return true}}
-    return false
+func runMatchesPR(run ghRun, number int, sha string) bool {
+    if run.Event=="pull_request" {
+        for _,pr:=range run.PullRequests {if pr.Number==number{return true}}
+        return false
+    }
+    // Dispatch is carried out by the trusted Dev workflow, NOT the PR
+    // workflow. Its GitHub run SHA therefore points at Dev; the signed-in
+    // request's exact PR number/SHA are encoded in the run display title and
+    // revalidated from the artifact manifest at download.
+    return run.Event=="workflow_dispatch" && run.HeadBranch=="dev" &&
+        run.DisplayTitle==fmt.Sprintf("Preview PR #%d %s",number,sha)
 }
 
 func dateKey(value string) time.Time {
@@ -143,9 +152,18 @@ func (c *Client) ListBuilds(ctx context.Context, limit int) ([]Build,error) {
     var prs []ghPull
     path:="/repos/"+Repository+"/pulls?state=open&sort=updated&direction=desc&per_page=100"
     if err:=c.get(ctx,path,&prs);err!=nil{return nil,err}
-    var runs ghRuns
+    var prRuns ghRuns
     runPath:="/repos/"+Repository+"/actions/workflows/"+url.PathEscape(workflow)+"/runs?event=pull_request&per_page=100"
-    if err:=c.get(ctx,runPath,&runs);err!=nil{return nil,err}
+    if err:=c.get(ctx,runPath,&prRuns);err!=nil{return nil,err}
+    var rebuiltRuns ghRuns
+    rebuiltPath:="/repos/"+Repository+"/actions/workflows/"+url.PathEscape(workflow)+"/runs?event=workflow_dispatch&per_page=100"
+    if err:=c.get(ctx,rebuiltPath,&rebuiltRuns);err!=nil{return nil,err}
+    runs:=append(prRuns.Runs,rebuiltRuns.Runs...)
+    sort.SliceStable(runs,func(i,j int)bool{
+        a,b:=dateKey(runs[i].CreatedAt),dateKey(runs[j].CreatedAt)
+        if !a.Equal(b){return a.After(b)}
+        return runs[i].ID>runs[j].ID
+    })
 
     result:=make([]Build,0,limit)
     for _,pr:=range prs {
@@ -162,7 +180,7 @@ func (c *Client) ListBuilds(ctx context.Context, limit int) ([]Build,error) {
             item.BuildStatus="blocked"
             item.Reason="invalid PR head SHA"
         } else {
-            item=c.findBuild(ctx,pr.Number,pr.Head.SHA,runs.Runs)
+            item=c.findBuild(ctx,pr.Number,pr.Head.SHA,runs)
         }
         item.Number=pr.Number
         item.Title=pr.Title
@@ -189,7 +207,7 @@ func (c *Client) findBuild(ctx context.Context, number int, sha string, runs []g
     item:=Build{BuildStatus:"none",ExecutionAllowed:false}
     expected:="task-mecca-preview-pr-"+strconv.Itoa(number)+"-"+sha
     for _,run:=range runs {
-        if !runMatchesPR(run,number) {continue}
+        if !runMatchesPR(run,number,sha) {continue}
         if run.Status!="completed" {
             // A still-running build is informative, but never usable.
             if item.BuildStatus=="none" {
@@ -234,7 +252,7 @@ func (c *Client) findBuild(ctx context.Context, number int, sha string, runs []g
                 // This is only discovery. M2 enables execution after
                 // manifest/checksum, runtime sandbox and consent checks.
                 item.ExecutionAllowed=false
-                item.Reason="execution is disabled pending sandbox and integrity verification"
+                item.Reason="artifact download requires provenance, checksum and PR return-protocol verification"
             }
             return item
         }
