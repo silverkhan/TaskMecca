@@ -80,13 +80,12 @@ func (m *Manager) Start(ctx context.Context,number int)(Instance,error){
  env,err:=PrepareEnvironment(filepath.Join(m.Base,"instances"),number,selected.HeadSHA)
  if err!=nil{return fail(err)}
  m.setStatus(number,func(v *Instance){v.Status="starting"})
- var process ProcessHandle
- for try:=0;try<3;try++{
-  port,portErr:=reservePort()
-  if portErr!=nil{err=portErr;break}
-  process,err=m.Runtime.Start(ctx,binary,selected.HeadSHA,env,port)
-  if err==nil{break}
- }
+ // Native staging is single-use per instance. Retry after a failed
+ // exec needs a newly prepared workspace, rather than repeated writes to
+ // the same executable path masking the original error.
+ port,err:=reservePort()
+ if err!=nil{return fail(err)}
+ process,err:=m.Runtime.Start(ctx,binary,selected.HeadSHA,env,port)
  if err!=nil{return fail(err)}
  healthErr:=m.waitReady(ctx,process,number,selected.HeadSHA)
  if healthErr!=nil{
