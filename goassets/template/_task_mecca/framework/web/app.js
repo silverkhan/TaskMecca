@@ -1325,7 +1325,7 @@ async function performUpgrade() {
   stopUpgradeFlowTimers();
   if(body.restart_required && body.to && body.to!==body.from){
    setUpgradeFlowStage('restarting');
-   const recovered=await waitForRestartedWeb(body.to);
+   const recovered=await waitForRestartedWeb(body.to,state.webBootID||'');
    if(recovered===false && session===upgradeFlowSession){
     stopUpgradeFlowTimers();
     setUpgradeFlowStage('failed',upgradeFlowCopy().restartError);
@@ -3470,7 +3470,9 @@ async function loadPreviewIdentity(){
   try{
     const r=await fetch('/api/health',{cache:'no-store'});
     if(!r.ok)return;
-    const identity=previewIdentityFromHealth(await r.json());
+    const health=await r.json();
+    if(health.boot_id)state.webBootID=String(health.boot_id);
+    const identity=previewIdentityFromHealth(health);
     if(!identity)return;
     state.previewIdentity=identity;
     const banner=$('#previewIdentityBanner');
@@ -4383,23 +4385,47 @@ function hubView() {
 function normalizedVersion(value) {
   return String(value??'').trim().replace(/(?:\\r|\\n)+$/g,'').trim();
 }
-async function waitForRestartedWeb(targetVersion) {
+async function waitForRestartedWeb(targetVersion,previousBoot='') {
   targetVersion=normalizedVersion(targetVersion);
   const started=Date.now();
+  let changedBootMismatchSince=0,observedVersion='',observedBoot='';
   while(Date.now()-started<30000){
     try {
-      const r=await fetch(`/api/health?restart_wait=${Date.now()}`,{cache:'no-store'});
+      const r=await fetch('/api/health?restart_wait='+Date.now(),{cache:'no-store'});
       if(r.ok){
         const body=await r.json();
-        if(!targetVersion||normalizedVersion(body.version)===targetVersion){ location.reload(); return true; }
+        const runningVersion=normalizedVersion(body.version||'');
+        const runningBoot=String(body.boot_id||'');
+        const bootChanged=!previousBoot||!runningBoot||runningBoot!==previousBoot;
+        observedVersion=runningVersion;observedBoot=runningBoot;
+        if(bootChanged&&(!targetVersion||runningVersion===targetVersion)){
+          state.webBootID=runningBoot||state.webBootID;
+          location.reload();
+          return true;
+        }
+        if(previousBoot&&runningBoot&&runningBoot!==previousBoot&&targetVersion&&runningVersion!==targetVersion){
+          if(!changedBootMismatchSince)changedBootMismatchSince=Date.now();
+          // A new process is running, but its embedded version does not
+          // match the expected version. Don't show a fake 30-second restart.
+          if(Date.now()-changedBootMismatchSince>2000){
+            const reason='Web is running a different version ('+runningVersion+') than the requested update ('+targetVersion+'). Check upgrade logs and retained binary.';
+            const panel=$('#content');
+            if(panel)panel.innerHTML='<div class="load-error">'+esc(reason)+'</div>';
+            return false;
+          }
+        }else{
+          changedBootMismatchSince=0;
+        }
       }
-    } catch(_) {}
+    }catch(_){}
     await new Promise(resolve=>setTimeout(resolve,500));
   }
-  const c=$('#content');
-  if(c)c.innerHTML=`<div class="load-error"><h2>Task Mecca Web 재시작을 확인하지 못했습니다</h2><p>CLI 업데이트 자체는 완료됐을 수 있습니다. 터미널에서 <code>task-mecca web status</code>로 상태를 확인하고, 이전 버전이 계속 실행 중이면 <code>task-mecca web restart</code>를 실행한 뒤 이 페이지를 새로고침하세요.</p></div>`;
+  const detail=observedVersion?(' Observed version: '+observedVersion+'; expected: '+targetVersion+'; boot: '+observedBoot+'.'):' The new HTTP health endpoint did not respond.';
+  const panel=$('#content');
+  if(panel)panel.innerHTML='<div class="load-error"><h2>Task Mecca Web 재시작을 확인하지 못했습니다</h2><p>'+esc(detail)+' CLI 업데이트는 별도로 성공했을 수 있습니다. <code>task-mecca web status</code>와 <code>task-mecca web logs</code>를 확인하세요.</p></div>';
   return false;
 }
+
 function migrationResyncPrompt(result) {
   const changed=(result.changed_instructions||[]).join(', ') || '-';
   if(state.language==='ko'){
