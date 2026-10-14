@@ -5797,6 +5797,9 @@ function storeListPage(key,data,epoch,source){
  pruneListPages(cache,cache.current,Math.max(1,Number(data.pages)||1));
 }
 function prefetchListPages(query,data,epoch,source){
+ // A slow foreground list must not trigger two more full control-tower
+ // reconciliations. Keep the normal adjacent-page prefetch for fast projects.
+ if(state.listLoadSlow||listRefreshInFlight||state.listRevalidating)return;
  if(!Number(data.pages)||!Number(data.page_size))return;
  const key=listContextKey(query),cache=pageCache(key);
  const current=Number(data.page)||1,pages=Number(data.pages)||1;
@@ -5815,6 +5818,7 @@ function prefetchListPages(query,data,epoch,source){
 }
 async function refreshListSummary(){
  if(!state.project||state.view!=='backlog'||state.detail)return;
+ if(listRefreshInFlight||state.listRevalidating)return;
  if(listSummaryInFlight){listSummaryQueued=true;return listSummaryInFlight;}
  const query=listQueryString(),key=listContextKey(query),source=listSourceKey(),epoch=listCacheEpoch(source),serial=++listSummarySerial;
  listSummaryInFlight=(async()=>{try{
@@ -5856,11 +5860,13 @@ async function refreshList(preserveSelection=false) {
  const cached=cache.pages.get(requestedPage);
  if(cached && !preserveSelection){state.listData=cachedListRows(cached,listContextKey());state.listDataContext=listContextKey();state.listRevalidating=true;state.loadError='';if(state.view==='backlog')render();}
  const controller=new AbortController();
+ const listRequestStartedAt=Date.now();
  listRefreshAbort=controller;listRefreshContext=key;
  const request=(async()=>{try{
   const r=await fetch('/api/backlog/tasks?'+targetQuery,{cache:'no-store',signal:controller.signal});
   if(!r.ok){let detail='';try{detail=(await r.json()).error||'';}catch(_){}throw new Error(detail||`HTTP ${r.status}`);}
   const data=await r.json();if(!isCurrent())return;
+  state.listLoadSlow=Date.now()-listRequestStartedAt>2000;
   cache.current=Math.max(1,Number(data.page)||1);storeListPage(key,data,epoch,source);
   const observed=Date.parse(data.snapshot_at)||0;if(observed<(listSummaryObserved.get(key)||0)){if(observed)listRefreshQueued=true;return;}listSummaryObserved.set(key,observed);listSummaryLatest.set(key,data);
   state.listData=data;state.listDataContext=key;state.listRevalidating=false;
@@ -5876,7 +5882,7 @@ async function refreshList(preserveSelection=false) {
   $('#connectionDot').style.background='var(--ok)';if(state.view==='backlog')render();
   // Start adjacent requests only after the foreground rows have rendered.
   const acceptedQuery=listQueryString();
-  requestAnimationFrame(()=>requestAnimationFrame(()=>{if(targetProject===state.project&&targetBacklog===state.backlog&&acceptedQuery===listQueryString()&&targetView===state.view&&targetDetail===state.detail&&listCacheEpoch(source)===epoch&&listPageCaches.get(key)===cache){prefetchListPages(acceptedQuery,data,epoch,source);scheduleTaskDetailPrefetch(acceptedQuery);}}));
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{if(targetProject===state.project&&targetBacklog===state.backlog&&acceptedQuery===listQueryString()&&targetView===state.view&&targetDetail===state.detail&&listCacheEpoch(source)===epoch&&listPageCaches.get(key)===cache){if(!state.listLoadSlow){prefetchListPages(acceptedQuery,data,epoch,source);scheduleTaskDetailPrefetch(acceptedQuery);}}}));
  }catch(e){if(!isCurrent())return;state.listRevalidating=false;state.loadError=String(e?.message||e||'Unknown error');$('#connectionDot').style.background='var(--danger)';if(!state.listData)render();}
  finally{
   // A canceled earlier request must not clear or queue over a newer one.
