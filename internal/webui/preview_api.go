@@ -72,7 +72,7 @@ func registerPreviewRoutes(mux *http.ServeMux,writeJSON func(http.ResponseWriter
   ctx,cancel:=stdcontext.WithTimeout(r.Context(),75*time.Second)
   defer cancel()
   if start{
-   instance,err:=getManager().Start(ctx,request.Number)
+   instance,err:=getManager().Start(ctx,request.Number,r.Header.Get("Origin"))
    if err!=nil{writeJSON(w,map[string]any{"error":err.Error(),"instance":instance},409);return}
    writeJSON(w,map[string]any{"instance":instance,"open_url":instance.URL},200)
   }else{
