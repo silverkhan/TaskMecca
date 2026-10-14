@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -243,6 +244,21 @@ func releaseLocation() (string,string) {
     return repoName,tag
 }
 
+// releaseCacheURL preserves existing query parameters while isolating requests
+// for a mutable rolling-tag asset from stale CDN/proxy cache generations.
+func releaseCacheURL(raw,token string) string {
+    parsed,err:=url.Parse(raw)
+    if err!=nil||parsed.Scheme==""||parsed.Host=="" {return raw}
+    query:=parsed.Query()
+    query.Set("_tm",token)
+    parsed.RawQuery=query.Encode()
+    return parsed.String()
+}
+
+func nextReleaseCheckToken() string {
+    return strconv.FormatInt(time.Now().UTC().UnixNano(),10)
+}
+
 func releaseBase() string {
     repoName,tag:=releaseLocation()
     return "https://github.com/"+repoName+"/releases/download/"+tag
@@ -342,12 +358,13 @@ func httpGetWithPolicy(url string,timeout time.Duration,maxBytes int64,attempts 
 func latestVersionForChannel(value string) (string,error) {
     base,err:=releaseBaseForChannel(value)
     if err!=nil { return "",err }
-    data,err:=httpGet(base+"/VERSION.txt")
+    token:=nextReleaseCheckToken()
+    data,err:=httpGet(releaseCacheURL(base+"/VERSION.txt",token))
     if err==nil { return normalizeVersion(string(data)),nil }
     releaseErr:=err
     fallback,fallbackErr:=versionFallbackURLForChannel(value)
     if fallbackErr!=nil { return "",fallbackErr }
-    data,err=httpGet(fallback)
+    data,err=httpGet(releaseCacheURL(fallback,token))
     if err!=nil { return "",fmt.Errorf("release version check failed: %v; fallback failed: %v",releaseErr,err) }
     return normalizeVersion(string(data)),nil
 }
@@ -560,10 +577,11 @@ func ReadCachedVersionInfo(current string) VersionInfo {
 func CheckLatest(current string) VersionInfo {
     current=normalizeVersion(current)
     info:=VersionInfo{Current:current,Channel:CurrentChannel(),CheckedAt:time.Now().Format(time.RFC3339)}
-    data,err:=httpGet(releaseBase()+"/VERSION.txt")
+    token:=nextReleaseCheckToken()
+    data,err:=httpGet(releaseCacheURL(releaseBase()+"/VERSION.txt",token))
     if err!=nil {
         releaseErr:=err
-        data,err=httpGet(versionFallbackURL())
+        data,err=httpGet(releaseCacheURL(versionFallbackURL(),token))
         if err!=nil {
             info.Error=fmt.Sprintf("release version check failed: %v; fallback failed: %v",releaseErr,err)
             return info
@@ -605,26 +623,42 @@ func checksumFor(data []byte,asset string) (string,error) {
     return "",fmt.Errorf("checksum entry missing for %s",asset)
 }
 
-func fetchReleaseBinary(base string) ([]byte,error) {
-    return fetchReleaseBinaryWithProgress(base,nil)
+func fetchReleaseBinary(base string,targetVersion ...string) ([]byte,error) {
+    return fetchReleaseBinaryWithProgress(base,nil,targetVersion...)
 }
 
 func reportUpgradeProgress(report func(string),phase string) {
     if report!=nil { report(phase) }
 }
 
-func fetchReleaseBinaryWithProgress(base string,report func(string)) ([]byte,error) {
+func fetchReleaseBinaryWithProgress(base string,report func(string),targetVersion ...string) ([]byte,error) {
     asset,err:=assetName()
     if err!=nil { return nil,err }
-    binary,err:=httpGetWithPolicy(base+"/"+asset,releaseBinaryTimeout,releaseBinaryMaxBytes,3)
+    // Binary and checksum MUST come from the same expected release generation.
+    // A stable version token prevents reuse of mutable rolling-release URLs.
+    token:=nextReleaseCheckToken()
+    if len(targetVersion)>0&&strings.TrimSpace(targetVersion[0])!="" {
+        token=normalizeVersion(targetVersion[0])
+    }
+    binary,err:=httpGetWithPolicy(releaseCacheURL(base+"/"+asset,token),releaseBinaryTimeout,releaseBinaryMaxBytes,3)
     if err!=nil { return nil,fmt.Errorf("downloading executable %s: %w",asset,err) }
     reportUpgradeProgress(report,"verifying")
-    sums,err:=httpGet(base+"/SHA256SUMS.txt")
+    sums,err:=httpGet(releaseCacheURL(base+"/SHA256SUMS.txt",token))
     if err!=nil { return nil,fmt.Errorf("downloading checksum manifest: %w",err) }
     expected,err:=checksumFor(sums,asset)
     if err!=nil { return nil,err }
     digest:=sha256.Sum256(binary)
     if hex.EncodeToString(digest[:])!=expected { return nil,errors.New("SHA-256 verification failed") }
+    if len(targetVersion)>0&&strings.TrimSpace(targetVersion[0])!="" {
+        // Two individually valid stale objects can still be an older release.
+        // Reject installation if the independently refreshed rolling release
+        // version no longer matches the version chosen for this transaction.
+        versionBytes,versionErr:=httpGet(releaseCacheURL(base+"/VERSION.txt",nextReleaseCheckToken()))
+        if versionErr!=nil {return nil,fmt.Errorf("cannot confirm rolling release generation: %w",versionErr)}
+        if actual:=normalizeVersion(string(versionBytes));actual!=normalizeVersion(targetVersion[0]){
+            return nil,fmt.Errorf("rolling release changed while downloading: expected %s, fetched %s; retry",normalizeVersion(targetVersion[0]),actual)
+        }
+    }
     return binary,nil
 }
 
@@ -718,7 +752,7 @@ func UpgradeWithProgress(current string,report func(string)) (UpgradeResult,erro
         return result,nil
     }
     reportUpgradeProgress(report,"downloading")
-    binary,err:=fetchReleaseBinaryWithProgress(releaseBase(),report)
+    binary,err:=fetchReleaseBinaryWithProgress(releaseBase(),report,info.Latest)
     if err!=nil { return result,err }
     reportUpgradeProgress(report,"installing")
     result,err=installBinary(current,info.Latest,binary)
@@ -751,7 +785,7 @@ func SwitchChannel(current,target string) (UpgradeResult,error) {
 
     base,err:=releaseBaseForChannel(channel)
     if err!=nil { return result,err }
-    binary,err:=fetchReleaseBinary(base)
+    binary,err:=fetchReleaseBinary(base,targetVersion)
     if err!=nil { return result,err }
 
     if err=SetChannel(channel); err!=nil { return result,err }
