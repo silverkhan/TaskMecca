@@ -274,9 +274,9 @@ func operationExactAttemptRecovered(item operationIncident, attempts []runtimeob
  return "","",false
 }
 
-// A canonical done task makes its previous *verification-required* assignment
-// or silence warning no longer actionable. This is not proof of Worker death
-// or success and never applies to actual confirmed terminal failures.
+// A canonical done task makes its previous unbound-assignment warning no
+// longer actionable. Linked attempts still need exact completion evidence:
+// a late Hook failure after task completion must never be hidden.
 // Read only after a successful, unambiguous canonical inventory.
 func operationCanonicalDoneRows(rows map[string][]backlog.Record, taskID string) bool {
  matches:=rows[strings.ToUpper(strings.TrimSpace(taskID))]
@@ -332,9 +332,13 @@ func scanOperationProject(project string, now time.Time) (operationJournal, erro
 			verified[attempt.Provider] = operationHookVerifier(project, attempt.Provider)
 		}
 		if signal, ok := classifyOperation(project, attempt, now, verified[attempt.Provider]); ok {
-			// Completed canonical tasks no longer need unverified active-session
-			// warnings. Confirmed failures remain actionable independently.
-			if signal.alert && signal.incident.Quality=="verification_required" && canonicalDone(signal.incident.TaskID) {continue}
+			// Retire *unlinked assignment* warnings on a completed task.
+// Linked runtime attempts require stronger evidence, since a late
+// Hook signal after task completion may be a new problem.
+			if signal.alert && signal.incident.Quality=="verification_required" &&
+                signal.incident.AttemptID=="" && signal.incident.Kind=="runtime_unknown" &&
+                signal.incident.Evidence=="doing assignment has no linked runtime attempt" &&
+                canonicalDone(signal.incident.TaskID) {continue}
 			// Suppress the same obsolete source on every scan, not only while
 			// its first incident is active. Otherwise resolution would recur.
 			latestAssignmentStillCanonical := operationLatestAssignmentSourceAlreadyResolved(signal.incident, journal) && operationCanonicalTaskIsDoing(project, signal.incident.TaskID)
@@ -464,7 +468,9 @@ func scanOperationProject(project string, now time.Time) (operationJournal, erro
 			if signal,ok:=signals[item.Key];ok&&signal.incident.Quality=="verification_required"{delete(signals,item.Key)}
 			continue
 		}
-		if item.Quality=="verification_required" && (item.Kind=="runtime_unknown"||item.Kind=="no_signal") && canonicalDone(item.TaskID) {
+		if item.Quality=="verification_required" && item.Kind=="runtime_unknown" &&
+           item.AttemptID=="" && item.Evidence=="doing assignment has no linked runtime attempt" &&
+           canonicalDone(item.TaskID) {
 			item.RecoveredAt=nowText
 			item.RecoveryEvidence="canonical task is done; unverified session warning no longer actionable, runtime terminal evidence unchanged"
 			if signal,ok:=signals[item.Key];ok&&signal.incident.Quality=="verification_required"{delete(signals,item.Key)}
