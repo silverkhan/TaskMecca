@@ -237,7 +237,7 @@ func (c *Client) findBuild(ctx context.Context, number int, sha string, runs []g
                 item.BuildStatus="success"
                 // A successful artifact is not a trust verdict. Runtime launch
                 // still checks the zip provenance and Preview health identity.
-                item.ExecutionAllowed=true
+                item.ExecutionAllowed=false
                 item.Reason=""
             }
             return item
