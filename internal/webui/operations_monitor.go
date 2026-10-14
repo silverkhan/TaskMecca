@@ -471,7 +471,7 @@ func scanOperationProject(project string, now time.Time) (operationJournal, erro
 			continue
 		}
 		if item.Kind == "handoff_stalled" && item.Quality == "verification_required" &&
-			item.AttemptID == "" && item.HandoffID == "" &&
+			item.AttemptID == "" && item.AssignmentID != "" &&
 			item.Evidence == "latest durable assignment" &&
 			retiredStageKeys[item.Key] {
 			item.RecoveredAt = nowText
