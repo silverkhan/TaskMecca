@@ -5220,6 +5220,23 @@ function scheduleAutoListPageSize(force=false) {
   autoPageMeasureRaf=requestAnimationFrame(()=>requestAnimationFrame(()=>updateAutoListPageSize(force)));
 }
 
+// Observe layout changes even when the browser viewport size stays unchanged.
+// Never observe task rows: page-size changes must not create a resize feedback loop.
+let autoPageLayoutObserver = null;
+function observeAutoListLayout() {
+  if(typeof ResizeObserver==='undefined'||autoPageLayoutObserver)return;
+  autoPageLayoutObserver=new ResizeObserver(()=>scheduleAutoListPageSize(true));
+  for(const selector of ['.topbar','#userAttention','.main','#content']){
+    const node=document.querySelector(selector);
+    if(node)autoPageLayoutObserver.observe(node);
+  }
+}
+if(document.readyState==='loading'){
+  document.addEventListener('DOMContentLoaded',observeAutoListLayout,{once:true});
+}else{
+  observeAutoListLayout();
+}
+
 function applySidebarState() {
   state.sidebarCollapsed=state.sidebarMode!=='expanded';
   const shell=document.querySelector('.app-shell');
