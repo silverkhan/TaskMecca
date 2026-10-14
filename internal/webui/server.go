@@ -348,6 +348,8 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
         writeJSON(w,map[string]any{"repository":preview.Repository,"builds":builds,"execution_available":false},200)
     })
 
+    registerPreviewRoutes(mux,writeJSON)
+
 	mux.HandleFunc("/api/health", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, map[string]any{"ok": true, "version": version, "instance_id": instanceID, "boot_id": bootID, "pid": os.Getpid(), "telegram_transport_disabled": notify.TelegramTransportDisabled(), "preview_mode": PreviewMode()}, 200)
 	})
@@ -1768,8 +1770,12 @@ func serveDirectTailscaleHTTPS(server *http.Server, port int, instanceID string,
 func Run(config Config) error {
     // The Preview listener must never enter the normal Tailscale/auto-host
     // management path. Explicit loopback is mandatory for a Preview child.
-    if PreviewMode() && config.Host!="127.0.0.1" && config.Host!="localhost" {
-        return errors.New("Preview Web must bind to an explicit local loopback host")
+    // Docker's isolated network requires the child to listen inside its
+    // container. Only a sandbox-marked child may bind beyond loopback; Docker
+    // publishes this port exclusively to the parent's 127.0.0.1.
+    if PreviewMode() && !(config.Host=="127.0.0.1" || config.Host=="localhost" ||
+         (config.Host=="0.0.0.0" && os.Getenv("TASK_MECCA_PREVIEW_SANDBOX")=="docker")) {
+        return errors.New("Preview Web must bind to loopback or a Docker-isolated container")
     }
 	if config.Port <= 0 {
 		config.Port = DefaultPort
