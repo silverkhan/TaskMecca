@@ -29,7 +29,7 @@ func registerEnvironmentRoutes(
 		if err!=nil{writeJSON(w,map[string]any{"error":err.Error()},409);return}
 		pending,err:=maintenance.PendingExecutionTransition()
 		if err!=nil{writeJSON(w,map[string]any{"error":err.Error()},409);return}
-		writeJSON(w,map[string]any{"target":target,"transition":pending},200)
+		writeJSON(w,map[string]any{"target":target,"transition":pending,"switch_supported":runtime.GOOS!="windows","os":runtime.GOOS},200)
 	})
 	mutate:=func(w http.ResponseWriter,r *http.Request,enter bool){
 		if PreviewMode() || maintenance.CurrentChannel()!="dev" || restartCh==nil {
