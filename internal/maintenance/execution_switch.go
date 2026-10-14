@@ -79,10 +79,10 @@ func exactDevBaseline(executable string)(string,string,error){
 	return path,sha,nil
 }
 
-func writeTransition(phase string,from,to ExecutionTarget,hash string)error{
-	if !validSHA256(hash){return errors.New("invalid installed executable digest")}
+func writeTransition(phase string,from,to ExecutionTarget,sourceHash,hash string)error{
+	if !validSHA256(sourceHash)||!validSHA256(hash){return errors.New("invalid source/target executable digest")}
 	return writeExecutionJSON(executionTransitionPath(),ExecutionTransition{
-		Schema:1,Phase:phase,From:from,To:to,TargetSHA256:hash,
+		Schema:1,Phase:phase,From:from,To:to,SourceSHA256:sourceHash,TargetSHA256:hash,
 		UpdatedAt:time.Now().UTC().Format(time.RFC3339),
 	})
 }
@@ -127,7 +127,7 @@ func EnterPR(currentVersion string,number int,headSHA,binaryPath string)(Upgrade
 		OriginalDevBackup:baseline,InstalledAt:time.Now().UTC().Format(time.RFC3339),
 	}
 	if err=target.validate();err!=nil{return result,err}
-	if err=writeTransition("installing",previous,target,prHash);err!=nil{return result,err}
+	if err=writeTransition("installing",previous,target,baselineHash,prHash);err!=nil{return result,err}
 	// Record intent before mutating the executable, so a restart or crash never
 	// accidentally treats a PR executable as a release-channel update.
 	if err=writeExecutionJSON(executionTargetPath(),target);err!=nil{
@@ -141,11 +141,11 @@ func EnterPR(currentVersion string,number int,headSHA,binaryPath string)(Upgrade
 			_ = os.Remove(executionTargetPath())
 			abortTransitionIfUnmodified(baselineHash)
 		}else{
-			_ = writeTransition("rollback_required",previous,target,prHash)
+			_ = writeTransition("rollback_required",previous,target,baselineHash,prHash)
 		}
 		return installed,installErr
 	}
-	if err=writeTransition("restarting",previous,target,prHash);err!=nil{
+	if err=writeTransition("restarting",previous,target,baselineHash,prHash);err!=nil{
 		return installed,fmt.Errorf("PR installed but restart checkpoint failed: %w",err)
 	}
 	installed.Channel=devChannel
@@ -170,13 +170,19 @@ func ReturnFromPR(currentVersion string)(UpgradeResult,error){
 		return result,errors.New("retained Dev baseline checksum mismatch")
 	}
 	to:=ExecutionTarget{Kind:devChannel,Channel:devChannel}
-	if err=writeTransition("installing",target,to,sum);err!=nil{return result,err}
+	exe,exeErr:=os.Executable()
+	if exeErr!=nil{return result,exeErr}
+	exe,exeErr=filepath.EvalSymlinks(exe)
+	if exeErr!=nil{return result,exeErr}
+	prDigest,digestErr:=executableDigest(exe)
+	if digestErr!=nil{return result,digestErr}
+	if err=writeTransition("installing",target,to,prDigest,sum);err!=nil{return result,err}
 	installed,installErr:=installBinary(currentVersion,target.OriginalDevVersion,data)
 	if installErr!=nil {
-		_ = writeTransition("rollback_required",target,to,sum)
+		_ = writeTransition("rollback_required",target,to,prDigest,sum)
 		return installed,installErr
 	}
-	if err=writeTransition("restarting",target,to,sum);err!=nil{
+	if err=writeTransition("restarting",target,to,prDigest,sum);err!=nil{
 		return installed,fmt.Errorf("Dev restored but restart checkpoint failed: %w",err)
 	}
 	installed.Channel=devChannel
@@ -211,8 +217,14 @@ func ReconcileExecutionOnBoot()error{
 	// The existing Web restart watchdog may have restored the original Dev
 	// after the PR failed to become healthy. Only clear an entry checkpoint
 	// if the running executable exactly matches the retained Dev baseline.
-	if pending.From.Kind=="dev"&&pending.To.Kind=="pr"&&current==pending.To.OriginalDevSHA256 {
-		if err=os.Remove(executionTargetPath());err!=nil&&!errors.Is(err,os.ErrNotExist){return err}
+	if validSHA256(pending.SourceSHA256)&&current==pending.SourceSHA256 {
+		// A failed restart watchdog has restored the exact preceding executable.
+		// For a failed PR→Dev return, keep the active PR marker and allow retry.
+		if pending.From.Kind=="pr" {
+			if err=writeExecutionJSON(executionTargetPath(),pending.From);err!=nil{return err}
+		} else if pending.From.Kind=="dev" {
+			if err=os.Remove(executionTargetPath());err!=nil&&!errors.Is(err,os.ErrNotExist){return err}
+		}
 		return os.Remove(executionTransitionPath())
 	}
 	return fmt.Errorf("PR transition %s could not verify running executable; manual recovery required",pending.Phase)
