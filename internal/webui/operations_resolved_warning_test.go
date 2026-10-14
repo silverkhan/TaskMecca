@@ -121,16 +121,21 @@ func TestRecoveredAttemptWarningNeverReappearsFromUnchangedHookSource(t *testing
  again.RecoveredAt=""
  again.RecoveryEvidence=""
  again.LastObservedAt=recoveredClock
- if !operationSourceAlreadyResolved(again,operationJournal{Incidents:[]operationIncident{prior}}){
+ if !operationSourceAlreadyResolved(again,operationJournal{Incidents:[]operationIncident{prior}},time.Date(2026,10,15,1,11,30,0,time.UTC)){
   t.Fatal("same observed recovery event created a duplicate warning")
  }
  again.LastObservedAt="2026-10-15T01:12:00Z"
- if operationSourceAlreadyResolved(again,operationJournal{Incidents:[]operationIncident{prior}}){
+ if operationSourceAlreadyResolved(again,operationJournal{Incidents:[]operationIncident{prior}},time.Date(2026,10,15,1,11,30,0,time.UTC)){
   t.Fatal("new evidence timestamp was suppressed")
  }
  again.LastObservedAt=recoveredClock
+ again.Kind="no_signal";again.Evidence="verified hook has no recent signal"
+ prior.Kind="no_signal";prior.Evidence="verified hook has no recent signal"
+ if operationSourceAlreadyResolved(again,operationJournal{Incidents:[]operationIncident{prior}},time.Date(2026,10,15,1,11,0,0,time.UTC).Add(runtimeobs.StaleWarnDuration())){
+  t.Fatal("silent agent after a full stale period must create a new episode")
+ }
  again.Kind="errored";again.Quality="confirmed"
- if operationSourceAlreadyResolved(again,operationJournal{Incidents:[]operationIncident{prior}}){
+ if operationSourceAlreadyResolved(again,operationJournal{Incidents:[]operationIncident{prior}},time.Date(2026,10,15,1,11,30,0,time.UTC)){
   t.Fatal("actual Hook error was suppressed by prior identity-gap recovery")
  }
 }
