@@ -3591,8 +3591,7 @@ async function previewAction(number,action){
     }
   }catch(error){
     if(tab)tab.close();
-    state.previewMessage='';
-    state.previewError=String(error?.message||error);
+    state.previewMessage=(state.language==='ko'?'Preview 작업 실패: ':'Preview action failed: ')+String(error?.message||error);
   }finally{
     state.previewActionBusy=0;
     await refreshPreviewData();
