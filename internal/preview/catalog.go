@@ -43,6 +43,9 @@ type Client struct {
     HTTP *http.Client
     APIURL string
     Token string
+    // TokenFallback is used only if artifact downloading returns 401 without
+    // an explicit token. It is not used to authenticate the Preview process.
+    TokenFallback func(context.Context)(string,error)
 }
 
 func NewClient() *Client {
@@ -50,6 +53,7 @@ func NewClient() *Client {
         HTTP:&http.Client{Timeout:12*time.Second},
         APIURL:"https://api.github.com",
         Token:strings.TrimSpace(os.Getenv("TASK_MECCA_GITHUB_TOKEN")),
+        TokenFallback:githubCLIToken,
     }
 }
 
