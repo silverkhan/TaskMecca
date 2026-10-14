@@ -349,7 +349,7 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
     })
 
 	mux.HandleFunc("/api/health", func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, map[string]any{"ok": true, "version": version, "instance_id": instanceID, "boot_id": bootID, "pid": os.Getpid(), "telegram_transport_disabled": notify.TelegramTransportDisabled()}, 200)
+		writeJSON(w, map[string]any{"ok": true, "version": version, "instance_id": instanceID, "boot_id": bootID, "pid": os.Getpid(), "telegram_transport_disabled": notify.TelegramTransportDisabled(), "preview_mode": PreviewMode()}, 200)
 	})
 
 	mux.HandleFunc("/api/version", func(w http.ResponseWriter, r *http.Request) {
@@ -1766,6 +1766,11 @@ func serveDirectTailscaleHTTPS(server *http.Server, port int, instanceID string,
 }
 
 func Run(config Config) error {
+    // The Preview listener must never enter the normal Tailscale/auto-host
+    // management path. Explicit loopback is mandatory for a Preview child.
+    if PreviewMode() && config.Host!="127.0.0.1" && config.Host!="localhost" {
+        return errors.New("Preview Web must bind to an explicit local loopback host")
+    }
 	if config.Port <= 0 {
 		config.Port = DefaultPort
 	}
