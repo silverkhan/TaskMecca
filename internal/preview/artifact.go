@@ -52,17 +52,30 @@ func readZipEntry(file *zip.File,max int64)([]byte,error){
 }
 
 func checksumEntry(manifest []byte,name string)(string,error) {
+    // Legacy builds generated SHA256SUMS from the repository root, leaving
+    // "dist/task-mecca-*" paths in the text manifest. GitHub's artifact ZIP
+    // contains the same binaries at its root. Only this exact legacy prefix
+    // is accepted, not arbitrary paths or basename matching.
+    expectedLegacy:="dist/"+name
+    digest:=""
     for _,line:=range strings.Split(string(manifest),"\n"){
         fields:=strings.Fields(line)
         if len(fields)!=2 {continue}
         actual:=strings.TrimPrefix(fields[1],"*")
-        if actual!=name {continue}
-        digest:=strings.ToLower(fields[0])
-        decoded,err:=hex.DecodeString(digest)
-        if err!=nil||len(decoded)!=sha256.Size{return "",errors.New("invalid Preview checksum")}
-        return digest,nil
+        if actual!=name&&actual!=expectedLegacy {continue}
+        if digest!="" {
+            return "",errors.New("duplicate Preview platform checksum entry")
+        }
+        decoded,err:=hex.DecodeString(fields[0])
+        if err!=nil||len(decoded)!=sha256.Size {
+            return "",errors.New("invalid Preview checksum")
+        }
+        digest=strings.ToLower(fields[0])
     }
-    return "",errors.New("platform binary missing from Preview checksum manifest")
+    if digest=="" {
+        return "",errors.New("platform binary missing from Preview checksum manifest")
+    }
+    return digest,nil
 }
 
 // DownloadVerified prepares an artifact as non-executable cached bytes.
