@@ -52,7 +52,7 @@ test('other backlog edits do not notify current reading; lifecycle updates only 
  assert.equal(a.harness.state.contentRevision,'r2');
  assert.equal(a.harness.state.signalRevision,'s2');
  assert.equal(a.harness.state.detailTask.raw_markdown,original.raw_markdown);
- assert.match(a.section.innerHTML,/lifecycle/);
+ assert.match(a.section.innerHTML,/라이프사이클/);
  assert.match(a.section.innerHTML,/e2/);
  assert.equal(a.scrolled.length,0,'the document reading position must not be moved');
  assert.ok(urls.some(u=>u.includes('projection=content')));
