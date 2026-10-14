@@ -552,16 +552,26 @@ func ensureOperationNotificationFeed(project string) {
 }
 
 func scanOperationProjects(primary string, now time.Time) {
+	scanOperationProjectsWithPriority(primary,now,false)
+}
+
+// The first scan after a Web restart is mandatory: it detects downtime and
+// preserves operation-gap evidence. Only subsequent periodic scans are best
+// effort, allowing an active backlog HTTP request to finish first.
+func scanOperationProjectsWithPriority(primary string, now time.Time, background bool) {
 	for _, project := range operationProjects(primary) {
-		maintenance.WithProjectMonitoring(project, func() {
-			// The guard excludes stopped/archived/missing projects. Feed startup
-			// is idempotent and never depends on an SSE subscriber.
+		work:=func(){
 			ensureOperationNotificationFeed(project)
 			journal, err := scanOperationProject(project, now)
 			if err == nil {
 				deliverOperationIncidents(project, journal)
 			}
-		})
+		}
+		if background{
+			maintenance.TryWithProjectMonitoring(project,work)
+		}else{
+			maintenance.WithProjectMonitoring(project,work)
+		}
 	}
 }
 
@@ -574,7 +584,7 @@ func runOperationMonitor(ctx stdcontext.Context, primary string) {
 		case <-ctx.Done():
 			return
 		case now := <-ticker.C:
-			scanOperationProjects(primary, now.UTC())
+			scanOperationProjectsWithPriority(primary, now.UTC(),true)
 		}
 	}
 }

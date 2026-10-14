@@ -195,12 +195,17 @@ type backlogPageRow struct {
 }
 
 func BacklogPage(project,root string,page,pageSize int,statuses,tags []string,search,sortKey string,projection ...string) (map[string]any,error) {
+    profileStart:=time.Now()
     rows,err:=CachedCatalog(project,root)
     if err!=nil { return nil,err }
+    catalogMS:=time.Since(profileStart).Seconds()*1000
     presence,err:=Presence(project,root,rows)
     if err!=nil { return nil,err }
     readyIDs,blocked:=webWorkflowStateMaps(project,root,rows)
+    stateMS:=time.Since(profileStart).Seconds()*1000-catalogMS
+    controlStart:=time.Now()
     control:=reconcileControlTower(project,root,rows)
+    controlMS:=time.Since(controlStart).Seconds()*1000
     byID:=preferredRows(rows)
 
     // Counts and scope still cover every matching backlog item, independently
@@ -306,7 +311,10 @@ func BacklogPage(project,root string,page,pageSize int,statuses,tags []string,se
         }
     }
     tagCatalog,tagErr:=TagCatalog(project,root,rows); if tagErr!=nil { tagCatalog=map[string]any{} }
-    attention,attErr:=AttentionSnapshotFromRows(project,root,rows,true,control); if attErr!=nil { attention=map[string]any{"attention":[]map[string]any{},"all_items":map[string]map[string]any{},"notification_events":[]map[string]any{}} }
+    attentionStart:=time.Now()
+    attention,attErr:=AttentionSnapshotFromRows(project,root,rows,true,control)
+    attentionMS:=time.Since(attentionStart).Seconds()*1000
+    if attErr!=nil { attention=map[string]any{"attention":[]map[string]any{},"all_items":map[string]map[string]any{},"notification_events":[]map[string]any{}} }
     if rowsAtt,ok:=attention["attention"].([]map[string]any); ok {
         needs:=0; for _,row:=range rowsAtt { if !scopeIDs[toString(row["id"])] { continue }; counts["attention"]++; if toString(row["type"])!="quiet" { needs++ } }
         counts["needs_action"]=needs
@@ -319,6 +327,10 @@ func BacklogPage(project,root string,page,pageSize int,statuses,tags []string,se
         "items":items,"page":page,"page_size":pageSize,"pages":pages,"total":total,
         "revision":backlogRevisionFromRows(rows),"signal_revision":backlogSignalRevision(project),"backlog_presence":presence,
         "counts":counts,"tag_catalog":tagCatalog,"access":AccessObservation(project),
+        "_server_profile":map[string]float64{
+            "catalog":catalogMS,"state":stateMS,"control":controlMS,
+            "notification":attentionMS,"total":time.Since(profileStart).Seconds()*1000,
+        },
         "attention":attention["attention"],"attention_items":pagedNotificationItems(attention["all_items"]),"notification_events":attention["notification_events"],
     },nil
 }
