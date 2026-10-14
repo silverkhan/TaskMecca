@@ -105,3 +105,32 @@ func TestMissingRuntimeSignalDoesNotPretendRecovery(t *testing.T){
   AttemptID:"run-old",TaskID:"A-5",AgentPath:"/worker",DetectedAt:now.Add(-time.Minute).Format(time.RFC3339Nano)}
  if _,_,ok:=operationExactAttemptRecovered(warning,nil,now);ok{t.Fatal("missing attempt was treated as resolution")}
 }
+
+func TestRecoveredAttemptWarningNeverReappearsFromUnchangedHookSource(t *testing.T){
+ const recoveredClock="2026-10-15T01:11:00Z"
+ prior:=operationIncident{
+  ID:"old-warning",Project:"/project",AttemptID:"run-1",AssignmentID:"assignment-1",
+  TaskID:"A-5",AgentPath:"/worker",Kind:"runtime_unknown",
+  Evidence:"runtime identity or hook execution unverified",
+  Quality:"verification_required",
+  LastObservedAt:"2026-10-15T00:59:00Z",RecoveredAt:recoveredClock,
+  RecoveryEvidence:"same attempt has later observed Hook running state; previous warning retired without changing runtime evidence",
+ }
+ again:=prior
+ again.ID=""
+ again.RecoveredAt=""
+ again.RecoveryEvidence=""
+ again.LastObservedAt=recoveredClock
+ if !operationSourceAlreadyResolved(again,operationJournal{Incidents:[]operationIncident{prior}}){
+  t.Fatal("same observed recovery event created a duplicate warning")
+ }
+ again.LastObservedAt="2026-10-15T01:12:00Z"
+ if operationSourceAlreadyResolved(again,operationJournal{Incidents:[]operationIncident{prior}}){
+  t.Fatal("new evidence timestamp was suppressed")
+ }
+ again.LastObservedAt=recoveredClock
+ again.Kind="errored";again.Quality="confirmed"
+ if operationSourceAlreadyResolved(again,operationJournal{Incidents:[]operationIncident{prior}}){
+  t.Fatal("actual Hook error was suppressed by prior identity-gap recovery")
+ }
+}
