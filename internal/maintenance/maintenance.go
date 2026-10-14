@@ -81,6 +81,9 @@ type ReleaseChannelTarget struct {
 type ReleaseChannelOptions struct {
 	CurrentVersion      string               `json:"current_version"`
 	CurrentChannel      string               `json:"current_channel"`
+	ExecutionTarget     *ExecutionTarget     `json:"execution_target,omitempty"`
+	ExecutionTargetError string              `json:"execution_target_error,omitempty"`
+	TransitionPending   *ExecutionTransition `json:"transition_pending,omitempty"`
 	Stable              ReleaseChannelTarget `json:"stable"`
 	Dev                 ReleaseChannelTarget `json:"dev"`
 	EnvironmentOverride bool                 `json:"environment_override,omitempty"`
@@ -355,6 +358,16 @@ func GetReleaseChannelOptions(current string) ReleaseChannelOptions {
         Stable:ReleaseChannelTarget{Channel:stableChannel},
         Dev:ReleaseChannelTarget{Channel:devChannel},
         EnvironmentOverride:strings.TrimSpace(os.Getenv("TASK_MECCA_CHANNEL"))!="",
+    }
+    if target,err:=InstalledExecutionTarget(); err!=nil {
+        out.ExecutionTargetError=err.Error()
+    }else{
+        out.ExecutionTarget=&target
+    }
+    if pending,err:=PendingExecutionTransition(); err!=nil {
+        out.ExecutionTargetError=err.Error()
+    }else{
+        out.TransitionPending=pending
     }
     if version,err:=latestVersionForChannel(stableChannel); err!=nil {
         out.Stable.Error=err.Error()
@@ -695,6 +708,7 @@ func Upgrade(current string) (UpgradeResult,error) {
 func UpgradeWithProgress(current string,report func(string)) (UpgradeResult,error) {
     current=normalizeVersion(current)
     result:=UpgradeResult{From:current,Channel:CurrentChannel()}
+    if err:=ensureReleaseTransitionAllowed();err!=nil{return result,err}
     reportUpgradeProgress(report,"checking")
     info:=CheckLatest(current)
     if info.Error!="" { return result,errors.New(info.Error) }
@@ -714,6 +728,7 @@ func UpgradeWithProgress(current string,report func(string)) (UpgradeResult,erro
 func SwitchChannel(current,target string) (UpgradeResult,error) {
     current=normalizeVersion(current)
     result:=UpgradeResult{From:current}
+    if err:=ensureReleaseTransitionAllowed();err!=nil{return result,err}
     if strings.TrimSpace(os.Getenv("TASK_MECCA_CHANNEL"))!="" {
         return result,errors.New("release channel is controlled by TASK_MECCA_CHANNEL; remove the environment override before switching from Web")
     }
