@@ -11,8 +11,15 @@ import (
 // are provisional until the normal reconciled page replaces them. Never use
 // this snapshot to send alerts, infer runtime starts, or persist lifecycles.
 func BacklogInitialPage(project,root string,page,pageSize int,tags []string,search,sortKey string) (map[string]any,error) {
-    rows,err:=CachedCatalog(project,root)
+    rows,cached,err:=CachedCatalogSnapshot(project,root)
     if err!=nil{return nil,err}
+    if !cached {
+        // Cold process startup has no snapshot yet; fall back to the usual
+        // filesystem read. An already parsed catalog must not wait for a
+        // concurrent authoritative catalog refresh or lifecycle scan.
+        rows,err=CachedCatalog(project,root)
+        if err!=nil{return nil,err}
+    }
     presence,err:=Presence(project,root,rows)
     if err!=nil{return nil,err}
     byID:=preferredRows(rows)
