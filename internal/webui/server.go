@@ -1552,8 +1552,13 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 			contentStarted := time.Now()
 			item, err := backlog.TaskContent(activeProject, selected, id)
 			w.Header().Set("Cache-Control", "no-store")
+			contentMS:=time.Since(contentStarted).Seconds()*1000
 			w.Header().Set("Server-Timing", fmt.Sprintf("selection;dur=%.1f, content;dur=%.1f",
-				selectionMS, time.Since(contentStarted).Seconds()*1000))
+				selectionMS, contentMS))
+			if selectionMS+contentMS>1500 {
+				log.Printf("Task Mecca slow content API project=%q task=%q selection_ms=%.0f content_ms=%.0f total_ms=%.0f failed=%t",
+					filepath.Base(activeProject),id,selectionMS,contentMS,selectionMS+contentMS,err!=nil)
+			}
 			if err != nil {
 				writeJSON(w, map[string]any{"error": err.Error(), "id": id}, http.StatusNotFound)
 				return
