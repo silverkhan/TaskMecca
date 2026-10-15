@@ -2211,8 +2211,11 @@ function commonAttentionMarkup(users,warnings,expanded=false) {
  return `<details class="common-attention"${state.commonAttentionOpen||expanded?' open':''}><summary><strong>${esc(t('commonAttention'))}</strong><span>${esc(t('commonUserCount',{count:users.length}))}</span><span>${esc(t('commonSessionCount',{count:warnings.length}))}</span></summary><div class="common-attention-body"><a class="common-center-link" href="/?view=notifications" data-notification-center>${esc(t('notificationCenter'))} · ${esc(t('notificationCurrent'))}</a>${users.length?`<h2>${esc(t('currentUserAttention'))}</h2><ul>${userRows}</ul>`:''}${warnings.length?`<h2>${esc(t('commonSessionHeading'))}</h2><ul>${sessionRows}</ul>`:''}</div></details>`;
 }
 function renderUserAttention() {
- const el=$('#userAttention');if(!el)return;
  const users=commonAttentionUsers(),warnings=state.sessionWarnings;
+ // SSE/attention summaries may change without a full nav render. Update the
+ // existing tile in place to preserve hover, focus and compact sidebar state.
+ syncSessionAttentionSeverity(users);
+ const el=$('#userAttention');if(!el)return;
  el.hidden=!users.length&&!warnings.length;
  if(el.hidden){el.innerHTML='';state.commonAttentionOpen=false;return;}
  const markup=commonAttentionMarkup(users,warnings);
@@ -3504,6 +3507,35 @@ function navigateView(view) {
   }
 }
 function devPreviewAvailable(){return !state.previewIdentity&&state.executionTarget?.kind!=='pr'&&(state.versionInfo?.cli?.channel||state.hub?.cli?.channel||'')==='dev';}
+// Project-level severity uses the same canonical user-intervention decisions
+// already shown in Current notifications. Hub QuickCounts is intentionally
+// file-only: never run a control-tower reconciliation just to paint the rail.
+function sessionProjectStatus(counts={},hasUserDecision=false) {
+  const critical=(counts.blocked||0)+(counts.error||0)+(counts.needs_user||0)+(counts.user_intervention||0);
+  const warnings=(counts.attention||0)+(counts.needs_attention||0)+(counts.hold||0);
+  return critical||hasUserDecision?'error':warnings?'warning':
+    counts.working?'working':counts.ready?'registered':
+    counts.done&&!counts.total_pending?'done':'unknown';
+}
+const sessionStatusDescriptions={error:'Error / User action / Blocked',warning:'Needs attention',working:'Working',registered:'Registered',done:'Done',unknown:'Unknown / Idle'};
+function syncSessionAttentionSeverity(users=commonAttentionUsers()) {
+  const byPath=new Map((state.hub?.projects||[]).map(p=>[p.path,p]));
+  const criticalProjects=new Set(users.map(row=>row.project).filter(Boolean));
+  (document.querySelectorAll?.('[data-session-project]')||[]).forEach(row=>{
+    const path=row.dataset.sessionProject;
+    const p=byPath.get(path)||{name:path.split(/[\\/]/).pop()||path,counts:{}};
+    const status=sessionProjectStatus(p.counts||{},criticalProjects.has(path));
+    if(row.classList.contains('session-state-'+status))return;
+    for(const name of Object.keys(sessionStatusDescriptions))row.classList.remove('session-state-'+name);
+    row.classList.add('session-state-'+status);
+    const button=row.querySelector('.session-open');
+    if(button){
+      const hint=`${p.name} · ${path} · ${sessionStatusDescriptions[status]}`;
+      button.title=hint;
+      button.setAttribute('aria-label',hint);
+    }
+  });
+}
 function nav() {
   const c = currentProjectData()?.counts || {};
   const projects=state.hub?.projects||[];
@@ -3514,16 +3546,15 @@ function nav() {
   // path-based fallback below until the hub discovers the project again.
   const sessions=state.openProjects;
   const closed=projects.filter(p=>!sessions.includes(p.path));
+  const criticalProjects=new Set(commonAttentionUsers().map(row=>row.project).filter(Boolean));
   const sessionRows=sessions.map(path=>{
     const p=byPath.get(path)||{name:path.split(/[\\/]/).pop()||path,counts:{}};
     const pc=p.counts||{};
     const active=state.project===path && state.view!=='hub';
     const badge=(pc.working||0)+(pc.ready||0);
-    const errors=(pc.blocked||0)+(pc.error||0),warnings=(pc.attention||0)+(pc.needs_attention||0)+(pc.hold||0);
-    const status=errors?'error':warnings?'warning':pc.working?'working':pc.ready?'registered':pc.done && !pc.total_pending?'done':'unknown';
-    const descriptions={error:'Error / Blocked',warning:'Needs attention',working:'Working',registered:'Registered',done:'Done',unknown:'Unknown / Idle'};
+    const status=sessionProjectStatus(pc,criticalProjects.has(path));
     const initial=(Array.from(String(p.name||'?').trim())[0]||'?').toLocaleUpperCase();
-    const projectHint=`${p.name} · ${path} · ${descriptions[status]}`;
+    const projectHint=`${p.name} · ${path} · ${sessionStatusDescriptions[status]}`;
     return `<div class="session-row session-state-${status} ${active?'active':''}" data-session-project="${esc(path)}"><button class="session-open" type="button" title="${esc(projectHint)}" aria-label="${esc(projectHint)}"><span class="session-initial" aria-hidden="true">${esc(initial)}</span><span class="session-name">${esc(p.name)}</span><span class="session-count">${badge||''}</span></button><button class="session-close" type="button" data-close-project="${esc(path)}" aria-label="Close ${esc(p.name)}" title="Close">×</button></div>`;
   }).join('');
   const menu=state.projectMenuOpen?`<div class="project-open-menu">${closed.length?closed.map(p=>`<button type="button" data-add-project="${esc(p.path)}"><span>${esc(p.name)}</span><small>${esc(p.path)}</small></button>`).join(''):'<div class="project-open-empty">No closed projects</div>'}</div>`:'';
