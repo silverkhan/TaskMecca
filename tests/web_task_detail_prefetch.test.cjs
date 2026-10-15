@@ -162,23 +162,24 @@ test('confirmed lifecycle hides redundant persistence source but retains Worker 
 });
 
 
-test('AID-174: visible-body refresh remains enriched when a new revision lands before 60ms',async()=>{
+test('AID-174: refresh button repaints content and enriches it when revision arrives before 60ms',async()=>{
  const timers=[],urls=[];
  const a=app(url=>{
   urls.push(url);
   if(url.includes('projection=content'))return Promise.resolve(reply({...task('A-20'),content_only:true}));
+  if(url.startsWith('/api/revision'))return Promise.resolve(reply({revision:'r2',signal_revision:'s2',states:[]}));
   return Promise.resolve(reply({...task('A-20'),content_only:false,lifecycle:{events:[{label:'Started',at:'2026-10-15T00:00:00Z'}]}}));
  },{setTimeout:(fn,delay)=>{timers.push({fn,delay});return timers.length;},
     window:{scrollY:80,scrollX:0,scrollTo(){}},requestAnimationFrame:fn=>fn()});
- a.state.detail='A-20';
- await a.loadTaskDetail('A-20');
+ a.state.detail='A-20';a.state.pendingContentUpdate=true;
+ await a.refreshVisibleContent();
  assert.equal(a.state.detailTask.content_only,true);
- assert.equal(timers.length,1);
- a.acceptContentRevision('r2');
+ assert.equal(a.state.contentRevision,'r2','the actual refresh path must commit a newer revision');
  assert.equal(timers.length,2,'new revision must arrange a valid lifecycle fetch');
  timers.shift().fn();timers.shift().fn();
  await tick();
- assert.equal(urls.filter(u=>!u.includes('projection=content')).length,1,'same latest request is shared');
+ assert.equal(urls.filter(u=>u.includes('projection=content')).length,1);
+ assert.equal(urls.filter(u=>!u.includes('projection=content')&&!u.startsWith('/api/revision')).length,1,'same latest request is shared');
  assert.equal(a.state.detailTask.content_only,false);
  assert.equal(a.state.detailTask.lifecycle.events[0].label,'Started');
 });
