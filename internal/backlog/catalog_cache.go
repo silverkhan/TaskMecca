@@ -181,6 +181,20 @@ func CachedTaskRecord(project,root,id string) (Record,bool,error) {
             }
         }
     }
+    // Content requests for ACTIVE tasks never need to walk archive and
+    // _complete trees. A directory listing is sufficient to identify the
+    // one active filename, even on a cold process with no catalog snapshot.
+    entries,err:=os.ReadDir(abs)
+    if err!=nil{return Record{},false,err}
+    for _,entry:=range entries {
+        if entry.IsDir() || !strings.HasSuffix(strings.ToLower(entry.Name()),".md") {continue}
+        match:=itemName.FindStringSubmatch(entry.Name())
+        if match==nil || strings.ToUpper(match[2])!=id {continue}
+        path:=filepath.Join(abs,entry.Name())
+        row,readErr:=parseRecordFile(abs,path)
+        if readErr==nil && row.ID==id {return row,true,nil}
+    }
+    // Retain the archival fallback semantics for historical task links.
     paths,err:=History(abs)
     if err!=nil{return Record{},false,err}
     found:=""
