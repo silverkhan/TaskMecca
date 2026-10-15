@@ -5734,6 +5734,8 @@ function selectedRowId() {
 }
 
 let autoPageMeasureRaf = 0;
+let autoPageMeasureContext = '';
+let autoPageRowHeightBudget = 0;
 function measuredTaskRowHeight() {
   const rows=[...document.querySelectorAll('.task-list .task-row')].slice(0,5);
   const heights=rows.map(r=>r.getBoundingClientRect().height).filter(h=>Number.isFinite(h)&&h>20).sort((a,b)=>a-b);
@@ -5742,15 +5744,27 @@ function measuredTaskRowHeight() {
 }
 function updateAutoListPageSize(force=false) {
   if(state.listPageMode!=='auto'||state.view!=='backlog'||state.detail)return;
-  if(state.listData&&!force)return;
+  // Never size from provisional file-only rows or an in-flight revalidation:
+  // the following canonical render may add status summaries and taller rows.
+  if(!state.listData||state.listData.pending_reconciliation||state.listRevalidating)return;
   const list=document.querySelector('.task-list');
   if(!list)return;
   const shortcut=document.querySelector('.shortcut-bar');
   const shortcutHeight=shortcut?.getBoundingClientRect().height||28;
   const listTopAtPageTop=list.getBoundingClientRect().top+window.scrollY;
   const available=Math.max(0,window.innerHeight-listTopAtPageTop-shortcutHeight-12);
-  const rowHeight=measuredTaskRowHeight();
-  const next=Math.max(1,Math.min(50,Math.floor(available/Math.max(1,rowHeight))));
+  // Initial row heights can fluctuate as file-only and canonical projections
+  // paint. Never increase the row-height estimate within the same project,
+  // filter and viewport context: pagination itself must not make the measured
+  // page capacity alternate between two values.
+  const measureContext=JSON.stringify([state.project,state.backlog,state.statusFilters,
+    state.tagFilters,state.query,state.listSort,window.innerWidth]);
+  if(measureContext!==autoPageMeasureContext){
+    autoPageMeasureContext=measureContext;
+    autoPageRowHeightBudget=0;
+  }
+  autoPageRowHeightBudget=Math.max(autoPageRowHeightBudget,measuredTaskRowHeight());
+  const next=Math.max(1,Math.min(50,Math.floor(available/Math.max(1,autoPageRowHeightBudget))));
   if(next===state.autoListPageSize)return;
   const oldSize=Math.max(1,state.autoListPageSize||1);
   const firstIndex=(Math.max(1,state.listPage)-1)*oldSize;
@@ -5765,13 +5779,14 @@ function scheduleAutoListPageSize(force=false) {
   autoPageMeasureRaf=requestAnimationFrame(()=>requestAnimationFrame(()=>updateAutoListPageSize(force)));
 }
 
-// Observe layout changes even when the browser viewport size stays unchanged.
-// Never observe task rows: page-size changes must not create a resize feedback loop.
+// Observe ONLY the toolbar and notification region above the list. Watching
+// .main or #content also watches the list itself: changing page_size changes
+// its height and retriggers a ResizeObserver → refreshList feedback loop.
 let autoPageLayoutObserver = null;
 function observeAutoListLayout() {
   if(typeof ResizeObserver==='undefined'||autoPageLayoutObserver)return;
   autoPageLayoutObserver=new ResizeObserver(()=>scheduleAutoListPageSize(true));
-  for(const selector of ['.topbar','#userAttention','.main','#content']){
+  for(const selector of ['.topbar','#userAttention']){
     const node=document.querySelector(selector);
     if(node)autoPageLayoutObserver.observe(node);
   }
@@ -5958,7 +5973,7 @@ function render() {
     if(state.notificationCenterTab==='settings'){renderNotificationPanel();const body=$('#notificationSettingsBody');if(body){body.dataset.context=notificationHistoryContext();if(settingsDraft)restoreNotificationSettings(body,settingsDraft);}}
     bindNotificationHistoryActions();bindTelegramSetupActions();
   }
-  if(state.view==='backlog')scheduleAutoListPageSize();
+  if(state.view==='backlog')scheduleAutoListPageSize(true);
   document.querySelectorAll('[data-manual-tab]').forEach(b=>b.onclick=()=>{state.manualTab=b.dataset.manualTab;render()});
   bindCopyButtons(); bindMermaidControls(); renderMermaidDiagrams();
 }
