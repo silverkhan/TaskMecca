@@ -1209,17 +1209,19 @@ body.release-modal-open{overflow:hidden}
   border-color:color-mix(in srgb,var(--accent) 50%,var(--border));
   box-shadow:0 0 0 1px color-mix(in srgb,var(--accent) 23%,transparent),0 2px 7px rgba(17,12,25,.09);
 }
-/* Small app-style status badges: only warning/error states, anchored to each tile. */
+/* Small app-style status badges: inherit exactly the same severity colors as
+   backlog status dots (warning/hold=--warn, error/blocked=--danger).
+   The theme surface supplies a high-contrast glyph in both light and dark. */
 .session-state-error .session-initial::after,.session-state-warning .session-initial::after{
   content:"!";position:absolute;top:-5px;right:-5px;
   display:grid;place-items:center;box-sizing:border-box;
   width:14px;height:14px;border:1px solid var(--surface);border-radius:50%;
-  background:color-mix(in srgb,var(--danger) 73%,#ffadaf);color:#281820;
+  background:var(--danger);color:var(--surface);
   font-size:9px;font-weight:900;line-height:1;
   box-shadow:0 1px 4px rgba(17,12,25,.20);pointer-events:none;
 }
 .session-state-warning .session-initial::after{
-  background:color-mix(in srgb,var(--warn) 73%,#ffcf7d);color:#2b1d12;
+  background:var(--warn);color:var(--surface);
 }
 .app-shell.sidebar-collapsed:not(.sidebar-peek) .sidebar-mode-selector{display:none}
 .app-shell.sidebar-collapsed:not(.sidebar-peek) .session-open{min-width:0}
