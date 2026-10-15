@@ -3521,7 +3521,7 @@ const sessionStatusDescriptions={error:'Error / User action / Blocked',warning:'
 function syncSessionAttentionSeverity(users=commonAttentionUsers()) {
   const byPath=new Map((state.hub?.projects||[]).map(p=>[p.path,p]));
   const criticalProjects=new Set(users.map(row=>row.project).filter(Boolean));
-  document.querySelectorAll('[data-session-project]').forEach(row=>{
+  (document.querySelectorAll?.('[data-session-project]')||[]).forEach(row=>{
     const path=row.dataset.sessionProject;
     const p=byPath.get(path)||{name:path.split(/[\\/]/).pop()||path,counts:{}};
     const status=sessionProjectStatus(p.counts||{},criticalProjects.has(path));
