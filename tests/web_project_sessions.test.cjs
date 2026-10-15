@@ -274,8 +274,10 @@ test('deep links show path-based project name before Hub data is discovered',()=
 
 test('loading placeholders escape dynamic project names and avoid a generic brand flash',()=>{
   const html=fs.readFileSync(path.join(__dirname,'../goassets/template/_task_mecca/framework/web/index.html'),'utf8');
-  assert.match(source,/c\\.innerHTML=\\`<div class="loading">\\$\\{esc\\(projectLoadingText\\(\\)\\)\\}<\\/div>\\`/);
-  assert.match(source,/else c\\.innerHTML=gate\\+\\`<div class="loading">\\$\\{esc\\(projectLoadingText\\(\\)\\)\\}<\\/div>\\`/);
-  assert.match(html,/<section id="content" class="content"><div class="loading">Loading…<\\/div><\\/section>/);
+  assert.ok(source.includes('c.innerHTML=`<div class="loading">${esc(projectLoadingText())}</div>`'),
+    'list view escapes project names before setting innerHTML');
+  assert.ok(source.includes('else c.innerHTML=gate+`<div class="loading">${esc(projectLoadingText())}</div>`'),
+    'detail view escapes project names before setting innerHTML');
+  assert.ok(html.includes('<section id="content" class="content"><div class="loading">Loading…</div></section>'));
   assert.doesNotMatch(html,/Loading Task Mecca…/);
 });
