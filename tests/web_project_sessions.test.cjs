@@ -154,8 +154,12 @@ test('project tiles use theme-muted selection and anchored alert badges', () => 
   assert.match(badge, /position:absolute;top:-5px;right:-5px/);
   assert.match(badge, /width:14px;height:14px/);
   assert.match(badge, /border-radius:50%/);
-  assert.match(badge, /background:color-mix\(in srgb,var\(--danger\)/);
-  assert.match(warning, /background:color-mix\(in srgb,var\(--warn\)/);
+  assert.match(badge, /background:var\(--danger\);color:var\(--surface\)/);
+  assert.match(warning, /background:var\(--warn\);color:var\(--surface\)/);
+  assert.match(css, /\.status\.blocked:before,\.status\.stale:before,\.status\.worker_missing:before\{background:var\(--danger\)\}/, 'blocked backlog status must share the error badge color');
+  assert.match(css, /\.status\.hold:before,\.status\.quiet:before\{background:var\(--warn\)\}/, 'hold backlog status must share the warning badge color');
+  assert.match(css, /\.session-state-error \.session-initial\{background:color-mix\(in srgb,var\(--danger\)/, 'error tile must match badge hue');
+  assert.match(css, /\.session-state-warning \.session-initial\{background:color-mix\(in srgb,var\(--warn\)/, 'warning tile must match badge hue');
   assert.doesNotMatch(badge, /transform:translate/, 'badge must not rely on a text glyph offset');
   assert.match(css, /\.session-open:focus-visible\{/, 'keyboard focus must remain independently visible');
 
