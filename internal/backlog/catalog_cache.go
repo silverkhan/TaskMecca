@@ -116,6 +116,31 @@ func CachedCatalog(project,root string) ([]Record,error) {
     return rows,nil
 }
 
+// CachedCatalogSnapshot returns an already parsed, read-only provisional file
+// snapshot without acquiring the slow per-folder refresh lock. It is safe ONLY
+// for initial UI projection: authoritative lists still use CachedCatalog and
+// always reconcile the current filesystem and control-tower evidence.
+func CachedCatalogSnapshot(project,root string) ([]Record,bool,error) {
+    folder,err:=Select(project,root)
+    if err!=nil {return nil,false,err}
+    if folder=="" {return nil,false,nil}
+    key,err:=filepath.Abs(folder)
+    if err!=nil {return nil,false,err}
+    catalogCache.Lock()
+    previous,exists:=catalogCache.Entries[key]
+    rows:=make([]Record,0,len(previous.Files))
+    if exists {
+        for _,item:=range previous.Files {rows=append(rows,item.Record)}
+    }
+    catalogCache.Unlock()
+    if !exists {return nil,false,nil}
+    sort.Slice(rows,func(i,j int)bool {
+        if rows[i].ID!=rows[j].ID {return rows[i].ID<rows[j].ID}
+        return rows[i].Path<rows[j].Path
+    })
+    return rows,true,nil
+}
+
 func InvalidateCachedCatalog(root string) {
     if abs,err:=filepath.Abs(root); err==nil {
         catalogCache.Lock(); delete(catalogCache.Entries,abs); catalogCache.Unlock()
