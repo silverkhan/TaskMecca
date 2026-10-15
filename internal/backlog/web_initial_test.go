@@ -56,3 +56,39 @@ func TestBacklogInitialPageNeverClaimsReadyOrAttention(t *testing.T) {
   if _,exists:=page[key];exists {t.Fatalf("initial page must not provide canonical %s",key)}
  }
 }
+
+func TestBacklogInitialPageUsesExistingProvisionalCatalogWithoutRescanning(t *testing.T) {
+ project:=t.TempDir()
+ root:=filepath.Join(project,"_task_mecca","data","backlog")
+ if err:=os.MkdirAll(root,0755);err!=nil{t.Fatal(err)}
+ path:=filepath.Join(root,"000001.B-1.test.done.md")
+ if err:=os.WriteFile(path,[]byte("# B-1 Saved\n"),0644);err!=nil{t.Fatal(err)}
+ if _,err:=CachedCatalog(project,root);err!=nil{t.Fatal(err)}
+ if err:=os.Remove(path);err!=nil{t.Fatal(err)}
+ snapshot,ok,err:=CachedCatalogSnapshot(project,root)
+ if err!=nil||!ok||len(snapshot)!=1 {t.Fatalf("snapshot=%v present=%v err=%v",snapshot,ok,err)}
+ // Existing verified catalog can paint a provisional page even while a
+ // subsequent authoritative scan would observe the file deletion.
+ provisional,err:=BacklogInitialPage(project,root,1,20,nil,"","id_desc")
+ if err!=nil{t.Fatal(err)}
+ if provisional["pending_reconciliation"]!=true || provisional["total"]!=1 {
+   t.Fatalf("provisional snapshot must remain explicitly pending: %#v",provisional)
+ }
+ fresh,err:=CachedCatalog(project,root)
+ if err!=nil || len(fresh)!=0 {t.Fatalf("authoritative catalog must discover deletion: %v, %v",fresh,err)}
+ again,err:=BacklogInitialPage(project,root,1,20,nil,"","id_desc")
+ if err!=nil || again["total"]!=0 {t.Fatalf("new catalog not applied: %v, %v",again,err)}
+}
+
+func TestCachedTaskRecordFindsActiveFileWithoutCatalogWarmup(t *testing.T) {
+ project:=t.TempDir()
+ root:=filepath.Join(project,"_task_mecca","data","backlog")
+ archive:=filepath.Join(root,"archive","2026-10")
+ if err:=os.MkdirAll(archive,0755);err!=nil{t.Fatal(err)}
+ if err:=os.WriteFile(filepath.Join(root,"000005.B-5.direct.todo.md"),[]byte("# B-5 Direct lookup\n"),0644);err!=nil{t.Fatal(err)}
+ if err:=os.WriteFile(filepath.Join(archive,"000004.B-4.old.done.md"),[]byte("# B-4 Archived\n"),0644);err!=nil{t.Fatal(err)}
+ row,ok,err:=CachedTaskRecord(project,root,"B-5")
+ if err!=nil||!ok||row.Location!="active"||!strings.Contains(row.RawMarkdown,"Direct lookup") {
+    t.Fatalf("fast active lookup failed: %v %v %+v",err,ok,row)
+ }
+}
