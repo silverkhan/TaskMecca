@@ -180,7 +180,7 @@ test('project tiles use theme-muted selection and anchored alert badges', () => 
   assert.match(html, /session-row session-state-error active/);
   assert.match(html, /session-row session-state-warning /);
   assert.match(html, /session-row session-state-working /);
-  assert.match(html, /aria-label="[^"]*Error \/ Blocked"/);
+  assert.match(html, /aria-label="[^"]*Error \/ User action \/ Blocked"/);
   assert.match(html, /aria-label="[^"]*Needs attention"/);
   assert.match(html, /aria-label="[^"]*Working"/);
 });
