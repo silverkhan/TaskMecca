@@ -2,10 +2,10 @@ const {test}=require('node:test');
 const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
 const source=fs.readFileSync('goassets/template/_task_mecca/framework/web/app.js','utf8');
 function app(fetch, options={}){
- const ctx=vm.createContext({fetch,URLSearchParams,location:{search:'?project=/demo'},history:{pushState(){}},navigator:{language:'ko'},queueMicrotask,document:{visibilityState:'visible',querySelector:()=>null,querySelectorAll:()=>[]},localStorage:{getItem:()=>null,setItem(){},removeItem(){}},setTimeout:options.setTimeout||(()=>1),requestIdleCallback:options.requestIdleCallback});
+ const ctx=vm.createContext({fetch,URLSearchParams,location:{search:'?project=/demo'},history:{pushState(){}},navigator:{language:'ko'},queueMicrotask,document:{visibilityState:'visible',querySelector:()=>null,querySelectorAll:()=>[]},window:options.window,requestAnimationFrame:options.requestAnimationFrame,localStorage:{getItem:()=>null,setItem(){},removeItem(){}},setTimeout:options.setTimeout||(()=>1),requestIdleCallback:options.requestIdleCallback});
  vm.runInContext(source.slice(0,source.indexOf('\ntranslateChrome();'))+`
  render=()=>{};
- globalThis.api={state,openTask,loadTaskDetail,prefetchTaskDetail,requestTaskDetail,cachedTaskDetail,taskDetailPending,taskDetailCache,taskLiveCache,taskLivePending,taskDetailKey,acceptContentRevision,invalidateTaskDetailCache,scheduleTaskDetailPrefetch,scheduleTaskLiveEnrichment,lifecycleEventLabel,lifecycleEvidenceLabel};
+ globalThis.api={state,openTask,loadTaskDetail,prefetchTaskDetail,requestTaskDetail,cachedTaskDetail,taskDetailPending,taskDetailCache,taskLiveCache,taskLivePending,taskDetailKey,acceptContentRevision,invalidateTaskDetailCache,scheduleTaskDetailPrefetch,scheduleTaskLiveEnrichment,retryTaskLifecycle,refreshVisibleContent,detailLifecycleBody,lifecycleEventLabel,lifecycleEvidenceLabel};
  `,ctx);
  const a=ctx.api;Object.assign(a.state,{project:'/demo',backlog:'/demo/backlog',view:'backlog',contentRevision:'r1',detail:null,detailTask:null,statusFilters:['all'],tagFilters:[],listPage:1,listSort:'id_desc',listPageMode:'manual',listPageSize:20,query:''});
  return {...a,ctx};
@@ -159,4 +159,135 @@ test('confirmed lifecycle hides redundant persistence source but retains Worker 
  a.state.language='en';
  assert.equal(a.lifecycleEvidenceLabel({source:'git'}),'Git history');
  assert.equal(a.lifecycleEvidenceLabel(confirmed),'worker/abc · ID lifecycle-long-event-id');
+});
+
+
+test('AID-174: visible-body refresh remains enriched when a new revision lands before 60ms',async()=>{
+ const timers=[],urls=[];
+ const a=app(url=>{
+  urls.push(url);
+  if(url.includes('projection=content'))return Promise.resolve(reply({...task('A-20'),content_only:true}));
+  return Promise.resolve(reply({...task('A-20'),content_only:false,lifecycle:{events:[{label:'Started',at:'2026-10-15T00:00:00Z'}]}}));
+ },{setTimeout:(fn,delay)=>{timers.push({fn,delay});return timers.length;},
+    window:{scrollY:80,scrollX:0,scrollTo(){}},requestAnimationFrame:fn=>fn()});
+ a.state.detail='A-20';
+ await a.loadTaskDetail('A-20');
+ assert.equal(a.state.detailTask.content_only,true);
+ assert.equal(timers.length,1);
+ a.acceptContentRevision('r2');
+ assert.equal(timers.length,2,'new revision must arrange a valid lifecycle fetch');
+ timers.shift().fn();timers.shift().fn();
+ await tick();
+ assert.equal(urls.filter(u=>!u.includes('projection=content')).length,1,'same latest request is shared');
+ assert.equal(a.state.detailTask.content_only,false);
+ assert.equal(a.state.detailTask.lifecycle.events[0].label,'Started');
+});
+
+test('AID-174: old in-flight lifecycle fetch does not block a refreshed document',async()=>{
+ const timers=[],fulls=[];
+ const a=app(url=>url.includes('projection=content')
+   ?Promise.resolve(reply({...task('A-21'),content_only:true}))
+   :new Promise(resolve=>fulls.push(resolve)),
+   {setTimeout:fn=>{timers.push(fn);return timers.length}});
+ a.openTask('A-21');
+ await tick();
+ timers.shift()();
+ assert.equal(fulls.length,1);
+ a.acceptContentRevision('r2');
+ timers.shift()();
+ assert.equal(fulls.length,2,'new generation must fetch even while previous one is pending');
+ fulls[0](reply({...task('A-21'),content_only:false,lifecycle:{events:[{label:'OLD'}]}}));
+ await tick();
+ assert.equal(a.state.detailTask.content_only,true,'obsolete response cannot win');
+ fulls[1](reply({...task('A-21'),content_only:false,lifecycle:{events:[{label:'NEW'}]}}));
+ await tick();
+ assert.equal(a.state.detailTask.lifecycle.events[0].label,'NEW');
+ assert.equal(a.taskLivePending.size,0);
+});
+
+test('AID-174: same task reloaded while old lifecycle is pending shows only new document',async()=>{
+ const timers=[],fulls=[];
+ let contents=0;
+ const a=app(url=>url.includes('projection=content')
+    ?Promise.resolve(reply({...task('A-22'),raw_markdown:'# version '+(++contents),content_only:true}))
+    :new Promise(resolve=>fulls.push(resolve)),
+    {setTimeout:fn=>{timers.push(fn);return timers.length}});
+ a.openTask('A-22');await tick();timers.shift()();
+ assert.equal(fulls.length,1);
+ a.invalidateTaskDetailCache();
+ await a.loadTaskDetail('A-22');await tick();
+ assert.equal(a.state.detailTask.raw_markdown,'# version 2');
+ timers.shift()();
+ assert.equal(fulls.length,2);
+ fulls[0](reply({...task('A-22'),raw_markdown:'# version 1',content_only:false}));await tick();
+ assert.equal(a.state.detailTask.content_only,true);
+ fulls[1](reply({...task('A-22'),raw_markdown:'# version 2',content_only:false,lifecycle:{events:[{label:'Completed'}]}}));await tick();
+ assert.equal(a.state.detailTask.content_only,false);
+ assert.equal(a.state.detailTask.raw_markdown,'# version 2');
+});
+
+test('AID-174: transient 503 retries once without disrupting visible Markdown',async()=>{
+ const timers=[],urls=[];
+ let fullCount=0;
+ const a=app(url=>{
+  urls.push(url);
+  if(url.includes('projection=content'))return Promise.resolve(reply({...task('A-23'),content_only:true}));
+  fullCount++;
+  return Promise.resolve(fullCount===1?{ok:false,status:503}:reply({...task('A-23'),content_only:false,lifecycle:{events:[{label:'Registered'}]}}));
+ },{setTimeout:(fn,delay)=>{timers.push({fn,delay});return timers.length}});
+ a.openTask('A-23');await tick();
+ timers.shift().fn();await tick();
+ assert.equal(a.state.detailTask.content_only,true,'readable body persists during server failure');
+ assert.equal(fullCount,1);
+ assert.equal(timers[0].delay,1200,'one bounded backoff');
+ timers.shift().fn();
+ assert.equal(timers[0].delay,0);
+ timers.shift().fn();await tick();
+ assert.equal(fullCount,2);
+ assert.equal(a.state.detailTask.content_only,false);
+ assert.equal(a.state.detailLifecycleError,'');
+});
+
+test('AID-174: repeated full API failure surfaces lifecycle-only retry and can recover',async()=>{
+ const timers=[],section={innerHTML:'',querySelector:()=>null};
+ let failure=true,fullCount=0;
+ const a=app(url=>{
+   if(url.includes('projection=content'))return Promise.resolve(reply({...task('A-24'),content_only:true}));
+   fullCount++;
+   return failure?Promise.reject(new Error('offline')):Promise.resolve(reply({...task('A-24'),content_only:false,lifecycle:{events:[{label:'Started'}]}}));
+ },{setTimeout:(fn,delay)=>{timers.push({fn,delay});return timers.length}});
+ a.ctx.document.getElementById=id=>id==='lifecycle'?section:null;
+ a.openTask('A-24');await tick();
+ timers.shift().fn();await tick();
+ timers.shift().fn();timers.shift().fn();await tick();
+ assert.equal(fullCount,2,'do not retry more than once automatically');
+ assert.equal(a.state.detailTask.raw_markdown,'# A-24');
+ assert.equal(a.state.detailTask.content_only,true);
+ assert.match(a.state.detailLifecycleError,/offline/);
+ assert.match(section.innerHTML,/lifecycleRetryBtn/);
+ assert.match(section.innerHTML,/다시 시도/);
+ failure=false;
+ a.retryTaskLifecycle();
+ assert.equal(a.state.detailLifecycleError,'');
+ timers.shift().fn();await tick();
+ assert.equal(fullCount,3);
+ assert.equal(a.state.detailTask.content_only,false);
+ assert.equal(a.state.detailLifecycleError,'');
+});
+
+test('AID-174: task changes while a retry is queued cannot leak lifecycle errors into another task',async()=>{
+ const timers=[];
+ const a=app(url=>url.includes('projection=content')
+  ?Promise.resolve(reply({...task(url.includes('A-25')?'A-25':'A-26'),content_only:true}))
+  :Promise.reject(new Error('offline')),
+ {setTimeout:(fn,delay)=>{timers.push({fn,delay});return timers.length}});
+ a.openTask('A-25');await tick();
+ timers.shift().fn();await tick();
+ assert.equal(timers[0].delay,1200);
+ a.openTask('A-26');await tick();
+ const queued=timers.shift();
+ queued.fn();
+ assert.equal(timers.length,1,'only the new task has its own pending enrichment');
+ assert.equal(a.state.detail,'A-26');
+ assert.equal(a.state.detailLifecycleError,'');
 });
