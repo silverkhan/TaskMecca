@@ -124,6 +124,14 @@ html{scrollbar-gutter:stable}
 @media(min-width:681px){.app-shell.sidebar-collapsed .shortcut-bar{left:72px}}
 @media(max-width:680px){.sidebar-toggle{display:none}.app-shell.sidebar-collapsed{display:block}.app-shell.sidebar-collapsed .brand-copy{display:block}.app-shell.sidebar-collapsed .brand{justify-content:flex-start}.app-shell.sidebar-collapsed .sidebar .nav,.app-shell.sidebar-collapsed .sidebar-section,.app-shell.sidebar-collapsed .sidebar-footer{display:none}.shortcut-bar{left:0!important}}
 
+/* The notification center can show a setup indicator alongside its name.
+   Allow the name to occupy available space (or wrap at a word boundary)
+   instead of inheriting a misleading "..." truncation. Other nav rows
+   retain their existing layout and compact/hover behavior. */
+#projectNotificationsNav .nav-main{flex:1;min-width:0}
+#projectNotificationsNav .nav-text{min-width:0;white-space:normal;overflow:visible;text-overflow:clip;word-break:keep-all}
+#projectNotificationsNav .count{flex:0 0 auto}
+
 /* Mermaid diagrams */
 .mermaid-wrap{margin:16px 0;border:1px solid var(--border);border-radius:10px;background:var(--surface);overflow:hidden}
 .mermaid-toolbar{height:42px;display:flex;align-items:center;justify-content:space-between;padding:0 10px 0 14px;border-bottom:1px solid var(--border);background:var(--surface2)}
