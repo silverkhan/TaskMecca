@@ -13,6 +13,7 @@ const storageKey = 'task-mecca-open-projects';
 
 function page(storage, project = '') {
   const elements = new Map();
+  const renderedSessionRows = [];
   function element(tagName = 'div') {
  const node = { tagName: tagName.toUpperCase(), innerHTML: '', textContent: '', dataset: {}, children: [], attributes: {}, listeners: {},
  addEventListener(type, listener) { this.listeners[type] = listener; },
@@ -34,7 +35,9 @@ function page(storage, project = '') {
  if (!elements.has(selector)) elements.set(selector, element());
  return elements.get(selector);
  },
- querySelectorAll() { return []; },
+ querySelectorAll(selector) {
+   return selector === '[data-session-project]' ? renderedSessionRows : [];
+ },
  };
  const context = vm.createContext({
     URLSearchParams, location: { search: project ? `?project=${encodeURIComponent(project)}` : '' },
@@ -49,9 +52,9 @@ function page(storage, project = '') {
   vm.runInContext(declarations + `
     render = () => nav();
     refresh = refreshList = ensureAttentionStream = refreshVersionInfo = () => {};
-    globalThis.session = { state, nav, switchProject, closeProjectSession };
+    globalThis.session = { state, nav, switchProject, closeProjectSession, sessionProjectStatus, renderUserAttention };
   `, context);
-  return { ...context.session, sidebarSelector: () => elements.get('#stateNav').children[0], menu: () => elements.get('#stateNav').innerHTML };
+  return { ...context.session, renderedSessionRows, sidebarSelector: () => elements.get('#stateNav').children[0], menu: () => elements.get('#stateNav').innerHTML };
 }
 
 function saved(storage) { return JSON.parse(storage.get(storageKey)); }
@@ -180,4 +183,60 @@ test('project tiles use theme-muted selection and anchored alert badges', () => 
   assert.match(html, /aria-label="[^"]*Error \/ Blocked"/);
   assert.match(html, /aria-label="[^"]*Needs attention"/);
   assert.match(html, /aria-label="[^"]*Working"/);
+});
+
+
+test('project status prioritizes canonical user intervention over a hold warning', () => {
+ const storage=new Map();
+ opened(storage,'/repos/a','/repos/b');
+ const app=page(storage,'/repos/a');
+ app.state.view='backlog';
+ app.state.hub={projects:[
+   {path:'/repos/a',name:'A',counts:{hold:1,working:1,blocked:0}},
+   {path:'/repos/b',name:'B',counts:{hold:1}},
+ ]};
+ assert.equal(app.sessionProjectStatus({hold:1},false),'warning');
+ assert.equal(app.sessionProjectStatus({hold:1},true),'error');
+ assert.equal(app.sessionProjectStatus({blocked:1},false),'error');
+ assert.equal(app.sessionProjectStatus({hold:1,needs_user:1},false),'error');
+ app.nav();
+ assert.match(app.menu(),/session-row session-state-warning active" data-session-project="\/repos\/a"/);
+ app.state.commonUserAttention['/repos/a|/backlog']={project:'/repos/a',backlog:'/backlog',observed:1,rows:[{id:'A-50',title:'Requires decision',message:'',action:'Review'}]};
+ app.nav();
+ assert.match(app.menu(),/session-row session-state-error active" data-session-project="\/repos\/a"/);
+ assert.match(app.menu(),/session-row session-state-warning " data-session-project="\/repos\/b"/);
+ assert.match(app.menu(),/Error \/ User action \/ Blocked/);
+});
+
+test('live attention refresh updates project badge and recovers warning without rebuilding navigation', () => {
+ const storage=new Map();
+ opened(storage,'/repos/a','/repos/b');
+ const app=page(storage,'/repos/a');
+ app.state.view='backlog';
+ app.state.hub={projects:[
+   {path:'/repos/a',name:'A',counts:{hold:1}},
+   {path:'/repos/b',name:'B',counts:{hold:1}},
+ ]};
+ const fakeRow=(project)=>{
+   const classes=new Set(['session-row','session-state-warning']);
+   const attrs={}, button={title:'',setAttribute(key,value){attrs[key]=value;}};
+   return {
+     dataset:{sessionProject:project},
+     classList:{contains:v=>classes.has(v),add:v=>classes.add(v),remove:v=>classes.delete(v)},
+     querySelector(selector){return selector==='.session-open'?button:null;},
+     classes,button,attrs,
+   };
+ };
+ const selected=fakeRow('/repos/a'),other=fakeRow('/repos/b');
+ app.renderedSessionRows.push(selected,other);
+ app.state.commonUserAttention['/repos/a|/backlog']={project:'/repos/a',backlog:'/backlog',observed:1,rows:[{id:'A-50',title:'Requires decision',message:'',action:'Review'}]};
+ app.renderUserAttention();
+ assert.ok(selected.classes.has('session-state-error'));
+ assert.ok(other.classes.has('session-state-warning'));
+ assert.match(selected.attrs['aria-label'],/Error \/ User action \/ Blocked/);
+ app.state.commonUserAttention['/repos/a|/backlog']={project:'/repos/a',backlog:'/backlog',observed:2,rows:[]};
+ app.renderUserAttention();
+ assert.ok(selected.classes.has('session-state-warning'));
+ assert.ok(!selected.classes.has('session-state-error'));
+ assert.match(selected.attrs['aria-label'],/Needs attention/);
 });
