@@ -116,6 +116,31 @@ func CachedCatalog(project,root string) ([]Record,error) {
     return rows,nil
 }
 
+// CachedCatalogSnapshot returns an already parsed, read-only provisional file
+// snapshot without acquiring the slow per-folder refresh lock. It is safe ONLY
+// for initial UI projection: authoritative lists still use CachedCatalog and
+// always reconcile the current filesystem and control-tower evidence.
+func CachedCatalogSnapshot(project,root string) ([]Record,bool,error) {
+    folder,err:=Select(project,root)
+    if err!=nil {return nil,false,err}
+    if folder=="" {return nil,false,nil}
+    key,err:=filepath.Abs(folder)
+    if err!=nil {return nil,false,err}
+    catalogCache.Lock()
+    previous,exists:=catalogCache.Entries[key]
+    rows:=make([]Record,0,len(previous.Files))
+    if exists {
+        for _,item:=range previous.Files {rows=append(rows,item.Record)}
+    }
+    catalogCache.Unlock()
+    if !exists {return nil,false,nil}
+    sort.Slice(rows,func(i,j int)bool {
+        if rows[i].ID!=rows[j].ID {return rows[i].ID<rows[j].ID}
+        return rows[i].Path<rows[j].Path
+    })
+    return rows,true,nil
+}
+
 func InvalidateCachedCatalog(root string) {
     if abs,err:=filepath.Abs(root); err==nil {
         catalogCache.Lock(); delete(catalogCache.Entries,abs); catalogCache.Unlock()
@@ -156,6 +181,20 @@ func CachedTaskRecord(project,root,id string) (Record,bool,error) {
             }
         }
     }
+    // Content requests for ACTIVE tasks never need to walk archive and
+    // _complete trees. A directory listing is sufficient to identify the
+    // one active filename, even on a cold process with no catalog snapshot.
+    entries,err:=os.ReadDir(abs)
+    if err!=nil{return Record{},false,err}
+    for _,entry:=range entries {
+        if entry.IsDir() || !strings.HasSuffix(strings.ToLower(entry.Name()),".md") {continue}
+        match:=itemName.FindStringSubmatch(entry.Name())
+        if match==nil || strings.ToUpper(match[2])!=id {continue}
+        path:=filepath.Join(abs,entry.Name())
+        row,readErr:=parseRecordFile(abs,path)
+        if readErr==nil && row.ID==id {return row,true,nil}
+    }
+    // Retain the archival fallback semantics for historical task links.
     paths,err:=History(abs)
     if err!=nil{return Record{},false,err}
     found:=""
