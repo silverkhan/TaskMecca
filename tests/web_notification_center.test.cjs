@@ -53,3 +53,20 @@ test('hook resolution prevents stale, undated or equal-time assignment warnings 
 test('packaged shell includes settings dialog and mobile center entry, and has no separate attention menu',()=>{
  const html=fs.readFileSync('goassets/template/_task_mecca/framework/web/index.html','utf8');assert.match(html,/id="notificationPanel"[^>]*role="dialog"/);assert.match(html,/id="projectNotificationsNav"/);assert.doesNotMatch(html,/id="notificationCenterTop"/);assert.doesNotMatch(html,/data-view="attention"/);assert.match(html,/data-view="issues"[^>]*hidden/);
 });
+
+
+test('notification-and-settings sidebar label is localized and remains accessible at narrow widths',()=>{
+ const a=app(),html=fs.readFileSync('goassets/template/_task_mecca/framework/web/index.html','utf8');
+ const css=fs.readFileSync('goassets/template/_task_mecca/framework/web/style.css','utf8');
+ assert.equal(vm.runInContext("t('projectNotifications')",a.context),'알림 & 설정');
+ assert.equal(vm.runInContext("t('notificationCenter')",a.context),'알림센터','page title stays specific to the center');
+ a.state.language='en';
+ assert.equal(vm.runInContext("t('projectNotifications')",a.context),'Alerts & settings');
+ assert.equal(vm.runInContext("t('notificationCenter')",a.context),'Notification center');
+ assert.match(html,/id="projectNotificationsNav"[^>]+title="Alerts &amp; settings" aria-label="Alerts &amp; settings"/);
+ assert.match(html,/id="projectNotificationsText">Alerts &amp; settings<\/span>/);
+ assert.match(source,/const description=summary\?t\('telegramSetupNav'\)[^\n]+:t\('projectNotifications'\)/,
+  'accessible title should follow the sidebar label unless setup action is needed');
+ assert.match(css,/@media\(min-width:681px\) and \(max-width:900px\)\{[^}]+#projectNotificationsNav \.nav-main\{gap:6px\}/,
+  'compact sidebar preserves text width');
+});
