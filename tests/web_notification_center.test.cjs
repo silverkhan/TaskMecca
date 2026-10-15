@@ -55,18 +55,21 @@ test('packaged shell includes settings dialog and mobile center entry, and has n
 });
 
 
-test('notification-and-settings sidebar label is localized and remains accessible at narrow widths',()=>{
+
+test('notification center sidebar keeps its original name without ellipsis',()=>{
  const a=app(),html=fs.readFileSync('goassets/template/_task_mecca/framework/web/index.html','utf8');
  const css=fs.readFileSync('goassets/template/_task_mecca/framework/web/style.css','utf8');
- assert.equal(vm.runInContext("t('projectNotifications')",a.context),'알림 & 설정');
- assert.equal(vm.runInContext("t('notificationCenter')",a.context),'알림센터','page title stays specific to the center');
+ assert.equal(vm.runInContext("t('projectNotifications')",a.context),'알림센터');
+ assert.equal(vm.runInContext("t('notificationCenter')",a.context),'알림센터');
  a.state.language='en';
- assert.equal(vm.runInContext("t('projectNotifications')",a.context),'Alerts & settings');
+ assert.equal(vm.runInContext("t('projectNotifications')",a.context),'Notification center');
  assert.equal(vm.runInContext("t('notificationCenter')",a.context),'Notification center');
- assert.match(html,/id="projectNotificationsNav"[^>]+title="Alerts &amp; settings" aria-label="Alerts &amp; settings"/);
- assert.match(html,/id="projectNotificationsText">Alerts &amp; settings<\/span>/);
- assert.match(source,/const description=summary\?t\('telegramSetupNav'\)[^\n]+:t\('projectNotifications'\)/,
-  'accessible title should follow the sidebar label unless setup action is needed');
- assert.match(css,/@media\(min-width:681px\) and \(max-width:900px\)\{[^}]+#projectNotificationsNav \.nav-main\{gap:6px\}/,
-  'compact sidebar preserves text width');
+ assert.match(html,/id="projectNotificationsNav"[^>]+title="Notification center" aria-label="Notification center"/);
+ assert.match(html,/id="projectNotificationsText">Notification center<\/span>/);
+ assert.match(source,/const description=summary\?t\('telegramSetupNav'\)[^\n]+:t\('notificationCenter'\)/,
+  'Telegram setup hint keeps the same center label by default');
+ assert.match(css,/#projectNotificationsNav \.nav-text\{[^}]*white-space:normal;overflow:visible;text-overflow:clip;word-break:keep-all\}/,
+  'notifications entry is never truncated with ellipsis, unlike other optional nav labels');
+ assert.match(css,/#projectNotificationsNav \.count\{flex:0 0 auto\}/,
+  'Telegram setup dot retains its own space');
 });
