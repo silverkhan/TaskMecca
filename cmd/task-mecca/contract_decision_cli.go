@@ -1,9 +1,7 @@
 package main
 
 import (
-	"bytes"
 	"encoding/json"
-	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -194,6 +192,20 @@ func readDecisionEvents(project,taskID string)([]decisionEvent,[]decisionFinding
 	return events,findings,nil
 }
 
+// Authorization scope intentionally excludes operational notes and lifecycle
+// projections. Their routine updates must not invalidate explicit consent.
+func authorizationContractScope(raw string)string{
+	start:=strings.Index(raw,"## 작업 정의\n")
+	if start<0{start=strings.Index(raw,"## 요건 정의서\n")}
+	if start<0{return raw}
+	end:=strings.Index(raw[start:],"## 실행 정보\n")
+	if end<0{end=len(raw)-start}
+	firstLine:=strings.SplitN(raw,"\n",2)[0]
+	scope:=firstLine+"\n"+raw[start:start+end]
+	if i:=strings.Index(raw,"## 원천 전문 (변경 금지)\n");i>=0{scope+="\n"+raw[i:]}
+	return scope
+}
+
 func projectContractDecision(project,taskID string)(contractDecisionReport,error){
 	taskID=strings.ToUpper(strings.TrimSpace(taskID))
 	result:=contractDecisionReport{TaskID:taskID,Status:"approval_required",AsOf:time.Now().UTC().Format(time.RFC3339Nano),
@@ -204,7 +216,7 @@ func projectContractDecision(project,taskID string)(contractDecisionReport,error
 	if duplicates,ok:=item["duplicate_count"].(int);ok&&duplicates!=1{return result,fmt.Errorf("duplicate task ID %s requires reconciliation",taskID)}
 	raw,_:=item["raw_markdown"].(string)
 	result.BaseMarkdown=raw
-	result.CurrentSHA256=hashBatchBytes([]byte(raw))
+	result.CurrentSHA256=hashBatchBytes([]byte(authorizationContractScope(raw)))
 	events,findings,err:=readDecisionEvents(project,taskID)
 	if err!=nil{return result,err}
 	result.Events=events
@@ -246,11 +258,16 @@ func projectContractDecision(project,taskID string)(contractDecisionReport,error
 	sort.Strings(result.PendingPolicies)
 	// Historical grant stored the projection BEFORE the grant itself. A grant
 	// remains valid only while current base/supplements/policies match it.
-	if len(result.Findings)>0{result.Status="unknown";return result,nil}
+	// Only malformed events are unknown; historical approvals against an older
+	// contract are retained as warnings rather than permanently preventing a
+	// new explicit approval for the current contract.
+	for _,finding:=range result.Findings{
+		if finding.Code=="INVALID_EVENT"||finding.Code=="INCOMPLETE_EVENT"||finding.Code=="UNKNOWN_KIND"{
+			result.Status="unknown";return result,nil
+		}
+	}
 	result.ExecutionAuthorized=approved&&approvedHash==result.EffectiveSHA256&&len(result.PendingPolicies)==0
 	if result.ExecutionAuthorized{result.Status="execution_authorized"}else if len(result.PendingPolicies)>0{result.Status="policy_pending"}else{result.Status="approval_required"}
 	return result,nil
 }
 
-var _ = bytes.Compare
-var _ = errors.New
