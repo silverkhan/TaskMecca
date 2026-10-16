@@ -110,6 +110,19 @@ func runContractDecisionCLI(args []string,out,stderr io.Writer)int{
 	unlock,err:=lockBatchRegistration(abs)
 	if err!=nil{fmt.Fprintln(stderr,err);return 1}
 	defer unlock()
+	// Retry is anchored to the immutable event ID, not a fresh snapshot.
+	// A second execution after later changes must never create new evidence.
+	if existingRaw,readErr:=os.ReadFile(decisionPath(abs,*eventID));readErr==nil{
+		var existing decisionEvent
+		if err:=json.Unmarshal(existingRaw,&existing);err!=nil{fmt.Fprintln(stderr,err);return 3}
+		if existing.TaskID!=strings.ToUpper(*taskID)||existing.Kind!=*kind||existing.Actor!=*actor||existing.Evidence!=*evidence||existing.PolicyKey!=*policyKey||existing.Text!=text||existing.UserConfirmed!=*confirmed{
+			fmt.Fprintln(stderr,"DECISION_ID_CONFLICT: existing event does not match supplied decision")
+			return 3
+		}
+		report,err:=projectContractDecision(abs,*taskID)
+		if err!=nil{fmt.Fprintln(stderr,err);return 1}
+		return emitDecisionReport(report,*asJSON,out,stderr)
+	}else if !os.IsNotExist(readErr){fmt.Fprintln(stderr,readErr);return 1}
 	prior,err:=projectContractDecision(abs,*taskID)
 	if err!=nil{fmt.Fprintln(stderr,err);return 1}
 	if prior.Status=="unknown"{fmt.Fprintln(stderr,"CONTRACT_UNKNOWN: inconsistent decision ledger; resolve findings before recording");return 3}
