@@ -96,7 +96,7 @@ func TestBatchPlanRefusesStaleAndConflictingReapply(t *testing.T){
 func TestBatchInvalidInputDoesNotCreateFiles(t *testing.T){
 	project,input:=batchFixture(t)
 	if err:=os.WriteFile(input,[]byte(`{"schema_version":1,"tasks":[{"key":"bad\nkey","kind":"simple","title":"x","goal":"a","acceptance_criteria":["ok"]}]}`),0600);err!=nil{t.Fatal(err)}
-	code,_,_=batchInvoke(t,"apply","--project",project,"--input",input,"--request-id","bad","--expect-plan","abc","--approve","--json")
+	code,_,_:=batchInvoke(t,"apply","--project",project,"--input",input,"--request-id","bad","--expect-plan","abc","--approve","--json")
 	if code==0{t.Fatal("bad input accepted")}
 	if _,err:=os.Stat(batchJournalPath(project,"bad"));!os.IsNotExist(err){t.Fatal("invalid input modified project")}
 }
