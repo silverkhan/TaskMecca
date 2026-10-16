@@ -52,7 +52,7 @@ function page(storage, project = '') {
   vm.runInContext(declarations + `
     render = () => nav();
     refresh = refreshList = ensureAttentionStream = refreshVersionInfo = () => {};
-    globalThis.session = { state, nav, switchProject, closeProjectSession, sessionProjectStatus, renderUserAttention };
+    globalThis.session = { state, nav, switchProject, closeProjectSession, sessionProjectStatus, renderUserAttention, projectLoadingText };
   `, context);
   return { ...context.session, renderedSessionRows, sidebarSelector: () => elements.get('#stateNav').children[0], menu: () => elements.get('#stateNav').innerHTML };
 }
@@ -239,4 +239,45 @@ test('live attention refresh updates project badge and recovers warning without 
  assert.ok(selected.classes.has('session-state-warning'));
  assert.ok(!selected.classes.has('session-state-error'));
  assert.match(selected.attrs['aria-label'],/Needs attention/);
+});
+
+test('backlog loading identifies the selected project using the Hub display name',()=>{
+  const storage=new Map();
+  const app=page(storage,'/repos/task-mecca-core');
+  app.state.hub={projects:[{path:'/repos/task-mecca-core',name:'투자전략 개발'},{path:'/repos/another',name:'Another'}]};
+  app.state.view='backlog';
+  assert.equal(app.projectLoadingText(),'투자전략 개발 불러오는 중…');
+  app.state.language='en';
+  assert.equal(app.projectLoadingText(),'Loading 투자전략 개발…');
+  // Switching the selected project must never show the previous name.
+  app.state.project='/repos/another';
+  app.state.language='ko';
+  assert.equal(app.projectLoadingText(),'Another 불러오는 중…');
+});
+
+test('deep links show path-based project name before Hub data is discovered',()=>{
+  const storage=new Map();
+  const app=page(storage,'/repos/strategy-pool');
+  app.state.view='backlog';
+  assert.equal(app.projectLoadingText(),'strategy-pool 불러오는 중…');
+  app.state.project='C:\\\\projects\\\\QuantModel\\\\';
+  assert.equal(app.projectLoadingText(),'QuantModel 불러오는 중…');
+  app.state.hub={projects:[]};
+  assert.equal(app.projectLoadingText(),'QuantModel 불러오는 중…');
+  // Non-backlog pages without a selected project retain generic guidance.
+  app.state.view='hub';
+  assert.equal(app.projectLoadingText(),'Task Mecca 불러오는 중…');
+  app.state.view='backlog';
+  app.state.project='';
+  assert.equal(app.projectLoadingText(),'Task Mecca 불러오는 중…');
+});
+
+test('loading placeholders escape dynamic project names and avoid a generic brand flash',()=>{
+  const html=fs.readFileSync(path.join(__dirname,'../goassets/template/_task_mecca/framework/web/index.html'),'utf8');
+  assert.ok(source.includes('c.innerHTML=`<div class="loading">${esc(projectLoadingText())}</div>`'),
+    'list view escapes project names before setting innerHTML');
+  assert.ok(source.includes('else c.innerHTML=gate+`<div class="loading">${esc(projectLoadingText())}</div>`'),
+    'detail view escapes project names before setting innerHTML');
+  assert.ok(html.includes('<section id="content" class="content"><div class="loading">Loading…</div></section>'));
+  assert.doesNotMatch(html,/Loading Task Mecca…/);
 });
