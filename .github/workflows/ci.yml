@@ -55,6 +55,8 @@ jobs:
         run: node --test tests/web_release_note_formats.test.cjs
       - name: Verify Stable promotion gates and retained Windows hotfix
         run: node --test tests/stable_release_guards.test.cjs
+      - name: Mirror Stable prepublish Web regression gate
+        run: node --test tests/stable_release_guards.test.cjs tests/web_release_note_formats.test.cjs tests/web_task_detail_prefetch.test.cjs tests/web_notification_center.test.cjs tests/web_notification_delivery.test.cjs tests/web_telegram_controls_ui.test.cjs tests/web_select_ui.test.cjs tests/web_storage_management.test.cjs tests/web_update_flow.test.cjs tests/web_terminal_service_restart.test.cjs
       - name: Verify backlog auto pagination and stable layout
         run: node --test tests/backlog_list_controls.test.cjs
       - name: Verify Python-free Web guidance

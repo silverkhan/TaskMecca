@@ -7,6 +7,8 @@ const end=source.indexOf('function renderGlobalUpdateIndicator()',start);
 const performStart=source.indexOf('async function performUpgrade()');
 const performEnd=source.indexOf('async function loadRuntimeHistory(',performStart);
 if(start<0||end<0||performStart<0||performEnd<0)throw Error('Missing upgrade flow sources');
+const phasesDeclaration=source.match(/^const upgradeFlowPhases\s*=\s*\[[^\n]*\];/m)?.[0];
+if(!phasesDeclaration)throw Error('Missing production upgrade phase declaration');
 
 function createFlow(fetch,loadReleaseNoteDetail=async()=>({version:'0.2.53-dev.200'}),scheduleTimeout=()=>{}){
  const stages=[],modal=[];
@@ -21,7 +23,7 @@ function createFlow(fetch,loadReleaseNoteDetail=async()=>({version:'0.2.53-dev.2
    closeUpgradeFlow:()=>vm.runInContext("upgradeFlowMode='idle';upgradeFlowSession++",context)
  });
  const init="let upgradeFlowMode='idle',upgradeFlowSession=0,upgradeFlowStartedAt=0,upgradeFlowTarget='',upgradeFlowPollTimer=null,upgradeFlowPollBusy=false,upgradeFlowOwnRequest=false,upgradeFlowRestartWatching=false;";
- vm.runInContext(init+'\n'+source.slice(start,end)+'\n'+source.slice(performStart,performEnd)+
+ vm.runInContext(init+'\n'+phasesDeclaration+'\n'+source.slice(start,end)+'\n'+source.slice(performStart,performEnd)+
    '\nglobalThis.api={openUpgradeDetails,performUpgrade,mode:()=>upgradeFlowMode,session:()=>upgradeFlowSession};',context);
  return {state,stages,modal,api:context.api,context};
 }
