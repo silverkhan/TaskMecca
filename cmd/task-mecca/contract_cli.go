@@ -78,6 +78,7 @@ func runContractCLI(args []string, out, stderr io.Writer) int {
 		return 0
 	}
 	action:=args[0]
+	if action=="plan" || action=="apply" || action=="status" { return runContractBatchCLI(action,args[1:],out,stderr) }
 	if action!="validate" && action!="preview" {
 		fmt.Fprintf(stderr,"unknown contract action: %s (use validate or preview)\n",action)
 		contractUsage(stderr)
