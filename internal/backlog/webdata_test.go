@@ -229,3 +229,108 @@ func TestBindRuntimeAgentFlowsThroughLifecycleIntoStartedNotification(t *testing
     }
     if starts!=1 { t.Fatalf("bind-agent path produced %d started events: %+v",starts,events) }
 }
+
+
+func TestBacklogRevisionTracksExecutionAndLifecycleEvidenceWithoutChangingMarkdown(t *testing.T) {
+    project:=t.TempDir()
+    folder:=filepath.Join(project,"_task_mecca","data","backlog")
+    writeWebTask(t,folder,"000001.A-1.alpha.doing.md","# A-1 Alpha\n- Agent: /root/controller/worker\n")
+    first,err:=BacklogRevision(project,folder)
+    if err!=nil { t.Fatal(err) }
+    contentRevision:=first["revision"]
+    signalRevision:=first["signal_revision"]
+    if signalRevision=="" { t.Fatal("missing runtime signal revision") }
+
+    // Hook events in today's partition can change effective list state even
+    // while neither the Markdown file nor its content revision changes.
+    raw:=filepath.Join(project,"_task_mecca",".runtime","executions","raw","2026-10-12.jsonl")
+    if err:=os.MkdirAll(filepath.Dir(raw),0755);err!=nil{t.Fatal(err)}
+    if err:=os.WriteFile(raw,[]byte("{\"event_kind\":\"started\"}\n"),0600);err!=nil{t.Fatal(err)}
+    started,err:=BacklogRevision(project,folder)
+    if err!=nil { t.Fatal(err) }
+    if started["revision"]!=contentRevision || started["signal_revision"]==signalRevision {
+        t.Fatalf("execution event was missed: initial=%v started=%v",first,started)
+    }
+
+    // A lifecycle report can be created independently of a task rename.
+    eventDir:=filepath.Join(project,"_task_mecca","data","lifecycle","events")
+    if err:=os.MkdirAll(eventDir,0755);err!=nil{t.Fatal(err)}
+    if err:=os.Mkdir(filepath.Join(eventDir,"event-1"),0755);err!=nil{t.Fatal(err)}
+    after,err:=BacklogRevision(project,folder)
+    if err!=nil { t.Fatal(err) }
+    if after["revision"]!=contentRevision || after["signal_revision"]==started["signal_revision"] {
+        t.Fatalf("lifecycle event directory was missed: before=%v after=%v",started,after)
+    }
+
+    // Time passing, without changes to evidence, must not induce refresh.
+    again,err:=BacklogRevision(project,folder)
+    if err!=nil { t.Fatal(err) }
+    if again["signal_revision"]!=after["signal_revision"] {
+        t.Fatalf("unchanged evidence produced a different revision: before=%v after=%v",after,again)
+    }
+}
+
+
+func TestBacklogPageActiveColumnUsesRealLifecycleEvidence(t *testing.T) {
+    project:=t.TempDir()
+    folder:=filepath.Join(project,"_task_mecca","data","backlog")
+    writeWebTask(t,folder,"000001.B-1.finished.done.md","# B-1 Finished\n- Agent: /root/controller/worker\n")
+    writeWebTask(t,folder,"000002.B-2.unknown.done.md","# B-2 Historical completion without start\n")
+    writeWebTask(t,folder,"000003.B-3.running.doing.md","# B-3 Running\n- Agent: /root/controller/worker\n")
+    writeWebTask(t,folder,"000004.B-4.new.todo.md","# B-4 Registered only\n")
+
+    now:=time.Now().UTC().Truncate(time.Second)
+    base:=now.Add(-15*time.Minute)
+    facts:=[]struct{
+        id,kind,task,actor,source string
+        at time.Time
+    }{
+        {"b1-register","registered","B-1","/root/registrar","registrar_report",base},
+        {"b1-start","started","B-1","/root/controller/worker","worker_report",base.Add(time.Minute)},
+        {"b1-complete","completed","B-1","/root/controller","controller_report",base.Add(3*time.Minute)},
+        {"b2-register","registered","B-2","/root/registrar","registrar_report",base.Add(4*time.Minute)},
+        {"b2-complete","completed","B-2","/root/controller","controller_report",base.Add(5*time.Minute)},
+        {"b3-register","registered","B-3","/root/registrar","registrar_report",base.Add(6*time.Minute)},
+        {"b3-start","started","B-3","/root/controller/worker","worker_report",base.Add(8*time.Minute)},
+        {"b4-register","registered","B-4","/root/registrar","registrar_report",base.Add(9*time.Minute)},
+    }
+    for _,fact:=range facts {
+        event:=LifecycleTransition{
+            EventID:fact.id,TaskID:fact.task,Kind:fact.kind,
+            Actor:fact.actor,EvidenceSource:fact.source,
+            OccurredAt:fact.at.Format(time.RFC3339Nano),
+        }
+        if _,err:=RecordLifecycleTransition(project,event,fact.at);err!=nil{t.Fatal(err)}
+    }
+
+    first,err:=BacklogPage(project,folder,1,2,nil,nil,"","id_desc")
+    if err!=nil{t.Fatal(err)}
+    rows:=first["items"].([]map[string]any)
+    if len(rows)!=2||rows[0]["id"]!="B-4"||rows[1]["id"]!="B-3" {
+        t.Fatalf("incorrect first page: %+v",rows)
+    }
+    if rows[0]["active_seconds"]!=nil { t.Fatalf("registered without start must not show active time: %+v",rows[0]) }
+    active,ok:=rows[1]["active_seconds"].(float64)
+    if !ok||active<6*60 { t.Fatalf("running item has no active time: %+v",rows[1]) }
+    current,ok:=rows[1]["lifecycle"].(map[string]any)
+    if !ok||current["current_state"]!="doing"||current["current_state_at"]==nil{
+        t.Fatalf("running lifecycle lacks live segment: %+v",rows[1])
+    }
+    if _,leaked:=current["events"];leaked { t.Fatal("list leaked unneeded lifecycle event history") }
+
+    second,err:=BacklogPage(project,folder,2,2,nil,nil,"","id_desc")
+    if err!=nil{t.Fatal(err)}
+    done:=second["items"].([]map[string]any)
+    if len(done)!=2||done[0]["id"]!="B-2"||done[1]["id"]!="B-1" {
+        t.Fatalf("incorrect second page: %+v",done)
+    }
+    if done[0]["active_seconds"]!=nil {t.Fatalf("unknown historical duration must remain unknown: %+v",done[0])}
+    duration,ok:=done[1]["active_seconds"].(float64)
+    if !ok||duration!=120 {t.Fatalf("completed activity must equal 120 seconds, got %v",done[1]["active_seconds"])}
+    if _,leaked:=done[1]["lifecycle"];leaked{t.Fatal("completed row should not transmit full lifecycle history")}
+
+    summary,err:=BacklogPage(project,folder,1,2,nil,nil,"","id_desc","summary")
+    if err!=nil{t.Fatal(err)}
+    if len(summary["items"].([]map[string]any))!=0 {t.Fatal("summary projection must omit task rows")}
+}
+

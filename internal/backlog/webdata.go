@@ -4,6 +4,7 @@ import (
     "crypto/sha256"
     "encoding/hex"
     "fmt"
+    "os"
     "path/filepath"
     "sort"
     "strings"
@@ -128,6 +129,42 @@ func backlogRevisionFromRows(rows []Record) string {
     return hex.EncodeToString(h.Sum(nil))[:20]
 }
 
+// backlogSignalRevision fingerprints only local evidence file metadata. It is a
+// read-only, bounded change detector, not a task-state inference. The expensive
+// control-tower and Git projections remain in the paged backlog endpoint.
+func backlogSignalRevision(project string) string {
+    base:=filepath.Join(project,"_task_mecca")
+    h:=sha256.New()
+    stamp:=func(path string) {
+        info,err:=os.Stat(path)
+        if os.IsNotExist(err) { return }
+        if err!=nil { fmt.Fprintf(h,"%s:unreadable:%T;",path,err); return }
+        fmt.Fprintf(h,"%s:%d:%d;",path,info.ModTime().UnixNano(),info.Size())
+    }
+    // Explicit lifecycle events use one new directory per event. Reading the
+    // directory metadata detects event registration without scanning all tasks.
+    for _,rel:=range []string{
+        "data/lifecycle/events",
+        "data/assignments/events.jsonl",
+        ".runtime/lifecycle_observations.json",
+        ".runtime/handoffs/events.jsonl",
+        ".runtime/executions/events.jsonl",
+    } { stamp(filepath.Join(base,filepath.FromSlash(rel))) }
+    // Execution Hooks append to daily raw journals; agent heartbeats live in
+    // a small flat directory. Check file metadata, never parse full journals.
+    for _,rel:=range []string{".runtime/executions/raw",".runtime/agents"} {
+        dir:=filepath.Join(base,filepath.FromSlash(rel))
+        entries,err:=os.ReadDir(dir)
+        if os.IsNotExist(err) { continue }
+        if err!=nil { fmt.Fprintf(h,"%s:unreadable:%T;",dir,err); continue }
+        for _,entry:=range entries {
+            if entry.IsDir() || !(strings.HasSuffix(entry.Name(),".json") || strings.HasSuffix(entry.Name(),".jsonl")) { continue }
+            stamp(filepath.Join(dir,entry.Name()))
+        }
+    }
+    return hex.EncodeToString(h.Sum(nil))[:20]
+}
+
 func BacklogRevision(project,root string) (map[string]any,error) {
     rows,err:=CachedCatalog(project,root)
     if err!=nil { return nil,err }
@@ -139,6 +176,7 @@ func BacklogRevision(project,root string) (map[string]any,error) {
     sort.Slice(states,func(i,j int)bool{return toString(states[i]["id"])<toString(states[j]["id"])})
     return map[string]any{
         "revision":backlogRevisionFromRows(rows),
+        "signal_revision":backlogSignalRevision(project),
         "count":len(rows),
         "states":states,
         "checked_at":time.Now().Format(time.RFC3339Nano),
@@ -157,12 +195,17 @@ type backlogPageRow struct {
 }
 
 func BacklogPage(project,root string,page,pageSize int,statuses,tags []string,search,sortKey string,projection ...string) (map[string]any,error) {
+    profileStart:=time.Now()
     rows,err:=CachedCatalog(project,root)
     if err!=nil { return nil,err }
+    catalogMS:=time.Since(profileStart).Seconds()*1000
     presence,err:=Presence(project,root,rows)
     if err!=nil { return nil,err }
     readyIDs,blocked:=webWorkflowStateMaps(project,root,rows)
+    stateMS:=time.Since(profileStart).Seconds()*1000-catalogMS
+    controlStart:=time.Now()
     control:=reconcileControlTower(project,root,rows)
+    controlMS:=time.Since(controlStart).Seconds()*1000
     byID:=preferredRows(rows)
 
     // Counts and scope still cover every matching backlog item, independently
@@ -247,13 +290,31 @@ func BacklogPage(project,root string,page,pageSize int,statuses,tags []string,se
         items=make([]map[string]any,0,end-start)
         for _,selected:=range filtered[start:end] {
             item:=webSummaryItem(selected.row,selected.state,selected.waiting,selected.reason,selected.signal)
+            // The backlog list uses a compact projection, but Active must use
+            // the same canonical lifecycle evidence as task detail. Project
+            // only the visible rows, and never synthesize a missing start.
+            if timing:=control.Timings[selected.row.ID]; len(timing)>0 {
+                item["active_seconds"]=timing["active_seconds"]
+                if selected.row.State=="doing" {
+                    // The browser extends a genuinely active segment between
+                    // refreshes without reloading the full lifecycle history.
+                    item["lifecycle"]=map[string]any{
+                        "current_state":timing["current_state"],
+                        "current_state_at":timing["current_state_at"],
+                        "current_segment_seconds":timing["current_segment_seconds"],
+                    }
+                }
+            }
             item["document"]=compactListDocument(selected.row)
             item["fields"]=compactListFields(selected.row)
             items=append(items,item)
         }
     }
     tagCatalog,tagErr:=TagCatalog(project,root,rows); if tagErr!=nil { tagCatalog=map[string]any{} }
-    attention,attErr:=AttentionSnapshotFromRows(project,root,rows,true,control); if attErr!=nil { attention=map[string]any{"attention":[]map[string]any{},"all_items":map[string]map[string]any{},"notification_events":[]map[string]any{}} }
+    attentionStart:=time.Now()
+    attention,attErr:=AttentionSnapshotFromRows(project,root,rows,true,control)
+    attentionMS:=time.Since(attentionStart).Seconds()*1000
+    if attErr!=nil { attention=map[string]any{"attention":[]map[string]any{},"all_items":map[string]map[string]any{},"notification_events":[]map[string]any{}} }
     if rowsAtt,ok:=attention["attention"].([]map[string]any); ok {
         needs:=0; for _,row:=range rowsAtt { if !scopeIDs[toString(row["id"])] { continue }; counts["attention"]++; if toString(row["type"])!="quiet" { needs++ } }
         counts["needs_action"]=needs
@@ -264,8 +325,12 @@ func BacklogPage(project,root string,page,pageSize int,statuses,tags []string,se
     return map[string]any{
         "snapshot_at":time.Now().Format(time.RFC3339Nano),"root":root,"repo":repoName,
         "items":items,"page":page,"page_size":pageSize,"pages":pages,"total":total,
-        "revision":backlogRevisionFromRows(rows),"backlog_presence":presence,
+        "revision":backlogRevisionFromRows(rows),"signal_revision":backlogSignalRevision(project),"backlog_presence":presence,
         "counts":counts,"tag_catalog":tagCatalog,"access":AccessObservation(project),
+        "_server_profile":map[string]float64{
+            "catalog":catalogMS,"state":stateMS,"control":controlMS,
+            "notification":attentionMS,"total":time.Since(profileStart).Seconds()*1000,
+        },
         "attention":attention["attention"],"attention_items":pagedNotificationItems(attention["all_items"]),"notification_events":attention["notification_events"],
     },nil
 }
@@ -275,6 +340,19 @@ func BacklogPage(project,root string,page,pageSize int,statuses,tags []string,se
 // notification delivery and runtime journal mutations. Reading content should
 // not wait for background monitoring to finish computing an unrelated state.
 func TaskContent(project, root, id string) (map[string]any, error) {
+    // Paint persisted Markdown without an all-task scan, even for todo.
+    // A todo document is shown as provisional until the independent canonical
+    // controller projection establishes its ready/blocked state. Never infer
+    // readiness from a single file or synthesize a runtime start here.
+    if cached,ok,err:=CachedTaskRecord(project,root,id);err!=nil {
+        return nil,err
+    } else if ok {
+        item:=dashboardItem(cached,cached.State,nil,map[string]any{},nil)
+        item["activity"]=map[string]any{"health":"n/a"}
+        item["content_only"]=true
+        if cached.State=="todo" {item["state_provisional"]=true}
+        return item,nil
+    }
     rows,err:=CachedCatalog(project,root)
     if err!=nil {return nil,err}
     byID:=preferredRows(rows)

@@ -57,8 +57,8 @@ jobs:
           fi
 
           # A main merge can be blocked by a PRE-PUBLISH OS safety gate.
-          # In that case 0.3.0 is present in source, but public Stable is
-          # still 0.2.52. Permit a same-version fix only until publication.
+          # The source candidate can exist while the publicly downloadable
+          # Stable is still older. Allow same-version fixes ONLY until publication.
           published_version=""
           if [ "$head_version" = "$base_version" ]; then
             published_version="$(curl -fLsS --retry 2 https://github.com/silverkhan/TaskMecca/releases/download/release-stable/VERSION.txt | tr -d '\r\n')"

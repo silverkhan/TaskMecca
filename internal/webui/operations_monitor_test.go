@@ -295,6 +295,32 @@ func TestOperationDoingAssignmentWithoutHookIsNotDeclaredDead(t *testing.T) {
 	}
 }
 
+func BenchmarkOperationScanSyntheticProject(b *testing.B) {
+	project := b.TempDir()
+	backlogDir := filepath.Join(project, "_task_mecca", "data", "backlog")
+	if err := os.MkdirAll(backlogDir, 0755); err != nil {
+		b.Fatal(err)
+	}
+	for i := 1; i <= 25; i++ {
+		body := fmt.Sprintf("# A-%d Synthetic\n- Agent: /root/controller/worker-%d\n- 변경범위: benchmark fixture\n- 선행: -\n- 연관: -\n", i, i)
+		path := filepath.Join(backlogDir, fmt.Sprintf("%06d.A-%d.synthetic.doing.md", i, i))
+		if err := os.WriteFile(path, []byte(body), 0600); err != nil {
+			b.Fatal(err)
+		}
+		if _, err := runtimeobs.RecordAssignment(project, fmt.Sprintf("assignment-%d", i), fmt.Sprintf("A-%d", i), fmt.Sprintf("/root/controller/worker-%d", i), time.Date(2026, 10, 12, 0, 0, 0, 0, time.UTC)); err != nil {
+			b.Fatal(err)
+		}
+	}
+	now := time.Date(2026, 10, 12, 1, 0, 0, 0, time.UTC)
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		if _, err := scanOperationProject(project, now.Add(time.Duration(i)*time.Second)); err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
 func TestOperationExplicitOutcomesHaveDistinctEvidenceAndSeverity(t *testing.T) {
 	now := time.Now().UTC()
 	for _, tc := range []struct {
@@ -318,6 +344,170 @@ func TestOperationExplicitOutcomesHaveDistinctEvidenceAndSeverity(t *testing.T) 
 		inferred, found := classifyOperation("/project", attempt, now, false)
 		if tc.state != runtimeobs.StateCompleted && (!found || inferred.incident.Kind != "runtime_unknown") {
 			t.Fatalf("inferred terminal state declared confirmed: %+v", inferred)
+		}
+	}
+}
+
+func TestOperationUnknownRecoveryRequiresRecentExactAssignmentHook(t *testing.T) {
+	now := time.Date(2026, 10, 12, 12, 0, 0, 0, time.UTC)
+	incident := operationIncident{Kind: "runtime_unknown", Quality: "verification_required", TaskID: "A-5", AgentPath: "/root/controller/worker", AttemptID: "attempt-1", AssignmentID: "assignment-1", DetectedAt: now.Add(-time.Minute).Format(time.RFC3339Nano), LastObservedAt: now.Add(-time.Minute).Format(time.RFC3339Nano)}
+	attempt := runtimeobs.Attempt{AttemptID: "attempt-1", TaskID: "A-5", AgentPath: incident.AgentPath, BindingState: runtimeobs.BindingBound, CurrentState: runtimeobs.StateRunning, StateEvidenceSource: runtimeobs.EvidenceHook, StateObservationQuality: runtimeobs.QualityObserved, LastActivityAt: now.Add(-time.Second).Format(time.RFC3339Nano)}
+	attempt.BindingEvidence = map[string]string{"assignment_id": "assignment-1"}
+	if recoveredAt, ok := operationEvidenceRecovery(incident, []runtimeobs.Attempt{attempt}, now); !ok || recoveredAt != attempt.LastActivityAt {
+		t.Fatalf("same assignment Hook evidence did not recover at source time: %s %v", recoveredAt, ok)
+	}
+	wrongAssignment := attempt
+	wrongAssignment.BindingEvidence = map[string]string{"assignment_id": "assignment-2"}
+	if _, ok := operationEvidenceRecovery(incident, []runtimeobs.Attempt{wrongAssignment}, now); ok {
+		t.Fatal("unrelated assignment recovered warning")
+	}
+	noHook := attempt
+	noHook.StateEvidenceSource = runtimeobs.EvidenceManualBinding
+	if _, ok := operationEvidenceRecovery(incident, []runtimeobs.Attempt{noHook}, now); ok {
+		t.Fatal("non-Hook binding recovered warning")
+	}
+	stale := attempt
+	stale.LastActivityAt = now.Add(-runtimeobs.StaleWarnDuration()).Format(time.RFC3339Nano)
+	if _, ok := operationEvidenceRecovery(incident, []runtimeobs.Attempt{stale}, now); ok {
+		t.Fatal("stale activity recovered warning")
+	}
+	confirmed := incident
+	confirmed.Quality = "confirmed"
+	if _, ok := operationEvidenceRecovery(confirmed, []runtimeobs.Attempt{attempt}, now); ok {
+		t.Fatal("confirmed failure was automatically recovered")
+	}
+}
+
+func TestOperationIncidentSharedSeverityAndNotificationClassification(t *testing.T) {
+	cases := []struct {
+		incident operationIncident
+		severity string
+		kind     string
+	}{
+		{operationIncident{Kind: "runtime_unknown", Quality: "verification_required"}, "warning", "runtime_unknown"},
+		{operationIncident{Kind: "no_signal", Quality: "verification_required"}, "warning", "stalled"},
+		{operationIncident{Kind: "errored", Quality: "confirmed"}, "error", "interrupted"},
+		{operationIncident{Kind: "monitor_gap", Quality: "monitoring_gap"}, "info", "runtime_unknown"},
+	}
+	for _, tc := range cases {
+		if got := operationIncidentSeverity(tc.incident); got != tc.severity {
+			t.Errorf("severity(%+v)=%q want %q", tc.incident, got, tc.severity)
+		}
+		if got := operationNotificationKind(tc.incident); got != tc.kind {
+			t.Errorf("notificationKind(%+v)=%q want %q", tc.incident, got, tc.kind)
+		}
+	}
+}
+
+func TestReadOperationJournalBackfillsSeverityWithoutLosingHistory(t *testing.T) {
+	project := testOperationProject(t)
+	prior := operationIncident{
+		ID: "legacy-warning", Key: "attempt:run-1", Project: project,
+		AttemptID: "run-1", AssignmentID: "assignment-1", TaskID: "A-5",
+		AgentPath: "/root/controller/worker", Kind: "runtime_unknown",
+		Quality: "verification_required", Evidence: "legacy observation",
+		DetectedAt: "2026-10-12T11:00:00Z", LastObservedAt: "2026-10-12T11:01:00Z",
+		RecoveredAt: "2026-10-12T11:02:00Z", RecoveryEvidence: "legacy recovery evidence",
+	}
+	if err := writeOperationJournal(project, operationJournal{
+		Version: 1, Project: project, LastScanAt: "2026-10-12T11:03:00Z",
+		NextSequence: 7, Incidents: []operationIncident{prior},
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	journal, err := readOperationJournal(project)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(journal.Incidents) != 1 || journal.Incidents[0].Severity != "warning" || journal.Incidents[0].RecoveryEvidence != prior.RecoveryEvidence || journal.NextSequence != 7 || journal.LastScanAt != "2026-10-12T11:03:00Z" {
+		t.Fatalf("severity backfill changed legacy history: %+v", journal)
+	}
+	if err := writeOperationJournal(project, journal); err != nil {
+		t.Fatal(err)
+	}
+	reloaded, err := readOperationJournal(project)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(reloaded.Incidents) != 1 || reloaded.Incidents[0].ID != prior.ID || reloaded.Incidents[0].Severity != "warning" || reloaded.Incidents[0].RecoveryEvidence != prior.RecoveryEvidence {
+		t.Fatalf("restart lost backfilled incident history: %+v", reloaded.Incidents)
+	}
+}
+
+func TestOperationScanRecoveryKeepsSourceTimeAndDoesNotRedeliverAfterRestart(t *testing.T) {
+	project := testOperationProject(t)
+	taskPath := filepath.Join(project, "_task_mecca", "data", "backlog", "000005.A-5.assigned.doing.md")
+	if err := os.WriteFile(taskPath, []byte("# A-5 Assigned\n- Agent: /root/controller/worker\n- 변경범위: -\n- 선행: -\n- 연관: -\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	base := time.Now().UTC().Add(-30 * time.Minute)
+	assignment, err := runtimeobs.RecordAssignment(project, "assignment-recovery", "A-5", "/root/controller/worker", base)
+	if err != nil {
+		t.Fatal(err)
+	}
+	initialHook := testOperationHook(t, project, `{"session_id":"recovery-session","turn_id":"recovery-turn","hook_event_name":"SubagentStart","agent_id":"recovery-worker"}`, base.Add(time.Second))
+	if _, err := runtimeobs.BindAttempt(project, initialHook.AttemptID, "A-5", "/root/controller/worker", "explicit", "", map[string]string{"assignment_id": assignment.AssignmentID}, base.Add(2*time.Second)); err != nil {
+		t.Fatal(err)
+	}
+	originalVerifier := operationHookVerifier
+	operationHookVerifier = func(string, string) bool { return false }
+	defer func() { operationHookVerifier = originalVerifier }()
+	originalDeliver := operationDeliver
+	var delivered []notify.Event
+	operationDeliver = func(_ string, events []notify.Event) []error {
+		delivered = append(delivered, events...)
+		return nil
+	}
+	defer func() { operationDeliver = originalDeliver }()
+
+	firstAt := base.Add(20 * time.Minute)
+	first, err := scanOperationProject(project, firstAt)
+	if err != nil {
+		t.Fatalf("initial scan failed: %v", err)
+	}
+	var recoveredID string
+	for _, incident := range first.Incidents {
+		if incident.AttemptID == initialHook.AttemptID && incident.Kind == "runtime_unknown" && incident.AssignmentID == assignment.AssignmentID && incident.RecoveredAt == "" {
+			recoveredID = incident.ID
+			break
+		}
+	}
+	if recoveredID == "" {
+		t.Fatalf("exact-attempt warning not recorded: %+v", first.Incidents)
+	}
+	deliverOperationIncidents(project, first)
+	if len(delivered) == 0 {
+		t.Fatal("initial warning was not delivered")
+	}
+	initialDeliveryCount := len(delivered)
+
+	hookAt := firstAt.Add(time.Second)
+	if err := runtimeobs.AppendExecutionEvent(project, runtimeobs.ExecutionEvent{
+		EventKind: "state", ObservedAt: hookAt.Format(time.RFC3339Nano), AttemptID: initialHook.AttemptID,
+		Provider: "codex", RuntimeAgentID: "recovery-worker", State: runtimeobs.StateRunning,
+		EvidenceSource: runtimeobs.EvidenceHook, ObservationQuality: runtimeobs.QualityObserved,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	operationHookVerifier = func(string, string) bool { return true }
+	for i := 0; i < 2; i++ {
+		journal, err := scanOperationProject(project, hookAt.Add(time.Duration(i+2)*time.Second))
+		if err != nil || len(journal.Incidents) != len(first.Incidents) {
+			t.Fatalf("recovery scan %d changed incident history: %+v %v", i, journal.Incidents, err)
+		}
+		foundRecovered := false
+		for _, incident := range journal.Incidents {
+			if incident.ID == recoveredID && incident.RecoveredAt == hookAt.Format(time.RFC3339Nano) {
+				foundRecovered = true
+			}
+		}
+		if !foundRecovered {
+			t.Fatalf("recovery scan %d lost source-timed incident %s: %+v", i, recoveredID, journal.Incidents)
+		}
+		deliverOperationIncidents(project, journal)
+		if len(delivered) != initialDeliveryCount {
+			t.Fatalf("recovery scan %d redelivered a resolved warning: %d events", i, len(delivered))
 		}
 	}
 }

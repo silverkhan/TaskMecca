@@ -6,6 +6,7 @@ const state = {
   listData: null,
   listRevalidating:false,listDataContext:'',
   detailTask: null,
+  detailLifecycleError: '',
   eventSource: null,
   eventStreamKey: '',
   view: 'hub',
@@ -47,6 +48,8 @@ const state = {
   previousTasksByProject: (()=>{ try { const raw=JSON.parse(localStorage.getItem('task-mecca-previous-tasks')||'{}'); return raw&&typeof raw==='object'?raw:{}; } catch(_) { return {}; } })(),
   versionInfo: null,
   contentRevision: '',
+  signalRevision: '',
+  pendingObservedRevision: '',
   contentStateSnapshot: [],
   pendingContentUpdate: false,
   pendingContentReason: '',
@@ -91,6 +94,9 @@ const state = {
   projectNotificationSettingsLoaded: false,
   telegramSetupInstance:'',telegramSetupBootPending:false,telegramSetupBootShown:false,
   projectNotificationSettingsError: '',
+  previewBuilds:[],previewInstances:[],previewLoading:false,previewLoaded:false,
+  previewError:'',previewMessage:'',previewSearch:'',previewFilter:'all',previewActionBusy:0,
+  executionTarget:null,executionSwitchSupported:true,executionSwitchOS:'',
   operationRevision: '',
 };
 
@@ -105,10 +111,10 @@ const LANGUAGES = {
 };
 const I18N = {
   ko: {
-    backlog:'백로그', operations:'운영', help:'도움말', workload:'서브에이전트 워크로드', attention:'확인 필요', issues:'이슈', manual:'사용자 매뉴얼', searchPlaceholder:'ID, 제목, 요구사항, 수용 기준 검색…', backlogFolder:'백로그', language:'언어', refresh:'새로고침', refreshWithUpdates:'새로고침 및 업데이트 확인', refreshChecking:'데이터와 신규 업데이트 확인 중…', refreshUpToDate:'최신 버전입니다', refreshUpdateFound:'새 업데이트: {version}', refreshCheckFailed:'업데이트 확인 실패', refreshDataFailed:'화면 데이터 새로고침 실패', themeSystem:'시스템', themeLight:'라이트', themeDark:'다크', accessUnchecked:'권한 미확인', loading:'Task Mecca 불러오는 중…', disconnected:'연결 끊김', move:'이동', open:'열기', back:'뒤로', search:'검색', page:'페이지', status:'상태', all:'전체', ready:'등록됨', working:'작업 중', hold:'보류', blocked:'차단', done:'완료', todo:'할 일', active:'활성', quiet:'조용함', stale:'정체', workerMissing:'워커 없음', runtimeUnknown:'런타임 미확인', awaitingFinalize:'완료 처리 필요', needsUser:'사용자 개입 필요', stalled:'정체 확인 필요', notificationSettings:'알림 설정', telegramNotifications:'Telegram 알림', telegramBotToken:'Bot Token', telegramConnect:'봇 확인', telegramFindChat:'연결 확인', telegramTest:'테스트 알림', telegramDisconnect:'연결 해제', telegramGuide:'BotFather에서 봇을 만든 뒤 Token을 입력하세요. 봇 확인 후 Telegram에서 해당 봇에 /start를 보내고 연결 확인을 누르세요.', telegramConnected:'Telegram 연결됨', telegramConfigured:'봇 확인됨 · /start 후 연결 확인', telegramNotConfigured:'Telegram 미연결', notifyRegistered:'작업 등록', notifyStarted:'작업 착수', notifyApproval:'승인 필요', notifyInterrupted:'실행 중단/오류', notifyRuntimeUnknown:'실행 상태 확인 필요', notifyFinalize:'완료 처리 필요', notificationTestSent:'테스트 알림을 전송했습니다.', telegramAllOn:'전체 켜기', telegramAllOff:'전체 끄기', browserNotifications:'이 기기의 브라우저 알림', browserNotificationsGuide:'Task Mecca를 열어 둔 이 브라우저/기기의 시스템 알림으로 표시합니다. Telegram 알림과는 별도로 설정됩니다.', allowBrowserNotifications:'브라우저 알림 권한 허용', notifyIntervention:'사용자 개입 필요', notifyCompleted:'태스크 완료', notifyStalled:'작업 정체', notificationsBlocked:'브라우저에서 알림이 차단되어 있습니다.', notificationsOn:'알림 켜짐', notificationsOff:'알림 꺼짐', notificationsPermissionNeeded:'브라우저 알림을 켜야 실제 알림을 받을 수 있습니다.', notificationsDeniedGuide:'브라우저 주소창의 사이트 설정에서 알림을 허용한 뒤 페이지를 새로고침하세요.', notificationTypesDisabled:'알림 유형이 모두 꺼져 있습니다.', sort:'정렬', perPage:'페이지당', updatedNewest:'최근 업데이트순', updatedOldest:'오래된 업데이트순', autoRows:'자동 ({n})', pageSummary:'{page} / {pages} 페이지 · {total}개', autoRowsSummary:' · 자동 {n}행', allStatuses:'전체 상태', items:'개', needsAttention:'확인 필요', updated:'업데이트', agent:'에이전트', activeTime:'활성 시간', task:'작업', id:'ID', repository:'저장소', noMatches:'선택한 필터에 맞는 백로그가 없습니다.', backlogUninitializedSummary:'백로그 생성 대기', backlogUninitializedTitle:'아직 등록된 작업이 없습니다.', backlogUninitializedBody:'첫 작업을 등록하면 백로그가 자동으로 생성됩니다.', manualIntro:'Task Mecca를 처음 사용하는 순서와 운영 규칙을 UI 안에서 확인합니다.', dashboardLaunch:'대시보드 실행', keyboard:'키보드', quickStart:'빠른 시작', detailedGuide:'상세 운영 가이드', manualLoading:'매뉴얼을 불러오는 중…', manualUnavailable:'매뉴얼을 불러올 수 없습니다.', operationsEyebrow:'운영', diagnostics:'진단', noAttention:'현재 확인이 필요한 작업이 없습니다.', advisory:'사용자 개입, 완료 처리 필요, 런타임 정체 등 대응이 필요한 작업을 표시합니다.', workers:'워커', doing:'진행', downstreamBlocked:'하위 차단', readyContinuity:'연속 작업 후보', noWorkload:'할당된 서브에이전트 워크로드가 없습니다.', noCurrentDoing:'현재 진행 중인 작업이 없습니다.', unassignedDoing:'미할당 진행 작업', releasedHold:'해제된 보류 소유권', continuity:'연속', blocks:'차단', scope:'변경범위', workloadIntro:'백로그/Git 기반의 할당 현황입니다. 관측 가능한 경우 runtime health를 함께 표시합니다.', issuesIntro:'현재 스냅샷의 doctor 및 hold-review 진단 결과입니다.', noIssues:'진단 이슈가 없습니다.', taskDefinition:'작업 정의', simpleNote:'Simple Task · 별도 요건정의 확인이 필요하지 않습니다.', goal:'목표', acceptance:'수용 기준', requirements:'요건 정의서', definedNote:'Defined Task · 등록 전 요건 정의를 확인한 작업입니다.', background:'배경 및 문제', scopeIn:'포함', scopeOut:'제외', constraints:'제약 및 보존 조건', legacyTask:'Legacy 작업', legacyNote:'Legacy 백로그 · 없는 요건 데이터를 만들지 않고 기존 필드를 표시합니다.', description:'설명', tocTitle:'이 작업의 목차', tocOpen:'목차 열기', tocClose:'목차 닫기', lifecycle:'Lifecycle', noLifecycle:'아직 사용할 수 있는 lifecycle 전환 기록이 없습니다.', stayed:'유지', provisional:'임시', overview:'개요', registrant:'등록자', changeScope:'변경범위', dependsOn:'선행', related:'연관', location:'위치', completed:'완료', activity:'활동', lastSignal:'마지막 신호', signalSource:'신호 근거', execution:'실행 정보', runtimeProvider:'RuntimeProvider', dispatchStatus:'Dispatch 상태', executionEvidence:'실행 근거', fallbackEvidence:'Fallback 근거', workNotes:'작업 노트', result:'결과', verification:'검증', rawMarkdown:'Raw Markdown', rendered:'렌더링', waitTime:'대기 시간', queueTime:'큐 시간', leadTime:'리드 시간', provisionalTiming:'임시 lifecycle 시간', incompleteHistory:'불완전한 lifecycle 이력', lastObservable:'마지막 관측 활동 {ago} ({source}).', workerMissingDetail:'작업은 진행 중이지만 할당된 워커가 runtime registry에 없습니다.', quietAdvisory:'참고용 경고입니다. 장시간 작업은 정상적으로 조용할 수 있습니다.', backToBacklog:'← 백로그', taskNotFound:'작업을 찾을 수 없습니다.', restrictedNow:'현재 제한됨', lastFullAccess:'마지막 Full Access', fullAccess:'Full Access', lastRestricted:'마지막 검증 제한', accessLastChecked:'마지막 권한 확인', accessNotChecked:'권한 미확인', networkOff:'네트워크 꺼짐', notChecked:'확인 안 됨', freshDispatch:'dispatch 직전에 항상 새 active preflight를 실행합니다.', dispatchDisabled:'서브에이전트 dispatch 중지', enableFullAccess:'현재 런타임 제한이 감지되었습니다. dispatch 전에 Full Access를 활성화하세요.', auto:'자동', manualMode:'수동', noBacklog:'선택된 백로그 없음', copyCode:'코드 복사', copied:'복사됨', copyFailed:'복사 실패', mermaid:'Mermaid', showSource:'소스 보기', hideSource:'소스 숨기기', renderingDiagram:'다이어그램 렌더링 중…', mermaidUnavailable:'Mermaid renderer를 사용할 수 없습니다.', mermaidUnavailableDetail:'로컬 및 CDN Mermaid 런타임을 불러오지 못했습니다. Source에서 원문을 확인하거나 복사할 수 있습니다.', mermaidFailed:'Mermaid 렌더링 실패', invalidMermaid:'유효하지 않은 Mermaid 문법', secondsAgo:'{n}초 전', minutesAgo:'{n}분 전', hoursAgo:'{n}시간 전', daysAgo:'{n}일 전', justNow:'방금', updatedColumn:'마지막 업데이트', activeColumn:'활성', agentColumn:'에이전트', statusColumn:'상태', taskColumn:'작업', expandSidebar:'사이드바 펼치기', collapseSidebar:'사이드바 접기', eventRegistered:'등록', eventAssigned:'배정', eventStarted:'착수', eventWaiting:'사용자 대기', eventResumed:'재개', eventHold:'보류', eventCompleted:'완료', observatory:'백로그 관제', theme:'테마', followSystemTheme:'시스템 테마 따르기', useLightTheme:'라이트 테마 사용', useDarkTheme:'다크 테마 사용', selectBacklog:'백로그 폴더 선택', provisionalTimingDetail:'전환을 직접 확인한 기록이 없어 파일·런타임 관측 시각을 사용합니다. 실제 전환 시각과 다를 수 있습니다.', incompleteHistoryDetail:'과거 lifecycle의 착수 근거가 없어 일부 시간은 정확히 복원할 수 없습니다.'
+    backlog:'백로그', operations:'운영', help:'도움말', workload:'서브에이전트 워크로드', attention:'확인 필요', issues:'이슈', manual:'사용자 매뉴얼', searchPlaceholder:'ID, 제목, 요구사항, 수용 기준 검색…', backlogFolder:'백로그', language:'언어', refresh:'새로고침', refreshWithUpdates:'새로고침 및 업데이트 확인', refreshChecking:'데이터와 신규 업데이트 확인 중…', refreshUpToDate:'최신 버전입니다', refreshUpdateFound:'새 업데이트: {version}', refreshCheckFailed:'업데이트 확인 실패', refreshDataFailed:'화면 데이터 새로고침 실패', themeSystem:'시스템', themeLight:'라이트', themeDark:'다크', accessUnchecked:'권한 미확인', loading:'Task Mecca 불러오는 중…', projectLoading:'{project} 불러오는 중…', disconnected:'연결 끊김', move:'이동', open:'열기', back:'뒤로', search:'검색', page:'페이지', status:'상태', all:'전체', ready:'등록됨', working:'작업 중', hold:'보류', blocked:'차단', done:'완료', todo:'할 일', active:'활성', quiet:'조용함', stale:'정체', workerMissing:'워커 없음', runtimeUnknown:'런타임 미확인', awaitingFinalize:'완료 처리 필요', needsUser:'사용자 개입 필요', stalled:'정체 확인 필요', notificationSettings:'알림 설정', telegramNotifications:'Telegram 알림', telegramBotToken:'Bot Token', telegramConnect:'봇 확인', telegramFindChat:'연결 확인', telegramTest:'테스트 알림', telegramDisconnect:'연결 해제', telegramGuide:'BotFather에서 봇을 만든 뒤 Token을 입력하세요. 봇 확인 후 Telegram에서 해당 봇에 /start를 보내고 연결 확인을 누르세요.', telegramConnected:'Telegram 연결됨', telegramConfigured:'봇 확인됨 · /start 후 연결 확인', telegramNotConfigured:'Telegram 미연결', notifyRegistered:'작업 등록', notifyStarted:'작업 착수', notifyApproval:'승인 필요', notifyInterrupted:'실행 중단/오류', notifyRuntimeUnknown:'실행 상태 확인 필요', notifyFinalize:'완료 처리 필요', notificationTestSent:'테스트 알림을 전송했습니다.', telegramAllOn:'전체 켜기', telegramAllOff:'전체 끄기', browserNotifications:'이 기기의 브라우저 알림', browserNotificationsGuide:'Task Mecca를 열어 둔 이 브라우저/기기의 시스템 알림으로 표시합니다. Telegram 알림과는 별도로 설정됩니다.', allowBrowserNotifications:'브라우저 알림 권한 허용', notifyIntervention:'사용자 개입 필요', notifyCompleted:'태스크 완료', notifyStalled:'작업 정체', notificationsBlocked:'브라우저에서 알림이 차단되어 있습니다.', notificationsOn:'알림 켜짐', notificationsOff:'알림 꺼짐', notificationsPermissionNeeded:'브라우저 알림을 켜야 실제 알림을 받을 수 있습니다.', notificationsDeniedGuide:'브라우저 주소창의 사이트 설정에서 알림을 허용한 뒤 페이지를 새로고침하세요.', notificationTypesDisabled:'알림 유형이 모두 꺼져 있습니다.', sort:'정렬', perPage:'페이지당', updatedNewest:'최근 업데이트순', updatedOldest:'오래된 업데이트순', autoRows:'자동 ({n})', pageSummary:'{page} / {pages} 페이지 · {total}개', autoRowsSummary:' · 자동 {n}행', allStatuses:'전체 상태', items:'개', needsAttention:'확인 필요', updated:'업데이트', agent:'에이전트', activeTime:'활성 시간', task:'작업', id:'ID', repository:'저장소', noMatches:'선택한 필터에 맞는 백로그가 없습니다.', backlogUninitializedSummary:'백로그 생성 대기', backlogUninitializedTitle:'아직 등록된 작업이 없습니다.', backlogUninitializedBody:'첫 작업을 등록하면 백로그가 자동으로 생성됩니다.', manualIntro:'Task Mecca를 처음 사용하는 순서와 운영 규칙을 UI 안에서 확인합니다.', dashboardLaunch:'대시보드 실행', keyboard:'키보드', quickStart:'빠른 시작', detailedGuide:'상세 운영 가이드', manualLoading:'매뉴얼을 불러오는 중…', manualUnavailable:'매뉴얼을 불러올 수 없습니다.', operationsEyebrow:'운영', diagnostics:'진단', noAttention:'현재 확인이 필요한 작업이 없습니다.', advisory:'사용자 개입, 완료 처리 필요, 런타임 정체 등 대응이 필요한 작업을 표시합니다.', workers:'워커', doing:'진행', downstreamBlocked:'하위 차단', readyContinuity:'연속 작업 후보', noWorkload:'할당된 서브에이전트 워크로드가 없습니다.', noCurrentDoing:'현재 진행 중인 작업이 없습니다.', unassignedDoing:'미할당 진행 작업', releasedHold:'해제된 보류 소유권', continuity:'연속', blocks:'차단', scope:'변경범위', workloadIntro:'백로그/Git 기반의 할당 현황입니다. 관측 가능한 경우 runtime health를 함께 표시합니다.', issuesIntro:'현재 스냅샷의 doctor 및 hold-review 진단 결과입니다.', noIssues:'진단 이슈가 없습니다.', taskDefinition:'작업 정의', simpleNote:'Simple Task · 별도 요건정의 확인이 필요하지 않습니다.', goal:'목표', acceptance:'수용 기준', requirements:'요건 정의서', definedNote:'Defined Task · 등록 전 요건 정의를 확인한 작업입니다.', background:'배경 및 문제', scopeIn:'포함', scopeOut:'제외', constraints:'제약 및 보존 조건', legacyTask:'Legacy 작업', legacyNote:'Legacy 백로그 · 없는 요건 데이터를 만들지 않고 기존 필드를 표시합니다.', description:'설명', tocTitle:'이 작업의 목차', tocOpen:'목차 열기', tocClose:'목차 닫기', lifecycle:'Lifecycle', noLifecycle:'아직 사용할 수 있는 lifecycle 전환 기록이 없습니다.', stayed:'유지', provisional:'임시', overview:'개요', registrant:'등록자', changeScope:'변경범위', dependsOn:'선행', related:'연관', location:'위치', completed:'완료', activity:'활동', lastSignal:'마지막 신호', signalSource:'신호 근거', execution:'실행 정보', runtimeProvider:'RuntimeProvider', dispatchStatus:'Dispatch 상태', executionEvidence:'실행 근거', fallbackEvidence:'Fallback 근거', workNotes:'작업 노트', result:'결과', verification:'검증', rawMarkdown:'Raw Markdown', rendered:'렌더링', waitTime:'대기 시간', queueTime:'큐 시간', leadTime:'리드 시간', provisionalTiming:'임시 lifecycle 시간', incompleteHistory:'불완전한 lifecycle 이력', lastObservable:'마지막 관측 활동 {ago} ({source}).', workerMissingDetail:'작업은 진행 중이지만 할당된 워커가 runtime registry에 없습니다.', quietAdvisory:'참고용 경고입니다. 장시간 작업은 정상적으로 조용할 수 있습니다.', backToBacklog:'← 백로그', taskNotFound:'작업을 찾을 수 없습니다.', restrictedNow:'현재 제한됨', lastFullAccess:'마지막 Full Access', fullAccess:'Full Access', lastRestricted:'마지막 검증 제한', accessLastChecked:'마지막 권한 확인', accessNotChecked:'권한 미확인', networkOff:'네트워크 꺼짐', notChecked:'확인 안 됨', freshDispatch:'dispatch 직전에 항상 새 active preflight를 실행합니다.', dispatchDisabled:'서브에이전트 dispatch 중지', enableFullAccess:'현재 런타임 제한이 감지되었습니다. dispatch 전에 Full Access를 활성화하세요.', auto:'자동', manualMode:'수동', noBacklog:'선택된 백로그 없음', copyCode:'코드 복사', copied:'복사됨', copyFailed:'복사 실패', mermaid:'Mermaid', showSource:'소스 보기', hideSource:'소스 숨기기', renderingDiagram:'다이어그램 렌더링 중…', mermaidUnavailable:'Mermaid renderer를 사용할 수 없습니다.', mermaidUnavailableDetail:'로컬 및 CDN Mermaid 런타임을 불러오지 못했습니다. Source에서 원문을 확인하거나 복사할 수 있습니다.', mermaidFailed:'Mermaid 렌더링 실패', invalidMermaid:'유효하지 않은 Mermaid 문법', secondsAgo:'{n}초 전', minutesAgo:'{n}분 전', hoursAgo:'{n}시간 전', daysAgo:'{n}일 전', justNow:'방금', updatedColumn:'마지막 업데이트', activeColumn:'활성', agentColumn:'에이전트', statusColumn:'상태', taskColumn:'작업', expandSidebar:'사이드바 펼치기', collapseSidebar:'사이드바 접기', eventRegistered:'등록', eventAssigned:'배정', eventStarted:'착수', eventReviewStarted:'Controller 검토 시작', eventWaiting:'사용자 대기', eventResumed:'재개', eventHold:'보류', eventCompleted:'완료', observatory:'백로그 관제', theme:'테마', followSystemTheme:'시스템 테마 따르기', useLightTheme:'라이트 테마 사용', useDarkTheme:'다크 테마 사용', selectBacklog:'백로그 폴더 선택', provisionalTimingDetail:'전환을 직접 확인한 기록이 없어 파일·런타임 관측 시각을 사용합니다. 실제 전환 시각과 다를 수 있습니다.', incompleteHistoryDetail:'과거 lifecycle의 착수 근거가 없어 일부 시간은 정확히 복원할 수 없습니다.'
   },
   en: {
-    backlog:'Backlog', operations:'Operations', help:'Help', workload:'Subagent Workload', attention:'Needs Attention', issues:'Issues', manual:'User Manual', searchPlaceholder:'Search ID, title, requirements, acceptance criteria…', backlogFolder:'Backlog', language:'Language', refresh:'Refresh', refreshWithUpdates:'Refresh and check for updates', refreshChecking:'Refreshing and checking for updates…', refreshUpToDate:'Already up to date', refreshUpdateFound:'Update available: {version}', refreshCheckFailed:'Could not check for updates', refreshDataFailed:'Could not refresh page data', themeSystem:'System', themeLight:'Light', themeDark:'Dark', accessUnchecked:'Access unchecked', loading:'Loading Task Mecca…', disconnected:'Disconnected', move:'move', open:'open', back:'back', search:'search', page:'page', status:'Status', all:'All', ready:'Ready', working:'Working', hold:'Hold', blocked:'Blocked', done:'Done', todo:'Todo', active:'Active', quiet:'Quiet', stale:'Stale', workerMissing:'Worker missing', runtimeUnknown:'Runtime unknown', awaitingFinalize:'Needs finalization', needsUser:'User action required', stalled:'Stalled', notificationSettings:'Notification settings', telegramNotifications:'Telegram notifications', telegramBotToken:'Bot Token', telegramConnect:'Verify bot', telegramFindChat:'Confirm chat', telegramTest:'Test notification', telegramDisconnect:'Disconnect', telegramGuide:'Create a bot with BotFather, paste its token, then send /start to the bot in Telegram and confirm the chat here.', telegramConnected:'Telegram connected', telegramConfigured:'Bot verified · send /start then confirm chat', telegramNotConfigured:'Telegram not connected', notifyRegistered:'Task registered', notifyStarted:'Task started', notifyApproval:'Approval required', notifyInterrupted:'Execution interrupted/error', notifyRuntimeUnknown:'Runtime status unknown', notifyFinalize:'Finalize required', notificationTestSent:'Test notification sent.', telegramAllOn:'Enable all', telegramAllOff:'Disable all', browserNotifications:'Browser notifications on this device', browserNotificationsGuide:'Shows system notifications on this browser/device while using Task Mecca. Configure these separately from Telegram notifications.', allowBrowserNotifications:'Allow browser notification permission', notifyIntervention:'User action required', notifyCompleted:'Task completed', notifyStalled:'Task stalled', notificationsBlocked:'Notifications are blocked by the browser.', notificationsOn:'Notifications on', notificationsOff:'Notifications off', notificationsPermissionNeeded:'Enable browser notifications to receive actual alerts.', notificationsDeniedGuide:'Allow notifications in the browser site settings, then refresh this page.', notificationTypesDisabled:'All notification types are turned off.', sort:'Sort', perPage:'Per page', updatedNewest:'Updated newest', updatedOldest:'Updated oldest', autoRows:'Auto ({n})', pageSummary:'Page {page} / {pages} · {total} items', autoRowsSummary:' · Auto {n} rows', allStatuses:'All statuses', items:'items', needsAttention:'Needs attention', updated:'Updated', agent:'Agent', activeTime:'Active time', task:'Task', id:'ID', repository:'Repository', noMatches:'No backlog items match the selected filters.', backlogUninitializedSummary:'Waiting for backlog creation', backlogUninitializedTitle:'No tasks have been registered yet.', backlogUninitializedBody:'The backlog will be created automatically when the first task is registered.', manualIntro:'Review the first-use flow and Task Mecca operating rules inside the UI.', dashboardLaunch:'Dashboard launch', keyboard:'Keyboard', quickStart:'Quick Start', detailedGuide:'Detailed Operations Guide', manualLoading:'Manual is loading…', manualUnavailable:'Manual unavailable.', operationsEyebrow:'Operations', diagnostics:'Diagnostics', noAttention:'No tasks currently need attention.', advisory:'Shows tasks that need user action, finalization, or runtime investigation.', workers:'Workers', doing:'Doing', downstreamBlocked:'Downstream blocked', readyContinuity:'Ready continuity', noWorkload:'No assigned subagent workload.', noCurrentDoing:'No current doing task.', unassignedDoing:'Unassigned doing', releasedHold:'Released hold ownership', continuity:'Continuity', blocks:'Blocks', scope:'Change scope', workloadIntro:'Durable allocation view from backlog/Git. Runtime health is shown when observable.', issuesIntro:'Doctor and hold-review findings from the current snapshot.', noIssues:'No diagnostic issues.', taskDefinition:'Task Definition', simpleNote:'Simple Task · no separate requirement-definition confirmation required.', goal:'Goal', acceptance:'Acceptance criteria', requirements:'Requirements', definedNote:'Defined Task · requirement definition confirmed before registration.', background:'Background & problem', scopeIn:'IN', scopeOut:'OUT', constraints:'Constraints & preservation', legacyTask:'Legacy task', legacyNote:'Legacy backlog · rendered from available fields without inventing missing requirement data.', description:'Description', tocTitle:'On this task', tocOpen:'Open table of contents', tocClose:'Close table of contents', lifecycle:'Lifecycle', noLifecycle:'No lifecycle transitions are available yet.', stayed:'Stayed', provisional:'provisional', overview:'Overview', registrant:'Registrant', changeScope:'Change scope', dependsOn:'Depends on', related:'Related', location:'Location', completed:'Completed', activity:'Activity', lastSignal:'Last signal', signalSource:'Signal source', execution:'Execution', runtimeProvider:'RuntimeProvider', dispatchStatus:'Dispatch status', executionEvidence:'Execution evidence', fallbackEvidence:'Fallback evidence', workNotes:'Work notes', result:'Result', verification:'Verification', rawMarkdown:'Raw Markdown', rendered:'Rendered', waitTime:'Wait time', queueTime:'Queue time', leadTime:'Lead time', provisionalTiming:'Provisional lifecycle timing', incompleteHistory:'Incomplete lifecycle history', lastObservable:'Last observable activity {ago} ({source}).', workerMissingDetail:'Task is doing but the assigned worker is absent from the available runtime registry.', quietAdvisory:'This is advisory; long-running work can be legitimately quiet.', backToBacklog:'← Backlog', taskNotFound:'Task not found.', restrictedNow:'Restricted now', lastFullAccess:'Last Full Access', fullAccess:'Full Access', lastRestricted:'Last check restricted', accessLastChecked:'Access last checked', accessNotChecked:'Access not checked', networkOff:'Net off', notChecked:'Not checked', freshDispatch:'dispatch always runs a fresh active preflight.', dispatchDisabled:'Subagent dispatch disabled', enableFullAccess:'Current runtime restriction detected. Enable Full Access before dispatch.', auto:'Auto', manualMode:'Manual', noBacklog:'No backlog selected', copyCode:'Copy code', copied:'Copied', copyFailed:'Copy failed', mermaid:'Mermaid', showSource:'Show source', hideSource:'Hide source', renderingDiagram:'Rendering diagram…', mermaidUnavailable:'Mermaid renderer unavailable.', mermaidUnavailableDetail:'Task Mecca could not load the local or CDN Mermaid runtime. Use Source to view or copy the diagram text.', mermaidFailed:'Mermaid render failed.', invalidMermaid:'Invalid Mermaid syntax', secondsAgo:'{n}s ago', minutesAgo:'{n}m ago', hoursAgo:'{n}h ago', daysAgo:'{n}d ago', justNow:'just now', updatedColumn:'Updated', activeColumn:'Active', agentColumn:'Agent', statusColumn:'Status', taskColumn:'Task', expandSidebar:'Expand sidebar', collapseSidebar:'Collapse sidebar', eventRegistered:'Registered', eventAssigned:'Assigned', eventStarted:'Started', eventWaiting:'Waiting for user', eventResumed:'Resumed', eventHold:'Hold', eventCompleted:'Completed', observatory:'Backlog Observatory', theme:'Theme', followSystemTheme:'Follow system theme', useLightTheme:'Use light theme', useDarkTheme:'Use dark theme', selectBacklog:'Select backlog folder', provisionalTimingDetail:'No direct transition report is available; timing uses file or runtime observation and may differ from the actual transition time.', incompleteHistoryDetail:'Some timing cannot be reconstructed exactly because the historical lifecycle has no observed start evidence.'
+    backlog:'Backlog', operations:'Operations', help:'Help', workload:'Subagent Workload', attention:'Needs Attention', issues:'Issues', manual:'User Manual', searchPlaceholder:'Search ID, title, requirements, acceptance criteria…', backlogFolder:'Backlog', language:'Language', refresh:'Refresh', refreshWithUpdates:'Refresh and check for updates', refreshChecking:'Refreshing and checking for updates…', refreshUpToDate:'Already up to date', refreshUpdateFound:'Update available: {version}', refreshCheckFailed:'Could not check for updates', refreshDataFailed:'Could not refresh page data', themeSystem:'System', themeLight:'Light', themeDark:'Dark', accessUnchecked:'Access unchecked', loading:'Loading Task Mecca…', projectLoading:'Loading {project}…', disconnected:'Disconnected', move:'move', open:'open', back:'back', search:'search', page:'page', status:'Status', all:'All', ready:'Ready', working:'Working', hold:'Hold', blocked:'Blocked', done:'Done', todo:'Todo', active:'Active', quiet:'Quiet', stale:'Stale', workerMissing:'Worker missing', runtimeUnknown:'Runtime unknown', awaitingFinalize:'Needs finalization', needsUser:'User action required', stalled:'Stalled', notificationSettings:'Notification settings', telegramNotifications:'Telegram notifications', telegramBotToken:'Bot Token', telegramConnect:'Verify bot', telegramFindChat:'Confirm chat', telegramTest:'Test notification', telegramDisconnect:'Disconnect', telegramGuide:'Create a bot with BotFather, paste its token, then send /start to the bot in Telegram and confirm the chat here.', telegramConnected:'Telegram connected', telegramConfigured:'Bot verified · send /start then confirm chat', telegramNotConfigured:'Telegram not connected', notifyRegistered:'Task registered', notifyStarted:'Task started', notifyApproval:'Approval required', notifyInterrupted:'Execution interrupted/error', notifyRuntimeUnknown:'Runtime status unknown', notifyFinalize:'Finalize required', notificationTestSent:'Test notification sent.', telegramAllOn:'Enable all', telegramAllOff:'Disable all', browserNotifications:'Browser notifications on this device', browserNotificationsGuide:'Shows system notifications on this browser/device while using Task Mecca. Configure these separately from Telegram notifications.', allowBrowserNotifications:'Allow browser notification permission', notifyIntervention:'User action required', notifyCompleted:'Task completed', notifyStalled:'Task stalled', notificationsBlocked:'Notifications are blocked by the browser.', notificationsOn:'Notifications on', notificationsOff:'Notifications off', notificationsPermissionNeeded:'Enable browser notifications to receive actual alerts.', notificationsDeniedGuide:'Allow notifications in the browser site settings, then refresh this page.', notificationTypesDisabled:'All notification types are turned off.', sort:'Sort', perPage:'Per page', updatedNewest:'Updated newest', updatedOldest:'Updated oldest', autoRows:'Auto ({n})', pageSummary:'Page {page} / {pages} · {total} items', autoRowsSummary:' · Auto {n} rows', allStatuses:'All statuses', items:'items', needsAttention:'Needs attention', updated:'Updated', agent:'Agent', activeTime:'Active time', task:'Task', id:'ID', repository:'Repository', noMatches:'No backlog items match the selected filters.', backlogUninitializedSummary:'Waiting for backlog creation', backlogUninitializedTitle:'No tasks have been registered yet.', backlogUninitializedBody:'The backlog will be created automatically when the first task is registered.', manualIntro:'Review the first-use flow and Task Mecca operating rules inside the UI.', dashboardLaunch:'Dashboard launch', keyboard:'Keyboard', quickStart:'Quick Start', detailedGuide:'Detailed Operations Guide', manualLoading:'Manual is loading…', manualUnavailable:'Manual unavailable.', operationsEyebrow:'Operations', diagnostics:'Diagnostics', noAttention:'No tasks currently need attention.', advisory:'Shows tasks that need user action, finalization, or runtime investigation.', workers:'Workers', doing:'Doing', downstreamBlocked:'Downstream blocked', readyContinuity:'Ready continuity', noWorkload:'No assigned subagent workload.', noCurrentDoing:'No current doing task.', unassignedDoing:'Unassigned doing', releasedHold:'Released hold ownership', continuity:'Continuity', blocks:'Blocks', scope:'Change scope', workloadIntro:'Durable allocation view from backlog/Git. Runtime health is shown when observable.', issuesIntro:'Doctor and hold-review findings from the current snapshot.', noIssues:'No diagnostic issues.', taskDefinition:'Task Definition', simpleNote:'Simple Task · no separate requirement-definition confirmation required.', goal:'Goal', acceptance:'Acceptance criteria', requirements:'Requirements', definedNote:'Defined Task · requirement definition confirmed before registration.', background:'Background & problem', scopeIn:'IN', scopeOut:'OUT', constraints:'Constraints & preservation', legacyTask:'Legacy task', legacyNote:'Legacy backlog · rendered from available fields without inventing missing requirement data.', description:'Description', tocTitle:'On this task', tocOpen:'Open table of contents', tocClose:'Close table of contents', lifecycle:'Lifecycle', noLifecycle:'No lifecycle transitions are available yet.', stayed:'Stayed', provisional:'provisional', overview:'Overview', registrant:'Registrant', changeScope:'Change scope', dependsOn:'Depends on', related:'Related', location:'Location', completed:'Completed', activity:'Activity', lastSignal:'Last signal', signalSource:'Signal source', execution:'Execution', runtimeProvider:'RuntimeProvider', dispatchStatus:'Dispatch status', executionEvidence:'Execution evidence', fallbackEvidence:'Fallback evidence', workNotes:'Work notes', result:'Result', verification:'Verification', rawMarkdown:'Raw Markdown', rendered:'Rendered', waitTime:'Wait time', queueTime:'Queue time', leadTime:'Lead time', provisionalTiming:'Provisional lifecycle timing', incompleteHistory:'Incomplete lifecycle history', lastObservable:'Last observable activity {ago} ({source}).', workerMissingDetail:'Task is doing but the assigned worker is absent from the available runtime registry.', quietAdvisory:'This is advisory; long-running work can be legitimately quiet.', backToBacklog:'← Backlog', taskNotFound:'Task not found.', restrictedNow:'Restricted now', lastFullAccess:'Last Full Access', fullAccess:'Full Access', lastRestricted:'Last check restricted', accessLastChecked:'Access last checked', accessNotChecked:'Access not checked', networkOff:'Net off', notChecked:'Not checked', freshDispatch:'dispatch always runs a fresh active preflight.', dispatchDisabled:'Subagent dispatch disabled', enableFullAccess:'Current runtime restriction detected. Enable Full Access before dispatch.', auto:'Auto', manualMode:'Manual', noBacklog:'No backlog selected', copyCode:'Copy code', copied:'Copied', copyFailed:'Copy failed', mermaid:'Mermaid', showSource:'Show source', hideSource:'Hide source', renderingDiagram:'Rendering diagram…', mermaidUnavailable:'Mermaid renderer unavailable.', mermaidUnavailableDetail:'Task Mecca could not load the local or CDN Mermaid runtime. Use Source to view or copy the diagram text.', mermaidFailed:'Mermaid render failed.', invalidMermaid:'Invalid Mermaid syntax', secondsAgo:'{n}s ago', minutesAgo:'{n}m ago', hoursAgo:'{n}h ago', daysAgo:'{n}d ago', justNow:'just now', updatedColumn:'Updated', activeColumn:'Active', agentColumn:'Agent', statusColumn:'Status', taskColumn:'Task', expandSidebar:'Expand sidebar', collapseSidebar:'Collapse sidebar', eventRegistered:'Registered', eventAssigned:'Assigned', eventStarted:'Started', eventReviewStarted:'Controller review started', eventWaiting:'Waiting for user', eventResumed:'Resumed', eventHold:'Hold', eventCompleted:'Completed', observatory:'Backlog Observatory', theme:'Theme', followSystemTheme:'Follow system theme', useLightTheme:'Use light theme', useDarkTheme:'Use dark theme', selectBacklog:'Select backlog folder', provisionalTimingDetail:'No direct transition report is available; timing uses file or runtime observation and may differ from the actual transition time.', incompleteHistoryDetail:'Some timing cannot be reconstructed exactly because the historical lifecycle has no observed start evidence.'
   }
 };
 Object.assign(I18N.ko,{
@@ -443,9 +449,21 @@ function t(key, vars = {}) {
   Object.entries(vars).forEach(([k,v]) => { value = value.replaceAll(`{${k}}`, String(v)); });
   return value;
 }
+// Use the same project name as the Hub and the open-session rail.
+ // A direct project URL can render before Hub discovery has finished; in that
+ // case its directory name is a stable, network-free fallback.
+function projectLoadingText() {
+  if(state.view!=='backlog'||!state.project)return t('loading');
+  const path=state.project;
+  const projects=state.hub?.projects||[];
+  const named=projects.find(item=>item.path===path)?.name;
+  const fallback=path.replace(/[\\/]+$/,'').split(/[\\/]/).pop();
+  const project=String(named||'').trim()||fallback||path;
+  return t('projectLoading',{project});
+}
 const OPERATION_COPY = {
-  ko: { heading:'세션 운영 확인 필요', monitoring:'Web 세션 감시 중', targets:'개 프로젝트 감시', lastScan:'최근 확인', scope:'감시 대상 보기', gap:'Web 감시 공백', no_signal:'세션 무신호', runtime_unknown:'실행 상태 미확인', interrupted:'확인된 실행 중단', errored:'확인된 실행 오류', shutdown:'확인된 세션 종료', evidence:'근거', seen:'마지막 관측', detected:'최초 발견', ended:'확인된 종료', recovered:'감시 재개', history:'과거 실행 관측', resolved:'현재 경고 해소', completedUnknown:'작업 완료 확인, 당시 실행 관측은 미확인', completionEvidence:'완료 확인 근거', completionAt:'작업 완료 시각', reconciliationAt:'경고 해소 시각', maintenance:'Telegram 전송 차단 · 유지보수 모드', action:'필요한 조치', project:'프로젝트', count:'건의 운영 사건', detail:'근거와 조치 보기' },
-  en: { heading:'Session operation needs review', monitoring:'Web session monitoring', targets:'projects monitored', lastScan:'Last scan', scope:'View monitored projects', gap:'Web monitoring gap', no_signal:'No session signal', runtime_unknown:'Runtime unverified', interrupted:'Confirmed interruption', errored:'Confirmed execution error', shutdown:'Confirmed session shutdown', evidence:'Evidence', seen:'Last observed', detected:'First detected', ended:'Confirmed end', recovered:'Monitoring resumed', history:'Past runtime observations', resolved:'Current warning resolved', completedUnknown:'Task completion verified; runtime observation at the time remains unverified', completionEvidence:'Completion evidence', completionAt:'Task completed at', reconciliationAt:'Warning resolved at', maintenance:'Telegram transport blocked · maintenance mode', action:'Next action', project:'Project', count:'operation incidents', detail:'View evidence and action' },
+  ko: { heading:'세션 운영 확인 필요', monitoring:'Web 세션 감시 중', targets:'개 프로젝트 감시', lastScan:'최근 확인', scope:'감시 대상 보기', gap:'Web 감시 공백', no_signal:'세션 무신호', runtime_unknown:'실행 상태 미확인', interrupted:'확인된 실행 중단', errored:'확인된 실행 오류', shutdown:'확인된 세션 종료', error:'실패 확인', warning:'확인 필요', info:'정보', evidence:'근거', seen:'마지막 관측', detected:'최초 발견', ended:'확인된 종료', recovered:'감시 재개', history:'과거 실행 관측', resolved:'현재 경고 해소', completedUnknown:'작업 완료 확인, 당시 실행 관측은 미확인', completionEvidence:'완료 확인 근거', completionAt:'작업 완료 시각', reconciliationAt:'경고 해소 시각', maintenance:'Telegram 전송 차단 · 유지보수 모드', action:'필요한 조치', project:'프로젝트', count:'건의 운영 사건', detail:'근거와 조치 보기' },
+  en: { heading:'Session operation needs review', monitoring:'Web session monitoring', targets:'projects monitored', lastScan:'Last scan', scope:'View monitored projects', gap:'Web monitoring gap', no_signal:'No session signal', runtime_unknown:'Runtime unverified', interrupted:'Confirmed interruption', errored:'Confirmed execution error', shutdown:'Confirmed session shutdown', error:'Confirmed failure', warning:'Review needed', info:'Information', evidence:'Evidence', seen:'Last observed', detected:'First detected', ended:'Confirmed end', recovered:'Monitoring resumed', history:'Past runtime observations', resolved:'Current warning resolved', completedUnknown:'Task completion verified; runtime observation at the time remains unverified', completionEvidence:'Completion evidence', completionAt:'Task completed at', reconciliationAt:'Warning resolved at', maintenance:'Telegram transport blocked · maintenance mode', action:'Next action', project:'Project', count:'operation incidents', detail:'View evidence and action' },
 };
 const OPERATION_EVIDENCE = {
   ko: {
@@ -799,7 +817,7 @@ function upgradeFlowCopy(){
   downloading:'업데이트 파일을 다운로드하고 있습니다',verifying:'다운로드 파일을 검증하고 있습니다',
   installing:'검증된 업데이트를 설치하고 있습니다',restarting:'웹 서비스를 재시작하고 있습니다',
   completed:'업데이트를 완료했습니다',failed:'업데이트를 완료하지 못했습니다',
-  noNotes:'업데이트 상세 내용을 확인할 수 없습니다',noNotesHelp:'릴리스 노트를 불러오지 못했습니다. 계속 진행할지 선택해 주세요.',
+  noNotes:'업데이트 상세 내용을 확인할 수 없습니다',noNotesHelp:'릴리스 노트 조회가 지연되거나 제공되지 않았습니다. 최신 버전으로 계속 진행할지 선택해 주세요.',
   waiting:'진행 중입니다. 업데이트 버튼을 다시 누르지 않아도 됩니다.',
   restartHelp:'연결이 잠시 끊길 수 있습니다. 준비되면 자동으로 다시 연결합니다.',
   longWait:'네트워크 상태에 따라 시간이 걸릴 수 있습니다. 작업이 계속 진행 중입니다.',
@@ -812,7 +830,7 @@ function upgradeFlowCopy(){
   downloading:'Downloading the update',verifying:'Verifying the downloaded file',
   installing:'Installing the verified update',restarting:'Restarting the Web service',
   completed:'Update completed',failed:'The update could not be completed',
-  noNotes:'Update details are unavailable',noNotesHelp:'Release notes could not be loaded. Choose whether to continue.',
+  noNotes:'Update details are unavailable',noNotesHelp:'Release notes are delayed or unavailable. You can still choose to update.',
   waiting:'In progress. You do not need to press Update again.',
   restartHelp:'The connection may briefly drop. This page will reconnect when ready.',
   longWait:'This can take longer on slower connections. The update is still running.',
@@ -930,7 +948,12 @@ async function openUpgradeDetails(version){
  upgradeFlowStartedAt=Date.now();
  upgradeFlowTarget=String(version||'');
  setUpgradeFlowStage('notes');
- const detail=await loadReleaseNoteDetail(version);
+ // Showing the update decision must not wait for a slow GitHub/CDN
+ // release-note request. Late notes are cached for a future click.
+ const detail=await Promise.race([
+  loadReleaseNoteDetail(version),
+  new Promise(resolve=>setTimeout(()=>resolve(null),1200))
+ ]);
  if(session!==upgradeFlowSession||upgradeFlowMode!=='notes')return;
  if(detail){
   closeUpgradeFlow();
@@ -947,7 +970,7 @@ async function observeUpgradeRestart(session){
  const ready=await waitForRestartedWeb(target);
  if(ready===false && session===upgradeFlowSession){
   stopUpgradeFlowTimers();
-  setUpgradeFlowStage('failed',upgradeFlowCopy().restartError);
+  setUpgradeFlowStage('failed',state.upgradeRestartDiagnostic||upgradeFlowCopy().restartError);
  }
  upgradeFlowRestartWatching=false;
 }
@@ -1085,7 +1108,11 @@ function renderContentUpdatePrompt() {
     el.innerHTML='';
     return;
   }
-  const reason=state.pendingContentReason==='runtime'?t('runtimeChanged'):t('contentChanged');
+  const reason=state.detail&&state.pendingContentReason==='content'
+    ? (state.language==='ko'
+        ? '현재 보고 있는 '+state.detail+' 백로그 본문이 실제 변경되었습니다.'
+        : 'The open task '+state.detail+' Markdown content has changed.')
+    : state.pendingContentReason==='runtime'?t('runtimeChanged'):t('contentChanged');
   el.innerHTML=`<div class="content-update-copy"><strong>${esc(t('newContentAvailable'))}</strong><span class="content-update-reason">${esc(reason)} ${esc(t('refreshToSee'))}</span>${statusChangeMarkup(state.pendingContentChanges)}</div><button type="button" class="content-update-action" id="contentUpdateRefreshBtn">${esc(t('refreshNow'))}</button>`;
   $('#contentUpdateRefreshBtn')?.addEventListener('click',refreshVisibleContent);
 }
@@ -1127,12 +1154,20 @@ function markContentUpdate(reason='content',changes=[]) {
   if(!state.detail)refreshListSummary();
 }
 
-function acceptContentRevision(revision='',states=null) {
-  if(revision&&state.contentRevision&&revision!==state.contentRevision)invalidateTaskDetailCache();
+function acceptContentRevision(revision='',states=null,signalRevision=null) {
+  const changed=Boolean(revision&&state.contentRevision&&revision!==state.contentRevision);
+  if(changed)invalidateTaskDetailCache();
   if(revision)state.contentRevision=revision;
+  // The content-first view may already have scheduled (or started) lifecycle
+  // enrichment under the old revision. Reconcile the CURRENT view again;
+  // obsolete requests must not leave "Checking lifecycle..." indefinitely.
+  if(changed&&state.view==='backlog'&&state.detail&&state.detailTask?.content_only)
+    scheduleTaskLiveEnrichment(state.detail,state.project,state.backlog);
+  if(signalRevision!==null)state.signalRevision=signalRevision;
   if(Array.isArray(states))state.contentStateSnapshot=states;
   state.pendingContentUpdate=false;
   state.pendingContentReason='';
+  state.pendingObservedRevision='';
   state.pendingContentChanges=[];
   renderContentUpdatePrompt();
 }
@@ -1180,7 +1215,11 @@ async function refreshVersionInfo(force=false) {
     if(force && (payload?.cli?.error || !payload?.cli?.latest)){
       return {ok:false,error:payload?.cli?.error || 'Latest version unavailable'};
     }
+    const priorPreviewAvailability=devPreviewAvailable();
     state.versionInfo=payload;
+    await refreshExecutionTarget();
+    if(devPreviewAvailable()!==priorPreviewAvailability)nav();
+    if(state.view==='preview')queueMicrotask(()=>void maybeConfirmPreviewStop());
     maybeApplyStableBrandIntro();
     renderGlobalUpdateIndicator();
     renderReleaseNotesBadge();
@@ -1191,6 +1230,69 @@ async function refreshVersionInfo(force=false) {
   }catch(error){
     return {ok:false,error:String(error?.message || error)};
   }
+}
+
+// The current task's raw Markdown and canonical lifecycle have separate
+// refresh contracts. Heartbeats in unrelated sessions are not text edits.
+async function viewedTaskMarkdownChanged(project,backlog,id,displayedMarkdown) {
+  const params=new URLSearchParams({project,projection:'content'});
+  if(backlog)params.set('backlog',backlog);
+  const response=await fetch('/api/tasks/'+encodeURIComponent(id)+'?'+params.toString(),{cache:'no-store'});
+  if(!response.ok)throw new Error('Cannot validate visible Markdown');
+  const body=await response.json();
+  return String(body.raw_markdown||'')!==String(displayedMarkdown||'');
+}
+
+function lifecycleVisualFingerprint(value) {
+  const lifecycle=value||{};
+  const events=(lifecycle.events||[]).map(event=>{
+    const copy={...event};
+    delete copy.interval; // live duration ticks already update locally
+    return copy;
+  });
+  return JSON.stringify({events,current_state:lifecycle.current_state||'',
+    current_state_at:lifecycle.current_state_at||'',
+    lifecycle_inferred:Boolean(lifecycle.lifecycle_inferred),
+    timing_incomplete:Boolean(lifecycle.timing_incomplete)});
+}
+
+let viewedLifecycleLastFetchAt=0;
+async function refreshViewedTaskLifecycle(project,backlog,id) {
+  if(state.view!=='backlog'||state.detail!==id||state.project!==project||
+    state.backlog!==backlog||!state.detailTask||state.detailTask.content_only)return false;
+  if(typeof document!=='undefined'&&document.visibilityState==='hidden')return false;
+  const now=Date.now();
+  if(now-viewedLifecycleLastFetchAt<10000)return false;
+  viewedLifecycleLastFetchAt=now;
+  const old=state.detailTask;
+  const params=new URLSearchParams({project,projection:'lifecycle'});
+  if(backlog)params.set('backlog',backlog);
+  const response=await fetch('/api/tasks/'+encodeURIComponent(id)+'?'+params.toString(),{cache:'no-store'});
+  if(!response.ok)throw new Error('Could not load lifecycle projection');
+  const payload=await response.json();
+  if(state.view!=='backlog'||state.detail!==id||state.project!==project||
+    state.backlog!==backlog||!state.detailTask||
+    state.detailTask.raw_markdown!==old.raw_markdown)return false;
+  const before=lifecycleVisualFingerprint(state.detailTask.lifecycle);
+  const after=lifecycleVisualFingerprint(payload.lifecycle);
+  const newer={...state.detailTask,lifecycle:payload.lifecycle||{},activity:payload.activity||{}};
+  state.detailTask=newer;
+  if(before===after)return true;
+  const section=typeof document!=='undefined'?document.getElementById?.('lifecycle'):null;
+  if(section&&!state.raw){
+    const rect=section.getBoundingClientRect?.();
+    const previouslyAbove=rect&&rect.bottom<=0;
+    const oldHeight=rect?.height||0;
+    const previousScroll=typeof window!=='undefined'?window.scrollY:0;
+    // Patch only lifecycle children. Keep section identity for TOC observer,
+    // preserve Markdown, open disclosures, focus and reading position.
+    section.innerHTML='<h2>'+esc(t('lifecycle'))+'</h2>'+detailLifecycleBody(newer);
+    if(previouslyAbove&&typeof window!=='undefined'){
+      const delta=(section.getBoundingClientRect?.().height||0)-oldHeight;
+      if(delta)window.scrollTo?.({left:window.scrollX,top:previousScroll+delta,behavior:'auto'});
+    }
+  }
+  return true;
 }
 
 let revisionCheckInFlight=null;
@@ -1207,17 +1309,51 @@ async function checkContentRevision(establishOnly=false) {
       if(!r.ok)return;
       const body=await r.json();
       if(project!==state.project || backlog!==state.backlog)return;
-      const revision=body.revision||'', states=Array.isArray(body.states)?body.states:[];
+      const revision=body.revision||'', signalRevision=body.signal_revision||'', states=Array.isArray(body.states)?body.states:[];
       if(!revision)return;
       if(!state.contentRevision || establishOnly){
-        acceptContentRevision(revision,states);
+        acceptContentRevision(revision,states,signalRevision);
         return;
       }
-      if(revision!==state.contentRevision){
+      const fingerprint=revision+'|'+signalRevision;
+      if(state.view==='backlog'&&state.detail&&state.detailTask){
+        const id=state.detail, displayed=state.detailTask;
+        const stillCurrent=()=>project===state.project&&backlog===state.backlog&&
+          state.view==='backlog'&&state.detail===id&&
+          state.detailTask?.raw_markdown===displayed.raw_markdown;
+        if(revision!==state.contentRevision &&
+          !(state.pendingContentUpdate&&state.pendingContentReason==='content'&&state.pendingObservedRevision===fingerprint)){
+          try{
+            const changed=await viewedTaskMarkdownChanged(project,backlog,id,displayed.raw_markdown);
+            if(!stillCurrent())return;
+            if(changed){
+              state.pendingObservedRevision=fingerprint;
+              if(!state.pendingContentUpdate)markContentUpdate('content',diffRevisionStates(state.contentStateSnapshot,states).filter(change=>change.id===id));
+            }else{
+              invalidateListPages();
+              state.contentRevision=revision;
+              state.contentStateSnapshot=states;
+            }
+          }catch(_){return}
+        }
+        if(signalRevision!==state.signalRevision){
+          try{
+            const updated=await refreshViewedTaskLifecycle(project,backlog,id);
+            if(updated&&stillCurrent())state.signalRevision=signalRevision;
+          }catch(_){}
+        }
+        return;
+      }
+      if(revision!==state.contentRevision || signalRevision!==state.signalRevision){
+        // A later page must keep its snapshot until the user refreshes.
+        // Repeated 5-second checks for the same revision do not re-query a
+        // heavy summary or repeatedly rebuild the refresh prompt.
+        if(state.pendingContentUpdate && state.pendingObservedRevision===fingerprint)return;
+        state.pendingObservedRevision=fingerprint;
         const changes=diffRevisionStates(state.contentStateSnapshot,states);
-        if(state.view==='backlog')markContentUpdate('content',changes);
+        if(state.view==='backlog')markContentUpdate(revision!==state.contentRevision?'content':'runtime',changes);
         else {
-          acceptContentRevision(revision,states);
+          acceptContentRevision(revision,states,signalRevision);
           queueMicrotask(()=>refresh());
         }
       } else if(!state.pendingContentUpdate && states.length) {
@@ -1233,10 +1369,11 @@ async function refreshVisibleContent() {
   const scrollY=window.scrollY;
   state.pendingContentUpdate=false;
   state.pendingContentReason='';
+  state.pendingObservedRevision='';
   renderContentUpdatePrompt();
   if(state.view==='backlog'){
-    await refreshList();
     if(state.detail)await loadTaskDetail(state.detail);
+    else await refreshList();
     await checkContentRevision(true);
   } else {
     await refresh();
@@ -1301,6 +1438,7 @@ async function performUpgrade() {
  const session=++upgradeFlowSession;
  stopUpgradeFlowTimers();
  upgradeFlowStartedAt=Date.now();
+ state.upgradeRestartDiagnostic='';
  upgradeFlowOwnRequest=true;
  const cli=state.versionInfo?.cli||state.hub?.cli||{};
  upgradeFlowTarget=String(cli.current||'-')+' → '+String(cli.latest||'-');
@@ -1310,7 +1448,9 @@ async function performUpgrade() {
  setUpgradeFlowStage('checking');
  startUpgradeFlowPolling(session);
  try{
-  const r=await fetch('/api/upgrade',{method:'POST',headers:{'X-Task-Mecca-Action':'1'}});
+  const r=await fetch('/api/upgrade',{method:'POST',
+    headers:{'X-Task-Mecca-Action':'1','Content-Type':'application/json'},
+    body:JSON.stringify({expected_version:String(cli.latest||'')})});
   const body=await r.json();
   if(r.status===409 && body.status?.active){
    upgradeFlowOwnRequest=false;
@@ -1324,10 +1464,10 @@ async function performUpgrade() {
   stopUpgradeFlowTimers();
   if(body.restart_required && body.to && body.to!==body.from){
    setUpgradeFlowStage('restarting');
-   const recovered=await waitForRestartedWeb(body.to);
+   const recovered=await waitForRestartedWeb(body.to,state.webBootID||'');
    if(recovered===false && session===upgradeFlowSession){
     stopUpgradeFlowTimers();
-    setUpgradeFlowStage('failed',upgradeFlowCopy().restartError);
+    setUpgradeFlowStage('failed',state.upgradeRestartDiagnostic||upgradeFlowCopy().restartError);
    }
    return;
   }
@@ -1889,7 +2029,7 @@ Object.assign(I18N.ko,{controllerReviewPending:'Controller 검토 대기',contro
 Object.assign(I18N.en,{controllerReviewPending:'Controller review pending',controllerReview:'Controller review in progress',controllerFinalizing:'Controller finalization in progress',controllerRecovery:'Controller recovery needed'});
 function healthLabel(h) { if(String(h).startsWith('controller_'))return ({controller_review_pending:t('controllerReviewPending'),controller_review:t('controllerReview'),controller_finalizing:t('controllerFinalizing'),controller_recovery:t('controllerRecovery')})[h]||h; return ({healthy:t('active'),quiet:t('quiet'),stale:t('stale'),worker_missing:t('workerMissing'),runtime_unknown:t('runtimeUnknown'),awaiting_finalize:t('controllerReviewPending'),needs_user:t('needsUser'),'n/a':'-'})[h] || h; }
 function stateLabel(s) { if(String(s).startsWith('controller_'))return healthLabel(s); return ({doing:t('working'),ready:t('ready'),blocked:t('blocked'),hold:t('hold'),done:t('done'),todo:t('todo'),needs_user:t('needsUser'),awaiting_finalize:t('controllerReviewPending'),stalled:t('stalled')})[s] || s; }
-function lifecycleEventLabel(label) { return ({Registered:t('eventRegistered'),Assigned:t('eventAssigned'),Started:t('eventStarted'),Waiting:t('eventWaiting'),Resumed:t('eventResumed'),Hold:t('eventHold'),Completed:t('eventCompleted')})[label] || label; }
+function lifecycleEventLabel(label) { return ({Registered:t('eventRegistered'),Assigned:t('eventAssigned'),Started:t('eventStarted'),'Controller review started':t('eventReviewStarted'),Waiting:t('eventWaiting'),Resumed:t('eventResumed'),Hold:t('eventHold'),Completed:t('eventCompleted')})[label] || label; }
 function lifecycleEvidenceLabel(event) {
   // The persistence mechanism is not useful for confirmed history, but the
   // responsible Worker/actor and stable event ID are important audit evidence.
@@ -2102,13 +2242,16 @@ function commonAttentionMarkup(users,warnings,expanded=false) {
   const params=new URLSearchParams({project:item.project||''});
   const taskLink=item.task_id?`<a href="/tasks/${encodeURIComponent(item.task_id)}?${esc(params.toString())}">${esc(t('commonTaskLink'))} · ${esc(item.task_id)}</a>`:'';
   params.set('view','workload');
-  return `<li><div><strong>${esc(operationText(item.kind==='monitor_gap'?'gap':item.kind))}</strong><p>${esc(item.task_id||item.agent_path||item.attempt_id||item.project)}</p></div><div class="user-attention-decision"><p class="common-attention-project">${esc(item.project||'')}</p><p>${esc(operationEvidence(item.evidence||''))}</p>${item.agent_path?`<p>${esc(item.agent_path)}</p>`:''}${item.attempt_id?`<p>${esc(item.attempt_id)}</p>`:''}<p><b>${esc(operationText('action'))}</b> ${esc(operationAction(item)||'')}</p><div class="common-attention-links">${taskLink}<a href="/?${esc(params.toString())}${item.attempt_id?'#runtime-attempt-'+encodeURIComponent(item.attempt_id):''}">${esc(t('commonSessionLink'))}</a></div></div></li>`;
+  return `<li><div><strong>${esc(operationText(item.kind==='monitor_gap'?'gap':item.kind))}</strong><span class="badge ${item.severity==='error'?'danger':'warn'}">${esc(operationText(item.severity||'warning'))}</span><p>${esc(item.task_id||item.agent_path||item.attempt_id||item.project)}</p></div><div class="user-attention-decision"><p class="common-attention-project">${esc(item.project||'')}</p><p>${esc(operationEvidence(item.evidence||''))}</p>${item.agent_path?`<p>${esc(item.agent_path)}</p>`:''}${item.attempt_id?`<p>${esc(item.attempt_id)}</p>`:''}<p><b>${esc(operationText('action'))}</b> ${esc(operationAction(item)||'')}</p><div class="common-attention-links">${taskLink}<a href="/?${esc(params.toString())}${item.attempt_id?'#runtime-attempt-'+encodeURIComponent(item.attempt_id):''}">${esc(t('commonSessionLink'))}</a></div></div></li>`;
  }).join('');
  return `<details class="common-attention"${state.commonAttentionOpen||expanded?' open':''}><summary><strong>${esc(t('commonAttention'))}</strong><span>${esc(t('commonUserCount',{count:users.length}))}</span><span>${esc(t('commonSessionCount',{count:warnings.length}))}</span></summary><div class="common-attention-body"><a class="common-center-link" href="/?view=notifications" data-notification-center>${esc(t('notificationCenter'))} · ${esc(t('notificationCurrent'))}</a>${users.length?`<h2>${esc(t('currentUserAttention'))}</h2><ul>${userRows}</ul>`:''}${warnings.length?`<h2>${esc(t('commonSessionHeading'))}</h2><ul>${sessionRows}</ul>`:''}</div></details>`;
 }
 function renderUserAttention() {
- const el=$('#userAttention');if(!el)return;
  const users=commonAttentionUsers(),warnings=state.sessionWarnings;
+ // SSE/attention summaries may change without a full nav render. Update the
+ // existing tile in place to preserve hover, focus and compact sidebar state.
+ syncSessionAttentionSeverity(users);
+ const el=$('#userAttention');if(!el)return;
  el.hidden=!users.length&&!warnings.length;
  if(el.hidden){el.innerHTML='';state.commonAttentionOpen=false;return;}
  const markup=commonAttentionMarkup(users,warnings);
@@ -3214,6 +3357,8 @@ function switchProject(path) {
   state.listData=null;
   state.detailTask=null;
   state.contentRevision='';
+  state.signalRevision='';
+  state.pendingObservedRevision='';
   state.pendingContentUpdate=false;
   state.pendingContentReason='';
   state.loadError='';
@@ -3352,6 +3497,13 @@ function navigateView(view) {
     return;
   }
   if(view==='attention')view='notifications';
+  if(view==='preview'){
+    if(!devPreviewAvailable())return;
+    state.project='';state.detail=null;state.detailTask=null;state.projectMenuOpen=false;
+    closeAttentionStream();state.view='preview';
+    history.pushState({},'','/?view=preview');
+    render();void refreshPreviewData();return;
+  }
   if(view==='storage'){
     state.view='storage';state.detail=null;state.detailTask=null;state.projectMenuOpen=false;
     history.pushState({},'','/?view=storage');
@@ -3390,6 +3542,36 @@ function navigateView(view) {
     render();
   }
 }
+function devPreviewAvailable(){return !state.previewIdentity&&state.executionTarget?.kind!=='pr'&&(state.versionInfo?.cli?.channel||state.hub?.cli?.channel||'')==='dev';}
+// Project-level severity uses the same canonical user-intervention decisions
+// already shown in Current notifications. Hub QuickCounts is intentionally
+// file-only: never run a control-tower reconciliation just to paint the rail.
+function sessionProjectStatus(counts={},hasUserDecision=false) {
+  const critical=(counts.blocked||0)+(counts.error||0)+(counts.needs_user||0)+(counts.user_intervention||0);
+  const warnings=(counts.attention||0)+(counts.needs_attention||0)+(counts.hold||0);
+  return critical||hasUserDecision?'error':warnings?'warning':
+    counts.working?'working':counts.ready?'registered':
+    counts.done&&!counts.total_pending?'done':'unknown';
+}
+const sessionStatusDescriptions={error:'Error / User action / Blocked',warning:'Needs attention',working:'Working',registered:'Registered',done:'Done',unknown:'Unknown / Idle'};
+function syncSessionAttentionSeverity(users=commonAttentionUsers()) {
+  const byPath=new Map((state.hub?.projects||[]).map(p=>[p.path,p]));
+  const criticalProjects=new Set(users.map(row=>row.project).filter(Boolean));
+  (document.querySelectorAll?.('[data-session-project]')||[]).forEach(row=>{
+    const path=row.dataset.sessionProject;
+    const p=byPath.get(path)||{name:path.split(/[\\/]/).pop()||path,counts:{}};
+    const status=sessionProjectStatus(p.counts||{},criticalProjects.has(path));
+    if(row.classList.contains('session-state-'+status))return;
+    for(const name of Object.keys(sessionStatusDescriptions))row.classList.remove('session-state-'+name);
+    row.classList.add('session-state-'+status);
+    const button=row.querySelector('.session-open');
+    if(button){
+      const hint=`${p.name} · ${path} · ${sessionStatusDescriptions[status]}`;
+      button.title=hint;
+      button.setAttribute('aria-label',hint);
+    }
+  });
+}
 function nav() {
   const c = currentProjectData()?.counts || {};
   const projects=state.hub?.projects||[];
@@ -3400,21 +3582,20 @@ function nav() {
   // path-based fallback below until the hub discovers the project again.
   const sessions=state.openProjects;
   const closed=projects.filter(p=>!sessions.includes(p.path));
+  const criticalProjects=new Set(commonAttentionUsers().map(row=>row.project).filter(Boolean));
   const sessionRows=sessions.map(path=>{
     const p=byPath.get(path)||{name:path.split(/[\\/]/).pop()||path,counts:{}};
     const pc=p.counts||{};
     const active=state.project===path && state.view!=='hub';
     const badge=(pc.working||0)+(pc.ready||0);
-    const errors=(pc.blocked||0)+(pc.error||0),warnings=(pc.attention||0)+(pc.needs_attention||0)+(pc.hold||0);
-    const status=errors?'error':warnings?'warning':pc.working?'working':pc.ready?'registered':pc.done && !pc.total_pending?'done':'unknown';
-    const descriptions={error:'Error / Blocked',warning:'Needs attention',working:'Working',registered:'Registered',done:'Done',unknown:'Unknown / Idle'};
+    const status=sessionProjectStatus(pc,criticalProjects.has(path));
     const initial=(Array.from(String(p.name||'?').trim())[0]||'?').toLocaleUpperCase();
-    const projectHint=`${p.name} · ${path} · ${descriptions[status]}`;
+    const projectHint=`${p.name} · ${path} · ${sessionStatusDescriptions[status]}`;
     return `<div class="session-row session-state-${status} ${active?'active':''}" data-session-project="${esc(path)}"><button class="session-open" type="button" title="${esc(projectHint)}" aria-label="${esc(projectHint)}"><span class="session-initial" aria-hidden="true">${esc(initial)}</span><span class="session-name">${esc(p.name)}</span><span class="session-count">${badge||''}</span></button><button class="session-close" type="button" data-close-project="${esc(path)}" aria-label="Close ${esc(p.name)}" title="Close">×</button></div>`;
   }).join('');
   const menu=state.projectMenuOpen?`<div class="project-open-menu">${closed.length?closed.map(p=>`<button type="button" data-add-project="${esc(p.path)}"><span>${esc(p.name)}</span><small>${esc(p.path)}</small></button>`).join(''):'<div class="project-open-empty">No closed projects</div>'}</div>`:'';
   $('#stateNav').innerHTML =
-    `<div class="sidebar-label">SYSTEM</div><button class="nav-item ${state.view==='hub'?'active':''}" id="hubNavBtn" type="button"><span class="nav-main"><span class="nav-icon">⌂</span><span class="nav-text">Global Hub</span></span></button><button class="nav-item ${state.view==='storage'?'active':''}" id="storageNavBtn" type="button"><span class="nav-main"><span class="nav-icon">▤</span><span class="nav-text">${esc(state.language==='ko'?'저장소 관리':'Storage management')}</span></span></button><div class="sidebar-label">BACKLOGS</div><div class="session-list">${sessionRows||'<div class="session-empty">No open backlogs</div>'}</div><button class="nav-item session-add" id="openProjectBtn" type="button"><span class="nav-main"><span class="nav-icon">＋</span><span class="nav-text">Open Project</span></span></button>${menu}`;
+    `<div class="sidebar-label">SYSTEM</div><button class="nav-item ${state.view==='hub'?'active':''}" id="hubNavBtn" type="button"><span class="nav-main"><span class="nav-icon">⌂</span><span class="nav-text">Global Hub</span></span></button><button class="nav-item ${state.view==='storage'?'active':''}" id="storageNavBtn" type="button"><span class="nav-main"><span class="nav-icon">▤</span><span class="nav-text">${esc(state.language==='ko'?'저장소 관리':'Storage management')}</span></span></button>${devPreviewAvailable()?`<button class="nav-item ${state.view==='preview'?'active':''}" id="previewNavBtn" type="button"><span class="nav-main"><span class="nav-icon" aria-hidden="true">⑂</span><span class="nav-text">Preview Builds</span></span></button>`:''}<div class="sidebar-label">BACKLOGS</div><div class="session-list">${sessionRows||'<div class="session-empty">No open backlogs</div>'}</div><button class="nav-item session-add" id="openProjectBtn" type="button"><span class="nav-main"><span class="nav-icon">＋</span><span class="nav-text">Open Project</span></span></button>${menu}`;
   const sidebarModes=[
     ['auto',state.language==='ko'?'자동':'Auto',state.language==='ko'?'마우스를 올리거나 포커스를 옮기면 임시로 펼침':'Temporarily expand on hover or focus'],
     ['expanded',state.language==='ko'?'펼침':'Expanded',state.language==='ko'?'항상 펼친 상태로 고정':'Keep the sidebar expanded'],
@@ -3436,12 +3617,311 @@ function nav() {
   $('#openProjectBtn')?.addEventListener('click',()=>{state.projectMenuOpen=!state.projectMenuOpen;render()});
   $('#hubNavBtn')?.addEventListener('click',()=>navigateView('hub'));
   $('#storageNavBtn')?.addEventListener('click',()=>navigateView('storage'));
+  $('#previewNavBtn')?.addEventListener('click',()=>navigateView('preview'));
   $('#terminalNavBtn')?.addEventListener('click',openWebTerminal);
   document.querySelectorAll('[data-view]').forEach(b => {
     b.classList.toggle('active', state.view === b.dataset.view);
     b.onclick = () => navigateView(b.dataset.view);
   });
   renderReleaseNotesBadge();
+}
+
+
+
+function previewIdentityFromHealth(payload){
+  const number=Number(payload?.preview_pr),sha=String(payload?.preview_sha||'');
+  const parent=String(payload?.preview_parent_url||'');
+  const port=Number(parent.match(/^http:\/\/(?:127\.0\.0\.1|localhost):([1-9]\d{0,4})$/)?.[1]||0);
+  if(payload?.preview_mode!==true||!Number.isSafeInteger(number)||number<1||
+    !/^[a-f0-9]{40}$/.test(sha)||port<1||port>65535)return null;
+  return {number,sha,parent};
+}
+async function loadPreviewIdentity(){
+  try{
+    const r=await fetch('/api/health',{cache:'no-store'});
+    if(!r.ok)return;
+    const health=await r.json();
+    if(health.boot_id)state.webBootID=String(health.boot_id);
+    const identity=previewIdentityFromHealth(health);
+    if(!identity)return;
+    state.previewIdentity=identity;
+    const banner=$('#previewIdentityBanner');
+    if(!banner)return;
+    const ko=state.language==='ko';
+    const base=identity.parent+'/?view=preview';
+    banner.innerHTML='<div class="preview-identity-copy"><strong>PREVIEW · PR #'+identity.number+' · '+esc(identity.sha.slice(0,10))+'</strong>'+
+      '<span>'+esc(ko?'별도 테스트 프로젝트를 사용하지만, 현재 사용자와 동일한 OS 권한으로 실행 중입니다.':'Separate test project; process still shares your OS account permissions.')+'</span></div>'+
+      '<div class="preview-identity-actions">'+
+      '<a class="action-btn secondary" href="'+esc(base)+'">'+(ko?'Dev로 돌아가기':'Back to Dev')+'</a>'+
+      '<a class="action-btn secondary danger-action" href="'+esc(base+'&stop_preview='+identity.number)+'">'+(ko?'Preview 종료':'Stop Preview')+'</a></div>';
+    banner.hidden=false;
+    document.title='PREVIEW · PR #'+identity.number+' · Task Mecca';
+    nav();
+  }catch(_){}
+}
+async function maybeConfirmPreviewStop(){
+  // Historical Preview tabs can still request cleanup after the new
+  // environment-switch UI has replaced the child-process launcher.
+  const params=new URLSearchParams(location.search),raw=params.get('stop_preview');
+  if(!raw||!devPreviewAvailable())return;
+  params.delete('stop_preview');
+  history.replaceState({},'','/?'+params.toString());
+  const number=Number(raw);
+  if(!Number.isSafeInteger(number)||number<1)return;
+  if(!window.confirm(state.language==='ko'?'이전 PR #'+number+' Preview 인스턴스를 종료하시겠습니까?':'Stop legacy Preview #'+number+'?'))return;
+  try{
+    const response=await fetch('/api/preview/stop',{method:'POST',
+      headers:{'Content-Type':'application/json','X-Task-Mecca-Action':'1'},
+      body:JSON.stringify({number})});
+    const payload=await response.json();
+    if(!response.ok)throw Error(payload.error||'Stop failed');
+    state.previewMessage=state.language==='ko'?'이전 Preview 종료 완료':'Legacy Preview stopped';
+    await refreshPreviewInstances();
+  }catch(e){state.previewError=String(e?.message||e)}
+  if(state.view==='preview')render();
+}
+
+function previewCaption(value){
+  if(!value)return '-';
+  const date=new Date(value);
+  return Number.isNaN(date.getTime())?String(value):date.toLocaleString(state.language==='ko'?'ko-KR':'en-US');
+}
+function previewBuildsView(){
+  const ko=state.language==='ko',dev=devPreviewAvailable();
+  const current=state.executionTarget||{kind:'dev'};
+  const header='<div class="pr-environment-heading"><div class="page-head pr-environment-head">'+
+    '<div class="pr-environment-title"><div class="eyebrow">DEV WORKSPACE</div><h1>'+(ko?'PR 실행 환경':'PR Environments')+'</h1></div>'+
+    '<button class="action-btn secondary pr-environment-refresh" id="previewReloadBtn" type="button" '+
+    'aria-label="'+(ko?'PR 목록 새로고침':'Refresh PR list')+'" '+(state.previewLoading?'disabled':'')+'>'+
+    '<span class="pr-refresh-long">'+(ko?'목록 새로고침':'Refresh list')+'</span>'+
+    '<span class="pr-refresh-short">'+(ko?'새로고침':'Refresh')+'</span></button></div>'+
+    '<p class="summary pr-environment-summary">'+
+    (ko?'기존 Dev 설치를 선택한 PR의 정확한 커밋으로 전환합니다. 기존 프로젝트와 관제 기능이 그대로 실행됩니다.':'Switch the installed Dev app to a pinned PR commit. Existing projects and monitoring continue under that code.')+
+    '</p></div>';
+  if(!dev)return header+'<div class="empty">'+(ko?'PR 환경 전환은 Dev에서만 가능합니다.':'PR switching is available only from Dev.')+'</div>';
+  const search=String(state.previewSearch||'').toLowerCase().trim();
+  const visible=[...(state.previewBuilds||[])].filter(item=>{
+    if(search&&![item.number,item.title,item.branch,item.head_sha].join(' ').toLowerCase().includes(search))return false;
+    if(state.previewFilter==='success')return item.build_status==='success';
+    if(state.previewFilter==='failed')return ['failure','expired','unavailable','blocked'].includes(item.build_status);
+    return true;
+  });
+  const status={none:ko?'빌드 없음':'No build',queued:ko?'대기 중':'Queued',in_progress:ko?'빌드 중':'Building',
+    success:ko?'빌드 성공':'Built',failure:ko?'빌드 실패':'Failed',expired:ko?'만료':'Expired',
+    unavailable:ko?'조회 실패':'Unavailable',blocked:ko?'차단':'Blocked'};
+  const rows=visible.map(item=>{
+    const number=Number(item.number),sha=String(item.head_sha||'');
+    const valid=/^[a-f0-9]{40}$/.test(sha);
+    const available=item.build_status==='success'&&valid&&state.executionSwitchSupported&&!state.previewActionBusy;
+    const rebuildable=['none','failure','expired','unavailable'].includes(item.build_status)&&valid&&!state.previewActionBusy;
+    const prLink=/^https:\/\/github\.com\/silverkhan\/TaskMecca\/pull\/\d+$/.test(String(item.url||''))
+      ?'<a href="'+esc(item.url)+'" target="_blank" rel="noopener noreferrer">PR #'+number+'</a>':'PR #'+number;
+    return '<article class="preview-build-row" data-preview-pr="'+number+'">'+
+      '<div class="preview-build-info"><div class="preview-build-title"><strong>'+prLink+' · '+esc(item.title||'-')+'</strong></div>'+
+      '<div class="preview-build-meta"><span>'+esc(item.branch||'-')+'</span><code>'+esc(sha.slice(0,10))+'</code>'+
+      '<span>'+esc(previewCaption(item.build_finished_at||item.updated_at))+'</span></div>'+
+      '<div class="preview-build-status"><span class="badge '+(item.build_status==='success'?'ok':'')+'">'+esc(status[item.build_status]||item.build_status||'-')+'</span></div></div>'+
+      '<div class="preview-build-actions"><button type="button" class="action-btn" data-pr-switch="'+number+'" '+(available?'':'disabled')+'>'+
+      (state.previewActionBusy===number?(ko?'처리 중…':'Working…'):(ko?'이 PR로 전환':'Switch to PR'))+'</button>'+
+      (['none','failure','expired','unavailable'].includes(item.build_status)?
+      '<button type="button" class="action-btn secondary" data-pr-rebuild="'+number+'" '+(rebuildable?'':'disabled')+'>'+
+      (state.previewActionBusy===number?(ko?'빌드 요청 중…':'Requesting…'):(ko?'빌드 생성':'Create build'))+'</button>':'')+
+      '</div></article>';
+  }).join('');
+  return header+
+    '<div class="timing-note"><strong>'+(ko?'전체 환경 전환':'Full environment switch')+'</strong><span>'+
+    esc(ko?'동시에 실행되는 별도의 Preview 프로세스는 생성하지 않습니다. 설치된 실행 파일을 교체하고 웹을 재시작합니다. PR 코드는 현재 사용자 권한으로 실행됩니다. 신뢰된 PR만 선택하세요.':'No extra Preview process is started. The installed executable is replaced and Web restarts. Only run code you trust under your OS user permissions.')+
+    '</span></div>'+
+    '<p class="timing-note">'+esc(ko?'과거 PR은 복귀 프로토콜을 지원하지 않을 수 있습니다. 빌드 성공만으로 PR 전환 가능성이 보장되지는 않습니다.':'Legacy PR code may lack the Dev return protocol. A successful build alone does not authorize execution.')+
+    ' <a href="https://github.com/silverkhan/TaskMecca/actions/workflows/go-artifacts.yml" target="_blank" rel="noopener noreferrer">'+
+    esc(ko?'GitHub Actions에서 직접 빌드':'Build manually in GitHub Actions')+'</a></p>'+
+    (!state.executionSwitchSupported?'<p class="load-error">'+esc(ko?'Windows PR 전환은 안전한 재시작 절차가 검증될 때까지 사용할 수 없습니다.':'PR switching on Windows is disabled until staged restart verification is completed.')+'</p>':'')+
+    '<div class="preview-build-tools"><input id="previewSearch" type="search" autocomplete="off" placeholder="'+(ko?'PR 번호, 제목, 브랜치 검색':'Search PR')+'" value="'+esc(state.previewSearch)+'"/>'+
+    '<div class="preview-build-filters">'+[['all',ko?'전체':'All'],['success',ko?'빌드 성공':'Built'],['failed',ko?'오류·만료':'Errors']].map(([value,label])=>
+      '<button type="button" class="action-btn secondary '+(state.previewFilter===value?'active':'')+'" data-preview-filter="'+value+'">'+label+'</button>').join('')+
+    '</div></div>'+
+    (state.previewError?'<div class="load-error" role="alert">'+esc(state.previewError)+'</div>':'')+
+    (state.previewMessage?'<p class="timing-note" role="status">'+esc(state.previewMessage)+'</p>':'')+
+    (state.previewLoading&&!state.previewLoaded?'<div class="loading">'+(ko?'PR 빌드 조회 중…':'Loading builds…')+'</div>':
+    '<div class="preview-build-list">'+(rows||'<div class="empty">'+(ko?'표시할 PR이 없습니다.':'No matching PR builds.')+'</div>')+'</div>');
+}
+// Local process state is independent from GitHub build metadata.
+function applyPreviewInstance(instance){
+  if(!instance||!Number.isSafeInteger(Number(instance.pr_number))||Number(instance.pr_number)<1)return;
+  const number=Number(instance.pr_number);
+  state.previewInstanceEpoch=(state.previewInstanceEpoch||0)+1;
+  state.previewInstances=(state.previewInstances||[]).filter(item=>Number(item.pr_number)!==number).concat([instance]);
+  if(state.view==='preview')render();
+}
+async function refreshPreviewInstances(){
+  if(state.previewInstancesRefreshing||state.previewActionBusy)return;
+  state.previewInstancesRefreshing=true;
+  const epoch=state.previewInstanceEpoch||0;
+  try{
+    const response=await fetch('/api/preview/instances',{cache:'no-store'});
+    if(!response.ok)throw Error('Preview instances HTTP '+response.status);
+    const payload=await response.json();
+    if(epoch!==(state.previewInstanceEpoch||0))return;
+    const next=Array.isArray(payload.instances)?payload.instances:[];
+    const changed=JSON.stringify(next)!==JSON.stringify(state.previewInstances||[]);
+    state.previewInstances=next;
+    state.previewInstancesError='';
+    // Polling must not steal focus from PR search or unnecessarily repaint.
+    if(changed&&state.view==='preview')render();
+  }catch(error){
+    state.previewInstancesError=String(error?.message||error);
+  }finally{state.previewInstancesRefreshing=false}
+}
+async function refreshPreviewData(){
+  if(state.previewLoading)return;
+  state.previewLoading=true;
+  const epoch=state.previewInstanceEpoch||0;
+  if(state.view==='preview')render();
+  try{
+    const [builds,instances]=await Promise.all([
+      fetch('/api/preview/builds?limit=30',{cache:'no-store'}),
+      fetch('/api/preview/instances',{cache:'no-store'})
+    ]);
+    const [buildBody,instanceBody]=await Promise.all([builds.json(),instances.json()]);
+    if(!builds.ok||!instances.ok)throw Error(buildBody.error||instanceBody.error||'Preview API unavailable');
+    state.previewBuilds=Array.isArray(buildBody.builds)?buildBody.builds:[];
+    // Ignore a stale instance GET that started before Stop/Start completed.
+    if(epoch===(state.previewInstanceEpoch||0)){
+      state.previewInstances=Array.isArray(instanceBody.instances)?instanceBody.instances:[];
+    }
+    state.previewLoaded=true;
+    state.previewError='';
+  }catch(error){
+    state.previewError=String(error?.message||error);
+  }finally{
+    state.previewLoading=false;
+    if(state.view==='preview')render();
+  }
+}
+async function currentEnvironmentBoot(){
+  try{
+    const response=await fetch('/api/health',{cache:'no-store'});
+    if(!response.ok)return '';
+    const body=await response.json();
+    return body.boot_id||'';
+  }catch(_){return ''}
+}
+async function waitForEnvironmentRestart(previousBoot,kind,sha){
+  const started=Date.now();
+  while(Date.now()-started<45000){
+    try{
+      const response=await fetch('/api/health?env_wait='+Date.now(),{cache:'no-store'});
+      if(response.ok){
+        const body=await response.json(),target=body.execution_target;
+        if(body.boot_id&&(!previousBoot||body.boot_id!==previousBoot)&&
+          target?.kind===kind&&(kind!=='pr'||target.head_sha===sha)){
+          location.reload();
+          return true;
+        }
+      }
+    }catch(_){}
+    await new Promise(resolve=>setTimeout(resolve,600));
+  }
+  throw Error('Web restart/PR identity not confirmed. Check task-mecca web status and logs.');
+}
+async function refreshExecutionTarget(){
+  try{
+    const response=await fetch('/api/environment',{cache:'no-store'});
+    if(!response.ok)return;
+    const payload=await response.json();
+    state.executionTarget=payload.target||null;
+    state.executionSwitchSupported=payload.switch_supported!==false;
+    state.executionSwitchOS=payload.os||'';
+    const banner=$('#prExecutionBanner'),target=state.executionTarget;
+    if(banner){
+      banner.hidden=target?.kind!=='pr';
+      if(target?.kind==='pr'){
+        banner.innerHTML='<strong>PR #'+Number(target.pr_number)+' · '+esc(String(target.head_sha||'').slice(0,10))+'</strong> · '+
+          esc(state.language==='ko'?'전체 실행 환경':'Full execution environment')+
+          ' <button id="prReturnDev" type="button" class="action-btn secondary">'+esc(state.language==='ko'?'Dev 복귀':'Return to Dev')+'</button>';
+        $('#prReturnDev')?.addEventListener('click',()=>{void returnToPinnedDev().catch(e=>alert(String(e?.message||e)))});
+      }
+    }
+  }catch(_){}
+}
+async function rebuildPRArtifact(number){
+  if(state.previewActionBusy||!devPreviewAvailable())return;
+  const item=state.previewBuilds.find(row=>Number(row.number)===number);
+  if(!item||!['none','failure','expired','unavailable'].includes(item.build_status)||
+    !/^[a-f0-9]{40}$/.test(String(item.head_sha||'')))return;
+  const ko=state.language==='ko';
+  if(!window.confirm(ko
+    ?'PR #'+number+'의 현재 SHA '+item.head_sha.slice(0,10)+'를 GitHub Actions에서 다시 빌드할까요?\n이 요청은 PR 코드를 실행하지 않고 CI 빌드만 시작합니다.'
+    :'Request a GitHub Actions build for PR #'+number+' at '+item.head_sha.slice(0,10)+'? No PR code runs on this machine.'))return;
+  state.previewActionBusy=number;
+  state.previewMessage='';state.previewError='';render();
+  try{
+    const response=await fetch('/api/preview/rebuild',{method:'POST',
+      headers:{'Content-Type':'application/json','X-Task-Mecca-Action':'1'},
+      body:JSON.stringify({number,sha:item.head_sha})});
+    const payload=await response.json();
+    if(!response.ok)throw Error(payload.error||'PR build request failed');
+    state.previewMessage=ko?'PR #'+number+' 빌드를 GitHub Actions에 요청했습니다. 잠시 후 목록을 새로고침하여 확인하세요.':
+      'GitHub Actions build queued for PR #'+number+'. Refresh to check progress.';
+    await refreshPreviewData();
+  }catch(error){
+    state.previewError=String(error?.message||error);
+  }finally{state.previewActionBusy=0;render()}
+}
+async function executePRSwitch(number){
+  if(state.previewActionBusy||!devPreviewAvailable())return;
+  const item=state.previewBuilds.find(row=>Number(row.number)===number);
+  if(!item||item.build_status!=='success'||!/^[a-f0-9]{40}$/.test(String(item.head_sha||'')))return;
+  const ko=state.language==='ko';
+  const warning=ko
+    ?'PR #'+number+' ('+item.head_sha.slice(0,10)+')로 전체 실행 환경을 전환합니다.\n\n기존 프로젝트, Hook, 워크로드 감시, Telegram 알림이 이 PR 코드로 실행됩니다. Dev 바이너리는 복귀용으로 보관하지만 PR의 데이터 변경은 자동으로 되돌릴 수 없습니다.\n\n외부 또는 신뢰하지 않는 PR 코드는 실행하지 마세요. 로컬 컴퓨터에서 진행하시겠습니까?'
+    :'Switch the entire installation to PR #'+number+' ('+item.head_sha.slice(0,10)+')?\n\nMonitoring, Hooks, projects and notifications run under that code. Restoring Dev does not undo PR data changes.\n\nOnly run trusted PR code on the local computer.';
+  if(!window.confirm(warning))return;
+  const oldBoot=await currentEnvironmentBoot();
+  state.previewActionBusy=number;state.previewMessage='';state.previewError='';render();
+  try{
+    const response=await fetch('/api/environment/enter-pr',{method:'POST',
+      headers:{'Content-Type':'application/json','X-Task-Mecca-Action':'1'},
+      body:JSON.stringify({number,sha:item.head_sha,approve:true})});
+    const payload=await response.json();
+    if(!response.ok)throw Error(payload.error||'PR switch failed');
+    state.previewMessage=ko?'PR 실행 파일을 적용했습니다. 웹 재시작을 확인합니다.':'PR installed. Checking Web restart.';
+    render();
+    await waitForEnvironmentRestart(oldBoot,'pr',item.head_sha);
+  }catch(error){
+    state.previewError=String(error?.message||error);
+  }finally{state.previewActionBusy=0;render()}
+}
+async function returnToPinnedDev(){
+  const target=state.executionTarget;
+  if(!target||target.kind!=='pr')return;
+  const ko=state.language==='ko';
+  if(!window.confirm(ko?'PR #'+target.pr_number+'에서 진입 직전 Dev 버전으로 복귀하시겠습니까? PR 실행 중 변경된 프로젝트 데이터는 자동 복원되지 않습니다.':'Restore the exact Dev version from before this PR? Project data changes are not reverted.'))return;
+  const oldBoot=await currentEnvironmentBoot();
+  const response=await fetch('/api/environment/return-dev',{method:'POST',
+    headers:{'Content-Type':'application/json','X-Task-Mecca-Action':'1'},
+    body:JSON.stringify({approve:true})});
+  const payload=await response.json();
+  if(!response.ok)throw Error(payload.error||'Dev restore failed');
+  await waitForEnvironmentRestart(oldBoot,'dev','');
+}
+function bindPreviewBuildsActions(){
+  $('#previewReloadBtn')?.addEventListener('click',()=>refreshPreviewData());
+  $('#previewSearch')?.addEventListener('input',event=>{
+    const value=event.target.value,pos=event.target.selectionStart;
+    state.previewSearch=value;render();
+    const next=$('#previewSearch');next?.focus({preventScroll:true});
+    if(pos!=null)next?.setSelectionRange(pos,pos);
+  });
+  document.querySelectorAll('[data-preview-filter]').forEach(button=>button.addEventListener('click',()=>{
+    state.previewFilter=button.dataset.previewFilter;render();
+  }));
+  document.querySelectorAll('[data-pr-switch]').forEach(button=>button.addEventListener('click',()=>{
+    void executePRSwitch(Number(button.dataset.prSwitch));
+  }));
+  document.querySelectorAll('[data-pr-rebuild]').forEach(button=>button.addEventListener('click',()=>{
+    void rebuildPRArtifact(Number(button.dataset.prRebuild));
+  }));
 }
 
 function releaseNotesView() {
@@ -3558,6 +4038,12 @@ async function showChannelSwitchModal() {
     options=body;
   }catch(e){
     alert(String(e?.message||e));
+    return;
+  }
+  if(options.execution_target?.kind==='pr'){
+    if(!window.confirm(state.language==='ko'
+      ?'PR #'+options.execution_target.pr_number+'에서 Dev로 복귀하시겠습니까?':'Return to pinned Dev from the active PR?'))return;
+    try{await returnToPinnedDev()}catch(e){alert(String(e?.message||e))}
     return;
   }
   const current=options.current_channel||'stable';
@@ -4082,7 +4568,8 @@ function hubView() {
   const cli=h.cli||{};
   const projects=Array.isArray(h.projects)?h.projects:[];
   const channelBadge=cli.channel==='dev' ? '<span class="badge warn">DEV</span>' : '';
-  const currentVersionMark='<span class="badge hub-version-mark">'+esc(cli.current||'-')+'</span>';
+  const activePR=state.executionTarget?.kind==='pr'?state.executionTarget:null;
+  const currentVersionMark='<span class="badge hub-version-mark">'+esc(activePR?('PR #'+activePR.pr_number+' · '+String(activePR.head_sha||'').slice(0,10)):cli.current||'-')+'</span>';
   const cliStatus=cli.update_available
     ? currentVersionMark+'<span class="badge warn">→ '+esc(cli.latest||'-')+'</span>'
     : currentVersionMark;
@@ -4109,23 +4596,45 @@ function hubView() {
 function normalizedVersion(value) {
   return String(value??'').trim().replace(/(?:\\r|\\n)+$/g,'').trim();
 }
-async function waitForRestartedWeb(targetVersion) {
+async function waitForRestartedWeb(targetVersion,previousBoot='') {
   targetVersion=normalizedVersion(targetVersion);
   const started=Date.now();
+  let changedBootMismatchSince=0,observedVersion='',observedBoot='';
   while(Date.now()-started<30000){
     try {
-      const r=await fetch(`/api/health?restart_wait=${Date.now()}`,{cache:'no-store'});
+      const r=await fetch('/api/health?restart_wait='+Date.now(),{cache:'no-store'});
       if(r.ok){
         const body=await r.json();
-        if(!targetVersion||normalizedVersion(body.version)===targetVersion){ location.reload(); return true; }
+        const runningVersion=normalizedVersion(body.version||'');
+        const runningBoot=String(body.boot_id||'');
+        const bootChanged=!previousBoot||!runningBoot||runningBoot!==previousBoot;
+        observedVersion=runningVersion;observedBoot=runningBoot;
+        if(bootChanged&&(!targetVersion||runningVersion===targetVersion)){
+          state.webBootID=runningBoot||state.webBootID;
+          location.reload();
+          return true;
+        }
+        if(previousBoot&&runningBoot&&runningBoot!==previousBoot&&targetVersion&&runningVersion!==targetVersion){
+          if(!changedBootMismatchSince)changedBootMismatchSince=Date.now();
+          // A new process is running, but its embedded version does not
+          // match the expected version. Don't show a fake 30-second restart.
+          if(Date.now()-changedBootMismatchSince>2000){
+            const reason='Web is running a different version ('+runningVersion+') than the requested update ('+targetVersion+'). Check upgrade logs and retained binary.';
+            state.upgradeRestartDiagnostic=reason;
+            return false;
+          }
+        }else{
+          changedBootMismatchSince=0;
+        }
       }
-    } catch(_) {}
+    }catch(_){}
     await new Promise(resolve=>setTimeout(resolve,500));
   }
-  const c=$('#content');
-  if(c)c.innerHTML=`<div class="load-error"><h2>Task Mecca Web 재시작을 확인하지 못했습니다</h2><p>CLI 업데이트 자체는 완료됐을 수 있습니다. 터미널에서 <code>task-mecca web status</code>로 상태를 확인하고, 이전 버전이 계속 실행 중이면 <code>task-mecca web restart</code>를 실행한 뒤 이 페이지를 새로고침하세요.</p></div>`;
+  const detail=observedVersion?(' Observed version: '+observedVersion+'; expected: '+targetVersion+'; boot: '+observedBoot+'.'):' The new HTTP health endpoint did not respond.';
+  state.upgradeRestartDiagnostic='Web restart check failed.'+detail+' Check task-mecca web status and logs.';
   return false;
 }
+
 function migrationResyncPrompt(result) {
   const changed=(result.changed_instructions||[]).join(', ') || '-';
   if(state.language==='ko'){
@@ -4300,7 +4809,10 @@ function listView() {
   const head=`<div class="task-list-head"><div>${esc(t('id'))}</div><div>${esc(t('taskColumn'))}</div><div>${esc(t('statusColumn'))}</div><div>${esc(t('agentColumn'))}</div><div>${esc(t('activeColumn'))}</div><div>${esc(t('updatedColumn'))}</div><div></div></div>`;
   const summary = uninitialized ? t('backlogUninitializedSummary') : `${meta.selected ? String(meta.selected).split(/[\\/]/).pop() : ''} · ${info.total} ${t('items')} · ${filterLabel}`;
   const emptyState = `<div class="empty"><strong>${esc(t('backlogUninitializedTitle'))}</strong><div>${esc(t('backlogUninitializedBody'))}</div></div>`;
-  return `<div class="page-head"><div><div class="eyebrow">${esc(data.repo||t('repository'))}</div><h1>${esc(t('backlog'))}</h1><p class="summary">${esc(summary)}</p></div></div><div class="metrics"><div class="metric"><strong>${c.working||0}</strong><span>${esc(t('working'))}</span></div><div class="metric"><strong>${c.ready||0}</strong><span>${esc(t('ready'))}</span></div><div class="metric"><strong>${c.hold||0}</strong><span>${esc(t('hold'))}</span></div><div class="metric"><strong>${c.attention||0}</strong><span>${esc(t('needsAttention'))}</span></div></div>${uninitialized?`${listControls(info)}${emptyState}`:`${listControls(info)}${rows.length?`${head}<div class="task-list">${rows.map((task,i)=>{
+  const preliminary=Boolean(data.pending_reconciliation);
+  const metricValue=key=>preliminary?'—':String(c[key]||0);
+  const summaryText=summary+(preliminary?(state.language==='ko'?' · 실행 상태 확인 중':' · Verifying execution state'):'');
+  return `<div class="page-head"><div><div class="eyebrow">${esc(data.repo||t('repository'))}</div><h1>${esc(t('backlog'))}</h1><p class="summary">${esc(summaryText)}</p></div></div><div class="metrics"><div class="metric"><strong>${metricValue('working')}</strong><span>${esc(t('working'))}</span></div><div class="metric"><strong>${metricValue('ready')}</strong><span>${esc(t('ready'))}</span></div><div class="metric"><strong>${metricValue('hold')}</strong><span>${esc(t('hold'))}</span></div><div class="metric"><strong>${metricValue('attention')}</strong><span>${esc(t('needsAttention'))}</span></div></div>${uninitialized?`${listControls(info)}${emptyState}`:`${listControls(info)}${rows.length?`${head}<div class="task-list">${rows.map((task,i)=>{
     const act=task.activity||{}, h=act.health;
     const time=task.file_state==='doing'?fmtSec(runningSeconds(task,'active')):(task.file_state==='done'?fmtSec(task.active_seconds):'-');
     const hs=humanSummary(task);
@@ -4314,7 +4826,7 @@ function listView() {
     const taskMeta=[task.source?.label?sourceLink(task.source,true):'',...visibleTags.map(tag=>tagChip(tag,true)),hiddenTags.length?`<span class="tag-overflow" title="${esc(hiddenTags.join(' · '))}">+${hiddenTags.length}</span>`:''].filter(Boolean).join('');
     const updated=updatedAt(task);
     const alias=(task.agent||'').split('/').pop()||'-';
-    return `<div class="task-row ${i===state.selectedIndex?'keyboard-selected':''}" data-id="${esc(task.id)}" data-row-index="${i}" tabindex="-1"><div class="task-id">${esc(task.id)}</div><div class="task-main"><div class="task-mobile-id">${esc(task.id)}</div><div class="task-title">${esc(titleOf(task))}</div>${taskMeta?`<div class="task-meta-row">${taskMeta}</div>`:''}${previewLine?`<div class="task-preview">${esc(previewLine)}</div>`:''}</div><div class="state-col"><span class="status ${esc(task.state)}">${esc(stateLabel(task.state))}</span>${statusSummary?`<div class="task-state-summary">${esc(statusSummary)}</div>`:''}${['quiet','stale','worker_missing'].includes(h)?`<div class="task-sub">${esc(healthLabel(h))}</div>`:''}</div><div class="task-agent"><div>${esc(alias)}</div>${task.archive_month?`<div class="task-sub">archive/${esc(task.archive_month)}</div>`:''}</div><div class="task-active timer live-timer" data-id="${esc(task.id)}">${time}</div><div class="task-updated" title="${esc(dateTimeLabel(updated))}"><strong class="live-updated" data-updated-at="${esc(updated)}">${esc(ago(updated))}</strong><span>${esc(dateTimeLabel(updated,true))}</span></div><div class="chev">›</div></div>`;
+    return `<div class="task-row ${i===state.selectedIndex?'keyboard-selected':''}" data-id="${esc(task.id)}" data-row-index="${i}" tabindex="-1"><div class="task-id">${esc(task.id)}</div><div class="task-main"><div class="task-mobile-id">${esc(task.id)}</div><div class="task-title">${esc(titleOf(task))}</div>${taskMeta?`<div class="task-meta-row">${taskMeta}</div>`:''}${previewLine?`<div class="task-preview">${esc(previewLine)}</div>`:''}</div><div class="state-col"><span class="status ${preliminary?'todo':esc(task.state)}">${esc(preliminary?(state.language==='ko'?'확인 중':'Checking'):stateLabel(task.state))}</span>${!preliminary&&statusSummary?`<div class="task-state-summary">${esc(statusSummary)}</div>`:''}${['quiet','stale','worker_missing'].includes(h)?`<div class="task-sub">${esc(healthLabel(h))}</div>`:''}</div><div class="task-agent"><div>${esc(alias)}</div>${task.archive_month?`<div class="task-sub">archive/${esc(task.archive_month)}</div>`:''}</div><div class="task-active timer live-timer" data-id="${esc(task.id)}">${time}</div><div class="task-updated" title="${esc(dateTimeLabel(updated))}"><strong class="live-updated" data-updated-at="${esc(updated)}">${esc(ago(updated))}</strong><span>${esc(dateTimeLabel(updated,true))}</span></div><div class="chev">›</div></div>`;
   }).join('')}</div>`:`<div class="empty">${esc(t('noMatches'))}</div>`}`}`;
 }
 
@@ -4941,17 +5453,27 @@ function bindDetailInteractions() {
     history.pushState({},'',backlogUrl()); refreshList();
   }));
 }
-function detailView(task) {
-  const act=task.activity||{}, lc=task.lifecycle||{}, reason=task.attention_reason||null, warn=Boolean(reason)||['quiet','stale','worker_missing'].includes(act.health), events=lc.events||[];
-  const hs=humanSummary(task);
+// Canonical lifecycle markup is independently replaceable without rebuilding
+// the task document, resetting disclosures or disturbing the reading position.
+function detailLifecycleBody(task) {
+  const lc=task.lifecycle||{}, events=lc.events||[];
   const timingInferred=Boolean(lc.lifecycle_inferred), timingIncomplete=Boolean(lc.timing_incomplete);
-  const lifecyclePreview=events.length?`${lifecycleEventLabel(events[events.length-1].label)} · ${dateTimeLabel(events[events.length-1].at,true)}`:t('noLifecycle');
-  const lifecycleBody=`${task.content_only?`<p class="summary">${esc(state.language==='ko'?'실행·라이프사이클 정보 확인 중…':'Checking lifecycle and runtime details…')}</p>`:''}${timingInferred?`<div class="timing-note"><strong>${esc(t('provisionalTiming'))}</strong><span>${esc(t('provisionalTimingDetail'))}</span></div>`:''}${timingIncomplete?`<div class="timing-note warning"><strong>${esc(t('incompleteHistory'))}</strong><span>${esc(t('incompleteHistoryDetail'))}</span></div>`:''}${events.length?`<div class="timeline">${events.map((e,i)=>{
+  const lifecycleBody=`${task.content_only?(state.detailLifecycleError
+    ?`<div class="lifecycle-load-error" role="alert"><span>${esc(state.language==='ko'?'실행·라이프사이클 정보를 불러오지 못했습니다.':'Could not load lifecycle and runtime details.')}</span><button type="button" id="lifecycleRetryBtn" class="action-btn secondary">${esc(state.language==='ko'?'다시 시도':'Retry')}</button></div>`
+    :`<p class="summary">${esc(state.language==='ko'?'실행·라이프사이클 정보 확인 중…':'Checking lifecycle and runtime details…')}</p>`):''}${timingInferred?`<div class="timing-note"><strong>${esc(t('provisionalTiming'))}</strong><span>${esc(t('provisionalTimingDetail'))}</span></div>`:''}${timingIncomplete?`<div class="timing-note warning"><strong>${esc(t('incompleteHistory'))}</strong><span>${esc(t('incompleteHistoryDetail'))}</span></div>`:''}${events.length?`<div class="timeline">${events.map((e,i)=>{
     const isCurrent=i===events.length-1 && e.state!=='done' && Boolean(e.at) && Number.isFinite(new Date(e.at).getTime());
     const duration=isCurrent?fmtSec(Math.max(0,(Date.now()-new Date(e.at).getTime())/1000)):(e.interval||'-');
     const durationHTML=duration&&duration!=='-'?`${esc(t('stayed'))} <span${isCurrent?` class="live-lifecycle-interval" data-state-at="${esc(e.at)}"`:''}>${esc(duration)}</span>`:'';
     return `<div class="timeline-event"><span class="timeline-dot"></span><span class="timeline-time">${esc(new Date(e.at).toLocaleString(localeCode()))}</span><div class="timeline-label"><strong>${esc(lifecycleEventLabel(e.label))}${e.provisional?` · ${esc(t('provisional'))}`:''}</strong><small>${durationHTML}${lifecycleEvidenceLabel(e)?` · ${esc(lifecycleEvidenceLabel(e))}`:''}</small></div></div>`;
   }).join('')}</div>`:task.content_only?'':`<p class="summary">${esc(t('noLifecycle'))}</p>`}`;
+  return lifecycleBody;
+}
+function detailView(task) {
+  const act=task.activity||{}, lc=task.lifecycle||{}, reason=task.attention_reason||null, warn=Boolean(reason)||['quiet','stale','worker_missing'].includes(act.health), events=lc.events||[];
+  const hs=humanSummary(task);
+  const timingInferred=Boolean(lc.lifecycle_inferred), timingIncomplete=Boolean(lc.timing_incomplete);
+  const lifecyclePreview=events.length?`${lifecycleEventLabel(events[events.length-1].label)} · ${dateTimeLabel(events[events.length-1].at,true)}`:t('noLifecycle');
+  const lifecycleBody=detailLifecycleBody(task);
   const lifecycle=`<section class="section detail-section lifecycle-section" id="lifecycle" data-toc-label="${esc(t('lifecycle'))}"><h2>${esc(t('lifecycle'))}</h2>${lifecycleBody}</section>`;
   const passiveAlert=!reason&&warn?`<div class="attention-banner ${['stale','worker_missing'].includes(act.health)?'danger':''}"><strong>${esc(healthLabel(act.health))}</strong><span>${esc(t('lastObservable',{ago:ago(act.last_activity_at),source:act.last_activity_source}))} ${esc(act.health==='worker_missing'?t('workerMissingDetail'):t('quietAdvisory'))}</span></div>`:'';
   const sectionSummaries=task.document?.section_summaries||{};
@@ -5036,6 +5558,7 @@ function requestTaskDetail(id,project=state.project,backlog=state.backlog) {
 // Enrich the visible document only AFTER the Markdown has been painted.
 // A slow control-tower reconciliation is never in the critical rendering path.
 function restoreLiveDetailReadingState(task) {
+  state.detailLifecycleError='';
   const opened=typeof document!=='undefined'&&document.querySelectorAll
     ? [...document.querySelectorAll('.detail-layout details[open][id]')].map(node=>node.id) : [];
   const scrollX=typeof window!=='undefined'?window.scrollX:0;
@@ -5054,39 +5577,82 @@ function restoreLiveDetailReadingState(task) {
     });
   }
 }
-function scheduleTaskLiveEnrichment(id,project=state.project,backlog=state.backlog) {
-  if(!state.detailTask?.content_only)return;
-  const source=state.detailTask, revision=state.contentRevision,generation=taskDetailCacheGeneration;
-  const key=taskDetailKey(id,project,backlog);
-  const current=()=>state.project===project&&state.backlog===backlog&&state.detail===id&&state.detailTask===source&&state.contentRevision===revision&&taskDetailCacheGeneration===generation;
-  const cached=taskLiveCache.get(key);
-  if(cached&&cached.revision===revision&&Date.now()-cached.at<=TASK_DETAIL_CACHE_MS&&cached.task.raw_markdown===source.raw_markdown){
-    restoreLiveDetailReadingState(cached.task);
-    return;
-  }
-  if(taskLivePending.has(key))return;
-  // Let a browser paint the text and tables before beginning any heavy work.
+// Repaint only the lifecycle section so retries never replace the Markdown,
+// reset the reading position, or close unrelated disclosures.
+function refreshVisibleLifecycleSection() {
+  if(state.raw||!state.detailTask?.content_only)return;
+  const section=typeof document!=='undefined'?document.getElementById?.('lifecycle'):null;
+  if(!section)return;
+  section.innerHTML='<h2>'+esc(t('lifecycle'))+'</h2>'+detailLifecycleBody(state.detailTask);
+  section.querySelector?.('#lifecycleRetryBtn')?.addEventListener('click',retryTaskLifecycle);
+}
+function retryTaskLifecycle() {
+  if(state.view!=='backlog'||!state.detail||!state.detailTask?.content_only)return;
+  state.detailLifecycleError='';
+  refreshVisibleLifecycleSection();
+  scheduleTaskLiveEnrichment(state.detail,state.project,state.backlog,{delay:0});
+}
+function scheduleTaskLiveEnrichment(id,project=state.project,backlog=state.backlog,options={}) {
+  if(state.view!=='backlog'||state.detail!==id||state.project!==project||
+    state.backlog!==backlog||!state.detailTask?.content_only)return;
+  const source=state.detailTask,key=taskDetailKey(id,project,backlog);
+  const current=()=>state.view==='backlog'&&state.project===project&&
+    state.backlog===backlog&&state.detail===id&&state.detailTask===source;
+  const delay=options.delay??60,retries=options.retries??1;
+  // Capture revision/generation WHEN the deferred task actually begins.
+  // An intervening /api/revision result must not cancel the only scheduled
+  // fetch before it has started.
   setTimeout(()=>{
     if(!current())return;
+    const revision=state.contentRevision,generation=taskDetailCacheGeneration;
+    const cached=taskLiveCache.get(key);
+    if(cached&&cached.revision===revision&&Date.now()-cached.at<=TASK_DETAIL_CACHE_MS&&cached.task.raw_markdown===source.raw_markdown){
+      state.detailLifecycleError='';
+      restoreLiveDetailReadingState(cached.task);
+      return;
+    }
+    // Only join a request for this exact visible document AND revision.
+    // A slow old request cannot block the new one after a content refresh.
+    const previous=taskLivePending.get(key);
+    if(previous&&previous.source===source&&previous.revision===revision&&previous.generation===generation)return;
+    const entry={source,revision,generation,promise:null};
+    const latest=()=>current()&&taskLivePending.get(key)===entry&&
+      state.contentRevision===revision&&taskDetailCacheGeneration===generation;
     const params=new URLSearchParams({project});
     if(backlog)params.set('backlog',backlog);
-    const promise=(async()=>{
-      const response=await fetch(`/api/tasks/${encodeURIComponent(id)}?${params.toString()}`,{cache:'no-store'});
-      if(!response.ok)return;
-      const full=await response.json();
-      if(taskDetailCacheGeneration!==generation||state.contentRevision!==revision)return;
-      if(full.raw_markdown!==source.raw_markdown) {
-        // New file content is never silently swapped out while being read.
-        if(current())markContentUpdate('content');
-        return;
+    entry.promise=(async()=>{
+      try {
+        const response=await fetch(`/api/tasks/${encodeURIComponent(id)}?${params.toString()}`,{cache:'no-store'});
+        if(!response.ok)throw new Error(`Lifecycle HTTP ${response.status}`);
+        const full=await response.json();
+        if(!latest())return;
+        if(full.raw_markdown!==source.raw_markdown) {
+          // Never silently replace a document that changed during the scan.
+          markContentUpdate('content');
+          return;
+        }
+        taskLiveCache.set(key,{task:full,at:Date.now(),revision});
+        while(taskLiveCache.size>TASK_DETAIL_CACHE_MAX)taskLiveCache.delete(taskLiveCache.keys().next().value);
+        state.detailLifecycleError='';
+        restoreLiveDetailReadingState(full);
+      } catch(error) {
+        if(!latest())return;
+        if(retries>0) {
+          // One bounded automatic retry; do not loop or amplify a failing
+          // control-tower endpoint. Keep the readable Markdown on screen.
+          setTimeout(()=>{
+            if(current())scheduleTaskLiveEnrichment(id,project,backlog,{delay:0,retries:retries-1});
+          },1200);
+        } else {
+          state.detailLifecycleError=String(error?.message||error||'Lifecycle request failed');
+          refreshVisibleLifecycleSection();
+        }
+      } finally {
+        if(taskLivePending.get(key)===entry)taskLivePending.delete(key);
       }
-      taskLiveCache.set(key,{task:full,at:Date.now(),revision});
-      while(taskLiveCache.size>TASK_DETAIL_CACHE_MAX)taskLiveCache.delete(taskLiveCache.keys().next().value);
-      if(current())restoreLiveDetailReadingState(full);
     })();
-    taskLivePending.set(key,promise);
-    promise.finally(()=>{if(taskLivePending.get(key)===promise)taskLivePending.delete(key);}).catch(()=>{});
-  },60);
+    taskLivePending.set(key,entry);
+  },delay);
 }
 function prefetchTaskDetail(id) {
   if(!id||state.view!=='backlog'||state.detail||!state.project)return;
@@ -5119,6 +5685,7 @@ async function loadTaskDetail(id) {
     // runtime ledger can take seconds without holding the document hostage.
     if(state.detailTask!==task||state.loadError){
       state.detailTask=task;
+      state.detailLifecycleError='';
       state.loadError='';
       render();
     }
@@ -5132,11 +5699,14 @@ async function loadTaskDetail(id) {
 }
 function openTask(id) {
   if (!id) return;
-  state.detail=id; state.detailTask=cachedTaskDetail(id); state.loadError=''; state.raw=false; state.view='backlog';
+  state.detail=id; state.detailTask=cachedTaskDetail(id); state.detailLifecycleError=''; state.loadError=''; state.raw=false; state.view='backlog';
   const p=new URLSearchParams(); if(state.project)p.set('project',state.project); if(state.backlog)p.set('backlog',state.backlog); if(state.tagFilters.length)p.set('tags',state.tagFilters.join(',')); history.pushState({},'',`/tasks/${encodeURIComponent(id)}${p.toString()?`?${p.toString()}`:''}`); render(); loadTaskDetail(id);
 }
 function closeTask() {
   state.detail=null; state.detailTask=null; state.loadError=''; history.pushState({},'',state.view==='backlog'?backlogUrl():`/?view=${state.view}`); render();
+  // A direct-link detail page never needed the heavy list before its first paint.
+  // Fetch the list only when the user actually returns to it.
+  void refreshList();
 }
 function bindRows() {
   bindBacklogListTools();
@@ -5193,6 +5763,8 @@ function selectedRowId() {
 }
 
 let autoPageMeasureRaf = 0;
+let autoPageMeasureContext = '';
+let autoPageRowHeightBudget = 0;
 function measuredTaskRowHeight() {
   const rows=[...document.querySelectorAll('.task-list .task-row')].slice(0,5);
   const heights=rows.map(r=>r.getBoundingClientRect().height).filter(h=>Number.isFinite(h)&&h>20).sort((a,b)=>a-b);
@@ -5201,15 +5773,27 @@ function measuredTaskRowHeight() {
 }
 function updateAutoListPageSize(force=false) {
   if(state.listPageMode!=='auto'||state.view!=='backlog'||state.detail)return;
-  if(state.listData&&!force)return;
+  // Never size from provisional file-only rows or an in-flight revalidation:
+  // the following canonical render may add status summaries and taller rows.
+  if(!state.listData||state.listData.pending_reconciliation||state.listRevalidating)return;
   const list=document.querySelector('.task-list');
   if(!list)return;
   const shortcut=document.querySelector('.shortcut-bar');
   const shortcutHeight=shortcut?.getBoundingClientRect().height||28;
   const listTopAtPageTop=list.getBoundingClientRect().top+window.scrollY;
   const available=Math.max(0,window.innerHeight-listTopAtPageTop-shortcutHeight-12);
-  const rowHeight=measuredTaskRowHeight();
-  const next=Math.max(1,Math.min(50,Math.floor(available/Math.max(1,rowHeight))));
+  // Initial row heights can fluctuate as file-only and canonical projections
+  // paint. Never increase the row-height estimate within the same project,
+  // filter and viewport context: pagination itself must not make the measured
+  // page capacity alternate between two values.
+  const measureContext=JSON.stringify([state.project,state.backlog,state.statusFilters,
+    state.tagFilters,state.query,state.listSort,window.innerWidth]);
+  if(measureContext!==autoPageMeasureContext){
+    autoPageMeasureContext=measureContext;
+    autoPageRowHeightBudget=0;
+  }
+  autoPageRowHeightBudget=Math.max(autoPageRowHeightBudget,measuredTaskRowHeight());
+  const next=Math.max(1,Math.min(50,Math.floor(available/Math.max(1,autoPageRowHeightBudget))));
   if(next===state.autoListPageSize)return;
   const oldSize=Math.max(1,state.autoListPageSize||1);
   const firstIndex=(Math.max(1,state.listPage)-1)*oldSize;
@@ -5222,6 +5806,24 @@ function scheduleAutoListPageSize(force=false) {
   if(state.listPageMode!=='auto')return;
   cancelAnimationFrame(autoPageMeasureRaf);
   autoPageMeasureRaf=requestAnimationFrame(()=>requestAnimationFrame(()=>updateAutoListPageSize(force)));
+}
+
+// Observe ONLY the toolbar and notification region above the list. Watching
+// .main or #content also watches the list itself: changing page_size changes
+// its height and retriggers a ResizeObserver → refreshList feedback loop.
+let autoPageLayoutObserver = null;
+function observeAutoListLayout() {
+  if(typeof ResizeObserver==='undefined'||autoPageLayoutObserver)return;
+  autoPageLayoutObserver=new ResizeObserver(()=>scheduleAutoListPageSize(true));
+  for(const selector of ['.topbar','#userAttention']){
+    const node=document.querySelector(selector);
+    if(node)autoPageLayoutObserver.observe(node);
+  }
+}
+if(document.readyState==='loading'){
+  document.addEventListener('DOMContentLoaded',observeAutoListLayout,{once:true});
+}else{
+  observeAutoListLayout();
 }
 
 function applySidebarState() {
@@ -5307,6 +5909,9 @@ function render() {
   const searchFocus=document.activeElement?.id==='search' ? {start:document.activeElement.selectionStart,end:document.activeElement.selectionEnd} : null;
   nav(); translateChrome(); renderAccess(); applySidebarState(); updateNotificationIndicator(); updateTelegramSetupNavIndicator(); renderGlobalUpdateIndicator(); renderContentUpdatePrompt(); renderReleaseUnreadPrompt();
   const c=$('#content'), data=currentProjectData();
+  if(state.view==='preview'){
+    c.innerHTML=previewBuildsView();bindPreviewBuildsActions();return;
+  }
   if(state.view==='release-notes'){
     c.innerHTML=releaseNotesView();
     bindReleaseNotesActions();
@@ -5326,7 +5931,7 @@ function render() {
       $('#backToHubBtn')?.addEventListener('click',()=>{state.project='';state.backlog='';state.listData=null;state.snapshot=null;state.view='hub';history.pushState({},'','/?view=hub');render();refresh();});
       return;
     }
-    c.innerHTML=`<div class="loading">${esc(t('loading'))}</div>`; return;
+    c.innerHTML=`<div class="loading">${esc(projectLoadingText())}</div>`; return;
   }
   const gate=accessBanner()+runtimeHookOnboardingBanner()+diagnosticBanner();
   if (state.detail) {
@@ -5336,10 +5941,11 @@ function render() {
         c.innerHTML=gate+`<div class="load-error"><h2>${esc(t('taskNotFound'))}</h2><p>${esc(state.loadError)}</p><div class="project-actions"><button class="action-btn secondary" id="detailBackBtn">${esc(t('backToBacklog'))}</button><button class="action-btn" id="detailRetryBtn">Retry</button></div></div>`;
         $('#detailBackBtn')?.addEventListener('click',closeTask);
         $('#detailRetryBtn')?.addEventListener('click',()=>{state.loadError='';render();loadTaskDetail(state.detail)});
-      } else c.innerHTML=gate+`<div class="loading">${esc(t('loading'))}</div>`;
+      } else c.innerHTML=gate+`<div class="loading">${esc(projectLoadingText())}</div>`;
       return;
     }
     c.innerHTML=gate+detailView(task);
+    $('#lifecycleRetryBtn')?.addEventListener('click',retryTaskLifecycle);
     $('#backBtn')?.addEventListener('click',closeTask);
     $('#rawToggle')?.addEventListener('click',()=>{
       const scrollY=window.scrollY;
@@ -5396,7 +6002,7 @@ function render() {
     if(state.notificationCenterTab==='settings'){renderNotificationPanel();const body=$('#notificationSettingsBody');if(body){body.dataset.context=notificationHistoryContext();if(settingsDraft)restoreNotificationSettings(body,settingsDraft);}}
     bindNotificationHistoryActions();bindTelegramSetupActions();
   }
-  if(state.view==='backlog')scheduleAutoListPageSize();
+  if(state.view==='backlog')scheduleAutoListPageSize(true);
   document.querySelectorAll('[data-manual-tab]').forEach(b=>b.onclick=()=>{state.manualTab=b.dataset.manualTab;render()});
   bindCopyButtons(); bindMermaidControls(); renderMermaidDiagrams();
 }
@@ -5503,6 +6109,9 @@ function storeListPage(key,data,epoch,source){
  pruneListPages(cache,cache.current,Math.max(1,Number(data.pages)||1));
 }
 function prefetchListPages(query,data,epoch,source){
+ // A slow foreground list must not trigger two more full control-tower
+ // reconciliations. Keep the normal adjacent-page prefetch for fast projects.
+ if(state.listLoadSlow)return;
  if(!Number(data.pages)||!Number(data.page_size))return;
  const key=listContextKey(query),cache=pageCache(key);
  const current=Number(data.page)||1,pages=Number(data.pages)||1;
@@ -5521,6 +6130,7 @@ function prefetchListPages(query,data,epoch,source){
 }
 async function refreshListSummary(){
  if(!state.project||state.view!=='backlog'||state.detail)return;
+ if(listRefreshInFlight||state.listRevalidating)return;
  if(listSummaryInFlight){listSummaryQueued=true;return listSummaryInFlight;}
  const query=listQueryString(),key=listContextKey(query),source=listSourceKey(),epoch=listCacheEpoch(source),serial=++listSummarySerial;
  listSummaryInFlight=(async()=>{try{
@@ -5562,26 +6172,49 @@ async function refreshList(preserveSelection=false) {
  const cached=cache.pages.get(requestedPage);
  if(cached && !preserveSelection){state.listData=cachedListRows(cached,listContextKey());state.listDataContext=listContextKey();state.listRevalidating=true;state.loadError='';if(state.view==='backlog')render();}
  const controller=new AbortController();
+ const listRequestStartedAt=Date.now();
+ let reconciled=false;
+ // First paint is strictly a read-only FILE snapshot. Runtime health, ready/
+ // blocked and notification counts are explicitly pending, not guessed.
+ // Keep the authoritative request running; it replaces every provisional row.
+ if(!cached&&!state.listData&&!state.detail&&state.statusFilters.includes('all')){
+   const fastParams=new URLSearchParams(targetQuery);
+   fastParams.set('projection','initial');
+   void (async()=>{try{
+     const response=await fetch('/api/backlog/tasks?'+fastParams.toString(),{cache:'no-store',signal:controller.signal});
+     if(!response.ok)return;
+     const first=await response.json();
+     if(reconciled||!isCurrent()||state.listData||!first.pending_reconciliation)return;
+     state.listData=first;state.listDataContext=key;state.listRevalidating=true;
+     state.loadError='';state.lastFetch=Date.now();
+     if(state.view==='backlog')render();
+   }catch(_){/* Authoritative request still reports the real error. */}})();
+ }
  listRefreshAbort=controller;listRefreshContext=key;
  const request=(async()=>{try{
   const r=await fetch('/api/backlog/tasks?'+targetQuery,{cache:'no-store',signal:controller.signal});
   if(!r.ok){let detail='';try{detail=(await r.json()).error||'';}catch(_){}throw new Error(detail||`HTTP ${r.status}`);}
-  const data=await r.json();if(!isCurrent())return;
+  const data=await r.json();reconciled=true;if(!isCurrent())return;
+  state.listLoadSlow=Date.now()-listRequestStartedAt>2000;
   cache.current=Math.max(1,Number(data.page)||1);storeListPage(key,data,epoch,source);
   const observed=Date.parse(data.snapshot_at)||0;if(observed<(listSummaryObserved.get(key)||0)){if(observed)listRefreshQueued=true;return;}listSummaryObserved.set(key,observed);listSummaryLatest.set(key,data);
   state.listData=data;state.listDataContext=key;state.listRevalidating=false;
   const selectedIndex=(data.items||[]).findIndex(task=>task.id===selectedID);if(selectedIndex>=0)state.selectedIndex=selectedIndex;
   state.loadError='';state.lastFetch=Date.now();state.listPage=Math.max(1,Number(data.page)||1);
-  acceptContentRevision(data.revision||state.contentRevision);
+  acceptContentRevision(data.revision||state.contentRevision,null,data.signal_revision||'');
   processTaskNotifications(listNotificationPayload(data));
+  // First direct backlog entry must connect after its actual backlog folder
+  // is resolved. Otherwise no SSE callback can request a live list refresh.
+  if(targetView==='backlog' && !targetDetail)ensureAttentionStream();
   const candidates=data.backlog_selection?.candidates||[];
   if(state.backlog&& !candidates.some(x=>x.path===state.backlog)){state.backlog='';localStorage.removeItem('task-mecca-backlog-folder');}
   $('#connectionDot').style.background='var(--ok)';if(state.view==='backlog')render();
   // Start adjacent requests only after the foreground rows have rendered.
   const acceptedQuery=listQueryString();
-  requestAnimationFrame(()=>requestAnimationFrame(()=>{if(targetProject===state.project&&targetBacklog===state.backlog&&acceptedQuery===listQueryString()&&targetView===state.view&&targetDetail===state.detail&&listCacheEpoch(source)===epoch&&listPageCaches.get(key)===cache){prefetchListPages(acceptedQuery,data,epoch,source);scheduleTaskDetailPrefetch(acceptedQuery);}}));
- }catch(e){if(!isCurrent())return;state.listRevalidating=false;state.loadError=String(e?.message||e||'Unknown error');$('#connectionDot').style.background='var(--danger)';if(!state.listData)render();}
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{if(targetProject===state.project&&targetBacklog===state.backlog&&acceptedQuery===listQueryString()&&targetView===state.view&&targetDetail===state.detail&&listCacheEpoch(source)===epoch&&listPageCaches.get(key)===cache){if(!state.listLoadSlow){prefetchListPages(acceptedQuery,data,epoch,source);scheduleTaskDetailPrefetch(acceptedQuery);}}}));
+ }catch(e){if(!isCurrent())return;state.listRevalidating=false;state.loadError=String(e?.message||e||'Unknown error');$('#connectionDot').style.background='var(--danger)';if(state.listData?.pending_reconciliation)state.listData=null;if(!state.listData)render();}
  finally{
+  reconciled=true;
   // A canceled earlier request must not clear or queue over a newer one.
   if(listRefreshInFlight===request){
    listRefreshInFlight=null;listRefreshAbort=null;listRefreshContext='';
@@ -5651,6 +6284,9 @@ async function refreshOnce() {
   if(targetProject)params.set('project',targetProject);
   const qs=params.toString()?`?${params}`:'';
 
+  if(targetView==='preview'){
+    closeAttentionStream();await refreshPreviewData();return;
+  }
   if(targetView==='release-notes'){
     closeAttentionStream();
     await loadReleaseNotes(!state.releaseNotesLoaded);
@@ -5683,9 +6319,17 @@ async function refreshOnce() {
   }
 
   if(targetView==='backlog'){
+    // Deep links and reloads must show the selected Markdown before any
+    // unrelated list/control-tower reconciliation can run.
+    if(state.detail){
+      await loadTaskDetail(state.detail);
+      if(targetProject!==state.project || targetBacklog!==state.backlog || state.view!==targetView)return;
+      void checkContentRevision(true);
+      return;
+    }
     refreshHub(false).catch(()=>{});
     await refreshList();
-    if(state.detail)await loadTaskDetail(state.detail);
+    if(targetProject!==state.project || targetBacklog!==state.backlog || state.view!==targetView)return;
     await checkContentRevision(true);
     return;
   }
@@ -5788,6 +6432,8 @@ function route(fromPop=false) {
   state.project=p.get('project')||'';
   if(previousProject!==state.project){
     state.contentRevision='';
+    state.signalRevision='';
+    state.pendingObservedRevision='';
     state.pendingContentUpdate=false;
     state.pendingContentReason='';
     state.runtimeHistoryOpen=false;
@@ -5820,7 +6466,7 @@ function route(fromPop=false) {
   if (!state.detail) {
     state.view=p.get('view')||(state.project?'backlog':'hub');
     if(state.view==='attention')state.view='notifications';
-    if(state.view==='hub'||state.view==='storage'||state.view==='release-notes') state.project='';
+    if(state.view==='hub'||state.view==='storage'||state.view==='release-notes'||state.view==='preview') state.project='';
     if (state.view === 'backlog') {
       const legacy=p.get('state');
       const raw=p.get('filter');
@@ -5843,9 +6489,8 @@ function route(fromPop=false) {
   if(fromPop&&state.view==='storage')queueMicrotask(()=>loadStorageManagement(true));
   if(fromPop&&state.project&&state.view==='backlog'){
     queueMicrotask(()=>{
-      refreshList();
-      ensureAttentionStream();
       if(state.detail)loadTaskDetail(state.detail);
+      else {refreshList();ensureAttentionStream();}
     });
   }
 }
@@ -5938,6 +6583,8 @@ function bindBacklogListTools() {
   invalidateTaskDetailCache();
   state.backlog=value;
   state.contentRevision='';
+  state.signalRevision='';
+  state.pendingObservedRevision='';
   state.pendingContentUpdate=false;
   state.pendingContentReason='';
   if(value)localStorage.setItem('task-mecca-backlog-folder',value);else localStorage.removeItem('task-mecca-backlog-folder');
@@ -6054,6 +6701,10 @@ setInterval(()=>{
 setInterval(()=>{
   if(state.project)checkContentRevision(false);
   else if(state.view==='hub')refreshHub(true).then(()=>{if(state.view==='hub')render()}).catch(()=>{});
+  // Stop from another tab or unexpected child exit must update the row.
+  if(state.view==='preview'&&document.visibilityState!=='hidden'){
+    void refreshPreviewInstances();
+  }
 },5000);
 function preserveViewportAndFocus(work) {
   const x=window.scrollX, y=window.scrollY;
@@ -6095,5 +6746,6 @@ setInterval(()=>{if(document.visibilityState!=='hidden')void checkTelegramSetupI
 Promise.resolve(initialForeground).finally(()=>refreshOperations());
 setInterval(refreshOperations,15000);
 refreshVersionInfo(false);
+void loadPreviewIdentity();
 void resumeActiveUpgrade();
 setTimeout(()=>refreshVersionInfo(true),800);

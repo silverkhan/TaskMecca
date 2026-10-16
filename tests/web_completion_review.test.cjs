@@ -18,6 +18,9 @@ function page() {
   const context = vm.createContext({
     URLSearchParams, location: { search: '?project=/repos/demo' }, navigator: { language: 'ko', userAgent: 'test', platform: 'MacIntel' },
     window: { isSecureContext: true, focus() {} }, Notification,
+    // The Web registers its layout observer on DOMContentLoaded at load time.
+    // This test executes only notification logic, so keep the document pending.
+    document: { readyState: 'loading', addEventListener() {} },
     fetch: async (url, options) => {
       if (!String(url).startsWith('/api/notifications/web')) throw Error('Unexpected URL '+url);
       const request=JSON.parse(options.body);

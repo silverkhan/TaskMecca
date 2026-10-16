@@ -1,6 +1,22 @@
 {
   "releases": [
     {
+      "version": "0.3.1",
+      "date": "2026-10-16",
+      "title": {
+        "ko": "백로그 성능·관제 신뢰성과 Preview 개선",
+        "en": "Backlog Performance, Monitoring Reliability & Preview"
+      },
+      "summary": {
+        "ko": "대규모 백로그와 라이프사이클 조회를 더 빠르고 안정적으로 처리하고, 해소된 경고 및 새로고침 안내를 정리했습니다. Docker 없는 PR Preview·환경 복귀, 업데이트 확인 및 배포 안전성도 강화했습니다.",
+        "en": "Improves large-backlog navigation and lifecycle refresh, clears resolved warnings and repeated update prompts, adds Docker-free PR previews with safer return-to-Dev, and hardens update checks and release safety."
+      },
+      "migration": {
+        "required": false,
+        "instruction_refresh": false
+      }
+    },
+    {
       "version": "0.3.0",
       "date": "2026-10-10",
       "title": {

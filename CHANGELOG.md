@@ -2,6 +2,17 @@
 
 All notable public releases will be documented here.
 
+## 0.3.1 - 2026-10-16 — Backlog, Monitoring and Preview Stability
+
+- **Backlog performance:** improve first paint, detail navigation, lifecycle cache/refresh and page-sizing stability.
+- **Attention reliability:** remove resolved session warnings, suppress duplicate update notices and retain floating gradient alerts.
+- **Preview workflow:** Docker-free native PR Preview with pinned PR/SHA, isolated data and reliable return to Dev.
+- **Update safety:** reduce repeated update checks, strengthen rolling asset verification and prepublish native/rollback checks.
+- **UI polish:** notification-center labeling, selected-project loading text, responsive controls and attention styling.
+- **After upgrading:** verify desktop/mobile first load, lifecycle and notifications in the actual environment; Dev Preview remains a development-only capability.
+
+Detailed bilingual release notes: [0.3.1](release-notes/0.3.1.json).
+
 ## 0.3.0 - 2026-10-10 — Operations and Monitoring Overhaul
 
 - **Unified agent observation:** Root Session history, canonical task lifecycle ledger with visible Worker/event IDs, Controller/Worker state monitoring, Hook onboarding.

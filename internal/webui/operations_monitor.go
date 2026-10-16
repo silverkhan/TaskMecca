@@ -31,10 +31,12 @@ type operationIncident struct {
 	Key              string                         `json:"key"`
 	Project          string                         `json:"project"`
 	AttemptID        string                         `json:"attempt_id,omitempty"`
+	AssignmentID     string                         `json:"assignment_id,omitempty"`
 	TaskID           string                         `json:"task_id,omitempty"`
 	AgentPath        string                         `json:"agent_path,omitempty"`
 	Kind             string                         `json:"kind"`
 	Quality          string                         `json:"quality"`
+	Severity         string                         `json:"severity,omitempty"`
 	Evidence         string                         `json:"evidence"`
 	LastObservedAt   string                         `json:"last_observed_at,omitempty"`
 	DetectedAt       string                         `json:"detected_at"`
@@ -77,6 +79,11 @@ func readOperationJournal(project string) (operationJournal, error) {
 	}
 	if out.Incidents == nil {
 		out.Incidents = []operationIncident{}
+	}
+	for i := range out.Incidents {
+		if out.Incidents[i].Severity == "" {
+			out.Incidents[i].Severity = operationIncidentSeverity(out.Incidents[i])
+		}
 	}
 	return out, nil
 }
@@ -145,7 +152,7 @@ func classifyOperation(project string, attempt runtimeobs.Attempt, now time.Time
 	if attempt.AttemptID == "" {
 		return operationSignal{}, false
 	}
-	base := operationIncident{Project: project, AttemptID: attempt.AttemptID, TaskID: attempt.TaskID,
+	base := operationIncident{Project: project, AttemptID: attempt.AttemptID, AssignmentID: attempt.BindingEvidence["assignment_id"], TaskID: attempt.TaskID,
 		AgentPath: attempt.AgentPath, LastObservedAt: attempt.LastObservedAt, EndedAt: attempt.EndedAt}
 	key := "attempt:" + attempt.AttemptID
 	confirmed := attempt.StateEvidenceSource == runtimeobs.EvidenceHook &&
@@ -189,6 +196,123 @@ func operationID(project, key string, sequence int) string {
 	return "ops-" + hex.EncodeToString(sum[:8])
 }
 
+func operationIncidentSeverity(item operationIncident) string {
+	if item.Quality == "confirmed" {
+		return "error"
+	}
+	if item.Kind == "monitor_gap" {
+		return "info"
+	}
+	return "warning"
+}
+
+func operationNotificationKind(item operationIncident) string {
+	if item.Quality == "confirmed" {
+		return "interrupted"
+	}
+	if item.Kind == "no_signal" || item.Kind == "handoff_stalled" {
+		return "stalled"
+	}
+	return "runtime_unknown"
+}
+
+func operationEvidenceRecovery(item operationIncident, attempts []runtimeobs.Attempt, now time.Time) (string, bool) {
+	if item.Quality == "confirmed" || (item.Kind != "runtime_unknown" && item.Kind != "no_signal") || item.AssignmentID == "" {
+		return "", false
+	}
+	anchor := item.LastObservedAt
+	if anchor == "" {
+		anchor = item.DetectedAt
+	}
+	since, err := time.Parse(time.RFC3339Nano, anchor)
+	if err != nil || since.IsZero() {
+		return "", false
+	}
+	for _, attempt := range attempts {
+		if (item.AttemptID != "" && attempt.AttemptID != item.AttemptID) || !strings.EqualFold(attempt.TaskID, item.TaskID) || attempt.AgentPath != item.AgentPath || attempt.BindingState != runtimeobs.BindingBound || attempt.BindingEvidence["assignment_id"] != item.AssignmentID {
+			continue
+		}
+		if attempt.CurrentState != runtimeobs.StateRunning || attempt.Terminal || attempt.StateEvidenceSource != runtimeobs.EvidenceHook || (attempt.StateObservationQuality != runtimeobs.QualityObserved && attempt.StateObservationQuality != runtimeobs.QualityAuthoritative) {
+			continue
+		}
+		observed, parseErr := time.Parse(time.RFC3339Nano, attempt.LastActivityAt)
+		if parseErr != nil || observed.IsZero() || !observed.After(since) || observed.After(now) || now.Sub(observed) >= runtimeobs.StaleWarnDuration() {
+			continue
+		}
+		return observed.UTC().Format(time.RFC3339Nano), true
+	}
+	return "", false
+}
+
+// A verified, later Hook event for the *same attempt* can retire an
+// unverified warning even when the original binding had no assignment ID.
+// It cannot retire a confirmed error, interruption, or shutdown.
+func operationExactAttemptRecovered(item operationIncident, attempts []runtimeobs.Attempt, now time.Time) (string, string, bool) {
+ if item.Quality!="verification_required" || (item.Kind!="runtime_unknown" && item.Kind!="no_signal") || item.AttemptID=="" {return "","",false}
+ detected,err:=time.Parse(time.RFC3339Nano,item.DetectedAt)
+ if err!=nil || detected.IsZero(){return "","",false}
+ for _,a:=range attempts {
+  if a.AttemptID!=item.AttemptID || !strings.EqualFold(a.TaskID,item.TaskID) ||
+   a.AgentPath!=item.AgentPath || (item.AssignmentID!="" && a.BindingEvidence["assignment_id"]!=item.AssignmentID) ||
+   a.StateEvidenceSource!=runtimeobs.EvidenceHook ||
+   (a.StateObservationQuality!=runtimeobs.QualityObserved && a.StateObservationQuality!=runtimeobs.QualityAuthoritative){continue}
+  switch a.CurrentState {
+  case runtimeobs.StateCompleted:
+   if !a.Terminal{continue}
+   at,err:=time.Parse(time.RFC3339Nano,a.EndedAt)
+   if err==nil&&at.After(detected)&&!at.After(now){
+    return at.UTC().Format(time.RFC3339Nano),"same attempt has confirmed Hook completion; previous warning retired without changing runtime evidence",true
+   }
+  case runtimeobs.StateRunning:
+   if a.Terminal{continue}
+   at,err:=time.Parse(time.RFC3339Nano,a.LastObservedAt)
+   if err==nil&&at.After(detected)&&!at.After(now)&&now.Sub(at)<runtimeobs.StaleWarnDuration(){
+    return at.UTC().Format(time.RFC3339Nano),"same attempt has later observed Hook running state; previous warning retired without changing runtime evidence",true
+   }
+  }
+ }
+ return "","",false
+}
+
+// A canonical done task makes its previous unbound-assignment warning no
+// longer actionable. Linked attempts still need exact completion evidence:
+// a late Hook failure after task completion must never be hidden.
+// Read only after a successful, unambiguous canonical inventory.
+func operationCanonicalDoneRows(rows map[string][]backlog.Record, taskID string) bool {
+ matches:=rows[strings.ToUpper(strings.TrimSpace(taskID))]
+ return len(matches)==1 && matches[0].State=="done"
+}
+
+// The canonical archive is proof that an old *unbound assignment stage*
+// is no longer pending. It is NOT proof that the Worker ran, reported or
+// completed. Match one recorded assignment and reject post-archive claims.
+// Attempts and failed handoffs are intentionally outside this predicate.
+func operationArchivedAssignmentRetired(rows map[string][]backlog.Record, assignments []runtimeobs.Assignment, taskID, assignmentID, since string, now time.Time) bool {
+ if strings.TrimSpace(taskID)=="" || strings.TrimSpace(assignmentID)=="" || strings.TrimSpace(since)=="" {return false}
+ matches:=rows[strings.ToUpper(strings.TrimSpace(taskID))]
+ if len(matches)!=1 || matches[0].State!="done" || matches[0].Location!="archive" || matches[0].ArchiveMonth=="" {return false}
+ archive:=matches[0]
+ archivedAt:=time.Time{}
+ for _,stamp:=range []string{archive.Mtime,archive.Ctime}{
+  at,err:=time.Parse(time.RFC3339Nano,stamp)
+  if err==nil && !at.IsZero() && !at.After(now) && at.After(archivedAt){archivedAt=at}
+ }
+ if archivedAt.IsZero(){return false}
+ source,err:=time.Parse(time.RFC3339Nano,since)
+ if err!=nil||source.IsZero()||source.After(archivedAt){return false}
+ found:=false
+ for _,a:=range assignments{
+  if !strings.EqualFold(a.TaskID,taskID){continue}
+  at,err:=time.Parse(time.RFC3339Nano,a.AssignedAt)
+  if err!=nil||at.IsZero()||at.After(archivedAt)||at.After(now){return false}
+  if a.AssignmentID==assignmentID {
+   if found||!at.Equal(source){return false}
+   found=true
+  }
+ }
+ return found
+}
+
 func scanOperationProject(project string, now time.Time) (operationJournal, error) {
 	operationMu.Lock()
 	defer operationMu.Unlock()
@@ -210,6 +334,37 @@ func scanOperationProject(project string, now time.Time) (operationJournal, erro
 	policies := operationPolicies(project, ledger, now)
 	recoveryPolicies := operationRecoveryPolicy(project, ledger, now)
 	stages := currentOperationStages(operationStages(project, ledger, now), policies)
+	// Lazily load only when an unverified session warning actually needs
+	// resolution. Unavailable or ambiguous catalogs cannot close warnings.
+	var canonicalRows map[string][]backlog.Record
+	var canonicalLoaded, canonicalAvailable bool
+	canonicalDone := func(taskID string) bool {
+		if taskID == "" { return false }
+		if !canonicalLoaded {
+			canonicalRows, canonicalAvailable = operationCanonicalRows(project)
+			canonicalLoaded = true
+		}
+		return canonicalAvailable && operationCanonicalDoneRows(canonicalRows, taskID)
+	}
+	// Use the same canonical inventory for stage retirement, but require an
+	// archived done file and the exact historical assignment. Never infer
+	// actual runtime completion from the archive.
+	var assignmentList []runtimeobs.Assignment
+	var assignmentsLoaded, assignmentsAvailable bool
+	archiveRetires := func(taskID, assignmentID, since string) bool {
+		if !canonicalLoaded {
+			canonicalRows, canonicalAvailable = operationCanonicalRows(project)
+			canonicalLoaded = true
+		}
+		if !canonicalAvailable { return false }
+		if !assignmentsLoaded {
+			var err error
+			assignmentList, err = runtimeobs.ListAssignments(project)
+			assignmentsAvailable = err == nil
+			assignmentsLoaded = true
+		}
+		return assignmentsAvailable && operationArchivedAssignmentRetired(canonicalRows,assignmentList,taskID,assignmentID,since,now)
+	}
 	for i := range stages {
 		if completion, ok := completions[stages[i].AttemptID]; ok && !stages[i].Failed {
 			stages[i].Stage = "controller_verified_complete"
@@ -218,6 +373,17 @@ func scanOperationProject(project string, now time.Time) (operationJournal, erro
 			stages[i].GraceUntil = ""
 		}
 	}
+	// The stage builder includes the latest durable assignment even when
+	// that task has subsequently moved to archive. The archive retires only
+	// its unbound assignment_pending stage, not any actual handoff failure.
+	currentStages:=make([]operationStage,0,len(stages))
+	for _,stage:=range stages{
+		if stage.Stage=="assignment_pending" && !stage.Failed && stage.AttemptID=="" &&
+			stage.Evidence=="latest durable assignment" &&
+			archiveRetires(stage.TaskID,stage.AssignmentID,stage.Since) {continue}
+		currentStages=append(currentStages,stage)
+	}
+	stages=currentStages
 	journal.Stages = stages
 	signals := map[string]operationSignal{}
 	verified := map[string]bool{}
@@ -226,9 +392,17 @@ func scanOperationProject(project string, now time.Time) (operationJournal, erro
 			verified[attempt.Provider] = operationHookVerifier(project, attempt.Provider)
 		}
 		if signal, ok := classifyOperation(project, attempt, now, verified[attempt.Provider]); ok {
+			// Retire *unlinked assignment* warnings on a completed task.
+// Linked runtime attempts require stronger evidence, since a late
+// Hook signal after task completion may be a new problem.
+			if signal.alert && signal.incident.Quality=="verification_required" &&
+                signal.incident.AttemptID=="" && signal.incident.Kind=="runtime_unknown" &&
+                signal.incident.Evidence=="doing assignment has no linked runtime attempt" &&
+                canonicalDone(signal.incident.TaskID) {continue}
 			// Suppress the same obsolete source on every scan, not only while
 			// its first incident is active. Otherwise resolution would recur.
-			if recoveryPolicies[strings.ToUpper(signal.incident.TaskID)] && (operationSourceAlreadyResolved(signal.incident, journal) || latestOperationRecovery(signal.incident, ledger.Attempts, stages, now)) {
+			latestAssignmentStillCanonical := operationLatestAssignmentSourceAlreadyResolved(signal.incident, journal) && operationCanonicalTaskIsDoing(project, signal.incident.TaskID)
+			if operationSourceAlreadyResolved(signal.incident, journal, now) || latestAssignmentStillCanonical || (recoveryPolicies[strings.ToUpper(signal.incident.TaskID)] && latestOperationRecovery(signal.incident, ledger.Attempts, stages, now)) {
 				continue
 			}
 			if stageSuppresses(signal.incident, stages, now) {
@@ -288,9 +462,10 @@ func scanOperationProject(project string, now time.Time) (operationJournal, erro
 						if matched {
 							continue
 						}
+						if canonicalDone(id){continue}
 						key := "task:" + id
 						signals[key] = operationSignal{key: key, alert: true, incident: operationIncident{
-							Project: project, TaskID: id, AgentPath: agent, Kind: "runtime_unknown", Quality: "verification_required",
+							Project: project, TaskID: id, AgentPath: agent, AssignmentID: strings.TrimSpace(fmt.Sprint(item["assignment_id"])), Kind: "runtime_unknown", Quality: "verification_required",
 							Evidence: "doing assignment has no linked runtime attempt",
 							Action:   "Controller: 배정 기록과 runtime identity를 대조하세요. Worker 종료를 단정하거나 백로그 상태를 자동 변경하지 마세요.",
 						}}
@@ -319,7 +494,7 @@ func scanOperationProject(project string, now time.Time) (operationJournal, erro
 		} else {
 			delete(signals, "task:"+stage.TaskID)
 		}
-		signals[key] = operationSignal{key: key, alert: true, incident: operationIncident{Project: project, TaskID: stage.TaskID, AttemptID: stage.AttemptID, Kind: kind, Quality: "verification_required", Evidence: stage.Evidence, LastObservedAt: stage.Since, Action: "Controller: 인계 전달·완료검토 근거와 정체 원인을 확인하세요. 백로그 완료를 자동 추정하지 마세요."}}
+		signals[key] = operationSignal{key: key, alert: true, incident: operationIncident{Project: project, TaskID: stage.TaskID, AttemptID: stage.AttemptID, AssignmentID: stage.AssignmentID, Kind: kind, Quality: "verification_required", Evidence: stage.Evidence, LastObservedAt: stage.Since, Action: "Controller: 인계 전달·완료검토 근거와 정체 원인을 확인하세요. 백로그 완료를 자동 추정하지 마세요."}}
 	}
 	for key, signal := range signals {
 		if operationPolicyForIncident(signal.incident, policies) != nil {
@@ -342,9 +517,37 @@ func scanOperationProject(project string, now time.Time) (operationJournal, erro
 		if item.RecoveredAt != "" {
 			continue
 		}
+		if item.Kind=="handoff_stalled" && item.Quality=="verification_required" &&
+			item.AttemptID=="" && item.Evidence=="latest durable assignment" &&
+			archiveRetires(item.TaskID,item.AssignmentID,item.LastObservedAt){
+			item.RecoveredAt=nowText
+			item.RecoveryEvidence="exact durable assignment retired by unique canonical archived done record; Worker/runtime completion not inferred"
+			delete(signals,item.Key)
+			continue
+		}
 		if stageSuppresses(*item, stages, now) {
 			item.RecoveredAt = nowText
 			item.RecoveryEvidence = "bounded normal handoff/review grace; runtime evidence unchanged"
+			continue
+		}
+		if at,evidence,recovered:=operationExactAttemptRecovered(*item,ledger.Attempts,now);recovered{
+			item.RecoveredAt=at
+			item.RecoveryEvidence=evidence
+			if signal,ok:=signals[item.Key];ok&&signal.incident.Quality=="verification_required"{delete(signals,item.Key)}
+			continue
+		}
+		if item.Quality=="verification_required" && item.Kind=="runtime_unknown" &&
+           item.AttemptID=="" && item.Evidence=="doing assignment has no linked runtime attempt" &&
+           canonicalDone(item.TaskID) {
+			item.RecoveredAt=nowText
+			item.RecoveryEvidence="canonical task is done; unverified session warning no longer actionable, runtime terminal evidence unchanged"
+			if signal,ok:=signals[item.Key];ok&&signal.incident.Quality=="verification_required"{delete(signals,item.Key)}
+			continue
+		}
+		if at, recovered := operationEvidenceRecovery(*item, ledger.Attempts, now); recovered {
+			item.RecoveredAt = at
+			item.RecoveryEvidence = "same assignment has recent observed Hook execution; prior runtime evidence unchanged"
+			delete(signals, item.Key)
 			continue
 		}
 		if recoveryPolicies[strings.ToUpper(item.TaskID)] && latestOperationRecovery(*item, ledger.Attempts, stages, now) {
@@ -377,10 +580,17 @@ func scanOperationProject(project string, now time.Time) (operationJournal, erro
 		if signal, ok := signals[key]; ok && signal.incident.Kind == item.Kind {
 			item.LastObservedAt = signal.incident.LastObservedAt
 			delete(signals, key)
-		} else if _, present := signals[key]; present || item.Kind != "runtime_unknown" {
+		} else if _, present := signals[key]; present {
+			// A changed kind at the same attempt key is a new episode.
+			item.RecoveredAt = nowText
+			delete(active, key)
+		} else if item.Kind != "runtime_unknown" {
 			item.RecoveredAt = nowText
 			delete(active, key)
 		}
+		// For runtime_unknown, missing a signal is not itself proof of
+		// resolution (a sensor may simply have stopped reporting). The exact
+		// Hook/canonical checks above retire it when evidence is available.
 	}
 	keys := make([]string, 0, len(signals))
 	for key := range signals {
@@ -393,6 +603,7 @@ func scanOperationProject(project string, now time.Time) (operationJournal, erro
 		signal.incident.ID = operationID(project, key, journal.NextSequence)
 		signal.incident.Key = key
 		signal.incident.DetectedAt = nowText
+		signal.incident.Severity = operationIncidentSeverity(signal.incident)
 		journal.Incidents = append(journal.Incidents, signal.incident)
 	}
 	journal.LastScanAt = nowText
@@ -422,13 +633,7 @@ func deliverOperationIncidents(project string, journal operationJournal) {
 		if incident.RecoveredAt != "" {
 			continue
 		}
-		kind := "runtime_unknown"
-		if incident.Quality == "confirmed" {
-			kind = "interrupted"
-		}
-		if incident.Kind == "no_signal" {
-			kind = "stalled"
-		}
+		kind := operationNotificationKind(incident)
 		events = append(events, notify.Event{ID: incident.ID, TaskID: incident.TaskID, Kind: kind,
 			Title: strings.ReplaceAll(incident.Kind, "_", " "), Message: incident.Evidence,
 			ResumeCondition: incident.Action, At: incident.DetectedAt})
@@ -495,16 +700,26 @@ func ensureOperationNotificationFeed(project string) {
 }
 
 func scanOperationProjects(primary string, now time.Time) {
+	scanOperationProjectsWithPriority(primary,now,false)
+}
+
+// The first scan after a Web restart is mandatory: it detects downtime and
+// preserves operation-gap evidence. Only subsequent periodic scans are best
+// effort, allowing an active backlog HTTP request to finish first.
+func scanOperationProjectsWithPriority(primary string, now time.Time, background bool) {
 	for _, project := range operationProjects(primary) {
-		maintenance.WithProjectMonitoring(project, func() {
-			// The guard excludes stopped/archived/missing projects. Feed startup
-			// is idempotent and never depends on an SSE subscriber.
+		work:=func(){
 			ensureOperationNotificationFeed(project)
 			journal, err := scanOperationProject(project, now)
 			if err == nil {
 				deliverOperationIncidents(project, journal)
 			}
-		})
+		}
+		if background{
+			maintenance.TryWithProjectMonitoring(project,work)
+		}else{
+			maintenance.WithProjectMonitoring(project,work)
+		}
 	}
 }
 
@@ -517,7 +732,7 @@ func runOperationMonitor(ctx stdcontext.Context, primary string) {
 		case <-ctx.Done():
 			return
 		case now := <-ticker.C:
-			scanOperationProjects(primary, now.UTC())
+			scanOperationProjectsWithPriority(primary, now.UTC(),true)
 		}
 	}
 }

@@ -107,3 +107,55 @@ func TestMonitoringManyConcurrentWaitersUseOneLockIdentity(t *testing.T) {
  projectMonitoringLocks.Unlock()
  if n!=0{t.Fatalf("per-project lock registry has %d dangling references",n)}
 }
+
+func TestBackgroundMonitoringSkipsWhenForegroundOwnsProject(t *testing.T) {
+ first,_:=monitoringFixture(t)
+ entered:=make(chan struct{})
+ release:=make(chan struct{})
+ done:=make(chan bool,1)
+ go func(){done<-WithProjectMonitoring(first,func(){close(entered);<-release})}()
+ waitMonitoring(t,entered,"foreground lock")
+ backgroundRan:=false
+ started:=time.Now()
+ if TryWithProjectMonitoring(first,func(){backgroundRan=true})||backgroundRan{
+  t.Fatal("background scan entered while foreground owns project")
+ }
+ if time.Since(started)>time.Second {
+  t.Fatal("background scanning waited instead of skipping")
+ }
+ close(release)
+ if !<-done {t.Fatal("foreground failed")}
+ if !TryWithProjectMonitoring(first,func(){backgroundRan=true})||!backgroundRan{
+  t.Fatal("background never resumed after UI")
+ }
+}
+
+func TestBackgroundMonitoringDoesNotOvertakeForegroundWaiter(t *testing.T) {
+ first,_:=monitoringFixture(t)
+ entered:=make(chan struct{})
+ release:=make(chan struct{})
+ done:=make(chan bool,1)
+ go func(){done<-WithProjectMonitoring(first,func(){close(entered);<-release})}()
+ waitMonitoring(t,entered,"first scan")
+ foregroundEntered:=make(chan struct{})
+ foregroundDone:=make(chan bool,1)
+ go func(){foregroundDone<-WithProjectMonitoring(first,func(){close(foregroundEntered)})}()
+ // Wait until the foreground waiter is registered before probing background.
+ deadline:=time.Now().Add(2*time.Second)
+ for {
+  projectMonitoringLocks.Lock()
+  waiting:=false
+  for _,lock:=range projectMonitoringLocks.entries{waiting=waiting||lock.foregroundWaiters>0}
+  projectMonitoringLocks.Unlock()
+  if waiting{break}
+  if time.Now().After(deadline){t.Fatal("foreground waiter not registered")}
+  time.Sleep(time.Millisecond)
+ }
+ ran:=false
+ if TryWithProjectMonitoring(first,func(){ran=true})||ran{
+  t.Fatal("background overtook queued foreground")
+ }
+ close(release)
+ if !<-done||!<-foregroundDone {t.Fatal("foreground work did not complete")}
+ waitMonitoring(t,foregroundEntered,"foreground waiter completion")
+}
