@@ -5,7 +5,6 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"os"
 	"reflect"
 	"sort"
 	"strings"
@@ -179,4 +178,3 @@ func validateRuntimeQueryFields(raw string)([]string,error){
 	return fields,nil
 }
 
-var _ = os.Stdout
