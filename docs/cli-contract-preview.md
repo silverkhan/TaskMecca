@@ -1,6 +1,6 @@
 # CLI 구조화 계약 사전 검증 — AID-201 / AID-202
 
-> 개발 대상: `dev`. 이 문서와 `contract validate/preview`는 실제 백로그 **등록·ID 배정·승인·lifecycle 기록을 하지 않는다.** 현재 계획/미리보기만 제공한다.
+> 개발 대상: `dev`. `contract validate/preview/plan`은 읽기 전용이며 `contract apply`만 승인된 배치의 **등록 파일·lifecycle**을 기록한다. **실행 승인은 부여하지 않는다.**
 
 ## 에이전트용 최소 호출
 
@@ -76,3 +76,17 @@ task-mecca contract help
 3. `success`, `partial`, `failed`, `unknown`, `not_run`을 증거대로 구분한다.
 4. 사용자/Worker가 독자적으로 canonical lifecycle을 쓰거나 근거 없는 runtime event를 합성하지 않는다.
 5. Stable/main 승격은 Dev 검증 및 사용자 승인 이후 별도로 수행한다.
+
+## AID-207: 다건 등록·재개
+
+```bash
+task-mecca contract plan --project /PROJECT --input tasks.json --request-id linear-20261016-1 --json
+task-mecca contract apply --project /PROJECT --input tasks.json --request-id linear-20261016-1 --expect-plan PLAN_DIGEST --approve --json
+task-mecca contract status --project /PROJECT --request-id linear-20261016-1 --json
+```
+
+- `plan`은 현재 백로그를 읽고 예정 **B-ID/선행관계/해시**를 계산하지만 원장에 아무것도 쓰지 않는다. ID는 아직 예약되지 않으므로 다른 등록으로 catalog가 바뀌면 `apply`가 `STALE_PLAN`을 반환한다.
+- `apply`는 **등록 전용 승인**(`--approve`) 및 동일 계획의 `--expect-plan`을 모두 요구한다. `--request-id`는 동일 요청 재시도 시 **같은 값으로 유지**해야 한다. 중단 뒤 동일 요청·입력·digest로 재실행하면 완료한 파일과 등록 이벤트를 확인하고 재개한다.
+- 같은 요청 ID에 다른 JSON 입력을 제공하면 `IDEMPOTENCY_CONFLICT`. 등록된 외부키와의 충돌, 미확인 선행키, 등록되지 않은 태그는 차단한다. 선행키 매핑은 현재 **동일 manifest 안의 작업**만 지원한다.
+- `status`의 `success`는 파일 등록과 `registered` lifecycle 사건이 확인되었다는 의미이며 **착수·완료나 실행 승인**을 뜻하지 않는다. 오류 시 `partial/unknown`을 구분한다.
+- 삭제·수정·승인/실행 전환을 하지 않는다. 등록 후 인계는 기존 Registrar/Controller 규약에 따라 별도 처리한다.

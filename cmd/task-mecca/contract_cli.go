@@ -69,7 +69,8 @@ func contractUsage(out io.Writer) {
 	fmt.Fprintln(out, "Read-only: validate source fields, or preview canonical Markdown without creating tasks.")
 	fmt.Fprintln(out, "Input: schema_version=1; tasks[]: key, title, kind(simple|defined), goal, acceptance_criteria[]")
 	fmt.Fprintln(out, "Optional: source_label, source_url, source_text, background, requirements, constraints, tags[], depends_on[].")
-	fmt.Fprintln(out, "Registration, ID mapping, approval and lifecycle events are not performed.")
+	fmt.Fprintln(out, "validate and preview are read-only. Batch registration uses explicit plan/apply/status.")
+	batchUsage(out)
 }
 
 func runContractCLI(args []string, out, stderr io.Writer) int {
@@ -78,6 +79,7 @@ func runContractCLI(args []string, out, stderr io.Writer) int {
 		return 0
 	}
 	action:=args[0]
+	if action=="plan" || action=="apply" || action=="status" { return runContractBatchCLI(action,args[1:],out,stderr) }
 	if action!="validate" && action!="preview" {
 		fmt.Fprintf(stderr,"unknown contract action: %s (use validate or preview)\n",action)
 		contractUsage(stderr)
