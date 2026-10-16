@@ -5,7 +5,6 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"strings"
 	"time"
 
 	"github.com/silverkhan/TaskMecca/internal/runtimeobs"
@@ -151,4 +150,3 @@ func runtimeDiagnosisSteps(kind,provider string)[]string{
 	}
 }
 
-var _ = strings.TrimSpace
