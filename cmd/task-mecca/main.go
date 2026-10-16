@@ -67,6 +67,9 @@ func run(args []string) int {
         }
         return 0
     }
+    if len(args) > 0 && args[0] == "contract" {
+        return runContractCLI(args[1:], os.Stdout, os.Stderr)
+    }
     if len(args) > 0 && args[0] == "handoff" {
         return handoff.RunCLI(args[1:], os.Stdout, os.Stderr)
     }
