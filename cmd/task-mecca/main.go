@@ -67,6 +67,9 @@ func run(args []string) int {
         }
         return 0
     }
+    if len(args) > 1 && args[0] == "runtime" && args[1] == "query" {
+        return runRuntimeQueryCLI(args[2:], os.Stdout, os.Stderr)
+    }
     if len(args) > 0 && args[0] == "contract" {
         return runContractCLI(args[1:], os.Stdout, os.Stderr)
     }
