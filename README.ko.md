@@ -139,6 +139,7 @@ flowchart LR
 
 | 명령어 | 기능 |
 | --- | --- |
+| `task-mecca --help` / `task-mecca help runtime` | 구현된 CLI 명령과 에이전트용 실행 조회 옵션 확인 |
 | `task-mecca --version` | 설치 버전·채널·최신 버전 확인 |
 | `task-mecca upgrade` | 현재 채널의 최신 버전으로 업데이트 |
 | `task-mecca channel` | 업데이트 채널 확인 |
