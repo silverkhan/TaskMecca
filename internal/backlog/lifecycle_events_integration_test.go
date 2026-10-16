@@ -1,6 +1,8 @@
 package backlog
 
 import (
+	"encoding/json"
+	"github.com/silverkhan/TaskMecca/internal/runtimeobs"
 	"os"
 	"path/filepath"
 	"testing"
@@ -349,5 +351,80 @@ func TestSilentAssignmentDoesNotCreateStartTerminalOrHold(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(backlogDir, "000001.B-1.silent.hold.md")); !os.IsNotExist(err) {
 		t.Fatalf("silence created hold file: %v", err)
+	}
+}
+
+func TestLifecycleProjectsExactControllerReviewClaimSeparately(t *testing.T) {
+	project := t.TempDir()
+	backlogDir := filepath.Join(project, "_task_mecca", "data", "backlog")
+	if err := os.MkdirAll(backlogDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(backlogDir, "000001.B-1.review.doing.md"), []byte("# B-1 Review\n- Agent: /root/controller/worker\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	base := time.Now().UTC().Add(-3 * time.Minute)
+	assignment, err := runtimeobs.RecordAssignment(project, "assignment-review", "B-1", "/root/controller/worker", base)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = runtimeobs.AppendExecutionEvent(project, runtimeobs.ExecutionEvent{EventKind: "state", ObservedAt: base.Add(time.Second).Format(time.RFC3339Nano), AttemptID: "worker-attempt", Provider: "codex", SessionID: "worker-session", RuntimeAgentID: "worker-id", State: runtimeobs.StateRunning, EvidenceSource: runtimeobs.EvidenceHook, ObservationQuality: runtimeobs.QualityObserved})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = runtimeobs.BindAttempt(project, "worker-attempt", "B-1", "/root/controller/worker", "explicit", "", map[string]string{"assignment_id": assignment.AssignmentID}, base.Add(2*time.Second)); err != nil {
+		t.Fatal(err)
+	}
+	err = runtimeobs.AppendExecutionEvent(project, runtimeobs.ExecutionEvent{EventKind: "state", ObservedAt: base.Add(5 * time.Second).Format(time.RFC3339Nano), AttemptID: "controller-attempt", Provider: "codex", SessionID: "controller-session", RuntimeAgentID: "controller-id", State: runtimeobs.StateRunning, EvidenceSource: runtimeobs.EvidenceHook, ObservationQuality: runtimeobs.QualityObserved})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = runtimeobs.BindAttempt(project, "controller-attempt", "", "/root/controller", "explicit", "", nil, base.Add(6*time.Second)); err != nil {
+		t.Fatal(err)
+	}
+	for _, record := range []map[string]any{{"handoff_id": "review-handoff", "record_kind": "prepared", "event_type": "worker_done", "task_id": "B-1", "source_agent_path": "/root/controller/worker", "source_attempt_id": "worker-attempt", "target_agent_path": "/root/controller", "target_attempt_id": "controller-attempt", "target_runtime_agent_id": "controller-id", "target_session_id": "controller-session", "provider": "codex", "observed_at": base.Add(7 * time.Second).Format(time.RFC3339Nano)}, {"handoff_id": "review-handoff", "record_kind": "claimed", "claimed_by": "/root/controller", "claimed_attempt_id": "controller-attempt", "observed_at": base.Add(8 * time.Second).Format(time.RFC3339Nano)}} {
+		if err := func() error {
+			data, e := json.Marshal(record)
+			if e != nil {
+				return e
+			}
+			path := filepath.Join(project, "_task_mecca", ".runtime", "handoffs", "events.jsonl")
+			if e = os.MkdirAll(filepath.Dir(path), 0700); e != nil {
+				return e
+			}
+			f, e := os.OpenFile(path, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
+			if e != nil {
+				return e
+			}
+			_, e = f.Write(append(data, '\n'))
+			closeErr := f.Close()
+			if e != nil {
+				return e
+			}
+			return closeErr
+		}(); err != nil {
+			t.Fatal(err)
+		}
+	}
+	timings, err := LifecycleTimings(project, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	row := timings["B-1"]
+	if row["started_at"] == nil {
+		t.Fatalf("review changed Worker start: %+v", row)
+	}
+	events := row["events"].([]map[string]any)
+	found := false
+	for _, event := range events {
+		if event["kind"] == "review_started" {
+			found = true
+			if event["actor"] != "/root/controller" || event["attempt_id"] != "controller-attempt" || event["assignment_id"] != assignment.AssignmentID || event["at"] != base.Add(8*time.Second).Format(time.RFC3339Nano) {
+				t.Fatalf("review identity lost: %+v", event)
+			}
+		}
+	}
+	if !found {
+		t.Fatalf("review claim missing: %+v", events)
 	}
 }

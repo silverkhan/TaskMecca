@@ -1,7 +1,17 @@
 name: Go standalone artifacts
+run-name: Preview PR #${{ inputs.preview_pr || github.event.pull_request.number || 'manual' }} ${{ inputs.preview_sha || github.event.pull_request.head.sha || github.sha }}
 
 on:
   workflow_dispatch:
+    inputs:
+      preview_pr:
+        description: "Current same-repository Dev PR number, optional for ordinary manual builds"
+        required: false
+        type: string
+      preview_sha:
+        description: "Exact current PR head SHA (required with preview_pr)"
+        required: false
+        type: string
   pull_request:
     paths:
       - "cmd/task-mecca/**"
@@ -11,11 +21,43 @@ on:
       - "go.mod"
       - ".github/workflows/go-artifacts.yml"
 
+permissions:
+  contents: read
+  pull-requests: read
+
 jobs:
   build:
+    # A preview build must never execute code from an arbitrary fork PR.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     steps:
+      # Validate the PR with the *trusted Dev workflow* and Actions token
+      # before checking out (and executing tests from) a requested commit.
+      - name: Validate exact PR identity before checkout
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.preview_pr != '' }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PREVIEW_PR: ${{ inputs.preview_pr }}
+          PREVIEW_SHA: ${{ inputs.preview_sha }}
+        run: |
+          set -euo pipefail
+          [[ "$PREVIEW_PR" =~ ^[1-9][0-9]*$ ]] || { echo "::error::Invalid PR number"; exit 1; }
+          [[ "$PREVIEW_SHA" =~ ^[a-f0-9]{40}$ ]] || { echo "::error::Invalid exact PR SHA"; exit 1; }
+          gh api "repos/$REPO/pulls/$PREVIEW_PR" --jq \
+            '{number,state,base:.base.ref,sha:.head.sha,head_repo:.head.repo.full_name}' > /tmp/tm-pr-verification.json
+          jq -e --argjson number "$PREVIEW_PR" --arg sha "$PREVIEW_SHA" --arg repo "$REPO" \
+            '.number==$number and .state=="open" and .base=="dev" and .sha==$sha and .head_repo==$repo' \
+            /tmp/tm-pr-verification.json >/dev/null || {
+              echo "::error::PR is closed, changed HEAD, targets other branch, or is a fork"
+              exit 1
+            }
       - uses: actions/checkout@v4
+        with:
+          # Never checkout a merge ref for a user-selected PR: pin exact SHA.
+          ref: ${{ (github.event_name == 'workflow_dispatch' && inputs.preview_pr != '' && inputs.preview_sha) || github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
@@ -39,9 +81,28 @@ jobs:
           CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o dist/task-mecca-macos-amd64 ./cmd/task-mecca
           CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -trimpath -ldflags="-s -w" -o dist/task-mecca-macos-arm64 ./cmd/task-mecca
           CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o dist/task-mecca-linux-amd64 ./cmd/task-mecca
-          sha256sum dist/* > dist/SHA256SUMS.txt
+          (cd dist && sha256sum task-mecca-* > SHA256SUMS.txt)
+      - name: Write Preview provenance
+        env:
+          PR_NUMBER: ${{ inputs.preview_pr || github.event.pull_request.number || '0' }}
+          HEAD_SHA: ${{ inputs.preview_sha || github.event.pull_request.head.sha || github.sha }}
+          WORKFLOW_RUN: ${{ github.run_id }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          SWITCH_PROTOCOL=0
+          if [ "$(dist/task-mecca-linux-amd64 environment capability 2>/dev/null)" = "task-mecca-execution-switch-protocol=1" ]; then
+            SWITCH_PROTOCOL=1
+          fi
+          jq -n \
+            --argjson switch_protocol "$SWITCH_PROTOCOL" \
+            --arg repo "$REPOSITORY" \
+            --argjson pr "$PR_NUMBER" \
+            --arg sha "$HEAD_SHA" \
+            --argjson run "$WORKFLOW_RUN" \
+            '{repository:$repo,pr_number:$pr,head_sha:$sha,run_id:$run,workflow:"go-artifacts.yml",schema_version:1,execution_switch_protocol:$switch_protocol}' \
+            > dist/preview-build.json
       - uses: actions/upload-artifact@v4
         with:
-          name: task-mecca-standalone-${{ github.sha }}
+          name: task-mecca-preview-pr-${{ inputs.preview_pr || github.event.pull_request.number || 'manual' }}-${{ inputs.preview_sha || github.event.pull_request.head.sha || github.sha }}
           path: dist/*
           if-no-files-found: error

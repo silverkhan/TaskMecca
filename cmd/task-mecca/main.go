@@ -21,17 +21,41 @@ import (
     "github.com/silverkhan/TaskMecca/internal/webui"
 )
 
-var version = "0.3.0"
+var version = "0.3.1"
 
-func main() { os.Exit(run(os.Args[1:])) }
+// A PR binary is built from its source without Dev release ldflags. Preserve
+// the version of the Dev installation it replaced for framework compatibility
+// checks, while exposing the pinned PR SHA separately.
+func runtimeVersionForTarget(compiled string,target maintenance.ExecutionTarget)string{
+    if target.Kind=="pr"&&strings.TrimSpace(target.OriginalDevVersion)!="" {
+        return target.OriginalDevVersion
+    }
+    return compiled
+}
+
+func main() {
+    if target,err:=maintenance.InstalledExecutionTarget();err==nil {
+        version=runtimeVersionForTarget(version,target)
+    }
+    os.Exit(run(os.Args[1:]))
+}
 
 func run(args []string) int {
+    // A side-effect-free capability handshake is checked by CI before it
+    // advertises that this exact PR binary can return to pinned Dev.
+    if len(args)==2 && args[0]=="environment" && args[1]=="capability" {
+        fmt.Println("task-mecca-execution-switch-protocol=1")
+        return 0
+    }
     if len(args)>0 && args[0]=="notifications" { return runNotificationCLI(args[1:],os.Stdout,os.Stderr) }
     if len(args)>0 && args[0]=="operations" { return runOperationsCLI(args[1:],os.Stdout,os.Stderr) }
  if len(args)>0 && args[0]=="projects" { return runProjectCLI(args[1:],os.Stdout,os.Stderr) }
     if len(args) == 1 && (args[0] == "--version" || args[0] == "-version" || args[0] == "version") {
         fmt.Printf("task-mecca %s\n", version)
         fmt.Printf("channel %s\n", maintenance.CurrentChannel())
+        if target,err:=maintenance.InstalledExecutionTarget();err==nil&&target.Kind=="pr" {
+            fmt.Printf("execution PR #%d %s (pinned Dev %s)\n",target.PRNumber,target.HeadSHA[:10],target.OriginalDevVersion)
+        }
         info:=maintenance.RefreshVersionInfo(version)
         if info.UpdateAvailable {
             fmt.Printf("latest %s · update available\n",info.Latest)

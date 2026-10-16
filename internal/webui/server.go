@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"io"
 	"io/fs"
 	"mime"
@@ -25,10 +26,17 @@ import (
 	"github.com/silverkhan/TaskMecca/internal/install"
 	"github.com/silverkhan/TaskMecca/internal/maintenance"
 	"github.com/silverkhan/TaskMecca/internal/notify"
+	"github.com/silverkhan/TaskMecca/internal/preview"
 	"github.com/silverkhan/TaskMecca/internal/runtimeobs"
 )
 
 const embeddedRoot = "template/_task_mecca/framework"
+
+// Override only in isolated tests; the production endpoint never executes a PR.
+var previewBuildsProvider = func(ctx stdcontext.Context, limit int) ([]preview.Build,error) {
+    return preview.NewClient().ListBuilds(ctx,limit)
+}
+
 
 // The timestamp is placed on a request before the project monitoring guard.
 // Detail timing can then distinguish lock queueing from actual rendering work.
@@ -148,6 +156,7 @@ func selectionPayload(ctx context, selected string, candidates []backlog.Candida
 
 // Replaceable only in isolated HTTP tests; real Web uses maintenance.UpgradeWithProgress.
 var webUpgradeRunner=maintenance.UpgradeWithProgress
+var webUpgradeRunnerExpected=maintenance.UpgradeWithProgressExpected
 
 var stableReleaseNotesIndexProvider = maintenance.StableReleaseNotesIndex
 var stableReleaseNoteProvider = maintenance.StableReleaseNote
@@ -232,6 +241,9 @@ func Handler(project, root, version string) (http.Handler, error) {
 }
 
 func handler(project, root, version, instanceID, controlToken string, restartCh chan<- maintenance.UpgradeResult, stopCh chan<- struct{}) (http.Handler, error) {
+	if err:=maintenance.ReconcileExecutionOnBoot();err!=nil {
+		return nil,fmt.Errorf("environment transition recovery requires attention: %w",err)
+	}
 	initialCtx, initialErr := webContext(project, root)
 	if initialErr != nil {
 		return nil, initialErr
@@ -249,10 +261,12 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 	// subscription side effect. Start it even before a backlog exists; when
 	// root is empty the periodic snapshot will discover the canonical backlog
 	// as soon as Registrar creates it.
-	ensureAttentionFeed(project, monitorRoot)
-	// A persistent cutover suppresses replay of notifications predating this deployment.
-	// A damaged ledger fails closed in its API; it does not prevent the Web UI starting.
-	_ = initWebDelivery(project)
+    if !PreviewMode() {
+        ensureAttentionFeed(project, monitorRoot)
+        // Never initialize the live Web delivery transport inside a Preview.
+        // Its project is synthetic, but avoiding background loops is safer.
+        _ = initWebDelivery(project)
+    }
 	mux := http.NewServeMux()
 
 	projectFor := func(r *http.Request) string {
@@ -313,8 +327,39 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
     })
 
 
+    // Preview discovery is read-only and exclusive to the Dev release channel.
+    // Preview executable launch is deliberately NOT exposed until AID-148/149
+    // establish a verified runtime isolation boundary.
+    mux.HandleFunc("/api/preview/builds", func(w http.ResponseWriter,r *http.Request){
+        if maintenance.CurrentChannel()!="dev" {
+            writeJSON(w,map[string]any{"error":"Preview Builds is available only in the Dev channel"},http.StatusForbidden)
+            return
+        }
+        if r.Method!=http.MethodGet {
+            w.Header().Set("Allow","GET")
+            writeJSON(w,map[string]any{"error":"method not allowed"},http.StatusMethodNotAllowed)
+            return
+        }
+        limit:=20
+        if raw:=r.URL.Query().Get("limit");raw!=""{
+            n,err:=strconv.Atoi(raw)
+            if err!=nil || n<1||n>30 {writeJSON(w,map[string]any{"error":"limit must be between 1 and 30"},400);return}
+            limit=n
+        }
+        ctx,cancel:=stdcontext.WithTimeout(r.Context(),25*time.Second)
+        defer cancel()
+        builds,err:=previewBuildsProvider(ctx,limit)
+        if err!=nil {writeJSON(w,map[string]any{"error":err.Error(),"builds":[]preview.Build{}},http.StatusBadGateway);return}
+        writeJSON(w,map[string]any{"repository":preview.Repository,"builds":builds,"execution_available":false},200)
+    })
+
+    registerPreviewRoutes(mux,writeJSON)
+	registerEnvironmentRoutes(mux,version,restartCh,writeJSON)
+
 	mux.HandleFunc("/api/health", func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, map[string]any{"ok": true, "version": version, "instance_id": instanceID, "boot_id": bootID, "pid": os.Getpid(), "telegram_transport_disabled": notify.TelegramTransportDisabled()}, 200)
+		execution,executionErr:=maintenance.InstalledExecutionTarget()
+		if executionErr!=nil {writeJSON(w,map[string]any{"ok":false,"error":executionErr.Error()},503);return}
+		writeJSON(w, map[string]any{"execution_target":execution,"ok": true, "version": version, "instance_id": instanceID, "boot_id": bootID, "pid": os.Getpid(), "telegram_transport_disabled": notify.TelegramTransportDisabled(), "preview_mode": PreviewMode(), "preview_pr": func()int{n,_:=previewIdentity();return n}(), "preview_sha": func()string{_,sha:=previewIdentity();return sha}(), "preview_parent_url": previewParentURL()}, 200)
 	})
 
 	mux.HandleFunc("/api/version", func(w http.ResponseWriter, r *http.Request) {
@@ -502,6 +547,10 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 
 	mux.HandleFunc("/api/backlog/tasks", func(w http.ResponseWriter, r *http.Request) {
         requestStart:=time.Now()
+        monitorWaitMS:=0.0
+        if queuedAt,ok:=r.Context().Value(projectMonitoringStartKey{}).(time.Time);ok{
+            monitorWaitMS=time.Since(queuedAt).Seconds()*1000
+        }
 		activeProject := projectFor(r)
 		activeCtx, ctxErr := webContext(activeProject, "")
 		if ctxErr != nil {
@@ -542,8 +591,34 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 		tags := split(r.URL.Query().Get("tags"))
         selectionDuration:=time.Since(requestStart)
         listStart:=time.Now()
+        if r.Method==http.MethodGet && r.URL.Query().Get("projection")=="initial" {
+            // Read-only first paint: file-backed rows only, no controller,
+            // runtime, lifecycle or notification reconciliation.
+            result,quickErr:=backlog.BacklogInitialPage(activeProject,selected,page,pageSize,tags,r.URL.Query().Get("q"),r.URL.Query().Get("sort"))
+            w.Header().Set("Cache-Control","no-store")
+            w.Header().Set("Server-Timing",fmt.Sprintf("selection;dur=%.1f, initial;dur=%.1f",selectionDuration.Seconds()*1000,time.Since(listStart).Seconds()*1000))
+            if quickErr!=nil {writeJSON(w,map[string]any{"error":quickErr.Error()},500);return}
+            result["backlog_selection"]=selectionPayload(activeCtx,selected,candidates)
+            result["project_path"]=activeProject
+            writeJSON(w,result,200)
+            return
+        }
 		result, err := backlog.BacklogPage(activeProject, selected, page, pageSize, statuses, tags, r.URL.Query().Get("q"), r.URL.Query().Get("sort"), r.URL.Query().Get("projection"))
-        w.Header().Set("Server-Timing",fmt.Sprintf("selection;dur=%.1f, backlog;dur=%.1f",selectionDuration.Seconds()*1000,time.Since(listStart).Seconds()*1000))
+        elapsedMS:=time.Since(listStart).Seconds()*1000
+        profile:=map[string]float64{}
+        if result!=nil{
+            if actual,ok:=result["_server_profile"].(map[string]float64);ok{
+                profile=actual
+                delete(result,"_server_profile")
+            }
+        }
+        w.Header().Set("Server-Timing",fmt.Sprintf("monitor_wait;dur=%.1f, selection;dur=%.1f, catalog;dur=%.1f, state;dur=%.1f, control;dur=%.1f, notification;dur=%.1f, backlog;dur=%.1f",
+            monitorWaitMS,selectionDuration.Seconds()*1000,profile["catalog"],profile["state"],profile["control"],profile["notification"],elapsedMS))
+        if monitorWaitMS+selectionDuration.Seconds()*1000+elapsedMS>1500{
+            log.Printf("Task Mecca slow backlog API project=%q page=%d wait_ms=%.0f selection_ms=%.0f catalog_ms=%.0f control_ms=%.0f notification_ms=%.0f total_ms=%.0f failed=%t",
+                filepath.Base(activeProject),page,monitorWaitMS,selectionDuration.Seconds()*1000,
+                profile["catalog"],profile["control"],profile["notification"],monitorWaitMS+selectionDuration.Seconds()*1000+elapsedMS,err!=nil)
+        }
 		if err != nil {
 			writeJSON(w, map[string]any{"error": err.Error()}, 500)
 			return
@@ -1362,11 +1437,32 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 			writeJSON(w, map[string]any{"error": "maintenance action header required"}, 403)
 			return
 		}
+        // New clients send the target already shown in the version badge.
+        // Keep empty-body legacy callers working. This is a hint only: the
+        // maintenance layer validates a fresh server-side cache and performs
+        // an independent live VERSION/SHA256 verification before install.
+        expectedVersion:=""
+        if r.Body!=nil{
+            var request struct{ExpectedVersion string `json:"expected_version"`}
+            decoder:=json.NewDecoder(http.MaxBytesReader(w,r.Body,2048))
+            decoder.DisallowUnknownFields()
+            if decodeErr:=decoder.Decode(&request);decodeErr!=nil && !errors.Is(decodeErr,io.EOF){
+                writeJSON(w,map[string]any{"error":"invalid update request"},400)
+                return
+            }
+            expectedVersion=request.ExpectedVersion
+        }
         if !upgradeTracker.begin() {
             writeJSON(w,map[string]any{"error":"update already in progress","status":upgradeTracker.snapshot()},409)
             return
         }
-		result, err := webUpgradeRunner(version,upgradeTracker.step)
+        var result maintenance.UpgradeResult
+        var err error
+        if expectedVersion!=""{
+            result,err=webUpgradeRunnerExpected(version,expectedVersion,upgradeTracker.step)
+        }else{
+            result,err=webUpgradeRunner(version,upgradeTracker.step)
+        }
 		if err != nil {
             upgradeTracker.finish("failed",err)
 			writeJSON(w, map[string]any{"error": err.Error()}, 500)
@@ -1456,8 +1552,13 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 			contentStarted := time.Now()
 			item, err := backlog.TaskContent(activeProject, selected, id)
 			w.Header().Set("Cache-Control", "no-store")
+			contentMS:=time.Since(contentStarted).Seconds()*1000
 			w.Header().Set("Server-Timing", fmt.Sprintf("selection;dur=%.1f, content;dur=%.1f",
-				selectionMS, time.Since(contentStarted).Seconds()*1000))
+				selectionMS, contentMS))
+			if selectionMS+contentMS>1500 {
+				log.Printf("Task Mecca slow content API project=%q task=%q selection_ms=%.0f content_ms=%.0f total_ms=%.0f failed=%t",
+					filepath.Base(activeProject),id,selectionMS,contentMS,selectionMS+contentMS,err!=nil)
+			}
 			if err != nil {
 				writeJSON(w, map[string]any{"error": err.Error(), "id": id}, http.StatusNotFound)
 				return
@@ -1470,6 +1571,19 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 			monitorWaitMS, selectionMS, profile.CatalogMS, profile.ReadinessMS, profile.ControlMS, profile.ProjectionMS, time.Since(detailStarted).Seconds()*1000))
 		if err != nil {
 			writeJSON(w, map[string]any{"error": err.Error(), "id": id}, 404)
+			return
+		}
+		if r.Method == http.MethodGet && r.URL.Query().Get("projection") == "lifecycle" {
+			// Runtime projection retains the same canonical control-tower evidence
+			// as full detail, but never sends Markdown or unrelated sections.
+			// It remains under the normal monitoring guard unlike content-only.
+			writeJSON(w, map[string]any{
+				"id": item["id"],
+				"lifecycle": item["lifecycle"],
+				"activity": item["activity"],
+				"state": item["state"],
+				"file_state": item["file_state"],
+			}, 200)
 			return
 		}
 		writeJSON(w, item, 200)
@@ -1520,7 +1634,7 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 	})
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) { sendEmbedded(w, "index.html") })
 
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	return previewGuard(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		path := r.URL.Path
 		// These projections reconcile lifecycle/notification/runtime state even
 		// on GET. Serialize them with pause/remove and refuse a stopped or absent
@@ -1529,7 +1643,8 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 		// state. Its permission check uses the management gate but deliberately
 		// avoids the per-project monitoring mutex held by expensive scans.
 		// Paused, removed and unregistered projects are still rejected.
-		if strings.HasPrefix(path, "/api/tasks/") && r.Method == http.MethodGet && r.URL.Query().Get("projection") == "content" {
+		if r.Method == http.MethodGet && ((strings.HasPrefix(path, "/api/tasks/") && r.URL.Query().Get("projection") == "content") ||
+            (path == "/api/backlog/tasks" && r.URL.Query().Get("projection") == "initial")) {
 			if !maintenance.ProjectMonitoringAllowed(projectFor(r)) {
 				writeJSON(w, map[string]any{"error": "project monitoring is stopped or the folder is unavailable", "monitoring": false}, http.StatusConflict)
 				return
@@ -1546,7 +1661,7 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 			return
 		}
 		mux.ServeHTTP(w, r)
-	}), nil
+	})), nil
 }
 
 func isTailscaleIPv4(ip net.IP) bool {
@@ -1730,7 +1845,58 @@ func serveDirectTailscaleHTTPS(server *http.Server, port int, instanceID string,
 	}
 }
 
+// configureMacTailscaleAsync runs after the local HTTP listener and service
+// identity are available. A slow or broken Tailscale Serve must never delay
+// task-mecca web start/restart or its local health check.
+func configureMacTailscaleAsync(port int, instanceID string) {
+	publish:=func(url,mode,message string,managed bool) {
+		_ = updateServiceState(instanceID,func(state *ServiceState){
+			state.TailscaleURL=url
+			state.TLSEnabled=url!=""
+			state.TLSError=message
+			state.TailscaleManaged=managed && url!=""
+			state.TailscaleMode=mode
+		})
+	}
+	dns,ip,err:=tailscaleStatusInfo()
+	if err!=nil {publish("","unavailable",err.Error(),false);return}
+	url,managed,err:=ensureTailscaleServe(dns,port)
+	if err!=nil {publish("","unavailable",err.Error(),false);return}
+	if url==""||dns==""||ip==""{
+		publish("","unavailable","Tailscale Serve address unavailable",false)
+		return
+	}
+	verifyErr:=verifyTailscaleEndpoint(dns,ip,port,instanceID,2*time.Second)
+	if verifyErr!=nil {
+		firstErr:=verifyErr
+		if _,applyErr:=applyTailscaleServe(port);applyErr==nil{
+			verifyErr=verifyTailscaleEndpoint(dns,ip,port,instanceID,2*time.Second)
+		}else{
+			verifyErr=fmt.Errorf("Serve reapply failed after verification (%v): %w",firstErr,applyErr)
+		}
+		if verifyErr!=nil && managed {
+			beforeReset:=verifyErr
+			if resetErr:=refreshOwnedTailscaleServe(dns,port);resetErr==nil{
+				verifyErr=verifyTailscaleEndpoint(dns,ip,port,instanceID,2*time.Second)
+			}else{
+				verifyErr=fmt.Errorf("Serve reset failed after verification (%v): %w",beforeReset,resetErr)
+			}
+		}
+	}
+	if verifyErr!=nil{publish("","unavailable",verifyErr.Error(),false);return}
+	publish(url,"serve","",managed)
+}
+
 func Run(config Config) error {
+    // The Preview listener must never enter the normal Tailscale/auto-host
+    // management path. Explicit loopback is mandatory for a Preview child.
+    // Docker's isolated network requires the child to listen inside its
+    // container. Only a sandbox-marked child may bind beyond loopback; Docker
+    // publishes this port exclusively to the parent's 127.0.0.1.
+    if PreviewMode() && !(config.Host=="127.0.0.1" || config.Host=="localhost" ||
+         (config.Host=="0.0.0.0" && os.Getenv("TASK_MECCA_PREVIEW_SANDBOX")=="docker")) {
+        return errors.New("Preview Web must bind to loopback or a Docker-isolated container")
+    }
 	if config.Port <= 0 {
 		config.Port = DefaultPort
 	}
@@ -1758,14 +1924,12 @@ func Run(config Config) error {
 	var primaryListener net.Listener
 	localURL := ""
 	tailscaleURL := ""
-	candidateTailscaleURL := ""
-	tailscaleDNS := ""
-	tailscaleIP := ""
 	tailscaleManaged := false
 	tailscaleMode := ""
 	tlsError := ""
 	bindHost := ""
 	directTLSPending := false
+	macTLSPending := false
 	port := config.Port
 
 	if autoMode {
@@ -1777,21 +1941,10 @@ func Run(config Config) error {
 		localURL = fmt.Sprintf("http://127.0.0.1:%d/", port)
 
 		if runtime.GOOS == "darwin" {
-			dns, ip, statusErr := tailscaleStatusInfo()
-			if statusErr != nil {
-				tlsError = statusErr.Error()
-			} else {
-				serveURL, managed, serveErr := ensureTailscaleServe(dns, port)
-				if serveErr != nil {
-					tlsError = serveErr.Error()
-				} else {
-					candidateTailscaleURL = serveURL
-					tailscaleDNS = dns
-					tailscaleIP = ip
-					tailscaleManaged = managed
-					tailscaleMode = "serve"
-				}
-			}
+			// Publish the local listener and health before querying/reconfiguring
+			// Tailscale. On failure, the existing local Web must remain usable.
+			macTLSPending = true
+			tailscaleMode = "initializing"
 		} else if autoTailscaleIPv4Provider() != "" {
 			// Windows/Linux HTTPS setup can involve a slow first certificate
 			// provision. Publish the local service first and finish HTTPS in
@@ -1822,34 +1975,6 @@ func Run(config Config) error {
 	primaryErrCh := make(chan error, 1)
 	go func() { primaryErrCh <- server.Serve(primaryListener) }()
 
-	if runtime.GOOS == "darwin" && candidateTailscaleURL != "" && tailscaleDNS != "" && tailscaleIP != "" {
-		verifyErr := verifyTailscaleEndpoint(tailscaleDNS, tailscaleIP, port, config.InstanceID, 2*time.Second)
-		if verifyErr != nil {
-			firstErr := verifyErr
-			_, applyErr := applyTailscaleServe(port)
-			if applyErr == nil {
-				verifyErr = verifyTailscaleEndpoint(tailscaleDNS, tailscaleIP, port, config.InstanceID, 2*time.Second)
-			} else {
-				verifyErr = fmt.Errorf("Serve reapply failed after health check error (%v): %w", firstErr, applyErr)
-			}
-
-			if verifyErr != nil && tailscaleManaged {
-				beforeResetErr := verifyErr
-				if resetErr := refreshOwnedTailscaleServe(tailscaleDNS, port); resetErr == nil {
-					verifyErr = verifyTailscaleEndpoint(tailscaleDNS, tailscaleIP, port, config.InstanceID, 2*time.Second)
-				} else {
-					verifyErr = fmt.Errorf("Serve hard reset failed after health check error (%v): %w", beforeResetErr, resetErr)
-				}
-			}
-		}
-		if verifyErr == nil {
-			tailscaleURL = candidateTailscaleURL
-			tlsError = ""
-		} else {
-			tailscaleURL = ""
-			tlsError = verifyErr.Error()
-		}
-	}
 
 	preferredURL := localURL
 	if preferredURL == "" {
@@ -1866,6 +1991,9 @@ func Run(config Config) error {
 		return err
 	}
 	defer removeServiceState(config.InstanceID, os.Getpid())
+	if macTLSPending {
+		go configureMacTailscaleAsync(port,config.InstanceID)
+	}
 
 	fmt.Println("Task Mecca Web UI")
 	if localURL != "" {
@@ -1873,7 +2001,7 @@ func Run(config Config) error {
 	}
 	if tailscaleURL != "" {
 		fmt.Println("tailscale: " + tailscaleURL)
-	} else if directTLSPending {
+	} else if directTLSPending || macTLSPending {
 		fmt.Println("tailscale HTTPS: initializing in background")
 	} else if autoMode && tailscaleIPv4() != "" {
 		fmt.Println("tailscale HTTPS: unavailable")

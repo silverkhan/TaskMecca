@@ -53,3 +53,23 @@ test('hook resolution prevents stale, undated or equal-time assignment warnings 
 test('packaged shell includes settings dialog and mobile center entry, and has no separate attention menu',()=>{
  const html=fs.readFileSync('goassets/template/_task_mecca/framework/web/index.html','utf8');assert.match(html,/id="notificationPanel"[^>]*role="dialog"/);assert.match(html,/id="projectNotificationsNav"/);assert.doesNotMatch(html,/id="notificationCenterTop"/);assert.doesNotMatch(html,/data-view="attention"/);assert.match(html,/data-view="issues"[^>]*hidden/);
 });
+
+
+
+test('notification center sidebar keeps its original name without ellipsis',()=>{
+ const a=app(),html=fs.readFileSync('goassets/template/_task_mecca/framework/web/index.html','utf8');
+ const css=fs.readFileSync('goassets/template/_task_mecca/framework/web/style.css','utf8');
+ assert.equal(vm.runInContext("t('projectNotifications')",a.context),'알림센터');
+ assert.equal(vm.runInContext("t('notificationCenter')",a.context),'알림센터');
+ a.state.language='en';
+ assert.equal(vm.runInContext("t('projectNotifications')",a.context),'Notification center');
+ assert.equal(vm.runInContext("t('notificationCenter')",a.context),'Notification center');
+ assert.match(html,/id="projectNotificationsNav"[^>]+title="Notification center" aria-label="Notification center"/);
+ assert.match(html,/id="projectNotificationsText">Notification center<\/span>/);
+ assert.match(source,/const description=summary\?t\('telegramSetupNav'\)[^\n]+:t\('notificationCenter'\)/,
+  'Telegram setup hint keeps the same center label by default');
+ assert.match(css,/#projectNotificationsNav \.nav-text\{[^}]*white-space:normal;overflow:visible;text-overflow:clip;word-break:keep-all\}/,
+  'notifications entry is never truncated with ellipsis, unlike other optional nav labels');
+ assert.match(css,/#projectNotificationsNav \.count\{flex:0 0 auto\}/,
+  'Telegram setup dot retains its own space');
+});

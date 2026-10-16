@@ -1,6 +1,22 @@
 {
   "releases": [
     {
+      "version": "0.3.1",
+      "date": "2026-10-16",
+      "title": {
+        "ko": "백로그 성능·라이프사이클 및 웹 사용성 개선",
+        "en": "Backlog Performance, Lifecycle & Web Experience"
+      },
+      "summary": {
+        "ko": "대규모 백로그 목록과 본문을 더 빠르게 표시하고, 최초 진입 시 화면 흔들림과 라이프사이클 갱신 경합을 개선했습니다. 해소된 경고·반복 갱신 안내를 정리하고 알림 화면과 업데이트 안정성을 강화했습니다.",
+        "en": "Improves large-backlog loading, stabilizes initial layout and lifecycle refresh, reduces stale warnings and repetitive refresh notices, and refines the attention panel and update reliability."
+      },
+      "migration": {
+        "required": false,
+        "instruction_refresh": false
+      }
+    },
+    {
       "version": "0.3.0",
       "date": "2026-10-10",
       "title": {

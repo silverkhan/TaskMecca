@@ -74,7 +74,7 @@ func ensureAttentionFeed(project, root string) *attentionFeed {
 }
 
 func (f *attentionFeed) refresh() {
-	maintenance.WithProjectMonitoring(f.project, f.refreshActive)
+	maintenance.TryWithProjectMonitoring(f.project, f.refreshActive)
 }
 
 func (f *attentionFeed) refreshActive() {

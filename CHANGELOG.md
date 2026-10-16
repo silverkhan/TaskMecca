@@ -2,6 +2,21 @@
 
 All notable public releases will be documented here.
 
+## 0.3.1 - 2026-10-16 — Backlog, Lifecycle and Web Experience
+
+- **Faster backlog:** prioritize initial list/detail rendering and reduce repeated Git-history lookups.
+- **Stable layout:** prevent page-size recalculation loops and first-load screen jitter.
+- **Lifecycle reliability:** discard stale refresh responses and improve retry and recovery.
+- **Attention & interface:** avoid lingering resolved warnings and repeated notices; preserve floating attention styling.
+- **Update safety:** reduce duplicate update checks and strengthen asset validation and OS prepublish checks.
+- **After upgrading:** verify real desktop/mobile backlog first load, lifecycle history, and attention behavior.
+
+### Contributors & development (Dev-only)
+
+- Docker-free native PR Preview with pinned PR/SHA, isolated test data, lifecycle controls, and reliable return to the original Dev build.
+
+Detailed bilingual release notes: [0.3.1](release-notes/0.3.1.json).
+
 ## 0.3.0 - 2026-10-10 — Operations and Monitoring Overhaul
 
 - **Unified agent observation:** Root Session history, canonical task lifecycle ledger with visible Worker/event IDs, Controller/Worker state monitoring, Hook onboarding.

@@ -11,11 +11,34 @@ import (
 	"time"
 )
 
+func TestOperationSourceAlreadyResolvedSuppressesSameObservedAssignmentAfterRestart(t *testing.T) {
+	observedAt := "2026-10-12T11:01:00Z"
+	signal := operationIncident{
+		Project: "/project", AttemptID: "run-1", AssignmentID: "assignment-1",
+		TaskID: "A-5", AgentPath: "/root/controller/worker", Kind: "runtime_unknown",
+		Evidence: "runtime identity or hook execution unverified", LastObservedAt: observedAt,
+	}
+	journal := operationJournal{Incidents: []operationIncident{{
+		Project: signal.Project, AttemptID: signal.AttemptID, AssignmentID: signal.AssignmentID,
+		TaskID: signal.TaskID, AgentPath: signal.AgentPath, Kind: signal.Kind,
+		Evidence: signal.Evidence, LastObservedAt: "2026-10-12T11:00:00Z",
+		RecoveredAt:      observedAt,
+		RecoveryEvidence: "same assignment has recent observed Hook execution; prior runtime evidence unchanged",
+	}}}
+	if !operationSourceAlreadyResolved(signal, journal, time.Date(2026,10,12,11,1,1,0,time.UTC)) {
+		t.Fatal("same source observation should stay resolved after a journal reload")
+	}
+	signal.AssignmentID = "assignment-2"
+	if operationSourceAlreadyResolved(signal, journal, time.Date(2026,10,12,11,1,1,0,time.UTC)) {
+		t.Fatal("a distinct assignment must create a new warning episode")
+	}
+}
+
 func TestOperationStagesBoundedGraceAndFailures(t *testing.T) {
 	base := time.Date(2026, 10, 7, 8, 0, 0, 0, time.UTC)
 	stamp := func(d time.Duration) string { return base.Add(d).Format(time.RFC3339Nano) }
 	assignments := []runtimeobs.Assignment{{AssignmentID: "new", TaskID: "A-19", AgentPath: "/worker", AssignedAt: stamp(0)}}
-	attempts := []runtimeobs.Attempt{{AttemptID: "run", TaskID: "A-19", AgentPath: "/worker", BindingState: runtimeobs.BindingBound, BindingEvidence: map[string]string{"assignment_id": "new"}}}
+	attempts := []runtimeobs.Attempt{{AttemptID: "run", TaskID: "A-19", AgentPath: "/worker", BindingState: runtimeobs.BindingBound, BindingEvidence: map[string]string{"assignment_id": "new"}}, {AttemptID: "controller", TaskID: "A-19", AgentPath: "/root/controller", RuntimeAgentID: "controller-id", SessionID: "controller-session", Provider: "codex", BindingState: runtimeobs.BindingBound, CurrentState: runtimeobs.StateRunning, LastActivityAt: stamp(-9 * time.Minute), StateEvidenceSource: runtimeobs.EvidenceHook, StateObservationQuality: runtimeobs.QualityObserved}}
 	h := handoff.Handoff{HandoffID: "done", EventType: handoff.EventWorkerDone, TaskID: "A-19", SourceAgentPath: "/worker", SourceAttemptID: "run", PreparedAt: stamp(time.Minute), Steps: map[string]handoff.StepState{}}
 	ledger := handoff.Ledger{Handoffs: map[string]handoff.Handoff{"done": h}}
 	stages := projectOperationStages("fixture", assignments, attempts, ledger, base.Add(2*time.Minute))
@@ -38,6 +61,10 @@ func TestOperationStagesBoundedGraceAndFailures(t *testing.T) {
 	h.Target.AgentPath = "/root/controller"
 	h.ClaimedAttemptID = "controller"
 	h.ClaimedAt = stamp(2 * time.Minute)
+	h.Target.AttemptID = "controller"
+	h.Target.RuntimeAgentID = "controller-id"
+	h.Target.SessionID = "controller-session"
+	h.Target.Provider = "codex"
 	ledger.Handoffs["done"] = h
 	review := projectOperationStages("fixture", assignments, attempts, ledger, base.Add(3*time.Minute))[0]
 	if review.Stage != "controller_review" || review.GraceUntil != stamp(17*time.Minute) {
@@ -70,6 +97,26 @@ func TestOperationStagesBoundedGraceAndFailures(t *testing.T) {
 		if current.Since != h.PreparedAt || current.deferred(base.Add(5*time.Minute)) {
 			t.Fatal("malformed failure obtained grace")
 		}
+	}
+}
+
+func TestExactControllerStageLiveAllowsElevenMinuteActivityButFailsClosedOnIdentityAndAge(t *testing.T) {
+	now := time.Date(2026, 10, 12, 12, 0, 0, 0, time.UTC)
+	claimed := now.Add(-12 * time.Minute)
+	h := handoff.Handoff{ClaimedAt: claimed.Format(time.RFC3339Nano), Target: handoff.Target{AgentPath: "/root/controller", AttemptID: "controller-run", RuntimeAgentID: "native", SessionID: "session", Provider: "codex"}}
+	a := runtimeobs.Attempt{AttemptID: "controller-run", AgentPath: "/root/controller", RuntimeAgentID: "native", SessionID: "session", Provider: "codex", BindingState: runtimeobs.BindingBound, CurrentState: runtimeobs.StateRunning, StateEvidenceSource: runtimeobs.EvidenceHook, StateObservationQuality: runtimeobs.QualityObserved, LastActivityAt: now.Add(-11 * time.Minute).Format(time.RFC3339Nano)}
+	if !exactControllerStageLive(h, []runtimeobs.Attempt{a}, now) {
+		t.Fatal("exact running Controller with 11m-old activity inside 15m claim grace must remain under review")
+	}
+	wrong := a
+	wrong.SessionID = "other-session"
+	if exactControllerStageLive(h, []runtimeobs.Attempt{wrong}, now) {
+		t.Fatal("mismatched session must fail closed")
+	}
+	stale := a
+	stale.LastActivityAt = now.Add(-30 * time.Minute).Format(time.RFC3339Nano)
+	if exactControllerStageLive(h, []runtimeobs.Attempt{stale}, now) {
+		t.Fatal("activity outside claim grace must fail closed")
 	}
 }
 
@@ -107,7 +154,7 @@ func TestOperationStageScanTransitionDedupAndBacklogPreservation(t *testing.T) {
 	if err := os.WriteFile(path, original, 0600); err != nil {
 		t.Fatal(err)
 	}
-	appendSyntheticStageRecord(t, project, handoff.Record{HandoffID: "synthetic-done", RecordKind: "prepared", EventType: handoff.EventWorkerDone, TaskID: "A-24", SourceAgentPath: a.AgentPath, SourceAttemptID: attempt.AttemptID, TargetAgentPath: "/root/controller", ObservedAt: stamp(2 * time.Second)})
+	appendSyntheticStageRecord(t, project, handoff.Record{HandoffID: "synthetic-done", RecordKind: "prepared", EventType: handoff.EventWorkerDone, TaskID: "A-24", SourceAgentPath: a.AgentPath, SourceAttemptID: attempt.AttemptID, TargetAgentPath: "/root/controller", TargetAttemptID: "controller-run", TargetRuntimeAgentID: "controller-id", TargetSessionID: "controller-session", Provider: "codex", ObservedAt: stamp(2 * time.Second)})
 	scan := func(d time.Duration) operationJournal {
 		t.Helper()
 		j, e := scanOperationProject(project, base.Add(d))
@@ -137,6 +184,42 @@ func TestOperationStageScanTransitionDedupAndBacklogPreservation(t *testing.T) {
 		t.Fatalf("duplicate notification episode=%+v", repeat)
 	}
 	appendSyntheticStageRecord(t, project, handoff.Record{HandoffID: "synthetic-done", RecordKind: "claimed", ClaimedBy: "/root/controller", ClaimedAttemptID: "controller-run", ObservedAt: stamp(6 * time.Minute)})
+	// A verified running Controller also needs provider Hook evidence newer
+	// than the configured Hook timestamp. The exact bound attempt events below
+	// alone do not prove that the provider hooks remain installed.
+	// Install provider hooks with a configuration timestamp on the same
+	// synthetic clock as this scenario; hookVerified requires post-config
+	// evidence, so wall-clock timestamps would invalidate this fixture.
+	hookSetup, err := runtimeobs.EnsureHooks(project, "codex")
+	if err != nil {
+		t.Fatal(err)
+	}
+	configuredAt := base.Add(5 * time.Minute)
+	if err := os.Chtimes(hookSetup.Path, configuredAt, configuredAt); err != nil {
+		t.Fatal(err)
+	}
+	hookSetup, err = runtimeobs.HookStatus(project, "codex")
+	if err != nil {
+		t.Fatal(err)
+	}
+	controllerEvent := runtimeobs.ExecutionEvent{EventKind: "state", ObservedAt: stamp(-5 * time.Minute), AttemptID: "controller-run", Provider: "codex", SessionID: "controller-session", RuntimeAgentID: "controller-id", State: runtimeobs.StateRunning, EvidenceSource: runtimeobs.EvidenceHook, ObservationQuality: runtimeobs.QualityObserved}
+	if err := runtimeobs.AppendExecutionEvent(project, controllerEvent); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := runtimeobs.BindAttempt(project, "controller-run", "A-24", "/root/controller", "explicit", "", map[string]string{"assignment_id": "synthetic-assignment"}, base.Add(6*time.Minute)); err != nil {
+		t.Fatal(err)
+	}
+	controllerActivity := runtimeobs.ExecutionEvent{EventKind: "activity", ObservedAt: stamp(-5*time.Minute + time.Second), AttemptID: "controller-run", Provider: "codex", SessionID: "controller-session", RuntimeAgentID: "controller-id", EvidenceSource: runtimeobs.EvidenceHook, ObservationQuality: runtimeobs.QualityObserved}
+	if err := runtimeobs.AppendExecutionEvent(project, controllerActivity); err != nil {
+		t.Fatal(err)
+	}
+	hookProofAt := configuredAt.Add(time.Second)
+	if err := runtimeobs.AppendExecutionEvent(project, runtimeobs.ExecutionEvent{EventKind: "activity", ObservedAt: hookProofAt.Format(time.RFC3339Nano), AttemptID: "controller-run", Provider: "codex", SessionID: "controller-session", RuntimeAgentID: "controller-id", EvidenceSource: runtimeobs.EvidenceHook, ObservationQuality: runtimeobs.QualityObserved}); err != nil {
+		t.Fatal(err)
+	}
+	if err := runtimeobs.AppendExecutionEvent(project, controllerEvent); err != nil {
+		t.Fatal(err)
+	}
 	if got := active(scan(7 * time.Minute)); len(got) != 0 {
 		t.Fatalf("claim review grace warned=%+v", got)
 	}
@@ -145,6 +228,10 @@ func TestOperationStageScanTransitionDedupAndBacklogPreservation(t *testing.T) {
 		t.Fatalf("review stall=%+v", reviewStall)
 	}
 	appendSyntheticStageRecord(t, project, handoff.Record{HandoffID: "synthetic-done", RecordKind: "step_succeeded", Step: "acceptance", Result: "ok", ObservedAt: stamp(22 * time.Minute)})
+	controllerLate := runtimeobs.ExecutionEvent{EventKind: "activity", ObservedAt: stamp(22 * time.Minute), AttemptID: "controller-run", Provider: "codex", SessionID: "controller-session", RuntimeAgentID: "controller-id", EvidenceSource: runtimeobs.EvidenceHook, ObservationQuality: runtimeobs.QualityObserved}
+	if err := runtimeobs.AppendExecutionEvent(project, controllerLate); err != nil {
+		t.Fatal(err)
+	}
 	if got := active(scan(23 * time.Minute)); len(got) != 0 {
 		t.Fatalf("review complete finalization grace=%+v", got)
 	}
@@ -288,7 +375,8 @@ func TestOperationStageResolvedOldAttemptDoesNotRecur(t *testing.T) {
 		}
 	}
 	if !foundUnknown {
-		t.Fatal("unavailable canonical policy blindly trusted historical suppression")
+		encoded, _ := json.Marshal(j.Incidents)
+		t.Fatalf("unavailable canonical policy blindly trusted historical suppression: incidents=%s", encoded)
 	}
 }
 
@@ -319,5 +407,41 @@ func TestOperationStageLatestAssignmentAndHistoricalRecovery(t *testing.T) {
 	stages = projectOperationStages("fixture", assignments, attempts, handoff.Ledger{}, base.Add(3*time.Minute))
 	if stages[0].Stage != "assignment_pending" || stages[0].AttemptID != "" {
 		t.Fatalf("reassignment=%+v", stages)
+	}
+}
+
+func TestCompletionReviewStageSeparatesUnverifiedEvidenceFromFailure(t *testing.T) {
+	base := time.Date(2026, 10, 12, 0, 0, 0, 0, time.UTC).Format(time.RFC3339Nano)
+	cases := []struct {
+		name         string
+		confirmed    bool
+		wantStage    string
+		wantFailed   bool
+		wantSeverity string
+	}{
+		{name: "unverified linkage", wantStage: "handoff_evidence_unverified", wantSeverity: "warning"},
+		{name: "confirmed failure", confirmed: true, wantStage: "handoff_failed", wantFailed: true, wantSeverity: "error"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			stage := operationStage{Project: "fixture", TaskID: "SYNTH-47", AssignmentID: "assignment-synthetic-47"}
+			ok := applyCompletionReviewStage(&stage, map[string]any{
+				"state":               "controller_recovery",
+				"since":               base,
+				"diagnostic":          "synthetic evidence",
+				"reason":              "synthetic_reason",
+				"observation_quality": "insufficient",
+				"action_required":     true,
+				"action":              "inspect_exact_linkage",
+				"severity":            "warning",
+				"confirmed_failure":   tc.confirmed,
+			})
+			if !ok || stage.Stage != tc.wantStage || stage.Failed != tc.wantFailed || stage.Severity != tc.wantSeverity {
+				t.Fatalf("stage=%+v", stage)
+			}
+			if stage.Reason != "synthetic_reason" || stage.ObservationQuality != "insufficient" || !stage.ActionRequired || stage.Action != "inspect_exact_linkage" {
+				t.Fatalf("classification evidence lost: %+v", stage)
+			}
+		})
 	}
 }

@@ -1,172 +1,139 @@
 {
-  "version": "0.3.0",
-  "date": "2026-10-10",
+  "version": "0.3.1",
+  "date": "2026-10-16",
   "title": {
-    "ko": "관제·운영 경험 개편",
-    "en": "Operations and Monitoring Overhaul"
+    "ko": "백로그 성능·라이프사이클 및 웹 사용성 개선",
+    "en": "Backlog Performance, Lifecycle & Web Experience"
   },
   "summary": {
-    "ko": "여러 에이전트의 작업 상태와 알림을 한곳에서 관리하도록 관제·운영 기능을 확장했습니다. 프로젝트·저장소 관리와 업데이트 안정성, 대규모 백로그 성능 및 웹 사용성을 함께 개선했습니다.",
-    "en": "Expanded unified agent monitoring and notifications. Improved project and storage management, update resilience, large-backlog performance, and the Web experience."
+    "ko": "대규모 백로그 목록과 본문을 더 빠르게 표시하고, 최초 진입 시 화면 흔들림과 라이프사이클 갱신 경합을 개선했습니다. 해소된 경고·반복 갱신 안내를 정리하고 알림 화면과 업데이트 안정성을 강화했습니다.",
+    "en": "Improves large-backlog loading, stabilizes initial layout and lifecycle refresh, reduces stale warnings and repetitive refresh notices, and refines the attention panel and update reliability."
   },
   "highlights": [
     {
-      "ko": "Root Session과 작업 라이프사이클을 통합해 실행 상태와 이력을 체계적으로 확인할 수 있습니다.",
-      "en": "Track Root Sessions, agent execution states, and task lifecycle history consistently."
+      "ko": "백로그 목록·본문을 우선 표시하고 Git 이력 조회와 중복 탐색 비용을 줄였습니다.",
+      "en": "Prioritize backlog list/details and reduce repeated Git history and lookup costs."
     },
     {
-      "ko": "통합 알림센터, 프로젝트별 Telegram 설정과 브라우저 푸시 알림을 제공합니다.",
-      "en": "Use the notification center, project-specific Telegram controls, and browser push notifications."
+      "ko": "백로그 첫 진입 시 자동 페이지 크기 계산이 반복되면서 화면이 흔들리는 현상을 방지했습니다.",
+      "en": "Prevent initial backlog layout jitter caused by repeated automatic page-size calculations."
     },
     {
-      "ko": "여러 프로젝트의 저장 용량·보호 사유·정리 가능 조건을 한곳에서 확인합니다.",
-      "en": "Review storage usage, protection reasons, and cleanup eligibility across projects."
+      "ko": "라이프사이클 새로고침 경합 시 오래된 응답을 폐기하고 실패 복구·재시도 흐름을 보강했습니다.",
+      "en": "Discard stale lifecycle refresh responses and improve recovery/retry behavior."
     },
     {
-      "ko": "대규모 백로그 탐색·화면 갱신·모바일 레이아웃과 Mecca Dark 테마를 개선했습니다.",
-      "en": "Faster large-backlog navigation, steadier refresh, improved mobile layout, and Mecca Dark styling."
+      "ko": "해소된 실행 경고와 중복 갱신 안내를 줄이고, 현재 알림을 본문 위 플로팅 패널로 표시합니다.",
+      "en": "Reduce stale execution warnings and repeated refresh notices; float the attention panel over page content."
     },
     {
-      "ko": "업데이트 진행 상태와 오류 복구 절차를 강화하고 Web Terminal을 추가했습니다.",
-      "en": "Clearer update progress and recovery, plus a Web Terminal."
+      "ko": "업데이트 중복 조회와 자산 캐시 검증을 개선하고 Windows/macOS 배포 전 안전성 검증을 강화했습니다.",
+      "en": "Reduce duplicate update checks, strengthen artifact-cache validation, and harden Windows/macOS prepublish safety checks."
     }
   ],
   "categories": [
     {
+      "id": "backlog",
+      "title": {
+        "ko": "백로그 표시와 속도",
+        "en": "Backlog Navigation & Performance"
+      },
+      "items": [
+        {
+          "ko": "첫 화면과 백로그 본문을 무거운 관제 계산과 분리해 먼저 보여주고, 목록·Git 이력 조회에 캐시와 탐색 최적화를 적용했습니다.",
+          "en": "Show the initial list and task details before expensive monitoring work, with caching and faster Git history lookups."
+        },
+        {
+          "ko": "화면 크기·현재 알림 확장 변화에 따라 표시 가능한 행 수를 안정적으로 다시 계산하고 자동 페이지 크기 피드백 반복을 방지합니다.",
+          "en": "Recalculate row capacity after layout changes without page-size feedback loops."
+        },
+        {
+          "ko": "백로그를 열 때 실제 프로젝트명을 표시하며 본문 변경과 라이프사이클 이력을 별도로 갱신합니다.",
+          "en": "Show the active project name when loading and refresh task content and lifecycle independently."
+        }
+      ]
+    },
+    {
       "id": "monitoring",
       "title": {
-        "ko": "에이전트 실행 관제",
-        "en": "Agent Execution Monitoring"
+        "ko": "라이프사이클·현재 알림",
+        "en": "Lifecycle & Attention"
       },
       "items": [
         {
-          "ko": "Root Session을 세션 이름 중심으로 표시하고 생성·최근 활동·하위 실행 내역을 확인할 수 있습니다.",
-          "en": "View Root Sessions by name with creation time, last activity, and linked attempts."
+          "ko": "본문 새로고침 중 오래된 라이프사이클 응답을 폐기하고 자동 재시도·수동 재시도 경로를 추가했습니다.",
+          "en": "Discard stale lifecycle responses during detail refresh, with retry and recovery paths."
         },
         {
-          "ko": "Controller와 Worker의 작업 상태 판정을 통합 관제 계층에서 관리하고, 라이프사이클 사건 이력을 유지합니다.",
-          "en": "Coordinate Controller and Worker state through unified monitoring while retaining lifecycle event history."
+          "ko": "완료 근거로 해소된 경고와 오래된 세션 상태의 현재 알림 잔류를 억제합니다.",
+          "en": "Keep resolved task and session warnings from lingering in active attention."
         },
         {
-          "ko": "Hook 설정 상태, 실제 관측 여부, 새 Root Session 적용 조건을 안내합니다.",
-          "en": "Explain Hook configuration, live observation, and new-Root-session activation requirements."
-        },
-        {
-          "ko": "확정된 라이프사이클 기록에서 불필요한 기술적 출처 문구를 생략하되 Worker와 이벤트 ID는 그대로 표시합니다.",
-          "en": "Simplify confirmed lifecycle provenance labels while retaining Worker identities and event IDs."
+          "ko": "반복적인 '새 내용이 업데이트되었습니다' 안내와 불필요한 화면 갱신을 줄였습니다.",
+          "en": "Reduce repeated new-content notices and unnecessary refreshes."
         }
       ]
     },
     {
-      "id": "notifications",
+      "id": "interface",
       "title": {
-        "ko": "통합 알림",
-        "en": "Unified Notifications"
+        "ko": "화면·알림센터",
+        "en": "Interface & Notification Center"
       },
       "items": [
         {
-          "ko": "통합 알림센터에서 프로젝트별 알림 이력과 설정을 확인합니다.",
-          "en": "Review per-project notification history and controls in one center."
+          "ko": "현재 알림을 본문을 밀지 않는 플로팅 패널로 표시하고 기존 그라데이션·아웃라인을 유지합니다.",
+          "en": "Display attention as a floating panel without shifting content, preserving gradient and outline styling."
         },
         {
-          "ko": "Telegram 채널 연결과 알림 유형 설정을 프로젝트별로 관리합니다.",
-          "en": "Manage Telegram destinations and event preferences by project."
+          "ko": "좌측 알림센터 항목의 불필요한 말줄임표를 없애고 백로그 로딩 문구에 프로젝트명을 사용합니다.",
+          "en": "Prevent truncation of the notification-center menu and show the current project in backlog loading text."
         },
         {
-          "ko": "지원되는 브라우저에서 Web Push를 제공하며, 알림 중복·소급 송신을 방지하는 원장을 도입했습니다.",
-          "en": "Offer Web Push where supported and a delivery ledger designed to prevent duplicates and replay."
-        },
-        {
-          "ko": "실제 Telegram 작업 이벤트 알림에 발신 컴퓨터명을 포함하고, 프로젝트별 알림 누락과 중복·소급 처리를 개선했습니다.",
-          "en": "Include the originating computer in Telegram task alerts and harden delivery against missing, duplicate, or replayed events."
-        }
-      ]
-    },
-    {
-      "id": "projects",
-      "title": {
-        "ko": "프로젝트·저장소 관리",
-        "en": "Project and Storage Management"
-      },
-      "items": [
-        {
-          "ko": "전체 프로젝트를 관리하고 보관·복원 시 백로그와 사용자 데이터를 보호합니다.",
-          "en": "Manage, archive, and restore projects while protecting backlog and user data."
-        },
-        {
-          "ko": "진단 로그·에이전트 실행 기록·보호 원장 등의 사용량과 정리 가능 용량을 구분해 보여줍니다.",
-          "en": "Distinguish diagnostic logs, agent execution records, protected ledgers, and reclaimable storage."
-        },
-        {
-          "ko": "날짜별 보호 사유와 해제 조건·잔여 대기일을 확인하고 안전한 정리만 실행합니다.",
-          "en": "Inspect protection reasons, release conditions, and remaining wait days before safe cleanup."
-        }
-      ]
-    },
-    {
-      "id": "performance",
-      "title": {
-        "ko": "성능·웹 사용성",
-        "en": "Performance and Web Experience"
-      },
-      "items": [
-        {
-          "ko": "대규모 백로그의 화면 데이터만 우선 생성하고 탐색·페이지 전환 비용을 줄였습니다.",
-          "en": "Project only the records needed for large-backlog pages to reduce navigation cost."
-        },
-        {
-          "ko": "내용 변경이 없을 때 불필요한 화면 갱신을 줄이고 읽던 위치를 유지합니다.",
-          "en": "Avoid disruptive refreshes when content has not changed and preserve the reading position."
-        },
-        {
-          "ko": "Mecca Dark 테마, 모바일 메뉴·반응형 레이아웃, 언어·테마 선택 UI를 정비했습니다.",
-          "en": "Refine Mecca Dark, responsive mobile menus, and language/theme selection."
-        },
-        {
-          "ko": "400개 이상 백로그에서도 본문 Markdown을 관제 계산과 분리해 먼저 표시하고, 프로젝트 간 잠금 대기를 줄였습니다.",
-          "en": "Show Markdown details before expensive monitoring projections and remove cross-project lock contention for large backlogs."
+          "ko": "백로그 선택 강조와 알림 배지 시각 표현의 일관성을 개선했습니다.",
+          "en": "Improve selected-task and alert-badge visual consistency."
         }
       ]
     },
     {
       "id": "updates",
       "title": {
-        "ko": "업데이트·오류 복구",
-        "en": "Updates and Recovery"
+        "ko": "업데이트·배포 안정성",
+        "en": "Updates & Release Safety"
       },
       "items": [
         {
-          "ko": "업데이트 확인·다운로드·검증·설치·재시작의 진행 단계를 안내하고 중복 요청을 방지합니다.",
-          "en": "Show update check, download, verification, installation, and restart progress while preventing duplicate requests."
+          "ko": "중복 버전 조회·릴리스 노트 대기를 줄이고 Rolling 릴리스 자산 캐시 세대 및 체크섬 검증을 강화했습니다.",
+          "en": "Reduce repeated update checks and release-note waits, and strengthen rolling-asset cache generation/checksum verification."
         },
         {
-          "ko": "업데이트 파일 검증과 실패 시 이전 실행 파일로 복구하는 경로를 강화했습니다.",
-          "en": "Strengthen artifact verification and previous-binary recovery after failed upgrades."
+          "ko": "Windows의 안전한 재시작·프로세스 정리와 macOS/Windows 업그레이드·롤백·마이그레이션 사전 검증을 유지합니다.",
+          "en": "Retain safe Windows restart/process handling and prepublish macOS/Windows upgrade, rollback, and migration gates."
         },
         {
-          "ko": "Windows Web 재시작 실행 오류를 수정하고 운영체제별 복구 테스트를 보강했습니다.",
-          "en": "Fix the Windows Web restart helper and extend platform-specific rollback tests."
+          "ko": "Stable 공개 전 Linux 실행 파일의 버전·Web health·SHA-256을 검증하고, 공개된 버전의 동일 버전 재게시를 방지합니다.",
+          "en": "Verify Linux binary version, Web health, and SHA-256 before publishing, and reject republishing an already public version."
         }
       ]
     },
     {
-      "id": "tools",
+      "id": "preview",
       "title": {
-        "ko": "실행 도구·운영 환경",
-        "en": "Operational Tools"
+        "ko": "기여자를 위한 개발 기능 (Dev 전용)",
+        "en": "Contributor Features (Dev-only)"
       },
       "items": [
         {
-          "ko": "Web Terminal과 복사·붙여넣기, 운영체제별 복구 명령을 제공합니다.",
-          "en": "Add Web Terminal, copy/paste, and platform-specific recovery commands."
+          "ko": "Dev에서 PR 번호와 정확한 커밋 SHA로 네이티브 Preview를 식별·빌드·실행·종료합니다. Docker 설치는 필요하지 않습니다.",
+          "en": "Build, identify, run, and stop native previews for pinned PR numbers and SHAs without Docker."
         },
         {
-          "ko": "Tailscale을 통한 원격 접속과 에이전트 Hook 승인·활성화 안내를 강화했습니다.",
-          "en": "Improve Tailscale remote access and Hook approval/activation guidance."
+          "ko": "Preview 테스트 데이터 격리 및 위험 API 제한을 유지하고, Dev 복귀 때 원래 빌드 식별을 보존합니다.",
+          "en": "Keep preview data isolated and sensitive APIs restricted, and preserve the original Dev build for return."
         },
         {
-          "ko": "사용자 설치 과정은 Go 독립 실행 파일만 사용하도록 통일하고 Python 레거시 지원을 종료했습니다.",
-          "en": "Standardize installation on the standalone Go binary and retire Python legacy support."
+          "ko": "Preview 종료 후 목록 상태·재실행 안내를 갱신하고 전환 안내창의 개행 표시를 수정했습니다.",
+          "en": "Refresh preview status after stopping and fix newline rendering in environment-switch prompts."
         }
       ]
     }
@@ -176,16 +143,8 @@
       "type": "new",
       "items": [
         {
-          "ko": "통합 알림센터, 브라우저 푸시, 프로젝트별 Telegram 알림 관리",
-          "en": "Unified notification center, browser push, and project-level Telegram controls"
-        },
-        {
-          "ko": "전체 프로젝트 저장소 관리, 보호 조건·정리 가능 용량 진단",
-          "en": "Cross-project storage management and eligibility diagnostics"
-        },
-        {
-          "ko": "Web Terminal, Root Session 중심 실행 이력 및 복구 안내",
-          "en": "Web Terminal, Root Session monitoring, and recovery guidance"
+          "ko": "현재 알림 펼침 패널을 콘텐츠 위에 표시해 백로그 목록 레이아웃을 유지",
+          "en": "Float the expanded attention panel over content without shifting the backlog layout"
         }
       ]
     },
@@ -193,12 +152,8 @@
       "type": "improved",
       "items": [
         {
-          "ko": "통합 관제·라이프사이클 사건 원장, 백로그 탐색 및 화면 갱신 성능",
-          "en": "Unified monitoring and lifecycle ledger, backlog navigation, and refresh performance"
-        },
-        {
-          "ko": "Mecca Dark 테마, 모바일 UI, Hook 설정 안내 및 업데이트 진행 상태",
-          "en": "Mecca Dark, mobile UI, Hook guidance, and update progress"
+          "ko": "백로그 진입·본문·라이프사이클 갱신, 자동 페이지 크기 계산과 업데이트 속도",
+          "en": "Backlog loading, task details, lifecycle refresh, page sizing, and update performance"
         }
       ]
     },
@@ -206,28 +161,20 @@
       "type": "fixed",
       "items": [
         {
-          "ko": "Windows 업그레이드·Web 재시작 실행 오류와 브라우저 UI 표시 문제",
-          "en": "Windows upgrade/Web restart and browser UI display defects"
-        },
-        {
-          "ko": "알림 중복·소급 전송 및 완료 이후 이력 누락을 방지하는 로직 보강",
-          "en": "Hardening against notification replay/duplicates and loss of completed-task history"
+          "ko": "해소된 경고 잔류, 반복 갱신 안내, 초기 화면 크기 변동과 캐시 문제",
+          "en": "Stale warnings, repeated refresh notices, initial layout jitter, and cache-related issues"
         }
       ]
     }
   ],
   "after_update": [
     {
-      "ko": "업데이트된 운영 지침을 사용하려면 프로젝트 프레임워크를 마이그레이션하세요. 변경된 사용자 문서는 덮어쓰기·백업·취소 중 선택할 수 있으며 프로젝트 데이터는 보존됩니다.",
-      "en": "Migrate each project's framework to adopt updated instructions. Modified documents require an explicit overwrite, backup, or cancel choice; project data is preserved."
-    },
-    {
-      "ko": "Codex/Claude Code의 실사용 Hook을 확인하고, 설정 또는 활성화 후에는 새 Root Session을 시작하세요.",
-      "en": "Check Hooks for the Codex/Claude Code provider actually in use; start a new Root Session after enabling or changing Hooks."
+      "ko": "PC와 모바일에서 백로그 최초 진입·본문·라이프사이클·현재 알림 동작을 확인하세요. 네트워크 환경별 실제 응답 속도에는 차이가 있을 수 있습니다.",
+      "en": "Check first backlog load, task details, lifecycle, and attention on desktop and mobile; real-world latency varies by network."
     }
   ],
   "migration": {
-    "required": true,
-    "instruction_refresh": true
+    "required": false,
+    "instruction_refresh": false
   }
 }

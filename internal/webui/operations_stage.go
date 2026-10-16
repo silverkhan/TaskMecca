@@ -13,17 +13,22 @@ import (
 // Stage clocks are immutable source timestamps, not the monitor's polling time.
 // This projection never reports a backlog completion or edits runtime evidence.
 type operationStage struct {
-	Project          string `json:"project"`
-	TaskID           string `json:"task_id"`
-	AssignmentID     string `json:"assignment_id"`
-	AttemptID        string `json:"attempt_id,omitempty"`
-	HandoffID        string `json:"handoff_id,omitempty"`
-	Stage            string `json:"stage"`
-	Evidence         string `json:"evidence"`
-	Since            string `json:"since"`
-	GraceUntil       string `json:"grace_until,omitempty"`
-	ControllerReview bool   `json:"controller_review,omitempty"`
-	Failed           bool   `json:"failed,omitempty"`
+	Project            string `json:"project"`
+	TaskID             string `json:"task_id"`
+	AssignmentID       string `json:"assignment_id"`
+	AttemptID          string `json:"attempt_id,omitempty"`
+	HandoffID          string `json:"handoff_id,omitempty"`
+	Stage              string `json:"stage"`
+	Evidence           string `json:"evidence"`
+	Since              string `json:"since"`
+	GraceUntil         string `json:"grace_until,omitempty"`
+	ControllerReview   bool   `json:"controller_review,omitempty"`
+	Failed             bool   `json:"failed,omitempty"`
+	Reason             string `json:"reason,omitempty"`
+	ObservationQuality string `json:"observation_quality,omitempty"`
+	Severity           string `json:"severity,omitempty"`
+	ActionRequired     bool   `json:"action_required,omitempty"`
+	Action             string `json:"action,omitempty"`
 }
 
 func (s operationStage) deferred(now time.Time) bool {
@@ -45,6 +50,29 @@ func currentOperationStages(stages []operationStage, policies map[string]operati
 	return out
 }
 
+func exactControllerStageLive(h handoff.Handoff, attempts []runtimeobs.Attempt, now time.Time) bool {
+	claimedAt, err := time.Parse(time.RFC3339Nano, h.ClaimedAt)
+	if err != nil || claimedAt.After(now) {
+		return false
+	}
+	var exact *runtimeobs.Attempt
+	for i := range attempts {
+		a := &attempts[i]
+		if a.AttemptID != h.Target.AttemptID {
+			continue
+		}
+		if exact != nil {
+			return false
+		}
+		exact = a
+	}
+	if exact == nil || exact.AgentPath != h.Target.AgentPath || exact.RuntimeAgentID != h.Target.RuntimeAgentID || exact.SessionID != h.Target.SessionID || exact.Provider != h.Target.Provider || exact.BindingState != runtimeobs.BindingBound || exact.StateEvidenceSource != runtimeobs.EvidenceHook || (exact.StateObservationQuality != runtimeobs.QualityObserved && exact.StateObservationQuality != runtimeobs.QualityAuthoritative) || exact.CurrentState != runtimeobs.StateRunning || exact.Terminal {
+		return false
+	}
+	last, err := time.Parse(time.RFC3339Nano, exact.LastActivityAt)
+	return err == nil && !last.Before(claimedAt.Add(-15*time.Minute)) && !last.After(now)
+}
+
 func operationStages(project string, ledger runtimeobs.Ledger, now time.Time) []operationStage {
 	for _, finding := range ledger.Findings {
 		if finding.Severity != "info" {
@@ -63,27 +91,52 @@ func operationStages(project string, ledger runtimeobs.Ledger, now time.Time) []
 	reviews := backlog.CompletionReviewStates(project, "", now)
 	for i := range stages {
 		if r := reviews[stages[i].TaskID]; r != nil {
-			state, _ := r["state"].(string)
-			switch state {
-			case "controller_review_pending":
-				stages[i].Stage = "handoff_pending"
-			case "controller_review":
-				stages[i].Stage = "controller_review"
-			case "controller_finalizing":
-				stages[i].Stage = "review_complete"
-			case "controller_recovery":
-				stages[i].Stage = "handoff_failed"
-				stages[i].Failed = true
-			default:
+			if !applyCompletionReviewStage(&stages[i], r) {
 				continue
 			}
-			stages[i].ControllerReview = true
-			stages[i].Since, _ = r["since"].(string)
-			stages[i].GraceUntil, _ = r["grace_until"].(string)
-			stages[i].Evidence, _ = r["diagnostic"].(string)
 		}
 	}
 	return stages
+}
+
+func applyCompletionReviewStage(stage *operationStage, review map[string]any) bool {
+	state, _ := review["state"].(string)
+	confirmedFailure, _ := review["confirmed_failure"].(bool)
+	stage.ControllerReview = true
+	stage.Since, _ = review["since"].(string)
+	stage.GraceUntil, _ = review["grace_until"].(string)
+	stage.Evidence, _ = review["diagnostic"].(string)
+	stage.Reason, _ = review["reason"].(string)
+	stage.ObservationQuality, _ = review["observation_quality"].(string)
+	stage.Severity, _ = review["severity"].(string)
+	stage.ActionRequired, _ = review["action_required"].(bool)
+	stage.Action, _ = review["action"].(string)
+	stage.Failed = false
+
+	switch state {
+	case "controller_review_pending":
+		if stage.Reason == "controller_claim_missing" {
+			stage.Stage = "handoff_pending"
+		} else {
+			stage.Stage = "handoff_evidence_unverified"
+		}
+	case "controller_review":
+		stage.Stage = "controller_review"
+	case "controller_finalizing":
+		stage.Stage = "review_complete"
+	case "controller_recovery":
+		if !confirmedFailure {
+			stage.Stage = "handoff_evidence_unverified"
+			stage.Severity = "warning"
+			return true
+		}
+		stage.Stage = "handoff_failed"
+		stage.Failed = true
+		stage.Severity = "error"
+	default:
+		return false
+	}
+	return true
 }
 
 func projectOperationStages(project string, assignments []runtimeobs.Assignment, attempts []runtimeobs.Attempt, transfers handoff.Ledger, now time.Time) []operationStage {
@@ -162,7 +215,7 @@ func projectOperationStages(project string, assignments []runtimeobs.Assignment,
 				s.Since = h.PreparedAt
 				s.Evidence = "durable worker_done handoff"
 				duration = 5 * time.Minute
-				if h.Target.AgentPath == "/root/controller" && h.ClaimedBy == h.Target.AgentPath && h.ClaimedAttemptID != "" && (h.Target.AttemptID == "" || h.Target.AttemptID == h.ClaimedAttemptID) {
+				if h.Target.AgentPath == "/root/controller" && h.ClaimedBy == h.Target.AgentPath && h.ClaimedAttemptID != "" && h.Target.AttemptID != "" && h.Target.RuntimeAgentID != "" && h.Target.SessionID != "" && h.Target.Provider != "" && h.Target.AttemptID == h.ClaimedAttemptID && exactControllerStageLive(h, attempts, now) {
 					s.Stage = "controller_review"
 					s.Since = h.ClaimedAt
 					s.Evidence = "handoff claimed by Controller"
@@ -269,7 +322,38 @@ func latestOperationRecovery(item operationIncident, attempts []runtimeobs.Attem
 	return false
 }
 
-func operationSourceAlreadyResolved(signal operationIncident, journal operationJournal) bool {
+func operationSourceAlreadyResolved(signal operationIncident, journal operationJournal, now time.Time) bool {
+	if signal.Kind != "runtime_unknown" && signal.Kind != "no_signal" {
+		return false
+	}
+	for _, prior := range journal.Incidents {
+		if prior.RecoveredAt == "" {continue}
+		switch prior.RecoveryEvidence {
+		case "same assignment has recent observed Hook execution; prior runtime evidence unchanged",
+			"same attempt has later observed Hook running state; previous warning retired without changing runtime evidence",
+			"same attempt has confirmed Hook completion; previous warning retired without changing runtime evidence":
+		default:
+			continue
+		}
+		// An unchanged source is not a new warning just because Hook setup
+		// verification toggled after the observed recovery. A fresh signal time,
+		// different failure kind or different attempt remains a distinct episode.
+		sameSourceClock := prior.LastObservedAt == signal.LastObservedAt || prior.RecoveredAt == signal.LastObservedAt
+		// A previous recovery does not grant permanent immunity: if that same
+		// source has now gone quiet for a full stale interval, this is a new
+		// observable no-signal episode and needs a new warning.
+		if prior.RecoveredAt == signal.LastObservedAt {
+			at,err:=time.Parse(time.RFC3339Nano,prior.RecoveredAt)
+			if err!=nil || at.After(now) || now.Sub(at)>=runtimeobs.StaleWarnDuration(){continue}
+		}
+		if prior.Project == signal.Project && prior.AttemptID == signal.AttemptID && prior.AssignmentID == signal.AssignmentID && prior.TaskID == signal.TaskID && prior.AgentPath == signal.AgentPath && prior.Kind == signal.Kind && prior.Evidence == signal.Evidence && sameSourceClock {
+			return true
+		}
+	}
+	return false
+}
+
+func operationLatestAssignmentSourceAlreadyResolved(signal operationIncident, journal operationJournal) bool {
 	if signal.Kind != "runtime_unknown" && signal.Kind != "no_signal" {
 		return false
 	}
@@ -277,9 +361,18 @@ func operationSourceAlreadyResolved(signal operationIncident, journal operationJ
 		if prior.RecoveredAt == "" || prior.RecoveryEvidence != "latest assignment has observed execution evidence; prior runtime evidence unchanged" {
 			continue
 		}
-		if prior.Project == signal.Project && prior.AttemptID == signal.AttemptID && prior.TaskID == signal.TaskID && prior.AgentPath == signal.AgentPath && prior.Kind == signal.Kind && prior.Evidence == signal.Evidence && prior.LastObservedAt == signal.LastObservedAt {
+		if prior.Project == signal.Project && prior.AttemptID == signal.AttemptID && prior.AssignmentID == signal.AssignmentID && prior.TaskID == signal.TaskID && prior.AgentPath == signal.AgentPath && prior.Kind == signal.Kind && prior.Evidence == signal.Evidence && prior.LastObservedAt == signal.LastObservedAt {
 			return true
 		}
 	}
 	return false
+}
+
+func operationCanonicalTaskIsDoing(project, taskID string) bool {
+	rows, ok := operationCanonicalRows(project)
+	if !ok {
+		return false
+	}
+	matches := rows[strings.ToUpper(strings.TrimSpace(taskID))]
+	return len(matches) == 1 && matches[0].Location == "active" && matches[0].State == "doing"
 }

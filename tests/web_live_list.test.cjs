@@ -1,9 +1,18 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
 const {test}=require('node:test');
 const source=fs.readFileSync('goassets/template/_task_mecca/framework/web/app.js','utf8');
-function page(fetch){
+function page(fetch,{quickFetch=null}={}){
+ // Existing reconciliation tests model the authoritative endpoint. The
+ // independent provisional first-paint request defaults to an unavailable
+ // optional optimization; dedicated tests below exercise its successful path.
+ const effectiveFetch=(url,options)=>{
+  if(url.startsWith('/api/backlog/tasks?')&&new URLSearchParams(url.split('?')[1]).get('projection')==='initial'){
+   return quickFetch?quickFetch(url,options):Promise.resolve({ok:false});
+  }
+  return fetch(url,options);
+ };
  const prompt={innerHTML:''},dot={style:{}},active={id:'search',selectionStart:2,selectionEnd:4,focus(){this.focused=true},setSelectionRange(a,b){this.range=[a,b]}};
- const scroll=[],context=vm.createContext({fetch,URLSearchParams,AbortController,location:{search:'?project=/demo'},navigator:{language:'ko'},queueMicrotask,requestAnimationFrame:fn=>fn(),window:{scrollX:3,scrollY:120,scrollTo:args=>scroll.push(args)},document:{activeElement:active,contains:()=>true,getElementById:()=>active,querySelector:selector=>selector==='#connectionDot'?dot:selector==='#contentUpdatePrompt'?prompt:null},localStorage:{getItem:()=>null,setItem(){},removeItem(){}}});
+ const scroll=[],context=vm.createContext({fetch:effectiveFetch,URLSearchParams,AbortController,location:{search:'?project=/demo'},navigator:{language:'ko'},queueMicrotask,requestAnimationFrame:fn=>fn(),window:{scrollX:3,scrollY:120,scrollTo:args=>scroll.push(args)},document:{activeElement:active,contains:()=>true,getElementById:()=>active,querySelector:selector=>selector==='#connectionDot'?dot:selector==='#contentUpdatePrompt'?prompt:null},localStorage:{getItem:()=>null,setItem(){},removeItem(){}}});
  vm.runInContext(source.slice(0,source.indexOf('\ntranslateChrome();'))+source.slice(source.indexOf('function preserveViewportAndFocus('),source.indexOf('\nsetInterval(()=>{',source.indexOf('function preserveViewportAndFocus(')))+`\nrender=()=>{};processTaskNotifications=payload=>(globalThis.notifications||(globalThis.notifications=[])).push(payload);globalThis.app={state,refreshList,markContentUpdate,checkContentRevision,ensureAttentionStream,updateLiveListRelativeTimes,runningSeconds,listPageCaches,invalidateListPages,listContextKey};`,context);
  context.app.state.view='backlog';context.app.state.listPageMode='manual';context.app.state.listPageSize=20;
  return {...context.app,prompt,scroll,active,context};
@@ -120,4 +129,100 @@ test('new project starts immediately instead of waiting for a previous project r
  await Promise.all([first,next]);
  assert.equal(app.state.listData.items[0].id,'B-1');
  assert.equal(app.state.loadError,'');
+});
+
+test('first page live-refreshes when only execution evidence changes',async()=>{
+ const calls=[];
+ const app=page(url=>{
+  calls.push(url);
+  return Promise.resolve(json(url.startsWith('/api/revision')
+   ?{revision:'content-1',signal_revision:'runtime-2',states:[{id:'A-1',title:'Alpha',file_state:'doing'}]}
+   :{...packet(1,'content-1'),signal_revision:'runtime-2',items:[{id:'A-1',runtime_state:'running'}]}));
+ });
+ Object.assign(app.state,{contentRevision:'content-1',signalRevision:'runtime-1',listData:{...packet(1,'content-1'),items:[{id:'A-1',runtime_state:'starting'}]}});
+ await app.checkContentRevision();await tick();
+ assert.equal(calls.filter(url=>url.startsWith('/api/revision')).length,1);
+ assert.equal(calls.filter(url=>url.startsWith('/api/backlog/tasks')&&!url.includes('prefetch=1')).length,1);
+ assert.equal(app.state.listData.items[0].runtime_state,'running');
+ assert.equal(app.state.signalRevision,'runtime-2');
+ assert.equal(app.state.pendingContentUpdate,false);
+ assert.equal(app.prompt.innerHTML,'');
+});
+
+test('runtime-only evidence change on page two prompts once without moving rows',async()=>{
+ const calls=[];
+ const app=page(url=>{
+  calls.push(url);
+  return Promise.resolve(json(url.startsWith('/api/revision')
+   ?{revision:'content-1',signal_revision:'runtime-2',states:[]}
+   :{...packet(2,'content-1'),signal_revision:'runtime-2',items:[],counts:{all:101},attention:[]}));
+ });
+ Object.assign(app.state,{listPage:2,contentRevision:'content-1',signalRevision:'runtime-1',listData:{...packet(2,'content-1'),items:[{id:'reading'}]}});
+ await app.checkContentRevision();await tick();
+ assert.equal(app.state.listData.items[0].id,'reading');
+ assert.equal(app.state.pendingContentUpdate,true);
+ assert.match(app.prompt.innerHTML,/contentUpdateRefreshBtn/);
+ await app.checkContentRevision();await tick();
+ assert.equal(calls.filter(url=>url.includes('projection=summary')).length,1,'repeated checks must not repeatedly reload summary');
+ assert.equal(calls.filter(url=>url.startsWith('/api/backlog/tasks')&&!url.includes('projection=summary')).length,0);
+});
+
+test('unchanged content and execution revision does not request a list refresh',async()=>{
+ const calls=[],app=page(url=>{calls.push(url);return Promise.resolve(json({revision:'content-1',signal_revision:'runtime-1',states:[]}));});
+ Object.assign(app.state,{contentRevision:'content-1',signalRevision:'runtime-1'});
+ await app.checkContentRevision();await tick();
+ assert.equal(calls.length,1);
+ assert.equal(app.state.pendingContentUpdate,false);
+});
+
+test('initial project backlog fetch subscribes to realtime updates after its folder is resolved',async()=>{
+ const app=page(()=>Promise.resolve(json({...packet(1,'content-1'),backlog_selection:{selected:'team',candidates:[]},signal_revision:'runtime-1'})));
+ vm.runInContext(`globalThis.EventSource=class {static CLOSED=2;constructor(url){this.url=url;this.readyState=1}addEventListener(){}close(){}}`,app.context);
+ // The production notification processing resolves the automatic folder.
+ app.state.attentionScopes['/demo|']='team';
+ await app.refreshList();
+ assert.ok(app.state.eventSource,'the initial list fetch must establish SSE');
+ assert.match(app.state.eventSource.url,/backlog=team/);
+});
+
+test('backlog Active column displays known completed and live durations but not fabricated history',()=>{
+ const app=page(()=>{throw Error('render should not fetch')});
+ app.state.listData={
+  page:1,pages:1,page_size:20,total:4,counts:{working:1,ready:1,done:2,attention:0},
+  backlog_selection:{selected:'demo'},items:[
+   {id:'B-4',title:'New',file_state:'todo',state:'ready',active_seconds:null},
+   {id:'B-3',title:'Running',file_state:'doing',state:'doing',
+    active_seconds:80,lifecycle:{current_state:'doing',current_state_at:new Date(Date.now()-120000).toISOString(),current_segment_seconds:80}},
+   {id:'B-2',title:'Old done',file_state:'done',state:'done',active_seconds:null},
+   {id:'B-1',title:'Completed',file_state:'done',state:'done',active_seconds:125}
+  ]
+ };
+ const html=vm.runInContext('listView()',app.context);
+ assert.match(html,/<div class="task-active timer live-timer" data-id="B-4">-<\/div>/);
+ assert.match(html,/<div class="task-active timer live-timer" data-id="B-3">\d\d:\d\d<\/div>/);
+ assert.match(html,/<div class="task-active timer live-timer" data-id="B-2">-<\/div>/);
+ assert.match(html,/<div class="task-active timer live-timer" data-id="B-1">02:05<\/div>/);
+});
+
+
+test('provisional list is visible before the authoritative reconciliation finishes',async()=>{
+ let complete;
+ const official=url=>new Promise(resolve=>{complete=resolve});
+ const fast=()=>Promise.resolve({ok:true,json:async()=>({
+  pending_reconciliation:true,page:1,pages:1,page_size:20,total:1,
+  items:[{id:'B-1',file_state:'todo',state:'todo',state_provisional:true}],
+  backlog_selection:{selected:'backlog',candidates:[]}
+ })});
+ const app=page(official,{quickFetch:fast});
+ const running=app.refreshList();
+ await tick();
+ assert.equal(app.state.listData.pending_reconciliation,true);
+ assert.equal(app.state.listRevalidating,true);
+ assert.equal(app.state.listData.items[0].id,'B-1');
+ assert.equal(app.context.notifications,undefined,'provisional file rows cannot deliver notifications');
+ complete(json({...packet(1,'official'),items:[{id:'B-1',state:'blocked',file_state:'todo'}]}));
+ await running;
+ assert.equal(app.state.listData.pending_reconciliation,undefined);
+ assert.equal(app.state.listData.items[0].state,'blocked');
+ assert.equal(app.context.notifications.length,1);
 });
