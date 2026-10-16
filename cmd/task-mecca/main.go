@@ -47,6 +47,11 @@ func run(args []string) int {
         fmt.Println("task-mecca-execution-switch-protocol=1")
         return 0
     }
+    if len(args)>0 && (args[0]=="help" || args[0]=="--help" || args[0]=="-h") {
+        if args[0]=="help" { return runHelpCLI(args[1:],os.Stdout,os.Stderr) }
+        if len(args)!=1 { fmt.Fprintln(os.Stderr,"use task-mecca help COMMAND"); return 2 }
+        return runHelpCLI(nil,os.Stdout,os.Stderr)
+    }
     if len(args)>0 && args[0]=="notifications" { return runNotificationCLI(args[1:],os.Stdout,os.Stderr) }
     if len(args)>0 && args[0]=="operations" { return runOperationsCLI(args[1:],os.Stdout,os.Stderr) }
  if len(args)>0 && args[0]=="projects" { return runProjectCLI(args[1:],os.Stdout,os.Stderr) }
@@ -974,8 +979,11 @@ func run(args []string) int {
             if requireFullAccess && report["orchestration_ready"]!=true { return 3 }
         }
     default:
-        // Go runtime commands must be implemented before this CLI can replace Python.
-        fmt.Fprintf(os.Stderr, "%s is not yet implemented in the Go runtime\n", command)
+        if command=="update" {
+            fmt.Fprintln(os.Stderr,"Unknown command update. Use task-mecca upgrade for CLI binary or task-mecca migrate for project framework.")
+        } else {
+            fmt.Fprintf(os.Stderr,"Unknown command %q. Run task-mecca --help to see supported commands.\n",command)
+        }
         return 2
     }
     if err != nil { fmt.Fprintln(os.Stderr, err); return 2 }
