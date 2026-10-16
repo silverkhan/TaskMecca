@@ -114,6 +114,20 @@ func runContractBatchCLI(action string,args []string,out,stderr io.Writer)int{
 		result:=contractResult{Status:"invalid",TaskCount:len(manifest.Tasks),Findings:findings,Written:false}
 		return emitContractResult(result,*asJSON,out,stderr,2)
 	}
+	// Reuse the project's active canonical taxonomy; never silently create tags.
+	for i:=range manifest.Tasks{
+		for j,tag:=range manifest.Tasks[i].Tags{
+			answer,tagErr:=backlog.TagResolve(abs,tag)
+			if tagErr!=nil {fmt.Fprintln(stderr,tagErr);return 2}
+			found,_:=answer["found"].(bool)
+			definition,_:=answer["tag"].(backlog.TagDefinition)
+			if !found||definition.Status!="active"{
+				fmt.Fprintf(stderr,"UNKNOWN_TAG tasks[%d].tags[%d]: %q must resolve to an active project tag\n",i,j,tag)
+				return 2
+			}
+			manifest.Tasks[i].Tags[j]=definition.Canonical
+		}
+	}
 	manifestHash:=hashBatchBytes(raw)
 	if action=="plan" {
 		plan,err:=makeContractBatchPlan(abs,*prefix,*requestID,manifest,manifestHash)
