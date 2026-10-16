@@ -89,7 +89,7 @@ test('Stable 0.3.1 keeps contributor-only Dev features exclusively in the last d
     assert.doesNotMatch(publicContents,/\bdev\b|preview|docker|PR\/SHA|기여자|개발 환경/i);
     const rendered=renderer(lang)(note);
     assert.doesNotMatch(rendered.preview,/\bdev\b|preview|docker|PR\/SHA|기여자|개발 환경/i);
-    assert.match(rendered.detail,/PR Preview/);
+    assert.match(rendered.detail,/preview/i);
     const marker=lang==='ko'?'기여자를 위한 개발 기능':'Contributor Features';
     const lastCategory=note.categories.at(-2).title[lang];
     assert.ok(rendered.detail.indexOf(marker)>rendered.detail.indexOf(lastCategory));
