@@ -2,6 +2,33 @@
 
 All notable public releases will be documented here.
 
+## 0.3.1 - 2026-10-16 — Backlog, Lifecycle and Web Experience
+
+- **Faster backlog:** prioritize initial list/detail rendering and reduce repeated Git-history lookups.
+- **Stable layout:** prevent page-size recalculation loops and first-load screen jitter.
+- **Lifecycle reliability:** discard stale refresh responses and improve retry and recovery.
+- **Attention & interface:** avoid lingering resolved warnings and repeated notices; preserve floating attention styling.
+- **Update safety:** reduce duplicate update checks and strengthen asset validation and OS prepublish checks.
+- **After upgrading:** verify real desktop/mobile backlog first load, lifecycle history, and attention behavior.
+
+### Contributors & development (Dev-only)
+
+- Docker-free native PR Preview with pinned PR/SHA, isolated test data, lifecycle controls, and reliable return to the original Dev build.
+
+Detailed bilingual release notes: [0.3.1](release-notes/0.3.1.json).
+
+## 0.3.0 - 2026-10-10 — Operations and Monitoring Overhaul
+
+- **Unified agent observation:** Root Session history, canonical task lifecycle ledger with visible Worker/event IDs, Controller/Worker state monitoring, Hook onboarding.
+- **Notifications:** integrated notification center, per-project Telegram settings and sending-computer identity, browser push, durable replay/duplicate protection.
+- **Project and storage management:** archive/restore, cross-project usage diagnostics, protected retention and safe cleanup.
+- **Performance and design:** 400+ backlog Markdown content-first navigation, reduced project monitoring lock contention, steadier refresh, Mecca Dark, responsive mobile controls.
+- **Update resilience and tools:** update progress phases, safer rollback and Windows restart, Web Terminal and remote operations.
+- **Runtime:** Go standalone application is the only supported runtime. Python legacy support has been retired.
+- **After upgrading:** migrate project framework instructions with explicit backup/consent for user modifications; confirm active provider Hooks and restart Root Sessions when enabling Hooks.
+
+Detailed bilingual release notes: [0.3.0](release-notes/0.3.0.json). Verification evidence is documented with the Stable promotion review. Release from the tested latest Dev code with Stable 0.2.52 Windows hotfix and release history retained.
+
 ## 0.2.1 - 2026-09-28
 
 - make Python 3.11+ and Git the core requirements; `uv` / `uvx` are optional conveniences only

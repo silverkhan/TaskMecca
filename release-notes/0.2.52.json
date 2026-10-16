@@ -1,0 +1,27 @@
+{
+  "version": "0.2.52",
+  "date": "2026-10-02",
+  "summary": {
+    "ko": "Windows Stable 업그레이드와 Web 재시작 과정에서 발생하던 실행 오류를 수정했습니다.",
+    "en": "Fixed a Windows execution error during Stable upgrades and Web restarts."
+  },
+  "sections": [
+    {
+      "type": "fixed",
+      "items": [
+        {
+          "ko": "Windows에서 업그레이드 helper를 시작할 때 cmd.exe가 'Mecca'를 실행 파일로 잘못 해석해 업그레이드가 중단되던 문제를 수정했습니다.",
+          "en": "Fixed an issue where cmd.exe could misinterpret 'Mecca' as an executable while launching the Windows upgrade helper."
+        },
+        {
+          "ko": "업그레이드 후 Windows Web 자동 재시작 helper도 동일한 안전한 START 인자 형식을 사용하도록 수정했습니다.",
+          "en": "Updated the Windows Web restart helper to use the same safe START argument form after upgrades."
+        }
+      ]
+    }
+  ],
+  "migration": {
+    "required": false,
+    "instruction_refresh": false
+  }
+}

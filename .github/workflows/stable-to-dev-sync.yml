@@ -1,0 +1,37 @@
+name: Stable release → Dev sync PR
+
+on:
+  workflow_run:
+    workflows: ["Publish stable release"]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  propose-sync:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Open explicit Stable to Dev reconciliation PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          repo="$GITHUB_REPOSITORY"
+          main_only="$(gh api "repos/$repo/compare/dev...main" --jq '.ahead_by')"
+          if [ "$main_only" -eq 0 ]; then
+            echo "Main is already in Dev history; nothing to back-merge."
+            exit 0
+          fi
+          existing="$(gh pr list --repo "$repo" --state open --base dev --head main --json number --jq '.[0].number // empty')"
+          if [ -n "$existing" ]; then
+            echo "Reconciliation PR already open: #$existing"
+            exit 0
+          fi
+          gh pr create --repo "$repo" --base dev --head main \
+            --title "chore: Stable 릴리즈 변경 사항 Dev 역동기화" \
+            --body "Stable 배포 성공 이후 Main에만 남은 릴리즈 이력·핫픽스·검증을 Dev로 되돌리는 PR입니다.\n\n- main 전용 VERSION/노트와 Dev의 새 개발 내용 충돌을 검토하세요.\n- CI가 모두 통과하고 기능 동등성이 확인되기 전에는 병합하지 마세요.\n- 강제 푸시하거나 Dev 변경을 덮어쓰지 마세요.\n\nAID-199 릴리즈 동기화 계약."

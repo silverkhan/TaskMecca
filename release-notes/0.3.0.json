@@ -1,0 +1,233 @@
+{
+  "version": "0.3.0",
+  "date": "2026-10-10",
+  "title": {
+    "ko": "관제·운영 경험 개편",
+    "en": "Operations and Monitoring Overhaul"
+  },
+  "summary": {
+    "ko": "여러 에이전트의 작업 상태와 알림을 한곳에서 관리하도록 관제·운영 기능을 확장했습니다. 프로젝트·저장소 관리와 업데이트 안정성, 대규모 백로그 성능 및 웹 사용성을 함께 개선했습니다.",
+    "en": "Expanded unified agent monitoring and notifications. Improved project and storage management, update resilience, large-backlog performance, and the Web experience."
+  },
+  "highlights": [
+    {
+      "ko": "Root Session과 작업 라이프사이클을 통합해 실행 상태와 이력을 체계적으로 확인할 수 있습니다.",
+      "en": "Track Root Sessions, agent execution states, and task lifecycle history consistently."
+    },
+    {
+      "ko": "통합 알림센터, 프로젝트별 Telegram 설정과 브라우저 푸시 알림을 제공합니다.",
+      "en": "Use the notification center, project-specific Telegram controls, and browser push notifications."
+    },
+    {
+      "ko": "여러 프로젝트의 저장 용량·보호 사유·정리 가능 조건을 한곳에서 확인합니다.",
+      "en": "Review storage usage, protection reasons, and cleanup eligibility across projects."
+    },
+    {
+      "ko": "대규모 백로그 탐색·화면 갱신·모바일 레이아웃과 Mecca Dark 테마를 개선했습니다.",
+      "en": "Faster large-backlog navigation, steadier refresh, improved mobile layout, and Mecca Dark styling."
+    },
+    {
+      "ko": "업데이트 진행 상태와 오류 복구 절차를 강화하고 Web Terminal을 추가했습니다.",
+      "en": "Clearer update progress and recovery, plus a Web Terminal."
+    }
+  ],
+  "categories": [
+    {
+      "id": "monitoring",
+      "title": {
+        "ko": "에이전트 실행 관제",
+        "en": "Agent Execution Monitoring"
+      },
+      "items": [
+        {
+          "ko": "Root Session을 세션 이름 중심으로 표시하고 생성·최근 활동·하위 실행 내역을 확인할 수 있습니다.",
+          "en": "View Root Sessions by name with creation time, last activity, and linked attempts."
+        },
+        {
+          "ko": "Controller와 Worker의 작업 상태 판정을 통합 관제 계층에서 관리하고, 라이프사이클 사건 이력을 유지합니다.",
+          "en": "Coordinate Controller and Worker state through unified monitoring while retaining lifecycle event history."
+        },
+        {
+          "ko": "Hook 설정 상태, 실제 관측 여부, 새 Root Session 적용 조건을 안내합니다.",
+          "en": "Explain Hook configuration, live observation, and new-Root-session activation requirements."
+        },
+        {
+          "ko": "확정된 라이프사이클 기록에서 불필요한 기술적 출처 문구를 생략하되 Worker와 이벤트 ID는 그대로 표시합니다.",
+          "en": "Simplify confirmed lifecycle provenance labels while retaining Worker identities and event IDs."
+        }
+      ]
+    },
+    {
+      "id": "notifications",
+      "title": {
+        "ko": "통합 알림",
+        "en": "Unified Notifications"
+      },
+      "items": [
+        {
+          "ko": "통합 알림센터에서 프로젝트별 알림 이력과 설정을 확인합니다.",
+          "en": "Review per-project notification history and controls in one center."
+        },
+        {
+          "ko": "Telegram 채널 연결과 알림 유형 설정을 프로젝트별로 관리합니다.",
+          "en": "Manage Telegram destinations and event preferences by project."
+        },
+        {
+          "ko": "지원되는 브라우저에서 Web Push를 제공하며, 알림 중복·소급 송신을 방지하는 원장을 도입했습니다.",
+          "en": "Offer Web Push where supported and a delivery ledger designed to prevent duplicates and replay."
+        },
+        {
+          "ko": "실제 Telegram 작업 이벤트 알림에 발신 컴퓨터명을 포함하고, 프로젝트별 알림 누락과 중복·소급 처리를 개선했습니다.",
+          "en": "Include the originating computer in Telegram task alerts and harden delivery against missing, duplicate, or replayed events."
+        }
+      ]
+    },
+    {
+      "id": "projects",
+      "title": {
+        "ko": "프로젝트·저장소 관리",
+        "en": "Project and Storage Management"
+      },
+      "items": [
+        {
+          "ko": "전체 프로젝트를 관리하고 보관·복원 시 백로그와 사용자 데이터를 보호합니다.",
+          "en": "Manage, archive, and restore projects while protecting backlog and user data."
+        },
+        {
+          "ko": "진단 로그·에이전트 실행 기록·보호 원장 등의 사용량과 정리 가능 용량을 구분해 보여줍니다.",
+          "en": "Distinguish diagnostic logs, agent execution records, protected ledgers, and reclaimable storage."
+        },
+        {
+          "ko": "날짜별 보호 사유와 해제 조건·잔여 대기일을 확인하고 안전한 정리만 실행합니다.",
+          "en": "Inspect protection reasons, release conditions, and remaining wait days before safe cleanup."
+        }
+      ]
+    },
+    {
+      "id": "performance",
+      "title": {
+        "ko": "성능·웹 사용성",
+        "en": "Performance and Web Experience"
+      },
+      "items": [
+        {
+          "ko": "대규모 백로그의 화면 데이터만 우선 생성하고 탐색·페이지 전환 비용을 줄였습니다.",
+          "en": "Project only the records needed for large-backlog pages to reduce navigation cost."
+        },
+        {
+          "ko": "내용 변경이 없을 때 불필요한 화면 갱신을 줄이고 읽던 위치를 유지합니다.",
+          "en": "Avoid disruptive refreshes when content has not changed and preserve the reading position."
+        },
+        {
+          "ko": "Mecca Dark 테마, 모바일 메뉴·반응형 레이아웃, 언어·테마 선택 UI를 정비했습니다.",
+          "en": "Refine Mecca Dark, responsive mobile menus, and language/theme selection."
+        },
+        {
+          "ko": "400개 이상 백로그에서도 본문 Markdown을 관제 계산과 분리해 먼저 표시하고, 프로젝트 간 잠금 대기를 줄였습니다.",
+          "en": "Show Markdown details before expensive monitoring projections and remove cross-project lock contention for large backlogs."
+        }
+      ]
+    },
+    {
+      "id": "updates",
+      "title": {
+        "ko": "업데이트·오류 복구",
+        "en": "Updates and Recovery"
+      },
+      "items": [
+        {
+          "ko": "업데이트 확인·다운로드·검증·설치·재시작의 진행 단계를 안내하고 중복 요청을 방지합니다.",
+          "en": "Show update check, download, verification, installation, and restart progress while preventing duplicate requests."
+        },
+        {
+          "ko": "업데이트 파일 검증과 실패 시 이전 실행 파일로 복구하는 경로를 강화했습니다.",
+          "en": "Strengthen artifact verification and previous-binary recovery after failed upgrades."
+        },
+        {
+          "ko": "Windows Web 재시작 실행 오류를 수정하고 운영체제별 복구 테스트를 보강했습니다.",
+          "en": "Fix the Windows Web restart helper and extend platform-specific rollback tests."
+        }
+      ]
+    },
+    {
+      "id": "tools",
+      "title": {
+        "ko": "실행 도구·운영 환경",
+        "en": "Operational Tools"
+      },
+      "items": [
+        {
+          "ko": "Web Terminal과 복사·붙여넣기, 운영체제별 복구 명령을 제공합니다.",
+          "en": "Add Web Terminal, copy/paste, and platform-specific recovery commands."
+        },
+        {
+          "ko": "Tailscale을 통한 원격 접속과 에이전트 Hook 승인·활성화 안내를 강화했습니다.",
+          "en": "Improve Tailscale remote access and Hook approval/activation guidance."
+        },
+        {
+          "ko": "사용자 설치 과정은 Go 독립 실행 파일만 사용하도록 통일하고 Python 레거시 지원을 종료했습니다.",
+          "en": "Standardize installation on the standalone Go binary and retire Python legacy support."
+        }
+      ]
+    }
+  ],
+  "sections": [
+    {
+      "type": "new",
+      "items": [
+        {
+          "ko": "통합 알림센터, 브라우저 푸시, 프로젝트별 Telegram 알림 관리",
+          "en": "Unified notification center, browser push, and project-level Telegram controls"
+        },
+        {
+          "ko": "전체 프로젝트 저장소 관리, 보호 조건·정리 가능 용량 진단",
+          "en": "Cross-project storage management and eligibility diagnostics"
+        },
+        {
+          "ko": "Web Terminal, Root Session 중심 실행 이력 및 복구 안내",
+          "en": "Web Terminal, Root Session monitoring, and recovery guidance"
+        }
+      ]
+    },
+    {
+      "type": "improved",
+      "items": [
+        {
+          "ko": "통합 관제·라이프사이클 사건 원장, 백로그 탐색 및 화면 갱신 성능",
+          "en": "Unified monitoring and lifecycle ledger, backlog navigation, and refresh performance"
+        },
+        {
+          "ko": "Mecca Dark 테마, 모바일 UI, Hook 설정 안내 및 업데이트 진행 상태",
+          "en": "Mecca Dark, mobile UI, Hook guidance, and update progress"
+        }
+      ]
+    },
+    {
+      "type": "fixed",
+      "items": [
+        {
+          "ko": "Windows 업그레이드·Web 재시작 실행 오류와 브라우저 UI 표시 문제",
+          "en": "Windows upgrade/Web restart and browser UI display defects"
+        },
+        {
+          "ko": "알림 중복·소급 전송 및 완료 이후 이력 누락을 방지하는 로직 보강",
+          "en": "Hardening against notification replay/duplicates and loss of completed-task history"
+        }
+      ]
+    }
+  ],
+  "after_update": [
+    {
+      "ko": "업데이트된 운영 지침을 사용하려면 프로젝트 프레임워크를 마이그레이션하세요. 변경된 사용자 문서는 덮어쓰기·백업·취소 중 선택할 수 있으며 프로젝트 데이터는 보존됩니다.",
+      "en": "Migrate each project's framework to adopt updated instructions. Modified documents require an explicit overwrite, backup, or cancel choice; project data is preserved."
+    },
+    {
+      "ko": "Codex/Claude Code의 실사용 Hook을 확인하고, 설정 또는 활성화 후에는 새 Root Session을 시작하세요.",
+      "en": "Check Hooks for the Codex/Claude Code provider actually in use; start a new Root Session after enabling or changing Hooks."
+    }
+  ],
+  "migration": {
+    "required": true,
+    "instruction_refresh": true
+  }
+}

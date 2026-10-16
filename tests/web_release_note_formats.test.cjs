@@ -67,3 +67,31 @@ test('legacy section-only release notes keep their original renderer',()=>{
     assert.ok(!detail.includes('release-categories'));
   }
 });
+
+
+test('Stable 0.3.1 keeps contributor-only Dev features exclusively in the last detailed category',()=>{
+  const root=path.join(__dirname,'..');
+  const note=JSON.parse(fs.readFileSync(path.join(root,'release-notes/0.3.1.json'),'utf8'));
+  const embedded=JSON.parse(fs.readFileSync(path.join(root,'goassets/template/_task_mecca/framework/release-notes/current.json'),'utf8'));
+  const index=JSON.parse(fs.readFileSync(path.join(root,'release-notes/index.json'),'utf8'));
+  assert.deepEqual(note,embedded);
+  assert.equal(index.releases[0].version,'0.3.1');
+  assert.deepEqual(index.releases[0].title,note.title);
+  assert.deepEqual(index.releases[0].summary,note.summary);
+  assert.equal(note.categories.at(-1).id,'preview');
+  assert.match(note.categories.at(-1).title.ko,/기여자/);
+  assert.match(note.categories.at(-1).title.en,/Contributor/);
+  for(const lang of ['ko','en']){
+    const publicContents=[note.title[lang],note.summary[lang],
+      ...note.highlights.map(h=>h[lang]),
+      ...note.after_update.map(item=>item[lang]),
+      ...(note.sections||[]).flatMap(s=>s.items.map(item=>item[lang]))].join(' ');
+    assert.doesNotMatch(publicContents,/\bdev\b|preview|docker|PR\/SHA|기여자|개발 환경/i);
+    const rendered=renderer(lang)(note);
+    assert.doesNotMatch(rendered.preview,/\bdev\b|preview|docker|PR\/SHA|기여자|개발 환경/i);
+    assert.match(rendered.detail,/preview/i);
+    const marker=lang==='ko'?'기여자를 위한 개발 기능':'Contributor Features';
+    const lastCategory=note.categories.at(-2).title[lang];
+    assert.ok(rendered.detail.indexOf(marker)>rendered.detail.indexOf(lastCategory));
+  }
+});

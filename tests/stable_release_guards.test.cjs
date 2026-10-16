@@ -10,6 +10,7 @@ const guard=read('.github/workflows/release-version-guard.yml');
 
 test('Stable release is main-only and never publishes before both native platform gates',()=>{
   assert.match(workflow,/branches: \[main\]/);
+  assert.match(workflow,/- "\.github\/workflows\/release-stable\.yml"/);
   assert.doesNotMatch(workflow,/branches: \[(?:main, dev|dev, main)\]/);
   assert.match(workflow,/platform-gate:\s*\n/);
   assert.match(workflow,/os: \[macos-latest, windows-latest\]/);
