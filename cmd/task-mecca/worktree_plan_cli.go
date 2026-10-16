@@ -202,9 +202,13 @@ func inventoryWorktreePayload(e *worktreeEntry,maxFiles int){
 		relative,_:=filepath.Rel(e.Path,path)
 		if relative=="."{return nil}
 		if filepath.Base(path)==".git"{
-			if filepath.Dir(path)==e.Path{return filepath.SkipDir}
+			if filepath.Dir(path)==e.Path {
+				if entry.IsDir(){return filepath.SkipDir}
+				return nil
+			}
 			e.NestedRepositories++
-			return filepath.SkipDir
+			if entry.IsDir(){return filepath.SkipDir}
+			return nil
 		}
 		seen++
 		if seen>maxFiles{return fmt.Errorf("inventory limit %d reached",maxFiles)}
