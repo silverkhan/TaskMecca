@@ -37,6 +37,7 @@ func runHelpCLI(args []string,out,stderr io.Writer) int {
 		contractUsage(out)
 	case "runtime":
 		fmt.Fprintln(out,"Runtime actions: list, reconcile, observe, hooks, assign, bind, bind-agent, bind-assignment, enrich-name")
+		fmt.Fprintln(out,"Runtime diagnosis (read-only): task-mecca runtime diagnose --provider codex --agent-id UUID --json")
 		fmt.Fprintln(out,"Runtime query (read-only):")
 		runtimeQueryUsage(out)
 		fmt.Fprintln(out,"Examples: task-mecca runtime list --json")
