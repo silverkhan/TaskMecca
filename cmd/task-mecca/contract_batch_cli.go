@@ -247,11 +247,14 @@ func writeBatchPlan(path string,p batchPlan)error{
 	if err:=os.MkdirAll(filepath.Dir(path),0700);err!=nil{return err}
 	body,err:=json.MarshalIndent(p,"","  ")
 	if err!=nil{return err}
-	file,err:=os.OpenFile(path,os.O_CREATE|os.O_EXCL|os.O_WRONLY,0600)
+	staging,err:=os.CreateTemp(filepath.Dir(path),".batch-plan-*.tmp")
 	if err!=nil{return err}
-	if _,err=file.Write(append(body,'\n'));err==nil{err=file.Sync()}
-	if closeErr:=file.Close();err==nil{err=closeErr}
-	return err
+	defer os.Remove(staging.Name())
+	if _,err=staging.Write(append(body,'\n'));err==nil{err=staging.Sync()}
+	if closeErr:=staging.Close();err==nil{err=closeErr}
+	if err!=nil{return err}
+	if err=os.Link(staging.Name(),path);err!=nil{return fmt.Errorf("atomic batch journal creation failed: %w",err)}
+	return nil
 }
 
 func readBatchPlan(path string)(batchPlan,error){
