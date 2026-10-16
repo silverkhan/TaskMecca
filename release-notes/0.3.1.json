@@ -2,33 +2,33 @@
   "version": "0.3.1",
   "date": "2026-10-16",
   "title": {
-    "ko": "백로그 성능·관제 신뢰성과 Preview 개선",
-    "en": "Backlog Performance, Monitoring Reliability & Preview"
+    "ko": "백로그 성능·라이프사이클 및 웹 사용성 개선",
+    "en": "Backlog Performance, Lifecycle & Web Experience"
   },
   "summary": {
-    "ko": "대규모 백로그와 라이프사이클 조회를 더 빠르고 안정적으로 처리하고, 해소된 경고 및 새로고침 안내를 정리했습니다. Docker 없는 PR Preview·환경 복귀, 업데이트 확인 및 배포 안전성도 강화했습니다.",
-    "en": "Improves large-backlog navigation and lifecycle refresh, clears resolved warnings and repeated update prompts, adds Docker-free PR previews with safer return-to-Dev, and hardens update checks and release safety."
+    "ko": "대규모 백로그 목록과 본문을 더 빠르게 표시하고, 최초 진입 시 화면 흔들림과 라이프사이클 갱신 경합을 개선했습니다. 해소된 경고·반복 갱신 안내를 정리하고 알림 화면과 업데이트 안정성을 강화했습니다.",
+    "en": "Improves large-backlog loading, stabilizes initial layout and lifecycle refresh, reduces stale warnings and repetitive refresh notices, and refines the attention panel and update reliability."
   },
   "highlights": [
     {
-      "ko": "백로그 목록·본문 첫 화면을 우선 표시하고, 변경 감지·라이프사이클 갱신 경합과 자동 페이지 크기 계산을 개선했습니다.",
-      "en": "Prioritize backlog list/details, improve lifecycle refresh races and change detection, and stabilize automatic page sizing."
+      "ko": "백로그 목록·본문을 우선 표시하고 Git 이력 조회와 중복 탐색 비용을 줄였습니다.",
+      "en": "Prioritize backlog list/details and reduce repeated Git history and lookup costs."
     },
     {
-      "ko": "정상 해소된 실행·세션 경고가 남아 있거나 완료 후 소급 표시되는 문제를 줄였습니다.",
-      "en": "Reduce stale execution/session warnings and alerts that linger after resolution or completion."
+      "ko": "백로그 첫 진입 시 자동 페이지 크기 계산이 반복되면서 화면이 흔들리는 현상을 방지했습니다.",
+      "en": "Prevent initial backlog layout jitter caused by repeated automatic page-size calculations."
     },
     {
-      "ko": "Dev에서 Docker 없이 PR Preview를 실행·종료하고 PR/SHA를 확인하며 원래 Dev로 복귀할 수 있습니다.",
-      "en": "Run and stop isolated PR previews without Docker in Dev, verify their PR/SHA, and return to the original Dev build."
+      "ko": "라이프사이클 새로고침 경합 시 오래된 응답을 폐기하고 실패 복구·재시도 흐름을 보강했습니다.",
+      "en": "Discard stale lifecycle refresh responses and improve recovery/retry behavior."
     },
     {
-      "ko": "현재 알림 플로팅 UI와 그라데이션을 복원하고 알림센터 메뉴·프로젝트별 로딩 안내를 정비했습니다.",
-      "en": "Restore the floating, gradient-styled attention panel and refine notification-center labeling and project-specific loading messages."
+      "ko": "해소된 실행 경고와 중복 갱신 안내를 줄이고, 현재 알림을 본문 위 플로팅 패널로 표시합니다.",
+      "en": "Reduce stale execution warnings and repeated refresh notices; float the attention panel over page content."
     },
     {
-      "ko": "중복 업데이트 확인 및 캐시 문제를 줄이고 Stable 사전 운영체제·바이너리·데이터 보존 검증을 강화했습니다.",
-      "en": "Reduce duplicate update checks and cache issues, and strengthen prepublish platform, binary, and data-preservation gates."
+      "ko": "업데이트 중복 조회와 자산 캐시 검증을 개선하고 Windows/macOS 배포 전 안전성 검증을 강화했습니다.",
+      "en": "Reduce duplicate update checks, strengthen artifact-cache validation, and harden Windows/macOS prepublish safety checks."
     }
   ],
   "categories": [
@@ -75,27 +75,6 @@
       ]
     },
     {
-      "id": "preview",
-      "title": {
-        "ko": "개발 Preview 환경",
-        "en": "Development Preview Environments"
-      },
-      "items": [
-        {
-          "ko": "Dev에서 PR 번호와 정확한 커밋 SHA로 네이티브 Preview를 식별·빌드·실행·종료합니다. Docker 설치는 필요하지 않습니다.",
-          "en": "Build, identify, run, and stop native previews for pinned PR numbers and SHAs without Docker."
-        },
-        {
-          "ko": "Preview 테스트 데이터 격리 및 위험 API 제한을 유지하고, Dev 복귀 때 원래 빌드 식별을 보존합니다.",
-          "en": "Keep preview data isolated and sensitive APIs restricted, and preserve the original Dev build for return."
-        },
-        {
-          "ko": "Preview 종료 후 목록 상태·재실행 안내를 갱신하고 전환 안내창의 개행 표시를 수정했습니다.",
-          "en": "Refresh preview status after stopping and fix newline rendering in environment-switch prompts."
-        }
-      ]
-    },
-    {
       "id": "interface",
       "title": {
         "ko": "화면·알림센터",
@@ -136,6 +115,27 @@
           "en": "Verify Linux binary version, Web health, and SHA-256 before publishing, and reject republishing an already public version."
         }
       ]
+    },
+    {
+      "id": "preview",
+      "title": {
+        "ko": "기여자를 위한 개발 기능 (Dev 전용)",
+        "en": "Contributor Features (Dev-only)"
+      },
+      "items": [
+        {
+          "ko": "Dev에서 PR 번호와 정확한 커밋 SHA로 네이티브 Preview를 식별·빌드·실행·종료합니다. Docker 설치는 필요하지 않습니다.",
+          "en": "Build, identify, run, and stop native previews for pinned PR numbers and SHAs without Docker."
+        },
+        {
+          "ko": "Preview 테스트 데이터 격리 및 위험 API 제한을 유지하고, Dev 복귀 때 원래 빌드 식별을 보존합니다.",
+          "en": "Keep preview data isolated and sensitive APIs restricted, and preserve the original Dev build for return."
+        },
+        {
+          "ko": "Preview 종료 후 목록 상태·재실행 안내를 갱신하고 전환 안내창의 개행 표시를 수정했습니다.",
+          "en": "Refresh preview status after stopping and fix newline rendering in environment-switch prompts."
+        }
+      ]
     }
   ],
   "sections": [
@@ -143,8 +143,8 @@
       "type": "new",
       "items": [
         {
-          "ko": "Docker 없는 네이티브 PR Preview, PR/SHA 식별·Dev 복귀",
-          "en": "Docker-free native PR previews with pinned PR/SHA and return-to-Dev"
+          "ko": "현재 알림 펼침 패널을 콘텐츠 위에 표시해 백로그 목록 레이아웃을 유지",
+          "en": "Float the expanded attention panel over content without shifting the backlog layout"
         }
       ]
     },
@@ -152,8 +152,8 @@
       "type": "improved",
       "items": [
         {
-          "ko": "백로그·라이프사이클 조회와 자동 페이지 크기, 플로팅 알림, 업데이트 성능",
-          "en": "Backlog/lifecycle navigation, auto sizing, floating attention, and update performance"
+          "ko": "백로그 진입·본문·라이프사이클 갱신, 자동 페이지 크기 계산과 업데이트 속도",
+          "en": "Backlog loading, task details, lifecycle refresh, page sizing, and update performance"
         }
       ]
     },
@@ -161,8 +161,8 @@
       "type": "fixed",
       "items": [
         {
-          "ko": "해소된 경고 잔류, 중복 갱신 안내, 캐시 및 Preview 종료 상태 오류",
-          "en": "Resolved warning persistence, repeated update notices, cache and preview-stop status defects"
+          "ko": "해소된 경고 잔류, 반복 갱신 안내, 초기 화면 크기 변동과 캐시 문제",
+          "en": "Stale warnings, repeated refresh notices, initial layout jitter, and cache-related issues"
         }
       ]
     }
@@ -171,10 +171,6 @@
     {
       "ko": "PC와 모바일에서 백로그 최초 진입·본문·라이프사이클·현재 알림 동작을 확인하세요. 네트워크 환경별 실제 응답 속도에는 차이가 있을 수 있습니다.",
       "en": "Check first backlog load, task details, lifecycle, and attention on desktop and mobile; real-world latency varies by network."
-    },
-    {
-      "ko": "Dev의 PR Preview는 개발·검증 기능입니다. 운영 데이터와 분리된 Preview 환경에서 확인하고 원래 Dev로 돌아오세요.",
-      "en": "PR previews are a development feature; validate in an isolated Preview and return to the original Dev build."
     }
   ],
   "migration": {
