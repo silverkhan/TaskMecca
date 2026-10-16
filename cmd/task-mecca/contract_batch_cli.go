@@ -304,12 +304,22 @@ func writeOrVerifyBatchFile(path string,expected []byte)error{
 		return fmt.Errorf("FILE_CONFLICT: existing file differs: %s",path)
 	}
 	if !os.IsNotExist(err){return err}
-	file,err:=os.OpenFile(path,os.O_WRONLY|os.O_CREATE|os.O_EXCL,0644)
-	if err!=nil {return err}
-	_,err=file.Write(expected)
-	if err==nil {err=file.Sync()}
-	if closeErr:=file.Close();err==nil{err=closeErr}
+	// Stage and fsync before atomic exclusive publication. A crash leaves
+	// only an ignorable staging file, never a truncated canonical task.
+	staging,err:=os.CreateTemp(filepath.Dir(path),".cli-batch-*.tmp")
 	if err!=nil{return err}
+	defer os.Remove(staging.Name())
+	if _,err=staging.Write(expected);err==nil{err=staging.Sync()}
+	if closeErr:=staging.Close();err==nil{err=closeErr}
+	if err!=nil{return err}
+	if err=os.Link(staging.Name(),path);err!=nil{
+		if os.IsExist(err) {
+			previous,readErr:=os.ReadFile(path)
+			if readErr==nil&&bytes.Equal(previous,expected){return nil}
+			return fmt.Errorf("FILE_CONFLICT: destination was created concurrently: %s",path)
+		}
+		return fmt.Errorf("safe exclusive file publish failed (original retained): %w",err)
+	}
 	verify,err:=os.ReadFile(path)
 	if err!=nil{return err}
 	if !bytes.Equal(verify,expected){return errors.New("file verification failed")}
