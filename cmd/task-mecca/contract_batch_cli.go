@@ -347,11 +347,12 @@ func batchStatus(plan batchPlan)batchResult{
 	r:=batchResult{RequestID:plan.RequestID,PlanDigest:plan.PlanDigest,Status:"success",Tasks:[]batchItemResult{},Written:true}
 	scan,err:=backlog.ReadLifecycleTransitions(plan.Project)
 	if err!=nil{r.Status="unknown";r.Error=err.Error();return r}
-	events:=map[string]bool{}
-	for _,e:=range scan.Events{events[e.EventID]=e.TaskID!=""}
+	events:=map[string]backlog.LifecycleTransition{}
+	for _,e:=range scan.Events{events[e.EventID]=e}
 	if len(scan.Findings)>0{r.Status="unknown";r.Error="lifecycle findings require inspection"}
 	for _,item:=range plan.Tasks{
-		entry:=batchItemResult{Key:item.Key,ID:item.ID,File:item.Path,LifecycleRecorded:events[item.EventID]}
+		event,eventFound:=events[item.EventID]
+		entry:=batchItemResult{Key:item.Key,ID:item.ID,File:item.Path,LifecycleRecorded:eventFound&&event.TaskID==item.ID&&event.Kind=="registered"&&event.EvidenceRef=="cli-batch:"+plan.RequestID}
 		data,e:=os.ReadFile(item.Path)
 		entry.Registered=e==nil&&hashBatchBytes(data)==item.ContentSHA256
 		if e!=nil&&!os.IsNotExist(e){entry.Error=e.Error();r.Status="unknown"}
