@@ -123,6 +123,9 @@ func runWorktreeCleanupCLI(args []string,out,stderr io.Writer)int{
 	if result.Status!="verified"{return printWorktreeCleanupResult(result,*asJSON,out,stderr)}
 	if selected==nil{
 		result.Status="already_removed";result.Removed=true
+		if err:=writeWorktreeRemovalReceipt(archiveAbs,manifest);err!=nil{
+			result.Status="unknown";result.Reasons=append(result.Reasons,"removal receipt could not be verified: "+err.Error())
+		}
 		return printWorktreeCleanupResult(result,*asJSON,out,stderr)
 	}
 	if selected.HEAD!=manifest.HEAD||selected.Primary||selected.Detached||selected.Locked||selected.Merged!="yes"||
@@ -162,6 +165,9 @@ func runWorktreeCleanupCLI(args []string,out,stderr io.Writer)int{
 		}
 	}
 	result.Status="removed";result.Removed=true;result.Verified=true
+	if err:=writeWorktreeRemovalReceipt(archiveAbs,manifest);err!=nil{
+		result.Status="unknown";result.Reasons=append(result.Reasons,"Git removal completed but receipt could not be recorded: "+err.Error())
+	}
 	return printWorktreeCleanupResult(result,*asJSON,out,stderr)
 }
 
@@ -381,4 +387,29 @@ func verifyWorktreePreservation(m worktreePreservation,verifySource bool)worktre
 	}
 	if len(r.Reasons)>0{r.Status="unknown";r.Verified=false;r.NextAction="Do not remove worktree; inspect protection manifest and source/backup hash differences."}
 	return r
+}
+
+func writeWorktreeRemovalReceipt(archive string,m worktreePreservation)error{
+	path:=filepath.Join(archive,"removal.json")
+	if old,err:=os.ReadFile(path);err==nil {
+		var saved struct{Target,Repository,HEAD,PayloadDigest string}
+		if json.Unmarshal(old,&saved)==nil&&saved.Target==m.Target&&saved.Repository==m.Repository&&saved.HEAD==m.HEAD&&saved.PayloadDigest==m.PayloadDigest{return nil}
+		return errors.New("existing removal receipt conflicts with verified archive")
+	}else if !os.IsNotExist(err){return err}
+	data:=struct{
+		Target string `json:"target"`
+		Repository string `json:"repository"`
+		HEAD string `json:"head"`
+		PayloadDigest string `json:"payload_digest"`
+		ConfirmedAt string `json:"confirmed_at"`
+		Method string `json:"method"`
+	}{m.Target,m.Repository,m.HEAD,m.PayloadDigest,time.Now().UTC().Format(time.RFC3339Nano),"git worktree remove (no force)"}
+	body,err:=json.MarshalIndent(data,"","  ");if err!=nil{return err}
+	tmp,err:=os.CreateTemp(archive,".removal-receipt-*.tmp")
+	if err!=nil{return err}
+	defer os.Remove(tmp.Name())
+	if _,err=tmp.Write(append(body,'\n'));err==nil{err=tmp.Sync()}
+	if e:=tmp.Close();err==nil{err=e}
+	if err!=nil{return err}
+	return os.Link(tmp.Name(),path)
 }
