@@ -1,5 +1,11 @@
 # Worker 역할 (`/root/controller/<pokemon>`)
 
+> **CLI 명령 선택·등록/승인/인계·실패 재개:** [CLI_OPERATIONS_PLAYBOOK.md](../CLI_OPERATIONS_PLAYBOOK.md)를 먼저 확인한다. 신규 CLI가 설치되어 있지 않은 경우에만 구형 수동 절차를 사용하고, 사용자 승인/등록 이력을 두 번 기록하지 않는다.
+
+## 원장 쓰기 권한
+
+`contract apply/decision record`, `lifecycle record`는 Worker에게 허용되지 않는 canonical 운영 쓰기다. Worktree 제거·마이그레이션·승인 기록은 해당 운영 담당자가 명시적으로 실행한다. Worker는 근거·결과를 Controller에게 보고한다.
+
 ## 공통 실행 체크리스트
 
 Worker의 수동 운영원장 쓰기 금지와 승인된 CLI preflight ephemeral probe/cache·runtime hook 자동 관측 예외를 구분한다. 실패/unknown durable report 보존 경로와 cleanup 전 회수는 공통 절차를 따른다.

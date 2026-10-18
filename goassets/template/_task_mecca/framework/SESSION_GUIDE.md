@@ -1,5 +1,11 @@
 # Task Mecca Session Guide
 
+> **CLI 명령 선택·등록/승인/인계·실패 재개:** [CLI_OPERATIONS_PLAYBOOK.md](CLI_OPERATIONS_PLAYBOOK.md)를 먼저 확인한다. 신규 CLI가 설치되어 있지 않은 경우에만 구형 수동 절차를 사용하고, 사용자 승인/등록 이력을 두 번 기록하지 않는다.
+
+## 신규 CLI 작업 선택
+
+등록과 출처 보존은 `contract validate/plan/apply/status`, 승인·정책 보충은 `contract decision record/show`, 현재 agent/session 조회는 `runtime query`, Hook 관측 원인 조사는 `runtime diagnose`를 우선 사용한다. 쓰기/승인/실행 인계의 권한과 선후관계는 [CLI 운영 플레이북](CLI_OPERATIONS_PLAYBOOK.md)을 따른다.
+
 ## 공통 실행 체크리스트
 
 Worker의 수동 운영원장 쓰기 금지와 승인된 CLI preflight ephemeral probe/cache·runtime hook 자동 관측 예외를 구분한다. 실패/unknown durable report 보존 경로와 cleanup 전 회수는 공통 절차를 따른다.

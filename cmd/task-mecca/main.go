@@ -1,6 +1,7 @@
 package main
 
 import (
+	"io"
 	"bufio"
 	"errors"
 	"golang.org/x/term"
@@ -52,7 +53,7 @@ func run(args []string) int {
         if len(args)!=1 { fmt.Fprintln(os.Stderr,"use task-mecca help COMMAND"); return 2 }
         return runHelpCLI(nil,os.Stdout,os.Stderr)
     }
-    if len(args)>0 && args[0]=="worktree" { return runWorktreePlanCLI(args[1:],os.Stdout,os.Stderr) }
+    if len(args)>0 && args[0]=="worktree" { return runAgentJSON(args[1:],func(out,err io.Writer)int{return runWorktreePlanCLI(args[1:],out,err)},os.Stdout,os.Stderr) }
     if len(args)>0 && args[0]=="notifications" { return runNotificationCLI(args[1:],os.Stdout,os.Stderr) }
     if len(args)>0 && args[0]=="operations" { return runOperationsCLI(args[1:],os.Stdout,os.Stderr) }
  if len(args)>0 && args[0]=="projects" { return runProjectCLI(args[1:],os.Stdout,os.Stderr) }
@@ -74,13 +75,13 @@ func run(args []string) int {
         return 0
     }
     if len(args) > 1 && args[0] == "runtime" && args[1] == "diagnose" {
-        return runRuntimeDiagnoseCLI(args[2:], os.Stdout, os.Stderr)
+        return runAgentJSON(args[2:],func(out,err io.Writer)int{return runRuntimeDiagnoseCLI(args[2:],out,err)},os.Stdout,os.Stderr)
     }
     if len(args) > 1 && args[0] == "runtime" && args[1] == "query" {
-        return runRuntimeQueryCLI(args[2:], os.Stdout, os.Stderr)
+        return runAgentJSON(args[2:],func(out,err io.Writer)int{return runRuntimeQueryCLI(args[2:],out,err)},os.Stdout,os.Stderr)
     }
     if len(args) > 0 && args[0] == "contract" {
-        return runContractCLI(args[1:], os.Stdout, os.Stderr)
+        return runAgentJSON(args[1:],func(out,err io.Writer)int{return runContractCLI(args[1:],out,err)},os.Stdout,os.Stderr)
     }
     if len(args) > 0 && args[0] == "handoff" {
         return handoff.RunCLI(args[1:], os.Stdout, os.Stderr)

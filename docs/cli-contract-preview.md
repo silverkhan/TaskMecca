@@ -17,7 +17,7 @@ task-mecca contract help
 - `source_text`는 JSON 문자열 그대로 입력한다. 출력 Markdown에서는 각 줄에 `> `를 붙여 Markdown heading으로 인한 계약 구조 오염을 방지하며 `source_sha256`은 입력 원문의 원본 바이트를 기준으로 계산한다.
 - `depends_on`은 같은 manifest에 있는 `key`의 배열이다. 이 단계에서는 외부 키↔B-ID 매핑을 수행하지 않으며, preview의 `선행`은 **미연결 표시**다.
 - 위험 입력(누락 goal/acceptance, 중복 key, 없는 dependency, cycle, 무효 URL, 외부 URL인데 source_text 누락, 원문과 충돌하는 canonical heading)은 계획 단계에서 거부한다.
-- 등록/승인은 아직 지원하지 않는다. 미리보기 문서를 백로그에 복사해 성공했다고 주장하지 않는다.
+- 이 문서의 **validate/preview만** 등록이나 승인을 수행하지 않는다. 실제 등록은 아래 `contract plan/apply/status`를 사용하며 실행 승인은 별도 `contract decision`으로 기록한다.
 
 ## JSON manifest 예시
 
@@ -59,9 +59,9 @@ task-mecca contract help
 
 | 운영 작업 | 확인된 기존 기능 | 필요한 후속 기능 |
 | --- | --- | --- |
-| 단건 ID/출처/태그/lifecycle | `next-id`, `inspect`, `tags`, `lifecycle record` | AID-207 다건 검증·원자성·관계 매핑·멱등성 |
-| Simple/Defined 계약 | `_template.md`, parser의 `작업 정의/요건 정의서` | AID-202 구조화 preview; AID-207 등록 |
-| 실행 승인/보충 | `handoff prepare --execution-authorized` 등 | AID-208 승인과 이력 projection 일원화 |
+| 단건 ID/출처/태그/lifecycle | `next-id`, `inspect`, `tags`, `lifecycle record` | AID-207: 다건 `contract plan/apply/status` 구현·dev 반영 |
+| Simple/Defined 계약 | `_template.md`, parser의 `작업 정의/요건 정의서` | AID-202 구조화 preview·AID-207 등록 구현 |
+| 실행 승인/보충 | `handoff prepare --execution-authorized` 등 | AID-208: `contract decision record/show`로 실행 승인과 이력 분리 구현 |
 | Runtime 최신 실행 | `runtime list|reconcile --json`, provider / limit | AID-203 role/session/agent filter, AID-209 Hook 진단 |
 | Worktree 보존형 정리 | Git/handoff 운영 절차, 일부 storage 정리 | AID-204/210 |
 | 업데이트 검증 | `upgrade`, `migrate` (modified_files, plan_digest, choices) | AID-205 protect hash/result |

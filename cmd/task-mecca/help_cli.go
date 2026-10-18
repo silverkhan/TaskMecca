@@ -33,7 +33,7 @@ func runHelpCLI(args []string,out,stderr io.Writer) int {
 		fmt.Fprintln(out,"  task-mecca preflight         Check project/runtime readiness")
 		fmt.Fprintln(out,"  task-mecca next-id PREFIX    Suggest next backlog identifier (no reservation)")
 		fmt.Fprintln(out,"  task-mecca tags              Inspect canonical task taxonomy")
-		fmt.Fprintln(out,"  task-mecca --help            Details: task-mecca help contract|runtime|upgrade|migrate|web|handoff")
+		fmt.Fprintln(out,"  task-mecca --help            Details: task-mecca help contract|runtime|worktree|upgrade|migrate|web|handoff")
 	case "contract":
 		contractUsage(out)
 	case "runtime":
