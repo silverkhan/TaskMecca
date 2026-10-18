@@ -96,12 +96,15 @@ func runWorktreeCleanupCLI(args []string,out,stderr io.Writer)int{
 	defer unlock()
 	plan,err:=inspectWorktrees(projectAbs,*into,200000)
 	if err!=nil{fmt.Fprintln(stderr,err);return 3}
-	// An integration ref can vary; the caller must match the exact default
-	// plan digest and rerun 'worktree plan --into origin/dev' if it changed.
-	if plan.PlanDigest!=*expect{fmt.Fprintf(stderr,"STALE_PLAN: run worktree plan --into %s again\n",*into);return 3}
+	// Find the exact Git-listed target before checking freshness. Once a
+	// verified remove succeeded, the worktree-list digest legitimately changes;
+	// identical retries can recognize that terminal state from Git+archive.
 	var selected *worktreeEntry
 	for i:=range plan.Worktrees{
 		if filepath.Clean(plan.Worktrees[i].Path)==filepath.Clean(targetAbs){selected=&plan.Worktrees[i];break}
+	}
+	if plan.PlanDigest!=*expect&&!(action=="remove"&&selected==nil){
+		fmt.Fprintf(stderr,"STALE_PLAN: run worktree plan --into %s again\n",*into);return 3
 	}
 	if err=validateArchiveOutsideWorktrees(plan,archiveAbs);err!=nil{fmt.Fprintln(stderr,err);return 3}
 	if action=="preserve"{
