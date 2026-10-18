@@ -256,8 +256,16 @@ func run(args []string) int {
             fmt.Printf("Task Mecca %s installed to %s\n", version, filepath.Join(root, "_task_mecca"))
         }
 	case "migrate":
+		// Hash project-owned files before touching managed framework files.
+		// If we cannot establish a complete baseline, fail closed.
+		protectedBefore,protectErr:=captureProjectProtection(root)
+		if protectErr!=nil{
+			if jsonOutput{emitJSON(map[string]any{"status":"failed","protected_files":protectedReport{Status:"unknown",Checked:false,Scope:protectedScope,Unverified:[]string{protectErr.Error()}}})}else{fmt.Fprintf(os.Stderr,"protection baseline unknown; migration not run: %v\n",protectErr)}
+			return 3
+		}
 		var migration install.MigrationResult
 		migration, err = install.MigrateWithPlan(root, version, migrationChoice,migrationExpectedPlan)
+		migration.ProtectedFiles=protectedReport{Status:"not_run",Checked:false,Scope:protectedScope,BeforeFiles:len(protectedBefore.Items),ManifestDigest:protectedBefore.Digest,Unverified:[]string{"migration not yet completed"}}
 		var required *install.ChoiceRequiredError
 		if errors.As(err, &required) {
 			if jsonOutput || !term.IsTerminal(int(os.Stdin.Fd())) {
@@ -286,6 +294,21 @@ func run(args []string) int {
 			return 3
 		}
 		if err == nil {
+			if migration.Status=="migrated" {
+				protectedAfter,afterErr:=captureProjectProtection(root)
+				if afterErr!=nil {
+					migration.ProtectedFiles=protectedReport{Status:"unknown",Checked:false,Scope:protectedScope,ManifestDigest:protectedBefore.Digest,Unverified:[]string{afterErr.Error()},BackupPath:migration.BackupPath}
+					if jsonOutput{emitJSON(migration)}else{fmt.Fprintf(os.Stderr,"migration applied but protected files are unverified: %v\n",afterErr)}
+					return 3
+				}
+				proof:=verifyProtection(protectedBefore,protectedAfter)
+				proof.BackupPath=migration.BackupPath
+				migration.ProtectedFiles=proof
+				if proof.Status!="verified"{
+					if jsonOutput{emitJSON(migration)}else{fmt.Fprintf(os.Stderr,"migration applied but protected files changed: %+v\n",proof)}
+					return 3
+				}
+			}
 			if jsonOutput {
 				emitJSON(migration)
 				return 0
