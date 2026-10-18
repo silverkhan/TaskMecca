@@ -59,7 +59,7 @@ func TestInstalledFrameworkAgentPlaybookLinks(t *testing.T){
 	for _,name:=range paths{
 		data,err:=os.ReadFile(filepath.Join(root,name))
 		if err!=nil{t.Fatalf("missing agent guide %s: %v",name,err)}
-		if !strings.Contains(string(data),"CLI_OPERATIONS_PLAYBOOK.md"){t.Fatalf("role entrypoint %s doesn't discover CLI playbook",name)}
+		if name!="CLI_OPERATIONS_PLAYBOOK.md"&&!strings.Contains(string(data),"CLI_OPERATIONS_PLAYBOOK.md"){t.Fatalf("role entrypoint %s doesn't discover CLI playbook",name)}
 	}
 	raw,err:=os.ReadFile(filepath.Join(root,"roles","registrar.md"))
 	if err!=nil{t.Fatal(err)}
