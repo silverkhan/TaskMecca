@@ -52,6 +52,7 @@ func run(args []string) int {
         if len(args)!=1 { fmt.Fprintln(os.Stderr,"use task-mecca help COMMAND"); return 2 }
         return runHelpCLI(nil,os.Stdout,os.Stderr)
     }
+    if len(args)>0 && args[0]=="protect" { return runProtectCLI(args[1:],os.Stdout,os.Stderr) }
     if len(args)>0 && args[0]=="worktree" { return runWorktreePlanCLI(args[1:],os.Stdout,os.Stderr) }
     if len(args)>0 && args[0]=="notifications" { return runNotificationCLI(args[1:],os.Stdout,os.Stderr) }
     if len(args)>0 && args[0]=="operations" { return runOperationsCLI(args[1:],os.Stdout,os.Stderr) }
