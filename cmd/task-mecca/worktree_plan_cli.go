@@ -57,9 +57,12 @@ func runWorktreePlanCLI(args []string,out,stderr io.Writer)int{
 	if len(args)==0||args[0]=="--help"||args[0]=="help"{
 		fmt.Fprintln(out,"task-mecca worktree plan --project DIR [--into origin/dev] [--max-files 200000] --json")
 		fmt.Fprintln(out,"Read-only inventory, all unresolved usage remains review_required; no worktree is deleted.")
+		fmt.Fprintln(out,"task-mecca worktree preserve --project DIR --into REF --target EXACT_PATH --archive EXTERNAL_DIR --expect-plan DIGEST --approve --json")
+		fmt.Fprintln(out,"task-mecca worktree verify --archive EXTERNAL_DIR --json")
+		fmt.Fprintln(out,"task-mecca worktree remove --project DIR --into REF --target EXACT_PATH --archive EXTERNAL_DIR --expect-plan DIGEST --approve --confirm-unused --json")
 		return 0
 	}
-	if args[0]!="plan"{fmt.Fprintln(stderr,"worktree only supports plan in this release; no delete/force option");return 2}
+	if args[0]!="plan"{return runWorktreeCleanupCLI(args,out,stderr)}
 	flags:=flag.NewFlagSet("worktree plan",flag.ContinueOnError)
 	flags.SetOutput(stderr)
 	project:=flags.String("project",".","project within Git repository")
