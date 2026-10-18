@@ -64,6 +64,9 @@ func runHelpCLI(args []string,out,stderr io.Writer) int {
 	case "worktree":
 		fmt.Fprintln(out,"task-mecca worktree plan --project DIR --into origin/dev --json")
 		fmt.Fprintln(out,"Read-only; unknown use, ignored/untracked data, unmerged or detached HEAD stay protected.")
+		fmt.Fprintln(out,"task-mecca worktree preserve --project DIR --into REF --target EXACT_PATH --archive EXTERNAL_DIR --expect-plan DIGEST --approve --json")
+		fmt.Fprintln(out,"task-mecca worktree verify --archive EXTERNAL_DIR --json")
+		fmt.Fprintln(out,"task-mecca worktree remove --project DIR --into REF --target EXACT_PATH --archive EXTERNAL_DIR --expect-plan DIGEST --approve --confirm-unused --json")
 	case "handoff":
 		fmt.Fprintln(out,"task-mecca handoff prepare|claim|mark|inspect|reconcile|capability [OPTIONS]")
 		fmt.Fprintln(out,"The CLI records explicit handoff evidence; it cannot assume unsupported native Agent transport succeeded.")
