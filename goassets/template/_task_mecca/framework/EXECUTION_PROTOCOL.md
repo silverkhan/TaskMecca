@@ -1,5 +1,7 @@
 # Canonical assignment and direct completion protocol
 
+> 실행·승인·등록 CLI의 사용자 근거 및 재시도 정책은 [CLI_OPERATIONS_PLAYBOOK.md](CLI_OPERATIONS_PLAYBOOK.md)를 따른다. 기존 canonical Writer/Worker의 권한 경계를 변경하지 않는다.
+
 이 문서는 SESSION_GUIDE 한국어·영어, collab 및 역할 문서의 공통 실행 절차다. Controller는 지정 원본 workspace의 canonical backlog/runtime의 단일 운영 writer다. Worker는 원본 계약을 읽고 구현·검증·실제 착수와 transport evidence를 Controller에 보고한다. Worker는 원본 또는 구현 worktree 사본 backlog/lifecycle/handoff/runtime 운영원장을 수동 생성·수정하거나 monitor에 등록하지 않는다. 승인된 CLI preflight의 ephemeral probe/cache 관측 쓰기와 runtime hook의 자동 관측은 허용된 예외이며 Worker의 운영원장 쓰기 권한이 아니다. Git 구현/지정 dev 통합과 원본 상태 기록은 별개다. Controller는 dev merge를 기다리지 않고 실제 배정·실행·대기·결과를 원본에 기록한다.
 
 ## Assignment checklist
