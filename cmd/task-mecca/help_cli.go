@@ -24,7 +24,8 @@ func runHelpCLI(args []string,out,stderr io.Writer) int {
 		fmt.Fprintln(out,"  task-mecca web               Start local Web dashboard")
 		fmt.Fprintln(out,"  task-mecca upgrade           Upgrade the Task Mecca binary")
 		fmt.Fprintln(out,"  task-mecca migrate           Migrate project framework (preserve project-owned data)")
-		fmt.Fprintln(out,"  task-mecca contract          Validate or preview structured task contracts (read-only)")
+		fmt.Fprintln(out,"  task-mecca contract          Validate, plan, register or record contract decisions")
+		fmt.Fprintln(out,"  task-mecca worktree          Inspect preservation/protection plan (read-only)")
 		fmt.Fprintln(out,"  task-mecca runtime           Observe/query/bind execution evidence")
 		fmt.Fprintln(out,"  task-mecca lifecycle         Read or write canonical lifecycle evidence")
 		fmt.Fprintln(out,"  task-mecca handoff           Inspect and record explicit handoff evidence")
@@ -55,6 +56,9 @@ func runHelpCLI(args []string,out,stderr io.Writer) int {
 	case "web":
 		fmt.Fprintln(out,"task-mecca web [status|restart|stop|logs]")
 		fmt.Fprintln(out,"Controls the currently running Task Mecca Web service; CLI binary update is a separate operation.")
+	case "worktree":
+		fmt.Fprintln(out,"task-mecca worktree plan --project DIR --into origin/dev --json")
+		fmt.Fprintln(out,"Read-only; unknown use, ignored/untracked data, unmerged or detached HEAD stay protected.")
 	case "handoff":
 		fmt.Fprintln(out,"task-mecca handoff prepare|claim|mark|inspect|reconcile|capability [OPTIONS]")
 		fmt.Fprintln(out,"The CLI records explicit handoff evidence; it cannot assume unsupported native Agent transport succeeded.")
