@@ -95,14 +95,20 @@ func hashProtectedFile(project,path string)(protectedItem,error){
 	info,err:=os.Lstat(path)
 	if err!=nil{return result,err}
 	if !info.Mode().IsRegular() || info.Mode()&os.ModeSymlink!=0{return result,fmt.Errorf("unsupported protected file type: %s",path)}
-	data,err:=os.ReadFile(path)
+	file,err:=os.Open(path)
 	if err!=nil{return result,err}
+	h:=sha256.New()
+	count,readErr:=io.Copy(h,file)
+	closeErr:=file.Close()
+	if readErr!=nil{return result,readErr}
+	if closeErr!=nil{return result,closeErr}
+	if count!=info.Size(){return result,fmt.Errorf("protected file changed during hash: %s",path)}
 	rel,err:=filepath.Rel(project,path)
 	if err!=nil||rel==".."||strings.HasPrefix(rel,".."+string(filepath.Separator)){return result,fmt.Errorf("file outside project: %s",path)}
 	category:="config"
 	if strings.Contains(filepath.ToSlash(rel),"/data/"){category="project_data"}
 	if strings.Contains(filepath.ToSlash(rel),"/backlog"){category="backlog"}
-	return protectedItem{Path:filepath.ToSlash(rel),Bytes:int64(len(data)),SHA256:protectHash(data),Category:category},nil
+	return protectedItem{Path:filepath.ToSlash(rel),Bytes:count,SHA256:hex.EncodeToString(h.Sum(nil)),Category:category},nil
 }
 
 func verifyProtection(before,after protectedSnapshot)protectedReport{
