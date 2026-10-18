@@ -26,6 +26,7 @@ func runHelpCLI(args []string,out,stderr io.Writer) int {
 		fmt.Fprintln(out,"  task-mecca migrate           Migrate project framework (preserve project-owned data)")
 		fmt.Fprintln(out,"  task-mecca contract          Validate, plan, register or record contract decisions")
 		fmt.Fprintln(out,"  task-mecca worktree          Inspect preservation/protection plan (read-only)")
+		fmt.Fprintln(out,"  task-mecca protect           Snapshot, verify project data and inspect component versions")
 		fmt.Fprintln(out,"  task-mecca runtime           Observe/query/bind execution evidence")
 		fmt.Fprintln(out,"  task-mecca lifecycle         Read or write canonical lifecycle evidence")
 		fmt.Fprintln(out,"  task-mecca handoff           Inspect and record explicit handoff evidence")
@@ -56,6 +57,10 @@ func runHelpCLI(args []string,out,stderr io.Writer) int {
 	case "web":
 		fmt.Fprintln(out,"task-mecca web [status|restart|stop|logs]")
 		fmt.Fprintln(out,"Controls the currently running Task Mecca Web service; CLI binary update is a separate operation.")
+	case "protect":
+		fmt.Fprintln(out,"task-mecca protect snapshot --project DIR --output EXTERNAL_MANIFEST.json --json")
+		fmt.Fprintln(out,"task-mecca protect verify --project DIR --snapshot EXTERNAL_MANIFEST.json --json")
+		fmt.Fprintln(out,"task-mecca protect versions --project DIR --json")
 	case "worktree":
 		fmt.Fprintln(out,"task-mecca worktree plan --project DIR --into origin/dev --json")
 		fmt.Fprintln(out,"Read-only; unknown use, ignored/untracked data, unmerged or detached HEAD stay protected.")
