@@ -60,6 +60,7 @@ func runWorktreeCleanupCLI(args []string,out,stderr io.Writer)int{
 	flags:=flag.NewFlagSet("worktree "+action,flag.ContinueOnError)
 	flags.SetOutput(stderr)
 	project:=flags.String("project",".","Git project root")
+	into:=flags.String("into","origin/dev","integration ref matching the approved plan")
 	target:=flags.String("target","","exact worktree path (must be separately listed by Git)")
 	archive:=flags.String("archive","","protected archive path outside all worktrees")
 	expect:=flags.String("expect-plan","","plan_digest from worktree plan")
@@ -93,11 +94,11 @@ func runWorktreeCleanupCLI(args []string,out,stderr io.Writer)int{
 	unlock,err:=projectguard.AcquireManagement()
 	if err!=nil{fmt.Fprintln(stderr,err);return 3}
 	defer unlock()
-	plan,err:=inspectWorktrees(projectAbs,"origin/dev",200000)
+	plan,err:=inspectWorktrees(projectAbs,*into,200000)
 	if err!=nil{fmt.Fprintln(stderr,err);return 3}
 	// An integration ref can vary; the caller must match the exact default
 	// plan digest and rerun 'worktree plan --into origin/dev' if it changed.
-	if plan.PlanDigest!=*expect{fmt.Fprintln(stderr,"STALE_PLAN: run worktree plan --into origin/dev again");return 3}
+	if plan.PlanDigest!=*expect{fmt.Fprintf(stderr,"STALE_PLAN: run worktree plan --into %s again\n",*into);return 3}
 	var selected *worktreeEntry
 	for i:=range plan.Worktrees{
 		if filepath.Clean(plan.Worktrees[i].Path)==filepath.Clean(targetAbs){selected=&plan.Worktrees[i];break}
@@ -130,7 +131,7 @@ func runWorktreeCleanupCLI(args []string,out,stderr io.Writer)int{
 		return printWorktreeCleanupResult(result,*asJSON,out,stderr)
 	}
 	// Last-moment plan and byte verification before the only destructive step.
-	again,err:=inspectWorktrees(plan.Repository,"origin/dev",200000)
+	again,err:=inspectWorktrees(plan.Repository,plan.IntegrationRef,200000)
 	if err!=nil||again.PlanDigest!=plan.PlanDigest{
 		result.Status="blocked";result.Reasons=append(result.Reasons,"TOCTOU: worktree state changed before remove")
 		return printWorktreeCleanupResult(result,*asJSON,out,stderr)
@@ -162,7 +163,7 @@ func runWorktreeCleanupCLI(args []string,out,stderr io.Writer)int{
 }
 
 func printWorktreeCleanupResult(result worktreeCleanupResult,asJSON bool,out,stderr io.Writer)int{
-	if *(&asJSON){
+	if asJSON{
 		if err:=json.NewEncoder(out).Encode(result);err!=nil{fmt.Fprintln(stderr,err);return 1}
 	}else{
 		fmt.Fprintf(out,"%s: %s preserved=%d files, removed=%t reasons=%s\n",result.Status,result.Target,result.FileCount,result.Removed,strings.Join(result.Reasons,", "))
@@ -266,7 +267,7 @@ func preserveWorktree(plan worktreePlan,e worktreeEntry,archive string)(worktree
 	fresh,err:=enumerateWorktreeRegularFiles(e.Path,200000)
 	if err!=nil{return result,err}
 	if !samePreservedFiles(files,fresh){return result,errors.New("worktree changed during preservation; original retained")}
-	current,err:=inspectWorktrees(plan.Repository,"origin/dev",200000)
+	current,err:=inspectWorktrees(plan.Repository,plan.IntegrationRef,200000)
 	if err!=nil||current.PlanDigest!=plan.PlanDigest{return result,errors.New("worktree plan changed during preservation")}
 	manifest:=worktreePreservation{SchemaVersion:1,Repository:plan.Repository,Target:e.Path,Archive:archive,HEAD:e.HEAD,PlanDigest:plan.PlanDigest,
 		CreatedAt:time.Now().UTC().Format(time.RFC3339Nano),Files:files,PayloadDigest:preservationDigest(files)}
