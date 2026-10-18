@@ -32,6 +32,7 @@ type manifest struct {
 }
 
 type MigrationResult struct {
+	ProtectedFiles any `json:"protected_files,omitempty"`
 	PlanDigest                 string   `json:"plan_digest,omitempty"`
 	Status                     string   `json:"status"`
 	ModifiedFiles              []string `json:"modified_files,omitempty"`
