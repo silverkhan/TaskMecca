@@ -392,7 +392,7 @@ func verifyWorktreePreservation(m worktreePreservation,verifySource bool)worktre
 func writeWorktreeRemovalReceipt(archive string,m worktreePreservation)error{
 	path:=filepath.Join(archive,"removal.json")
 	if old,err:=os.ReadFile(path);err==nil {
-		var saved struct{Target,Repository,HEAD,PayloadDigest string}
+		var saved struct{Target string `json:"target"`;Repository string `json:"repository"`;HEAD string `json:"head"`;PayloadDigest string `json:"payload_digest"`}
 		if json.Unmarshal(old,&saved)==nil&&saved.Target==m.Target&&saved.Repository==m.Repository&&saved.HEAD==m.HEAD&&saved.PayloadDigest==m.PayloadDigest{return nil}
 		return errors.New("existing removal receipt conflicts with verified archive")
 	}else if !os.IsNotExist(err){return err}
