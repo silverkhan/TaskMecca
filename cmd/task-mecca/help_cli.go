@@ -25,7 +25,7 @@ func runHelpCLI(args []string,out,stderr io.Writer) int {
 		fmt.Fprintln(out,"  task-mecca upgrade           Upgrade the Task Mecca binary")
 		fmt.Fprintln(out,"  task-mecca migrate           Migrate project framework (preserve project-owned data)")
 		fmt.Fprintln(out,"  task-mecca contract          Validate, plan, register or record contract decisions")
-		fmt.Fprintln(out,"  task-mecca worktree          Inspect preservation/protection plan (read-only)")
+		fmt.Fprintln(out,"  task-mecca worktree          Inspect and explicitly preserve/verify/remove safe Git worktrees")
 		fmt.Fprintln(out,"  task-mecca protect           Snapshot, verify project data and inspect component versions")
 		fmt.Fprintln(out,"  task-mecca runtime           Observe/query/bind execution evidence")
 		fmt.Fprintln(out,"  task-mecca lifecycle         Read or write canonical lifecycle evidence")
