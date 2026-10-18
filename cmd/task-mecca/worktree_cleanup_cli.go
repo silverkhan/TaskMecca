@@ -193,6 +193,21 @@ func validateArchiveOutsideWorktrees(plan worktreePlan,archive string)error{
 	return nil
 }
 
+func rejectPathSymlinksWithin(root,path string)error{
+	rel,err:=filepath.Rel(root,path)
+	if err!=nil||rel==".."||strings.HasPrefix(rel,".."+string(filepath.Separator)){return fmt.Errorf("unsafe path outside selected root: %s",path)}
+	for current:=root; ;{
+		info,e:=os.Lstat(current)
+		if e==nil&&info.Mode()&os.ModeSymlink!=0{return fmt.Errorf("symlink in protected path: %s",current)}
+		if e!=nil&&!os.IsNotExist(e){return e}
+		if current==path{break}
+		remainder,_:=filepath.Rel(current,path)
+		parts:=strings.Split(remainder,string(filepath.Separator))
+		current=filepath.Join(current,parts[0])
+	}
+	return nil
+}
+
 func preservationManifestPath(archive string)string{return filepath.Join(archive,"manifest.json")}
 func preservedFilePath(archive,rel string)string{return filepath.Join(archive,"payload",filepath.FromSlash(rel))}
 func hashFileStream(path string)(string,int64,error){
@@ -256,6 +271,8 @@ func preserveWorktree(plan worktreePlan,e worktreeEntry,archive string)(worktree
 		source:=filepath.Join(e.Path,filepath.FromSlash(f.Path))
 		destination:=preservedFilePath(archive,f.Path)
 		if err:=os.MkdirAll(filepath.Dir(destination),0700);err!=nil{return result,err}
+		if err:=rejectPathSymlinksWithin(archive,destination);err!=nil{return result,err}
+		if err:=rejectPathSymlinksWithin(e.Path,source);err!=nil{return result,err}
 		if old,err:=os.Lstat(destination);err==nil{
 			if !old.Mode().IsRegular()||old.Mode()&os.ModeSymlink!=0{return result,fmt.Errorf("archive payload unsafe: %s",f.Path)}
 			hash,n,err:=hashFileStream(destination)
@@ -340,6 +357,7 @@ func verifyWorktreePreservation(m worktreePreservation,verifySource bool)worktre
 		if seen[f.Path]{r.Reasons=append(r.Reasons,"duplicate manifest entry: "+f.Path);continue}
 		seen[f.Path]=true
 		file:=preservedFilePath(m.Archive,f.Path)
+		if err:=rejectPathSymlinksWithin(m.Archive,file);err!=nil{r.Reasons=append(r.Reasons,err.Error());continue}
 		info,err:=os.Lstat(file)
 		if err!=nil||!info.Mode().IsRegular()||info.Mode()&os.ModeSymlink!=0{
 			r.Reasons=append(r.Reasons,"archive file missing or unsafe: "+f.Path);continue
