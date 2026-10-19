@@ -20,8 +20,8 @@
 | 실행 준비 및 인계 | Registrar/Controller | `decision show` → 기존 `preflight` / `handoff prepare` | 지원되는 native 전달·결과 확인 후 `handoff mark` | 과거 completed attempt를 live로 재사용 |
 | 현재 Controller/Worker/세션 조회 | Root/Controller | `runtime query` | 필터링된 attempt/evidence 확인 | 전체 JSON Python 후처리 |
 | Hook 설정 vs 관측 장애 | Root/Controller | `runtime diagnose` | 근거/복구 단계 확인 | 합성 Hook 시작 이벤트 주입 |
-| worktree 정리 | Controller/운영자 | `worktree plan` | **별도 보존·검증·사용 여부 확정 후** 대상별 승인 | plan만 보고 삭제·force cleanup |
-| 업데이트 | 운영자 | `--version`, `upgrade` / `migrate` 구분 | 보호 증명 및 Web 실행판 확인 | 설치 성공=Framework/Web 적용 성공으로 취급 |
+| worktree 정리 | Controller/운영자 | `worktree plan → preserve → verify` | clean/merged·unused 확인 뒤 `remove` | plan만 보고 삭제·force cleanup |
+| 업데이트 | 운영자 | `protect snapshot → upgrade/migrate → protect verify` | `protect versions`로 CLI·Framework·Web 확인 | 설치 성공=Framework/Web 적용 성공으로 취급 |
 
 ## 2. Registrar: 구조화 등록 기본 경로
 
@@ -74,10 +74,10 @@ task-mecca runtime diagnose --provider codex --agent-id AGENT_UUID --json
 
 ## 5. Worktree/업데이트 안전 경계
 
-- `worktree plan`은 현 버전에서 **읽기 전용이며 삭제를 하지 않는다.** `usage_not_verified`는 기본 보호. 정리 기능은 Dev 소스에서 실제 구현·테스트·인수한 후에만 사용한다.
+- `worktree plan`은 **읽기 전용**이고 `preserve`는 Git worktree 외부에 tracked/untracked/ignored payload를 SHA-256 보존한다. `verify`는 manifest와 복사본 해시를 확인한다. `remove`는 **사용자 실제 미사용 확인(`--confirm-unused`)** 및 clean·merged·non-detached·non-primary·sha 검증을 모두 만족할 때만 강제하지 않는 `git worktree remove`를 실행한다. dirty/ignored/untracked 자료가 남으면 백업 후에도 삭제하지 않는다. 관련 사용법: `task-mecca help worktree`.
 - Git commit/branch·작업 중 자료, ignored/untracked/중첩 저장소/외부 symlink를 보존한다. SHA 증거 없이는 데이터 회수가 끝났다고 주장하지 않는다.
 - `upgrade`는 설치 CLI 갱신, `migrate`는 프로젝트 Framework 갱신, `web restart`는 실제 서비스 프로세스 갱신이다. 각 적용 상태는 별도로 보고한다.
-- 보호 증명에 검증하지 않은 경로가 남으면 `not_run/unknown`, 변경 확인이 있으면 변경 목록을 제시한다.
+- `task-mecca protect snapshot/verify/versions`와 migration의 `protected_files`가 명시하는 범위만 확인한다. 보호 비교는 `_task_mecca/data/**`, `_task_mecca/backlog*/**`, `_task_mecca/config.toml`이며 `.runtime`·외부 저장소는 범위 밖이다. 검증하지 않은 경로는 `not_run/unknown`, 변경 확인이 있으면 변경·누락·추가 목록을 제시한다.
 
 ## 6. 오류 및 복구 결정표
 

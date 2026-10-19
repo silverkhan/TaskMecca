@@ -63,8 +63,8 @@ task-mecca contract help
 | Simple/Defined 계약 | `_template.md`, parser의 `작업 정의/요건 정의서` | AID-202 구조화 preview·AID-207 등록 구현 |
 | 실행 승인/보충 | `handoff prepare --execution-authorized` 등 | AID-208: `contract decision record/show`로 실행 승인과 이력 분리 구현 |
 | Runtime 최신 실행 | `runtime list|reconcile --json`, provider / limit | AID-203 role/session/agent filter, AID-209 Hook 진단 |
-| Worktree 보존형 정리 | Git/handoff 운영 절차, 일부 storage 정리 | AID-204/210 |
-| 업데이트 검증 | `upgrade`, `migrate` (modified_files, plan_digest, choices) | AID-205 protect hash/result |
+| Worktree 보존형 정리 | Git/handoff 운영 절차, 일부 storage 정리 | AID-204 `worktree plan`, AID-210 `preserve/verify/remove` 구현·Dev 반영(검증 후 clean만 제거) |
+| 업데이트 검증 | `upgrade`, `migrate` (modified_files, plan_digest, choices) | AID-205 `protect snapshot/verify/versions` 및 migration의 protected_files Dev 반영 |
 | CLI 자체 설명 | 현재 코드에 `version`, `--version` / README의 `upgrade` | AID-206 글로벌 help/unknown aliases |
 
 **검증 범위:** 2026-10-16의 GitHub `main`/`dev` CLI 소스와 마이그레이션 정책. 실제 사용자가 설치한 바이너리, 모든 OS 및 0.3.1 재현 결과는 아직 **미확인**. AID-201 실측 작업 완료 전까지 기능 지원 확정으로 표기하지 않는다.
