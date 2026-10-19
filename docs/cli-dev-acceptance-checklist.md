@@ -27,6 +27,7 @@
 - [ ] 실제 실행 중인 Controller/Worker 세션에서 `runtime query --role controller --state open --json`, `--agent-id ID --limit 2 --fields attempt_id,binding_state,current_state,runtime_agent_id,session_id,turn_id --json`이 Python 후처리 없이 최신 N건 반환
 - [ ] 실행 종료 후 과거 completed 이력은 active로 잘못 선택되지 않음. `not_found`와 `unknown`을 실행하지 않았음/사망으로 오표기하지 않음
 - [ ] `runtime diagnose --provider codex --agent-id ID --json`에서 Hook **설정 여부**와 **실제 관측된 이벤트**가 분리. 복구 안내에 합성 이벤트/종료 attempt 재사용 요구가 없음
+- [ ] 실제 Codex session ID를 지정한 `runtime diagnose --provider codex --session-id ID --json`에서 `native_log.session_meta/task_started/turn_context`의 건수가 확인되고 원문 메시지는 노출되지 않음. Hook 미수신과 실제 native 시작이 확인되면 별도 관측 공백 진단 표시
 - [ ] Hook을 사용할 수 없는 provider 기능은 지원 불가/외부 수동 조치로 표현되고, native transport 성공을 추정하지 않음
 
 ## 4. Worktree 자료 보존·정리 — AID-204/210
