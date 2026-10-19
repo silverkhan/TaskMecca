@@ -27,3 +27,13 @@ task-mecca runtime diagnose --project /PROJECT --provider claude \
 - API가 보장하지 않는 native resumed/message/spawn은 호출했다고 주장하지 않는다. 필요한 외부 동작을 `recovery_steps`로 제시한다.
 - 이전 completed 실행을 재사용하거나 합성 시작/완료 이벤트를 넣어 복구하지 않는다.
 - 0.3.1에서 해소된 과거 연결 장애를 재발했다고 주장하지 않으며 미래 진단에 사용한다.
+
+## Codex native JSONL 교차검증 (AID-209 보완)
+
+```bash
+task-mecca runtime diagnose --project /PROJECT --provider codex --session-id EXACT_CODEX_SESSION_UUID --json
+```
+
+명시한 session ID의 `CODEX_HOME/sessions/**`(기본 `~/.codex/sessions/**`) 아래에서 해당 ID로 끝나는 JSONL filename만 찾고, **해당 파일 한 개만 읽어** `session_meta`, `task_started`, `turn_context` 이벤트 수를 계산한다. 원문 프롬프트·코드·전체 파일 경로를 반환하지 않고 source token만 표시한다. 없는 경우 `not_found`, 중복 filename은 `ambiguous`, 불완전한 파일/메타데이터 불일치는 `unknown/mismatch`. 어떤 경우에도 이벤트를 합성하거나 기존 completed attempt를 재활성화하지 않는다.
+
+실제 native `task_started`는 있는데 Hook/Binding에 해당 실행이 보이지 않는다면 `native_hook_observation_gap`으로 진단하고, 사용자 승인 하에 Hook 설정·권한·새로운 실제 세션을 확인하도록 안내한다. Provider 변경/로그 경로 변경 등으로 native 근거가 발견되지 않았다는 것만으로 실행이 없었다고 단정하지 않는다.

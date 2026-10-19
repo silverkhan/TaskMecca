@@ -29,6 +29,7 @@ type runtimeDiagnostic struct {
 	Attempts []runtimeobs.Attempt `json:"matched_attempts"`
 	Findings []runtimeobs.LedgerFinding `json:"findings"`
 	Recovery []string `json:"recovery_steps"`
+	NativeLog *nativeSessionEvidence `json:"native_log,omitempty"`
 	NativeOperationAttempted bool `json:"native_operation_attempted"`
 	ReconciliationPerformed bool `json:"reconciliation_performed"`
 }
@@ -47,7 +48,8 @@ func runRuntimeDiagnoseCLI(args []string,out,stderr io.Writer)int{
 	if err:=f.Parse(args);err!=nil{return 2}
 	if *help{
 		fmt.Fprintln(out,"task-mecca runtime diagnose --project DIR --provider codex|claude [--agent-id UUID|--session-id SESSION|--role controller] [--limit 4] --json")
-		fmt.Fprintln(out,"Read-only observation diagnosis; does not generate events, bind old attempts or invoke native Agent transport.")
+		fmt.Fprintln(out,"Read-only observation diagnosis. An exact --session-id on Codex also checks local native JSONL event counts (session_meta/task_started/turn_context) without transcript disclosure.")
+		fmt.Fprintln(out,"No synthetic events, old attempt reuse or native Agent transport.")
 		return 0
 	}
 	if f.NArg()!=0||(*provider!="codex"&&*provider!="claude")||*limit<=0||*limit>50{
@@ -108,6 +110,26 @@ func runRuntimeDiagnoseCLI(args []string,out,stderr io.Writer)int{
 	add("canonical_runtime_ledger",observationDiagnosticState(len(report.Attempts)),fmt.Sprintf("matched=%d; journal=%s",len(report.Attempts),ledger.JournalPath))
 	report.Diagnosis=classifyRuntimeDiagnostic(enabled,configured,providerEvents,report.Attempts,time.Now())
 	report.Recovery=runtimeDiagnosisSteps(report.Diagnosis,*provider)
+	if *session!="" {
+		if *provider=="codex" {
+			native:=inspectCodexSessionEvidence(*session)
+			report.NativeLog=&native
+			add("codex_native_session_jsonl",native.Status,
+				fmt.Sprintf("event counts only: session_meta=%d task_started=%d turn_context=%d; token=%s",native.SessionMeta,native.TaskStarted,native.TurnContext,native.SourceToken))
+			if native.Status=="observed_native"&&native.TaskStarted>0&&enabled&&configured&&
+				(providerEvents==0||len(report.Attempts)==0){
+				report.Diagnosis="native_hook_observation_gap"
+				report.Recovery=[]string{
+					"Codex native task_started exists for the exact session, but a matching canonical attempt/Hook observation was not confirmed.",
+					"Review actual Codex Hook settings and execution; start a new real session after fixing delivery, never synthesize lifecycle events.",
+				}
+			}
+		}else{
+			native:=nativeSessionEvidence{Status:"unsupported",Provider:*provider,SessionID:*session,Reason:"native JSONL adapter is supported for exact Codex sessions only"}
+			report.NativeLog=&native
+			add("provider_native_session_jsonl","unsupported",native.Reason)
+		}
+	}
 	if *asJSON {
 		if err:=json.NewEncoder(out).Encode(report);err!=nil{fmt.Fprintln(stderr,err);return 1}
 		return 0
