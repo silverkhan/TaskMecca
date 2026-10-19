@@ -10,8 +10,6 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
-
-	"github.com/silverkhan/TaskMecca/internal/runtimeobs"
 )
 
 type nativeSessionEvidence struct {
@@ -107,9 +105,3 @@ func inspectCodexSessionEvidence(sessionID string)nativeSessionEvidence{
 	return result
 }
 
-func diagnoseNativeCodex(project string,session string,providerEvents int,attempts []runtimeobs.Attempt)nativeSessionEvidence{
-	_ = project
-	_ = providerEvents
-	_ = attempts
-	return inspectCodexSessionEvidence(session)
-}
