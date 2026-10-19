@@ -21,7 +21,7 @@ func TestCodexNativeJSONLExactSessionEvidence(t *testing.T){
 		`{"type":"event_msg","payload":{"type":"task_started","message":"very private source text"}}`,
 		`{"type":"turn_context","payload":{"model":"private"}}`,
 		`{"type":"event_msg","payload":{"type":"user_message","text":"SECRET_DO_NOT_SHOW"}}`,
-	},"\\n")+"\\n"
+	},"\n")+"\n"
 	if err:=os.WriteFile(path,[]byte(records),0600);err!=nil{t.Fatal(err)}
 	native:=inspectCodexSessionEvidence(session)
 	if native.Status!="observed_native"||native.SessionMeta!=1||native.TaskStarted!=1||native.TurnContext!=1||!native.MetadataMatched{
