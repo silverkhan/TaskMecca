@@ -59,6 +59,25 @@ task-mecca contract decision show --project PROJECT --task B-508 --json
 - `hold`/미지원 provider native 호출/미확인 실행은 성공으로 표시하지 않는다. Root는 등록·인계 확인 뒤 복귀하며 Controller 완료를 기다리거나 중계하지 않는다.
 - 보충·정책 확정이 기존 approval의 effective scope를 바꾸면 **새 사용자 확인** 필요. 원본 snapshot은 수정하지 않는다.
 
+### Controller 인계 조회 표준 (AID-219)
+
+Controller는 인계 복구를 시작할 때 전체 JSON을 임시 Python으로 제거하거나 설치 바이너리에 `strings`를 실행하지 않는다. 정확한 옵션은 `task-mecca help handoff`에서 확인한다.
+
+```bash
+# 요약 및 진단만 조회 (handoffs 상세/저널 경로 미출력)
+task-mecca handoff reconcile --project PROJECT --summary --json
+# 원하는 최상위 집계 필드만 조회
+task-mecca handoff reconcile --project PROJECT --summary --fields total_handoffs,claimed_pending_count,unclaimed_pending_count,hold_count,findings_count --json
+# 특정 인계는 정확한 handoff ID로 직접 확인
+task-mecca handoff inspect HANDOFF_ID --project PROJECT --json
+# 정규화된 기존 백로그 상태 조회
+task-mecca inspect B-525 --project PROJECT --json
+```
+
+- `--summary`와 `--fields`는 **handoff reconcile 전용**이다. `--fields`는 출력 객체의 **최상위 필드만** 선택하며 오타나 중복 필드 요청은 exit code 2로 실패한다. 집계는 journal 증거이지 Provider 전송 성공·실제 Agent liveness의 증거가 아니다.
+- 동일 workflow에 속한다는 정확한 근거 없이 서로 다른 B-ID(예: B-525와 B-526)를 연관 지어 판단하지 않는다. `claim`은 현재 exact Controller attempt로, `mark dispatch=ok`는 실제 native 전송 증거가 있을 때만 실행한다.
+- shell에서 파일 저장/후처리가 불가피하면 `;` 대신 명령 exit status와 JSON `findings`를 확인하여 실패를 성공으로 취급하지 않는다. 본 범위의 집계/필드 조회는 CLI 자체로 해결한다.
+
 ## 4. 실행 조회·진단
 
 ```bash
