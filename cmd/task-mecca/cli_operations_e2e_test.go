@@ -23,7 +23,7 @@ func TestAgentOperationalE2E_RegistrationApprovalAndProtection(t *testing.T){
 	t.Setenv("TASK_MECCA_HOME",t.TempDir())
 	project:=t.TempDir()
 	if err:=os.MkdirAll(filepath.Join(project,"_task_mecca"),0755);err!=nil{t.Fatal(err)}
-	if _,err:=backlog.TagDefine(project,"area:backend","Fixture backend scope","");err!=nil{t.Fatal(err)}
+	if _,err:=backlog.TagDefine(project,"area:cli-qa-fixture","Fixture backend scope","");err!=nil{t.Fatal(err)}
 	tasks:=[]contractTask{}
 	for i:=1;i<=6;i++{
 		key:=fmt.Sprintf("linear:QA-%d",i)
@@ -34,7 +34,7 @@ func TestAgentOperationalE2E_RegistrationApprovalAndProtection(t *testing.T){
 			SourceURL:fmt.Sprintf("https://linear.app/aiden7/issue/QA-%d",i),
 			SourceLabel:fmt.Sprintf("QA-%d",i),
 			SourceText:fmt.Sprintf("# 원본 QA-%d\n요건 전문 변경 금지",i),
-			Tags:[]string{"area:backend"},
+			Tags:[]string{"area:cli-qa-fixture"},
 		}
 		if i>1{item.DependsOn=[]string{fmt.Sprintf("linear:QA-%d",i-1)}}
 		tasks=append(tasks,item)
@@ -71,7 +71,7 @@ func TestAgentOperationalE2E_RegistrationApprovalAndProtection(t *testing.T){
 	events,err:=backlog.ReadLifecycleTransitions(project)
 	if err!=nil||len(events.Events)!=6{t.Fatalf("duplicate or missing registration events: %v %d",err,len(events.Events))}
 	for i,record:=range records{
-		for _,section:=range []string{"### 목표","### 수용 기준","## 원천 전문 (변경 금지)","area:backend"}{
+		for _,section:=range []string{"### 목표","### 수용 기준","## 원천 전문 (변경 금지)","area:cli-qa-fixture"}{
 			if !strings.Contains(record.RawMarkdown,section){t.Fatalf("task %d missing %s",i,section)}
 		}
 		if i>0 && !strings.Contains(record.RawMarkdown,fmt.Sprintf("- 선행: B-%d",i)){t.Fatalf("missing dependency on task %d",i)}
