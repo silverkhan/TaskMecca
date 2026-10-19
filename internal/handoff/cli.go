@@ -187,8 +187,10 @@ func parseCLI(args []string) (cliOptions, error) {
 				return opts, errors.New("--fields may be provided only once")
 			}
 			i++
+			if strings.TrimSpace(args[i]) == "" {
+				return opts, errors.New("--fields requires a non-empty comma-separated list")
+			}
 			opts.fields = args[i]
-
 		case "--execution-authorized":
 			opts.executionAuthorized = true
 		case "--project", "--event", "--from", "--to", "--source-attempt", "--target-attempt", "--report-file", "--contract-sha256", "--as", "--step", "--result", "--evidence":
