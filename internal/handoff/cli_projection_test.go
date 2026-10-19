@@ -73,6 +73,7 @@ func TestHandoffReconcileProjectionRefusesInvalidFlags(t *testing.T) {
 		{[]string{"reconcile", "--project", project, "--summary", "--fields", "total_handoffs,total_handoffs"}, "duplicate"},
 		{[]string{"reconcile", "--project", project, "--summary", "--fields", "total_handoffs,"}, "empty"},
 		{[]string{"reconcile", "--fields"}, "requires"},
+		{[]string{"reconcile", "--fields", ""}, "non-empty"},
 		{[]string{"inspect", "--summary", "handoff-any"}, "only"},
 		{[]string{"claim", "handoff-any", "--fields", "version"}, "only"},
 	} {
