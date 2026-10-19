@@ -75,6 +75,19 @@ Worker 보고를 `결과`, `검증`, `핵심 요약`에 반영할 때는 보고 
 사용자가 바로 이해할 수 있는 자연스러운 문장으로 다시 서술한다. 특히 영어 명사구에 한국어 조사만 붙이거나
 여러 내부 개념을 한 문장에 연쇄해서 쓰지 않는다. `HUMAN_READABLE_BACKLOG.md`의 표현 원칙과 예시를 따른다.
 
+## Handoff 조회·명령 발견 (Controller 표준)
+
+현재 `task-mecca help handoff`에 하위 명령과 정확한 옵션이 명시되어 있다. 설치 바이너리의 내부 문자열(`strings`)을 분석하여 옵션을 추정하지 않는다. 일괄 reconciliation의 본문에서 임시 Python으로 `handoffs` 필드를 제거하는 대신 다음을 사용한다.
+
+```bash
+task-mecca handoff reconcile --project PROJECT --summary --json
+task-mecca handoff reconcile --project PROJECT --summary --fields total_handoffs,claimed_pending_count,unclaimed_pending_count,findings_count --json
+task-mecca handoff inspect HANDOFF_ID --project PROJECT --json
+task-mecca inspect TASK_ID --project PROJECT --json
+```
+
+`--summary`는 진단·집계를 유지하면서 상세 handoff 객체를 반환하지 않으며, `--fields`는 해당 출력의 최상위 필드를 선택한다. `reconcile` 결과의 pending/claimed는 실제 Provider 메시지 전달·Worker 착수를 증명하지 않는다. 실제 `claim`, `mark`, lifecycle 근거와 현재 native Agent 상태를 추가 대조한다. 서로 다른 백로그 ID를 같은 인계로 연결하지 않는다. 명령이 nonzero이면 진행을 중단하고 오류를 해소한 뒤 재조회한다.
+
 ## Handoff 수신과 멱등 처리
 
 Registrar 또는 Worker로부터 handoff를 받으면 side effect 전에 현재 Controller의 **runtime attempt ID까지 포함해 claim**한다.
