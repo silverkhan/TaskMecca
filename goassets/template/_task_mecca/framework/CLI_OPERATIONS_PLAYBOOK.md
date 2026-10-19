@@ -70,6 +70,7 @@ task-mecca runtime diagnose --provider codex --agent-id AGENT_UUID --json
 - `not_found` = **일치하는 관측 증거가 없음**(실제 미실행 단정 금지).
 - `open/observed_nonterminal` = **비종료 기록 존재**(살아 있는 프로세스 인증 아님).
 - `stale/unknown/unbound/ambiguous`는 근거 부족·연결 문제이며 실제 Provider 이벤트 확인 없이는 시작/종료를 합성하지 않는다.
+- Codex 세션 ID가 있다면 `runtime diagnose --provider codex --session-id ID --json`이 직접 해당 native JSONL의 `session_meta/task_started/turn_context` **건수만** 교차검증한다. 원문을 직접 검색하거나 transcript 내용을 보고에 복사하지 않는다. native started ≠ Hook observation 이면 `native_hook_observation_gap`으로 표시한다.
 - `terminal_history`를 현재 실행으로 재사용하지 않는다. 필요한 외부 동작은 native capability와 허용된 실제 Agent 도구 사용을 명시한다.
 
 ## 5. Worktree/업데이트 안전 경계
