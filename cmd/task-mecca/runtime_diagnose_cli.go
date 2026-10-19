@@ -48,7 +48,8 @@ func runRuntimeDiagnoseCLI(args []string,out,stderr io.Writer)int{
 	if err:=f.Parse(args);err!=nil{return 2}
 	if *help{
 		fmt.Fprintln(out,"task-mecca runtime diagnose --project DIR --provider codex|claude [--agent-id UUID|--session-id SESSION|--role controller] [--limit 4] --json")
-		fmt.Fprintln(out,"Read-only observation diagnosis; does not generate events, bind old attempts or invoke native Agent transport.")
+		fmt.Fprintln(out,"Read-only observation diagnosis. An exact --session-id on Codex also checks local native JSONL event counts (session_meta/task_started/turn_context) without transcript disclosure.")
+		fmt.Fprintln(out,"No synthetic events, old attempt reuse or native Agent transport.")
 		return 0
 	}
 	if f.NArg()!=0||(*provider!="codex"&&*provider!="claude")||*limit<=0||*limit>50{
