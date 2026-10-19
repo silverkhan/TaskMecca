@@ -2,6 +2,7 @@ package handoff
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"path/filepath"
@@ -25,6 +26,8 @@ type cliOptions struct {
 	result              string
 	evidence            string
 	positionals         []string
+	summary             bool
+	fields              string
 }
 
 func RunCLI(args []string, stdout, stderr io.Writer) int {
@@ -36,6 +39,10 @@ func RunCLI(args []string, stdout, stderr io.Writer) int {
 	opts, err := parseCLI(args[1:])
 	if err != nil {
 		fmt.Fprintln(stderr, err)
+		return 2
+	}
+	if action != "reconcile" && (opts.summary || opts.fields != "") {
+		fmt.Fprintln(stderr, "--summary and --fields are supported only by handoff reconcile")
 		return 2
 	}
 	project := opts.project
@@ -116,7 +123,12 @@ func RunCLI(args []string, stdout, stderr io.Writer) int {
 			fmt.Fprintln(stderr, callErr)
 			return 1
 		}
-		printValue(stdout, ledger, opts.jsonOutput)
+		result, projectionErr := projectReconcileLedger(ledger, opts.summary, opts.fields)
+		if projectionErr != nil {
+			fmt.Fprintln(stderr, projectionErr)
+			return 2
+		}
+		printValue(stdout, result, opts.jsonOutput)
 	case "capability":
 		if len(opts.positionals) < 2 {
 			fmt.Fprintln(stderr, "handoff capability requires: show <provider> | record <provider> <name> <supported|unsupported|unknown>")
@@ -165,6 +177,18 @@ func parseCLI(args []string) (cliOptions, error) {
 		switch arg {
 		case "--json":
 			opts.jsonOutput = true
+		case "--summary":
+			opts.summary = true
+		case "--fields":
+			if i+1 >= len(args) || strings.HasPrefix(args[i+1], "--") {
+				return opts, errors.New("--fields requires a comma-separated list of top-level field names")
+			}
+			if opts.fields != "" {
+				return opts, errors.New("--fields may be provided only once")
+			}
+			i++
+			opts.fields = args[i]
+
 		case "--execution-authorized":
 			opts.executionAuthorized = true
 		case "--project", "--event", "--from", "--to", "--source-attempt", "--target-attempt", "--report-file", "--contract-sha256", "--as", "--step", "--result", "--evidence":
@@ -207,6 +231,76 @@ func parseCLI(args []string) (cliOptions, error) {
 		}
 	}
 	return opts, nil
+}
+
+
+func projectReconcileLedger(ledger Ledger, summary bool, fields string) (any, error) {
+	// Preserve the legacy JSON contract exactly when no projection is requested.
+	if !summary && fields == "" {
+		return ledger, nil
+	}
+
+	var data map[string]any
+	if summary {
+		byEvent := map[string]int{}
+		applied, claimedPending, unclaimedPending, held := 0, 0, 0, 0
+		for _, row := range ledger.Handoffs {
+			byEvent[string(row.EventType)]++
+			if row.Applied {
+				applied++
+				continue
+			}
+			if row.Action == ActionHold {
+				held++
+			}
+			if row.ClaimedBy != "" {
+				claimedPending++
+			} else {
+				unclaimedPending++
+			}
+		}
+		data = map[string]any{
+			"version": ledger.Version,
+			"generated_at": ledger.GeneratedAt,
+			"total_handoffs": len(ledger.Handoffs),
+			"applied_count": applied,
+			"claimed_pending_count": claimedPending,
+			"unclaimed_pending_count": unclaimedPending,
+			"hold_count": held,
+			"findings_count": len(ledger.Findings),
+			"by_event": byEvent,
+			"findings": ledger.Findings,
+			"observation_scope": "handoff journal only; no native transport or runtime liveness assertion",
+		}
+	} else {
+		// Marshal canonical JSON tags rather than reflecting Go field names.
+		payload, err := json.Marshal(ledger)
+		if err != nil {
+			return nil, err
+		}
+		if err := json.Unmarshal(payload, &data); err != nil {
+			return nil, err
+		}
+	}
+	if fields == "" {
+		return data, nil
+	}
+	selected := map[string]any{}
+	for _, raw := range strings.Split(fields, ",") {
+		field := strings.TrimSpace(raw)
+		if field == "" {
+			return nil, errors.New("--fields contains an empty field name")
+		}
+		value, ok := data[field]
+		if !ok {
+			return nil, fmt.Errorf("unsupported handoff reconcile field %q (use task-mecca help handoff)", field)
+		}
+		if _, exists := selected[field]; exists {
+			return nil, fmt.Errorf("duplicate handoff reconcile field %q", field)
+		}
+		selected[field] = value
+	}
+	return selected, nil
 }
 
 func printValue(w io.Writer, value any, jsonOutput bool) {
