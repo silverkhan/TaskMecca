@@ -1,0 +1,151 @@
+{
+  "version": "0.3.2",
+  "date": "2026-10-20",
+  "title": {
+    "ko": "에이전트 CLI 운영 표준화와 인계·복구 진단 강화",
+    "en": "Agent CLI Operations, Handoff and Recovery Diagnostics"
+  },
+  "summary": {
+    "ko": "에이전트의 백로그 등록·승인·실행 조회를 표준 CLI로 통합하고, 보호형 Worktree 정리와 업데이트 전후 데이터 검증을 추가했습니다. Controller 인계 현황을 필요한 정보만으로 조회하도록 개선하고 역할별 실행 지침을 정리했습니다.",
+    "en": "Standardize agent backlog registration, approvals and runtime queries in the CLI. Add cautious Git worktree preservation, data-integrity checks across updates, focused handoff summaries and role-based operational guidance."
+  },
+  "highlights": [
+    {
+      "ko": "여러 작업을 계약 검사·계획·등록·재조회하며 ID·의존관계·출처를 일관되게 관리합니다.",
+      "en": "Validate, plan, apply and inspect multi-task contracts with consistent IDs, dependencies and source evidence."
+    },
+    {
+      "ko": "등록과 실행 승인을 분리하고 승인·정책 변경 이력을 근거 기반으로 조회합니다.",
+      "en": "Separate registration from execution authorization and inspect evidence-backed approval/policy history."
+    },
+    {
+      "ko": "에이전트 실행 상태·Hook 관측 공백과 Codex 세션 증거를 전용 CLI로 진단합니다.",
+      "en": "Query agent runtime state and diagnose Hook gaps against Codex native session evidence."
+    },
+    {
+      "ko": "Git Worktree의 삭제 전 보존·해시 검증 및 프로젝트 보호 파일의 변경 여부를 확인합니다.",
+      "en": "Preserve and hash-verify worktree material before cleanup and compare protected project files."
+    },
+    {
+      "ko": "Controller 인계 요약·선택 필드 조회 및 자세한 도움말로 임시 Python/바이너리 역탐색을 줄입니다.",
+      "en": "Use focused Controller handoff summaries, selected JSON fields and detailed help instead of ad hoc scripts."
+    }
+  ],
+  "categories": [
+    {
+      "id": "contracts",
+      "title": {
+        "ko": "백로그 등록·승인",
+        "en": "Task Registration & Approval"
+      },
+      "items": [
+        {
+          "ko": "contract validate/preview/plan/apply/status를 제공하며 입력 충돌·누락·의존관계·멱등 재개를 검증합니다.",
+          "en": "Provide contract validate/preview/plan/apply/status with validation for incomplete input, dependencies and idempotent retries."
+        },
+        {
+          "ko": "contract decision show/record로 명시적 사용자 승인·정책 보충·철회를 append-only 이력으로 관리합니다.",
+          "en": "Record and inspect explicit user approvals, policy amendments and revocations through append-only decisions."
+        }
+      ]
+    },
+    {
+      "id": "runtime",
+      "title": {
+        "ko": "실행 관측·진단",
+        "en": "Runtime Observation & Diagnostics"
+      },
+      "items": [
+        {
+          "ko": "runtime query의 Agent·역할·세션 필터, 조회 건수 및 필드 선택으로 대용량 JSON 후처리를 줄입니다.",
+          "en": "Filter and project runtime query results by agent, role and session."
+        },
+        {
+          "ko": "runtime diagnose가 Hook·Binding 증거 및 Codex native 세션 이벤트 종류별 건수와 관측 공백을 구분합니다.",
+          "en": "Diagnose Hook/Binding evidence and Codex native session event-count gaps without exposing transcript contents."
+        }
+      ]
+    },
+    {
+      "id": "handoff",
+      "title": {
+        "ko": "인계·역할별 운영",
+        "en": "Handoffs & Role Guidance"
+      },
+      "items": [
+        {
+          "ko": "handoff reconcile --summary/--fields로 전체 인계 내역 대신 집계·진단을 선택 조회하고 기존 출력 호환성을 유지합니다.",
+          "en": "Use handoff reconcile --summary/--fields for focused journal statistics and diagnostics while preserving legacy output."
+        },
+        {
+          "ko": "help handoff 및 Framework 내 CLI_OPERATIONS_PLAYBOOK으로 역할별 명령 순서·권한·실패 재개 경계를 명확히 합니다.",
+          "en": "Provide command discovery and role-specific operational/failure guidance in CLI help and framework playbooks."
+        }
+      ]
+    },
+    {
+      "id": "safety",
+      "title": {
+        "ko": "자료 보존·업데이트 검증",
+        "en": "Data Preservation & Update Safety"
+      },
+      "items": [
+        {
+          "ko": "worktree plan/preserve/verify/remove로 사용 여부·clean/merged 상태·보존 해시를 확인한 경우에만 안전한 제거를 허용합니다.",
+          "en": "Plan, preserve, verify and conditionally remove worktrees with clean/merged/use-state and hash safeguards."
+        },
+        {
+          "ko": "protect snapshot/verify/versions로 보호 범위 SHA-256과 CLI/Framework/Web 버전을 독립적으로 점검합니다.",
+          "en": "Snapshot/verify protected project file hashes and inspect CLI, Framework and Web versions independently."
+        }
+      ]
+    }
+  ],
+  "sections": [
+    {
+      "type": "new",
+      "items": [
+        {
+          "ko": "다건 계약 등록·승인 감사, 실행 관측 CLI, 보호형 Worktree 및 SHA-256 보호 검증",
+          "en": "Batch contract registration/approval auditing, runtime queries, worktree preservation and SHA-256 validation"
+        }
+      ]
+    },
+    {
+      "type": "improved",
+      "items": [
+        {
+          "ko": "역할별 CLI 운영 플레이북, Controller 인계 요약·필드 조회 및 명령 도움말",
+          "en": "Role-oriented CLI playbook, Controller handoff summaries/field selection and command help"
+        }
+      ]
+    },
+    {
+      "type": "fixed",
+      "items": [
+        {
+          "ko": "인계 현황을 보기 위해 JSON을 임시 스크립트로 가공하거나 바이너리 내부 옵션을 역탐색해야 하는 불편",
+          "en": "Need for ad hoc JSON filtering or binary string inspection to inspect handoffs"
+        }
+      ]
+    }
+  ],
+  "after_update": [
+    {
+      "ko": "CLI 업그레이드 후 프로젝트별 Framework 마이그레이션 계획을 확인하고 사용자 수정 지침·백로그를 보존하면서 반영하세요. Web 실행 프로세스는 별도로 확인하세요.",
+      "en": "After upgrading the CLI, review the per-project Framework migration plan and preserve custom files and backlogs. Verify the Web process separately."
+    },
+    {
+      "ko": "Registrar 등록·승인과 Controller 인계의 실제 출력·원장을 확인하세요. 전체 실사용 인수 항목은 AID-211에서 별도 추적 중입니다.",
+      "en": "Validate actual Registrar registration/approval and Controller handoff output; complete UAT is tracked separately in AID-211."
+    },
+    {
+      "ko": "Controller/Worker가 작업 도중 종료됐을 때 자동 재개를 보장하지는 않습니다. 미완료 작업·인계 기록을 확인하고 안전하게 수동 복구하세요. 정책 기반 Decision Engine은 차기 개발 대상입니다.",
+      "en": "Automatic recovery after premature Controller/Worker termination is not guaranteed. Inspect unfinished tasks and handoffs before safe manual recovery; the policy Decision Engine is future work."
+    }
+  ],
+  "migration": {
+    "required": true,
+    "instruction_refresh": true
+  }
+}

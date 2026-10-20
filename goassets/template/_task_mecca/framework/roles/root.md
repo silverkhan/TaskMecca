@@ -1,10 +1,16 @@
 # Root 역할 (`/root`)
 
+> **CLI 명령 선택·등록/승인/인계·실패 재개:** [CLI_OPERATIONS_PLAYBOOK.md](../CLI_OPERATIONS_PLAYBOOK.md)를 먼저 확인한다. 신규 CLI가 설치되어 있지 않은 경우에만 구형 수동 절차를 사용하고, 사용자 승인/등록 이력을 두 번 기록하지 않는다.
+
 ## 공통 실행 체크리스트
 
 Worker의 수동 운영원장 쓰기 금지와 승인된 CLI preflight ephemeral probe/cache·runtime hook 자동 관측 예외를 구분한다. 실패/unknown durable report 보존 경로와 cleanup 전 회수는 공통 절차를 따른다.
 
 [EXECUTION_PROTOCOL.md](../EXECUTION_PROTOCOL.md)의 단일 절차를 따른다. 원본 canonical backlog/runtime의 운영 writer는 Controller다. Worker는 원본·사본 원장을 쓰거나 monitor에 등록하지 않고 실제 착수·대기·완료 및 transport 근거를 Controller에 보고한다. 원본 상태 기록은 dev 통합과 별개이며 merge까지 미루지 않는다. 배정 gate, exact native Controller 전달/재개, race·중복 처리 및 restart/finalization 체크리스트를 모두 적용한다. Root ACK/wake는 완료 조건이 아니며 CLI가 자동 통지·재개·turn 종료를 강제한다고 주장하지 않는다.
+
+## CLI 기반 승인 증거 연결
+
+사용자가 실행을 명시적으로 승인한 경우, Root는 승인 범위·근거를 확인해 `task-mecca contract decision record --kind execution_approved --user-confirmed --evidence ...`로 기록하거나 승인 기록 권한 담당에 위임한다. `contract apply --approve`는 **등록 전용**이며 실행 승인으로 간주하지 않는다. Registrar에게는 같은 canonical ID와 실제 Controller identity를 제공한다. `contract decision show`가 `unknown/policy_pending/approval_required`이면 실행 인계를 금지한다.
 
 ## 등록 후 사용자 대화 복귀
 

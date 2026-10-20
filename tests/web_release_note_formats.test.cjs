@@ -71,13 +71,18 @@ test('legacy section-only release notes keep their original renderer',()=>{
 
 test('Stable 0.3.1 keeps contributor-only Dev features exclusively in the last detailed category',()=>{
   const root=path.join(__dirname,'..');
+  // Keep the 0.3.1 public/Dev editorial regression as a historical fixture.
+  // The embedded and indexed release must follow the current Stable version.
   const note=JSON.parse(fs.readFileSync(path.join(root,'release-notes/0.3.1.json'),'utf8'));
+  const currentVersion=fs.readFileSync(path.join(root,'goassets/template/_task_mecca/VERSION'),'utf8').trim();
+  const current=JSON.parse(fs.readFileSync(path.join(root,'release-notes',currentVersion+'.json'),'utf8'));
   const embedded=JSON.parse(fs.readFileSync(path.join(root,'goassets/template/_task_mecca/framework/release-notes/current.json'),'utf8'));
   const index=JSON.parse(fs.readFileSync(path.join(root,'release-notes/index.json'),'utf8'));
-  assert.deepEqual(note,embedded);
-  assert.equal(index.releases[0].version,'0.3.1');
-  assert.deepEqual(index.releases[0].title,note.title);
-  assert.deepEqual(index.releases[0].summary,note.summary);
+  assert.deepEqual(current,embedded);
+  assert.equal(index.releases[0].version,currentVersion);
+  assert.deepEqual(index.releases[0].title,current.title);
+  assert.deepEqual(index.releases[0].summary,current.summary);
+  assert.deepEqual(index.releases[0].migration,current.migration);
   assert.equal(note.categories.at(-1).id,'preview');
   assert.match(note.categories.at(-1).title.ko,/기여자/);
   assert.match(note.categories.at(-1).title.en,/Contributor/);

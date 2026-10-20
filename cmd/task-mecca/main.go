@@ -1,6 +1,7 @@
 package main
 
 import (
+	"io"
 	"bufio"
 	"errors"
 	"golang.org/x/term"
@@ -21,7 +22,7 @@ import (
     "github.com/silverkhan/TaskMecca/internal/webui"
 )
 
-var version = "0.3.1"
+var version = "0.3.2"
 
 // A PR binary is built from its source without Dev release ldflags. Preserve
 // the version of the Dev installation it replaced for framework compatibility
@@ -47,6 +48,13 @@ func run(args []string) int {
         fmt.Println("task-mecca-execution-switch-protocol=1")
         return 0
     }
+    if len(args)>0 && (args[0]=="help" || args[0]=="--help" || args[0]=="-h") {
+        if args[0]=="help" { return runHelpCLI(args[1:],os.Stdout,os.Stderr) }
+        if len(args)!=1 { fmt.Fprintln(os.Stderr,"use task-mecca help COMMAND"); return 2 }
+        return runHelpCLI(nil,os.Stdout,os.Stderr)
+    }
+    if len(args)>0 && args[0]=="protect" { return runAgentJSON(args[1:],func(out,err io.Writer)int{return runProtectCLI(args[1:],out,err)},os.Stdout,os.Stderr) }
+    if len(args)>0 && args[0]=="worktree" { return runAgentJSON(args[1:],func(out,err io.Writer)int{return runWorktreePlanCLI(args[1:],out,err)},os.Stdout,os.Stderr) }
     if len(args)>0 && args[0]=="notifications" { return runNotificationCLI(args[1:],os.Stdout,os.Stderr) }
     if len(args)>0 && args[0]=="operations" { return runOperationsCLI(args[1:],os.Stdout,os.Stderr) }
  if len(args)>0 && args[0]=="projects" { return runProjectCLI(args[1:],os.Stdout,os.Stderr) }
@@ -66,6 +74,15 @@ func run(args []string) int {
             fmt.Fprintf(os.Stderr,"latest check failed: %s\n",info.Error)
         }
         return 0
+    }
+    if len(args) > 1 && args[0] == "runtime" && args[1] == "diagnose" {
+        return runAgentJSON(args[2:],func(out,err io.Writer)int{return runRuntimeDiagnoseCLI(args[2:],out,err)},os.Stdout,os.Stderr)
+    }
+    if len(args) > 1 && args[0] == "runtime" && args[1] == "query" {
+        return runAgentJSON(args[2:],func(out,err io.Writer)int{return runRuntimeQueryCLI(args[2:],out,err)},os.Stdout,os.Stderr)
+    }
+    if len(args) > 0 && args[0] == "contract" {
+        return runAgentJSON(args[1:],func(out,err io.Writer)int{return runContractCLI(args[1:],out,err)},os.Stdout,os.Stderr)
     }
     if len(args) > 0 && args[0] == "handoff" {
         return handoff.RunCLI(args[1:], os.Stdout, os.Stderr)
@@ -241,8 +258,16 @@ func run(args []string) int {
             fmt.Printf("Task Mecca %s installed to %s\n", version, filepath.Join(root, "_task_mecca"))
         }
 	case "migrate":
+		// Hash project-owned files before touching managed framework files.
+		// If we cannot establish a complete baseline, fail closed.
+		protectedBefore,protectErr:=captureProjectProtection(root)
+		if protectErr!=nil{
+			if jsonOutput{emitJSON(map[string]any{"status":"failed","protected_files":protectedReport{Status:"unknown",Checked:false,Scope:protectedScope,Unverified:[]string{protectErr.Error()}}})}else{fmt.Fprintf(os.Stderr,"protection baseline unknown; migration not run: %v\n",protectErr)}
+			return 3
+		}
 		var migration install.MigrationResult
 		migration, err = install.MigrateWithPlan(root, version, migrationChoice,migrationExpectedPlan)
+		migration.ProtectedFiles=protectedReport{Status:"not_run",Checked:false,Scope:protectedScope,BeforeFiles:len(protectedBefore.Items),ManifestDigest:protectedBefore.Digest,Unverified:[]string{"migration not yet completed"}}
 		var required *install.ChoiceRequiredError
 		if errors.As(err, &required) {
 			if jsonOutput || !term.IsTerminal(int(os.Stdin.Fd())) {
@@ -271,6 +296,21 @@ func run(args []string) int {
 			return 3
 		}
 		if err == nil {
+			if migration.Status=="migrated" {
+				protectedAfter,afterErr:=captureProjectProtection(root)
+				if afterErr!=nil {
+					migration.ProtectedFiles=protectedReport{Status:"unknown",Checked:false,Scope:protectedScope,ManifestDigest:protectedBefore.Digest,Unverified:[]string{afterErr.Error()},BackupPath:migration.BackupPath}
+					if jsonOutput{emitJSON(migration)}else{fmt.Fprintf(os.Stderr,"migration applied but protected files are unverified: %v\n",afterErr)}
+					return 3
+				}
+				proof:=verifyProtection(protectedBefore,protectedAfter)
+				proof.BackupPath=migration.BackupPath
+				migration.ProtectedFiles=proof
+				if proof.Status!="verified"{
+					if jsonOutput{emitJSON(migration)}else{fmt.Fprintf(os.Stderr,"migration applied but protected files changed: %+v\n",proof)}
+					return 3
+				}
+			}
 			if jsonOutput {
 				emitJSON(migration)
 				return 0
@@ -968,8 +1008,11 @@ func run(args []string) int {
             if requireFullAccess && report["orchestration_ready"]!=true { return 3 }
         }
     default:
-        // Go runtime commands must be implemented before this CLI can replace Python.
-        fmt.Fprintf(os.Stderr, "%s is not yet implemented in the Go runtime\n", command)
+        if command=="update" {
+            fmt.Fprintln(os.Stderr,"Unknown command update. Use task-mecca upgrade for CLI binary or task-mecca migrate for project framework.")
+        } else {
+            fmt.Fprintf(os.Stderr,"Unknown command %q. Run task-mecca --help to see supported commands.\n",command)
+        }
         return 2
     }
     if err != nil { fmt.Fprintln(os.Stderr, err); return 2 }
