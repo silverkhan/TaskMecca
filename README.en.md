@@ -1,11 +1,10 @@
 # Task Mecca
 
-**Task Mecca connects and manages AI-agent collaboration and execution history through a persistent backlog.**
+**Task Mecca manages collaboration across multiple AI agents through a persistent backlog, keeping work continuous and progress visible in one place.**
 
-- **Natural-language, role-based collaboration** — Talk to a Root; Registrar, Controller, and Workers divide up registration, execution, and verification.
-- **Continuity across sessions and providers** — Backlog, handoff, and lifecycle records retain requirements, progress, and verification evidence, helping work continue across conversations and agent providers such as Codex and Claude Code.
-- **At-a-glance execution visibility** — The Web UI brings together project and backlog progress, Root/Worker sessions, execution stages, and warnings that need attention.
-- **Progress notifications** — Telegram and browser notifications surface task starts, completions, and events that require user attention.
+- **Coordinated multi-agent work** — Subagents carry out user requests, while the Controller assigns tasks to suitable Workers. Every task is recorded in the backlog.
+- **Continuity across handoffs** — Linked tasks and recorded history help work continue even when the Worker, conversation session, or agent provider changes.
+- **Progress tracking and notifications** — Follow each task's status and history in the Web UI, and receive Telegram and browser notifications for starts, completions, and events that need your attention.
 
 [한국어](README.md) · [User manual](goassets/template/_task_mecca/framework/README.en.md)
 
