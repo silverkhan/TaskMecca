@@ -1,139 +1,102 @@
 {
-  "version": "0.3.1",
-  "date": "2026-10-16",
+  "version": "0.3.2",
+  "date": "2026-10-20",
   "title": {
-    "ko": "백로그 성능·라이프사이클 및 웹 사용성 개선",
-    "en": "Backlog Performance, Lifecycle & Web Experience"
+    "ko": "에이전트 CLI 운영 표준화와 인계·복구 진단 강화",
+    "en": "Agent CLI Operations, Handoff and Recovery Diagnostics"
   },
   "summary": {
-    "ko": "대규모 백로그 목록과 본문을 더 빠르게 표시하고, 최초 진입 시 화면 흔들림과 라이프사이클 갱신 경합을 개선했습니다. 해소된 경고·반복 갱신 안내를 정리하고 알림 화면과 업데이트 안정성을 강화했습니다.",
-    "en": "Improves large-backlog loading, stabilizes initial layout and lifecycle refresh, reduces stale warnings and repetitive refresh notices, and refines the attention panel and update reliability."
+    "ko": "에이전트의 백로그 등록·승인·실행 조회를 표준 CLI로 통합하고, 보호형 Worktree 정리와 업데이트 전후 데이터 검증을 추가했습니다. Controller 인계 현황을 필요한 정보만으로 조회하도록 개선하고 역할별 실행 지침을 정리했습니다.",
+    "en": "Standardize agent backlog registration, approvals and runtime queries in the CLI. Add cautious Git worktree preservation, data-integrity checks across updates, focused handoff summaries and role-based operational guidance."
   },
   "highlights": [
     {
-      "ko": "백로그 목록·본문을 우선 표시하고 Git 이력 조회와 중복 탐색 비용을 줄였습니다.",
-      "en": "Prioritize backlog list/details and reduce repeated Git history and lookup costs."
+      "ko": "여러 작업을 계약 검사·계획·등록·재조회하며 ID·의존관계·출처를 일관되게 관리합니다.",
+      "en": "Validate, plan, apply and inspect multi-task contracts with consistent IDs, dependencies and source evidence."
     },
     {
-      "ko": "백로그 첫 진입 시 자동 페이지 크기 계산이 반복되면서 화면이 흔들리는 현상을 방지했습니다.",
-      "en": "Prevent initial backlog layout jitter caused by repeated automatic page-size calculations."
+      "ko": "등록과 실행 승인을 분리하고 승인·정책 변경 이력을 근거 기반으로 조회합니다.",
+      "en": "Separate registration from execution authorization and inspect evidence-backed approval/policy history."
     },
     {
-      "ko": "라이프사이클 새로고침 경합 시 오래된 응답을 폐기하고 실패 복구·재시도 흐름을 보강했습니다.",
-      "en": "Discard stale lifecycle refresh responses and improve recovery/retry behavior."
+      "ko": "에이전트 실행 상태·Hook 관측 공백과 Codex 세션 증거를 전용 CLI로 진단합니다.",
+      "en": "Query agent runtime state and diagnose Hook gaps against Codex native session evidence."
     },
     {
-      "ko": "해소된 실행 경고와 중복 갱신 안내를 줄이고, 현재 알림을 본문 위 플로팅 패널로 표시합니다.",
-      "en": "Reduce stale execution warnings and repeated refresh notices; float the attention panel over page content."
+      "ko": "Git Worktree의 삭제 전 보존·해시 검증 및 프로젝트 보호 파일의 변경 여부를 확인합니다.",
+      "en": "Preserve and hash-verify worktree material before cleanup and compare protected project files."
     },
     {
-      "ko": "업데이트 중복 조회와 자산 캐시 검증을 개선하고 Windows/macOS 배포 전 안전성 검증을 강화했습니다.",
-      "en": "Reduce duplicate update checks, strengthen artifact-cache validation, and harden Windows/macOS prepublish safety checks."
+      "ko": "Controller 인계 요약·선택 필드 조회 및 자세한 도움말로 임시 Python/바이너리 역탐색을 줄입니다.",
+      "en": "Use focused Controller handoff summaries, selected JSON fields and detailed help instead of ad hoc scripts."
     }
   ],
   "categories": [
     {
-      "id": "backlog",
+      "id": "contracts",
       "title": {
-        "ko": "백로그 표시와 속도",
-        "en": "Backlog Navigation & Performance"
+        "ko": "백로그 등록·승인",
+        "en": "Task Registration & Approval"
       },
       "items": [
         {
-          "ko": "첫 화면과 백로그 본문을 무거운 관제 계산과 분리해 먼저 보여주고, 목록·Git 이력 조회에 캐시와 탐색 최적화를 적용했습니다.",
-          "en": "Show the initial list and task details before expensive monitoring work, with caching and faster Git history lookups."
+          "ko": "contract validate/preview/plan/apply/status를 제공하며 입력 충돌·누락·의존관계·멱등 재개를 검증합니다.",
+          "en": "Provide contract validate/preview/plan/apply/status with validation for incomplete input, dependencies and idempotent retries."
         },
         {
-          "ko": "화면 크기·현재 알림 확장 변화에 따라 표시 가능한 행 수를 안정적으로 다시 계산하고 자동 페이지 크기 피드백 반복을 방지합니다.",
-          "en": "Recalculate row capacity after layout changes without page-size feedback loops."
-        },
-        {
-          "ko": "백로그를 열 때 실제 프로젝트명을 표시하며 본문 변경과 라이프사이클 이력을 별도로 갱신합니다.",
-          "en": "Show the active project name when loading and refresh task content and lifecycle independently."
+          "ko": "contract decision show/record로 명시적 사용자 승인·정책 보충·철회를 append-only 이력으로 관리합니다.",
+          "en": "Record and inspect explicit user approvals, policy amendments and revocations through append-only decisions."
         }
       ]
     },
     {
-      "id": "monitoring",
+      "id": "runtime",
       "title": {
-        "ko": "라이프사이클·현재 알림",
-        "en": "Lifecycle & Attention"
+        "ko": "실행 관측·진단",
+        "en": "Runtime Observation & Diagnostics"
       },
       "items": [
         {
-          "ko": "본문 새로고침 중 오래된 라이프사이클 응답을 폐기하고 자동 재시도·수동 재시도 경로를 추가했습니다.",
-          "en": "Discard stale lifecycle responses during detail refresh, with retry and recovery paths."
+          "ko": "runtime query의 Agent·역할·세션 필터, 조회 건수 및 필드 선택으로 대용량 JSON 후처리를 줄입니다.",
+          "en": "Filter and project runtime query results by agent, role and session."
         },
         {
-          "ko": "완료 근거로 해소된 경고와 오래된 세션 상태의 현재 알림 잔류를 억제합니다.",
-          "en": "Keep resolved task and session warnings from lingering in active attention."
-        },
-        {
-          "ko": "반복적인 '새 내용이 업데이트되었습니다' 안내와 불필요한 화면 갱신을 줄였습니다.",
-          "en": "Reduce repeated new-content notices and unnecessary refreshes."
+          "ko": "runtime diagnose가 Hook·Binding 증거 및 Codex native 세션 이벤트 종류별 건수와 관측 공백을 구분합니다.",
+          "en": "Diagnose Hook/Binding evidence and Codex native session event-count gaps without exposing transcript contents."
         }
       ]
     },
     {
-      "id": "interface",
+      "id": "handoff",
       "title": {
-        "ko": "화면·알림센터",
-        "en": "Interface & Notification Center"
+        "ko": "인계·역할별 운영",
+        "en": "Handoffs & Role Guidance"
       },
       "items": [
         {
-          "ko": "현재 알림을 본문을 밀지 않는 플로팅 패널로 표시하고 기존 그라데이션·아웃라인을 유지합니다.",
-          "en": "Display attention as a floating panel without shifting content, preserving gradient and outline styling."
+          "ko": "handoff reconcile --summary/--fields로 전체 인계 내역 대신 집계·진단을 선택 조회하고 기존 출력 호환성을 유지합니다.",
+          "en": "Use handoff reconcile --summary/--fields for focused journal statistics and diagnostics while preserving legacy output."
         },
         {
-          "ko": "좌측 알림센터 항목의 불필요한 말줄임표를 없애고 백로그 로딩 문구에 프로젝트명을 사용합니다.",
-          "en": "Prevent truncation of the notification-center menu and show the current project in backlog loading text."
-        },
-        {
-          "ko": "백로그 선택 강조와 알림 배지 시각 표현의 일관성을 개선했습니다.",
-          "en": "Improve selected-task and alert-badge visual consistency."
+          "ko": "help handoff 및 Framework 내 CLI_OPERATIONS_PLAYBOOK으로 역할별 명령 순서·권한·실패 재개 경계를 명확히 합니다.",
+          "en": "Provide command discovery and role-specific operational/failure guidance in CLI help and framework playbooks."
         }
       ]
     },
     {
-      "id": "updates",
+      "id": "safety",
       "title": {
-        "ko": "업데이트·배포 안정성",
-        "en": "Updates & Release Safety"
+        "ko": "자료 보존·업데이트 검증",
+        "en": "Data Preservation & Update Safety"
       },
       "items": [
         {
-          "ko": "중복 버전 조회·릴리스 노트 대기를 줄이고 Rolling 릴리스 자산 캐시 세대 및 체크섬 검증을 강화했습니다.",
-          "en": "Reduce repeated update checks and release-note waits, and strengthen rolling-asset cache generation/checksum verification."
+          "ko": "worktree plan/preserve/verify/remove로 사용 여부·clean/merged 상태·보존 해시를 확인한 경우에만 안전한 제거를 허용합니다.",
+          "en": "Plan, preserve, verify and conditionally remove worktrees with clean/merged/use-state and hash safeguards."
         },
         {
-          "ko": "Windows의 안전한 재시작·프로세스 정리와 macOS/Windows 업그레이드·롤백·마이그레이션 사전 검증을 유지합니다.",
-          "en": "Retain safe Windows restart/process handling and prepublish macOS/Windows upgrade, rollback, and migration gates."
-        },
-        {
-          "ko": "Stable 공개 전 Linux 실행 파일의 버전·Web health·SHA-256을 검증하고, 공개된 버전의 동일 버전 재게시를 방지합니다.",
-          "en": "Verify Linux binary version, Web health, and SHA-256 before publishing, and reject republishing an already public version."
-        }
-      ]
-    },
-    {
-      "id": "preview",
-      "title": {
-        "ko": "기여자를 위한 개발 기능 (Dev 전용)",
-        "en": "Contributor Features (Dev-only)"
-      },
-      "items": [
-        {
-          "ko": "Dev에서 PR 번호와 정확한 커밋 SHA로 네이티브 Preview를 식별·빌드·실행·종료합니다. Docker 설치는 필요하지 않습니다.",
-          "en": "Build, identify, run, and stop native previews for pinned PR numbers and SHAs without Docker."
-        },
-        {
-          "ko": "Preview 테스트 데이터 격리 및 위험 API 제한을 유지하고, Dev 복귀 때 원래 빌드 식별을 보존합니다.",
-          "en": "Keep preview data isolated and sensitive APIs restricted, and preserve the original Dev build for return."
-        },
-        {
-          "ko": "Preview 종료 후 목록 상태·재실행 안내를 갱신하고 전환 안내창의 개행 표시를 수정했습니다.",
-          "en": "Refresh preview status after stopping and fix newline rendering in environment-switch prompts."
+          "ko": "protect snapshot/verify/versions로 보호 범위 SHA-256과 CLI/Framework/Web 버전을 독립적으로 점검합니다.",
+          "en": "Snapshot/verify protected project file hashes and inspect CLI, Framework and Web versions independently."
         }
       ]
     }
@@ -143,8 +106,8 @@
       "type": "new",
       "items": [
         {
-          "ko": "현재 알림 펼침 패널을 콘텐츠 위에 표시해 백로그 목록 레이아웃을 유지",
-          "en": "Float the expanded attention panel over content without shifting the backlog layout"
+          "ko": "다건 계약 등록·승인 감사, 실행 관측 CLI, 보호형 Worktree 및 SHA-256 보호 검증",
+          "en": "Batch contract registration/approval auditing, runtime queries, worktree preservation and SHA-256 validation"
         }
       ]
     },
@@ -152,8 +115,8 @@
       "type": "improved",
       "items": [
         {
-          "ko": "백로그 진입·본문·라이프사이클 갱신, 자동 페이지 크기 계산과 업데이트 속도",
-          "en": "Backlog loading, task details, lifecycle refresh, page sizing, and update performance"
+          "ko": "역할별 CLI 운영 플레이북, Controller 인계 요약·필드 조회 및 명령 도움말",
+          "en": "Role-oriented CLI playbook, Controller handoff summaries/field selection and command help"
         }
       ]
     },
@@ -161,20 +124,28 @@
       "type": "fixed",
       "items": [
         {
-          "ko": "해소된 경고 잔류, 반복 갱신 안내, 초기 화면 크기 변동과 캐시 문제",
-          "en": "Stale warnings, repeated refresh notices, initial layout jitter, and cache-related issues"
+          "ko": "인계 현황을 보기 위해 JSON을 임시 스크립트로 가공하거나 바이너리 내부 옵션을 역탐색해야 하는 불편",
+          "en": "Need for ad hoc JSON filtering or binary string inspection to inspect handoffs"
         }
       ]
     }
   ],
   "after_update": [
     {
-      "ko": "PC와 모바일에서 백로그 최초 진입·본문·라이프사이클·현재 알림 동작을 확인하세요. 네트워크 환경별 실제 응답 속도에는 차이가 있을 수 있습니다.",
-      "en": "Check first backlog load, task details, lifecycle, and attention on desktop and mobile; real-world latency varies by network."
+      "ko": "CLI 업그레이드 후 프로젝트별 Framework 마이그레이션 계획을 확인하고 사용자 수정 지침·백로그를 보존하면서 반영하세요. Web 실행 프로세스는 별도로 확인하세요.",
+      "en": "After upgrading the CLI, review the per-project Framework migration plan and preserve custom files and backlogs. Verify the Web process separately."
+    },
+    {
+      "ko": "Registrar 등록·승인과 Controller 인계의 실제 출력·원장을 확인하세요. 전체 실사용 인수 항목은 AID-211에서 별도 추적 중입니다.",
+      "en": "Validate actual Registrar registration/approval and Controller handoff output; complete UAT is tracked separately in AID-211."
+    },
+    {
+      "ko": "Controller/Worker가 작업 도중 종료됐을 때 자동 재개를 보장하지는 않습니다. 미완료 작업·인계 기록을 확인하고 안전하게 수동 복구하세요. 정책 기반 Decision Engine은 차기 개발 대상입니다.",
+      "en": "Automatic recovery after premature Controller/Worker termination is not guaranteed. Inspect unfinished tasks and handoffs before safe manual recovery; the policy Decision Engine is future work."
     }
   ],
   "migration": {
-    "required": false,
-    "instruction_refresh": false
+    "required": true,
+    "instruction_refresh": true
   }
 }
