@@ -1,8 +1,11 @@
 # Task Mecca
 
-**Task Mecca coordinates AI-agent work through a persistent project backlog, Web UI tracking, and progress notifications.**  
-Talk to one Root in natural language; Registrar, Controller, and Workers handle registration, execution, and verification.
-Backlog, handoff, and lifecycle records preserve requirements, progress history, and verification evidence as work moves between conversations or agent providers such as Codex and Claude Code. The Web UI and Telegram/browser notifications keep you informed of task starts, completions, and warnings that need your attention.
+**Task Mecca connects and manages AI-agent collaboration and execution history through a persistent backlog.**
+
+- **Natural-language, role-based collaboration** — Talk to a Root; Registrar, Controller, and Workers divide up registration, execution, and verification.
+- **Continuity across sessions and providers** — Backlog, handoff, and lifecycle records retain requirements, progress, and verification evidence, helping work continue across conversations and agent providers such as Codex and Claude Code.
+- **At-a-glance execution visibility** — The Web UI brings together project and backlog progress, Root/Worker sessions, execution stages, and warnings that need attention.
+- **Progress notifications** — Telegram and browser notifications surface task starts, completions, and events that require user attention.
 
 [한국어](README.md) · [User manual](goassets/template/_task_mecca/framework/README.en.md)
 
