@@ -1,6 +1,22 @@
 {
   "releases": [
     {
+      "version": "0.3.2",
+      "date": "2026-10-20",
+      "title": {
+        "ko": "에이전트 CLI 운영 표준화와 인계·복구 진단 강화",
+        "en": "Agent CLI Operations, Handoff and Recovery Diagnostics"
+      },
+      "summary": {
+        "ko": "에이전트의 백로그 등록·승인·실행 조회를 표준 CLI로 통합하고, 보호형 Worktree 정리와 업데이트 전후 데이터 검증을 추가했습니다. Controller 인계 현황을 필요한 정보만으로 조회하도록 개선하고 역할별 실행 지침을 정리했습니다.",
+        "en": "Standardize agent backlog registration, approvals and runtime queries in the CLI. Add cautious Git worktree preservation, data-integrity checks across updates, focused handoff summaries and role-based operational guidance."
+      },
+      "migration": {
+        "required": true,
+        "instruction_refresh": true
+      }
+    },
+    {
       "version": "0.3.1",
       "date": "2026-10-16",
       "title": {
