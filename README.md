@@ -1,17 +1,20 @@
 # Task Mecca
 
-**Manage AI-agent work in a persistent backlog and monitor execution and results from the Web UI.**  
-Talk to one Root in natural language; Registrar, Controller, and Workers handle registration, execution, and verification.
+**Task Mecca는 여러 AI 에이전트의 협업을 백로그 기반으로 관리하고, 작업의 연속성과 진행 상황을 한곳에서 관리하는 도구입니다.**
 
-[한국어](README.ko.md) · [User manual](goassets/template/_task_mecca/framework/README.en.md)
+- **체계적인 멀티 에이전트 협업** — 사용자의 요청을 서브에이전트가 나누어 수행하고, Controller가 작업에 적합한 Worker에게 업무를 배분합니다. 모든 작업은 백로그에 기록됩니다.
+- **끊김 없는 작업 연속성** — 백로그에 기록된 작업 간 관계와 이력을 바탕으로 담당 Worker나 세션, 에이전트 프로바이더가 바뀌어도 이전 작업을 이어갈 수 있습니다.
+- **진행 상황 관리와 알림** — Web에서 작업별 진행 상태와 이력을 확인하고, 착수·완료·사용자 확인이 필요한 상황을 Telegram과 브라우저 알림으로 받을 수 있습니다.
+
+[English](README.en.md) · [사용자 매뉴얼](goassets/template/_task_mecca/framework/README.md)
 
 > [!IMPORTANT]
-> **Project origin & acknowledgements**  
-> Task Mecca began with **initial source code and a backlog-driven collaboration idea** shared by my colleague [gyusu](https://github.com/gyusu). [Read more →](#project-origin)
+> **프로젝트의 시작과 감사**  
+> Task Mecca는 동료 [gyusu](https://github.com/gyusu)가 공유한 **초기 소스와 백로그 기반 협업 아이디어**에서 출발했습니다. [이야기 더 보기 →](#project-origin)
 
-## Quick start
+## 빠른 시작
 
-### 1. Install
+### 1. 설치
 
 **macOS / Linux**
 ```bash
@@ -23,107 +26,107 @@ curl -fsSL https://raw.githubusercontent.com/silverkhan/TaskMecca/main/install.s
 irm https://raw.githubusercontent.com/silverkhan/TaskMecca/main/install.ps1 | iex
 ```
 
-### 2. Start the Web UI
+### 2. Web UI 실행
 
 ```bash
 task-mecca web
 ```
 
-Open **http://127.0.0.1:18765/** in your browser. Initialize a working project in step 3.
+브라우저에서 **http://127.0.0.1:18765/** 로 접속합니다. 처음 사용할 프로젝트는 아래 3단계에서 초기화합니다.
 
-The Web UI brings together **backlog progress**, **Root/Worker sessions and recent activity**, and **execution stages and actionable warnings**. You can configure project-level **Telegram and browser notifications**, manage projects, and update Task Mecca.
+Web은 **백로그 진행 상황**, **Root/Worker 세션과 최근 활동**, **실행 단계와 확인이 필요한 경고**를 한곳에 모읍니다. 프로젝트별 알림을 설정하면 **Telegram·브라우저 알림**도 받을 수 있으며, 업데이트와 프로젝트 관리도 지원합니다.
 
-**Web service commands**
+**Web 관리 명령어**
 
-| Command | Purpose |
+| 명령어 | 기능 |
 | --- | --- |
-| `task-mecca web` | Start Web UI and open browser |
-| `task-mecca web status` | Check service status, version and URLs |
-| `task-mecca web restart` | Restart Web service |
-| `task-mecca web stop` | Stop Web service |
-| `task-mecca web logs` | View logs (`--follow` for live output) |
+| `task-mecca web` | Web 실행 · 브라우저 열기 |
+| `task-mecca web status` | 실행 여부·버전·접속 주소 확인 |
+| `task-mecca web restart` | Web 재시작 |
+| `task-mecca web stop` | Web 종료 |
+| `task-mecca web logs` | Web 로그 확인 (`--follow`로 계속 보기) |
 
-![Task Mecca Web UI — English project backlog list](handoff-evidence/a24-raichyu/final-desktop-dark-en.jpg)
+![Task Mecca Web UI — 영문 프로젝트 백로그 목록](handoff-evidence/a24-raichyu/final-desktop-dark-en.jpg)
 
-<sub>English · Dark theme · Backlog list for a sample project (Needs attention: 0). Actual capture from an earlier development build; the current UI may differ.</sub>
+<sub>영문 · 다크 테마 · 샘플 프로젝트의 백로그 목록(Needs attention 0건). 이전 개발판의 실제 캡처로, 현재 화면과 일부 차이가 있을 수 있습니다.</sub>
 
-### 3. Initialize a project
+### 3. 프로젝트 초기화
 
-Run this in the **folder you want to manage**.
+작업을 관리할 **프로젝트 폴더**에서 실행합니다.
 
 ```bash
 cd /path/to/your/project
 task-mecca init
 ```
 
-Key installed files:
+다음은 주요 생성 파일입니다.
 
 ```text
-project/
+프로젝트/
 └── _task_mecca/
-    ├── ROOT_PROMPT.md           # Root startup prompt
+    ├── ROOT_PROMPT.md         # Root를 시작할 때 사용하는 프롬프트
     └── framework/
-        ├── SESSION_GUIDE.md     # Session guide
-        ├── EXECUTION_PROTOCOL.md # Execution and handoff rules
-        ├── collab.md            # Collaboration rules
-        └── roles/               # Root, Registrar, Controller, Worker
+        ├── SESSION_GUIDE.md   # 세션 사용 안내
+        ├── EXECUTION_PROTOCOL.md # 작업 수행·인계 규칙
+        ├── collab.md          # 에이전트 협업 규칙
+        └── roles/             # Root·Registrar·Controller·Worker 역할별 안내
 ```
 
 > [!NOTE]
-> **The task backlog (`data/backlog/`) is created when the first task is registered, not by initialization.** For an existing installation, use migration in step 5 instead of rerunning `init`.
+> **작업 목록(`data/backlog/`)은 초기화할 때 비어 있으며, 첫 작업을 등록할 때 생성됩니다.** 기존 프로젝트에서 `init`을 다시 실행하지 말고 5단계의 마이그레이션을 이용하세요.
 
-### 4. Activate your Root
+### 4. Root 시작하기
 
-Open Codex or Claude Code **in the same project folder**. Designate **one user-facing session** as Root, paste the prompt below, and describe work naturally.
+같은 프로젝트 폴더에서 Codex 또는 Claude Code를 열고, **사용자와 대화할 세션 하나**를 Root로 지정합니다. 아래 프롬프트를 복사해 해당 세션에 붙여넣은 뒤 자연어로 작업을 요청하세요.
 
 <details>
-<summary><strong>Expand & copy Root prompt</strong></summary>
+<summary><strong>Root 시작 프롬프트 펼치기 · 복사</strong></summary>
 
 ```text
-Act as the Task Mecca Root for this session.
-First read _task_mecca/framework/SESSION_GUIDE.md, _task_mecca/framework/collab.md, and _task_mecca/framework/roles/root.md and follow those rules.
-For all user-facing conversation and backlog prose—titles, summaries, requirements, status, and results—write natively in the user's primary language and vocabulary. Keep exact English identifiers, commands, paths, or technical terms when they improve precision, but do not mechanically leak internal English modifiers or word order into another language; restate the whole expression naturally in the user's language.
-When work originates from a connected external item such as a Linear or GitHub issue, read that source and preserve a clickable source reference in the backlog. Root writes back important decisions confirmed before registration or during active user discussion. After registration, Controller is the single operational writer for real lifecycle transitions and completion results through the connected capability. Workers do not edit the external issue directly; they report implementation and verification evidence to Controller. If the external source changes in a way that conflicts with the current Task Mecca contract and requires user judgment, Controller must not merge it silently: put the task on hold, record the difference and resume condition in follow-up, and let the next Root interaction reconcile it with the user.
-Before delegating executable work to subagents, run the Full Access preflight described in SESSION_GUIDE.
-Classify work as Simple Task or Defined Task. For a simple task that is directly verifiable without additional interpretation, record only the goal and acceptance criteria and register it immediately. For work requiring scope, design, or user choices, prepare a requirement definition, get my confirmation, and then ask Registrar to register it losslessly.
-If no backlog exists yet, Registrar creates _task_mecca/data/backlog on the first registration. Everything under data is project-owned and is never overwritten by the framework updater.
-Before sending execution-authorized work to Registrar, prepare an exact reusable Controller runtime identity and pass it to Registrar so successful registration can hand off directly to Controller without another Root turn. Workers must likewise hand DONE/BLOCKED events directly back to Controller, and any resume that starts a completed agent's new turn requires a fresh Full Access preflight.
-After registration, let Controller allocate work to Workers based on dependency and continuity, while Root remains the user-facing interface.
+이 세션에서는 Task Mecca의 Root로 동작해 주세요.
+먼저 _task_mecca/framework/SESSION_GUIDE.md, _task_mecca/framework/collab.md, _task_mecca/framework/roles/root.md를 읽고 그 규약을 따르세요.
+사용자에게 보이는 대화와 백로그의 제목·요약·요건·상태·결과는 사용자가 주로 쓰는 언어와 용어 감각을 기준으로 자연스럽게 작성하세요. 정확한 식별자·명령·경로·전문용어로 필요한 영문은 유지하되, 내부 영문 수식어·어순을 기계적으로 섞지 말고 전체 표현을 사용자 언어의 자연스러운 문장으로 재구성하세요.
+Linear, GitHub Issue 등 연결된 외부 업무 항목에서 시작된 작업은 원천 항목을 읽고 백로그에 클릭 가능한 출처를 보존하세요. Root는 등록 전 또는 사용자와 활성 대화 중 확정된 중요한 합의를 원천 항목에 반영하고, 등록 이후 실제 작업 상태 변화와 완료 결과는 Controller가 연결된 도구를 통해 직접 반영하도록 하세요. Worker는 외부 이슈를 직접 수정하지 않으며 구현·검증 근거를 Controller에 보고하게 하세요. 외부 원천의 변경이 현재 Task Mecca 계약과 충돌해 사용자 판단이 필요하면 Controller가 임의로 합치지 말고 hold와 확인·후속에 차이와 재개 조건을 남기고, 다음 Root 대화에서 사용자와 재합의하세요.
+실행형 작업을 subagent에 위임하기 전에는 SESSION_GUIDE의 Full Access preflight를 먼저 수행하세요.
+작업을 Simple Task와 Defined Task로 구분하세요. 추가 해석 없이 바로 검증 가능한 단순 작업은 목표와 수용 기준만 기록하고 바로 등록하며, 범위·설계·사용자 선택이 필요한 작업만 요건 정의서를 작성해 제 확인을 받은 뒤 Registrar에 lossless하게 등록하세요.
+아직 backlog가 없다면 Registrar가 첫 등록 시 _task_mecca/data/backlog를 생성하도록 하세요. data 아래의 내용은 project-owned이며 framework updater가 덮어쓰지 않습니다.
+실행까지 승인된 작업을 Registrar에 넘기기 전에는 재사용 가능한 Controller의 정확한 runtime identity를 먼저 준비해 Registrar에 전달하고, Registrar가 등록 성공 직후 Root를 거치지 않고 Controller에 직접 인계하도록 하세요. Worker도 DONE/BLOCKED 시 같은 방식으로 Controller에 직접 인계하며, completed agent의 새 turn을 재개하기 직전에는 fresh Full Access preflight를 다시 수행하세요.
+등록 이후에는 Controller가 작업 연속성과 의존성을 고려해 Worker에 배분하도록 하고, Root는 사용자-facing 창구로 유지하세요.
 ```
 
 </details>
 
-Example: `Fix the login API error and verify the relevant tests.`
+예: `로그인 API 오류를 수정하고 관련 테스트까지 확인해 줘.`
 
-### 5. Migrate an existing project
+### 5. 프로젝트 마이그레이션
 
-Use migration **after a Task Mecca update when the project's installed operating instructions need refreshing**. The Web UI or an `init` attempt in an existing project will guide you when migration is needed.
+**Task Mecca를 업데이트한 뒤 기존 프로젝트의 작업 규칙·안내 파일도 새 버전에 맞춰야 할 때** 사용합니다. Web에 프로젝트 업데이트 안내가 나타나거나 기존 프로젝트에 `init`을 실행했을 때 마이그레이션을 안내받았다면 진행하세요.
 
 ```bash
 cd /path/to/your/project
 task-mecca migrate
 ```
 
-- **Updated:** Task Mecca-managed instructions and framework files
-- **Preserved:** Your backlog, work history, configuration, notifications, and execution data
-- **Customized files:** Choose overwrite / back up changes and continue / cancel
+- **바뀌는 것:** Task Mecca가 설치한 작업 규칙과 안내 파일
+- **그대로 남는 것:** 기존 백로그, 작업 이력, 설정, 알림 정보, 실행 기록
+- **직접 수정한 안내 파일이 있다면:** 덮어쓰기 / 수정본 백업 후 진행 / 취소 중 선택
 
-Use `task-mecca upgrade` to **update the application**, and `task-mecca migrate` to **update a project's instructions**.
+프로그램 자체 업데이트는 `task-mecca upgrade`, **프로젝트 안내·규칙 업데이트는 `task-mecca migrate`** 입니다.
 
-## How it works
+## 작동 구조
 
 ```mermaid
-%%{init: {"theme": "base", "themeVariables": {"fontFamily": "Inter, sans-serif", "primaryColor": "#241b39", "primaryTextColor": "#ffffff", "primaryBorderColor": "#9b79d2", "lineColor": "#9477c6", "background": "#141426"}}}%%
+%%{init: {"theme": "base", "themeVariables": {"fontFamily": "Pretendard, Inter, sans-serif", "primaryColor": "#241b39", "primaryTextColor": "#ffffff", "primaryBorderColor": "#9b79d2", "lineColor": "#9477c6", "background": "#141426"}}}%%
 flowchart LR
-    U(["You<br/>Natural-language request"]):::person --> R["Root<br/>Discuss & define"]:::root
-    R --> G["Registrar<br/>Register work"]:::agent
-    G --> B[("Markdown backlog<br/>Source & history")]:::record
-    B --> C["Controller<br/>Assign · verify · finalize"]:::controller
-    C <--> W["Workers<br/>Read source & execute"]:::worker
+    U(["사용자<br/>자연어 요청"]):::person --> R["Root<br/>논의·요건 확정"]:::root
+    R --> G["Registrar<br/>작업 등록"]:::agent
+    G --> B[("Markdown 백로그<br/>원문·진행 이력")]:::record
+    B --> C["Controller<br/>배정·검증·완료"]:::controller
+    C <--> W["Workers<br/>원문 읽고 병렬 수행"]:::worker
     C --> B
-    B --> V["Web UI<br/>Sessions · status · alerts"]:::web
-    R -. Decisions .-> E["Linear · GitHub<br/>Source issues"]:::external
-    C -. Results .-> E
+    B --> V["Web UI<br/>세션·상태·알림"]:::web
+    R -. 합의 .-> E["Linear · GitHub<br/>원천 이슈"]:::external
+    C -. 실제 결과 .-> E
 
     classDef person fill:#FFF0C2,stroke:#E3AC3B,color:#43300A,stroke-width:2px
     classDef root fill:#EADFFF,stroke:#9A66D2,color:#48216C,stroke-width:2px
@@ -135,82 +138,82 @@ flowchart LR
     classDef external fill:#F7E7F2,stroke:#BD78AE,color:#733B62,stroke-width:2px
 ```
 
-## Version & updates
+## 버전 확인·업데이트
 
-| Command | Purpose |
+| 명령어 | 기능 |
 | --- | --- |
-| `task-mecca --version` | Installed version, channel and latest release |
-| `task-mecca upgrade` | Update from the selected channel |
-| `task-mecca channel` | Show update channel |
-| `task-mecca channel stable` | Select stable releases |
-| `task-mecca channel dev` | Select development releases |
-| `task-mecca migrate` | Refresh an existing project's operating instructions (step 5) |
+| `task-mecca --version` | 설치 버전·채널·최신 버전 확인 |
+| `task-mecca upgrade` | 현재 채널의 최신 버전으로 업데이트 |
+| `task-mecca channel` | 업데이트 채널 확인 |
+| `task-mecca channel stable` | 정식 버전 채널 선택 |
+| `task-mecca channel dev` | 개발 버전 채널 선택 |
+| `task-mecca migrate` | 기존 프로젝트의 작업 규칙 업데이트 (5단계 참고) |
 
-For more details, see the Web **User Manual**, [session guide](goassets/template/_task_mecca/framework/SESSION_GUIDE.en.md) and [collaboration rules](goassets/template/_task_mecca/framework/collab.md).
+자세한 사용법: Web의 **사용자 매뉴얼**, [세션 안내](goassets/template/_task_mecca/framework/SESSION_GUIDE.md) · [협업 규칙](goassets/template/_task_mecca/framework/collab.md).
 
 <a id="project-origin"></a>
 
-## Project origin & acknowledgements
+## 프로젝트의 시작과 감사
 
-Task Mecca grew from an **idea and usable initial source code** shared by my colleague [gyusu](https://github.com/gyusu): separate backlog registration and execution sessions, and let Workers continue through remaining tasks. The idea evolved into today's Root, Registrar, Controller, and Worker collaboration model.
+Task Mecca는 동료 [gyusu](https://github.com/gyusu)가 공유한 **백로그 등록·수행 세션을 분리하는 협업 아이디어**와 **활용 가능한 초기 소스**에서 시작되었습니다. Worker가 남은 백로그를 이어서 수행하는 구상은 현재의 Root·Registrar·Controller·Worker 협업 구조로 발전했습니다.
 
-Many thanks to [gyusu](https://github.com/gyusu) for sharing the inspiration and source material that started this project.
+프로젝트의 출발점이 된 아이디어와 소스를 나누어 준 [gyusu](https://github.com/gyusu)에게 감사드립니다.
 
-## Development & license
+## 개발·라이선스
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) · [MIT License](LICENSE)
+개발 환경 및 기여 방법: [CONTRIBUTING.md](CONTRIBUTING.md) · [MIT License](LICENSE)
 
-## Complete CLI command reference
+## 전체 CLI 명령어
 
-Common commands are covered above. This is the complete list of CLI command families and subcommands; `|` separates alternatives.
+**자주 쓰는 명령어**는 위에서 설명했습니다. 아래는 현재 CLI에서 제공하는 명령어의 전체 목록입니다. 하위 명령은 `|`로 구분합니다.
 
-### Start & update
+### 실행·업데이트
 
-| Command | Purpose |
+| 명령어 | 기능 |
 | --- | --- |
-| `task-mecca` | Start Web UI (default) |
-| `task-mecca web [start\|status\|restart\|stop\|logs]` | Start, inspect, restart, stop Web or read logs |
-| `task-mecca --version` (or `version`) | Installed/latest version and channel |
-| `task-mecca upgrade` | Update the application |
-| `task-mecca channel [stable\|dev]` | View or switch update channel |
-| `task-mecca init` | Initialize a new project |
-| `task-mecca migrate` | Refresh an existing project's framework |
+| `task-mecca` | 기본 Web 실행 |
+| `task-mecca web [start\|status\|restart\|stop\|logs]` | Web 실행·상태·재시작·종료·로그 |
+| `task-mecca --version` (또는 `version`) | 설치/최신 버전과 채널 확인 |
+| `task-mecca upgrade` | 애플리케이션 업데이트 |
+| `task-mecca channel [stable\|dev]` | 채널 확인·전환 |
+| `task-mecca init` | 새 프로젝트 초기화 |
+| `task-mecca migrate` | 기존 프로젝트 작업 규칙 업데이트 |
 
-### Backlog & project management
+### 백로그·프로젝트 관리
 
-| Command | Purpose |
+| 명령어 | 기능 |
 | --- | --- |
-| `task-mecca status` | Backlog progress |
-| `task-mecca ready` | Ready tasks |
-| `task-mecca search <query>` | Search the backlog |
-| `task-mecca inspect <ID>` | Task details |
-| `task-mecca workload` | Agent workload |
-| `task-mecca coordinate` | Scheduling snapshot |
-| `task-mecca projects list\|archived\|add\|register\|unregister\|archive\|restore\|forget` | Register, monitor and archive projects |
-| `task-mecca tags list\|search\|discover\|show\|resolve\|tasks\|query\|stats\|catalog\|assign\|remove\|set\|define\|rename\|merge\|retire\|rebuild` | Search and manage tags |
-| `task-mecca task tags\|tag-add\|tag-remove\|tag-set` | Manage task tags |
-| `task-mecca audit` | Required backlog fields |
-| `task-mecca check` | Documentation links and dependencies |
-| `task-mecca doctor` | Project diagnostics |
+| `task-mecca status` | 백로그 진행 상태 |
+| `task-mecca ready` | 착수 가능한 작업 |
+| `task-mecca search <검색어>` | 백로그 검색 |
+| `task-mecca inspect <ID>` | 작업 상세 조회 |
+| `task-mecca workload` | 에이전트별 작업량 |
+| `task-mecca coordinate` | 작업 배정 현황 |
+| <code>task-mecca projects</code><br><code>list &#124; archived &#124; add</code><br><code>register &#124; unregister &#124; archive</code><br><code>restore &#124; forget</code> | 프로젝트 등록·감시·보관 관리 |
+| <code>task-mecca tags</code><br><code>list &#124; search &#124; discover &#124; show</code><br><code>resolve &#124; tasks &#124; query &#124; stats</code><br><code>catalog &#124; assign &#124; remove &#124; set</code><br><code>define &#124; rename &#124; merge &#124; retire</code><br><code>rebuild</code> | 태그 조회·검색·관리 |
+| <code>task-mecca task</code><br><code>tags &#124; tag-add &#124; tag-remove</code><br><code>tag-set</code> | 개별 작업 태그 관리 |
+| `task-mecca audit` | 작업 항목 필수 정보 검사 |
+| `task-mecca check` | 문서 링크·작업 관계 검사 |
+| `task-mecca doctor` | 프로젝트 종합 진단 |
 
-### Agents & execution records (advanced)
+### 에이전트·실행 기록 (고급)
 
-| Command | Purpose |
+| 명령어 | 기능 |
 | --- | --- |
-| `task-mecca monitor` | Web-backed monitoring (`--once` for one snapshot) |
-| `task-mecca preflight` | Check permissions and execution readiness |
-| `task-mecca worker-name` | Select available Worker identity |
-| `task-mecca agent <path>` | Validate Agent path |
-| `task-mecca ensure-backlog` | Check or create backlog |
-| `task-mecca next-id <prefix>` | Allocate a task ID |
-| `task-mecca lifecycle list\|record` | Inspect or record lifecycle events |
-| `task-mecca runtime list\|reconcile\|observe\|enrich-name\|assign\|bind\|bind-assignment\|bind-agent\|hooks` | Observe and bind runtimes, manage Hooks |
-| `task-mecca runtime-spike observe\|report` | Runtime diagnostic reports |
-| `task-mecca handoff prepare\|claim\|mark\|inspect\|reconcile\|capability` | Manage Agent handoff evidence |
-| `task-mecca deliveries [task ID] [event ID]` | Notification delivery history |
-| `task-mecca notifications resume-status\|suppress-before-resume` | Telegram resumption controls |
-| `task-mecca operations reconcile` | Reconcile execution warnings with completion evidence |
+| `task-mecca monitor` | Web 기반 모니터링 (`--once`로 1회 조회) |
+| `task-mecca preflight` | 실행 환경 및 접근 권한 사전 확인 |
+| `task-mecca worker-name` | 사용 가능한 Worker 이름 선정 |
+| `task-mecca agent <경로>` | Agent 경로 유효성 확인 |
+| `task-mecca ensure-backlog` | 백로그 생성·존재 확인 |
+| `task-mecca next-id <접두어>` | 신규 작업 ID 발급 |
+| `task-mecca lifecycle list\|record` | 작업 이벤트 이력 조회·기록 |
+| `task-mecca runtime list\|reconcile\|observe\|enrich-name\|assign\|bind\|bind-assignment\|bind-agent\|hooks` | 실행 관측·연결·Hook 관리 |
+| `task-mecca runtime-spike observe\|report` | 실행 관측 진단 |
+| `task-mecca handoff prepare\|claim\|mark\|inspect\|reconcile\|capability` | Agent 인계 기록·확인 |
+| `task-mecca deliveries [작업 ID] [이벤트 ID]` | 알림 전송 이력 조회 |
+| `task-mecca notifications resume-status\|suppress-before-resume` | Telegram 재개 상태·안전 조치 |
+| `task-mecca operations reconcile` | 실행 관측 경고와 완료 근거 재조정 |
 
 > [!NOTE]
-> `|` means **choose one subcommand**, not a literal pipe. Some advanced commands require additional parameters and permissions; use them through your Root/Controller under the established operating rules.
+> `|`는 **선택 가능한 하위 명령**이며 실제 입력 시 하나만 사용합니다. 고급 명령 일부는 별도 인자와 권한이 필요하므로 Root/Controller가 규약에 따라 실행하는 것을 권장합니다.
 

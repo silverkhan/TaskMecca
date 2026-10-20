@@ -1,9 +1,12 @@
 # Task Mecca
 
-**AI 에이전트가 함께 수행하는 작업을 백로그로 관리하고, 실행 상태와 결과를 Web에서 확인하는 도구입니다.**  
-Root와 자연어로 대화하면 Registrar·Controller·Worker가 등록부터 실행·검증까지 역할을 나눠 진행합니다.
+**Task Mecca는 여러 AI 에이전트의 협업을 백로그 기반으로 관리하고, 작업의 연속성과 진행 상황을 한곳에서 관리하는 도구입니다.**
 
-[English](README.md) · [사용자 매뉴얼](goassets/template/_task_mecca/framework/README.md)
+- **체계적인 멀티 에이전트 협업** — 사용자의 요청을 서브에이전트가 나누어 수행하고, Controller가 작업에 적합한 Worker에게 업무를 배분합니다. 모든 작업은 백로그에 기록됩니다.
+- **끊김 없는 작업 연속성** — 백로그에 기록된 작업 간 관계와 이력을 바탕으로 담당 Worker나 세션, 에이전트 프로바이더가 바뀌어도 이전 작업을 이어갈 수 있습니다.
+- **진행 상황 관리와 알림** — Web에서 작업별 진행 상태와 이력을 확인하고, 착수·완료·사용자 확인이 필요한 상황을 Telegram과 브라우저 알림으로 받을 수 있습니다.
+
+[English](README.en.md) · [사용자 매뉴얼](goassets/template/_task_mecca/framework/README.md)
 
 > [!IMPORTANT]
 > **프로젝트의 시작과 감사**  
@@ -139,7 +142,6 @@ flowchart LR
 
 | 명령어 | 기능 |
 | --- | --- |
-| `task-mecca --help` / `task-mecca help runtime` | 구현된 CLI 명령과 에이전트용 실행 조회 옵션 확인 |
 | `task-mecca --version` | 설치 버전·채널·최신 버전 확인 |
 | `task-mecca upgrade` | 현재 채널의 최신 버전으로 업데이트 |
 | `task-mecca channel` | 업데이트 채널 확인 |
@@ -187,9 +189,9 @@ Task Mecca는 동료 [gyusu](https://github.com/gyusu)가 공유한 **백로그 
 | `task-mecca inspect <ID>` | 작업 상세 조회 |
 | `task-mecca workload` | 에이전트별 작업량 |
 | `task-mecca coordinate` | 작업 배정 현황 |
-| `task-mecca projects list\|archived\|add\|register\|unregister\|archive\|restore\|forget` | 프로젝트 등록·감시·보관 관리 |
-| `task-mecca tags list\|search\|discover\|show\|resolve\|tasks\|query\|stats\|catalog\|assign\|remove\|set\|define\|rename\|merge\|retire\|rebuild` | 태그 조회·검색·관리 |
-| `task-mecca task tags\|tag-add\|tag-remove\|tag-set` | 개별 작업 태그 관리 |
+| <code>task-mecca projects</code><br><code>list &#124; archived &#124; add</code><br><code>register &#124; unregister &#124; archive</code><br><code>restore &#124; forget</code> | 프로젝트 등록·감시·보관 관리 |
+| <code>task-mecca tags</code><br><code>list &#124; search &#124; discover &#124; show</code><br><code>resolve &#124; tasks &#124; query &#124; stats</code><br><code>catalog &#124; assign &#124; remove &#124; set</code><br><code>define &#124; rename &#124; merge &#124; retire</code><br><code>rebuild</code> | 태그 조회·검색·관리 |
+| <code>task-mecca task</code><br><code>tags &#124; tag-add &#124; tag-remove</code><br><code>tag-set</code> | 개별 작업 태그 관리 |
 | `task-mecca audit` | 작업 항목 필수 정보 검사 |
 | `task-mecca check` | 문서 링크·작업 관계 검사 |
 | `task-mecca doctor` | 프로젝트 종합 진단 |
