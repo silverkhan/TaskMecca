@@ -278,6 +278,9 @@ type terminalSession struct {
     closed       bool
     closedAt     time.Time
     exitError    string
+    outputBytes  uint64
+    lastOutputAt time.Time
+    readError    string
     done         chan struct{}
     doneOnce     sync.Once
 }
@@ -343,6 +346,9 @@ func (s *terminalSession) readLoop() {
             s.publish(buffer[:n])
         }
         if err != nil {
+            s.mu.Lock()
+            if !s.closed { s.readError = err.Error() }
+            s.mu.Unlock()
             return
         }
     }
@@ -357,6 +363,8 @@ func (s *terminalSession) publish(data []byte) {
     chunk := append([]byte(nil), data...)
     s.mu.Lock()
     s.history = append(s.history, chunk...)
+    s.outputBytes += uint64(len(chunk))
+    s.lastOutputAt = time.Now()
     if len(s.history) > terminalHistoryLimit {
         s.history = append([]byte(nil), s.history[len(s.history)-terminalHistoryLimit:]...)
     }
@@ -461,6 +469,12 @@ func (s *terminalSession) payload(includeToken bool) map[string]any {
         "created_at": s.createdAt.UTC().Format(time.RFC3339),
         "closed": s.closed,
         "exit_error": s.exitError,
+        "read_error": s.readError,
+        "output_bytes": s.outputBytes,
+        "stream_subscribers": len(s.subscribers),
+    }
+    if !s.lastOutputAt.IsZero() {
+        result["last_output_at"] = s.lastOutputAt.UTC().Format(time.RFC3339)
     }
     if !s.closedAt.IsZero() {
         result["closed_at"] = s.closedAt.UTC().Format(time.RFC3339)
@@ -725,6 +739,9 @@ func registerTerminalRoutes(
             w.Header().Set("X-Accel-Buffering", "no")
             snapshot, chunks, cancel := session.subscribe()
             defer cancel()
+            // Flush headers even before the shell writes its first byte.
+            // The browser can then distinguish a live stream from a stalled connection.
+            flusher.Flush()
             if len(snapshot) > 0 {
                 if _, err := w.Write(snapshot); err != nil {
                     return
