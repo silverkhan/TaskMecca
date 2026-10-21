@@ -155,3 +155,34 @@ func TestTerminalOutputDiagnostics(t *testing.T) {
         t.Fatal("read-only diagnostics must not expose session tokens")
     }
 }
+
+func TestTerminalOutputOffsets(t *testing.T) {
+    session := &terminalSession{
+        createdAt: time.Now(),
+        subscribers: map[chan []byte]struct{}{},
+    }
+    session.publish([]byte("first-second"))
+    start, end, payload, closed := session.outputSince(6)
+    if start != 6 || end != 12 || string(payload) != "second" || closed {
+        t.Fatalf("unexpected output offset: first=%d end=%d payload=%q closed=%v",
+            start, end, payload, closed)
+    }
+
+    oversized := make([]byte, terminalHistoryLimit+17)
+    for i := range oversized { oversized[i] = 'x' }
+    session.publish(oversized)
+    start, end, payload, _ = session.outputSince(0)
+    if start != end-terminalHistoryLimit || len(payload) != terminalHistoryLimit {
+        t.Fatalf("bounded replay failed: start=%d end=%d bytes=%d", start, end, len(payload))
+    }
+    nextStart, nextEnd, remaining, _ := session.outputSince(end-5)
+    if nextStart != end-5 || nextEnd != end || len(remaining) != 5 {
+        t.Fatalf("incremental replay failed: start=%d end=%d bytes=%d",
+            nextStart, nextEnd, len(remaining))
+    }
+    session.mu.Lock()
+    session.closed = true
+    session.mu.Unlock()
+    _, _, _, closed = session.outputSince(end)
+    if !closed { t.Fatal("closed session must be reported to polling clients") }
+}
