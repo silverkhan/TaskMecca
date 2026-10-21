@@ -22,3 +22,23 @@ test('Web restart completes only on a new boot ID, not an HTTP 200',()=>{
  assert.match(js,/webRestartFailure/);
  assert.match(app,/health\.boot_id\|\|health\.instance_id/);
 });
+
+test('Terminal stream failures remain visible and basic-input recovery is accessible',()=>{
+ const css=fs.readFileSync(root+'terminal.css','utf8');
+ assert.match(html,/id="terminalDiagnostics" role="status" aria-live="polite"/);
+ assert.match(html,/id="terminalBasicBtn"/);
+ assert.match(css,/\.terminal-diagnostics\[data-kind="error"\]/);
+ assert.match(js,/function showTerminalDiagnostic\(kind, message\)/);
+ assert.match(js,/showTerminalDiagnostic\('error', t\('inputFailed'\)/);
+ assert.match(js,/state\.preferBasicInput = !state\.preferBasicInput/);
+ assert.match(js,/info\.output_bytes > 0/);
+ assert.match(js,/controller\.signal\.aborted/);
+ assert.match(js,/await mountSession\(\);/);
+});
+
+test('Terminal status visibility is not inferred from HTTP status alone',()=>{
+ assert.match(js,/receivedBytes \+= value\.length/);
+ assert.match(js,/t\('noShellOutput'\)/);
+ assert.match(js,/t\('outputNotReceived'\)/);
+ assert.match(js,/if \(!host\.clientWidth \|\| !host\.clientHeight\)/);
+});
