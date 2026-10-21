@@ -67,7 +67,7 @@
       richMode:'xterm 모드',
       rendererFailed:'터미널 렌더러 초기화 실패 · 기본 입력 모드로 전환했습니다.',
       noShellOutput:'셸 세션은 열렸지만 아직 PTY 출력이 없습니다. 셸 초기화 상태를 확인하세요.',
-      outputNotReceived:'서버에서 PTY 출력이 발생했지만 브라우저 스트림에는 아직 도착하지 않았습니다. Tailscale Serve 또는 중간 전송 경로를 확인하세요.',
+      outputNotReceived:'서버에서 PTY 출력이 발생했지만 브라우저 스트림에는 아직 도착하지 않았습니다. 출력 조회 모드로 자동 전환합니다.',
       inputModeHint:'입력이 불가능하거나 화면이 비어 있다면 기본 입력 모드로 전환해 보세요.',
       lifecycle:'브라우저 연결이 끊긴 세션은 5분 후 자동 종료됩니다.',
       ended:'Terminal 세션이 종료되었습니다.',
@@ -147,7 +147,7 @@
       richMode:'xterm mode',
       rendererFailed:'Terminal renderer initialization failed; switched to basic input mode.',
       noShellOutput:'Shell session started but the PTY has not produced output yet. Check shell startup.',
-      outputNotReceived:'The server has PTY output but the browser stream has not received it. Check Tailscale Serve or streaming transport.',
+      outputNotReceived:'The server has PTY output but the browser stream has not received it. Switching to output polling automatically.',
       inputModeHint:'If the terminal is blank or cannot accept input, switch to basic input mode.',
       lifecycle:'Detached browser sessions are closed automatically after 5 minutes.',
       ended:'Terminal session ended.',
@@ -959,6 +959,59 @@
     input.focus();
   }
 
+  // Finite, offset-based responses recover PTY output when a reverse proxy
+  // buffers a long-lived stream. Session tokens remain in request headers.
+  async function pollOutput(session, controller) {
+    let cursor = 0;
+    while (state.session?.id === session.id && !controller.signal.aborted) {
+      try {
+        const response = await fetch('/api/terminal/sessions/' +
+          encodeURIComponent(session.id) + '/output?after=' + cursor, {
+          cache:'no-store',
+          headers:{'X-Task-Mecca-Terminal':session.token},
+          signal:controller.signal
+        });
+        if (!response.ok) throw new Error('HTTP ' + response.status);
+        const start = Number(response.headers.get('X-Task-Mecca-Output-Start'));
+        const end = Number(response.headers.get('X-Task-Mecca-Output-End'));
+        if (!Number.isSafeInteger(start) || !Number.isSafeInteger(end) || end < start) {
+          throw new Error('Invalid output offset');
+        }
+        const bytes = new Uint8Array(await response.arrayBuffer());
+        if (controller.signal.aborted || state.session?.id !== session.id) return;
+        cursor = end;
+        if (bytes.length) {
+          if (state.terminal) {
+            try {
+              state.terminal.write(bytes);
+            } catch (error) {
+              state.preferBasicInput = true;
+              await mountSession();
+              showTerminalDiagnostic('error', t('rendererFailed') + ' ' + String(error?.message || error));
+              return;
+            }
+          } else {
+            appendFallback(state.fallbackDecoder.decode(bytes, {stream:true}));
+          }
+          showTerminalDiagnostic('', '');
+          setConnection('ok', t('connected'));
+        }
+        if (response.headers.get('X-Task-Mecca-Session-Closed') === 'true') {
+          setConnection('warn', t('ended'));
+          await refreshSessionStatus();
+          showTerminalDiagnostic('warn', t('ended'));
+          return;
+        }
+      } catch (error) {
+        if (controller.signal.aborted || state.session?.id !== session.id) return;
+        setConnection('error', t('streamFailed'));
+        showTerminalDiagnostic('error', t('streamFailed') + ': ' + String(error?.message || error));
+        return;
+      }
+      await new Promise(resolve => window.setTimeout(resolve, 1200));
+    }
+  }
+
   async function startStream() {
     stopStream();
     if (!state.session) return;
@@ -966,6 +1019,7 @@
     const controller = new AbortController();
     state.streamAbort = controller;
     let receivedBytes = 0;
+    let polling = false;
     try {
       const response = await fetch('/api/terminal/sessions/' + encodeURIComponent(session.id) + '/stream', {
         cache:'no-store',
@@ -997,6 +1051,8 @@
               ? (t('ended') + (info.exit_error ? ' · ' + info.exit_error : ''))
               : t('noShellOutput');
           showTerminalDiagnostic('warn', diagnosis + ' ' + t('inputModeHint'));
+          polling = true;
+          void pollOutput(session, controller);
         } catch (_) { /* Diagnostic probing must not interrupt the shell. */ }
       }, 4000);
 
@@ -1006,6 +1062,7 @@
         if (done) break;
         if (!value?.length) continue;
         receivedBytes += value.length;
+        if (polling) continue; // Polling owns rendering after stream buffering is detected.
         if (state.terminal) {
           try {
             state.terminal.write(value);
@@ -1026,14 +1083,14 @@
           showTerminalDiagnostic('', '');
         }
       }
-      if (state.session?.id === session.id && !controller.signal.aborted) {
+      if (state.session?.id === session.id && !controller.signal.aborted && !polling) {
         setConnection('warn', t('ended'));
         await refreshSessionStatus();
         showTerminalDiagnostic('warn', t('ended'));
       }
     } catch (error) {
       if (controller.signal.aborted) return;
-      if (state.session?.id === session.id) {
+      if (state.session?.id === session.id && !polling) {
         setConnection('error', t('streamFailed'));
         showTerminalDiagnostic('error', t('streamFailed') + ': ' + String(error?.message || error));
       }
