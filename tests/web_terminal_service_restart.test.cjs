@@ -42,3 +42,16 @@ test('Terminal status visibility is not inferred from HTTP status alone',()=>{
  assert.match(js,/t\('outputNotReceived'\)/);
  assert.match(js,/if \(!host\.clientWidth \|\| !host\.clientHeight\)/);
 });
+
+test('Terminal can poll bounded PTY history without weakening auth',()=>{
+ const go=fs.readFileSync('internal/webui/terminal.go','utf8');
+ assert.match(go,/case "output":/);
+ assert.match(go,/session\.outputSince\(after\)/);
+ assert.match(go,/X-Task-Mecca-Output-Start/);
+ assert.match(go,/X-Task-Mecca-Output-End/);
+ assert.match(go,/X-Task-Mecca-Session-Closed/);
+ assert.match(js,/\/output\?after=/);
+ assert.match(js,/X-Task-Mecca-Terminal/);
+ assert.match(js,/void pollOutput\(session, controller\)/);
+ assert.match(js,/if \(polling\) continue/);
+});
