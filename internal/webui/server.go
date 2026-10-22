@@ -258,8 +258,10 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 	bootID, bootErr := randomHex(12)
 	if bootErr != nil { return nil, bootErr }
 	monitorRoot := root
-	if selected, _, selectErr := resolveBacklog(project, initialCtx, url.Values{}); selectErr == nil && selected != "" {
-		monitorRoot = selected
+	if !isGlobalWebRoot(project) {
+		if selected, _, selectErr := resolveBacklog(project, initialCtx, url.Values{}); selectErr == nil && selected != "" {
+			monitorRoot = selected
+		}
 	}
 	// The control/notification feed is a service responsibility, not a browser
 	// subscription side effect. Start it even before a backlog exists; when
