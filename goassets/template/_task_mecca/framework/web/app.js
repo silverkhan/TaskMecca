@@ -47,6 +47,7 @@ const state = {
   notificationSettings: (()=>{ try { return {...{intervention:true,completed:true,stalled:true},...JSON.parse(localStorage.getItem('task-mecca-notifications')||'{}')}; } catch(_) { return {intervention:true,completed:true,stalled:true}; } })(),
   previousTasksByProject: (()=>{ try { const raw=JSON.parse(localStorage.getItem('task-mecca-previous-tasks')||'{}'); return raw&&typeof raw==='object'?raw:{}; } catch(_) { return {}; } })(),
   versionInfo: null,
+  versionCheckError: '',
   contentRevision: '',
   signalRevision: '',
   pendingObservedRevision: '',
@@ -1056,7 +1057,16 @@ function renderGlobalUpdateIndicator() {
     $('#globalMigrateBtn')?.addEventListener('click',e=>performProjectMigration(state.project,e.currentTarget));
     return;
   }
-  el.innerHTML='<span class="global-update-pill version-label"><span>v'+esc(cli.current||'-')+'</span></span>';
+  const channel=String(cli.channel||'stable').toUpperCase();
+  const versionLabel=channel+' · v'+String(cli.current||'-');
+  if(state.versionCheckError){
+    const message=state.language==='ko'?'업데이트 확인 실패 · 재시도':'Update check failed · Retry';
+    el.innerHTML='<button type="button" class="global-update-pill version-label" id="globalVersionRetryBtn" title="'+esc(versionLabel+' · '+state.versionCheckError)+'" aria-label="'+esc(message)+'">'+
+      '<span>'+esc(versionLabel)+'</span><span class="update-check-error">'+esc(message)+'</span></button>';
+    $('#globalVersionRetryBtn')?.addEventListener('click',()=>void refreshVersionInfo(true));
+    return;
+  }
+  el.innerHTML='<span class="global-update-pill version-label" title="'+esc(versionLabel)+'"><span>'+esc(versionLabel)+'</span></span>';
 }
 
 function revisionStateMap(rows=[]) {
@@ -1202,34 +1212,60 @@ function maybeApplyStableBrandIntro() {
   applyTheme(state.theme);
 }
 
+// A background cached read and a forced release check must never race to
+// overwrite a newer update indicator. A force request following a cached read
+// always gets its own release lookup.
+let versionInfoRequest=null;
 async function refreshVersionInfo(force=false) {
-  const params=new URLSearchParams();
-  if(state.project)params.set('project',state.project);
-  if(force)params.set('refresh','1');
-  try{
-    const r=await fetch('/api/version?'+params.toString(),{cache:'no-store'});
-    if(!r.ok)throw new Error(`HTTP ${r.status}`);
-    const payload=await r.json();
-    // A forced check must not silently turn a failed network lookup into
-    // "already up to date". Preserve the previous known-good version state.
-    if(force && (payload?.cli?.error || !payload?.cli?.latest)){
-      return {ok:false,error:payload?.cli?.error || 'Latest version unavailable'};
-    }
-    const priorPreviewAvailability=devPreviewAvailable();
-    state.versionInfo=payload;
-    await refreshExecutionTarget();
-    if(devPreviewAvailable()!==priorPreviewAvailability)nav();
-    if(state.view==='preview')queueMicrotask(()=>void maybeConfirmPreviewStop());
-    maybeApplyStableBrandIntro();
-    renderGlobalUpdateIndicator();
-    renderReleaseNotesBadge();
-    queueMicrotask(()=>maybeShowCurrentReleaseNote());
-    queueMicrotask(()=>maybeShowPendingFrameworkSync());
-    queueMicrotask(()=>maybeShowUpgradeRecovery());
-    return {ok:true,info:payload};
-  }catch(error){
-    return {ok:false,error:String(error?.message || error)};
+  if(versionInfoRequest){
+    const ongoing=versionInfoRequest;
+    const result=await ongoing.promise;
+    return force&&!ongoing.force?refreshVersionInfo(true):result;
   }
+  const request={force,promise:null};
+  versionInfoRequest=request;
+  request.promise=(async()=>{
+    const params=new URLSearchParams();
+    if(state.project)params.set('project',state.project);
+    if(force)params.set('refresh','1');
+    try{
+      // Web backend may retry GitHub/CDN. A suspended or disconnected request
+      // cannot hold the browser's updater single-flight gate indefinitely.
+      const r=await fetchWithDeadline('/api/version?'+params.toString(),{cache:'no-store'},45000);
+      if(!r.ok)throw new Error(`HTTP ${r.status}`);
+      const payload=await r.json();
+      // A failed lookup is NOT "up to date". Keep an already known good
+      // update target and expose a visible retry action instead.
+      if(force && (payload?.cli?.error || !payload?.cli?.latest)){
+        state.versionCheckError=String(payload?.cli?.error || 'Latest version unavailable');
+        if(!state.versionInfo && payload?.cli?.current)state.versionInfo=payload;
+        renderGlobalUpdateIndicator();
+        return {ok:false,error:state.versionCheckError};
+      }
+      const priorPreviewAvailability=devPreviewAvailable();
+      state.versionInfo=payload;
+      if(force || payload?.cli?.latest)state.versionCheckError='';
+      await refreshExecutionTarget();
+      if(devPreviewAvailable()!==priorPreviewAvailability)nav();
+      if(state.view==='preview')queueMicrotask(()=>void maybeConfirmPreviewStop());
+      maybeApplyStableBrandIntro();
+      renderGlobalUpdateIndicator();
+      renderReleaseNotesBadge();
+      queueMicrotask(()=>maybeShowCurrentReleaseNote());
+      queueMicrotask(()=>maybeShowPendingFrameworkSync());
+      queueMicrotask(()=>maybeShowUpgradeRecovery());
+      return {ok:true,info:payload};
+    }catch(error){
+      if(force){
+        state.versionCheckError=String(error?.message || error);
+        renderGlobalUpdateIndicator();
+      }
+      return {ok:false,error:String(error?.message || error)};
+    }finally{
+      if(versionInfoRequest===request)versionInfoRequest=null;
+    }
+  })();
+  return request.promise;
 }
 
 // The current task's raw Markdown and canonical lifecycle have separate
@@ -6837,9 +6873,24 @@ setInterval(()=>{
     preserveViewportAndFocus(()=>refresh());
   }
 },30000);
-setInterval(()=>{
-  if(document.visibilityState!=='hidden')refreshVersionInfo(true);
-},60000);
+// Hidden tabs are throttled and skip periodic release checks. A visible
+// tab must catch up immediately on focus/online/page return rather than wait
+// for the next interval. One outstanding check is coalesced above.
+let lastAutomaticVersionCheckAt=0;
+function automaticallyCheckLatestVersion() {
+  if(document.visibilityState==='hidden')return;
+  const now=Date.now();
+  if(now-lastAutomaticVersionCheckAt<45000)return;
+  lastAutomaticVersionCheckAt=now;
+  void refreshVersionInfo(true);
+}
+document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState!=='hidden')automaticallyCheckLatestVersion();
+});
+for(const eventName of ['focus','pageshow','online']){
+  window.addEventListener(eventName,automaticallyCheckLatestVersion);
+}
+setInterval(automaticallyCheckLatestVersion,30000);
 if(window.isSecureContext&&'serviceWorker' in navigator)notificationWorker();
 setInterval(()=>{if(document.visibilityState!=='hidden')void syncBackgroundPush()},60000);
 route();
@@ -6854,4 +6905,4 @@ setInterval(refreshOperations,15000);
 refreshVersionInfo(false);
 void loadPreviewIdentity();
 void resumeActiveUpgrade();
-setTimeout(()=>refreshVersionInfo(true),800);
+setTimeout(automaticallyCheckLatestVersion,800);

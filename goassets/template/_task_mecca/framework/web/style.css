@@ -466,6 +466,10 @@ html{scrollbar-gutter:stable}
 .global-update-indicator{flex:0 0 auto;display:flex;align-items:center}
 .global-update-pill{height:34px;display:inline-flex;align-items:center;gap:7px;padding:0 10px;border:1px solid var(--border);border-radius:999px;background:var(--surface);color:var(--muted);font-size:10px;font-weight:700;white-space:nowrap}
 .global-update-pill strong{color:var(--text);font-weight:800}
+.global-update-pill#globalVersionRetryBtn{cursor:pointer;gap:8px;max-width:100%;min-width:0}
+.global-update-pill#globalVersionRetryBtn:hover{background:var(--surface2);color:var(--text)}
+.global-update-pill .update-check-error{font-weight:650;color:var(--warn);white-space:normal;overflow-wrap:anywhere;text-align:left}
+
 .global-update-pill.available{cursor:pointer;color:var(--warn);border-color:color-mix(in srgb,var(--warn) 45%,var(--border));background:color-mix(in srgb,var(--warn) 7%,var(--surface))}
 .global-update-pill.migration{cursor:pointer;color:var(--accent);border-color:color-mix(in srgb,var(--accent) 45%,var(--border));background:color-mix(in srgb,var(--accent) 7%,var(--surface))}
 .global-update-pill:hover.available,.global-update-pill:hover.migration{filter:brightness(1.03)}
