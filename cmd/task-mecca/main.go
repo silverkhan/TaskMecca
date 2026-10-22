@@ -41,6 +41,14 @@ func main() {
     os.Exit(run(os.Args[1:]))
 }
 
+// webLaunchRoot resolves the managed Web's identity independently of CWD.
+// Only an explicit --project argument or a Preview-scoped session may
+// select a project at service startup.
+func webLaunchRoot(root string, explicit bool) string {
+    if explicit || webui.PreviewMode() { return root }
+    return webui.GlobalWebRoot()
+}
+
 func run(args []string) int {
     // A side-effect-free capability handshake is checked by CI before it
     // advertises that this exact PR binary can return to pinned Dev.
@@ -722,8 +730,9 @@ func run(args []string) int {
         // A normal Web invocation is not a project initialization or selection
         // action. Preview and explicitly --project-scoped compatibility
         // invocations retain their opt-in target.
-        if !projectExplicit && !webui.PreviewMode() {
-            root=webui.GlobalWebRoot()
+        launchRoot:=webLaunchRoot(root,projectExplicit)
+        if launchRoot!=root {
+            root=launchRoot
             rootOption=""
         }
         config:=webui.Config{Project:root,Root:rootOption,Host:host,Port:port,OpenBrowser:!noOpen,Version:version,InstanceID:webInstanceID,ControlToken:webControlToken}
