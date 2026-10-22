@@ -263,9 +263,15 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 	// as soon as Registrar creates it.
     if !PreviewMode() {
         ensureAttentionFeed(project, monitorRoot)
-        // Never initialize the live Web delivery transport inside a Preview.
-        // Its project is synthetic, but avoiding background loops is safer.
-        _ = initWebDelivery(project)
+        // Web can start before "task-mecca init" (the documented onboarding
+        // order). Do not create _task_mecca/.runtime in an uninitialized or
+        // unregistered primary project: install.Init must see a clean target.
+        // Previously initWebDelivery created web_delivery.json on Web boot,
+        // causing the subsequent first init to reject the non-empty folder.
+        // Only explicitly registered, active projects may initialize delivery.
+        if maintenance.ProjectMonitoringAllowed(project) {
+            _ = initWebDelivery(project)
+        }
     }
 	mux := http.NewServeMux()
 
