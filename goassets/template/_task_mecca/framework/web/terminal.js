@@ -63,6 +63,12 @@
       runtimeLoading:'Terminal renderer 불러오는 중…',
       runtimeXterm:'xterm.js · ANSI/키 입력 활성',
       runtimeFallback:'기본 renderer · 명령 입력 fallback',
+      basicMode:'기본 입력 모드',
+      richMode:'xterm 모드',
+      rendererFailed:'터미널 렌더러 초기화 실패 · 기본 입력 모드로 전환했습니다.',
+      noShellOutput:'셸 세션은 열렸지만 아직 PTY 출력이 없습니다. 셸 초기화 상태를 확인하세요.',
+      outputNotReceived:'서버에서 PTY 출력이 발생했지만 브라우저 스트림에는 아직 도착하지 않았습니다. 출력 조회 모드로 자동 전환합니다.',
+      inputModeHint:'입력이 불가능하거나 화면이 비어 있다면 기본 입력 모드로 전환해 보세요.',
       lifecycle:'브라우저 연결이 끊긴 세션은 5분 후 자동 종료됩니다.',
       ended:'Terminal 세션이 종료되었습니다.',
       startFailed:'Terminal을 시작하지 못했습니다.',
@@ -137,6 +143,12 @@
       runtimeLoading:'Loading terminal renderer…',
       runtimeXterm:'xterm.js · ANSI and interactive keys enabled',
       runtimeFallback:'Basic renderer · command-input fallback',
+      basicMode:'Basic input mode',
+      richMode:'xterm mode',
+      rendererFailed:'Terminal renderer initialization failed; switched to basic input mode.',
+      noShellOutput:'Shell session started but the PTY has not produced output yet. Check shell startup.',
+      outputNotReceived:'The server has PTY output but the browser stream has not received it. Switching to output polling automatically.',
+      inputModeHint:'If the terminal is blank or cannot accept input, switch to basic input mode.',
       lifecycle:'Detached browser sessions are closed automatically after 5 minutes.',
       ended:'Terminal session ended.',
       startFailed:'Could not start Terminal.',
@@ -171,6 +183,7 @@
     fallbackHistory: [],
     fallbackHistoryIndex: 0,
     runtimeMode: '',
+    preferBasicInput: false,
     busy: false,
     restartingWeb: false,
   };
@@ -236,9 +249,17 @@
     if (span) span.textContent = label;
   }
 
+  function showTerminalDiagnostic(kind, message) {
+    const el = $('#terminalDiagnostics');
+    if (!el) return;
+    el.hidden = !message;
+    el.dataset.kind = kind || 'info';
+    el.textContent = message || '';
+  }
+
   function setBusy(busy) {
     state.busy = busy;
-    ['terminalStartBtn','terminalRestartBtn','terminalCloseBtn','terminalCopyBtn','terminalPasteBtn','terminalInterruptBtn','terminalWebRestartBtn'].forEach(id => {
+    ['terminalStartBtn','terminalRestartBtn','terminalCloseBtn','terminalBasicBtn','terminalCopyBtn','terminalPasteBtn','terminalInterruptBtn','terminalWebRestartBtn'].forEach(id => {
       const el = $('#' + id);
       if (el) el.disabled = busy;
     });
@@ -718,7 +739,7 @@
         }
       }).catch(error => {
         setConnection('error', t('inputFailed'));
-        appendFallback('\n[Task Mecca] ' + t('inputFailed') + ': ' + String(error.message || error) + '\n');
+        showTerminalDiagnostic('error', t('inputFailed') + ': ' + String(error.message || error));
       });
     }, 12);
   }
@@ -829,46 +850,61 @@
     if (!state.session) return;
     cleanupRenderer();
     updateSessionControls();
+    showTerminalDiagnostic('', '');
     $('#terminalIdle').hidden = true;
     $('#terminalRuntime').textContent = t('runtimeLoading');
     setConnection('warn', t('shellStarting'));
 
-    const xtermAvailable = await loadXtermRuntime();
+    const xtermAvailable = !state.preferBasicInput && await loadXtermRuntime();
     if (!state.session) return;
     if (xtermAvailable) {
-      const host = $('#xtermHost');
-      host.hidden = false;
+      try {
+        const host = $('#xtermHost');
+        host.hidden = false;
+        if (!host.clientWidth || !host.clientHeight) {
+          throw new Error('xterm container has zero width or height');
+        }
+        const term = new window.Terminal({
+          cursorBlink:true,
+          convertEol:false,
+          scrollback:5000,
+          fontFamily:'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
+          fontSize:14,
+          lineHeight:1.15,
+          theme: terminalTheme()
+        });
+        // Own the instance before opening it so cleanup also works if open() throws.
+        state.terminal = term;
+        term.open(host);
+        bindNativePaste(host);
+        state.terminalDataDisposable = term.onData(data => sendInput(data));
+        state.runtimeMode = 'xterm';
+        $('#terminalRuntime').textContent = t('runtimeXterm');
+        const size = estimatedSize();
+        term.resize(size.cols, size.rows);
+        state.resizeObserver = new ResizeObserver(scheduleResize);
+        state.resizeObserver.observe($('#terminalSurface'));
+        scheduleResize();
+        term.focus();
+      } catch (error) {
+        cleanupRenderer();
+        state.preferBasicInput = true;
+        showTerminalDiagnostic('warn', t('rendererFailed') + ' ' + String(error?.message || error));
+      }
+    } else if (!state.preferBasicInput) {
+      state.preferBasicInput = true;
+      showTerminalDiagnostic('warn', t('fallbackNotice'));
+    }
 
-      const term = new window.Terminal({
-        cursorBlink:true,
-        convertEol:false,
-        scrollback:5000,
-        fontFamily:'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
-        fontSize:14,
-        lineHeight:1.15,
-        theme: terminalTheme()
-      });
-      term.open(host);
-      bindNativePaste(host);
-      state.terminal = term;
-      state.terminalDataDisposable = term.onData(data => sendInput(data));
-      state.runtimeMode = 'xterm';
-      $('#terminalRuntime').textContent = t('runtimeXterm');
-      const size = estimatedSize();
-      term.resize(size.cols, size.rows);
-      state.resizeObserver = new ResizeObserver(scheduleResize);
-      state.resizeObserver.observe($('#terminalSurface'));
-      scheduleResize();
-      term.focus();
-    } else {
+    if (!state.terminal) {
       state.runtimeMode = 'fallback';
       $('#terminalFallbackOutput').hidden = false;
       $('#terminalFallbackComposer').hidden = false;
       $('#terminalRuntime').textContent = t('runtimeFallback');
-      appendFallback('[Task Mecca] ' + t('fallbackNotice') + '\n');
       bindFallbackComposer();
       scheduleResize();
     }
+    updateSessionControls();
     void startStream();
   }
 
@@ -923,12 +959,67 @@
     input.focus();
   }
 
+  // Finite, offset-based responses recover PTY output when a reverse proxy
+  // buffers a long-lived stream. Session tokens remain in request headers.
+  async function pollOutput(session, controller) {
+    let cursor = 0;
+    while (state.session?.id === session.id && !controller.signal.aborted) {
+      try {
+        const response = await fetch('/api/terminal/sessions/' +
+          encodeURIComponent(session.id) + '/output?after=' + cursor, {
+          cache:'no-store',
+          headers:{'X-Task-Mecca-Terminal':session.token},
+          signal:controller.signal
+        });
+        if (!response.ok) throw new Error('HTTP ' + response.status);
+        const start = Number(response.headers.get('X-Task-Mecca-Output-Start'));
+        const end = Number(response.headers.get('X-Task-Mecca-Output-End'));
+        if (!Number.isSafeInteger(start) || !Number.isSafeInteger(end) || end < start) {
+          throw new Error('Invalid output offset');
+        }
+        const bytes = new Uint8Array(await response.arrayBuffer());
+        if (controller.signal.aborted || state.session?.id !== session.id) return;
+        cursor = end;
+        if (bytes.length) {
+          if (state.terminal) {
+            try {
+              state.terminal.write(bytes);
+            } catch (error) {
+              state.preferBasicInput = true;
+              await mountSession();
+              showTerminalDiagnostic('error', t('rendererFailed') + ' ' + String(error?.message || error));
+              return;
+            }
+          } else {
+            appendFallback(state.fallbackDecoder.decode(bytes, {stream:true}));
+          }
+          showTerminalDiagnostic('', '');
+          setConnection('ok', t('connected'));
+        }
+        if (response.headers.get('X-Task-Mecca-Session-Closed') === 'true') {
+          setConnection('warn', t('ended'));
+          await refreshSessionStatus();
+          showTerminalDiagnostic('warn', t('ended'));
+          return;
+        }
+      } catch (error) {
+        if (controller.signal.aborted || state.session?.id !== session.id) return;
+        setConnection('error', t('streamFailed'));
+        showTerminalDiagnostic('error', t('streamFailed') + ': ' + String(error?.message || error));
+        return;
+      }
+      await new Promise(resolve => window.setTimeout(resolve, 1200));
+    }
+  }
+
   async function startStream() {
     stopStream();
     if (!state.session) return;
     const session = state.session;
     const controller = new AbortController();
     state.streamAbort = controller;
+    let receivedBytes = 0;
+    let polling = false;
     try {
       const response = await fetch('/api/terminal/sessions/' + encodeURIComponent(session.id) + '/stream', {
         cache:'no-store',
@@ -940,27 +1031,68 @@
         try { detail = (await response.json()).error || ''; } catch (_) {}
         throw new Error(detail || ('HTTP ' + response.status));
       }
+      if (!response.body) throw new Error('ReadableStream unavailable');
       setConnection('ok', t('connected'));
+
+      // Server-reported output bytes distinguish a silent PTY from
+      // stalled HTTP streaming. Never expose shell output or tokens here.
+      window.setTimeout(async () => {
+        if (controller.signal.aborted || state.session?.id !== session.id || receivedBytes) return;
+        try {
+          const status = await fetch('/api/terminal/sessions/' + encodeURIComponent(session.id), {
+            cache:'no-store', headers:{'X-Task-Mecca-Terminal':session.token}
+          });
+          if (!status.ok) return;
+          const info = await status.json();
+          if (controller.signal.aborted || state.session?.id !== session.id || receivedBytes) return;
+          const diagnosis = info.output_bytes > 0
+            ? t('outputNotReceived')
+            : info.closed
+              ? (t('ended') + (info.exit_error ? ' · ' + info.exit_error : ''))
+              : t('noShellOutput');
+          showTerminalDiagnostic('warn', diagnosis + ' ' + t('inputModeHint'));
+          polling = true;
+          void pollOutput(session, controller);
+        } catch (_) { /* Diagnostic probing must not interrupt the shell. */ }
+      }, 4000);
+
       const reader = response.body.getReader();
       while (state.session?.id === session.id) {
         const {value, done} = await reader.read();
         if (done) break;
         if (!value?.length) continue;
+        receivedBytes += value.length;
+        if (polling) continue; // Polling owns rendering after stream buffering is detected.
         if (state.terminal) {
-          state.terminal.write(value);
+          try {
+            state.terminal.write(value);
+          } catch (error) {
+            state.preferBasicInput = true;
+            await mountSession();
+            showTerminalDiagnostic('error', t('rendererFailed') + ' ' + String(error?.message || error));
+            return;
+          }
         } else {
           appendFallback(state.fallbackDecoder.decode(value, {stream:true}));
         }
+        // Clear only warnings about missing PTY/stream output once bytes arrive.
+        const diagnostics = $('#terminalDiagnostics');
+        if (diagnostics && !diagnostics.hidden &&
+            (diagnostics.textContent.includes(t('noShellOutput')) ||
+             diagnostics.textContent.includes(t('outputNotReceived')))) {
+          showTerminalDiagnostic('', '');
+        }
       }
-      if (state.session?.id === session.id) {
+      if (state.session?.id === session.id && !controller.signal.aborted && !polling) {
         setConnection('warn', t('ended'));
         await refreshSessionStatus();
+        showTerminalDiagnostic('warn', t('ended'));
       }
     } catch (error) {
       if (controller.signal.aborted) return;
-      if (state.session?.id === session.id) {
+      if (state.session?.id === session.id && !polling) {
         setConnection('error', t('streamFailed'));
-        appendFallback('\n[Task Mecca] ' + t('streamFailed') + ': ' + String(error.message || error) + '\n');
+        showTerminalDiagnostic('error', t('streamFailed') + ': ' + String(error?.message || error));
       }
     }
   }
@@ -992,6 +1124,8 @@
     const active = Boolean(state.session);
     $('#terminalStartBtn').hidden = active;
     $('#terminalRestartBtn').hidden = !active;
+    $('#terminalBasicBtn').hidden = !active;
+    $('#terminalBasicBtn').textContent = state.preferBasicInput ? t('richMode') : t('basicMode');
     $('#terminalCloseBtn').hidden = !active;
     $('#terminalCopyBtn').hidden = !active;
     $('#terminalPasteBtn').hidden = !active;
@@ -1001,6 +1135,7 @@
     $('#terminalCwd').textContent = active ? (state.session.cwd || state.project || '') : (state.project || '');
     if (!active) {
       cleanupRenderer();
+      showTerminalDiagnostic('', '');
       $('#terminalRuntime').textContent = 'PTY: ' + t('ready');
     }
   }
@@ -1009,6 +1144,11 @@
   $('#terminalWebRestartBtn').textContent=t('webRestartAction');
   $('#terminalStartBtn').addEventListener('click', startSession);
   $('#terminalRestartBtn').addEventListener('click', restartSession);
+  $('#terminalBasicBtn').addEventListener('click', async () => {
+    if (!state.session || state.busy) return;
+    state.preferBasicInput = !state.preferBasicInput;
+    await mountSession();
+  });
   $('#terminalCloseBtn').addEventListener('click', () => closeSession(false));
   $('#terminalCopyBtn').addEventListener('click', copyTerminalSelection);
   $('#terminalPasteBtn').addEventListener('click', pasteIntoTerminal);

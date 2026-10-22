@@ -278,6 +278,9 @@ type terminalSession struct {
     closed       bool
     closedAt     time.Time
     exitError    string
+    outputBytes  uint64
+    lastOutputAt time.Time
+    readError    string
     done         chan struct{}
     doneOnce     sync.Once
 }
@@ -343,6 +346,9 @@ func (s *terminalSession) readLoop() {
             s.publish(buffer[:n])
         }
         if err != nil {
+            s.mu.Lock()
+            if !s.closed { s.readError = err.Error() }
+            s.mu.Unlock()
             return
         }
     }
@@ -357,6 +363,8 @@ func (s *terminalSession) publish(data []byte) {
     chunk := append([]byte(nil), data...)
     s.mu.Lock()
     s.history = append(s.history, chunk...)
+    s.outputBytes += uint64(len(chunk))
+    s.lastOutputAt = time.Now()
     if len(s.history) > terminalHistoryLimit {
         s.history = append([]byte(nil), s.history[len(s.history)-terminalHistoryLimit:]...)
     }
@@ -451,6 +459,20 @@ func (s *terminalSession) subscribe() ([]byte, <-chan []byte, func()) {
     return snapshot, ch, cancel
 }
 
+// outputSince returns a copy of retained PTY output for clients whose streaming
+// transport is buffered by a reverse proxy. The existing per-session token
+// authorization is checked by the route before this function is called.
+func (s *terminalSession) outputSince(after uint64) (uint64, uint64, []byte, bool) {
+    s.mu.Lock()
+    defer s.mu.Unlock()
+    end := s.outputBytes
+    first := end - uint64(len(s.history))
+    if after < first || after > end { after = first }
+    payload := append([]byte(nil), s.history[int(after-first):]...)
+    if len(s.subscribers) == 0 { s.lastDetached = time.Now() }
+    return after, end, payload, s.closed
+}
+
 func (s *terminalSession) payload(includeToken bool) map[string]any {
     s.mu.Lock()
     defer s.mu.Unlock()
@@ -461,6 +483,12 @@ func (s *terminalSession) payload(includeToken bool) map[string]any {
         "created_at": s.createdAt.UTC().Format(time.RFC3339),
         "closed": s.closed,
         "exit_error": s.exitError,
+        "read_error": s.readError,
+        "output_bytes": s.outputBytes,
+        "stream_subscribers": len(s.subscribers),
+    }
+    if !s.lastOutputAt.IsZero() {
+        result["last_output_at"] = s.lastOutputAt.UTC().Format(time.RFC3339)
     }
     if !s.closedAt.IsZero() {
         result["closed_at"] = s.closedAt.UTC().Format(time.RFC3339)
@@ -705,6 +733,29 @@ func registerTerminalRoutes(
         }
 
         switch action {
+        case "output":
+            if r.Method != http.MethodGet {
+                writeJSON(w, map[string]any{"error": "GET required"}, http.StatusMethodNotAllowed)
+                return
+            }
+            raw := strings.TrimSpace(r.URL.Query().Get("after"))
+            var after uint64
+            if raw != "" {
+                var parseErr error
+                after, parseErr = strconv.ParseUint(raw, 10, 64)
+                if parseErr != nil {
+                    writeJSON(w, map[string]any{"error": "invalid output offset"}, http.StatusBadRequest)
+                    return
+                }
+            }
+            first, end, payload, closed := session.outputSince(after)
+            w.Header().Set("Cache-Control", "no-store")
+            w.Header().Set("Content-Type", "application/octet-stream")
+            w.Header().Set("X-Content-Type-Options", "nosniff")
+            w.Header().Set("X-Task-Mecca-Output-Start", strconv.FormatUint(first, 10))
+            w.Header().Set("X-Task-Mecca-Output-End", strconv.FormatUint(end, 10))
+            w.Header().Set("X-Task-Mecca-Session-Closed", strconv.FormatBool(closed))
+            _, _ = w.Write(payload)
         case "stream":
             if r.Method != http.MethodGet {
                 writeJSON(w, map[string]any{"error": "GET required"}, http.StatusMethodNotAllowed)
@@ -725,6 +776,9 @@ func registerTerminalRoutes(
             w.Header().Set("X-Accel-Buffering", "no")
             snapshot, chunks, cancel := session.subscribe()
             defer cancel()
+            // Flush headers even before the shell writes its first byte.
+            // The browser can then distinguish a live stream from a stalled connection.
+            flusher.Flush()
             if len(snapshot) > 0 {
                 if _, err := w.Write(snapshot); err != nil {
                     return

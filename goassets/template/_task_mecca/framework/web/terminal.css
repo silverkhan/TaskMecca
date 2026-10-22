@@ -473,5 +473,34 @@ body.terminal-page {
 .terminal-command-note p{margin:0}
 @media(max-width:680px){.terminal-web-restart-btn{min-height:42px}.terminal-web-restart-status{margin:8px}}
 
-/* Reserve a row for the optional restart status so PTY retains flex space. */
-.terminal-workspace{grid-template-rows:auto auto minmax(0,1fr) auto}
+/* Keep the PTY on the flexible grid track even when optional status rows
+   are display:none. Auto-placement previously collapsed the PTY and put
+   the footer above the empty flexible row (blank terminal regression). */
+.terminal-workspace {
+  grid-template-rows: auto auto auto minmax(0,1fr) auto;
+  grid-template-areas:
+    "toolbar"
+    "restart-status"
+    "diagnostics"
+    "surface"
+    "footer";
+}
+.terminal-toolbar { grid-area: toolbar; }
+.terminal-web-restart-status { grid-area: restart-status; }
+.terminal-diagnostics { grid-area: diagnostics; }
+.terminal-surface { grid-area: surface; }
+.terminal-footer { grid-area: footer; }
+
+/* Visible errors are kept outside the xterm canvas, including on mobile. */
+.terminal-diagnostics {
+  padding: 9px 13px;
+  background: var(--terminal-console-toolbar);
+  border-bottom: 1px solid var(--terminal-console-border);
+  color: var(--terminal-console-text);
+  font-size: 12px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+.terminal-diagnostics[data-kind="error"] { color: var(--danger, #e45d68); }
+.terminal-diagnostics[data-kind="warn"] { color: var(--warn, #d49b37); }
+.terminal-diagnostics[data-kind="ok"] { color: var(--ok, #39b980); }
