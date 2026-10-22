@@ -1337,7 +1337,9 @@ async function checkContentRevision(establishOnly=false) {
       // Never acknowledge a newer revision merely because the caller
       // established the initial view. A file created between list fetch and
       // this check would otherwise be invisible until another change.
-      if(!state.contentRevision){
+      if(!state.contentRevision || (establishOnly && state.view==='backlog' && Boolean(state.detail))){
+        // A refreshed task detail already fetched its Markdown; unlike a
+        // paginated list, it may acknowledge that new revision immediately.
         acceptContentRevision(revision,states,signalRevision);
         return;
       }
