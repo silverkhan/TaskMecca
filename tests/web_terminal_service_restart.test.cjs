@@ -55,3 +55,23 @@ test('Terminal can poll bounded PTY history without weakening auth',()=>{
  assert.match(js,/void pollOutput\(session, controller\)/);
  assert.match(js,/if \(polling\) continue/);
 });
+
+
+test('PTY always occupies the flexible terminal grid row with hidden status panels',()=>{
+ const css=fs.readFileSync(root+'terminal.css','utf8');
+ // Hidden status panels must not shift the PTY into an auto-sized row.
+ assert.match(css,/grid-template-rows:\s*auto auto auto minmax\(0,1fr\) auto/);
+ assert.match(css,/grid-template-areas:\s*"toolbar"\s*"restart-status"\s*"diagnostics"\s*"surface"\s*"footer"/);
+ for(const [selector,area] of [
+   ['terminal-toolbar','toolbar'],
+   ['terminal-web-restart-status','restart-status'],
+   ['terminal-diagnostics','diagnostics'],
+   ['terminal-surface','surface'],
+   ['terminal-footer','footer']
+ ]) {
+   assert.match(css,new RegExp('\\.'+selector+'\\s*\\{\\s*grid-area:\\s*'+area+';\\s*\\}'));
+ }
+ assert.match(html,/id="terminalWebRestartStatus"[^>]*hidden/);
+ assert.match(html,/id="terminalDiagnostics"[^>]*hidden/);
+ assert.ok(html.indexOf('id="terminalSurface"')<html.indexOf('class="terminal-footer"'));
+});
