@@ -165,14 +165,11 @@ func registerProject(project string) error {
 	if err != nil {
 		return err
 	}
-	_ = os.MkdirAll(homeDir(), 0755)
-	reg := registry{}
-	if data, readErr := os.ReadFile(registryPath()); readErr == nil {
-		if err := json.Unmarshal(data, &reg); err != nil {
-			return err
-		}
-	} else if !os.IsNotExist(readErr) {
-		return readErr
+	// Use the same validated registry reader and atomic writer as Hub
+	// management. A partial write must not corrupt all registered projects.
+	reg, err := readProjectRegistry()
+	if err != nil {
+		return err
 	}
 	now := time.Now().Format(time.RFC3339)
 	paused := reg.Paused[:0]
@@ -205,25 +202,32 @@ func registerProject(project string) error {
 	sort.Slice(reg.Projects, func(i, j int) bool {
 		return strings.ToLower(reg.Projects[i].Name) < strings.ToLower(reg.Projects[j].Name)
 	})
-	data, err := json.MarshalIndent(reg, "", "  ")
-	if err != nil {
-		return err
-	}
-	return os.WriteFile(registryPath(), append(data, '\n'), 0644)
+	return writeProjectRegistry(reg)
 }
 
+// ListProjectsChecked distinguishes an uninitialized (empty) Hub from an
+// unreadable or corrupt global registry. The latter must not appear as zero
+// projects in the Web UI.
+func ListProjectsChecked() ([]Project, error) {
+	reg, err := readProjectRegistry()
+	if err != nil {
+		return nil, err
+	}
+	out := make([]Project, 0, len(reg.Projects))
+	for _, p := range reg.Projects {
+		if _, err := os.Stat(filepath.Join(p.Path, "_task_mecca")); err != nil {
+			continue
+		}
+		p.FrameworkVersion = frameworkVersion(p.Path)
+		out = append(out, p)
+	}
+	return out, nil
+}
+
+// Preserve legacy callers; interactive Hub callers use ListProjectsChecked.
 func ListProjects() []Project {
-    reg:=registry{}
-    data,err:=os.ReadFile(registryPath())
-    if err!=nil { return []Project{} }
-    if json.Unmarshal(data,&reg)!=nil { return []Project{} }
-    out:=make([]Project,0,len(reg.Projects))
-    for _,p:=range reg.Projects {
-        if _,err:=os.Stat(filepath.Join(p.Path,"_task_mecca")); err!=nil { continue }
-        p.FrameworkVersion=frameworkVersion(p.Path)
-        out=append(out,p)
-    }
-    return out
+	projects, _ := ListProjectsChecked()
+	return projects
 }
 
 func IsRegisteredProject(path string) bool {

@@ -165,10 +165,37 @@ func fileHash(path string) string {
 	return hash(data)
 }
 
+// An older Web process could create its delivery bootstrap ledger before
+// the first init. Permit only this exact runtime-only footprint, without
+// deleting or rewriting it. Arbitrary existing content remains protected.
+func webBootstrapOnly(target string, entries []os.DirEntry) bool {
+	if len(entries) != 1 || entries[0].Name() != ".runtime" || !entries[0].IsDir() {
+		return false
+	}
+	if info, err := os.Lstat(target); err != nil || !info.IsDir() {
+		return false
+	}
+	runtimeDir := filepath.Join(target, ".runtime")
+	runtimeEntries, err := os.ReadDir(runtimeDir)
+	if err != nil || len(runtimeEntries) != 1 ||
+		runtimeEntries[0].Name() != "notifications" || !runtimeEntries[0].IsDir() {
+		return false
+	}
+	notificationEntries, err := os.ReadDir(filepath.Join(runtimeDir, "notifications"))
+	if err != nil || len(notificationEntries) != 1 ||
+		notificationEntries[0].Name() != "web_delivery.json" {
+		return false
+	}
+	info, err := os.Lstat(filepath.Join(runtimeDir, "notifications", "web_delivery.json"))
+	return err == nil && info.Mode().IsRegular()
+}
+
 func Init(project, version string) error {
 	target := filepath.Join(project, targetName)
 	if entries, err := os.ReadDir(target); err == nil && len(entries) > 0 {
-		return fmt.Errorf("%s already exists; use task-mecca migrate", target)
+		if !webBootstrapOnly(target, entries) {
+			return fmt.Errorf("%s already exists; use task-mecca migrate", target)
+		}
 	} else if err != nil && !errors.Is(err, os.ErrNotExist) {
 		return err
 	}
