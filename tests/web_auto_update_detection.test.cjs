@@ -9,7 +9,7 @@ const fragment=(start,end)=>{
 };
 const code=[
   fragment('function renderGlobalUpdateIndicator() {','\nfunction revisionStateMap('),
-  fragment('async function refreshVersionInfo(force=false) {','\n// The current task\'s raw Markdown'),
+  fragment('let versionInfoRequest=null;','\n// The current task\'s raw Markdown'),
   fragment('async function fetchWithDeadline(','\nlet revisionCheckInFlight=null;'),
   fragment('let lastAutomaticVersionCheckAt=0;','\nsetInterval(automaticallyCheckLatestVersion,30000);'),
 ].join('\n')+'\nsetInterval(automaticallyCheckLatestVersion,30000);\n'+'globalThis.api={refreshVersionInfo,automaticallyCheckLatestVersion,renderGlobalUpdateIndicator};';
