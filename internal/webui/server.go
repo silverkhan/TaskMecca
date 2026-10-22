@@ -1397,7 +1397,13 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 		writeJSON(w, map[string]any{"error": err.Error()}, http.StatusConflict)
 	})
 	mux.HandleFunc("/api/hub", func(w http.ResponseWriter, r *http.Request) {
-		projects := maintenance.ListProjects()
+		projects, registryErr := maintenance.ListProjectsChecked()
+		if registryErr != nil {
+			writeJSON(w, map[string]any{
+				"error": "Project registry unavailable: " + registryErr.Error(),
+			}, http.StatusInternalServerError)
+			return
+		}
 		rows := make([]map[string]any, 0, len(projects))
 		for _, p := range projects {
 			counts := map[string]any{}
