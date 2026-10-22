@@ -334,3 +334,36 @@ func TestBacklogPageActiveColumnUsesRealLifecycleEvidence(t *testing.T) {
     if len(summary["items"].([]map[string]any))!=0 {t.Fatal("summary projection must omit task rows")}
 }
 
+
+func TestArchivedB539IsListedBeforeB540Registration(t *testing.T) {
+    project:=t.TempDir()
+    folder:=filepath.Join(project,"_task_mecca","data","backlog")
+    archive:=filepath.Join(folder,"archive","2026-10")
+    writeWebTask(t,archive,"000539.B-539.archived.done.md","# B-539 Archived\n")
+
+    before,err:=BacklogPage(project,folder,1,10,nil,nil,"","id_desc")
+    if err!=nil {t.Fatal(err)}
+    items:=before["items"].([]map[string]any)
+    if len(items)!=1 || items[0]["id"]!="B-539" || items[0]["location"]!="archive" {
+        t.Fatalf("archived B-539 missing before B-540: %v",items)
+    }
+    revision,err:=BacklogRevision(project,folder)
+    if err!=nil{t.Fatal(err)}
+    if revision["count"]!=1 || len(revision["states"].([]map[string]any))!=1 {
+        t.Fatalf("archived B-539 missing from lightweight revision inventory: %+v",revision)
+    }
+    firstVersion:=revision["revision"].(string)
+
+    writeWebTask(t,folder,"000540.B-540.new.todo.md","# B-540 Newly Registered\n")
+    after,err:=BacklogPage(project,folder,1,10,nil,nil,"","id_desc")
+    if err!=nil{t.Fatal(err)}
+    next:=after["items"].([]map[string]any)
+    if len(next)!=2 || next[0]["id"]!="B-540" || next[1]["id"]!="B-539" {
+        t.Fatalf("archive unexpectedly depends on next registration: %v",next)
+    }
+    updated,err:=BacklogRevision(project,folder)
+    if err!=nil{t.Fatal(err)}
+    if updated["revision"]==firstVersion || updated["count"]!=2 {
+        t.Fatalf("adding B-540 must update catalog revision and inventory: %+v",updated)
+    }
+}

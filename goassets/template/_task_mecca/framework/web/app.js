@@ -1344,6 +1344,19 @@ async function checkContentRevision(establishOnly=false) {
         return;
       }
       const fingerprint=revision+'|'+signalRevision;
+      // When a catalog snapshot was acknowledged without being painted,
+      // its fingerprint can match forever although rows are missing. In an
+      // unfiltered list, the lightweight /api/revision ID inventory is
+      // authoritative about how many distinct backlog tasks exist (including
+      // archived ones). Heal this mismatch without waiting for another task.
+      const completeList=state.listData && !state.listData.pending_reconciliation &&
+        state.statusFilters.includes('all') && state.tagFilters.length===0 &&
+        !state.query.trim() && Number.isFinite(Number(state.listData.total));
+      if(isLiveBacklogPage() && completeList && !state.listRevalidating &&
+         !listRefreshInFlight && Number(state.listData.total)!==states.length) {
+        markContentUpdate('content',diffRevisionStates(state.contentStateSnapshot,states));
+        return;
+      }
       if(state.view==='backlog'&&state.detail&&state.detailTask){
         const id=state.detail, displayed=state.detailTask;
         const stillCurrent=()=>project===state.project&&backlog===state.backlog&&
@@ -6235,8 +6248,22 @@ async function refreshList(preserveSelection=false) {
   const data=await r.json();reconciled=true;if(!isCurrent())return;
   state.listLoadSlow=Date.now()-listRequestStartedAt>2000;
   cache.current=Math.max(1,Number(data.page)||1);storeListPage(key,data,epoch,source);
-  const observed=Date.parse(data.snapshot_at)||0;if(observed<(listSummaryObserved.get(key)||0)){if(observed)listRefreshQueued=true;return;}listSummaryObserved.set(key,observed);listSummaryLatest.set(key,data);
-  state.listData=data;state.listDataContext=key;state.listRevalidating=false;
+  // A summary request has counts/attention but *no list rows*. Its newer
+  // timestamp alone must never cause a full, valid row response to be
+  // discarded. Retry only when it proves the rows really belong to a
+  // different content/signal revision.
+  const observed=Date.parse(data.snapshot_at)||0;
+  const newerSummary=listSummaryLatest.get(key);
+  const summaryIsAhead=Boolean(newerSummary && observed<(listSummaryObserved.get(key)||0));
+  const differentRevision=summaryIsAhead &&
+    (newerSummary.revision!==data.revision || newerSummary.signal_revision!==data.signal_revision);
+  if(differentRevision){listRefreshQueued=true;return;}
+  if(!summaryIsAhead) {
+    listSummaryObserved.set(key,observed);
+    listSummaryLatest.set(key,data);
+  }
+  state.listData=summaryIsAhead?cachedListRows(data,key):data;
+  state.listDataContext=key;state.listRevalidating=false;
   const selectedIndex=(data.items||[]).findIndex(task=>task.id===selectedID);if(selectedIndex>=0)state.selectedIndex=selectedIndex;
   state.loadError='';state.lastFetch=Date.now();state.listPage=Math.max(1,Number(data.page)||1);
   acceptContentRevision(data.revision||state.contentRevision,null,data.signal_revision||'');
@@ -6734,12 +6761,23 @@ function revalidateFirstPageOnWake() {
   }
   void preserveViewportAndFocus(()=>refreshList(true));
 }
+// Independent anti-entropy fallback. A missing/acknowledged revision or
+// throttled event callback must not leave a visibly open first page stale
+// until someone creates another backlog. Full reconciliation stays bounded
+// to one active first page, once per minute, without polling hidden tabs.
+function revalidateVisibleFirstPageByAge() {
+  if(document.visibilityState==='hidden'||!isLiveBacklogPage()||
+     !state.listData || !state.lastFetch || listRefreshInFlight)return;
+  if(Date.now()-state.lastFetch<60000)return;
+  return preserveViewportAndFocus(()=>refreshList(true));
+}
 document.addEventListener('visibilitychange',()=>{
   if(document.visibilityState!=='hidden')revalidateFirstPageOnWake();
 });
 window.addEventListener('focus',revalidateFirstPageOnWake);
 window.addEventListener('pageshow',revalidateFirstPageOnWake);
 window.addEventListener('online',revalidateFirstPageOnWake);
+setInterval(()=>{void revalidateVisibleFirstPageByAge();},30000);
 
 setInterval(()=>{
   const data=currentProjectData();
