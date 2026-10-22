@@ -22,7 +22,7 @@ import (
     "github.com/silverkhan/TaskMecca/internal/webui"
 )
 
-var version = "0.3.4"
+var version = "0.3.5"
 
 // A PR binary is built from its source without Dev release ldflags. Preserve
 // the version of the Dev installation it replaced for framework compatibility
@@ -61,6 +61,7 @@ func run(args []string) int {
         if len(args)!=1 { fmt.Fprintln(os.Stderr,"use task-mecca help COMMAND"); return 2 }
         return runHelpCLI(nil,os.Stdout,os.Stderr)
     }
+    if len(args)>0 && args[0]=="uninstall" { return runUninstallCLI(args[1:],os.Stdin,os.Stdout,os.Stderr) }
     if len(args)>0 && args[0]=="protect" { return runAgentJSON(args[1:],func(out,err io.Writer)int{return runProtectCLI(args[1:],out,err)},os.Stdout,os.Stderr) }
     if len(args)>0 && args[0]=="worktree" { return runAgentJSON(args[1:],func(out,err io.Writer)int{return runWorktreePlanCLI(args[1:],out,err)},os.Stdout,os.Stderr) }
     if len(args)>0 && args[0]=="notifications" { return runNotificationCLI(args[1:],os.Stdout,os.Stderr) }

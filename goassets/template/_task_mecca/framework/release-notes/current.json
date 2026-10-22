@@ -1,96 +1,88 @@
 {
-  "version": "0.3.4",
+  "version": "0.3.5",
   "date": "2026-10-22",
   "title": {
-    "ko": "최초 프로젝트 등록 및 Web 전역 서비스 안정화",
-    "en": "First-Project Registration and Global Web Service Reliability"
+    "ko": "프로그램 안전 제거 및 전역 Hook 정리",
+    "en": "Safe Program Uninstall and Global Hook Cleanup"
   },
   "summary": {
-    "ko": "최초 설치 사용자의 프로젝트 초기화·Web 감시 등록 경로를 개선했습니다. Web 실행 위치가 프로젝트에 영향을 주지 않도록 서비스를 분리하고, 등록 오류를 명확히 표시하며 안전하게 복구할 수 있습니다.",
-    "en": "Improve first-time project initialization and Web monitoring registration. Separate the global Web service from the launching directory, surface registry errors and add safe recovery paths."
+    "ko": "Web 서비스·실행 파일·Task Mecca 소유 전역 Hook을 안전하게 제거하는 uninstall 명령을 추가했습니다. 기본값은 모든 프로젝트와 백로그·원장·등록 정보를 보존합니다.",
+    "en": "Add a safe uninstall command for the Web service, executable and owned global agent Hooks, preserving all projects, backlogs, ledgers and registration records by default."
   },
   "highlights": [
     {
-      "ko": "어느 폴더에서 task-mecca web을 실행해도 해당 폴더를 자동 초기화하거나 프로젝트로 등록하지 않습니다.",
-      "en": "Starting task-mecca web from any directory no longer initializes or implicitly registers it as a project."
+      "ko": "task-mecca uninstall --dry-run으로 변경 없이 제거 대상과 Hook 개수를 먼저 확인합니다.",
+      "en": "Inspect the uninstall plan and owned Hook counts with task-mecca uninstall --dry-run without making changes."
     },
     {
-      "ko": "Web을 먼저 실행한 뒤 프로젝트에서 init을 수행하면 재시작 없이 신규 프로젝트가 목록에 반영됩니다.",
-      "en": "A first project initialized after Web startup becomes visible in the running Hub without a restart."
+      "ko": "실행 확인 후 Web 서비스를 중지하고 Task Mecca 전용 자동 실행 등록과 바이너리를 제거합니다.",
+      "en": "After confirmation, stop the Web service and remove the Task Mecca-owned autostart registration and binary."
     },
     {
-      "ko": "오래된 Web 부트스트랩 파일로 인한 초기화 충돌을 복구하고, 레지스트리 오류를 빈 목록으로 숨기지 않습니다.",
-      "en": "Safely recover from legacy Web bootstrap files and show registry errors instead of silently displaying an empty project list."
+      "ko": "Codex·Claude 전역 설정은 백업한 뒤 Task Mecca 소유 Hook 명령만 제거하고, 다른 Hook은 유지합니다.",
+      "en": "Back up user-global Codex and Claude settings before removing exact Task Mecca Hook commands while preserving other Hooks."
     }
   ],
   "categories": [
     {
-      "id": "onboarding",
+      "id": "uninstall",
       "title": {
-        "ko": "최초 설치 및 프로젝트 등록",
-        "en": "First-time Setup and Registration"
+        "ko": "Uninstall 명령",
+        "en": "Uninstall CLI"
       },
       "items": [
         {
-          "ko": "프로젝트가 없는 상태에서도 Global Hub를 먼저 실행할 수 있고, 프로젝트 등록은 init 또는 명시적 등록 명령에서만 수행됩니다.",
-          "en": "The Global Hub starts before any project exists; only init or explicit registration adds monitoring targets."
+          "ko": "task-mecca uninstall --dry-run [--json]으로 읽기 전용 계획을 확인하고, 실제 삭제는 uninstall 확인 문구 또는 --approve가 있어야 실행됩니다.",
+          "en": "Preview a read-only removal plan with --dry-run [--json]; actual deletion requires typing uninstall or explicitly passing --approve."
         },
         {
-          "ko": "이전 Web 버전이 만든 알림 부트스트랩 파일 하나만 남은 경우, 기존 파일을 보존하면서 init할 수 있습니다. 사용자 파일은 덮어쓰지 않습니다.",
-          "en": "Allow first init when only a recognized legacy delivery bootstrap file exists, preserving it and refusing to overwrite unrelated user files."
-        },
-        {
-          "ko": "프레임워크 설치 후 등록이 실패한 경우 명시적 복구 명령을 안내합니다.",
-          "en": "Give an explicit projects add recovery command if framework installation succeeded but Web registration failed."
+          "ko": "macOS·Linux는 바이너리를 직접 제거하고, Windows는 프로세스 종료 이후 해시를 재검증하는 지연 제거 절차를 사용합니다.",
+          "en": "macOS/Linux remove the executable directly; Windows schedules deletion after exit and verifies the original SHA-256 hash."
         }
       ]
     },
     {
-      "id": "globalweb",
+      "id": "hooks",
       "title": {
-        "ko": "Web 서비스와 프로젝트 분리",
-        "en": "Global Web Service Isolation"
+        "ko": "Web 및 Hook 정리",
+        "en": "Web and Hook Cleanup"
       },
       "items": [
         {
-          "ko": "기본 Web 프로세스는 TASK_MECCA_HOME/web의 전역 작업 경로를 사용합니다. 명시적인 --project 실행은 호환성을 유지합니다.",
-          "en": "Use TASK_MECCA_HOME/web as the managed Web working directory while retaining explicit --project compatibility."
+          "ko": "Web 서비스를 중지하고 Task Mecca 소유로 확인된 macOS launchd 등록만 삭제합니다.",
+          "en": "Stop the Web service and delete only a recognized Task Mecca-owned macOS launchd registration."
         },
         {
-          "ko": "프로젝트 선택 및 감시는 등록 목록을 기준으로 처리하고, Web 실행 디렉터리를 암묵적인 감시 대상으로 사용하지 않습니다.",
-          "en": "Resolve monitored projects from the registry and explicit UI selection, never the launch directory."
+          "ko": "사용자 전역 Codex·Claude Hook 설정을 변경할 때 0600 원본 백업을 남기며 기존 타사 Hook 설정은 보존합니다.",
+          "en": "Keep a mode-0600 backup before changing user-global Codex/Claude Hook settings, preserving unrelated Hooks."
         }
       ]
     },
     {
-      "id": "reliability",
+      "id": "data",
       "title": {
-        "ko": "레지스트리 안전성 및 검증",
-        "en": "Registry Safety and Verification"
+        "ko": "데이터 보존과 오류 방어",
+        "en": "Data Preservation and Failure Safety"
       },
       "items": [
         {
-          "ko": "프로젝트 레지스트리 쓰기를 원자적으로 수행하며 읽기 실패는 Web 화면과 API에서 오류로 표시합니다.",
-          "en": "Write the project registry atomically and expose read failures in the Web API and Hub UI."
+          "ko": "프로젝트 폴더, _task_mecca, 백로그, 원장 및 프로젝트별 Hook은 변경하지 않습니다. 전역 설정 파일 삭제는 --purge-settings에서만 요청할 수 있습니다.",
+          "en": "Preserve project directories, _task_mecca, task histories, ledgers and project-local Hooks; deleting recognized global settings requires --purge-settings."
         },
         {
-          "ko": "Web 선실행→첫 init→즉시 발견, 기존 파일 보존, 일시정지 프로젝트 보호, macOS/Windows 빌드 회귀 테스트를 추가했습니다.",
-          "en": "Add regression coverage for Web-before-init discovery, data preservation and paused-project protection, with cross-platform build checks."
+          "ko": "손상된 JSON·소유권 불명 서비스·바이너리 변경 또는 검증 실패는 제거를 중단하고 실행 파일을 보존합니다.",
+          "en": "Fail closed and retain the executable on corrupt JSON, uncertain service ownership, changed executable or verification errors."
         }
       ]
     }
   ],
   "sections": [
     {
-      "type": "fixed",
+      "type": "new",
       "items": [
         {
-          "ko": "Web 선실행 후 init 실패 또는 신규 프로젝트 자동 등록 누락으로 이어질 수 있던 충돌",
-          "en": "Web-before-init collisions and missing first-project registration"
-        },
-        {
-          "ko": "손상된 프로젝트 레지스트리가 빈 Hub 목록처럼 보이던 문제",
-          "en": "Corrupt registry falsely appearing as an empty project list"
+          "ko": "프로그램 전용 uninstall CLI 및 --dry-run, --approve, --purge-settings 옵션",
+          "en": "Program-only uninstall CLI with --dry-run, --approve and --purge-settings flags"
         }
       ]
     },
@@ -98,24 +90,20 @@
       "type": "improved",
       "items": [
         {
-          "ko": "전역 Web 서비스와 프로젝트 상태 간 책임 분리",
-          "en": "Separation of global Web service and project lifecycle"
-        },
-        {
-          "ko": "부분 초기화 복구 및 기존 사용자 데이터 보존",
-          "en": "Safe partial-initialization recovery while preserving user data"
+          "ko": "기존 Hook 비활성화 로직을 활용한 안전한 제거·백업, macOS 자동 실행 등록 소유권 검사",
+          "en": "Owned Hook cleanup and backups using existing disable logic, plus macOS autostart ownership checks"
         }
       ]
     }
   ],
   "after_update": [
     {
-      "ko": "task-mecca web을 어느 디렉터리에서든 실행한 뒤, 관리할 프로젝트 폴더에서 task-mecca init을 실행하고 Global Hub 등록 여부를 확인하세요.",
-      "en": "Start task-mecca web from any directory, then run task-mecca init in the intended project folder and check Global Hub discovery."
+      "ko": "제거 계획을 확인하려면 task-mecca uninstall --dry-run을 실행하세요. 이 명령은 파일을 변경하지 않습니다.",
+      "en": "Run task-mecca uninstall --dry-run to review the targets without modifying files."
     },
     {
-      "ko": "기존 프로젝트가 누락되었다면 task-mecca projects list를 확인하고, 필요 시 task-mecca projects add --path \"절대경로\"를 명시적으로 실행하세요.",
-      "en": "If an existing project is missing, inspect task-mecca projects list and explicitly repair it with task-mecca projects add --path \"ABSOLUTE_PATH\"."
+      "ko": "실제 제거 후 프로젝트 데이터는 계속 남습니다. Windows EXE는 프로그램 종료 후 삭제되므로 파일 제거 여부를 확인해야 합니다.",
+      "en": "Project data remains after uninstall. On Windows, verify executable removal after the helper runs following program exit."
     }
   ],
   "migration": {

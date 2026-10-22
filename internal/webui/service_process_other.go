@@ -29,6 +29,10 @@ func startManagedWebProcess(exe string,args []string,project string) error {
 
 func managedWebProcessActive() bool { return false }
 
+// Non-macOS managed Web servers do not install a persistent launchd unit.
+func ManagedWebRegistration() (string, bool, error) { return "", false, nil }
+func RemoveManagedWebRegistration() error { return nil }
+
 func stopManagedWebProcess() error { return nil }
 
 func prepareManagedWebRestart() (bool,error) { return false,nil }
