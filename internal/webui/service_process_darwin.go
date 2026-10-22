@@ -3,6 +3,7 @@
 package webui
 
 import (
+    "errors"
     "bytes"
     "encoding/xml"
     "fmt"
@@ -72,6 +73,29 @@ func renderLaunchdPlist(exe string,args []string,project string) string {
 func launchdWebLoaded() bool {
     cmd:=exec.Command("/bin/launchctl","print",launchdWebTarget())
     return cmd.Run()==nil
+}
+
+// ManagedWebRegistration is read-only. It refuses to treat arbitrary user
+// LaunchAgents as Task Mecca owned, even if their filename matches.
+func ManagedWebRegistration() (string, bool, error) {
+    path := launchdWebPlistPath()
+    data, err := os.ReadFile(path)
+    if errors.Is(err, os.ErrNotExist) { return path, false, nil }
+    if err != nil { return path, false, err }
+    if !strings.Contains(string(data), "<key>Label</key><string>"+launchdWebLabel+"</string>") ||
+       !strings.Contains(string(data), "<key>ProgramArguments</key>") {
+        return path, false, fmt.Errorf("unrecognized launchd service at %s; preserving it", path)
+    }
+    return path, true, nil
+}
+
+// RemoveManagedWebRegistration is called only after StopService succeeds.
+// It removes the Task Mecca launchd plist, never the enclosing directory.
+func RemoveManagedWebRegistration() error {
+    path, owned, err := ManagedWebRegistration()
+    if err != nil || !owned { return err }
+    if launchdWebLoaded() { return fmt.Errorf("Task Mecca launchd service still loaded; refusing to remove %s", path) }
+    return os.Remove(path)
 }
 
 func stopManagedWebProcess() error {

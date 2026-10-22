@@ -115,6 +115,17 @@ task-mecca migrate
 
 프로그램 자체 업데이트는 `task-mecca upgrade`, **프로젝트 안내·규칙 업데이트는 `task-mecca migrate`** 입니다.
 
+### 프로그램 제거 (Uninstall)
+
+```bash
+task-mecca uninstall --dry-run  # 삭제 대상 미리 보기; 읽기 전용
+task-mecca uninstall            # 제거 전 'uninstall' 입력으로 확인
+# 자동화된 설치 환경에서는 task-mecca uninstall --approve```
+
+제거 시 Web 서비스를 중지하고 Task Mecca 전용 macOS 자동 시작 등록, 설치 실행 파일 및 **사용자 전역 Codex·Claude Hook 중 Task Mecca 명령만** 정리합니다. Hook 설정 파일은 수정 전에 원본 백업을 생성합니다. **기존 프로젝트의 `_task_mecca`, 백로그, 원장, 프로젝트별 Hook 및 전역 등록 정보는 그대로 보존**합니다.
+
+`--purge-settings`는 명시적으로 선택했을 때 전역 `projects.json`, `channel`만 추가 삭제하며 프로젝트 폴더는 삭제하지 않습니다. Windows에서는 실행 중인 EXE 제거가 불가능하여 종료 후 별도 삭제 작업을 예약합니다.
+
 ## 작동 구조
 
 ```mermaid

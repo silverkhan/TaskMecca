@@ -23,6 +23,7 @@ func runHelpCLI(args []string,out,stderr io.Writer) int {
 		fmt.Fprintln(out,"  task-mecca --version         Installed version/channel and best-effort latest check")
 		fmt.Fprintln(out,"  task-mecca web               Start local Web dashboard")
 		fmt.Fprintln(out,"  task-mecca upgrade           Upgrade the Task Mecca binary")
+		fmt.Fprintln(out,"  task-mecca uninstall --dry-run  Inspect program, service and owned Hook removal")
 		fmt.Fprintln(out,"  task-mecca migrate           Migrate project framework (preserve project-owned data)")
 		fmt.Fprintln(out,"  task-mecca contract          Validate, plan, register or record contract decisions")
 		fmt.Fprintln(out,"  task-mecca worktree          Inspect and explicitly preserve/verify/remove safe Git worktrees")
@@ -35,6 +36,14 @@ func runHelpCLI(args []string,out,stderr io.Writer) int {
 		fmt.Fprintln(out,"  task-mecca next-id PREFIX    Suggest next backlog identifier (no reservation)")
 		fmt.Fprintln(out,"  task-mecca tags              Inspect canonical task taxonomy")
 		fmt.Fprintln(out,"  task-mecca --help            Details: task-mecca help contract|runtime|worktree|upgrade|migrate|web|handoff")
+	case "uninstall":
+        fmt.Fprintln(out,"Safely remove the Task Mecca program, Web service registration and global Task Mecca-owned agent Hook commands.")
+        fmt.Fprintln(out,"task-mecca uninstall --dry-run [--json] [--purge-settings]")
+        fmt.Fprintln(out,"task-mecca uninstall [--approve] [--purge-settings]")
+        fmt.Fprintln(out,"Default: preserve all project directories, _task_mecca data, global registry/settings and project-local Hooks.")
+        fmt.Fprintln(out,"--purge-settings: also remove recognized global projects.json and channel metadata; never delete projects.")
+        fmt.Fprintln(out,"Modified global agent Hook JSON files are backed up before exact Task Mecca commands are removed.")
+        fmt.Fprintln(out,"Interactive uninstall requires typing 'uninstall'; --approve is explicit noninteractive confirmation.")
 	case "contract":
 		contractUsage(out)
 	case "runtime":

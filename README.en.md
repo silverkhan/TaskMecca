@@ -115,6 +115,15 @@ task-mecca migrate
 
 Use `task-mecca upgrade` to **update the application**, and `task-mecca migrate` to **update a project's instructions**.
 
+### Uninstall the program
+
+```bash
+task-mecca uninstall --dry-run  # read-only removal plan
+task-mecca uninstall            # type 'uninstall' to confirm
+# For explicit noninteractive approval: task-mecca uninstall --approve```
+
+Uninstall stops the Web service, removes only Task Mecca's managed macOS autostart registration and executable, and backs up user-global Codex/Claude settings before removing **only** Task Mecca observer Hook commands. **Project directories, `_task_mecca`, backlogs, ledgers, project-local Hooks and the global project registry are preserved.** Optional `--purge-settings` removes only the global `projects.json` and `channel` files. Windows schedules executable removal after the command exits.
+
 ## How it works
 
 ```mermaid

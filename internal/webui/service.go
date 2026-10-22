@@ -154,6 +154,17 @@ func NormalizeManagedHost(host string) string {
     return host
 }
 
+// InspectServiceStatus does not remove stale state or modify any file.
+// Uninstall --dry-run must be strictly read-only, including a stale Web PID.
+func InspectServiceStatus() (ServiceState, error) {
+    state, err := readServiceState()
+    if errors.Is(err, os.ErrNotExist) { return ServiceState{},nil }
+    if err != nil { return ServiceState{},err }
+    state.Running=healthState(state)
+    state.ControlToken=""
+    return state,nil
+}
+
 func ServiceStatus() ServiceState {
     state,err:=readServiceState()
     if err!=nil { return ServiceState{} }

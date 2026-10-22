@@ -103,6 +103,32 @@ func EnsureHooks(project,provider string) (HookSetup,error) {
     return status,nil
 }
 
+// OwnedHookCount counts only exact Task Mecca observer commands. It performs
+// no writes and is used by uninstall to back up user configuration before any
+// change, including when only some provider events have been installed.
+func OwnedHookCount(project, provider string) (int, error) {
+    provider = strings.ToLower(strings.TrimSpace(provider))
+    path, err := HookConfigPath(project, provider)
+    if err != nil { return 0, err }
+    doc, _, err := readHookDocument(path)
+    if err != nil { return 0, err }
+    hooks, _ := doc["hooks"].(map[string]any)
+    count := 0
+    for _, event := range hookEventsForProvider(provider) {
+        for _, entry := range asSlice(hooks[event]) {
+            row, ok := entry.(map[string]any)
+            if !ok { continue }
+            for _, item := range asSlice(row["hooks"]) {
+                command, ok := item.(map[string]any)
+                if ok && strings.TrimSpace(fmt.Sprint(command["command"])) == "task-mecca runtime observe "+provider {
+                    count++
+                }
+            }
+        }
+    }
+    return count, nil
+}
+
 func DisableHooks(project,provider string) (HookSetup,error) {
     provider=strings.ToLower(strings.TrimSpace(provider))
     path,err:=HookConfigPath(project,provider); if err!=nil { return HookSetup{},err }
