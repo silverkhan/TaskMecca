@@ -4591,7 +4591,8 @@ function hubView() {
   return `<div class="page-head"><div><h1>Global Hub</h1><p class="summary">${esc(hubText('intro'))}</p></div><div class="hub-cli"><strong>CLI</strong> ${channelBadge} ${cliStatus} ${updateActions}</div></div>
     ${cli.update_available?'<div class="timing-note"><strong>Upgrade</strong><span>업그레이드가 완료되면 Task Mecca Web이 자동으로 재시작되며, 현재 브라우저 페이지도 자동으로 새로고침됩니다.</span></div>':''}
     ${cli.error?`<div class="timing-note"><strong>Version check</strong><span>${esc(cli.error)}</span></div>`:''}
-    <p id="hubFeedback" role="status" class="timing-note" hidden></p><div class="project-grid">${cards||`<div class="empty">${esc(hubText('emptyProjects'))}</div>`}</div><section class="hub-history"><h2><button id="hubHistoryToggle" type="button" class="hub-history-toggle" aria-expanded="${state.hubHistoryExpanded}" aria-controls="hubHistoryItems"><span>${esc(hubText('history'))}</span><span class="badge">${(state.hubManagement?.archives||[]).length}</span><span class="hub-history-action">${esc(hubText(state.hubHistoryExpanded?'collapseHistory':'expandHistory'))}</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button></h2><p class="muted">${esc(hubText('historyInfo'))}</p><div id="hubHistoryItems" ${state.hubHistoryExpanded?'':'hidden'}>${history||`<div class="empty">${esc(hubText('emptyHistory'))}</div>`}</div></section><div class="hub-storage-link"><strong>${esc(state.language==='ko'?'저장소 관리':'Storage management')}</strong><p>${esc(state.language==='ko'?'로그·Runtime 데이터 사용량과 안전 정리 기능이 시스템 메뉴로 이동했습니다.':'Log and Runtime usage and safe cleanup are now in the System menu.')}</p><button type="button" class="action-btn secondary" id="openStorageFromHub">${esc(state.language==='ko'?'저장소 관리 열기':'Open storage management')}</button></div>`;
+    ${state.loadError?`<div class="timing-note" role="alert"><strong>${esc(state.language==='ko'?'프로젝트 목록 조회 실패':'Project inventory unavailable')}</strong><span>${esc(state.loadError)}</span></div>`:''}
+    <p id="hubFeedback" role="status" class="timing-note" hidden></p><div class="project-grid">${cards||(state.loadError?'':`<div class="empty">${esc(hubText('emptyProjects'))}</div>`)}</div><section class="hub-history"><h2><button id="hubHistoryToggle" type="button" class="hub-history-toggle" aria-expanded="${state.hubHistoryExpanded}" aria-controls="hubHistoryItems"><span>${esc(hubText('history'))}</span><span class="badge">${(state.hubManagement?.archives||[]).length}</span><span class="hub-history-action">${esc(hubText(state.hubHistoryExpanded?'collapseHistory':'expandHistory'))}</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button></h2><p class="muted">${esc(hubText('historyInfo'))}</p><div id="hubHistoryItems" ${state.hubHistoryExpanded?'':'hidden'}>${history||`<div class="empty">${esc(hubText('emptyHistory'))}</div>`}</div></section><div class="hub-storage-link"><strong>${esc(state.language==='ko'?'저장소 관리':'Storage management')}</strong><p>${esc(state.language==='ko'?'로그·Runtime 데이터 사용량과 안전 정리 기능이 시스템 메뉴로 이동했습니다.':'Log and Runtime usage and safe cleanup are now in the System menu.')}</p><button type="button" class="action-btn secondary" id="openStorageFromHub">${esc(state.language==='ko'?'저장소 관리 열기':'Open storage management')}</button></div>`;
 }
 function normalizedVersion(value) {
   return String(value??'').trim().replace(/(?:\\r|\\n)+$/g,'').trim();
@@ -6038,9 +6039,18 @@ async function refreshHub(force=false) {
   hubFetchInFlight=(async()=>{
     try {
       const [r, management]=await Promise.all([fetch('/api/hub',{cache:'no-store'}),fetch('/api/hub/projects',{cache:'no-store'})]);
-      if(!r.ok)throw new Error(`HTTP ${r.status}`);
-      state.hub=await r.json();
-      state.hubManagement=management.ok?await management.json():{projects:[],history:[]};
+      // A registry read failure is not an empty collection; expose it to
+      // the Hub instead of silently replacing a previously known inventory.
+      if(!r.ok || !management.ok){
+        const failed=!r.ok?r:management;
+        let detail='';
+        try { detail=String((await failed.json()).error||''); } catch(_){}
+        throw new Error(detail||(`Project registry request failed (HTTP ${failed.status})`));
+      }
+      const hub=await r.json();
+      const inventory=await management.json();
+      state.hub=hub;
+      state.hubManagement=inventory;
       state.lastHubFetch=Date.now();
       return state.hub;
     } finally {
