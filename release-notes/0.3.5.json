@@ -1,0 +1,113 @@
+{
+  "version": "0.3.5",
+  "date": "2026-10-22",
+  "title": {
+    "ko": "프로그램 안전 제거 및 전역 Hook 정리",
+    "en": "Safe Program Uninstall and Global Hook Cleanup"
+  },
+  "summary": {
+    "ko": "Web 서비스·실행 파일·Task Mecca 소유 전역 Hook을 안전하게 제거하는 uninstall 명령을 추가했습니다. 기본값은 모든 프로젝트와 백로그·원장·등록 정보를 보존합니다.",
+    "en": "Add a safe uninstall command for the Web service, executable and owned global agent Hooks, preserving all projects, backlogs, ledgers and registration records by default."
+  },
+  "highlights": [
+    {
+      "ko": "task-mecca uninstall --dry-run으로 변경 없이 제거 대상과 Hook 개수를 먼저 확인합니다.",
+      "en": "Inspect the uninstall plan and owned Hook counts with task-mecca uninstall --dry-run without making changes."
+    },
+    {
+      "ko": "실행 확인 후 Web 서비스를 중지하고 Task Mecca 전용 자동 실행 등록과 바이너리를 제거합니다.",
+      "en": "After confirmation, stop the Web service and remove the Task Mecca-owned autostart registration and binary."
+    },
+    {
+      "ko": "Codex·Claude 전역 설정은 백업한 뒤 Task Mecca 소유 Hook 명령만 제거하고, 다른 Hook은 유지합니다.",
+      "en": "Back up user-global Codex and Claude settings before removing exact Task Mecca Hook commands while preserving other Hooks."
+    }
+  ],
+  "categories": [
+    {
+      "id": "uninstall",
+      "title": {
+        "ko": "Uninstall 명령",
+        "en": "Uninstall CLI"
+      },
+      "items": [
+        {
+          "ko": "task-mecca uninstall --dry-run [--json]으로 읽기 전용 계획을 확인하고, 실제 삭제는 uninstall 확인 문구 또는 --approve가 있어야 실행됩니다.",
+          "en": "Preview a read-only removal plan with --dry-run [--json]; actual deletion requires typing uninstall or explicitly passing --approve."
+        },
+        {
+          "ko": "macOS·Linux는 바이너리를 직접 제거하고, Windows는 프로세스 종료 이후 해시를 재검증하는 지연 제거 절차를 사용합니다.",
+          "en": "macOS/Linux remove the executable directly; Windows schedules deletion after exit and verifies the original SHA-256 hash."
+        }
+      ]
+    },
+    {
+      "id": "hooks",
+      "title": {
+        "ko": "Web 및 Hook 정리",
+        "en": "Web and Hook Cleanup"
+      },
+      "items": [
+        {
+          "ko": "Web 서비스를 중지하고 Task Mecca 소유로 확인된 macOS launchd 등록만 삭제합니다.",
+          "en": "Stop the Web service and delete only a recognized Task Mecca-owned macOS launchd registration."
+        },
+        {
+          "ko": "사용자 전역 Codex·Claude Hook 설정을 변경할 때 0600 원본 백업을 남기며 기존 타사 Hook 설정은 보존합니다.",
+          "en": "Keep a mode-0600 backup before changing user-global Codex/Claude Hook settings, preserving unrelated Hooks."
+        }
+      ]
+    },
+    {
+      "id": "data",
+      "title": {
+        "ko": "데이터 보존과 오류 방어",
+        "en": "Data Preservation and Failure Safety"
+      },
+      "items": [
+        {
+          "ko": "프로젝트 폴더, _task_mecca, 백로그, 원장 및 프로젝트별 Hook은 변경하지 않습니다. 전역 설정 파일 삭제는 --purge-settings에서만 요청할 수 있습니다.",
+          "en": "Preserve project directories, _task_mecca, task histories, ledgers and project-local Hooks; deleting recognized global settings requires --purge-settings."
+        },
+        {
+          "ko": "손상된 JSON·소유권 불명 서비스·바이너리 변경 또는 검증 실패는 제거를 중단하고 실행 파일을 보존합니다.",
+          "en": "Fail closed and retain the executable on corrupt JSON, uncertain service ownership, changed executable or verification errors."
+        }
+      ]
+    }
+  ],
+  "sections": [
+    {
+      "type": "new",
+      "items": [
+        {
+          "ko": "프로그램 전용 uninstall CLI 및 --dry-run, --approve, --purge-settings 옵션",
+          "en": "Program-only uninstall CLI with --dry-run, --approve and --purge-settings flags"
+        }
+      ]
+    },
+    {
+      "type": "improved",
+      "items": [
+        {
+          "ko": "기존 Hook 비활성화 로직을 활용한 안전한 제거·백업, macOS 자동 실행 등록 소유권 검사",
+          "en": "Owned Hook cleanup and backups using existing disable logic, plus macOS autostart ownership checks"
+        }
+      ]
+    }
+  ],
+  "after_update": [
+    {
+      "ko": "제거 계획을 확인하려면 task-mecca uninstall --dry-run을 실행하세요. 이 명령은 파일을 변경하지 않습니다.",
+      "en": "Run task-mecca uninstall --dry-run to review the targets without modifying files."
+    },
+    {
+      "ko": "실제 제거 후 프로젝트 데이터는 계속 남습니다. Windows EXE는 프로그램 종료 후 삭제되므로 파일 제거 여부를 확인해야 합니다.",
+      "en": "Project data remains after uninstall. On Windows, verify executable removal after the helper runs following program exit."
+    }
+  ],
+  "migration": {
+    "required": false,
+    "instruction_refresh": false
+  }
+}
