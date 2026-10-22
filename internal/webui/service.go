@@ -45,6 +45,17 @@ func webHomeDir() string {
 }
 
 func webServiceDir() string { return filepath.Join(webHomeDir(),"web") }
+
+// GlobalWebRoot is the durable working directory for the managed Web service.
+// Running "task-mecca web" must not treat the invoker's CWD as a project.
+func GlobalWebRoot() string { return webServiceDir() }
+
+func isGlobalWebRoot(project string) bool {
+    if strings.TrimSpace(project)=="" { return false }
+    abs,err:=filepath.Abs(project)
+    if err!=nil { return false }
+    return filepath.Clean(abs)==filepath.Clean(GlobalWebRoot())
+}
 func webStatePath() string { return filepath.Join(webServiceDir(),"state.json") }
 func WebLogPath() string { return filepath.Join(webServiceDir(),"web.log") }
 func upgradeRecoveryPath() string { return filepath.Join(webServiceDir(),"upgrade-recovery.json") }
@@ -177,7 +188,9 @@ func StartService(config Config) (ServiceState,error) {
     exe,_=filepath.EvalSymlinks(exe)
     args:=[]string{"web","--foreground","--project",config.Project,"--host",config.Host,"--port",fmt.Sprint(config.Port),"--no-open","--web-instance-id",id,"--web-control-token",token}
     if config.Root!="" { args=append(args,"--root",config.Root) }
-    if err=startManagedWebProcess(exe,args,config.Project); err!=nil {
+    // Managed Web is global infrastructure; do not tie its process working
+    // directory to an initialized project (including an explicit --project).
+    if err=startManagedWebProcess(exe,args,GlobalWebRoot()); err!=nil {
         return ServiceState{},err
     }
 
