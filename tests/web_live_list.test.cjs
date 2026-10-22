@@ -13,7 +13,7 @@ function page(fetch,{quickFetch=null}={}){
  };
  const prompt={innerHTML:''},dot={style:{}},active={id:'search',selectionStart:2,selectionEnd:4,focus(){this.focused=true},setSelectionRange(a,b){this.range=[a,b]}};
  const scroll=[],context=vm.createContext({fetch:effectiveFetch,URLSearchParams,AbortController,setTimeout,clearTimeout,location:{search:'?project=/demo'},navigator:{language:'ko'},queueMicrotask,requestAnimationFrame:fn=>fn(),window:{scrollX:3,scrollY:120,scrollTo:args=>scroll.push(args),addEventListener(){}},document:{visibilityState:'visible',addEventListener(){},activeElement:active,contains:()=>true,getElementById:()=>active,querySelector:selector=>selector==='#connectionDot'?dot:selector==='#contentUpdatePrompt'?prompt:null},localStorage:{getItem:()=>null,setItem(){},removeItem(){}}});
- vm.runInContext(source.slice(0,source.indexOf('\ntranslateChrome();'))+source.slice(source.indexOf('function preserveViewportAndFocus('),source.indexOf('\nsetInterval(()=>{',source.indexOf('function preserveViewportAndFocus(')))+source.slice(source.indexOf('let lastWakeListRefreshAt=0;'),source.indexOf('\nsetInterval(()=>{',source.indexOf('let lastWakeListRefreshAt=0;')))+`\nrender=()=>{};processTaskNotifications=payload=>(globalThis.notifications||(globalThis.notifications=[])).push(payload);globalThis.app={state,refreshList,markContentUpdate,checkContentRevision,revalidateFirstPageOnWake,ensureAttentionStream,updateLiveListRelativeTimes,runningSeconds,listPageCaches,invalidateListPages,listContextKey};`,context);
+ vm.runInContext(source.slice(0,source.indexOf('\ntranslateChrome();'))+source.slice(source.indexOf('function preserveViewportAndFocus('),source.indexOf('\nsetInterval(()=>{',source.indexOf('function preserveViewportAndFocus(')))+source.slice(source.indexOf('let lastWakeListRefreshAt=0;'),source.indexOf('\nsetInterval(()=>{',source.indexOf('let lastWakeListRefreshAt=0;')))+`\nrender=()=>{};processTaskNotifications=payload=>(globalThis.notifications||(globalThis.notifications=[])).push(payload);globalThis.app={state,refreshList,markContentUpdate,checkContentRevision,revalidateFirstPageOnWake,revalidateVisibleFirstPageByAge,ensureAttentionStream,updateLiveListRelativeTimes,runningSeconds,listPageCaches,invalidateListPages,listContextKey};`,context);
  context.app.state.view='backlog';context.app.state.listPageMode='manual';context.app.state.listPageSize=20;
  return {...context.app,prompt,scroll,active,context};
 }
@@ -300,4 +300,50 @@ test('a hung list reload times out, then next first-page refresh can recover',as
  await app.refreshList();await tick();
  assert.equal(requests,2);
  assert.equal(app.state.listData.items[0].id,'NEW');
+});
+
+test('archived B-539 is recovered from revision inventory without needing B-540 registration',async()=>{
+ const calls=[];
+ const app=page(url=>{
+  calls.push(url);
+  if(url.startsWith('/api/revision')) {
+   return Promise.resolve(json({revision:'rev-539',signal_revision:'s1',states:[{id:'B-539',file_state:'done'}]}));
+  }
+  return Promise.resolve(json({...packet(1,'rev-539'),total:1,items:[{id:'B-539',file_state:'done',location:'archive',archive_month:'2026-10'}]}));
+ });
+ Object.assign(app.state,{listData:{...packet(1,'rev-539'),total:0,items:[]},contentRevision:'rev-539',signalRevision:'s1'});
+ await app.checkContentRevision(false);await tick();
+ assert.equal(app.state.listData.items[0]?.id,'B-539');
+ assert.equal(calls.filter(x=>x.startsWith('/api/backlog/tasks?')).length,1);
+ assert.equal(calls.filter(x=>x.startsWith('/api/revision?')).length,1);
+});
+
+test('newer summary with identical revision does not suppress authoritative archived rows',async()=>{
+ const urls=[];
+ const app=page(url=>{
+  urls.push(url);
+  if(url.includes('projection=summary'))return Promise.resolve(json({...packet(2,'rev-539'),items:[],total:1,snapshot_at:'2026-10-23T10:00:02Z',signal_revision:'s1'}));
+  return Promise.resolve(json({...packet(1,'rev-539'),total:1,snapshot_at:'2026-10-23T10:00:01Z',signal_revision:'s1',items:[{id:'B-539',location:'archive'}]}));
+ });
+ Object.assign(app.state,{listPage:2,listData:{...packet(2,'rev-539'),items:[{id:'old'}]},contentRevision:'rev-539'});
+ app.markContentUpdate('runtime');await tick();
+ app.state.listPage=1;await app.refreshList();await tick();
+ assert.equal(app.state.listData.items[0].id,'B-539');
+ assert.equal(app.state.listData.total,1);
+ assert.equal(app.state.listRevalidating,false);
+});
+
+test('stale visible first page reconciles even without any new revision or focus event',async()=>{
+ const urls=[];
+ const app=page(url=>{urls.push(url);return Promise.resolve(json({...packet(1,'rev-539'),total:1,items:[{id:'B-539',location:'archive'}]}));});
+ Object.assign(app.state,{listData:{...packet(1,'rev-539'),total:0,items:[]},contentRevision:'rev-539',lastFetch:Date.now()-90000});
+ await app.revalidateVisibleFirstPageByAge();await tick();
+ assert.equal(app.state.listData.items[0]?.id,'B-539');
+ assert.equal(urls.length,1);
+ await app.revalidateVisibleFirstPageByAge();await tick();
+ assert.equal(urls.length,1,'do not reconcile again while the snapshot is fresh');
+ app.context.document.visibilityState='hidden';
+ app.state.lastFetch=Date.now()-90000;
+ await app.revalidateVisibleFirstPageByAge();await tick();
+ assert.equal(urls.length,1,'hidden pages must not perform expensive full list scans');
 });
