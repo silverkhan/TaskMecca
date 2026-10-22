@@ -1295,6 +1295,29 @@ async function refreshViewedTaskLifecycle(project,backlog,id) {
   return true;
 }
 
+// Bound foreground and background network calls. A request left pending while
+// a laptop sleeps must not permanently hold the single-flight refresh gates.
+async function fetchWithDeadline(url,options={},timeoutMs=20000) {
+  const controller=new AbortController();
+  const upstream=options.signal;
+  const onAbort=()=>controller.abort();
+  if(upstream?.aborted)controller.abort();
+  else upstream?.addEventListener?.('abort',onAbort,{once:true});
+  let timer;
+  try {
+    return await Promise.race([
+      fetch(url,{...options,signal:controller.signal}),
+      new Promise((_,reject)=>{timer=setTimeout(()=>{
+        controller.abort();
+        reject(new Error('Request timed out; retrying on the next refresh'));
+      },timeoutMs);})
+    ]);
+  } finally {
+    clearTimeout(timer);
+    upstream?.removeEventListener?.('abort',onAbort);
+  }
+}
+
 let revisionCheckInFlight=null;
 async function checkContentRevision(establishOnly=false) {
   if(!state.project)return;
@@ -1305,13 +1328,18 @@ async function checkContentRevision(establishOnly=false) {
       const params=new URLSearchParams();
       params.set('project',project);
       if(backlog)params.set('backlog',backlog);
-      const r=await fetch('/api/revision?'+params.toString(),{cache:'no-store'});
+      const r=await fetchWithDeadline('/api/revision?'+params.toString(),{cache:'no-store'},20000);
       if(!r.ok)return;
       const body=await r.json();
       if(project!==state.project || backlog!==state.backlog)return;
       const revision=body.revision||'', signalRevision=body.signal_revision||'', states=Array.isArray(body.states)?body.states:[];
       if(!revision)return;
-      if(!state.contentRevision || establishOnly){
+      // Never acknowledge a newer revision merely because the caller
+      // established the initial view. A file created between list fetch and
+      // this check would otherwise be invisible until another change.
+      if(!state.contentRevision || (establishOnly && state.view==='backlog' && Boolean(state.detail))){
+        // A refreshed task detail already fetched its Markdown; unlike a
+        // paginated list, it may acknowledge that new revision immediately.
         acceptContentRevision(revision,states,signalRevision);
         return;
       }
@@ -6202,7 +6230,7 @@ async function refreshList(preserveSelection=false) {
  }
  listRefreshAbort=controller;listRefreshContext=key;
  const request=(async()=>{try{
-  const r=await fetch('/api/backlog/tasks?'+targetQuery,{cache:'no-store',signal:controller.signal});
+  const r=await fetchWithDeadline('/api/backlog/tasks?'+targetQuery,{cache:'no-store',signal:controller.signal},60000);
   if(!r.ok){let detail='';try{detail=(await r.json()).error||'';}catch(_){}throw new Error(detail||`HTTP ${r.status}`);}
   const data=await r.json();reconciled=true;if(!isCurrent())return;
   state.listLoadSlow=Date.now()-listRequestStartedAt>2000;
@@ -6683,6 +6711,36 @@ window.addEventListener('resize',()=>{
   autoPageResizeTimer=setTimeout(()=>scheduleAutoListPageSize(true),100);
 });
 window.addEventListener('popstate',()=>route(true));
+
+// Timer throttling, network transitions and computer sleep can leave an open
+// first page behind even when the revision event was missed. Revalidate the
+// authoritative list when that tab becomes usable again; never silently
+// update later pages or interrupt the user's current task detail.
+let lastWakeListRefreshAt=0;
+function revalidateFirstPageOnWake() {
+  if(!isLiveBacklogPage() || !state.listData || !state.lastFetch)return;
+  const now=Date.now();
+  if(now-state.lastFetch<30000 || now-lastWakeListRefreshAt<15000)return;
+  lastWakeListRefreshAt=now;
+  // Discard any pre-sleep in-flight list and its cached revision. A late
+  // response is rejected by the context epoch before touching current rows.
+  invalidateListPages();
+  if(listRefreshInFlight){
+    listRefreshAbort?.abort();
+    listRefreshInFlight=null;
+    listRefreshAbort=null;
+    listRefreshContext='';
+    listRefreshQueued=false;
+  }
+  void preserveViewportAndFocus(()=>refreshList(true));
+}
+document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState!=='hidden')revalidateFirstPageOnWake();
+});
+window.addEventListener('focus',revalidateFirstPageOnWake);
+window.addEventListener('pageshow',revalidateFirstPageOnWake);
+window.addEventListener('online',revalidateFirstPageOnWake);
+
 setInterval(()=>{
   const data=currentProjectData();
   updateLiveListRelativeTimes();

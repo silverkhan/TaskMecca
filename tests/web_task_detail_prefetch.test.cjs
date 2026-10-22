@@ -2,7 +2,7 @@ const {test}=require('node:test');
 const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
 const source=fs.readFileSync('goassets/template/_task_mecca/framework/web/app.js','utf8');
 function app(fetch, options={}){
- const ctx=vm.createContext({fetch,URLSearchParams,location:{search:'?project=/demo'},history:{pushState(){}},navigator:{language:'ko'},queueMicrotask,document:{visibilityState:'visible',querySelector:()=>null,querySelectorAll:()=>[]},window:options.window,requestAnimationFrame:options.requestAnimationFrame,localStorage:{getItem:()=>null,setItem(){},removeItem(){}},setTimeout:options.setTimeout||(()=>1),requestIdleCallback:options.requestIdleCallback});
+ const ctx=vm.createContext({fetch,URLSearchParams,AbortController,clearTimeout,location:{search:'?project=/demo'},history:{pushState(){}},navigator:{language:'ko'},queueMicrotask,document:{visibilityState:'visible',querySelector:()=>null,querySelectorAll:()=>[]},window:options.window,requestAnimationFrame:options.requestAnimationFrame,localStorage:{getItem:()=>null,setItem(){},removeItem(){}},setTimeout:(fn,delay)=>delay>=20000?setTimeout(fn,delay):(options.setTimeout?options.setTimeout(fn,delay):1),requestIdleCallback:options.requestIdleCallback});
  vm.runInContext(source.slice(0,source.indexOf('\ntranslateChrome();'))+`
  render=()=>{};
  globalThis.api={state,openTask,loadTaskDetail,prefetchTaskDetail,requestTaskDetail,cachedTaskDetail,taskDetailPending,taskDetailCache,taskLiveCache,taskLivePending,taskDetailKey,acceptContentRevision,invalidateTaskDetailCache,scheduleTaskDetailPrefetch,scheduleTaskLiveEnrichment,retryTaskLifecycle,refreshVisibleContent,detailLifecycleBody,lifecycleEventLabel,lifecycleEvidenceLabel};
