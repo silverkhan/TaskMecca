@@ -26,6 +26,7 @@ type uninstallHook struct {
 }
 type uninstallPlan struct {
     Executable string `json:"executable"`
+    ExecutableSHA256 string `json:"executable_sha256"`
     WebRunning bool `json:"web_running"`
     ServiceRegistration string `json:"service_registration,omitempty"`
     Hooks []uninstallHook `json:"hooks"`
@@ -60,14 +61,19 @@ func validateInstalledExecutable(path string) (string, error) {
 func buildUninstallPlan(executable,home,management string,purge bool) (uninstallPlan,error) {
     executable,err:=validateInstalledExecutable(executable)
     if err!=nil { return uninstallPlan{},err }
+    binaryData,err:=os.ReadFile(executable)
+    if err!=nil{return uninstallPlan{},err}
+    binaryHash:=sha256.Sum256(binaryData)
     result:=uninstallPlan{
-        Executable:executable,PurgeSettings:purge,
+        Executable:executable,ExecutableSHA256:hex.EncodeToString(binaryHash[:]),PurgeSettings:purge,
         Hooks:[]uninstallHook{},
         Preserved:[]string{"All project directories, _task_mecca, backlog and lifecycle data",
             "Project-local agent configuration/Hooks (not modified automatically)",
             "Global Task Mecca data and project registry (unless --purge-settings)"},
     }
-    result.WebRunning=webui.ServiceStatus().Running
+    svcState,err:=webui.InspectServiceStatus()
+    if err!=nil{return result,err}
+    result.WebRunning=svcState.Running
     svc,exists,err:=webui.ManagedWebRegistration()
     if err!=nil { return result,err }
     if exists { result.ServiceRegistration=svc }
@@ -147,6 +153,12 @@ func performUninstall(plan uninstallPlan,output io.Writer) error {
         if err!=nil{return err}
         if !info.Mode().IsRegular(){return fmt.Errorf("settings path no longer a regular file; executable preserved: %s",file)}
         if err:=os.Remove(file);err!=nil{return fmt.Errorf("could not purge managed setting %s; executable preserved: %w",file,err)}
+    }
+    present,err:=os.ReadFile(plan.Executable)
+    if err!=nil{return fmt.Errorf("executable changed since preflight; retained: %w",err)}
+    digest:=sha256.Sum256(present)
+    if hex.EncodeToString(digest[:])!=plan.ExecutableSHA256 {
+        return fmt.Errorf("installed executable changed since uninstall preflight; refusing to delete it")
     }
     outcome,err:=removeInstalledBinary(plan.Executable)
     if err!=nil{return fmt.Errorf("installed executable removal failed, manual cleanup required: %w",err)}
