@@ -1,6 +1,22 @@
 {
   "releases": [
     {
+      "version": "0.3.3",
+      "date": "2026-10-22",
+      "title": {
+        "ko": "원격 웹 터미널 빈 화면 수정 및 연결 복구 강화",
+        "en": "Remote Web Terminal Rendering and Recovery Fix"
+      },
+      "summary": {
+        "ko": "Tailscale 원격 웹 터미널에서 연결된 셸이 빈 화면으로 보이던 레이아웃 오류를 수정했습니다. 출력 상태를 진단하고 스트리밍이 정체될 때 복구를 시도하며, 기본 입력 모드로 전환할 수 있도록 개선했습니다.",
+        "en": "Fix a layout regression that left connected remote terminal sessions blank. Improve output diagnostics, add recovery for buffered streams, and provide an alternate basic-input mode."
+      },
+      "migration": {
+        "required": false,
+        "instruction_refresh": false
+      }
+    },
+    {
       "version": "0.3.2",
       "date": "2026-10-20",
       "title": {
