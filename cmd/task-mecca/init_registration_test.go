@@ -21,15 +21,23 @@ func TestFirstInitRegistersInWebHub(t *testing.T) {
     project := filepath.Join(base, "first project")
     if err := os.MkdirAll(project, 0755); err != nil { t.Fatal(err) }
 
+    // README onboarding starts Web before init. Opening the Web must not
+    // create _task_mecca/.runtime or otherwise block first installation.
+    handler, err := webui.Handler(project, "", "test")
+    if err != nil { t.Fatal(err) }
+    if _, err := os.Stat(filepath.Join(project, "_task_mecca")); !os.IsNotExist(err) {
+        t.Fatalf("Web startup created an uninitialized framework: %v", err)
+    }
+
     if code := run([]string{"init", "--project", project}); code != 0 {
-        t.Fatalf("fresh init returned %d", code)
+        t.Fatalf("fresh init after Web startup returned %d", code)
     }
     states, err := maintenance.ManagedProjects()
     if err != nil || len(states) != 1 || states[0].Path != project || !states[0].Monitoring {
         t.Fatalf("initial registration not monitoring: %#v, %v", states, err)
     }
-    handler, err := webui.Handler(project, "", "test")
-    if err != nil { t.Fatal(err) }
+    // Query the already-created handler to prove the running Web can
+    // discover the newly initialized project without a restart.
     for _, path := range []string{"/api/hub", "/api/hub/projects"} {
         rec := httptest.NewRecorder()
         handler.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, path, nil))
