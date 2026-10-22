@@ -1,0 +1,109 @@
+{
+  "version": "0.3.3",
+  "date": "2026-10-22",
+  "title": {
+    "ko": "원격 웹 터미널 빈 화면 수정 및 연결 복구 강화",
+    "en": "Remote Web Terminal Rendering and Recovery Fix"
+  },
+  "summary": {
+    "ko": "Tailscale 원격 웹 터미널에서 연결된 셸이 빈 화면으로 보이던 레이아웃 오류를 수정했습니다. 출력 상태를 진단하고 스트리밍이 정체될 때 복구를 시도하며, 기본 입력 모드로 전환할 수 있도록 개선했습니다.",
+    "en": "Fix a layout regression that left connected remote terminal sessions blank. Improve output diagnostics, add recovery for buffered streams, and provide an alternate basic-input mode."
+  },
+  "highlights": [
+    {
+      "ko": "원격 웹 터미널에서 셸 프롬프트와 커서가 보이지 않던 빈 화면 문제를 수정했습니다.",
+      "en": "Fix the blank terminal that hid the shell prompt and cursor over Tailscale HTTPS."
+    },
+    {
+      "ko": "화면 상태 요소가 숨겨져도 터미널 출력 영역이 올바른 높이를 유지합니다.",
+      "en": "Keep the terminal surface sized correctly when optional status panels are hidden."
+    },
+    {
+      "ko": "출력 정체 감지·오류 표시·기본 입력 모드 전환으로 원격 복구 수단을 강화했습니다.",
+      "en": "Provide output-stall diagnostics, visible errors and a basic-input recovery mode."
+    }
+  ],
+  "categories": [
+    {
+      "id": "terminal",
+      "title": {
+        "ko": "웹 터미널 사용성",
+        "en": "Web Terminal"
+      },
+      "items": [
+        {
+          "ko": "CSS Grid 영역을 명시적으로 배치해 터미널 출력 화면이 빈 영역 뒤에 가려지는 문제를 수정했습니다.",
+          "en": "Explicitly place terminal Grid areas to prevent the PTY canvas from collapsing behind an empty layout track."
+        },
+        {
+          "ko": "xterm.js에서 렌더링 실패 시 기본 입력 모드로 전환하고, 동일 세션에서 모드를 변경할 수 있습니다.",
+          "en": "Switch to basic input if xterm.js initialization fails; toggle modes without creating a new shell."
+        }
+      ]
+    },
+    {
+      "id": "reliability",
+      "title": {
+        "ko": "원격 연결 진단·복구",
+        "en": "Remote Diagnostics and Recovery"
+      },
+      "items": [
+        {
+          "ko": "PTY 출력량과 브라우저 수신 상태를 구분하고 스트리밍·입력 오류를 화면에 표시합니다.",
+          "en": "Distinguish PTY output from browser reception and show stream/input errors visibly."
+        },
+        {
+          "ko": "Tailscale Serve 등에서 지속 스트림이 정체되면 세션 인증을 유지하면서 제한된 출력 이력을 조회해 복구를 시도합니다.",
+          "en": "When long-lived transport is buffered, attempt bounded output replay while preserving per-session token authorization."
+        }
+      ]
+    },
+    {
+      "id": "tests",
+      "title": {
+        "ko": "회귀 방지",
+        "en": "Regression Coverage"
+      },
+      "items": [
+        {
+          "ko": "숨김 상태 배치, 출력 오프셋·기록 상한, 오류 표시·기본 입력 모드 테스트를 추가했습니다.",
+          "en": "Add regression checks for hidden-panel layout, bounded output offsets, visible errors and recovery controls."
+        }
+      ]
+    }
+  ],
+  "sections": [
+    {
+      "type": "fixed",
+      "items": [
+        {
+          "ko": "Tailscale 원격 웹 터미널이 '연결됨'을 표시하지만 프롬프트와 입력 커서가 보이지 않던 문제",
+          "en": "Remote terminal showed Connected but no prompt or cursor"
+        }
+      ]
+    },
+    {
+      "type": "improved",
+      "items": [
+        {
+          "ko": "원격 터미널 장애 진단, 출력 조회 복구 및 기본 입력 모드",
+          "en": "Terminal diagnostics, bounded replay recovery and basic-input fallback"
+        }
+      ]
+    }
+  ],
+  "after_update": [
+    {
+      "ko": "원격 Tailscale HTTPS로 웹 터미널을 열고 셸 프롬프트·커서·입력이 정상 동작하는지 확인하세요.",
+      "en": "Open the terminal over Tailscale HTTPS and verify the prompt, cursor and keyboard input."
+    },
+    {
+      "ko": "빈 화면이 다시 나타나면 기본 입력 모드로 전환하고 상단 진단 메시지를 확인하세요. 웹 실행 프로세스 업데이트 여부도 확인하세요.",
+      "en": "If the terminal is blank again, switch to Basic input and inspect the visible diagnostics; verify that the Web process was updated."
+    }
+  ],
+  "migration": {
+    "required": false,
+    "instruction_refresh": false
+  }
+}

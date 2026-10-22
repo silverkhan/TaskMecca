@@ -2,6 +2,25 @@
 
 All notable public releases will be documented here.
 
+## 0.3.3 - 2026-10-22 — Remote Web Terminal Rendering and Recovery
+
+- **Remote terminal fix:** prevent the PTY surface from collapsing when optional status rows are hidden; restore the shell prompt and cursor over Tailscale HTTPS.
+- **Diagnostics:** distinguish PTY output from browser streaming and display errors visibly.
+- **Recovery:** add a basic-input switch and bounded, authenticated output replay when long-lived streams are buffered.
+- **Tests:** cover explicit Grid placement, output replay offsets and terminal recovery controls.
+- **After upgrading:** restart the Web service with the updated binary, verify Tailscale shell input/output, and confirm the fallback control if needed. No framework-instruction refresh is required for this patch.
+
+Detailed bilingual release notes: [0.3.3](release-notes/0.3.3.json).
+
+## 0.3.2 - 2026-10-20 — Agent CLI Operations, Handoff and Recovery Diagnostics
+
+- Standardize contract validation, planning, registration and approval tracking.
+- Add runtime query/diagnose, Codex native evidence counters and focused Controller handoff summaries.
+- Provide safe worktree preservation and project file integrity verification.
+- Guide per-project framework migration and role-specific operations after upgrading.
+
+Detailed bilingual release notes: [0.3.2](release-notes/0.3.2.json).
+
 ## 0.3.1 - 2026-10-16 — Backlog, Lifecycle and Web Experience
 
 - **Faster backlog:** prioritize initial list/detail rendering and reduce repeated Git-history lookups.
