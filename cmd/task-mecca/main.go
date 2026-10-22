@@ -22,7 +22,7 @@ import (
     "github.com/silverkhan/TaskMecca/internal/webui"
 )
 
-var version = "0.3.3"
+var version = "0.3.4"
 
 // A PR binary is built from its source without Dev release ldflags. Preserve
 // the version of the Dev installation it replaced for framework compatibility
@@ -39,6 +39,14 @@ func main() {
         version=runtimeVersionForTarget(version,target)
     }
     os.Exit(run(os.Args[1:]))
+}
+
+// webLaunchRoot resolves the managed Web's identity independently of CWD.
+// Only an explicit --project argument or a Preview-scoped session may
+// select a project at service startup.
+func webLaunchRoot(root string, explicit bool) string {
+    if explicit || webui.PreviewMode() { return root }
+    return webui.GlobalWebRoot()
 }
 
 func run(args []string) int {
@@ -88,16 +96,14 @@ func run(args []string) int {
         return handoff.RunCLI(args[1:], os.Stdout, os.Stderr)
     }
     if len(args) == 0 {
-        root,err:=filepath.Abs(".")
-        if err!=nil { fmt.Fprintln(os.Stderr,err); return 2 }
-        _ = maintenance.RegisterWebProject(root)
-        state,startErr:=webui.StartService(webui.Config{Project:root,Host:"auto",Port:webui.DefaultPort,OpenBrowser:true,Version:version})
+        state,startErr:=webui.StartService(webui.Config{Project:webui.GlobalWebRoot(),Host:"auto",Port:webui.DefaultPort,OpenBrowser:true,Version:version})
         if startErr!=nil { fmt.Fprintln(os.Stderr,startErr); return 2 }
         printWebState("Task Mecca Web is running",state)
         return 0
     }
     command := args[0]
     project := "."
+    projectExplicit := false
     rootOption := ""
     jsonOutput := false
     migrationChoice := ""
@@ -128,6 +134,7 @@ func run(args []string) int {
             migrationChoice=args[i+1]; i++
         } else if args[i] == "--project" && i+1 < len(args) {
             project = args[i+1]
+            projectExplicit = true
             i++
         } else if args[i] == "--root" && i+1 < len(args) {
             rootOption = args[i+1]
@@ -254,8 +261,18 @@ func run(args []string) int {
     case "init":
         if err = install.Init(root, version); err == nil {
             _,_ = backlog.EnsureTagRegistry(root)
-            if registerErr := maintenance.RegisterProject(root); registerErr != nil { err = fmt.Errorf("framework installed; Web monitoring registration failed (framework preserved): %w", registerErr); break }
-            fmt.Printf("Task Mecca %s installed to %s\n", version, filepath.Join(root, "_task_mecca"))
+            if registerErr := maintenance.RegisterProject(root); registerErr != nil {
+                // The framework already exists at this point. Never remove user
+                // files or silently retry registration (which could revive an
+                // archived/paused project); provide an explicit repair command.
+                err = fmt.Errorf("framework installed, but Web monitoring registration failed (files preserved): %w\nRecovery: task-mecca projects add --path %q", registerErr, root)
+                break
+            }
+            fmt.Printf("Task Mecca %s installed to %s\nWeb monitoring: registered %s\n", version, filepath.Join(root, "_task_mecca"), root)
+        } else if _, manifestErr := os.Stat(filepath.Join(root, "_task_mecca", "manifest.json")); manifestErr == nil {
+            // An existing installation is not implicitly re-registered:
+            // users may have deliberately paused or archived it.
+            err = fmt.Errorf("%w\nIf this project is missing from Web, explicitly run: task-mecca projects add --path %q", err, root)
         }
 	case "migrate":
 		// Hash project-owned files before touching managed framework files.
@@ -710,7 +727,14 @@ func run(args []string) int {
         if len(positional)>1 { fmt.Fprintln(os.Stderr, "web accepts at most one action: status, restart, stop, or logs"); return 2 }
         action:=""
         if len(positional)==1 { action=strings.ToLower(positional[0]) }
-        _ = maintenance.RegisterWebProject(root)
+        // A normal Web invocation is not a project initialization or selection
+        // action. Preview and explicitly --project-scoped compatibility
+        // invocations retain their opt-in target.
+        launchRoot:=webLaunchRoot(root,projectExplicit)
+        if launchRoot!=root {
+            root=launchRoot
+            rootOption=""
+        }
         config:=webui.Config{Project:root,Root:rootOption,Host:host,Port:port,OpenBrowser:!noOpen,Version:version,InstanceID:webInstanceID,ControlToken:webControlToken}
         switch action {
         case "", "start":

@@ -211,3 +211,46 @@ func TestLegacyBootstrapNormalizesLiteralEscapedVersion(t *testing.T) {
 		t.Fatalf("from_version=%q", result.FromVersion)
 	}
 }
+
+
+func TestInitAdoptsOnlyLegacyWebBootstrapLedger(t *testing.T) {
+    project := t.TempDir()
+    target := filepath.Join(project, targetName)
+    notifications := filepath.Join(target, ".runtime", "notifications")
+    if err := os.MkdirAll(notifications, 0700); err != nil { t.Fatal(err) }
+    legacy := filepath.Join(notifications, "web_delivery.json")
+    original := []byte("{\"version\":1,\"activated_at\":\"2026-10-22T00:00:00Z\",\"entries\":{}}\n")
+    if err := os.WriteFile(legacy, original, 0600); err != nil { t.Fatal(err) }
+    if err := Init(project, "0.3.4-dev.1"); err != nil {
+        t.Fatalf("legacy Web pre-init runtime must not block first init: %v", err)
+    }
+    after, err := os.ReadFile(legacy)
+    if err != nil || string(after) != string(original) {
+        t.Fatalf("existing browser delivery history changed: %q, %v", after, err)
+    }
+    if _, err := os.Stat(filepath.Join(target, "manifest.json")); err != nil {
+        t.Fatalf("framework was not initialized: %v", err)
+    }
+    if err := Init(project, "0.3.4-dev.1"); err == nil {
+        t.Fatal("second init must not overwrite existing framework")
+    }
+}
+
+func TestInitRejectsNonBootstrapContentWithoutDataLoss(t *testing.T) {
+    for _, contents := range []string{"custom.log", ".runtime/other.json", ".runtime/notifications/custom.json"} {
+        t.Run(contents, func(t *testing.T) {
+            project := t.TempDir()
+            target := filepath.Join(project, targetName)
+            file := filepath.Join(target, contents)
+            if err := os.MkdirAll(filepath.Dir(file), 0700); err != nil { t.Fatal(err) }
+            if err := os.WriteFile(file, []byte("user data"), 0600); err != nil { t.Fatal(err) }
+            if err := Init(project, "0.3.4-dev.1"); err == nil {
+                t.Fatal("existing non-bootstrap content was overwritten")
+            }
+            after, err := os.ReadFile(file)
+            if err != nil || string(after) != "user data" {
+                t.Fatalf("init changed user data: %q %v", after, err)
+            }
+        })
+    }
+}

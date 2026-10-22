@@ -2,6 +2,17 @@
 
 All notable public releases will be documented here.
 
+## 0.3.4 - 2026-10-22 — First Project Registration and Global Web Service
+
+- **Global Web:** `task-mecca web` runs independently of the shell's current directory; managed service working directory belongs to `TASK_MECCA_HOME/web`.
+- **First-time onboarding:** Web may start before any project exists. Running `task-mecca init` later registers the project, and the existing Hub discovers it without restarting.
+- **Safe recovery:** Recognized legacy Web bootstrap files no longer block first init, while unrelated user files remain protected. A registration failure shows an explicit `projects add` repair command.
+- **Registry reliability:** Atomic writes and surfaced read failures prevent partial updates and misleading empty project lists.
+- **Validation:** Extend Go regression tests for first installation, global Web isolation, paused project safety and recovery.
+- **After upgrading:** Update/restart the Web service to activate the changed global process context. No framework instruction refresh is required.
+
+Detailed bilingual release notes: [0.3.4](release-notes/0.3.4.json).
+
 ## 0.3.3 - 2026-10-22 — Remote Web Terminal Rendering and Recovery
 
 - **Remote terminal fix:** prevent the PTY surface from collapsing when optional status rows are hidden; restore the shell prompt and cursor over Tailscale HTTPS.
