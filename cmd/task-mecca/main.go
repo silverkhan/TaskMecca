@@ -41,6 +41,14 @@ func main() {
     os.Exit(run(os.Args[1:]))
 }
 
+// webLaunchRoot resolves the managed Web's identity independently of CWD.
+// Only an explicit --project argument or a Preview-scoped session may
+// select a project at service startup.
+func webLaunchRoot(root string, explicit bool) string {
+    if explicit || webui.PreviewMode() { return root }
+    return webui.GlobalWebRoot()
+}
+
 func run(args []string) int {
     // A side-effect-free capability handshake is checked by CI before it
     // advertises that this exact PR binary can return to pinned Dev.
@@ -88,16 +96,14 @@ func run(args []string) int {
         return handoff.RunCLI(args[1:], os.Stdout, os.Stderr)
     }
     if len(args) == 0 {
-        root,err:=filepath.Abs(".")
-        if err!=nil { fmt.Fprintln(os.Stderr,err); return 2 }
-        _ = maintenance.RegisterWebProject(root)
-        state,startErr:=webui.StartService(webui.Config{Project:root,Host:"auto",Port:webui.DefaultPort,OpenBrowser:true,Version:version})
+        state,startErr:=webui.StartService(webui.Config{Project:webui.GlobalWebRoot(),Host:"auto",Port:webui.DefaultPort,OpenBrowser:true,Version:version})
         if startErr!=nil { fmt.Fprintln(os.Stderr,startErr); return 2 }
         printWebState("Task Mecca Web is running",state)
         return 0
     }
     command := args[0]
     project := "."
+    projectExplicit := false
     rootOption := ""
     jsonOutput := false
     migrationChoice := ""
@@ -128,6 +134,7 @@ func run(args []string) int {
             migrationChoice=args[i+1]; i++
         } else if args[i] == "--project" && i+1 < len(args) {
             project = args[i+1]
+            projectExplicit = true
             i++
         } else if args[i] == "--root" && i+1 < len(args) {
             rootOption = args[i+1]
@@ -720,7 +727,14 @@ func run(args []string) int {
         if len(positional)>1 { fmt.Fprintln(os.Stderr, "web accepts at most one action: status, restart, stop, or logs"); return 2 }
         action:=""
         if len(positional)==1 { action=strings.ToLower(positional[0]) }
-        _ = maintenance.RegisterWebProject(root)
+        // A normal Web invocation is not a project initialization or selection
+        // action. Preview and explicitly --project-scoped compatibility
+        // invocations retain their opt-in target.
+        launchRoot:=webLaunchRoot(root,projectExplicit)
+        if launchRoot!=root {
+            root=launchRoot
+            rootOption=""
+        }
         config:=webui.Config{Project:root,Root:rootOption,Host:host,Port:port,OpenBrowser:!noOpen,Version:version,InstanceID:webInstanceID,ControlToken:webControlToken}
         switch action {
         case "", "start":

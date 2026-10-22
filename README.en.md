@@ -32,6 +32,8 @@ irm https://raw.githubusercontent.com/silverkhan/TaskMecca/main/install.ps1 | ie
 task-mecca web
 ```
 
+The Web UI is a global service independent of your shell's current directory. Starting it does not initialize or register that directory; use `task-mecca init` from a project folder to register a project for monitoring.
+
 Open **http://127.0.0.1:18765/** in your browser. Initialize a working project in step 3.
 
 The Web UI brings together **backlog progress**, **Root/Worker sessions and recent activity**, and **execution stages and actionable warnings**. You can configure project-level **Telegram and browser notifications**, manage projects, and update Task Mecca.
