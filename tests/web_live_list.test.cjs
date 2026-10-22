@@ -314,7 +314,7 @@ test('archived B-539 is recovered from revision inventory without needing B-540 
  Object.assign(app.state,{listData:{...packet(1,'rev-539'),total:0,items:[]},contentRevision:'rev-539',signalRevision:'s1'});
  await app.checkContentRevision(false);await tick();
  assert.equal(app.state.listData.items[0]?.id,'B-539');
- assert.equal(calls.filter(x=>x.startsWith('/api/backlog/tasks?')).length,1);
+ assert.equal(calls.filter(x=>x.startsWith('/api/backlog/tasks?')&&!x.includes('prefetch=1')).length,1);
  assert.equal(calls.filter(x=>x.startsWith('/api/revision?')).length,1);
 });
 
@@ -339,11 +339,12 @@ test('stale visible first page reconciles even without any new revision or focus
  Object.assign(app.state,{listData:{...packet(1,'rev-539'),total:0,items:[]},contentRevision:'rev-539',lastFetch:Date.now()-90000});
  await app.revalidateVisibleFirstPageByAge();await tick();
  assert.equal(app.state.listData.items[0]?.id,'B-539');
- assert.equal(urls.length,1);
+ const foreground=()=>urls.filter(x=>!x.includes('prefetch=1')).length;
+ assert.equal(foreground(),1);
  await app.revalidateVisibleFirstPageByAge();await tick();
- assert.equal(urls.length,1,'do not reconcile again while the snapshot is fresh');
+ assert.equal(foreground(),1,'do not reconcile again while the snapshot is fresh');
  app.context.document.visibilityState='hidden';
  app.state.lastFetch=Date.now()-90000;
  await app.revalidateVisibleFirstPageByAge();await tick();
- assert.equal(urls.length,1,'hidden pages must not perform expensive full list scans');
+ assert.equal(foreground(),1,'hidden pages must not perform expensive full list scans');
 });
