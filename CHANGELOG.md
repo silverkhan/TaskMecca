@@ -2,6 +2,17 @@
 
 All notable public releases will be documented here.
 
+## 0.3.5 - 2026-10-22 — Safe Program Uninstall and Hook Cleanup
+
+- **Program-only removal:** `task-mecca uninstall` stops the Web service, removes the installed executable and owned macOS launchd registration while preserving all project folders and task histories.
+- **Read-only preview:** `task-mecca uninstall --dry-run [--json]` enumerates removal targets before confirmation. An interactive `uninstall` acknowledgment or explicit `--approve` is required to proceed.
+- **Hook safety:** Back up user-global Codex and Claude settings, remove only exact Task Mecca observer commands and keep other agent Hooks/settings intact.
+- **Preservation:** Keep project-local `_task_mecca` data, backlogs, lifecycle ledgers and project-local Hook files. Optional `--purge-settings` deletes only recognized global registry/channel files.
+- **Platform behavior:** On Windows a separate PowerShell helper waits for the CLI to exit before removing a SHA-256-matched executable; macOS and Linux can unlink the executable directly.
+- **Validation:** Go tests, cross-platform builds and installer checks; actual OS-specific uninstall remains an explicit user acceptance item before closing AID-229.
+
+Detailed bilingual release notes: [0.3.5](release-notes/0.3.5.json).
+
 ## 0.3.4 - 2026-10-22 — First Project Registration and Global Web Service
 
 - **Global Web:** `task-mecca web` runs independently of the shell's current directory; managed service working directory belongs to `TASK_MECCA_HOME/web`.
