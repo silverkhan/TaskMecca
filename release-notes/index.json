@@ -1,6 +1,22 @@
 {
   "releases": [
     {
+      "version": "0.3.5",
+      "date": "2026-10-22",
+      "title": {
+        "ko": "프로그램 안전 제거 및 전역 Hook 정리",
+        "en": "Safe Program Uninstall and Global Hook Cleanup"
+      },
+      "summary": {
+        "ko": "Web 서비스·실행 파일·Task Mecca 소유 전역 Hook을 안전하게 제거하는 uninstall 명령을 추가했습니다. 기본값은 모든 프로젝트와 백로그·원장·등록 정보를 보존합니다.",
+        "en": "Add a safe uninstall command for the Web service, executable and owned global agent Hooks, preserving all projects, backlogs, ledgers and registration records by default."
+      },
+      "migration": {
+        "required": false,
+        "instruction_refresh": false
+      }
+    },
+    {
       "version": "0.3.4",
       "date": "2026-10-22",
       "title": {
