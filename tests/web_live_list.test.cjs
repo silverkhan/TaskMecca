@@ -12,8 +12,8 @@ function page(fetch,{quickFetch=null}={}){
   return fetch(url,options);
  };
  const prompt={innerHTML:''},dot={style:{}},active={id:'search',selectionStart:2,selectionEnd:4,focus(){this.focused=true},setSelectionRange(a,b){this.range=[a,b]}};
- const scroll=[],context=vm.createContext({fetch:effectiveFetch,URLSearchParams,AbortController,location:{search:'?project=/demo'},navigator:{language:'ko'},queueMicrotask,requestAnimationFrame:fn=>fn(),window:{scrollX:3,scrollY:120,scrollTo:args=>scroll.push(args)},document:{activeElement:active,contains:()=>true,getElementById:()=>active,querySelector:selector=>selector==='#connectionDot'?dot:selector==='#contentUpdatePrompt'?prompt:null},localStorage:{getItem:()=>null,setItem(){},removeItem(){}}});
- vm.runInContext(source.slice(0,source.indexOf('\ntranslateChrome();'))+source.slice(source.indexOf('function preserveViewportAndFocus('),source.indexOf('\nsetInterval(()=>{',source.indexOf('function preserveViewportAndFocus(')))+`\nrender=()=>{};processTaskNotifications=payload=>(globalThis.notifications||(globalThis.notifications=[])).push(payload);globalThis.app={state,refreshList,markContentUpdate,checkContentRevision,ensureAttentionStream,updateLiveListRelativeTimes,runningSeconds,listPageCaches,invalidateListPages,listContextKey};`,context);
+ const scroll=[],context=vm.createContext({fetch:effectiveFetch,URLSearchParams,AbortController,setTimeout,clearTimeout,location:{search:'?project=/demo'},navigator:{language:'ko'},queueMicrotask,requestAnimationFrame:fn=>fn(),window:{scrollX:3,scrollY:120,scrollTo:args=>scroll.push(args),addEventListener(){}},document:{visibilityState:'visible',addEventListener(){},activeElement:active,contains:()=>true,getElementById:()=>active,querySelector:selector=>selector==='#connectionDot'?dot:selector==='#contentUpdatePrompt'?prompt:null},localStorage:{getItem:()=>null,setItem(){},removeItem(){}}});
+ vm.runInContext(source.slice(0,source.indexOf('\ntranslateChrome();'))+source.slice(source.indexOf('function preserveViewportAndFocus('),source.indexOf('\nsetInterval(()=>{',source.indexOf('function preserveViewportAndFocus(')))+source.slice(source.indexOf('let lastWakeListRefreshAt=0;'),source.indexOf('\nsetInterval(()=>{',source.indexOf('let lastWakeListRefreshAt=0;')))+`\nrender=()=>{};processTaskNotifications=payload=>(globalThis.notifications||(globalThis.notifications=[])).push(payload);globalThis.app={state,refreshList,markContentUpdate,checkContentRevision,revalidateFirstPageOnWake,ensureAttentionStream,updateLiveListRelativeTimes,runningSeconds,listPageCaches,invalidateListPages,listContextKey};`,context);
  context.app.state.view='backlog';context.app.state.listPageMode='manual';context.app.state.listPageSize=20;
  return {...context.app,prompt,scroll,active,context};
 }
@@ -225,4 +225,79 @@ test('provisional list is visible before the authoritative reconciliation finish
  assert.equal(app.state.listData.pending_reconciliation,undefined);
  assert.equal(app.state.listData.items[0].state,'blocked');
  assert.equal(app.context.notifications.length,1);
+});
+
+// Sleep/wake regression: the authoritative list must be reloaded without
+// waiting for a future SSE event, even if the revision fingerprint was missed.
+test('waking a stale first page refreshes authoritative rows, not page two or task detail',async()=>{
+ for(const pageNum of [1,2]){
+  const calls=[];
+  const app=page(url=>{calls.push(url);return Promise.resolve(reply(1,['A-9','A-1'],'rev-9'));});
+  Object.assign(app.state,{listPage:pageNum,listData:{items:[{id:'A-1'}]},lastFetch:Date.now()-60000,contentRevision:'rev-1'});
+  app.revalidateFirstPageOnWake();await tick();
+  assert.equal(calls.length,pageNum===1?1:0);
+  assert.equal(app.state.listData.items[0].id,pageNum===1?'A-9':'A-1');
+ }
+ const calls=[];
+ const app=page(url=>{calls.push(url);return Promise.resolve(reply(1,['A-9']));});
+ Object.assign(app.state,{detail:'A-1',listData:{items:[{id:'A-1'}]},lastFetch:Date.now()-60000});
+ app.revalidateFirstPageOnWake();await tick();
+ assert.equal(calls.length,0);
+});
+
+test('first page rejects late pre-sleep data after waking and keeps new response',async()=>{
+ let oldResolve;
+ const calls=[];
+ const app=page(url=>{calls.push(url);if(calls.length===1)return new Promise(resolve=>{oldResolve=resolve});return Promise.resolve(reply(1,['NEW'],'rev-2'))});
+ Object.assign(app.state,{listData:{items:[{id:'OLD'}]},lastFetch:Date.now()-60000});
+ const old=app.refreshList();
+ app.revalidateFirstPageOnWake();
+ await tick();
+ assert.equal(app.state.listData.items[0].id,'NEW');
+ oldResolve(reply(1,['OLD'],'rev-1'));await old;await tick();
+ assert.equal(app.state.listData.items[0].id,'NEW');
+});
+
+test('revision establishment does not acknowledge a newly added but unseen backlog',async()=>{
+ const calls=[];
+ const app=page(url=>{calls.push(url);return Promise.resolve(url.startsWith('/api/revision')?{ok:true,json:async()=>({revision:'rev-2',states:[{id:'A-2'}]})}:reply(1,['A-2','A-1'],'rev-2'));});
+ Object.assign(app.state,{listData:{items:[{id:'A-1'}]},contentRevision:'rev-1',signalRevision:'signal-1'});
+ await app.checkContentRevision(true);await tick();
+ assert.equal(calls.length,2);
+ assert.equal(app.state.listData.items[0].id,'A-2');
+ assert.equal(app.state.contentRevision,'rev-2');
+});
+
+test('a hung revision poll releases its single-flight gate after deadline and detects new work',async()=>{
+ let calls=0;
+ const app=page(url=>{
+  if(url.startsWith('/api/revision')) {
+   calls++;
+   if(calls===1)return new Promise(()=>{});
+   return Promise.resolve({ok:true,json:async()=>({revision:'rev-2',states:[{id:'A-2'}]})});
+  }
+  return Promise.resolve(reply(1,['A-2'],'rev-2'));
+ });
+ Object.assign(app.state,{listData:{items:[{id:'A-1'}]},contentRevision:'rev-1'});
+ const nativeTimeout=app.context.setTimeout;
+ app.context.setTimeout=(cb,ms)=>ms===20000?nativeTimeout(cb,0):nativeTimeout(cb,ms);
+ await app.checkContentRevision();
+ await app.checkContentRevision();await tick();
+ assert.equal(calls,2);
+ assert.equal(app.state.listData.items[0].id,'A-2');
+});
+
+test('a hung list reload times out, then next first-page refresh can recover',async()=>{
+ let requests=0;
+ const app=page(url=>{
+  requests++;
+  if(requests===1)return new Promise(()=>{});
+  return Promise.resolve(reply(1,['NEW'],'rev-2'));
+ });
+ const nativeTimeout=app.context.setTimeout;
+ app.context.setTimeout=(cb,ms)=>ms===60000?nativeTimeout(cb,0):nativeTimeout(cb,ms);
+ await app.refreshList();
+ await app.refreshList();await tick();
+ assert.equal(requests,2);
+ assert.equal(app.state.listData.items[0].id,'NEW');
 });
