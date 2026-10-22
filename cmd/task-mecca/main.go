@@ -254,8 +254,18 @@ func run(args []string) int {
     case "init":
         if err = install.Init(root, version); err == nil {
             _,_ = backlog.EnsureTagRegistry(root)
-            if registerErr := maintenance.RegisterProject(root); registerErr != nil { err = fmt.Errorf("framework installed; Web monitoring registration failed (framework preserved): %w", registerErr); break }
-            fmt.Printf("Task Mecca %s installed to %s\n", version, filepath.Join(root, "_task_mecca"))
+            if registerErr := maintenance.RegisterProject(root); registerErr != nil {
+                // The framework already exists at this point. Never remove user
+                // files or silently retry registration (which could revive an
+                // archived/paused project); provide an explicit repair command.
+                err = fmt.Errorf("framework installed, but Web monitoring registration failed (files preserved): %w\nRecovery: task-mecca projects add --path %q", registerErr, root)
+                break
+            }
+            fmt.Printf("Task Mecca %s installed to %s\nWeb monitoring: registered %s\n", version, filepath.Join(root, "_task_mecca"), root)
+        } else if _, manifestErr := os.Stat(filepath.Join(root, "_task_mecca", "manifest.json")); manifestErr == nil {
+            // An existing installation is not implicitly re-registered:
+            // users may have deliberately paused or archived it.
+            err = fmt.Errorf("%w\nIf this project is missing from Web, explicitly run: task-mecca projects add --path %q", err, root)
         }
 	case "migrate":
 		// Hash project-owned files before touching managed framework files.
