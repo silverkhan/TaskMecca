@@ -244,9 +244,13 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 	if err:=maintenance.ReconcileExecutionOnBoot();err!=nil {
 		return nil,fmt.Errorf("environment transition recovery requires attention: %w",err)
 	}
-	initialCtx, initialErr := webContext(project, root)
-	if initialErr != nil {
-		return nil, initialErr
+	// Global Hub boots without a project; project discovery comes from the
+	// explicit registry and is requested only after UI project selection.
+	initialCtx := context{}
+	if !isGlobalWebRoot(project) {
+		var initialErr error
+		initialCtx, initialErr = webContext(project, root)
+		if initialErr != nil { return nil, initialErr }
 	}
 	// A fresh boot identifier distinguishes each actual Web process start.
 	// The managed service control identity intentionally remains stable across
@@ -261,7 +265,7 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 	// subscription side effect. Start it even before a backlog exists; when
 	// root is empty the periodic snapshot will discover the canonical backlog
 	// as soon as Registrar creates it.
-    if !PreviewMode() {
+    if !PreviewMode() && !isGlobalWebRoot(project) {
         ensureAttentionFeed(project, monitorRoot)
         // Web can start before "task-mecca init" (the documented onboarding
         // order). Do not create _task_mecca/.runtime in an uninitialized or
@@ -277,15 +281,20 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 
 	projectFor := func(r *http.Request) string {
 		requested := strings.TrimSpace(r.URL.Query().Get("project"))
-		if requested == "" {
-			return project
+		if requested != "" && maintenance.IsRegisteredProject(requested) {
+			if abs, err := filepath.Abs(requested); err == nil { return abs }
 		}
-		if maintenance.IsRegisteredProject(requested) {
-			if abs, err := filepath.Abs(requested); err == nil {
-				return abs
+		if !isGlobalWebRoot(project) { return project }
+		// Compatibility for endpoints that have no selected project query.
+		// Never fall back to the service directory or the invoking CWD.
+		if projects, err := maintenance.ManagedProjects(); err == nil {
+			for _, item := range projects {
+				if item.Monitoring && item.Presence == "present" && item.Path != "" {
+					return item.Path
+				}
 			}
 		}
-		return project
+		return ""
 	}
 
 	writeJSON := func(w http.ResponseWriter, payload any, status int) {
@@ -1420,7 +1429,7 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 			}
 			rows = append(rows, map[string]any{"name": p.Name, "path": p.Path, "framework_version": p.FrameworkVersion, "last_seen": p.LastSeen, "counts": counts, "migration_available": p.FrameworkVersion != "" && p.FrameworkVersion != version})
 		}
-		writeJSON(w, map[string]any{"cli": maintenance.CachedVersionInfo(version), "projects": rows, "current_project": project}, 200)
+		writeJSON(w, map[string]any{"cli": maintenance.CachedVersionInfo(version), "projects": rows, "current_project": func() string { if isGlobalWebRoot(project) { return "" }; return project }()}, 200)
 	})
 
 	mux.HandleFunc("/api/upgrade-recovery", func(w http.ResponseWriter, r *http.Request) {
@@ -1775,7 +1784,7 @@ func scheduleWebRestart(result maintenance.UpgradeResult, config Config, port in
 		// preserved executable before kickstarting launchd when health fails.
 		return launchdRollbackWatchdog(exe, result.PreviousExecutable, config.InstanceID, port)
 	}
-	return detachedWebRestartWithRollback(exe, args, config.Project, result.PreviousExecutable, port)
+	return detachedWebRestartWithRollback(exe, args, GlobalWebRoot(), result.PreviousExecutable, port)
 }
 
 var autoTailscaleIPv4Provider = tailscaleIPv4
@@ -1977,10 +1986,13 @@ func Run(config Config) error {
 		}
 	}
 
-	ctx, err := webContext(config.Project, config.Root)
-	if err != nil {
-		_ = primaryListener.Close()
-		return err
+	ctx := context{}
+	if !isGlobalWebRoot(config.Project) {
+		ctx, err = webContext(config.Project, config.Root)
+		if err != nil {
+			_ = primaryListener.Close()
+			return err
+		}
 	}
 
 	server := &http.Server{Handler: handler, ReadHeaderTimeout: 5 * time.Second}
@@ -2044,7 +2056,10 @@ func Run(config Config) error {
 		fmt.Println("backlog: not initialized (Registrar creates data/backlog on first registration)")
 	}
 	fmt.Println("maintenance actions require explicit UI confirmation · Ctrl+C to stop")
-	access := backlog.AccessObservation(config.Project)
+	access := map[string]any{}
+	if !isGlobalWebRoot(config.Project) {
+		access = backlog.AccessObservation(config.Project)
+	}
 	if access["restriction_current"] == true {
 		fmt.Println("WARNING: current runtime restriction detected · subagent dispatch will remain blocked until a fresh preflight succeeds")
 	} else if access["checked_at"] != nil {
