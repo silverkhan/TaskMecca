@@ -22,7 +22,7 @@ import (
     "github.com/silverkhan/TaskMecca/internal/webui"
 )
 
-var version = "0.3.2"
+var version = "0.3.3"
 
 // A PR binary is built from its source without Dev release ldflags. Preserve
 // the version of the Dev installation it replaced for framework compatibility
