@@ -92,6 +92,12 @@ task-mecca runtime diagnose --provider codex --agent-id AGENT_UUID --json
 - Codex 세션 ID가 있다면 `runtime diagnose --provider codex --session-id ID --json`이 직접 해당 native JSONL의 `session_meta/task_started/turn_context` **건수만** 교차검증한다. 원문을 직접 검색하거나 transcript 내용을 보고에 복사하지 않는다. native started ≠ Hook observation 이면 `native_hook_observation_gap`으로 표시한다.
 - `terminal_history`를 현재 실행으로 재사용하지 않는다. 필요한 외부 동작은 native capability와 허용된 실제 Agent 도구 사용을 명시한다.
 
+### Controller 종료 전 읽기 전용 Worktree 정리 판단 (Decision P1)
+
+사용 가능한 설치판에서는 `task-mecca flow next --role controller --event final_requested --project REPO --task B-541 --into origin/dev --worktree EXACT_PATH --archive EXTERNAL_ARCHIVE --json`을 실행한다. **증거가 없는 `완료` 텍스트는 상태가 아니다.** CLI는 canonical done, Worktree Git 목록/HEAD 병합 ancestry/ignored/untracked, 외부 archive SHA, 정상 Git 제거 `removal.json`을 확인해 다음 행동을 반환한다. 기록이 없거나 오래됐다면 `EXIT_BLOCKED`로 보고하며 어떠한 파일도 수정하지 않는다. 정리 증거가 있더라도 다른 종료 검증은 계속 필요하고, 강제 git 삭제나 cherry-pick을 병합 ancestry로 간주하는 우회는 하지 않는다.
+
+기존 계획 도구와 연결: `worktree plan → preserve → verify → remove`는 별도의 명시 실행·미사용 확인을 요구한다. **blocked/retained 상태의 canonical backlog는 실제 작업 완료로 둘 수 있으나 Controller가 후속 담당·정리 사유·재개조건을 기록해야 한다.** 현 버전에서 `flow next`는 기록/exit intercept를 자동 시행하지 않는 읽기 전용 초기 단계이므로 저장·독립 복구·역할별 정식 gate는 AID-222/223 후속 구현 범위다.
+
 ## 5. Worktree/업데이트 안전 경계
 
 - `worktree plan`은 **읽기 전용**이고 `preserve`는 Git worktree 외부에 tracked/untracked/ignored payload를 SHA-256 보존한다. `verify`는 manifest와 복사본 해시를 확인한다. `remove`는 **사용자 실제 미사용 확인(`--confirm-unused`)** 및 clean·merged·non-detached·non-primary·sha 검증을 모두 만족할 때만 강제하지 않는 `git worktree remove`를 실행한다. dirty/ignored/untracked 자료가 남으면 백업 후에도 삭제하지 않는다. 관련 사용법: `task-mecca help worktree`.

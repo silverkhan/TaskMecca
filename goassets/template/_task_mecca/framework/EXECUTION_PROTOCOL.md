@@ -78,6 +78,8 @@ task-mecca lifecycle record completed <ID> <stable-event-id> /root/controller co
 5. Go/Python 배포 지침의 동기화와 현재 설치 지침 refresh를 확인한다. 사용자 수정 managed 문서는 migration backup/동의 정책을 지키고 실제 설치 sync/재읽기 evidence를 기록한다.
 6. 원본 결과·검증·핵심 요약 및 실제 lifecycle completed를 기록하고 done/archive한다. stale completed Agent를 doing 담당자로 방치하지 않는다. 전체 queue가 남아 있어도 충족된 개별 항목은 완료한다.
 7. 출처가 있는 경우 승인된 외부 원천 writeback을 단일 writer로 수행한다. write 직후 local mark 전 중단이면 원격 evidence를 조회하고 blind retry하지 않는다. 확인 불가는 external-synced=unknown과 재개조건을 남긴다. 외부 도구 부재는 canonical 완료를 되돌리지 않는다.
+8. **Decision Engine P1 (설치판 지원 시):** Controller는 Worker 산출물을 통합하고 원본 backlog done을 확인한 뒤 `task-mecca flow next --role controller --event final_requested --project REPO --task ID --into REF --worktree EXACT --archive EXTERNAL --json`으로 **실제 작업/워크트리/보존 증거**를 읽는다. `EXIT_BLOCKED`이면 정리 완료를 가장하지 않고 남은 단계와 담당자·이유·재개조건을 원본 canonical 노트 및 후속 backlog에 남긴다. 현 P1은 advisory/read-only로 모델의 final/exit를 기술적으로 인터셉트하지 않는다. `cleanup_status=removed_verified`도 다른 인계·외부 원천·미완료 Worker 확인 없이 전체 종료 승인이 아니다.
+
 8. exact worktree를 확인해 미커밋·untracked·ignored·사용자 데이터를 보존한 뒤 안전 cleanup한다. 필요한 파일과 handoff-evidence durable report는 cleanup 전에 Controller가 회수·보존·인계하고 정리 evidence를 남긴다. 원래 workspace나 canonical data를 삭제/reset하지 않는다.
 9. backlog-finalized/external-synced 및 transport/검증 근거와 잔여 상태를 각각 mark한 뒤 `handoff mark <HANDOFF_ID> --step applied --result ok --evidence <finalization-evidence> --json`으로 handoff를 마친다. Root 통지는 선택적 best-effort이며 Root ACK/wake는 필요 없다.
 

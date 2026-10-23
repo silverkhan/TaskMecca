@@ -26,6 +26,7 @@ func runHelpCLI(args []string,out,stderr io.Writer) int {
 		fmt.Fprintln(out,"  task-mecca uninstall --dry-run  Inspect program, service and owned Hook removal")
 		fmt.Fprintln(out,"  task-mecca migrate           Migrate project framework (preserve project-owned data)")
 		fmt.Fprintln(out,"  task-mecca contract          Validate, plan, register or record contract decisions")
+		fmt.Fprintln(out,"  task-mecca flow              Inspect read-only next-action decisions; Controller cleanup/exit gate")
 		fmt.Fprintln(out,"  task-mecca worktree          Inspect and explicitly preserve/verify/remove safe Git worktrees")
 		fmt.Fprintln(out,"  task-mecca protect           Snapshot, verify project data and inspect component versions")
 		fmt.Fprintln(out,"  task-mecca runtime           Observe/query/bind execution evidence")
@@ -44,6 +45,8 @@ func runHelpCLI(args []string,out,stderr io.Writer) int {
         fmt.Fprintln(out,"--purge-settings: also remove recognized global projects.json and channel metadata; never delete projects.")
         fmt.Fprintln(out,"Modified global agent Hook JSON files are backed up before exact Task Mecca commands are removed.")
         fmt.Fprintln(out,"Interactive uninstall requires typing 'uninstall'; --approve is explicit noninteractive confirmation.")
+	case "flow":
+		flowNextUsage(out)
 	case "contract":
 		contractUsage(out)
 	case "runtime":
