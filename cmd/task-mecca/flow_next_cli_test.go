@@ -18,7 +18,12 @@ func controllerFlowFixture(t *testing.T)(string,string,string,worktreePlan,strin
     if err:=os.MkdirAll(archived,0700);err!=nil{t.Fatal(err)}
     if err:=os.WriteFile(filepath.Join(archived,"000541.B-541.finished.done.md"),[]byte("# B-541 Finished\n"),0600);err!=nil{t.Fatal(err)}
     if err:=os.WriteFile(filepath.Join(original,"000542.B-542.running.doing.md"),[]byte("# B-542 Running\n"),0600);err!=nil{t.Fatal(err)}
-    return repo,worker,archive,plan,archived
+    // Canonical task files change the primary worktree's inventory, hence
+    // the preservation plan digest. Freshly re-plan after fixture setup.
+    fresh,err:=inspectWorktrees(repo,"main",200000)
+    if err!=nil{t.Fatal(err)}
+    _=plan
+    return repo,worker,archive,fresh,archived
 }
 
 func flowReport(t *testing.T,repo,task,worker,archive string)flowNextDecision {
@@ -100,6 +105,12 @@ func TestControllerFlowBlocksCherryPickAndIgnoredFilesDespiteCleanGitStatus(t *t
         "-c","commit.gpgsign=false","commit","-m","worker feature")
     workerSHA,err:=gitReadOnly(worker,"rev-parse","HEAD")
     if err!=nil{t.Fatal(err)}
+    // Diverge integration history before cherry-picking the worker commit.
+    // Without this, same parent/author/time can produce an identical SHA.
+    if err:=os.WriteFile(filepath.Join(repo,"integration-only.txt"),[]byte("main diverged\\n"),0600);err!=nil{t.Fatal(err)}
+    gitFixtureCommand(t,repo,"add","integration-only.txt")
+    gitFixtureCommand(t,repo,"-c","user.name=Fixture","-c","user.email=fixture@example.invalid",
+        "-c","commit.gpgsign=false","commit","-m","integration branch advanced")
     gitFixtureCommand(t,repo,"-c","user.name=Fixture","-c","user.email=fixture@example.invalid",
         "-c","commit.gpgsign=false","cherry-pick",strings.TrimSpace(string(workerSHA)))
     // Shared exclude file applies to all worktrees, and keeps the ordinary
