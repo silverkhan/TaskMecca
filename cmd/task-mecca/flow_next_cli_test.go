@@ -53,6 +53,10 @@ func TestControllerFlowBlocksRetainedPreservedB541BeforeB542Completion(t *testin
     if initial.Decision!="EXIT_BLOCKED"||!slices.ContainsFunc(initial.Reasons,func(s string)bool{return strings.HasPrefix(s,"preservation_manifest_unavailable")}) {
         t.Fatalf("missing preservation must block: %+v",initial)
     }
+    // The live Decision query can read additional canonical runtime
+    // observations; always obtain a fresh plan immediately before preserve.
+    plan,err:=inspectWorktrees(repo,"main",200000)
+    if err!=nil{t.Fatal(err)}
     args:=[]string{"--project",repo,"--into","main","--target",worker,
         "--archive",archive,"--expect-plan",plan.PlanDigest,"--approve","--json"}
     code,preserved,errText:=runCleanupTest(t,append([]string{"preserve"},args...)...)
