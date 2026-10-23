@@ -181,9 +181,12 @@ func evaluateControllerCleanup(project,task,into,target,archive string) flowNext
     }
     result.CleanupStatus="removed_verified"
     result.EvidenceQuality="git_absent_plus_manifest_and_receipt"
-    result.Decision="EXIT_ALLOWED"
-    result.ExitAllowed=true
-    result.NextAction="Worktree cleanup verified; Controller may now check other task, handoff and external-sync exit gates."
+    // Cleanup is only one finalization gate. Handoff, external writeback,
+    // active workers and any unrelated retained worktree still require review.
+    // Never grant global exit permission based on a single cleanup receipt.
+    result.Decision="CONTINUE"
+    result.ExitAllowed=false
+    result.NextAction="Worktree cleanup verified. Check handoff applied, external sync, live Worker and remaining cleanup queue before Controller exit."
     return result
 }
 
