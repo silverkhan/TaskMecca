@@ -2103,6 +2103,7 @@ select.tm-combo-native{position:absolute!important;width:1px!important;height:1p
 }
 
 /* Compact backlog header: status is the sole status selector; list search takes remaining width. */
+.backlog-list-controls.backlog-compact-toolbar{padding:0;border:0;border-radius:0;background:transparent;margin:0 0 12px}
 .backlog-compact-header{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 8px;min-width:0}
 .backlog-compact-title{display:flex;align-items:center;gap:7px;white-space:nowrap;font-size:13px}
 .backlog-crumb{color:var(--muted)}
