@@ -2130,3 +2130,7 @@ select.tm-combo-native{position:absolute!important;width:1px!important;height:1p
 /* Keep compact list tool labels on one line at every desktop width. */
 .backlog-compact-toolbar .control-group label{white-space:nowrap;flex-wrap:nowrap;flex-shrink:0}
 .backlog-compact-toolbar .control-group label select{flex-shrink:0}
+
+/* Equal-height controls in the compact backlog toolbar. */
+.backlog-compact-toolbar .control-group select{height:34px;min-height:34px;box-sizing:border-box;vertical-align:middle}
+.backlog-compact-toolbar .control-group label{align-items:center}
