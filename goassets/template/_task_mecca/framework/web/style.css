@@ -2101,3 +2101,27 @@ select.tm-combo-native{position:absolute!important;width:1px!important;height:1p
  .preview-identity-banner{margin:8px 10px;padding:11px;align-items:flex-start}
  .preview-identity-actions{width:100%}
 }
+
+/* Compact backlog header: status is the sole status selector; list search takes remaining width. */
+.backlog-compact-header{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 8px;min-width:0}
+.backlog-compact-title{display:flex;align-items:center;gap:7px;white-space:nowrap;font-size:13px}
+.backlog-crumb{color:var(--muted)}
+.backlog-compact-header>.backlog-picker{display:flex;align-items:center;flex:0 0 auto;height:34px;max-width:185px;min-width:0}
+.backlog-compact-header>.backlog-picker>span:not(.tm-combo){display:none}
+.backlog-compact-header>.backlog-picker select{width:100%;max-width:185px;min-width:0;text-overflow:ellipsis}
+.backlog-compact-header .status-filter-wrap{margin:0;gap:0;flex:0 1 auto}
+.backlog-compact-header .status-filter-wrap>.filter-label{display:none}
+.backlog-compact-header .status-filter-bar{gap:4px}
+.backlog-compact-header .status-filter-btn{height:30px;padding:0 8px;gap:4px}
+.backlog-compact-header .tag-filter-wrap{margin:0;gap:0}
+.backlog-compact-header .tag-filter-wrap>.filter-label{display:none}
+.backlog-compact-header .tag-filter-actions{gap:4px}
+.backlog-attention{margin-left:auto;font-size:11px;color:var(--muted);white-space:nowrap}
+.backlog-compact-toolbar{display:flex;align-items:center;gap:10px;min-width:0;margin:0 0 12px}
+.backlog-compact-toolbar .backlog-list-tools{flex:1 1 180px;min-width:100px}
+.backlog-compact-toolbar .backlog-list-tools .search-wrap{height:34px;min-width:0;width:100%}
+.backlog-compact-toolbar .list-controls{display:flex;flex:0 0 auto;align-items:center;gap:10px;margin:0;min-width:0}
+.backlog-compact-toolbar .control-group{gap:8px;flex-wrap:nowrap}
+.backlog-compact-toolbar .pager{gap:6px;white-space:nowrap}
+@media(max-width:850px){.backlog-compact-toolbar{flex-wrap:wrap}.backlog-compact-toolbar .list-controls{flex:1 1 auto;justify-content:space-between}.backlog-compact-header>.backlog-picker{max-width:160px}}
+@media(max-width:680px){.backlog-compact-toolbar .backlog-list-tools{flex:1 1 100%;width:100%}.backlog-compact-toolbar .list-controls{flex-wrap:wrap}.backlog-compact-header>.backlog-picker{display:flex}.backlog-compact-header .status-filter-bar{flex-wrap:wrap}.backlog-compact-toolbar .control-group select,.backlog-compact-toolbar .pager button{min-height:34px}}
