@@ -2126,3 +2126,7 @@ select.tm-combo-native{position:absolute!important;width:1px!important;height:1p
 .backlog-compact-toolbar .pager{gap:6px;white-space:nowrap}
 @media(max-width:850px){.backlog-compact-toolbar{flex-wrap:wrap}.backlog-compact-toolbar .list-controls{flex:1 1 auto;justify-content:space-between}.backlog-compact-header>.backlog-picker{max-width:160px}}
 @media(max-width:680px){.backlog-compact-toolbar .backlog-list-tools{flex:1 1 100%;width:100%}.backlog-compact-toolbar .list-controls{flex-wrap:wrap}.backlog-compact-header>.backlog-picker{display:flex}.backlog-compact-header .status-filter-bar{flex-wrap:wrap}.backlog-compact-toolbar .control-group select,.backlog-compact-toolbar .pager button{min-height:34px}}
+
+/* Keep compact list tool labels on one line at every desktop width. */
+.backlog-compact-toolbar .control-group label{white-space:nowrap;flex-wrap:nowrap;flex-shrink:0}
+.backlog-compact-toolbar .control-group label select{flex-shrink:0}
