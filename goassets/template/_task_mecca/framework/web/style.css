@@ -2134,3 +2134,16 @@ select.tm-combo-native{position:absolute!important;width:1px!important;height:1p
 /* Equal-height controls in the compact backlog toolbar. */
 .backlog-compact-toolbar .control-group select{height:34px;min-height:34px;box-sizing:border-box;vertical-align:middle}
 .backlog-compact-toolbar .control-group label{align-items:center}
+
+/* The visible themed select is .tm-combo-trigger, not the hidden native select. */
+.backlog-compact-toolbar .control-group .tm-combo-trigger{
+  height:34px;
+  min-height:34px;
+  box-sizing:border-box;
+  display:flex;
+  align-items:center;
+  padding-top:0;
+  padding-bottom:0;
+  line-height:1.2;
+}
+.backlog-compact-toolbar .control-group .tm-combo{align-self:center}
