@@ -391,7 +391,11 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 				continue
 			}
 			projectInfo["framework_version"] = p.FrameworkVersion
-			projectInfo["migration_available"] = p.FrameworkVersion != "" && p.FrameworkVersion != version
+			if p.FrameworkVersion != "" {
+                needed,err:=install.FrameworkChangesRequired(activeProject)
+                // Avoid claiming an installation is current when its manifest cannot be read.
+                projectInfo["migration_available"] = err != nil || needed
+            }
 			break
 		}
 		writeJSON(w, map[string]any{"cli": info, "project": projectInfo}, 200)
