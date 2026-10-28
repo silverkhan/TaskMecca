@@ -2147,3 +2147,10 @@ select.tm-combo-native{position:absolute!important;width:1px!important;height:1p
   line-height:1.2;
 }
 .backlog-compact-toolbar .control-group .tm-combo{align-self:center}
+
+/* Declarative multi-worker roster on a backlog detail, never a runtime-state surrogate. */
+.collaboration-section .collaboration-scroll{overflow-x:auto}
+.collaboration-section table{border-collapse:collapse;width:100%;min-width:520px;font-size:12px}
+.collaboration-section th,.collaboration-section td{text-align:left;vertical-align:top;padding:8px 10px;border-bottom:1px solid var(--border);overflow-wrap:anywhere}
+.collaboration-section th{color:var(--muted);font-weight:650;white-space:nowrap}
+.collaboration-section .collaboration-note{margin:8px 0 0;color:var(--muted);font-size:11px}
