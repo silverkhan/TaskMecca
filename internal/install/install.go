@@ -608,3 +608,31 @@ func MigrateWithPlan(project, version, choice, expectedPlan string) (MigrationRe
 	result.InstructionRefreshRequired = len(changedInstructions) > 0
 	return result, nil
 }
+
+
+// FrameworkChangesRequired reports changes to managed content, not VERSION-only
+// metadata churn. Errors are returned to callers rather than treated as "no work".
+func FrameworkChangesRequired(project string) (bool, error) {
+    target := filepath.Join(project, targetName)
+    raw, err := os.ReadFile(filepath.Join(target, "manifest.json"))
+    if errors.Is(err, os.ErrNotExist) { return true, nil }
+    if err != nil { return false, err }
+    var previous manifest
+    if err := json.Unmarshal(raw, &previous); err != nil { return false, err }
+    if previous.Managed == nil { return false, errors.New("invalid Task Mecca manifest") }
+    files, err := bundled()
+    if err != nil { return false, err }
+    for path, item := range previous.Managed {
+        if !managedPath(path) { return false, fmt.Errorf("invalid managed path: %s",path) }
+        if path == "VERSION" { continue }
+        incoming, exists := files[path]
+        if !exists || item.BaselineSHA256 != hash(incoming) { return true, nil }
+        if err := safeTargetPath(target, path); err != nil { return false, err }
+        if _, err := os.Lstat(filepath.Join(target, filepath.FromSlash(path))); errors.Is(err,os.ErrNotExist) { return true,nil } else if err!=nil {return false,err}
+    }
+    for path := range files {
+        if path == "VERSION" { continue }
+        if _, ok := previous.Managed[path]; !ok { return true, nil }
+    }
+    return false,nil
+}
