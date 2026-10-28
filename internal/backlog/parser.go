@@ -239,6 +239,27 @@ func documentModel(text string,fields map[string]string) map[string]any {
     legacyDescription,legacySummary:=cleanedSemanticSection(fields["설명"])
     if kind!="defined" { scopeIn=""; scopeOut="" }
 
+    resultSummary:=map[string]string{}
+    // Only explicitly authored key outcomes are presented as accepted facts.
+    // Do not derive acceptance from technical logs or a done filename.
+    for _, line := range strings.Split(sections["핵심 결과"],"\n") {
+        line=strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(line),"- "))
+        for key, names:=range map[string][]string{
+            "verdict":{"판정","Verdict"},
+            "achievement_1":{"성과1","Achievement 1"},
+            "achievement_2":{"성과2","Achievement 2"},
+            "achievement_3":{"성과3","Achievement 3"},
+            "outstanding":{"남은 사항","Outstanding"},
+            "user_action":{"사용자 조치","User action"},
+        } {
+            for _,name:=range names {
+                prefix:=name+":"
+                if strings.HasPrefix(strings.ToLower(line),strings.ToLower(prefix)) {
+                    resultSummary[key]=strings.TrimSpace(line[len(prefix):])
+                }
+            }
+        }
+    }
     summary:=humanSummary(sections["핵심 요약"])
     sectionSummaries:=map[string]string{
         "task_definition":goalSummary,
@@ -255,6 +276,7 @@ func documentModel(text string,fields map[string]string) map[string]any {
         "contract_kind":kind,
         "sections":sections,
         "summary":summary,
+        "result_summary":resultSummary,
         "summary_present":strings.TrimSpace(sections["핵심 요약"])!="",
         "section_summaries":sectionSummaries,
         "requirements":map[string]any{
