@@ -3,6 +3,7 @@ package maintenance
 import (
     "crypto/sha256"
     "encoding/hex"
+    "errors"
     "fmt"
     "net/http"
     "net/http/httptest"
@@ -97,5 +98,26 @@ func TestRollingReleaseRejectsChecksumFromDifferentGeneration(t *testing.T){
     _,err=fetchReleaseBinaryWithProgress(server.URL,nil,"0.3.1-dev.32")
     if err==nil||!strings.Contains(err.Error(),"SHA-256 verification failed"){
         t.Fatalf("mixed artifact generation not rejected: %v",err)
+    }
+}
+
+func TestRollingReleaseChangedTypedError(t *testing.T) {
+    asset,err:=assetName()
+    if err!=nil {t.Skipf("unsupported platform: %v",err)}
+    binary:=[]byte("old release")
+    hash:=sha256.Sum256(binary)
+    server:=httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter,r *http.Request){
+        switch {
+        case strings.HasSuffix(r.URL.Path,"/"+asset):_,_=w.Write(binary)
+        case strings.HasSuffix(r.URL.Path,"/SHA256SUMS.txt"):fmt.Fprintf(w,"%s  %s\n",hex.EncodeToString(hash[:]),asset)
+        case strings.HasSuffix(r.URL.Path,"/VERSION.txt"):fmt.Fprint(w,"0.3.6-dev.10")
+        default:http.Error(w,"not found",404)
+        }
+    }))
+    defer server.Close()
+    _,err=fetchReleaseBinaryWithProgress(server.URL,nil,"0.3.6-dev.9")
+    var moved *RollingReleaseChangedError
+    if !errors.As(err,&moved)||moved.Expected!="0.3.6-dev.9"||moved.Actual!="0.3.6-dev.10" {
+        t.Fatalf("expected typed release advance, got %#v",err)
     }
 }
