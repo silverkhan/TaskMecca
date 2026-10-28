@@ -5552,6 +5552,39 @@ function detailLifecycleBody(task) {
   }).join('')}</div>`:task.content_only?'':`<p class="summary">${esc(t('noLifecycle'))}</p>`}`;
   return lifecycleBody;
 }
+// Read-only collaborative assignment presentation. The Markdown remains authoritative.
+// No runtime state is inferred from this roster; execution is shown in Lifecycle.
+function backlogWorkerRoster(raw) {
+  const source=String(raw||'').replace(/\r\n?/g,'\n');
+  const lines=source.split('\n');
+  let start=-1, level=0;
+  for(let i=0;i<lines.length;i++){
+    const m=lines[i].match(/^(#{2,4})\s+(작업 참여자|협업 참여자|Worker Assignments)\s*$/i);
+    if(m){start=i+1;level=m[1].length;break}
+  }
+  if(start<0)return [];
+  const rows=[];
+  for(let i=start;i<lines.length;i++){
+    if(new RegExp('^#{1,'+level+'}\\s+').test(lines[i]))break;
+    const line=lines[i].trim();
+    if(!line.startsWith('|'))continue;
+    const cells=line.replace(/^\||\|$/g,'').split('|').map(v=>v.trim().replace(/^`|`$/g,''));
+    if(cells.length<3 || /^:?-{3,}:?$/.test(cells[0]))continue;
+    if(/^(worker|에이전트|참여자)$/i.test(cells[0]))continue;
+    const [agent,role,scope,sourceOfAssignment='']=cells;
+    if(!agent||!role||!scope)continue;
+    rows.push({agent,role,scope,source:sourceOfAssignment});
+  }
+  return rows;
+}
+function backlogWorkerRosterSection(task) {
+  const workers=backlogWorkerRoster(task.raw_markdown);
+  if(!workers.length)return '';
+  const cells=workers.map(w=>`<tr><td><strong>${esc(w.agent)}</strong></td><td>${esc(w.role)}</td><td>${esc(w.scope)}</td><td>${esc(w.source||'-')}</td></tr>`).join('');
+  const title=state.language==='ko'?'작업 참여자':'Worker assignments';
+  const heads=state.language==='ko'?['Worker','역할','담당 범위','배정 경위']:['Worker','Role','Scope','Assignment origin'];
+  return `<section class="section detail-section collaboration-section" id="collaboration" data-toc-label="${esc(title)}"><h2>${esc(title)}</h2><div class="collaboration-scroll"><table><thead><tr>${heads.map(h=>`<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${cells}</tbody></table></div><p class="collaboration-note">${esc(state.language==='ko'?'참여 역할은 백로그에 선언된 계획이며, 실제 착수·완료는 Lifecycle에서 확인합니다.':'Roster shows declared roles; consult Lifecycle for observed execution.')}</p></section>`;
+}
 function detailView(task) {
   const act=task.activity||{}, lc=task.lifecycle||{}, reason=task.attention_reason||null, warn=Boolean(reason)||['quiet','stale','worker_missing'].includes(act.health), events=lc.events||[];
   const hs=humanSummary(task);
@@ -5574,7 +5607,7 @@ function detailView(task) {
   const rawToggle=`<button id="rawToggle" class="raw-toggle ${state.raw?'active':''}">${esc(state.raw?t('rendered'):t('rawMarkdown'))}</button>`;
   const detailHead=`<div class="detail-head"><div class="detail-head-top"><div class="detail-id">${esc(task.id)}</div>${rawToggle}</div><h1>${esc(titleOf(task))}</h1><div class="detail-status"><span class="status ${esc(task.state)}">${esc(stateLabel(task.state))}</span>${task.agent?`<span class="badge">${esc(task.agent)}</span>`:''}<span class="badge">${esc(task.document?.schema||'legacy')}</span>${task.archive_month?`<span class="badge">archive/${esc(task.archive_month)}</span>`:''}</div>${task.source?.label?`<div class="detail-source-row"><span>${esc(t('source'))}</span>${sourceLink(task.source)}</div>`:''}${(task.tags||[]).length?`<div class="detail-tag-row">${(task.tags||[]).map(tag=>tagChip(tag,true)).join('')}</div>`:''}</div>`;
   const rawPanel=`<section class="section raw-markdown-view"><h2>${esc(t('rawMarkdown'))}</h2><pre class="raw">${esc(task.raw_markdown||'')}</pre></section>`;
-  const rendered=`${humanSummaryCard(task)}${lifecycle}${related}${operations}${passiveAlert}${contractSections(task)}${progress}${verification}`;
+  const rendered=`${humanSummaryCard(task)}${backlogWorkerRosterSection(task)}${lifecycle}${related}${operations}${passiveAlert}${contractSections(task)}${progress}${verification}`;
   const body=`<div class="detail"><button class="back" id="backBtn">${esc(t('backToBacklog'))}</button>${detailHead}${state.raw?rawPanel:rendered}</div>`;
   return `<div class="detail-layout ${state.raw?'raw-mode':''}">${body}${state.raw?'':detailToc()}</div>`;
 }
