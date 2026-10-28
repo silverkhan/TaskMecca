@@ -421,10 +421,10 @@ func frameworkSyncCandidates(currentVersion,targetVersion,targetChannel string) 
                 if !needed { continue }
             } // On read errors retain the migration offer rather than hiding needed repair.
         } else if framework==targetVersion { continue }
-        include:=false
-        if targetChannel==stableChannel {
+        include:=targetVersion==currentVersion
+        if targetVersion!=currentVersion && targetChannel==stableChannel {
             include=strings.Contains(strings.ToLower(framework),"-dev.")
-        } else if targetChannel==devChannel {
+        } else if targetVersion!=currentVersion && targetChannel==devChannel {
             include=framework==currentVersion || !strings.Contains(strings.ToLower(framework),"-dev.")
         }
         if !include { continue }
