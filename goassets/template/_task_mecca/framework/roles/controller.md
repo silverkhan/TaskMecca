@@ -35,6 +35,18 @@ ready/idle/완료를 판단하지 않는다.
 active Full Access preflight를 자동 재실행**한다. fresh probe가 `full`이 아니면 dispatch를 중단하고 그때만 사용자에게 권한
 조치를 요청한다. `doing + Agent` claim은 fresh 권한 확인과 exact task 재확인 뒤, 실제 dispatch 직전에만 기록한다.
 
+## Sub-Controller를 활용한 병렬 검수 (Dev 단계)
+
+독립된 신규/완료 업무가 2~3건만 겹쳐도 Main Controller가 모든 보고를 직접 재읽는 병목이 생길 수 있다. **Main이 최종 수용·canonical 단일 writer**라는 불변조건은 유지하면서 `roles/sub-controller.md`에 정의한 읽기·검수 업무만 제한적으로 위임한다.
+
+1. `coordinate --json`, 현재 native agent 목록, 실제 completion handoff, 원본 수용 기준을 **fresh** 조회해 대기 중인 독립 검수 건수를 확인한다. 원장 기록이나 화면 추정만으로 완료 신원을 단정하지 않는다.
+2. 대기 검수 2건 이상이면서 구체적으로 병렬 처리 이점이 있고 native subagent를 지원하는 경우, `task-mecca subcontroller decide`에 확인한 사실을 JSON으로 전달하여 `propose_delegation` / `handle_directly` / `escalate` 판정을 얻는다. 이 CLI는 **판단 보조**일 뿐 허가나 spawn을 수행하지 않는다.
+3. 위임 시 백로그 한 건, 계약 fingerprint, exact runtime/attempt, 파일 범위, 검수 기준, 수명/종료 조건, Main 보고 대상을 명시한다. 새로운 Sub-Controller를 생성하기 전 기존 유휴 세션의 안전한 재사용을 우선 검토하며, 생성 비용과 native concurrency 제한을 확인한다. 임의 문자열을 실제 runtime ID로 취급하지 않는다.
+4. Sub-Controller는 코드·테스트·산출물 및 acceptance evidence만 검수하고 **원장·Git 통합·완료 처리·승인 기록은 하지 않는다**. 보고를 받으면 Main이 canonical 계약 및 근거를 재확인한 뒤 기존 완료 절차로 최종 수용한다.
+5. 검증 결함·작업 겹침·신원 불명·세션 종료가 확인되면 즉시 Main으로 이관한다. provider에서 안전한 parallel spawn/handoff가 안 된다면 기존 Main-only 검수 경로를 유지한다.
+
+**아직 자동 pool·atomic lease·Sub의 실행 배정·자동 생성/회수는 제공되지 않는다.** 확인되지 않은 기능을 자동화 완료로 보고하지 않는다. 실제 Dev 사용에서 1/2/3건에 대한 배정/검수 대기 시간과 Main 작업량을 기록한다.
+
 ## 배분
 
 [Assignment checklist](../EXECUTION_PROTOCOL.md#assignment-checklist)를 한 절차로 실행한다. fresh preflight → canonical inspect → identity/scope → doing/Agent/변경범위 → `task-mecca runtime assign` 및 lifecycle assigned → 실제 dispatch → `task-mecca runtime bind-assignment` → 원본 post-inspect 순서를 지킨다. 실패 전 dispatch 중단과 실패 후 복구 기록을 구분한다. 실제 Worker started를 Controller가 기록하고 가짜 착수·attempt를 만들지 않는다.
