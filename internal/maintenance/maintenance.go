@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/silverkhan/TaskMecca/internal/projectguard"
+    "github.com/silverkhan/TaskMecca/internal/install"
 )
 
 const (
@@ -412,7 +413,14 @@ func frameworkSyncCandidates(currentVersion,targetVersion,targetChannel string) 
     candidates:=[]FrameworkSyncCandidate{}
     for _,project:=range ListProjects() {
         framework:=normalizeVersion(project.FrameworkVersion)
-        if framework=="" || framework==targetVersion { continue }
+        if framework=="" { continue }
+        // Installed-bundle comparison is authoritative only for this running version.
+        if targetVersion==currentVersion {
+            needed,err:=install.FrameworkChangesRequired(project.Path)
+            if err==nil {
+                if !needed { continue }
+            } // On read errors retain the migration offer rather than hiding needed repair.
+        } else if framework==targetVersion { continue }
         include:=false
         if targetChannel==stableChannel {
             include=strings.Contains(strings.ToLower(framework),"-dev.")
