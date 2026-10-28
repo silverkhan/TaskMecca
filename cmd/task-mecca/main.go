@@ -19,6 +19,7 @@ import (
     "github.com/silverkhan/TaskMecca/internal/maintenance"
     "github.com/silverkhan/TaskMecca/internal/notify"
     "github.com/silverkhan/TaskMecca/internal/runtimeobs"
+    "github.com/silverkhan/TaskMecca/internal/subcontroller"
     "github.com/silverkhan/TaskMecca/internal/webui"
 )
 
@@ -60,6 +61,17 @@ func run(args []string) int {
         if args[0]=="help" { return runHelpCLI(args[1:],os.Stdout,os.Stderr) }
         if len(args)!=1 { fmt.Fprintln(os.Stderr,"use task-mecca help COMMAND"); return 2 }
         return runHelpCLI(nil,os.Stdout,os.Stderr)
+    }
+    if len(args)>1 && args[0]=="subcontroller" && args[1]=="decide" {
+        var snapshot subcontroller.Snapshot
+        if err:=json.NewDecoder(io.LimitReader(os.Stdin,1<<20)).Decode(&snapshot);err!=nil {
+            fmt.Fprintln(os.Stderr,"subcontroller decide: invalid JSON:",err)
+            return 2
+        }
+        decision,err:=subcontroller.Decide(snapshot)
+        if err!=nil {fmt.Fprintln(os.Stderr,err);return 2}
+        if err:=json.NewEncoder(os.Stdout).Encode(decision);err!=nil {fmt.Fprintln(os.Stderr,err);return 2}
+        return 0
     }
     if len(args)>0 && args[0]=="flow" { return runAgentJSON(args[1:],func(out,err io.Writer)int{return runFlowNextCLI(args[1:],out,err)},os.Stdout,os.Stderr) }
     if len(args)>0 && args[0]=="uninstall" { return runUninstallCLI(args[1:],os.Stdin,os.Stdout,os.Stderr) }
