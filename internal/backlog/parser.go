@@ -239,7 +239,7 @@ func documentModel(text string,fields map[string]string) map[string]any {
     legacyDescription,legacySummary:=cleanedSemanticSection(fields["설명"])
     if kind!="defined" { scopeIn=""; scopeOut="" }
 
-    resultSummary:=map[string]string{}
+    keyOutcome:=map[string]string{}
     // Only explicitly authored key outcomes are presented as accepted facts.
     // Do not derive acceptance from technical logs or a done filename.
     for _, line := range strings.Split(sections["핵심 결과"],"\n") {
@@ -255,7 +255,7 @@ func documentModel(text string,fields map[string]string) map[string]any {
             for _,name:=range names {
                 prefix:=name+":"
                 if strings.HasPrefix(strings.ToLower(line),strings.ToLower(prefix)) {
-                    resultSummary[key]=strings.TrimSpace(line[len(prefix):])
+                    keyOutcome[key]=strings.TrimSpace(line[len(prefix):])
                 }
             }
         }
@@ -276,7 +276,7 @@ func documentModel(text string,fields map[string]string) map[string]any {
         "contract_kind":kind,
         "sections":sections,
         "summary":summary,
-        "result_summary":resultSummary,
+        "result_summary":keyOutcome,
         "summary_present":strings.TrimSpace(sections["핵심 요약"])!="",
         "section_summaries":sectionSummaries,
         "requirements":map[string]any{
