@@ -1279,6 +1279,26 @@ async function viewedTaskMarkdownChanged(project,backlog,id,displayedMarkdown) {
   return String(body.raw_markdown||'')!==String(displayedMarkdown||'');
 }
 
+function taskTimingNow(){return typeof performance!=='undefined'&&performance.now?performance.now():Date.now();}
+function recordTaskTiming(phase,url,started,response) {
+  const end=taskTimingNow(),serverTiming=response?.headers?.get?.('Server-Timing')||'';
+  const resourceURL=typeof URL!=='undefined'&&typeof location!=='undefined'&&location.href?new URL(url,location.href).href:url;
+  const entries=typeof performance!=='undefined'?performance.getEntriesByName?.(resourceURL)||[]:[];
+  const resource=entries[entries.length-1];
+  const timing={phase,request_url:url,route:typeof location!=='undefined'&&location.hostname?.endsWith('.ts.net')?'tailscale':typeof location!=='undefined'&&['localhost','127.0.0.1','::1'].includes(location.hostname)?'localhost':'other',
+    at:new Date().toISOString(),browser_ms:end-started,ttfb_ms:resource&&resource.responseStart?resource.responseStart-resource.requestStart:null,transfer_ms:resource&&resource.responseEnd?resource.responseEnd-resource.responseStart:null,server_timing:serverTiming};
+  state.taskLoadTimings=[...(state.taskLoadTimings||[]),timing].slice(-50);
+  if(typeof performance!=='undefined')try{performance.measure('task-mecca:'+phase,{start:started,end});}catch(_){}
+  return timing;
+}
+function lifecycleSnapshotNotice(task){
+  const snapshot=task.snapshot||{},trust=snapshot.trust;
+  const retry=`<button id="lifecycleRetryBtn" class="action-btn secondary">${esc(state.language==='ko'?'다시 확인':'Retry')}</button>`;
+  if(state.detailLifecycleError||trust==='error')return `<div class="lifecycle-load-error" role="alert"><span>${esc(state.language==='ko'?'최신 라이프사이클을 확인하지 못했습니다. 이전 확인 결과를 유지합니다.':'Could not verify the latest lifecycle. Showing the previous snapshot.')}</span>${retry}</div>`;
+  if(trust==='pending')return `<p class="summary" role="status">${esc(state.language==='ko'?'라이프사이클 근거를 확인하고 있습니다.':'Checking lifecycle evidence.')}</p>`;
+  if(trust==='stale')return `<div class="timing-note warning" role="status"><span>${esc(state.language==='ko'?'이전 확인 결과입니다. 최신 상태 확인이 필요합니다.':'This is an earlier snapshot. Check again for the latest state.')}</span>${retry}</div>`;
+  return '';
+}
 function lifecycleVisualFingerprint(value) {
   const lifecycle=value||{};
   const events=(lifecycle.events||[]).map(event=>{
@@ -1292,28 +1312,42 @@ function lifecycleVisualFingerprint(value) {
     timing_incomplete:Boolean(lifecycle.timing_incomplete)});
 }
 
-let viewedLifecycleLastFetchAt=0;
-async function refreshViewedTaskLifecycle(project,backlog,id) {
+let viewedLifecycleLastFetchAt=0,lifecycleSnapshotRetrySequence=0,viewedLifecycleRequestSequence=0;
+function scheduleLifecycleSnapshotCheck(project,backlog,id,budget=5){
+  if(budget<=0||typeof setTimeout!=='function')return;
+  const sequence=++lifecycleSnapshotRetrySequence;
+  setTimeout(()=>{
+    if(sequence!==lifecycleSnapshotRetrySequence||state.view!=='backlog'||state.project!==project||state.backlog!==backlog||state.detail!==id||state.detailTask?.content_only)return;
+    refreshViewedTaskLifecycle(project,backlog,id,{force:true,retryBudget:budget-1}).catch(()=>{});
+  },1200);
+}
+async function refreshViewedTaskLifecycle(project,backlog,id,options={}) {
   if(state.view!=='backlog'||state.detail!==id||state.project!==project||
     state.backlog!==backlog||!state.detailTask||state.detailTask.content_only)return false;
   if(typeof document!=='undefined'&&document.visibilityState==='hidden')return false;
   const now=Date.now();
-  if(now-viewedLifecycleLastFetchAt<10000)return false;
+  if(!options.force&&now-viewedLifecycleLastFetchAt<10000)return false;
   viewedLifecycleLastFetchAt=now;
   const old=state.detailTask;
   const params=new URLSearchParams({project,projection:'lifecycle'});
   if(backlog)params.set('backlog',backlog);
-  const response=await fetch('/api/tasks/'+encodeURIComponent(id)+'?'+params.toString(),{cache:'no-store'});
-  if(!response.ok)throw new Error('Could not load lifecycle projection');
-  const payload=await response.json();
-  if(state.view!=='backlog'||state.detail!==id||state.project!==project||
+  const timingStarted=taskTimingNow(),timingURL='/api/tasks/'+encodeURIComponent(id)+'?'+params.toString();
+  const requestSequence=++viewedLifecycleRequestSequence;
+  let response,payload;
+  try {response=await fetchWithDeadline(timingURL,{cache:'no-store'});if(!response.ok)throw new Error('Could not load lifecycle projection');payload=await response.json();}
+  catch(error){if(requestSequence===viewedLifecycleRequestSequence&&state.detail===id&&state.project===project&&state.backlog===backlog){state.detailLifecycleError=String(error?.message||error);refreshVisibleLifecycleSection();}throw error;}
+  if(requestSequence!==viewedLifecycleRequestSequence||state.view!=='backlog'||state.detail!==id||state.project!==project||
     state.backlog!==backlog||!state.detailTask||
     state.detailTask.raw_markdown!==old.raw_markdown)return false;
   const before=lifecycleVisualFingerprint(state.detailTask.lifecycle);
   const after=lifecycleVisualFingerprint(payload.lifecycle);
-  const newer={...state.detailTask,lifecycle:payload.lifecycle||{},activity:payload.activity||{}};
-  state.detailTask=newer;
-  if(before===after)return true;
+  const oldNotice=JSON.stringify({trust:state.detailTask.snapshot?.trust,error:state.detailLifecycleError});
+  const newer={...state.detailTask,...payload,lifecycle:payload.lifecycle||{},activity:payload.activity||{}};
+  if(payload.snapshot?.trust==='pending'||payload.not_found){state.detailTask={...state.detailTask,snapshot:{...payload.snapshot,trust:'stale'}};refreshVisibleLifecycleSection();recordTaskTiming('lifecycle:refresh',timingURL,timingStarted,response);scheduleLifecycleSnapshotCheck(project,backlog,id,options.retryBudget??5);return false;}
+  state.detailLifecycleError='';state.detailTask=newer;
+  recordTaskTiming('lifecycle:refresh',timingURL,timingStarted,response);
+  if(payload.snapshot?.trust==='stale')scheduleLifecycleSnapshotCheck(project,backlog,id,options.retryBudget??5);else lifecycleSnapshotRetrySequence++;
+  if(before===after&&oldNotice===JSON.stringify({trust:newer.snapshot?.trust,error:''}))return true;
   const section=typeof document!=='undefined'?document.getElementById?.('lifecycle'):null;
   if(section&&!state.raw){
     const rect=section.getBoundingClientRect?.();
@@ -1323,6 +1357,7 @@ async function refreshViewedTaskLifecycle(project,backlog,id) {
     // Patch only lifecycle children. Keep section identity for TOC observer,
     // preserve Markdown, open disclosures, focus and reading position.
     section.innerHTML='<h2>'+esc(t('lifecycle'))+'</h2>'+detailLifecycleBody(newer);
+    section.querySelector?.('#lifecycleRetryBtn')?.addEventListener('click',retryTaskLifecycle);
     if(previouslyAbove&&typeof window!=='undefined'){
       const delta=(section.getBoundingClientRect?.().height||0)-oldHeight;
       if(delta)window.scrollTo?.({left:window.scrollX,top:previousScroll+delta,behavior:'auto'});
@@ -1413,7 +1448,7 @@ async function checkContentRevision(establishOnly=false) {
             }
           }catch(_){return}
         }
-        if(signalRevision!==state.signalRevision){
+        if(signalRevision!==state.signalRevision||(!state.pendingContentUpdate&&Date.now()-viewedLifecycleLastFetchAt>=10000)){
           try{
             const updated=await refreshViewedTaskLifecycle(project,backlog,id);
             if(updated&&stillCurrent())state.signalRevision=signalRevision;
@@ -5532,7 +5567,7 @@ function bindDetailInteractions() {
 function detailLifecycleBody(task) {
   const lc=task.lifecycle||{}, events=lc.events||[];
   const timingInferred=Boolean(lc.lifecycle_inferred), timingIncomplete=Boolean(lc.timing_incomplete);
-  const lifecycleBody=`${task.content_only?(state.detailLifecycleError
+  const lifecycleBody=`${lifecycleSnapshotNotice(task)}${task.content_only&&!task.snapshot?(state.detailLifecycleError
     ?`<div class="lifecycle-load-error" role="alert"><span>${esc(state.language==='ko'?'실행·라이프사이클 정보를 불러오지 못했습니다.':'Could not load lifecycle and runtime details.')}</span><button type="button" id="lifecycleRetryBtn" class="action-btn secondary">${esc(state.language==='ko'?'다시 시도':'Retry')}</button></div>`
     :`<p class="summary">${esc(state.language==='ko'?'실행·라이프사이클 정보 확인 중…':'Checking lifecycle and runtime details…')}</p>`):''}${timingInferred?`<div class="timing-note"><strong>${esc(t('provisionalTiming'))}</strong><span>${esc(t('provisionalTimingDetail'))}</span></div>`:''}${timingIncomplete?`<div class="timing-note warning"><strong>${esc(t('incompleteHistory'))}</strong><span>${esc(t('incompleteHistoryDetail'))}</span></div>`:''}${events.length?`<div class="timeline">${events.map((e,i)=>{
     const isCurrent=i===events.length-1 && e.state!=='done' && Boolean(e.at) && Number.isFinite(new Date(e.at).getTime());
@@ -5650,12 +5685,14 @@ function requestTaskDetail(id,project=state.project,backlog=state.backlog) {
   if(backlog)params.set('backlog',backlog);
   params.set('projection','content');
   const promise=(async()=>{
-    const response=await fetch(`/api/tasks/${encodeURIComponent(id)}?${params.toString()}`,{cache:'no-store'});
+    const timingStarted=taskTimingNow(),timingURL=`/api/tasks/${encodeURIComponent(id)}?${params.toString()}`;
+    const response=await fetch(timingURL,{cache:'no-store'});
     if(!response.ok){
       let detail='';try{detail=(await response.json()).error||'';}catch(_){}
       throw new Error(detail||`HTTP ${response.status}`);
     }
     const task=await response.json();
+    task.content_timing=recordTaskTiming('content:load',timingURL,timingStarted,response);
     // Late or obsolete prefetches must never poison a newer revision's cache.
     if(generation===taskDetailCacheGeneration&&revision===state.contentRevision){
       taskDetailCache.delete(key);taskDetailCache.set(key,{task,at:Date.now(),revision});
@@ -5692,17 +5729,24 @@ function restoreLiveDetailReadingState(task) {
 // Repaint only the lifecycle section so retries never replace the Markdown,
 // reset the reading position, or close unrelated disclosures.
 function refreshVisibleLifecycleSection() {
-  if(state.raw||!state.detailTask?.content_only)return;
+  if(state.raw||!state.detailTask)return;
   const section=typeof document!=='undefined'?document.getElementById?.('lifecycle'):null;
   if(!section)return;
+  const rect=section.getBoundingClientRect?.(),oldHeight=rect?.height||0;
+  const previousScroll=typeof window!=='undefined'?window.scrollY:0;
   section.innerHTML='<h2>'+esc(t('lifecycle'))+'</h2>'+detailLifecycleBody(state.detailTask);
   section.querySelector?.('#lifecycleRetryBtn')?.addEventListener('click',retryTaskLifecycle);
+  if(rect?.bottom<=0&&typeof window!=='undefined'){
+    const delta=(section.getBoundingClientRect?.().height||0)-oldHeight;
+    if(delta)window.scrollTo?.({left:window.scrollX,top:previousScroll+delta,behavior:'auto'});
+  }
 }
 function retryTaskLifecycle() {
-  if(state.view!=='backlog'||!state.detail||!state.detailTask?.content_only)return;
+  if(state.view!=='backlog'||!state.detail||!state.detailTask)return;
   state.detailLifecycleError='';
   refreshVisibleLifecycleSection();
-  scheduleTaskLiveEnrichment(state.detail,state.project,state.backlog,{delay:0});
+  if(state.detailTask.content_only)scheduleTaskLiveEnrichment(state.detail,state.project,state.backlog,{delay:0});
+  else {viewedLifecycleLastFetchAt=0;refreshViewedTaskLifecycle(state.project,state.backlog,state.detail).catch(()=>{});}
 }
 function scheduleTaskLiveEnrichment(id,project=state.project,backlog=state.backlog,options={}) {
   if(state.view!=='backlog'||state.detail!==id||state.project!==project||
@@ -5710,7 +5754,7 @@ function scheduleTaskLiveEnrichment(id,project=state.project,backlog=state.backl
   const source=state.detailTask,key=taskDetailKey(id,project,backlog);
   const current=()=>state.view==='backlog'&&state.project===project&&
     state.backlog===backlog&&state.detail===id&&state.detailTask===source;
-  const delay=options.delay??60,retries=options.retries??1;
+  const delay=options.delay??60,retries=options.retries??1,pendingRetries=options.pendingRetries??5;
   // Capture revision/generation WHEN the deferred task actually begins.
   // An intervening /api/revision result must not cancel the only scheduled
   // fetch before it has started.
@@ -5720,7 +5764,7 @@ function scheduleTaskLiveEnrichment(id,project=state.project,backlog=state.backl
     const cached=taskLiveCache.get(key);
     if(cached&&cached.revision===revision&&Date.now()-cached.at<=TASK_DETAIL_CACHE_MS&&cached.task.raw_markdown===source.raw_markdown){
       state.detailLifecycleError='';
-      restoreLiveDetailReadingState(cached.task);
+      state.detailTask=cached.task;refreshVisibleLifecycleSection();
       return;
     }
     // Only join a request for this exact visible document AND revision.
@@ -5730,15 +5774,23 @@ function scheduleTaskLiveEnrichment(id,project=state.project,backlog=state.backl
     const entry={source,revision,generation,promise:null};
     const latest=()=>current()&&taskLivePending.get(key)===entry&&
       state.contentRevision===revision&&taskDetailCacheGeneration===generation;
-    const params=new URLSearchParams({project});
+    const params=new URLSearchParams({project,projection:'lifecycle'});
     if(backlog)params.set('backlog',backlog);
     entry.promise=(async()=>{
       try {
-        const response=await fetch(`/api/tasks/${encodeURIComponent(id)}?${params.toString()}`,{cache:'no-store'});
+        const timingStarted=taskTimingNow(),timingURL=`/api/tasks/${encodeURIComponent(id)}?${params.toString()}`;
+        const response=await fetchWithDeadline(timingURL,{cache:'no-store'});
         if(!response.ok)throw new Error(`Lifecycle HTTP ${response.status}`);
-        const full=await response.json();
+        const payload=await response.json();
+        const full={...source,...payload,content_only:false};
         if(!latest())return;
-        if(full.raw_markdown!==source.raw_markdown) {
+        if(payload.snapshot?.trust==='pending'||payload.not_found){
+          source.snapshot=payload.snapshot;refreshVisibleLifecycleSection();
+          if(pendingRetries>0)setTimeout(()=>{if(current())scheduleTaskLiveEnrichment(id,project,backlog,{delay:0,retries,pendingRetries:pendingRetries-1});},1200);
+          else {state.detailLifecycleError='Lifecycle snapshot is not ready; retry to check again';refreshVisibleLifecycleSection();}
+          return;
+        }
+        if(payload.raw_markdown!==undefined&&payload.raw_markdown!==source.raw_markdown) {
           // Never silently replace a document that changed during the scan.
           markContentUpdate('content');
           return;
@@ -5746,11 +5798,13 @@ function scheduleTaskLiveEnrichment(id,project=state.project,backlog=state.backl
         taskLiveCache.set(key,{task:full,at:Date.now(),revision});
         while(taskLiveCache.size>TASK_DETAIL_CACHE_MAX)taskLiveCache.delete(taskLiveCache.keys().next().value);
         state.detailLifecycleError='';
-        restoreLiveDetailReadingState(full);
+        state.detailTask=full;refreshVisibleLifecycleSection();
+        recordTaskTiming('lifecycle:first',timingURL,timingStarted,response);
+        if(full.snapshot?.trust==='stale')scheduleLifecycleSnapshotCheck(project,backlog,id);
       } catch(error) {
         if(!latest())return;
         if(retries>0) {
-          // One bounded automatic retry; do not loop or amplify a failing
+          // Bounded automatic retries; do not loop or amplify a failing
           // control-tower endpoint. Keep the readable Markdown on screen.
           setTimeout(()=>{
             if(current())scheduleTaskLiveEnrichment(id,project,backlog,{delay:0,retries:retries-1});
@@ -5788,6 +5842,7 @@ function scheduleTaskDetailPrefetch(query) {
 }
 async function loadTaskDetail(id) {
   if(!id||!state.project)return;
+  const loadStarted=taskTimingNow();
   const targetProject=state.project,targetBacklog=state.backlog,targetID=id;
   const current=()=>state.project===targetProject&&state.backlog===targetBacklog&&state.detail===targetID;
   try {
@@ -5800,6 +5855,7 @@ async function loadTaskDetail(id) {
       state.detailLifecycleError='';
       state.loadError='';
       render();
+      if(task.content_timing){const painted=()=>{if(current())state.taskLoadTimings=[...(state.taskLoadTimings||[]),{...task.content_timing,phase:'content:first',browser_ms:taskTimingNow()-loadStarted}].slice(-50);};if(typeof requestAnimationFrame==='function')requestAnimationFrame(painted);else painted();}
     }
     scheduleTaskLiveEnrichment(targetID,targetProject,targetBacklog);
   } catch(e) {

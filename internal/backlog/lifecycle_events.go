@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/silverkhan/TaskMecca/internal/projectionchange"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -137,6 +138,7 @@ func RecordLifecycleTransition(project string, event LifecycleTransition, now ti
 	if err := os.Rename(temp, path); err != nil {
 		return LifecycleTransition{}, err
 	}
+	projectionchange.Mark(project)
 	return event, nil
 }
 

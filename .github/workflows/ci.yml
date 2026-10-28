@@ -39,6 +39,22 @@ jobs:
           go-version-file: go.mod
       - name: Test Go runtime
         run: go test ./...
+      - name: Lifecycle read correctness and scale regression gate
+        env:
+          TASK_MECCA_LIFECYCLE_PERF: "1"
+          TASK_MECCA_LIFECYCLE_PERF_REPORT: lifecycle-performance.json
+        run: |
+          go test ./internal/backlog -run '^TestLifecycleProjectionPerformanceRegression$' -count=1 -v
+          go test -race ./internal/backlog ./internal/webui -run 'TestLifecycleProjection' -count=1
+          node --test tests/web_detail_lifecycle_live.test.cjs tests/web_task_detail_prefetch.test.cjs
+      - name: Preserve lifecycle performance measurements
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lifecycle-performance-${{ github.run_id }}
+          path: lifecycle-performance.json
+          if-no-files-found: ignore
+
       - name: Vet Go runtime
         run: go vet ./...
       - name: Build Go CLI

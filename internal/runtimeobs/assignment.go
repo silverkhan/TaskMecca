@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/silverkhan/TaskMecca/internal/projectguard"
+	"github.com/silverkhan/TaskMecca/internal/projectionchange"
 	"os"
 	"path/filepath"
 	"strings"
@@ -102,6 +103,7 @@ func RecordAssignment(project, assignmentID, taskID, agentPath string, now time.
 	if _, err := f.Write(append(data, '\n')); err != nil {
 		return Assignment{}, err
 	}
+	projectionchange.Mark(project)
 	return item, nil
 }
 

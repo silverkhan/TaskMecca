@@ -2,6 +2,7 @@ package handoff
 
 import (
 	"github.com/silverkhan/TaskMecca/internal/handoffjournal"
+	"github.com/silverkhan/TaskMecca/internal/projectionchange"
 
 	"encoding/json"
 	"errors"
@@ -67,6 +68,9 @@ func appendRecordUnlocked(project string, record Record) error {
 	closeErr := f.Close()
 	if writeErr != nil {
 		return writeErr
+	}
+	if closeErr == nil {
+		projectionchange.Mark(project)
 	}
 	return closeErr
 }
