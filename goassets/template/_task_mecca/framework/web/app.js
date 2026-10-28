@@ -2030,24 +2030,13 @@ function summaryText(value) {
 }
 function humanSummary(task) {
   const doc=task.document||{}, raw=doc.summary||{}, req=doc.requirements||{}, reason=effectiveAttentionReason(task);
-  const result=summaryText(doc.result||task.fields?.결과);
-  const notes=summaryText(doc.notes||task.fields?.메모);
+  // Only author-verified concise fields may be shown as achievements. Technical
+  // result logs are never passed off as human-readable conclusions.
   const purpose=summaryText(raw.purpose)||summaryText(req.goal)||summaryText(task.fields?.설명)||titleOf(task);
-  const change=summaryText(raw.change)||(task.file_state==='done'?result:'');
-  let statusDetail='';
-  if(reason)statusDetail=summaryText(reason.message||reason.title);
-  else statusDetail=summaryText(raw.status_result);
-  if(!statusDetail){
-    if(task.file_state==='done')statusDetail=result||t('summaryDoneFallback');
-    else if(task.file_state==='hold')statusDetail=summaryText(task.fields?.대기)||t('summaryHoldFallback');
-    else if(task.file_state==='doing')statusDetail=notes||t('summaryDoingFallback');
-    else statusDetail=t('summaryTodoFallback');
-  }
-  let follow='';
-  if(reason?.resume_condition)follow=summaryText(reason.resume_condition);
-  if(!follow)follow=summaryText(raw.follow_up);
-  if(!follow&&task.file_state==='hold')follow=summaryText(task.fields?.재개조건);
-  const statusResult=`${stateLabel(task.state)} · ${statusDetail}`;
+  const change=summaryText(raw.change);
+  const statusDetail=reason?summaryText(reason.message||reason.title):summaryText(raw.status_result);
+  const follow=summaryText(reason?.resume_condition)||summaryText(raw.follow_up)||(task.file_state==='hold'?summaryText(task.fields?.재개조건):'');
+  const statusResult=stateLabel(task.state)+(statusDetail?' · '+statusDetail:'');
   return {purpose,change,status_result:statusResult,follow_up:follow,canonical:Boolean(doc.summary_present)};
 }
 function summaryPreview(value,max=150) {
@@ -2098,7 +2087,8 @@ function humanSummaryCard(task) {
   if(kind==='defined')links.push(['background',t('backgroundProblem')],['requirements',t('requirements')],['scope',t('workScope')],['acceptance',t('completionCriteria')]);
   else if(kind==='simple')links.push(['task-definition',t('taskDefinition')],['acceptance',t('completionCriteria')]);
   else links.push(['legacy-task',t('legacyDetails')]);
-  links.push(['progress-result',t('progressResult')],['verification',t('verificationDetail')]);
+  if(task.document?.result_summary && Object.values(task.document.result_summary).some(Boolean))links.push(['outcome-summary',state.language==='ko'?'핵심 결과':'Key outcome']);
+  links.push(['progress-result',state.language==='ko'?'상세 결과 및 기술 근거':'Detailed results and evidence'],['verification',t('verificationDetail')]);
   const urgent=reason?`<div class="summary-alert ${reason.severity==='danger'?'danger':''}"><strong>${esc(reason.title||t('needsAttention'))}</strong><span>${esc(reason.message||'')}</span>${reason.resume_condition?`<span>${esc(reason.resume_condition)}</span>`:''}</div>`:'';
   return `<section class="human-summary-card detail-section" id="human-summary" data-toc-label="${esc(t('humanSummary'))}"><div class="human-summary-head"><div><div class="eyebrow">${esc(t('humanSummary'))}</div>${!s.canonical?`<span class="summary-source">${esc(t('summaryFallback'))}</span>`:''}</div></div><div class="human-summary-grid">${rows.map(([label,value])=>`<div class="human-summary-row"><span>${esc(label)}</span><strong>${esc(value)}</strong></div>`).join('')}</div>${urgent}<div class="detail-jump-list"><span>${esc(t('detailLinks'))}</span>${links.map(([id,label])=>`<a href="#${esc(id)}" data-detail-target="${esc(id)}">${esc(label)}</a>`).join('')}</div></section>`;
 }
@@ -5595,7 +5585,12 @@ function detailView(task) {
   const passiveAlert=!reason&&warn?`<div class="attention-banner ${['stale','worker_missing'].includes(act.health)?'danger':''}"><strong>${esc(healthLabel(act.health))}</strong><span>${esc(t('lastObservable',{ago:ago(act.last_activity_at),source:act.last_activity_source}))} ${esc(act.health==='worker_missing'?t('workerMissingDetail'):t('quietAdvisory'))}</span></div>`:'';
   const sectionSummaries=task.document?.section_summaries||{};
   const progressBody=`<h3>${esc(t('workNotes'))}</h3><div class="markdown">${markdown(task.document?.notes||task.fields?.메모)}</div><h3>${esc(t('result'))}</h3><div class="markdown">${markdown(task.document?.result||task.fields?.결과)}</div>`;
-  const progress=semanticSection('progress-result',t('progressResult'),sectionSummaries.progress_result,progressBody);
+  const resultSummary=task.document?.result_summary||{};
+  const outcomeItems=[resultSummary.achievement_1,resultSummary.achievement_2,resultSummary.achievement_3].map(summaryText).filter(Boolean);
+  const outcome=outcomeItems.length||summaryText(resultSummary.verdict)||summaryText(resultSummary.outstanding)||summaryText(resultSummary.user_action)
+    ?`<section class="section detail-section outcome-summary" id="outcome-summary" data-toc-label="${esc(state.language==='ko'?'핵심 결과':'Key outcome')}"><h2>${esc(state.language==='ko'?'핵심 결과':'Key outcome')}</h2>${summaryText(resultSummary.verdict)?`<p class="outcome-verdict">${esc(summaryText(resultSummary.verdict))}</p>`:''}${outcomeItems.length?`<ul>${outcomeItems.map(v=>`<li>${esc(v)}</li>`).join('')}</ul>`:''}${summaryText(resultSummary.outstanding)?`<p><strong>${esc(state.language==='ko'?'남은 사항':'Outstanding')}:</strong> ${esc(summaryText(resultSummary.outstanding))}</p>`:''}${summaryText(resultSummary.user_action)?`<p><strong>${esc(state.language==='ko'?'사용자 조치':'User action')}:</strong> ${esc(summaryText(resultSummary.user_action))}</p>`:''}</section>`
+    :'';
+  const progress=detailDisclosure('progress-result',state.language==='ko'?'상세 결과 및 기술 근거':'Detailed results and evidence',sectionSummaries.progress_result||'',progressBody);
   const verificationValue=task.document?.verification||task.fields?.검증;
   const verificationBody=`<div class="markdown">${markdown(verificationValue)}</div>`;
   const verification=semanticSection('verification',t('verificationDetail'),sectionSummaries.verification,verificationBody);
@@ -5607,7 +5602,7 @@ function detailView(task) {
   const rawToggle=`<button id="rawToggle" class="raw-toggle ${state.raw?'active':''}">${esc(state.raw?t('rendered'):t('rawMarkdown'))}</button>`;
   const detailHead=`<div class="detail-head"><div class="detail-head-top"><div class="detail-id">${esc(task.id)}</div>${rawToggle}</div><h1>${esc(titleOf(task))}</h1><div class="detail-status"><span class="status ${esc(task.state)}">${esc(stateLabel(task.state))}</span>${task.agent?`<span class="badge">${esc(task.agent)}</span>`:''}<span class="badge">${esc(task.document?.schema||'legacy')}</span>${task.archive_month?`<span class="badge">archive/${esc(task.archive_month)}</span>`:''}</div>${task.source?.label?`<div class="detail-source-row"><span>${esc(t('source'))}</span>${sourceLink(task.source)}</div>`:''}${(task.tags||[]).length?`<div class="detail-tag-row">${(task.tags||[]).map(tag=>tagChip(tag,true)).join('')}</div>`:''}</div>`;
   const rawPanel=`<section class="section raw-markdown-view"><h2>${esc(t('rawMarkdown'))}</h2><pre class="raw">${esc(task.raw_markdown||'')}</pre></section>`;
-  const rendered=`${humanSummaryCard(task)}${backlogWorkerRosterSection(task)}${lifecycle}${related}${operations}${passiveAlert}${contractSections(task)}${progress}${verification}`;
+  const rendered=`${humanSummaryCard(task)}${outcome}${backlogWorkerRosterSection(task)}${lifecycle}${related}${operations}${passiveAlert}${contractSections(task)}${progress}${verification}`;
   const body=`<div class="detail"><button class="back" id="backBtn">${esc(t('backToBacklog'))}</button>${detailHead}${state.raw?rawPanel:rendered}</div>`;
   return `<div class="detail-layout ${state.raw?'raw-mode':''}">${body}${state.raw?'':detailToc()}</div>`;
 }

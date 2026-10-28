@@ -33,7 +33,7 @@ func compactListFields(row Record) map[string]string {
 func compactDocument(row Record) map[string]any {
     doc:=row.Document
     out:=map[string]any{}
-    for _,key:=range []string{"schema","contract_kind","summary","summary_present","result","notes","requirements"} {
+    for _,key:=range []string{"schema","contract_kind","summary","summary_present","result_summary","result","notes","requirements"} {
         if value,ok:=doc[key]; ok { out[key]=value }
     }
     return out
