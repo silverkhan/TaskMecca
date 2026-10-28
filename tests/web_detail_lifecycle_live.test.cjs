@@ -2,7 +2,7 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('nod
 const {test}=require('node:test');
 const source=fs.readFileSync('goassets/template/_task_mecca/framework/web/app.js','utf8');
 const stamp='2026-10-14T12:00:00Z';
-function session(fetch){
+function session(fetch,options={}){
  const section={
    innerHTML:'Original lifecycle',
    height:50,
@@ -11,7 +11,7 @@ function session(fetch){
  };
  const scrolled=[];
  const context=vm.createContext({
-   fetch,URLSearchParams,location:{search:'?project=/demo'},
+   fetch,URLSearchParams,AbortController,setTimeout:(fn,delay)=>delay===1200?(options.setTimeout?options.setTimeout(fn,delay):1):setTimeout(fn,delay),clearTimeout,location:{search:'?project=/demo'},
    navigator:{language:'ko'},queueMicrotask,
    window:{scrollX:0,scrollY:600,scrollTo:args=>scrolled.push(args)},
    document:{visibilityState:'visible',querySelector:()=>null,getElementById:id=>id==='lifecycle'?section:null},
@@ -52,7 +52,7 @@ test('other backlog edits do not notify current reading; lifecycle updates only 
  assert.equal(a.harness.state.contentRevision,'r2');
  assert.equal(a.harness.state.signalRevision,'s2');
  assert.equal(a.harness.state.detailTask.raw_markdown,original.raw_markdown);
- assert.match(a.section.innerHTML,/라이프사이클/);
+ assert.match(a.section.innerHTML,/Lifecycle|라이프사이클/);
  assert.match(a.section.innerHTML,/e2/);
  assert.equal(a.scrolled.length,0,'the document reading position must not be moved');
  assert.ok(urls.some(u=>u.includes('projection=content')));
@@ -100,4 +100,78 @@ test('task navigation during a pending lifecycle response must not rewrite a dif
  assert.equal(a.harness.state.detailTask.id,'A-2');
  assert.equal(a.section.innerHTML,'Original lifecycle');
  assert.equal(a.harness.state.signalRevision,'s1');
+});
+
+test('snapshot stale and error notices patch lifecycle without replacing body or open disclosures',async()=>{
+ const oldEvents=[{label:'Registered',at:stamp,event_id:'e1',actor:'worker'}];
+ const a=session(()=>Promise.resolve(json({...live(oldEvents),snapshot:{trust:'stale',version:'v2',computed_at:stamp}})));
+ const original=a.harness.state.detailTask.raw_markdown;
+ await a.harness.refreshViewedTaskLifecycle('/demo','team','A-1');
+ assert.equal(a.harness.state.detailTask.raw_markdown,original);
+ assert.match(a.section.innerHTML,/이전 확인 결과|earlier snapshot/);
+ assert.match(a.section.innerHTML,/lifecycleRetryBtn/);
+ assert.equal(a.scrolled.length,0);
+ assert.equal(a.harness.state.taskLoadTimings[0].phase,'lifecycle:refresh');
+});
+
+test('failed independent lifecycle refresh keeps evidence and displays retry',async()=>{
+ const a=session(()=>Promise.reject(new Error('offline')));
+ await assert.rejects(a.harness.refreshViewedTaskLifecycle('/demo','team','A-1'),/offline/);
+ assert.equal(a.harness.state.detailTask.raw_markdown,'# Task A-1');
+ assert.match(a.section.innerHTML,/lifecycleRetryBtn/);
+ assert.match(a.section.innerHTML,/이전 확인 결과|previous snapshot/);
+ assert.equal(a.harness.state.detailTask.lifecycle.events[0].event_id,'e1');
+});
+
+test('late lifecycle response cannot replace a newer independent refresh',async()=>{
+ const replies=[];const a=session(()=>new Promise(resolve=>replies.push(resolve)));
+ const first=a.harness.refreshViewedTaskLifecycle('/demo','team','A-1',{force:true});
+ const second=a.harness.refreshViewedTaskLifecycle('/demo','team','A-1',{force:true});
+ replies[1](json(live([{label:'Started',at:stamp,event_id:'new-event'}])));await second;
+ replies[0](json(live([{label:'Registered',at:stamp,event_id:'old-event'}])));await first;
+ assert.equal(a.harness.state.detailTask.lifecycle.events[0].event_id,'new-event');
+ assert.match(a.section.innerHTML,/new-event/);
+ assert.doesNotMatch(a.section.innerHTML,/old-event/);
+});
+
+test('server restart pending snapshot keeps previous evidence and marks it stale',async()=>{
+ const a=session(()=>Promise.resolve(json({id:'A-1',snapshot:{trust:'pending',version:''},lifecycle:{},activity:{health:'runtime_unknown'}})));
+ await a.harness.refreshViewedTaskLifecycle('/demo','team','A-1',{force:true});
+ assert.equal(a.harness.state.detailTask.lifecycle.events[0].event_id,'e1');
+ assert.equal(a.harness.state.detailTask.snapshot.trust,'stale');
+ assert.match(a.section.innerHTML,/lifecycleRetryBtn/);
+ assert.equal(a.harness.state.detailTask.raw_markdown,'# Task A-1');
+});
+
+test('browser timings connect response Server-Timing and HTTP TTFB without inventing network values',async()=>{
+ const a=session(()=>Promise.resolve({...json(live([{label:'Registered',at:stamp,event_id:'e1',actor:'worker'}])),headers:{get:()=> 'control;dur=0, projection;dur=0.1'}}));
+ a.context.performance={now:()=>30,getEntriesByName:()=>[{requestStart:10,responseStart:15,responseEnd:20}],measure(){}};
+ await a.harness.refreshViewedTaskLifecycle('/demo','team','A-1',{force:true});
+ const timing=a.harness.state.taskLoadTimings[0];
+ assert.equal(timing.phase,'lifecycle:refresh');assert.equal(timing.ttfb_ms,5);assert.equal(timing.transfer_ms,5);
+ assert.equal(timing.server_timing,'control;dur=0, projection;dur=0.1');
+ assert.match(timing.request_url,/projection=lifecycle/);
+});
+
+test('unchanged signal still rechecks lifecycle to recover Git changes and missed events',async()=>{
+ const urls=[];const a=session(url=>{
+  urls.push(url);
+  if(url.includes('/api/revision'))return Promise.resolve(json(revision('r1','s1')));
+  if(url.includes('projection=lifecycle'))return Promise.resolve(json(live([{label:'Started',at:stamp,event_id:'git-recovered'}])));
+  throw Error(url);
+ });
+ await a.harness.checkContentRevision();
+ assert.equal(a.harness.state.detailTask.lifecycle.events[0].event_id,'git-recovered');
+ assert.ok(urls.some(url=>url.includes('projection=lifecycle')));
+ assert.equal(a.harness.state.detailTask.raw_markdown,'# Task A-1');
+});
+
+test('stale snapshot automatically rechecks with a bounded retry budget',async()=>{
+ const timers=[];let calls=0;
+ const a=session(()=>{calls++;return Promise.resolve(json({...live([{label:'Registered',at:stamp,event_id:'e1'}]),snapshot:{trust:'stale',version:'v1'}}))},{setTimeout:fn=>{timers.push(fn);return timers.length;}});
+ await a.harness.refreshViewedTaskLifecycle('/demo','team','A-1',{force:true});
+ while(timers.length){timers.shift()();await new Promise(setImmediate);assert.ok(calls<=6,'recheck must not create an endless polling loop');}
+ assert.equal(calls,6);
+ assert.equal(a.harness.state.detailTask.raw_markdown,'# Task A-1');
+ assert.match(a.section.innerHTML,/lifecycleRetryBtn/);
 });

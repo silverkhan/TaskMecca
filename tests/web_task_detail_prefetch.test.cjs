@@ -101,7 +101,7 @@ test('content-first detail paints Markdown before a deliberately slow full recon
  await tick();
  assert.equal(a.state.detailTask.content_only,false);
  assert.equal(a.state.detailTask.activity.health,'healthy');
- assert.equal(renders,3,'lifecycle info is enriched separately');
+ assert.equal(renders,2,'lifecycle info is enriched separately');
 });
 test('late full response cannot replace the body from a different task',async()=>{
  const timers=[],fullRequests=[];
@@ -291,4 +291,25 @@ test('AID-174: task changes while a retry is queued cannot leak lifecycle errors
  assert.equal(timers.length,1,'only the new task has its own pending enrichment');
  assert.equal(a.state.detail,'A-26');
  assert.equal(a.state.detailLifecycleError,'');
+});
+
+test('AID-237: pending snapshot never invents lifecycle and retries only its projection',async()=>{
+ const timers=[],urls=[];let requests=0;
+ const a=app(url=>{
+  urls.push(url);
+  if(url.includes('projection=content'))return Promise.resolve(reply({...task('A-237'),content_only:true}));
+  requests++;
+  return Promise.resolve(reply(requests===1?{id:'A-237',snapshot:{trust:'pending',version:''},lifecycle:{},activity:{health:'runtime_unknown'}}:{id:'A-237',snapshot:{trust:'verified',version:'v1'},lifecycle:{events:[{label:'Registered',event_id:'canonical-event',at:'2026-10-28T00:00:00Z'}]},activity:{health:'healthy'}}));
+ },{setTimeout:fn=>{timers.push(fn);return timers.length;}});
+ a.openTask('A-237');await tick();timers.shift()();await tick();
+ assert.equal(a.state.detailTask.content_only,true);
+ assert.equal(a.state.detailTask.snapshot.trust,'pending');
+ assert.equal(a.state.detailTask.raw_markdown,'# A-237');
+ timers.shift()();timers.shift()();await tick();
+ assert.equal(a.state.detailTask.content_only,false);
+ assert.equal(a.state.detailTask.lifecycle.events[0].event_id,'canonical-event');
+ assert.equal(urls.filter(u=>u.includes('projection=content')).length,1);
+ assert.ok(urls.slice(1).every(u=>u.includes('projection=lifecycle')));
+ assert.ok(a.state.taskLoadTimings.some(x=>x.phase==='content:first'));
+ assert.ok(a.state.taskLoadTimings.some(x=>x.phase==='lifecycle:first'));
 });
