@@ -12,6 +12,7 @@ func TestRecoveryEventCLIRegistrationReportsPreviouslyStrandedWork(t *testing.T)
 	project := t.TempDir()
 	folder := filepath.Join(project, "_task_mecca", "data", "backlog")
 	if err := os.MkdirAll(folder, 0755); err != nil { t.Fatal(err) }
+	if err := os.MkdirAll(filepath.Join(project, "_task_mecca", ".runtime", "agents"), 0755); err != nil { t.Fatal(err) }
 	for name, body := range map[string]string{
 		"000527.B-527.abandoned.doing.md": "# B-527 Abandoned\n- Agent: /root/controller/kkobugi\n- 변경범위: src\n",
 		"000550.B-550.new.todo.md": "# B-550 New\n- Agent: -\n- 변경범위: -\n",
