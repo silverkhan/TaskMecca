@@ -78,6 +78,22 @@ task-mecca inspect B-525 --project PROJECT --json
 - 동일 workflow에 속한다는 정확한 근거 없이 서로 다른 B-ID(예: B-525와 B-526)를 연관 지어 판단하지 않는다. `claim`은 현재 exact Controller attempt로, `mark dispatch=ok`는 실제 native 전송 증거가 있을 때만 실행한다.
 - shell에서 파일 저장/후처리가 불가피하면 `;` 대신 명령 exit status와 JSON `findings`를 확인하여 실패를 성공으로 취급하지 않는다. 본 범위의 집계/필드 조회는 CLI 자체로 해결한다.
 
+### 이벤트 기반 기존 미아 백로그 점검 (AID-223 1단계)
+
+신규 백로그 등록 시 Root는 Registrar의 exact ID를 받은 후, 사용자에게 등록 결과를 알리기 전에 다음을 **한 번** 조회한다.
+
+```bash
+task-mecca recovery event --event registration --task B-550 --project PROJECT --json
+```
+
+Controller는 `registration_ready` 인수, 신규 시작/재개, Worker DONE/BLOCKED 보고 시 전체 `coordinate.recovery_queue`를 이미 확인했다면 재조회할 필요가 없다. 요약 전용 조회가 필요하면 각각 `--event controller_start`, `--event controller_resume`, `--event worker_report --task ID`로 호출한다.
+
+- `candidates`는 trigger task와 무관한 과거 `doing` 작업도 포함한다. registration 시 현재 신규 ID 자체는 제외한다.
+- `report_to_root=true`이면 Root는 기존 미완결 후보 ID·관측 상태와 조치 주체를 등록 결과에 함께 보여준다. `requires_user`가 확정된 항목만 결정을 요청한다.
+- `incident_key` / `event_fingerprint`는 관측 동일성 비교용이다. CLI 자체는 알림을 전송하지 않으며 실제 수신 보장을 뜻하지 않는다.
+- 조회는 **read-only**다. 실제 Worker 재개·재배정·완료는 Controller가 별도 native 상태 확인, 계약·승인·fresh preflight·미커밋 결과 보존 후 수행한다.
+- `no_confirmed_candidates`는 관측 가능한 `coordinate.recovery_queue`가 비었다는 뜻이며 미아 백로그가 절대 없다는 증명은 아니다. 조회 실패를 빈 목록으로 대체하지 않는다.
+
 ## 4. 실행 조회·진단
 
 ```bash

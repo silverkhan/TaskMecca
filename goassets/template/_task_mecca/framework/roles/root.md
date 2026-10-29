@@ -199,6 +199,20 @@ task-mecca runtime bind <controller-attempt-id> '' /root/controller --json
 
 Runtime observation이 비활성이라 exact target을 안전하게 원장화할 수 없으면 autonomous handoff를 사용하지 않는다. 이 경우 Root가 현재 turn 안에서 등록 결과를 받은 뒤 Controller 인계까지 수행하는 fallback을 사용한다.
 
+### 신규 백로그 등록 시 기존 미아 백로그 보고 (이벤트 기반)
+
+Registrar가 **신규 등록에 성공해 정확한 ID를 반환한 직후**, Root는 현재 등록 결과를 사용자에게 안내하기 전에 다음 **읽기 전용** 조회를 한 번 수행한다.
+
+```bash
+task-mecca recovery event --event registration --task <NEW_ID> --project <PROJECT> --json
+```
+
+- 조회 범위는 현재 등록한 태스크뿐 아니라 **해당 프로젝트의 모든 기존 활성 `doing`**이다. 신규 ID 자체는 과거 미아 후보에서 제외된다.
+- `candidate_count > 0`이면 신규 등록 결과와 함께 **기존 미완결 후보 ID·상태·Controller 검토 예정**을 간단히 알린다. `requires_user`가 명시된 경우에만 사용자 판단을 요청한다. 현재 관측 결과를 실제 사망·재개 성공으로 표현하지 않는다.
+- `event_fingerprint`와 항목별 `incident_key`는 반복 조회/보고의 동일 사건 식별자다. 기존에 보고한 동일 근거를 불필요하게 반복하지 않으며, 새 근거나 심각도 변화는 설명한다. 이 조회는 알림 전송이나 영속 보고 완료를 보장하지 않는다.
+- 조회가 실패하거나 설치판 CLI가 `recovery event`를 지원하지 않으면 실패를 숨기지 말고, 기존 `coordinate --json`의 `recovery_queue`를 조회해 안전한 범위만 보고한다. 두 조회 모두 불가능하면 **미아 없음**으로 단정하지 않는다.
+- 이 단계는 **기존 작업 복구를 위한 추가 조회**이지 Registrar 인계·Controller 실행 승인·Root polling gate가 아니다. Root는 Controller 완료를 기다리지 않는다. Controller가 늦게 발견한 항목은 다음 Root 대화/원장 확인 시 다룬다.
+
 Codex에서는 종료된 Root를 subagent가 새 turn으로 재개할 수 없으므로 Controller의 최종 완료 처리는 Root wake와 분리한다. Claude 등 Root/parent resume이 가능한 runtime도 Root wake 성공을 task completion 조건으로 삼지 않는다.
 
 ## 작업 정의 프로세스
@@ -215,7 +229,7 @@ Root classification
 
 1. 하나의 요구가 독립 검증 가능한 여러 backlog item으로 나뉘어야 하면 **Root 단계에서** 분해한다.
 2. 각 신규 item마다 taxonomy를 탐색하고 기존 canonical tag 재사용 또는 필요한 신규 tag define까지 끝낸 뒤 Registrar에 넘긴다.
-3. Registrar가 ID를 반환하면 Controller에 `NEW_TASK <ID>`를 알리고 Root는 사용자 입력을 받을 수 있는 상태로 돌아간다.
+3. Registrar가 ID를 반환하면 승인된 직접 Controller handoff 성공 여부를 확인하고 위의 `recovery event --event registration`으로 과거 미아 백로그를 점검한 뒤, 사용자에게 등록 결과를 알리고 대기하지 않고 복귀한다. 구형 fallback인 경우에만 직접 `NEW_TASK <ID>`를 전달한다.
 4. 등록된 `## 작업 정의` 또는 `## 요건 정의서`가 해당 task의 canonical contract다.
 
 ## 계약 경계
