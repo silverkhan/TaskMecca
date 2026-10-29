@@ -5894,13 +5894,13 @@ document.addEventListener?.('pointerdown',e=>{
   clearTimeout(taskRowTouchReleaseTimer);
   taskRowTouchActive=true;
 },true);
-window?.addEventListener?.('pointerup',e=>{
+if(typeof window!=='undefined')window.addEventListener?.('pointerup',e=>{
   if(e.pointerType!=='touch' || !taskRowTouchActive)return;
   // Synthetic click follows pointerup. Keep the target mounted until then.
   clearTimeout(taskRowTouchReleaseTimer);
   taskRowTouchReleaseTimer=setTimeout(()=>releaseTaskRowTouch(),400);
 },true);
-window?.addEventListener?.('pointercancel',e=>{
+if(typeof window!=='undefined')window.addEventListener?.('pointercancel',e=>{
   if(e.pointerType==='touch')releaseTaskRowTouch();
 },true);
 
