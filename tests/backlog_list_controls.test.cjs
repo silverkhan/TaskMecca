@@ -99,6 +99,7 @@ assert.equal(params.get('page'),'2');assert.equal(params.get('page_size'),'10');
     querySelectorAll:selector=>selector==='.task-list .task-row'
       ?Array.from({length:5},()=>({getBoundingClientRect:()=>({height:rowHeight})})) : []},
   ResizeObserver:FakeResizeObserver,
+  taskRowTouchActive:false,taskRowDeferredMeasure:false,
   requestAnimationFrame:fn=>{frameQueue.push(fn);return ++rafID;},
   cancelAnimationFrame:()=>{},
   refreshList:()=>{refreshCount++;},
@@ -144,9 +145,74 @@ assert.equal(params.get('page'),'2');assert.equal(params.get('page_size'),'10');
  vm.runInContext('scheduleAutoListPageSize(true)',layoutContext);runFrames();
  assert.equal(listState.autoListPageSize,9);
  assert.equal(refreshCount,3);
- assert.match(source,/if\(state\.view==='backlog'\)scheduleAutoListPageSize\(true\)/,
+ // A touch held on a row must not recalculate pagination and detach the
+ // source element before the browser delivers the synthesized click.
+ layoutContext.taskRowTouchActive=true;
+ rowHeight=130;
+ vm.runInContext('scheduleAutoListPageSize(true)',layoutContext);runFrames();
+ assert.equal(listState.autoListPageSize,9);
+ assert.equal(refreshCount,3);
+ assert.equal(layoutContext.taskRowDeferredMeasure,true);
+ layoutContext.taskRowTouchActive=false;
+ vm.runInContext('scheduleAutoListPageSize(true)',layoutContext);runFrames();
+ assert.equal(refreshCount,4,'measurement can resume after the pointer is released');
+ assert.match(source,/if\\(state\\.view==='backlog'\\)scheduleAutoListPageSize\\(true\\)/,
   'canonical render must request a measurement after its rows are painted');
  assert.match(fs.readFileSync(path.join(root,'goassets/template/_task_mecca/framework/web/style.css'),'utf8'),/html\{scrollbar-gutter:stable\}/,
   'content width must stay stable when the scrollbar appears or disappears');
  console.log('AID-186: provisional render, ResizeObserver feedback isolation, stable row budget, and viewport resize PASS');
+}
+
+// AID-288: A mobile portrait tap must survive a concurrent list re-render.
+// Runtime resize/revalidation can otherwise detach the row between touch
+// pointerdown and click, requiring the user to tap again.
+{
+ const begin=source.indexOf('let taskRowTouchActive=false;');
+ const end=source.indexOf('function openTask(id) {',begin);
+ assert(begin>=0&&end>begin,'mobile pointer protection must precede openTask');
+ const renderBegin=source.indexOf('function render() {');
+ const renderEnd=source.indexOf('async function loadManual(',renderBegin);
+ assert(renderBegin>=0&&renderEnd>renderBegin);
+ const listeners={},timers=[];
+ const gestureState={view:'backlog',detail:null};
+ let renderCount=0,measureCount=0;
+ const ctx=vm.createContext({
+  state:gestureState,
+  document:{addEventListener:(name,handler)=>{listeners['document:'+name]=handler;}},
+  window:{addEventListener:(name,handler)=>{listeners['window:'+name]=handler;}},
+  setTimeout:callback=>{timers.push(callback);return timers.length;},
+  clearTimeout:()=>{},
+  render:()=>{renderCount++;},
+  scheduleAutoListPageSize:()=>{measureCount++;}
+ });
+ vm.runInContext(source.slice(begin,end),ctx);
+ const row={dataset:{id:'B-527'}};
+ const target={closest:selector=>selector==='.task-list .task-row[data-id]'?row:null};
+ listeners['document:pointerdown']({pointerType:'touch',target});
+ assert.equal(vm.runInContext('taskRowTouchActive',ctx),true);
+ // Invoke the real render function while pressed: it must not replace #content.
+ vm.runInContext(source.slice(renderBegin,renderEnd),ctx);
+ vm.runInContext('render()',ctx);
+ assert.equal(vm.runInContext('taskRowDeferredRender',ctx),true);
+ ctx.render=()=>{renderCount++;};
+ vm.runInContext('taskRowDeferredMeasure=true',ctx);
+ listeners['window:pointerup']({pointerType:'touch'});
+ assert.equal(renderCount,0,'pointerup must keep row mounted through click dispatch');
+ assert.equal(measureCount,0);
+ vm.runInContext('releaseTaskRowTouch(false)',ctx); // openTask claims the click
+ gestureState.detail='B-527';
+ assert.equal(renderCount,0,'click navigation must not redraw the list before detail');
+ assert.equal(measureCount,0,'clicked row must not trigger list pagination');
+ assert.equal(vm.runInContext('taskRowTouchActive',ctx),false);
+ gestureState.detail=null;
+ listeners['document:pointerdown']({pointerType:'touch',target});
+ vm.runInContext('taskRowDeferredRender=true;taskRowDeferredMeasure=true',ctx);
+ listeners['window:pointercancel']({pointerType:'touch'});
+ assert.equal(renderCount,1,'canceled scroll gesture must eventually flush its list render');
+ assert.equal(measureCount,1,'canceled scroll gesture must remeasure pagination');
+ listeners['document:pointerdown']({pointerType:'mouse',target});
+ assert.equal(vm.runInContext('taskRowTouchActive',ctx),false,'desktop pointer must remain unaffected');
+ assert.match(source,/function openTask\(id\) \{[\s\S]*?releaseTaskRowTouch\(false\);/,
+  'detail navigation must drop touch lock without flashing an intermediate list');
+ console.log('AID-288: first mobile touch retains row through click; cancel unlocks PASS');
 }
