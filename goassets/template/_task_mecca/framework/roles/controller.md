@@ -220,6 +220,22 @@ Web UI의 stale/quiet/worker-missing은 관제 보조 신호이지 자동 상태
 
 Controller는 handoff를 claim한 뒤 transport 결과와 handoff journal을 같은 ID로 대조한다. running Controller에는 message를 보내고, completed Controller는 capability가 지원하며 identity가 fresh일 때만 새 turn 직전 preflight 뒤 resume한다. send와 resume이 경쟁하면 먼저 성공한 claim/dispatch evidence를 canonical으로 삼고 중복 Worker 배정·중복 완료 처리를 하지 않는다. stale/unknown identity 또는 unsupported resume은 `hold`와 재개 조건으로 기록하며 새 identity를 추측하지 않는다.
 
+## 이벤트 기반 전체 미아 백로그 점검
+
+현재 지시 대상 백로그가 다른 기존 `doing`을 가리는 일이 없어야 한다. Controller는 다음 이벤트에서 **전체 활성 백로그**를 조율한다.
+
+- **등록 인계 `registration_ready` 인수:** `task-mecca recovery event --event registration --task <NEW_ID> --project <PROJECT> --json`
+- **Controller 신규 시작·재개:** `task-mecca recovery event --event controller_start|controller_resume --project <PROJECT> --json` (둘 중 해당 이벤트 하나만 사용)
+- **Worker DONE/BLOCKED 인수:** `task-mecca recovery event --event worker_report --task <WORKER_TASK_ID> --project <PROJECT> --json`
+
+이미 이 이벤트에서 **fresh `coordinate --json`으로 전체 `recovery_queue`를 조회했다면 중복 스캔하지 않는다.** 별도 `recovery event` 명령은 조회 결과를 간결하게 축약하는 읽기 전용 진입점이며 watchdog이나 native dispatch가 아니다.
+
+- `candidate_count`는 현재 작업과 관계없는 과거 미완결 후보를 포함한다. `registration`에서 신규 등록 ID 자체만 과거 미아 후보에서 제외한다.
+- `incident_key` / `event_fingerprint`는 반복 관측 식별에 사용한다. 동일 관측을 중복 알림·중복 배정하지 않으며, 키만으로 자동 복구 성공이나 영속 알림 수신을 주장하지 않는다.
+- 발견 후보를 정상 새 작업보다 우선 심사하되, 실제 native 상태·계약·실행 승인·미커밋 변경·fresh preflight를 확인한 뒤에만 재배정/지원되는 resume을 수행한다. 읽기 전용 조회만으로 canonical을 `doing/hold/done` 전환하지 않는다.
+- 사용자 판단이 실제로 필요한 경우에만 `hold(user)` 및 재개조건을 기록하고 Root에 보고한다. Root가 이미 종료되었다면 확인 가능한 원장에 근거를 보존한다. 사용자 결정을 요청하지 않는 일반 복구는 가능한 경우 Controller가 자율 처리한다.
+- CLI가 없는 설치판에서는 기존 `coordinate --json`을 사용하며, 조회 오류/모호한 상태는 `미아 없음`으로 간주하지 않는다.
+
 ## Continuity gap 복구
 
 Worker turn이 끝났는데 canonical backlog가 여전히 `doing`이면 다음 pass로 조용히 넘기지 않는다.
