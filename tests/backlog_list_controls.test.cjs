@@ -163,7 +163,7 @@ assert.equal(params.get('page'),'2');assert.equal(params.get('page_size'),'10');
  console.log('AID-186: provisional render, ResizeObserver feedback isolation, stable row budget, and viewport resize PASS');
 }
 
-// AID-288: A mobile portrait tap must survive a concurrent list re-render.
+// AID-241: A mobile portrait tap must survive a concurrent list re-render.
 // Runtime resize/revalidation can otherwise detach the row between touch
 // pointerdown and click, requiring the user to tap again.
 {
@@ -214,5 +214,5 @@ assert.equal(params.get('page'),'2');assert.equal(params.get('page_size'),'10');
  assert.equal(vm.runInContext('taskRowTouchActive',ctx),false,'desktop pointer must remain unaffected');
  assert.match(source,/function openTask\(id\) \{[\s\S]*?releaseTaskRowTouch\(false\);/,
   'detail navigation must drop touch lock without flashing an intermediate list');
- console.log('AID-288: first mobile touch retains row through click; cancel unlocks PASS');
+ console.log('AID-241: first mobile touch retains row through click; cancel unlocks PASS');
 }
