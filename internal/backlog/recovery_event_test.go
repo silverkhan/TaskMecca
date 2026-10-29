@@ -10,6 +10,8 @@ func TestRecoveryEventSnapshotFindsOlderOrphanOnUnrelatedRegistration(t *testing
 	project := t.TempDir()
 	dir := filepath.Join(project, "_task_mecca", "data", "backlog")
 	if err := os.MkdirAll(dir, 0755); err != nil { t.Fatal(err) }
+	// A present runtime registry makes missing assigned workers observable.
+	if err := os.MkdirAll(filepath.Join(project, "_task_mecca", ".runtime", "agents"), 0755); err != nil { t.Fatal(err) }
 	tasks := map[string]string{
 		"000527.B-527.orphan.doing.md": "# B-527 Interrupted\n- Agent: /root/controller/kkobugi\n- 변경범위: src\n",
 		"000550.B-550.new.todo.md": "# B-550 New task\n- Agent: -\n- 변경범위: -\n",
