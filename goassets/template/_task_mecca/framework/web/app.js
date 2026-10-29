@@ -5887,20 +5887,20 @@ function releaseTaskRowTouch(flush=true) {
   if(pendingRender)render();
   if(pendingMeasure)scheduleAutoListPageSize(true);
 }
-document.addEventListener('pointerdown',e=>{
+document.addEventListener?.('pointerdown',e=>{
   if(e.pointerType!=='touch' || state.view!=='backlog' || state.detail)return;
   const row=e.target?.closest?.('.task-list .task-row[data-id]');
   if(!row || e.target.closest('a,button,[data-external-source]'))return;
   clearTimeout(taskRowTouchReleaseTimer);
   taskRowTouchActive=true;
 },true);
-window.addEventListener('pointerup',e=>{
+window?.addEventListener?.('pointerup',e=>{
   if(e.pointerType!=='touch' || !taskRowTouchActive)return;
   // Synthetic click follows pointerup. Keep the target mounted until then.
   clearTimeout(taskRowTouchReleaseTimer);
   taskRowTouchReleaseTimer=setTimeout(()=>releaseTaskRowTouch(),400);
 },true);
-window.addEventListener('pointercancel',e=>{
+window?.addEventListener?.('pointercancel',e=>{
   if(e.pointerType==='touch')releaseTaskRowTouch();
 },true);
 
