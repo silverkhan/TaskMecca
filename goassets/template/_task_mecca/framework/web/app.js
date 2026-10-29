@@ -5865,8 +5865,48 @@ async function loadTaskDetail(id) {
     render();
   }
 }
+// A mobile tap can span a list revalidation or a viewport-height resize.
+// Replacing #content between pointerdown and the synthesized click detaches
+// the tapped row, so the first tap only appears to rearrange the list.
+// Keep the visible rows stable until the click settles (or the gesture
+// cancels); do not block native scrolling or prefetching.
+let taskRowTouchActive=false;
+let taskRowDeferredRender=false;
+let taskRowDeferredMeasure=false;
+let taskRowTouchReleaseTimer=0;
+function releaseTaskRowTouch(flush=true) {
+  clearTimeout(taskRowTouchReleaseTimer);
+  taskRowTouchReleaseTimer=0;
+  if(!taskRowTouchActive)return;
+  taskRowTouchActive=false;
+  const pendingRender=taskRowDeferredRender;
+  const pendingMeasure=taskRowDeferredMeasure;
+  taskRowDeferredRender=false;
+  taskRowDeferredMeasure=false;
+  if(!flush || state.view!=='backlog' || state.detail)return;
+  if(pendingRender)render();
+  if(pendingMeasure)scheduleAutoListPageSize(true);
+}
+document.addEventListener?.('pointerdown',e=>{
+  if(e.pointerType!=='touch' || state.view!=='backlog' || state.detail)return;
+  const row=e.target?.closest?.('.task-list .task-row[data-id]');
+  if(!row || e.target.closest('a,button,[data-external-source]'))return;
+  clearTimeout(taskRowTouchReleaseTimer);
+  taskRowTouchActive=true;
+},true);
+if(typeof window!=='undefined')window.addEventListener?.('pointerup',e=>{
+  if(e.pointerType!=='touch' || !taskRowTouchActive)return;
+  // Synthetic click follows pointerup. Keep the target mounted until then.
+  clearTimeout(taskRowTouchReleaseTimer);
+  taskRowTouchReleaseTimer=setTimeout(()=>releaseTaskRowTouch(),400);
+},true);
+if(typeof window!=='undefined')window.addEventListener?.('pointercancel',e=>{
+  if(e.pointerType==='touch')releaseTaskRowTouch();
+},true);
+
 function openTask(id) {
   if (!id) return;
+  releaseTaskRowTouch(false);
   state.detail=id; state.detailTask=cachedTaskDetail(id); state.detailLifecycleError=''; state.loadError=''; state.raw=false; state.view='backlog';
   const p=new URLSearchParams(); if(state.project)p.set('project',state.project); if(state.backlog)p.set('backlog',state.backlog); if(state.tagFilters.length)p.set('tags',state.tagFilters.join(',')); history.pushState({},'',`/tasks/${encodeURIComponent(id)}${p.toString()?`?${p.toString()}`:''}`); render(); loadTaskDetail(id);
 }
@@ -5941,6 +5981,7 @@ function measuredTaskRowHeight() {
 }
 function updateAutoListPageSize(force=false) {
   if(state.listPageMode!=='auto'||state.view!=='backlog'||state.detail)return;
+  if(taskRowTouchActive){taskRowDeferredMeasure=true;return;}
   // Never size from provisional file-only rows or an in-flight revalidation:
   // the following canonical render may add status summaries and taller rows.
   if(!state.listData||state.listData.pending_reconciliation||state.listRevalidating)return;
@@ -6067,6 +6108,7 @@ function toggleSidebar() {
 
 let notificationSettingsDraft=null;
 function render() {
+  if(taskRowTouchActive && state.view==='backlog' && !state.detail){taskRowDeferredRender=true;return;}
   syncTelegramConnectionWatch();
   const settingsElement=$('#notificationSettingsBody');
   const settingsDraft=settingsElement?.dataset.context===notificationHistoryContext()?preserveNotificationSettings(settingsElement):notificationSettingsDraft?.context===notificationHistoryContext()?notificationSettingsDraft.draft:null;
