@@ -156,7 +156,7 @@ assert.equal(params.get('page'),'2');assert.equal(params.get('page_size'),'10');
  layoutContext.taskRowTouchActive=false;
  vm.runInContext('scheduleAutoListPageSize(true)',layoutContext);runFrames();
  assert.equal(refreshCount,4,'measurement can resume after the pointer is released');
- assert.match(source,/if\\(state\\.view==='backlog'\\)scheduleAutoListPageSize\\(true\\)/,
+ assert.match(source,/if\(state\.view==='backlog'\)scheduleAutoListPageSize\(true\)/,
   'canonical render must request a measurement after its rows are painted');
  assert.match(fs.readFileSync(path.join(root,'goassets/template/_task_mecca/framework/web/style.css'),'utf8'),/html\{scrollbar-gutter:stable\}/,
   'content width must stay stable when the scrollbar appears or disappears');
