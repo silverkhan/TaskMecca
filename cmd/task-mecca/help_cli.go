@@ -26,6 +26,7 @@ func runHelpCLI(args []string,out,stderr io.Writer) int {
 		fmt.Fprintln(out,"  task-mecca uninstall --dry-run  Inspect program, service and owned Hook removal")
 		fmt.Fprintln(out,"  task-mecca migrate           Migrate project framework (preserve project-owned data)")
 		fmt.Fprintln(out,"  task-mecca contract          Validate, plan, register or record contract decisions")
+		fmt.Fprintln(out,"  task-mecca context           Context lifecycle status, policy, event and safe rotation")
 		fmt.Fprintln(out,"  task-mecca recovery event    Inspect older stranded doing tasks on orchestration events (read-only)")
 		fmt.Fprintln(out,"  task-mecca flow              Inspect read-only next-action decisions; Controller cleanup/exit gate")
 		fmt.Fprintln(out,"  task-mecca worktree          Inspect and explicitly preserve/verify/remove safe Git worktrees")
@@ -46,6 +47,14 @@ func runHelpCLI(args []string,out,stderr io.Writer) int {
         fmt.Fprintln(out,"--purge-settings: also remove recognized global projects.json and channel metadata; never delete projects.")
         fmt.Fprintln(out,"Modified global agent Hook JSON files are backed up before exact Task Mecca commands are removed.")
         fmt.Fprintln(out,"Interactive uninstall requires typing 'uninstall'; --approve is explicit noninteractive confirmation.")
+	case "context":
+        fmt.Fprintln(out,"task-mecca context status --role controller --project DIR --json")
+        fmt.Fprintln(out,"task-mecca context event --role controller --event controller_resume --attempt EXACT --apply --project DIR --json")
+        fmt.Fprintln(out,"task-mecca context observe --role controller --attempt EXACT --used N --window N --evidence TEXT --json")
+        fmt.Fprintln(out,"task-mecca context rotation prepare --role controller --attempt EXACT --json")
+        fmt.Fprintln(out,"task-mecca context rotation acknowledge --role controller --id ROTATION --successor EXACT --checkpoint SHA --json")
+        fmt.Fprintln(out,"task-mecca context rotation commit --role controller --id ROTATION --json")
+        fmt.Fprintln(out,"Context usage reports are unverified. Native successor creation is external; commit requires old terminal/new running exact attempts.")
 	case "recovery":
 		fmt.Fprintln(out,"task-mecca recovery event --event registration --task B-550 --project DIR --json")
 		fmt.Fprintln(out,"task-mecca recovery event --event controller_start|controller_resume --project DIR --json")
