@@ -126,7 +126,22 @@ func withState(project,role string,fn func(*State)error)(State,error){
  if err=fn(&s);err!=nil{return s,err}
  s.UpdatedAt=time.Now().UTC().Format(time.RFC3339Nano)
  if err=write(project,s);err!=nil{return State{},err}
+ if err=appendTransition(project,s);err!=nil{return s,fmt.Errorf("owner state persisted but rotation audit append failed: %w",err)}
  return s,nil
+}
+// The role state is authoritative. The append-only transition record is an
+// audit trail; if append fails the caller must re-read state before retrying.
+func appendTransition(project string,s State)error{
+ path:=filepath.Join(project,"_task_mecca",".runtime","context_lifecycle","events.jsonl")
+ if err:=os.MkdirAll(filepath.Dir(path),0700);err!=nil{return err}
+ stage,id:="active",""
+ if s.Rotation!=nil {stage=s.Rotation.Stage;id=s.Rotation.ID}
+ record:=map[string]any{"role":s.Role,"generation":s.Generation,"owner_attempt":s.OwnerAttempt,"rotation_id":id,"stage":stage,"observed_at":s.UpdatedAt}
+ raw,err:=json.Marshal(record);if err!=nil{return err}
+ fd,err:=os.OpenFile(path,os.O_CREATE|os.O_WRONLY|os.O_APPEND,0600);if err!=nil{return err}
+ if _,err=fd.Write(append(raw,'\n'));err!=nil{fd.Close();return err}
+ if err=fd.Sync();err!=nil{fd.Close();return err}
+ return fd.Close()
 }
 func fingerprint(parts ...string)string{
  sum:=sha256.Sum256([]byte(strings.Join(parts,"\x00")))
@@ -208,6 +223,7 @@ func Status(project,role,event string,now time.Time)(StatusReport,error){
    if age==0 {if t,e:=time.Parse(time.RFC3339Nano,a.FirstObservedAt);e==nil&&now.After(t){age=now.Sub(t)}}
   }
  }
+ if s.Observation!=nil && s.OwnerAttempt!="" && s.Observation.AttemptID!=s.OwnerAttempt {s.Observation=nil}
  decision:=Decide(role,s.Observation,age,event)
  blockers:=[]string{}
  for _,id:=range cp.ActiveDoing {blockers=append(blockers,"active doing: "+id)}
@@ -228,10 +244,10 @@ func Observe(project,role,attemptID string,used,window int64,evidence string,now
 }
 func Prepare(project,role,attemptID string,now time.Time)(State,error){
  a,err:=attemptFor(project,role,attemptID,now);if err!=nil{return State{},err}
- if a.Terminal {return State{},errors.New("current owner must initiate preparation before terminal state")}
+ if a.CurrentState==runtimeobs.StateRuntimeUnknown {return State{},errors.New("unknown old runtime state; no rotation without evidence")}
  return withState(project,role,func(s *State)error{
   if s.OwnerAttempt!=""&&s.OwnerAttempt!=attemptID{return errors.New("owner attempt mismatch")}
-  if s.Rotation!=nil {
+  if s.Rotation!=nil && s.Rotation.Stage!="committed" {
    if s.Rotation.FromAttempt==attemptID && s.Rotation.Stage=="prepared"{return nil}
    return errors.New("rotation already exists; explicit recover/review required")
   }
@@ -271,7 +287,7 @@ func Commit(project,role,rotationID string,now time.Time)(State,error){
   if next.Terminal || next.CurrentState!=runtimeobs.StateRunning{return errors.New("new owner not confirmed running")}
   cp,err:=checkpoint(project,role,now);if err!=nil{return err}
   if cp.Fingerprint!=r.Checkpoint.Fingerprint||len(cp.ActiveDoing)>0||len(cp.PendingHandoffs)>0{return errors.New("canonical/handoff changed or work active; rotation cannot commit")}
-  s.Generation++;s.OwnerAttempt=r.ToAttempt;r.Stage="committed";r.CommittedAt=now.UTC().Format(time.RFC3339Nano)
+  s.Generation++;s.OwnerAttempt=r.ToAttempt;s.Observation=nil;r.Stage="committed";r.CommittedAt=now.UTC().Format(time.RFC3339Nano)
   return nil
  })
 }
