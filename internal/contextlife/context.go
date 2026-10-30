@@ -4,6 +4,7 @@
 package contextlife
 
 import (
+ "bytes"
  "crypto/sha256"
  "encoding/hex"
  "encoding/json"
@@ -123,7 +124,10 @@ func withState(project,role string,fn func(*State)error)(State,error){
  if err!=nil{return State{},err}
  defer unlock()
  s,err:=read(project,role);if err!=nil{return State{},err}
+ before,_:=json.Marshal(s)
  if err=fn(&s);err!=nil{return s,err}
+ after,_:=json.Marshal(s)
+ if bytes.Equal(before,after){return s,nil} // duplicate event: no write or audit replay
  s.UpdatedAt=time.Now().UTC().Format(time.RFC3339Nano)
  if err=write(project,s);err!=nil{return State{},err}
  if err=appendTransition(project,s);err!=nil{return s,fmt.Errorf("owner state persisted but rotation audit append failed: %w",err)}
