@@ -176,12 +176,6 @@ func Claim(project, handoffID, recipient, claimantAttemptID string, now time.Tim
 	if handoffID == "" || recipient == "" || claimantAttemptID == "" {
 		return ClaimResult{}, errors.New("handoff_id, recipient and claimant attempt_id are required")
 	}
-	// An acknowledged Controller rotation must not allow its retired
- // attempt to claim new work. The check is conservative and is NOT a
- // universal canonical write fence for direct Markdown edits.
- if recipient=="/root/controller" {
-  if err:=contextlife.MayClaimController(project,claimantAttemptID);err!=nil{return ClaimResult{},err}
- }
  var result ClaimResult
 	err := withLock(project, func() error {
 		ledger, err := buildLedgerUnlocked(project, now)
@@ -192,6 +186,12 @@ func Claim(project, handoffID, recipient, claimantAttemptID string, now time.Tim
 		if !ok {
 			return fmt.Errorf("handoff not found: %s", handoffID)
 		}
+        // After a verified transfer, the journal itself is the exact
+        // resource-scoped owner fence. Pending CLM generations may still
+        // refer to the retired Controller, but cannot reactivate it.
+        if recipient=="/root/controller" && row.TransferCount==0 {
+            if err:=contextlife.MayClaimController(project,claimantAttemptID);err!=nil{return err}
+        }
 		result.HandoffID = handoffID
 		result.ClaimedBy = row.ClaimedBy
 		result.ClaimedAttemptID = row.ClaimedAttemptID
@@ -260,7 +260,13 @@ func Claim(project, handoffID, recipient, claimantAttemptID string, now time.Tim
 	return result, err
 }
 
+// Mark preserves historical call sites for never-transferred handoffs. A
+// transferred handoff MUST specify its current exact owner with MarkAs.
 func Mark(project, handoffID, step, resultValue, evidence string, now time.Time) (MarkResult, error) {
+ return MarkAs(project,handoffID,step,resultValue,evidence,"",now)
+}
+
+func MarkAs(project, handoffID, step, resultValue, evidence, claimantAttemptID string, now time.Time) (MarkResult, error) {
 	handoffID = strings.TrimSpace(handoffID)
 	step = strings.ToLower(strings.TrimSpace(step))
 	resultValue = strings.ToLower(strings.TrimSpace(resultValue))
@@ -281,6 +287,14 @@ func Mark(project, handoffID, step, resultValue, evidence string, now time.Time)
 			return fmt.Errorf("handoff not found: %s", handoffID)
 		}
 		result = MarkResult{HandoffID: handoffID, Step: step, Result: resultValue, Applied: row.Applied}
+        // Prevent the old attempt (or unscoped legacy command) from writing
+        // ANY step after an ownership transfer, including applied.
+        if row.TransferCount>0 && (claimantAttemptID=="" || row.ClaimedAttemptID!=claimantAttemptID) {
+           return errors.New("transferred handoff requires --source-attempt matching current claimant")
+        }
+        if claimantAttemptID!="" && row.ClaimedAttemptID!="" && row.ClaimedAttemptID!=claimantAttemptID {
+           return errors.New("handoff mark denied: claimant attempt mismatch")
+        }
 		if step == "applied" {
 			if row.Applied {
 				result.Duplicate = true
