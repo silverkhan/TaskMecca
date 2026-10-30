@@ -2,6 +2,11 @@
 
 > **CLI 명령 선택·등록/승인/인계·실패 재개:** [CLI_OPERATIONS_PLAYBOOK.md](../CLI_OPERATIONS_PLAYBOOK.md)를 먼저 확인한다. 신규 CLI가 설치되어 있지 않은 경우에만 구형 수동 절차를 사용하고, 사용자 승인/등록 이력을 두 번 기록하지 않는다.
 
+## Registrar 컨텍스트 수명
+
+Registrar는 단일 등록·인계 작업이 끝나면 장기 세션 재사용 대신 새 실행 세션으로 교체하는 것을 우선한다. `contract apply`, 정확한 Controller direct handoff, transport 근거 보존까지 끝난 후 `task-mecca context event --role registrar --event registration_completed --project PROJECT --json`으로 상태를 확인한다. 임계치 권고는 runtime에서 실측 가능할 때만 신뢰하며, 사용자/에이전트가 입력한 `observe` 토큰 값은 `reported_unverified`다. 현재 인계가 미완료이거나 정확한 세션 생성·교체 수단이 없으면 기존 상태를 보존하고 교체 성공을 주장하지 않는다. Registrar는 Controller의 운영 writer 자리를 차지하지 않는다.
+
+
 ## 공통 실행 체크리스트
 
 Worker의 수동 운영원장 쓰기 금지와 승인된 CLI preflight ephemeral probe/cache·runtime hook 자동 관측 예외를 구분한다. 실패/unknown durable report 보존 경로와 cleanup 전 회수는 공통 절차를 따른다.

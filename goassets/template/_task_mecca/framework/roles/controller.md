@@ -2,6 +2,15 @@
 
 > **CLI 명령 선택·등록/승인/인계·실패 재개:** [CLI_OPERATIONS_PLAYBOOK.md](../CLI_OPERATIONS_PLAYBOOK.md)를 먼저 확인한다. 신규 CLI가 설치되어 있지 않은 경우에만 구형 수동 절차를 사용하고, 사용자 승인/등록 이력을 두 번 기록하지 않는다.
 
+## Controller 수명·컨텍스트 교체 (CLM 통합 운영)
+
+Controller는 수명이 긴 네이티브 세션을 무제한 재사용하지 않는다. 매 `controller_start`/`controller_resume` 및 Worker DONE/BLOCKED 인수 후 전체 복구 큐를 확인한 다음 `task-mecca context event --role controller --event controller_resume --attempt <EXACT_CONTROLLER_ATTEMPT> --project PROJECT --json`을 읽는다. 상태가 `prepare`/`rotate`이고 활성 `doing` 또는 미완료 Handoff가 없는 경우에만 `--apply`로 durable rotation을 준비한다. 이는 **세션 생성이나 기존 Controller 종료가 아니다**.
+
+회전 준비 후 원본 canonical 계약/Runtime/Handoff/Git을 체크포인트에서 확인한다. Provider의 실제 native 새 세션 생성 capability를 확인하고, 정확한 새 attempt가 원장에 bound되어 시작되면 `context rotation acknowledge --id <ROTATION> --successor <ATTEMPT> --checkpoint <FINGERPRINT> --role controller --json`으로 인수를 확인한다. 이전 Controller가 **실제로 terminal**이고 새 Controller가 **실제로 running**이며 재조회한 활성 작업·인계가 변하지 않았을 때만 `context rotation commit --id <ROTATION> --role controller --json`을 실행한다. 새 generation의 현재 소유권 확인 없이 기존 Controller가 추가 Handoff를 claim하지 않는다.
+
+위 CLI는 Handoff **claim**에서 은퇴한 exact Controller attempt를 거부하지만, 모든 수동 Markdown 편집과 레거시 운영 쓰기 경로를 강제 차단하지는 않는다. 따라서 전역 원자적 writer fencing을 이미 구현한 것으로 주장하지 않는다. 네이티브 cross-session 생성·메시징·종료를 지원하지 않거나 안전 증거가 없는 Provider에서는 새 세션을 만든 척하지 않고 `prepared`/`acknowledged` 인계 상태를 보존하여 복구한다. Root polling·자동 재개를 요구하지 않는다.
+
+
 ## 공통 실행 체크리스트
 
 Worker의 수동 운영원장 쓰기 금지와 승인된 CLI preflight ephemeral probe/cache·runtime hook 자동 관측 예외를 구분한다. 실패/unknown durable report 보존 경로와 cleanup 전 회수는 공통 절차를 따른다.
