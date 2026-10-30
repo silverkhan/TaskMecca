@@ -2133,17 +2133,23 @@ function healthLabel(h) { if(String(h).startsWith('controller_'))return ({contro
 function stateLabel(s) { if(String(s).startsWith('controller_'))return healthLabel(s); return ({doing:t('working'),ready:t('ready'),blocked:t('blocked'),hold:t('hold'),done:t('done'),todo:t('todo'),needs_user:t('needsUser'),awaiting_finalize:t('controllerReviewPending'),stalled:t('stalled')})[s] || s; }
 function lifecycleEventLabel(label) { return ({Registered:t('eventRegistered'),Assigned:t('eventAssigned'),Started:t('eventStarted'),'Controller review started':t('eventReviewStarted'),Waiting:t('eventWaiting'),Resumed:t('eventResumed'),Hold:t('eventHold'),Completed:t('eventCompleted')})[label] || label; }
 function lifecycleEvidenceLabel(event) {
-  // The persistence mechanism is not useful for confirmed history, but the
-  // responsible Worker/actor and stable event ID are important audit evidence.
-  // Keep both visible even when the source label is redundant or provisional.
+  // Lifecycle Actor is the actor of an immutable report, NOT the current
+  // Markdown Agent. The exact historical assignment is a separate source.
   const ko=state.language==='ko';
   let source='';
   if(event.source==='git')source=ko?'Git 이력':'Git history';
   else if(event.source==='runtime_observed'&&!event.provisional)source=ko?'파일 상태 관측':'File observation';
   else if(event.source!=='durable_lifecycle'&&event.source!=='execution_ledger'&&event.source!=='runtime_observed')source=event.source||'';
-  const actor=event.actor||'';
-  const id=event.event_id?'ID '+event.event_id:'';
-  return [source,actor,id].filter(Boolean).join(' · ');
+  const actor=String(event.actor||'');
+  const assigned=String(event.assigned_worker||'');
+  const kind=event.kind||'';
+  const evidence=[];
+  if(source)evidence.push(source);
+  if(assigned)evidence.push((ko?'당시 배정: ':'Assigned then: ')+assigned);
+  if(actor)evidence.push((ko?'기록 주체: ':'Recorded actor: ')+actor);
+  if(kind==='started'&&actor==='/root/controller')evidence.push(ko?'착수 Worker 식별 미확인':'Started Worker identity unverified');
+  if(event.event_id)evidence.push('ID '+event.event_id);
+  return evidence.join(' · ');
 }
 function completionAt(t) { return t.completion_sort_at || t.completed_at || t.mtime || ''; }
 function updatedAt(t) { return t.updated_at || t.mtime || t.completed_at || ''; }
@@ -5566,8 +5572,11 @@ function bindDetailInteractions() {
 // the task document, resetting disclosures or disturbing the reading position.
 function detailLifecycleBody(task) {
   const lc=task.lifecycle||{}, events=lc.events||[];
+  const currentAgent=task.file_state==='doing'?String(task.agent||task.fields?.Agent||'').trim():'';
+  const ownerNote=currentAgent?`<p class="summary lifecycle-owner-note">${esc(state.language==='ko'?'현재 담당: ':'Current assignee: ')}<strong>${esc(currentAgent)}</strong> · ${esc(state.language==='ko'?'아래는 과거 담당자와 기록 주체를 포함한 전체 이력입니다.':'History below includes former assignees and event authors.')}</p>`:'';
+
   const timingInferred=Boolean(lc.lifecycle_inferred), timingIncomplete=Boolean(lc.timing_incomplete);
-  const lifecycleBody=`${lifecycleSnapshotNotice(task)}${task.content_only&&!task.snapshot?(state.detailLifecycleError
+  const lifecycleBody=`${ownerNote}${lifecycleSnapshotNotice(task)}${task.content_only&&!task.snapshot?(state.detailLifecycleError
     ?`<div class="lifecycle-load-error" role="alert"><span>${esc(state.language==='ko'?'실행·라이프사이클 정보를 불러오지 못했습니다.':'Could not load lifecycle and runtime details.')}</span><button type="button" id="lifecycleRetryBtn" class="action-btn secondary">${esc(state.language==='ko'?'다시 시도':'Retry')}</button></div>`
     :`<p class="summary">${esc(state.language==='ko'?'실행·라이프사이클 정보 확인 중…':'Checking lifecycle and runtime details…')}</p>`):''}${timingInferred?`<div class="timing-note"><strong>${esc(t('provisionalTiming'))}</strong><span>${esc(t('provisionalTimingDetail'))}</span></div>`:''}${timingIncomplete?`<div class="timing-note warning"><strong>${esc(t('incompleteHistory'))}</strong><span>${esc(t('incompleteHistoryDetail'))}</span></div>`:''}${events.length?`<div class="timeline">${events.map((e,i)=>{
     const isCurrent=i===events.length-1 && e.state!=='done' && Boolean(e.at) && Number.isFinite(new Date(e.at).getTime());
