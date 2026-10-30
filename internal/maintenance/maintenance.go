@@ -627,6 +627,16 @@ func checksumFor(data []byte,asset string) (string,error) {
     return "",fmt.Errorf("checksum entry missing for %s",asset)
 }
 
+// RollingReleaseChangedError is returned before installing a binary when a
+// mutable release tag advances during the current download transaction.
+type RollingReleaseChangedError struct {
+    Expected string
+    Actual string
+}
+func (e *RollingReleaseChangedError) Error() string {
+    return fmt.Sprintf("rolling release changed while downloading: expected %s, fetched %s; retry",e.Expected,e.Actual)
+}
+
 func fetchReleaseBinary(base string,targetVersion ...string) ([]byte,error) {
     return fetchReleaseBinaryWithProgress(base,nil,targetVersion...)
 }
@@ -660,7 +670,7 @@ func fetchReleaseBinaryWithProgress(base string,report func(string),targetVersio
         versionBytes,versionErr:=httpGet(releaseCacheURL(base+"/VERSION.txt",nextReleaseCheckToken()))
         if versionErr!=nil {return nil,fmt.Errorf("cannot confirm rolling release generation: %w",versionErr)}
         if actual:=normalizeVersion(string(versionBytes));actual!=normalizeVersion(targetVersion[0]){
-            return nil,fmt.Errorf("rolling release changed while downloading: expected %s, fetched %s; retry",normalizeVersion(targetVersion[0]),actual)
+            return nil,&RollingReleaseChangedError{Expected:normalizeVersion(targetVersion[0]),Actual:actual}
         }
     }
     return binary,nil
@@ -787,6 +797,21 @@ func UpgradeWithProgressExpected(current,expected string,report func(string)) (U
     }
     reportUpgradeProgress(report,"downloading")
     binary,err:=fetchReleaseBinaryWithProgress(releaseBase(),report,info.Latest)
+    if err!=nil && CurrentChannel()==devChannel {
+        var moved *RollingReleaseChangedError
+        if errors.As(err,&moved) {
+            // One bounded retry for a rolling Dev release that advances while
+            // downloading. Re-read the live target, then re-download both the
+            // binary and checksum before any installation takes place.
+            reportUpgradeProgress(report,"checking")
+            refreshed:=CheckLatest(current)
+            if refreshed.Error!="" {return result,fmt.Errorf("release advanced; refresh failed: %s",refreshed.Error)}
+            if !refreshed.UpdateAvailable {return result,err}
+            info=refreshed
+            reportUpgradeProgress(report,"downloading")
+            binary,err=fetchReleaseBinaryWithProgress(releaseBase(),report,info.Latest)
+        }
+    }
     if err!=nil { return result,err }
     reportUpgradeProgress(report,"installing")
     result,err=installBinary(current,info.Latest,binary)
