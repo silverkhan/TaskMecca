@@ -289,6 +289,13 @@ func AssertOwner(project,role,attempt string,generation int)error{
  if s.OwnerAttempt!=attempt||s.Generation!=generation{return fmt.Errorf("stale controller generation or attempt")}
  return nil
 }
+// MayClaimController gates exact Controller handoff claims after CLM has an
+// explicit owner. Legacy projects without a CLM owner keep their old behavior.
+func MayClaimController(project,attempt string)error{
+ s,err:=read(project,"controller");if err!=nil{return err}
+ if s.OwnerAttempt!=""&&s.OwnerAttempt!=attempt{return fmt.Errorf("controller handoff claim rejected: stale rotation owner attempt")}
+ return nil
+}
 func EnsureAllowed(project string)error {
  if !projectguard.Allowed(project){return projectguard.ErrSuppressed}
  return nil
