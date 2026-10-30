@@ -62,6 +62,11 @@ func TestPreparedSuccessorNeedsTerminalOwnerAndFingerprint(t *testing.T){
  if err:=AssertOwner(project,"controller","run-old",1);err==nil{t.Fatal("old owner fence passed")}
  if err:=AssertOwner(project,"controller","run-next",2);err!=nil{t.Fatal(err)}
  if _,err=Commit(project,"controller",r.ID,at.Add(7*time.Minute));err!=nil{t.Fatal("commit retry must be idempotent:",err)}
+ // Next generation can rotate again without recycling the old attempt.
+ follow,err:=Prepare(project,"controller","run-next",at.Add(8*time.Minute))
+ if err!=nil||follow.Rotation.FromAttempt!="run-next"||follow.Rotation.ID==r.ID {t.Fatalf("second rotation blocked: %v %+v",err,follow)}
+ if b,err:=os.ReadFile(filepath.Join(project,"_task_mecca",".runtime","context_lifecycle","events.jsonl"));err!=nil||len(b)==0{t.Fatalf("audit trail missing: %v",err)}
+
 }
 func TestActiveWorkDefersControllerRotation(t *testing.T){
  project:=seedProject(t)
