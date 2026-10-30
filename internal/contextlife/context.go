@@ -195,9 +195,7 @@ func Decide(role string,o *Observation,age time.Duration,event string)Decision {
   // External/manual reports never authorize an automatic generation change.
   if o.Trust=="provider_verified" {
    p:=*o.UsagePercent
-   if p>=90 {d.Action="protect";d.Reason="context >=90 percent: stop new dispatch and checkpoint"}
-   else if p>=80 {d.Action="rotate";d.Reason="context >=80 percent"}
-   else if p>=65 {d.Action="prepare";d.Reason="context >=65 percent"}
+   if p>=90 {d.Action="protect";d.Reason="context >=90 percent: stop new dispatch and checkpoint"} else if p>=80 {d.Action="rotate";d.Reason="context >=80 percent"} else if p>=65 {d.Action="prepare";d.Reason="context >=65 percent"}
   }
  }
  if d.Action=="continue" && age>=7*24*time.Hour {
