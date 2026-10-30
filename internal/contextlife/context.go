@@ -114,7 +114,7 @@ func write(project string,s State)error{
  if err=tmp.Close();err!=nil{return err}
  // On Windows rename cannot replace a destination. Never remove the
  // current owner in that case: return an error and preserve both records.
- if err=os.Rename(tmp.Name(),path);err!=nil{return fmt.Errorf("atomic owner state replace unavailable: %w",err)}
+ if err=replaceFile(tmp.Name(),path);err!=nil{return fmt.Errorf("atomic owner state replace unavailable: %w",err)}
  return nil
 }
 func withState(project,role string,fn func(*State)error)(State,error){
