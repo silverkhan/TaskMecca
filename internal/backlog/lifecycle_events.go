@@ -67,12 +67,6 @@ func validateLifecycleTransition(event LifecycleTransition) error {
 	if _, err := time.Parse(time.RFC3339Nano, event.OccurredAt); err != nil {
 		return fmt.Errorf("invalid occurrence time: %w", err)
 	}
-	// Controller may record a Worker report, but the immutable started Actor
-	// identifies the Worker that began execution, not the Recorder.
-	// Existing records are never rewritten: reject only new ambiguous starts.
-	if event.Kind == "started" && event.Actor == "/root/controller" {
-		return errors.New("started actor must identify the Worker, not /root/controller; use Worker agent path")
-	}
 	if event.Kind == "started" && event.AttemptID == "" && event.EvidenceSource != "worker_report" {
 		return errors.New("started requires a runtime attempt or explicit Worker report")
 	}
@@ -92,6 +86,11 @@ func RecordLifecycleTransition(project string, event LifecycleTransition, now ti
 	}
 	if err := validateLifecycleTransition(event); err != nil {
 		return LifecycleTransition{}, err
+	}
+	// Do not apply new write-time constraints when reading immutable legacy
+	// events; historical Controller-attributed starts remain visible for audit.
+	if event.Kind == "started" && event.Actor == "/root/controller" {
+		return LifecycleTransition{}, errors.New("started actor must identify Worker; pass Worker path instead of /root/controller")
 	}
 	path := lifecycleTransitionPath(project, event.EventID)
 	if err := os.MkdirAll(lifecycleEventsDir(project), 0755); err != nil {
