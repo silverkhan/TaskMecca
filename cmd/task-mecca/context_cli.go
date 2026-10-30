@@ -49,7 +49,7 @@ func runContextCLI(args []string,out,stderr io.Writer)int{
   if *inputFormat=="claude-statusline" {result,err=contextlife.ObserveClaudeStatusline(root,*role,*attempt,os.Stdin,now)} else if *inputFormat=="manual" {result,err=contextlife.Observe(root,*role,*attempt,*used,*window,*evidence,now)} else {fmt.Fprintln(stderr,"unknown observation format");return 2}
  case "event":
   var report contextlife.StatusReport
-  report,err=contextlife.Status(root,*role,*event,now)
+  report,err=contextlife.StatusForAttempt(root,*role,*event,*attempt,now)
   if err==nil {
    if *apply&&(report.Decision.Action=="prepare"||report.Decision.Action=="rotate"||report.Decision.Action=="protect")&&report.Eligible {
     result,err=contextlife.Prepare(root,*role,*attempt,now)
