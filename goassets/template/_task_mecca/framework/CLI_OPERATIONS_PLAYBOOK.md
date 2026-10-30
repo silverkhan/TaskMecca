@@ -16,7 +16,9 @@ task-mecca context rotation commit --role controller --id <ROTATION_ID> --projec
 task-mecca context rotation recover --role controller --project PROJECT --json
 ```
 
-- 기본 경계는 65/80/90%이지만 현재 Provider의 실측 ingestion이 없으면 사용률은 `unknown`이며 자동 교체하지 않는다. 수동 `observe`는 `reported_unverified`로 명시된다.
+- 기본 경계는 65/80/90%이다. 수동 `observe`는 `reported_unverified`, Claude 구조화된 statusline은 `provider_structured`이고 강제 교체에 사용할 수 없다. 실측이 없는 경우 `unknown`을 반환한다.
+- Claude Code가 실제로 제공하는 statusline JSON을 정확한 `session_id`와 bound attempt에 맞추어 전달할 수 있는 환경에서는 `task-mecca context observe --role controller --attempt <EXACT> --format claude-statusline --project PROJECT --json < statusline.json`으로 관측을 기록할 수 있다. statusline JSON은 암호학적 인증 수단이 아니므로 `provider_structured`로 표시하며 컨텍스트 사용률 65% 이상은 **안전한 준비만 권고**한다. null/세션 불일치는 실패이며 0으로 대체하지 않는다.
+
 - 7일 이상 장기 세션 및 단건 Registrar 등록 완료 이벤트가 교체 준비를 권고한다. 실제 native successor 생성은 제공된 협업 도구가 수행하며, Task Mecca CLI만으로 생성되지는 않는다.
 - 준비는 `doing`과 미처리 관련 Handoff가 없어야 하며, 인수는 별개 native attempt와 정확한 체크포인트 ACK를 필요로 한다.
 - 이전 owner가 terminal로 확인되기 전에는 generation을 넘기지 않는다. 이 시점에도 legacy 직접 파일 편집 등 모든 운영 쓰기가 fenced된 것은 아니다.
