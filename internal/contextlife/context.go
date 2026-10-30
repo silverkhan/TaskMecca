@@ -191,11 +191,12 @@ func Decide(role string,o *Observation,age time.Duration,event string)Decision {
  if role=="root"{d.Action="manual_only";d.Reason="Root never auto-rotates";return d}
  if o!=nil&&o.WindowTokens>0&&o.UsagePercent!=nil {
   d.ContextPercent=o.UsagePercent
-  if o.Trust=="provider_verified"{d.ContextStatus="measured"}else{d.ContextStatus="reported_unverified"}
+  if o.Trust=="provider_verified"{d.ContextStatus="measured"}else if o.Trust=="provider_structured"{d.ContextStatus="provider_structured"}else{d.ContextStatus="reported_unverified"}
   // External/manual reports never authorize an automatic generation change.
   if o.Trust=="provider_verified" {
    p:=*o.UsagePercent
    if p>=90 {d.Action="protect";d.Reason="context >=90 percent: stop new dispatch and checkpoint"} else if p>=80 {d.Action="rotate";d.Reason="context >=80 percent"} else if p>=65 {d.Action="prepare";d.Reason="context >=65 percent"}
+  } else if o.Trust=="provider_structured" && *o.UsagePercent>=65 {d.Action="prepare";d.Reason="structured but unauthenticated provider usage: prepare only, require independent native identity gates"
   }
  }
  if d.Action=="continue" && age>=7*24*time.Hour {
