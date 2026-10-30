@@ -46,6 +46,7 @@ type Record struct {
 	HoldReason             string            `json:"hold_reason,omitempty"`
 	ClaimedBy              string            `json:"claimed_by,omitempty"`
 	ClaimedAttemptID       string            `json:"claimed_attempt_id,omitempty"`
+	PreviousClaimedAttemptID string          `json:"previous_claimed_attempt_id,omitempty"`
 	Step                   string            `json:"step,omitempty"`
 	Result                 string            `json:"result,omitempty"`
 	ObservedAt             string            `json:"observed_at"`
@@ -72,6 +73,9 @@ type Handoff struct {
 	ClaimedBy              string               `json:"claimed_by,omitempty"`
 	ClaimedAttemptID       string               `json:"claimed_attempt_id,omitempty"`
 	ClaimedAt              string               `json:"claimed_at,omitempty"`
+	TransferCount          int                  `json:"transfer_count,omitempty"`
+	LastTransferFrom       string               `json:"last_transfer_from,omitempty"`
+	LastTransferredAt      string               `json:"last_transferred_at,omitempty"`
 	Steps                  map[string]StepState `json:"steps"`
 	Applied                bool                 `json:"applied"`
 	AppliedAt              string               `json:"applied_at,omitempty"`
