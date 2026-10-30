@@ -17,6 +17,8 @@ type cliOptions struct {
 	from                string
 	to                  string
 	sourceAttempt       string
+    fromAttempt         string
+    toAttempt           string
 	targetAttempt       string
 	reportFile          string
 	contractSHA256      string
@@ -32,7 +34,7 @@ type cliOptions struct {
 
 func RunCLI(args []string, stdout, stderr io.Writer) int {
 	if len(args) == 0 {
-		fmt.Fprintln(stderr, "handoff requires one of: prepare, claim, mark, inspect, reconcile, capability")
+		fmt.Fprintln(stderr, "handoff requires one of: prepare, claim, transfer, mark, inspect, reconcile, capability")
 		return 2
 	}
 	action := strings.ToLower(args[0])
@@ -87,12 +89,20 @@ func RunCLI(args []string, stdout, stderr io.Writer) int {
 		if result.ClaimConflict || result.ContractChanged {
 			return 1
 		}
+	case "transfer":
+        if len(opts.positionals)!=1||opts.fromAttempt==""||opts.toAttempt==""||opts.evidence=="" {
+            fmt.Fprintln(stderr,"handoff transfer requires <HANDOFF_ID> --from-attempt OLD --to-attempt NEW --evidence TEXT")
+            return 2
+        }
+        result,callErr:=TransferClaim(project,opts.positionals[0],opts.fromAttempt,opts.toAttempt,opts.evidence,now)
+        if callErr!=nil {fmt.Fprintln(stderr,callErr);return 1}
+        printValue(stdout,result,opts.jsonOutput)
 	case "mark":
 		if len(opts.positionals) != 1 || opts.step == "" || opts.result == "" {
 			fmt.Fprintln(stderr, "handoff mark requires <HANDOFF_ID> --step <step> --result ok|failed|unknown")
 			return 2
 		}
-		result, callErr := Mark(project, opts.positionals[0], opts.step, opts.result, opts.evidence, now)
+		result, callErr := MarkAs(project, opts.positionals[0], opts.step, opts.result, opts.evidence, opts.sourceAttempt, now)
 		if callErr != nil {
 			fmt.Fprintln(stderr, callErr)
 			return 1
@@ -193,7 +203,7 @@ func parseCLI(args []string) (cliOptions, error) {
 			opts.fields = args[i]
 		case "--execution-authorized":
 			opts.executionAuthorized = true
-		case "--project", "--event", "--from", "--to", "--source-attempt", "--target-attempt", "--report-file", "--contract-sha256", "--as", "--step", "--result", "--evidence":
+		case "--project", "--event", "--from", "--to", "--source-attempt", "--target-attempt", "--from-attempt", "--to-attempt", "--report-file", "--contract-sha256", "--as", "--step", "--result", "--evidence":
 			if i+1 >= len(args) {
 				return opts, fmt.Errorf("%s requires a value", arg)
 			}
@@ -210,6 +220,10 @@ func parseCLI(args []string) (cliOptions, error) {
 				opts.to = value
 			case "--source-attempt":
 				opts.sourceAttempt = value
+            case "--from-attempt":
+                opts.fromAttempt=value
+            case "--to-attempt":
+                opts.toAttempt=value
 			case "--target-attempt":
 				opts.targetAttempt = value
 			case "--report-file":

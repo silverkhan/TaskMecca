@@ -72,7 +72,19 @@ task-mecca lifecycle record completed <ID> <stable-event-id> /root/controller co
 재개 Controller는 수신확인만 하고 종료하지 않는다. 다음 대조부터 시작하고 완료 결과와 merged PR 잔여를 ready 신규 구현보다 먼저 처리한다.
 
 1. 원본 canonical inspect/계약·Agent·scope·assignment/lifecycle, native Worker state/exact attempt, handoff journal/claim, fresh `coordinate --json`의 recovery_queue를 함께 대조한다. recovery_queue가 비어 있어도 completed Worker와 merged PR를 별도로 확인한다. native/runtime 불일치나 누락을 완료로 추정하지 않는다.
-2. 현재 exact Controller attempt로 handoff claim한다. already_applied는 반복하지 않고 already_claimed는 남은 단계부터 복구한다. claim_conflict/contract_changed는 evidence와 재개조건을 남긴다. 교체 Controller가 이전 claim을 임의 applied로 바꾸지 않는다.
+2. 현재 exact Controller attempt로 handoff claim한다. already_applied는 반복하지 않고 already_claimed는 남은 단계부터 복구한다. `claimant_attempt_mismatch` 또는 `claimed_by_other_runtime_attempt`이고 과거 Controller가 종료된 경우, **자동 재작성/새 handoff 생성이 아니라** 아래 안전한 `handoff transfer` 경로로 기존 Claim을 이전한다. 이전 Controller의 실제 terminal 상태, 신규 Controller의 observed running·exact binding, 다른 동시 Controller 부재, 미완료 handoff 및 계약 해시 일치를 검증하지 못하면 transfer를 보류한다. `contract_changed`는 evidence와 재개조건을 남긴다. 교체 Controller가 이전 claim을 임의 applied로 바꾸지 않는다.
+
+### 종료된 Controller Claim의 안전한 이전 (B-575 회귀)
+
+```bash
+task-mecca handoff inspect HANDOFF_ID --project PROJECT --json
+task-mecca runtime query --project PROJECT --json
+task-mecca handoff transfer HANDOFF_ID --from-attempt EXACT_OLD --to-attempt EXACT_NEW --evidence "observed old terminal; new Controller observed running; contract rechecked" --project PROJECT --json
+task-mecca handoff claim HANDOFF_ID --as /root/controller --source-attempt EXACT_NEW --project PROJECT --json
+task-mecca handoff mark HANDOFF_ID --step acceptance --result ok --source-attempt EXACT_NEW --evidence "verified current review" --project PROJECT --json
+```
+
+인수권 이전은 원래 Handoff ID와 승인·계약·기존 Claim·검토 단계 기록을 보존하는 `claim_transferred` append-only 전이이며, 이전 종료 및 신규 실행의 Provider/Runtime 근거와 독립적 Controller 한 명을 확인해야 한다. `duplicate=true`인 `prepare`를 강제 새 Handoff로 만들지 않는다. **Transfer 이후의 모든 `handoff mark`에는 현재 Claimant의 `--source-attempt`가 필수**이며, 이전 Controller의 `mark`는 거부된다. 과거 기록의 이름·runtime attempt를 추측하거나 원장 JSONL을 수동 변경하지 않는다. 이 작업은 네이티브 메시지 실제 전달·CLM 전역 파일 writer fencing을 증명하지 않는다.
 3. 계약 수용 기준마다 코드·문서·테스트를 검증한다. 잔여 구현은 fresh dispatch 절차로 resume/reassign하고 실제 새 turn을 확인한다. 사용자 판단이 필요한 경우에만 durable hold와 재개조건을 만든다. 실행 가능한 후속이나 미처리 DONE/BLOCKED가 남아 있으면 조용히 종료하지 않는다.
 4. 요구된 회귀/테스트 및 PR CI를 확인하고 최신 target·dirty·다른 writer를 점검해 지정 dev로 직렬 merge한다. remote merge만으로 끝내지 않고 지정 local dev에 merged SHA가 포함되는 ancestry 및 remote/local sync evidence를 기록한다. unsafe conflict는 보존하고 재개조건을 남긴다.
 5. Go/Python 배포 지침의 동기화와 현재 설치 지침 refresh를 확인한다. 사용자 수정 managed 문서는 migration backup/동의 정책을 지키고 실제 설치 sync/재읽기 evidence를 기록한다.
@@ -81,7 +93,7 @@ task-mecca lifecycle record completed <ID> <stable-event-id> /root/controller co
 8. **Decision Engine P1 (설치판 지원 시):** Controller는 Worker 산출물을 통합하고 원본 backlog done을 확인한 뒤 `task-mecca flow next --role controller --event final_requested --project REPO --task ID --into REF --worktree EXACT --archive EXTERNAL --json`으로 **실제 작업/워크트리/보존 증거**를 읽는다. `EXIT_BLOCKED`이면 정리 완료를 가장하지 않고 남은 단계와 담당자·이유·재개조건을 원본 canonical 노트 및 후속 backlog에 남긴다. 현 P1은 advisory/read-only로 모델의 final/exit를 기술적으로 인터셉트하지 않는다. `cleanup_status=removed_verified`도 다른 인계·외부 원천·미완료 Worker 확인 없이 전체 종료 승인이 아니다.
 
 8. exact worktree를 확인해 미커밋·untracked·ignored·사용자 데이터를 보존한 뒤 안전 cleanup한다. 필요한 파일과 handoff-evidence durable report는 cleanup 전에 Controller가 회수·보존·인계하고 정리 evidence를 남긴다. 원래 workspace나 canonical data를 삭제/reset하지 않는다.
-9. backlog-finalized/external-synced 및 transport/검증 근거와 잔여 상태를 각각 mark한 뒤 `handoff mark <HANDOFF_ID> --step applied --result ok --evidence <finalization-evidence> --json`으로 handoff를 마친다. Root 통지는 선택적 best-effort이며 Root ACK/wake는 필요 없다.
+9. backlog-finalized/external-synced 및 transport/검증 근거와 잔여 상태를 각각 mark한 뒤 `handoff mark <HANDOFF_ID> --step applied --result ok --source-attempt <CURRENT_CONTROLLER_ATTEMPT> --evidence <finalization-evidence> --json`으로 handoff를 마친다. Root 통지는 선택적 best-effort이며 Root ACK/wake는 필요 없다.
 
 ## Regression evidence: A-19 / A-20
 

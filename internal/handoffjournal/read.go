@@ -90,6 +90,29 @@ func BuildLedger(project string, now time.Time) (Ledger, error) {
 				row.ClaimedAttemptID = record.ClaimedAttemptID
 				row.ClaimedAt = record.ObservedAt
 			}
+		case "claim_transferred":
+            // Append-only compare-and-swap fold. Original Claim, approval,
+            // contract and all earlier review steps remain in the journal.
+            if row.Applied || row.ClaimedBy != "/root/controller" ||
+               row.ClaimedAttemptID == "" || row.ClaimedAttemptID != record.PreviousClaimedAttemptID ||
+               row.Target.AgentPath != "/root/controller" ||
+               (row.Target.AttemptID != "" && row.Target.AttemptID != record.PreviousClaimedAttemptID) ||
+               record.ClaimedBy != "/root/controller" || record.ClaimedAttemptID == "" ||
+               record.ClaimedAttemptID != record.TargetAttemptID ||
+               record.ClaimedAttemptID == record.PreviousClaimedAttemptID ||
+               record.TargetAgentPath != "/root/controller" || record.Provider == "" ||
+               record.TargetSessionID == "" || record.TargetRuntimeAgentID == "" {
+                out.Findings=append(out.Findings,Finding{Severity:"warning",Code:"invalid_claim_transfer",HandoffID:record.HandoffID,Message:"claim transfer did not match the preceding owner; ignored"})
+                break
+            }
+            row.Target=Target{AgentPath:record.TargetAgentPath,AttemptID:record.TargetAttemptID,RuntimeAgentID:record.TargetRuntimeAgentID,RuntimeName:record.TargetRuntimeName,SessionID:record.TargetSessionID,Provider:record.Provider,State:record.TargetState}
+            row.ClaimedAttemptID=record.ClaimedAttemptID
+            row.ClaimedBy=record.ClaimedBy
+            row.TransferCount++
+            row.LastTransferFrom=record.PreviousClaimedAttemptID
+            row.LastTransferredAt=record.ObservedAt
+            row.Action=record.Action
+            row.RequiresFreshPreflight=record.RequiresFreshPreflight
 		case "step_succeeded", "step_failed", "step_unknown":
 			if _, exists := row.Steps[record.Step]; !exists {
 				row.Steps[record.Step] = StepState{
