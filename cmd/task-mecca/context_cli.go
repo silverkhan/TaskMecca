@@ -5,6 +5,7 @@ import (
  "flag"
  "fmt"
  "io"
+ "os"
  "path/filepath"
  "time"
 
@@ -29,6 +30,7 @@ func runContextCLI(args []string,out,stderr io.Writer)int{
  used:=flags.Int64("used",0,"reported used context tokens")
  window:=flags.Int64("window",0,"reported context window tokens")
  evidence:=flags.String("evidence","","source for reported token counts")
+ inputFormat:=flags.String("format","manual","manual|claude-statusline (provider JSON via stdin)")
  generation:=flags.Int("generation",0,"exact generation for assert")
  apply:=flags.Bool("apply",false,"prepare an eligible rotation on a named orchestration event")
  asJSON:=flags.Bool("json",false,"structured output")
@@ -44,7 +46,7 @@ func runContextCLI(args []string,out,stderr io.Writer)int{
   if action!="show"{fmt.Fprintln(stderr,"context policy show");return 2}
   result=map[string]any{"prepare_at_percent":65,"rotate_at_percent":80,"protect_at_percent":90,"max_session_age_days":7,"metrics_rule":"reported token values are unverified/advisory; no synthetic provider-verified measurement","native_spawn":"external provider runtime required","root_rotation":"manual only"}
  case "observe":
-  result,err=contextlife.Observe(root,*role,*attempt,*used,*window,*evidence,now)
+  if *inputFormat=="claude-statusline" {result,err=contextlife.ObserveClaudeStatusline(root,*role,*attempt,os.Stdin,now)} else if *inputFormat=="manual" {result,err=contextlife.Observe(root,*role,*attempt,*used,*window,*evidence,now)} else {fmt.Fprintln(stderr,"unknown observation format");return 2}
  case "event":
   var report contextlife.StatusReport
   report,err=contextlife.Status(root,*role,*event,now)
