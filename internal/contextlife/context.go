@@ -231,6 +231,23 @@ func Status(project,role,event string,now time.Time)(StatusReport,error){
  return StatusReport{State:s,Decision:decision,Current:cp,Eligible:len(blockers)==0,Blockers:blockers,
   Notice:"Read-only advisory. Native spawn, live liveness, current preflight and canonical writer fencing are NOT provided by this status."},nil
 }
+// StatusForAttempt evaluates the exact current native attempt even on first
+// use when no CLM owner state has been written yet. Never choose a role-only
+// match from multiple sessions or treat "open" as verified liveness.
+func StatusForAttempt(project,role,event,attemptID string,now time.Time)(StatusReport,error){
+ report,err:=Status(project,role,event,now);if err!=nil{return StatusReport{},err}
+ if strings.TrimSpace(attemptID)==""{return report,nil}
+ a,err:=attemptFor(project,role,attemptID,now);if err!=nil{return StatusReport{},err}
+ if report.State.OwnerAttempt!=""&&report.State.OwnerAttempt!=attemptID{return StatusReport{},errors.New("event attempt is not current role owner")}
+ age:=time.Duration(0)
+ timestamp:=a.StartedAt
+ if timestamp==""{timestamp=a.FirstObservedAt}
+ if t,e:=time.Parse(time.RFC3339Nano,timestamp);e==nil&&now.After(t){age=now.Sub(t)}
+ observation:=report.State.Observation
+ if observation!=nil&&observation.AttemptID!=attemptID{observation=nil}
+ report.Decision=Decide(role,observation,age,event)
+ return report,nil
+}
 func Observe(project,role,attemptID string,used,window int64,evidence string,now time.Time)(State,error){
  if used<0||window<=0||used>window||strings.TrimSpace(evidence)==""{return State{},errors.New("invalid token report or missing evidence")}
  a,err:=attemptFor(project,role,attemptID,now);if err!=nil{return State{},err}
