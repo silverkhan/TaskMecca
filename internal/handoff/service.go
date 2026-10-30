@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/silverkhan/TaskMecca/internal/backlog"
+ "github.com/silverkhan/TaskMecca/internal/contextlife"
 )
 
 func Prepare(req PrepareRequest, now time.Time) (PrepareResult, error) {
@@ -175,7 +176,13 @@ func Claim(project, handoffID, recipient, claimantAttemptID string, now time.Tim
 	if handoffID == "" || recipient == "" || claimantAttemptID == "" {
 		return ClaimResult{}, errors.New("handoff_id, recipient and claimant attempt_id are required")
 	}
-	var result ClaimResult
+	// An acknowledged Controller rotation must not allow its retired
+ // attempt to claim new work. The check is conservative and is NOT a
+ // universal canonical write fence for direct Markdown edits.
+ if recipient=="/root/controller" {
+  if err:=contextlife.MayClaimController(project,claimantAttemptID);err!=nil{return ClaimResult{},err}
+ }
+ var result ClaimResult
 	err := withLock(project, func() error {
 		ledger, err := buildLedgerUnlocked(project, now)
 		if err != nil {
