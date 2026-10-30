@@ -175,3 +175,27 @@ test('stale snapshot automatically rechecks with a bounded retry budget',async()
  assert.equal(a.harness.state.detailTask.raw_markdown,'# Task A-1');
  assert.match(a.section.innerHTML,/lifecycleRetryBtn/);
 });
+
+test('historical reassignment shows current assignee, former Worker and ambiguous Controller start separately',async()=>{
+ const records=[
+  {kind:'started',label:'Started',at:stamp,event_id:'digeuda-start',source:'durable_lifecycle',
+   actor:'/root/controller/digeuda',assigned_worker:'/root/controller/digeuda',
+   assignment_id:'assignment-digeuda'},
+  {kind:'assigned',label:'Assigned',at:'2026-10-14T12:05:00Z',event_id:'new-assignment',source:'durable_lifecycle',
+   actor:'/root/controller',assigned_worker:'/root/controller/nayong_1030_3m'},
+  {kind:'started',label:'Started',at:'2026-10-14T12:10:00Z',event_id:'legacy-controller-start',source:'durable_lifecycle',
+   actor:'/root/controller',assigned_worker:'/root/controller/nayong_1030_3m'}
+ ];
+ const a=session(()=>Promise.resolve(json(live(records))));
+ a.harness.state.detailTask.agent='/root/controller/nayong_1030_3m';
+ a.harness.state.detailTask.file_state='doing';
+ await a.harness.refreshViewedTaskLifecycle('/demo','team','A-1',{force:true});
+ const html=a.section.innerHTML;
+ assert.match(html,/현재 담당: /);
+ assert.match(html,/root\/controller\/nayong_1030_3m/);
+ assert.match(html,/당시 배정: \/root\/controller\/digeuda/);
+ assert.match(html,/기록 주체: \/root\/controller\/digeuda/);
+ assert.match(html,/착수 Worker 식별 미확인/);
+ assert.match(html,/legacy-controller-start/);
+ assert.match(html,/아래는 과거 담당자와 기록 주체/);
+});
