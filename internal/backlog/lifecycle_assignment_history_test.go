@@ -44,6 +44,7 @@ func TestLifecycleHistoricalWorkerSeparatedFromCurrentAgentAndRecorder(t *testin
  if err:=os.MkdirAll(filepath.Dir(historyPath),0755);err!=nil{t.Fatal(err)}
  if err:=os.WriteFile(historyPath,payload,0644);err!=nil{t.Fatal(err)}
  if _,err:=RecordLifecycleTransition(project,LifecycleTransition{EventID:"invalid-new-start",TaskID:"B-574",Kind:"started",Actor:"/root/controller",EvidenceSource:"worker_report"},now);err==nil{t.Fatal("new Controller-as-Worker start must be refused")}
+ if same,err:=RecordLifecycleTransition(project,old,now.Add(5*time.Minute));err!=nil||same.EventID!=old.EventID{t.Fatalf("legacy exact retry must remain idempotent: %v %+v",err,same)}
  scan,err:=ReadLifecycleTransitions(project)
  if err!=nil||len(scan.Events)!=5||len(scan.Findings)!=0{t.Fatalf("old record must remain readable: %+v %v",scan,err)}
  timings,err:=LifecycleTimings(project,"")
