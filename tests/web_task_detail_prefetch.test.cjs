@@ -147,18 +147,18 @@ test('confirmed lifecycle hides redundant persistence source but retains Worker 
  a.state.language='ko';
  const confirmed={source:'durable_lifecycle',actor:'worker/abc',event_id:'lifecycle-long-event-id',label:'Started',at:'2026-10-10T01:00:00Z'};
  const execution={source:'execution_ledger',actor:'runtime',event_id:'attempt-long-id',label:'Started'};
- assert.equal(a.lifecycleEvidenceLabel(confirmed),'worker/abc · ID lifecycle-long-event-id','canonical record must retain its Worker and event ID');
- assert.equal(a.lifecycleEvidenceLabel(execution),'runtime · ID attempt-long-id','runtime ledger event still identifies its source actor and ID');
- assert.equal(a.lifecycleEvidenceLabel({source:'durable_lifecycle',actor:'worker-only'}),'worker-only');
+ assert.equal(a.lifecycleEvidenceLabel(confirmed),'기록 주체: worker/abc · ID lifecycle-long-event-id','canonical record must retain its Worker and event ID');
+ assert.equal(a.lifecycleEvidenceLabel(execution),'기록 주체: runtime · ID attempt-long-id','runtime ledger event still identifies its source actor and ID');
+ assert.equal(a.lifecycleEvidenceLabel({source:'durable_lifecycle',actor:'worker-only'}),'기록 주체: worker-only');
  assert.equal(a.lifecycleEvidenceLabel({source:'durable_lifecycle',event_id:'event-only'}),'ID event-only');
  assert.equal(a.lifecycleEvidenceLabel({source:'durable_lifecycle'}),'','empty metadata never produces dangling separators');
  const inferred={source:'runtime_observed',provisional:true,actor:'worker/xyz',event_id:'observation'};
- assert.equal(a.lifecycleEvidenceLabel(inferred),'worker/xyz · ID observation','provisional marker is separate; actor and ID must remain');
+ assert.equal(a.lifecycleEvidenceLabel(inferred),'기록 주체: worker/xyz · ID observation','provisional marker is separate; actor and ID must remain');
  assert.equal(a.lifecycleEvidenceLabel({source:'git',event_id:'historical-id'}),'Git 이력 · ID historical-id');
  assert.equal(a.lifecycleEvidenceLabel({source:'runtime_observed'}),'파일 상태 관측');
  a.state.language='en';
  assert.equal(a.lifecycleEvidenceLabel({source:'git'}),'Git history');
- assert.equal(a.lifecycleEvidenceLabel(confirmed),'worker/abc · ID lifecycle-long-event-id');
+ assert.equal(a.lifecycleEvidenceLabel(confirmed),'Recorded actor: worker/abc · ID lifecycle-long-event-id');
 });
 
 

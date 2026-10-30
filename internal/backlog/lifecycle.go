@@ -26,6 +26,7 @@ type lifecycleEvent struct {
 	ID     string
 	Kind   string
 	Actor  string
+	AssignedWorker string
 	EvidenceSource string
 	AssignmentID string
 	AttemptID string
@@ -481,7 +482,26 @@ func lifecycleTimings(project,root string,rows []Record,shared ...requestRuntime
 	// observation journal remain readable fallback evidence, never a reason to
 	// duplicate a phase or promote a late file observation to a real start.
 	directByID:=map[string][]LifecycleTransition{}
-	for _,event:=range durableScan.Events { directByID[event.TaskID]=append(directByID[event.TaskID],event) }
+	needsAssignmentLookup:=false
+	for _,event:=range durableScan.Events {
+        directByID[event.TaskID]=append(directByID[event.TaskID],event)
+        if event.AssignmentID!="" {needsAssignmentLookup=true}
+    }
+    // Event Actor is the recorded actor, not necessarily the assigned Worker.
+    // Resolve only exact TaskID + assignment ID; never substitute today's Agent.
+    historicalAssigned:=map[string]string{}
+    ambiguousAssignment:=map[string]bool{}
+    if needsAssignmentLookup {
+        if assignments,assignmentErr:=runtimeobs.ListAssignments(project);assignmentErr==nil {
+            for _,a:=range assignments {
+                key:=strings.ToUpper(a.TaskID)+"\x00"+a.AssignmentID
+                if existing,ok:=historicalAssigned[key];ok && existing!=a.AgentPath {
+                    historicalAssigned[key]=""
+                    ambiguousAssignment[key]=true
+                }else if !ok {historicalAssigned[key]=a.AgentPath}
+            }
+        }
+    }
 	for id,direct:=range directByID {
 		stateFor:=func(kind string) string { switch kind { case "registered","assigned":return "todo"; case "started","resumed":return "doing"; case "waiting":return "hold"; case "completed":return "done" }; return "" }
 		directState:=map[string]bool{}
@@ -495,7 +515,10 @@ func lifecycleTimings(project,root string,rows []Record,shared ...requestRuntime
 			filtered=append(filtered,old)
 		}
 		for _,event:=range direct {
-			filtered=append(filtered,lifecycleEvent{State:stateFor(event.Kind),At:event.OccurredAt,Source:"durable_lifecycle",ID:event.EventID,Kind:event.Kind,Actor:event.Actor,EvidenceSource:event.EvidenceSource})
+			workerKey:=event.TaskID+"\x00"+event.AssignmentID
+            worker:=""
+            if event.AssignmentID!="" && !ambiguousAssignment[workerKey] { worker=historicalAssigned[workerKey] }
+            filtered=append(filtered,lifecycleEvent{State:stateFor(event.Kind),At:event.OccurredAt,Source:"durable_lifecycle",ID:event.EventID,Kind:event.Kind,Actor:event.Actor,AssignedWorker:worker,EvidenceSource:event.EvidenceSource,AssignmentID:event.AssignmentID,AttemptID:event.AttemptID})
 		}
 		combinedEvents[id]=filtered
 	}
@@ -582,6 +605,7 @@ func lifecycleTimings(project,root string,rows []Record,shared ...requestRuntime
 				"event_id":         entry.event.ID,
 				"kind":             entry.event.Kind,
 				"actor":            entry.event.Actor,
+                "assigned_worker":  entry.event.AssignedWorker,
 				"evidence_source":  entry.event.EvidenceSource,
                 "assignment_id": entry.event.AssignmentID,
                 "attempt_id": entry.event.AttemptID,

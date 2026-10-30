@@ -87,7 +87,19 @@ func RecordLifecycleTransition(project string, event LifecycleTransition, now ti
 	if err := validateLifecycleTransition(event); err != nil {
 		return LifecycleTransition{}, err
 	}
+	// Do not apply new write-time constraints when reading immutable legacy
+	// events; historical Controller-attributed starts remain visible for audit.
 	path := lifecycleTransitionPath(project, event.EventID)
+	if event.Kind == "started" && event.Actor == "/root/controller" {
+		// Historical events stay readable and exact retries remain idempotent.
+		// Only a NEW ambiguous start is forbidden; existing claims follow
+		// the immutable equality checks below without rewriting history.
+		if _, statErr := os.Stat(path); errors.Is(statErr, os.ErrNotExist) {
+			return LifecycleTransition{}, errors.New("started actor must identify Worker; pass Worker path instead of /root/controller")
+		} else if statErr != nil {
+			return LifecycleTransition{}, statErr
+		}
+	}
 	if err := os.MkdirAll(lifecycleEventsDir(project), 0755); err != nil {
 		return LifecycleTransition{}, err
 	}

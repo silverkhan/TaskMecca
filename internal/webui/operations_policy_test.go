@@ -338,6 +338,7 @@ func TestPolicyRejectsZeroTimesAndConflictingLatestLifecycle(t *testing.T) {
 			}
 			if tc == "tie" {
 				event.EventID, event.Kind = "edge-started", "started"
+				event.Actor, event.EvidenceSource = "/root/controller/worker", "worker_report"
 				if _, err := backlog.RecordLifecycleTransition(f.project, event, at); err != nil {
 					t.Fatal(err)
 				}
