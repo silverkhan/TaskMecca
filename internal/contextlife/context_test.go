@@ -92,3 +92,15 @@ func TestObservationReportedIsAdvisoryAndOwnerScoped(t *testing.T){
  if status.Decision.Action!="continue"||status.Decision.ContextStatus!="reported_unverified"{t.Fatalf("%+v",status.Decision)}
  if _,err=Observe(project,"registrar","run-old",-1,200000,"invalid",now);err==nil{t.Fatal("negative usage accepted")}
 }
+
+func TestFirstEverLongSessionIsDetectedWithoutOwnerState(t *testing.T){
+ project:=seedProject(t)
+ now:=time.Date(2026,10,30,8,0,0,0,time.UTC)
+ seedAttempt(t,project,"run-week-old","session-week-old","agent-week-old","controller",now.Add(-8*24*time.Hour))
+ report,err:=StatusForAttempt(project,"controller","controller_resume","run-week-old",now)
+ if err!=nil{t.Fatal(err)}
+ if report.Decision.Action!="prepare"||!report.Eligible{t.Fatalf("old agent not recognized on first use: %+v",report)}
+ plain,err:=Status(project,"controller","controller_resume",now)
+ if err!=nil{t.Fatal(err)}
+ if plain.Decision.Action!="continue"{t.Fatalf("unspecified identity must not be guessed: %+v",plain)}
+}
