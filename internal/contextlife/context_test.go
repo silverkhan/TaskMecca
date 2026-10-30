@@ -61,6 +61,9 @@ func TestPreparedSuccessorNeedsTerminalOwnerAndFingerprint(t *testing.T){
  next,err:=Read(project,"controller");if err!=nil||next.OwnerAttempt!="run-next"{t.Fatalf("not durable: %v %+v",err,next)}
  if err:=AssertOwner(project,"controller","run-old",1);err==nil{t.Fatal("old owner fence passed")}
  if err:=AssertOwner(project,"controller","run-next",2);err!=nil{t.Fatal(err)}
+ if err:=MayClaimController(project,"run-old");err==nil{t.Fatal("old Controller must not claim a new Handoff")}
+ if err:=MayClaimController(project,"run-next");err!=nil{t.Fatal("new Controller claim should be allowed:",err)}
+
  if _,err=Commit(project,"controller",r.ID,at.Add(7*time.Minute));err!=nil{t.Fatal("commit retry must be idempotent:",err)}
  // Next generation can rotate again without recycling the old attempt.
  follow,err:=Prepare(project,"controller","run-next",at.Add(8*time.Minute))
