@@ -99,6 +99,9 @@ func Prepare(req PrepareRequest, now time.Time) (PrepareResult, error) {
 			return buildErr
 		}
 		if existing, ok := ledger.Handoffs[handoffID]; ok {
+			if existing.ContractSHA256 != currentContractSHA {
+				return errors.New("canonical contract changed: existing handoff retarget denied")
+			}
 			result = PrepareResult{
 				HandoffID: handoffID, Duplicate: true, ContractSHA256: existing.ContractSHA256,
 				Target: existing.Target, Action: existing.Action,
