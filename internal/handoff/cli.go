@@ -87,6 +87,7 @@ func RunCLI(args []string, stdout, stderr io.Writer) int {
 		}
 		printValue(stdout, result, opts.jsonOutput)
 		if result.ClaimConflict || result.ContractChanged {
+			if !opts.jsonOutput && result.RecoveryHint != "" { fmt.Fprintln(stderr, "recovery: "+result.RecoveryHint) }
 			return 1
 		}
 	case "transfer":
