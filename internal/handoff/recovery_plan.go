@@ -43,7 +43,9 @@ func PlanRecovery(project, handoffID string, now time.Time) (RecoveryPlan,error)
  runtimeLedger,err:=runtimeobs.BuildLedger(project,20,now)
  if err!=nil{return RecoveryPlan{},err}
  candidates:=[]string{}
+ oldOwnerObservedTerminal:=false
  for _,a:=range runtimeLedger.Attempts {
+  if a.AttemptID==row.ClaimedAttemptID && a.AgentPath=="/root/controller" && a.Terminal && a.StateObservationQuality==runtimeobs.QualityObserved && a.EndedAt!="" {oldOwnerObservedTerminal=true}
   if a.AttemptID==""||a.AttemptID==row.Target.AttemptID||a.AgentPath!="/root/controller" || a.BindingState!=runtimeobs.BindingBound ||
    a.Terminal||a.CurrentState!=runtimeobs.StateRunning||a.StateObservationQuality!=runtimeobs.QualityObserved {continue}
   candidate:=Target{AgentPath:a.AgentPath,Provider:a.Provider,SessionID:a.SessionID,RuntimeAgentID:a.RuntimeAgentID}
@@ -63,6 +65,7 @@ func PlanRecovery(project, handoffID string, now time.Time) (RecoveryPlan,error)
   if row.ClaimedBy!="/root/controller"||row.ClaimedAttemptID=="" {
    result.Reason="unexpected_claim_owner";return result,nil
   }
+  if !oldOwnerObservedTerminal {result.Reason="prior_claim_owner_not_observed_terminal";return result,nil}
   result.NextAction="transfer_claim"
   result.Reason="claimed_owner_requires_exact_fenced_transfer"
  } else {
