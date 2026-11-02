@@ -74,6 +74,10 @@ type Handoff struct {
 	ClaimedAttemptID       string               `json:"claimed_attempt_id,omitempty"`
 	ClaimedAt              string               `json:"claimed_at,omitempty"`
 	TransferCount          int                  `json:"transfer_count,omitempty"`
+	Redispatches           []RedispatchEvidence `json:"redispatches,omitempty"`
+	RedispatchCount        int                  `json:"redispatch_count,omitempty"`
+	DeliveryStatus         string               `json:"delivery_status"`
+	ClaimStatus            string               `json:"claim_status"`
 	LastTransferFrom       string               `json:"last_transfer_from,omitempty"`
 	LastTransferredAt      string               `json:"last_transferred_at,omitempty"`
 	Steps                  map[string]StepState `json:"steps"`
@@ -95,4 +99,11 @@ type Ledger struct {
 	JournalPath string             `json:"journal_path"`
 	Handoffs    map[string]Handoff `json:"handoffs"`
 	Findings    []Finding          `json:"findings"`
+}
+
+// RedispatchEvidence is a separate append-only native delivery receipt, not a claim.
+type RedispatchEvidence struct {
+	TargetAttemptID string `json:"target_attempt_id"`
+	Evidence string `json:"evidence"`
+	ObservedAt string `json:"observed_at"`
 }

@@ -113,6 +113,18 @@ func BuildLedger(project string, now time.Time) (Ledger, error) {
             row.LastTransferredAt=record.ObservedAt
             row.Action=record.Action
             row.RequiresFreshPreflight=record.RequiresFreshPreflight
+		case "redispatched":
+			if row.PreparedAt == "" || row.Applied || row.Target.AttemptID == "" || row.Target.AttemptID != record.TargetAttemptID ||
+			   record.Evidence["detail"] == "" || row.Steps["dispatch"].Result != "ok" {
+				out.Findings = append(out.Findings, Finding{Severity:"warning", Code:"invalid_redispatch", HandoffID:record.HandoffID, Message:"redispatch did not match active target and original successful dispatch; ignored"})
+				break
+			}
+			found := false
+			for _, prior := range row.Redispatches { if prior.TargetAttemptID == record.TargetAttemptID && prior.Evidence == record.Evidence["detail"] { found = true; break } }
+			if !found {
+				row.Redispatches = append(row.Redispatches, RedispatchEvidence{TargetAttemptID:record.TargetAttemptID, Evidence:record.Evidence["detail"], ObservedAt:record.ObservedAt})
+				row.RedispatchCount++
+			}
 		case "step_succeeded", "step_failed", "step_unknown":
 			if _, exists := row.Steps[record.Step]; !exists {
 				row.Steps[record.Step] = StepState{
@@ -134,6 +146,14 @@ func BuildLedger(project string, now time.Time) (Ledger, error) {
 	}
 	if err := scanner.Err(); err != nil {
 		return out, err
+	}
+	for id, row := range out.Handoffs {
+		row.DeliveryStatus = "not_confirmed"
+		if dispatch,ok:=row.Steps["dispatch"]; ok { row.DeliveryStatus = "dispatch_"+dispatch.Result }
+		if row.RedispatchCount>0 { row.DeliveryStatus = "redispatch_confirmed" }
+		row.ClaimStatus = "pending"
+		if row.ClaimedBy!="" { row.ClaimStatus = "claimed" }
+		out.Handoffs[id]=row
 	}
 	sort.SliceStable(out.Findings, func(i, j int) bool {
 		if out.Findings[i].Severity != out.Findings[j].Severity {

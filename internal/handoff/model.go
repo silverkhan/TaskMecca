@@ -53,6 +53,7 @@ type ClaimResult struct {
 	ContractChanged       bool   `json:"contract_changed"`
 	CurrentContractSHA256 string `json:"current_contract_sha256,omitempty"`
 	Reason                string `json:"reason,omitempty"`
+	RecoveryHint          string `json:"recovery_hint,omitempty"`
 	ClaimedBy             string `json:"claimed_by,omitempty"`
 	ClaimedAttemptID      string `json:"claimed_attempt_id,omitempty"`
 }

@@ -34,7 +34,7 @@ type cliOptions struct {
 
 func RunCLI(args []string, stdout, stderr io.Writer) int {
 	if len(args) == 0 {
-		fmt.Fprintln(stderr, "handoff requires one of: prepare, claim, transfer, mark, inspect, reconcile, capability")
+		fmt.Fprintln(stderr, "handoff requires one of: prepare, claim, transfer, recover-plan, redispatch, mark, inspect, reconcile, capability")
 		return 2
 	}
 	action := strings.ToLower(args[0])
@@ -87,6 +87,7 @@ func RunCLI(args []string, stdout, stderr io.Writer) int {
 		}
 		printValue(stdout, result, opts.jsonOutput)
 		if result.ClaimConflict || result.ContractChanged {
+			if !opts.jsonOutput && result.RecoveryHint != "" { fmt.Fprintln(stderr, "recovery: "+result.RecoveryHint) }
 			return 1
 		}
 	case "transfer":
@@ -97,6 +98,19 @@ func RunCLI(args []string, stdout, stderr io.Writer) int {
         result,callErr:=TransferClaim(project,opts.positionals[0],opts.fromAttempt,opts.toAttempt,opts.evidence,now)
         if callErr!=nil {fmt.Fprintln(stderr,callErr);return 1}
         printValue(stdout,result,opts.jsonOutput)
+	case "recover-plan":
+		if len(opts.positionals) != 1 { fmt.Fprintln(stderr, "handoff recover-plan requires <HANDOFF_ID>"); return 2 }
+		result, callErr := PlanRecovery(project, opts.positionals[0], now)
+		if callErr != nil { fmt.Fprintln(stderr, callErr); return 1 }
+		printValue(stdout, result, opts.jsonOutput)
+	case "redispatch":
+		if len(opts.positionals) != 1 || opts.targetAttempt == "" || opts.evidence == "" {
+			fmt.Fprintln(stderr, "handoff redispatch requires <HANDOFF_ID> --target-attempt CURRENT --evidence NATIVE_TRANSPORT_PROOF")
+			return 2
+		}
+		result, callErr := Redispatch(project, opts.positionals[0], opts.targetAttempt, opts.evidence, now)
+		if callErr != nil { fmt.Fprintln(stderr, callErr); return 1 }
+		printValue(stdout, result, opts.jsonOutput)
 	case "mark":
 		if len(opts.positionals) != 1 || opts.step == "" || opts.result == "" {
 			fmt.Fprintln(stderr, "handoff mark requires <HANDOFF_ID> --step <step> --result ok|failed|unknown")

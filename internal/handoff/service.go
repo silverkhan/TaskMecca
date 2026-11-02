@@ -99,6 +99,9 @@ func Prepare(req PrepareRequest, now time.Time) (PrepareResult, error) {
 			return buildErr
 		}
 		if existing, ok := ledger.Handoffs[handoffID]; ok {
+			if existing.ContractSHA256 != currentContractSHA {
+				return errors.New("canonical contract changed: existing handoff retarget denied")
+			}
 			result = PrepareResult{
 				HandoffID: handoffID, Duplicate: true, ContractSHA256: existing.ContractSHA256,
 				Target: existing.Target, Action: existing.Action,
@@ -234,6 +237,11 @@ func Claim(project, handoffID, recipient, claimantAttemptID string, now time.Tim
 		if row.Target.AttemptID != "" && row.Target.AttemptID != claimantAttemptID {
 			result.ClaimConflict = true
 			result.Reason = "claimant_attempt_mismatch"
+			if row.ClaimedBy == "" {
+				result.RecoveryHint = "unclaimed: inspect the handoff and verify the resumed native Controller runtime; rerun handoff prepare for the same task/event/contract/authorization with --target-attempt CURRENT_ATTEMPT, then deliver and claim the original handoff ID; do not transfer or create a new authorization"
+			} else {
+				result.RecoveryHint = "claimed: inspect the exact prior claimed Controller attempt and current runtime; use handoff transfer --from-attempt OLD --to-attempt NEW --evidence PROOF only after owner/contract/runtime verification; do not rerun unclaimed retarget or forge a claim"
+			}
 			return nil
 		}
 		if row.ClaimedBy != "" {
