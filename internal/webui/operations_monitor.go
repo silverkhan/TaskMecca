@@ -720,7 +720,7 @@ func scanOperationProjectsWithPriority(primary string, now time.Time, background
             }
             // Includes the end-to-end operation monitor and delivery cost.
             recordMonitorPerf("operation_scan", time.Since(start), len(journal.Stages),
-                len(journal.Incidents), err == nil, false)
+                len(journal.Incidents), false, false)
         }
         if background {
             maintenance.TryWithProjectMonitoring(project, work)
