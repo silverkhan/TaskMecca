@@ -72,6 +72,9 @@
       'Version: '+snapshot.version,
       'Collection: '+(snapshot.enabled?'enabled':'disabled'),
       'Window count: '+windows.length,
+      'Active attention feeds: '+snapshot.active_attention_feeds,
+      'Go goroutines: '+snapshot.goroutines,
+      'Heap allocated bytes: '+snapshot.heap_alloc_bytes,
       'Measurement: wall-clock elapsed time; NOT CPU time or battery drain',
       'Counts: observed attention rows/operation stages, NOT full backlog or runtime inventory',
       '',
@@ -104,6 +107,9 @@
       [T('측정된 감시 호출','Measured monitor calls'),number(calls)],
       [T('건너뛴 감시','Skipped checks'),number(skipped)],
       [T('누적 경과 시간','Total elapsed (wall)'),number(total)+' ms'],
+      [T('알림 감시 피드','Attention feeds'),number(latest.active_attention_feeds)],
+      [T('Go 고루틴','Go goroutines'),number(latest.goroutines)],
+      [T('힙 사용량','Heap allocation'),number((Number(latest.heap_alloc_bytes)||0)/1048576)+' MiB'],
     ];
     for (const [label,value] of cards) {
       const card=elem('div','perf-stat');card.append(elem('span','perf-note',label),elem('strong','',value));grid.append(card);
