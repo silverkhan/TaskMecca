@@ -707,20 +707,30 @@ func scanOperationProjects(primary string, now time.Time) {
 // preserves operation-gap evidence. Only subsequent periodic scans are best
 // effort, allowing an active backlog HTTP request to finish first.
 func scanOperationProjectsWithPriority(primary string, now time.Time, background bool) {
-	for _, project := range operationProjects(primary) {
-		work:=func(){
-			ensureOperationNotificationFeed(project)
-			journal, err := scanOperationProject(project, now)
-			if err == nil {
-				deliverOperationIncidents(project, journal)
-			}
-		}
-		if background{
-			maintenance.TryWithProjectMonitoring(project,work)
-		}else{
-			maintenance.WithProjectMonitoring(project,work)
-		}
-	}
+    projects := operationProjects(primary)
+    for _, project := range projects {
+        start := time.Now()
+        executed := false
+        work := func() {
+            executed = true
+            ensureOperationNotificationFeed(project)
+            journal, err := scanOperationProject(project, now)
+            if err == nil {
+                deliverOperationIncidents(project, journal)
+            }
+            // Includes the end-to-end operation monitor and delivery cost.
+            recordMonitorPerf("operation_scan", time.Since(start), len(journal.Stages),
+                len(journal.Incidents), false, false)
+        }
+        if background {
+            maintenance.TryWithProjectMonitoring(project, work)
+        } else {
+            maintenance.WithProjectMonitoring(project, work)
+        }
+        if !executed {
+            recordMonitorPerf("operation_skipped", time.Since(start), 0, 0, false, true)
+        }
+    }
 }
 
 func runOperationMonitor(ctx stdcontext.Context, primary string) {
