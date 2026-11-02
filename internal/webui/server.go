@@ -240,6 +240,11 @@ func Handler(project, root, version string) (http.Handler, error) {
 }
 
 func handler(project, root, version, instanceID, controlToken string, restartCh chan<- maintenance.UpgradeResult, stopCh chan<- struct{}) (http.Handler, error) {
+    // Dev instrumentation requires no environment variables or service restart.
+    // The normal update process already restarts the Web binary.
+    if strings.Contains(strings.ToLower(version), "-dev.") && !PreviewMode() {
+        enableDevMonitorPerf()
+    }
 	if err := maintenance.ReconcileExecutionOnBoot(); err != nil {
 		return nil, fmt.Errorf("environment transition recovery requires attention: %w", err)
 	}
@@ -788,6 +793,20 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 		snapshot["project_path"] = activeProject
 		writeJSON(w, snapshot, 200)
 	})
+	mux.HandleFunc("/api/monitor-performance", func(w http.ResponseWriter, r *http.Request) {
+        if r.Method != http.MethodGet {
+            writeJSON(w, map[string]any{"error":"GET required"}, http.StatusMethodNotAllowed)
+            return
+        }
+        // Diagnostics have no stable menu or endpoint, even if collection was
+        // explicitly enabled for local troubleshooting.
+        if !strings.Contains(strings.ToLower(version), "-dev.") || PreviewMode() {
+            http.NotFound(w,r)
+            return
+        }
+        writeJSON(w, monitorPerfSnapshot(version), http.StatusOK)
+    })
+
 	mux.HandleFunc("/api/operations", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			writeJSON(w, map[string]any{"error": "GET required"}, http.StatusMethodNotAllowed)
@@ -1718,6 +1737,7 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 	})
 	mux.HandleFunc("/app.js", func(w http.ResponseWriter, r *http.Request) { sendEmbedded(w, "app.js") })
 	mux.HandleFunc("/select-ui.js", func(w http.ResponseWriter, r *http.Request) { sendEmbedded(w, "select-ui.js") })
+	mux.HandleFunc("/perf-diagnostics.js", func(w http.ResponseWriter, r *http.Request) { sendEmbedded(w, "perf-diagnostics.js") })
 	mux.HandleFunc("/sw.js", func(w http.ResponseWriter, r *http.Request) { sendEmbedded(w, "sw.js") })
 	mux.HandleFunc("/manifest.webmanifest", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/manifest+json; charset=utf-8")
