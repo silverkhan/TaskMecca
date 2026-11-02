@@ -116,6 +116,8 @@ task-mecca handoff prepare <ID> \
 - `resume_completed`: **fresh Full Access preflight를 다시 통과한 뒤** 종료된 동일 Controller를 새 turn으로 재개한다.
   - Codex: `followup_task`
   - Claude Code: 동일 Controller agent ID/name 대상 `SendMessage`
+  - **중요:** native resume 성공은 handoff claim 성공이 아니다. 새 turn의 정확한 runtime attempt를 다시 관측한다. 원 handoff가 미인수 상태이며 대상 attempt가 달라졌다면, 현재 Controller의 동일 native runtime ID/session/provider와 원 계약·승인을 검증한 후 **동일 task/event/contract/authorization으로 `handoff prepare`를 재실행**하면서 `--target-attempt`에 현재 attempt를 준다. `duplicate=true`, `reason=retargeted_verified_runtime_identity`, 동일 `handoff_id`를 확인한 후 현재 Controller에 실제 메시지를 전달하고 원 handoff를 claim하도록 한다. 재연결 거부 또는 `hold`는 사용자 업무요건 대기가 아니라 운영 인계 장애로 보고한다.
+  - 기존 handoff가 **이미 claim된 경우** prepare 재연결 대신 정확한 기존 claimant attempt를 확인하고 `handoff transfer <HANDOFF_ID> --from-attempt OLD --to-attempt NEW --evidence PROOF --json`의 검증된 절차를 사용한다. 미인수 handoff에 transfer를 시도하지 않는다.
 - `hold`: target missing/ambiguous/cancelled/unknown 등을 성공으로 취급하지 않는다. 실패 근거와 복구 조건을 Root에 보고한다.
 
 실제 transport가 성공했을 때만:
@@ -124,7 +126,7 @@ task-mecca handoff prepare <ID> \
 task-mecca handoff mark <HANDOFF_ID> --step dispatch --result ok --evidence <runtime-evidence> --json
 ```
 
-을 기록한다. 호출 실패 또는 성공 여부를 확인할 수 없으면 각각 `failed` / `unknown`으로 남긴다.
+을 **최초 dispatch 증거**로 기록한다. 호출 실패 또는 성공 여부를 확인할 수 없으면 각각 `failed` / `unknown`으로 남긴다. 복구 후 재전달이 발생하면 기존 `dispatch=ok`를 재기록하거나 덮어쓰지 말고, 원 handoff ID·이전/현재 attempt·복구 원인·새 native transport 증거를 별도 durable 보고서에 추가한다. 실제 claim 결과(`claimed=true`, `claim_conflict=false`)를 독립적으로 확인하기 전에는 등록/전달 성공을 Controller 인수나 구현 착수로 보고하지 않는다. 사용자 요건 확인 대기와 runtime/인계 장애 대기는 구분한다.
 
 `execution_authorized=false`인 등록은 Controller를 깨우지 않는다. 등록 충돌·taxonomy 오류·계약 등록 실패도 구현 handoff로 이어지지 않는다.
 
