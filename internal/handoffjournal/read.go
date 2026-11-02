@@ -147,6 +147,14 @@ func BuildLedger(project string, now time.Time) (Ledger, error) {
 	if err := scanner.Err(); err != nil {
 		return out, err
 	}
+	for id, row := range out.Handoffs {
+		row.DeliveryStatus = "not_confirmed"
+		if dispatch,ok:=row.Steps["dispatch"]; ok { row.DeliveryStatus = "dispatch_"+dispatch.Result }
+		if row.RedispatchCount>0 { row.DeliveryStatus = "redispatch_confirmed" }
+		row.ClaimStatus = "pending"
+		if row.ClaimedBy!="" { row.ClaimStatus = "claimed" }
+		out.Handoffs[id]=row
+	}
 	sort.SliceStable(out.Findings, func(i, j int) bool {
 		if out.Findings[i].Severity != out.Findings[j].Severity {
 			return out.Findings[i].Severity < out.Findings[j].Severity
