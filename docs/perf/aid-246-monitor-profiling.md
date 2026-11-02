@@ -40,3 +40,15 @@ PID를 실제 숫자로 교체한다. sample 결과의 hot stack에서 `Attentio
 
 ## 단계 완료 기준과 체감 평가
 Dev 빌드/자동 회귀가 통과하고 CPU 프로파일·시나리오별 계측 자료가 모여야 P0 진단을 완료한다. 계측이 추가됐다는 사실만으로 성능 문제가 해결된 것은 아니다. 실제 개선의 수용은 사용자의 Dev 실사용 **체감**을 기준으로 후속 P1~P4 단계에서 순차 확인한다.
+
+## Dev reporting workflow (AID-246 follow-up)
+
+- On Dev Web startup, lightweight aggregate monitor instrumentation is automatically enabled (including the Web restart triggered by software update). No terminal environment variable is needed.
+- The sidebar's **성능 진단 (Dev)** entry appears only when the read-only `/api/monitor-performance` endpoint is available. Stable and Preview do not expose it.
+- Open the panel after representative idle/active/multi-project use; use **보고서 복사** to send text or **JSON 내보내기** for the complete bounded report. This does not initiate an expensive CPU profile.
+- Reports contain recent 15 completed ~60-second windows plus the current partial window, refresh every 30 seconds while the panel is open, and hold all values in memory only.
+- Report includes attention feed count, Go goroutines and memory heap allocation, plus per-monitor calls, skipped counts, revision changes, observed rows/stages, total/average/maximum wall-clock milliseconds.
+- These are wall-clock execution times **not process CPU time**; observed rows/stages are not full backlog catalog cardinality. CPU hotspot confirmation still requires a system sample during a high-CPU episode.
+- No project paths, task titles, worker identities, runtime tokens, event contents, or notification destinations are exported.
+- Stable defaults to no collection unless an explicit local env override is supplied; the diagnostics API remains Dev-only.
+
