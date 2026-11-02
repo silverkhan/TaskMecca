@@ -74,11 +74,20 @@ func ensureAttentionFeed(project, root string) *attentionFeed {
 }
 
 func (f *attentionFeed) refresh() {
-	maintenance.TryWithProjectMonitoring(f.project, f.refreshActive)
+    start := time.Now()
+    executed := false
+    maintenance.TryWithProjectMonitoring(f.project, func() {
+        executed = true
+        f.refreshActive()
+    })
+    if !executed {
+        recordMonitorPerf("attention_skipped", time.Since(start), 0, 0, false, true)
+    }
 }
 
 func (f *attentionFeed) refreshActive() {
-	payload, err := backlog.AttentionSnapshot(f.project, f.root, true)
+    start := time.Now()
+    payload, err := backlog.AttentionSnapshot(f.project, f.root, true)
 	if err != nil {
 		payload = map[string]any{"error": err.Error(), "attention": []map[string]any{}, "all_items": map[string]map[string]any{}, "notification_events": []map[string]any{}}
 	}
@@ -119,6 +128,11 @@ func (f *attentionFeed) refreshActive() {
 		}
 	}
 	f.mu.Unlock()
+    attentionCount := 0
+    notificationCount := 0
+    if rows, ok := payload["attention"].([]map[string]any); ok { attentionCount = len(rows) }
+    if rows, ok := payload["notification_events"].([]map[string]any); ok { notificationCount = len(rows) }
+    recordMonitorPerf("attention_refresh", time.Since(start), attentionCount, notificationCount, changed, false)
 	if changed {
 		// Let foreground SSE consume a fresh canonical event first; background
 		// Push shares exactly the same AID-119 claim ledger.
