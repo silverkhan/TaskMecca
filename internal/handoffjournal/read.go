@@ -113,6 +113,18 @@ func BuildLedger(project string, now time.Time) (Ledger, error) {
             row.LastTransferredAt=record.ObservedAt
             row.Action=record.Action
             row.RequiresFreshPreflight=record.RequiresFreshPreflight
+		case "redispatched":
+			if row.PreparedAt == "" || row.Applied || row.Target.AttemptID == "" || row.Target.AttemptID != record.TargetAttemptID ||
+			   record.Evidence["detail"] == "" || row.Steps["dispatch"].Result != "ok" {
+				out.Findings = append(out.Findings, Finding{Severity:"warning", Code:"invalid_redispatch", HandoffID:record.HandoffID, Message:"redispatch did not match active target and original successful dispatch; ignored"})
+				break
+			}
+			found := false
+			for _, prior := range row.Redispatches { if prior.TargetAttemptID == record.TargetAttemptID && prior.Evidence == record.Evidence["detail"] { found = true; break } }
+			if !found {
+				row.Redispatches = append(row.Redispatches, RedispatchEvidence{TargetAttemptID:record.TargetAttemptID, Evidence:record.Evidence["detail"], ObservedAt:record.ObservedAt})
+				row.RedispatchCount++
+			}
 		case "step_succeeded", "step_failed", "step_unknown":
 			if _, exists := row.Steps[record.Step]; !exists {
 				row.Steps[record.Step] = StepState{
