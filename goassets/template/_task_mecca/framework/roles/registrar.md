@@ -126,7 +126,7 @@ task-mecca handoff prepare <ID> \
 task-mecca handoff mark <HANDOFF_ID> --step dispatch --result ok --evidence <runtime-evidence> --json
 ```
 
-을 **최초 dispatch 증거**로 기록한다. 호출 실패 또는 성공 여부를 확인할 수 없으면 각각 `failed` / `unknown`으로 남긴다. 복구 후 재전달이 발생하면 기존 `dispatch=ok`를 재기록하거나 덮어쓰지 말고, 원 handoff ID·이전/현재 attempt·복구 원인·새 native transport 증거를 별도 durable 보고서에 추가한다. 실제 claim 결과(`claimed=true`, `claim_conflict=false`)를 독립적으로 확인하기 전에는 등록/전달 성공을 Controller 인수나 구현 착수로 보고하지 않는다. 사용자 요건 확인 대기와 runtime/인계 장애 대기는 구분한다.
+을 **최초 dispatch 증거**로 기록한다. 호출 실패 또는 성공 여부를 확인할 수 없으면 각각 `failed` / `unknown`으로 남긴다. 복구 후 재전달이 발생하면 기존 `dispatch=ok`를 재기록하거나 덮어쓰지 않는다. 실제 native 전달이 성공한 **뒤** `task-mecca handoff redispatch <HANDOFF_ID> --target-attempt <CURRENT_ATTEMPT> --evidence <RECOVERY_NATIVE_TRANSPORT_PROOF> --json`으로 현재 검증된 인계 대상에 대해 append-only 별도 영수증을 남긴다. 원 handoff ID·이전/현재 attempt·복구 원인·새 native transport 증거는 별도 durable 보고서에도 연결한다. CLI는 메시지를 직접 보내거나 claim하지 않는다. 실제 claim 결과(`claimed=true`, `claim_conflict=false`)를 독립적으로 확인하기 전에는 등록/전달 성공을 Controller 인수나 구현 착수로 보고하지 않는다. 사용자 요건 확인 대기와 runtime/인계 장애 대기는 구분한다.
 
 `execution_authorized=false`인 등록은 Controller를 깨우지 않는다. 등록 충돌·taxonomy 오류·계약 등록 실패도 구현 handoff로 이어지지 않는다.
 
