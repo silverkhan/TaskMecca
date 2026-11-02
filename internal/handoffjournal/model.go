@@ -76,6 +76,8 @@ type Handoff struct {
 	TransferCount          int                  `json:"transfer_count,omitempty"`
 	Redispatches           []RedispatchEvidence `json:"redispatches,omitempty"`
 	RedispatchCount        int                  `json:"redispatch_count,omitempty"`
+	DeliveryStatus         string               `json:"delivery_status"`
+	ClaimStatus            string               `json:"claim_status"`
 	LastTransferFrom       string               `json:"last_transfer_from,omitempty"`
 	LastTransferredAt      string               `json:"last_transferred_at,omitempty"`
 	Steps                  map[string]StepState `json:"steps"`
