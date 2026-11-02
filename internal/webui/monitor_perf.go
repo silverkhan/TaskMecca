@@ -3,6 +3,7 @@ package webui
 import (
     "log"
     "os"
+    "runtime"
     "sort"
     "sync"
     "sync/atomic"
@@ -103,6 +104,11 @@ func recordMonitorPerf(kind string, elapsed time.Duration, items, events int, ch
 // notification delivery. The API exports only aggregate statistics.
 func monitorPerfSnapshot(version string) map[string]any {
     now := time.Now()
+    attentionFeeds.Lock()
+    feedCount := len(attentionFeeds.feeds)
+    attentionFeeds.Unlock()
+    var mem runtime.MemStats
+    runtime.ReadMemStats(&mem)
     monitorPerfState.Lock()
     defer monitorPerfState.Unlock()
     flushMonitorPerfLocked(now)
@@ -115,6 +121,10 @@ func monitorPerfSnapshot(version string) map[string]any {
         "captured_at": now.UTC().Format(time.RFC3339),
         "started_at": monitorPerfState.started.UTC().Format(time.RFC3339),
         "enabled": monitorPerfEnabled.Load(),
+        "active_attention_feeds": feedCount,
+        "goroutines": runtime.NumGoroutine(),
+        "heap_alloc_bytes": mem.HeapAlloc,
+        "heap_sys_bytes": mem.HeapSys,
         "window_seconds": 60,
         "measurement": "wall_clock_not_cpu",
         "observed_items_definition": "attention rows or operation stages, not full catalog size",
