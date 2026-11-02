@@ -44,3 +44,18 @@ func TestRedispatchRejectsMissingFirstProof(t *testing.T) {
  _,err=Redispatch(project,p.HandoffID,"controller-new","proof",now.Add(2*time.Second))
  if err==nil||!strings.Contains(err.Error(),"original dispatch=ok"){t.Fatalf("expected first dispatch fence, got %v",err)}
 }
+
+func TestRecoverPlanChoosesUnclaimedRetargetWithoutClaiming(t *testing.T) {
+ project:=t.TempDir()
+ writeSimpleTask(t,project,"A-1")
+ now:=time.Date(2026,11,2,8,0,0,0,time.UTC)
+ appendControllerAttempt(t,project,"controller-old","session-1","agent-1",runtimeobs.StateCompleted,now)
+ p,err:=Prepare(PrepareRequest{Project:project,TaskID:"A-1",EventType:EventRegistrationReady,SourceAgentPath:"/root/registrar",TargetAgentPath:"/root/controller",TargetAttemptID:"controller-old",ExecutionAuthorized:true},now.Add(time.Second))
+ if err!=nil{t.Fatal(err)}
+ appendControllerAttempt(t,project,"controller-new","session-1","agent-1",runtimeobs.StateRunning,now.Add(2*time.Second))
+ plan,err:=PlanRecovery(project,p.HandoffID,now.Add(3*time.Second))
+ if err!=nil{t.Fatal(err)}
+ if plan.NextAction!="prepare_retarget"||!plan.Verified||plan.CandidateAttemptID!="controller-new"||plan.RequiresUserDecision {t.Fatalf("%+v",plan)}
+ row,ok,err:=Inspect(project,p.HandoffID,now.Add(4*time.Second))
+ if err!=nil||!ok||row.ClaimedBy!=""||row.Target.AttemptID!="controller-old" {t.Fatalf("read-only plan changed handoff: %+v %v",row,err)}
+}
