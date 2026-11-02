@@ -251,6 +251,9 @@ func TestClaimRejectsWrongTargetAttempt(t *testing.T) {
 	if !claim.ClaimConflict || claim.Reason != "claimant_attempt_mismatch" {
 		t.Fatalf("claim=%+v", claim)
 	}
+	if !strings.Contains(claim.RecoveryHint, "unclaimed:") || !strings.Contains(claim.RecoveryHint, "handoff prepare") || strings.Contains(claim.RecoveryHint, "use handoff transfer") {
+		t.Fatalf("missing safe unclaimed recovery guidance: %+v", claim)
+	}
 }
 
 func TestAppliedRequiresClaim(t *testing.T) {
