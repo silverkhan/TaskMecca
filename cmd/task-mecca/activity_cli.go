@@ -106,23 +106,25 @@ func runActivityCLI(args []string,out,errOut io.Writer) int {
         Round:*round,Type:activity.Type(*kind),Confidence:activity.Inferred,Source:"agent_report",
         Evidence:*evidence,Explanation:*explain,ProposedType:*proposed,ReviewOutcome:*reviewOutcome,RunEvidence:runEvidence,OccurredAt:now,RecordedAt:now}
     if err:=e.Validate();err!=nil{fmt.Fprintln(errOut,err);return 2}
-    runtimeLedger,readErr:=runtimeobs.BuildLedger(root,10,now)
-    if readErr!=nil{fmt.Fprintln(errOut,"runtime evidence unavailable:",readErr);return 1}
-    var verifyErr error
-    switch e.Role {
-    case activity.RoleWorker:
-        assignments,err:=runtimeobs.ListAssignments(root)
-        if err!=nil{fmt.Fprintln(errOut,"assignment evidence unavailable:",err);return 1}
-        verifyErr=activity.ValidateAttribution(e,runtimeLedger.Attempts,assignments)
-    case activity.RoleController:
-        claims,err:=handoffjournal.BuildLedger(root,now)
-        if err!=nil{fmt.Fprintln(errOut,"handoff evidence unavailable:",err);return 1}
-        verifyErr=activity.ValidateControllerAttribution(e,runtimeLedger.Attempts,claims.Handoffs)
-    default:
-        fmt.Fprintln(errOut,"this role has no verified Activity recording boundary yet");return 3
-    }
-    if verifyErr!=nil{fmt.Fprintln(errOut,"activity actor attribution rejected:",verifyErr);return 3}
-    inserted,writeErr:=store.Apply(e)
+    // Verify attribution under the same project write lock as the append.
+    // A terminal/runtime rebinding event cannot land between verification and
+    // Activity publication through other canonical project writers.
+    inserted,writeErr:=store.ApplyVerified(e,func()error{
+        runtimeLedger,err:=runtimeobs.BuildLedger(root,10,time.Now().UTC())
+        if err!=nil{return fmt.Errorf("runtime evidence unavailable: %w",err)}
+        switch e.Role {
+        case activity.RoleWorker:
+            assignments,err:=runtimeobs.ListAssignments(root)
+            if err!=nil{return fmt.Errorf("assignment evidence unavailable: %w",err)}
+            return activity.ValidateAttribution(e,runtimeLedger.Attempts,assignments)
+        case activity.RoleController:
+            claims,err:=handoffjournal.BuildLedger(root,time.Now().UTC())
+            if err!=nil{return fmt.Errorf("handoff evidence unavailable: %w",err)}
+            return activity.ValidateControllerAttribution(e,runtimeLedger.Attempts,claims.Handoffs)
+        default:
+            return fmt.Errorf("this role has no verified Activity recording boundary yet")
+        }
+    })
     if writeErr!=nil{
         if errors.Is(writeErr,activity.ErrEventConflict){fmt.Fprintln(errOut,"event-id reused with a different event; original record preserved");return 3}
         fmt.Fprintln(errOut,writeErr);return 1
