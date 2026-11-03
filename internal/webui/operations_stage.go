@@ -88,6 +88,10 @@ func operationStages(project string, ledger runtimeobs.Ledger, now time.Time) []
 		return nil
 	}
 	stages := projectOperationStages(project, assignments, ledger.Attempts, transfers, now)
+    // No exact current assignment means no Controller stage to decorate.
+    // Avoid a full catalog + lifecycle + runtime evidence reconciliation on
+    // quiescent projects while keeping the original source journals intact.
+    if len(stages)==0 {return stages}
 	reviews := backlog.CompletionReviewStates(project, "", now)
 	for i := range stages {
 		if r := reviews[stages[i].TaskID]; r != nil {
