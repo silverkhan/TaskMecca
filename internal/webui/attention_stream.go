@@ -239,11 +239,20 @@ func (f *attentionFeed) run() {
 }
 
 func (f *attentionFeed) subscribe() (chan []byte, []byte, func()) {
-	ch := make(chan []byte, 4)
+    ch := make(chan []byte, 4)
+    // A project may be removed between ensureAttentionFeed and subscribe.
+    // Serialize with registry teardown so a stopped feed cannot gain clients.
+    attentionFeeds.Lock()
+    if attentionFeeds.feeds[f.project+"\x00"+f.root] != f {
+        close(ch)
+        attentionFeeds.Unlock()
+        return ch, nil, func(){}
+    }
 	f.mu.Lock()
 	f.subscribers[ch] = struct{}{}
 	initial := append([]byte{}, f.latest...)
 	f.mu.Unlock()
+    attentionFeeds.Unlock()
 	cancel := func() {
 		f.mu.Lock()
 		if _, ok := f.subscribers[ch]; ok {
