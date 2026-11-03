@@ -108,3 +108,9 @@ Project-owned data lives beneath `_task_mecca/data/activity/`, not the managed f
 - Per-event file storage should be profiled under large histories before treating the metrics as zero-cost.
 - The UI reports observed intervals only; it does not reconstruct unobserved historical phases.
 - Full rollout should be judged after implementation and Dev real-use observation, not by synthetic charts alone.
+
+## On-demand performance diagnostics
+
+`task-mecca activity diagnose --project PROJECT --limit 5000 --json` returns a bounded file-count lower bound, up to 128 sampled event-file sizes, and wall-clock directory scan time. It does **not** estimate CPU utilization, battery drain, or total storage from an incomplete sample. The command never executes from ordinary Hook or Web refresh paths.
+
+Web Activity read projections share concurrent scans for the same project, retain at most 4 projects / 20,000 events for up to 2 seconds, and invalidate same-process cache after a successful append. Large histories fall back to uncached authoritative reads. Do not treat read-cache snapshots as write/identity evidence.
