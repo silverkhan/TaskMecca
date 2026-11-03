@@ -2186,3 +2186,10 @@ select.tm-combo-native{position:absolute!important;width:1px!important;height:1p
 .activity-project-suggestion{border:1px solid var(--border,rgba(128,128,128,.2));border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:4px;overflow-wrap:anywhere}
 .activity-project-suggestion span,.activity-project-suggestion small{color:var(--muted,var(--text-muted,#888));font-size:.78rem}
 @media(max-width:560px){.activity-project-top-row{grid-template-columns:minmax(65px,1fr) auto;gap:6px}.activity-project-top-row small{grid-column:1/-1}}
+
+
+/* Narrow, inexpensive filter controls: only aggregate query selection. */
+.activity-project-filters{display:flex;flex-wrap:wrap;gap:10px;margin:12px 0 16px}
+.activity-project-filters label{display:flex;flex-direction:column;gap:4px;min-width:125px;flex:1 1 150px;font-size:.78rem;color:var(--muted,var(--text-muted,#888))}
+.activity-project-filters select{width:100%;max-width:250px;padding:8px 10px;border-radius:8px;border:1px solid var(--border,rgba(128,128,128,.26));background:var(--surface-2,var(--panel-bg,transparent));color:inherit;font:inherit;cursor:pointer}
+.activity-project-filters select:focus-visible{outline:2px solid currentColor;outline-offset:2px}
