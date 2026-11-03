@@ -12,6 +12,7 @@ import (
     "time"
 
     "github.com/silverkhan/TaskMecca/internal/activity"
+    "github.com/silverkhan/TaskMecca/internal/runtimeobs"
 )
 
 // Activity mutations are explicit and evidence-backed. An untrusted agent may
@@ -78,12 +79,22 @@ func runActivityCLI(args []string,out,errOut io.Writer) int {
     if action=="start" && active!=nil {fmt.Fprintln(errOut,"activity already active; use switch or stop");return 2}
     if (action=="stop"||action=="switch") && active==nil {fmt.Fprintln(errOut,"no open activity for attempt");return 2}
     if action=="stop" && *kind=="" && active!=nil {*kind=string(active.Type);*round=active.Round}
+    if strings.TrimSpace(*assignment)==""||strings.TrimSpace(*evidence)==""{
+        fmt.Fprintln(errOut,"--assignment and --evidence required; agent reports are not authoritative Hook evidence");return 2
+    }
     now:=time.Now().UTC()
     e:=activity.Event{SchemaVersion:1,EventID:*eventID,TaskID:task,Action:activity.Action(action),
         Role:activity.Role(*role),AgentID:*agent,RuntimeAttemptID:*attempt,AssignmentID:*assignment,
-        Round:*round,Type:activity.Type(*kind),Confidence:activity.Confirmed,
+        Round:*round,Type:activity.Type(*kind),Confidence:activity.Inferred,Source:"agent_report",
         Evidence:*evidence,Explanation:*explain,ProposedType:*proposed,OccurredAt:now,RecordedAt:now}
     if err:=e.Validate();err!=nil{fmt.Fprintln(errOut,err);return 2}
+    runtimeLedger,readErr:=runtimeobs.BuildLedger(root,10,now)
+    if readErr!=nil{fmt.Fprintln(errOut,"runtime evidence unavailable:",readErr);return 1}
+    assignments,readErr:=runtimeobs.ListAssignments(root)
+    if readErr!=nil{fmt.Fprintln(errOut,"assignment evidence unavailable:",readErr);return 1}
+    if verifyErr:=activity.ValidateAttribution(e,runtimeLedger.Attempts,assignments);verifyErr!=nil{
+        fmt.Fprintln(errOut,"activity actor attribution rejected:",verifyErr);return 3
+    }
     inserted,writeErr:=store.Append(e)
     if writeErr!=nil{
         if errors.Is(writeErr,activity.ErrEventConflict){fmt.Fprintln(errOut,"event-id reused with a different event; original record preserved");return 3}
