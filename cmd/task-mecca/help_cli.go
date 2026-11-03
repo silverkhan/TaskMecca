@@ -69,6 +69,8 @@ func runHelpCLI(args []string,out,stderr io.Writer) int {
         fmt.Fprintln(out,"Sub-Controller: use --role sub_controller only with a bound /root/controller/sub-* attempt. This reports activity, never grants delegation or canonical write authority.")
         fmt.Fprintln(out,"task-mecca activity history|status TASK-ID --project DIR --json")
         fmt.Fprintln(out,"task-mecca activity suggest --role worker|controller|registrar|sub_controller --event PHASE --round N --json (advisory; no writes)")
+        fmt.Fprintln(out,"task-mecca activity report TASK --project DIR --role ROLE --agent EXACT --attempt EXACT --assignment ASSIGNMENT_OR_HANDOFF --event implementation_started --event-id STABLE-ID --evidence TEXT --json")
+        fmt.Fprintln(out,"report infers start/switch/stop and type from an explicitly observed phase event; it never assumes a decision was actually executed.")
         fmt.Fprintln(out,"task-mecca activity run B-589 --project DIR --role worker --agent EXACT --attempt EXACT --assignment ID --event-id RUNID --type targeted_test|full_regression|build_check --git-sha SHA --scope SCOPE -- PROGRAM [ARG...]")
         fmt.Fprintln(out,"Runs only the supplied command (without a shell). Records the outcome and restores the previous phase; rerunning a completed RUNID is refused.")
         fmt.Fprintln(out,"Writes are attributed against observed Runtime/assignment or Controller claim evidence. Activity phase remains agent-reported (inferred), not independently authenticated by a native provider.")
