@@ -293,7 +293,6 @@ func projectOperationStages(project string, assignments []runtimeobs.Assignment,
 // assignment, failure, retry or Hook transition re-enters via fresh stages.
 // Grace windows are checked at the supplied scan time, never cached.
 func operationStageNeedsAttention(stage operationStage, now time.Time) bool {
-    if stage.Failed { return !stage.deferred(now) }
     switch stage.Stage {
     case "worker_running", "runtime_observation_pending", "handoff_applied", "controller_verified_complete":
         return false
