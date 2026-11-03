@@ -39,6 +39,8 @@ type Summary struct {
     UnattributedGapMillis int64 `json:"unattributed_gap_ms"`
     OpenActivities int `json:"open_activities"`
     InvalidTransitions int `json:"invalid_transitions"`
+    InterruptedActivities int `json:"interrupted_activities"`
+    UnmeasuredUpperBoundMillis int64 `json:"unmeasured_upper_bound_ms"`
     InitialWorkerMillis int64 `json:"initial_worker_ms"`
     ReworkWorkerMillis int64 `json:"rework_worker_ms"`
     ControllerFirstReviewMillis int64 `json:"controller_first_review_ms"`
@@ -74,6 +76,17 @@ func Summarize(task string, events []Event) Summary {
         case Start:
             if exists {out.InvalidTransitions++;continue}
             active[k]=activeSegment{event:e}
+        case Abandon:
+            if !exists || e.OccurredAt.Before(current.event.OccurredAt){
+                out.InvalidTransitions++
+                continue
+            }
+            // The terminal Hook proves execution ended, NOT that the preceding
+            // phase remained active until it ended. Do not add this interval to
+            // confirmed/agent-observed totals.
+            out.InterruptedActivities++
+            out.UnmeasuredUpperBoundMillis+=e.OccurredAt.Sub(current.event.OccurredAt).Milliseconds()
+            delete(active,k)
         case Switch,Stop:
             if !exists || e.OccurredAt.Before(current.event.OccurredAt) {
                 out.InvalidTransitions++
