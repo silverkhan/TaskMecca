@@ -1630,6 +1630,26 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 		}, 200)
 	})
 
+	mux.HandleFunc("/api/activity/project", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			w.Header().Set("Allow", "GET")
+			writeJSON(w, map[string]any{"error": "method not allowed"}, http.StatusMethodNotAllowed)
+			return
+		}
+		project := projectFor(r)
+		if !maintenance.ProjectMonitoringAllowed(project) {
+			writeJSON(w, map[string]any{"error": "project monitoring unavailable"}, http.StatusForbidden)
+			return
+		}
+		rows, err := (activity.Ledger{Project: project}).List("")
+		if err != nil {
+			writeJSON(w, map[string]any{"error": err.Error()}, http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Cache-Control", "no-store")
+		writeJSON(w, activity.SummarizeProject(rows), http.StatusOK)
+	})
+
 	mux.HandleFunc("/api/activity", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			w.Header().Set("Allow", "GET")
