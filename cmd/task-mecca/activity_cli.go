@@ -35,6 +35,7 @@ func runActivityCLI(args []string,out,errOut io.Writer) int {
     explain:=fs.String("explanation","","required for other activity")
     proposed:=fs.String("proposed-type","","suggested type for other activity")
     round:=fs.Int("round",0,"zero for initial execution; positive for rework")
+    eventName:=fs.String("event","","decision or work phase event for suggest")
     reviewOutcome:=fs.String("review-outcome","","accepted|rejected|needs_changes; Controller review stop only")
     runCommand:=fs.String("command","","test/build command")
     runSHA:=fs.String("git-sha","","code revision tested")
@@ -50,6 +51,13 @@ func runActivityCLI(args []string,out,errOut io.Writer) int {
     root,err:=filepath.Abs(*project);if err!=nil{fmt.Fprintln(errOut,err);return 2}
     store:=activity.Ledger{Project:root}
     emit:=func(v any){if *jsonOutput{_ =json.NewEncoder(out).Encode(v)}else{fmt.Fprintln(out,v)}}
+    if action=="suggest" {
+        if !activity.Role(*role).Valid() || *eventName=="" || *round<0 {
+            fmt.Fprintln(errOut,"suggest requires --role, --event and a nonnegative --round");return 2
+        }
+        emit(activity.Suggest(activity.Role(*role),*eventName,*round))
+        return 0
+    }
     if action=="history" || action=="status" {
         task:="";if fs.NArg()==1{task=fs.Arg(0)}
         if task==""{fmt.Fprintln(errOut,"task ID required");return 2}
