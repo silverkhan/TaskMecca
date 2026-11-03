@@ -329,6 +329,7 @@ func scanOperationProject(project string, now time.Time) (operationJournal, erro
 	ledger, err := runtimeobs.BuildLedger(project, 3, now)
     recordMonitorPerf("operation_build_ledger", time.Since(started), len(ledger.Attempts), 0, false, false)
 	if err != nil { return journal, err }
+    started = time.Now()
 	nowText := now.UTC().Format(time.RFC3339Nano)
 	completions := operationCompletionEvidence(project, ledger, now)
 	policies := operationPolicies(project, ledger, now)
@@ -606,6 +607,7 @@ func scanOperationProject(project string, now time.Time) (operationJournal, erro
 		signal.incident.Severity = operationIncidentSeverity(signal.incident)
 		journal.Incidents = append(journal.Incidents, signal.incident)
 	}
+    recordMonitorPerf("operation_reconcile", time.Since(started), len(ledger.Attempts), len(journal.Incidents), false, false)
 	journal.LastScanAt = nowText
     started = time.Now()
     writeErr := writeOperationJournal(project, journal)
