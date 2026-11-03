@@ -9,6 +9,7 @@ import (
     "regexp"
     "sort"
     "strings"
+    "github.com/silverkhan/TaskMecca/internal/projectguard"
 )
 
 var eventFileID=regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$`)
@@ -40,6 +41,9 @@ func (l Ledger) Read(id string)(Event,error){
 // Append publishes a validated event exactly once. Repeating identical input is
 // idempotent; conflicting reuse of an event ID is rejected, not overwritten.
 func(l Ledger) Append(event Event)(bool,error){
+    release,guardErr:=projectguard.AcquireWrite(l.Project)
+    if guardErr!=nil{return false,guardErr}
+    defer release()
     if err:=event.Validate();err!=nil{return false,err}
     path,err:=l.path(event.EventID);if err!=nil{return false,err}
     body,err:=json.MarshalIndent(event,"","  ");if err!=nil{return false,err}
