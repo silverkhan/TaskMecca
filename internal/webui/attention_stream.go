@@ -125,6 +125,9 @@ func stopProjectAttentionFeeds(project string) {
 // Registry changes are reconciled even when no UI is connected. A project
 // with monitoring paused/removed has no background attention goroutines.
 func reconcileAttentionFeedProjects(active []string) {
+    // A temporary registry read failure is not evidence of removal. Avoid
+    // stopping healthy project feeds when management metadata is unavailable.
+    if _, err := maintenance.ManagedProjects(); err != nil { return }
     allowed := make(map[string]bool,len(active))
     for _, project := range active { allowed[project] = true }
     attentionFeeds.Lock()
