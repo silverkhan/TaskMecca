@@ -5417,12 +5417,32 @@ const activityProjectCache=new Map();
 const activityProjectLoading=new Set();
 const activityProjectFetchedAt=new Map();
 const ACTIVITY_PROJECT_REFRESH_MS=30000;
+const activityProjectFilters={role:'',type:'',days:'0'};
+function activityProjectKey(project){
+  return JSON.stringify([project,activityProjectFilters.role,activityProjectFilters.type,activityProjectFilters.days]);
+}
+function activityFilterOptions(options,selected){
+  return options.map(([value,label])=>'<option value="'+esc(value)+'"'+(value===selected?' selected':'')+'>'+esc(label)+'</option>').join('');
+}
 function projectActivityPanel(){
   const ko=state.language==='ko';
-  const report=activityProjectCache.get(state.project);
+  const report=activityProjectCache.get(activityProjectKey(state.project));
   const label=ko?'작업시간 병목 분석':'Activity Performance';
-  if(!report)return '<section class="section" id="activityProjectPanel"><h2>'+esc(label)+'</h2><p class="summary">'+esc(ko?'활동 통계를 조회하는 중…':'Loading activity statistics…')+'</p></section>';
-  if(report.error)return '<section class="section" id="activityProjectPanel"><h2>'+esc(label)+'</h2><p class="summary">'+esc(report.error)+'</p></section>';
+  const filters='<div class="activity-project-filters">'+
+    '<label>'+esc(ko?'작업자 역할':'Agent role')+'<select data-activity-filter="role">'+activityFilterOptions([
+      ['',ko?'전체':'All'],['registrar','Registrar'],['controller','Controller'],['sub_controller','Sub-Controller'],['worker','Worker']
+    ],activityProjectFilters.role)+'</select></label>'+
+    '<label>'+esc(ko?'활동 유형':'Activity type')+'<select data-activity-filter="type">'+activityFilterOptions([
+      ['',ko?'전체':'All'],['requirements','requirements'],['research','research'],['implementation','implementation'],
+      ['targeted_test','targeted_test'],['full_regression','full_regression'],['build_check','build_check'],
+      ['controller_review','controller_review'],['controller_rereview','controller_rereview'],['handoff','handoff'],
+      ['recovery','recovery'],['other','other']
+    ],activityProjectFilters.type)+'</select></label>'+
+    '<label>'+esc(ko?'관측기간':'Observed period')+'<select data-activity-filter="days">'+activityFilterOptions([
+      ['0',ko?'전체':'All'],['7',ko?'최근 7일':'Last 7 days'],['30',ko?'최근 30일':'Last 30 days'],['90',ko?'최근 90일':'Last 90 days']
+    ],activityProjectFilters.days)+'</select></label></div>';
+  if(!report)return '<section class="section" id="activityProjectPanel"><h2>'+esc(label)+'</h2>'+filters+'<p class="summary">'+esc(ko?'활동 통계를 조회하는 중…':'Loading activity statistics…')+'</p></section>';
+  if(report.error)return '<section class="section" id="activityProjectPanel"><h2>'+esc(label)+'</h2>'+filters+'<p class="summary">'+esc(report.error)+'</p></section>';
   const stats=[
     [ko?'관측된 백로그':'Backlogs with records',report.tasks_observed],
     [ko?'시간 측정 백로그':'Backlogs with timed intervals',report.tasks_with_measured_time],
@@ -5444,7 +5464,8 @@ function projectActivityPanel(){
   const topTasks=Array.isArray(report.top_tasks)?report.top_tasks:[];
   const leaders=topTasks.length?'<h3>'+esc(ko?'경과시간 상위 백로그 (상세 열기)':'Backlogs with longest elapsed time')+'</h3>'+
     '<div class="activity-project-top">'+topTasks.map(item=>{
-      const basis=item.duration_basis==='registered_completed'?(ko?'등록~완료':'Registered–completed'):(ko?'Activity 관측 구간':'Observed activity');
+      const basis=item.duration_basis==='registered_completed'?(ko?'등록~완료':'Registered–completed'):
+        item.duration_basis==='filtered_activity_wall'?(ko?'필터 적용 구간':'Filtered activity'):(ko?'Activity 관측 구간':'Observed activity');
       return '<div class="activity-project-top-row"><button type="button" class="activity-project-task-link" data-activity-task="'+esc(item.task_id)+'">'+esc(item.task_id)+'</button>'+
         '<strong>'+esc(activityDuration(item.duration_ms))+'</strong><small>'+esc(basis)+'</small></div>';
     }).join('')+'</div>':'';
@@ -5454,8 +5475,11 @@ function projectActivityPanel(){
        '<span>'+esc((item.event_count||0)+(ko?'건 · ':' events · ')+activityDuration(item.observed_ms||0))+'</span>'+
        (item.examples&&item.examples[0]?'<small>'+esc(item.examples[0])+'</small>':'')+'</div>').join('')+'</div>':'';
 
-  const note=ko?'Agent 보고·Lifecycle 이벤트에 근거한 구간만 합산했습니다. 대기시간과 활동시간 중복은 제거하고, 나머지는 미귀속으로 표시합니다. 백로그별 경과시간을 합산한 값은 전체 프로젝트 경과시간과 다릅니다.':'Only agent-reported and lifecycle evidence is counted; overlap is removed and the remaining span is unattributed. The sum of per-task elapsed times is not overall project elapsed time.';
-  return '<section class="section" id="activityProjectPanel"><h2>'+esc(label)+'</h2><div class="activity-metric-grid">'+cards+'</div>'+typeBars+leaders+proposals+'<p class="summary">'+esc(note)+'</p></section>';
+  const note=(report.filtered_activity?
+   (ko?'필터는 Agent의 Activity 관측 구간에만 적용됩니다. Lifecycle의 전체 경과·대기·미귀속 합계는 비교용 전체 값입니다.':'Filters apply only to observed Agent activity; lifecycle totals remain unfiltered context.')+' ':
+   '')+
+   (ko?'Agent 보고·Lifecycle 이벤트에 근거한 구간만 합산했습니다. 백로그별 경과시간 합계는 프로젝트 전체 경과시간과 다릅니다.':'Only reported evidence is counted. Per-task elapsed times summed together are not project elapsed time.');
+  return '<section class="section" id="activityProjectPanel"><h2>'+esc(label)+'</h2>'+filters+'<div class="activity-metric-grid">'+cards+'</div>'+typeBars+leaders+proposals+'<p class="summary">'+esc(note)+'</p></section>';
 }
 function bindActivityProjectTasks(){
   const root=typeof document.getElementById==='function'?document.getElementById('activityProjectPanel'):null;
