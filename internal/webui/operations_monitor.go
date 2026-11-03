@@ -321,14 +321,14 @@ func scanOperationProject(project string, now time.Time) (operationJournal, erro
 		return operationJournal{}, err
 	}
 	defer release()
+    started := time.Now()
 	journal, err := readOperationJournal(project)
-	if err != nil {
-		return journal, err
-	}
+    recordMonitorPerf("operation_journal_read", time.Since(started), len(journal.Incidents), 0, false, false)
+	if err != nil { return journal, err }
+    started = time.Now()
 	ledger, err := runtimeobs.BuildLedger(project, 3, now)
-	if err != nil {
-		return journal, err
-	}
+    recordMonitorPerf("operation_build_ledger", time.Since(started), len(ledger.Attempts), 0, false, false)
+	if err != nil { return journal, err }
 	nowText := now.UTC().Format(time.RFC3339Nano)
 	completions := operationCompletionEvidence(project, ledger, now)
 	policies := operationPolicies(project, ledger, now)
@@ -607,40 +607,52 @@ func scanOperationProject(project string, now time.Time) (operationJournal, erro
 		journal.Incidents = append(journal.Incidents, signal.incident)
 	}
 	journal.LastScanAt = nowText
-	if err := writeOperationJournal(project, journal); err != nil {
-		return journal, err
-	}
-	return journal, nil
+    started = time.Now()
+    writeErr := writeOperationJournal(project, journal)
+    recordMonitorPerf("operation_journal_write", time.Since(started), len(journal.Incidents), 0, false, false)
+    if writeErr != nil { return journal, writeErr }
+    return journal, nil
+}
+
+// Review stages are indexed once instead of searched anew for each historic
+// incident. An incident without an attempt ID matches any review for its task.
+func operationControllerReviews(stages []operationStage) map[string]map[string]bool {
+    indexed := make(map[string]map[string]bool)
+    for _, stage := range stages {
+        if !stage.ControllerReview { continue }
+        task := strings.ToLower(stage.TaskID)
+        if indexed[task] == nil { indexed[task] = make(map[string]bool) }
+        indexed[task][stage.AttemptID] = true
+    }
+    return indexed
+}
+
+func operationActionableIncidents(journal operationJournal) []notify.Event {
+    reviews := operationControllerReviews(journal.Stages)
+    events := make([]notify.Event, 0)
+    for _, incident := range journal.Incidents {
+        // Retain history in the journal but do not recheck recovered episodes
+        // against each active stage on every scan.
+        if incident.Kind == "normal_exit" || incident.RecoveredAt != "" { continue }
+        byAttempt := reviews[strings.ToLower(incident.TaskID)]
+        if len(byAttempt) > 0 && (incident.AttemptID == "" || byAttempt[incident.AttemptID]) { continue }
+        events = append(events, notify.Event{
+            ID: incident.ID, TaskID: incident.TaskID, Kind: operationNotificationKind(incident),
+            Title: strings.ReplaceAll(incident.Kind, "_", " "), Message: incident.Evidence,
+            ResumeCondition: incident.Action, At: incident.DetectedAt,
+        })
+    }
+    return events
 }
 
 func deliverOperationIncidents(project string, journal operationJournal) {
-	events := []notify.Event{}
-	for _, incident := range journal.Incidents {
-		controllerWork := false
-		for _, stage := range journal.Stages {
-			if stage.ControllerReview && strings.EqualFold(stage.TaskID, incident.TaskID) && (incident.AttemptID == "" || stage.AttemptID == incident.AttemptID) {
-				controllerWork = true
-				break
-			}
-		}
-		if controllerWork {
-			continue
-		}
-		if incident.Kind == "normal_exit" {
-			continue
-		}
-		// Recovered scan gaps remain diagnostic history, never actionable alerts.
-		if incident.RecoveredAt != "" {
-			continue
-		}
-		kind := operationNotificationKind(incident)
-		events = append(events, notify.Event{ID: incident.ID, TaskID: incident.TaskID, Kind: kind,
-			Title: strings.ReplaceAll(incident.Kind, "_", " "), Message: incident.Evidence,
-			ResumeCondition: incident.Action, At: incident.DetectedAt})
-	}
-	_ = operationDeliver(project, events)
+    started := time.Now()
+    events := operationActionableIncidents(journal)
+    recordMonitorPerf("operation_alert_filter", time.Since(started), len(journal.Incidents), len(events), false, false)
+    started = time.Now()
+    _ = operationDeliver(project, events)
+    recordMonitorPerf("operation_alert_delivery", time.Since(started), len(events), 0, false, false)
 }
-
 func operationProjects(primary string) []string {
 	seen := map[string]bool{}
 	projects := []string{}
