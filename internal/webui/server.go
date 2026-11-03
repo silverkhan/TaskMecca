@@ -1650,6 +1650,29 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 			writeJSON(w, map[string]any{"error": "project monitoring unavailable"}, http.StatusForbidden)
 			return
 		}
+        filter:=activity.ActivityFilter{}
+        if role:=strings.TrimSpace(r.URL.Query().Get("role"));role!=""{
+            filter.Role=activity.Role(role)
+            if !filter.Role.Valid(){
+                writeJSON(w,map[string]any{"error":"unsupported role"},http.StatusBadRequest)
+                return
+            }
+        }
+        if kind:=strings.TrimSpace(r.URL.Query().Get("type"));kind!=""{
+            filter.Type=activity.Type(kind)
+            if !filter.Type.Valid(){
+                writeJSON(w,map[string]any{"error":"unsupported activity type"},http.StatusBadRequest)
+                return
+            }
+        }
+        if daysRaw:=strings.TrimSpace(r.URL.Query().Get("days"));daysRaw!=""&&daysRaw!="0"{
+            days,parseErr:=strconv.Atoi(daysRaw)
+            if parseErr!=nil||days<1||days>365{
+                writeJSON(w,map[string]any{"error":"days must be between 1 and 365"},http.StatusBadRequest)
+                return
+            }
+            filter.Since=time.Now().UTC().Add(-time.Duration(days)*24*time.Hour)
+        }
 		readStarted := time.Now()
         rows, err := (activity.Ledger{Project: project}).ListCached("")
 		if err != nil {
@@ -1664,7 +1687,7 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
             writeJSON(w,map[string]any{"error":lifeErr.Error()},http.StatusInternalServerError)
             return
         }
-        report := activity.SummarizeProjectWithLifecycle(rows,lifeEvidence.byTask)
+        report := activity.SummarizeProjectWithFilter(rows,lifeEvidence.byTask,filter)
         // The Workload dashboard needs aggregates only. Do not ship thousands
         // of full per-backlog timelines; drill into /api/activity for details.
         report.TaskSummaries=nil
