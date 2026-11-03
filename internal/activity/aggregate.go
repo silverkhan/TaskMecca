@@ -17,6 +17,7 @@ type Segment struct {
     StartedAt time.Time `json:"started_at"`
     EndedAt time.Time `json:"ended_at"`
     DurationMillis int64 `json:"duration_ms"`
+    RunEvidence *RunEvidence `json:"run_evidence,omitempty"`
 }
 type Dimension struct {
     Role Role `json:"role"`
@@ -77,7 +78,7 @@ func Summarize(task string, events []Event) Summary {
                 continue
             }
             duration:=e.OccurredAt.Sub(current.event.OccurredAt).Milliseconds()
-            segment:=Segment{TaskID:task,AgentID:current.event.AgentID,AttemptID:current.event.RuntimeAttemptID,Role:current.event.Role,Type:current.event.Type,Round:current.event.Round,StartedAt:current.event.OccurredAt,EndedAt:e.OccurredAt,DurationMillis:duration}
+            segment:=Segment{TaskID:task,AgentID:current.event.AgentID,AttemptID:current.event.RuntimeAttemptID,Role:current.event.Role,Type:current.event.Type,Round:current.event.Round,StartedAt:current.event.OccurredAt,EndedAt:e.OccurredAt,DurationMillis:duration,RunEvidence:current.event.RunEvidence}
             out.Segments=append(out.Segments,segment)
             out.ByType[segment.Type]+=duration
             out.ByDimension[Dimension{Role:segment.Role,Type:segment.Type,Round:segment.Round}]+=duration
