@@ -65,6 +65,8 @@ func runHelpCLI(args []string,out,stderr io.Writer) int {
 	case "activity":
         fmt.Fprintln(out,"task-mecca activity start|switch|stop TASK-ID --project DIR --role worker --agent EXACT-RUNTIME-AGENT --attempt EXACT-ATTEMPT --assignment ID --event-id STABLE-ID --type TYPE --evidence TEXT --json")
         fmt.Fprintln(out,"Controller review: use --role controller --handoff CLAIMED-HANDOFF instead of --assignment.")
+        fmt.Fprintln(out,"Registrar: use --role registrar with an exact bound /root/registrar Runtime attempt, without --assignment/--handoff.")
+        fmt.Fprintln(out,"Sub-Controller: no distinct authoritative agent-path binding is yet available; role-specific writes remain disabled.")
         fmt.Fprintln(out,"task-mecca activity history|status TASK-ID --project DIR --json")
         fmt.Fprintln(out,"task-mecca activity suggest --role worker|controller|registrar|sub_controller --event PHASE --round N --json (advisory; no writes)")
         fmt.Fprintln(out,"task-mecca activity run B-589 --project DIR --role worker --agent EXACT --attempt EXACT --assignment ID --event-id RUNID --type targeted_test|full_regression|build_check --git-sha SHA --scope SCOPE -- PROGRAM [ARG...]")
