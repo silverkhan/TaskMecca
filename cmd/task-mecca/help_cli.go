@@ -68,6 +68,7 @@ func runHelpCLI(args []string,out,stderr io.Writer) int {
         fmt.Fprintln(out,"Registrar: use --role registrar with an exact bound /root/registrar Runtime attempt, without --assignment/--handoff.")
         fmt.Fprintln(out,"Sub-Controller: use --role sub_controller only with a bound /root/controller/sub-* attempt. This reports activity, never grants delegation or canonical write authority.")
         fmt.Fprintln(out,"task-mecca activity history|status TASK-ID --project DIR --json")
+        fmt.Fprintln(out,"task-mecca activity diagnose --project DIR --limit 5000 --json  # bounded, on-demand file/size sample and wall-clock only")
         fmt.Fprintln(out,"task-mecca activity correct TASK --supersedes-id ORIGINAL_EVENT --event-id CORRECTION_ID --type CORRECTED_TYPE --evidence REASON [--occurred-at RFC3339] --project DIR --role ROLE --agent EXACT --attempt EXACT [--assignment ID|--handoff ID] --json")
         fmt.Fprintln(out,"Corrections append an immutable audit record; original event bytes remain untouched. Exact active runtime attribution is still required.")
         fmt.Fprintln(out,"task-mecca activity suggest --role worker|controller|registrar|sub_controller --event PHASE --round N --json (advisory; no writes)")
