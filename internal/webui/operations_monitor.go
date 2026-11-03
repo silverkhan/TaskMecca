@@ -463,6 +463,9 @@ func scanOperationProject(project string, now time.Time) (operationJournal, erro
     if ctx, ctxErr := webContext(project, ""); ctxErr == nil {
         if selected, _, selectErr := resolveBacklog(project, ctx, url.Values{}); selectErr == nil && selected != "" {
             if assignments, assignmentErr := backlog.MonitoringAssignments(project, selected); assignmentErr == nil {
+                if os.Getenv("TASK_MECCA_OPERATION_HELPER") == "1" {
+                    fmt.Fprintf(os.Stderr, "operation helper monitoring assignments: %d selected=%s\\n",len(assignments),selected)
+                }
                 linkedTasks := make(map[string]bool, len(ledger.Attempts))
                 for _, attempt := range ledger.Attempts {
                     linkedTasks[strings.ToUpper(attempt.TaskID)] = true
@@ -480,6 +483,7 @@ func scanOperationProject(project string, now time.Time) (operationJournal, erro
             }
         }
     }
+    if os.Getenv("TASK_MECCA_OPERATION_HELPER") == "1" { fmt.Fprintf(os.Stderr,"operation helper generated signals=%d journal=%d\\n",len(signals),len(journal.Incidents)) }
     recordMonitorPerf("operation_monitor_assignments", time.Since(workloadStarted), len(ledger.Attempts), 0, false, false)
 	for _, stage := range stages {
 		if stage.Stage == "worker_running" || stage.Stage == "runtime_observation_pending" || stage.Stage == "handoff_applied" || stage.Stage == "controller_verified_complete" || stage.deferred(now) {
