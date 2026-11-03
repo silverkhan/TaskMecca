@@ -39,6 +39,7 @@ type Summary struct {
     UnattributedGapMillis int64 `json:"unattributed_gap_ms"`
     OpenActivities int `json:"open_activities"`
     InvalidTransitions int `json:"invalid_transitions"`
+    InvalidCorrections int `json:"invalid_corrections"`
     InterruptedActivities int `json:"interrupted_activities"`
     UnmeasuredUpperBoundMillis int64 `json:"unmeasured_upper_bound_ms"`
     InitialWorkerMillis int64 `json:"initial_worker_ms"`
@@ -54,9 +55,10 @@ type activeSegment struct{event Event}
 // Correction events are excluded until an authoritative supersession projection
 // supplies the corrected view. This avoids silently rewriting historical time.
 func Summarize(task string, events []Event) Summary {
-    rows:=make([]Event,0,len(events))
-    for _,event:=range events {
-        if event.TaskID==task && event.Action!=Correct {rows=append(rows,event)}
+    effective,correctionFindings:=EffectiveEvents(events)
+    rows:=make([]Event,0,len(effective))
+    for _,event:=range effective {
+        if event.TaskID==task {rows=append(rows,event)}
     }
     sort.SliceStable(rows,func(i,j int)bool {
         if rows[i].OccurredAt.Equal(rows[j].OccurredAt){
@@ -65,7 +67,7 @@ func Summarize(task string, events []Event) Summary {
         }
         return rows[i].OccurredAt.Before(rows[j].OccurredAt)
     })
-    out:=Summary{TaskID:task,Segments:[]Segment{},ByDimension:map[Dimension]int64{},ByType:map[Type]int64{}}
+    out:=Summary{TaskID:task,Segments:[]Segment{},ByDimension:map[Dimension]int64{},ByType:map[Type]int64{},InvalidCorrections:len(correctionFindings)}
     active:=map[string]activeSegment{}
     for _,e:=range rows{
         if out.FirstObservedAt==nil{when:=e.OccurredAt;out.FirstObservedAt=&when}
