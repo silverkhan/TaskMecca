@@ -83,6 +83,7 @@ func operationStages(project string, ledger runtimeobs.Ledger, now time.Time) []
 	if err != nil {
 		return nil
 	}
+	if len(assignments) == 0 { return nil }
 	transfers, err := handoff.BuildLedger(project, now)
 	if err != nil || len(transfers.Findings) != 0 {
 		return nil
