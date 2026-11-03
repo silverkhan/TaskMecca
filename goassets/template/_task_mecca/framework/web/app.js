@@ -5415,6 +5415,37 @@ function runtimeRootListPanel() {
 
 const activityProjectCache=new Map();
 const activityProjectLoading=new Set();
+const activityProjectFiltered=new Map();
+function filteredActivityHTML(item){
+  const ko=state.language==='ko';
+  if(!item)return '<p class="summary">'+esc(ko?'필터를 적용하면 해당 활동 구간만 집계합니다.':'Apply filters to measure only matching Activity intervals.')+'</p>';
+  if(item.error)return '<p class="summary">'+esc(item.error)+'</p>';
+  const parts=[
+    [ko?'해당 백로그':'Matching backlogs',String(item.matched_tasks||0)],
+    [ko?'활동 구간':'Activity intervals',String(item.matched_segments||0)],
+    [ko?'누적 Agent 시간':'Agent time',activityDuration(item.agent_time_ms||0)],
+    [ko?'중복 제거 구간시간':'De-duplicated task wall time',activityDuration(item.sum_task_observed_wall_ms||0)]
+  ];
+  const cards='<div class="activity-metric-grid">'+parts.map(([name,value])=>
+    '<div class="activity-metric"><strong>'+esc(value)+'</strong><span>'+esc(name)+'</span></div>').join('')+'</div>';
+  const list=(item.top_tasks||[]).map(task=>
+    '<div class="activity-project-top-row"><button type="button" class="activity-project-task-link" data-activity-task="'+esc(task.task_id)+'">'+esc(task.task_id)+'</button><strong>'+esc(activityDuration(task.duration_ms||0))+'</strong></div>').join('');
+  const leaders=list?'<div class="activity-project-top">'+list+'</div>':'';
+  const note=ko?'선택한 활동 구간만 계산합니다. 등록~완료 경과시간과 대기시간은 이 필터 통계에 포함하지 않습니다.':'This filters observed activity only; lifecycle elapsed and waiting are not filtered.';
+  return cards+leaders+'<p class="summary">'+esc(note)+'</p>';
+}
+function activityFilterControls(){
+  const ko=state.language==='ko',prior=activityProjectFiltered.get(state.project)?.values||{};
+  const choose=(name,choices)=>'<select id="activityFilter'+name+'" aria-label="'+esc(name)+'">'+choices.map(([key,label])=>'<option value="'+esc(key)+'"'+(prior[name]===key?' selected':'')+'>'+esc(label)+'</option>').join('')+'</select>';
+  const roles=[['',ko?'모든 역할':'All roles'],['worker','Worker'],['controller','Controller'],['sub_controller','Sub-Controller'],['registrar','Registrar']];
+  const types=[['',ko?'모든 활동':'All activities'],['requirements','requirements'],['research','research'],['implementation','implementation'],['targeted_test','targeted_test'],['full_regression','full_regression'],['build_check','build_check'],['controller_review','controller_review'],['controller_rereview','controller_rereview'],['handoff','handoff'],['recovery','recovery'],['other','other']];
+  const inp=(id,type,placeholder)=>'<input id="activityFilter'+id+'" type="'+type+'" placeholder="'+esc(placeholder)+'" value="'+esc(prior[id]||'')+'" aria-label="'+esc(placeholder)+'"/>';
+  return '<div class="activity-filter-fields">'+choose('Role',roles)+choose('Type',types)+
+    inp('Agent','text',ko?'작업자 ID':'Agent ID')+inp('Round','number',ko?'회차':'Round')+
+    inp('From','date',ko?'시작일':'From')+inp('Until','date',ko?'종료일':'Until')+
+    '<button type="button" id="activityFilterApply">'+esc(ko?'조건 적용':'Apply filters')+'</button></div>';
+}
+
 const activityProjectFetchedAt=new Map();
 const ACTIVITY_PROJECT_REFRESH_MS=30000;
 function projectActivityPanel(){
@@ -5455,11 +5486,47 @@ function projectActivityPanel(){
        (item.examples&&item.examples[0]?'<small>'+esc(item.examples[0])+'</small>':'')+'</div>').join('')+'</div>':'';
 
   const note=ko?'Agent 보고·Lifecycle 이벤트에 근거한 구간만 합산했습니다. 대기시간과 활동시간 중복은 제거하고, 나머지는 미귀속으로 표시합니다. 백로그별 경과시간을 합산한 값은 전체 프로젝트 경과시간과 다릅니다.':'Only agent-reported and lifecycle evidence is counted; overlap is removed and the remaining span is unattributed. The sum of per-task elapsed times is not overall project elapsed time.';
-  return '<section class="section" id="activityProjectPanel"><h2>'+esc(label)+'</h2><div class="activity-metric-grid">'+cards+'</div>'+typeBars+leaders+proposals+'<p class="summary">'+esc(note)+'</p></section>';
+  const filters='<h3>'+esc(ko?'활동 구간 조건별 분석':'Filter measured activities')+'</h3>'+activityFilterControls()+
+    '<div id="activityProjectFiltered">'+filteredActivityHTML(activityProjectFiltered.get(state.project)?.result)+'</div>';
+  return '<section class="section" id="activityProjectPanel"><h2>'+esc(label)+'</h2><div class="activity-metric-grid">'+cards+'</div>'+typeBars+leaders+proposals+filters+'<p class="summary">'+esc(note)+'</p></section>';
 }
 function bindActivityProjectTasks(){
   const root=typeof document.getElementById==='function'?document.getElementById('activityProjectPanel'):null;
   if(!root)return;
+  const apply=root.querySelector('#activityFilterApply');
+  if(apply&&!apply.dataset.activityBound){
+    apply.dataset.activityBound='1';
+    apply.addEventListener('click',async()=>{
+      const project=state.project;
+      const value=id=>(root.querySelector('#activityFilter'+id)?.value||'').trim();
+      const values={Role:value('Role'),Type:value('Type'),Agent:value('Agent'),Round:value('Round'),From:value('From'),Until:value('Until')};
+      const query=new URLSearchParams({project});
+      for(const [ui,param]of [['Role','role'],['Type','type'],['Agent','agent'],['Round','round']]){
+        if(values[ui])query.set(param,values[ui]);
+      }
+      if(values.From)query.set('from',new Date(values.From+'T00:00:00').toISOString());
+      if(values.Until){
+        const local=new Date(values.Until+'T00:00:00');
+        local.setDate(local.getDate()+1);
+        query.set('until',local.toISOString());
+      }
+      const pane=root.querySelector('#activityProjectFiltered');
+      apply.disabled=true;
+      if(pane)pane.textContent=state.language==='ko'?'분석 중…':'Analyzing…';
+      let result;
+      try{
+        const response=await fetch('/api/activity/project/filter?'+query.toString(),{cache:'no-store'});
+        result=await response.json();
+        if(!response.ok)throw Error(result?.error||('HTTP '+response.status));
+      }catch(e){result={error:String(e?.message||e)}}
+      activityProjectFiltered.set(project,{values,result});
+      if(state.project===project){
+        const target=typeof document.getElementById==='function'?document.getElementById('activityProjectFiltered'):null;
+        if(target){target.innerHTML=filteredActivityHTML(result);bindActivityProjectTasks();}
+      }
+      apply.disabled=false;
+    });
+  }
   root.querySelectorAll('[data-activity-task]').forEach(button=>{
     if(button.dataset.activityBound)return;
     button.dataset.activityBound='1';
