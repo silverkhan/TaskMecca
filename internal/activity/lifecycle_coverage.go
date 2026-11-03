@@ -146,6 +146,7 @@ func SummarizeLifecycle(taskID string,facts []LifecycleFact,segments []Segment)L
         if clipped,ok:=clipInterval(s.StartedAt,s.EndedAt,lo,hi);ok{active=append(active,clipped)}
     }
     waitsMS:=unionDuration(waitClipped)
+    out.WaitMillis=waitsMS
     activeMS:=unionDuration(active)
     combined:=append(append([]timingInterval{},waitClipped...),active...)
     covered:=unionDuration(combined)
