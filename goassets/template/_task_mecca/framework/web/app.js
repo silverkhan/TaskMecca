@@ -5619,6 +5619,66 @@ function backlogWorkerRosterSection(task) {
   const heads=state.language==='ko'?['Worker','역할','담당 범위','배정 경위']:['Worker','Role','Scope','Assignment origin'];
   return `<section class="section detail-section collaboration-section" id="collaboration" data-toc-label="${esc(title)}"><h2>${esc(title)}</h2><div class="collaboration-scroll"><table><thead><tr>${heads.map(h=>`<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${cells}</tbody></table></div><p class="collaboration-note">${esc(state.language==='ko'?'참여 역할은 백로그에 선언된 계획이며, 실제 착수·완료는 Lifecycle에서 확인합니다.':'Roster shows declared roles; consult Lifecycle for observed execution.')}</p></section>`;
 }
+// Activity is fetched independently so canonical task text and lifecycle remain fast.
+const activityDetailCache=new Map();
+const activityDetailPending=new Map();
+function activityDetailKey(id,project=state.project){return JSON.stringify([project,String(id||'').toUpperCase()]);}
+function activityDuration(ms){if(!Number.isFinite(ms)||ms<0)return '—';return fmtSec(Math.round(ms/1000));}
+function activityMetricsBody(payload){
+  if(!payload)return '<p class="summary">'+esc(state.language==='ko'?'활동 기록을 불러오는 중…':'Loading activity history…')+'</p>';
+  if(payload.error)return '<p class="summary">'+esc(payload.error)+'</p>';
+  const s=payload.summary||{},segments=Array.isArray(s.segments)?s.segments:[],ko=state.language==='ko';
+  if(!segments.length && !s.open_activities)return '<p class="summary">'+esc(ko?'아직 측정된 활동시간이 없습니다.':'No measured activity intervals yet.')+'</p>';
+  const metrics=[
+    [ko?'누적 Agent 시간':'Cumulative agent time',s.agent_time_ms],
+    [ko?'관측 경과시간':'Observed wall time',s.observed_wall_ms],
+    [ko?'최초 Worker 작업':'Initial worker work',s.initial_worker_ms],
+    [ko?'재작업 합계':'Rework total',s.rework_worker_ms],
+    [ko?'최초 Controller 검토':'Initial controller review',s.controller_first_review_ms],
+    [ko?'재검토 합계':'Rereview total',s.controller_rereview_ms],
+  ];
+  const boxes='<div class="activity-metric-grid">'+metrics.map(([label,ms])=>'<div class="activity-metric"><strong>'+esc(activityDuration(ms))+'</strong><span>'+esc(label)+'</span></div>').join('')+'</div>';
+  const totals=Object.entries(s.by_type_ms||{}).filter(([,ms])=>ms>0).sort((a,b)=>b[1]-a[1]);
+  const all=totals.reduce((sum,[,ms])=>sum+ms,0);
+  const byType='<h3>'+esc(ko?'활동 유형별 누적':'Cumulative by activity')+'</h3><div class="activity-type-bars">'+totals.map(([name,ms])=>'<div class="activity-type-row"><span>'+esc(name)+'</span><div class="activity-type-track"><div style="width:'+Math.max(0,Math.min(100,all?ms/all*100:0))+'%"></div></div><strong>'+esc(activityDuration(ms))+'</strong></div>').join('')+'</div>';
+  const starts=segments.map(x=>Date.parse(x.started_at)).filter(Number.isFinite),ends=segments.map(x=>Date.parse(x.ended_at)).filter(Number.isFinite);
+  const begin=Math.min(...starts),end=Math.max(...ends),span=Math.max(1,end-begin);
+  const timeline='<h3>'+esc(ko?'활동 타임라인 (실제 시간축)':'Activity timeline (actual time axis)')+'</h3><div class="activity-time-axis">'+segments.map(x=>{
+    const left=Math.max(0,Math.min(100,(Date.parse(x.started_at)-begin)/span*100));
+    const width=Math.max(0,Math.min(100-left,(Date.parse(x.ended_at)-Date.parse(x.started_at))/span*100));
+    const label=x.type+' · '+x.role+' · '+(ko?'회차 ':'Round ')+x.round;
+    const tooltip=label+' · '+x.started_at+' → '+x.ended_at;
+    return '<div class="activity-timeline-row"><span>'+esc(label)+'</span><div class="activity-timeline-track"><div title="'+esc(tooltip)+'" style="left:'+left+'%;width:'+width+'%"></div></div><strong>'+esc(activityDuration(x.duration_ms))+'</strong></div>';
+  }).join('')+'</div>';
+  const unknown=(s.open_activities||s.invalid_transitions)?'<p class="timing-note warning">'+esc(ko?'열린 활동 '+(s.open_activities||0)+'건, 불완전한 전환 '+(s.invalid_transitions||0)+'건은 임의로 시간 계산하지 않았습니다.':'Open activities and invalid transitions are excluded from measured totals.')+'</p>':'';
+  return boxes+byType+timeline+unknown;
+}
+async function loadTaskActivity(id,project=state.project){
+  const key=activityDetailKey(id,project);
+  if(activityDetailPending.has(key))return activityDetailPending.get(key);
+  const job=(async()=>{
+    let payload;
+    try{
+      const url='/api/activity?'+new URLSearchParams({project,task:id});
+      const response=await fetch(url,{cache:'no-store'});
+      if(!response.ok)throw Error('Activity HTTP '+response.status);
+      payload=await response.json();
+    }catch(e){payload={error:String(e?.message||e)}}
+    activityDetailCache.set(key,payload);
+    if(state.project===project&&state.detail===id){
+      const el=document.getElementById('activityMetricsBody');
+      if(el)el.innerHTML=activityMetricsBody(payload);
+    }
+    return payload;
+  })();
+  activityDetailPending.set(key,job);
+  try{return await job}finally{activityDetailPending.delete(key)}
+}
+function activityDetailSection(task){
+  const ko=state.language==='ko';
+  return '<section class="section detail-section" id="activity-metrics" data-toc-label="'+esc(ko?'작업시간 분석':'Activity timing')+'"><h2>'+esc(ko?'작업시간 분석':'Activity timing')+'</h2><div id="activityMetricsBody">'+activityMetricsBody(activityDetailCache.get(activityDetailKey(task.id)))+'</div></section>';
+}
+
 function detailView(task) {
   const act=task.activity||{}, lc=task.lifecycle||{}, reason=task.attention_reason||null, warn=Boolean(reason)||['quiet','stale','worker_missing'].includes(act.health), events=lc.events||[];
   const hs=humanSummary(task);
@@ -5646,7 +5706,7 @@ function detailView(task) {
   const rawToggle=`<button id="rawToggle" class="raw-toggle ${state.raw?'active':''}">${esc(state.raw?t('rendered'):t('rawMarkdown'))}</button>`;
   const detailHead=`<div class="detail-head"><div class="detail-head-top"><div class="detail-id">${esc(task.id)}</div>${rawToggle}</div><h1>${esc(titleOf(task))}</h1><div class="detail-status"><span class="status ${esc(task.state)}">${esc(stateLabel(task.state))}</span>${task.agent?`<span class="badge">${esc(task.agent)}</span>`:''}<span class="badge">${esc(task.document?.schema||'legacy')}</span>${task.archive_month?`<span class="badge">archive/${esc(task.archive_month)}</span>`:''}</div>${task.source?.label?`<div class="detail-source-row"><span>${esc(t('source'))}</span>${sourceLink(task.source)}</div>`:''}${(task.tags||[]).length?`<div class="detail-tag-row">${(task.tags||[]).map(tag=>tagChip(tag,true)).join('')}</div>`:''}</div>`;
   const rawPanel=`<section class="section raw-markdown-view"><h2>${esc(t('rawMarkdown'))}</h2><pre class="raw">${esc(task.raw_markdown||'')}</pre></section>`;
-  const rendered=`${humanSummaryCard(task)}${outcome}${backlogWorkerRosterSection(task)}${lifecycle}${related}${operations}${passiveAlert}${contractSections(task)}${progress}${verification}`;
+  const rendered=`${humanSummaryCard(task)}${outcome}${backlogWorkerRosterSection(task)}${lifecycle}${activityDetailSection(task)}${related}${operations}${passiveAlert}${contractSections(task)}${progress}${verification}`;
   const body=`<div class="detail"><button class="back" id="backBtn">${esc(t('backToBacklog'))}</button>${detailHead}${state.raw?rawPanel:rendered}</div>`;
   return `<div class="detail-layout ${state.raw?'raw-mode':''}">${body}${state.raw?'':detailToc()}</div>`;
 }
@@ -5867,6 +5927,7 @@ async function loadTaskDetail(id) {
       if(task.content_timing){const painted=()=>{if(current())state.taskLoadTimings=[...(state.taskLoadTimings||[]),{...task.content_timing,phase:'content:first',browser_ms:taskTimingNow()-loadStarted}].slice(-50);};if(typeof requestAnimationFrame==='function')requestAnimationFrame(painted);else painted();}
     }
     scheduleTaskLiveEnrichment(targetID,targetProject,targetBacklog);
+    void loadTaskActivity(targetID,targetProject);
   } catch(e) {
     if(!current())return;
     state.detailTask=null;
