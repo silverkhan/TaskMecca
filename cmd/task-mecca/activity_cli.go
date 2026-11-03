@@ -47,6 +47,7 @@ func runActivityCLI(args []string,out,errOut io.Writer) int {
     runID:=fs.String("run-id","","execution evidence ID")
     runResult:=fs.String("result","","passed|failed|cancelled|unknown for test/build")
     runPurpose:=fs.String("purpose","","why the run was performed")
+    diagnosticLimit:=fs.Int("limit",5000,"maximum Activity files to inspect for diagnose")
     jsonOutput:=fs.Bool("json",false,"JSON response")
     parseArgs:=append([]string{},args[1:]...)
     if len(parseArgs)>0 && !strings.HasPrefix(parseArgs[0],"-") {parseArgs=append(parseArgs[1:],parseArgs[0])}
@@ -55,6 +56,13 @@ func runActivityCLI(args []string,out,errOut io.Writer) int {
     root,err:=filepath.Abs(*project);if err!=nil{fmt.Fprintln(errOut,err);return 2}
     store:=activity.Ledger{Project:root}
     emit:=func(v any){if *jsonOutput{_ =json.NewEncoder(out).Encode(v)}else{fmt.Fprintln(out,v)}}
+    if action=="diagnose"{
+        if fs.NArg()!=0 {fmt.Fprintln(errOut,"diagnose does not take a task ID");return 2}
+        report,diagErr:=store.Diagnose(*diagnosticLimit)
+        if diagErr!=nil{fmt.Fprintln(errOut,diagErr);return 1}
+        emit(report)
+        return 0
+    }
     if action=="suggest" {
         if !activity.Role(*role).Valid() || *eventName=="" || *round<0 {
             fmt.Fprintln(errOut,"suggest requires --role, --event and a nonnegative --round");return 2
