@@ -5708,7 +5708,7 @@ async function loadTaskActivity(id,project=state.project){
     }catch(e){payload={error:String(e?.message||e)}}
     activityDetailCache.set(key,payload);
     if(state.project===project&&state.detail===id){
-      const el=document.getElementById('activityMetricsBody');
+      const el=typeof document.getElementById==='function'?document.getElementById('activityMetricsBody'):null;
       if(el)el.innerHTML=activityMetricsBody(payload);
     }
     return payload;
@@ -5969,7 +5969,9 @@ async function loadTaskDetail(id) {
       if(task.content_timing){const painted=()=>{if(current())state.taskLoadTimings=[...(state.taskLoadTimings||[]),{...task.content_timing,phase:'content:first',browser_ms:taskTimingNow()-loadStarted}].slice(-50);};if(typeof requestAnimationFrame==='function')requestAnimationFrame(painted);else painted();}
     }
     scheduleTaskLiveEnrichment(targetID,targetProject,targetBacklog);
-    void loadTaskActivity(targetID,targetProject);
+    // Only fetch analytics when its independently rendered panel actually exists.
+    // Headless detail/prefetch paths must not add network calls or async errors.
+    if(typeof document.getElementById==='function' && document.getElementById('activityMetricsBody')) void loadTaskActivity(targetID,targetProject);
   } catch(e) {
     if(!current())return;
     state.detailTask=null;
