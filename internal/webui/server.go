@@ -1639,6 +1639,54 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 		}, 200)
 	})
 
+	mux.HandleFunc("/api/activity/project/filter", func(w http.ResponseWriter, r *http.Request) {
+        if r.Method != http.MethodGet {
+            w.Header().Set("Allow","GET")
+            writeJSON(w,map[string]any{"error":"method not allowed"},http.StatusMethodNotAllowed)
+            return
+        }
+        project:=projectFor(r)
+        if !maintenance.ProjectMonitoringAllowed(project) {
+            writeJSON(w,map[string]any{"error":"project monitoring unavailable"},http.StatusForbidden)
+            return
+        }
+        query:=r.URL.Query()
+        filter:=activity.SegmentFilter{
+            Role:activity.Role(strings.TrimSpace(query.Get("role"))),
+            Type:activity.Type(strings.TrimSpace(query.Get("type"))),
+            AgentID:strings.TrimSpace(query.Get("agent")),
+        }
+        if value:=strings.TrimSpace(query.Get("round"));value!="" {
+            parsed,err:=strconv.Atoi(value)
+            if err!=nil {writeJSON(w,map[string]any{"error":"invalid round"},http.StatusBadRequest);return}
+            filter.Round=&parsed
+        }
+        if value:=strings.TrimSpace(query.Get("from"));value!="" {
+            parsed,err:=time.Parse(time.RFC3339Nano,value)
+            if err!=nil {writeJSON(w,map[string]any{"error":"invalid from timestamp"},http.StatusBadRequest);return}
+            filter.From=&parsed
+        }
+        if value:=strings.TrimSpace(query.Get("until"));value!="" {
+            parsed,err:=time.Parse(time.RFC3339Nano,value)
+            if err!=nil {writeJSON(w,map[string]any{"error":"invalid until timestamp"},http.StatusBadRequest);return}
+            filter.Until=&parsed
+        }
+        if err:=filter.Validate();err!=nil {
+            writeJSON(w,map[string]any{"error":err.Error()},http.StatusBadRequest)
+            return
+        }
+        readStart:=time.Now()
+        rows,err:=(activity.Ledger{Project:project}).ListCached("")
+        if err!=nil {writeJSON(w,map[string]any{"error":err.Error()},http.StatusInternalServerError);return}
+        readMS:=time.Since(readStart).Seconds()*1000
+        aggregateStart:=time.Now()
+        result,err:=activity.SummarizeFilteredProject(rows,filter)
+        if err!=nil {writeJSON(w,map[string]any{"error":err.Error()},http.StatusBadRequest);return}
+        w.Header().Set("Cache-Control","no-store")
+        w.Header().Set("Server-Timing",fmt.Sprintf("activity_read;dur=%.1f,activity_filter;dur=%.1f",readMS,time.Since(aggregateStart).Seconds()*1000))
+        writeJSON(w,result,http.StatusOK)
+    })
+
 	mux.HandleFunc("/api/activity/project", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			w.Header().Set("Allow", "GET")
