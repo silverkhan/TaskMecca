@@ -1,6 +1,6 @@
 package activity
 
-import "sort"
+import ("sort";"strings")
 
 // ProjectRollup aggregates only measured intervals. Missing/unclosed work is
 // explicitly counted, not inferred to be zero work. The denominator is the
@@ -42,6 +42,7 @@ func summarizeProject(events []Event,includeTasks bool)ProjectRollup {
     sort.Strings(ids)
     result:=ProjectRollup{TasksObserved:len(ids),EventCount:len(events),ByType:map[Type]int64{},TaskSummaries:make([]Summary,0,len(ids))}
     timings:=make([]int64,0,len(ids))
+    suggestionDurations:=map[string]int64{}
     for _,id:=range ids{
         s:=Summarize(id,grouped[id])
         if includeTasks {result.TaskSummaries=append(result.TaskSummaries,s)}
@@ -50,10 +51,16 @@ func summarizeProject(events []Event,includeTasks bool)ProjectRollup {
         if s.AgentTimeMillis>0{result.TasksWithMeasuredTime++;timings=append(timings,s.AgentTimeMillis)}
         if s.OpenActivities>0{result.TasksWithOpenActivities++}
         for kind,ms:=range s.ByType{result.ByType[kind]+=ms}
+        for _,segment:=range s.Segments{
+            if segment.Type!=Other{continue}
+            key:=strings.ToLower(strings.TrimSpace(segment.ProposedType))
+            if key==""{key="unspecified"}
+            suggestionDurations[key]+=segment.DurationMillis
+        }
     }
     sort.Slice(timings,func(i,j int)bool{return timings[i]<timings[j]})
     result.MedianAgentMillis=percentile(timings,50)
     result.P90AgentMillis=percentile(timings,90)
-    result.Suggestions=SummarizeSuggestions(events)
+    result.Suggestions=SuggestionsWithDurations(events,suggestionDurations)
     return result
 }
