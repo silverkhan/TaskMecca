@@ -55,6 +55,13 @@ func runActivityCLI(args []string,out,errOut io.Writer) int {
     root,err:=filepath.Abs(*project);if err!=nil{fmt.Fprintln(errOut,err);return 2}
     store:=activity.Ledger{Project:root}
     emit:=func(v any){if *jsonOutput{_ =json.NewEncoder(out).Encode(v)}else{fmt.Fprintln(out,v)}}
+    if action=="diagnose" {
+        if fs.NArg()!=0{fmt.Fprintln(errOut,"diagnose does not accept a task ID");return 2}
+        stats,statsErr:=store.Diagnostics()
+        if statsErr!=nil{fmt.Fprintln(errOut,statsErr);return 1}
+        emit(stats)
+        return 0
+    }
     if action=="suggest" {
         if !activity.Role(*role).Valid() || *eventName=="" || *round<0 {
             fmt.Fprintln(errOut,"suggest requires --role, --event and a nonnegative --round");return 2
