@@ -1641,16 +1641,20 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 			writeJSON(w, map[string]any{"error": "project monitoring unavailable"}, http.StatusForbidden)
 			return
 		}
-		rows, err := (activity.Ledger{Project: project}).ListCached("")
+		readStarted := time.Now()
+        rows, err := (activity.Ledger{Project: project}).ListCached("")
 		if err != nil {
 			writeJSON(w, map[string]any{"error": err.Error()}, http.StatusInternalServerError)
 			return
 		}
 		w.Header().Set("Cache-Control", "no-store")
-		report := activity.SummarizeProjectCompact(rows)
+		readMS := time.Since(readStarted).Seconds()*1000
+        summaryStarted := time.Now()
+        report := activity.SummarizeProjectCompact(rows)
         // The Workload dashboard needs aggregates only. Do not ship thousands
         // of full per-backlog timelines; drill into /api/activity for details.
         report.TaskSummaries=nil
+        w.Header().Set("Server-Timing",fmt.Sprintf("activity_read;dur=%.1f,activity_aggregate;dur=%.1f",readMS,time.Since(summaryStarted).Seconds()*1000))
         writeJSON(w, report, http.StatusOK)
 	})
 
@@ -1670,14 +1674,18 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 			writeJSON(w, map[string]any{"error": "task query is required"}, http.StatusBadRequest)
 			return
 		}
-		rows, err := (activity.Ledger{Project: project}).ListCached(taskID)
+		readStarted := time.Now()
+        rows, err := (activity.Ledger{Project: project}).ListCached(taskID)
 		if err != nil {
 			writeJSON(w, map[string]any{"error": err.Error()}, http.StatusInternalServerError)
 			return
 		}
 		w.Header().Set("Cache-Control", "no-store")
-		summary := activity.Summarize(taskID, rows)
-		writeJSON(w, map[string]any{"task_id": taskID, "events": rows, "summary": summary, "test_report": activity.SummarizeTests(summary.Segments), "review_report": activity.SummarizeReviews(rows, summary.Segments)}, http.StatusOK)
+		readMS := time.Since(readStarted).Seconds()*1000
+        summaryStarted := time.Now()
+        summary := activity.Summarize(taskID, rows)
+		w.Header().Set("Server-Timing",fmt.Sprintf("activity_read;dur=%.1f,activity_aggregate;dur=%.1f",readMS,time.Since(summaryStarted).Seconds()*1000))
+        writeJSON(w, map[string]any{"task_id": taskID, "events": rows, "summary": summary, "test_report": activity.SummarizeTests(summary.Segments), "review_report": activity.SummarizeReviews(rows, summary.Segments)}, http.StatusOK)
 	})
 
 	mux.HandleFunc("/api/tasks/", func(w http.ResponseWriter, r *http.Request) {
