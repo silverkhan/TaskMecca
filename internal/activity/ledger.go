@@ -182,6 +182,7 @@ func sameActivityIntent(a,b Event)bool{
         a.Type==b.Type && a.Round==b.Round &&
         a.Evidence==b.Evidence && a.Explanation==b.Explanation &&
         a.ProposedType==b.ProposedType && a.ReviewOutcome==b.ReviewOutcome &&
+        a.SupersedesID==b.SupersedesID &&
         a.Source==b.Source && a.PhaseEvent==b.PhaseEvent && a.Confidence==b.Confidence &&
         a.Provider==b.Provider && a.SessionID==b.SessionID &&
         a.ContractSHA256==b.ContractSHA256 && a.TaskRevision==b.TaskRevision &&
