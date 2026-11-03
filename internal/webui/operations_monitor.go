@@ -386,6 +386,18 @@ func scanOperationProject(project string, now time.Time) (operationJournal, erro
 	}
 	stages=currentStages
 	journal.Stages = stages
+    resolvedIndex := indexResolvedSources(journal)
+    // All canonical state checks within this scan use the same inventory.
+    canonicalDoing := func(taskID string) bool {
+        if !canonicalLoaded {
+            canonicalRows, canonicalAvailable = operationCanonicalRows(project)
+            canonicalLoaded = true
+        }
+        if !canonicalAvailable { return false }
+        matches := canonicalRows[strings.ToUpper(strings.TrimSpace(taskID))]
+        return len(matches) == 1 && matches[0].Location == "active" && matches[0].State == "doing"
+    }
+    phaseStarted := time.Now()
 	signals := map[string]operationSignal{}
 	verified := map[string]bool{}
 	for _, attempt := range ledger.Attempts {
@@ -402,8 +414,8 @@ func scanOperationProject(project string, now time.Time) (operationJournal, erro
                 canonicalDone(signal.incident.TaskID) {continue}
 			// Suppress the same obsolete source on every scan, not only while
 			// its first incident is active. Otherwise resolution would recur.
-			latestAssignmentStillCanonical := operationLatestAssignmentSourceAlreadyResolved(signal.incident, journal) && operationCanonicalTaskIsDoing(project, signal.incident.TaskID)
-			if operationSourceAlreadyResolved(signal.incident, journal, now) || latestAssignmentStillCanonical || (recoveryPolicies[strings.ToUpper(signal.incident.TaskID)] && latestOperationRecovery(signal.incident, ledger.Attempts, stages, now)) {
+			latestAssignmentStillCanonical := resolvedIndex.latestAssignmentResolved(signal.incident) && canonicalDoing(signal.incident.TaskID)
+			if resolvedIndex.alreadyResolved(signal.incident, now) || latestAssignmentStillCanonical || (recoveryPolicies[strings.ToUpper(signal.incident.TaskID)] && latestOperationRecovery(signal.incident, ledger.Attempts, stages, now)) {
 				continue
 			}
 			if stageSuppresses(signal.incident, stages, now) {
@@ -415,6 +427,8 @@ func scanOperationProject(project string, now time.Time) (operationJournal, erro
 			signals[signal.key] = signal
 		}
 	}
+    recordMonitorPerf("operation_reconcile_signals", time.Since(phaseStarted), len(ledger.Attempts), len(signals), false, false)
+    phaseStarted = time.Now()
 	// A later observed attempt for the same task is recovery evidence for an
 	// earlier terminal episode. Keep both attempts' history, but close the old
 	// warning instead of leaving it active forever.
@@ -512,6 +526,8 @@ func scanOperationProject(project string, now time.Time) (operationJournal, erro
 			Action: "Controller: 감시 공백 동안의 세션 상태를 별도 근거로 확인하세요.", RecoveredAt: nowText}
 		signals["gap:"+journal.LastScanAt] = operationSignal{key: "gap:" + journal.LastScanAt, incident: gap, alert: true}
 	}
+    recordMonitorPerf("operation_reconcile_pre_history", time.Since(phaseStarted), len(ledger.Attempts), len(signals), false, false)
+    phaseStarted = time.Now()
 	active := map[string]int{}
 	for i := range journal.Incidents {
 		item := &journal.Incidents[i]
@@ -593,6 +609,8 @@ func scanOperationProject(project string, now time.Time) (operationJournal, erro
 		// resolution (a sensor may simply have stopped reporting). The exact
 		// Hook/canonical checks above retire it when evidence is available.
 	}
+    recordMonitorPerf("operation_reconcile_history", time.Since(phaseStarted), len(journal.Incidents), 0, false, false)
+    phaseStarted = time.Now()
 	keys := make([]string, 0, len(signals))
 	for key := range signals {
 		keys = append(keys, key)
@@ -607,6 +625,7 @@ func scanOperationProject(project string, now time.Time) (operationJournal, erro
 		signal.incident.Severity = operationIncidentSeverity(signal.incident)
 		journal.Incidents = append(journal.Incidents, signal.incident)
 	}
+    recordMonitorPerf("operation_reconcile_finalize", time.Since(phaseStarted), len(signals), 0, false, false)
     recordMonitorPerf("operation_reconcile", time.Since(started), len(ledger.Attempts), len(journal.Incidents), false, false)
 	journal.LastScanAt = nowText
     started = time.Now()
