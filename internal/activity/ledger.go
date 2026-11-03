@@ -68,6 +68,7 @@ func(l Ledger) appendLocked(event Event)(bool,error){
         if string(append(other,'\n'))!=string(body){return false,ErrEventConflict}
         return false,nil
     }
+    invalidateProjection(l.Project)
     return true,nil
 }
 
