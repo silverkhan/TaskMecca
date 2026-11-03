@@ -737,6 +737,7 @@ func scanOperationProjects(primary string, now time.Time) {
 // effort, allowing an active backlog HTTP request to finish first.
 func scanOperationProjectsWithPriority(primary string, now time.Time, background bool) {
     projects := operationProjects(primary)
+    if os.Getenv("TASK_MECCA_OPERATION_HELPER") == "1" {fmt.Fprintf(os.Stderr,"operation helper tick project_count=%d background=%v\\n",len(projects),background)}
     for _, project := range projects {
         start := time.Now()
         executed := false
@@ -757,6 +758,7 @@ func scanOperationProjectsWithPriority(primary string, now time.Time, background
             maintenance.WithProjectMonitoring(project, work)
         }
         if !executed {
+            if os.Getenv("TASK_MECCA_OPERATION_HELPER") == "1" {fmt.Fprintf(os.Stderr,"operation helper tick skipped\\n")}
             recordMonitorPerf("operation_skipped", time.Since(start), 0, 0, false, true)
         }
     }
