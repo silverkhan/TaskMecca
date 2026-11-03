@@ -5412,6 +5412,43 @@ function runtimeRootListPanel() {
   </div>`:`<div class="runtime-history-page-label">${esc(t('runtimeRootPage',{page:pages?1:0,pages,total}))}</div>`;
   return `<section class="runtime-root-list-panel"><div class="runtime-root-list">${rows}</div>${pager}</section>`;
 }
+
+const activityProjectCache=new Map();
+const activityProjectLoading=new Set();
+function projectActivityPanel(){
+  const ko=state.language==='ko';
+  const report=activityProjectCache.get(state.project);
+  const label=ko?'작업시간 병목 분석':'Activity Performance';
+  if(!report)return '<section class="section" id="activityProjectPanel"><h2>'+esc(label)+'</h2><p class="summary">'+esc(ko?'활동 통계를 조회하는 중…':'Loading activity statistics…')+'</p></section>';
+  if(report.error)return '<section class="section" id="activityProjectPanel"><h2>'+esc(label)+'</h2><p class="summary">'+esc(report.error)+'</p></section>';
+  const stats=[
+    [ko?'관측된 백로그':'Backlogs with records',report.tasks_observed],
+    [ko?'시간 측정 백로그':'Backlogs with timed intervals',report.tasks_with_measured_time],
+    [ko?'누적 Agent 시간':'Agent time',activityDuration(report.agent_time_ms)],
+    [ko?'백로그 관측시간 합계':'Sum of task wall time',activityDuration(report.sum_task_observed_wall_ms)],
+    [ko?'중앙값':'Median',activityDuration(report.median_agent_ms)],
+    ['P90',activityDuration(report.p90_agent_ms)]
+  ];
+  const cards=stats.map(function(entry){return '<div class="activity-metric"><strong>'+esc(String(entry[1]))+'</strong><span>'+esc(entry[0])+'</span></div>';}).join('');
+  const note=ko?'관측된 구간만 합산하며 미측정 시간은 추정하지 않습니다. 백로그별 경과시간 합계는 전체 프로젝트 경과시간과 다릅니다.':'Only observed intervals are included; task wall time summed across backlogs is not overall project elapsed time.';
+  return '<section class="section" id="activityProjectPanel"><h2>'+esc(label)+'</h2><div class="activity-metric-grid">'+cards+'</div><p class="summary">'+esc(note)+'</p></section>';
+}
+async function loadActivityProject(project){
+  if(!project||activityProjectLoading.has(project))return;
+  activityProjectLoading.add(project);
+  try {
+    const response=await fetch('/api/activity/project?'+new URLSearchParams({project:project}),{cache:'no-store'});
+    if(!response.ok)throw Error('HTTP '+response.status);
+    const data=await response.json();
+    activityProjectCache.set(project,data);
+  }catch(e){activityProjectCache.set(project,{error:String(e&&e.message||e)});}
+  finally{activityProjectLoading.delete(project);}
+  if(state.view==='workload'&&state.project===project&&!state.detail){
+    const target=document.getElementById('activityProjectPanel');
+    if(target)target.outerHTML=projectActivityPanel();
+  }
+}
+
 function workloadView() {
   const snapshot=state.snapshot||{}, w=snapshot.workload||{}, agents=w.agents||[], all=snapshot.all_items||{}, unassigned=w.unassigned_doing||[], released=w.released_holds||[];
   const runtime=snapshot.runtime_observability||{}, attempts=runtime.attempts||[], findings=runtime.findings||[], hooks=runtime.hooks||[], rc=runtime.counts||{}, historyMeta=runtime.history||{};
@@ -5466,7 +5503,7 @@ function workloadView() {
     return `<article class="worker-card"><div class="worker-head"><div><div class="worker-name">${esc(a.agent)}</div><div class="worker-alias">${esc(alias)}</div>${liveLine}</div><div class="worker-stats"><div><strong>${a.doing_count||0}</strong><span>${esc(t('doing'))}</span></div><div><strong>${a.blocking_count||0}</strong><span>${esc(t('downstreamBlocked'))}</span></div><div><strong>${a.ready_candidate_count||0}</strong><span>${esc(t('continuity'))}</span></div></div></div><div class="worker-body">${tasks||`<div class="worker-empty">${esc(t('noCurrentDoing'))}</div>`}${blocked?`<div class="mini-panel"><h3>${esc(t('downstreamBlocked'))}</h3><div class="mini-list">${blocked}</div></div>`:''}${ready?`<div class="mini-panel"><h3>${esc(t('readyContinuity'))}</h3><div class="mini-list">${ready}</div></div>`:''}</div></article>`;
   }).join('');
   const backlogPanel=`<section class="assigned-workload-section"><div class="runtime-section-head compact"><div><div class="eyebrow">Backlog / Git</div><h2>${esc(t('runtimeAssignedWorkload'))}</h2><p class="summary">${esc(t('runtimeAssignedWorkloadIntro'))}</p></div></div><div class="metrics"><div class="metric"><strong>${agents.length}</strong><span>${esc(t('workers'))}</span></div><div class="metric"><strong>${doingTotal}</strong><span>${esc(t('doing'))}</span></div><div class="metric"><strong>${blockingTotal}</strong><span>${esc(t('downstreamBlocked'))}</span></div><div class="metric"><strong>${continuityTotal}</strong><span>${esc(t('readyContinuity'))}</span></div></div>${unassigned.length?`<div class="unassigned-warning"><strong>${esc(t('unassignedDoing'))}:</strong> ${esc(unassigned.join(', '))}</div>`:''}${cards?`<div class="workload-grid">${cards}</div>`:`<div class="empty">${esc(t('noWorkload'))}</div>`}${released.length?`<div class="workload-secondary"><div class="mini-panel"><h3>${esc(t('releasedHold'))}</h3><div class="mini-list">${released.map(x=>`<span class="badge" data-id="${esc(x.id)}">${esc(x.id)}</span>`).join('')}</div></div></div>`:''}</section>`;
-  return `<div class="page-head"><div><div class="eyebrow">${esc(t('operationsEyebrow'))}</div><h1>${esc(t('workload'))}</h1><p class="summary">${esc(t('workloadIntro'))}</p></div></div>${runtimePanel}${renderOperationStages(state.operationPayload.stages||[])}${backlogPanel}`;
+  return `<div class="page-head"><div><div class="eyebrow">${esc(t('operationsEyebrow'))}</div><h1>${esc(t('workload'))}</h1><p class="summary">${esc(t('workloadIntro'))}</p></div></div>${runtimePanel}${renderOperationStages(state.operationPayload.stages||[])}${backlogPanel}${projectActivityPanel()}`;
 }
 function diagnosticEntries(snapshot){const rows=[];for(const [type,value] of Object.entries(snapshot?.health||{})){if(Array.isArray(value))for(const item of value)rows.push({type,item});else if(value&&typeof value==='object'&&Object.keys(value).length)rows.push({type,item:value});}for(const item of snapshot?.diagnostics||[])rows.push({type:item.component||'doctor',item});return rows;}
 function currentDiagnosticSource(){return state.diagnosticSnapshots[state.project+'|'+state.backlog];}
@@ -6247,6 +6284,7 @@ function render() {
     button.addEventListener('click',()=>toggleRuntimeHookGuide(button.dataset.runtimeHookTrust));
   });
   if(state.view==='workload'){
+    if(!activityProjectCache.has(state.project))void loadActivityProject(state.project);
     $('#runtimeHistoryToggle')?.addEventListener('click',()=>toggleRuntimeHistory());
     $('#runtimeStorageToggle')?.addEventListener('click',()=>toggleRuntimeStorage());
     $('#runtimeCleanupBtn')?.addEventListener('click',e=>performRuntimeCleanup(e.currentTarget));
