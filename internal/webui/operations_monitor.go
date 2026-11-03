@@ -490,9 +490,7 @@ func scanOperationProject(project string, now time.Time) (operationJournal, erro
     }
 recordMonitorPerf("operation_monitor_assignments", time.Since(workloadStarted), len(ledger.Attempts), 0, false, false)
 	for _, stage := range stages {
-		if stage.Stage == "worker_running" || stage.Stage == "runtime_observation_pending" || stage.Stage == "handoff_applied" || stage.Stage == "controller_verified_complete" || stage.deferred(now) {
-			continue
-		}
+        if !operationStageNeedsAttention(stage,now) { continue }
 		kind := "handoff_stalled"
 		if stage.Failed {
 			kind = "handoff_failed"
