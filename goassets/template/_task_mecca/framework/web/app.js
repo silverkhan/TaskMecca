@@ -5693,7 +5693,15 @@ function activityMetricsBody(payload){
     return '<div class="activity-unclassified-item"><strong>'+esc(e.proposed_type||'other')+'</strong> · '+esc(e.agent_id||'-')+
       '<p>'+esc(e.explanation||'-')+'</p><small>'+esc(e.confidence||'unknown')+' · '+esc(e.evidence||'-')+'</small></div>';
   }).join('')+'</div>':'';
-  return boxes+byType+timeline+unclassifiedView+unknown;
+  const tr=payload.test_report||{};
+  const testOverview=tr.runs&&tr.runs.length?'<h3>'+esc(ko?'검증·빌드 실행 분석':'Test and build executions')+'</h3>'+
+    '<div class="activity-metric-grid">'+
+    '<div class="activity-metric"><strong>'+esc(activityDuration(tr.full_regression_ms))+'</strong><span>'+esc(ko?'전체 회귀 누적':'Full regression total')+'</span></div>'+
+    '<div class="activity-metric"><strong>'+esc(String(tr.full_regression_count||0))+'</strong><span>'+esc(ko?'전체 회귀 횟수':'Full regression count')+'</span></div>'+
+    '<div class="activity-metric"><strong>'+esc(String(tr.repetition_candidates||0))+'</strong><span>'+esc(ko?'동일 SHA·명령·범위 재실행 후보':'Repeat candidates')+'</span></div></div>'+
+    '<p class="summary">'+esc(ko?'반복 후보는 불필요한 테스트로 확정된 것이 아닙니다. 테스트 목적과 코드 변경 여부를 함께 검토해야 합니다.':'Repeated runs can be legitimate; verify purpose and code revision.')+'</p>':'';
+  const gap=s.unattributed_gap_ms>0?'<p class="summary">'+esc(ko?'관측 범위 내 활동 미귀속 시간: ':'Unattributed observed-span time: ')+esc(activityDuration(s.unattributed_gap_ms))+'</p>':'';
+  return boxes+byType+timeline+testOverview+unclassifiedView+gap+unknown;
 }
 async function loadTaskActivity(id,project=state.project){
   const key=activityDetailKey(id,project);
