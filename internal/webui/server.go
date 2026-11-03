@@ -1641,7 +1641,7 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 			writeJSON(w, map[string]any{"error": "project monitoring unavailable"}, http.StatusForbidden)
 			return
 		}
-		rows, err := (activity.Ledger{Project: project}).List("")
+		rows, err := (activity.Ledger{Project: project}).ListCached("")
 		if err != nil {
 			writeJSON(w, map[string]any{"error": err.Error()}, http.StatusInternalServerError)
 			return
@@ -1666,7 +1666,7 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 			writeJSON(w, map[string]any{"error": "task query is required"}, http.StatusBadRequest)
 			return
 		}
-		rows, err := (activity.Ledger{Project: project}).List(taskID)
+		rows, err := (activity.Ledger{Project: project}).ListCached(taskID)
 		if err != nil {
 			writeJSON(w, map[string]any{"error": err.Error()}, http.StatusInternalServerError)
 			return
