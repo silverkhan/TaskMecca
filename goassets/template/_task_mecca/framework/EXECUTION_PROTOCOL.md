@@ -6,14 +6,16 @@
 
 ## Activity Recorder · 작업시간 경량 기록
 
-Activity는 Lifecycle/승인 원장과 별개의 **측정 전용 이벤트**다. exact Runtime attempt와 Worker assignment, Controller claimed handoff 또는 Registrar/Sub-Controller 역할별 바인딩이 확인된 뒤에만 `task-mecca activity start|switch|stop TASK --project PROJECT --role ROLE --agent EXACT_ID --attempt EXACT_ATTEMPT ... --event-id STABLE_ID --type TYPE --evidence SHORT_REASON`을 사용한다. 각 논리 사건의 stable ID는 재시도에도 동일하게 유지한다. 값이 없거나 identity가 애매하면 활동시간을 꾸며내지 않고 미관측으로 남긴다.
+Activity는 Lifecycle/승인 원장과 별개의 **측정 전용 이벤트**다. 가장 적은 호출로 실제 활동을 구분할 수 있도록, 역할별 Decision 결과를 실행한 다음 실제 사건을 `task-mecca activity report TASK --project PROJECT --role ROLE --agent EXACT_ID --attempt EXACT_ATTEMPT --event PHASE_EVENT --event-id STABLE_ID --evidence SHORT_REASON ... --json`으로 **한 번만** 보고한다. Recorder가 역할·회차를 참고해 start/switch/stop 및 표준 활동 유형을 선택한다. Decision이 다음 행동을 권고했다는 이유만으로 Activity를 시작하지 않는다.
 
-- **Worker:** 요건 분석 → 구현 → 검증처럼 의미 있는 단계가 바뀔 때만 `switch`; 실제 테스트/빌드는 `activity run ... -- PROGRAM ARGS`로 실행하면 시간과 종료 결과를 기록하고 원래 단계로 돌아온다. 전체 회귀 테스트를 자동 추가 실행하지 않는다.
-- **Controller:** 실제 Handoff 인수 후 최초 검토는 `controller_review`, 반려 뒤 재검토는 `controller_rereview`로 기록한다. 검토 종료 시 `--review-outcome accepted|rejected|needs_changes`를 사용하며 실제 반려 근거 없이 회차를 증가시키지 않는다.
-- **Registrar/Sub-Controller:** 본인의 정확한 Runtime 바인딩이 있을 때만 기록한다. Sub-Controller의 측정 권한은 원본 운영 writer·최종 수용 권한을 부여하지 않는다.
-- 유형이 모호하면 `task-mecca activity suggest --role ROLE --event EVENT --round N --json`을 참고하고, 분류할 수 없다면 `other --explanation DESCRIPTION --proposed-type CANDIDATE`로 보존한다.
+- **Worker:** `requirements_started`, `research_started`, `implementation_started`, `worker_completed` 등을 실제 착수·완료 시각에만 보고한다. 검증/빌드 명령은 `activity run ... -- PROGRAM ARGS`로 실행해 시작·종료·실행 결과를 자동 계측한다. 전체 회귀 테스트를 추가로 자동 실행하지 않는다.
+- **Main Controller:** 실제 Handoff 인수 후 `review_started`, 검토 후 `review_accepted` / `review_rejected` / `review_needs_changes`를 보고한다. 이 명시적인 검토 결과로만 재작업 회차를 증가시킨다. Sub-Controller의 검수 보고는 Main 최종 수용과 다르다.
+- **Registrar/Sub-Controller:** 본인의 정확한 Runtime 바인딩에서만 보고하며, 분류 권한이나 Activity 원장 기록이 원본 backlog writer·최종 승인 권한을 부여하지 않는다.
+- **미분류:** 사전에 없는 사건은 `other --explanation DESCRIPTION --proposed-type CANDIDATE` 형태로 Agent 판단을 남긴다. 필요한 경우 `activity suggest`에서 유형만 미리 조회할 수 있다.
 
-모든 도구 호출마다 Activity 기록을 추가하거나 주기적 heartbeat를 생성하지 않는다. 기록 실패를 감추거나 완료로 주장하지 않되, 관측 실패만으로 원래 구현·검수·인계를 중단하지 않는다. 세부 API와 신뢰도 제약은 `task-mecca help activity` 및 저장소의 `docs/activity-recorder.md`에서 확인한다.
+Worker는 실제 `--assignment ID`, Controller는 claimed `--handoff ID`를 함께 전달한다. Runtime/attempt/등록 ID가 불명확하면 실행 사실이나 시간을 추측하지 않는다. `event-id`는 같은 사건 재시도 때 동일하게 사용한다. 모든 tool call마다 기록하거나 주기적 heartbeat를 생성하지 않는다. 기록 실패를 성공처럼 주장하지 않되, Activity 관측만 실패했다고 구현·검수·인계를 취소하지도 않는다.
+
+현재 기록된 활동 유형은 `agent_report / inferred`이며 CPU/배터리 사용량이나 운영 병목의 인과적 증거가 아니다. 세부 명령과 한계는 `task-mecca help activity`, 저장소의 `docs/activity-recorder.md`를 참조한다.
 
 ## Assignment checklist
 
