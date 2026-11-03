@@ -5489,21 +5489,46 @@ function bindActivityProjectTasks(){
     button.dataset.activityBound='1';
     button.addEventListener('click',()=>openTask(button.dataset.activityTask));
   });
+  root.querySelectorAll('[data-activity-filter]').forEach(control=>{
+    if(control.dataset.activityBound)return;
+    control.dataset.activityBound='1';
+    control.addEventListener('change',()=>{
+      const name=control.dataset.activityFilter;
+      if(!['role','type','days'].includes(name))return;
+      if(activityProjectFilters[name]===control.value)return;
+      activityProjectFilters[name]=control.value;
+      root.outerHTML=projectActivityPanel();
+      bindActivityProjectTasks();
+      void loadActivityProject(state.project);
+    });
+  });
 }
 async function loadActivityProject(project){
-  if(!project||activityProjectLoading.has(project))return;
-  activityProjectLoading.add(project);
+  const key=activityProjectKey(project);
+  if(!project||activityProjectLoading.has(key))return;
+  activityProjectLoading.add(key);
+  const selected={role:activityProjectFilters.role,type:activityProjectFilters.type,days:activityProjectFilters.days};
   try {
-    const response=await fetch('/api/activity/project?'+new URLSearchParams({project:project}),{cache:'no-store'});
-    if(!response.ok)throw Error('HTTP '+response.status);
+    const query=new URLSearchParams({project:project});
+    if(selected.role)query.set('role',selected.role);
+    if(selected.type)query.set('type',selected.type);
+    if(selected.days!=='0')query.set('days',selected.days);
+    const response=await fetch('/api/activity/project?'+query,{cache:'no-store'});
+    if(!response.ok)throw Error('Activity HTTP '+response.status);
     const data=await response.json();
-    activityProjectCache.set(project,data);
-    activityProjectFetchedAt.set(project,Date.now());
-  }catch(e){activityProjectCache.set(project,{error:String(e&&e.message||e)});activityProjectFetchedAt.set(project,Date.now());}
-  finally{activityProjectLoading.delete(project);}
-  if(state.view==='workload'&&state.project===project&&!state.detail){
+    activityProjectCache.set(key,data);
+    activityProjectFetchedAt.set(key,Date.now());
+  }catch(e){activityProjectCache.set(key,{error:String(e&&e.message||e)});activityProjectFetchedAt.set(key,Date.now());}
+  finally{activityProjectLoading.delete(key);}
+  // Filter changes can race network replies. Never render an old result into
+  // the currently selected project/filter.
+  if(state.view==='workload'&&state.project===project&&!state.detail&&activityProjectKey(project)===key){
     const target=document.getElementById('activityProjectPanel');
     if(target){target.outerHTML=projectActivityPanel();bindActivityProjectTasks();}
+  }
+  if(activityProjectCache.size>12){
+    const oldest=activityProjectCache.keys().next().value;
+    activityProjectCache.delete(oldest);activityProjectFetchedAt.delete(oldest);
   }
 }
 
@@ -6378,7 +6403,7 @@ function render() {
     button.addEventListener('click',()=>toggleRuntimeHookGuide(button.dataset.runtimeHookTrust));
   });
   if(state.view==='workload'){
-    if(Date.now()-(activityProjectFetchedAt.get(state.project)||0)>ACTIVITY_PROJECT_REFRESH_MS)void loadActivityProject(state.project);
+    if(Date.now()-(activityProjectFetchedAt.get(activityProjectKey(state.project))||0)>ACTIVITY_PROJECT_REFRESH_MS)void loadActivityProject(state.project);
     bindActivityProjectTasks();
     $('#runtimeHistoryToggle')?.addEventListener('click',()=>toggleRuntimeHistory());
     $('#runtimeStorageToggle')?.addEventListener('click',()=>toggleRuntimeStorage());
