@@ -4,6 +4,17 @@
 
 이 문서는 SESSION_GUIDE 한국어·영어, collab 및 역할 문서의 공통 실행 절차다. Controller는 지정 원본 workspace의 canonical backlog/runtime의 단일 운영 writer다. Worker는 원본 계약을 읽고 구현·검증·실제 착수와 transport evidence를 Controller에 보고한다. Worker는 원본 또는 구현 worktree 사본 backlog/lifecycle/handoff/runtime 운영원장을 수동 생성·수정하거나 monitor에 등록하지 않는다. 승인된 CLI preflight의 ephemeral probe/cache 관측 쓰기와 runtime hook의 자동 관측은 허용된 예외이며 Worker의 운영원장 쓰기 권한이 아니다. Git 구현/지정 dev 통합과 원본 상태 기록은 별개다. Controller는 dev merge를 기다리지 않고 실제 배정·실행·대기·결과를 원본에 기록한다.
 
+## Activity Recorder · 작업시간 경량 기록
+
+Activity는 Lifecycle/승인 원장과 별개의 **측정 전용 이벤트**다. exact Runtime attempt와 Worker assignment, Controller claimed handoff 또는 Registrar/Sub-Controller 역할별 바인딩이 확인된 뒤에만 `task-mecca activity start|switch|stop TASK --project PROJECT --role ROLE --agent EXACT_ID --attempt EXACT_ATTEMPT ... --event-id STABLE_ID --type TYPE --evidence SHORT_REASON`을 사용한다. 각 논리 사건의 stable ID는 재시도에도 동일하게 유지한다. 값이 없거나 identity가 애매하면 활동시간을 꾸며내지 않고 미관측으로 남긴다.
+
+- **Worker:** 요건 분석 → 구현 → 검증처럼 의미 있는 단계가 바뀔 때만 `switch`; 실제 테스트/빌드는 `activity run ... -- PROGRAM ARGS`로 실행하면 시간과 종료 결과를 기록하고 원래 단계로 돌아온다. 전체 회귀 테스트를 자동 추가 실행하지 않는다.
+- **Controller:** 실제 Handoff 인수 후 최초 검토는 `controller_review`, 반려 뒤 재검토는 `controller_rereview`로 기록한다. 검토 종료 시 `--review-outcome accepted|rejected|needs_changes`를 사용하며 실제 반려 근거 없이 회차를 증가시키지 않는다.
+- **Registrar/Sub-Controller:** 본인의 정확한 Runtime 바인딩이 있을 때만 기록한다. Sub-Controller의 측정 권한은 원본 운영 writer·최종 수용 권한을 부여하지 않는다.
+- 유형이 모호하면 `task-mecca activity suggest --role ROLE --event EVENT --round N --json`을 참고하고, 분류할 수 없다면 `other --explanation DESCRIPTION --proposed-type CANDIDATE`로 보존한다.
+
+모든 도구 호출마다 Activity 기록을 추가하거나 주기적 heartbeat를 생성하지 않는다. 기록 실패를 감추거나 완료로 주장하지 않되, 관측 실패만으로 원래 구현·검수·인계를 중단하지 않는다. 세부 API와 신뢰도 제약은 [Activity Recorder 문서](../../../docs/activity-recorder.md)에서 확인한다.
+
 ## Assignment checklist
 
 모든 CLI 명령은 지정 원본 project를 cwd로 실행한다. 설치된 CLI의 옵션 지원을 확인하지 않고 다른 cwd에서 --project 동작을 가정하지 않는다. 원본 backlog root, 원래 repository, integration branch/base SHA, 구현 worktree/branch 및 금지 범위를 먼저 확정한다. 다음 순서는 생략하거나 뒤집지 않는다.
