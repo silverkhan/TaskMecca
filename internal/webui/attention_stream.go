@@ -88,10 +88,12 @@ func (f *attentionFeed) refresh() {
 func (f *attentionFeed) refreshActive() {
     start := time.Now()
     payload, err := backlog.AttentionSnapshot(f.project, f.root, true)
+    recordMonitorPerf("attention_snapshot", time.Since(start), 0, 0, false, false)
 	if err != nil {
 		payload = map[string]any{"error": err.Error(), "attention": []map[string]any{}, "all_items": map[string]map[string]any{}, "notification_events": []map[string]any{}}
 	}
 	revision := attentionRevision(payload)
+    deliveryStarted := time.Now()
 	if rows, ok := payload["notification_events"].([]map[string]any); ok {
 		events := make([]notify.Event, 0, len(rows))
 		for _, row := range rows {
@@ -116,7 +118,10 @@ func (f *attentionFeed) refreshActive() {
 			}
 		}
 	}
+    recordMonitorPerf("attention_delivery", time.Since(deliveryStarted), 0, 0, false, false)
+    encodingStarted := time.Now()
 	data, _ := json.Marshal(payload)
+    recordMonitorPerf("attention_encoding", time.Since(encodingStarted), 0, 0, false, false)
 	f.mu.Lock()
 	changed := revision != f.revision || f.latest == nil
 	f.revision = revision
