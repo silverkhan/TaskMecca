@@ -24,15 +24,21 @@ var activityLifeCache=struct{
 // not on the critical backlog-detail HTML path. Repeated panel reads within the
 // TTL avoid reopening every lifecycle event file.
 func readActivityLifecycle(project,task string)([]activity.LifecycleFact,int,error){
+    item,err:=loadActivityLifecycle(project)
+    if err!=nil{return nil,0,err}
+    return item.byTask[task],item.findings,nil
+}
+
+func loadActivityLifecycle(project string)(activityLifecycleEvidence,error){
     now:=time.Now()
     activityLifeCache.Lock()
     if item,ok:=activityLifeCache.projects[project];ok&&now.Sub(item.at)<activityLifecycleTTL{
         activityLifeCache.Unlock()
-        return item.byTask[task],item.findings,nil
+        return item,nil
     }
     activityLifeCache.Unlock()
     scan,err:=backlog.ReadLifecycleTransitions(project)
-    if err!=nil{return nil,0,err}
+    if err!=nil{return activityLifecycleEvidence{},err}
     byTask:=map[string][]activity.LifecycleFact{}
     for _,e:=range scan.Events{
         when,parseErr:=time.Parse(time.RFC3339Nano,e.OccurredAt)
@@ -53,5 +59,5 @@ func readActivityLifecycle(project,task string)([]activity.LifecycleFact,int,err
     }
     activityLifeCache.projects[project]=snapshot
     activityLifeCache.Unlock()
-    return byTask[task],snapshot.findings,nil
+    return snapshot,nil
 }
