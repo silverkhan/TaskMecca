@@ -20,6 +20,7 @@ type ReviewReport struct {
 // test does not count as a Controller rejection. Historical duplicate IDs do
 // not increment the rework round.
 func SummarizeReviews(events []Event,segments []Segment)ReviewReport {
+    events,_=EffectiveEvents(events)
     result:=ReviewReport{RoundBreakdown:[]RoundBreakdown{}}
     seen:=map[string]bool{}
     for _,e:=range events {
