@@ -3,6 +3,8 @@ package activity
 import (
     "crypto/sha256"
     "encoding/hex"
+    "errors"
+    "os"
     "fmt"
     "strings"
     "time"
@@ -17,6 +19,10 @@ func RecordTerminal(project string,hook runtimeobs.ExecutionEvent)(bool,error){
     if !hook.Terminal || hook.EventKind!="state" || hook.AttemptID=="" {
         return false,nil
     }
+    // Most projects have no Activity records yet. One cheap stat avoids
+    // rebuilding the expensive Runtime ledger for such terminal hooks.
+    if _,statErr:=os.Stat((Ledger{Project:project}).dir());errors.Is(statErr,os.ErrNotExist){return false,nil
+    }else if statErr!=nil{return false,statErr}
     when,err:=time.Parse(time.RFC3339Nano,hook.ObservedAt)
     if err!=nil{return false,nil}
     runtimeLedger,err:=runtimeobs.BuildLedger(project,5,time.Now())
