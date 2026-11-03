@@ -88,7 +88,8 @@ func runActivityCLI(args []string,out,errOut io.Writer) int {
             if prior.TaskID==task && prior.PhaseEvent==*eventName && string(prior.Role)==*role &&
                 prior.AgentID==*agent && prior.RuntimeAttemptID==*attempt &&
                 prior.AssignmentID==*assignment && prior.HandoffID==*handoffID &&
-                prior.Evidence==*evidence {
+                prior.Evidence==*evidence && prior.Explanation==*explain &&
+                prior.ProposedType==*proposed && prior.Source=="agent_report" {
                 emit(map[string]any{"ok":true,"recorded":false,"event":prior});return 0
             }
             fmt.Fprintln(errOut,"event-id already belongs to another reported phase");return 3
