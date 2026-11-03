@@ -134,6 +134,8 @@ func runActivityCLI(args []string,out,errOut io.Writer) int {
             return activity.ValidateAttribution(e,runtimeLedger.Attempts,assignments)
         case activity.RoleRegistrar:
             return activity.ValidateRegistrarAttribution(e,runtimeLedger.Attempts)
+        case activity.RoleSubController:
+            return activity.ValidateSubControllerAttribution(e,runtimeLedger.Attempts)
         case activity.RoleController:
             claims,err:=handoffjournal.BuildLedger(root,time.Now().UTC())
             if err!=nil{return fmt.Errorf("handoff evidence unavailable: %w",err)}
