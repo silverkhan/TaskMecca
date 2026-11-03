@@ -96,10 +96,20 @@ func(l Ledger) List(taskID string)([]Event,error){
 // canonical project lock. Two concurrent start/switch/stop commands must not
 // both approve a transition based on the same stale open interval.
 func(l Ledger) Apply(event Event)(bool,error){
+    return l.ApplyVerified(event,nil)
+}
+
+// ApplyVerified checks authoritative Runtime/assignment evidence inside the
+// same project write gate as transition validation and immutable publication.
+// verify MUST only read canonical state; it must not acquire a write lock.
+func(l Ledger) ApplyVerified(event Event,verify func()error)(bool,error){
     release,err:=projectguard.AcquireWrite(l.Project)
     if err!=nil{return false,err}
     defer release()
     if err:=event.Validate();err!=nil{return false,err}
+    if verify!=nil {
+        if err:=verify();err!=nil{return false,err}
+    }
     prior,err:=l.Read(event.EventID)
     if err==nil{
         // RecordedAt is assigned by the recorder. Retry with the same stable
