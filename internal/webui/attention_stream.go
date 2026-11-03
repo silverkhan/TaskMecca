@@ -246,7 +246,7 @@ func (f *attentionFeed) subscribe() (chan []byte, []byte, func()) {
     // A project may be removed between ensureAttentionFeed and subscribe.
     // Serialize with registry teardown so a stopped feed cannot gain clients.
     attentionFeeds.Lock()
-    if attentionFeeds.feeds[f.project+"\x00"+f.root] != f {
+    if attentionFeeds.feeds[f.project+"\x00"+f.root] != f && f.stopCh != nil {
         close(ch)
         attentionFeeds.Unlock()
         return ch, nil, func(){}
