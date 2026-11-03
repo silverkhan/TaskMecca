@@ -400,11 +400,17 @@ func scanOperationProject(project string, now time.Time) (operationJournal, erro
     phaseStarted := time.Now()
 	signals := map[string]operationSignal{}
 	verified := map[string]bool{}
+    var hookVerificationDuration, classificationDuration time.Duration
 	for _, attempt := range ledger.Attempts {
 		if _, ok := verified[attempt.Provider]; !ok {
+            verifyStarted := time.Now()
 			verified[attempt.Provider] = operationHookVerifier(project, attempt.Provider)
+            hookVerificationDuration += time.Since(verifyStarted)
 		}
-		if signal, ok := classifyOperation(project, attempt, now, verified[attempt.Provider]); ok {
+        classifyStarted := time.Now()
+        signal, classified := classifyOperation(project, attempt, now, verified[attempt.Provider])
+        classificationDuration += time.Since(classifyStarted)
+		if classified {
 			// Retire *unlinked assignment* warnings on a completed task.
 // Linked runtime attempts require stronger evidence, since a late
 // Hook signal after task completion may be a new problem.
@@ -427,6 +433,8 @@ func scanOperationProject(project string, now time.Time) (operationJournal, erro
 			signals[signal.key] = signal
 		}
 	}
+    recordMonitorPerf("operation_signal_hook_verification", hookVerificationDuration, len(verified), 0, false, false)
+    recordMonitorPerf("operation_signal_classification", classificationDuration, len(ledger.Attempts), 0, false, false)
     recordMonitorPerf("operation_reconcile_signals", time.Since(phaseStarted), len(ledger.Attempts), len(signals), false, false)
     phaseStarted = time.Now()
 	// A later observed attempt for the same task is recovery evidence for an

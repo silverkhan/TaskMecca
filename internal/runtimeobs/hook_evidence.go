@@ -20,6 +20,11 @@ func HookEvidenceSince(project, provider, since string) (map[string]bool, string
 	if err != nil {
 		return events, "", err
 	}
+    fingerprints, stable := executionFileFingerprints(files)
+    key := hookEvidenceCacheKey{project:project, provider:strings.ToLower(strings.TrimSpace(provider)), cutoff:since}
+    if result, last, hit := cachedHookEvidence(key, fingerprints, stable); hit {
+        return result, last, nil
+    }
 	last := ""
 	seen := map[string]bool{}
 	for _, path := range files {
@@ -66,5 +71,16 @@ func HookEvidenceSince(project, provider, since string) (map[string]bool, string
 			return events, last, closeErr
 		}
 	}
+    // Concurrent Hook appends/rotations cannot produce cached partial proof.
+    // The next request rechecks all file identities before trusting this fold.
+    if stable {
+        freshFiles, listErr := executionEventFiles(project)
+        if listErr == nil {
+            freshFingerprints, freshOK := executionFileFingerprints(freshFiles)
+            if freshOK && sameExecutionFileFingerprints(fingerprints, freshFingerprints) {
+                rememberHookEvidence(key, fingerprints, events, last)
+            }
+        }
+    }
 	return events, last, nil
 }
