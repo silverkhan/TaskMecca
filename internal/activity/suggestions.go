@@ -15,6 +15,7 @@ type ClassificationSuggestion struct {
 // SummarizeSuggestions preserves suggestions as proposals rather than adding
 // their free-text names to the official Activity type vocabulary.
 func SummarizeSuggestions(events []Event)[]ClassificationSuggestion{
+    events,_=EffectiveEvents(events)
     durations:=map[string]int64{}
     byTask:=map[string][]Event{}
     for _,e:=range events{byTask[e.TaskID]=append(byTask[e.TaskID],e)}
