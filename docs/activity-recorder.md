@@ -11,6 +11,35 @@ Activity Recorder complements the durable Lifecycle and Runtime ledgers. It reco
 - Unsupported Registrar and Sub-Controller writes fail closed until role-specific authoritative bindings are available.
 - Caller-provided phase names and timing transitions use `source=agent_report`, `confidence=inferred`. Runtime and dispatch/claim ledgers validate **attribution**, but same-OS-user CLI caller authentication is not cryptographic. Do not treat this as a hostile-process security boundary.
 
+## One-call Decision-to-Activity reporting
+
+Use `activity report` immediately **after the real phase begins or ends**. It
+uses the same role/event taxonomy as the read-only `activity suggest` command
+but also writes the observed transition under the existing Runtime/assignment
+or claimed-handoff evidence gate. It never treats a suggestion as execution.
+
+```bash
+task-mecca activity report B-589 --project /path/to/project \
+  --role worker --agent EXACT_RUNTIME_AGENT_ID --attempt EXACT_ATTEMPT \
+  --assignment EXACT_ASSIGNMENT_ID --event requirements_started \
+  --event-id B589-analysis-start --evidence "began requirement analysis" --json
+task-mecca activity report B-589 --project /path/to/project \
+  --role worker --agent EXACT_RUNTIME_AGENT_ID --attempt EXACT_ATTEMPT \
+  --assignment EXACT_ASSIGNMENT_ID --event implementation_started \
+  --event-id B589-implementation-start --evidence "began implementation" --json
+task-mecca activity report B-589 --project /path/to/project \
+  --role worker --agent EXACT_RUNTIME_AGENT_ID --attempt EXACT_ATTEMPT \
+  --assignment EXACT_ASSIGNMENT_ID --event worker_completed \
+  --event-id B589-worker-completed --evidence "work returned to Controller" --json
+```
+
+For a Main Controller use the exact claimed `--handoff`. Actual
+`review_started` plus a later `review_accepted`, `review_rejected`,
+or `review_needs_changes` records the review outcome. These are Activity
+facts only; they do not update canonical acceptance or backlog status.
+Unsupported phase names become `other` and require `--explanation`.
+A stable event ID can be retried without adding another measurement.
+
 ## CLI examples
 
 Get exact IDs from `task-mecca runtime query`, assignment/handoff, and native evidence; do not guess. Each logical call needs a stable unique `--event-id` for retries.
