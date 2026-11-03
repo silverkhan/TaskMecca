@@ -137,7 +137,7 @@ func reconcileAttentionFeedProjects(active []string) {
     }
 }
 
-func (f *attentionFeed) refresh() {
+func (f *attentionFeed) refresh() bool {
     start := time.Now()
     executed := false
     maintenance.TryWithProjectMonitoring(f.project, func() {
@@ -147,6 +147,7 @@ func (f *attentionFeed) refresh() {
     if !executed {
         recordMonitorPerf("attention_skipped", time.Since(start), 0, 0, false, true)
     }
+    return executed
 }
 
 func (f *attentionFeed) refreshActive() {
@@ -228,7 +229,16 @@ func (f *attentionFeed) refreshActive() {
 func (f *attentionFeed) run() {
 	defer close(f.doneCh)
     select { case <-f.stopCh: return; default: }
-	f.refresh()
+    // Startup can race the operation scanner's project guard. An initial
+    // skipped refresh is not an initialized notification baseline: retry
+    // promptly until the first scan actually runs, without creating a
+    // second monitoring loop or waiting for the ordinary three-second tick.
+    for !f.refresh() {
+        select {
+        case <-f.stopCh: return
+        case <-time.After(150 * time.Millisecond):
+        }
+    }
 	ticker := time.NewTicker(3 * time.Second)
 	defer ticker.Stop()
 	for {
