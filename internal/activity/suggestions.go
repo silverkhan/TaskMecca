@@ -33,6 +33,7 @@ func SummarizeSuggestions(events []Event)[]ClassificationSuggestion{
 // SuggestionsWithDurations reuses durations calculated during the project
 // rollup instead of recomputing every task's sorted Activity timeline.
 func SuggestionsWithDurations(events []Event,durations map[string]int64)[]ClassificationSuggestion{
+    events,_=EffectiveEvents(events)
     summaries:=map[string]*ClassificationSuggestion{}
     for _,e:=range events{
         if e.Type!=Other || e.Action==Correct || strings.TrimSpace(e.Explanation)==""{continue}
