@@ -1647,7 +1647,7 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 			return
 		}
 		w.Header().Set("Cache-Control", "no-store")
-		report := activity.SummarizeProject(rows)
+		report := activity.SummarizeProjectCompact(rows)
         // The Workload dashboard needs aggregates only. Do not ship thousands
         // of full per-backlog timelines; drill into /api/activity for details.
         report.TaskSummaries=nil
