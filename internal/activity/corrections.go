@@ -15,6 +15,9 @@ type CorrectionFinding struct {
 // immutable ledger. The original and all corrections stay queryable via List.
 // A correction inherits its target's start/switch/stop action and ownership.
 func EffectiveEvents(events []Event)([]Event,[]CorrectionFinding){
+    hasCorrections:=false
+    for _,e:=range events{if e.Action==Correct{hasCorrections=true;break}}
+    if !hasCorrections{return events,nil}
     byID:=make(map[string]Event,len(events))
     corrections:=make([]Event,0)
     findings:=make([]CorrectionFinding,0)
