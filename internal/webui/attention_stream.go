@@ -87,8 +87,12 @@ func (f *attentionFeed) refresh() {
 
 func (f *attentionFeed) refreshActive() {
     start := time.Now()
-    payload, err := backlog.AttentionSnapshot(f.project, f.root, true)
+    payload, profile, err := backlog.AttentionSnapshotWithProfile(f.project, f.root, true)
     recordMonitorPerf("attention_snapshot", time.Since(start), 0, 0, false, false)
+    // These are subphases of attention_snapshot; never add to its total.
+    recordMonitorPerf("attention_control_runtime", time.Duration(profile["runtime"]*float64(time.Millisecond)), 0, 0, false, false)
+    recordMonitorPerf("attention_control_lifecycle", time.Duration(profile["lifecycle_git"]*float64(time.Millisecond)), 0, 0, false, false)
+    recordMonitorPerf("attention_control_activity", time.Duration(profile["activity_handoff"]*float64(time.Millisecond)), 0, 0, false, false)
 	if err != nil {
 		payload = map[string]any{"error": err.Error(), "attention": []map[string]any{}, "all_items": map[string]map[string]any{}, "notification_events": []map[string]any{}}
 	}
