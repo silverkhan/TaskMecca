@@ -67,6 +67,8 @@ func runHelpCLI(args []string,out,stderr io.Writer) int {
         fmt.Fprintln(out,"Controller review: use --role controller --handoff CLAIMED-HANDOFF instead of --assignment.")
         fmt.Fprintln(out,"task-mecca activity history|status TASK-ID --project DIR --json")
         fmt.Fprintln(out,"task-mecca activity suggest --role worker|controller|registrar|sub_controller --event PHASE --round N --json (advisory; no writes)")
+        fmt.Fprintln(out,"task-mecca activity run B-589 --project DIR --role worker --agent EXACT --attempt EXACT --assignment ID --event-id RUNID --type targeted_test|full_regression|build_check --git-sha SHA --scope SCOPE -- PROGRAM [ARG...]")
+        fmt.Fprintln(out,"Runs only the supplied command (without a shell). Records the outcome and restores the previous phase; rerunning a completed RUNID is refused.")
         fmt.Fprintln(out,"Writes are attributed against observed Runtime/assignment or Controller claim evidence. Activity phase remains agent-reported (inferred), not independently authenticated by a native provider.")
         fmt.Fprintln(out,"Unverified/stale/ambiguous claims fail closed. Other roles currently cannot write.")
 	case "flow":
