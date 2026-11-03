@@ -684,6 +684,10 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 
 	mux.HandleFunc("/api/events", func(w http.ResponseWriter, r *http.Request) {
 		activeProject := projectFor(r)
+        if !maintenance.ProjectMonitoringAllowed(activeProject) {
+            http.Error(w, "project monitoring is paused or unavailable", http.StatusConflict)
+            return
+        }
 		activeCtx, ctxErr := webContext(activeProject, "")
 		if ctxErr != nil {
 			http.Error(w, ctxErr.Error(), 500)
