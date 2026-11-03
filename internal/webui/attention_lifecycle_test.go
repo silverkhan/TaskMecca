@@ -21,7 +21,12 @@ func TestAttentionFeedOwnerLifecycle(t *testing.T) {
     ch1,_,cancel1:=durable.subscribe()
     _,_,cancel2:=durable.subscribe()
     cancel1()
-    select { case _,ok:=<-ch1: if ok {t.Fatal("subscriber not closed")};default: t.Fatal("closed subscriber missing") }
+    // Buffered attention data may precede the close. Drain until EOF.
+    drained := false
+    for !drained {
+        select { case _,ok:=<-ch1: drained = !ok
+        case <-time.After(5*time.Second): t.Fatal("subscriber not closed") }
+    }
     cancel2()
     attentionFeeds.Lock()
     got:=attentionFeeds.feeds[project+"\x00"+root]
