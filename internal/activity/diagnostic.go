@@ -25,9 +25,9 @@ type Diagnostic struct {
 
 // Diagnose limits directory walk and per-file size-stat calls. It is
 // explicitly invoked by an operator, never run on every Web refresh or Hook.
-func (l Ledger) Diagnose(limit int)(Diagnostic,error){
+func (l Ledger) Diagnose(limit int)(report Diagnostic, resultErr error){
     if limit<=0 || limit>50000{limit=5000}
-    report:=Diagnostic{ScanLimit:limit,Measurement:"bounded directory metadata and wall-clock scan; not CPU, battery or total disk size"}
+    report=Diagnostic{ScanLimit:limit,Measurement:"bounded directory metadata and wall-clock scan; not CPU, battery or total disk size"}
     started:=time.Now()
     defer func(){report.ScanElapsedMS=float64(time.Since(started).Microseconds())/1000}()
     file,err:=os.Open(l.dir())
