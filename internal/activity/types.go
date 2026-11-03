@@ -93,7 +93,7 @@ func(e Event) Validate() error {
     if e.Action==Correct && strings.TrimSpace(e.SupersedesID)==""{return fail("correction missing supersedes_id")}
     if e.Action!=Correct && e.SupersedesID!=""{return fail("supersedes_id without correction")}
     if e.ReviewOutcome!="" {
-        if e.Action!=Stop || (e.Type!=ControllerReview&&e.Type!=ControllerReReview) {return fail("review outcome requires review stop")}
+        if (e.Action!=Stop && e.Action!=Correct) || (e.Type!=ControllerReview&&e.Type!=ControllerReReview) {return fail("review outcome requires review stop")}
         if e.ReviewOutcome!="accepted"&&e.ReviewOutcome!="rejected"&&e.ReviewOutcome!="needs_changes" {return fail("invalid review outcome")}
     }
     if e.Type==Other && strings.TrimSpace(e.Explanation)==""{return fail("other requires explanation")}

@@ -65,6 +65,30 @@ For Controller review, use `--role controller --handoff EXACT_CLAIMED_HANDOFF` a
 
 For tests/builds, use a test activity type and supply `--command`, `--git-sha`, `--scope`, `--run-id`, `--purpose`; on stop supply `--result passed|failed|cancelled|unknown`. The same SHA/command/scope produces a *repeat candidate*, not a declaration that the retest was unnecessary.
 
+## Immutable correction and audit
+
+A mistaken classification can be corrected **without modifying the original
+event** while the original actor still has verified live Runtime attribution.
+Use a new stable ID:
+
+```bash
+task-mecca activity correct B-589 --project /path/to/project \
+  --role worker --agent EXACT_RUNTIME_AGENT_ID --attempt EXACT_ATTEMPT \
+  --assignment EXACT_ASSIGNMENT_ID --supersedes-id ORIGINAL_EVENT_ID \
+  --event-id CORRECTION_EVENT_ID --type research \
+  --evidence "corrected phase classification from requirements to research" --json
+```
+
+The original and correction are both returned in raw history. Time summaries
+use the effective event, and report invalid correction chains rather than
+silently accepting broken or double-applied records. Corrections cannot change
+the task/role/agent/attempt/assignment/handoff ownership, override terminal
+Hook observations, or increase invalid time transitions. Corrected occurrence
+times require an explicit `--occurred-at` timestamp. Correction is not
+available once the original actor's Runtime identity can no longer be
+verified; future administrator-authorized historical corrections would need
+a separate explicit authorization design.
+
 ## APIs / screens
 
 - `GET /api/activity?task=B-589&project=...`: append-only event history, interval summary, test-run summary and review-round summary.
