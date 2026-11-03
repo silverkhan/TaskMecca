@@ -63,7 +63,7 @@ func runActivityCLI(args []string,out,errOut io.Writer) int {
     }
     task:=fs.Arg(0)
     if prior,readErr:=store.Read(*eventID);readErr==nil {
-        if prior.TaskID==task && string(prior.Action)==action && string(prior.Role)==*role && prior.AgentID==*agent && prior.RuntimeAttemptID==*attempt && (*kind=="" || string(prior.Type)==*kind) {
+        if prior.TaskID==task && string(prior.Action)==action && string(prior.Role)==*role && prior.AgentID==*agent && prior.RuntimeAttemptID==*attempt && prior.AssignmentID==*assignment && prior.HandoffID==*handoffID && (*kind=="" || string(prior.Type)==*kind) {
             emit(map[string]any{"ok":true,"recorded":false,"event":prior});return 0
         }
         fmt.Fprintln(errOut,"event-id already belongs to another activity");return 3
