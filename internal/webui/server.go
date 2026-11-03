@@ -1650,7 +1650,12 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 		w.Header().Set("Cache-Control", "no-store")
 		readMS := time.Since(readStarted).Seconds()*1000
         summaryStarted := time.Now()
-        report := activity.SummarizeProjectCompact(rows)
+        lifeEvidence,lifeErr:=loadActivityLifecycle(project)
+        if lifeErr!=nil{
+            writeJSON(w,map[string]any{"error":lifeErr.Error()},http.StatusInternalServerError)
+            return
+        }
+        report := activity.SummarizeProjectWithLifecycle(rows,lifeEvidence.byTask)
         // The Workload dashboard needs aggregates only. Do not ship thousands
         // of full per-backlog timelines; drill into /api/activity for details.
         report.TaskSummaries=nil
@@ -1684,8 +1689,14 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 		readMS := time.Since(readStarted).Seconds()*1000
         summaryStarted := time.Now()
         summary := activity.Summarize(taskID, rows)
+        lifecycle,findings,lifeErr:=readActivityLifecycle(project,taskID)
+        if lifeErr!=nil {
+            writeJSON(w,map[string]any{"error":lifeErr.Error()},http.StatusInternalServerError)
+            return
+        }
+        coverage:=activity.SummarizeLifecycle(taskID,lifecycle,summary.Segments)
 		w.Header().Set("Server-Timing",fmt.Sprintf("activity_read;dur=%.1f,activity_aggregate;dur=%.1f",readMS,time.Since(summaryStarted).Seconds()*1000))
-        writeJSON(w, map[string]any{"task_id": taskID, "events": rows, "summary": summary, "test_report": activity.SummarizeTests(summary.Segments), "review_report": activity.SummarizeReviews(rows, summary.Segments)}, http.StatusOK)
+        writeJSON(w, map[string]any{"task_id": taskID, "events": rows, "summary": summary, "test_report": activity.SummarizeTests(summary.Segments), "review_report": activity.SummarizeReviews(rows, summary.Segments), "lifecycle_coverage": coverage, "lifecycle_findings": findings}, http.StatusOK)
 	})
 
 	mux.HandleFunc("/api/tasks/", func(w http.ResponseWriter, r *http.Request) {

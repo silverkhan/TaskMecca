@@ -2168,3 +2168,8 @@ select.tm-combo-native{position:absolute!important;width:1px!important;height:1p
 .activity-type-track>div{height:100%;background:#0d9488;border-radius:4px}
 .activity-timeline-track>div{position:absolute;top:0;height:100%;background:#6478bc;border-radius:3px;min-width:2px}
 @media(max-width:580px){.activity-type-row,.activity-timeline-row{grid-template-columns:minmax(70px,1fr) minmax(65px,1.7fr) auto;gap:6px;font-size:.7rem}.activity-metric-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+
+/* Reported lifecycle waits are visually distinct from agent-reported activity. */
+.activity-timeline-wait>div{background:#b77936}
+.activity-time-axis .activity-timeline-row>span{overflow-wrap:anywhere}

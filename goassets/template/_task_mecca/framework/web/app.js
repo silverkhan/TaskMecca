@@ -5429,10 +5429,14 @@ function projectActivityPanel(){
     [ko?'누적 Agent 시간':'Agent time',activityDuration(report.agent_time_ms)],
     [ko?'백로그 관측시간 합계':'Sum of task wall time',activityDuration(report.sum_task_observed_wall_ms)],
     [ko?'중앙값':'Median',activityDuration(report.median_agent_ms)],
-    ['P90',activityDuration(report.p90_agent_ms)]
+    ['P90',activityDuration(report.p90_agent_ms)],
+    [ko?'등록~완료 백로그':'Completed lifecycle tasks',report.lifecycle_completed_tasks||0],
+    [ko?'등록~완료 경과 합계':'Sum of task elapsed time',activityDuration(report.lifecycle_total_elapsed_ms)],
+    [ko?'보고된 대기시간 합계':'Reported waiting total',activityDuration(report.lifecycle_wait_ms)],
+    [ko?'미귀속 경과시간 합계':'Unattributed elapsed total',activityDuration(report.lifecycle_unattributed_ms)]
   ];
   const cards=stats.map(function(entry){return '<div class="activity-metric"><strong>'+esc(String(entry[1]))+'</strong><span>'+esc(entry[0])+'</span></div>';}).join('');
-  const note=ko?'관측된 구간만 합산하며 미측정 시간은 추정하지 않습니다. 백로그별 경과시간 합계는 전체 프로젝트 경과시간과 다릅니다.':'Only observed intervals are included; task wall time summed across backlogs is not overall project elapsed time.';
+  const note=ko?'Agent 보고·Lifecycle 이벤트에 근거한 구간만 합산했습니다. 대기시간과 활동시간 중복은 제거하고, 나머지는 미귀속으로 표시합니다. 백로그별 경과시간을 합산한 값은 전체 프로젝트 경과시간과 다릅니다.':'Only agent-reported and lifecycle evidence is counted; overlap is removed and the remaining span is unattributed. The sum of per-task elapsed times is not overall project elapsed time.';
   return '<section class="section" id="activityProjectPanel"><h2>'+esc(label)+'</h2><div class="activity-metric-grid">'+cards+'</div><p class="summary">'+esc(note)+'</p></section>';
 }
 async function loadActivityProject(project){
@@ -5668,7 +5672,9 @@ function activityMetricsBody(payload){
   if(!payload)return '<p class="summary">'+esc(state.language==='ko'?'활동 기록을 불러오는 중…':'Loading activity history…')+'</p>';
   if(payload.error)return '<p class="summary">'+esc(payload.error)+'</p>';
   const s=payload.summary||{},segments=Array.isArray(s.segments)?s.segments:[],ko=state.language==='ko';
-  if(!segments.length && !s.open_activities)return '<p class="summary">'+esc(ko?'아직 측정된 활동시간이 없습니다.':'No measured activity intervals yet.')+'</p>';
+  const lc=payload.lifecycle_coverage||{},waitRows=Array.isArray(lc.wait_intervals)?lc.wait_intervals:[];
+  if(!segments.length && !s.open_activities && !lc.registered_at && !waitRows.length)
+    return '<p class="summary">'+esc(ko?'아직 관측된 활동·Lifecycle 시간 근거가 없습니다.':'No observed Activity or lifecycle timing evidence yet.')+'</p>';
   const metrics=[
     [ko?'누적 Agent 시간':'Cumulative agent time',s.agent_time_ms],
     [ko?'관측 경과시간':'Observed wall time',s.observed_wall_ms],
@@ -5681,15 +5687,34 @@ function activityMetricsBody(payload){
   const totals=Object.entries(s.by_type_ms||{}).filter(([,ms])=>ms>0).sort((a,b)=>b[1]-a[1]);
   const all=totals.reduce((sum,[,ms])=>sum+ms,0);
   const byType='<h3>'+esc(ko?'활동 유형별 누적':'Cumulative by activity')+'</h3><div class="activity-type-bars">'+totals.map(([name,ms])=>'<div class="activity-type-row"><span>'+esc(name)+'</span><div class="activity-type-track"><div style="width:'+Math.max(0,Math.min(100,all?ms/all*100:0))+'%"></div></div><strong>'+esc(activityDuration(ms))+'</strong></div>').join('')+'</div>';
-  const starts=segments.map(x=>Date.parse(x.started_at)).filter(Number.isFinite),ends=segments.map(x=>Date.parse(x.ended_at)).filter(Number.isFinite);
-  const begin=Math.min(...starts),end=Math.max(...ends),span=Math.max(1,end-begin);
-  const timeline='<h3>'+esc(ko?'활동 타임라인 (실제 시간축)':'Activity timeline (actual time axis)')+'</h3><div class="activity-time-axis">'+segments.map(x=>{
-    const left=Math.max(0,Math.min(100,(Date.parse(x.started_at)-begin)/span*100));
-    const width=Math.max(0,Math.min(100-left,(Date.parse(x.ended_at)-Date.parse(x.started_at))/span*100));
-    const label=x.type+' · '+x.role+' · '+(ko?'회차 ':'Round ')+x.round;
-    const tooltip=label+' · '+x.started_at+' → '+x.ended_at;
-    return '<div class="activity-timeline-row"><span>'+esc(label)+'</span><div class="activity-timeline-track"><div title="'+esc(tooltip)+'" style="left:'+left+'%;width:'+width+'%"></div></div><strong>'+esc(activityDuration(x.duration_ms))+'</strong></div>';
-  }).join('')+'</div>';
+  const timelineData=segments.map(x=>({label:x.type+' · '+x.role+' · '+(ko?'회차 ':'Round ')+x.round,from:x.started_at,to:x.ended_at,ms:x.duration_ms,wait:false}))
+    .concat(waitRows.map(x=>({label:(ko?'대기 · ':'Wait · ')+x.kind,from:x.started_at,to:x.ended_at,ms:x.duration_ms,wait:true})));
+  const validTimeline=timelineData.filter(x=>Number.isFinite(Date.parse(x.from))&&Number.isFinite(Date.parse(x.to)));
+  const starts=validTimeline.map(x=>Date.parse(x.from)),ends=validTimeline.map(x=>Date.parse(x.to));
+  const begin=starts.length?Math.min(...starts):0,end=ends.length?Math.max(...ends):0,span=Math.max(1,end-begin);
+  const timeline=validTimeline.length?'<h3>'+esc(ko?'작업·대기 타임라인 (실제 시간축)':'Activity and waiting timeline (actual time axis)')+'</h3>'+
+    '<p class="summary">'+esc(new Date(begin).toLocaleString(state.language==='ko'?'ko-KR':'en-US'))+
+    ' — '+esc(new Date(end).toLocaleString(state.language==='ko'?'ko-KR':'en-US'))+'</p>'+
+    '<div class="activity-time-axis">'+validTimeline.map(x=>{
+      const left=Math.max(0,Math.min(100,(Date.parse(x.from)-begin)/span*100));
+      const width=Math.max(0,Math.min(100-left,(Date.parse(x.to)-Date.parse(x.from))/span*100));
+      const tooltip=x.label+' · '+x.from+' → '+x.to;
+      return '<div class="activity-timeline-row"><span>'+esc(x.label)+'</span>'+
+        '<div class="activity-timeline-track'+(x.wait?' activity-timeline-wait':'')+'"><div title="'+esc(tooltip)+'" style="left:'+left+'%;width:'+width+'%"></div></div>'+
+        '<strong>'+esc(activityDuration(x.ms))+'</strong></div>';
+    }).join('')+'</div>':'';
+  const lifetimeMetrics=lc.registered_at?[
+    [ko?'등록~완료 전체 경과':'Registered to completed',lc.total_elapsed_ms],
+    [ko?'등록 후 배정 대기':'Registration queue',lc.registration_queue_ms],
+    [ko?'배정 후 착수 대기':'Dispatch wait',lc.dispatch_wait_ms],
+    [ko?'명시적 대기':'Explicit waiting',lc.explicit_wait_ms],
+    [ko?'미귀속 경과시간':'Unattributed elapsed',lc.unattributed_elapsed_ms],
+  ]:[];
+  const lifetimeView=lifetimeMetrics.length?'<h3>'+esc(ko?'Lifecycle 기반 경과·대기 분석':'Lifecycle elapsed and waiting analysis')+'</h3>'+
+    '<div class="activity-metric-grid">'+lifetimeMetrics.map(([label,ms])=>'<div class="activity-metric"><strong>'+esc(ms==null?'—':activityDuration(ms))+'</strong><span>'+esc(label)+'</span></div>').join('')+'</div>'+
+    '<p class="summary">'+esc(ko?'Lifecycle 보고를 근거로 계산한 경과시간입니다. 실행 중 실제 활동시간이나 Task Mecca 원인 지연을 의미하지 않습니다.':'Durations use reported lifecycle boundaries, not measured CPU time or proof of Task Mecca overhead.')+'</p>'+
+    ((lc.wait_activity_overlap_ms||0)>0?'<p class="timing-note warning">'+esc(ko?'활동·대기 근거 겹침: ':'Overlapping activity and wait evidence: ')+esc(activityDuration(lc.wait_activity_overlap_ms))+'</p>':'')+
+    ((lc.open_wait_count||0)>0||payload.lifecycle_findings>0?'<p class="timing-note warning">'+esc(ko?'닫히지 않은 대기 또는 불완전한 Lifecycle 근거가 있어 미확정 구간을 임의 합산하지 않았습니다.':'Open wait or incomplete lifecycle evidence was excluded instead of estimated.')+'</p>':''):'';
   const unknown=(s.open_activities||s.invalid_transitions)?'<p class="timing-note warning">'+esc(ko?'열린 활동 '+(s.open_activities||0)+'건, 불완전한 전환 '+(s.invalid_transitions||0)+'건은 임의로 시간 계산하지 않았습니다.':'Open activities and invalid transitions are excluded from measured totals.')+'</p>':'';
   const unclassified=(Array.isArray(payload.events)?payload.events:[]).filter(function(e){return e.type==='other' && e.action!=='correct';});
   const unclassifiedView=unclassified.length?'<h3>'+esc(ko?'미분류 활동 및 Agent 제안':'Unclassified activity suggestions')+'</h3><div class="activity-unclassified">'+unclassified.map(function(e){
@@ -5704,7 +5729,7 @@ function activityMetricsBody(payload){
     '<div class="activity-metric"><strong>'+esc(String(tr.repetition_candidates||0))+'</strong><span>'+esc(ko?'동일 SHA·명령·범위 재실행 후보':'Repeat candidates')+'</span></div></div>'+
     '<p class="summary">'+esc(ko?'반복 후보는 불필요한 테스트로 확정된 것이 아닙니다. 테스트 목적과 코드 변경 여부를 함께 검토해야 합니다.':'Repeated runs can be legitimate; verify purpose and code revision.')+'</p>':'';
   const gap=s.unattributed_gap_ms>0?'<p class="summary">'+esc(ko?'관측 범위 내 활동 미귀속 시간: ':'Unattributed observed-span time: ')+esc(activityDuration(s.unattributed_gap_ms))+'</p>':'';
-  return boxes+byType+timeline+testOverview+unclassifiedView+gap+unknown;
+  return boxes+lifetimeView+byType+timeline+testOverview+unclassifiedView+gap+unknown;
 }
 async function loadTaskActivity(id,project=state.project){
   const key=activityDetailKey(id,project);
