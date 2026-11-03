@@ -20,7 +20,7 @@ import (
 // identify its own attempt, but must not infer a different actor's execution.
 func runActivityCLI(args []string,out,errOut io.Writer) int {
     callStarted:=time.Now()
-    if len(args)==0 {fmt.Fprintln(errOut,"activity requires start, switch, stop, history, status, suggest or run");return 2}
+    if len(args)==0 {fmt.Fprintln(errOut,"activity requires start, switch, stop, report, history, status, suggest or run");return 2}
     if args[0]=="run" {return runActivityCommand(args[1:],out,errOut)}
     action:=args[0]
     fs:=flag.NewFlagSet("activity "+action,flag.ContinueOnError)
@@ -72,13 +72,38 @@ func runActivityCLI(args []string,out,errOut io.Writer) int {
         emit(map[string]any{"task_id":task,"open_activities":active,"event_count":len(rows)})
         return 0
     }
-    if action!="start" && action!="switch" && action!="stop"{fmt.Fprintln(errOut,"unsupported activity action");return 2}
+    if action!="start" && action!="switch" && action!="stop" && action!="report"{fmt.Fprintln(errOut,"unsupported activity action");return 2}
     if fs.NArg()!=1{fmt.Fprintln(errOut,"task ID required");return 2}
     if strings.TrimSpace(*eventID)==""{fmt.Fprintln(errOut,"--event-id required for idempotent retries");return 2}
     if strings.TrimSpace(*role)==""||strings.TrimSpace(*agent)==""||strings.TrimSpace(*attempt)==""{
         fmt.Fprintln(errOut,"--role, --agent, --attempt (or exact runtime env) required");return 2
     }
     task:=fs.Arg(0)
+    phaseEvent:=""
+    if action=="report"{
+        if strings.TrimSpace(*eventName)==""{fmt.Fprintln(errOut,"report requires --event");return 2}
+        // An identical event is idempotent even after subsequent phase changes.
+        // PhaseEvent is immutable to prevent reusing an ID for a different fact.
+        if prior,readErr:=store.Read(*eventID);readErr==nil{
+            if prior.TaskID==task && prior.PhaseEvent==*eventName && string(prior.Role)==*role &&
+                prior.AgentID==*agent && prior.RuntimeAttemptID==*attempt &&
+                prior.AssignmentID==*assignment && prior.HandoffID==*handoffID &&
+                prior.Evidence==*evidence {
+                emit(map[string]any{"ok":true,"recorded":false,"event":prior});return 0
+            }
+            fmt.Fprintln(errOut,"event-id already belongs to another reported phase");return 3
+        } else if !os.IsNotExist(readErr){fmt.Fprintln(errOut,readErr);return 1}
+        resolution,resolveErr:=resolveActivityReport(store,task,activity.Role(*role),*agent,*attempt,*eventName)
+        if resolveErr!=nil{fmt.Fprintln(errOut,resolveErr);return 2}
+        if *kind!="" && *kind!=string(resolution.Type){
+            fmt.Fprintln(errOut,"reported phase type conflicts with standard classification");return 2
+        }
+        action=string(resolution.Action)
+        *kind=string(resolution.Type)
+        *round=resolution.Round
+        *reviewOutcome=resolution.ReviewOutcome
+        phaseEvent=*eventName
+    }
     // Auto-classify revision round only from explicit Controller review outcomes.
     // A new worker attempt starts in the number of rejected/needs-changes rounds
     // observed for this exact backlog. Switch/stop continue the same round.
@@ -118,7 +143,7 @@ func runActivityCLI(args []string,out,errOut io.Writer) int {
     now:=time.Now().UTC()
     e:=activity.Event{SchemaVersion:1,EventID:*eventID,TaskID:task,Action:activity.Action(action),
         Role:activity.Role(*role),AgentID:*agent,RuntimeAttemptID:*attempt,AssignmentID:*assignment,HandoffID:*handoffID,
-        Round:*round,Type:activity.Type(*kind),Confidence:activity.Inferred,Source:"agent_report",
+        Round:*round,Type:activity.Type(*kind),Confidence:activity.Inferred,Source:"agent_report",PhaseEvent:phaseEvent,
         Evidence:*evidence,Explanation:*explain,ProposedType:*proposed,ReviewOutcome:*reviewOutcome,RunEvidence:runEvidence,OccurredAt:now,RecordedAt:now}
     if err:=e.Validate();err!=nil{fmt.Fprintln(errOut,err);return 2}
     // Verify attribution under the same project write lock as the append.
