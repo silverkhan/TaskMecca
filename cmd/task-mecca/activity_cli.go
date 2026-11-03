@@ -59,23 +59,25 @@ func runActivityCLI(args []string,out,errOut io.Writer) int {
         fmt.Fprintln(errOut,"--role, --agent, --attempt (or exact runtime env) required");return 2
     }
     task:=fs.Arg(0)
-    if action=="stop" && *kind=="" {
-        rows,readErr:=store.List(task);if readErr!=nil{fmt.Fprintln(errOut,readErr);return 1}
-        for i:=len(rows)-1;i>=0;i--{
-            v:=rows[i]
-            if string(v.Role)==*role&&v.AgentID==*agent&&v.RuntimeAttemptID==*attempt{
-                if v.Action==activity.Stop{fmt.Fprintln(errOut,"no open activity for attempt");return 2}
-                *kind=string(v.Type);*round=v.Round;break
-            }
-        }
-        if *kind==""{fmt.Fprintln(errOut,"no matching open activity to stop");return 2}
-    }
     if prior,readErr:=store.Read(*eventID);readErr==nil {
         if prior.TaskID==task && string(prior.Action)==action && string(prior.Role)==*role && prior.AgentID==*agent && prior.RuntimeAttemptID==*attempt && (*kind=="" || string(prior.Type)==*kind) {
             emit(map[string]any{"ok":true,"recorded":false,"event":prior});return 0
         }
         fmt.Fprintln(errOut,"event-id already belongs to another activity");return 3
     } else if !os.IsNotExist(readErr) {fmt.Fprintln(errOut,readErr);return 1}
+    rows,readErr:=store.List(task)
+    if readErr!=nil{fmt.Fprintln(errOut,readErr);return 1}
+    var active *activity.Event
+    for i:=len(rows)-1;i>=0;i-- {
+        row:=rows[i]
+        if string(row.Role)==*role && row.AgentID==*agent && row.RuntimeAttemptID==*attempt {
+            if row.Action!=activity.Stop { copyRow:=row;active=&copyRow }
+            break
+        }
+    }
+    if action=="start" && active!=nil {fmt.Fprintln(errOut,"activity already active; use switch or stop");return 2}
+    if (action=="stop"||action=="switch") && active==nil {fmt.Fprintln(errOut,"no open activity for attempt");return 2}
+    if action=="stop" && *kind=="" && active!=nil {*kind=string(active.Type);*round=active.Round}
     now:=time.Now().UTC()
     e:=activity.Event{SchemaVersion:1,EventID:*eventID,TaskID:task,Action:activity.Action(action),
         Role:activity.Role(*role),AgentID:*agent,RuntimeAttemptID:*attempt,AssignmentID:*assignment,
