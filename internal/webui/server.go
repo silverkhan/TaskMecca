@@ -1650,7 +1650,12 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 		w.Header().Set("Cache-Control", "no-store")
 		readMS := time.Since(readStarted).Seconds()*1000
         summaryStarted := time.Now()
-        report := activity.SummarizeProjectCompact(rows)
+        lifeEvidence,lifeErr:=loadActivityLifecycle(project)
+        if lifeErr!=nil{
+            writeJSON(w,map[string]any{"error":lifeErr.Error()},http.StatusInternalServerError)
+            return
+        }
+        report := activity.SummarizeProjectWithLifecycle(rows,lifeEvidence.byTask)
         // The Workload dashboard needs aggregates only. Do not ship thousands
         // of full per-backlog timelines; drill into /api/activity for details.
         report.TaskSummaries=nil
