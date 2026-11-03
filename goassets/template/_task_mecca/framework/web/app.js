@@ -5688,7 +5688,12 @@ function activityMetricsBody(payload){
     return '<div class="activity-timeline-row"><span>'+esc(label)+'</span><div class="activity-timeline-track"><div title="'+esc(tooltip)+'" style="left:'+left+'%;width:'+width+'%"></div></div><strong>'+esc(activityDuration(x.duration_ms))+'</strong></div>';
   }).join('')+'</div>';
   const unknown=(s.open_activities||s.invalid_transitions)?'<p class="timing-note warning">'+esc(ko?'열린 활동 '+(s.open_activities||0)+'건, 불완전한 전환 '+(s.invalid_transitions||0)+'건은 임의로 시간 계산하지 않았습니다.':'Open activities and invalid transitions are excluded from measured totals.')+'</p>':'';
-  return boxes+byType+timeline+unknown;
+  const unclassified=(Array.isArray(payload.events)?payload.events:[]).filter(function(e){return e.type==='other' && e.action!=='correct';});
+  const unclassifiedView=unclassified.length?'<h3>'+esc(ko?'미분류 활동 및 Agent 제안':'Unclassified activity suggestions')+'</h3><div class="activity-unclassified">'+unclassified.map(function(e){
+    return '<div class="activity-unclassified-item"><strong>'+esc(e.proposed_type||'other')+'</strong> · '+esc(e.agent_id||'-')+
+      '<p>'+esc(e.explanation||'-')+'</p><small>'+esc(e.confidence||'unknown')+' · '+esc(e.evidence||'-')+'</small></div>';
+  }).join('')+'</div>':'';
+  return boxes+byType+timeline+unclassifiedView+unknown;
 }
 async function loadTaskActivity(id,project=state.project){
   const key=activityDetailKey(id,project);
