@@ -62,7 +62,12 @@ func reconcileControlTower(project, root string, rows []Record) controlTowerSnap
 	activity := runtimeActivity(project, rows, timings)
 	activity = mergeRuntimeSignals(activity, runtimeLedgerSignals(project, rows, now, shared))
 	applyCompletionReviews(project, rows, activity, now, shared)
-	suppressLiveControllerReviewSignals(project, rows, activity, now, shared)
+    // Use one immutable handoff inventory for both Controller-review
+    // suppression and the integrity check at the end of this snapshot.
+    handoffs, handoffErr := handoffjournal.BuildLedger(project, now)
+    if handoffErr == nil && len(handoffs.Findings) == 0 {
+        suppressLiveControllerReviewSignalsWithHandoffs(project, rows, activity, now, handoffs, shared...)
+    }
 	for id, signal := range activity {
 		health := toString(signal["health"])
 		if health != "assignment_unobserved" && health != "binding_pending" && health != "binding_ambiguous" && health != "awaiting_start" {
@@ -108,7 +113,7 @@ func reconcileControlTower(project, root string, rows []Record) controlTowerSnap
 	} else if len(scan.Findings) > 0 {
 		snapshot.Err = fmt.Errorf("lifecycle evidence has %d findings", len(scan.Findings))
 	}
-	if handoffs, handoffErr := handoffjournal.BuildLedger(project, now); handoffErr != nil {
+	if handoffErr != nil {
 		snapshot.Err = handoffErr
 	} else if len(handoffs.Findings) > 0 {
 		snapshot.Err = fmt.Errorf("handoff evidence has %d findings", len(handoffs.Findings))
@@ -124,10 +129,12 @@ func reconcileControlTower(project, root string, rows []Record) controlTowerSnap
 }
 
 func suppressLiveControllerReviewSignals(project string, rows []Record, activity map[string]map[string]any, now time.Time, shared ...requestRuntime) {
-	handoffs, err := handoffjournal.BuildLedger(project, now)
-	if err != nil || len(handoffs.Findings) != 0 {
-		return
-	}
+    handoffs, err := handoffjournal.BuildLedger(project, now)
+    if err != nil || len(handoffs.Findings) != 0 { return }
+    suppressLiveControllerReviewSignalsWithHandoffs(project, rows, activity, now, handoffs, shared...)
+}
+
+func suppressLiveControllerReviewSignalsWithHandoffs(project string, rows []Record, activity map[string]map[string]any, now time.Time, handoffs handoffjournal.Ledger, shared ...requestRuntime) {
 	ledger, err := readRequestRuntime(project, 20, now, shared...)
 	if err != nil {
 		return
