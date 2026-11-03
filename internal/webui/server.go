@@ -1672,7 +1672,8 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 			return
 		}
 		w.Header().Set("Cache-Control", "no-store")
-		writeJSON(w, map[string]any{"task_id": taskID, "events": rows, "summary": activity.Summarize(taskID, rows)}, http.StatusOK)
+		summary := activity.Summarize(taskID, rows)
+		writeJSON(w, map[string]any{"task_id": taskID, "events": rows, "summary": summary, "test_report": activity.SummarizeTests(summary.Segments)}, http.StatusOK)
 	})
 
 	mux.HandleFunc("/api/tasks/", func(w http.ResponseWriter, r *http.Request) {
