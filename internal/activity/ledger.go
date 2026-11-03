@@ -45,6 +45,9 @@ func(l Ledger) Append(event Event)(bool,error){
     release,guardErr:=projectguard.AcquireWrite(l.Project)
     if guardErr!=nil{return false,guardErr}
     defer release()
+    unlock,lockErr:=acquireActivityLock(l.Project)
+    if lockErr!=nil{return false,lockErr}
+    defer unlock()
     return l.appendLocked(event)
 }
 
@@ -106,6 +109,9 @@ func(l Ledger) ApplyVerified(event Event,verify func()error)(bool,error){
     release,err:=projectguard.AcquireWrite(l.Project)
     if err!=nil{return false,err}
     defer release()
+    unlock,lockErr:=acquireActivityLock(l.Project)
+    if lockErr!=nil{return false,lockErr}
+    defer unlock()
     if err:=event.Validate();err!=nil{return false,err}
     if verify!=nil {
         if err:=verify();err!=nil{return false,err}
