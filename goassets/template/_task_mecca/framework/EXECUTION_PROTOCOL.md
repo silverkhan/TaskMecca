@@ -13,7 +13,7 @@ Activity는 Lifecycle/승인 원장과 별개의 **측정 전용 이벤트**다.
 - **Registrar/Sub-Controller:** 본인의 정확한 Runtime 바인딩이 있을 때만 기록한다. Sub-Controller의 측정 권한은 원본 운영 writer·최종 수용 권한을 부여하지 않는다.
 - 유형이 모호하면 `task-mecca activity suggest --role ROLE --event EVENT --round N --json`을 참고하고, 분류할 수 없다면 `other --explanation DESCRIPTION --proposed-type CANDIDATE`로 보존한다.
 
-모든 도구 호출마다 Activity 기록을 추가하거나 주기적 heartbeat를 생성하지 않는다. 기록 실패를 감추거나 완료로 주장하지 않되, 관측 실패만으로 원래 구현·검수·인계를 중단하지 않는다. 세부 API와 신뢰도 제약은 [Activity Recorder 문서](../../../docs/activity-recorder.md)에서 확인한다.
+모든 도구 호출마다 Activity 기록을 추가하거나 주기적 heartbeat를 생성하지 않는다. 기록 실패를 감추거나 완료로 주장하지 않되, 관측 실패만으로 원래 구현·검수·인계를 중단하지 않는다. 세부 API와 신뢰도 제약은 `task-mecca help activity` 및 저장소의 `docs/activity-recorder.md`에서 확인한다.
 
 ## Assignment checklist
 
