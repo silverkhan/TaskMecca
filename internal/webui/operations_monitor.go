@@ -456,39 +456,31 @@ func scanOperationProject(project string, now time.Time) (operationJournal, erro
 			}
 		}
 	}
-	// A doing assignment without a linked attempt is an identity gap, not
-	// evidence that the assigned Worker died.
-	if ctx, ctxErr := webContext(project, ""); ctxErr == nil {
-		if selected, _, selectErr := resolveBacklog(project, ctx, url.Values{}); selectErr == nil && selected != "" {
-			if workload, workErr := backlog.WorkloadSnapshot(project, selected); workErr == nil {
-				if items, ok := workload["all_items"].(map[string]map[string]any); ok {
-					for id, item := range items {
-						agent := strings.TrimSpace(fmt.Sprint(item["agent"]))
-						if agent == "" || agent == "-" || agent == "<nil>" {
-							continue
-						}
-						matched := false
-						for _, attempt := range ledger.Attempts {
-							if strings.EqualFold(attempt.TaskID, id) {
-								matched = true
-								break
-							}
-						}
-						if matched {
-							continue
-						}
-						if canonicalDone(id){continue}
-						key := "task:" + id
-						signals[key] = operationSignal{key: key, alert: true, incident: operationIncident{
-							Project: project, TaskID: id, AgentPath: agent, AssignmentID: strings.TrimSpace(fmt.Sprint(item["assignment_id"])), Kind: "runtime_unknown", Quality: "verification_required",
-							Evidence: "doing assignment has no linked runtime attempt",
-							Action:   "Controller: 배정 기록과 runtime identity를 대조하세요. Worker 종료를 단정하거나 백로그 상태를 자동 변경하지 마세요.",
-						}}
-					}
-				}
-			}
-		}
-	}
+    // A doing assignment without a linked attempt is an identity gap, not
+    // evidence that the assigned Worker died. Only agent/doing membership
+    // is needed: never compute the entire WorkloadSnapshot in this monitor.
+    workloadStarted := time.Now()
+    if ctx, ctxErr := webContext(project, ""); ctxErr == nil {
+        if selected, _, selectErr := resolveBacklog(project, ctx, url.Values{}); selectErr == nil && selected != "" {
+            if assignments, assignmentErr := backlog.MonitoringAssignments(project, selected); assignmentErr == nil {
+                linkedTasks := make(map[string]bool, len(ledger.Attempts))
+                for _, attempt := range ledger.Attempts {
+                    linkedTasks[strings.ToUpper(attempt.TaskID)] = true
+                }
+                for id, agent := range assignments {
+                    if linkedTasks[strings.ToUpper(id)] || canonicalDone(id) { continue }
+                    key := "task:" + id
+                    signals[key] = operationSignal{key:key, alert:true, incident:operationIncident{
+                        Project:project, TaskID:id, AgentPath:agent,
+                        Kind:"runtime_unknown", Quality:"verification_required",
+                        Evidence:"doing assignment has no linked runtime attempt",
+                        Action:"Controller: 배정 기록과 runtime identity를 대조하세요. Worker 종료를 단정하거나 백로그 상태를 자동 변경하지 마세요.",
+                    }}
+                }
+            }
+        }
+    }
+recordMonitorPerf("operation_monitor_assignments", time.Since(workloadStarted), len(ledger.Attempts), 0, false, false)
 	for _, stage := range stages {
 		if stage.Stage == "worker_running" || stage.Stage == "runtime_observation_pending" || stage.Stage == "handoff_applied" || stage.Stage == "controller_verified_complete" || stage.deferred(now) {
 			continue
@@ -739,8 +731,12 @@ func scanOperationProjects(primary string, now time.Time) {
 // The first scan after a Web restart is mandatory: it detects downtime and
 // preserves operation-gap evidence. Only subsequent periodic scans are best
 // effort, allowing an active backlog HTTP request to finish first.
-func scanOperationProjectsWithPriority(primary string, now time.Time, background bool) {
-    projects := operationProjects(primary)
+func scanOperationProjectsWithPriority(primary string, now time.Time, background bool) []string {
+    return scanOperationProjectList(operationProjects(primary),now,background)
+}
+
+func scanOperationProjectList(projects []string, now time.Time, background bool) []string {
+    skippedProjects := []string{}
     for _, project := range projects {
         start := time.Now()
         executed := false
@@ -761,9 +757,11 @@ func scanOperationProjectsWithPriority(primary string, now time.Time, background
             maintenance.WithProjectMonitoring(project, work)
         }
         if !executed {
+            skippedProjects = append(skippedProjects, project)
             recordMonitorPerf("operation_skipped", time.Since(start), 0, 0, false, true)
         }
     }
+    return skippedProjects
 }
 
 func runOperationMonitor(ctx stdcontext.Context, primary string) {
@@ -775,7 +773,18 @@ func runOperationMonitor(ctx stdcontext.Context, primary string) {
 		case <-ctx.Done():
 			return
 		case now := <-ticker.C:
-			scanOperationProjectsWithPriority(primary, now.UTC(),true)
+            // A busy attention/backlog operation can temporarily hold the
+            // shared project monitoring gate. Retry only the skipped targets
+            // shortly instead of deferring their observation by a full 15s.
+            pending := scanOperationProjectsWithPriority(primary, now.UTC(),true)
+            for retry := 0; retry < 6 && len(pending) > 0; retry++ {
+                select {
+                case <-ctx.Done():
+                    return
+                case <-time.After(time.Second):
+                }
+                pending = scanOperationProjectList(pending,time.Now().UTC(),true)
+            }
 		}
 	}
 }
