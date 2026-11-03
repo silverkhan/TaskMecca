@@ -490,9 +490,20 @@ func AttentionSnapshotFromRows(project,root string,rows []Record,reconcile bool,
     return map[string]any{"snapshot_at":time.Now().Format(time.RFC3339Nano),"attention":attention, "content_revision":backlogRevisionFromRows(rows),"controller_reviews": controllerReviews,"all_items":allItems,"notification_events":events,"counts":map[string]any{"attention":len(attention)}},nil
 }
 
+// AttentionSnapshotWithProfile returns the existing canonical snapshot and
+// request-local phase timings. No extra reconciliation is performed for
+// diagnostics, and no profiling fields are added to the client payload.
+func AttentionSnapshotWithProfile(project,root string,reconcile bool) (map[string]any,map[string]float64,error) {
+    rows,err:=CachedCatalog(project,root)
+    if err!=nil { return nil,nil,err }
+    control:=reconcileControlTower(project,root,rows)
+    payload,err:=AttentionSnapshotFromRows(project,root,rows,reconcile,control)
+    return payload,control.Profile,err
+}
+
 func AttentionSnapshot(project,root string,reconcile bool) (map[string]any,error) {
-    rows,err:=CachedCatalog(project,root); if err!=nil { return nil,err }
-    return AttentionSnapshotFromRows(project,root,rows,reconcile)
+    payload,_,err:=AttentionSnapshotWithProfile(project,root,reconcile)
+    return payload,err
 }
 
 // List notifications need state identity and actionable reasons, not every
