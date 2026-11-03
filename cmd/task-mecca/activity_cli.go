@@ -19,6 +19,7 @@ import (
 // Activity mutations are explicit and evidence-backed. An untrusted agent may
 // identify its own attempt, but must not infer a different actor's execution.
 func runActivityCLI(args []string,out,errOut io.Writer) int {
+    callStarted:=time.Now()
     if len(args)==0 {fmt.Fprintln(errOut,"activity requires start, switch, stop, history or status");return 2}
     action:=args[0]
     fs:=flag.NewFlagSet("activity "+action,flag.ContinueOnError)
@@ -142,6 +143,6 @@ func runActivityCLI(args []string,out,errOut io.Writer) int {
         if errors.Is(writeErr,activity.ErrEventConflict){fmt.Fprintln(errOut,"event-id reused with a different event; original record preserved");return 3}
         fmt.Fprintln(errOut,writeErr);return 1
     }
-    emit(map[string]any{"ok":true,"recorded":inserted,"event":e})
+    emit(map[string]any{"ok":true,"recorded":inserted,"event":e,"recorder_elapsed_ms":float64(time.Since(callStarted).Microseconds())/1000})
     return 0
 }
