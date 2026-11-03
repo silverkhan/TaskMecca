@@ -1647,7 +1647,11 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 			return
 		}
 		w.Header().Set("Cache-Control", "no-store")
-		writeJSON(w, activity.SummarizeProject(rows), http.StatusOK)
+		report := activity.SummarizeProject(rows)
+        // The Workload dashboard needs aggregates only. Do not ship thousands
+        // of full per-backlog timelines; drill into /api/activity for details.
+        report.TaskSummaries=nil
+        writeJSON(w, report, http.StatusOK)
 	})
 
 	mux.HandleFunc("/api/activity", func(w http.ResponseWriter, r *http.Request) {
