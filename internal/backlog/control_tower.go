@@ -66,7 +66,7 @@ func reconcileControlTower(project, root string, rows []Record) controlTowerSnap
     // suppression and the integrity check at the end of this snapshot.
     handoffs, handoffErr := handoffjournal.BuildLedger(project, now)
     if handoffErr == nil && len(handoffs.Findings) == 0 {
-        suppressLiveControllerReviewSignalsWithHandoffs(project, rows, activity, now, handoffs, shared...)
+        suppressLiveControllerReviewSignalsWithHandoffs(project, rows, activity, now, handoffs, shared)
     }
 	for id, signal := range activity {
 		health := toString(signal["health"])
