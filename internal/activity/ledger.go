@@ -126,6 +126,31 @@ func(l Ledger) ApplyVerified(event Event,verify func()error)(bool,error){
     if !errors.Is(err,os.ErrNotExist){return false,err}
     events,err:=l.List(event.TaskID)
     if err!=nil{return false,err}
+    if event.Action==Correct{
+        target,targetErr:=l.Read(event.SupersedesID)
+        if targetErr!=nil{return false,fmt.Errorf("%w: correction target unavailable: %v",ErrInvalidEvent,targetErr)}
+        if target.Action==Abandon || target.TaskID!=event.TaskID || target.Role!=event.Role ||
+            target.AgentID!=event.AgentID || target.RuntimeAttemptID!=event.RuntimeAttemptID ||
+            target.AssignmentID!=event.AssignmentID || target.HandoffID!=event.HandoffID{
+            return false,fmt.Errorf("%w: correction cannot change event ownership or terminal hook",ErrInvalidEvent)
+        }
+        for _,prior:=range events {
+            if prior.Action==Correct && prior.SupersedesID==event.SupersedesID {
+                return false,fmt.Errorf("%w: correction target already superseded",ErrEventConflict)
+            }
+        }
+        _,findings:=EffectiveEvents(append(events,event))
+        if len(findings)>0{return false,fmt.Errorf("%w: unresolved correction chain",ErrInvalidEvent)}
+        before:=Summarize(event.TaskID,events)
+        after:=Summarize(event.TaskID,append(events,event))
+        if after.InvalidTransitions>before.InvalidTransitions {
+            return false,fmt.Errorf("%w: corrected activity chronology invalid",ErrInvalidEvent)
+        }
+        return l.appendLocked(event)
+    }
+    // Only apply transitions to the effective immutable projection.
+    // Corrections remain in the audit List but cannot reopen a closed attempt.
+    events,_=EffectiveEvents(events)
     var latest *Event
     for i:=range events{
         e:=&events[i]
