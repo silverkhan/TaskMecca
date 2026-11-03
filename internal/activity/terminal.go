@@ -42,6 +42,7 @@ func RecordTerminal(project string,hook runtimeobs.ExecutionEvent)(bool,error){
     switch {
     case bound.AgentPath=="/root/controller":role=RoleController
     case bound.AgentPath=="/root/registrar":role=RoleRegistrar
+    case strings.HasPrefix(bound.AgentPath,"/root/controller/sub-"):role=RoleSubController
     case strings.HasPrefix(bound.AgentPath,"/root/controller/"):role=RoleWorker
     default:return false,nil
     }
