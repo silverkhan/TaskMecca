@@ -20,7 +20,7 @@ func TestReadProjectionConcurrentReaders(t *testing.T){
   go func(){
     defer group.Done()
     result,err:=l.ListCached("B-589")
-    if err!=nil{t.Errorf("cache read: %v");return}
+    if err!=nil{t.Errorf("cache read: %v",err);return}
     if len(result)!=100{t.Errorf("expected 100 events, got %d",len(result))}
   }()
  }
