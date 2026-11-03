@@ -67,10 +67,20 @@ func runActivityCLI(args []string,out,errOut io.Writer) int {
         if task==""{fmt.Fprintln(errOut,"task ID required");return 2}
         rows,readErr:=store.List(task);if readErr!=nil{fmt.Fprintln(errOut,readErr);return 1}
         if action=="history" {emit(map[string]any{"task_id":task,"events":rows});return 0}
+        effective,findings:=activity.EffectiveEvents(rows)
         latest:=map[string]activity.Event{}
-        for _,row:=range rows {key:=string(row.Role)+"|"+row.AgentID+"|"+row.RuntimeAttemptID;latest[key]=row}
+        for _,row:=range effective {
+            if row.Action==activity.Correct{continue}
+            key:=string(row.Role)+"|"+row.AgentID+"|"+row.RuntimeAttemptID
+            latest[key]=row
+        }
         active:=[]activity.Event{}
-        for _,row:=range latest{if row.Action!=activity.Stop{active=append(active,row)}}
+        for _,row:=range latest {
+            if row.Action==activity.Start || row.Action==activity.Switch {active=append(active,row)}
+        }
+        if len(findings)>0 {
+            fmt.Fprintf(errOut,"warning: %d invalid activity corrections were excluded\\n",len(findings))
+        }
         emit(map[string]any{"task_id":task,"open_activities":active,"event_count":len(rows)})
         return 0
     }
