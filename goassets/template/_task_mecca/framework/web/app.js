@@ -5429,10 +5429,14 @@ function projectActivityPanel(){
     [ko?'누적 Agent 시간':'Agent time',activityDuration(report.agent_time_ms)],
     [ko?'백로그 관측시간 합계':'Sum of task wall time',activityDuration(report.sum_task_observed_wall_ms)],
     [ko?'중앙값':'Median',activityDuration(report.median_agent_ms)],
-    ['P90',activityDuration(report.p90_agent_ms)]
+    ['P90',activityDuration(report.p90_agent_ms)],
+    [ko?'등록~완료 백로그':'Completed lifecycle tasks',report.lifecycle_completed_tasks||0],
+    [ko?'등록~완료 경과 합계':'Sum of task elapsed time',activityDuration(report.lifecycle_total_elapsed_ms)],
+    [ko?'보고된 대기시간 합계':'Reported waiting total',activityDuration(report.lifecycle_wait_ms)],
+    [ko?'미귀속 경과시간 합계':'Unattributed elapsed total',activityDuration(report.lifecycle_unattributed_ms)]
   ];
   const cards=stats.map(function(entry){return '<div class="activity-metric"><strong>'+esc(String(entry[1]))+'</strong><span>'+esc(entry[0])+'</span></div>';}).join('');
-  const note=ko?'관측된 구간만 합산하며 미측정 시간은 추정하지 않습니다. 백로그별 경과시간 합계는 전체 프로젝트 경과시간과 다릅니다.':'Only observed intervals are included; task wall time summed across backlogs is not overall project elapsed time.';
+  const note=ko?'Agent 보고·Lifecycle 이벤트에 근거한 구간만 합산했습니다. 대기시간과 활동시간 중복은 제거하고, 나머지는 미귀속으로 표시합니다. 백로그별 경과시간을 합산한 값은 전체 프로젝트 경과시간과 다릅니다.':'Only agent-reported and lifecycle evidence is counted; overlap is removed and the remaining span is unattributed. The sum of per-task elapsed times is not overall project elapsed time.';
   return '<section class="section" id="activityProjectPanel"><h2>'+esc(label)+'</h2><div class="activity-metric-grid">'+cards+'</div><p class="summary">'+esc(note)+'</p></section>';
 }
 async function loadActivityProject(project){
