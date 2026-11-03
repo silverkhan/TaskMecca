@@ -139,7 +139,32 @@ func applyCompletionReviewStage(stage *operationStage, review map[string]any) bo
 	return true
 }
 
+// A monitor stage can only reference the latest exact assignment, including
+// its agent path. Grouping historical attempts by exact binding removes an
+// assignment x history scan without hiding a late Hook failure/restart.
+type operationStageBindingKey struct {
+    taskID, agentPath, assignmentID string
+}
+type operationStageHandoffKey struct {
+    taskID, agentPath, attemptID string
+}
+
 func projectOperationStages(project string, assignments []runtimeobs.Assignment, attempts []runtimeobs.Attempt, transfers handoff.Ledger, now time.Time) []operationStage {
+    attemptsByBinding := make(map[operationStageBindingKey][]runtimeobs.Attempt)
+    for _, attempt := range attempts {
+        if attempt.BindingState != runtimeobs.BindingBound { continue }
+        key:=operationStageBindingKey{
+            taskID:strings.ToUpper(attempt.TaskID),agentPath:attempt.AgentPath,
+            assignmentID:attempt.BindingEvidence["assignment_id"],
+        }
+        attemptsByBinding[key]=append(attemptsByBinding[key],attempt)
+    }
+    handoffsBySource := make(map[operationStageHandoffKey][]handoff.Handoff)
+    for _, h := range transfers.Handoffs {
+        if h.EventType != handoff.EventWorkerDone {continue}
+        key:=operationStageHandoffKey{taskID:strings.ToUpper(h.TaskID),agentPath:h.SourceAgentPath,attemptID:h.SourceAttemptID}
+        handoffsBySource[key]=append(handoffsBySource[key],h)
+    }
 	latest := map[string]runtimeobs.Assignment{}
 	ambiguous := map[string]bool{}
 	for _, a := range assignments {
@@ -164,12 +189,7 @@ func projectOperationStages(project string, assignments []runtimeobs.Assignment,
 		}
 		s := operationStage{Project: project, TaskID: id, AssignmentID: a.AssignmentID, Stage: "assignment_pending", Evidence: "latest durable assignment", Since: a.AssignedAt}
 		duration := runtimeobs.AssignmentObservationGrace
-		matched := []runtimeobs.Attempt{}
-		for _, attempt := range attempts {
-			if attempt.BindingState == runtimeobs.BindingBound && strings.EqualFold(attempt.TaskID, id) && attempt.AgentPath == a.AgentPath && attempt.BindingEvidence["assignment_id"] == a.AssignmentID {
-				matched = append(matched, attempt)
-			}
-		}
+        matched := attemptsByBinding[operationStageBindingKey{taskID:id,agentPath:a.AgentPath,assignmentID:a.AssignmentID}]
 		if len(matched) > 1 {
 			continue
 		}
@@ -190,10 +210,7 @@ func projectOperationStages(project string, assignments []runtimeobs.Assignment,
 			}
 			var selected *handoff.Handoff
 			duplicate := false
-			for _, h := range transfers.Handoffs {
-				if h.EventType != handoff.EventWorkerDone || !strings.EqualFold(h.TaskID, id) || h.SourceAgentPath != a.AgentPath || h.SourceAttemptID != attempt.AttemptID {
-					continue
-				}
+            for _, h := range handoffsBySource[operationStageHandoffKey{taskID:id,agentPath:a.AgentPath,attemptID:attempt.AttemptID}] {
 				prepared, e := time.Parse(time.RFC3339Nano, h.PreparedAt)
 				assigned, _ := time.Parse(time.RFC3339Nano, a.AssignedAt)
 				if e != nil || prepared.Before(assigned) || prepared.After(now) {
