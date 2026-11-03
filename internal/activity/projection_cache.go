@@ -26,9 +26,8 @@ func(l Ledger) ListCached(taskID string)([]Event,error){
     now:=time.Now()
     projectionCache.Lock()
     if entry,ok:=projectionCache.entries[l.Project];ok&&now.Sub(entry.at)<projectionTTL{
-        out:=filterProjectedEvents(entry.events,taskID)
         projectionCache.Unlock()
-        return out,nil
+        return filterProjectedEvents(entry.events,taskID),nil
     }
     projectionCache.Unlock()
 
