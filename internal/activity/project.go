@@ -13,6 +13,7 @@ type ProjectRollup struct {
     AgentTimeMillis int64 `json:"agent_time_ms"`
     ObservedWallMillis int64 `json:"sum_task_observed_wall_ms"`
     ByType map[Type]int64 `json:"by_type_ms"`
+    Suggestions []ClassificationSuggestion `json:"classification_suggestions"`
     TaskSummaries []Summary `json:"task_summaries"`
     MedianAgentMillis int64 `json:"median_agent_ms"`
     P90AgentMillis int64 `json:"p90_agent_ms"`
@@ -44,5 +45,6 @@ func SummarizeProject(events []Event)ProjectRollup {
     sort.Slice(timings,func(i,j int)bool{return timings[i]<timings[j]})
     result.MedianAgentMillis=percentile(timings,50)
     result.P90AgentMillis=percentile(timings,90)
+    result.Suggestions=SummarizeSuggestions(events)
     return result
 }
