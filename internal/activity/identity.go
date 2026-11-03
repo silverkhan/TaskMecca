@@ -46,6 +46,7 @@ func ValidateAttribution(e Event, attempts []runtimeobs.Attempt, assignments []r
     switch {
     case found.AgentPath=="/root/registrar":expectedRole=string(RoleRegistrar)
     case found.AgentPath=="/root/controller":expectedRole=string(RoleController)
+    case strings.HasPrefix(found.AgentPath,"/root/controller/sub-"):expectedRole=string(RoleSubController)
     case strings.HasPrefix(found.AgentPath,"/root/controller/"):expectedRole=string(RoleWorker)
     }
     if expectedRole==""||string(e.Role)!=expectedRole{return deny("role does not match bound agent path")}
