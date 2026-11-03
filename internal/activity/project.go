@@ -26,6 +26,15 @@ func percentile(sorted []int64,numerator int)int64 {
     return sorted[rank-1]
 }
 func SummarizeProject(events []Event)ProjectRollup {
+    return summarizeProject(events,true)
+}
+
+// SummarizeProjectCompact keeps only aggregate statistics for the Workload
+// page. Task detail timelines remain available from the per-task endpoint.
+func SummarizeProjectCompact(events []Event)ProjectRollup {
+    return summarizeProject(events,false)
+}
+func summarizeProject(events []Event,includeTasks bool)ProjectRollup {
     grouped:=map[string][]Event{}
     for _,e:=range events{grouped[e.TaskID]=append(grouped[e.TaskID],e)}
     ids:=make([]string,0,len(grouped))
@@ -35,7 +44,7 @@ func SummarizeProject(events []Event)ProjectRollup {
     timings:=make([]int64,0,len(ids))
     for _,id:=range ids{
         s:=Summarize(id,grouped[id])
-        result.TaskSummaries=append(result.TaskSummaries,s)
+        if includeTasks {result.TaskSummaries=append(result.TaskSummaries,s)}
         result.AgentTimeMillis+=s.AgentTimeMillis
         result.ObservedWallMillis+=s.ObservedWallMillis
         if s.AgentTimeMillis>0{result.TasksWithMeasuredTime++;timings=append(timings,s.AgentTimeMillis)}
