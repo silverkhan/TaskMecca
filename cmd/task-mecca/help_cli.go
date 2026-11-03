@@ -32,6 +32,7 @@ func runHelpCLI(args []string,out,stderr io.Writer) int {
 		fmt.Fprintln(out,"  task-mecca worktree          Inspect and explicitly preserve/verify/remove safe Git worktrees")
 		fmt.Fprintln(out,"  task-mecca protect           Snapshot, verify project data and inspect component versions")
 		fmt.Fprintln(out,"  task-mecca runtime           Observe/query/bind execution evidence")
+        fmt.Fprintln(out,"  task-mecca activity          Record verified-bound agent reports and inspect Activity timings")
 		fmt.Fprintln(out,"  task-mecca lifecycle         Read or write canonical lifecycle evidence")
 		fmt.Fprintln(out,"  task-mecca handoff           Inspect and record explicit handoff evidence")
 		fmt.Fprintln(out,"  task-mecca inspect ID        Inspect an existing backlog task")
@@ -61,6 +62,12 @@ func runHelpCLI(args []string,out,stderr io.Writer) int {
 		fmt.Fprintln(out,"task-mecca recovery event --event worker_report --task B-527 --project DIR --json")
 		fmt.Fprintln(out,"Read-only; returns all confirmed recovery candidates, stable incident keys and a Root report hint.")
 		fmt.Fprintln(out,"Not a watchdog, delivery acknowledgement, permission to resume, or proof an agent is dead.")
+	case "activity":
+        fmt.Fprintln(out,"task-mecca activity start|switch|stop TASK-ID --project DIR --role worker --agent EXACT-RUNTIME-AGENT --attempt EXACT-ATTEMPT --assignment ID --event-id STABLE-ID --type TYPE --evidence TEXT --json")
+        fmt.Fprintln(out,"Controller review: use --role controller --handoff CLAIMED-HANDOFF instead of --assignment.")
+        fmt.Fprintln(out,"task-mecca activity history|status TASK-ID --project DIR --json")
+        fmt.Fprintln(out,"Writes are attributed against observed Runtime/assignment or Controller claim evidence. Activity phase remains agent-reported (inferred), not independently authenticated by a native provider.")
+        fmt.Fprintln(out,"Unverified/stale/ambiguous claims fail closed. Other roles currently cannot write.")
 	case "flow":
 		flowNextUsage(out)
 	case "contract":

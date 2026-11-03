@@ -4,8 +4,10 @@ import (
     "bytes"
     "encoding/json"
     "testing"
+    "time"
 
     "github.com/silverkhan/TaskMecca/internal/activity"
+    "github.com/silverkhan/TaskMecca/internal/runtimeobs"
 )
 
 func invokeActivity(t *testing.T,args ...string)(int,map[string]any,string){
@@ -21,7 +23,17 @@ func invokeActivity(t *testing.T,args ...string)(int,map[string]any,string){
 
 func TestActivityCLIStartSwitchStopAndHistory(t *testing.T){
     project:=t.TempDir()
-    base:=[]string{"--project",project,"--role","worker","--agent","worker-test","--attempt","run-test","--json"}
+    now:=time.Now().UTC()
+    if _,err:=runtimeobs.RecordAssignment(project,"assignment-1","B-589","/root/controller/worker-test",now);err!=nil{t.Fatal(err)}
+    if err:=runtimeobs.AppendExecutionEvent(project,runtimeobs.ExecutionEvent{
+        EventKind:"state",ObservedAt:now.Format(time.RFC3339Nano),
+        AttemptID:"run-test",Provider:"codex",RuntimeAgentID:"worker-test",
+        State:runtimeobs.StateRunning,EvidenceSource:runtimeobs.EvidenceHook,
+        ObservationQuality:runtimeobs.QualityObserved,
+    });err!=nil{t.Fatal(err)}
+    if _,err:=runtimeobs.BindAttempt(project,"run-test","B-589","/root/controller/worker-test","dispatch","",
+        map[string]string{"assignment_id":"assignment-1"},now.Add(time.Millisecond));err!=nil{t.Fatal(err)}
+    base:=[]string{"--project",project,"--role","worker","--agent","worker-test","--attempt","run-test","--assignment","assignment-1","--evidence","agent observed task phase","--json"}
     args:=func(command,id,kind string)[]string{
         v:=[]string{command,"B-589","--event-id",id}
         if kind!=""{v=append(v,"--type",kind)}

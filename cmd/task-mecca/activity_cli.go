@@ -12,6 +12,8 @@ import (
     "time"
 
     "github.com/silverkhan/TaskMecca/internal/activity"
+    "github.com/silverkhan/TaskMecca/internal/runtimeobs"
+    "github.com/silverkhan/TaskMecca/internal/handoffjournal"
 )
 
 // Activity mutations are explicit and evidence-backed. An untrusted agent may
@@ -27,11 +29,19 @@ func runActivityCLI(args []string,out,errOut io.Writer) int {
     agent:=fs.String("agent",os.Getenv("TASK_MECCA_AGENT_ID"),"exact actor ID")
     attempt:=fs.String("attempt",os.Getenv("TASK_MECCA_ATTEMPT_ID"),"exact attempt ID")
     assignment:=fs.String("assignment","","assignment ID")
+    handoffID:=fs.String("handoff","","claimed handoff ID for controller")
     eventID:=fs.String("event-id","","stable event ID for retries")
     evidence:=fs.String("evidence","","source evidence")
     explain:=fs.String("explanation","","required for other activity")
     proposed:=fs.String("proposed-type","","suggested type for other activity")
     round:=fs.Int("round",0,"zero for initial execution; positive for rework")
+    reviewOutcome:=fs.String("review-outcome","","accepted|rejected|needs_changes; Controller review stop only")
+    runCommand:=fs.String("command","","test/build command")
+    runSHA:=fs.String("git-sha","","code revision tested")
+    runScope:=fs.String("scope","","test/build scope")
+    runID:=fs.String("run-id","","execution evidence ID")
+    runResult:=fs.String("result","","passed|failed|cancelled|unknown for test/build")
+    runPurpose:=fs.String("purpose","","why the run was performed")
     jsonOutput:=fs.Bool("json",false,"JSON response")
     parseArgs:=append([]string{},args[1:]...)
     if len(parseArgs)>0 && !strings.HasPrefix(parseArgs[0],"-") {parseArgs=append(parseArgs[1:],parseArgs[0])}
@@ -60,7 +70,7 @@ func runActivityCLI(args []string,out,errOut io.Writer) int {
     }
     task:=fs.Arg(0)
     if prior,readErr:=store.Read(*eventID);readErr==nil {
-        if prior.TaskID==task && string(prior.Action)==action && string(prior.Role)==*role && prior.AgentID==*agent && prior.RuntimeAttemptID==*attempt && (*kind=="" || string(prior.Type)==*kind) {
+        if prior.TaskID==task && string(prior.Action)==action && string(prior.Role)==*role && prior.AgentID==*agent && prior.RuntimeAttemptID==*attempt && prior.AssignmentID==*assignment && prior.HandoffID==*handoffID && prior.ReviewOutcome==*reviewOutcome && (*kind=="" || string(prior.Type)==*kind) {
             emit(map[string]any{"ok":true,"recorded":false,"event":prior});return 0
         }
         fmt.Fprintln(errOut,"event-id already belongs to another activity");return 3
@@ -78,12 +88,37 @@ func runActivityCLI(args []string,out,errOut io.Writer) int {
     if action=="start" && active!=nil {fmt.Fprintln(errOut,"activity already active; use switch or stop");return 2}
     if (action=="stop"||action=="switch") && active==nil {fmt.Fprintln(errOut,"no open activity for attempt");return 2}
     if action=="stop" && *kind=="" && active!=nil {*kind=string(active.Type);*round=active.Round}
+    if strings.TrimSpace(*evidence)==""{
+        fmt.Fprintln(errOut,"--evidence required; agent reports are not authoritative Hook evidence");return 2
+    }
+    if *role==string(activity.RoleWorker)&&strings.TrimSpace(*assignment)=="" {fmt.Fprintln(errOut,"worker requires --assignment");return 2}
+    if *role==string(activity.RoleController)&&strings.TrimSpace(*handoffID)=="" {fmt.Fprintln(errOut,"controller requires --handoff");return 2}
+    var runEvidence *activity.RunEvidence
+    if *runCommand!=""||*runSHA!=""||*runScope!=""||*runID!=""||*runResult!="" {
+        runEvidence=&activity.RunEvidence{Command:*runCommand,GitSHA:*runSHA,Scope:*runScope,RunID:*runID,Result:*runResult,Purpose:*runPurpose}
+    }
     now:=time.Now().UTC()
     e:=activity.Event{SchemaVersion:1,EventID:*eventID,TaskID:task,Action:activity.Action(action),
-        Role:activity.Role(*role),AgentID:*agent,RuntimeAttemptID:*attempt,AssignmentID:*assignment,
-        Round:*round,Type:activity.Type(*kind),Confidence:activity.Confirmed,
-        Evidence:*evidence,Explanation:*explain,ProposedType:*proposed,OccurredAt:now,RecordedAt:now}
+        Role:activity.Role(*role),AgentID:*agent,RuntimeAttemptID:*attempt,AssignmentID:*assignment,HandoffID:*handoffID,
+        Round:*round,Type:activity.Type(*kind),Confidence:activity.Inferred,Source:"agent_report",
+        Evidence:*evidence,Explanation:*explain,ProposedType:*proposed,ReviewOutcome:*reviewOutcome,RunEvidence:runEvidence,OccurredAt:now,RecordedAt:now}
     if err:=e.Validate();err!=nil{fmt.Fprintln(errOut,err);return 2}
+    runtimeLedger,readErr:=runtimeobs.BuildLedger(root,10,now)
+    if readErr!=nil{fmt.Fprintln(errOut,"runtime evidence unavailable:",readErr);return 1}
+    var verifyErr error
+    switch e.Role {
+    case activity.RoleWorker:
+        assignments,err:=runtimeobs.ListAssignments(root)
+        if err!=nil{fmt.Fprintln(errOut,"assignment evidence unavailable:",err);return 1}
+        verifyErr=activity.ValidateAttribution(e,runtimeLedger.Attempts,assignments)
+    case activity.RoleController:
+        claims,err:=handoffjournal.BuildLedger(root,now)
+        if err!=nil{fmt.Fprintln(errOut,"handoff evidence unavailable:",err);return 1}
+        verifyErr=activity.ValidateControllerAttribution(e,runtimeLedger.Attempts,claims.Handoffs)
+    default:
+        fmt.Fprintln(errOut,"this role has no verified Activity recording boundary yet");return 3
+    }
+    if verifyErr!=nil{fmt.Fprintln(errOut,"activity actor attribution rejected:",verifyErr);return 3}
     inserted,writeErr:=store.Append(e)
     if writeErr!=nil{
         if errors.Is(writeErr,activity.ErrEventConflict){fmt.Fprintln(errOut,"event-id reused with a different event; original record preserved");return 3}

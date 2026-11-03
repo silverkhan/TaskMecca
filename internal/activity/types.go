@@ -54,6 +54,7 @@ type Event struct {
     AgentID string `json:"agent_id"`
     RuntimeAttemptID string `json:"runtime_attempt_id"`
     AssignmentID string `json:"assignment_id,omitempty"`
+    HandoffID string `json:"handoff_id,omitempty"`
     Provider string `json:"provider,omitempty"`
     SessionID string `json:"session_id,omitempty"`
     ContractSHA256 string `json:"contract_sha256,omitempty"`

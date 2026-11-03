@@ -81,6 +81,10 @@ func Summarize(task string, events []Event) Summary {
             }
             duration:=e.OccurredAt.Sub(current.event.OccurredAt).Milliseconds()
             segment:=Segment{TaskID:task,AgentID:current.event.AgentID,AttemptID:current.event.RuntimeAttemptID,Role:current.event.Role,Type:current.event.Type,Round:current.event.Round,StartedAt:current.event.OccurredAt,EndedAt:e.OccurredAt,DurationMillis:duration,RunEvidence:current.event.RunEvidence,ProposedType:current.event.ProposedType,Explanation:current.event.Explanation}
+            if e.RunEvidence!=nil && e.RunEvidence.Result!="" {
+                if segment.RunEvidence==nil {copyRun:=*e.RunEvidence;segment.RunEvidence=&copyRun
+                }else{copyRun:=*segment.RunEvidence;copyRun.Result=e.RunEvidence.Result;segment.RunEvidence=&copyRun}
+            }
             out.Segments=append(out.Segments,segment)
             out.ByType[segment.Type]+=duration
             out.ByDimension[Dimension{Role:segment.Role,Type:segment.Type,Round:segment.Round}]+=duration
