@@ -137,7 +137,11 @@ func reconcileAttentionFeedProjects(active []string) {
     }
 }
 
-func (f *attentionFeed) refresh() {
+func (f *attentionFeed) refresh() { f.tryRefresh() }
+
+// tryRefresh returns false only when the monitoring gate suppresses the
+// attempt. A skipped startup refresh is not a successful initial baseline.
+func (f *attentionFeed) tryRefresh() bool {
     start := time.Now()
     executed := false
     maintenance.TryWithProjectMonitoring(f.project, func() {
@@ -147,6 +151,7 @@ func (f *attentionFeed) refresh() {
     if !executed {
         recordMonitorPerf("attention_skipped", time.Since(start), 0, 0, false, true)
     }
+    return executed
 }
 
 func (f *attentionFeed) refreshActive() {
@@ -226,19 +231,34 @@ func (f *attentionFeed) refreshActive() {
 }
 
 func (f *attentionFeed) run() {
-	defer close(f.doneCh)
+    defer close(f.doneCh)
     select { case <-f.stopCh: return; default: }
-	f.refresh()
-	ticker := time.NewTicker(3 * time.Second)
-	defer ticker.Stop()
-	for {
-		select {
-		case <-ticker.C:
-			f.refresh()
-		case <-f.stopCh:
-			return
-		}
-	}
+    // A transient foreground project lock may suppress the first scan.
+    // Retrying only during startup avoids a blank feed until the 3-second
+    // periodic tick, without changing the steady-state polling cadence.
+    ready:=f.tryRefresh()
+    if !ready{
+        for _,delay:=range []time.Duration{50*time.Millisecond,100*time.Millisecond,200*time.Millisecond,350*time.Millisecond,500*time.Millisecond}{
+            timer:=time.NewTimer(delay)
+            select{
+            case <-timer.C:
+            case <-f.stopCh:
+                if !timer.Stop(){select{case <-timer.C:default:}}
+                return
+            }
+            if f.tryRefresh(){ready=true;break}
+        }
+    }
+    ticker:=time.NewTicker(3*time.Second)
+    defer ticker.Stop()
+    for {
+        select {
+        case <-ticker.C:
+            f.refresh()
+        case <-f.stopCh:
+            return
+        }
+    }
 }
 
 func (f *attentionFeed) subscribe() (chan []byte, []byte, func()) {
