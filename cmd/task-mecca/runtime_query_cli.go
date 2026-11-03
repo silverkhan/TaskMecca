@@ -65,7 +65,7 @@ func runRuntimeQueryCLI(args []string,out,stderr io.Writer) int {
 	if flags.NArg()!=0 {fmt.Fprintln(stderr,"runtime query takes named options only");runtimeQueryUsage(stderr);return 2}
 	if *limit<=0||*limit>500 {fmt.Fprintln(stderr,"--limit must be between 1 and 500");return 2}
 	if *state!="any"&&*state!="open"&&*state!="terminal"&&*state!="unknown" {fmt.Fprintln(stderr,"--state must be any, open, terminal or unknown");return 2}
-	if *role!=""&&*role!="root"&&*role!="registrar"&&*role!="controller"&&*role!="worker" {fmt.Fprintln(stderr,"--role must be root, registrar, controller or worker");return 2}
+	if *role!=""&&*role!="root"&&*role!="registrar"&&*role!="controller"&&*role!="worker"&&*role!="sub_controller" {fmt.Fprintln(stderr,"--role must be root, registrar, controller or worker");return 2}
 	if *provider!=""&&*provider!="codex"&&*provider!="claude" {fmt.Fprintln(stderr,"--provider must be codex or claude");return 2}
 	fields,err:=validateRuntimeQueryFields(*fieldText)
 	if err!=nil {fmt.Fprintln(stderr,err);return 2}
@@ -121,6 +121,7 @@ func runtimeQueryRole(path string)string {
 	case path=="/root":return "root"
 	case path=="/root/registrar":return "registrar"
 	case path=="/root/controller":return "controller"
+	case strings.HasPrefix(path,"/root/controller/sub-"):return "sub_controller"
 	case strings.HasPrefix(path,"/root/controller/"):return "worker"
 	default:return ""
 	}
