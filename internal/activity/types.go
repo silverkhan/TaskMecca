@@ -62,6 +62,7 @@ type Event struct {
     Generation string `json:"generation,omitempty"`
     ParentActivityID string `json:"parent_activity_id,omitempty"`
     Source string `json:"source,omitempty"`
+    PhaseEvent string `json:"phase_event,omitempty"`
     RunEvidence *RunEvidence `json:"run_evidence,omitempty"`
     ReviewOutcome string `json:"review_outcome,omitempty"`
     Round int `json:"round"` // zero: first execution; positive: rework round
@@ -99,6 +100,7 @@ func(e Event) Validate() error {
     if e.RunEvidence!=nil { if err:=e.RunEvidence.Validate();err!=nil{return err} }
     if e.Type!=Other && e.ProposedType!=""{return fail("proposed_type only valid for other")}
     if strings.ContainsAny(e.ProposedType,"\r\n\x00"){return fail("invalid proposed_type")}
+    if strings.ContainsAny(e.PhaseEvent,"\r\n\x00"){return fail("invalid phase_event")}
     if e.Confidence==Inferred && strings.TrimSpace(e.Evidence)==""{return fail("inferred activity requires evidence")}
     return nil
 }
