@@ -33,6 +33,8 @@ func runActivityCLI(args []string,out,errOut io.Writer) int {
     assignment:=fs.String("assignment","","assignment ID")
     handoffID:=fs.String("handoff","","claimed handoff ID for controller")
     eventID:=fs.String("event-id","","stable event ID for retries")
+    supersedesID:=fs.String("supersedes-id","","existing immutable Activity event to correct")
+    occurredAt:=fs.String("occurred-at","","corrected event occurrence in RFC3339Nano (default original)")
     evidence:=fs.String("evidence","","source evidence")
     explain:=fs.String("explanation","","required for other activity")
     proposed:=fs.String("proposed-type","","suggested type for other activity")
@@ -72,7 +74,7 @@ func runActivityCLI(args []string,out,errOut io.Writer) int {
         emit(map[string]any{"task_id":task,"open_activities":active,"event_count":len(rows)})
         return 0
     }
-    if action!="start" && action!="switch" && action!="stop" && action!="report"{fmt.Fprintln(errOut,"unsupported activity action");return 2}
+    if action!="start" && action!="switch" && action!="stop" && action!="report" && action!="correct"{fmt.Fprintln(errOut,"unsupported activity action");return 2}
     if fs.NArg()!=1{fmt.Fprintln(errOut,"task ID required");return 2}
     if strings.TrimSpace(*eventID)==""{fmt.Fprintln(errOut,"--event-id required for idempotent retries");return 2}
     if strings.TrimSpace(*role)==""||strings.TrimSpace(*agent)==""||strings.TrimSpace(*attempt)==""{
@@ -105,6 +107,19 @@ func runActivityCLI(args []string,out,errOut io.Writer) int {
         *reviewOutcome=resolution.ReviewOutcome
         phaseEvent=*eventName
     }
+    var correctionTarget *activity.Event
+    if action=="correct" {
+        if *supersedesID==""{fmt.Fprintln(errOut,"correct requires --supersedes-id");return 2}
+        original,readErr:=store.Read(*supersedesID)
+        if readErr!=nil{fmt.Fprintln(errOut,readErr);return 2}
+        if original.TaskID!=task{fmt.Fprintln(errOut,"correction task differs from original");return 2}
+        correctionTarget=&original
+        if *kind==""{*kind=string(original.Type)}
+        if *round<0{*round=original.Round}
+        if *reviewOutcome==""{*reviewOutcome=original.ReviewOutcome}
+        if *kind==string(activity.Other) && *explain==""{*explain=original.Explanation}
+        if *kind==string(activity.Other) && *proposed==""{*proposed=original.ProposedType}
+    }
     // Auto-classify revision round only from explicit Controller review outcomes.
     // A new worker attempt starts in the number of rejected/needs-changes rounds
     // observed for this exact backlog. Switch/stop continue the same round.
@@ -127,7 +142,7 @@ func runActivityCLI(args []string,out,errOut io.Writer) int {
         if *round<0{*round=0}
     }
     if prior,readErr:=store.Read(*eventID);readErr==nil {
-        if prior.TaskID==task && string(prior.Action)==action && string(prior.Role)==*role && prior.AgentID==*agent && prior.RuntimeAttemptID==*attempt && prior.AssignmentID==*assignment && prior.HandoffID==*handoffID && prior.ReviewOutcome==*reviewOutcome && prior.Round==*round && prior.Evidence==*evidence && (*kind=="" || string(prior.Type)==*kind) {
+        if prior.TaskID==task && string(prior.Action)==action && string(prior.Role)==*role && prior.AgentID==*agent && prior.RuntimeAttemptID==*attempt && prior.AssignmentID==*assignment && prior.HandoffID==*handoffID && prior.ReviewOutcome==*reviewOutcome && prior.SupersedesID==*supersedesID && prior.Round==*round && prior.Evidence==*evidence && (*kind=="" || string(prior.Type)==*kind) {
             emit(map[string]any{"ok":true,"recorded":false,"event":prior});return 0
         }
         fmt.Fprintln(errOut,"event-id already belongs to another activity");return 3
@@ -142,10 +157,19 @@ func runActivityCLI(args []string,out,errOut io.Writer) int {
         runEvidence=&activity.RunEvidence{Command:*runCommand,GitSHA:*runSHA,Scope:*runScope,RunID:*runID,Result:*runResult,Purpose:*runPurpose}
     }
     now:=time.Now().UTC()
+    eventOccurred:=now
+    if correctionTarget!=nil {
+        eventOccurred=correctionTarget.OccurredAt
+        if *occurredAt!="" {
+            parsed,parseErr:=time.Parse(time.RFC3339Nano,*occurredAt)
+            if parseErr!=nil{fmt.Fprintln(errOut,"invalid --occurred-at:",parseErr);return 2}
+            eventOccurred=parsed
+        }
+    }
     e:=activity.Event{SchemaVersion:1,EventID:*eventID,TaskID:task,Action:activity.Action(action),
         Role:activity.Role(*role),AgentID:*agent,RuntimeAttemptID:*attempt,AssignmentID:*assignment,HandoffID:*handoffID,
         Round:*round,Type:activity.Type(*kind),Confidence:activity.Inferred,Source:"agent_report",PhaseEvent:phaseEvent,
-        Evidence:*evidence,Explanation:*explain,ProposedType:*proposed,ReviewOutcome:*reviewOutcome,RunEvidence:runEvidence,OccurredAt:now,RecordedAt:now}
+        Evidence:*evidence,Explanation:*explain,ProposedType:*proposed,ReviewOutcome:*reviewOutcome,RunEvidence:runEvidence,SupersedesID:*supersedesID,OccurredAt:eventOccurred,RecordedAt:now}
     if err:=e.Validate();err!=nil{fmt.Fprintln(errOut,err);return 2}
     // Verify attribution under the same project write lock as the append.
     // A terminal/runtime rebinding event cannot land between verification and
