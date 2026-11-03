@@ -98,6 +98,20 @@ a separate explicit authorization design.
 
 Do not add parallel Agent durations and report them as elapsed wall-time. Open activities, invalid transitions and unattributed gaps are surfaced separately. These reports cannot by themselves prove Task Mecca caused a slowdown.
 
+## Recorder overhead measurement (on demand)
+
+`task-mecca activity diagnose --project PROJECT --json` returns the count,
+total bytes and average size of immutable Activity event files, along with
+the wall-clock cost of scanning **metadata only**. It does not read event
+contents or run repository tests. It is not a CPU, battery or memory energy
+measurement.
+
+For individual activity writes, use `recorder_elapsed_ms` in the CLI JSON
+response. For a standalone Activity Web API query, inspect the `Server-Timing`
+header for the `activity_read` and `activity_aggregate` phases. These metrics
+are not comparable with total time consumed by all running Agents, and no
+background polling or periodic benchmark is added.
+
 ## Operational and migration safety
 
 Project-owned data lives beneath `_task_mecca/data/activity/`, not the managed framework template. Activity events are immutable and original event IDs remain in the journal; the CLI cannot silently rewrite conflicting entries. Project guard refuses writes to paused/removed projects. Back up project-owned data before any manual migration or cleanup.
