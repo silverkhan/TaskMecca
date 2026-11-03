@@ -170,6 +170,20 @@ func runActivityCLI(args []string,out,errOut io.Writer) int {
         Role:activity.Role(*role),AgentID:*agent,RuntimeAttemptID:*attempt,AssignmentID:*assignment,HandoffID:*handoffID,
         Round:*round,Type:activity.Type(*kind),Confidence:activity.Inferred,Source:"agent_report",PhaseEvent:phaseEvent,
         Evidence:*evidence,Explanation:*explain,ProposedType:*proposed,ReviewOutcome:*reviewOutcome,RunEvidence:runEvidence,SupersedesID:*supersedesID,OccurredAt:eventOccurred,RecordedAt:now}
+    if correctionTarget!=nil {
+        e.Source="agent_correction"
+        e.PhaseEvent=correctionTarget.PhaseEvent
+        e.Provider=correctionTarget.Provider
+        e.SessionID=correctionTarget.SessionID
+        e.ContractSHA256=correctionTarget.ContractSHA256
+        e.TaskRevision=correctionTarget.TaskRevision
+        e.Generation=correctionTarget.Generation
+        e.ParentActivityID=correctionTarget.ParentActivityID
+        if e.RunEvidence==nil && correctionTarget.RunEvidence!=nil {
+            copyRun:=*correctionTarget.RunEvidence
+            e.RunEvidence=&copyRun
+        }
+    }
     if err:=e.Validate();err!=nil{fmt.Fprintln(errOut,err);return 2}
     // Verify attribution under the same project write lock as the append.
     // A terminal/runtime rebinding event cannot land between verification and
