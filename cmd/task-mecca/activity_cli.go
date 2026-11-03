@@ -90,10 +90,8 @@ func runActivityCLI(args []string,out,errOut io.Writer) int {
             for i:=len(rows)-1;i>=0;i--{
                 prev:=rows[i]
                 if string(prev.Role)==*role && prev.AgentID==*agent && prev.RuntimeAttemptID==*attempt && prev.Action!=activity.Correct{
-                    if prev.Action!=activity.Stop && prev.Action!=activity.Abandon{
-                        if *round<0{*round=prev.Round}
-                        if action=="stop" && *kind==""{*kind=string(prev.Type)}
-                    }
+                    if *round<0{*round=prev.Round}
+                    if action=="stop" && *kind==""{*kind=string(prev.Type)}
                     break
                 }
             }
