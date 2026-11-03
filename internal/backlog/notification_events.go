@@ -101,17 +101,13 @@ func ReadNotificationEvents(project string) ([]map[string]any, error) {
     defer notificationJournalMu.Unlock()
 
     path := filepath.Join(project, "_task_mecca", ".runtime", "notification_events.json")
-    data, err := os.ReadFile(path)
-    if os.IsNotExist(err) {
-        return []map[string]any{}, nil
-    }
-    if err != nil {
-        return nil, err
-    }
-
-    journal := notificationJournal{}
-    if err := json.Unmarshal(data, &journal); err != nil {
-        return nil, err
+    journal, hit := cachedNotificationJournal(path)
+    if !hit {
+        data, err := os.ReadFile(path)
+        if os.IsNotExist(err) { return []map[string]any{}, nil }
+        if err != nil { return nil, err }
+        if err := json.Unmarshal(data, &journal); err != nil { return nil, err }
+        rememberNotificationJournal(path, journal)
     }
     if journal.Events == nil {
         return []map[string]any{}, nil
@@ -138,13 +134,25 @@ func NotificationEvents(project string, items map[string]map[string]any) ([]map[
     loaded := false
     itemsPresent := true
     phasesPresent := true
-    data, err := os.ReadFile(path)
+    cached, hit := cachedNotificationJournal(path)
+    var data []byte
+    var err error
+    if !hit { data, err = os.ReadFile(path) }
     switch {
+    case hit:
+        loaded = true
+        journal = cached
+        itemsPresent = journal.Items != nil
+        phasesPresent = journal.Phases != nil
+        if journal.Items == nil { journal.Items = map[string]notificationObservation{} }
+        if journal.Phases == nil { journal.Phases = map[string]int{} }
+        if journal.Events == nil { journal.Events = []map[string]any{} }
     case err == nil:
         loaded = true
         if err := json.Unmarshal(data, &journal); err != nil {
             return nil, err
         }
+        rememberNotificationJournal(path,journal)
         itemsPresent = journal.Items != nil
         phasesPresent = journal.Phases != nil
         if journal.Items == nil {
@@ -399,6 +407,8 @@ func NotificationEvents(project string, items map[string]map[string]any) ([]map[
     if err := os.Rename(tmp, path); err != nil {
         return nil, err
     }
-
+    // Publish only the fully committed journal. Readers in this process
+    // otherwise trust an obsolete observation until the next stat.
+    rememberNotificationJournal(path,journal)
     return append([]map[string]any{}, journal.Events...), nil
 }
