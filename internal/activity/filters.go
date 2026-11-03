@@ -22,7 +22,7 @@ func(f SegmentFilter)Validate()error{
  if f.Role!=""&&!f.Role.Valid(){return ErrInvalidSegmentFilter}
  if f.Type!=""&&!f.Type.Valid(){return ErrInvalidSegmentFilter}
  if f.Round!=nil&&*f.Round<0{return ErrInvalidSegmentFilter}
- if strings.ContainsAny(f.AgentID,"\r\n\x00"){return ErrInvalidSegmentFilter}
+ if len(f.AgentID)>256 || strings.ContainsAny(f.AgentID,"\r\n\x00"){return ErrInvalidSegmentFilter}
  if f.From!=nil&&f.Until!=nil&&!f.From.Before(*f.Until){return ErrInvalidSegmentFilter}
  return nil
 }
