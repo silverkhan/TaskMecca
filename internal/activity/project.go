@@ -10,6 +10,13 @@ type ProjectRollup struct {
     TasksWithMeasuredTime int `json:"tasks_with_measured_time"`
     TasksWithOpenActivities int `json:"tasks_with_open_activities"`
     EventCount int `json:"event_count"`
+    LifecycleCompletedTasks int `json:"lifecycle_completed_tasks"`
+    LifecycleOpenWaitTasks int `json:"lifecycle_open_wait_tasks"`
+    LifecycleTotalElapsedMillis int64 `json:"lifecycle_total_elapsed_ms"`
+    LifecycleCoveredMillis int64 `json:"lifecycle_covered_ms"`
+    LifecycleWaitMillis int64 `json:"lifecycle_wait_ms"`
+    LifecycleUnattributedMillis int64 `json:"lifecycle_unattributed_ms"`
+    LifecycleOverlapMillis int64 `json:"lifecycle_overlap_ms"`
     AgentTimeMillis int64 `json:"agent_time_ms"`
     ObservedWallMillis int64 `json:"sum_task_observed_wall_ms"`
     ByType map[Type]int64 `json:"by_type_ms"`
@@ -34,13 +41,25 @@ func SummarizeProject(events []Event)ProjectRollup {
 func SummarizeProjectCompact(events []Event)ProjectRollup {
     return summarizeProject(events,false)
 }
+// SummarizeProjectWithLifecycle reuses already aggregated Activity intervals
+// when calculating reported queue/wait/unknown times. No duplicate pass over
+// each backlog's Activity events is required.
+func SummarizeProjectWithLifecycle(events []Event, facts map[string][]LifecycleFact)ProjectRollup {
+    return summarizeProjectWithLifecycle(events,false,facts)
+}
 func summarizeProject(events []Event,includeTasks bool)ProjectRollup {
+    return summarizeProjectWithLifecycle(events,includeTasks,nil)
+}
+func summarizeProjectWithLifecycle(events []Event,includeTasks bool,facts map[string][]LifecycleFact)ProjectRollup {
     grouped:=map[string][]Event{}
     for _,e:=range events{grouped[e.TaskID]=append(grouped[e.TaskID],e)}
-    ids:=make([]string,0,len(grouped))
-    for id:=range grouped{ids=append(ids,id)}
+    allIDs:=map[string]bool{}
+    for id:=range grouped{allIDs[id]=true}
+    for id:=range facts{allIDs[id]=true}
+    ids:=make([]string,0,len(allIDs))
+    for id:=range allIDs{ids=append(ids,id)}
     sort.Strings(ids)
-    result:=ProjectRollup{TasksObserved:len(ids),EventCount:len(events),ByType:map[Type]int64{},TaskSummaries:make([]Summary,0,len(ids))}
+    result:=ProjectRollup{TasksObserved:len(grouped),EventCount:len(events),ByType:map[Type]int64{},TaskSummaries:make([]Summary,0,len(grouped))}
     timings:=make([]int64,0,len(ids))
     suggestionDurations:=map[string]int64{}
     for _,id:=range ids{
@@ -51,6 +70,23 @@ func summarizeProject(events []Event,includeTasks bool)ProjectRollup {
         if s.AgentTimeMillis>0{result.TasksWithMeasuredTime++;timings=append(timings,s.AgentTimeMillis)}
         if s.OpenActivities>0{result.TasksWithOpenActivities++}
         for kind,ms:=range s.ByType{result.ByType[kind]+=ms}
+        if len(facts[id])>0{
+            coverage:=SummarizeLifecycle(id,facts[id],s.Segments)
+            if coverage.OpenWaitCount>0{result.LifecycleOpenWaitTasks++}
+            if coverage.TotalElapsedMillis!=nil{
+                result.LifecycleCompletedTasks++
+                result.LifecycleTotalElapsedMillis+=*coverage.TotalElapsedMillis
+                result.LifecycleCoveredMillis+=coverage.CoveredElapsedMillis
+                result.LifecycleOverlapMillis+=coverage.OverlapMillis
+                // WaitMillis is the union of explicit intervals; if some
+                // lifecycle facts are outside the completed window, clamp the
+                // advertised aggregate to the completed elapsed duration.
+                waitMillis:=coverage.WaitMillis
+                if waitMillis>*coverage.TotalElapsedMillis{waitMillis=*coverage.TotalElapsedMillis}
+                result.LifecycleWaitMillis+=waitMillis
+                if coverage.UnattributedElapsedMillis!=nil{result.LifecycleUnattributedMillis+=*coverage.UnattributedElapsedMillis}
+            }
+        }
         for _,segment:=range s.Segments{
             if segment.Type!=Other{continue}
             key:=strings.ToLower(strings.TrimSpace(segment.ProposedType))
