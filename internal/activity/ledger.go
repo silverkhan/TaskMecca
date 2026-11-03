@@ -7,6 +7,7 @@ import (
     "os"
     "path/filepath"
     "regexp"
+    "reflect"
     "sort"
     "strings"
     "github.com/silverkhan/TaskMecca/internal/projectguard"
@@ -44,6 +45,14 @@ func(l Ledger) Append(event Event)(bool,error){
     release,guardErr:=projectguard.AcquireWrite(l.Project)
     if guardErr!=nil{return false,guardErr}
     defer release()
+    unlock,lockErr:=acquireActivityLock(l.Project)
+    if lockErr!=nil{return false,lockErr}
+    defer unlock()
+    return l.appendLocked(event)
+}
+
+// appendLocked is only called while the canonical project write gate is held.
+func(l Ledger) appendLocked(event Event)(bool,error){
     if err:=event.Validate();err!=nil{return false,err}
     path,err:=l.path(event.EventID);if err!=nil{return false,err}
     body,err:=json.MarshalIndent(event,"","  ");if err!=nil{return false,err}
@@ -63,6 +72,7 @@ func(l Ledger) Append(event Event)(bool,error){
         if string(append(other,'\n'))!=string(body){return false,ErrEventConflict}
         return false,nil
     }
+    invalidateProjection(l.Project)
     return true,nil
 }
 
@@ -83,4 +93,73 @@ func(l Ledger) List(taskID string)([]Event,error){
         return events[i].OccurredAt.Before(events[j].OccurredAt)
     })
     return events,nil
+}
+
+// Apply serializes the activity state transition with the append under one
+// canonical project lock. Two concurrent start/switch/stop commands must not
+// both approve a transition based on the same stale open interval.
+func(l Ledger) Apply(event Event)(bool,error){
+    return l.ApplyVerified(event,nil)
+}
+
+// ApplyVerified checks authoritative Runtime/assignment evidence inside the
+// same project write gate as transition validation and immutable publication.
+// verify MUST only read canonical state; it must not acquire a write lock.
+func(l Ledger) ApplyVerified(event Event,verify func()error)(bool,error){
+    release,err:=projectguard.AcquireWrite(l.Project)
+    if err!=nil{return false,err}
+    defer release()
+    unlock,lockErr:=acquireActivityLock(l.Project)
+    if lockErr!=nil{return false,lockErr}
+    defer unlock()
+    if err:=event.Validate();err!=nil{return false,err}
+    if verify!=nil {
+        if err:=verify();err!=nil{return false,err}
+    }
+    prior,err:=l.Read(event.EventID)
+    if err==nil{
+        // RecordedAt is assigned by the recorder. Retry with the same stable
+        // event ID is successful only if immutable caller supplied data agrees.
+        if sameActivityIntent(prior,event){return false,nil}
+        return false,ErrEventConflict
+    }
+    if !errors.Is(err,os.ErrNotExist){return false,err}
+    events,err:=l.List(event.TaskID)
+    if err!=nil{return false,err}
+    var latest *Event
+    for i:=range events{
+        e:=&events[i]
+        if e.Action==Correct || actorKey(*e)!=actorKey(event){continue}
+        if latest==nil || e.OccurredAt.After(latest.OccurredAt) || (e.OccurredAt.Equal(latest.OccurredAt) && e.RecordedAt.After(latest.RecordedAt)){
+            latest=e
+        }
+    }
+    open:=latest!=nil && latest.Action!=Stop && latest.Action!=Abandon
+    switch event.Action{
+    case Start:
+        if open{return false,fmt.Errorf("%w: attempt already has an open activity",ErrInvalidEvent)}
+    case Switch,Stop,Abandon:
+        if !open{return false,fmt.Errorf("%w: no open activity for attempt",ErrInvalidEvent)}
+        if event.OccurredAt.Before(latest.OccurredAt){return false,fmt.Errorf("%w: time travel",ErrInvalidEvent)}
+        if (event.Action==Stop || event.Action==Abandon) && (event.Type!=latest.Type || event.Round!=latest.Round){
+            return false,fmt.Errorf("%w: stop must match active type and round",ErrInvalidEvent)
+        }
+    default:
+        return false,fmt.Errorf("%w: unsupported transition",ErrInvalidEvent)
+    }
+    return l.appendLocked(event)
+}
+
+func sameActivityIntent(a,b Event)bool{
+    return a.EventID==b.EventID && a.TaskID==b.TaskID && a.Action==b.Action &&
+        a.Role==b.Role && a.AgentID==b.AgentID && a.RuntimeAttemptID==b.RuntimeAttemptID &&
+        a.AssignmentID==b.AssignmentID && a.HandoffID==b.HandoffID &&
+        a.Type==b.Type && a.Round==b.Round &&
+        a.Evidence==b.Evidence && a.Explanation==b.Explanation &&
+        a.ProposedType==b.ProposedType && a.ReviewOutcome==b.ReviewOutcome &&
+        a.Source==b.Source && a.Confidence==b.Confidence &&
+        a.Provider==b.Provider && a.SessionID==b.SessionID &&
+        a.ContractSHA256==b.ContractSHA256 && a.TaskRevision==b.TaskRevision &&
+        a.Generation==b.Generation && a.ParentActivityID==b.ParentActivityID &&
+        reflect.DeepEqual(a.RunEvidence,b.RunEvidence)
 }

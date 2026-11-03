@@ -35,6 +35,7 @@ func runActivityCLI(args []string,out,errOut io.Writer) int {
     explain:=fs.String("explanation","","required for other activity")
     proposed:=fs.String("proposed-type","","suggested type for other activity")
     round:=fs.Int("round",0,"zero for initial execution; positive for rework")
+    eventName:=fs.String("event","","decision or work phase event for suggest")
     reviewOutcome:=fs.String("review-outcome","","accepted|rejected|needs_changes; Controller review stop only")
     runCommand:=fs.String("command","","test/build command")
     runSHA:=fs.String("git-sha","","code revision tested")
@@ -50,6 +51,13 @@ func runActivityCLI(args []string,out,errOut io.Writer) int {
     root,err:=filepath.Abs(*project);if err!=nil{fmt.Fprintln(errOut,err);return 2}
     store:=activity.Ledger{Project:root}
     emit:=func(v any){if *jsonOutput{_ =json.NewEncoder(out).Encode(v)}else{fmt.Fprintln(out,v)}}
+    if action=="suggest" {
+        if !activity.Role(*role).Valid() || *eventName=="" || *round<0 {
+            fmt.Fprintln(errOut,"suggest requires --role, --event and a nonnegative --round");return 2
+        }
+        emit(activity.Suggest(activity.Role(*role),*eventName,*round))
+        return 0
+    }
     if action=="history" || action=="status" {
         task:="";if fs.NArg()==1{task=fs.Arg(0)}
         if task==""{fmt.Fprintln(errOut,"task ID required");return 2}
@@ -75,19 +83,22 @@ func runActivityCLI(args []string,out,errOut io.Writer) int {
         }
         fmt.Fprintln(errOut,"event-id already belongs to another activity");return 3
     } else if !os.IsNotExist(readErr) {fmt.Fprintln(errOut,readErr);return 1}
-    rows,readErr:=store.List(task)
-    if readErr!=nil{fmt.Fprintln(errOut,readErr);return 1}
-    var active *activity.Event
-    for i:=len(rows)-1;i>=0;i-- {
-        row:=rows[i]
-        if string(row.Role)==*role && row.AgentID==*agent && row.RuntimeAttemptID==*attempt {
-            if row.Action!=activity.Stop { copyRow:=row;active=&copyRow }
-            break
+    // Stop can infer the active type/round, but the recorder revalidates the
+    // transition under its canonical write lock before publishing.
+    if action=="stop" && *kind=="" {
+        rows,readErr:=store.List(task)
+        if readErr!=nil{fmt.Fprintln(errOut,readErr);return 1}
+        for i:=len(rows)-1;i>=0;i-- {
+            prior:=rows[i]
+            if string(prior.Role)==*role && prior.AgentID==*agent && prior.RuntimeAttemptID==*attempt {
+                if prior.Action!=activity.Stop && prior.Action!=activity.Correct {
+                    *kind=string(prior.Type);*round=prior.Round
+                }
+                break
+            }
         }
+        if *kind==""{fmt.Fprintln(errOut,"no active type to stop");return 2}
     }
-    if action=="start" && active!=nil {fmt.Fprintln(errOut,"activity already active; use switch or stop");return 2}
-    if (action=="stop"||action=="switch") && active==nil {fmt.Fprintln(errOut,"no open activity for attempt");return 2}
-    if action=="stop" && *kind=="" && active!=nil {*kind=string(active.Type);*round=active.Round}
     if strings.TrimSpace(*evidence)==""{
         fmt.Fprintln(errOut,"--evidence required; agent reports are not authoritative Hook evidence");return 2
     }
@@ -103,23 +114,25 @@ func runActivityCLI(args []string,out,errOut io.Writer) int {
         Round:*round,Type:activity.Type(*kind),Confidence:activity.Inferred,Source:"agent_report",
         Evidence:*evidence,Explanation:*explain,ProposedType:*proposed,ReviewOutcome:*reviewOutcome,RunEvidence:runEvidence,OccurredAt:now,RecordedAt:now}
     if err:=e.Validate();err!=nil{fmt.Fprintln(errOut,err);return 2}
-    runtimeLedger,readErr:=runtimeobs.BuildLedger(root,10,now)
-    if readErr!=nil{fmt.Fprintln(errOut,"runtime evidence unavailable:",readErr);return 1}
-    var verifyErr error
-    switch e.Role {
-    case activity.RoleWorker:
-        assignments,err:=runtimeobs.ListAssignments(root)
-        if err!=nil{fmt.Fprintln(errOut,"assignment evidence unavailable:",err);return 1}
-        verifyErr=activity.ValidateAttribution(e,runtimeLedger.Attempts,assignments)
-    case activity.RoleController:
-        claims,err:=handoffjournal.BuildLedger(root,now)
-        if err!=nil{fmt.Fprintln(errOut,"handoff evidence unavailable:",err);return 1}
-        verifyErr=activity.ValidateControllerAttribution(e,runtimeLedger.Attempts,claims.Handoffs)
-    default:
-        fmt.Fprintln(errOut,"this role has no verified Activity recording boundary yet");return 3
-    }
-    if verifyErr!=nil{fmt.Fprintln(errOut,"activity actor attribution rejected:",verifyErr);return 3}
-    inserted,writeErr:=store.Append(e)
+    // Verify attribution under the same project write lock as the append.
+    // A terminal/runtime rebinding event cannot land between verification and
+    // Activity publication through other canonical project writers.
+    inserted,writeErr:=store.ApplyVerified(e,func()error{
+        runtimeLedger,err:=runtimeobs.BuildLedger(root,10,time.Now().UTC())
+        if err!=nil{return fmt.Errorf("runtime evidence unavailable: %w",err)}
+        switch e.Role {
+        case activity.RoleWorker:
+            assignments,err:=runtimeobs.ListAssignments(root)
+            if err!=nil{return fmt.Errorf("assignment evidence unavailable: %w",err)}
+            return activity.ValidateAttribution(e,runtimeLedger.Attempts,assignments)
+        case activity.RoleController:
+            claims,err:=handoffjournal.BuildLedger(root,time.Now().UTC())
+            if err!=nil{return fmt.Errorf("handoff evidence unavailable: %w",err)}
+            return activity.ValidateControllerAttribution(e,runtimeLedger.Attempts,claims.Handoffs)
+        default:
+            return fmt.Errorf("this role has no verified Activity recording boundary yet")
+        }
+    })
     if writeErr!=nil{
         if errors.Is(writeErr,activity.ErrEventConflict){fmt.Fprintln(errOut,"event-id reused with a different event; original record preserved");return 3}
         fmt.Fprintln(errOut,writeErr);return 1

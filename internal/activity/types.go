@@ -35,8 +35,8 @@ const (
 func (t Type) Valid() bool { switch t {case Requirements,Research,Implementation,TargetedTest,FullRegression,BuildCheck,ControllerReview,ControllerReReview,Handoff,Recovery,Other:return true};return false }
 
 type Action string
-const (Start Action="start"; Stop Action="stop"; Switch Action="switch"; Correct Action="correct")
-func(a Action) Valid() bool {switch a {case Start,Stop,Switch,Correct:return true};return false}
+const (Start Action="start"; Stop Action="stop"; Switch Action="switch"; Correct Action="correct"; Abandon Action="abandon")
+func(a Action) Valid() bool {switch a {case Start,Stop,Switch,Correct,Abandon:return true};return false}
 
 type Confidence string
 const (Confirmed Confidence="confirmed"; Inferred Confidence="inferred"; Unknown Confidence="unknown")

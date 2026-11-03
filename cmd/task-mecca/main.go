@@ -13,6 +13,7 @@ import (
     "strings"
     "time"
 
+    "github.com/silverkhan/TaskMecca/internal/activity"
     "github.com/silverkhan/TaskMecca/internal/backlog"
     "github.com/silverkhan/TaskMecca/internal/handoff"
     "github.com/silverkhan/TaskMecca/internal/install"
@@ -848,6 +849,14 @@ func run(args []string) int {
             }
             var event runtimeobs.ExecutionEvent
             event,err=runtimeobs.ObserveHook(runtimeProject,positional[1],os.Stdin,time.Now())
+            if err==nil && event.Terminal {
+                // Terminal-only reconciliation: never scan all Activity files
+                // on frequent tool-use hooks. A failed projection must not
+                // invalidate the already durable provider Runtime event.
+                if _,closeErr:=activity.RecordTerminal(runtimeProject,event);closeErr!=nil{
+                    fmt.Fprintln(os.Stderr,"Activity terminal reconciliation deferred:",closeErr)
+                }
+            }
             if err==nil && jsonOutput { emitJSON(event) }
         case "list","reconcile":
             if len(positional)>2 {

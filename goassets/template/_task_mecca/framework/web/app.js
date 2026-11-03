@@ -5415,6 +5415,8 @@ function runtimeRootListPanel() {
 
 const activityProjectCache=new Map();
 const activityProjectLoading=new Set();
+const activityProjectFetchedAt=new Map();
+const ACTIVITY_PROJECT_REFRESH_MS=30000;
 function projectActivityPanel(){
   const ko=state.language==='ko';
   const report=activityProjectCache.get(state.project);
@@ -5441,7 +5443,8 @@ async function loadActivityProject(project){
     if(!response.ok)throw Error('HTTP '+response.status);
     const data=await response.json();
     activityProjectCache.set(project,data);
-  }catch(e){activityProjectCache.set(project,{error:String(e&&e.message||e)});}
+    activityProjectFetchedAt.set(project,Date.now());
+  }catch(e){activityProjectCache.set(project,{error:String(e&&e.message||e)});activityProjectFetchedAt.set(project,Date.now());}
   finally{activityProjectLoading.delete(project);}
   if(state.view==='workload'&&state.project===project&&!state.detail){
     const target=document.getElementById('activityProjectPanel');
@@ -6299,7 +6302,7 @@ function render() {
     button.addEventListener('click',()=>toggleRuntimeHookGuide(button.dataset.runtimeHookTrust));
   });
   if(state.view==='workload'){
-    if(!activityProjectCache.has(state.project))void loadActivityProject(state.project);
+    if(Date.now()-(activityProjectFetchedAt.get(state.project)||0)>ACTIVITY_PROJECT_REFRESH_MS)void loadActivityProject(state.project);
     $('#runtimeHistoryToggle')?.addEventListener('click',()=>toggleRuntimeHistory());
     $('#runtimeStorageToggle')?.addEventListener('click',()=>toggleRuntimeStorage());
     $('#runtimeCleanupBtn')?.addEventListener('click',e=>performRuntimeCleanup(e.currentTarget));

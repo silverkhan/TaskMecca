@@ -15,6 +15,23 @@ type ClassificationSuggestion struct {
 // SummarizeSuggestions preserves suggestions as proposals rather than adding
 // their free-text names to the official Activity type vocabulary.
 func SummarizeSuggestions(events []Event)[]ClassificationSuggestion{
+    durations:=map[string]int64{}
+    byTask:=map[string][]Event{}
+    for _,e:=range events{byTask[e.TaskID]=append(byTask[e.TaskID],e)}
+    for task,rows:=range byTask{
+        for _,seg:=range Summarize(task,rows).Segments {
+            if seg.Type!=Other{continue}
+            name:=strings.ToLower(strings.TrimSpace(seg.ProposedType))
+            if name==""{name="unspecified"}
+            durations[name]+=seg.DurationMillis
+        }
+    }
+    return SuggestionsWithDurations(events,durations)
+}
+
+// SuggestionsWithDurations reuses durations calculated during the project
+// rollup instead of recomputing every task's sorted Activity timeline.
+func SuggestionsWithDurations(events []Event,durations map[string]int64)[]ClassificationSuggestion{
     summaries:=map[string]*ClassificationSuggestion{}
     for _,e:=range events{
         if e.Type!=Other || e.Action==Correct || strings.TrimSpace(e.Explanation)==""{continue}
@@ -27,15 +44,8 @@ func SummarizeSuggestions(events []Event)[]ClassificationSuggestion{
             if len(summary.Examples)<3 {summary.Examples=append(summary.Examples,e.Explanation)}
         }
     }
-    byTask:=map[string][]Event{}
-    for _,e:=range events{byTask[e.TaskID]=append(byTask[e.TaskID],e)}
-    for task,rows:=range byTask{
-        for _,s:=range Summarize(task,rows).Segments{
-            if s.Type!=Other{continue}
-            name:=strings.ToLower(strings.TrimSpace(s.ProposedType))
-            if name==""{name="unspecified"}
-            if group:=summaries[name];group!=nil{group.ObservedMillis+=s.DurationMillis}
-        }
+    for name,ms:=range durations{
+        if group:=summaries[name];group!=nil{group.ObservedMillis=ms}
     }
     result:=make([]ClassificationSuggestion,0,len(summaries))
     for _,s:=range summaries{result=append(result,*s)}
