@@ -57,6 +57,12 @@ type Event struct {
     Provider string `json:"provider,omitempty"`
     SessionID string `json:"session_id,omitempty"`
     ContractSHA256 string `json:"contract_sha256,omitempty"`
+    TaskRevision string `json:"task_revision,omitempty"`
+    Generation string `json:"generation,omitempty"`
+    ParentActivityID string `json:"parent_activity_id,omitempty"`
+    Source string `json:"source,omitempty"`
+    RunEvidence *RunEvidence `json:"run_evidence,omitempty"`
+    ReviewOutcome string `json:"review_outcome,omitempty"`
     Round int `json:"round"` // zero: first execution; positive: rework round
     Type Type `json:"type"`
     Confidence Confidence `json:"confidence"`
@@ -84,7 +90,12 @@ func(e Event) Validate() error {
     if e.OccurredAt.IsZero()||e.RecordedAt.IsZero(){return fail("missing timestamps")}
     if e.Action==Correct && strings.TrimSpace(e.SupersedesID)==""{return fail("correction missing supersedes_id")}
     if e.Action!=Correct && e.SupersedesID!=""{return fail("supersedes_id without correction")}
+    if e.ReviewOutcome!="" {
+        if e.Action!=Stop || (e.Type!=ControllerReview&&e.Type!=ControllerReReview) {return fail("review outcome requires review stop")}
+        if e.ReviewOutcome!="accepted"&&e.ReviewOutcome!="rejected"&&e.ReviewOutcome!="needs_changes" {return fail("invalid review outcome")}
+    }
     if e.Type==Other && strings.TrimSpace(e.Explanation)==""{return fail("other requires explanation")}
+    if e.RunEvidence!=nil { if err:=e.RunEvidence.Validate();err!=nil{return err} }
     if e.Type!=Other && e.ProposedType!=""{return fail("proposed_type only valid for other")}
     if strings.ContainsAny(e.ProposedType,"\r\n\x00"){return fail("invalid proposed_type")}
     if e.Confidence==Inferred && strings.TrimSpace(e.Evidence)==""{return fail("inferred activity requires evidence")}

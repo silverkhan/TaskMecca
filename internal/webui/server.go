@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/silverkhan/TaskMecca/goassets"
+	"github.com/silverkhan/TaskMecca/internal/activity"
 	"github.com/silverkhan/TaskMecca/internal/backlog"
 	"github.com/silverkhan/TaskMecca/internal/install"
 	"github.com/silverkhan/TaskMecca/internal/maintenance"
@@ -1627,6 +1628,52 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 			"legacy_bootstrap":             result.LegacyBootstrap,
 			"backup_path":                  result.BackupPath,
 		}, 200)
+	})
+
+	mux.HandleFunc("/api/activity/project", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			w.Header().Set("Allow", "GET")
+			writeJSON(w, map[string]any{"error": "method not allowed"}, http.StatusMethodNotAllowed)
+			return
+		}
+		project := projectFor(r)
+		if !maintenance.ProjectMonitoringAllowed(project) {
+			writeJSON(w, map[string]any{"error": "project monitoring unavailable"}, http.StatusForbidden)
+			return
+		}
+		rows, err := (activity.Ledger{Project: project}).List("")
+		if err != nil {
+			writeJSON(w, map[string]any{"error": err.Error()}, http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Cache-Control", "no-store")
+		writeJSON(w, activity.SummarizeProject(rows), http.StatusOK)
+	})
+
+	mux.HandleFunc("/api/activity", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			w.Header().Set("Allow", "GET")
+			writeJSON(w, map[string]any{"error": "method not allowed"}, http.StatusMethodNotAllowed)
+			return
+		}
+		project := projectFor(r)
+		if !maintenance.ProjectMonitoringAllowed(project) {
+			writeJSON(w, map[string]any{"error": "project monitoring unavailable"}, http.StatusForbidden)
+			return
+		}
+		taskID := strings.ToUpper(strings.TrimSpace(r.URL.Query().Get("task")))
+		if taskID == "" {
+			writeJSON(w, map[string]any{"error": "task query is required"}, http.StatusBadRequest)
+			return
+		}
+		rows, err := (activity.Ledger{Project: project}).List(taskID)
+		if err != nil {
+			writeJSON(w, map[string]any{"error": err.Error()}, http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Cache-Control", "no-store")
+		summary := activity.Summarize(taskID, rows)
+		writeJSON(w, map[string]any{"task_id": taskID, "events": rows, "summary": summary, "test_report": activity.SummarizeTests(summary.Segments), "review_report": activity.SummarizeReviews(rows, summary.Segments)}, http.StatusOK)
 	})
 
 	mux.HandleFunc("/api/tasks/", func(w http.ResponseWriter, r *http.Request) {
