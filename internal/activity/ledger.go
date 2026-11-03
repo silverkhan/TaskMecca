@@ -128,14 +128,14 @@ func(l Ledger) ApplyVerified(event Event,verify func()error)(bool,error){
             latest=e
         }
     }
-    open:=latest!=nil && latest.Action!=Stop
+    open:=latest!=nil && latest.Action!=Stop && latest.Action!=Abandon
     switch event.Action{
     case Start:
         if open{return false,fmt.Errorf("%w: attempt already has an open activity",ErrInvalidEvent)}
-    case Switch,Stop:
+    case Switch,Stop,Abandon:
         if !open{return false,fmt.Errorf("%w: no open activity for attempt",ErrInvalidEvent)}
         if event.OccurredAt.Before(latest.OccurredAt){return false,fmt.Errorf("%w: time travel",ErrInvalidEvent)}
-        if event.Action==Stop && (event.Type!=latest.Type || event.Round!=latest.Round){
+        if (event.Action==Stop || event.Action==Abandon) && (event.Type!=latest.Type || event.Round!=latest.Round){
             return false,fmt.Errorf("%w: stop must match active type and round",ErrInvalidEvent)
         }
     default:
