@@ -32,6 +32,8 @@ type Summary struct {
     ObservedWallMillis int64 `json:"observed_wall_ms"`
     FirstObservedAt *time.Time `json:"first_observed_at,omitempty"`
     LastObservedAt *time.Time `json:"last_observed_at,omitempty"`
+    ObservedSpanMillis int64 `json:"observed_span_ms"`
+    UnattributedGapMillis int64 `json:"unattributed_gap_ms"`
     OpenActivities int `json:"open_activities"`
     InvalidTransitions int `json:"invalid_transitions"`
     InitialWorkerMillis int64 `json:"initial_worker_ms"`
@@ -99,6 +101,12 @@ func Summarize(task string, events []Event) Summary {
             }else if s.EndedAt.After(right){right=s.EndedAt}
         }
         out.ObservedWallMillis+=right.Sub(left).Milliseconds()
+    }
+    if out.FirstObservedAt!=nil && out.LastObservedAt!=nil {
+        out.ObservedSpanMillis=out.LastObservedAt.Sub(*out.FirstObservedAt).Milliseconds()
+        if out.ObservedSpanMillis>out.ObservedWallMillis {
+            out.UnattributedGapMillis=out.ObservedSpanMillis-out.ObservedWallMillis
+        }
     }
     return out
 }
