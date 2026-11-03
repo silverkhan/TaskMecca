@@ -5436,8 +5436,35 @@ function projectActivityPanel(){
     [ko?'미귀속 경과시간 합계':'Unattributed elapsed total',activityDuration(report.lifecycle_unattributed_ms)]
   ];
   const cards=stats.map(function(entry){return '<div class="activity-metric"><strong>'+esc(String(entry[1]))+'</strong><span>'+esc(entry[0])+'</span></div>';}).join('');
+  const types=Object.entries(report.by_type_ms||{}).filter(([,ms])=>ms>0).sort((a,b)=>b[1]-a[1]).slice(0,12);
+  const allTypeMs=types.reduce((total,[,ms])=>total+ms,0);
+  const typeBars=types.length?'<h3>'+esc(ko?'활동 유형별 투입시간':'Agent time by activity')+'</h3>'+
+    '<div class="activity-type-bars">'+types.map(([name,ms])=>'<div class="activity-type-row"><span>'+esc(name)+'</span>'+
+    '<div class="activity-type-track"><div style="width:'+Math.min(100,allTypeMs?ms/allTypeMs*100:0)+'%"></div></div><strong>'+esc(activityDuration(ms))+'</strong></div>').join('')+'</div>':'';
+  const topTasks=Array.isArray(report.top_tasks)?report.top_tasks:[];
+  const leaders=topTasks.length?'<h3>'+esc(ko?'경과시간 상위 백로그 (상세 열기)':'Backlogs with longest elapsed time')+'</h3>'+
+    '<div class="activity-project-top">'+topTasks.map(item=>{
+      const basis=item.duration_basis==='registered_completed'?(ko?'등록~완료':'Registered–completed'):(ko?'Activity 관측 구간':'Observed activity');
+      return '<div class="activity-project-top-row"><button type="button" class="activity-project-task-link" data-activity-task="'+esc(item.task_id)+'">'+esc(item.task_id)+'</button>'+
+        '<strong>'+esc(activityDuration(item.duration_ms))+'</strong><small>'+esc(basis)+'</small></div>';
+    }).join('')+'</div>':'';
+  const suggestions=Array.isArray(report.classification_suggestions)?report.classification_suggestions.slice(0,8):[];
+  const proposals=suggestions.length?'<h3>'+esc(ko?'미분류 활동의 분류 개선 후보':'Unclassified activity suggestions')+'</h3>'+
+    '<div class="activity-project-suggestions">'+suggestions.map(item=>'<div class="activity-project-suggestion"><strong>'+esc(item.proposed_type||'other')+'</strong>'+
+       '<span>'+esc((item.event_count||0)+(ko?'건 · ':' events · ')+activityDuration(item.observed_ms||0))+'</span>'+
+       (item.examples&&item.examples[0]?'<small>'+esc(item.examples[0])+'</small>':'')+'</div>').join('')+'</div>':'';
+
   const note=ko?'Agent 보고·Lifecycle 이벤트에 근거한 구간만 합산했습니다. 대기시간과 활동시간 중복은 제거하고, 나머지는 미귀속으로 표시합니다. 백로그별 경과시간을 합산한 값은 전체 프로젝트 경과시간과 다릅니다.':'Only agent-reported and lifecycle evidence is counted; overlap is removed and the remaining span is unattributed. The sum of per-task elapsed times is not overall project elapsed time.';
-  return '<section class="section" id="activityProjectPanel"><h2>'+esc(label)+'</h2><div class="activity-metric-grid">'+cards+'</div><p class="summary">'+esc(note)+'</p></section>';
+  return '<section class="section" id="activityProjectPanel"><h2>'+esc(label)+'</h2><div class="activity-metric-grid">'+cards+'</div>'+typeBars+leaders+proposals+'<p class="summary">'+esc(note)+'</p></section>';
+}
+function bindActivityProjectTasks(){
+  const root=typeof document.getElementById==='function'?document.getElementById('activityProjectPanel'):null;
+  if(!root)return;
+  root.querySelectorAll('[data-activity-task]').forEach(button=>{
+    if(button.dataset.activityBound)return;
+    button.dataset.activityBound='1';
+    button.addEventListener('click',()=>openTask(button.dataset.activityTask));
+  });
 }
 async function loadActivityProject(project){
   if(!project||activityProjectLoading.has(project))return;
@@ -5452,7 +5479,7 @@ async function loadActivityProject(project){
   finally{activityProjectLoading.delete(project);}
   if(state.view==='workload'&&state.project===project&&!state.detail){
     const target=document.getElementById('activityProjectPanel');
-    if(target)target.outerHTML=projectActivityPanel();
+    if(target){target.outerHTML=projectActivityPanel();bindActivityProjectTasks();}
   }
 }
 
@@ -6328,6 +6355,7 @@ function render() {
   });
   if(state.view==='workload'){
     if(Date.now()-(activityProjectFetchedAt.get(state.project)||0)>ACTIVITY_PROJECT_REFRESH_MS)void loadActivityProject(state.project);
+    bindActivityProjectTasks();
     $('#runtimeHistoryToggle')?.addEventListener('click',()=>toggleRuntimeHistory());
     $('#runtimeStorageToggle')?.addEventListener('click',()=>toggleRuntimeStorage());
     $('#runtimeCleanupBtn')?.addEventListener('click',e=>performRuntimeCleanup(e.currentTarget));

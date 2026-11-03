@@ -2173,3 +2173,16 @@ select.tm-combo-native{position:absolute!important;width:1px!important;height:1p
 /* Reported lifecycle waits are visually distinct from agent-reported activity. */
 .activity-timeline-wait>div{background:#b77936}
 .activity-time-axis .activity-timeline-row>span{overflow-wrap:anywhere}
+
+
+/* Compact, read-only project activity diagnostics. */
+.activity-project-top{display:flex;flex-direction:column;gap:6px;margin:10px 0 20px}
+.activity-project-top-row{display:grid;grid-template-columns:minmax(80px,1fr) auto minmax(105px,1fr);align-items:center;gap:12px;padding:7px 10px;border-bottom:1px solid var(--border,rgba(128,128,128,.2))}
+.activity-project-top-row strong{font-variant-numeric:tabular-nums}
+.activity-project-top-row small{color:var(--muted,var(--text-muted,#888));font-size:.75rem}
+.activity-project-task-link{cursor:pointer;min-width:0;justify-self:start;background:none;border:0;text-decoration:underline;text-underline-offset:3px;color:inherit;font:inherit;padding:0}
+.activity-project-task-link:focus-visible{outline:2px solid currentColor;outline-offset:3px}
+.activity-project-suggestions{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;margin:10px 0 18px}
+.activity-project-suggestion{border:1px solid var(--border,rgba(128,128,128,.2));border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:4px;overflow-wrap:anywhere}
+.activity-project-suggestion span,.activity-project-suggestion small{color:var(--muted,var(--text-muted,#888));font-size:.78rem}
+@media(max-width:560px){.activity-project-top-row{grid-template-columns:minmax(65px,1fr) auto;gap:6px}.activity-project-top-row small{grid-column:1/-1}}
