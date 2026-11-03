@@ -1651,6 +1651,12 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
             return
         }
         query:=r.URL.Query()
+        for _,key:=range []string{"role","type","agent","round","from","until"}{
+            if len(query[key])>1{
+                writeJSON(w,map[string]any{"error":"duplicate activity filter parameter: "+key},http.StatusBadRequest)
+                return
+            }
+        }
         filter:=activity.SegmentFilter{
             Role:activity.Role(strings.TrimSpace(query.Get("role"))),
             Type:activity.Type(strings.TrimSpace(query.Get("type"))),
