@@ -33,7 +33,9 @@ func runActivityCLI(args []string,out,errOut io.Writer) int {
     proposed:=fs.String("proposed-type","","suggested type for other activity")
     round:=fs.Int("round",0,"zero for initial execution; positive for rework")
     jsonOutput:=fs.Bool("json",false,"JSON response")
-    if err:=fs.Parse(args[1:]);err!=nil{return 2}
+    parseArgs:=append([]string{},args[1:]...)
+    if len(parseArgs)>0 && !strings.HasPrefix(parseArgs[0],"-") {parseArgs=append(parseArgs[1:],parseArgs[0])}
+    if err:=fs.Parse(parseArgs);err!=nil{return 2}
     if fs.NArg()>1 {fmt.Fprintln(errOut,"expected at most one task ID");return 2}
     root,err:=filepath.Abs(*project);if err!=nil{fmt.Fprintln(errOut,err);return 2}
     store:=activity.Ledger{Project:root}
@@ -44,7 +46,7 @@ func runActivityCLI(args []string,out,errOut io.Writer) int {
         rows,readErr:=store.List(task);if readErr!=nil{fmt.Fprintln(errOut,readErr);return 1}
         if action=="history" {emit(map[string]any{"task_id":task,"events":rows});return 0}
         latest:=map[string]activity.Event{}
-        for _,row:=range rows {key:=row.Role.String()+"|"+row.AgentID+"|"+row.RuntimeAttemptID;latest[key]=row}
+        for _,row:=range rows {key:=string(row.Role)+"|"+row.AgentID+"|"+row.RuntimeAttemptID;latest[key]=row}
         active:=[]activity.Event{}
         for _,row:=range latest{if row.Action!=activity.Stop{active=append(active,row)}}
         emit(map[string]any{"task_id":task,"open_activities":active,"event_count":len(rows)})
@@ -68,6 +70,12 @@ func runActivityCLI(args []string,out,errOut io.Writer) int {
         }
         if *kind==""{fmt.Fprintln(errOut,"no matching open activity to stop");return 2}
     }
+    if prior,readErr:=store.Read(*eventID);readErr==nil {
+        if prior.TaskID==task && string(prior.Action)==action && string(prior.Role)==*role && prior.AgentID==*agent && prior.RuntimeAttemptID==*attempt && (*kind=="" || string(prior.Type)==*kind) {
+            emit(map[string]any{"ok":true,"recorded":false,"event":prior});return 0
+        }
+        fmt.Fprintln(errOut,"event-id already belongs to another activity");return 3
+    } else if !os.IsNotExist(readErr) {fmt.Fprintln(errOut,readErr);return 1}
     now:=time.Now().UTC()
     e:=activity.Event{SchemaVersion:1,EventID:*eventID,TaskID:task,Action:activity.Action(action),
         Role:activity.Role(*role),AgentID:*agent,RuntimeAttemptID:*attempt,AssignmentID:*assignment,
