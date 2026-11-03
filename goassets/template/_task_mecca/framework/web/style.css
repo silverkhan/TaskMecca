@@ -2186,3 +2186,11 @@ select.tm-combo-native{position:absolute!important;width:1px!important;height:1p
 .activity-project-suggestion{border:1px solid var(--border,rgba(128,128,128,.2));border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:4px;overflow-wrap:anywhere}
 .activity-project-suggestion span,.activity-project-suggestion small{color:var(--muted,var(--text-muted,#888));font-size:.78rem}
 @media(max-width:560px){.activity-project-top-row{grid-template-columns:minmax(65px,1fr) auto;gap:6px}.activity-project-top-row small{grid-column:1/-1}}
+
+
+/* Project Activity filter is opt-in: no polling or automatic filtered scans. */
+.activity-filter-fields{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0;align-items:center}
+.activity-filter-fields input,.activity-filter-fields select{min-width:110px;max-width:195px;flex:1 1 135px;min-height:34px;border:1px solid var(--border,rgba(128,128,128,.25));border-radius:8px;padding:5px 8px;background:var(--surface-2,var(--panel,#222));color:inherit;font:inherit;font-size:.82rem}
+.activity-filter-fields button{min-height:34px;border-radius:8px;padding:6px 14px;font:inherit;cursor:pointer;border:1px solid var(--border,rgba(128,128,128,.3))}
+.activity-filter-fields button:disabled{opacity:.55;cursor:wait}
+#activityProjectFiltered{min-height:40px}
