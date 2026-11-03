@@ -218,6 +218,25 @@ func NotificationEvents(project string, items map[string]map[string]any) ([]map[
         }
 
         phase:=journal.Phases[id]
+        // Fast path for an unchanged, already-consumed observation. Unlike
+        // merely comparing the task's mtime this also checks the exact
+        // lifecycle start and notification condition episode. An unconsumed
+        // condition is ALWAYS revisited: runtime_unknown can mature into an
+        // alert solely because its dwell clock expired.
+        conditionKeyNow:=""
+        if condition,ok:=item["notification_condition"].(map[string]any); ok && len(condition)>0 {
+            conditionKeyNow=toString(condition["key"])
+            if conditionKeyNow=="" {
+                conditionKeyNow=toString(condition["kind"])+"\x00"+toString(condition["reason_type"])
+            }
+        }
+        if seen && !baseline &&
+            previous.FileState==fileState && previous.UpdatedAt==updatedAt &&
+            previous.StartedAt==startedAt && previous.ConditionKey==conditionKeyNow &&
+            previous.ConditionConsumed && (startedAt=="" || phase>=20) &&
+            (fileState!="done" || phase>=40) && phase>=10 {
+            continue
+        }
         if previous.FileState=="done" { phase=maxNotificationPhase(phase,40) }
         if baseline {
             phase=maxNotificationPhase(phase,10)
