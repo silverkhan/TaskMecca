@@ -20,7 +20,8 @@ import (
 // identify its own attempt, but must not infer a different actor's execution.
 func runActivityCLI(args []string,out,errOut io.Writer) int {
     callStarted:=time.Now()
-    if len(args)==0 {fmt.Fprintln(errOut,"activity requires start, switch, stop, history or status");return 2}
+    if len(args)==0 {fmt.Fprintln(errOut,"activity requires start, switch, stop, history, status, suggest or run");return 2}
+    if args[0]=="run" {return runActivityCommand(args[1:],out,errOut)}
     action:=args[0]
     fs:=flag.NewFlagSet("activity "+action,flag.ContinueOnError)
     fs.SetOutput(errOut)
