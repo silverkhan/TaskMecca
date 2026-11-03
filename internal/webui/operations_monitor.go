@@ -729,7 +729,7 @@ func ensureOperationNotificationFeed(project string) {
 	if err != nil {
 		return
 	}
-	ensureAttentionFeed(project, selected)
+	ensureDurableAttentionFeed(project, selected)
 }
 
 func scanOperationProjects(primary string, now time.Time) {
@@ -740,7 +740,9 @@ func scanOperationProjects(primary string, now time.Time) {
 // preserves operation-gap evidence. Only subsequent periodic scans are best
 // effort, allowing an active backlog HTTP request to finish first.
 func scanOperationProjectsWithPriority(primary string, now time.Time, background bool) []string {
-    return scanOperationProjectList(operationProjects(primary),now,background)
+    projects := operationProjects(primary)
+    reconcileAttentionFeedProjects(projects)
+    return scanOperationProjectList(projects,now,background)
 }
 
 func scanOperationProjectList(projects []string, now time.Time, background bool) []string {

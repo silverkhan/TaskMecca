@@ -19,6 +19,8 @@ type attentionFeed struct {
 	project     string
 	root        string
 	stopCh      chan struct{}
+    // Governed by attentionFeeds.Mutex. UI subscribers do not own a durable loop.
+    durable bool
 	doneCh      chan struct{}
 	mu          sync.Mutex
 	latest      []byte
@@ -71,6 +73,68 @@ func ensureAttentionFeed(project, root string) *attentionFeed {
 	attentionFeeds.Unlock()
 	go feed.run()
 	return feed
+}
+
+// A browser-only feed is deleted as soon as its last subscriber leaves.
+// Exactly one canonical root per monitored project owns persistent Telegram
+// notification reconciliation, independently of any browser subscription.
+func ensureDurableAttentionFeed(project, root string) *attentionFeed {
+    key := project + "\x00" + root
+    attentionFeeds.Lock()
+    defer attentionFeeds.Unlock()
+    for oldKey, old := range attentionFeeds.feeds {
+        if old.project != project || oldKey == key || !old.durable { continue }
+        old.durable = false
+        old.mu.Lock()
+        unused := len(old.subscribers) == 0
+        old.mu.Unlock()
+        if unused { stopAttentionFeedLocked(oldKey, old) }
+    }
+    feed := attentionFeeds.feeds[key]
+    if feed == nil {
+        feed = &attentionFeed{project:project, root:root,stopCh:make(chan struct{}),doneCh:make(chan struct{}),subscribers:map[chan []byte]struct{}{}}
+        attentionFeeds.feeds[key] = feed
+        go feed.run()
+    }
+    feed.durable = true
+    return feed
+}
+
+// Must be called with attentionFeeds locked. Closing subscriptions wakes
+// stale SSE requests so a removed project cannot keep a client loop alive.
+func stopAttentionFeedLocked(key string, feed *attentionFeed) {
+    if attentionFeeds.feeds[key] != feed { return }
+    delete(attentionFeeds.feeds, key)
+    close(feed.stopCh)
+    feed.mu.Lock()
+    for ch := range feed.subscribers {
+        delete(feed.subscribers, ch)
+        close(ch)
+    }
+    feed.mu.Unlock()
+}
+
+func stopProjectAttentionFeeds(project string) {
+    attentionFeeds.Lock()
+    defer attentionFeeds.Unlock()
+    for key,feed := range attentionFeeds.feeds {
+        if feed.project == project { stopAttentionFeedLocked(key, feed) }
+    }
+}
+
+// Registry changes are reconciled even when no UI is connected. A project
+// with monitoring paused/removed has no background attention goroutines.
+func reconcileAttentionFeedProjects(active []string) {
+    // A temporary registry read failure is not evidence of removal. Avoid
+    // stopping healthy project feeds when management metadata is unavailable.
+    if _, err := maintenance.ManagedProjects(); err != nil { return }
+    allowed := make(map[string]bool,len(active))
+    for _, project := range active { allowed[project] = true }
+    attentionFeeds.Lock()
+    defer attentionFeeds.Unlock()
+    for key,feed := range attentionFeeds.feeds {
+        if !allowed[feed.project] { stopAttentionFeedLocked(key,feed) }
+    }
 }
 
 func (f *attentionFeed) refresh() {
@@ -163,6 +227,7 @@ func (f *attentionFeed) refreshActive() {
 
 func (f *attentionFeed) run() {
 	defer close(f.doneCh)
+    select { case <-f.stopCh: return; default: }
 	f.refresh()
 	ticker := time.NewTicker(3 * time.Second)
 	defer ticker.Stop()
@@ -177,18 +242,37 @@ func (f *attentionFeed) run() {
 }
 
 func (f *attentionFeed) subscribe() (chan []byte, []byte, func()) {
-	ch := make(chan []byte, 4)
+    ch := make(chan []byte, 4)
+    // A project may be removed between ensureAttentionFeed and subscribe.
+    // Serialize with registry teardown so a stopped feed cannot gain clients.
+    attentionFeeds.Lock()
+    if attentionFeeds.feeds[f.project+"\x00"+f.root] != f && f.stopCh != nil {
+        close(ch)
+        attentionFeeds.Unlock()
+        return ch, nil, func(){}
+    }
 	f.mu.Lock()
 	f.subscribers[ch] = struct{}{}
 	initial := append([]byte{}, f.latest...)
 	f.mu.Unlock()
+    attentionFeeds.Unlock()
 	cancel := func() {
 		f.mu.Lock()
 		if _, ok := f.subscribers[ch]; ok {
 			delete(f.subscribers, ch)
 			close(ch)
 		}
-		f.mu.Unlock()
+        f.mu.Unlock()
+        // Serialise deletion with feed creation. The unsubscribe callback
+        // may race pause/archival, where the channel was already closed.
+        attentionFeeds.Lock()
+        f.mu.Lock()
+        unused := len(f.subscribers)==0
+        f.mu.Unlock()
+        if unused && !f.durable {
+            stopAttentionFeedLocked(f.project+"\x00"+f.root,f)
+        }
+        attentionFeeds.Unlock()
 	}
 	return ch, initial, cancel
 }

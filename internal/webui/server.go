@@ -277,7 +277,7 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 	// root is empty the periodic snapshot will discover the canonical backlog
 	// as soon as Registrar creates it.
 	if !PreviewMode() && !isGlobalWebRoot(project) {
-		ensureAttentionFeed(project, monitorRoot)
+		ensureDurableAttentionFeed(project, monitorRoot)
 		// Web can start before "task-mecca init" (the documented onboarding
 		// order). Do not create _task_mecca/.runtime in an uninitialized or
 		// unregistered primary project: install.Init must see a clean target.
@@ -684,6 +684,10 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 
 	mux.HandleFunc("/api/events", func(w http.ResponseWriter, r *http.Request) {
 		activeProject := projectFor(r)
+        if !maintenance.ProjectMonitoringAllowed(activeProject) {
+            http.Error(w, "project monitoring is paused or unavailable", http.StatusConflict)
+            return
+        }
 		activeCtx, ctxErr := webContext(activeProject, "")
 		if ctxErr != nil {
 			http.Error(w, ctxErr.Error(), 500)
@@ -1447,18 +1451,21 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 		case "unregister":
 			err := maintenance.SetProjectMonitoring(body.Path, false)
 			if err == nil {
+                stopProjectAttentionFeeds(body.Path)
 				writeJSON(w, map[string]any{"result": "monitoring_paused"}, 200)
 				return
 			}
 		case "register":
 			err := maintenance.SetProjectMonitoring(body.Path, true)
 			if err == nil {
+                ensureOperationNotificationFeed(body.Path)
 				writeJSON(w, map[string]any{"result": "monitoring_resumed"}, 200)
 				return
 			}
 		case "archive":
 			record, removeErr := maintenance.ArchiveProject(body.Path)
 			if removeErr == nil {
+                stopProjectAttentionFeeds(body.Path)
 				writeJSON(w, record, 200)
 				return
 			} else {
@@ -1467,12 +1474,14 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 		case "add":
 			err = maintenance.RegisterProject(body.Path)
 			if err == nil {
+                ensureOperationNotificationFeed(body.Path)
 				writeJSON(w, map[string]any{"result": "registered"}, 200)
 				return
 			}
 		case "restore":
 			err = maintenance.RestoreArchivedProject(body.HistoryID, body.Path)
 			if err == nil {
+                ensureOperationNotificationFeed(body.Path)
 				writeJSON(w, map[string]any{"result": "restored"}, 200)
 				return
 			}
