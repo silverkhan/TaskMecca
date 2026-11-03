@@ -463,9 +463,6 @@ func scanOperationProject(project string, now time.Time) (operationJournal, erro
     if ctx, ctxErr := webContext(project, ""); ctxErr == nil {
         if selected, _, selectErr := resolveBacklog(project, ctx, url.Values{}); selectErr == nil && selected != "" {
             if assignments, assignmentErr := backlog.MonitoringAssignments(project, selected); assignmentErr == nil {
-                if os.Getenv("TASK_MECCA_OPERATION_HELPER") == "1" {
-                    fmt.Fprintf(os.Stderr, "operation helper monitoring assignments: %d selected=%s\\n",len(assignments),selected)
-                }
                 linkedTasks := make(map[string]bool, len(ledger.Attempts))
                 for _, attempt := range ledger.Attempts {
                     linkedTasks[strings.ToUpper(attempt.TaskID)] = true
@@ -483,8 +480,7 @@ func scanOperationProject(project string, now time.Time) (operationJournal, erro
             }
         }
     }
-    if os.Getenv("TASK_MECCA_OPERATION_HELPER") == "1" { fmt.Fprintf(os.Stderr,"operation helper generated signals=%d journal=%d\\n",len(signals),len(journal.Incidents)) }
-    recordMonitorPerf("operation_monitor_assignments", time.Since(workloadStarted), len(ledger.Attempts), 0, false, false)
+recordMonitorPerf("operation_monitor_assignments", time.Since(workloadStarted), len(ledger.Attempts), 0, false, false)
 	for _, stage := range stages {
 		if stage.Stage == "worker_running" || stage.Stage == "runtime_observation_pending" || stage.Stage == "handoff_applied" || stage.Stage == "controller_verified_complete" || stage.deferred(now) {
 			continue
@@ -735,9 +731,12 @@ func scanOperationProjects(primary string, now time.Time) {
 // The first scan after a Web restart is mandatory: it detects downtime and
 // preserves operation-gap evidence. Only subsequent periodic scans are best
 // effort, allowing an active backlog HTTP request to finish first.
-func scanOperationProjectsWithPriority(primary string, now time.Time, background bool) {
-    projects := operationProjects(primary)
-    if os.Getenv("TASK_MECCA_OPERATION_HELPER") == "1" {fmt.Fprintf(os.Stderr,"operation helper tick project_count=%d background=%v\\n",len(projects),background)}
+func scanOperationProjectsWithPriority(primary string, now time.Time, background bool) []string {
+    return scanOperationProjectList(operationProjects(primary),now,background)
+}
+
+func scanOperationProjectList(projects []string, now time.Time, background bool) []string {
+    skippedProjects := []string{}
     for _, project := range projects {
         start := time.Now()
         executed := false
@@ -758,10 +757,11 @@ func scanOperationProjectsWithPriority(primary string, now time.Time, background
             maintenance.WithProjectMonitoring(project, work)
         }
         if !executed {
-            if os.Getenv("TASK_MECCA_OPERATION_HELPER") == "1" {fmt.Fprintf(os.Stderr,"operation helper tick skipped\\n")}
+            skippedProjects = append(skippedProjects, project)
             recordMonitorPerf("operation_skipped", time.Since(start), 0, 0, false, true)
         }
     }
+    return skippedProjects
 }
 
 func runOperationMonitor(ctx stdcontext.Context, primary string) {
@@ -773,7 +773,18 @@ func runOperationMonitor(ctx stdcontext.Context, primary string) {
 		case <-ctx.Done():
 			return
 		case now := <-ticker.C:
-			scanOperationProjectsWithPriority(primary, now.UTC(),true)
+            // A busy attention/backlog operation can temporarily hold the
+            // shared project monitoring gate. Retry only the skipped targets
+            // shortly instead of deferring their observation by a full 15s.
+            pending := scanOperationProjectsWithPriority(primary, now.UTC(),true)
+            for retry := 0; retry < 6 && len(pending) > 0; retry++ {
+                select {
+                case <-ctx.Done():
+                    return
+                case <-time.After(time.Second):
+                }
+                pending = scanOperationProjectList(pending,time.Now().UTC(),true)
+            }
 		}
 	}
 }
