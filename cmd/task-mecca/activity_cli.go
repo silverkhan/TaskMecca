@@ -34,7 +34,7 @@ func runActivityCLI(args []string,out,errOut io.Writer) int {
     evidence:=fs.String("evidence","","source evidence")
     explain:=fs.String("explanation","","required for other activity")
     proposed:=fs.String("proposed-type","","suggested type for other activity")
-    round:=fs.Int("round",0,"zero for initial execution; positive for rework")
+    round:=fs.Int("round",-1,"default auto from observed review evidence; explicit 0 for initial work")
     eventName:=fs.String("event","","decision or work phase event for suggest")
     reviewOutcome:=fs.String("review-outcome","","accepted|rejected|needs_changes; Controller review stop only")
     runCommand:=fs.String("command","","test/build command")
@@ -77,28 +77,35 @@ func runActivityCLI(args []string,out,errOut io.Writer) int {
         fmt.Fprintln(errOut,"--role, --agent, --attempt (or exact runtime env) required");return 2
     }
     task:=fs.Arg(0)
+    // Auto-classify revision round only from explicit Controller review outcomes.
+    // A new worker attempt starts in the number of rejected/needs-changes rounds
+    // observed for this exact backlog. Switch/stop continue the same round.
+    if *round<0 || (action=="stop" && *kind==""){
+        rows,readErr:=store.List(task)
+        if readErr!=nil{fmt.Fprintln(errOut,readErr);return 1}
+        if action=="start" && *round<0{
+            review:=activity.SummarizeReviews(rows,nil)
+            *round=review.SuggestedNextRound
+        }else{
+            for i:=len(rows)-1;i>=0;i--{
+                prev:=rows[i]
+                if string(prev.Role)==*role && prev.AgentID==*agent && prev.RuntimeAttemptID==*attempt && prev.Action!=activity.Correct{
+                    if prev.Action!=activity.Stop && prev.Action!=activity.Abandon{
+                        if *round<0{*round=prev.Round}
+                        if action=="stop" && *kind==""{*kind=string(prev.Type)}
+                    }
+                    break
+                }
+            }
+        }
+        if *round<0{*round=0}
+    }
     if prior,readErr:=store.Read(*eventID);readErr==nil {
-        if prior.TaskID==task && string(prior.Action)==action && string(prior.Role)==*role && prior.AgentID==*agent && prior.RuntimeAttemptID==*attempt && prior.AssignmentID==*assignment && prior.HandoffID==*handoffID && prior.ReviewOutcome==*reviewOutcome && (*kind=="" || string(prior.Type)==*kind) {
+        if prior.TaskID==task && string(prior.Action)==action && string(prior.Role)==*role && prior.AgentID==*agent && prior.RuntimeAttemptID==*attempt && prior.AssignmentID==*assignment && prior.HandoffID==*handoffID && prior.ReviewOutcome==*reviewOutcome && prior.Round==*round && prior.Evidence==*evidence && (*kind=="" || string(prior.Type)==*kind) {
             emit(map[string]any{"ok":true,"recorded":false,"event":prior});return 0
         }
         fmt.Fprintln(errOut,"event-id already belongs to another activity");return 3
     } else if !os.IsNotExist(readErr) {fmt.Fprintln(errOut,readErr);return 1}
-    // Stop can infer the active type/round, but the recorder revalidates the
-    // transition under its canonical write lock before publishing.
-    if action=="stop" && *kind=="" {
-        rows,readErr:=store.List(task)
-        if readErr!=nil{fmt.Fprintln(errOut,readErr);return 1}
-        for i:=len(rows)-1;i>=0;i-- {
-            prior:=rows[i]
-            if string(prior.Role)==*role && prior.AgentID==*agent && prior.RuntimeAttemptID==*attempt {
-                if prior.Action!=activity.Stop && prior.Action!=activity.Correct {
-                    *kind=string(prior.Type);*round=prior.Round
-                }
-                break
-            }
-        }
-        if *kind==""{fmt.Fprintln(errOut,"no active type to stop");return 2}
-    }
     if strings.TrimSpace(*evidence)==""{
         fmt.Fprintln(errOut,"--evidence required; agent reports are not authoritative Hook evidence");return 2
     }
