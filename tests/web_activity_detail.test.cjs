@@ -193,3 +193,18 @@ test('Gantt groups waiting separately and never assumes an unbound agent',()=>{
  assert.match(html,/대기 구간/);
  assert.match(html,/작업 착수 대기/);
 });
+
+test('Activity refresh timestamp is explicitly API-read time, not source freshness',()=>{
+ const a=page();const data=payload();data._client_fetched_at='2026-11-04T07:00:00Z';
+ const html=a.activityMetricsBody(data,'B-589');
+ assert.match(html,/마지막 조회:/);
+ assert.match(html,/원천 데이터의 최종 변경 시각을 의미하지 않습니다/);
+});
+test('exact attempt groups translate role but preserve actor identity',()=>{
+ const a=page();const data=payload();
+ data.summary.segments=[{type:'implementation',role:'registrar',agent_id:'registrar-1',attempt_id:'attempt-1',round:0,started_at:shift(0),ended_at:shift(2),duration_ms:120000}];
+ a.activityDetailPrefs('B-589').groupAgents=true;
+ const html=a.activityMetricsBody(data,'B-589');
+ assert.match(html,/등록 담당 · registrar-1/);
+ assert.match(html,/실행 attempt-1/);
+});
