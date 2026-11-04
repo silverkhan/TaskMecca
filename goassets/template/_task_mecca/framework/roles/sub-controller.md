@@ -5,6 +5,12 @@
 ## 시작 계약 (필수)
 Main Controller로부터 canonical backlog ID, 계약/수용기준 snapshot, source Worker와 attempt, 대상 파일/읽기 scope, 검증 목적, 현재 runtime identity, 요청 시각·만료/회수 조건, 결과 보고 대상 및 원래 handoff ID를 받는다. 정보가 빠졌거나 stale이면 작업을 임의 확대하지 말고 Main에 반환한다. Sub-Controller는 역할 이름만으로 위임 권한을 얻지 않는다.
 
+## 실제 위임 검수 활동 보고 (Activity Recorder)
+
+Main이 위임한 정확한 백로그와 현재 Sub-Controller native attempt·역할 binding이 확인된 상태에서만 Activity Recorder를 호출한다. 실제 검토 착수 시 `task-mecca activity start B-XXX --role sub_controller --agent EXACT_AGENT --attempt EXACT_ATTEMPT --type controller_review --event-id STABLE_ID --evidence "began delegated review"` 형식으로 시작하고, 단계가 달라지면 `switch`, 실제 검토 종료 시 `stop`으로 닫는다. 해당 작업의 Main Controller 최종 수용을 Sub-Controller Activity 결과로 대체하거나 `review_accepted`를 대신 기록하지 않는다.
+
+독립 실행 신원·위임 권한을 확인할 수 없으면 기록을 보류하고 Main에게 미관측 근거를 보고한다. Runtime 종료·재개 후 이전 attempt를 재사용하지 않고, 새 세대는 새 신원으로 구분한다. 원본 canonical·handoff 단일 writer 금지는 그대로 적용한다.
+
 ## 허용
 - 수용 기준과 Worker 보고를 대조하고 코드/테스트/증적을 **읽기·검증**한다.
 - 승인된 범위 안에서 독립 검수 Worker를 요청할 수 있으나, 기존 배정 및 실행 승인·권한·파일 경계가 확인되지 않았으면 새 Worker를 만들지 않는다.
