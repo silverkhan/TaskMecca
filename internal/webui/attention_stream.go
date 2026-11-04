@@ -21,6 +21,9 @@ type attentionFeed struct {
 	stopCh      chan struct{}
     // Governed by attentionFeeds.Mutex. UI subscribers do not own a durable loop.
     durable bool
+    // Only the background worker reads or writes these fields, never SSE.
+    quiescentCandidate bool
+    snapshotMemo *attentionSnapshotMemo
 	doneCh      chan struct{}
 	mu          sync.Mutex
 	latest      []byte
@@ -156,12 +159,34 @@ func (f *attentionFeed) tryRefresh() bool {
 
 func (f *attentionFeed) refreshActive() {
     start := time.Now()
-    payload, profile, err := backlog.AttentionSnapshotWithProfile(f.project, f.root, true)
+    var sources []attentionSourceStamp
+    var sourceValid bool
+    if f.snapshotMemo!=nil || f.quiescentCandidate {
+        sources,sourceValid=attentionSourceInventory(f.project,f.root)
+    }
+    payload,reused:=reuseAttentionSnapshot(f.snapshotMemo,sources,sourceValid,time.Now())
+    var profile map[string]float64
+    var err error
+    if !reused {
+        var idle bool
+        payload,profile,idle,err=backlog.AttentionSnapshotWithProfileAndEligibility(f.project,f.root,true)
+        f.snapshotMemo=nil
+        if err==nil && idle && f.quiescentCandidate && sourceValid {
+            after,valid:=attentionSourceInventory(f.project,f.root)
+            if valid && sameAttentionSources(sources,after) {
+                f.snapshotMemo=&attentionSnapshotMemo{sources:after,at:time.Now(),payload:payload}
+            }
+        }
+        f.quiescentCandidate=idle && err==nil
+        // These are subphases of an actual canonical computation, not of
+        // fingerprint-only cache reuse. Preserve meaningful sample averages.
+        recordMonitorPerf("attention_control_runtime", time.Duration(profile["runtime"]*float64(time.Millisecond)), 0, 0, false, false)
+        recordMonitorPerf("attention_control_lifecycle", time.Duration(profile["lifecycle_git"]*float64(time.Millisecond)), 0, 0, false, false)
+        recordMonitorPerf("attention_control_activity", time.Duration(profile["activity_handoff"]*float64(time.Millisecond)), 0, 0, false, false)
+    } else {
+        recordMonitorPerf("attention_snapshot_reused", time.Since(start), 0, 0, false, true)
+    }
     recordMonitorPerf("attention_snapshot", time.Since(start), 0, 0, false, false)
-    // These are subphases of attention_snapshot; never add to its total.
-    recordMonitorPerf("attention_control_runtime", time.Duration(profile["runtime"]*float64(time.Millisecond)), 0, 0, false, false)
-    recordMonitorPerf("attention_control_lifecycle", time.Duration(profile["lifecycle_git"]*float64(time.Millisecond)), 0, 0, false, false)
-    recordMonitorPerf("attention_control_activity", time.Duration(profile["activity_handoff"]*float64(time.Millisecond)), 0, 0, false, false)
 	if err != nil {
 		payload = map[string]any{"error": err.Error(), "attention": []map[string]any{}, "all_items": map[string]map[string]any{}, "notification_events": []map[string]any{}}
 	}
