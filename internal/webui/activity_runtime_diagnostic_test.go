@@ -64,3 +64,20 @@ func TestActivityRuntimeDiagnosticDeduplicatesUnmatchedEventIDs(t *testing.T){
     got:=summarizeActivityRuntimeEvidence("B-602",nil,events)
     if got.ActivityWithoutRuntime!=1{t.Fatalf("duplicate unmatched event overcount %+v",got)}
 }
+
+func TestRuntimeDiagnosticRecentHookEvidenceDoesNotClaimContinuousWork(t *testing.T){
+    a:=runtimeobs.Attempt{
+        AttemptID:"a",TaskID:"B-602",RuntimeAgentID:"worker-1",BindingState:runtimeobs.BindingBound,
+        RecentTransitions:[]runtimeobs.Transition{
+            {At:"2026-11-04T07:00:00Z",EvidenceSource:runtimeobs.EvidenceHook},
+            {At:"2026-11-04T07:05:00Z",EvidenceSource:runtimeobs.EvidenceManualBinding},
+            {At:"2026-11-04T07:08:00Z",EvidenceSource:runtimeobs.EvidenceHook},
+        },
+    }
+    got:=summarizeActivityRuntimeEvidence("B-602",[]runtimeobs.Attempt{a},nil)
+    if len(got.Attempts)!=1||got.Attempts[0].RecentHookTransitions!=2||
+       got.Attempts[0].LatestRecentHookAt!="2026-11-04T07:08:00Z"||
+       got.WithoutActivity!=1{
+       t.Fatalf("unexpected recent provenance %+v",got)
+    }
+}
