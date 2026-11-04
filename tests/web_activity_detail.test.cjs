@@ -208,3 +208,16 @@ test('exact attempt groups translate role but preserve actor identity',()=>{
  assert.match(html,/등록 담당 · registrar-1/);
  assert.match(html,/실행 attempt-1/);
 });
+
+test('all Activity timing views present explicit units in Korean',()=>{
+ const a=page(),data=payload();
+ data.summary.by_type_ms={requirements:120000,implementation:180000};
+ data.lifecycle_coverage.wait_activity_overlap_ms=26000;
+ data.test_report={runs:[{}],full_regression_ms:65000,full_regression_count:1,repetition_candidates:0};
+ const html=a.activityMetricsBody(data,'B-589');
+ assert.match(html,/요구사항 분석/);
+ assert.match(html,/2분/);
+ assert.match(html,/활동·대기 근거 겹침: 26초/);
+ assert.match(html,/1분 5초/);
+ assert.doesNotMatch(html,/00:26/);
+});
