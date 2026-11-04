@@ -5848,7 +5848,12 @@ function activityMetricsBody(payload,taskID=state.detail){
     [ko?'최초 Controller 검토':'Initial controller review',s.controller_first_review_ms],
     [ko?'재검토 합계':'Rereview total',s.controller_rereview_ms],
   ];
-  const boxes='<div class="activity-metric-grid">'+metrics.map(([label,ms])=>'<div class="activity-metric"><strong>'+esc(ms==null?'—':activityDisplayDuration(ms,ko))+'</strong><span>'+esc(label)+'</span></div>').join('')+'</div>';
+  const workerObserved=segments.some(x=>String(x.role).toLowerCase()==='worker');
+  const boxes='<div class="activity-metric-grid">'+metrics.map(([label,ms],idx)=>{
+    const missingWorker=(idx===2||idx===3)&&!workerObserved&&!s.open_activities;
+    const display=missingWorker?(ko?'기록 없음':'Not observed'):(ms==null?'—':activityDisplayDuration(ms,ko));
+    return '<div class="activity-metric"><strong>'+esc(display)+'</strong><span>'+esc(label)+'</span></div>';
+  }).join('')+'</div>';
   const totals=Object.entries(s.by_type_ms||{}).filter(([,ms])=>ms>0).sort((a,b)=>b[1]-a[1]);
   const all=totals.reduce((sum,[,ms])=>sum+ms,0);
   const byType=totals.length?'<h3>'+esc(ko?'활동 유형별 누적 (전체 회차)':'Cumulative by activity (all rounds)')+'</h3><div class="activity-type-bars">'+
@@ -5916,22 +5921,33 @@ function activityMetricsBody(payload,taskID=state.detail){
   ]:[];
   const lifetimeView=lifetimeMetrics.length?'<h3>'+esc(ko?'Lifecycle 기반 경과·대기 분석':'Lifecycle elapsed and waiting analysis')+'</h3>'+
     '<div class="activity-metric-grid">'+lifetimeMetrics.map(([label,ms])=>'<div class="activity-metric"><strong>'+esc(ms==null?'—':activityDisplayDuration(ms,ko))+'</strong><span>'+esc(label)+'</span></div>').join('')+'</div>'+
-    '<p class="summary">'+esc(ko?'Lifecycle 보고를 근거로 계산한 경과시간입니다. CPU 사용시간이나 Task Mecca 원인 지연을 의미하지 않습니다.':'Lifecycle durations are not CPU time or proof of Task Mecca overhead.')+'</p>'+
+    '<p class="summary">'+esc(ko?'Lifecycle 등록~완료 범위를 기준으로 한 경과·대기입니다. 아래 Gantt는 관측 가능한 활동·대기 구간만 표시하므로 시작·종료 시각과 전체 길이가 다를 수 있습니다. 각 시간은 중첩될 수 있어 합산하지 않습니다. CPU 사용시간이나 Task Mecca 원인 지연을 의미하지 않습니다.':'Lifecycle measures registered-to-completed elapsed and waits. The Gantt covers only observed activity and wait intervals, so its endpoints may differ. Intervals can overlap and must not be summed. Not CPU time or evidence of Task Mecca-induced delay.')+'</p>'+
     ((lc.wait_activity_overlap_ms||0)>0?'<p class="timing-note warning">'+esc(ko?'활동·대기 근거 겹침: ':'Activity/wait overlap: ')+esc(activityDuration(lc.wait_activity_overlap_ms))+'</p>':''):'';
   const unknown=(s.open_activities||s.invalid_transitions||s.invalid_corrections||lc.open_wait_count||payload.lifecycle_findings)?
     '<p class="timing-note warning">'+esc(ko?'미확정: 열린 활동 '+(s.open_activities||0)+'건 · 잘못된 전환 '+(s.invalid_transitions||0)+'건 · 정정 오류 '+(s.invalid_corrections||0)+'건 · 열린 대기 '+(lc.open_wait_count||0)+'건. 불명확한 구간은 임의 계산하지 않았습니다.':
      'Incomplete evidence: open activities '+(s.open_activities||0)+', invalid transitions '+(s.invalid_transitions||0)+', invalid corrections '+(s.invalid_corrections||0)+', open waits '+(lc.open_wait_count||0)+'. Unknown intervals are not estimated.')+'</p>':'';
   const unclassified=events.filter(e=>e.type==='other'&&e.action!=='correct').slice(-30);
-  const unclassifiedView=unclassified.length?'<h3>'+esc(ko?'미분류 활동 및 Agent 제안':'Unclassified activity suggestions')+'</h3><div class="activity-unclassified">'+unclassified.map(e=>
-    '<div class="activity-unclassified-item"><strong>'+esc(e.proposed_type||'other')+'</strong> · '+esc(e.agent_id||'-')+
-      '<p>'+esc(e.explanation||'-')+'</p><small>'+esc(e.confidence||'unknown')+' · '+esc(e.evidence||'-')+'</small></div>').join('')+'</div>':'';
+  const unclassifiedGroups=new Map();
+  for(const e of unclassified){
+    const key=JSON.stringify([e.proposed_type||'other',e.agent_id||'-']);
+    if(!unclassifiedGroups.has(key))unclassifiedGroups.set(key,[]);
+    unclassifiedGroups.get(key).push(e);
+  }
+  const unclassifiedView=unclassified.length?'<h3>'+esc(ko?'미분류 활동 및 Agent 제안':'Unclassified activity suggestions')+'</h3><div class="activity-unclassified">'+
+    [...unclassifiedGroups.values()].map(group=>{
+      const first=group[0],label=activityDisplayType(first.proposed_type||'other',ko);
+      return '<details class="activity-unclassified-item"><summary><strong title="'+esc(first.proposed_type||'other')+'">'+esc(label)+'</strong> · '+
+        esc(group.length+(ko?'건':' records'))+'</summary>'+
+        group.map(e=>'<div><small>'+esc(e.agent_id||'-')+' · '+esc(e.confidence==='inferred'?(ko?'Agent 추정':'Agent inferred'):(e.confidence||'unknown'))+
+          '</small><p>'+esc(e.explanation||'-')+'</p><small>'+esc(e.evidence||'-')+'</small></div>').join('')+'</details>';
+    }).join('')+'</div>':'';
   const tr=payload.test_report||{};
   const testOverview=tr.runs&&tr.runs.length?'<h3>'+esc(ko?'검증·빌드 실행 분석':'Test and build executions')+'</h3>'+
     '<div class="activity-metric-grid">'+
     '<div class="activity-metric"><strong>'+esc(activityDuration(tr.full_regression_ms))+'</strong><span>'+esc(ko?'전체 회귀 누적':'Full regression total')+'</span></div>'+
     '<div class="activity-metric"><strong>'+esc(String(tr.full_regression_count||0))+'</strong><span>'+esc(ko?'전체 회귀 횟수':'Full regression count')+'</span></div>'+
     '<div class="activity-metric"><strong>'+esc(String(tr.repetition_candidates||0))+'</strong><span>'+esc(ko?'동일 SHA·명령·범위 재실행 후보':'Repeat candidates')+'</span></div></div>'+
-    '<p class="summary">'+esc(ko?'반복 후보는 불필요한 테스트로 확정된 것이 아닙니다.':'Repeated test candidates are not necessarily wasteful.')+'</p>':'';
+    '<p class="summary">'+esc(ko?'반복 후보는 불필요한 테스트로 확정된 것이 아닙니다.':'Repeated test candidates are not necessarily wasteful.')+'</p>':(tr.runs?'<p class="summary">'+esc(ko?'이 분석 범위에 연결된 검증·빌드 실행 기록이 없습니다. 실제 실행 여부와 CI 연계 상태는 별도로 확인해야 합니다.':'No test or build execution evidence is linked to this scope. Actual execution and CI linkage require separate confirmation.')+'</p>':'');
   const lastRows=events.slice(-ACTIVITY_DETAIL_MAX_LEDGER).reverse();
   const ledger='<details id="activityLedgerDetail"'+(prefs.ledger?' open':'')+'><summary>'+esc(ko?'Activity 원장 상세':'Activity event ledger')+
       ' ('+events.length+')</summary>'+
@@ -5943,7 +5959,8 @@ function activityMetricsBody(payload,taskID=state.detail){
        (e.supersedes_id?'<small>'+esc((ko?'정정 대상: ':'Supersedes: ')+e.supersedes_id)+'</small>':'')+
        '</td><td>'+esc(e.evidence||'—')+'<small>'+esc((e.source||'—')+' · '+(e.confidence||'—'))+'</small></td></tr>').join('')+
       '</tbody></table></div>'+((events.length>ACTIVITY_DETAIL_MAX_LEDGER)?'<p class="summary">'+esc(ko?'최신 '+ACTIVITY_DETAIL_MAX_LEDGER+'건을 표시합니다. 전체 원장은 Activity API에서 조회할 수 있습니다.':'Showing the latest '+ACTIVITY_DETAIL_MAX_LEDGER+' records; the API retains the full ledger.')+'</p>':'')+'</details>';
-  const gap=s.unattributed_gap_ms>0?'<p class="summary">'+esc(ko?'활동 관측 범위 내 미귀속 시간: ':'Unattributed within activity span: ')+esc(activityDuration(s.unattributed_gap_ms))+'</p>':'';
+  const gap=s.unattributed_gap_ms>0?'<p class="summary">'+esc(ko?'활동 관측 구간 내 기록 공백: ':'Unattributed within observed activity span: ')+esc(activityDisplayDuration(s.unattributed_gap_ms,ko))+
+    ' <span title="'+esc(ko?'첫 관측 활동부터 마지막 관측 활동까지의 범위에서 원장 활동이 차지하지 않는 시간입니다. 등록~완료 전체 경과의 미귀속 시간과 기준 범위가 다르며 합산할 수 없습니다.':'Unattributed time inside the observed activity window; differs from lifecycle elapsed unknown, and must not be added to it.')+'">ⓘ</span></p>':'';
   return settings+boxes+lifetimeView+byType+chart+'<p class="summary">'+esc(chartNote)+'</p>'+trimNote+
     testOverview+unclassifiedView+gap+unknown+ledger;
 }

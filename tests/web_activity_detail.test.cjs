@@ -99,3 +99,31 @@ test('timeline title contains measured duration and original endpoints',()=>{
  assert.match(html,/aria-label="[^"]*2분/);
  assert.match(html,/작업시간|요구사항 분석/);
 });
+
+test('missing worker evidence is distinct from confirmed zero',()=>{
+ const a=page();const data=payload();
+ data.summary.segments=[{type:'controller_review',role:'controller',round:0,started_at:shift(0),ended_at:shift(1),duration_ms:60000}];
+ data.summary.initial_worker_ms=0;data.summary.rework_worker_ms=0;
+ const html=a.activityMetricsBody(data,'B-589');
+ assert.match(html,/기록 없음/);
+ assert.match(html,/최초 Worker 작업/);
+});
+test('lifecycle window and activity coverage explain their distinct timing bases',()=>{
+ const a=page();const data=payload();
+ data.summary.unattributed_gap_ms=120000;
+ const html=a.activityMetricsBody(data,'B-589');
+ assert.match(html,/등록~완료 범위를 기준/);
+ assert.match(html,/기록 공백/);
+ assert.match(html,/합산하지 않습니다/);
+});
+test('unclassified suggested types are grouped with escaped evidence',()=>{
+ const a=page();const data=payload();data.events=[
+ {type:'other',action:'start',proposed_type:'registration_authorization',agent_id:'agent-1',confidence:'inferred',explanation:'<svg/onload=alert(1)>',evidence:'first'},
+ {type:'other',action:'stop',proposed_type:'registration_authorization',agent_id:'agent-1',confidence:'inferred',explanation:'second',evidence:'second'}
+ ];
+ const html=a.activityMetricsBody(data,'B-589');
+ assert.match(html,/작업 실행 승인/);
+ assert.match(html,/2건/);
+ assert.match(html,/Agent 추정/);
+ assert.doesNotMatch(html,/<svg\/onload/);
+});
