@@ -2260,33 +2260,33 @@ select.tm-combo-native{position:absolute!important;width:1px!important;height:1p
 :root[data-palette="glass"][data-theme="dark"]{
   color-scheme:dark;
   --bg:#1d1b1d;
-  --surface:rgba(67,59,55,.49);
-  --surface2:rgba(93,82,76,.53);
-  --surface-raised:rgba(116,101,91,.43);
+  --surface:rgba(34,29,30,.42);
+  --surface2:rgba(42,36,37,.35);
+  --surface-raised:rgba(65,54,51,.43);
   --text:#f8f4ed;
   --muted:#d0c4b8;
-  --border:rgba(249,236,214,.29);
+  --border:rgba(255,244,228,.38);
   --accent:#edcda5;
   --accent-soft:rgba(239,203,156,.20);
   --danger:#ff9c9c;
   --warn:#f2c17b;
   --ok:#a0dcb8;
   --shadow:0 13px 36px rgba(17,12,13,.23);
-  --glass-panel:rgba(76,66,61,.33);
-  --glass-chrome:rgba(47,41,41,.40);
-  --glass-top:rgba(255,244,223,.19);
-  --glass-bottom:rgba(241,211,175,.055);
-  --glass-edge:rgba(255,242,220,.37);
-  --glass-glow:rgba(255,250,237,.36);
+  --glass-panel:rgba(255,246,231,.075);
+  --glass-chrome:rgba(29,26,29,.23);
+  --glass-top:rgba(255,255,255,.33);
+  --glass-bottom:rgba(255,237,209,.10);
+  --glass-edge:rgba(255,252,242,.63);
+  --glass-glow:rgba(255,253,246,.77);
   --glass-inner:rgba(37,28,25,.18);
-  --glass-depth:0 16px 34px rgba(23,14,13,.23),0 3px 8px rgba(20,13,12,.11);
+  --glass-depth:0 16px 34px rgba(17,10,12,.23),0 3px 8px rgba(18,12,12,.10);
   --glass-background:#211d1d;
 }
 :root[data-palette="glass"][data-theme="light"]{
   color-scheme:light;
   --bg:#eee5d9;
-  --surface:rgba(255,252,246,.57);
-  --surface2:rgba(252,246,235,.68);
+  --surface:rgba(255,252,246,.47);
+  --surface2:rgba(253,249,240,.48);
   --surface-raised:rgba(255,251,243,.76);
   --text:#342c27;
   --muted:#62574e;
@@ -2297,11 +2297,11 @@ select.tm-combo-native{position:absolute!important;width:1px!important;height:1p
   --warn:#8a5b20;
   --ok:#2f7958;
   --shadow:0 13px 36px rgba(82,58,42,.14);
-  --glass-panel:rgba(255,252,246,.38);
-  --glass-chrome:rgba(255,251,243,.56);
-  --glass-top:rgba(255,255,255,.66);
-  --glass-bottom:rgba(239,214,188,.10);
-  --glass-edge:rgba(255,255,255,.86);
+  --glass-panel:rgba(255,255,255,.24);
+  --glass-chrome:rgba(255,252,247,.30);
+  --glass-top:rgba(255,255,255,.76);
+  --glass-bottom:rgba(252,234,209,.15);
+  --glass-edge:rgba(255,255,255,.95);
   --glass-glow:rgba(255,255,255,.98);
   --glass-inner:rgba(164,130,93,.065);
   --glass-depth:0 15px 32px rgba(95,67,45,.16),0 3px 8px rgba(96,69,48,.06);
@@ -2328,7 +2328,7 @@ select.tm-combo-native{position:absolute!important;width:1px!important;height:1p
 :root[data-palette="glass"][data-background="cozy"] body{
   background-color:#e7d8c5;
   background-image:
-    linear-gradient(120deg,rgba(255,247,233,.28),rgba(255,248,236,.16) 50%,rgba(246,232,211,.31)),
+    linear-gradient(120deg,rgba(255,247,233,.14),rgba(255,248,236,.07) 50%,rgba(246,232,211,.14)),
     url("/cozy-beige-room.svg");
   background-position:center center;
   background-size:cover;
@@ -2338,7 +2338,7 @@ select.tm-combo-native{position:absolute!important;width:1px!important;height:1p
 :root[data-palette="glass"][data-background="cozy"][data-theme="dark"] body{
   background-color:#231d1c;
   background-image:
-    linear-gradient(120deg,rgba(23,21,23,.66),rgba(27,22,22,.56) 52%,rgba(24,19,21,.69)),
+    linear-gradient(120deg,rgba(19,17,21,.39),rgba(21,17,21,.29) 52%,rgba(19,16,21,.42)),
     url("/cozy-beige-room.svg");
 }
 :root[data-palette="glass"][data-background="none"] body{
@@ -2352,12 +2352,12 @@ select.tm-combo-native{position:absolute!important;width:1px!important;height:1p
 :root[data-palette="glass"] .preview-identity-banner,
 :root[data-palette="glass"] .common-attention-body{
   background:
-    linear-gradient(153deg,var(--glass-top),transparent 40%,var(--glass-bottom)),
+    linear-gradient(142deg,var(--glass-top) 0%,rgba(255,255,255,.055) 22%,transparent 45%,var(--glass-bottom) 100%),
     var(--glass-chrome);
   border-color:var(--glass-edge);
-  box-shadow:var(--glass-depth),inset 0 1px 0 var(--glass-glow);
-  -webkit-backdrop-filter:blur(14px) saturate(112%);
-  backdrop-filter:blur(14px) saturate(112%);
+  box-shadow:var(--glass-depth),inset 1px 1px 0 var(--glass-glow),inset -1px -1px 0 rgba(255,248,233,.14);
+  -webkit-backdrop-filter:blur(17px) saturate(142%);
+  backdrop-filter:blur(17px) saturate(142%);
 }
 :root[data-palette="glass"] .sidebar{border-right:1px solid var(--glass-edge)}
 :root[data-palette="glass"] .topbar{
@@ -2374,18 +2374,18 @@ select.tm-combo-native{position:absolute!important;width:1px!important;height:1p
 :root[data-palette="glass"] .detail-metrics,
 :root[data-palette="glass"] .timing-note{
   background:
-    linear-gradient(160deg,var(--glass-top),transparent 37%,var(--glass-bottom)),
+    linear-gradient(148deg,var(--glass-top) 0%,rgba(255,255,255,.045) 20%,transparent 42%,var(--glass-bottom) 100%),
     var(--glass-panel);
   border:1px solid var(--glass-edge);
   border-radius:14px;
-  box-shadow:var(--glass-depth),inset 0 1px 0 var(--glass-glow),inset 0 -1px 0 var(--glass-inner);
+  box-shadow:var(--glass-depth),inset 1px 1px 0 var(--glass-glow),inset -1px -1px 0 rgba(255,252,242,.17);
 }
 :root[data-palette="glass"] .preview-build-row,
 :root[data-palette="glass"] .worker-card,
 :root[data-palette="glass"] .runtime-root-card,
 :root[data-palette="glass"] .activity-metric{
-  -webkit-backdrop-filter:blur(7px) saturate(105%);
-  backdrop-filter:blur(7px) saturate(105%);
+  -webkit-backdrop-filter:blur(10px) saturate(132%);
+  backdrop-filter:blur(10px) saturate(132%);
 }
 :root[data-palette="glass"] .metrics,
 :root[data-palette="glass"] .detail-metrics{padding:16px 20px;gap:14px}
@@ -2430,6 +2430,33 @@ select.tm-combo-native{position:absolute!important;width:1px!important;height:1p
 :root[data-palette="glass"] .theme-btn.active{
   font-weight:750;
 }
+
+/* Specular glass: directional reflection and a visible bevel, without
+   blue fill or continuous animation. Limit glare to panel perimeters. */
+:root[data-palette="glass"] .preview-identity-banner,
+:root[data-palette="glass"] .user-attention,
+:root[data-palette="glass"] .preview-build-row,
+:root[data-palette="glass"] .worker-card,
+:root[data-palette="glass"] .runtime-root-card,
+:root[data-palette="glass"] .activity-metric,
+:root[data-palette="glass"] .timing-note{
+  border:1px solid transparent;
+  background:
+    linear-gradient(138deg,var(--glass-top),rgba(255,255,255,.045) 25%,transparent 52%,var(--glass-bottom)) padding-box,
+    linear-gradient(140deg,var(--glass-edge),rgba(255,255,255,.13) 34%,rgba(255,255,255,.08) 64%,var(--glass-edge)) border-box,
+    var(--glass-panel) padding-box;
+  box-shadow:var(--glass-depth),inset 1px 1px 0 var(--glass-glow),inset -1px -1px 0 rgba(255,255,255,.12);
+}
+/* Pair clear glazing with readable print: no full-screen gray veil. */
+:root[data-palette="glass"][data-theme="dark"] .content,
+:root[data-palette="glass"][data-theme="dark"] .preview-identity-banner,
+:root[data-palette="glass"][data-theme="dark"] .user-attention{
+  text-shadow:0 1px 4px rgba(16,12,14,.42);
+}
+:root[data-palette="glass"][data-theme="light"] .content,
+:root[data-palette="glass"][data-theme="light"] .preview-identity-banner,
+:root[data-palette="glass"][data-theme="light"] .user-attention{text-shadow:none}
+
 /* Custom selects and buttons must inherit the material rather than paint
    a second solid layer inside the glass frame. */
 :root[data-palette="glass"] .palette-picker .tm-combo-trigger,
@@ -2542,11 +2569,11 @@ select.tm-combo-native{position:absolute!important;width:1px!important;height:1p
   }
   /* Mobile: avoid a high-cost full-height blur without reverting to blue. */
   :root[data-palette="glass"] .sidebar{
-    background:rgba(62,52,49,.73);
-    -webkit-backdrop-filter:none;backdrop-filter:none;
+    background:linear-gradient(142deg,rgba(255,255,255,.18),transparent 48%),rgba(25,22,25,.37);
+    -webkit-backdrop-filter:blur(9px) saturate(132%);backdrop-filter:blur(9px) saturate(132%);
   }
   :root[data-palette="glass"][data-theme="light"] .sidebar{
-    background:rgba(255,250,241,.79);
+    background:linear-gradient(145deg,rgba(255,255,255,.50),transparent 65%),rgba(253,247,236,.35);
   }
   :root[data-palette="glass"] .metrics,
   :root[data-palette="glass"] .detail-metrics{padding:12px;gap:10px}
