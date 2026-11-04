@@ -5803,6 +5803,19 @@ function activityRoundBreakdown(segments){
   }
   return rounds;
 }
+function activityDisplayType(type,ko){
+  const names={requirements:['요구사항 분석','Requirements'],research:['자료 조사','Research'],implementation:['구현','Implementation'],targeted_test:['선별 테스트','Targeted test'],full_regression:['전체 회귀 테스트','Full regression'],build_check:['빌드 확인','Build check'],controller_review:['Controller 검토','Controller review'],controller_rereview:['Controller 재검토','Controller rereview'],handoff:['작업 인계','Handoff'],recovery:['복구 작업','Recovery'],other:['기타 활동','Other activity'],registration_authorization:['작업 실행 승인','Execution authorization']};
+  return names[type]?(ko?names[type][0]:names[type][1]):String(type||'—');
+}
+function activityDisplayWait(kind,ko){
+  const names={registration_queue:['작업 배정 대기','Awaiting assignment'],dispatch_wait:['작업 착수 대기','Awaiting work start']};
+  return names[kind]?(ko?names[kind][0]:names[kind][1]):String(kind||'—');
+}
+function activityDisplayDuration(ms,ko){
+  if(!Number.isFinite(ms)||ms<0)return '—';
+  const sec=Math.round(ms/1000),h=Math.floor(sec/3600),m=Math.floor(sec%3600/60),s=sec%60;
+  return (ko?[h?h+'시간':null,m?m+'분':null,(!h&&!m||s)?s+'초':null]:[h?h+'h':null,m?m+'m':null,(!h&&!m||s)?s+'s':null]).filter(Boolean).join(' ');
+}
 function activityMetricsBody(payload,taskID=state.detail){
   if(!payload)return '<p class="summary">'+esc(state.language==='ko'?'활동 기록을 불러오는 중…':'Loading activity history…')+'</p>';
   if(payload.error)return '<p class="summary">'+esc(payload.error)+'</p>';
@@ -5835,13 +5848,13 @@ function activityMetricsBody(payload,taskID=state.detail){
     [ko?'최초 Controller 검토':'Initial controller review',s.controller_first_review_ms],
     [ko?'재검토 합계':'Rereview total',s.controller_rereview_ms],
   ];
-  const boxes='<div class="activity-metric-grid">'+metrics.map(([label,ms])=>'<div class="activity-metric"><strong>'+esc(activityDuration(ms))+'</strong><span>'+esc(label)+'</span></div>').join('')+'</div>';
+  const boxes='<div class="activity-metric-grid">'+metrics.map(([label,ms])=>'<div class="activity-metric"><strong>'+esc(ms==null?'—':activityDisplayDuration(ms,ko))+'</strong><span>'+esc(label)+'</span></div>').join('')+'</div>';
   const totals=Object.entries(s.by_type_ms||{}).filter(([,ms])=>ms>0).sort((a,b)=>b[1]-a[1]);
   const all=totals.reduce((sum,[,ms])=>sum+ms,0);
   const byType=totals.length?'<h3>'+esc(ko?'활동 유형별 누적 (전체 회차)':'Cumulative by activity (all rounds)')+'</h3><div class="activity-type-bars">'+
-    totals.map(([name,ms])=>'<div class="activity-type-row"><span>'+esc(name)+'</span><div class="activity-type-track"><div style="width:'+Math.max(0,Math.min(100,all?ms/all*100:0))+'%"></div></div><strong>'+esc(activityDuration(ms))+'</strong></div>').join('')+'</div>':'';
-  const timelineData=filtered.map(x=>({label:x.type+' · '+x.role+' · '+(ko?'회차 ':'Round ')+x.round,from:x.started_at,to:x.ended_at,ms:x.duration_ms,wait:false}))
-    .concat(activeRound==='all'?waitRows.map(x=>({label:(ko?'대기 · ':'Wait · ')+x.kind,from:x.started_at,to:x.ended_at,ms:x.duration_ms,wait:true})):[]);
+    totals.map(([name,ms])=>'<div class="activity-type-row"><span title="'+esc(name)+'">'+esc(activityDisplayType(name,ko))+'</span><div class="activity-type-track"><div style="width:'+Math.max(0,Math.min(100,all?ms/all*100:0))+'%"></div></div><strong>'+esc(activityDuration(ms))+'</strong></div>').join('')+'</div>':'';
+  const timelineData=filtered.map(x=>({label:activityDisplayType(x.type,ko)+' · '+x.role+' · '+(ko?'회차 ':'Round ')+x.round,from:x.started_at,to:x.ended_at,ms:x.duration_ms,wait:false}))
+    .concat(activeRound==='all'?waitRows.map(x=>({label:(ko?'대기 · ':'Wait · ')+activityDisplayWait(x.kind,ko),from:x.started_at,to:x.ended_at,ms:x.duration_ms,wait:true})):[]);
   // Retain the full time axis while filtering so round comparisons do not
   // silently rebase the data. Clip rendering, not the evidence itself.
   let begin=Infinity,end=-Infinity;
@@ -5869,17 +5882,17 @@ function activityMetricsBody(payload,taskID=state.detail){
       '<div class="activity-time-axis">'+shownTimeline.map(x=>{
         const left=Math.max(0,Math.min(100,(Date.parse(x.from)-begin)/span*100));
         const width=Math.max(0,Math.min(100-left,(Date.parse(x.to)-Date.parse(x.from))/span*100));
-        const tooltip=x.label+' · '+activityEventTime(x.from,ko)+' → '+activityEventTime(x.to,ko);
+        const tooltip=x.label+' · '+activityEventTime(x.from,ko)+' → '+activityEventTime(x.to,ko)+' · '+activityDisplayDuration(x.ms,ko);
         return '<div class="activity-timeline-row"><span>'+esc(x.label)+'</span>'+
           '<div class="activity-timeline-track'+(x.wait?' activity-timeline-wait':'')+'"><div role="img" aria-label="'+esc(tooltip)+'" title="'+esc(tooltip)+
-          '" style="left:'+left+'%;width:'+width+'%"></div></div><strong>'+esc(activityDuration(x.ms))+'</strong></div>';
+          '" style="left:'+left+'%;width:'+width+'%;overflow:hidden;white-space:nowrap;display:flex;align-items:center;justify-content:center">'+(width>=20?'<small style="color:white;font-size:10px;pointer-events:none">'+esc(activityDisplayDuration(x.ms,ko))+'</small>':'')+'</div></div><strong>'+esc(activityDisplayDuration(x.ms,ko))+'</strong></div>';
       }).join('')+'</div></div></div>':'<p class="summary">'+esc(ko?'선택한 회차에 측정된 작업 구간이 없습니다.':'No measured intervals for this round.')+'</p>';
   const group=activityRoundBreakdown(filtered);
   const groupKeys=[...group.keys()].sort((a,b)=>a-b);
   const maxRound=Math.max(1,...groupKeys.map(k=>[...group.get(k).values()].reduce((n,ms)=>n+ms,0)));
   const kinds=[...new Set(filtered.map(x=>x.type))].sort();
   const stacked=groupKeys.length?'<h3>'+esc(ko?'회차별 Agent 시간 구성':'Agent time composition by round')+'</h3>'+
-    '<div class="activity-stacked-legend">'+kinds.map((name,i)=>'<span><i class="activity-stack-swatch activity-stack-color-'+(i%8)+'"></i>'+esc(name)+'</span>').join('')+'</div>'+
+    '<div class="activity-stacked-legend">'+kinds.map((name,i)=>'<span><i class="activity-stack-swatch activity-stack-color-'+(i%8)+'"></i>'+esc(activityDisplayType(name,ko))+'</span>').join('')+'</div>'+
     '<div class="activity-stacked-rounds">'+groupKeys.map(k=>{
       const entries=kinds.map((name,i)=>({name,ms:group.get(k).get(name)||0,color:i%8})).filter(x=>x.ms>0);
       const sum=entries.reduce((n,x)=>n+x.ms,0);
@@ -5902,7 +5915,7 @@ function activityMetricsBody(payload,taskID=state.detail){
     [ko?'미귀속 경과시간':'Unattributed elapsed',lc.unattributed_elapsed_ms],
   ]:[];
   const lifetimeView=lifetimeMetrics.length?'<h3>'+esc(ko?'Lifecycle 기반 경과·대기 분석':'Lifecycle elapsed and waiting analysis')+'</h3>'+
-    '<div class="activity-metric-grid">'+lifetimeMetrics.map(([label,ms])=>'<div class="activity-metric"><strong>'+esc(ms==null?'—':activityDuration(ms))+'</strong><span>'+esc(label)+'</span></div>').join('')+'</div>'+
+    '<div class="activity-metric-grid">'+lifetimeMetrics.map(([label,ms])=>'<div class="activity-metric"><strong>'+esc(ms==null?'—':activityDisplayDuration(ms,ko))+'</strong><span>'+esc(label)+'</span></div>').join('')+'</div>'+
     '<p class="summary">'+esc(ko?'Lifecycle 보고를 근거로 계산한 경과시간입니다. CPU 사용시간이나 Task Mecca 원인 지연을 의미하지 않습니다.':'Lifecycle durations are not CPU time or proof of Task Mecca overhead.')+'</p>'+
     ((lc.wait_activity_overlap_ms||0)>0?'<p class="timing-note warning">'+esc(ko?'활동·대기 근거 겹침: ':'Activity/wait overlap: ')+esc(activityDuration(lc.wait_activity_overlap_ms))+'</p>':''):'';
   const unknown=(s.open_activities||s.invalid_transitions||s.invalid_corrections||lc.open_wait_count||payload.lifecycle_findings)?
