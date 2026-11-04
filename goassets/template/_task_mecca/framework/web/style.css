@@ -2254,152 +2254,138 @@ select.tm-combo-native{position:absolute!important;width:1px!important;height:1p
 @media(max-width:580px){.activity-agent-group{padding:3px}.activity-agent-group>summary{font-size:.72rem}}
 
 
-/* Glass palette: distinct dark/light materials over a stationary atmospheric backdrop.
-   Only structural chrome is blurred; backlog rows, charts, code and terminal remain opaque. */
+/* GLASS MATERIAL SYSTEM — Warm neutral, not a blue recolor of Mecca.
+   All selectors are scoped to Glass, preserving Mecca/Slate unchanged.
+   Underlying content remains legible without a blur filter on every row. */
 :root[data-palette="glass"][data-theme="dark"]{
-  color-scheme:dark;--bg:#0b1020;--surface:rgba(23,34,55,.85);--surface2:#202c43;
-  --text:#eef4ff;--muted:#b2bed3;--border:rgba(199,219,255,.20);
-  --accent:#90bfff;--accent-soft:#243851;--danger:#ff8799;--warn:#e8b877;
-  --ok:#71d7ac;--shadow:0 16px 42px rgba(0,4,18,.25);
-  --glass-panel:rgba(28,41,64,.64);--glass-chrome:rgba(17,28,48,.72);
-  --glass-edge:rgba(218,233,255,.24);--glass-glow:rgba(185,220,255,.18);
+  color-scheme:dark;
+  --bg:#1d1b1d;
+  --surface:rgba(67,59,55,.49);
+  --surface2:rgba(93,82,76,.53);
+  --surface-raised:rgba(116,101,91,.43);
+  --text:#f8f4ed;
+  --muted:#d0c4b8;
+  --border:rgba(249,236,214,.29);
+  --accent:#edcda5;
+  --accent-soft:rgba(239,203,156,.20);
+  --danger:#ff9c9c;
+  --warn:#f2c17b;
+  --ok:#a0dcb8;
+  --shadow:0 13px 36px rgba(17,12,13,.23);
+  --glass-panel:rgba(76,66,61,.33);
+  --glass-chrome:rgba(47,41,41,.40);
+  --glass-top:rgba(255,244,223,.19);
+  --glass-bottom:rgba(241,211,175,.055);
+  --glass-edge:rgba(255,242,220,.37);
+  --glass-glow:rgba(255,250,237,.36);
+  --glass-inner:rgba(37,28,25,.18);
+  --glass-depth:0 16px 34px rgba(23,14,13,.23),0 3px 8px rgba(20,13,12,.11);
+  --glass-background:#211d1d;
 }
 :root[data-palette="glass"][data-theme="light"]{
-  color-scheme:light;--bg:#edf2fa;--surface:rgba(255,255,255,.88);--surface2:#e8eef8;
-  --text:#202c43;--muted:#54647a;--border:rgba(87,117,164,.22);
-  --accent:#355ca9;--accent-soft:#dfebff;--danger:#bf435d;--warn:#96631d;
-  --ok:#237d61;--shadow:0 16px 40px rgba(54,80,128,.12);
-  --glass-panel:rgba(255,255,255,.64);--glass-chrome:rgba(246,250,255,.73);
-  --glass-edge:rgba(255,255,255,.92);--glass-glow:rgba(255,255,255,.70);
+  color-scheme:light;
+  --bg:#eee5d9;
+  --surface:rgba(255,252,246,.57);
+  --surface2:rgba(252,246,235,.68);
+  --surface-raised:rgba(255,251,243,.76);
+  --text:#342c27;
+  --muted:#62574e;
+  --border:rgba(111,91,72,.25);
+  --accent:#75583e;
+  --accent-soft:rgba(148,110,73,.14);
+  --danger:#b53e51;
+  --warn:#8a5b20;
+  --ok:#2f7958;
+  --shadow:0 13px 36px rgba(82,58,42,.14);
+  --glass-panel:rgba(255,252,246,.38);
+  --glass-chrome:rgba(255,251,243,.56);
+  --glass-top:rgba(255,255,255,.66);
+  --glass-bottom:rgba(239,214,188,.10);
+  --glass-edge:rgba(255,255,255,.86);
+  --glass-glow:rgba(255,255,255,.98);
+  --glass-inner:rgba(164,130,93,.065);
+  --glass-depth:0 15px 32px rgba(95,67,45,.16),0 3px 8px rgba(96,69,48,.06);
+  --glass-background:#ece2d4;
 }
-:root[data-palette="glass"][data-theme="dark"] body{
-  background:radial-gradient(ellipse 55% 55% at 85% 8%,rgba(103,78,192,.27),transparent 75%),
-    radial-gradient(ellipse 45% 58% at 2% 88%,rgba(35,101,178,.26),transparent 76%),
-    radial-gradient(ellipse 36% 50% at 65% 64%,rgba(42,85,143,.13),transparent 85%),
-    linear-gradient(132deg,#0b1020,#111a2c 60%,#0c1424);
-  background-attachment:fixed;
-}
-:root[data-palette="glass"][data-theme="light"] body{
-  background:radial-gradient(ellipse 55% 56% at 87% 7%,rgba(168,172,241,.37),transparent 78%),
-    radial-gradient(ellipse 50% 55% at 1% 90%,rgba(135,190,243,.36),transparent 77%),
-    radial-gradient(ellipse 38% 45% at 58% 58%,rgba(216,197,247,.22),transparent 85%),
-    linear-gradient(133deg,#f4f8ff,#e7eefb 60%,#edf3fb);
-  background-attachment:fixed;
-}
-:root[data-palette="glass"] .sidebar,
-:root[data-palette="glass"] .topbar{
-  background:var(--glass-chrome);border-color:var(--glass-edge);
-  -webkit-backdrop-filter:blur(11px) saturate(125%);
-  backdrop-filter:blur(11px) saturate(125%);
-  box-shadow:inset 0 1px 0 var(--glass-glow);
-}
-:root[data-palette="glass"] .notification-panel,
-:root[data-palette="glass"] .user-attention,
-:root[data-palette="glass"] .release-note-modal,
-:root[data-palette="glass"] .tm-combo-popup{
-  background:var(--glass-panel);
-  border-color:var(--glass-edge);
-  -webkit-backdrop-filter:blur(12px) saturate(125%);
-  backdrop-filter:blur(12px) saturate(125%);
-  box-shadow:0 14px 36px rgba(10,25,55,.16),inset 0 1px 0 var(--glass-glow);
-}
-:root[data-palette="glass"] .topbar .theme-switcher,
-:root[data-palette="glass"] .topbar .palette-picker,
-:root[data-palette="glass"] .topbar .language-picker{
-  border-color:var(--glass-edge);
-}
-@media (prefers-reduced-transparency:reduce){
-  :root[data-palette="glass"] .sidebar,
-  :root[data-palette="glass"] .topbar,
-  :root[data-palette="glass"] .notification-panel,
-  :root[data-palette="glass"] .user-attention,
-  :root[data-palette="glass"] .release-note-modal,
-  :root[data-palette="glass"] .tm-combo-popup{
-    -webkit-backdrop-filter:none;backdrop-filter:none;background:var(--surface);
-  }
-}
-@media(max-width:680px){
-  :root[data-palette="glass"] .sidebar{-webkit-backdrop-filter:none;backdrop-filter:none;background:var(--surface)}
-}
-
-
-/* Glass material system v2
-   Refractive appearance is suggested with layered color transmission, edge
-   highlights and elevation; no continuous canvas, animation or shader cost. */
-:root[data-palette="glass"][data-theme="dark"]{
-  --glass-panel:rgba(19,32,55,.44);
-  --glass-chrome:rgba(15,25,46,.55);
-  --glass-edge:rgba(228,241,255,.33);
-  --glass-glow:rgba(238,246,255,.36);
-  --glass-top:rgba(226,242,255,.15);
-  --glass-bottom:rgba(73,122,211,.10);
-  --glass-inner:rgba(9,20,40,.23);
-  --glass-depth:0 18px 38px rgba(2,7,22,.30),0 3px 8px rgba(2,7,22,.15);
-  --glass-background:#0a1024;
-}
-:root[data-palette="glass"][data-theme="light"]{
-  --glass-panel:rgba(249,252,255,.45);
-  --glass-chrome:rgba(248,252,255,.53);
-  --glass-edge:rgba(255,255,255,.92);
-  --glass-glow:rgba(255,255,255,.96);
-  --glass-top:rgba(255,255,255,.75);
-  --glass-bottom:rgba(96,151,211,.10);
-  --glass-inner:rgba(238,246,255,.12);
-  --glass-depth:0 17px 38px rgba(47,75,128,.17),0 3px 9px rgba(56,83,121,.08);
-  --glass-background:#e5eefb;
-}
-/* Deliberately asymmetric atmospheric light: visible THROUGH the panels.
-   Keep the bright pools toward the outer edges, away from table text. */
+/* Calm atmosphere is a user-selectable option, separate from the room. */
 :root[data-palette="glass"][data-theme="dark"] body{
   background-color:var(--glass-background);
   background-image:
-    radial-gradient(ellipse 34% 48% at 12% 20%,rgba(75,139,248,.49) 0%,rgba(59,112,208,.17) 55%,transparent 100%),
-    radial-gradient(ellipse 36% 55% at 95% 9%,rgba(155,92,245,.47) 0%,rgba(111,72,196,.16) 57%,transparent 100%),
-    radial-gradient(ellipse 42% 40% at 72% 95%,rgba(36,172,210,.22),transparent 78%),
-    linear-gradient(125deg,#0b1126 5%,#172341 48%,#0e1028 95%);
+    radial-gradient(ellipse 42% 65% at 6% 8%,rgba(146,114,100,.35),transparent 78%),
+    radial-gradient(ellipse 48% 55% at 97% 83%,rgba(176,141,123,.29),transparent 81%),
+    linear-gradient(125deg,#252325,#4a403d 55%,#252326);
+  background-attachment:fixed;
 }
 :root[data-palette="glass"][data-theme="light"] body{
   background-color:var(--glass-background);
   background-image:
-    radial-gradient(ellipse 37% 50% at 8% 12%,rgba(95,164,237,.52),rgba(140,197,251,.12) 63%,transparent 100%),
-    radial-gradient(ellipse 40% 54% at 98% 10%,rgba(185,155,239,.58),rgba(202,175,245,.15) 64%,transparent 100%),
-    radial-gradient(ellipse 44% 47% at 66% 99%,rgba(100,205,225,.27),transparent 80%),
-    linear-gradient(126deg,#e8f3ff 5%,#ecedff 51%,#f6f8ff 95%);
+    radial-gradient(ellipse 48% 60% at 7% 18%,rgba(232,205,175,.46),transparent 78%),
+    radial-gradient(ellipse 43% 55% at 94% 86%,rgba(208,177,154,.28),transparent 84%),
+    linear-gradient(135deg,#f6eee3,#e9dacf 58%,#f6f0e9);
+  background-attachment:fixed;
 }
-/* Multiple translucent material layers are intentionally visible. This
-   makes Glass visibly distinct from Mecca's nearly opaque gradients. */
+/* The Cozy Beige Room image is bundled locally and never sent off-device. */
+:root[data-palette="glass"][data-background="cozy"] body{
+  background-color:#e7d8c5;
+  background-image:
+    linear-gradient(120deg,rgba(255,247,233,.28),rgba(255,248,236,.16) 50%,rgba(246,232,211,.31)),
+    url("/cozy-beige-room.svg");
+  background-position:center center;
+  background-size:cover;
+  background-repeat:no-repeat;
+  background-attachment:fixed;
+}
+:root[data-palette="glass"][data-background="cozy"][data-theme="dark"] body{
+  background-color:#231d1c;
+  background-image:
+    linear-gradient(120deg,rgba(23,21,23,.66),rgba(27,22,22,.56) 52%,rgba(24,19,21,.69)),
+    url("/cozy-beige-room.svg");
+}
+:root[data-palette="glass"][data-background="none"] body{
+  background:var(--glass-background);
+}
+/* Large stationary layers carry the strongest transmitted material effect. */
 :root[data-palette="glass"] .sidebar,
 :root[data-palette="glass"] .topbar,
 :root[data-palette="glass"] .notification-panel,
-:root[data-palette="glass"] .tm-combo-popup{
+:root[data-palette="glass"] .tm-combo-popup,
+:root[data-palette="glass"] .preview-identity-banner,
+:root[data-palette="glass"] .common-attention-body{
   background:
-    linear-gradient(160deg,var(--glass-top),transparent 37%,var(--glass-bottom) 100%),
+    linear-gradient(153deg,var(--glass-top),transparent 40%,var(--glass-bottom)),
     var(--glass-chrome);
   border-color:var(--glass-edge);
-  box-shadow:var(--glass-depth),inset 0 1px 0 var(--glass-glow),inset 1px 0 0 rgba(255,255,255,.08);
-  -webkit-backdrop-filter:blur(15px) saturate(150%);
-  backdrop-filter:blur(15px) saturate(150%);
+  box-shadow:var(--glass-depth),inset 0 1px 0 var(--glass-glow);
+  -webkit-backdrop-filter:blur(14px) saturate(112%);
+  backdrop-filter:blur(14px) saturate(112%);
 }
-:root[data-palette="glass"] .sidebar{
-  border-right:1px solid var(--glass-edge);
-}
+:root[data-palette="glass"] .sidebar{border-right:1px solid var(--glass-edge)}
 :root[data-palette="glass"] .topbar{
   border-bottom:1px solid var(--glass-edge);
-  box-shadow:0 8px 24px rgba(6,16,42,.10),inset 0 1px 0 var(--glass-glow);
+  box-shadow:0 5px 18px rgba(32,23,21,.10),inset 0 1px 0 var(--glass-glow);
 }
-/* Cards: high-contrast low-cost translucent glass, without repeated backdrop
-   filters across lists, graph segments or scroll rows. */
+/* Content groups are glass, not solid navy plates. Blur a few containers,
+   never a timeline, Gantt bar, table row or large scrolling list. */
+:root[data-palette="glass"] .preview-build-row,
 :root[data-palette="glass"] .worker-card,
 :root[data-palette="glass"] .runtime-root-card,
 :root[data-palette="glass"] .activity-metric,
 :root[data-palette="glass"] .metrics,
-:root[data-palette="glass"] .detail-metrics{
+:root[data-palette="glass"] .detail-metrics,
+:root[data-palette="glass"] .timing-note{
   background:
-    linear-gradient(150deg,var(--glass-top) 0%,transparent 29%,var(--glass-bottom) 100%),
+    linear-gradient(160deg,var(--glass-top),transparent 37%,var(--glass-bottom)),
     var(--glass-panel);
   border:1px solid var(--glass-edge);
-  border-radius:15px;
+  border-radius:14px;
   box-shadow:var(--glass-depth),inset 0 1px 0 var(--glass-glow),inset 0 -1px 0 var(--glass-inner);
+}
+:root[data-palette="glass"] .preview-build-row,
+:root[data-palette="glass"] .worker-card,
+:root[data-palette="glass"] .runtime-root-card,
+:root[data-palette="glass"] .activity-metric{
+  -webkit-backdrop-filter:blur(7px) saturate(105%);
+  backdrop-filter:blur(7px) saturate(105%);
 }
 :root[data-palette="glass"] .metrics,
 :root[data-palette="glass"] .detail-metrics{padding:16px 20px;gap:14px}
@@ -2407,52 +2393,83 @@ select.tm-combo-native{position:absolute!important;width:1px!important;height:1p
 :root[data-palette="glass"] .runtime-root-card{overflow:hidden}
 :root[data-palette="glass"] .worker-head,
 :root[data-palette="glass"] .runtime-root-summary{
-  background:linear-gradient(120deg,rgba(255,255,255,.075),transparent 76%);
+  background:linear-gradient(145deg,rgba(255,249,239,.12),transparent 76%);
 }
-:root[data-palette="glass"] .activity-metric{
-  background:
-    linear-gradient(155deg,var(--glass-top),transparent 45%),
-    var(--glass-panel);
-}
-/* A stepped elevation on controls is more convincing than a bright
-   glowing outline around every element. */
+/* Controls: quiet, semi-transparent neutral glass. Semantic actions retain
+   their status hues; only ordinary surfaces lose the old blue fill. */
 :root[data-palette="glass"] .search-wrap,
 :root[data-palette="glass"] .icon-btn,
 :root[data-palette="glass"] .palette-picker,
 :root[data-palette="glass"] .language-picker,
-:root[data-palette="glass"] .tm-combo-trigger{
-  background:linear-gradient(165deg,var(--glass-top),transparent 70%),var(--glass-panel);
+:root[data-palette="glass"] .background-picker,
+:root[data-palette="glass"] .theme-switcher,
+:root[data-palette="glass"] .global-update-pill,
+:root[data-palette="glass"] .preview-build-tools input,
+:root[data-palette="glass"] .action-btn,
+:root[data-palette="glass"] .sidebar-mode-selector,
+:root[data-palette="glass"] .sidebar-toggle,
+:root[data-palette="glass"] .shortcut-bar{
+  background:
+    linear-gradient(155deg,var(--glass-top),transparent 70%),
+    var(--glass-panel);
   border-color:var(--glass-edge);
-  box-shadow:inset 0 1px 0 var(--glass-glow),0 3px 9px rgba(12,28,54,.08);
+  box-shadow:inset 0 1px 0 var(--glass-glow),0 3px 10px rgba(22,14,13,.08);
 }
 :root[data-palette="glass"] .nav-item.active,
-:root[data-palette="glass"] .theme-btn.active{
-  background:linear-gradient(125deg,var(--glass-top),var(--glass-bottom)),var(--glass-panel);
-  box-shadow:inset 0 1px 0 var(--glass-glow),0 3px 12px rgba(10,30,60,.12);
+:root[data-palette="glass"] .theme-btn.active,
+:root[data-palette="glass"] .sidebar-mode-option.active,
+:root[data-palette="glass"] .preview-build-filters .action-btn.active{
+  background:linear-gradient(135deg,var(--glass-top),var(--glass-bottom)),var(--glass-panel);
   border:1px solid var(--glass-edge);
+  box-shadow:inset 0 1px 0 var(--glass-glow),0 3px 8px rgba(30,18,14,.09);
+  color:var(--text);
 }
 :root[data-palette="glass"] .nav-item:not(.active):hover{
-  background:linear-gradient(105deg,var(--glass-top),transparent),var(--glass-panel);
+  background:linear-gradient(115deg,var(--glass-top),transparent),var(--glass-panel);
 }
-/* Preserve the established multicolour attention outline; give its
-   expanded flyout the same frosted material, avoiding a visible hard seam. */
+:root[data-palette="glass"] .theme-btn.active{
+  font-weight:750;
+}
+/* Custom selects and buttons must inherit the material rather than paint
+   a second solid layer inside the glass frame. */
+:root[data-palette="glass"] .palette-picker .tm-combo-trigger,
+:root[data-palette="glass"] .language-picker .tm-combo-trigger,
+:root[data-palette="glass"] .background-picker .tm-combo-trigger{
+  background:transparent;border:0;box-shadow:none;
+}
+/* The old PR banner had a thick neon border and an opaque dark fill. */
+:root[data-palette="glass"] .preview-identity-banner{
+  border:1px solid var(--glass-edge);
+  border-radius:13px;
+}
+:root[data-palette="glass"] .preview-identity-actions .action-btn,
+:root[data-palette="glass"] .preview-build-filters .action-btn,
+:root[data-palette="glass"] .preview-build-actions .action-btn{
+  border-color:var(--glass-edge);
+}
+/* Restore the attention panel as a floating glass, not a dark blue slab. */
 :root[data-palette="glass"] .user-attention{
-  --attention-fill:linear-gradient(105deg,
-    color-mix(in srgb,var(--glass-panel) 95%,var(--accent)),
-    color-mix(in srgb,var(--glass-panel) 96%,var(--warn)),
-    var(--glass-panel));
+  --attention-outline:linear-gradient(90deg,transparent,var(--glass-edge),transparent);
+  --attention-fill:linear-gradient(150deg,var(--glass-top),var(--glass-bottom));
+  background:linear-gradient(145deg,var(--glass-top),transparent 78%),var(--glass-chrome);
+  border:1px solid var(--glass-edge);
+  border-radius:12px;
   box-shadow:var(--glass-depth),inset 0 1px 0 var(--glass-glow);
+  -webkit-backdrop-filter:blur(10px) saturate(110%);
+  backdrop-filter:blur(10px) saturate(110%);
 }
 :root[data-palette="glass"] .common-attention-body{
-  -webkit-backdrop-filter:blur(13px) saturate(130%);
-  backdrop-filter:blur(13px) saturate(130%);
-  box-shadow:var(--glass-depth);
+  left:-1px;right:-1px;
+  border:1px solid var(--glass-edge);
+  border-top:0;
+  border-radius:0 0 12px 12px;
 }
 :root[data-palette="glass"] .notification-panel-head{
   background:var(--glass-chrome);
   border-color:var(--glass-edge);
 }
-/* The reading surfaces must stay calm and readable. */
+/* Long-form textual and graphical information stays crisp. */
+:root[data-palette="glass"] .markdown,
 :root[data-palette="glass"] .markdown pre,
 :root[data-palette="glass"] .raw,
 :root[data-palette="glass"] .task-list,
@@ -2461,54 +2478,8 @@ select.tm-combo-native{position:absolute!important;width:1px!important;height:1p
   -webkit-backdrop-filter:none;
   backdrop-filter:none;
 }
-@media(prefers-reduced-transparency:reduce){
-  :root[data-palette="glass"] .sidebar,
-  :root[data-palette="glass"] .topbar,
-  :root[data-palette="glass"] .notification-panel,
-  :root[data-palette="glass"] .tm-combo-popup,
-  :root[data-palette="glass"] .common-attention-body{
-    background:var(--surface);-webkit-backdrop-filter:none;backdrop-filter:none;
-  }
-  :root[data-palette="glass"] .worker-card,
-  :root[data-palette="glass"] .runtime-root-card,
-  :root[data-palette="glass"] .activity-metric,
-  :root[data-palette="glass"] .metrics,
-  :root[data-palette="glass"] .detail-metrics{
-    background:var(--surface);
-  }
-}
-@media(max-width:680px){
-  :root[data-palette="glass"] body{background-attachment:scroll}
-  :root[data-palette="glass"] .sidebar{
-    background:var(--surface);-webkit-backdrop-filter:none;backdrop-filter:none;
-  }
-  :root[data-palette="glass"] .metrics,
-  :root[data-palette="glass"] .detail-metrics{padding:12px;gap:10px}
-}
-
-
-/* Glass background presets. Background is a separate preference, applied
-   only to Glass; legacy Mecca and Slate visuals remain unchanged. */
+/* Glass background is selectable independently of palette and color mode. */
 :root:not([data-palette="glass"]) .background-picker{display:none!important}
-:root[data-palette="glass"][data-background="cozy"] body{
-  background-color:#d9c6ad;
-  background-image:
-    linear-gradient(125deg,rgba(255,249,237,.30),rgba(239,223,199,.21) 60%,rgba(246,236,215,.38)),
-    url("/cozy-beige-room.svg");
-  background-repeat:no-repeat;
-  background-size:cover;
-  background-position:center center;
-  background-attachment:fixed;
-}
-:root[data-palette="glass"][data-background="cozy"][data-theme="dark"] body{
-  background-color:#211b1b;
-  background-image:
-    linear-gradient(120deg,rgba(9,14,25,.77),rgba(15,17,25,.65) 48%,rgba(23,15,23,.70)),
-    url("/cozy-beige-room.svg");
-}
-:root[data-palette="glass"][data-background="none"] body{
-  background:var(--glass-background);
-}
 .background-picker{
   min-width:0;max-width:210px;height:38px;
   display:inline-flex;align-items:center;gap:7px;
@@ -2527,16 +2498,27 @@ select.tm-combo-native{position:absolute!important;width:1px!important;height:1p
   background:transparent;padding:5px 18px 5px 2px;font-size:11px;
 }
 .background-picker .tm-combo-trigger::after{right:4px}
-:root[data-palette="glass"] .background-picker{
-  background:linear-gradient(160deg,var(--glass-top),transparent 68%),var(--glass-panel);
-  border-color:var(--glass-edge);
-  box-shadow:inset 0 1px 0 var(--glass-glow);
-}
-:root[data-palette="glass"] .background-picker .tm-combo-trigger{
-  background:transparent;border:0;box-shadow:none;
-}
 .topbar .background-picker{order:3;flex:0 0 auto}
 :root[data-palette="glass"] .topbar .theme-switcher{order:4}
+/* Fall back to solid surfaces on devices/users requesting reduced clarity. */
+@media(prefers-reduced-transparency:reduce){
+  :root[data-palette="glass"] .sidebar,
+  :root[data-palette="glass"] .topbar,
+  :root[data-palette="glass"] .notification-panel,
+  :root[data-palette="glass"] .tm-combo-popup,
+  :root[data-palette="glass"] .preview-identity-banner,
+  :root[data-palette="glass"] .common-attention-body,
+  :root[data-palette="glass"] .preview-build-row,
+  :root[data-palette="glass"] .worker-card,
+  :root[data-palette="glass"] .runtime-root-card,
+  :root[data-palette="glass"] .activity-metric,
+  :root[data-palette="glass"] .user-attention{
+    background:var(--surface);-webkit-backdrop-filter:none;backdrop-filter:none;
+  }
+  :root[data-palette="glass"][data-background="cozy"] body{
+    background-image:none;background-color:var(--glass-background);
+  }
+}
 @media(max-width:900px){
   .background-picker>span:not(.tm-combo){display:none}
   .background-picker{padding:0 5px;max-width:142px}
@@ -2558,9 +2540,20 @@ select.tm-combo-native{position:absolute!important;width:1px!important;height:1p
     background-attachment:scroll;
     background-size:cover;
   }
-}
-@media(prefers-reduced-transparency:reduce){
-  :root[data-palette="glass"][data-background="cozy"] body{
-    background-image:none;background-color:var(--glass-background);
+  /* Mobile: avoid a high-cost full-height blur without reverting to blue. */
+  :root[data-palette="glass"] .sidebar{
+    background:rgba(62,52,49,.73);
+    -webkit-backdrop-filter:none;backdrop-filter:none;
+  }
+  :root[data-palette="glass"][data-theme="light"] .sidebar{
+    background:rgba(255,250,241,.79);
+  }
+  :root[data-palette="glass"] .metrics,
+  :root[data-palette="glass"] .detail-metrics{padding:12px;gap:10px}
+  :root[data-palette="glass"] .app-shell.mobile-nav-open .mobile-sidebar-panel{
+    background:var(--surface);
+    border-color:var(--glass-edge);
+    box-shadow:var(--glass-depth);
+    -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);
   }
 }
