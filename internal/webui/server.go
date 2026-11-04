@@ -1876,6 +1876,7 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 	mux.HandleFunc("/terminal.js", func(w http.ResponseWriter, r *http.Request) { sendEmbedded(w, "terminal.js") })
 	mux.HandleFunc("/theme-boot.js", func(w http.ResponseWriter, r *http.Request) { sendEmbedded(w, "theme-boot.js") })
 	mux.HandleFunc("/style.css", func(w http.ResponseWriter, r *http.Request) { sendEmbedded(w, "style.css") })
+	mux.HandleFunc("/cozy-beige-room.svg", func(w http.ResponseWriter, r *http.Request) { sendEmbedded(w, "cozy-beige-room.svg") })
 	mux.HandleFunc("/logo.svg", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "image/svg+xml; charset=utf-8")
 		sendEmbedded(w, "logo.svg")
