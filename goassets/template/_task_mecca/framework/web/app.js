@@ -5467,6 +5467,20 @@ function projectActivityPanel(){
     [ko?'미귀속 경과시간 합계':'Unattributed elapsed total',activityDuration(report.lifecycle_unattributed_ms)]
   ];
   const cards=stats.map(function(entry){return '<div class="activity-metric"><strong>'+esc(String(entry[1]))+'</strong><span>'+esc(entry[0])+'</span></div>';}).join('');
+  const reviewStats=[
+    [ko?'최초 검토 통과율':'First-pass acceptance',report.first_pass_acceptance_pct==null?'—':Number(report.first_pass_acceptance_pct).toFixed(1)+'%'],
+    [ko?'최초 검토 결과 확보':'Tasks with initial review outcome',String(report.first_review_decided_tasks||0)],
+    [ko?'관측된 재작업 백로그':'Tasks with measured rework',String(report.reworked_tasks||0)],
+    [ko?'재작업 Worker 시간':'Measured rework time',activityDuration(report.rework_worker_ms||0)],
+    [ko?'Controller 총 검토시간':'Measured controller review',activityDuration(report.controller_review_ms||0)],
+    [ko?'전체 회귀 실행 횟수':'Full regression runs',String(report.full_regression_runs||0)],
+    [ko?'전체 회귀 실행시간':'Full regression time',activityDuration(report.full_regression_ms||0)],
+    [ko?'동일 검증 반복 후보':'Repeated test candidates',String(report.test_repetition_candidates||0)]
+  ];
+  const reviewCards='<h3>'+esc(ko?'검토·재작업·검증 비용':'Review, rework and validation cost')+'</h3>'+
+    '<div class="activity-metric-grid">'+reviewStats.map(([name,value])=>
+    '<div class="activity-metric"><strong>'+esc(value)+'</strong><span>'+esc(name)+'</span></div>').join('')+'</div>'+
+    '<p class="summary">'+esc(ko?'재작업·검토·테스트 시간은 누적 Agent 시간의 부분집합입니다. 최초 통과율은 명시적 최초 검토 결과가 있는 백로그만 대상으로 합니다.':'Rework, review and test time are subsets of agent time. First-pass acceptance uses only explicit initial review outcomes.')+'</p>';
   const types=Object.entries(report.by_type_ms||{}).filter(([,ms])=>ms>0).sort((a,b)=>b[1]-a[1]).slice(0,12);
   const allTypeMs=types.reduce((total,[,ms])=>total+ms,0);
   const typeBars=types.length?'<h3>'+esc(ko?'활동 유형별 투입시간':'Agent time by activity')+'</h3>'+
@@ -5488,7 +5502,7 @@ function projectActivityPanel(){
   const note=ko?'Agent 보고·Lifecycle 이벤트에 근거한 구간만 합산했습니다. 대기시간과 활동시간 중복은 제거하고, 나머지는 미귀속으로 표시합니다. 백로그별 경과시간을 합산한 값은 전체 프로젝트 경과시간과 다릅니다.':'Only agent-reported and lifecycle evidence is counted; overlap is removed and the remaining span is unattributed. The sum of per-task elapsed times is not overall project elapsed time.';
   const filters='<h3>'+esc(ko?'활동 구간 조건별 분석':'Filter measured activities')+'</h3>'+activityFilterControls()+
     '<div id="activityProjectFiltered">'+filteredActivityHTML(activityProjectFiltered.get(state.project)?.result)+'</div>';
-  return '<section class="section" id="activityProjectPanel"><h2>'+esc(label)+'</h2><div class="activity-metric-grid">'+cards+'</div>'+typeBars+leaders+proposals+filters+'<p class="summary">'+esc(note)+'</p></section>';
+  return '<section class="section" id="activityProjectPanel"><h2>'+esc(label)+'</h2><div class="activity-metric-grid">'+cards+'</div>'+reviewCards+typeBars+leaders+proposals+filters+'<p class="summary">'+esc(note)+'</p></section>';
 }
 function bindActivityProjectTasks(){
   const root=typeof document.getElementById==='function'?document.getElementById('activityProjectPanel'):null;

@@ -30,6 +30,15 @@ type ProjectRollup struct {
     LifecycleWaitMillis int64 `json:"lifecycle_wait_ms"`
     LifecycleUnattributedMillis int64 `json:"lifecycle_unattributed_ms"`
     LifecycleOverlapMillis int64 `json:"lifecycle_overlap_ms"`
+    FirstReviewDecidedTasks int `json:"first_review_decided_tasks"`
+    FirstReviewAcceptedTasks int `json:"first_review_accepted_tasks"`
+    FirstPassAcceptancePct *float64 `json:"first_pass_acceptance_pct,omitempty"`
+    ReworkedTasks int `json:"reworked_tasks"`
+    ReworkWorkerMillis int64 `json:"rework_worker_ms"`
+    ControllerReviewMillis int64 `json:"controller_review_ms"`
+    FullRegressionRuns int `json:"full_regression_runs"`
+    FullRegressionMillis int64 `json:"full_regression_ms"`
+    TestRepetitionCandidates int `json:"test_repetition_candidates"`
     AgentTimeMillis int64 `json:"agent_time_ms"`
     ObservedWallMillis int64 `json:"sum_task_observed_wall_ms"`
     ByType map[Type]int64 `json:"by_type_ms"`
@@ -80,6 +89,27 @@ func summarizeProjectWithLifecycle(events []Event,includeTasks bool,facts map[st
     for _,id:=range ids{
         s:=Summarize(id,grouped[id])
         if includeTasks {result.TaskSummaries=append(result.TaskSummaries,s)}
+        result.ReworkWorkerMillis+=s.ReworkWorkerMillis
+        result.ControllerReviewMillis+=s.ControllerFirstReviewMillis+s.ControllerRereviewMillis
+        if s.ReworkWorkerMillis>0{result.ReworkedTasks++}
+        testReport:=SummarizeTests(s.Segments)
+        result.FullRegressionRuns+=testReport.FullRegressionCount
+        result.FullRegressionMillis+=testReport.FullRegressionMillis
+        result.TestRepetitionCandidates+=testReport.RepetitionCandidates
+        // First-pass acceptance is known only when the Controller actually
+        // recorded an explicit initial-review outcome. Do not use task done
+        // or a missing review record as a proxy.
+        var firstOutcome *Event
+        effective,_:=EffectiveEvents(grouped[id])
+        for i:=range effective{
+            e:=&effective[i]
+            if e.Action!=Stop || e.Type!=ControllerReview || e.Round!=0 || e.ReviewOutcome==""{continue}
+            if firstOutcome==nil || e.OccurredAt.Before(firstOutcome.OccurredAt){firstOutcome=e}
+        }
+        if firstOutcome!=nil {
+            result.FirstReviewDecidedTasks++
+            if firstOutcome.ReviewOutcome=="accepted"{result.FirstReviewAcceptedTasks++}
+        }
         result.AgentTimeMillis+=s.AgentTimeMillis
         result.ObservedWallMillis+=s.ObservedWallMillis
         if s.AgentTimeMillis>0{result.TasksWithMeasuredTime++;timings=append(timings,s.AgentTimeMillis)}
@@ -119,6 +149,10 @@ func summarizeProjectWithLifecycle(events []Event,includeTasks bool,facts map[st
         }
     }
     sort.Slice(timings,func(i,j int)bool{return timings[i]<timings[j]})
+    if result.FirstReviewDecidedTasks>0{
+        pct:=100*float64(result.FirstReviewAcceptedTasks)/float64(result.FirstReviewDecidedTasks)
+        result.FirstPassAcceptancePct=&pct
+    }
     result.MedianAgentMillis=percentile(timings,50)
     result.P90AgentMillis=percentile(timings,90)
     result.Suggestions=SuggestionsWithDurations(events,suggestionDurations)
