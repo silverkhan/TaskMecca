@@ -141,3 +141,14 @@ test('Gantt offers touch and keyboard detail output without relying on native ti
  assert.match(html,/role="status"/);
  assert.match(html,/aria-label="[^"]*2분/);
 });
+
+test('observation quality distinguishes ledger coverage from native runtime inventory',()=>{
+ const a=page();const data=payload();
+ data.summary.segments=[{type:'controller_review',role:'controller',round:0,started_at:shift(0),ended_at:shift(1),duration_ms:30000}];
+ data.events=[{type:'controller_review',role:'controller',agent_id:'controller-1',confidence:'inferred',action:'start'}];
+ const html=a.activityMetricsBody(data,'B-589');
+ assert.match(html,/활동 기록의 관측 품질/);
+ assert.match(html,/원장 이벤트 1건/);
+ assert.match(html,/Worker의 종료까지 확인된 작업시간 구간이 없습니다/);
+ assert.match(html,/Runtime 실행 목록/);
+});
