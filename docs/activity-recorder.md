@@ -98,6 +98,21 @@ a separate explicit authorization design.
 
 Do not add parallel Agent durations and report them as elapsed wall-time. Open activities, invalid transitions and unattributed gaps are surfaced separately. These reports cannot by themselves prove Task Mecca caused a slowdown.
 
+## On-demand Runtime versus Activity reconciliation
+
+The Activity detail screen has a **Compare runtime evidence** button. It requests
+`GET /api/activity?task=TASK&project=...&runtime_diagnostic=1` only when
+clicked. The ordinary lazy Activity read performs **no Runtime ledger scan**.
+
+This comparison matches the exact task-bound Runtime attempt and native agent
+identifier to the immutable Activity events. It distinguishes a matched
+Activity record, no matching Activity record, an unverified binding, and an
+identity mismatch. Unbound attempts without a verified task are excluded
+rather than assigned speculatively. Diagnostic rows are capped at 60 and
+errors leave the standard Activity summary available. A missing record is
+**not evidence that the Worker never ran**, nor does the comparison reconstruct
+unobserved time or authenticate same-user CLI callers.
+
 ## Recorder overhead measurement (on demand)
 
 `task-mecca activity diagnose --project PROJECT --json` returns the count,
