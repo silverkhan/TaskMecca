@@ -5774,6 +5774,7 @@ function backlogWorkerRosterSection(task) {
 // Activity is fetched independently so canonical task text and lifecycle remain fast.
 const activityDetailCache=new Map();
 const activityDetailPending=new Map();
+const activityTimelinePreferences=new Map();
 function activityDetailKey(id,project=state.project){return JSON.stringify([project,String(id||'').toUpperCase()]);}
 function activityDuration(ms){if(!Number.isFinite(ms)||ms<0)return '—';return fmtSec(Math.round(ms/1000));}
 function activityMetricsBody(payload){
@@ -5781,6 +5782,8 @@ function activityMetricsBody(payload){
   if(payload.error)return '<p class="summary">'+esc(payload.error)+'</p>';
   const s=payload.summary||{},segments=Array.isArray(s.segments)?s.segments:[],ko=state.language==='ko';
   const lc=payload.lifecycle_coverage||{},waitRows=Array.isArray(lc.wait_intervals)?lc.wait_intervals:[];
+  const prefs=activityTimelinePreferences.get(activityDetailKey(payload.task_id||state.detail))||{round:'all',zoom:'all'};
+  const selectedSegments=prefs.round==='all'?segments:segments.filter(x=>String(x.round)===prefs.round);
   if(!segments.length && !s.open_activities && !lc.registered_at && !waitRows.length)
     return '<p class="summary">'+esc(ko?'아직 관측된 활동·Lifecycle 시간 근거가 없습니다.':'No observed Activity or lifecycle timing evidence yet.')+'</p>';
   const metrics=[
@@ -5795,21 +5798,36 @@ function activityMetricsBody(payload){
   const totals=Object.entries(s.by_type_ms||{}).filter(([,ms])=>ms>0).sort((a,b)=>b[1]-a[1]);
   const all=totals.reduce((sum,[,ms])=>sum+ms,0);
   const byType='<h3>'+esc(ko?'활동 유형별 누적':'Cumulative by activity')+'</h3><div class="activity-type-bars">'+totals.map(([name,ms])=>'<div class="activity-type-row"><span>'+esc(name)+'</span><div class="activity-type-track"><div style="width:'+Math.max(0,Math.min(100,all?ms/all*100:0))+'%"></div></div><strong>'+esc(activityDuration(ms))+'</strong></div>').join('')+'</div>';
-  const timelineData=segments.map(x=>({label:x.type+' · '+x.role+' · '+(ko?'회차 ':'Round ')+x.round,from:x.started_at,to:x.ended_at,ms:x.duration_ms,wait:false}))
-    .concat(waitRows.map(x=>({label:(ko?'대기 · ':'Wait · ')+x.kind,from:x.started_at,to:x.ended_at,ms:x.duration_ms,wait:true})));
+  const timelineData=selectedSegments.map(x=>({label:x.type+' · '+x.role+' · '+(ko?'회차 ':'Round ')+x.round,from:x.started_at,to:x.ended_at,ms:x.duration_ms,wait:false}))
+    .concat(prefs.round==='all'?waitRows.map(x=>({label:(ko?'대기 · ':'Wait · ')+x.kind,from:x.started_at,to:x.ended_at,ms:x.duration_ms,wait:true})):[]);
   const validTimeline=timelineData.filter(x=>Number.isFinite(Date.parse(x.from))&&Number.isFinite(Date.parse(x.to)));
   const starts=validTimeline.map(x=>Date.parse(x.from)),ends=validTimeline.map(x=>Date.parse(x.to));
-  const begin=starts.length?Math.min(...starts):0,end=ends.length?Math.max(...ends):0,span=Math.max(1,end-begin);
+  const fullBegin=starts.length?Math.min(...starts):0,end=ends.length?Math.max(...ends):0;
+  const fullSpan=Math.max(1,end-fullBegin);
+  const begin=prefs.zoom==='last25'?end-fullSpan*.25:prefs.zoom==='last50'?end-fullSpan*.5:fullBegin;
+  const span=Math.max(1,end-begin);
+  const visibleTimeline=validTimeline.filter(x=>Date.parse(x.to)>=begin&&Date.parse(x.from)<=end);
+  const roundOptions=[...new Set(segments.map(x=>x.round))].sort((a,b)=>a-b);
+  const controls=segments.length?'<div class="activity-timeline-controls">'+
+    '<label for="activityTimelineRound">'+esc(ko?'회차':'Round')+'</label>'+
+    '<select id="activityTimelineRound"><option value="all">'+esc(ko?'전체':'All')+'</option>'+
+    roundOptions.map(n=>'<option value="'+esc(String(n))+'"'+(prefs.round===String(n)?' selected':'')+'>'+esc((ko?'회차 ':'Round ')+n)+'</option>').join('')+'</select>'+
+    '<label for="activityTimelineZoom">'+esc(ko?'시간 범위':'Time window')+'</label>'+
+    '<select id="activityTimelineZoom">'+[['all',ko?'전체':'All'],['last50',ko?'최근 50%':'Last 50%'],['last25',ko?'최근 25%':'Last 25%']].map(([key,name])=>
+      '<option value="'+key+'"'+(prefs.zoom===key?' selected':'')+'>'+esc(name)+'</option>').join('')+'</select></div>':'';
   const timeline=validTimeline.length?'<h3>'+esc(ko?'작업·대기 타임라인 (실제 시간축)':'Activity and waiting timeline (actual time axis)')+'</h3>'+
+    controls+
     '<p class="summary">'+esc(new Date(begin).toLocaleString(state.language==='ko'?'ko-KR':'en-US'))+
     ' — '+esc(new Date(end).toLocaleString(state.language==='ko'?'ko-KR':'en-US'))+'</p>'+
-    '<div class="activity-time-axis">'+validTimeline.map(x=>{
-      const left=Math.max(0,Math.min(100,(Date.parse(x.from)-begin)/span*100));
-      const width=Math.max(0,Math.min(100-left,(Date.parse(x.to)-Date.parse(x.from))/span*100));
+    '<div class="activity-time-axis">'+visibleTimeline.map(x=>{
+      const from=Math.max(begin,Date.parse(x.from));
+      const to=Math.min(end,Date.parse(x.to));
+      const left=Math.max(0,Math.min(100,(from-begin)/span*100));
+      const width=Math.max(0,Math.min(100-left,(to-from)/span*100));
       const tooltip=x.label+' · '+x.from+' → '+x.to;
       return '<div class="activity-timeline-row"><span>'+esc(x.label)+'</span>'+
         '<div class="activity-timeline-track'+(x.wait?' activity-timeline-wait':'')+'"><div title="'+esc(tooltip)+'" style="left:'+left+'%;width:'+width+'%"></div></div>'+
-        '<strong>'+esc(activityDuration(x.ms))+'</strong></div>';
+        '<strong>'+esc(activityDuration(to-from))+'</strong></div>';
     }).join('')+'</div>':'';
   const lifetimeMetrics=lc.registered_at?[
     [ko?'등록~완료 전체 경과':'Registered to completed',lc.total_elapsed_ms],
@@ -5839,6 +5857,25 @@ function activityMetricsBody(payload){
   const gap=s.unattributed_gap_ms>0?'<p class="summary">'+esc(ko?'관측 범위 내 활동 미귀속 시간: ':'Unattributed observed-span time: ')+esc(activityDuration(s.unattributed_gap_ms))+'</p>':'';
   return boxes+lifetimeView+byType+timeline+testOverview+unclassifiedView+gap+unknown;
 }
+function bindActivityTimelineControls(){
+  const root=typeof document.getElementById==='function'?document.getElementById('activityMetricsBody'):null;
+  if(!root)return;
+  const key=activityDetailKey(state.detail);
+  const payload=activityDetailCache.get(key);
+  if(!payload)return;
+  for(const [id,field] of [['activityTimelineRound','round'],['activityTimelineZoom','zoom']]){
+    const control=root.querySelector('#'+id);
+    if(!control||control.dataset.activityBound)return;
+    control.dataset.activityBound='1';
+    control.addEventListener('change',()=>{
+      const current=activityTimelinePreferences.get(key)||{round:'all',zoom:'all'};
+      current[field]=control.value;
+      activityTimelinePreferences.set(key,current);
+      root.innerHTML=activityMetricsBody(payload);
+      bindActivityTimelineControls();
+    });
+  }
+}
 async function loadTaskActivity(id,project=state.project){
   const key=activityDetailKey(id,project);
   if(activityDetailPending.has(key))return activityDetailPending.get(key);
@@ -5853,7 +5890,7 @@ async function loadTaskActivity(id,project=state.project){
     activityDetailCache.set(key,payload);
     if(state.project===project&&state.detail===id){
       const el=typeof document.getElementById==='function'?document.getElementById('activityMetricsBody'):null;
-      if(el)el.innerHTML=activityMetricsBody(payload);
+      if(el){el.innerHTML=activityMetricsBody(payload);bindActivityTimelineControls();}
     }
     return payload;
   })();
