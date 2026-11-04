@@ -127,3 +127,10 @@ test('unclassified suggested types are grouped with escaped evidence',()=>{
  assert.match(html,/Agent 추정/);
  assert.doesNotMatch(html,/<svg\/onload/);
 });
+
+test('Gantt interval labels are measured by rendered pixels rather than percentage',()=>{
+ const a=page();const html=a.activityMetricsBody(payload(),'B-589');
+ assert.match(html,/activity-timeline-duration-label/);
+ assert.match(html,/tabindex="0"/);
+ assert.match(html,/2분/);
+});
