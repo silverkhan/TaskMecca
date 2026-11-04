@@ -134,3 +134,10 @@ test('Gantt interval labels are measured by rendered pixels rather than percenta
  assert.match(html,/tabindex="0"/);
  assert.match(html,/2분/);
 });
+
+test('Gantt offers touch and keyboard detail output without relying on native title',()=>{
+ const a=page();const html=a.activityMetricsBody(payload(),'B-589');
+ assert.match(html,/id="activityTimelineSelection"/);
+ assert.match(html,/role="status"/);
+ assert.match(html,/aria-label="[^"]*2분/);
+});
