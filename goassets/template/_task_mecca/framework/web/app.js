@@ -26,7 +26,7 @@ const state = {
   lastFetch: 0,
   lastHubFetch: 0,
   theme: (()=>{ const preference=localStorage.getItem('task-mecca-theme'); return ['dark','light','system'].includes(preference)?preference:'dark'; })(),
-  palette: (()=>{ const saved=localStorage.getItem('task-mecca-palette'); const palette=['mecca','slate'].includes(saved)?saved:'mecca'; if(localStorage.getItem('task-mecca-palette-version')!=='2')localStorage.setItem('task-mecca-palette-version','2'); return palette; })(),
+  palette: (()=>{ const saved=localStorage.getItem('task-mecca-palette'); const palette=['mecca','slate','glass'].includes(saved)?saved:'mecca'; if(localStorage.getItem('task-mecca-palette-version')!=='2')localStorage.setItem('task-mecca-palette-version','2'); return palette; })(),
   manual: null,
   manualTab: 'quick',
   backlog: localStorage.getItem('task-mecca-backlog-folder') || '',
@@ -7337,8 +7337,8 @@ async function setLanguage(value) {
 
 function syncThemeBrowserChrome() {
   const effective=effectiveTheme(),mecca=state.palette==='mecca';
-  const background=mecca
-    ?(effective==='dark'?'#0a0e1b':'#f7f3f8')
+  const background=state.palette==='glass'?(effective==='dark'?'#0b1020':'#edf2fa')
+    :mecca?(effective==='dark'?'#0a0e1b':'#f7f3f8')
     :(effective==='dark'?'#111318':'#f7f8fa');
   document.documentElement.style.colorScheme=effective;
   // The inline background only protects the first paint. Once app.js is
@@ -7347,7 +7347,7 @@ function syncThemeBrowserChrome() {
   document.querySelector('meta[name="theme-color"]')?.setAttribute('content',background);
 }
 function applyPalette(value) {
-  state.palette=['mecca','slate'].includes(value)?value:'mecca';
+  state.palette=['mecca','slate','glass'].includes(value)?value:'mecca';
   document.documentElement.dataset.palette=state.palette;
   localStorage.setItem('task-mecca-palette',state.palette);
   syncThemeBrowserChrome();
