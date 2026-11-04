@@ -1452,6 +1452,7 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 			err := maintenance.SetProjectMonitoring(body.Path, false)
 			if err == nil {
                 stopProjectAttentionFeeds(body.Path)
+                invalidateProjectDiscovery(body.Path)
 				writeJSON(w, map[string]any{"result": "monitoring_paused"}, 200)
 				return
 			}
@@ -1459,6 +1460,7 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 			err := maintenance.SetProjectMonitoring(body.Path, true)
 			if err == nil {
                 ensureOperationNotificationFeed(body.Path)
+                invalidateProjectDiscovery(body.Path)
 				writeJSON(w, map[string]any{"result": "monitoring_resumed"}, 200)
 				return
 			}
@@ -1466,6 +1468,7 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 			record, removeErr := maintenance.ArchiveProject(body.Path)
 			if removeErr == nil {
                 stopProjectAttentionFeeds(body.Path)
+                invalidateProjectDiscovery(body.Path)
 				writeJSON(w, record, 200)
 				return
 			} else {
@@ -1475,6 +1478,7 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 			err = maintenance.RegisterProject(body.Path)
 			if err == nil {
                 ensureOperationNotificationFeed(body.Path)
+                invalidateProjectDiscovery(body.Path)
 				writeJSON(w, map[string]any{"result": "registered"}, 200)
 				return
 			}
@@ -1482,6 +1486,7 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 			err = maintenance.RestoreArchivedProject(body.HistoryID, body.Path)
 			if err == nil {
                 ensureOperationNotificationFeed(body.Path)
+                invalidateProjectDiscovery(body.Path)
 				writeJSON(w, map[string]any{"result": "restored"}, 200)
 				return
 			}
