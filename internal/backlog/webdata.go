@@ -494,11 +494,31 @@ func AttentionSnapshotFromRows(project,root string,rows []Record,reconcile bool,
 // request-local phase timings. No extra reconciliation is performed for
 // diagnostics, and no profiling fields are added to the client payload.
 func AttentionSnapshotWithProfile(project,root string,reconcile bool) (map[string]any,map[string]float64,error) {
+    payload,profile,_,err:=AttentionSnapshotWithProfileAndEligibility(project,root,reconcile)
+    return payload,profile,err
+}
+
+// Eligibility is a strictly conservative optimization hint. Ongoing doing
+// and hold tasks, failed control evidence, and actionable review/attention
+// states must always be recomputed because time alone can change their
+// canonical health or notification dwell.
+func AttentionSnapshotWithProfileAndEligibility(project,root string,reconcile bool) (map[string]any,map[string]float64,bool,error) {
     rows,err:=CachedCatalog(project,root)
-    if err!=nil { return nil,nil,err }
+    if err!=nil { return nil,nil,false,err }
+    quiescent:=reconcile
+    for _,row:=range preferredRows(rows){
+        if row.Location=="active" && (row.State=="doing" || row.State=="hold"){
+            quiescent=false
+            break
+        }
+    }
     control:=reconcileControlTower(project,root,rows)
+    if control.Err!=nil {quiescent=false}
     payload,err:=AttentionSnapshotFromRows(project,root,rows,reconcile,control)
-    return payload,control.Profile,err
+    if err!=nil {return payload,control.Profile,false,err}
+    if attention,ok:=payload["attention"].([]map[string]any); ok && len(attention)!=0 {quiescent=false}
+    if reviews,ok:=payload["controller_reviews"].([]map[string]any); ok && len(reviews)!=0 {quiescent=false}
+    return payload,control.Profile,quiescent,nil
 }
 
 func AttentionSnapshot(project,root string,reconcile bool) (map[string]any,error) {
