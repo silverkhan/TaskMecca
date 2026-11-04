@@ -47,6 +47,7 @@ func runActivityCLI(args []string,out,errOut io.Writer) int {
     runID:=fs.String("run-id","","execution evidence ID")
     runResult:=fs.String("result","","passed|failed|cancelled|unknown for test/build")
     runPurpose:=fs.String("purpose","","why the run was performed")
+    ciURL:=fs.String("ci-url","","link to separately verified CI workflow run")
     jsonOutput:=fs.Bool("json",false,"JSON response")
     parseArgs:=append([]string{},args[1:]...)
     if len(parseArgs)>0 && !strings.HasPrefix(parseArgs[0],"-") {parseArgs=append(parseArgs[1:],parseArgs[0])}
@@ -170,8 +171,8 @@ func runActivityCLI(args []string,out,errOut io.Writer) int {
     if *role==string(activity.RoleWorker)&&strings.TrimSpace(*assignment)=="" {fmt.Fprintln(errOut,"worker requires --assignment");return 2}
     if *role==string(activity.RoleController)&&strings.TrimSpace(*handoffID)=="" {fmt.Fprintln(errOut,"controller requires --handoff");return 2}
     var runEvidence *activity.RunEvidence
-    if *runCommand!=""||*runSHA!=""||*runScope!=""||*runID!=""||*runResult!="" {
-        runEvidence=&activity.RunEvidence{Command:*runCommand,GitSHA:*runSHA,Scope:*runScope,RunID:*runID,Result:*runResult,Purpose:*runPurpose}
+    if *runCommand!=""||*runSHA!=""||*runScope!=""||*runID!=""||*runResult!=""||*ciURL!="" {
+        runEvidence=&activity.RunEvidence{Command:*runCommand,GitSHA:*runSHA,Scope:*runScope,RunID:*runID,Result:*runResult,Purpose:*runPurpose,CIURL:*ciURL}
     }
     now:=time.Now().UTC()
     eventOccurred:=now

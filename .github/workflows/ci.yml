@@ -37,8 +37,17 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
-      - name: Test Go runtime
-        run: go test ./...
+      - name: Test Go runtime with Activity CI evidence
+        run: node scripts/record-ci-test.cjs --output activity-ci-evidence.json -- go test ./...
+      - name: Preserve full regression CI evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: activity-ci-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          path: activity-ci-evidence.json
+          if-no-files-found: warn
+      - name: Test CI evidence schema
+        run: node --test tests/record_ci_test.test.cjs
       - name: Lifecycle read correctness and scale regression gate
         env:
           TASK_MECCA_LIFECYCLE_PERF: "1"
