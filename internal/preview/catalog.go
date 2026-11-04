@@ -15,6 +15,7 @@ import (
     "strconv"
     "strings"
     "time"
+    "sync"
 )
 
 const (
@@ -40,12 +41,15 @@ type Build struct {
 }
 
 type Client struct {
-    HTTP *http.Client
-    APIURL string
-    Token string
-    // TokenFallback is used only if artifact downloading returns 401 without
-    // an explicit token. It is not used to authenticate the Preview process.
-    TokenFallback func(context.Context)(string,error)
+	HTTP   *http.Client
+	APIURL string
+	Token  string
+	// TokenFallback reuses existing gh authentication for metadata and artifact
+	// reads only. Resolved credentials stay in this client, never in a child.
+	TokenFallback    func(context.Context) (string, error)
+	authMu           sync.Mutex
+	fallbackResolved bool
+	fallbackToken    string
 }
 
 func NewClient() *Client {
@@ -57,7 +61,10 @@ func NewClient() *Client {
     }
 }
 
-type ghRepository struct { FullName string `json:"full_name"` }
+type ghRepository struct {
+	ID       int64  `json:"id"`
+	FullName string `json:"full_name"`
+}
 type ghPull struct {
     Number int `json:"number"`
     Title string `json:"title"`
@@ -71,51 +78,72 @@ type ghPull struct {
     } `json:"head"`
 }
 type ghRun struct {
-    ID int64 `json:"id"`
-    HTMLURL string `json:"html_url"`
-    Status string `json:"status"`
-    Conclusion string `json:"conclusion"`
-    Event string `json:"event"`
-    DisplayTitle string `json:"display_title"`
-    HeadBranch string `json:"head_branch"`
-    CreatedAt string `json:"created_at"`
-    UpdatedAt string `json:"updated_at"`
-    RunAttempt int `json:"run_attempt"`
-    PullRequests []struct { Number int `json:"number"` } `json:"pull_requests"`
+	ID             int64         `json:"id"`
+	HTMLURL        string        `json:"html_url"`
+	Status         string        `json:"status"`
+	Conclusion     string        `json:"conclusion"`
+	Event          string        `json:"event"`
+	DisplayTitle   string        `json:"display_title"`
+	HeadBranch     string        `json:"head_branch"`
+	HeadSHA        string        `json:"head_sha"`
+	WorkflowID     int64         `json:"workflow_id"`
+	Path           string        `json:"path"`
+	Repository     *ghRepository `json:"repository"`
+	HeadRepository *ghRepository `json:"head_repository"`
+	CreatedAt      string        `json:"created_at"`
+	UpdatedAt      string        `json:"updated_at"`
+	RunAttempt     int           `json:"run_attempt"`
+	PullRequests   []struct {
+		Number int `json:"number"`
+	} `json:"pull_requests"`
 }
 type ghRuns struct { Runs []ghRun `json:"workflow_runs"` }
 type ghArtifact struct {
-    ID int64 `json:"id"`
-    Name string `json:"name"`
-    Expired bool `json:"expired"`
+	ID          int64  `json:"id"`
+	Name        string `json:"name"`
+	Expired     bool   `json:"expired"`
+	WorkflowRun *struct {
+		ID               int64  `json:"id"`
+		RepositoryID     int64  `json:"repository_id"`
+		HeadRepositoryID int64  `json:"head_repository_id"`
+		HeadBranch       string `json:"head_branch"`
+		HeadSHA          string `json:"head_sha"`
+	} `json:"workflow_run"`
 }
 type ghArtifacts struct { Artifacts []ghArtifact `json:"artifacts"` }
 
 func (c *Client) get(ctx context.Context, path string, out any) error {
-    base:=strings.TrimRight(c.APIURL,"/")
-    if base=="" {return errors.New("GitHub API URL is missing")}
-    req,err:=http.NewRequestWithContext(ctx,http.MethodGet,base+path,nil)
-    if err!=nil{return err}
-    req.Header.Set("Accept","application/vnd.github+json")
-    req.Header.Set("X-GitHub-Api-Version","2022-11-28")
-    if c.Token!="" {req.Header.Set("Authorization","Bearer "+c.Token)}
-    client:=c.HTTP
-    if client==nil {client=&http.Client{Timeout:12*time.Second}}
-    resp,err:=client.Do(req)
-    if err!=nil{return fmt.Errorf("GitHub API unavailable: %w",err)}
-    defer resp.Body.Close()
-    if resp.StatusCode!=http.StatusOK {
-        // Never reflect GitHub response bodies: they may contain user/account data.
-        switch resp.StatusCode {
-        case 401: return errors.New("GitHub authentication failed")
-        case 403,429: return errors.New("GitHub API rate limited or access denied")
-        case 404: return errors.New("GitHub repository or workflow not accessible")
-        default: return fmt.Errorf("GitHub API status %d",resp.StatusCode)
-        }
-    }
-    dec:=json.NewDecoder(io.LimitReader(resp.Body,4<<20))
-    if err=dec.Decode(out);err!=nil{return fmt.Errorf("GitHub API invalid response: %w",err)}
-    return nil
+	base := strings.TrimRight(c.APIURL, "/")
+	if base == "" {
+		return errors.New("GitHub API URL is missing")
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, base+path, nil)
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Accept", "application/vnd.github+json")
+	req.Header.Set("X-GitHub-Api-Version", "2022-11-28")
+	if token := c.readToken(ctx); token != "" {
+		req.Header.Set("Authorization", "Bearer "+token)
+	}
+	client := c.HTTP
+	if client == nil {
+		client = &http.Client{Timeout: 12 * time.Second}
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		return &APIError{Code: "github_unavailable"}
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		// Never reflect GitHub response bodies: they may contain user/account data.
+		return githubAPIError(resp)
+	}
+	dec := json.NewDecoder(io.LimitReader(resp.Body, 4<<20))
+	if err = dec.Decode(out); err != nil {
+		return &APIError{Code:"github_unavailable"}
+	}
+	return nil
 }
 
 func validSHA(sha string) bool {
@@ -165,6 +193,20 @@ func (c *Client) ListBuilds(ctx context.Context, limit int) ([]Build,error) {
         return runs[i].ID>runs[j].ID
     })
 
+	var trusted *ghWorkflow
+	for _, run := range runs {
+		if legacyDispatchCandidate(run) {
+			trusted = &ghWorkflow{}
+			if err := c.get(ctx, "/repos/"+Repository+"/actions/workflows/"+workflow, trusted); err != nil {
+				return nil, err
+			}
+			if trusted.ID <= 0 || trusted.Path != ".github/workflows/"+workflow || trusted.State != "active" {
+				return nil, errors.New("GitHub Preview workflow metadata is not trusted")
+			}
+			break
+		}
+	}
+	artifactCache := map[int64]catalogArtifacts{}
     result:=make([]Build,0,limit)
     for _,pr:=range prs {
         if pr.Base.Ref!="dev" {continue}
@@ -180,7 +222,7 @@ func (c *Client) ListBuilds(ctx context.Context, limit int) ([]Build,error) {
             item.BuildStatus="blocked"
             item.Reason="invalid PR head SHA"
         } else {
-            item=c.findBuild(ctx,pr.Number,pr.Head.SHA,runs)
+            item=c.findBuild(ctx,pr.Number,pr.Head.SHA,runs,trusted,artifactCache)
         }
         item.Number=pr.Number
         item.Title=pr.Title
@@ -203,60 +245,73 @@ func (c *Client) ListBuilds(ctx context.Context, limit int) ([]Build,error) {
     return result,nil
 }
 
-func (c *Client) findBuild(ctx context.Context, number int, sha string, runs []ghRun) Build {
-    item:=Build{BuildStatus:"none",ExecutionAllowed:false}
-    expected:="task-mecca-preview-pr-"+strconv.Itoa(number)+"-"+sha
-    for _,run:=range runs {
-        if !runMatchesPR(run,number,sha) {continue}
-        if run.Status!="completed" {
-            // A still-running build is informative, but never usable.
-            if item.BuildStatus=="none" {
-                item.BuildStatus=run.Status
-                item.RunID=run.ID
-                item.RunURL=run.HTMLURL
-            }
-            continue
-        }
-        // Only a successful workflow with an exact head-SHA artifact can be
-        // advertised as a build of this PR revision.
-        if run.Conclusion!="success" {
-            if item.BuildStatus=="none" {
-                item.BuildStatus="failure"
-                item.RunID=run.ID
-                item.RunURL=run.HTMLURL
-                item.BuildFinishedAt=run.UpdatedAt
-            }
-            continue
-        }
-        var artifacts ghArtifacts
-        path:=fmt.Sprintf("/repos/%s/actions/runs/%d/artifacts?per_page=100",Repository,run.ID)
-        if err:=c.get(ctx,path,&artifacts);err!=nil{
-            if item.BuildStatus=="none" {
-                item.BuildStatus="unavailable"
-                item.Reason=err.Error()
-            }
-            continue
-        }
-        for _,a:=range artifacts.Artifacts {
-            if a.Name!=expected {continue}
-            item.RunID=run.ID
-            item.RunURL=run.HTMLURL
-            item.BuildFinishedAt=run.UpdatedAt
-            item.ArtifactID=a.ID
-            item.ArtifactName=a.Name
-            if a.Expired {
-                item.BuildStatus="expired"
-                item.Reason="GitHub artifact retention expired"
-            }else{
-                item.BuildStatus="success"
-                // This is only discovery. M2 enables execution after
-                // manifest/checksum, runtime sandbox and consent checks.
-                item.ExecutionAllowed=false
-                item.Reason="artifact download requires provenance, checksum and PR return-protocol verification"
-            }
-            return item
-        }
-    }
-    if item.BuildStatus=="none" {item.Reason="no successful artifact matches the current PR head SHA"}
-    return item
+func (c *Client) findBuild(ctx context.Context, number int, sha string, runs []ghRun, trusted *ghWorkflow, cache map[int64]catalogArtifacts) Build {
+	item := Build{BuildStatus: "none", ExecutionAllowed: false}
+	expected := "task-mecca-preview-pr-" + strconv.Itoa(number) + "-" + sha
+	for _, run := range runs {
+		legacy := legacyDispatchTrusted(run, trusted)
+		if !runMatchesPR(run, number, sha) && !legacy {
+			continue
+		}
+		if run.Status != "completed" {
+			// A still-running build is informative, but never usable.
+			if item.BuildStatus == "none" {
+				item.BuildStatus = run.Status
+				item.RunID = run.ID
+				item.RunURL = run.HTMLURL
+			}
+			continue
+		}
+		// Only a successful workflow with an exact head-SHA artifact can be
+		// advertised as a build of this PR revision.
+		if run.Conclusion != "success" {
+			if item.BuildStatus == "none" {
+				item.BuildStatus = "failure"
+				item.RunID = run.ID
+				item.RunURL = run.HTMLURL
+				item.BuildFinishedAt = run.UpdatedAt
+			}
+			continue
+		}
+		cached, ok := cache[run.ID]
+		if !ok {
+			path := fmt.Sprintf("/repos/%s/actions/runs/%d/artifacts?per_page=100", Repository, run.ID)
+			cached.err = c.get(ctx, path, &cached.items)
+			cache[run.ID] = cached
+		}
+		if cached.err != nil {
+			item.BuildStatus = "unavailable"
+			item.Reason = cached.err.Error()
+			continue
+		}
+		artifacts := cached.items
+		for _, a := range artifacts.Artifacts {
+			if a.ID <= 0 || a.Name != expected {
+				continue
+			}
+			if legacy && !legacyArtifactMatches(a, run) {
+				continue
+			}
+			item.RunID = run.ID
+			item.RunURL = run.HTMLURL
+			item.BuildFinishedAt = run.UpdatedAt
+			item.ArtifactID = a.ID
+			item.ArtifactName = a.Name
+			if a.Expired {
+				item.BuildStatus = "expired"
+				item.Reason = "GitHub artifact retention expired"
+			} else {
+				item.BuildStatus = "success"
+				// This is only discovery. M2 enables execution after
+				// manifest/checksum, runtime sandbox and consent checks.
+				item.ExecutionAllowed = false
+				item.Reason = "artifact download requires provenance, checksum and PR return-protocol verification"
+			}
+			return item
+		}
+	}
+	if item.BuildStatus == "none" {
+		item.Reason = "no successful artifact matches the current PR head SHA"
+	}
+	return item
 }

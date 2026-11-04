@@ -61,3 +61,14 @@ func TestPreviewBuildListServerDevOnlyAndNeverExecutes(t *testing.T) {
     h.ServeHTTP(w,httptest.NewRequest("GET","/api/preview/builds",nil))
     if w.Code!=http.StatusBadGateway{t.Fatalf("discovery failure status=%d",w.Code)}
 }
+
+func TestPreviewBuildLookupFailureDoesNotReturnEmptySuccess(t *testing.T){
+ project:=t.TempDir();old:=previewBuildsProvider;defer func(){previewBuildsProvider=old}()
+ previewBuildsProvider=func(stdcontext.Context,int)([]preview.Build,error){return nil,&preview.APIError{Code:"github_rate_limited",Status:403}}
+ t.Setenv("TASK_MECCA_CHANNEL","dev")
+ h,err:=Handler(project,"","0.3.6-dev.test");if err!=nil{t.Fatal(err)}
+ w:=httptest.NewRecorder();h.ServeHTTP(w,httptest.NewRequest("GET","/api/preview/builds",nil))
+ var body map[string]any;if err:=json.Unmarshal(w.Body.Bytes(),&body);err!=nil{t.Fatal(err)}
+ if w.Code!=502||body["error_code"]!="github_rate_limited"{t.Fatal("missing lookup failure classification")}
+ if _,exists:=body["builds"];exists{t.Fatal("lookup failure represented as empty builds")}
+}
