@@ -2485,3 +2485,82 @@ select.tm-combo-native{position:absolute!important;width:1px!important;height:1p
   :root[data-palette="glass"] .metrics,
   :root[data-palette="glass"] .detail-metrics{padding:12px;gap:10px}
 }
+
+
+/* Glass background presets. Background is a separate preference, applied
+   only to Glass; legacy Mecca and Slate visuals remain unchanged. */
+:root:not([data-palette="glass"]) .background-picker{display:none!important}
+:root[data-palette="glass"][data-background="cozy"] body{
+  background-color:#d9c6ad;
+  background-image:
+    linear-gradient(125deg,rgba(255,249,237,.30),rgba(239,223,199,.21) 60%,rgba(246,236,215,.38)),
+    url("/cozy-beige-room.svg");
+  background-repeat:no-repeat;
+  background-size:cover;
+  background-position:center center;
+  background-attachment:fixed;
+}
+:root[data-palette="glass"][data-background="cozy"][data-theme="dark"] body{
+  background-color:#211b1b;
+  background-image:
+    linear-gradient(120deg,rgba(9,14,25,.77),rgba(15,17,25,.65) 48%,rgba(23,15,23,.70)),
+    url("/cozy-beige-room.svg");
+}
+:root[data-palette="glass"][data-background="none"] body{
+  background:var(--glass-background);
+}
+.background-picker{
+  min-width:0;max-width:210px;height:38px;
+  display:inline-flex;align-items:center;gap:7px;
+  border:1px solid var(--border);border-radius:9px;
+  padding:0 8px;background:var(--surface);color:var(--muted);
+  font-size:11px;white-space:nowrap;
+}
+.background-picker select{
+  min-width:90px;max-width:140px;cursor:pointer;
+  background:transparent;border:0;outline:0;color:var(--text);
+  font-size:11px;
+}
+.background-picker .tm-combo{flex:1;min-width:87px;max-width:140px}
+.background-picker .tm-combo-trigger{
+  min-height:32px;border:0;box-shadow:none;
+  background:transparent;padding:5px 18px 5px 2px;font-size:11px;
+}
+.background-picker .tm-combo-trigger::after{right:4px}
+:root[data-palette="glass"] .background-picker{
+  background:linear-gradient(160deg,var(--glass-top),transparent 68%),var(--glass-panel);
+  border-color:var(--glass-edge);
+  box-shadow:inset 0 1px 0 var(--glass-glow);
+}
+:root[data-palette="glass"] .background-picker .tm-combo-trigger{
+  background:transparent;border:0;box-shadow:none;
+}
+.topbar .background-picker{order:3;flex:0 0 auto}
+:root[data-palette="glass"] .topbar .theme-switcher{order:4}
+@media(max-width:900px){
+  .background-picker>span:not(.tm-combo){display:none}
+  .background-picker{padding:0 5px;max-width:142px}
+}
+@media(max-width:680px){
+  :root[data-palette="glass"] .topbar{
+    grid-template-areas:"palette language theme theme"
+                        "background background background background"
+                        "version version version refresh";
+    grid-template-rows:36px 36px auto;
+  }
+  .topbar .background-picker{
+    grid-area:background;order:initial;
+    justify-self:stretch;width:100%;max-width:none;min-width:0;height:36px;
+  }
+  .topbar .background-picker select{max-width:none;flex:1;min-width:0;width:100%}
+  .topbar .background-picker .tm-combo{max-width:none;flex:1}
+  :root[data-palette="glass"][data-background="cozy"] body{
+    background-attachment:scroll;
+    background-size:cover;
+  }
+}
+@media(prefers-reduced-transparency:reduce){
+  :root[data-palette="glass"][data-background="cozy"] body{
+    background-image:none;background-color:var(--glass-background);
+  }
+}
