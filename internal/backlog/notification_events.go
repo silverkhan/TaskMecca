@@ -101,17 +101,13 @@ func ReadNotificationEvents(project string) ([]map[string]any, error) {
     defer notificationJournalMu.Unlock()
 
     path := filepath.Join(project, "_task_mecca", ".runtime", "notification_events.json")
-    data, err := os.ReadFile(path)
-    if os.IsNotExist(err) {
-        return []map[string]any{}, nil
-    }
-    if err != nil {
-        return nil, err
-    }
-
-    journal := notificationJournal{}
-    if err := json.Unmarshal(data, &journal); err != nil {
-        return nil, err
+    journal, hit := cachedNotificationJournal(path)
+    if !hit {
+        data, err := os.ReadFile(path)
+        if os.IsNotExist(err) { return []map[string]any{}, nil }
+        if err != nil { return nil, err }
+        if err := json.Unmarshal(data, &journal); err != nil { return nil, err }
+        rememberNotificationJournal(path, journal)
     }
     if journal.Events == nil {
         return []map[string]any{}, nil
@@ -138,13 +134,25 @@ func NotificationEvents(project string, items map[string]map[string]any) ([]map[
     loaded := false
     itemsPresent := true
     phasesPresent := true
-    data, err := os.ReadFile(path)
+    cached, hit := cachedNotificationJournal(path)
+    var data []byte
+    var err error
+    if !hit { data, err = os.ReadFile(path) }
     switch {
+    case hit:
+        loaded = true
+        journal = cached
+        itemsPresent = journal.Items != nil
+        phasesPresent = journal.Phases != nil
+        if journal.Items == nil { journal.Items = map[string]notificationObservation{} }
+        if journal.Phases == nil { journal.Phases = map[string]int{} }
+        if journal.Events == nil { journal.Events = []map[string]any{} }
     case err == nil:
         loaded = true
         if err := json.Unmarshal(data, &journal); err != nil {
             return nil, err
         }
+        rememberNotificationJournal(path,journal)
         itemsPresent = journal.Items != nil
         phasesPresent = journal.Phases != nil
         if journal.Items == nil {
@@ -210,6 +218,25 @@ func NotificationEvents(project string, items map[string]map[string]any) ([]map[
         }
 
         phase:=journal.Phases[id]
+        // Fast path for an unchanged, already-consumed observation. Unlike
+        // merely comparing the task's mtime this also checks the exact
+        // lifecycle start and notification condition episode. An unconsumed
+        // condition is ALWAYS revisited: runtime_unknown can mature into an
+        // alert solely because its dwell clock expired.
+        conditionKeyNow:=""
+        if condition,ok:=item["notification_condition"].(map[string]any); ok && len(condition)>0 {
+            conditionKeyNow=toString(condition["key"])
+            if conditionKeyNow=="" {
+                conditionKeyNow=toString(condition["kind"])+"\x00"+toString(condition["reason_type"])
+            }
+        }
+        if seen && !baseline &&
+            previous.FileState==fileState && previous.UpdatedAt==updatedAt &&
+            previous.StartedAt==startedAt && previous.ConditionKey==conditionKeyNow &&
+            previous.ConditionConsumed && (startedAt=="" || phase>=20) &&
+            (fileState!="done" || phase>=40) && phase>=10 {
+            continue
+        }
         if previous.FileState=="done" { phase=maxNotificationPhase(phase,40) }
         if baseline {
             phase=maxNotificationPhase(phase,10)
@@ -399,6 +426,8 @@ func NotificationEvents(project string, items map[string]map[string]any) ([]map[
     if err := os.Rename(tmp, path); err != nil {
         return nil, err
     }
-
+    // Publish only the fully committed journal. Readers in this process
+    // otherwise trust an obsolete observation until the next stat.
+    rememberNotificationJournal(path,journal)
     return append([]map[string]any{}, journal.Events...), nil
 }
