@@ -1758,8 +1758,15 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
             return
         }
         coverage:=activity.SummarizeLifecycle(taskID,lifecycle,summary.Segments)
+        report:=map[string]any{"task_id": taskID, "events": rows, "summary": summary, "test_report": activity.SummarizeTests(summary.Segments), "review_report": activity.SummarizeReviews(rows, summary.Segments), "lifecycle_coverage": coverage, "lifecycle_findings": findings}
+        // Runtime evidence scans are opt-in; normal Activity reads retain their
+        // lightweight ledger-only path. A failure never replaces valid data.
+        if r.URL.Query().Get("runtime_diagnostic")=="1" {
+            diagnostic,diagnosticErr:=readActivityRuntimeDiagnostic(project,taskID,rows)
+            if diagnosticErr!=nil{report["runtime_diagnostic_error"]=diagnosticErr.Error()}else{report["runtime_diagnostic"]=diagnostic}
+        }
 		w.Header().Set("Server-Timing",fmt.Sprintf("activity_read;dur=%.1f,activity_aggregate;dur=%.1f",readMS,time.Since(summaryStarted).Seconds()*1000))
-        writeJSON(w, map[string]any{"task_id": taskID, "events": rows, "summary": summary, "test_report": activity.SummarizeTests(summary.Segments), "review_report": activity.SummarizeReviews(rows, summary.Segments), "lifecycle_coverage": coverage, "lifecycle_findings": findings}, http.StatusOK)
+        writeJSON(w, report, http.StatusOK)
 	})
 
 	mux.HandleFunc("/api/tasks/", func(w http.ResponseWriter, r *http.Request) {
