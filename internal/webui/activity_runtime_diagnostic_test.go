@@ -2,6 +2,7 @@ package webui
 
 import (
     "testing"
+    "fmt"
 
     "github.com/silverkhan/TaskMecca/internal/activity"
     "github.com/silverkhan/TaskMecca/internal/runtimeobs"
@@ -36,4 +37,30 @@ func TestActivityRuntimeDiagnosticNeverInfersUnboundTask(t *testing.T){
         {AttemptID:"unbound",RuntimeAgentID:"worker",BindingState:runtimeobs.BindingUnbound},
     },nil)
     if len(got.Attempts)!=0||got.WithoutActivity!=0 {t.Fatalf("unbound task falsely attributed: %+v",got)}
+}
+
+func TestActivityRuntimeDiagnosticCountsAllAttemptsBeyondDisplayLimit(t *testing.T){
+    attempts:=make([]runtimeobs.Attempt,activityRuntimeDetailLimit+3)
+    events:=make([]activity.Event,0,len(attempts))
+    for i:=range attempts{
+        id:=fmt.Sprintf("attempt-%03d",i)
+        attempts[i]=runtimeobs.Attempt{AttemptID:id,TaskID:"B-602",RuntimeAgentID:"worker",BindingState:runtimeobs.BindingBound}
+        events=append(events,activity.Event{EventID:fmt.Sprintf("evt-%d",i),TaskID:"B-602",RuntimeAttemptID:id,AgentID:"worker"})
+    }
+    got:=summarizeActivityRuntimeEvidence("B-602",attempts,events)
+    if !got.Truncated||got.TotalAttempts!=activityRuntimeDetailLimit+3||len(got.Attempts)!=activityRuntimeDetailLimit{
+        t.Fatalf("invalid display cap %+v",got)
+    }
+    if got.MatchedAttempts!=activityRuntimeDetailLimit+3||got.ActivityWithoutRuntime!=0{
+        t.Fatalf("truncated counts lost true matches %+v",got)
+    }
+}
+func TestActivityRuntimeDiagnosticDeduplicatesUnmatchedEventIDs(t *testing.T){
+    events:=[]activity.Event{
+        {EventID:"same",TaskID:"B-602",RuntimeAttemptID:"missing",AgentID:"worker"},
+        {EventID:"same",TaskID:"B-602",RuntimeAttemptID:"missing",AgentID:"worker"},
+        {EventID:"other",TaskID:"B-OTHER",RuntimeAttemptID:"missing",AgentID:"worker"},
+    }
+    got:=summarizeActivityRuntimeEvidence("B-602",nil,events)
+    if got.ActivityWithoutRuntime!=1{t.Fatalf("duplicate unmatched event overcount %+v",got)}
 }
