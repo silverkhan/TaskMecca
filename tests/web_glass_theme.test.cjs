@@ -122,3 +122,16 @@ test('Glass surfaces use neutral transparent material rather than opaque blue',(
  const section=css.slice(css.indexOf('/* GLASS MATERIAL SYSTEM'));
  assert.equal(section.match(/\/\* GLASS MATERIAL SYSTEM/g).length,1);
 });
+
+test('Glass v3 is luminous and transparent rather than monochrome gray',()=>{
+ const glass=css.slice(css.indexOf('/* GLASS MATERIAL SYSTEM'));
+ assert.ok(glass.includes('--glass-panel:rgba(255,246,231,.075);'));
+ assert.ok(glass.includes('--glass-edge:rgba(255,252,242,.63);'));
+ assert.ok(glass.includes('rgba(19,17,21,.39)'));
+ assert.ok(glass.includes('/* Specular glass: directional reflection'));
+ assert.ok(glass.includes('linear-gradient(140deg,var(--glass-edge)'));
+ assert.ok(glass.includes(':root[data-palette="glass"] .preview-identity-banner'));
+ assert.ok(glass.includes(':root[data-palette="glass"] .user-attention'));
+ assert.ok(!glass.includes('rgba(23,21,23,.66)'));
+ assert.ok(!glass.includes('--glass-panel:rgba(76,66,61,.33);'));
+});
