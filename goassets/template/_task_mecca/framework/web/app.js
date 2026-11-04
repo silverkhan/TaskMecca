@@ -5888,10 +5888,19 @@ function activityMetricsBody(payload,taskID=state.detail){
     '<p class="summary">'+esc(ko?
       '진단을 요청한 시점의 해당 태스크에 연결된 실행만 비교했습니다. 태스크 연결이 없는 실행은 임의로 포함하지 않습니다. Activity 기록이 없다는 사실은 작업이 없었다는 증거가 아닙니다.':
       'Only task-bound attempts at the time of the explicit check are compared. Missing Activity records do not prove no execution.')+'</p>'+
+    '<p class="summary">'+esc(ko?
+      'Hook 설정은 수집 가능성을 뜻하며 실제 수신 성공을 보증하지 않습니다. 아래 Hook 시각은 최근 전이 기록에 한정됩니다.':
+      'Hook setup indicates collection potential, not proof of delivery. Hook times cover recent transitions only.')+'</p>'+
+    (Array.isArray(runtimeEvidence.hook_statuses)?
+      '<p class="summary">'+runtimeEvidence.hook_statuses.map(h=>esc(h.provider+' · '+(h.status==='configured'?
+        (ko?'설정 확인':'Configured'):h.status==='not_configured'?(ko?'설정 미확인':'Not configured'):(ko?'상태 확인 불가':'Unknown status')))).join(' / ')+'</p>':'')+
     '<div class="activity-ledger-scroll"><table class="activity-ledger-table"><thead><tr>'+
-    [ko?'실행 ID':'Attempt',ko?'Agent / 역할':'Agent / role',ko?'상태':'Status',ko?'Activity 기록':'Activity records'].map(x=>'<th scope="col">'+esc(x)+'</th>').join('')+
+    [ko?'실행 ID':'Attempt',ko?'Agent / 역할':'Agent / role',ko?'상태':'Status',ko?'Activity 기록':'Activity records',ko?'최근 Hook 근거':'Recent Hook evidence'].map(x=>'<th scope="col">'+esc(x)+'</th>').join('')+
     '</tr></thead><tbody>'+runtimeEvidence.attempts.map(a=>'<tr><td>'+esc(a.attempt_id||'—')+'</td><td>'+esc((a.agent_id||'—')+' · '+(a.agent_type||'—'))+'</td>'+
-    '<td>'+esc(runtimeStatus(a.diagnostic))+'</td><td>'+esc(String(a.matched_activity_events||0))+'</td></tr>').join('')+
+    '<td>'+esc(runtimeStatus(a.diagnostic))+'</td><td>'+esc(String(a.matched_activity_events||0))+'</td>'+
+    '<td>'+esc(a.recent_hook_transitions?
+      ((ko?'최근 '+a.recent_hook_transitions+'건 · ':'Recent '+a.recent_hook_transitions+' · ')+activityEventTime(a.latest_recent_hook_at,ko)):
+      (ko?'최근 근거 없음':'None in recent transitions'))+'</td></tr>').join('')+
     '</tbody></table></div>'+((runtimeEvidence.truncated)?'<p class="summary">'+esc(ko?'안전한 조회량 제한으로 일부 실행만 표시했습니다.':'Attempt list truncated for bounded diagnostic.')+'</p>':'')+'</details>':
     (payload.runtime_diagnostic_error?'<p class="timing-note warning">'+esc(ko?'실행 대조를 수행하지 못했습니다: ':'Runtime comparison unavailable: ')+esc(payload.runtime_diagnostic_error)+'</p>':'');
   const totals=Object.entries(s.by_type_ms||{}).filter(([,ms])=>ms>0).sort((a,b)=>b[1]-a[1]);
