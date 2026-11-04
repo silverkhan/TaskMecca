@@ -4,6 +4,8 @@ import (
     "os"
     "path/filepath"
     "time"
+
+    "github.com/silverkhan/TaskMecca/internal/projectionchange"
 )
 
 // These are read-only source identities, never the output of a reconciliation.
@@ -18,6 +20,8 @@ type attentionSnapshotMemo struct {
     sources []attentionSourceStamp
     at time.Time
     payload map[string]any
+    project string
+    generation uint64
 }
 const attentionSnapshotCheckpoint = 12*time.Second
 const attentionSourceLimit = 2500
@@ -74,8 +78,8 @@ func sameAttentionSources(a,b []attentionSourceStamp) bool {
 }
 
 func reuseAttentionSnapshot(memo *attentionSnapshotMemo, sources []attentionSourceStamp, valid bool,now time.Time) (map[string]any,bool) {
-    if memo==nil || !valid || now.Before(memo.at) ||
-        now.Sub(memo.at)>=attentionSnapshotCheckpoint ||
+    if memo==nil || !valid || projectionchange.Version(memo.project)!=memo.generation ||
+        now.Before(memo.at) || now.Sub(memo.at)>=attentionSnapshotCheckpoint ||
         !sameAttentionSources(memo.sources,sources){return nil,false}
     // Snapshot timestamps refer to this request, while the canonical payload
     // and notification IDs are unchanged. Only copy the outer map; nested
