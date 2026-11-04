@@ -2194,3 +2194,9 @@ select.tm-combo-native{position:absolute!important;width:1px!important;height:1p
 .activity-filter-fields button{min-height:34px;border-radius:8px;padding:6px 14px;font:inherit;cursor:pointer;border:1px solid var(--border,rgba(128,128,128,.3))}
 .activity-filter-fields button:disabled{opacity:.55;cursor:wait}
 #activityProjectFiltered{min-height:40px}
+
+
+/* Activity detail timeline controls use local data; no extra API calls. */
+.activity-timeline-controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:10px 0}
+.activity-timeline-controls label{font-size:.8rem;color:var(--muted,var(--text-muted,#888))}
+.activity-timeline-controls select{border:1px solid var(--border,rgba(128,128,128,.3));border-radius:8px;background:var(--surface-2,var(--panel,#222));color:inherit;min-height:32px;padding:5px 8px;font:inherit;font-size:.82rem}
