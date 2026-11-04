@@ -5844,9 +5844,19 @@ function activityMetricsBody(payload,taskID=state.detail){
     .concat(activeRound==='all'?waitRows.map(x=>({label:(ko?'대기 · ':'Wait · ')+x.kind,from:x.started_at,to:x.ended_at,ms:x.duration_ms,wait:true})):[]);
   // Retain the full time axis while filtering so round comparisons do not
   // silently rebase the data. Clip rendering, not the evidence itself.
-  const allTimes=segments.flatMap(x=>[Date.parse(x.started_at),Date.parse(x.ended_at)])
-    .concat(waitRows.flatMap(x=>[Date.parse(x.started_at),Date.parse(x.ended_at)])).filter(Number.isFinite);
-  const begin=allTimes.length?Math.min(...allTimes):0,end=allTimes.length?Math.max(...allTimes):0,span=Math.max(1,end-begin);
+  let begin=Infinity,end=-Infinity;
+  for(const item of segments){
+    for(const t of [Date.parse(item.started_at),Date.parse(item.ended_at)]){
+      if(Number.isFinite(t)){if(t<begin)begin=t;if(t>end)end=t;}
+    }
+  }
+  for(const item of waitRows){
+    for(const t of [Date.parse(item.started_at),Date.parse(item.ended_at)]){
+      if(Number.isFinite(t)){if(t<begin)begin=t;if(t>end)end=t;}
+    }
+  }
+  if(!Number.isFinite(begin)||!Number.isFinite(end)){begin=0;end=0;}
+  const span=Math.max(1,end-begin);
   const validTimeline=timelineData.filter(x=>Number.isFinite(Date.parse(x.from))&&Number.isFinite(Date.parse(x.to))&&Date.parse(x.to)>=Date.parse(x.from));
   const shownTimeline=validTimeline.slice(0,ACTIVITY_DETAIL_MAX_ROWS);
   const ruler='<div class="activity-time-ruler" aria-hidden="true">'+[0,.25,.5,.75,1].map(p=>'<span>'+
@@ -6534,6 +6544,7 @@ function render() {
       return;
     }
     c.innerHTML=gate+detailView(task);
+    bindActivityDetailControls(task.id,state.project);
     $('#lifecycleRetryBtn')?.addEventListener('click',retryTaskLifecycle);
     $('#backBtn')?.addEventListener('click',closeTask);
     $('#rawToggle')?.addEventListener('click',()=>{
