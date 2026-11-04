@@ -223,3 +223,16 @@ test('on-demand Runtime diagnosis exposes configured hooks separately from actua
  assert.match(html,/최근 2건/);
  assert.match(html,/실제 수신 성공을 보증하지 않습니다/);
 });
+
+test('all Activity timing views present explicit units in Korean',()=>{
+ const a=page(),data=payload();
+ data.summary.by_type_ms={requirements:120000,implementation:180000};
+ data.lifecycle_coverage.wait_activity_overlap_ms=26000;
+ data.test_report={runs:[{}],full_regression_ms:65000,full_regression_count:1,repetition_candidates:0};
+ const html=a.activityMetricsBody(data,'B-589');
+ assert.match(html,/요구사항 분석/);
+ assert.match(html,/2분/);
+ assert.match(html,/활동·대기 근거 겹침: 26초/);
+ assert.match(html,/1분 5초/);
+ assert.doesNotMatch(html,/00:26/);
+});
