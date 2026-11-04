@@ -23,6 +23,7 @@ type ActivityRuntimeDiagnostic struct {
     IdentityMismatch int `json:"identity_mismatch"`
     ActivityWithoutRuntime int `json:"activity_without_runtime"`
     RuntimeFindings int `json:"runtime_findings"`
+    HookStatuses []ActivityHookConfigStatus `json:"hook_statuses"`
     Truncated bool `json:"truncated"`
     Attempts []ActivityRuntimeAttempt `json:"attempts"`
 }
@@ -35,9 +36,30 @@ type ActivityRuntimeAttempt struct {
     RuntimeState runtimeobs.CanonicalState `json:"runtime_state"`
     ObservationQuality runtimeobs.ObservationQuality `json:"observation_quality,omitempty"`
     MatchedActivityEvents int `json:"matched_activity_events"`
+    LastObservedAt string `json:"last_observed_at,omitempty"`
+    StateEvidenceSource runtimeobs.EvidenceSource `json:"state_evidence_source,omitempty"`
+    RecentHookTransitions int `json:"recent_hook_transitions"`
+    LatestRecentHookAt string `json:"latest_recent_hook_at,omitempty"`
     Diagnostic string `json:"diagnostic"`
 }
+// These flags are only configuration evidence, not proof that hooks are firing.
+type ActivityHookConfigStatus struct {
+    Provider string `json:"provider"`
+    Status string `json:"status"`
+    ProjectInstalled bool `json:"project_installed"`
+    GlobalInstalled bool `json:"global_installed"`
+}
 const activityRuntimeDetailLimit=60
+func activityHookConfiguration(project string,provider string)ActivityHookConfigStatus {
+    out:=ActivityHookConfigStatus{Provider:provider,Status:"unknown"}
+    local,localErr:=runtimeobs.HookStatus(project,provider)
+    global,globalErr:=runtimeobs.GlobalHookStatus(provider)
+    if localErr!=nil||globalErr!=nil{return out}
+    out.ProjectInstalled=local.Installed
+    out.GlobalInstalled=global.Installed
+    if local.Installed||global.Installed{out.Status="configured"}else{out.Status="not_configured"}
+    return out
+}
 
 func summarizeActivityRuntimeEvidence(taskID string, attempts []runtimeobs.Attempt, events []activity.Event) ActivityRuntimeDiagnostic {
     out:=ActivityRuntimeDiagnostic{Source:"runtime_activity_on_demand",TaskID:taskID,Attempts:[]ActivityRuntimeAttempt{}}
@@ -63,7 +85,13 @@ func summarizeActivityRuntimeEvidence(taskID string, attempts []runtimeobs.Attem
         row:=ActivityRuntimeAttempt{
             AttemptID:a.AttemptID,AgentID:a.RuntimeAgentID,AgentType:a.AgentType,
             Provider:a.Provider,BindingState:a.BindingState,RuntimeState:a.CurrentState,
-            ObservationQuality:a.StateObservationQuality,
+            ObservationQuality:a.StateObservationQuality,LastObservedAt:a.LastObservedAt,
+            StateEvidenceSource:a.StateEvidenceSource,
+        }
+        for _,transition:=range a.RecentTransitions {
+            if transition.EvidenceSource!=runtimeobs.EvidenceHook{continue}
+            row.RecentHookTransitions++
+            if transition.At>row.LatestRecentHookAt{row.LatestRecentHookAt=transition.At}
         }
         if a.BindingState!=runtimeobs.BindingBound || a.RuntimeAgentID=="" || a.AttemptID==""{
             row.Diagnostic="identity_unverified"
@@ -105,5 +133,8 @@ func readActivityRuntimeDiagnostic(project,taskID string,events []activity.Event
     out:=summarizeActivityRuntimeEvidence(taskID,ledger.Attempts,events)
     out.CheckedAt=time.Now().UTC().Format(time.RFC3339Nano)
     out.RuntimeFindings=len(ledger.Findings)
+    out.HookStatuses=[]ActivityHookConfigStatus{
+        activityHookConfiguration(project,"codex"),activityHookConfiguration(project,"claude"),
+    }
     return out,nil
 }
