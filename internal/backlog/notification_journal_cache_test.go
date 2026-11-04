@@ -77,3 +77,25 @@ func TestNotificationJournalCheckpointFallsBackToDisk(t *testing.T) {
  notificationJournalMu.Unlock()
  if !hit{t.Fatal("checkpoint did not repopulate cache")}
 }
+
+func TestNotificationFastPathDoesNotHideLateStartOrConditionReset(t *testing.T) {
+ project:=t.TempDir()
+ item:=map[string]any{"id":"A-55","title":"Active","file_state":"doing","updated_at":"2026-11-04T00:00:00Z"}
+ rows:=map[string]map[string]any{"A-55":item}
+ if initial,err:=NotificationEvents(project,rows);err!=nil||len(initial)!=0 {t.Fatalf("baseline=%v err=%v",initial,err)}
+ for i:=0;i<3;i++ {if events,err:=NotificationEvents(project,rows);err!=nil||len(events)!=0{t.Fatalf("unchanged repeat %d: %v %v",i,events,err)}}
+ // A runtime-start observation can appear without a backlog file change.
+ item["lifecycle"]=map[string]any{"started_at":"2026-11-04T00:00:30Z"}
+ started,err:=NotificationEvents(project,rows)
+ if err!=nil||len(started)!=1||started[0]["kind"]!="started"{t.Fatalf("late Hook start invisible: %v %v",started,err)}
+ // A first actionable episode must be emitted, then a cleared condition
+ // may reappear with the same identifier as a separate notification episode.
+ item["notification_condition"]=map[string]any{"kind":"stalled","key":"worker:stalled","message":"no activity"}
+ first,err:=NotificationEvents(project,rows)
+ if err!=nil||len(first)!=2 {t.Fatalf("condition invisible: %v %v",first,err)}
+ item["notification_condition"]=nil
+ if _,err:=NotificationEvents(project,rows);err!=nil{t.Fatal(err)}
+ item["notification_condition"]=map[string]any{"kind":"stalled","key":"worker:stalled","message":"no activity"}
+ again,err:=NotificationEvents(project,rows)
+ if err!=nil||len(again)!=3 {t.Fatalf("new episode suppressed by consumed cache: %v %v",again,err)}
+}
