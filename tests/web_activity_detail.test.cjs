@@ -193,3 +193,18 @@ test('Gantt groups waiting separately and never assumes an unbound agent',()=>{
  assert.match(html,/대기 구간/);
  assert.match(html,/작업 착수 대기/);
 });
+
+test('on-demand Runtime diagnosis exposes configured hooks separately from actual observations',()=>{
+ const a=page();const data=payload();
+ data.runtime_diagnostic={
+   attempts:[{attempt_id:'attempt-1',agent_id:'worker-1',agent_type:'worker',diagnostic:'no_matching_activity',matched_activity_events:0,recent_hook_transitions:2,latest_recent_hook_at:'2026-11-04T07:08:00Z'}],
+   matched_attempts:0,without_activity:1,identity_unknown:0,identity_mismatch:0,
+   hook_statuses:[{provider:'codex',status:'configured'},{provider:'claude',status:'not_configured'}]
+ };
+ const html=a.activityMetricsBody(data,'B-589');
+ assert.match(html,/codex · 설정 확인/);
+ assert.match(html,/claude · 설정 미확인/);
+ assert.match(html,/최근 Hook 근거/);
+ assert.match(html,/최근 2건/);
+ assert.match(html,/실제 수신 성공을 보증하지 않습니다/);
+});
