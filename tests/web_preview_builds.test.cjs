@@ -4,11 +4,12 @@ const vm=require('node:vm');
 const {test}=require('node:test');
 
 const source=fs.readFileSync('goassets/template/_task_mecca/framework/web/app.js','utf8');
-function setup(){
+function setup(fetchImpl){
   const store=new Map();
   const prompts=[];
   const ctx=vm.createContext({
     prompts,
+    fetch:fetchImpl,
     window:{confirm(value){prompts.push(value);return false}},
     URLSearchParams,
     location:{search:'?view=preview',pathname:'/',reload(){}},
@@ -17,7 +18,7 @@ function setup(){
     localStorage:{getItem:key=>store.get(key)||null,setItem:(key,val)=>store.set(key,String(val))}
   });
   const body=source.slice(0,source.indexOf('\ntranslateChrome();'));
-  vm.runInContext(body+'\nglobalThis.harness={state,previewBuildsView,devPreviewAvailable,previewIdentityFromHealth,executePRSwitch,rebuildPRArtifact,prompts};',ctx);
+  vm.runInContext(body+'\nglobalThis.harness={state,refreshPreviewData,previewLookupError,previewBuildsView,devPreviewAvailable,previewIdentityFromHealth,executePRSwitch,rebuildPRArtifact,prompts};',ctx);
   return ctx.harness;
 }
 
@@ -136,4 +137,27 @@ test('mobile PR refresh control keeps a compact single-line label and independen
  assert.match(css,/\.pr-environment-summary\{margin-top:12px\}/);
  assert.match(css,/@media\(max-width:700px\)\{[\s\S]*?\.pr-refresh-long\{display:none\}/);
  assert.match(css,/\.pr-refresh-short\{display:inline\}/);
+});
+
+test('lookup failure is unknown availability, never an empty build list',async()=>{
+  const h=setup(async url=>url.includes('/builds')?{ok:false,status:502,json:async()=>({error_code:'github_rate_limited',error:'private upstream detail'})}:{ok:true,status:200,json:async()=>({instances:[]})});
+  h.state.view='hub';h.state.versionInfo={cli:{channel:'dev'}};
+  await h.refreshPreviewData();
+  assert.match(h.state.previewError,/요청 한도/);
+  assert.equal(h.state.previewLoaded,false);
+  const html=h.previewBuildsView();assert.match(html,/빌드 유무를 확인할 수 없습니다/);assert.doesNotMatch(html,/표시할 PR이 없습니다|private upstream detail/);
+});
+
+test('failed refresh keeps prior results identifiable and disables switching',async()=>{
+  const h=setup(async url=>url.includes('/builds')?{ok:false,status:502,json:async()=>({error_code:'github_access_denied'})}:{ok:true,status:200,json:async()=>({instances:[]})});
+  h.state.view='hub';h.state.versionInfo={cli:{channel:'dev'}};h.state.previewLoaded=true;
+  h.state.previewBuilds=[{number:348,head_sha:'a'.repeat(40),build_status:'success',title:'fixture'}];
+  await h.refreshPreviewData();const html=h.previewBuildsView();assert.match(html,/마지막으로 불러온 목록/);assert.match(html.match(/<button[^>]*data-pr-switch="348"[^>]*>/)[0],/disabled/);
+  h.state.previewError='';assert.doesNotMatch(h.previewBuildsView().match(/<button[^>]*data-pr-switch="348"[^>]*>/)[0],/disabled/);
+});
+
+test('Preview workflow title is quoted so YAML preserves PR hash and SHA',()=>{
+  const yaml=fs.readFileSync('.github/workflows/go-artifacts.yml','utf8'),line=yaml.split('\n').find(s=>s.startsWith('run-name:'));
+  const title=JSON.parse(line.slice('run-name:'.length).trim());
+  assert.match(title,/Preview PR #\$\{\{/);assert.match(title,/inputs\.preview_sha/);assert.match(title,/github\.event\.pull_request\.head\.sha/);
 });

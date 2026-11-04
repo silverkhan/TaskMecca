@@ -395,7 +395,7 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 		defer cancel()
 		builds, err := previewBuildsProvider(ctx, limit)
 		if err != nil {
-			writeJSON(w, map[string]any{"error": err.Error(), "builds": []preview.Build{}}, http.StatusBadGateway)
+			writeJSON(w, map[string]any{"error": err.Error(), "error_code": preview.APIErrorCode(err)}, http.StatusBadGateway)
 			return
 		}
 		writeJSON(w, map[string]any{"repository": preview.Repository, "builds": builds, "execution_available": false}, 200)
