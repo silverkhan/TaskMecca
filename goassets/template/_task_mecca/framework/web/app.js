@@ -5811,7 +5811,7 @@ function activityDetailPrefs(id,project=state.project){
   const key=activityDetailKey(id,project);
   if(!activityDetailViews.has(key)){
     if(activityDetailViews.size>=24)activityDetailViews.delete(activityDetailViews.keys().next().value);
-    activityDetailViews.set(key,{round:'all',mode:'timeline',zoom:1,groupAgents:false,ledger:false});
+    activityDetailViews.set(key,{round:'all',mode:'timeline',zoom:1,focus:'manual',groupAgents:false,ledger:false});
   }
   return activityDetailViews.get(key);
 }
@@ -5872,6 +5872,11 @@ function activityMetricsBody(payload,taskID=state.detail){
     '<label>'+esc(ko?'확대':'Zoom')+' <output id="activityDetailZoomValue">'+prefs.zoom+'×</output>'+
       '<input type="range" id="activityDetailZoom" min="1" max="8" step="1" value="'+prefs.zoom+'"'+
       (prefs.mode==='rounds'?' disabled':'')+' aria-label="'+esc(ko?'시간축 확대':'Timeline zoom')+'"/></label>'+
+    '<label>'+esc(ko?'빠른 이동':'Quick focus')+
+      '<select id="activityDetailFocus"'+(prefs.mode==='rounds'?' disabled':'')+'>'+
+      [['manual',ko?'직접 탐색':'Manual'],['last50',ko?'최근 절반':'Recent half'],['last25',ko?'최근 ¼':'Recent quarter']].
+      map(([v,label])=>'<option value="'+v+'"'+((prefs.focus||'manual')===v?' selected':'')+'>'+esc(label)+'</option>').join('')+
+      '</select></label>'+
     '<label>'+esc(ko?'Agent 그룹':'Group by agent')+
       '<input type="checkbox" id="activityDetailGroupAgents"'+(prefs.groupAgents?' checked':'')+
       (prefs.mode==='rounds'?' disabled':'')+'/></label>'+
@@ -6079,6 +6084,12 @@ function bindActivityDetailControls(taskID,project=state.project){
   if(!root||typeof root.querySelector!=='function')return;
   const pref=activityDetailPrefs(taskID,project);
   const previousObserver=activityDetailResizeObservers.get(root);
+  const scrollToRecent=()=>{
+    const scroller=root.querySelector('.activity-timeline-scroll');
+    if(scroller && (pref.focus==='last50'||pref.focus==='last25')){
+      scroller.scrollLeft=Math.max(0,scroller.scrollWidth-scroller.clientWidth);
+    }
+  };
   if(previousObserver)previousObserver.disconnect();
   const fitTimelineLabels=()=>{
     const labels=[...root.querySelectorAll('.activity-timeline-duration-label')];
@@ -6098,14 +6109,14 @@ function bindActivityDetailControls(taskID,project=state.project){
     }
   };
   if(typeof ResizeObserver!=='undefined'){
-    const observer=new ResizeObserver(()=>fitTimelineLabels());
+    const observer=new ResizeObserver(()=>{fitTimelineLabels();scrollToRecent();});
     const scroll=root.querySelector('.activity-timeline-scroll');
     const canvas=root.querySelector('.activity-timeline-canvas');
     if(scroll)observer.observe(scroll);
     if(canvas)observer.observe(canvas);
     activityDetailResizeObservers.set(root,observer);
   }
-  if(typeof queueMicrotask==='function')queueMicrotask(fitTimelineLabels);
+  if(typeof queueMicrotask==='function')queueMicrotask(()=>{fitTimelineLabels();scrollToRecent();});
   const canvasForSelection=root.querySelector('.activity-timeline-canvas');
   const selectedDetail=root.querySelector('#activityTimelineSelection');
   if(canvasForSelection&&selectedDetail){
@@ -6132,7 +6143,13 @@ function bindActivityDetailControls(taskID,project=state.project){
   };
   modify('activityDetailRound',value=>{pref.round=value;});
   modify('activityDetailMode',value=>{pref.mode=value==='rounds'?'rounds':'timeline';});
-  modify('activityDetailZoom',value=>{pref.zoom=Math.max(1,Math.min(8,Number(value)||1));});
+  modify('activityDetailZoom',value=>{pref.zoom=Math.max(1,Math.min(8,Number(value)||1));pref.focus='manual';});
+  modify('activityDetailFocus',value=>{
+    pref.focus=value==='last50'||value==='last25'?value:'manual';
+    if(pref.focus==='last50')pref.zoom=2;
+    else if(pref.focus==='last25')pref.zoom=4;
+    else pref.zoom=1;
+  });
   const groupToggle=root.querySelector('#activityDetailGroupAgents');
   if(groupToggle)groupToggle.addEventListener('change',()=>{
     if(state.project!==project||state.detail!==taskID)return;
@@ -6141,6 +6158,9 @@ function bindActivityDetailControls(taskID,project=state.project){
   });
   const zoom=root.querySelector('#activityDetailZoom');
   if(zoom)zoom.addEventListener('input',()=>{
+    pref.focus='manual';
+    const focus=root.querySelector('#activityDetailFocus');
+    if(focus)focus.value='manual';
     const label=root.querySelector('#activityDetailZoomValue');
     if(label)label.textContent=zoom.value+'×';
     const canvas=root.querySelector('.activity-timeline-canvas');
