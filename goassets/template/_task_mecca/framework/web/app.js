@@ -3794,6 +3794,16 @@ function previewCaption(value){
   const date=new Date(value);
   return Number.isNaN(date.getTime())?String(value):date.toLocaleString(state.language==='ko'?'ko-KR':'en-US');
 }
+function previewLookupError(body,status){
+  const ko=state.language==='ko',code=String(body?.error_code||'');
+  const messages={
+    github_authentication:ko?'GitHub 인증을 확인해 주세요. 기존 gh 로그인이나 지정된 인증 정보를 확인한 뒤 다시 조회하세요.':'Check the existing gh login or configured credential, then refresh.',
+    github_rate_limited:ko?'GitHub 요청 한도에 도달했습니다. 한도가 풀린 뒤 목록을 다시 조회하세요.':'GitHub request limit reached. Refresh after the limit resets.',
+    github_access_denied:ko?'GitHub 조회 권한이 없습니다. 저장소와 Actions 읽기 권한을 확인해 주세요.':'Check repository and Actions read permissions.',
+    github_not_accessible:ko?'GitHub 저장소 또는 workflow에 접근할 수 없습니다.':'The GitHub repository or workflow is not accessible.'
+  };
+  return messages[code]||(ko?'PR 빌드를 조회하지 못했습니다. 목록을 다시 조회해 주세요.':'PR build lookup failed. Refresh the list.');
+}
 function previewBuildsView(){
   const ko=state.language==='ko',dev=devPreviewAvailable();
   const current=state.executionTarget||{kind:'dev'};
@@ -3820,8 +3830,8 @@ function previewBuildsView(){
   const rows=visible.map(item=>{
     const number=Number(item.number),sha=String(item.head_sha||'');
     const valid=/^[a-f0-9]{40}$/.test(sha);
-    const available=item.build_status==='success'&&valid&&state.executionSwitchSupported&&!state.previewActionBusy;
-    const rebuildable=['none','failure','expired','unavailable'].includes(item.build_status)&&valid&&!state.previewActionBusy;
+    const available=item.build_status==='success'&&valid&&state.executionSwitchSupported&&!state.previewActionBusy&&!state.previewError&&!state.previewLoading;
+    const rebuildable=['none','failure','expired','unavailable'].includes(item.build_status)&&valid&&!state.previewActionBusy&&!state.previewError&&!state.previewLoading;
     const prLink=/^https:\/\/github\.com\/silverkhan\/TaskMecca\/pull\/\d+$/.test(String(item.url||''))
       ?'<a href="'+esc(item.url)+'" target="_blank" rel="noopener noreferrer">PR #'+number+'</a>':'PR #'+number;
     return '<article class="preview-build-row" data-preview-pr="'+number+'">'+
@@ -3849,9 +3859,10 @@ function previewBuildsView(){
       '<button type="button" class="action-btn secondary '+(state.previewFilter===value?'active':'')+'" data-preview-filter="'+value+'">'+label+'</button>').join('')+
     '</div></div>'+
     (state.previewError?'<div class="load-error" role="alert">'+esc(state.previewError)+'</div>':'')+
+    (state.previewError&&state.previewLoaded?'<p class="timing-note" role="status">'+esc(ko?'마지막으로 불러온 목록입니다. 다시 조회하기 전에는 PR로 전환할 수 없습니다.':'This is the last loaded list. Refresh successfully before switching.')+'</p>':'')+
     (state.previewMessage?'<p class="timing-note" role="status">'+esc(state.previewMessage)+'</p>':'')+
     (state.previewLoading&&!state.previewLoaded?'<div class="loading">'+(ko?'PR 빌드 조회 중…':'Loading builds…')+'</div>':
-    '<div class="preview-build-list">'+(rows||'<div class="empty">'+(ko?'표시할 PR이 없습니다.':'No matching PR builds.')+'</div>')+'</div>');
+    '<div class="preview-build-list">'+(rows||(state.previewError?'<p role="status">'+(ko?'조회에 실패해 빌드 유무를 확인할 수 없습니다.':'The lookup failed; build availability is unknown.')+'</p>':'<div class="empty">'+(ko?'표시할 PR이 없습니다.':'No matching PR builds.')+'</div>'))+'</div>');
 }
 // Local process state is independent from GitHub build metadata.
 function applyPreviewInstance(instance){
@@ -3891,7 +3902,8 @@ async function refreshPreviewData(){
       fetch('/api/preview/instances',{cache:'no-store'})
     ]);
     const [buildBody,instanceBody]=await Promise.all([builds.json(),instances.json()]);
-    if(!builds.ok||!instances.ok)throw Error(buildBody.error||instanceBody.error||'Preview API unavailable');
+    if(!builds.ok||!instances.ok)throw Error(previewLookupError(!builds.ok?buildBody:instanceBody,!builds.ok?builds.status:instances.status));
+    if(!Array.isArray(buildBody.builds))throw Error(previewLookupError({},builds.status));
     state.previewBuilds=Array.isArray(buildBody.builds)?buildBody.builds:[];
     // Ignore a stale instance GET that started before Stop/Start completed.
     if(epoch===(state.previewInstanceEpoch||0)){

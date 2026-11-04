@@ -1,5 +1,5 @@
 name: Go standalone artifacts
-run-name: Preview PR #${{ inputs.preview_pr || github.event.pull_request.number || 'manual' }} ${{ inputs.preview_sha || github.event.pull_request.head.sha || github.sha }}
+run-name: "Preview PR #${{ inputs.preview_pr || github.event.pull_request.number || 'manual' }} ${{ inputs.preview_sha || github.event.pull_request.head.sha || github.sha }}"
 
 on:
   workflow_dispatch:

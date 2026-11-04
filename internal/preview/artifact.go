@@ -111,16 +111,18 @@ func (c *Client) DownloadVerified(ctx context.Context, build Build,cacheRoot,goo
         if token!=""{req.Header.Set("Authorization","Bearer "+token)}
         return client.Do(req)
     }
-    resp,err:=fetch(c.Token)
-    if err!=nil{return "",fmt.Errorf("Preview artifact download failed: %w",err)}
+    resp,err:=fetch(c.cachedReadToken())
+    if err!=nil{return "",errors.New("Preview artifact download failed; retry the verified download")}
     if resp.StatusCode==http.StatusUnauthorized&&c.Token==""&&c.TokenFallback!=nil {
         _=resp.Body.Close()
         // Existing gh CLI sign-in can supply credentials without making gh
         // a mandatory runtime dependency or forwarding secrets to PR code.
-        fallback,tokenErr:=c.TokenFallback(ctx)
+        fallback:=c.readToken(ctx)
+        var tokenErr error
+        if fallback=="" {tokenErr=errors.New("existing GitHub authentication unavailable")}
         if tokenErr==nil&&fallback!="" {
             resp,err=fetch(fallback)
-            if err!=nil{return "",fmt.Errorf("Preview authenticated download failed: %w",err)}
+            if err!=nil{return "",errors.New("Preview authenticated download failed; check connectivity and retry")}
         }else{
             return "",errors.New("GitHub Actions artifact download requires Actions:read authentication. Sign in using 'gh auth login -h github.com' (optional GitHub CLI), or set TASK_MECCA_GITHUB_TOKEN for the Dev Web service")
         }
@@ -139,7 +141,7 @@ func (c *Client) DownloadVerified(ctx context.Context, build Build,cacheRoot,goo
     }
     if resp.ContentLength>maxArtifactArchiveBytes{return "",errors.New("Preview artifact archive too large")}
     archive,err:=io.ReadAll(io.LimitReader(resp.Body,maxArtifactArchiveBytes+1))
-    if err!=nil{return "",err}
+    if err!=nil{return "",errors.New("Preview artifact transfer failed; retry the verified download")}
     if int64(len(archive))>maxArtifactArchiveBytes{return "",errors.New("Preview artifact archive too large")}
 
     reader,err:=zip.NewReader(bytes.NewReader(archive),int64(len(archive)))
