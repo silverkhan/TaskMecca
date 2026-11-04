@@ -2243,3 +2243,12 @@ select.tm-combo-native{position:absolute!important;width:1px!important;height:1p
   .activity-stacked-row{grid-template-columns:minmax(70px,1fr) minmax(95px,2fr) auto;gap:5px;font-size:.72rem}
   .activity-time-ruler{font-size:.59rem}
 }
+
+/* AID-264: grouped activity rows preserve the absolute timeline per attempt. */
+.activity-agent-group{margin:5px 0 9px;border:1px solid var(--border,rgba(128,128,128,.16));border-radius:8px;padding:4px 6px}
+.activity-agent-group>summary{cursor:pointer;padding:6px 4px;font-size:.79rem;font-weight:600;overflow-wrap:anywhere}
+.activity-agent-group>summary small{font-weight:400;opacity:.7}
+.activity-agent-group>.activity-timeline-row{padding:3px 4px}
+.activity-agent-group>.activity-timeline-row>span{overflow-wrap:anywhere}
+.activity-agent-group:focus-within{outline:1px solid var(--muted,rgba(128,128,128,.4));outline-offset:2px}
+@media(max-width:580px){.activity-agent-group{padding:3px}.activity-agent-group>summary{font-size:.72rem}}
