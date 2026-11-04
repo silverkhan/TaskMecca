@@ -105,3 +105,20 @@ test('Cozy room asset and distinct Glass material preserve data readability',()=
  assert.ok(css.includes('background-attachment:scroll'));
  assert.ok(css.includes('backdrop-filter:none'));
 });
+
+test('Glass surfaces use neutral transparent material rather than opaque blue',()=>{
+ const dark=css.slice(css.indexOf(':root[data-palette="glass"][data-theme="dark"]{'));
+ const start=dark.indexOf(':root[data-palette="glass"][data-theme="light"]{');
+ const darkVars=dark.slice(0,start);
+ assert.ok(darkVars.includes('--surface:rgba('));
+ assert.ok(darkVars.includes('--surface2:rgba('));
+ assert.ok(!darkVars.includes('#202c43'));
+ assert.ok(!darkVars.includes('--accent:#90bfff'));
+ assert.ok(css.includes(':root[data-palette="glass"] .preview-identity-banner'));
+ assert.ok(css.includes(':root[data-palette="glass"] .preview-build-row'));
+ assert.ok(css.includes(':root[data-palette="glass"] .preview-build-tools input'));
+ assert.ok(css.includes(':root[data-palette="glass"] .user-attention'));
+ assert.ok(css.includes(':root[data-palette="glass"] .sidebar'));
+ const section=css.slice(css.indexOf('/* GLASS MATERIAL SYSTEM'));
+ assert.equal(section.match(/\/\* GLASS MATERIAL SYSTEM/g).length,1);
+});
