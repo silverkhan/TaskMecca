@@ -21,6 +21,10 @@ Worker의 수동 운영원장 쓰기 금지와 승인된 CLI preflight ephemeral
 
 실제 Agent dispatch 전에 `task-mecca contract decision show --project PROJECT --task ID --json`로 유효 승인 근거와 잔여 정책을 확인한다. `contract apply`는 등록 전용이다. 현재 실행은 `runtime query`, Hook/Binding 장애는 `runtime diagnose`를 우선 사용하고, 완료된 과거 attempt를 살아 있는 현재 실행으로 재사용하지 않는다. 기존 `preflight`와 provider native capability 확인은 생략하지 않는다.
 
+## 실제 검토 활동 계측 (Activity Recorder)
+
+실제 Controller Handoff claim과 현재 native attempt를 재확인한 후, 검토를 **실제로 시작할 때만** `task-mecca activity report`의 `--event review_started`를 호출한다. 정확한 `--role controller --agent --attempt --handoff` 및 안정적 `--event-id`, 관측된 `--evidence`가 필수다. 검토 종료 시 실제 결론에 따라 `review_accepted`, `review_rejected`, `review_needs_changes` 중 해당하는 이벤트를 1회 보고한다. 이는 Activity 계측이며 canonical acceptance/done을 대신하지 않는다. 실패 시 미기록 사유를 남기고 허위 활동시간을 보충하지 않는다. 단순 Decision 반환이나 claim만으로 Activity start하지 않는다.
+
 ## Root와 독립적인 완료
 
 `registration_ready`를 claim한 뒤 Root의 다음 turn·응답·결과 확인을 기다리지 않고 Worker 배정, DONE/BLOCKED 검증, backlog/lifecycle 확정, 외부 원천 반영을 독립적으로 수행한다. `root-reported`는 가능한 경우의 best-effort handoff mark일 뿐 done/archive나 외부 반영의 gate가 아니다. 통지가 실패하거나 Root가 종료되어도 나머지 단계를 완료한다. 계약상 사용자 선택이 새로 필요할 때만 hold와 차이·재개 조건을 durable하게 기록한다.
