@@ -37,8 +37,9 @@ func runActivityCI(args []string,out,errOut io.Writer)int{
     if token==""{token=strings.TrimSpace(os.Getenv("GITHUB_TOKEN"))}
     ctx,cancel:=context.WithTimeout(context.Background(),25*time.Second)
     defer cancel()
+    normalizedTask:=strings.ToUpper(strings.TrimSpace(*task))
     jobs,err:=(activity.GitHubCIClient{Token:token}).FetchGitHubCI(
-        ctx,*task,*repository,*runID,*sha,*jobName,activity.Type(*kind),*scope)
+        ctx,normalizedTask,*repository,*runID,*sha,*jobName,activity.Type(*kind),*scope)
     if err!=nil{fmt.Fprintln(errOut,"CI evidence not imported:",err);return 1}
     if len(jobs)==0{
         fmt.Fprintln(errOut,"no completed CI jobs matched; nothing was imported")
@@ -47,7 +48,7 @@ func runActivityCI(args []string,out,errOut io.Writer)int{
     inserted,err:=(activity.CIJournal{Project:root}).AppendBatch(jobs)
     if err!=nil{fmt.Fprintln(errOut,"CI evidence not imported:",err);return 1}
     response:=map[string]any{
-        "ok":true,"task_id":*task,"repository":*repository,
+        "ok":true,"task_id":normalizedTask,"repository":*repository,
         "run_id":*runID,"commit_sha":strings.ToLower(*sha),
         "jobs_found":len(jobs),"jobs_imported":inserted,
         "jobs_unchanged":len(jobs)-inserted,
@@ -57,7 +58,7 @@ func runActivityCI(args []string,out,errOut io.Writer)int{
         if err:=json.NewEncoder(out).Encode(response);err!=nil{fmt.Fprintln(errOut,err);return 1}
     }else{
         fmt.Fprintf(out,"CI evidence for %s: %d jobs imported, %d unchanged (not counted as Agent time)\n",
-            *task,inserted,len(jobs)-inserted)
+            normalizedTask,inserted,len(jobs)-inserted)
     }
     return 0
 }
