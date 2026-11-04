@@ -5891,7 +5891,7 @@ function activityMetricsBody(payload,taskID=state.detail){
         return '<div class="activity-timeline-row"><span>'+esc(x.label)+'</span>'+
           '<div class="activity-timeline-track'+(x.wait?' activity-timeline-wait':'')+'"><div role="img" aria-label="'+esc(tooltip)+'" title="'+esc(tooltip)+
           '" tabindex="0" style="left:'+left+'%;width:'+width+'%;overflow:hidden;white-space:nowrap;display:flex;align-items:center;justify-content:center"><small class="activity-timeline-duration-label" style="display:none;color:white;font-size:10px;pointer-events:none">'+esc(activityDisplayDuration(x.ms,ko))+'</small></div></div><strong>'+esc(activityDisplayDuration(x.ms,ko))+'</strong></div>';
-      }).join('')+'</div></div></div>':'<p class="summary">'+esc(ko?'선택한 회차에 측정된 작업 구간이 없습니다.':'No measured intervals for this round.')+'</p>';
+      }).join('')+'</div></div></div><p class="summary" id="activityTimelineSelection" role="status" hidden></p>':'<p class="summary">'+esc(ko?'선택한 회차에 측정된 작업 구간이 없습니다.':'No measured intervals for this round.')+'</p>';
   const group=activityRoundBreakdown(filtered);
   const groupKeys=[...group.keys()].sort((a,b)=>a-b);
   const maxRound=Math.max(1,...groupKeys.map(k=>[...group.get(k).values()].reduce((n,ms)=>n+ms,0)));
@@ -5997,6 +5997,23 @@ function bindActivityDetailControls(taskID,project=state.project){
     activityDetailResizeObservers.set(root,observer);
   }
   if(typeof queueMicrotask==='function')queueMicrotask(fitTimelineLabels);
+  const canvasForSelection=root.querySelector('.activity-timeline-canvas');
+  const selectedDetail=root.querySelector('#activityTimelineSelection');
+  if(canvasForSelection&&selectedDetail){
+    const showSelected=target=>{
+      const interval=target&&typeof target.closest==='function'?target.closest('[role="img"]'):null;
+      if(!interval||!canvasForSelection.contains(interval))return;
+      selectedDetail.textContent=interval.getAttribute('aria-label')||'';
+      selectedDetail.hidden=false;
+    };
+    canvasForSelection.addEventListener('click',e=>showSelected(e.target));
+    canvasForSelection.addEventListener('keydown',e=>{
+      if(e.key==='Enter'||e.key===' '){
+        const interval=e.target&&typeof e.target.closest==='function'?e.target.closest('[role="img"]'):null;
+        if(interval){e.preventDefault();showSelected(interval);}
+      }
+    });
+  }
   const modify=(id,fn)=>{
     const control=root.querySelector('#'+id);
     if(control)control.addEventListener('change',()=>{
