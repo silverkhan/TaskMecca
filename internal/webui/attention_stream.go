@@ -13,6 +13,7 @@ import (
 	"github.com/silverkhan/TaskMecca/internal/backlog"
 	"github.com/silverkhan/TaskMecca/internal/maintenance"
 	"github.com/silverkhan/TaskMecca/internal/notify"
+    "github.com/silverkhan/TaskMecca/internal/projectionchange"
 )
 
 type attentionFeed struct {
@@ -161,7 +162,9 @@ func (f *attentionFeed) refreshActive() {
     start := time.Now()
     var sources []attentionSourceStamp
     var sourceValid bool
+    var sourceGeneration uint64
     if f.snapshotMemo!=nil || f.quiescentCandidate {
+        sourceGeneration=projectionchange.Version(f.project)
         sources,sourceValid=attentionSourceInventory(f.project,f.root)
     }
     payload,reused:=reuseAttentionSnapshot(f.snapshotMemo,sources,sourceValid,time.Now())
@@ -173,8 +176,10 @@ func (f *attentionFeed) refreshActive() {
         f.snapshotMemo=nil
         if err==nil && idle && f.quiescentCandidate && sourceValid {
             after,valid:=attentionSourceInventory(f.project,f.root)
-            if valid && sameAttentionSources(sources,after) {
-                f.snapshotMemo=&attentionSnapshotMemo{sources:after,at:time.Now(),payload:payload}
+            if valid && sameAttentionSources(sources,after) &&
+                projectionchange.Version(f.project)==sourceGeneration {
+                f.snapshotMemo=&attentionSnapshotMemo{sources:after,at:time.Now(),payload:payload,
+                    project:f.project,generation:sourceGeneration}
             }
         }
         f.quiescentCandidate=idle && err==nil
