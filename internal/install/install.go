@@ -608,3 +608,35 @@ func MigrateWithPlan(project, version, choice, expectedPlan string) (MigrationRe
 	result.InstructionRefreshRequired = len(changedInstructions) > 0
 	return result, nil
 }
+
+// FrameworkChangesRequired compares the current embedded managed files with the
+// project's recorded framework baseline. VERSION-only churn is not actionable.
+// If the manifest is missing, the UI should conservatively offer repair.
+func FrameworkChangesRequired(project string) (bool,error) {
+    target:=filepath.Join(project,targetName)
+    if err:=safeTargetPath(target,"manifest.json");err!=nil{return false,err}
+    raw,err:=os.ReadFile(filepath.Join(target,"manifest.json"))
+    if errors.Is(err,os.ErrNotExist){return true,nil}
+    if err!=nil{return false,err}
+    var previous manifest
+    if err=json.Unmarshal(raw,&previous);err!=nil{return false,err}
+    if previous.Managed==nil{return false,errors.New("invalid Task Mecca manifest")}
+    embedded,err:=bundled()
+    if err!=nil{return false,err}
+    for rel,item:=range previous.Managed {
+        if !managedPath(rel){return false,fmt.Errorf("invalid managed path: %s",rel)}
+        if rel=="VERSION"{continue}
+        incoming,exists:=embedded[rel]
+        if !exists||item.BaselineSHA256!=hash(incoming){return true,nil}
+        if err:=safeTargetPath(target,rel);err!=nil{return false,err}
+        info,statErr:=os.Lstat(filepath.Join(target,filepath.FromSlash(rel)))
+        if errors.Is(statErr,os.ErrNotExist){return true,nil}
+        if statErr!=nil{return false,statErr}
+        if !info.Mode().IsRegular(){return false,fmt.Errorf("not a regular managed file: %s",rel)}
+    }
+    for rel:=range embedded{
+        if rel=="VERSION"{continue}
+        if _,exists:=previous.Managed[rel];!exists{return true,nil}
+    }
+    return false,nil
+}
