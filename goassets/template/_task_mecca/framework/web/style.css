@@ -2431,32 +2431,6 @@ select.tm-combo-native{position:absolute!important;width:1px!important;height:1p
   font-weight:750;
 }
 
-/* Specular glass: directional reflection and a visible bevel, without
-   blue fill or continuous animation. Limit glare to panel perimeters. */
-:root[data-palette="glass"] .preview-identity-banner,
-:root[data-palette="glass"] .user-attention,
-:root[data-palette="glass"] .preview-build-row,
-:root[data-palette="glass"] .worker-card,
-:root[data-palette="glass"] .runtime-root-card,
-:root[data-palette="glass"] .activity-metric,
-:root[data-palette="glass"] .timing-note{
-  border:1px solid transparent;
-  background:
-    linear-gradient(138deg,var(--glass-top),rgba(255,255,255,.045) 25%,transparent 52%,var(--glass-bottom)) padding-box,
-    linear-gradient(140deg,var(--glass-edge),rgba(255,255,255,.13) 34%,rgba(255,255,255,.08) 64%,var(--glass-edge)) border-box,
-    var(--glass-panel) padding-box;
-  box-shadow:var(--glass-depth),inset 1px 1px 0 var(--glass-glow),inset -1px -1px 0 rgba(255,255,255,.12);
-}
-/* Pair clear glazing with readable print: no full-screen gray veil. */
-:root[data-palette="glass"][data-theme="dark"] .content,
-:root[data-palette="glass"][data-theme="dark"] .preview-identity-banner,
-:root[data-palette="glass"][data-theme="dark"] .user-attention{
-  text-shadow:0 1px 4px rgba(16,12,14,.42);
-}
-:root[data-palette="glass"][data-theme="light"] .content,
-:root[data-palette="glass"][data-theme="light"] .preview-identity-banner,
-:root[data-palette="glass"][data-theme="light"] .user-attention{text-shadow:none}
-
 /* Custom selects and buttons must inherit the material rather than paint
    a second solid layer inside the glass frame. */
 :root[data-palette="glass"] .palette-picker .tm-combo-trigger,
@@ -2495,6 +2469,33 @@ select.tm-combo-native{position:absolute!important;width:1px!important;height:1p
   background:var(--glass-chrome);
   border-color:var(--glass-edge);
 }
+/* Specular glass: directional reflection and a visible bevel, without
+   blue fill or continuous animation. Limit glare to panel perimeters. */
+:root[data-palette="glass"] .preview-identity-banner,
+:root[data-palette="glass"] .user-attention,
+:root[data-palette="glass"] .preview-build-row,
+:root[data-palette="glass"] .worker-card,
+:root[data-palette="glass"] .runtime-root-card,
+:root[data-palette="glass"] .activity-metric,
+:root[data-palette="glass"] .timing-note{
+  border:1px solid transparent;
+  background:
+    linear-gradient(138deg,var(--glass-top),rgba(255,255,255,.045) 25%,transparent 52%,var(--glass-bottom)) padding-box,
+    linear-gradient(140deg,var(--glass-edge),rgba(255,255,255,.13) 34%,rgba(255,255,255,.08) 64%,var(--glass-edge)) border-box,
+    var(--glass-panel) padding-box;
+  box-shadow:var(--glass-depth),inset 1px 1px 0 var(--glass-glow),inset -1px -1px 0 rgba(255,255,255,.12);
+}
+/* Pair clear glazing with readable print: no full-screen gray veil. */
+:root[data-palette="glass"][data-theme="dark"] .content,
+:root[data-palette="glass"][data-theme="dark"] .preview-identity-banner,
+:root[data-palette="glass"][data-theme="dark"] .user-attention{
+  text-shadow:0 1px 4px rgba(16,12,14,.42);
+}
+:root[data-palette="glass"][data-theme="light"] .content,
+:root[data-palette="glass"][data-theme="light"] .preview-identity-banner,
+:root[data-palette="glass"][data-theme="light"] .user-attention{text-shadow:none}
+
+
 /* Long-form textual and graphical information stays crisp. */
 :root[data-palette="glass"] .markdown,
 :root[data-palette="glass"] .markdown pre,
