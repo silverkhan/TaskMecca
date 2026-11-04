@@ -425,7 +425,12 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 				continue
 			}
 			projectInfo["framework_version"] = p.FrameworkVersion
-			projectInfo["migration_available"] = p.FrameworkVersion != "" && p.FrameworkVersion != version
+			if p.FrameworkVersion != "" {
+                needed,checkErr:=install.FrameworkChangesRequired(activeProject)
+                // If current managed-file status is unavailable, offer repair;
+                // never silently declare a damaged framework current.
+                projectInfo["migration_available"]=checkErr!=nil || needed
+            }
 			break
 		}
 		writeJSON(w, map[string]any{"cli": info, "project": projectInfo}, 200)

@@ -15,7 +15,7 @@ function page(){
   });
   vm.runInContext(source.slice(0,startup)+`
     state.project='/demo';state.detail='B-589';state.language='ko';
-    globalThis.activityTest={state,activityMetricsBody,activityDetailPrefs,activityDetailCache,activityDetailKey,activityRoundBreakdown};
+    globalThis.activityTest={state,activityMetricsBody,activityDetailPrefs,activityDetailCache,activityDetailKey,activityRoundBreakdown,activityRollingPeriod,activityFilterControls};
   `,context);
   return context.activityTest;
 }
@@ -235,4 +235,40 @@ test('all Activity timing views present explicit units in Korean',()=>{
  assert.match(html,/활동·대기 근거 겹침: 26초/);
  assert.match(html,/1분 5초/);
  assert.doesNotMatch(html,/00:26/);
+});
+
+test('Activity rolling 7/30/90 day shortcuts use exact duration boundaries',()=>{
+ const a=page();const now=new Date('2026-11-04T07:00:00.000Z');
+ assert.equal(a.activityRollingPeriod('7',now).from,'2026-10-28T07:00:00.000Z');
+ assert.equal(a.activityRollingPeriod('30',now).from,'2026-10-05T07:00:00.000Z');
+ assert.equal(a.activityRollingPeriod('90',now).until,now.toISOString());
+ assert.equal(a.activityRollingPeriod('custom',now),null);
+ const html=a.activityFilterControls();
+ assert.match(html,/activityFilterPeriod/);
+ assert.match(html,/최근 7일/);
+ assert.match(html,/최근 30일/);
+ assert.match(html,/최근 90일/);
+ assert.match(html,/선별 테스트/);
+});
+
+test('recent half and quarter Gantt shortcuts retain full measured evidence',()=>{
+ const a=page(),data=payload();
+ const base=a.activityMetricsBody(data,'B-589');
+ assert.match(base,/id="activityDetailFocus"/);
+ assert.match(base,/직접 탐색/);
+ const pref=a.activityDetailPrefs('B-589');
+ pref.focus='last50';pref.zoom=2;
+ let html=a.activityMetricsBody(data,'B-589');
+ assert.match(html,/value="last50" selected/);
+ assert.match(html,/min-width:200%/);
+ assert.match(html,/누적 Agent 시간/);
+ assert.match(html,/5분/);
+ // A different viewport cannot rewrite original event start/end or elapsed.
+ assert.match(html,/2026/);
+ pref.focus='last25';pref.zoom=4;
+ html=a.activityMetricsBody(data,'B-589');
+ assert.match(html,/value="last25" selected/);
+ assert.match(html,/min-width:400%/);
+ assert.match(html,/5분/);
+ assert.match(html,/작업 회차/);
 });

@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/silverkhan/TaskMecca/internal/projectguard"
+	"github.com/silverkhan/TaskMecca/internal/install"
 )
 
 const (
@@ -412,11 +413,20 @@ func frameworkSyncCandidates(currentVersion,targetVersion,targetChannel string) 
     candidates:=[]FrameworkSyncCandidate{}
     for _,project:=range ListProjects() {
         framework:=normalizeVersion(project.FrameworkVersion)
-        if framework=="" || framework==targetVersion { continue }
-        include:=false
-        if targetChannel==stableChannel {
+        if framework=="" { continue }
+        // Compare against installed managed content only when the candidate
+        // target equals the running binary. Future release payloads cannot be
+        // inspected through the currently installed binary.
+        if targetVersion==currentVersion {
+            needed,err:=install.FrameworkChangesRequired(project.Path)
+            if err==nil && !needed { continue }
+            // On errors retain the offer: absence of evidence is not proof
+            // that a damaged/legacy project needs no repair.
+        } else if framework==targetVersion { continue }
+        include:=targetVersion==currentVersion
+        if targetVersion!=currentVersion && targetChannel==stableChannel {
             include=strings.Contains(strings.ToLower(framework),"-dev.")
-        } else if targetChannel==devChannel {
+        } else if targetVersion!=currentVersion && targetChannel==devChannel {
             include=framework==currentVersion || !strings.Contains(strings.ToLower(framework),"-dev.")
         }
         if !include { continue }
@@ -627,6 +637,13 @@ func checksumFor(data []byte,asset string) (string,error) {
     return "",fmt.Errorf("checksum entry missing for %s",asset)
 }
 
+// RollingReleaseChangedError marks only a mutable tag generation mismatch.
+// Network, checksum and manifest failures never qualify for automatic retry.
+type RollingReleaseChangedError struct { Expected, Actual string }
+func (e *RollingReleaseChangedError) Error() string {
+    return fmt.Sprintf("rolling release changed while downloading: expected %s, fetched %s; retry",e.Expected,e.Actual)
+}
+
 func fetchReleaseBinary(base string,targetVersion ...string) ([]byte,error) {
     return fetchReleaseBinaryWithProgress(base,nil,targetVersion...)
 }
@@ -660,7 +677,7 @@ func fetchReleaseBinaryWithProgress(base string,report func(string),targetVersio
         versionBytes,versionErr:=httpGet(releaseCacheURL(base+"/VERSION.txt",nextReleaseCheckToken()))
         if versionErr!=nil {return nil,fmt.Errorf("cannot confirm rolling release generation: %w",versionErr)}
         if actual:=normalizeVersion(string(versionBytes));actual!=normalizeVersion(targetVersion[0]){
-            return nil,fmt.Errorf("rolling release changed while downloading: expected %s, fetched %s; retry",normalizeVersion(targetVersion[0]),actual)
+            return nil,&RollingReleaseChangedError{Expected:normalizeVersion(targetVersion[0]),Actual:actual}
         }
     }
     return binary,nil
@@ -787,6 +804,20 @@ func UpgradeWithProgressExpected(current,expected string,report func(string)) (U
     }
     reportUpgradeProgress(report,"downloading")
     binary,err:=fetchReleaseBinaryWithProgress(releaseBase(),report,info.Latest)
+    if err!=nil && CurrentChannel()==devChannel {
+        var changed *RollingReleaseChangedError
+        if errors.As(err,&changed) {
+            // Retry the *entire* download+manifest+generation verification at
+            // most once. Never install mixed-generation or unverified bytes.
+            reportUpgradeProgress(report,"checking")
+            latest:=CheckLatest(current)
+            if latest.Error!="" { return result,fmt.Errorf("release advanced; refresh failed: %s",latest.Error) }
+            if !latest.UpdateAvailable { return result,err }
+            info=latest
+            reportUpgradeProgress(report,"downloading")
+            binary,err=fetchReleaseBinaryWithProgress(releaseBase(),report,info.Latest)
+        }
+    }
     if err!=nil { return result,err }
     reportUpgradeProgress(report,"installing")
     result,err=installBinary(current,info.Latest,binary)
