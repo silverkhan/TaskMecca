@@ -2307,25 +2307,45 @@ select.tm-combo-native{position:absolute!important;width:1px!important;height:1p
   --glass-depth:0 15px 32px rgba(95,67,45,.16),0 3px 8px rgba(96,69,48,.06);
   --glass-background:#ece2d4;
 }
+/* Stationary backdrop layer: background-attachment:fixed on body is not
+   consistently honored by Android browsers. A viewport-fixed layer remains
+   stationary when the document, panels, and lists scroll. */
+:root[data-palette="glass"] body{
+  background:var(--glass-background);
+}
+:root[data-palette="glass"] body::before{
+  content:"";
+  position:fixed;
+  inset:0;
+  z-index:0;
+  pointer-events:none;
+  background-color:var(--glass-background);
+  background-size:cover;
+  background-position:center center;
+  background-repeat:no-repeat;
+}
+:root[data-palette="glass"] .app-shell{
+  position:relative;
+  z-index:1;
+}
+
 /* Calm atmosphere is a user-selectable option, separate from the room. */
-:root[data-palette="glass"][data-theme="dark"] body{
+:root[data-palette="glass"][data-theme="dark"] body::before{
   background-color:var(--glass-background);
   background-image:
     radial-gradient(ellipse 42% 65% at 6% 8%,rgba(146,114,100,.35),transparent 78%),
     radial-gradient(ellipse 48% 55% at 97% 83%,rgba(176,141,123,.29),transparent 81%),
     linear-gradient(125deg,#252325,#4a403d 55%,#252326);
-  background-attachment:fixed;
 }
-:root[data-palette="glass"][data-theme="light"] body{
+:root[data-palette="glass"][data-theme="light"] body::before{
   background-color:var(--glass-background);
   background-image:
     radial-gradient(ellipse 48% 60% at 7% 18%,rgba(232,205,175,.46),transparent 78%),
     radial-gradient(ellipse 43% 55% at 94% 86%,rgba(208,177,154,.28),transparent 84%),
     linear-gradient(135deg,#f6eee3,#e9dacf 58%,#f6f0e9);
-  background-attachment:fixed;
 }
 /* The Cozy Beige Room image is bundled locally and never sent off-device. */
-:root[data-palette="glass"][data-background="cozy"] body{
+:root[data-palette="glass"][data-background="cozy"] body::before{
   background-color:#e7d8c5;
   background-image:
     linear-gradient(120deg,rgba(255,247,233,.14),rgba(255,248,236,.07) 50%,rgba(246,232,211,.14)),
@@ -2333,15 +2353,14 @@ select.tm-combo-native{position:absolute!important;width:1px!important;height:1p
   background-position:center center;
   background-size:cover;
   background-repeat:no-repeat;
-  background-attachment:fixed;
 }
-:root[data-palette="glass"][data-background="cozy"][data-theme="dark"] body{
+:root[data-palette="glass"][data-background="cozy"][data-theme="dark"] body::before{
   background-color:#231d1c;
   background-image:
     linear-gradient(120deg,rgba(19,17,21,.39),rgba(21,17,21,.29) 52%,rgba(19,16,21,.42)),
     url("/cozy-beige-room.svg");
 }
-:root[data-palette="glass"][data-background="none"] body{
+:root[data-palette="glass"][data-background="none"] body::before{
   background:var(--glass-background);
 }
 /* Large stationary layers carry the strongest transmitted material effect. */
@@ -2543,7 +2562,7 @@ select.tm-combo-native{position:absolute!important;width:1px!important;height:1p
   :root[data-palette="glass"] .user-attention{
     background:var(--surface);-webkit-backdrop-filter:none;backdrop-filter:none;
   }
-  :root[data-palette="glass"][data-background="cozy"] body{
+  :root[data-palette="glass"][data-background="cozy"] body::before{
     background-image:none;background-color:var(--glass-background);
   }
 }
@@ -2564,10 +2583,6 @@ select.tm-combo-native{position:absolute!important;width:1px!important;height:1p
   }
   .topbar .background-picker select{max-width:none;flex:1;min-width:0;width:100%}
   .topbar .background-picker .tm-combo{max-width:none;flex:1}
-  :root[data-palette="glass"][data-background="cozy"] body{
-    background-attachment:scroll;
-    background-size:cover;
-  }
   /* Mobile: avoid a high-cost full-height blur without reverting to blue. */
   :root[data-palette="glass"] .sidebar{
     background:linear-gradient(142deg,rgba(255,255,255,.18),transparent 48%),rgba(25,22,25,.37);
