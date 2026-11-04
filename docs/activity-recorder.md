@@ -112,6 +112,27 @@ header for the `activity_read` and `activity_aggregate` phases. These metrics
 are not comparable with total time consumed by all running Agents, and no
 background polling or periodic benchmark is added.
 
+## Opt-in performance diagnostics
+
+Use the read-only diagnostic only when comparing an observed slow project:
+
+```bash
+task-mecca activity diagnose --project /path/to/project --samples 5 --json
+task-mecca activity diagnose --project /path/to/project --task B-589 --samples 5 --cpu-profile /tmp/task-mecca-activity.cpu.pprof --json
+```
+
+The command performs 1–10 explicitly requested direct ledger reads, reporting
+p50/p95 read wall-time, event-file count, stored event bytes, and diagnostic
+process heap before and after. An optional Go CPU profile captures work
+performed by the diagnostic process only. It does not run in the background
+or on every backlog click. It does not claim that a change in process heap
+equals Activity-attributed memory or that elapsed time measures battery drain.
+
+Compare like-for-like workloads (same task count, events, OS, storage medium,
+and warm/cold cache state) before and after changing ledger internals. For
+normal production Web reads, the existing 2-second bounded cache and
+compact project aggregates remain the low-cost path.
+
 ## Operational and migration safety
 
 Project-owned data lives beneath `_task_mecca/data/activity/`, not the managed framework template. Activity events are immutable and original event IDs remain in the journal; the CLI cannot silently rewrite conflicting entries. Project guard refuses writes to paused/removed projects. Back up project-owned data before any manual migration or cleanup.
