@@ -635,7 +635,8 @@ recordMonitorPerf("operation_monitor_assignments", time.Since(workloadStarted), 
     unchanged:=previous.Version==journal.Version && previous.Project==journal.Project &&
         previous.NextSequence==journal.NextSequence &&
         reflect.DeepEqual(previous.Incidents,journal.Incidents) &&
-        reflect.DeepEqual(previous.Stages,journal.Stages)
+        ((len(previous.Stages)==0 && len(journal.Stages)==0) ||
+            reflect.DeepEqual(previous.Stages,journal.Stages))
     var writeErr error
     if unchanged {
         // No incident/stage change: persist only the scan clock. The
