@@ -25,3 +25,12 @@ func TestRunEvidenceUnknownIsNotFabricated(t *testing.T){
     out:=SummarizeTests([]Segment{{Type:FullRegression,DurationMillis:5000}})
     if out.FullRegressionCount!=0||out.TotalMillis!=0 {t.Fatalf("missing evidence must remain uncounted: %+v",out)}
 }
+
+func TestCIURLMustBeHttps(t *testing.T){
+ valid:=RunEvidence{CIURL:"https://github.com/silverkhan/TaskMecca/actions/runs/123"}
+ if err:=valid.Validate();err!=nil{t.Fatalf("valid CI URL: %v",err)}
+ for _,candidate:=range []string{"javascript:alert(1)","http://github.com/x/actions/runs/1","https://user:pass@github.com/x/actions/runs/1"}{
+  invalid:=RunEvidence{CIURL:candidate}
+  if err:=invalid.Validate();err==nil{t.Fatalf("accepted invalid URL %q",candidate)}
+ }
+}
