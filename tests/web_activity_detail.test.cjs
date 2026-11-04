@@ -13,10 +13,10 @@ function page(){
     document:{visibilityState:'visible',querySelector:()=>null,querySelectorAll:()=>[],getElementById:()=>null},
     queueMicrotask,setTimeout:()=>1,clearTimeout
   });
-  vm.runInContext(source.slice(0,startup)+\`
+  vm.runInContext(source.slice(0,startup)+`
     state.project='/demo';state.detail='B-589';state.language='ko';
     globalThis.activityTest={state,activityMetricsBody,activityDetailPrefs,activityDetailCache,activityDetailKey,activityRoundBreakdown};
-  \`,context);
+  `,context);
   return context.activityTest;
 }
 const origin='2026-11-04T00:00:00.000Z';
