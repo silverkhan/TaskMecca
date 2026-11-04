@@ -2321,3 +2321,167 @@ select.tm-combo-native{position:absolute!important;width:1px!important;height:1p
 @media(max-width:680px){
   :root[data-palette="glass"] .sidebar{-webkit-backdrop-filter:none;backdrop-filter:none;background:var(--surface)}
 }
+
+
+/* Glass material system v2
+   Refractive appearance is suggested with layered color transmission, edge
+   highlights and elevation; no continuous canvas, animation or shader cost. */
+:root[data-palette="glass"][data-theme="dark"]{
+  --glass-panel:rgba(19,32,55,.44);
+  --glass-chrome:rgba(15,25,46,.55);
+  --glass-edge:rgba(228,241,255,.33);
+  --glass-glow:rgba(238,246,255,.36);
+  --glass-top:rgba(226,242,255,.15);
+  --glass-bottom:rgba(73,122,211,.10);
+  --glass-inner:rgba(9,20,40,.23);
+  --glass-depth:0 18px 38px rgba(2,7,22,.30),0 3px 8px rgba(2,7,22,.15);
+  --glass-background:#0a1024;
+}
+:root[data-palette="glass"][data-theme="light"]{
+  --glass-panel:rgba(249,252,255,.45);
+  --glass-chrome:rgba(248,252,255,.53);
+  --glass-edge:rgba(255,255,255,.92);
+  --glass-glow:rgba(255,255,255,.96);
+  --glass-top:rgba(255,255,255,.75);
+  --glass-bottom:rgba(96,151,211,.10);
+  --glass-inner:rgba(238,246,255,.12);
+  --glass-depth:0 17px 38px rgba(47,75,128,.17),0 3px 9px rgba(56,83,121,.08);
+  --glass-background:#e5eefb;
+}
+/* Deliberately asymmetric atmospheric light: visible THROUGH the panels.
+   Keep the bright pools toward the outer edges, away from table text. */
+:root[data-palette="glass"][data-theme="dark"] body{
+  background-color:var(--glass-background);
+  background-image:
+    radial-gradient(ellipse 34% 48% at 12% 20%,rgba(75,139,248,.49) 0%,rgba(59,112,208,.17) 55%,transparent 100%),
+    radial-gradient(ellipse 36% 55% at 95% 9%,rgba(155,92,245,.47) 0%,rgba(111,72,196,.16) 57%,transparent 100%),
+    radial-gradient(ellipse 42% 40% at 72% 95%,rgba(36,172,210,.22),transparent 78%),
+    linear-gradient(125deg,#0b1126 5%,#172341 48%,#0e1028 95%);
+}
+:root[data-palette="glass"][data-theme="light"] body{
+  background-color:var(--glass-background);
+  background-image:
+    radial-gradient(ellipse 37% 50% at 8% 12%,rgba(95,164,237,.52),rgba(140,197,251,.12) 63%,transparent 100%),
+    radial-gradient(ellipse 40% 54% at 98% 10%,rgba(185,155,239,.58),rgba(202,175,245,.15) 64%,transparent 100%),
+    radial-gradient(ellipse 44% 47% at 66% 99%,rgba(100,205,225,.27),transparent 80%),
+    linear-gradient(126deg,#e8f3ff 5%,#ecedff 51%,#f6f8ff 95%);
+}
+/* Multiple translucent material layers are intentionally visible. This
+   makes Glass visibly distinct from Mecca's nearly opaque gradients. */
+:root[data-palette="glass"] .sidebar,
+:root[data-palette="glass"] .topbar,
+:root[data-palette="glass"] .notification-panel,
+:root[data-palette="glass"] .tm-combo-popup{
+  background:
+    linear-gradient(160deg,var(--glass-top),transparent 37%,var(--glass-bottom) 100%),
+    var(--glass-chrome);
+  border-color:var(--glass-edge);
+  box-shadow:var(--glass-depth),inset 0 1px 0 var(--glass-glow),inset 1px 0 0 rgba(255,255,255,.08);
+  -webkit-backdrop-filter:blur(15px) saturate(150%);
+  backdrop-filter:blur(15px) saturate(150%);
+}
+:root[data-palette="glass"] .sidebar{
+  border-right:1px solid var(--glass-edge);
+}
+:root[data-palette="glass"] .topbar{
+  border-bottom:1px solid var(--glass-edge);
+  box-shadow:0 8px 24px rgba(6,16,42,.10),inset 0 1px 0 var(--glass-glow);
+}
+/* Cards: high-contrast low-cost translucent glass, without repeated backdrop
+   filters across lists, graph segments or scroll rows. */
+:root[data-palette="glass"] .worker-card,
+:root[data-palette="glass"] .runtime-root-card,
+:root[data-palette="glass"] .activity-metric,
+:root[data-palette="glass"] .metrics,
+:root[data-palette="glass"] .detail-metrics{
+  background:
+    linear-gradient(150deg,var(--glass-top) 0%,transparent 29%,var(--glass-bottom) 100%),
+    var(--glass-panel);
+  border:1px solid var(--glass-edge);
+  border-radius:15px;
+  box-shadow:var(--glass-depth),inset 0 1px 0 var(--glass-glow),inset 0 -1px 0 var(--glass-inner);
+}
+:root[data-palette="glass"] .metrics,
+:root[data-palette="glass"] .detail-metrics{padding:16px 20px;gap:14px}
+:root[data-palette="glass"] .worker-card,
+:root[data-palette="glass"] .runtime-root-card{overflow:hidden}
+:root[data-palette="glass"] .worker-head,
+:root[data-palette="glass"] .runtime-root-summary{
+  background:linear-gradient(120deg,rgba(255,255,255,.075),transparent 76%);
+}
+:root[data-palette="glass"] .activity-metric{
+  background:
+    linear-gradient(155deg,var(--glass-top),transparent 45%),
+    var(--glass-panel);
+}
+/* A stepped elevation on controls is more convincing than a bright
+   glowing outline around every element. */
+:root[data-palette="glass"] .search-wrap,
+:root[data-palette="glass"] .icon-btn,
+:root[data-palette="glass"] .palette-picker,
+:root[data-palette="glass"] .language-picker,
+:root[data-palette="glass"] .tm-combo-trigger{
+  background:linear-gradient(165deg,var(--glass-top),transparent 70%),var(--glass-panel);
+  border-color:var(--glass-edge);
+  box-shadow:inset 0 1px 0 var(--glass-glow),0 3px 9px rgba(12,28,54,.08);
+}
+:root[data-palette="glass"] .nav-item.active,
+:root[data-palette="glass"] .theme-btn.active{
+  background:linear-gradient(125deg,var(--glass-top),var(--glass-bottom)),var(--glass-panel);
+  box-shadow:inset 0 1px 0 var(--glass-glow),0 3px 12px rgba(10,30,60,.12);
+  border:1px solid var(--glass-edge);
+}
+:root[data-palette="glass"] .nav-item:not(.active):hover{
+  background:linear-gradient(105deg,var(--glass-top),transparent),var(--glass-panel);
+}
+/* Preserve the established multicolour attention outline; give its
+   expanded flyout the same frosted material, avoiding a visible hard seam. */
+:root[data-palette="glass"] .user-attention{
+  --attention-fill:linear-gradient(105deg,
+    color-mix(in srgb,var(--glass-panel) 95%,var(--accent)),
+    color-mix(in srgb,var(--glass-panel) 96%,var(--warn)),
+    var(--glass-panel));
+  box-shadow:var(--glass-depth),inset 0 1px 0 var(--glass-glow);
+}
+:root[data-palette="glass"] .common-attention-body{
+  -webkit-backdrop-filter:blur(13px) saturate(130%);
+  backdrop-filter:blur(13px) saturate(130%);
+  box-shadow:var(--glass-depth);
+}
+:root[data-palette="glass"] .notification-panel-head{
+  background:var(--glass-chrome);
+  border-color:var(--glass-edge);
+}
+/* The reading surfaces must stay calm and readable. */
+:root[data-palette="glass"] .markdown pre,
+:root[data-palette="glass"] .raw,
+:root[data-palette="glass"] .task-list,
+:root[data-palette="glass"] .activity-type-track,
+:root[data-palette="glass"] .activity-timeline-track{
+  -webkit-backdrop-filter:none;
+  backdrop-filter:none;
+}
+@media(prefers-reduced-transparency:reduce){
+  :root[data-palette="glass"] .sidebar,
+  :root[data-palette="glass"] .topbar,
+  :root[data-palette="glass"] .notification-panel,
+  :root[data-palette="glass"] .tm-combo-popup,
+  :root[data-palette="glass"] .common-attention-body{
+    background:var(--surface);-webkit-backdrop-filter:none;backdrop-filter:none;
+  }
+  :root[data-palette="glass"] .worker-card,
+  :root[data-palette="glass"] .runtime-root-card,
+  :root[data-palette="glass"] .activity-metric,
+  :root[data-palette="glass"] .metrics,
+  :root[data-palette="glass"] .detail-metrics{
+    background:var(--surface);
+  }
+}
+@media(max-width:680px){
+  :root[data-palette="glass"] body{background-attachment:scroll}
+  :root[data-palette="glass"] .sidebar{
+    background:var(--surface);-webkit-backdrop-filter:none;backdrop-filter:none;
+  }
+  :root[data-palette="glass"] .metrics,
+  :root[data-palette="glass"] .detail-metrics{padding:12px;gap:10px}
+}
