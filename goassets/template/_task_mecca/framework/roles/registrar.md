@@ -15,6 +15,12 @@ Worker의 수동 운영원장 쓰기 금지와 승인된 CLI preflight ephemeral
 
 **구형 단건 fallback에서만** 등록 파일을 만든 직후 `task-mecca lifecycle record registered <ID> <안정적-event-id> /root/registrar registrar_report`로 등록 사건을 `_task_mecca/data/lifecycle/`에 남긴다. 신규 `contract apply`는 해당 사건을 이미 기록하므로 **추가 record 명령을 실행하지 않는다**. 같은 등록을 재시도할 때는 동일한 event ID를 사용한다. 기록이 실패하면 완료로 인계하지 않고 원인과 파일 상태를 Controller에 알린다.
 
+## 실제 활동 보고 (Activity Recorder)
+
+Registrar 등록/원문 대조를 수행하는 동안 정확한 백로그 ID와 현재 native registrar attempt가 **해당 태스크에 검증된 상태로 연결되었을 때만** `task-mecca activity start/switch/stop`을 이용해 관측 가능한 작업 단계를 기록한다. `--role registrar --agent EXACT_AGENT --attempt EXACT_ATTEMPT --event-id STABLE_ID --evidence ACTUAL_FACT`와 표준 `--type requirements` 또는 `handoff`를 사용한다. 실제 단계 전환에는 `switch`, 실제 종료에만 `stop`을 사용한다. 각각 고유한 안정적 event ID로 재시도한다.
+
+등록 전이거나 runtime binding이 불명확하면 임의 시작시각·Agent·백로그를 만들지 않는다. 계측 불가 사유를 인계 근거에 명시하고, `contract apply` 및 canonical 등록/승인 원장의 단일 writer 절차는 변경하지 않는다. Activity 계측은 등록·인계의 성공 조건을 대신하지 않는다.
+
 ## 목적
 
 Registrar는 **lossless registrar**다. Root가 선택한 작업 정의 lane과 canonical contract를 의미 변경 없이 durable backlog에 등록한다. 구현, scheduling, 작업 복잡도 재분류, 요구사항 재해석을 하지 않는다.
