@@ -152,3 +152,15 @@ test('observation quality distinguishes ledger coverage from native runtime inve
  assert.match(html,/Worker의 종료까지 확인된 작업시간 구간이 없습니다/);
  assert.match(html,/Runtime 실행 목록/);
 });
+
+test('runtime reconciliation is opt-in and clearly distinguishes unmeasured work',()=>{
+ const a=page();const data=payload();
+ let html=a.activityMetricsBody(data,'B-589');
+ assert.match(html,/id="activityRuntimeDiagnose"/);
+ assert.doesNotMatch(html,/Runtime·Activity 실행 근거 대조/);
+ data.runtime_diagnostic={attempts:[{attempt_id:'attempt-1',agent_id:'worker-1',agent_type:'worker',diagnostic:'no_matching_activity',matched_activity_events:0}],matched_attempts:0,without_activity:1,identity_unknown:0,identity_mismatch:0};
+ html=a.activityMetricsBody(data,'B-589');
+ assert.match(html,/Runtime·Activity 실행 근거 대조/);
+ assert.match(html,/Activity 기록 없음/);
+ assert.match(html,/작업이 없었다는 증거가 아닙니다/);
+});
