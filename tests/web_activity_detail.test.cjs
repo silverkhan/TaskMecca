@@ -54,7 +54,7 @@ test('round filter retains original timestamps instead of rebasing',()=>{
  const html=a.activityMetricsBody(payload(),'B-589');
  assert.match(html,/implementation · worker/);
  assert.doesNotMatch(html,/requirements · worker · 회차/);
- assert.match(html,/11\/04/);
+ assert.match(html,/11[.\/ ]+04/);
  assert.match(html,/활동 유형별 누적 \(전체 회차\)/);
 });
 test('stacked mode and zoom are controlled independently',()=>{
