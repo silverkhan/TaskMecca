@@ -5890,7 +5890,7 @@ function activityMetricsBody(payload,taskID=state.detail){
         const tooltip=x.label+' · '+activityEventTime(x.from,ko)+' → '+activityEventTime(x.to,ko)+' · '+activityDisplayDuration(x.ms,ko);
         return '<div class="activity-timeline-row"><span>'+esc(x.label)+'</span>'+
           '<div class="activity-timeline-track'+(x.wait?' activity-timeline-wait':'')+'"><div role="img" aria-label="'+esc(tooltip)+'" title="'+esc(tooltip)+
-          '" style="left:'+left+'%;width:'+width+'%;overflow:hidden;white-space:nowrap;display:flex;align-items:center;justify-content:center">'+(width>=20?'<small style="color:white;font-size:10px;pointer-events:none">'+esc(activityDisplayDuration(x.ms,ko))+'</small>':'')+'</div></div><strong>'+esc(activityDisplayDuration(x.ms,ko))+'</strong></div>';
+          '" tabindex="0" style="left:'+left+'%;width:'+width+'%;overflow:hidden;white-space:nowrap;display:flex;align-items:center;justify-content:center"><small class="activity-timeline-duration-label" style="display:none;color:white;font-size:10px;pointer-events:none">'+esc(activityDisplayDuration(x.ms,ko))+'</small></div></div><strong>'+esc(activityDisplayDuration(x.ms,ko))+'</strong></div>';
       }).join('')+'</div></div></div>':'<p class="summary">'+esc(ko?'선택한 회차에 측정된 작업 구간이 없습니다.':'No measured intervals for this round.')+'</p>';
   const group=activityRoundBreakdown(filtered);
   const groupKeys=[...group.keys()].sort((a,b)=>a-b);
@@ -5964,10 +5964,39 @@ function activityMetricsBody(payload,taskID=state.detail){
   return settings+boxes+lifetimeView+byType+chart+'<p class="summary">'+esc(chartNote)+'</p>'+trimNote+
     testOverview+unclassifiedView+gap+unknown+ledger;
 }
+const activityDetailResizeObservers=new WeakMap();
 function bindActivityDetailControls(taskID,project=state.project){
   const root=typeof document.getElementById==='function'?document.getElementById('activityMetricsBody'):null;
   if(!root||typeof root.querySelector!=='function')return;
   const pref=activityDetailPrefs(taskID,project);
+  const previousObserver=activityDetailResizeObservers.get(root);
+  if(previousObserver)previousObserver.disconnect();
+  const fitTimelineLabels=()=>{
+    const labels=[...root.querySelectorAll('.activity-timeline-duration-label')];
+    // Batch writes before reads to avoid a per-bar forced layout.
+    for(const label of labels)label.style.display='inline-block';
+    const fits=labels.map(label=>label.parentElement.getBoundingClientRect().width>=label.scrollWidth+12);
+    labels.forEach((label,i)=>{label.style.display=fits[i]?'inline-block':'none';});
+    const ticks=[...root.querySelectorAll('.activity-time-ruler span')];
+    ticks.forEach(t=>{t.style.visibility='visible';});
+    if(ticks.length>2){
+      const rects=ticks.map(t=>t.getBoundingClientRect());
+      let lastRight=rects[0].right;
+      for(let i=1;i<ticks.length-1;i++){
+        if(rects[i].left<lastRight+8 || rects[i].right>rects[ticks.length-1].left-8)ticks[i].style.visibility='hidden';
+        else lastRight=rects[i].right;
+      }
+    }
+  };
+  if(typeof ResizeObserver!=='undefined'){
+    const observer=new ResizeObserver(()=>fitTimelineLabels());
+    const scroll=root.querySelector('.activity-timeline-scroll');
+    const canvas=root.querySelector('.activity-timeline-canvas');
+    if(scroll)observer.observe(scroll);
+    if(canvas)observer.observe(canvas);
+    activityDetailResizeObservers.set(root,observer);
+  }
+  if(typeof queueMicrotask==='function')queueMicrotask(fitTimelineLabels);
   const modify=(id,fn)=>{
     const control=root.querySelector('#'+id);
     if(control)control.addEventListener('change',()=>{
@@ -5984,6 +6013,7 @@ function bindActivityDetailControls(taskID,project=state.project){
     if(label)label.textContent=zoom.value+'×';
     const canvas=root.querySelector('.activity-timeline-canvas');
     if(canvas)canvas.style.minWidth=(Number(zoom.value)*100)+'%';
+    fitTimelineLabels();
   });
   const ledger=root.querySelector('#activityLedgerDetail');
   if(ledger)ledger.addEventListener('toggle',()=>{pref.ledger=ledger.open;});
