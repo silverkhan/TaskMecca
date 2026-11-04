@@ -99,3 +99,20 @@ func TestNotificationFastPathDoesNotHideLateStartOrConditionReset(t *testing.T) 
  again,err:=NotificationEvents(project,rows)
  if err!=nil||len(again)!=3 {t.Fatalf("new episode suppressed by consumed cache: %v %v",again,err)}
 }
+
+func TestNotificationJournalCacheFailsClosedForMalformedExternalEdit(t *testing.T) {
+    project:=t.TempDir()
+    items:=map[string]map[string]any{"A-44":{"id":"A-44","file_state":"doing","updated_at":"2026-11-04T00:00:00Z"}}
+    if _,err:=NotificationEvents(project,items);err!=nil{t.Fatal(err)}
+    path:=filepath.Join(project,"_task_mecca",".runtime","notification_events.json")
+    saved,err:=os.ReadFile(path);if err!=nil{t.Fatal(err)}
+    // An external edit can replace the journal while this process is live.
+    // Never return a successful stale read for invalid source evidence.
+    if err:=os.WriteFile(path,[]byte("{invalid"),0644);err!=nil{t.Fatal(err)}
+    if _,err:=ReadNotificationEvents(project);err==nil{t.Fatal("invalid journal silently replaced by cached data")}
+    if _,err:=NotificationEvents(project,items);err==nil{t.Fatal("invalid journal silently reconciled")}
+    restored:=path+".restore"
+    if err:=os.WriteFile(restored,saved,0644);err!=nil{t.Fatal(err)}
+    if err:=os.Rename(restored,path);err!=nil{t.Fatal(err)}
+    if _,err:=NotificationEvents(project,items);err!=nil{t.Fatalf("valid restored journal not accepted: %v",err)}
+}
