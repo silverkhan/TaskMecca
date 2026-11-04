@@ -236,3 +236,25 @@ test('all Activity timing views present explicit units in Korean',()=>{
  assert.match(html,/1분 5초/);
  assert.doesNotMatch(html,/00:26/);
 });
+
+test('recent half and quarter Gantt shortcuts retain full measured evidence',()=>{
+ const a=page(),data=payload();
+ const base=a.activityMetricsBody(data,'B-589');
+ assert.match(base,/id="activityDetailFocus"/);
+ assert.match(base,/직접 탐색/);
+ const pref=a.activityDetailPrefs('B-589');
+ pref.focus='last50';pref.zoom=2;
+ let html=a.activityMetricsBody(data,'B-589');
+ assert.match(html,/value="last50" selected/);
+ assert.match(html,/min-width:200%/);
+ assert.match(html,/누적 Agent 시간/);
+ assert.match(html,/5분/);
+ // A different viewport cannot rewrite original event start/end or elapsed.
+ assert.match(html,/2026/);
+ pref.focus='last25';pref.zoom=4;
+ html=a.activityMetricsBody(data,'B-589');
+ assert.match(html,/value="last25" selected/);
+ assert.match(html,/min-width:400%/);
+ assert.match(html,/5분/);
+ assert.match(html,/작업 회차/);
+});
