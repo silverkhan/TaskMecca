@@ -164,3 +164,32 @@ test('runtime reconciliation is opt-in and clearly distinguishes unmeasured work
  assert.match(html,/Activity 기록 없음/);
  assert.match(html,/작업이 없었다는 증거가 아닙니다/);
 });
+
+test('Gantt can group by exact agent attempt without changing absolute-time positions',()=>{
+ const a=page();const data=payload();
+ data.summary.segments=[
+  {type:'implementation',role:'worker',agent_id:'worker-a',attempt_id:'attempt-1',round:0,started_at:shift(0),ended_at:shift(2),duration_ms:120000},
+  {type:'targeted_test',role:'worker',agent_id:'worker-a',attempt_id:'attempt-1',round:0,started_at:shift(3),ended_at:shift(5),duration_ms:120000},
+  {type:'implementation',role:'worker',agent_id:'worker-a',attempt_id:'attempt-2',round:0,started_at:shift(5),ended_at:shift(8),duration_ms:180000}
+ ];
+ const before=a.activityMetricsBody(data,'B-589');
+ assert.match(before,/activityDetailGroupAgents/);
+ assert.doesNotMatch(before,/class="activity-agent-group"/);
+ a.activityDetailPrefs('B-589').groupAgents=true;
+ const html=a.activityMetricsBody(data,'B-589');
+ assert.equal((html.match(/class="activity-agent-group"/g)||[]).length,2);
+ assert.match(html,/실행 attempt-1/);
+ assert.match(html,/실행 attempt-2/);
+ assert.match(html,/left:37.5%/);
+ assert.match(html,/left:62.5%/);
+});
+test('Gantt groups waiting separately and never assumes an unbound agent',()=>{
+ const a=page();const data=payload();
+ data.summary.segments=[{type:'implementation',role:'worker',round:0,started_at:shift(0),ended_at:shift(2),duration_ms:120000}];
+ data.lifecycle_coverage.wait_intervals=[{kind:'dispatch_wait',started_at:shift(2),ended_at:shift(4),duration_ms:120000}];
+ a.activityDetailPrefs('B-589').groupAgents=true;
+ const html=a.activityMetricsBody(data,'B-589');
+ assert.match(html,/Agent 미확인/);
+ assert.match(html,/대기 구간/);
+ assert.match(html,/작업 착수 대기/);
+});
