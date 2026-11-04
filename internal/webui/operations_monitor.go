@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+    "reflect"
 	"sort"
 	"strings"
 	"sync"
@@ -55,6 +56,7 @@ type operationJournal struct {
 	NextSequence int                 `json:"next_sequence"`
 	Incidents    []operationIncident `json:"incidents"`
 	Stages       []operationStage    `json:"stages,omitempty"`
+    lastPersistedScanAt string `json:"-"`
 }
 
 var operationMu sync.Mutex
@@ -77,6 +79,8 @@ func readOperationJournal(project string) (operationJournal, error) {
 	if err := json.Unmarshal(data, &out); err != nil {
 		return out, err
 	}
+    out.lastPersistedScanAt=out.LastScanAt
+    out.LastScanAt=operationHeartbeatTime(project,out.LastScanAt)
 	if out.Incidents == nil {
 		out.Incidents = []operationIncident{}
 	}
@@ -325,6 +329,7 @@ func scanOperationProject(project string, now time.Time) (operationJournal, erro
 	journal, err := readOperationJournal(project)
     recordMonitorPerf("operation_journal_read", time.Since(started), len(journal.Incidents), 0, false, false)
 	if err != nil { return journal, err }
+    previous:=snapshotOperationJournal(journal)
     started = time.Now()
 	ledger, err := runtimeobs.BuildLedger(project, 3, now)
     recordMonitorPerf("operation_build_ledger", time.Since(started), len(ledger.Attempts), 0, false, false)
@@ -627,8 +632,24 @@ recordMonitorPerf("operation_monitor_assignments", time.Since(workloadStarted), 
     recordMonitorPerf("operation_reconcile", time.Since(started), len(ledger.Attempts), len(journal.Incidents), false, false)
 	journal.LastScanAt = nowText
     started = time.Now()
-    writeErr := writeOperationJournal(project, journal)
+    unchanged:=previous.Version==journal.Version && previous.Project==journal.Project &&
+        previous.NextSequence==journal.NextSequence &&
+        reflect.DeepEqual(previous.Incidents,journal.Incidents) &&
+        reflect.DeepEqual(previous.Stages,journal.Stages)
+    var writeErr error
+    if unchanged {
+        // No incident/stage change: persist only the scan clock. The
+        // heartbeat is tied to the exact baseline journal file metadata.
+        writeErr=writeOperationHeartbeat(project,journal.lastPersistedScanAt,nowText)
+    }
+    if !unchanged || writeErr!=nil {
+        // First scan, unreadable heartbeat, or an actual evidence change:
+        // always fall back to the canonical full atomic journal write.
+        writeErr=writeOperationJournal(project,journal)
+        unchanged=false
+    }
     recordMonitorPerf("operation_journal_write", time.Since(started), len(journal.Incidents), 0, false, false)
+    if unchanged { recordMonitorPerf("operation_journal_write_skipped", time.Since(started), len(journal.Incidents), 0, false, true) }
     if writeErr != nil { return journal, writeErr }
     return journal, nil
 }
