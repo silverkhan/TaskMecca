@@ -5776,13 +5776,57 @@ const activityDetailCache=new Map();
 const activityDetailPending=new Map();
 function activityDetailKey(id,project=state.project){return JSON.stringify([project,String(id||'').toUpperCase()]);}
 function activityDuration(ms){if(!Number.isFinite(ms)||ms<0)return '—';return fmtSec(Math.round(ms/1000));}
-function activityMetricsBody(payload){
+
+const activityDetailViews=new Map();
+const ACTIVITY_DETAIL_MAX_ROWS=450;
+const ACTIVITY_DETAIL_MAX_LEDGER=120;
+function activityDetailPrefs(id,project=state.project){
+  const key=activityDetailKey(id,project);
+  if(!activityDetailViews.has(key)){
+    if(activityDetailViews.size>=24)activityDetailViews.delete(activityDetailViews.keys().next().value);
+    activityDetailViews.set(key,{round:'all',mode:'timeline',zoom:1,ledger:false});
+  }
+  return activityDetailViews.get(key);
+}
+function activityEventTime(value,ko){
+  const stamp=Date.parse(value||'');
+  return Number.isFinite(stamp)?new Date(stamp).toLocaleString(ko?'ko-KR':'en-US'):'—';
+}
+function activityRoundBreakdown(segments){
+  const rounds=new Map();
+  for(const seg of segments){
+    if(!Number.isFinite(seg.duration_ms)||seg.duration_ms<0)continue;
+    const round=Number(seg.round)||0;
+    if(!rounds.has(round))rounds.set(round,new Map());
+    const group=rounds.get(round);
+    group.set(seg.type,(group.get(seg.type)||0)+seg.duration_ms);
+  }
+  return rounds;
+}
+function activityMetricsBody(payload,taskID=state.detail){
   if(!payload)return '<p class="summary">'+esc(state.language==='ko'?'활동 기록을 불러오는 중…':'Loading activity history…')+'</p>';
   if(payload.error)return '<p class="summary">'+esc(payload.error)+'</p>';
-  const s=payload.summary||{},segments=Array.isArray(s.segments)?s.segments:[],ko=state.language==='ko';
-  const lc=payload.lifecycle_coverage||{},waitRows=Array.isArray(lc.wait_intervals)?lc.wait_intervals:[];
-  if(!segments.length && !s.open_activities && !lc.registered_at && !waitRows.length)
-    return '<p class="summary">'+esc(ko?'아직 관측된 활동·Lifecycle 시간 근거가 없습니다.':'No observed Activity or lifecycle timing evidence yet.')+'</p>';
+  const ko=state.language==='ko',s=payload.summary||{},segments=Array.isArray(s.segments)?s.segments:[],
+    lc=payload.lifecycle_coverage||{},waitRows=Array.isArray(lc.wait_intervals)?lc.wait_intervals:[],
+    events=Array.isArray(payload.events)?payload.events:[];
+  const prefs=activityDetailPrefs(taskID);
+  const rounds=[...new Set(segments.map(x=>Number(x.round)||0))].sort((a,b)=>a-b);
+  const selectedRound=prefs.round==='all'?'all':Number(prefs.round);
+  const activeRound=selectedRound==='all'||rounds.includes(selectedRound)?selectedRound:'all';
+  const filtered=activeRound==='all'?segments:segments.filter(x=>(Number(x.round)||0)===activeRound);
+  const settings='<div class="activity-detail-controls" role="group" aria-label="'+esc(ko?'작업시간 차트 설정':'Activity chart controls')+'">'+
+    '<label>'+esc(ko?'작업 회차':'Work round')+
+      '<select id="activityDetailRound"><option value="all"'+(activeRound==='all'?' selected':'')+'>'+esc(ko?'전체':'All rounds')+'</option>'+
+      rounds.map(n=>'<option value="'+n+'"'+(activeRound===n?' selected':'')+'>'+esc(n===0?(ko?'최초 작업':'Initial work'):(ko?'재작업 ':'Rework ')+n)+'</option>').join('')+'</select></label>'+
+    '<label>'+esc(ko?'차트':'Chart')+
+      '<select id="activityDetailMode"><option value="timeline"'+(prefs.mode==='timeline'?' selected':'')+'>'+esc(ko?'시간축 Gantt':'Timeline Gantt')+'</option>'+
+      '<option value="rounds"'+(prefs.mode==='rounds'?' selected':'')+'>'+esc(ko?'회차별 스택':'Stacked by round')+'</option></select></label>'+
+    '<label>'+esc(ko?'확대':'Zoom')+' <output id="activityDetailZoomValue">'+prefs.zoom+'×</output>'+
+      '<input type="range" id="activityDetailZoom" min="1" max="8" step="1" value="'+prefs.zoom+'"'+
+      (prefs.mode==='rounds'?' disabled':'')+' aria-label="'+esc(ko?'시간축 확대':'Timeline zoom')+'"/></label>'+
+    '<button type="button" id="activityDetailRefresh">'+esc(ko?'기록 새로고침':'Refresh evidence')+'</button></div>';
+  if(!segments.length&&!s.open_activities&&!lc.registered_at&&!waitRows.length&&!events.length)
+    return settings+'<p class="summary">'+esc(ko?'아직 관측된 Activity·Lifecycle 시간 근거가 없습니다.':'No observed Activity or lifecycle timing evidence yet.')+'</p>';
   const metrics=[
     [ko?'누적 Agent 시간':'Cumulative agent time',s.agent_time_ms],
     [ko?'관측 경과시간':'Observed wall time',s.observed_wall_ms],
@@ -5794,23 +5838,52 @@ function activityMetricsBody(payload){
   const boxes='<div class="activity-metric-grid">'+metrics.map(([label,ms])=>'<div class="activity-metric"><strong>'+esc(activityDuration(ms))+'</strong><span>'+esc(label)+'</span></div>').join('')+'</div>';
   const totals=Object.entries(s.by_type_ms||{}).filter(([,ms])=>ms>0).sort((a,b)=>b[1]-a[1]);
   const all=totals.reduce((sum,[,ms])=>sum+ms,0);
-  const byType='<h3>'+esc(ko?'활동 유형별 누적':'Cumulative by activity')+'</h3><div class="activity-type-bars">'+totals.map(([name,ms])=>'<div class="activity-type-row"><span>'+esc(name)+'</span><div class="activity-type-track"><div style="width:'+Math.max(0,Math.min(100,all?ms/all*100:0))+'%"></div></div><strong>'+esc(activityDuration(ms))+'</strong></div>').join('')+'</div>';
-  const timelineData=segments.map(x=>({label:x.type+' · '+x.role+' · '+(ko?'회차 ':'Round ')+x.round,from:x.started_at,to:x.ended_at,ms:x.duration_ms,wait:false}))
-    .concat(waitRows.map(x=>({label:(ko?'대기 · ':'Wait · ')+x.kind,from:x.started_at,to:x.ended_at,ms:x.duration_ms,wait:true})));
-  const validTimeline=timelineData.filter(x=>Number.isFinite(Date.parse(x.from))&&Number.isFinite(Date.parse(x.to)));
-  const starts=validTimeline.map(x=>Date.parse(x.from)),ends=validTimeline.map(x=>Date.parse(x.to));
-  const begin=starts.length?Math.min(...starts):0,end=ends.length?Math.max(...ends):0,span=Math.max(1,end-begin);
-  const timeline=validTimeline.length?'<h3>'+esc(ko?'작업·대기 타임라인 (실제 시간축)':'Activity and waiting timeline (actual time axis)')+'</h3>'+
-    '<p class="summary">'+esc(new Date(begin).toLocaleString(state.language==='ko'?'ko-KR':'en-US'))+
-    ' — '+esc(new Date(end).toLocaleString(state.language==='ko'?'ko-KR':'en-US'))+'</p>'+
-    '<div class="activity-time-axis">'+validTimeline.map(x=>{
-      const left=Math.max(0,Math.min(100,(Date.parse(x.from)-begin)/span*100));
-      const width=Math.max(0,Math.min(100-left,(Date.parse(x.to)-Date.parse(x.from))/span*100));
-      const tooltip=x.label+' · '+x.from+' → '+x.to;
-      return '<div class="activity-timeline-row"><span>'+esc(x.label)+'</span>'+
-        '<div class="activity-timeline-track'+(x.wait?' activity-timeline-wait':'')+'"><div title="'+esc(tooltip)+'" style="left:'+left+'%;width:'+width+'%"></div></div>'+
-        '<strong>'+esc(activityDuration(x.ms))+'</strong></div>';
-    }).join('')+'</div>':'';
+  const byType=totals.length?'<h3>'+esc(ko?'활동 유형별 누적 (전체 회차)':'Cumulative by activity (all rounds)')+'</h3><div class="activity-type-bars">'+
+    totals.map(([name,ms])=>'<div class="activity-type-row"><span>'+esc(name)+'</span><div class="activity-type-track"><div style="width:'+Math.max(0,Math.min(100,all?ms/all*100:0))+'%"></div></div><strong>'+esc(activityDuration(ms))+'</strong></div>').join('')+'</div>':'';
+  const timelineData=filtered.map(x=>({label:x.type+' · '+x.role+' · '+(ko?'회차 ':'Round ')+x.round,from:x.started_at,to:x.ended_at,ms:x.duration_ms,wait:false}))
+    .concat(activeRound==='all'?waitRows.map(x=>({label:(ko?'대기 · ':'Wait · ')+x.kind,from:x.started_at,to:x.ended_at,ms:x.duration_ms,wait:true})):[]);
+  // Retain the full time axis while filtering so round comparisons do not
+  // silently rebase the data. Clip rendering, not the evidence itself.
+  const allTimes=segments.flatMap(x=>[Date.parse(x.started_at),Date.parse(x.ended_at)])
+    .concat(waitRows.flatMap(x=>[Date.parse(x.started_at),Date.parse(x.ended_at)])).filter(Number.isFinite);
+  const begin=allTimes.length?Math.min(...allTimes):0,end=allTimes.length?Math.max(...allTimes):0,span=Math.max(1,end-begin);
+  const validTimeline=timelineData.filter(x=>Number.isFinite(Date.parse(x.from))&&Number.isFinite(Date.parse(x.to))&&Date.parse(x.to)>=Date.parse(x.from));
+  const shownTimeline=validTimeline.slice(0,ACTIVITY_DETAIL_MAX_ROWS);
+  const ruler='<div class="activity-time-ruler" aria-hidden="true">'+[0,.25,.5,.75,1].map(p=>'<span>'+
+    esc(new Date(begin+(end-begin)*p).toLocaleString(ko?'ko-KR':'en-US',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}))+
+    '</span>').join('')+'</div>';
+  const timeline=shownTimeline.length?'<h3>'+esc(ko?'실제 시간축 Gantt':'Actual-time Gantt')+'</h3>'+
+    '<p class="summary">'+esc(activityEventTime(new Date(begin).toISOString(),ko))+' — '+esc(activityEventTime(new Date(end).toISOString(),ko))+'</p>'+
+    '<div class="activity-timeline-scroll" tabindex="0" aria-label="'+esc(ko?'가로 스크롤 가능한 작업시간 차트':'Horizontally scrollable activity timeline')+'">'+
+      '<div class="activity-timeline-canvas" style="min-width:'+(prefs.zoom*100)+'%">'+ruler+
+      '<div class="activity-time-axis">'+shownTimeline.map(x=>{
+        const left=Math.max(0,Math.min(100,(Date.parse(x.from)-begin)/span*100));
+        const width=Math.max(0,Math.min(100-left,(Date.parse(x.to)-Date.parse(x.from))/span*100));
+        const tooltip=x.label+' · '+activityEventTime(x.from,ko)+' → '+activityEventTime(x.to,ko);
+        return '<div class="activity-timeline-row"><span>'+esc(x.label)+'</span>'+
+          '<div class="activity-timeline-track'+(x.wait?' activity-timeline-wait':'')+'"><div role="img" aria-label="'+esc(tooltip)+'" title="'+esc(tooltip)+
+          '" style="left:'+left+'%;width:'+width+'%"></div></div><strong>'+esc(activityDuration(x.ms))+'</strong></div>';
+      }).join('')+'</div></div></div>':'<p class="summary">'+esc(ko?'선택한 회차에 측정된 작업 구간이 없습니다.':'No measured intervals for this round.')+'</p>';
+  const group=activityRoundBreakdown(filtered);
+  const groupKeys=[...group.keys()].sort((a,b)=>a-b);
+  const maxRound=Math.max(1,...groupKeys.map(k=>[...group.get(k).values()].reduce((n,ms)=>n+ms,0)));
+  const kinds=[...new Set(filtered.map(x=>x.type))].sort();
+  const stacked=groupKeys.length?'<h3>'+esc(ko?'회차별 Agent 시간 구성':'Agent time composition by round')+'</h3>'+
+    '<div class="activity-stacked-legend">'+kinds.map((name,i)=>'<span><i class="activity-stack-swatch activity-stack-color-'+(i%8)+'"></i>'+esc(name)+'</span>').join('')+'</div>'+
+    '<div class="activity-stacked-rounds">'+groupKeys.map(k=>{
+      const entries=kinds.map((name,i)=>({name,ms:group.get(k).get(name)||0,color:i%8})).filter(x=>x.ms>0);
+      const sum=entries.reduce((n,x)=>n+x.ms,0);
+      return '<div class="activity-stacked-row"><span>'+esc(k===0?(ko?'최초':'Initial'):(ko?'재작업 ':'Rework ')+k)+'</span>'+
+        '<div class="activity-stacked-track" role="img" aria-label="'+esc(entries.map(x=>x.name+' '+activityDuration(x.ms)).join(', '))+'">'+
+          '<div class="activity-stacked-bar" style="width:'+Math.max(0,Math.min(100,sum/maxRound*100))+'%">'+
+          entries.map(x=>'<span class="activity-stack-color-'+x.color+'" style="width:'+(x.ms/sum*100)+'%" title="'+esc(x.name+' · '+activityDuration(x.ms))+'"></span>').join('')+
+          '</div></div><strong>'+esc(activityDuration(sum))+'</strong></div>';
+    }).join('')+'</div>':'<p class="summary">'+esc(ko?'선택한 회차에 측정된 Agent 시간이 없습니다.':'No measured agent time in the selected rounds.')+'</p>';
+  const chart=(prefs.mode==='rounds'?stacked:timeline);
+  const chartNote=(prefs.mode==='rounds'?ko?'스택은 에이전트별 투입시간입니다. 병렬 실행 시 실제 경과시간과 다를 수 있습니다.':'Stacks show summed agent time; concurrent agents can exceed wall time.':
+     ko?'실제 시작·종료 시각을 사용했습니다. 회차 필터에서는 대기를 제외하며, 확대해도 시간 길이는 변경되지 않습니다.':'Actual start/end times. Round filters exclude unattributed waiting. Zoom changes scale, not elapsed time.');
+  const trimNote=validTimeline.length>ACTIVITY_DETAIL_MAX_ROWS&&prefs.mode==='timeline'?
+    '<p class="summary">'+esc(ko?'화면 성능을 위해 '+ACTIVITY_DETAIL_MAX_ROWS+'개 구간만 표시했습니다. 전체 기록은 아래 원장에서 확인하세요.':'Showing first '+ACTIVITY_DETAIL_MAX_ROWS+' intervals for performance; full evidence is available in the API.')+'</p>':'';
   const lifetimeMetrics=lc.registered_at?[
     [ko?'등록~완료 전체 경과':'Registered to completed',lc.total_elapsed_ms],
     [ko?'등록 후 배정 대기':'Registration queue',lc.registration_queue_ms],
@@ -5820,24 +5893,72 @@ function activityMetricsBody(payload){
   ]:[];
   const lifetimeView=lifetimeMetrics.length?'<h3>'+esc(ko?'Lifecycle 기반 경과·대기 분석':'Lifecycle elapsed and waiting analysis')+'</h3>'+
     '<div class="activity-metric-grid">'+lifetimeMetrics.map(([label,ms])=>'<div class="activity-metric"><strong>'+esc(ms==null?'—':activityDuration(ms))+'</strong><span>'+esc(label)+'</span></div>').join('')+'</div>'+
-    '<p class="summary">'+esc(ko?'Lifecycle 보고를 근거로 계산한 경과시간입니다. 실행 중 실제 활동시간이나 Task Mecca 원인 지연을 의미하지 않습니다.':'Durations use reported lifecycle boundaries, not measured CPU time or proof of Task Mecca overhead.')+'</p>'+
-    ((lc.wait_activity_overlap_ms||0)>0?'<p class="timing-note warning">'+esc(ko?'활동·대기 근거 겹침: ':'Overlapping activity and wait evidence: ')+esc(activityDuration(lc.wait_activity_overlap_ms))+'</p>':'')+
-    ((lc.open_wait_count||0)>0||payload.lifecycle_findings>0?'<p class="timing-note warning">'+esc(ko?'닫히지 않은 대기 또는 불완전한 Lifecycle 근거가 있어 미확정 구간을 임의 합산하지 않았습니다.':'Open wait or incomplete lifecycle evidence was excluded instead of estimated.')+'</p>':''):'';
-  const unknown=(s.open_activities||s.invalid_transitions)?'<p class="timing-note warning">'+esc(ko?'열린 활동 '+(s.open_activities||0)+'건, 불완전한 전환 '+(s.invalid_transitions||0)+'건은 임의로 시간 계산하지 않았습니다.':'Open activities and invalid transitions are excluded from measured totals.')+'</p>':'';
-  const unclassified=(Array.isArray(payload.events)?payload.events:[]).filter(function(e){return e.type==='other' && e.action!=='correct';});
-  const unclassifiedView=unclassified.length?'<h3>'+esc(ko?'미분류 활동 및 Agent 제안':'Unclassified activity suggestions')+'</h3><div class="activity-unclassified">'+unclassified.map(function(e){
-    return '<div class="activity-unclassified-item"><strong>'+esc(e.proposed_type||'other')+'</strong> · '+esc(e.agent_id||'-')+
-      '<p>'+esc(e.explanation||'-')+'</p><small>'+esc(e.confidence||'unknown')+' · '+esc(e.evidence||'-')+'</small></div>';
-  }).join('')+'</div>':'';
+    '<p class="summary">'+esc(ko?'Lifecycle 보고를 근거로 계산한 경과시간입니다. CPU 사용시간이나 Task Mecca 원인 지연을 의미하지 않습니다.':'Lifecycle durations are not CPU time or proof of Task Mecca overhead.')+'</p>'+
+    ((lc.wait_activity_overlap_ms||0)>0?'<p class="timing-note warning">'+esc(ko?'활동·대기 근거 겹침: ':'Activity/wait overlap: ')+esc(activityDuration(lc.wait_activity_overlap_ms))+'</p>':''):'';
+  const unknown=(s.open_activities||s.invalid_transitions||s.invalid_corrections||lc.open_wait_count||payload.lifecycle_findings)?
+    '<p class="timing-note warning">'+esc(ko?'미확정: 열린 활동 '+(s.open_activities||0)+'건 · 잘못된 전환 '+(s.invalid_transitions||0)+'건 · 정정 오류 '+(s.invalid_corrections||0)+'건 · 열린 대기 '+(lc.open_wait_count||0)+'건. 불명확한 구간은 임의 계산하지 않았습니다.':
+     'Incomplete evidence: open activities '+(s.open_activities||0)+', invalid transitions '+(s.invalid_transitions||0)+', invalid corrections '+(s.invalid_corrections||0)+', open waits '+(lc.open_wait_count||0)+'. Unknown intervals are not estimated.')+'</p>':'';
+  const unclassified=events.filter(e=>e.type==='other'&&e.action!=='correct').slice(-30);
+  const unclassifiedView=unclassified.length?'<h3>'+esc(ko?'미분류 활동 및 Agent 제안':'Unclassified activity suggestions')+'</h3><div class="activity-unclassified">'+unclassified.map(e=>
+    '<div class="activity-unclassified-item"><strong>'+esc(e.proposed_type||'other')+'</strong> · '+esc(e.agent_id||'-')+
+      '<p>'+esc(e.explanation||'-')+'</p><small>'+esc(e.confidence||'unknown')+' · '+esc(e.evidence||'-')+'</small></div>').join('')+'</div>':'';
   const tr=payload.test_report||{};
   const testOverview=tr.runs&&tr.runs.length?'<h3>'+esc(ko?'검증·빌드 실행 분석':'Test and build executions')+'</h3>'+
     '<div class="activity-metric-grid">'+
     '<div class="activity-metric"><strong>'+esc(activityDuration(tr.full_regression_ms))+'</strong><span>'+esc(ko?'전체 회귀 누적':'Full regression total')+'</span></div>'+
     '<div class="activity-metric"><strong>'+esc(String(tr.full_regression_count||0))+'</strong><span>'+esc(ko?'전체 회귀 횟수':'Full regression count')+'</span></div>'+
     '<div class="activity-metric"><strong>'+esc(String(tr.repetition_candidates||0))+'</strong><span>'+esc(ko?'동일 SHA·명령·범위 재실행 후보':'Repeat candidates')+'</span></div></div>'+
-    '<p class="summary">'+esc(ko?'반복 후보는 불필요한 테스트로 확정된 것이 아닙니다. 테스트 목적과 코드 변경 여부를 함께 검토해야 합니다.':'Repeated runs can be legitimate; verify purpose and code revision.')+'</p>':'';
-  const gap=s.unattributed_gap_ms>0?'<p class="summary">'+esc(ko?'관측 범위 내 활동 미귀속 시간: ':'Unattributed observed-span time: ')+esc(activityDuration(s.unattributed_gap_ms))+'</p>':'';
-  return boxes+lifetimeView+byType+timeline+testOverview+unclassifiedView+gap+unknown;
+    '<p class="summary">'+esc(ko?'반복 후보는 불필요한 테스트로 확정된 것이 아닙니다.':'Repeated test candidates are not necessarily wasteful.')+'</p>':'';
+  const lastRows=events.slice(-ACTIVITY_DETAIL_MAX_LEDGER).reverse();
+  const ledger='<details id="activityLedgerDetail"'+(prefs.ledger?' open':'')+'><summary>'+esc(ko?'Activity 원장 상세':'Activity event ledger')+
+      ' ('+events.length+')</summary>'+
+      '<div class="activity-ledger-scroll"><table class="activity-ledger-table"><thead><tr>'+
+      [ko?'시각':'Time',ko?'이벤트':'Event',ko?'주체 / 회차':'Actor / round',ko?'활동':'Activity',ko?'근거 / 출처':'Evidence / source'].map(x=>'<th scope="col">'+esc(x)+'</th>').join('')+'</tr></thead><tbody>'+
+      lastRows.map(e=>'<tr><td>'+esc(activityEventTime(e.occurred_at,ko))+'</td><td>'+esc(e.action||'—')+
+       '<small>'+esc(e.event_id||'—')+'</small></td><td>'+esc(e.role||'—')+' · '+esc(e.agent_id||'—')+
+       '<small>'+esc((ko?'회차 ':'Round ')+(e.round??0))+'</small></td><td>'+esc(e.type||'—')+
+       (e.supersedes_id?'<small>'+esc((ko?'정정 대상: ':'Supersedes: ')+e.supersedes_id)+'</small>':'')+
+       '</td><td>'+esc(e.evidence||'—')+'<small>'+esc((e.source||'—')+' · '+(e.confidence||'—'))+'</small></td></tr>').join('')+
+      '</tbody></table></div>'+((events.length>ACTIVITY_DETAIL_MAX_LEDGER)?'<p class="summary">'+esc(ko?'최신 '+ACTIVITY_DETAIL_MAX_LEDGER+'건을 표시합니다. 전체 원장은 Activity API에서 조회할 수 있습니다.':'Showing the latest '+ACTIVITY_DETAIL_MAX_LEDGER+' records; the API retains the full ledger.')+'</p>':'')+'</details>';
+  const gap=s.unattributed_gap_ms>0?'<p class="summary">'+esc(ko?'활동 관측 범위 내 미귀속 시간: ':'Unattributed within activity span: ')+esc(activityDuration(s.unattributed_gap_ms))+'</p>':'';
+  return settings+boxes+lifetimeView+byType+chart+'<p class="summary">'+esc(chartNote)+'</p>'+trimNote+
+    testOverview+unclassifiedView+gap+unknown+ledger;
+}
+function bindActivityDetailControls(taskID,project=state.project){
+  const root=typeof document.getElementById==='function'?document.getElementById('activityMetricsBody'):null;
+  if(!root||typeof root.querySelector!=='function')return;
+  const pref=activityDetailPrefs(taskID,project);
+  const modify=(id,fn)=>{
+    const control=root.querySelector('#'+id);
+    if(control)control.addEventListener('change',()=>{
+      if(state.project!==project||state.detail!==taskID)return;
+      fn(control.value);renderActivityDetailControls(taskID,project);
+    });
+  };
+  modify('activityDetailRound',value=>{pref.round=value;});
+  modify('activityDetailMode',value=>{pref.mode=value==='rounds'?'rounds':'timeline';});
+  modify('activityDetailZoom',value=>{pref.zoom=Math.max(1,Math.min(8,Number(value)||1));});
+  const zoom=root.querySelector('#activityDetailZoom');
+  if(zoom)zoom.addEventListener('input',()=>{
+    const label=root.querySelector('#activityDetailZoomValue');
+    if(label)label.textContent=zoom.value+'×';
+    const canvas=root.querySelector('.activity-timeline-canvas');
+    if(canvas)canvas.style.minWidth=(Number(zoom.value)*100)+'%';
+  });
+  const ledger=root.querySelector('#activityLedgerDetail');
+  if(ledger)ledger.addEventListener('toggle',()=>{pref.ledger=ledger.open;});
+  const refresh=root.querySelector('#activityDetailRefresh');
+  if(refresh)refresh.addEventListener('click',()=>{
+    activityDetailCache.delete(activityDetailKey(taskID,project));
+    void loadTaskActivity(taskID,project);
+  });
+}
+function renderActivityDetailControls(taskID,project=state.project){
+  if(state.project!==project||state.detail!==taskID)return;
+  const root=typeof document.getElementById==='function'?document.getElementById('activityMetricsBody'):null;
+  if(!root)return;
+  root.innerHTML=activityMetricsBody(activityDetailCache.get(activityDetailKey(taskID,project)),taskID);
+  bindActivityDetailControls(taskID,project);
 }
 async function loadTaskActivity(id,project=state.project){
   const key=activityDetailKey(id,project);
@@ -5853,7 +5974,7 @@ async function loadTaskActivity(id,project=state.project){
     activityDetailCache.set(key,payload);
     if(state.project===project&&state.detail===id){
       const el=typeof document.getElementById==='function'?document.getElementById('activityMetricsBody'):null;
-      if(el)el.innerHTML=activityMetricsBody(payload);
+      if(el)renderActivityDetailControls(id,project);
     }
     return payload;
   })();
@@ -5862,7 +5983,7 @@ async function loadTaskActivity(id,project=state.project){
 }
 function activityDetailSection(task){
   const ko=state.language==='ko';
-  return '<section class="section detail-section" id="activity-metrics" data-toc-label="'+esc(ko?'작업시간 분석':'Activity timing')+'"><h2>'+esc(ko?'작업시간 분석':'Activity timing')+'</h2><div id="activityMetricsBody">'+activityMetricsBody(activityDetailCache.get(activityDetailKey(task.id)))+'</div></section>';
+  return '<section class="section detail-section" id="activity-metrics" data-toc-label="'+esc(ko?'작업시간 분석':'Activity timing')+'"><h2>'+esc(ko?'작업시간 분석':'Activity timing')+'</h2><div id="activityMetricsBody">'+activityMetricsBody(activityDetailCache.get(activityDetailKey(task.id)),task.id)+'</div></section>';
 }
 
 function detailView(task) {
