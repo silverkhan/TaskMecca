@@ -102,7 +102,13 @@ test('Cozy room asset and distinct Glass material preserve data readability',()=
   ':root[data-palette="glass"] .common-attention-body',
   '@media(prefers-reduced-transparency:reduce)'
  ])assert.ok(css.includes(token),token);
- assert.ok(css.includes('background-attachment:scroll'));
+ const glassStyles=css.slice(css.indexOf('/* GLASS MATERIAL SYSTEM'));
+ assert.ok(glassStyles.includes('body::before{'));
+ assert.ok(glassStyles.includes('position:fixed;'));
+ assert.ok(glassStyles.includes('inset:0;'));
+ assert.ok(glassStyles.includes('pointer-events:none;'));
+ assert.ok(glassStyles.includes('.app-shell{'));
+ assert.ok(!glassStyles.includes('background-attachment:scroll'));
  assert.ok(css.includes('backdrop-filter:none'));
 });
 
@@ -134,4 +140,19 @@ test('Glass v3 is luminous and transparent rather than monochrome gray',()=>{
  assert.ok(glass.includes(':root[data-palette="glass"] .user-attention'));
  assert.ok(!glass.includes('rgba(23,21,23,.66)'));
  assert.ok(!glass.includes('--glass-panel:rgba(76,66,61,.33);'));
+});
+
+test('Background presets share a viewport-fixed image layer on mobile',()=>{
+ const glassStyles=css.slice(css.indexOf('/* GLASS MATERIAL SYSTEM'));
+ for(const variant of [
+   '[data-theme="dark"] body::before',
+   '[data-theme="light"] body::before',
+   '[data-background="cozy"] body::before',
+   '[data-background="none"] body::before'
+ ])assert.ok(glassStyles.includes(variant),variant);
+ const mobile=glassStyles.slice(glassStyles.indexOf('@media(max-width:680px)'));
+ assert.ok(!mobile.includes('background-attachment:scroll'));
+ assert.ok(!mobile.includes('background-position:scroll'));
+ assert.ok(glassStyles.includes('background-size:cover;'));
+ assert.ok(glassStyles.includes('background-position:center center;'));
 });
