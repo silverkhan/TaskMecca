@@ -17,6 +17,10 @@ Worker의 수동 운영원장 쓰기 금지와 승인된 CLI preflight ephemeral
 
 [EXECUTION_PROTOCOL.md](../EXECUTION_PROTOCOL.md)의 단일 절차를 따른다. 원본 canonical backlog/runtime의 운영 writer는 Controller다. Worker는 원본·사본 원장을 쓰거나 monitor에 등록하지 않고 실제 착수·대기·완료 및 transport 근거를 Controller에 보고한다. 원본 상태 기록은 dev 통합과 별개이며 merge까지 미루지 않는다. 배정 gate, exact native Controller 전달/재개, race·중복 처리 및 restart/finalization 체크리스트를 모두 적용한다. Root ACK/wake는 완료 조건이 아니며 CLI가 자동 통지·재개·turn 종료를 강제한다고 주장하지 않는다.
 
+## 실제 활동 계측 (Activity Recorder)
+
+배정과 실제 native 실행 신원이 확인된 후에만, 실제로 시작한 단계에서 `task-mecca activity report`를 1회 호출한다. 정확한 `--role worker --agent --attempt --assignment`와 안정적인 `--event-id`를 사용한다. 요구사항 분석 시작은 `--event requirements_started`, 구현 전환은 `implementation_started`, 실제 작업 종료는 `worker_completed`이며 각 호출에 실측 근거 `--evidence`를 넣는다. 상세 계약은 [Activity Recorder](../../../../../../docs/activity-recorder.md)에 따른다. 기록 실패나 미지원 Hook을 성공으로 간주하지 않고 Controller에 원인/미관측을 보고한다. Decision 권고·배정·메시지 전달만으로 start를 기록하지 않는다. canonical lifecycle의 수동 쓰기 금지는 그대로 적용한다.
+
 ## 완료 보고 경로
 
 DONE/BLOCKED 보고와 handoff는 Controller에 직접 전달한다. Root의 응답·재개·결과 확인을 기다리거나 완료 근거로 삼지 않는다. 사용자 판단이 필요하면 Controller가 durable hold를 만들 수 있게 근거와 재개에 필요한 정보를 보고한다.
