@@ -52,8 +52,8 @@ test('Activity detail shows measured durations and truthful elapsed basis',()=>{
 test('round filter retains original timestamps instead of rebasing',()=>{
  const a=page();a.activityDetailPrefs('B-589').round='1';
  const html=a.activityMetricsBody(payload(),'B-589');
- assert.match(html,/implementation · worker/);
- assert.doesNotMatch(html,/requirements · worker · 회차/);
+ assert.match(html,/구현 · worker/);
+ assert.doesNotMatch(html,/요구사항 분석 · worker · 회차/);
  assert.match(html,/11[.\/ ]+04/);
  assert.match(html,/활동 유형별 누적 \(전체 회차\)/);
 });
@@ -78,4 +78,24 @@ test('no evidence does not invent duration or trigger additional reads',()=>{
  const html=a.activityMetricsBody({summary:{segments:[]},events:[]},'B-589');
  assert.match(html,/관측된 Activity·Lifecycle 시간 근거가 없습니다/);
  assert.doesNotMatch(html,/activity-stacked-rounds/);
+});
+
+test('localized taxonomy and wait labels retain original event provenance',()=>{
+ const a=page();const data=payload();
+ data.summary.by_type_ms={controller_review:31000,other:26000,targeted_test:1000};
+ data.summary.segments=[{type:'controller_review',role:'controller',round:0,started_at:shift(0),ended_at:shift(1),duration_ms:31000}];
+ data.lifecycle_coverage.wait_intervals=[{kind:'registration_queue',started_at:shift(1),ended_at:shift(5),duration_ms:240000}];
+ const html=a.activityMetricsBody(data,'B-589');
+ assert.match(html,/Controller 검토/);
+ assert.match(html,/기타 활동/);
+ assert.match(html,/선별 테스트/);
+ assert.match(html,/작업 배정 대기/);
+ assert.match(html,/31초/);
+ assert.match(html,/title="controller_review"/);
+});
+test('timeline title contains measured duration and original endpoints',()=>{
+ const a=page();const html=a.activityMetricsBody(payload(),'B-589');
+ assert.match(html,/2분/);
+ assert.match(html,/aria-label="[^"]*2분/);
+ assert.match(html,/작업시간|요구사항 분석/);
 });
