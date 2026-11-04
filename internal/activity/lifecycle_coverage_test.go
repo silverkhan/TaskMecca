@@ -48,3 +48,36 @@ func TestLifecycleUnfinishedKeepsUnknownBoundary(t *testing.T){
   t.Fatalf("open lifecycle must not invent elapsed time: %+v",out)
  }
 }
+
+func TestLifecycleRealUsageWaitOverlapExplainsUnattributedTime(t *testing.T){
+    // Reproduce reported 2026-11-04 UI durations (all values in seconds):
+    // elapsed=809, queue=351, dispatch=211, Activity=58, overlap=26, unknown=215.
+    base:=time.Date(2026,11,4,0,0,0,0,time.UTC)
+    at:=func(sec int)time.Time{return base.Add(time.Duration(sec)*time.Second)}
+    fact:=func(id,kind string,sec int)LifecycleFact{
+        return LifecycleFact{TaskID:"B-602",EventID:id,Kind:kind,OccurredAt:at(sec),EvidenceSource:"controller_report"}
+    }
+    facts:=[]LifecycleFact{
+        fact("registered","registered",0),fact("assigned","assigned",351),
+        fact("started","started",562),fact("completed","completed",809),
+    }
+    makeSegment:=func(id string,from,to int)Segment{
+        return Segment{TaskID:"B-602",AgentID:id,Type:Implementation,Role:RoleController,
+            StartedAt:at(from),EndedAt:at(to),DurationMillis:int64(to-from)*1000}
+    }
+    segments:=[]Segment{
+        makeSegment("registrar-phase",100,126), // 26 seconds within queue; NOT extra elapsed
+        makeSegment("controller-review",600,631),
+        makeSegment("targeted-test",700,701),
+    }
+    got:=SummarizeLifecycle("B-602",facts,segments)
+    if got.TotalElapsedMillis==nil||got.UnattributedElapsedMillis==nil{t.Fatalf("missing closed bounds %+v",got)}
+    if *got.TotalElapsedMillis!=809000||got.RegistrationQueueMillis!=351000||
+       got.DispatchWaitMillis!=211000||got.OverlapMillis!=26000||
+       got.CoveredElapsedMillis!=594000||*got.UnattributedElapsedMillis!=215000 {
+       t.Fatalf("real usage timing invariant violated: %+v",got)
+    }
+    if got.CoveredElapsedMillis+*got.UnattributedElapsedMillis!=*got.TotalElapsedMillis{
+       t.Fatalf("union decomposition does not cover elapsed %+v",got)
+    }
+}
