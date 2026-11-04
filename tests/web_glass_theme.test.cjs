@@ -47,3 +47,12 @@ test('Glass fallback and accessibility preferences are separate contracts',()=>{
  assert.equal((glass.match(/\/\* GLASS MATERIAL SYSTEM/g)||[]).length,1);
  assert.ok(fs.readFileSync(root+'cozy-beige-room.svg','utf8').startsWith('<svg'));
 });
+test('photographic derivatives match provenance and explicit byte budgets',()=>{
+ const crypto=require('node:crypto'),manifest=JSON.parse(fs.readFileSync('docs/assets/cozy-beige-room-photo.json'));
+ assert.deepEqual(manifest.native_generation_size,[1672,941]);assert.equal(manifest.neural_upscale.model,'realesrgan-x4plus');
+ for(const [name,budget] of [['cozy-beige-room-photo-1920.webp',500000],['cozy-beige-room-photo-3840.webp',1250000]]){
+  const data=fs.readFileSync(root+name),record=manifest.files.find(x=>x.file===name);
+  assert.equal(data.length,record.bytes);assert.ok(data.length<=budget);assert.equal(crypto.createHash('sha256').update(data).digest('hex'),record.sha256);
+  assert.equal(data.toString('ascii',0,4),'RIFF');assert.equal(data.toString('ascii',8,12),'WEBP');assert.ok(css.includes(name));
+ }
+});

@@ -115,6 +115,8 @@ jobs:
           name: glass-browser-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
             glass-browser-evidence/browser-contract.json
+            glass-browser-evidence/photo-delivery.json
+            glass-browser-evidence/desktop-light-backlog.png
             glass-browser-evidence/desktop-dark-backlog.png
             glass-browser-evidence/mobile-dark-backlog.png
             glass-browser-evidence/mobile-height-orientation.png

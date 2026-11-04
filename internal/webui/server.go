@@ -1881,6 +1881,46 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 	mux.HandleFunc("/terminal.js", func(w http.ResponseWriter, r *http.Request) { sendEmbedded(w, "terminal.js") })
 	mux.HandleFunc("/theme-boot.js", func(w http.ResponseWriter, r *http.Request) { sendEmbedded(w, "theme-boot.js") })
 	mux.HandleFunc("/style.css", func(w http.ResponseWriter, r *http.Request) { sendEmbedded(w, "style.css") })
+	// Versioned photographic assets are immutable; unversioned clients revalidate.
+	for _, asset := range []struct{ name, hash string }{
+		{"cozy-beige-room-photo-1920.webp", "48c7a6a5c4dbc1e6afe9b07ab0d026850e8516fbde21e621fa4bbabc9c072600"},
+		{"cozy-beige-room-photo-3840.webp", "542346a844197fd8eb594cc414abd8ebcd9b726d9ef809ed14cd91c05bb8a4fe"},
+	} {
+		mux.HandleFunc("/"+asset.name, func(w http.ResponseWriter, r *http.Request) {
+			if r.Method != http.MethodGet && r.Method != http.MethodHead {
+				w.Header().Set("Allow", "GET, HEAD")
+				w.WriteHeader(http.StatusMethodNotAllowed)
+				return
+			}
+			info, err := fs.Stat(goassets.Template, embeddedRoot+"/web/"+asset.name)
+			if err != nil {
+				http.NotFound(w, r)
+				return
+			}
+			etag := "\"" + asset.hash + "\""
+			w.Header().Set("Content-Type", "image/webp")
+			w.Header().Set("X-Content-Type-Options", "nosniff")
+			w.Header().Set("ETag", etag)
+			w.Header().Set("Cache-Control", "public, max-age=0, must-revalidate")
+			if r.URL.Query().Get("v") == asset.hash[:8] {
+				w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+			}
+			if r.Header.Get("If-None-Match") == etag {
+				w.WriteHeader(http.StatusNotModified)
+				return
+			}
+			w.Header().Set("Content-Length", strconv.FormatInt(info.Size(), 10))
+			if r.Method == http.MethodHead {
+				return
+			}
+			data, err := fs.ReadFile(goassets.Template, embeddedRoot+"/web/"+asset.name)
+			if err != nil {
+				http.NotFound(w, r)
+				return
+			}
+			_, _ = w.Write(data)
+		})
+	}
 	mux.HandleFunc("/cozy-beige-room.svg", func(w http.ResponseWriter, r *http.Request) { sendEmbedded(w, "cozy-beige-room.svg") })
 	mux.HandleFunc("/logo.svg", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "image/svg+xml; charset=utf-8")

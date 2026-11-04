@@ -1,0 +1,67 @@
+{
+  "description": "Task Mecca 기본 Cozy Beige Room용 AI 생성 실사풍 이미지",
+  "generator": "Codex built-in image_gen",
+  "native_generation_size": [
+    1672,
+    941
+  ],
+  "neural_upscale": {
+    "tool": "Real-ESRGAN-ncnn-vulkan",
+    "version": "v0.2.0",
+    "model": "realesrgan-x4plus",
+    "scale": 4,
+    "tile": 128,
+    "threads": "1:1:1",
+    "binary_source": "https://github.com/xinntao/Real-ESRGAN-ncnn-vulkan/releases/tag/v0.2.0",
+    "model_package_source": "https://github.com/xinntao/Real-ESRGAN/releases/tag/v0.2.5.0"
+  },
+  "master_processing": "신경망 4배 출력에서 Lanczos 축소 후 미세 crop하여 3840×2160. 네이티브 4K 생성 또는 일반 보간 업스케일로 표현하지 않음.",
+  "web_encoding": {
+    "format": "WebP",
+    "quality": 88,
+    "method": 6,
+    "encoder": "Pillow 11.3.0"
+  },
+  "files": [
+    {
+      "file": "cozy-beige-room-generated-original.png",
+      "width": 1672,
+      "height": 941,
+      "bytes": 2924631,
+      "sha256": "317e7d1da6b9fda39de22c51efd8570b5ab9168d2a8a4703141904471bd0bd7b",
+      "role": "AI 생성 원본"
+    },
+    {
+      "file": "cozy-beige-room-neural-4x.png",
+      "width": 6688,
+      "height": 3764,
+      "bytes": 44023511,
+      "sha256": "c2c35c5a507641457db1a27a6a74cd8319e5a7508c9a7aba89693e3c8d1329c0",
+      "role": "Real-ESRGAN 4배 출력"
+    },
+    {
+      "file": "cozy-beige-room-4k.png",
+      "width": 3840,
+      "height": 2160,
+      "bytes": 11420146,
+      "sha256": "8493e91c29cedbf69cd37a1c7d07af492fa54d300dc2ae4e34beee77660585d1",
+      "role": "4K 마스터"
+    },
+    {
+      "file": "cozy-beige-room-photo-3840.webp",
+      "width": 3840,
+      "height": 2160,
+      "bytes": 1158428,
+      "sha256": "542346a844197fd8eb594cc414abd8ebcd9b726d9ef809ed14cd91c05bb8a4fe",
+      "role": "웹용 고해상도"
+    },
+    {
+      "file": "cozy-beige-room-photo-1920.webp",
+      "width": 1920,
+      "height": 1080,
+      "bytes": 451256,
+      "sha256": "48c7a6a5c4dbc1e6afe9b07ab0d026850e8516fbde21e621fa4bbabc9c072600",
+      "role": "웹용 경량"
+    }
+  ]
+}

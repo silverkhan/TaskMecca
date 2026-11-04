@@ -19,16 +19,21 @@ test('Glass browser contract: appearance, stable canvas, content, fallbacks and 
   await seed();assert.ok(await page.locator('#previewIdentityBanner').isVisible(),'fixture Preview identity renders');await page.evaluate(()=>scrollTo(0,0));
   // Use the actual custom select's click/option event path at least once.
   await page.evaluate(()=>{applyTheme('light');applyBackground('ambient')});
-  for(const [palette,label,text]of [['mecca','Mecca','#292536'],['slate','Slate','#172033'],['glass','Glass','#30251f']]){
+  for(const [palette,label,text]of [['mecca','Mecca','#292536'],['slate','Slate','#172033'],['glass','Glass','#201b17']]){
    await page.locator('.palette-picker .tm-combo-trigger').click();await page.locator('.tm-combo-option').filter({hasText:new RegExp('^'+label+'$')}).click();
    assert.equal(await page.evaluate(()=>document.documentElement.dataset.palette),palette);assert.equal(await page.evaluate(()=>localStorage.getItem('task-mecca-palette')),palette);
    assert.equal(await page.locator('.background-picker').isVisible(),palette==='glass');
    assert.equal(await page.evaluate(()=>getComputedStyle(document.documentElement).getPropertyValue('--text').trim()),text);
    assert.equal(await page.evaluate(()=>localStorage.getItem('task-mecca-background')),'ambient');
    assert.equal((await page.evaluate(()=>getComputedStyle(document.body,'::before').content))!=='none',palette==='glass');
-   assert.equal(await page.locator('.task-list').evaluate(e=>getComputedStyle(e).backgroundColor==='rgba(0, 0, 0, 0)'),palette!=='glass');
+   assert.equal(await page.locator('.content').evaluate(e=>getComputedStyle(e,'::before').content!=='none'),palette==='glass');
   }
   await page.evaluate(()=>{applyTheme('dark');applyBackground('cozy')});
+  const reader=await page.locator('.content').evaluate(e=>{const s=getComputedStyle(e,'::before');return{height:parseFloat(s.height),width:parseFloat(s.width),filter:s.backdropFilter,position:s.position,ownFilter:getComputedStyle(e).backdropFilter}});
+  assert.ok(reader.filter.includes('blur('));assert.equal(reader.position,'sticky');assert.ok(reader.height<=await page.evaluate(()=>innerHeight));assert.equal(reader.ownFilter,'none','fixed descendants retain their viewport containing block');report.readerPlanes??=[];report.readerPlanes.push({mobile,...reader});
+  const paneCDP=await ctx.newCDPSession(page),{root:domRoot}=await paneCDP.send('DOM.getDocument'),{nodeId:paneNode}=await paneCDP.send('DOM.querySelector',{nodeId:domRoot.nodeId,selector:'#content'}),{node:described}=await paneCDP.send('DOM.describeNode',{nodeId:paneNode,depth:1});
+  const pseudo=described.pseudoElements.find(n=>n.pseudoType==='before'),{model:paneModel}=await paneCDP.send('DOM.getBoxModel',{backendNodeId:pseudo.backendNodeId});
+  assert.ok(paneModel.height<=await page.evaluate(()=>innerHeight));report.readerPlanes.at(-1).boxModel=paneModel;
   const geometry=()=>page.evaluate(()=>{const s=getComputedStyle(document.body,'::before');return[s.width,s.height,s.left,s.top,s.backgroundSize,s.backgroundPosition,s.backgroundImage]});
   const initial=await geometry();await page.evaluate(()=>{document.body.style.minHeight='3000px';window.scrollTo(0,800)});assert.deepEqual(await geometry(),initial);
   await page.setViewportSize({width:mobile?390:1440,height:mobile?510:700});assert.deepEqual(await geometry(),initial);await page.setViewportSize(mobile?{width:844,height:390}:{width:1100,height:800});assert.deepEqual(await geometry(),initial);
@@ -44,10 +49,10 @@ test('Glass browser contract: appearance, stable canvas, content, fallbacks and 
    for(const bg of ['ambient','none','cozy']){await page.evaluate(bg=>applyBackground(bg),bg);assert.equal(await page.evaluate(()=>document.documentElement.dataset.background),bg);await page.reload();await seed();assert.equal(await page.evaluate(()=>document.documentElement.dataset.background),bg)}
    await seed('workload');await page.locator('.runtime-root-card').first().scrollIntoViewIfNeeded();await shot(theme+'-workload');await page.locator('.runtime-history').first().evaluate(e=>e.open=true);await page.locator('.runtime-transition-list').first().scrollIntoViewIfNeeded();await shot(theme+'-runtime-logs');await page.locator('.worker-card').first().scrollIntoViewIfNeeded();await shot(theme+'-workers');
    assert.equal(await page.locator('.worker-card').count()>0,true,'actual workload cards render');
-   assert.equal(await page.locator('.worker-card').first().evaluate(e=>getComputedStyle(e).backdropFilter),'none');
+   assert.equal(await page.locator('.worker-card').first().evaluate(e=>getComputedStyle(e).backdropFilter),'none');assert.ok(await page.locator('.content').evaluate(e=>parseFloat(getComputedStyle(e,'::before').height)<=innerHeight));
    await page.evaluate(()=>scrollTo(0,0));await seed('hub');await shot(theme+'-hub');await seed('storage');await page.waitForTimeout(100);assert.equal(await page.locator('.storage-overview-card').count(),3,'selected-project storage figures render');await shot(theme+'-storage');
    await page.evaluate(()=>scrollTo(0,0));await seed();await page.evaluate(f=>{state.detail=f.detail.id;state.detailTask=f.detail;state.raw=true;render()},data);await shot(theme+'-detail-raw');await page.locator('.raw').evaluate(e=>e.scrollIntoView());await shot(theme+'-raw-table');
-   await page.evaluate(f=>{state.raw=false;activityDetailCache.set(activityDetailKey(f.detail.id),f.activity);render()},data);assert.ok(await page.locator('.activity-timeline-track').count()>0,'Gantt has real timed rows');await page.locator('.activity-timeline-scroll').scrollIntoViewIfNeeded();await shot(theme+'-detail-gantt');
+   await page.evaluate(f=>{state.raw=false;activityDetailCache.set(activityDetailKey(f.detail.id),f.activity);render()},data);if(mobile){const fixed=await page.locator('.detail-toc-fab').boundingBox();assert.ok(fixed?.width>0);await page.evaluate(()=>scrollBy(0,160));assert.deepEqual(await page.locator('.detail-toc-fab').boundingBox(),fixed,'TOC stays fixed across reader scroll')}assert.ok(await page.locator('.activity-timeline-track').count()>0,'Gantt has real timed rows');await page.locator('.activity-timeline-scroll').scrollIntoViewIfNeeded();await shot(theme+'-detail-gantt');
   }
   await page.evaluate(()=>{applyTheme('system');applyBackground('cozy')});await page.emulateMedia({colorScheme:'dark'});await page.waitForFunction(()=>document.documentElement.dataset.theme==='dark');assert.equal(await page.evaluate(()=>document.documentElement.dataset.theme),'dark');await page.emulateMedia({colorScheme:'light'});await page.waitForFunction(()=>document.documentElement.dataset.theme==='light');assert.equal(await page.evaluate(()=>document.documentElement.dataset.theme),'light');
   await seed();await page.keyboard.press('Tab');assert.ok(await page.evaluate(()=>document.activeElement!==document.body));assert.equal(await page.evaluate(()=>getComputedStyle(document.activeElement).outlineStyle),'solid');
@@ -67,7 +72,7 @@ test('Glass browser contract: appearance, stable canvas, content, fallbacks and 
   // Chromium supports blur. Force only the unsupported capability branch and remove
   // unsupported declarations, emulating how a browser lacking both properties parses CSS.
   await page.route('**/style.css',async route=>{const response=await route.fetch();let css=await response.text();css=css.replace(/@supports not \(\(backdrop-filter:blur\(1px\)\) or \(-webkit-backdrop-filter:blur\(1px\)\)\)/,'@supports (display:block)').replace(/(?:-webkit-)?backdrop-filter\s*:[^;}]+;?/g,'');await route.fulfill({response,body:css})});
-  await page.reload();await seed();assert.ok((await geometry())[6].includes('cozy-beige-room.svg'));assert.equal(await page.locator('.topbar').evaluate(e=>getComputedStyle(e).backgroundColor),'rgb(245, 235, 221)');await shot('unsupported-blur-emulated');
+  await page.reload();await seed();assert.ok((await geometry())[6].includes('cozy-beige-room-photo-1920.webp'));assert.equal(await page.locator('.topbar').evaluate(e=>getComputedStyle(e).backgroundColor),'rgb(238, 237, 231)');await shot('unsupported-blur-emulated');
   await page.unroute('**/style.css');for(const theme of ['dark','light']){
    await page.evaluate(theme=>localStorage.setItem('task-mecca-theme',theme),theme);await page.goto(server.origin+'/terminal?project=/fixtures/atlas');await page.waitForTimeout(200);
    assert.equal(await page.evaluate(()=>document.documentElement.dataset.theme),theme);assert.equal(await page.locator('.terminal-app').evaluate(e=>getComputedStyle(e).zIndex),'1');
@@ -77,4 +82,17 @@ test('Glass browser contract: appearance, stable canvas, content, fallbacks and 
  }
  assert.deepEqual(report.errors,[]);
  }finally{if(out)fs.writeFileSync(path.join(out,'browser-contract.json'),JSON.stringify(report,null,2));await browser.close();await server.close()}
+});
+test('photographic source responds to mobile decode budget and desktop DPR',{skip:!enabled,timeout:60000},async()=>{
+ const {chromium}=require(process.env.GLASS_PLAYWRIGHT_MODULE),server=await fixture.start(path.resolve('goassets/template/_task_mecca/framework/web'));
+ const browser=await chromium.launch({executablePath:process.env.CHROME_EXECUTABLE,headless:true}),records=[];
+ try{for(const mobile of [true,false]){
+  const ctx=await browser.newContext({viewport:mobile?{width:390,height:844}:{width:1440,height:960},screen:mobile?{width:390,height:844}:{width:1440,height:960},isMobile:mobile,hasTouch:mobile,deviceScaleFactor:mobile?3:2});
+  await ctx.route('**/*',r=>r.request().url().startsWith(server.origin+'/')?r.continue():r.abort());await ctx.addInitScript(()=>{localStorage.setItem('task-mecca-palette','glass');localStorage.setItem('task-mecca-theme','light');window.EventSource=class{addEventListener(){}close(){}}});
+  const page=await ctx.newPage();await page.goto(server.origin);await page.waitForTimeout(300);
+  const image=await page.evaluate(async()=>{const css=getComputedStyle(document.body,'::before').backgroundImage,url=css.match(/url\(["']?([^"')]+)/)[1],start=performance.now(),image=new Image();image.src=url;await image.decode();const resource=performance.getEntriesByName(image.src).find(e=>e.initiatorType==='css');return{url,width:image.naturalWidth,height:image.naturalHeight,decodeMs:performance.now()-start,resource:resource?{name:resource.name,encodedBodySize:resource.encodedBodySize,decodedBodySize:resource.decodedBodySize,transferSize:resource.transferSize}:null}});
+  assert.equal(image.width,mobile?1920:3840);assert.equal(image.height,mobile?1080:2160);assert.ok(image.resource,'CSS requested actual photo');assert.equal(image.resource.encodedBodySize,mobile?451256:1158428);
+  const response=await ctx.request.get(new URL(image.url,server.origin).href);assert.equal(response.headers()['content-type'],'image/webp');assert.ok(response.headers()['cache-control'].includes('immutable'));
+  records.push({mobile,dpr:mobile?3:2,...image,rgbaDecodeEstimateBytes:image.width*image.height*4,contentType:response.headers()['content-type'],cache:response.headers()['cache-control']});await ctx.close();
+ }}finally{if(process.env.GLASS_EVIDENCE_DIR)fs.writeFileSync(path.resolve(process.env.GLASS_EVIDENCE_DIR,'photo-delivery.json'),JSON.stringify(records,null,2));await browser.close();await server.close()}
 });

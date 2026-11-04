@@ -1,5 +1,5 @@
 // Actual embedded application assets; every API response and visible record is synthetic.
-const http=require('node:http'),fs=require('node:fs'),path=require('node:path');
+const http=require('node:http'),fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto');
 const project='/fixtures/atlas',backlog=project+'/_task_mecca/data/backlog';
 const stamp='2026-11-04T10:00:00Z';
 const items=Array.from({length:36},(_,i)=>({id:'DEMO-'+(100+i),sort_key:String(100+i).padStart(6,'0'),title:['월간 결산 자료 검증','고객 요청 처리 현황','배치 작업과 의존성 확인'][i%3]+' · '+(i+1),state:['doing','ready','hold','done'][i%4],file_state:['doing','todo','hold','done'][i%4],agent:i%4===0?'worker-pine':'',scope:'가상 검증 데이터',tags:['area:backend'],updated_at:stamp,mtime:stamp,document:{schema:'v2',contract_kind:'simple',summary:{purpose:'운영 화면의 상태와 가독성을 확인하는 가상 자료',change:'테마·레이아웃 검증',status_result:'검증용 fixture',follow_up:'실제 업무 데이터가 아닙니다.'},requirements:{goal:'가상 작업의 처리 흐름 확인',acceptance:'- [ ] 결과와 근거를 확인한다.'}},fields:{},lifecycle:{events:[],active_seconds:128,lead_seconds:600}}));
@@ -36,8 +36,8 @@ async function start(root,port=0){
   if(url.pathname.startsWith('/api/')){res.setHeader('Content-Type','application/json');res.end(JSON.stringify(api(url,origin)));return;}
   let name=decodeURIComponent(url.pathname);if(name==='/'||name.startsWith('/tasks/'))name='/index.html';if(name==='/terminal')name='/terminal.html';
   const file=path.resolve(root,'.'+name);if(!file.startsWith(path.resolve(root)+path.sep)){res.writeHead(403);res.end();return;}
-  const type={'.css':'text/css','.js':'text/javascript','.svg':'image/svg+xml','.html':'text/html','.json':'application/json','.webmanifest':'application/json'}[path.extname(file)]||'application/octet-stream';
-  fs.readFile(file,(err,data)=>{if(err){res.writeHead(404);res.end();return;}res.setHeader('Content-Type',type);res.setHeader('Cache-Control','no-store');res.end(data);});
+  const type={'.css':'text/css','.js':'text/javascript','.svg':'image/svg+xml','.webp':'image/webp','.html':'text/html','.json':'application/json','.webmanifest':'application/json'}[path.extname(file)]||'application/octet-stream';
+  fs.readFile(file,(err,data)=>{if(err){res.writeHead(404);res.end();return;}res.setHeader('Content-Type',type);res.setHeader('Cache-Control','no-store');if(name.includes('cozy-beige-room-photo-')){const hash=crypto.createHash('sha256').update(data).digest('hex');res.setHeader('ETag','\"'+hash+'\"');if(url.searchParams.get('v')===hash.slice(0,8))res.setHeader('Cache-Control','public, max-age=31536000, immutable');res.setHeader('Content-Length',data.length)}res.end(data);});
  });
  await new Promise(r=>server.listen(port,'127.0.0.1',r));return{origin:'http://127.0.0.1:'+server.address().port,close:()=>new Promise(r=>server.close(r))};
 }
