@@ -5784,7 +5784,7 @@ function activityDetailPrefs(id,project=state.project){
   const key=activityDetailKey(id,project);
   if(!activityDetailViews.has(key)){
     if(activityDetailViews.size>=24)activityDetailViews.delete(activityDetailViews.keys().next().value);
-    activityDetailViews.set(key,{round:'all',mode:'timeline',zoom:1,ledger:false});
+    activityDetailViews.set(key,{round:'all',mode:'timeline',zoom:1,groupAgents:false,ledger:false});
   }
   return activityDetailViews.get(key);
 }
@@ -5837,6 +5837,9 @@ function activityMetricsBody(payload,taskID=state.detail){
     '<label>'+esc(ko?'확대':'Zoom')+' <output id="activityDetailZoomValue">'+prefs.zoom+'×</output>'+
       '<input type="range" id="activityDetailZoom" min="1" max="8" step="1" value="'+prefs.zoom+'"'+
       (prefs.mode==='rounds'?' disabled':'')+' aria-label="'+esc(ko?'시간축 확대':'Timeline zoom')+'"/></label>'+
+    '<label>'+esc(ko?'Agent 그룹':'Group by agent')+
+      '<input type="checkbox" id="activityDetailGroupAgents"'+(prefs.groupAgents?' checked':'')+
+      (prefs.mode==='rounds'?' disabled':'')+'/></label>'+
     '<button type="button" id="activityDetailRefresh">'+esc(ko?'기록 새로고침':'Refresh evidence')+'</button>'+
     '<button type="button" id="activityRuntimeDiagnose">'+esc(ko?'실행 기록 대조':'Compare runtime evidence')+'</button></div>';
   if(!segments.length&&!s.open_activities&&!lc.registered_at&&!waitRows.length&&!events.length)
@@ -5895,8 +5898,10 @@ function activityMetricsBody(payload,taskID=state.detail){
   const all=totals.reduce((sum,[,ms])=>sum+ms,0);
   const byType=totals.length?'<h3>'+esc(ko?'활동 유형별 누적 (전체 회차)':'Cumulative by activity (all rounds)')+'</h3><div class="activity-type-bars">'+
     totals.map(([name,ms])=>'<div class="activity-type-row"><span title="'+esc(name)+'">'+esc(activityDisplayType(name,ko))+'</span><div class="activity-type-track"><div style="width:'+Math.max(0,Math.min(100,all?ms/all*100:0))+'%"></div></div><strong>'+esc(activityDuration(ms))+'</strong></div>').join('')+'</div>':'';
-  const timelineData=filtered.map(x=>({label:activityDisplayType(x.type,ko)+' · '+x.role+' · '+(ko?'회차 ':'Round ')+x.round,from:x.started_at,to:x.ended_at,ms:x.duration_ms,wait:false}))
-    .concat(activeRound==='all'?waitRows.map(x=>({label:(ko?'대기 · ':'Wait · ')+activityDisplayWait(x.kind,ko),from:x.started_at,to:x.ended_at,ms:x.duration_ms,wait:true})):[]);
+  const timelineData=filtered.map(x=>({label:activityDisplayType(x.type,ko)+' · '+x.role+' · '+(ko?'회차 ':'Round ')+x.round,
+    role:String(x.role||''),agent:String(x.agent_id||''),attempt:String(x.attempt_id||''),from:x.started_at,to:x.ended_at,ms:x.duration_ms,wait:false}))
+    .concat(activeRound==='all'?waitRows.map(x=>({label:(ko?'대기 · ':'Wait · ')+activityDisplayWait(x.kind,ko),
+      role:'',agent:'',attempt:'',from:x.started_at,to:x.ended_at,ms:x.duration_ms,wait:true})):[]);
   // Retain the full time axis while filtering so round comparisons do not
   // silently rebase the data. Clip rendering, not the evidence itself.
   let begin=Infinity,end=-Infinity;
@@ -5917,18 +5922,41 @@ function activityMetricsBody(payload,taskID=state.detail){
   const ruler='<div class="activity-time-ruler" aria-hidden="true">'+[0,.25,.5,.75,1].map(p=>'<span>'+
     esc(new Date(begin+(end-begin)*p).toLocaleString(ko?'ko-KR':'en-US',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}))+
     '</span>').join('')+'</div>';
+  const timelineRow=x=>{
+    const left=Math.max(0,Math.min(100,(Date.parse(x.from)-begin)/span*100));
+    const width=Math.max(0,Math.min(100-left,(Date.parse(x.to)-Date.parse(x.from))/span*100));
+    const tooltip=x.label+' · '+activityEventTime(x.from,ko)+' → '+activityEventTime(x.to,ko)+' · '+activityDisplayDuration(x.ms,ko)+
+      (x.agent?' · '+x.agent:'');
+    return '<div class="activity-timeline-row"><span title="'+esc(x.label)+'">'+esc(x.label)+'</span>'+
+      '<div class="activity-timeline-track'+(x.wait?' activity-timeline-wait':'')+'"><div role="img" aria-label="'+esc(tooltip)+
+      '" title="'+esc(tooltip)+'" tabindex="0" style="left:'+left+'%;width:'+width+
+      '%;overflow:hidden;white-space:nowrap;display:flex;align-items:center;justify-content:center">'+
+      '<small class="activity-timeline-duration-label" style="display:none;color:white;font-size:10px;pointer-events:none">'+
+      esc(activityDisplayDuration(x.ms,ko))+'</small></div></div><strong>'+esc(activityDisplayDuration(x.ms,ko))+'</strong></div>';
+  };
+  const renderTimelineRows=()=>{
+    if(!prefs.groupAgents)return shownTimeline.map(timelineRow).join('');
+    const groups=new Map();
+    for(const item of shownTimeline){
+      // Use exact actor identity for grouping; do not mix different attempts.
+      const key=item.wait?'wait':JSON.stringify([item.role,item.agent,item.attempt]);
+      if(!groups.has(key))groups.set(key,{wait:item.wait,role:item.role,agent:item.agent,attempt:item.attempt,items:[]});
+      groups.get(key).items.push(item);
+    }
+    return [...groups.values()].map(group=>{
+      const label=group.wait?(ko?'대기 구간':'Waiting intervals'):
+        (group.role||'—')+' · '+(group.agent|| (ko?'Agent 미확인':'Agent unknown'));
+      const description=group.wait?'':(ko?'실행':'Attempt')+' '+(group.attempt||'—');
+      return '<details class="activity-agent-group" open><summary title="'+esc(description)+'">'+esc(label)+
+        ' <small>('+group.items.length+(ko?'건':' intervals')+')</small></summary>'+
+        group.items.map(timelineRow).join('')+'</details>';
+    }).join('');
+  };
   const timeline=shownTimeline.length?'<h3>'+esc(ko?'실제 시간축 Gantt':'Actual-time Gantt')+'</h3>'+
     '<p class="summary">'+esc(activityEventTime(new Date(begin).toISOString(),ko))+' — '+esc(activityEventTime(new Date(end).toISOString(),ko))+'</p>'+
     '<div class="activity-timeline-scroll" tabindex="0" aria-label="'+esc(ko?'가로 스크롤 가능한 작업시간 차트':'Horizontally scrollable activity timeline')+'">'+
       '<div class="activity-timeline-canvas" style="min-width:'+(prefs.zoom*100)+'%">'+ruler+
-      '<div class="activity-time-axis">'+shownTimeline.map(x=>{
-        const left=Math.max(0,Math.min(100,(Date.parse(x.from)-begin)/span*100));
-        const width=Math.max(0,Math.min(100-left,(Date.parse(x.to)-Date.parse(x.from))/span*100));
-        const tooltip=x.label+' · '+activityEventTime(x.from,ko)+' → '+activityEventTime(x.to,ko)+' · '+activityDisplayDuration(x.ms,ko);
-        return '<div class="activity-timeline-row"><span>'+esc(x.label)+'</span>'+
-          '<div class="activity-timeline-track'+(x.wait?' activity-timeline-wait':'')+'"><div role="img" aria-label="'+esc(tooltip)+'" title="'+esc(tooltip)+
-          '" tabindex="0" style="left:'+left+'%;width:'+width+'%;overflow:hidden;white-space:nowrap;display:flex;align-items:center;justify-content:center"><small class="activity-timeline-duration-label" style="display:none;color:white;font-size:10px;pointer-events:none">'+esc(activityDisplayDuration(x.ms,ko))+'</small></div></div><strong>'+esc(activityDisplayDuration(x.ms,ko))+'</strong></div>';
-      }).join('')+'</div></div></div><p class="summary" id="activityTimelineSelection" role="status" hidden></p>':'<p class="summary">'+esc(ko?'선택한 회차에 측정된 작업 구간이 없습니다.':'No measured intervals for this round.')+'</p>';
+      '<div class="activity-time-axis">'+renderTimelineRows()+'</div></div></div><p class="summary" id="activityTimelineSelection" role="status" hidden></p>':'<p class="summary">'+esc(ko?'선택한 회차에 측정된 작업 구간이 없습니다.':'No measured intervals for this round.')+'</p>';
   const group=activityRoundBreakdown(filtered);
   const groupKeys=[...group.keys()].sort((a,b)=>a-b);
   const maxRound=Math.max(1,...groupKeys.map(k=>[...group.get(k).values()].reduce((n,ms)=>n+ms,0)));
@@ -6061,6 +6089,12 @@ function bindActivityDetailControls(taskID,project=state.project){
   modify('activityDetailRound',value=>{pref.round=value;});
   modify('activityDetailMode',value=>{pref.mode=value==='rounds'?'rounds':'timeline';});
   modify('activityDetailZoom',value=>{pref.zoom=Math.max(1,Math.min(8,Number(value)||1));});
+  const groupToggle=root.querySelector('#activityDetailGroupAgents');
+  if(groupToggle)groupToggle.addEventListener('change',()=>{
+    if(state.project!==project||state.detail!==taskID)return;
+    pref.groupAgents=Boolean(groupToggle.checked);
+    renderActivityDetailControls(taskID,project);
+  });
   const zoom=root.querySelector('#activityDetailZoom');
   if(zoom)zoom.addEventListener('input',()=>{
     const label=root.querySelector('#activityDetailZoomValue');
