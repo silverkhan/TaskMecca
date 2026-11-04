@@ -2,6 +2,7 @@ package activity
 
 import (
     "fmt"
+    "net/url"
     "strings"
 )
 
@@ -18,6 +19,12 @@ type RunEvidence struct {
 
 func (r RunEvidence) Validate()error {
     if strings.ContainsAny(r.RunID+r.Command+r.Scope+r.GitSHA+r.Purpose,"\x00"){return fmt.Errorf("%w: null byte in run evidence",ErrInvalidEvent)}
+    if r.CIURL!="" {
+        parsed,err:=url.Parse(r.CIURL)
+        if err!=nil || parsed.Scheme!="https" || parsed.Hostname()=="" || parsed.User!=nil {
+            return fmt.Errorf("%w: invalid CI URL",ErrInvalidEvent)
+        }
+    }
     if r.Result!="" && r.Result!="passed" && r.Result!="failed" && r.Result!="cancelled" && r.Result!="unknown" {
         return fmt.Errorf("%w: invalid run result",ErrInvalidEvent)
     }
