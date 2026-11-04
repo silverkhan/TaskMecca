@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/silverkhan/TaskMecca/internal/projectguard"
+	"github.com/silverkhan/TaskMecca/internal/install"
 )
 
 const (
@@ -412,11 +413,20 @@ func frameworkSyncCandidates(currentVersion,targetVersion,targetChannel string) 
     candidates:=[]FrameworkSyncCandidate{}
     for _,project:=range ListProjects() {
         framework:=normalizeVersion(project.FrameworkVersion)
-        if framework=="" || framework==targetVersion { continue }
-        include:=false
-        if targetChannel==stableChannel {
+        if framework=="" { continue }
+        // Compare against installed managed content only when the candidate
+        // target equals the running binary. Future release payloads cannot be
+        // inspected through the currently installed binary.
+        if targetVersion==currentVersion {
+            needed,err:=install.FrameworkChangesRequired(project.Path)
+            if err==nil && !needed { continue }
+            // On errors retain the offer: absence of evidence is not proof
+            // that a damaged/legacy project needs no repair.
+        } else if framework==targetVersion { continue }
+        include:=targetVersion==currentVersion
+        if targetVersion!=currentVersion && targetChannel==stableChannel {
             include=strings.Contains(strings.ToLower(framework),"-dev.")
-        } else if targetChannel==devChannel {
+        } else if targetVersion!=currentVersion && targetChannel==devChannel {
             include=framework==currentVersion || !strings.Contains(strings.ToLower(framework),"-dev.")
         }
         if !include { continue }
