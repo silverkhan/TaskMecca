@@ -634,7 +634,8 @@ recordMonitorPerf("operation_monitor_assignments", time.Since(workloadStarted), 
     started = time.Now()
     unchanged:=previous.Version==journal.Version && previous.Project==journal.Project &&
         previous.NextSequence==journal.NextSequence &&
-        reflect.DeepEqual(previous.Incidents,journal.Incidents) &&
+        ((len(previous.Incidents)==0 && len(journal.Incidents)==0) ||
+            reflect.DeepEqual(previous.Incidents,journal.Incidents)) &&
         ((len(previous.Stages)==0 && len(journal.Stages)==0) ||
             reflect.DeepEqual(previous.Stages,journal.Stages))
     var writeErr error
