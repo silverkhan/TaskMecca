@@ -19,7 +19,7 @@ Worker의 수동 운영원장 쓰기 금지와 승인된 CLI preflight ephemeral
 
 ## 실제 활동 계측 (Activity Recorder)
 
-배정과 실제 native 실행 신원이 확인된 후에만, 실제로 시작한 단계에서 `task-mecca activity report`를 1회 호출한다. 정확한 `--role worker --agent --attempt --assignment`와 안정적인 `--event-id`를 사용한다. 요구사항 분석 시작은 `--event requirements_started`, 구현 전환은 `implementation_started`, 실제 작업 종료는 `worker_completed`이며 각 호출에 실측 근거 `--evidence`를 넣는다. 상세 계약은 [Activity Recorder](../../../../../../docs/activity-recorder.md)에 따른다. 기록 실패나 미지원 Hook을 성공으로 간주하지 않고 Controller에 원인/미관측을 보고한다. Decision 권고·배정·메시지 전달만으로 start를 기록하지 않는다. canonical lifecycle의 수동 쓰기 금지는 그대로 적용한다.
+배정과 실제 native 실행 신원이 확인된 후에만, 실제로 시작한 단계에서 `task-mecca activity report`를 1회 호출한다. 정확한 `--role worker --agent --attempt --assignment`와 안정적인 `--event-id`를 사용한다. 요구사항 분석 시작은 `--event requirements_started`, 구현 전환은 `implementation_started`, 실제 작업 종료는 `worker_completed`이며 각 호출에 실측 근거 `--evidence`를 넣는다. 상세 계약은 [Activity Recorder](../../../../../docs/activity-recorder.md)에 따른다. 기록 실패나 미지원 Hook을 성공으로 간주하지 않고 Controller에 원인/미관측을 보고한다. Decision 권고·배정·메시지 전달만으로 start를 기록하지 않는다. canonical lifecycle의 수동 쓰기 금지는 그대로 적용한다.
 
 ## 완료 보고 경로
 
