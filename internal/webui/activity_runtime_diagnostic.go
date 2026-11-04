@@ -15,6 +15,7 @@ type ActivityRuntimeDiagnostic struct {
     Source string `json:"source"`
     CheckedAt string `json:"checked_at"`
     TaskID string `json:"task_id"`
+    TotalAttempts int `json:"total_attempts"`
     BoundAttempts int `json:"bound_attempts"`
     MatchedAttempts int `json:"matched_attempts"`
     WithoutActivity int `json:"without_activity"`
@@ -40,15 +41,25 @@ const activityRuntimeDetailLimit=60
 
 func summarizeActivityRuntimeEvidence(taskID string, attempts []runtimeobs.Attempt, events []activity.Event) ActivityRuntimeDiagnostic {
     out:=ActivityRuntimeDiagnostic{Source:"runtime_activity_on_demand",TaskID:taskID,Attempts:[]ActivityRuntimeAttempt{}}
-    matchedIDs:=map[string]bool{}
     relevant:=make([]runtimeobs.Attempt,0)
     for _,a:=range attempts {
-        if !strings.EqualFold(a.TaskID,taskID){continue}
-        relevant=append(relevant,a)
+        if strings.EqualFold(a.TaskID,taskID){relevant=append(relevant,a)}
     }
     sort.Slice(relevant,func(i,j int)bool{return relevant[i].AttemptID<relevant[j].AttemptID})
+    out.TotalAttempts=len(relevant)
+    out.Truncated=len(relevant)>activityRuntimeDetailLimit
+
+    // Index once: an exact attempt may contain many phase events. Avoid O(A*E)
+    // scans for large histories and count matches outside the displayed top 60.
+    byAttempt:=make(map[string][]activity.Event)
+    distinct:=make(map[string]bool)
+    matchedIDs:=make(map[string]bool)
+    for _,e:=range events {
+        if !strings.EqualFold(e.TaskID,taskID){continue}
+        if e.EventID!=""{distinct[e.EventID]=true}
+        if e.RuntimeAttemptID!=""{byAttempt[e.RuntimeAttemptID]=append(byAttempt[e.RuntimeAttemptID],e)}
+    }
     for i,a:=range relevant {
-        if i>=activityRuntimeDetailLimit{out.Truncated=true;break}
         row:=ActivityRuntimeAttempt{
             AttemptID:a.AttemptID,AgentID:a.RuntimeAgentID,AgentType:a.AgentType,
             Provider:a.Provider,BindingState:a.BindingState,RuntimeState:a.CurrentState,
@@ -60,11 +71,10 @@ func summarizeActivityRuntimeEvidence(taskID string, attempts []runtimeobs.Attem
         }else{
             out.BoundAttempts++
             wrongAgent:=false
-            for _,e:=range events {
-                if !strings.EqualFold(e.TaskID,taskID)||e.RuntimeAttemptID!=a.AttemptID{continue}
+            for _,e:=range byAttempt[a.AttemptID] {
                 if e.AgentID==a.RuntimeAgentID {
                     row.MatchedActivityEvents++
-                    matchedIDs[e.EventID]=true
+                    if e.EventID!=""{matchedIDs[e.EventID]=true}
                 }else{wrongAgent=true}
             }
             switch {
@@ -79,12 +89,12 @@ func summarizeActivityRuntimeEvidence(taskID string, attempts []runtimeobs.Attem
                 out.WithoutActivity++
             }
         }
-        out.Attempts=append(out.Attempts,row)
+        if i<activityRuntimeDetailLimit{out.Attempts=append(out.Attempts,row)}
     }
-    // This is a bounded diagnostic: an absent runtime attempt is unknown,
-    // not proof that the agent never ran. Count unmatched *distinct* events.
-    for _,e:=range events {
-        if e.EventID!=""&&!matchedIDs[e.EventID]{out.ActivityWithoutRuntime++}
+    // Report distinct unmatched event identities, including events for attempts
+    // omitted from the UI only when they truly lack an exact matching actor.
+    for id:=range distinct {
+        if !matchedIDs[id]{out.ActivityWithoutRuntime++}
     }
     return out
 }
