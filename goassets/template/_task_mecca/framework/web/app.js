@@ -5854,6 +5854,20 @@ function activityMetricsBody(payload,taskID=state.detail){
     const display=missingWorker?(ko?'기록 없음':'Not observed'):(ms==null?'—':activityDisplayDuration(ms,ko));
     return '<div class="activity-metric"><strong>'+esc(display)+'</strong><span>'+esc(label)+'</span></div>';
   }).join('')+'</div>';
+  const agentIdentities=new Set(events.filter(e=>e.agent_id&&e.role).map(e=>String(e.role)+'|'+String(e.agent_id)));
+  const agentInferred=events.filter(e=>e.confidence==='inferred').length;
+  const workerUnknown=!workerObserved;
+  const observationQuality='<details class="activity-quality"'+(workerUnknown?' open':'')+'><summary>'+
+    esc(ko?'활동 기록의 관측 품질':'Activity observation quality')+'</summary>'+
+    '<p class="summary">'+esc(ko?
+      '원장 이벤트 '+events.length+'건 · 시간 구간 '+segments.length+'개 · 기록된 역할·Agent 조합 '+agentIdentities.size+'개 · Agent 추정 근거 '+agentInferred+'건':
+      'Ledger events '+events.length+' · timed intervals '+segments.length+' · recorded role/agent pairs '+agentIdentities.size+' · inferred events '+agentInferred)+
+    '</p>'+(!workerObserved?'<p class="timing-note warning">'+esc(ko?
+      'Worker의 종료까지 확인된 작업시간 구간이 없습니다. 실제 미착수인지, 기록·신원 연결이 누락된 것인지는 현재 원장만으로 판단할 수 없습니다.':
+      'No closed Worker work interval was observed. This ledger alone cannot distinguish no execution from missing evidence or identity linkage.')+'</p>':'')+
+    '<p class="summary">'+esc(ko?
+      '이 수치는 Activity 원장에 기록된 범위만 나타냅니다. 전체 Runtime 실행 목록이나 Hook 지원 상태의 완전성을 증명하지 않습니다.':
+      'These counts cover the Activity ledger only; they do not attest full runtime inventory or Hook availability.')+'</p></details>';
   const totals=Object.entries(s.by_type_ms||{}).filter(([,ms])=>ms>0).sort((a,b)=>b[1]-a[1]);
   const all=totals.reduce((sum,[,ms])=>sum+ms,0);
   const byType=totals.length?'<h3>'+esc(ko?'활동 유형별 누적 (전체 회차)':'Cumulative by activity (all rounds)')+'</h3><div class="activity-type-bars">'+
@@ -5961,7 +5975,7 @@ function activityMetricsBody(payload,taskID=state.detail){
       '</tbody></table></div>'+((events.length>ACTIVITY_DETAIL_MAX_LEDGER)?'<p class="summary">'+esc(ko?'최신 '+ACTIVITY_DETAIL_MAX_LEDGER+'건을 표시합니다. 전체 원장은 Activity API에서 조회할 수 있습니다.':'Showing the latest '+ACTIVITY_DETAIL_MAX_LEDGER+' records; the API retains the full ledger.')+'</p>':'')+'</details>';
   const gap=s.unattributed_gap_ms>0?'<p class="summary">'+esc(ko?'활동 관측 구간 내 기록 공백: ':'Unattributed within observed activity span: ')+esc(activityDisplayDuration(s.unattributed_gap_ms,ko))+
     ' <span title="'+esc(ko?'첫 관측 활동부터 마지막 관측 활동까지의 범위에서 원장 활동이 차지하지 않는 시간입니다. 등록~완료 전체 경과의 미귀속 시간과 기준 범위가 다르며 합산할 수 없습니다.':'Unattributed time inside the observed activity window; differs from lifecycle elapsed unknown, and must not be added to it.')+'">ⓘ</span></p>':'';
-  return settings+boxes+lifetimeView+byType+chart+'<p class="summary">'+esc(chartNote)+'</p>'+trimNote+
+  return settings+boxes+observationQuality+lifetimeView+byType+chart+'<p class="summary">'+esc(chartNote)+'</p>'+trimNote+
     testOverview+unclassifiedView+gap+unknown+ledger;
 }
 const activityDetailResizeObservers=new WeakMap();
