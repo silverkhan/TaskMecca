@@ -2254,349 +2254,134 @@ select.tm-combo-native{position:absolute!important;width:1px!important;height:1p
 @media(max-width:580px){.activity-agent-group{padding:3px}.activity-agent-group>summary{font-size:.72rem}}
 
 
-/* GLASS MATERIAL SYSTEM — Warm neutral, not a blue recolor of Mecca.
-   All selectors are scoped to Glass, preserving Mecca/Slate unchanged.
-   Underlying content remains legible without a blur filter on every row. */
+/* GLASS MATERIAL SYSTEM
+   A stable room canvas, unfiltered data surfaces, and two elevated materials.
+   Only chrome and floating overlays sample the backdrop; dense content never does. */
 :root[data-palette="glass"][data-theme="dark"]{
   color-scheme:dark;
-  --bg:#1d1b1d;
-  --surface:rgba(34,29,30,.42);
-  --surface2:rgba(42,36,37,.35);
-  --surface-raised:rgba(65,54,51,.43);
-  --text:#f8f4ed;
-  --muted:#d0c4b8;
-  --border:rgba(255,244,228,.38);
-  --accent:#edcda5;
-  --accent-soft:rgba(239,203,156,.20);
-  --danger:#ff9c9c;
-  --warn:#f2c17b;
-  --ok:#a0dcb8;
-  --shadow:0 13px 36px rgba(17,12,13,.23);
-  --glass-panel:rgba(255,246,231,.075);
-  --glass-chrome:rgba(29,26,29,.23);
-  --glass-top:rgba(255,255,255,.33);
-  --glass-bottom:rgba(255,237,209,.10);
-  --glass-edge:rgba(255,252,242,.63);
-  --glass-glow:rgba(255,253,246,.77);
-  --glass-inner:rgba(37,28,25,.18);
-  --glass-depth:0 16px 34px rgba(17,10,12,.23),0 3px 8px rgba(18,12,12,.10);
-  --glass-background:#211d1d;
+  --bg:#211d1d; --surface:rgba(39,30,27,.42); --surface2:rgba(40,31,27,.48);
+  --surface-raised:rgba(43,34,30,.94); --text:#fffaf2; --muted:#f1e7d9;
+  --border:rgba(255,239,214,.28); --accent:#ffdbad; --accent-soft:rgba(246,200,143,.18);
+  --danger:#ffb4b4; --warn:#ffd398; --ok:#b1e8c3;
+  --glass-background:#211d1d; --glass-panel:rgba(39,29,25,.42);
+  --glass-chrome:rgba(37,29,26,.50); --glass-floating:rgba(39,31,27,.88);
+  --glass-solid:#302823; --glass-control:rgba(30,23,20,.42);
+  --glass-edge:rgba(255,243,223,.44); --glass-reflection:rgba(255,247,231,.08);
+  --glass-depth:0 8px 24px rgba(24,14,10,.14);
+  --glass-highlight:inset 0 1px 0 rgba(255,251,237,.35);
+  --shadow:var(--glass-depth);
 }
 :root[data-palette="glass"][data-theme="light"]{
   color-scheme:light;
-  --bg:#eee5d9;
-  --surface:rgba(255,252,246,.47);
-  --surface2:rgba(253,249,240,.48);
-  --surface-raised:rgba(255,251,243,.76);
-  --text:#342c27;
-  --muted:#62574e;
-  --border:rgba(111,91,72,.25);
-  --accent:#75583e;
-  --accent-soft:rgba(148,110,73,.14);
-  --danger:#b53e51;
-  --warn:#8a5b20;
-  --ok:#2f7958;
-  --shadow:0 13px 36px rgba(82,58,42,.14);
-  --glass-panel:rgba(255,255,255,.24);
-  --glass-chrome:rgba(255,252,247,.30);
-  --glass-top:rgba(255,255,255,.76);
-  --glass-bottom:rgba(252,234,209,.15);
-  --glass-edge:rgba(255,255,255,.95);
-  --glass-glow:rgba(255,255,255,.98);
-  --glass-inner:rgba(164,130,93,.065);
-  --glass-depth:0 15px 32px rgba(95,67,45,.16),0 3px 8px rgba(96,69,48,.06);
-  --glass-background:#ece2d4;
+  --bg:#ece2d4; --surface:rgba(255,251,241,.60); --surface2:rgba(255,250,240,.48);
+  --surface-raised:rgba(255,251,242,.97); --text:#30251f; --muted:#514033;
+  --border:rgba(92,65,43,.26); --accent:#644327; --accent-soft:rgba(137,92,49,.15);
+  --danger:#a6263d; --warn:#70440b; --ok:#205c3f;
+  --glass-background:#ece2d4; --glass-panel:rgba(255,253,244,.60);
+  --glass-chrome:rgba(255,250,238,.40); --glass-floating:rgba(255,251,242,.93);
+  --glass-solid:#f5ebdd; --glass-control:rgba(255,253,245,.50);
+  --glass-edge:rgba(255,255,248,.80); --glass-reflection:rgba(255,255,250,.28);
+  --glass-depth:0 8px 24px rgba(78,51,29,.10);
+  --glass-highlight:inset 0 1px 0 rgba(255,255,255,.86);
+  --shadow:var(--glass-depth);
 }
-/* Stationary backdrop layer: background-attachment:fixed on body is not
-   consistently honored by Android browsers. A viewport-fixed layer remains
-   stationary when the document, panels, and lists scroll. */
-:root[data-palette="glass"] body{
-  background:var(--glass-background);
-}
+:root[data-palette="glass"] body{background:var(--glass-background)}
+/* Pixel dimensions are frozen by theme-boot before paint. Never size from dvh/vh,
+   recenter on resize, or attach the image to the document's scrollable box. */
 :root[data-palette="glass"] body::before{
-  content:"";
-  position:fixed;
-  inset:0;
-  z-index:0;
-  pointer-events:none;
-  background-color:var(--glass-background);
-  background-size:cover;
-  background-position:center center;
-  background-repeat:no-repeat;
+  content:"";position:fixed;left:0;top:0;
+  width:var(--glass-stage-width,100vw);height:var(--glass-stage-height,100vh);
+  z-index:0;pointer-events:none;background-color:var(--glass-background);
+  background-size:cover;background-position:center center;background-repeat:no-repeat;
 }
-:root[data-palette="glass"] .app-shell{
-  position:relative;
-  z-index:1;
-}
-
-/* Calm atmosphere is a user-selectable option, separate from the room. */
+:root[data-palette="glass"] :is(.app-shell,.terminal-app){position:relative;z-index:1}
 :root[data-palette="glass"][data-theme="dark"] body::before{
-  background-color:var(--glass-background);
-  background-image:
-    radial-gradient(ellipse 42% 65% at 6% 8%,rgba(146,114,100,.35),transparent 78%),
-    radial-gradient(ellipse 48% 55% at 97% 83%,rgba(176,141,123,.29),transparent 81%),
-    linear-gradient(125deg,#252325,#4a403d 55%,#252326);
+  background-image:radial-gradient(ellipse at 8% 10%,#665044,transparent 72%),linear-gradient(130deg,#302725,#5b4538 60%,#292221);
 }
 :root[data-palette="glass"][data-theme="light"] body::before{
-  background-color:var(--glass-background);
-  background-image:
-    radial-gradient(ellipse 48% 60% at 7% 18%,rgba(232,205,175,.46),transparent 78%),
-    radial-gradient(ellipse 43% 55% at 94% 86%,rgba(208,177,154,.28),transparent 84%),
-    linear-gradient(135deg,#f6eee3,#e9dacf 58%,#f6f0e9);
+  background-image:radial-gradient(ellipse at 8% 10%,#f3d8b6,transparent 72%),linear-gradient(130deg,#eee3d3,#d7bba1 60%,#f6ecdd);
 }
-/* The Cozy Beige Room image is bundled locally and never sent off-device. */
 :root[data-palette="glass"][data-background="cozy"] body::before{
-  background-color:#e7d8c5;
-  background-image:
-    linear-gradient(120deg,rgba(255,247,233,.14),rgba(255,248,236,.07) 50%,rgba(246,232,211,.14)),
-    url("/cozy-beige-room.svg");
-  background-position:center center;
-  background-size:cover;
-  background-repeat:no-repeat;
+  background-image:linear-gradient(120deg,rgba(255,249,235,.12),rgba(255,250,238,.04) 52%,rgba(249,237,217,.12)),url("/cozy-beige-room.svg");
 }
 :root[data-palette="glass"][data-background="cozy"][data-theme="dark"] body::before{
-  background-color:#231d1c;
-  background-image:
-    linear-gradient(120deg,rgba(19,17,21,.39),rgba(21,17,21,.29) 52%,rgba(19,16,21,.42)),
-    url("/cozy-beige-room.svg");
+  background-image:linear-gradient(120deg,rgba(30,19,13,.48),rgba(29,19,14,.40) 52%,rgba(28,18,13,.48)),url("/cozy-beige-room.svg");
 }
-:root[data-palette="glass"][data-background="none"] body::before{
-  background:var(--glass-background);
+:root[data-palette="glass"][data-background="none"] body::before{background:var(--glass-background)}
+/* Data material: one reflection and edge, no per-card backdrop render pass. */
+:root[data-palette="glass"] :is(.preview-build-row,.worker-card,.runtime-root-card,.activity-metric,.metrics,.detail-metrics,.timing-note){
+  background:linear-gradient(145deg,var(--glass-reflection),transparent 42%),var(--glass-panel);
+  border:1px solid var(--glass-edge);border-radius:14px;box-shadow:var(--glass-highlight),var(--glass-depth);
 }
-/* Large stationary layers carry the strongest transmitted material effect. */
-:root[data-palette="glass"] .sidebar,
-:root[data-palette="glass"] .topbar,
-:root[data-palette="glass"] .notification-panel,
-:root[data-palette="glass"] .tm-combo-popup,
-:root[data-palette="glass"] .preview-identity-banner,
-:root[data-palette="glass"] .common-attention-body{
-  background:
-    linear-gradient(142deg,var(--glass-top) 0%,rgba(255,255,255,.055) 22%,transparent 45%,var(--glass-bottom) 100%),
-    var(--glass-chrome);
-  border-color:var(--glass-edge);
-  box-shadow:var(--glass-depth),inset 1px 1px 0 var(--glass-glow),inset -1px -1px 0 rgba(255,248,233,.14);
-  -webkit-backdrop-filter:blur(17px) saturate(142%);
-  backdrop-filter:blur(17px) saturate(142%);
+:root[data-palette="glass"] :is(.worker-card,.runtime-root-card){overflow:hidden}
+:root[data-palette="glass"] :is(.metrics,.detail-metrics){padding:16px 20px;gap:14px}
+:root[data-palette="glass"] :is(.worker-head,.runtime-root-summary){background:var(--glass-reflection)}
+/* Readable islands protect dense copy locally; room remains visible between them. */
+:root[data-palette="glass"] :is(.task-list,.task-list-head,.backlog-compact-header,.backlog-compact-toolbar,.section,.page-head,.detail-head,.runtime-hook-panel,.runtime-empty,.hub-history,.hub-storage-link){background:var(--glass-panel)}
+:root[data-palette="glass"] :is(.backlog-compact-header,.backlog-compact-toolbar){padding:8px;border-radius:10px}
+:root[data-palette="glass"] :is(.section,.page-head,.detail-head,.runtime-hook-panel,.runtime-empty,.hub-history,.hub-storage-link){padding:16px;border-radius:12px}
+:root[data-palette="glass"] .task-list{border-radius:12px;overflow:hidden}
+:root[data-palette="glass"] .status.ready{color:var(--muted)}
+:root[data-palette="glass"] :is(input,textarea,select){background-color:var(--glass-control)}
+/* Chrome material. Nested controls and content inherit clarity without extra blur. */
+:root[data-palette="glass"] :is(.sidebar,.topbar,.preview-identity-banner,.user-attention,.terminal-header){
+  background:linear-gradient(140deg,var(--glass-reflection),transparent 52%),var(--glass-chrome);
+  border-color:var(--glass-edge);box-shadow:var(--glass-highlight),var(--glass-depth);
+  -webkit-backdrop-filter:blur(14px) saturate(118%);backdrop-filter:blur(14px) saturate(118%);
 }
-:root[data-palette="glass"] .sidebar{border-right:1px solid var(--glass-edge)}
-:root[data-palette="glass"] .topbar{
-  border-bottom:1px solid var(--glass-edge);
-  box-shadow:0 5px 18px rgba(32,23,21,.10),inset 0 1px 0 var(--glass-glow);
-}
-/* Content groups are glass, not solid navy plates. Blur a few containers,
-   never a timeline, Gantt bar, table row or large scrolling list. */
-:root[data-palette="glass"] .preview-build-row,
-:root[data-palette="glass"] .worker-card,
-:root[data-palette="glass"] .runtime-root-card,
-:root[data-palette="glass"] .activity-metric,
-:root[data-palette="glass"] .metrics,
-:root[data-palette="glass"] .detail-metrics,
-:root[data-palette="glass"] .timing-note{
-  background:
-    linear-gradient(148deg,var(--glass-top) 0%,rgba(255,255,255,.045) 20%,transparent 42%,var(--glass-bottom) 100%),
-    var(--glass-panel);
-  border:1px solid var(--glass-edge);
-  border-radius:14px;
-  box-shadow:var(--glass-depth),inset 1px 1px 0 var(--glass-glow),inset -1px -1px 0 rgba(255,252,242,.17);
-}
-:root[data-palette="glass"] .preview-build-row,
-:root[data-palette="glass"] .worker-card,
-:root[data-palette="glass"] .runtime-root-card,
-:root[data-palette="glass"] .activity-metric{
-  -webkit-backdrop-filter:blur(10px) saturate(132%);
-  backdrop-filter:blur(10px) saturate(132%);
-}
-:root[data-palette="glass"] .metrics,
-:root[data-palette="glass"] .detail-metrics{padding:16px 20px;gap:14px}
-:root[data-palette="glass"] .worker-card,
-:root[data-palette="glass"] .runtime-root-card{overflow:hidden}
-:root[data-palette="glass"] .worker-head,
-:root[data-palette="glass"] .runtime-root-summary{
-  background:linear-gradient(145deg,rgba(255,249,239,.12),transparent 76%);
-}
-/* Controls: quiet, semi-transparent neutral glass. Semantic actions retain
-   their status hues; only ordinary surfaces lose the old blue fill. */
-:root[data-palette="glass"] .search-wrap,
-:root[data-palette="glass"] .icon-btn,
-:root[data-palette="glass"] .palette-picker,
-:root[data-palette="glass"] .language-picker,
-:root[data-palette="glass"] .background-picker,
-:root[data-palette="glass"] .theme-switcher,
-:root[data-palette="glass"] .global-update-pill,
-:root[data-palette="glass"] .preview-build-tools input,
-:root[data-palette="glass"] .action-btn,
-:root[data-palette="glass"] .sidebar-mode-selector,
-:root[data-palette="glass"] .sidebar-toggle,
-:root[data-palette="glass"] .shortcut-bar{
-  background:
-    linear-gradient(155deg,var(--glass-top),transparent 70%),
-    var(--glass-panel);
-  border-color:var(--glass-edge);
-  box-shadow:inset 0 1px 0 var(--glass-glow),0 3px 10px rgba(22,14,13,.08);
-}
-:root[data-palette="glass"] .nav-item.active,
-:root[data-palette="glass"] .theme-btn.active,
-:root[data-palette="glass"] .sidebar-mode-option.active,
-:root[data-palette="glass"] .preview-build-filters .action-btn.active{
-  background:linear-gradient(135deg,var(--glass-top),var(--glass-bottom)),var(--glass-panel);
-  border:1px solid var(--glass-edge);
-  box-shadow:inset 0 1px 0 var(--glass-glow),0 3px 8px rgba(30,18,14,.09);
-  color:var(--text);
-}
-:root[data-palette="glass"] .nav-item:not(.active):hover{
-  background:linear-gradient(115deg,var(--glass-top),transparent),var(--glass-panel);
-}
-:root[data-palette="glass"] .theme-btn.active{
-  font-weight:750;
-}
-
-/* Custom selects and buttons must inherit the material rather than paint
-   a second solid layer inside the glass frame. */
-:root[data-palette="glass"] .palette-picker .tm-combo-trigger,
-:root[data-palette="glass"] .language-picker .tm-combo-trigger,
-:root[data-palette="glass"] .background-picker .tm-combo-trigger{
-  background:transparent;border:0;box-shadow:none;
-}
-/* The old PR banner had a thick neon border and an opaque dark fill. */
-:root[data-palette="glass"] .preview-identity-banner{
-  border:1px solid var(--glass-edge);
-  border-radius:13px;
-}
-:root[data-palette="glass"] .preview-identity-actions .action-btn,
-:root[data-palette="glass"] .preview-build-filters .action-btn,
-:root[data-palette="glass"] .preview-build-actions .action-btn{
-  border-color:var(--glass-edge);
-}
-/* Restore the attention panel as a floating glass, not a dark blue slab. */
+:root[data-palette="glass"] :is(.preview-identity-banner,.user-attention){border-radius:12px}
 :root[data-palette="glass"] .user-attention{
   --attention-outline:linear-gradient(90deg,transparent,var(--glass-edge),transparent);
-  --attention-fill:linear-gradient(150deg,var(--glass-top),var(--glass-bottom));
-  background:linear-gradient(145deg,var(--glass-top),transparent 78%),var(--glass-chrome);
-  border:1px solid var(--glass-edge);
-  border-radius:12px;
-  box-shadow:var(--glass-depth),inset 0 1px 0 var(--glass-glow);
-  -webkit-backdrop-filter:blur(10px) saturate(110%);
-  backdrop-filter:blur(10px) saturate(110%);
+  --attention-fill:var(--glass-reflection);
 }
-:root[data-palette="glass"] .common-attention-body{
-  left:-1px;right:-1px;
-  border:1px solid var(--glass-edge);
-  border-top:0;
-  border-radius:0 0 12px 12px;
+/* Floating material is more protective because it can overlap arbitrary content. */
+:root[data-palette="glass"] :is(.notification-panel,.tm-combo-popup,.common-attention-body,.modal-card,.mobile-sidebar-panel){
+  background:var(--glass-floating);border-color:var(--glass-edge);
+  box-shadow:var(--glass-highlight),var(--glass-depth);
+  -webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);
 }
-:root[data-palette="glass"] .notification-panel-head{
-  background:var(--glass-chrome);
-  border-color:var(--glass-edge);
+:root[data-palette="glass"] .common-attention-body{border-top:0;border-radius:0 0 12px 12px}
+:root[data-palette="glass"] .notification-panel-head{background:transparent}
+:root[data-palette="glass"] :is(.search-wrap,.icon-btn,.palette-picker,.language-picker,.background-picker,.theme-switcher,.global-update-pill,.action-btn,.sidebar-mode-selector,.sidebar-toggle,.shortcut-bar){
+  background:var(--glass-control);border-color:var(--border);box-shadow:var(--glass-highlight);
 }
-/* Specular glass: directional reflection and a visible bevel, without
-   blue fill or continuous animation. Limit glare to panel perimeters. */
-:root[data-palette="glass"] .preview-identity-banner,
-:root[data-palette="glass"] .user-attention,
-:root[data-palette="glass"] .preview-build-row,
-:root[data-palette="glass"] .worker-card,
-:root[data-palette="glass"] .runtime-root-card,
-:root[data-palette="glass"] .activity-metric,
-:root[data-palette="glass"] .timing-note{
-  border:1px solid transparent;
-  background:
-    linear-gradient(138deg,var(--glass-top),rgba(255,255,255,.045) 25%,transparent 52%,var(--glass-bottom)) padding-box,
-    linear-gradient(140deg,var(--glass-edge),rgba(255,255,255,.13) 34%,rgba(255,255,255,.08) 64%,var(--glass-edge)) border-box,
-    var(--glass-panel) padding-box;
-  box-shadow:var(--glass-depth),inset 1px 1px 0 var(--glass-glow),inset -1px -1px 0 rgba(255,255,255,.12);
+:root[data-palette="glass"] :is(.nav-item.active,.theme-btn.active,.sidebar-mode-option.active,.preview-build-filters .action-btn.active){
+  background:var(--accent-soft);color:var(--text);border-color:var(--accent);box-shadow:var(--glass-highlight);
 }
-/* Pair clear glazing with readable print: no full-screen gray veil. */
-:root[data-palette="glass"][data-theme="dark"] .content,
-:root[data-palette="glass"][data-theme="dark"] .preview-identity-banner,
-:root[data-palette="glass"][data-theme="dark"] .user-attention{
-  text-shadow:0 1px 4px rgba(16,12,14,.42);
-}
-:root[data-palette="glass"][data-theme="light"] .content,
-:root[data-palette="glass"][data-theme="light"] .preview-identity-banner,
-:root[data-palette="glass"][data-theme="light"] .user-attention{text-shadow:none}
-
-
-/* Long-form textual and graphical information stays crisp. */
-:root[data-palette="glass"] .markdown,
-:root[data-palette="glass"] .markdown pre,
-:root[data-palette="glass"] .raw,
-:root[data-palette="glass"] .task-list,
-:root[data-palette="glass"] .activity-type-track,
-:root[data-palette="glass"] .activity-timeline-track{
-  -webkit-backdrop-filter:none;
-  backdrop-filter:none;
-}
-/* Glass background is selectable independently of palette and color mode. */
+:root[data-palette="glass"] .nav-item:not(.active):hover{background:var(--glass-reflection)}
+:root[data-palette="glass"] .theme-btn.active{font-weight:750}
+:root[data-palette="glass"] :is(.palette-picker,.language-picker,.background-picker) .tm-combo-trigger{background:transparent;border:0;box-shadow:none}
+:root[data-palette="glass"] :is(.markdown,.markdown pre,.raw,.task-list,.activity-type-track,.activity-timeline-track,.terminal-console){-webkit-backdrop-filter:none;backdrop-filter:none}
+:root[data-palette="glass"] :focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+:root[data-palette="glass"] :is(input,textarea,select){color:var(--text)}
+:root[data-palette="glass"] ::placeholder{color:var(--muted);opacity:1}
 :root:not([data-palette="glass"]) .background-picker{display:none!important}
-.background-picker{
-  min-width:0;max-width:210px;height:38px;
-  display:inline-flex;align-items:center;gap:7px;
-  border:1px solid var(--border);border-radius:9px;
-  padding:0 8px;background:var(--surface);color:var(--muted);
-  font-size:11px;white-space:nowrap;
-}
-.background-picker select{
-  min-width:90px;max-width:140px;cursor:pointer;
-  background:transparent;border:0;outline:0;color:var(--text);
-  font-size:11px;
-}
+.background-picker{min-width:0;max-width:210px;height:38px;display:inline-flex;align-items:center;gap:7px;border:1px solid var(--border);border-radius:9px;padding:0 8px;background:var(--surface);color:var(--muted);font-size:11px;white-space:nowrap}
+.background-picker select{min-width:90px;max-width:140px;cursor:pointer;background:transparent;border:0;color:var(--text);font-size:11px}
 .background-picker .tm-combo{flex:1;min-width:87px;max-width:140px}
-.background-picker .tm-combo-trigger{
-  min-height:32px;border:0;box-shadow:none;
-  background:transparent;padding:5px 18px 5px 2px;font-size:11px;
-}
+.background-picker .tm-combo-trigger{min-height:32px;border:0;box-shadow:none;background:transparent;padding:5px 18px 5px 2px;font-size:11px}
 .background-picker .tm-combo-trigger::after{right:4px}
 .topbar .background-picker{order:3;flex:0 0 auto}
-:root[data-palette="glass"] .topbar .theme-switcher{order:4}
-/* Fall back to solid surfaces on devices/users requesting reduced clarity. */
+:root[data-palette="glass"] .theme-switcher{order:4}
+/* Capability fallback preserves the room; accessibility preference removes it.
+   These paths intentionally have distinct behavior and browser tests. */
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
+  :root[data-palette="glass"][data-theme]{--glass-panel:var(--glass-solid);--glass-chrome:var(--glass-solid);--glass-floating:var(--glass-solid);--surface:var(--glass-solid);--surface2:var(--glass-solid);--glass-control:var(--glass-solid)}
+}
 @media(prefers-reduced-transparency:reduce){
-  :root[data-palette="glass"] .sidebar,
-  :root[data-palette="glass"] .topbar,
-  :root[data-palette="glass"] .notification-panel,
-  :root[data-palette="glass"] .tm-combo-popup,
-  :root[data-palette="glass"] .preview-identity-banner,
-  :root[data-palette="glass"] .common-attention-body,
-  :root[data-palette="glass"] .preview-build-row,
-  :root[data-palette="glass"] .worker-card,
-  :root[data-palette="glass"] .runtime-root-card,
-  :root[data-palette="glass"] .activity-metric,
-  :root[data-palette="glass"] .user-attention{
-    background:var(--surface);-webkit-backdrop-filter:none;backdrop-filter:none;
-  }
-  :root[data-palette="glass"][data-background="cozy"] body::before{
-    background-image:none;background-color:var(--glass-background);
-  }
+  :root[data-palette="glass"][data-theme]{--glass-panel:var(--glass-solid);--glass-chrome:var(--glass-solid);--glass-floating:var(--glass-solid);--surface:var(--glass-solid);--surface2:var(--glass-solid);--glass-control:var(--glass-solid)}
+  :root[data-palette="glass"] body::before{background-image:none!important}
+  :root[data-palette="glass"] :is(.sidebar,.topbar,.preview-identity-banner,.user-attention,.terminal-header,.notification-panel,.tm-combo-popup,.common-attention-body,.modal-card,.mobile-sidebar-panel){-webkit-backdrop-filter:none;backdrop-filter:none}
 }
-@media(max-width:900px){
-  .background-picker>span:not(.tm-combo){display:none}
-  .background-picker{padding:0 5px;max-width:142px}
+@media(prefers-reduced-motion:reduce){
+  :root[data-palette="glass"] *, :root[data-palette="glass"] *::before, :root[data-palette="glass"] *::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
 }
+@media(max-width:900px){.background-picker>span:not(.tm-combo){display:none}.background-picker{padding:0 5px;max-width:142px}}
 @media(max-width:680px){
-  :root[data-palette="glass"] .topbar{
-    grid-template-areas:"palette language theme theme"
-                        "background background background background"
-                        "version version version refresh";
-    grid-template-rows:36px 36px auto;
-  }
-  .topbar .background-picker{
-    grid-area:background;order:initial;
-    justify-self:stretch;width:100%;max-width:none;min-width:0;height:36px;
-  }
-  .topbar .background-picker select{max-width:none;flex:1;min-width:0;width:100%}
-  .topbar .background-picker .tm-combo{max-width:none;flex:1}
-  /* Mobile: avoid a high-cost full-height blur without reverting to blue. */
-  :root[data-palette="glass"] .sidebar{
-    background:linear-gradient(142deg,rgba(255,255,255,.18),transparent 48%),rgba(25,22,25,.37);
-    -webkit-backdrop-filter:blur(9px) saturate(132%);backdrop-filter:blur(9px) saturate(132%);
-  }
-  :root[data-palette="glass"][data-theme="light"] .sidebar{
-    background:linear-gradient(145deg,rgba(255,255,255,.50),transparent 65%),rgba(253,247,236,.35);
-  }
-  :root[data-palette="glass"] .metrics,
-  :root[data-palette="glass"] .detail-metrics{padding:12px;gap:10px}
-  :root[data-palette="glass"] .app-shell.mobile-nav-open .mobile-sidebar-panel{
-    background:var(--surface);
-    border-color:var(--glass-edge);
-    box-shadow:var(--glass-depth);
-    -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);
-  }
+  :root[data-palette="glass"] .topbar{grid-template-columns:repeat(3,minmax(0,1fr)) 44px;grid-template-areas:"palette palette background background" "language language theme theme" "version version version refresh";grid-template-rows:36px 36px auto}
+  .background-picker{grid-area:background;order:initial;justify-self:stretch;width:100%;max-width:none;min-width:0;height:36px}
+  .background-picker select{max-width:none;flex:1;min-width:0;width:100%}
+  .background-picker .tm-combo{max-width:none;flex:1}
+  :root[data-palette="glass"] :is(.metrics,.detail-metrics){padding:12px;gap:10px}
+  :root[data-palette="glass"] :is(.icon-btn,.sidebar-toggle,.action-btn){min-height:44px}
 }

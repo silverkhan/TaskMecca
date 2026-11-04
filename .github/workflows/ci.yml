@@ -75,7 +75,7 @@ jobs:
           node --check goassets/template/_task_mecca/framework/web/sw.js
           node --check goassets/template/_task_mecca/framework/web/terminal.js
       - name: Test Controller review and current user attention
-        run: node --test tests/web_completion_review.test.cjs tests/web_user_attention.test.cjs tests/web_common_attention.test.cjs tests/web_live_list.test.cjs tests/web_task_detail_prefetch.test.cjs tests/web_notification_center.test.cjs tests/web_notification_delivery.test.cjs tests/web_notification_pagination.test.cjs tests/web_push_service_worker.test.cjs tests/web_notification_settings.test.cjs tests/web_telegram_controls_ui.test.cjs tests/web_storage_management.test.cjs tests/web_terminal_service_restart.test.cjs tests/web_terminal_theme.test.cjs tests/web_select_ui.test.cjs tests/web_preview_builds.test.cjs
+        run: node --test tests/web_completion_review.test.cjs tests/web_user_attention.test.cjs tests/web_common_attention.test.cjs tests/web_live_list.test.cjs tests/web_task_detail_prefetch.test.cjs tests/web_notification_center.test.cjs tests/web_notification_delivery.test.cjs tests/web_notification_pagination.test.cjs tests/web_push_service_worker.test.cjs tests/web_notification_settings.test.cjs tests/web_telegram_controls_ui.test.cjs tests/web_storage_management.test.cjs tests/web_terminal_service_restart.test.cjs tests/web_terminal_theme.test.cjs tests/web_glass_theme.test.cjs tests/web_select_ui.test.cjs tests/web_preview_builds.test.cjs
       - name: Verify Activity detail timeline and ledger controls
         run: node --test tests/web_activity_detail.test.cjs
       - name: Verify structured and legacy release note formats
@@ -90,6 +90,39 @@ jobs:
         run: node --test tests/web_go_only_runtime.test.cjs
       - name: Test Web project session persistence
         run: node --test tests/web_project_sessions.test.cjs
+
+  glass-browser:
+    name: Glass fixture browser regression
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install isolated browser test runtime
+        run: |
+          npm install --prefix "$RUNNER_TEMP/glass-runtime" --no-save --no-audit --no-fund playwright@1.64.1
+          "$RUNNER_TEMP/glass-runtime/node_modules/.bin/playwright" install --with-deps chromium
+      - name: Check Glass state and real app rendering with synthetic APIs
+        env:
+          GLASS_EVIDENCE_DIR: glass-browser-evidence
+        run: |
+          export GLASS_PLAYWRIGHT_MODULE="$RUNNER_TEMP/glass-runtime/node_modules/playwright"
+          node --test tests/web_glass_theme.test.cjs tests/web_glass_browser.test.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: glass-browser-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            glass-browser-evidence/browser-contract.json
+            glass-browser-evidence/desktop-dark-backlog.png
+            glass-browser-evidence/mobile-dark-backlog.png
+            glass-browser-evidence/mobile-height-orientation.png
+            glass-browser-evidence/mobile-navigation-dialog.png
+            glass-browser-evidence/desktop-unsupported-blur-emulated.png
+            glass-browser-evidence/desktop-reduced-preferences.png
+          if-no-files-found: error
+          retention-days: 7
 
   platform-builds:
     name: Platform build · ${{ matrix.os }}

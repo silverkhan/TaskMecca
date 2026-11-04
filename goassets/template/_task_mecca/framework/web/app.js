@@ -7387,7 +7387,7 @@ async function setLanguage(value) {
 
 function syncThemeBrowserChrome() {
   const effective=effectiveTheme(),mecca=state.palette==='mecca';
-  const background=state.palette==='glass'?(state.background==='cozy'?(effective==='dark'?'#211b1b':'#e9dfce'):(effective==='dark'?'#0b1020':'#edf2fa'))
+  const background=state.palette==='glass'?(effective==='dark'?'#211d1d':'#ece2d4')
     :mecca?(effective==='dark'?'#0a0e1b':'#f7f3f8')
     :(effective==='dark'?'#111318':'#f7f8fa');
   document.documentElement.style.colorScheme=effective;
