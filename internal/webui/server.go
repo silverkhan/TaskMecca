@@ -1722,7 +1722,7 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
         // The Workload dashboard needs aggregates only. Do not ship thousands
         // of full per-backlog timelines; drill into /api/activity for details.
         report.TaskSummaries=nil
-        w.Header().Set("Server-Timing",fmt.Sprintf("activity_read;dur=%.1f,activity_aggregate;dur=%.1f",readMS,time.Since(summaryStarted).Seconds()*1000))
+        w.Header().Set("Server-Timing",fmt.Sprintf("activity_read;dur=%.1f,activity_aggregate;dur=%.1f,ci_evidence;dur=%.1f",readMS,time.Since(summaryStarted).Seconds()*1000,ciReadMS))
         writeJSON(w, report, http.StatusOK)
 	})
 
@@ -1758,8 +1758,17 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
             return
         }
         coverage:=activity.SummarizeLifecycle(taskID,lifecycle,summary.Segments)
+        ciStarted:=time.Now()
+        ciJobs,ciErr:=(activity.CIJournal{Project:project}).List(taskID)
+        if ciErr!=nil{
+            writeJSON(w,map[string]any{"error":ciErr.Error()},http.StatusInternalServerError)
+            return
+        }
+        testReport:=activity.SummarizeTests(summary.Segments)
+        ciReport:=activity.SummarizeCI(ciJobs,testReport.Runs)
+        ciReadMS:=time.Since(ciStarted).Seconds()*1000
 		w.Header().Set("Server-Timing",fmt.Sprintf("activity_read;dur=%.1f,activity_aggregate;dur=%.1f",readMS,time.Since(summaryStarted).Seconds()*1000))
-        writeJSON(w, map[string]any{"task_id": taskID, "events": rows, "summary": summary, "test_report": activity.SummarizeTests(summary.Segments), "review_report": activity.SummarizeReviews(rows, summary.Segments), "lifecycle_coverage": coverage, "lifecycle_findings": findings}, http.StatusOK)
+        writeJSON(w, map[string]any{"task_id": taskID, "events": rows, "summary": summary, "test_report": testReport, "ci_report": ciReport, "review_report": activity.SummarizeReviews(rows, summary.Segments), "lifecycle_coverage": coverage, "lifecycle_findings": findings}, http.StatusOK)
 	})
 
 	mux.HandleFunc("/api/tasks/", func(w http.ResponseWriter, r *http.Request) {
