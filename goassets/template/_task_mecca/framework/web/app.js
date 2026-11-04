@@ -5881,7 +5881,7 @@ function activityMetricsBody(payload,taskID=state.detail){
     esc(ko?'Runtime·Activity 실행 근거 대조':'Runtime and Activity evidence comparison')+'</summary>'+
     '<p class="summary">'+esc(ko?
       'Task 연결 실행 '+(runtimeEvidence.total_attempts??runtimeEvidence.attempts.length)+'건 · Activity 연결 '+runtimeEvidence.matched_attempts+'건 · 기록 없음 '+runtimeEvidence.without_activity+'건 · 신원 미확정 '+runtimeEvidence.identity_unknown+'건 · 불일치 '+runtimeEvidence.identity_mismatch+'건':
-      'Task-bound attempts '+(runtimeEvidence.total_attempts??runtimeEvidence.attempts.length)+' · matched +runtimeEvidence.matched_attempts+' · without Activity '+runtimeEvidence.without_activity+' · unverified '+runtimeEvidence.identity_unknown+' · mismatched '+runtimeEvidence.identity_mismatch)+'</p>'+
+      'Task-bound attempts '+(runtimeEvidence.total_attempts??runtimeEvidence.attempts.length)+' · matched '+runtimeEvidence.matched_attempts+' · without Activity '+runtimeEvidence.without_activity+' · unverified '+runtimeEvidence.identity_unknown+' · mismatched '+runtimeEvidence.identity_mismatch)+'</p>'+
     '<p class="summary">'+esc(ko?
       '진단을 요청한 시점의 해당 태스크에 연결된 실행만 비교했습니다. 태스크 연결이 없는 실행은 임의로 포함하지 않습니다. Activity 기록이 없다는 사실은 작업이 없었다는 증거가 아닙니다.':
       'Only task-bound attempts at the time of the explicit check are compared. Missing Activity records do not prove no execution.')+'</p>'+
