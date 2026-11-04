@@ -43,6 +43,7 @@ func runActivityCommand(args []string,out,errOut io.Writer)int{
  sha:=fs.String("git-sha","","tested revision")
  scope:=fs.String("scope","","test/build scope")
  purpose:=fs.String("purpose","validation","reason for execution")
+ ciURL:=fs.String("ci-url","","optional verified related CI workflow URL")
  if err:=fs.Parse(flagsInput);err!=nil{return 2}
  if fs.NArg()!=1 || *eventID=="" || *agent=="" || *attempt=="" || !activity.Role(*role).Valid() ||
   (*kind!=string(activity.TargetedTest)&&*kind!=string(activity.FullRegression)&&*kind!=string(activity.BuildCheck)){
@@ -95,6 +96,7 @@ func runActivityCommand(args []string,out,errOut io.Writer)int{
  started:=makeEventArgs(beginAction,*eventID+"-begin",*kind,"test/build process start")
  started=append(started,"--run-id",*eventID,"--command",commandEvidence,"--scope",*scope,
   "--git-sha",*sha,"--purpose",*purpose)
+ if *ciURL!=""{started=append(started,"--ci-url",*ciURL)}
  if status:=runActivityCLI(started,io.Discard,errOut);status!=0{
   fmt.Fprintln(errOut,"test/build not executed because Activity start was rejected");return status
  }
