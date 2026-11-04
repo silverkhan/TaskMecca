@@ -7514,14 +7514,23 @@ window.addEventListener('online',revalidateFirstPageOnWake);
 setInterval(()=>{void revalidateVisibleFirstPageByAge();},30000);
 
 setInterval(()=>{
+  // Hidden tabs do not repaint; the server-side SSE and Telegram watchers
+  // continue independently, while the visibility/focus handlers revalidate
+  // stale data when the tab returns.
+  if(document.visibilityState==='hidden')return;
   const data=currentProjectData();
   updateLiveListRelativeTimes();
   if(data){
     $('#snapshotAge').textContent=`${t('updated')} ${ago(new Date(state.lastFetch).toISOString())}`;
-    const byID={};
-    (state.listData?.items||[]).forEach(task=>{byID[task.id]=task});
-    Object.assign(byID,state.snapshot?.all_items||{});
-    document.querySelectorAll('.live-timer').forEach(el=>{const task=byID[el.dataset.id];if(task)el.textContent=fmtSec(runningSeconds(task,'active'))});
+    // Building a map of every backlog item each second is wasted unless
+    // the current view actually contains live timer cells.
+    const liveTimers=document.querySelectorAll('.live-timer');
+    if(liveTimers.length){
+      const byID={};
+      (state.listData?.items||[]).forEach(task=>{byID[task.id]=task});
+      Object.assign(byID,state.snapshot?.all_items||{});
+      liveTimers.forEach(el=>{const task=byID[el.dataset.id];if(task)el.textContent=fmtSec(runningSeconds(task,'active'))});
+    }
     document.querySelectorAll('.live-lifecycle-interval').forEach(el=>{
       const started=new Date(el.dataset.stateAt||'').getTime();
       if(Number.isFinite(started))el.textContent=fmtSec(Math.max(0,(Date.now()-started)/1000));
