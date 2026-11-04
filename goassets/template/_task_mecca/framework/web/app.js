@@ -5930,9 +5930,34 @@ function activityMetricsBody(payload,taskID=state.detail){
        (e.supersedes_id?'<small>'+esc((ko?'정정 대상: ':'Supersedes: ')+e.supersedes_id)+'</small>':'')+
        '</td><td>'+esc(e.evidence||'—')+'<small>'+esc((e.source||'—')+' · '+(e.confidence||'—'))+'</small></td></tr>').join('')+
       '</tbody></table></div>'+((events.length>ACTIVITY_DETAIL_MAX_LEDGER)?'<p class="summary">'+esc(ko?'최신 '+ACTIVITY_DETAIL_MAX_LEDGER+'건을 표시합니다. 전체 원장은 Activity API에서 조회할 수 있습니다.':'Showing the latest '+ACTIVITY_DETAIL_MAX_LEDGER+' records; the API retains the full ledger.')+'</p>':'')+'</details>';
+  const ci=payload.ci_report||{},ciJobs=Array.isArray(ci.jobs)?ci.jobs:[],
+    ciLinks=new Map((Array.isArray(ci.links)?ci.links:[]).map(x=>[String(x.job_id),x.local_run_ids||[]]));
+  const visibleCI=ciJobs.slice(-60).reverse();
+  const ciPanel=ciJobs.length?'<h3>'+esc(ko?'GitHub Actions CI 실행 증거':'GitHub Actions CI job evidence')+'</h3>'+
+    '<div class="activity-metric-grid">'+
+    '<div class="activity-metric"><strong>'+esc(String(ci.job_count||0))+'</strong><span>'+esc(ko?'완료된 CI 작업':'Completed CI jobs')+'</span></div>'+
+    '<div class="activity-metric"><strong>'+esc(activityDuration(ci.sum_job_ms||0))+'</strong><span>'+esc(ko?'CI 작업시간 합계':'Sum of CI job time')+'</span></div>'+
+    '<div class="activity-metric"><strong>'+esc(String(ci.matched_jobs||0))+'</strong><span>'+esc(ko?'로컬 검증 연결':'Linked to local tests')+'</span></div></div>'+
+    '<p class="summary">'+esc(ko?'CI 작업시간은 외부 실행의 경과시간으로, Agent 투입시간에 합산하지 않습니다. 작업이 병렬일 수 있어 CI 작업시간 합계도 전체 경과시간과 다릅니다.':
+      'CI job durations are external execution time, not Agent effort. Parallel jobs can make their sum exceed workflow elapsed time.')+'</p>'+
+    '<div class="activity-ledger-scroll"><table class="activity-ledger-table"><thead><tr>'+
+    [ko?'작업':'Job',ko?'결과':'Result',ko?'소요시간':'Duration',ko?'코드·분류':'Revision / type',ko?'로컬 실행 연결':'Local run linkage'].map(x=>'<th scope="col">'+esc(x)+'</th>').join('')+
+    '</tr></thead><tbody>'+visibleCI.map(job=>{
+      const local=ciLinks.get(String(job.job_id))||[];
+      const safeURL=typeof job.url==='string'&&job.url.startsWith('https://github.com/')?job.url:null;
+      const name=safeURL?'<a href="'+esc(safeURL)+'" target="_blank" rel="noopener noreferrer">'+esc(job.job_name||'CI job')+'</a>':esc(job.job_name||'CI job');
+      const ms=Math.max(0,Date.parse(job.completed_at)-Date.parse(job.started_at));
+      return '<tr><td>'+name+'<small>'+esc(job.workflow||'—')+'</small></td>'+
+        '<td>'+esc(job.conclusion||'—')+'</td>'+
+        '<td>'+esc(activityDuration(ms))+'</td>'+
+        '<td>'+esc((job.commit_sha||'').slice(0,12))+'<small>'+esc(job.type||'unclassified')+
+          (job.scope?' · '+esc(job.scope):'')+'</small></td>'+
+        '<td>'+esc(local.length?local.join(', '):(ko?'연결 없음':'Not linked'))+'</td></tr>';
+    }).join('')+'</tbody></table></div>'+
+    (ciJobs.length>60?'<p class="summary">'+esc(ko?'최근 60개 CI 작업만 표시합니다.':'Showing the latest 60 CI jobs.')+'</p>':''):'';
   const gap=s.unattributed_gap_ms>0?'<p class="summary">'+esc(ko?'활동 관측 범위 내 미귀속 시간: ':'Unattributed within activity span: ')+esc(activityDuration(s.unattributed_gap_ms))+'</p>':'';
   return settings+boxes+lifetimeView+byType+chart+'<p class="summary">'+esc(chartNote)+'</p>'+trimNote+
-    testOverview+unclassifiedView+gap+unknown+ledger;
+    testOverview+ciPanel+unclassifiedView+gap+unknown+ledger;
 }
 function bindActivityDetailControls(taskID,project=state.project){
   const root=typeof document.getElementById==='function'?document.getElementById('activityMetricsBody'):null;
