@@ -5837,7 +5837,8 @@ function activityMetricsBody(payload,taskID=state.detail){
     '<label>'+esc(ko?'확대':'Zoom')+' <output id="activityDetailZoomValue">'+prefs.zoom+'×</output>'+
       '<input type="range" id="activityDetailZoom" min="1" max="8" step="1" value="'+prefs.zoom+'"'+
       (prefs.mode==='rounds'?' disabled':'')+' aria-label="'+esc(ko?'시간축 확대':'Timeline zoom')+'"/></label>'+
-    '<button type="button" id="activityDetailRefresh">'+esc(ko?'기록 새로고침':'Refresh evidence')+'</button></div>';
+    '<button type="button" id="activityDetailRefresh">'+esc(ko?'기록 새로고침':'Refresh evidence')+'</button>'+
+    '<button type="button" id="activityRuntimeDiagnose">'+esc(ko?'실행 기록 대조':'Compare runtime evidence')+'</button></div>';
   if(!segments.length&&!s.open_activities&&!lc.registered_at&&!waitRows.length&&!events.length)
     return settings+'<p class="summary">'+esc(ko?'아직 관측된 Activity·Lifecycle 시간 근거가 없습니다.':'No observed Activity or lifecycle timing evidence yet.')+'</p>';
   const metrics=[
@@ -5868,6 +5869,28 @@ function activityMetricsBody(payload,taskID=state.detail){
     '<p class="summary">'+esc(ko?
       '이 수치는 Activity 원장에 기록된 범위만 나타냅니다. 전체 Runtime 실행 목록이나 Hook 지원 상태의 완전성을 증명하지 않습니다.':
       'These counts cover the Activity ledger only; they do not attest full runtime inventory or Hook availability.')+'</p></details>';
+  const runtimeEvidence=payload.runtime_diagnostic;
+  const runtimeStatus=(code)=>{
+    const labels={activity_recorded:[ko?'Activity 기록 연결':'Activity matched'],
+      no_matching_activity:[ko?'Activity 기록 없음':'No Activity record'],
+      identity_unverified:[ko?'실행 신원 미확정':'Identity unverified'],
+      identity_mismatch:[ko?'실행 신원 불일치':'Identity mismatch']};
+    return labels[code]?labels[code][0]:String(code||'—');
+  };
+  const runtimeView=runtimeEvidence?'<details class="activity-runtime-comparison" open><summary>'+
+    esc(ko?'Runtime·Activity 실행 근거 대조':'Runtime and Activity evidence comparison')+'</summary>'+
+    '<p class="summary">'+esc(ko?
+      'Task 연결 실행 '+runtimeEvidence.attempts.length+'건 · Activity 연결 '+runtimeEvidence.matched_attempts+'건 · 기록 없음 '+runtimeEvidence.without_activity+'건 · 신원 미확정 '+runtimeEvidence.identity_unknown+'건 · 불일치 '+runtimeEvidence.identity_mismatch+'건':
+      'Task-bound attempts '+runtimeEvidence.attempts.length+' · matched '+runtimeEvidence.matched_attempts+' · without Activity '+runtimeEvidence.without_activity+' · unverified '+runtimeEvidence.identity_unknown+' · mismatched '+runtimeEvidence.identity_mismatch)+'</p>'+
+    '<p class="summary">'+esc(ko?
+      '진단을 요청한 시점의 해당 태스크에 연결된 실행만 비교했습니다. 태스크 연결이 없는 실행은 임의로 포함하지 않습니다. Activity 기록이 없다는 사실은 작업이 없었다는 증거가 아닙니다.':
+      'Only task-bound attempts at the time of the explicit check are compared. Missing Activity records do not prove no execution.')+'</p>'+
+    '<div class="activity-ledger-scroll"><table class="activity-ledger-table"><thead><tr>'+
+    [ko?'실행 ID':'Attempt',ko?'Agent / 역할':'Agent / role',ko?'상태':'Status',ko?'Activity 기록':'Activity records'].map(x=>'<th scope="col">'+esc(x)+'</th>').join('')+
+    '</tr></thead><tbody>'+runtimeEvidence.attempts.map(a=>'<tr><td>'+esc(a.attempt_id||'—')+'</td><td>'+esc((a.agent_id||'—')+' · '+(a.agent_type||'—'))+'</td>'+
+    '<td>'+esc(runtimeStatus(a.diagnostic))+'</td><td>'+esc(String(a.matched_activity_events||0))+'</td></tr>').join('')+
+    '</tbody></table></div>'+((runtimeEvidence.truncated)?'<p class="summary">'+esc(ko?'안전한 조회량 제한으로 일부 실행만 표시했습니다.':'Attempt list truncated for bounded diagnostic.')+'</p>':'')+'</details>':
+    (payload.runtime_diagnostic_error?'<p class="timing-note warning">'+esc(ko?'실행 대조를 수행하지 못했습니다: ':'Runtime comparison unavailable: ')+esc(payload.runtime_diagnostic_error)+'</p>':'');
   const totals=Object.entries(s.by_type_ms||{}).filter(([,ms])=>ms>0).sort((a,b)=>b[1]-a[1]);
   const all=totals.reduce((sum,[,ms])=>sum+ms,0);
   const byType=totals.length?'<h3>'+esc(ko?'활동 유형별 누적 (전체 회차)':'Cumulative by activity (all rounds)')+'</h3><div class="activity-type-bars">'+
@@ -5975,7 +5998,7 @@ function activityMetricsBody(payload,taskID=state.detail){
       '</tbody></table></div>'+((events.length>ACTIVITY_DETAIL_MAX_LEDGER)?'<p class="summary">'+esc(ko?'최신 '+ACTIVITY_DETAIL_MAX_LEDGER+'건을 표시합니다. 전체 원장은 Activity API에서 조회할 수 있습니다.':'Showing the latest '+ACTIVITY_DETAIL_MAX_LEDGER+' records; the API retains the full ledger.')+'</p>':'')+'</details>';
   const gap=s.unattributed_gap_ms>0?'<p class="summary">'+esc(ko?'활동 관측 구간 내 기록 공백: ':'Unattributed within observed activity span: ')+esc(activityDisplayDuration(s.unattributed_gap_ms,ko))+
     ' <span title="'+esc(ko?'첫 관측 활동부터 마지막 관측 활동까지의 범위에서 원장 활동이 차지하지 않는 시간입니다. 등록~완료 전체 경과의 미귀속 시간과 기준 범위가 다르며 합산할 수 없습니다.':'Unattributed time inside the observed activity window; differs from lifecycle elapsed unknown, and must not be added to it.')+'">ⓘ</span></p>':'';
-  return settings+boxes+observationQuality+lifetimeView+byType+chart+'<p class="summary">'+esc(chartNote)+'</p>'+trimNote+
+  return settings+boxes+observationQuality+runtimeView+lifetimeView+byType+chart+'<p class="summary">'+esc(chartNote)+'</p>'+trimNote+
     testOverview+unclassifiedView+gap+unknown+ledger;
 }
 const activityDetailResizeObservers=new WeakMap();
@@ -6046,6 +6069,12 @@ function bindActivityDetailControls(taskID,project=state.project){
     if(canvas)canvas.style.minWidth=(Number(zoom.value)*100)+'%';
     fitTimelineLabels();
   });
+  const diagnose=root.querySelector('#activityRuntimeDiagnose');
+  if(diagnose)diagnose.addEventListener('click',()=>{
+    activityDetailCache.delete(activityDetailKey(taskID,project));
+    diagnose.disabled=true;
+    void loadTaskActivity(taskID,project,true);
+  });
   const ledger=root.querySelector('#activityLedgerDetail');
   if(ledger)ledger.addEventListener('toggle',()=>{pref.ledger=ledger.open;});
   const refresh=root.querySelector('#activityDetailRefresh');
@@ -6061,13 +6090,15 @@ function renderActivityDetailControls(taskID,project=state.project){
   root.innerHTML=activityMetricsBody(activityDetailCache.get(activityDetailKey(taskID,project)),taskID);
   bindActivityDetailControls(taskID,project);
 }
-async function loadTaskActivity(id,project=state.project){
+async function loadTaskActivity(id,project=state.project,runtimeDiagnostic=false){
   const key=activityDetailKey(id,project);
   if(activityDetailPending.has(key))return activityDetailPending.get(key);
   const job=(async()=>{
     let payload;
     try{
-      const url='/api/activity?'+new URLSearchParams({project,task:id});
+      const parameters=new URLSearchParams({project,task:id});
+      if(runtimeDiagnostic)parameters.set('runtime_diagnostic','1');
+      const url='/api/activity?'+parameters;
       const response=await fetch(url,{cache:'no-store'});
       if(!response.ok)throw Error('Activity HTTP '+response.status);
       payload=await response.json();
