@@ -5807,6 +5807,11 @@ function activityDisplayType(type,ko){
   const names={requirements:['요구사항 분석','Requirements'],research:['자료 조사','Research'],implementation:['구현','Implementation'],targeted_test:['선별 테스트','Targeted test'],full_regression:['전체 회귀 테스트','Full regression'],build_check:['빌드 확인','Build check'],controller_review:['Controller 검토','Controller review'],controller_rereview:['Controller 재검토','Controller rereview'],handoff:['작업 인계','Handoff'],recovery:['복구 작업','Recovery'],other:['기타 활동','Other activity'],registration_authorization:['작업 실행 승인','Execution authorization']};
   return names[type]?(ko?names[type][0]:names[type][1]):String(type||'—');
 }
+function activityDisplayRole(role,ko){
+  const labels={registrar:['등록 담당','Registrar'],controller:['Controller','Controller'],
+    sub_controller:['보조 Controller','Sub-controller'],worker:['Worker','Worker']};
+  return labels[role]?(ko?labels[role][0]:labels[role][1]):String(role||'—');
+}
 function activityDisplayWait(kind,ko){
   const names={registration_queue:['작업 배정 대기','Awaiting assignment'],dispatch_wait:['작업 착수 대기','Awaiting work start']};
   return names[kind]?(ko?names[kind][0]:names[kind][1]):String(kind||'—');
@@ -5823,6 +5828,9 @@ function activityMetricsBody(payload,taskID=state.detail){
     lc=payload.lifecycle_coverage||{},waitRows=Array.isArray(lc.wait_intervals)?lc.wait_intervals:[],
     events=Array.isArray(payload.events)?payload.events:[];
   const prefs=activityDetailPrefs(taskID);
+  const lastRead=payload._client_fetched_at?
+    '<small class="activity-last-read" title="'+esc(ko?'마지막 API 요청 시각입니다. 원천 데이터의 최종 변경 시각을 의미하지 않습니다.':'Time of latest API request, not last upstream modification.')+'">'+
+      esc((ko?'마지막 조회: ':'Last fetched: ')+activityEventTime(payload._client_fetched_at,ko))+'</small>':'';
   const rounds=[...new Set(segments.map(x=>Number(x.round)||0))].sort((a,b)=>a-b);
   const selectedRound=prefs.round==='all'?'all':Number(prefs.round);
   const activeRound=selectedRound==='all'||rounds.includes(selectedRound)?selectedRound:'all';
@@ -5840,7 +5848,7 @@ function activityMetricsBody(payload,taskID=state.detail){
     '<label>'+esc(ko?'Agent 그룹':'Group by agent')+
       '<input type="checkbox" id="activityDetailGroupAgents"'+(prefs.groupAgents?' checked':'')+
       (prefs.mode==='rounds'?' disabled':'')+'/></label>'+
-    '<button type="button" id="activityDetailRefresh">'+esc(ko?'기록 새로고침':'Refresh evidence')+'</button>'+
+    '<button type="button" id="activityDetailRefresh">'+esc(ko?'기록 새로고침':'Refresh evidence')+'</button>'+lastRead+
     '<button type="button" id="activityRuntimeDiagnose">'+esc(ko?'실행 기록 대조':'Compare runtime evidence')+'</button></div>';
   if(!segments.length&&!s.open_activities&&!lc.registered_at&&!waitRows.length&&!events.length)
     return settings+'<p class="summary">'+esc(ko?'아직 관측된 Activity·Lifecycle 시간 근거가 없습니다.':'No observed Activity or lifecycle timing evidence yet.')+'</p>';
@@ -5945,7 +5953,7 @@ function activityMetricsBody(payload,taskID=state.detail){
     }
     return [...groups.values()].map(group=>{
       const label=group.wait?(ko?'대기 구간':'Waiting intervals'):
-        (group.role||'—')+' · '+(group.agent|| (ko?'Agent 미확인':'Agent unknown'));
+        activityDisplayRole(group.role,ko)+' · '+(group.agent|| (ko?'Agent 미확인':'Agent unknown'));
       const description=group.wait?'':(ko?'실행':'Attempt')+' '+(group.attempt||'—');
       return '<details class="activity-agent-group" open><summary title="'+esc(description)+'">'+esc(label)+
         ' <small>('+group.items.length+(ko?'건':' intervals')+')</small></summary>'+
@@ -6136,6 +6144,7 @@ async function loadTaskActivity(id,project=state.project,runtimeDiagnostic=false
       const response=await fetch(url,{cache:'no-store'});
       if(!response.ok)throw Error('Activity HTTP '+response.status);
       payload=await response.json();
+      if(payload&&typeof payload==='object'&&!payload.error)payload._client_fetched_at=new Date().toISOString();
     }catch(e){payload={error:String(e?.message||e)}}
     activityDetailCache.set(key,payload);
     if(state.project===project&&state.detail===id){
