@@ -207,7 +207,7 @@
       storedPalette = localStorage.getItem('task-mecca-palette') || '';
     } catch (_) {}
     const preference = ['dark', 'light', 'system'].includes(storedTheme) ? storedTheme : 'dark';
-    const palette = ['mecca', 'slate'].includes(storedPalette) ? storedPalette : 'mecca';
+    const palette = ['mecca', 'slate', 'glass'].includes(storedPalette) ? storedPalette : 'mecca';
     const isDark = window.matchMedia?.('(prefers-color-scheme: dark)')?.matches ?? false;
     const effective = preference === 'system' ? (isDark ? 'dark' : 'light') : preference;
     const root = document.documentElement;
