@@ -8,11 +8,11 @@
     storedPalette=localStorage.getItem('task-mecca-palette')||'';
   }catch(_){}
   const preference=['dark','light','system'].includes(storedTheme)?storedTheme:'dark';
-  const palette=['mecca','slate'].includes(storedPalette)?storedPalette:'mecca';
+  const palette=['mecca','slate','glass'].includes(storedPalette)?storedPalette:'mecca';
   const systemDark=window.matchMedia?.('(prefers-color-scheme: dark)')?.matches ?? false;
   const effective=preference==='system'?(systemDark?'dark':'light'):preference;
-  const background=palette==='mecca'
-    ?(effective==='dark'?'#0a0e1b':'#f7f3f8')
+  const background=palette==='glass'?(effective==='dark'?'#0b1020':'#edf2fa')
+    :palette==='mecca'?(effective==='dark'?'#0a0e1b':'#f7f3f8')
     :(effective==='dark'?'#111318':'#f7f8fa');
   root.dataset.themePreference=preference;
   root.dataset.theme=effective;
