@@ -5434,13 +5434,21 @@ function filteredActivityHTML(item){
   const note=ko?'선택한 활동 구간만 계산합니다. 등록~완료 경과시간과 대기시간은 이 필터 통계에 포함하지 않습니다.':'This filters observed activity only; lifecycle elapsed and waiting are not filtered.';
   return cards+leaders+'<p class="summary">'+esc(note)+'</p>';
 }
+// Use an explicit rolling UTC window; the existing filtered Activity API
+// clips real segments exactly and never applies this range to lifecycle totals.
+function activityRollingPeriod(days,now=new Date()){
+  const count=Number(days);
+  if(![7,30,90].includes(count))return null;
+  return {from:new Date(now.getTime()-count*86400000).toISOString(),until:now.toISOString()};
+}
 function activityFilterControls(){
   const ko=state.language==='ko',prior=activityProjectFiltered.get(state.project)?.values||{};
   const choose=(name,choices)=>'<select id="activityFilter'+name+'" aria-label="'+esc(name)+'">'+choices.map(([key,label])=>'<option value="'+esc(key)+'"'+(prior[name]===key?' selected':'')+'>'+esc(label)+'</option>').join('')+'</select>';
   const roles=[['',ko?'모든 역할':'All roles'],['worker','Worker'],['controller','Controller'],['sub_controller','Sub-Controller'],['registrar','Registrar']];
   const types=[['',ko?'모든 활동':'All activities'],['requirements','requirements'],['research','research'],['implementation','implementation'],['targeted_test','targeted_test'],['full_regression','full_regression'],['build_check','build_check'],['controller_review','controller_review'],['controller_rereview','controller_rereview'],['handoff','handoff'],['recovery','recovery'],['other','other']];
   const inp=(id,type,placeholder)=>'<input id="activityFilter'+id+'" type="'+type+'" placeholder="'+esc(placeholder)+'" value="'+esc(prior[id]||'')+'" aria-label="'+esc(placeholder)+'"/>';
-  return '<div class="activity-filter-fields">'+choose('Role',roles)+choose('Type',types)+
+  return '<div class="activity-filter-fields">'+choose('Role',roles)+choose('Type',types.map(([code,label])=>[code,code?activityDisplayType(code,ko):label]))+
+    choose('Period',[['custom',ko?'직접 기간 지정':'Custom dates'],['7',ko?'최근 7일':'Last 7 days'],['30',ko?'최근 30일':'Last 30 days'],['90',ko?'최근 90일':'Last 90 days']])+
     inp('Agent','text',ko?'작업자 ID':'Agent ID')+inp('Round','number',ko?'회차':'Round')+
     inp('From','date',ko?'시작일':'From')+inp('Until','date',ko?'종료일':'Until')+
     '<button type="button" id="activityFilterApply">'+esc(ko?'조건 적용':'Apply filters')+'</button></div>';
@@ -5507,22 +5515,41 @@ function projectActivityPanel(){
 function bindActivityProjectTasks(){
   const root=typeof document.getElementById==='function'?document.getElementById('activityProjectPanel'):null;
   if(!root)return;
+  const period=root.querySelector('#activityFilterPeriod');
+  if(period){
+    const syncDateFields=()=>{
+      for(const name of ['From','Until']){
+        const input=root.querySelector('#activityFilter'+name);
+        if(input)input.disabled=period.value!=='custom';
+      }
+    };
+    if(!period.dataset.activityBound){
+      period.dataset.activityBound='1';
+      period.addEventListener('change',syncDateFields);
+    }
+    syncDateFields();
+  }
   const apply=root.querySelector('#activityFilterApply');
   if(apply&&!apply.dataset.activityBound){
     apply.dataset.activityBound='1';
     apply.addEventListener('click',async()=>{
       const project=state.project;
       const value=id=>(root.querySelector('#activityFilter'+id)?.value||'').trim();
-      const values={Role:value('Role'),Type:value('Type'),Agent:value('Agent'),Round:value('Round'),From:value('From'),Until:value('Until')};
+      const values={Role:value('Role'),Type:value('Type'),Agent:value('Agent'),Round:value('Round'),Period:value('Period')||'custom',From:value('From'),Until:value('Until')};
       const query=new URLSearchParams({project});
       for(const [ui,param]of [['Role','role'],['Type','type'],['Agent','agent'],['Round','round']]){
         if(values[ui])query.set(param,values[ui]);
       }
-      if(values.From)query.set('from',new Date(values.From+'T00:00:00').toISOString());
-      if(values.Until){
-        const local=new Date(values.Until+'T00:00:00');
-        local.setDate(local.getDate()+1);
-        query.set('until',local.toISOString());
+      const rolling=activityRollingPeriod(values.Period);
+      if(rolling){
+        query.set('from',rolling.from);query.set('until',rolling.until);
+      }else{
+        if(values.From)query.set('from',new Date(values.From+'T00:00:00').toISOString());
+        if(values.Until){
+          const local=new Date(values.Until+'T00:00:00');
+          local.setDate(local.getDate()+1);
+          query.set('until',local.toISOString());
+        }
       }
       const pane=root.querySelector('#activityProjectFiltered');
       apply.disabled=true;
