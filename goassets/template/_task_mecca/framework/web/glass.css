@@ -133,3 +133,31 @@
  :root[data-palette="glass"] .content{margin-top:6px;margin-bottom:30px;padding-top:14px}
  :root[data-palette="glass"] :is(.icon-btn,.sidebar-toggle,.action-btn){min-height:44px}
 }
+
+/* Panel-local contrast follows the sampled fixed stage; user theme remains global. */
+:root[data-palette="glass"] [data-glass-tone="light"]{
+ --bg:#e7ecee;--text:#1c2730;--muted:#293842;
+ --accent:#254e68;--accent-soft:rgba(29,63,84,.10);
+ --danger:#86172c;--warn:#654517;--ok:#1f6845;--border:rgba(36,61,79,.18);
+ --surface:rgba(248,251,252,var(--glass-alpha,.78));--surface2:rgba(245,249,251,.32);--surface-raised:#f0f5f7;
+ --glass-background:#e7ecee;--glass-reader:rgba(248,251,252,var(--glass-alpha,.78));--glass-reading:transparent;
+ --glass-chrome:rgba(248,251,252,var(--glass-alpha,.78));--glass-floating:rgba(248,251,252,.84);--glass-control:rgba(255,255,255,.16);
+ --glass-edge:rgba(255,255,255,.67);--glass-far:rgba(49,74,91,.15);--glass-solid:#eef3f5;
+ --shadow:var(--glass-shadow);
+ --glass-edge:rgba(var(--glass-reflection-rgb,240,249,255),.35);
+ --glass-highlight:inset 0 1px 0 rgba(var(--glass-reflection-rgb,240,249,255),.2);
+ color:var(--text);
+}
+:root[data-palette="glass"] [data-glass-tone="dark"]{
+ --bg:#242b30;--text:#fbfdff;--muted:#e4ebee;
+ --accent:#d0e8f5;--accent-soft:rgba(221,240,255,.13);
+ --danger:#ffbdc3;--warn:#ffe0ac;--ok:#b9edce;--border:rgba(230,241,247,.18);
+ --surface:rgba(34,42,46,.66);--surface2:rgba(19,28,34,.22);--surface-raised:#303b41;
+ --glass-background:#242b30;--glass-reader:rgba(34,42,46,var(--glass-alpha,.78));--glass-reading:transparent;
+ --glass-chrome:rgba(34,42,46,var(--glass-alpha,.78));--glass-floating:rgba(34,42,46,.82);--glass-control:rgba(10,20,27,.16);
+ --glass-edge:rgba(240,249,255,.27);--glass-far:rgba(5,16,24,.18);--glass-solid:#2c363d;
+ --shadow:var(--glass-shadow);
+ --glass-edge:rgba(var(--glass-reflection-rgb,240,249,255),.35);
+ --glass-highlight:inset 0 1px 0 rgba(var(--glass-reflection-rgb,240,249,255),.2);
+ color:var(--text);
+}

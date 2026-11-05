@@ -45,7 +45,7 @@ async function paneBox(cdp,page){
    const switching=await page.evaluate(async()=>{let times=[];for(let i=0;i<8;i++){const t=performance.now();applyTheme(i%2?'dark':'light');await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));times.push(performance.now()-t)}return times});
    Object.assign(observation,{frames,paint:{events:paints.length,totalMs:paints.reduce((sum,e)=>sum+(e.dur||0),0)/1000},before:before.metrics,after:after.metrics,switching,readerAfter:await paneBox(cdp,page)});
   }
-  const first=await page.evaluate(()=>window.TaskMeccaGlass?.diagnostics()||null);await page.waitForTimeout(250);const second=await page.evaluate(()=>window.TaskMeccaGlass?.diagnostics()||null);observation.optics=second;observation.idleOpticalPaints=first&&second?second.paintCount-first.paintCount:null;observation.canvasRgbaEstimateBytes=second?((second.sampler?.width||0)*(second.sampler?.height||0)+second.lenses.reduce((n,l)=>n+l.pixels,0))*4:0;
-  report.observations.push(observation);await context.close();
+  const first=await page.evaluate(()=>window.TaskMeccaGlass?.diagnostics()||null);await page.waitForTimeout(250);const second=await page.evaluate(()=>window.TaskMeccaGlass?.diagnostics()||null);observation.optics=second;observation.idleOpticalPaints=first&&second?second.paintCount-first.paintCount:null;observation.idleAdaptations=first&&second?(second.adaptCount||0)-(first.adaptCount||0):null;observation.sampleBytes=second?.sampleBytes||0;observation.canvasRgbaEstimateBytes=second?((second.sampler?.width||0)*(second.sampler?.height||0)+second.lenses.reduce((n,l)=>n+l.pixels,0))*4:0;
+  observation.canvasAndSampleBytes=(observation.canvasRgbaEstimateBytes||0)+(observation.sampleBytes||0);report.observations.push(observation);await context.close();
  }}finally{fs.writeFileSync(path.join(out,'observations.json'),JSON.stringify(report,null,2));await browser.close();await server.close()}
 })().catch(e=>{console.error(e);process.exit(1)});

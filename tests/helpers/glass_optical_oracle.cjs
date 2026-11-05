@@ -5,13 +5,13 @@ const assert=require('node:assert/strict');
 // This avoids a second, differently scaled/opaque photo-rendering implementation.
 function installOpticalOracle(){
  const proto=CanvasRenderingContext2D.prototype,original={},entries=new WeakMap();
- for(const name of ['setTransform','clearRect','scale','translate','save','restore','clip','drawImage'])original[name]=proto[name];
+ for(const name of ['setTransform','clearRect','scale','translate','save','restore','clip','drawImage','stroke'])original[name]=proto[name];
  function entry(context){
   const canvas=context.canvas;if(!canvas.classList?.contains('glass-optics'))return null;
   let e=entries.get(canvas);
   if(!e||e.width!==canvas.width||e.height!==canvas.height){
    const make=()=>{const c=document.createElement('canvas');c.width=canvas.width;c.height=canvas.height;return c.getContext('2d')};
-   e={width:canvas.width,height:canvas.height,replay:make(),identity:make(),scales:[]};entries.set(canvas,e);
+   e={width:canvas.width,height:canvas.height,replay:make(),identity:make(),uncoated:make(),scales:[]};entries.set(canvas,e);
   }
   return e;
  }
@@ -20,12 +20,19 @@ function installOpticalOracle(){
   const lens=name==='scale'&&(Math.abs(before.e)>1e-8||Math.abs(before.f)>1e-8);
   if(e){
    if(name==='clearRect')e.scales=[];
-   if(name==='drawImage')for(const c of [e.replay,e.identity]){c.globalAlpha=this.globalAlpha;c.globalCompositeOperation=this.globalCompositeOperation;c.imageSmoothingEnabled=this.imageSmoothingEnabled;c.imageSmoothingQuality=this.imageSmoothingQuality}
+   if(name==='stroke')for(const c of [e.replay,e.identity,e.uncoated]){c.strokeStyle=this.strokeStyle;c.lineWidth=this.lineWidth;c.lineCap=this.lineCap;c.lineJoin=this.lineJoin;c.globalAlpha=this.globalAlpha}
+   if(name==='drawImage')for(const c of [e.replay,e.identity,e.uncoated]){c.globalAlpha=this.globalAlpha;c.globalCompositeOperation=this.globalCompositeOperation;c.imageSmoothingEnabled=this.imageSmoothingEnabled;c.imageSmoothingQuality=this.imageSmoothingQuality}
+   if(name!=='stroke')original[name].apply(e.uncoated,args);
    original[name].apply(e.replay,args);
    if(!lens)original[name].apply(e.identity,args);
    if(lens)e.scales.push({x:args[0],y:args[1],centerX:before.e/before.a,centerY:before.f/before.d});
   }
   return original[name].apply(this,args);
+ };
+ window.__glassSpectralControl=(canvas,restore=false)=>{
+  const e=entries.get(canvas),c=canvas.getContext('2d');if(!e)throw Error('Unobserved real optical canvas');
+  if(restore){c.putImageData(e.positive,0,0);return;}
+  e.positive=c.getImageData(0,0,e.width,e.height);c.putImageData(e.uncoated.getImageData(0,0,e.width,e.height),0,0);
  };
  window.__glassOpticalCompare=canvas=>{
   const e=entries.get(canvas);if(!e)return null;

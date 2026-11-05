@@ -32,7 +32,7 @@ test('Glass browser contract: appearance, stable canvas, content, fallbacks and 
   await page.evaluate(()=>{applyTheme('dark');applyBackground('cozy')});
   await page.waitForFunction(()=>document.documentElement.dataset.glassOptics==='active');
   await page.waitForFunction(()=>{const e=document.querySelector('.glass-reader-material');return e?.isConnected&&getComputedStyle(e).backdropFilter.includes('blur(')});
-  const reader=await page.locator('.content').evaluate(owner=>{const e=owner.querySelector('.glass-reader-material');return{height:e.getBoundingClientRect().height,width:e.getBoundingClientRect().width,filter:getComputedStyle(e).backdropFilter,position:getComputedStyle(e).position,ownFilter:getComputedStyle(owner).backdropFilter}});
+  const reader=await page.locator('.content > .glass-reader-material').evaluate(e=>({height:e.getBoundingClientRect().height,width:e.getBoundingClientRect().width,filter:getComputedStyle(e).backdropFilter,position:getComputedStyle(e).position,ownFilter:getComputedStyle(e.parentElement).backdropFilter}));
   assert.ok(reader.filter.includes('blur('));assert.equal(reader.position,'sticky');assert.ok(reader.height<=await page.evaluate(()=>innerHeight));assert.equal(reader.ownFilter,'none');report.readerPlanes??=[];report.readerPlanes.push({mobile,...reader,optics:await page.evaluate(()=>TaskMeccaGlass.diagnostics())});
   const geometry=()=>page.evaluate(()=>{const s=getComputedStyle(document.body,'::before');return[s.width,s.height,s.left,s.top,s.backgroundSize,s.backgroundPosition,s.backgroundImage]});
   const initial=await geometry();await page.evaluate(()=>{document.body.style.minHeight='3000px';window.scrollTo(0,800)});assert.deepEqual(await geometry(),initial);
