@@ -137,6 +137,45 @@ func exportWorkflowFixture(t *testing.T, name string, w Workflow, evidence []Eve
 	}
 }
 
+func TestWorkflowShortNonzeroZeroAndUnmeasuredRemainDistinct(t *testing.T) {
+	b, at := workflowFixture()
+	events := []Event{
+		{EventID: "short-s", TaskID: "B-1", Role: RoleWorker, AgentID: "w", RuntimeAttemptID: "short", Action: Start, Type: Implementation, OccurredAt: at(1)},
+		{EventID: "short-e", TaskID: "B-1", Role: RoleWorker, AgentID: "w", RuntimeAttemptID: "short", Action: Stop, Type: Implementation, OccurredAt: at(1).Add(250 * time.Millisecond)},
+		{EventID: "zero-s", TaskID: "B-1", Role: RoleWorker, AgentID: "w", RuntimeAttemptID: "zero", Action: Start, Type: TargetedTest, OccurredAt: at(2)},
+		{EventID: "zero-e", TaskID: "B-1", Role: RoleWorker, AgentID: "w", RuntimeAttemptID: "zero", Action: Stop, Type: TargetedTest, OccurredAt: at(2), RecordedAt: at(2).Add(time.Millisecond)},
+	}
+	facts := []LifecycleFact{{EventID: "r", TaskID: "B-1", Kind: "registered", OccurredAt: b}, {EventID: "s", TaskID: "B-1", Kind: "started", Actor: "w", AttemptID: "unmeasured", OccurredAt: at(3)}, {EventID: "c", TaskID: "B-1", Kind: "completed", OccurredAt: at(60)}}
+	w := SummarizeWorkflow(WorkflowInput{TaskID: "B-1", Events: events, Summary: Summarize("B-1", events), Facts: facts, Now: at(60)})
+	exportWorkflowFixture(t, "synthetic-short.json", w, events)
+	if w.Measurement.Worker.Millis == nil || *w.Measurement.Worker.Millis != 250 || w.Measurement.Review.Millis != nil {
+		t.Fatalf("short/zero/absent measurements changed: %+v", w.Measurement)
+	}
+	foundShort, foundZero, foundUnknown := false, false, false
+	for _, row := range w.Rows {
+		for _, interval := range row.Intervals {
+			if interval.Measured && interval.DurationMillis != nil {
+				foundShort = foundShort || *interval.DurationMillis == 250
+				foundZero = foundZero || *interval.DurationMillis == 0
+			} else if interval.Kind == "execution_report" && interval.End == nil {
+				foundUnknown = true
+			}
+		}
+	}
+	if !foundShort || !foundZero || !foundUnknown {
+		t.Fatalf("short, zero or unmeasured lost: %+v", w.Rows)
+	}
+}
+
+func TestWorkflowMissingBoundsRemainsUnmeasured(t *testing.T) {
+	_, at := workflowFixture()
+	w := SummarizeWorkflow(WorkflowInput{TaskID: "B-1", Summary: Summarize("B-1", nil), Now: at(60)})
+	exportWorkflowFixture(t, "synthetic-empty.json", w, nil)
+	if w.Axis.Start != nil || w.Axis.End != nil || w.Measurement.Worker.Millis != nil || len(w.Rows) != 0 {
+		t.Fatalf("missing evidence became a period or measured zero: %+v", w)
+	}
+}
+
 func TestWorkflowExplicitCIWaitIsNotUserHoldAndClosedWaitDoesNotPersist(t *testing.T) {
 	_, at := workflowFixture()
 	events := []Event{{TaskID: "B-1", EventID: "a-start", Action: Start, Role: RoleController, AgentID: "c", RuntimeAttemptID: "a", Type: Other, PhaseEvent: "external_ci_wait_started", OccurredAt: at(1)}}

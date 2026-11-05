@@ -4,7 +4,7 @@ const project='/fixtures/workflow',backlog=project+'/_task_mecca/data/backlog';
 const clone=value=>JSON.parse(JSON.stringify(value));
 const fixture=name=>clone(require('../fixtures/workflow/'+name+'.json').workflow);
 function payload(kind='continuous'){
- const name=({history:'unmeasured-history',overlap:'overlap',zero:'zero'})[kind]||'continuous-activity';
+  const name=({history:'unmeasured-history',overlap:'overlap',zero:'zero',short:'short',none:'empty'})[kind]||'continuous-activity';
  const raw=clone(require('../fixtures/workflow/'+name+'.json')),workflow=raw.workflow;
  workflow.control_snapshot={trust:'verified',version:'synthetic-v1',computed_at:workflow.computed_at,validated_at:workflow.computed_at,handoff_checked_at:workflow.computed_at};
  if(kind==='stale')workflow.control_snapshot.trust='stale';
@@ -13,12 +13,12 @@ function payload(kind='continuous'){
  return {task_id:'FLOW-1',workflow,events,summary:raw.summary,review_report:{},lifecycle_coverage:workflow.lifecycle};
 }
 function task(data=payload()){
- const wf=data.workflow,events=[{event_id:'synthetic-register',state:'todo',label:'Registered',kind:'registered',at:wf.axis.start,actor:'/root/registrar',source:'fixture'}];
+ const wf=data.workflow,events=[];if(wf.axis.start)events.push({event_id:'synthetic-register',state:'todo',label:'Registered',kind:'registered',at:wf.axis.start,actor:'/root/registrar',source:'fixture'});
  for(const [i,at] of (wf.lifecycle.completion_history||[]).entries())events.push({event_id:'synthetic-complete-'+i,state:'done',label:'Completed',kind:'completed',at,actor:'/root/controller',source:'fixture'});
  if(wf.axis.open){const starts=wf.rows.flatMap(r=>r.intervals).filter(i=>i.kind==='execution_report').sort((a,b)=>Date.parse(a.start)-Date.parse(b.start));const at=starts.at(-1)?.start||wf.axis.start;events.push({event_id:'synthetic-resume',state:'doing',label:'Resumed',kind:'resumed',at,actor:wf.current.assigned_worker||'worker',source:'fixture'});}
- else if(!events.some(e=>e.kind==='completed'&&e.at===wf.axis.end))events.push({event_id:'synthetic-complete',state:'done',label:'Completed',kind:'completed',at:wf.axis.end,actor:'/root/controller',source:'fixture'});
+ else if(wf.axis.end&&!wf.axis.open&&!events.some(e=>e.kind==='completed'&&e.at===wf.axis.end))events.push({event_id:'synthetic-complete',state:'done',label:'Completed',kind:'completed',at:wf.axis.end,actor:'/root/controller',source:'fixture'});
 
- return {id:'FLOW-1',title:'작업 기록과 검토 흐름 확인',state:data.workflow.axis.open?'doing':'done',file_state:data.workflow.axis.open?'doing':'done',agent:'/root/controller/pairi',location:'active',fields:{},tags:[],depends_on:[],related:[],raw_markdown:'# Synthetic workflow fixture\n'+Array.from({length:30},(_,i)=>'## 기록 '+(i+1)+'\n본문과 읽기 위치를 보존하는 가상 자료입니다.').join('\n'),activity:{health:'healthy'},lifecycle:{events,current_state:'done',lead_seconds:(data.workflow.axis.elapsed_ms||0)/1000},snapshot:{trust:'verified',version:'fixture-v1'},document:{schema:'defined-v2',summary:{purpose:'실제 사건과 측정 누락을 구분해 읽는다.',change:'역할별 전체 시간축',status_result:'합성 검증 자료',follow_up:'실제 운영 데이터가 아닙니다.'},notes:'가상 검증 기록입니다.',result:'가상 결과입니다.',verification:'브라우저 fixture 검증',requirements:{goal:'기록과 전체 시간축을 확인한다.',acceptance:'- [ ] 근거와 시간을 구별한다.'}}};
+ return {id:'FLOW-1',title:'작업 기록과 검토 흐름 확인',state:data.workflow.axis.open?'doing':'done',file_state:data.workflow.axis.open?'doing':'done',agent:'/root/controller/pairi',location:'active',fields:{},tags:[],depends_on:[],related:[],raw_markdown:'# Synthetic workflow fixture\n'+Array.from({length:30},(_,i)=>'## 기록 '+(i+1)+'\n본문과 읽기 위치를 보존하는 가상 자료입니다.').join('\n'),activity:{health:'healthy'},lifecycle:{events,current_state:wf.axis.open?'doing':wf.axis.end?'done':'unknown',lead_seconds:(data.workflow.axis.elapsed_ms||0)/1000},snapshot:{trust:'verified',version:'fixture-v1'},document:{schema:'defined-v2',summary:{purpose:'실제 사건과 측정 누락을 구분해 읽는다.',change:'역할별 전체 시간축',status_result:'합성 검증 자료',follow_up:'실제 운영 데이터가 아닙니다.'},notes:'가상 검증 기록입니다.',result:'가상 결과입니다.',verification:'브라우저 fixture 검증',requirements:{goal:'기록과 전체 시간축을 확인한다.',acceptance:'- [ ] 근거와 시간을 구별한다.'}}};
 }
 async function start(root){
  const state={data:payload(),activityStatus:200,requests:[]};
