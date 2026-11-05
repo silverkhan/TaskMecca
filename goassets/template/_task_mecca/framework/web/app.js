@@ -1356,8 +1356,8 @@ async function refreshViewedTaskLifecycle(project,backlog,id,options={}) {
     const previousScroll=typeof window!=='undefined'?window.scrollY:0;
     // Patch only lifecycle children. Keep section identity for TOC observer,
     // preserve Markdown, open disclosures, focus and reading position.
-    section.innerHTML='<h2>'+esc(t('lifecycle'))+'</h2>'+detailLifecycleBody(newer);
-    section.querySelector?.('#lifecycleRetryBtn')?.addEventListener('click',retryTaskLifecycle);
+    patchLifecycleEvidence(section,newer);
+    if(section.querySelector?.('#activityMetricsBody'))void loadTaskActivity(id,project);
     if(previouslyAbove&&typeof window!=='undefined'){
       const delta=(section.getBoundingClientRect?.().height||0)-oldHeight;
       if(delta)window.scrollTo?.({left:window.scrollX,top:previousScroll+delta,behavior:'auto'});
@@ -5860,7 +5860,81 @@ function activityDisplayDuration(ms,ko){
   const sec=Math.round(ms/1000),h=Math.floor(sec/3600),m=Math.floor(sec%3600/60),s=sec%60;
   return (ko?[h?h+'시간':null,m?m+'분':null,(!h&&!m||s)?s+'초':null]:[h?h+'h':null,m?m+'m':null,(!h&&!m||s)?s+'s':null]).filter(Boolean).join(' ');
 }
+function workflowText(ko,koText,enText){return ko?koText:enText;}
+function workflowRoundLabel(round,ko){return round==null?workflowText(ko,'회차 미분류','Unclassified round'):Number(round)===0?workflowText(ko,'최초 작업','Initial work'):workflowText(ko,'재작업 '+round+'차','Rework '+round);}
+function workflowAgentLabel(agent,ko){
+  const value=String(agent||'');if(!value)return workflowText(ko,'담당 미확인','Actor unverified');
+  if(value==='unclassified_worker')return workflowText(ko,'Worker 미확인','Worker unverified');
+  if(value.includes('/'))return value.split('/').filter(Boolean).pop();
+  return value.length>20?'Agent '+value.slice(-8):value;
+}
+function workflowPhaseLabel(value,ko){
+  const labels={queued:['배정 대기','Queued'],dispatch_wait:['착수 확인 대기','Awaiting start'],implementation:['구현 중','Implementing'],rework:['수정 중','Correcting'],rework_requested:['수정 요청됨','Changes requested'],controller_review:['Controller 검토','Controller review'],finalizing:['완료 처리 중','Finalizing'],completed:['완료','Completed'],external_ci_wait:['외부 검증 대기','External verification'],user_decision_wait:['사용자 판단 대기','User decision'],wait_unclassified:['대기 사유 미확인','Wait reason unverified'],recovery:['실행 근거 확인 필요','Execution needs verification'],unknown:['처리 단계 미확인','Phase unverified']};
+  return labels[value]?.[ko?0:1]||labels.unknown[ko?0:1];
+}
+function workflowActionLabel(value,ko){
+  const labels={assign_worker:['Worker 배정','Assign Worker'],confirm_worker_start:['실제 착수 확인','Confirm actual start'],implement_and_verify:['구현·검증 진행','Implement and verify'],review_report:['결과와 수용 기준 검토','Review result and criteria'],dispatch_correction:['수정 범위 인계','Hand off corrections'],finalize_backlog_and_external_result:['검증 결과·완료 기록 반영','Finalize verified result'],await_ci_result:['외부 검증 결과 확인','Check verification result'],user_decision:['사용자 판단 확인','Await user decision'],verify_wait_reason:['대기 근거 확인','Verify wait evidence'],verify_execution_evidence:['실행 근거 확인','Verify execution evidence'],none:['추가 실행 없음','No further execution']};
+  return labels[value]?.[ko?0:1]||labels.verify_execution_evidence[ko?0:1];
+}
+function workflowMeasurementLabel(status,ko){return ({not_recorded:['활동 미측정','Activity unmeasured'],partial:['부분 관측','Partially observed'],observed:['관측됨','Observed'],conflict:['근거 충돌','Conflicting evidence']})[status]?.[ko?0:1]||workflowText(ko,'측정 상태 미확인','Measurement unverified');}
+function workflowRoleClass(role){return ['worker','controller','registrar','sub_controller','wait'].includes(role)?role:'unknown';}
+function workflowMetric(metric,ko){return metric&&Number.isFinite(metric.duration_ms)?activityDisplayDuration(metric.duration_ms,ko):workflowText(ko,'미측정','Unmeasured');}
+function workflowIntervalType(interval,ko){
+  if(interval.kind==='execution_report')return interval.end?workflowText(ko,'실행 보고 · 활동 미측정','Execution reported · activity unmeasured'):workflowText(ko,'시작만 관측 · 종료 미확인','Start observed · end unverified');
+  if(interval.kind==='handoff_review')return workflowText(ko,'검토 인계 · 활동 미측정','Review claimed · activity unmeasured');
+  return activityDisplayType(interval.type,ko)+(interval.kind==='activity_open'?workflowText(ko,' · 종료 미관측',' · end unobserved'):'');
+}
+function workflowOutcome(value,ko){return ({passed:['성공','Passed'],ok:['수용','Accepted'],accepted:['수용','Accepted'],failed:['실패','Failed'],rejected:['반려','Rejected'],needs_changes:['수정 요청','Changes requested'],cancelled:['취소','Cancelled']})[value]?.[ko?0:1]||'';}
+function workflowMetricsBody(payload,taskID){
+  const ko=state.language==='ko',wf=payload.workflow,current=wf.current||{},measurement=wf.measurement||{},axis=wf.axis||{},prefs=activityDetailPrefs(taskID),rows=Array.isArray(wf.rows)?wf.rows:[],rounds=Array.isArray(wf.rounds)?wf.rounds:[];
+  const begin=Date.parse(axis.start||''),end=Date.parse(axis.end||''),validAxis=Number.isFinite(begin)&&Number.isFinite(end)&&end>=begin,span=Math.max(1,end-begin);
+  const roundValues=[...new Set(rows.filter(r=>r.round!=null).map(r=>Number(r.round)))].sort((a,b)=>a-b);
+  const selected=prefs.round==='all'?'all':String(prefs.round),visibleRows=selected==='all'?rows:rows.filter(r=>String(r.round??'unknown')===selected);
+  const shortTime=value=>new Date(value).toLocaleString(ko?'ko-KR':'en-US',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});
+  const percentage=value=>Math.max(0,Math.min(100,(value-begin)/span*100));
+  const status=measurement.status||'not_recorded',coverage=Number.isFinite(measurement.coverage_percent)?Math.max(0,Math.min(100,measurement.coverage_percent)):null;
+  const task=state.detailTask?.id===taskID?state.detailTask:null;
+  const stateText=task?stateLabel(task.state||task.file_state):workflowPhaseLabel(current.phase,ko);
+  const actor=current.processing_agent?activityDisplayRole(current.processing_role,ko)+' · '+workflowAgentLabel(current.processing_agent,ko):workflowText(ko,current.phase==='completed'?'처리 없음 · 완료':'처리자 미확인',current.phase==='completed'?'No active processor · completed':'Processing actor unverified');
+  const completionHistory=Array.isArray(wf.lifecycle?.completion_history)?wf.lifecycle.completion_history:[],reopened=Boolean(axis.open&&completionHistory.length);
+  const metricRows=[['전체 경과','Total elapsed',Number.isFinite(axis.elapsed_ms)?activityDisplayDuration(axis.elapsed_ms,ko):workflowText(ko,'경계 미확인','Bounds unverified')],['Worker 활동','Worker activity',workflowMetric(measurement.worker,ko)],['Controller 검토','Controller review',workflowMetric(measurement.review,ko)],['활동 미측정','Unmeasured activity',Number.isFinite(measurement.unmeasured_ms)?activityDisplayDuration(measurement.unmeasured_ms,ko):workflowText(ko,'범위 미확인','Range unverified')]];
+  const snapshot=wf.control_snapshot||{},trust=snapshot.trust||'pending',sourceIssue=payload._client_error||snapshot.handoff_error||snapshot.error||'',stale=['stale','error','pending'].includes(trust);
+  const checked=snapshot.validated_at||snapshot.handoff_checked_at||wf.computed_at;
+  const observation=workflowMeasurementLabel(status,ko)+(coverage==null?'':workflowText(ko,' · 전체 기간의 '+coverage.toFixed(1)+'% 활동 측정',' · '+coverage.toFixed(1)+'% of elapsed time measured'));
+  const summary='<div class="workflow-overview"><div class="workflow-current"><span class="badge">'+esc(stateText)+'</span><h3>'+esc(workflowPhaseLabel(current.phase,ko))+'</h3><p>'+esc(workflowActionLabel(current.next_action,ko))+'</p></div><dl class="workflow-facts"><div><dt>'+esc(workflowText(ko,'현재 처리자','Processing actor'))+'</dt><dd title="'+esc(current.processing_agent||'')+'">'+esc(actor)+'</dd></div><div><dt>'+esc(workflowText(ko,'담당 Worker','Assigned Worker'))+'</dt><dd title="'+esc(current.assigned_worker||'')+'">'+esc(workflowAgentLabel(current.assigned_worker,ko))+'</dd></div><div><dt>'+esc(workflowText(ko,'업무 회차','Work round'))+'</dt><dd>'+esc(workflowRoundLabel(current.round,ko))+'</dd></div></dl></div>'+
+    (reopened?'<p class="workflow-reopened">'+esc(workflowText(ko,'이전 완료 기록 이후 재개됨 · 마지막 완료 ','Resumed after an earlier completion · last completed ')+activityEventTime(completionHistory[completionHistory.length-1],ko))+'</p>':'')+
+    '<div class="workflow-measurements">'+metricRows.map(([kr,en,value])=>'<div><span>'+esc(workflowText(ko,kr,en))+'</span><strong>'+esc(value)+'</strong></div>').join('')+'</div>'+
+    '<div class="workflow-observation" data-measurement-status="'+esc(status)+'"><strong>'+esc(observation)+'</strong><span>'+esc(workflowText(ko,'실행·인계 근거와 활동 측정은 구분합니다. 미측정은 작업이 없었다는 뜻이 아닙니다.','Execution and claim evidence are distinct from measured activity. Unmeasured does not mean no work.'))+'</span></div>'+
+    (sourceIssue?'<p class="workflow-source-warning" role="status">'+esc(workflowText(ko,'새 근거를 불러오지 못했습니다. 마지막 확인 결과를 유지합니다. 기록 새로고침으로 다시 확인하세요.','New evidence could not be loaded. The last checked result is retained; refresh the record to retry.'))+'</p>':stale?'<p class="workflow-source-note">'+esc(workflowText(ko,trust==='pending'?'관제 원천 확인 전입니다. 아래 시간축은 확인 가능한 기록 기준입니다.':'관제 원천이 오래됐습니다. 마지막 확인 결과와 기록 시각을 구분해 표시합니다.',trust==='pending'?'Control evidence is not yet checked. The timeline uses available records.':'Control evidence is stale. The last verified result remains visible.'))+'</p>':'');
+  const controls='<div class="activity-detail-controls workflow-controls"><label>'+esc(workflowText(ko,'업무 회차','Work round'))+'<select id="activityDetailRound"><option value="all"'+(selected==='all'?' selected':'')+'>'+esc(workflowText(ko,'모든 회차','All rounds'))+'</option>'+roundValues.map(n=>'<option value="'+n+'"'+(selected===String(n)?' selected':'')+'>'+esc(workflowRoundLabel(n,ko))+'</option>').join('')+(rows.some(r=>r.round==null)?'<option value="unknown"'+(selected==='unknown'?' selected':'')+'>'+esc(workflowRoundLabel(null,ko))+'</option>':'')+'</select></label><label>'+esc(workflowText(ko,'시간축 확대','Timeline zoom'))+' <output id="activityDetailZoomValue">'+prefs.zoom+'×</output><input id="activityDetailZoom" type="range" min="1" max="8" step="1" value="'+prefs.zoom+'" aria-label="'+esc(workflowText(ko,'시간축 확대','Timeline zoom'))+'"/></label><label>'+esc(workflowText(ko,'빠른 이동','Navigate'))+'<select id="activityDetailFocus">'+[['manual',workflowText(ko,'직접 탐색','Manual')],['last50',workflowText(ko,'최근 절반','Recent half')],['last25',workflowText(ko,'최근 1/4','Recent quarter')]].map(([value,label])=>'<option value="'+value+'"'+(prefs.focus===value?' selected':'')+'>'+esc(label)+'</option>').join('')+'</select></label><button type="button" id="activityDetailRefresh">'+esc(workflowText(ko,'기록 새로고침','Refresh record'))+'</button></div>';
+  const legend='<ul class="workflow-role-legend" aria-label="'+esc(workflowText(ko,'역할별 시간축 범례','Timeline role legend'))+'">'+[['worker','Worker'],['controller',workflowText(ko,'Controller','Controller')],['registrar',workflowText(ko,'Registrar','Registrar')],['wait',workflowText(ko,'대기','Waiting')],['unknown',workflowText(ko,'미측정 영역','Unmeasured')]].map(([role,label])=>'<li><i class="workflow-role-swatch wf-role-'+role+'"></i>'+esc(label)+'</li>').join('')+'</ul>';
+  const gaps=Array.isArray(wf.unmeasured_intervals)?wf.unmeasured_intervals:[];
+  const gapHTML=validAxis?gaps.map(g=>{const from=Date.parse(g.start),to=Date.parse(g.end);if(!Number.isFinite(from)||!Number.isFinite(to))return '';const left=percentage(from),width=Math.max(0,percentage(to)-left);return '<span class="workflow-gap" style="left:'+left+'%;width:'+width+'%" aria-hidden="true"></span>';}).join(''):'';
+  const renderInterval=(row,interval,index)=>{
+    const from=Date.parse(interval.start||''),startOnly=!interval.end&&['execution_report','handoff_review'].includes(interval.kind),to=interval.end?Date.parse(interval.end):startOnly?from:end;if(!Number.isFinite(from)||!Number.isFinite(to)||to<from)return '';
+    const left=percentage(from),width=Math.max(0,percentage(to)-left),lane=Math.max(0,Number(interval.lane)||0),kind=['activity','activity_open','execution_report','handoff_review'].includes(interval.kind)?interval.kind:'execution_report';
+    const label=workflowIntervalType(interval,ko),outcome=workflowOutcome(interval.outcome,ko),basis=interval.measured?workflowText(ko,'측정된 활동','Measured activity'):workflowText(ko,'실행·인계 근거 · 활동 시간 미측정','Execution or claim evidence · activity time unmeasured');
+    const detail=[activityDisplayRole(row.role,ko),workflowAgentLabel(row.agent_id,ko),workflowRoundLabel(row.round,ko),label,activityEventTime(interval.start,ko)+' — '+(interval.end?activityEventTime(interval.end,ko):workflowText(ko,'종료 미관측','End unobserved')),basis,interval.measured?activityDisplayDuration(interval.duration_ms,ko):'',outcome].filter(Boolean).join(' · ');
+    const full=detail+'\n'+workflowText(ko,'실행: ','Attempt: ')+(interval.attempt_id||'—')+'\n'+workflowText(ko,'배정: ','Assignment: ')+(interval.assignment_id||'—')+'\n'+workflowText(ko,'인계: ','Handoff: ')+(interval.handoff_id||'—')+(interval.evidence?'\n'+interval.evidence:'');
+    return '<button type="button" class="workflow-interval wf-role-'+workflowRoleClass(row.role)+' wf-kind-'+kind+(startOnly?' wf-start-only':'')+'" data-workflow-interval="'+esc(row.id+'|'+interval.id+'|'+index)+'" data-workflow-detail="'+esc(full)+'" aria-label="'+esc(detail)+'" title="'+esc(detail)+'" style="left:'+left+'%;width:'+width+'%;top:'+(lane*28+6)+'px"><span>'+esc(label)+'</span>'+(outcome?'<b class="workflow-outcome" data-outcome="'+esc(interval.outcome)+'">'+esc(outcome)+'</b>':'')+'</button>';
+  };
+  const rowHTML=visibleRows.slice(0,ACTIVITY_DETAIL_MAX_ROWS).map(row=>{
+    const intervals=Array.isArray(row.intervals)?row.intervals:[],maxLane=Math.max(0,...intervals.map(i=>Number(i.lane)||0)),measured=row.observed_activity_ms,hasMeasured=Number.isFinite(measured),outcomes=[...new Set(intervals.map(i=>i.outcome).filter(v=>workflowOutcome(v,ko)))],startOnly=intervals.some(i=>i.kind==='execution_report'&&!i.end);
+    return '<div class="workflow-agent-row" data-workflow-row="'+esc(row.id)+'"><div class="workflow-agent-label"><strong>'+esc(activityDisplayRole(row.role,ko))+' · '+esc(workflowAgentLabel(row.agent_id,ko))+'</strong><span>'+esc(workflowRoundLabel(row.round,ko))+'</span><small>'+esc(hasMeasured?workflowText(ko,'활동 측정 ','Activity measured ')+activityDisplayDuration(measured,ko):workflowText(ko,'활동 미측정','Activity unmeasured'))+'</small>'+(startOnly?'<small class="workflow-start-status">'+esc(workflowText(ko,'시작만 관측 · 종료 미확인','Start observed · end unverified'))+'</small>':'')+(outcomes.length?'<div class="workflow-row-outcomes">'+outcomes.map(o=>'<span class="workflow-result-badge" data-workflow-row-outcome="'+esc(o)+'">'+esc(workflowOutcome(o,ko))+'</span>').join('')+'</div>':'')+'</div><div class="workflow-agent-track" style="height:'+(Math.min(maxLane,30)+1)*28+'px">'+intervals.slice(0,600).map((i,index)=>renderInterval(row,i,index)).join('')+'</div></div>';
+  }).join('');
+  const waits=wf.lifecycle?.wait_intervals||[];
+  const waitsHTML=waits.length?'<div class="workflow-agent-row"><div class="workflow-agent-label"><strong>'+esc(workflowText(ko,'대기','Waiting'))+'</strong><span>'+esc(workflowText(ko,'Lifecycle 보고','Lifecycle reports'))+'</span></div><div class="workflow-agent-track" style="height:34px">'+waits.map((v,index)=>renderInterval({id:'wait',role:'wait',round:null,agent_id:''},{id:v.from_event_id||String(index),kind:'activity',type:activityDisplayWait(v.kind,ko),start:v.started_at,end:v.ended_at,measured:false,evidence:workflowText(ko,'보고된 대기 구간이며 순수 작업시간이 아닙니다.','Reported wait interval, not pure work time.')},index)).join('')+'</div></div>':'';
+  const timeline=validAxis?'<div class="workflow-axis-caption"><strong>'+esc(workflowText(ko,'역할별 시간축','Timeline by role'))+'</strong><span>'+esc(activityEventTime(axis.start,ko)+' — '+activityEventTime(axis.end,ko))+(axis.open?' · '+esc(workflowText(ko,'현재까지','to current observation')):'')+'</span></div>'+legend+'<div class="activity-timeline-scroll workflow-timeline-scroll" tabindex="0" aria-label="'+esc(workflowText(ko,'전체 기간 시간축, 가로 스크롤 가능','Full-period timeline, horizontally scrollable'))+'"><div class="activity-timeline-canvas workflow-timeline-canvas" style="min-width:'+prefs.zoom*100+'%" data-axis-start="'+esc(axis.start)+'" data-axis-end="'+esc(axis.end)+'"><div class="workflow-ruler-row"><span>'+esc(workflowText(ko,'역할 · Agent / 회차','Role · Agent / round'))+'</span><div class="activity-time-ruler">'+[0,.25,.5,.75,1].map(p=>'<span>'+esc(shortTime(begin+(end-begin)*p))+'</span>').join('')+'</div></div><div class="workflow-coverage-row"><span>'+esc(workflowText(ko,'활동 관측 범위','Activity observation'))+'</span><div class="workflow-coverage-track">'+gapHTML+'</div></div>'+rowHTML+waitsHTML+(!rowHTML&&!waitsHTML?'<p class="workflow-empty">'+esc(workflowText(ko,'이 기간의 역할별 실행·활동 기록이 없습니다. 전체 기간을 미측정으로 표시합니다.','No role execution or activity records exist for this period. The full interval remains unmeasured.'))+'</p>':'')+'</div></div><p class="workflow-timeline-note" id="workflowTimingNote">'+esc(workflowText(ko,'빈 구간과 겹침을 유지하며 확대·회차 필터로 전체 기간을 바꾸지 않습니다. 작은 구간은 확대하거나 Tab/Enter로 상세를 확인하세요.','Gaps and overlap remain; zoom and round filters do not change the full period. Zoom small intervals or use Tab/Enter for details.'))+'</p><div id="activityTimelineSelection" class="workflow-selection" role="status" aria-live="polite" hidden></div>':'<p class="workflow-empty">'+esc(workflowText(ko,'시작·종료 경계를 확인할 수 없어 시간축을 그리지 않았습니다. 원천 기록을 확인하세요.','The time axis cannot be drawn without verified bounds. Check the source records.'))+'</p>';
+  const roundDetail='<details class="workflow-disclosure" id="workflowRoundDetails"><summary>'+esc(workflowText(ko,'회차와 검토·수정 관계','Rounds, reviews and corrections'))+' <span>'+rounds.length+'</span></summary><ol class="workflow-round-list">'+rounds.map(r=>'<li><strong>'+esc(workflowRoundLabel(r.number,ko))+'</strong><span>'+esc(activityEventTime(r.started_at,ko))+'</span>'+(r.reason?'<p>'+esc(r.reason)+'</p>':'<p>'+esc(workflowText(ko,'등록 또는 실제 활동 보고에 연결된 최초 작업입니다.','Initial work linked to registration or a real activity report.'))+'</p>')+(r.verification_results?.length?'<small>'+esc(workflowText(ko,'검증 결과: ','Verification: ')+r.verification_results.map(v=>workflowOutcome(v,ko)||v).join(' · '))+'</small>':'')+'<details><summary>'+esc(workflowText(ko,'연결 근거','Linked evidence'))+'</summary><pre>'+esc(JSON.stringify({basis:r.basis,previous_round:r.previous_round,handoff:r.handoff_id,assignment_ids:r.assignment_ids,attempt_ids:r.attempt_ids,handoff_ids:r.handoff_ids,commits:r.commits},null,2))+'</pre></details></li>').join('')+'</ol></details>';
+  const totals=Object.entries(payload.summary?.by_type_ms||{}).filter(([,ms])=>Number.isFinite(ms)&&ms>=0).sort((a,b)=>b[1]-a[1]),max=Math.max(1,...totals.map(([,ms])=>ms));
+  const events=Array.isArray(payload.events)?payload.events:[];
+  const evidence='<details class="workflow-disclosure" id="workflowEvidenceDetails"><summary>'+esc(workflowText(ko,'측정 집계와 원천 근거','Measurement totals and sources'))+'</summary><dl class="workflow-source-facts"><div><dt>'+esc(workflowText(ko,'마지막 원천 확인','Source last checked'))+'</dt><dd>'+esc(activityEventTime(checked,ko))+'</dd></div><div><dt>'+esc(workflowText(ko,'API 조회','API read'))+'</dt><dd>'+esc(activityEventTime(payload._client_fetched_at,ko))+'</dd></div><div><dt>'+esc(workflowText(ko,'원천 상태','Source status'))+'</dt><dd>'+esc(({verified:workflowText(ko,'확인됨','Verified'),stale:workflowText(ko,'오래된 결과','Stale'),pending:workflowText(ko,'확인 전','Pending'),error:workflowText(ko,'갱신 오류','Refresh error')})[trust]||trust)+'</dd></div></dl>'+(sourceIssue?'<p class="workflow-source-warning">'+esc(sourceIssue)+'</p>':'')+'<h4>'+esc(workflowText(ko,'활동 유형별 누적 · 전체 회차','Cumulative activity · all rounds'))+'</h4><div class="activity-type-bars">'+totals.map(([type,ms])=>'<div class="activity-type-row"><span>'+esc(activityDisplayType(type,ko))+'</span><div class="activity-type-track"><div style="width:'+ms/max*100+'%"></div></div><strong>'+esc(activityDisplayDuration(ms,ko))+'</strong></div>').join('')+'</div><p>'+esc(workflowText(ko,'누적 Agent 시간은 겹칠 수 있으며 전체 경과와 합산하지 않습니다.','Agent intervals can overlap and are not added to end-to-end elapsed time.'))+'</p><details id="activityLedgerDetail"'+(prefs.ledger?' open':'')+'><summary>'+esc(workflowText(ko,'Activity 원장 상세','Activity ledger detail'))+' ('+events.length+')</summary><div class="activity-ledger-scroll"><table class="activity-ledger-table"><thead><tr>'+['시각','역할 · 활동','회차','근거'].map((v,i)=>'<th scope="col">'+esc(ko?v:['Time','Role · activity','Round','Evidence'][i])+'</th>').join('')+'</tr></thead><tbody>'+events.slice(0,ACTIVITY_DETAIL_MAX_LEDGER).map(e=>'<tr><td>'+esc(activityEventTime(e.occurred_at,ko))+'</td><td>'+esc(activityDisplayRole(e.role,ko)+' · '+activityDisplayType(e.type,ko))+'</td><td>'+esc(workflowText(ko,'원장 값 ','Recorded ')+String(e.round??'—'))+'</td><td>'+esc(e.evidence||e.explanation||'—')+'<small>'+esc([e.event_id,e.agent_id,e.runtime_attempt_id,e.assignment_id,e.handoff_id].filter(Boolean).join(' · '))+'</small></td></tr>').join('')+'</tbody></table></div></details></details>';
+  return '<div class="workflow-view">'+summary+controls+timeline+roundDetail+evidence+'</div>';
+}
+
 function activityMetricsBody(payload,taskID=state.detail){
+  if(payload?.workflow?.version===1)return workflowMetricsBody(payload,taskID);
+  if(payload?.error){const ko=state.language==='ko';return '<div class="workflow-load-error"><p role="status">'+esc(workflowText(ko,'작업 흐름 기록을 불러오지 못했습니다. 본문은 계속 볼 수 있습니다.','Workflow records could not be loaded. The task document is still available.'))+'</p><button type="button" id="activityDetailRefresh">'+esc(workflowText(ko,'기록 다시 불러오기','Retry record'))+'</button><details><summary>'+esc(workflowText(ko,'오류 상세','Error details'))+'</summary><p>'+esc(payload.error)+'</p></details></div>';}
   if(!payload)return '<p class="summary">'+esc(state.language==='ko'?'활동 기록을 불러오는 중…':'Loading activity history…')+'</p>';
   if(payload.error)return '<p class="summary">'+esc(payload.error)+'</p>';
   const ko=state.language==='ko',s=payload.summary||{},segments=Array.isArray(s.segments)?s.segments:[],
@@ -6133,15 +6207,15 @@ function bindActivityDetailControls(taskID,project=state.project){
   const selectedDetail=root.querySelector('#activityTimelineSelection');
   if(canvasForSelection&&selectedDetail){
     const showSelected=target=>{
-      const interval=target&&typeof target.closest==='function'?target.closest('[role="img"]'):null;
+      const interval=target&&typeof target.closest==='function'?target.closest('[data-workflow-interval],[role="img"]'):null;
       if(!interval||!canvasForSelection.contains(interval))return;
-      selectedDetail.textContent=interval.getAttribute('aria-label')||'';
+      selectedDetail.textContent=interval.getAttribute('data-workflow-detail')||interval.getAttribute('aria-label')||'';
       selectedDetail.hidden=false;
     };
     canvasForSelection.addEventListener('click',e=>showSelected(e.target));
     canvasForSelection.addEventListener('keydown',e=>{
       if(e.key==='Enter'||e.key===' '){
-        const interval=e.target&&typeof e.target.closest==='function'?e.target.closest('[role="img"]'):null;
+        const interval=e.target&&typeof e.target.closest==='function'?e.target.closest('[data-workflow-interval],[role="img"]'):null;
         if(interval){e.preventDefault();showSelected(interval);}
       }
     });
@@ -6170,6 +6244,7 @@ function bindActivityDetailControls(taskID,project=state.project){
   });
   const zoom=root.querySelector('#activityDetailZoom');
   if(zoom)zoom.addEventListener('input',()=>{
+    pref.zoom=Math.max(1,Math.min(8,Number(zoom.value)||1));
     pref.focus='manual';
     const focus=root.querySelector('#activityDetailFocus');
     if(focus)focus.value='manual';
@@ -6189,7 +6264,6 @@ function bindActivityDetailControls(taskID,project=state.project){
   if(ledger)ledger.addEventListener('toggle',()=>{pref.ledger=ledger.open;});
   const refresh=root.querySelector('#activityDetailRefresh');
   if(refresh)refresh.addEventListener('click',()=>{
-    activityDetailCache.delete(activityDetailKey(taskID,project));
     void loadTaskActivity(taskID,project);
   });
 }
@@ -6197,9 +6271,24 @@ function renderActivityDetailControls(taskID,project=state.project){
   if(state.project!==project||state.detail!==taskID)return;
   const root=typeof document.getElementById==='function'?document.getElementById('activityMetricsBody'):null;
   if(!root)return;
+  const disclosures=[...(root.querySelectorAll?.('details[id]')||[])].map(d=>[d.id,d.open]);
+  const scroll=root.querySelector?.('.activity-timeline-scroll')?.scrollLeft||0;
+  const active=typeof document!=='undefined'?document.activeElement:null;
+  const activeId=root.contains?.(active)?active?.id:null;
+  const activeInterval=root.contains?.(active)?active?.getAttribute?.('data-workflow-interval'):null;
+  const selected=root.querySelector?.('#activityTimelineSelection');
+  const selection=selected&&!selected.hidden?selected.textContent:null;
+  const y=typeof window!=='undefined'?window.scrollY:0,x=typeof window!=='undefined'?window.scrollX:0;
   root.innerHTML=activityMetricsBody(activityDetailCache.get(activityDetailKey(taskID,project)),taskID);
+  for(const [id,open] of disclosures){const el=root.querySelector?.('#'+id);if(el)el.open=open;}
   bindActivityDetailControls(taskID,project);
+  const scroller=root.querySelector?.('.activity-timeline-scroll');if(scroller&&activityDetailPrefs(taskID,project).focus==='manual')scroller.scrollLeft=scroll;
+  const output=root.querySelector?.('#activityTimelineSelection');if(output&&selection){output.textContent=selection;output.hidden=false;}
+  if(activeId)root.querySelector?.('#'+activeId)?.focus?.({preventScroll:true});
+  if(activeInterval){for(const button of root.querySelectorAll?.('[data-workflow-interval]')||[]){if(button.getAttribute('data-workflow-interval')===activeInterval){button.focus?.({preventScroll:true});break}}}
+  if(typeof window!=='undefined'&&window.scrollY!==y)window.scrollTo?.({left:x,top:y,behavior:'auto'});
 }
+
 async function loadTaskActivity(id,project=state.project,runtimeDiagnostic=false){
   const key=activityDetailKey(id,project);
   if(activityDetailPending.has(key))return activityDetailPending.get(key);
@@ -6213,7 +6302,7 @@ async function loadTaskActivity(id,project=state.project,runtimeDiagnostic=false
       if(!response.ok)throw Error('Activity HTTP '+response.status);
       payload=await response.json();
       if(payload&&typeof payload==='object'&&!payload.error)payload._client_fetched_at=new Date().toISOString();
-    }catch(e){payload={error:String(e?.message||e)}}
+    }catch(e){const previous=activityDetailCache.get(key);payload=previous?.workflow?{...previous,_client_error:String(e?.message||e),_client_failed_at:new Date().toISOString()}:{error:String(e?.message||e)}}
     activityDetailCache.set(key,payload);
     if(state.project===project&&state.detail===id){
       const el=typeof document.getElementById==='function'?document.getElementById('activityMetricsBody'):null;
@@ -6226,7 +6315,13 @@ async function loadTaskActivity(id,project=state.project,runtimeDiagnostic=false
 }
 function activityDetailSection(task){
   const ko=state.language==='ko';
-  return '<section class="section detail-section" id="activity-metrics" data-toc-label="'+esc(ko?'작업시간 분석':'Activity timing')+'"><h2>'+esc(ko?'작업시간 분석':'Activity timing')+'</h2><div id="activityMetricsBody">'+activityMetricsBody(activityDetailCache.get(activityDetailKey(task.id)),task.id)+'</div></section>';
+  return '<section class="section detail-section lifecycle-section workflow-section" id="lifecycle" data-toc-label="'+esc(ko?'작업 흐름':'Workflow')+'"><h2>'+esc(ko?'작업 흐름':'Workflow')+'</h2><div id="activity-metrics"><div id="activityMetricsBody">'+activityMetricsBody(activityDetailCache.get(activityDetailKey(task.id)),task.id)+'</div></div><details class="workflow-disclosure" id="workflowLifecycleEvents"><summary>'+esc(ko?'Lifecycle 사건 기록':'Lifecycle event record')+'</summary><div id="workflowLifecycleEvidenceBody">'+detailLifecycleBody(task)+'</div></details></section>';
+}
+function patchLifecycleEvidence(section,task){
+  const target=section.querySelector?.('#workflowLifecycleEvidenceBody');
+  if(target){target.innerHTML=detailLifecycleBody(task);target.querySelector?.('#lifecycleRetryBtn')?.addEventListener('click',retryTaskLifecycle);return;}
+  section.innerHTML='<h2>'+esc(t('lifecycle'))+'</h2>'+detailLifecycleBody(task);
+  section.querySelector?.('#lifecycleRetryBtn')?.addEventListener('click',retryTaskLifecycle);
 }
 
 function detailView(task) {
@@ -6256,7 +6351,7 @@ function detailView(task) {
   const rawToggle=`<button id="rawToggle" class="raw-toggle ${state.raw?'active':''}">${esc(state.raw?t('rendered'):t('rawMarkdown'))}</button>`;
   const detailHead=`<div class="detail-head"><div class="detail-head-top"><div class="detail-id">${esc(task.id)}</div>${rawToggle}</div><h1>${esc(titleOf(task))}</h1><div class="detail-status"><span class="status ${esc(task.state)}">${esc(stateLabel(task.state))}</span>${task.agent?`<span class="badge">${esc(task.agent)}</span>`:''}<span class="badge">${esc(task.document?.schema||'legacy')}</span>${task.archive_month?`<span class="badge">archive/${esc(task.archive_month)}</span>`:''}</div>${task.source?.label?`<div class="detail-source-row"><span>${esc(t('source'))}</span>${sourceLink(task.source)}</div>`:''}${(task.tags||[]).length?`<div class="detail-tag-row">${(task.tags||[]).map(tag=>tagChip(tag,true)).join('')}</div>`:''}</div>`;
   const rawPanel=`<section class="section raw-markdown-view"><h2>${esc(t('rawMarkdown'))}</h2><pre class="raw">${esc(task.raw_markdown||'')}</pre></section>`;
-  const rendered=`${humanSummaryCard(task)}${outcome}${backlogWorkerRosterSection(task)}${lifecycle}${activityDetailSection(task)}${related}${operations}${passiveAlert}${contractSections(task)}${progress}${verification}`;
+  const rendered=`${humanSummaryCard(task)}${outcome}${backlogWorkerRosterSection(task)}${activityDetailSection(task)}${related}${operations}${passiveAlert}${contractSections(task)}${progress}${verification}`;
   const body=`<div class="detail"><button class="back" id="backBtn">${esc(t('backToBacklog'))}</button>${detailHead}${state.raw?rawPanel:rendered}</div>`;
   return `<div class="detail-layout ${state.raw?'raw-mode':''}">${body}${state.raw?'':detailToc()}</div>`;
 }
@@ -6353,8 +6448,7 @@ function refreshVisibleLifecycleSection() {
   if(!section)return;
   const rect=section.getBoundingClientRect?.(),oldHeight=rect?.height||0;
   const previousScroll=typeof window!=='undefined'?window.scrollY:0;
-  section.innerHTML='<h2>'+esc(t('lifecycle'))+'</h2>'+detailLifecycleBody(state.detailTask);
-  section.querySelector?.('#lifecycleRetryBtn')?.addEventListener('click',retryTaskLifecycle);
+  patchLifecycleEvidence(section,state.detailTask);
   if(rect?.bottom<=0&&typeof window!=='undefined'){
     const delta=(section.getBoundingClientRect?.().height||0)-oldHeight;
     if(delta)window.scrollTo?.({left:window.scrollX,top:previousScroll+delta,behavior:'auto'});

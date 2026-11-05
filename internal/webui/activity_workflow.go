@@ -1,6 +1,7 @@
 package webui
 
 import (
+	"encoding/json"
 	"fmt"
 	"sync"
 	"time"
@@ -8,6 +9,7 @@ import (
 	"github.com/silverkhan/TaskMecca/internal/activity"
 	"github.com/silverkhan/TaskMecca/internal/backlog"
 	"github.com/silverkhan/TaskMecca/internal/handoffjournal"
+	"github.com/silverkhan/TaskMecca/internal/runtimeobs"
 )
 
 type workflowResponseEntry struct {
@@ -96,7 +98,11 @@ func readActivityWorkflow(project, task string, events []activity.Event, summary
 	if found && prior.revision == revision && now.Sub(prior.at) < 2*time.Second {
 		return prior.value
 	}
-	out := activity.SummarizeWorkflow(activity.WorkflowInput{TaskID: task, Events: events, Summary: summary, Facts: facts, Handoffs: cached.ledger.Handoffs, Control: control, Now: now})
+	observations := []runtimeobs.Attempt{}
+	if raw, err := json.Marshal(control["execution_observations"]); err == nil {
+		_ = json.Unmarshal(raw, &observations)
+	}
+	out := activity.SummarizeWorkflow(activity.WorkflowInput{ExecutionObservations: observations, TaskID: task, Events: events, Summary: summary, Facts: facts, Handoffs: cached.ledger.Handoffs, Control: control, Now: now})
 	out.Snapshot["handoff_checked_at"] = cached.checkedAt
 	out.Snapshot["handoff_computed_at"] = cached.at
 	if cached.err != nil {

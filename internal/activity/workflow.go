@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/silverkhan/TaskMecca/internal/handoffjournal"
+	"github.com/silverkhan/TaskMecca/internal/runtimeobs"
 )
 
 // Workflow is an additive read model. These observations never write Activity
@@ -79,14 +80,16 @@ type WorkRound struct {
 	VerificationResults []string  `json:"verification_results"`
 }
 type WorkflowRow struct {
-	ID          string             `json:"id"`
-	Role        string             `json:"role"`
-	AgentID     string             `json:"agent_id"`
-	Round       *int               `json:"round,omitempty"`
-	RoundStatus string             `json:"round_status"`
-	Intervals   []WorkflowInterval `json:"intervals"`
+	ObservedActivityMillis *int64             `json:"observed_activity_ms,omitempty"`
+	ID                     string             `json:"id"`
+	Role                   string             `json:"role"`
+	AgentID                string             `json:"agent_id"`
+	Round                  *int               `json:"round,omitempty"`
+	RoundStatus            string             `json:"round_status"`
+	Intervals              []WorkflowInterval `json:"intervals"`
 }
 type WorkflowInterval struct {
+	EndEvidence    string     `json:"end_evidence,omitempty"`
 	ID             string     `json:"id"`
 	Kind           string     `json:"kind"`
 	Type           string     `json:"type"`
@@ -122,13 +125,14 @@ type ReportingFinding struct {
 	RequiredPhase string `json:"required_phase,omitempty"`
 }
 type WorkflowInput struct {
-	TaskID   string
-	Events   []Event
-	Summary  Summary
-	Facts    []LifecycleFact
-	Handoffs map[string]handoffjournal.Handoff
-	Control  map[string]any
-	Now      time.Time
+	ExecutionObservations []runtimeobs.Attempt
+	TaskID                string
+	Events                []Event
+	Summary               Summary
+	Facts                 []LifecycleFact
+	Handoffs              map[string]handoffjournal.Handoff
+	Control               map[string]any
+	Now                   time.Time
 }
 type reviewBoundary struct {
 	at                         time.Time
@@ -306,6 +310,13 @@ func SummarizeWorkflow(in WorkflowInput) Workflow {
 			rows[key] = row
 		}
 		row.Intervals = append(row.Intervals, v)
+		if v.Measured && v.DurationMillis != nil {
+			if row.ObservedActivityMillis == nil {
+				ms := int64(0)
+				row.ObservedActivityMillis = &ms
+			}
+			*row.ObservedActivityMillis += *v.DurationMillis
+		}
 		if n != nil && *n < len(w.Rounds) {
 			r := &w.Rounds[*n]
 			r.AttemptIDs = appendUnique(r.AttemptIDs, v.AttemptID)
@@ -315,10 +326,14 @@ func SummarizeWorkflow(in WorkflowInput) Workflow {
 	}
 	nativeByAttempt := map[string]string{}
 	eventByStart := map[string]Event{}
+	reviewOutcomeByEnd := map[string]string{}
 	eventByActor := map[string][]Event{}
 	eventByAttempt := map[string]int{}
 	eventByHandoff := map[string]int{}
 	for _, e := range events {
+		if e.Action == Stop && e.ReviewOutcome != "" {
+			reviewOutcomeByEnd[actorKey(e)+"|"+e.OccurredAt.Format(time.RFC3339Nano)] = e.ReviewOutcome
+		}
 		eventByAttempt[e.RuntimeAttemptID]++
 		if e.Role == RoleWorker {
 			nativeByAttempt[e.RuntimeAttemptID] = e.AgentID
@@ -352,6 +367,9 @@ func SummarizeWorkflow(in WorkflowInput) Workflow {
 				r.VerificationResults = appendUnique(r.VerificationResults, s.RunEvidence.Result)
 			}
 		}
+		if outcome := reviewOutcomeByEnd[string(s.Role)+"\x00"+s.AgentID+"\x00"+s.AttemptID+"|"+s.EndedAt.Format(time.RFC3339Nano)]; outcome != "" {
+			v.Outcome = outcome
+		}
 		add(string(s.Role), s.AgentID, n, v)
 	}
 	latestWorker := (*Event)(nil)
@@ -362,7 +380,7 @@ func SummarizeWorkflow(in WorkflowInput) Workflow {
 		}
 		latest := history[0]
 		for _, e := range history[1:] {
-			if e.OccurredAt.After(latest.OccurredAt) || (e.OccurredAt.Equal(latest.OccurredAt) && e.RecordedAt.After(latest.RecordedAt)) {
+			if e.OccurredAt.After(latest.OccurredAt) || (e.OccurredAt.Equal(latest.OccurredAt) && (e.RecordedAt.After(latest.RecordedAt) || (e.RecordedAt.Equal(latest.RecordedAt) && e.EventID > latest.EventID))) {
 				latest = e
 			}
 		}
@@ -386,25 +404,29 @@ func SummarizeWorkflow(in WorkflowInput) Workflow {
 		}
 	}
 	sort.Slice(facts, func(i, j int) bool { return facts[i].OccurredAt.Before(facts[j].OccurredAt) })
-	nextBoundary := make([]*time.Time, len(facts))
-	var next *time.Time
-	for i := len(facts) - 1; i >= 0; i-- {
-		nextBoundary[i] = next
-		if facts[i].Kind == "waiting" || facts[i].Kind == "completed" || facts[i].Kind == "assigned" {
-			at := facts[i].OccurredAt
-			next = &at
+	type executionBoundary struct {
+		at    time.Time
+		basis string
+	}
+	reportsByAttempt := map[string][]executionBoundary{}
+	for _, h := range handoffs {
+		if h.SourceAttemptID == "" || (h.EventType != handoffjournal.EventWorkerDone && h.EventType != handoffjournal.EventWorkerBlocked) {
+			continue
+		}
+		if at, ok := workflowTime(h.PreparedAt); ok && !at.After(in.Now) {
+			reportsByAttempt[h.SourceAttemptID] = append(reportsByAttempt[h.SourceAttemptID], executionBoundary{at, string(h.EventType) + "_report"})
 		}
 	}
-	reportsByAttempt := map[string][]time.Time{}
-	for _, h := range handoffs {
-		if h.SourceAttemptID != "" {
-			if at, ok := workflowTime(h.PreparedAt); ok {
-				reportsByAttempt[h.SourceAttemptID] = append(reportsByAttempt[h.SourceAttemptID], at)
-			}
+	terminalByAttempt := map[string]runtimeobs.Attempt{}
+	ambiguousAttempts := map[string]bool{}
+	for _, a := range in.ExecutionObservations {
+		if _, ok := terminalByAttempt[a.AttemptID]; ok {
+			ambiguousAttempts[a.AttemptID] = true
 		}
+		terminalByAttempt[a.AttemptID] = a
 	}
 	seenExec := map[string]bool{}
-	for i, f := range facts {
+	for _, f := range facts {
 		if f.TaskID != in.TaskID || (f.Kind != "started" && f.Kind != "resumed") {
 			continue
 		}
@@ -420,12 +442,20 @@ func SummarizeWorkflow(in WorkflowInput) Workflow {
 				w.Reporting.Findings = append(w.Reporting.Findings, ReportingFinding{Code: "execution_activity_missing", AttemptID: f.AttemptID, AssignmentID: f.AssignmentID, RequiredPhase: "implementation_started"})
 			}
 		}
-		end := nextBoundary[i]
+		var end *time.Time
+		endEvidence := "unobserved"
 		reports := reportsByAttempt[f.AttemptID]
-		j := sort.Search(len(reports), func(j int) bool { return !reports[j].Before(f.OccurredAt) })
-		if j < len(reports) && (end == nil || reports[j].Before(*end)) {
-			at := reports[j]
+		j := sort.Search(len(reports), func(j int) bool { return !reports[j].at.Before(f.OccurredAt) })
+		if j < len(reports) {
+			at := reports[j].at
 			end = &at
+			endEvidence = reports[j].basis
+		}
+		if a, ok := terminalByAttempt[f.AttemptID]; ok && !ambiguousAttempts[f.AttemptID] && a.TaskID == in.TaskID && a.BindingState == runtimeobs.BindingBound && a.Terminal && a.RuntimeAgentID != "" && a.SessionID != "" && a.Provider != "" && runtimeobs.HasObservedExecution(a) && (a.CurrentState == runtimeobs.StateCompleted || a.CurrentState == runtimeobs.StateErrored || a.CurrentState == runtimeobs.StateInterrupted || a.CurrentState == runtimeobs.StateShutdown) && (f.Actor == "" || f.Actor == a.AgentPath) {
+			if at, ok := workflowTime(a.EndedAt); ok && !at.Before(f.OccurredAt) && !at.After(in.Now) && (end == nil || at.Before(*end)) {
+				end = &at
+				endEvidence = "native_terminal"
+			}
 		}
 
 		// These are reported execution boundaries, not measurements of active work.
@@ -436,7 +466,7 @@ func SummarizeWorkflow(in WorkflowInput) Workflow {
 		if native := nativeByAttempt[f.AttemptID]; native != "" {
 			agent = native
 		}
-		add("worker", agent, roundNumber(f.OccurredAt, boundaries, known), WorkflowInterval{ID: f.EventID, Kind: "execution_report", Type: "unclassified_execution", Start: f.OccurredAt, End: end, AttemptID: f.AttemptID, AssignmentID: f.AssignmentID, Evidence: f.EvidenceSource})
+		add("worker", agent, roundNumber(f.OccurredAt, boundaries, known), WorkflowInterval{ID: f.EventID, Kind: "execution_report", Type: "unclassified_execution", Start: f.OccurredAt, End: end, EndEvidence: endEvidence, AttemptID: f.AttemptID, AssignmentID: f.AssignmentID, Evidence: f.EvidenceSource})
 	}
 	for _, h := range handoffs {
 		claimed, ok := workflowTime(h.ClaimedAt)
@@ -473,7 +503,10 @@ func SummarizeWorkflow(in WorkflowInput) Workflow {
 			for lane < len(lanes) && lanes[lane].After(v.Start) {
 				lane++
 			}
-			end := in.Now
+			end := v.Start
+			if v.Kind == "activity_open" {
+				end = in.Now
+			}
 			if v.End != nil {
 				end = *v.End
 			}
