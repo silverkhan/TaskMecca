@@ -5,6 +5,8 @@
  const root=document.documentElement,MAX_LENSES=2,MAX_PIXELS=350000,RINGS=4;
  const entries=new Map(),reduced=window.matchMedia('(prefers-reduced-transparency: reduce)');
  const panels=new Map();
+ const readerBackingSupported=CSS.supports('selector(:has(*))');
+ let sampleTheme='',sampleBackground='',sampleSource='';
  let samplePixels=null,adaptCount=0,totalAdaptMs=0,scrollTimer=0,failedURL='';
  let frame=0,image=null,imageURL='',loading='',sampler=null,stageKey='',generation=0,paintCount=0,totalPaintMs=0,enabled=false;
  const supports=typeof Path2D!=='undefined'&&!!document.createElement('canvas').getContext?.('2d')&&
@@ -27,7 +29,7 @@
   if(dark){const dx=Math.sin(2*Math.PI/3),dy=-Math.cos(2*Math.PI/3),len=Math.abs(g.width*dx)+Math.abs(g.height*dy),cx=g.width/2,cy=g.height/2;
    const shade=c.createLinearGradient(cx-dx*len/2,cy-dy*len/2,cx+dx*len/2,cy+dy*len/2);shade.addColorStop(0,'rgba(8,12,10,.10)');shade.addColorStop(.6,'rgba(8,12,10,.02)');shade.addColorStop(1,'rgba(8,12,10,.12)');c.fillStyle=shade;c.fillRect(0,0,g.width,g.height);
   }
-  stageKey=key;generation++;samplePixels=c.getImageData(0,0,sampler.width,sampler.height).data;
+  stageKey=key;generation++;samplePixels=c.getImageData(0,0,sampler.width,sampler.height).data;sampleTheme=root.dataset.theme;sampleBackground=root.dataset.background;sampleSource=imageURL;
  }
  // Parse the resolved, authored CSS gradient layers, so sampling follows the actual
  // stage colors/positions rather than assigning a tone from a preset name.
@@ -74,7 +76,7 @@
    }
    c.fillStyle=gradient;c.fillRect(...fill);c.restore();
   }
-  samplePixels=c.getImageData(0,0,sampler.width,sampler.height).data;stageKey=key;generation++;return true;
+  samplePixels=c.getImageData(0,0,sampler.width,sampler.height).data;stageKey=key;generation++;sampleTheme=root.dataset.theme;sampleBackground=root.dataset.background;sampleSource=style.backgroundImage;return true;
  }
  const linearChannel=v=>{v/=255;return v<=.04045?v/12.92:((v+.055)/1.055)**2.4};
  function adaptPanels(){
@@ -104,13 +106,14 @@
   totalAdaptMs+=performance.now()-start;
  }
  function backing(owner,terminal=false){
+  if(!readerBackingSupported)return null; // Keep the CSS pseudo fallback on older selectors.
   let plane=owner.querySelector(':scope > .glass-reader-material');if(plane)return plane;
   plane=document.createElement('div');plane.className='glass-reader-material'+(terminal?' terminal-material':'');plane.setAttribute('aria-hidden','true');plane.dataset.glassKind='reader';owner.prepend(plane);return plane;
  }
  function remove(entry){entry.canvas.remove();entries.delete(entry.host);}
  function deactivate(reason){
   enabled=false;for(const e of [...entries.values()])remove(e);document.querySelectorAll('.glass-reader-material').forEach(e=>e.remove());root.dataset.glassOptics=reason;
-  image=null;imageURL='';loading='';sampler=null;samplePixels=null;stageKey='';
+  image=null;imageURL='';loading='';sampler=null;samplePixels=null;stageKey='';sampleTheme='';sampleBackground='';sampleSource='';
   for(const host of panels.keys()){delete host.dataset.glassTone;host.style.removeProperty('--glass-alpha');host.style.removeProperty('--glass-reflection-rgb')}panels.clear();
  }
  function candidates(){
@@ -164,7 +167,7 @@
  new MutationObserver(schedule).observe(document.body,{childList:true,subtree:true});
  window.addEventListener('resize',schedule,{passive:true});document.addEventListener('scroll',()=>{if(!scrollTimer)scrollTimer=setTimeout(()=>{scrollTimer=0;schedule()},100)},{passive:true,capture:true});document.addEventListener('focusin',schedule);document.addEventListener('focusout',schedule);
  window.visualViewport?.addEventListener('resize',schedule,{passive:true});window.visualViewport?.addEventListener('scroll',schedule,{passive:true});reduced.addEventListener?.('change',schedule);
- window.TaskMeccaGlass=Object.freeze({refresh:schedule,diagnostics:()=>({mode:root.dataset.glassOptics||'material',photo:imageURL,stage:geometry(),sampler:sampler?{width:sampler.width,height:sampler.height}:null,paintCount,totalPaintMs,adaptCount,totalAdaptMs,sampleBytes:samplePixels?.byteLength||0,panels:[...panels.values()],lenses:[...entries.values()].map(e=>({kind:e.kind,rect:e.rect,rim:e.rim,amplitude:e.amplitude,draws:e.draws,pixels:e.canvas.width*e.canvas.height}))})});
+ window.TaskMeccaGlass=Object.freeze({refresh:schedule,diagnostics:()=>({mode:root.dataset.glassOptics||'material',photo:imageURL,sample:{generation,theme:sampleTheme,background:sampleBackground,source:sampleSource},loading:!!loading,pending:!!frame||!!scrollTimer,readerBackingSupported,stage:geometry(),sampler:sampler?{width:sampler.width,height:sampler.height}:null,paintCount,totalPaintMs,adaptCount,totalAdaptMs,sampleBytes:samplePixels?.byteLength||0,panels:[...panels.values()],lenses:[...entries.values()].map(e=>({kind:e.kind,rect:e.rect,rim:e.rim,amplitude:e.amplitude,draws:e.draws,pixels:e.canvas.width*e.canvas.height}))})});
  if(typeof ResizeObserver!=='undefined'){const resize=new ResizeObserver(schedule);document.querySelectorAll('.topbar,.terminal-header,.sidebar-head').forEach(e=>resize.observe(e))}
  document.fonts?.ready.then(schedule);
  schedule();

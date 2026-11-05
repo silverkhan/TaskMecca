@@ -44,7 +44,8 @@
 :root[data-palette="glass"] .content::before,:root[data-palette="glass"] .terminal-main::before,:root[data-palette="glass"] .glass-reader-material{content:"";border:1px solid var(--glass-edge);border-right-color:var(--glass-far);border-bottom-color:var(--glass-far);border-radius:18px;background:var(--glass-reader);box-shadow:var(--glass-shadow);-webkit-backdrop-filter:var(--glass-frost);backdrop-filter:var(--glass-frost);pointer-events:none;z-index:-1}
 :root[data-palette="glass"] .content::before,:root[data-palette="glass"] .glass-reader-material:not(.terminal-material){display:block;position:sticky;top:var(--glass-reader-top);height:calc(100dvh - var(--glass-reader-top) - var(--glass-reader-bottom));width:calc(100% + 24px);margin:0 -12px calc(var(--glass-reader-top) + var(--glass-reader-bottom) - 100dvh)}
 :root[data-palette="glass"] .terminal-main::before,:root[data-palette="glass"] .terminal-material{position:absolute;inset:0;margin:0}
-:root[data-palette="glass"][data-glass-optics="active"] .content::before,:root[data-palette="glass"][data-glass-optics="active"] .terminal-main::before{content:none}
+/* Suppress fallback only while this exact owner has its actual backing. */
+:root[data-palette="glass"] .content:has(> .glass-reader-material)::before,:root[data-palette="glass"] .terminal-main:has(> .glass-reader-material)::before{content:none}
 .glass-optics{position:absolute;inset:0;width:100%;height:100%;border-radius:inherit;pointer-events:none!important;z-index:-1}
 :root:not([data-palette="glass"]) .glass-optics{display:none}
 :root[data-palette="glass"] :is(.topbar,.sidebar,.sidebar-head,.tm-combo-popup,.terminal-header){isolation:isolate}
@@ -161,3 +162,6 @@
  --glass-highlight:inset 0 1px 0 rgba(var(--glass-reflection-rgb,240,249,255),.2);
  color:var(--text);
 }
+
+/* Contrast polarity changes atomically with its reading material. Retain hover fills/motion. */
+:root[data-palette="glass"] :is(.status-filter-btn,.copy-code-btn,.detail-toc-nav a){transition-property:background-color,border-color,transform}

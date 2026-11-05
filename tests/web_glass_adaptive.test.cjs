@@ -2,6 +2,7 @@
 const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),zlib=require('node:zlib');
 const fixture=require('./helpers/glass_fixture.cjs');
 const {installOpticalOracle}=require('./helpers/glass_optical_oracle.cjs');
+const {waitForGlass,captureGlass}=require('./helpers/glass_state.cjs');
 function raster(png){
  let w,h,n,at=8,blocks=[];while(at<png.length){const l=png.readUInt32BE(at),kind=png.toString('ascii',at+4,at+8),b=png.subarray(at+8,at+8+l);at+=l+12;if(kind==='IHDR'){w=b.readUInt32BE(0);h=b.readUInt32BE(4);n={2:3,6:4}[b[9]];assert.ok(n)}if(kind==='IDAT')blocks.push(b)}
  const raw=zlib.inflateSync(Buffer.concat(blocks)),stride=w*n,pixels=Buffer.alloc(w*h*n);let prev=Buffer.alloc(stride),p=0;
@@ -13,25 +14,30 @@ const contrast=(a,b)=>(Math.max(lum(a),lum(b))+.05)/(Math.min(lum(a),lum(b))+.05
 const enabled=!!process.env.GLASS_PLAYWRIGHT_MODULE;
 test('Glass adapts actual panel pixels, keeps a stable reading polarity and isolates the spectral lip',{skip:!enabled,timeout:120000},async()=>{
  const {chromium}=require(process.env.GLASS_PLAYWRIGHT_MODULE),server=await fixture.start(path.resolve('goassets/template/_task_mecca/framework/web')),browser=await chromium.launch({headless:true,executablePath:process.env.CHROME_EXECUTABLE}),out=process.env.GLASS_EVIDENCE_DIR&&path.resolve(process.env.GLASS_EVIDENCE_DIR,'adaptive');
- if(out)fs.mkdirSync(out,{recursive:true});const report={origin:server.origin,scenes:[],spectrum:[],focus:[],stability:[],fallback:[],errors:[],cleanup:{}};
+ if(out)fs.mkdirSync(out,{recursive:true});const report={browser:browser.version(),platform:process.platform,node:process.version,locale:'en-US',origin:server.origin,captures:[],scenes:[],spectrum:[],focus:[],stability:[],fallback:[],errors:[],cleanup:{}};
  try{for(const mobile of [false,true]){
-  const ctx=await browser.newContext({viewport:mobile?{width:390,height:844}:{width:1440,height:960},screen:mobile?{width:390,height:844}:{width:1440,height:960},isMobile:mobile,hasTouch:mobile,deviceScaleFactor:1});
+  const ctx=await browser.newContext({viewport:mobile?{width:390,height:844}:{width:1440,height:960},screen:mobile?{width:390,height:844}:{width:1440,height:960},isMobile:mobile,hasTouch:mobile,deviceScaleFactor:1,locale:'en-US'});
   try{
    await ctx.route('**/*',r=>r.request().url().startsWith(server.origin+'/')?r.continue():r.abort());
    await ctx.addInitScript(installOpticalOracle);
    await ctx.addInitScript(()=>{localStorage.setItem('task-mecca-palette','glass');localStorage.setItem('task-mecca-theme','dark');window.EventSource=class{addEventListener(){}close(){}}});
    const p=await ctx.newPage();p.on('pageerror',e=>report.errors.push(e.message));await p.goto(server.origin);await p.waitForFunction(()=>window.TaskMeccaGlass?.diagnostics().photo);
    await p.evaluate(f=>{Object.assign(state,{project:f.project,backlog:f.backlog,view:'backlog',listData:f.list,snapshot:f.snapshot,hub:f.hub,detail:null});render()},JSON.parse(JSON.stringify(fixture)));
-   const settle=()=>p.waitForTimeout(180);
+   const settle=()=>waitForGlass(p);
    // The same shipped photograph at controlled exposures, selected through the
    // real CSS photo input. No preset/theme-to-tone lookup can pass this test.
    await p.evaluate(async()=>{const img=new Image();img.src=getComputedStyle(document.documentElement).getPropertyValue('--glass-room-image').match(/url\(["']?([^"')]+)/)[1];await img.decode();window.fixtureExposure=kind=>{const c=document.createElement('canvas');c.width=800;c.height=600;const x=c.getContext('2d');x.drawImage(img,0,0,c.width,c.height);if(kind==='mixed'){x.fillStyle='rgba(255,255,255,.8)';x.fillRect(0,0,400,600);x.fillStyle='rgba(0,0,0,.93)';x.fillRect(400,0,400,600)}else{x.fillStyle=kind==='bright'?'rgba(255,255,255,.8)':kind==='dark'?'rgba(0,0,0,.93)':`rgba(160,160,160,.98)`;x.fillRect(0,0,800,600)}document.documentElement.style.setProperty('--glass-room-image',`url("${c.toDataURL()}")`);TaskMeccaGlass.refresh()}});
    for(const theme of ['light','dark'])for(const kind of ['bright','dark','mixed']){
     await p.evaluate(({theme,kind})=>{applyTheme(theme);fixtureExposure(kind)},{theme,kind});await settle();
-    const text=await p.locator('.topbar,.content,.preview-identity-banner,.user-attention').evaluateAll(hosts=>hosts.flatMap(host=>{const walk=document.createTreeWalker(host,NodeFilter.SHOW_TEXT),a=[];let n;while(n=walk.nextNode()){const e=n.parentElement;if(!n.textContent.trim()||e.closest('script,style')||!e.checkVisibility({checkOpacity:true,checkVisibilityCSS:true}))continue;const r=document.createRange();r.selectNodeContents(n);const b=r.getBoundingClientRect(),s=getComputedStyle(e);let opacity=1;for(let ancestor=e;ancestor;ancestor=ancestor.parentElement)opacity*=Number(getComputedStyle(ancestor).opacity);if(b.x>2&&b.y>2&&b.right<innerWidth-2&&b.bottom<innerHeight-2&&b.width>5)a.push({opacity,disabled:!!e.closest('[disabled],[aria-disabled="true"]'),text:n.textContent.trim().slice(0,40),rect:b.toJSON(),color:s.color,font:parseFloat(s.fontSize),weight:parseFloat(s.fontWeight)});}return a}));
-    assert.ok(text.length>8,'actual app text must be measured');const normal=await p.screenshot({animations:'disabled'}),hide=await p.addStyleTag({content:'*{-webkit-text-fill-color:transparent!important;text-shadow:none!important}'}),background=raster(await p.screenshot({animations:'disabled'}));await hide.evaluate(e=>e.remove());
+    const {text,normal,background}=await captureGlass(p,async()=>{
+     const text=await p.locator('.topbar,.content,.preview-identity-banner,.user-attention').evaluateAll(hosts=>hosts.flatMap(host=>{const walk=document.createTreeWalker(host,NodeFilter.SHOW_TEXT),a=[];let n;while(n=walk.nextNode()){const e=n.parentElement;if(!n.textContent.trim()||e.closest('script,style')||!e.checkVisibility({checkOpacity:true,checkVisibilityCSS:true}))continue;const r=document.createRange();r.selectNodeContents(n);const b=r.getBoundingClientRect(),s=getComputedStyle(e);let opacity=1;for(let ancestor=e;ancestor;ancestor=ancestor.parentElement)opacity*=Number(getComputedStyle(ancestor).opacity);if(b.x>2&&b.y>2&&b.right<innerWidth-2&&b.bottom<innerHeight-2&&b.width>5)a.push({opacity,disabled:!!e.closest('[disabled],[aria-disabled="true"]'),text:n.textContent.trim().slice(0,40),rect:b.toJSON(),color:s.color,font:parseFloat(s.fontSize),weight:parseFloat(s.fontWeight)});}return a}));
+    const normal=await p.screenshot({animations:'disabled'}),hide=await p.addStyleTag({content:'*{-webkit-text-fill-color:transparent!important;text-shadow:none!important}'}),background=raster(await p.screenshot({animations:'disabled'}));await hide.evaluate(e=>e.remove());
+     return{text,normal,background};
+    },report.captures);
+    assert.ok(text.length>8,'actual app text must be measured');
     const samples=text.map(t=>{const rgba=t.color.match(/[\d.]+/g).map(Number),color=rgba.slice(0,3),alpha=(rgba[3]??1)*t.opacity,r=t.rect,ratios=[];for(const dx of [.15,.5,.85])for(const dy of [.2,.5,.8]){const bg=background.pixel(r.x+r.width*dx,r.y+r.height*dy);ratios.push(contrast(color.map((v,k)=>v*alpha+bg[k]*(1-alpha)),bg));}return{...t,minimum:Math.min(...ratios),required:t.font>=24||(t.font>=18.66&&t.weight>=700)?3:4.5}});
     const bad=samples.filter(s=>!s.disabled&&s.minimum<s.required);report.scenes.push({mobile,theme,kind,samples,panels:await p.evaluate(()=>TaskMeccaGlass.diagnostics().panels)});if(out)fs.writeFileSync(path.join(out,`${mobile?'mobile':'desktop'}-${theme}-${kind}.png`),normal);
+    if(out)fs.writeFileSync(path.join(out,'adaptive.json'),JSON.stringify(report,null,2));
     assert.deepEqual(bad,[],`${theme}/${kind}: representative actual text pixels meet contrast`);
     if(kind!=='mixed'){const actual=await p.locator('.topbar').evaluate(e=>({tone:e.dataset.glassTone,color:getComputedStyle(e).color}));assert.equal(actual.tone,kind==='bright'?'light':'dark');}
    }
@@ -51,28 +57,38 @@ test('Glass adapts actual panel pixels, keeps a stable reading polarity and isol
    // Render the real canvas with and without ONLY its spectral stroke. The draw
    // observer supplies an independent replay for the optical displacement test.
    await p.keyboard.press('Escape');
-   const positive=await p.screenshot({animations:'disabled'}),box=await p.locator('.topbar .glass-optics').boundingBox();
-   await p.locator('.topbar .glass-optics').evaluate(e=>__glassSpectralControl(e));
-   const negative=await p.screenshot({animations:'disabled'}),a=raster(positive),b=raster(negative);let rimChanged=0,centerChanged=0,maxDifference=0;
+   const {positive,negative,box,copyControl,rimMask}=await captureGlass(p,async()=>{
+    const positive=await p.screenshot({animations:'disabled'}),box=await p.locator('.topbar .glass-optics').boundingBox();
+    await p.locator('.topbar .glass-optics').evaluate(e=>__glassSpectralControl(e,'copy'));
+    const copyControl=await p.screenshot({animations:'disabled'});
+    await p.locator('.topbar .glass-optics').evaluate(e=>__glassSpectralControl(e));let negative;
+    try{negative=await p.screenshot({animations:'disabled'})}finally{await p.locator('.topbar .glass-optics').evaluate(e=>__glassSpectralControl(e,true))}
+    const radius=await p.locator('.topbar').evaluate(e=>getComputedStyle(e).borderTopLeftRadius);
+    await p.evaluate(({box,radius})=>{const overlay=document.createElement('div');overlay.id='fixture-rim-reference';overlay.style.cssText='position:fixed;inset:0;background:#000;z-index:2147483647;pointer-events:none';const ring=document.createElement('div');ring.style.cssText=`position:absolute;box-sizing:border-box;left:${box.x}px;top:${box.y}px;width:${box.width}px;height:${box.height}px;border:2px solid #fff;border-radius:${radius}`;overlay.append(ring);document.documentElement.append(overlay)},{box,radius});
+    let rimMask;try{rimMask=await p.screenshot({animations:'disabled'})}finally{await p.evaluate(()=>document.getElementById('fixture-rim-reference').remove())}
+    return{positive,negative,box,copyControl,rimMask};
+   },report.captures);
+   const a=raster(positive),b=raster(negative),mask=raster(rimMask);let rimChanged=0,centerChanged=0,maxDifference=0,maskArea=0;
    const radius=await p.locator('.topbar').evaluate(e=>parseFloat(getComputedStyle(e).borderTopLeftRadius));
    // Rounded-rectangle distance classifies curved corners as rim as well.
-   for(let y=Math.ceil(box.y);y<box.y+box.height;y++)for(let x=Math.ceil(box.x);x<box.x+box.width;x++){
+   for(let y=Math.ceil(box.y);y<Math.min(a.h,box.y+box.height);y++)for(let x=Math.ceil(box.x);x<Math.min(a.w,box.x+box.width);x++){
     const qx=Math.abs(x+.5-box.x-box.width/2)-(box.width/2-radius),qy=Math.abs(y+.5-box.y-box.height/2)-(box.height/2-radius),distance=Math.hypot(Math.max(qx,0),Math.max(qy,0))+Math.min(Math.max(qx,qy),0)-radius;
     const d=a.pixel(x,y).reduce((sum,v,k)=>sum+Math.abs(v-b.pixel(x,y)[k]),0);maxDifference=Math.max(maxDifference,d);
-    if(d>3){if(distance < -2)centerChanged++;else rimChanged++;}
+    const onRim=mask.pixel(x,y).some(v=>v>0);if(onRim)maskArea++;
+    if(d>3){if(!onRim)centerChanged++;else rimChanged++;}
    }
-   report.spectrum.push({mobile,rimChanged,centerChanged,maxDifference});if(out){fs.writeFileSync(path.join(out,`${mobile?'mobile':'desktop'}-spectral-positive.png`),positive);fs.writeFileSync(path.join(out,`${mobile?'mobile':'desktop'}-spectral-negative.png`),negative)}assert.ok(rimChanged>20,'spectral lip changes actual screenshot pixels');assert.equal(centerChanged,0,'spectral stroke leaves central foreground unchanged');
-   await p.locator('.topbar .glass-optics').evaluate(e=>__glassSpectralControl(e,true));
+   const copyRaster=raster(copyControl);let copyChanged=0,copyMaximum=0,copyOutsideRim=0;const copyOutsideSurface=[];for(let y=0;y<a.h;y++)for(let x=0;x<a.w;x++){const difference=Math.max(...a.pixel(x,y).map((v,k)=>Math.abs(v-copyRaster.pixel(x,y)[k])));if(!difference)continue;if(x<box.x||x>=box.x+box.width||y<box.y||y>=box.y+box.height){copyOutsideSurface.push({x,y,difference});continue;}copyMaximum=Math.max(copyMaximum,difference);copyChanged++;if(!mask.pixel(x,y).some(v=>v>0))copyOutsideRim++;}
+   report.spectrum.push({mobile,box,radius,raster:{width:a.w,height:a.h},copyChanged,copyMaximum,copyOutsideRim,copyOutsideSurface,maskArea,rimChanged,centerChanged,maxDifference});if(out){fs.writeFileSync(path.join(out,`${mobile?'mobile':'desktop'}-spectral-positive.png`),positive);fs.writeFileSync(path.join(out,`${mobile?'mobile':'desktop'}-spectral-positive-replay.png`),copyControl);fs.writeFileSync(path.join(out,`${mobile?'mobile':'desktop'}-spectral-negative.png`),negative);fs.writeFileSync(path.join(out,`${mobile?'mobile':'desktop'}-spectral-2px-reference.png`),rimMask)}if(out)fs.writeFileSync(path.join(out,'adaptive.json'),JSON.stringify(report,null,2));assert.ok(copyMaximum<=1,'positive draw replay stays within the existing 8-bit oracle quantization bound');assert.equal(copyOutsideRim,0,'positive replay changes no foreground/center pixels');assert.ok(maskArea<box.width*box.height*.25,'independent 2 CSS px rim mask leaves a clear center');assert.ok(rimChanged>20,'spectral lip changes actual screenshot pixels');assert.equal(centerChanged,0,'spectral stroke leaves central foreground unchanged');
    for(const background of ['cozy','ambient','none'])for(const colorScheme of ['light','dark']){
-    await p.evaluate(v=>{applyTheme('system');applyBackground(v)},background);await p.emulateMedia({colorScheme});await settle();
+    await p.evaluate(v=>{applyTheme('system');applyBackground(v)},background);await p.emulateMedia({colorScheme});await p.waitForFunction(value=>document.documentElement.dataset.theme===value,colorScheme);await settle();
     assert.equal(await p.evaluate(()=>document.documentElement.dataset.theme),colorScheme);
     assert.equal(await p.evaluate(()=>localStorage.getItem('task-mecca-theme')),'system');
    }
    await p.evaluate(()=>{applyTheme('dark');applyBackground('cozy')});await settle();
    // Image decode failure preserves the user's readable theme defaults.
-   await p.evaluate(()=>{document.documentElement.style.setProperty('--glass-room-image','url("/fixture-missing.webp")');TaskMeccaGlass.refresh()});await settle();
+   await p.evaluate(()=>{document.documentElement.style.setProperty('--glass-room-image','url("/fixture-missing.webp")');TaskMeccaGlass.refresh()});await waitForGlass(p,'material');
    const fallback=await p.locator('.topbar').evaluate(e=>({tone:e.dataset.glassTone||null,color:getComputedStyle(e).color,mode:TaskMeccaGlass.diagnostics().mode}));report.fallback.push({mobile,...fallback});assert.equal(fallback.tone,null);assert.equal(fallback.mode,'material');assert.equal(fallback.color,'rgb(251, 253, 255)');
-   await p.evaluate(()=>applyTheme('light'));await settle();const lightFallback=await p.locator('.topbar').evaluate(e=>({tone:e.dataset.glassTone||null,color:getComputedStyle(e).color}));assert.equal(lightFallback.tone,null);assert.equal(lightFallback.color,'rgb(28, 39, 48)');report.fallback.push({mobile,theme:'light',...lightFallback});
+   await p.evaluate(()=>applyTheme('light'));await waitForGlass(p,'material');const lightFallback=await p.locator('.topbar').evaluate(e=>({tone:e.dataset.glassTone||null,color:getComputedStyle(e).color}));assert.equal(lightFallback.tone,null);assert.equal(lightFallback.color,'rgb(28, 39, 48)');report.fallback.push({mobile,theme:'light',...lightFallback});
    const before=await p.evaluate(()=>TaskMeccaGlass.diagnostics());await p.waitForTimeout(350);const after=await p.evaluate(()=>TaskMeccaGlass.diagnostics());assert.equal(after.adaptCount,before.adaptCount,'idle has no sampling loop');
   }finally{await ctx.close()}
  }
@@ -82,20 +98,21 @@ test('Glass adapts actual panel pixels, keeps a stable reading polarity and isol
 
 test('Glass ambient and None sample the actual fixed CSS background raster and adapt to position/color',{skip:!enabled,timeout:120000},async()=>{
  const {chromium}=require(process.env.GLASS_PLAYWRIGHT_MODULE),server=await fixture.start(path.resolve('goassets/template/_task_mecca/framework/web')),browser=await chromium.launch({headless:true,executablePath:process.env.CHROME_EXECUTABLE}),out=process.env.GLASS_EVIDENCE_DIR&&path.resolve(process.env.GLASS_EVIDENCE_DIR,'ambient');
- if(out)fs.mkdirSync(out,{recursive:true});const report={origin:server.origin,scenes:[],controls:[],errors:[],cleanup:{}};
+ if(out)fs.mkdirSync(out,{recursive:true});const report={browser:browser.version(),platform:process.platform,node:process.version,locale:'en-US',origin:server.origin,captures:[],scenes:[],controls:[],errors:[],cleanup:{}};
  try{for(const mobile of [false,true]){
-  const ctx=await browser.newContext({viewport:mobile?{width:390,height:844}:{width:1440,height:960},screen:mobile?{width:390,height:844}:{width:1440,height:960},isMobile:mobile,hasTouch:mobile,deviceScaleFactor:1});
+  const ctx=await browser.newContext({viewport:mobile?{width:390,height:844}:{width:1440,height:960},screen:mobile?{width:390,height:844}:{width:1440,height:960},isMobile:mobile,hasTouch:mobile,deviceScaleFactor:1,locale:'en-US'});
   try{
    await ctx.route('**/*',r=>r.request().url().startsWith(server.origin+'/')?r.continue():r.abort());
    // Test-only observation of the real production sampler readback. The independent
    // reference is the browser's CSS screenshot, never a second Canvas gradient.
-   await ctx.addInitScript(()=>{const read=CanvasRenderingContext2D.prototype.getImageData;CanvasRenderingContext2D.prototype.getImageData=function(x,y,w,h,...rest){const pixels=read.call(this,x,y,w,h,...rest);if(!this.canvas.className&&x===0&&y===0&&w===this.canvas.width&&h===this.canvas.height&&w>100&&h>100)window.__fixtureSampler={width:w,height:h,pixels:pixels.data};return pixels};localStorage.setItem('task-mecca-palette','glass');localStorage.setItem('task-mecca-theme','dark');window.EventSource=class{addEventListener(){}close(){}}});
+   await ctx.addInitScript(()=>{const read=CanvasRenderingContext2D.prototype.getImageData;CanvasRenderingContext2D.prototype.getImageData=function(x,y,w,h,...rest){const pixels=read.call(this,x,y,w,h,...rest);if(!this.canvas.className&&x===0&&y===0&&w===this.canvas.width&&h===this.canvas.height&&w>100&&h>100)window.__fixtureSampler={width:w,height:h,pixels:pixels.data,source:getComputedStyle(document.body,'::before').backgroundImage,backgroundColor:getComputedStyle(document.body,'::before').backgroundColor,theme:document.documentElement.dataset.theme,background:document.documentElement.dataset.background};return pixels};localStorage.setItem('task-mecca-palette','glass');localStorage.setItem('task-mecca-theme','dark');window.EventSource=class{addEventListener(){}close(){}}});
    const p=await ctx.newPage();p.on('pageerror',e=>report.errors.push(e.message));await p.goto(server.origin);await p.waitForTimeout(250);
    await p.evaluate(f=>{Object.assign(state,{project:f.project,backlog:f.backlog,view:'backlog',listData:f.list,snapshot:f.snapshot,hub:f.hub,detail:null});render()},JSON.parse(JSON.stringify(fixture)));
    const checkRaster=async(name)=>{
-    await p.waitForTimeout(150);
-    const observation=await p.evaluate(()=>({computed:getComputedStyle(document.body,'::before').backgroundImage,mode:TaskMeccaGlass.diagnostics().mode,panels:TaskMeccaGlass.diagnostics().panels,stage:TaskMeccaGlass.diagnostics().stage,sampler:!!window.__fixtureSampler}));
-    assert.equal(observation.mode,'active',`${name}: material fallback cannot stand in for active adaptation`);assert.ok(observation.panels.length>=2);assert.equal(observation.sampler,true);
+    await waitForGlass(p);
+    const observation=await p.evaluate(()=>{const style=getComputedStyle(document.body,'::before'),s=window.__fixtureSampler;return{computed:style.backgroundImage,mode:TaskMeccaGlass.diagnostics().mode,panels:TaskMeccaGlass.diagnostics().panels,stage:TaskMeccaGlass.diagnostics().stage,sampler:!!s,samplerMatches:s?.source===style.backgroundImage&&s?.backgroundColor===style.backgroundColor&&s?.theme===document.documentElement.dataset.theme&&s?.background===document.documentElement.dataset.background}});
+    report.readiness??=[];report.readiness.push({mobile,name,...observation,state:await p.evaluate(()=>window.__glassReadState())});if(out)fs.writeFileSync(path.join(out,'ambient.json'),JSON.stringify(report,null,2));
+    assert.equal(observation.mode,'active',`${name}: material fallback cannot stand in for active adaptation`);assert.ok(observation.panels.length>=2);assert.equal(observation.sampler,true);assert.equal(observation.samplerMatches,true,'observed sampler belongs to the actual current CSS generation');
     const hide=await p.addStyleTag({content:'.app-shell{visibility:hidden!important}'}),png=await p.screenshot({animations:'disabled'}),reference=raster(png);await hide.evaluate(e=>e.remove());
     const points=[];for(const fy of [.03,.12,.3,.5,.7,.83,.97])for(const fx of [.03,.16,.35,.5,.7,.88,.97])points.push({x:Math.floor(reference.w*fx),y:Math.floor(reference.h*fy)});
     const sampled=await p.evaluate(points=>{const s=window.__fixtureSampler,g=TaskMeccaGlass.diagnostics().stage;return points.map(({x,y})=>{const sx=Math.min(s.width-1,Math.floor((x+.5)/g.width*s.width)),sy=Math.min(s.height-1,Math.floor((y+.5)/g.height*s.height)),at=(sy*s.width+sx)*4;return[...s.pixels.slice(at,at+3)]})},points);
@@ -109,7 +126,7 @@ test('Glass ambient and None sample the actual fixed CSS background raster and a
     return scene;
    };
    for(const theme of ['light','dark'])for(const background of ['ambient','none']){
-    await p.evaluate(v=>{window.__fixtureSampler=null;applyTheme(v.theme);applyBackground(v.background);TaskMeccaGlass.refresh()},{theme,background});await checkRaster(theme+'-'+background);
+    await p.evaluate(v=>{applyTheme(v.theme);applyBackground(v.background);TaskMeccaGlass.refresh()},{theme,background});await checkRaster(theme+'-'+background);
     if(background==='ambient'){await p.evaluate(()=>{document.body.style.minHeight='2500px';scrollTo(0,180)});await p.setViewportSize({width:mobile?390:1440,height:mobile?640:700});await checkRaster(theme+'-ambient-fixed-stage');await p.setViewportSize({width:mobile?390:1440,height:mobile?844:960});await p.evaluate(()=>{document.body.style.minHeight='';scrollTo(0,0)});}
    }
    await p.evaluate(()=>{applyTheme('light');applyBackground('ambient')});
@@ -117,10 +134,10 @@ test('Glass ambient and None sample the actual fixed CSS background raster and a
    // both browser pixels and the sampled panel's decision. A centered substitute fails.
    let override;
    for(const at of ['0%','100%']){
-    if(override)await override.evaluate(e=>e.remove());override=await p.addStyleTag({content:`:root[data-palette="glass"][data-background="ambient"] body::before{background-image:radial-gradient(ellipse 45% 150% at ${at} 50%,#fff 50%,transparent 65%),linear-gradient(0deg,#080c10,#080c10)!important}`});await p.evaluate(()=>{window.__fixtureSampler=null;TaskMeccaGlass.refresh()});const scene=await checkRaster('position-'+at.replace('%',''));const panel=await p.locator('.sidebar').evaluate(e=>({tone:e.dataset.glassTone,color:getComputedStyle(e).color}));report.controls.push({mobile,kind:'position',at,panel,scene:scene.name});assert.equal(panel.tone,at==='0%'?'light':'dark');
+    if(override)await override.evaluate(e=>e.remove());override=await p.addStyleTag({content:`:root[data-palette="glass"][data-background="ambient"] body::before{background-image:radial-gradient(ellipse 45% 150% at ${at} 50%,#fff 50%,transparent 65%),linear-gradient(0deg,#080c10,#080c10)!important}`});await p.evaluate(()=>{TaskMeccaGlass.refresh()});const scene=await checkRaster('position-'+at.replace('%',''));const panel=await p.locator('.sidebar').evaluate(e=>({tone:e.dataset.glassTone,color:getComputedStyle(e).color}));report.controls.push({mobile,kind:'position',at,panel,scene:scene.name});assert.equal(panel.tone,at==='0%'?'light':'dark');
    }
    for(const color of ['#f7f8fa','#080c10']){
-    await override.evaluate(e=>e.remove());override=await p.addStyleTag({content:`:root[data-palette="glass"][data-background="ambient"] body::before{background-image:linear-gradient(0deg,${color},${color})!important}`});await p.evaluate(()=>{window.__fixtureSampler=null;TaskMeccaGlass.refresh()});const scene=await checkRaster('color-'+color.slice(1)),panel=await p.locator('.topbar').evaluate(e=>({tone:e.dataset.glassTone,color:getComputedStyle(e).color}));report.controls.push({mobile,kind:'color',color,panel,scene:scene.name});assert.equal(panel.tone,color==='#f7f8fa'?'light':'dark');
+    await override.evaluate(e=>e.remove());override=await p.addStyleTag({content:`:root[data-palette="glass"][data-background="ambient"] body::before{background-image:linear-gradient(0deg,${color},${color})!important}`});await p.evaluate(()=>{TaskMeccaGlass.refresh()});const scene=await checkRaster('color-'+color.slice(1)),panel=await p.locator('.topbar').evaluate(e=>({tone:e.dataset.glassTone,color:getComputedStyle(e).color}));report.controls.push({mobile,kind:'color',color,panel,scene:scene.name});assert.equal(panel.tone,color==='#f7f8fa'?'light':'dark');
    }
    await override.evaluate(e=>e.remove());override=await p.addStyleTag({content:':root[data-palette="glass"][data-background="ambient"] body::before{background-image:conic-gradient(#fff,#000)!important}'});await p.evaluate(()=>TaskMeccaGlass.refresh());await p.waitForTimeout(150);const unsupported=await p.evaluate(()=>({mode:TaskMeccaGlass.diagnostics().mode,panels:TaskMeccaGlass.diagnostics().panels.length}));assert.equal(unsupported.mode,'material');assert.equal(unsupported.panels,0);report.controls.push({mobile,kind:'unsupported-negative',...unsupported});await override.evaluate(e=>e.remove());
    await p.evaluate(()=>TaskMeccaGlass.refresh());await p.waitForTimeout(200);const before=await p.evaluate(()=>TaskMeccaGlass.diagnostics());await p.waitForTimeout(250);const after=await p.evaluate(()=>TaskMeccaGlass.diagnostics());assert.equal(after.adaptCount,before.adaptCount);assert.equal(after.paintCount,before.paintCount);
@@ -128,4 +145,36 @@ test('Glass ambient and None sample the actual fixed CSS background raster and a
  }
  assert.deepEqual(report.errors,[]);
  }finally{await browser.close();report.cleanup.browserClosed=true;await server.close();report.cleanup.fixtureClosed=true;if(out)fs.writeFileSync(path.join(out,'ambient.json'),JSON.stringify(report,null,2))}
+});
+
+test('Glass keeps a real fallback during render and changes reading polarity atomically',{skip:!enabled,timeout:120000},async()=>{
+ const {chromium}=require(process.env.GLASS_PLAYWRIGHT_MODULE),server=await fixture.start(path.resolve(process.env.GLASS_TRANSITION_ASSET_ROOT||'goassets/template/_task_mecca/framework/web')),browser=await chromium.launch({headless:true,executablePath:process.env.CHROME_EXECUTABLE}),out=process.env.GLASS_EVIDENCE_DIR&&path.resolve(process.env.GLASS_EVIDENCE_DIR,'adaptive');
+ const report={browser:browser.version(),node:process.version,platform:process.platform,locale:'en-US',origin:server.origin,frames:[],backingFrames:[],cleanup:{}};if(out)fs.mkdirSync(out,{recursive:true});
+ try{for(const mobile of [false,true]){
+  const ctx=await browser.newContext({viewport:mobile?{width:390,height:844}:{width:1440,height:960},screen:mobile?{width:390,height:844}:{width:1440,height:960},deviceScaleFactor:1,locale:'en-US',isMobile:mobile,hasTouch:mobile});
+  try{await ctx.route('**/*',r=>r.request().url().startsWith(server.origin+'/')?r.continue():r.abort());await ctx.addInitScript(()=>{localStorage.setItem('task-mecca-palette','glass');localStorage.setItem('task-mecca-theme','light');window.EventSource=class{addEventListener(){}close(){}}});const p=await ctx.newPage();await p.goto(server.origin);await p.waitForFunction(()=>window.TaskMeccaGlass?.diagnostics().photo);
+   await p.evaluate(f=>{Object.assign(state,{project:f.project,backlog:f.backlog,view:'backlog',listData:f.list,snapshot:f.snapshot,hub:f.hub,detail:null});render()},JSON.parse(JSON.stringify(fixture)));
+   await p.evaluate(async()=>{const image=new Image();image.src=TaskMeccaGlass.diagnostics().photo;await image.decode();window.__transitionPhotos={};for(const kind of ['bright','dark']){const c=document.createElement('canvas');c.width=800;c.height=600;const x=c.getContext('2d');x.drawImage(image,0,0,800,600);x.fillStyle=kind==='bright'?'rgba(255,255,255,.8)':'rgba(0,0,0,.93)';x.fillRect(0,0,800,600);window.__transitionPhotos[kind]=c.toDataURL()}window.__setTransitionPhoto=kind=>{document.documentElement.style.setProperty('--glass-room-image',`url("${window.__transitionPhotos[kind]}")`);TaskMeccaGlass.refresh()}});
+   for(const [initial,target]of [['dark','bright'],['bright','dark']]){
+    await p.evaluate(v=>__setTransitionPhoto(v),initial);await p.waitForFunction(kind=>TaskMeccaGlass.diagnostics().photo===__transitionPhotos[kind]&&!!document.querySelector('.content > .glass-reader-material')&&!document.getAnimations().some(a=>a.playState==='running'||a.pending),initial);
+    const frames=await p.evaluate(async kind=>{__setTransitionPhoto(kind);const rows=[];for(let frame=0;frame<14;frame++){await new Promise(r=>requestAnimationFrame(r));const owner=document.querySelector('.content'),plane=owner.querySelector(':scope > .glass-reader-material'),d=TaskMeccaGlass.diagnostics();rows.push({frame,kind,sampledMatches:d.sample?.source===__transitionPhotos[kind],generation:d.sample?.generation??null,decodedMatches:d.photo===__transitionPhotos[kind],tone:owner.dataset.glassTone,fill:getComputedStyle(plane||owner,plane?null:'::before').backgroundColor,pseudo:getComputedStyle(owner,'::before').content,plane:!!plane,colors:[...owner.querySelectorAll('.status-filter-btn')].map(e=>({text:e.textContent,color:getComputedStyle(e).color,colorTransitions:e.getAnimations().filter(a=>a.transitionProperty==='color').length}))})}return rows},target);report.frames.push({mobile,initial,target,frames});
+   }
+   const backing=await p.evaluate(async()=>{const rows=[];for(let i=0;i<3;i++){await new Promise(r=>requestAnimationFrame(r));render();const e=document.querySelector('.content');rows.push({frame:i,plane:!!e.querySelector('.glass-reader-material'),pseudo:getComputedStyle(e,'::before').content})}return rows});report.backingFrames.push({mobile,frames:backing});
+   // Delay only the optical update callback, emulating a backing unavailable
+   // across a paint. The product's independent CSS fallback must still render.
+   await waitForGlass(p);
+   await p.evaluate(()=>{const original=window.requestAnimationFrame;window.__releaseGlassUpdate=()=>{window.requestAnimationFrame=original;if(window.__heldGlassUpdate)original(window.__heldGlassUpdate);delete window.__heldGlassUpdate};window.requestAnimationFrame=callback=>{if(callback.name==='update'){window.__heldGlassUpdate=callback;return -1}return original(callback)};render();document.querySelector('.content > .glass-reader-material')?.remove()});await p.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
+   const owner=await p.locator('.content').evaluate(e=>({plane:!!e.querySelector('.glass-reader-material'),pseudo:getComputedStyle(e,'::before').content,rect:e.getBoundingClientRect().toJSON()}));const hidden=await p.addStyleTag({content:'.content>*{visibility:hidden!important}'}),positive=await p.screenshot({animations:'disabled'}),negativeStyle=await p.addStyleTag({content:'.content::before{content:none!important}'}),negative=await p.screenshot({animations:'disabled'});await negativeStyle.evaluate(e=>e.remove());await hidden.evaluate(e=>e.remove());await p.evaluate(()=>__releaseGlassUpdate());
+   const a=raster(positive),b=raster(negative),y=Math.min(a.h-20,Math.max(180,owner.rect.y+80)),deltas=[.25,.5,.75].map(k=>{const x=owner.rect.x+owner.rect.width*k;return a.pixel(x,y).reduce((sum,v,i)=>sum+Math.abs(v-b.pixel(x,y)[i]),0)/3});report.backingFrames.push({mobile,faultWindow:owner,rasterDelta:deltas});if(out){fs.writeFileSync(path.join(out,`${mobile?'mobile':'desktop'}-fallback-present.png`),positive);fs.writeFileSync(path.join(out,`${mobile?'mobile':'desktop'}-fallback-negative.png`),negative)}
+   // Assert after preserving both polarity and backing evidence, including failures.
+   if(out)fs.writeFileSync(path.join(out,'transitions.json'),JSON.stringify(report,null,2));
+   assert.ok(report.frames.filter(v=>v.mobile===mobile).every(v=>v.frames.every(f=>f.colors.length&&f.colors.every(c=>c.color===(f.tone==='light'?'rgb(28, 39, 48)':'rgb(251, 253, 255)')&&c.colorTransitions===0))),'foreground changes atomically with its actual reading material');
+   assert.ok(backing.every(f=>f.plane||!['none','normal'].includes(f.pseudo)),'every render frame retains a reader or its fallback');assert.equal(owner.plane,false);assert.ok(!['none','normal'].includes(owner.pseudo));assert.ok(deltas.every(d=>d>5),'actual fallback pixels differ from a deliberately absent reading surface');
+   if(!mobile){
+    await ctx.addInitScript(()=>{const supports=CSS.supports.bind(CSS);CSS.supports=(...args)=>args[0]==='selector(:has(*))'?false:supports(...args)});await p.reload();await waitForGlass(p);
+    const fallback=await p.locator('.content').evaluate(e=>({supported:TaskMeccaGlass.diagnostics().readerBackingSupported,plane:!!e.querySelector('.glass-reader-material'),pseudo:getComputedStyle(e,'::before').content,filter:getComputedStyle(e,'::before').backdropFilter}));report.selectorFallback=fallback;assert.equal(fallback.supported,false);assert.equal(fallback.plane,false);assert.ok(!['none','normal'].includes(fallback.pseudo));assert.ok(fallback.filter.includes('blur('));
+   }
+  }finally{await ctx.close()}
+ }
+ }finally{await browser.close();await server.close();report.cleanup={browserClosed:true,fixtureClosed:true};if(out){fs.writeFileSync(path.join(out,'transitions.json'),JSON.stringify(report,null,2));const target=path.join(out,'adaptive.json'),existing=fs.existsSync(target)?JSON.parse(fs.readFileSync(target,'utf8')):{};existing.transitions=report;fs.writeFileSync(target,JSON.stringify(existing,null,2))}}
 });

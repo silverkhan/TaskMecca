@@ -199,3 +199,19 @@ A-56 로컬 Chrome 156.0.8078.80, DPR 1, desktop 1440×960 / touch-emulated 390�
 스펙트럼 stroke와 굴절 canvas는 **Cozy의 최대 두 면에만 적용**합니다. Ambient/None은 패널 대비 적응만 수행하며 광학 canvas는 0개입니다. 모든 배경에 같은 스펙트럼 광학 효과를 제공한다고 해석하지 않습니다. 실기기·사용자 최종 디자인 수용·운영 변경 제한은 위와 같습니다.
 
 수정 후 20개 scene, 독립 raster 표본 980점에서 최대 채널 오차 3/255, scene 평균 채널 오차 최대 0.599/255, 상대 휘도 오차 최대 0.00795였습니다. None 단색은 채널 오차 0입니다. 활성 상단·본문·안내 텍스트 1,830개 표본의 최저 대비는 5.121:1입니다. 실제 ambient/None 활성화를 추가로 요구하며 원래 사진 노출·hysteresis·키보드·복원·실패·미지원/reduced 검사를 유지합니다. 비Glass palette로 이동할 때 다음 frame의 실제 장식 제거를 기다리는 검사 조건도 보완했습니다.
+
+### A-56 headless / 영어 locale 전환 프레임 수정
+
+Linux CI41971930004는 첫 bright 사진의 필터 글자 대비와 Glass 전환 직후 backing 검사를 실패했습니다. macOS에서도 같은 Chromium headless156.0.8078.4/en-US의 프레임 probe에서 `tone=light`/밝은 reader인데 상태 필터 글자는 흰색인 첫 프레임을 확인했습니다. 기존 `.12s color` 전환이 재질보다 늦게 끝났고, 고정180ms 측정은 decode/재샘플/DOM 교체가 늦으면 앞 시점 글자와 뒤 시점 배경을 짝지을 수도 있었습니다. 실제 `render()` 직후 reader와 fallback이 모두 없는 경우도 확인했습니다.
+
+Glass의 상태 필터·copy 버튼·TOC 링크는 색 전환만 제거해 글자와 재질 극성을 원자적으로 바꿉니다. 기존 hover fill/경계/transform 전환과 Mecca/Slate는 유지합니다. Pseudo reader는 전역 active flag가 아니라 **그 owner의 실제 backing이 연결되어 있을 때만** 숨깁니다. `:has` 미지원에서는 JS backing을 만들지 않고 CSS pseudo를 유지합니다. 광학 면 수·사진·스펙트럼 크기·설정·레이아웃을 재설계하지 않았습니다.
+
+Read-only diagnostics에는 실제 sampler의 generation/theme/background/source와 pending/decode 상태를 추가했습니다. 새 fixture observer는 현재 CSS URL과 실제 decoded/sample URL, 같은 generation, 연결된 host/plane, computed foreground, 폰트/진행 중 transition을 확인합니다. 고정 지연 대신 같은 fingerprint의 안정 프레임을 기다리고 screenshot 전후도 대조합니다. 중간 DOM/색/세대가 달라지면 그 capture를 근거와 함께 버리고 최대3회까지만 재취득하며, 대비 assertion 자체를 재시도하지 않습니다. 영어 표본은 제외하지 않습니다. OS 변경도 요청한 OS 테마 event의 실제 반영을 기다립니다. Ambient readback 관측은 cache가 유효한 데이터를 지우지 않고 실제 CSS source/theme/background와 맞는지 검사합니다.
+
+새 회귀는 양방향 밝기 전환 56프레임의 실제 재질/글자 짝, render 직후 reader 또는 fallback 존재, optical callback을 지연시킨 실제 화면의 fallback 양성/없음 음성 pixel 차이, selector 미지원 대체 표현을 검사합니다. 광학 음성 대조는 8-bit get/put 및 canvas copy를 거치지 않고 **동일 context에 실제 draw call을 다시 재생하면서 stroke만 제외**합니다. 양성 재생의 기존8-bit oracle 오차 한계1을 유지하고, foreground/중앙 변화는0을 요구합니다. Rim은 CSS 좌표를 screenshot pixel로 가정한 거리식 대신 브라우저가 그린 독립2 CSS px 경계 raster와 대조합니다. 대비4.5/3, focus3, rim2px, 중앙0 및 기존 alpha가중 광학 signal 기준은 완화하지 않습니다.
+
+Node22.23.4를 격리 runtime에서 사용하고 headless156.0.8078.4 및 설치 Chrome156.0.8078.80, en-US, 세 test 파일 동시 실행을 비교합니다. macOS ARM의 동일 엔진 확인이며 Ubuntu26.04/x64 실행 성공과 동일시하지 않습니다. Linux exact-head CI는 Controller가 확인합니다. 이번 수정에서는 성능/Go를 반복하지 않았고 새 전면 canvas·sampling loop·상시 animation은 추가하지 않았습니다. 원격 CI·Preview·최종 사용자 수용과 운영 변경 제한은 그대로입니다.
+
+최종 macOS 동일-client 확인은 Playwright1.64.1/Node22.23.4/headless156.0.8078.4/en-US/세 파일 동시 실행13/13(skip0)입니다. 설치 Chrome.80의 영향 회귀13/13은 같은 제품 소스와 Playwright1.62.1에서 별도 확인했으며 두 client 환경을 구분합니다. 원본d7의 동일-client macOS suite는10/12로 headless rim 좌표 대조와 readback 관측 cache race를 실패했고, Linux CI의 두 assertion 조합을 그대로 재현했다고 주장하지 않습니다. 실제 제품의 전환 불일치/reader 공백은 별도 frame probe로 전후 재현했습니다.
+
+양성 광학 대조는 해당 canvas의 실제 가시 영역을 검사하고, 다른 영역의 변화 좌표는 별도 기록합니다. 일부 full-page 재생 screenshot의 20개 변화는 y179~209의 backlog 제어 경계로, 측정 대상 상단 canvas(y9~63) 밖이었습니다. 검사 대상 foreground/중앙0과 기존 1-byte oracle 오차 한계는 유지합니다. 최종 actual2CSSpx reference와 양성 재생을 포함한 PNG는 로컬 증거이며 CI에는 JSON만 남습니다.

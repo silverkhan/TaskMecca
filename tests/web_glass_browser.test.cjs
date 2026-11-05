@@ -2,6 +2,7 @@
 const {test}=require('node:test'),assert=require('node:assert/strict'),path=require('node:path'),fs=require('node:fs');
 const fixture=require('./helpers/glass_fixture.cjs');
 const {installOpticalOracle,assertOpticalComparison,captureOpticalWitness}=require('./helpers/glass_optical_oracle.cjs');
+const {waitForGlass}=require('./helpers/glass_state.cjs');
 const enabled=!!process.env.GLASS_PLAYWRIGHT_MODULE;
 test('Glass browser contract: appearance, stable canvas, content, fallbacks and input',{skip:!enabled,timeout:120000},async()=>{
  const {chromium}=require(process.env.GLASS_PLAYWRIGHT_MODULE),data=JSON.parse(JSON.stringify(fixture));data.logs=fixture.api(new URL('http://fixture/api/storage/logs'),'http://fixture');data.runtime=fixture.api(new URL('http://fixture/api/runtime/storage'),'http://fixture');
@@ -11,7 +12,7 @@ test('Glass browser contract: appearance, stable canvas, content, fallbacks and 
  const report={syntheticProject:fixture.project,syntheticBacklog:fixture.backlog,origin:server.origin,errors:[],checks:[],screenshots:[],textSamples:[]};
  try{
  for(const mobile of [false,true]){
-  const ctx=await browser.newContext({viewport:mobile?{width:390,height:844}:{width:1440,height:960},screen:mobile?{width:390,height:844}:{width:1440,height:960},isMobile:mobile,hasTouch:mobile,deviceScaleFactor:1});
+  const ctx=await browser.newContext({viewport:mobile?{width:390,height:844}:{width:1440,height:960},screen:mobile?{width:390,height:844}:{width:1440,height:960},isMobile:mobile,hasTouch:mobile,deviceScaleFactor:1,locale:'en-US'});
   await ctx.route('**/*',route=>route.request().url().startsWith(server.origin+'/')?route.continue():route.abort());
   await ctx.addInitScript(()=>{if(!localStorage.getItem('fixture-seeded')){localStorage.setItem('task-mecca-palette','glass');localStorage.setItem('task-mecca-theme','dark');localStorage.setItem('task-mecca-language','ko');localStorage.setItem('fixture-seeded','1')}window.EventSource=class{addEventListener(){}close(){}}});
   const page=await ctx.newPage();page.on('pageerror',e=>report.errors.push(e.message));await page.goto(server.origin);await page.waitForTimeout(300);
@@ -23,6 +24,7 @@ test('Glass browser contract: appearance, stable canvas, content, fallbacks and 
   for(const [palette,label,text]of [['mecca','Mecca','#292536'],['slate','Slate','#172033'],['glass','Glass','#1c2730']]){
    await page.locator('.palette-picker .tm-combo-trigger').click();await page.locator('.tm-combo-option').filter({hasText:new RegExp('^'+label+'$')}).click();
    await page.waitForFunction(value=>value==='glass'||!document.querySelector('.glass-reader-material,.glass-optics'),palette);
+   if(palette==='glass'){report.paletteStates??=[];report.paletteStates.push(await waitForGlass(page));if(out)fs.writeFileSync(path.join(out,'browser-contract.json'),JSON.stringify(report,null,2));}
    assert.equal(await page.evaluate(()=>document.documentElement.dataset.palette),palette);assert.equal(await page.evaluate(()=>localStorage.getItem('task-mecca-palette')),palette);
    assert.equal(await page.locator('.background-picker').isVisible(),palette==='glass');
    assert.equal(await page.evaluate(()=>getComputedStyle(document.documentElement).getPropertyValue('--text').trim()),text);
@@ -103,7 +105,7 @@ test('Glass optical layers preserve representative menu and native controls',{sk
  const {chromium}=require(process.env.GLASS_PLAYWRIGHT_MODULE),server=await fixture.start(path.resolve('goassets/template/_task_mecca/framework/web')),browser=await chromium.launch({executablePath:process.env.CHROME_EXECUTABLE,headless:true});
  const out=process.env.GLASS_EVIDENCE_DIR&&path.resolve(process.env.GLASS_EVIDENCE_DIR),data=JSON.parse(JSON.stringify(fixture)),report=[];if(out)fs.mkdirSync(out,{recursive:true});
  try{for(const mobile of [false,true]){
-  const c=await browser.newContext({viewport:mobile?{width:390,height:844}:{width:1440,height:960},screen:mobile?{width:390,height:844}:{width:1440,height:960},isMobile:mobile,hasTouch:mobile,deviceScaleFactor:1});await c.route('**/*',r=>r.request().url().startsWith(server.origin+'/')?r.continue():r.abort());
+  const c=await browser.newContext({viewport:mobile?{width:390,height:844}:{width:1440,height:960},screen:mobile?{width:390,height:844}:{width:1440,height:960},isMobile:mobile,hasTouch:mobile,deviceScaleFactor:1,locale:'en-US'});await c.route('**/*',r=>r.request().url().startsWith(server.origin+'/')?r.continue():r.abort());
   await c.addInitScript(installOpticalOracle);
   await c.addInitScript(()=>{localStorage.setItem('task-mecca-palette','glass');localStorage.setItem('task-mecca-theme','dark');localStorage.setItem('task-mecca-language','ko');window.EventSource=class{addEventListener(){}close(){}}});
   const p=await c.newPage();await p.goto(server.origin);await p.waitForTimeout(350);await p.waitForFunction(()=>window.TaskMeccaGlass?.diagnostics().mode==='active');
