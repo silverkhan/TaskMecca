@@ -3,15 +3,13 @@ package backlog
 // This is a read-only projection of the optional dev handoff journal. Stable
 // does not own that journal and must never manufacture claims or completion.
 import (
-	"crypto/sha256"
-	"encoding/hex"
-
 	"fmt"
 	"os"
 
 	"strings"
 	"time"
 
+	"github.com/silverkhan/TaskMecca/internal/contractscope"
 	"github.com/silverkhan/TaskMecca/internal/handoffjournal"
 	"github.com/silverkhan/TaskMecca/internal/runtimeobs"
 )
@@ -84,29 +82,10 @@ func readCompletionHandoffs(project string) (map[string]*completionHandoff, erro
 }
 
 // Same contract-section normalization as dev's handoff.ContractFingerprint.
-func completionContract(markdown string) string {
-	markdown = strings.ReplaceAll(strings.ReplaceAll(markdown, "\r\n", "\n"), "\r", "\n")
-	lines := strings.Split(markdown, "\n")
-	start, end := -1, len(lines)
-	for i, line := range lines {
-		s := strings.TrimSpace(line)
-		if start < 0 && (s == "## 작업 정의" || s == "## 요건 정의서") {
-			start = i
-			continue
-		}
-		if start >= 0 && strings.HasPrefix(s, "## ") {
-			end = i
-			break
-		}
-	}
-	if start < 0 {
-		return ""
-	}
-	for i := start; i < end; i++ {
-		lines[i] = strings.TrimRight(lines[i], " \t")
-	}
-	sum := sha256.Sum256([]byte(strings.TrimSpace(strings.Join(lines[start:end], "\n"))))
-	return hex.EncodeToString(sum[:])
+func completionContract(markdown string) string { return contractscope.Fingerprint(markdown) }
+func completionContractMatches(markdown, expected string) bool {
+	ok, _ := contractscope.MatchesFingerprint(markdown, expected)
+	return ok
 }
 
 func completionTimeBefore(left, right string) bool {
@@ -143,7 +122,7 @@ func completionReview(row Record, worker *runtimeobs.Attempt, assignmentID, comp
 		contract := completionContract(row.RawMarkdown)
 		for id, h := range handoffs {
 			p := h.prepared
-			if p.Event != "worker_done" || !strings.EqualFold(p.TaskID, row.ID) || p.SourceAgent != row.Fields["Agent"] || p.SourceAttempt != worker.AttemptID || contract == "" || p.Contract != contract {
+			if p.Event != "worker_done" || !strings.EqualFold(p.TaskID, row.ID) || p.SourceAgent != row.Fields["Agent"] || p.SourceAttempt != worker.AttemptID || contract == "" || !completionContractMatches(row.RawMarkdown, p.Contract) {
 				continue
 			}
 			at, ok := parseTime(p.At)
@@ -189,7 +168,7 @@ func completionReview(row Record, worker *runtimeobs.Attempt, assignmentID, comp
 					controller = a
 				}
 			}
-			valid := p.TargetAgent == "/root/controller" && p.TargetAttempt != "" && p.TargetRuntimeID != "" && p.TargetSession != "" && p.Provider != "" && c.ClaimedBy == p.TargetAgent && c.ClaimedAttempt == p.TargetAttempt && controller != nil && controller.AgentPath == p.TargetAgent && controller.RuntimeAgentID == p.TargetRuntimeID && controller.SessionID == p.TargetSession && controller.Provider == p.Provider && controller.BindingState == runtimeobs.BindingBound && controller.StateEvidenceSource == runtimeobs.EvidenceHook && (controller.StateObservationQuality == runtimeobs.QualityObserved || controller.StateObservationQuality == runtimeobs.QualityAuthoritative)
+			valid := p.TargetAgent == "/root/controller" && p.TargetAttempt != "" && p.TargetRuntimeID != "" && p.TargetSession != "" && p.Provider != "" && c.ClaimedBy == p.TargetAgent && c.ClaimedAttempt == p.TargetAttempt && controller != nil && controller.AgentPath == p.TargetAgent && controller.RuntimeAgentID == p.TargetRuntimeID && controller.SessionID == p.TargetSession && controller.Provider == p.Provider && controller.BindingState == runtimeobs.BindingBound && runtimeobs.HasObservedExecution(*controller)
 			claimAt, claimOK := parseTime(c.At)
 			preparedAt, _ := parseTime(p.At)
 			if !valid || !claimOK || claimAt.Before(preparedAt) || claimAt.After(now) {
@@ -210,7 +189,7 @@ func completionReview(row Record, worker *runtimeobs.Attempt, assignmentID, comp
 					state, diagnostic = "needs_user", "Controller가 명시적으로 사용자 판단 또는 승인을 기다리고 있습니다."
 				} else if state != "controller_recovery" && (controller.CurrentState != runtimeobs.StateRunning || controller.Terminal) {
 					state = "controller_recovery"
-					if controller.Terminal && controller.StateEvidenceSource == runtimeobs.EvidenceHook && (controller.StateObservationQuality == runtimeobs.QualityObserved || controller.StateObservationQuality == runtimeobs.QualityAuthoritative) && (controller.CurrentState == runtimeobs.StateErrored || controller.CurrentState == runtimeobs.StateInterrupted || controller.CurrentState == runtimeobs.StateShutdown) {
+					if controller.Terminal && runtimeobs.HasObservedExecution(*controller) && (controller.CurrentState == runtimeobs.StateErrored || controller.CurrentState == runtimeobs.StateInterrupted || controller.CurrentState == runtimeobs.StateShutdown) {
 						reason, quality, action, severity, confirmedFailure = "controller_execution_failed", "confirmed", "investigate_controller_execution", "error", true
 						diagnostic = "Controller 실행의 오류 또는 중단이 Hook 상태로 관측되었습니다."
 					} else {
@@ -263,7 +242,7 @@ func reportedCompletionAt(row Record, worker *runtimeobs.Attempt, handoffs map[s
 	for _, h := range handoffs {
 		p := h.prepared
 		at, ok := parseTime(p.At)
-		if p.Event == "worker_done" && strings.EqualFold(p.TaskID, row.ID) && p.SourceAgent == worker.AgentPath && p.SourceAttempt == worker.AttemptID && contract != "" && p.Contract == contract && ok && !at.Before(started) && !at.After(now) {
+		if p.Event == "worker_done" && strings.EqualFold(p.TaskID, row.ID) && p.SourceAgent == worker.AgentPath && p.SourceAttempt == worker.AttemptID && contract != "" && completionContractMatches(row.RawMarkdown, p.Contract) && ok && !at.Before(started) && !at.After(now) {
 			if result == "" || completionTimeBefore(p.At, result) {
 				result = p.At
 			}

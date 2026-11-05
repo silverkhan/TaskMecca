@@ -2,6 +2,8 @@ package main
 
 import (
     "fmt"
+ "time"
+ "github.com/silverkhan/TaskMecca/internal/handoffjournal"
 
     "github.com/silverkhan/TaskMecca/internal/activity"
 )
@@ -19,6 +21,8 @@ type activityReportResolution struct {
 func resolveActivityReport(store activity.Ledger,task string,role activity.Role,agent,attempt,eventName string)(activityReportResolution,error){
     rows,err:=store.List(task)
     if err!=nil{return activityReportResolution{},err}
+    handoffs,err:=handoffjournal.BuildLedger(store.Project,time.Now().UTC());if err!=nil{return activityReportResolution{},err}
+    suggested:=activity.SuggestedRoundFromEvidence(task,rows,handoffs.Handoffs)
     var latest *activity.Event
     for i:=len(rows)-1;i>=0;i--{
         row:=&rows[i]
@@ -32,7 +36,7 @@ func resolveActivityReport(store activity.Ledger,task string,role activity.Role,
     if active {
         round=latest.Round
     }else{
-        round=activity.SummarizeReviews(rows,nil).SuggestedNextRound
+        round=suggested
     }
     outcome:=""
     terminal:=false
@@ -55,6 +59,7 @@ func resolveActivityReport(store activity.Ledger,task string,role activity.Role,
         }
         return activityReportResolution{Action:activity.Stop,Type:latest.Type,Round:round,ReviewOutcome:outcome},nil
     }
+    if nextRound:=suggested;nextRound>round {round=nextRound}
     suggestion:=activity.Suggest(role,eventName,round)
     next:=activity.Start
     if active{next=activity.Switch}

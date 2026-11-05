@@ -428,3 +428,13 @@ func TestLifecycleProjectsExactControllerReviewClaimSeparately(t *testing.T) {
 		t.Fatalf("review claim missing: %+v", events)
 	}
 }
+
+func TestLifecycleReopenedCompletionRetainsHistoryAndCurrentLead(t *testing.T){
+ project:=t.TempDir();dir:=filepath.Join(project,"_task_mecca","data","backlog");if err:=os.MkdirAll(dir,0755);err!=nil{t.Fatal(err)}
+ if err:=os.WriteFile(filepath.Join(dir,"000001.B-1.reopen.doing.md"),[]byte("# B-1 Reopen\n- Agent: /root/controller/pairi\n"),0600);err!=nil{t.Fatal(err)}
+ base:=time.Now().UTC().Add(-time.Hour)
+ for i,kind:=range []string{"registered","started","completed","resumed"}{_,err:=RecordLifecycleTransition(project,LifecycleTransition{EventID:"reopen-"+kind,TaskID:"B-1",Kind:kind,Actor:"/root/controller/pairi",EvidenceSource:"worker_report",OccurredAt:base.Add(time.Duration(i)*10*time.Minute).Format(time.RFC3339Nano)},base);if err!=nil{t.Fatal(err)}}
+ timings,err:=LifecycleTimings(project,"");if err!=nil{t.Fatal(err)};row:=timings["B-1"]
+ if row["completed_at"]!=nil||row["current_state"]!="doing"{t.Fatalf("historical completion used as current boundary: %v",row)}
+ if len(row["completion_history"].([]string))!=1||row["lead_seconds"].(float64)<59*60||row["active_seconds"].(float64)>row["lead_seconds"].(float64){t.Fatalf("reopened durations inconsistent: %v",row)}
+}

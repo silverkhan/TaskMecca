@@ -84,8 +84,9 @@ func runActivityCommand(args []string,out,errOut io.Writer)int{
  common:=[]string{"--project",root,"--role",*role,"--agent",*agent,"--attempt",*attempt}
  if *assignment!=""{common=append(common,"--assignment",*assignment)}
  if *handoff!=""{common=append(common,"--handoff",*handoff)}
- if *round>=0{common=append(common,"--round",fmt.Sprint(*round))}
- if previous!=nil{common=append(common,"--round",fmt.Sprint(previous.Round))}
+ chosenRound:=*round
+ if chosenRound<0{resolution,resolveErr:=resolveActivityReport(store,task,activity.Role(*role),*agent,*attempt,*kind);if resolveErr!=nil{fmt.Fprintln(errOut,resolveErr);return 1};chosenRound=resolution.Round}
+ common=append(common,"--round",fmt.Sprint(chosenRound))
  makeEventArgs:=func(op,id,typ,evidence string,extra ...string)[]string{
   options:=[]string{op,task,"--event-id",id,"--type",typ,"--evidence",evidence}
   options=append(options,common...)

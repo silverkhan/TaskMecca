@@ -10,7 +10,8 @@ import (
 	"time"
 
 	"github.com/silverkhan/TaskMecca/internal/backlog"
- "github.com/silverkhan/TaskMecca/internal/contextlife"
+	"github.com/silverkhan/TaskMecca/internal/contextlife"
+	"github.com/silverkhan/TaskMecca/internal/contractscope"
 )
 
 func Prepare(req PrepareRequest, now time.Time) (PrepareResult, error) {
@@ -99,7 +100,7 @@ func Prepare(req PrepareRequest, now time.Time) (PrepareResult, error) {
 			return buildErr
 		}
 		if existing, ok := ledger.Handoffs[handoffID]; ok {
-			if existing.ContractSHA256 != currentContractSHA {
+			if matches, _ := contractscope.MatchesFingerprint(raw, existing.ContractSHA256); !matches {
 				return errors.New("canonical contract changed: existing handoff retarget denied")
 			}
 			result = PrepareResult{
@@ -179,7 +180,7 @@ func Claim(project, handoffID, recipient, claimantAttemptID string, now time.Tim
 	if handoffID == "" || recipient == "" || claimantAttemptID == "" {
 		return ClaimResult{}, errors.New("handoff_id, recipient and claimant attempt_id are required")
 	}
- var result ClaimResult
+	var result ClaimResult
 	err := withLock(project, func() error {
 		ledger, err := buildLedgerUnlocked(project, now)
 		if err != nil {
@@ -189,12 +190,14 @@ func Claim(project, handoffID, recipient, claimantAttemptID string, now time.Tim
 		if !ok {
 			return fmt.Errorf("handoff not found: %s", handoffID)
 		}
-        // After a verified transfer, the journal itself is the exact
-        // resource-scoped owner fence. Pending CLM generations may still
-        // refer to the retired Controller, but cannot reactivate it.
-        if recipient=="/root/controller" && row.TransferCount==0 {
-            if err:=contextlife.MayClaimController(project,claimantAttemptID);err!=nil{return err}
-        }
+		// After a verified transfer, the journal itself is the exact
+		// resource-scoped owner fence. Pending CLM generations may still
+		// refer to the retired Controller, but cannot reactivate it.
+		if recipient == "/root/controller" && row.TransferCount == 0 {
+			if err := contextlife.MayClaimController(project, claimantAttemptID); err != nil {
+				return err
+			}
+		}
 		result.HandoffID = handoffID
 		result.ClaimedBy = row.ClaimedBy
 		result.ClaimedAttemptID = row.ClaimedAttemptID
@@ -224,9 +227,16 @@ func Claim(project, handoffID, recipient, claimantAttemptID string, now time.Tim
 			}
 			result.CurrentContractSHA256 = currentSHA
 			if currentSHA != row.ContractSHA256 {
-				result.ContractChanged = true
-				result.Reason = "contract_changed"
-				return nil
+				matches, exhaustive := contractscope.MatchesFingerprint(raw, row.ContractSHA256)
+				if !matches {
+					result.ContractChanged = true
+					result.Reason = "contract_changed"
+					if !exhaustive {
+						result.Reason = "legacy_check_state_unverified"
+					}
+					return nil
+				}
+				result.ContractCompatibility = "acceptance_check_state_only"
 			}
 		}
 		if row.Target.AgentPath != "" && row.Target.AgentPath != recipient {
@@ -271,7 +281,7 @@ func Claim(project, handoffID, recipient, claimantAttemptID string, now time.Tim
 // Mark preserves historical call sites for never-transferred handoffs. A
 // transferred handoff MUST specify its current exact owner with MarkAs.
 func Mark(project, handoffID, step, resultValue, evidence string, now time.Time) (MarkResult, error) {
- return MarkAs(project,handoffID,step,resultValue,evidence,"",now)
+	return MarkAs(project, handoffID, step, resultValue, evidence, "", now)
 }
 
 func MarkAs(project, handoffID, step, resultValue, evidence, claimantAttemptID string, now time.Time) (MarkResult, error) {
@@ -295,14 +305,14 @@ func MarkAs(project, handoffID, step, resultValue, evidence, claimantAttemptID s
 			return fmt.Errorf("handoff not found: %s", handoffID)
 		}
 		result = MarkResult{HandoffID: handoffID, Step: step, Result: resultValue, Applied: row.Applied}
-        // Prevent the old attempt (or unscoped legacy command) from writing
-        // ANY step after an ownership transfer, including applied.
-        if row.TransferCount>0 && (claimantAttemptID=="" || row.ClaimedAttemptID!=claimantAttemptID) {
-           return errors.New("transferred handoff requires --source-attempt matching current claimant")
-        }
-        if claimantAttemptID!="" && row.ClaimedAttemptID!="" && row.ClaimedAttemptID!=claimantAttemptID {
-           return errors.New("handoff mark denied: claimant attempt mismatch")
-        }
+		// Prevent the old attempt (or unscoped legacy command) from writing
+		// ANY step after an ownership transfer, including applied.
+		if row.TransferCount > 0 && (claimantAttemptID == "" || row.ClaimedAttemptID != claimantAttemptID) {
+			return errors.New("transferred handoff requires --source-attempt matching current claimant")
+		}
+		if claimantAttemptID != "" && row.ClaimedAttemptID != "" && row.ClaimedAttemptID != claimantAttemptID {
+			return errors.New("handoff mark denied: claimant attempt mismatch")
+		}
 		if step == "applied" {
 			if row.Applied {
 				result.Duplicate = true

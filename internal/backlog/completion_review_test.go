@@ -400,3 +400,21 @@ func TestCompletionReviewActualEventsAcrossWebAndRecoveryAPIs(t *testing.T) {
 		})
 	}
 }
+
+func TestCompletionReviewAcceptsOnlyHookBackedReconciledController(t *testing.T){
+ row,worker,controller,h,base:=reviewFixture()
+ h.claim=completionHandoffRecord{ClaimedBy:controller.AgentPath,ClaimedAttempt:controller.AttemptID,At:base.Add(2*time.Second).Format(time.RFC3339Nano)}
+ controller.StateEvidenceSource=runtimeobs.EvidenceReconciled
+ controller.BindingSource="explicit"
+ controller.BindingAt=base.Format(time.RFC3339Nano)
+ controller.StartedAt=base.Format(time.RFC3339Nano)
+ controller.LastObservedAt=base.Add(3*time.Second).Format(time.RFC3339Nano)
+ controller.LastHookActivityAt=controller.LastObservedAt
+ controller.HookActivityCount=1
+ controller.LastActivityAt=controller.LastObservedAt
+ good:=completionReview(row,&worker,"assignment-test",worker.EndedAt,map[string]*completionHandoff{"handoff-1":h},nil,[]runtimeobs.Attempt{controller},base.Add(4*time.Second))
+ if good["state"]!="controller_review"{t.Fatalf("real reconciled controller falsely rejected: %v",good)}
+ controller.HookActivityCount=0
+ bad:=completionReview(row,&worker,"assignment-test",worker.EndedAt,map[string]*completionHandoff{"handoff-1":h},nil,[]runtimeobs.Attempt{controller},base.Add(4*time.Second))
+ if bad["state"]!="controller_recovery"{t.Fatalf("source name alone accepted: %v",bad)}
+}

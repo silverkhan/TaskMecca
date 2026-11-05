@@ -824,7 +824,11 @@ func run(args []string) int {
 			if len(positional)>8 { event.AttemptID=positional[8] }
 			var recorded backlog.LifecycleTransition
 			recorded,err=backlog.RecordLifecycleTransition(root,event,time.Now())
-			if err==nil { if jsonOutput { emitJSON(recorded) } else { fmt.Printf("%s %s %s %s\n",recorded.EventID,recorded.TaskID,recorded.Kind,recorded.OccurredAt) } }
+			if err==nil {
+                var reporting *activity.ReportingRequirement
+                if recorded.Kind=="started"||recorded.Kind=="resumed" {v:=activity.CheckReporting(root,recorded.TaskID,activity.RoleWorker,recorded.AttemptID,recorded.AssignmentID,"","requirements_started",time.Now());reporting=&v}
+                if jsonOutput { emitJSON(struct{backlog.LifecycleTransition; ActivityReporting *activity.ReportingRequirement `json:"activity_reporting,omitempty"`}{recorded,reporting}) } else {fmt.Printf("%s %s %s %s\n",recorded.EventID,recorded.TaskID,recorded.Kind,recorded.OccurredAt);if reporting!=nil&&reporting.ActionRequired{fmt.Fprintln(os.Stderr,"Activity reporting:",reporting.Status,reporting.Diagnostic)}}
+            }
 		case "list":
 			if len(positional)!=1 { fmt.Fprintln(os.Stderr,"lifecycle list takes no arguments"); return 2 }
 			var scan backlog.LifecycleEventScan

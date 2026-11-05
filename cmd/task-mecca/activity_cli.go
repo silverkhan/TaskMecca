@@ -146,8 +146,8 @@ func runActivityCLI(args []string,out,errOut io.Writer) int {
         rows,readErr:=store.List(task)
         if readErr!=nil{fmt.Fprintln(errOut,readErr);return 1}
         if action=="start" && *round<0{
-            review:=activity.SummarizeReviews(rows,nil)
-            *round=review.SuggestedNextRound
+            handoffs,readErr:=handoffjournal.BuildLedger(root,time.Now().UTC());if readErr!=nil{fmt.Fprintln(errOut,readErr);return 1}
+            *round=activity.SuggestedRoundFromEvidence(task,rows,handoffs.Handoffs)
         }else{
             for i:=len(rows)-1;i>=0;i--{
                 prev:=rows[i]

@@ -82,3 +82,36 @@ func TestDecisionRefusesDuplicateEventDifferentContents(t *testing.T){
 	code,_,_=decisionInvoke(t,another...)
 	if code!=3{t.Fatalf("conflicting stable event must fail, code=%d",code)}
 }
+
+func TestDecisionAcceptanceChecksDoNotRevokeWordingApproval(t *testing.T){
+ project:=makeDecisionFixture(t)
+ _,approved,msg:=decisionInvoke(t,append(decisionRecordArgs(project,"check-approval","execution_approved"),"--user-confirmed")...)
+ if !approved.ExecutionAuthorized{t.Fatal(msg)}
+ path:=filepath.Join(project,"_task_mecca","data","backlog","000001.B-1.test.todo.md")
+ raw,err:=os.ReadFile(path);if err!=nil{t.Fatal(err)}
+ checked:=strings.Replace(string(raw),"- [ ]","- [x]",1)
+ if checked==string(raw){t.Fatal("fixture lacks acceptance checkbox")}
+ if err=os.WriteFile(path,[]byte(checked),0600);err!=nil{t.Fatal(err)}
+ _,after,msg:=decisionInvoke(t,"show","--project",project,"--task","B-1","--json")
+ if !after.ExecutionAuthorized||after.EffectiveSHA256!=approved.EffectiveSHA256{t.Fatalf("check changed approval: %+v %s",after,msg)}
+ changed:=strings.Replace(checked,"기존 데이터 보존","기존 데이터 삭제",1)
+ if err=os.WriteFile(path,[]byte(changed),0600);err!=nil{t.Fatal(err)}
+ _,after,_=decisionInvoke(t,"show","--project",project,"--task","B-1","--json")
+ if after.ExecutionAuthorized{t.Fatal("actual acceptance wording change was hidden")}
+}
+
+func TestDecisionPreservesImmutableLegacyCheckedApproval(t *testing.T){
+ project:=makeDecisionFixture(t);path:=filepath.Join(project,"_task_mecca","data","backlog","000001.B-1.test.todo.md")
+ raw,err:=os.ReadFile(path);if err!=nil{t.Fatal(err)};checked:=strings.Replace(string(raw),"- [ ]","- [x]",1)
+ if err=os.WriteFile(path,[]byte(checked),0600);err!=nil{t.Fatal(err)}
+ base:=hashBatchBytes([]byte(authorizationContractScopeRaw(checked)));event:=decisionEvent{EventID:"legacy-checked",TaskID:"B-1",Kind:"execution_approved",Actor:"/root",Evidence:"old explicit approval",UserConfirmed:true,BaseSHA256:base,EffectiveSHA256:hashBatchBytes([]byte(base+"\x00")),RecordedAt:"2026-11-01T00:00:00Z"}
+ if err=appendDecisionEvent(project,event);err!=nil{t.Fatal(err)};before,err:=os.ReadFile(decisionPath(project,event.EventID));if err!=nil{t.Fatal(err)}
+ for _,current:=range []string{checked,strings.Replace(checked,"- [x]","- [ ]",1)}{
+  if err=os.WriteFile(path,[]byte(current),0600);err!=nil{t.Fatal(err)}
+  _,report,msg:=decisionInvoke(t,"show","--project",project,"--task","B-1","--json")
+  if !report.ExecutionAuthorized||len(report.Findings)!=0||report.ApprovalCompatibility!="acceptance_check_state_only"{t.Fatalf("legacy consent lost: %+v %s",report,msg)}
+ }
+ changed:=strings.Replace(checked,"기존 데이터 보존","기존 데이터 삭제",1);if err=os.WriteFile(path,[]byte(changed),0600);err!=nil{t.Fatal(err)}
+ _,report,_:=decisionInvoke(t,"show","--project",project,"--task","B-1","--json");if report.ExecutionAuthorized{t.Fatal("legacy proof hid wording change")}
+ after,err:=os.ReadFile(decisionPath(project,event.EventID));if err!=nil{t.Fatal(err)};if !bytes.Equal(before,after){t.Fatal("legacy approval event rewritten")}
+}
