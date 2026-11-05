@@ -63,3 +63,24 @@ func TestPhotographicRoomAssetDelivery(t *testing.T) {
 		})
 	}
 }
+
+func TestGlassMaterialAssetsAreEmbedded(t *testing.T) {
+	root := t.TempDir()
+	h, err := Handler(root, root, "fixture")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"glass.css", "glass-optics.js"} {
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/"+name, nil))
+		if w.Code != http.StatusOK || w.Body.Len() == 0 || w.Header().Get("X-Content-Type-Options") != "nosniff" {
+			t.Fatalf("missing Glass asset %s", name)
+		}
+		if name == "glass.css" && !strings.Contains(w.Header().Get("Content-Type"), "text/css") {
+			t.Fatal("Glass stylesheet MIME")
+		}
+		if name == "glass-optics.js" && !strings.Contains(w.Header().Get("Content-Type"), "javascript") {
+			t.Fatal("Glass script MIME")
+		}
+	}
+}

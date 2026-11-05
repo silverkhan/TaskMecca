@@ -4,7 +4,7 @@ const fs=require('node:fs'),vm=require('node:vm');
 const root='goassets/template/_task_mecca/framework/web/';
 const boot=fs.readFileSync(root+'theme-boot.js','utf8');
 const app=fs.readFileSync(root+'app.js','utf8');
-const css=fs.readFileSync(root+'style.css','utf8');
+const css=fs.readFileSync(root+'style.css','utf8')+fs.readFileSync(root+'glass.css','utf8');
 function appearance({theme='dark',palette='glass',background='',dark=false,coarse=false,width=390,height=844,blocked=false}={}){
  const style={setProperty(k,v){this[k]=v}},element={dataset:{},style},meta={setAttribute(k,v){this[k]=v}};
  const values={'task-mecca-theme':theme,'task-mecca-palette':palette,'task-mecca-background':background};

@@ -1880,6 +1880,8 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 	mux.HandleFunc("/terminal.css", func(w http.ResponseWriter, r *http.Request) { sendEmbedded(w, "terminal.css") })
 	mux.HandleFunc("/terminal.js", func(w http.ResponseWriter, r *http.Request) { sendEmbedded(w, "terminal.js") })
 	mux.HandleFunc("/theme-boot.js", func(w http.ResponseWriter, r *http.Request) { sendEmbedded(w, "theme-boot.js") })
+	mux.HandleFunc("/glass.css", func(w http.ResponseWriter,r *http.Request){sendEmbedded(w,"glass.css")})
+	mux.HandleFunc("/glass-optics.js", func(w http.ResponseWriter,r *http.Request){sendEmbedded(w,"glass-optics.js")})
 	mux.HandleFunc("/style.css", func(w http.ResponseWriter, r *http.Request) { sendEmbedded(w, "style.css") })
 	// Versioned photographic assets are immutable; unversioned clients revalidate.
 	for _, asset := range []struct{ name, hash string }{

@@ -116,13 +116,7 @@ jobs:
           path: |
             glass-browser-evidence/browser-contract.json
             glass-browser-evidence/photo-delivery.json
-            glass-browser-evidence/desktop-light-backlog.png
-            glass-browser-evidence/desktop-dark-backlog.png
-            glass-browser-evidence/mobile-dark-backlog.png
-            glass-browser-evidence/mobile-height-orientation.png
-            glass-browser-evidence/mobile-navigation-dialog.png
-            glass-browser-evidence/desktop-unsupported-blur-emulated.png
-            glass-browser-evidence/desktop-reduced-preferences.png
+            glass-browser-evidence/liquid-glass-contract.json
           if-no-files-found: error
           retention-days: 7
 

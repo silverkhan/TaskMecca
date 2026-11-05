@@ -19,21 +19,19 @@ test('Glass browser contract: appearance, stable canvas, content, fallbacks and 
   await seed();assert.ok(await page.locator('#previewIdentityBanner').isVisible(),'fixture Preview identity renders');await page.evaluate(()=>scrollTo(0,0));
   // Use the actual custom select's click/option event path at least once.
   await page.evaluate(()=>{applyTheme('light');applyBackground('ambient')});
-  for(const [palette,label,text]of [['mecca','Mecca','#292536'],['slate','Slate','#172033'],['glass','Glass','#201b17']]){
+  for(const [palette,label,text]of [['mecca','Mecca','#292536'],['slate','Slate','#172033'],['glass','Glass','#1c2730']]){
    await page.locator('.palette-picker .tm-combo-trigger').click();await page.locator('.tm-combo-option').filter({hasText:new RegExp('^'+label+'$')}).click();
    assert.equal(await page.evaluate(()=>document.documentElement.dataset.palette),palette);assert.equal(await page.evaluate(()=>localStorage.getItem('task-mecca-palette')),palette);
    assert.equal(await page.locator('.background-picker').isVisible(),palette==='glass');
    assert.equal(await page.evaluate(()=>getComputedStyle(document.documentElement).getPropertyValue('--text').trim()),text);
    assert.equal(await page.evaluate(()=>localStorage.getItem('task-mecca-background')),'ambient');
    assert.equal((await page.evaluate(()=>getComputedStyle(document.body,'::before').content))!=='none',palette==='glass');
-   assert.equal(await page.locator('.content').evaluate(e=>getComputedStyle(e,'::before').content!=='none'),palette==='glass');
+   assert.equal(await page.locator('.content').evaluate(e=>!!e.querySelector('.glass-reader-material')||getComputedStyle(e,'::before').content!=='none'),palette==='glass');
   }
   await page.evaluate(()=>{applyTheme('dark');applyBackground('cozy')});
-  const reader=await page.locator('.content').evaluate(e=>{const s=getComputedStyle(e,'::before');return{height:parseFloat(s.height),width:parseFloat(s.width),filter:s.backdropFilter,position:s.position,ownFilter:getComputedStyle(e).backdropFilter}});
-  assert.ok(reader.filter.includes('blur('));assert.equal(reader.position,'sticky');assert.ok(reader.height<=await page.evaluate(()=>innerHeight));assert.equal(reader.ownFilter,'none','fixed descendants retain their viewport containing block');report.readerPlanes??=[];report.readerPlanes.push({mobile,...reader});
-  const paneCDP=await ctx.newCDPSession(page),{root:domRoot}=await paneCDP.send('DOM.getDocument'),{nodeId:paneNode}=await paneCDP.send('DOM.querySelector',{nodeId:domRoot.nodeId,selector:'#content'}),{node:described}=await paneCDP.send('DOM.describeNode',{nodeId:paneNode,depth:1});
-  const pseudo=described.pseudoElements.find(n=>n.pseudoType==='before'),{model:paneModel}=await paneCDP.send('DOM.getBoxModel',{backendNodeId:pseudo.backendNodeId});
-  assert.ok(paneModel.height<=await page.evaluate(()=>innerHeight));report.readerPlanes.at(-1).boxModel=paneModel;
+  await page.waitForFunction(()=>document.documentElement.dataset.glassOptics==='active');
+  const reader=await page.locator('.glass-reader-material').first().evaluate(e=>({height:e.getBoundingClientRect().height,width:e.getBoundingClientRect().width,filter:getComputedStyle(e).backdropFilter,position:getComputedStyle(e).position,ownFilter:getComputedStyle(document.querySelector('.content')).backdropFilter}));
+  assert.ok(reader.filter.includes('blur('));assert.equal(reader.position,'sticky');assert.ok(reader.height<=await page.evaluate(()=>innerHeight));assert.equal(reader.ownFilter,'none');report.readerPlanes??=[];report.readerPlanes.push({mobile,...reader,optics:await page.evaluate(()=>TaskMeccaGlass.diagnostics())});
   const geometry=()=>page.evaluate(()=>{const s=getComputedStyle(document.body,'::before');return[s.width,s.height,s.left,s.top,s.backgroundSize,s.backgroundPosition,s.backgroundImage]});
   const initial=await geometry();await page.evaluate(()=>{document.body.style.minHeight='3000px';window.scrollTo(0,800)});assert.deepEqual(await geometry(),initial);
   await page.setViewportSize({width:mobile?390:1440,height:mobile?510:700});assert.deepEqual(await geometry(),initial);await page.setViewportSize(mobile?{width:844,height:390}:{width:1100,height:800});assert.deepEqual(await geometry(),initial);
@@ -49,7 +47,7 @@ test('Glass browser contract: appearance, stable canvas, content, fallbacks and 
    for(const bg of ['ambient','none','cozy']){await page.evaluate(bg=>applyBackground(bg),bg);assert.equal(await page.evaluate(()=>document.documentElement.dataset.background),bg);await page.reload();await seed();assert.equal(await page.evaluate(()=>document.documentElement.dataset.background),bg)}
    await seed('workload');await page.locator('.runtime-root-card').first().scrollIntoViewIfNeeded();await shot(theme+'-workload');await page.locator('.runtime-history').first().evaluate(e=>e.open=true);await page.locator('.runtime-transition-list').first().scrollIntoViewIfNeeded();await shot(theme+'-runtime-logs');await page.locator('.worker-card').first().scrollIntoViewIfNeeded();await shot(theme+'-workers');
    assert.equal(await page.locator('.worker-card').count()>0,true,'actual workload cards render');
-   assert.equal(await page.locator('.worker-card').first().evaluate(e=>getComputedStyle(e).backdropFilter),'none');assert.ok(await page.locator('.content').evaluate(e=>parseFloat(getComputedStyle(e,'::before').height)<=innerHeight));
+   assert.equal(await page.locator('.worker-card').first().evaluate(e=>getComputedStyle(e).backdropFilter),'none');assert.ok(await page.locator('.glass-reader-material').first().evaluate(e=>e.getBoundingClientRect().height<=innerHeight));
    await page.evaluate(()=>scrollTo(0,0));await seed('hub');await shot(theme+'-hub');await seed('storage');await page.waitForTimeout(100);assert.equal(await page.locator('.storage-overview-card').count(),3,'selected-project storage figures render');await shot(theme+'-storage');
    await page.evaluate(()=>scrollTo(0,0));await seed();await page.evaluate(f=>{state.detail=f.detail.id;state.detailTask=f.detail;state.raw=true;render()},data);await shot(theme+'-detail-raw');await page.locator('.raw').evaluate(e=>e.scrollIntoView());await shot(theme+'-raw-table');
    await page.evaluate(f=>{state.raw=false;activityDetailCache.set(activityDetailKey(f.detail.id),f.activity);render()},data);if(mobile){const fixed=await page.locator('.detail-toc-fab').boundingBox();assert.ok(fixed?.width>0);await page.evaluate(()=>scrollBy(0,160));assert.deepEqual(await page.locator('.detail-toc-fab').boundingBox(),fixed,'TOC stays fixed across reader scroll')}assert.ok(await page.locator('.activity-timeline-track').count()>0,'Gantt has real timed rows');await page.locator('.activity-timeline-scroll').scrollIntoViewIfNeeded();await shot(theme+'-detail-gantt');
@@ -71,9 +69,10 @@ test('Glass browser contract: appearance, stable canvas, content, fallbacks and 
   await cdp.send('Emulation.setEmulatedMedia',{features:[]});
   // Chromium supports blur. Force only the unsupported capability branch and remove
   // unsupported declarations, emulating how a browser lacking both properties parses CSS.
-  await page.route('**/style.css',async route=>{const response=await route.fetch();let css=await response.text();css=css.replace(/@supports not \(\(backdrop-filter:blur\(1px\)\) or \(-webkit-backdrop-filter:blur\(1px\)\)\)/,'@supports (display:block)').replace(/(?:-webkit-)?backdrop-filter\s*:[^;}]+;?/g,'');await route.fulfill({response,body:css})});
-  await page.reload();await seed();assert.ok((await geometry())[6].includes('cozy-beige-room-photo-1920.webp'));assert.equal(await page.locator('.topbar').evaluate(e=>getComputedStyle(e).backgroundColor),'rgb(238, 237, 231)');await shot('unsupported-blur-emulated');
-  await page.unroute('**/style.css');for(const theme of ['dark','light']){
+  await page.evaluate(()=>localStorage.setItem('fixture-no-backdrop','1'));await page.addInitScript(()=>{if(localStorage.getItem('fixture-no-backdrop')==='1'){const original=CSS.supports.bind(CSS);CSS.supports=(p,v)=>String(p).includes('backdrop-filter')?false:original(p,v)}});
+  await page.route('**/glass.css',async route=>{const response=await route.fetch();let css=await response.text();css=css.replace(/@supports not \(\(backdrop-filter:blur\(1px\)\) or \(-webkit-backdrop-filter:blur\(1px\)\)\)/,'@supports (display:block)').replace(/(?:-webkit-)?backdrop-filter\s*:[^;}]+;?/g,'');await route.fulfill({response,body:css})});
+  await page.reload();await seed();assert.ok((await geometry())[6].includes('cozy-beige-room-photo-1920.webp'));assert.equal(await page.locator('.topbar').evaluate(e=>getComputedStyle(e).backgroundColor),'rgb(238, 244, 247)');assert.equal(await page.locator('.glass-optics').count(),0);await shot('unsupported-blur-emulated');await page.evaluate(()=>localStorage.removeItem('fixture-no-backdrop'));
+  await page.unroute('**/glass.css');for(const theme of ['dark','light']){
    await page.evaluate(theme=>localStorage.setItem('task-mecca-theme',theme),theme);await page.goto(server.origin+'/terminal?project=/fixtures/atlas');await page.waitForTimeout(200);
    assert.equal(await page.evaluate(()=>document.documentElement.dataset.theme),theme);assert.equal(await page.locator('.terminal-app').evaluate(e=>getComputedStyle(e).zIndex),'1');
    await page.locator('#terminalIdle').evaluate(e=>e.hidden=true);await page.locator('#terminalFallbackOutput').evaluate(e=>{e.hidden=false;e.textContent='[fixture only] 가상 로그 스트림\nDEMO-100 · verification completed\nNo shell process was launched.'});assert.ok(await page.locator('#terminalFallbackOutput').isVisible());await shot(theme+'-terminal');
@@ -95,4 +94,49 @@ test('photographic source responds to mobile decode budget and desktop DPR',{ski
   const response=await ctx.request.get(new URL(image.url,server.origin).href);assert.equal(response.headers()['content-type'],'image/webp');assert.ok(response.headers()['cache-control'].includes('immutable'));
   records.push({mobile,dpr:mobile?3:2,...image,rgbaDecodeEstimateBytes:image.width*image.height*4,contentType:response.headers()['content-type'],cache:response.headers()['cache-control']});await ctx.close();
  }}finally{if(process.env.GLASS_EVIDENCE_DIR)fs.writeFileSync(path.resolve(process.env.GLASS_EVIDENCE_DIR,'photo-delivery.json'),JSON.stringify(records,null,2));await browser.close();await server.close()}
+});
+
+test('Glass optical layers preserve representative menu and native controls',{skip:!enabled,timeout:120000},async()=>{
+ const {chromium}=require(process.env.GLASS_PLAYWRIGHT_MODULE),server=await fixture.start(path.resolve('goassets/template/_task_mecca/framework/web')),browser=await chromium.launch({executablePath:process.env.CHROME_EXECUTABLE,headless:true});
+ const out=process.env.GLASS_EVIDENCE_DIR&&path.resolve(process.env.GLASS_EVIDENCE_DIR),data=JSON.parse(JSON.stringify(fixture)),report=[];
+ try{for(const mobile of [false,true]){
+  const c=await browser.newContext({viewport:mobile?{width:390,height:844}:{width:1440,height:960},screen:mobile?{width:390,height:844}:{width:1440,height:960},isMobile:mobile,hasTouch:mobile,deviceScaleFactor:1});await c.route('**/*',r=>r.request().url().startsWith(server.origin+'/')?r.continue():r.abort());
+  await c.addInitScript(()=>{localStorage.setItem('task-mecca-palette','glass');localStorage.setItem('task-mecca-theme','dark');localStorage.setItem('task-mecca-language','ko');window.EventSource=class{addEventListener(){}close(){}}});
+  const p=await c.newPage();await p.goto(server.origin);await p.waitForTimeout(350);await p.waitForFunction(()=>window.TaskMeccaGlass?.diagnostics().mode==='active');
+  const seed=()=>p.evaluate(f=>{Object.assign(state,{project:f.project,backlog:f.backlog,view:'backlog',listData:f.list,snapshot:f.snapshot,hub:f.hub,detail:null,detailTask:null});render()},data);
+  const shot=async(name)=>{await p.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));if(out)await p.screenshot({path:path.join(out,`${mobile?'mobile':'desktop'}-optical-${name}.png`),animations:'disabled'})};
+  await seed();
+  for(const theme of ['dark','light']){
+   await p.evaluate(theme=>applyTheme(theme),theme);await p.locator('.palette-picker .tm-combo-trigger').click();await p.waitForFunction(()=>TaskMeccaGlass.diagnostics().lenses.some(e=>e.kind==='popup'));
+   const d=await p.evaluate(()=>TaskMeccaGlass.diagnostics());assert.ok(d.lenses.length<=7);const lens=d.lenses.find(e=>e.kind==='popup');assert.ok(lens.amplitude>0&&lens.rim>0&&lens.draws>0);
+   const pixels=await p.locator('.tm-combo-popup .glass-optics').evaluate(e=>{const c=e.getContext('2d'),p=c.getImageData(0,0,e.width,e.height).data;let painted=0;for(let i=3;i<p.length;i+=4)if(p[i])painted++;return{painted,total:e.width*e.height,center:c.getImageData(Math.floor(e.width/2),Math.floor(e.height/2),1,1).data[3]}});
+   assert.ok(pixels.painted>0&&pixels.painted<pixels.total/2);assert.equal(pixels.center,0,'foreground center is not captured/warped');
+   const box=await p.locator('.tm-combo-popup').boundingBox(),v=p.viewportSize();assert.ok(box.x>=0&&box.y>=0&&box.x+box.width<=v.width+1&&box.y+box.height<=v.height+1);
+   if(theme==='light'){
+    const remap=await p.locator('.tm-combo-popup .glass-optics').evaluate(async canvas=>{
+     const d=TaskMeccaGlass.diagnostics(),image=new Image();image.src=d.photo;await image.decode();const source=document.createElement('canvas');source.width=d.stage.width;source.height=d.stage.height;const a=source.getContext('2d'),scale=Math.max(d.stage.width/image.naturalWidth,d.stage.height/image.naturalHeight),w=image.naturalWidth*scale,h=image.naturalHeight*scale;a.drawImage(image,(d.stage.width-w)/2,(d.stage.height-h)/2,w,h);
+     const r=canvas.getBoundingClientRect(),identity=document.createElement('canvas');identity.width=canvas.width;identity.height=canvas.height;const b=identity.getContext('2d');b.scale(canvas.width/r.width,canvas.height/r.height);b.drawImage(source,-r.left,-r.top,d.stage.width,d.stage.height);
+     const warped=canvas.getContext('2d').getImageData(0,0,canvas.width,canvas.height).data,straight=b.getImageData(0,0,canvas.width,canvas.height).data;let diff=0,count=0;for(let i=0;i<warped.length;i+=4)if(warped[i+3]>100){for(let k=0;k<3;k++)diff+=Math.abs(warped[i+k]-straight[i+k]);count+=3}return{meanChannelDifference:diff/count,channels:count,control:'same fixed photo without curved rim mapping'};
+    });assert.ok(remap.meanChannelDifference>1,'actual background samples differ from an undisplaced photo projection');report.push({mobile,refractionComparison:remap});
+   }
+   await shot(theme+'-menu');if(out){await p.locator('.tm-combo-popup .glass-optics').evaluate(e=>e.style.visibility='hidden');await shot(theme+'-menu-no-optical-rim');await p.locator('.tm-combo-popup .glass-optics').evaluate(e=>e.style.visibility='')}
+   await p.keyboard.press('Escape');assert.equal(await p.locator('.palette-picker .tm-combo-trigger').getAttribute('aria-expanded'),'false');assert.ok(await p.locator('.palette-picker .tm-combo-trigger').evaluate(e=>e===document.activeElement));
+   report.push({mobile,theme,box,pixels,optics:d});
+  }
+  const combo=p.locator('.palette-picker .tm-combo-trigger');await combo.press('Enter');await p.keyboard.press('Home');await p.keyboard.press('Enter');assert.equal(await p.evaluate(()=>state.palette),'mecca');await p.waitForFunction(()=>document.querySelectorAll('.glass-optics').length===0);assert.equal(await p.locator('.glass-optics').count(),0);await p.evaluate(()=>applyPalette('glass'));await p.waitForFunction(()=>TaskMeccaGlass.diagnostics().mode==='active');
+  // Real select enhancement: searchable list, disabled option, keyboard choice.
+  await p.evaluate(()=>{const l=document.createElement('label');l.id='fixtureSelectLabel';l.style.cssText='position:fixed;top:180px;left:20px;z-index:2000;width:280px';l.textContent='가상 선택 검색 ';const s=document.createElement('select');s.id='fixtureSearchSelect';s.setAttribute('aria-label','가상 선택 검색');for(let i=0;i<16;i++){const o=document.createElement('option');o.value='v'+i;o.textContent='가상 항목 '+i;o.disabled=i===3;s.append(o)}l.append(s);document.body.append(l);TaskMeccaSelectUI.sync()});
+  await p.locator('#fixtureSelectLabel .tm-combo-trigger').click();await p.locator('.tm-combo-search').fill('항목 12');await p.keyboard.press('ArrowDown');await p.keyboard.press('Enter');assert.equal(await p.locator('#fixtureSearchSelect').inputValue(),'v12');assert.ok(await p.locator('#fixtureSelectLabel .tm-combo-trigger').evaluate(e=>e===document.activeElement));
+  await p.locator('#fixtureSelectLabel .tm-combo-trigger').click();await p.keyboard.press('Home');await p.keyboard.press('ArrowDown');await p.keyboard.press('ArrowDown');await p.keyboard.press('ArrowDown');await p.keyboard.press('Enter');assert.equal(await p.locator('#fixtureSearchSelect').inputValue(),'v4','disabled option is skipped');
+ await p.locator('#fixtureSelectLabel .tm-combo-trigger').click();await p.setViewportSize({width:350,height:600});await p.waitForTimeout(50);const resized=await p.locator('.tm-combo-popup').boundingBox();assert.ok(resized.x>=0&&resized.y>=0&&resized.x+resized.width<=351&&resized.y+resized.height<=601);await p.keyboard.press('Escape');await p.setViewportSize(mobile?{width:390,height:844}:{width:1440,height:960});
+ await p.evaluate(()=>{const input=document.createElement('input');input.id='fixtureInvalidInput';input.setAttribute('aria-invalid','true');document.getElementById('fixtureSelectLabel').append(input)});const invalid=await p.locator('#fixtureInvalidInput').evaluate(e=>({outline:getComputedStyle(e).outlineWidth,border:getComputedStyle(e).borderColor}));assert.equal(invalid.outline,'1px');assert.ok(invalid.border);await p.locator('#fixtureInvalidInput').evaluate(e=>e.remove());
+ await p.locator('#fixtureSearchSelect').evaluate(e=>e.disabled=true);await p.evaluate(()=>TaskMeccaSelectUI.sync());assert.ok(await p.locator('#fixtureSelectLabel .tm-combo-trigger').isDisabled());await p.locator('#fixtureSelectLabel').evaluate(e=>e.remove());
+  // Activity's actual native checkbox and notifications' actual role=switch.
+  await p.evaluate(f=>{state.detail=f.detail.id;state.detailTask=f.detail;activityDetailCache.set(activityDetailKey(f.detail.id),f.activity);state.raw=false;render()},data);
+  const group=p.locator('#activityDetailGroupAgents');await group.scrollIntoViewIfNeeded();await group.focus();const was=await group.isChecked();await p.keyboard.press('Space');assert.equal(await p.locator('#activityDetailGroupAgents').isChecked(),!was);await shot('activity-checkbox');
+  await p.evaluate(f=>{Object.assign(state,{detail:null,detailTask:null,view:'notifications',notificationCenterTab:'settings',projectNotificationSettings:[{path:f.project,name:'Atlas · 가상 알림',status:{project_enabled:true,configured:false,connected:false}}]});syncBackgroundPush=async()=>false;render();renderNotificationPanel()},data);
+  const toggle=p.locator('#centerGlobalWebChannel');await toggle.scrollIntoViewIfNeeded();const checked=await toggle.getAttribute('aria-checked');await toggle.click();await p.waitForFunction(value=>document.querySelector('#centerGlobalWebChannel')?.getAttribute('aria-checked')!==value,checked);await shot('notification-switches');
+  report.push({mobile,selectionInventory:await p.evaluate(()=>({nativeRadios:document.querySelectorAll('input[type=radio]').length,switches:document.querySelectorAll('[role=switch]').length,disabledSwitches:document.querySelectorAll('[role=switch]:disabled').length})),providerBoundary:'Push provider stub; native handlers and local state used'});
+  await c.close();
+ }}finally{if(out)fs.writeFileSync(path.join(out,'liquid-glass-contract.json'),JSON.stringify(report,null,2));await browser.close();await server.close()}
 });
