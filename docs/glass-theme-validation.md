@@ -21,7 +21,7 @@ WebP quality 88이며 파일별 SHA-256은 메타데이터와 자동 검사로 �
 
 `theme-boot.js`는 첫 paint 전에 screen 크기로 배경 canvas의 pixel 크기를 정합니다. coarse 화면은 긴 변의 정방형을 사용하고 left/top 0과 이미지 scale을 유지합니다. 주소창·키보드에 해당하는 viewport 높이 변경, 문서/독립 메뉴 scroll과 회전 때 재확대·재중심화하지 않습니다. 회전하면 같은 사진의 가시 범위가 달라집니다. 배경과 reader pane은 별개이므로 pane 높이는 viewport에 맞춰 바뀔 수 있습니다.
 
-읽기 pane의 filter는 `.content` 자체가 아닌 별도 장식 바탕에 적용합니다. Cozy의 광학 표현이 활성화되면 aria-hidden `.glass-reader-material` 요소를 쓰고, 그 외에는 `::before`로 대체합니다. sticky와 같은 크기의 음수 margin으로 flow 높이를 상쇄해 긴 원장 전체를 필터 면으로 만들지 않습니다. reader blur 6px, chrome blur 5px이며 row/card/code/Gantt에는 반복 backdrop filter가 없습니다. filter/transform/contain을 content 부모에 걸지 않으므로 fixed TOC의 containing block을 바꾸지 않습니다. Terminal의 별도 reader backing은 viewport 안의 terminal main에 한정됩니다.
+읽기 pane의 filter는 `.content` 자체가 아닌 별도 장식 바탕에 적용합니다. Cozy의 광학 표현이 활성화되면 aria-hidden `.glass-reader-material` 요소를 쓰고, 그 외에는 `::before`로 대체합니다. sticky와 같은 크기의 음수 margin으로 flow 높이를 상쇄해 긴 원장 전체를 필터 면으로 만들지 않습니다. reader/chrome blur 10px이며 row/card/code/Gantt에는 반복 backdrop filter가 없습니다. filter/transform/contain을 content 부모에 걸지 않으므로 fixed TOC의 containing block을 바꾸지 않습니다. Terminal의 별도 reader backing은 viewport 안의 terminal main에 한정됩니다.
 
 실제 요소 또는 CDP pseudo box model과 가시 교차 영역을 기록하고, 내용이 약 3,000–3,800px이어도 backing 높이가 viewport보다 작은지 검사합니다. `.querySelectorAll('*')` 개수만으로 pseudo 비용을 누락하지 않습니다. reader 하나 외에 고정 메뉴와 활성 팝업의 제한된 filter가 있으며, **부모 하나라는 이유만으로 GPU 비용이 작다고 단정하지 않습니다.**
 
@@ -84,7 +84,9 @@ Samsung Internet 실제 기기, Android 주소창·가상 키보드, OS 글꼴 �
 자동 검사와 Root/Controller의 시각 검토는 사용자 디자인 승인이 아닙니다. 새 최종 SHA의 CI·Preview와 사용자 수용 판단은 Controller가 별도로 기록합니다. Draft 유지, Dev/main/Stable 미병합, 개인 배경 업로드·조정 UI 미추가 조건을 유지합니다.
 
 
-## A-55: Glass 전용 소재와 곡면 가장자리
+## d237 구현 이력 — 사용자 Preview 거부로 교체
+
+이 절과 다음 비용 표는 첫 구현의 역사입니다. 사용자가 과한 띠와 중첩 액자를 거부했으며 현재 설계는 아래의 Preview 피드백 수정 절을 따릅니다.
 
 `glass.css`가 Glass의 토큰·형태·반사·상태를 소유합니다. Mecca/Slate는 기존 공통 스타일을 유지하며, 공유 선택기의 역할·검색·키보드 선택·포커스 복귀 로직을 재사용합니다. Glass 팝업만 visualViewport를 기준으로 너비·높이·위치를 제한합니다. 선택기가 처리한 Escape·이동·선택 키는 상위 앱 단축키로 전달하지 않아, 닫힌 뒤 포커스가 다시 사라지는 문제를 방지합니다.
 
@@ -100,7 +102,7 @@ Samsung Internet 실제 기기, Android 주소창·가상 키보드, OS 글꼴 �
 
 2026-11-05 로컬 Chrome 156의 최종 표본에서 텍스트 숨김 화면의 실제 배경을 이용해 desktop/mobile × Dark/Light 총 350개 텍스트의 여러 위치를 비교했습니다. 장면별 최저 대비는 5.67 / 5.11 / 4.84 / 5.67:1이며 4.5:1 미달 표본은 0개였습니다. 이는 대표 위치 점검이며 전체 화면·모든 상태에 대한 WCAG 인증이 아닙니다. 시각 검토는 desktop/mobile 한 묶음과 대비 보완 후 확인 한 묶음으로 제한했습니다. 최종 디자인은 사용자가 Preview에서 수용 판단합니다.
 
-### A-55 변경 전후 비용
+### d237 구현 당시 비용
 
 기준은 `689fa0f2`의 동일 사진·가상 데이터, 결과는 최종 Glass 소재입니다. macOS/설치 Chrome/headless/DPR 1/1.5초 원장 scroll을 다른 검증과 겹치지 않게 순차 측정한 단일 표본입니다.
 
@@ -112,3 +114,31 @@ Samsung Internet 실제 기기, Android 주소창·가상 키보드, OS 글꼴 �
 최대 frame 간격은 두 조건 모두 약 16.8ms 이내였습니다. 정지 250ms 동안 추가 광학 paint는 0회였습니다. 캔버스 추정은 sampler와 각 버퍼의 픽셀×4이며 JS heap과 별도입니다. 사진 decode·합성·GPU 실제 메모리 총량을 의미하지 않습니다. 낮은 JS heap은 GC 시점의 영향을 받으므로 메모리 개선으로 해석하지 않습니다.
 
 국소 재표본화 때문에 CPU 작업과 paint는 늘었습니다. 추가 Task 시간은 이 표본에서 desktop 약 20ms, mobile viewport 약 77ms/1.5초이며, 직전 동일 구현의 모바일 표본은 약 52ms였습니다. 최대 7영역·버퍼 재사용·세대/좌표 캐시로 범위를 제한했지만 실기기 비용이 낮다고 단정하지 않습니다. 관측된 광학 draw는 메뉴/스크롤/테마 변경에 한정됐고, reader는 viewport 높이를 넘지 않았으며 행·카드 필터는 none이었습니다. 실제 Samsung Internet·주소창/키보드·GPU·CPU 계측·장시간 배터리는 미측정입니다. remote CI·Preview 검증과 운영 Dev67 변경은 Worker가 수행하지 않았습니다.
+
+
+## Preview 피드백 수정: 소재 면을 정돈하고 확산광을 복구
+
+사용자는 d237 Preview를 “엄청 지저분하고 난잡해졌다”고 평가하고 확산광이 연갈색 단색으로 보인다고 보고했습니다. 앞선 자동 검증과 CI 성공은 사용자 디자인 수용을 뜻하지 않습니다. 이 revision은 새 장식이나 엔진을 추가하지 않고 사진 띠와 반복 경계를 줄였습니다.
+
+- 사진 굴절은 팝업·부유 툴바 최대 2곳의 2px 경계에만 남겼습니다. 기존 최대 7곳·10~12px에서 축소했으며 검색창·사이드바·본문의 캔버스는 제거했습니다. 둥근 띠 12→4개, 변위 7~8→1.6px, 광학 alpha .82→.42, sampler 한도 2048→1536px, 캔버스 한도 약120만→35만 픽셀, DPR 상한1.5→1.25입니다. 중앙 텍스트·아이콘·포커스는 계속 원래 DOM입니다.
+- 큰 읽기 면은 한 겹으로 유지하고 행·헤더·내부 툴바는 같은 바탕을 공유합니다. 반복 그림자·밝은 외곽선·모든 컨트롤의 캡슐 광택을 줄였습니다. 사이드바 머리의 안쪽 액자를 없애고, 검색창의 generic input 선택자 명시도를 `:where`로 낮춰 실제 입력이 두 번째 테두리·그림자를 만들던 문제를 해결했습니다. 검색창은 바깥 홈 한 겹만 가집니다.
+- Dark 안내 영역과 읽기 면은 같은 차분한 소재로 맞추고 Light의 과한 비침은 읽기 면에서 줄였습니다. 모든 요소를 같은 캡슐로 만들지 않고 큰 면18px·팝업16px·일반 입력9px·내부 선택7~9px로 역할을 구분합니다. 본문 위 여백도 줄였습니다.
+- 확산광은 로드 오류가 아니라 기존 warm gradient의 실제 표현이었습니다. 사진을 추가하지 않고 넓은 radial light field와 부드러운 중성·따뜻한 명암 분포로 교체했습니다. None은 단색으로 유지하며 boot/browser chrome의 Glass 기본색도 같은 중성색으로 맞춰 초기 색 전환을 줄였습니다. Cozy 사진·WebP·설정 키·System·고정 stage는 보존합니다.
+
+`tests/helpers/glass_background_review.cjs`는 실제 앱 자산과 가상 API를 사용해 desktop1550×1080/펼친 사이드바 및 mobile390×844에서 Dark/Light × Cozy/ambient/None을 캡처합니다. body 배경만 보이는 실제 PNG의 픽셀 분포도 읽습니다. 확산광의 채널 밝기 범위는 장면에 따라33~99, None은0으로 구분됐습니다. 평균값만으로 밝은 영역과 어두운 영역을 상쇄하지 않고 분산까지 비교합니다. 검색 입력의 border0·shadow none 및 검색/사이드바/본문의 optical canvas0도 검사합니다. 열린 언어·테마 메뉴와 PR/알림·긴 목록을 함께 확인했습니다.
+
+브라우저4건, 관련 Node16건, 안전 named Go 검사, 기존 Mecca/Slate 8조합×대표7요소 전후 외형 비교를 통과했습니다. 12장면의 대표 텍스트1344개에서 4.5:1 미달 표본은0개, 최저4.63:1이었습니다. 이는 대표 위치 표본이며 전체 WCAG 인증이 아닙니다. 최초 desktop/mobile/6조건 묶음 확인 뒤 검색 프레임과 여백을 일괄 보완했고, 확인은 한 번만 추가했습니다. 최종 디자인은 사용자가 새 Preview에서 판단합니다.
+
+사용자가 제공한 Liquid Glass Studio 참고의 SDF 법선·경계 두께에 따른 변위·Fresnel/방향성 반사 개념 검토를 읽었습니다. 그 저장소의 코드·사진·영상을 재사용하거나 데모를 실행하지 않았고, WebGL/WebGPU 엔진을 도입하지 않았습니다. 독립 DOM toolkit이나 삼성 지원·성능이 검증된 것으로 취급하지 않습니다.
+
+### 수정 전후 비용
+
+기준은 사용자에게 거부된 d237 자산이며 사진·가상 API·DPR1·Chrome156·macOS·1.5초 스크롤 조건을 맞춰 순차 관측했습니다.
+
+| 조건 | 평균 frame 간격 | Task | main-thread Paint 횟수/시간 | JS heap | 캔버스 RGBA 추정 | 광학 draw 횟수 |
+| --- | --- | --- | --- | --- | --- | --- |
+| Desktop | 16.32→16.38ms | 43.64→40.25ms | 20/3.28→12/2.69ms | 4.32→4.44MiB | 9.60→5.55MiB | 114→18 |
+| Mobile viewport | 16.63→16.60ms | 87.26→71.52ms | 50/9.78→26/5.93ms | 4.42→4.41MiB | 3.89→2.93MiB | 154→34 |
+
+최대 frame 간격은 전후 모두 약16.8ms 이내, 정지250ms의 추가 광학 paint는 모두0회였습니다. 광학 draw 총 소요 시간은 desktop24.8→21.6ms, mobile26.2→21.6ms였으며 이 합계에는 메뉴 열기·테마 변경·스크롤이 포함됩니다. 8회 테마 전환 평균은 desktop32.71→31.81ms, mobile31.76→31.74ms였습니다. 캔버스 추정은 sampler와 각 버퍼의 픽셀×4이며 JS heap·사진 decode·GPU 총량과 구분합니다. 단일 headless 표본과 GC 시점에 따른 heap 차이를 실기기 성능 개선 배수로 해석하지 않습니다.
+ 새 revision의 main-thread·paint·광학 draw·heap 및 별도 캔버스 추정은 Worker 보고서에 보존합니다. blur 반경은10px로 정돈했으므로 국소 캔버스 비용 감소만으로 물리 GPU·배터리 개선을 주장하지 않습니다. 삼성 실기기·주소창/키보드·물리 GPU/CPU·장시간 배터리는 미측정입니다. 운영 Web을 변경하지 않고 fixture/browser만 종료합니다. 최종 HEAD의 원격 CI·Preview와 PR 결과 반영은 Controller 담당입니다.

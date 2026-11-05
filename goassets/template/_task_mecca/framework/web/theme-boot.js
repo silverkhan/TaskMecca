@@ -13,7 +13,7 @@
   const backdrop=['cozy','ambient','none'].includes(storedBackground)?storedBackground:'cozy';
   const systemDark=window.matchMedia?.('(prefers-color-scheme: dark)')?.matches ?? false;
   const effective=preference==='system'?(systemDark?'dark':'light'):preference;
-  const background=palette==='glass'?(effective==='dark'?'#211d1d':'#ece2d4')
+  const background=palette==='glass'?(effective==='dark'?'#242b30':'#e7ecee')
     :palette==='mecca'?(effective==='dark'?'#0a0e1b':'#f7f3f8')
     :(effective==='dark'?'#111318':'#f7f8fa');
   // Screen dimensions survive address-bar/keyboard and viewport-height changes.

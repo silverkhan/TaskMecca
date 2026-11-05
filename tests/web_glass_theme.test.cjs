@@ -17,7 +17,7 @@ test('boot validates appearance and resolves System before application paint',()
   const expected=theme==='system'?(dark?'dark':'light'):theme;
   assert.equal(element.dataset.theme,expected);assert.equal(element.dataset.themePreference,theme);assert.equal(element.dataset.background,background);
   assert.equal(element.style.backgroundColor,meta.content);
-  assert.equal(meta.content,expected==='dark'?'#211d1d':'#ece2d4');
+  assert.equal(meta.content,expected==='dark'?'#242b30':'#e7ecee');
  }
  const invalid=appearance({theme:'broken',palette:'invalid',background:'url(secret)'}).element.dataset;
  assert.deepEqual({...invalid},{themePreference:'dark',theme:'dark',palette:'mecca',background:'cozy'});

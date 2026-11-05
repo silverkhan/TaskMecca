@@ -30,7 +30,8 @@ test('Glass browser contract: appearance, stable canvas, content, fallbacks and 
   }
   await page.evaluate(()=>{applyTheme('dark');applyBackground('cozy')});
   await page.waitForFunction(()=>document.documentElement.dataset.glassOptics==='active');
-  const reader=await page.locator('.glass-reader-material').first().evaluate(e=>({height:e.getBoundingClientRect().height,width:e.getBoundingClientRect().width,filter:getComputedStyle(e).backdropFilter,position:getComputedStyle(e).position,ownFilter:getComputedStyle(document.querySelector('.content')).backdropFilter}));
+  await page.waitForFunction(()=>{const e=document.querySelector('.glass-reader-material');return e?.isConnected&&getComputedStyle(e).backdropFilter.includes('blur(')});
+  const reader=await page.locator('.content').evaluate(owner=>{const e=owner.querySelector('.glass-reader-material');return{height:e.getBoundingClientRect().height,width:e.getBoundingClientRect().width,filter:getComputedStyle(e).backdropFilter,position:getComputedStyle(e).position,ownFilter:getComputedStyle(owner).backdropFilter}});
   assert.ok(reader.filter.includes('blur('));assert.equal(reader.position,'sticky');assert.ok(reader.height<=await page.evaluate(()=>innerHeight));assert.equal(reader.ownFilter,'none');report.readerPlanes??=[];report.readerPlanes.push({mobile,...reader,optics:await page.evaluate(()=>TaskMeccaGlass.diagnostics())});
   const geometry=()=>page.evaluate(()=>{const s=getComputedStyle(document.body,'::before');return[s.width,s.height,s.left,s.top,s.backgroundSize,s.backgroundPosition,s.backgroundImage]});
   const initial=await geometry();await page.evaluate(()=>{document.body.style.minHeight='3000px';window.scrollTo(0,800)});assert.deepEqual(await geometry(),initial);
@@ -71,7 +72,7 @@ test('Glass browser contract: appearance, stable canvas, content, fallbacks and 
   // unsupported declarations, emulating how a browser lacking both properties parses CSS.
   await page.evaluate(()=>localStorage.setItem('fixture-no-backdrop','1'));await page.addInitScript(()=>{if(localStorage.getItem('fixture-no-backdrop')==='1'){const original=CSS.supports.bind(CSS);CSS.supports=(p,v)=>String(p).includes('backdrop-filter')?false:original(p,v)}});
   await page.route('**/glass.css',async route=>{const response=await route.fetch();let css=await response.text();css=css.replace(/@supports not \(\(backdrop-filter:blur\(1px\)\) or \(-webkit-backdrop-filter:blur\(1px\)\)\)/,'@supports (display:block)').replace(/(?:-webkit-)?backdrop-filter\s*:[^;}]+;?/g,'');await route.fulfill({response,body:css})});
-  await page.reload();await seed();assert.ok((await geometry())[6].includes('cozy-beige-room-photo-1920.webp'));assert.equal(await page.locator('.topbar').evaluate(e=>getComputedStyle(e).backgroundColor),'rgb(238, 244, 247)');assert.equal(await page.locator('.glass-optics').count(),0);await shot('unsupported-blur-emulated');await page.evaluate(()=>localStorage.removeItem('fixture-no-backdrop'));
+  await page.reload();await seed();assert.ok((await geometry())[6].includes('cozy-beige-room-photo-1920.webp'));assert.equal(await page.locator('.topbar').evaluate(e=>getComputedStyle(e).backgroundColor),'rgb(238, 243, 245)');assert.equal(await page.locator('.glass-optics').count(),0);await shot('unsupported-blur-emulated');await page.evaluate(()=>localStorage.removeItem('fixture-no-backdrop'));
   await page.unroute('**/glass.css');for(const theme of ['dark','light']){
    await page.evaluate(theme=>localStorage.setItem('task-mecca-theme',theme),theme);await page.goto(server.origin+'/terminal?project=/fixtures/atlas');await page.waitForTimeout(200);
    assert.equal(await page.evaluate(()=>document.documentElement.dataset.theme),theme);assert.equal(await page.locator('.terminal-app').evaluate(e=>getComputedStyle(e).zIndex),'1');
@@ -108,7 +109,7 @@ test('Glass optical layers preserve representative menu and native controls',{sk
   await seed();
   for(const theme of ['dark','light']){
    await p.evaluate(theme=>applyTheme(theme),theme);await p.locator('.palette-picker .tm-combo-trigger').click();await p.waitForFunction(()=>TaskMeccaGlass.diagnostics().lenses.some(e=>e.kind==='popup'));
-   const d=await p.evaluate(()=>TaskMeccaGlass.diagnostics());assert.ok(d.lenses.length<=7);const lens=d.lenses.find(e=>e.kind==='popup');assert.ok(lens.amplitude>0&&lens.rim>0&&lens.draws>0);
+   const d=await p.evaluate(()=>TaskMeccaGlass.diagnostics());assert.ok(d.lenses.length<=2);const lens=d.lenses.find(e=>e.kind==='popup');assert.ok(lens.amplitude>0&&lens.amplitude<=2&&lens.rim>0&&lens.rim<=2&&lens.draws>0);
    const pixels=await p.locator('.tm-combo-popup .glass-optics').evaluate(e=>{const c=e.getContext('2d'),p=c.getImageData(0,0,e.width,e.height).data;let painted=0;for(let i=3;i<p.length;i+=4)if(p[i])painted++;return{painted,total:e.width*e.height,center:c.getImageData(Math.floor(e.width/2),Math.floor(e.height/2),1,1).data[3]}});
    assert.ok(pixels.painted>0&&pixels.painted<pixels.total/2);assert.equal(pixels.center,0,'foreground center is not captured/warped');
    const box=await p.locator('.tm-combo-popup').boundingBox(),v=p.viewportSize();assert.ok(box.x>=0&&box.y>=0&&box.x+box.width<=v.width+1&&box.y+box.height<=v.height+1);
@@ -139,4 +140,9 @@ test('Glass optical layers preserve representative menu and native controls',{sk
   report.push({mobile,selectionInventory:await p.evaluate(()=>({nativeRadios:document.querySelectorAll('input[type=radio]').length,switches:document.querySelectorAll('[role=switch]').length,disabledSwitches:document.querySelectorAll('[role=switch]:disabled').length})),providerBoundary:'Push provider stub; native handlers and local state used'});
   await c.close();
  }}finally{if(out)fs.writeFileSync(path.join(out,'liquid-glass-contract.json'),JSON.stringify(report,null,2));await browser.close();await server.close()}
+});
+
+test('Glass backgrounds have distinct actual light distributions in Dark and Light',{skip:!enabled,timeout:120000},async()=>{
+ const {chromium}=require(process.env.GLASS_PLAYWRIGHT_MODULE),browser=await chromium.launch({executablePath:process.env.CHROME_EXECUTABLE,headless:true});
+ try{await require('./helpers/glass_background_review.cjs').capture({browser,root:path.resolve('goassets/template/_task_mecca/framework/web'),out:process.env.GLASS_EVIDENCE_DIR&&path.resolve(process.env.GLASS_EVIDENCE_DIR)})}finally{await browser.close()}
 });

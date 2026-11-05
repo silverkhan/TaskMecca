@@ -2,7 +2,7 @@
    A shared photo sampler feeds a few curved rims; foreground DOM stays intact. */
 (function(){
  'use strict';
- const root=document.documentElement,MAX_LENSES=7,MAX_PIXELS=1200000,RINGS=12;
+ const root=document.documentElement,MAX_LENSES=2,MAX_PIXELS=350000,RINGS=4;
  const entries=new Map(),reduced=window.matchMedia('(prefers-reduced-transparency: reduce)');
  let frame=0,image=null,imageURL='',loading='',sampler=null,stageKey='',generation=0,paintCount=0,totalPaintMs=0,enabled=false;
  const supports=typeof Path2D!=='undefined'&&!!document.createElement('canvas').getContext?.('2d')&&
@@ -17,7 +17,7 @@
  function paintSampler(){
   if(!image)return;
   const g=geometry(),dark=root.dataset.theme==='dark',key=[g.width,g.height,dark,imageURL].join('|');if(key===stageKey)return;
-  const scale=Math.min(1,2048/g.width,2048/g.height);sampler=document.createElement('canvas');sampler.width=Math.ceil(g.width*scale);sampler.height=Math.ceil(g.height*scale);
+  const scale=Math.min(1,1536/g.width,1536/g.height);sampler=document.createElement('canvas');sampler.width=Math.ceil(g.width*scale);sampler.height=Math.ceil(g.height*scale);
   const c=sampler.getContext('2d');c.scale(scale,scale);
   const cover=Math.max(g.width/image.naturalWidth,g.height/image.naturalHeight),w=image.naturalWidth*cover,h=image.naturalHeight*cover;
   c.drawImage(image,(g.width-w)/2,(g.height-h)/2,w,h);
@@ -38,11 +38,10 @@
  }
  function candidates(){
   const a=[];const add=(selector,kind)=>{for(const host of document.querySelectorAll(selector))a.push({host,kind})};
-  add('.tm-combo-popup','popup');add('.palette-picker','menu');add('.topbar,.terminal-header','chrome');add(innerWidth<=680?'.sidebar-head':'.sidebar','sidebar');
-  for(const owner of document.querySelectorAll('.content,.terminal-main'))a.push({host:backing(owner,owner.classList.contains('terminal-main')),kind:'reader'});
-  add('.search-wrap','inset');add('.tm-combo:focus-within','control');
+  add('.tm-combo-popup','popup');add('.topbar,.terminal-header','chrome');
+  // Reader material stays a single quiet plane, with no optical canvas.
+  for(const owner of document.querySelectorAll('.content,.terminal-main'))backing(owner,owner.classList.contains('terminal-main'));
   return a.filter((item,index,list)=>list.findIndex(x=>x.host===item.host)===index).filter(({host,kind})=>{
-   if(kind==='control'&&host.closest('.palette-picker,.language-picker,.background-picker'))return false;
    const r=host.getBoundingClientRect(),s=getComputedStyle(host);
    return r.width>8&&r.height>8&&r.bottom>0&&r.right>0&&r.top<innerHeight&&r.left<innerWidth&&s.visibility!=='hidden'&&s.display!=='none';
   }).slice(0,MAX_LENSES);
@@ -51,14 +50,14 @@
   if(!sampler)return;
   const {host,canvas,kind}=entry,r=canvas.getBoundingClientRect(),style=getComputedStyle(host),radius=Math.min(parseFloat(style.borderTopLeftRadius)||16,r.width/2,r.height/2);
   const key=[r.x,r.y,r.width,r.height,radius,generation,devicePixelRatio].map(x=>typeof x==='number'?Math.round(x*100)/100:x).join('|');if(entry.key===key)return;
-  const start=performance.now(),w=r.width,h=r.height,dpr=Math.min(devicePixelRatio||1,1.5,Math.sqrt(MAX_PIXELS/(w*h)));
+  const start=performance.now(),w=r.width,h=r.height,dpr=Math.min(devicePixelRatio||1,1.25,Math.sqrt(MAX_PIXELS/(w*h)));
   const width=Math.max(1,Math.ceil(w*dpr)),height=Math.max(1,Math.ceil(h*dpr));if(canvas.width!==width)canvas.width=width;if(canvas.height!==height)canvas.height=height;const c=canvas.getContext('2d');c.setTransform(1,0,0,1,0,0);c.clearRect(0,0,width,height);c.scale(dpr,dpr);
-  const rim=Math.min(kind==='reader'?12:10,radius*.72,h*.28),amp=kind==='reader'?8:kind==='inset'?-4:7,g=geometry();
+  const rim=Math.min(2,radius*.18,h*.08),amp=1.6,g=geometry();
   for(let i=0;i<RINGS;i++){
    const a=i*rim/RINGS,b=(i+1)*rim/RINGS,ring=new Path2D();rounded(ring,a,a,w-2*a,h-2*a,radius-a);
    if(w>2*b&&h>2*b)rounded(ring,b,b,w-2*b,h-2*b,radius-b);
    const curvature=Math.pow(1-(i+.5)/RINGS,2),mx=1+amp*curvature/(w/2),my=1+amp*curvature/(h/2);
-   c.save();c.clip(ring,'evenodd');c.globalAlpha=.82;c.translate(w/2,h/2);c.scale(mx,my);c.translate(-w/2,-h/2);
+   c.save();c.clip(ring,'evenodd');c.globalAlpha=.42;c.translate(w/2,h/2);c.scale(mx,my);c.translate(-w/2,-h/2);
    c.drawImage(sampler,-r.left,-r.top,g.width,g.height);c.restore();
   }
   entry.key=key;entry.rect={left:r.left,top:r.top,width:w,height:h};entry.rim=rim;entry.amplitude=amp;entry.draws++;paintCount++;totalPaintMs+=performance.now()-start;
