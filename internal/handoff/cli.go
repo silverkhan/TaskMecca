@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/silverkhan/TaskMecca/internal/activity"
 	"io"
 	"path/filepath"
 	"strings"
@@ -17,8 +18,8 @@ type cliOptions struct {
 	from                string
 	to                  string
 	sourceAttempt       string
-    fromAttempt         string
-    toAttempt           string
+	fromAttempt         string
+	toAttempt           string
 	targetAttempt       string
 	reportFile          string
 	contractSHA256      string
@@ -74,6 +75,10 @@ func RunCLI(args []string, stdout, stderr io.Writer) int {
 			fmt.Fprintln(stderr, callErr)
 			return 1
 		}
+		if opts.event == "worker-done" || opts.event == "worker_done" {
+			r := activity.CheckReporting(project, opts.positionals[0], activity.RoleWorker, opts.sourceAttempt, "", "", "worker_completed", now)
+			result.ActivityReporting = &r
+		}
 		printValue(stdout, result, opts.jsonOutput)
 	case "claim":
 		if len(opts.positionals) != 1 || opts.as == "" || opts.sourceAttempt == "" {
@@ -85,23 +90,40 @@ func RunCLI(args []string, stdout, stderr io.Writer) int {
 			fmt.Fprintln(stderr, callErr)
 			return 1
 		}
+		if (result.Claimed || result.AlreadyClaimed) && !result.AlreadyApplied {
+			if h, ok, _ := Inspect(project, result.HandoffID, now); ok && (h.EventType == EventWorkerDone || h.EventType == EventWorkerBlocked || h.EventType == EventCompletionReport) {
+				r := activity.CheckReporting(project, h.TaskID, activity.RoleController, result.ClaimedAttemptID, "", h.HandoffID, "review_started", now)
+				result.ActivityReporting = &r
+			}
+		}
 		printValue(stdout, result, opts.jsonOutput)
 		if result.ClaimConflict || result.ContractChanged {
-			if !opts.jsonOutput && result.RecoveryHint != "" { fmt.Fprintln(stderr, "recovery: "+result.RecoveryHint) }
+			if !opts.jsonOutput && result.RecoveryHint != "" {
+				fmt.Fprintln(stderr, "recovery: "+result.RecoveryHint)
+			}
 			return 1
 		}
 	case "transfer":
-        if len(opts.positionals)!=1||opts.fromAttempt==""||opts.toAttempt==""||opts.evidence=="" {
-            fmt.Fprintln(stderr,"handoff transfer requires <HANDOFF_ID> --from-attempt OLD --to-attempt NEW --evidence TEXT")
-            return 2
-        }
-        result,callErr:=TransferClaim(project,opts.positionals[0],opts.fromAttempt,opts.toAttempt,opts.evidence,now)
-        if callErr!=nil {fmt.Fprintln(stderr,callErr);return 1}
-        printValue(stdout,result,opts.jsonOutput)
+		if len(opts.positionals) != 1 || opts.fromAttempt == "" || opts.toAttempt == "" || opts.evidence == "" {
+			fmt.Fprintln(stderr, "handoff transfer requires <HANDOFF_ID> --from-attempt OLD --to-attempt NEW --evidence TEXT")
+			return 2
+		}
+		result, callErr := TransferClaim(project, opts.positionals[0], opts.fromAttempt, opts.toAttempt, opts.evidence, now)
+		if callErr != nil {
+			fmt.Fprintln(stderr, callErr)
+			return 1
+		}
+		printValue(stdout, result, opts.jsonOutput)
 	case "recover-plan":
-		if len(opts.positionals) != 1 { fmt.Fprintln(stderr, "handoff recover-plan requires <HANDOFF_ID>"); return 2 }
+		if len(opts.positionals) != 1 {
+			fmt.Fprintln(stderr, "handoff recover-plan requires <HANDOFF_ID>")
+			return 2
+		}
 		result, callErr := PlanRecovery(project, opts.positionals[0], now)
-		if callErr != nil { fmt.Fprintln(stderr, callErr); return 1 }
+		if callErr != nil {
+			fmt.Fprintln(stderr, callErr)
+			return 1
+		}
 		printValue(stdout, result, opts.jsonOutput)
 	case "redispatch":
 		if len(opts.positionals) != 1 || opts.targetAttempt == "" || opts.evidence == "" {
@@ -109,7 +131,10 @@ func RunCLI(args []string, stdout, stderr io.Writer) int {
 			return 2
 		}
 		result, callErr := Redispatch(project, opts.positionals[0], opts.targetAttempt, opts.evidence, now)
-		if callErr != nil { fmt.Fprintln(stderr, callErr); return 1 }
+		if callErr != nil {
+			fmt.Fprintln(stderr, callErr)
+			return 1
+		}
 		printValue(stdout, result, opts.jsonOutput)
 	case "mark":
 		if len(opts.positionals) != 1 || opts.step == "" || opts.result == "" {
@@ -120,6 +145,12 @@ func RunCLI(args []string, stdout, stderr io.Writer) int {
 		if callErr != nil {
 			fmt.Fprintln(stderr, callErr)
 			return 1
+		}
+		if opts.step == "acceptance" {
+			if h, ok, _ := Inspect(project, result.HandoffID, now); ok {
+				r := activity.CheckReporting(project, h.TaskID, activity.RoleController, h.ClaimedAttemptID, "", h.HandoffID, "review_outcome", now)
+				result.ActivityReporting = &r
+			}
 		}
 		printValue(stdout, result, opts.jsonOutput)
 	case "inspect":
@@ -234,10 +265,10 @@ func parseCLI(args []string) (cliOptions, error) {
 				opts.to = value
 			case "--source-attempt":
 				opts.sourceAttempt = value
-            case "--from-attempt":
-                opts.fromAttempt=value
-            case "--to-attempt":
-                opts.toAttempt=value
+			case "--from-attempt":
+				opts.fromAttempt = value
+			case "--to-attempt":
+				opts.toAttempt = value
 			case "--target-attempt":
 				opts.targetAttempt = value
 			case "--report-file":
@@ -262,7 +293,6 @@ func parseCLI(args []string) (cliOptions, error) {
 	}
 	return opts, nil
 }
-
 
 func projectReconcileLedger(ledger Ledger, summary bool, fields string) (any, error) {
 	// Preserve the legacy JSON contract exactly when no projection is requested.
@@ -290,17 +320,17 @@ func projectReconcileLedger(ledger Ledger, summary bool, fields string) (any, er
 			}
 		}
 		data = map[string]any{
-			"version": ledger.Version,
-			"generated_at": ledger.GeneratedAt,
-			"total_handoffs": len(ledger.Handoffs),
-			"applied_count": applied,
-			"claimed_pending_count": claimedPending,
+			"version":                 ledger.Version,
+			"generated_at":            ledger.GeneratedAt,
+			"total_handoffs":          len(ledger.Handoffs),
+			"applied_count":           applied,
+			"claimed_pending_count":   claimedPending,
 			"unclaimed_pending_count": unclaimedPending,
-			"hold_count": held,
-			"findings_count": len(ledger.Findings),
-			"by_event": byEvent,
-			"findings": ledger.Findings,
-			"observation_scope": "handoff journal only; no native transport or runtime liveness assertion",
+			"hold_count":              held,
+			"findings_count":          len(ledger.Findings),
+			"by_event":                byEvent,
+			"findings":                ledger.Findings,
+			"observation_scope":       "handoff journal only; no native transport or runtime liveness assertion",
 		}
 	} else {
 		// Marshal canonical JSON tags rather than reflecting Go field names.

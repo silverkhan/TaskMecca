@@ -75,7 +75,7 @@ func publishLifecycleProjection(project, root string, rows []Record, control con
 				state = "blocked"
 			}
 		}
-		item := map[string]any{"id": id, "lifecycle": control.Timings[id], "activity": control.Activity[id], "state": effectiveStateFromControl(state, control.Attention[id]), "file_state": row.State}
+		item := map[string]any{"id": id, "lifecycle": control.Timings[id], "activity": control.Activity[id], "state": effectiveStateFromControl(state, control.Attention[id]), "file_state": row.State, "execution_observations": control.ExecutionObservations[id]}
 		if item["lifecycle"] == nil {
 			item["lifecycle"] = map[string]any{}
 		}

@@ -1,0 +1,855 @@
+{
+  "events": [
+    {
+      "schema_version": 0,
+      "event_id": "0",
+      "task_id": "B-1",
+      "action": "start",
+      "role": "worker",
+      "agent_id": "worker",
+      "runtime_attempt_id": "one-attempt",
+      "round": 0,
+      "type": "implementation",
+      "confidence": "",
+      "occurred_at": "2026-11-05T00:10:00Z",
+      "recorded_at": "2026-11-05T00:10:00Z"
+    },
+    {
+      "schema_version": 0,
+      "event_id": "1",
+      "task_id": "B-1",
+      "action": "switch",
+      "role": "worker",
+      "agent_id": "worker",
+      "runtime_attempt_id": "one-attempt",
+      "round": 0,
+      "type": "targeted_test",
+      "confidence": "",
+      "occurred_at": "2026-11-05T00:11:00Z",
+      "recorded_at": "2026-11-05T00:11:00Z"
+    },
+    {
+      "schema_version": 0,
+      "event_id": "2",
+      "task_id": "B-1",
+      "action": "switch",
+      "role": "worker",
+      "agent_id": "worker",
+      "runtime_attempt_id": "one-attempt",
+      "round": 0,
+      "type": "implementation",
+      "confidence": "",
+      "occurred_at": "2026-11-05T00:12:00Z",
+      "recorded_at": "2026-11-05T00:12:00Z"
+    },
+    {
+      "schema_version": 0,
+      "event_id": "3",
+      "task_id": "B-1",
+      "action": "switch",
+      "role": "worker",
+      "agent_id": "worker",
+      "runtime_attempt_id": "one-attempt",
+      "round": 0,
+      "type": "targeted_test",
+      "confidence": "",
+      "occurred_at": "2026-11-05T00:13:00Z",
+      "recorded_at": "2026-11-05T00:13:00Z"
+    },
+    {
+      "schema_version": 0,
+      "event_id": "4",
+      "task_id": "B-1",
+      "action": "switch",
+      "role": "worker",
+      "agent_id": "worker",
+      "runtime_attempt_id": "one-attempt",
+      "round": 0,
+      "type": "implementation",
+      "confidence": "",
+      "occurred_at": "2026-11-05T00:14:00Z",
+      "recorded_at": "2026-11-05T00:14:00Z"
+    },
+    {
+      "schema_version": 0,
+      "event_id": "5",
+      "task_id": "B-1",
+      "action": "switch",
+      "role": "worker",
+      "agent_id": "worker",
+      "runtime_attempt_id": "one-attempt",
+      "round": 0,
+      "type": "targeted_test",
+      "confidence": "",
+      "occurred_at": "2026-11-05T00:15:00Z",
+      "recorded_at": "2026-11-05T00:15:00Z"
+    },
+    {
+      "schema_version": 0,
+      "event_id": "6",
+      "task_id": "B-1",
+      "action": "switch",
+      "role": "worker",
+      "agent_id": "worker",
+      "runtime_attempt_id": "one-attempt",
+      "round": 0,
+      "type": "implementation",
+      "confidence": "",
+      "occurred_at": "2026-11-05T00:16:00Z",
+      "recorded_at": "2026-11-05T00:16:00Z"
+    },
+    {
+      "schema_version": 0,
+      "event_id": "7",
+      "task_id": "B-1",
+      "action": "switch",
+      "role": "worker",
+      "agent_id": "worker",
+      "runtime_attempt_id": "one-attempt",
+      "round": 0,
+      "type": "targeted_test",
+      "confidence": "",
+      "occurred_at": "2026-11-05T00:17:00Z",
+      "recorded_at": "2026-11-05T00:17:00Z"
+    },
+    {
+      "schema_version": 0,
+      "event_id": "8",
+      "task_id": "B-1",
+      "action": "switch",
+      "role": "worker",
+      "agent_id": "worker",
+      "runtime_attempt_id": "one-attempt",
+      "round": 0,
+      "type": "implementation",
+      "confidence": "",
+      "occurred_at": "2026-11-05T00:18:00Z",
+      "recorded_at": "2026-11-05T00:18:00Z"
+    },
+    {
+      "schema_version": 0,
+      "event_id": "9",
+      "task_id": "B-1",
+      "action": "switch",
+      "role": "worker",
+      "agent_id": "worker",
+      "runtime_attempt_id": "one-attempt",
+      "round": 0,
+      "type": "targeted_test",
+      "confidence": "",
+      "occurred_at": "2026-11-05T00:19:00Z",
+      "recorded_at": "2026-11-05T00:19:00Z"
+    },
+    {
+      "schema_version": 0,
+      "event_id": "10",
+      "task_id": "B-1",
+      "action": "switch",
+      "role": "worker",
+      "agent_id": "worker",
+      "runtime_attempt_id": "one-attempt",
+      "round": 0,
+      "type": "implementation",
+      "confidence": "",
+      "occurred_at": "2026-11-05T00:20:00Z",
+      "recorded_at": "2026-11-05T00:20:00Z"
+    },
+    {
+      "schema_version": 0,
+      "event_id": "11",
+      "task_id": "B-1",
+      "action": "switch",
+      "role": "worker",
+      "agent_id": "worker",
+      "runtime_attempt_id": "one-attempt",
+      "round": 0,
+      "type": "targeted_test",
+      "confidence": "",
+      "occurred_at": "2026-11-05T00:21:00Z",
+      "recorded_at": "2026-11-05T00:21:00Z"
+    },
+    {
+      "schema_version": 0,
+      "event_id": "12",
+      "task_id": "B-1",
+      "action": "switch",
+      "role": "worker",
+      "agent_id": "worker",
+      "runtime_attempt_id": "one-attempt",
+      "round": 0,
+      "type": "implementation",
+      "confidence": "",
+      "occurred_at": "2026-11-05T00:22:00Z",
+      "recorded_at": "2026-11-05T00:22:00Z"
+    },
+    {
+      "schema_version": 0,
+      "event_id": "13",
+      "task_id": "B-1",
+      "action": "switch",
+      "role": "worker",
+      "agent_id": "worker",
+      "runtime_attempt_id": "one-attempt",
+      "round": 0,
+      "type": "targeted_test",
+      "confidence": "",
+      "occurred_at": "2026-11-05T00:23:00Z",
+      "recorded_at": "2026-11-05T00:23:00Z"
+    },
+    {
+      "schema_version": 0,
+      "event_id": "14",
+      "task_id": "B-1",
+      "action": "switch",
+      "role": "worker",
+      "agent_id": "worker",
+      "runtime_attempt_id": "one-attempt",
+      "round": 0,
+      "type": "implementation",
+      "confidence": "",
+      "occurred_at": "2026-11-05T00:24:00Z",
+      "recorded_at": "2026-11-05T00:24:00Z"
+    },
+    {
+      "schema_version": 0,
+      "event_id": "15",
+      "task_id": "B-1",
+      "action": "switch",
+      "role": "worker",
+      "agent_id": "worker",
+      "runtime_attempt_id": "one-attempt",
+      "round": 0,
+      "type": "targeted_test",
+      "confidence": "",
+      "occurred_at": "2026-11-05T00:25:00Z",
+      "recorded_at": "2026-11-05T00:25:00Z"
+    },
+    {
+      "schema_version": 0,
+      "event_id": "16",
+      "task_id": "B-1",
+      "action": "switch",
+      "role": "worker",
+      "agent_id": "worker",
+      "runtime_attempt_id": "one-attempt",
+      "round": 0,
+      "type": "implementation",
+      "confidence": "",
+      "occurred_at": "2026-11-05T00:26:00Z",
+      "recorded_at": "2026-11-05T00:26:00Z"
+    },
+    {
+      "schema_version": 0,
+      "event_id": "17",
+      "task_id": "B-1",
+      "action": "switch",
+      "role": "worker",
+      "agent_id": "worker",
+      "runtime_attempt_id": "one-attempt",
+      "round": 0,
+      "type": "targeted_test",
+      "confidence": "",
+      "occurred_at": "2026-11-05T00:27:00Z",
+      "recorded_at": "2026-11-05T00:27:00Z"
+    },
+    {
+      "schema_version": 0,
+      "event_id": "18",
+      "task_id": "B-1",
+      "action": "switch",
+      "role": "worker",
+      "agent_id": "worker",
+      "runtime_attempt_id": "one-attempt",
+      "round": 0,
+      "type": "implementation",
+      "confidence": "",
+      "occurred_at": "2026-11-05T00:28:00Z",
+      "recorded_at": "2026-11-05T00:28:00Z"
+    },
+    {
+      "schema_version": 0,
+      "event_id": "19",
+      "task_id": "B-1",
+      "action": "stop",
+      "role": "worker",
+      "agent_id": "worker",
+      "runtime_attempt_id": "one-attempt",
+      "round": 0,
+      "type": "targeted_test",
+      "confidence": "",
+      "occurred_at": "2026-11-05T00:29:00Z",
+      "recorded_at": "2026-11-05T00:29:00Z"
+    }
+  ],
+  "source": "synthetic regression fixture; contains no user evidence",
+  "summary": {
+    "task_id": "B-1",
+    "segments": [
+      {
+        "task_id": "B-1",
+        "agent_id": "worker",
+        "attempt_id": "one-attempt",
+        "role": "worker",
+        "type": "implementation",
+        "round": 0,
+        "started_at": "2026-11-05T00:10:00Z",
+        "ended_at": "2026-11-05T00:11:00Z",
+        "duration_ms": 60000
+      },
+      {
+        "task_id": "B-1",
+        "agent_id": "worker",
+        "attempt_id": "one-attempt",
+        "role": "worker",
+        "type": "targeted_test",
+        "round": 0,
+        "started_at": "2026-11-05T00:11:00Z",
+        "ended_at": "2026-11-05T00:12:00Z",
+        "duration_ms": 60000
+      },
+      {
+        "task_id": "B-1",
+        "agent_id": "worker",
+        "attempt_id": "one-attempt",
+        "role": "worker",
+        "type": "implementation",
+        "round": 0,
+        "started_at": "2026-11-05T00:12:00Z",
+        "ended_at": "2026-11-05T00:13:00Z",
+        "duration_ms": 60000
+      },
+      {
+        "task_id": "B-1",
+        "agent_id": "worker",
+        "attempt_id": "one-attempt",
+        "role": "worker",
+        "type": "targeted_test",
+        "round": 0,
+        "started_at": "2026-11-05T00:13:00Z",
+        "ended_at": "2026-11-05T00:14:00Z",
+        "duration_ms": 60000
+      },
+      {
+        "task_id": "B-1",
+        "agent_id": "worker",
+        "attempt_id": "one-attempt",
+        "role": "worker",
+        "type": "implementation",
+        "round": 0,
+        "started_at": "2026-11-05T00:14:00Z",
+        "ended_at": "2026-11-05T00:15:00Z",
+        "duration_ms": 60000
+      },
+      {
+        "task_id": "B-1",
+        "agent_id": "worker",
+        "attempt_id": "one-attempt",
+        "role": "worker",
+        "type": "targeted_test",
+        "round": 0,
+        "started_at": "2026-11-05T00:15:00Z",
+        "ended_at": "2026-11-05T00:16:00Z",
+        "duration_ms": 60000
+      },
+      {
+        "task_id": "B-1",
+        "agent_id": "worker",
+        "attempt_id": "one-attempt",
+        "role": "worker",
+        "type": "implementation",
+        "round": 0,
+        "started_at": "2026-11-05T00:16:00Z",
+        "ended_at": "2026-11-05T00:17:00Z",
+        "duration_ms": 60000
+      },
+      {
+        "task_id": "B-1",
+        "agent_id": "worker",
+        "attempt_id": "one-attempt",
+        "role": "worker",
+        "type": "targeted_test",
+        "round": 0,
+        "started_at": "2026-11-05T00:17:00Z",
+        "ended_at": "2026-11-05T00:18:00Z",
+        "duration_ms": 60000
+      },
+      {
+        "task_id": "B-1",
+        "agent_id": "worker",
+        "attempt_id": "one-attempt",
+        "role": "worker",
+        "type": "implementation",
+        "round": 0,
+        "started_at": "2026-11-05T00:18:00Z",
+        "ended_at": "2026-11-05T00:19:00Z",
+        "duration_ms": 60000
+      },
+      {
+        "task_id": "B-1",
+        "agent_id": "worker",
+        "attempt_id": "one-attempt",
+        "role": "worker",
+        "type": "targeted_test",
+        "round": 0,
+        "started_at": "2026-11-05T00:19:00Z",
+        "ended_at": "2026-11-05T00:20:00Z",
+        "duration_ms": 60000
+      },
+      {
+        "task_id": "B-1",
+        "agent_id": "worker",
+        "attempt_id": "one-attempt",
+        "role": "worker",
+        "type": "implementation",
+        "round": 0,
+        "started_at": "2026-11-05T00:20:00Z",
+        "ended_at": "2026-11-05T00:21:00Z",
+        "duration_ms": 60000
+      },
+      {
+        "task_id": "B-1",
+        "agent_id": "worker",
+        "attempt_id": "one-attempt",
+        "role": "worker",
+        "type": "targeted_test",
+        "round": 0,
+        "started_at": "2026-11-05T00:21:00Z",
+        "ended_at": "2026-11-05T00:22:00Z",
+        "duration_ms": 60000
+      },
+      {
+        "task_id": "B-1",
+        "agent_id": "worker",
+        "attempt_id": "one-attempt",
+        "role": "worker",
+        "type": "implementation",
+        "round": 0,
+        "started_at": "2026-11-05T00:22:00Z",
+        "ended_at": "2026-11-05T00:23:00Z",
+        "duration_ms": 60000
+      },
+      {
+        "task_id": "B-1",
+        "agent_id": "worker",
+        "attempt_id": "one-attempt",
+        "role": "worker",
+        "type": "targeted_test",
+        "round": 0,
+        "started_at": "2026-11-05T00:23:00Z",
+        "ended_at": "2026-11-05T00:24:00Z",
+        "duration_ms": 60000
+      },
+      {
+        "task_id": "B-1",
+        "agent_id": "worker",
+        "attempt_id": "one-attempt",
+        "role": "worker",
+        "type": "implementation",
+        "round": 0,
+        "started_at": "2026-11-05T00:24:00Z",
+        "ended_at": "2026-11-05T00:25:00Z",
+        "duration_ms": 60000
+      },
+      {
+        "task_id": "B-1",
+        "agent_id": "worker",
+        "attempt_id": "one-attempt",
+        "role": "worker",
+        "type": "targeted_test",
+        "round": 0,
+        "started_at": "2026-11-05T00:25:00Z",
+        "ended_at": "2026-11-05T00:26:00Z",
+        "duration_ms": 60000
+      },
+      {
+        "task_id": "B-1",
+        "agent_id": "worker",
+        "attempt_id": "one-attempt",
+        "role": "worker",
+        "type": "implementation",
+        "round": 0,
+        "started_at": "2026-11-05T00:26:00Z",
+        "ended_at": "2026-11-05T00:27:00Z",
+        "duration_ms": 60000
+      },
+      {
+        "task_id": "B-1",
+        "agent_id": "worker",
+        "attempt_id": "one-attempt",
+        "role": "worker",
+        "type": "targeted_test",
+        "round": 0,
+        "started_at": "2026-11-05T00:27:00Z",
+        "ended_at": "2026-11-05T00:28:00Z",
+        "duration_ms": 60000
+      },
+      {
+        "task_id": "B-1",
+        "agent_id": "worker",
+        "attempt_id": "one-attempt",
+        "role": "worker",
+        "type": "implementation",
+        "round": 0,
+        "started_at": "2026-11-05T00:28:00Z",
+        "ended_at": "2026-11-05T00:29:00Z",
+        "duration_ms": 60000
+      }
+    ],
+    "by_type_ms": {
+      "implementation": 600000,
+      "targeted_test": 540000
+    },
+    "agent_time_ms": 1140000,
+    "observed_wall_ms": 1140000,
+    "first_observed_at": "2026-11-05T00:10:00Z",
+    "last_observed_at": "2026-11-05T00:29:00Z",
+    "observed_span_ms": 1140000,
+    "unattributed_gap_ms": 0,
+    "open_activities": 0,
+    "invalid_transitions": 0,
+    "invalid_corrections": 0,
+    "interrupted_activities": 0,
+    "unmeasured_upper_bound_ms": 0,
+    "initial_worker_ms": 1140000,
+    "rework_worker_ms": 0,
+    "controller_first_review_ms": 0,
+    "controller_rereview_ms": 0
+  },
+  "workflow": {
+    "version": 1,
+    "task_id": "B-1",
+    "computed_at": "2026-11-05T01:00:00Z",
+    "axis": {
+      "start": "2026-11-05T00:00:00Z",
+      "end": "2026-11-05T01:00:00Z",
+      "basis": "registered_completed",
+      "boundary_status": "complete",
+      "elapsed_ms": 3600000,
+      "open": false
+    },
+    "lifecycle": {
+      "task_id": "B-1",
+      "source": "reported_lifecycle",
+      "registered_at": "2026-11-05T00:00:00Z",
+      "completed_at": "2026-11-05T01:00:00Z",
+      "completion_history": [
+        "2026-11-05T01:00:00Z"
+      ],
+      "total_elapsed_ms": 3600000,
+      "registration_queue_ms": 0,
+      "dispatch_wait_ms": 0,
+      "explicit_wait_ms": 0,
+      "wait_ms": 0,
+      "covered_elapsed_ms": 1140000,
+      "unattributed_elapsed_ms": 2460000,
+      "wait_activity_overlap_ms": 0,
+      "invalid_facts": 0,
+      "open_wait_count": 0,
+      "wait_intervals": []
+    },
+    "measurement": {
+      "status": "partial",
+      "activity": {
+        "status": "observed",
+        "duration_ms": 1140000,
+        "event_count": 20,
+        "segment_count": 19
+      },
+      "worker": {
+        "status": "observed",
+        "duration_ms": 1140000,
+        "event_count": 20,
+        "segment_count": 19
+      },
+      "controller": {
+        "status": "not_recorded",
+        "event_count": 0,
+        "segment_count": 0
+      },
+      "registrar": {
+        "status": "not_recorded",
+        "event_count": 0,
+        "segment_count": 0
+      },
+      "review": {
+        "status": "not_recorded",
+        "event_count": 0,
+        "segment_count": 0
+      },
+      "tests": {
+        "status": "observed",
+        "duration_ms": 540000,
+        "event_count": 10,
+        "segment_count": 9
+      },
+      "observed_wall_ms": 1140000,
+      "agent_time_ms": 1140000,
+      "unmeasured_ms": 2460000,
+      "coverage_percent": 31.666666666666668
+    },
+    "current": {
+      "phase": "completed",
+      "basis": "reported_lifecycle",
+      "next_action": "none",
+      "round": 0,
+      "round_status": "initial"
+    },
+    "rounds": [
+      {
+        "number": 0,
+        "kind": "initial",
+        "started_at": "2026-11-05T00:00:00Z",
+        "basis": "registered_or_reported_activity",
+        "assignment_ids": [],
+        "attempt_ids": [
+          "one-attempt"
+        ],
+        "handoff_ids": [],
+        "commits": [],
+        "verification_results": []
+      }
+    ],
+    "rows": [
+      {
+        "observed_activity_ms": 1140000,
+        "id": "worker|worker|0",
+        "role": "worker",
+        "agent_id": "worker",
+        "round": 0,
+        "round_status": "initial",
+        "intervals": [
+          {
+            "id": "0",
+            "kind": "activity",
+            "type": "implementation",
+            "start": "2026-11-05T00:10:00Z",
+            "end": "2026-11-05T00:11:00Z",
+            "measured": true,
+            "duration_ms": 60000,
+            "attempt_id": "one-attempt",
+            "lane": 0
+          },
+          {
+            "id": "1",
+            "kind": "activity",
+            "type": "targeted_test",
+            "start": "2026-11-05T00:11:00Z",
+            "end": "2026-11-05T00:12:00Z",
+            "measured": true,
+            "duration_ms": 60000,
+            "attempt_id": "one-attempt",
+            "lane": 0
+          },
+          {
+            "id": "2",
+            "kind": "activity",
+            "type": "implementation",
+            "start": "2026-11-05T00:12:00Z",
+            "end": "2026-11-05T00:13:00Z",
+            "measured": true,
+            "duration_ms": 60000,
+            "attempt_id": "one-attempt",
+            "lane": 0
+          },
+          {
+            "id": "3",
+            "kind": "activity",
+            "type": "targeted_test",
+            "start": "2026-11-05T00:13:00Z",
+            "end": "2026-11-05T00:14:00Z",
+            "measured": true,
+            "duration_ms": 60000,
+            "attempt_id": "one-attempt",
+            "lane": 0
+          },
+          {
+            "id": "4",
+            "kind": "activity",
+            "type": "implementation",
+            "start": "2026-11-05T00:14:00Z",
+            "end": "2026-11-05T00:15:00Z",
+            "measured": true,
+            "duration_ms": 60000,
+            "attempt_id": "one-attempt",
+            "lane": 0
+          },
+          {
+            "id": "5",
+            "kind": "activity",
+            "type": "targeted_test",
+            "start": "2026-11-05T00:15:00Z",
+            "end": "2026-11-05T00:16:00Z",
+            "measured": true,
+            "duration_ms": 60000,
+            "attempt_id": "one-attempt",
+            "lane": 0
+          },
+          {
+            "id": "6",
+            "kind": "activity",
+            "type": "implementation",
+            "start": "2026-11-05T00:16:00Z",
+            "end": "2026-11-05T00:17:00Z",
+            "measured": true,
+            "duration_ms": 60000,
+            "attempt_id": "one-attempt",
+            "lane": 0
+          },
+          {
+            "id": "7",
+            "kind": "activity",
+            "type": "targeted_test",
+            "start": "2026-11-05T00:17:00Z",
+            "end": "2026-11-05T00:18:00Z",
+            "measured": true,
+            "duration_ms": 60000,
+            "attempt_id": "one-attempt",
+            "lane": 0
+          },
+          {
+            "id": "8",
+            "kind": "activity",
+            "type": "implementation",
+            "start": "2026-11-05T00:18:00Z",
+            "end": "2026-11-05T00:19:00Z",
+            "measured": true,
+            "duration_ms": 60000,
+            "attempt_id": "one-attempt",
+            "lane": 0
+          },
+          {
+            "id": "9",
+            "kind": "activity",
+            "type": "targeted_test",
+            "start": "2026-11-05T00:19:00Z",
+            "end": "2026-11-05T00:20:00Z",
+            "measured": true,
+            "duration_ms": 60000,
+            "attempt_id": "one-attempt",
+            "lane": 0
+          },
+          {
+            "id": "10",
+            "kind": "activity",
+            "type": "implementation",
+            "start": "2026-11-05T00:20:00Z",
+            "end": "2026-11-05T00:21:00Z",
+            "measured": true,
+            "duration_ms": 60000,
+            "attempt_id": "one-attempt",
+            "lane": 0
+          },
+          {
+            "id": "11",
+            "kind": "activity",
+            "type": "targeted_test",
+            "start": "2026-11-05T00:21:00Z",
+            "end": "2026-11-05T00:22:00Z",
+            "measured": true,
+            "duration_ms": 60000,
+            "attempt_id": "one-attempt",
+            "lane": 0
+          },
+          {
+            "id": "12",
+            "kind": "activity",
+            "type": "implementation",
+            "start": "2026-11-05T00:22:00Z",
+            "end": "2026-11-05T00:23:00Z",
+            "measured": true,
+            "duration_ms": 60000,
+            "attempt_id": "one-attempt",
+            "lane": 0
+          },
+          {
+            "id": "13",
+            "kind": "activity",
+            "type": "targeted_test",
+            "start": "2026-11-05T00:23:00Z",
+            "end": "2026-11-05T00:24:00Z",
+            "measured": true,
+            "duration_ms": 60000,
+            "attempt_id": "one-attempt",
+            "lane": 0
+          },
+          {
+            "id": "14",
+            "kind": "activity",
+            "type": "implementation",
+            "start": "2026-11-05T00:24:00Z",
+            "end": "2026-11-05T00:25:00Z",
+            "measured": true,
+            "duration_ms": 60000,
+            "attempt_id": "one-attempt",
+            "lane": 0
+          },
+          {
+            "id": "15",
+            "kind": "activity",
+            "type": "targeted_test",
+            "start": "2026-11-05T00:25:00Z",
+            "end": "2026-11-05T00:26:00Z",
+            "measured": true,
+            "duration_ms": 60000,
+            "attempt_id": "one-attempt",
+            "lane": 0
+          },
+          {
+            "id": "16",
+            "kind": "activity",
+            "type": "implementation",
+            "start": "2026-11-05T00:26:00Z",
+            "end": "2026-11-05T00:27:00Z",
+            "measured": true,
+            "duration_ms": 60000,
+            "attempt_id": "one-attempt",
+            "lane": 0
+          },
+          {
+            "id": "17",
+            "kind": "activity",
+            "type": "targeted_test",
+            "start": "2026-11-05T00:27:00Z",
+            "end": "2026-11-05T00:28:00Z",
+            "measured": true,
+            "duration_ms": 60000,
+            "attempt_id": "one-attempt",
+            "lane": 0
+          },
+          {
+            "id": "18",
+            "kind": "activity",
+            "type": "implementation",
+            "start": "2026-11-05T00:28:00Z",
+            "end": "2026-11-05T00:29:00Z",
+            "measured": true,
+            "duration_ms": 60000,
+            "attempt_id": "one-attempt",
+            "lane": 0
+          }
+        ]
+      }
+    ],
+    "unmeasured_intervals": [
+      {
+        "start": "2026-11-05T00:00:00Z",
+        "end": "2026-11-05T00:10:00Z",
+        "kind": "activity_unmeasured"
+      },
+      {
+        "start": "2026-11-05T00:29:00Z",
+        "end": "2026-11-05T01:00:00Z",
+        "kind": "activity_unmeasured"
+      }
+    ],
+    "reporting": {
+      "status": "not_expected",
+      "expected_executions": 0,
+      "executions_without_activity": 0,
+      "expected_reviews": 0,
+      "reviews_without_activity": 0,
+      "findings": []
+    },
+    "control_snapshot": {}
+  }
+}

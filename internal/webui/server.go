@@ -1768,7 +1768,7 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
             return
         }
         coverage:=activity.SummarizeLifecycle(taskID,lifecycle,summary.Segments)
-        report:=map[string]any{"task_id": taskID, "events": rows, "summary": summary, "test_report": activity.SummarizeTests(summary.Segments), "review_report": activity.SummarizeReviews(rows, summary.Segments), "lifecycle_coverage": coverage, "lifecycle_findings": findings}
+        report:=map[string]any{"task_id": taskID, "events": rows, "summary": summary, "test_report": activity.SummarizeTests(summary.Segments), "review_report": activity.SummarizeReviews(rows, summary.Segments), "lifecycle_coverage": coverage, "lifecycle_findings": findings, "workflow": readActivityWorkflow(project,taskID,rows,summary,lifecycle)}
         // Runtime evidence scans are opt-in; normal Activity reads retain their
         // lightweight ledger-only path. A failure never replaces valid data.
         if r.URL.Query().Get("runtime_diagnostic")=="1" {

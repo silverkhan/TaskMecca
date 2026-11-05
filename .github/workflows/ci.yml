@@ -77,7 +77,7 @@ jobs:
       - name: Test Controller review and current user attention
         run: node --test tests/web_completion_review.test.cjs tests/web_user_attention.test.cjs tests/web_common_attention.test.cjs tests/web_live_list.test.cjs tests/web_task_detail_prefetch.test.cjs tests/web_notification_center.test.cjs tests/web_notification_delivery.test.cjs tests/web_notification_pagination.test.cjs tests/web_push_service_worker.test.cjs tests/web_notification_settings.test.cjs tests/web_telegram_controls_ui.test.cjs tests/web_storage_management.test.cjs tests/web_terminal_service_restart.test.cjs tests/web_terminal_theme.test.cjs tests/web_select_ui.test.cjs tests/web_preview_builds.test.cjs
       - name: Verify Activity detail timeline and ledger controls
-        run: node --test tests/web_activity_detail.test.cjs
+        run: node --test tests/web_activity_detail.test.cjs tests/web_workflow_detail.test.cjs
       - name: Verify structured and legacy release note formats
         run: node --test tests/web_release_note_formats.test.cjs
       - name: Verify Stable promotion gates and retained Windows hotfix
@@ -91,6 +91,33 @@ jobs:
       - name: Test Web project session persistence
         run: node --test tests/web_project_sessions.test.cjs
 
+  workflow-browser:
+    name: Unified workflow browser regression
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install isolated browser runtime
+        run: |
+          npm install --prefix "$RUNNER_TEMP/workflow-runtime" --no-save --no-audit --no-fund playwright@1.64.1
+          "$RUNNER_TEMP/workflow-runtime/node_modules/.bin/playwright" install --with-deps chromium
+      - name: Verify workflow timing and interaction in actual Chromium
+        env:
+          WORKFLOW_REQUIRE_BROWSER: '1'
+          WORKFLOW_EVIDENCE_DIR: workflow-browser-evidence
+        run: |
+          export WORKFLOW_PLAYWRIGHT_MODULE="$RUNNER_TEMP/workflow-runtime/node_modules/playwright"
+          node --test tests/web_workflow_browser.test.cjs
+      - name: Preserve synthetic browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: workflow-browser-${{ github.run_id }}-${{ github.run_attempt }}
+          path: workflow-browser-evidence
+          if-no-files-found: warn
+          retention-days: 7
   platform-builds:
     name: Platform build · ${{ matrix.os }}
     runs-on: ${{ matrix.os }}

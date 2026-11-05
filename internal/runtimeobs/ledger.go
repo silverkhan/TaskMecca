@@ -115,6 +115,8 @@ type Attempt struct {
 	StateObservationQuality ObservationQuality `json:"state_observation_quality,omitempty"`
 	EvidenceCount           int                `json:"evidence_count"`
 	ActivityCount           int                `json:"activity_count"`
+	HookActivityCount       int                `json:"hook_activity_count,omitempty"`
+	LastHookActivityAt      string             `json:"last_hook_activity_at,omitempty"`
 	RecentTransitions       []Transition       `json:"recent_transitions"`
 }
 
@@ -543,6 +545,10 @@ func (a *accumulator) apply(e ExecutionEvent) {
 	switch e.EventKind {
 	case "activity":
 		a.attempt.ActivityCount++
+		if e.EvidenceSource == EvidenceHook && (e.ObservationQuality == QualityObserved || e.ObservationQuality == QualityAuthoritative) {
+			a.attempt.HookActivityCount++
+			a.attempt.LastHookActivityAt = maxTimeString(a.attempt.LastHookActivityAt, e.ObservedAt)
+		}
 		a.attempt.LastActivityAt = maxTimeString(a.attempt.LastActivityAt, e.ObservedAt)
 		// A provider session/agent identity may be reused after its previous
 		// attempt reached a terminal state. Fresh observed runtime activity is

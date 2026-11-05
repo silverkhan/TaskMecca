@@ -44,7 +44,7 @@ func loadActivityLifecycle(project string)(activityLifecycleEvidence,error){
         when,parseErr:=time.Parse(time.RFC3339Nano,e.OccurredAt)
         if parseErr!=nil{continue}
         byTask[e.TaskID]=append(byTask[e.TaskID],activity.LifecycleFact{
-            EventID:e.EventID,TaskID:e.TaskID,Kind:e.Kind,OccurredAt:when,EvidenceSource:e.EvidenceSource,
+            EventID:e.EventID,TaskID:e.TaskID,Kind:e.Kind,OccurredAt:when,EvidenceSource:e.EvidenceSource,Actor:e.Actor,AssignmentID:e.AssignmentID,AttemptID:e.AttemptID,
         })
     }
     snapshot:=activityLifecycleEvidence{at:now,byTask:byTask,findings:len(scan.Findings)}

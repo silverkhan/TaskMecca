@@ -1,0 +1,446 @@
+{
+  "events": null,
+  "source": "synthetic regression fixture; contains no user evidence",
+  "summary": {
+    "task_id": "A-1",
+    "segments": [],
+    "by_type_ms": {},
+    "agent_time_ms": 0,
+    "observed_wall_ms": 0,
+    "observed_span_ms": 0,
+    "unattributed_gap_ms": 0,
+    "open_activities": 0,
+    "invalid_transitions": 0,
+    "invalid_corrections": 0,
+    "interrupted_activities": 0,
+    "unmeasured_upper_bound_ms": 0,
+    "initial_worker_ms": 0,
+    "rework_worker_ms": 0,
+    "controller_first_review_ms": 0,
+    "controller_rereview_ms": 0
+  },
+  "workflow": {
+    "version": 1,
+    "task_id": "A-1",
+    "computed_at": "2026-11-05T02:20:00Z",
+    "axis": {
+      "start": "2026-11-05T00:00:00Z",
+      "end": "2026-11-05T02:19:00Z",
+      "basis": "registered_completed",
+      "boundary_status": "complete",
+      "elapsed_ms": 8340000,
+      "open": false
+    },
+    "lifecycle": {
+      "task_id": "A-1",
+      "source": "reported_lifecycle",
+      "registered_at": "2026-11-05T00:00:00Z",
+      "completed_at": "2026-11-05T02:19:00Z",
+      "completion_history": [
+        "2026-11-05T02:19:00Z"
+      ],
+      "total_elapsed_ms": 8340000,
+      "registration_queue_ms": 0,
+      "dispatch_wait_ms": 0,
+      "explicit_wait_ms": 0,
+      "wait_ms": 0,
+      "covered_elapsed_ms": 0,
+      "unattributed_elapsed_ms": 8340000,
+      "wait_activity_overlap_ms": 0,
+      "invalid_facts": 0,
+      "open_wait_count": 0,
+      "wait_intervals": []
+    },
+    "measurement": {
+      "status": "not_recorded",
+      "activity": {
+        "status": "not_recorded",
+        "event_count": 0,
+        "segment_count": 0
+      },
+      "worker": {
+        "status": "not_recorded",
+        "event_count": 0,
+        "segment_count": 0
+      },
+      "controller": {
+        "status": "not_recorded",
+        "event_count": 0,
+        "segment_count": 0
+      },
+      "registrar": {
+        "status": "not_recorded",
+        "event_count": 0,
+        "segment_count": 0
+      },
+      "review": {
+        "status": "not_recorded",
+        "event_count": 0,
+        "segment_count": 0
+      },
+      "tests": {
+        "status": "not_recorded",
+        "event_count": 0,
+        "segment_count": 0
+      },
+      "observed_wall_ms": 0,
+      "agent_time_ms": 0,
+      "unmeasured_ms": 8340000,
+      "coverage_percent": 0
+    },
+    "current": {
+      "phase": "completed",
+      "basis": "reported_lifecycle",
+      "assigned_worker": "worker",
+      "next_action": "none",
+      "round": 4,
+      "round_status": "rework"
+    },
+    "rounds": [
+      {
+        "number": 0,
+        "kind": "initial",
+        "started_at": "2026-11-05T00:00:00Z",
+        "basis": "registered_or_reported_activity",
+        "assignment_ids": [],
+        "attempt_ids": [
+          "attempt-0",
+          "controller"
+        ],
+        "handoff_ids": [
+          "h-0"
+        ],
+        "commits": [],
+        "verification_results": []
+      },
+      {
+        "number": 1,
+        "kind": "rework",
+        "started_at": "2026-11-05T00:24:00Z",
+        "basis": "handoff_acceptance_failed",
+        "reason": "real correction",
+        "handoff_id": "h-0",
+        "previous_round": 0,
+        "assignment_ids": [],
+        "attempt_ids": [
+          "attempt-1",
+          "controller"
+        ],
+        "handoff_ids": [
+          "h-1"
+        ],
+        "commits": [],
+        "verification_results": []
+      },
+      {
+        "number": 2,
+        "kind": "rework",
+        "started_at": "2026-11-05T00:49:00Z",
+        "basis": "handoff_acceptance_failed",
+        "reason": "real correction",
+        "handoff_id": "h-1",
+        "previous_round": 1,
+        "assignment_ids": [],
+        "attempt_ids": [
+          "attempt-2",
+          "controller"
+        ],
+        "handoff_ids": [
+          "h-2"
+        ],
+        "commits": [],
+        "verification_results": []
+      },
+      {
+        "number": 3,
+        "kind": "rework",
+        "started_at": "2026-11-05T01:14:00Z",
+        "basis": "handoff_acceptance_failed",
+        "reason": "real correction",
+        "handoff_id": "h-2",
+        "previous_round": 2,
+        "assignment_ids": [],
+        "attempt_ids": [
+          "attempt-3",
+          "controller"
+        ],
+        "handoff_ids": [
+          "h-3"
+        ],
+        "commits": [],
+        "verification_results": []
+      },
+      {
+        "number": 4,
+        "kind": "rework",
+        "started_at": "2026-11-05T01:39:00Z",
+        "basis": "handoff_acceptance_failed",
+        "reason": "real correction",
+        "handoff_id": "h-3",
+        "previous_round": 3,
+        "assignment_ids": [],
+        "attempt_ids": [
+          "attempt-4"
+        ],
+        "handoff_ids": [],
+        "commits": [],
+        "verification_results": []
+      }
+    ],
+    "rows": [
+      {
+        "id": "controller||0",
+        "role": "controller",
+        "agent_id": "",
+        "round": 0,
+        "round_status": "initial",
+        "intervals": [
+          {
+            "id": "h-0",
+            "kind": "handoff_review",
+            "type": "unclassified_review",
+            "start": "2026-11-05T00:23:00Z",
+            "end": "2026-11-05T00:24:00Z",
+            "measured": false,
+            "attempt_id": "controller",
+            "handoff_id": "h-0",
+            "evidence": "claimed_handoff",
+            "outcome": "failed",
+            "lane": 0
+          }
+        ]
+      },
+      {
+        "id": "controller||1",
+        "role": "controller",
+        "agent_id": "",
+        "round": 1,
+        "round_status": "rework",
+        "intervals": [
+          {
+            "id": "h-1",
+            "kind": "handoff_review",
+            "type": "unclassified_review",
+            "start": "2026-11-05T00:48:00Z",
+            "end": "2026-11-05T00:49:00Z",
+            "measured": false,
+            "attempt_id": "controller",
+            "handoff_id": "h-1",
+            "evidence": "claimed_handoff",
+            "outcome": "failed",
+            "lane": 0
+          }
+        ]
+      },
+      {
+        "id": "controller||2",
+        "role": "controller",
+        "agent_id": "",
+        "round": 2,
+        "round_status": "rework",
+        "intervals": [
+          {
+            "id": "h-2",
+            "kind": "handoff_review",
+            "type": "unclassified_review",
+            "start": "2026-11-05T01:13:00Z",
+            "end": "2026-11-05T01:14:00Z",
+            "measured": false,
+            "attempt_id": "controller",
+            "handoff_id": "h-2",
+            "evidence": "claimed_handoff",
+            "outcome": "failed",
+            "lane": 0
+          }
+        ]
+      },
+      {
+        "id": "controller||3",
+        "role": "controller",
+        "agent_id": "",
+        "round": 3,
+        "round_status": "rework",
+        "intervals": [
+          {
+            "id": "h-3",
+            "kind": "handoff_review",
+            "type": "unclassified_review",
+            "start": "2026-11-05T01:38:00Z",
+            "end": "2026-11-05T01:39:00Z",
+            "measured": false,
+            "attempt_id": "controller",
+            "handoff_id": "h-3",
+            "evidence": "claimed_handoff",
+            "outcome": "failed",
+            "lane": 0
+          }
+        ]
+      },
+      {
+        "id": "worker|worker|0",
+        "role": "worker",
+        "agent_id": "worker",
+        "round": 0,
+        "round_status": "initial",
+        "intervals": [
+          {
+            "end_evidence": "worker_done_report",
+            "id": "start-0",
+            "kind": "execution_report",
+            "type": "unclassified_execution",
+            "start": "2026-11-05T00:05:00Z",
+            "end": "2026-11-05T00:22:00Z",
+            "measured": false,
+            "attempt_id": "attempt-0",
+            "lane": 0
+          }
+        ]
+      },
+      {
+        "id": "worker|worker|1",
+        "role": "worker",
+        "agent_id": "worker",
+        "round": 1,
+        "round_status": "rework",
+        "intervals": [
+          {
+            "end_evidence": "worker_done_report",
+            "id": "start-1",
+            "kind": "execution_report",
+            "type": "unclassified_execution",
+            "start": "2026-11-05T00:30:00Z",
+            "end": "2026-11-05T00:47:00Z",
+            "measured": false,
+            "attempt_id": "attempt-1",
+            "lane": 0
+          }
+        ]
+      },
+      {
+        "id": "worker|worker|2",
+        "role": "worker",
+        "agent_id": "worker",
+        "round": 2,
+        "round_status": "rework",
+        "intervals": [
+          {
+            "end_evidence": "worker_done_report",
+            "id": "start-2",
+            "kind": "execution_report",
+            "type": "unclassified_execution",
+            "start": "2026-11-05T00:55:00Z",
+            "end": "2026-11-05T01:12:00Z",
+            "measured": false,
+            "attempt_id": "attempt-2",
+            "lane": 0
+          }
+        ]
+      },
+      {
+        "id": "worker|worker|3",
+        "role": "worker",
+        "agent_id": "worker",
+        "round": 3,
+        "round_status": "rework",
+        "intervals": [
+          {
+            "end_evidence": "worker_done_report",
+            "id": "start-3",
+            "kind": "execution_report",
+            "type": "unclassified_execution",
+            "start": "2026-11-05T01:20:00Z",
+            "end": "2026-11-05T01:37:00Z",
+            "measured": false,
+            "attempt_id": "attempt-3",
+            "lane": 0
+          }
+        ]
+      },
+      {
+        "id": "worker|worker|4",
+        "role": "worker",
+        "agent_id": "worker",
+        "round": 4,
+        "round_status": "rework",
+        "intervals": [
+          {
+            "end_evidence": "unobserved",
+            "id": "start-4",
+            "kind": "execution_report",
+            "type": "unclassified_execution",
+            "start": "2026-11-05T01:45:00Z",
+            "measured": false,
+            "attempt_id": "attempt-4",
+            "lane": 0
+          }
+        ]
+      }
+    ],
+    "unmeasured_intervals": [
+      {
+        "start": "2026-11-05T00:00:00Z",
+        "end": "2026-11-05T02:19:00Z",
+        "kind": "activity_unmeasured"
+      }
+    ],
+    "reporting": {
+      "status": "missing",
+      "expected_executions": 5,
+      "executions_without_activity": 5,
+      "expected_reviews": 4,
+      "reviews_without_activity": 4,
+      "findings": [
+        {
+          "code": "execution_activity_missing",
+          "attempt_id": "attempt-0",
+          "required_phase": "implementation_started"
+        },
+        {
+          "code": "execution_activity_missing",
+          "attempt_id": "attempt-1",
+          "required_phase": "implementation_started"
+        },
+        {
+          "code": "execution_activity_missing",
+          "attempt_id": "attempt-2",
+          "required_phase": "implementation_started"
+        },
+        {
+          "code": "execution_activity_missing",
+          "attempt_id": "attempt-3",
+          "required_phase": "implementation_started"
+        },
+        {
+          "code": "execution_activity_missing",
+          "attempt_id": "attempt-4",
+          "required_phase": "implementation_started"
+        },
+        {
+          "code": "review_activity_missing",
+          "attempt_id": "controller",
+          "handoff_id": "h-0",
+          "required_phase": "review_started"
+        },
+        {
+          "code": "review_activity_missing",
+          "attempt_id": "controller",
+          "handoff_id": "h-1",
+          "required_phase": "review_started"
+        },
+        {
+          "code": "review_activity_missing",
+          "attempt_id": "controller",
+          "handoff_id": "h-2",
+          "required_phase": "review_started"
+        },
+        {
+          "code": "review_activity_missing",
+          "attempt_id": "controller",
+          "handoff_id": "h-3",
+          "required_phase": "review_started"
+        }
+      ]
+    },
+    "control_snapshot": {}
+  }
+}

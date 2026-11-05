@@ -14,6 +14,7 @@ import (
 // Consumers (Web, attention, notification delivery) must project this result;
 // they must not independently reinterpret runtime or backlog evidence.
 type controlTowerSnapshot struct {
+	ExecutionObservations map[string][]runtimeobs.Attempt
 	Err                   error
 	Profile               map[string]float64
 	Timings               map[string]map[string]any
@@ -62,12 +63,12 @@ func reconcileControlTower(project, root string, rows []Record) controlTowerSnap
 	activity := runtimeActivity(project, rows, timings)
 	activity = mergeRuntimeSignals(activity, runtimeLedgerSignals(project, rows, now, shared))
 	applyCompletionReviews(project, rows, activity, now, shared)
-    // Use one immutable handoff inventory for both Controller-review
-    // suppression and the integrity check at the end of this snapshot.
-    handoffs, handoffErr := handoffjournal.BuildLedger(project, now)
-    if handoffErr == nil && len(handoffs.Findings) == 0 {
-        suppressLiveControllerReviewSignalsWithHandoffs(project, rows, activity, now, handoffs, shared)
-    }
+	// Use one immutable handoff inventory for both Controller-review
+	// suppression and the integrity check at the end of this snapshot.
+	handoffs, handoffErr := handoffjournal.BuildLedger(project, now)
+	if handoffErr == nil && len(handoffs.Findings) == 0 {
+		suppressLiveControllerReviewSignalsWithHandoffs(project, rows, activity, now, handoffs, shared)
+	}
 	for id, signal := range activity {
 		health := toString(signal["health"])
 		if health != "assignment_unobserved" && health != "binding_pending" && health != "binding_ambiguous" && health != "awaiting_start" {
@@ -99,10 +100,17 @@ func reconcileControlTower(project, root string, rows []Record) controlTowerSnap
 			conditions[row.ID] = condition
 		}
 	}
+	observations := map[string][]runtimeobs.Attempt{}
+	for _, attempt := range ledger.Attempts {
+		if attempt.TaskID != "" && attempt.BindingState == runtimeobs.BindingBound {
+			observations[attempt.TaskID] = append(observations[attempt.TaskID], attempt)
+		}
+	}
 	snapshot := controlTowerSnapshot{
-		Err:     ledgerErr,
-		Profile: map[string]float64{"runtime": runtimeMS, "lifecycle_git": lifecycleMS, "activity_handoff": time.Since(activityStarted).Seconds() * 1000},
-		Timings: timings, Activity: activity, ReviewByPath: reviewByPath,
+		ExecutionObservations: observations,
+		Err:                   ledgerErr,
+		Profile:               map[string]float64{"runtime": runtimeMS, "lifecycle_git": lifecycleMS, "activity_handoff": time.Since(activityStarted).Seconds() * 1000},
+		Timings:               timings, Activity: activity, ReviewByPath: reviewByPath,
 		Attention: attention, NotificationCondition: conditions,
 	}
 	if err != nil {
@@ -129,9 +137,11 @@ func reconcileControlTower(project, root string, rows []Record) controlTowerSnap
 }
 
 func suppressLiveControllerReviewSignals(project string, rows []Record, activity map[string]map[string]any, now time.Time, shared ...requestRuntime) {
-    handoffs, err := handoffjournal.BuildLedger(project, now)
-    if err != nil || len(handoffs.Findings) != 0 { return }
-    suppressLiveControllerReviewSignalsWithHandoffs(project, rows, activity, now, handoffs, shared...)
+	handoffs, err := handoffjournal.BuildLedger(project, now)
+	if err != nil || len(handoffs.Findings) != 0 {
+		return
+	}
+	suppressLiveControllerReviewSignalsWithHandoffs(project, rows, activity, now, handoffs, shared...)
 }
 
 func suppressLiveControllerReviewSignalsWithHandoffs(project string, rows []Record, activity map[string]map[string]any, now time.Time, handoffs handoffjournal.Ledger, shared ...requestRuntime) {

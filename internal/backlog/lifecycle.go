@@ -575,6 +575,7 @@ func lifecycleTimings(project,root string,rows []Record,shared ...requestRuntime
         firstDoing:=""
         latestDoing:=""
         completedAt:=""
+        completionHistory:=[]string{}
         hasDoing:=false
         hasHold:=false
         activeSeconds:=0.0
@@ -587,7 +588,7 @@ func lifecycleTimings(project,root string,rows []Record,shared ...requestRuntime
                 latestDoing=entry.event.At
             }
             if entry.event.State=="hold" { hasHold=true }
-            if entry.event.State=="done" { completedAt=entry.event.At }
+            if entry.event.State=="done" { completedAt=entry.event.At; completionHistory=append(completionHistory,entry.event.At) }
             next:=now
             if i+1<len(parsed) { next=parsed[i+1].at }
             interval:=next.Sub(entry.at).Seconds()
@@ -617,6 +618,7 @@ func lifecycleTimings(project,root string,rows []Record,shared ...requestRuntime
             })
         }
         current:=parsed[len(parsed)-1]
+        if current.event.State!="done" {completedAt=""}
         currentSegment:=0.0
         if current.event.State!="done" {
             currentSegment=now.Sub(current.at).Seconds()
@@ -628,7 +630,7 @@ func lifecycleTimings(project,root string,rows []Record,shared ...requestRuntime
 				started=&v
 				break } }
         var completed *time.Time
-        for i:=len(parsed)-1;i>=0;i-- { if parsed[i].event.State=="done" { v:=parsed[i].at
+        for i:=len(parsed)-1;i>=0;i-- { if current.event.State=="done" && parsed[i].event.State=="done" { v:=parsed[i].at
 				completed=&v
 				break } }
         var queueSeconds any
@@ -669,6 +671,7 @@ func lifecycleTimings(project,root string,rows []Record,shared ...requestRuntime
             "started_at":nilIfEmpty(firstDoing),
             "claimed_at":nilIfEmpty(latestDoing),
             "completed_at":nilIfEmpty(completedAt),
+            "completion_history":completionHistory,
             "queue_seconds":queueSeconds,
             "active_seconds":activeValue,
             "wait_seconds":waitValue,
