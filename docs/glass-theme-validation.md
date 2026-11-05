@@ -1,6 +1,27 @@
 # 실사 배경과 Glass 소재 검증
 
 
+## CI recovery for scroll rendering (2026-11-05)
+
+Remote `ed307998` failed when the search style observation returned an empty
+border shorthand and when a mobile resize reference frame had no reader canvas.
+Chrome 156.0.8078.4 passes the original tests locally on macOS; the Linux timing
+has not been reproduced. Deterministic controls show that a detached input has
+empty computed border longhands and that `render()` can remove the existing
+reader scene between animation callbacks without changing its owner or sampler
+generation.
+
+Search checks now resolve the current element and read all four border sides,
+connectedness, outer frame and interior layout in one browser task. Detached
+observations and an injected real 1px side border must both fail. The optional
+Glass render hook retains only existing decorative reader planes on surviving
+owners and synchronizes their geometry before paint. It preserves queued
+structural work and the established missing-plane CSS fallback test. Motion
+checks require both Cozy canvases and compare first-frame pixels before origin;
+a render between refresh and reference must retain owner/plane/canvas identity,
+while an explicitly removed reference canvas must fail. New recovery evidence
+is kept separately from report01 and its frozen manifest.
+
 ## Fixed scene during scroll (A-56 follow-up, 2026-11-05)
 
 The user observed the scene moving with a panel, then returning. In568ed18f the

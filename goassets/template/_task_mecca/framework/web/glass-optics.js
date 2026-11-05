@@ -203,6 +203,15 @@
   for(const {entry,rect}of boxes){if(rect.width<8||rect.height<8||rect.bottom<=0||rect.right<=0||rect.top>=innerHeight||rect.left>=innerWidth)continue;if(materials.get(entry.host)===entry)paintMaterial(entry,rect);else paint(entry,rect)}
  }
  function scheduleGeometry(){if(!geometryFrame&&!frame)geometryFrame=requestAnimationFrame(syncGeometry)}
+ // App renders replace foreground children. Keep an existing decorative scene
+ // on a surviving reader owner through that transaction, before another paint.
+ function captureReaders(){return [...document.querySelectorAll('.content,.terminal-main')].map(owner=>({owner,plane:owner.querySelector(':scope > .glass-reader-material')})).filter(({plane})=>plane)}
+ function restoreReaders(saved){
+  if(!enabled||root.dataset.palette!=='glass')return;
+  let restored=false;
+  for(const {owner,plane}of saved||[])if(owner.isConnected&&!plane.isConnected&&!owner.querySelector(':scope > .glass-reader-material')){owner.prepend(plane);restored=true}
+  if(restored){if(geometryFrame){cancelAnimationFrame(geometryFrame);geometryFrame=0}syncGeometry()}
+ }
  function update(){
   frame=0;const active=root.dataset.palette==='glass'&&!reduced.matches&&supports;
   if(geometryFrame){cancelAnimationFrame(geometryFrame);geometryFrame=0}
@@ -229,7 +238,7 @@
  new MutationObserver(schedule).observe(document.body,{childList:true,subtree:true});
  window.addEventListener('resize',schedule,{passive:true});document.addEventListener('scroll',scheduleGeometry,{passive:true,capture:true});document.addEventListener('focusin',schedule);document.addEventListener('focusout',schedule);
  window.visualViewport?.addEventListener('resize',schedule,{passive:true});window.visualViewport?.addEventListener('scroll',scheduleGeometry,{passive:true});reduced.addEventListener?.('change',schedule);
- window.TaskMeccaGlass=Object.freeze({refresh:schedule,diagnostics:()=>({mode:root.dataset.glassOptics||'material',photo:imageURL,sample:{generation,theme:sampleTheme,background:sampleBackground,source:sampleSource},loading:!!loading,pending:!!frame||!!geometryFrame,readerBackingSupported,stage:geometry(),sampler:sampler?{width:sampler.width,height:sampler.height}:null,paintCount,totalPaintMs,adaptCount,totalAdaptMs,sampleBytes:samplePixels?.byteLength||0,panels:[...panels.values()],materials:[...materials.values()].map(e=>({rect:e.rect,amplitude:e.amplitude,paintMs:e.paintMs,totalPaintMs:e.totalPaintMs,draws:e.draws,pixels:e.canvas.width*e.canvas.height})),lenses:[...entries.values()].map(e=>({kind:e.kind,rect:e.rect,rim:e.rim,amplitude:e.amplitude,draws:e.draws,pixels:e.canvas.width*e.canvas.height}))})});
+ window.TaskMeccaGlass=Object.freeze({refresh:schedule,captureReaders,restoreReaders,diagnostics:()=>({mode:root.dataset.glassOptics||'material',photo:imageURL,sample:{generation,theme:sampleTheme,background:sampleBackground,source:sampleSource},loading:!!loading,pending:!!frame||!!geometryFrame,readerBackingSupported,stage:geometry(),sampler:sampler?{width:sampler.width,height:sampler.height}:null,paintCount,totalPaintMs,adaptCount,totalAdaptMs,sampleBytes:samplePixels?.byteLength||0,panels:[...panels.values()],materials:[...materials.values()].map(e=>({rect:e.rect,amplitude:e.amplitude,paintMs:e.paintMs,totalPaintMs:e.totalPaintMs,draws:e.draws,pixels:e.canvas.width*e.canvas.height})),lenses:[...entries.values()].map(e=>({kind:e.kind,rect:e.rect,rim:e.rim,amplitude:e.amplitude,draws:e.draws,pixels:e.canvas.width*e.canvas.height}))})});
  if(typeof ResizeObserver!=='undefined'){const resize=new ResizeObserver(schedule);document.querySelectorAll('.topbar,.terminal-header,.sidebar-head').forEach(e=>resize.observe(e))}
  document.fonts?.ready.then(schedule);
  schedule();

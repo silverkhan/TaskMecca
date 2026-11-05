@@ -6826,6 +6826,8 @@ function toggleSidebar() {
 let notificationSettingsDraft=null;
 function render() {
   if(taskRowTouchActive && state.view==='backlog' && !state.detail){taskRowDeferredRender=true;return;}
+  const glassReaders=window.TaskMeccaGlass?.captureReaders?.();
+  try {
   syncTelegramConnectionWatch();
   const settingsElement=$('#notificationSettingsBody');
   const settingsDraft=settingsElement?.dataset.context===notificationHistoryContext()?preserveNotificationSettings(settingsElement):notificationSettingsDraft?.context===notificationHistoryContext()?notificationSettingsDraft.draft:null;
@@ -6935,6 +6937,9 @@ function render() {
   if(state.view==='backlog')scheduleAutoListPageSize(true);
   document.querySelectorAll('[data-manual-tab]').forEach(b=>b.onclick=()=>{state.manualTab=b.dataset.manualTab;render()});
   bindCopyButtons(); bindMermaidControls(); renderMermaidDiagrams();
+  } finally {
+    window.TaskMeccaGlass?.restoreReaders?.(glassReaders);
+  }
 }
 
 async function loadManual(language = state.language, force = false) {
