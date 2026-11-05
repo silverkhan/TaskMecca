@@ -64,10 +64,10 @@ test('representative workflow has compact context and plot-coordinate anchored t
         const subsecond=await windowRange(),subsecondLabel=await page.locator('#workflowVisibleRange').textContent();assert.ok(subsecond.end-subsecond.start<1000);assert.match(subsecondLabel,/\d{2}:\d{2}:\d{2}\.\d{3}/);await tickGeometry(prefix+' subsecond');
         if(mobile){await page.setViewportSize({width:430,height:844});await page.locator('#workflowFit').click();await scrollSection();await settled();await tickGeometry('mobile430 whole');if(process.env.WORKFLOW_NO_CAPTURE!=='1')await page.screenshot({path:path.join(out,'mobile430-whole.png'),animations:'disabled'});await page.locator('#workflowZoomSelection').click();await settled();await tickGeometry('mobile430 72seconds');assert.match(await page.locator('#workflowVisibleRange').textContent(),/09:17:54/);if(process.env.WORKFLOW_NO_CAPTURE!=='1')await page.screenshot({path:path.join(out,'mobile430-72seconds.png'),animations:'disabled'});}
         await chart.focus();await page.evaluate(()=>{window.__coreWheel=[];document.querySelector('#workflowTimelineViewport').addEventListener('wheel',e=>window.__coreWheel.push(e.defaultPrevented),{passive:true});});
-        const rect=await page.locator('.workflow-axis-track').boundingBox();await page.mouse.move(rect.x+rect.width*.5,rect.y+rect.height/2);await page.mouse.wheel(0,15);await page.keyboard.down('Control');await page.mouse.wheel(0,-15);await page.keyboard.up('Control');await settled();assert.deepEqual(await page.evaluate(()=>window.__coreWheel),[false,false]);
+        const rect=await page.locator('.workflow-axis-track').boundingBox();await page.mouse.move(rect.x+rect.width*.5,rect.y+rect.height/2);await page.mouse.wheel(0,15);await page.keyboard.down('Control');await page.mouse.wheel(0,-15);await page.keyboard.up('Control');await settled();assert.deepEqual(await page.evaluate(()=>window.__coreWheel),[false,true]);
         assert.equal(await page.evaluate(()=>JSON.stringify(activityDetailCache.get(activityDetailKey('FLOW-1',state.project)).workflow)),sourceBefore);
         await page.evaluate(()=>{document.activeElement.blur();});await page.keyboard.press('ArrowLeft');assert.equal(await page.evaluate(()=>state.detail),null,'existing ArrowLeft outside chart still closes detail');
-        report.cases.push({mobile,precise,label,afterLeft,keys,descendantKeys,nativeEnterSpaceSelection:true,tickGeometries:geometries,subsecond,subsecondLabel,detailRetained:true,selectionRetained:true,sourceUnchanged:true,outsideShortcutUnchanged:true,verticalAndControlWheelUnprevented:true});await context.close();continue;
+        report.cases.push({mobile,precise,label,afterLeft,keys,descendantKeys,nativeEnterSpaceSelection:true,tickGeometries:geometries,subsecond,subsecondLabel,detailRetained:true,selectionRetained:true,sourceUnchanged:true,outsideShortcutUnchanged:true,verticalUnpreventedPlotCtrlWheelHandled:true});await context.close();continue;
       }
       await scrollSection();await settled();const prefix=mobile?'mobile-dark':'desktop-light';
       if(process.env.WORKFLOW_NO_CAPTURE!=='1')await page.screenshot({path:path.join(out,prefix+'-overview.png'),animations:'disabled'});
@@ -88,12 +88,12 @@ test('representative workflow has compact context and plot-coordinate anchored t
       await page.keyboard.down('Shift');await page.mouse.move(plot.x+plot.width*.25,y);await page.mouse.down();await page.mouse.move(plot.x+plot.width*.5,y,{steps:8});await page.mouse.up();await page.keyboard.up('Shift');await settled();
       const selectedRange=await windowRange();assert.ok(Math.abs((selectedRange.end-selectedRange.start)-900000)<1000);assert.ok(Math.abs(selectedRange.start-(initial.start+900000))<1000);
       if(process.env.WORKFLOW_NO_CAPTURE!=='1')await page.screenshot({path:path.join(out,prefix+'-range-zoom.png'),animations:'disabled'});
-      // Native horizontal wheel pans. Ordinary vertical and browser-zoom wheels stay unhandled.
+      // Native horizontal wheel pans. Ordinary vertical wheel stays native; plot Ctrl-wheel is explicitly chart zoom.
       await page.mouse.move(plot.x+plot.width*.5,y);await page.mouse.wheel(40,0);await settled();const wheel=await windowRange();assert.ok(wheel.start>selectedRange.start);
       const wheelGeometry=await projectedPosition();assert.ok(wheelGeometry.error<1.5,'rendered interval follows actual time coordinates after buffered pan');
       await page.evaluate(()=>{window.__workflowWheels=[];document.querySelector('#workflowTimelineViewport').addEventListener('wheel',e=>window.__workflowWheels.push({ctrl:e.ctrlKey,prevented:e.defaultPrevented}),{passive:true});});
       await page.mouse.wheel(0,12);await page.keyboard.down('Control');await page.mouse.wheel(0,-12);await page.keyboard.up('Control');await settled();
-      assert.deepEqual(await page.evaluate(()=>window.__workflowWheels.map(e=>e.prevented)),[false,false]);
+      assert.deepEqual(await page.evaluate(()=>window.__workflowWheels.map(e=>e.prevented)),[false,true]);
       await scrollSection();await settled();const afterScrollPlot=await page.locator('.workflow-axis-track').boundingBox(),afterScrollRow=await page.locator('.workflow-agent-track').first().boundingBox();
       let touch=null;
       if(mobile){

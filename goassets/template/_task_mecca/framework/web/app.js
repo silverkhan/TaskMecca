@@ -5916,6 +5916,14 @@ function workflowVisibleRange(view,ko,axis=null){
   return (crossesDay||multipleDays?date(view.start)+' · ':'')+workflowTimeLabel(view.start,view,ko)+' — '+(crossesDay?date(view.end)+' · ':'')+workflowTimeLabel(view.end,view,ko);
 }
 function workflowIntervalKey(row,interval){return JSON.stringify([row.id,interval.id,interval.kind]);}
+const workflowRowMetadata=new WeakMap();
+function workflowRowInfo(row){
+  if(!workflowRowMetadata.has(row)){
+    const intervals=Array.isArray(row.intervals)?row.intervals:[],times=intervals.flatMap(i=>[Date.parse(i.start),Date.parse(i.end||i.start)]).filter(Number.isFinite);
+    workflowRowMetadata.set(row,{intervals,lane:Math.max(0,...intervals.map(i=>Number(i.lane)||0)),outcomes:[...new Set(intervals.map(i=>i.outcome).filter(Boolean))],startOnly:intervals.some(i=>i.kind==='execution_report'&&!i.end),from:times.length?Math.min(...times):null,to:times.length?Math.max(...times):null});
+  }
+  return workflowRowMetadata.get(row);
+}
 function workflowPlotHTML(wf,prefs,ko,drawWindow=null){
   const view=workflowViewWindow(wf,prefs);if(!view)return '';
   const draw=drawWindow||view;
@@ -5927,7 +5935,7 @@ function workflowPlotHTML(wf,prefs,ko,drawWindow=null){
     const start=Date.parse(g.start),end=Date.parse(g.end);if(!Number.isFinite(start)||!Number.isFinite(end)||end<draw.start||start>draw.end)return '';
     return '<span class="workflow-gap" style="left:'+pct(start)+'%;width:'+(pct(end)-pct(start))+'%" aria-hidden="true"></span>';
   }).join('');
-  const intervalHTML=(row,interval,index)=>{
+  const intervalHTML=(row,interval,index,layout={lanes:1,expanded:false})=>{
     const from=Date.parse(interval.start||''),point=!interval.end&&['execution_report','handoff_review'].includes(interval.kind),to=interval.end?Date.parse(interval.end):point?from:Date.parse(axis.end);
     if(!Number.isFinite(from)||!Number.isFinite(to)||to<from||to<draw.start||from>draw.end)return '';
     const label=workflowIntervalType(interval,ko),outcome=workflowOutcome(interval.outcome,ko),key=workflowIntervalKey(row,interval);
@@ -5935,15 +5943,21 @@ function workflowPlotHTML(wf,prefs,ko,drawWindow=null){
     const full=detail+'\n'+workflowText(ko,'실행: ','Attempt: ')+(interval.attempt_id||'—')+'\n'+workflowText(ko,'배정: ','Assignment: ')+(interval.assignment_id||'—')+'\n'+workflowText(ko,'인계: ','Handoff: ')+(interval.handoff_id||'—')+(interval.evidence?'\n'+interval.evidence:'');
     if(prefs.selection?.key===key)prefs.selection={key,start:from,end:to,summary:detail,detail:full};
     const kind=['activity','activity_open','execution_report','handoff_review'].includes(interval.kind)?interval.kind:'execution_report';
-    return '<button type="button" class="workflow-interval wf-role-'+workflowRoleClass(row.role)+' wf-kind-'+kind+(point?' wf-start-only':'')+(prefs.selection?.key===key?' is-selected':'')+'" data-workflow-interval="'+esc(key)+'" data-workflow-start="'+from+'" data-workflow-end="'+to+'" data-workflow-detail="'+esc(full)+'" data-workflow-summary="'+esc(detail)+'" aria-label="'+esc(detail)+'" title="'+esc(detail)+'" style="left:'+pct(from)+'%;width:'+Math.max(0,pct(to)-pct(from))+'%;top:'+(Math.max(0,Number(interval.lane)||0)*24+7)+'px"><span class="activity-timeline-duration-label">'+esc(label)+(interval.measured?' · '+esc(activityDisplayDuration(interval.duration_ms,ko)):'')+'</span></button>';
+    const lane=Math.max(0,Number(interval.lane)||0),pitch=layout.expanded?24:20/layout.lanes,height=point?24:layout.expanded?20:Math.max(2,Math.min(20,pitch-2));
+    return '<button type="button" class="workflow-interval wf-role-'+workflowRoleClass(row.role)+' wf-kind-'+kind+(point?' wf-start-only':'')+(prefs.selection?.key===key?' is-selected':'')+'" data-workflow-interval="'+esc(key)+'" data-workflow-start="'+from+'" data-workflow-end="'+to+'" data-workflow-detail="'+esc(full)+'" data-workflow-summary="'+esc(detail)+'" aria-label="'+esc(detail)+'" title="'+esc(detail)+'" style="left:'+pct(from)+'%;width:'+Math.max(0,pct(to)-pct(from))+'%;top:'+(point&&!layout.expanded?2:lane*pitch+4)+'px;height:'+height+'px"><span class="activity-timeline-duration-label">'+esc(label)+(interval.measured?' · '+esc(activityDisplayDuration(interval.duration_ms,ko)):'')+'</span></button>';
   };
   const rowHTML=visible.slice(0,ACTIVITY_DETAIL_MAX_ROWS).map(row=>{
-    const intervals=Array.isArray(row.intervals)?row.intervals:[],lane=Math.max(0,...intervals.map(i=>Number(i.lane)||0));
-    const outcomes=[...new Set(intervals.map(i=>i.outcome).filter(v=>workflowOutcome(v,ko)))],startOnly=intervals.some(i=>i.kind==='execution_report'&&!i.end);
-    return '<div class="workflow-agent-row" data-workflow-row="'+esc(row.id)+'"><div class="workflow-agent-label"><strong><i class="workflow-role-swatch wf-role-'+workflowRoleClass(row.role)+'"></i>'+esc(activityDisplayRole(row.role,ko))+' · '+esc(workflowAgentLabel(row.agent_id,ko))+'</strong><span>'+esc(workflowRoundLabel(row.round,ko))+' · '+esc(Number.isFinite(row.observed_activity_ms)?activityDisplayDuration(row.observed_activity_ms,ko):workflowText(ko,'활동 미측정','Activity unmeasured'))+'</span>'+(startOnly?'<small class="workflow-start-status">'+esc(workflowText(ko,'종료 미확인','End unverified'))+'</small>':'')+(outcomes.length?'<div class="workflow-row-outcomes">'+outcomes.map(o=>'<span class="workflow-result-badge" data-workflow-row-outcome="'+esc(o)+'">'+esc(workflowOutcome(o,ko))+'</span>').join('')+'</div>':'')+'</div><div class="workflow-agent-plot"><div class="workflow-agent-track" style="height:'+((Math.min(lane,30)+1)*24+14)+'px">'+intervals.map((i,index)=>intervalHTML(row,i,index)).join('')+'</div></div></div>';
+    const {intervals,lane,startOnly,from:reportedFrom,to:reportedTo,outcomes:allOutcomes}=workflowRowInfo(row),outcomes=allOutcomes.filter(v=>workflowOutcome(v,ko)),expanded=Boolean(prefs.expandedRows?.[row.id]);
+    const round=row.round==null?workflowText(ko,'회차 미분류','Unknown round'):row.round===0?workflowText(ko,'최초','Initial'):workflowText(ko,'재작업 '+row.round,'Rework '+row.round);
+    const value=Number.isFinite(row.observed_activity_ms)?activityDisplayDuration(row.observed_activity_ms,ko):workflowText(ko,'미측정','Unmeasured');
+    const fullLabel=[activityDisplayRole(row.role,ko),row.agent_id||workflowAgentLabel('',ko),workflowRoundLabel(row.round,ko),workflowText(ko,'활동 ','Activity ')+value,startOnly?workflowText(ko,'종료 미확인','End unverified'):'',...outcomes.map(o=>workflowOutcome(o,ko))].filter(Boolean).join(' · ');
+    const from=reportedFrom??view.start,to=reportedTo??from,rowKey=JSON.stringify(['row',row.id]);
+    if(prefs.selection?.key===rowKey)prefs.selection={key:rowKey,start:from,end:to,summary:fullLabel,detail:JSON.stringify({role:row.role,agent:row.agent_id,round:row.round,observed_activity_ms:row.observed_activity_ms,intervals},null,2)};
+    const label='<button type="button" class="workflow-row-label'+(prefs.selection?.key===rowKey?' is-selected':'')+'" data-workflow-row-select="'+esc(row.id)+'" data-workflow-start="'+from+'" data-workflow-end="'+to+'" data-workflow-summary="'+esc(fullLabel)+'" title="'+esc(fullLabel)+'" aria-label="'+esc(fullLabel)+'"><i class="workflow-role-swatch wf-role-'+workflowRoleClass(row.role)+'"></i><span>'+esc(activityDisplayRole(row.role,ko)+' · '+workflowAgentLabel(row.agent_id,ko)+' · '+round+' · '+value+(startOnly?workflowText(ko,' · 종료 미확인',' · end unverified'):''))+'</span></button>';
+    return '<div class="workflow-agent-row" data-workflow-row="'+esc(row.id)+'"><div class="workflow-agent-label">'+label+outcomes.map(o=>'<span class="workflow-result-badge" data-workflow-row-outcome="'+esc(o)+'" title="'+esc(workflowOutcome(o,ko))+'">'+esc(workflowOutcome(o,ko))+'</span>').join('')+(lane?'<button type="button" class="workflow-row-expand" data-workflow-row-expand="'+esc(row.id)+'" aria-expanded="'+expanded+'" aria-label="'+esc(workflowText(ko,(expanded?'접기: ':'펼치기: ')+(lane+1)+'개 동시 구간',(expanded?'Collapse: ':'Expand: ')+(lane+1)+' concurrent lanes'))+'">'+esc(workflowText(ko,'겹침','Overlap'))+' '+(lane+1)+'</button>':'')+'</div><div class="workflow-agent-plot"><div class="workflow-agent-track" style="height:'+(expanded?(lane+1)*24+8:28)+'px">'+intervals.map((i,index)=>intervalHTML(row,i,index,{lanes:lane+1,expanded})).join('')+'</div></div></div>';
   }).join('');
   const waits=(wf.lifecycle?.wait_intervals||[]).map((v,index)=>intervalHTML({id:'wait',role:'wait',round:null,agent_id:''},{id:v.from_event_id||String(index),kind:'activity',type:activityDisplayWait(v.kind,ko),start:v.started_at,end:v.ended_at,measured:false,evidence:workflowText(ko,'보고된 대기 구간이며 순수 작업시간이 아닙니다.','Reported wait interval, not pure work time.')},index)).join('');
-  return '<div class="workflow-ruler-row"><span>'+esc(workflowText(ko,'역할 · Agent / 회차','Role · Agent / round'))+'</span><div class="activity-time-ruler workflow-axis-track">'+ticks+'</div></div><div class="workflow-coverage-row"><span>'+esc(workflowText(ko,'미측정 영역','Unmeasured'))+'</span><div class="workflow-coverage-clip"><div class="workflow-coverage-track">'+gaps+'</div></div></div>'+rowHTML+(waits?'<div class="workflow-agent-row"><div class="workflow-agent-label"><strong>'+esc(workflowText(ko,'대기','Waiting'))+'</strong></div><div class="workflow-agent-plot"><div class="workflow-agent-track" style="height:38px">'+waits+'</div></div></div>':'')+(!rowHTML&&!waits?'<p class="workflow-empty">'+esc(workflowText(ko,'역할별 실행·활동 기록 없음 · 활동 시간 미측정','No execution/activity records · activity unmeasured'))+'</p>':'');
+  return '<div class="workflow-ruler-row"><span>'+esc(workflowText(ko,'역할 · Agent / 회차','Role · Agent / round'))+'</span><div class="activity-time-ruler workflow-axis-track">'+ticks+'</div></div><div class="workflow-coverage-row"><span>'+esc(workflowText(ko,'미측정 영역','Unmeasured'))+'</span><div class="workflow-coverage-clip"><div class="workflow-coverage-track">'+gaps+'</div></div></div>'+rowHTML+(waits?'<div class="workflow-agent-row"><div class="workflow-agent-label"><strong>'+esc(workflowText(ko,'대기','Waiting'))+'</strong></div><div class="workflow-agent-plot"><div class="workflow-agent-track" style="height:28px">'+waits+'</div></div></div>':'')+(!rowHTML&&!waits?'<p class="workflow-empty">'+esc(workflowText(ko,'역할별 실행·활동 기록 없음 · 활동 시간 미측정','No execution/activity records · activity unmeasured'))+'</p>':'');
 }
 function bindWorkflowControls(taskID,project,root){
   const pref=activityDetailPrefs(taskID,project),ko=state.language==='ko',payload=activityDetailCache.get(activityDetailKey(taskID,project)),wf=payload?.workflow;
@@ -5962,7 +5976,7 @@ function bindWorkflowControls(taskID,project,root){
     if(!tickFont&&ticks[0])tickFont=getComputedStyle(ticks[0]).font;
     // Time geometry and cached text widths avoid a forced layout read for every
     // interval on every pan frame. Source observations are never rescanned.
-    intervalNodes.forEach(({button,label,start,end})=>{const visible=end>=view.start&&start<=view.end,pixels=Math.max(0,Math.min(end,view.end)-Math.max(start,view.start))/span*width,visibility=pixels>=textWidth(label.textContent,labelFont)+14?'visible':'hidden';if(label.style.visibility!==visibility)label.style.visibility=visibility;const tab=visible?0:-1;if(button.tabIndex!==tab)button.tabIndex=tab;if(visible)button.removeAttribute('aria-hidden');else button.setAttribute('aria-hidden','true');});
+    intervalNodes.forEach(({button,label,start,end})=>{const visible=end>=view.start&&start<=view.end,pixels=Math.max(0,Math.min(end,view.end)-Math.max(start,view.start))/span*width,visibility=parseFloat(button.style.height)>=14&&pixels>=textWidth(label.textContent,labelFont)+14?'visible':'hidden';if(label.style.visibility!==visibility)label.style.visibility=visibility;const tab=visible?0:-1;if(button.tabIndex!==tab)button.tabIndex=tab;if(visible)button.removeAttribute('aria-hidden');else button.setAttribute('aria-hidden','true');});
     let last=-Infinity;const ending=ticks.at(-1),endingLeft=width-(ending?textWidth(ending.textContent,tickFont):0);
     ticks.forEach((tick,i)=>{const p=Number(tick.dataset.workflowTick),w=textWidth(tick.textContent,tickFont),left=p*width-(p===0?0:p===1?w:w/2),right=left+w,visible=!i||i===ticks.length-1||(left>=last+8&&right<=endingLeft-8);tick.style.visibility=visible?'visible':'hidden';if(visible)last=right;});
   };
@@ -5973,7 +5987,7 @@ function bindWorkflowControls(taskID,project,root){
   };
   const paint=()=>{
     if(!canvas||!canvas.isConnected)return;
-    const focused=document.activeElement?.getAttribute?.('data-workflow-interval');
+    const focused=document.activeElement?.getAttribute?.('data-workflow-interval'),focusedRow=document.activeElement?.getAttribute?.('data-workflow-row-select'),focusedExpand=document.activeElement?.getAttribute?.('data-workflow-row-expand');
     const view=workflowViewWindow(wf,pref),span=view.end-view.start;
     if(!plotted||plotted.span!==span||plotted.round!==pref.round||view.start<plotted.draw.start||view.end>plotted.draw.end){
       const draw={start:Math.max(Date.parse(wf.axis.start),view.start-span),end:Math.min(Date.parse(wf.axis.end),view.end+span)};
@@ -5987,12 +6001,14 @@ function bindWorkflowControls(taskID,project,root){
     const full=Date.parse(wf.axis.end)-Date.parse(wf.axis.start),isFit=view.end-view.start>=full;
     root.querySelector('#workflowZoomOut').disabled=isFit;root.querySelector('#workflowZoomIn').disabled=view.end-view.start<=1;
     displaySelection();fitLabels();
+    if(focusedRow||focusedExpand){const attr=focusedRow?'data-workflow-row-select':'data-workflow-row-expand',value=focusedRow||focusedExpand;[...canvas.querySelectorAll('['+attr+']')].find(button=>button.getAttribute(attr)===value)?.focus({preventScroll:true});}
     if(focused){const target=[...canvas.querySelectorAll('[data-workflow-interval]')].find(x=>x.dataset.workflowInterval===focused&&x.tabIndex===0);(target||viewport)?.focus({preventScroll:true});}
   };
   const select=target=>{
-    const interval=target.closest?.('[data-workflow-interval]');if(!interval)return;
-    pref.selection={key:interval.dataset.workflowInterval,start:Number(interval.dataset.workflowStart),end:Number(interval.dataset.workflowEnd),summary:interval.dataset.workflowSummary,detail:interval.dataset.workflowDetail};
-    root.querySelectorAll('.workflow-interval.is-selected').forEach(x=>x.classList.remove('is-selected'));interval.classList.add('is-selected');displaySelection();
+    const interval=target.closest?.('[data-workflow-interval],[data-workflow-row-select]');if(!interval)return;
+    const row=interval.dataset.workflowRowSelect?wf.rows.find(row=>row.id===interval.dataset.workflowRowSelect):null;
+    pref.selection={key:interval.dataset.workflowInterval||JSON.stringify(['row',interval.dataset.workflowRowSelect]),start:Number(interval.dataset.workflowStart),end:Number(interval.dataset.workflowEnd),summary:interval.dataset.workflowSummary,detail:row?JSON.stringify(row,null,2):interval.dataset.workflowDetail};
+    root.querySelectorAll('.workflow-interval.is-selected,.workflow-row-label.is-selected').forEach(x=>x.classList.remove('is-selected'));interval.classList.add('is-selected');displaySelection();
   };
   let frame=0;const queuePaint=()=>{if(!frame)frame=requestAnimationFrame(()=>{frame=0;paint();});};
   const zoom=(factor,anchor,ratio)=>{
@@ -6007,12 +6023,13 @@ function bindWorkflowControls(taskID,project,root){
   root.querySelector('#activityDetailRefresh')?.addEventListener('click',()=>void loadTaskActivity(taskID,project));
   root.querySelector('#activityLedgerDetail')?.addEventListener('toggle',e=>{pref.ledger=e.target.open;});
   if(!viewport||!canvas){root.querySelectorAll('#workflowZoomIn,#workflowZoomOut,#workflowFit,#workflowZoomSelection').forEach(button=>button.disabled=true);return;}
-  let drag=null,suppressClick=0;
+  let drag=null,suppressClick=0,touchGesture=null,touchSuppressWheelUntil=0;
+  const touchContacts=new Map();
   const plotRect=()=>canvas.querySelector('.workflow-axis-track').getBoundingClientRect();
   const inPlot=(x,rect)=>x>=rect.left&&x<=rect.right;
-  viewport.addEventListener('click',e=>{if(e.detail>0&&performance.now()<suppressClick){e.preventDefault();suppressClick=0;return;}suppressClick=0;select(e.target);});
+  viewport.addEventListener('click',e=>{if(e.detail>0&&performance.now()<suppressClick){e.preventDefault();return;}suppressClick=0;const expand=e.target.closest?.('[data-workflow-row-expand]');if(expand){pref.expandedRows??={};pref.expandedRows[expand.dataset.workflowRowExpand]=!pref.expandedRows[expand.dataset.workflowRowExpand];plotted=null;paint();return;}select(e.target);});
   viewport.addEventListener('keydown',e=>{
-    if(e.target!==viewport&&!e.target.closest?.('[data-workflow-interval]'))return;if(e.ctrlKey||e.metaKey||e.altKey)return;
+    if(e.target!==viewport&&!e.target.closest?.('[data-workflow-interval],[data-workflow-row-select],[data-workflow-row-expand]'))return;if(e.ctrlKey||e.metaKey||e.altKey)return;
     if(!['+','=','-','Home','0','ArrowLeft','ArrowRight'].includes(e.key))return;
     e.preventDefault();e.stopPropagation();
     const v=workflowViewWindow(wf,pref),span=v.end-v.start;
@@ -6021,19 +6038,60 @@ function bindWorkflowControls(taskID,project,root){
     else if(e.key==='Home'||e.key==='0'){e.preventDefault();fit();}
     else if(e.key==='ArrowLeft'||e.key==='ArrowRight'){e.preventDefault();const delta=span*(e.key==='ArrowLeft'?-.2:.2);workflowSetWindow(wf,pref,v.start+delta,v.end+delta);paint();}
   });
-  viewport.addEventListener('dblclick',e=>{if(e.ctrlKey||e.metaKey||e.altKey)return;const r=plotRect();if(!inPlot(e.clientX,r))return;const v=workflowViewWindow(wf,pref),ratio=(e.clientX-r.left)/r.width;e.preventDefault();zoom(e.shiftKey?2:.5,v.start+(v.end-v.start)*ratio,ratio);});
+  viewport.addEventListener('dblclick',e=>{if(e.ctrlKey||e.metaKey||e.altKey)return;const r=plotRect();if(!inPlot(e.clientX,r))return;if(performance.now()<touchSuppressWheelUntil){e.preventDefault();return;}const v=workflowViewWindow(wf,pref),ratio=(e.clientX-r.left)/r.width;e.preventDefault();zoom(e.shiftKey?2:.5,v.start+(v.end-v.start)*ratio,ratio);});
   viewport.addEventListener('wheel',e=>{
-    if(e.ctrlKey||e.metaKey||e.altKey)return;
+    if(e.metaKey||e.altKey)return;
     const r=plotRect();if(!inPlot(e.clientX,r))return;
+    if(e.ctrlKey){
+      e.preventDefault();e.stopPropagation();
+      if(touchContacts.size>1||performance.now()<touchSuppressWheelUntil)return;
+      const v=workflowViewWindow(wf,pref),ratio=(e.clientX-r.left)/r.width,scale=e.deltaMode===1?16:e.deltaMode===2?r.width:1;
+      workflowZoomWindow(wf,pref,Math.exp(Math.max(-4,Math.min(4,(e.deltaY||e.deltaX)*scale*.002))),v.start+(v.end-v.start)*ratio,ratio);queuePaint();return;
+    }
     const delta=Math.abs(e.deltaX)>Math.abs(e.deltaY)?e.deltaX:e.shiftKey?e.deltaY:0;if(!delta)return;
     const v=workflowViewWindow(wf,pref),scale=e.deltaMode===1?16:e.deltaMode===2?r.width:1,offset=delta*scale/r.width*(v.end-v.start);
     const next=workflowSetWindow(wf,pref,v.start+offset,v.end+offset);if(next.start!==v.start){e.preventDefault();queuePaint();}
   },{passive:false});
+  const releaseTouchCapture=id=>{if(viewport.hasPointerCapture(id))viewport.releasePointerCapture(id);};
+  const rebaseTouch=()=>{
+    const contacts=[...touchContacts.values()],view=workflowViewWindow(wf,pref),rect=plotRect();
+    if(contacts.length>1){
+      const pair=touchGesture?.mode==='pinch'&&touchGesture.ids.every(id=>touchContacts.has(id))?touchGesture.ids.map(id=>touchContacts.get(id)):contacts.slice(0,2);
+      const midpoint=(pair[0].x+pair[1].x)/2,ratio=Math.max(0,Math.min(1,(midpoint-rect.left)/rect.width));
+      touchGesture={mode:'pinch',ids:pair.map(c=>c.id),distance:Math.max(4,Math.hypot(pair[1].x-pair[0].x,pair[1].y-pair[0].y)),anchor:view.start+(view.end-view.start)*ratio,span:view.end-view.start,rect};
+      touchSuppressWheelUntil=performance.now()+350;suppressClick=performance.now()+350;drag=null;
+    }else if(contacts.length){const c=contacts[0];touchGesture={mode:'single',id:c.id,x:c.x,y:c.y,start:view.start,end:view.end,rect,active:false,vertical:false};}
+    else touchGesture=null;
+  };
+  const cancelTouches=()=>{const ids=[...touchContacts.keys()],multi=touchContacts.size>1||touchGesture?.mode==='pinch';touchContacts.clear();touchGesture=null;if(multi)touchSuppressWheelUntil=performance.now()+350;suppressClick=performance.now()+350;ids.forEach(releaseTouchCapture);};
+  // Pointer capture belongs to this stable viewport, not the interval node that
+  // a zoom paint replaces. TouchEvent is used only to suppress native two-touch
+  // scrolling/zoom; all coordinates are processed once by captured pointers.
+  viewport.addEventListener('touchstart',e=>{if(touchContacts.size>1&&e.cancelable)e.preventDefault();},{passive:false});
   viewport.addEventListener('pointerdown',e=>{
+    if(e.pointerType==='touch'){
+      const rect=plotRect();if(!inPlot(e.clientX,rect))return;
+      touchContacts.set(e.pointerId,{id:e.pointerId,x:e.clientX,y:e.clientY});viewport.setPointerCapture(e.pointerId);
+      if(touchContacts.size<=2)rebaseTouch();return;
+    }
     if(e.button!==0||e.ctrlKey||e.metaKey||e.altKey)return;const rect=plotRect();if(!inPlot(e.clientX,rect))return;
     const view=workflowViewWindow(wf,pref);drag={id:e.pointerId,x:e.clientX,y:e.clientY,rect,start:view.start,end:view.end,range:e.shiftKey,active:false};
   });
   viewport.addEventListener('pointermove',e=>{
+    if(e.pointerType==='touch'){
+      if(!touchContacts.has(e.pointerId))return;if(!viewport.isConnected){cancelTouches();return;}
+      touchContacts.set(e.pointerId,{id:e.pointerId,x:e.clientX,y:e.clientY});
+      const g=touchGesture;if(!g)return;
+      if(g.mode==='pinch'){
+        if(!g.ids.includes(e.pointerId))return;
+        const pair=g.ids.map(id=>touchContacts.get(id));if(pair.some(c=>!c)){rebaseTouch();return;}
+        const distance=Math.max(4,Math.hypot(pair[1].x-pair[0].x,pair[1].y-pair[0].y)),midpoint=(pair[0].x+pair[1].x)/2,ratio=Math.max(0,Math.min(1,(midpoint-g.rect.left)/g.rect.width)),span=g.span*g.distance/distance;
+        e.preventDefault();workflowSetWindow(wf,pref,g.anchor-span*ratio,g.anchor+span*(1-ratio));touchSuppressWheelUntil=performance.now()+350;suppressClick=performance.now()+350;queuePaint();return;
+      }
+      if(g.id!==e.pointerId||g.vertical)return;
+      const dx=e.clientX-g.x,dy=e.clientY-g.y;if(!g.active){if(Math.max(Math.abs(dx),Math.abs(dy))<6)return;if(Math.abs(dy)>Math.abs(dx)){g.vertical=true;return;}g.active=true;}
+      e.preventDefault();const offset=-dx/g.rect.width*(g.end-g.start);workflowSetWindow(wf,pref,g.start+offset,g.end+offset);suppressClick=performance.now()+350;queuePaint();return;
+    }
     if(!drag||drag.id!==e.pointerId)return;const dx=e.clientX-drag.x,dy=e.clientY-drag.y;
     if(!drag.active){if(Math.abs(dx)<6)return;if(e.pointerType==='touch'&&Math.abs(dy)>Math.abs(dx)){drag=null;return;}drag.active=true;viewport.setPointerCapture(e.pointerId);}
     e.preventDefault();const span=drag.end-drag.start;
@@ -6041,12 +6099,21 @@ function bindWorkflowControls(taskID,project,root){
     else{const offset=-dx/drag.rect.width*span;workflowSetWindow(wf,pref,drag.start+offset,drag.end+offset);queuePaint();}
   },{passive:false});
   const endDrag=e=>{
+    if(e.pointerType==='touch'){
+      if(!touchContacts.has(e.pointerId))return;if(!viewport.isConnected){cancelTouches();return;}
+      if(e.type==='pointercancel'){cancelTouches();return;}
+      const wasPinch=touchGesture?.mode==='pinch',active=touchGesture?.active;touchContacts.delete(e.pointerId);releaseTouchCapture(e.pointerId);
+      if(wasPinch||active){suppressClick=performance.now()+350;if(wasPinch)touchSuppressWheelUntil=performance.now()+350;}
+      if(wasPinch&&touchContacts.size>1&&touchGesture.ids.every(id=>touchContacts.has(id)))return;
+      rebaseTouch();return;
+    }
     if(!drag||drag.id!==e.pointerId)return;const d=drag;drag=null;viewport.classList.remove('is-selecting');
     if(viewport.hasPointerCapture(e.pointerId))viewport.releasePointerCapture(e.pointerId);
     if(d.active){suppressClick=performance.now()+100;if(d.range&&e.type!=='pointercancel'){const a=Math.max(0,Math.min(1,(d.x-d.rect.left)/d.rect.width)),b=Math.max(0,Math.min(1,(e.clientX-d.rect.left)/d.rect.width));workflowSetWindow(wf,pref,d.start+Math.min(a,b)*(d.end-d.start),d.start+Math.max(a,b)*(d.end-d.start));paint();}}
   };
   viewport.addEventListener('pointerup',endDrag);viewport.addEventListener('pointercancel',endDrag);
-  if(typeof ResizeObserver!=='undefined'){const observer=new ResizeObserver(fitLabels);observer.observe(viewport);activityDetailResizeObservers.set(root,observer);}
+  viewport.addEventListener('lostpointercapture',e=>{if(touchContacts.has(e.pointerId))cancelTouches();else if(drag?.id===e.pointerId){drag=null;viewport.classList.remove('is-selecting');}});
+  if(typeof ResizeObserver!=='undefined'){const observer=new ResizeObserver(()=>{fitLabels();if(touchContacts.size)rebaseTouch();});observer.observe(viewport);activityDetailResizeObservers.set(root,observer);}
   displaySelection();fitLabels();
   root.querySelector('#workflowZoomOut').disabled=workflowViewWindow(wf,pref).end-workflowViewWindow(wf,pref).start>=Date.parse(wf.axis.end)-Date.parse(wf.axis.start);
 }
@@ -6064,7 +6131,7 @@ function workflowMetricsBody(payload,taskID){
   const elapsed=metricRows[0][2],unknown=metricRows[3][2];
   const summary='<div class="workflow-context"><div class="workflow-context-line"><strong>'+esc(workflowPhaseLabel(current.phase,ko))+'</strong>'+(!completed?'<span>'+esc(actor)+'</span>':'')+'<span>'+esc(workflowRoundLabel(current.round,ko))+'</span><span>'+esc(workflowText(ko,'전체 ','Total ')+elapsed)+'</span></div>'+(!completed?'<p class="workflow-next">'+esc(workflowText(ko,'다음: ','Next: ')+workflowActionLabel(current.next_action,ko))+'</p>':'')+'<p class="workflow-quality" data-measurement-status="'+esc(status)+'"><span>'+esc(observation)+'</span><span>'+esc(workflowText(ko,'활동 미측정 ','Unmeasured activity ')+unknown)+'</span></p></div>'+(reopened?'<p class="workflow-reopened">'+esc(workflowText(ko,'이전 완료 후 재개 · ','Resumed after completion · ')+activityEventTime(completionHistory.at(-1),ko))+'</p>':'')+(sourceIssue?'<p class="workflow-source-warning" role="status">'+esc(workflowText(ko,'갱신 실패 · 마지막 확인 결과를 표시합니다. 새로고침으로 재시도하세요.','Refresh failed · last verified result retained. Refresh to retry.'))+'</p>':stale?'<p class="workflow-source-note">'+esc(workflowText(ko,trust==='pending'?'원천 확인 전 · 확인 가능한 기록 기준':'원천이 오래됐습니다 · 마지막 확인 결과',trust==='pending'?'Source pending · available records':'Stale source · last verified result'))+'</p>':'');
   const controls='<div class="workflow-controls"><div class="workflow-zoom-buttons" role="group" aria-label="'+esc(workflowText(ko,'시간축 확대·축소','Timeline zoom'))+'"><button id="workflowZoomOut" type="button" aria-label="'+esc(workflowText(ko,'시간축 축소','Zoom out'))+'" title="'+esc(workflowText(ko,'축소 (−)','Zoom out (−)'))+'">−</button><button id="workflowZoomIn" type="button" aria-label="'+esc(workflowText(ko,'시간축 확대','Zoom in'))+'" title="'+esc(workflowText(ko,'확대 (+)','Zoom in (+)'))+'">+</button><button id="workflowFit" type="button" title="'+esc(workflowText(ko,'전체 기간 보기 (Home)','Fit full period (Home)'))+'">'+esc(workflowText(ko,'전체 보기','Fit all'))+'</button></div><output id="workflowVisibleRange" class="workflow-visible-range" aria-label="'+esc(workflowText(ko,'보이는 시간 범위','Visible time range'))+'">'+esc(view?workflowVisibleRange(view,ko,axis):'—')+'</output><label class="workflow-round-filter"><span class="sr-only">'+esc(workflowText(ko,'업무 회차','Work round'))+'</span><select id="activityDetailRound"><option value="all"'+(selected==='all'?' selected':'')+'>'+esc(workflowText(ko,'모든 회차','All rounds'))+'</option>'+roundValues.map(n=>'<option value="'+n+'"'+(selected===String(n)?' selected':'')+'>'+esc(workflowRoundLabel(n,ko))+'</option>').join('')+(rows.some(r=>r.round==null)?'<option value="unknown"'+(selected==='unknown'?' selected':'')+'>'+esc(workflowRoundLabel(null,ko))+'</option>':'')+'</select></label><button type="button" id="activityDetailRefresh">'+esc(workflowText(ko,'새로고침','Refresh'))+'</button></div>';
-  const timeline=validAxis?'<div class="workflow-axis-caption"><span>'+esc(activityEventTime(axis.start,ko)+' — '+activityEventTime(axis.end,ko))+(axis.open?' · '+esc(workflowText(ko,'현재까지','to current observation')):'')+'</span></div><div id="workflowTimelineViewport" class="workflow-timeline-scroll" tabindex="0" aria-label="'+esc(workflowText(ko,'작업 시간축. 가로 드래그로 이동, Shift 드래그로 구간 확대. 더블클릭 또는 +와 −로 확대 축소, 화살표로 이동, Home으로 전체 보기.','Workflow timeline. Drag to pan, Shift-drag to zoom a range. Double-click or +/− to zoom, arrows to pan, Home to fit.'))+'"><div class="workflow-timeline-canvas" data-axis-start="'+esc(axis.start)+'" data-axis-end="'+esc(axis.end)+'" data-view-start="'+view.start+'" data-view-end="'+view.end+'">'+workflowPlotHTML(wf,prefs,ko)+'</div></div><div class="workflow-chart-footer"><span class="workflow-pointer-help">'+esc(workflowText(ko,'드래그로 이동 · Shift+드래그로 구간 확대','Drag to pan · Shift-drag to zoom a range'))+'</span><span class="workflow-touch-help">'+esc(workflowText(ko,'가로로 밀어 이동 · 구간 선택 후 확대','Swipe to pan · select an interval to zoom'))+'</span><button type="button" id="workflowZoomSelection"'+(!prefs.selection?' disabled':'')+'>'+esc(workflowText(ko,'선택 확대','Zoom selection'))+'</button></div><div id="activityTimelineSelection" class="workflow-selection" aria-live="polite"'+(!prefs.selection?' hidden':'')+'><p class="workflow-selection-summary">'+esc(prefs.selection?.summary||'')+'</p><details id="workflowIntervalEvidence"><summary>'+esc(workflowText(ko,'구간 근거','Interval evidence'))+'</summary><pre>'+esc(prefs.selection?.detail||'')+'</pre></details></div>':'<p class="workflow-empty">'+esc(workflowText(ko,'시작·종료 경계를 확인할 수 없어 시간축을 그리지 않았습니다.','Time axis unavailable without verified bounds.'))+'</p>';
+  const timeline=validAxis?'<div class="workflow-axis-caption"><span>'+esc(activityEventTime(axis.start,ko)+' — '+activityEventTime(axis.end,ko))+(axis.open?' · '+esc(workflowText(ko,'현재까지','to current observation')):'')+'</span></div><div id="workflowTimelineViewport" class="workflow-timeline-scroll" tabindex="0" aria-label="'+esc(workflowText(ko,'작업 시간축. 가로 드래그로 이동, Ctrl 휠이나 두 손가락으로 확대·축소, Shift 드래그로 구간 확대. 더블클릭 또는 +와 −로 확대 축소, 화살표로 이동, Home으로 전체 보기.','Workflow timeline. Drag to pan, Ctrl-wheel or pinch to zoom, Shift-drag to zoom a range. Double-click or +/− to zoom, arrows to pan, Home to fit.'))+'"><div class="workflow-timeline-canvas" data-axis-start="'+esc(axis.start)+'" data-axis-end="'+esc(axis.end)+'" data-view-start="'+view.start+'" data-view-end="'+view.end+'">'+workflowPlotHTML(wf,prefs,ko)+'</div></div><div class="workflow-chart-footer"><span class="workflow-pointer-help">'+esc(workflowText(ko,'드래그로 이동 · Ctrl+휠로 확대 · Shift+드래그로 구간 확대','Drag to pan · Shift-drag to zoom a range'))+'</span><span class="workflow-touch-help">'+esc(workflowText(ko,'가로로 밀어 이동 · 두 손가락으로 확대·축소','Swipe to pan · select an interval to zoom'))+'</span><button type="button" id="workflowZoomSelection"'+(!prefs.selection?' disabled':'')+'>'+esc(workflowText(ko,'선택 확대','Zoom selection'))+'</button></div><div id="activityTimelineSelection" class="workflow-selection" aria-live="polite"'+(!prefs.selection?' hidden':'')+'><p class="workflow-selection-summary">'+esc(prefs.selection?.summary||'')+'</p><details id="workflowIntervalEvidence"><summary>'+esc(workflowText(ko,'구간 근거','Interval evidence'))+'</summary><pre>'+esc(prefs.selection?.detail||'')+'</pre></details></div>':'<p class="workflow-empty">'+esc(workflowText(ko,'시작·종료 경계를 확인할 수 없어 시간축을 그리지 않았습니다.','Time axis unavailable without verified bounds.'))+'</p>';
   const roundDetail='<details class="workflow-disclosure" id="workflowRoundDetails"><summary>'+esc(workflowText(ko,'회차와 검토·수정 관계','Rounds, reviews and corrections'))+' <span>'+rounds.length+'</span></summary><ol class="workflow-round-list">'+rounds.map(r=>'<li><strong>'+esc(workflowRoundLabel(r.number,ko))+'</strong><span>'+esc(activityEventTime(r.started_at,ko))+'</span>'+(r.reason?'<p>'+esc(r.reason)+'</p>':'<p>'+esc(workflowText(ko,'등록 또는 실제 활동 보고에 연결된 최초 작업입니다.','Initial work linked to registration or a real activity report.'))+'</p>')+(r.verification_results?.length?'<small>'+esc(workflowText(ko,'검증 결과: ','Verification: ')+r.verification_results.map(v=>workflowOutcome(v,ko)||v).join(' · '))+'</small>':'')+'<details><summary>'+esc(workflowText(ko,'연결 근거','Linked evidence'))+'</summary><pre>'+esc(JSON.stringify({basis:r.basis,previous_round:r.previous_round,handoff:r.handoff_id,assignment_ids:r.assignment_ids,attempt_ids:r.attempt_ids,handoff_ids:r.handoff_ids,commits:r.commits},null,2))+'</pre></details></li>').join('')+'</ol></details>';
   const totals=Object.entries(payload.summary?.by_type_ms||{}).filter(([,ms])=>Number.isFinite(ms)&&ms>=0).sort((a,b)=>b[1]-a[1]),max=Math.max(1,...totals.map(([,ms])=>ms));
   const events=Array.isArray(payload.events)?payload.events:[];
@@ -6417,6 +6484,7 @@ function renderActivityDetailControls(taskID,project=state.project){
   const active=typeof document!=='undefined'?document.activeElement:null;
   const activeId=root.contains?.(active)?active?.id:null;
   const activeInterval=root.contains?.(active)?active?.getAttribute?.('data-workflow-interval'):null;
+  const activeRow=root.contains?.(active)?active?.getAttribute?.('data-workflow-row-select'):null,activeExpand=root.contains?.(active)?active?.getAttribute?.('data-workflow-row-expand'):null;
   const selected=root.querySelector?.('#activityTimelineSelection');
   const selection=selected&&!selected.hidden?selected.textContent:null;
   const y=typeof window!=='undefined'?window.scrollY:0,x=typeof window!=='undefined'?window.scrollX:0;
@@ -6426,6 +6494,7 @@ function renderActivityDetailControls(taskID,project=state.project){
   const scroller=root.querySelector?.('.activity-timeline-scroll');if(scroller&&activityDetailPrefs(taskID,project).focus==='manual')scroller.scrollLeft=scroll;
   const output=root.querySelector?.('#activityTimelineSelection');if(output&&selection&&!root.querySelector('.workflow-view')){output.textContent=selection;output.hidden=false;}
   if(activeId)root.querySelector?.('#'+activeId)?.focus?.({preventScroll:true});
+  if(activeRow||activeExpand){const attr=activeRow?'data-workflow-row-select':'data-workflow-row-expand',value=activeRow||activeExpand;[...(root.querySelectorAll?.('['+attr+']')||[])].find(button=>button.getAttribute(attr)===value)?.focus?.({preventScroll:true});}
   if(activeInterval){const button=[...(root.querySelectorAll?.('[data-workflow-interval]')||[])].find(button=>button.getAttribute('data-workflow-interval')===activeInterval);(button||root.querySelector?.('#workflowTimelineViewport'))?.focus?.({preventScroll:true});}
   if(typeof window!=='undefined'&&window.scrollY!==y)window.scrollTo?.({left:x,top:y,behavior:'auto'});
 }
