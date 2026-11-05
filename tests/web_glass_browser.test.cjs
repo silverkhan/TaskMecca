@@ -1,6 +1,7 @@
 // Opt-in real Chromium test. All assets are the embedded app; all API data is synthetic.
 const {test}=require('node:test'),assert=require('node:assert/strict'),path=require('node:path'),fs=require('node:fs');
 const fixture=require('./helpers/glass_fixture.cjs');
+const {installOpticalOracle,assertOpticalComparison,captureOpticalWitness}=require('./helpers/glass_optical_oracle.cjs');
 const enabled=!!process.env.GLASS_PLAYWRIGHT_MODULE;
 test('Glass browser contract: appearance, stable canvas, content, fallbacks and input',{skip:!enabled,timeout:120000},async()=>{
  const {chromium}=require(process.env.GLASS_PLAYWRIGHT_MODULE),data=JSON.parse(JSON.stringify(fixture));data.logs=fixture.api(new URL('http://fixture/api/storage/logs'),'http://fixture');data.runtime=fixture.api(new URL('http://fixture/api/runtime/storage'),'http://fixture');
@@ -99,9 +100,10 @@ test('photographic source responds to mobile decode budget and desktop DPR',{ski
 
 test('Glass optical layers preserve representative menu and native controls',{skip:!enabled,timeout:120000},async()=>{
  const {chromium}=require(process.env.GLASS_PLAYWRIGHT_MODULE),server=await fixture.start(path.resolve('goassets/template/_task_mecca/framework/web')),browser=await chromium.launch({executablePath:process.env.CHROME_EXECUTABLE,headless:true});
- const out=process.env.GLASS_EVIDENCE_DIR&&path.resolve(process.env.GLASS_EVIDENCE_DIR),data=JSON.parse(JSON.stringify(fixture)),report=[];
+ const out=process.env.GLASS_EVIDENCE_DIR&&path.resolve(process.env.GLASS_EVIDENCE_DIR),data=JSON.parse(JSON.stringify(fixture)),report=[];if(out)fs.mkdirSync(out,{recursive:true});
  try{for(const mobile of [false,true]){
   const c=await browser.newContext({viewport:mobile?{width:390,height:844}:{width:1440,height:960},screen:mobile?{width:390,height:844}:{width:1440,height:960},isMobile:mobile,hasTouch:mobile,deviceScaleFactor:1});await c.route('**/*',r=>r.request().url().startsWith(server.origin+'/')?r.continue():r.abort());
+  await c.addInitScript(installOpticalOracle);
   await c.addInitScript(()=>{localStorage.setItem('task-mecca-palette','glass');localStorage.setItem('task-mecca-theme','dark');localStorage.setItem('task-mecca-language','ko');window.EventSource=class{addEventListener(){}close(){}}});
   const p=await c.newPage();await p.goto(server.origin);await p.waitForTimeout(350);await p.waitForFunction(()=>window.TaskMeccaGlass?.diagnostics().mode==='active');
   const seed=()=>p.evaluate(f=>{Object.assign(state,{project:f.project,backlog:f.backlog,view:'backlog',listData:f.list,snapshot:f.snapshot,hub:f.hub,detail:null,detailTask:null});render()},data);
@@ -114,16 +116,16 @@ test('Glass optical layers preserve representative menu and native controls',{sk
    assert.ok(pixels.painted>0&&pixels.painted<pixels.total/2);assert.equal(pixels.center,0,'foreground center is not captured/warped');
    const box=await p.locator('.tm-combo-popup').boundingBox(),v=p.viewportSize();assert.ok(box.x>=0&&box.y>=0&&box.x+box.width<=v.width+1&&box.y+box.height<=v.height+1);
    if(theme==='light'){
-    const remap=await p.locator('.tm-combo-popup .glass-optics').evaluate(async canvas=>{
-     const d=TaskMeccaGlass.diagnostics(),image=new Image();image.src=d.photo;await image.decode();const source=document.createElement('canvas');source.width=d.stage.width;source.height=d.stage.height;const a=source.getContext('2d'),scale=Math.max(d.stage.width/image.naturalWidth,d.stage.height/image.naturalHeight),w=image.naturalWidth*scale,h=image.naturalHeight*scale;a.drawImage(image,(d.stage.width-w)/2,(d.stage.height-h)/2,w,h);
-     const r=canvas.getBoundingClientRect(),identity=document.createElement('canvas');identity.width=canvas.width;identity.height=canvas.height;const b=identity.getContext('2d');b.scale(canvas.width/r.width,canvas.height/r.height);b.drawImage(source,-r.left,-r.top,d.stage.width,d.stage.height);
-     const warped=canvas.getContext('2d').getImageData(0,0,canvas.width,canvas.height).data,straight=b.getImageData(0,0,canvas.width,canvas.height).data;let diff=0,count=0;for(let i=0;i<warped.length;i+=4)if(warped[i+3]>100){for(let k=0;k<3;k++)diff+=Math.abs(warped[i+k]-straight[i+k]);count+=3}return{meanChannelDifference:diff/count,channels:count,control:'same fixed photo without curved rim mapping'};
-    });assert.ok(remap.meanChannelDifference>1,'actual background samples differ from an undisplaced photo projection');report.push({mobile,refractionComparison:remap});
+    const remap=await p.locator('.tm-combo-popup .glass-optics').evaluate(canvas=>window.__glassOpticalCompare(canvas));
+    report.push({mobile,refractionComparison:remap});if(out)fs.writeFileSync(path.join(out,'liquid-glass-contract.json'),JSON.stringify(report,null,2));
+    assertOpticalComparison(remap);
    }
    await shot(theme+'-menu');if(out){await p.locator('.tm-combo-popup .glass-optics').evaluate(e=>e.style.visibility='hidden');await shot(theme+'-menu-no-optical-rim');await p.locator('.tm-combo-popup .glass-optics').evaluate(e=>e.style.visibility='')}
    await p.keyboard.press('Escape');assert.equal(await p.locator('.palette-picker .tm-combo-trigger').getAttribute('aria-expanded'),'false');assert.ok(await p.locator('.palette-picker .tm-combo-trigger').evaluate(e=>e===document.activeElement));
    report.push({mobile,theme,box,pixels,optics:d});
   }
+  const witness=await captureOpticalWitness({browser,origin:server.origin,mobile});report.push({mobile,opticalWitness:witness});if(out)fs.writeFileSync(path.join(out,'liquid-glass-contract.json'),JSON.stringify(report,null,2));assertOpticalComparison(witness,{witness:true});
+  const negative=await captureOpticalWitness({browser,origin:server.origin,mobile,zeroDisplacement:true});report.push({mobile,zeroDisplacementControl:negative});if(out)fs.writeFileSync(path.join(out,'liquid-glass-contract.json'),JSON.stringify(report,null,2));assert.throws(()=>assertOpticalComparison(negative,{witness:true}),/bounded nonzero displacement/,'zero displacement must fail the optical contract');
   const combo=p.locator('.palette-picker .tm-combo-trigger');await combo.press('Enter');await p.keyboard.press('Home');await p.keyboard.press('Enter');assert.equal(await p.evaluate(()=>state.palette),'mecca');await p.waitForFunction(()=>document.querySelectorAll('.glass-optics').length===0);assert.equal(await p.locator('.glass-optics').count(),0);await p.evaluate(()=>applyPalette('glass'));await p.waitForFunction(()=>TaskMeccaGlass.diagnostics().mode==='active');
   // Real select enhancement: searchable list, disabled option, keyboard choice.
   await p.evaluate(()=>{const l=document.createElement('label');l.id='fixtureSelectLabel';l.style.cssText='position:fixed;top:180px;left:20px;z-index:2000;width:280px';l.textContent='가상 선택 검색 ';const s=document.createElement('select');s.id='fixtureSearchSelect';s.setAttribute('aria-label','가상 선택 검색');for(let i=0;i<16;i++){const o=document.createElement('option');o.value='v'+i;o.textContent='가상 항목 '+i;o.disabled=i===3;s.append(o)}l.append(s);document.body.append(l);TaskMeccaSelectUI.sync()});
