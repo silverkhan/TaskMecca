@@ -81,7 +81,7 @@
  const linearChannel=v=>{v/=255;return v<=.04045?v/12.92:((v+.055)/1.055)**2.4};
  function adaptPanels(){
   if(!samplePixels)return;
-  const start=performance.now(),g=geometry(),hosts=[...document.querySelectorAll('.topbar,.sidebar,.content,.terminal-header,.terminal-main,.tm-combo-popup,.notification-panel,.common-attention-body,.modal-card,.mobile-sidebar-panel,.preview-identity-banner,.user-attention')],keep=new Set(hosts);
+  const start=performance.now(),g=geometry(),hosts=[...document.querySelectorAll('.topbar,.sidebar,.sidebar-head,.content,.terminal-header,.terminal-main,.tm-combo-popup,.notification-panel,.common-attention-body,.modal-card,.mobile-sidebar-panel,.preview-identity-banner,.user-attention')],keep=new Set(hosts);
   for(const host of panels.keys())if(!keep.has(host)){delete host.dataset.glassTone;host.style.removeProperty('--glass-alpha');host.style.removeProperty('--glass-reflection-rgb');panels.delete(host)}
   for(const host of hosts){
    // The reader's fixed-size sticky backing is the actual surface behind long tables.
@@ -96,8 +96,8 @@
    const luminance=sum/count;
    // A wide dead band retains panel polarity across leaves, threshold scroll and resize.
    const prior=previous?.theme===root.dataset.theme?previous.tone:root.dataset.theme,tone=luminance>.48?'light':luminance<.28?'dark':prior;
-   // Density is no longer a contrast blanket. The broad material transmits
-   // the scene; a separate, spatially bounded ink support protects actual text.
+   // Broad Cozy material transmits the scene without any text-specific backing.
+   // Non-photographic and fallback panels retain their established contrast fill.
    const mixed=max-min>.38?true:max-min<.24?false:(previous?.mixed??true),alpha=host.dataset.glassMaterial==='true'?.14:(mixed?.86:.78);
    if(host.dataset.glassTone!==tone)host.dataset.glassTone=tone;
    if(host.style.getPropertyValue('--glass-alpha')!==String(alpha))host.style.setProperty('--glass-alpha',alpha);
@@ -130,61 +130,35 @@
   }).slice(0,MAX_LENSES);
  }
  function materialCandidates(){
-  return [...document.querySelectorAll('.tm-combo-popup,.topbar,.sidebar,.content,.terminal-header,.terminal-main,.mobile-sidebar-panel')].filter(host=>{
+  return [...document.querySelectorAll('.tm-combo-popup,.topbar,.sidebar,.sidebar-head,.content,.terminal-header,.terminal-main,.mobile-sidebar-panel,.preview-identity-banner,.user-attention,.common-attention-body')].filter(host=>{
    const r=host.getBoundingClientRect(),s=getComputedStyle(host);
-   return r.width>8&&r.height>8&&r.bottom>0&&r.right>0&&r.top<innerHeight&&r.left<innerWidth&&s.visibility!=='hidden'&&s.display!=='none'&&!(innerWidth<=680&&host.classList.contains('sidebar'))&&(readerBackingSupported||!host.matches('.content,.terminal-main'));
+   return r.width>8&&r.height>8&&r.bottom>0&&r.right>0&&r.top<innerHeight&&r.left<innerWidth&&s.visibility!=='hidden'&&s.display!=='none'&&!(innerWidth<=680&&host.classList.contains('sidebar'))&&!(innerWidth>680&&host.classList.contains('sidebar-head'))&&(readerBackingSupported||!host.matches('.content,.terminal-main'));
   });
  }
- function inkRects(host,r){
-  const walk=document.createTreeWalker(host,NodeFilter.SHOW_TEXT),out=[],groups=new Map(),styles=new Map(),styleOf=e=>{if(!styles.has(e))styles.set(e,getComputedStyle(e));return styles.get(e)};let node,visitedTextNodes=0;
-  const parseColor=value=>{const numbers=value.match(/[\d.]+/g)?.map(Number);if(!numbers)return null;if(value.startsWith('color(srgb '))for(let i=0;i<3;i++)numbers[i]*=255;return numbers};
-  while(node=walk.nextNode()){
-   visitedTextNodes++;
-   const parent=node.parentElement;if(!node.textContent.trim()||parent.closest('script,style')||(parent.checkVisibility?!parent.checkVisibility({checkOpacity:true,checkVisibilityCSS:true}):styleOf(parent).visibility==='hidden'))continue;
-   const bounds=parent.getBoundingClientRect();if(bounds.bottom<r.top||bounds.top>r.bottom||bounds.right<r.left||bounds.left>r.right)continue;
-   const style=styleOf(parent),rgb=parseColor(style.color)?.slice(0,3);if(!rgb)continue;
-   const group=parent.closest('p,h1,h2,h3,h4,li,nav,.palette-picker,.language-picker,.background-picker,.theme-switcher,.sidebar-mode-selector,.detail-meta,.lifecycle-event')||parent;
-   if(!groups.has(group))groups.set(group,groups.size);
-   const backgrounds=[];for(let ancestor=parent;ancestor&&ancestor!==host;ancestor=ancestor.parentElement){const color=parseColor(styleOf(ancestor).backgroundColor);if(color&&(color[3]??1)>0)backgrounds.unshift(color)}
-   const range=document.createRange();range.selectNodeContents(node);
-   for(const box of range.getClientRects())if(box.width>0&&box.height>0&&box.right>r.left&&box.left<r.right&&box.bottom>r.top&&box.top<r.bottom)out.push({x:box.x-r.x,y:box.y-r.y,width:box.width,height:box.height,rgb,backgrounds,group:groups.get(group),required:parseFloat(style.fontSize)>=24||parseFloat(style.fontSize)>=18.66&&Number(style.fontWeight)>=700?3:4.5});
-  }
-  for(const input of host.querySelectorAll('input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),textarea')){const box=input.getBoundingClientRect();if(box.width<1||box.height<1||box.bottom<r.top||box.top>r.bottom)continue;const rgb=parseColor((input.value?styleOf(input):getComputedStyle(input,'::placeholder')).color)?.slice(0,3);if(rgb)out.push({x:box.x-r.x,y:box.y-r.y,width:box.width,height:box.height,rgb,backgrounds:[],group:groups.size+out.length,required:4.5})}
-  for(const icon of host.querySelectorAll('.nav-icon svg')){const box=icon.getBoundingClientRect();if(box.width<1||box.height<1||box.bottom<r.top||box.top>r.bottom)continue;const rgb=parseColor(styleOf(icon).color)?.slice(0,3);if(rgb)out.push({x:box.x-r.x,y:box.y-r.y,width:box.width,height:box.height,rgb,backgrounds:[],group:groups.size+out.length,required:3})}
-  out.visitedTextNodes=visitedTextNodes;return out;
- }
- const luminanceOf=rgb=>rgb.reduce((sum,v,i)=>sum+linearChannel(v)*[.2126,.7152,.0722][i],0);
  function paintMaterial(entry){
   const {host,canvas,plane}=entry,r=plane.getBoundingClientRect(),w=r.width,h=r.height;if(w<8||h<8)return;
-  const inkStart=performance.now(),ink=inkRects(host,r),key=JSON.stringify([generation,r.x,r.y,w,h,host.dataset.glassTone,ink]);entry.visitedTextNodes=ink.visitedTextNodes;entry.visibleInk=ink.length;entry.inkMeasureMs=performance.now()-inkStart;entry.totalInkMeasureMs=(entry.totalInkMeasureMs||0)+entry.inkMeasureMs;if(entry.key===key)return;
+  // Material depends only on the scene and panel geometry, never on ink.
+  const key=[generation,r.x,r.y,w,h,host.dataset.glassTone].join("|");if(entry.key===key)return;
   const start=performance.now(),scale=Math.min(1,Math.sqrt(MAX_MATERIAL_PIXELS/(w*h))),width=Math.ceil(w*scale),height=Math.ceil(h*scale),g=geometry();
   if(canvas.width!==width)canvas.width=width;if(canvas.height!==height)canvas.height=height;
   const c=canvas.getContext('2d');c.setTransform(scale,0,0,scale,0,0);c.clearRect(0,0,w,h);
-  // Adjacent scan bands sample one continuous lens field. A slight central
-  // magnification and smooth lateral displacement bend window/leaf contours
-  // across the full material, without a copied photographic border.
-  const sx=sampler.width/g.width,sy=sampler.height/g.height,amplitude=8;
-  for(let y=-8;y<h+8;y+=4){const t=(y+2)/h,dx=Math.sin(t*Math.PI*2)*amplitude,dy=Math.sin(t*Math.PI)*4;
-   c.drawImage(sampler,(r.left-w*.012+dx)*sx,(r.top+y+dy)*sy,w*1.024*sx,5*sy,0,y,w,5);
-  }
-  const light=host.dataset.glassTone==='light',neutral=light?[255,255,255]:[12,20,25],tint=.14;
-  c.fillStyle=`rgba(${neutral},${tint})`;c.fillRect(0,0,w,h);
-  let protectedRects=0;const supports=new Map();
-  for(const box of ink){
-   let alpha=0;const foreground=luminanceOf(box.rgb);
-   // Conservative bounded samples include the displaced neighborhood. The
-   // support is only added where the existing scene cannot carry this ink.
-   for(const fy of [0,.5,1])for(const fx of [0,.25,.5,.75,1]){
-    const x=Math.max(0,Math.min(sampler.width-1,Math.round((r.x+box.x+box.width*fx)*sx))),y=Math.max(0,Math.min(sampler.height-1,Math.round((r.y+box.y+box.height*fy)*sy))),i=(y*sampler.width+x)*4,rgb=[samplePixels[i],samplePixels[i+1],samplePixels[i+2]];
-    let a=0;for(;a<.96;a+=.025){let composed=rgb.map((v,k)=>(v*(1-tint)+neutral[k]*tint)*(1-a)+neutral[k]*a);for(const color of box.backgrounds)composed=composed.map((v,k)=>v*(1-(color[3]??1))+color[k]*(color[3]??1));const background=luminanceOf(composed);if((Math.max(foreground,background)+.05)/(Math.min(foreground,background)+.05)>=box.required+.8)break;}alpha=Math.max(alpha,a);
+  // One continuous field: the central wave flows into a shallow curved bevel.
+  // Edge samples return smoothly to the interior instead of copying a photo rim.
+  const sx=sampler.width/g.width,sy=sampler.height/g.height,amplitude=8,edge=Math.min(28,w*.12,h*.22),bend=Math.min(6,edge*.22),fall=d=>Math.max(0,Math.min(1,1-d/edge))**2;
+  const cuts=[0,edge*.2,edge*.5,edge*.8,edge,w-edge,w-edge*.8,w-edge*.5,w-edge*.2,w];
+  const mapY=y=>r.top+y+Math.sin(y/h*Math.PI)*4+bend*(fall(y)-fall(h-y));
+  for(let y=-4;y<h+4;y+=4){const dx=Math.sin((y+2)/h*Math.PI*2)*amplitude,top=mapY(y),bottom=mapY(y+5),mapX=x=>r.left-w*.012+x*1.024+dx+bend*(fall(x)-fall(w-x));
+   for(let i=0;i<cuts.length-1;i++){const x=cuts[i],right=cuts[i+1],leftSample=mapX(x),rightSample=mapX(right);
+    c.drawImage(sampler,leftSample*sx,top*sy,(rightSample-leftSample)*sx,(bottom-top)*sy,x,y,right-x,5);
    }
-   if(alpha<=0)continue;const previous=supports.get(box.group);if(previous){const right=Math.max(previous.x+previous.width,box.x+box.width),bottom=Math.max(previous.y+previous.height,box.y+box.height);previous.x=Math.min(previous.x,box.x);previous.y=Math.min(previous.y,box.y);previous.width=right-previous.x;previous.height=bottom-previous.y;previous.alpha=Math.max(previous.alpha,alpha)}else supports.set(box.group,{...box,alpha});
   }
-  for(const box of supports.values()){protectedRects++;c.save();c.fillStyle=`rgba(${neutral},${box.alpha})`;c.shadowColor=c.fillStyle;c.shadowBlur=24*scale;const path=new Path2D();rounded(path,box.x-12,box.y-10,box.width+24,box.height+20,12);c.fill(path);c.restore()}
+  const light=host.dataset.glassTone==='light',neutral=light?[255,255,255]:[12,20,25],tint=host.matches('.mobile-sidebar-panel,.common-attention-body')?.22:.14;
+  c.fillStyle=`rgba(${neutral},${tint})`;c.fillRect(0,0,w,h);
   // Directional, neutral reflection. Chromatic dispersion remains only on the
   // separate narrow floating lip; text and focus never pass through this layer.
   const reflection=c.createLinearGradient(0,0,w*.8,h);reflection.addColorStop(0,'rgba(255,255,255,.16)');reflection.addColorStop(.25,'rgba(255,255,255,.015)');reflection.addColorStop(.7,'rgba(255,255,255,0)');reflection.addColorStop(1,'rgba(3,12,18,.07)');c.fillStyle=reflection;c.fillRect(0,0,w,h);
-  entry.key=key;entry.rect={left:r.x,top:r.y,width:w,height:h};entry.amplitude=amplitude;entry.protectedRects=protectedRects;entry.paintMs=performance.now()-start;entry.totalPaintMs=(entry.totalPaintMs||0)+entry.paintMs;entry.draws++;paintCount++;totalPaintMs+=entry.paintMs;
+  if(host.matches('.content,.terminal-main')){const bevel=new Path2D();rounded(bevel,1.5,1.5,w-3,h-3,16.5);const light=c.createLinearGradient(0,0,w,h);light.addColorStop(0,'rgba(255,255,255,.5)');light.addColorStop(.28,'rgba(255,255,255,.06)');light.addColorStop(.6,'rgba(3,12,18,0)');light.addColorStop(1,'rgba(3,12,18,.24)');c.strokeStyle=light;c.lineWidth=1.25;c.stroke(bevel)}
+  entry.key=key;entry.rect={left:r.x,top:r.y,width:w,height:h};entry.amplitude=amplitude;entry.paintMs=performance.now()-start;entry.totalPaintMs=(entry.totalPaintMs||0)+entry.paintMs;entry.draws++;paintCount++;totalPaintMs+=entry.paintMs;
  }
  function paint(entry){
   if(!sampler)return;
@@ -230,7 +204,7 @@
  new MutationObserver(schedule).observe(document.body,{childList:true,subtree:true});
  window.addEventListener('resize',schedule,{passive:true});document.addEventListener('scroll',()=>{if(!scrollTimer)scrollTimer=setTimeout(()=>{scrollTimer=0;schedule()},100)},{passive:true,capture:true});document.addEventListener('focusin',schedule);document.addEventListener('focusout',schedule);
  window.visualViewport?.addEventListener('resize',schedule,{passive:true});window.visualViewport?.addEventListener('scroll',schedule,{passive:true});reduced.addEventListener?.('change',schedule);
- window.TaskMeccaGlass=Object.freeze({refresh:schedule,diagnostics:()=>({mode:root.dataset.glassOptics||'material',photo:imageURL,sample:{generation,theme:sampleTheme,background:sampleBackground,source:sampleSource},loading:!!loading,pending:!!frame||!!scrollTimer,readerBackingSupported,stage:geometry(),sampler:sampler?{width:sampler.width,height:sampler.height}:null,paintCount,totalPaintMs,adaptCount,totalAdaptMs,sampleBytes:samplePixels?.byteLength||0,panels:[...panels.values()],materials:[...materials.values()].map(e=>({rect:e.rect,amplitude:e.amplitude,visitedTextNodes:e.visitedTextNodes,visibleInk:e.visibleInk,protectedRects:e.protectedRects,inkMeasureMs:e.inkMeasureMs,totalInkMeasureMs:e.totalInkMeasureMs,paintMs:e.paintMs,totalPaintMs:e.totalPaintMs,draws:e.draws,pixels:e.canvas.width*e.canvas.height})),lenses:[...entries.values()].map(e=>({kind:e.kind,rect:e.rect,rim:e.rim,amplitude:e.amplitude,draws:e.draws,pixels:e.canvas.width*e.canvas.height}))})});
+ window.TaskMeccaGlass=Object.freeze({refresh:schedule,diagnostics:()=>({mode:root.dataset.glassOptics||'material',photo:imageURL,sample:{generation,theme:sampleTheme,background:sampleBackground,source:sampleSource},loading:!!loading,pending:!!frame||!!scrollTimer,readerBackingSupported,stage:geometry(),sampler:sampler?{width:sampler.width,height:sampler.height}:null,paintCount,totalPaintMs,adaptCount,totalAdaptMs,sampleBytes:samplePixels?.byteLength||0,panels:[...panels.values()],materials:[...materials.values()].map(e=>({rect:e.rect,amplitude:e.amplitude,paintMs:e.paintMs,totalPaintMs:e.totalPaintMs,draws:e.draws,pixels:e.canvas.width*e.canvas.height})),lenses:[...entries.values()].map(e=>({kind:e.kind,rect:e.rect,rim:e.rim,amplitude:e.amplitude,draws:e.draws,pixels:e.canvas.width*e.canvas.height}))})});
  if(typeof ResizeObserver!=='undefined'){const resize=new ResizeObserver(schedule);document.querySelectorAll('.topbar,.terminal-header,.sidebar-head').forEach(e=>resize.observe(e))}
  document.fonts?.ready.then(schedule);
  schedule();

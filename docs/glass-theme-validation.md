@@ -1,8 +1,123 @@
 # 실사 배경과 Glass 소재 검증
 
+
+## Current contract: no text-specific fog (A-56, 2026-11-05)
+
+The user explicitly withdrew the text-by-text readability treatment after
+reviewing PR348/b82b7098. This section supersedes older descriptions of local
+ink support and photographic per-text AA enforcement below. Those measurements
+remain historical evidence, not current implementation or acceptance claims.
+
+Cozy optics no longer walks text nodes, creates character Ranges, reads input or
+SVG ink rectangles, searches a support alpha, or paints fog/scrim/halo behind
+text. The material cache key uses only the sampled scene generation, panel
+geometry and panel tone. No CSS text-shadow, DOM text boxes or row backing
+replaces the removed effect. Basic DOM text, theme/panel foreground color,
+selection, inputs, focus and keyboard/ARIA behavior remain ordinary app UI.
+
+The scene-preserving .14 broad material, continuous background displacement,
+curvature, direction reflection and narrow spectral lip are retained. It does
+not revert to a broad opaque readability blanket. None/ambient and unsupported
+features/decode/reduced-transparency fallback retain their established fills.
+
+Photographic contrast is an audit: the actual final raster is still measured
+against the same 4.5 normal / 3 large-text reference values. The report contains
+every sampled result, below-reference count and minimum/p05/median/maximum
+distribution. Those reference values were not reduced; the withdrawn criterion
+was forcing every photographic sample to pass through local ink treatment.
+The suite explicitly detects low-contrast samples on the split desktop photo,
+and separately uses a real white/black probe to verify that deliberate low
+contrast and a changed background change the measured ratio. The frozen mobile
+stage crop can show only one half of the split photo and is not falsely required
+to contain both bright and dark regions.
+
+Functional/fallback gates remain: None/ambient text raster AA, controlled
+keyboard-focus visibility, palette colors, settings/System OS, native controls,
+selector/backdrop/Canvas/decode fallback, reduced preferences, DOM restoration,
+positive/negative optical comparisons and screenshot text/color/opacity/geometry
+change detection. Foreground-only edits also verify that material pixels and
+paint count remain unchanged when scene/panel geometry is unchanged. These
+checks do not claim universal photographic contrast compliance.
+
+The implementation is based on8af36459, which includes Dev source6c6c7563 and
+retains the workflow browser job as well as the Glass browser job. Local
+validation uses isolated synthetic fixture APIs and dynamic ports; it never
+changes the operating PR/Dev session or18765 service. The independent Lumen
+review and final user Preview acceptance are distinct from numeric testing.
+
 PR #348의 Cozy 기본 배경을 AI로 생성한 실사풍 Cozy Beige Room으로 교체했습니다. 원래 `cozy` 저장값과 Cozy / Atmospheric / None, Dark / Light / System을 유지합니다. 이전 fb4fe7cf의 alpha 패널은 사용자가 거절한 과거 revision이며, 당시 CI·Preview 성공을 새 디자인의 수용 근거로 사용하지 않습니다. 최종 디자인 판단은 사용자가 최신 Preview에서 합니다.
 
 새 소재는 화면 뒤의 viewport 한정 읽기 바탕과 부유 메뉴·팝업으로 구성합니다. 사진의 형태와 빛은 유리 아래로 투과하며, 가장자리 반사·두께·접촉 그림자로 표면을 구분합니다. CSS blur·반사와 같은 사진의 국소 재표본화를 사용하며, 아래 A-55 항목에 광학 구현과 한계를 설명합니다.
+
+
+Actual unmodified Cozy photo audit (local Chrome156, DPR1, fixture list, normal
+and large-text reference values4.5/3 unchanged):
+
+| Viewport/theme | Enabled text/input samples | Below reference | Minimum / p05 / median |
+| --- | --- | --- | --- |
+| Desktop Light | 138 | 62 | 1.313 / 1.699 / 4.891 |
+| Desktop Dark | 138 | 88 | 1.250 / 1.631 / 3.407 |
+| Mobile Light | 50 | 15 | 2.404 / 2.749 / 5.596 |
+| Mobile Dark | 50 | 36 | 1.358 / 1.619 / 3.422 |
+
+The distribution does not establish WCAG compliance. The independent contrast
+probe measured12.717 on white,1.044 after making only the text nearly white,
+and20.119 after changing only the background to black. Foreground-only edits
+left material paint count unchanged and material bitmap difference within one
+8-bit readback quantization step. The split desktop photo exposed46/44 below-
+reference Light/Dark samples; mobile stage cropping is reported separately.
+
+A serial same-browser1.5-second scroll sample compared b82, merged baseline8af
+and the no-text-fog revision. Each scene ran separately after the browser suite:
+
+| Scene | b82 script ms | 8af script ms | No-text-fog script ms | No-text-fog drawing / adaptation ms |
+| --- | --- | --- | --- | --- |
+| 36-row list, desktop | 68.586 | 71.438 | 83.278 | 8.9 / 31.9 |
+| 500-row detail, desktop | 65.105 | 68.333 | 41.417 | 8.9 / 13.0 |
+| 500-row detail, mobile viewport | 62.982 | 66.421 | 33.401 | 8.3 / 16.2 |
+
+The no-text-fog list had720 elements/478 text nodes; long detail had2,203/1,612.
+These counts come from test-only observation; production optics no longer
+collects text nodes or ranges at all. Maximum frame gap was about16.8ms in every
+scene, with mean16.5–16.6ms. After the single Lumen batch, longer detail used less script time, while the
+dense list used more. TaskDuration was98.923/105.458/170.520ms for the list,
+124.169/120.046/103.675ms for desktop long detail and128.082/136.747/85.361ms
+for mobile long detail (b82/8af/revision). This is an exploratory single sample,
+not a hardware/GPU/energy guarantee or an across-the-board speedup. The initial
+removal-only sample is retained separately from this final batch measurement.
+
+At the same Dark Cozy PR view, explicit sampler/readback and material/rim canvas
+RGBA estimates were14,348,072/9,146,248B for desktop/mobile b82 and8af.
+The final Lumen batch extends scene material to header/banner/attention, so
+revision estimates are16,533,744/10,315,608B, an increase of2,185,672/1,169,360B.
+Ink previously occupied existing canvases, so its removal does not itself save
+canvas memory. Material canvas count remains separate from the two-rim limit;
+the observed final PR view had6 material canvases on each viewport, versus3/2
+previously. No independent material-count hard cap is claimed.
+
+The first review bundle captured67 unique PNGs, including b82/8af comparison and
+the new desktop/mobile431 Light/Dark/System × Cozy/ambient/None matrix, actual
+PR environment long/short copy, banner, attention, detail, menu and navigation.
+Every bundle has source/capture hashes and an isolated reproducible fixture.
+
+Lumen's first independent review requested one batch: repair the mobile menu
+stacking/scrim relationship, connect header/PR/attention to the same material,
+and give the broad reader a gradual boundary-to-plane transition. The batch
+removes the app-shell stacking trap only while mobile navigation is open, keeps
+the front dialog above the scrim, and uses a whole-background6px scrim blur.
+Sidebar/expanded alert use8px scene diffusion and a uniform .22 tint; ordinary
+material remains .14. A returning shallow bevel field is continuous with the
+existing wave, with a thin directional reader reflection/opposite rim. No
+foreground probing or ink treatment was reintroduced.
+
+A51-PNG confirmation matrix records that single batch. Mobile navigation also
+passes a real elementFromPoint hit-test above the visible scrim. An independent
+identity-source mapping control changes74.984% of426,580 interior reader pixels
+by more than two average channel steps, mean difference15.370, while foreground
+and dimensions stay equal. This establishes actual broad optical change, not
+physical accuracy or design acceptance. The independent Lumen confirmation and
+final user Preview acceptance remain separate from numeric test success.
+
 
 ## 사진의 생성·변환과 제공
 
@@ -217,7 +332,7 @@ Node22.23.4를 격리 runtime에서 사용하고 headless156.0.8078.4 및 설치
 양성 광학 대조는 해당 canvas의 실제 가시 영역을 검사하고, 다른 영역의 변화 좌표는 별도 기록합니다. 일부 full-page 재생 screenshot의 20개 변화는 y179~209의 backlog 제어 경계로, 측정 대상 상단 canvas(y9~63) 밖이었습니다. 검사 대상 foreground/중앙0과 기존 1-byte oracle 오차 한계는 유지합니다. 최종 actual2CSSpx reference와 양성 재생을 포함한 PNG는 로컬 증거이며 CI에는 JSON만 남습니다.
 
 
-## Perceptual material rework (A-56, 2026-11-05)
+## Superseded material rework with ink support (A-56, 2026-11-05)
 
 The user rejected the broad neutral .86/.78 overlay after reviewing e6fa63bb. The
 approved revision separates the broad material from ink contrast. In Cozy, the
