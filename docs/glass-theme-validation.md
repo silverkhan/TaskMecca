@@ -215,3 +215,113 @@ Node22.23.4를 격리 runtime에서 사용하고 headless156.0.8078.4 및 설치
 최종 macOS 동일-client 확인은 Playwright1.64.1/Node22.23.4/headless156.0.8078.4/en-US/세 파일 동시 실행13/13(skip0)입니다. 설치 Chrome.80의 영향 회귀13/13은 같은 제품 소스와 Playwright1.62.1에서 별도 확인했으며 두 client 환경을 구분합니다. 원본d7의 동일-client macOS suite는10/12로 headless rim 좌표 대조와 readback 관측 cache race를 실패했고, Linux CI의 두 assertion 조합을 그대로 재현했다고 주장하지 않습니다. 실제 제품의 전환 불일치/reader 공백은 별도 frame probe로 전후 재현했습니다.
 
 양성 광학 대조는 해당 canvas의 실제 가시 영역을 검사하고, 다른 영역의 변화 좌표는 별도 기록합니다. 일부 full-page 재생 screenshot의 20개 변화는 y179~209의 backlog 제어 경계로, 측정 대상 상단 canvas(y9~63) 밖이었습니다. 검사 대상 foreground/중앙0과 기존 1-byte oracle 오차 한계는 유지합니다. 최종 actual2CSSpx reference와 양성 재생을 포함한 PNG는 로컬 증거이며 CI에는 JSON만 남습니다.
+
+
+## Perceptual material rework (A-56, 2026-11-05)
+
+The user rejected the broad neutral .86/.78 overlay after reviewing e6fa63bb. The
+approved revision separates the broad material from ink contrast. In Cozy, the
+sidebar, floating chrome/menu and bounded reader transmit the shared background
+sampler with a .14 neutral tint. A smooth 8 CSS px lateral and 4 px vertical
+displacement plus mild magnification bends background contours continuously; the
+foreground DOM and focus outlines remain outside all filters/transforms. The
+existing narrow spectral lip remains a secondary cue, not a photographic frame.
+A one-pixel directional reader reflection defines thickness without nesting frames.
+
+The shared photo is decoded once for optics, as before. Each visible material
+canvas is capped at approximately 480,000 pixels (rounding each dimension can add
+less than one row/column). One event-driven pass draws the broad material; no
+per-row lens or frame loop is installed. Text geometry is grouped into small
+semantic blocks and receives a soft neutral support only where the sampled scene
+and authored child fills cannot support the computed ink color. `color(srgb ...)`
+from computed color-mix is normalized correctly. Visible decorative text, SVG
+navigation icons and input values/placeholders are protected too. This is a
+bounded representative contrast check, not an exhaustive accessibility audit.
+
+Reader DOM replacement reconnects both the material plane and its canvas. A CSS
+solid fallback protects the short plane-absent interval; missing selector support,
+missing Canvas/backdrop support, decode failure and reduced transparency retain
+readable theme defaults. Ambient and None retain the original adaptive CSS
+material path. Light/Dark remain user preferences and System follows OS. Mecca and
+Slate do not receive any of these layers.
+
+Validation keeps the existing 14 browser/theme/adaptive cases and AA/focus
+thresholds. It additionally measures actual search placeholder raster contrast and
+asserts that DOM replacement reconnects the continuous material canvas. Screenshot
+readiness rejects a material-marked host whose canvas is missing. The measurement
+helper now includes material canvas RGBA bytes as well as the existing sampler and
+readback in memory estimates. Only the named embedded photographic/Glass delivery
+Go tests run locally; the unprotected full Go suite is reserved for remote CI.
+
+Bounded visual review covered a real detail renderer with sidebar expanded,
+topbar, long reading surface and open menu in Light/Dark, plus mobile counterparts.
+Warm/green scene regions, an inside/outside blur difference and continuous
+background bending are visible compared with the rejected baseline. Dark still
+shows some distinct local fog blocks around the title/Lifecycle. This limitation
+remains an explicit Preview review item. Neither code properties, numeric contrast
+nor this bounded review constitutes final user design acceptance. Physical Samsung
+Internet, GPU/CPU energy, battery and extended device use remain unverified.
+
+
+A serial local measurement used Chrome 156.0.8078.80, DPR 1, the same fixture,
+Cozy photograph and 1.5-second scripted scroll. The full browser suite and Go
+tests had finished before this measurement. This is one bounded sample; the
+first concurrently measured run is retained as provisional and is not used below.
+
+| Metric | Desktop e6fa63bb → revision | Mobile e6fa63bb → revision |
+| --- | --- | --- |
+| main-thread TaskDuration delta | 56.628 → 125.124 ms | 95.500 → 108.529 ms |
+| ScriptDuration delta | 9.360 → 83.652 ms | 15.130 → 56.567 ms |
+| paint events / total trace duration | 17 / 3.351 → 19 / 4.318 ms | 48 / 10.400 → 48 / 6.208 ms |
+| mean animation-frame gap | 16.372 → 16.300 ms | 16.590 → 16.609 ms |
+| sampler + readback + material RGBA estimate | 11,347,560 → 13,786,648 B | 5,919,072 → 7,125,088 B |
+| idle material paints / adaptations | 0 / 0 → 0 / 0 | 0 / 0 → 0 / 0 |
+
+The new material costs more script time and approximately 2.44 MB desktop /
+1.21 MB mobile explicit RGBA storage. Mean/max frame gaps did not show a sustained
+scroll slowdown in this sample (maximum about 16.8 ms in both revisions). Lower
+mobile paint time in a single sample is not a general performance improvement.
+These counters and byte estimates exclude GPU textures, energy, physical device
+performance and total browser process memory.
+
+
+The `MAX_LENSES=2` limit belongs only to narrow spectral rim canvases. Continuous
+material canvases are a separate map: one per visible matching material host,
+with a per-canvas pixel cap and no independent count cap. Their count depends on
+the visible chrome, reader, sidebar and open popup/drawer topology. Diagnostics
+report both maps separately. Each material reports actual text nodes visited,
+visible ink rectangles, protected groups, last/cumulative geometry measurement
+time and last/cumulative drawing time. The shared `totalPaintMs` measures drawing
+only; `totalInkMeasureMs` must be considered separately for the DOM walk cost.
+
+A local independent material witness replays the actual drawImage calls with an
+identity screen-to-sampler source rectangle, preserving tint, ink support,
+reflection, blur, dimensions and foreground. In 426,580 interior reader pixels,
+72.802% differed by more than two average channel steps, with a 13.707 mean
+channel difference. The foreground color and canvas dimensions stayed equal.
+This verifies a broad actual source-mapping effect; it does not establish user
+acceptance or a physically accurate optical simulation.
+
+
+A second serial density sample used the actual 36-row list and a fixture-only
+500-row markdown detail table, in the desktop browser and a mobile viewport.
+The content subtree contained 719/478 element/text nodes for the baseline list,
+and 2,201/1,613 for the long detail; the revision adds one decorative material
+canvas. At the sampled final scroll position, the revised reader visited all
+478/1,613 text nodes but retained 121 visible ink rectangles for the list and
+27 desktop / 26 mobile rectangles for the long detail. Last geometry collection
+was about 0.9 / 1.7 / 2.6 ms respectively; cumulative reader geometry collection
+was 15.1 / 24.5 / 26.2 ms over the scripted sample.
+
+| Density sample | TaskDuration baseline → revision | ScriptDuration baseline → revision | Drawing delta baseline → revision | Adaptation delta baseline → revision |
+| --- | --- | --- | --- | --- |
+| 36-row list, desktop | 72.077 → 109.462 ms | 34.765 → 74.012 ms | 0 → 27.8 ms | 11.7 → 11.8 ms |
+| 500-row detail, desktop | 74.873 → 107.703 ms | 26.298 → 58.764 ms | 0 → 10.2 ms | 7.3 → 7.3 ms |
+| 500-row detail, mobile viewport | 102.515 → 145.604 ms | 33.622 → 75.167 ms | 0.5 → 8.2 ms | 16.3 → 18.0 ms |
+
+Each sample had 91 animation frames, a mean gap around 16.5–16.6 ms and a maximum
+about 16.8 ms. The revision had three material canvases in desktop scenes and two
+in the mobile scene, with one separate rim canvas. The DOM walk remains linear
+in total content text-node count; the viewport test avoids color/geometry work
+for offscreen text but is not a subtree traversal cap. Documents much longer
+than this 500-row fixture and physical mobile performance remain unverified.

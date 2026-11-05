@@ -47,6 +47,12 @@
 /* Suppress fallback only while this exact owner has its actual backing. */
 :root[data-palette="glass"] .content:has(> .glass-reader-material)::before,:root[data-palette="glass"] .terminal-main:has(> .glass-reader-material)::before{content:none}
 .glass-optics{position:absolute;inset:0;width:100%;height:100%;border-radius:inherit;pointer-events:none!important;z-index:-1}
+.glass-material-optics{position:absolute;inset:0;width:100%;height:100%;border-radius:inherit;pointer-events:none!important;z-index:-1;filter:blur(4px)}
+:root[data-palette="glass"] [data-glass-material="true"]{--glass-alpha:.14}
+:root[data-palette="glass"] [data-glass-material="true"]>.glass-reader-material{overflow:hidden}
+:root[data-palette="glass"] :is(.content,.terminal-main)[data-glass-material="true"]::before{background:var(--glass-solid)}
+:root[data-palette="glass"] [data-glass-material="true"]>.glass-reader-material::after{content:"";position:absolute;inset:0;pointer-events:none;border-radius:inherit;background:linear-gradient(125deg,rgba(255,255,255,.46),rgba(255,255,255,.06) 23%,transparent 40%,transparent 72%,rgba(8,20,28,.14));padding:1px;mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);mask-composite:exclude;box-shadow:inset 1px 1px 1px rgba(255,255,255,.25)}
+:root:not([data-palette="glass"]) .glass-material-optics{display:none}
 :root:not([data-palette="glass"]) .glass-optics{display:none}
 :root[data-palette="glass"] :is(.topbar,.sidebar,.sidebar-head,.tm-combo-popup,.terminal-header){isolation:isolate}
 :root[data-palette="glass"] :is(.topbar,.sidebar,.terminal-header){background:var(--glass-chrome);border:1px solid var(--glass-edge);border-right-color:var(--glass-far);border-bottom-color:var(--glass-far);box-shadow:var(--glass-highlight),var(--glass-shadow);-webkit-backdrop-filter:var(--glass-chrome-frost);backdrop-filter:var(--glass-chrome-frost)}
