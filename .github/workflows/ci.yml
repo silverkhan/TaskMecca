@@ -119,6 +119,7 @@ jobs:
             glass-browser-evidence/liquid-glass-contract.json
             glass-browser-evidence/background-scenes.json
           glass-browser-evidence/adaptive/adaptive.json
+          glass-browser-evidence/ambient/ambient.json
           if-no-files-found: error
           retention-days: 7
 

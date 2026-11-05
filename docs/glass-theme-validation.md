@@ -185,3 +185,17 @@ A-56 로컬 Chrome 156.0.8078.80, DPR 1, desktop 1440×960 / touch-emulated 390�
 정지 250ms에서 두 조건 모두 추가 optical paint와 적응 계산은 0회였습니다. 추가 픽셀 배열은 desktop 5,529,600B, touch 2,849,344B입니다. 이 추정에는 기존 decode bitmap·브라우저/GPU 복사본을 더하지 않았습니다. Touch의 task/paint 증가는 그대로 보고하며, run 간 변동이 있는 headless main-thread 관측을 실기기 성능 향상으로 해석하지 않습니다. 샘플링이 전체 흐름에 더하는 비용과 메모리 증가가 있습니다.
 
 최종 screenshot 표본은 비활성 컨트롤 24개를 구분한 일반/큰 텍스트 1,116개에서 최소 5.386:1, 실제 키보드 focus outline 네 표본에서 최소 7.886:1이었습니다. 본문뿐 아니라 상단·안내 면의 foreground opacity도 합성해서 계산합니다. 색 stroke 제외 대조는 desktop 2,052 / mobile 650개 경계 픽셀에서 차이가 있었고, 2px보다 안쪽 중앙 변화는 0이었습니다. 이는 대표 표본과 실제 렌더 차이의 근거이며 전체 화면·모든 기기의 최종 디자인 수용은 아닙니다.
+
+### A-56 확산광 경로 수정과 독립 raster 검증
+
+첫 A-56 구현 `0f507259`는 shipped CSS의 `ellipse at …`가 브라우저에서 `radial-gradient(at …)`로 직렬화되는 경로를 놓쳐 Light/Dark 확산광 모두 `material` fallback/적응 패널 0개로 표시했습니다. 설정·OS 검사만으로 이 경로를 검증했다고 보았던 초기 보고는 이 재검증으로 정정합니다. 당시 보고/실패와 증거는 삭제하지 않습니다.
+
+수정은 실제 `at` 좌표를 사용하고, 기본 farthest-corner 타원의 farthest-side 종횡비를 유지하면서 가장 먼 모서리를 지나는 반경을 계산합니다. 명시적 %/px 타원 반경도 처리합니다. CSS stop의 생략 위치와 단조 증가를 맞추고, CSS의 premultiplied sRGB와 Canvas의 straight RGB 보간 차이로 생기던 어두운 투명 fringe를 제거했습니다. 현재 색→투명 stop은 같은 색으로 정확히 fade하며, 일반 varying-alpha segment는 최대 32개 stop으로 근사합니다. 전체 CSS gradient 문법을 구현한 엔진은 아니며 미지원 문법/색 공간은 읽기 가능한 선택 테마 기본값으로 돌아갑니다.
+
+새 검사는 실제 production sampler의 readback을 관측하고 **독립된 브라우저 CSS screenshot**과 비교합니다. desktop/mobile, Light/Dark 확산광/None, scroll와 viewport 높이 변경에 따른 fixed-stage crop, radial 위치와 색 변경 대조를 포함합니다. 명시적으로 active mode와 실제 패널 적응을 요구하므로 fallback은 통과할 수 없습니다. 위치만 옮길 때 같은 sidebar의 글자와 밝기 판단이 바뀌고, 색만 바꿀 때 같은 topbar가 반응합니다. 미지원 conic은 음성 대조로 안전 fallback을 확인합니다. CI는 `ambient/ambient.json` 정량 기록만 추가 보존합니다.
+
+`GLASS_MEASURE_BACKGROUND=ambient`로 동일 Chrome 156.0.8078.80/DPR1/fixture/1.5초 scroll에서 초기 material fallback과 수정 후 active를 비교했습니다. Desktop script 6.277→11.641ms, task 45.381→53.475ms, paint 39/5.598→8/3.032ms; touch emulation script 6.094→18.253ms, task 45.642→119.516ms, paint 69/6.488→55/12.104ms입니다. 처음에는 기능이 비활성이었으므로 비용 증가를 정상 기능 활성화의 비용으로 구분합니다. Ambient sampler canvas+readback 추정은 0→desktop 11,059,200B / mobile 5,698,688B이며 물리 GPU/CPU/배터리 실측이 아닙니다. 정지 추가 paint/적응 계산은 두 조건 0회입니다.
+
+스펙트럼 stroke와 굴절 canvas는 **Cozy의 최대 두 면에만 적용**합니다. Ambient/None은 패널 대비 적응만 수행하며 광학 canvas는 0개입니다. 모든 배경에 같은 스펙트럼 광학 효과를 제공한다고 해석하지 않습니다. 실기기·사용자 최종 디자인 수용·운영 변경 제한은 위와 같습니다.
+
+수정 후 20개 scene, 독립 raster 표본 980점에서 최대 채널 오차 3/255, scene 평균 채널 오차 최대 0.599/255, 상대 휘도 오차 최대 0.00795였습니다. None 단색은 채널 오차 0입니다. 활성 상단·본문·안내 텍스트 1,830개 표본의 최저 대비는 5.121:1입니다. 실제 ambient/None 활성화를 추가로 요구하며 원래 사진 노출·hysteresis·키보드·복원·실패·미지원/reduced 검사를 유지합니다. 비Glass palette로 이동할 때 다음 frame의 실제 장식 제거를 기다리는 검사 조건도 보완했습니다.

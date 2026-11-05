@@ -40,12 +40,39 @@
   for(const layer of layers){
    if(layer==='none')continue;
    const radial=layer.startsWith('radial-gradient('),linear=layer.startsWith('linear-gradient(');if(!radial&&!linear)return false;
-   const parts=splitLayers(layer.slice(layer.indexOf('(')+1,-1)),shape=parts.shift();let gradient;
+   const parts=splitLayers(layer.slice(layer.indexOf('(')+1,-1));let shape=parts.shift(),gradient,fill=[0,0,g.width,g.height];
    c.save();
-   if(radial){const radii=shape.match(/ellipse\s+([\d.]+)%\s+([\d.]+)%/);if(!radii){c.restore();return false}c.translate(g.width/2,g.height/2);c.scale(g.width*Number(radii[1])/100,g.height*Number(radii[2])/100);gradient=c.createRadialGradient(0,0,0,0,0,1);}
-   else{const angle=parseFloat(shape)*Math.PI/180,dx=Math.sin(angle),dy=-Math.cos(angle),length=Math.abs(g.width*dx)+Math.abs(g.height*dy);gradient=c.createLinearGradient(g.width/2-dx*length/2,g.height/2-dy*length/2,g.width/2+dx*length/2,g.height/2+dy*length/2);}
-   for(let i=0;i<parts.length;i++){const stop=parts[i].match(/^(.*?)(?:\s+([\d.]+)%)?$/);gradient.addColorStop(stop[2]===undefined?i/(parts.length-1):Number(stop[2])/100,stop[1]);}
-   c.fillStyle=gradient;if(radial)c.fillRect(-100,-100,200,200);else c.fillRect(0,0,g.width,g.height);c.restore();
+   if(radial){
+    // CSS serializes the implicit ellipse as "at x% y%". Its default
+    // farthest-corner ellipse keeps the farthest-side aspect ratio, then grows
+    // through the farthest corner; neither its center nor its radii are fixed.
+    if(!/^(?:ellipse\b|at\b|farthest-corner\b|[\d.]+(?:%|px))/.test(shape)){parts.unshift(shape);shape='';}
+    let size=shape.replace(/^ellipse(?:\s+|$)/,'').trim(),cx=g.width/2,cy=g.height/2;
+    const position=size.match(/(?:^|\s)at\s+([\d.]+)(%|px)\s+([\d.]+)(%|px)$/);
+    if(position){cx=Number(position[1])*(position[2]==='%'?g.width/100:1);cy=Number(position[3])*(position[4]==='%'?g.height/100:1);size=size.slice(0,position.index).trim();}
+    else if(size.includes('at')){c.restore();return false;}
+    let rx,ry;
+    if(!size||size==='farthest-corner'){rx=Math.max(Math.abs(cx),Math.abs(g.width-cx))*Math.SQRT2;ry=Math.max(Math.abs(cy),Math.abs(g.height-cy))*Math.SQRT2;}
+    else{const radii=size.match(/^([\d.]+)(%|px)\s+([\d.]+)(%|px)$/);if(!radii){c.restore();return false}rx=Number(radii[1])*(radii[2]==='%'?g.width/100:1);ry=Number(radii[3])*(radii[4]==='%'?g.height/100:1);}
+    if(!(rx>0&&ry>0)){c.restore();return false;}
+    c.translate(cx,cy);c.scale(rx,ry);gradient=c.createRadialGradient(0,0,0,0,0,1);fill=[-cx/rx,-cy/ry,g.width/rx,g.height/ry];
+   }
+   else{if(!/^[\d.]+deg$/.test(shape)){c.restore();return false}const angle=parseFloat(shape)*Math.PI/180,dx=Math.sin(angle),dy=-Math.cos(angle),length=Math.abs(g.width*dx)+Math.abs(g.height*dy);gradient=c.createLinearGradient(g.width/2-dx*length/2,g.height/2-dy*length/2,g.width/2+dx*length/2,g.height/2+dy*length/2);}
+   const stops=parts.map(part=>{const stop=part.match(/^(.*?)(?:\s+([\d.]+)%)?$/);return{color:stop[1],at:stop[2]===undefined?null:Number(stop[2])/100}});
+   if(stops.length<2){c.restore();return false;}stops[0].at??=0;stops[stops.length-1].at??=1;
+   let previous=0;for(const stop of stops)if(stop.at!==null){stop.at=Math.max(previous,stop.at);previous=stop.at;}
+   for(let i=1;i<stops.length-1;i++)if(stops[i].at===null){const start=i-1;let end=i;while(stops[end].at===null)end++;for(;i<end;i++)stops[i].at=stops[start].at+(stops[end].at-stops[start].at)*(i-start)/(end-start);}
+   // CSS gradients interpolate premultiplied sRGB; Canvas gradients interpolate
+   // straight RGB. In particular, fading a color to transparent black must not
+   // introduce a dark fringe. Subdivide only varying-alpha segments, using the
+   // premultiplied color at each stop (authored color-to-transparent is exact).
+   const colors=stops.map(stop=>{const match=stop.color.match(/^rgba?\(([^)]+)\)$/);if(!match)return null;const channels=match[1].split(',').map(Number);return channels.length===3||channels.length===4?[...channels.slice(0,3),channels[3]??1]:null});
+   if(colors.some(color=>!color||color.some(n=>!Number.isFinite(n)))){c.restore();return false;}
+   for(let i=0;i<stops.length-1;i++){
+    const a=colors[i],b=colors[i+1],steps=a[3]===b[3]?1:32;
+    for(let j=0;j<=steps;j++){const t=j/steps,alpha=a[3]*(1-t)+b[3]*t,rgb=a.slice(0,3).map((v,k)=>alpha?(v*a[3]*(1-t)+b[k]*b[3]*t)/alpha:(a[3]?v:b[k]));gradient.addColorStop(stops[i].at+(stops[i+1].at-stops[i].at)*t,`rgba(${rgb.join(',')},${alpha})`);}
+   }
+   c.fillStyle=gradient;c.fillRect(...fill);c.restore();
   }
   samplePixels=c.getImageData(0,0,sampler.width,sampler.height).data;stageKey=key;generation++;return true;
  }

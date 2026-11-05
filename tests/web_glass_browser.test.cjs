@@ -22,6 +22,7 @@ test('Glass browser contract: appearance, stable canvas, content, fallbacks and 
   await page.evaluate(()=>{applyTheme('light');applyBackground('ambient')});
   for(const [palette,label,text]of [['mecca','Mecca','#292536'],['slate','Slate','#172033'],['glass','Glass','#1c2730']]){
    await page.locator('.palette-picker .tm-combo-trigger').click();await page.locator('.tm-combo-option').filter({hasText:new RegExp('^'+label+'$')}).click();
+   await page.waitForFunction(value=>value==='glass'||!document.querySelector('.glass-reader-material,.glass-optics'),palette);
    assert.equal(await page.evaluate(()=>document.documentElement.dataset.palette),palette);assert.equal(await page.evaluate(()=>localStorage.getItem('task-mecca-palette')),palette);
    assert.equal(await page.locator('.background-picker').isVisible(),palette==='glass');
    assert.equal(await page.evaluate(()=>getComputedStyle(document.documentElement).getPropertyValue('--text').trim()),text);

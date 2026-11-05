@@ -13,11 +13,12 @@ async function paneBox(cdp,page){
 (async()=>{
  const {chromium}=require(process.env.GLASS_PLAYWRIGHT_MODULE),out=path.resolve(process.env.GLASS_EVIDENCE_DIR||'glass-measurements');fs.mkdirSync(out,{recursive:true});
  const root=path.resolve(process.env.GLASS_ASSET_ROOT||'goassets/template/_task_mecca/framework/web'),server=await fixture.start(root),browser=await chromium.launch({executablePath:process.env.CHROME_EXECUTABLE,headless:true});
- const data=JSON.parse(JSON.stringify(fixture)),report={browser:browser.version(),root,syntheticProject:fixture.project,origin:server.origin,captureOnly:!!process.env.GLASS_CAPTURE_ONLY,observations:[]};
+ const background=process.env.GLASS_MEASURE_BACKGROUND||'cozy';
+ const data=JSON.parse(JSON.stringify(fixture)),report={background,browser:browser.version(),root,syntheticProject:fixture.project,origin:server.origin,captureOnly:!!process.env.GLASS_CAPTURE_ONLY,observations:[]};
  try{for(const mobile of [false,true]){
   const context=await browser.newContext({viewport:mobile?{width:390,height:844}:{width:1440,height:960},screen:mobile?{width:390,height:844}:{width:1440,height:960},isMobile:mobile,hasTouch:mobile,deviceScaleFactor:1});
   await context.route('**/*',r=>r.request().url().startsWith(server.origin+'/')?r.continue():r.abort());
-  await context.addInitScript(()=>{localStorage.setItem('task-mecca-palette','glass');localStorage.setItem('task-mecca-theme','dark');localStorage.setItem('task-mecca-language','ko');window.EventSource=class{addEventListener(){}close(){}}});
+  await context.addInitScript(background=>{localStorage.setItem('task-mecca-background',background);localStorage.setItem('task-mecca-palette','glass');localStorage.setItem('task-mecca-theme','dark');localStorage.setItem('task-mecca-language','ko');window.EventSource=class{addEventListener(){}close(){}}},background);
   const page=await context.newPage(),cdp=await context.newCDPSession(page);await page.goto(server.origin);await page.waitForTimeout(300);
   await page.evaluate(f=>{Object.assign(state,{project:f.project,backlog:f.backlog,view:'backlog',listData:f.list,snapshot:f.snapshot,hub:f.hub,detail:null});render()},data);
   const optical=[];

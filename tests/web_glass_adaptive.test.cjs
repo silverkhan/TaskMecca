@@ -79,3 +79,53 @@ test('Glass adapts actual panel pixels, keeps a stable reading polarity and isol
  assert.deepEqual(report.errors,[]);
  }finally{await browser.close();report.cleanup.browserClosed=true;await server.close();report.cleanup.fixtureClosed=true;if(out)fs.writeFileSync(path.join(out,'adaptive.json'),JSON.stringify(report,null,2))}
 });
+
+test('Glass ambient and None sample the actual fixed CSS background raster and adapt to position/color',{skip:!enabled,timeout:120000},async()=>{
+ const {chromium}=require(process.env.GLASS_PLAYWRIGHT_MODULE),server=await fixture.start(path.resolve('goassets/template/_task_mecca/framework/web')),browser=await chromium.launch({headless:true,executablePath:process.env.CHROME_EXECUTABLE}),out=process.env.GLASS_EVIDENCE_DIR&&path.resolve(process.env.GLASS_EVIDENCE_DIR,'ambient');
+ if(out)fs.mkdirSync(out,{recursive:true});const report={origin:server.origin,scenes:[],controls:[],errors:[],cleanup:{}};
+ try{for(const mobile of [false,true]){
+  const ctx=await browser.newContext({viewport:mobile?{width:390,height:844}:{width:1440,height:960},screen:mobile?{width:390,height:844}:{width:1440,height:960},isMobile:mobile,hasTouch:mobile,deviceScaleFactor:1});
+  try{
+   await ctx.route('**/*',r=>r.request().url().startsWith(server.origin+'/')?r.continue():r.abort());
+   // Test-only observation of the real production sampler readback. The independent
+   // reference is the browser's CSS screenshot, never a second Canvas gradient.
+   await ctx.addInitScript(()=>{const read=CanvasRenderingContext2D.prototype.getImageData;CanvasRenderingContext2D.prototype.getImageData=function(x,y,w,h,...rest){const pixels=read.call(this,x,y,w,h,...rest);if(!this.canvas.className&&x===0&&y===0&&w===this.canvas.width&&h===this.canvas.height&&w>100&&h>100)window.__fixtureSampler={width:w,height:h,pixels:pixels.data};return pixels};localStorage.setItem('task-mecca-palette','glass');localStorage.setItem('task-mecca-theme','dark');window.EventSource=class{addEventListener(){}close(){}}});
+   const p=await ctx.newPage();p.on('pageerror',e=>report.errors.push(e.message));await p.goto(server.origin);await p.waitForTimeout(250);
+   await p.evaluate(f=>{Object.assign(state,{project:f.project,backlog:f.backlog,view:'backlog',listData:f.list,snapshot:f.snapshot,hub:f.hub,detail:null});render()},JSON.parse(JSON.stringify(fixture)));
+   const checkRaster=async(name)=>{
+    await p.waitForTimeout(150);
+    const observation=await p.evaluate(()=>({computed:getComputedStyle(document.body,'::before').backgroundImage,mode:TaskMeccaGlass.diagnostics().mode,panels:TaskMeccaGlass.diagnostics().panels,stage:TaskMeccaGlass.diagnostics().stage,sampler:!!window.__fixtureSampler}));
+    assert.equal(observation.mode,'active',`${name}: material fallback cannot stand in for active adaptation`);assert.ok(observation.panels.length>=2);assert.equal(observation.sampler,true);
+    const hide=await p.addStyleTag({content:'.app-shell{visibility:hidden!important}'}),png=await p.screenshot({animations:'disabled'}),reference=raster(png);await hide.evaluate(e=>e.remove());
+    const points=[];for(const fy of [.03,.12,.3,.5,.7,.83,.97])for(const fx of [.03,.16,.35,.5,.7,.88,.97])points.push({x:Math.floor(reference.w*fx),y:Math.floor(reference.h*fy)});
+    const sampled=await p.evaluate(points=>{const s=window.__fixtureSampler,g=TaskMeccaGlass.diagnostics().stage;return points.map(({x,y})=>{const sx=Math.min(s.width-1,Math.floor((x+.5)/g.width*s.width)),sy=Math.min(s.height-1,Math.floor((y+.5)/g.height*s.height)),at=(sy*s.width+sx)*4;return[...s.pixels.slice(at,at+3)]})},points);
+    const comparisons=points.map((v,i)=>{const css=reference.pixel(v.x,v.y),canvas=sampled[i];return{...v,css,canvas,maximumChannelError:Math.max(...css.map((n,k)=>Math.abs(n-canvas[k]))),luminanceError:Math.abs(lum(css)-lum(canvas))}}),maximumChannelError=Math.max(...comparisons.map(v=>v.maximumChannelError)),meanChannelError=comparisons.reduce((sum,v)=>sum+v.css.reduce((a,n,k)=>a+Math.abs(n-v.canvas[k]),0),0)/(comparisons.length*3),maximumLuminanceError=Math.max(...comparisons.map(v=>v.luminanceError));
+    const scene={mobile,name,...observation,comparisons,maximumChannelError,meanChannelError,maximumLuminanceError};report.scenes.push(scene);if(out){fs.writeFileSync(path.join(out,`${mobile?'mobile':'desktop'}-${name}-css-background.png`),png);fs.writeFileSync(path.join(out,'ambient.json'),JSON.stringify(report,null,2))}
+    assert.ok(maximumChannelError<=3,`${name}: sampler matches independent CSS raster within 3 channel levels (actual ${maximumChannelError})`);assert.ok(meanChannelError<=1,`${name}: mean channel error <= 1`);assert.ok(maximumLuminanceError<=.012,`${name}: sampled relative luminance tracks actual rendered CSS`);
+    const texts=await p.locator('.topbar,.content,.preview-identity-banner,.user-attention').evaluateAll(hosts=>hosts.flatMap(e=>{const w=document.createTreeWalker(e,NodeFilter.SHOW_TEXT),a=[];let n;while(n=w.nextNode()){const el=n.parentElement;if(!n.textContent.trim()||!el.checkVisibility())continue;const r=document.createRange();r.selectNodeContents(n);const b=r.getBoundingClientRect(),s=getComputedStyle(el);let opacity=1;for(let t=el;t;t=t.parentElement)opacity*=Number(getComputedStyle(t).opacity);if(b.x>=0&&b.y>=0&&b.right<innerWidth&&b.bottom<innerHeight)a.push({text:n.textContent.trim(),rect:b.toJSON(),color:s.color,opacity,disabled:!!el.closest('[disabled],[aria-disabled="true"]')})}return a}));
+    const hiddenText=await p.addStyleTag({content:'*{-webkit-text-fill-color:transparent!important;text-shadow:none!important}'}),bg=raster(await p.screenshot({animations:'disabled'}));await hiddenText.evaluate(e=>e.remove());
+    scene.textSamples=texts.filter(t=>!t.disabled).map(t=>{const c=t.color.match(/[\d.]+/g).map(Number),alpha=(c[3]??1)*t.opacity,ratios=[];for(const dx of [.15,.5,.85]){const b=bg.pixel(t.rect.x+t.rect.width*dx,t.rect.y+t.rect.height*.5);ratios.push(contrast(c.slice(0,3).map((v,k)=>v*alpha+b[k]*(1-alpha)),b))}return{text:t.text,minimumContrast:Math.min(...ratios)}});assert.ok(scene.textSamples.length>5);assert.ok(scene.textSamples.every(t=>t.minimumContrast>=4.5),'active ambient/None rendered text reaches 4.5:1');
+    if(out)await p.screenshot({path:path.join(out,`${mobile?'mobile':'desktop'}-${name}-ui.png`),animations:'disabled'});
+    return scene;
+   };
+   for(const theme of ['light','dark'])for(const background of ['ambient','none']){
+    await p.evaluate(v=>{window.__fixtureSampler=null;applyTheme(v.theme);applyBackground(v.background);TaskMeccaGlass.refresh()},{theme,background});await checkRaster(theme+'-'+background);
+    if(background==='ambient'){await p.evaluate(()=>{document.body.style.minHeight='2500px';scrollTo(0,180)});await p.setViewportSize({width:mobile?390:1440,height:mobile?640:700});await checkRaster(theme+'-ambient-fixed-stage');await p.setViewportSize({width:mobile?390:1440,height:mobile?844:960});await p.evaluate(()=>{document.body.style.minHeight='';scrollTo(0,0)});}
+   }
+   await p.evaluate(()=>{applyTheme('light');applyBackground('ambient')});
+   // Same theme and surface; moving only the authored radial position must move
+   // both browser pixels and the sampled panel's decision. A centered substitute fails.
+   let override;
+   for(const at of ['0%','100%']){
+    if(override)await override.evaluate(e=>e.remove());override=await p.addStyleTag({content:`:root[data-palette="glass"][data-background="ambient"] body::before{background-image:radial-gradient(ellipse 45% 150% at ${at} 50%,#fff 50%,transparent 65%),linear-gradient(0deg,#080c10,#080c10)!important}`});await p.evaluate(()=>{window.__fixtureSampler=null;TaskMeccaGlass.refresh()});const scene=await checkRaster('position-'+at.replace('%',''));const panel=await p.locator('.sidebar').evaluate(e=>({tone:e.dataset.glassTone,color:getComputedStyle(e).color}));report.controls.push({mobile,kind:'position',at,panel,scene:scene.name});assert.equal(panel.tone,at==='0%'?'light':'dark');
+   }
+   for(const color of ['#f7f8fa','#080c10']){
+    await override.evaluate(e=>e.remove());override=await p.addStyleTag({content:`:root[data-palette="glass"][data-background="ambient"] body::before{background-image:linear-gradient(0deg,${color},${color})!important}`});await p.evaluate(()=>{window.__fixtureSampler=null;TaskMeccaGlass.refresh()});const scene=await checkRaster('color-'+color.slice(1)),panel=await p.locator('.topbar').evaluate(e=>({tone:e.dataset.glassTone,color:getComputedStyle(e).color}));report.controls.push({mobile,kind:'color',color,panel,scene:scene.name});assert.equal(panel.tone,color==='#f7f8fa'?'light':'dark');
+   }
+   await override.evaluate(e=>e.remove());override=await p.addStyleTag({content:':root[data-palette="glass"][data-background="ambient"] body::before{background-image:conic-gradient(#fff,#000)!important}'});await p.evaluate(()=>TaskMeccaGlass.refresh());await p.waitForTimeout(150);const unsupported=await p.evaluate(()=>({mode:TaskMeccaGlass.diagnostics().mode,panels:TaskMeccaGlass.diagnostics().panels.length}));assert.equal(unsupported.mode,'material');assert.equal(unsupported.panels,0);report.controls.push({mobile,kind:'unsupported-negative',...unsupported});await override.evaluate(e=>e.remove());
+   await p.evaluate(()=>TaskMeccaGlass.refresh());await p.waitForTimeout(200);const before=await p.evaluate(()=>TaskMeccaGlass.diagnostics());await p.waitForTimeout(250);const after=await p.evaluate(()=>TaskMeccaGlass.diagnostics());assert.equal(after.adaptCount,before.adaptCount);assert.equal(after.paintCount,before.paintCount);
+  }finally{await ctx.close()}
+ }
+ assert.deepEqual(report.errors,[]);
+ }finally{await browser.close();report.cleanup.browserClosed=true;await server.close();report.cleanup.fixtureClosed=true;if(out)fs.writeFileSync(path.join(out,'ambient.json'),JSON.stringify(report,null,2))}
+});
