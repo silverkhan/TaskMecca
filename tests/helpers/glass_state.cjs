@@ -8,13 +8,16 @@ function installGlassState(){
   const root=document.documentElement,d=window.TaskMeccaGlass?.diagnostics(),style=getComputedStyle(root),url=style.getPropertyValue('--glass-room-image').match(/url\(["']?([^"')]+)/)?.[1]||'',source=root.dataset.background==='cozy'?url:getComputedStyle(document.body,'::before').backgroundImage;
   const panels=[...document.querySelectorAll('.topbar,.content,.terminal-main,.preview-identity-banner,.user-attention,.tm-combo-popup')].filter(e=>{const r=e.getBoundingClientRect();return e.checkVisibility()&&r.width>8&&r.height>8&&r.bottom>0&&r.top<innerHeight}).map(e=>{const plane=e.querySelector(':scope > .glass-reader-material'),s=getComputedStyle(e),r=e.getBoundingClientRect(),pseudo=getComputedStyle(e,'::before').content;return{id:id(e),kind:e.className,plane:id(plane),planeConnected:!!plane?.isConnected,pseudo,tone:e.dataset.glassTone||null,foreground:s.color,fill:getComputedStyle(plane||e,plane?null:'::before').backgroundColor,rect:[r.x,r.y,r.width,r.height],backed:!e.matches('.content,.terminal-main')||!!plane?.isConnected||!['none','normal'].includes(pseudo)}});
   const texts=[],walk=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);let n;
-  while(n=walk.nextNode()){const e=n.parentElement;if(!n.textContent.trim()||e.closest('script,style')||!e.checkVisibility())continue;const r=document.createRange();r.selectNodeContents(n);const b=r.getBoundingClientRect();if(b.width<2||b.height<2||b.bottom<0||b.y>innerHeight)continue;const s=getComputedStyle(e);texts.push([id(n),n.textContent.trim(),s.color,s.opacity,b.x,b.y,b.width,b.height]);}
+  while(n=walk.nextNode()){const e=n.parentElement;if(!n.textContent.trim()||e.closest('script,style')||!e.checkVisibility())continue;const r=document.createRange();r.selectNodeContents(n);const b=r.getBoundingClientRect();if(b.width<2||b.height<2||b.bottom<0||b.y>innerHeight)continue;const s=getComputedStyle(e);let opacity=1;for(let ancestor=e;ancestor;ancestor=ancestor.parentElement)opacity*=Number(getComputedStyle(ancestor).opacity);texts.push([id(n),n.textContent.trim(),s.color,String(opacity),b.x,b.y,b.width,b.height]);}
   const animations=document.getAnimations().filter(a=>a.playState==='running'||a.pending).map(a=>({target:id(a.effect?.target),property:a.transitionProperty||a.animationName||'animation',time:a.currentTime,progress:a.effect?.getComputedTiming().progress}));
   const sourceMatches=!!d&&d.sample?.source===source&&d.sample?.theme===root.dataset.theme&&d.sample?.background===root.dataset.background&&(root.dataset.background!=='cozy'||d.photo===url);
   const ready=!!d&&(mode!=='active'||root.dataset.palette==='glass')&&d.mode===mode&&!d.pending&&!d.loading&&panels.every(p=>p.backed)&&document.fonts.status==='loaded'&&!animations.length&&(mode!=='active'||(sourceMatches&&panels.every(p=>p.tone)));
   const sample=d?.sample?{generation:d.sample.generation,theme:d.sample.theme,background:d.sample.background,source:hash(d.sample.source)}:null;
   const viewport={width:innerWidth,height:innerHeight,dpr:devicePixelRatio};
-  const fingerprint=JSON.stringify({viewport,palette:root.dataset.palette,theme:root.dataset.theme,background:root.dataset.background,mode:d?.mode,sample,panels,texts,paintCount:d?.paintCount});
+  // Native identities remain in diagnostics; visual equivalence retains every
+  // measured value while ignoring replacement nodes with identical pixels.
+  const visualPanels=panels.map(({id,plane,...visual})=>visual),visualTexts=texts.map(([, ...visual])=>visual);
+  const fingerprint=JSON.stringify({viewport,palette:root.dataset.palette,theme:root.dataset.theme,background:root.dataset.background,mode:d?.mode,sample,panels:visualPanels,texts:visualTexts,paintCount:d?.paintCount});
   return{ready,viewport,palette:root.dataset.palette,theme:root.dataset.theme,background:root.dataset.background,mode:d?.mode,selectedSource:hash(source),decodedPhoto:hash(d?.photo||''),sourceMatches,sample,pending:d?.pending,loading:d?.loading,panels,texts,animations,paintCount:d?.paintCount,fingerprint};
  };
  window.__glassReady=mode=>{const s=window.__glassReadState(mode);if(s.ready&&s.fingerprint===previous)repetitions++;else repetitions=0;previous=s.fingerprint;return s.ready&&repetitions>=2;};
@@ -32,4 +35,22 @@ async function captureGlass(page,capture,observations=[]){
  }
  throw Error('Glass snapshot changed DOM/sample/foreground while screenshots were captured; see observations');
 }
-module.exports={installGlassState,waitForGlass,captureGlass};
+// Install before application scripts: execution-time gating also catches a
+// native rAF that was queued while the gate was still disabled.
+function installGlassUpdateGate(){
+ if(window.__glassUpdateGate)return;
+ const request=window.requestAnimationFrame.bind(window),cancel=window.cancelAnimationFrame.bind(window),queued=new Map(),held=new Map(),events=[];let active=false;
+ const hash=value=>{let h=2166136261;for(let i=0;i<value.length;i++)h=Math.imul(h^value.charCodeAt(i),16777619);return(h>>>0).toString(16)};
+ const execute=(task,time,released)=>{task.callback(time);events.push({phase:released?'released-executed':'executed',id:task.id,pending:window.TaskMeccaGlass?.diagnostics().pending,plane:!!document.querySelector('.content > .glass-reader-material')})};
+ window.requestAnimationFrame=callback=>{
+  if(callback.name!=='update'||!callback.toString().includes('glassOptics'))return request(callback);
+  const task={callback,id:null,signature:hash(callback.toString())};task.id=request(time=>{queued.delete(task.id);if(active){held.set(task.id,task);events.push({phase:'held',id:task.id,signature:task.signature});return;}execute(task,time,false)});queued.set(task.id,task);events.push({phase:'queued',id:task.id,signature:task.signature});return task.id;
+ };
+ window.cancelAnimationFrame=id=>{queued.delete(id);held.delete(id);cancel(id)};
+ window.__glassUpdateGate={
+  activate(){active=true;events.push({phase:'activated',queued:[...queued.keys()]});return this.state()},
+  release(){active=false;const tasks=[...held.values()];held.clear();for(const task of tasks)request(time=>execute(task,time,true));events.push({phase:'released',ids:tasks.map(task=>task.id)});return tasks.map(task=>task.id)},
+  state(){return{active,queued:[...queued.keys()],held:[...held.keys()],events:events.map(event=>({...event}))}}
+ };
+}
+module.exports={installGlassState,waitForGlass,captureGlass,installGlassUpdateGate};
