@@ -1,6 +1,89 @@
 # 실사 배경과 Glass 소재 검증
 
 
+## Fixed scene during scroll (A-56 follow-up, 2026-11-05)
+
+The user observed the scene moving with a panel, then returning. In568ed18f the
+body photograph remained fixed. The material bitmap was sampled using the old
+panel origin and rode with the moving owner until the100ms document-scroll
+timer repainted it. Actual mobile moving/settled PNG crops at the same pose had
+reader mean channel differences22.7–28.7, while exposed body crop differences
+were0. Desktop screenshot serialization sometimes crossed the delayed repaint;
+those intervals are explicitly ambiguous. Scroll-event rAF-synchronous raw
+canvas captures disambiguated them: same-pose fresh differences30.7–34.4 on
+desktop and26.2–32.5 on mobile; steady controls were0 at the same generation.
+
+A second defect affected overflow ports: the absolute decorative canvas moved
+with scrollTop120 and left a persistent121px gap in a260px mobile sidebar.
+Geometry repaint alone could not repair coverage. Intermediate direct-sticky
+attempts exposed padding and horizontal-overflow errors and are retained as
+failed development evidence. The final scene uses a zero-height/content-width
+sticky anchor, with its absolute canvas extending across port padding. It
+changes no text/foreground flow. In the same baseline fixture, sidebar11,
+attention9 and nested-list72 controls had identical contentY/width/height;
+scrollHeight/scrollWidth/client dimensions matched exactly. Earlier659-versus-
+672 sidebar height observations used different fixture state; the matched
+baseline/revision both measured672. Visible controls retain exact hit/focus.
+
+The renderer now separates structural/scene work from geometry work. Scroll and
+visualViewport movement coalesce into a pre-paint animation-frame callback,
+which batch-reads actual canvas viewport rectangles and remaps only changed
+visible surfaces. Actual canvas bounds account for the owner's border/padding.
+The fixed sampler/decoded image are reused; a queued structural update absorbs
+geometry work rather than scheduling duplicate passes. There is no recurring
+frame loop, opacity cover, material-off phase, fallback flash or text treatment.
+Offscreen connected materials are retained for reentry and skipped while hidden
+outside the viewport; this costs some retained canvas storage.
+
+`tests/web_glass_scroll.test.cjs` adds two real browser regressions. The first
+checks72 first motion callbacks across desktop/mobile, Light/Dark and
+Cozy/ambient/None, rapid35→70→25→0→80→10 reversals, six viewport changes and idle
+paint/adaptation0. Cozy first-frame bitmap pixels must match a fresh reference
+at the same pose within the existing one-step readback quantization bound, with
+actual painted origins aligned. The second checks three nested ports, full
+coverage, unchanged foreground coordinates/scroll metrics, exact visible control
+hit/focus and geometry-invariant nested-list paint0. The unchanged568 baseline
+fails the pixel assertion first (maximum216, mean33.287), independently of its
+one-pixel border-origin discrepancy. The negative command selects only the
+first motion test with `GLASS_SCROLL_ASSET_ROOT`; it is an expected failed test,
+not a suppressed regression.
+
+The final local suite runs existing14 plus new2 tests, all16 passing and0
+skipped. Glass CI explicitly includes the new file and preserves its motion and
+port JSON artifacts. Six workflow job definitions retain their existing matrix
+expansions, for eight executed jobs, including both Glass/workflow browser jobs.
+Named embedded photo/Glass asset Go tests run locally; the unsafe local full Go
+uninstall-fixture suite is not run.
+
+A serial Chrome156/DPR1/same fixture1.5-second scroll compared568 and revision:
+
+| Metric | Desktop baseline → revision | Mobile viewport baseline → revision |
+| --- | --- | --- |
+| TaskDuration delta | 78.481 → 102.935ms | 83.962 → 137.876ms |
+| ScriptDuration delta | 17.140 → 36.076ms | 18.015 → 49.092ms |
+| main-thread paint trace | 41/6.639 → 24/4.370 events/ms | 66/6.884 → 80/8.256 events/ms |
+| mean frame gap | 16.373 → 16.514ms | 16.480 → 16.512ms |
+| explicit sampler/readback/canvas bytes | 13,786,648 → 14,123,480 | 7,336,728 → 7,429,088 |
+| retained material maps at sample end | 3 → 4 | 3 → 4 |
+| idle paint/adaptation | 0/0 → 0/0 | 0/0 → 0/0 |
+
+Pre-paint correctness costs more script/main-thread time. The maximum frame gap
+was about16.8ms in this single sample, not a universal performance guarantee.
+Later actual viewport PNG pairs showed body/reader differences0 and no paint
+change during capture, but their85–348ms screenshot intervals are only
+corroboration. First-frame evidence comes from the synchronized raw bitmap
+regression. It does not certify compositor-only/off-main-thread behavior on
+Samsung hardware. Mobile height/orientation changes emulate a browser viewport,
+not a real address-bar/keyboard or pinch/pan sequence. Actual Samsung Internet,
+physical GPU/CPU energy, battery and prolonged use remain unverified. No static
+Lumen pass is extended into a dynamic or final user-acceptance claim.
+
+The following no-text-fog/material tables describe the earlier568 baseline and
+its prior design iteration; the scroll measurements above are the current
+follow-up evidence. Final remote exact HEAD CI/Preview/provenance/checksums and
+PR/canonical completion belong to Controller.
+
+
 ## Current contract: no text-specific fog (A-56, 2026-11-05)
 
 The user explicitly withdrew the text-by-text readability treatment after

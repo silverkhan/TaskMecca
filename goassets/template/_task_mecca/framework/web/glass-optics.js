@@ -7,7 +7,7 @@
  const panels=new Map(),materials=new Map(),MAX_MATERIAL_PIXELS=480000;
  const readerBackingSupported=CSS.supports('selector(:has(*))');
  let sampleTheme='',sampleBackground='',sampleSource='';
- let samplePixels=null,adaptCount=0,totalAdaptMs=0,scrollTimer=0,failedURL='';
+ let samplePixels=null,adaptCount=0,totalAdaptMs=0,geometryFrame=0,failedURL='';
  let frame=0,image=null,imageURL='',loading='',sampler=null,stageKey='',generation=0,paintCount=0,totalPaintMs=0,enabled=false;
  const supports=typeof Path2D!=='undefined'&&!!document.createElement('canvas').getContext?.('2d')&&
   (CSS.supports('backdrop-filter','blur(1px)')||CSS.supports('-webkit-backdrop-filter','blur(1px)'));
@@ -112,8 +112,9 @@
   let plane=owner.querySelector(':scope > .glass-reader-material');if(plane)return plane;
   plane=document.createElement('div');plane.className='glass-reader-material'+(terminal?' terminal-material':'');plane.setAttribute('aria-hidden','true');plane.dataset.glassKind='reader';owner.prepend(plane);return plane;
  }
- function remove(entry){entry.canvas.remove();entries.delete(entry.host);}
- function removeMaterial(entry){entry.canvas.remove();delete entry.host.dataset.glassMaterial;materials.delete(entry.host);}
+ function removeCanvas(entry){if(entry.scrollPlane)entry.scrollPlane.remove();else entry.canvas.remove()}
+ function remove(entry){removeCanvas(entry);entries.delete(entry.host);}
+ function removeMaterial(entry){removeCanvas(entry);delete entry.host.dataset.glassMaterial;materials.delete(entry.host);}
  function deactivate(reason){
   enabled=false;for(const e of [...entries.values()])remove(e);for(const e of [...materials.values()])removeMaterial(e);document.querySelectorAll('.glass-reader-material').forEach(e=>e.remove());root.dataset.glassOptics=reason;
   image=null;imageURL='';loading='';sampler=null;samplePixels=null;stageKey='';sampleTheme='';sampleBackground='';sampleSource='';
@@ -122,7 +123,7 @@
  function candidates(){
   const a=[];const add=(selector,kind)=>{for(const host of document.querySelectorAll(selector))a.push({host,kind})};
   add('.tm-combo-popup','popup');add('.topbar,.terminal-header','chrome');
-  // Reader material stays a single quiet plane, with no optical canvas.
+  // One bounded reader plane; no per-row optical layers.
   for(const owner of document.querySelectorAll('.content,.terminal-main'))backing(owner,owner.classList.contains('terminal-main'));
   return a.filter((item,index,list)=>list.findIndex(x=>x.host===item.host)===index).filter(({host,kind})=>{
    const r=host.getBoundingClientRect(),s=getComputedStyle(host);
@@ -135,8 +136,8 @@
    return r.width>8&&r.height>8&&r.bottom>0&&r.right>0&&r.top<innerHeight&&r.left<innerWidth&&s.visibility!=='hidden'&&s.display!=='none'&&!(innerWidth<=680&&host.classList.contains('sidebar'))&&!(innerWidth>680&&host.classList.contains('sidebar-head'))&&(readerBackingSupported||!host.matches('.content,.terminal-main'));
   });
  }
- function paintMaterial(entry){
-  const {host,canvas,plane}=entry,r=plane.getBoundingClientRect(),w=r.width,h=r.height;if(w<8||h<8)return;
+ function paintMaterial(entry,r){
+  const {host,canvas}=entry,w=r.width,h=r.height;if(w<8||h<8)return;
   // Material depends only on the scene and panel geometry, never on ink.
   const key=[generation,r.x,r.y,w,h,host.dataset.glassTone].join("|");if(entry.key===key)return;
   const start=performance.now(),scale=Math.min(1,Math.sqrt(MAX_MATERIAL_PIXELS/(w*h))),width=Math.ceil(w*scale),height=Math.ceil(h*scale),g=geometry();
@@ -160,9 +161,9 @@
   if(host.matches('.content,.terminal-main')){const bevel=new Path2D();rounded(bevel,1.5,1.5,w-3,h-3,16.5);const light=c.createLinearGradient(0,0,w,h);light.addColorStop(0,'rgba(255,255,255,.5)');light.addColorStop(.28,'rgba(255,255,255,.06)');light.addColorStop(.6,'rgba(3,12,18,0)');light.addColorStop(1,'rgba(3,12,18,.24)');c.strokeStyle=light;c.lineWidth=1.25;c.stroke(bevel)}
   entry.key=key;entry.rect={left:r.x,top:r.y,width:w,height:h};entry.amplitude=amplitude;entry.paintMs=performance.now()-start;entry.totalPaintMs=(entry.totalPaintMs||0)+entry.paintMs;entry.draws++;paintCount++;totalPaintMs+=entry.paintMs;
  }
- function paint(entry){
+ function paint(entry,r){
   if(!sampler)return;
-  const {host,canvas,kind}=entry,r=canvas.getBoundingClientRect(),style=getComputedStyle(host),radius=Math.min(parseFloat(style.borderTopLeftRadius)||16,r.width/2,r.height/2);
+  const {host,canvas,kind}=entry,style=getComputedStyle(host),radius=Math.min(parseFloat(style.borderTopLeftRadius)||16,r.width/2,r.height/2);
   const key=[r.x,r.y,r.width,r.height,radius,generation,host.dataset.glassTone,devicePixelRatio].map(x=>typeof x==='number'?Math.round(x*100)/100:x).join('|');if(entry.key===key)return;
   const start=performance.now(),w=r.width,h=r.height,dpr=Math.min(devicePixelRatio||1,1.25,Math.sqrt(MAX_PIXELS/(w*h)));
   const width=Math.max(1,Math.ceil(w*dpr)),height=Math.max(1,Math.ceil(h*dpr));if(canvas.width!==width)canvas.width=width;if(canvas.height!==height)canvas.height=height;const c=canvas.getContext('2d');c.setTransform(1,0,0,1,0,0);c.clearRect(0,0,width,height);c.scale(dpr,dpr);
@@ -179,8 +180,32 @@
   c.save();c.strokeStyle=(()=>{const light=c.createLinearGradient(0,0,w*.72,h);light.addColorStop(0,`rgba(99,190,222,${strength})`);light.addColorStop(.12,`rgba(122,191,223,${strength*.5})`);light.addColorStop(.32,'rgba(220,233,236,0)');light.addColorStop(.7,'rgba(220,233,236,0)');light.addColorStop(.9,`rgba(226,184,117,${strength*.65})`);light.addColorStop(1,`rgba(238,213,169,${strength*.3})`);return light})();c.lineWidth=.75;c.stroke(lip);c.restore();
   entry.key=key;entry.rect={left:r.left,top:r.top,width:w,height:h};entry.rim=rim;entry.amplitude=amp;entry.draws++;paintCount++;totalPaintMs+=performance.now()-start;
  }
+ function ensureMaterial(host){
+  if(materials.has(host))return;
+  const plane=host.querySelector(':scope > .glass-reader-material')||host,canvas=document.createElement('canvas');canvas.className='glass-material-optics';canvas.setAttribute('aria-hidden','true');canvas.setAttribute('role','presentation');plane.prepend(canvas);host.dataset.glassMaterial='true';materials.set(host,{host,plane,canvas,key:'',draws:0});
+ }
+ function syncGeometry(){
+  geometryFrame=0;if(!enabled||!sampler)return;
+  if(root.dataset.background==='cozy')for(const host of materialCandidates())ensureMaterial(host);
+  const all=[...materials.values(),...entries.values()].filter(e=>e.canvas.isConnected&&e.host.isConnected),ports=new Map();
+  // A canvas inside an overflow port must stay with its viewport, not with
+  // scrolled text. Read dimensions first, then apply only changed port metrics.
+  for(const e of all)if(!ports.has(e.host)){const s=getComputedStyle(e.host),port=(e.plane||e.host)===e.host&&/^(auto|scroll)$/.test(s.overflowY);ports.set(e.host,port?{width:e.host.clientWidth,height:e.host.clientHeight,top:parseFloat(s.paddingTop)||0,left:parseFloat(s.paddingLeft)||0}:null)}
+  for(const e of all){const port=ports.get(e.host),key=port?Object.values(port).join('|'):'';if(e.portKey===key)continue;e.portKey=key;
+   if(port&&!e.scrollPlane){const plane=document.createElement('div');plane.className='glass-scroll-plane';plane.setAttribute('aria-hidden','true');e.canvas.before(plane);plane.append(e.canvas);e.scrollPlane=plane}
+   if(!port&&e.scrollPlane){e.scrollPlane.before(e.canvas);e.scrollPlane.remove();e.scrollPlane=null}
+   e.canvas.classList.toggle('glass-scroll-optics',!!port);for(const name of ['width','height','top','left'])if(port)e.canvas.style.setProperty('--glass-scroll-'+name,port[name]+'px');else e.canvas.style.removeProperty('--glass-scroll-'+name)
+  }
+  // These viewport boxes and body::before use the same coordinate space.
+  // Sample the canvas itself: its border/padding offset differs from its owner.
+  const boxes=all.map(entry=>({entry,rect:entry.canvas.getBoundingClientRect()}));
+  adaptPanels();
+  for(const {entry,rect}of boxes){if(rect.width<8||rect.height<8||rect.bottom<=0||rect.right<=0||rect.top>=innerHeight||rect.left>=innerWidth)continue;if(materials.get(entry.host)===entry)paintMaterial(entry,rect);else paint(entry,rect)}
+ }
+ function scheduleGeometry(){if(!geometryFrame&&!frame)geometryFrame=requestAnimationFrame(syncGeometry)}
  function update(){
   frame=0;const active=root.dataset.palette==='glass'&&!reduced.matches&&supports;
+  if(geometryFrame){cancelAnimationFrame(geometryFrame);geometryFrame=0}
   if(!active){if(enabled||root.dataset.glassOptics!==(reduced.matches?'solid':'material'))deactivate(reduced.matches?'solid':'material');return;}
   const cozy=root.dataset.background==='cozy',url=cozy?photoURL():'';
   if(cozy&&(!url||failedURL===url)){deactivate('material');return;}
@@ -192,19 +217,19 @@
   const toolbar=document.querySelector('.topbar'),top=toolbar?Math.ceil(toolbar.getBoundingClientRect().height)+(innerWidth<=680?20:24):88;
   if(root.style.getPropertyValue('--glass-reader-top')!==top+'px')root.style.setProperty('--glass-reader-top',top+'px');
   try{if(cozy)paintSampler();else if(!paintMaterialSampler()){deactivate('material');return;}}catch{deactivate('material');return;}
-  const possible=candidates(),materialHosts=cozy?materialCandidates():[],materialKeep=new Set(materialHosts);
-  for(const e of [...materials.values()])if(!materialKeep.has(e.host)||!e.host.isConnected||!e.plane.isConnected||!e.canvas.isConnected)removeMaterial(e);
-  for(const host of materialHosts){if(!materials.has(host)){const plane=host.querySelector(':scope > .glass-reader-material')||host,canvas=document.createElement('canvas');canvas.className='glass-material-optics';canvas.setAttribute('aria-hidden','true');canvas.setAttribute('role','presentation');plane.prepend(canvas);host.dataset.glassMaterial='true';materials.set(host,{host,plane,canvas,key:'',draws:0})}}
-  adaptPanels();for(const entry of materials.values())paintMaterial(entry);
+  const possible=candidates(),materialHosts=cozy?materialCandidates():[];
+  for(const e of [...materials.values()])if(!cozy||!e.host.isConnected||!e.plane.isConnected||!e.canvas.isConnected||getComputedStyle(e.host).display==='none')removeMaterial(e);
+  for(const host of materialHosts)ensureMaterial(host);
   const desired=cozy?possible:[],keep=new Set(desired.map(x=>x.host));for(const entry of [...entries.values()])if(!keep.has(entry.host)||!entry.host.isConnected)remove(entry);
-  for(const {host,kind}of desired){let entry=entries.get(host);if(!entry){const canvas=document.createElement('canvas');canvas.className='glass-optics';canvas.setAttribute('aria-hidden','true');canvas.setAttribute('role','presentation');host.prepend(canvas);entry={host,canvas,kind,key:'',draws:0};entries.set(host,entry)}paint(entry)}
+  for(const {host,kind}of desired){let entry=entries.get(host);if(!entry){const canvas=document.createElement('canvas');canvas.className='glass-optics';canvas.setAttribute('aria-hidden','true');canvas.setAttribute('role','presentation');host.prepend(canvas);entry={host,canvas,kind,key:'',draws:0};entries.set(host,entry)}}
+  syncGeometry();
  }
  function schedule(){if(!frame)frame=requestAnimationFrame(update)}
  new MutationObserver(schedule).observe(root,{attributes:true,attributeFilter:['data-palette','data-theme','data-background']});
  new MutationObserver(schedule).observe(document.body,{childList:true,subtree:true});
- window.addEventListener('resize',schedule,{passive:true});document.addEventListener('scroll',()=>{if(!scrollTimer)scrollTimer=setTimeout(()=>{scrollTimer=0;schedule()},100)},{passive:true,capture:true});document.addEventListener('focusin',schedule);document.addEventListener('focusout',schedule);
- window.visualViewport?.addEventListener('resize',schedule,{passive:true});window.visualViewport?.addEventListener('scroll',schedule,{passive:true});reduced.addEventListener?.('change',schedule);
- window.TaskMeccaGlass=Object.freeze({refresh:schedule,diagnostics:()=>({mode:root.dataset.glassOptics||'material',photo:imageURL,sample:{generation,theme:sampleTheme,background:sampleBackground,source:sampleSource},loading:!!loading,pending:!!frame||!!scrollTimer,readerBackingSupported,stage:geometry(),sampler:sampler?{width:sampler.width,height:sampler.height}:null,paintCount,totalPaintMs,adaptCount,totalAdaptMs,sampleBytes:samplePixels?.byteLength||0,panels:[...panels.values()],materials:[...materials.values()].map(e=>({rect:e.rect,amplitude:e.amplitude,paintMs:e.paintMs,totalPaintMs:e.totalPaintMs,draws:e.draws,pixels:e.canvas.width*e.canvas.height})),lenses:[...entries.values()].map(e=>({kind:e.kind,rect:e.rect,rim:e.rim,amplitude:e.amplitude,draws:e.draws,pixels:e.canvas.width*e.canvas.height}))})});
+ window.addEventListener('resize',schedule,{passive:true});document.addEventListener('scroll',scheduleGeometry,{passive:true,capture:true});document.addEventListener('focusin',schedule);document.addEventListener('focusout',schedule);
+ window.visualViewport?.addEventListener('resize',schedule,{passive:true});window.visualViewport?.addEventListener('scroll',scheduleGeometry,{passive:true});reduced.addEventListener?.('change',schedule);
+ window.TaskMeccaGlass=Object.freeze({refresh:schedule,diagnostics:()=>({mode:root.dataset.glassOptics||'material',photo:imageURL,sample:{generation,theme:sampleTheme,background:sampleBackground,source:sampleSource},loading:!!loading,pending:!!frame||!!geometryFrame,readerBackingSupported,stage:geometry(),sampler:sampler?{width:sampler.width,height:sampler.height}:null,paintCount,totalPaintMs,adaptCount,totalAdaptMs,sampleBytes:samplePixels?.byteLength||0,panels:[...panels.values()],materials:[...materials.values()].map(e=>({rect:e.rect,amplitude:e.amplitude,paintMs:e.paintMs,totalPaintMs:e.totalPaintMs,draws:e.draws,pixels:e.canvas.width*e.canvas.height})),lenses:[...entries.values()].map(e=>({kind:e.kind,rect:e.rect,rim:e.rim,amplitude:e.amplitude,draws:e.draws,pixels:e.canvas.width*e.canvas.height}))})});
  if(typeof ResizeObserver!=='undefined'){const resize=new ResizeObserver(schedule);document.querySelectorAll('.topbar,.terminal-header,.sidebar-head').forEach(e=>resize.observe(e))}
  document.fonts?.ready.then(schedule);
  schedule();
