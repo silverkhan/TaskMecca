@@ -1,0 +1,409 @@
+{
+  "events": [
+    {
+      "schema_version": 0,
+      "event_id": "review-s",
+      "task_id": "B-1",
+      "action": "start",
+      "role": "controller",
+      "agent_id": "reviewer",
+      "runtime_attempt_id": "c",
+      "round": 0,
+      "type": "controller_review",
+      "confidence": "",
+      "occurred_at": "2026-11-05T00:10:00Z",
+      "recorded_at": "0001-01-01T00:00:00Z"
+    },
+    {
+      "schema_version": 0,
+      "event_id": "review-e",
+      "task_id": "B-1",
+      "action": "stop",
+      "role": "controller",
+      "agent_id": "reviewer",
+      "runtime_attempt_id": "c",
+      "review_outcome": "needs_changes",
+      "round": 0,
+      "type": "controller_review",
+      "confidence": "",
+      "evidence": "synthetic correction",
+      "occurred_at": "2026-11-05T00:20:00Z",
+      "recorded_at": "0001-01-01T00:00:00Z"
+    },
+    {
+      "schema_version": 0,
+      "event_id": "work-s",
+      "task_id": "B-1",
+      "action": "start",
+      "role": "worker",
+      "agent_id": "worker",
+      "runtime_attempt_id": "a1",
+      "round": 0,
+      "type": "implementation",
+      "confidence": "",
+      "occurred_at": "2026-11-05T00:21:00Z",
+      "recorded_at": "0001-01-01T00:00:00Z"
+    },
+    {
+      "schema_version": 0,
+      "event_id": "work-e",
+      "task_id": "B-1",
+      "action": "stop",
+      "role": "worker",
+      "agent_id": "worker",
+      "runtime_attempt_id": "a1",
+      "round": 0,
+      "type": "implementation",
+      "confidence": "",
+      "evidence": "synthetic correction",
+      "occurred_at": "2026-11-05T00:30:00Z",
+      "recorded_at": "0001-01-01T00:00:00Z"
+    },
+    {
+      "schema_version": 0,
+      "event_id": "parallel-s",
+      "task_id": "B-1",
+      "action": "start",
+      "role": "worker",
+      "agent_id": "worker",
+      "runtime_attempt_id": "a2",
+      "round": 0,
+      "type": "targeted_test",
+      "confidence": "",
+      "occurred_at": "2026-11-05T00:22:00Z",
+      "recorded_at": "0001-01-01T00:00:00Z"
+    },
+    {
+      "schema_version": 0,
+      "event_id": "parallel-e",
+      "task_id": "B-1",
+      "action": "stop",
+      "role": "worker",
+      "agent_id": "worker",
+      "runtime_attempt_id": "a2",
+      "round": 0,
+      "type": "targeted_test",
+      "confidence": "",
+      "evidence": "synthetic correction",
+      "occurred_at": "2026-11-05T00:28:00Z",
+      "recorded_at": "0001-01-01T00:00:00Z"
+    },
+    {
+      "schema_version": 0,
+      "event_id": "other-s",
+      "task_id": "B-1",
+      "action": "start",
+      "role": "worker",
+      "agent_id": "a-second-very-long-named-agent-for-accessibility-check",
+      "runtime_attempt_id": "a3",
+      "round": 0,
+      "type": "implementation",
+      "confidence": "",
+      "occurred_at": "2026-11-05T00:22:00Z",
+      "recorded_at": "0001-01-01T00:00:00Z"
+    },
+    {
+      "schema_version": 0,
+      "event_id": "other-e",
+      "task_id": "B-1",
+      "action": "stop",
+      "role": "worker",
+      "agent_id": "a-second-very-long-named-agent-for-accessibility-check",
+      "runtime_attempt_id": "a3",
+      "round": 0,
+      "type": "implementation",
+      "confidence": "",
+      "evidence": "synthetic correction",
+      "occurred_at": "2026-11-05T00:27:00Z",
+      "recorded_at": "0001-01-01T00:00:00Z"
+    }
+  ],
+  "source": "synthetic regression fixture; contains no user evidence",
+  "summary": {
+    "task_id": "B-1",
+    "segments": [
+      {
+        "task_id": "B-1",
+        "agent_id": "reviewer",
+        "attempt_id": "c",
+        "role": "controller",
+        "type": "controller_review",
+        "round": 0,
+        "started_at": "2026-11-05T00:10:00Z",
+        "ended_at": "2026-11-05T00:20:00Z",
+        "duration_ms": 600000
+      },
+      {
+        "task_id": "B-1",
+        "agent_id": "a-second-very-long-named-agent-for-accessibility-check",
+        "attempt_id": "a3",
+        "role": "worker",
+        "type": "implementation",
+        "round": 0,
+        "started_at": "2026-11-05T00:22:00Z",
+        "ended_at": "2026-11-05T00:27:00Z",
+        "duration_ms": 300000
+      },
+      {
+        "task_id": "B-1",
+        "agent_id": "worker",
+        "attempt_id": "a2",
+        "role": "worker",
+        "type": "targeted_test",
+        "round": 0,
+        "started_at": "2026-11-05T00:22:00Z",
+        "ended_at": "2026-11-05T00:28:00Z",
+        "duration_ms": 360000
+      },
+      {
+        "task_id": "B-1",
+        "agent_id": "worker",
+        "attempt_id": "a1",
+        "role": "worker",
+        "type": "implementation",
+        "round": 0,
+        "started_at": "2026-11-05T00:21:00Z",
+        "ended_at": "2026-11-05T00:30:00Z",
+        "duration_ms": 540000
+      }
+    ],
+    "by_type_ms": {
+      "controller_review": 600000,
+      "implementation": 840000,
+      "targeted_test": 360000
+    },
+    "agent_time_ms": 1800000,
+    "observed_wall_ms": 1140000,
+    "first_observed_at": "2026-11-05T00:10:00Z",
+    "last_observed_at": "2026-11-05T00:30:00Z",
+    "observed_span_ms": 1200000,
+    "unattributed_gap_ms": 60000,
+    "open_activities": 0,
+    "invalid_transitions": 0,
+    "invalid_corrections": 0,
+    "interrupted_activities": 0,
+    "unmeasured_upper_bound_ms": 0,
+    "initial_worker_ms": 1200000,
+    "rework_worker_ms": 0,
+    "controller_first_review_ms": 600000,
+    "controller_rereview_ms": 0
+  },
+  "workflow": {
+    "version": 1,
+    "task_id": "B-1",
+    "computed_at": "2026-11-05T01:00:00Z",
+    "axis": {
+      "start": "2026-11-05T00:00:00Z",
+      "end": "2026-11-05T01:00:00Z",
+      "basis": "registered_completed",
+      "boundary_status": "complete",
+      "elapsed_ms": 3600000,
+      "open": false
+    },
+    "lifecycle": {
+      "task_id": "B-1",
+      "source": "reported_lifecycle",
+      "registered_at": "2026-11-05T00:00:00Z",
+      "completed_at": "2026-11-05T01:00:00Z",
+      "completion_history": [
+        "2026-11-05T01:00:00Z"
+      ],
+      "total_elapsed_ms": 3600000,
+      "registration_queue_ms": 0,
+      "dispatch_wait_ms": 0,
+      "explicit_wait_ms": 0,
+      "wait_ms": 0,
+      "covered_elapsed_ms": 1140000,
+      "unattributed_elapsed_ms": 2460000,
+      "wait_activity_overlap_ms": 0,
+      "invalid_facts": 0,
+      "open_wait_count": 0,
+      "wait_intervals": []
+    },
+    "measurement": {
+      "status": "partial",
+      "activity": {
+        "status": "observed",
+        "duration_ms": 1800000,
+        "event_count": 8,
+        "segment_count": 4
+      },
+      "worker": {
+        "status": "observed",
+        "duration_ms": 1200000,
+        "event_count": 6,
+        "segment_count": 3
+      },
+      "controller": {
+        "status": "observed",
+        "duration_ms": 600000,
+        "event_count": 2,
+        "segment_count": 1
+      },
+      "registrar": {
+        "status": "not_recorded",
+        "event_count": 0,
+        "segment_count": 0
+      },
+      "review": {
+        "status": "observed",
+        "duration_ms": 600000,
+        "event_count": 2,
+        "segment_count": 1
+      },
+      "tests": {
+        "status": "observed",
+        "duration_ms": 360000,
+        "event_count": 2,
+        "segment_count": 1
+      },
+      "observed_wall_ms": 1140000,
+      "agent_time_ms": 1800000,
+      "unmeasured_ms": 2460000,
+      "coverage_percent": 31.666666666666668
+    },
+    "current": {
+      "phase": "completed",
+      "basis": "reported_lifecycle",
+      "next_action": "none",
+      "round": 1,
+      "round_status": "rework"
+    },
+    "rounds": [
+      {
+        "number": 0,
+        "kind": "initial",
+        "started_at": "2026-11-05T00:00:00Z",
+        "basis": "registered_or_reported_activity",
+        "assignment_ids": [],
+        "attempt_ids": [
+          "c"
+        ],
+        "handoff_ids": [],
+        "commits": [],
+        "verification_results": []
+      },
+      {
+        "number": 1,
+        "kind": "rework",
+        "started_at": "2026-11-05T00:20:00Z",
+        "basis": "activity_review_outcome",
+        "reason": "synthetic correction",
+        "rejection_event_id": "review-e",
+        "previous_round": 0,
+        "assignment_ids": [],
+        "attempt_ids": [
+          "a3",
+          "a2",
+          "a1"
+        ],
+        "handoff_ids": [],
+        "commits": [],
+        "verification_results": []
+      }
+    ],
+    "rows": [
+      {
+        "observed_activity_ms": 600000,
+        "id": "controller|reviewer|0",
+        "role": "controller",
+        "agent_id": "reviewer",
+        "round": 0,
+        "round_status": "initial",
+        "intervals": [
+          {
+            "id": "review-s",
+            "kind": "activity",
+            "type": "controller_review",
+            "start": "2026-11-05T00:10:00Z",
+            "end": "2026-11-05T00:20:00Z",
+            "measured": true,
+            "duration_ms": 600000,
+            "attempt_id": "c",
+            "outcome": "needs_changes",
+            "lane": 0
+          }
+        ]
+      },
+      {
+        "observed_activity_ms": 300000,
+        "id": "worker|a-second-very-long-named-agent-for-accessibility-check|1",
+        "role": "worker",
+        "agent_id": "a-second-very-long-named-agent-for-accessibility-check",
+        "round": 1,
+        "round_status": "rework",
+        "intervals": [
+          {
+            "id": "other-s",
+            "kind": "activity",
+            "type": "implementation",
+            "start": "2026-11-05T00:22:00Z",
+            "end": "2026-11-05T00:27:00Z",
+            "measured": true,
+            "duration_ms": 300000,
+            "attempt_id": "a3",
+            "lane": 0
+          }
+        ]
+      },
+      {
+        "observed_activity_ms": 900000,
+        "id": "worker|worker|1",
+        "role": "worker",
+        "agent_id": "worker",
+        "round": 1,
+        "round_status": "rework",
+        "intervals": [
+          {
+            "id": "work-s",
+            "kind": "activity",
+            "type": "implementation",
+            "start": "2026-11-05T00:21:00Z",
+            "end": "2026-11-05T00:30:00Z",
+            "measured": true,
+            "duration_ms": 540000,
+            "attempt_id": "a1",
+            "lane": 0
+          },
+          {
+            "id": "parallel-s",
+            "kind": "activity",
+            "type": "targeted_test",
+            "start": "2026-11-05T00:22:00Z",
+            "end": "2026-11-05T00:28:00Z",
+            "measured": true,
+            "duration_ms": 360000,
+            "attempt_id": "a2",
+            "lane": 1
+          }
+        ]
+      }
+    ],
+    "unmeasured_intervals": [
+      {
+        "start": "2026-11-05T00:00:00Z",
+        "end": "2026-11-05T00:10:00Z",
+        "kind": "activity_unmeasured"
+      },
+      {
+        "start": "2026-11-05T00:20:00Z",
+        "end": "2026-11-05T00:21:00Z",
+        "kind": "activity_unmeasured"
+      },
+      {
+        "start": "2026-11-05T00:30:00Z",
+        "end": "2026-11-05T01:00:00Z",
+        "kind": "activity_unmeasured"
+      }
+    ],
+    "reporting": {
+      "status": "not_expected",
+      "expected_executions": 0,
+      "executions_without_activity": 0,
+      "expected_reviews": 0,
+      "reviews_without_activity": 0,
+      "findings": []
+    },
+    "control_snapshot": {}
+  }
+}

@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/silverkhan/TaskMecca/internal/backlog"
+ "github.com/silverkhan/TaskMecca/internal/contractscope"
 	"github.com/silverkhan/TaskMecca/internal/projectguard"
 )
 
@@ -37,6 +38,8 @@ type decisionFinding struct {
 }
 
 type contractDecisionReport struct {
+ ApprovalCompatibility string `json:"approval_compatibility,omitempty"`
+ ApprovalAnchorSHA256 string `json:"approval_anchor_sha256,omitempty"`
 	TaskID string `json:"task_id"`
 	Status string `json:"status"`
 	ExecutionAuthorized bool `json:"execution_authorized"`
@@ -207,7 +210,7 @@ func readDecisionEvents(project,taskID string)([]decisionEvent,[]decisionFinding
 
 // Authorization scope intentionally excludes operational notes and lifecycle
 // projections. Their routine updates must not invalidate explicit consent.
-func authorizationContractScope(raw string)string{
+func authorizationContractScopeRaw(raw string)string{
 	start:=strings.Index(raw,"## 작업 정의\n")
 	if start<0{start=strings.Index(raw,"## 요건 정의서\n")}
 	if start<0{return raw}
@@ -218,6 +221,7 @@ func authorizationContractScope(raw string)string{
 	if i:=strings.Index(raw,"## 원천 전문 (변경 금지)\n");i>=0{scope+="\n"+raw[i:]}
 	return scope
 }
+func authorizationContractScope(raw string)string{return contractscope.NormalizeAcceptance(authorizationContractScopeRaw(raw))}
 
 func projectContractDecision(project,taskID string)(contractDecisionReport,error){
 	taskID=strings.ToUpper(strings.TrimSpace(taskID))
@@ -237,13 +241,18 @@ func projectContractDecision(project,taskID string)(contractDecisionReport,error
 	pending:=map[string]bool{}
 	approved:=false
 	approvedHash:=""
+    approvedBase:=""
+    type scopeMatch struct{matched,exhaustive bool}
+    scopeMatches:=map[string]scopeMatch{}
+    matchBase:=func(expected string)scopeMatch{if cached,ok:=scopeMatches[expected];ok{return cached};matched,exhaustive:=contractscope.MatchLegacyAcceptanceHash(authorizationContractScopeRaw(raw),expected);value:=scopeMatch{matched,exhaustive};scopeMatches[expected]=value;return value}
 	var history strings.Builder
 	for _,event:=range events {
 		// Any canonical contract replacement after the event's original base is
 		// review-required, never quietly accepted as prior user consent.
-		if event.BaseSHA256!=result.CurrentSHA256 {
-			result.Findings=append(result.Findings,decisionFinding{Code:"BASE_CHANGED",Message:"canonical contract changed after decision; re-confirm needed",EventID:event.EventID})
-		}
+        if event.BaseSHA256!=result.CurrentSHA256 {
+            match:=matchBase(event.BaseSHA256)
+            if !match.matched{code:="BASE_CHANGED";message:="canonical contract changed after decision; re-confirm needed";if !match.exhaustive{code="LEGACY_CHECK_STATE_UNVERIFIED";message="legacy approval has no text snapshot; bounded acceptance-state hash proof exhausted; authorization remains unverified"};result.Findings=append(result.Findings,decisionFinding{Code:code,Message:message,EventID:event.EventID})}
+        }
 		switch event.Kind{
 		case "supplement":
 			if event.UserConfirmed {
@@ -259,7 +268,7 @@ func projectContractDecision(project,taskID string)(contractDecisionReport,error
 				fmt.Fprintf(&history,"policy_confirmed\x00%s\x00%s\n",event.PolicyKey,event.EventID)
 			}
 		case "execution_approved":
-			if event.UserConfirmed {approved=true;approvedHash=event.EffectiveSHA256;result.ApprovalEventID=event.EventID}
+			if event.UserConfirmed {approved=true;approvedHash=event.EffectiveSHA256;approvedBase=event.BaseSHA256;result.ApprovalEventID=event.EventID}
 		case "execution_revoked":
 			if event.UserConfirmed {approved=false;approvedHash="";result.ApprovalEventID=""}
 		default:
@@ -279,7 +288,12 @@ func projectContractDecision(project,taskID string)(contractDecisionReport,error
 			result.Status="unknown";return result,nil
 		}
 	}
-	result.ExecutionAuthorized=approved&&approvedHash==result.EffectiveSHA256&&len(result.PendingPolicies)==0
+	approvalMatches:=approvedHash==result.EffectiveSHA256
+    if approved&&!approvalMatches&&approvedBase!=""&&matchBase(approvedBase).matched{
+        legacyEffective:=hashBatchBytes([]byte(approvedBase+"\x00"+history.String()))
+        if approvedHash==legacyEffective{approvalMatches=true;result.ApprovalCompatibility="acceptance_check_state_only";result.ApprovalAnchorSHA256=approvedBase}
+    }
+    result.ExecutionAuthorized=approved&&approvalMatches&&len(result.PendingPolicies)==0
 	if result.ExecutionAuthorized{result.Status="execution_authorized"}else if len(result.PendingPolicies)>0{result.Status="policy_pending"}else{result.Status="approval_required"}
 	return result,nil
 }

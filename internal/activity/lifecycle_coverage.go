@@ -15,6 +15,9 @@ type LifecycleFact struct {
     Kind string `json:"kind"`
     OccurredAt time.Time `json:"occurred_at"`
     EvidenceSource string `json:"evidence_source,omitempty"`
+    Actor string `json:"actor,omitempty"`
+    AssignmentID string `json:"assignment_id,omitempty"`
+    AttemptID string `json:"attempt_id,omitempty"`
 }
 
 type WaitInterval struct {
@@ -31,6 +34,7 @@ type LifecycleCoverage struct {
     Source string `json:"source"`
     RegisteredAt *time.Time `json:"registered_at,omitempty"`
     CompletedAt *time.Time `json:"completed_at,omitempty"`
+    CompletionHistory []time.Time `json:"completion_history"`
     TotalElapsedMillis *int64 `json:"total_elapsed_ms,omitempty"`
     RegistrationQueueMillis int64 `json:"registration_queue_ms"`
     DispatchWaitMillis int64 `json:"dispatch_wait_ms"`
@@ -106,6 +110,10 @@ func SummarizeLifecycle(taskID string,facts []LifecycleFact,segments []Segment)L
     }
     for _,e:=range sorted {
         switch e.Kind {
+        case "assigned", "started", "resumed", "waiting":
+            if out.CompletedAt!=nil && e.OccurredAt.After(*out.CompletedAt){out.CompletedAt=nil}
+        }
+        switch e.Kind {
         case "registered":
             if out.RegisteredAt==nil{copyTime:=e.OccurredAt;out.RegisteredAt=&copyTime}
             pending="registration_queue";last=e
@@ -123,7 +131,7 @@ func SummarizeLifecycle(taskID string,facts []LifecycleFact,segments []Segment)L
         case "completed":
             if out.RegisteredAt!=nil && !e.OccurredAt.Before(*out.RegisteredAt) {
                 completed:=e.OccurredAt
-                if out.CompletedAt==nil || completed.After(*out.CompletedAt){out.CompletedAt=&completed}
+                if out.CompletedAt==nil || completed.After(*out.CompletedAt){out.CompletedAt=&completed;out.CompletionHistory=append(out.CompletionHistory,completed)}
             }
             pending=""
         }

@@ -5,24 +5,17 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"github.com/silverkhan/TaskMecca/internal/contractscope"
 	"os"
 	"strings"
 )
 
 func ContractFingerprint(markdown string) (string, error) {
-	normalized := strings.ReplaceAll(markdown, "\r\n", "\n")
-	normalized = strings.ReplaceAll(normalized, "\r", "\n")
-	section := extractContractSection(normalized)
-	if section == "" {
+	fingerprint := contractscope.Fingerprint(markdown)
+	if fingerprint == "" {
 		return "", errors.New("canonical contract section not found")
 	}
-	lines := strings.Split(section, "\n")
-	for i := range lines {
-		lines[i] = strings.TrimRight(lines[i], " \t")
-	}
-	canonical := strings.TrimSpace(strings.Join(lines, "\n"))
-	sum := sha256.Sum256([]byte(canonical))
-	return hex.EncodeToString(sum[:]), nil
+	return fingerprint, nil
 }
 
 func extractContractSection(markdown string) string {

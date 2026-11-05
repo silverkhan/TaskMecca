@@ -1,6 +1,9 @@
 package handoff
 
-import "github.com/silverkhan/TaskMecca/internal/handoffjournal"
+import (
+	"github.com/silverkhan/TaskMecca/internal/activity"
+	"github.com/silverkhan/TaskMecca/internal/handoffjournal"
+)
 
 type EventType = handoffjournal.EventType
 type Action = handoffjournal.Action
@@ -35,33 +38,37 @@ type PrepareRequest struct {
 }
 
 type PrepareResult struct {
-	HandoffID              string `json:"handoff_id"`
-	Duplicate              bool   `json:"duplicate"`
-	ContractSHA256         string `json:"contract_sha256"`
-	Target                 Target `json:"target"`
-	Action                 Action `json:"action"`
-	RequiresFreshPreflight bool   `json:"requires_fresh_preflight"`
-	Reason                 string `json:"reason,omitempty"`
+	ActivityReporting      *activity.ReportingRequirement `json:"activity_reporting,omitempty"`
+	HandoffID              string                         `json:"handoff_id"`
+	Duplicate              bool                           `json:"duplicate"`
+	ContractSHA256         string                         `json:"contract_sha256"`
+	Target                 Target                         `json:"target"`
+	Action                 Action                         `json:"action"`
+	RequiresFreshPreflight bool                           `json:"requires_fresh_preflight"`
+	Reason                 string                         `json:"reason,omitempty"`
 }
 
 type ClaimResult struct {
-	HandoffID             string `json:"handoff_id"`
-	Claimed               bool   `json:"claimed"`
-	AlreadyClaimed        bool   `json:"already_claimed"`
-	AlreadyApplied        bool   `json:"already_applied"`
-	ClaimConflict         bool   `json:"claim_conflict"`
-	ContractChanged       bool   `json:"contract_changed"`
-	CurrentContractSHA256 string `json:"current_contract_sha256,omitempty"`
-	Reason                string `json:"reason,omitempty"`
-	RecoveryHint          string `json:"recovery_hint,omitempty"`
-	ClaimedBy             string `json:"claimed_by,omitempty"`
-	ClaimedAttemptID      string `json:"claimed_attempt_id,omitempty"`
+	ContractCompatibility string                         `json:"contract_compatibility,omitempty"`
+	ActivityReporting     *activity.ReportingRequirement `json:"activity_reporting,omitempty"`
+	HandoffID             string                         `json:"handoff_id"`
+	Claimed               bool                           `json:"claimed"`
+	AlreadyClaimed        bool                           `json:"already_claimed"`
+	AlreadyApplied        bool                           `json:"already_applied"`
+	ClaimConflict         bool                           `json:"claim_conflict"`
+	ContractChanged       bool                           `json:"contract_changed"`
+	CurrentContractSHA256 string                         `json:"current_contract_sha256,omitempty"`
+	Reason                string                         `json:"reason,omitempty"`
+	RecoveryHint          string                         `json:"recovery_hint,omitempty"`
+	ClaimedBy             string                         `json:"claimed_by,omitempty"`
+	ClaimedAttemptID      string                         `json:"claimed_attempt_id,omitempty"`
 }
 
 type MarkResult struct {
-	HandoffID string `json:"handoff_id"`
-	Step      string `json:"step"`
-	Result    string `json:"result"`
-	Duplicate bool   `json:"duplicate"`
-	Applied   bool   `json:"applied"`
+	ActivityReporting *activity.ReportingRequirement `json:"activity_reporting,omitempty"`
+	HandoffID         string                         `json:"handoff_id"`
+	Step              string                         `json:"step"`
+	Result            string                         `json:"result"`
+	Duplicate         bool                           `json:"duplicate"`
+	Applied           bool                           `json:"applied"`
 }
