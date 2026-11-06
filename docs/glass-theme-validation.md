@@ -41,7 +41,7 @@ exactly. Mobile row height remains97.734375px before/after and hover does not
 shift row geometry; tags remain11px and nested-overflow gates are retained.
 Renderer/app/theme-boot/shared-style/index/select-ui hashes remain identical.
 Original Glass16 + native-functional1 + new target-guard1 produce18 required
-browser tests; exact-commit results, common91, named Go2 and vet are frozen in
+suite cases (unit checks and actual-browser cases); exact-commit results, common91, named Go2 and vet are frozen in
 `correction01/` rather than added to the old manifest.
 
 Affected mobile composited checks are source-tagged separately: ko586 eligible
@@ -66,6 +66,9 @@ failing f4 guard, raw native event/viewport data, affected ko/en captures,
 composited samples, one current cost sample, protected-file equivalence and
 owned-port refusal after cleanup. Main owns the same reviewer's narrow
 confirmation, exact branch CI8/Preview, Draft PR348 and canonical finalization.
+Latest exact source/CI/Preview and published synthetic capture links are maintained
+in [PR #348](https://github.com/silverkhan/TaskMecca/pull/348) by the sole PR writer.
+
 Physical Android/Samsung/Safari, OS safe-area/keyboard/trackpad behavior and user
 final acceptance remain unverified. No Glass Dev/Main/Stable merge/deploy or
 operational18765 interaction is authorized or performed.
