@@ -1,6 +1,7 @@
 // Real raster review of all six Glass appearance/background combinations.
 // APIs remain synthetic; this never contacts or alters the operational Web.
 const fs=require('node:fs'),path=require('node:path'),zlib=require('node:zlib'),assert=require('node:assert/strict'),fixture=require('./glass_fixture.cjs');
+const {openGlassPreferences}=require('./glass_state.cjs');
 const {installSearchReader,assertSearchFrame,checkSearchControls}=require('./glass_search.cjs');
 function rasterStats(png){
  let width,height,channels,offset=8,blocks=[];
@@ -26,7 +27,7 @@ async function capture({browser,root,out,verify=true}){
     scene.optics=await p.evaluate(()=>window.TaskMeccaGlass?.diagnostics());if(verify){await p.evaluate(installSearchReader);scene.search=await p.evaluate(()=>__glassReadSearch());assertSearchFrame(scene.search);if(theme==='dark'&&background==='cozy')report.searchControls.push({mobile,...await checkSearchControls(p)});assert.equal(await p.locator('.search-wrap .glass-optics,.sidebar .glass-optics,.glass-reader-material .glass-optics').count(),0);assert.ok((scene.optics?.lenses.length||0)<=2);if(background!=='cozy')assert.equal(await p.locator('.glass-optics').count(),0)}
     const samples=await p.evaluate(()=>{const w=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT),a=[];let n;while(n=w.nextNode()){if(!n.textContent.trim()||!n.parentElement||n.parentElement.closest('script,style'))continue;const r=document.createRange();r.selectNodeContents(n);const b=r.getBoundingClientRect(),s=getComputedStyle(n.parentElement);if(b.width>8&&b.height>5&&b.x>=0&&b.right<innerWidth&&b.y>=0&&b.bottom<innerHeight&&n.parentElement.checkVisibility({checkOpacity:true,checkVisibilityCSS:true}))a.push({text:n.textContent.trim().slice(0,60),rect:{x:b.x,y:b.y,width:b.width,height:b.height},color:s.color,fontSize:s.fontSize,fontWeight:s.fontWeight})}return a});
     if(out){const hideText=await p.addStyleTag({content:'*{-webkit-text-fill-color:transparent!important;text-shadow:none!important}'});await p.screenshot({path:path.join(out,name+'-background-samples.png')});await hideText.evaluate(e=>e.remove())}report.textSamples.push({mobile,theme,background,samples});
-    if(background==='cozy')for(const menu of ['language','palette']){await p.locator('.'+menu+'-picker .tm-combo-trigger').click();await p.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));if(out)await p.screenshot({path:path.join(out,name+'-'+menu+'-menu.png'),animations:'disabled'});await p.keyboard.press('Escape')}
+    if(background==='cozy')await openGlassPreferences(p);if(background==='cozy')for(const menu of ['language','palette']){await p.locator('.'+menu+'-picker .tm-combo-trigger').click();await p.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));if(out)await p.screenshot({path:path.join(out,name+'-'+menu+'-menu.png'),animations:'disabled'});await p.keyboard.press('Escape')}
     report.scenes.push(scene);
    }
   }finally{await c.close()}

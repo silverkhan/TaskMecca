@@ -38,7 +38,16 @@ reading·알림 이력·선택/포커스의 기존 보존 함수를 활성 scrol
 
 기능 focused는320/390/430/1280/1448폭, ko/en, Light/Dark의 프레임·44px·중복ID0·
 first-open 소재 좌표와 실제 페이지/상세/목차/뒤로가기/읽기·선택·알림 복원을 검사합니다.
-초기 focused 실패와 하니스 수정은 새 packet에 그대로 보존합니다. 최종 정확 소스
+초기 focused 실패와 하니스 수정은 새 packet에 그대로 보존합니다. 첫 동결346288b8의
+전체 실행은16통과/5실패로 보존했고 수용하지 않았습니다. neutral 하니스 문법·모바일
+설정 개방·selector fallback readiness를 수정했습니다. resize의 기존 margin-left180ms
+전환은 Glass에서 제거해 첫 frame과 강제 fresh의 pixels max0을 확인했습니다.
+Spectral 첫 replay에서는 foreground/capsule 부근에 positive→positive 자체179px/max16
+차이가 났습니다. 동일 context replay1회 calibration 후 기존copy<=1/중앙0 검사는
+데스크톱·모바일 모두 max0/중앙0이었습니다. Chromium 첫 replay의 raster/compositing
+차이로 분리하며 이를 제품의 완벽한 초기 frame 증명으로 사용하지 않습니다. 실제
+text/color/opacity/geometry 변경을 거부하는 negative guard도 별도로 유지합니다.
+최종 정확 소스
 Glass21개, 공통189개 및 안전한 named Go2-race/vet 결과, source-tagged 대비와
 고정36행/manual50 전후 trace는 아래 전용 packet의 report에 기록합니다. 테스트/대비
 통과를 시안 동일성이나 물리기기 성능 수용으로 해석하지 않습니다.

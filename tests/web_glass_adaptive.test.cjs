@@ -57,7 +57,7 @@ test('Glass reports composited contrast, preserves authored theme and isolates t
    }
    await p.evaluate(()=>{document.body.style.minHeight='';scrollTo(0,0)});
    for(const kind of ['bright','dark']){
-    await p.evaluate(v=>fixtureExposure(v),kind);await settle();await p.keyboard.press('Tab');await openGlassPreferences(p);await p.locator('.palette-picker .tm-combo-trigger').focus();
+    await p.evaluate(v=>fixtureExposure(v),kind);await settle();await openGlassPreferences(p);await p.keyboard.press('Tab');await p.locator('.palette-picker .tm-combo-trigger').focus();
     const ring=await p.locator('.palette-picker .tm-combo-trigger').evaluate(e=>{const r=e.getBoundingClientRect(),s=getComputedStyle(e);return{rect:r.toJSON(),viewport:{left:visualViewport.offsetLeft,top:visualViewport.offsetTop},width:parseFloat(s.outlineWidth),offset:parseFloat(s.outlineOffset),style:s.outlineStyle}}),shot=raster(await p.screenshot({animations:'disabled'}));
     assert.equal(ring.style,'solid');const x=ring.rect.x-ring.offset-ring.width/2-ring.viewport.left,y=ring.rect.y+ring.rect.height/2-ring.viewport.top,ratio=contrast(shot.pixel(x,y),shot.pixel(x+ring.width,y));report.focus.push({mobile,kind,ratio,reference:3,reportOnly:true,ring});assert.ok(ring.width>=2&&Number.isFinite(ratio)&&ratio>=1&&ratio<=21,'actual keyboard focus remains visible and measurable; numeric contrast is report-only');
    }
@@ -65,6 +65,10 @@ test('Glass reports composited contrast, preserves authored theme and isolates t
    // Render the real canvas with and without ONLY its spectral stroke. The draw
    // observer supplies an independent replay for the optical displacement test.
    await p.keyboard.press('Escape');
+   // Calibrate the exact same-context replay before comparing screenshots.
+   // Chromium may change Canvas raster/compositing backend on the first replay;
+   // the positive-to-positive control below still requires <=1 and zero center.
+   await p.locator('.topbar .glass-optics').evaluate(e=>__glassSpectralControl(e,'copy'));await settle();
    const {positive,negative,box,copyControl,rimMask}=await captureGlass(p,async()=>{
     const positive=await p.screenshot({animations:'disabled'}),box=await p.locator('.topbar .glass-optics').boundingBox();
     await p.locator('.topbar .glass-optics').evaluate(e=>__glassSpectralControl(e,'copy'));
