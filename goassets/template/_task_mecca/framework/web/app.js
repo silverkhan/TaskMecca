@@ -26,7 +26,8 @@ const state = {
   lastFetch: 0,
   lastHubFetch: 0,
   theme: (()=>{ const preference=localStorage.getItem('task-mecca-theme'); return ['dark','light','system'].includes(preference)?preference:'dark'; })(),
-  palette: (()=>{ const saved=localStorage.getItem('task-mecca-palette'); const palette=['mecca','slate'].includes(saved)?saved:'mecca'; if(localStorage.getItem('task-mecca-palette-version')!=='2')localStorage.setItem('task-mecca-palette-version','2'); return palette; })(),
+  palette: (()=>{ const saved=localStorage.getItem('task-mecca-palette'); const palette=['mecca','slate','glass'].includes(saved)?saved:'mecca'; if(localStorage.getItem('task-mecca-palette-version')!=='2')localStorage.setItem('task-mecca-palette-version','2'); return palette; })(),
+  background: (()=>{ const saved=localStorage.getItem('task-mecca-background'); return ['cozy','ambient','none'].includes(saved)?saved:'cozy'; })(),
   manual: null,
   manualTab: 'quick',
   backlog: localStorage.getItem('task-mecca-backlog-folder') || '',
@@ -112,10 +113,10 @@ const LANGUAGES = {
 };
 const I18N = {
   ko: {
-    backlog:'백로그', operations:'운영', help:'도움말', workload:'서브에이전트 워크로드', attention:'확인 필요', issues:'이슈', manual:'사용자 매뉴얼', searchPlaceholder:'ID, 제목, 요구사항, 수용 기준 검색…', backlogFolder:'백로그', language:'언어', refresh:'새로고침', refreshWithUpdates:'새로고침 및 업데이트 확인', refreshChecking:'데이터와 신규 업데이트 확인 중…', refreshUpToDate:'최신 버전입니다', refreshUpdateFound:'새 업데이트: {version}', refreshCheckFailed:'업데이트 확인 실패', refreshDataFailed:'화면 데이터 새로고침 실패', themeSystem:'시스템', themeLight:'라이트', themeDark:'다크', accessUnchecked:'권한 미확인', loading:'Task Mecca 불러오는 중…', projectLoading:'{project} 불러오는 중…', disconnected:'연결 끊김', move:'이동', open:'열기', back:'뒤로', search:'검색', page:'페이지', status:'상태', all:'전체', ready:'등록됨', working:'작업 중', hold:'보류', blocked:'차단', done:'완료', todo:'할 일', active:'활성', quiet:'조용함', stale:'정체', workerMissing:'워커 없음', runtimeUnknown:'런타임 미확인', awaitingFinalize:'완료 처리 필요', needsUser:'사용자 개입 필요', stalled:'정체 확인 필요', notificationSettings:'알림 설정', telegramNotifications:'Telegram 알림', telegramBotToken:'Bot Token', telegramConnect:'봇 확인', telegramFindChat:'연결 확인', telegramTest:'테스트 알림', telegramDisconnect:'연결 해제', telegramGuide:'BotFather에서 봇을 만든 뒤 Token을 입력하세요. 봇 확인 후 Telegram에서 해당 봇에 /start를 보내고 연결 확인을 누르세요.', telegramConnected:'Telegram 연결됨', telegramConfigured:'봇 확인됨 · /start 후 연결 확인', telegramNotConfigured:'Telegram 미연결', notifyRegistered:'작업 등록', notifyStarted:'작업 착수', notifyApproval:'승인 필요', notifyInterrupted:'실행 중단/오류', notifyRuntimeUnknown:'실행 상태 확인 필요', notifyFinalize:'완료 처리 필요', notificationTestSent:'테스트 알림을 전송했습니다.', telegramAllOn:'전체 켜기', telegramAllOff:'전체 끄기', browserNotifications:'이 기기의 브라우저 알림', browserNotificationsGuide:'Task Mecca를 열어 둔 이 브라우저/기기의 시스템 알림으로 표시합니다. Telegram 알림과는 별도로 설정됩니다.', allowBrowserNotifications:'브라우저 알림 권한 허용', notifyIntervention:'사용자 개입 필요', notifyCompleted:'태스크 완료', notifyStalled:'작업 정체', notificationsBlocked:'브라우저에서 알림이 차단되어 있습니다.', notificationsOn:'알림 켜짐', notificationsOff:'알림 꺼짐', notificationsPermissionNeeded:'브라우저 알림을 켜야 실제 알림을 받을 수 있습니다.', notificationsDeniedGuide:'브라우저 주소창의 사이트 설정에서 알림을 허용한 뒤 페이지를 새로고침하세요.', notificationTypesDisabled:'알림 유형이 모두 꺼져 있습니다.', sort:'정렬', perPage:'페이지당', updatedNewest:'최근 업데이트순', updatedOldest:'오래된 업데이트순', autoRows:'자동 ({n})', pageSummary:'{page} / {pages} 페이지 · {total}개', autoRowsSummary:' · 자동 {n}행', allStatuses:'전체 상태', items:'개', needsAttention:'확인 필요', updated:'업데이트', agent:'에이전트', activeTime:'활성 시간', task:'작업', id:'ID', repository:'저장소', noMatches:'선택한 필터에 맞는 백로그가 없습니다.', backlogUninitializedSummary:'백로그 생성 대기', backlogUninitializedTitle:'아직 등록된 작업이 없습니다.', backlogUninitializedBody:'첫 작업을 등록하면 백로그가 자동으로 생성됩니다.', manualIntro:'Task Mecca를 처음 사용하는 순서와 운영 규칙을 UI 안에서 확인합니다.', dashboardLaunch:'대시보드 실행', keyboard:'키보드', quickStart:'빠른 시작', detailedGuide:'상세 운영 가이드', manualLoading:'매뉴얼을 불러오는 중…', manualUnavailable:'매뉴얼을 불러올 수 없습니다.', operationsEyebrow:'운영', diagnostics:'진단', noAttention:'현재 확인이 필요한 작업이 없습니다.', advisory:'사용자 개입, 완료 처리 필요, 런타임 정체 등 대응이 필요한 작업을 표시합니다.', workers:'워커', doing:'진행', downstreamBlocked:'하위 차단', readyContinuity:'연속 작업 후보', noWorkload:'할당된 서브에이전트 워크로드가 없습니다.', noCurrentDoing:'현재 진행 중인 작업이 없습니다.', unassignedDoing:'미할당 진행 작업', releasedHold:'해제된 보류 소유권', continuity:'연속', blocks:'차단', scope:'변경범위', workloadIntro:'백로그/Git 기반의 할당 현황입니다. 관측 가능한 경우 runtime health를 함께 표시합니다.', issuesIntro:'현재 스냅샷의 doctor 및 hold-review 진단 결과입니다.', noIssues:'진단 이슈가 없습니다.', taskDefinition:'작업 정의', simpleNote:'Simple Task · 별도 요건정의 확인이 필요하지 않습니다.', goal:'목표', acceptance:'수용 기준', requirements:'요건 정의서', definedNote:'Defined Task · 등록 전 요건 정의를 확인한 작업입니다.', background:'배경 및 문제', scopeIn:'포함', scopeOut:'제외', constraints:'제약 및 보존 조건', legacyTask:'Legacy 작업', legacyNote:'Legacy 백로그 · 없는 요건 데이터를 만들지 않고 기존 필드를 표시합니다.', description:'설명', tocTitle:'이 작업의 목차', tocOpen:'목차 열기', tocClose:'목차 닫기', lifecycle:'Lifecycle', noLifecycle:'아직 사용할 수 있는 lifecycle 전환 기록이 없습니다.', stayed:'유지', provisional:'임시', overview:'개요', registrant:'등록자', changeScope:'변경범위', dependsOn:'선행', related:'연관', location:'위치', completed:'완료', activity:'활동', lastSignal:'마지막 신호', signalSource:'신호 근거', execution:'실행 정보', runtimeProvider:'RuntimeProvider', dispatchStatus:'Dispatch 상태', executionEvidence:'실행 근거', fallbackEvidence:'Fallback 근거', workNotes:'작업 노트', result:'결과', verification:'검증', rawMarkdown:'Raw Markdown', rendered:'렌더링', waitTime:'대기 시간', queueTime:'큐 시간', leadTime:'리드 시간', provisionalTiming:'임시 lifecycle 시간', incompleteHistory:'불완전한 lifecycle 이력', lastObservable:'마지막 관측 활동 {ago} ({source}).', workerMissingDetail:'작업은 진행 중이지만 할당된 워커가 runtime registry에 없습니다.', quietAdvisory:'참고용 경고입니다. 장시간 작업은 정상적으로 조용할 수 있습니다.', backToBacklog:'← 백로그', taskNotFound:'작업을 찾을 수 없습니다.', restrictedNow:'현재 제한됨', lastFullAccess:'마지막 Full Access', fullAccess:'Full Access', lastRestricted:'마지막 검증 제한', accessLastChecked:'마지막 권한 확인', accessNotChecked:'권한 미확인', networkOff:'네트워크 꺼짐', notChecked:'확인 안 됨', freshDispatch:'dispatch 직전에 항상 새 active preflight를 실행합니다.', dispatchDisabled:'서브에이전트 dispatch 중지', enableFullAccess:'현재 런타임 제한이 감지되었습니다. dispatch 전에 Full Access를 활성화하세요.', auto:'자동', manualMode:'수동', noBacklog:'선택된 백로그 없음', copyCode:'코드 복사', copied:'복사됨', copyFailed:'복사 실패', mermaid:'Mermaid', showSource:'소스 보기', hideSource:'소스 숨기기', renderingDiagram:'다이어그램 렌더링 중…', mermaidUnavailable:'Mermaid renderer를 사용할 수 없습니다.', mermaidUnavailableDetail:'로컬 및 CDN Mermaid 런타임을 불러오지 못했습니다. Source에서 원문을 확인하거나 복사할 수 있습니다.', mermaidFailed:'Mermaid 렌더링 실패', invalidMermaid:'유효하지 않은 Mermaid 문법', secondsAgo:'{n}초 전', minutesAgo:'{n}분 전', hoursAgo:'{n}시간 전', daysAgo:'{n}일 전', justNow:'방금', updatedColumn:'마지막 업데이트', activeColumn:'활성', agentColumn:'에이전트', statusColumn:'상태', taskColumn:'작업', expandSidebar:'사이드바 펼치기', collapseSidebar:'사이드바 접기', eventRegistered:'등록', eventAssigned:'배정', eventStarted:'착수', eventReviewStarted:'Controller 검토 시작', eventWaiting:'사용자 대기', eventResumed:'재개', eventHold:'보류', eventCompleted:'완료', observatory:'백로그 관제', theme:'테마', followSystemTheme:'시스템 테마 따르기', useLightTheme:'라이트 테마 사용', useDarkTheme:'다크 테마 사용', selectBacklog:'백로그 폴더 선택', provisionalTimingDetail:'전환을 직접 확인한 기록이 없어 파일·런타임 관측 시각을 사용합니다. 실제 전환 시각과 다를 수 있습니다.', incompleteHistoryDetail:'과거 lifecycle의 착수 근거가 없어 일부 시간은 정확히 복원할 수 없습니다.'
+    backlog:'백로그', operations:'운영', help:'도움말', workload:'서브에이전트 워크로드', attention:'확인 필요', issues:'이슈', manual:'사용자 매뉴얼', searchPlaceholder:'ID, 제목, 요구사항, 수용 기준 검색…', backlogFolder:'백로그', language:'언어', refresh:'새로고침', refreshWithUpdates:'새로고침 및 업데이트 확인', refreshChecking:'데이터와 신규 업데이트 확인 중…', refreshUpToDate:'최신 버전입니다', refreshUpdateFound:'새 업데이트: {version}', refreshCheckFailed:'업데이트 확인 실패', refreshDataFailed:'화면 데이터 새로고침 실패', themeSystem:'시스템', themeLight:'라이트', themeDark:'다크', accessUnchecked:'권한 미확인', loading:'Task Mecca 불러오는 중…', projectLoading:'{project} 불러오는 중…', disconnected:'연결 끊김', move:'이동', open:'열기', back:'뒤로', search:'검색', page:'페이지', status:'상태', all:'전체', ready:'등록됨', working:'작업 중', hold:'보류', blocked:'차단', done:'완료', todo:'할 일', active:'활성', quiet:'조용함', stale:'정체', workerMissing:'워커 없음', runtimeUnknown:'런타임 미확인', awaitingFinalize:'완료 처리 필요', needsUser:'사용자 개입 필요', stalled:'정체 확인 필요', notificationSettings:'알림 설정', telegramNotifications:'Telegram 알림', telegramBotToken:'Bot Token', telegramConnect:'봇 확인', telegramFindChat:'연결 확인', telegramTest:'테스트 알림', telegramDisconnect:'연결 해제', telegramGuide:'BotFather에서 봇을 만든 뒤 Token을 입력하세요. 봇 확인 후 Telegram에서 해당 봇에 /start를 보내고 연결 확인을 누르세요.', telegramConnected:'Telegram 연결됨', telegramConfigured:'봇 확인됨 · /start 후 연결 확인', telegramNotConfigured:'Telegram 미연결', notifyRegistered:'작업 등록', notifyStarted:'작업 착수', notifyApproval:'승인 필요', notifyInterrupted:'실행 중단/오류', notifyRuntimeUnknown:'실행 상태 확인 필요', notifyFinalize:'완료 처리 필요', notificationTestSent:'테스트 알림을 전송했습니다.', telegramAllOn:'전체 켜기', telegramAllOff:'전체 끄기', browserNotifications:'이 기기의 브라우저 알림', browserNotificationsGuide:'Task Mecca를 열어 둔 이 브라우저/기기의 시스템 알림으로 표시합니다. Telegram 알림과는 별도로 설정됩니다.', allowBrowserNotifications:'브라우저 알림 권한 허용', notifyIntervention:'사용자 개입 필요', notifyCompleted:'태스크 완료', notifyStalled:'작업 정체', notificationsBlocked:'브라우저에서 알림이 차단되어 있습니다.', notificationsOn:'알림 켜짐', notificationsOff:'알림 꺼짐', notificationsPermissionNeeded:'브라우저 알림을 켜야 실제 알림을 받을 수 있습니다.', notificationsDeniedGuide:'브라우저 주소창의 사이트 설정에서 알림을 허용한 뒤 페이지를 새로고침하세요.', notificationTypesDisabled:'알림 유형이 모두 꺼져 있습니다.', sort:'정렬', perPage:'페이지당', updatedNewest:'최근 업데이트순', updatedOldest:'오래된 업데이트순', autoRows:'자동 ({n})', pageSummary:'{page} / {pages} 페이지 · {total}개', autoRowsSummary:' · 자동 {n}행', allStatuses:'전체 상태', items:'개', needsAttention:'확인 필요', updated:'업데이트', agent:'에이전트', activeTime:'활성 시간', task:'작업', id:'ID', repository:'저장소', noMatches:'선택한 필터에 맞는 백로그가 없습니다.', backlogUninitializedSummary:'백로그 생성 대기', backlogUninitializedTitle:'아직 등록된 작업이 없습니다.', backlogUninitializedBody:'첫 작업을 등록하면 백로그가 자동으로 생성됩니다.', manualIntro:'Task Mecca를 처음 사용하는 순서와 운영 규칙을 UI 안에서 확인합니다.', dashboardLaunch:'대시보드 실행', keyboard:'키보드', quickStart:'빠른 시작', detailedGuide:'상세 운영 가이드', manualLoading:'매뉴얼을 불러오는 중…', manualUnavailable:'매뉴얼을 불러올 수 없습니다.', operationsEyebrow:'운영', diagnostics:'진단', noAttention:'현재 확인이 필요한 작업이 없습니다.', advisory:'사용자 개입, 완료 처리 필요, 런타임 정체 등 대응이 필요한 작업을 표시합니다.', workers:'워커', doing:'진행', downstreamBlocked:'하위 차단', readyContinuity:'연속 작업 후보', noWorkload:'할당된 서브에이전트 워크로드가 없습니다.', noCurrentDoing:'현재 진행 중인 작업이 없습니다.', unassignedDoing:'미할당 진행 작업', releasedHold:'해제된 보류 소유권', continuity:'연속', blocks:'차단', scope:'변경범위', workloadIntro:'백로그/Git 기반의 할당 현황입니다. 관측 가능한 경우 runtime health를 함께 표시합니다.', issuesIntro:'현재 스냅샷의 doctor 및 hold-review 진단 결과입니다.', noIssues:'진단 이슈가 없습니다.', taskDefinition:'작업 정의', simpleNote:'Simple Task · 별도 요건정의 확인이 필요하지 않습니다.', goal:'목표', acceptance:'수용 기준', requirements:'요건 정의서', definedNote:'Defined Task · 등록 전 요건 정의를 확인한 작업입니다.', background:'배경 및 문제', scopeIn:'포함', scopeOut:'제외', constraints:'제약 및 보존 조건', legacyTask:'Legacy 작업', legacyNote:'Legacy 백로그 · 없는 요건 데이터를 만들지 않고 기존 필드를 표시합니다.', description:'설명', tocTitle:'이 작업의 목차', tocOpen:'목차 열기', tocClose:'목차 닫기', lifecycle:'Lifecycle', noLifecycle:'아직 사용할 수 있는 lifecycle 전환 기록이 없습니다.', stayed:'유지', provisional:'임시', overview:'개요', registrant:'등록자', changeScope:'변경범위', dependsOn:'선행', related:'연관', location:'위치', completed:'완료', activity:'활동', lastSignal:'마지막 신호', signalSource:'신호 근거', execution:'실행 정보', runtimeProvider:'RuntimeProvider', dispatchStatus:'Dispatch 상태', executionEvidence:'실행 근거', fallbackEvidence:'Fallback 근거', workNotes:'작업 노트', result:'결과', verification:'검증', rawMarkdown:'Raw Markdown', rendered:'렌더링', waitTime:'대기 시간', queueTime:'큐 시간', leadTime:'리드 시간', provisionalTiming:'임시 lifecycle 시간', incompleteHistory:'불완전한 lifecycle 이력', lastObservable:'마지막 관측 활동 {ago} ({source}).', workerMissingDetail:'작업은 진행 중이지만 할당된 워커가 runtime registry에 없습니다.', quietAdvisory:'참고용 경고입니다. 장시간 작업은 정상적으로 조용할 수 있습니다.', backToBacklog:'← 백로그', taskNotFound:'작업을 찾을 수 없습니다.', restrictedNow:'현재 제한됨', lastFullAccess:'마지막 Full Access', fullAccess:'Full Access', lastRestricted:'마지막 검증 제한', accessLastChecked:'마지막 권한 확인', accessNotChecked:'권한 미확인', networkOff:'네트워크 꺼짐', notChecked:'확인 안 됨', freshDispatch:'dispatch 직전에 항상 새 active preflight를 실행합니다.', dispatchDisabled:'서브에이전트 dispatch 중지', enableFullAccess:'현재 런타임 제한이 감지되었습니다. dispatch 전에 Full Access를 활성화하세요.', auto:'자동', manualMode:'수동', noBacklog:'선택된 백로그 없음', copyCode:'코드 복사', copied:'복사됨', copyFailed:'복사 실패', mermaid:'Mermaid', showSource:'소스 보기', hideSource:'소스 숨기기', renderingDiagram:'다이어그램 렌더링 중…', mermaidUnavailable:'Mermaid renderer를 사용할 수 없습니다.', mermaidUnavailableDetail:'로컬 및 CDN Mermaid 런타임을 불러오지 못했습니다. Source에서 원문을 확인하거나 복사할 수 있습니다.', mermaidFailed:'Mermaid 렌더링 실패', invalidMermaid:'유효하지 않은 Mermaid 문법', secondsAgo:'{n}초 전', minutesAgo:'{n}분 전', hoursAgo:'{n}시간 전', daysAgo:'{n}일 전', justNow:'방금', updatedColumn:'마지막 업데이트', activeColumn:'활성', agentColumn:'에이전트', statusColumn:'상태', taskColumn:'작업', expandSidebar:'사이드바 펼치기', collapseSidebar:'사이드바 접기', eventRegistered:'등록', eventAssigned:'배정', eventStarted:'착수', eventReviewStarted:'Controller 검토 시작', eventWaiting:'사용자 대기', eventResumed:'재개', eventHold:'보류', eventCompleted:'완료', observatory:'백로그 관제', theme:'테마', background:'배경', backgroundCozy:'코지 베이지 실내', backgroundAmbient:'확산광', backgroundNone:'배경 없음', followSystemTheme:'시스템 테마 따르기', useLightTheme:'라이트 테마 사용', useDarkTheme:'다크 테마 사용', selectBacklog:'백로그 폴더 선택', provisionalTimingDetail:'전환을 직접 확인한 기록이 없어 파일·런타임 관측 시각을 사용합니다. 실제 전환 시각과 다를 수 있습니다.', incompleteHistoryDetail:'과거 lifecycle의 착수 근거가 없어 일부 시간은 정확히 복원할 수 없습니다.'
   },
   en: {
-    backlog:'Backlog', operations:'Operations', help:'Help', workload:'Subagent Workload', attention:'Needs Attention', issues:'Issues', manual:'User Manual', searchPlaceholder:'Search ID, title, requirements, acceptance criteria…', backlogFolder:'Backlog', language:'Language', refresh:'Refresh', refreshWithUpdates:'Refresh and check for updates', refreshChecking:'Refreshing and checking for updates…', refreshUpToDate:'Already up to date', refreshUpdateFound:'Update available: {version}', refreshCheckFailed:'Could not check for updates', refreshDataFailed:'Could not refresh page data', themeSystem:'System', themeLight:'Light', themeDark:'Dark', accessUnchecked:'Access unchecked', loading:'Loading Task Mecca…', projectLoading:'Loading {project}…', disconnected:'Disconnected', move:'move', open:'open', back:'back', search:'search', page:'page', status:'Status', all:'All', ready:'Ready', working:'Working', hold:'Hold', blocked:'Blocked', done:'Done', todo:'Todo', active:'Active', quiet:'Quiet', stale:'Stale', workerMissing:'Worker missing', runtimeUnknown:'Runtime unknown', awaitingFinalize:'Needs finalization', needsUser:'User action required', stalled:'Stalled', notificationSettings:'Notification settings', telegramNotifications:'Telegram notifications', telegramBotToken:'Bot Token', telegramConnect:'Verify bot', telegramFindChat:'Confirm chat', telegramTest:'Test notification', telegramDisconnect:'Disconnect', telegramGuide:'Create a bot with BotFather, paste its token, then send /start to the bot in Telegram and confirm the chat here.', telegramConnected:'Telegram connected', telegramConfigured:'Bot verified · send /start then confirm chat', telegramNotConfigured:'Telegram not connected', notifyRegistered:'Task registered', notifyStarted:'Task started', notifyApproval:'Approval required', notifyInterrupted:'Execution interrupted/error', notifyRuntimeUnknown:'Runtime status unknown', notifyFinalize:'Finalize required', notificationTestSent:'Test notification sent.', telegramAllOn:'Enable all', telegramAllOff:'Disable all', browserNotifications:'Browser notifications on this device', browserNotificationsGuide:'Shows system notifications on this browser/device while using Task Mecca. Configure these separately from Telegram notifications.', allowBrowserNotifications:'Allow browser notification permission', notifyIntervention:'User action required', notifyCompleted:'Task completed', notifyStalled:'Task stalled', notificationsBlocked:'Notifications are blocked by the browser.', notificationsOn:'Notifications on', notificationsOff:'Notifications off', notificationsPermissionNeeded:'Enable browser notifications to receive actual alerts.', notificationsDeniedGuide:'Allow notifications in the browser site settings, then refresh this page.', notificationTypesDisabled:'All notification types are turned off.', sort:'Sort', perPage:'Per page', updatedNewest:'Updated newest', updatedOldest:'Updated oldest', autoRows:'Auto ({n})', pageSummary:'Page {page} / {pages} · {total} items', autoRowsSummary:' · Auto {n} rows', allStatuses:'All statuses', items:'items', needsAttention:'Needs attention', updated:'Updated', agent:'Agent', activeTime:'Active time', task:'Task', id:'ID', repository:'Repository', noMatches:'No backlog items match the selected filters.', backlogUninitializedSummary:'Waiting for backlog creation', backlogUninitializedTitle:'No tasks have been registered yet.', backlogUninitializedBody:'The backlog will be created automatically when the first task is registered.', manualIntro:'Review the first-use flow and Task Mecca operating rules inside the UI.', dashboardLaunch:'Dashboard launch', keyboard:'Keyboard', quickStart:'Quick Start', detailedGuide:'Detailed Operations Guide', manualLoading:'Manual is loading…', manualUnavailable:'Manual unavailable.', operationsEyebrow:'Operations', diagnostics:'Diagnostics', noAttention:'No tasks currently need attention.', advisory:'Shows tasks that need user action, finalization, or runtime investigation.', workers:'Workers', doing:'Doing', downstreamBlocked:'Downstream blocked', readyContinuity:'Ready continuity', noWorkload:'No assigned subagent workload.', noCurrentDoing:'No current doing task.', unassignedDoing:'Unassigned doing', releasedHold:'Released hold ownership', continuity:'Continuity', blocks:'Blocks', scope:'Change scope', workloadIntro:'Durable allocation view from backlog/Git. Runtime health is shown when observable.', issuesIntro:'Doctor and hold-review findings from the current snapshot.', noIssues:'No diagnostic issues.', taskDefinition:'Task Definition', simpleNote:'Simple Task · no separate requirement-definition confirmation required.', goal:'Goal', acceptance:'Acceptance criteria', requirements:'Requirements', definedNote:'Defined Task · requirement definition confirmed before registration.', background:'Background & problem', scopeIn:'IN', scopeOut:'OUT', constraints:'Constraints & preservation', legacyTask:'Legacy task', legacyNote:'Legacy backlog · rendered from available fields without inventing missing requirement data.', description:'Description', tocTitle:'On this task', tocOpen:'Open table of contents', tocClose:'Close table of contents', lifecycle:'Lifecycle', noLifecycle:'No lifecycle transitions are available yet.', stayed:'Stayed', provisional:'provisional', overview:'Overview', registrant:'Registrant', changeScope:'Change scope', dependsOn:'Depends on', related:'Related', location:'Location', completed:'Completed', activity:'Activity', lastSignal:'Last signal', signalSource:'Signal source', execution:'Execution', runtimeProvider:'RuntimeProvider', dispatchStatus:'Dispatch status', executionEvidence:'Execution evidence', fallbackEvidence:'Fallback evidence', workNotes:'Work notes', result:'Result', verification:'Verification', rawMarkdown:'Raw Markdown', rendered:'Rendered', waitTime:'Wait time', queueTime:'Queue time', leadTime:'Lead time', provisionalTiming:'Provisional lifecycle timing', incompleteHistory:'Incomplete lifecycle history', lastObservable:'Last observable activity {ago} ({source}).', workerMissingDetail:'Task is doing but the assigned worker is absent from the available runtime registry.', quietAdvisory:'This is advisory; long-running work can be legitimately quiet.', backToBacklog:'← Backlog', taskNotFound:'Task not found.', restrictedNow:'Restricted now', lastFullAccess:'Last Full Access', fullAccess:'Full Access', lastRestricted:'Last check restricted', accessLastChecked:'Access last checked', accessNotChecked:'Access not checked', networkOff:'Net off', notChecked:'Not checked', freshDispatch:'dispatch always runs a fresh active preflight.', dispatchDisabled:'Subagent dispatch disabled', enableFullAccess:'Current runtime restriction detected. Enable Full Access before dispatch.', auto:'Auto', manualMode:'Manual', noBacklog:'No backlog selected', copyCode:'Copy code', copied:'Copied', copyFailed:'Copy failed', mermaid:'Mermaid', showSource:'Show source', hideSource:'Hide source', renderingDiagram:'Rendering diagram…', mermaidUnavailable:'Mermaid renderer unavailable.', mermaidUnavailableDetail:'Task Mecca could not load the local or CDN Mermaid runtime. Use Source to view or copy the diagram text.', mermaidFailed:'Mermaid render failed.', invalidMermaid:'Invalid Mermaid syntax', secondsAgo:'{n}s ago', minutesAgo:'{n}m ago', hoursAgo:'{n}h ago', daysAgo:'{n}d ago', justNow:'just now', updatedColumn:'Updated', activeColumn:'Active', agentColumn:'Agent', statusColumn:'Status', taskColumn:'Task', expandSidebar:'Expand sidebar', collapseSidebar:'Collapse sidebar', eventRegistered:'Registered', eventAssigned:'Assigned', eventStarted:'Started', eventReviewStarted:'Controller review started', eventWaiting:'Waiting for user', eventResumed:'Resumed', eventHold:'Hold', eventCompleted:'Completed', observatory:'Backlog Observatory', theme:'Theme', followSystemTheme:'Follow system theme', useLightTheme:'Use light theme', useDarkTheme:'Use dark theme', selectBacklog:'Select backlog folder', provisionalTimingDetail:'No direct transition report is available; timing uses file or runtime observation and may differ from the actual transition time.', incompleteHistoryDetail:'Some timing cannot be reconstructed exactly because the historical lifecycle has no observed start evidence.'
+    backlog:'Backlog', operations:'Operations', help:'Help', workload:'Subagent Workload', attention:'Needs Attention', issues:'Issues', manual:'User Manual', searchPlaceholder:'Search ID, title, requirements, acceptance criteria…', backlogFolder:'Backlog', language:'Language', refresh:'Refresh', refreshWithUpdates:'Refresh and check for updates', refreshChecking:'Refreshing and checking for updates…', refreshUpToDate:'Already up to date', refreshUpdateFound:'Update available: {version}', refreshCheckFailed:'Could not check for updates', refreshDataFailed:'Could not refresh page data', themeSystem:'System', themeLight:'Light', themeDark:'Dark', accessUnchecked:'Access unchecked', loading:'Loading Task Mecca…', projectLoading:'Loading {project}…', disconnected:'Disconnected', move:'move', open:'open', back:'back', search:'search', page:'page', status:'Status', all:'All', ready:'Ready', working:'Working', hold:'Hold', blocked:'Blocked', done:'Done', todo:'Todo', active:'Active', quiet:'Quiet', stale:'Stale', workerMissing:'Worker missing', runtimeUnknown:'Runtime unknown', awaitingFinalize:'Needs finalization', needsUser:'User action required', stalled:'Stalled', notificationSettings:'Notification settings', telegramNotifications:'Telegram notifications', telegramBotToken:'Bot Token', telegramConnect:'Verify bot', telegramFindChat:'Confirm chat', telegramTest:'Test notification', telegramDisconnect:'Disconnect', telegramGuide:'Create a bot with BotFather, paste its token, then send /start to the bot in Telegram and confirm the chat here.', telegramConnected:'Telegram connected', telegramConfigured:'Bot verified · send /start then confirm chat', telegramNotConfigured:'Telegram not connected', notifyRegistered:'Task registered', notifyStarted:'Task started', notifyApproval:'Approval required', notifyInterrupted:'Execution interrupted/error', notifyRuntimeUnknown:'Runtime status unknown', notifyFinalize:'Finalize required', notificationTestSent:'Test notification sent.', telegramAllOn:'Enable all', telegramAllOff:'Disable all', browserNotifications:'Browser notifications on this device', browserNotificationsGuide:'Shows system notifications on this browser/device while using Task Mecca. Configure these separately from Telegram notifications.', allowBrowserNotifications:'Allow browser notification permission', notifyIntervention:'User action required', notifyCompleted:'Task completed', notifyStalled:'Task stalled', notificationsBlocked:'Notifications are blocked by the browser.', notificationsOn:'Notifications on', notificationsOff:'Notifications off', notificationsPermissionNeeded:'Enable browser notifications to receive actual alerts.', notificationsDeniedGuide:'Allow notifications in the browser site settings, then refresh this page.', notificationTypesDisabled:'All notification types are turned off.', sort:'Sort', perPage:'Per page', updatedNewest:'Updated newest', updatedOldest:'Updated oldest', autoRows:'Auto ({n})', pageSummary:'Page {page} / {pages} · {total} items', autoRowsSummary:' · Auto {n} rows', allStatuses:'All statuses', items:'items', needsAttention:'Needs attention', updated:'Updated', agent:'Agent', activeTime:'Active time', task:'Task', id:'ID', repository:'Repository', noMatches:'No backlog items match the selected filters.', backlogUninitializedSummary:'Waiting for backlog creation', backlogUninitializedTitle:'No tasks have been registered yet.', backlogUninitializedBody:'The backlog will be created automatically when the first task is registered.', manualIntro:'Review the first-use flow and Task Mecca operating rules inside the UI.', dashboardLaunch:'Dashboard launch', keyboard:'Keyboard', quickStart:'Quick Start', detailedGuide:'Detailed Operations Guide', manualLoading:'Manual is loading…', manualUnavailable:'Manual unavailable.', operationsEyebrow:'Operations', diagnostics:'Diagnostics', noAttention:'No tasks currently need attention.', advisory:'Shows tasks that need user action, finalization, or runtime investigation.', workers:'Workers', doing:'Doing', downstreamBlocked:'Downstream blocked', readyContinuity:'Ready continuity', noWorkload:'No assigned subagent workload.', noCurrentDoing:'No current doing task.', unassignedDoing:'Unassigned doing', releasedHold:'Released hold ownership', continuity:'Continuity', blocks:'Blocks', scope:'Change scope', workloadIntro:'Durable allocation view from backlog/Git. Runtime health is shown when observable.', issuesIntro:'Doctor and hold-review findings from the current snapshot.', noIssues:'No diagnostic issues.', taskDefinition:'Task Definition', simpleNote:'Simple Task · no separate requirement-definition confirmation required.', goal:'Goal', acceptance:'Acceptance criteria', requirements:'Requirements', definedNote:'Defined Task · requirement definition confirmed before registration.', background:'Background & problem', scopeIn:'IN', scopeOut:'OUT', constraints:'Constraints & preservation', legacyTask:'Legacy task', legacyNote:'Legacy backlog · rendered from available fields without inventing missing requirement data.', description:'Description', tocTitle:'On this task', tocOpen:'Open table of contents', tocClose:'Close table of contents', lifecycle:'Lifecycle', noLifecycle:'No lifecycle transitions are available yet.', stayed:'Stayed', provisional:'provisional', overview:'Overview', registrant:'Registrant', changeScope:'Change scope', dependsOn:'Depends on', related:'Related', location:'Location', completed:'Completed', activity:'Activity', lastSignal:'Last signal', signalSource:'Signal source', execution:'Execution', runtimeProvider:'RuntimeProvider', dispatchStatus:'Dispatch status', executionEvidence:'Execution evidence', fallbackEvidence:'Fallback evidence', workNotes:'Work notes', result:'Result', verification:'Verification', rawMarkdown:'Raw Markdown', rendered:'Rendered', waitTime:'Wait time', queueTime:'Queue time', leadTime:'Lead time', provisionalTiming:'Provisional lifecycle timing', incompleteHistory:'Incomplete lifecycle history', lastObservable:'Last observable activity {ago} ({source}).', workerMissingDetail:'Task is doing but the assigned worker is absent from the available runtime registry.', quietAdvisory:'This is advisory; long-running work can be legitimately quiet.', backToBacklog:'← Backlog', taskNotFound:'Task not found.', restrictedNow:'Restricted now', lastFullAccess:'Last Full Access', fullAccess:'Full Access', lastRestricted:'Last check restricted', accessLastChecked:'Access last checked', accessNotChecked:'Access not checked', networkOff:'Net off', notChecked:'Not checked', freshDispatch:'dispatch always runs a fresh active preflight.', dispatchDisabled:'Subagent dispatch disabled', enableFullAccess:'Current runtime restriction detected. Enable Full Access before dispatch.', auto:'Auto', manualMode:'Manual', noBacklog:'No backlog selected', copyCode:'Copy code', copied:'Copied', copyFailed:'Copy failed', mermaid:'Mermaid', showSource:'Show source', hideSource:'Hide source', renderingDiagram:'Rendering diagram…', mermaidUnavailable:'Mermaid renderer unavailable.', mermaidUnavailableDetail:'Task Mecca could not load the local or CDN Mermaid runtime. Use Source to view or copy the diagram text.', mermaidFailed:'Mermaid render failed.', invalidMermaid:'Invalid Mermaid syntax', secondsAgo:'{n}s ago', minutesAgo:'{n}m ago', hoursAgo:'{n}h ago', daysAgo:'{n}d ago', justNow:'just now', updatedColumn:'Updated', activeColumn:'Active', agentColumn:'Agent', statusColumn:'Status', taskColumn:'Task', expandSidebar:'Expand sidebar', collapseSidebar:'Collapse sidebar', eventRegistered:'Registered', eventAssigned:'Assigned', eventStarted:'Started', eventReviewStarted:'Controller review started', eventWaiting:'Waiting for user', eventResumed:'Resumed', eventHold:'Hold', eventCompleted:'Completed', observatory:'Backlog Observatory', theme:'Theme', background:'Background', backgroundCozy:'Cozy Beige Room', backgroundAmbient:'Atmospheric', backgroundNone:'None', followSystemTheme:'Follow system theme', useLightTheme:'Use light theme', useDarkTheme:'Use dark theme', selectBacklog:'Select backlog folder', provisionalTimingDetail:'No direct transition report is available; timing uses file or runtime observation and may differ from the actual transition time.', incompleteHistoryDetail:'Some timing cannot be reconstructed exactly because the historical lifecycle has no observed start evidence.'
   }
 };
 Object.assign(I18N.ko,{
@@ -1351,16 +1352,16 @@ async function refreshViewedTaskLifecycle(project,backlog,id,options={}) {
   const section=typeof document!=='undefined'?document.getElementById?.('lifecycle'):null;
   if(section&&!state.raw){
     const rect=section.getBoundingClientRect?.();
-    const previouslyAbove=rect&&rect.bottom<=0;
+    const previouslyAbove=rect&&rect.bottom<=(typeof window!=='undefined'?(window.TaskMeccaGlass?.readingViewport?.()?.top||0):0);
     const oldHeight=rect?.height||0;
-    const previousScroll=typeof window!=='undefined'?window.scrollY:0;
+    const previousScroll=typeof window!=='undefined'?(window.TaskMeccaGlass?.scrollY??window.scrollY):0;
     // Patch only lifecycle children. Keep section identity for TOC observer,
     // preserve Markdown, open disclosures, focus and reading position.
     patchLifecycleEvidence(section,newer);
     if(section.querySelector?.('#activityMetricsBody'))void loadTaskActivity(id,project);
     if(previouslyAbove&&typeof window!=='undefined'){
       const delta=(section.getBoundingClientRect?.().height||0)-oldHeight;
-      if(delta)window.scrollTo?.({left:window.scrollX,top:previousScroll+delta,behavior:'auto'});
+      if(delta)(window.TaskMeccaGlass?.scrollTo?.bind(window.TaskMeccaGlass)||window.scrollTo?.bind(window))?.({left:(window.TaskMeccaGlass?.scrollX??window.scrollX),top:previousScroll+delta,behavior:'auto'});
     }
   }
   return true;
@@ -1478,7 +1479,7 @@ async function checkContentRevision(establishOnly=false) {
 }
 
 async function refreshVisibleContent() {
-  const scrollY=window.scrollY;
+  const scrollY=(window.TaskMeccaGlass?.scrollY??window.scrollY);
   state.pendingContentUpdate=false;
   state.pendingContentReason='';
   state.pendingObservedRevision='';
@@ -1491,7 +1492,7 @@ async function refreshVisibleContent() {
     await refresh();
     await checkContentRevision(true);
   }
-  requestAnimationFrame(()=>window.scrollTo({top:scrollY,left:0,behavior:'auto'}));
+  requestAnimationFrame(()=>(window.TaskMeccaGlass?.scrollTo?.bind(window.TaskMeccaGlass)||window.scrollTo.bind(window))({top:scrollY,left:0,behavior:'auto'}));
 }
 
 let manualRefreshInFlight=false;
@@ -3121,7 +3122,7 @@ function notificationHistoryMarkup(){
 }
 function notificationCenterView(){return `<div class="notification-center-tabs" role="tablist"><button type="button" role="tab" data-center-tab="history" aria-selected="${state.notificationCenterTab==='history'}">${esc(t('notificationHistory'))}<span id="centerHistoryBadge">${state.notificationHistoryNew?` · ${state.notificationHistoryNew}`:''}</span></button><button type="button" role="tab" data-center-tab="settings" aria-selected="${state.notificationCenterTab==='settings'}">${esc(t('notificationSettings'))}</button></div>${telegramSetupGuideMarkup()}${state.notificationCenterTab==='settings'?'<section id="notificationSettingsBody" class="notification-settings-body"></section>':`<p class="summary">${esc(t('notificationHistoryGuide'))}</p><section id="centerHistory">${notificationHistoryMarkup()}</section>`}`;}
 function bindNotificationHistoryActions(){document.querySelectorAll('[data-history-page]').forEach(button=>button.addEventListener('click',()=>{state.notificationHistoryPage=Number(button.dataset.historyPage);if(state.notificationHistoryPage===1)captureHistoryWindow();updateNotificationHistoryDOM();}));document.querySelectorAll('[data-history-latest]').forEach(button=>button.addEventListener('click',()=>{state.notificationHistoryPage=1;captureHistoryWindow();updateNotificationHistoryDOM();}));}
-function updateNotificationHistoryDOM(){if(state.view!=='notifications')return;const badge=$('#centerHistoryBadge');if(badge)badge.textContent=state.notificationHistoryNew?' · '+state.notificationHistoryNew:'';const region=$('#centerHistory');if(!region)return;const scroll=region.querySelector('.notification-history-scroll'),left=scroll?.scrollLeft||0,top=window.scrollY,open=[...region.querySelectorAll('details[open]')].map(item=>item.dataset.historyDisclosure),active=document.activeElement,focusRow=active?.closest?.('[data-history-row]')?.dataset.historyRow,focusPage=active?.dataset?.historyPage;region.innerHTML=notificationHistoryMarkup();for(const details of region.querySelectorAll('details'))details.open=open.includes(details.dataset.historyDisclosure);const nextScroll=region.querySelector('.notification-history-scroll');if(nextScroll)nextScroll.scrollLeft=left;bindNotificationHistoryActions();const focus=focusRow?[...region.querySelectorAll('[data-history-row]')].find(row=>row.dataset.historyRow===focusRow)?.querySelector(active?.tagName==='SUMMARY'?'summary':'a'):focusPage?[...region.querySelectorAll('[data-history-page]')].find(button=>button.dataset.historyPage===focusPage):null;focus?.focus({preventScroll:true});window.scrollTo?.(0,top);}
+function updateNotificationHistoryDOM(){if(state.view!=='notifications')return;const badge=$('#centerHistoryBadge');if(badge)badge.textContent=state.notificationHistoryNew?' · '+state.notificationHistoryNew:'';const region=$('#centerHistory');if(!region)return;const scroll=region.querySelector('.notification-history-scroll'),left=scroll?.scrollLeft||0,top=(window.TaskMeccaGlass?.scrollY??window.scrollY),open=[...region.querySelectorAll('details[open]')].map(item=>item.dataset.historyDisclosure),active=document.activeElement,focusRow=active?.closest?.('[data-history-row]')?.dataset.historyRow,focusPage=active?.dataset?.historyPage;region.innerHTML=notificationHistoryMarkup();for(const details of region.querySelectorAll('details'))details.open=open.includes(details.dataset.historyDisclosure);const nextScroll=region.querySelector('.notification-history-scroll');if(nextScroll)nextScroll.scrollLeft=left;bindNotificationHistoryActions();const focus=focusRow?[...region.querySelectorAll('[data-history-row]')].find(row=>row.dataset.historyRow===focusRow)?.querySelector(active?.tagName==='SUMMARY'?'summary':'a'):focusPage?[...region.querySelectorAll('[data-history-page]')].find(button=>button.dataset.historyPage===focusPage):null;focus?.focus({preventScroll:true});(window.TaskMeccaGlass?.scrollTo?.bind(window.TaskMeccaGlass)||window.scrollTo?.bind(window))?.(0,top);}
 const notificationSwitchPending=new Set();
 function notificationPendingKey(input){
  if(input.id)return 'id="'+input.id+'"';
@@ -3956,9 +3957,9 @@ async function refreshExecutionTarget(){
     if(banner){
       banner.hidden=target?.kind!=='pr';
       if(target?.kind==='pr'){
-        banner.innerHTML='<strong>PR #'+Number(target.pr_number)+' · '+esc(String(target.head_sha||'').slice(0,10))+'</strong> · '+
+        banner.innerHTML='<div class="preview-identity-copy"><strong>PR #'+Number(target.pr_number)+' · '+esc(String(target.head_sha||'').slice(0,10))+'</strong><span>'+
           esc(state.language==='ko'?'전체 실행 환경':'Full execution environment')+
-          ' <button id="prReturnDev" type="button" class="action-btn secondary">'+esc(state.language==='ko'?'Dev 복귀':'Return to Dev')+'</button>';
+          '</span></div><div class="preview-identity-actions"><button id="prReturnDev" type="button" class="action-btn secondary">'+esc(state.language==='ko'?'Dev 복귀':'Return to Dev')+'</button></div>';
         $('#prReturnDev')?.addEventListener('click',()=>{void returnToPinnedDev().catch(e=>alert(String(e?.message||e)))});
       }
     }
@@ -4894,7 +4895,7 @@ function statusFilterBar() {
     ['blocked',t('blocked'),c.blocked||0],
     ['done',t('done'),c.done||0],
   ];
-  return `<div class="status-filter-wrap"><div class="filter-label">${esc(t('status'))}</div><div class="status-filter-bar" role="group" aria-label="${esc(t('status'))}">${defs.map(([k,label,n])=>`<button class="status-filter-btn ${state.statusFilters.includes(k)?'active':''}" data-status-filter="${k}" aria-pressed="${state.statusFilters.includes(k)?'true':'false'}">${esc(label)}<span>${n}</span></button>`).join('')}</div></div>`;
+  return `<div class="status-filter-wrap" ${state.palette==='glass'?'id="glassStatusFilters"':''}><div class="filter-label">${esc(t('status'))}</div><div class="status-filter-bar" role="group" aria-label="${esc(t('status'))}">${defs.map(([k,label,n])=>`<button class="status-filter-btn ${state.statusFilters.includes(k)?'active':''}" data-status-filter="${k}" aria-pressed="${state.statusFilters.includes(k)?'true':'false'}">${esc(label)}<span>${n}</span></button>`).join('')}</div></div>`;
 }
 function tagFilterBar() {
   const catalog=currentProjectData()?.tag_catalog||{}, stats=Array.isArray(catalog.stats)?catalog.stats:[];
@@ -4922,7 +4923,9 @@ function listControls(info) {
   const data=currentProjectData()||{};
   const preliminary=Boolean(data.pending_reconciliation);
   const attention=preliminary?'—':String((data.counts||{}).attention||0);
-  return `<div class="backlog-compact-header"><div class="backlog-compact-title"><strong>${esc(data.repo||t('repository'))}</strong><span class="backlog-crumb">›</span><strong>${esc(t('backlog'))}</strong></div>${backlogListPicker()}${statusFilterBar()}${tagFilterBar()}<span class="backlog-attention">${esc(t('needsAttention'))} ${esc(attention)}</span></div><div class="backlog-compact-toolbar backlog-list-controls">${backlogListTools()}<div class="list-controls"><div class="control-group"><label>${esc(t('sort'))}<select id="listSort"><option value="id_desc" ${state.listSort==='id_desc'?'selected':''}>ID ↓</option><option value="id_asc" ${state.listSort==='id_asc'?'selected':''}>ID ↑</option><option value="updated_desc" ${state.listSort==='updated_desc'?'selected':''}>${esc(t('updatedNewest'))}</option><option value="updated_asc" ${state.listSort==='updated_asc'?'selected':''}>${esc(t('updatedOldest'))}</option></select></label><label>${esc(state.language==='ko'?'표시 수':t('perPage'))}<select id="listPageSize"><option value="auto" ${pageValue==='auto'?'selected':''}>${esc(t('autoRows',{n:info.pageSize}))}</option><option value="10" ${pageValue==='10'?'selected':''}>10</option><option value="20" ${pageValue==='20'?'selected':''}>20</option><option value="50" ${pageValue==='50'?'selected':''}>50</option></select></label></div><div class="pager"><button id="prevPage" ${info.page<=1?'disabled':''}>←</button><span>${esc(pageText)}</span><button id="nextPage" ${info.page>=info.pages?'disabled':''}>→</button></div></div></div>`;
+  const glassFilterSummary=state.statusFilters.map(k=>t(k==='doing'?'working':k)).join(' · ')+(state.tagFilters.length?' · '+state.tagFilters.length+' '+(state.language==='ko'?'태그':'tags'):'');
+  const glassFilterButton=state.palette==='glass'?`<button class="glass-filter-toggle action-btn secondary" id="glassFilterToggle" type="button" aria-expanded="${state.glassFiltersOpen?'true':'false'}" aria-controls="glassStatusFilters" aria-label="${esc(state.language==='ko'?'상태 및 태그 필터':'Status and tag filters')}" title="${esc(glassFilterSummary)}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h18l-7 8v7l-4 2v-9z"/></svg><span>${esc(glassFilterSummary)}</span></button>`:'';
+  return `<div class="backlog-compact-header ${state.glassFiltersOpen?'glass-filters-open':''}"><div class="backlog-compact-title"><strong>${esc(data.repo||t('repository'))}</strong><span class="backlog-crumb">›</span><strong>${esc(t('backlog'))}</strong></div>${backlogListPicker()}${glassFilterButton}${statusFilterBar()}${tagFilterBar()}<span class="backlog-attention">${esc(t('needsAttention'))} ${esc(attention)}</span></div><div class="backlog-compact-toolbar backlog-list-controls">${backlogListTools()}<div class="list-controls"><div class="control-group"><label>${esc(t('sort'))}<select id="listSort"><option value="id_desc" ${state.listSort==='id_desc'?'selected':''}>ID ↓</option><option value="id_asc" ${state.listSort==='id_asc'?'selected':''}>ID ↑</option><option value="updated_desc" ${state.listSort==='updated_desc'?'selected':''}>${esc(t('updatedNewest'))}</option><option value="updated_asc" ${state.listSort==='updated_asc'?'selected':''}>${esc(t('updatedOldest'))}</option></select></label><label>${esc(state.language==='ko'?'표시 수':t('perPage'))}<select id="listPageSize"><option value="auto" ${pageValue==='auto'?'selected':''}>${esc(t('autoRows',{n:info.pageSize}))}</option><option value="10" ${pageValue==='10'?'selected':''}>10</option><option value="20" ${pageValue==='20'?'selected':''}>20</option><option value="50" ${pageValue==='50'?'selected':''}>50</option></select></label></div><div class="pager"><button id="prevPage" ${info.page<=1?'disabled':''}>←</button><span>${esc(pageText)}</span><button id="nextPage" ${info.page>=info.pages?'disabled':''}>→</button></div></div></div>`;
 }
 
 function listView() {
@@ -5717,9 +5720,16 @@ function bindDetailToc() {
   const sections=[...document.querySelectorAll('.detail-section[id]')];
   if(!layout||!toc||!sections.length)return;
   const setOpen=open=>{
+    const wasOpen=layout.classList.contains('toc-open');
+    if(state.palette==='glass')window.TaskMeccaGlass?.prepareReaderLayout?.();
     layout.classList.toggle('toc-open',Boolean(open));
     toggle?.setAttribute('aria-expanded',open?'true':'false');
+    if(state.palette==='glass'&&window.matchMedia('(max-width:1280px)').matches){
+      if(open)close?.focus({preventScroll:true});else if(wasOpen)toggle?.focus({preventScroll:true});
+    }
+    window.TaskMeccaGlass?.refresh?.();
   };
+  layout.addEventListener('keydown',e=>{if(state.palette==='glass'&&e.key==='Escape'&&layout.classList.contains('toc-open')){e.preventDefault();e.stopPropagation();setOpen(false)}});
   toggle?.setAttribute('aria-expanded','false');
   toggle?.addEventListener('click',()=>setOpen(!layout.classList.contains('toc-open')));
   close?.addEventListener('click',()=>setOpen(false));
@@ -5735,7 +5745,7 @@ function bindDetailToc() {
     const observer=new IntersectionObserver(entries=>{
       const visible=entries.filter(x=>x.isIntersecting).sort((a,b)=>a.boundingClientRect.top-b.boundingClientRect.top);
       if(visible[0])setActive(visible[0].target.id);
-    },{rootMargin:'-18% 0px -68% 0px',threshold:[0,0.01]});
+    },{root:window.TaskMeccaGlass?.scrollHost?.()||null,rootMargin:'-18% 0px -68% 0px',threshold:[0,0.01]});
     sections.forEach(section=>observer.observe(section));
   }
   const hash=decodeURIComponent(location.hash.replace(/^#/,''));
@@ -6608,7 +6618,7 @@ function renderActivityDetailControls(taskID,project=state.project){
   const activeRow=root.contains?.(active)?active?.getAttribute?.('data-workflow-row-select'):null,activeExpand=root.contains?.(active)?active?.getAttribute?.('data-workflow-row-expand'):null;
   const selected=root.querySelector?.('#activityTimelineSelection');
   const selection=selected&&!selected.hidden?selected.textContent:null;
-  const y=typeof window!=='undefined'?window.scrollY:0,x=typeof window!=='undefined'?window.scrollX:0;
+  const y=typeof window!=='undefined'?(window.TaskMeccaGlass?.scrollY??window.scrollY):0,x=typeof window!=='undefined'?(window.TaskMeccaGlass?.scrollX??window.scrollX):0;
   workflowFloatingViews.get(root)?.dispose();workflowFloatingViews.delete(root);
   root.innerHTML=activityMetricsBody(activityDetailCache.get(activityDetailKey(taskID,project)),taskID);
   for(const [id,open] of disclosures){const el=root.querySelector?.('#'+id);if(el)el.open=open;}
@@ -6618,7 +6628,7 @@ function renderActivityDetailControls(taskID,project=state.project){
   if(activeId)root.querySelector?.('#'+activeId)?.focus?.({preventScroll:true});
   if(activeRow||activeExpand){const attr=activeRow?'data-workflow-row-select':'data-workflow-row-expand',value=activeRow||activeExpand;[...(root.querySelectorAll?.('['+attr+']')||[])].find(button=>button.getAttribute(attr)===value)?.focus?.({preventScroll:true});}
   if(activeInterval){const button=[...(root.querySelectorAll?.('[data-workflow-interval]')||[])].find(button=>button.getAttribute('data-workflow-interval')===activeInterval);(button||root.querySelector?.('#workflowTimelineViewport'))?.focus?.({preventScroll:true});}
-  if(typeof window!=='undefined'&&window.scrollY!==y)window.scrollTo?.({left:x,top:y,behavior:'auto'});
+  if(typeof window!=='undefined'&&(window.TaskMeccaGlass?.scrollY??window.scrollY)!==y)(window.TaskMeccaGlass?.scrollTo?.bind(window.TaskMeccaGlass)||window.scrollTo?.bind(window))?.({left:x,top:y,behavior:'auto'});
 }
 
 async function loadTaskActivity(id,project=state.project,runtimeDiagnostic=false){
@@ -6756,8 +6766,8 @@ function restoreLiveDetailReadingState(task) {
   state.detailLifecycleError='';
   const opened=typeof document!=='undefined'&&document.querySelectorAll
     ? [...document.querySelectorAll('.detail-layout details[open][id]')].map(node=>node.id) : [];
-  const scrollX=typeof window!=='undefined'?window.scrollX:0;
-  const scrollY=typeof window!=='undefined'?window.scrollY:0;
+  const scrollX=typeof window!=='undefined'?(window.TaskMeccaGlass?.scrollX??window.scrollX):0;
+  const scrollY=typeof window!=='undefined'?(window.TaskMeccaGlass?.scrollY??window.scrollY):0;
   const activeId=typeof document!=='undefined'?document.activeElement?.id:'';
   state.detailTask=task;
   render();
@@ -6767,7 +6777,7 @@ function restoreLiveDetailReadingState(task) {
   }
   if(typeof requestAnimationFrame==='function'&&typeof window!=='undefined'){
     requestAnimationFrame(()=>{
-      window.scrollTo?.({left:scrollX,top:scrollY,behavior:'auto'});
+      (window.TaskMeccaGlass?.scrollTo?.bind(window.TaskMeccaGlass)||window.scrollTo?.bind(window))?.({left:scrollX,top:scrollY,behavior:'auto'});
       if(activeId)document.getElementById?.(activeId)?.focus?.({preventScroll:true});
     });
   }
@@ -6779,11 +6789,11 @@ function refreshVisibleLifecycleSection() {
   const section=typeof document!=='undefined'?document.getElementById?.('lifecycle'):null;
   if(!section)return;
   const rect=section.getBoundingClientRect?.(),oldHeight=rect?.height||0;
-  const previousScroll=typeof window!=='undefined'?window.scrollY:0;
+  const previousScroll=typeof window!=='undefined'?(window.TaskMeccaGlass?.scrollY??window.scrollY):0;
   patchLifecycleEvidence(section,state.detailTask);
-  if(rect?.bottom<=0&&typeof window!=='undefined'){
+  if(typeof window!=='undefined'&&rect?.bottom<=(window.TaskMeccaGlass?.readingViewport?.()?.top||0)){
     const delta=(section.getBoundingClientRect?.().height||0)-oldHeight;
-    if(delta)window.scrollTo?.({left:window.scrollX,top:previousScroll+delta,behavior:'auto'});
+    if(delta)(window.TaskMeccaGlass?.scrollTo?.bind(window.TaskMeccaGlass)||window.scrollTo?.bind(window))?.({left:(window.TaskMeccaGlass?.scrollX??window.scrollX),top:previousScroll+delta,behavior:'auto'});
   }
 }
 function retryTaskLifecycle() {
@@ -6955,11 +6965,12 @@ if(typeof window!=='undefined')window.addEventListener?.('pointercancel',e=>{
 function openTask(id) {
   if (!id) return;
   releaseTaskRowTouch(false);
+  window?.TaskMeccaGlass?.rememberListReading?.(state.project+'|'+state.backlog);
   state.detail=id; state.detailTask=cachedTaskDetail(id); state.detailLifecycleError=''; state.loadError=''; state.raw=false; state.view='backlog';
-  const p=new URLSearchParams(); if(state.project)p.set('project',state.project); if(state.backlog)p.set('backlog',state.backlog); if(state.tagFilters.length)p.set('tags',state.tagFilters.join(',')); history.pushState({},'',`/tasks/${encodeURIComponent(id)}${p.toString()?`?${p.toString()}`:''}`); render(); loadTaskDetail(id);
+  const p=new URLSearchParams(); if(state.project)p.set('project',state.project); if(state.backlog)p.set('backlog',state.backlog); if(state.tagFilters.length)p.set('tags',state.tagFilters.join(',')); history.pushState({},'',`/tasks/${encodeURIComponent(id)}${p.toString()?`?${p.toString()}`:''}`); render();if(window?.TaskMeccaGlass?.scrollHost?.())window.TaskMeccaGlass.scrollTo({top:0,behavior:'auto'});loadTaskDetail(id);
 }
 function closeTask() {
-  state.detail=null; state.detailTask=null; state.loadError=''; history.pushState({},'',state.view==='backlog'?backlogUrl():`/?view=${state.view}`); render();
+  state.detail=null; state.detailTask=null; state.loadError=''; history.pushState({},'',state.view==='backlog'?backlogUrl():`/?view=${state.view}`);render();window?.TaskMeccaGlass?.restoreListReading?.(state.project+'|'+state.backlog);
   // A direct-link detail page never needed the heavy list before its first paint.
   // Fetch the list only when the user actually returns to it.
   void refreshList();
@@ -6978,6 +6989,7 @@ function bindRows() {
     el.addEventListener('focusin',()=>prefetchTaskDetail(el.dataset.id));
     el.addEventListener('touchstart',()=>prefetchTaskDetail(el.dataset.id),{passive:true});
   });
+  $('#glassFilterToggle')?.addEventListener('click',()=>{state.glassFiltersOpen=!state.glassFiltersOpen;render();$('#glassFilterToggle')?.focus({preventScroll:true})});
   document.querySelectorAll('[data-status-filter]').forEach(b=>b.addEventListener('click',()=>setStatusFilter(b.dataset.statusFilter)));
   document.querySelectorAll('[data-tag-filter]').forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();setTagFilter(b.dataset.tagFilter)}));
   $('#tagExploreBtn')?.addEventListener('click',()=>{state.tagExplorerOpen=!state.tagExplorerOpen;render()});
@@ -7004,7 +7016,7 @@ function changeListPage(delta) {
   if (state.view !== 'backlog') return;
   const info=pageInfo(), next=Math.min(info.pages,Math.max(1,state.listPage+delta));
   if (next===state.listPage) return;
-  state.listPage=next; state.selectedIndex=0; refreshList(); window.scrollTo({top:0,behavior:'smooth'});
+  state.listPage=next; state.selectedIndex=0; refreshList(); (window.TaskMeccaGlass?.scrollTo?.bind(window.TaskMeccaGlass)||window.scrollTo.bind(window))({top:0,behavior:'smooth'});
 }
 function highlightSelection(index) {
   const rows=[...document.querySelectorAll('.task-row[data-row-index]')];
@@ -7037,8 +7049,9 @@ function updateAutoListPageSize(force=false) {
   if(!list)return;
   const shortcut=document.querySelector('.shortcut-bar');
   const shortcutHeight=shortcut?.getBoundingClientRect().height||28;
-  const listTopAtPageTop=list.getBoundingClientRect().top+window.scrollY;
-  const available=Math.max(0,window.innerHeight-listTopAtPageTop-shortcutHeight-12);
+  const readingViewport=window.TaskMeccaGlass?.readingViewport?.();
+  const listTopAtPageTop=list.getBoundingClientRect().top+(window.TaskMeccaGlass?.scrollY??window.scrollY)-(readingViewport?.top||0);
+  const available=Math.max(0,(readingViewport?.height||window.innerHeight)-listTopAtPageTop-(readingViewport?readingViewport.paddingBottom:shortcutHeight)-12);
   // Initial row heights can fluctuate as file-only and canonical projections
   // paint. Never increase the row-height estimate within the same project,
   // filter and viewport context: pagination itself must not make the measured
@@ -7158,6 +7171,8 @@ let notificationSettingsDraft=null;
 function render() {
   syncWorkflowTimelineEntry();
   if(taskRowTouchActive && state.view==='backlog' && !state.detail){taskRowDeferredRender=true;return;}
+  const glassReaders=window.TaskMeccaGlass?.captureReaders?.();
+  try {
   syncTelegramConnectionWatch();
   const settingsElement=$('#notificationSettingsBody');
   const settingsDraft=settingsElement?.dataset.context===notificationHistoryContext()?preserveNotificationSettings(settingsElement):notificationSettingsDraft?.context===notificationHistoryContext()?notificationSettingsDraft.draft:null;
@@ -7208,10 +7223,10 @@ function render() {
     $('#lifecycleRetryBtn')?.addEventListener('click',retryTaskLifecycle);
     $('#backBtn')?.addEventListener('click',closeTask);
     $('#rawToggle')?.addEventListener('click',()=>{
-      const scrollY=window.scrollY;
+      const scrollY=(window.TaskMeccaGlass?.scrollY??window.scrollY);
       state.raw=!state.raw;
       render();
-      requestAnimationFrame(()=>window.scrollTo({top:scrollY,left:0,behavior:'auto'}));
+      requestAnimationFrame(()=>(window.TaskMeccaGlass?.scrollTo?.bind(window.TaskMeccaGlass)||window.scrollTo.bind(window))({top:scrollY,left:0,behavior:'auto'}));
     });
     bindCopyButtons(); bindMermaidControls(); bindDetailToc(); bindDetailInteractions(); renderMermaidDiagrams();
     return;
@@ -7267,6 +7282,9 @@ function render() {
   if(state.view==='backlog')scheduleAutoListPageSize(true);
   document.querySelectorAll('[data-manual-tab]').forEach(b=>b.onclick=()=>{state.manualTab=b.dataset.manualTab;render()});
   bindCopyButtons(); bindMermaidControls(); renderMermaidDiagrams();
+  } finally {
+    window.TaskMeccaGlass?.restoreReaders?.(glassReaders);
+  }
 }
 
 async function loadManual(language = state.language, force = false) {
@@ -7771,6 +7789,7 @@ function route(fromPop=false) {
   }
   if(previousAttentionContext!==state.project+'|'+state.backlog)clearCurrentUserAttention();
  render();
+  if(fromPop&&previousDetail&&!state.detail&&state.view==='backlog')window?.TaskMeccaGlass?.restoreListReading?.(state.project+'|'+state.backlog);
   if(fromPop&&state.view==='storage')queueMicrotask(()=>loadStorageManagement(true));
   if(fromPop&&state.project&&state.view==='backlog'){
     queueMicrotask(()=>{
@@ -7785,7 +7804,9 @@ function renderLanguagePicker() {
   picker.innerHTML=Object.entries(LANGUAGES).map(([code,meta])=>`<option value="${esc(code)}" ${state.language===code?'selected':''}>${esc(meta.label)}</option>`).join('');
   const label=$('#languageLabel'); if(label) label.textContent=t('language');
 }
+function setGlassAppearanceOpen(open){const bar=document.querySelector('.topbar'),button=document.getElementById('glassAppearanceToggle');bar?.classList.toggle('glass-preferences-open',Boolean(open));button?.setAttribute('aria-expanded',open?'true':'false');window.TaskMeccaGlass?.refresh?.();}
 function translateChrome() {
+  const appearance=document.getElementById('glassAppearanceToggle');if(appearance){appearance.textContent=state.language==='ko'?'화면 설정':'Display';appearance.setAttribute('aria-label',state.language==='ko'?'화면 설정 열기 또는 닫기':'Open or close appearance preferences');}
   document.documentElement.lang=state.language;
   const search=$('#search'); if(search) search.placeholder=t('searchPlaceholder');
   const backlogLabel=$('#backlogLabel'); if(backlogLabel) backlogLabel.textContent=t('backlogFolder');
@@ -7802,6 +7823,8 @@ function translateChrome() {
   const refresh=$('#refreshBtn'); if(refresh){refresh.title=t('refreshWithUpdates');refresh.setAttribute('aria-label',t('refreshWithUpdates'));}
   const themeGroup=document.querySelector('.theme-switcher'); if(themeGroup){themeGroup.setAttribute('aria-label',t('theme'));themeGroup.title=t('theme');}
   const palette=$('#palettePicker');if(palette){palette.value=state.palette;palette.setAttribute('aria-label',t('theme'));palette.closest('.palette-picker')?.setAttribute('title',t('theme'));}
+  const backgroundPicker=$('#backgroundPicker');if(backgroundPicker){backgroundPicker.value=state.background;backgroundPicker.setAttribute('aria-label',t('background'));backgroundPicker.closest('.background-picker')?.setAttribute('title',t('background'));for(const [value,key] of [['cozy','backgroundCozy'],['ambient','backgroundAmbient'],['none','backgroundNone']]){const option=backgroundPicker.querySelector('option[value="'+value+'"]');if(option)option.textContent=t(key);}}
+  const backgroundLabel=$('#backgroundLabel');if(backgroundLabel)backgroundLabel.textContent=t('background');
   document.querySelectorAll('[data-theme-choice]').forEach(btn=>{const key={system:'themeSystem',light:'themeLight',dark:'themeDark'}[btn.dataset.themeChoice];const titleKey={system:'followSystemTheme',light:'useLightTheme',dark:'useDarkTheme'}[btn.dataset.themeChoice];if(key)btn.textContent=t(key);if(titleKey)btn.title=t(titleKey)});
   const sb=$('#shortcutBar'); if(sb) sb.innerHTML=`<span><kbd>↑</kbd><kbd>↓</kbd> ${esc(t('move'))}</span><span><kbd>Enter</kbd>/<kbd>→</kbd> ${esc(t('open'))}</span><span><kbd>←</kbd>/<kbd>Esc</kbd> ${esc(t('back'))}</span><span><kbd>/</kbd> ${esc(t('search'))}</span><span><kbd>PgUp</kbd>/<kbd>PgDn</kbd> ${esc(t('page'))}</span>`;
   renderLanguagePicker();
@@ -7823,8 +7846,8 @@ async function setLanguage(value) {
 
 function syncThemeBrowserChrome() {
   const effective=effectiveTheme(),mecca=state.palette==='mecca';
-  const background=mecca
-    ?(effective==='dark'?'#0a0e1b':'#f7f3f8')
+  const background=state.palette==='glass'?(effective==='dark'?'#242728':'#e9ebe9')
+    :mecca?(effective==='dark'?'#0a0e1b':'#f7f3f8')
     :(effective==='dark'?'#111318':'#f7f8fa');
   document.documentElement.style.colorScheme=effective;
   // The inline background only protects the first paint. Once app.js is
@@ -7832,8 +7855,16 @@ function syncThemeBrowserChrome() {
   document.documentElement.style.removeProperty('background-color');
   document.querySelector('meta[name="theme-color"]')?.setAttribute('content',background);
 }
+function applyBackground(value) {
+  state.background=['cozy','ambient','none'].includes(value)?value:'cozy';
+  document.documentElement.dataset.background=state.background;
+  localStorage.setItem('task-mecca-background',state.background);
+  syncThemeBrowserChrome();
+  const picker=$('#backgroundPicker');if(picker)picker.value=state.background;
+  window.TaskMeccaSelectUI?.sync();
+}
 function applyPalette(value) {
-  state.palette=['mecca','slate'].includes(value)?value:'mecca';
+  state.palette=['mecca','slate','glass'].includes(value)?value:'mecca';
   document.documentElement.dataset.palette=state.palette;
   localStorage.setItem('task-mecca-palette',state.palette);
   syncThemeBrowserChrome();
@@ -7852,11 +7883,15 @@ function applyTheme(value) {
   if (document.querySelector('.mermaid-wrap')) renderMermaidDiagrams(true);
 }
 translateChrome();
+applyBackground(state.background);
 applyPalette(state.palette);
 applyTheme(state.theme);
 document.querySelectorAll('[data-theme-choice]').forEach(b=>b.addEventListener('click',()=>applyTheme(b.dataset.themeChoice)));
 $('#palettePicker')?.addEventListener('change',e=>applyPalette(e.target.value));
+$('#backgroundPicker')?.addEventListener('change',e=>applyBackground(e.target.value));
 window.matchMedia?.('(prefers-color-scheme: dark)').addEventListener?.('change',()=>{if(state.theme==='system'){document.documentElement.dataset.theme=effectiveTheme();syncThemeBrowserChrome();renderMermaidDiagrams(true)}});
+$('#glassAppearanceToggle')?.addEventListener('click',()=>setGlassAppearanceOpen(document.getElementById('glassAppearanceToggle').getAttribute('aria-expanded')!=='true'));
+document.querySelector('.topbar')?.addEventListener('keydown',event=>{if(event.key==='Escape'&&event.currentTarget.classList.contains('glass-preferences-open')&&!document.querySelector('.tm-combo-popup')){event.preventDefault();event.stopPropagation();setGlassAppearanceOpen(false);document.getElementById('glassAppearanceToggle')?.focus();}});
 $('#languagePicker').addEventListener('change',e=>setLanguage(e.target.value));
 let searchRefreshTimer=0;
 function bindBacklogListTools() {
@@ -8042,7 +8077,7 @@ setInterval(()=>{
   }
 },5000);
 function preserveViewportAndFocus(work) {
-  const x=window.scrollX, y=window.scrollY;
+  const x=(window.TaskMeccaGlass?.scrollX??window.scrollX), y=(window.TaskMeccaGlass?.scrollY??window.scrollY);
   const active=document.activeElement;
   const activeID=active?.id||'';
   const selection=active&&typeof active.selectionStart==='number'
@@ -8050,7 +8085,7 @@ function preserveViewportAndFocus(work) {
     : null;
   return Promise.resolve().then(work).finally(()=>{
     requestAnimationFrame(()=>{
-      window.scrollTo({left:x,top:y,behavior:'auto'});
+      (window.TaskMeccaGlass?.scrollTo?.bind(window.TaskMeccaGlass)||window.scrollTo.bind(window))({left:x,top:y,behavior:'auto'});
       const target=activeID?document.getElementById(activeID):null;
       if(target&&document.contains(target)){
         try { target.focus({preventScroll:true}); } catch(_) {}
