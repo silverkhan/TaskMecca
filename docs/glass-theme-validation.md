@@ -1,6 +1,6 @@
 # A-64 교정04 최종 검증 기록 (2026-11-07)
 
-제품·테스트·CI 검증 소스는 `a4aa71e540982e3b721a4fb5eec2d647d25a1144`입니다. Main의 후속 커밋은 이 문서만 갱신합니다. 최종 게시 HEAD의 실제 CI/Preview run, provenance와 체크섬은 [동일 Draft PR #348의 최신 결과 기록](https://github.com/silverkhan/TaskMecca/pull/348)과 [커밋별 Checks](https://github.com/silverkhan/TaskMecca/pull/348/checks)를 기준으로 확인합니다. 사용자 실사용의 소재·가독성 판단과 기술 검증을 구분하며 PR은 Draft로 유지합니다.
+제품·테스트·CI 검증 소스는 `a4aa71e540982e3b721a4fb5eec2d647d25a1144`입니다. 문서 전용579f 기록 후 최신 Dev의 연결형 lifecycle(#360, f0a732e3)을 PR 브랜치에 통합했습니다. activity detail 갱신의 두 충돌은 Glass content scroll adapter와 Dev의 floating view dispose·row/interval focus를 모두 보존하도록 결합했습니다. 광학 엔진·Glass CSS·TOC 구현은 a4aa와 같습니다. 통합 HEAD의 재검증/실제 원격 CI·Preview 근거는 PR 최신 결과 기록에 구분합니다. 최종 게시 HEAD의 실제 CI/Preview run, provenance와 체크섬은 [동일 Draft PR #348의 최신 결과 기록](https://github.com/silverkhan/TaskMecca/pull/348)과 [커밋별 Checks](https://github.com/silverkhan/TaskMecca/pull/348/checks)를 기준으로 확인합니다. 사용자 실사용의 소재·가독성 판단과 기술 검증을 구분하며 PR은 Draft로 유지합니다.
 
 모바일 필터의 render 뒤 포커스를 복원하고, 열린 TOC를 뒤 본문과 분리했습니다. terminal idle의 중복 console 코팅을 제거하며 활성 콘솔 코드는 보존했습니다. 공유 셸의 전 둘레 반사/회색 return을 국소 cap과 비대칭 inner return으로 교정했습니다. 독립559a는 FULL01/03/04 교정을 확인했고, 남은320px TOC 제목·닫기·포커스 클리핑은 실제 reader/visualViewport 교차 영역에 배치하도록 후속 교정했습니다.
 

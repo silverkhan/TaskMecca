@@ -1,0 +1,99 @@
+{
+  "events": null,
+  "source": "synthetic regression fixture; contains no user evidence",
+  "summary": {
+    "task_id": "B-1",
+    "segments": [],
+    "by_type_ms": {},
+    "agent_time_ms": 0,
+    "observed_wall_ms": 0,
+    "observed_span_ms": 0,
+    "unattributed_gap_ms": 0,
+    "open_activities": 0,
+    "invalid_transitions": 0,
+    "invalid_corrections": 0,
+    "interrupted_activities": 0,
+    "unmeasured_upper_bound_ms": 0,
+    "initial_worker_ms": 0,
+    "rework_worker_ms": 0,
+    "controller_first_review_ms": 0,
+    "controller_rereview_ms": 0
+  },
+  "workflow": {
+    "version": 1,
+    "task_id": "B-1",
+    "computed_at": "2026-11-05T01:00:00Z",
+    "axis": {
+      "basis": "unknown",
+      "boundary_status": "unknown",
+      "open": false
+    },
+    "lifecycle": {
+      "task_id": "B-1",
+      "source": "reported_lifecycle",
+      "completion_history": null,
+      "registration_queue_ms": 0,
+      "dispatch_wait_ms": 0,
+      "explicit_wait_ms": 0,
+      "wait_ms": 0,
+      "covered_elapsed_ms": 0,
+      "wait_activity_overlap_ms": 0,
+      "invalid_facts": 0,
+      "open_wait_count": 0,
+      "wait_intervals": []
+    },
+    "measurement": {
+      "status": "not_recorded",
+      "activity": {
+        "status": "not_recorded",
+        "event_count": 0,
+        "segment_count": 0
+      },
+      "worker": {
+        "status": "not_recorded",
+        "event_count": 0,
+        "segment_count": 0
+      },
+      "controller": {
+        "status": "not_recorded",
+        "event_count": 0,
+        "segment_count": 0
+      },
+      "registrar": {
+        "status": "not_recorded",
+        "event_count": 0,
+        "segment_count": 0
+      },
+      "review": {
+        "status": "not_recorded",
+        "event_count": 0,
+        "segment_count": 0
+      },
+      "tests": {
+        "status": "not_recorded",
+        "event_count": 0,
+        "segment_count": 0
+      },
+      "observed_wall_ms": 0,
+      "agent_time_ms": 0
+    },
+    "current": {
+      "phase": "unknown",
+      "basis": "insufficient_evidence",
+      "next_action": "verify_execution_evidence",
+      "round_status": "unclassified"
+    },
+    "rounds": [],
+    "rows": [],
+    "unmeasured_intervals": [],
+    "reporting": {
+      "status": "not_expected",
+      "expected_executions": 0,
+      "executions_without_activity": 0,
+      "expected_reviews": 0,
+      "reviews_without_activity": 0,
+      "findings": []
+    },
+    "control_snapshot": {}
+  }
+}

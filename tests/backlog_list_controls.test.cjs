@@ -174,7 +174,7 @@ assert.equal(params.get('page'),'2');assert.equal(params.get('page_size'),'10');
  const renderEnd=source.indexOf('async function loadManual(',renderBegin);
  assert(renderBegin>=0&&renderEnd>renderBegin);
  const listeners={},timers=[];
- const gestureState={view:'backlog',detail:null};
+ const gestureState={view:'backlog',detail:null,project:'touch-test',backlog:'default'};
  let renderCount=0,measureCount=0;
  const ctx=vm.createContext({
   state:gestureState,
@@ -185,6 +185,14 @@ assert.equal(params.get('page'),'2');assert.equal(params.get('page_size'),'10');
   render:()=>{renderCount++;},
   scheduleAutoListPageSize:()=>{measureCount++;}
  });
+ // Use the actual lifecycle entry helpers required by render, even when the
+ // pressed row makes render defer before touching the content DOM.
+ const keyBegin=source.indexOf('function activityDetailKey(');
+ const keyEnd=source.indexOf('function activityDuration(',keyBegin);
+ const entryBegin=source.indexOf('const activityDetailViews=new Map();');
+ const entryEnd=source.indexOf('function activityEventTime(',entryBegin);
+ assert(keyBegin>=0&&keyEnd>keyBegin&&entryBegin>=0&&entryEnd>entryBegin);
+ vm.runInContext(source.slice(keyBegin,keyEnd)+source.slice(entryBegin,entryEnd),ctx);
  vm.runInContext(source.slice(begin,end),ctx);
  const row={dataset:{id:'B-527'}};
  const target={closest:selector=>selector==='.task-list .task-row[data-id]'?row:null};
@@ -192,8 +200,23 @@ assert.equal(params.get('page'),'2');assert.equal(params.get('page_size'),'10');
  assert.equal(vm.runInContext('taskRowTouchActive',ctx),true);
  // Invoke the real render function while pressed: it must not replace #content.
  vm.runInContext(source.slice(renderBegin,renderEnd),ctx);
- vm.runInContext('render()',ctx);
+ vm.runInContext("workflowTimelineEntry='stale-list-context';render()",ctx);
+ assert.equal(vm.runInContext('workflowTimelineEntry',ctx),null,'real render synchronizes lifecycle entry before deferring');
  assert.equal(vm.runInContext('taskRowDeferredRender',ctx),true);
+ gestureState.detail='B-527';
+ vm.runInContext("Object.assign(activityDetailPrefs('B-527'),{window:{start:1,end:2},windowMode:'manual',selection:'stale'});syncWorkflowTimelineEntry()",ctx);
+ assert.equal(vm.runInContext("activityDetailPrefs('B-527').window",ctx),null,'new detail entry resets stale manual bounds');
+ assert.equal(vm.runInContext("activityDetailPrefs('B-527').windowMode",ctx),'fit');
+ assert.equal(vm.runInContext("activityDetailPrefs('B-527').selection",ctx),null);
+ vm.runInContext("Object.assign(activityDetailPrefs('B-527'),{window:{start:3,end:4},windowMode:'manual'});syncWorkflowTimelineEntry()",ctx);
+ assert.equal(vm.runInContext("activityDetailPrefs('B-527').window.start",ctx),3,'same-open entry retains manual bounds');
+ gestureState.detail=null;
+ vm.runInContext('syncWorkflowTimelineEntry()',ctx);
+ gestureState.detail='B-527';
+ vm.runInContext('syncWorkflowTimelineEntry()',ctx);
+ assert.equal(vm.runInContext("activityDetailPrefs('B-527').windowMode",ctx),'fit','reopening returns to Fit');
+ assert.equal(vm.runInContext("activityDetailPrefs('B-527').window",ctx),null);
+ gestureState.detail=null;
  ctx.render=()=>{renderCount++;};
  vm.runInContext('taskRowDeferredMeasure=true',ctx);
  listeners['window:pointerup']({pointerType:'touch'});

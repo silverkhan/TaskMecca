@@ -1,0 +1,276 @@
+{
+  "events": [
+    {
+      "schema_version": 0,
+      "event_id": "short-s",
+      "task_id": "B-1",
+      "action": "start",
+      "role": "worker",
+      "agent_id": "w",
+      "runtime_attempt_id": "short",
+      "round": 0,
+      "type": "implementation",
+      "confidence": "",
+      "occurred_at": "2026-11-05T00:01:00Z",
+      "recorded_at": "0001-01-01T00:00:00Z"
+    },
+    {
+      "schema_version": 0,
+      "event_id": "short-e",
+      "task_id": "B-1",
+      "action": "stop",
+      "role": "worker",
+      "agent_id": "w",
+      "runtime_attempt_id": "short",
+      "round": 0,
+      "type": "implementation",
+      "confidence": "",
+      "occurred_at": "2026-11-05T00:01:00.25Z",
+      "recorded_at": "0001-01-01T00:00:00Z"
+    },
+    {
+      "schema_version": 0,
+      "event_id": "zero-s",
+      "task_id": "B-1",
+      "action": "start",
+      "role": "worker",
+      "agent_id": "w",
+      "runtime_attempt_id": "zero",
+      "round": 0,
+      "type": "targeted_test",
+      "confidence": "",
+      "occurred_at": "2026-11-05T00:02:00Z",
+      "recorded_at": "0001-01-01T00:00:00Z"
+    },
+    {
+      "schema_version": 0,
+      "event_id": "zero-e",
+      "task_id": "B-1",
+      "action": "stop",
+      "role": "worker",
+      "agent_id": "w",
+      "runtime_attempt_id": "zero",
+      "round": 0,
+      "type": "targeted_test",
+      "confidence": "",
+      "occurred_at": "2026-11-05T00:02:00Z",
+      "recorded_at": "2026-11-05T00:02:00.001Z"
+    }
+  ],
+  "source": "synthetic regression fixture; contains no user evidence",
+  "summary": {
+    "task_id": "B-1",
+    "segments": [
+      {
+        "task_id": "B-1",
+        "agent_id": "w",
+        "attempt_id": "short",
+        "role": "worker",
+        "type": "implementation",
+        "round": 0,
+        "started_at": "2026-11-05T00:01:00Z",
+        "ended_at": "2026-11-05T00:01:00.25Z",
+        "duration_ms": 250
+      },
+      {
+        "task_id": "B-1",
+        "agent_id": "w",
+        "attempt_id": "zero",
+        "role": "worker",
+        "type": "targeted_test",
+        "round": 0,
+        "started_at": "2026-11-05T00:02:00Z",
+        "ended_at": "2026-11-05T00:02:00Z",
+        "duration_ms": 0
+      }
+    ],
+    "by_type_ms": {
+      "implementation": 250,
+      "targeted_test": 0
+    },
+    "agent_time_ms": 250,
+    "observed_wall_ms": 250,
+    "first_observed_at": "2026-11-05T00:01:00Z",
+    "last_observed_at": "2026-11-05T00:02:00Z",
+    "observed_span_ms": 60000,
+    "unattributed_gap_ms": 59750,
+    "open_activities": 0,
+    "invalid_transitions": 0,
+    "invalid_corrections": 0,
+    "interrupted_activities": 0,
+    "unmeasured_upper_bound_ms": 0,
+    "initial_worker_ms": 250,
+    "rework_worker_ms": 0,
+    "controller_first_review_ms": 0,
+    "controller_rereview_ms": 0
+  },
+  "workflow": {
+    "version": 1,
+    "task_id": "B-1",
+    "computed_at": "2026-11-05T01:00:00Z",
+    "axis": {
+      "start": "2026-11-05T00:00:00Z",
+      "end": "2026-11-05T01:00:00Z",
+      "basis": "registered_completed",
+      "boundary_status": "complete",
+      "elapsed_ms": 3600000,
+      "open": false
+    },
+    "lifecycle": {
+      "task_id": "B-1",
+      "source": "reported_lifecycle",
+      "registered_at": "2026-11-05T00:00:00Z",
+      "completed_at": "2026-11-05T01:00:00Z",
+      "completion_history": [
+        "2026-11-05T01:00:00Z"
+      ],
+      "total_elapsed_ms": 3600000,
+      "registration_queue_ms": 0,
+      "dispatch_wait_ms": 0,
+      "explicit_wait_ms": 0,
+      "wait_ms": 0,
+      "covered_elapsed_ms": 250,
+      "unattributed_elapsed_ms": 3599750,
+      "wait_activity_overlap_ms": 0,
+      "invalid_facts": 0,
+      "open_wait_count": 0,
+      "wait_intervals": []
+    },
+    "measurement": {
+      "status": "partial",
+      "activity": {
+        "status": "observed",
+        "duration_ms": 250,
+        "event_count": 4,
+        "segment_count": 2
+      },
+      "worker": {
+        "status": "observed",
+        "duration_ms": 250,
+        "event_count": 4,
+        "segment_count": 2
+      },
+      "controller": {
+        "status": "not_recorded",
+        "event_count": 0,
+        "segment_count": 0
+      },
+      "registrar": {
+        "status": "not_recorded",
+        "event_count": 0,
+        "segment_count": 0
+      },
+      "review": {
+        "status": "not_recorded",
+        "event_count": 0,
+        "segment_count": 0
+      },
+      "tests": {
+        "status": "observed",
+        "duration_ms": 0,
+        "event_count": 2,
+        "segment_count": 1
+      },
+      "observed_wall_ms": 250,
+      "agent_time_ms": 250,
+      "unmeasured_ms": 3599750,
+      "coverage_percent": 0.006944444444444444
+    },
+    "current": {
+      "phase": "completed",
+      "basis": "reported_lifecycle",
+      "assigned_worker": "w",
+      "next_action": "none",
+      "round": 0,
+      "round_status": "initial"
+    },
+    "rounds": [
+      {
+        "number": 0,
+        "kind": "initial",
+        "started_at": "2026-11-05T00:00:00Z",
+        "basis": "registered_or_reported_activity",
+        "assignment_ids": [],
+        "attempt_ids": [
+          "short",
+          "zero",
+          "unmeasured"
+        ],
+        "handoff_ids": [],
+        "commits": [],
+        "verification_results": []
+      }
+    ],
+    "rows": [
+      {
+        "observed_activity_ms": 250,
+        "id": "worker|w|0",
+        "role": "worker",
+        "agent_id": "w",
+        "round": 0,
+        "round_status": "initial",
+        "intervals": [
+          {
+            "id": "short-s",
+            "kind": "activity",
+            "type": "implementation",
+            "start": "2026-11-05T00:01:00Z",
+            "end": "2026-11-05T00:01:00.25Z",
+            "measured": true,
+            "duration_ms": 250,
+            "attempt_id": "short",
+            "lane": 0
+          },
+          {
+            "id": "zero-s",
+            "kind": "activity",
+            "type": "targeted_test",
+            "start": "2026-11-05T00:02:00Z",
+            "end": "2026-11-05T00:02:00Z",
+            "measured": true,
+            "duration_ms": 0,
+            "attempt_id": "zero",
+            "lane": 0
+          },
+          {
+            "end_evidence": "unobserved",
+            "id": "s",
+            "kind": "execution_report",
+            "type": "unclassified_execution",
+            "start": "2026-11-05T00:03:00Z",
+            "measured": false,
+            "attempt_id": "unmeasured",
+            "lane": 0
+          }
+        ]
+      }
+    ],
+    "unmeasured_intervals": [
+      {
+        "start": "2026-11-05T00:00:00Z",
+        "end": "2026-11-05T00:01:00Z",
+        "kind": "activity_unmeasured"
+      },
+      {
+        "start": "2026-11-05T00:01:00.25Z",
+        "end": "2026-11-05T01:00:00Z",
+        "kind": "activity_unmeasured"
+      }
+    ],
+    "reporting": {
+      "status": "missing",
+      "expected_executions": 1,
+      "executions_without_activity": 1,
+      "expected_reviews": 0,
+      "reviews_without_activity": 0,
+      "findings": [
+        {
+          "code": "execution_activity_missing",
+          "attempt_id": "unmeasured",
+          "required_phase": "implementation_started"
+        }
+      ]
+    },
+    "control_snapshot": {}
+  }
+}
