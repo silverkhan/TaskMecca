@@ -252,3 +252,91 @@ func TestWorkflowBrowserOverlapFixtureUsesConsistentMeasuredSummary(t *testing.T
 	}
 	exportWorkflowFixture(t, "synthetic-overlap.json", w, events)
 }
+
+func TestWorkflowDisplayNameRequiresExactUnambiguousRuntimeBinding(t *testing.T) {
+	b, at := workflowFixture()
+	events := []Event{{EventID: "name-start", TaskID: "NAME-1", Role: RoleWorker, AgentID: "native-agent-123", RuntimeAttemptID: "name-attempt", Action: Start, Type: Implementation, OccurredAt: at(1), RecordedAt: at(1)}, {EventID: "name-stop", TaskID: "NAME-1", Role: RoleWorker, AgentID: "native-agent-123", RuntimeAttemptID: "name-attempt", Action: Stop, Type: Implementation, OccurredAt: at(2), RecordedAt: at(2)}}
+	bound := runtimeobs.Attempt{AttemptID: "name-attempt", TaskID: "NAME-1", RuntimeAgentID: "native-agent-123", AgentPath: "/root/controller/pairi", BindingState: runtimeobs.BindingBound}
+	cases := []struct {
+		name     string
+		attempts []runtimeobs.Attempt
+		want     string
+	}{
+		{"exact bound", []runtimeobs.Attempt{bound}, "pairi"},
+		{"absent", nil, ""},
+	}
+	unbound := bound
+	unbound.BindingState = runtimeobs.BindingUnbound
+	cases = append(cases, struct {
+		name     string
+		attempts []runtimeobs.Attempt
+		want     string
+	}{"unbound", []runtimeobs.Attempt{unbound}, ""})
+	wrong := bound
+	wrong.RuntimeAgentID = "different-native"
+	cases = append(cases, struct {
+		name     string
+		attempts []runtimeobs.Attempt
+		want     string
+	}{"identity mismatch", []runtimeobs.Attempt{wrong}, ""})
+	other := bound
+	other.AgentPath = "/root/controller/other"
+	cases = append(cases, struct {
+		name     string
+		attempts []runtimeobs.Attempt
+		want     string
+	}{"ambiguous", []runtimeobs.Attempt{bound, other}, ""})
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			w := SummarizeWorkflow(WorkflowInput{TaskID: "NAME-1", Events: events, Summary: Summarize("NAME-1", events), Facts: []LifecycleFact{{EventID: "registered", TaskID: "NAME-1", Kind: "registered", OccurredAt: b}}, ExecutionObservations: c.attempts, Now: at(3)})
+			if len(w.Rows) != 1 || w.Rows[0].DisplayName != c.want {
+				t.Fatalf("unproved or lost name: %+v", w.Rows)
+			}
+			if c.want != "" && w.Rows[0].DisplayNameSource != "bound_runtime_agent_path" {
+				t.Fatal("missing exact name source")
+			}
+			if w.Rows[0].AgentID != "native-agent-123" || w.Rows[0].Intervals[0].AttemptID != "name-attempt" {
+				t.Fatal("name projection changed raw identity")
+			}
+		})
+	}
+}
+
+func TestWorkflowDisplayNameRejectsOpaqueBoundPathLeaves(t *testing.T) {
+	b, at := workflowFixture()
+	const native = "62f77abc-1234-4567-89ab-123456789abc"
+	events := []Event{{EventID: "opaque-start", TaskID: "FLOW-1", Role: RoleWorker, AgentID: native, RuntimeAttemptID: "opaque-attempt", Action: Start, Type: Implementation, OccurredAt: at(1), RecordedAt: at(1)}, {EventID: "opaque-stop", TaskID: "FLOW-1", Role: RoleWorker, AgentID: native, RuntimeAttemptID: "opaque-attempt", Action: Stop, Type: Implementation, OccurredAt: at(2), RecordedAt: at(2)}}
+	for _, leaf := range []string{"62f77abc", "62F77ABC", "62f7", "62f77abc-1234", "dead-beef", native, "62f77abc1234456789ab123456789abc", "agent-62f77abc", "worker_62f77abc", "run-28dfaea54c4484d2", "agent-123", "worker42", "12345", "Pairi", "pairi", "Controller", "Lumen-2"} {
+		t.Run(leaf, func(t *testing.T) {
+			path := "/root/controller/" + leaf
+			attempt := runtimeobs.Attempt{AttemptID: "opaque-attempt", TaskID: "FLOW-1", Provider: "codex", SessionID: "synthetic-session", RuntimeAgentID: native, AgentPath: path, BindingState: runtimeobs.BindingBound}
+			w := SummarizeWorkflow(WorkflowInput{TaskID: "FLOW-1", Events: events, Summary: Summarize("FLOW-1", events), Facts: []LifecycleFact{{EventID: "registered", TaskID: "FLOW-1", Kind: "registered", OccurredAt: b}}, ExecutionObservations: []runtimeobs.Attempt{attempt}, Now: at(3)})
+			if len(w.Rows) != 1 {
+				t.Fatalf("unexpected rows: %+v", w.Rows)
+			}
+			want := ""
+			if leaf == "Pairi" || leaf == "pairi" || leaf == "Controller" || leaf == "Lumen-2" {
+				want = leaf
+			}
+			row := w.Rows[0]
+			if leaf == "62f77abc" {
+				exportWorkflowFixture(t, "correction02-opaque-bound.json", w, events)
+			}
+			if len(row.NameEvidence) != 1 || row.NameEvidence[0].AgentPath != path || row.NameEvidence[0].AttemptID != "opaque-attempt" {
+				t.Fatalf("raw name grounds lost: %+v", row.NameEvidence)
+			}
+			if row.DisplayName != want {
+				t.Fatalf("opaque bound path leaked or known name lost: leaf=%q got=%q want=%q", leaf, row.DisplayName, want)
+			}
+			if want == "" && row.NameEvidence[0].Status != "opaque_or_unreadable_runtime_path_leaf" {
+				t.Fatal("opaque path grounds unmarked")
+			}
+			if want == "" && row.DisplayNameSource != "" {
+				t.Fatal("opaque leaf received verified display-name source")
+			}
+			if row.AgentID != native || row.Intervals[0].AttemptID != "opaque-attempt" {
+				t.Fatal("name filtering changed raw identity")
+			}
+		})
+	}
+}
