@@ -96,12 +96,12 @@
    const luminance=sum/count;
    // A wide dead band retains panel polarity across leaves, threshold scroll and resize.
    const prior=previous?.theme===root.dataset.theme?previous.tone:root.dataset.theme,tone=luminance>.48?'light':luminance<.28?'dark':prior;
-   // Broad Cozy material transmits the scene without any text-specific backing.
-   // Non-photographic and fallback panels retain their established contrast fill.
-   const mixed=max-min>.38?true:max-min<.24?false:(previous?.mixed??true),alpha=host.dataset.glassMaterial==='true'?.14:(mixed?.86:.78);
+   // Broad neutral material attenuates scene contrast as one continuous surface.
+   // Scene range chooses density; no ink, rows or text-specific backing is sampled.
+   const mixed=max-min>.38?true:max-min<.24?false:(previous?.mixed??true),alpha=host.dataset.glassMaterial==='true'?(mixed?.86:.76):(mixed?.88:.80);
    if(host.dataset.glassTone!==tone)host.dataset.glassTone=tone;
    if(host.style.getPropertyValue('--glass-alpha')!==String(alpha))host.style.setProperty('--glass-alpha',alpha);
-   const color=rgb.map(n=>Math.round(n/count)),reflection=color.map((n,i)=>Math.round(n*.18+[240,249,255][i]*.82)).join(',');
+   const color=rgb.map(n=>Math.round(n/count)),reflection=color.map((n,i)=>Math.round(n*.18+[246,248,247][i]*.82)).join(',');
    if(host.style.getPropertyValue('--glass-reflection-rgb')!==reflection)host.style.setProperty('--glass-reflection-rgb',reflection);
    panels.set(host,{key,tone,theme:root.dataset.theme,luminance,range:max-min,color,mixed,alpha,rect:{left,top,width:right-left,height:bottom-top}});adaptCount++;
   }
@@ -139,7 +139,7 @@
  function paintMaterial(entry,r){
   const {host,canvas}=entry,w=r.width,h=r.height;if(w<8||h<8)return;
   // Material depends only on the scene and panel geometry, never on ink.
-  const key=[generation,r.x,r.y,w,h,host.dataset.glassTone].join("|");if(entry.key===key)return;
+  const key=[generation,r.x,r.y,w,h,host.dataset.glassTone,panels.get(host)?.alpha].join("|");if(entry.key===key)return;
   const start=performance.now(),scale=Math.min(1,Math.sqrt(MAX_MATERIAL_PIXELS/(w*h))),width=Math.ceil(w*scale),height=Math.ceil(h*scale),g=geometry();
   if(canvas.width!==width)canvas.width=width;if(canvas.height!==height)canvas.height=height;
   const c=canvas.getContext('2d');c.setTransform(scale,0,0,scale,0,0);c.clearRect(0,0,w,h);
@@ -153,12 +153,12 @@
     c.drawImage(sampler,leftSample*sx,top*sy,(rightSample-leftSample)*sx,(bottom-top)*sy,x,y,right-x,5);
    }
   }
-  const light=host.dataset.glassTone==='light',neutral=light?[255,255,255]:[12,20,25],tint=host.matches('.mobile-sidebar-panel,.common-attention-body')?.22:.14;
+  const light=host.dataset.glassTone==='light',neutral=light?[249,250,248]:[24,28,29],tint=panels.get(host)?.alpha??.86;
   c.fillStyle=`rgba(${neutral},${tint})`;c.fillRect(0,0,w,h);
-  // Directional, neutral reflection. Chromatic dispersion remains only on the
+  // Directional, neutral reflection. The separate silver highlight stays on the
   // separate narrow floating lip; text and focus never pass through this layer.
-  const reflection=c.createLinearGradient(0,0,w*.8,h);reflection.addColorStop(0,'rgba(255,255,255,.16)');reflection.addColorStop(.25,'rgba(255,255,255,.015)');reflection.addColorStop(.7,'rgba(255,255,255,0)');reflection.addColorStop(1,'rgba(3,12,18,.07)');c.fillStyle=reflection;c.fillRect(0,0,w,h);
-  if(host.matches('.content,.terminal-main')){const bevel=new Path2D();rounded(bevel,1.5,1.5,w-3,h-3,16.5);const light=c.createLinearGradient(0,0,w,h);light.addColorStop(0,'rgba(255,255,255,.5)');light.addColorStop(.28,'rgba(255,255,255,.06)');light.addColorStop(.6,'rgba(3,12,18,0)');light.addColorStop(1,'rgba(3,12,18,.24)');c.strokeStyle=light;c.lineWidth=1.25;c.stroke(bevel)}
+  const reflection=c.createLinearGradient(0,0,w*.8,h);reflection.addColorStop(0,'rgba(255,255,255,.10)');reflection.addColorStop(.25,'rgba(255,255,255,.015)');reflection.addColorStop(.7,'rgba(255,255,255,0)');reflection.addColorStop(1,'rgba(10,12,13,.07)');c.fillStyle=reflection;c.fillRect(0,0,w,h);
+  if(host.matches('.content,.terminal-main')){const bevel=new Path2D();rounded(bevel,1.5,1.5,w-3,h-3,16.5);const light=c.createLinearGradient(0,0,w,h);light.addColorStop(0,'rgba(255,255,255,.5)');light.addColorStop(.28,'rgba(255,255,255,.06)');light.addColorStop(.6,'rgba(10,12,13,0)');light.addColorStop(1,'rgba(10,12,13,.24)');c.strokeStyle=light;c.lineWidth=1.25;c.stroke(bevel)}
   entry.key=key;entry.rect={left:r.x,top:r.y,width:w,height:h};entry.amplitude=amplitude;entry.paintMs=performance.now()-start;entry.totalPaintMs=(entry.totalPaintMs||0)+entry.paintMs;entry.draws++;paintCount++;totalPaintMs+=entry.paintMs;
  }
  function paint(entry,r){
@@ -177,7 +177,7 @@
   }
   const lip=new Path2D();rounded(lip,.65,.65,w-1.3,h-1.3,radius-.65);
   const panel=panels.get(host),strength=.22+.28*(1-(panel?.luminance??.5));
-  c.save();c.strokeStyle=(()=>{const light=c.createLinearGradient(0,0,w*.72,h);light.addColorStop(0,`rgba(99,190,222,${strength})`);light.addColorStop(.12,`rgba(122,191,223,${strength*.5})`);light.addColorStop(.32,'rgba(220,233,236,0)');light.addColorStop(.7,'rgba(220,233,236,0)');light.addColorStop(.9,`rgba(226,184,117,${strength*.65})`);light.addColorStop(1,`rgba(238,213,169,${strength*.3})`);return light})();c.lineWidth=.75;c.stroke(lip);c.restore();
+  c.save();c.strokeStyle=(()=>{const light=c.createLinearGradient(0,0,w*.72,h);light.addColorStop(0,`rgba(255,255,255,${strength})`);light.addColorStop(.12,`rgba(235,239,237,${strength*.5})`);light.addColorStop(.32,'rgba(240,243,241,0)');light.addColorStop(.7,'rgba(240,243,241,0)');light.addColorStop(.9,`rgba(213,219,216,${strength*.65})`);light.addColorStop(1,`rgba(255,255,255,${strength*.3})`);return light})();c.lineWidth=.75;c.stroke(lip);c.restore();
   entry.key=key;entry.rect={left:r.left,top:r.top,width:w,height:h};entry.rim=rim;entry.amplitude=amp;entry.draws++;paintCount++;totalPaintMs+=performance.now()-start;
  }
  function ensureMaterial(host){

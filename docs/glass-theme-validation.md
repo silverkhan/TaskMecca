@@ -1,6 +1,102 @@
 # 실사 배경과 Glass 소재 검증
 
 
+## Neutral Fluid Glass (A-62, 2026-11-06)
+
+This approved brief supersedes the earlier A-56 photographic contrast audit
+policy below. The implementation refines PR348 from `410ce290`; it does not
+integrate the separately advancing Dev branch. Mecca/Slate behavior and palette
+bytes remain unchanged. The pinned reference is
+`_task_mecca/data/contracts/neutral-fluid-glass-20261106/references/neutral-fluid-glass-reference.png`
+(SHA256 `04733a96041bbd7247cc66682c84107a2cbbee5a449bade8793f657956235e14`).
+The image guides material, never application data or functionality.
+
+The three layers are the fixed photograph, neutral floating chrome, and one
+continuous reader. Graphite `#3d4447` / silver `#dfe4e3` carry interaction and
+focus; optical highlights use neutral RGB rather than authored blue/gold rays.
+Scene range selects continuous material density (.76/.86 for active material,
+.80/.88 for CSS-backed panels). Curvature, displacement, reflection and the
+narrow lip remain; no text-specific backing or per-row blur/canvas is added.
+The stronger secondary foreground is a measured contrast margin, not a change
+to the 4.5/3 targets. Repeated metadata/tag labels are at least11px in Glass.
+Controls use36px desktop sizing and44px principal mobile hit targets; mobile
+status filters retain a native horizontal overflow port. Selection/hover never
+change row document coordinates or height.
+
+`MAX_LENSES=2`, lens `MAX_PIXELS=350000`, material
+`MAX_MATERIAL_PIXELS=480000`, shared sampler, viewport synchronization,
+`syncGeometry()`, sticky overflow plane and `captureReaders`/`restoreReaders`
+are preserved. There is no permanent rendering loop, text walker/Range mapping,
+fog/halo/scrim behind individual text, or foreground distortion in product code.
+Test-only raster observation uses DOM text geometry and records exclusions.
+
+Coverage A–L includes1440×900,1280×900 and390×844, Light/Dark, and
+Cozy/ambient/None (18 base scenes), plus16 popup, notification, modal,
+mobile-navigation and terminal scenes. Real native handlers are exercised for
+search, sorting, paging, status/tag filters, project switching, ko/en, saved
+appearance/reload, listbox keyboard/ARIA and the local fixture Preview-return
+anchor. No operating Preview/environment switch or shell process is used.
+Existing Glass16 gates pass before commit; final exact-commit results and the
+additional native-functional gate are frozen in the worker packet. Affected
+select/backlog/Preview/terminal/notification/storage common gates pass91/91.
+The CI Glass job includes the additional native-functional test and its JSON.
+
+Final-byte composited audit: **3,225 eligible text samples, minimum4.8242,
+zero below their normal4.5 / large3 targets**. Eighteen actual focus-outline
+samples have minimum3.9594 (target3); four selected-boundary raster samples have
+minimum9.1535 (target3). White-on-white1 and black-on-white21 are independent
+real-raster negative/positive controls. Sample locations, foreground/background
+values and every failure are recorded. Fully covered/overflow-clipped points
+are not foreground pairs:6,498 occluded,126 overflow-clipped and102 outside
+visual-viewport points are explicitly recorded with reason/occluder. Visible
+portions of partial text remain measured. Disabled controls are reported and
+excluded from enabled-text acceptance, rather than silently counted as passing.
+
+Preserved failures include the provisional baseline desktop690/2,108 shortfalls,
+initial controlled-scene failures, and harness errors. The corrected audit does
+not discard low contrast: a real4.4733 muted ID shortfall was fixed through
+neutral foreground margin; a3.9456 search glyph passed the UI3 target but failed
+the inherited stricter4.5 guard, which is retained. Old tests sampling pixels
+covered by the fixed footer and later overflow clipping were corrected by
+point visibility, with exclusion evidence. Prepatch captures retain their
+source-stage labels; they are never relabeled as final.
+
+The selected bounded comparison uses the same synthetic fixture, Chrome
+156.0.8078.4, DPR1 and90 animation-frame scroll callbacks per viewport. Values
+are one baseline410/final sample pair, not universal guarantees:
+
+| Browser proxy | Desktop baseline → final | Mobile baseline → final |
+| --- | --- | --- |
+| TaskDuration |479.94 →522.16ms|519.56 →571.15ms|
+| ScriptDuration |101.12 →90.21ms|104.35 →108.00ms|
+| Paint trace |129/26.31 →241/56.81 events/ms|254/26.42 →414/49.22 events/ms|
+| Mean/max frame gap |24.72/33.40 →26.97/33.40ms|16.67/16.80 →16.67/16.80ms|
+| Explicit sampler/readback/canvas bytes |14,917,120 →14,917,120|7,760,800 →7,760,800|
+| Idle paint/adapt delta |0/0 →0/0|0/0 →0/0|
+
+Browser painting costs more in this sample; no performance improvement is
+claimed. CDP task/script/layout durations, Paint events, DOM counts and JS heap
+are proxies, not physical CPU/GPU/power or complete browser/GPU memory. Heap
+before/after and engine paint/adapt counts are retained in
+`handoff-evidence/a62-neutral-fluid-glass-20261106/performance-comparison-final.json`.
+Garbage collection and machine scheduling affect single samples.
+
+Evidence remains untracked under
+`handoff-evidence/a62-neutral-fluid-glass-20261106/`: baseline410 captures are
+`baseline/1440-{light,dark}-cozy.png` and
+`baseline-mobile/390-{light,dark}-cozy.png`; final source captures and all
+18+16 raster audits are in `final-visible-matrix/`. `audit-notes.json` preserves
+the bounded visual review and acceptance-only fixes; report/source/evidence
+manifests bind these files to the frozen commit. Main supplies exact HEAD CI,
+Preview and published artifact links in PR348 and keeps that PR Draft until
+independent review and user design judgment.
+
+Physical Android, Samsung Internet, Safari, OS trackpad/compositor-only motion,
+fullscreen reader, physical energy/GPU and user Preview approval are unrun.
+Automated gates and independent Lumen inspection do not constitute user final
+approval. No Glass merge/deploy to Dev/Main/Stable, operational18765 interaction,
+installation, upgrade, service restart, migration or environment switch occurs.
+
 ## CI recovery for scroll rendering (2026-11-05)
 
 Remote `ed307998` failed when the search style observation returned an empty

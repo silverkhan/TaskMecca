@@ -7498,7 +7498,7 @@ async function setLanguage(value) {
 
 function syncThemeBrowserChrome() {
   const effective=effectiveTheme(),mecca=state.palette==='mecca';
-  const background=state.palette==='glass'?(effective==='dark'?'#242b30':'#e7ecee')
+  const background=state.palette==='glass'?(effective==='dark'?'#242728':'#e9ebe9')
     :mecca?(effective==='dark'?'#0a0e1b':'#f7f3f8')
     :(effective==='dark'?'#111318':'#f7f8fa');
   document.documentElement.style.colorScheme=effective;

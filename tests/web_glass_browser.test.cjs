@@ -21,7 +21,7 @@ test('Glass browser contract: appearance, stable canvas, content, fallbacks and 
   await seed();assert.ok(await page.locator('#previewIdentityBanner').isVisible(),'fixture Preview identity renders');await page.evaluate(()=>scrollTo(0,0));
   // Use the actual custom select's click/option event path at least once.
   await page.evaluate(()=>{applyTheme('light');applyBackground('ambient')});
-  for(const [palette,label,text]of [['mecca','Mecca','#292536'],['slate','Slate','#172033'],['glass','Glass','#1c2730']]){
+  for(const [palette,label,text]of [['mecca','Mecca','#292536'],['slate','Slate','#172033'],['glass','Glass','#23272a']]){
    await page.locator('.palette-picker .tm-combo-trigger').click();await page.locator('.tm-combo-option').filter({hasText:new RegExp('^'+label+'$')}).click();
    await page.waitForFunction(value=>value==='glass'||!document.querySelector('.glass-reader-material,.glass-optics'),palette);
    if(palette==='glass'){report.paletteStates??=[];report.paletteStates.push(await waitForGlass(page));if(out)fs.writeFileSync(path.join(out,'browser-contract.json'),JSON.stringify(report,null,2));}
@@ -76,7 +76,7 @@ test('Glass browser contract: appearance, stable canvas, content, fallbacks and 
   // unsupported declarations, emulating how a browser lacking both properties parses CSS.
   await page.evaluate(()=>localStorage.setItem('fixture-no-backdrop','1'));await page.addInitScript(()=>{if(localStorage.getItem('fixture-no-backdrop')==='1'){const original=CSS.supports.bind(CSS);CSS.supports=(p,v)=>String(p).includes('backdrop-filter')?false:original(p,v)}});
   await page.route('**/glass.css',async route=>{const response=await route.fetch();let css=await response.text();css=css.replace(/@supports not \(\(backdrop-filter:blur\(1px\)\) or \(-webkit-backdrop-filter:blur\(1px\)\)\)/,'@supports (display:block)').replace(/(?:-webkit-)?backdrop-filter\s*:[^;}]+;?/g,'');await route.fulfill({response,body:css})});
-  await page.reload();await seed();assert.ok((await geometry())[6].includes('cozy-beige-room-photo-1920.webp'));assert.equal(await page.locator('.topbar').evaluate(e=>getComputedStyle(e).backgroundColor),'rgb(238, 243, 245)');assert.equal(await page.locator('.glass-optics').count(),0);await shot('unsupported-blur-emulated');await page.evaluate(()=>localStorage.removeItem('fixture-no-backdrop'));
+  await page.reload();await seed();assert.ok((await geometry())[6].includes('cozy-beige-room-photo-1920.webp'));assert.equal(await page.locator('.topbar').evaluate(e=>getComputedStyle(e).backgroundColor),'rgb(241, 243, 241)');assert.equal(await page.locator('.glass-optics').count(),0);await shot('unsupported-blur-emulated');await page.evaluate(()=>localStorage.removeItem('fixture-no-backdrop'));
   await page.unroute('**/glass.css');for(const theme of ['dark','light']){
    await page.evaluate(theme=>localStorage.setItem('task-mecca-theme',theme),theme);await page.goto(server.origin+'/terminal?project=/fixtures/atlas');await page.waitForTimeout(200);
    assert.equal(await page.evaluate(()=>document.documentElement.dataset.theme),theme);assert.equal(await page.locator('.terminal-app').evaluate(e=>getComputedStyle(e).zIndex),'1');
