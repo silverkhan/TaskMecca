@@ -17,7 +17,7 @@ function extract(name, next) {
 let refreshes = 0, listRefreshes = 0, callback;
 const elements = {};
 const makeElement = () => ({listeners:{}, addEventListener(name, fn){assert(!this.listeners[name], 'duplicate listener');this.listeners[name]=fn;}});
-const state = {query:'<needle>', backlog:'',view:'backlog',detail:null,listPage:3,selectedIndex:2,listSort:'id_desc',listPageMode:'auto'};
+const state = {query:'<needle>', backlog:'',view:'backlog',detail:null,listPage:3,selectedIndex:2,listSort:'id_desc',listPageMode:'auto',palette:'mecca',language:'en',statusFilters:[],tagFilters:[],glassFiltersOpen:false};
 const data = {backlog_selection:{selected:'/fixture/backlog',candidates:[{path:'/fixture/backlog',name:'backlog',record_count:2},{path:'/fixture/backlog_long',name:'backlog_long',record_count:0}]}};
 const storage = new Map();
 const context = vm.createContext({state, currentProjectData:()=>data, $:id=>elements[id], t:key=>key, esc:value=>String(value).replaceAll('<','&lt;').replaceAll('>','&gt;'), dateLabel:()=>'-', invalidateTaskDetailCache:()=>{}, localStorage:{setItem:(k,v)=>storage.set(k,v),removeItem:k=>storage.delete(k)},refresh:()=>refreshes++,refreshList:()=>listRefreshes++,clearTimeout:()=>{callback=null},setTimeout:fn=>{callback=fn;return 1},statusFilterBar:()=>'',tagFilterBar:()=>''});
