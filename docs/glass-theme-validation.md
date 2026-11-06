@@ -1,3 +1,40 @@
+# A-64 교정04 최종 검증 기록 (2026-11-07)
+
+제품·테스트·CI 검증 소스는 `a4aa71e540982e3b721a4fb5eec2d647d25a1144`입니다. Main의 후속 커밋은 이 문서만 갱신합니다. 최종 게시 HEAD의 실제 CI/Preview run, provenance와 체크섬은 [동일 Draft PR #348의 최신 결과 기록](https://github.com/silverkhan/TaskMecca/pull/348)과 [커밋별 Checks](https://github.com/silverkhan/TaskMecca/pull/348/checks)를 기준으로 확인합니다. 사용자 실사용의 소재·가독성 판단과 기술 검증을 구분하며 PR은 Draft로 유지합니다.
+
+모바일 필터의 render 뒤 포커스를 복원하고, 열린 TOC를 뒤 본문과 분리했습니다. terminal idle의 중복 console 코팅을 제거하며 활성 콘솔 코드는 보존했습니다. 공유 셸의 전 둘레 반사/회색 return을 국소 cap과 비대칭 inner return으로 교정했습니다. 독립559a는 FULL01/03/04 교정을 확인했고, 남은320px TOC 제목·닫기·포커스 클리핑은 실제 reader/visualViewport 교차 영역에 배치하도록 후속 교정했습니다.
+
+독립 `report-a64-lumen-toc-clip-confirmation-971a-01`은 남은 FULL02의 실제 한정 기능을 PASS로 판정했습니다. Main은6개 직접 확인 PNG·20파일/2,889,515bytes·17개 source before/after Git 일치를 검증했고320px 기본/확장 헤더의 닫기·제목·focus를 직접 봤습니다. 이 판정은 전체 사용자 디자인·가독성/실기기 판단을 대신하지 않습니다. 첫 native geometry 관찰의 pending 상태와 settled PNG를 구분하며 모든 첫 프레임의 픽셀 완벽 동등성을 주장하지 않습니다.
+
+첫 열기에서 닫기44px·제목·focus 외곽이 실제 clip 안에 있으며 각각9점 hit와 native pointer/Enter/Escape·FAB 복귀를 확인했습니다. 320px Light/Dark·긴 한영/헤더 확장, 관련390/430·collapsed1280/wide sticky·resize·ambient/None/reduced·nav 자체 스크롤·target/hash·nonzero reading/back을 한정 확인했습니다. 1280은 모바일 context resize의 기능 표본이며 이를 새 시안 미감 판정으로 쓰지 않습니다.
+
+정확 제품 소스의 로컬 결과는 Glass **23/23**, 공통 **189/189**, 지정 안전 Go race 및 webui vet 통과이며 실패/스킵0입니다. Main은291개 증거122,654,813bytes,6개 변경+7개 보존 자산/누적17Git파일과 보호 과거3407개 파일을 검증했습니다. 기존1c80/4c45 수용 실패·원본 검수·raw 하니스 실패·보고서/manifest는 불변 보존합니다. 자동 검사 통과를 사용자 디자인 수용으로 대신하지 않습니다.
+
+## 현재 소스 대비 보고
+
+`a4aa`의 기존 adaptive 검사를 원시 표본에서 다시 집계했습니다. natural4는346개 유효 텍스트 관측 중229개 참고 미달/최소1.502584이며, 별도 exposure stress12는1038개 중518개/최소1.000392입니다. disabled 표본은 각각8개/24개 제외했습니다. 두 모집단과 이전 소스 표본을 합산하지 않습니다. 위치·문구·rect·foreground·최소값·참고값은 `correction04-toc-clip/final-glass/adaptive/adaptive.json`의 `scenes[].samples[]`에 보존합니다. 모든 텍스트·포커스 비율은 보고 전용이며 alpha 증가·local tone 반전·디밍·광학 약화를 자동 적용하지 않았습니다.
+
+## 비용의 소스와 한계
+
+아래 mixed90-rAF/rerender/resize/search 표본은 **1c80→4c45**의 동일36 records/manual50, 실제 DOM36/동일content port의4직렬 표본입니다. 후속 TOC-only `a4aa`에서 mixed benchmark를 재실행하지 않았으며 이 값을 `a4aa` 실측으로 바꾸지 않습니다. 세 광학 함수와 상수·tint/bend/88path/pixel cap은 보존했지만 이것이 전체 비용 동등성이나 무회귀의 물리 증명은 아닙니다.
+
+| software counter | Desktop before→after | Mobile before→after |
+|---|---:|---:|
+| TaskDuration ms | 399.997→410.018 | 231.280→235.224 |
+| ScriptDuration ms | 140.369→150.639 | 75.156→76.760 |
+| p95 rAF gap ms | 16.7→16.7 | 16.7→16.7 |
+| long task | 50ms1개→51/55ms2개 | 0→0 |
+
+새 비용의 소폭 증가를 그대로 보존합니다. mobile CDP after는6documents/6925nodes/1137listeners→6/7002/1139이며 GC/context 영향을 포함합니다. raw250ms tail의 paint/adapt1/1과 별도 pending을 비운400ms quiet0/0을 구분합니다. 최종 `a4aa` 관련 idle/닫힘 release·fallback 검사는 별도 원시 증거로 확인했습니다. GPU/Path2D 실제 bytes·총프로세스메모리·물리 CPU/GPU·배터리/에너지는 미측정입니다. 물리 Android/Samsung/Safari/OS trackpad·장시간·VoiceOver/실제 PTY 연결 실사용을 수행했다고 주장하지 않습니다.
+
+## 보존 화면과 원격 근거
+
+실제 Light/Dark·원본 시안/전후 component와 최종 목차 PNG·JSON·HTML·log는 전용 WT의 `handoff-evidence/a64-glass-reference-fidelity-20261106/`와 canonical `contracts/glass-reference-fidelity-20261106/lumen-review/`에 보존했습니다. 최종320 대표 파일은 `correction04-toc-clip/final-glass/full-review/320-light-toc-open.png`이며, 해당 JSON의 실제3asset hash가 `a4aa` Git과 일치합니다. fixture PR 배너의4c45 문구는 캡처 소스/원격 Preview provenance가 아닙니다. 독립 최종 PNG/보고서는 `lumen-toc-clip-confirmation-run-971a18fa09c4511a/`에 있습니다. 로컬 증거를 공개 웹 업로드했다고 주장하지 않습니다.
+
+CI는 새 `full-review/{native-focus-toc,terminal-idle,toc-clip}.json`을 보존합니다. [Preview workflow](https://github.com/silverkhan/TaskMecca/actions/workflows/go-artifacts.yml)의 정확 PR head provenance·ZIP digest·binary4 SHA256과 실제 source/merge CI는 PR 최신 최종 기록에 연결하며 source와 synthetic merge tree를 구분합니다. 기존 실행 환경·사용자 Preview를 설치/전환하거나 Glass를 Dev/main/Stable에 병합·배포하지 않습니다.
+
+---
+
 # A-64 TOC 가용 영역 최소 교정04 (2026-11-07)
 
 독립559a에서 FULL01/03/04 교정은 확인됐고,4c45의320×780에서는 viewport기준
