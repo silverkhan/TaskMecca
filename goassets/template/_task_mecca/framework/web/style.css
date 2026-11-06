@@ -2410,3 +2410,31 @@ select.tm-combo-native{position:absolute!important;width:1px!important;height:1p
   .workflow-floating-close{width:44px;height:44px;margin:-10px -12px -6px 0}
   .workflow-floating summary{min-height:36px}
 }
+/* A63: one paint capsule per exact-touch run; original event controls stay separate. */
+.workflow-run{position:absolute;top:0;height:100%;min-width:0}
+.workflow-run-surface{position:absolute;left:0;right:0;top:var(--workflow-run-top);height:var(--workflow-run-height);border-radius:calc(var(--workflow-run-height)/2);overflow:hidden;background:var(--wf-role-color);pointer-events:none}
+.workflow-run-surface.is-open{border-top-right-radius:0;border-bottom-right-radius:0}
+.workflow-divider{position:absolute;top:0;bottom:0;width:1px;background:#fffffff0;pointer-events:none}
+[data-theme="dark"] .workflow-divider{background:#ffffffa6}
+.workflow-open-paint{position:absolute;inset-block:0;box-sizing:border-box;background:color-mix(in srgb,var(--wf-role-color) 8%,var(--surface));border:1px dotted var(--wf-role-color);pointer-events:none}
+.workflow-run .workflow-interval{background:transparent;border:0;border-radius:0;box-shadow:none;overflow:visible}
+.workflow-run:has(.workflow-interval:hover) .workflow-run-surface{filter:brightness(1.08)}
+.workflow-edge-fade{position:absolute;top:25px;bottom:0;width:28px;pointer-events:none;z-index:3}
+.workflow-edge-left{left:calc(var(--workflow-label-width) + 8px);background:linear-gradient(to right,var(--surface),color-mix(in srgb,var(--surface) 65%,transparent) 35%,transparent)}
+.workflow-edge-right{right:8px;background:linear-gradient(to left,var(--surface),color-mix(in srgb,var(--surface) 65%,transparent) 35%,transparent)}
+.workflow-edge-fade[hidden],.workflow-pan-button[hidden]{display:none}
+.workflow-pan-row{width:100%;display:flex;align-items:center;gap:8px;min-width:0}
+.workflow-navigation-help{flex:1;min-width:0}
+.workflow-chart-footer .workflow-pan-button{display:grid;place-items:center;flex:none;width:34px;min-height:34px;padding:0;color:var(--text);background:var(--surface);border:1px solid var(--border);border-radius:6px}
+.workflow-chart-footer .workflow-pan-button[hidden]{display:none}
+.workflow-pan-button:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.workflow-included-events{margin:0 0 12px}
+.workflow-member-list{max-height:160px;overflow:auto;overscroll-behavior:contain}
+.workflow-member{display:block;width:100%;min-height:32px;padding:5px 6px;text-align:left;font:inherit;font-size:11px;color:var(--text);background:transparent;border:0;border-bottom:1px solid var(--border);cursor:pointer}
+.workflow-member small{display:block;color:var(--muted);font-size:10px}
+.workflow-member[aria-pressed="true"]{background:var(--surface2)}
+@media(max-width:720px){
+  .workflow-edge-fade{width:20px}
+  .workflow-chart-footer .workflow-pan-button{width:44px;min-height:44px}
+  .workflow-member{min-height:44px}
+}

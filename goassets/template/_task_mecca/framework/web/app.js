@@ -5817,13 +5817,19 @@ function activityDetailKey(id,project=state.project){return JSON.stringify([proj
 function activityDuration(ms){if(!Number.isFinite(ms)||ms<0)return '—';return fmtSec(Math.round(ms/1000));}
 
 const activityDetailViews=new Map();
+let workflowTimelineEntry=null;
+function syncWorkflowTimelineEntry(){
+  const entry=state.view==='backlog'&&state.detail?JSON.stringify([state.project,state.backlog,String(state.detail).toUpperCase()]):null;
+  if(entry!==workflowTimelineEntry&&entry){const prefs=activityDetailPrefs(state.detail);prefs.window=null;prefs.windowMode='fit';prefs.selection=null;}
+  workflowTimelineEntry=entry;
+}
 const ACTIVITY_DETAIL_MAX_ROWS=450;
 const ACTIVITY_DETAIL_MAX_LEDGER=120;
 function activityDetailPrefs(id,project=state.project){
   const key=activityDetailKey(id,project);
   if(!activityDetailViews.has(key)){
     if(activityDetailViews.size>=24)activityDetailViews.delete(activityDetailViews.keys().next().value);
-    activityDetailViews.set(key,{round:'all',mode:'timeline',zoom:1,focus:'manual',groupAgents:false,ledger:false});
+    activityDetailViews.set(key,{round:'all',mode:'timeline',zoom:1,focus:'manual',groupAgents:false,ledger:false,windowMode:'fit'});
   }
   return activityDetailViews.get(key);
 }
@@ -5888,12 +5894,12 @@ function workflowViewWindow(wf,prefs){
   if(!Number.isFinite(start)||!Number.isFinite(end)||end<start)return null;
   const boundEnd=Math.max(start+1,end),full=boundEnd-start;
   let view=prefs.window;
-  if(!view||!Number.isFinite(view.start)||!Number.isFinite(view.end))view={start,end:boundEnd};
+  if(prefs.windowMode==='fit'||!view||!Number.isFinite(view.start)||!Number.isFinite(view.end)){view={start,end:boundEnd};prefs.windowMode='fit';}
   const span=Math.max(1,Math.min(full,view.end-view.start));
   const left=Math.max(start,Math.min(boundEnd-span,view.start));
-  return prefs.window={start:left,end:left+span};
+  return prefs.window={start:left,end:left===boundEnd-span?boundEnd:left+span};
 }
-function workflowSetWindow(wf,prefs,start,end){prefs.window={start,end};return workflowViewWindow(wf,prefs);}
+function workflowSetWindow(wf,prefs,start,end){prefs.windowMode='manual';prefs.window={start,end};const view=workflowViewWindow(wf,prefs);if(view&&view.start===Date.parse(wf.axis.start)&&view.end===Math.max(Date.parse(wf.axis.start)+1,Date.parse(wf.axis.end)))prefs.windowMode='fit';return view;}
 function workflowZoomWindow(wf,prefs,factor,anchor,ratio=.5){
   const view=workflowViewWindow(wf,prefs);if(!view)return;
   const span=Math.min(Math.max(1,Date.parse(wf.axis.end)-Date.parse(wf.axis.start)),Math.max(1,(view.end-view.start)*factor));
@@ -5913,60 +5919,88 @@ function workflowVisibleRange(view,ko,axis=null){
   return (date(view.start)+' · ')+workflowTimeLabel(view.start,view,ko)+' — '+(crossesDay?date(view.end)+' · ':'')+workflowTimeLabel(view.end,view,ko);
 }
 function workflowIntervalKey(row,interval){return JSON.stringify([row.id,interval.id,interval.kind]);}
-const workflowRowMetadata=new WeakMap();
+// Exact timestamps decide continuity/overlap; CSS geometry uses relative offsets.
+// This preserves positive sub-millisecond gaps instead of Date.parse rounding them into joins.
+function workflowTimeNS(value){
+  const match=String(value||'').match(/^(.*:\d{2})(?:\.(\d{1,9}))?(Z|[+-]\d{2}:\d{2})$/);
+  const millis=Date.parse(match?match[1]+match[3]:value||'');
+  if(!Number.isFinite(millis))return null;
+  return BigInt(Math.trunc(millis))*1000000n+(match?BigInt((match[2]||'').padEnd(9,'0')):0n);
+}
 function workflowIntervalBounds(interval,axisEnd){
   const from=Date.parse(interval.start||''),point=!interval.end&&['execution_report','handoff_review'].includes(interval.kind),open=!interval.end&&!point;
-  return {from,to:interval.end?Date.parse(interval.end):point?from:Date.parse(axisEnd),point,open};
+  return {from,to:interval.end?Date.parse(interval.end):point?from:Date.parse(axisEnd),point,open,fromNS:workflowTimeNS(interval.start),toNS:workflowTimeNS(interval.end|| (point?interval.start:axisEnd))};
 }
-function workflowRowInfo(row){
-  if(!workflowRowMetadata.has(row)){
-    const intervals=Array.isArray(row.intervals)?row.intervals:[],bounds=intervals.map(i=>workflowIntervalBounds(i,undefined)),times=bounds.flatMap(b=>[b.from,b.to]).filter(Number.isFinite);
-    workflowRowMetadata.set(row,{intervals,lane:Math.max(0,...intervals.map(i=>Number(i.lane)||0)),outcomes:[...new Set(intervals.map(i=>i.outcome).filter(Boolean))],startOnly:intervals.some(i=>i.kind==='execution_report'&&!i.end),openEnded:bounds.some(b=>b.open),from:times.length?Math.min(...times):null,to:times.length?Math.max(...times):null});
+function workflowActivityLayout(row,axisEnd){
+  const entries=(Array.isArray(row.intervals)?row.intervals:[]).filter(i=>i.kind==='activity'||i.kind==='activity_open').map((interval,index)=>({interval,index,...workflowIntervalBounds(interval,axisEnd)})).filter(e=>e.fromNS!==null&&e.toNS!==null&&e.toNS>=e.fromNS);
+  entries.sort((a,b)=>a.fromNS<b.fromNS?-1:a.fromNS>b.fromNS?1:a.index-b.index);
+  const ends=[],runs=[],lastByLane=[];
+  for(const entry of entries){let lane=0;while(lane<ends.length&&ends[lane]>entry.fromNS)lane++;ends[lane]=entry.toNS;entry.lane=lane;
+    const previous=lastByLane[lane];
+    if(previous&&previous.entries.at(-1).interval.end&&previous.toNS===entry.fromNS){previous.entries.push(entry);previous.toNS=entry.toNS;previous.to=entry.to;previous.open=entry.open;}
+    else{const run={from:entry.from,to:entry.to,fromNS:entry.fromNS,toNS:entry.toNS,lane,open:entry.open,entries:[entry]};runs.push(run);lastByLane[lane]=run;}
   }
-  return workflowRowMetadata.get(row);
+  return {entries,runs,lanes:Math.max(1,ends.length)};
 }
+function workflowEdgeState(wf,view){return {left:Boolean(view&&view.start>Date.parse(wf.axis?.start)),right:Boolean(view&&view.end<Date.parse(wf.axis?.end))};}
+function workflowPanButton(side,ko,hidden){return '<button type="button" class="workflow-pan-button" data-workflow-pan="'+side+'"'+(hidden?' hidden':'')+' aria-label="'+esc(side==='left'?workflowText(ko,'화면 밖 이전 시간으로 이동','Pan to earlier time outside view'):workflowText(ko,'화면 밖 이후 시간으로 이동','Pan to later time outside view'))+'"><svg width="14" height="14" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="'+(side==='left'?'M12 4 6 10l6 6':'m8 4 6 6-6 6')+'" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>';}
 function workflowPlotHTML(wf,prefs,ko,drawWindow=null){
   const view=workflowViewWindow(wf,prefs);if(!view)return '';
   const draw=drawWindow||view;
   const span=view.end-view.start,axis=wf.axis,rows=Array.isArray(wf.rows)?wf.rows:[];
   const selected=prefs.round==='all'?'all':String(prefs.round),visible=selected==='all'?rows:rows.filter(r=>String(r.round??'unknown')===selected);
-  const pct=time=>(Math.max(draw.start,Math.min(draw.end,time))-view.start)/span*100;
+  const originNS=workflowTimeNS(axis.start),origin=Date.parse(axis.start),relative=ns=>Number(ns-originNS)/1000000,pctNS=ns=>(relative(ns)-(view.start-origin))/span*100;
   const ticks=[0,.25,.5,.75,1].map(p=>'<span data-workflow-tick="'+p+'" style="left:'+p*100+'%;transform:translateX('+(p===0?0:p===1?-100:-50)+'%)">'+esc(workflowTimeLabel(view.start+span*p,view,ko))+'</span>').join('');
-  const intervalHTML=(row,interval,index,layout={lanes:1,expanded:false})=>{
-    const {from,to,point}=workflowIntervalBounds(interval,axis.end);
+  const intervalHTML=(row,interval,index,layout,run)=>{
+    const {from,to,point,fromNS,toNS}=workflowIntervalBounds(interval,axis.end);
     if(!Number.isFinite(from)||!Number.isFinite(to)||to<from||to<draw.start||from>draw.end)return '';
     const label=workflowIntervalType(interval,ko),outcome=workflowOutcome(interval.outcome,ko),key=workflowIntervalKey(row,interval);
     const detail=[workflowActorLabel(row,ko),workflowRoundLabel(row.round,ko),label,activityEventTime(interval.start,ko)+' — '+(interval.end?activityEventTime(interval.end,ko):workflowText(ko,'종료 미관측','End unobserved')),interval.measured?activityDisplayDuration(interval.duration_ms,ko):workflowText(ko,'활동 시간 미측정','Activity unmeasured'),outcome].filter(Boolean).join(' · ');
     const full=detail+'\n'+JSON.stringify({role:row.role,agent_id:row.agent_id,display_name:row.display_name,display_name_source:row.display_name_source,interval},null,2)+'\n'+workflowText(ko,'실행: ','Attempt: ')+(interval.attempt_id||'—')+'\n'+workflowText(ko,'배정: ','Assignment: ')+(interval.assignment_id||'—')+'\n'+workflowText(ko,'인계: ','Handoff: ')+(interval.handoff_id||'—')+(interval.evidence?'\n'+interval.evidence:'');
     const kind=['activity','activity_open','execution_report','handoff_review'].includes(interval.kind)?interval.kind:'execution_report';
     const lane=Math.max(0,Number(layout.lane)||0),pitch=layout.expanded?24:20/layout.lanes,height=point?24:layout.expanded?20:Math.max(2,Math.min(20,pitch-2));
-    return '<button type="button" class="workflow-interval wf-role-'+workflowRoleClass(row.role)+' wf-kind-'+kind+(point?' wf-start-only':'')+(prefs.selection?.key===key?' is-selected':'')+'" data-workflow-interval="'+esc(key)+'" data-workflow-start="'+from+'" data-workflow-end="'+to+'" data-workflow-detail="'+esc(full)+'" data-workflow-summary="'+esc(detail)+'" data-workflow-title="'+esc(label+' · '+(interval.measured?activityDisplayDuration(interval.duration_ms,ko):workflowText(ko,'미측정','Unmeasured')))+'" data-workflow-fingerprint="'+esc(JSON.stringify([row.display_name,row.display_name_source,row.name_evidence,interval]))+'" aria-label="'+esc(detail)+'" style="left:'+pct(from)+'%;width:'+Math.max(0,pct(to)-pct(from))+'%;top:'+(point&&!layout.expanded?2:lane*pitch+4)+'px;height:'+height+'px"><span class="activity-timeline-duration-label">'+esc(label)+(interval.measured?' · '+esc(activityDisplayDuration(interval.duration_ms,ko)):'')+'</span></button>';
+    return '<button type="button" class="workflow-interval wf-role-'+workflowRoleClass(row.role)+' wf-kind-'+kind+(point?' wf-start-only':'')+(prefs.selection?.key===key?' is-selected':'')+'" data-workflow-interval="'+esc(key)+'" data-workflow-start="'+from+'" data-workflow-end="'+to+'" data-workflow-relative-start="'+relative(fromNS)+'" data-workflow-relative-end="'+relative(toNS)+'" data-workflow-detail="'+esc(full)+'" data-workflow-summary="'+esc(detail)+'" data-workflow-title="'+esc(label+' · '+(interval.measured?activityDisplayDuration(interval.duration_ms,ko):workflowText(ko,'미측정','Unmeasured')))+'" data-workflow-fingerprint="'+esc(JSON.stringify([row.display_name,row.display_name_source,row.name_evidence,interval]))+'" aria-label="'+esc(detail)+'" style="left:'+(Number(fromNS-run.fromNS)/Math.max(1,Number(run.toNS-run.fromNS))*100)+'%;width:'+(Number(toNS-fromNS)/Math.max(1,Number(run.toNS-run.fromNS))*100)+'%;top:'+(point&&!layout.expanded?2:lane*pitch+4)+'px;height:'+height+'px"><span class="activity-timeline-duration-label">'+esc(label)+(interval.measured?' · '+esc(activityDisplayDuration(interval.duration_ms,ko)):'')+'</span></button>';
   };
   const rowHTML=visible.slice(0,ACTIVITY_DETAIL_MAX_ROWS).map(row=>{
-    const intervals=workflowRowInfo(row).intervals.filter(i=>i.kind==='activity'||i.kind==='activity_open');
+    const layout=workflowActivityLayout(row,axis.end),intervals=layout.entries.map(e=>e.interval);
     if(!intervals.length)return '';
-    // Layout is derived from actual Activity only; source lane/time objects stay untouched.
-    const ends=[],lanes=intervals.map(i=>{const bounds=workflowIntervalBounds(i,axis.end);let lane=0;while(lane<ends.length&&ends[lane]>bounds.from)lane++;ends[lane]=bounds.to;return lane;});
-    const lane=Math.max(0,...lanes),expanded=Boolean(prefs.expandedRows?.[row.id]);
+    const lane=layout.lanes-1,expanded=Boolean(prefs.expandedRows?.[row.id]);
     const outcomes=[...new Set(intervals.map(i=>i.outcome).filter(o=>workflowOutcome(o,ko)))];
     const round=workflowRoundLabel(row.round,ko),value=Number.isFinite(row.observed_activity_ms)?activityDisplayDuration(row.observed_activity_ms,ko):workflowText(ko,'미측정','Unmeasured');
     const fullLabel=[workflowActorLabel(row,ko),round,value].join(' · ');
     const label='<button type="button" class="workflow-row-label" data-workflow-row-select="'+esc(row.id)+'" data-workflow-title="'+esc(fullLabel)+'" data-workflow-fingerprint="'+esc(JSON.stringify(row))+'" aria-label="'+esc(fullLabel)+'"><i class="workflow-role-swatch wf-role-'+workflowRoleClass(row.role)+'"></i><span>'+esc(workflowActorLabel(row,ko))+'<small>'+esc(round+' · '+workflowText(ko,'활동 누적 ','Activity total ')+value)+'</small></span></button>';
     const results=outcomes.length>1?'<span class="workflow-result-badge" data-workflow-row-outcome="mixed" data-workflow-result-count="'+outcomes.length+'" title="'+esc(outcomes.map(o=>workflowOutcome(o,ko)).join(' · '))+'">'+outcomes.length+'</span>':outcomes.map(o=>'<span class="workflow-result-badge" data-workflow-row-outcome="'+esc(o)+'" title="'+esc(workflowOutcome(o,ko))+'">'+esc(workflowOutcome(o,ko))+'</span>').join('');
-    return '<div class="workflow-agent-row" data-workflow-row="'+esc(row.id)+'"><div class="workflow-agent-label">'+label+results+(lane?'<button type="button" class="workflow-row-expand" data-workflow-row-expand="'+esc(row.id)+'" aria-expanded="'+expanded+'" aria-label="'+esc(workflowText(ko,(expanded?'접기: ':'펼치기: ')+(lane+1)+'개 동시 구간',(expanded?'Collapse: ':'Expand: ')+(lane+1)+' concurrent intervals'))+'">'+(lane+1)+'</button>':'')+'</div><div class="workflow-agent-plot"><div class="workflow-agent-track" style="height:'+(expanded?(lane+1)*24+8:28)+'px">'+intervals.map((i,index)=>intervalHTML(row,i,index,{lane:lanes[index],lanes:lane+1,expanded})).join('')+'</div></div></div>';
+    const runs=layout.runs.map(run=>{
+      if(run.to<draw.start||run.from>draw.end)return '';
+      const pitch=expanded?24:20/layout.lanes,height=expanded?20:Math.max(2,Math.min(20,pitch-2)),top=run.lane*pitch+4,total=Math.max(1,Number(run.toNS-run.fromNS)),members=run.entries.map(e=>workflowIntervalKey(row,e.interval));
+      const dividers=run.entries.slice(1).map(e=>'<span class="workflow-divider" style="left:'+Number(e.fromNS-run.fromNS)/total*100+'%"></span>').join('');
+      const open=run.entries.filter(e=>e.open).map(e=>'<span class="workflow-open-paint" style="left:'+Number(e.fromNS-run.fromNS)/total*100+'%;width:'+Number(e.toNS-e.fromNS)/total*100+'%"></span>').join('');
+      return '<div class="workflow-run wf-role-'+workflowRoleClass(row.role)+'" data-workflow-run data-workflow-members="'+esc(JSON.stringify(members))+'" data-workflow-from-ns="'+run.fromNS+'" data-workflow-to-ns="'+run.toNS+'" style="left:'+pctNS(run.fromNS)+'%;width:'+(Number(run.toNS-run.fromNS)/1000000/span*100)+'%;--workflow-run-height:'+height+'px;--workflow-run-top:'+top+'px"><div class="workflow-run-surface'+(run.open?' is-open':'')+'" aria-hidden="true">'+open+dividers+'</div>'+run.entries.map(e=>intervalHTML(row,e.interval,e.index,{lane:e.lane,lanes:layout.lanes,expanded},run)).join('')+'</div>';
+    }).join('');
+    return '<div class="workflow-agent-row" data-workflow-row="'+esc(row.id)+'"><div class="workflow-agent-label">'+label+results+(lane?'<button type="button" class="workflow-row-expand" data-workflow-row-expand="'+esc(row.id)+'" aria-expanded="'+expanded+'" aria-label="'+esc(workflowText(ko,(expanded?'접기: ':'펼치기: ')+(lane+1)+'개 동시 구간',(expanded?'Collapse: ':'Expand: ')+(lane+1)+' concurrent intervals'))+'">'+(lane+1)+'</button>':'')+'</div><div class="workflow-agent-plot"><div class="workflow-agent-track" style="height:'+(expanded?(lane+1)*24+8:28)+'px">'+runs+'</div></div></div>';
   }).join('');
   return '<div class="workflow-ruler-row"><span>'+esc(workflowText(ko,'역할 · 회차','Role · round'))+'</span><div class="activity-time-ruler workflow-axis-track">'+ticks+'</div></div>'+rowHTML+(!rowHTML?'<p class="workflow-empty">'+esc(workflowText(ko,'실제 활동 구간 미측정 · 실행 보고는 근거에서 확인할 수 있습니다.','Actual activity unmeasured · execution reports are available in sources.'))+'</p>':'');
 }
 const workflowFloatingViews=new WeakMap();
+let workflowActiveFloating=null;
 // One nonmodal floating surface per chart. No polling or additional source reads.
 function workflowFloatingView(root,viewport,wf,pref,ko){
   const abort=new AbortController(),options={signal:abort.signal},surface=document.createElement('div');
   surface.className='workflow-floating';surface.hidden=true;document.body.append(surface);
   let anchor=null,pinned=false,keyboard=false,positionFrame=0,disposed=false,returningFocus=false;
   const key=node=>node?.dataset.workflowInterval||JSON.stringify(['row',node?.dataset.workflowRowSelect]);
+  const memberFingerprint=node=>node?.closest('.workflow-run')?.dataset.workflowMembers||null;
+  const anchorVisible=node=>{if(!node.dataset.workflowInterval)return true;const view=workflowViewWindow(wf,pref),origin=Date.parse(wf.axis.start);return Number(node.dataset.workflowRelativeEnd)>=view.start-origin&&Number(node.dataset.workflowRelativeStart)<=view.end-origin;};
   const anchors=()=>[...root.querySelectorAll('[data-workflow-interval],[data-workflow-row-select]')];
+  const visiblePeers=(node,row)=>{
+    const view=workflowViewWindow(wf,pref),origin=Date.parse(wf.axis.start),left=view.start-origin,right=view.end-origin,members=memberFingerprint(node),memberKeys=members?new Set(JSON.parse(members)):null;
+    const live=new Set(anchors().filter(n=>n.dataset.workflowInterval&&Number(n.dataset.workflowRelativeEnd)>=left&&Number(n.dataset.workflowRelativeStart)<=right).map(n=>n.dataset.workflowInterval));
+    return row?.intervals.filter(i=>['activity','activity_open'].includes(i.kind)&&live.has(workflowIntervalKey(row,i))&&(!memberKeys||memberKeys.has(workflowIntervalKey(row,i))))||[];
+  };
+  const readingState=()=>{const active=document.activeElement,details=surface.querySelector('#workflowIntervalEvidence'),included=surface.querySelector('.workflow-included-events'),text=surface.querySelector('#workflowIntervalEvidence pre')?.firstChild,selection=getSelection();return {open:details?.open||false,includedOpen:included?.open||false,scrollTop:surface.scrollTop,focus:active===surface?'surface':active===surface.querySelector('#workflowIntervalEvidence>summary')?'summary':active===included?.querySelector('summary')?'included-summary':active?.dataset?.workflowMember?'member:'+active.dataset.workflowMember:active===surface.querySelector('button')?'close':null,selection:text&&selection?.anchorNode===text&&selection.focusNode===text?{anchor:selection.anchorOffset,focus:selection.focusOffset}:null};};
+
   const place=()=>{
-    positionFrame=0;if(surface.hidden||!anchor)return;
+    positionFrame=0;if(disposed||surface.hidden||!anchor)return;
     const r=anchor.getBoundingClientRect(),clip=viewport.getBoundingClientRect();
     if(!anchor.isConnected||r.right<clip.left||r.left>clip.right||r.bottom<0||r.top>innerHeight){close(false);return;}
     const margin=8,width=Math.min(pinned?360:300,innerWidth-margin*2);surface.style.width=width+'px';
@@ -5978,7 +6012,7 @@ function workflowFloatingView(root,viewport,wf,pref,ko){
     const left=Math.max(margin,Math.min(innerWidth-width-margin,(Math.max(r.left,clip.left)+Math.min(r.right,clip.right)-width)/2)),top=Math.max(topMargin,useBelow?r.bottom+10:r.top-h-10);
     surface.style.left=left+'px';surface.style.top=top+'px';
   };
-  const queuePlace=()=>{if(!positionFrame)positionFrame=requestAnimationFrame(place);};
+  const queuePlace=()=>{if(!disposed&&!positionFrame)positionFrame=requestAnimationFrame(place);};
   const close=(restore=false,clear=true)=>{
     const previous=anchor;anchor?.classList.remove('is-selected');anchor?.removeAttribute('aria-describedby');anchor?.removeAttribute('aria-expanded');
     root.querySelectorAll('.workflow-interval.is-selected,.workflow-row-label.is-selected').forEach(node=>{node.classList.remove('is-selected');node.removeAttribute('aria-expanded');});
@@ -5991,6 +6025,7 @@ function workflowFloatingView(root,viewport,wf,pref,ko){
     close(false,!pin);anchor=node;pinned=pin;keyboard=fromKeyboard;
     const rowID=node.dataset.workflowRowSelect,entry=rowID?null:JSON.parse(node.dataset.workflowInterval),row=wf.rows.find(r=>r.id===(rowID||entry?.[0]));
     const interval=entry&&row?.intervals.find(i=>i.id===entry[1]&&i.kind===entry[2]);
+    const peers=visiblePeers(node,row);
     if(!row){close(false);return;}
     const title=node.dataset.workflowTitle||node.dataset.workflowSummary||workflowActorLabel(row,ko);
     surface.id='workflowActivityFloating';surface.classList.toggle('is-pinned',pin);surface.setAttribute('role',pin?'dialog':'tooltip');
@@ -5999,24 +6034,35 @@ function workflowFloatingView(root,viewport,wf,pref,ko){
       const badges=[workflowActorLabel(row,ko),workflowRoundLabel(row.round,ko),workflowOutcome(interval?.outcome,ko)].filter(Boolean);
       const times=interval?'<dl><div><dt>'+esc(workflowText(ko,'시작','Start'))+'</dt><dd>'+esc(activityEventTime(interval.start,ko))+'</dd></div><div><dt>'+esc(workflowText(ko,'종료','End'))+'</dt><dd>'+esc(interval.end?activityEventTime(interval.end,ko):workflowText(ko,'종료 미관측','End unobserved'))+'</dd></div></dl>':'';
       surface.innerHTML='<div class="workflow-floating-head"><strong>'+esc(title)+'</strong><button type="button" class="workflow-floating-close" aria-label="'+esc(workflowText(ko,'구간 상세 닫기','Close interval details'))+'">×</button></div><div class="workflow-floating-badges">'+badges.map(b=>'<span>'+esc(b)+'</span>').join('')+'</div>'+times+'<details id="workflowIntervalEvidence"><summary>'+esc(workflowText(ko,'정확한 근거','Exact evidence'))+'</summary><pre>'+esc(JSON.stringify({role:row.role,agent_id:row.agent_id,display_name:row.display_name||null,display_name_source:row.display_name_source||'unverified',name_evidence:row.name_evidence,round:row.round,interval:interval||undefined,intervals:interval?undefined:row.intervals},null,2))+'</pre></details>';
+      if(peers.length>1){
+        const list=document.createElement('details');list.className='workflow-included-events';list.open=reading?.includedOpen??Boolean(interval&&node.getBoundingClientRect().width<7);
+        list.innerHTML='<summary>'+esc(workflowText(ko,'포함 이벤트','Included events'))+' ('+peers.length+')</summary><div class="workflow-member-list">'+peers.map(i=>'<button type="button" class="workflow-member" data-workflow-member="'+esc(workflowIntervalKey(row,i))+'" aria-pressed="'+(i===interval)+'">'+esc(workflowIntervalType(i,ko)+' · '+(i.measured?activityDisplayDuration(i.duration_ms,ko):workflowText(ko,'미측정','Unmeasured')))+'<small>'+esc(activityEventTime(i.start,ko))+'</small></button>').join('')+'</div>';
+        surface.insertBefore(list,surface.querySelector('#workflowIntervalEvidence'));
+        list.querySelectorAll('[data-workflow-member]').forEach(button=>button.addEventListener('click',e=>{const target=anchors().find(a=>a.dataset.workflowInterval===button.dataset.workflowMember&&a.tabIndex!==-1);if(target)show(target,true,e.detail===0,{open:false,includedOpen:true,scrollTop:surface.scrollTop,focus:'member:'+button.dataset.workflowMember,selection:null});},options));
+        list.addEventListener('toggle',queuePlace,options);
+      }
       surface.querySelector('.workflow-floating-close').addEventListener('click',e=>{if(e.detail===0)keyboard=true;close(true);},options);
-      surface.querySelector('details').addEventListener('toggle',queuePlace,options);
+      surface.querySelector('#workflowIntervalEvidence').addEventListener('toggle',queuePlace,options);
       node.classList.add('is-selected');node.setAttribute('aria-expanded','true');
-      pref.selection={key:key(node),fingerprint:node.dataset.workflowFingerprint,keyboard:fromKeyboard};
+      pref.selection={key:key(node),fingerprint:node.dataset.workflowFingerprint,keyboard:fromKeyboard,membersFingerprint:memberFingerprint(node),visibleMembersFingerprint:JSON.stringify(peers.map(i=>workflowIntervalKey(row,i)))};
     }else{surface.textContent=title;node.setAttribute('aria-describedby',surface.id);}
-    if(pin&&reading)surface.querySelector('details').open=reading.open;
+    if(pin&&reading)surface.querySelector('#workflowIntervalEvidence').open=reading.open;
     surface.hidden=false;place();
     if(pin&&reading){
-      const focus=reading.focus==='summary'?surface.querySelector('summary'):reading.focus==='close'?surface.querySelector('button'):reading.focus==='surface'?surface:null;
+      const focus=reading.focus==='summary'?surface.querySelector('#workflowIntervalEvidence>summary'):reading.focus==='close'?surface.querySelector('button'):reading.focus==='surface'?surface:reading.focus==='included-summary'?surface.querySelector('.workflow-included-events>summary'):reading.focus?.startsWith('member:')?[...surface.querySelectorAll('[data-workflow-member]')].find(b=>b.dataset.workflowMember===reading.focus.slice(7)):null;
       if(focus)focus.focus({preventScroll:true});
       if(reading.selection){const text=surface.querySelector('pre')?.firstChild;if(text){const selection=getSelection(),limit=text.textContent.length;selection.setBaseAndExtent(text,Math.min(limit,reading.selection.anchor),text,Math.min(limit,reading.selection.focus));}}
       surface.scrollTop=reading.scrollTop;
     }else if(pin&&fromKeyboard)surface.focus({preventScroll:true});
   };
   const reconcile=()=>{
-    if(pinned||pref.selection){const selection=pref.selection,node=selection&&anchors().find(n=>key(n)===selection.key&&n.dataset.workflowFingerprint===selection.fingerprint&&n.tabIndex!==-1);
+    if(pinned||pref.selection){const selection=pref.selection,node=selection&&anchors().find(n=>key(n)===selection.key&&n.dataset.workflowFingerprint===selection.fingerprint&&memberFingerprint(n)===selection.membersFingerprint&&anchorVisible(n));
       if(!node){close(false);return;}
-      if(!pinned)show(node,true,Boolean(selection.keyboard&&selection.focused),selection.reading);else{anchor?.classList.remove('is-selected');anchor=node;node.classList.add('is-selected');node.setAttribute('aria-expanded','true');queuePlace();}
+      if(!pinned)show(node,true,Boolean(selection.keyboard&&selection.focused),selection.reading);
+      else{const rowID=node.dataset.workflowRowSelect||JSON.parse(node.dataset.workflowInterval)[0],row=wf.rows.find(r=>r.id===rowID),visible=JSON.stringify(visiblePeers(node,row).map(i=>workflowIntervalKey(row,i)));
+        if(visible!==selection.visibleMembersFingerprint){const reading=readingState();pinned=false;show(node,true,false,reading);}
+        else{anchor?.classList.remove('is-selected');anchor=node;node.classList.add('is-selected');node.setAttribute('aria-expanded','true');queuePlace();}
+      }
     }else if(anchor&&!anchor.isConnected)close(false);
   };
   viewport.addEventListener('pointerover',e=>{if(e.pointerType!=='touch'&&!pinned)show(e.target.closest('[data-workflow-interval],[data-workflow-row-select]'));},options);
@@ -6031,9 +6077,8 @@ function workflowFloatingView(root,viewport,wf,pref,ko){
   const dispose=()=>{
     if(disposed)return;disposed=true;
     if(pinned&&pref.selection){
-      const active=document.activeElement,details=surface.querySelector('details'),text=surface.querySelector('pre')?.firstChild,selection=getSelection();
-      pref.selection.focused=surface.contains(active);
-      pref.selection.reading={open:details.open,scrollTop:surface.scrollTop,focus:active===surface?'surface':active===surface.querySelector('summary')?'summary':active===surface.querySelector('button')?'close':null,selection:text&&selection?.anchorNode===text&&selection.focusNode===text?{anchor:selection.anchorOffset,focus:selection.focusOffset}:null};
+      pref.selection.focused=surface.contains(document.activeElement);
+      pref.selection.reading=readingState();
     }
     abort.abort();observer.disconnect();cancelAnimationFrame(positionFrame);surface.remove();
   };
@@ -6043,16 +6088,17 @@ function bindWorkflowControls(taskID,project,root){
   const pref=activityDetailPrefs(taskID,project),ko=state.language==='ko',payload=activityDetailCache.get(activityDetailKey(taskID,project)),wf=payload?.workflow;
   if(!wf)return;
   activityDetailResizeObservers.get(root)?.disconnect();
+  workflowActiveFloating?.dispose();
   workflowFloatingViews.get(root)?.dispose();
   const viewport=root.querySelector('#workflowTimelineViewport'),canvas=root.querySelector('.workflow-timeline-canvas');
-  const floating=viewport?workflowFloatingView(root,viewport,wf,pref,ko):null;if(floating)workflowFloatingViews.set(root,floating);
+  const floating=viewport?workflowFloatingView(root,viewport,wf,pref,ko):null;if(floating){workflowFloatingViews.set(root,floating);workflowActiveFloating=floating;}
   const textMeasure=document.createElement('canvas').getContext('2d'),textWidths=new Map();
   let labelFont='',tickFont='',plotted=null,intervalNodes=null,tracks=null;
   const textWidth=(text,font)=>{const key=font+'|'+text;if(!textWidths.has(key)){textMeasure.font=font;textWidths.set(key,textMeasure.measureText(text).width);}return textWidths.get(key);};
   const fitLabels=()=>{
     if(!canvas)return;
     const plot=canvas.querySelector('.workflow-axis-track'),width=plot?.getBoundingClientRect().width||0;
-    if(!intervalNodes)intervalNodes=[...canvas.querySelectorAll('[data-workflow-interval]')].map(button=>({button,label:button.querySelector('.activity-timeline-duration-label'),start:Number(button.dataset.workflowStart),end:Number(button.dataset.workflowEnd)}));
+    if(!intervalNodes)intervalNodes=[...canvas.querySelectorAll('[data-workflow-interval]')].map(button=>({button,label:button.querySelector('.activity-timeline-duration-label'),start:Number(button.dataset.workflowRelativeStart),end:Number(button.dataset.workflowRelativeEnd)}));
     const labels=intervalNodes.map(item=>item.label),ticks=[...root.querySelectorAll('.activity-time-ruler span')],view=workflowViewWindow(wf,pref),span=view.end-view.start;
     if(!labelFont&&labels[0])labelFont=getComputedStyle(labels[0]).font;
     if(!tickFont&&ticks[0])tickFont=getComputedStyle(ticks[0]).font;
@@ -6061,12 +6107,13 @@ function bindWorkflowControls(taskID,project,root){
     // Transparent hit regions stop at neighboring centers so tiny bars cannot
     // swallow another activity's painted center, even in a dense Fit view.
     const hitGroups=new Map();
-    intervalNodes.forEach(item=>{const track=item.button.parentElement,key=item.button.style.top;if(!hitGroups.has(track))hitGroups.set(track,new Map());const groups=hitGroups.get(track);if(!groups.has(key))groups.set(key,[]);groups.get(key).push(item);});
+    intervalNodes.forEach(item=>{const track=item.button.closest('.workflow-agent-track'),key=item.button.style.top;if(!hitGroups.has(track))hitGroups.set(track,new Map());const groups=hitGroups.get(track);if(!groups.has(key))groups.set(key,[]);groups.get(key).push(item);});
     hitGroups.forEach(groups=>groups.forEach(items=>{items.sort((a,b)=>(a.start+a.end)-(b.start+b.end));items.forEach((item,index)=>{const pixels=Math.max(0,item.end-item.start)/span*width,center=(item.start+item.end)/2,previous=items[index-1],next=items[index+1],left=Math.min(12,previous?(center-(previous.start+previous.end)/2)/span*width/2:12),right=Math.min(12,next?((next.start+next.end)/2-center)/span*width/2:12);item.button.style.setProperty('--workflow-hit-left',(pixels/2-Math.max(pixels/2,left))+'px');item.button.style.setProperty('--workflow-hit-width',(Math.max(pixels/2,left)+Math.max(pixels/2,right))+'px');});}));
-    intervalNodes.forEach(({button,label,start,end})=>{const visible=end>=view.start&&start<=view.end,pixels=Math.max(0,Math.min(end,view.end)-Math.max(start,view.start))/span*width,visibility=parseFloat(button.style.height)>=14&&pixels>=textWidth(label.textContent,labelFont)+14?'visible':'hidden';if(label.style.visibility!==visibility)label.style.visibility=visibility;const tab=visible?0:-1;if(button.tabIndex!==tab)button.tabIndex=tab;if(visible)button.removeAttribute('aria-hidden');else button.setAttribute('aria-hidden','true');});
+    intervalNodes.forEach(({button,label,start,end})=>{const left=view.start-Date.parse(wf.axis.start),right=view.end-Date.parse(wf.axis.start),visible=end>=left&&start<=right,pixels=Math.max(0,Math.min(end,right)-Math.max(start,left))/span*width,visibility=parseFloat(button.style.height)>=14&&pixels>=textWidth(label.textContent,labelFont)+14?'visible':'hidden';if(label.style.visibility!==visibility)label.style.visibility=visibility;const tab=visible?0:-1;if(button.tabIndex!==tab)button.tabIndex=tab;if(visible)button.removeAttribute('aria-hidden');else button.setAttribute('aria-hidden','true');});
     let last=-Infinity;const ending=ticks.at(-1),endingLeft=width-(ending?textWidth(ending.textContent,tickFont):0);
     ticks.forEach((tick,i)=>{const p=Number(tick.dataset.workflowTick),w=textWidth(tick.textContent,tickFont),left=p*width-(p===0?0:p===1?w:w/2),right=left+w,visible=!i||i===ticks.length-1||(left>=last+8&&right<=endingLeft-8);tick.style.visibility=visible?'visible':'hidden';if(visible)last=right;});
   };
+  const updateEdges=()=>{const edges=workflowEdgeState(wf,workflowViewWindow(wf,pref));for(const side of ['left','right']){const button=root.querySelector('[data-workflow-pan="'+side+'"]');if(button&&!edges[side]&&button===document.activeElement)viewport?.focus({preventScroll:true});if(button)button.hidden=!edges[side];const fade=root.querySelector('[data-workflow-fade="'+side+'"]');if(fade)fade.hidden=!edges[side];}};
   const displaySelection=()=>floating?.reconcile();
   const paint=()=>{
     if(!canvas||!canvas.isConnected)return;
@@ -6083,7 +6130,7 @@ function bindWorkflowControls(taskID,project,root){
     const output=root.querySelector('#workflowVisibleRange');if(output)output.textContent=workflowVisibleRange(view,ko,wf.axis);
     const full=Date.parse(wf.axis.end)-Date.parse(wf.axis.start),isFit=view.end-view.start>=full;
     root.querySelector('#workflowZoomOut').disabled=isFit;root.querySelector('#workflowZoomIn').disabled=view.end-view.start<=1;
-    displaySelection();fitLabels();
+    displaySelection();fitLabels();updateEdges();
     if(focusedRow||focusedExpand){const attr=focusedRow?'data-workflow-row-select':'data-workflow-row-expand',value=focusedRow||focusedExpand;[...canvas.querySelectorAll('['+attr+']')].find(button=>button.getAttribute(attr)===value)?.focus({preventScroll:true});}
     if(focused){const target=[...canvas.querySelectorAll('[data-workflow-interval]')].find(x=>x.dataset.workflowInterval===focused&&x.tabIndex===0);(target||viewport)?.focus({preventScroll:true});}
   };
@@ -6092,6 +6139,7 @@ function bindWorkflowControls(taskID,project,root){
   const zoom=(factor,anchor,ratio)=>{workflowZoomWindow(wf,pref,factor,anchor,ratio??.5);paint();};
   const fit=()=>{pref.window=null;workflowViewWindow(wf,pref);paint();};
   root.querySelector('#workflowZoomIn')?.addEventListener('click',()=>zoom(.5));root.querySelector('#workflowZoomOut')?.addEventListener('click',()=>zoom(2));root.querySelector('#workflowFit')?.addEventListener('click',fit);
+  root.querySelectorAll('[data-workflow-pan]').forEach(button=>button.addEventListener('click',()=>{const v=workflowViewWindow(wf,pref),delta=(v.end-v.start)*.65*(button.dataset.workflowPan==='left'?-1:1);workflowSetWindow(wf,pref,v.start+delta,v.end+delta);paint();}));
   root.querySelector('#activityDetailRound')?.addEventListener('change',e=>{pref.round=e.target.value;paint();});
   root.querySelector('#activityDetailRefresh')?.addEventListener('click',()=>void loadTaskActivity(taskID,project));
   root.querySelector('#activityLedgerDetail')?.addEventListener('toggle',e=>{pref.ledger=e.target.open;});
@@ -6101,8 +6149,8 @@ function bindWorkflowControls(taskID,project,root){
   const plotRect=()=>canvas.querySelector('.workflow-axis-track').getBoundingClientRect();
   const inPlot=(x,rect)=>x>=rect.left&&x<=rect.right;
   viewport.addEventListener('click',e=>{if(e.detail>0&&performance.now()<suppressClick){e.preventDefault();return;}suppressClick=0;const expand=e.target.closest?.('[data-workflow-row-expand]');if(expand){pref.expandedRows??={};pref.expandedRows[expand.dataset.workflowRowExpand]=!pref.expandedRows[expand.dataset.workflowRowExpand];plotted=null;paint();return;}select(e.target,e.detail===0);});
-  viewport.addEventListener('keydown',e=>{
-    if(e.target!==viewport&&!e.target.closest?.('[data-workflow-interval],[data-workflow-row-select],[data-workflow-row-expand]'))return;if(e.ctrlKey||e.metaKey||e.altKey)return;
+  root.addEventListener('keydown',e=>{
+    if(e.target!==viewport&&!e.target.closest?.('[data-workflow-interval],[data-workflow-row-select],[data-workflow-row-expand],[data-workflow-pan]'))return;if(e.ctrlKey||e.metaKey||e.altKey)return;
     if(!['+','=','-','Home','0','ArrowLeft','ArrowRight'].includes(e.key))return;
     e.preventDefault();e.stopPropagation();
     const v=workflowViewWindow(wf,pref),span=v.end-v.start;
@@ -6187,13 +6235,13 @@ function bindWorkflowControls(taskID,project,root){
   viewport.addEventListener('pointerup',endDrag);viewport.addEventListener('pointercancel',endDrag);
   viewport.addEventListener('lostpointercapture',e=>{if(touchContacts.has(e.pointerId))cancelTouches();else if(drag?.id===e.pointerId){drag=null;viewport.classList.remove('is-selecting');}});
   if(typeof ResizeObserver!=='undefined'){const observer=new ResizeObserver(()=>{fitLabels();floating?.place();if(touchContacts.size)rebaseTouch();});observer.observe(viewport);activityDetailResizeObservers.set(root,observer);}
-  displaySelection();fitLabels();
+  displaySelection();fitLabels();updateEdges();
   root.querySelector('#workflowZoomOut').disabled=workflowViewWindow(wf,pref).end-workflowViewWindow(wf,pref).start>=Date.parse(wf.axis.end)-Date.parse(wf.axis.start);
 }
 
 function workflowMetricsBody(payload,taskID){
   const ko=state.language==='ko',wf=payload.workflow,current=wf.current||{},measurement=wf.measurement||{},axis=wf.axis||{},prefs=activityDetailPrefs(taskID),rows=Array.isArray(wf.rows)?wf.rows:[],rounds=Array.isArray(wf.rounds)?wf.rounds:[];
-  const view=workflowViewWindow(wf,prefs),validAxis=Boolean(view),completed=current.phase==='completed';
+  const view=workflowViewWindow(wf,prefs),edges=workflowEdgeState(wf,view),validAxis=Boolean(view),completed=current.phase==='completed';
   const roundValues=[...new Set(rows.filter(r=>r.round!=null).map(r=>Number(r.round)))].sort((a,b)=>a-b),selected=String(prefs.round);
   const actor=current.processing_agent?workflowActorLabel(rows.find(r=>r.agent_id===current.processing_agent&&r.role===current.processing_role)||{role:current.processing_role},ko):workflowText(ko,completed?'처리 없음 · 완료':'처리자 미확인',completed?'No active processor · completed':'Processing actor unverified');
   const completionHistory=Array.isArray(wf.lifecycle?.completion_history)?wf.lifecycle.completion_history:[],reopened=Boolean(axis.open&&completionHistory.length);
@@ -6204,7 +6252,7 @@ function workflowMetricsBody(payload,taskID){
   const elapsed=metricRows[0][2],unknown=metricRows[3][2];
   const summary='<div class="workflow-context"><div class="workflow-context-line"><strong>'+esc(workflowPhaseLabel(current.phase,ko))+'</strong>'+(!completed?'<span>'+esc(actor)+'</span>':'')+'<span>'+esc(workflowRoundLabel(current.round,ko))+'</span><span>'+esc(workflowText(ko,'전체 ','Total ')+elapsed)+'</span></div>'+(!completed?'<p class="workflow-next">'+esc(workflowText(ko,'다음: ','Next: ')+workflowActionLabel(current.next_action,ko))+'</p>':'')+'<p class="workflow-quality" data-measurement-status="'+esc(status)+'"><span>'+esc(observation)+'</span><span>'+esc(workflowText(ko,'활동 미측정 ','Unmeasured activity ')+unknown)+'</span></p></div>'+(reopened?'<p class="workflow-reopened">'+esc(workflowText(ko,'이전 완료 후 재개 · ','Resumed after completion · ')+activityEventTime(completionHistory.at(-1),ko))+'</p>':'')+(sourceIssue?'<p class="workflow-source-warning" role="status">'+esc(workflowText(ko,'갱신 실패 · 마지막 확인 결과를 표시합니다. 새로고침으로 재시도하세요.','Refresh failed · last verified result retained. Refresh to retry.'))+'</p>':stale?'<p class="workflow-source-note">'+esc(workflowText(ko,trust==='pending'?'원천 확인 전 · 확인 가능한 기록 기준':'원천이 오래됐습니다 · 마지막 확인 결과',trust==='pending'?'Source pending · available records':'Stale source · last verified result'))+'</p>':'');
   const controls='<div class="workflow-controls"><div class="workflow-zoom-buttons" role="group" aria-label="'+esc(workflowText(ko,'시간축 확대','Timeline zoom'))+'"><span class="workflow-zoom-label">'+esc(workflowText(ko,'시간축 확대','Timeline zoom'))+'</span><button id="workflowZoomOut" type="button" aria-label="'+esc(workflowText(ko,'시간축 축소','Zoom out'))+'" title="'+esc(workflowText(ko,'축소 (−)','Zoom out (−)'))+'">−</button><button id="workflowZoomIn" type="button" aria-label="'+esc(workflowText(ko,'시간축 확대','Zoom in'))+'" title="'+esc(workflowText(ko,'확대 (+)','Zoom in (+)'))+'">+</button><button id="workflowFit" type="button" title="'+esc(workflowText(ko,'전체 기간 보기 (Home)','Fit full period (Home)'))+'">'+esc(workflowText(ko,'전체 보기','Fit all'))+'</button></div><label class="workflow-round-filter"><span class="sr-only">'+esc(workflowText(ko,'업무 회차','Work round'))+'</span><select id="activityDetailRound"><option value="all"'+(selected==='all'?' selected':'')+'>'+esc(workflowText(ko,'모든 회차','All rounds'))+'</option>'+roundValues.map(n=>'<option value="'+n+'"'+(selected===String(n)?' selected':'')+'>'+esc(workflowRoundLabel(n,ko))+'</option>').join('')+(rows.some(r=>r.round==null)?'<option value="unknown"'+(selected==='unknown'?' selected':'')+'>'+esc(workflowRoundLabel(null,ko))+'</option>':'')+'</select></label><button type="button" id="activityDetailRefresh">'+esc(workflowText(ko,'새로고침','Refresh'))+'</button></div>';
-  const timeline=validAxis?'<div id="workflowTimelineViewport" class="workflow-timeline-scroll" tabindex="0" aria-label="'+esc(workflowText(ko,'작업 시간축. 가로 드래그로 이동, Ctrl 휠이나 두 손가락으로 확대·축소, Shift 드래그로 구간 확대. 더블클릭 또는 +와 −로 확대 축소, 화살표로 이동, Home으로 전체 보기.','Workflow timeline. Drag to pan, Ctrl-wheel or pinch to zoom, Shift-drag to zoom a range. Double-click or +/− to zoom, arrows to pan, Home to fit.'))+'"><div class="workflow-timeline-canvas" data-axis-start="'+esc(axis.start)+'" data-axis-end="'+esc(axis.end)+'" data-view-start="'+view.start+'" data-view-end="'+view.end+'">'+workflowPlotHTML(wf,prefs,ko)+'</div></div><div class="workflow-chart-footer"><span class="workflow-pointer-help">'+esc(workflowText(ko,'드래그로 이동 · Ctrl+휠로 확대 · Shift+드래그로 구간 확대','Drag to pan · Shift-drag to zoom a range'))+'</span><span class="workflow-touch-help">'+esc(workflowText(ko,'가로로 밀어 이동 · 두 손가락으로 확대·축소','Swipe to pan · select an interval to zoom'))+'</span><output id="workflowVisibleRange" class="workflow-visible-range" aria-label="'+esc(workflowText(ko,'보이는 시간 범위','Visible time range'))+'">'+esc(view?workflowVisibleRange(view,ko,axis):'—')+'</output></div>':'<p class="workflow-empty">'+esc(workflowText(ko,'시작·종료 경계를 확인할 수 없어 시간축을 그리지 않았습니다.','Time axis unavailable without verified bounds.'))+'</p>';
+  const timeline=validAxis?'<div id="workflowTimelineViewport" class="workflow-timeline-scroll" tabindex="0" aria-label="'+esc(workflowText(ko,'작업 시간축. 가로 드래그로 이동, Ctrl 휠이나 두 손가락으로 확대·축소, Shift 드래그로 구간 확대. 더블클릭 또는 +와 −로 확대 축소, 화살표로 이동, Home으로 전체 보기.','Workflow timeline. Drag to pan, Ctrl-wheel or pinch to zoom, Shift-drag to zoom a range. Double-click or +/− to zoom, arrows to pan, Home to fit.'))+'"><div class="workflow-timeline-canvas" data-axis-start="'+esc(axis.start)+'" data-axis-end="'+esc(axis.end)+'" data-view-start="'+view.start+'" data-view-end="'+view.end+'">'+workflowPlotHTML(wf,prefs,ko)+'</div><div class="workflow-edge-fade workflow-edge-left" data-workflow-fade="left" aria-hidden="true"'+(!edges.left?' hidden':'')+'></div><div class="workflow-edge-fade workflow-edge-right" data-workflow-fade="right" aria-hidden="true"'+(!edges.right?' hidden':'')+'></div></div><div class="workflow-chart-footer"><div class="workflow-pan-row">'+workflowPanButton('left',ko,!edges.left)+'<span class="workflow-navigation-help"><span class="workflow-pointer-help">'+esc(workflowText(ko,'드래그로 이동 · Ctrl+휠로 확대 · Shift+드래그로 구간 확대','Drag to pan · Shift-drag to zoom a range'))+'</span><span class="workflow-touch-help">'+esc(workflowText(ko,'가로로 밀어 이동 · 두 손가락으로 확대·축소','Swipe pan · pinch zoom'))+'</span></span>'+workflowPanButton('right',ko,!edges.right)+'</div><output id="workflowVisibleRange" class="workflow-visible-range" aria-label="'+esc(workflowText(ko,'보이는 시간 범위','Visible time range'))+'">'+esc(view?workflowVisibleRange(view,ko,axis):'—')+'</output></div>':'<p class="workflow-empty">'+esc(workflowText(ko,'시작·종료 경계를 확인할 수 없어 시간축을 그리지 않았습니다.','Time axis unavailable without verified bounds.'))+'</p>';
   const roundDetail='<p class="workflow-round-explanation">'+esc(workflowText(ko,'최초 작업과 보완차수는 같은 업무의 검토·수정 과정입니다. 재개나 새 업무를 뜻하지 않습니다.','Initial work and correction rounds describe review and corrections within this task, not resumed sessions or new scope.'))+'</p><details class="workflow-disclosure" id="workflowRoundDetails"><summary>'+esc(workflowText(ko,'회차와 검토·수정 관계','Rounds, reviews and corrections'))+' <span>'+rounds.length+'</span></summary><ol class="workflow-round-list">'+rounds.map(r=>'<li><strong>'+esc(workflowRoundLabel(r.number,ko))+'</strong><span>'+esc(activityEventTime(r.started_at,ko))+'</span>'+(r.reason?'<p>'+esc(r.reason)+'</p>':'<p>'+esc(workflowText(ko,'등록 또는 실제 활동 보고에 연결된 최초 작업입니다.','Initial work linked to registration or a real activity report.'))+'</p>')+(r.verification_results?.length?'<small>'+esc(workflowText(ko,'검증 결과: ','Verification: ')+r.verification_results.map(v=>workflowOutcome(v,ko)||v).join(' · '))+'</small>':'')+'<details><summary>'+esc(workflowText(ko,'연결 근거','Linked evidence'))+'</summary><pre>'+esc(JSON.stringify({basis:r.basis,previous_round:r.previous_round,handoff:r.handoff_id,assignment_ids:r.assignment_ids,attempt_ids:r.attempt_ids,handoff_ids:r.handoff_ids,commits:r.commits},null,2))+'</pre></details></li>').join('')+'</ol></details>';
   const totals=Object.entries(payload.summary?.by_type_ms||{}).filter(([,ms])=>Number.isFinite(ms)&&ms>=0).sort((a,b)=>b[1]-a[1]),max=Math.max(1,...totals.map(([,ms])=>ms));
   const events=Array.isArray(payload.events)?payload.events:[];
@@ -7108,6 +7156,7 @@ function toggleSidebar() {
 
 let notificationSettingsDraft=null;
 function render() {
+  syncWorkflowTimelineEntry();
   if(taskRowTouchActive && state.view==='backlog' && !state.detail){taskRowDeferredRender=true;return;}
   syncTelegramConnectionWatch();
   const settingsElement=$('#notificationSettingsBody');
