@@ -88,7 +88,7 @@ test('localized taxonomy and wait labels retain original event provenance',()=>{
  const html=a.activityMetricsBody(data,'B-589');
  assert.match(html,/Controller 검토/);
  assert.match(html,/기타 활동/);
- assert.match(html,/선별 테스트/);
+ assert.match(html,/테스트/);
  assert.match(html,/작업 배정 대기/);
  assert.match(html,/31초/);
  assert.match(html,/title="controller_review"/);
@@ -205,7 +205,7 @@ test('exact attempt groups translate role but preserve actor identity',()=>{
  data.summary.segments=[{type:'implementation',role:'registrar',agent_id:'registrar-1',attempt_id:'attempt-1',round:0,started_at:shift(0),ended_at:shift(2),duration_ms:120000}];
  a.activityDetailPrefs('B-589').groupAgents=true;
  const html=a.activityMetricsBody(data,'B-589');
- assert.match(html,/등록 담당 · registrar-1/);
+ assert.match(html,/Registrar · registrar-1/);
  assert.match(html,/실행 attempt-1/);
 });
 
@@ -248,7 +248,7 @@ test('Activity rolling 7/30/90 day shortcuts use exact duration boundaries',()=>
  assert.match(html,/최근 7일/);
  assert.match(html,/최근 30일/);
  assert.match(html,/최근 90일/);
- assert.match(html,/선별 테스트/);
+ assert.match(html,/테스트/);
 });
 
 test('recent half and quarter Gantt shortcuts retain full measured evidence',()=>{

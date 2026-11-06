@@ -252,3 +252,52 @@ func TestWorkflowBrowserOverlapFixtureUsesConsistentMeasuredSummary(t *testing.T
 	}
 	exportWorkflowFixture(t, "synthetic-overlap.json", w, events)
 }
+
+func TestWorkflowDisplayNameRequiresExactUnambiguousRuntimeBinding(t *testing.T) {
+	b, at := workflowFixture()
+	events := []Event{{EventID: "name-start", TaskID: "NAME-1", Role: RoleWorker, AgentID: "native-agent-123", RuntimeAttemptID: "name-attempt", Action: Start, Type: Implementation, OccurredAt: at(1), RecordedAt: at(1)}, {EventID: "name-stop", TaskID: "NAME-1", Role: RoleWorker, AgentID: "native-agent-123", RuntimeAttemptID: "name-attempt", Action: Stop, Type: Implementation, OccurredAt: at(2), RecordedAt: at(2)}}
+	bound := runtimeobs.Attempt{AttemptID: "name-attempt", TaskID: "NAME-1", RuntimeAgentID: "native-agent-123", AgentPath: "/root/controller/pairi", BindingState: runtimeobs.BindingBound}
+	cases := []struct {
+		name     string
+		attempts []runtimeobs.Attempt
+		want     string
+	}{
+		{"exact bound", []runtimeobs.Attempt{bound}, "pairi"},
+		{"absent", nil, ""},
+	}
+	unbound := bound
+	unbound.BindingState = runtimeobs.BindingUnbound
+	cases = append(cases, struct {
+		name     string
+		attempts []runtimeobs.Attempt
+		want     string
+	}{"unbound", []runtimeobs.Attempt{unbound}, ""})
+	wrong := bound
+	wrong.RuntimeAgentID = "different-native"
+	cases = append(cases, struct {
+		name     string
+		attempts []runtimeobs.Attempt
+		want     string
+	}{"identity mismatch", []runtimeobs.Attempt{wrong}, ""})
+	other := bound
+	other.AgentPath = "/root/controller/other"
+	cases = append(cases, struct {
+		name     string
+		attempts []runtimeobs.Attempt
+		want     string
+	}{"ambiguous", []runtimeobs.Attempt{bound, other}, ""})
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			w := SummarizeWorkflow(WorkflowInput{TaskID: "NAME-1", Events: events, Summary: Summarize("NAME-1", events), Facts: []LifecycleFact{{EventID: "registered", TaskID: "NAME-1", Kind: "registered", OccurredAt: b}}, ExecutionObservations: c.attempts, Now: at(3)})
+			if len(w.Rows) != 1 || w.Rows[0].DisplayName != c.want {
+				t.Fatalf("unproved or lost name: %+v", w.Rows)
+			}
+			if c.want != "" && w.Rows[0].DisplayNameSource != "bound_runtime_agent_path" {
+				t.Fatal("missing exact name source")
+			}
+			if w.Rows[0].AgentID != "native-agent-123" || w.Rows[0].Intervals[0].AttemptID != "name-attempt" {
+				t.Fatal("name projection changed raw identity")
+			}
+		})
+	}
+}

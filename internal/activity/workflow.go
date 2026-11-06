@@ -80,6 +80,8 @@ type WorkRound struct {
 	VerificationResults []string  `json:"verification_results"`
 }
 type WorkflowRow struct {
+	DisplayName            string             `json:"display_name,omitempty"`
+	DisplayNameSource      string             `json:"display_name_source,omitempty"`
 	ObservedActivityMillis *int64             `json:"observed_activity_ms,omitempty"`
 	ID                     string             `json:"id"`
 	Role                   string             `json:"role"`
@@ -495,6 +497,32 @@ func SummarizeWorkflow(in WorkflowInput) Workflow {
 		}
 	}
 	for _, row := range rows {
+		// Names require an exact, unambiguous task/attempt/native identity binding.
+		// Never derive aliases from Activity UUIDs or unbound paths.
+		name := ""
+		conflict := false
+		for _, interval := range row.Intervals {
+			if interval.AttemptID == "" {
+				continue
+			}
+			a, ok := terminalByAttempt[interval.AttemptID]
+			if !ok || ambiguousAttempts[interval.AttemptID] || a.TaskID != in.TaskID || a.BindingState != runtimeobs.BindingBound || a.RuntimeAgentID == "" || a.AgentPath == "" || (row.AgentID != a.RuntimeAgentID && row.AgentID != a.AgentPath) {
+				continue
+			}
+			parts := strings.Split(strings.Trim(a.AgentPath, "/"), "/")
+			candidate := parts[len(parts)-1]
+			if candidate == "" || candidate == "root" || strings.ContainsAny(candidate, " \t\n") || len(candidate) > 32 || strings.Count(candidate, "-") >= 4 {
+				continue
+			}
+			if name != "" && name != candidate {
+				conflict = true
+			}
+			name = candidate
+		}
+		if !conflict && name != "" {
+			row.DisplayName = name
+			row.DisplayNameSource = "bound_runtime_agent_path"
+		}
 		sort.SliceStable(row.Intervals, func(i, j int) bool { return row.Intervals[i].Start.Before(row.Intervals[j].Start) })
 		lanes := []time.Time{}
 		for i := range row.Intervals {
