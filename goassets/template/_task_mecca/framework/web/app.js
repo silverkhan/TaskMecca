@@ -6626,12 +6626,12 @@ if(typeof window!=='undefined')window.addEventListener?.('pointercancel',e=>{
 function openTask(id) {
   if (!id) return;
   releaseTaskRowTouch(false);
-  window.TaskMeccaGlass?.rememberListReading?.(state.project+'|'+state.backlog);
+  window?.TaskMeccaGlass?.rememberListReading?.(state.project+'|'+state.backlog);
   state.detail=id; state.detailTask=cachedTaskDetail(id); state.detailLifecycleError=''; state.loadError=''; state.raw=false; state.view='backlog';
-  const p=new URLSearchParams(); if(state.project)p.set('project',state.project); if(state.backlog)p.set('backlog',state.backlog); if(state.tagFilters.length)p.set('tags',state.tagFilters.join(',')); history.pushState({},'',`/tasks/${encodeURIComponent(id)}${p.toString()?`?${p.toString()}`:''}`); render();if(window.TaskMeccaGlass?.scrollHost?.())window.TaskMeccaGlass.scrollTo({top:0,behavior:'auto'});loadTaskDetail(id);
+  const p=new URLSearchParams(); if(state.project)p.set('project',state.project); if(state.backlog)p.set('backlog',state.backlog); if(state.tagFilters.length)p.set('tags',state.tagFilters.join(',')); history.pushState({},'',`/tasks/${encodeURIComponent(id)}${p.toString()?`?${p.toString()}`:''}`); render();if(window?.TaskMeccaGlass?.scrollHost?.())window.TaskMeccaGlass.scrollTo({top:0,behavior:'auto'});loadTaskDetail(id);
 }
 function closeTask() {
-  state.detail=null; state.detailTask=null; state.loadError=''; history.pushState({},'',state.view==='backlog'?backlogUrl():`/?view=${state.view}`);render();window.TaskMeccaGlass?.restoreListReading?.(state.project+'|'+state.backlog);
+  state.detail=null; state.detailTask=null; state.loadError=''; history.pushState({},'',state.view==='backlog'?backlogUrl():`/?view=${state.view}`);render();window?.TaskMeccaGlass?.restoreListReading?.(state.project+'|'+state.backlog);
   // A direct-link detail page never needed the heavy list before its first paint.
   // Fetch the list only when the user actually returns to it.
   void refreshList();
@@ -7449,7 +7449,7 @@ function route(fromPop=false) {
   }
   if(previousAttentionContext!==state.project+'|'+state.backlog)clearCurrentUserAttention();
  render();
-  if(fromPop&&previousDetail&&!state.detail&&state.view==='backlog')window.TaskMeccaGlass?.restoreListReading?.(state.project+'|'+state.backlog);
+  if(fromPop&&previousDetail&&!state.detail&&state.view==='backlog')window?.TaskMeccaGlass?.restoreListReading?.(state.project+'|'+state.backlog);
   if(fromPop&&state.view==='storage')queueMicrotask(()=>loadStorageManagement(true));
   if(fromPop&&state.project&&state.view==='backlog'){
     queueMicrotask(()=>{

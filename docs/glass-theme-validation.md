@@ -47,6 +47,9 @@ Spectral 첫 replay에서는 foreground/capsule 부근에 positive→positive �
 데스크톱·모바일 모두 max0/중앙0이었습니다. Chromium 첫 replay의 raster/compositing
 차이로 분리하며 이를 제품의 완벽한 초기 frame 증명으로 사용하지 않습니다. 실제
 text/color/opacity/geometry 변경을 거부하는 negative guard도 별도로 유지합니다.
+공통 회귀의 첫 실행은176통과/13실패였으며 모두 window가 undefined인 기존
+단위 하니스에서 신규 openTask scroll adapter를 읽은 동일 원인입니다. 신규 연결에
+optional window 접근을 적용했고 해당 prefetch18개가 통과했습니다.
 최종 정확 소스
 Glass21개, 공통189개 및 안전한 named Go2-race/vet 결과, source-tagged 대비와
 고정36행/manual50 전후 trace는 아래 전용 packet의 report에 기록합니다. 테스트/대비
