@@ -1,0 +1,207 @@
+{
+  "events": [
+    {
+      "schema_version": 0,
+      "event_id": "opaque-start",
+      "task_id": "FLOW-1",
+      "action": "start",
+      "role": "worker",
+      "agent_id": "62f77abc-1234-4567-89ab-123456789abc",
+      "runtime_attempt_id": "opaque-attempt",
+      "round": 0,
+      "type": "implementation",
+      "confidence": "",
+      "occurred_at": "2026-11-05T00:01:00Z",
+      "recorded_at": "2026-11-05T00:01:00Z"
+    },
+    {
+      "schema_version": 0,
+      "event_id": "opaque-stop",
+      "task_id": "FLOW-1",
+      "action": "stop",
+      "role": "worker",
+      "agent_id": "62f77abc-1234-4567-89ab-123456789abc",
+      "runtime_attempt_id": "opaque-attempt",
+      "round": 0,
+      "type": "implementation",
+      "confidence": "",
+      "occurred_at": "2026-11-05T00:02:00Z",
+      "recorded_at": "2026-11-05T00:02:00Z"
+    }
+  ],
+  "source": "synthetic regression fixture; contains no user evidence",
+  "summary": {
+    "task_id": "FLOW-1",
+    "segments": [
+      {
+        "task_id": "FLOW-1",
+        "agent_id": "62f77abc-1234-4567-89ab-123456789abc",
+        "attempt_id": "opaque-attempt",
+        "role": "worker",
+        "type": "implementation",
+        "round": 0,
+        "started_at": "2026-11-05T00:01:00Z",
+        "ended_at": "2026-11-05T00:02:00Z",
+        "duration_ms": 60000
+      }
+    ],
+    "by_type_ms": {
+      "implementation": 60000
+    },
+    "agent_time_ms": 60000,
+    "observed_wall_ms": 60000,
+    "first_observed_at": "2026-11-05T00:01:00Z",
+    "last_observed_at": "2026-11-05T00:02:00Z",
+    "observed_span_ms": 60000,
+    "unattributed_gap_ms": 0,
+    "open_activities": 0,
+    "invalid_transitions": 0,
+    "invalid_corrections": 0,
+    "interrupted_activities": 0,
+    "unmeasured_upper_bound_ms": 0,
+    "initial_worker_ms": 60000,
+    "rework_worker_ms": 0,
+    "controller_first_review_ms": 0,
+    "controller_rereview_ms": 0
+  },
+  "workflow": {
+    "version": 1,
+    "task_id": "FLOW-1",
+    "computed_at": "2026-11-05T00:03:00Z",
+    "axis": {
+      "start": "2026-11-05T00:00:00Z",
+      "end": "2026-11-05T00:03:00Z",
+      "basis": "registered_current",
+      "boundary_status": "complete",
+      "elapsed_ms": 180000,
+      "open": true
+    },
+    "lifecycle": {
+      "task_id": "FLOW-1",
+      "source": "reported_lifecycle",
+      "registered_at": "2026-11-05T00:00:00Z",
+      "completion_history": null,
+      "registration_queue_ms": 0,
+      "dispatch_wait_ms": 0,
+      "explicit_wait_ms": 0,
+      "wait_ms": 0,
+      "covered_elapsed_ms": 0,
+      "wait_activity_overlap_ms": 0,
+      "invalid_facts": 0,
+      "open_wait_count": 1,
+      "wait_intervals": []
+    },
+    "measurement": {
+      "status": "partial",
+      "activity": {
+        "status": "observed",
+        "duration_ms": 60000,
+        "event_count": 2,
+        "segment_count": 1
+      },
+      "worker": {
+        "status": "observed",
+        "duration_ms": 60000,
+        "event_count": 2,
+        "segment_count": 1
+      },
+      "controller": {
+        "status": "not_recorded",
+        "event_count": 0,
+        "segment_count": 0
+      },
+      "registrar": {
+        "status": "not_recorded",
+        "event_count": 0,
+        "segment_count": 0
+      },
+      "review": {
+        "status": "not_recorded",
+        "event_count": 0,
+        "segment_count": 0
+      },
+      "tests": {
+        "status": "not_recorded",
+        "event_count": 0,
+        "segment_count": 0
+      },
+      "observed_wall_ms": 60000,
+      "agent_time_ms": 60000,
+      "unmeasured_ms": 120000,
+      "coverage_percent": 33.333333333333336
+    },
+    "current": {
+      "phase": "queued",
+      "basis": "reported_lifecycle",
+      "next_action": "assign_worker",
+      "round": 0,
+      "round_status": "initial"
+    },
+    "rounds": [
+      {
+        "number": 0,
+        "kind": "initial",
+        "started_at": "2026-11-05T00:00:00Z",
+        "basis": "registered_or_reported_activity",
+        "assignment_ids": [],
+        "attempt_ids": [
+          "opaque-attempt"
+        ],
+        "handoff_ids": [],
+        "commits": [],
+        "verification_results": []
+      }
+    ],
+    "rows": [
+      {
+        "name_evidence": [
+          {
+            "attempt_id": "opaque-attempt",
+            "agent_path": "/root/controller/62f77abc",
+            "status": "opaque_or_unreadable_runtime_path_leaf"
+          }
+        ],
+        "observed_activity_ms": 60000,
+        "id": "worker|62f77abc-1234-4567-89ab-123456789abc|0",
+        "role": "worker",
+        "agent_id": "62f77abc-1234-4567-89ab-123456789abc",
+        "round": 0,
+        "round_status": "initial",
+        "intervals": [
+          {
+            "id": "opaque-start",
+            "kind": "activity",
+            "type": "implementation",
+            "start": "2026-11-05T00:01:00Z",
+            "end": "2026-11-05T00:02:00Z",
+            "measured": true,
+            "duration_ms": 60000,
+            "attempt_id": "opaque-attempt",
+            "lane": 0
+          }
+        ]
+      }
+    ],
+    "unmeasured_intervals": [
+      {
+        "start": "2026-11-05T00:00:00Z",
+        "end": "2026-11-05T00:01:00Z",
+        "kind": "activity_unmeasured"
+      },
+      {
+        "start": "2026-11-05T00:02:00Z",
+        "end": "2026-11-05T00:03:00Z",
+        "kind": "activity_unmeasured"
+      }
+    ],
+    "reporting": {
+      "status": "not_expected",
+      "expected_executions": 0,
+      "executions_without_activity": 0,
+      "expected_reviews": 0,
+      "reviews_without_activity": 0,
+      "findings": []
+    },
+    "control_snapshot": {}
+  }
+}

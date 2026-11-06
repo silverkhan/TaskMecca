@@ -79,16 +79,23 @@ type WorkRound struct {
 	Commits             []string  `json:"commits"`
 	VerificationResults []string  `json:"verification_results"`
 }
+type WorkflowNameEvidence struct {
+	AttemptID string `json:"attempt_id"`
+	AgentPath string `json:"agent_path"`
+	Status    string `json:"status"`
+}
+
 type WorkflowRow struct {
-	DisplayName            string             `json:"display_name,omitempty"`
-	DisplayNameSource      string             `json:"display_name_source,omitempty"`
-	ObservedActivityMillis *int64             `json:"observed_activity_ms,omitempty"`
-	ID                     string             `json:"id"`
-	Role                   string             `json:"role"`
-	AgentID                string             `json:"agent_id"`
-	Round                  *int               `json:"round,omitempty"`
-	RoundStatus            string             `json:"round_status"`
-	Intervals              []WorkflowInterval `json:"intervals"`
+	NameEvidence           []WorkflowNameEvidence `json:"name_evidence,omitempty"`
+	DisplayName            string                 `json:"display_name,omitempty"`
+	DisplayNameSource      string                 `json:"display_name_source,omitempty"`
+	ObservedActivityMillis *int64                 `json:"observed_activity_ms,omitempty"`
+	ID                     string                 `json:"id"`
+	Role                   string                 `json:"role"`
+	AgentID                string                 `json:"agent_id"`
+	Round                  *int                   `json:"round,omitempty"`
+	RoundStatus            string                 `json:"round_status"`
+	Intervals              []WorkflowInterval     `json:"intervals"`
 }
 type WorkflowInterval struct {
 	EndEvidence    string     `json:"end_evidence,omitempty"`
@@ -501,6 +508,7 @@ func SummarizeWorkflow(in WorkflowInput) Workflow {
 		// Never derive aliases from Activity UUIDs or unbound paths.
 		name := ""
 		conflict := false
+		namedAttempts := map[string]bool{}
 		for _, interval := range row.Intervals {
 			if interval.AttemptID == "" {
 				continue
@@ -509,9 +517,16 @@ func SummarizeWorkflow(in WorkflowInput) Workflow {
 			if !ok || ambiguousAttempts[interval.AttemptID] || a.TaskID != in.TaskID || a.BindingState != runtimeobs.BindingBound || a.RuntimeAgentID == "" || a.AgentPath == "" || (row.AgentID != a.RuntimeAgentID && row.AgentID != a.AgentPath) {
 				continue
 			}
-			parts := strings.Split(strings.Trim(a.AgentPath, "/"), "/")
-			candidate := parts[len(parts)-1]
-			if candidate == "" || candidate == "root" || strings.ContainsAny(candidate, " \t\n") || len(candidate) > 32 || strings.Count(candidate, "-") >= 4 {
+			candidate := workflowReadableAgentName(a.AgentPath)
+			if !namedAttempts[a.AttemptID] {
+				status := "readable_bound_runtime_path"
+				if candidate == "" {
+					status = "opaque_or_unreadable_runtime_path_leaf"
+				}
+				row.NameEvidence = append(row.NameEvidence, WorkflowNameEvidence{AttemptID: a.AttemptID, AgentPath: a.AgentPath, Status: status})
+				namedAttempts[a.AttemptID] = true
+			}
+			if candidate == "" {
 				continue
 			}
 			if name != "" && name != candidate {
@@ -712,4 +727,44 @@ func reviewBoundaries(task string, events []Event, handoffs map[string]handoffjo
 		return out[i].at.Before(out[j].at)
 	})
 	return out
+}
+
+// Exact binding proves identity, not that an opaque ID leaf is a human name.
+// Reject generic ID-derived aliases without manufacturing a replacement alias.
+func workflowReadableAgentName(agentPath string) string {
+	parts := strings.Split(strings.Trim(agentPath, "/"), "/")
+	candidate := parts[len(parts)-1]
+	if candidate == "" || candidate == "root" || strings.ContainsAny(candidate, " \t\n") || len(candidate) > 32 || strings.Count(candidate, "-") >= 4 {
+		return ""
+	}
+	lower := strings.ToLower(candidate)
+	opaque := func(token string) bool {
+		digits, hex := true, true
+		hasDigit := false
+		for _, c := range token {
+			if c < '0' || c > '9' {
+				digits = false
+			} else {
+				hasDigit = true
+			}
+			if !((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f')) {
+				hex = false
+			}
+		}
+		return token != "" && (digits || hex && (len(token) >= 6 || len(token) >= 4 && hasDigit))
+	}
+	if opaque(strings.NewReplacer("-", "", "_", "", ".", "", ":", "").Replace(lower)) {
+		return ""
+	}
+	for _, token := range strings.FieldsFunc(lower, func(c rune) bool { return c == '-' || c == '_' || c == '.' || c == ':' }) {
+		if len(token) >= 4 && opaque(token) {
+			return ""
+		}
+	}
+	for _, prefix := range []string{"agent", "worker", "controller", "registrar", "run", "attempt", "session", "thread", "native", "id", "uuid"} {
+		if strings.HasPrefix(lower, prefix) && opaque(strings.TrimLeft(strings.TrimPrefix(lower, prefix), "-_.:")) {
+			return ""
+		}
+	}
+	return candidate
 }
