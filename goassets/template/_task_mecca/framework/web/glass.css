@@ -282,3 +282,10 @@
 :root[data-palette="glass"][data-glass-optics="active"] [data-glass-material="true"]>.glass-reader-material::after{content:none}
 :root[data-palette="glass"] :is(.palette-picker,.language-picker,.background-picker) .tm-combo-trigger:focus-visible{box-shadow:0 0 0 2px var(--glass-solid)}
 @media(min-width:1100px){:root[data-palette="glass"]{--sidebar:260px}}
+
+/* A64-LUMEN-01: the broad convex Canvas reflection owns the active shell.
+   CSS supplies a quiet secondary interface edge, not parallel bright rails. */
+:root[data-palette="glass"][data-glass-optics="active"][data-background="cozy"] :is([data-glass-material="true"]:not(.content):not(.terminal-main),.glass-reader-material){
+ border-color:rgba(255,255,255,.28);border-right-color:rgba(43,49,50,.12);border-bottom-color:rgba(43,49,50,.12);
+ box-shadow:var(--glass-shadow);
+}

@@ -1,3 +1,102 @@
+# A64-LUMEN-01 convex reflection correction (2026-11-06)
+
+This correction supersedes the visual implementation/result section below; the
+user's reference-first, numeric-contrast-report-only policy is unchanged. Parent
+`558406902bb2a7405404b0cd9765aabbbd18cdeb`, its 896 evidence files, the independent
+Lumen 234-file packet and its P1 finding are immutable. The earlier 66 captures,
+5,698/1,625 contrast observations and cost numbers remain historical 5584 results.
+They are not relabeled as correction results.
+
+Lumen identified one P1: the actual transmitted/reflected scene was present, but
+four sharp photo bands and several similarly strong white strokes read as parallel
+rails rather than the reference's broad asymmetric convex reflection. The shared
+profile now uses a continuous rounded distance/normal field. A single off-edge
+reflection lobe grows on the convex cap, varies with normal and position, then
+returns through neutral inner shade to the face. A quiet outer lip/CSS interface
+edge is secondary. Soft five-tap scene sampling replaces the sharp stepped photo
+strips. This same existing material path covers sidebar/topbar, PR/attention,
+reader, popup, mobile navigation, modal and terminal.
+
+Authored tints and global theme policy are unchanged. Maximum scene bend remains
+12 CSS px; the broader profile has an 18 px maximum support, with width varying by
+normal. The scene still transmits and refracts; neither contrast-driven opacity,
+local mode/dimming nor foreground fog was added. Native data/logic/localization,
+44 px controls, focus, fixed/sticky/nested coordinates, first-frame/rerender and
+fallback preferences remain guarded. No new canvas, lens slot or permanent loop.
+Pixel authorities stay 480,000 per material / 350,000 per lens / 2 lenses.
+
+## Correctness and bounded profile confirmation
+
+New evidence lives only under
+`handoff-evidence/a64-glass-reference-fidelity-20261106/correction01-convex-profile/`.
+`preflight.json` verifies all original 896 and reviewer 234 files; old seven source
+hashes are verified using immutable `git show 5584:path`, not modified current files.
+`comparison.html` shows the same native sidebar/toolbar crops against the actual
+reference and immutable 5584 replay, plus narrow Light/Dark desktop/mobile states.
+One coherent visual correction and one narrow confirmation were used, with no new
+broad taste matrix or optical alternatives. Independent confirmation is separate.
+
+The narrow visual stage has 13 old and 13 new-profile captures. Each has 832 eligible
+text observations and 477 below unchanged text references. Minimum is 1.1619 in the
+5584 replay and 1.3168 in the new-profile visual candidate. These snapshots precede
+the coefficient cache; the separate actual-material equivalence proof maps them
+to the final cached implementation without pretending they were captured afterward.
+Fresh exact-commit exposure/focus/selection/native audits remain in the final packet.
+
+The actual reflection-only positive versus disabled-reflection witness measures a
+5.25 px desktop / 6.75 px mobile half-height width on the rounded cap; a 1 px hairline
+cannot satisfy this witness. The original 24 zero-bevel/zero-bend controls still
+require meaningful edge changes, unchanged centers and identical foreground.
+The cache is independently compared with the preserved uncached candidate across
+Light/Dark × desktop/mobile × origin/scroll/resize/restore: **96 material PNG
+comparisons, maximum channel difference 0**, with identical foreground geometry,
+text and color. This verifies an implementation optimization of the same profile.
+
+## Necessary performance correction and remaining cost
+
+The first continuous profile recomputed geometry/light/exponentials at every edge
+pixel for each invalidation. Its severe regression is preserved, not discarded:
+desktop Task/Script 2759.52/2572.54 ms, mobile 2374.54/2125.90 ms per 90-rAF sample;
+p95 gaps 50.1/33.4 ms. This justified one necessary performance correction and one
+final cost recheck, rather than another visual or benchmark loop.
+
+Each entry now retains exactly one coefficient cache for its current allocated
+size/CSS geometry/radius/profile parameters. Float64 keeps the candidate arithmetic
+exact. Translation, scene generation and theme do not rebuild geometry; every paint
+uses current stage offsets, scene pixels and authored tint. Resize replaces/releases
+the previous geometry; material removal releases the entry cache. There is no
+history map or cached scene RGBA. Gaussian coordinates/Canvas dimensions are reused.
+Cache bytes/count/points/builds/hits are exposed separately in diagnostics/tests.
+
+| 90-rAF current cached sample | Desktop1448×1090 | Mobile390×844 |
+| --- | ---: | ---: |
+| TaskDuration / ScriptDuration ms | 1064.37 / 912.69 | 923.98 / 696.23 |
+| Engine paint / adaptation ms | 865.80 / 92.20 | 653.00 / 163.00 |
+| Engine paint / adapt increments | 248 / 215 | 440 / 392 |
+| Mean / max / p95 rAF gap ms | 24.91 / 33.40 / 33.40 | 16.67 / 16.80 / 16.70 |
+| Current coefficient caches | 6 | 6 |
+| Allocated Float64 cache bytes | 15,666,944 | 7,138,176 |
+| Cache builds during sample | 0 | 0 |
+| Idle paint/adapt increments | 0/0 | 0/0 |
+
+The cache reduces the severe CPU regression while preserving exact pixels. Cost
+still exceeds historical 5584 Task795.61/777.40 ms and Script305.44/276.24 ms; this
+remaining regression and the cache's allocated bytes are explicit tradeoffs.
+Historical and current contexts have different prior capture/interaction histories,
+so their heap/listener/GC observations are contextual proxies, not isolated causal
+comparisons. Cache ArrayBuffer allocation is separate from Canvas RGBA pixel caps
+and CDP JSHeapUsedSize; the latter is not total cache/browser/GPU memory. Current
+heap endpoints 5,319,192/3,445,160 B do not cancel the additional cache allocation.
+No physical CPU/GPU/energy, Android/Samsung/Safari, battery or prolonged-use proof.
+
+Exact-commit Glass19/common189/native44/scroll and safe named Go-race/vet results,
+source/evidence hashes, raw failed/uncached/cached cost and final independent review
+are carried by the frozen correction packet and Activity. No full local Go suite,
+PR push, canonical edit, release/merge/deploy, operating18765/user Preview or
+install/restart/migration/environment switch is performed by the worker.
+
+---
+
 # A-64 reference fidelity follow-up (2026-11-06)
 
 This section is the current A-64 policy and result. All earlier A-62 sections

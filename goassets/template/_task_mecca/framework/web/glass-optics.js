@@ -4,7 +4,7 @@
  'use strict';
  const root=document.documentElement,MAX_LENSES=2,MAX_PIXELS=350000,RINGS=4;
  const entries=new Map(),reduced=window.matchMedia('(prefers-reduced-transparency: reduce)');
- const panels=new Map(),materials=new Map(),MAX_MATERIAL_PIXELS=480000,MATERIAL_BEVEL=10,MATERIAL_BEND=12;
+ const panels=new Map(),materials=new Map(),MAX_MATERIAL_PIXELS=480000,MATERIAL_BEVEL=18,MATERIAL_BEND=12,MATERIAL_REFLECTION=1;
  const readerBackingSupported=CSS.supports('selector(:has(*))');
  let sampleTheme='',sampleBackground='',sampleSource='';
  let samplePixels=null,adaptCount=0,totalAdaptMs=0,geometryFrame=0,failedURL='';
@@ -113,7 +113,7 @@
  }
  function removeCanvas(entry){if(entry.scrollPlane)entry.scrollPlane.remove();else entry.canvas.remove()}
  function remove(entry){removeCanvas(entry);entries.delete(entry.host);}
- function removeMaterial(entry){removeCanvas(entry);delete entry.host.dataset.glassMaterial;materials.delete(entry.host);}
+ function removeMaterial(entry){entry.profileCache=null;removeCanvas(entry);delete entry.host.dataset.glassMaterial;materials.delete(entry.host);}
  function deactivate(reason){
   enabled=false;for(const e of [...entries.values()])remove(e);for(const e of [...materials.values()])removeMaterial(e);document.querySelectorAll('.glass-reader-material').forEach(e=>e.remove());root.dataset.glassOptics=reason;
   image=null;imageURL='';loading='';sampler=null;samplePixels=null;stageKey='';sampleTheme='';sampleBackground='';sampleSource='';
@@ -136,25 +136,55 @@
   });
  }
  function materialRole(host){return host.matches('.content,.terminal-main')?'reader':host.matches('.tm-combo-popup,.mobile-sidebar-panel,.common-attention-body,.notification-panel,.modal-card,.channel-switch-modal')?'floating':'chrome'}
- // Shared curved profile on the existing bounded material canvas. The center
- // remains one softened field; only the rounded perimeter refracts the scene.
- function paintMaterialBevel(c,r,radius){
-  const w=r.width,h=r.height,band=Math.min(MATERIAL_BEVEL,w/4,h/4),g=geometry();
-  if(!band)return 0;
-  for(let i=0;i<RINGS;i++){
-   const a=i*band/RINGS,b=(i+1)*band/RINGS,ring=new Path2D();
-   rounded(ring,a,a,w-2*a,h-2*a,Math.max(0,radius-a));
-   rounded(ring,b,b,w-2*b,h-2*b,Math.max(0,radius-b));
-   const curve=(1-(i+.5)/RINGS)**2,bend=MATERIAL_BEND*curve;
-   c.save();c.clip(ring,'evenodd');c.globalAlpha=.68;
-   c.translate(w/2,h/2);c.scale(1+bend/(w/2),1+bend/(h/2));c.translate(-w/2,-h/2);
-   c.drawImage(sampler,-r.left,-r.top,g.width,g.height);c.restore();
+ // One continuous convex face, not concentric photo bands or stroke rails.
+ // Geometry/lighting coefficients belong to one current-geometry cache per entry.
+ // Scroll changes scene coordinates, so the actual scene is resampled every paint.
+ function materialProfile(entry,w,h,radius){
+  const cw=entry.canvas.width,ch=entry.canvas.height,band=Math.min(MATERIAL_BEVEL,w/4,h/3);
+  if(!band)return null;
+  const key=[cw,ch,w,h,radius,MATERIAL_BEVEL,MATERIAL_BEND,MATERIAL_REFLECTION].join('|'),cached=entry.profileCache;
+  if(cached?.key===key){entry.profileCacheHits=(entry.profileCacheHits||0)+1;return cached;}
+  const start=performance.now(),px=cw/w,py=ch/h,bx=Math.ceil(band*px),by=Math.ceil(band*py),tiles=[];
+  entry.profileCache=null; // Release the previous geometry; never retain history.
+  for(const [tx,ty,tw,th]of [[0,0,cw,by],[0,ch-by,cw,by],[0,by,bx,ch-2*by],[cw-bx,by,bx,ch-2*by]]){
+   if(tw<1||th<1)continue;
+   const coefficients=new Float64Array(tw*th*8);let count=0;
+   for(let y=0;y<th;y++)for(let x=0;x<tw;x++){
+    const xx=(tx+x+.5)/px,yy=(ty+y+.5)/py,dx=xx-w/2,dy=yy-h/2,qx=Math.abs(dx)-(w/2-radius),qy=Math.abs(dy)-(h/2-radius);
+    const ax=Math.max(qx,0),ay=Math.max(qy,0),length=Math.hypot(ax,ay),distance=radius-length-Math.min(Math.max(qx,qy),0);
+    if(distance<0||distance>band)continue;
+    const nx=length?ax/length*Math.sign(dx):qx>qy?Math.sign(dx):0,ny=length?ay/length*Math.sign(dy):qy>=qx?Math.sign(dy):0;
+    const width=band*(.64+.36*Math.abs(nx));if(distance>width)continue;
+    const t=distance/width,fall=(1-t)**2,bend=MATERIAL_BEND*fall,mix=.68*fall;
+    const light=Math.max(0,-nx*.65-ny*.76),position=.38+.62*Math.exp(-1*((xx/w*.7+yy/h*.3-.12)*2.5)**2);
+    // One broad lobe returns continuously through neutral inner shade.
+    const lobe=.82*Math.exp(-1*((t-.31)/.22)**2)*(.16+.84*light**3)*position;
+    const lip=.38*Math.exp(-distance/.55)*(.25+.75*light),shine=Math.min(.92,(lobe+lip)*MATERIAL_REFLECTION),shade=.13*Math.exp(-1*((t-.79)/.17)**2)*(.35+.65*(1-light));
+    coefficients.set([(y*tw+x)*4,xx,yy,nx*bend,ny*bend,mix,shine,shade],count++*8);
+   }
+   tiles.push({tx,ty,tw,th,coefficients,count});
   }
-  const stroke=(inset,width,stops)=>{const path=new Path2D();rounded(path,inset,inset,w-2*inset,h-2*inset,Math.max(0,radius-inset));const light=c.createLinearGradient(0,0,w*.72,h);for(const [at,color] of stops)light.addColorStop(at,color);c.strokeStyle=light;c.lineWidth=width;c.stroke(path)};
-  stroke(1,1.8,[[0,'rgba(255,255,255,.98)'],[.16,'rgba(255,255,255,.78)'],[.38,'rgba(255,255,255,.12)'],[.72,'rgba(48,45,40,.28)'],[1,'rgba(255,255,255,.92)']]);
-  stroke(3.2,1,[[0,'rgba(255,255,255,.65)'],[.24,'rgba(255,255,255,.12)'],[.65,'rgba(30,28,24,.20)'],[1,'rgba(255,255,255,.70)']]);
-  stroke(band,.75,[[0,'rgba(36,32,26,.09)'],[.4,'rgba(255,255,255,0)'],[1,'rgba(255,255,255,.22)']]);
-  return band;
+  const profile={key,band,tiles,bytes:tiles.reduce((n,t)=>n+t.coefficients.byteLength,0),points:tiles.reduce((n,t)=>n+t.count,0)};
+  entry.profileCacheBuilds=(entry.profileCacheBuilds||0)+1;entry.profileCacheBuildMs=(entry.profileCacheBuildMs||0)+performance.now()-start;entry.profileCache=profile;return profile;
+ }
+ function paintMaterialBevel(entry,c,r,radius){
+  const profile=materialProfile(entry,r.width,r.height,radius);if(!profile)return 0;
+  const g=geometry(),sw=sampler.width,sh=sampler.height,pixels=samplePixels,neutral=root.dataset.theme==='light'?[249,250,248]:[24,28,29],tint=panels.get(entry.host)?.alpha??.18;
+  for(const {tx,ty,tw,th,coefficients:points,count}of profile.tiles){
+   const field=c.getImageData(tx,ty,tw,th),data=field.data;
+   for(let i=0;i<count*8;i+=8){
+    const at=points[i],xx=points[i+1],yy=points[i+2],bendX=points[i+3],bendY=points[i+4],mix=points[i+5],shine=points[i+6],shade=points[i+7];
+    const sceneX=r.left+xx-bendX,sceneY=r.top+yy-bendY;
+    const cx=Math.min(sw-1,Math.max(0,Math.round(sceneX/g.width*sw))),cy=Math.min(sh-1,Math.max(0,Math.round(sceneY/g.height*sh)));
+    const lx=Math.min(sw-1,Math.max(0,Math.round((sceneX-4)/g.width*sw))),rx=Math.min(sw-1,Math.max(0,Math.round((sceneX+4)/g.width*sw))),uy=Math.min(sh-1,Math.max(0,Math.round((sceneY-4)/g.height*sh))),dy=Math.min(sh-1,Math.max(0,Math.round((sceneY+4)/g.height*sh)));
+    const center=(cy*sw+cx)*4,left=(cy*sw+lx)*4,right=(cy*sw+rx)*4,up=(uy*sw+cx)*4,down=(dy*sw+cx)*4;
+    // Same five-tap arithmetic, with scene coordinates and Canvas dimensions
+    // reused rather than crossing the native Canvas getters per channel/tap.
+    for(let k=0;k<3;k++){const scene=pixels[center+k]*.5+pixels[left+k]*.125+pixels[right+k]*.125+pixels[up+k]*.125+pixels[down+k]*.125,transmitted=scene*(1-tint)+neutral[k]*tint,value=data[at+k]*(1-mix)+transmitted*mix;data[at+k]=(value+(255-value)*shine)*(1-shade)}
+   }
+   c.putImageData(field,tx,ty);
+  }
+  return profile.band;
  }
  function paintMaterial(entry,r){
   const {host,canvas}=entry,w=r.width,h=r.height;if(w<8||h<8)return;
@@ -179,7 +209,7 @@
   const light=host.dataset.glassTone==='light',neutral=light?[249,250,248]:[24,28,29],tint=panels.get(host)?.alpha??.18;
   c.fillStyle=`rgba(${neutral},${tint})`;c.fillRect(0,0,w,h);
   const reflection=c.createLinearGradient(0,0,w*.8,h);reflection.addColorStop(0,'rgba(255,255,255,.16)');reflection.addColorStop(.25,'rgba(255,255,255,.025)');reflection.addColorStop(.7,'rgba(255,255,255,0)');reflection.addColorStop(1,'rgba(10,12,13,.08)');c.fillStyle=reflection;c.fillRect(0,0,w,h);
-  entry.bevel=paintMaterialBevel(c,r,radius);entry.radius=radius;entry.role=role;entry.tint=tint;
+  entry.bevel=paintMaterialBevel(entry,c,r,radius);entry.radius=radius;entry.role=role;entry.tint=tint;
   entry.key=key;entry.rect={left:r.x,top:r.y,width:w,height:h};entry.amplitude=amplitude;entry.paintMs=performance.now()-start;entry.totalPaintMs=(entry.totalPaintMs||0)+entry.paintMs;entry.draws++;paintCount++;totalPaintMs+=entry.paintMs;
  }
  function paint(entry,r){
@@ -259,7 +289,7 @@
  new MutationObserver(schedule).observe(document.body,{childList:true,subtree:true});
  window.addEventListener('resize',schedule,{passive:true});document.addEventListener('scroll',scheduleGeometry,{passive:true,capture:true});document.addEventListener('focusin',schedule);document.addEventListener('focusout',schedule);
  window.visualViewport?.addEventListener('resize',schedule,{passive:true});window.visualViewport?.addEventListener('scroll',scheduleGeometry,{passive:true});reduced.addEventListener?.('change',schedule);
- window.TaskMeccaGlass=Object.freeze({refresh:schedule,captureReaders,restoreReaders,diagnostics:()=>({mode:root.dataset.glassOptics||'material',photo:imageURL,sample:{generation,theme:sampleTheme,background:sampleBackground,source:sampleSource},loading:!!loading,pending:!!frame||!!geometryFrame,readerBackingSupported,stage:geometry(),sampler:sampler?{width:sampler.width,height:sampler.height}:null,paintCount,totalPaintMs,adaptCount,totalAdaptMs,sampleBytes:samplePixels?.byteLength||0,panels:[...panels.values()],materials:[...materials.values()].map(e=>({host:e.host.className,role:e.role,tint:e.tint,radius:e.radius,bevel:e.bevel,bend:MATERIAL_BEND,rect:e.rect,amplitude:e.amplitude,paintMs:e.paintMs,totalPaintMs:e.totalPaintMs,draws:e.draws,pixels:e.canvas.width*e.canvas.height})),lenses:[...entries.values()].map(e=>({kind:e.kind,rect:e.rect,rim:e.rim,amplitude:e.amplitude,draws:e.draws,pixels:e.canvas.width*e.canvas.height}))})});
+ window.TaskMeccaGlass=Object.freeze({refresh:schedule,captureReaders,restoreReaders,diagnostics:()=>({mode:root.dataset.glassOptics||'material',photo:imageURL,sample:{generation,theme:sampleTheme,background:sampleBackground,source:sampleSource},loading:!!loading,pending:!!frame||!!geometryFrame,readerBackingSupported,stage:geometry(),sampler:sampler?{width:sampler.width,height:sampler.height}:null,paintCount,totalPaintMs,adaptCount,totalAdaptMs,sampleBytes:samplePixels?.byteLength||0,panels:[...panels.values()],profileCacheBytes:[...materials.values()].reduce((n,e)=>n+(e.profileCache?.bytes||0),0),profileCacheCount:[...materials.values()].filter(e=>e.profileCache).length,materials:[...materials.values()].map(e=>({cacheBytes:e.profileCache?.bytes||0,cachePoints:e.profileCache?.points||0,cacheBuilds:e.profileCacheBuilds||0,cacheHits:e.profileCacheHits||0,cacheBuildMs:e.profileCacheBuildMs||0,host:e.host.className,role:e.role,tint:e.tint,radius:e.radius,bevel:e.bevel,bend:MATERIAL_BEND,profile:"continuous-convex",reflection:MATERIAL_REFLECTION,rect:e.rect,amplitude:e.amplitude,paintMs:e.paintMs,totalPaintMs:e.totalPaintMs,draws:e.draws,pixels:e.canvas.width*e.canvas.height})),lenses:[...entries.values()].map(e=>({kind:e.kind,rect:e.rect,rim:e.rim,amplitude:e.amplitude,draws:e.draws,pixels:e.canvas.width*e.canvas.height}))})});
  if(typeof ResizeObserver!=='undefined'){const resize=new ResizeObserver(schedule);document.querySelectorAll('.topbar,.terminal-header,.sidebar-head').forEach(e=>resize.observe(e))}
  document.fonts?.ready.then(schedule);
  schedule();
