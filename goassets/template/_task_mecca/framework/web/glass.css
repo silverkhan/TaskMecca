@@ -384,3 +384,21 @@
 :root[data-palette="glass"] [data-glass-positioned="true"]{position:relative}
 
 @media(max-width:680px){:root[data-palette="glass"] .topbar :is(.palette-picker,.language-picker,.background-picker) .tm-combo{min-width:0;max-width:none}}
+
+/* Full-review correction: let the curved local cap, not a constant CSS rail,
+   own the native shell edge. Transmission/tint and bend remain authored. */
+:root[data-palette="glass"][data-glass-optics="active"] [data-glass-native]{border-color:rgba(255,255,255,.12);border-right-color:rgba(255,255,255,.06);border-bottom-color:rgba(255,255,255,.10)}
+:root[data-palette="glass"] .topbar[data-glass-native="topbar"] :is(.palette-picker,.language-picker,.background-picker,.theme-switcher){border-color:rgba(255,255,255,.16);background:radial-gradient(ellipse at 12% 0,rgba(255,255,255,.30),transparent 62%),var(--glass-control);box-shadow:inset 1px 2px 3px rgba(255,255,255,.50),inset -1px -2px 3px rgba(12,14,15,.10),0 2px 4px rgba(12,14,15,.06)}
+@media(max-width:1280px){
+ :root[data-palette="glass"] .detail-toc{isolation:isolate;visibility:hidden;transform:none;transition:none;border-radius:22px;background:var(--glass-chrome);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);box-shadow:var(--glass-shadow)}
+ :root[data-palette="glass"] .detail-layout.toc-open .detail-toc{visibility:visible;opacity:1;transform:none}
+ :root[data-palette="glass"] .detail-toc[data-glass-native="surface"]{background:transparent;backdrop-filter:none;-webkit-backdrop-filter:none}
+ :root[data-palette="glass"] :is(.detail-toc-fab,.detail-toc-close){min-width:44px;min-height:44px}
+ :root[data-palette="glass"] .detail-toc-nav a{min-height:44px;display:flex;align-items:center}
+}
+
+/* Explicit reading restoration owns the viewport during drawer/rerender swaps;
+   native anchoring must not apply a second displacement after that transaction. */
+:root[data-palette="glass"] .content{overflow-anchor:none}
+
+:root[data-palette="glass"][data-glass-optics="solid"] .detail-toc{backdrop-filter:none;-webkit-backdrop-filter:none}

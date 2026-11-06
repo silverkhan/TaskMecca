@@ -5720,9 +5720,15 @@ function bindDetailToc() {
   const sections=[...document.querySelectorAll('.detail-section[id]')];
   if(!layout||!toc||!sections.length)return;
   const setOpen=open=>{
+    const wasOpen=layout.classList.contains('toc-open');
     layout.classList.toggle('toc-open',Boolean(open));
     toggle?.setAttribute('aria-expanded',open?'true':'false');
+    if(state.palette==='glass'&&window.matchMedia('(max-width:1280px)').matches){
+      if(open)close?.focus({preventScroll:true});else if(wasOpen)toggle?.focus({preventScroll:true});
+    }
+    window.TaskMeccaGlass?.refresh?.();
   };
+  layout.addEventListener('keydown',e=>{if(state.palette==='glass'&&e.key==='Escape'&&layout.classList.contains('toc-open')){e.preventDefault();e.stopPropagation();setOpen(false)}});
   toggle?.setAttribute('aria-expanded','false');
   toggle?.addEventListener('click',()=>setOpen(!layout.classList.contains('toc-open')));
   close?.addEventListener('click',()=>setOpen(false));
@@ -6650,7 +6656,7 @@ function bindRows() {
     el.addEventListener('focusin',()=>prefetchTaskDetail(el.dataset.id));
     el.addEventListener('touchstart',()=>prefetchTaskDetail(el.dataset.id),{passive:true});
   });
-  $('#glassFilterToggle')?.addEventListener('click',()=>{state.glassFiltersOpen=!state.glassFiltersOpen;render()});
+  $('#glassFilterToggle')?.addEventListener('click',()=>{state.glassFiltersOpen=!state.glassFiltersOpen;render();$('#glassFilterToggle')?.focus({preventScroll:true})});
   document.querySelectorAll('[data-status-filter]').forEach(b=>b.addEventListener('click',()=>setStatusFilter(b.dataset.statusFilter)));
   document.querySelectorAll('[data-tag-filter]').forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();setTagFilter(b.dataset.tagFilter)}));
   $('#tagExploreBtn')?.addEventListener('click',()=>{state.tagExplorerOpen=!state.tagExplorerOpen;render()});

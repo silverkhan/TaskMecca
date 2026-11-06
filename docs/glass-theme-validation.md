@@ -1,3 +1,51 @@
+# A-64 전체 독립 검수 교정03 (2026-11-07)
+
+시작 소스1c80과 correction02의1217개 증거·21/189/Go/cost 통과는 보존하지만,
+전체 c189 독립 검수의 FULL01–04 P2로 Main acceptance=failed였음을 유지합니다.
+이 절은 네 항목에 한정한 현재 구현이며 추가 디자인/benchmark 반복이 아닙니다.
+모든 대비·포커스 수치는 계속 보고 전용입니다.
+
+- FULL01: 모바일 필터 render 뒤 같은 native trigger에 preventScroll focus를
+  복원합니다. Enter 개폐와 다음 Tab의 첫 상태 필터 이동을 실제 입력으로 검사합니다.
+- FULL02: 모바일/축소 폭에서 열린 TOC만 floating material 후보로 등록합니다.
+  자기 paddingbox를 덮는 native 사진 장면이 뒤 본문 foreground와 분리되며,
+  backdrop fallback은 전체 drawer에서만 작동합니다. text fog·불투명 사각형은
+  추가하지 않습니다. first-open·닫힘 release·responsive sticky 전환·ambient/
+  None/reduced fallback·44px·Escape/FAB 포커스·실제 hash 이동을 보호합니다.
+- FULL03: Glass terminal workspace는 geometry만 소유하고 idle surface의
+  중복 console fill을 제거합니다. 기존 활성 console paint는 유지합니다.
+  실제 Light/Dark 및 Mecca/Slate를 구분했고 PTY·셸·service는 시작하지 않습니다.
+  active 표현의 CSS 확인은 실제 연결/ANSI/grid 실사용 검증을 대신하지 않습니다.
+- FULL04: native48개 lobe의 단면을 넓히고 uniform ambient stroke와 전 둘레
+  diagonal grey shade를 제거했습니다. inner return은 같은 국소 광원을 따르고,
+  tall shell의 양쪽 광원 지원이 겹치지 않게 long-axis42%로 제한합니다.
+  CSS의 일정한 흰 경계를 보조 역할로 낮추고 작은 capsule은 비대칭 면 반사를
+  사용합니다. 전역 tint/alpha·사진·12px bend·native Canvas40ring+48path·기존
+  pixel cap·row 없음·상시 loop 없음은 유지합니다. 시안 최종 수용은 독립 판단입니다.
+
+새 native TOC→back 경로에서 실제 click180/saved180 뒤 native anchor가 추가20px
+이동하는 회귀를 발견했습니다. Glass content의 explicit reading 복원과 browser
+anchoring이 중복 작동하지 않도록 overflow-anchor:none을 적용했고 handler-return과
+후속 rAF/settled 모두180을 확인했습니다. 별도320폭 rowIntoView는 requested180→
+trusted click277/saved277/restored277로, 자동 클릭 준비와 복원을 구분했습니다.
+초기 직접 자식 Canvas selector 오류는 실제 scroll-plane topology를 읽도록 수정했고,
+최초297/200 실패를 단순 허용 오차로 덮지 않았습니다.
+
+새 `web_glass_full_review.test.cjs` 두 검사를 CI glass-browser에 명시 포함했습니다.
+기존21개와 별도로 최종23개·공통189개·안전 named Go2-race/vet를 정확 소스에서
+검증하며 native-focus-toc/terminal-idle JSON을 업로드합니다. 뒤 본문 색 변경 시
+TOC 내부 pixel diff0과 실제 backing 제거 negative를 함께 확인합니다.
+기존 replay calibration/copy<=1/center0 및 text/color/opacity/geometry negative도
+유지합니다. 최종 source-tagged 결과·단 한 번의1c80→후속 동일36행/manual50 비용은
+새 `correction03-full-review/report.{md,json}`에서 분리 보고합니다. 이전1c80/b677
+cohort·불리한 longtask/GC·대비 수치를 새 소스 결과로 재표기하지 않습니다.
+
+증거 위치: `handoff-evidence/a64-glass-reference-fidelity-20261106/correction03-full-review/`.
+component-impact는 precommit1차 원인 확인 snapshot, component-confirmation은 마지막
+광원 범위 수정 후 별도 snapshot입니다. 각각 정확 source hashes를 가지며 최종
+커밋/원격 Preview 촬영으로 재표기하지 않습니다. 이전 모든 packet/검수/실패는
+불변 보존합니다. 운영18765·사용자 Preview·설치/재시작/전환·배포는 변경하지 않습니다.
+
 # A-64 사용자 결함 교정02 (2026-11-07)
 
 이 절은 b677f10f의 좁은 convex 교정을 대체하는 현재 구현 설명입니다. 아래
