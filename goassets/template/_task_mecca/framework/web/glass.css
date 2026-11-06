@@ -223,3 +223,17 @@
 
 /* Contrast polarity changes atomically with its reading material. Retain hover fills/motion. */
 :root[data-palette="glass"] :is(.status-filter-btn,.copy-code-btn,.detail-toc-nav a){transition-property:background-color,border-color,transform}
+
+/* Mobile hit targets belong to the native controls, not just their wrappers. */
+@media(max-width:680px){
+ :root[data-palette="glass"] .topbar{width:calc(100% - max(8px,env(safe-area-inset-left)) - max(8px,env(safe-area-inset-right)));max-width:calc(100% - max(8px,env(safe-area-inset-left)) - max(8px,env(safe-area-inset-right)))}
+ :root[data-palette="glass"] .search-wrap{height:auto;min-height:46px}
+ :root[data-palette="glass"] .search-wrap input{height:44px;min-height:44px;min-width:0;padding-block:0}
+ :root[data-palette="glass"] .sidebar-toggle{width:44px;min-width:44px;min-height:44px;flex:0 0 44px}
+ :root[data-palette="glass"] .topbar #refreshBtn{width:44px;min-width:44px;height:44px;min-height:44px}
+ :root[data-palette="glass"] .pager button{width:44px;min-width:44px;min-height:44px;padding-inline:0;flex:0 0 44px}
+ :root[data-palette="glass"] .pager{max-width:100%}
+ :root[data-palette="glass"] .pager span{min-width:0;white-space:normal;text-align:center}
+ :root[data-palette="glass"] .topbar button.global-update-pill{min-width:44px;min-height:44px;height:auto;white-space:normal}
+ :root[data-palette="glass"] .topbar .global-update-pill .update-check-error{min-width:0;white-space:normal}
+}

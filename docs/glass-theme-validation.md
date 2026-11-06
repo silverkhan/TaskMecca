@@ -1,6 +1,75 @@
 # 실사 배경과 Glass 소재 검증
 
 
+## Mobile native target correction (A62-LUMEN-01, 2026-11-06)
+
+Independent review accepted the neutral material, continuous reader and optical
+protections, but found one P1 in actual mobile hit targets on `f4c0d7ef`.
+The source correction is restricted to a Glass-only `max-width:680px` CSS block.
+No renderer, sampler, material colors, opacity, rim, lens or shared application
+logic changes. The f4 packet, 18-base/16-state matrix, 3,225-sample contrast and
+performance data in the following section are historical f4 evidence, not
+relabeled correction results.
+
+| Native target at390×844 | f4 | correction |
+| --- | --- | --- |
+| `#search` INPUT |291.14×22.14px|291.14×44px|
+| `.search-wrap` DIV |358×36px|358×46px|
+| Sidebar / refresh |36×44 /34×44px|44×44px each|
+| Previous / next page |30×44px|44×44px each|
+| Actionable version retry |32px high|44px high|
+
+The input itself receives the height; no pseudo-element or painted wrapper
+substitutes for native geometry. The topbar width accounts for its safe-area
+margins, removing the398px document overflow in the390px visual viewport.
+Paging and retry text can wrap without shrinking the named targets. Small tags
+remain11px metadata rather than becoming44px cards.
+
+A new real-browser guard first fails unchanged f4 after all four Light/Dark ×
+ko/en scenarios. The corrected source passes28 named trusted native actions
+(search clicks2px from the top/bottom edges, sidebar, refresh, retry, next and
+previous),32 geometry observations, and explicit nonoverlap/viewport checks.
+It reads `getBoundingClientRect()` and actual `visualViewport` offsets, size,
+scale and safe-area values directly; layout398×862 is never remapped to pretend
+it is visual390×844. Corrected layout/client/document and visual width are390,
+scale1. The native input is focused by the edge clicks. All action requests stay
+on the owned mock origin; no update, migration, shell or environment action is
+sent to an operating service.
+
+Four desktop cases /28 target style-and-rectangle records equal the f4 baseline
+exactly. Mobile row height remains97.734375px before/after and hover does not
+shift row geometry; tags remain11px and nested-overflow gates are retained.
+Renderer/app/theme-boot/shared-style/index/select-ui hashes remain identical.
+Original Glass16 + native-functional1 + new target-guard1 produce18 required
+browser tests; exact-commit results, common91, named Go2 and vet are frozen in
+`correction01/` rather than added to the old manifest.
+
+Affected mobile composited checks are source-tagged separately: ko586 eligible
+text samples /minimum5.1809 and en538 /minimum5.1083, zero below unchanged
+normal4.5/large3 targets, zero focus failures. These are affected mobile checks,
+not a new full desktop design review or a replacement for f4 history.
+
+One affected390×844 cost sample uses the same existing90-callback harness:
+TaskDuration571.15→629.98ms, Script108.00→113.35ms, Paint49.22→59.53ms
+(f4→correction); mean16.67ms/max16.8ms, engine paint454/adapt393 and idle0/0
+remain. JS heap falls6327016→4654732 bytes at the two sample endpoints, but
+that is not total memory equality or proof of improvement; garbage collection
+and scheduling affect these browser proxies. The original410→f4 increases
+remain exposed below. No optimization/benchmark loop or physical CPU/GPU/energy
+claim is made.
+
+The immutable independent review lives under canonical
+`neutral-fluid-glass-20261106/lumen-review/lumen-run-389187c5e044bfd9/`.
+The correction packet is untracked at
+`handoff-evidence/a62-neutral-fluid-glass-20261106/correction01/`; it retains the
+failing f4 guard, raw native event/viewport data, affected ko/en captures,
+composited samples, one current cost sample, protected-file equivalence and
+owned-port refusal after cleanup. Main owns the same reviewer's narrow
+confirmation, exact branch CI8/Preview, Draft PR348 and canonical finalization.
+Physical Android/Samsung/Safari, OS safe-area/keyboard/trackpad behavior and user
+final acceptance remain unverified. No Glass Dev/Main/Stable merge/deploy or
+operational18765 interaction is authorized or performed.
+
 ## Neutral Fluid Glass (A-62, 2026-11-06)
 
 This approved brief supersedes the earlier A-56 photographic contrast audit
