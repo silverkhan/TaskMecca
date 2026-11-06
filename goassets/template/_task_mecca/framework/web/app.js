@@ -6000,7 +6000,7 @@ function workflowFloatingView(root,viewport,wf,pref,ko){
   const readingState=()=>{const active=document.activeElement,details=surface.querySelector('#workflowIntervalEvidence'),included=surface.querySelector('.workflow-included-events'),text=surface.querySelector('#workflowIntervalEvidence pre')?.firstChild,selection=getSelection();return {open:details?.open||false,includedOpen:included?.open||false,scrollTop:surface.scrollTop,focus:active===surface?'surface':active===surface.querySelector('#workflowIntervalEvidence>summary')?'summary':active===included?.querySelector('summary')?'included-summary':active?.dataset?.workflowMember?'member:'+active.dataset.workflowMember:active===surface.querySelector('button')?'close':null,selection:text&&selection?.anchorNode===text&&selection.focusNode===text?{anchor:selection.anchorOffset,focus:selection.focusOffset}:null};};
 
   const place=()=>{
-    positionFrame=0;if(surface.hidden||!anchor)return;
+    positionFrame=0;if(disposed||surface.hidden||!anchor)return;
     const r=anchor.getBoundingClientRect(),clip=viewport.getBoundingClientRect();
     if(!anchor.isConnected||r.right<clip.left||r.left>clip.right||r.bottom<0||r.top>innerHeight){close(false);return;}
     const margin=8,width=Math.min(pinned?360:300,innerWidth-margin*2);surface.style.width=width+'px';
@@ -6012,7 +6012,7 @@ function workflowFloatingView(root,viewport,wf,pref,ko){
     const left=Math.max(margin,Math.min(innerWidth-width-margin,(Math.max(r.left,clip.left)+Math.min(r.right,clip.right)-width)/2)),top=Math.max(topMargin,useBelow?r.bottom+10:r.top-h-10);
     surface.style.left=left+'px';surface.style.top=top+'px';
   };
-  const queuePlace=()=>{if(!positionFrame)positionFrame=requestAnimationFrame(place);};
+  const queuePlace=()=>{if(!disposed&&!positionFrame)positionFrame=requestAnimationFrame(place);};
   const close=(restore=false,clear=true)=>{
     const previous=anchor;anchor?.classList.remove('is-selected');anchor?.removeAttribute('aria-describedby');anchor?.removeAttribute('aria-expanded');
     root.querySelectorAll('.workflow-interval.is-selected,.workflow-row-label.is-selected').forEach(node=>{node.classList.remove('is-selected');node.removeAttribute('aria-expanded');});
