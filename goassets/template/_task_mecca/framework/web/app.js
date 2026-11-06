@@ -1352,16 +1352,16 @@ async function refreshViewedTaskLifecycle(project,backlog,id,options={}) {
   const section=typeof document!=='undefined'?document.getElementById?.('lifecycle'):null;
   if(section&&!state.raw){
     const rect=section.getBoundingClientRect?.();
-    const previouslyAbove=rect&&rect.bottom<=0;
+    const previouslyAbove=rect&&rect.bottom<=(typeof window!=='undefined'?(window.TaskMeccaGlass?.readingViewport?.()?.top||0):0);
     const oldHeight=rect?.height||0;
-    const previousScroll=typeof window!=='undefined'?window.scrollY:0;
+    const previousScroll=typeof window!=='undefined'?(window.TaskMeccaGlass?.scrollY??window.scrollY):0;
     // Patch only lifecycle children. Keep section identity for TOC observer,
     // preserve Markdown, open disclosures, focus and reading position.
     patchLifecycleEvidence(section,newer);
     if(section.querySelector?.('#activityMetricsBody'))void loadTaskActivity(id,project);
     if(previouslyAbove&&typeof window!=='undefined'){
       const delta=(section.getBoundingClientRect?.().height||0)-oldHeight;
-      if(delta)window.scrollTo?.({left:window.scrollX,top:previousScroll+delta,behavior:'auto'});
+      if(delta)(window.TaskMeccaGlass?.scrollTo?.bind(window.TaskMeccaGlass)||window.scrollTo?.bind(window))?.({left:(window.TaskMeccaGlass?.scrollX??window.scrollX),top:previousScroll+delta,behavior:'auto'});
     }
   }
   return true;
@@ -1479,7 +1479,7 @@ async function checkContentRevision(establishOnly=false) {
 }
 
 async function refreshVisibleContent() {
-  const scrollY=window.scrollY;
+  const scrollY=(window.TaskMeccaGlass?.scrollY??window.scrollY);
   state.pendingContentUpdate=false;
   state.pendingContentReason='';
   state.pendingObservedRevision='';
@@ -1492,7 +1492,7 @@ async function refreshVisibleContent() {
     await refresh();
     await checkContentRevision(true);
   }
-  requestAnimationFrame(()=>window.scrollTo({top:scrollY,left:0,behavior:'auto'}));
+  requestAnimationFrame(()=>(window.TaskMeccaGlass?.scrollTo?.bind(window.TaskMeccaGlass)||window.scrollTo.bind(window))({top:scrollY,left:0,behavior:'auto'}));
 }
 
 let manualRefreshInFlight=false;
@@ -3122,7 +3122,7 @@ function notificationHistoryMarkup(){
 }
 function notificationCenterView(){return `<div class="notification-center-tabs" role="tablist"><button type="button" role="tab" data-center-tab="history" aria-selected="${state.notificationCenterTab==='history'}">${esc(t('notificationHistory'))}<span id="centerHistoryBadge">${state.notificationHistoryNew?` · ${state.notificationHistoryNew}`:''}</span></button><button type="button" role="tab" data-center-tab="settings" aria-selected="${state.notificationCenterTab==='settings'}">${esc(t('notificationSettings'))}</button></div>${telegramSetupGuideMarkup()}${state.notificationCenterTab==='settings'?'<section id="notificationSettingsBody" class="notification-settings-body"></section>':`<p class="summary">${esc(t('notificationHistoryGuide'))}</p><section id="centerHistory">${notificationHistoryMarkup()}</section>`}`;}
 function bindNotificationHistoryActions(){document.querySelectorAll('[data-history-page]').forEach(button=>button.addEventListener('click',()=>{state.notificationHistoryPage=Number(button.dataset.historyPage);if(state.notificationHistoryPage===1)captureHistoryWindow();updateNotificationHistoryDOM();}));document.querySelectorAll('[data-history-latest]').forEach(button=>button.addEventListener('click',()=>{state.notificationHistoryPage=1;captureHistoryWindow();updateNotificationHistoryDOM();}));}
-function updateNotificationHistoryDOM(){if(state.view!=='notifications')return;const badge=$('#centerHistoryBadge');if(badge)badge.textContent=state.notificationHistoryNew?' · '+state.notificationHistoryNew:'';const region=$('#centerHistory');if(!region)return;const scroll=region.querySelector('.notification-history-scroll'),left=scroll?.scrollLeft||0,top=window.scrollY,open=[...region.querySelectorAll('details[open]')].map(item=>item.dataset.historyDisclosure),active=document.activeElement,focusRow=active?.closest?.('[data-history-row]')?.dataset.historyRow,focusPage=active?.dataset?.historyPage;region.innerHTML=notificationHistoryMarkup();for(const details of region.querySelectorAll('details'))details.open=open.includes(details.dataset.historyDisclosure);const nextScroll=region.querySelector('.notification-history-scroll');if(nextScroll)nextScroll.scrollLeft=left;bindNotificationHistoryActions();const focus=focusRow?[...region.querySelectorAll('[data-history-row]')].find(row=>row.dataset.historyRow===focusRow)?.querySelector(active?.tagName==='SUMMARY'?'summary':'a'):focusPage?[...region.querySelectorAll('[data-history-page]')].find(button=>button.dataset.historyPage===focusPage):null;focus?.focus({preventScroll:true});window.scrollTo?.(0,top);}
+function updateNotificationHistoryDOM(){if(state.view!=='notifications')return;const badge=$('#centerHistoryBadge');if(badge)badge.textContent=state.notificationHistoryNew?' · '+state.notificationHistoryNew:'';const region=$('#centerHistory');if(!region)return;const scroll=region.querySelector('.notification-history-scroll'),left=scroll?.scrollLeft||0,top=(window.TaskMeccaGlass?.scrollY??window.scrollY),open=[...region.querySelectorAll('details[open]')].map(item=>item.dataset.historyDisclosure),active=document.activeElement,focusRow=active?.closest?.('[data-history-row]')?.dataset.historyRow,focusPage=active?.dataset?.historyPage;region.innerHTML=notificationHistoryMarkup();for(const details of region.querySelectorAll('details'))details.open=open.includes(details.dataset.historyDisclosure);const nextScroll=region.querySelector('.notification-history-scroll');if(nextScroll)nextScroll.scrollLeft=left;bindNotificationHistoryActions();const focus=focusRow?[...region.querySelectorAll('[data-history-row]')].find(row=>row.dataset.historyRow===focusRow)?.querySelector(active?.tagName==='SUMMARY'?'summary':'a'):focusPage?[...region.querySelectorAll('[data-history-page]')].find(button=>button.dataset.historyPage===focusPage):null;focus?.focus({preventScroll:true});(window.TaskMeccaGlass?.scrollTo?.bind(window.TaskMeccaGlass)||window.scrollTo?.bind(window))?.(0,top);}
 const notificationSwitchPending=new Set();
 function notificationPendingKey(input){
  if(input.id)return 'id="'+input.id+'"';
@@ -3957,9 +3957,9 @@ async function refreshExecutionTarget(){
     if(banner){
       banner.hidden=target?.kind!=='pr';
       if(target?.kind==='pr'){
-        banner.innerHTML='<strong>PR #'+Number(target.pr_number)+' · '+esc(String(target.head_sha||'').slice(0,10))+'</strong> · '+
+        banner.innerHTML='<div class="preview-identity-copy"><strong>PR #'+Number(target.pr_number)+' · '+esc(String(target.head_sha||'').slice(0,10))+'</strong><span>'+
           esc(state.language==='ko'?'전체 실행 환경':'Full execution environment')+
-          ' <button id="prReturnDev" type="button" class="action-btn secondary">'+esc(state.language==='ko'?'Dev 복귀':'Return to Dev')+'</button>';
+          '</span></div><div class="preview-identity-actions"><button id="prReturnDev" type="button" class="action-btn secondary">'+esc(state.language==='ko'?'Dev 복귀':'Return to Dev')+'</button></div>';
         $('#prReturnDev')?.addEventListener('click',()=>{void returnToPinnedDev().catch(e=>alert(String(e?.message||e)))});
       }
     }
@@ -4895,7 +4895,7 @@ function statusFilterBar() {
     ['blocked',t('blocked'),c.blocked||0],
     ['done',t('done'),c.done||0],
   ];
-  return `<div class="status-filter-wrap"><div class="filter-label">${esc(t('status'))}</div><div class="status-filter-bar" role="group" aria-label="${esc(t('status'))}">${defs.map(([k,label,n])=>`<button class="status-filter-btn ${state.statusFilters.includes(k)?'active':''}" data-status-filter="${k}" aria-pressed="${state.statusFilters.includes(k)?'true':'false'}">${esc(label)}<span>${n}</span></button>`).join('')}</div></div>`;
+  return `<div class="status-filter-wrap" ${state.palette==='glass'?'id="glassStatusFilters"':''}><div class="filter-label">${esc(t('status'))}</div><div class="status-filter-bar" role="group" aria-label="${esc(t('status'))}">${defs.map(([k,label,n])=>`<button class="status-filter-btn ${state.statusFilters.includes(k)?'active':''}" data-status-filter="${k}" aria-pressed="${state.statusFilters.includes(k)?'true':'false'}">${esc(label)}<span>${n}</span></button>`).join('')}</div></div>`;
 }
 function tagFilterBar() {
   const catalog=currentProjectData()?.tag_catalog||{}, stats=Array.isArray(catalog.stats)?catalog.stats:[];
@@ -4923,7 +4923,9 @@ function listControls(info) {
   const data=currentProjectData()||{};
   const preliminary=Boolean(data.pending_reconciliation);
   const attention=preliminary?'—':String((data.counts||{}).attention||0);
-  return `<div class="backlog-compact-header"><div class="backlog-compact-title"><strong>${esc(data.repo||t('repository'))}</strong><span class="backlog-crumb">›</span><strong>${esc(t('backlog'))}</strong></div>${backlogListPicker()}${statusFilterBar()}${tagFilterBar()}<span class="backlog-attention">${esc(t('needsAttention'))} ${esc(attention)}</span></div><div class="backlog-compact-toolbar backlog-list-controls">${backlogListTools()}<div class="list-controls"><div class="control-group"><label>${esc(t('sort'))}<select id="listSort"><option value="id_desc" ${state.listSort==='id_desc'?'selected':''}>ID ↓</option><option value="id_asc" ${state.listSort==='id_asc'?'selected':''}>ID ↑</option><option value="updated_desc" ${state.listSort==='updated_desc'?'selected':''}>${esc(t('updatedNewest'))}</option><option value="updated_asc" ${state.listSort==='updated_asc'?'selected':''}>${esc(t('updatedOldest'))}</option></select></label><label>${esc(state.language==='ko'?'표시 수':t('perPage'))}<select id="listPageSize"><option value="auto" ${pageValue==='auto'?'selected':''}>${esc(t('autoRows',{n:info.pageSize}))}</option><option value="10" ${pageValue==='10'?'selected':''}>10</option><option value="20" ${pageValue==='20'?'selected':''}>20</option><option value="50" ${pageValue==='50'?'selected':''}>50</option></select></label></div><div class="pager"><button id="prevPage" ${info.page<=1?'disabled':''}>←</button><span>${esc(pageText)}</span><button id="nextPage" ${info.page>=info.pages?'disabled':''}>→</button></div></div></div>`;
+  const glassFilterSummary=state.statusFilters.map(k=>t(k==='doing'?'working':k)).join(' · ')+(state.tagFilters.length?' · '+state.tagFilters.length+' '+(state.language==='ko'?'태그':'tags'):'');
+  const glassFilterButton=state.palette==='glass'?`<button class="glass-filter-toggle action-btn secondary" id="glassFilterToggle" type="button" aria-expanded="${state.glassFiltersOpen?'true':'false'}" aria-controls="glassStatusFilters" aria-label="${esc(state.language==='ko'?'상태 및 태그 필터':'Status and tag filters')}" title="${esc(glassFilterSummary)}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h18l-7 8v7l-4 2v-9z"/></svg><span>${esc(glassFilterSummary)}</span></button>`:'';
+  return `<div class="backlog-compact-header ${state.glassFiltersOpen?'glass-filters-open':''}"><div class="backlog-compact-title"><strong>${esc(data.repo||t('repository'))}</strong><span class="backlog-crumb">›</span><strong>${esc(t('backlog'))}</strong></div>${backlogListPicker()}${glassFilterButton}${statusFilterBar()}${tagFilterBar()}<span class="backlog-attention">${esc(t('needsAttention'))} ${esc(attention)}</span></div><div class="backlog-compact-toolbar backlog-list-controls">${backlogListTools()}<div class="list-controls"><div class="control-group"><label>${esc(t('sort'))}<select id="listSort"><option value="id_desc" ${state.listSort==='id_desc'?'selected':''}>ID ↓</option><option value="id_asc" ${state.listSort==='id_asc'?'selected':''}>ID ↑</option><option value="updated_desc" ${state.listSort==='updated_desc'?'selected':''}>${esc(t('updatedNewest'))}</option><option value="updated_asc" ${state.listSort==='updated_asc'?'selected':''}>${esc(t('updatedOldest'))}</option></select></label><label>${esc(state.language==='ko'?'표시 수':t('perPage'))}<select id="listPageSize"><option value="auto" ${pageValue==='auto'?'selected':''}>${esc(t('autoRows',{n:info.pageSize}))}</option><option value="10" ${pageValue==='10'?'selected':''}>10</option><option value="20" ${pageValue==='20'?'selected':''}>20</option><option value="50" ${pageValue==='50'?'selected':''}>50</option></select></label></div><div class="pager"><button id="prevPage" ${info.page<=1?'disabled':''}>←</button><span>${esc(pageText)}</span><button id="nextPage" ${info.page>=info.pages?'disabled':''}>→</button></div></div></div>`;
 }
 
 function listView() {
@@ -5736,7 +5738,7 @@ function bindDetailToc() {
     const observer=new IntersectionObserver(entries=>{
       const visible=entries.filter(x=>x.isIntersecting).sort((a,b)=>a.boundingClientRect.top-b.boundingClientRect.top);
       if(visible[0])setActive(visible[0].target.id);
-    },{rootMargin:'-18% 0px -68% 0px',threshold:[0,0.01]});
+    },{root:window.TaskMeccaGlass?.scrollHost?.()||null,rootMargin:'-18% 0px -68% 0px',threshold:[0,0.01]});
     sections.forEach(section=>observer.observe(section));
   }
   const hash=decodeURIComponent(location.hash.replace(/^#/,''));
@@ -6279,7 +6281,7 @@ function renderActivityDetailControls(taskID,project=state.project){
   const activeInterval=root.contains?.(active)?active?.getAttribute?.('data-workflow-interval'):null;
   const selected=root.querySelector?.('#activityTimelineSelection');
   const selection=selected&&!selected.hidden?selected.textContent:null;
-  const y=typeof window!=='undefined'?window.scrollY:0,x=typeof window!=='undefined'?window.scrollX:0;
+  const y=typeof window!=='undefined'?(window.TaskMeccaGlass?.scrollY??window.scrollY):0,x=typeof window!=='undefined'?(window.TaskMeccaGlass?.scrollX??window.scrollX):0;
   root.innerHTML=activityMetricsBody(activityDetailCache.get(activityDetailKey(taskID,project)),taskID);
   for(const [id,open] of disclosures){const el=root.querySelector?.('#'+id);if(el)el.open=open;}
   bindActivityDetailControls(taskID,project);
@@ -6287,7 +6289,7 @@ function renderActivityDetailControls(taskID,project=state.project){
   const output=root.querySelector?.('#activityTimelineSelection');if(output&&selection){output.textContent=selection;output.hidden=false;}
   if(activeId)root.querySelector?.('#'+activeId)?.focus?.({preventScroll:true});
   if(activeInterval){for(const button of root.querySelectorAll?.('[data-workflow-interval]')||[]){if(button.getAttribute('data-workflow-interval')===activeInterval){button.focus?.({preventScroll:true});break}}}
-  if(typeof window!=='undefined'&&window.scrollY!==y)window.scrollTo?.({left:x,top:y,behavior:'auto'});
+  if(typeof window!=='undefined'&&(window.TaskMeccaGlass?.scrollY??window.scrollY)!==y)(window.TaskMeccaGlass?.scrollTo?.bind(window.TaskMeccaGlass)||window.scrollTo?.bind(window))?.({left:x,top:y,behavior:'auto'});
 }
 
 async function loadTaskActivity(id,project=state.project,runtimeDiagnostic=false){
@@ -6425,8 +6427,8 @@ function restoreLiveDetailReadingState(task) {
   state.detailLifecycleError='';
   const opened=typeof document!=='undefined'&&document.querySelectorAll
     ? [...document.querySelectorAll('.detail-layout details[open][id]')].map(node=>node.id) : [];
-  const scrollX=typeof window!=='undefined'?window.scrollX:0;
-  const scrollY=typeof window!=='undefined'?window.scrollY:0;
+  const scrollX=typeof window!=='undefined'?(window.TaskMeccaGlass?.scrollX??window.scrollX):0;
+  const scrollY=typeof window!=='undefined'?(window.TaskMeccaGlass?.scrollY??window.scrollY):0;
   const activeId=typeof document!=='undefined'?document.activeElement?.id:'';
   state.detailTask=task;
   render();
@@ -6436,7 +6438,7 @@ function restoreLiveDetailReadingState(task) {
   }
   if(typeof requestAnimationFrame==='function'&&typeof window!=='undefined'){
     requestAnimationFrame(()=>{
-      window.scrollTo?.({left:scrollX,top:scrollY,behavior:'auto'});
+      (window.TaskMeccaGlass?.scrollTo?.bind(window.TaskMeccaGlass)||window.scrollTo?.bind(window))?.({left:scrollX,top:scrollY,behavior:'auto'});
       if(activeId)document.getElementById?.(activeId)?.focus?.({preventScroll:true});
     });
   }
@@ -6448,11 +6450,11 @@ function refreshVisibleLifecycleSection() {
   const section=typeof document!=='undefined'?document.getElementById?.('lifecycle'):null;
   if(!section)return;
   const rect=section.getBoundingClientRect?.(),oldHeight=rect?.height||0;
-  const previousScroll=typeof window!=='undefined'?window.scrollY:0;
+  const previousScroll=typeof window!=='undefined'?(window.TaskMeccaGlass?.scrollY??window.scrollY):0;
   patchLifecycleEvidence(section,state.detailTask);
-  if(rect?.bottom<=0&&typeof window!=='undefined'){
+  if(typeof window!=='undefined'&&rect?.bottom<=(window.TaskMeccaGlass?.readingViewport?.()?.top||0)){
     const delta=(section.getBoundingClientRect?.().height||0)-oldHeight;
-    if(delta)window.scrollTo?.({left:window.scrollX,top:previousScroll+delta,behavior:'auto'});
+    if(delta)(window.TaskMeccaGlass?.scrollTo?.bind(window.TaskMeccaGlass)||window.scrollTo?.bind(window))?.({left:(window.TaskMeccaGlass?.scrollX??window.scrollX),top:previousScroll+delta,behavior:'auto'});
   }
 }
 function retryTaskLifecycle() {
@@ -6624,11 +6626,12 @@ if(typeof window!=='undefined')window.addEventListener?.('pointercancel',e=>{
 function openTask(id) {
   if (!id) return;
   releaseTaskRowTouch(false);
+  window.TaskMeccaGlass?.rememberListReading?.(state.project+'|'+state.backlog);
   state.detail=id; state.detailTask=cachedTaskDetail(id); state.detailLifecycleError=''; state.loadError=''; state.raw=false; state.view='backlog';
-  const p=new URLSearchParams(); if(state.project)p.set('project',state.project); if(state.backlog)p.set('backlog',state.backlog); if(state.tagFilters.length)p.set('tags',state.tagFilters.join(',')); history.pushState({},'',`/tasks/${encodeURIComponent(id)}${p.toString()?`?${p.toString()}`:''}`); render(); loadTaskDetail(id);
+  const p=new URLSearchParams(); if(state.project)p.set('project',state.project); if(state.backlog)p.set('backlog',state.backlog); if(state.tagFilters.length)p.set('tags',state.tagFilters.join(',')); history.pushState({},'',`/tasks/${encodeURIComponent(id)}${p.toString()?`?${p.toString()}`:''}`); render();if(window.TaskMeccaGlass?.scrollHost?.())window.TaskMeccaGlass.scrollTo({top:0,behavior:'auto'});loadTaskDetail(id);
 }
 function closeTask() {
-  state.detail=null; state.detailTask=null; state.loadError=''; history.pushState({},'',state.view==='backlog'?backlogUrl():`/?view=${state.view}`); render();
+  state.detail=null; state.detailTask=null; state.loadError=''; history.pushState({},'',state.view==='backlog'?backlogUrl():`/?view=${state.view}`);render();window.TaskMeccaGlass?.restoreListReading?.(state.project+'|'+state.backlog);
   // A direct-link detail page never needed the heavy list before its first paint.
   // Fetch the list only when the user actually returns to it.
   void refreshList();
@@ -6647,6 +6650,7 @@ function bindRows() {
     el.addEventListener('focusin',()=>prefetchTaskDetail(el.dataset.id));
     el.addEventListener('touchstart',()=>prefetchTaskDetail(el.dataset.id),{passive:true});
   });
+  $('#glassFilterToggle')?.addEventListener('click',()=>{state.glassFiltersOpen=!state.glassFiltersOpen;render()});
   document.querySelectorAll('[data-status-filter]').forEach(b=>b.addEventListener('click',()=>setStatusFilter(b.dataset.statusFilter)));
   document.querySelectorAll('[data-tag-filter]').forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();setTagFilter(b.dataset.tagFilter)}));
   $('#tagExploreBtn')?.addEventListener('click',()=>{state.tagExplorerOpen=!state.tagExplorerOpen;render()});
@@ -6673,7 +6677,7 @@ function changeListPage(delta) {
   if (state.view !== 'backlog') return;
   const info=pageInfo(), next=Math.min(info.pages,Math.max(1,state.listPage+delta));
   if (next===state.listPage) return;
-  state.listPage=next; state.selectedIndex=0; refreshList(); window.scrollTo({top:0,behavior:'smooth'});
+  state.listPage=next; state.selectedIndex=0; refreshList(); (window.TaskMeccaGlass?.scrollTo?.bind(window.TaskMeccaGlass)||window.scrollTo.bind(window))({top:0,behavior:'smooth'});
 }
 function highlightSelection(index) {
   const rows=[...document.querySelectorAll('.task-row[data-row-index]')];
@@ -6706,8 +6710,9 @@ function updateAutoListPageSize(force=false) {
   if(!list)return;
   const shortcut=document.querySelector('.shortcut-bar');
   const shortcutHeight=shortcut?.getBoundingClientRect().height||28;
-  const listTopAtPageTop=list.getBoundingClientRect().top+window.scrollY;
-  const available=Math.max(0,window.innerHeight-listTopAtPageTop-shortcutHeight-12);
+  const readingViewport=window.TaskMeccaGlass?.readingViewport?.();
+  const listTopAtPageTop=list.getBoundingClientRect().top+(window.TaskMeccaGlass?.scrollY??window.scrollY)-(readingViewport?.top||0);
+  const available=Math.max(0,(readingViewport?.height||window.innerHeight)-listTopAtPageTop-(readingViewport?readingViewport.paddingBottom:shortcutHeight)-12);
   // Initial row heights can fluctuate as file-only and canonical projections
   // paint. Never increase the row-height estimate within the same project,
   // filter and viewport context: pagination itself must not make the measured
@@ -6878,10 +6883,10 @@ function render() {
     $('#lifecycleRetryBtn')?.addEventListener('click',retryTaskLifecycle);
     $('#backBtn')?.addEventListener('click',closeTask);
     $('#rawToggle')?.addEventListener('click',()=>{
-      const scrollY=window.scrollY;
+      const scrollY=(window.TaskMeccaGlass?.scrollY??window.scrollY);
       state.raw=!state.raw;
       render();
-      requestAnimationFrame(()=>window.scrollTo({top:scrollY,left:0,behavior:'auto'}));
+      requestAnimationFrame(()=>(window.TaskMeccaGlass?.scrollTo?.bind(window.TaskMeccaGlass)||window.scrollTo.bind(window))({top:scrollY,left:0,behavior:'auto'}));
     });
     bindCopyButtons(); bindMermaidControls(); bindDetailToc(); bindDetailInteractions(); renderMermaidDiagrams();
     return;
@@ -7444,6 +7449,7 @@ function route(fromPop=false) {
   }
   if(previousAttentionContext!==state.project+'|'+state.backlog)clearCurrentUserAttention();
  render();
+  if(fromPop&&previousDetail&&!state.detail&&state.view==='backlog')window.TaskMeccaGlass?.restoreListReading?.(state.project+'|'+state.backlog);
   if(fromPop&&state.view==='storage')queueMicrotask(()=>loadStorageManagement(true));
   if(fromPop&&state.project&&state.view==='backlog'){
     queueMicrotask(()=>{
@@ -7458,7 +7464,9 @@ function renderLanguagePicker() {
   picker.innerHTML=Object.entries(LANGUAGES).map(([code,meta])=>`<option value="${esc(code)}" ${state.language===code?'selected':''}>${esc(meta.label)}</option>`).join('');
   const label=$('#languageLabel'); if(label) label.textContent=t('language');
 }
+function setGlassAppearanceOpen(open){const bar=document.querySelector('.topbar'),button=document.getElementById('glassAppearanceToggle');bar?.classList.toggle('glass-preferences-open',Boolean(open));button?.setAttribute('aria-expanded',open?'true':'false');window.TaskMeccaGlass?.refresh?.();}
 function translateChrome() {
+  const appearance=document.getElementById('glassAppearanceToggle');if(appearance){appearance.textContent=state.language==='ko'?'화면 설정':'Display';appearance.setAttribute('aria-label',state.language==='ko'?'화면 설정 열기 또는 닫기':'Open or close appearance preferences');}
   document.documentElement.lang=state.language;
   const search=$('#search'); if(search) search.placeholder=t('searchPlaceholder');
   const backlogLabel=$('#backlogLabel'); if(backlogLabel) backlogLabel.textContent=t('backlogFolder');
@@ -7542,6 +7550,8 @@ document.querySelectorAll('[data-theme-choice]').forEach(b=>b.addEventListener('
 $('#palettePicker')?.addEventListener('change',e=>applyPalette(e.target.value));
 $('#backgroundPicker')?.addEventListener('change',e=>applyBackground(e.target.value));
 window.matchMedia?.('(prefers-color-scheme: dark)').addEventListener?.('change',()=>{if(state.theme==='system'){document.documentElement.dataset.theme=effectiveTheme();syncThemeBrowserChrome();renderMermaidDiagrams(true)}});
+$('#glassAppearanceToggle')?.addEventListener('click',()=>setGlassAppearanceOpen(document.getElementById('glassAppearanceToggle').getAttribute('aria-expanded')!=='true'));
+document.querySelector('.topbar')?.addEventListener('keydown',event=>{if(event.key==='Escape'&&event.currentTarget.classList.contains('glass-preferences-open')&&!document.querySelector('.tm-combo-popup')){event.preventDefault();event.stopPropagation();setGlassAppearanceOpen(false);document.getElementById('glassAppearanceToggle')?.focus();}});
 $('#languagePicker').addEventListener('change',e=>setLanguage(e.target.value));
 let searchRefreshTimer=0;
 function bindBacklogListTools() {
@@ -7727,7 +7737,7 @@ setInterval(()=>{
   }
 },5000);
 function preserveViewportAndFocus(work) {
-  const x=window.scrollX, y=window.scrollY;
+  const x=(window.TaskMeccaGlass?.scrollX??window.scrollX), y=(window.TaskMeccaGlass?.scrollY??window.scrollY);
   const active=document.activeElement;
   const activeID=active?.id||'';
   const selection=active&&typeof active.selectionStart==='number'
@@ -7735,7 +7745,7 @@ function preserveViewportAndFocus(work) {
     : null;
   return Promise.resolve().then(work).finally(()=>{
     requestAnimationFrame(()=>{
-      window.scrollTo({left:x,top:y,behavior:'auto'});
+      (window.TaskMeccaGlass?.scrollTo?.bind(window.TaskMeccaGlass)||window.scrollTo.bind(window))({left:x,top:y,behavior:'auto'});
       const target=activeID?document.getElementById(activeID):null;
       if(target&&document.contains(target)){
         try { target.focus({preventScroll:true}); } catch(_) {}

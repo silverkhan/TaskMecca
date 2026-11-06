@@ -78,7 +78,7 @@ async function captureOpticalWitness({browser,origin,mobile,zeroDisplacement=fal
    if(zeroDisplacement&&url.endsWith('/glass-optics.js')){const response=await route.fetch(),source=await response.text();assert.ok(source.includes('amp=1.6'),'negative control targets the actual production amplitude');return route.fulfill({response,body:source.replace('amp=1.6','amp=0')})}
    return route.continue();
   });
-  const p=await c.newPage();await p.goto(origin);await p.waitForTimeout(350);await p.evaluate(f=>{Object.assign(state,{project:f.project,backlog:f.backlog,view:'backlog',listData:f.list,snapshot:f.snapshot,hub:f.hub,detail:null});render()},JSON.parse(JSON.stringify(require('./glass_fixture.cjs'))));await p.waitForFunction(()=>window.TaskMeccaGlass?.diagnostics().mode==='active');await p.locator('.palette-picker .tm-combo-trigger').click();await p.waitForFunction(()=>TaskMeccaGlass.diagnostics().lenses.some(e=>e.kind==='popup'));
+  const p=await c.newPage();await p.goto(origin);await p.waitForTimeout(350);await p.evaluate(f=>{Object.assign(state,{project:f.project,backlog:f.backlog,view:'backlog',listData:f.list,snapshot:f.snapshot,hub:f.hub,detail:null});render()},JSON.parse(JSON.stringify(require('./glass_fixture.cjs'))));await p.waitForFunction(()=>window.TaskMeccaGlass?.diagnostics().mode==='active');await require('./glass_state.cjs').openGlassPreferences(p);await p.locator('.palette-picker .tm-combo-trigger').click();await p.waitForFunction(()=>TaskMeccaGlass.diagnostics().lenses.some(e=>e.kind==='popup'));
   return await p.locator('.tm-combo-popup .glass-optics').evaluate(canvas=>window.__glassOpticalCompare(canvas));
  }finally{await c.close()}
 }

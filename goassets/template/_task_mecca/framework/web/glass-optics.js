@@ -85,7 +85,7 @@
   for(const host of panels.keys())if(!keep.has(host)){delete host.dataset.glassTone;host.style.removeProperty('--glass-alpha');host.style.removeProperty('--glass-reflection-rgb');panels.delete(host)}
   for(const host of hosts){
    // The reader's fixed-size sticky backing is the actual surface behind long tables.
-   const plane=host.querySelector(':scope > .glass-reader-material'),r=(plane||host).getBoundingClientRect(),left=Math.max(0,r.left),top=Math.max(0,r.top),right=Math.min(innerWidth,r.right),bottom=Math.min(innerHeight,r.bottom);
+   const plane=host.querySelector(':scope > .glass-reader-material'),planeRect=plane?.getBoundingClientRect(),r=(planeRect?.width>8&&planeRect?.height>8)?planeRect:host.getBoundingClientRect(),left=Math.max(0,r.left),top=Math.max(0,r.top),right=Math.min(innerWidth,r.right),bottom=Math.min(innerHeight,r.bottom);
    if(right-left<8||bottom-top<8||getComputedStyle(host).visibility==='hidden')continue;
    const key=[generation,left,top,right,bottom].map((n,i)=>i?Math.round(n/12):n).join('|'),previous=panels.get(host);if(previous?.key===key)continue;
    let sum=0,min=1,max=0,rgb=[0,0,0],count=0;
@@ -113,7 +113,7 @@
  }
  function removeCanvas(entry){if(entry.scrollPlane)entry.scrollPlane.remove();else entry.canvas.remove()}
  function remove(entry){removeCanvas(entry);entries.delete(entry.host);}
- function removeMaterial(entry){entry.profileCache=null;removeCanvas(entry);delete entry.host.dataset.glassMaterial;materials.delete(entry.host);}
+ function removeMaterial(entry){entry.profileCache=null;entry.nativeProfile=null;delete entry.host.dataset.glassNative;delete entry.host.dataset.glassPositioned;removeCanvas(entry);delete entry.host.dataset.glassMaterial;materials.delete(entry.host);}
  function deactivate(reason){
   enabled=false;for(const e of [...entries.values()])remove(e);for(const e of [...materials.values()])removeMaterial(e);document.querySelectorAll('.glass-reader-material').forEach(e=>e.remove());root.dataset.glassOptics=reason;
   image=null;imageURL='';loading='';sampler=null;samplePixels=null;stageKey='';sampleTheme='';sampleBackground='';sampleSource='';
@@ -126,98 +126,64 @@
   for(const owner of document.querySelectorAll('.content,.terminal-main'))backing(owner,owner.classList.contains('terminal-main'));
   return a.filter((item,index,list)=>list.findIndex(x=>x.host===item.host)===index).filter(({host,kind})=>{
    const r=host.getBoundingClientRect(),s=getComputedStyle(host);
+   if(host.closest('details:not([open])'))return false;
+   if(host.checkVisibility&&!host.checkVisibility({checkOpacity:true,checkVisibilityCSS:true}))return false;
    return r.width>8&&r.height>8&&r.bottom>0&&r.right>0&&r.top<innerHeight&&r.left<innerWidth&&s.visibility!=='hidden'&&s.display!=='none';
   }).slice(0,MAX_LENSES);
  }
  function materialCandidates(){
   return [...document.querySelectorAll('.tm-combo-popup,.topbar,.sidebar,.sidebar-head,.content,.terminal-header,.terminal-main,.mobile-sidebar-panel,.preview-identity-banner,.user-attention,.common-attention-body,.notification-panel,.modal-card,.channel-switch-modal')].filter(host=>{
    const r=host.getBoundingClientRect(),s=getComputedStyle(host);
+   if(host.closest('details:not([open])'))return false;
+   if(host.checkVisibility&&!host.checkVisibility({checkOpacity:true,checkVisibilityCSS:true}))return false;
    return r.width>8&&r.height>8&&r.bottom>0&&r.right>0&&r.top<innerHeight&&r.left<innerWidth&&s.visibility!=='hidden'&&s.display!=='none'&&!(innerWidth<=680&&host.classList.contains('sidebar'))&&!(innerWidth>680&&host.classList.contains('sidebar-head'))&&(readerBackingSupported||!host.matches('.content,.terminal-main'));
   });
  }
  function materialRole(host){return host.matches('.content,.terminal-main')?'reader':host.matches('.tm-combo-popup,.mobile-sidebar-panel,.common-attention-body,.notification-panel,.modal-card,.channel-switch-modal')?'floating':'chrome'}
- // One continuous convex face, not concentric photo bands or stroke rails.
- // Geometry/lighting coefficients belong to one current-geometry cache per entry.
- // Scroll changes scene coordinates, so the actual scene is resampled every paint.
- function materialProfile(entry,w,h,radius){
-  const cw=entry.canvas.width,ch=entry.canvas.height,band=Math.min(MATERIAL_BEVEL,w/4,h/3);
-  if(!band)return null;
-  const key=[cw,ch,w,h,radius,MATERIAL_BEVEL,MATERIAL_BEND,MATERIAL_REFLECTION].join('|'),cached=entry.profileCache;
-  if(cached?.key===key){entry.profileCacheHits=(entry.profileCacheHits||0)+1;return cached;}
-  const start=performance.now(),px=cw/w,py=ch/h,bx=Math.ceil(band*px),by=Math.ceil(band*py),tiles=[];
-  entry.profileCache=null; // Release the previous geometry; never retain history.
-  for(const [tx,ty,tw,th]of [[0,0,cw,by],[0,ch-by,cw,by],[0,by,bx,ch-2*by],[cw-bx,by,bx,ch-2*by]]){
-   if(tw<1||th<1)continue;
-   const coefficients=new Float64Array(tw*th*8);let count=0;
-   for(let y=0;y<th;y++)for(let x=0;x<tw;x++){
-    const xx=(tx+x+.5)/px,yy=(ty+y+.5)/py,dx=xx-w/2,dy=yy-h/2,qx=Math.abs(dx)-(w/2-radius),qy=Math.abs(dy)-(h/2-radius);
-    const ax=Math.max(qx,0),ay=Math.max(qy,0),length=Math.hypot(ax,ay),distance=radius-length-Math.min(Math.max(qx,qy),0);
-    if(distance<0||distance>band)continue;
-    const nx=length?ax/length*Math.sign(dx):qx>qy?Math.sign(dx):0,ny=length?ay/length*Math.sign(dy):qy>=qx?Math.sign(dy):0;
-    const width=band*(.64+.36*Math.abs(nx));if(distance>width)continue;
-    const t=distance/width,fall=(1-t)**2,bend=MATERIAL_BEND*fall,mix=.68*fall;
-    const light=Math.max(0,-nx*.65-ny*.76),position=.38+.62*Math.exp(-1*((xx/w*.7+yy/h*.3-.12)*2.5)**2);
-    // One broad lobe returns continuously through neutral inner shade.
-    const lobe=.82*Math.exp(-1*((t-.31)/.22)**2)*(.16+.84*light**3)*position;
-    const lip=.38*Math.exp(-distance/.55)*(.25+.75*light),shine=Math.min(.92,(lobe+lip)*MATERIAL_REFLECTION),shade=.13*Math.exp(-1*((t-.79)/.17)**2)*(.35+.65*(1-light));
-    coefficients.set([(y*tw+x)*4,xx,yy,nx*bend,ny*bend,mix,shine,shade],count++*8);
-   }
-   tiles.push({tx,ty,tw,th,coefficients,count});
+ // Component-proven native material: scene sampling and compositing remain
+ // on Canvas. Cache only current rounded paths, never foreground or pixel coefficients.
+ function nativeMaterialGeometry(entry,w,h,radius){
+  const key=[w,h,radius,MATERIAL_BEVEL,MATERIAL_BEND].join('|');if(entry.nativeProfile?.key===key)return entry.nativeProfile;
+  const band=Math.min(MATERIAL_BEVEL,w/4,h/3),rings=[],lights=[];
+  for(let i=0;i<40;i++){
+   const a=i*band/40,b=(i+1)*band/40,path=new Path2D();rounded(path,a,a,w-2*a,h-2*a,Math.max(0,radius-a));rounded(path,b,b,w-2*b,h-2*b,Math.max(0,radius-b));
+   const t=(i+.5)/40;rings.push({path,curve:(1-t)**2,alpha:.82*(1-t)**2});
   }
-  const profile={key,band,tiles,bytes:tiles.reduce((n,t)=>n+t.coefficients.byteLength,0),points:tiles.reduce((n,t)=>n+t.count,0)};
-  entry.profileCacheBuilds=(entry.profileCacheBuilds||0)+1;entry.profileCacheBuildMs=(entry.profileCacheBuildMs||0)+performance.now()-start;entry.profileCache=profile;return profile;
- }
- function paintMaterialBevel(entry,c,r,radius){
-  const profile=materialProfile(entry,r.width,r.height,radius);if(!profile)return 0;
-  const g=geometry(),sw=sampler.width,sh=sampler.height,pixels=samplePixels,neutral=root.dataset.theme==='light'?[249,250,248]:[24,28,29],tint=panels.get(entry.host)?.alpha??.18;
-  for(const {tx,ty,tw,th,coefficients:points,count}of profile.tiles){
-   const field=c.getImageData(tx,ty,tw,th),data=field.data;
-   for(let i=0;i<count*8;i+=8){
-    const at=points[i],xx=points[i+1],yy=points[i+2],bendX=points[i+3],bendY=points[i+4],mix=points[i+5],shine=points[i+6],shade=points[i+7];
-    const sceneX=r.left+xx-bendX,sceneY=r.top+yy-bendY;
-    const cx=Math.min(sw-1,Math.max(0,Math.round(sceneX/g.width*sw))),cy=Math.min(sh-1,Math.max(0,Math.round(sceneY/g.height*sh)));
-    const lx=Math.min(sw-1,Math.max(0,Math.round((sceneX-4)/g.width*sw))),rx=Math.min(sw-1,Math.max(0,Math.round((sceneX+4)/g.width*sw))),uy=Math.min(sh-1,Math.max(0,Math.round((sceneY-4)/g.height*sh))),dy=Math.min(sh-1,Math.max(0,Math.round((sceneY+4)/g.height*sh)));
-    const center=(cy*sw+cx)*4,left=(cy*sw+lx)*4,right=(cy*sw+rx)*4,up=(uy*sw+cx)*4,down=(dy*sw+cx)*4;
-    // Same five-tap arithmetic, with scene coordinates and Canvas dimensions
-    // reused rather than crossing the native Canvas getters per channel/tap.
-    for(let k=0;k<3;k++){const scene=pixels[center+k]*.5+pixels[left+k]*.125+pixels[right+k]*.125+pixels[up+k]*.125+pixels[down+k]*.125,transmitted=scene*(1-tint)+neutral[k]*tint,value=data[at+k]*(1-mix)+transmitted*mix;data[at+k]=(value+(255-value)*shine)*(1-shade)}
-   }
-   c.putImageData(field,tx,ty);
+  for(let i=0;i<48;i++){
+   const d=(i+.5)*band/48,t=d/band,path=new Path2D();rounded(path,d,d,w-2*d,h-2*d,Math.max(0,radius-d));
+   const width=band/48+1,coverage=(band/48)/width,energy=target=>1-(1-target)**coverage;
+   lights.push({path,width,shine:energy(.80*Math.exp(-1*((t-.28)/.22)**2)),ambient:energy(.055*Math.exp(-1*((t-.28)/.22)**2)),secondary:energy(.28*Math.exp(-1*((t-.28)/.22)**2)),shade:energy(.07*Math.exp(-1*((t-.82)/.18)**2))});
   }
-  return profile.band;
+  entry.nativeProfile={key,band,rings,lights};return entry.nativeProfile;
  }
- function paintMaterial(entry,r){
+ function paintNativeMaterial(entry,r){
   const {host,canvas}=entry,w=r.width,h=r.height;if(w<8||h<8)return;
-  // Material depends only on the scene and panel geometry, never on ink.
-  const radius=Math.min(parseFloat(getComputedStyle(entry.plane).borderTopLeftRadius)||28,w/2,h/2),role=materialRole(host);
-  const key=[generation,r.x,r.y,w,h,radius,host.dataset.glassTone,panels.get(host)?.alpha].join("|");if(entry.key===key)return;
-  const start=performance.now(),scale=Math.min(1,Math.sqrt(MAX_MATERIAL_PIXELS/(w*h))),width=Math.max(1,Math.floor(w*scale)),height=Math.max(1,Math.floor(h*scale)),g=geometry();
-  if(canvas.width!==width)canvas.width=width;if(canvas.height!==height)canvas.height=height;
-  const c=canvas.getContext('2d');c.setTransform(scale,0,0,scale,0,0);c.clearRect(0,0,w,h);
-  // One continuous field: the central wave flows into a shallow curved bevel.
-  // Edge samples return smoothly to the interior instead of copying a photo rim.
-  const sx=sampler.width/g.width,sy=sampler.height/g.height,amplitude=8,edge=Math.min(28,w*.12,h*.22),bend=Math.min(6,edge*.22),fall=d=>Math.max(0,Math.min(1,1-d/edge))**2;
-  const cuts=[0,edge*.2,edge*.5,edge*.8,edge,w-edge,w-edge*.8,w-edge*.5,w-edge*.2,w];
-  const mapY=y=>r.top+y+Math.sin(y/h*Math.PI)*4+bend*(fall(y)-fall(h-y));
-  for(let y=-4;y<h+4;y+=4){const dx=Math.sin((y+2)/h*Math.PI*2)*amplitude,top=mapY(y),bottom=mapY(y+5),mapX=x=>r.left-w*.012+x*1.024+dx+bend*(fall(x)-fall(w-x));
-   for(let i=0;i<cuts.length-1;i++){const x=cuts[i],right=cuts[i+1],leftSample=mapX(x),rightSample=mapX(right);
-    c.drawImage(sampler,leftSample*sx,top*sy,(rightSample-leftSample)*sx,(bottom-top)*sy,x,y,right-x,5);
-   }
-  }
-  // Soften transmission before the bevel is drawn, keeping its lip crisp.
-  c.save();c.setTransform(1,0,0,1,0,0);c.filter='blur(12px)';c.globalCompositeOperation='copy';c.drawImage(canvas,0,0);c.restore();
-  const light=host.dataset.glassTone==='light',neutral=light?[249,250,248]:[24,28,29],tint=panels.get(host)?.alpha??.18;
-  c.fillStyle=`rgba(${neutral},${tint})`;c.fillRect(0,0,w,h);
-  const reflection=c.createLinearGradient(0,0,w*.8,h);reflection.addColorStop(0,'rgba(255,255,255,.16)');reflection.addColorStop(.25,'rgba(255,255,255,.025)');reflection.addColorStop(.7,'rgba(255,255,255,0)');reflection.addColorStop(1,'rgba(10,12,13,.08)');c.fillStyle=reflection;c.fillRect(0,0,w,h);
-  entry.bevel=paintMaterialBevel(entry,c,r,radius);entry.radius=radius;entry.role=role;entry.tint=tint;
-  entry.key=key;entry.rect={left:r.x,top:r.y,width:w,height:h};entry.amplitude=amplitude;entry.paintMs=performance.now()-start;entry.totalPaintMs=(entry.totalPaintMs||0)+entry.paintMs;entry.draws++;paintCount++;totalPaintMs+=entry.paintMs;
+  const radius=Math.min(parseFloat(getComputedStyle(host).borderTopLeftRadius)||28,w/2,h/2),tint=panels.get(host)?.alpha??.18,key=['native-sidebar',generation,r.x,r.y,w,h,radius,tint].join('|');if(entry.key===key)return;
+  const started=performance.now(),scale=Math.min(1,Math.sqrt(MAX_MATERIAL_PIXELS/(w*h))),cw=Math.max(1,Math.floor(w*scale)),ch=Math.max(1,Math.floor(h*scale));if(canvas.width!==cw)canvas.width=cw;if(canvas.height!==ch)canvas.height=ch;
+  const c=canvas.getContext('2d'),g=geometry();c.setTransform(scale,0,0,scale,0,0);c.clearRect(0,0,w,h);
+  // One native softened photograph, no strip/self-blur/CPU pixel readback chain.
+  c.save();c.filter='blur(9px)';c.drawImage(sampler,-r.left,-r.top,g.width,g.height);c.restore();
+  const neutral=root.dataset.theme==='light'?[249,250,248]:[24,28,29];c.fillStyle=`rgba(${neutral},${tint})`;c.fillRect(0,0,w,h);
+  const profile=nativeMaterialGeometry(entry,w,h,radius);
+  // Each subpixel ring samples the still-unmodified inner face. Its smooth
+  // inward bend is retained while native Canvas handles the compositing.
+  for(const ring of profile.rings){const bend=MATERIAL_BEND*ring.curve;c.save();c.clip(ring.path,'evenodd');c.globalAlpha=ring.alpha;c.translate(w/2,h/2);c.scale(1+bend/(w/2),1+bend/(h/2));c.translate(-w/2,-h/2);c.drawImage(canvas,0,0,canvas.width,canvas.height,0,0,w,h);c.restore()}
+  // Localized corner sources, not a bright constant rail along a tall side.
+  // Coverage-compensated subpixel strokes retain one intended reflection energy.
+  const extent=Math.max(Math.min(w,h)*1.4,radius*3),light=c.createRadialGradient(radius*.45,radius*.45,0,radius*.45,radius*.45,extent);light.addColorStop(0,'rgba(255,255,255,.98)');light.addColorStop(.25,'rgba(255,255,255,.85)');light.addColorStop(.62,'rgba(255,255,255,.18)');light.addColorStop(1,'rgba(255,255,255,0)');
+  const secondary=c.createRadialGradient(w-radius*.4,h-radius*.4,0,w-radius*.4,h-radius*.4,extent*.85);secondary.addColorStop(0,'rgba(255,255,255,.85)');secondary.addColorStop(.4,'rgba(255,255,255,.30)');secondary.addColorStop(1,'rgba(255,255,255,0)');
+  const shade=c.createLinearGradient(0,0,w,h);shade.addColorStop(0,'rgba(10,12,13,0)');shade.addColorStop(.5,'rgba(10,12,13,.1)');shade.addColorStop(1,'rgba(10,12,13,.9)');
+  for(const lobe of profile.lights){c.lineWidth=lobe.width;c.strokeStyle=light;c.globalAlpha=lobe.shine*MATERIAL_REFLECTION;c.stroke(lobe.path);c.strokeStyle=secondary;c.globalAlpha=lobe.secondary*MATERIAL_REFLECTION;c.stroke(lobe.path);c.strokeStyle='white';c.globalAlpha=lobe.ambient*MATERIAL_REFLECTION;c.stroke(lobe.path);c.strokeStyle=shade;c.globalAlpha=lobe.shade;c.stroke(lobe.path)}c.globalAlpha=1;
+  const lip=new Path2D();rounded(lip,.7,.7,w-1.4,h-1.4,radius-.7);c.lineWidth=1.1;c.strokeStyle=light;c.globalAlpha=.88*MATERIAL_REFLECTION;c.stroke(lip);c.strokeStyle=secondary;c.globalAlpha=.45*MATERIAL_REFLECTION;c.stroke(lip);c.globalAlpha=1;
+  const face=c.createLinearGradient(0,0,w*.7,h);face.addColorStop(0,'rgba(255,255,255,.11)');face.addColorStop(.45,'rgba(255,255,255,.015)');face.addColorStop(1,'rgba(255,255,255,0)');c.fillStyle=face;c.fillRect(0,0,w,h);
+  entry.profileCache=null;host.dataset.glassNative=host.matches('.sidebar')?'sidebar':host.matches('.topbar')?'topbar':host.matches('.content,.terminal-main')?'reader':'surface';entry.key=key;entry.rect={left:r.x,top:r.y,width:w,height:h};entry.role=materialRole(host);entry.tint=tint;entry.radius=radius;entry.bevel=profile.band;entry.amplitude=MATERIAL_BEND;entry.backend='native-canvas';entry.paintMs=performance.now()-started;entry.totalPaintMs=(entry.totalPaintMs||0)+entry.paintMs;entry.draws++;paintCount++;totalPaintMs+=entry.paintMs;
  }
  function paint(entry,r){
   if(!sampler)return;
   const {host,canvas,kind}=entry,style=getComputedStyle(host),radius=Math.min(parseFloat(style.borderTopLeftRadius)||16,r.width/2,r.height/2);
   const key=[r.x,r.y,r.width,r.height,radius,generation,host.dataset.glassTone,devicePixelRatio].map(x=>typeof x==='number'?Math.round(x*100)/100:x).join('|');if(entry.key===key)return;
   const start=performance.now(),w=r.width,h=r.height,dpr=Math.min(devicePixelRatio||1,1.25,Math.sqrt(MAX_PIXELS/(w*h)));
-  const width=Math.max(1,Math.ceil(w*dpr)),height=Math.max(1,Math.ceil(h*dpr));if(canvas.width!==width)canvas.width=width;if(canvas.height!==height)canvas.height=height;const c=canvas.getContext('2d');c.setTransform(1,0,0,1,0,0);c.clearRect(0,0,width,height);c.scale(dpr,dpr);
+  const width=Math.max(1,Math.floor(w*dpr)),height=Math.max(1,Math.floor(h*dpr));if(canvas.width!==width)canvas.width=width;if(canvas.height!==height)canvas.height=height;const c=canvas.getContext('2d');c.setTransform(1,0,0,1,0,0);c.clearRect(0,0,width,height);c.scale(dpr,dpr);
   const rim=Math.min(2,radius*.18,h*.08),amp=1.6,g=geometry();
   for(let i=0;i<RINGS;i++){
    const a=i*rim/RINGS,b=(i+1)*rim/RINGS,ring=new Path2D();rounded(ring,a,a,w-2*a,h-2*a,radius-a);
@@ -233,17 +199,24 @@
  }
  function ensureMaterial(host){
   if(materials.has(host))return;
+  if(getComputedStyle(host).position==='static')host.dataset.glassPositioned='true';
   const plane=host.querySelector(':scope > .glass-reader-material')||host,canvas=document.createElement('canvas');canvas.className='glass-material-optics';canvas.setAttribute('aria-hidden','true');canvas.setAttribute('role','presentation');plane.prepend(canvas);host.dataset.glassMaterial='true';materials.set(host,{host,plane,canvas,key:'',draws:0});
  }
+ let savedListReading=null;
+ function readerScrollHost(){const owner=document.querySelector('.content');return root.dataset.palette==='glass'&&owner&&getComputedStyle(owner).overflowY==='auto'?owner:null}
+ function layoutReaderPorts(){
+  if(root.dataset.palette!=='glass')return;
+  for(const owner of document.querySelectorAll('.content')){const style=getComputedStyle(owner),values={width:owner.clientWidth,height:owner.clientHeight,top:parseFloat(style.paddingTop)||0,left:parseFloat(style.paddingLeft)||0};for(const [name,value]of Object.entries(values)){const key='--glass-reader-port-'+name,v=value+'px';if(owner.style.getPropertyValue(key)!==v)owner.style.setProperty(key,v)}}
+ }
  function syncGeometry(){
-  geometryFrame=0;if(!enabled||!sampler)return;
-  if(root.dataset.background==='cozy')for(const host of materialCandidates())ensureMaterial(host);
+  geometryFrame=0;if(!enabled||!sampler)return;layoutReaderPorts();
+  if(root.dataset.background==='cozy'){const desired=materialCandidates(),keep=new Set(desired);for(const e of [...materials.values()])if(!keep.has(e.host))removeMaterial(e);for(const host of desired)ensureMaterial(host);}
   const all=[...materials.values(),...entries.values()].filter(e=>e.canvas.isConnected&&e.host.isConnected),ports=new Map();
   // A canvas inside an overflow port must stay with its viewport, not with
   // scrolled text. Read dimensions first, then apply only changed port metrics.
-  for(const e of all)if(!ports.has(e.host)){const s=getComputedStyle(e.host),port=(e.plane||e.host)===e.host&&/^(auto|scroll)$/.test(s.overflowY);ports.set(e.host,port?{width:e.host.clientWidth,height:e.host.clientHeight,top:parseFloat(s.paddingTop)||0,left:parseFloat(s.paddingLeft)||0}:null)}
+  for(const e of all)if(!ports.has(e.host)){const s=getComputedStyle(e.host),port=((e.plane||e.host)===e.host||e.host.matches('.content'))&&/^(auto|scroll)$/.test(s.overflowY);ports.set(e.host,port?{width:e.host.clientWidth,height:e.host.clientHeight,top:parseFloat(s.paddingTop)||0,left:parseFloat(s.paddingLeft)||0}:null)}
   for(const e of all){const port=ports.get(e.host),key=port?Object.values(port).join('|'):'';if(e.portKey===key)continue;e.portKey=key;
-   if(port&&!e.scrollPlane){const plane=document.createElement('div');plane.className='glass-scroll-plane';plane.setAttribute('aria-hidden','true');e.canvas.before(plane);plane.append(e.canvas);e.scrollPlane=plane}
+   if(port&&!e.scrollPlane&&(e.plane||e.host)===e.host){const plane=document.createElement('div');plane.className='glass-scroll-plane';plane.setAttribute('aria-hidden','true');e.canvas.before(plane);plane.append(e.canvas);e.scrollPlane=plane}
    if(!port&&e.scrollPlane){e.scrollPlane.before(e.canvas);e.scrollPlane.remove();e.scrollPlane=null}
    e.canvas.classList.toggle('glass-scroll-optics',!!port);for(const name of ['width','height','top','left'])if(port)e.canvas.style.setProperty('--glass-scroll-'+name,port[name]+'px');else e.canvas.style.removeProperty('--glass-scroll-'+name)
   }
@@ -251,20 +224,20 @@
   // Sample the canvas itself: its border/padding offset differs from its owner.
   const boxes=all.map(entry=>({entry,rect:entry.canvas.getBoundingClientRect()}));
   adaptPanels();
-  for(const {entry,rect}of boxes){if(rect.width<8||rect.height<8||rect.bottom<=0||rect.right<=0||rect.top>=innerHeight||rect.left>=innerWidth)continue;if(materials.get(entry.host)===entry)paintMaterial(entry,rect);else paint(entry,rect)}
+  for(const {entry,rect}of boxes){if(rect.width<8||rect.height<8||rect.bottom<=0||rect.right<=0||rect.top>=innerHeight||rect.left>=innerWidth)continue;if(materials.get(entry.host)===entry){paintNativeMaterial(entry,rect)}else paint(entry,rect)}
  }
  function scheduleGeometry(){if(!geometryFrame&&!frame)geometryFrame=requestAnimationFrame(syncGeometry)}
  // App renders replace foreground children. Keep an existing decorative scene
  // on a surviving reader owner through that transaction, before another paint.
- function captureReaders(){return [...document.querySelectorAll('.content,.terminal-main')].map(owner=>({owner,plane:owner.querySelector(':scope > .glass-reader-material')})).filter(({plane})=>plane)}
+ function captureReaders(){return [...document.querySelectorAll('.content,.terminal-main')].map(owner=>({owner,plane:owner.querySelector(':scope > .glass-reader-material'),scrollTop:owner.scrollTop,scrollLeft:owner.scrollLeft})).filter(({owner,plane})=>plane||owner===readerScrollHost())}
  function restoreReaders(saved){
-  if(!enabled||root.dataset.palette!=='glass')return;
+  if(root.dataset.palette!=='glass')return;
   let restored=false;
-  for(const {owner,plane}of saved||[])if(owner.isConnected&&!plane.isConnected&&!owner.querySelector(':scope > .glass-reader-material')){owner.prepend(plane);restored=true}
-  if(restored){if(geometryFrame){cancelAnimationFrame(geometryFrame);geometryFrame=0}syncGeometry()}
+  for(const {owner,plane,scrollTop,scrollLeft}of saved||[])if(owner.isConnected){if(enabled&&plane&&!plane.isConnected&&!owner.querySelector(':scope > .glass-reader-material')){owner.prepend(plane);restored=true}if(owner.scrollTop!==(scrollTop||0))owner.scrollTop=scrollTop||0;if(owner.scrollLeft!==(scrollLeft||0))owner.scrollLeft=scrollLeft||0}
+  if(enabled&&restored){if(geometryFrame){cancelAnimationFrame(geometryFrame);geometryFrame=0}syncGeometry()}
  }
  function update(){
-  frame=0;const active=root.dataset.palette==='glass'&&!reduced.matches&&supports;
+  frame=0;layoutReaderPorts();const active=root.dataset.palette==='glass'&&!reduced.matches&&supports;
   if(geometryFrame){cancelAnimationFrame(geometryFrame);geometryFrame=0}
   if(!active){if(enabled||root.dataset.glassOptics!==(reduced.matches?'solid':'material'))deactivate(reduced.matches?'solid':'material');return;}
   const cozy=root.dataset.background==='cozy',url=cozy?photoURL():'';
@@ -277,9 +250,9 @@
   const toolbar=document.querySelector('.topbar'),top=toolbar?Math.ceil(toolbar.getBoundingClientRect().height)+(innerWidth<=680?20:24):88;
   if(root.style.getPropertyValue('--glass-reader-top')!==top+'px')root.style.setProperty('--glass-reader-top',top+'px');
   try{if(cozy)paintSampler();else if(!paintMaterialSampler()){deactivate('material');return;}}catch{deactivate('material');return;}
-  const possible=candidates(),materialHosts=cozy?materialCandidates():[];
-  for(const e of [...materials.values()])if(!cozy||!e.host.isConnected||!e.plane.isConnected||!e.canvas.isConnected||getComputedStyle(e.host).display==='none')removeMaterial(e);
-  for(const host of materialHosts)ensureMaterial(host);
+  const possible=candidates(),materialHosts=cozy?materialCandidates():[],materialKeep=new Set(materialHosts);
+  for(const e of [...materials.values()])if(!cozy||!materialKeep.has(e.host)||!e.host.isConnected||!e.plane.isConnected||!e.canvas.isConnected||getComputedStyle(e.host).display==='none')removeMaterial(e);
+  for(const host of materialHosts){if(host.dataset.glassPositioned==='true'){delete host.dataset.glassPositioned;if(getComputedStyle(host).position==='static')host.dataset.glassPositioned='true';}ensureMaterial(host);}
   const desired=cozy?possible:[],keep=new Set(desired.map(x=>x.host));for(const entry of [...entries.values()])if(!keep.has(entry.host)||!entry.host.isConnected)remove(entry);
   for(const {host,kind}of desired){let entry=entries.get(host);if(!entry){const canvas=document.createElement('canvas');canvas.className='glass-optics';canvas.setAttribute('aria-hidden','true');canvas.setAttribute('role','presentation');host.prepend(canvas);entry={host,canvas,kind,key:'',draws:0};entries.set(host,entry)}}
   syncGeometry();
@@ -287,9 +260,11 @@
  function schedule(){if(!frame)frame=requestAnimationFrame(update)}
  new MutationObserver(schedule).observe(root,{attributes:true,attributeFilter:['data-palette','data-theme','data-background']});
  new MutationObserver(schedule).observe(document.body,{childList:true,subtree:true});
+ // Native details/hidden changes do not necessarily insert nodes or move focus.
+ new MutationObserver(schedule).observe(document.body,{attributes:true,subtree:true,attributeFilter:['open','hidden']});
  window.addEventListener('resize',schedule,{passive:true});document.addEventListener('scroll',scheduleGeometry,{passive:true,capture:true});document.addEventListener('focusin',schedule);document.addEventListener('focusout',schedule);
  window.visualViewport?.addEventListener('resize',schedule,{passive:true});window.visualViewport?.addEventListener('scroll',scheduleGeometry,{passive:true});reduced.addEventListener?.('change',schedule);
- window.TaskMeccaGlass=Object.freeze({refresh:schedule,captureReaders,restoreReaders,diagnostics:()=>({mode:root.dataset.glassOptics||'material',photo:imageURL,sample:{generation,theme:sampleTheme,background:sampleBackground,source:sampleSource},loading:!!loading,pending:!!frame||!!geometryFrame,readerBackingSupported,stage:geometry(),sampler:sampler?{width:sampler.width,height:sampler.height}:null,paintCount,totalPaintMs,adaptCount,totalAdaptMs,sampleBytes:samplePixels?.byteLength||0,panels:[...panels.values()],profileCacheBytes:[...materials.values()].reduce((n,e)=>n+(e.profileCache?.bytes||0),0),profileCacheCount:[...materials.values()].filter(e=>e.profileCache).length,materials:[...materials.values()].map(e=>({cacheBytes:e.profileCache?.bytes||0,cachePoints:e.profileCache?.points||0,cacheBuilds:e.profileCacheBuilds||0,cacheHits:e.profileCacheHits||0,cacheBuildMs:e.profileCacheBuildMs||0,host:e.host.className,role:e.role,tint:e.tint,radius:e.radius,bevel:e.bevel,bend:MATERIAL_BEND,profile:"continuous-convex",reflection:MATERIAL_REFLECTION,rect:e.rect,amplitude:e.amplitude,paintMs:e.paintMs,totalPaintMs:e.totalPaintMs,draws:e.draws,pixels:e.canvas.width*e.canvas.height})),lenses:[...entries.values()].map(e=>({kind:e.kind,rect:e.rect,rim:e.rim,amplitude:e.amplitude,draws:e.draws,pixels:e.canvas.width*e.canvas.height}))})});
+ window.TaskMeccaGlass=Object.freeze({scrollHost:readerScrollHost,rememberListReading(key){const owner=readerScrollHost();if(owner)savedListReading={key,x:owner.scrollLeft,y:owner.scrollTop}},restoreListReading(key){const saved=savedListReading,owner=readerScrollHost();if(owner&&saved?.key===key){owner.scrollTo({left:saved.x,top:saved.y,behavior:'auto'});savedListReading=null}},get scrollY(){return readerScrollHost()?.scrollTop??window.scrollY},get scrollX(){return readerScrollHost()?.scrollLeft??window.scrollX},scrollTo(...args){(readerScrollHost()||window).scrollTo(...args)},readingViewport(){const owner=readerScrollHost();return owner?{top:owner.getBoundingClientRect().top,height:owner.clientHeight,paddingBottom:parseFloat(getComputedStyle(owner).paddingBottom)||0}:null},refresh:schedule,captureReaders,restoreReaders,diagnostics:()=>({mode:root.dataset.glassOptics||'material',photo:imageURL,sample:{generation,theme:sampleTheme,background:sampleBackground,source:sampleSource},loading:!!loading,pending:!!frame||!!geometryFrame,readerBackingSupported,stage:geometry(),sampler:sampler?{width:sampler.width,height:sampler.height}:null,paintCount,totalPaintMs,adaptCount,totalAdaptMs,sampleBytes:samplePixels?.byteLength||0,panels:[...panels.values()],materialCount:materials.size,materialPixelsTotal:[...materials.values()].reduce((n,e)=>n+e.canvas.width*e.canvas.height,0),nativeGeometryObjects:[...materials.values()].reduce((n,e)=>n+(e.nativeProfile?e.nativeProfile.rings.length+e.nativeProfile.lights.length:0),0),profileCacheBytes:[...materials.values()].reduce((n,e)=>n+(e.profileCache?.bytes||0),0),profileCacheCount:[...materials.values()].filter(e=>e.profileCache).length,materials:[...materials.values()].map(e=>({backend:e.backend||'cpu-pixels',nativeGeometryObjects:e.nativeProfile?e.nativeProfile.rings.length+e.nativeProfile.lights.length:0,cacheBytes:e.profileCache?.bytes||0,cachePoints:e.profileCache?.points||0,cacheBuilds:e.profileCacheBuilds||0,cacheHits:e.profileCacheHits||0,cacheBuildMs:e.profileCacheBuildMs||0,host:e.host.className,role:e.role,tint:e.tint,radius:e.radius,bevel:e.bevel,bend:MATERIAL_BEND,profile:e.backend==='native-canvas'?'native-convex':'continuous-convex',reflection:MATERIAL_REFLECTION,rect:e.rect,amplitude:e.amplitude,paintMs:e.paintMs,totalPaintMs:e.totalPaintMs,draws:e.draws,pixels:e.canvas.width*e.canvas.height})),lenses:[...entries.values()].map(e=>({kind:e.kind,rect:e.rect,rim:e.rim,amplitude:e.amplitude,draws:e.draws,pixels:e.canvas.width*e.canvas.height}))})});
  if(typeof ResizeObserver!=='undefined'){const resize=new ResizeObserver(schedule);document.querySelectorAll('.topbar,.terminal-header,.sidebar-head').forEach(e=>resize.observe(e))}
  document.fonts?.ready.then(schedule);
  schedule();

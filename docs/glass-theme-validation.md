@@ -1,3 +1,56 @@
+# A-64 사용자 결함 교정02 (2026-11-07)
+
+이 절은 b677f10f의 좁은 convex 교정을 대체하는 현재 구현 설명입니다. 아래
+correction01 및 이전 A62/A56 수치·시각 결과는 당시 소스의 이력이며 현재 결과로
+전용하지 않습니다. 원본 시안 우선·대비/포커스 수치 보고 전용 정책을 유지합니다.
+전체 독립 needs_changes 재검수와 사용자 디자인 수용은 별도입니다.
+
+실제 자산과 격리 fixture 재현에서 desktop reader 하단1209.5/viewport1090,
+390폭 하단1035.5/844, 모바일 첫 행763~822px을 확인했습니다. 상태 텍스트는
+문서 가로 넘침 대신 발견하기 어려운 가로 스크롤 안에 있었습니다. 최소 PR fixture의
+줄바꿈은 정상이라 모든 긴 텍스트 결함이 재현됐다고 주장하지 않습니다. shortcut의
+불투명 사각 배경, CPU edge readback와 중복 blur 비용도 확인했습니다.
+
+사이드바→상단바/캡슐→reader→배너/알림/모바일 순서로 실제 컴포넌트를 확인했습니다.
+공유 소재는 단일 native Canvas 사진 blur, 부드러운 굴절 ring과 에너지 보정된
+비대칭 모서리 광원을 사용합니다. 12px bend와 authored tint를 유지하고 per-frame
+CPU 픽셀 루프·Float64 coefficient cache·중복 CSS backdrop을 제거했습니다.
+각 material480000px, lens350000px/최대2를 유지합니다. material 개수는 보이는
+호스트에 따라 달라집니다. entry당 현재 Path2D88개를 캐시하며 GPU/Path2D 및
+총 프로세스 메모리는 측정하지 않습니다. coefficient bytes0은 총메모리0이 아닙니다.
+
+Glass `.content`는 화면 안에 닫힌 native scrollport이며 장식 backing은 zero-flow
+sticky anchor입니다. reader foreground도 같은 프레임에서 잘립니다. 실제 port와
+Canvas paddingbox를 첫 그리기부터 맞추고 static 호스트는 Canvas 삽입 전에만
+position 소유권을 표시합니다. details의 open/hidden만 관찰하며 닫힘·반응형·fallback에서
+불필요한 material을 해제합니다. 상시 루프·행별 Canvas/filter·텍스트 fog는 없습니다.
+shortcut은 투과 dock으로 바뀌었습니다.
+
+모바일은 기존 native 설정과 필터를 각각 화면 설정/필터 버튼으로 공개하며 기본 접힘을
+CSS로 첫 paint부터 적용합니다. 열린 필터는44px 줄바꿈 grid입니다. 기존 컨트롤을
+중복 생성하거나 재정렬하지 않았습니다. Mecca/Slate는 기존 window scroll과 설정
+노출을 유지합니다. source image와 전역 theme/alpha 정책은 유지합니다.
+
+reader 전환에 맞춰 페이지/키보드·자동 표시 수·목차 observer·상세/뒤로가기·live
+reading·알림 이력·선택/포커스의 기존 보존 함수를 활성 scrollhost로 연결했습니다.
+보강 검사는 실제 popstate가180→0이 되는 누락을 발견했고 route 복원 연결을
+추가했습니다. solid fallback처럼 backing이 없어도 native reader 위치를 보존합니다.
+
+기능 focused는320/390/430/1280/1448폭, ko/en, Light/Dark의 프레임·44px·중복ID0·
+first-open 소재 좌표와 실제 페이지/상세/목차/뒤로가기/읽기·선택·알림 복원을 검사합니다.
+초기 focused 실패와 하니스 수정은 새 packet에 그대로 보존합니다. 최종 정확 소스
+Glass21개, 공통189개 및 안전한 named Go2-race/vet 결과, source-tagged 대비와
+고정36행/manual50 전후 trace는 아래 전용 packet의 report에 기록합니다. 테스트/대비
+통과를 시안 동일성이나 물리기기 성능 수용으로 해석하지 않습니다.
+
+새 근거는 `handoff-evidence/a64-glass-reference-fidelity-20261106/correction02-user-defects/`
+안에만 보존합니다. baseline 자동 행 수 trace, sidebar-stage01 비용, 최종 동일36행
+cohort를 분리하며 quiet는 요청/geometry를 비운 뒤 따로 측정합니다. 원본896,
+독립234, correction01의561, 좁은 독립18개 파일은 덮어쓰지 않습니다.
+실제 Safari/물리 모바일/OS trackpad/CPU·GPU 에너지·배터리·총메모리·장시간 사용은
+미검증입니다. 사진의 초록빛과 참조 광원 형태 등 시안 차이는 독립 검수에 남습니다.
+운영18765·사용자 Preview·설치/재시작/배포는 변경하지 않았습니다.
+
 # A64-LUMEN-01 convex reflection correction (2026-11-06)
 
 This correction supersedes the visual implementation/result section below; the

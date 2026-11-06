@@ -1,3 +1,4 @@
+const {openGlassPreferences,openGlassFilters}=require('./helpers/glass_state.cjs');
 // Opt-in real Chromium test. All assets are the embedded app; all API data is synthetic.
 const {test}=require('node:test'),assert=require('node:assert/strict'),path=require('node:path'),fs=require('node:fs');
 const fixture=require('./helpers/glass_fixture.cjs');
@@ -22,7 +23,7 @@ test('Glass browser contract: appearance, stable canvas, content, fallbacks and 
   // Use the actual custom select's click/option event path at least once.
   await page.evaluate(()=>{applyTheme('light');applyBackground('ambient')});
   for(const [palette,label,text]of [['mecca','Mecca','#292536'],['slate','Slate','#172033'],['glass','Glass','#23272a']]){
-   await page.locator('.palette-picker .tm-combo-trigger').click();await page.locator('.tm-combo-option').filter({hasText:new RegExp('^'+label+'$')}).click();
+   await openGlassPreferences(page);await page.locator('.palette-picker .tm-combo-trigger').click();await page.locator('.tm-combo-option').filter({hasText:new RegExp('^'+label+'$')}).click();
    await page.waitForFunction(value=>value==='glass'||!document.querySelector('.glass-reader-material,.glass-optics'),palette);
    if(palette==='glass'){report.paletteStates??=[];report.paletteStates.push(await waitForGlass(page));if(out)fs.writeFileSync(path.join(out,'browser-contract.json'),JSON.stringify(report,null,2));}
    assert.equal(await page.evaluate(()=>document.documentElement.dataset.palette),palette);assert.equal(await page.evaluate(()=>localStorage.getItem('task-mecca-palette')),palette);
@@ -34,9 +35,9 @@ test('Glass browser contract: appearance, stable canvas, content, fallbacks and 
   }
   await page.evaluate(()=>{applyTheme('dark');applyBackground('cozy')});
   await page.waitForFunction(()=>document.documentElement.dataset.glassOptics==='active');
-  await page.waitForFunction(()=>{const e=document.querySelector('.glass-reader-material');return e?.isConnected&&getComputedStyle(e).backdropFilter.includes('blur(')});
-  const reader=await page.locator('.content > .glass-reader-material').evaluate(e=>({height:e.getBoundingClientRect().height,width:e.getBoundingClientRect().width,filter:getComputedStyle(e).backdropFilter,position:getComputedStyle(e).position,ownFilter:getComputedStyle(e.parentElement).backdropFilter}));
-  assert.ok(reader.filter.includes('blur('));assert.equal(reader.position,'sticky');assert.ok(reader.height<=await page.evaluate(()=>innerHeight));assert.equal(reader.ownFilter,'none');report.readerPlanes??=[];report.readerPlanes.push({mobile,...reader,optics:await page.evaluate(()=>TaskMeccaGlass.diagnostics())});
+  await waitForGlass(page);
+  const reader=await page.locator('.content').evaluate(owner=>{const plane=owner.querySelector('.glass-reader-material'),canvas=plane?.querySelector('.glass-material-optics'),r=canvas?.getBoundingClientRect(),d=TaskMeccaGlass.diagnostics();return{height:r?.height,width:r?.width,rect:r?.toJSON(),owner:owner.getBoundingClientRect().toJSON(),filter:getComputedStyle(plane).backdropFilter,position:getComputedStyle(plane).position,ownFilter:getComputedStyle(owner).backdropFilter,backend:d.materials.find(m=>m.host==='content')?.backend}});
+  assert.equal(reader.filter,'none','native Canvas owns frost rather than duplicate CSS blur');assert.equal(reader.backend,'native-canvas');assert.equal(reader.position,'sticky');assert.ok(reader.height<=await page.evaluate(()=>innerHeight));assert.ok(reader.owner.bottom<=await page.evaluate(()=>innerHeight));assert.equal(reader.ownFilter,'none');report.readerPlanes??=[];report.readerPlanes.push({mobile,...reader,optics:await page.evaluate(()=>TaskMeccaGlass.diagnostics())});
   const geometry=()=>page.evaluate(()=>{const s=getComputedStyle(document.body,'::before');return[s.width,s.height,s.left,s.top,s.backgroundSize,s.backgroundPosition,s.backgroundImage]});
   const initial=await geometry();await page.evaluate(()=>{document.body.style.minHeight='3000px';window.scrollTo(0,800)});assert.deepEqual(await geometry(),initial);
   await page.setViewportSize({width:mobile?390:1440,height:mobile?510:700});assert.deepEqual(await geometry(),initial);await page.setViewportSize(mobile?{width:844,height:390}:{width:1100,height:800});assert.deepEqual(await geometry(),initial);
@@ -52,7 +53,7 @@ test('Glass browser contract: appearance, stable canvas, content, fallbacks and 
    for(const bg of ['ambient','none','cozy']){await page.evaluate(bg=>applyBackground(bg),bg);assert.equal(await page.evaluate(()=>document.documentElement.dataset.background),bg);await page.reload();await seed();assert.equal(await page.evaluate(()=>document.documentElement.dataset.background),bg)}
    await seed('workload');await page.locator('.runtime-root-card').first().scrollIntoViewIfNeeded();await shot(theme+'-workload');await page.locator('.runtime-history').first().evaluate(e=>e.open=true);await page.locator('.runtime-transition-list').first().scrollIntoViewIfNeeded();await shot(theme+'-runtime-logs');await page.locator('.worker-card').first().scrollIntoViewIfNeeded();await shot(theme+'-workers');
    assert.equal(await page.locator('.worker-card').count()>0,true,'actual workload cards render');
-   assert.equal(await page.locator('.worker-card').first().evaluate(e=>getComputedStyle(e).backdropFilter),'none');assert.ok(await page.locator('.glass-reader-material').first().evaluate(e=>e.getBoundingClientRect().height<=innerHeight));
+   assert.equal(await page.locator('.worker-card').first().evaluate(e=>getComputedStyle(e).backdropFilter),'none');assert.ok(await page.locator('.content').evaluate(e=>e.clientHeight<=innerHeight));
    await page.evaluate(()=>scrollTo(0,0));await seed('hub');await shot(theme+'-hub');await seed('storage');await page.waitForTimeout(100);assert.equal(await page.locator('.storage-overview-card').count(),3,'selected-project storage figures render');await shot(theme+'-storage');
    await page.evaluate(()=>scrollTo(0,0));await seed();await page.evaluate(f=>{state.detail=f.detail.id;state.detailTask=f.detail;state.raw=true;render()},data);await shot(theme+'-detail-raw');await page.locator('.raw').evaluate(e=>e.scrollIntoView());await shot(theme+'-raw-table');
    await page.evaluate(f=>{state.raw=false;activityDetailCache.set(activityDetailKey(f.detail.id),f.activity);render()},data);if(mobile){const fixed=await page.locator('.detail-toc-fab').boundingBox();assert.ok(fixed?.width>0);await page.evaluate(()=>scrollBy(0,160));assert.deepEqual(await page.locator('.detail-toc-fab').boundingBox(),fixed,'TOC stays fixed across reader scroll')}assert.ok(await page.locator('.activity-timeline-track').count()>0,'Gantt has real timed rows');await page.locator('.activity-timeline-scroll').scrollIntoViewIfNeeded();await shot(theme+'-detail-gantt');
@@ -113,7 +114,7 @@ test('Glass optical layers preserve representative menu and native controls',{sk
   const shot=async(name)=>{await p.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));if(out)await p.screenshot({path:path.join(out,`${mobile?'mobile':'desktop'}-optical-${name}.png`),animations:'disabled'})};
   await seed();
   for(const theme of ['dark','light']){
-   await p.evaluate(theme=>applyTheme(theme),theme);await p.locator('.palette-picker .tm-combo-trigger').click();await p.waitForFunction(()=>TaskMeccaGlass.diagnostics().lenses.some(e=>e.kind==='popup'));
+   await p.evaluate(theme=>applyTheme(theme),theme);await openGlassPreferences(p);await p.locator('.palette-picker .tm-combo-trigger').click();await p.waitForFunction(()=>TaskMeccaGlass.diagnostics().lenses.some(e=>e.kind==='popup'));
    const d=await p.evaluate(()=>TaskMeccaGlass.diagnostics());assert.ok(d.lenses.length<=2);const lens=d.lenses.find(e=>e.kind==='popup');assert.ok(lens.amplitude>0&&lens.amplitude<=2&&lens.rim>0&&lens.rim<=2&&lens.draws>0);
    const pixels=await p.locator('.tm-combo-popup .glass-optics').evaluate(e=>{const c=e.getContext('2d'),p=c.getImageData(0,0,e.width,e.height).data;let painted=0;for(let i=3;i<p.length;i+=4)if(p[i])painted++;return{painted,total:e.width*e.height,center:c.getImageData(Math.floor(e.width/2),Math.floor(e.height/2),1,1).data[3]}});
    assert.ok(pixels.painted>0&&pixels.painted<pixels.total/2);assert.equal(pixels.center,0,'foreground center is not captured/warped');
