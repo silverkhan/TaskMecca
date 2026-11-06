@@ -47,14 +47,14 @@
 /* Suppress fallback only while this exact owner has its actual backing. */
 :root[data-palette="glass"] .content:has(> .glass-reader-material)::before,:root[data-palette="glass"] .terminal-main:has(> .glass-reader-material)::before{content:none}
 .glass-optics{position:absolute;inset:0;width:100%;height:100%;border-radius:inherit;pointer-events:none!important;z-index:-1}
-.glass-material-optics{position:absolute;inset:0;width:100%;height:100%;border-radius:inherit;pointer-events:none!important;z-index:-1;filter:blur(4px)}
+.glass-material-optics{position:absolute;inset:0;width:100%;height:100%;border-radius:inherit;pointer-events:none!important;z-index:-1;filter:none}
 /* The sticky anchor has no flow footprint or overflow; only its scene expands
    across padding. Text and native scroll metrics stay in their original flow. */
 .glass-scroll-plane{position:sticky;display:block;flex:none;top:0;left:0;width:100%;height:0;border-radius:inherit;pointer-events:none;z-index:-1}
 .glass-scroll-optics{position:absolute;inset:auto;top:calc(-1 * var(--glass-scroll-top));left:calc(-1 * var(--glass-scroll-left));width:var(--glass-scroll-width);height:var(--glass-scroll-height);margin:0}
 :root[data-palette="glass"] [data-glass-material="true"]{--glass-alpha:.14;isolation:isolate}
-:root[data-palette="glass"] :is(.mobile-sidebar-panel,.common-attention-body)>.glass-material-optics{filter:blur(8px)}
-:root[data-palette="glass"] :is(.mobile-sidebar-panel,.common-attention-body)>.glass-scroll-plane>.glass-material-optics{filter:blur(8px)}
+:root[data-palette="glass"] :is(.mobile-sidebar-panel,.common-attention-body)>.glass-material-optics{filter:none}
+:root[data-palette="glass"] :is(.mobile-sidebar-panel,.common-attention-body)>.glass-scroll-plane>.glass-material-optics{filter:none}
 :root[data-palette="glass"] [data-glass-material="true"]>.glass-reader-material{overflow:hidden}
 :root[data-palette="glass"] :is(.content,.terminal-main)[data-glass-material="true"]::before{background:var(--glass-solid)}
 :root[data-palette="glass"] [data-glass-material="true"]>.glass-reader-material::after{content:"";position:absolute;inset:0;pointer-events:none;border-radius:inherit;background:linear-gradient(125deg,rgba(255,255,255,.46),rgba(255,255,255,.06) 23%,transparent 40%,transparent 72%,rgba(10,12,13,.14));padding:1px;mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);mask-composite:exclude;box-shadow:inset 1px 1px 1px rgba(255,255,255,.25)}
@@ -237,3 +237,48 @@
  :root[data-palette="glass"] .topbar button.global-update-pill{min-width:44px;min-height:44px;height:auto;white-space:normal}
  :root[data-palette="glass"] .topbar .global-update-pill .update-check-error{min-width:0;white-space:normal}
 }
+
+/* A-64 reference profile: authored transmission and a crisp curved shell.
+   Numeric contrast is observed, never used to increase material density. */
+:root[data-palette="glass"][data-glass-optics="active"][data-background="cozy"] [data-glass-tone]{
+ --glass-chrome:rgba(249,250,248,.08);--glass-reader:rgba(249,250,248,.08);
+ --glass-floating:rgba(249,250,248,.16);--surface:rgba(249,250,248,.10);
+ --glass-control:rgba(255,255,255,.16);
+ --glass-edge:rgba(255,255,255,.75);--glass-far:rgba(55,49,40,.22);
+}
+:root[data-palette="glass"][data-glass-optics="active"][data-background="cozy"][data-theme="dark"] [data-glass-tone]{
+ --glass-chrome:rgba(24,28,29,.08);--glass-reader:rgba(24,28,29,.08);
+ --glass-floating:rgba(24,28,29,.16);--surface:rgba(24,28,29,.10);
+ --glass-control:rgba(24,28,29,.12);
+}
+:root[data-palette="glass"] :is(.topbar,.terminal-header,.preview-identity-banner,.user-attention){border-radius:999px;box-shadow:var(--glass-highlight),0 4px 10px rgba(43,34,22,.17)}
+:root[data-palette="glass"] :is(.content::before,.terminal-main::before,.glass-reader-material,.sidebar){border-radius:28px}
+@media(min-width:681px){
+ :root[data-palette="glass"] .sidebar{height:calc(100dvh - 16px);bottom:8px}
+ :root[data-palette="glass"] .topbar{padding:9px 13px;min-height:58px}
+}
+:root[data-palette="glass"] :is(.palette-picker,.language-picker,.background-picker,.theme-switcher,.sidebar-mode-selector){
+ border:1px solid rgba(255,255,255,.32);border-radius:999px;
+ background:linear-gradient(150deg,rgba(255,255,255,.28),rgba(255,255,255,.05) 60%,rgba(38,32,23,.07));
+ box-shadow:inset 0 1px 1px rgba(255,255,255,.68),inset 0 -1px 2px rgba(41,35,26,.13),0 2px 5px rgba(41,35,26,.09);
+}
+:root[data-palette="glass"] :is(.theme-btn,.sidebar-mode-option,.palette-picker .tm-combo-trigger,.language-picker .tm-combo-trigger,.background-picker .tm-combo-trigger){border-radius:999px}
+:root[data-palette="glass"] :is(.theme-btn.active,.sidebar-mode-option.active,.session-row.active){
+ background:linear-gradient(140deg,rgba(255,255,255,.38),rgba(255,255,255,.08) 70%),var(--glass-control);
+ border-radius:999px;box-shadow:inset 0 1px 1px rgba(255,255,255,.92),inset 0 -1px 1px rgba(44,37,28,.21),0 3px 7px rgba(44,37,28,.16);color:var(--text);
+}
+:root[data-palette="glass"] .task-row.keyboard-selected{border-radius:18px;outline-color:var(--glass-edge);background:linear-gradient(125deg,rgba(255,255,255,.24),rgba(255,255,255,.04));box-shadow:var(--glass-volume)}
+:root[data-palette="glass"] :is(.search-wrap,.tm-combo-trigger,.status-filter-btn,.tag-explore-btn,.pager button,.action-btn,.icon-btn){border-radius:999px}
+:root[data-palette="glass"] :focus-visible{outline:2px solid var(--text);outline-offset:2px;box-shadow:0 0 0 2px var(--glass-solid)}
+:root[data-palette="glass"] .search-wrap:focus-within{outline:2px solid var(--text);box-shadow:0 0 0 2px var(--glass-solid)}
+@media(max-width:680px){
+ :root[data-palette="glass"] .topbar{border-radius:26px;grid-template-rows:minmax(46px,auto) minmax(46px,auto) auto}
+ :root[data-palette="glass"] :is(.palette-picker,.language-picker,.background-picker,.theme-switcher){height:auto;min-height:46px;padding-block:0}
+ :root[data-palette="glass"] .sidebar-head{border-radius:24px}
+ :root[data-palette="glass"] :is(.preview-identity-banner,.user-attention){border-radius:24px}
+}
+
+/* The shared profile now supplies this edge; avoid a second rigid reader rim. */
+:root[data-palette="glass"][data-glass-optics="active"] [data-glass-material="true"]>.glass-reader-material::after{content:none}
+:root[data-palette="glass"] :is(.palette-picker,.language-picker,.background-picker) .tm-combo-trigger:focus-visible{box-shadow:0 0 0 2px var(--glass-solid)}
+@media(min-width:1100px){:root[data-palette="glass"]{--sidebar:260px}}

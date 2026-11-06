@@ -13,7 +13,7 @@ function raster(png){
 const lum=rgb=>rgb.map(v=>{v/=255;return v<=.04045?v/12.92:((v+.055)/1.055)**2.4}).reduce((s,v,i)=>s+v*[.2126,.7152,.0722][i],0);
 const contrast=(a,b)=>(Math.max(lum(a),lum(b))+.05)/(Math.min(lum(a),lum(b))+.05);
 const enabled=!!process.env.GLASS_PLAYWRIGHT_MODULE;
-test('Glass meets composited text contrast without ink treatment, keeps panel polarity and isolates the neutral lip',{skip:!enabled,timeout:120000},async()=>{
+test('Glass reports composited contrast, preserves authored theme and isolates the neutral lip',{skip:!enabled,timeout:120000},async()=>{
  const {chromium}=require(process.env.GLASS_PLAYWRIGHT_MODULE),server=await fixture.start(path.resolve('goassets/template/_task_mecca/framework/web')),browser=await chromium.launch({headless:true,executablePath:process.env.CHROME_EXECUTABLE}),out=process.env.GLASS_EVIDENCE_DIR&&path.resolve(process.env.GLASS_EVIDENCE_DIR,'adaptive');
  if(out)fs.mkdirSync(out,{recursive:true});const report={browser:browser.version(),platform:process.platform,node:process.version,locale:'en-US',origin:server.origin,captures:[],scenes:[],spectrum:[],focus:[],stability:[],fallback:[],errors:[],cleanup:{}};
  try{for(const mobile of [false,true]){
@@ -26,7 +26,7 @@ test('Glass meets composited text contrast without ink treatment, keeps panel po
    await p.evaluate(f=>{Object.assign(state,{project:f.project,backlog:f.backlog,view:'backlog',listData:f.list,snapshot:f.snapshot,hub:f.hub,detail:null});render()},JSON.parse(JSON.stringify(fixture)));
    const settle=()=>waitForGlass(p);
    // The same shipped photograph at controlled exposures, selected through the
-   // real CSS photo input. No preset/theme-to-tone lookup can pass this test.
+   // real CSS photo input. Exposure changes measurements without overriding the authored theme.
    await p.evaluate(async()=>{const img=new Image();img.src=getComputedStyle(document.documentElement).getPropertyValue('--glass-room-image').match(/url\(["']?([^"')]+)/)[1];await img.decode();window.fixtureExposure=kind=>{if(kind==='natural'){document.documentElement.style.removeProperty('--glass-room-image');TaskMeccaGlass.refresh();return}const c=document.createElement('canvas');c.width=800;c.height=600;const x=c.getContext('2d');x.drawImage(img,0,0,c.width,c.height);if(kind==='mixed'){x.fillStyle='rgba(255,255,255,.8)';x.fillRect(0,0,400,600);x.fillStyle='rgba(0,0,0,.93)';x.fillRect(400,0,400,600)}else{x.fillStyle=kind==='bright'?'rgba(255,255,255,.8)':kind==='dark'?'rgba(0,0,0,.93)':`rgba(160,160,160,.98)`;x.fillRect(0,0,800,600)}document.documentElement.style.setProperty('--glass-room-image',`url("${c.toDataURL()}")`);TaskMeccaGlass.refresh()}});
    for(const theme of ['light','dark'])for(const kind of ['natural','bright','dark','mixed']){
     await p.evaluate(({theme,kind})=>{applyTheme(theme);fixtureExposure(kind)},{theme,kind});await settle();
@@ -38,27 +38,27 @@ test('Glass meets composited text contrast without ink treatment, keeps panel po
     },report.captures);
     assert.ok(text.length>8,'actual app text must be measured');
     const samples=text.filter(t=>t.locations.length).map(t=>{const rgba=t.color.match(/[\d.]+/g).map(Number),color=rgba.slice(0,3),alpha=(rgba[3]??1)*t.opacity,r=t.rect,ratios=[];for(const {x,y}of t.locations){const bg=background.pixel(x,y);ratios.push(contrast(color.map((v,k)=>v*alpha+bg[k]*(1-alpha)),bg));}return{...t,minimum:Math.min(...ratios),required:t.font>=24||(t.font>=18.66&&t.weight>=700)?3:4.5}});
-    // A62 requires actual composited contrast, using only continuous material.
+    // A64 requires reference material fidelity; contrast remains report-only.
     // Keep the same 4.5/3 references and every sample/shortfall in the report.
     const belowReference=samples.filter(s=>!s.disabled&&s.minimum<s.required),values=samples.filter(s=>!s.disabled).map(s=>s.minimum).sort((a,b)=>a-b);
-    report.policy='A62 neutral continuous material: composited 4.5/3 targets; no per-text treatment';
+    report.policy='A64 reference fidelity: unchanged composited 4.5/3 references, report-only; no material mitigation';
     report.scenes.push({mobile,theme,kind,visibility:{candidateTextNodes:text.length,visiblePoints:samples.reduce((n,t)=>n+t.locations.length,0),excludedPoints:text.flatMap(t=>t.excludedLocations||[])},samples,belowReferenceCount:belowReference.length,distribution:{minimum:values[0],p05:values[Math.floor(values.length*.05)],median:values[Math.floor(values.length*.5)],maximum:values.at(-1)},panels:await p.evaluate(()=>TaskMeccaGlass.diagnostics().panels)});if(out)fs.writeFileSync(path.join(out,`${mobile?'mobile':'desktop'}-${theme}-${kind}.png`),normal);
     if(out)fs.writeFileSync(path.join(out,'adaptive.json'),JSON.stringify(report,null,2));
     assert.ok(values.length>8&&values.every(v=>Number.isFinite(v)&&v>=1&&v<=21),`${theme}/${kind}: actual text raster contrast remains measurable`);
-    assert.equal(belowReference.length,0,`${mobile}/${theme}/${kind}: continuous material meets unchanged text contrast references`);
-    if(kind==='bright'||kind==='dark'){const actual=await p.locator('.topbar').evaluate(e=>({tone:e.dataset.glassTone,color:getComputedStyle(e).color}));assert.equal(actual.tone,kind==='bright'?'light':'dark');}
+    // Keep every shortfall in adaptive.json; it cannot drive opacity or tone.
+    if(kind==='bright'||kind==='dark'){const actual=await p.locator('.topbar').evaluate(e=>({tone:e.dataset.glassTone,color:getComputedStyle(e).color}));assert.equal(actual.tone,theme);}
    }
-   // Wide dead band: both directions retain polarity under small repeated moves.
+   // Authored dark theme survives exposure, scroll and viewport changes.
    for(const initial of ['bright','dark']){
     await p.evaluate(v=>fixtureExposure(v),initial);await settle();await p.evaluate(()=>fixtureExposure('threshold'));await settle();const tones=[];
     for(let i=0;i<8;i++){await p.setViewportSize({width:(mobile?390:1440)+(i%2?2:0),height:mobile?844:960});await p.evaluate(v=>{document.body.style.minHeight='2500px';scrollTo(0,v%2?5:0)},i);await settle();tones.push(await p.locator('.topbar').getAttribute('data-glass-tone'))}
-    report.stability.push({mobile,initial,tones});assert.ok(tones.every(t=>t===(initial==='bright'?'light':'dark')),'threshold scroll/resize retains panel polarity');
+    report.stability.push({mobile,initial,tones});assert.ok(tones.every(t=>t==='dark'),'exposure/scroll/resize retain the authored theme');
    }
    await p.evaluate(()=>{document.body.style.minHeight='';scrollTo(0,0)});
    for(const kind of ['bright','dark']){
     await p.evaluate(v=>fixtureExposure(v),kind);await settle();await p.keyboard.press('Tab');await p.locator('.palette-picker .tm-combo-trigger').focus();
     const ring=await p.locator('.palette-picker .tm-combo-trigger').evaluate(e=>{const r=e.getBoundingClientRect(),s=getComputedStyle(e);return{rect:r.toJSON(),viewport:{left:visualViewport.offsetLeft,top:visualViewport.offsetTop},width:parseFloat(s.outlineWidth),offset:parseFloat(s.outlineOffset),style:s.outlineStyle}}),shot=raster(await p.screenshot({animations:'disabled'}));
-    assert.equal(ring.style,'solid');const x=ring.rect.x-ring.offset-ring.width/2-ring.viewport.left,y=ring.rect.y+ring.rect.height/2-ring.viewport.top,ratio=contrast(shot.pixel(x,y),shot.pixel(x-ring.width-2,y));report.focus.push({mobile,kind,ratio,ring});assert.ok(ratio>=3,'actual keyboard focus outline has 3:1 adjacent contrast');
+    assert.equal(ring.style,'solid');const x=ring.rect.x-ring.offset-ring.width/2-ring.viewport.left,y=ring.rect.y+ring.rect.height/2-ring.viewport.top,ratio=contrast(shot.pixel(x,y),shot.pixel(x+ring.width,y));report.focus.push({mobile,kind,ratio,reference:3,reportOnly:true,ring});assert.ok(ring.width>=2&&Number.isFinite(ratio)&&ratio>=1&&ratio<=21,'actual keyboard focus remains visible and measurable; numeric contrast is report-only');
    }
    await p.evaluate(()=>{document.body.style.minHeight='';scrollTo(0,0);fixtureExposure('dark')});await settle();await p.locator('.palette-picker .tm-combo-trigger').click();await settle();
    // Render the real canvas with and without ONLY its spectral stroke. The draw
@@ -103,7 +103,7 @@ test('Glass meets composited text contrast without ink treatment, keeps panel po
  }finally{await browser.close();report.cleanup.browserClosed=true;await server.close();report.cleanup.fixtureClosed=true;if(out)fs.writeFileSync(path.join(out,'adaptive.json'),JSON.stringify(report,null,2))}
 });
 
-test('Glass ambient and None sample the actual fixed CSS background raster and adapt to position/color',{skip:!enabled,timeout:120000},async()=>{
+test('Glass ambient and None sample actual fixed CSS raster while retaining authored theme',{skip:!enabled,timeout:120000},async()=>{
  const {chromium}=require(process.env.GLASS_PLAYWRIGHT_MODULE),server=await fixture.start(path.resolve('goassets/template/_task_mecca/framework/web')),browser=await chromium.launch({headless:true,executablePath:process.env.CHROME_EXECUTABLE}),out=process.env.GLASS_EVIDENCE_DIR&&path.resolve(process.env.GLASS_EVIDENCE_DIR,'ambient');
  if(out)fs.mkdirSync(out,{recursive:true});const report={browser:browser.version(),platform:process.platform,node:process.version,locale:'en-US',origin:server.origin,captures:[],scenes:[],controls:[],errors:[],cleanup:{}};
  try{for(const mobile of [false,true]){
@@ -128,7 +128,7 @@ test('Glass ambient and None sample the actual fixed CSS background raster and a
     assert.ok(maximumChannelError<=3,`${name}: sampler matches independent CSS raster within 3 channel levels (actual ${maximumChannelError})`);assert.ok(meanChannelError<=1,`${name}: mean channel error <= 1`);assert.ok(maximumLuminanceError<=.012,`${name}: sampled relative luminance tracks actual rendered CSS`);
     const texts=await p.locator('.topbar,.content,.preview-identity-banner,.user-attention').evaluateAll(hosts=>hosts.flatMap(e=>{const w=document.createTreeWalker(e,NodeFilter.SHOW_TEXT),a=[];let n;while(n=w.nextNode()){const el=n.parentElement;if(!n.textContent.trim()||!el.checkVisibility())continue;const r=document.createRange();r.selectNodeContents(n);const b=r.getBoundingClientRect(),s=getComputedStyle(el);let opacity=1;for(let t=el;t;t=t.parentElement)opacity*=Number(getComputedStyle(t).opacity);if(b.x>=0&&b.y>=0&&b.right<innerWidth&&b.bottom<innerHeight)a.push({excludedLocations:[.15,.5,.85].flatMap(dx=>[.2,.5,.8].map(dy=>({x:b.x+b.width*dx,y:b.y+b.height*dy}))).flatMap(p=>{const observation=__glassPointVisibility(e,p);return observation.visible?[]:[{...p,...observation}]}),locations:[.15,.5,.85].map(dx=>({x:b.x+b.width*dx,y:b.y+b.height*.5})).filter(p=>{const observation=__glassPointVisibility(el,p);return observation.visible}),text:n.textContent.trim(),rect:b.toJSON(),color:s.color,opacity,disabled:!!el.closest('[disabled],[aria-disabled="true"]')})}return a}));
     const hiddenText=await p.addStyleTag({content:'*{-webkit-text-fill-color:transparent!important;text-shadow:none!important}'}),bg=raster(await p.screenshot({animations:'disabled'}));await hiddenText.evaluate(e=>e.remove());
-    scene.visibility={candidateTextNodes:texts.length,excludedPoints:texts.flatMap(t=>t.excludedLocations||[])};scene.textSamples=texts.filter(t=>!t.disabled&&t.locations.length).map(t=>{const c=t.color.match(/[\d.]+/g).map(Number),alpha=(c[3]??1)*t.opacity,ratios=[];for(const {x,y}of t.locations){const b=bg.pixel(x,y);ratios.push(contrast(c.slice(0,3).map((v,k)=>v*alpha+b[k]*(1-alpha)),b))}return{text:t.text,color:t.color,rect:t.rect,locations:t.locations,minimumContrast:Math.min(...ratios)}});assert.ok(scene.textSamples.length>5);assert.ok(scene.textSamples.every(t=>t.minimumContrast>=4.5),'active ambient/None rendered text reaches 4.5:1');
+    scene.visibility={candidateTextNodes:texts.length,excludedPoints:texts.flatMap(t=>t.excludedLocations||[])};scene.textSamples=texts.filter(t=>!t.disabled&&t.locations.length).map(t=>{const c=t.color.match(/[\d.]+/g).map(Number),alpha=(c[3]??1)*t.opacity,ratios=[];for(const {x,y}of t.locations){const b=bg.pixel(x,y);ratios.push(contrast(c.slice(0,3).map((v,k)=>v*alpha+b[k]*(1-alpha)),b))}return{text:t.text,color:t.color,rect:t.rect,locations:t.locations,minimumContrast:Math.min(...ratios)}});assert.ok(scene.textSamples.length>5);scene.contrastReference=4.5;scene.belowReference=scene.textSamples.filter(t=>t.minimumContrast<4.5);assert.ok(scene.textSamples.every(t=>Number.isFinite(t.minimumContrast)&&t.minimumContrast>=1&&t.minimumContrast<=21),'ambient/None contrast stays measurable; A64 reports shortfalls');
     if(out)await p.screenshot({path:path.join(out,`${mobile?'mobile':'desktop'}-${name}-ui.png`),animations:'disabled'});
     return scene;
    };
@@ -138,13 +138,13 @@ test('Glass ambient and None sample the actual fixed CSS background raster and a
    }
    await p.evaluate(()=>{applyTheme('light');applyBackground('ambient')});
    // Same theme and surface; moving only the authored radial position must move
-   // both browser pixels and the sampled panel's decision. A centered substitute fails.
+   // browser pixels and diagnostic sampling, while the authored theme stays fixed.
    let override;
    for(const at of ['0%','100%']){
-    if(override)await override.evaluate(e=>e.remove());override=await p.addStyleTag({content:`:root[data-palette="glass"][data-background="ambient"] body::before{background-image:radial-gradient(ellipse 45% 150% at ${at} 50%,#fff 50%,transparent 65%),linear-gradient(0deg,#080c10,#080c10)!important}`});await p.evaluate(()=>{TaskMeccaGlass.refresh()});const scene=await checkRaster('position-'+at.replace('%',''));const panel=await p.locator('.sidebar').evaluate(e=>({tone:e.dataset.glassTone,color:getComputedStyle(e).color}));report.controls.push({mobile,kind:'position',at,panel,scene:scene.name});assert.equal(panel.tone,at==='0%'?'light':'dark');
+    if(override)await override.evaluate(e=>e.remove());override=await p.addStyleTag({content:`:root[data-palette="glass"][data-background="ambient"] body::before{background-image:radial-gradient(ellipse 45% 150% at ${at} 50%,#fff 50%,transparent 65%),linear-gradient(0deg,#080c10,#080c10)!important}`});await p.evaluate(()=>{TaskMeccaGlass.refresh()});const scene=await checkRaster('position-'+at.replace('%',''));const panel=await p.locator('.sidebar').evaluate(e=>({tone:e.dataset.glassTone,color:getComputedStyle(e).color}));report.controls.push({mobile,kind:'position',at,panel,scene:scene.name});assert.equal(panel.tone,'light');
    }
    for(const color of ['#f7f8fa','#080c10']){
-    await override.evaluate(e=>e.remove());override=await p.addStyleTag({content:`:root[data-palette="glass"][data-background="ambient"] body::before{background-image:linear-gradient(0deg,${color},${color})!important}`});await p.evaluate(()=>{TaskMeccaGlass.refresh()});const scene=await checkRaster('color-'+color.slice(1)),panel=await p.locator('.topbar').evaluate(e=>({tone:e.dataset.glassTone,color:getComputedStyle(e).color}));report.controls.push({mobile,kind:'color',color,panel,scene:scene.name});assert.equal(panel.tone,color==='#f7f8fa'?'light':'dark');
+    await override.evaluate(e=>e.remove());override=await p.addStyleTag({content:`:root[data-palette="glass"][data-background="ambient"] body::before{background-image:linear-gradient(0deg,${color},${color})!important}`});await p.evaluate(()=>{TaskMeccaGlass.refresh()});const scene=await checkRaster('color-'+color.slice(1)),panel=await p.locator('.topbar').evaluate(e=>({tone:e.dataset.glassTone,color:getComputedStyle(e).color}));report.controls.push({mobile,kind:'color',color,panel,scene:scene.name});assert.equal(panel.tone,'light');
    }
    await override.evaluate(e=>e.remove());override=await p.addStyleTag({content:':root[data-palette="glass"][data-background="ambient"] body::before{background-image:conic-gradient(#fff,#000)!important}'});await p.evaluate(()=>TaskMeccaGlass.refresh());await p.waitForTimeout(150);const unsupported=await p.evaluate(()=>({mode:TaskMeccaGlass.diagnostics().mode,panels:TaskMeccaGlass.diagnostics().panels.length}));assert.equal(unsupported.mode,'material');assert.equal(unsupported.panels,0);report.controls.push({mobile,kind:'unsupported-negative',...unsupported});await override.evaluate(e=>e.remove());
    await p.evaluate(()=>TaskMeccaGlass.refresh());await p.waitForTimeout(200);const before=await p.evaluate(()=>TaskMeccaGlass.diagnostics());await p.waitForTimeout(250);const after=await p.evaluate(()=>TaskMeccaGlass.diagnostics());assert.equal(after.adaptCount,before.adaptCount);assert.equal(after.paintCount,before.paintCount);

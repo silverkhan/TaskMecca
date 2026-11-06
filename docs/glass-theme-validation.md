@@ -1,3 +1,132 @@
+# A-64 reference fidelity follow-up (2026-11-06)
+
+This section is the current A-64 policy and result. All earlier A-62 sections
+below are historical evidence; their contrast acceptance rules do not apply to
+this follow-up. The user instruction is: “일단 시안과 동일한 스펙으로 구현해보라.
+가독성은 사용하며 판단할것임”. Material, shape and optical strength follow the
+supplied neutral-fluid-glass reference. Contrast is measured and reported against
+unchanged 4.5:1 text / 3:1 large-text, focus and selected-boundary references; a
+shortfall cannot automatically change opacity, theme polarity or optical strength.
+
+The baseline is `06e1b8597965fd6c2c450d0a9ef863ecf06890e5`. A-64 runs in its own
+worktree and does not integrate the separate A-63/Dev changes. Original A-62
+packets, failures, reviewer results and previous acceptance remain unchanged.
+
+## Material and shape
+
+The authored Light/Dark theme now owns every panel's polarity. The sampled scene
+luminance/range remain diagnostics, with no .48/.28 local mode override or .86
+mixed-scene tint. The active Cozy material uses neutral authored tint: chrome .18,
+reader .30, floating .26 on the canvas, plus .08 shell / .16 floating CSS material.
+These values are reference choices, not contrast-responsive corrections. This also
+prevents a PR banner independently flipping white inside Dark.
+
+The existing material map draws a shared 10 CSS px curved perimeter with 12 px
+maximum scene-sampling bend, asymmetric neutral specular strokes and inner shading.
+Transmission is softened inside Canvas (12 px) before the sharp perimeter is drawn;
+CSS no longer blurs the completed material and its edge together. Sidebar, topbar,
+PR/environment, attention, reader, popup, modal, navigation and terminal shells use
+this common profile. The reader's redundant CSS rim is suppressed only when the
+actual material exists. Its continuous, viewport-bounded sticky plane remains.
+
+The standalone narrow optical lip retains its separate 2 px / 1.6 displacement
+profile and existing independent oracle. Lens count remains at most 2 and its
+350,000-pixel authority is unchanged. Material authority remains 480,000 pixels per
+canvas; flooring allocated dimensions fixes the previous rounding overrun.
+There are no per-row canvases/filters, text fog/halo, foreground capture or permanent
+render loop. Foreground app/data/localization logic and all image assets are unchanged.
+
+The desktop sidebar is one tall 28 px rounded shell; large desktops use a 260 px
+sidebar column. Topbar and PR/attention strips use long capsules. Preference groups,
+selected project and controls have neutral glossy volume. Native mobile input and
+buttons retain their existing 44 px geometry; the toolbar has room for those controls.
+Theme/fallback/reduced preferences and Mecca/Slate stay scoped and covered by tests.
+
+## Bounded visual comparison and limitations
+
+The new local evidence folder is
+`handoff-evidence/a64-glass-reference-fidelity-20261106/` (untracked, not published).
+`baseline-06e1/` has 16 original-source captures; `confirmation/` has 66 captures,
+including 1448×1090, 1468×635, 1280×900 and 390×844, Light/Dark, Cozy/ambient/None,
+real backlog and PR-execution views, popup, notification, modal, mobile navigation
+and terminal. Device scale is 1 and actual visualViewport offsets are recorded.
+A first combined batch, one consolidated correction and one confirmation were used.
+The initial terminal harness closure error and partial log are retained; the first
+batch resumed only missing captures. No new taste/benchmark cycle is claimed.
+
+Compared with 06e1, transmitted photo and curved glass now remain visible across
+sidebar/topbar/PR/reader, with sharp silver/white rims and continuous frosted centers.
+Compared with the reference, the shipped photo's green/window regions remain more
+visible in some centers, rim bands are less organically continuous, actual fixture
+rows/toolbar content differ, and mobile needs multiple toolbar rows for native hit
+sizes. These are explicit visual differences for independent review and user Preview
+judgment. Automated pass is not evidence of reference equivalence or user acceptance.
+
+| Matched 16 Cozy captures | Eligible samples | Below text reference | Minimum |
+| --- | ---: | ---: | ---: |
+| 06e1 Light | 775 | 0 | 4.8208 |
+| A-64 Light | 772 | 374 | 1.0082 |
+| 06e1 Dark | 775 | 6 | 1.2262 |
+| A-64 Dark | 772 | 521 | 1.0511 |
+
+The complete confirmation matrix contains 5,698 eligible observations, 1,625 below
+unchanged text references, minimum 1.0082. Repeated text across scenes is intentional;
+these are observations, not unique defects or an accessibility certification.
+`review.json` includes every text, selector, rectangle, visible/excluded point,
+background RGB, computed ink/opacity and measured ratio. Visibility uses actual
+visualViewport offsets without remapping layout to visual coordinates. Sample count
+changes reflect the authored sidebar width and visible geometry. No density was
+increased in response to these results. Focus and selected-boundary ratios remain
+in their test reports, while actual visible focus, native keyboard, ARIA and trusted
+hit/activation semantics are functional guards.
+
+## Validation and cost evidence
+
+Before the policy change, the old 18-case suite produced 16 pass / 2 fail / 0 skip:
+natural Light had 83 text shortfalls in its first scene; ambient failed its old
+4.5 assertion. `strict-before-policy.log` and its JSON retain those failures.
+The explicit policy update retains every 4.5/3 reference and shortfall, source raster
+matching, atomic foreground/current-scene checks, first-frame/nested-scroll/rerender,
+fallback and idle guards. A subsequent focused 5-case browser run passed with no
+skips. The final exact-commit full Glass/common/named-Go/race/vet results are frozen
+in the A-64 packet and Activity runs, rather than inferred from this focused check.
+
+`web_glass_material.test.cjs` adds actual positive/zero-bevel/zero-bend production
+canvas witnesses. Its 24 comparisons span navigation/topbar/PR/attention/reader;
+centers have zero pixel changes, foreground text/color/geometry are identical, and
+at least 3,909 edge pixels change. The focused witness largest allocation is 479,611
+pixels. Across the complete confirmation, the largest actual material is 479,809
+pixels, largest standalone lens is 80,136, and at most 2 lenses exist. CI runs this
+new witness and uploads its quantitative JSON, not user reference images/PNGs.
+
+One baseline/final desktop/mobile pair uses the same fixture, current seeded backlog,
+Light Cozy, 90-rAF scripted scroll and CDP protocol. The initial overlapped performance
+sample in `final/review.json` is excluded; the dedicated confirmation pair is retained.
+
+| 90 callbacks, 06e1 → A-64 | 1448×1090 | 390×844 touch emulation |
+| --- | ---: | ---: |
+| TaskDuration ms | 470.08 → 795.61 | 481.82 → 777.40 |
+| ScriptDuration ms | 91.96 → 305.44 | 90.91 → 276.24 |
+| CDP Paint event ms | 47.41 → 30.39 | 43.97 → 26.61 |
+| Mean / max rAF gap ms | 30.71/33.40 → 24.34/33.40 | 16.67/16.80 → 16.67/16.80 |
+| Heap at sample end B | 6,313,836 → 7,765,844 | 3,900,204 → 6,543,816 |
+| Material RGBA pixels | 1,107,920 → 1,120,322 | 430,560 → 430,196 |
+| Idle paint/adapt increments | 0/0 → 0/0 | 0/0 → 0/0 |
+
+Script/task cost and heap increase are exposed; lower Paint time or rAF gaps do not
+prove improvement. Baseline and final have the same current measurement state but
+different prior capture/interaction histories, so heap, listeners and garbage
+collection are contextual browser proxies, not isolated causal allocation results.
+Canvas RGBA is an estimate, not total browser/GPU memory. This is macOS headless
+Chromium 156.0.8078.4 with Playwright 1.64.1; physical Android/Samsung Internet,
+Safari, address-bar/keyboard hardware, CPU/GPU energy, battery and prolonged use
+are untested. No operating server/Preview/environment, install, release or merge was
+changed. Owned fixture/browser cleanup and port refusal are recorded. Unsafe local
+full `go test ./...` remains prohibited; remote full CI/Preview provenance and
+independent review/user acceptance belong to the Controller.
+
+---
+
 # 실사 배경과 Glass 소재 검증
 
 

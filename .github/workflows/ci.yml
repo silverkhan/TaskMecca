@@ -108,7 +108,7 @@ jobs:
           GLASS_EVIDENCE_DIR: glass-browser-evidence
         run: |
           export GLASS_PLAYWRIGHT_MODULE="$RUNNER_TEMP/glass-runtime/node_modules/playwright"
-          node --test tests/web_glass_theme.test.cjs tests/web_glass_browser.test.cjs tests/web_glass_adaptive.test.cjs tests/web_glass_scroll.test.cjs tests/web_glass_neutral.test.cjs tests/web_glass_mobile_targets.test.cjs
+          node --test tests/web_glass_theme.test.cjs tests/web_glass_browser.test.cjs tests/web_glass_adaptive.test.cjs tests/web_glass_scroll.test.cjs tests/web_glass_neutral.test.cjs tests/web_glass_mobile_targets.test.cjs tests/web_glass_material.test.cjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -123,6 +123,7 @@ jobs:
             glass-browser-evidence/scroll/motion.json
             glass-browser-evidence/neutral/functional.json
             glass-browser-evidence/mobile-targets/targets.json
+            glass-browser-evidence/material/witness.json
             glass-browser-evidence/scroll/ports.json
           if-no-files-found: error
           retention-days: 7

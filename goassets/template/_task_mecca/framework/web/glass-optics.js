@@ -4,7 +4,7 @@
  'use strict';
  const root=document.documentElement,MAX_LENSES=2,MAX_PIXELS=350000,RINGS=4;
  const entries=new Map(),reduced=window.matchMedia('(prefers-reduced-transparency: reduce)');
- const panels=new Map(),materials=new Map(),MAX_MATERIAL_PIXELS=480000;
+ const panels=new Map(),materials=new Map(),MAX_MATERIAL_PIXELS=480000,MATERIAL_BEVEL=10,MATERIAL_BEND=12;
  const readerBackingSupported=CSS.supports('selector(:has(*))');
  let sampleTheme='',sampleBackground='',sampleSource='';
  let samplePixels=null,adaptCount=0,totalAdaptMs=0,geometryFrame=0,failedURL='';
@@ -81,7 +81,7 @@
  const linearChannel=v=>{v/=255;return v<=.04045?v/12.92:((v+.055)/1.055)**2.4};
  function adaptPanels(){
   if(!samplePixels)return;
-  const start=performance.now(),g=geometry(),hosts=[...document.querySelectorAll('.topbar,.sidebar,.sidebar-head,.content,.terminal-header,.terminal-main,.tm-combo-popup,.notification-panel,.common-attention-body,.modal-card,.mobile-sidebar-panel,.preview-identity-banner,.user-attention')],keep=new Set(hosts);
+  const start=performance.now(),g=geometry(),hosts=[...document.querySelectorAll('.topbar,.sidebar,.sidebar-head,.content,.terminal-header,.terminal-main,.tm-combo-popup,.notification-panel,.common-attention-body,.modal-card,.channel-switch-modal,.mobile-sidebar-panel,.preview-identity-banner,.user-attention')],keep=new Set(hosts);
   for(const host of panels.keys())if(!keep.has(host)){delete host.dataset.glassTone;host.style.removeProperty('--glass-alpha');host.style.removeProperty('--glass-reflection-rgb');panels.delete(host)}
   for(const host of hosts){
    // The reader's fixed-size sticky backing is the actual surface behind long tables.
@@ -94,16 +94,15 @@
     const v=[samplePixels[i],samplePixels[i+1],samplePixels[i+2]],l=.2126*linearChannel(v[0])+.7152*linearChannel(v[1])+.0722*linearChannel(v[2]);sum+=l;min=Math.min(min,l);max=Math.max(max,l);v.forEach((n,k)=>rgb[k]+=n);count++;
    }
    const luminance=sum/count;
-   // A wide dead band retains panel polarity across leaves, threshold scroll and resize.
-   const prior=previous?.theme===root.dataset.theme?previous.tone:root.dataset.theme,tone=luminance>.48?'light':luminance<.28?'dark':prior;
-   // Broad neutral material attenuates scene contrast as one continuous surface.
-   // Scene range chooses density; no ink, rows or text-specific backing is sampled.
-   const mixed=max-min>.38?true:max-min<.24?false:(previous?.mixed??true),alpha=host.dataset.glassMaterial==='true'?(mixed?.86:.76):(mixed?.88:.80);
+   // The authored theme owns polarity and density. Scene measurements are
+   // diagnostic only: reference fidelity must not be corrected for contrast.
+   const tone=root.dataset.theme==='dark'?'dark':'light',role=materialRole(host);
+   const mixed=max-min>.38,alpha=role==='reader'?.30:role==='floating'?.26:.18;
    if(host.dataset.glassTone!==tone)host.dataset.glassTone=tone;
    if(host.style.getPropertyValue('--glass-alpha')!==String(alpha))host.style.setProperty('--glass-alpha',alpha);
    const color=rgb.map(n=>Math.round(n/count)),reflection=color.map((n,i)=>Math.round(n*.18+[246,248,247][i]*.82)).join(',');
    if(host.style.getPropertyValue('--glass-reflection-rgb')!==reflection)host.style.setProperty('--glass-reflection-rgb',reflection);
-   panels.set(host,{key,tone,theme:root.dataset.theme,luminance,range:max-min,color,mixed,alpha,rect:{left,top,width:right-left,height:bottom-top}});adaptCount++;
+   panels.set(host,{key,role,tone,theme:root.dataset.theme,luminance,range:max-min,color,mixed,alpha,rect:{left,top,width:right-left,height:bottom-top}});adaptCount++;
   }
   totalAdaptMs+=performance.now()-start;
  }
@@ -131,16 +130,38 @@
   }).slice(0,MAX_LENSES);
  }
  function materialCandidates(){
-  return [...document.querySelectorAll('.tm-combo-popup,.topbar,.sidebar,.sidebar-head,.content,.terminal-header,.terminal-main,.mobile-sidebar-panel,.preview-identity-banner,.user-attention,.common-attention-body')].filter(host=>{
+  return [...document.querySelectorAll('.tm-combo-popup,.topbar,.sidebar,.sidebar-head,.content,.terminal-header,.terminal-main,.mobile-sidebar-panel,.preview-identity-banner,.user-attention,.common-attention-body,.notification-panel,.modal-card,.channel-switch-modal')].filter(host=>{
    const r=host.getBoundingClientRect(),s=getComputedStyle(host);
    return r.width>8&&r.height>8&&r.bottom>0&&r.right>0&&r.top<innerHeight&&r.left<innerWidth&&s.visibility!=='hidden'&&s.display!=='none'&&!(innerWidth<=680&&host.classList.contains('sidebar'))&&!(innerWidth>680&&host.classList.contains('sidebar-head'))&&(readerBackingSupported||!host.matches('.content,.terminal-main'));
   });
  }
+ function materialRole(host){return host.matches('.content,.terminal-main')?'reader':host.matches('.tm-combo-popup,.mobile-sidebar-panel,.common-attention-body,.notification-panel,.modal-card,.channel-switch-modal')?'floating':'chrome'}
+ // Shared curved profile on the existing bounded material canvas. The center
+ // remains one softened field; only the rounded perimeter refracts the scene.
+ function paintMaterialBevel(c,r,radius){
+  const w=r.width,h=r.height,band=Math.min(MATERIAL_BEVEL,w/4,h/4),g=geometry();
+  if(!band)return 0;
+  for(let i=0;i<RINGS;i++){
+   const a=i*band/RINGS,b=(i+1)*band/RINGS,ring=new Path2D();
+   rounded(ring,a,a,w-2*a,h-2*a,Math.max(0,radius-a));
+   rounded(ring,b,b,w-2*b,h-2*b,Math.max(0,radius-b));
+   const curve=(1-(i+.5)/RINGS)**2,bend=MATERIAL_BEND*curve;
+   c.save();c.clip(ring,'evenodd');c.globalAlpha=.68;
+   c.translate(w/2,h/2);c.scale(1+bend/(w/2),1+bend/(h/2));c.translate(-w/2,-h/2);
+   c.drawImage(sampler,-r.left,-r.top,g.width,g.height);c.restore();
+  }
+  const stroke=(inset,width,stops)=>{const path=new Path2D();rounded(path,inset,inset,w-2*inset,h-2*inset,Math.max(0,radius-inset));const light=c.createLinearGradient(0,0,w*.72,h);for(const [at,color] of stops)light.addColorStop(at,color);c.strokeStyle=light;c.lineWidth=width;c.stroke(path)};
+  stroke(1,1.8,[[0,'rgba(255,255,255,.98)'],[.16,'rgba(255,255,255,.78)'],[.38,'rgba(255,255,255,.12)'],[.72,'rgba(48,45,40,.28)'],[1,'rgba(255,255,255,.92)']]);
+  stroke(3.2,1,[[0,'rgba(255,255,255,.65)'],[.24,'rgba(255,255,255,.12)'],[.65,'rgba(30,28,24,.20)'],[1,'rgba(255,255,255,.70)']]);
+  stroke(band,.75,[[0,'rgba(36,32,26,.09)'],[.4,'rgba(255,255,255,0)'],[1,'rgba(255,255,255,.22)']]);
+  return band;
+ }
  function paintMaterial(entry,r){
   const {host,canvas}=entry,w=r.width,h=r.height;if(w<8||h<8)return;
   // Material depends only on the scene and panel geometry, never on ink.
-  const key=[generation,r.x,r.y,w,h,host.dataset.glassTone,panels.get(host)?.alpha].join("|");if(entry.key===key)return;
-  const start=performance.now(),scale=Math.min(1,Math.sqrt(MAX_MATERIAL_PIXELS/(w*h))),width=Math.ceil(w*scale),height=Math.ceil(h*scale),g=geometry();
+  const radius=Math.min(parseFloat(getComputedStyle(entry.plane).borderTopLeftRadius)||28,w/2,h/2),role=materialRole(host);
+  const key=[generation,r.x,r.y,w,h,radius,host.dataset.glassTone,panels.get(host)?.alpha].join("|");if(entry.key===key)return;
+  const start=performance.now(),scale=Math.min(1,Math.sqrt(MAX_MATERIAL_PIXELS/(w*h))),width=Math.max(1,Math.floor(w*scale)),height=Math.max(1,Math.floor(h*scale)),g=geometry();
   if(canvas.width!==width)canvas.width=width;if(canvas.height!==height)canvas.height=height;
   const c=canvas.getContext('2d');c.setTransform(scale,0,0,scale,0,0);c.clearRect(0,0,w,h);
   // One continuous field: the central wave flows into a shallow curved bevel.
@@ -153,12 +174,12 @@
     c.drawImage(sampler,leftSample*sx,top*sy,(rightSample-leftSample)*sx,(bottom-top)*sy,x,y,right-x,5);
    }
   }
-  const light=host.dataset.glassTone==='light',neutral=light?[249,250,248]:[24,28,29],tint=panels.get(host)?.alpha??.86;
+  // Soften transmission before the bevel is drawn, keeping its lip crisp.
+  c.save();c.setTransform(1,0,0,1,0,0);c.filter='blur(12px)';c.globalCompositeOperation='copy';c.drawImage(canvas,0,0);c.restore();
+  const light=host.dataset.glassTone==='light',neutral=light?[249,250,248]:[24,28,29],tint=panels.get(host)?.alpha??.18;
   c.fillStyle=`rgba(${neutral},${tint})`;c.fillRect(0,0,w,h);
-  // Directional, neutral reflection. The separate silver highlight stays on the
-  // separate narrow floating lip; text and focus never pass through this layer.
-  const reflection=c.createLinearGradient(0,0,w*.8,h);reflection.addColorStop(0,'rgba(255,255,255,.10)');reflection.addColorStop(.25,'rgba(255,255,255,.015)');reflection.addColorStop(.7,'rgba(255,255,255,0)');reflection.addColorStop(1,'rgba(10,12,13,.07)');c.fillStyle=reflection;c.fillRect(0,0,w,h);
-  if(host.matches('.content,.terminal-main')){const bevel=new Path2D();rounded(bevel,1.5,1.5,w-3,h-3,16.5);const light=c.createLinearGradient(0,0,w,h);light.addColorStop(0,'rgba(255,255,255,.5)');light.addColorStop(.28,'rgba(255,255,255,.06)');light.addColorStop(.6,'rgba(10,12,13,0)');light.addColorStop(1,'rgba(10,12,13,.24)');c.strokeStyle=light;c.lineWidth=1.25;c.stroke(bevel)}
+  const reflection=c.createLinearGradient(0,0,w*.8,h);reflection.addColorStop(0,'rgba(255,255,255,.16)');reflection.addColorStop(.25,'rgba(255,255,255,.025)');reflection.addColorStop(.7,'rgba(255,255,255,0)');reflection.addColorStop(1,'rgba(10,12,13,.08)');c.fillStyle=reflection;c.fillRect(0,0,w,h);
+  entry.bevel=paintMaterialBevel(c,r,radius);entry.radius=radius;entry.role=role;entry.tint=tint;
   entry.key=key;entry.rect={left:r.x,top:r.y,width:w,height:h};entry.amplitude=amplitude;entry.paintMs=performance.now()-start;entry.totalPaintMs=(entry.totalPaintMs||0)+entry.paintMs;entry.draws++;paintCount++;totalPaintMs+=entry.paintMs;
  }
  function paint(entry,r){
@@ -238,7 +259,7 @@
  new MutationObserver(schedule).observe(document.body,{childList:true,subtree:true});
  window.addEventListener('resize',schedule,{passive:true});document.addEventListener('scroll',scheduleGeometry,{passive:true,capture:true});document.addEventListener('focusin',schedule);document.addEventListener('focusout',schedule);
  window.visualViewport?.addEventListener('resize',schedule,{passive:true});window.visualViewport?.addEventListener('scroll',scheduleGeometry,{passive:true});reduced.addEventListener?.('change',schedule);
- window.TaskMeccaGlass=Object.freeze({refresh:schedule,captureReaders,restoreReaders,diagnostics:()=>({mode:root.dataset.glassOptics||'material',photo:imageURL,sample:{generation,theme:sampleTheme,background:sampleBackground,source:sampleSource},loading:!!loading,pending:!!frame||!!geometryFrame,readerBackingSupported,stage:geometry(),sampler:sampler?{width:sampler.width,height:sampler.height}:null,paintCount,totalPaintMs,adaptCount,totalAdaptMs,sampleBytes:samplePixels?.byteLength||0,panels:[...panels.values()],materials:[...materials.values()].map(e=>({rect:e.rect,amplitude:e.amplitude,paintMs:e.paintMs,totalPaintMs:e.totalPaintMs,draws:e.draws,pixels:e.canvas.width*e.canvas.height})),lenses:[...entries.values()].map(e=>({kind:e.kind,rect:e.rect,rim:e.rim,amplitude:e.amplitude,draws:e.draws,pixels:e.canvas.width*e.canvas.height}))})});
+ window.TaskMeccaGlass=Object.freeze({refresh:schedule,captureReaders,restoreReaders,diagnostics:()=>({mode:root.dataset.glassOptics||'material',photo:imageURL,sample:{generation,theme:sampleTheme,background:sampleBackground,source:sampleSource},loading:!!loading,pending:!!frame||!!geometryFrame,readerBackingSupported,stage:geometry(),sampler:sampler?{width:sampler.width,height:sampler.height}:null,paintCount,totalPaintMs,adaptCount,totalAdaptMs,sampleBytes:samplePixels?.byteLength||0,panels:[...panels.values()],materials:[...materials.values()].map(e=>({host:e.host.className,role:e.role,tint:e.tint,radius:e.radius,bevel:e.bevel,bend:MATERIAL_BEND,rect:e.rect,amplitude:e.amplitude,paintMs:e.paintMs,totalPaintMs:e.totalPaintMs,draws:e.draws,pixels:e.canvas.width*e.canvas.height})),lenses:[...entries.values()].map(e=>({kind:e.kind,rect:e.rect,rim:e.rim,amplitude:e.amplitude,draws:e.draws,pixels:e.canvas.width*e.canvas.height}))})});
  if(typeof ResizeObserver!=='undefined'){const resize=new ResizeObserver(schedule);document.querySelectorAll('.topbar,.terminal-header,.sidebar-head').forEach(e=>resize.observe(e))}
  document.fonts?.ready.then(schedule);
  schedule();
