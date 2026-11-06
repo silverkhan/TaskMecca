@@ -5721,6 +5721,7 @@ function bindDetailToc() {
   if(!layout||!toc||!sections.length)return;
   const setOpen=open=>{
     const wasOpen=layout.classList.contains('toc-open');
+    if(state.palette==='glass')window.TaskMeccaGlass?.prepareReaderLayout?.();
     layout.classList.toggle('toc-open',Boolean(open));
     toggle?.setAttribute('aria-expanded',open?'true':'false');
     if(state.palette==='glass'&&window.matchMedia('(max-width:1280px)').matches){

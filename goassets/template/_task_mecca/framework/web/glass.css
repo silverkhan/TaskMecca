@@ -402,3 +402,12 @@
 :root[data-palette="glass"] .content{overflow-anchor:none}
 
 :root[data-palette="glass"][data-glass-optics="solid"] .detail-toc{backdrop-filter:none;-webkit-backdrop-filter:none}
+
+/* TOC controls share the reader's visible viewport; only the links scroll. */
+@media(max-width:1280px){
+ :root[data-palette="glass"] .detail-toc{top:var(--glass-toc-top,140px);bottom:auto;right:auto;left:max(var(--glass-toc-left,20px),calc(var(--glass-toc-right,100vw) - 250px));width:min(250px,var(--glass-toc-width,calc(100vw - 40px)));max-height:var(--glass-toc-height,calc(100dvh - 172px));display:flex;flex-direction:column;overflow:hidden}
+ :root[data-palette="glass"] .detail-toc-head{flex:none}
+ :root[data-palette="glass"] .detail-toc-nav{flex:1 1 auto;min-height:0;overflow:auto;overscroll-behavior:contain}
+ :root[data-palette="glass"] .detail-toc-fab{right:auto;bottom:auto;left:max(var(--glass-toc-left,20px),calc(var(--glass-toc-right,100vw) - 44px));top:max(var(--glass-toc-top,88px),calc(var(--glass-toc-bottom,100dvh) - 44px));width:44px;height:44px}
+}
+@media(max-width:680px){:root[data-palette="glass"] .detail-toc{left:var(--glass-toc-left,12px);width:var(--glass-toc-width,calc(100vw - 24px))}}

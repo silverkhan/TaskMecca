@@ -1,3 +1,30 @@
+# A-64 TOC 가용 영역 최소 교정04 (2026-11-07)
+
+독립559a에서 FULL01/03/04 교정은 확인됐고,4c45의320×780에서는 viewport기준
+bottom 배치 때문에 목차 제목/44px 닫기/포커스가 reader 상단 밖으로 잘렸습니다.
+원본4c45/389packet·559a30개 보고·제품 acceptance=failed는 불변 보존합니다.
+Canvas own/stored 일치만으로 실제 조작부 가시성을 증명할 수 없었던 한 건입니다.
+
+Glass reader의 실제 paddingbox와 visual viewport의 교차 영역을 읽어 TOC/FAB의
+위치·가용 높이를 clamp합니다. 첫 열기 전 동기 준비와 기존 geometry/resize 갱신을
+사용하며 새 observer/loop는 추가하지 않습니다. 제목/닫기 header는 고정하고 nav만
+자체 스크롤합니다. 좁은 화면의 숫자를 하드코딩하지 않고 wide sticky 모드는 유지합니다.
+광학 프로필·tint/alpha·사진·12px bend·88path·pixel cap은 바꾸지 않았습니다.
+
+기존23개 suite 안의 native TOC 검사에 실제 title/close/focus rect와 ancestor reader/
+viewport clip 비교,44px·9점 native hit-test·pointer close·keyboard Enter/Escape·
+2px solid focus 가시성을 추가했습니다.320/390/430의 한영·Light/Dark와1280 compact/
+1448 sticky, resize·설정 헤더 확장, ambient/None/reduced fallback 및 강한 nonzero
+읽기 복원을 한 묶음 확인합니다. CI에 source hashes가 있는 toc-clip.json을 보존합니다.
+정확 최종23/189/namedGo2-race/vet와 실제 geometry·rawPNG·idle/cleanup 결과는
+`handoff-evidence/a64-glass-reference-fidelity-20261106/correction04-toc-clip/`에 둡니다.
+
+새 광학/전체 미감/광범위 benchmark는 실행하지 않습니다. 기존4c45의36행 비용과
+대비 cohort는 그 소스의 근거로만 남기고 새 소스로 재표기하지 않습니다. 이번 renderer의
+추가 작업은 기존 layout 준비에서 교차 rect와 변경된 CSS변수만 갱신하는 범위이며,
+같은 scroll/idle 회귀 guard를 유지합니다. 모든 수치 대비는 보고 전용입니다.
+운영18765·사용자 Preview/설정·설치/전환/재시작·push/PR/병합배포는 변경하지 않습니다.
+
 # A-64 전체 독립 검수 교정03 (2026-11-07)
 
 시작 소스1c80과 correction02의1217개 증거·21/189/Go/cost 통과는 보존하지만,

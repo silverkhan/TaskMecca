@@ -123,6 +123,7 @@ jobs:
             glass-browser-evidence/scroll/motion.json
             glass-browser-evidence/neutral/functional.json
             glass-browser-evidence/mobile-targets/targets.json
+            glass-browser-evidence/full-review/toc-clip.json
             glass-browser-evidence/full-review/native-focus-toc.json
             glass-browser-evidence/full-review/terminal-idle.json
             glass-browser-evidence/user-defects/geometry.json
