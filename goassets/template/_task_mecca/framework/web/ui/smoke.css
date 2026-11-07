@@ -1370,3 +1370,8 @@ dd {
   color: var(--muted);
   min-width: 85px;
 }
+/* Keep placeholder contrast under the authored Smoke text palette. */
+input::placeholder {
+  color: var(--muted);
+  opacity: 1;
+}

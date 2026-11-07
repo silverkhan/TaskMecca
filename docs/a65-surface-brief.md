@@ -21,3 +21,5 @@ Native ES modules separate state, data, components and screens. Main home consum
 | Backlog CRUD, Agent execution/approval | Outside approved scope | Excluded |
 
 Review gate: real core, exact HEAD CI, isolated Preview, desktop/mobile Light/Dark evidence and performance comparison. Do not mark all A-65 acceptance criteria complete before user review.
+
+Release notes/version/update prompts, help/manual, terminal, storage, and project Activity queries remain mapped residuals after core design review; existing server APIs and compatibility assets remain preserved.

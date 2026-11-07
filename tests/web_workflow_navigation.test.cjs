@@ -107,6 +107,9 @@ test('representative workflow has compact context and plot-coordinate anchored t
       await zoomActivityRange(page);const precise=await windowRange();assert.ok(precise.end-precise.start<120000);assert.ok((initial.end-initial.start)/(precise.end-precise.start)>8);
       await page.locator('#workflowEvidenceDetails').evaluate(el=>el.open=true);const beforeRefresh=await windowRange();
       await fixture.evaluate(page,()=>window.__workflowDetail=document.querySelector('.detail-identity'));await page.locator('#activityDetailRefresh').click();await fixture.waitFor(page,()=>!activityDetailPending.size);
+      // Source completion precedes the browser disclosure/layout update.
+      // A permanently hidden replacement still fails this visibility gate.
+      await canvas.waitFor({state:'visible'});await settled();
       assert.deepEqual(await windowRange(),beforeRefresh);assert.equal(await fixture.evaluate(page,()=>window.__workflowDetail===document.querySelector('.detail-identity')),true);assert.equal(await page.locator('#workflowEvidenceDetails').evaluate(el=>el.open),true);assert.equal(await page.locator('.workflow-floating.is-pinned').count(),0);
       const beforeResize=await windowRange();await page.setViewportSize(mobile?{width:430,height:900}:{width:1280,height:900});await settled();const resized=await windowRange();assert.equal(resized.start,beforeResize.start);assert.equal(resized.end,beforeResize.end);
       assert.equal(await fixture.evaluate(page,()=>JSON.stringify(activityDetailCache.get(activityDetailKey('FLOW-1',state.project)).workflow)),sourceBefore,'original timestamps, gaps, overlap and elapsed calculations stay unchanged');

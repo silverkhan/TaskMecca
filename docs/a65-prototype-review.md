@@ -27,6 +27,6 @@ Final screenshots, exact source/binary provenance, native test reports, paired p
 
 ## Remaining areas and resume conditions
 
-Full operations/workload/runtime views, project/service/channel management, notification delivery/configuration and extended settings remain for the next stage. Their shell paths describe the review boundary; they are not claimed complete. Backlog CRUD and Agent execution/approval are excluded from the approved redesign scope.
+Full operations/workload/runtime views, project/service/channel management, notification delivery/configuration, release notes/version/update prompts, help/manual, terminal, storage, project Activity queries and extended settings remain for the next stage. Their shell paths describe the review boundary; they are not claimed complete. Backlog CRUD and Agent execution/approval are excluded from the approved redesign scope.
 
 Resume expansion only after the user reviews the core PC/mobile Light/Dark design and provides direction. Resolve any open finish-review or performance gate findings before claiming readiness. No Dev/Main/Stable merge, production deployment, service installation/restart, migration or user Preview switch is authorized by this prototype.
