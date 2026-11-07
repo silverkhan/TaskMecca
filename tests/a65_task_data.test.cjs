@@ -161,3 +161,15 @@ test("captured actual Go compact-list response stays nonempty and exposes canoni
   assert.ok(result.tag_options.some((t) => t.tag === "area:frontend"));
   assert.ok(result.tag_options.some((t) => t.tag === "type:user-wait"));
 });
+test("actual legacy task with empty defined requirement fields still shows its source", () => {
+  const packet = require("./fixtures/a65/task-actual-content.json"),
+    native = require("./helpers/native_ui_vm.cjs").session({
+      location: { origin: "http://synthetic.local" },
+    });
+  const state = native.load("state.js").state;
+  state.detailTab = "requirements";
+  const rendered = native.load("screens/detail.js").detail(packet.response);
+  assert.ok(packet.response.raw_markdown.length > 0);
+  assert.match(rendered, /격리된 공개 합성 데이터/);
+  assert.match(rendered, /document-section/);
+});

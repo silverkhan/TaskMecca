@@ -33,7 +33,9 @@ export function detail(task) {
         ? activityDetailSection(task)
         : tab === "requirements"
           ? `${
-              Object.keys(r).length
+              Object.values(r).some(
+                (value) => typeof value === "string" && value.trim(),
+              )
                 ? Object.entries(r)
                     .filter(([key]) => key !== "acceptance_items")
                     .map(([k, v]) =>
