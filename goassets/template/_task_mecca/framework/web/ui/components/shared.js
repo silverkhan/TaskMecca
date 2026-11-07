@@ -47,12 +47,20 @@ export function shell() {
 export function heading(title, description, extra = "") {
   return `<div class="page-heading"><div><h1>${esc(title)}</h1>${description ? `<p>${esc(description)}</p>` : ""}</div>${extra}</div>`;
 }
+function updatedFact(task) {
+  const value = task.updated_at || task.mtime;
+  return typeof value === "string" && Number.isFinite(Date.parse(value))
+    ? `<time class="task-updated" datetime="${esc(new Date(value).toISOString())}" title="${esc(value)}">${text("수정", "Updated")} ${esc(date(value))}</time>`
+    : `<span class="task-updated">${text("수정 시각 미확인", "Updated: Unknown")}</span>`;
+}
 export function taskRows(items = []) {
   return items
-    .map(
-      (task) =>
-        `<li class="task-row" data-id="${esc(task.id)}">${link(`<span class="task-id">${esc(task.id)}</span><div class="task-main"><strong>${esc(task.title)}</strong><span>${esc(task.project_name || task.project || task.agent || text("담당 미확인", "Assignee unknown"))}</span>${task.reason ? `<p class="reason">${esc(typeof task.reason === "string" ? task.reason : task.reason.message || task.reason.label || task.reason.kind || text("판단 필요", "Needs attention"))}</p>` : ""}</div><span class="status ${esc(task.state)}">${esc(status(task.state))}${task.state_provisional ? " · " + text("잠정", "Provisional") : ""}</span>${icon("arrow")}`, { view: "backlog", detail: task.id, project: task.project || state.project, backlog: task.backlog || state.backlog, detailTab: "overview" }, "task-link")}</li>`,
-    )
+    .map((task) => {
+      const owner = task.agent || text("담당 미확인", "Assignee unknown"),
+        project = task.project_name || task.project;
+      const metadata = `<div class="task-meta">${project ? `<span class="task-project">${esc(project)}</span>` : ""}<span class="task-owner">${esc(owner)}</span>${updatedFact(task)}</div>`;
+      return `<li class="task-row" data-id="${esc(task.id)}">${link(`<span class="task-id">${esc(task.id)}</span><div class="task-main"><strong>${esc(task.title)}</strong>${metadata}${task.reason ? `<p class="reason">${esc(typeof task.reason === "string" ? task.reason : task.reason.message || task.reason.label || task.reason.kind || text("판단 필요", "Needs attention"))}</p>` : ""}</div><span class="status ${esc(task.state)}">${esc(status(task.state))}${task.state_provisional ? " · " + text("잠정", "Provisional") : ""}</span>${icon("arrow")}`, { view: "backlog", detail: task.id, project: task.project || state.project, backlog: task.backlog || state.backlog, detailTab: "overview" }, "task-link")}</li>`;
+    })
     .join("");
 }
 export function pageControls(section, key) {

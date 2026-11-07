@@ -1375,3 +1375,320 @@ input::placeholder {
   color: var(--muted);
   opacity: 1;
 }
+/* Finish review M1–M4: context in the first viewport, compact tools, time facts. */
+.task-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 12px;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+.task-owner,
+.task-project {
+  overflow-wrap: anywhere;
+}
+.task-updated {
+  white-space: nowrap;
+  font-size: 11px;
+  color: var(--muted);
+}
+.project-identity {
+  min-width: 0;
+}
+.project-state {
+  font-size: 10px;
+  color: var(--muted);
+}
+.project-path {
+  font-size: 10px;
+}
+.project-counts {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  align-items: flex-end;
+}
+.project-counts span {
+  white-space: nowrap;
+}
+.filters {
+  align-items: center;
+  padding: 10px 13px;
+  margin-bottom: 8px;
+}
+.filters .search-label {
+  border-bottom: 0;
+}
+.filter-more {
+  margin: 0 0 12px;
+}
+.filter-more > summary {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 3px 14px;
+  min-height: 44px;
+  cursor: pointer;
+}
+.filter-more > summary > span:first-child {
+  color: var(--text);
+  font-weight: 600;
+}
+.filter-more > summary > span:first-child {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+.filter-more > summary svg {
+  width: 13px;
+  height: 13px;
+  transform: rotate(0);
+}
+.filter-more[open] > summary svg {
+  transform: rotate(90deg);
+}
+.filter-more #filterSummary {
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+.filter-settings {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 10px 0;
+}
+.filter-settings label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--muted);
+  flex: 1;
+  min-width: 130px;
+}
+.filter-more #tags {
+  padding-top: 0;
+}
+.filter-more .project-location {
+  font-size: 10px;
+  overflow-wrap: anywhere;
+  margin: 12px 0 0;
+}
+.list-summary {
+  margin: 12px 0;
+}
+.backlog-heading .page-heading {
+  margin-bottom: 18px;
+}
+#listRequestStatus:empty {
+  display: none;
+}
+#listRequestStatus:not(:empty) {
+  margin: 8px 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+@media (min-width: 1100px) {
+  .overview-flow:not(.overview-only) .project-link {
+    display: grid;
+    grid-template-columns: 30px minmax(0, 1fr) auto 14px;
+    padding: 12px 14px;
+    gap: 12px;
+    align-items: center;
+  }
+  .overview-flow:not(.overview-only) .project-counts {
+    margin-left: 0;
+    gap: 2px;
+    font-size: 10px;
+  }
+  .overview-flow:not(.overview-only) .project-link > svg {
+    margin: 0;
+  }
+  .overview-flow:not(.overview-only) .project-link p {
+    margin: 2px 0 0;
+  }
+  .overview-flow:not(.overview-only) .project-link strong {
+    font-size: 13px;
+  }
+  .overview-flow:not(.overview-only) > .attention .status {
+    max-width: 132px;
+    white-space: normal;
+    line-height: 1.45;
+    text-align: center;
+  }
+}
+@media (max-width: 760px) {
+  .task-link .task-main {
+    grid-column: 1/-1;
+    grid-row: 2;
+  }
+  .task-link > svg {
+    display: none;
+  }
+  .task-meta {
+    font-size: 11px;
+    gap: 2px 10px;
+  }
+  .task-updated {
+    font-size: 11px;
+  }
+  .task-link .status {
+    max-width: 180px;
+    white-space: normal;
+    line-height: 1.4;
+    text-align: right;
+  }
+  .task-link .task-id {
+    align-self: center;
+  }
+  .task-link .task-main strong {
+    font-size: 13px;
+  }
+  .task-link .reason {
+    font-size: 11px;
+  }
+  .project-link {
+    grid-template-columns: 30px minmax(0, 1fr) auto;
+    gap: 10px;
+  }
+  .project-counts {
+    grid-column: 3;
+    grid-row: 1;
+    gap: 2px;
+  }
+  .project-link > svg {
+    display: none;
+  }
+  .project-state {
+    font-size: 10px;
+  }
+  .filters {
+    display: flex;
+    padding: 4px 10px;
+    gap: 8px;
+    min-height: 48px;
+  }
+  .filters .search-label {
+    flex: 1;
+    flex-basis: auto;
+  }
+  .filters .primary-apply {
+    display: none;
+  }
+  .filter-more > summary {
+    min-height: 44px;
+    padding: 5px 0;
+  }
+  .filter-more > summary > span:first-child {
+    font-size: 11px;
+  }
+  .filter-more #filterSummary {
+    font-size: 10px;
+  }
+  .filter-settings {
+    gap: 10px;
+  }
+  .filter-settings label {
+    min-width: 110px;
+  }
+  .filter-more #tags label {
+    flex: 1;
+    min-width: 140px;
+  }
+  .filter-more #tags button {
+    font-size: 11px;
+  }
+  .list-summary {
+    margin: 10px 0;
+  }
+  .list-summary > span:last-child {
+    max-width: 52%;
+  }
+  .backlog-heading .page-heading {
+    margin-bottom: 16px;
+  }
+  .back-link {
+    margin-bottom: 16px;
+  }
+}
+.project-link strong {
+  display: block;
+  line-height: 1.4;
+}
+.project-link .project-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 10px;
+  margin: 3px 0 0;
+  font-size: 10px;
+  line-height: 1.4;
+}
+.project-meta .project-path {
+  font-size: 10px;
+  line-height: 1.4;
+}
+.project-meta .project-state {
+  font-size: 10px;
+  line-height: 1.4;
+}
+.attention-more {
+  margin-top: 6px;
+}
+.attention-more > summary {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 36px;
+  font-size: 11px;
+  color: var(--muted);
+  cursor: pointer;
+}
+.attention-more > summary svg {
+  width: 13px;
+  height: 13px;
+}
+.attention-more[open] > summary svg {
+  transform: rotate(90deg);
+}
+.attention-more > .task-list {
+  margin: 6px 0 10px;
+}
+@media (min-width: 1100px) {
+  .topbar {
+    margin-bottom: 24px;
+  }
+  .page-heading {
+    margin-bottom: 24px;
+  }
+  .notice {
+    margin-bottom: 24px;
+  }
+  .overview-flow:not(.overview-only) {
+    gap: 24px 28px;
+  }
+  .overview-flow:not(.overview-only) .project-link {
+    padding-top: 10px;
+    padding-bottom: 10px;
+  }
+}
+@media (max-width: 760px) {
+  .attention-more > summary {
+    min-height: 44px;
+  }
+}
+.project-link .project-meta {
+  flex-wrap: nowrap;
+}
+.project-meta .project-path {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.project-meta .project-state {
+  flex: none;
+  white-space: nowrap;
+}

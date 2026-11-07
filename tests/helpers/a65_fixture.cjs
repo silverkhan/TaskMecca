@@ -122,7 +122,7 @@ async function start(root) {
             name === "projects"
               ? projects
               : name === "attention"
-                ? rows.slice(0, 2).map((r, i) => ({
+                ? rows.slice(0, 9).map((r, i) => ({
                     ...r,
                     reason: {
                       message: i
@@ -178,7 +178,7 @@ async function start(root) {
           },
           counts: {
             projects: 3,
-            attention: loading ? null : 2,
+            attention: loading ? null : 9,
             working: loading ? null : 8,
           },
           sections,

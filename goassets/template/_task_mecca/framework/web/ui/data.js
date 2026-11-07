@@ -38,14 +38,26 @@ export const fetchActivity = (id, project, runtimeDiagnostic = false) =>
         ...(runtimeDiagnostic ? { runtime_diagnostic: "1" } : {}),
       }),
   );
+const queryPending = new Map();
+function sharedRead(path, signal) {
+  const previous = queryPending.get(path);
+  if (previous && previous.signal === signal && !signal?.aborted)
+    return previous.promise;
+  const record = { signal, promise: null };
+  record.promise = get(path, signal).finally(() => {
+    if (queryPending.get(path) === record) queryPending.delete(path);
+  });
+  queryPending.set(path, record);
+  return record.promise;
+}
 export function fetchOverview(signal) {
-  const p = new URLSearchParams({ page_size: "8" });
+  const p = new URLSearchParams({ page_size: "4" });
   for (const k of ["attention", "working", "projects", "activity"]) {
     p.set(k + "_page", state.overviewPages[k] || 1);
     if (state.overviewCursors[k])
       p.set(k + "_cursor", state.overviewCursors[k]);
   }
-  return get("/api/overview?" + p, signal);
+  return sharedRead("/api/overview?" + p, signal);
 }
 export async function fetchBacklog(signal) {
   const p = new URLSearchParams({
@@ -58,7 +70,7 @@ export async function fetchBacklog(signal) {
   if (state.query) p.set("q", state.query);
   if (state.status !== "all") p.set("status", state.status);
   if (state.tags.length) p.set("tags", state.tags.join(","));
-  const data = await get("/api/backlog/tasks?" + p, signal);
+  const data = await sharedRead("/api/backlog/tasks?" + p, signal);
   return {
     ...data,
     selection: data.backlog_selection || data.selection,

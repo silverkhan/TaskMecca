@@ -173,3 +173,70 @@ test("actual legacy task with empty defined requirement fields still shows its s
   assert.match(rendered, /격리된 공개 합성 데이터/);
   assert.match(rendered, /document-section/);
 });
+test("overview and backlog duplicate reads share only the same route signal", async () => {
+  for (const read of [data.fetchOverview, data.fetchBacklog]) {
+    let calls = 0,
+      finish;
+    global.fetch = () => {
+      calls++;
+      return new Promise((resolve) => (finish = resolve));
+    };
+    const c = new AbortController(),
+      first = read(c.signal),
+      second = read(c.signal);
+    assert.equal(calls, 1);
+    finish(reply({ items: [], sections: {}, tag_catalog: { stats: [] } }));
+    await Promise.all([first, second]);
+  }
+});
+test("a new route signal does not join an old route request", async () => {
+  const replies = [];
+  global.fetch = () => new Promise((resolve) => replies.push(resolve));
+  const old = data.fetchOverview(new AbortController().signal),
+    next = data.fetchOverview(new AbortController().signal);
+  assert.equal(replies.length, 2);
+  replies[1](reply({ revision: "new" }));
+  assert.equal((await next).revision, "new");
+  replies[0](reply({ revision: "old" }));
+  assert.equal((await old).revision, "old");
+});
+test("task row shows labeled update facts and explicit unknown without inventing duration", () => {
+  const native = require("./helpers/native_ui_vm.cjs").session({
+    location: { origin: "http://synthetic.local" },
+  });
+  native.load("state.js").state.language = "en";
+  const { taskRows } = native.load("components/shared.js");
+  for (const field of ["updated_at", "mtime"]) {
+    const html = taskRows([
+      { id: "SYN-1", title: "Synthetic", [field]: "2026-11-08T01:02:03Z" },
+    ]);
+    assert.match(html, /Updated/);
+    assert.match(html, /datetime="2026-11-08T01:02:03.000Z"/);
+  }
+  const unknown = taskRows([{ id: "SYN-2", title: "Synthetic unknown" }]);
+  assert.match(unknown, /Updated: Unknown/);
+  assert.doesNotMatch(unknown, /0s/);
+});
+test("collapsed tools preserve incoming multi-status and tag context while keeping search primary", () => {
+  const native = require("./helpers/native_ui_vm.cjs").session({
+      location: { origin: "http://synthetic.local" },
+    }),
+    state = native.load("state.js").state;
+  Object.assign(state, {
+    view: "backlog",
+    project: "/synthetic",
+    status: "doing,hold",
+    tags: ["area:frontend"],
+    language: "en",
+    toolsOpen: false,
+  });
+  const html = native
+    .load("screens/backlog.js")
+    .backlog({ items: [], tag_options: [], page: 1, pages: 1, total: 0 });
+  assert.match(html, /<option value="doing,hold" selected>/);
+  assert.match(html, /Working, On hold/);
+  assert.match(html, /Tags area:frontend/);
+  assert.doesNotMatch(html, /<details class="tag-filter filter-more" open/);
+  assert.match(html, /<input name="q" type="search"/);
+  assert.match(html, /<select name="status" form="filters"/);
+});

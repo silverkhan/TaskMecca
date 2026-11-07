@@ -43,6 +43,8 @@ export const state = {
   overviewCursors: {},
   detailTab: "overview",
   selected: null,
+  toolsOpen: false,
+  attentionExpanded: false,
 };
 export function readRoute() {
   const u = new URL(location.href),
@@ -58,6 +60,8 @@ export function readRoute() {
     ? Number(p.get("page_size"))
     : 20;
   state.query = p.get("q") || "";
+  state.toolsOpen =
+    typeof history !== "undefined" ? Boolean(history.state?.toolsOpen) : false;
   state.status = p.get("status") || "all";
   state.tags = (p.get("tags") || "").split(",").filter(Boolean);
   state.sort = p.get("sort") || "id_desc";

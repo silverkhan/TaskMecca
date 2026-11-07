@@ -39,7 +39,7 @@ test(
       await page.goto(server.origin);
       await page.locator(".notice").first().waitFor();
       await page.waitForFunction(
-        () => document.querySelectorAll("#attention .task-row").length === 2,
+        () => document.querySelectorAll("#attention .task-row").length === 4,
       );
       assert.equal(
         server.state.requests.filter((u) => u.startsWith("/api/overview?"))
@@ -51,6 +51,33 @@ test(
           /^\/api\/(snapshot|workload|hub)/.test(u),
         ).length,
         0,
+      );
+      const attentionIDs = new Set();
+      for (let attentionPage = 1; attentionPage <= 3; attentionPage++) {
+        const more = page.locator("#attentionMore");
+        if (await more.count()) {
+          assert.equal(await more.evaluate((el) => el.open), false);
+          await more.locator("summary").click();
+        }
+        for (const id of await page
+          .locator("#attention .task-row:visible .task-id")
+          .allTextContents())
+          attentionIDs.add(id);
+        if (attentionPage < 3) {
+          await page.locator('[data-page="attention:next"]').click();
+          await page.waitForFunction(
+            (expected) =>
+              document
+                .querySelector("#attention .pagination")
+                ?.textContent.includes(" " + expected + " "),
+            attentionPage + 1,
+          );
+        }
+      }
+      assert.equal(
+        attentionIDs.size,
+        9,
+        "preview disclosure and opaque pagination retain access to every known attention item",
       );
       assert.match(
         await page.locator("#projects").textContent(),
@@ -122,11 +149,36 @@ test(
       await page.locator("#projects .project-link").first().click();
       await page.locator("#filters").waitFor();
       const q = page.locator("input[name=q]");
+      await page.evaluate(() => {
+        window.__smokeNodes = {
+          rail: document.querySelector(".rail"),
+          topbar: document.querySelector(".topbar"),
+          search: document.querySelector("[name=q]"),
+          form: document.querySelector("#filters"),
+          main: document.querySelector("main"),
+        };
+      });
       await q.fill("FLOW-12");
       await page.waitForTimeout(450);
       await page.waitForFunction(() => location.search.includes("q=FLOW-12"));
       await page.waitForFunction(() => document.activeElement?.name === "q");
       assert.equal(await q.evaluate((e) => e === document.activeElement), true);
+      await page.waitForFunction(
+        () =>
+          document.querySelector("main").getAttribute("aria-busy") === "false",
+      );
+      assert.equal(
+        await page.evaluate(
+          () =>
+            window.__smokeNodes.rail === document.querySelector(".rail") &&
+            window.__smokeNodes.topbar === document.querySelector(".topbar") &&
+            window.__smokeNodes.search === document.querySelector("[name=q]") &&
+            window.__smokeNodes.form === document.querySelector("#filters") &&
+            window.__smokeNodes.main === document.querySelector("main"),
+        ),
+        true,
+        "search patches results without replacing shell or focused input",
+      );
       await q.fill("");
       await page.locator("#filters").evaluate((f) => f.requestSubmit());
       await page.waitForFunction(
@@ -138,6 +190,11 @@ test(
       );
       await page.locator(".task-row").first().waitFor();
       await page.evaluate(() => scrollTo(0, 500));
+      await page.waitForFunction(
+        () =>
+          document.querySelector("main").getAttribute("aria-busy") === "false",
+      );
+      await page.locator(".task-row").nth(8).scrollIntoViewIfNeeded();
       const listURL = page.url(),
         readingY = await page.evaluate(() => scrollY),
         id = await page.locator(".task-id").nth(8).textContent();
@@ -146,7 +203,7 @@ test(
       await page.locator("#backBtn").click();
       await page.waitForURL(listURL);
       await page.locator("#filters").waitFor();
-      await page.waitForTimeout(50);
+      await page.waitForFunction((y) => Math.abs(scrollY - y) < 2, readingY);
       assert.equal(new URL(page.url()).searchParams.get("page"), "2");
       assert.ok(
         Math.abs((await page.evaluate(() => scrollY)) - readingY) < 2,
@@ -158,18 +215,29 @@ test(
       cases.push(
         "debounced search retains focus; URL page state and list reading survive dedicated detail/back",
       );
+      if (!(await page.locator(".filter-more").evaluate((el) => el.open)))
+        await page.locator(".filter-more summary").click();
       await page.locator("select[name=status]").selectOption("doing");
       await page.waitForFunction(
         () => new URL(location.href).searchParams.get("status") === "doing",
       );
+      await page.waitForFunction(
+        () =>
+          document.querySelector("main").getAttribute("aria-busy") === "false",
+      );
       await page.locator(".task-row").first().waitFor();
       assert.equal(await page.locator(".task-row").count(), 6);
-      await page.locator(".tag-filter summary").click();
+      if (!(await page.locator(".filter-more").evaluate((el) => el.open)))
+        await page.locator(".filter-more summary").click();
       await page.locator("input[name=tags]").fill("frontend,core");
       await page.locator("#tags").evaluate((f) => f.requestSubmit());
       await page.waitForFunction(
         () =>
           new URL(location.href).searchParams.get("tags") === "frontend,core",
+      );
+      await page.waitForFunction(
+        () =>
+          document.querySelector("main").getAttribute("aria-busy") === "false",
       );
       await page.locator(".task-row").first().waitFor();
       assert.equal(await page.locator(".task-row").count(), 3);
@@ -230,7 +298,7 @@ test(
       for (const width of [1440, 1280, 320, 390, 430])
         for (const theme of ["light", "dark"]) {
           const c = await browser.newContext({
-            viewport: { width, height: 1000 },
+            viewport: { width, height: width === 1280 ? 900 : 1000 },
             hasTouch: width < 760,
           });
           await c.addInitScript(
@@ -262,6 +330,46 @@ test(
               await p.locator("html").getAttribute("data-theme"),
               theme,
             );
+            if (url === "/") {
+              await p.locator("#projects .project-link").first().waitFor();
+              if (width >= 1100)
+                assert.equal(
+                  await p
+                    .locator("#projects .project-link")
+                    .evaluateAll((rows) =>
+                      rows.every(
+                        (row) =>
+                          row.getBoundingClientRect().bottom <= innerHeight,
+                      ),
+                    ),
+                  true,
+                  "all three project identities/counts stay in the first desktop viewport",
+                );
+              if (width < 760)
+                assert.ok(
+                  (await p
+                    .locator("#attention .task-main")
+                    .first()
+                    .evaluate((el) => el.getBoundingClientRect().width)) >= 200,
+                  "mobile evidence uses the available row width",
+                );
+            }
+            if (url.includes("view=backlog")) {
+              await p.locator(".task-row").first().waitFor();
+              assert.equal(
+                await p.locator(".filter-more").evaluate((el) => el.open),
+                false,
+              );
+              assert.ok(await p.locator(".task-updated").first().isVisible());
+              if (width < 760)
+                assert.ok(
+                  (await p
+                    .locator(".task-row")
+                    .first()
+                    .evaluate((el) => el.getBoundingClientRect().top)) < 450,
+                  "compact tools leave the first mobile task in view",
+                );
+            }
           }
           await p.keyboard.press("Tab");
           assert.notEqual(

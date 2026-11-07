@@ -19,7 +19,7 @@ import {
 } from "./data.js";
 import { shell, heading, failure, empty, link } from "./components/shared.js";
 import { home } from "./screens/home.js";
-import { backlog } from "./screens/backlog.js";
+import { backlog, backlogResults, filterSummary } from "./screens/backlog.js";
 import { detail } from "./screens/detail.js";
 import {
   bindActivityDetailControls,
@@ -73,6 +73,7 @@ function saveReading() {
     {
       ...history.state,
       readingY: scrollY,
+      toolsOpen: document.querySelector(".filter-more")?.open || false,
       focusID:
         document.activeElement?.closest(".task-row")?.querySelector(".task-id")
           ?.textContent || null,
@@ -105,30 +106,89 @@ function navigate(
     inputFocus: preserve ? focus : null,
   });
 }
+let shellLanguage = null,
+  renderedBacklogKey = null;
+const backlogKey = () =>
+  [state.project, state.backlog, state.language].join("|");
+function updateShellNavigation() {
+  const active = state.view === "backlog" ? "projects" : state.view;
+  document.querySelectorAll(".rail-link").forEach((a) => {
+    const view = new URL(a.href).searchParams.get("view") || "home",
+      current = view === active;
+    a.classList.toggle("active", current);
+    if (current) a.setAttribute("aria-current", "page");
+    else a.removeAttribute("aria-current");
+  });
+}
 function renderShell() {
   disposeWorkflow();
-  document.getElementById("app").innerHTML = shell();
-  document.getElementById("refresh").onclick = () => {
-    if (state.detail)
-      invalidateContent({
-        id: state.detail,
-        project: state.project,
-        backlog: state.backlog,
-      });
-    taskData = null;
-    render({ preserve: true });
-  };
-  document.getElementById("language").onclick = () => {
-    state.language = state.language === "ko" ? "en" : "ko";
-    persist("task-mecca-language", state.language);
-    render({ preserve: true });
-  };
-  document.getElementById("appearance").onchange = (e) => {
-    state.mode = e.target.value;
-    persist("task-mecca-smoke-mode", state.mode);
-    appearance();
-  };
+  if (!main() || shellLanguage !== state.language) {
+    document.getElementById("app").innerHTML = shell();
+    shellLanguage = state.language;
+    document.getElementById("refresh").onclick = () => {
+      if (state.detail)
+        invalidateContent({
+          id: state.detail,
+          project: state.project,
+          backlog: state.backlog,
+        });
+      taskData = null;
+      render({ preserve: true });
+    };
+    document.getElementById("language").onclick = () => {
+      state.language = state.language === "ko" ? "en" : "ko";
+      persist("task-mecca-language", state.language);
+      render({ preserve: true });
+    };
+    document.getElementById("appearance").onchange = (e) => {
+      state.mode = e.target.value;
+      persist("task-mecca-smoke-mode", state.mode);
+      appearance();
+    };
+  }
+  document.getElementById("appearance").value = state.mode;
+  updateShellNavigation();
   appearance();
+}
+function syncBacklogControls() {
+  const f = document.getElementById("filters");
+  if (!f) return;
+  for (const [name, value] of Object.entries({
+    q: state.query,
+    status: state.status,
+    sort: state.sort,
+    page_size: String(state.pageSize),
+  })) {
+    const control = f.elements.namedItem(name);
+    if (control && control.value !== value) control.value = value;
+  }
+  const tags = document.querySelector("#tags [name=tags]");
+  if (tags && document.activeElement !== tags)
+    tags.value = state.tags.join(",");
+  const more = document.querySelector(".filter-more");
+  if (more) more.open = state.toolsOpen;
+  const summary = document.getElementById("filterSummary");
+  if (summary) summary.textContent = filterSummary();
+}
+function patchBacklogResults(data) {
+  const before = JSON.stringify(backlogData?.tag_options);
+  backlogData = data;
+  document.getElementById("backlogResults").innerHTML = backlogResults(data);
+  if (before !== JSON.stringify(data.tag_options)) {
+    const catalog = document.getElementById("tag-options");
+    if (catalog)
+      catalog.innerHTML = (data.tag_options || [])
+        .map(
+          (tag) =>
+            '<option value="' +
+            esc(tag.tag) +
+            '">' +
+            esc(tag.description || "") +
+            "</option>",
+        )
+        .join("");
+  }
+  syncBacklogControls();
 }
 function ready({
   preserve = false,
@@ -166,7 +226,19 @@ function ready({
   announce(text("화면을 불러왔습니다", "Screen loaded"));
 }
 async function render(options = {}) {
+  if (
+    !Object.hasOwn(options, "preserve") &&
+    state.detail &&
+    state.detailContext ===
+      [state.project, state.backlog, state.detail].join("|")
+  )
+    options.preserve = true;
   if (options.preserve && options.readingY == null) options.readingY = scrollY;
+  const quickBacklog =
+    state.view === "backlog" &&
+    !state.detail &&
+    document.getElementById("backlogResults") &&
+    renderedBacklogKey === backlogKey();
   clearTimeout(pollTimer);
   clearTimeout(searchTimer);
   controller?.abort();
@@ -174,10 +246,20 @@ async function render(options = {}) {
   const signal = controller.signal,
     current = ++epoch;
   polls = 0;
-  renderShell();
+  if (quickBacklog) {
+    syncBacklogControls();
+    document.getElementById("listRequestStatus").textContent = text(
+      "목록을 확인하고 있습니다…",
+      "Updating results…",
+    );
+    main().setAttribute("aria-busy", "true");
+  } else {
+    renderShell();
+    main().setAttribute("aria-busy", "false");
+    main().innerHTML = `<div class="loading" role="status">${text("정보를 불러오는 중…", "Loading information…")}</div>`;
+  }
   syncWorkflowTimelineEntry();
   stopLifecycleChecks();
-  main().innerHTML = `<div class="loading" role="status">${text("정보를 불러오는 중…", "Loading information…")}</div>`;
   try {
     if (state.detail) {
       const context = [state.project, state.backlog, state.detail].join("|");
@@ -240,9 +322,9 @@ async function render(options = {}) {
         ready(options);
         return;
       }
-      backlogData = await fetchBacklog(signal);
+      const next = await fetchBacklog(signal);
       if (current !== epoch) return;
-      const actualPage = Number(backlogData.page);
+      const actualPage = Number(next.page);
       if (
         Number.isInteger(actualPage) &&
         actualPage > 0 &&
@@ -251,11 +333,18 @@ async function render(options = {}) {
         state.page = actualPage;
         history.replaceState(history.state, "", routeURL());
       }
-      if (backlogData.selection?.selected && !state.backlog) {
-        state.backlog = backlogData.selection.selected;
+      if (next.selection?.selected && !state.backlog) {
+        state.backlog = next.selection.selected;
         history.replaceState(history.state, "", routeURL());
       }
-      main().innerHTML = backlog(backlogData);
+      if (quickBacklog) patchBacklogResults(next);
+      else {
+        backlogData = next;
+        main().innerHTML = backlog(next);
+      }
+      renderedBacklogKey = backlogKey();
+      main().setAttribute("aria-busy", "false");
+      document.getElementById("listRequestStatus").textContent = "";
       ready(options);
       return;
     }
@@ -286,7 +375,22 @@ async function render(options = {}) {
     ready(options);
   } catch (e) {
     if (e.name === "AbortError" || current !== epoch) return;
-    main().innerHTML = failure(e);
+    main().setAttribute("aria-busy", "false");
+    if (quickBacklog && document.getElementById("listRequestStatus"))
+      document.getElementById("listRequestStatus").innerHTML =
+        '<div class="notice" role="alert"><span>' +
+        esc(
+          text(
+            "갱신하지 못해 이전 결과를 유지합니다.",
+            "Refresh failed. Previous results are retained.",
+          ),
+        ) +
+        " " +
+        esc(e.message) +
+        '</span><button id="retry">' +
+        esc(text("다시 시도", "Retry")) +
+        "</button></div>";
+    else main().innerHTML = failure(e);
     bindScreen();
     announce(
       text(
@@ -356,6 +460,12 @@ function schedulePoll(current) {
   );
 }
 function bindScreen() {
+  const attentionMore = document.getElementById("attentionMore");
+  if (attentionMore)
+    attentionMore.ontoggle = () => {
+      if (attentionMore.isConnected)
+        state.attentionExpanded = attentionMore.open;
+    };
   document.querySelectorAll(".task-row a[data-route]").forEach((a) => {
     const prefetch = () => {
       const u = new URL(a.href),
@@ -381,6 +491,7 @@ function bindScreen() {
           );
           return;
         }
+        if (key === "attention") state.attentionExpanded = false;
         const section = overviewData.sections[key];
         if (delta > 0) {
           cursorHistory[key].push(state.overviewCursors[key] || "");
@@ -418,8 +529,15 @@ function bindScreen() {
       clearTimeout(searchTimer);
       searchTimer = setTimeout(apply, 400);
     };
-    f.querySelectorAll("select").forEach((select) => (select.onchange = apply));
+    document
+      .querySelectorAll('select[form="filters"]')
+      .forEach((select) => (select.onchange = apply));
   }
+  const more = document.querySelector(".filter-more");
+  if (more)
+    more.ontoggle = () => {
+      if (more.isConnected) state.toolsOpen = more.open;
+    };
   const tags = document.getElementById("tags");
   if (tags)
     tags.onsubmit = (e) => {
@@ -561,11 +679,11 @@ async function liveChange() {
         !state.tags.length &&
         state.status === "all" &&
         !getSelection()?.toString() &&
-        !document.activeElement?.matches("input,select");
+        !document.activeElement?.matches("input,select") &&
+        !document.activeElement?.closest(".task-row");
       if (safe) {
         const y = scrollY;
-        backlogData = next;
-        main().innerHTML = backlog(next);
+        patchBacklogResults(next);
         ready({ preserve: true, readingY: y });
       } else if (!document.getElementById("listUpdateNotice")) {
         const notice = document.createElement("div");
