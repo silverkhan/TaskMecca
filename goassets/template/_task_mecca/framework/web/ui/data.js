@@ -47,19 +47,23 @@ export function fetchOverview(signal) {
   }
   return get("/api/overview?" + p, signal);
 }
-export function fetchBacklog(signal) {
+export async function fetchBacklog(signal) {
   const p = new URLSearchParams({
     project: state.project,
     page: state.page,
     page_size: state.pageSize,
     sort: state.sort,
-    projection: "summary",
   });
   if (state.backlog) p.set("backlog", state.backlog);
   if (state.query) p.set("q", state.query);
   if (state.status !== "all") p.set("status", state.status);
   if (state.tags.length) p.set("tags", state.tags.join(","));
-  return get("/api/backlog/tasks?" + p, signal);
+  const data = await get("/api/backlog/tasks?" + p, signal);
+  return {
+    ...data,
+    selection: data.backlog_selection || data.selection,
+    tag_options: tagOptions(data.tag_catalog),
+  };
 }
 export function fetchTask(signal, projection = "content") {
   return get(
@@ -132,4 +136,26 @@ export function prefetchContent(context) {
       prefetchInFlight = null;
     });
   return prefetchInFlight;
+}
+
+export function tagOptions(catalog) {
+  const rows = Array.isArray(catalog)
+    ? catalog
+    : [
+        ...(Array.isArray(catalog?.stats) ? catalog.stats : []),
+        ...(Array.isArray(catalog?.registry) ? catalog.registry : []),
+      ];
+  const seen = new Set();
+  return rows.flatMap((row) => {
+    const value =
+      typeof row === "string" ? row : row.tag || row.canonical || row.name;
+    if (!value || seen.has(value)) return [];
+    seen.add(value);
+    return [
+      {
+        tag: value,
+        description: typeof row === "string" ? "" : row.description || "",
+      },
+    ];
+  });
 }

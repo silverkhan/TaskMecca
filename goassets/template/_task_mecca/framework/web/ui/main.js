@@ -242,6 +242,15 @@ async function render(options = {}) {
       }
       backlogData = await fetchBacklog(signal);
       if (current !== epoch) return;
+      const actualPage = Number(backlogData.page);
+      if (
+        Number.isInteger(actualPage) &&
+        actualPage > 0 &&
+        actualPage !== state.page
+      ) {
+        state.page = actualPage;
+        history.replaceState(history.state, "", routeURL());
+      }
       if (backlogData.selection?.selected && !state.backlog) {
         state.backlog = backlogData.selection.selected;
         history.replaceState(history.state, "", routeURL());

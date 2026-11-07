@@ -149,7 +149,7 @@ test(
       await page.waitForTimeout(50);
       assert.equal(new URL(page.url()).searchParams.get("page"), "2");
       assert.ok(
-        Math.abs((await page.evaluate(() => scrollY)) - readingY) < 600,
+        Math.abs((await page.evaluate(() => scrollY)) - readingY) < 2,
         "back restores reading rather than resetting to top",
       );
       assert.ok(

@@ -26,7 +26,7 @@ export const state = {
 export function readRoute() {
   const u = new URL(location.href),
     p = u.searchParams;
-  state.view = p.get("view") || "home";
+  state.view = p.get("view") || (p.get("project") ? "backlog" : "home");
   const task = u.pathname.match(/^\/tasks\/([^/]+)/);
   state.detail = task ? decodeURIComponent(task[1]) : null;
   if (task) state.view = "backlog";

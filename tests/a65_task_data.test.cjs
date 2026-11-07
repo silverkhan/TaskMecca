@@ -117,3 +117,47 @@ test("native document renderer preserves source links and escapes executable mar
   assert.match(html, /&lt;script&gt;/);
   assert.match(html, /<ul><li><strong>Observed<\/strong>/);
 });
+
+test("native backlog consumes the real compact-list and tag catalog contract", async () => {
+  let url;
+  global.fetch = async (value) => {
+    url = value;
+    return reply({
+      items: [{ id: "A-1", tags: ["area:frontend"] }],
+      backlog_selection: { selected: "/synthetic/backlog" },
+      tag_catalog: {
+        stats: [{ tag: "area:frontend", total: 1 }],
+        registry: [
+          { canonical: "area:frontend", description: "Frontend" },
+          { canonical: "area:backend" },
+        ],
+      },
+    });
+  };
+  const result = await data.fetchBacklog();
+  assert.equal(
+    new URL(url, "http://synthetic").searchParams.has("projection"),
+    false,
+    "summary means counts-only on the actual Go API",
+  );
+  assert.equal(result.items.length, 1);
+  assert.equal(result.selection.selected, "/synthetic/backlog");
+  assert.deepEqual(
+    result.tag_options.map((t) => t.tag),
+    ["area:frontend", "area:backend"],
+  );
+});
+test("captured actual Go compact-list response stays nonempty and exposes canonical tag names", async () => {
+  const packet = require("./fixtures/a65/backlog-actual-compact.json");
+  assert.equal(packet.synthetic, true);
+  global.fetch = async () => reply(packet.response);
+  const result = await data.fetchBacklog();
+  assert.ok(result.items.length > 0);
+  assert.equal(result.items.length, packet.response.items.length);
+  assert.equal(
+    result.selection.selected,
+    packet.response.backlog_selection.selected,
+  );
+  assert.ok(result.tag_options.some((t) => t.tag === "area:frontend"));
+  assert.ok(result.tag_options.some((t) => t.tag === "type:user-wait"));
+});

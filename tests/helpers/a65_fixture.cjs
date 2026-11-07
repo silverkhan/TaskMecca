@@ -209,8 +209,15 @@ async function start(root) {
           total: items.length,
           pages: Math.max(1, Math.ceil(items.length / size)),
           counts: { all: 128, working: 6 },
-          tag_catalog: ["frontend", "core", "design"],
-          selection: { selected: workflow.backlog, candidates: [] },
+          tag_catalog: {
+            stats: [
+              { tag: "frontend", total: 64 },
+              { tag: "core", total: 64 },
+              { tag: "design", total: 64 },
+            ],
+            registry: [{ canonical: "frontend", description: "Frontend work" }],
+          },
+          backlog_selection: { selected: workflow.backlog, candidates: [] },
           backlog_presence: { present: true },
         };
       } else if (u.pathname.startsWith("/api/tasks/")) {

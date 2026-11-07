@@ -1,0 +1,1024 @@
+{
+  "synthetic": true,
+  "source_head": "767b0f42ceab5da2e8d01efdd1a9aaf87b33a00c",
+  "projection": "default compact page; summary is counts-only",
+  "temporary_fixture_paths": "isolated synthetic server; paths are not operating project locations",
+  "response": {
+    "access": {
+      "checked_at": null,
+      "dispatch_recheck_required": true,
+      "full_access_confirmed": false,
+      "message": "아직 effective Full Access 검증 이력이 없습니다. subagent dispatch 직전에 active preflight를 자동 실행합니다.",
+      "network": "unknown",
+      "orchestration_ready": false,
+      "reasons": [],
+      "restriction_current": false,
+      "sandbox_env": null,
+      "sandbox_marker": "absent",
+      "source": "no_effective_probe",
+      "status": "unknown"
+    },
+    "attention": [
+      {
+        "agent": "/root/synthetic-worker",
+        "critical_after_seconds": 3600,
+        "health": "runtime_unknown",
+        "id": "SYN-2",
+        "inactivity_seconds": 870.970788303,
+        "last_activity_at": "2026-11-07T22:55:40.108250697+00:00",
+        "last_activity_source": "file",
+        "message": "백로그에 연결된 실행 attempt의 현재 상태를 신뢰성 있게 확인할 수 없습니다.",
+        "resume_condition": "런타임과 hook 상태를 확인하고 필요하면 작업을 재개하세요.",
+        "runtime_registry_available": false,
+        "runtime_state": "unknown",
+        "severity": "warning",
+        "title": "실행 상태 확인 필요",
+        "type": "runtime_unknown",
+        "warn_after_seconds": 1800
+      },
+      {
+        "agent": "/root/synthetic-worker",
+        "critical_after_seconds": 3600,
+        "health": "runtime_unknown",
+        "id": "SYN-3",
+        "inactivity_seconds": 870.970361262,
+        "last_activity_at": "2026-11-07T22:55:40.108677738+00:00",
+        "last_activity_source": "file",
+        "message": "백로그에 연결된 실행 attempt의 현재 상태를 신뢰성 있게 확인할 수 없습니다.",
+        "resume_condition": "런타임과 hook 상태를 확인하고 필요하면 작업을 재개하세요.",
+        "runtime_registry_available": false,
+        "runtime_state": "unknown",
+        "severity": "warning",
+        "title": "실행 상태 확인 필요",
+        "type": "runtime_unknown",
+        "warn_after_seconds": 1800
+      },
+      {
+        "agent": "/root/synthetic-worker",
+        "critical_after_seconds": 3600,
+        "health": "runtime_unknown",
+        "id": "SYN-4",
+        "inactivity_seconds": 870.970070096,
+        "last_activity_at": "2026-11-07T22:55:40.108968904+00:00",
+        "last_activity_source": "file",
+        "message": "백로그에 연결된 실행 attempt의 현재 상태를 신뢰성 있게 확인할 수 없습니다.",
+        "resume_condition": "런타임과 hook 상태를 확인하고 필요하면 작업을 재개하세요.",
+        "runtime_registry_available": false,
+        "runtime_state": "unknown",
+        "severity": "warning",
+        "title": "실행 상태 확인 필요",
+        "type": "runtime_unknown",
+        "warn_after_seconds": 1800
+      }
+    ],
+    "attention_items": {
+      "SYN-2": {
+        "activity": {
+          "agent": "/root/synthetic-worker",
+          "critical_after_seconds": 3600,
+          "health": "runtime_unknown",
+          "inactivity_seconds": 870.970788303,
+          "last_activity_at": "2026-11-07T22:55:40.108250697+00:00",
+          "last_activity_source": "file",
+          "runtime_registry_available": false,
+          "runtime_state": "unknown",
+          "warn_after_seconds": 1800
+        },
+        "attention_reason": {
+          "message": "백로그에 연결된 실행 attempt의 현재 상태를 신뢰성 있게 확인할 수 없습니다.",
+          "resume_condition": "런타임과 hook 상태를 확인하고 필요하면 작업을 재개하세요.",
+          "severity": "warning",
+          "title": "실행 상태 확인 필요",
+          "type": "runtime_unknown"
+        },
+        "document": {
+          "contract_kind": "legacy",
+          "notes": "",
+          "requirements": {
+            "goal": ""
+          },
+          "result": "",
+          "schema": "legacy",
+          "summary": {
+            "change": "",
+            "follow_up": "",
+            "purpose": "",
+            "status_result": ""
+          },
+          "summary_present": false
+        },
+        "fields": {
+          "Agent": "/root/synthetic-worker"
+        },
+        "file_state": "doing",
+        "id": "SYN-2",
+        "mtime": "2026-11-07T22:55:40.108250697+00:00",
+        "state": "stalled",
+        "title": "SYN-2 프로젝트 관제와 작업 흐름 연결",
+        "updated_at": "2026-11-07T22:55:40.108250697+00:00"
+      },
+      "SYN-3": {
+        "activity": {
+          "agent": "/root/synthetic-worker",
+          "critical_after_seconds": 3600,
+          "health": "runtime_unknown",
+          "inactivity_seconds": 870.970361262,
+          "last_activity_at": "2026-11-07T22:55:40.108677738+00:00",
+          "last_activity_source": "file",
+          "runtime_registry_available": false,
+          "runtime_state": "unknown",
+          "warn_after_seconds": 1800
+        },
+        "attention_reason": {
+          "message": "백로그에 연결된 실행 attempt의 현재 상태를 신뢰성 있게 확인할 수 없습니다.",
+          "resume_condition": "런타임과 hook 상태를 확인하고 필요하면 작업을 재개하세요.",
+          "severity": "warning",
+          "title": "실행 상태 확인 필요",
+          "type": "runtime_unknown"
+        },
+        "document": {
+          "contract_kind": "legacy",
+          "notes": "",
+          "requirements": {
+            "goal": ""
+          },
+          "result": "",
+          "schema": "legacy",
+          "summary": {
+            "change": "",
+            "follow_up": "",
+            "purpose": "",
+            "status_result": ""
+          },
+          "summary_present": false
+        },
+        "fields": {
+          "Agent": "/root/synthetic-worker"
+        },
+        "file_state": "doing",
+        "id": "SYN-3",
+        "mtime": "2026-11-07T22:55:40.108677738+00:00",
+        "state": "stalled",
+        "title": "SYN-3 Release Desk 합성 작업 3",
+        "updated_at": "2026-11-07T22:55:40.108677738+00:00"
+      },
+      "SYN-4": {
+        "activity": {
+          "agent": "/root/synthetic-worker",
+          "critical_after_seconds": 3600,
+          "health": "runtime_unknown",
+          "inactivity_seconds": 870.970070096,
+          "last_activity_at": "2026-11-07T22:55:40.108968904+00:00",
+          "last_activity_source": "file",
+          "runtime_registry_available": false,
+          "runtime_state": "unknown",
+          "warn_after_seconds": 1800
+        },
+        "attention_reason": {
+          "message": "백로그에 연결된 실행 attempt의 현재 상태를 신뢰성 있게 확인할 수 없습니다.",
+          "resume_condition": "런타임과 hook 상태를 확인하고 필요하면 작업을 재개하세요.",
+          "severity": "warning",
+          "title": "실행 상태 확인 필요",
+          "type": "runtime_unknown"
+        },
+        "document": {
+          "contract_kind": "legacy",
+          "notes": "",
+          "requirements": {
+            "goal": ""
+          },
+          "result": "",
+          "schema": "legacy",
+          "summary": {
+            "change": "",
+            "follow_up": "",
+            "purpose": "",
+            "status_result": ""
+          },
+          "summary_present": false
+        },
+        "fields": {
+          "Agent": "/root/synthetic-worker"
+        },
+        "file_state": "doing",
+        "id": "SYN-4",
+        "mtime": "2026-11-07T22:55:40.108968904+00:00",
+        "state": "stalled",
+        "title": "SYN-4 Release Desk 합성 작업 4",
+        "updated_at": "2026-11-07T22:55:40.108968904+00:00"
+      }
+    },
+    "backlog_presence": {
+      "active_count": 8,
+      "folders": [
+        "/var/folders/07/q_8xp6j90zn8r_gdxk6sj5nm0000gn/T/task-mecca-a65-preview-fS0cU4/release/_task_mecca/data/backlog"
+      ],
+      "message": "backlog를 찾았고 항목을 읽을 수 있다.",
+      "ok": true,
+      "record_count": 8,
+      "root": "/var/folders/07/q_8xp6j90zn8r_gdxk6sj5nm0000gn/T/task-mecca-a65-preview-fS0cU4/release/_task_mecca/data/backlog",
+      "status": "ok"
+    },
+    "backlog_selection": {
+      "auto_selected": true,
+      "candidates": [
+        {
+          "backlog_named": true,
+          "canonical": true,
+          "latest_modified": "2026-11-08T07:55:40+09:00",
+          "name": "backlog",
+          "path": "/var/folders/07/q_8xp6j90zn8r_gdxk6sj5nm0000gn/T/task-mecca-a65-preview-fS0cU4/release/_task_mecca/data/backlog",
+          "record_count": 8,
+          "selected": true,
+          "under_data": true
+        }
+      ],
+      "scan_root": "/var/folders/07/q_8xp6j90zn8r_gdxk6sj5nm0000gn/T/task-mecca-a65-preview-fS0cU4/release/_task_mecca",
+      "selected": "/var/folders/07/q_8xp6j90zn8r_gdxk6sj5nm0000gn/T/task-mecca-a65-preview-fS0cU4/release/_task_mecca/data/backlog"
+    },
+    "counts": {
+      "all": 8,
+      "attention": 3,
+      "blocked": 0,
+      "done": 0,
+      "hold": 1,
+      "needs_action": 3,
+      "ready": 4,
+      "working": 3
+    },
+    "items": [
+      {
+        "active_seconds": null,
+        "activity": {
+          "health": "n/a"
+        },
+        "agent": "",
+        "archive_month": "",
+        "assignment_kind": "unassigned",
+        "depends_on": [],
+        "document": {
+          "contract_kind": "legacy",
+          "notes": "",
+          "requirements": {
+            "goal": ""
+          },
+          "result": "",
+          "schema": "legacy",
+          "summary": {
+            "change": "",
+            "follow_up": "",
+            "purpose": "",
+            "status_result": ""
+          },
+          "summary_present": false
+        },
+        "fields": {
+          "Agent": "/root/synthetic-worker"
+        },
+        "file_state": "todo",
+        "id": "SYN-8",
+        "location": "active",
+        "mtime": "2026-11-07T22:55:40.114216316+00:00",
+        "path": "/var/folders/07/q_8xp6j90zn8r_gdxk6sj5nm0000gn/T/task-mecca-a65-preview-fS0cU4/release/_task_mecca/data/backlog/000008.SYN-8.synthetic.todo.md",
+        "registrant": "",
+        "related": [],
+        "scope": "",
+        "sort_key": "000008",
+        "source": {},
+        "state": "ready",
+        "tags": [
+          "area:frontend",
+          "phase:prototype"
+        ],
+        "title": "SYN-8 Release Desk 합성 작업 8",
+        "updated_at": "2026-11-07T22:55:40.114216316+00:00",
+        "waiting_for": null
+      },
+      {
+        "active_seconds": null,
+        "activity": {
+          "health": "n/a"
+        },
+        "agent": "",
+        "archive_month": "",
+        "assignment_kind": "unassigned",
+        "depends_on": [],
+        "document": {
+          "contract_kind": "legacy",
+          "notes": "",
+          "requirements": {
+            "goal": ""
+          },
+          "result": "",
+          "schema": "legacy",
+          "summary": {
+            "change": "",
+            "follow_up": "",
+            "purpose": "",
+            "status_result": ""
+          },
+          "summary_present": false
+        },
+        "fields": {
+          "Agent": "/root/synthetic-worker"
+        },
+        "file_state": "todo",
+        "id": "SYN-7",
+        "location": "active",
+        "mtime": "2026-11-07T22:55:40.110680778+00:00",
+        "path": "/var/folders/07/q_8xp6j90zn8r_gdxk6sj5nm0000gn/T/task-mecca-a65-preview-fS0cU4/release/_task_mecca/data/backlog/000007.SYN-7.synthetic.todo.md",
+        "registrant": "",
+        "related": [],
+        "scope": "",
+        "sort_key": "000007",
+        "source": {},
+        "state": "ready",
+        "tags": [
+          "area:frontend",
+          "phase:prototype"
+        ],
+        "title": "SYN-7 Release Desk 합성 작업 7",
+        "updated_at": "2026-11-07T22:55:40.110680778+00:00",
+        "waiting_for": null
+      },
+      {
+        "active_seconds": null,
+        "activity": {
+          "health": "n/a"
+        },
+        "agent": "",
+        "archive_month": "",
+        "assignment_kind": "unassigned",
+        "depends_on": [],
+        "document": {
+          "contract_kind": "legacy",
+          "notes": "",
+          "requirements": {
+            "goal": ""
+          },
+          "result": "",
+          "schema": "legacy",
+          "summary": {
+            "change": "",
+            "follow_up": "",
+            "purpose": "",
+            "status_result": ""
+          },
+          "summary_present": false
+        },
+        "fields": {
+          "Agent": "/root/synthetic-worker"
+        },
+        "file_state": "todo",
+        "id": "SYN-6",
+        "location": "active",
+        "mtime": "2026-11-07T22:55:40.109884653+00:00",
+        "path": "/var/folders/07/q_8xp6j90zn8r_gdxk6sj5nm0000gn/T/task-mecca-a65-preview-fS0cU4/release/_task_mecca/data/backlog/000006.SYN-6.synthetic.todo.md",
+        "registrant": "",
+        "related": [],
+        "scope": "",
+        "sort_key": "000006",
+        "source": {},
+        "state": "ready",
+        "tags": [
+          "area:frontend",
+          "phase:prototype"
+        ],
+        "title": "SYN-6 Release Desk 합성 작업 6",
+        "updated_at": "2026-11-07T22:55:40.109884653+00:00",
+        "waiting_for": null
+      },
+      {
+        "active_seconds": null,
+        "activity": {
+          "health": "n/a"
+        },
+        "agent": "",
+        "archive_month": "",
+        "assignment_kind": "unassigned",
+        "depends_on": [],
+        "document": {
+          "contract_kind": "legacy",
+          "notes": "",
+          "requirements": {
+            "goal": ""
+          },
+          "result": "",
+          "schema": "legacy",
+          "summary": {
+            "change": "",
+            "follow_up": "",
+            "purpose": "",
+            "status_result": ""
+          },
+          "summary_present": false
+        },
+        "fields": {
+          "Agent": "/root/synthetic-worker"
+        },
+        "file_state": "todo",
+        "id": "SYN-5",
+        "location": "active",
+        "mtime": "2026-11-07T22:55:40.109303571+00:00",
+        "path": "/var/folders/07/q_8xp6j90zn8r_gdxk6sj5nm0000gn/T/task-mecca-a65-preview-fS0cU4/release/_task_mecca/data/backlog/000005.SYN-5.synthetic.todo.md",
+        "registrant": "",
+        "related": [],
+        "scope": "",
+        "sort_key": "000005",
+        "source": {},
+        "state": "ready",
+        "tags": [
+          "area:frontend",
+          "phase:prototype"
+        ],
+        "title": "SYN-5 Release Desk 합성 작업 5",
+        "updated_at": "2026-11-07T22:55:40.109303571+00:00",
+        "waiting_for": null
+      },
+      {
+        "active_seconds": 871.078899,
+        "activity": {
+          "agent": "/root/synthetic-worker",
+          "critical_after_seconds": 3600,
+          "health": "runtime_unknown",
+          "inactivity_seconds": 870.970070096,
+          "last_activity_at": "2026-11-07T22:55:40.108968904+00:00",
+          "last_activity_source": "file",
+          "runtime_registry_available": false,
+          "runtime_state": "unknown",
+          "warn_after_seconds": 1800
+        },
+        "agent": "/root/synthetic-worker",
+        "archive_month": "",
+        "assignment_kind": "current",
+        "attention_reason": {
+          "message": "백로그에 연결된 실행 attempt의 현재 상태를 신뢰성 있게 확인할 수 없습니다.",
+          "resume_condition": "런타임과 hook 상태를 확인하고 필요하면 작업을 재개하세요.",
+          "severity": "warning",
+          "title": "실행 상태 확인 필요",
+          "type": "runtime_unknown"
+        },
+        "depends_on": [],
+        "document": {
+          "contract_kind": "legacy",
+          "notes": "",
+          "requirements": {
+            "goal": ""
+          },
+          "result": "",
+          "schema": "legacy",
+          "summary": {
+            "change": "",
+            "follow_up": "",
+            "purpose": "",
+            "status_result": ""
+          },
+          "summary_present": false
+        },
+        "fields": {
+          "Agent": "/root/synthetic-worker"
+        },
+        "file_state": "doing",
+        "id": "SYN-4",
+        "lifecycle": {
+          "current_segment_seconds": 871.078899,
+          "current_state": "doing",
+          "current_state_at": "2026-11-07T22:55:40Z"
+        },
+        "location": "active",
+        "mtime": "2026-11-07T22:55:40.108968904+00:00",
+        "path": "/var/folders/07/q_8xp6j90zn8r_gdxk6sj5nm0000gn/T/task-mecca-a65-preview-fS0cU4/release/_task_mecca/data/backlog/000004.SYN-4.synthetic.doing.md",
+        "registrant": "",
+        "related": [],
+        "scope": "",
+        "sort_key": "000004",
+        "source": {},
+        "state": "stalled",
+        "tags": [
+          "area:frontend",
+          "phase:prototype"
+        ],
+        "title": "SYN-4 Release Desk 합성 작업 4",
+        "updated_at": "2026-11-07T22:55:40.108968904+00:00",
+        "waiting_for": null
+      },
+      {
+        "active_seconds": 871.078899,
+        "activity": {
+          "agent": "/root/synthetic-worker",
+          "critical_after_seconds": 3600,
+          "health": "runtime_unknown",
+          "inactivity_seconds": 870.970361262,
+          "last_activity_at": "2026-11-07T22:55:40.108677738+00:00",
+          "last_activity_source": "file",
+          "runtime_registry_available": false,
+          "runtime_state": "unknown",
+          "warn_after_seconds": 1800
+        },
+        "agent": "/root/synthetic-worker",
+        "archive_month": "",
+        "assignment_kind": "current",
+        "attention_reason": {
+          "message": "백로그에 연결된 실행 attempt의 현재 상태를 신뢰성 있게 확인할 수 없습니다.",
+          "resume_condition": "런타임과 hook 상태를 확인하고 필요하면 작업을 재개하세요.",
+          "severity": "warning",
+          "title": "실행 상태 확인 필요",
+          "type": "runtime_unknown"
+        },
+        "depends_on": [],
+        "document": {
+          "contract_kind": "legacy",
+          "notes": "",
+          "requirements": {
+            "goal": ""
+          },
+          "result": "",
+          "schema": "legacy",
+          "summary": {
+            "change": "",
+            "follow_up": "",
+            "purpose": "",
+            "status_result": ""
+          },
+          "summary_present": false
+        },
+        "fields": {
+          "Agent": "/root/synthetic-worker"
+        },
+        "file_state": "doing",
+        "id": "SYN-3",
+        "lifecycle": {
+          "current_segment_seconds": 871.078899,
+          "current_state": "doing",
+          "current_state_at": "2026-11-07T22:55:40Z"
+        },
+        "location": "active",
+        "mtime": "2026-11-07T22:55:40.108677738+00:00",
+        "path": "/var/folders/07/q_8xp6j90zn8r_gdxk6sj5nm0000gn/T/task-mecca-a65-preview-fS0cU4/release/_task_mecca/data/backlog/000003.SYN-3.synthetic.doing.md",
+        "registrant": "",
+        "related": [],
+        "scope": "",
+        "sort_key": "000003",
+        "source": {},
+        "state": "stalled",
+        "tags": [
+          "area:frontend",
+          "phase:prototype"
+        ],
+        "title": "SYN-3 Release Desk 합성 작업 3",
+        "updated_at": "2026-11-07T22:55:40.108677738+00:00",
+        "waiting_for": null
+      },
+      {
+        "active_seconds": 871.078899,
+        "activity": {
+          "agent": "/root/synthetic-worker",
+          "critical_after_seconds": 3600,
+          "health": "runtime_unknown",
+          "inactivity_seconds": 870.970788303,
+          "last_activity_at": "2026-11-07T22:55:40.108250697+00:00",
+          "last_activity_source": "file",
+          "runtime_registry_available": false,
+          "runtime_state": "unknown",
+          "warn_after_seconds": 1800
+        },
+        "agent": "/root/synthetic-worker",
+        "archive_month": "",
+        "assignment_kind": "current",
+        "attention_reason": {
+          "message": "백로그에 연결된 실행 attempt의 현재 상태를 신뢰성 있게 확인할 수 없습니다.",
+          "resume_condition": "런타임과 hook 상태를 확인하고 필요하면 작업을 재개하세요.",
+          "severity": "warning",
+          "title": "실행 상태 확인 필요",
+          "type": "runtime_unknown"
+        },
+        "depends_on": [],
+        "document": {
+          "contract_kind": "legacy",
+          "notes": "",
+          "requirements": {
+            "goal": ""
+          },
+          "result": "",
+          "schema": "legacy",
+          "summary": {
+            "change": "",
+            "follow_up": "",
+            "purpose": "",
+            "status_result": ""
+          },
+          "summary_present": false
+        },
+        "fields": {
+          "Agent": "/root/synthetic-worker"
+        },
+        "file_state": "doing",
+        "id": "SYN-2",
+        "lifecycle": {
+          "current_segment_seconds": 871.078899,
+          "current_state": "doing",
+          "current_state_at": "2026-11-07T22:55:40Z"
+        },
+        "location": "active",
+        "mtime": "2026-11-07T22:55:40.108250697+00:00",
+        "path": "/var/folders/07/q_8xp6j90zn8r_gdxk6sj5nm0000gn/T/task-mecca-a65-preview-fS0cU4/release/_task_mecca/data/backlog/000002.SYN-2.synthetic.doing.md",
+        "registrant": "",
+        "related": [],
+        "scope": "",
+        "sort_key": "000002",
+        "source": {},
+        "state": "stalled",
+        "tags": [
+          "area:frontend",
+          "phase:prototype"
+        ],
+        "title": "SYN-2 프로젝트 관제와 작업 흐름 연결",
+        "updated_at": "2026-11-07T22:55:40.108250697+00:00",
+        "waiting_for": null
+      },
+      {
+        "active_seconds": null,
+        "activity": {
+          "health": "n/a"
+        },
+        "agent": "",
+        "archive_month": "",
+        "assignment_kind": "released",
+        "depends_on": [],
+        "document": {
+          "contract_kind": "legacy",
+          "notes": "",
+          "requirements": {
+            "goal": ""
+          },
+          "result": "",
+          "schema": "legacy",
+          "summary": {
+            "change": "",
+            "follow_up": "",
+            "purpose": "",
+            "status_result": ""
+          },
+          "summary_present": false
+        },
+        "fields": {
+          "Agent": "/root/synthetic-worker",
+          "재개조건": "디자인 검토 후 재개"
+        },
+        "file_state": "hold",
+        "id": "SYN-1",
+        "location": "active",
+        "mtime": "2026-11-07T22:55:40.106162074+00:00",
+        "path": "/var/folders/07/q_8xp6j90zn8r_gdxk6sj5nm0000gn/T/task-mecca-a65-preview-fS0cU4/release/_task_mecca/data/backlog/000001.SYN-1.synthetic.hold.md",
+        "registrant": "",
+        "related": [],
+        "scope": "",
+        "sort_key": "000001",
+        "source": {},
+        "state": "hold",
+        "tags": [
+          "area:frontend",
+          "phase:prototype",
+          "type:user-wait"
+        ],
+        "title": "SYN-1 핵심 화면 디자인 검토를 기다립니다",
+        "updated_at": "2026-11-07T22:55:40.106162074+00:00",
+        "waiting_for": null
+      }
+    ],
+    "notification_events": [],
+    "page": 1,
+    "page_size": 20,
+    "pages": 1,
+    "project_path": "/var/folders/07/q_8xp6j90zn8r_gdxk6sj5nm0000gn/T/task-mecca-a65-preview-fS0cU4/release",
+    "repo": "data",
+    "revision": "e9044bf445ac86c7a3bc",
+    "root": "/var/folders/07/q_8xp6j90zn8r_gdxk6sj5nm0000gn/T/task-mecca-a65-preview-fS0cU4/release/_task_mecca/data/backlog",
+    "signal_revision": "be53efc562120514db40",
+    "snapshot_at": "2026-11-08T08:10:11.128879+09:00",
+    "tag_catalog": {
+      "namespaces": {
+        "area": [
+          {
+            "tag": "area:frontend",
+            "namespace": "area",
+            "description": "Frontend/Web UI implementation",
+            "status": "active",
+            "total": 8,
+            "active": 7,
+            "hold": 1,
+            "done": 0,
+            "tasks": [
+              "SYN-1",
+              "SYN-2",
+              "SYN-3",
+              "SYN-4",
+              "SYN-5",
+              "SYN-6",
+              "SYN-7",
+              "SYN-8"
+            ]
+          }
+        ],
+        "phase": [
+          {
+            "tag": "phase:prototype",
+            "namespace": "phase",
+            "status": "unregistered",
+            "total": 8,
+            "active": 7,
+            "hold": 1,
+            "done": 0,
+            "tasks": [
+              "SYN-1",
+              "SYN-2",
+              "SYN-3",
+              "SYN-4",
+              "SYN-5",
+              "SYN-6",
+              "SYN-7",
+              "SYN-8"
+            ]
+          }
+        ],
+        "type": [
+          {
+            "tag": "type:user-wait",
+            "namespace": "type",
+            "status": "unregistered",
+            "total": 1,
+            "active": 0,
+            "hold": 1,
+            "done": 0,
+            "tasks": [
+              "SYN-1"
+            ]
+          }
+        ]
+      },
+      "registry": [
+        {
+          "canonical": "area:backend",
+          "namespace": "area",
+          "name": "backend",
+          "description": "Backend/server-side implementation",
+          "aliases": [
+            "server",
+            "백엔드"
+          ],
+          "status": "active",
+          "created_at": "2026-11-07T23:10:11Z",
+          "updated_at": "2026-11-07T23:10:11Z"
+        },
+        {
+          "canonical": "area:frontend",
+          "namespace": "area",
+          "name": "frontend",
+          "description": "Frontend/Web UI implementation",
+          "aliases": [
+            "ui",
+            "web-ui",
+            "프론트엔드"
+          ],
+          "status": "active",
+          "created_at": "2026-11-07T23:10:11Z",
+          "updated_at": "2026-11-07T23:10:11Z"
+        },
+        {
+          "canonical": "area:strategy",
+          "namespace": "area",
+          "name": "strategy",
+          "description": "Domain strategy or model logic",
+          "aliases": [
+            "전략"
+          ],
+          "status": "active",
+          "created_at": "2026-11-07T23:10:11Z",
+          "updated_at": "2026-11-07T23:10:11Z"
+        },
+        {
+          "canonical": "area:data",
+          "namespace": "area",
+          "name": "data",
+          "description": "Data pipeline, schema, storage or quality",
+          "aliases": [
+            "데이터"
+          ],
+          "status": "active",
+          "created_at": "2026-11-07T23:10:11Z",
+          "updated_at": "2026-11-07T23:10:11Z"
+        },
+        {
+          "canonical": "area:infra",
+          "namespace": "area",
+          "name": "infra",
+          "description": "Infrastructure, packaging, deployment or runtime",
+          "aliases": [
+            "infrastructure",
+            "인프라"
+          ],
+          "status": "active",
+          "created_at": "2026-11-07T23:10:11Z",
+          "updated_at": "2026-11-07T23:10:11Z"
+        },
+        {
+          "canonical": "area:docs",
+          "namespace": "area",
+          "name": "docs",
+          "description": "Documentation and operating guidance",
+          "aliases": [
+            "documentation",
+            "문서"
+          ],
+          "status": "active",
+          "created_at": "2026-11-07T23:10:11Z",
+          "updated_at": "2026-11-07T23:10:11Z"
+        },
+        {
+          "canonical": "type:feature",
+          "namespace": "type",
+          "name": "feature",
+          "description": "New user-visible capability",
+          "aliases": [
+            "기능",
+            "신규기능"
+          ],
+          "status": "active",
+          "created_at": "2026-11-07T23:10:11Z",
+          "updated_at": "2026-11-07T23:10:11Z"
+        },
+        {
+          "canonical": "type:bug",
+          "namespace": "type",
+          "name": "bug",
+          "description": "Defect correction",
+          "aliases": [
+            "버그",
+            "오류"
+          ],
+          "status": "active",
+          "created_at": "2026-11-07T23:10:11Z",
+          "updated_at": "2026-11-07T23:10:11Z"
+        },
+        {
+          "canonical": "type:improvement",
+          "namespace": "type",
+          "name": "improvement",
+          "description": "Improvement to existing behavior or UX",
+          "aliases": [
+            "개선"
+          ],
+          "status": "active",
+          "created_at": "2026-11-07T23:10:11Z",
+          "updated_at": "2026-11-07T23:10:11Z"
+        },
+        {
+          "canonical": "type:refactor",
+          "namespace": "type",
+          "name": "refactor",
+          "description": "Internal restructuring without intended behavior change",
+          "aliases": [
+            "refactoring",
+            "리팩터링"
+          ],
+          "status": "active",
+          "created_at": "2026-11-07T23:10:11Z",
+          "updated_at": "2026-11-07T23:10:11Z"
+        },
+        {
+          "canonical": "type:research",
+          "namespace": "type",
+          "name": "research",
+          "description": "Investigation, spike or research task",
+          "aliases": [
+            "연구",
+            "조사"
+          ],
+          "status": "active",
+          "created_at": "2026-11-07T23:10:11Z",
+          "updated_at": "2026-11-07T23:10:11Z"
+        },
+        {
+          "canonical": "concern:performance",
+          "namespace": "concern",
+          "name": "performance",
+          "description": "Performance, latency or resource efficiency",
+          "aliases": [
+            "성능"
+          ],
+          "status": "active",
+          "created_at": "2026-11-07T23:10:11Z",
+          "updated_at": "2026-11-07T23:10:11Z"
+        },
+        {
+          "canonical": "concern:security",
+          "namespace": "concern",
+          "name": "security",
+          "description": "Security, access control or trust boundary",
+          "aliases": [
+            "보안"
+          ],
+          "status": "active",
+          "created_at": "2026-11-07T23:10:11Z",
+          "updated_at": "2026-11-07T23:10:11Z"
+        },
+        {
+          "canonical": "concern:ux",
+          "namespace": "concern",
+          "name": "ux",
+          "description": "User experience and interaction quality",
+          "aliases": [
+            "user-experience",
+            "사용성"
+          ],
+          "status": "active",
+          "created_at": "2026-11-07T23:10:11Z",
+          "updated_at": "2026-11-07T23:10:11Z"
+        },
+        {
+          "canonical": "concern:compatibility",
+          "namespace": "concern",
+          "name": "compatibility",
+          "description": "Cross-version, platform or migration compatibility",
+          "aliases": [
+            "호환성"
+          ],
+          "status": "active",
+          "created_at": "2026-11-07T23:10:11Z",
+          "updated_at": "2026-11-07T23:10:11Z"
+        },
+        {
+          "canonical": "concern:data-integrity",
+          "namespace": "concern",
+          "name": "data-integrity",
+          "description": "Correctness and preservation of durable data",
+          "aliases": [
+            "data integrity",
+            "데이터무결성"
+          ],
+          "status": "active",
+          "created_at": "2026-11-07T23:10:11Z",
+          "updated_at": "2026-11-07T23:10:11Z"
+        }
+      ],
+      "stats": [
+        {
+          "tag": "area:frontend",
+          "namespace": "area",
+          "description": "Frontend/Web UI implementation",
+          "status": "active",
+          "total": 8,
+          "active": 7,
+          "hold": 1,
+          "done": 0,
+          "tasks": [
+            "SYN-1",
+            "SYN-2",
+            "SYN-3",
+            "SYN-4",
+            "SYN-5",
+            "SYN-6",
+            "SYN-7",
+            "SYN-8"
+          ]
+        },
+        {
+          "tag": "phase:prototype",
+          "namespace": "phase",
+          "status": "unregistered",
+          "total": 8,
+          "active": 7,
+          "hold": 1,
+          "done": 0,
+          "tasks": [
+            "SYN-1",
+            "SYN-2",
+            "SYN-3",
+            "SYN-4",
+            "SYN-5",
+            "SYN-6",
+            "SYN-7",
+            "SYN-8"
+          ]
+        },
+        {
+          "tag": "type:user-wait",
+          "namespace": "type",
+          "status": "unregistered",
+          "total": 1,
+          "active": 0,
+          "hold": 1,
+          "done": 0,
+          "tasks": [
+            "SYN-1"
+          ]
+        }
+      ],
+      "unregistered": [
+        "phase:prototype",
+        "type:user-wait"
+      ]
+    },
+    "total": 8
+  }
+}

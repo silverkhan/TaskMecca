@@ -10,12 +10,12 @@ import {
 } from "../components/shared.js";
 export function backlog(data) {
   const items = data.items || [],
-    tags = data.tag_catalog || [];
+    tags = data.tag_options || [];
   return `${link(icon("back") + text("모든 프로젝트", "All projects"), { view: "projects", detail: null, project: "", backlog: "" }, "back-link")}${heading(state.project.split("/").filter(Boolean).at(-1) || text("백로그", "Backlog"), state.project)}<form id="filters" class="filters"><label class="search-label">${icon("search")}<span class="live-region">${text("작업 검색", "Search tasks")}</span><input name="q" type="search" value="${esc(state.query)}" placeholder="${text("제목, ID, 내용 검색", "Search title, ID, content")}" autocomplete="off"></label><label>${text("상태", "State")}<select name="status">${["all", "todo", "doing", "hold", "done"].map((v) => `<option value="${v}" ${state.status === v ? "selected" : ""}>${v === "all" ? text("전체 상태", "All states") : status(v)}</option>`).join("")}</select></label><label>${text("정렬", "Sort")}<select name="sort">${[
     ["id_desc", "최신 ID", "Newest ID"],
     ["id_asc", "이전 ID", "Oldest ID"],
     ["updated_desc", "최근 수정", "Recently updated"],
-    ["title_asc", "제목", "Title"],
+    ["updated_asc", "오래된 수정", "Least recently updated"],
   ]
     .map(
       ([v, k, e]) =>
