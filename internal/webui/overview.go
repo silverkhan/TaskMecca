@@ -85,12 +85,13 @@ type overviewService struct {
 	projects func() ([]maintenance.ProjectState, error)
 	load     func(stdcontext.Context, maintenance.ProjectState) overviewProject
 	now      func() time.Time
+	revision func() string
 }
 
 var overviewSections = []string{"attention", "working", "projects", "activity"}
 
 func newOverviewService() *overviewService {
-	return &overviewService{cached: map[int]*overviewSnapshot{}, projects: maintenance.ManagedProjects, load: loadOverviewProject, now: time.Now}
+	return &overviewService{cached: map[int]*overviewSnapshot{}, projects: maintenance.ManagedProjects, load: loadOverviewProject, now: time.Now, revision: func() string { return overviewEvents.current().Revision }}
 }
 
 func registerOverviewRoute(mux *http.ServeMux, writeJSON func(http.ResponseWriter, any, int)) {
@@ -102,6 +103,7 @@ func registerOverviewRoute(mux *http.ServeMux, writeJSON func(http.ResponseWrite
 			writeJSON(w, map[string]any{"error": "GET required"}, http.StatusMethodNotAllowed)
 			return
 		}
+		responseRevision := overviewEvents.current().Revision
 		pages, size, err := overviewPagination(r.URL.Query())
 		if err != nil {
 			writeJSON(w, map[string]any{"error": err.Error()}, http.StatusBadRequest)
@@ -134,6 +136,7 @@ func registerOverviewRoute(mux *http.ServeMux, writeJSON func(http.ResponseWrite
 			snapshots[name] = service.read(projects, key, requests[name].Batch)
 		}
 		payload := overviewResponse(service.now(), requests, size, snapshots, len(projects))
+		payload["revision"] = responseRevision
 		writeOverviewResponse(w, payload, writeJSON)
 	})
 }
@@ -216,9 +219,11 @@ func decodeOverviewCursor(encoded string) (overviewCursor, error) {
 func (s *overviewService) read(projects []maintenance.ProjectState, key string, batch int) *overviewSnapshot {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if s.cacheKey != key {
+	generation := s.revision()
+	dataKey := key + "\x00" + generation
+	if s.cacheKey != dataKey {
 		s.cached = map[int]*overviewSnapshot{}
-		s.cacheKey = key
+		s.cacheKey = dataKey
 	}
 	cached := s.cached[batch]
 	if cached != nil && s.now().Sub(cached.at) < overviewTTL {
@@ -240,7 +245,7 @@ func (s *overviewService) read(projects []maintenance.ProjectState, key string, 
 				result.coverage[name] = coverage
 			}
 			s.mu.Lock()
-			if s.cacheKey == key {
+			if s.cacheKey == dataKey && s.revision() == generation {
 				if len(s.cached) >= overviewCacheBatches && s.cached[batch] == nil {
 					oldest := -1
 					for offset, item := range s.cached {
@@ -640,4 +645,224 @@ func loadOverviewProject(ctx stdcontext.Context, project maintenance.ProjectStat
 		return fail("paused", "project monitoring changed during overview read")
 	}
 	return result
+}
+
+// A process-local invalidation bus observes the existing control-plane output.
+// It never opens a project, refreshes a feed, scans a ledger or starts a timer.
+// Its revision invalidates all handler-local aggregate caches lazily on read.
+const overviewEventSubscriberLimit = 256
+const overviewEventHeartbeat = 15 * time.Second
+
+type overviewHint struct {
+	SchemaVersion int    `json:"schema_version"`
+	Revision      string `json:"revision"`
+	Reason        string `json:"reason"`
+}
+
+type overviewNotifier struct {
+	mu          sync.Mutex
+	epoch       string
+	sequence    uint64
+	registry    string
+	subscribers map[chan overviewHint]struct{}
+}
+
+func newOverviewNotifier() *overviewNotifier {
+	epoch, err := randomHex(12)
+	if err != nil {
+		epoch = strconv.FormatInt(time.Now().UnixNano(), 36)
+	}
+	return &overviewNotifier{epoch: epoch, subscribers: map[chan overviewHint]struct{}{}}
+}
+
+var overviewEvents = newOverviewNotifier()
+
+func (n *overviewNotifier) hintLocked(reason string) overviewHint {
+	return overviewHint{SchemaVersion: 1, Revision: n.epoch + ":" + strconv.FormatUint(n.sequence, 10), Reason: reason}
+}
+
+func (n *overviewNotifier) current() overviewHint {
+	n.mu.Lock()
+	defer n.mu.Unlock()
+	return n.hintLocked("ready")
+}
+
+func (n *overviewNotifier) publishLocked(reason string) {
+	n.sequence++
+	hint := n.hintLocked(reason)
+	for ch := range n.subscribers {
+		// Retain only the newest hint. Every send, drain and close is under
+		// this mutex; cancel/shutdown cannot race a send to a closed channel.
+		select {
+		case ch <- hint:
+		default:
+			select {
+			case <-ch:
+			default:
+			}
+			ch <- hint
+		}
+	}
+}
+
+func (n *overviewNotifier) publish(reason string) {
+	n.mu.Lock()
+	defer n.mu.Unlock()
+	n.publishLocked(reason)
+}
+
+func (n *overviewNotifier) observeRegistry(projects []maintenance.ProjectState) {
+	key := overviewRegistryKey(projects)
+	n.mu.Lock()
+	defer n.mu.Unlock()
+	if n.registry == key {
+		return
+	}
+	n.registry = key
+	n.publishLocked("membership")
+}
+
+func (n *overviewNotifier) subscribe() (chan overviewHint, overviewHint, func(), error) {
+	n.mu.Lock()
+	defer n.mu.Unlock()
+	if len(n.subscribers) >= overviewEventSubscriberLimit {
+		return nil, overviewHint{}, nil, fmt.Errorf("overview event subscriber limit reached")
+	}
+	ch := make(chan overviewHint, 1)
+	n.subscribers[ch] = struct{}{}
+	cancel := func() {
+		n.mu.Lock()
+		defer n.mu.Unlock()
+		if _, ok := n.subscribers[ch]; ok {
+			delete(n.subscribers, ch)
+			close(ch)
+		}
+	}
+	return ch, n.hintLocked("ready"), cancel, nil
+}
+
+// Called by the HTTP server shutdown hook. Preserve epoch/sequence so another
+// handler in this process can resume; only the current connections are closed.
+func (n *overviewNotifier) closeSubscribers() {
+	n.mu.Lock()
+	defer n.mu.Unlock()
+	for ch := range n.subscribers {
+		delete(n.subscribers, ch)
+		close(ch)
+	}
+}
+
+func (n *overviewNotifier) serveHTTP(w http.ResponseWriter, r *http.Request) {
+	n.serve(w, r, overviewEventHeartbeat)
+}
+
+func (n *overviewNotifier) serve(w http.ResponseWriter, r *http.Request, heartbeat time.Duration) {
+	if r.Method != http.MethodGet {
+		w.Header().Set("Allow", http.MethodGet)
+		http.Error(w, "GET required", http.StatusMethodNotAllowed)
+		return
+	}
+	if _, ok := w.(http.Flusher); !ok {
+		http.Error(w, "streaming not supported", http.StatusInternalServerError)
+		return
+	}
+	ch, ready, cancel, err := n.subscribe()
+	if err != nil {
+		w.Header().Set("Retry-After", "3")
+		http.Error(w, err.Error(), http.StatusServiceUnavailable)
+		return
+	}
+	defer cancel()
+	w.Header().Set("Content-Type", "text/event-stream; charset=utf-8")
+	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("X-Accel-Buffering", "no")
+	controller := http.NewResponseController(w)
+	write := func(hint *overviewHint) bool {
+		_ = controller.SetWriteDeadline(time.Now().Add(time.Second))
+		var err error
+		if hint == nil {
+			_, err = fmt.Fprint(w, ": keepalive\n\n")
+		} else {
+			data, _ := json.Marshal(hint)
+			_, err = fmt.Fprintf(w, "id: %s\nevent: overview\ndata: %s\n\n", hint.Revision, data)
+		}
+		return err == nil && controller.Flush() == nil
+	}
+	// Every connection/reconnection gets one current hint. The HTTP snapshot
+	// revision lets clients skip an identical baseline without another fetch.
+	if !write(&ready) {
+		return
+	}
+	ticker := time.NewTicker(heartbeat)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-r.Context().Done():
+			return
+		case hint, ok := <-ch:
+			if !ok {
+				return
+			}
+			if !write(&hint) {
+				return
+			}
+		case <-ticker.C:
+			if !write(nil) {
+				return
+			}
+		}
+	}
+}
+
+// Stable semantic fields only: age, elapsed durations, snapshot_at and
+// computed_at advance on idle refreshes and must never trigger invalidation.
+func overviewPayloadRevision(payload map[string]any) string {
+	items := map[string]any{}
+	add := func(id string, item map[string]any) {
+		row := map[string]any{}
+		for _, key := range []string{"id", "title", "state", "file_state", "updated_at", "agent", "tags", "attention_reason"} {
+			if value, ok := item[key]; ok {
+				row[key] = value
+			}
+		}
+		if signal, ok := item["activity"].(map[string]any); ok {
+			row["activity"] = overviewSummaryFields("activity", signal)
+		}
+		if lifecycle, ok := item["lifecycle"].(map[string]any); ok {
+			row["lifecycle"] = overviewFields(lifecycle, []string{"current_state", "current_state_at", "created_at", "started_at", "claimed_at", "completed_at"})
+		}
+		items[id] = row
+	}
+	switch rows := payload["all_items"].(type) {
+	case map[string]map[string]any:
+		for id, item := range rows {
+			add(id, item)
+		}
+	case map[string]any:
+		for id, raw := range rows {
+			if item, ok := raw.(map[string]any); ok {
+				add(id, item)
+			}
+		}
+	}
+	data, _ := json.Marshal(map[string]any{"items": items, "attention_revision": attentionRevision(payload), "error": payload["error"]})
+	return fmt.Sprintf("%x", sha256.Sum256(data))
+}
+
+func publishOverviewFeedHint(feed *attentionFeed, payload map[string]any) {
+	revision := overviewPayloadRevision(payload)
+	// Existing feed lifecycle ordering is attentionFeeds -> feed.mu. The
+	// notifier never takes either lock, and no aggregate mutex is acquired.
+	attentionFeeds.Lock()
+	defer attentionFeeds.Unlock()
+	if attentionFeeds.feeds[feed.project+"\x00"+feed.root] != feed {
+		return
+	} // retired source cannot invalidate a replacement
+	feed.mu.Lock()
+	changed := feed.overviewRevision != revision
+	feed.overviewRevision = revision
+	feed.mu.Unlock()
+	if changed {
+		overviewEvents.publish("changed")
+	}
 }

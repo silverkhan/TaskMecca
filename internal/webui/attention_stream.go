@@ -29,6 +29,7 @@ type attentionFeed struct {
 	mu          sync.Mutex
 	latest      []byte
 	revision    string
+	overviewRevision string
 	lastDeliveryWarning time.Time
 	subscribers map[chan []byte]struct{}
 }
@@ -75,6 +76,7 @@ func ensureAttentionFeed(project, root string) *attentionFeed {
 	feed := &attentionFeed{project: project, root: root, stopCh: make(chan struct{}), doneCh: make(chan struct{}), subscribers: map[chan []byte]struct{}{}}
 	attentionFeeds.feeds[key] = feed
 	attentionFeeds.Unlock()
+	overviewEvents.publish("membership")
 	go feed.run()
 	return feed
 }
@@ -98,6 +100,7 @@ func ensureDurableAttentionFeed(project, root string) *attentionFeed {
     if feed == nil {
         feed = &attentionFeed{project:project, root:root,stopCh:make(chan struct{}),doneCh:make(chan struct{}),subscribers:map[chan []byte]struct{}{}}
         attentionFeeds.feeds[key] = feed
+        overviewEvents.publish("membership")
         go feed.run()
     }
     feed.durable = true
@@ -116,6 +119,7 @@ func stopAttentionFeedLocked(key string, feed *attentionFeed) {
         close(ch)
     }
     feed.mu.Unlock()
+	overviewEvents.publish("membership")
 }
 
 func stopProjectAttentionFeeds(project string) {
@@ -131,7 +135,8 @@ func stopProjectAttentionFeeds(project string) {
 func reconcileAttentionFeedProjects(active []string) {
     // A temporary registry read failure is not evidence of removal. Avoid
     // stopping healthy project feeds when management metadata is unavailable.
-    if _, err := maintenance.ManagedProjects(); err != nil { return }
+    managed, err := maintenance.ManagedProjects(); if err != nil { return }
+	overviewEvents.observeRegistry(managed)
     allowed := make(map[string]bool,len(active))
     for _, project := range active { allowed[project] = true }
     attentionFeeds.Lock()
@@ -236,6 +241,7 @@ func (f *attentionFeed) refreshActive() {
 		}
 	}
 	f.mu.Unlock()
+    publishOverviewFeedHint(f, payload)
     attentionCount := 0
     notificationCount := 0
     if rows, ok := payload["attention"].([]map[string]any); ok { attentionCount = len(rows) }

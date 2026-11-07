@@ -740,6 +740,7 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 
 	// This aggregate reads projections only and must bypass project write guards.
 	registerOverviewRoute(mux, writeJSON)
+	mux.HandleFunc("/api/overview/events", overviewEvents.serveHTTP)
 	mux.HandleFunc("/api/snapshot", func(w http.ResponseWriter, r *http.Request) {
 		activeProject := projectFor(r)
 		activeCtx, ctxErr := webContext(activeProject, "")
@@ -1895,6 +1896,20 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 		w.Header().Set("Content-Type", "application/manifest+json; charset=utf-8")
 		sendEmbedded(w, "manifest.webmanifest")
 	})
+	mux.HandleFunc("/ui/", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet && r.Method != http.MethodHead {
+			w.Header().Set("Allow", "GET, HEAD")
+			http.Error(w, "GET required", http.StatusMethodNotAllowed)
+			return
+		}
+		name := strings.TrimPrefix(r.URL.Path, "/")
+		clean := filepath.ToSlash(filepath.Clean(name))
+		if !strings.HasPrefix(clean, "ui/") || strings.Contains(clean, "..") || strings.Contains(name, "\\") || clean != name || strings.HasSuffix(name, "/") {
+			http.NotFound(w, r)
+			return
+		}
+		sendEmbedded(w, clean)
+	})
 	mux.HandleFunc("/vendor/", func(w http.ResponseWriter, r *http.Request) {
 		name := strings.TrimPrefix(r.URL.Path, "/")
 		clean := filepath.ToSlash(filepath.Clean(name))
@@ -2256,6 +2271,7 @@ func Run(config Config) error {
 	}
 
 	server := &http.Server{Handler: handler, ReadHeaderTimeout: 5 * time.Second}
+	server.RegisterOnShutdown(overviewEvents.closeSubscribers)
 	primaryErrCh := make(chan error, 1)
 	go func() { primaryErrCh <- server.Serve(primaryListener) }()
 
