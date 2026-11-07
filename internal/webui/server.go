@@ -738,6 +738,8 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 		}
 	})
 
+	// This aggregate reads projections only and must bypass project write guards.
+	registerOverviewRoute(mux, writeJSON)
 	mux.HandleFunc("/api/snapshot", func(w http.ResponseWriter, r *http.Request) {
 		activeProject := projectFor(r)
 		activeCtx, ctxErr := webContext(activeProject, "")
