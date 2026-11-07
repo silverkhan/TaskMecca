@@ -1,29 +1,26 @@
 const {test}=require('node:test'),assert=require('node:assert/strict'),path=require('node:path'),fs=require('node:fs');
-const fixture=require('./helpers/workflow_fixture.cjs');
+const fixture=require('./helpers/workflow_native.cjs');
 const {zoomActivityRange}=require('./helpers/workflow_input.cjs');
 const modulePath=process.env.WORKFLOW_PLAYWRIGHT_MODULE;
 if(process.env.WORKFLOW_REQUIRE_BROWSER==='1'&&!modulePath)throw new Error('Required workflow browser runtime missing');
 test('representative workflow has compact context and plot-coordinate anchored time navigation',{skip:!modulePath,timeout:120000},async()=>{
   const {chromium}=require(modulePath),server=await fixture.start(path.resolve('goassets/template/_task_mecca/framework/web'));
   let browser;
-  const out=path.resolve(process.env.WORKFLOW_EVIDENCE_DIR||'handoff-evidence/a59-lifecycle-simple-zoom-20261105/milestone');fs.mkdirSync(out,{recursive:true});
-  const report={synthetic:true,base:'6c6c7563ac115ff372f52dec002930fc9452af53',cases:[],errors:[],cleanup:{}};
+  const out=path.resolve(process.env.WORKFLOW_EVIDENCE_DIR||'workflow-navigation-evidence');fs.mkdirSync(out,{recursive:true});
+  const report={synthetic:true,ui:'native ES modules / Smoke',cases:[],errors:[],cleanup:{}};
   try{
     browser=await chromium.launch({headless:true,executablePath:process.env.CHROME_EXECUTABLE});report.browser=browser.version();
     for(const mobile of [false,true]){
       const context=await browser.newContext({viewport:mobile?{width:390,height:844}:{width:1440,height:1000},locale:'ko-KR',timezoneId:'Asia/Seoul',hasTouch:mobile,isMobile:mobile,deviceScaleFactor:1});
       await context.route('**/*',route=>route.request().url().startsWith(server.origin+'/')?route.continue():route.abort());
       await context.addInitScript(()=>{window.EventSource=class{addEventListener(){}close(){}};window.setInterval=()=>0;localStorage.setItem('task-mecca-language','ko');localStorage.setItem('task-mecca-sidebar-mode','expanded');});
-      const page=await context.newPage();page.on('pageerror',error=>report.errors.push(error.message));
-      await page.goto(server.origin+'/?project='+encodeURIComponent(fixture.project));await page.waitForFunction(()=>typeof state!=='undefined');
+      const page=await fixture.page(context,server);page.on('pageerror',error=>report.errors.push(error.message));
+      await fixture.open(page,server);
       server.state.data=fixture.payload();server.state.activityStatus=200;
-      await page.evaluate(({data,task,project,backlog,mobile})=>{
-        Object.assign(state,{project,backlog,view:'backlog',detail:task.id,detailTask:task,raw:false,loadError:'',language:'ko',sidebarMode:'expanded',snapshot:{all_items:{[task.id]:task},counts:{all:1,done:1},access:{status:'full',full_access_confirmed:true},workload:{agents:[]},attention:[]},listData:{items:[task],counts:{all:1,done:1}},hub:{projects:[{project,name:'Workflow fixture'}]}});
-        activityDetailViews.clear();activityDetailCache.set(activityDetailKey(task.id,project),{...data,_client_fetched_at:'2026-11-05T03:00:00Z'});applyPalette('mecca');applyTheme(mobile?'dark':'light');render();
-      },{data:server.state.data,task:fixture.task(server.state.data),project:fixture.project,backlog:fixture.backlog,mobile});
-      const chart=page.locator('#workflowTimelineViewport'),canvas=page.locator('.workflow-timeline-canvas');
+      await fixture.mount(page,server,server.state.data,{theme:mobile?'dark':'light'});
+  const chart=page.locator('#workflowTimelineViewport'),canvas=page.locator('.workflow-timeline-canvas');
       await chart.waitFor();
-      const settled=()=>page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+      const settled=()=>fixture.evaluate(page,()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
       const windowRange=()=>canvas.evaluate(el=>({start:Number(el.dataset.viewStart),end:Number(el.dataset.viewEnd),fullStart:el.dataset.axisStart,fullEnd:el.dataset.axisEnd,width:el.getBoundingClientRect().width}));
       const projectedPosition=()=>canvas.evaluate(el=>{
         const start=Number(el.dataset.viewStart),end=Number(el.dataset.viewEnd),plot=el.querySelector('.workflow-axis-track').getBoundingClientRect(),button=[...el.querySelectorAll('[data-workflow-interval]')].find(b=>Number(b.dataset.workflowStart)>=start&&Number(b.dataset.workflowEnd)<=end&&b.getAttribute('aria-hidden')!=='true');
@@ -31,7 +28,7 @@ test('representative workflow has compact context and plot-coordinate anchored t
         const expected=plot.left+(Number(button.dataset.workflowStart)-start)/(end-start)*plot.width,actual=button.getBoundingClientRect().left;return {expected,actual,error:Math.abs(expected-actual)};
       });
       const scrollSection=()=>page.locator('.workflow-section').evaluate(el=>{const header=document.querySelector('.topbar')?.getBoundingClientRect().height||0;scrollTo({top:el.getBoundingClientRect().top+scrollY-header-18,behavior:'instant'});});
-      const sourceBefore=await page.evaluate(()=>JSON.stringify(activityDetailCache.get(activityDetailKey('FLOW-1',state.project)).workflow));
+      const sourceBefore=await fixture.evaluate(page,()=>JSON.stringify(activityDetailCache.get(activityDetailKey('FLOW-1',state.project)).workflow));
       const initial=await windowRange();assert.equal(initial.end-initial.start,3600000);assert.equal(await page.locator('[data-workflow-row]').count(),1);assert.equal(await page.locator('[data-workflow-interval]').count(),19);
       assert.equal(await page.locator('#activityDetailZoom').count(),0);assert.equal(await page.locator('#activityDetailFocus').count(),0);
       if(process.env.WORKFLOW_CORE_ONLY==='1'){
@@ -51,23 +48,23 @@ test('representative workflow has compact context and plot-coordinate anchored t
         const label=await page.locator('#workflowVisibleRange').textContent();assert.match(label,/09:17:5[34]/);assert.match(label,/09:19:0[56]/);await tickGeometry(prefix+' 72seconds');
         await page.locator('#workflowEvidenceDetails').evaluate(el=>el.open=true);await chart.focus();await page.keyboard.press('ArrowLeft');
         const afterLeft=await windowRange();assert.ok(Math.abs(afterLeft.start-(precise.start-14400))<2);
-        assert.equal(await page.evaluate(()=>state.detail),'FLOW-1');assert.equal(await chart.count(),1);assert.equal(await page.locator('.workflow-floating.is-pinned').count(),0);assert.equal(await page.locator('#workflowEvidenceDetails').evaluate(el=>el.open),true);
+        assert.equal(await fixture.evaluate(page,()=>state.detail),'FLOW-1');assert.equal(await chart.count(),1);assert.equal(await page.locator('.workflow-floating.is-pinned').count(),0);assert.equal(await page.locator('#workflowEvidenceDetails').evaluate(el=>el.open),true);
         await scrollSection();await page.locator('#workflowEvidenceDetails').evaluate(el=>el.open=false);await settled();if(process.env.WORKFLOW_NO_CAPTURE!=='1')await page.screenshot({path:path.join(out,prefix+'-after-arrowleft.png'),animations:'disabled'});
         await zoomActivityRange(page);await scrollSection();await settled();if(process.env.WORKFLOW_NO_CAPTURE!=='1')await page.screenshot({path:path.join(out,prefix+'-72seconds.png'),animations:'disabled'});
         const keys=[];
-        for(const key of ['ArrowRight','ArrowLeft','+','-','Home','+','0']){await chart.focus();await page.keyboard.press(key);assert.equal(await page.evaluate(()=>state.detail),'FLOW-1',key+' must not close task detail');keys.push({key,range:await windowRange()});}
+        for(const key of ['ArrowRight','ArrowLeft','+','-','Home','+','0']){await chart.focus();await page.keyboard.press(key);assert.equal(await fixture.evaluate(page,()=>state.detail),'FLOW-1',key+' must not close task detail');keys.push({key,range:await windowRange()});}
         await zoomActivityRange(page);const descendantKeys=[];
-        for(const key of ['ArrowLeft','ArrowRight','+','-','Home','+','0']){await page.locator('[data-workflow-interval]:not([aria-hidden="true"])').first().focus();await page.keyboard.press(key);assert.equal(await page.evaluate(()=>state.detail),'FLOW-1','focused interval '+key+' must not close task detail');descendantKeys.push({key,range:await windowRange(),focus:await page.evaluate(()=>document.activeElement?.getAttribute('data-workflow-interval')||document.activeElement?.id)});}
+        for(const key of ['ArrowLeft','ArrowRight','+','-','Home','+','0']){await page.locator('[data-workflow-interval]:not([aria-hidden="true"])').first().focus();await page.keyboard.press(key);assert.equal(await fixture.evaluate(page,()=>state.detail),'FLOW-1','focused interval '+key+' must not close task detail');descendantKeys.push({key,range:await windowRange(),focus:await fixture.evaluate(page,()=>document.activeElement?.getAttribute('data-workflow-interval')||document.activeElement?.id)});}
         await page.locator('#workflowFit').click();await page.locator('[data-workflow-interval]').nth(4).focus();await page.keyboard.press('Enter');assert.match(await page.locator('.workflow-floating.is-pinned').textContent(),/9:14:00/);
         await page.locator('[data-workflow-interval]').nth(8).focus();await page.keyboard.press('Space');assert.match(await page.locator('.workflow-floating.is-pinned').textContent(),/9:18:00/);
         // Fractional seconds use the same formatter for visible endpoints and ticks.
         await zoomActivityRange(page);await chart.focus();for(let i=0;i<8;i++)await page.keyboard.press('+');
         const subsecond=await windowRange(),subsecondLabel=await page.locator('#workflowVisibleRange').textContent();assert.ok(subsecond.end-subsecond.start<1000);assert.match(subsecondLabel,/\d{2}:\d{2}:\d{2}\.\d{3}/);await tickGeometry(prefix+' subsecond');
         if(mobile){await page.setViewportSize({width:430,height:844});await page.locator('#workflowFit').click();await scrollSection();await settled();await tickGeometry('mobile430 whole');if(process.env.WORKFLOW_NO_CAPTURE!=='1')await page.screenshot({path:path.join(out,'mobile430-whole.png'),animations:'disabled'});await zoomActivityRange(page);await settled();await tickGeometry('mobile430 72seconds');assert.match(await page.locator('#workflowVisibleRange').textContent(),/09:17:5[34]/);if(process.env.WORKFLOW_NO_CAPTURE!=='1')await page.screenshot({path:path.join(out,'mobile430-72seconds.png'),animations:'disabled'});}
-        await chart.focus();await page.evaluate(()=>{window.__coreWheel=[];document.querySelector('#workflowTimelineViewport').addEventListener('wheel',e=>window.__coreWheel.push(e.defaultPrevented),{passive:true});});
-        const rect=await page.locator('.workflow-axis-track').boundingBox();await page.mouse.move(rect.x+rect.width*.5,rect.y+rect.height/2);await page.mouse.wheel(0,15);await page.keyboard.down('Control');await page.mouse.wheel(0,-15);await page.keyboard.up('Control');await settled();assert.deepEqual(await page.evaluate(()=>window.__coreWheel),[false,true]);
-        assert.equal(await page.evaluate(()=>JSON.stringify(activityDetailCache.get(activityDetailKey('FLOW-1',state.project)).workflow)),sourceBefore);
-        await page.evaluate(()=>{document.activeElement.blur();});await page.keyboard.press('ArrowLeft');assert.equal(await page.evaluate(()=>state.detail),null,'existing ArrowLeft outside chart still closes detail');
+        await chart.focus();await fixture.evaluate(page,()=>{window.__coreWheel=[];document.querySelector('#workflowTimelineViewport').addEventListener('wheel',e=>window.__coreWheel.push(e.defaultPrevented),{passive:true});});
+        const rect=await page.locator('.workflow-axis-track').boundingBox();await page.mouse.move(rect.x+rect.width*.5,rect.y+rect.height/2);await page.mouse.wheel(0,15);await page.keyboard.down('Control');await page.mouse.wheel(0,-15);await page.keyboard.up('Control');await settled();assert.deepEqual(await fixture.evaluate(page,()=>window.__coreWheel),[false,true]);
+        assert.equal(await fixture.evaluate(page,()=>JSON.stringify(activityDetailCache.get(activityDetailKey('FLOW-1',state.project)).workflow)),sourceBefore);
+        await fixture.evaluate(page,()=>{document.activeElement.blur();});await page.keyboard.press('ArrowLeft');assert.equal(await fixture.evaluate(page,()=>state.detail),null,'existing ArrowLeft outside chart still closes detail');
         report.cases.push({mobile,precise,label,afterLeft,keys,descendantKeys,nativeEnterSpaceSelection:true,tickGeometries:geometries,subsecond,subsecondLabel,detailRetained:true,selectionRetained:true,sourceUnchanged:true,outsideShortcutUnchanged:true,verticalUnpreventedPlotCtrlWheelHandled:true});await context.close();continue;
       }
       await scrollSection();await settled();const prefix=mobile?'mobile-dark':'desktop-light';
@@ -92,9 +89,9 @@ test('representative workflow has compact context and plot-coordinate anchored t
       // Native horizontal wheel pans. Ordinary vertical wheel stays native; plot Ctrl-wheel is explicitly chart zoom.
       await page.mouse.move(plot.x+plot.width*.5,y);await page.mouse.wheel(40,0);await settled();const wheel=await windowRange();assert.ok(wheel.start>selectedRange.start);
       const wheelGeometry=await projectedPosition();assert.ok(wheelGeometry.error<1.5,'rendered interval follows actual time coordinates after buffered pan');
-      await page.evaluate(()=>{window.__workflowWheels=[];document.querySelector('#workflowTimelineViewport').addEventListener('wheel',e=>window.__workflowWheels.push({ctrl:e.ctrlKey,prevented:e.defaultPrevented}),{passive:true});});
+      await fixture.evaluate(page,()=>{window.__workflowWheels=[];document.querySelector('#workflowTimelineViewport').addEventListener('wheel',e=>window.__workflowWheels.push({ctrl:e.ctrlKey,prevented:e.defaultPrevented}),{passive:true});});
       await page.mouse.wheel(0,12);await page.keyboard.down('Control');await page.mouse.wheel(0,-12);await page.keyboard.up('Control');await settled();
-      assert.deepEqual(await page.evaluate(()=>window.__workflowWheels.map(e=>e.prevented)),[false,true]);
+      assert.deepEqual(await fixture.evaluate(page,()=>window.__workflowWheels.map(e=>e.prevented)),[false,true]);
       await scrollSection();await settled();const afterScrollPlot=await page.locator('.workflow-axis-track').boundingBox(),afterScrollRow=await page.locator('.workflow-agent-track').first().boundingBox();
       let touch=null;
       if(mobile){
@@ -109,37 +106,37 @@ test('representative workflow has compact context and plot-coordinate anchored t
       await page.locator('#workflowFit').click();const interval=page.locator('[data-workflow-interval]').nth(8);await interval.focus();await page.keyboard.press('Enter');assert.equal(await page.locator('.workflow-floating.is-pinned').isVisible(),true);
       await zoomActivityRange(page);const precise=await windowRange();assert.ok(precise.end-precise.start<120000);assert.ok((initial.end-initial.start)/(precise.end-precise.start)>8);
       await page.locator('#workflowEvidenceDetails').evaluate(el=>el.open=true);const beforeRefresh=await windowRange();
-      await page.evaluate(()=>window.__workflowDetail=document.querySelector('.detail-head'));await page.locator('#activityDetailRefresh').click();await page.waitForFunction(()=>!activityDetailPending.size);
-      assert.deepEqual(await windowRange(),beforeRefresh);assert.equal(await page.evaluate(()=>window.__workflowDetail===document.querySelector('.detail-head')),true);assert.equal(await page.locator('#workflowEvidenceDetails').evaluate(el=>el.open),true);assert.equal(await page.locator('.workflow-floating.is-pinned').count(),0);
+      await fixture.evaluate(page,()=>window.__workflowDetail=document.querySelector('.detail-identity'));await page.locator('#activityDetailRefresh').click();await fixture.waitFor(page,()=>!activityDetailPending.size);
+      assert.deepEqual(await windowRange(),beforeRefresh);assert.equal(await fixture.evaluate(page,()=>window.__workflowDetail===document.querySelector('.detail-identity')),true);assert.equal(await page.locator('#workflowEvidenceDetails').evaluate(el=>el.open),true);assert.equal(await page.locator('.workflow-floating.is-pinned').count(),0);
       const beforeResize=await windowRange();await page.setViewportSize(mobile?{width:430,height:900}:{width:1280,height:900});await settled();const resized=await windowRange();assert.equal(resized.start,beforeResize.start);assert.equal(resized.end,beforeResize.end);
-      assert.equal(await page.evaluate(()=>JSON.stringify(activityDetailCache.get(activityDetailKey('FLOW-1',state.project)).workflow)),sourceBefore,'original timestamps, gaps, overlap and elapsed calculations stay unchanged');
-      assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'no page overflow');
+      assert.equal(await fixture.evaluate(page,()=>JSON.stringify(activityDetailCache.get(activityDetailKey('FLOW-1',state.project)).workflow)),sourceBefore,'original timestamps, gaps, overlap and elapsed calculations stay unchanged');
+      assert.ok(await fixture.evaluate(page,()=>document.documentElement.scrollWidth<=innerWidth+1),'no page overflow');
       // An out-of-order unmeasured report does not change measured totals. Its
       // insertion before the selected activity must not change that activity's identity.
       await page.locator('[data-workflow-interval]:not([aria-hidden="true"])').first().focus();await page.keyboard.press('Enter');
       const selectedKey=await page.locator('.workflow-interval.is-selected').getAttribute('data-workflow-interval'),selectedText=await page.locator('.workflow-floating.is-pinned').textContent();
       const inserted=structuredClone(server.state.data);inserted.workflow.rows[0].intervals.unshift({id:'synthetic-late-arriving-report',kind:'execution_report',type:'unclassified_execution',start:'2026-11-05T00:01:00Z',measured:false,attempt_id:'late-report',end_evidence:'unobserved',lane:0});
       server.state.data=inserted;await page.locator('#workflowIntervalEvidence').evaluate(el=>el.open=true);await page.locator('.workflow-interval.is-selected').focus();
-      await page.evaluate(()=>loadTaskActivity('FLOW-1',state.project));await page.waitForFunction(()=>!activityDetailPending.size);
-      assert.equal(await page.locator('.workflow-interval.is-selected').getAttribute('data-workflow-interval'),selectedKey);assert.equal(await page.locator('.workflow-floating.is-pinned').textContent(),selectedText);assert.equal(await page.evaluate(()=>document.activeElement.dataset.workflowInterval),selectedKey);assert.equal(await page.locator('#workflowIntervalEvidence').evaluate(el=>el.open),true);
+      await fixture.evaluate(page,()=>loadTaskActivity('FLOW-1',state.project));await fixture.waitFor(page,()=>!activityDetailPending.size);
+      assert.equal(await page.locator('.workflow-interval.is-selected').getAttribute('data-workflow-interval'),selectedKey);assert.equal(await page.locator('.workflow-floating.is-pinned').textContent(),selectedText);assert.equal(await fixture.evaluate(page,()=>document.activeElement.dataset.workflowInterval),selectedKey);assert.equal(await page.locator('#workflowIntervalEvidence').evaluate(el=>el.open),true);
       // Existing round0 can be filtered and re-entered without changing the time window.
       const beforeFilter=await windowRange();await page.locator('#activityDetailRound').selectOption('0',{force:true});assert.deepEqual(await windowRange(),beforeFilter);assert.equal(await page.locator('.workflow-interval.is-selected').count(),1);
-      server.state.activityStatus=503;await page.locator('#activityDetailRefresh').click();await page.waitForFunction(()=>!activityDetailPending.size);assert.deepEqual(await windowRange(),beforeFilter);assert.equal(await page.locator('.workflow-floating.is-pinned').count(),0);assert.match(await page.locator('.workflow-source-warning').first().textContent(),/마지막 확인/);
-      server.state.activityStatus=200;server.state.data.workflow.control_snapshot.trust='stale';await page.locator('#activityDetailRefresh').click();await page.waitForFunction(()=>!activityDetailPending.size);assert.deepEqual(await windowRange(),beforeFilter);assert.match(await page.locator('.workflow-source-note').textContent(),/오래/);
+      server.state.activityStatus=503;await page.locator('#activityDetailRefresh').click();await fixture.waitFor(page,()=>!activityDetailPending.size);assert.deepEqual(await windowRange(),beforeFilter);assert.equal(await page.locator('.workflow-floating.is-pinned').count(),0);assert.match(await page.locator('.workflow-source-warning').first().textContent(),/마지막 확인/);
+      server.state.activityStatus=200;server.state.data.workflow.control_snapshot.trust='stale';await page.locator('#activityDetailRefresh').click();await fixture.waitFor(page,()=>!activityDetailPending.size);assert.deepEqual(await windowRange(),beforeFilter);assert.match(await page.locator('.workflow-source-note').textContent(),/오래/);
       await page.locator('#workflowFit').click();await page.locator('#workflowZoomIn').click();await chart.focus();for(let i=0;i<12;i++)await page.keyboard.press('ArrowLeft');assert.equal((await windowRange()).start,initial.start);for(let i=0;i<24;i++)await page.keyboard.press('ArrowRight');assert.equal((await windowRange()).end,initial.end);
       // An open lifecycle can receive a newer current observation. Keeping a
       // view is the default; only the explicit Fit action follows the new bound.
       const open=fixture.payload('zero');server.state.data=open;
-      await page.evaluate(({data,task})=>{activityDetailViews.clear();state.detailTask=task;activityDetailCache.set(activityDetailKey('FLOW-1',state.project),data);renderActivityDetailControls('FLOW-1',state.project);},{data:open,task:fixture.task(open)});
+      await fixture.mount(page,server,open,{theme:mobile?'dark':'light'});
       const openBefore=await windowRange(),advanced=structuredClone(open),oldEnd=advanced.workflow.axis.end,newEnd=new Date(Date.parse(oldEnd)+60000).toISOString();
       advanced.workflow.axis.end=newEnd;advanced.workflow.axis.elapsed_ms+=60000;advanced.workflow.computed_at=newEnd;advanced.workflow.lifecycle.total_elapsed_ms+=60000;advanced.workflow.lifecycle.unattributed_elapsed_ms+=60000;advanced.workflow.measurement.unmeasured_ms+=60000;for(const gap of advanced.workflow.unmeasured_intervals)if(Date.parse(gap.end)===Date.parse(oldEnd))gap.end=newEnd;
-      server.state.data=advanced;await page.locator('#activityDetailRefresh').click();await page.waitForFunction(()=>!activityDetailPending.size);let stayed=await windowRange();assert.equal(stayed.start,openBefore.start);assert.equal(stayed.end,Date.parse(newEnd));await page.locator('#workflowFit').click();assert.equal((await windowRange()).end,Date.parse(newEnd));
+      server.state.data=advanced;await page.locator('#activityDetailRefresh').click();await fixture.waitFor(page,()=>!activityDetailPending.size);let stayed=await windowRange();assert.equal(stayed.start,openBefore.start);assert.equal(stayed.end,Date.parse(newEnd));await page.locator('#workflowFit').click();assert.equal((await windowRange()).end,Date.parse(newEnd));
       const long=structuredClone(advanced),longEnd=new Date(Date.parse(long.workflow.axis.start)+3*86400000).toISOString(),delta=Date.parse(longEnd)-Date.parse(long.workflow.axis.end),priorEnd=long.workflow.axis.end;
       long.workflow.axis.end=longEnd;long.workflow.computed_at=longEnd;long.workflow.axis.elapsed_ms+=delta;long.workflow.lifecycle.total_elapsed_ms+=delta;long.workflow.lifecycle.unattributed_elapsed_ms+=delta;long.workflow.measurement.unmeasured_ms+=delta;for(const gap of long.workflow.unmeasured_intervals)if(Date.parse(gap.end)===Date.parse(priorEnd))gap.end=longEnd;
-      server.state.data=long;await page.locator('#activityDetailRefresh').click();await page.waitForFunction(()=>!activityDetailPending.size);
-      await page.evaluate(()=>{const wf=activityDetailCache.get(activityDetailKey('FLOW-1',state.project)).workflow,p=activityDetailPrefs('FLOW-1');workflowSetWindow(wf,p,Date.parse('2026-11-05T14:59:00Z'),Date.parse('2026-11-05T15:01:00Z'));renderActivityDetailControls('FLOW-1');});
+      server.state.data=long;await page.locator('#activityDetailRefresh').click();await fixture.waitFor(page,()=>!activityDetailPending.size);
+      await fixture.evaluate(page,()=>{const wf=activityDetailCache.get(activityDetailKey('FLOW-1',state.project)).workflow,p=activityDetailPrefs('FLOW-1');workflowSetWindow(wf,p,Date.parse('2026-11-05T14:59:00Z'),Date.parse('2026-11-05T15:01:00Z'));renderActivityDetailControls('FLOW-1');});
       const midnight=await page.locator('#workflowVisibleRange').textContent();assert.match(midnight,/11\. 05\..*오후 11:59:00.*11\. 06\..*오전 12:01:00/);
-      await page.evaluate(()=>{const wf=activityDetailCache.get(activityDetailKey('FLOW-1',state.project)).workflow,p=activityDetailPrefs('FLOW-1');workflowSetWindow(wf,p,Date.parse('2026-11-07T00:00:00Z'),Date.parse('2026-11-07T00:00:45Z'));renderActivityDetailControls('FLOW-1');});
+      await fixture.evaluate(page,()=>{const wf=activityDetailCache.get(activityDetailKey('FLOW-1',state.project)).workflow,p=activityDetailPrefs('FLOW-1');workflowSetWindow(wf,p,Date.parse('2026-11-07T00:00:00Z'),Date.parse('2026-11-07T00:00:45Z'));renderActivityDetailControls('FLOW-1');});
       const laterDay=await page.locator('#workflowVisibleRange').textContent();assert.match(laterDay,/11\. 07\..*09:00:00.*09:00:45/);await page.locator('#workflowZoomIn').click();assert.match(await page.locator('#workflowVisibleRange').textContent(),/11\. 07\./);
       await scrollSection();await settled();if(process.env.WORKFLOW_NO_CAPTURE!=='1')await page.screenshot({path:path.join(out,prefix+'-later-day.png'),animations:'disabled'});
       await page.locator('#workflowFit').click();const longFit=await page.locator('#workflowVisibleRange').textContent();assert.match(longFit,/11\. 05\..*11\. 08\./);assert.equal((await windowRange()).end,Date.parse(longEnd));
