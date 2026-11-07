@@ -70,6 +70,8 @@ jobs:
         run: go build ./cmd/task-mecca
       - name: Check Web JavaScript syntax
         run: |
+          node scripts/check-native-ui.cjs
+          node --test tests/a65_task_data.test.cjs
           node --check goassets/template/_task_mecca/framework/web/app.js
           node --check goassets/template/_task_mecca/framework/web/select-ui.js
           node --check goassets/template/_task_mecca/framework/web/sw.js
@@ -109,6 +111,7 @@ jobs:
           WORKFLOW_EVIDENCE_DIR: workflow-browser-evidence
         run: |
           export WORKFLOW_PLAYWRIGHT_MODULE="$RUNNER_TEMP/workflow-runtime/node_modules/playwright"
+          node --test tests/a65_core_browser.test.cjs
           node --test tests/web_workflow_browser.test.cjs tests/web_workflow_navigation.test.cjs tests/web_workflow_gestures.test.cjs tests/web_workflow_popover.test.cjs tests/web_workflow_connected.test.cjs
           WORKFLOW_CORE_ONLY=1 WORKFLOW_NO_CAPTURE=1 WORKFLOW_EVIDENCE_DIR=workflow-browser-evidence/core node --test tests/web_workflow_navigation.test.cjs
       - name: Preserve synthetic browser evidence

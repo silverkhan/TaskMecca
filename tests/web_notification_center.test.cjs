@@ -50,26 +50,25 @@ test('hook resolution prevents stale, undated or equal-time assignment warnings 
  a.context.app.processTaskNotifications({snapshot_at:'2026-10-08T00:03:00Z',all_items:{'A-44':warning},notification_events:[{id:'warning-event',task_id:'A-44',kind:'intervention',reason_type:'assignment_unobserved',at:new Date().toISOString()}]});
  await new Promise(setImmediate);assert.equal(emitted.length,1);
 });
-test('packaged shell includes settings dialog and mobile center entry, and has no separate attention menu',()=>{
- const html=fs.readFileSync('goassets/template/_task_mecca/framework/web/index.html','utf8');assert.match(html,/id="notificationPanel"[^>]*role="dialog"/);assert.match(html,/id="projectNotificationsNav"/);assert.doesNotMatch(html,/id="notificationCenterTop"/);assert.doesNotMatch(html,/data-view="attention"/);assert.match(html,/data-view="issues"[^>]*hidden/);
+function nativeShell(language='en'){
+ const native=require('./helpers/native_ui_vm.cjs').session({location:{origin:'http://synthetic.local'}});
+ native.load('state.js').state.language=language;
+ return native.load('components/shared.js').shell();
+}
+test('native packaged shell has dedicated preferences and notifications without a duplicate attention route',()=>{
+ const html=fs.readFileSync('goassets/template/_task_mecca/framework/web/index.html','utf8'),shell=nativeShell();
+ assert.match(html,/type="module" src="\/ui\/main.js"/);
+ assert.match(shell,/href="\/\?view=settings"/);
+ assert.match(shell,/href="\/\?view=notifications"/);
+ assert.doesNotMatch(shell,/view=attention/);
+ assert.doesNotMatch(html,/src="\/app.js"/);
 });
-
-
-
-test('notification center sidebar keeps its original name without ellipsis',()=>{
- const a=app(),html=fs.readFileSync('goassets/template/_task_mecca/framework/web/index.html','utf8');
- const css=fs.readFileSync('goassets/template/_task_mecca/framework/web/style.css','utf8');
- assert.equal(vm.runInContext("t('projectNotifications')",a.context),'알림센터');
- assert.equal(vm.runInContext("t('notificationCenter')",a.context),'알림센터');
- a.state.language='en';
- assert.equal(vm.runInContext("t('projectNotifications')",a.context),'Notification center');
- assert.equal(vm.runInContext("t('notificationCenter')",a.context),'Notification center');
- assert.match(html,/id="projectNotificationsNav"[^>]+title="Notification center" aria-label="Notification center"/);
- assert.match(html,/id="projectNotificationsText">Notification center<\/span>/);
- assert.match(source,/const description=summary\?t\('telegramSetupNav'\)[^\n]+:t\('notificationCenter'\)/,
-  'Telegram setup hint keeps the same center label by default');
- assert.match(css,/#projectNotificationsNav \.nav-text\{[^}]*white-space:normal;overflow:visible;text-overflow:clip;word-break:keep-all\}/,
-  'notifications entry is never truncated with ellipsis, unlike other optional nav labels');
- assert.match(css,/#projectNotificationsNav \.count\{flex:0 0 auto\}/,
-  'Telegram setup dot retains its own space');
+test('notification labels retain their meaning and remain readable in the native navigation',()=>{
+ const a=app();assert.equal(vm.runInContext("t('projectNotifications')",a.context),'알림센터');
+ a.state.language='en';assert.equal(vm.runInContext("t('notificationCenter')",a.context),'Notification center');
+ const en=nativeShell(),ko=nativeShell('ko'),css=fs.readFileSync('goassets/template/_task_mecca/framework/web/ui/smoke.css','utf8');
+ assert.match(en,/view=notifications[^]*?<span>Notifications<\/span>/);
+ assert.match(ko,/view=notifications[^]*?<span>알림<\/span>/);
+ assert.doesNotMatch(css,/\.rail-link[^}]*text-overflow:\s*ellipsis/);
+ assert.match(css,/@media[^]*?max-width: 760px/);
 });

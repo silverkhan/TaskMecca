@@ -102,8 +102,11 @@ test('keyboard navigation and escape restore focus without changing native selec
  assert.equal(h.native.selectedIndex,1);
  assert.equal(h.document.activeElement,button);
 });
-test('mobile theme and all-selector integration are wired into every page',()=>{
- assert.match(index,/<script src="\/select-ui\.js"><\/script>/);
+test('native core uses accessible platform selects while legacy select component remains tested',()=>{
+ assert.match(index,/type="module" src="\/ui\/main.js"/);
+ const active=fs.readFileSync('goassets/template/_task_mecca/framework/web/ui/components/shared.js','utf8');
+ assert.match(active,/<select id="appearance" aria-label=/);
+ const filters=fs.readFileSync('goassets/template/_task_mecca/framework/web/ui/screens/backlog.js','utf8');assert.match(filters,/<select name="status"/);assert.match(filters,/<select name="sort"/);assert.match(filters,/<select name="page_size"/);
  assert.match(styles,/\.tm-combo-popup\{position:fixed/);
  assert.match(styles,/\.tm-combo-option\.active/);
  assert.match(styles,/select\.tm-combo-native/);

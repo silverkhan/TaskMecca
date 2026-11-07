@@ -278,6 +278,8 @@ test('loading placeholders escape dynamic project names and avoid a generic bran
     'list view escapes project names before setting innerHTML');
   assert.ok(source.includes('else c.innerHTML=gate+`<div class="loading">${esc(projectLoadingText())}</div>`'),
     'detail view escapes project names before setting innerHTML');
-  assert.ok(html.includes('<section id="content" class="content"><div class="loading">Loading…</div></section>'));
+  const native=require('./helpers/native_ui_vm.cjs').session();const heading=native.load('components/shared.js').heading('<unsafe-project>','<unsafe-path>');
+  assert.match(heading,/&lt;unsafe-project&gt;/);assert.match(heading,/&lt;unsafe-path&gt;/);assert.doesNotMatch(heading,/<unsafe-project>/);
+  const active=fs.readFileSync(path.join(__dirname,'../goassets/template/_task_mecca/framework/web/ui/main.js'),'utf8');assert.match(active,/class="loading" role="status"/);
   assert.doesNotMatch(html,/Loading Task Mecca…/);
 });
