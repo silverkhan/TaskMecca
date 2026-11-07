@@ -71,7 +71,7 @@ jobs:
       - name: Check Web JavaScript syntax
         run: |
           node scripts/check-native-ui.cjs
-          node --test tests/a65_task_data.test.cjs
+          node --test tests/a65_task_data.test.cjs tests/a65_preferences.test.cjs
           node --check goassets/template/_task_mecca/framework/web/app.js
           node --check goassets/template/_task_mecca/framework/web/select-ui.js
           node --check goassets/template/_task_mecca/framework/web/sw.js

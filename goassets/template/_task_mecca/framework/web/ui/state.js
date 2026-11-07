@@ -1,17 +1,38 @@
-const saved = (key, fallback) => {
-  try {
-    return localStorage.getItem(key) || fallback;
-  } catch {
-    return fallback;
-  }
-};
+export function initialPreferences() {
+  const read = (key) => {
+      try {
+        return localStorage.getItem(key);
+      } catch {
+        return null;
+      }
+    },
+    valid = (value) => ["light", "dark", "system"].includes(value),
+    smoke = read("task-mecca-smoke-mode"),
+    legacy = read("task-mecca-theme"),
+    mode = valid(smoke) ? smoke : valid(legacy) ? legacy : "system";
+  if (!valid(smoke) && valid(legacy))
+    try {
+      localStorage.setItem("task-mecca-smoke-mode", mode);
+    } catch {}
+  const savedLanguage = read("task-mecca-language"),
+    locale = typeof navigator !== "undefined" ? navigator.language : "";
+  return {
+    mode,
+    language: ["ko", "en"].includes(savedLanguage)
+      ? savedLanguage
+      : locale?.toLowerCase().startsWith("ko")
+        ? "ko"
+        : "en",
+  };
+}
+const initial = initialPreferences();
 export const state = {
   view: "home",
   detail: null,
   project: "",
   backlog: "",
-  language: saved("task-mecca-language", "ko"),
-  mode: saved("task-mecca-smoke-mode", "system"),
+  language: initial.language,
+  mode: initial.mode,
   page: 1,
   pageSize: 20,
   query: "",
