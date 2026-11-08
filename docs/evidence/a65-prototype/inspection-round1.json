@@ -1,0 +1,145 @@
+{
+  "errors": [],
+  "report": [
+    {
+      "name": "desktop",
+      "view": "home",
+      "width": 1440,
+      "overflow": false,
+      "title": "관제 홈"
+    },
+    {
+      "name": "desktop",
+      "view": "backlog",
+      "width": 1440,
+      "overflow": false,
+      "title": "task-mecca"
+    },
+    {
+      "name": "desktop",
+      "view": "detail",
+      "width": 1440,
+      "overflow": false,
+      "title": "관제 홈과 작업 흐름을 하나로 연결"
+    },
+    {
+      "name": "desktop",
+      "view": "lifecycle",
+      "width": 1440,
+      "overflow": false,
+      "title": "관제 홈과 작업 흐름을 하나로 연결"
+    },
+    {
+      "name": "desktop-light",
+      "view": "home",
+      "width": 1280,
+      "overflow": false,
+      "title": "Control home"
+    },
+    {
+      "name": "desktop-light",
+      "view": "backlog",
+      "width": 1280,
+      "overflow": false,
+      "title": "task-mecca"
+    },
+    {
+      "name": "desktop-light",
+      "view": "detail",
+      "width": 1280,
+      "overflow": false,
+      "title": "관제 홈과 작업 흐름을 하나로 연결"
+    },
+    {
+      "name": "desktop-light",
+      "view": "lifecycle",
+      "width": 1280,
+      "overflow": false,
+      "title": "관제 홈과 작업 흐름을 하나로 연결"
+    },
+    {
+      "name": "mobile",
+      "view": "home",
+      "width": 390,
+      "overflow": false,
+      "title": "관제 홈"
+    },
+    {
+      "name": "mobile",
+      "view": "backlog",
+      "width": 390,
+      "overflow": false,
+      "title": "task-mecca"
+    },
+    {
+      "name": "mobile",
+      "view": "detail",
+      "width": 390,
+      "overflow": false,
+      "title": "관제 홈과 작업 흐름을 하나로 연결"
+    },
+    {
+      "name": "mobile",
+      "view": "lifecycle",
+      "width": 390,
+      "overflow": false,
+      "title": "관제 홈과 작업 흐름을 하나로 연결"
+    },
+    {
+      "name": "mobile-light",
+      "view": "home",
+      "width": 320,
+      "overflow": false,
+      "title": "Control home"
+    },
+    {
+      "name": "mobile-light",
+      "view": "backlog",
+      "width": 320,
+      "overflow": false,
+      "title": "task-mecca"
+    },
+    {
+      "name": "mobile-light",
+      "view": "detail",
+      "width": 320,
+      "overflow": false,
+      "title": "관제 홈과 작업 흐름을 하나로 연결"
+    },
+    {
+      "name": "mobile-light",
+      "view": "lifecycle",
+      "width": 320,
+      "overflow": false,
+      "title": "관제 홈과 작업 흐름을 하나로 연결"
+    },
+    {
+      "name": "mobile-wide",
+      "view": "home",
+      "width": 430,
+      "overflow": false,
+      "title": "Control home"
+    },
+    {
+      "name": "mobile-wide",
+      "view": "backlog",
+      "width": 430,
+      "overflow": false,
+      "title": "task-mecca"
+    },
+    {
+      "name": "mobile-wide",
+      "view": "detail",
+      "width": 430,
+      "overflow": false,
+      "title": "관제 홈과 작업 흐름을 하나로 연결"
+    },
+    {
+      "name": "mobile-wide",
+      "view": "lifecycle",
+      "width": 430,
+      "overflow": false,
+      "title": "관제 홈과 작업 흐름을 하나로 연결"
+    }
+  ]
+}

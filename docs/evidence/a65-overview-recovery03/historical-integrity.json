@@ -1,0 +1,10 @@
+{
+  "report01_manifest_count": 9,
+  "report01_mismatches": [],
+  "report01_manifest_sha256": "64c551bdc2b6cb2dd0dc3727dcbc0513c9619e8818815787a4aade027904cf78",
+  "report02_files": {
+    "development.log": "215ef28e0f2b6d47504b5c7398fb0b6b355343d6772ad4e6631577beccc590ac",
+    "final-race.log": "3796a60f09e5a93f2a1d195a4ca33c395e1f93b32dbf039273ded49464b8f0ec"
+  },
+  "older_ui_asset_provenance": "Old17PASS used untracked working-tree UI assets without a stored tree hash; it is not retrospectively attested. This report03 is a new test on fully committed767."
+}

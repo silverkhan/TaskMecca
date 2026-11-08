@@ -23,10 +23,15 @@ The active browser tests load the native modules and real routes. Migrated workf
 
 `docs/evidence/a65-prototype/inspection-round1.json` records the first batched mechanical inspection; it is not visual acceptance. `design-detector.json` is the single final static detector run, with no findings. The actual-binary intermediate failure is retained in `integrated-smoke-intermediate.json`; it identified the missing `/ui/` static route, which required a guarded server route before final integration could pass.
 
-Final screenshots, exact source/binary provenance, native test reports, paired performance medians, Draft PR and exact HEAD CI must be read together. Synthetic fixtures are public test records. No physical phone, OS trackpad, screen reader, battery/energy or native browser zoom claims are made. The core browser suite separately labels its 200% CSS zoom check as a layout equivalent.
+Final screenshots, exact source/binary provenance, native test reports, paired performance medians, and Draft PR exact-HEAD CI must be read together. Synthetic fixtures are public test records. No physical phone, OS trackpad, screen reader or battery/energy validation is claimed. The core browser suite labels its 200% CSS zoom check as layout equivalent. A separate native Chrome 200% wide-window check is recorded in `native-chrome-zoom-5b04.json`; it does not establish coverage at every width.
 
 ## Remaining areas and resume conditions
 
 Full operations/workload/runtime views, project/service/channel management, notification delivery/configuration, release notes/version/update prompts, help/manual, terminal, storage, project Activity queries and extended settings remain for the next stage. Their shell paths describe the review boundary; they are not claimed complete. Backlog CRUD and Agent execution/approval are excluded from the approved redesign scope.
 
 Resume expansion only after the user reviews the core PC/mobile Light/Dark design and provides direction. Resolve any open finish-review or performance gate findings before claiming readiness. No Dev/Main/Stable merge, production deployment, service installation/restart, migration or user Preview switch is authorized by this prototype.
+
+
+## Review packet
+
+[DESIGN.md](../DESIGN.md) records the implemented Smoke design system. The [feature map](a65-feature-map.md) compares the old interface with delivered core, residual and excluded capabilities. The [evidence index](a65-review-evidence.md) identifies current visual evidence, immutable prior findings, source provenance and pending delivery gates. Final performance output is preserved through Controller intake after the delivery HEAD freezes; it is not a reason to change the measured commit.

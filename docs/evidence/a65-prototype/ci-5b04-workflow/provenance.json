@@ -1,0 +1,8 @@
+{
+  "head": "5b04ba6f4f2aa3c8ff30949a3af0bca45cddd179",
+  "run": 42424472642,
+  "artifact": 13595181522,
+  "artifact_sha256": "fe040d6ae372e22b17496b15ef420a02df58d312b1f2bab0e85a00bb6392ab71",
+  "synthetic": true,
+  "meaning": "Native browser component fixtures from exact HEAD remote CI; not actual Go backend integration."
+}

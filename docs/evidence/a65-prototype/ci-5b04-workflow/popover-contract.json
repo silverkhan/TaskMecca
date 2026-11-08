@@ -1,0 +1,323 @@
+{
+  "synthetic": true,
+  "mechanism": "Chromium native mouse/keyboard/wheel/tap; source mounting only for fixtures",
+  "sources": {
+    "goassets/template/_task_mecca/framework/web/ui/components/workflow.js": "7ccc8a53ebc4f744a4f2e9c3df564daac12a292e877dab4f832d0f15db88b322",
+    "goassets/template/_task_mecca/framework/web/ui/components/workflow.css": "f69e9151a1d916242f5ec5996550fb00928a137a903038665ce5172b4896f285",
+    "internal/activity/workflow.go": "01f9fac3d8333ef4fa493732d7ab3db2c694f235b3f0db7abf4caf3c9dc4a2f2"
+  },
+  "cases": [
+    {
+      "mobile": false,
+      "geometry": {
+        "width": 2.578125,
+        "radius": "9px",
+        "height": "18px",
+        "plot": 846
+      },
+      "placements": [
+        {
+          "x": 315.28125,
+          "y": 625.03125,
+          "width": 360,
+          "height": 205.375
+        },
+        {
+          "x": 1072,
+          "y": 625.03125,
+          "width": 360,
+          "height": 205.375
+        }
+      ],
+      "resized": {
+        "x": 912,
+        "y": 625.03125,
+        "width": 360,
+        "height": 205.375
+      },
+      "dropdown": {
+        "width": 438,
+        "right": 951,
+        "height": 34
+      },
+      "actualInput": true,
+      "sameItemToggle": true,
+      "insideSelection": true,
+      "keyboardFocusAndEscape": true,
+      "refreshChangedDismisses": true,
+      "rawSourceUnchanged": true
+    },
+    {
+      "mobile": true,
+      "geometry": {
+        "width": 0.578125,
+        "radius": "9px",
+        "height": "18px",
+        "plot": 194
+      },
+      "placements": [
+        {
+          "x": 8,
+          "y": 473.5,
+          "width": 360,
+          "height": 211.59375
+        },
+        {
+          "x": 22,
+          "y": 473.5,
+          "width": 360,
+          "height": 211.59375
+        }
+      ],
+      "resized": {
+        "x": 62,
+        "y": 473.5,
+        "width": 360,
+        "height": 211.59375
+      },
+      "dropdown": {
+        "width": 110,
+        "right": 136,
+        "height": 44
+      },
+      "actualInput": true,
+      "sameItemToggle": true,
+      "insideSelection": true,
+      "keyboardFocusAndEscape": true,
+      "refreshChangedDismisses": true,
+      "rawSourceUnchanged": true
+    }
+  ],
+  "errors": [],
+  "screens": [],
+  "limits": [
+    "No physical phone, OS trackpad, Safari or full screen-reader validation",
+    "Synthetic fixture timings are not device energy or native-CSS speed claims"
+  ],
+  "browser": "156.0.8078.4",
+  "cost": {
+    "scope": "One bounded instrumented 3-day synthetic history, 2000 actual activities + 2000 detail-only execution reports",
+    "sourceHash": "10870c6ba31ded6d1ff8379c1abf4fb54d8f0db93dd3eedcffd4643debfcfd02",
+    "sourceHashes": {
+      "goassets/template/_task_mecca/framework/web/ui/components/workflow.js": "7ccc8a53ebc4f744a4f2e9c3df564daac12a292e877dab4f832d0f15db88b322",
+      "goassets/template/_task_mecca/framework/web/ui/components/workflow.css": "f69e9151a1d916242f5ec5996550fb00928a137a903038665ce5172b4896f285",
+      "internal/activity/workflow.go": "01f9fac3d8333ef4fa493732d7ab3db2c694f235b3f0db7abf4caf3c9dc4a2f2"
+    },
+    "startup": {
+      "sourceIndexReads": 0,
+      "childMutations": 0,
+      "canvasReplacements": 0,
+      "pointerOutsidePlot": true
+    },
+    "startupBoundary": {
+      "nativePointer": {
+        "x": 0,
+        "y": 0
+      },
+      "fontReady": true,
+      "animationFrames": 4,
+      "idleAnimationFrames": 4,
+      "countersReset": false,
+      "pollingOrRetries": false,
+      "synchronousMountInstrumented": false
+    },
+    "idle": {
+      "sourceIndexReads": 0,
+      "childMutations": 0
+    },
+    "activityAPICalls": 0,
+    "backendSourceRescans": "No endpoint calls during sample; backend scan count not independently instrumented",
+    "frontendSourceRescans": "Numeric interval reads counted by Proxy; zoom rebuilds filter/layout from cached source arrays; same-span pan reuses translated tracks",
+    "sourceIndexReads": 181541,
+    "childMutations": 86,
+    "canvasReplacements": 11,
+    "bodySame": true,
+    "metricsBodySame": true,
+    "domNodes": 8344,
+    "renderedActivityNodes": 2000,
+    "wheel": [
+      {
+        "deltaX": 0,
+        "deltaY": -0.125,
+        "ctrl": true
+      },
+      {
+        "deltaX": 0,
+        "deltaY": -0.5,
+        "ctrl": true
+      },
+      {
+        "deltaX": 0,
+        "deltaY": -1.25,
+        "ctrl": true
+      },
+      {
+        "deltaX": 0,
+        "deltaY": -12,
+        "ctrl": true
+      },
+      {
+        "deltaX": 0,
+        "deltaY": -36,
+        "ctrl": true
+      },
+      {
+        "deltaX": 0,
+        "deltaY": -120,
+        "ctrl": true
+      },
+      {
+        "deltaX": 0,
+        "deltaY": 24,
+        "ctrl": true
+      },
+      {
+        "deltaX": 0,
+        "deltaY": 12,
+        "ctrl": true
+      },
+      {
+        "deltaX": 0,
+        "deltaY": 0.75,
+        "ctrl": true
+      },
+      {
+        "deltaX": 0,
+        "deltaY": 0.25,
+        "ctrl": true
+      },
+      {
+        "deltaX": 24,
+        "deltaY": 0,
+        "ctrl": false
+      },
+      {
+        "deltaX": -36,
+        "deltaY": 0,
+        "ctrl": false
+      },
+      {
+        "deltaX": 12.5,
+        "deltaY": 0,
+        "ctrl": false
+      },
+      {
+        "deltaX": -6.25,
+        "deltaY": 0,
+        "ctrl": false
+      }
+    ],
+    "pinnedCount": 0,
+    "timings": [
+      {
+        "kind": "nativeCtrlWheel",
+        "delta": -0.125,
+        "wallMilliseconds": 466
+      },
+      {
+        "kind": "nativeCtrlWheel",
+        "delta": -0.5,
+        "wallMilliseconds": 515
+      },
+      {
+        "kind": "nativeCtrlWheel",
+        "delta": -1.25,
+        "wallMilliseconds": 456
+      },
+      {
+        "kind": "nativeCtrlWheel",
+        "delta": -12,
+        "wallMilliseconds": 431
+      },
+      {
+        "kind": "nativeCtrlWheel",
+        "delta": -36,
+        "wallMilliseconds": 354
+      },
+      {
+        "kind": "nativeCtrlWheel",
+        "delta": -120,
+        "wallMilliseconds": 383
+      },
+      {
+        "kind": "nativeCtrlWheel",
+        "delta": 24,
+        "wallMilliseconds": 354
+      },
+      {
+        "kind": "nativeCtrlWheel",
+        "delta": 12,
+        "wallMilliseconds": 380
+      },
+      {
+        "kind": "nativeCtrlWheel",
+        "delta": 0.75,
+        "wallMilliseconds": 382
+      },
+      {
+        "kind": "nativeCtrlWheel",
+        "delta": 0.25,
+        "wallMilliseconds": 367
+      },
+      {
+        "kind": "nativeHorizontalWheel",
+        "delta": 24,
+        "wallMilliseconds": 114
+      },
+      {
+        "kind": "nativeHorizontalWheel",
+        "delta": -36,
+        "wallMilliseconds": 67
+      },
+      {
+        "kind": "nativeHorizontalWheel",
+        "delta": 12.5,
+        "wallMilliseconds": 66
+      },
+      {
+        "kind": "nativeHorizontalWheel",
+        "delta": -6.25,
+        "wallMilliseconds": 67
+      },
+      {
+        "kind": "nativePopoverOpenClose",
+        "wallMilliseconds": 106
+      },
+      {
+        "kind": "nativePopoverOpenClose",
+        "wallMilliseconds": 89
+      },
+      {
+        "kind": "nativePopoverOpenClose",
+        "wallMilliseconds": 43
+      },
+      {
+        "kind": "nativePopoverOpenClose",
+        "wallMilliseconds": 66
+      },
+      {
+        "kind": "nativePopoverOpenClose",
+        "wallMilliseconds": 87
+      },
+      {
+        "kind": "nativePopoverOpenClose",
+        "wallMilliseconds": 59
+      },
+      {
+        "kind": "nativePopoverOpenClose",
+        "wallMilliseconds": 58
+      },
+      {
+        "kind": "nativePopoverOpenClose",
+        "wallMilliseconds": 77
+      }
+    ],
+    "limits": "Wall times include browser protocol, rAF and Proxy overhead; no baseline comparison, device-energy or native-CSS speed claim. Dense history retains source array filtering and many Activity DOM nodes."
+  },
+  "passed": true,
+  "cleanup": {
+    "browserClosed": true,
+    "fixtureClosed": true,
+    "portRefused": true
+  }
+}

@@ -1,0 +1,108 @@
+{
+  "observed_at": "2026-11-07T23:03:24.649817+00:00",
+  "head": "767b0f42ceab5da2e8d01efdd1a9aaf87b33a00c",
+  "tracked_status": " M internal/webui/server_test.go\n",
+  "api_source_count": 5,
+  "ui_asset_and_index_count": 19,
+  "api_or_ui_hash_mismatches": [],
+  "files": {
+    "goassets/template/_task_mecca/framework/web/index.html": {
+      "before_sha256": "c100327215cb257523554551ecde85b3c843a73afaaa2b755f4d37d1f56a4854",
+      "current_sha256": "c100327215cb257523554551ecde85b3c843a73afaaa2b755f4d37d1f56a4854"
+    },
+    "goassets/template/_task_mecca/framework/web/ui/boot.js": {
+      "before_sha256": "24e18b21109bf1708a9b3c7c6e60c6deb2978cc17d63ec28d0c6097eb53e807a",
+      "current_sha256": "24e18b21109bf1708a9b3c7c6e60c6deb2978cc17d63ec28d0c6097eb53e807a"
+    },
+    "goassets/template/_task_mecca/framework/web/ui/components/lifecycle.js": {
+      "before_sha256": "1c067f89feed2ad911c911399e7566323649d8398c394cc634beb3b2eb1239bc",
+      "current_sha256": "1c067f89feed2ad911c911399e7566323649d8398c394cc634beb3b2eb1239bc"
+    },
+    "goassets/template/_task_mecca/framework/web/ui/components/shared.js": {
+      "before_sha256": "a37b9688911f89b88b7a75a17f508d7d7eff24279aadb3b57a52330f0129b028",
+      "current_sha256": "a37b9688911f89b88b7a75a17f508d7d7eff24279aadb3b57a52330f0129b028"
+    },
+    "goassets/template/_task_mecca/framework/web/ui/components/workflow.css": {
+      "before_sha256": "f69e9151a1d916242f5ec5996550fb00928a137a903038665ce5172b4896f285",
+      "current_sha256": "f69e9151a1d916242f5ec5996550fb00928a137a903038665ce5172b4896f285"
+    },
+    "goassets/template/_task_mecca/framework/web/ui/components/workflow.js": {
+      "before_sha256": "7ccc8a53ebc4f744a4f2e9c3df564daac12a292e877dab4f832d0f15db88b322",
+      "current_sha256": "7ccc8a53ebc4f744a4f2e9c3df564daac12a292e877dab4f832d0f15db88b322"
+    },
+    "goassets/template/_task_mecca/framework/web/ui/data.js": {
+      "before_sha256": "53c79ac1164cb35a534043fb1a623097af5f632da50686f7e0e0d0aff230c95b",
+      "current_sha256": "53c79ac1164cb35a534043fb1a623097af5f632da50686f7e0e0d0aff230c95b"
+    },
+    "goassets/template/_task_mecca/framework/web/ui/fonts/OFL.txt": {
+      "before_sha256": "58172e0c0fac2cda8a37b348164bb55e44b0e69051e557e92b1d3f6910141f7b",
+      "current_sha256": "58172e0c0fac2cda8a37b348164bb55e44b0e69051e557e92b1d3f6910141f7b"
+    },
+    "goassets/template/_task_mecca/framework/web/ui/fonts/manrope.ttf": {
+      "before_sha256": "3ae11c49db0455a3cc33e37d380f20fdb8c7f8b41dc07625c177e3d87a9d6ae6",
+      "current_sha256": "3ae11c49db0455a3cc33e37d380f20fdb8c7f8b41dc07625c177e3d87a9d6ae6"
+    },
+    "goassets/template/_task_mecca/framework/web/ui/format.js": {
+      "before_sha256": "fb312d1605385f97190b2404e719cbb948e55f6a403a9ceb21a0c76eb4bb1426",
+      "current_sha256": "fb312d1605385f97190b2404e719cbb948e55f6a403a9ceb21a0c76eb4bb1426"
+    },
+    "goassets/template/_task_mecca/framework/web/ui/live-lifecycle.js": {
+      "before_sha256": "1ea06c0f3e5bc1d10ec53473ac75c7392cbee3f2f13faff98f356e936fa3101e",
+      "current_sha256": "1ea06c0f3e5bc1d10ec53473ac75c7392cbee3f2f13faff98f356e936fa3101e"
+    },
+    "goassets/template/_task_mecca/framework/web/ui/live-source.js": {
+      "before_sha256": "143fbf6d5617bf6cb551ac0712fa253190a7c506bafb8acb6ae7d2fbee4ede49",
+      "current_sha256": "143fbf6d5617bf6cb551ac0712fa253190a7c506bafb8acb6ae7d2fbee4ede49"
+    },
+    "goassets/template/_task_mecca/framework/web/ui/main.js": {
+      "before_sha256": "580ce01e4e5a4901f73a3036e4673b63e56add4a1dc942784c3dfd78fefe1e87",
+      "current_sha256": "580ce01e4e5a4901f73a3036e4673b63e56add4a1dc942784c3dfd78fefe1e87"
+    },
+    "goassets/template/_task_mecca/framework/web/ui/package.json": {
+      "before_sha256": "89c47db7851f89caec72da4f215ebc21cf1e294aeef3b45d2583562d846ab035",
+      "current_sha256": "89c47db7851f89caec72da4f215ebc21cf1e294aeef3b45d2583562d846ab035"
+    },
+    "goassets/template/_task_mecca/framework/web/ui/screens/backlog.js": {
+      "before_sha256": "9cc1f0d77ce733e0555d9fb1a470ed13050828fdd3ae8ea512284c58a77c3c9d",
+      "current_sha256": "9cc1f0d77ce733e0555d9fb1a470ed13050828fdd3ae8ea512284c58a77c3c9d"
+    },
+    "goassets/template/_task_mecca/framework/web/ui/screens/detail.js": {
+      "before_sha256": "f17c0f51520d01564da47edceb04330ad99fb8a0ddff5e78361dd7e2c9c516bd",
+      "current_sha256": "f17c0f51520d01564da47edceb04330ad99fb8a0ddff5e78361dd7e2c9c516bd"
+    },
+    "goassets/template/_task_mecca/framework/web/ui/screens/home.js": {
+      "before_sha256": "db79346a19f2b4eff2c05e8d9d6161968b6c7898525939bf8973adc44ec7ef33",
+      "current_sha256": "db79346a19f2b4eff2c05e8d9d6161968b6c7898525939bf8973adc44ec7ef33"
+    },
+    "goassets/template/_task_mecca/framework/web/ui/smoke.css": {
+      "before_sha256": "5ba0781ee595c56bedd96a7534844d506150a3e25711f77a0360572aa4a452a6",
+      "current_sha256": "5ba0781ee595c56bedd96a7534844d506150a3e25711f77a0360572aa4a452a6"
+    },
+    "goassets/template/_task_mecca/framework/web/ui/state.js": {
+      "before_sha256": "eb19539d2099672a4829080c3df12f546ec7b206d2b7c1cf09e2106eb3bfc0d5",
+      "current_sha256": "eb19539d2099672a4829080c3df12f546ec7b206d2b7c1cf09e2106eb3bfc0d5"
+    },
+    "internal/webui/attention_stream.go": {
+      "before_sha256": "1d19d00d09bb6c340701aeb1fac7b06fe15b38779d9b497c7ebb5d30de3e9b7e",
+      "current_sha256": "1d19d00d09bb6c340701aeb1fac7b06fe15b38779d9b497c7ebb5d30de3e9b7e"
+    },
+    "internal/webui/overview.go": {
+      "before_sha256": "713ba2859fe23c78b548373c9d9a9f1ac67f0ade6bdad7fd4ca1f162420c7db2",
+      "current_sha256": "713ba2859fe23c78b548373c9d9a9f1ac67f0ade6bdad7fd4ca1f162420c7db2"
+    },
+    "internal/webui/overview_events_test.go": {
+      "before_sha256": "cb90d345947862a3a8d9c66bf01795a028a29bd13d82b78f85e787a3edd26d97",
+      "current_sha256": "cb90d345947862a3a8d9c66bf01795a028a29bd13d82b78f85e787a3edd26d97"
+    },
+    "internal/webui/overview_test.go": {
+      "before_sha256": "99482c276947bfc3da7946b9885a89af0d3d84ec8ae05f9383a96f074cbae410",
+      "current_sha256": "99482c276947bfc3da7946b9885a89af0d3d84ec8ae05f9383a96f074cbae410"
+    },
+    "internal/webui/server.go": {
+      "before_sha256": "59340cf80754c6bd28df9b9834cb71d8724c424821e57bbd6941c5682a9f3e92",
+      "current_sha256": "59340cf80754c6bd28df9b9834cb71d8724c424821e57bbd6941c5682a9f3e92"
+    }
+  },
+  "other_writer_change": "Controller confirmed server_test.go belongs to lead migration of old theme/static markup expectations, after the completed clean verification window. No source test was repeated by support.",
+  "boundary": "Exact17 validation refers to recorded22:56:50\u201322:57:06 window and source tree767. Current later working-tree changes are not claimed to be part of that clean window."
+}

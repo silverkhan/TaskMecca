@@ -1,0 +1,160 @@
+{
+  "report_id": "a65-ci-fixture-cleanup-20261108-01",
+  "scope": "A65 narrow CI fixture cleanup only; not full A65 acceptance/completion.",
+  "assignment": "assignment-0750817af15269aa27d24686622356b2",
+  "identity": {
+    "native": "01a1aab8-7aab-7b60-9e80-7a10f550e5ce",
+    "session": "01a18149-b707-7ee3-8069-d86f0a14d405",
+    "turn": "01a1b87d-58f0-7310-a5c9-988a9811727f",
+    "attempt": "run-366a78e6bad8c43d",
+    "firstbind": "Controller verified fresh exact path bound/running/A65/findings[] before mutation; old completed7aa not reused"
+  },
+  "contract_sha": "2c27553e4e280bbdf61813b461367668b2689567f562e1160225deca857149c3",
+  "source": {
+    "runtime_freeze_base": "487c23918449aaab6ab422c5d1f47b71a1669055",
+    "baseline_actual_head": "1c40cb27c888ae7f055f572a5593826ac60b8a41",
+    "support_commit": "6ba0fa548f4b344ee44cf4b15dde907291ebf21d",
+    "actual_parent": "1c40cb27c888ae7f055f572a5593826ac60b8a41",
+    "target_file": "internal/webui/activity_lifecycle_http_test.go",
+    "target_before_sha256": "d475f228dfba3b17e2d5022eca8b2245100ddcd419d5a5e3de9363a9bcce6376",
+    "target_after_sha256": "906d4091f1609ab098362d541c06337635666f42f3c6bb30e9148c6a84809b25",
+    "target_matches_support_commit": true,
+    "files_in_commit": [
+      "internal/webui/activity_lifecycle_http_test.go"
+    ],
+    "lines_added": 1,
+    "lines_deleted": 0,
+    "removing_only_added_call_restores_exact_original_487_bytes": true,
+    "other_dirty_preserved": true
+  },
+  "failure": {
+    "source": "docs/evidence/a65-prototype/ci-487c2391/go-runtime.log",
+    "sha256": "09a2ad7abf3082b5ca02cd95668c2432c49b0ba73deb11f13dde53cec84a5a22",
+    "excerpt": "2026-11-08T00:00:50.6153758Z 2026/11/08 00:00:28 Task Mecca automatic Telegram delivery issue in project \"001\": 0 events, 1 failures; inspect notification delivery ledger\n2026-11-08T00:00:50.6154333Z 2026/11/08 00:00:28 Task Mecca automatic Telegram delivery issue in project \"001\": 0 events, 1 failures; inspect notification delivery ledger\n2026-11-08T00:00:50.6154724Z --- FAIL: TestActivityHTTPIncludesReportedLifecycleCoverage (0.01s)\n2026-11-08T00:00:50.6155812Z     testing.go:1231: TempDir RemoveAll cleanup: unlinkat /tmp/TestActivityHTTPIncludesReportedLifecycleCoverage263819627/001/_task_mecca: directory not empty\n2026-11-08T00:00:50.6156350Z 2026/11/08 00:00:28 Task Mecca automatic Telegram delivery issue in project \"001\": 0 events, 1 failures; inspect notification delivery ledger\n2026-11-08T00:00:50.6156820Z 2026/11/08 00:00:29 Task Mecca automatic Telegram delivery issue in project \"001\": 0 events, 1 failures; inspect notification delivery ledger",
+    "classification": "fixture TempDir RemoveAll directory-not-empty race; no lifecycle coverage assertion failure reported"
+  },
+  "cleanup": {
+    "added_call": "stopProjectAttentionFeedsForTest(t,project)",
+    "placement": "Immediately after registerWebFixture, before lifecycle writes and Handler creation.",
+    "existing_helper": "internal/webui/runtime_hooks_test.go:18",
+    "mechanism": "Registers t.Cleanup; removes only this synthetic project namespace from attentionFeeds under its mutex, releases mutex, closes each owned stopCh and waits for doneCh.",
+    "order": "project TempDir registered first; registerWebFixture creates isolated TASK_MECCA_HOME TempDir and env restoration cleanup; feed cleanup registered last therefore executes first under LIFO, before registry/env/temp directory teardown.",
+    "fatal_paths": "Cleanup is registered before Handler and assertions, so test failures/Fatal still join any fixture-owned feed before deleting directories.",
+    "preserved": [
+      "All coverage/rollup assertions byte-identical after removing the one new call.",
+      "No assertion removal, skips, expectation relaxation, arbitrary sleeps, production shutdown or global service stop.",
+      "No production/API/SSE/UI/other test/CI edits."
+    ]
+  },
+  "verification": {
+    "baseline": {
+      "command": [
+        "go",
+        "test",
+        "-race",
+        "./internal/webui",
+        "-run",
+        "^TestActivityHTTPIncludesReportedLifecycleCoverage$",
+        "-count=1",
+        "-v"
+      ],
+      "exit": 0,
+      "elapsed_ms": 5042.3,
+      "note": "One bounded local baseline; a local pass does not negate observed nondeterministic remote cleanup failure."
+    },
+    "baseline_result": "PASS locally once; cleanup race is nondeterministic, so this does not negate the preserved observed remote failure.",
+    "after_gates": [
+      {
+        "name": "after-target-race20",
+        "command": [
+          "go",
+          "test",
+          "-race",
+          "./internal/webui",
+          "-run",
+          "^TestActivityHTTPIncludesReportedLifecycleCoverage$",
+          "-count=20",
+          "-v"
+        ],
+        "started_at": "2026-11-08T00:14:08.780317+00:00",
+        "ended_at": "2026-11-08T00:14:14.989743+00:00",
+        "elapsed_ms": 6209.5,
+        "exit": 0,
+        "pass_count": 20,
+        "skip_count": 0,
+        "race_detected": false,
+        "package_seconds": 3.731
+      },
+      {
+        "name": "related-cache-race",
+        "command": [
+          "go",
+          "test",
+          "-race",
+          "./internal/webui",
+          "-run",
+          "^TestActivityWorkflowCachesUnchangedSourcesWithoutRuntimeReconcile$",
+          "-count=1",
+          "-v"
+        ],
+        "started_at": "2026-11-08T00:14:14.990473+00:00",
+        "ended_at": "2026-11-08T00:14:16.876813+00:00",
+        "elapsed_ms": 1886.4,
+        "exit": 0,
+        "pass_count": 1,
+        "skip_count": 0,
+        "race_detected": false,
+        "package_seconds": 1.318
+      }
+    ],
+    "target_repetitions": 20,
+    "related_case": "TestActivityWorkflowCachesUnchangedSourcesWithoutRuntimeReconcile",
+    "passes_after": 21,
+    "new_failures": [],
+    "race_findings": false,
+    "full_local_go_suite": "not run; forbidden",
+    "test_fixture_boundary": "Only original synthetic TempDir/isolated registry fixture; feed shutdown is scoped to this project, not an operating service.",
+    "cpu_coordination": "KK and Lumen confirmed no heavy work/performance final8-pair hold; start/end notifications sent; no further heavy execution planned."
+  },
+  "runtime_inputs": {
+    "manifest": "before.json + after.json",
+    "total_distinct_inputs": 239,
+    "before_after_mismatches": [],
+    "runtime_paths_changed_from_487": [],
+    "groups": {
+      "runtime_go": {
+        "count": 186,
+        "sha256": "6d5f012632fc147311ee10e3c1987820f9ca1d77405a1cc90eb503a62db6b66a"
+      },
+      "embed_assets": {
+        "count": 52,
+        "sha256": "4d10dfef6adf8961897b46ee6be8e0133d68bae4282d736ad57ae390fc816d86"
+      },
+      "web_ui_and_index": {
+        "count": 19,
+        "sha256": "68ef8c7001287ca727661c52a1dc248aaa6a6e518f1838225694ad10b68f0419"
+      }
+    },
+    "interpretation": "Measured source/embed input hashes match across the local correction and git diff against runtime487 has no runtime-path change. This is not a claim that a rebuilt binary is byte-identical or that final candidate UI/performance acceptance is inherited.",
+    "final_head_relation": "Independent gesture test-only commit1c40 is parent of support6ba; lead/Controller own push, new exact-HEAD CI and final binary/Preview gates."
+  },
+  "historical_evidence": {
+    "files_checked": 27,
+    "changed": [],
+    "original01_manifest9_mismatches": [],
+    "original03_manifest14_mismatches": [],
+    "unfinished02_two_logs_preserved": true
+  },
+  "limitations": [
+    "Local bounded repeats validate the fixture teardown ordering and original assertions; the next complete remote CI remains a separate gate.",
+    "A local unfixed pass is not presented as reproducing the remote cleanup failure.",
+    "Runtime source/assets are measured separately from test/source commit metadata; no inference about final binary equality or broad UI acceptance."
+  ],
+  "operational_writes": {
+    "canonical_operating_ledgers_copies_activity_handoff": 0,
+    "service_or_user_preview_changes": 0,
+    "environment_or_certificate_changes": 0,
+    "merge_deploy_reset_forcepush_deletion": 0,
+    "push": "not performed by support; lead/Controller-owned"
+  }
+}

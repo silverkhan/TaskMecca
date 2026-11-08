@@ -1,0 +1,100 @@
+{
+  "synthetic": true,
+  "source_head": "6ba0fa548f4b344ee44cf4b15dde907291ebf21d",
+  "url": "http://127.0.0.1:57068",
+  "api_routing": "none; actual Go HTTP only",
+  "assets": [
+    {
+      "file": "ui/main.js",
+      "status": 200,
+      "mime": "text/javascript; charset=utf-8",
+      "sha256": "53d8c53f91f2a67d54414038e84811215db7c5ee59a8c49d11df907cb1e18703"
+    },
+    {
+      "file": "ui/screens/home.js",
+      "status": 200,
+      "mime": "text/javascript; charset=utf-8",
+      "sha256": "cba1d03ac24cf0cde5ec816a4b4464b83e8d69612aa95b73f270e07e84f4e789"
+    },
+    {
+      "file": "ui/smoke.css",
+      "status": 200,
+      "mime": "text/css; charset=utf-8",
+      "sha256": "73d4b4fafab6e20b403f63d141eef8724b0de6d32ac1a17ca6c821a49f2b0358"
+    },
+    {
+      "file": "ui/fonts/manrope.ttf",
+      "status": 200,
+      "mime": "font/ttf",
+      "sha256": "3ae11c49db0455a3cc33e37d380f20fdb8c7f8b41dc07625c177e3d87a9d6ae6"
+    }
+  ],
+  "projects": [
+    {
+      "name": "release",
+      "rows": 8,
+      "title": "SYN-8 Release Desk 합성 작업 8",
+      "list_back_restored": true,
+      "requirements_visible": true,
+      "lifecycle_visible": true
+    },
+    {
+      "name": "research",
+      "rows": 14,
+      "title": "SYN-14 Research Board 합성 작업 14",
+      "list_back_restored": true,
+      "requirements_visible": true,
+      "lifecycle_visible": true
+    },
+    {
+      "name": "task-mecca",
+      "rows": 20,
+      "title": "SYN-36 Task Mecca 합성 작업 36",
+      "list_back_restored": true,
+      "requirements_visible": true,
+      "lifecycle_visible": true
+    }
+  ],
+  "errors": [],
+  "requests": [
+    "http://127.0.0.1:57068/api/overview?page_size=4&attention_page=1&working_page=1&projects_page=1&activity_page=1",
+    "http://127.0.0.1:57068/api/overview/events",
+    "http://127.0.0.1:57068/api/overview?page_size=4&attention_page=1&working_page=1&projects_page=1&activity_page=1",
+    "http://127.0.0.1:57068/api/backlog/tasks?project=%2Fvar%2Ffolders%2F07%2Fq_8xp6j90zn8r_gdxk6sj5nm0000gn%2FT%2Ftask-mecca-a65-preview-i1uDyF%2Frelease&page=1&page_size=20&sort=id_desc",
+    "http://127.0.0.1:57068/api/events?project=%2Fvar%2Ffolders%2F07%2Fq_8xp6j90zn8r_gdxk6sj5nm0000gn%2FT%2Ftask-mecca-a65-preview-i1uDyF%2Frelease&backlog=%2Fvar%2Ffolders%2F07%2Fq_8xp6j90zn8r_gdxk6sj5nm0000gn%2FT%2Ftask-mecca-a65-preview-i1uDyF%2Frelease%2F_task_mecca%2Fdata%2Fbacklog",
+    "http://127.0.0.1:57068/api/tasks/SYN-8?project=%2Fvar%2Ffolders%2F07%2Fq_8xp6j90zn8r_gdxk6sj5nm0000gn%2FT%2Ftask-mecca-a65-preview-i1uDyF%2Frelease&projection=content&backlog=%2Fvar%2Ffolders%2F07%2Fq_8xp6j90zn8r_gdxk6sj5nm0000gn%2FT%2Ftask-mecca-a65-preview-i1uDyF%2Frelease%2F_task_mecca%2Fdata%2Fbacklog",
+    "http://127.0.0.1:57068/api/tasks/SYN-8?project=%2Fvar%2Ffolders%2F07%2Fq_8xp6j90zn8r_gdxk6sj5nm0000gn%2FT%2Ftask-mecca-a65-preview-i1uDyF%2Frelease&projection=lifecycle&backlog=%2Fvar%2Ffolders%2F07%2Fq_8xp6j90zn8r_gdxk6sj5nm0000gn%2FT%2Ftask-mecca-a65-preview-i1uDyF%2Frelease%2F_task_mecca%2Fdata%2Fbacklog",
+    "http://127.0.0.1:57068/api/revision?project=%2Fvar%2Ffolders%2F07%2Fq_8xp6j90zn8r_gdxk6sj5nm0000gn%2FT%2Ftask-mecca-a65-preview-i1uDyF%2Frelease&backlog=%2Fvar%2Ffolders%2F07%2Fq_8xp6j90zn8r_gdxk6sj5nm0000gn%2FT%2Ftask-mecca-a65-preview-i1uDyF%2Frelease%2F_task_mecca%2Fdata%2Fbacklog",
+    "http://127.0.0.1:57068/api/tasks/SYN-8?project=%2Fvar%2Ffolders%2F07%2Fq_8xp6j90zn8r_gdxk6sj5nm0000gn%2FT%2Ftask-mecca-a65-preview-i1uDyF%2Frelease&projection=lifecycle&backlog=%2Fvar%2Ffolders%2F07%2Fq_8xp6j90zn8r_gdxk6sj5nm0000gn%2FT%2Ftask-mecca-a65-preview-i1uDyF%2Frelease%2F_task_mecca%2Fdata%2Fbacklog",
+    "http://127.0.0.1:57068/api/revision?project=%2Fvar%2Ffolders%2F07%2Fq_8xp6j90zn8r_gdxk6sj5nm0000gn%2FT%2Ftask-mecca-a65-preview-i1uDyF%2Frelease&backlog=%2Fvar%2Ffolders%2F07%2Fq_8xp6j90zn8r_gdxk6sj5nm0000gn%2FT%2Ftask-mecca-a65-preview-i1uDyF%2Frelease%2F_task_mecca%2Fdata%2Fbacklog",
+    "http://127.0.0.1:57068/api/activity?project=%2Fvar%2Ffolders%2F07%2Fq_8xp6j90zn8r_gdxk6sj5nm0000gn%2FT%2Ftask-mecca-a65-preview-i1uDyF%2Frelease&task=SYN-8",
+    "http://127.0.0.1:57068/api/tasks/SYN-8?project=%2Fvar%2Ffolders%2F07%2Fq_8xp6j90zn8r_gdxk6sj5nm0000gn%2FT%2Ftask-mecca-a65-preview-i1uDyF%2Frelease&projection=lifecycle&backlog=%2Fvar%2Ffolders%2F07%2Fq_8xp6j90zn8r_gdxk6sj5nm0000gn%2FT%2Ftask-mecca-a65-preview-i1uDyF%2Frelease%2F_task_mecca%2Fdata%2Fbacklog",
+    "http://127.0.0.1:57068/api/revision?project=%2Fvar%2Ffolders%2F07%2Fq_8xp6j90zn8r_gdxk6sj5nm0000gn%2FT%2Ftask-mecca-a65-preview-i1uDyF%2Frelease&backlog=%2Fvar%2Ffolders%2F07%2Fq_8xp6j90zn8r_gdxk6sj5nm0000gn%2FT%2Ftask-mecca-a65-preview-i1uDyF%2Frelease%2F_task_mecca%2Fdata%2Fbacklog",
+    "http://127.0.0.1:57068/api/backlog/tasks?project=%2Fvar%2Ffolders%2F07%2Fq_8xp6j90zn8r_gdxk6sj5nm0000gn%2FT%2Ftask-mecca-a65-preview-i1uDyF%2Frelease&page=1&page_size=20&sort=id_desc&backlog=%2Fvar%2Ffolders%2F07%2Fq_8xp6j90zn8r_gdxk6sj5nm0000gn%2FT%2Ftask-mecca-a65-preview-i1uDyF%2Frelease%2F_task_mecca%2Fdata%2Fbacklog",
+    "http://127.0.0.1:57068/api/backlog/tasks?project=%2Fvar%2Ffolders%2F07%2Fq_8xp6j90zn8r_gdxk6sj5nm0000gn%2FT%2Ftask-mecca-a65-preview-i1uDyF%2Fresearch&page=1&page_size=20&sort=id_desc",
+    "http://127.0.0.1:57068/api/events?project=%2Fvar%2Ffolders%2F07%2Fq_8xp6j90zn8r_gdxk6sj5nm0000gn%2FT%2Ftask-mecca-a65-preview-i1uDyF%2Fresearch&backlog=%2Fvar%2Ffolders%2F07%2Fq_8xp6j90zn8r_gdxk6sj5nm0000gn%2FT%2Ftask-mecca-a65-preview-i1uDyF%2Fresearch%2F_task_mecca%2Fdata%2Fbacklog",
+    "http://127.0.0.1:57068/api/tasks/SYN-14?project=%2Fvar%2Ffolders%2F07%2Fq_8xp6j90zn8r_gdxk6sj5nm0000gn%2FT%2Ftask-mecca-a65-preview-i1uDyF%2Fresearch&projection=content&backlog=%2Fvar%2Ffolders%2F07%2Fq_8xp6j90zn8r_gdxk6sj5nm0000gn%2FT%2Ftask-mecca-a65-preview-i1uDyF%2Fresearch%2F_task_mecca%2Fdata%2Fbacklog",
+    "http://127.0.0.1:57068/api/tasks/SYN-14?project=%2Fvar%2Ffolders%2F07%2Fq_8xp6j90zn8r_gdxk6sj5nm0000gn%2FT%2Ftask-mecca-a65-preview-i1uDyF%2Fresearch&projection=lifecycle&backlog=%2Fvar%2Ffolders%2F07%2Fq_8xp6j90zn8r_gdxk6sj5nm0000gn%2FT%2Ftask-mecca-a65-preview-i1uDyF%2Fresearch%2F_task_mecca%2Fdata%2Fbacklog",
+    "http://127.0.0.1:57068/api/revision?project=%2Fvar%2Ffolders%2F07%2Fq_8xp6j90zn8r_gdxk6sj5nm0000gn%2FT%2Ftask-mecca-a65-preview-i1uDyF%2Fresearch&backlog=%2Fvar%2Ffolders%2F07%2Fq_8xp6j90zn8r_gdxk6sj5nm0000gn%2FT%2Ftask-mecca-a65-preview-i1uDyF%2Fresearch%2F_task_mecca%2Fdata%2Fbacklog",
+    "http://127.0.0.1:57068/api/tasks/SYN-14?project=%2Fvar%2Ffolders%2F07%2Fq_8xp6j90zn8r_gdxk6sj5nm0000gn%2FT%2Ftask-mecca-a65-preview-i1uDyF%2Fresearch&projection=lifecycle&backlog=%2Fvar%2Ffolders%2F07%2Fq_8xp6j90zn8r_gdxk6sj5nm0000gn%2FT%2Ftask-mecca-a65-preview-i1uDyF%2Fresearch%2F_task_mecca%2Fdata%2Fbacklog",
+    "http://127.0.0.1:57068/api/revision?project=%2Fvar%2Ffolders%2F07%2Fq_8xp6j90zn8r_gdxk6sj5nm0000gn%2FT%2Ftask-mecca-a65-preview-i1uDyF%2Fresearch&backlog=%2Fvar%2Ffolders%2F07%2Fq_8xp6j90zn8r_gdxk6sj5nm0000gn%2FT%2Ftask-mecca-a65-preview-i1uDyF%2Fresearch%2F_task_mecca%2Fdata%2Fbacklog",
+    "http://127.0.0.1:57068/api/activity?project=%2Fvar%2Ffolders%2F07%2Fq_8xp6j90zn8r_gdxk6sj5nm0000gn%2FT%2Ftask-mecca-a65-preview-i1uDyF%2Fresearch&task=SYN-14",
+    "http://127.0.0.1:57068/api/tasks/SYN-14?project=%2Fvar%2Ffolders%2F07%2Fq_8xp6j90zn8r_gdxk6sj5nm0000gn%2FT%2Ftask-mecca-a65-preview-i1uDyF%2Fresearch&projection=lifecycle&backlog=%2Fvar%2Ffolders%2F07%2Fq_8xp6j90zn8r_gdxk6sj5nm0000gn%2FT%2Ftask-mecca-a65-preview-i1uDyF%2Fresearch%2F_task_mecca%2Fdata%2Fbacklog",
+    "http://127.0.0.1:57068/api/revision?project=%2Fvar%2Ffolders%2F07%2Fq_8xp6j90zn8r_gdxk6sj5nm0000gn%2FT%2Ftask-mecca-a65-preview-i1uDyF%2Fresearch&backlog=%2Fvar%2Ffolders%2F07%2Fq_8xp6j90zn8r_gdxk6sj5nm0000gn%2FT%2Ftask-mecca-a65-preview-i1uDyF%2Fresearch%2F_task_mecca%2Fdata%2Fbacklog",
+    "http://127.0.0.1:57068/api/backlog/tasks?project=%2Fvar%2Ffolders%2F07%2Fq_8xp6j90zn8r_gdxk6sj5nm0000gn%2FT%2Ftask-mecca-a65-preview-i1uDyF%2Fresearch&page=1&page_size=20&sort=id_desc&backlog=%2Fvar%2Ffolders%2F07%2Fq_8xp6j90zn8r_gdxk6sj5nm0000gn%2FT%2Ftask-mecca-a65-preview-i1uDyF%2Fresearch%2F_task_mecca%2Fdata%2Fbacklog",
+    "http://127.0.0.1:57068/api/backlog/tasks?project=%2Fvar%2Ffolders%2F07%2Fq_8xp6j90zn8r_gdxk6sj5nm0000gn%2FT%2Ftask-mecca-a65-preview-i1uDyF%2Ftask-mecca&page=1&page_size=20&sort=id_desc",
+    "http://127.0.0.1:57068/api/events?project=%2Fvar%2Ffolders%2F07%2Fq_8xp6j90zn8r_gdxk6sj5nm0000gn%2FT%2Ftask-mecca-a65-preview-i1uDyF%2Ftask-mecca&backlog=%2Fvar%2Ffolders%2F07%2Fq_8xp6j90zn8r_gdxk6sj5nm0000gn%2FT%2Ftask-mecca-a65-preview-i1uDyF%2Ftask-mecca%2F_task_mecca%2Fdata%2Fbacklog",
+    "http://127.0.0.1:57068/api/tasks/SYN-36?project=%2Fvar%2Ffolders%2F07%2Fq_8xp6j90zn8r_gdxk6sj5nm0000gn%2FT%2Ftask-mecca-a65-preview-i1uDyF%2Ftask-mecca&projection=content&backlog=%2Fvar%2Ffolders%2F07%2Fq_8xp6j90zn8r_gdxk6sj5nm0000gn%2FT%2Ftask-mecca-a65-preview-i1uDyF%2Ftask-mecca%2F_task_mecca%2Fdata%2Fbacklog",
+    "http://127.0.0.1:57068/api/tasks/SYN-36?project=%2Fvar%2Ffolders%2F07%2Fq_8xp6j90zn8r_gdxk6sj5nm0000gn%2FT%2Ftask-mecca-a65-preview-i1uDyF%2Ftask-mecca&projection=lifecycle&backlog=%2Fvar%2Ffolders%2F07%2Fq_8xp6j90zn8r_gdxk6sj5nm0000gn%2FT%2Ftask-mecca-a65-preview-i1uDyF%2Ftask-mecca%2F_task_mecca%2Fdata%2Fbacklog",
+    "http://127.0.0.1:57068/api/revision?project=%2Fvar%2Ffolders%2F07%2Fq_8xp6j90zn8r_gdxk6sj5nm0000gn%2FT%2Ftask-mecca-a65-preview-i1uDyF%2Ftask-mecca&backlog=%2Fvar%2Ffolders%2F07%2Fq_8xp6j90zn8r_gdxk6sj5nm0000gn%2FT%2Ftask-mecca-a65-preview-i1uDyF%2Ftask-mecca%2F_task_mecca%2Fdata%2Fbacklog",
+    "http://127.0.0.1:57068/api/tasks/SYN-36?project=%2Fvar%2Ffolders%2F07%2Fq_8xp6j90zn8r_gdxk6sj5nm0000gn%2FT%2Ftask-mecca-a65-preview-i1uDyF%2Ftask-mecca&projection=lifecycle&backlog=%2Fvar%2Ffolders%2F07%2Fq_8xp6j90zn8r_gdxk6sj5nm0000gn%2FT%2Ftask-mecca-a65-preview-i1uDyF%2Ftask-mecca%2F_task_mecca%2Fdata%2Fbacklog",
+    "http://127.0.0.1:57068/api/revision?project=%2Fvar%2Ffolders%2F07%2Fq_8xp6j90zn8r_gdxk6sj5nm0000gn%2FT%2Ftask-mecca-a65-preview-i1uDyF%2Ftask-mecca&backlog=%2Fvar%2Ffolders%2F07%2Fq_8xp6j90zn8r_gdxk6sj5nm0000gn%2FT%2Ftask-mecca-a65-preview-i1uDyF%2Ftask-mecca%2F_task_mecca%2Fdata%2Fbacklog",
+    "http://127.0.0.1:57068/api/activity?project=%2Fvar%2Ffolders%2F07%2Fq_8xp6j90zn8r_gdxk6sj5nm0000gn%2FT%2Ftask-mecca-a65-preview-i1uDyF%2Ftask-mecca&task=SYN-36",
+    "http://127.0.0.1:57068/api/tasks/SYN-36?project=%2Fvar%2Ffolders%2F07%2Fq_8xp6j90zn8r_gdxk6sj5nm0000gn%2FT%2Ftask-mecca-a65-preview-i1uDyF%2Ftask-mecca&projection=lifecycle&backlog=%2Fvar%2Ffolders%2F07%2Fq_8xp6j90zn8r_gdxk6sj5nm0000gn%2FT%2Ftask-mecca-a65-preview-i1uDyF%2Ftask-mecca%2F_task_mecca%2Fdata%2Fbacklog",
+    "http://127.0.0.1:57068/api/revision?project=%2Fvar%2Ffolders%2F07%2Fq_8xp6j90zn8r_gdxk6sj5nm0000gn%2FT%2Ftask-mecca-a65-preview-i1uDyF%2Ftask-mecca&backlog=%2Fvar%2Ffolders%2F07%2Fq_8xp6j90zn8r_gdxk6sj5nm0000gn%2FT%2Ftask-mecca-a65-preview-i1uDyF%2Ftask-mecca%2F_task_mecca%2Fdata%2Fbacklog",
+    "http://127.0.0.1:57068/api/backlog/tasks?project=%2Fvar%2Ffolders%2F07%2Fq_8xp6j90zn8r_gdxk6sj5nm0000gn%2FT%2Ftask-mecca-a65-preview-i1uDyF%2Ftask-mecca&page=1&page_size=20&sort=id_desc&backlog=%2Fvar%2Ffolders%2F07%2Fq_8xp6j90zn8r_gdxk6sj5nm0000gn%2FT%2Ftask-mecca-a65-preview-i1uDyF%2Ftask-mecca%2F_task_mecca%2Fdata%2Fbacklog"
+  ],
+  "sse_initial": "id: 22447b839aab18e87b243504:7\nevent: overview\ndata: {\"schema_version\":1,\"revision\":\"22447b839aab18e87b243504:7\",\"reason\":\"ready\"}\n\n",
+  "browser": "156.0.8078.4",
+  "passed": true
+}

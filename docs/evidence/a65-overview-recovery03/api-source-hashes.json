@@ -1,0 +1,31 @@
+{
+  "head": "767b0f42ceab5da2e8d01efdd1a9aaf87b33a00c",
+  "tree": "8d5f953894f3f1f785c57ccc1276bb3af295154b",
+  "files": {
+    "internal/webui/overview.go": {
+      "sha256": "713ba2859fe23c78b548373c9d9a9f1ac67f0ade6bdad7fd4ca1f162420c7db2",
+      "bytes": 29712,
+      "symlink": false
+    },
+    "internal/webui/overview_test.go": {
+      "sha256": "99482c276947bfc3da7946b9885a89af0d3d84ec8ae05f9383a96f074cbae410",
+      "bytes": 20773,
+      "symlink": false
+    },
+    "internal/webui/overview_events_test.go": {
+      "sha256": "cb90d345947862a3a8d9c66bf01795a028a29bd13d82b78f85e787a3edd26d97",
+      "bytes": 14659,
+      "symlink": false
+    },
+    "internal/webui/attention_stream.go": {
+      "sha256": "1d19d00d09bb6c340701aeb1fac7b06fe15b38779d9b497c7ebb5d30de3e9b7e",
+      "bytes": 12420,
+      "symlink": false
+    },
+    "internal/webui/server.go": {
+      "sha256": "59340cf80754c6bd28df9b9834cb71d8724c424821e57bbd6941c5682a9f3e92",
+      "bytes": 87559,
+      "symlink": false
+    }
+  }
+}

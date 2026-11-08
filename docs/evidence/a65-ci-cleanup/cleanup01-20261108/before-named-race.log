@@ -1,0 +1,5 @@
+=== RUN   TestActivityHTTPIncludesReportedLifecycleCoverage
+--- PASS: TestActivityHTTPIncludesReportedLifecycleCoverage (0.05s)
+PASS
+2026/11/08 09:13:22 Task Mecca automatic Telegram delivery issue in project "001": 0 events, 1 failures; inspect notification delivery ledger
+ok  	github.com/silverkhan/TaskMecca/internal/webui	1.722s

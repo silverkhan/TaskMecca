@@ -1,0 +1,31 @@
+{
+  "source_head": "767b0f42ceab5da2e8d01efdd1a9aaf87b33a00c",
+  "source_tree": "8d5f953894f3f1f785c57ccc1276bb3af295154b",
+  "command": [
+    "go",
+    "test",
+    "-race",
+    "./internal/webui",
+    "-run",
+    "^(TestOverview|TestOperationMonitorStartsCanonicalEventFeedsForEveryActiveProject)",
+    "-count=1",
+    "-v"
+  ],
+  "started_at": "2026-11-07T22:56:50.710689+00:00",
+  "ended_at": "2026-11-07T22:57:06.907981+00:00",
+  "exit": 0,
+  "tracked_files": 638,
+  "changed_files": [],
+  "head_before": "767b0f42ceab5da2e8d01efdd1a9aaf87b33a00c",
+  "head_after": "767b0f42ceab5da2e8d01efdd1a9aaf87b33a00c",
+  "tracked_status_before": "",
+  "tracked_status_after": "",
+  "historical_evidence_changed": [],
+  "historical_evidence_files": 12,
+  "package_elapsed_seconds": 12.365,
+  "verification_window_ms_including_post_inventory": 16197.3,
+  "pass_count": 17,
+  "skip_count": 0,
+  "race_detected": false,
+  "failed_tests": []
+}

@@ -1,0 +1,53 @@
+{
+  "source_head": "767b0f42ceab5da2e8d01efdd1a9aaf87b33a00c",
+  "source_tree": "8d5f953894f3f1f785c57ccc1276bb3af295154b",
+  "assets": [
+    {
+      "request": "/ui/main.js",
+      "committed_source": "goassets/template/_task_mecca/framework/web/ui/main.js",
+      "sha256": "580ce01e4e5a4901f73a3036e4673b63e56add4a1dc942784c3dfd78fefe1e87",
+      "bytes": 19878,
+      "symlink": false,
+      "asserted_status": 200,
+      "asserted_mime_contains": "javascript",
+      "asserted_response_bytes": "exactly equal to embedded bytes compiled from frozen tracked source",
+      "test": "TestOverviewUIAssetsNestedMIMEBytesAndTraversalReadOnly"
+    },
+    {
+      "request": "/ui/screens/home.js",
+      "committed_source": "goassets/template/_task_mecca/framework/web/ui/screens/home.js",
+      "sha256": "db79346a19f2b4eff2c05e8d9d6161968b6c7898525939bf8973adc44ec7ef33",
+      "bytes": 5231,
+      "symlink": false,
+      "asserted_status": 200,
+      "asserted_mime_contains": "javascript",
+      "asserted_response_bytes": "exactly equal to embedded bytes compiled from frozen tracked source",
+      "test": "TestOverviewUIAssetsNestedMIMEBytesAndTraversalReadOnly"
+    },
+    {
+      "request": "/ui/smoke.css",
+      "committed_source": "goassets/template/_task_mecca/framework/web/ui/smoke.css",
+      "sha256": "5ba0781ee595c56bedd96a7534844d506150a3e25711f77a0360572aa4a452a6",
+      "bytes": 24332,
+      "symlink": false,
+      "asserted_status": 200,
+      "asserted_mime_contains": "text/css",
+      "asserted_response_bytes": "exactly equal to embedded bytes compiled from frozen tracked source",
+      "test": "TestOverviewUIAssetsNestedMIMEBytesAndTraversalReadOnly"
+    },
+    {
+      "request": "/ui/fonts/manrope.ttf",
+      "committed_source": "goassets/template/_task_mecca/framework/web/ui/fonts/manrope.ttf",
+      "sha256": "3ae11c49db0455a3cc33e37d380f20fdb8c7f8b41dc07625c177e3d87a9d6ae6",
+      "bytes": 164700,
+      "symlink": false,
+      "asserted_status": 200,
+      "asserted_mime_contains": "font",
+      "asserted_response_bytes": "exactly equal to embedded bytes compiled from frozen tracked source",
+      "test": "TestOverviewUIAssetsNestedMIMEBytesAndTraversalReadOnly"
+    }
+  ],
+  "invalid_paths_asserted": "non-200 for directory, nonexistent, encoded traversal, backslash traversal, raw traversal; no successful catchall HTML",
+  "methods": "Preview guard rejects POST before route with403; direct SSE handler separately rejects POST405+Allow GET",
+  "provenance": "Exact767 committed inputs hash-identical before/after the new Go17 race run. Raw per-response headers were not separately dumped; assertions and source asset hashes provide the reproducible evidence."
+}

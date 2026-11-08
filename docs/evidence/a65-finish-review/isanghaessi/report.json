@@ -1,0 +1,380 @@
+{
+  "schema_version": 1,
+  "created_at_utc": "2026-11-07T23:38:27.764024+00:00",
+  "disposition": "fix",
+  "readiness": "NEEDS CHANGES",
+  "scope": "Core prototype readiness for user design review only; not overall A-65 completion",
+  "source_head": "5b04ba6f4f2aa3c8ff30949a3af0bca45cddd179",
+  "reviewer": {
+    "canonical": "/root/controller/isanghaessi",
+    "native_target": "/root/controller_recovery/isanghaessi",
+    "thread_id": "01a1b85b-713f-7d20-9061-b6e61455968a",
+    "session_id": "01a18149-b707-7ee3-8069-d86f0a14d405",
+    "turn_id": "01a1b85b-71d4-7a02-bb6e-b91b3845e2ba",
+    "attempt_id": "run-b7c7fa5519137117",
+    "identity_provenance": "thread/session from process environment; turn from own rollout task_started; attempt from Controller current firstbind confirmation"
+  },
+  "missing_inputs": [
+    "No approved Task Mecca composition comp supplied; user explicitly chose Pane as material/quality reference only.",
+    "No separate QUALITY BAR card supplied; assessment uses original pinned Smoke brief and actual Pane reference.",
+    "No independent browser, physical device, screen-reader, trackpad, performance, CI or deployment verification by this reviewer."
+  ],
+  "persistence": {
+    "status": "pass for this review stage",
+    "product_exists": true,
+    "design_absence": "Expected for replacement world; shipped documenter follows verdict. Still required before presenting a finished stage.",
+    "authority_hashes": {
+      "approved-plan.md": {
+        "expected": "d9c3d89c89f423336aedaf71e64c2bad6a7ca735bd50be4b7178b966aa282605",
+        "actual": "d9c3d89c89f423336aedaf71e64c2bad6a7ca735bd50be4b7178b966aa282605",
+        "match": true
+      },
+      "user-decisions.md": {
+        "expected": "a980fac5226d70c369362e880ea016caae68a5ad9e73bf0bb13f185fe5181a71",
+        "actual": "a980fac5226d70c369362e880ea016caae68a5ad9e73bf0bb13f185fe5181a71",
+        "match": true
+      },
+      "requirements.md": {
+        "expected": "7b9a819a3797fcdeb36ee25c596ff6f304021ac1a84808694bed96e8d23f1214",
+        "actual": "7b9a819a3797fcdeb36ee25c596ff6f304021ac1a84808694bed96e8d23f1214",
+        "match": true
+      },
+      "tasks.json": {
+        "expected": "597cb485777a2d08faa6394d31338802c48dfc94b48a35b09e54c0e55f882144",
+        "actual": "597cb485777a2d08faa6394d31338802c48dfc94b48a35b09e54c0e55f882144",
+        "match": true
+      },
+      "approval-evidence.md": {
+        "expected": "779745f77c41cac288181ccea4ca0acd2c2e1840ee903efaf0ac8a4a0880c110",
+        "actual": "779745f77c41cac288181ccea4ca0acd2c2e1840ee903efaf0ac8a4a0880c110",
+        "match": true
+      }
+    },
+    "approval": "User decisions and execution approval hash-verified; pinned direction, no additional concept selection required."
+  },
+  "fidelity": {
+    "comp_inventory_before_contract": [
+      "Floating narrow navigation rail with rounded outer shell",
+      "Charcoal field and elevated neutral panes",
+      "Upper-left asymmetric rim reflections and soft offset shadows",
+      "Compact toolbar and dense readable lists",
+      "Restrained blue interaction accents",
+      "Strong heading/body distinction",
+      "Several work regions visible together; reference-specific calendar/timer/metrics excluded"
+    ],
+    "type": "match/adaptation: self-hosted Manrope for Latin, Korean platform fallback for readable product content; not a decorative system display substitution",
+    "material": "match/adaptation: geometry-based neutral UI surfaces visibly use upper-left reflections and offset soft shadows; no image-native focal region or raster substitute is required by pinned brief",
+    "direction_contract": [
+      {
+        "promise": "THESIS",
+        "assessment": "partial / M1",
+        "evidence": "Evidence links and unknown-state language are legible, but the first view hides the project comparison the thesis promises."
+      },
+      {
+        "promise": "OWN-WORLD",
+        "assessment": "match",
+        "evidence": "Original Task Mecca mark, factual statuses, explicit stale/unknown text, neutral surfaces and restrained blue remain visible. Synthetic tasks are labeled by SYN IDs and 합성 titles; CI fixtures identify synthetic provenance."
+      },
+      {
+        "promise": "STORY",
+        "assessment": "acceptable adaptation, hierarchy incomplete / M1",
+        "evidence": "Home DOM retains attention → work → projects → activity and dedicated task tabs carry the reading flow. Desktop work/projects parallel placement is allowed by the approved custom structure; section visibility is inadequate."
+      },
+      {
+        "promise": "FIRST VIEWPORT",
+        "assessment": "contradicted / M1",
+        "evidence": "Floating rail frames work, but the memory of entry is an eight-item repeated amber exception block. At 1280x900 no project identity is visible."
+      },
+      {
+        "promise": "FORM",
+        "assessment": "partial / M2, M3",
+        "evidence": "Seed 48a9eb3c appears in the opening contract and persisted brief; pinned Smoke direction governs without a reroll. Neutral reflection, soft offset depth and blue controls are present. Equal mobile use is weakened by narrow content and expanded tools."
+      }
+    ],
+    "matrix": [
+      {
+        "element": "Original mark and product identity",
+        "classification": "match"
+      },
+      {
+        "element": "Floating rail / mobile top identity and bottom navigation",
+        "classification": "acceptable adaptation",
+        "authority": "equal PC/mobile product functions; custom Task Mecca structure"
+      },
+      {
+        "element": "Neutral charcoal/light material, reflective rims, soft depth",
+        "classification": "match"
+      },
+      {
+        "element": "TYPE",
+        "classification": "acceptable adaptation",
+        "authority": "operate-mode product reading, Korean/English, self-hosted Manrope"
+      },
+      {
+        "element": "MATERIAL",
+        "classification": "acceptable adaptation",
+        "authority": "pinned neutral Smoke surfaces; Pane is quality/material reference only"
+      },
+      {
+        "element": "Compact multi-region first view",
+        "classification": "contradicted",
+        "finding": "M1"
+      },
+      {
+        "element": "Attention reason readability at 320px",
+        "classification": "contradicted",
+        "finding": "M2"
+      },
+      {
+        "element": "Mobile auxiliary controls fold",
+        "classification": "missing",
+        "finding": "M3"
+      },
+      {
+        "element": "Backlog temporal fact",
+        "classification": "missing",
+        "finding": "M4"
+      },
+      {
+        "element": "Dedicated detail tabs and lifecycle evidence",
+        "classification": "match"
+      },
+      {
+        "element": "Pane calendar/focus/user/metric content",
+        "classification": "acceptable omission",
+        "authority": "user chose custom structure and existing features only"
+      }
+    ]
+  },
+  "ceiling": {
+    "status": "not reached: information hierarchy and responsive density remain material",
+    "material": "Sufficiently committed to the pinned neutral Smoke world for this prototype; no whole-page rebuild directive.",
+    "unused_or_unproven": "Depth and frame are present; reference-level simultaneous visibility of meaningful work regions is not. Authored rail shadow settle appears in source with reduced-motion guard; motion quality cannot be scored from stills.",
+    "craft_floor": {
+      "mechanical_detector": "Existing single report is []; not rerun.",
+      "contrast": "Provided sampled ancestor/gradient-composited minimum 4.60595 >=4.5 and heading values >=3; accepted as bounded evidence, not independent pixel/AT verification.",
+      "pass_observations": [
+        "Consistent authored SVG icons",
+        "Soft offset shadows and asymmetric inset reflection rather than hard block shadow",
+        "No gradient text, decorative side stripes, card-grid filler metrics, or invented dashboard statistics",
+        "The topbar context is persistent navigation chrome, not a heading-attached eyebrow; task ID/status is meaningful data",
+        "Self-hosted Latin face; no decorative monospace costume",
+        "Unknown lifecycle bounds show no invented axis; true zero and 250ms remain distinct in fixtures"
+      ],
+      "material_failures": [
+        "M1: hierarchy/coverage",
+        "M2: real-copy responsive composition",
+        "M3: work-first mobile tool behavior",
+        "M4: approved core information coverage"
+      ]
+    },
+    "lifecycle_review": "Reviewed all five actual Go unmeasured lifecycle screens plus continuous Light desktop/Dark mobile, short, zero, history and overlap native component fixtures at exact 5b04 provenance. Fixtures support visual component judgment only; they are not measured Go integration evidence.",
+    "pending_separate_gates": [
+      "Final counterbalanced paired performance medians, including correction of >10% regressions if confirmed",
+      "Controller exact-head CI/Preview/function gate and documenter output; supplied single-case native zoom remains limited as recorded.",
+      "User core design review hold before any remaining operations/settings expansion"
+    ],
+    "next_stage_residuals": [
+      "Full operations/workload/runtime and project/service/channel/notification management",
+      "Release/update/manual/terminal/storage/project Activity/diagnostics and extended settings",
+      "Full multi-status editing, rich tag namespace exploration and automatic viewport row count remain explicitly disclosed; single status/multiple comma-separated tags/manual page size are sufficient for this bounded prototype provided the four findings are corrected. Retained APIs alone are not working replacement UI."
+    ],
+    "additional_controller_evidence": {
+      "native_zoom": "Controller reports an explicitly observed Chrome native zoom 90%→200%→90% in a separate owned tab on isolated 57068; home→projects→release8→detail→lifecycle, CSS viewport 1384x554, document scrollWidth 1377 and workflow width 1011. This reviewer did not reproduce it.",
+      "limit": "One wide-window case only; not all-breakpoint 200%, physical-device or general accessibility acceptance."
+    }
+  },
+  "material_fixes": [
+    {
+      "id": "M1",
+      "severity": "high",
+      "finding": "Home attention monopolizes the first viewport and hides the multi-project overview.",
+      "promise": "THESIS / FIRST VIEWPORT / multi-project priority",
+      "evidence": [
+        "docs/evidence/a65-prototype/final/pc-light-home.png: entire 1280x900 viewport; attention panel y355–844, no Projects visible",
+        "docs/evidence/a65-prototype/final/pc-dark-home.png: Projects heading near y918, project rows below viewport",
+        "docs/evidence/a65-prototype/final/pc-dark-home-full.png: Projects below full-width eight-row attention preview",
+        "docs/evidence/a65-prototype/final/capture-contrast-report.json: projectsY=917.96875",
+        "goassets/template/_task_mecca/framework/web/ui/data.js:42: page_size 8",
+        "goassets/template/_task_mecca/framework/web/ui/smoke.css:1208: full-width attention grid"
+      ],
+      "why": "The approved primary experience is rapid control across several projects. The entire visible working area repeats one unverified-execution reason; the two-column work/projects arrangement begins too late.",
+      "user_consequence": "A user cannot compare project identities and current per-project state on entry; the home reads as a long exception queue.",
+      "bounded_fix": "Rebalance the existing home composition in one batch: cap the attention preview to a compact first page, preserve independent next/previous or all-item access, and compact the existing project identity/count/status rows while keeping paths available as secondary information. Preserve attention → work → projects → activity reading order. At 1280x900 and 1440x1000, show the three synthetic project identities and their current state/counts in the first viewport, with attention remaining the strongest section. Do not add metrics or reorder into a Pane clone.",
+      "acceptance": "Same-data desktop recaptures visibly show all three project identities and state/counts before the fold; all attention records remain reachable and truthful."
+    },
+    {
+      "id": "M2",
+      "severity": "high",
+      "finding": "The 320px English attention row reserves most horizontal width for its status badge.",
+      "promise": "FORM / equal mobile function / craft-floor real-copy responsive composition",
+      "evidence": [
+        "docs/evidence/a65-prototype/final/mobile-light-home.png: first attention card y438–663; title/reason confined to roughly x36–130 while the arrow sits near x262",
+        "docs/evidence/a65-prototype/final/mobile-wide-home.png: comparison showing a much wider usable text measure",
+        "goassets/template/_task_mecca/framework/web/ui/smoke.css:983: 1fr auto grid; task-main restricted to column 1, status occupies auto column 2"
+      ],
+      "why": "The long English state label determines the second grid column for every row. The title and reason wrap into a narrow strip although there is unused width below the badge. Document-overflow checks cannot detect this.",
+      "user_consequence": "At the explicitly supported 320px width, the reason requires excessive vertical reading and each item becomes much harder to scan than on wider mobile.",
+      "bounded_fix": "Make the mobile metadata line and content width independent: retain ID and status on a compact upper line, then let title, project and reason span the usable row width with a small trailing chevron allocation. Allow the status to wrap or occupy its own line when necessary. Keep the complete reason accessible; do not solve this by reducing the font or truncating the evidence.",
+      "acceptance": "The same 320px English first card uses almost the full card width for title/reason; 390px Korean and 430px English remain legible with no badge/arrow overlap."
+    },
+    {
+      "id": "M3",
+      "severity": "high",
+      "finding": "Mobile backlog auxiliary controls consume the task-reading viewport.",
+      "promise": "Approved mobile compact-tools requirement / FORM / craft-floor coverage",
+      "evidence": [
+        "docs/evidence/a65-prototype/final/mobile-light-backlog.png: expanded form y302–518; first task begins around y632, above bottom navigation y763",
+        "docs/evidence/a65-prototype/final/mobile-dark-backlog.png: expanded form y281–499; first task begins around y595",
+        "docs/evidence/a65-prototype/final/mobile-wide-backlog.png: expanded state/sort/page-size controls and full-width Apply above task list",
+        "goassets/template/_task_mecca/framework/web/ui/screens/backlog.js:14: always-expanded filters form",
+        "goassets/template/_task_mecca/framework/web/ui/smoke.css:1064: mobile wrapping of all filter controls"
+      ],
+      "why": "The approved plan explicitly says mobile auxiliary tools should fold so that the work area is not pushed down. Wrapping every control into additional rows does not meet that behavior.",
+      "user_consequence": "Only one task or part of one task is available on initial mobile entry, and users repeatedly scroll through settings to reach their work.",
+      "bounded_fix": "Keep search immediately available and place state/sort/page-size and tag options in a concise accessible disclosure with a visible active-filter summary. Preserve every current control, query state, URL restoration and keyboard/touch access. Compact the existing path/context presentation if needed. Do not introduce a modal.",
+      "acceptance": "At 320/390/430px, the collapsed default backlog visibly provides search, a discoverable filters action, and at least one complete task row above bottom navigation. Open-state captures prove all existing controls remain usable and active filters remain visible."
+    },
+    {
+      "id": "M4",
+      "severity": "medium",
+      "finding": "Backlog rows omit every temporal fact.",
+      "promise": "Approved backlog name/state/assignee/time priority / craft-floor coverage",
+      "evidence": [
+        "docs/evidence/a65-prototype/final/pc-dark-backlog.png: rows show ID/title/assignee/state without a time",
+        "docs/evidence/a65-prototype/final/pc-light-backlog.png: same omission",
+        "docs/evidence/a65-prototype/final/mobile-dark-backlog.png: same omission",
+        "goassets/template/_task_mecca/framework/web/ui/components/shared.js:50: taskRows renders identity/title/project-or-agent/reason/state/arrow only",
+        "goassets/template/_task_mecca/framework/web/ui/screens/detail.js: executionMetadata already reads updated_at or mtime"
+      ],
+      "why": "Time is explicitly part of the approved core list hierarchy, not a next-stage operations feature. The shared row template has no temporal rendering branch at all.",
+      "user_consequence": "Users must open tasks to determine recency, even when comparing a backlog sorted by recent modification.",
+      "bounded_fix": "Render one clearly labeled existing temporal fact in backlog rows, preferably the available Updated timestamp from updated_at/mtime, with an explicit Unknown value when absent. Keep it secondary to title/state and retain assignee. Never label modification time as measured activity or fabricate duration. Fit it into the same responsive row repair.",
+      "acceptance": "Desktop and mobile backlog recaptures show truthful labeled recency or Unknown on each row without sacrificing title, assignee or state; no temporal value is synthesized."
+    }
+  ],
+  "keep": "Preserve original mark, factual uncertainty and provenance, compact neutral Smoke reflections/soft depth, restrained blue, dedicated detail navigation, connected lifecycle behavior, and all current list/state restoration; no new features or direction change.",
+  "evidence_manifest": [
+    {
+      "path": "/Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/docs/evidence/a65-prototype/final/pc-dark-home.png",
+      "sha256": "16c77b966db3ff7003b4132ad8399cefcf2dc6e9c8d8b25a7d0a5b8fb1435f3f"
+    },
+    {
+      "path": "/Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/docs/evidence/a65-prototype/final/pc-dark-backlog.png",
+      "sha256": "6c99435cb1411080aaa5b5cb8e4f159ccfe6dab04b848b91ccc318aacd6d9cd6"
+    },
+    {
+      "path": "/Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/docs/evidence/a65-prototype/final/pc-dark-detail.png",
+      "sha256": "a68df3ae060f0bc1c13289c79772569906914d6e77d1e278c85ebf2c63612dfb"
+    },
+    {
+      "path": "/Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/docs/evidence/a65-prototype/final/pc-dark-lifecycle.png",
+      "sha256": "8eeae6f3d3ee83a9e816a49ae71042fcfe31c06f691da387fc34a19ac9f6e28d"
+    },
+    {
+      "path": "/Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/docs/evidence/a65-prototype/final/pc-light-home.png",
+      "sha256": "dbfdca9c1bc117a2ea7242272a2d4c94bc5f68ead8a1a19e1ca227d265d69de3"
+    },
+    {
+      "path": "/Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/docs/evidence/a65-prototype/final/pc-light-backlog.png",
+      "sha256": "fb459e7722acffa84cbd8ea6f370271841cdff06100049f520246a40170803e6"
+    },
+    {
+      "path": "/Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/docs/evidence/a65-prototype/final/pc-light-detail.png",
+      "sha256": "fb466c9587cfee488fa4b74418c3d13b9189d6df27bf0dbec2897d2fe7c9abd0"
+    },
+    {
+      "path": "/Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/docs/evidence/a65-prototype/final/pc-light-lifecycle.png",
+      "sha256": "d9f2b096079f5e20d97fde3bced5af71c7859b14732506269cd55313220a760e"
+    },
+    {
+      "path": "/Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/docs/evidence/a65-prototype/final/mobile-dark-home.png",
+      "sha256": "d9715bbaec433a91d898e1a23caf8e1cd3cec8332b6c513a922c753ea3413b79"
+    },
+    {
+      "path": "/Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/docs/evidence/a65-prototype/final/mobile-dark-backlog.png",
+      "sha256": "f7b7bed9747b9dfaa818b0c9ad03c00cc7ad2d88f41b1c29ab893a5d1c5091ca"
+    },
+    {
+      "path": "/Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/docs/evidence/a65-prototype/final/mobile-dark-detail.png",
+      "sha256": "e69011acf8fc027bb0bb2daa4ffa8a90cee3fb42a01b99c8377c47d36b7a01bf"
+    },
+    {
+      "path": "/Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/docs/evidence/a65-prototype/final/mobile-dark-lifecycle.png",
+      "sha256": "1404720e0b3f54c511094ce437439d3f21c34529e72fac5629b3b4460dce8bdd"
+    },
+    {
+      "path": "/Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/docs/evidence/a65-prototype/final/mobile-light-home.png",
+      "sha256": "25a6a2b7caf61a95c863152566bc18dc41623bf789302d425961c95febe265a6"
+    },
+    {
+      "path": "/Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/docs/evidence/a65-prototype/final/mobile-light-backlog.png",
+      "sha256": "3098f67e4b36a210ad47d728baffd3f56469d3fdb8ded42d30430a6c20fe51e7"
+    },
+    {
+      "path": "/Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/docs/evidence/a65-prototype/final/mobile-light-detail.png",
+      "sha256": "e40641a3ddc25dba3d0b6d4280aea0608f375b653302d4f7791036bdb0b1876b"
+    },
+    {
+      "path": "/Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/docs/evidence/a65-prototype/final/mobile-light-lifecycle.png",
+      "sha256": "54764c02841c1f2f64a952c1fb5d6b78e81ac11556265a8df4b9ba20cc636dec"
+    },
+    {
+      "path": "/Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/docs/evidence/a65-prototype/final/mobile-wide-home.png",
+      "sha256": "424d1d24d4c0509a14068635b307e534114e9033850d7ad8fb08e7cc0da60b23"
+    },
+    {
+      "path": "/Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/docs/evidence/a65-prototype/final/mobile-wide-backlog.png",
+      "sha256": "90b314a528c90f7e13dae04998fcf9513edc16a7f87095dad5ed31c328ad3158"
+    },
+    {
+      "path": "/Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/docs/evidence/a65-prototype/final/mobile-wide-detail.png",
+      "sha256": "5435c7e5fbbfbbaed2a0a86b0bd62396f0dd4055542769a8cccd249296c4b831"
+    },
+    {
+      "path": "/Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/docs/evidence/a65-prototype/final/mobile-wide-lifecycle.png",
+      "sha256": "c2f6a61c4caa25c67747956d543111c5da9c76a3c5e05cf9cb7244636cd92aef"
+    },
+    {
+      "path": "/Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/docs/evidence/a65-prototype/final/pc-dark-home-full.png",
+      "sha256": "2015fa75a0bc2bdf082211f208419572f09cdbf8d1c87fc8782922069d0cdfa3"
+    },
+    {
+      "path": "/Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/docs/evidence/a65-prototype/ci-5b04-workflow/continuous-smoke-light-desktop-section.png",
+      "sha256": "b4389e5f49205ef97fadc8e8ec334174242b22f51e5cdf32455d3686013f2d39"
+    },
+    {
+      "path": "/Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/docs/evidence/a65-prototype/ci-5b04-workflow/continuous-smoke-dark-mobile-section.png",
+      "sha256": "eb43869b26ffd7411fb989fa7bd6a9dbad7555891e2ec033f3b2a4f643def8da"
+    },
+    {
+      "path": "/Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/docs/evidence/a65-prototype/ci-5b04-workflow/short-smoke-dark-desktop-section.png",
+      "sha256": "3a804a72c1c706ed0286e3162c428a4f26cef6e34bbaeb6acdc818012e66cc64"
+    },
+    {
+      "path": "/Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/docs/evidence/a65-prototype/ci-5b04-workflow/zero-smoke-dark-desktop-section.png",
+      "sha256": "d6718035802d20d3b8baa2dce9aa87d861491e851fb5e789b668075d43d0081f"
+    },
+    {
+      "path": "/Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/docs/evidence/a65-prototype/ci-5b04-workflow/history-smoke-light-desktop-section.png",
+      "sha256": "d933f4e7ffdb58d4cf8238a5bcee2bea3487c52d84b7922504645c18bf850eb6"
+    },
+    {
+      "path": "/Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/docs/evidence/a65-prototype/ci-5b04-workflow/overlap-smoke-dark-desktop-section.png",
+      "sha256": "1abe320ac2c80a16d1d22386f0698c03f6fb6ef163b9a0d08796489948126141"
+    },
+    {
+      "path": "/Users/hanati/projects/TaskMecca/TaskMecca/_task_mecca/data/contracts/uiux-redesign-20261108/reference/pane-actual-dark.jpg",
+      "sha256": "f70d20344f821c8f6da88c73d82a7f006241898867903e6925370bd7f2baa141"
+    }
+  ],
+  "review_actions": {
+    "browser": false,
+    "tests": false,
+    "builds": false,
+    "detector_rerun": false,
+    "source_edits": false,
+    "operational_writes": false,
+    "writes": "Only this reviewer evidence folder"
+  }
+}

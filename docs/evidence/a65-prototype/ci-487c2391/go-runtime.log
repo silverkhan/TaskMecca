@@ -1,0 +1,291 @@
+﻿2026-11-08T00:00:08.1795944Z Current runner version: '2.338.2'
+2026-11-08T00:00:08.1814052Z ##[group]Runner Image Provisioner
+2026-11-08T00:00:08.1814684Z Hosted Compute Agent
+2026-11-08T00:00:08.1815041Z Version: 20261028.624
+2026-11-08T00:00:08.1815410Z Commit: 54898b74c23fde5556c9b3c3a2290865feef0dfe
+2026-11-08T00:00:08.1815989Z Build Date: 2026-10-28T21:51:42Z
+2026-11-08T00:00:08.1816381Z Worker ID: {db2d6261-8120-4e7f-a282-e87aa9674eeb}
+2026-11-08T00:00:08.1816810Z Region: centralus
+2026-11-08T00:00:08.1817184Z Cloud: Azure
+2026-11-08T00:00:08.1817504Z ##[endgroup]
+2026-11-08T00:00:08.1818811Z ##[group]Operating System
+2026-11-08T00:00:08.1819173Z Ubuntu
+2026-11-08T00:00:08.1819505Z 26.04.1
+2026-11-08T00:00:08.1819851Z LTS
+2026-11-08T00:00:08.1820157Z ##[endgroup]
+2026-11-08T00:00:08.1820512Z ##[group]Runner Image
+2026-11-08T00:00:08.1820882Z Image: ubuntu-26.04
+2026-11-08T00:00:08.1821244Z Version: 20261101.186.1
+2026-11-08T00:00:08.1822029Z Included Software: https://github.com/actions/runner-images/blob/ubuntu26/20261101.186/images/ubuntu/Ubuntu2604-Readme.md
+2026-11-08T00:00:08.1822902Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu26%2F20261101.186
+2026-11-08T00:00:08.1823457Z ##[endgroup]
+2026-11-08T00:00:08.1824172Z ##[group]GITHUB_TOKEN Permissions
+2026-11-08T00:00:08.1825350Z Contents: read
+2026-11-08T00:00:08.1825684Z Metadata: read
+2026-11-08T00:00:08.1826062Z ##[endgroup]
+2026-11-08T00:00:08.1827447Z Secret source: Actions
+2026-11-08T00:00:08.1828023Z Cache mode: write
+2026-11-08T00:00:08.1828561Z Prepare workflow directory
+2026-11-08T00:00:08.2040827Z Prepare all required actions
+2026-11-08T00:00:08.2072972Z Getting action download info
+2026-11-08T00:00:08.4365847Z Download action repository 'actions/checkout@v4' (SHA:11d5960a326750d5838078e36cf38b85af677262)
+2026-11-08T00:00:08.5136848Z Download action repository 'actions/setup-go@v5' (SHA:40f1582b2485089dde7abd97c1529aa768e1baff)
+2026-11-08T00:00:08.9761485Z Download action repository 'actions/upload-artifact@v4' (SHA:ea165f8d65b6e75b540449e92b4886f43607fa02)
+2026-11-08T00:00:09.1143120Z Complete job name: Go runtime
+2026-11-08T00:00:09.1717861Z ##[group]Run actions/checkout@v4
+2026-11-08T00:00:09.1718568Z with:
+2026-11-08T00:00:09.1718830Z   repository: silverkhan/TaskMecca
+2026-11-08T00:00:09.1721297Z   token: ***
+2026-11-08T00:00:09.1721550Z   ssh-strict: true
+2026-11-08T00:00:09.1721810Z   ssh-user: git
+2026-11-08T00:00:09.1722081Z   persist-credentials: true
+2026-11-08T00:00:09.1722376Z   clean: true
+2026-11-08T00:00:09.1722647Z   sparse-checkout-cone-mode: true
+2026-11-08T00:00:09.1722963Z   fetch-depth: 1
+2026-11-08T00:00:09.1723220Z   fetch-tags: false
+2026-11-08T00:00:09.1723486Z   show-progress: true
+2026-11-08T00:00:09.1723752Z   lfs: false
+2026-11-08T00:00:09.1724009Z   submodules: false
+2026-11-08T00:00:09.1724284Z   set-safe-directory: true
+2026-11-08T00:00:09.1724590Z   allow-unsafe-pr-checkout: false
+2026-11-08T00:00:09.1724987Z ##[endgroup]
+2026-11-08T00:00:09.4069062Z Syncing repository: silverkhan/TaskMecca
+2026-11-08T00:00:09.4070435Z ##[group]Getting Git version info
+2026-11-08T00:00:09.4070930Z Working directory is '/home/runner/work/TaskMecca/TaskMecca'
+2026-11-08T00:00:09.4071520Z [command]/usr/bin/git version
+2026-11-08T00:00:09.4090265Z git version 2.56.0
+2026-11-08T00:00:09.4102305Z ##[endgroup]
+2026-11-08T00:00:09.4112523Z Temporarily overriding HOME='/home/runner/work/_temp/0608fb95-539b-48a7-a376-28c6c1a01d93' before making global git config changes
+2026-11-08T00:00:09.4113928Z Adding repository directory to the temporary git global config as a safe directory
+2026-11-08T00:00:09.4115764Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/TaskMecca/TaskMecca
+2026-11-08T00:00:09.4182796Z Deleting the contents of '/home/runner/work/TaskMecca/TaskMecca'
+2026-11-08T00:00:09.4185384Z ##[group]Initializing the repository
+2026-11-08T00:00:09.4188900Z [command]/usr/bin/git init /home/runner/work/TaskMecca/TaskMecca
+2026-11-08T00:00:09.4308119Z hint: Using 'master' as the name for the initial branch. This default branch name
+2026-11-08T00:00:09.4309409Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+2026-11-08T00:00:09.4310029Z hint: to use in all of your new repositories, which will suppress this warning,
+2026-11-08T00:00:09.4310480Z hint: call:
+2026-11-08T00:00:09.4310722Z hint:
+2026-11-08T00:00:09.4311183Z hint: 	git config --global init.defaultBranch <name>
+2026-11-08T00:00:09.4311548Z hint:
+2026-11-08T00:00:09.4311892Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+2026-11-08T00:00:09.4312461Z hint: 'development'. The just-created branch can be renamed via this command:
+2026-11-08T00:00:09.4312897Z hint:
+2026-11-08T00:00:09.4313141Z hint: 	git branch -m <name>
+2026-11-08T00:00:09.4313527Z hint:
+2026-11-08T00:00:09.4313906Z hint: Disable this message with "git config set advice.defaultBranchName false"
+2026-11-08T00:00:09.4321686Z Initialized empty Git repository in /home/runner/work/TaskMecca/TaskMecca/.git/
+2026-11-08T00:00:09.4331935Z [command]/usr/bin/git remote add origin https://github.com/silverkhan/TaskMecca
+2026-11-08T00:00:09.4377407Z ##[endgroup]
+2026-11-08T00:00:09.4377894Z ##[group]Disabling automatic garbage collection
+2026-11-08T00:00:09.4380776Z [command]/usr/bin/git config --local gc.auto 0
+2026-11-08T00:00:09.4409177Z ##[endgroup]
+2026-11-08T00:00:09.4409632Z ##[group]Setting up auth
+2026-11-08T00:00:09.4421170Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-11-08T00:00:09.4447782Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-11-08T00:00:09.4843519Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-11-08T00:00:09.4872637Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-11-08T00:00:09.5089963Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-11-08T00:00:09.5117619Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-11-08T00:00:09.5331929Z [command]/usr/bin/git config --local http.https://github.com/.extraheader AUTHORIZATION: basic ***
+2026-11-08T00:00:09.5364740Z ##[endgroup]
+2026-11-08T00:00:09.5365563Z ##[group]Fetching the repository
+2026-11-08T00:00:09.5372368Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +37a6d21c4b72f13d3cb0216ce81532f756d2d593:refs/remotes/pull/361/merge
+2026-11-08T00:00:10.1521242Z From https://github.com/silverkhan/TaskMecca
+2026-11-08T00:00:10.1523526Z  * [new ref]         37a6d21c4b72f13d3cb0216ce81532f756d2d593 -> pull/361/merge
+2026-11-08T00:00:10.1526522Z ##[endgroup]
+2026-11-08T00:00:10.1527719Z ##[group]Determining the checkout info
+2026-11-08T00:00:10.1529063Z ##[endgroup]
+2026-11-08T00:00:10.1530753Z [command]/usr/bin/git sparse-checkout disable
+2026-11-08T00:00:10.1583788Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+2026-11-08T00:00:10.1610417Z ##[group]Checking out the ref
+2026-11-08T00:00:10.1613323Z [command]/usr/bin/git checkout --progress --force refs/remotes/pull/361/merge
+2026-11-08T00:00:10.2009035Z Note: switching to 'refs/remotes/pull/361/merge'.
+2026-11-08T00:00:10.2009696Z 
+2026-11-08T00:00:10.2010241Z You are in 'detached HEAD' state. You can look around, make experimental
+2026-11-08T00:00:10.2011421Z changes and commit them, and you can discard any commits you make in this
+2026-11-08T00:00:10.2012608Z state without impacting any branches by switching back to a branch.
+2026-11-08T00:00:10.2013348Z 
+2026-11-08T00:00:10.2013837Z If you want to create a new branch to retain commits you create, you may
+2026-11-08T00:00:10.2014908Z do so (now or later) by using -c with the switch command. Example:
+2026-11-08T00:00:10.2015881Z 
+2026-11-08T00:00:10.2016174Z   git switch -c <new-branch-name>
+2026-11-08T00:00:10.2016703Z 
+2026-11-08T00:00:10.2017174Z Or undo this operation with:
+2026-11-08T00:00:10.2017727Z 
+2026-11-08T00:00:10.2018059Z   git switch -
+2026-11-08T00:00:10.2018639Z 
+2026-11-08T00:00:10.2019330Z Turn off this advice by setting config variable advice.detachedHead to false
+2026-11-08T00:00:10.2020216Z 
+2026-11-08T00:00:10.2021316Z HEAD is now at 37a6d21 Merge 487c23918449aaab6ab422c5d1f47b71a1669055 into f0a732e3dd8234a663dccf3c6937fc9dc674917b
+2026-11-08T00:00:10.2024602Z ##[endgroup]
+2026-11-08T00:00:10.2058076Z [command]/usr/bin/git log -1 --format=%H
+2026-11-08T00:00:10.2079142Z 37a6d21c4b72f13d3cb0216ce81532f756d2d593
+2026-11-08T00:00:10.2343051Z ##[group]Run actions/setup-go@v5
+2026-11-08T00:00:10.2343743Z with:
+2026-11-08T00:00:10.2344274Z   go-version-file: go.mod
+2026-11-08T00:00:10.2344887Z   check-latest: false
+2026-11-08T00:00:10.2351061Z   token: ***
+2026-11-08T00:00:10.2351600Z   cache: true
+2026-11-08T00:00:10.2352118Z ##[endgroup]
+2026-11-08T00:00:10.3239316Z Setup go version spec 1.22
+2026-11-08T00:00:10.3269424Z Attempting to download 1.22...
+2026-11-08T00:00:10.3385799Z (node:2218) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+2026-11-08T00:00:10.3387481Z (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-11-08T00:00:11.1548436Z matching 1.22...
+2026-11-08T00:00:11.1576943Z Acquiring 1.22.12 from https://github.com/actions/go-versions/releases/download/1.22.12-13149489080/go-1.22.12-linux-x64.tar.gz
+2026-11-08T00:00:11.7388907Z Extracting Go...
+2026-11-08T00:00:11.7502868Z [command]/usr/bin/tar xz --warning=no-unknown-keyword --overwrite -C /home/runner/work/_temp/92cfbfef-dc5d-4d05-a0e9-ff5f85d65f0f -f /home/runner/work/_temp/30deb3ea-6206-4c19-9b14-659cdd93a2df
+2026-11-08T00:00:12.5860814Z Successfully extracted go to /home/runner/work/_temp/92cfbfef-dc5d-4d05-a0e9-ff5f85d65f0f
+2026-11-08T00:00:12.5861322Z Adding to the cache ...
+2026-11-08T00:00:16.1292349Z Successfully cached go to /opt/hostedtoolcache/go/1.22.12/x64
+2026-11-08T00:00:16.1293802Z Added go to the path
+2026-11-08T00:00:16.1295741Z Successfully set up Go version 1.22
+2026-11-08T00:00:16.1466854Z [command]/opt/hostedtoolcache/go/1.22.12/x64/bin/go env GOMODCACHE
+2026-11-08T00:00:16.1510450Z [command]/opt/hostedtoolcache/go/1.22.12/x64/bin/go env GOCACHE
+2026-11-08T00:00:16.1555563Z /home/runner/go/pkg/mod
+2026-11-08T00:00:16.1568581Z /home/runner/.cache/go-build
+2026-11-08T00:00:16.3022660Z Cache hit for: setup-go-Linux-x64-ubuntu26-go-1.22.12-a0dda88cfc92ef25ad2e57caf590d7241cb4e6849d501f463f8a99b60f2516a3
+2026-11-08T00:00:16.3097376Z (node:2218) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+2026-11-08T00:00:17.4262948Z Received 129072372 of 129072372 (100.0%), 125.3 MBs/sec
+2026-11-08T00:00:17.4263754Z Cache Size: ~123 MB (129072372 B)
+2026-11-08T00:00:17.4354823Z [command]/usr/bin/tar -xf /home/runner/work/_temp/22bbdde4-af10-4dd3-89de-f1a7373c8c53/cache.tzst -P -C /home/runner/work/TaskMecca/TaskMecca --use-compress-program unzstd
+2026-11-08T00:00:17.7479903Z Cache restored successfully
+2026-11-08T00:00:17.7536268Z Cache restored from key: setup-go-Linux-x64-ubuntu26-go-1.22.12-a0dda88cfc92ef25ad2e57caf590d7241cb4e6849d501f463f8a99b60f2516a3
+2026-11-08T00:00:17.7559851Z go version go1.22.12 linux/amd64
+2026-11-08T00:00:17.7560062Z 
+2026-11-08T00:00:17.7560351Z ##[group]go env
+2026-11-08T00:00:17.7689110Z GO111MODULE=''
+2026-11-08T00:00:17.7689386Z GOARCH='amd64'
+2026-11-08T00:00:17.7689631Z GOBIN=''
+2026-11-08T00:00:17.7689831Z GOCACHE='/home/runner/.cache/go-build'
+2026-11-08T00:00:17.7690089Z GOENV='/home/runner/.config/go/env'
+2026-11-08T00:00:17.7690385Z GOEXE=''
+2026-11-08T00:00:17.7690567Z GOEXPERIMENT=''
+2026-11-08T00:00:17.7690774Z GOFLAGS=''
+2026-11-08T00:00:17.7691188Z GOHOSTARCH='amd64'
+2026-11-08T00:00:17.7691310Z GOHOSTOS='linux'
+2026-11-08T00:00:17.7691430Z GOINSECURE=''
+2026-11-08T00:00:17.7691564Z GOMODCACHE='/home/runner/go/pkg/mod'
+2026-11-08T00:00:17.7691712Z GONOPROXY=''
+2026-11-08T00:00:17.7691827Z GONOSUMDB=''
+2026-11-08T00:00:17.7691937Z GOOS='linux'
+2026-11-08T00:00:17.7692060Z GOPATH='/home/runner/go'
+2026-11-08T00:00:17.7692186Z GOPRIVATE=''
+2026-11-08T00:00:17.7692357Z GOPROXY='https://proxy.golang.org,direct'
+2026-11-08T00:00:17.7692541Z GOROOT='/opt/hostedtoolcache/go/1.22.12/x64'
+2026-11-08T00:00:17.7692714Z GOSUMDB='sum.golang.org'
+2026-11-08T00:00:17.7692841Z GOTMPDIR=''
+2026-11-08T00:00:17.7692953Z GOTOOLCHAIN='auto'
+2026-11-08T00:00:17.7693282Z GOTOOLDIR='/opt/hostedtoolcache/go/1.22.12/x64/pkg/tool/linux_amd64'
+2026-11-08T00:00:17.7693484Z GOVCS=''
+2026-11-08T00:00:17.7693595Z GOVERSION='go1.22.12'
+2026-11-08T00:00:17.7693715Z GCCGO='gccgo'
+2026-11-08T00:00:17.7693827Z GOAMD64='v1'
+2026-11-08T00:00:17.7693946Z AR='ar'
+2026-11-08T00:00:17.7694059Z CC='gcc'
+2026-11-08T00:00:17.7694161Z CXX='g++'
+2026-11-08T00:00:17.7694263Z CGO_ENABLED='1'
+2026-11-08T00:00:17.7694415Z GOMOD='/home/runner/work/TaskMecca/TaskMecca/go.mod'
+2026-11-08T00:00:17.7694592Z GOWORK=''
+2026-11-08T00:00:17.7694707Z CGO_CFLAGS='-O2 -g'
+2026-11-08T00:00:17.7694828Z CGO_CPPFLAGS=''
+2026-11-08T00:00:17.7694944Z CGO_CXXFLAGS='-O2 -g'
+2026-11-08T00:00:17.7695070Z CGO_FFLAGS='-O2 -g'
+2026-11-08T00:00:17.7695190Z CGO_LDFLAGS='-O2 -g'
+2026-11-08T00:00:17.7695320Z PKG_CONFIG='pkg-config'
+2026-11-08T00:00:17.7695704Z GOGCCFLAGS='-fPIC -m64 -pthread -Wl,--no-gc-sections -fmessage-length=0 -ffile-prefix-map=/tmp/go-build640398208=/tmp/go-build -gno-record-gcc-switches'
+2026-11-08T00:00:17.7696013Z 
+2026-11-08T00:00:17.7696235Z ##[endgroup]
+2026-11-08T00:00:17.7883839Z ##[group]Run node scripts/record-ci-test.cjs --output activity-ci-evidence.json -- go test ./...
+2026-11-08T00:00:17.7884270Z [36;1mnode scripts/record-ci-test.cjs --output activity-ci-evidence.json -- go test ./...[0m
+2026-11-08T00:00:17.7931043Z shell: /usr/bin/bash -e {0}
+2026-11-08T00:00:17.7931219Z ##[endgroup]
+2026-11-08T00:00:23.0661641Z ?   	github.com/silverkhan/TaskMecca/goassets	[no test files]
+2026-11-08T00:00:23.9198488Z ?   	github.com/silverkhan/TaskMecca/internal/handoffjournal	[no test files]
+2026-11-08T00:00:25.1819140Z ok  	github.com/silverkhan/TaskMecca/cmd/task-mecca	1.679s
+2026-11-08T00:00:25.1826919Z ok  	github.com/silverkhan/TaskMecca/internal/activity	0.238s
+2026-11-08T00:00:26.2709149Z ?   	github.com/silverkhan/TaskMecca/internal/projectionchange	[no test files]
+2026-11-08T00:00:26.5709491Z ok  	github.com/silverkhan/TaskMecca/internal/backlog	2.605s
+2026-11-08T00:00:26.5760020Z ok  	github.com/silverkhan/TaskMecca/internal/contextlife	0.083s
+2026-11-08T00:00:26.5779340Z ok  	github.com/silverkhan/TaskMecca/internal/contractscope	0.007s
+2026-11-08T00:00:26.5800891Z ok  	github.com/silverkhan/TaskMecca/internal/handoff	0.562s
+2026-11-08T00:00:26.5805761Z ok  	github.com/silverkhan/TaskMecca/internal/install	0.627s
+2026-11-08T00:00:26.9296091Z ok  	github.com/silverkhan/TaskMecca/internal/maintenance	1.705s
+2026-11-08T00:00:26.9296546Z ok  	github.com/silverkhan/TaskMecca/internal/notify	0.660s
+2026-11-08T00:00:26.9296918Z ok  	github.com/silverkhan/TaskMecca/internal/preview	0.344s
+2026-11-08T00:00:26.9297287Z ok  	github.com/silverkhan/TaskMecca/internal/projectguard	0.008s
+2026-11-08T00:00:27.3059048Z ok  	github.com/silverkhan/TaskMecca/internal/runtimeobs	0.356s
+2026-11-08T00:00:27.3069264Z ok  	github.com/silverkhan/TaskMecca/internal/subcontroller	0.002s
+2026-11-08T00:00:50.6153758Z 2026/11/08 00:00:28 Task Mecca automatic Telegram delivery issue in project "001": 0 events, 1 failures; inspect notification delivery ledger
+2026-11-08T00:00:50.6154333Z 2026/11/08 00:00:28 Task Mecca automatic Telegram delivery issue in project "001": 0 events, 1 failures; inspect notification delivery ledger
+2026-11-08T00:00:50.6154724Z --- FAIL: TestActivityHTTPIncludesReportedLifecycleCoverage (0.01s)
+2026-11-08T00:00:50.6155812Z     testing.go:1231: TempDir RemoveAll cleanup: unlinkat /tmp/TestActivityHTTPIncludesReportedLifecycleCoverage263819627/001/_task_mecca: directory not empty
+2026-11-08T00:00:50.6156350Z 2026/11/08 00:00:28 Task Mecca automatic Telegram delivery issue in project "001": 0 events, 1 failures; inspect notification delivery ledger
+2026-11-08T00:00:50.6156820Z 2026/11/08 00:00:29 Task Mecca automatic Telegram delivery issue in project "001": 0 events, 1 failures; inspect notification delivery ledger
+2026-11-08T00:00:50.6157119Z Task Mecca Web UI
+2026-11-08T00:00:50.6157275Z local:     http://127.0.0.1:41005/
+2026-11-08T00:00:50.6157452Z tailscale HTTPS: initializing in background
+2026-11-08T00:00:50.6157773Z backlog: /tmp/TestRunAutoPublishesLocalStateBeforeDirectTLSReady41021680/002/_task_mecca/data/backlog (auto)
+2026-11-08T00:00:50.6158541Z maintenance actions require explicit UI confirmation · Ctrl+C to stop
+2026-11-08T00:00:50.6158886Z access: not yet observed · fresh active preflight runs automatically before dispatch
+2026-11-08T00:00:50.6159147Z tailscale HTTPS: unavailable
+2026-11-08T00:00:50.6159315Z   test delayed TLS
+2026-11-08T00:00:50.6159496Z   Local Web remains available; inspect: task-mecca web logs
+2026-11-08T00:00:50.6159679Z FAIL
+2026-11-08T00:00:50.6159842Z FAIL	github.com/silverkhan/TaskMecca/internal/webui	22.497s
+2026-11-08T00:00:50.6160028Z FAIL
+2026-11-08T00:00:50.6603474Z CI command evidence: activity-ci-evidence.json (failed, 32696 ms)
+2026-11-08T00:00:50.6673458Z ##[error]Process completed with exit code 1.
+2026-11-08T00:00:50.6741852Z ##[group]Run actions/upload-artifact@v4
+2026-11-08T00:00:50.6742026Z with:
+2026-11-08T00:00:50.6742158Z   name: activity-ci-evidence-42427731543-1
+2026-11-08T00:00:50.6742332Z   path: activity-ci-evidence.json
+2026-11-08T00:00:50.6742481Z   if-no-files-found: warn
+2026-11-08T00:00:50.6742616Z   compression-level: 6
+2026-11-08T00:00:50.6742742Z   overwrite: false
+2026-11-08T00:00:50.6742867Z   include-hidden-files: false
+2026-11-08T00:00:50.6743024Z ##[endgroup]
+2026-11-08T00:00:50.7821629Z (node:6609) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+2026-11-08T00:00:50.7822120Z (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-11-08T00:00:50.7871779Z With the provided path, there will be 1 file uploaded
+2026-11-08T00:00:50.7889432Z Artifact name is valid!
+2026-11-08T00:00:50.7889710Z Root directory input is valid!
+2026-11-08T00:00:51.0674155Z Beginning upload of artifact content to blob storage
+2026-11-08T00:00:51.0822417Z (node:6609) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+2026-11-08T00:00:51.2405416Z Uploaded bytes 569
+2026-11-08T00:00:51.2803861Z Finished uploading artifact content to blob storage!
+2026-11-08T00:00:51.2804644Z SHA256 digest of uploaded artifact zip is 0b274e212fc4ab5b9b2adc06f316c7b6a7d1ef64d61cb5c5846a4e8823c8d3a4
+2026-11-08T00:00:51.2805185Z Finalizing artifact upload
+2026-11-08T00:00:51.6955243Z Artifact activity-ci-evidence-42427731543-1.zip successfully finalized. Artifact ID 13596311255
+2026-11-08T00:00:51.6956035Z Artifact activity-ci-evidence-42427731543-1 has been successfully uploaded! Final size is 569 bytes. Artifact ID is 13596311255
+2026-11-08T00:00:51.6960970Z Artifact download URL: https://github.com/silverkhan/TaskMecca/actions/runs/42427731543/artifacts/13596311255
+2026-11-08T00:00:51.7108512Z ##[group]Run actions/upload-artifact@v4
+2026-11-08T00:00:51.7108757Z with:
+2026-11-08T00:00:51.7108897Z   name: lifecycle-performance-42427731543
+2026-11-08T00:00:51.7109089Z   path: lifecycle-performance.json
+2026-11-08T00:00:51.7109255Z   if-no-files-found: ignore
+2026-11-08T00:00:51.7109427Z   compression-level: 6
+2026-11-08T00:00:51.7109561Z   overwrite: false
+2026-11-08T00:00:51.7109695Z   include-hidden-files: false
+2026-11-08T00:00:51.7109975Z ##[endgroup]
+2026-11-08T00:00:51.8252144Z (node:6621) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+2026-11-08T00:00:51.8252618Z (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-11-08T00:00:51.8262445Z No files were found with the provided path: lifecycle-performance.json. No artifacts will be uploaded.
+2026-11-08T00:00:51.8503056Z Post job cleanup.
+2026-11-08T00:00:51.9114898Z [command]/usr/bin/git version
+2026-11-08T00:00:51.9154807Z git version 2.56.0
+2026-11-08T00:00:51.9182933Z Temporarily overriding HOME='/home/runner/work/_temp/084a5144-8c9f-4208-92b9-72d5714a4b60' before making global git config changes
+2026-11-08T00:00:51.9183786Z Adding repository directory to the temporary git global config as a safe directory
+2026-11-08T00:00:51.9187350Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/TaskMecca/TaskMecca
+2026-11-08T00:00:51.9230639Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-11-08T00:00:51.9270533Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-11-08T00:00:51.9547305Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-11-08T00:00:51.9575353Z http.https://github.com/.extraheader
+2026-11-08T00:00:51.9585518Z [command]/usr/bin/git config --local --unset-all http.https://github.com/.extraheader
+2026-11-08T00:00:51.9631008Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-11-08T00:00:51.9875558Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-11-08T00:00:51.9907281Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-11-08T00:00:52.0282760Z Cleaning up orphan processes
+2026-11-08T00:00:52.0534509Z ##[warning]Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/checkout@v4, actions/setup-go@v5, actions/upload-artifact@v4. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+

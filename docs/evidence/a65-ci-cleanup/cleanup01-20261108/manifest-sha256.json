@@ -1,0 +1,20 @@
+{
+  "report_id": "a65-ci-fixture-cleanup-20261108-01",
+  "algorithm": "sha256",
+  "source_commit": "6ba0fa548f4b344ee44cf4b15dde907291ebf21d",
+  "files": {
+    "after-gates.json": "421e8a8cbe0e081fd1a2d1294daffb65097089f1e883d15aa2a01d499bf8005b",
+    "after-target-race20.log": "e0d6b4ba59695f055acc092fa8efc6c384d4f1b09eddb4f5d7daf0a0effae63f",
+    "after.json": "fc510f24bd626f8313245ef03d08133fd1ca2f20513260a29ec4ee73bd764879",
+    "before-named-race.log": "1d30fe3975f8e91baa3df688b847a4a35b788dfb504706f29ced455490f29afa",
+    "before-test.json": "1b11c4916c2db912cfc9fe31aaec9c7d8b9307e4bb1d5a25e9d03fc2ddde5166",
+    "before.json": "9f868e102fe32c15523e2a2fef33ab7f44f789a6e06b736df4a882b3253a1a3a",
+    "fixture-cleanup.diff": "7a37429fb9989c0a4822a4eb6d474eb197065fe72c1ed5b5f33e9cc56f567017",
+    "historical-before.json": "ac3368ce228c2bc765956ad17cf56d21bbe88b650dafde7bc296d6d6228fa99a",
+    "related-cache-race.log": "e291f1a7058976e3b614ab3599f04ccc0e4d4037c768e7be6a556f1cdb51e275",
+    "remote-failure.json": "7274b734636bb20597ffb2996f02355c9a7c9ad97dea1c7a2950eb288824d1af",
+    "report.json": "0c3d3cd9e53f4e59156f3882e6718b5fe72fc834d95437e2ee98d138a2356730",
+    "report.md": "8e4f43fe4adb9f8315031af8e700efdea54dea706693e61627a098a71ad6f15b",
+    "verification.json": "6b948dcbbc1da6b064c2cd7d475fd348cdf081b37467534d3c90e1f5dc12c282"
+  }
+}

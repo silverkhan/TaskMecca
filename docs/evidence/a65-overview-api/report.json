@@ -1,0 +1,137 @@
+{
+  "report_id": "a65-overview-api-support-20261108-01",
+  "scope": "A-65 additive backend support only; not full A-65 completion or product acceptance",
+  "source_commit": "68c353420f307979ee1d07fba35bc122501095ac",
+  "base_commit": "f0a732e3dd8234a663dccf3c6937fc9dc674917b",
+  "branch": "codex/a65-uiux-redesign",
+  "source_files": {
+    "internal/webui/overview.go": "6e8dd4334c2cb98db4405d593bcccf1a0be58badb392d223e38b7bf4dea57522",
+    "internal/webui/overview_test.go": "99482c276947bfc3da7946b9885a89af0d3d84ec8ae05f9383a96f074cbae410",
+    "internal/webui/server.go": "a11b4e4e4b3e94b50c05c45fef591b5ef1fda9d528bc455988ff9a6b3e3437be"
+  },
+  "contract_sha": "2c27553e4e280bbdf61813b461367668b2689567f562e1160225deca857149c3",
+  "original_contract_files": 5,
+  "original_source_hashes_verified": true,
+  "runtime": {
+    "native": "01a1aab8-7aab-7b60-9e80-7a10f550e5ce",
+    "session": "01a18149-b707-7ee3-8069-d86f0a14d405",
+    "turn": "01a1b6db-62fb-72c2-bb7b-e93ff9cc5110",
+    "attempt": "run-08687860ee87a1f8",
+    "assignment": "assignment-558055fc4d342c27e0820ceffed26b17",
+    "canonical_controller": "/root/controller",
+    "actual_controller": "/root/controller_recovery"
+  },
+  "endpoint": {
+    "path": "GET /api/overview",
+    "methods": "GET only; other methods405+Allow:GET",
+    "cache_control": "no-store",
+    "query": [
+      "page_size(default8,max50)",
+      "attention_page",
+      "working_page",
+      "projects_page",
+      "activity_page",
+      "attention_cursor",
+      "working_cursor",
+      "projects_cursor",
+      "activity_cursor"
+    ],
+    "cursor": "opaque per-section next_cursor; cursor page takes precedence over page query; registry membership/status change returns409 requiring restart",
+    "response": "schema_version/generated_at/status/freshness/counts/sections/errors/loading/pending/retry_after_ms/limits",
+    "status": "partial takes precedence over stale, then ok",
+    "count_semantics": "projects count is registry size; attention/working and section totals/pages null when global coverage is incomplete; true empty known scope is0",
+    "working_semantics": "file doing summaries match existing backlog count semantics; state_provisional=true and lifecycle/activity=null until canonical projection exists; no execution start inferred from doing",
+    "activity_source": "existing notification_events journal only, not entire runtime/activity ledger",
+    "pagination": "all known items in a loaded batch, then next8-project batch; coverage reports current batch, not cumulative history",
+    "retry": "loading source job500ms; pending canonical projection5000ms; complete/stale but not pending0; client uses finite active-screen polling"
+  },
+  "bounds": {
+    "project_targets_per_job": 8,
+    "max_concurrency_service_wide": 4,
+    "simultaneous_batch_jobs": 1,
+    "cached_batches": 8,
+    "ttl_seconds": 5,
+    "per_section_items_max": 50,
+    "response_max_bytes": 2097152,
+    "oversize_response": "413 with smaller page_size recovery message",
+    "summary_strings_runes": 512,
+    "cold_request": "registry metadata only; starts bounded background pure-read job and returns loading partial without waiting for catalog IO",
+    "limitations": [
+      "ManagedProjects still enumerates registered project metadata O(P); no claim of strict wall-time bound for registry filesystem metadata.",
+      "Each chosen project can require a complete existing CachedCatalog walk in the background. HTTP does not wait; per-project scan runtime/task count is not individually capped.",
+      "No separate index or canonical control plane is created. Cache and source query costs are reused; aggregate summary memory follows the tasks/events in up to8 cached batches.",
+      "For >8 projects, totals stay globally unknown in each window; cursors provide exhaustive access rather than pretending the window is a complete global sum."
+    ]
+  },
+  "read_only_proof": {
+    "production_write_calls": 0,
+    "api_calls_to_snapshot_or_attention_or_workload_reconcile": 0,
+    "fixture_hash_metrics": [
+      "overview_test.go:344: OVERVIEW_READONLY_HTTP files=75 before=3a59894ee29d70ac660a66edd93c5dc8e689d7fb62dcd9cd1a2af600b836273a after=3a59894ee29d70ac660a66edd93c5dc8e689d7fb62dcd9cd1a2af600b836273a",
+      "overview_test.go:474: OVERVIEW_READONLY_CANONICAL files=7 before=d7e632c32d263831e1f4b63110cb14f826a93aabe22d391a80604d0401e5bf01 after=d7e632c32d263831e1f4b63110cb14f826a93aabe22d391a80604d0401e5bf01"
+    ],
+    "files_unchanged": [
+      "75-file HTTP cold-to-data fixture: registry/backlog files",
+      "7-file automatically seeded canonical fixture: registry/backlog/runtime/lifecycle/notification/control evidence after monitor shutdown"
+    ],
+    "canonical_operational_ledgers_or_copies_written": false,
+    "no_new_server_or_operating_port": true
+  },
+  "reuse_and_rejected_paths": {
+    "used": [
+      "maintenance.ManagedProjects",
+      "maintenance.ProjectMonitoringAllowed",
+      "webContext/cachedBacklogDiscover + resolveBacklog",
+      "backlog.CachedCatalog",
+      "backlog.ReadLifecycleProjection",
+      "backlog.ReadNotificationEvents"
+    ],
+    "excluded": [
+      "DashboardSnapshot invokes reconcileControlTower/runtime binding/lifecycle reconciliation.",
+      "AttentionSnapshot(reconcile=false included) calls AttentionSnapshotWithProfileAndEligibility then reconcileControlTower; false suppresses notification writes, not canonical reconciliation.",
+      "WorkloadSnapshot reconciles runtime ledger, maintains execution history and refreshes provider root names."
+    ]
+  },
+  "automatic_warming": {
+    "production_trigger": "server.go Run starts go runOperationMonitor; initial scanOperationProjects→scanOperationProjectList→ensureOperationNotificationFeed→ensureDurableAttentionFeed; no UI/operations/SSE request required",
+    "proof_test": "TestOverviewAutomaticMonitorWarmsCanonicalAttentionWithoutUIReadWrites + existing TestOperationMonitorStartsCanonicalEventFeedsForEveryActiveProject",
+    "metadata_limit": "existing feed publishes canonical user_intervention/needs_user but validated_at=null/source_revision empty makes trust stale; API preserves stale, computed_at, reason and href without repairing sources",
+    "preview_limit": "with control disabled, canonical attention remains unknown/pending until legitimate isolated canonical fixture is seeded; file working/projects/notification events still warm from read-only source cache"
+  },
+  "validation": {
+    "final_command": "go test -race ./internal/webui -run '^(TestOverview|TestOperationMonitorStartsCanonicalEventFeedsForEveryActiveProject)' -count=1 -v",
+    "result": "PASS",
+    "tests": 10,
+    "elapsed_seconds": 10.505,
+    "source_bytes_match_frozen_commit": {
+      "internal/webui/overview.go": true,
+      "internal/webui/overview_test.go": true,
+      "internal/webui/server.go": true
+    },
+    "cases": [
+      "10000-project synthetic registry with intentionally blocked loader: request28.609ms,8 source calls, max4 concurrent; this is not an actual10000-project filesystem benchmark.",
+      "19 synthetic projects×23 rows=437 distinct working rows reached exactly once through section cursors.",
+      "73 real synthetic backlog files: cold request asynchronously becomes usable, all73 traversable, task link project/backlog preserved, unknown attention staysnull.",
+      "Independent page selection, max50, positive input validation, true empty0 versus incomplete null, corrupt registry503, paused source countsnull.",
+      "No UI/API visit: existing service monitor produces canonical user attention; API consumes reason and task link with unchanged fixture tree hashes.",
+      "LRU8, stale-while-revalidate/singleflight, response hard budget2MiB and bounded summary strings."
+    ],
+    "initial_failure": {
+      "test": "TestOverviewAutomaticMonitorWarmsCanonicalAttentionWithoutUIReadWrites",
+      "reason": "Test originally waited only for trust verified. Diagnostic showed canonical attention available=true with trust stale, validated_at null.",
+      "correction": "Test checks actual canonical item with existing verified-or-stale trust and retains stale expectation; no source/projection metadata changed.",
+      "evidence": "monitor-diagnostic-before.log"
+    },
+    "full_local_go_suite": "not run; forbidden",
+    "operating_web_or_preview_changes": "none",
+    "remote_ci_or_pr_or_push": "lead/Controller-owned; none by support"
+  },
+  "handoff": {
+    "own_three_file_commit_agreed_with_lead": true,
+    "lead_consumer_contract_acknowledged": true,
+    "lead_binary_smoke": "pending lead result",
+    "ui_dirty_preserved": true,
+    "canonical_operations_writer": "Controller only",
+    "next_owner": "lead continues core prototype through independent review/exact HEAD CI/isolated Preview and user review hold"
+  }
+}

@@ -1,0 +1,42 @@
+=== RUN   TestActivityHTTPIncludesReportedLifecycleCoverage
+--- PASS: TestActivityHTTPIncludesReportedLifecycleCoverage (0.12s)
+=== RUN   TestActivityHTTPIncludesReportedLifecycleCoverage
+--- PASS: TestActivityHTTPIncludesReportedLifecycleCoverage (0.13s)
+=== RUN   TestActivityHTTPIncludesReportedLifecycleCoverage
+--- PASS: TestActivityHTTPIncludesReportedLifecycleCoverage (0.12s)
+=== RUN   TestActivityHTTPIncludesReportedLifecycleCoverage
+--- PASS: TestActivityHTTPIncludesReportedLifecycleCoverage (0.12s)
+=== RUN   TestActivityHTTPIncludesReportedLifecycleCoverage
+--- PASS: TestActivityHTTPIncludesReportedLifecycleCoverage (0.12s)
+=== RUN   TestActivityHTTPIncludesReportedLifecycleCoverage
+--- PASS: TestActivityHTTPIncludesReportedLifecycleCoverage (0.13s)
+=== RUN   TestActivityHTTPIncludesReportedLifecycleCoverage
+--- PASS: TestActivityHTTPIncludesReportedLifecycleCoverage (0.12s)
+=== RUN   TestActivityHTTPIncludesReportedLifecycleCoverage
+--- PASS: TestActivityHTTPIncludesReportedLifecycleCoverage (0.12s)
+=== RUN   TestActivityHTTPIncludesReportedLifecycleCoverage
+--- PASS: TestActivityHTTPIncludesReportedLifecycleCoverage (0.12s)
+=== RUN   TestActivityHTTPIncludesReportedLifecycleCoverage
+--- PASS: TestActivityHTTPIncludesReportedLifecycleCoverage (0.13s)
+=== RUN   TestActivityHTTPIncludesReportedLifecycleCoverage
+--- PASS: TestActivityHTTPIncludesReportedLifecycleCoverage (0.13s)
+=== RUN   TestActivityHTTPIncludesReportedLifecycleCoverage
+--- PASS: TestActivityHTTPIncludesReportedLifecycleCoverage (0.12s)
+=== RUN   TestActivityHTTPIncludesReportedLifecycleCoverage
+--- PASS: TestActivityHTTPIncludesReportedLifecycleCoverage (0.12s)
+=== RUN   TestActivityHTTPIncludesReportedLifecycleCoverage
+--- PASS: TestActivityHTTPIncludesReportedLifecycleCoverage (0.13s)
+=== RUN   TestActivityHTTPIncludesReportedLifecycleCoverage
+--- PASS: TestActivityHTTPIncludesReportedLifecycleCoverage (0.13s)
+=== RUN   TestActivityHTTPIncludesReportedLifecycleCoverage
+--- PASS: TestActivityHTTPIncludesReportedLifecycleCoverage (0.08s)
+=== RUN   TestActivityHTTPIncludesReportedLifecycleCoverage
+--- PASS: TestActivityHTTPIncludesReportedLifecycleCoverage (0.10s)
+=== RUN   TestActivityHTTPIncludesReportedLifecycleCoverage
+--- PASS: TestActivityHTTPIncludesReportedLifecycleCoverage (0.07s)
+=== RUN   TestActivityHTTPIncludesReportedLifecycleCoverage
+--- PASS: TestActivityHTTPIncludesReportedLifecycleCoverage (0.06s)
+=== RUN   TestActivityHTTPIncludesReportedLifecycleCoverage
+--- PASS: TestActivityHTTPIncludesReportedLifecycleCoverage (0.10s)
+PASS
+ok  	github.com/silverkhan/TaskMecca/internal/webui	3.731s

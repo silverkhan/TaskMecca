@@ -1,0 +1,211 @@
+{
+  "counts": {
+    "attention": 1,
+    "projects": 1,
+    "working": 0
+  },
+  "errors": [],
+  "freshness": {
+    "observed_at": "2026-11-07T17:01:09.484215Z",
+    "stale": true
+  },
+  "generated_at": "2026-11-07T17:01:09.490983Z",
+  "limits": {
+    "cache_batches": 8,
+    "concurrency": 4,
+    "page_size_max": 50,
+    "project_batch": 8,
+    "response_max_bytes": 2097152
+  },
+  "loading": false,
+  "pending": false,
+  "retry_after_ms": 0,
+  "schema_version": 1,
+  "sections": {
+    "activity": {
+      "items": [],
+      "page": 1,
+      "page_size": 8,
+      "total": 0,
+      "pages": 1,
+      "has_more": false,
+      "status": "stale",
+      "coverage": {
+        "complete": true,
+        "scanned_projects": 1,
+        "total_projects": 1
+      },
+      "observed_at": "2026-11-07T17:01:09.484215Z",
+      "pending": false,
+      "loading": false,
+      "source": "notification_events"
+    },
+    "attention": {
+      "items": [
+        {
+          "activity": null,
+          "agent": "",
+          "attention_reason": {
+            "evidence": "Synthetic review fixture",
+            "message": "Choose a prototype direction",
+            "resume_condition": "User decision recorded",
+            "severity": "danger",
+            "title": "사용자 개입 필요",
+            "type": "user_intervention"
+          },
+          "backlog": "/var/folders/07/q_8xp6j90zn8r_gdxk6sj5nm0000gn/T/TestOverviewAutomaticMonitorWarmsCanonicalAttentionWithoutUIRead258759845/001/synthetic-project/_task_mecca/data/backlog",
+          "evidence": {
+            "path": "/var/folders/07/q_8xp6j90zn8r_gdxk6sj5nm0000gn/T/TestOverviewAutomaticMonitorWarmsCanonicalAttentionWithoutUIRead258759845/001/synthetic-project/_task_mecca/data/backlog/000001.A-1.synthetic.hold.md",
+            "snapshot": {
+              "age_ms": 6,
+              "check_interval_ms": 1000,
+              "computed_at": "2026-11-07T17:01:09.484215Z",
+              "rebuild_interval_ms": 30000,
+              "refresh_timings_ms": {
+                "activity_handoff": 0.066334,
+                "lifecycle_git": 43.232208,
+                "runtime": 0.025875
+              },
+              "refreshing": false,
+              "source_revision": "",
+              "trust": "stale",
+              "validated_at": null,
+              "version": "1794070869484215000-1"
+            },
+            "source": "lifecycle_projection"
+          },
+          "file_state": "hold",
+          "href": "/tasks/A-1?backlog=%2Fvar%2Ffolders%2F07%2Fq_8xp6j90zn8r_gdxk6sj5nm0000gn%2FT%2FTestOverviewAutomaticMonitorWarmsCanonicalAttentionWithoutUIRead258759845%2F001%2Fsynthetic-project%2F_task_mecca%2Fdata%2Fbacklog&project=%2Fvar%2Ffolders%2F07%2Fq_8xp6j90zn8r_gdxk6sj5nm0000gn%2FT%2FTestOverviewAutomaticMonitorWarmsCanonicalAttentionWithoutUIRead258759845%2F001%2Fsynthetic-project",
+          "id": "A-1",
+          "lifecycle": {
+            "active": "-",
+            "active_seconds": null,
+            "claimed_at": null,
+            "completed_at": null,
+            "created_at": "2026-11-07T17:01:09Z",
+            "current_segment_seconds": 0.483542,
+            "current_state": "hold",
+            "current_state_at": "2026-11-07T17:01:09Z",
+            "current_state_source": "runtime_observed",
+            "duration": "-",
+            "duration_seconds": null,
+            "elapsed": "-",
+            "elapsed_seconds": null,
+            "lead": "0s",
+            "lead_seconds": 0.483542,
+            "lifecycle_inference_note": "Current state includes a provisional runtime observation that is retained across refreshes until Git records the transition.",
+            "lifecycle_inferred": true,
+            "queue": "0s",
+            "queue_seconds": 0.483542,
+            "started_at": null,
+            "timing_incomplete": false,
+            "timing_incomplete_note": "",
+            "wait": "0s",
+            "wait_seconds": 0.483542,
+            "work": "-",
+            "work_seconds": null
+          },
+          "project": "/var/folders/07/q_8xp6j90zn8r_gdxk6sj5nm0000gn/T/TestOverviewAutomaticMonitorWarmsCanonicalAttentionWithoutUIRead258759845/001/synthetic-project",
+          "project_name": "synthetic-project",
+          "reason": {
+            "evidence": "Synthetic review fixture",
+            "message": "Choose a prototype direction",
+            "resume_condition": "User decision recorded",
+            "severity": "danger",
+            "title": "사용자 개입 필요",
+            "type": "user_intervention"
+          },
+          "snapshot": {
+            "age_ms": 6,
+            "check_interval_ms": 1000,
+            "computed_at": "2026-11-07T17:01:09.484215Z",
+            "rebuild_interval_ms": 30000,
+            "refresh_timings_ms": {
+              "activity_handoff": 0.066334,
+              "lifecycle_git": 43.232208,
+              "runtime": 0.025875
+            },
+            "refreshing": false,
+            "source_revision": "",
+            "trust": "stale",
+            "validated_at": null,
+            "version": "1794070869484215000-1"
+          },
+          "state": "needs_user",
+          "state_provisional": false,
+          "tags": [],
+          "title": "A-1 Synthetic judgment needed",
+          "updated_at": "2026-11-07T17:01:09.388763077+00:00"
+        }
+      ],
+      "page": 1,
+      "page_size": 8,
+      "total": 1,
+      "pages": 1,
+      "has_more": false,
+      "status": "stale",
+      "coverage": {
+        "complete": true,
+        "scanned_projects": 1,
+        "total_projects": 1
+      },
+      "observed_at": "2026-11-07T17:01:09.484215Z",
+      "pending": false,
+      "loading": false
+    },
+    "projects": {
+      "items": [
+        {
+          "backlog": "/var/folders/07/q_8xp6j90zn8r_gdxk6sj5nm0000gn/T/TestOverviewAutomaticMonitorWarmsCanonicalAttentionWithoutUIRead258759845/001/synthetic-project/_task_mecca/data/backlog",
+          "counts": {
+            "all": 1,
+            "attention": 1,
+            "done": 0,
+            "hold": 1,
+            "working": 0
+          },
+          "error": null,
+          "href": "/?backlog=%2Fvar%2Ffolders%2F07%2Fq_8xp6j90zn8r_gdxk6sj5nm0000gn%2FT%2FTestOverviewAutomaticMonitorWarmsCanonicalAttentionWithoutUIRead258759845%2F001%2Fsynthetic-project%2F_task_mecca%2Fdata%2Fbacklog&project=%2Fvar%2Ffolders%2F07%2Fq_8xp6j90zn8r_gdxk6sj5nm0000gn%2FT%2FTestOverviewAutomaticMonitorWarmsCanonicalAttentionWithoutUIRead258759845%2F001%2Fsynthetic-project",
+          "name": "synthetic-project",
+          "observed_at": "2026-11-07T17:01:09.484215Z",
+          "path": "/var/folders/07/q_8xp6j90zn8r_gdxk6sj5nm0000gn/T/TestOverviewAutomaticMonitorWarmsCanonicalAttentionWithoutUIRead258759845/001/synthetic-project",
+          "status": "stale"
+        }
+      ],
+      "page": 1,
+      "page_size": 8,
+      "total": 1,
+      "pages": 1,
+      "has_more": false,
+      "status": "stale",
+      "coverage": {
+        "complete": true,
+        "scanned_projects": 1,
+        "total_projects": 1
+      },
+      "observed_at": "2026-11-07T17:01:09.484215Z",
+      "pending": false,
+      "loading": false
+    },
+    "working": {
+      "items": [],
+      "page": 1,
+      "page_size": 8,
+      "total": 0,
+      "pages": 1,
+      "has_more": false,
+      "status": "stale",
+      "coverage": {
+        "complete": true,
+        "scanned_projects": 1,
+        "total_projects": 1
+      },
+      "observed_at": "2026-11-07T17:01:09.484215Z",
+      "pending": false,
+      "loading": false
+    }
+  },
+  "status": "stale",
+  "synthetic": true,
+  "_evidence_origin": "Real overview response from an isolated temporary synthetic user-wait project, seeded by the existing service monitor without any UI/API visit; temporary paths are no longer live."
+}

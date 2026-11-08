@@ -1,0 +1,22 @@
+{
+  "report_id": "a65-overview-recovery03-20261108-01",
+  "algorithm": "sha256",
+  "source_commit": "767b0f42ceab5da2e8d01efdd1a9aaf87b33a00c",
+  "source_tree": "8d5f953894f3f1f785c57ccc1276bb3af295154b",
+  "files": {
+    "api-source-hashes.json": "682b446704d8178a0630a3a6eea5f331663f1fd28a471599ed2db7db3e25e74b",
+    "committed-ui-assets.json": "8de311f88e6b86f07999081ba5edb1dc90f5ca9796250bd588052441eb790346",
+    "exact-767-race.log": "ad1539e05c42eb158b68867448a551a9cf1860dc903675ee5c790e06f630d688",
+    "historical-evidence-before.json": "1a342a2b21621ca8f757ceb283899f88656166fd07aa27821bde81694ef97ea3",
+    "historical-integrity.json": "3275cd63b972c792f0c389572b7174597be77e7ae8727b13497cf0c77a189d07",
+    "http-static-evidence.json": "5f968f190b04b8217ee6cb86f0a2c0b3faae3a5ef1f36431fed71244f855e745",
+    "lineage.json": "97dc5d97cab7aec38d8ee2b2dcf12f181f38f58aeeeaf7a9294eaaa76a948d09",
+    "post-validation-observation.json": "8bd66e68802a519261497c43b8bc7d157ceef7daf20dfbee4a4bd0aa988f51e0",
+    "report.json": "b11937dcc9084f1ec5917b9e08bdb8d9758d68997d893b21372ff494661fe21a",
+    "report.md": "69ca432da8589002536072a6e4beb27546c179d97643aa30453549e81be35499",
+    "source-after.json": "ae003907e83319141f85a8aa34c4de8443e00011cef67711d34651a122b081a7",
+    "source-before.json": "82c885ab272616840dee052f46d9dd78ac4ad24eebc443168c8d9b53c577bcb9",
+    "toolchain.txt": "c528ba02b39880f1357f51dee70e41c1ef03e3a70c7a03055c080532b9635f58",
+    "verification.json": "138a26949c0ce8b6f997a214810d2057be7e28d24ab349392d8b537bda34e94a"
+  }
+}

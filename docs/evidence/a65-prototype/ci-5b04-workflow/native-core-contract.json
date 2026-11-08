@@ -1,0 +1,22 @@
+{
+  "synthetic": true,
+  "browser": "156.0.8078.4",
+  "passed": true,
+  "cases": [
+    "cold loading becomes observed data; unknown differs from zero; opaque independent cursor; no per-project fanout",
+    "registry change recovers a stale cursor once with a first-page notice",
+    "late same-epoch global SSE hints do not trigger stale refetch",
+    "completed overview has no idle request or DOM growth",
+    "debounced search retains focus; URL page state and list reading survive dedicated detail/back",
+    "status, multitag, page and refresh context remain URL-addressable",
+    "content paints before slow canonical projection; source is preserved; lifecycle zoom/fit and direct reload work",
+    "five viewport widths, Light/Dark, Korean/English and keyboard focus",
+    "200% CSS zoom layout-equivalent has no document overflow; physical browser/device zoom unclaimed",
+    "cold/pending polling stops after initial+12 retries and after route departure"
+  ],
+  "errors": [],
+  "limits": [
+    "No physical device or assistive-technology validation",
+    "CSS zoom is a layout equivalent, not native browser zoom"
+  ]
+}

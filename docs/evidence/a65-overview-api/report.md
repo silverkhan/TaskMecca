@@ -1,0 +1,21 @@
+# A-65 Overview API support
+
+Report ID: `a65-overview-api-support-20261108-01`. API support completion is separate from full A-65 completion.
+
+Commit `68c353420f307979ee1d07fba35bc122501095ac` adds `overview.go`, `overview_test.go` and the two-line route registration in `server.go`, based on `f0a732e3dd8234a663dccf3c6937fc9dc674917b`. Lead agreed to this own-files-only commit; all UI, existing tests, PRODUCT and evidence changes were preserved outside the commit.
+
+`GET /api/overview` returns the agreed version1 counts/freshness/four-section schema. Each section supports independent page and opaque cursor navigation. Cursor page takes precedence; registry changes return409/restart. Null totals/counts mean unknown, while true known empty scope is0. Provisional file-doing rows preserve lifecycle/activity null. Working counts use existing file-doing task semantics. Activity is explicitly the existing notification-events source, not the full runtime ledger.
+
+A cold request reads registry metadata, starts one eight-project pure-read cache job and returns loading/partial. All jobs share four workers and singleflight; LRU holds eight batches with a5-second TTL. The next request retrieves real file task/event/project summaries. Each section cursor traverses known rows and then subsequent project batches. Coverage describes the current window, not a cumulative global sum. Per-section payload is at most50 rows, summary text512 runes, and the encoded response has a2MiB hard guard with413/smaller-page recovery.
+
+ManagedProjects still does O(P) metadata checks. A selected cold project can need a full existing CachedCatalog walk in the background; no claim of a bounded per-project scan time is made. The HTTP request does not await that scan. This avoids a new all-project ledger scan, alternate index or control plane.
+
+The API never calls reconciling DashboardSnapshot, AttentionSnapshot or WorkloadSnapshot. Attention's false flag does not prevent reconcileControlTower, so it is excluded too. It reuses CachedCatalog, ReadLifecycleProjection, ReadNotificationEvents, discovery and managed-project queries. No source ledger writes are introduced.
+
+The real service startup starts runOperationMonitor without a UI/SSE visit. Its existing feed publishes canonical attention. The new fixture runs that same monitor and verifies a declared synthetic user wait becomes needs_user/user_intervention, then stops the monitor before hashing sources and reading overview. Existing feed metadata leaves validated_at null and therefore trust stale. The API retains stale/computed_at/reason/href; it does not repair or promote the projection. A stale completed load has loading=false,pending=false,retry0. Missing canonical projection uses pending with retry5000; catalog loading uses retry500. The lead consumer uses finite active-screen polling.
+
+Final validation: `go test -race ./internal/webui -run '^(TestOverview|TestOperationMonitorStartsCanonicalEventFeedsForEveryActiveProject)' -count=1 -v` passed10 tests in10.505s. Source bytes match the frozen commit. Tests cover an intentionally blocked synthetic10000-project loader (28.609ms request return, eight source calls, four concurrent), all437 rows across19×23 synthetic projects, all73 real synthetic backlog rows and deep links, null/empty/error/paused distinctions, LRU/stale/singleflight and response bounds. The10000-project result is a simulated blocked-source control test, not a filesystem scale benchmark.
+
+The75-file HTTP fixture digest remained `3a59894ee29d70ac660a66edd93c5dc8e689d7fb62dcd9cd1a2af600b836273a` before/after. The7-file canonical fixture remained `d7e632c32d263831e1f4b63110cb14f826a93aabe22d391a80604d0401e5bf01`. The earlier monitor test failure and diagnostic are retained: it expected verified-only metadata even though canonical attention existed as stale; the expectation was corrected without changing production sources.
+
+No full local Go suite, push, PR write, deployment, operating Web/Preview change or canonical operational ledger/copy write was performed. Lead owns UI consumer binary smoke and the remaining core-prototype/CI/isolated-Preview/user-review flow. Synthetic response evidence is explicitly marked; its temporary fixture paths are no longer live.

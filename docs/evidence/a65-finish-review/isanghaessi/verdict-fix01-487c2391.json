@@ -1,0 +1,391 @@
+{
+  "schema_version": 1,
+  "created_at_utc": "2026-11-08T00:12:42.239313+00:00",
+  "disposition": "ship",
+  "readiness": "READY FOR USER DESIGN REVIEW",
+  "readiness_scope": "Visual core prototype only, at pinned 487 source. Separate delivery gates remain pending.",
+  "source_head": "487c23918449aaab6ab422c5d1f47b71a1669055",
+  "prior_head": "5b04ba6f4f2aa3c8ff30949a3af0bca45cddd179",
+  "reviewer": {
+    "canonical": "/root/controller/isanghaessi",
+    "native_target": "/root/controller_recovery/isanghaessi",
+    "thread_id": "01a1b85b-713f-7d20-9061-b6e61455968a",
+    "session_id": "01a18149-b707-7ee3-8069-d86f0a14d405",
+    "turn_id": "01a1b878-207c-7b13-b116-23dbf625a009",
+    "attempt_id": "run-5a55e05e3d1a17a7",
+    "identity_provenance": "New task_started turn observed in own rollout at 2026-11-08T00:04:02.848Z; new attempt confirmed by Controller firstbind; terminal prior b7c was not reused."
+  },
+  "persistence": {
+    "status": "unchanged; pass for this verdict stage",
+    "product": "Existing PRODUCT.md and approved pinned Smoke contract retained. No new direction selection or scope expansion.",
+    "prior_report_immutable": {
+      "report.md": "e20dc639adf3b6a8c29b3b3235b162cb1af956cbf5f35237061cf2a2afc21b2f",
+      "report.json": "124aa81f799389a701690f608f16f1d7dc8b1dede1ed1b38da6ae040fe0e09c5"
+    },
+    "source_check": [
+      {
+        "path": "goassets/template/_task_mecca/framework/web/ui/components/shared.js",
+        "sha256": "a051dd898f18eb6179bbe02b63f22f1e2fc24e08be2a9372c6b799cdcdb40b9c",
+        "matches_committed_487": true
+      },
+      {
+        "path": "goassets/template/_task_mecca/framework/web/ui/screens/home.js",
+        "sha256": "cba1d03ac24cf0cde5ec816a4b4464b83e8d69612aa95b73f270e07e84f4e789",
+        "matches_committed_487": true
+      },
+      {
+        "path": "goassets/template/_task_mecca/framework/web/ui/screens/backlog.js",
+        "sha256": "a7fe4575989370e23710c99a703f1dd292329ec341ccfd2c8146a5ae5b577c3b",
+        "matches_committed_487": true
+      },
+      {
+        "path": "goassets/template/_task_mecca/framework/web/ui/smoke.css",
+        "sha256": "73d4b4fafab6e20b403f63d141eef8724b0de6d32ac1a17ca6c821a49f2b0358",
+        "matches_committed_487": true
+      },
+      {
+        "path": "goassets/template/_task_mecca/framework/web/ui/main.js",
+        "sha256": "53d8c53f91f2a67d54414038e84811215db7c5ee59a8c49d11df907cb1e18703",
+        "matches_committed_487": true
+      },
+      {
+        "path": "goassets/template/_task_mecca/framework/web/ui/data.js",
+        "sha256": "ae80c63978e4e11615394d808482794e75ed677c32c0cc713a4accd2fdc16dbd",
+        "matches_committed_487": true
+      },
+      {
+        "path": "goassets/template/_task_mecca/framework/web/ui/state.js",
+        "sha256": "23ef748eb0b010e47733919342e7a31ddc95254a58a1c64ec6e6582d70c73d16",
+        "matches_committed_487": true
+      },
+      {
+        "path": "goassets/template/_task_mecca/framework/web/ui/components/workflow.js",
+        "sha256": "7ccc8a53ebc4f744a4f2e9c3df564daac12a292e877dab4f832d0f15db88b322",
+        "matches_committed_487": true
+      },
+      {
+        "path": "goassets/template/_task_mecca/framework/web/ui/components/workflow.css",
+        "sha256": "f69e9151a1d916242f5ec5996550fb00928a137a903038665ce5172b4896f285",
+        "matches_committed_487": true
+      }
+    ],
+    "design": "Still due from shipped documenter after verdict; not retroactively claimed present.",
+    "actual_go_provenance": {
+      "binary": "/private/tmp/task-mecca-a65-build/task-mecca-487c2391",
+      "binary_sha256_reported": "3662f3a629c8d5b8d6ee4b08be19fe5eee7e36f1076a349fa32a4bf37c9387a7",
+      "actual_api": true,
+      "synthetic": true,
+      "reviewer_execution": false
+    }
+  },
+  "fidelity": {
+    "verdict": [
+      {
+        "id": "M1",
+        "status": "resolved",
+        "severity_before": "high",
+        "evidence": [
+          "pc-dark-home.png: all three project identities, stale state and working/attention counts visible, last project row bottom 804.20px",
+          "pc-light-home.png: same information visible, last project row bottom 822.70px",
+          "pc-dark-home-full.png: attention remains first and strongest; work/projects/activity continue below",
+          "ui/screens/home.js:99: first two attention rows plus native More on this page disclosure for remaining page rows",
+          "ui/data.js: fetchOverview page_size 4; independent cursor pagination retained"
+        ],
+        "judgment": "The repair restores an actual multi-project first viewport, not merely an earlier Projects heading. Attention reasons remain complete. All nine attention records remain represented by total, current-page disclosure and three cursor pages. The fixed two-row preview is an acceptable bounded adaptation of the existing order. Secondary project paths are abbreviated visually, retain full-path title, and remain available in opened backlog tools."
+      },
+      {
+        "id": "M2",
+        "status": "resolved",
+        "severity_before": "high",
+        "evidence": [
+          "mobile-light-home.png: first English card title and reason span usable width instead of a narrow strip",
+          "mobile-dark-home.png: Korean reason remains readable at 390px",
+          "mobile-wide-home.png: English title/reason remain readable at 430px",
+          "capture-contrast-report.json: task-body widths 233 / 303 / 343px at 320 / 390 / 430px",
+          "ui/smoke.css:1523: mobile task-main spans 1/-1; complete reason is retained"
+        ],
+        "judgment": "The status no longer controls the content column. Complete title, project/owner, Updated and reason are visible with a normal reading measure. Decorative mobile chevrons are omitted to free width; the complete row remains an actual route link with original task ID and state, so this is an acceptable responsive adaptation, not removed navigation."
+      },
+      {
+        "id": "M3",
+        "status": "resolved",
+        "severity_before": "high",
+        "evidence": [
+          "mobile-light-backlog.png, mobile-dark-backlog.png, mobile-wide-backlog.png: search and Filters & sort summary visible; first task starts 385.72px and multiple complete task rows appear above bottom navigation",
+          "mobile-light-backlog-open-tools.png: actual 320x844 English Light full-page capture of open native disclosure, showing state/sort/page-size/tags, Apply tags and full project/backlog paths",
+          "open-tools-proof.json: doing / updated_asc / page_size10 / area:frontend applied, summary and URL updated, three actual rows, overflow false, every control within x20..285",
+          "ui/screens/backlog.js:37: controls preserved within native details and form associations",
+          "ui/main.js:533: external form-associated select changes apply; query form still handles Enter/debounce; tools-open state retained"
+        ],
+        "judgment": "Both original acceptance halves are evidenced: the closed default restores reading space, and the open disclosure visibly retains the existing controls and secondary paths. The selected sort text uses native select clipping at its closed width; its semantic option and value are preserved, and this does not reintroduce the original viewport issue. Search remains visible without a separate mobile search button, with form Enter/debounce behavior preserved in source. No modal or control deletion was used."
+      },
+      {
+        "id": "M4",
+        "status": "resolved",
+        "severity_before": "medium",
+        "evidence": [
+          "pc-dark-backlog.png and pc-light-backlog.png: labeled 수정 / Updated timestamp shown beside owner on rows",
+          "all three mobile backlog captures: Updated timestamp remains visible, wrapping below owner at 320px",
+          "ui/components/shared.js:50: existing updated_at || mtime, valid timestamp rendered as semantic time, otherwise explicit Updated: Unknown",
+          "ui/components/shared.js:56: owner and project remain separate from the labeled temporal fact"
+        ],
+        "judgment": "Recency is now a truthful secondary list fact. It is explicitly labeled modification time, not activity duration. Identity/title/owner/state remain visible, and invalid/missing timestamps cannot become invented measured values. Unknown is source-verified; supplied synthetic recaptures exercise valid timestamps, not the missing-value branch."
+      }
+    ],
+    "regressions": [],
+    "regression_statement": "No material regression caused by this fix batch was observed in the supplied same-size captures or scoped preserve-code diff. No new defect hunt was conducted.",
+    "direction_assessment": {
+      "THESIS": "M1 resolves entry-level cross-project evidence visibility.",
+      "OWN-WORLD": "Preserved original mark, factual stale/unknown states, neutral material and restrained blue.",
+      "STORY": "Attention remains first; work/projects parallel desktop composition preserves approved reading order, followed by activity and dedicated details.",
+      "FIRST VIEWPORT": "M1 resolves: actual project identities, states and counts now appear, rather than only a moved heading.",
+      "FORM": "M2/M3 resolve the identified equal-mobile-use failures; neutral Smoke reflections/depth and pinned seed/direction remain unchanged."
+    },
+    "type_material": "Original accepted type/material adaptation remains intact; no raster rebuild or style reroll is indicated."
+  },
+  "ceiling": {
+    "status": "Identified visual core finish bar reached for user design review; this is not overall delivery acceptance.",
+    "regressions_found": 0,
+    "mechanical_evidence": "Provided 20-screen report: errors [], no document overflow, minimum sampled body/control ratio 4.605952 and heading ratio 13.234377. These measurements support but do not substitute for visual verdict. Detector was not rerun.",
+    "lifecycle_limit": "All five new actual-Go lifecycle captures remain honestly unmeasured. Six rich component fixtures are retained from exact 5b04 CI and were inspected in the initial review; workflow.js/workflow.css are unchanged in the 487 batch. Main-shell/render/runtime code changed, so old fixtures do not independently establish 487 gesture, event or performance behavior.",
+    "pending_separate_gates": [
+      "Final eight counterbalanced paired performance samples/medians and correction of any confirmed >10% regression; no final timing verdict is available.",
+      "Final exact-delivery-HEAD CI and isolated Preview verification; parent reports CI fixture cleanup and gesture observation race under separate correction. No green CI or Preview acceptance is asserted here.",
+      "Shipped documenter DESIGN.md and final review package; then Controller user-design-review hold.",
+      "Full operations/settings expansion and overall A-65/8AC completion remain outside this visual core verdict."
+    ],
+    "no_claims": [
+      "Physical phone",
+      "Screen reader",
+      "OS trackpad",
+      "Battery/energy",
+      "All-breakpoint native 200% zoom",
+      "New exact-HEAD CI success",
+      "Final performance pass",
+      "Full A-65 completion"
+    ]
+  },
+  "material_fixes": {
+    "verdict": [
+      {
+        "id": "M1",
+        "status": "resolved",
+        "severity_before": "high",
+        "evidence": [
+          "pc-dark-home.png: all three project identities, stale state and working/attention counts visible, last project row bottom 804.20px",
+          "pc-light-home.png: same information visible, last project row bottom 822.70px",
+          "pc-dark-home-full.png: attention remains first and strongest; work/projects/activity continue below",
+          "ui/screens/home.js:99: first two attention rows plus native More on this page disclosure for remaining page rows",
+          "ui/data.js: fetchOverview page_size 4; independent cursor pagination retained"
+        ],
+        "judgment": "The repair restores an actual multi-project first viewport, not merely an earlier Projects heading. Attention reasons remain complete. All nine attention records remain represented by total, current-page disclosure and three cursor pages. The fixed two-row preview is an acceptable bounded adaptation of the existing order. Secondary project paths are abbreviated visually, retain full-path title, and remain available in opened backlog tools."
+      },
+      {
+        "id": "M2",
+        "status": "resolved",
+        "severity_before": "high",
+        "evidence": [
+          "mobile-light-home.png: first English card title and reason span usable width instead of a narrow strip",
+          "mobile-dark-home.png: Korean reason remains readable at 390px",
+          "mobile-wide-home.png: English title/reason remain readable at 430px",
+          "capture-contrast-report.json: task-body widths 233 / 303 / 343px at 320 / 390 / 430px",
+          "ui/smoke.css:1523: mobile task-main spans 1/-1; complete reason is retained"
+        ],
+        "judgment": "The status no longer controls the content column. Complete title, project/owner, Updated and reason are visible with a normal reading measure. Decorative mobile chevrons are omitted to free width; the complete row remains an actual route link with original task ID and state, so this is an acceptable responsive adaptation, not removed navigation."
+      },
+      {
+        "id": "M3",
+        "status": "resolved",
+        "severity_before": "high",
+        "evidence": [
+          "mobile-light-backlog.png, mobile-dark-backlog.png, mobile-wide-backlog.png: search and Filters & sort summary visible; first task starts 385.72px and multiple complete task rows appear above bottom navigation",
+          "mobile-light-backlog-open-tools.png: actual 320x844 English Light full-page capture of open native disclosure, showing state/sort/page-size/tags, Apply tags and full project/backlog paths",
+          "open-tools-proof.json: doing / updated_asc / page_size10 / area:frontend applied, summary and URL updated, three actual rows, overflow false, every control within x20..285",
+          "ui/screens/backlog.js:37: controls preserved within native details and form associations",
+          "ui/main.js:533: external form-associated select changes apply; query form still handles Enter/debounce; tools-open state retained"
+        ],
+        "judgment": "Both original acceptance halves are evidenced: the closed default restores reading space, and the open disclosure visibly retains the existing controls and secondary paths. The selected sort text uses native select clipping at its closed width; its semantic option and value are preserved, and this does not reintroduce the original viewport issue. Search remains visible without a separate mobile search button, with form Enter/debounce behavior preserved in source. No modal or control deletion was used."
+      },
+      {
+        "id": "M4",
+        "status": "resolved",
+        "severity_before": "medium",
+        "evidence": [
+          "pc-dark-backlog.png and pc-light-backlog.png: labeled 수정 / Updated timestamp shown beside owner on rows",
+          "all three mobile backlog captures: Updated timestamp remains visible, wrapping below owner at 320px",
+          "ui/components/shared.js:50: existing updated_at || mtime, valid timestamp rendered as semantic time, otherwise explicit Updated: Unknown",
+          "ui/components/shared.js:56: owner and project remain separate from the labeled temporal fact"
+        ],
+        "judgment": "Recency is now a truthful secondary list fact. It is explicitly labeled modification time, not activity duration. Identity/title/owner/state remain visible, and invalid/missing timestamps cannot become invented measured values. Unknown is source-verified; supplied synthetic recaptures exercise valid timestamps, not the missing-value branch."
+      }
+    ],
+    "remaining": [],
+    "remaining_statement": "clear — all four original material findings resolved. No further visual source changes requested by this verdict.",
+    "status_counts": {
+      "resolved": 4,
+      "partial": 0,
+      "unresolved": 0
+    }
+  },
+  "keep": "Preserve original identity, truthful uncertainty/provenance, compact neutral Smoke material, restrained blue, full evidence text, native disclosures, dedicated detail/lifecycle navigation and existing list/filter/focus/reading behavior. Stop visual polishing; finish separate gates and user review hold.",
+  "evidence_manifest": [
+    {
+      "path": "/Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/docs/evidence/a65-prototype/final-fix01-487c2391/pc-dark-home.png",
+      "sha256": "11cd9ce6066852ff2f50e7d369800ac7df4ff55a92a9a4e4c7df34d7ebc5d1e3"
+    },
+    {
+      "path": "/Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/docs/evidence/a65-prototype/final-fix01-487c2391/pc-dark-backlog.png",
+      "sha256": "cb2de015159a75761196a47bb05cf53bf65bc5fd07c3318b79cbbde9ef8230ae"
+    },
+    {
+      "path": "/Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/docs/evidence/a65-prototype/final-fix01-487c2391/pc-dark-detail.png",
+      "sha256": "b127731ffb52d06865a5dbc3fa6203d6f8acc7bf33e38f3bdfe391b088b1c14d"
+    },
+    {
+      "path": "/Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/docs/evidence/a65-prototype/final-fix01-487c2391/pc-dark-lifecycle.png",
+      "sha256": "d8974a4dce04ecf52d010f0be5115450494150a22a8671176586f12dfe8d7ac2"
+    },
+    {
+      "path": "/Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/docs/evidence/a65-prototype/final-fix01-487c2391/pc-light-home.png",
+      "sha256": "4c30162905e8df879879a00b532e06fc1cc307ba1fee805b5681360839fb842b"
+    },
+    {
+      "path": "/Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/docs/evidence/a65-prototype/final-fix01-487c2391/pc-light-backlog.png",
+      "sha256": "7d823f5dc2e13803e6a23b76ee55958a6cabcc55469f34121fecd71e620028ab"
+    },
+    {
+      "path": "/Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/docs/evidence/a65-prototype/final-fix01-487c2391/pc-light-detail.png",
+      "sha256": "91051d7052f9edae45272b9ee4637640d480882dd03434d70a40bde1739ca08b"
+    },
+    {
+      "path": "/Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/docs/evidence/a65-prototype/final-fix01-487c2391/pc-light-lifecycle.png",
+      "sha256": "1fc949085e6d4ae6341de02afa7f69ecd1691fa6158058867ef67037f4f0e224"
+    },
+    {
+      "path": "/Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/docs/evidence/a65-prototype/final-fix01-487c2391/mobile-dark-home.png",
+      "sha256": "d06159190de0001d48e960872232fe9917a49adebbe6d03e026d01e849289e19"
+    },
+    {
+      "path": "/Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/docs/evidence/a65-prototype/final-fix01-487c2391/mobile-dark-backlog.png",
+      "sha256": "8021072aac769d34daa56e594ca771389f5ece09fde4e0d0281f48088d70ca89"
+    },
+    {
+      "path": "/Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/docs/evidence/a65-prototype/final-fix01-487c2391/mobile-dark-detail.png",
+      "sha256": "c64d2f28926e2ac192d046a44d42ae602a2dc3ff6cea8f6fb1a2b2808a1447ec"
+    },
+    {
+      "path": "/Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/docs/evidence/a65-prototype/final-fix01-487c2391/mobile-dark-lifecycle.png",
+      "sha256": "1da2c1256d34ff50c75e692790632f1b9f6056fce5fe93196285f936c9eedec1"
+    },
+    {
+      "path": "/Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/docs/evidence/a65-prototype/final-fix01-487c2391/mobile-light-home.png",
+      "sha256": "c122a2af501d22583d1844fe8450f2b2995de8e87242986f76af19e65898b7a5"
+    },
+    {
+      "path": "/Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/docs/evidence/a65-prototype/final-fix01-487c2391/mobile-light-backlog.png",
+      "sha256": "53cbc004c313d8ca37e433a4f36c755cccd9a62e9f6a821161c7740e2ddf613e"
+    },
+    {
+      "path": "/Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/docs/evidence/a65-prototype/final-fix01-487c2391/mobile-light-detail.png",
+      "sha256": "fc78e61bc687967a6ae632c0b68f4b16f33f5f2675ec9981a35693c15a452999"
+    },
+    {
+      "path": "/Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/docs/evidence/a65-prototype/final-fix01-487c2391/mobile-light-lifecycle.png",
+      "sha256": "1d1520ad498068728adbbd32a00f0933f59e22029b26b1eed0b82b40f91f9def"
+    },
+    {
+      "path": "/Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/docs/evidence/a65-prototype/final-fix01-487c2391/mobile-wide-home.png",
+      "sha256": "fd3ba6222936b4cc6b51369e645f9007dc7563a4ee95b20fce78857a9b987da0"
+    },
+    {
+      "path": "/Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/docs/evidence/a65-prototype/final-fix01-487c2391/mobile-wide-backlog.png",
+      "sha256": "dea08ae2922b59918dbf714a7ef1bdb237d715b9ea460e510301a1b0c214ee1c"
+    },
+    {
+      "path": "/Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/docs/evidence/a65-prototype/final-fix01-487c2391/mobile-wide-detail.png",
+      "sha256": "62a3f00ce36ced167961548267465009a6065256f61b1b5a2d92e4b517eff077"
+    },
+    {
+      "path": "/Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/docs/evidence/a65-prototype/final-fix01-487c2391/mobile-wide-lifecycle.png",
+      "sha256": "5c76d6cf77e2d840e0e2d529b6b462654baff30bdcc054d3dcbc3f6e7b427b1a"
+    },
+    {
+      "path": "/Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/docs/evidence/a65-prototype/final-fix01-487c2391/pc-dark-home-full.png",
+      "sha256": "863492c3f82d925181922f92f7b67008ffef3ed9840b42172c42251a59eaaeac"
+    },
+    {
+      "path": "/Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/docs/evidence/a65-prototype/final-fix01-487c2391/mobile-light-backlog-open-tools.png",
+      "sha256": "b7107cac91b4f8e0fa0ac4f273317511a4f1b08c2a2559bced3742f5fad1c307"
+    },
+    {
+      "path": "/Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/docs/evidence/a65-prototype/final-fix01-487c2391/open-tools-proof.json",
+      "sha256": "5c68df8801ad61cc5d5a22c5e17866a2ab19c2f03a3d212c5435cfa46a1ac520"
+    },
+    {
+      "path": "/Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/docs/evidence/a65-prototype/final-fix01-487c2391/capture-contrast-report.json",
+      "sha256": "067c4db5705b3fe12e72f3654d659ee8aa7c97e6c0d1364c013659d59eb4f791"
+    },
+    {
+      "path": "/Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/docs/evidence/a65-prototype/final-fix01-487c2391/contrast-summary.md",
+      "sha256": "ed1ea0e6d23488cdb73f2635963d5dfba4e7bb927c523a7d36fdd82126644b8f"
+    },
+    {
+      "path": "/Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/docs/evidence/a65-prototype/final-fix01-487c2391/preview-provenance.json",
+      "sha256": "12fc7d671ab7824e11e0ab8530ad1eeb1274b02766404f0cbde44c121488e149"
+    },
+    {
+      "path": "/Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/docs/evidence/a65-prototype/final-fix01-487c2391/committed-source-manifest.json",
+      "sha256": "36656e940f08af014f82b06de55887ef354ae840969107095ad25a89e08aa2c9"
+    },
+    {
+      "path": "/Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/docs/evidence/a65-finish-review/isanghaessi/report.md",
+      "sha256": "e20dc639adf3b6a8c29b3b3235b162cb1af956cbf5f35237061cf2a2afc21b2f"
+    },
+    {
+      "path": "/Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/docs/evidence/a65-finish-review/isanghaessi/report.json",
+      "sha256": "124aa81f799389a701690f608f16f1d7dc8b1dede1ed1b38da6ae040fe0e09c5"
+    },
+    {
+      "path": "/Users/hanati/projects/TaskMecca/TaskMecca/_task_mecca/data/contracts/uiux-redesign-20261108/reference/pane-actual-dark.jpg",
+      "sha256": "f70d20344f821c8f6da88c73d82a7f006241898867903e6925370bd7f2baa141"
+    },
+    {
+      "path": "/Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/docs/evidence/a65-prototype/ci-5b04-workflow/continuous-smoke-light-desktop-section.png",
+      "sha256": "b4389e5f49205ef97fadc8e8ec334174242b22f51e5cdf32455d3686013f2d39"
+    },
+    {
+      "path": "/Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/docs/evidence/a65-prototype/ci-5b04-workflow/continuous-smoke-dark-mobile-section.png",
+      "sha256": "eb43869b26ffd7411fb989fa7bd6a9dbad7555891e2ec033f3b2a4f643def8da"
+    },
+    {
+      "path": "/Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/docs/evidence/a65-prototype/ci-5b04-workflow/short-smoke-dark-desktop-section.png",
+      "sha256": "3a804a72c1c706ed0286e3162c428a4f26cef6e34bbaeb6acdc818012e66cc64"
+    },
+    {
+      "path": "/Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/docs/evidence/a65-prototype/ci-5b04-workflow/zero-smoke-dark-desktop-section.png",
+      "sha256": "d6718035802d20d3b8baa2dce9aa87d861491e851fb5e789b668075d43d0081f"
+    },
+    {
+      "path": "/Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/docs/evidence/a65-prototype/ci-5b04-workflow/history-smoke-light-desktop-section.png",
+      "sha256": "d933f4e7ffdb58d4cf8238a5bcee2bea3487c52d84b7922504645c18bf850eb6"
+    },
+    {
+      "path": "/Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/docs/evidence/a65-prototype/ci-5b04-workflow/overlap-smoke-dark-desktop-section.png",
+      "sha256": "1abe320ac2c80a16d1d22386f0698c03f6fb6ef163b9a0d08796489948126141"
+    },
+    {
+      "path": "/Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/docs/evidence/a65-prototype/ci-5b04-workflow/provenance.json",
+      "sha256": "0be88c5a409eb7ca5e299dd33a83f71f318ba873e362b037b62cf7ede4a9f5bd"
+    }
+  ],
+  "review_actions": {
+    "browser": false,
+    "tests": false,
+    "builds": false,
+    "cpu_measurement": false,
+    "detector_rerun": false,
+    "source_edits": false,
+    "operational_writes": false,
+    "writes": "Only separate verdict artifacts in this reviewer folder"
+  }
+}
