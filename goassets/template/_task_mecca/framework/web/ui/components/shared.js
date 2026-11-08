@@ -1,3 +1,4 @@
+import { environmentSlot } from "../environment.js";
 import { state, routeURL } from "../state.js";
 import { esc, text, status, date, count } from "../format.js";
 const paths = {
@@ -42,7 +43,7 @@ export function shell() {
     )
     .join(
       "",
-    )}</select></div></header><main id="main" tabindex="-1"></main></div><div class="live-region" role="status" aria-live="polite" id="announcement"></div>`;
+    )}</select></div></header>${environmentSlot()}<main id="main" tabindex="-1"></main></div><div class="live-region" role="status" aria-live="polite" id="announcement"></div>`;
 }
 export function heading(title, description, extra = "") {
   return `<div class="page-heading"><div><h1>${esc(title)}</h1>${description ? `<p>${esc(description)}</p>` : ""}</div>${extra}</div>`;

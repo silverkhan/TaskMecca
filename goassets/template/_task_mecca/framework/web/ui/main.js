@@ -1,3 +1,4 @@
+import { mountExecutionEnvironment, refreshExecutionEnvironment, stopExecutionEnvironment, resumeExecutionEnvironment } from "./environment.js";
 import { connectLiveSource, closeLiveSource } from "./live-source.js";
 import {
   configureLifecycle,
@@ -126,6 +127,7 @@ function renderShell() {
     document.getElementById("app").innerHTML = shell();
     shellLanguage = state.language;
     document.getElementById("refresh").onclick = () => {
+      void refreshExecutionEnvironment();
       if (state.detail)
         invalidateContent({
           id: state.detail,
@@ -149,6 +151,7 @@ function renderShell() {
   document.getElementById("appearance").value = state.mode;
   updateShellNavigation();
   appearance();
+  mountExecutionEnvironment();
 }
 function syncBacklogControls() {
   const f = document.getElementById("filters");
@@ -629,6 +632,7 @@ document.addEventListener("visibilitychange", () => {
     stopLifecycleChecks();
     closeLiveSource();
   } else {
+    void refreshExecutionEnvironment();
     connectLiveSource(liveChange, streamFailure, overviewData?.revision || "");
     if (state.detail) void checkContentRevision().catch(() => {});
   }
@@ -644,6 +648,7 @@ matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
 });
 window.addEventListener("beforeunload", saveReading);
 window.addEventListener("pagehide", () => {
+  stopExecutionEnvironment();
   clearTimeout(pollTimer);
   controller?.abort();
   disposeWorkflow();
@@ -741,3 +746,5 @@ readRoute();
 appearance();
 render({ restore: true });
 export { render };
+
+window.addEventListener("pageshow", (event) => { if (event.persisted) void resumeExecutionEnvironment(); });
