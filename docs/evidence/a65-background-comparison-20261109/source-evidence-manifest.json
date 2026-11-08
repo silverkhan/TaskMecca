@@ -1,0 +1,145 @@
+{
+  "base_head": "7455f579f00a2f71aad9470374d9cbf480e0afaa",
+  "isolated_branch": "codex/a65-background-comparison-20261109",
+  "no_push": true,
+  "raw_whitespace_preserved": [
+    "working-go-build-info.txt"
+  ],
+  "files": [
+    {
+      "path": "docs/evidence/a65-background-comparison-20261109/asset-provenance.json",
+      "bytes": 1037,
+      "sha256": "d35e4328a52f96f1327bfb4615c1d6b63a2cc0a6577f134d00a00bf08e4d90a8"
+    },
+    {
+      "path": "docs/evidence/a65-background-comparison-20261109/check.cjs",
+      "bytes": 8566,
+      "sha256": "961e35fb3fdcde7e1169ee15fa4c751cb120bd0d9757965a2c93cd6d64ae9238"
+    },
+    {
+      "path": "docs/evidence/a65-background-comparison-20261109/optional-estimate-unavailable.log",
+      "bytes": 264,
+      "sha256": "3b844c560733b981cf4cde36655b7e0606fcd88a3c820101ad51abdf6fc432db"
+    },
+    {
+      "path": "docs/evidence/a65-background-comparison-20261109/origin-cozy-beige-room-photo.json",
+      "bytes": 2098,
+      "sha256": "b69fe970792dbe3caa76723d7266ee73718f38e9c2be8a387c9ac2e1cc23d532"
+    },
+    {
+      "path": "docs/evidence/a65-background-comparison-20261109/origin-worker-report.md",
+      "bytes": 10567,
+      "sha256": "08fd6e410aa32ba124e5768a63c368de9f356d977d2af20499bd52aa5ab82a3a"
+    },
+    {
+      "path": "docs/evidence/a65-background-comparison-20261109/protected-after.json",
+      "bytes": 5461,
+      "sha256": "a347f946923a2eaf14c1b2d8089fce8c67729ed926104feaae7f96c4a4656442"
+    },
+    {
+      "path": "docs/evidence/a65-background-comparison-20261109/protected-before.json",
+      "bytes": 5398,
+      "sha256": "c0771e2c0b824cc434e5c4be09ed33b72fc3003110a3e7c768b853ab1a46bb67"
+    },
+    {
+      "path": "docs/evidence/a65-background-comparison-20261109/round1/mobile-dark-image-scroll.png",
+      "bytes": 272243,
+      "sha256": "24b0fe0d3f7d25e399259d1532f72144098b5434763fc1ab57c2f1bd9314e0b2"
+    },
+    {
+      "path": "docs/evidence/a65-background-comparison-20261109/round1/mobile-dark-image.png",
+      "bytes": 212249,
+      "sha256": "2b55cfe91483ea619eeb075a83ea107d19eb80bde6271bc98eb3b9ef4c9a1ea3"
+    },
+    {
+      "path": "docs/evidence/a65-background-comparison-20261109/round1/mobile-dark-solid.png",
+      "bytes": 76490,
+      "sha256": "72938455b9e489056c30e4616afc1f6b1d44a2b26d443e1e5a5e6584b63fb22c"
+    },
+    {
+      "path": "docs/evidence/a65-background-comparison-20261109/round1/mobile-light-image-scroll.png",
+      "bytes": 281513,
+      "sha256": "00c1d6e79a450d15ac75aa4743a36cbe741fe0aa9a14590ca987cb10436dc9b4"
+    },
+    {
+      "path": "docs/evidence/a65-background-comparison-20261109/round1/mobile-light-image.png",
+      "bytes": 224046,
+      "sha256": "2d45b0246b9a199914811bcd545ece1eba6c778f3f1d9228defb67a931584366"
+    },
+    {
+      "path": "docs/evidence/a65-background-comparison-20261109/round1/mobile-light-solid.png",
+      "bytes": 87928,
+      "sha256": "f27f7dd795b63fef434098fea0df2d5f63f60317d24522b034e3059b61c7eff4"
+    },
+    {
+      "path": "docs/evidence/a65-background-comparison-20261109/round1/pc-dark-image-scroll.png",
+      "bytes": 867938,
+      "sha256": "9a331b46d0d005dc862bcdfa1de5e1bdfbd4f692f3fbbda43a0ecaef247929ca"
+    },
+    {
+      "path": "docs/evidence/a65-background-comparison-20261109/round1/pc-dark-image.png",
+      "bytes": 826979,
+      "sha256": "7296698e513b4f23259698de66d50c19b2af7718218e8b016d3efd7f363006cd"
+    },
+    {
+      "path": "docs/evidence/a65-background-comparison-20261109/round1/pc-dark-solid.png",
+      "bytes": 140598,
+      "sha256": "271aee15423a253f8b4030ec9ab9527b5ff31ec639d94692722e552ec0c774ac"
+    },
+    {
+      "path": "docs/evidence/a65-background-comparison-20261109/round1/pc-light-image-scroll.png",
+      "bytes": 894261,
+      "sha256": "d284ef1c945406f60e61bb6c787d10b375f2858945bcc93b60d88a643c769269"
+    },
+    {
+      "path": "docs/evidence/a65-background-comparison-20261109/round1/pc-light-image.png",
+      "bytes": 852366,
+      "sha256": "a5f675b2350c9975324d7a6ca4fe8154de1a3d6a6adace11ead920a51c65c091"
+    },
+    {
+      "path": "docs/evidence/a65-background-comparison-20261109/round1/pc-light-solid.png",
+      "bytes": 159460,
+      "sha256": "bf7260bc0a0d3ded44d57ef4da079bee9567b730ce8cab658b0bad2cdd2142b8"
+    },
+    {
+      "path": "docs/evidence/a65-background-comparison-20261109/round1/report.json",
+      "bytes": 103802,
+      "sha256": "e9cb081145ea6d6f9996225c605925fa38330f4b2dee62c5e93721f953a18da3"
+    },
+    {
+      "path": "docs/evidence/a65-background-comparison-20261109/worker-report.md",
+      "bytes": 6681,
+      "sha256": "0c3f0941b5df4edbb6efce4c1566910f098934b199e7fdf89211412ee7828278"
+    },
+    {
+      "path": "docs/evidence/a65-background-comparison-20261109/working-fixture.json",
+      "bytes": 1710,
+      "sha256": "6178b5ff9f0095b090df5055863ab4cedcc8890b43d54b654d0083be4d3430e3"
+    },
+    {
+      "path": "docs/evidence/a65-background-comparison-20261109/working-go-build-info.txt",
+      "bytes": 1488,
+      "sha256": "7e7a9cecca7f416388278425ea5f0036532db451d360ae1e1c06e9f21406c47c"
+    },
+    {
+      "path": "goassets/template/_task_mecca/framework/web/ui/material-review.html",
+      "bytes": 1689,
+      "sha256": "9e57b4a20bc0eccf3e3a5935bcb0cb7e5b59a4dd2c0f4810de6dc50d2502d55c"
+    },
+    {
+      "path": "goassets/template/_task_mecca/framework/web/ui/material/background-comparison.css",
+      "bytes": 1052,
+      "sha256": "a33127390d2f658e6f8d1af147c23dad20c55f3889fdd759e129d59febb18504"
+    },
+    {
+      "path": "goassets/template/_task_mecca/framework/web/ui/material/background-comparison.js",
+      "bytes": 2104,
+      "sha256": "788f88f6e0a25c9c4d597d771f51e97c670ad6c0b1326b7081a2f519eeb7b019"
+    },
+    {
+      "path": "goassets/template/_task_mecca/framework/web/ui/material/cozy-beige-room-photo-1920.webp",
+      "bytes": 451256,
+      "sha256": "48c7a6a5c4dbc1e6afe9b07ab0d026850e8516fbde21e621fa4bbabc9c072600"
+    }
+  ]
+}

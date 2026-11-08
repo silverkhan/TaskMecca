@@ -1,0 +1,5 @@
+Optional offline copy-contrast pixel model was not run.
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+ModuleNotFoundError: No module named 'PIL'
+No dependency installed; no formal contrast or comprehensive accessibility PASS is claimed.

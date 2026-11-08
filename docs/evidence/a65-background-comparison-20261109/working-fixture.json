@@ -1,0 +1,36 @@
+{
+  "synthetic": true,
+  "binary": "/private/tmp/task-mecca-a65-build/task-mecca-background-20261109-working",
+  "root": "/var/folders/07/q_8xp6j90zn8r_gdxk6sj5nm0000gn/T/task-mecca-a65-preview-5ic8T7",
+  "management": "/var/folders/07/q_8xp6j90zn8r_gdxk6sj5nm0000gn/T/task-mecca-a65-preview-5ic8T7/management",
+  "projects": [
+    {
+      "name": "Task Mecca",
+      "project": "/var/folders/07/q_8xp6j90zn8r_gdxk6sj5nm0000gn/T/task-mecca-a65-preview-5ic8T7/task-mecca",
+      "backlog": "/var/folders/07/q_8xp6j90zn8r_gdxk6sj5nm0000gn/T/task-mecca-a65-preview-5ic8T7/task-mecca/_task_mecca/data/backlog",
+      "tasks": 36
+    },
+    {
+      "name": "Research Board",
+      "project": "/var/folders/07/q_8xp6j90zn8r_gdxk6sj5nm0000gn/T/task-mecca-a65-preview-5ic8T7/research",
+      "backlog": "/var/folders/07/q_8xp6j90zn8r_gdxk6sj5nm0000gn/T/task-mecca-a65-preview-5ic8T7/research/_task_mecca/data/backlog",
+      "tasks": 14
+    },
+    {
+      "name": "Release Desk",
+      "project": "/var/folders/07/q_8xp6j90zn8r_gdxk6sj5nm0000gn/T/task-mecca-a65-preview-5ic8T7/release",
+      "backlog": "/var/folders/07/q_8xp6j90zn8r_gdxk6sj5nm0000gn/T/task-mecca-a65-preview-5ic8T7/release/_task_mecca/data/backlog",
+      "tasks": 8
+    }
+  ],
+  "host": "127.0.0.1",
+  "port": 56929,
+  "url": "http://127.0.0.1:56929",
+  "pid": 79959,
+  "service_installed": false,
+  "user_preview_switched": false,
+  "launcher_git_head": "7455f579f00a2f71aad9470374d9cbf480e0afaa",
+  "source_state": "base7455 plus uncommitted background comparison; not pristine base binary",
+  "binary_sha256": "ffb940a6a2062214c1820ed6481d50892900613c4295a29b0776cbeecfd94548",
+  "review_url": "http://127.0.0.1:56929/ui/material-review.html"
+}
