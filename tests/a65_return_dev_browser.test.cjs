@@ -9,9 +9,9 @@ test('synthetic native PR banner and consent/return/error flows use only owned e
  const report={synthetic:true,operating_environment_mutations:0,mechanism:'Native Playwright interactions with same-origin synthetic API routes on owned ephemeral fixture; no actual managed return executed.',cases:[],pageErrors:[],outsideFixtureRequests:[]};
  try{
   browser=await require(runtime).chromium.launch({headless:true,executablePath:process.env.CHROME_EXECUTABLE});
-  async function open({viewport={width:1440,height:1000},mode='light',language='ko',postStatus=200,blockPost=false,badHealth=false,transition=null}={}){
+  async function open({viewport={width:1440,height:1000},mode='light',language='ko',postStatus=200,blockPost=false,badHealth=false,noPRIdentity=false,transition=null}={}){
    const context=await browser.newContext({viewport,hasTouch:viewport.width<600,isMobile:viewport.width<600,serviceWorkers:'block'});let t=target(),e=env(t),h=health(t),posts=0,dialogCount=0,releasePost,signalPost;
-   e.transition=transition;if(badHealth)delete h.boot_id;
+   e.transition=transition;if(badHealth)delete h.boot_id;if(noPRIdentity){e={};h={};}
    const postStarted=new Promise(r=>signalPost=r),postGate=blockPost?new Promise(r=>releasePost=r):Promise.resolve();
    await context.addInitScript(({mode,language})=>{localStorage.setItem('task-mecca-smoke-mode',mode);localStorage.setItem('task-mecca-language',language)}, {mode,language});
    await context.route('**/*',async route=>{const request=route.request(),u=new URL(request.url());if(!request.url().startsWith(server.origin+'/')){report.outsideFixtureRequests.push(request.url());await route.abort();return}
@@ -25,8 +25,8 @@ test('synthetic native PR banner and consent/return/error flows use only owned e
     }
     return route.continue();
    });
-   const page=await context.newPage();page.on('pageerror',error=>report.pageErrors.push(error.message));await page.goto(server.origin);await page.locator('#executionEnvironment').waitFor();
-   await page.waitForFunction(()=>!document.querySelector('#executionRefresh')?.disabled);
+   const page=await context.newPage();page.on('pageerror',error=>report.pageErrors.push(error.message));await page.goto(server.origin);await page.locator('#executionEnvironment').waitFor({state:'attached'});
+   await page.waitForFunction(()=>{const button=document.querySelector('#executionRefresh');return button&&!button.disabled});
    await page.evaluate(()=>{const n=document.createElement('aside');n.id='syntheticFixtureLabel';n.textContent='SYNTHETIC FIXTURE · 실제 환경 전환 없음';n.style.cssText='position:fixed;bottom:4px;right:8px;z-index:1000;max-width:calc(100% - 16px);padding:3px 7px;font:11px sans-serif;background:Canvas;color:CanvasText;border:1px solid GrayText';document.body.append(n)});
    return{page,context,postStarted,release:()=>releasePost?.(),posts:()=>posts,dialogs:()=>dialogCount,dialog:accept=>{page.once('dialog',async d=>{dialogCount++;assert.equal(d.type(),'confirm');assert.match(d.message(),/9001/);assert.match(d.message(),/0\.0\.0-dev\.synthetic/);accept?await d.accept():await d.dismiss()})}};
   }
@@ -38,6 +38,7 @@ test('synthetic native PR banner and consent/return/error flows use only owned e
    x.dialog(false);await page.locator('#prReturnDev').click();await page.waitForFunction(()=>document.activeElement?.id==='prReturnDev');assert.equal(x.posts(),0);assert.equal(x.dialogs(),1);
    report.cases.push({name,fullPRSHAVisible:true,overflow:false,returnTarget44:true,nativeCancelPostCount:x.posts(),focusRestored:true});await x.context.close();
   }
+  for(const [name,viewport] of [['unknown-desktop',{width:1440,height:1000}],['unknown-mobile',{width:320,height:720}]]){const x=await open({noPRIdentity:true,viewport});assert.equal(await x.page.locator('#executionEnvironmentSummary').isVisible(),true);assert.match(await x.page.locator('#executionEnvironmentSummary').innerText(),/미확인/);assert.equal(await x.page.locator('#prReturnDev').count(),0);assert.equal(await x.page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),true);await x.page.screenshot({path:path.join(out,name+'.png'),fullPage:false});report.cases.push({name,unknownExplicitlyVisible:true,postCount:0,overflow:false});await x.context.close();}
   const denied=await open({postStatus:403});denied.dialog(true);await denied.page.locator('#prReturnDev').click();await denied.page.waitForFunction(()=>document.querySelector('.execution-status')?.textContent.includes('Synthetic unmanaged'));assert.equal(denied.posts(),1);assert.equal(await denied.page.locator('#prReturnDev').isDisabled(),true);assert.match(await denied.page.locator('#executionEnvironment').innerText(),/거부|rejected/);report.cases.push({name:'unmanaged403',nativeConfirm:true,postCount:denied.posts(),success:false,reloaded:false});await denied.context.close();
   const unknown=await open({badHealth:true});assert.equal(await unknown.page.locator('#prReturnDev').isDisabled(),true);assert.match(await unknown.page.locator('.execution-status').innerText(),/미확인|확인하지/);assert.equal(unknown.posts(),0);report.cases.push({name:'missing-identity',postCount:0,success:false});await unknown.context.close();
   const pending=await open({transition:{phase:'rollback_required'}});assert.equal(await pending.page.locator('#prReturnDev').isDisabled(),true);assert.match(await pending.page.locator('.execution-status').innerText(),/rollback_required/);assert.equal(pending.posts(),0);report.cases.push({name:'pending-transition',postCount:0});await pending.context.close();

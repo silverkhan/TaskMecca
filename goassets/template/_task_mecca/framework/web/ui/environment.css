@@ -33,3 +33,7 @@
   .execution-actions { grid-row: 3; }
   .execution-actions button { flex: 1; }
 }
+
+.execution-context { display: flex; flex-direction: column; align-items: flex-start; min-width: 0; }
+.execution-summary { font-size: 11px; line-height: 1.25; min-height: 36px; padding: 0; text-align: start; }
+@media (max-width: 650px) { .execution-summary { min-height: 44px; max-width: 116px; } }

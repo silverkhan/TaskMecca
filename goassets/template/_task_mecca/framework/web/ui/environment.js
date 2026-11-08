@@ -11,8 +11,9 @@ const prIdentity = (target) => target?.kind === "pr" && Number.isInteger(target.
 const baselineRecorded = (target) => present(target?.original_dev_version) && sha64(target?.original_dev_sha256) && present(target?.original_dev_backup);
 
 export function environmentModel(snapshot) {
-  const env = snapshot.environment, health = snapshot.health, target = env?.target || health?.execution_target;
-  const model = { target, health, hidden: false, canReturn: false, reason: "", state: snapshot.phase, busy: snapshot.busy, identityVerified: false };
+  const env = snapshot.environment, health = snapshot.health;
+  const target = env?.target?.kind === "pr" ? env.target : health?.execution_target?.kind === "pr" ? health.execution_target : env?.target || health?.execution_target;
+  const model = { target, health, displayOrigin: target === env?.target ? "record" : "response", hidden: false, canReturn: false, reason: "", state: snapshot.phase, busy: snapshot.busy, identityVerified: false };
   if (snapshot.loading) { model.reason = text("실행 환경 확인 중", "Checking execution environment"); return model; }
   if (snapshot.error) { model.reason = snapshot.error; return model; }
   if (!snapshot.environmentOK || !snapshot.healthOK || !target || !["pr", "dev", "stable"].includes(target.kind)) {
@@ -181,21 +182,47 @@ let host = null, lastHTML = "", started = false;
 const execution = createEnvironmentController({ changed: () => paint() });
 export function environmentSlot() { return `<section id="executionEnvironment" class="execution-banner" aria-label="${text("실행 환경", "Execution environment")}" hidden></section>`; }
 function bannerHTML(data, model) {
-  const target = model.target, pr = prIdentity(target), current = model.health?.execution_target;
-  const title = pr ? "PR #" + target.pr_number : model.state === "preview" ? text("격리 Preview", "Isolated Preview") : model.identityVerified && target?.kind === "dev" ? text("Dev 실행 환경", "Dev execution environment") : text("실행 환경 미확인", "Execution environment unverified");
-  const identity = pr ? `<code class="execution-sha" aria-label="${text("전체 PR commit SHA", "Complete PR commit SHA")}">${esc(target.head_sha)}</code>` : "";
-  const mismatch = prIdentity(current) && targetKey(current) !== targetKey(target) ? `<p>${text("현재 실행 응답", "Current execution response")}: PR #${current.pr_number} <code>${esc(current.head_sha)}</code></p>` : "";
+  const target = model.target, pr = target?.kind === "pr", current = model.health?.execution_target;
+  const title = pr ? "PR #" + (Number.isInteger(target.pr_number) ? target.pr_number : text("미확인", "Unverified")) : model.state === "preview" ? text("격리 Preview", "Isolated Preview") : model.identityVerified && target?.kind === "dev" ? text("Dev 실행 환경", "Dev execution environment") : text("실행 환경 미확인", "Execution environment unverified");
+  const identity = pr ? `<code class="execution-sha" aria-label="${text("전체 PR commit SHA", "Complete PR commit SHA")}">${esc(target.head_sha || text("SHA 미확인", "SHA unverified"))}</code>` : "";
+  const recorded = data.environment?.target;
+  const mismatch = current && recorded && targetKey(current) !== targetKey(recorded) ? `<p>${text("저장된 대상", "Recorded target")}: ${esc(recorded.kind)} ${recorded.kind === "pr" ? `#${esc(recorded.pr_number)} <code>${esc(recorded.head_sha || "")}</code>` : ""} · ${text("현재 실행 응답", "Current execution response")}: ${esc(current.kind)} ${current.kind === "pr" ? `#${esc(current.pr_number)} <code>${esc(current.head_sha || "")}</code>` : ""}</p>` : "";
   const baseline = pr ? `<details class="execution-baseline"><summary>${text("보관된 Dev 기록", "Retained Dev record")}: ${esc(target.original_dev_version || text("미확인", "Unverified"))}</summary><p>${text("실제 파일 존재와 checksum 유효성은 복귀 요청 시 서버가 검증합니다.", "The server checks file presence and checksum validity when return is requested.")}</p><code>${esc(target.original_dev_sha256 || text("미확인", "Unverified"))}</code><p class="execution-path">${esc(target.original_dev_backup || "")}</p></details>` : "";
   const busy = data.busy ? text(data.phase === "verifying" ? "재시작 확인 중…" : "복귀 확인 중…", data.phase === "verifying" ? "Verifying restart…" : "Checking return…") : text("Dev 복귀", "Return to Dev");
   const progress = { confirming: text("Dev 복귀 확인 대기", "Awaiting return confirmation"), checking: text("복귀 전 실행 상태를 다시 확인하고 있습니다.", "Checking execution status before return."), returning: text("서버가 Dev 복귀 요청을 처리하고 있습니다.", "The server is processing the Dev return request."), verifying: text("새 Dev Web의 재시작과 identity를 확인하고 있습니다.", "Verifying the restarted Dev Web identity.") };
   const prefix = data.failureKind === "denied" ? text("서버가 요청을 거부했습니다: ", "The server rejected the request: ") : data.failureKind === "unconfirmed" && data.error ? text("Dev 복귀 결과 미확인: ", "Dev return outcome unconfirmed: ") : data.failureKind === "not-sent" && data.error ? text("복귀 요청을 보내지 않았습니다: ", "The return request was not sent: ") : "";
   const statusMessage = data.busy ? progress[data.phase] || model.reason : prefix + (model.reason || data.notice || text("전환 상태 확인 중", "Checking transition status"));
-  return `<div class="execution-identity"><strong>${esc(title)}</strong>${identity}<span>${text("저장된 설치 대상", "Recorded installation target")}</span></div><div class="execution-actions">${pr ? `<button id="prReturnDev" type="button" ${!model.canReturn ? "disabled" : ""}>${busy}</button>` : ""}<button id="executionRefresh" type="button" class="quiet" ${data.busy || data.loading ? "disabled" : ""}>${text("상태 재확인", "Check status")}</button></div><p class="execution-status" role="status" aria-live="polite">${esc(statusMessage)}</p>${data.notice && model.reason ? `<p>${esc(data.notice)}</p>` : ""}${mismatch}${baseline}`;
+  return `<div class="execution-identity"><strong>${esc(title)}</strong>${identity}<span>${model.displayOrigin === "record" ? text("저장된 설치 대상", "Recorded installation target") : text("현재 실행 응답 · 기록과 비교 필요", "Current execution response · Check against record")}</span></div><div class="execution-actions">${pr ? `<button id="prReturnDev" type="button" ${!model.canReturn ? "disabled" : ""}>${busy}</button>` : ""}<button id="executionRefresh" type="button" class="quiet" ${data.busy || data.loading ? "disabled" : ""}>${text("상태 재확인", "Check status")}</button></div><p class="execution-status" role="status" aria-live="polite">${esc(statusMessage)}</p>${data.notice && model.reason ? `<p>${esc(data.notice)}</p>` : ""}${mismatch}${baseline}`;
 }
 function paint() {
   const node = document.getElementById("executionEnvironment");
   if (!node) return;
-  const data = execution.snapshot(), model = environmentModel(data), html = model.hidden ? "" : bannerHTML(data, model);
+  const data = execution.snapshot(), model = environmentModel(data);
+  const compact = model.target?.kind !== "pr" && model.state !== "preview";
+  let summary = document.getElementById("executionEnvironmentSummary");
+  const context = document.querySelector(".topbar > span");
+  if (compact) {
+    node.hidden = true;
+    if (node.innerHTML) node.innerHTML = "";
+    host = node; lastHTML = "";
+    if (model.hidden) { summary?.remove(); context?.classList.remove("execution-context"); return; }
+    if (!summary && context) {
+      summary = document.createElement("span"); summary.id = "executionEnvironmentSummary";
+      context.classList.add("execution-context"); context.append(summary);
+    }
+    if (summary) {
+      const label = data.loading ? text("실행 환경 확인 중", "Checking environment") : model.identityVerified ? text("Dev 응답 확인", "Dev response observed") : text("실행 환경 미확인", "Environment unverified");
+      const explanation = model.reason || data.notice || label;
+      const html = `<button id="executionRefresh" type="button" class="quiet execution-summary" title="${esc(explanation)}" aria-label="${esc(explanation + " · " + text("상태 재확인", "Check status"))}" ${data.busy || data.loading ? "disabled" : ""}>${esc(label)}</button>`;
+      if (summary.innerHTML !== html) {
+        summary.innerHTML = html;
+        summary.querySelector("button")?.addEventListener("click", () => { void execution.refresh(); });
+      }
+    }
+    return;
+  }
+  summary?.remove(); context?.classList.remove("execution-context");
+  const html = model.hidden ? "" : bannerHTML(data, model);
   node.hidden = model.hidden; node.dataset.kind = model.target?.kind || model.state;
   if (node !== host || html !== lastHTML) {
     node.innerHTML = html; host = node; lastHTML = html;
@@ -211,7 +238,7 @@ function paint() {
 export function mountExecutionEnvironment() {
   if (!document.getElementById("executionEnvironmentStyle")) {
     const link = document.createElement("link"); link.id = "executionEnvironmentStyle"; link.rel = "stylesheet";
-    link.href = new URL("./environment.css", import.meta.url).href; document.head.append(link);
+    link.href = "/ui/environment.css"; document.head.append(link);
   }
   paint();
   if (!started) { started = true; void execution.refresh(); }
