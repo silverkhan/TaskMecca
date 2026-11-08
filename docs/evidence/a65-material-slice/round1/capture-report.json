@@ -1,0 +1,1051 @@
+{
+  "url": "http://127.0.0.1:57069/ui/material-review.html",
+  "synthetic": true,
+  "response_routing": "none; actual Go HTTP",
+  "source_files": {
+    "material-review.html": "c125fd69f432ac45f066eb054dd977f6e6df1bd9417c85cfec7ce3b4d162415d",
+    "material/components.js": "518933e9e0a5061728598ac615b0698f07238bd1ba889db9a92c9a934310b8b8",
+    "material/material.css": "4877508b21b0bb0f6d924c96b04b86dadb0f0e5c210bcd4b12d130964c42efa7",
+    "material/proximity.js": "0ff1189efb71f91068609bb8523c575a613e4ba30c6b8effeedc6311af4ef968",
+    "material/review.js": "3580ede1d087912a41117443f25851ba933e8ef2415750f163a67035f959f9aa"
+  },
+  "cases": [
+    {
+      "name": "desktop",
+      "theme": "dark",
+      "errors": [],
+      "checks": {},
+      "states": {},
+      "failure": "AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\n\n0 !== 3\n\n    at /Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/docs/evidence/a65-material-slice/capture.cjs:25:16",
+      "passed": false
+    },
+    {
+      "name": "desktop",
+      "theme": "light",
+      "errors": [],
+      "checks": {
+        "three_actual_projects": true,
+        "distance_attenuates": true,
+        "idle_frames_and_writes_zero": true,
+        "keyboard_focus_visible": true,
+        "actual_source_read": true,
+        "direct_project_context": true,
+        "local_close_reopen": true
+      },
+      "states": {
+        "default": {
+          "width": 1440,
+          "scrollWidth": 1440,
+          "theme": "light",
+          "focus": "<body>\n    <!--\n      THESIS: A small, working material slice restores the original Mecca navigation grammar.\n      OWN-WORLD: Original Task Mecca mark, neutral Smoke material, Pane-derived continuous curves and light.\n      STORY: Global Hub, directly opened projects, then Operations and Help; one real synthetic task card.\n      FIRST VIEWPORT: A 32px rail, narrow floating toolbar and 30px card expose the same material at useful scales.\n      FORM: User-approved revision; top-focused reflections, asymmetric thin rim, inner lower shadow, raised selection.\n      FINISH: unreviewed and undocumented is unfinished; this slice awaits independent review and user acceptance.\n    -->\n    <a class=\"material-skip\" href=\"#material-main\">본문으로 건너뛰기</a>\n    <div id=\"material-review\"><div class=\"material-layout\" data-rail-mode=\"expanded\"><aside class=\"material-rail material-surface\" data-light-surface=\"\" id=\"material-rail\" aria-label=\"주 탐색\">\n    <div class=\"material-brand-row\"><a class=\"material-brand\" href=\"/ui/material-review.html\" aria-label=\"Task Mecca 재질 검토 홈\"><img src=\"/logo.svg\" alt=\"\"><strong>Task Mecca</strong></a><button type=\"button\" class=\"material-icon-button material-mobile-toggle\" aria-label=\"메뉴 열기\" aria-expanded=\"false\" aria-controls=\"material-rail-panel\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M4 6h16M4 12h16M4 18h16\"></path></svg></button></div>\n    <div class=\"material-rail-panel\" id=\"material-rail-panel\">\n      <nav class=\"material-nav\" aria-label=\"기존 메뉴 배치 시안\">\n        <section class=\"material-nav-group\" aria-labelledby=\"material-system\"><h2 id=\"material-system\">SYSTEM</h2><button type=\"button\" class=\"material-nav-item\" data-destination=\"hub\" title=\"Global Hub\" aria-current=\"page\"><span class=\"material-nav-icon\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M3 10 12 3l9 7v10H3z M9 20v-7h6v7\"></path></svg></span><span class=\"material-nav-label\">Global Hub</span></button><button type=\"button\" class=\"material-nav-item\" data-destination=\"storage\" aria-disabled=\"true\" title=\"저장소 관리 · 미연결\"><span class=\"material-nav-icon\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M4 4h16v6H4z M4 14h16v6H4z M7 7h.01M7 17h.01\"></path></svg></span><span class=\"material-nav-label\">저장소 관리</span><span class=\"material-unconnected\" aria-hidden=\"true\">미연결</span></button><button type=\"button\" class=\"material-nav-item\" data-destination=\"preview\" aria-disabled=\"true\" title=\"Preview Builds · 미연결\"><span class=\"material-nav-icon\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M3 7h7l2-3h9v16H3z\"></path></svg></span><span class=\"material-nav-label\">Preview Builds</span><span class=\"material-unconnected\" aria-hidden=\"true\">미연결</span></button></section>\n        <section class=\"material-nav-group\" aria-labelledby=\"material-backlogs\"><h2 id=\"material-backlogs\">BACKLOGS</h2><div id=\"material-projects\"><div class=\"material-project-row \"><button type=\"button\" class=\"material-nav-item material-project-open\" data-project=\"/var/folders/07/q_8xp6j90zn8r_gdxk6sj5nm0000gn/T/task-mecca-a65-preview-memwTY/release\" title=\"release · /var/folders/07/q_8xp6j90zn8r_gdxk6sj5nm0000gn/T/task-mecca-a65-preview-memwTY/release\"><span class=\"material-nav-icon material-project-initial\" aria-hidden=\"true\">R</span><span class=\"material-nav-label\">release</span></button><button type=\"button\" class=\"material-project-close\" data-close-project=\"/var/folders/07/q_8xp6j90zn8r_gdxk6sj5nm0000gn/T/task-mecca-a65-preview-memwTY/release\" aria-label=\"release 닫기\" title=\"프로젝트 닫기\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"m6 6 12 12M18 6 6 18\"></path></svg></button></div><div class=\"material-project-row \"><button type=\"button\" class=\"material-nav-item material-project-open\" data-project=\"/var/folders/07/q_8xp6j90zn8r_gdxk6sj5nm0000gn/T/task-mecca-a65-preview-memwTY/research\" title=\"research · /var/folders/07/q_8xp6j90zn8r_gdxk6sj5nm0000gn/T/task-mecca-a65-preview-memwTY/research\"><span class=\"material-nav-icon material-project-initial\" aria-hidden=\"true\">R</span><span class=\"material-nav-label\">research</span></button><button type=\"button\" class=\"material-project-close\" data-close-project=\"/var/folders/07/q_8xp6j90zn8r_gdxk6sj5nm0000gn/T/task-mecca-a65-preview-memwTY/research\" aria-label=\"research 닫기\" title=\"프로젝트 닫기\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"m6 6 12 12M18 6 6 18\"></path></svg></button></div><div class=\"material-project-row \"><button type=\"button\" class=\"material-nav-item material-project-open\" data-project=\"/var/folders/07/q_8xp6j90zn8r_gdxk6sj5nm0000gn/T/task-mecca-a65-preview-memwTY/task-mecca\" title=\"task-mecca · /var/folders/07/q_8xp6j90zn8r_gdxk6sj5nm0000gn/T/task-mecca-a65-preview-memwTY/task-mecca\"><span class=\"material-nav-icon material-project-initial\" aria-hidden=\"true\">T</span><span class=\"material-nav-label\">task-mecca</span></button><button type=\"button\" class=\"material-project-close\" data-close-project=\"/var/folders/07/q_8xp6j90zn8r_gdxk6sj5nm0000gn/T/task-mecca-a65-preview-memwTY/task-mecca\" aria-label=\"task-mecca 닫기\" title=\"프로젝트 닫기\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"m6 6 12 12M18 6 6 18\"></path></svg></button></div></div><div class=\"material-project-opener\"><button type=\"button\" class=\"material-nav-item\" id=\"material-open-project\" aria-expanded=\"false\" aria-controls=\"material-closed-projects\"><span class=\"material-nav-icon\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M12 5v14M5 12h14\"></path></svg></span><span class=\"material-nav-label\">프로젝트 열기</span></button><div id=\"material-closed-projects\" hidden=\"\"><p class=\"material-nav-empty\">닫힌 프로젝트가 없습니다.</p></div></div></section>\n        <section class=\"material-nav-group\" aria-labelledby=\"material-operations\"><h2 id=\"material-operations\">OPERATIONS</h2><button type=\"button\" class=\"material-nav-item\" data-destination=\"workload\" aria-disabled=\"true\" title=\"Subagent Workload · 미연결\"><span class=\"material-nav-icon\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M4 19V9m5 10V4m6 15v-8m5 8V6\"></path></svg></span><span class=\"material-nav-label\">Subagent Workload</span><span class=\"material-unconnected\" aria-hidden=\"true\">미연결</span></button><button type=\"button\" class=\"material-nav-item\" data-destination=\"notifications\" aria-disabled=\"true\" title=\"알림 센터 · 미연결\"><span class=\"material-nav-icon\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M6 9a6 6 0 0 1 12 0v6l2 3H4l2-3z M10 21h4\"></path></svg></span><span class=\"material-nav-label\">알림 센터</span><span class=\"material-unconnected\" aria-hidden=\"true\">미연결</span></button><button type=\"button\" class=\"material-nav-item\" data-destination=\"terminal\" aria-disabled=\"true\" title=\"터미널 · 미연결\"><span class=\"material-nav-icon\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"m4 6 5 6-5 6 M12 18h8\"></path></svg></span><span class=\"material-nav-label\">터미널</span><span class=\"material-unconnected\" aria-hidden=\"true\">미연결</span></button></section>\n        <section class=\"material-nav-group\" aria-labelledby=\"material-help\"><h2 id=\"material-help\">HELP</h2><button type=\"button\" class=\"material-nav-item\" data-destination=\"manual\" aria-disabled=\"true\" title=\"사용자 매뉴얼 · 미연결\"><span class=\"material-nav-icon\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M12 5C8 2 4 3 2 4v16c3-2 6-2 10 0 4-2 7-2 10 0V4c-2-1-6-2-10 1Zm0 0v15\"></path></svg></span><span class=\"material-nav-label\">사용자 매뉴얼</span><span class=\"material-unconnected\" aria-hidden=\"true\">미연결</span></button><button type=\"button\" class=\"material-nav-item\" data-destination=\"release\" aria-disabled=\"true\" title=\"업데이트 내역 · 미연결\"><span class=\"material-nav-icon\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M3 5v5h5 M3 10a9 9 0 1 1 1 7 M12 7v5l3 2\"></path></svg></span><span class=\"material-nav-label\">업데이트 내역</span><span class=\"material-unconnected\" aria-hidden=\"true\">미연결</span></button><button type=\"button\" class=\"material-nav-item\" data-destination=\"issues\" aria-disabled=\"true\" title=\"진단 및 이슈 · 미연결\"><span class=\"material-nav-icon\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M12 8v5m0 4h.01 M10 3h4l8 15-2 3H4l-2-3z\"></path></svg></span><span class=\"material-nav-label\">진단 및 이슈</span><span class=\"material-unconnected\" aria-hidden=\"true\">미연결</span></button></section>\n      </nav>\n      <footer class=\"material-rail-footer\"><div class=\"material-mode-control\" role=\"group\" aria-label=\"사이드바 표시 방식\"><button type=\"button\" data-rail-mode=\"auto\" aria-pressed=\"false\" title=\"자동\">자동</button><button type=\"button\" data-rail-mode=\"expanded\" aria-pressed=\"true\" title=\"펼침\">펼침</button><button type=\"button\" data-rail-mode=\"compact\" aria-pressed=\"false\" title=\"최소\">최소</button></div><p class=\"material-rail-note\">재질 검토 · 하위 화면 미연결</p></footer>\n    </div>\n  </aside><div class=\"material-toolbar material-surface\" data-light-surface=\"\" role=\"toolbar\" aria-label=\"검토 화면 도구\"><span class=\"material-toolbar-title\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5M16 12a4 4 0 1 1-8 0 4 4 0 0 1 8 0\"></path></svg><span>화면 모드</span></span><div class=\"material-theme-control\" role=\"group\" aria-label=\"화면 모드\"><button type=\"button\" data-material-mode=\"light\" aria-pressed=\"true\">Light</button><button type=\"button\" data-material-mode=\"dark\" aria-pressed=\"false\">Dark</button><button type=\"button\" data-material-mode=\"system\" aria-pressed=\"false\">System</button></div><span class=\"material-tool-divider\" aria-hidden=\"true\"></span><button type=\"button\" class=\"material-icon-button\" id=\"material-refresh\" aria-label=\"합성 작업 다시 읽기\" title=\"다시 읽기\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M20 8a8 8 0 1 0 0 8M20 3v5h-5\"></path></svg></button></div><main class=\"material-main\" id=\"material-main\" tabindex=\"-1\"><header class=\"material-page-header\"><h1 id=\"material-view-title\">Global Hub</h1><p>프로젝트를 바로 열고, 필요한 근거부터.</p></header><div id=\"material-card-slot\" aria-busy=\"false\"><article class=\"material-card material-surface\" data-light-surface=\"\" id=\"material-task-card\" aria-labelledby=\"material-card-title\"><header class=\"material-card-header\"><span class=\"material-card-identity\">SYN-1 · release</span><span class=\"material-status\">파일: 보류</span></header><h2 id=\"material-card-title\">SYN-1 핵심 화면 디자인 검토를 기다립니다</h2><p class=\"material-card-description\">열린 프로젝트의 합성 작업입니다. 표면의 곡률과 반사광, 선택·포커스의 깊이를 확인해 주세요.</p><dl class=\"material-card-facts\"><div><dt>프로젝트</dt><dd>release</dd></div><div><dt>담당</dt><dd>미확인</dd></div></dl><div class=\"material-card-actions\"><button type=\"button\" class=\"material-capsule material-select-card\" aria-pressed=\"false\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"m5 12 4 4L19 6\"></path></svg><span>카드 선택</span></button><button type=\"button\" class=\"material-text-button\" id=\"material-show-source\" aria-expanded=\"false\" aria-controls=\"material-source\">원문 보기</button></div><div class=\"material-source\" id=\"material-source\" hidden=\"\"></div><footer class=\"material-card-footer\">합성 데이터 · 실제 서버에서 읽음</footer></article></div><div class=\"material-feedback\" id=\"material-feedback\" role=\"status\" aria-live=\"polite\">합성 작업을 읽었습니다.</div><div class=\"material-review-notes\"><p><strong>재질·탐색 동작 시안</strong> · 사이드바, 툴바, 카드 한 장을 먼저 확인하는 화면입니다.</p><p>프로젝트 선택·닫기·다시 열기, 화면 모드와 카드 선택은 작동합니다. 작업 목록과 상세 화면, SYSTEM의 관리 화면 및 OPERATIONS·HELP의 하위 화면은 아직 연결하지 않았습니다.</p><p>마우스가 가까워지면 빛이 부드럽게 반응합니다. 터치 화면과 모션 감소 환경에는 정적 반사를 제공합니다.</p></div></main></div></div>\n    <script type=\"module\" src=\"/ui/material/review.js\"></script>\n  \n\n</body>",
+          "inspect": {
+            "events": 1,
+            "frames": 1,
+            "writes": 0,
+            "maxAffected": 0,
+            "flushMs": [
+              0.09999990463256836
+            ],
+            "pending": false,
+            "surfaces": 3,
+            "enabled": true
+          },
+          "surfaces": [
+            {
+              "name": "material-rail",
+              "x": 14,
+              "y": 14,
+              "width": 252,
+              "height": 972,
+              "radius": "32px",
+              "background": "linear-gradient(rgb(255, 255, 255), rgb(240, 243, 246) 25%, rgb(231, 235, 240) 64%)",
+              "shadow": "rgb(255, 255, 255) 0px 1px 1px 0px inset, rgba(180, 190, 206, 0.27) 0px -1px 1px 0px inset, rgb(255, 255, 255) 3px 4px 12px -6px inset, rgba(123, 135, 153, 0.208) -4px -6px 14px -8px inset, rgba(104, 119, 141, 0.26) 0px -16px 28px -18px inset, rgba(88, 101, 120, 0.39) 4px 18px 28px -16px",
+              "strength": "",
+              "xLight": "",
+              "yLight": ""
+            },
+            {
+              "name": "material-toolbar material-surface",
+              "x": 1068.484375,
+              "y": 14,
+              "width": 345.515625,
+              "height": 60,
+              "radius": "999px",
+              "background": "linear-gradient(rgb(255, 255, 255), rgb(240, 243, 246) 25%, rgb(231, 235, 240) 64%)",
+              "shadow": "rgb(255, 255, 255) 0px 1px 1px 0px inset, rgba(180, 190, 206, 0.27) 0px -1px 1px 0px inset, rgb(255, 255, 255) 3px 4px 12px -6px inset, rgba(123, 135, 153, 0.208) -4px -6px 14px -8px inset, rgba(104, 119, 141, 0.26) 0px -16px 28px -18px inset, rgba(88, 101, 120, 0.39) 4px 18px 28px -16px",
+              "strength": "",
+              "xLight": "",
+              "yLight": ""
+            },
+            {
+              "name": "material-task-card",
+              "x": 294,
+              "y": 199,
+              "width": 560,
+              "height": 387.875,
+              "radius": "30px",
+              "background": "linear-gradient(rgb(255, 255, 255), rgb(240, 243, 246) 25%, rgb(231, 235, 240) 64%)",
+              "shadow": "rgb(255, 255, 255) 0px 1px 1px 0px inset, rgba(180, 190, 206, 0.27) 0px -1px 1px 0px inset, rgb(255, 255, 255) 3px 4px 12px -6px inset, rgba(123, 135, 153, 0.208) -4px -6px 14px -8px inset, rgba(104, 119, 141, 0.26) 0px -16px 28px -18px inset, rgba(88, 101, 120, 0.39) 4px 18px 28px -16px",
+              "strength": "",
+              "xLight": "",
+              "yLight": ""
+            }
+          ]
+        },
+        "near": {
+          "width": 1440,
+          "scrollWidth": 1440,
+          "theme": "light",
+          "focus": "<body>\n    <!--\n      THESIS: A small, working material slice restores the original Mecca navigation grammar.\n      OWN-WORLD: Original Task Mecca mark, neutral Smoke material, Pane-derived continuous curves and light.\n      STORY: Global Hub, directly opened projects, then Operations and Help; one real synthetic task card.\n      FIRST VIEWPORT: A 32px rail, narrow floating toolbar and 30px card expose the same material at useful scales.\n      FORM: User-approved revision; top-focused reflections, asymmetric thin rim, inner lower shadow, raised selection.\n      FINISH: unreviewed and undocumented is unfinished; this slice awaits independent review and user acceptance.\n    -->\n    <a class=\"material-skip\" href=\"#material-main\">본문으로 건너뛰기</a>\n    <div id=\"material-review\"><div class=\"material-layout\" data-rail-mode=\"expanded\"><aside class=\"material-rail material-surface\" data-light-surface=\"\" id=\"material-rail\" aria-label=\"주 탐색\" style=\"--light-x: 304.0px; --light-y: 209.0px; --light-strength: 0.4268;\">\n    <div class=\"material-brand-row\"><a class=\"material-brand\" href=\"/ui/material-review.html\" aria-label=\"Task Mecca 재질 검토 홈\"><img src=\"/logo.svg\" alt=\"\"><strong>Task Mecca</strong></a><button type=\"button\" class=\"material-icon-button material-mobile-toggle\" aria-label=\"메뉴 열기\" aria-expanded=\"false\" aria-controls=\"material-rail-panel\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M4 6h16M4 12h16M4 18h16\"></path></svg></button></div>\n    <div class=\"material-rail-panel\" id=\"material-rail-panel\">\n      <nav class=\"material-nav\" aria-label=\"기존 메뉴 배치 시안\">\n        <section class=\"material-nav-group\" aria-labelledby=\"material-system\"><h2 id=\"material-system\">SYSTEM</h2><button type=\"button\" class=\"material-nav-item\" data-destination=\"hub\" title=\"Global Hub\" aria-current=\"page\"><span class=\"material-nav-icon\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M3 10 12 3l9 7v10H3z M9 20v-7h6v7\"></path></svg></span><span class=\"material-nav-label\">Global Hub</span></button><button type=\"button\" class=\"material-nav-item\" data-destination=\"storage\" aria-disabled=\"true\" title=\"저장소 관리 · 미연결\"><span class=\"material-nav-icon\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M4 4h16v6H4z M4 14h16v6H4z M7 7h.01M7 17h.01\"></path></svg></span><span class=\"material-nav-label\">저장소 관리</span><span class=\"material-unconnected\" aria-hidden=\"true\">미연결</span></button><button type=\"button\" class=\"material-nav-item\" data-destination=\"preview\" aria-disabled=\"true\" title=\"Preview Builds · 미연결\"><span class=\"material-nav-icon\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M3 7h7l2-3h9v16H3z\"></path></svg></span><span class=\"material-nav-label\">Preview Builds</span><span class=\"material-unconnected\" aria-hidden=\"true\">미연결</span></button></section>\n        <section class=\"material-nav-group\" aria-labelledby=\"material-backlogs\"><h2 id=\"material-backlogs\">BACKLOGS</h2><div id=\"material-projects\"><div class=\"material-project-row \"><button type=\"button\" class=\"material-nav-item material-project-open\" data-project=\"/var/folders/07/q_8xp6j90zn8r_gdxk6sj5nm0000gn/T/task-mecca-a65-preview-memwTY/release\" title=\"release · /var/folders/07/q_8xp6j90zn8r_gdxk6sj5nm0000gn/T/task-mecca-a65-preview-memwTY/release\"><span class=\"material-nav-icon material-project-initial\" aria-hidden=\"true\">R</span><span class=\"material-nav-label\">release</span></button><button type=\"button\" class=\"material-project-close\" data-close-project=\"/var/folders/07/q_8xp6j90zn8r_gdxk6sj5nm0000gn/T/task-mecca-a65-preview-memwTY/release\" aria-label=\"release 닫기\" title=\"프로젝트 닫기\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"m6 6 12 12M18 6 6 18\"></path></svg></button></div><div class=\"material-project-row \"><button type=\"button\" class=\"material-nav-item material-project-open\" data-project=\"/var/folders/07/q_8xp6j90zn8r_gdxk6sj5nm0000gn/T/task-mecca-a65-preview-memwTY/research\" title=\"research · /var/folders/07/q_8xp6j90zn8r_gdxk6sj5nm0000gn/T/task-mecca-a65-preview-memwTY/research\"><span class=\"material-nav-icon material-project-initial\" aria-hidden=\"true\">R</span><span class=\"material-nav-label\">research</span></button><button type=\"button\" class=\"material-project-close\" data-close-project=\"/var/folders/07/q_8xp6j90zn8r_gdxk6sj5nm0000gn/T/task-mecca-a65-preview-memwTY/research\" aria-label=\"research 닫기\" title=\"프로젝트 닫기\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"m6 6 12 12M18 6 6 18\"></path></svg></button></div><div class=\"material-project-row \"><button type=\"button\" class=\"material-nav-item material-project-open\" data-project=\"/var/folders/07/q_8xp6j90zn8r_gdxk6sj5nm0000gn/T/task-mecca-a65-preview-memwTY/task-mecca\" title=\"task-mecca · /var/folders/07/q_8xp6j90zn8r_gdxk6sj5nm0000gn/T/task-mecca-a65-preview-memwTY/task-mecca\"><span class=\"material-nav-icon material-project-initial\" aria-hidden=\"true\">T</span><span class=\"material-nav-label\">task-mecca</span></button><button type=\"button\" class=\"material-project-close\" data-close-project=\"/var/folders/07/q_8xp6j90zn8r_gdxk6sj5nm0000gn/T/task-mecca-a65-preview-memwTY/task-mecca\" aria-label=\"task-mecca 닫기\" title=\"프로젝트 닫기\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"m6 6 12 12M18 6 6 18\"></path></svg></button></div></div><div class=\"material-project-opener\"><button type=\"button\" class=\"material-nav-item\" id=\"material-open-project\" aria-expanded=\"false\" aria-controls=\"material-closed-projects\"><span class=\"material-nav-icon\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M12 5v14M5 12h14\"></path></svg></span><span class=\"material-nav-label\">프로젝트 열기</span></button><div id=\"material-closed-projects\" hidden=\"\"><p class=\"material-nav-empty\">닫힌 프로젝트가 없습니다.</p></div></div></section>\n        <section class=\"material-nav-group\" aria-labelledby=\"material-operations\"><h2 id=\"material-operations\">OPERATIONS</h2><button type=\"button\" class=\"material-nav-item\" data-destination=\"workload\" aria-disabled=\"true\" title=\"Subagent Workload · 미연결\"><span class=\"material-nav-icon\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M4 19V9m5 10V4m6 15v-8m5 8V6\"></path></svg></span><span class=\"material-nav-label\">Subagent Workload</span><span class=\"material-unconnected\" aria-hidden=\"true\">미연결</span></button><button type=\"button\" class=\"material-nav-item\" data-destination=\"notifications\" aria-disabled=\"true\" title=\"알림 센터 · 미연결\"><span class=\"material-nav-icon\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M6 9a6 6 0 0 1 12 0v6l2 3H4l2-3z M10 21h4\"></path></svg></span><span class=\"material-nav-label\">알림 센터</span><span class=\"material-unconnected\" aria-hidden=\"true\">미연결</span></button><button type=\"button\" class=\"material-nav-item\" data-destination=\"terminal\" aria-disabled=\"true\" title=\"터미널 · 미연결\"><span class=\"material-nav-icon\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"m4 6 5 6-5 6 M12 18h8\"></path></svg></span><span class=\"material-nav-label\">터미널</span><span class=\"material-unconnected\" aria-hidden=\"true\">미연결</span></button></section>\n        <section class=\"material-nav-group\" aria-labelledby=\"material-help\"><h2 id=\"material-help\">HELP</h2><button type=\"button\" class=\"material-nav-item\" data-destination=\"manual\" aria-disabled=\"true\" title=\"사용자 매뉴얼 · 미연결\"><span class=\"material-nav-icon\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M12 5C8 2 4 3 2 4v16c3-2 6-2 10 0 4-2 7-2 10 0V4c-2-1-6-2-10 1Zm0 0v15\"></path></svg></span><span class=\"material-nav-label\">사용자 매뉴얼</span><span class=\"material-unconnected\" aria-hidden=\"true\">미연결</span></button><button type=\"button\" class=\"material-nav-item\" data-destination=\"release\" aria-disabled=\"true\" title=\"업데이트 내역 · 미연결\"><span class=\"material-nav-icon\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M3 5v5h5 M3 10a9 9 0 1 1 1 7 M12 7v5l3 2\"></path></svg></span><span class=\"material-nav-label\">업데이트 내역</span><span class=\"material-unconnected\" aria-hidden=\"true\">미연결</span></button><button type=\"button\" class=\"material-nav-item\" data-destination=\"issues\" aria-disabled=\"true\" title=\"진단 및 이슈 · 미연결\"><span class=\"material-nav-icon\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M12 8v5m0 4h.01 M10 3h4l8 15-2 3H4l-2-3z\"></path></svg></span><span class=\"material-nav-label\">진단 및 이슈</span><span class=\"material-unconnected\" aria-hidden=\"true\">미연결</span></button></section>\n      </nav>\n      <footer class=\"material-rail-footer\"><div class=\"material-mode-control\" role=\"group\" aria-label=\"사이드바 표시 방식\"><button type=\"button\" data-rail-mode=\"auto\" aria-pressed=\"false\" title=\"자동\">자동</button><button type=\"button\" data-rail-mode=\"expanded\" aria-pressed=\"true\" title=\"펼침\">펼침</button><button type=\"button\" data-rail-mode=\"compact\" aria-pressed=\"false\" title=\"최소\">최소</button></div><p class=\"material-rail-note\">재질 검토 · 하위 화면 미연결</p></footer>\n    </div>\n  </aside><div class=\"material-toolbar material-surface\" data-light-surface=\"\" role=\"toolbar\" aria-label=\"검토 화면 도구\"><span class=\"material-toolbar-title\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5M16 12a4 4 0 1 1-8 0 4 4 0 0 1 8 0\"></path></svg><span>화면 모드</span></span><div class=\"material-theme-control\" role=\"group\" aria-label=\"화면 모드\"><button type=\"button\" data-material-mode=\"light\" aria-pressed=\"true\">Light</button><button type=\"button\" data-material-mode=\"dark\" aria-pressed=\"false\">Dark</button><button type=\"button\" data-material-mode=\"system\" aria-pressed=\"false\">System</button></div><span class=\"material-tool-divider\" aria-hidden=\"true\"></span><button type=\"button\" class=\"material-icon-button\" id=\"material-refresh\" aria-label=\"합성 작업 다시 읽기\" title=\"다시 읽기\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M20 8a8 8 0 1 0 0 8M20 3v5h-5\"></path></svg></button></div><main class=\"material-main\" id=\"material-main\" tabindex=\"-1\"><header class=\"material-page-header\"><h1 id=\"material-view-title\">Global Hub</h1><p>프로젝트를 바로 열고, 필요한 근거부터.</p></header><div id=\"material-card-slot\" aria-busy=\"false\"><article class=\"material-card material-surface\" data-light-surface=\"\" id=\"material-task-card\" aria-labelledby=\"material-card-title\" style=\"--light-x: 24.0px; --light-y: 24.0px; --light-strength: 1.0000;\"><header class=\"material-card-header\"><span class=\"material-card-identity\">SYN-1 · release</span><span class=\"material-status\">파일: 보류</span></header><h2 id=\"material-card-title\">SYN-1 핵심 화면 디자인 검토를 기다립니다</h2><p class=\"material-card-description\">열린 프로젝트의 합성 작업입니다. 표면의 곡률과 반사광, 선택·포커스의 깊이를 확인해 주세요.</p><dl class=\"material-card-facts\"><div><dt>프로젝트</dt><dd>release</dd></div><div><dt>담당</dt><dd>미확인</dd></div></dl><div class=\"material-card-actions\"><button type=\"button\" class=\"material-capsule material-select-card\" aria-pressed=\"false\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"m5 12 4 4L19 6\"></path></svg><span>카드 선택</span></button><button type=\"button\" class=\"material-text-button\" id=\"material-show-source\" aria-expanded=\"false\" aria-controls=\"material-source\">원문 보기</button></div><div class=\"material-source\" id=\"material-source\" hidden=\"\"></div><footer class=\"material-card-footer\">합성 데이터 · 실제 서버에서 읽음</footer></article></div><div class=\"material-feedback\" id=\"material-feedback\" role=\"status\" aria-live=\"polite\">합성 작업을 읽었습니다.</div><div class=\"material-review-notes\"><p><strong>재질·탐색 동작 시안</strong> · 사이드바, 툴바, 카드 한 장을 먼저 확인하는 화면입니다.</p><p>프로젝트 선택·닫기·다시 열기, 화면 모드와 카드 선택은 작동합니다. 작업 목록과 상세 화면, SYSTEM의 관리 화면 및 OPERATIONS·HELP의 하위 화면은 아직 연결하지 않았습니다.</p><p>마우스가 가까워지면 빛이 부드럽게 반응합니다. 터치 화면과 모션 감소 환경에는 정적 반사를 제공합니다.</p></div></main></div></div>\n    <script type=\"module\" src=\"/ui/material/review.js\"></script>\n  \n\n</body>",
+          "inspect": {
+            "events": 2,
+            "frames": 2,
+            "writes": 6,
+            "maxAffected": 2,
+            "flushMs": [
+              0.09999990463256836,
+              0
+            ],
+            "pending": false,
+            "surfaces": 3,
+            "enabled": true
+          },
+          "surfaces": [
+            {
+              "name": "material-rail",
+              "x": 14,
+              "y": 14,
+              "width": 252,
+              "height": 972,
+              "radius": "32px",
+              "background": "linear-gradient(rgb(255, 255, 255), rgb(240, 243, 246) 25%, rgb(231, 235, 240) 64%)",
+              "shadow": "rgb(255, 255, 255) 0px 1px 1px 0px inset, rgba(180, 190, 206, 0.27) 0px -1px 1px 0px inset, rgb(255, 255, 255) 3px 4px 12px -6px inset, rgba(123, 135, 153, 0.208) -4px -6px 14px -8px inset, rgba(104, 119, 141, 0.26) 0px -16px 28px -18px inset, rgba(88, 101, 120, 0.39) 4px 18px 28px -16px",
+              "strength": "0.4268",
+              "xLight": "304.0px",
+              "yLight": "209.0px"
+            },
+            {
+              "name": "material-toolbar material-surface",
+              "x": 1068.484375,
+              "y": 14,
+              "width": 345.515625,
+              "height": 60,
+              "radius": "999px",
+              "background": "linear-gradient(rgb(255, 255, 255), rgb(240, 243, 246) 25%, rgb(231, 235, 240) 64%)",
+              "shadow": "rgb(255, 255, 255) 0px 1px 1px 0px inset, rgba(180, 190, 206, 0.27) 0px -1px 1px 0px inset, rgb(255, 255, 255) 3px 4px 12px -6px inset, rgba(123, 135, 153, 0.208) -4px -6px 14px -8px inset, rgba(104, 119, 141, 0.26) 0px -16px 28px -18px inset, rgba(88, 101, 120, 0.39) 4px 18px 28px -16px",
+              "strength": "",
+              "xLight": "",
+              "yLight": ""
+            },
+            {
+              "name": "material-task-card",
+              "x": 294,
+              "y": 199,
+              "width": 560,
+              "height": 387.875,
+              "radius": "30px",
+              "background": "linear-gradient(rgb(255, 255, 255), rgb(240, 243, 246) 25%, rgb(231, 235, 240) 64%)",
+              "shadow": "rgb(255, 255, 255) 0px 1px 1px 0px inset, rgba(180, 190, 206, 0.27) 0px -1px 1px 0px inset, rgb(255, 255, 255) 3px 4px 12px -6px inset, rgba(123, 135, 153, 0.208) -4px -6px 14px -8px inset, rgba(104, 119, 141, 0.26) 0px -16px 28px -18px inset, rgba(88, 101, 120, 0.39) 4px 18px 28px -16px",
+              "strength": "1.0000",
+              "xLight": "24.0px",
+              "yLight": "24.0px"
+            }
+          ]
+        },
+        "outside24": {
+          "width": 1440,
+          "scrollWidth": 1440,
+          "theme": "light",
+          "focus": "<body>\n    <!--\n      THESIS: A small, working material slice restores the original Mecca navigation grammar.\n      OWN-WORLD: Original Task Mecca mark, neutral Smoke material, Pane-derived continuous curves and light.\n      STORY: Global Hub, directly opened projects, then Operations and Help; one real synthetic task card.\n      FIRST VIEWPORT: A 32px rail, narrow floating toolbar and 30px card expose the same material at useful scales.\n      FORM: User-approved revision; top-focused reflections, asymmetric thin rim, inner lower shadow, raised selection.\n      FINISH: unreviewed and undocumented is unfinished; this slice awaits independent review and user acceptance.\n    -->\n    <a class=\"material-skip\" href=\"#material-main\">본문으로 건너뛰기</a>\n    <div id=\"material-review\"><div class=\"material-layout\" data-rail-mode=\"expanded\"><aside class=\"material-rail material-surface\" data-light-surface=\"\" id=\"material-rail\" aria-label=\"주 탐색\" style=\"--light-x: 304.0px; --light-y: 209.0px; --light-strength: 0.0000;\">\n    <div class=\"material-brand-row\"><a class=\"material-brand\" href=\"/ui/material-review.html\" aria-label=\"Task Mecca 재질 검토 홈\"><img src=\"/logo.svg\" alt=\"\"><strong>Task Mecca</strong></a><button type=\"button\" class=\"material-icon-button material-mobile-toggle\" aria-label=\"메뉴 열기\" aria-expanded=\"false\" aria-controls=\"material-rail-panel\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M4 6h16M4 12h16M4 18h16\"></path></svg></button></div>\n    <div class=\"material-rail-panel\" id=\"material-rail-panel\">\n      <nav class=\"material-nav\" aria-label=\"기존 메뉴 배치 시안\">\n        <section class=\"material-nav-group\" aria-labelledby=\"material-system\"><h2 id=\"material-system\">SYSTEM</h2><button type=\"button\" class=\"material-nav-item\" data-destination=\"hub\" title=\"Global Hub\" aria-current=\"page\"><span class=\"material-nav-icon\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M3 10 12 3l9 7v10H3z M9 20v-7h6v7\"></path></svg></span><span class=\"material-nav-label\">Global Hub</span></button><button type=\"button\" class=\"material-nav-item\" data-destination=\"storage\" aria-disabled=\"true\" title=\"저장소 관리 · 미연결\"><span class=\"material-nav-icon\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M4 4h16v6H4z M4 14h16v6H4z M7 7h.01M7 17h.01\"></path></svg></span><span class=\"material-nav-label\">저장소 관리</span><span class=\"material-unconnected\" aria-hidden=\"true\">미연결</span></button><button type=\"button\" class=\"material-nav-item\" data-destination=\"preview\" aria-disabled=\"true\" title=\"Preview Builds · 미연결\"><span class=\"material-nav-icon\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M3 7h7l2-3h9v16H3z\"></path></svg></span><span class=\"material-nav-label\">Preview Builds</span><span class=\"material-unconnected\" aria-hidden=\"true\">미연결</span></button></section>\n        <section class=\"material-nav-group\" aria-labelledby=\"material-backlogs\"><h2 id=\"material-backlogs\">BACKLOGS</h2><div id=\"material-projects\"><div class=\"material-project-row \"><button type=\"button\" class=\"material-nav-item material-project-open\" data-project=\"/var/folders/07/q_8xp6j90zn8r_gdxk6sj5nm0000gn/T/task-mecca-a65-preview-memwTY/release\" title=\"release · /var/folders/07/q_8xp6j90zn8r_gdxk6sj5nm0000gn/T/task-mecca-a65-preview-memwTY/release\"><span class=\"material-nav-icon material-project-initial\" aria-hidden=\"true\">R</span><span class=\"material-nav-label\">release</span></button><button type=\"button\" class=\"material-project-close\" data-close-project=\"/var/folders/07/q_8xp6j90zn8r_gdxk6sj5nm0000gn/T/task-mecca-a65-preview-memwTY/release\" aria-label=\"release 닫기\" title=\"프로젝트 닫기\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"m6 6 12 12M18 6 6 18\"></path></svg></button></div><div class=\"material-project-row \"><button type=\"button\" class=\"material-nav-item material-project-open\" data-project=\"/var/folders/07/q_8xp6j90zn8r_gdxk6sj5nm0000gn/T/task-mecca-a65-preview-memwTY/research\" title=\"research · /var/folders/07/q_8xp6j90zn8r_gdxk6sj5nm0000gn/T/task-mecca-a65-preview-memwTY/research\"><span class=\"material-nav-icon material-project-initial\" aria-hidden=\"true\">R</span><span class=\"material-nav-label\">research</span></button><button type=\"button\" class=\"material-project-close\" data-close-project=\"/var/folders/07/q_8xp6j90zn8r_gdxk6sj5nm0000gn/T/task-mecca-a65-preview-memwTY/research\" aria-label=\"research 닫기\" title=\"프로젝트 닫기\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"m6 6 12 12M18 6 6 18\"></path></svg></button></div><div class=\"material-project-row \"><button type=\"button\" class=\"material-nav-item material-project-open\" data-project=\"/var/folders/07/q_8xp6j90zn8r_gdxk6sj5nm0000gn/T/task-mecca-a65-preview-memwTY/task-mecca\" title=\"task-mecca · /var/folders/07/q_8xp6j90zn8r_gdxk6sj5nm0000gn/T/task-mecca-a65-preview-memwTY/task-mecca\"><span class=\"material-nav-icon material-project-initial\" aria-hidden=\"true\">T</span><span class=\"material-nav-label\">task-mecca</span></button><button type=\"button\" class=\"material-project-close\" data-close-project=\"/var/folders/07/q_8xp6j90zn8r_gdxk6sj5nm0000gn/T/task-mecca-a65-preview-memwTY/task-mecca\" aria-label=\"task-mecca 닫기\" title=\"프로젝트 닫기\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"m6 6 12 12M18 6 6 18\"></path></svg></button></div></div><div class=\"material-project-opener\"><button type=\"button\" class=\"material-nav-item\" id=\"material-open-project\" aria-expanded=\"false\" aria-controls=\"material-closed-projects\"><span class=\"material-nav-icon\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M12 5v14M5 12h14\"></path></svg></span><span class=\"material-nav-label\">프로젝트 열기</span></button><div id=\"material-closed-projects\" hidden=\"\"><p class=\"material-nav-empty\">닫힌 프로젝트가 없습니다.</p></div></div></section>\n        <section class=\"material-nav-group\" aria-labelledby=\"material-operations\"><h2 id=\"material-operations\">OPERATIONS</h2><button type=\"button\" class=\"material-nav-item\" data-destination=\"workload\" aria-disabled=\"true\" title=\"Subagent Workload · 미연결\"><span class=\"material-nav-icon\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M4 19V9m5 10V4m6 15v-8m5 8V6\"></path></svg></span><span class=\"material-nav-label\">Subagent Workload</span><span class=\"material-unconnected\" aria-hidden=\"true\">미연결</span></button><button type=\"button\" class=\"material-nav-item\" data-destination=\"notifications\" aria-disabled=\"true\" title=\"알림 센터 · 미연결\"><span class=\"material-nav-icon\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M6 9a6 6 0 0 1 12 0v6l2 3H4l2-3z M10 21h4\"></path></svg></span><span class=\"material-nav-label\">알림 센터</span><span class=\"material-unconnected\" aria-hidden=\"true\">미연결</span></button><button type=\"button\" class=\"material-nav-item\" data-destination=\"terminal\" aria-disabled=\"true\" title=\"터미널 · 미연결\"><span class=\"material-nav-icon\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"m4 6 5 6-5 6 M12 18h8\"></path></svg></span><span class=\"material-nav-label\">터미널</span><span class=\"material-unconnected\" aria-hidden=\"true\">미연결</span></button></section>\n        <section class=\"material-nav-group\" aria-labelledby=\"material-help\"><h2 id=\"material-help\">HELP</h2><button type=\"button\" class=\"material-nav-item\" data-destination=\"manual\" aria-disabled=\"true\" title=\"사용자 매뉴얼 · 미연결\"><span class=\"material-nav-icon\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M12 5C8 2 4 3 2 4v16c3-2 6-2 10 0 4-2 7-2 10 0V4c-2-1-6-2-10 1Zm0 0v15\"></path></svg></span><span class=\"material-nav-label\">사용자 매뉴얼</span><span class=\"material-unconnected\" aria-hidden=\"true\">미연결</span></button><button type=\"button\" class=\"material-nav-item\" data-destination=\"release\" aria-disabled=\"true\" title=\"업데이트 내역 · 미연결\"><span class=\"material-nav-icon\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M3 5v5h5 M3 10a9 9 0 1 1 1 7 M12 7v5l3 2\"></path></svg></span><span class=\"material-nav-label\">업데이트 내역</span><span class=\"material-unconnected\" aria-hidden=\"true\">미연결</span></button><button type=\"button\" class=\"material-nav-item\" data-destination=\"issues\" aria-disabled=\"true\" title=\"진단 및 이슈 · 미연결\"><span class=\"material-nav-icon\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M12 8v5m0 4h.01 M10 3h4l8 15-2 3H4l-2-3z\"></path></svg></span><span class=\"material-nav-label\">진단 및 이슈</span><span class=\"material-unconnected\" aria-hidden=\"true\">미연결</span></button></section>\n      </nav>\n      <footer class=\"material-rail-footer\"><div class=\"material-mode-control\" role=\"group\" aria-label=\"사이드바 표시 방식\"><button type=\"button\" data-rail-mode=\"auto\" aria-pressed=\"false\" title=\"자동\">자동</button><button type=\"button\" data-rail-mode=\"expanded\" aria-pressed=\"true\" title=\"펼침\">펼침</button><button type=\"button\" data-rail-mode=\"compact\" aria-pressed=\"false\" title=\"최소\">최소</button></div><p class=\"material-rail-note\">재질 검토 · 하위 화면 미연결</p></footer>\n    </div>\n  </aside><div class=\"material-toolbar material-surface\" data-light-surface=\"\" role=\"toolbar\" aria-label=\"검토 화면 도구\"><span class=\"material-toolbar-title\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5M16 12a4 4 0 1 1-8 0 4 4 0 0 1 8 0\"></path></svg><span>화면 모드</span></span><div class=\"material-theme-control\" role=\"group\" aria-label=\"화면 모드\"><button type=\"button\" data-material-mode=\"light\" aria-pressed=\"true\">Light</button><button type=\"button\" data-material-mode=\"dark\" aria-pressed=\"false\">Dark</button><button type=\"button\" data-material-mode=\"system\" aria-pressed=\"false\">System</button></div><span class=\"material-tool-divider\" aria-hidden=\"true\"></span><button type=\"button\" class=\"material-icon-button\" id=\"material-refresh\" aria-label=\"합성 작업 다시 읽기\" title=\"다시 읽기\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M20 8a8 8 0 1 0 0 8M20 3v5h-5\"></path></svg></button></div><main class=\"material-main\" id=\"material-main\" tabindex=\"-1\"><header class=\"material-page-header\"><h1 id=\"material-view-title\">Global Hub</h1><p>프로젝트를 바로 열고, 필요한 근거부터.</p></header><div id=\"material-card-slot\" aria-busy=\"false\"><article class=\"material-card material-surface\" data-light-surface=\"\" id=\"material-task-card\" aria-labelledby=\"material-card-title\" style=\"--light-x: 584.0px; --light-y: 24.0px; --light-strength: 0.7056;\"><header class=\"material-card-header\"><span class=\"material-card-identity\">SYN-1 · release</span><span class=\"material-status\">파일: 보류</span></header><h2 id=\"material-card-title\">SYN-1 핵심 화면 디자인 검토를 기다립니다</h2><p class=\"material-card-description\">열린 프로젝트의 합성 작업입니다. 표면의 곡률과 반사광, 선택·포커스의 깊이를 확인해 주세요.</p><dl class=\"material-card-facts\"><div><dt>프로젝트</dt><dd>release</dd></div><div><dt>담당</dt><dd>미확인</dd></div></dl><div class=\"material-card-actions\"><button type=\"button\" class=\"material-capsule material-select-card\" aria-pressed=\"false\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"m5 12 4 4L19 6\"></path></svg><span>카드 선택</span></button><button type=\"button\" class=\"material-text-button\" id=\"material-show-source\" aria-expanded=\"false\" aria-controls=\"material-source\">원문 보기</button></div><div class=\"material-source\" id=\"material-source\" hidden=\"\"></div><footer class=\"material-card-footer\">합성 데이터 · 실제 서버에서 읽음</footer></article></div><div class=\"material-feedback\" id=\"material-feedback\" role=\"status\" aria-live=\"polite\">합성 작업을 읽었습니다.</div><div class=\"material-review-notes\"><p><strong>재질·탐색 동작 시안</strong> · 사이드바, 툴바, 카드 한 장을 먼저 확인하는 화면입니다.</p><p>프로젝트 선택·닫기·다시 열기, 화면 모드와 카드 선택은 작동합니다. 작업 목록과 상세 화면, SYSTEM의 관리 화면 및 OPERATIONS·HELP의 하위 화면은 아직 연결하지 않았습니다.</p><p>마우스가 가까워지면 빛이 부드럽게 반응합니다. 터치 화면과 모션 감소 환경에는 정적 반사를 제공합니다.</p></div></main></div></div>\n    <script type=\"module\" src=\"/ui/material/review.js\"></script>\n  \n\n</body>",
+          "inspect": {
+            "events": 3,
+            "frames": 3,
+            "writes": 10,
+            "maxAffected": 2,
+            "flushMs": [
+              0.09999990463256836,
+              0,
+              0
+            ],
+            "pending": false,
+            "surfaces": 3,
+            "enabled": true
+          },
+          "surfaces": [
+            {
+              "name": "material-rail",
+              "x": 14,
+              "y": 14,
+              "width": 252,
+              "height": 972,
+              "radius": "32px",
+              "background": "linear-gradient(rgb(255, 255, 255), rgb(240, 243, 246) 25%, rgb(231, 235, 240) 64%)",
+              "shadow": "rgb(255, 255, 255) 0px 1px 1px 0px inset, rgba(180, 190, 206, 0.27) 0px -1px 1px 0px inset, rgb(255, 255, 255) 3px 4px 12px -6px inset, rgba(123, 135, 153, 0.208) -4px -6px 14px -8px inset, rgba(104, 119, 141, 0.26) 0px -16px 28px -18px inset, rgba(88, 101, 120, 0.39) 4px 18px 28px -16px",
+              "strength": "0.0000",
+              "xLight": "304.0px",
+              "yLight": "209.0px"
+            },
+            {
+              "name": "material-toolbar material-surface",
+              "x": 1068.484375,
+              "y": 14,
+              "width": 345.515625,
+              "height": 60,
+              "radius": "999px",
+              "background": "linear-gradient(rgb(255, 255, 255), rgb(240, 243, 246) 25%, rgb(231, 235, 240) 64%)",
+              "shadow": "rgb(255, 255, 255) 0px 1px 1px 0px inset, rgba(180, 190, 206, 0.27) 0px -1px 1px 0px inset, rgb(255, 255, 255) 3px 4px 12px -6px inset, rgba(123, 135, 153, 0.208) -4px -6px 14px -8px inset, rgba(104, 119, 141, 0.26) 0px -16px 28px -18px inset, rgba(88, 101, 120, 0.39) 4px 18px 28px -16px",
+              "strength": "",
+              "xLight": "",
+              "yLight": ""
+            },
+            {
+              "name": "material-task-card",
+              "x": 294,
+              "y": 199,
+              "width": 560,
+              "height": 387.875,
+              "radius": "30px",
+              "background": "linear-gradient(rgb(255, 255, 255), rgb(240, 243, 246) 25%, rgb(231, 235, 240) 64%)",
+              "shadow": "rgb(255, 255, 255) 0px 1px 1px 0px inset, rgba(180, 190, 206, 0.27) 0px -1px 1px 0px inset, rgb(255, 255, 255) 3px 4px 12px -6px inset, rgba(123, 135, 153, 0.208) -4px -6px 14px -8px inset, rgba(104, 119, 141, 0.26) 0px -16px 28px -18px inset, rgba(88, 101, 120, 0.39) 4px 18px 28px -16px",
+              "strength": "0.7056",
+              "xLight": "584.0px",
+              "yLight": "24.0px"
+            }
+          ]
+        },
+        "leave": {
+          "width": 1440,
+          "scrollWidth": 1440,
+          "theme": "light",
+          "focus": "<body>\n    <!--\n      THESIS: A small, working material slice restores the original Mecca navigation grammar.\n      OWN-WORLD: Original Task Mecca mark, neutral Smoke material, Pane-derived continuous curves and light.\n      STORY: Global Hub, directly opened projects, then Operations and Help; one real synthetic task card.\n      FIRST VIEWPORT: A 32px rail, narrow floating toolbar and 30px card expose the same material at useful scales.\n      FORM: User-approved revision; top-focused reflections, asymmetric thin rim, inner lower shadow, raised selection.\n      FINISH: unreviewed and undocumented is unfinished; this slice awaits independent review and user acceptance.\n    -->\n    <a class=\"material-skip\" href=\"#material-main\">본문으로 건너뛰기</a>\n    <div id=\"material-review\"><div class=\"material-layout\" data-rail-mode=\"expanded\"><aside class=\"material-rail material-surface\" data-light-surface=\"\" id=\"material-rail\" aria-label=\"주 탐색\" style=\"--light-x: 304.0px; --light-y: 209.0px; --light-strength: 0.0000;\">\n    <div class=\"material-brand-row\"><a class=\"material-brand\" href=\"/ui/material-review.html\" aria-label=\"Task Mecca 재질 검토 홈\"><img src=\"/logo.svg\" alt=\"\"><strong>Task Mecca</strong></a><button type=\"button\" class=\"material-icon-button material-mobile-toggle\" aria-label=\"메뉴 열기\" aria-expanded=\"false\" aria-controls=\"material-rail-panel\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M4 6h16M4 12h16M4 18h16\"></path></svg></button></div>\n    <div class=\"material-rail-panel\" id=\"material-rail-panel\">\n      <nav class=\"material-nav\" aria-label=\"기존 메뉴 배치 시안\">\n        <section class=\"material-nav-group\" aria-labelledby=\"material-system\"><h2 id=\"material-system\">SYSTEM</h2><button type=\"button\" class=\"material-nav-item\" data-destination=\"hub\" title=\"Global Hub\" aria-current=\"page\"><span class=\"material-nav-icon\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M3 10 12 3l9 7v10H3z M9 20v-7h6v7\"></path></svg></span><span class=\"material-nav-label\">Global Hub</span></button><button type=\"button\" class=\"material-nav-item\" data-destination=\"storage\" aria-disabled=\"true\" title=\"저장소 관리 · 미연결\"><span class=\"material-nav-icon\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M4 4h16v6H4z M4 14h16v6H4z M7 7h.01M7 17h.01\"></path></svg></span><span class=\"material-nav-label\">저장소 관리</span><span class=\"material-unconnected\" aria-hidden=\"true\">미연결</span></button><button type=\"button\" class=\"material-nav-item\" data-destination=\"preview\" aria-disabled=\"true\" title=\"Preview Builds · 미연결\"><span class=\"material-nav-icon\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M3 7h7l2-3h9v16H3z\"></path></svg></span><span class=\"material-nav-label\">Preview Builds</span><span class=\"material-unconnected\" aria-hidden=\"true\">미연결</span></button></section>\n        <section class=\"material-nav-group\" aria-labelledby=\"material-backlogs\"><h2 id=\"material-backlogs\">BACKLOGS</h2><div id=\"material-projects\"><div class=\"material-project-row \"><button type=\"button\" class=\"material-nav-item material-project-open\" data-project=\"/var/folders/07/q_8xp6j90zn8r_gdxk6sj5nm0000gn/T/task-mecca-a65-preview-memwTY/release\" title=\"release · /var/folders/07/q_8xp6j90zn8r_gdxk6sj5nm0000gn/T/task-mecca-a65-preview-memwTY/release\"><span class=\"material-nav-icon material-project-initial\" aria-hidden=\"true\">R</span><span class=\"material-nav-label\">release</span></button><button type=\"button\" class=\"material-project-close\" data-close-project=\"/var/folders/07/q_8xp6j90zn8r_gdxk6sj5nm0000gn/T/task-mecca-a65-preview-memwTY/release\" aria-label=\"release 닫기\" title=\"프로젝트 닫기\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"m6 6 12 12M18 6 6 18\"></path></svg></button></div><div class=\"material-project-row \"><button type=\"button\" class=\"material-nav-item material-project-open\" data-project=\"/var/folders/07/q_8xp6j90zn8r_gdxk6sj5nm0000gn/T/task-mecca-a65-preview-memwTY/research\" title=\"research · /var/folders/07/q_8xp6j90zn8r_gdxk6sj5nm0000gn/T/task-mecca-a65-preview-memwTY/research\"><span class=\"material-nav-icon material-project-initial\" aria-hidden=\"true\">R</span><span class=\"material-nav-label\">research</span></button><button type=\"button\" class=\"material-project-close\" data-close-project=\"/var/folders/07/q_8xp6j90zn8r_gdxk6sj5nm0000gn/T/task-mecca-a65-preview-memwTY/research\" aria-label=\"research 닫기\" title=\"프로젝트 닫기\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"m6 6 12 12M18 6 6 18\"></path></svg></button></div><div class=\"material-project-row \"><button type=\"button\" class=\"material-nav-item material-project-open\" data-project=\"/var/folders/07/q_8xp6j90zn8r_gdxk6sj5nm0000gn/T/task-mecca-a65-preview-memwTY/task-mecca\" title=\"task-mecca · /var/folders/07/q_8xp6j90zn8r_gdxk6sj5nm0000gn/T/task-mecca-a65-preview-memwTY/task-mecca\"><span class=\"material-nav-icon material-project-initial\" aria-hidden=\"true\">T</span><span class=\"material-nav-label\">task-mecca</span></button><button type=\"button\" class=\"material-project-close\" data-close-project=\"/var/folders/07/q_8xp6j90zn8r_gdxk6sj5nm0000gn/T/task-mecca-a65-preview-memwTY/task-mecca\" aria-label=\"task-mecca 닫기\" title=\"프로젝트 닫기\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"m6 6 12 12M18 6 6 18\"></path></svg></button></div></div><div class=\"material-project-opener\"><button type=\"button\" class=\"material-nav-item\" id=\"material-open-project\" aria-expanded=\"false\" aria-controls=\"material-closed-projects\"><span class=\"material-nav-icon\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M12 5v14M5 12h14\"></path></svg></span><span class=\"material-nav-label\">프로젝트 열기</span></button><div id=\"material-closed-projects\" hidden=\"\"><p class=\"material-nav-empty\">닫힌 프로젝트가 없습니다.</p></div></div></section>\n        <section class=\"material-nav-group\" aria-labelledby=\"material-operations\"><h2 id=\"material-operations\">OPERATIONS</h2><button type=\"button\" class=\"material-nav-item\" data-destination=\"workload\" aria-disabled=\"true\" title=\"Subagent Workload · 미연결\"><span class=\"material-nav-icon\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M4 19V9m5 10V4m6 15v-8m5 8V6\"></path></svg></span><span class=\"material-nav-label\">Subagent Workload</span><span class=\"material-unconnected\" aria-hidden=\"true\">미연결</span></button><button type=\"button\" class=\"material-nav-item\" data-destination=\"notifications\" aria-disabled=\"true\" title=\"알림 센터 · 미연결\"><span class=\"material-nav-icon\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M6 9a6 6 0 0 1 12 0v6l2 3H4l2-3z M10 21h4\"></path></svg></span><span class=\"material-nav-label\">알림 센터</span><span class=\"material-unconnected\" aria-hidden=\"true\">미연결</span></button><button type=\"button\" class=\"material-nav-item\" data-destination=\"terminal\" aria-disabled=\"true\" title=\"터미널 · 미연결\"><span class=\"material-nav-icon\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"m4 6 5 6-5 6 M12 18h8\"></path></svg></span><span class=\"material-nav-label\">터미널</span><span class=\"material-unconnected\" aria-hidden=\"true\">미연결</span></button></section>\n        <section class=\"material-nav-group\" aria-labelledby=\"material-help\"><h2 id=\"material-help\">HELP</h2><button type=\"button\" class=\"material-nav-item\" data-destination=\"manual\" aria-disabled=\"true\" title=\"사용자 매뉴얼 · 미연결\"><span class=\"material-nav-icon\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M12 5C8 2 4 3 2 4v16c3-2 6-2 10 0 4-2 7-2 10 0V4c-2-1-6-2-10 1Zm0 0v15\"></path></svg></span><span class=\"material-nav-label\">사용자 매뉴얼</span><span class=\"material-unconnected\" aria-hidden=\"true\">미연결</span></button><button type=\"button\" class=\"material-nav-item\" data-destination=\"release\" aria-disabled=\"true\" title=\"업데이트 내역 · 미연결\"><span class=\"material-nav-icon\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M3 5v5h5 M3 10a9 9 0 1 1 1 7 M12 7v5l3 2\"></path></svg></span><span class=\"material-nav-label\">업데이트 내역</span><span class=\"material-unconnected\" aria-hidden=\"true\">미연결</span></button><button type=\"button\" class=\"material-nav-item\" data-destination=\"issues\" aria-disabled=\"true\" title=\"진단 및 이슈 · 미연결\"><span class=\"material-nav-icon\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M12 8v5m0 4h.01 M10 3h4l8 15-2 3H4l-2-3z\"></path></svg></span><span class=\"material-nav-label\">진단 및 이슈</span><span class=\"material-unconnected\" aria-hidden=\"true\">미연결</span></button></section>\n      </nav>\n      <footer class=\"material-rail-footer\"><div class=\"material-mode-control\" role=\"group\" aria-label=\"사이드바 표시 방식\"><button type=\"button\" data-rail-mode=\"auto\" aria-pressed=\"false\" title=\"자동\">자동</button><button type=\"button\" data-rail-mode=\"expanded\" aria-pressed=\"true\" title=\"펼침\">펼침</button><button type=\"button\" data-rail-mode=\"compact\" aria-pressed=\"false\" title=\"최소\">최소</button></div><p class=\"material-rail-note\">재질 검토 · 하위 화면 미연결</p></footer>\n    </div>\n  </aside><div class=\"material-toolbar material-surface\" data-light-surface=\"\" role=\"toolbar\" aria-label=\"검토 화면 도구\"><span class=\"material-toolbar-title\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5M16 12a4 4 0 1 1-8 0 4 4 0 0 1 8 0\"></path></svg><span>화면 모드</span></span><div class=\"material-theme-control\" role=\"group\" aria-label=\"화면 모드\"><button type=\"button\" data-material-mode=\"light\" aria-pressed=\"true\">Light</button><button type=\"button\" data-material-mode=\"dark\" aria-pressed=\"false\">Dark</button><button type=\"button\" data-material-mode=\"system\" aria-pressed=\"false\">System</button></div><span class=\"material-tool-divider\" aria-hidden=\"true\"></span><button type=\"button\" class=\"material-icon-button\" id=\"material-refresh\" aria-label=\"합성 작업 다시 읽기\" title=\"다시 읽기\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M20 8a8 8 0 1 0 0 8M20 3v5h-5\"></path></svg></button></div><main class=\"material-main\" id=\"material-main\" tabindex=\"-1\"><header class=\"material-page-header\"><h1 id=\"material-view-title\">Global Hub</h1><p>프로젝트를 바로 열고, 필요한 근거부터.</p></header><div id=\"material-card-slot\" aria-busy=\"false\"><article class=\"material-card material-surface\" data-light-surface=\"\" id=\"material-task-card\" aria-labelledby=\"material-card-title\" style=\"--light-x: 584.0px; --light-y: 24.0px; --light-strength: 0.0000;\"><header class=\"material-card-header\"><span class=\"material-card-identity\">SYN-1 · release</span><span class=\"material-status\">파일: 보류</span></header><h2 id=\"material-card-title\">SYN-1 핵심 화면 디자인 검토를 기다립니다</h2><p class=\"material-card-description\">열린 프로젝트의 합성 작업입니다. 표면의 곡률과 반사광, 선택·포커스의 깊이를 확인해 주세요.</p><dl class=\"material-card-facts\"><div><dt>프로젝트</dt><dd>release</dd></div><div><dt>담당</dt><dd>미확인</dd></div></dl><div class=\"material-card-actions\"><button type=\"button\" class=\"material-capsule material-select-card\" aria-pressed=\"false\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"m5 12 4 4L19 6\"></path></svg><span>카드 선택</span></button><button type=\"button\" class=\"material-text-button\" id=\"material-show-source\" aria-expanded=\"false\" aria-controls=\"material-source\">원문 보기</button></div><div class=\"material-source\" id=\"material-source\" hidden=\"\"></div><footer class=\"material-card-footer\">합성 데이터 · 실제 서버에서 읽음</footer></article></div><div class=\"material-feedback\" id=\"material-feedback\" role=\"status\" aria-live=\"polite\">합성 작업을 읽었습니다.</div><div class=\"material-review-notes\"><p><strong>재질·탐색 동작 시안</strong> · 사이드바, 툴바, 카드 한 장을 먼저 확인하는 화면입니다.</p><p>프로젝트 선택·닫기·다시 열기, 화면 모드와 카드 선택은 작동합니다. 작업 목록과 상세 화면, SYSTEM의 관리 화면 및 OPERATIONS·HELP의 하위 화면은 아직 연결하지 않았습니다.</p><p>마우스가 가까워지면 빛이 부드럽게 반응합니다. 터치 화면과 모션 감소 환경에는 정적 반사를 제공합니다.</p></div></main></div></div>\n    <script type=\"module\" src=\"/ui/material/review.js\"></script>\n  \n\n</body>",
+          "inspect": {
+            "events": 4,
+            "frames": 4,
+            "writes": 11,
+            "maxAffected": 2,
+            "flushMs": [
+              0.09999990463256836,
+              0,
+              0,
+              0
+            ],
+            "pending": false,
+            "surfaces": 3,
+            "enabled": true
+          },
+          "surfaces": [
+            {
+              "name": "material-rail",
+              "x": 14,
+              "y": 14,
+              "width": 252,
+              "height": 972,
+              "radius": "32px",
+              "background": "linear-gradient(rgb(255, 255, 255), rgb(240, 243, 246) 25%, rgb(231, 235, 240) 64%)",
+              "shadow": "rgb(255, 255, 255) 0px 1px 1px 0px inset, rgba(180, 190, 206, 0.27) 0px -1px 1px 0px inset, rgb(255, 255, 255) 3px 4px 12px -6px inset, rgba(123, 135, 153, 0.208) -4px -6px 14px -8px inset, rgba(104, 119, 141, 0.26) 0px -16px 28px -18px inset, rgba(88, 101, 120, 0.39) 4px 18px 28px -16px",
+              "strength": "0.0000",
+              "xLight": "304.0px",
+              "yLight": "209.0px"
+            },
+            {
+              "name": "material-toolbar material-surface",
+              "x": 1068.484375,
+              "y": 14,
+              "width": 345.515625,
+              "height": 60,
+              "radius": "999px",
+              "background": "linear-gradient(rgb(255, 255, 255), rgb(240, 243, 246) 25%, rgb(231, 235, 240) 64%)",
+              "shadow": "rgb(255, 255, 255) 0px 1px 1px 0px inset, rgba(180, 190, 206, 0.27) 0px -1px 1px 0px inset, rgb(255, 255, 255) 3px 4px 12px -6px inset, rgba(123, 135, 153, 0.208) -4px -6px 14px -8px inset, rgba(104, 119, 141, 0.26) 0px -16px 28px -18px inset, rgba(88, 101, 120, 0.39) 4px 18px 28px -16px",
+              "strength": "",
+              "xLight": "",
+              "yLight": ""
+            },
+            {
+              "name": "material-task-card",
+              "x": 294,
+              "y": 199,
+              "width": 560,
+              "height": 387.875,
+              "radius": "30px",
+              "background": "linear-gradient(rgb(255, 255, 255), rgb(240, 243, 246) 25%, rgb(231, 235, 240) 64%)",
+              "shadow": "rgb(255, 255, 255) 0px 1px 1px 0px inset, rgba(180, 190, 206, 0.27) 0px -1px 1px 0px inset, rgb(255, 255, 255) 3px 4px 12px -6px inset, rgba(123, 135, 153, 0.208) -4px -6px 14px -8px inset, rgba(104, 119, 141, 0.26) 0px -16px 28px -18px inset, rgba(88, 101, 120, 0.39) 4px 18px 28px -16px",
+              "strength": "0.0000",
+              "xLight": "584.0px",
+              "yLight": "24.0px"
+            }
+          ]
+        },
+        "selected": {
+          "width": 1440,
+          "scrollWidth": 1440,
+          "theme": "light",
+          "focus": "<button type=\"button\" class=\"material-capsule material-select-card\" aria-pressed=\"true\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"m5 12 4 4L19 6\"></path></svg><span>선택됨</span></button>",
+          "inspect": {
+            "events": 6,
+            "frames": 5,
+            "writes": 11,
+            "maxAffected": 2,
+            "flushMs": [
+              0.09999990463256836,
+              0,
+              0,
+              0,
+              0
+            ],
+            "pending": false,
+            "surfaces": 3,
+            "enabled": true
+          },
+          "surfaces": [
+            {
+              "name": "material-rail",
+              "x": 14,
+              "y": 14,
+              "width": 252,
+              "height": 972,
+              "radius": "32px",
+              "background": "linear-gradient(rgb(255, 255, 255), rgb(240, 243, 246) 25%, rgb(231, 235, 240) 64%)",
+              "shadow": "rgb(255, 255, 255) 0px 1px 1px 0px inset, rgba(180, 190, 206, 0.27) 0px -1px 1px 0px inset, rgb(255, 255, 255) 3px 4px 12px -6px inset, rgba(123, 135, 153, 0.208) -4px -6px 14px -8px inset, rgba(104, 119, 141, 0.26) 0px -16px 28px -18px inset, rgba(88, 101, 120, 0.39) 4px 18px 28px -16px",
+              "strength": "0.0000",
+              "xLight": "304.0px",
+              "yLight": "209.0px"
+            },
+            {
+              "name": "material-toolbar material-surface",
+              "x": 1068.484375,
+              "y": 14,
+              "width": 345.515625,
+              "height": 60,
+              "radius": "999px",
+              "background": "linear-gradient(rgb(255, 255, 255), rgb(240, 243, 246) 25%, rgb(231, 235, 240) 64%)",
+              "shadow": "rgb(255, 255, 255) 0px 1px 1px 0px inset, rgba(180, 190, 206, 0.27) 0px -1px 1px 0px inset, rgb(255, 255, 255) 3px 4px 12px -6px inset, rgba(123, 135, 153, 0.208) -4px -6px 14px -8px inset, rgba(104, 119, 141, 0.26) 0px -16px 28px -18px inset, rgba(88, 101, 120, 0.39) 4px 18px 28px -16px",
+              "strength": "",
+              "xLight": "",
+              "yLight": ""
+            },
+            {
+              "name": "material-task-card",
+              "x": 294,
+              "y": 199,
+              "width": 560,
+              "height": 387.875,
+              "radius": "30px",
+              "background": "linear-gradient(rgb(255, 255, 255), rgb(240, 243, 246) 25%, rgb(231, 235, 240) 64%)",
+              "shadow": "rgb(255, 255, 255) 0px 1px 1px 0px inset, rgba(180, 190, 206, 0.27) 0px -1px 1px 0px inset, rgb(255, 255, 255) 3px 4px 12px -6px inset, rgba(123, 135, 153, 0.208) -4px -6px 14px -8px inset, rgba(104, 119, 141, 0.26) 0px -16px 28px -18px inset, rgba(88, 101, 120, 0.39) 4px 18px 28px -16px",
+              "strength": "0.0000",
+              "xLight": "584.0px",
+              "yLight": "24.0px"
+            }
+          ]
+        },
+        "keyboard": {
+          "width": 1440,
+          "scrollWidth": 1440,
+          "theme": "light",
+          "focus": "<button type=\"button\" class=\"material-capsule material-select-card\" aria-pressed=\"true\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"m5 12 4 4L19 6\"></path></svg><span>선택됨</span></button>",
+          "inspect": {
+            "events": 6,
+            "frames": 5,
+            "writes": 11,
+            "maxAffected": 2,
+            "flushMs": [
+              0.09999990463256836,
+              0,
+              0,
+              0,
+              0
+            ],
+            "pending": false,
+            "surfaces": 3,
+            "enabled": true
+          },
+          "surfaces": [
+            {
+              "name": "material-rail",
+              "x": 14,
+              "y": 14,
+              "width": 252,
+              "height": 972,
+              "radius": "32px",
+              "background": "linear-gradient(rgb(255, 255, 255), rgb(240, 243, 246) 25%, rgb(231, 235, 240) 64%)",
+              "shadow": "rgb(255, 255, 255) 0px 1px 1px 0px inset, rgba(180, 190, 206, 0.27) 0px -1px 1px 0px inset, rgb(255, 255, 255) 3px 4px 12px -6px inset, rgba(123, 135, 153, 0.208) -4px -6px 14px -8px inset, rgba(104, 119, 141, 0.26) 0px -16px 28px -18px inset, rgba(88, 101, 120, 0.39) 4px 18px 28px -16px",
+              "strength": "0.0000",
+              "xLight": "304.0px",
+              "yLight": "209.0px"
+            },
+            {
+              "name": "material-toolbar material-surface",
+              "x": 1068.484375,
+              "y": 14,
+              "width": 345.515625,
+              "height": 60,
+              "radius": "999px",
+              "background": "linear-gradient(rgb(255, 255, 255), rgb(240, 243, 246) 25%, rgb(231, 235, 240) 64%)",
+              "shadow": "rgb(255, 255, 255) 0px 1px 1px 0px inset, rgba(180, 190, 206, 0.27) 0px -1px 1px 0px inset, rgb(255, 255, 255) 3px 4px 12px -6px inset, rgba(123, 135, 153, 0.208) -4px -6px 14px -8px inset, rgba(104, 119, 141, 0.26) 0px -16px 28px -18px inset, rgba(88, 101, 120, 0.39) 4px 18px 28px -16px",
+              "strength": "",
+              "xLight": "",
+              "yLight": ""
+            },
+            {
+              "name": "material-task-card",
+              "x": 294,
+              "y": 199,
+              "width": 560,
+              "height": 387.875,
+              "radius": "30px",
+              "background": "linear-gradient(rgb(255, 255, 255), rgb(240, 243, 246) 25%, rgb(231, 235, 240) 64%)",
+              "shadow": "rgb(255, 255, 255) 0px 1px 1px 0px inset, rgba(180, 190, 206, 0.27) 0px -1px 1px 0px inset, rgb(255, 255, 255) 3px 4px 12px -6px inset, rgba(123, 135, 153, 0.208) -4px -6px 14px -8px inset, rgba(104, 119, 141, 0.26) 0px -16px 28px -18px inset, rgba(88, 101, 120, 0.39) 4px 18px 28px -16px",
+              "strength": "0.0000",
+              "xLight": "584.0px",
+              "yLight": "24.0px"
+            }
+          ]
+        },
+        "focusOutline": {
+          "style": "solid",
+          "width": "2px"
+        }
+      },
+      "failure": "locator.click: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('[data-destination=\"workload\"]')\u001b[22m\n\u001b[2m    - locator resolved to <button type=\"button\" aria-disabled=\"true\" class=\"material-nav-item\" data-destination=\"workload\" title=\"Subagent Workload · 미연결\">…</button>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m    58 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m       - element is not enabled\u001b[22m\n\u001b[2m     - retrying click action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n\n    at /Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/docs/evidence/a65-material-slice/capture.cjs:59:83",
+      "passed": false
+    },
+    {
+      "name": "mobile",
+      "theme": "dark",
+      "errors": [],
+      "checks": {
+        "three_actual_projects": true,
+        "mobile_escape_focus_return": true,
+        "touch_static": true,
+        "keyboard_focus_visible": true,
+        "actual_source_read": true,
+        "direct_project_context": true,
+        "local_close_reopen": true
+      },
+      "states": {
+        "default": {
+          "width": 390,
+          "scrollWidth": 390,
+          "theme": "dark",
+          "focus": "<body>\n    <!--\n      THESIS: A small, working material slice restores the original Mecca navigation grammar.\n      OWN-WORLD: Original Task Mecca mark, neutral Smoke material, Pane-derived continuous curves and light.\n      STORY: Global Hub, directly opened projects, then Operations and Help; one real synthetic task card.\n      FIRST VIEWPORT: A 32px rail, narrow floating toolbar and 30px card expose the same material at useful scales.\n      FORM: User-approved revision; top-focused reflections, asymmetric thin rim, inner lower shadow, raised selection.\n      FINISH: unreviewed and undocumented is unfinished; this slice awaits independent review and user acceptance.\n    -->\n    <a class=\"material-skip\" href=\"#material-main\">본문으로 건너뛰기</a>\n    <div id=\"material-review\"><div class=\"material-layout\" data-rail-mode=\"expanded\"><aside class=\"material-rail material-surface\" data-light-surface=\"\" id=\"material-rail\" aria-label=\"주 탐색\">\n    <div class=\"material-brand-row\"><a class=\"material-brand\" href=\"/ui/material-review.html\" aria-label=\"Task Mecca 재질 검토 홈\"><img src=\"/logo.svg\" alt=\"\"><strong>Task Mecca</strong></a><button type=\"button\" class=\"material-icon-button material-mobile-toggle\" aria-label=\"메뉴 열기\" aria-expanded=\"false\" aria-controls=\"material-rail-panel\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M4 6h16M4 12h16M4 18h16\"></path></svg></button></div>\n    <div class=\"material-rail-panel\" id=\"material-rail-panel\" hidden=\"\">\n      <nav class=\"material-nav\" aria-label=\"기존 메뉴 배치 시안\">\n        <section class=\"material-nav-group\" aria-labelledby=\"material-system\"><h2 id=\"material-system\">SYSTEM</h2><button type=\"button\" class=\"material-nav-item\" data-destination=\"hub\" title=\"Global Hub\" aria-current=\"page\"><span class=\"material-nav-icon\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M3 10 12 3l9 7v10H3z M9 20v-7h6v7\"></path></svg></span><span class=\"material-nav-label\">Global Hub</span></button><button type=\"button\" class=\"material-nav-item\" data-destination=\"storage\" aria-disabled=\"true\" title=\"저장소 관리 · 미연결\"><span class=\"material-nav-icon\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M4 4h16v6H4z M4 14h16v6H4z M7 7h.01M7 17h.01\"></path></svg></span><span class=\"material-nav-label\">저장소 관리</span><span class=\"material-unconnected\" aria-hidden=\"true\">미연결</span></button><button type=\"button\" class=\"material-nav-item\" data-destination=\"preview\" aria-disabled=\"true\" title=\"Preview Builds · 미연결\"><span class=\"material-nav-icon\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M3 7h7l2-3h9v16H3z\"></path></svg></span><span class=\"material-nav-label\">Preview Builds</span><span class=\"material-unconnected\" aria-hidden=\"true\">미연결</span></button></section>\n        <section class=\"material-nav-group\" aria-labelledby=\"material-backlogs\"><h2 id=\"material-backlogs\">BACKLOGS</h2><div id=\"material-projects\"><div class=\"material-project-row \"><button type=\"button\" class=\"material-nav-item material-project-open\" data-project=\"/var/folders/07/q_8xp6j90zn8r_gdxk6sj5nm0000gn/T/task-mecca-a65-preview-memwTY/release\" title=\"release · /var/folders/07/q_8xp6j90zn8r_gdxk6sj5nm0000gn/T/task-mecca-a65-preview-memwTY/release\"><span class=\"material-nav-icon material-project-initial\" aria-hidden=\"true\">R</span><span class=\"material-nav-label\">release</span></button><button type=\"button\" class=\"material-project-close\" data-close-project=\"/var/folders/07/q_8xp6j90zn8r_gdxk6sj5nm0000gn/T/task-mecca-a65-preview-memwTY/release\" aria-label=\"release 닫기\" title=\"프로젝트 닫기\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"m6 6 12 12M18 6 6 18\"></path></svg></button></div><div class=\"material-project-row \"><button type=\"button\" class=\"material-nav-item material-project-open\" data-project=\"/var/folders/07/q_8xp6j90zn8r_gdxk6sj5nm0000gn/T/task-mecca-a65-preview-memwTY/research\" title=\"research · /var/folders/07/q_8xp6j90zn8r_gdxk6sj5nm0000gn/T/task-mecca-a65-preview-memwTY/research\"><span class=\"material-nav-icon material-project-initial\" aria-hidden=\"true\">R</span><span class=\"material-nav-label\">research</span></button><button type=\"button\" class=\"material-project-close\" data-close-project=\"/var/folders/07/q_8xp6j90zn8r_gdxk6sj5nm0000gn/T/task-mecca-a65-preview-memwTY/research\" aria-label=\"research 닫기\" title=\"프로젝트 닫기\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"m6 6 12 12M18 6 6 18\"></path></svg></button></div><div class=\"material-project-row \"><button type=\"button\" class=\"material-nav-item material-project-open\" data-project=\"/var/folders/07/q_8xp6j90zn8r_gdxk6sj5nm0000gn/T/task-mecca-a65-preview-memwTY/task-mecca\" title=\"task-mecca · /var/folders/07/q_8xp6j90zn8r_gdxk6sj5nm0000gn/T/task-mecca-a65-preview-memwTY/task-mecca\"><span class=\"material-nav-icon material-project-initial\" aria-hidden=\"true\">T</span><span class=\"material-nav-label\">task-mecca</span></button><button type=\"button\" class=\"material-project-close\" data-close-project=\"/var/folders/07/q_8xp6j90zn8r_gdxk6sj5nm0000gn/T/task-mecca-a65-preview-memwTY/task-mecca\" aria-label=\"task-mecca 닫기\" title=\"프로젝트 닫기\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"m6 6 12 12M18 6 6 18\"></path></svg></button></div></div><div class=\"material-project-opener\"><button type=\"button\" class=\"material-nav-item\" id=\"material-open-project\" aria-expanded=\"false\" aria-controls=\"material-closed-projects\"><span class=\"material-nav-icon\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M12 5v14M5 12h14\"></path></svg></span><span class=\"material-nav-label\">프로젝트 열기</span></button><div id=\"material-closed-projects\" hidden=\"\"><p class=\"material-nav-empty\">닫힌 프로젝트가 없습니다.</p></div></div></section>\n        <section class=\"material-nav-group\" aria-labelledby=\"material-operations\"><h2 id=\"material-operations\">OPERATIONS</h2><button type=\"button\" class=\"material-nav-item\" data-destination=\"workload\" aria-disabled=\"true\" title=\"Subagent Workload · 미연결\"><span class=\"material-nav-icon\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M4 19V9m5 10V4m6 15v-8m5 8V6\"></path></svg></span><span class=\"material-nav-label\">Subagent Workload</span><span class=\"material-unconnected\" aria-hidden=\"true\">미연결</span></button><button type=\"button\" class=\"material-nav-item\" data-destination=\"notifications\" aria-disabled=\"true\" title=\"알림 센터 · 미연결\"><span class=\"material-nav-icon\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M6 9a6 6 0 0 1 12 0v6l2 3H4l2-3z M10 21h4\"></path></svg></span><span class=\"material-nav-label\">알림 센터</span><span class=\"material-unconnected\" aria-hidden=\"true\">미연결</span></button><button type=\"button\" class=\"material-nav-item\" data-destination=\"terminal\" aria-disabled=\"true\" title=\"터미널 · 미연결\"><span class=\"material-nav-icon\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"m4 6 5 6-5 6 M12 18h8\"></path></svg></span><span class=\"material-nav-label\">터미널</span><span class=\"material-unconnected\" aria-hidden=\"true\">미연결</span></button></section>\n        <section class=\"material-nav-group\" aria-labelledby=\"material-help\"><h2 id=\"material-help\">HELP</h2><button type=\"button\" class=\"material-nav-item\" data-destination=\"manual\" aria-disabled=\"true\" title=\"사용자 매뉴얼 · 미연결\"><span class=\"material-nav-icon\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M12 5C8 2 4 3 2 4v16c3-2 6-2 10 0 4-2 7-2 10 0V4c-2-1-6-2-10 1Zm0 0v15\"></path></svg></span><span class=\"material-nav-label\">사용자 매뉴얼</span><span class=\"material-unconnected\" aria-hidden=\"true\">미연결</span></button><button type=\"button\" class=\"material-nav-item\" data-destination=\"release\" aria-disabled=\"true\" title=\"업데이트 내역 · 미연결\"><span class=\"material-nav-icon\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M3 5v5h5 M3 10a9 9 0 1 1 1 7 M12 7v5l3 2\"></path></svg></span><span class=\"material-nav-label\">업데이트 내역</span><span class=\"material-unconnected\" aria-hidden=\"true\">미연결</span></button><button type=\"button\" class=\"material-nav-item\" data-destination=\"issues\" aria-disabled=\"true\" title=\"진단 및 이슈 · 미연결\"><span class=\"material-nav-icon\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M12 8v5m0 4h.01 M10 3h4l8 15-2 3H4l-2-3z\"></path></svg></span><span class=\"material-nav-label\">진단 및 이슈</span><span class=\"material-unconnected\" aria-hidden=\"true\">미연결</span></button></section>\n      </nav>\n      <footer class=\"material-rail-footer\"><div class=\"material-mode-control\" role=\"group\" aria-label=\"사이드바 표시 방식\"><button type=\"button\" data-rail-mode=\"auto\" aria-pressed=\"false\" title=\"자동\">자동</button><button type=\"button\" data-rail-mode=\"expanded\" aria-pressed=\"true\" title=\"펼침\">펼침</button><button type=\"button\" data-rail-mode=\"compact\" aria-pressed=\"false\" title=\"최소\">최소</button></div><p class=\"material-rail-note\">재질 검토 · 하위 화면 미연결</p></footer>\n    </div>\n  </aside><div class=\"material-toolbar material-surface\" data-light-surface=\"\" role=\"toolbar\" aria-label=\"검토 화면 도구\"><span class=\"material-toolbar-title\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5M16 12a4 4 0 1 1-8 0 4 4 0 0 1 8 0\"></path></svg><span>화면 모드</span></span><div class=\"material-theme-control\" role=\"group\" aria-label=\"화면 모드\"><button type=\"button\" data-material-mode=\"light\" aria-pressed=\"false\">Light</button><button type=\"button\" data-material-mode=\"dark\" aria-pressed=\"true\">Dark</button><button type=\"button\" data-material-mode=\"system\" aria-pressed=\"false\">System</button></div><span class=\"material-tool-divider\" aria-hidden=\"true\"></span><button type=\"button\" class=\"material-icon-button\" id=\"material-refresh\" aria-label=\"합성 작업 다시 읽기\" title=\"다시 읽기\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M20 8a8 8 0 1 0 0 8M20 3v5h-5\"></path></svg></button></div><main class=\"material-main\" id=\"material-main\" tabindex=\"-1\"><header class=\"material-page-header\"><h1 id=\"material-view-title\">Global Hub</h1><p>프로젝트를 바로 열고, 필요한 근거부터.</p></header><div id=\"material-card-slot\" aria-busy=\"false\"><article class=\"material-card material-surface\" data-light-surface=\"\" id=\"material-task-card\" aria-labelledby=\"material-card-title\"><header class=\"material-card-header\"><span class=\"material-card-identity\">SYN-1 · release</span><span class=\"material-status\">파일: 보류</span></header><h2 id=\"material-card-title\">SYN-1 핵심 화면 디자인 검토를 기다립니다</h2><p class=\"material-card-description\">열린 프로젝트의 합성 작업입니다. 표면의 곡률과 반사광, 선택·포커스의 깊이를 확인해 주세요.</p><dl class=\"material-card-facts\"><div><dt>프로젝트</dt><dd>release</dd></div><div><dt>담당</dt><dd>미확인</dd></div></dl><div class=\"material-card-actions\"><button type=\"button\" class=\"material-capsule material-select-card\" aria-pressed=\"false\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"m5 12 4 4L19 6\"></path></svg><span>카드 선택</span></button><button type=\"button\" class=\"material-text-button\" id=\"material-show-source\" aria-expanded=\"false\" aria-controls=\"material-source\">원문 보기</button></div><div class=\"material-source\" id=\"material-source\" hidden=\"\"></div><footer class=\"material-card-footer\">합성 데이터 · 실제 서버에서 읽음</footer></article></div><div class=\"material-feedback\" id=\"material-feedback\" role=\"status\" aria-live=\"polite\">합성 작업을 읽었습니다.</div><div class=\"material-review-notes\"><p><strong>재질·탐색 동작 시안</strong> · 사이드바, 툴바, 카드 한 장을 먼저 확인하는 화면입니다.</p><p>프로젝트 선택·닫기·다시 열기, 화면 모드와 카드 선택은 작동합니다. 작업 목록과 상세 화면, SYSTEM의 관리 화면 및 OPERATIONS·HELP의 하위 화면은 아직 연결하지 않았습니다.</p><p>마우스가 가까워지면 빛이 부드럽게 반응합니다. 터치 화면과 모션 감소 환경에는 정적 반사를 제공합니다.</p></div></main></div></div>\n    <script type=\"module\" src=\"/ui/material/review.js\"></script>\n  \n\n</body>",
+          "inspect": {
+            "events": 0,
+            "frames": 0,
+            "writes": 0,
+            "maxAffected": 0,
+            "flushMs": [],
+            "pending": false,
+            "surfaces": 3,
+            "enabled": false
+          },
+          "surfaces": [
+            {
+              "name": "material-rail",
+              "x": 14,
+              "y": 12,
+              "width": 362,
+              "height": 64,
+              "radius": "28px",
+              "background": "linear-gradient(rgb(51, 52, 60), rgb(40, 41, 49) 25%, rgb(32, 33, 39) 64%)",
+              "shadow": "rgba(255, 255, 255, 0.3) 0px 1px 1px 0px inset, rgba(255, 255, 255, 0.1) 0px -1px 1px 0px inset, rgba(255, 255, 255, 0.24) 3px 4px 12px -6px inset, rgba(255, 255, 255, 0.12) -4px -6px 14px -8px inset, rgba(0, 0, 0, 0.45) 0px -16px 28px -18px inset, rgba(0, 0, 0, 0.6) 4px 18px 28px -16px",
+              "strength": "",
+              "xLight": "",
+              "yLight": ""
+            },
+            {
+              "name": "material-toolbar material-surface",
+              "x": 14,
+              "y": 91,
+              "width": 362,
+              "height": 52,
+              "radius": "999px",
+              "background": "linear-gradient(rgb(51, 52, 60), rgb(40, 41, 49) 25%, rgb(32, 33, 39) 64%)",
+              "shadow": "rgba(255, 255, 255, 0.3) 0px 1px 1px 0px inset, rgba(255, 255, 255, 0.1) 0px -1px 1px 0px inset, rgba(255, 255, 255, 0.24) 3px 4px 12px -6px inset, rgba(255, 255, 255, 0.12) -4px -6px 14px -8px inset, rgba(0, 0, 0, 0.45) 0px -16px 28px -18px inset, rgba(0, 0, 0, 0.6) 4px 18px 28px -16px",
+              "strength": "",
+              "xLight": "",
+              "yLight": ""
+            },
+            {
+              "name": "material-task-card",
+              "x": 14,
+              "y": 259.140625,
+              "width": 362,
+              "height": 379.65625,
+              "radius": "30px",
+              "background": "linear-gradient(rgb(51, 52, 60), rgb(40, 41, 49) 25%, rgb(32, 33, 39) 64%)",
+              "shadow": "rgba(255, 255, 255, 0.3) 0px 1px 1px 0px inset, rgba(255, 255, 255, 0.1) 0px -1px 1px 0px inset, rgba(255, 255, 255, 0.24) 3px 4px 12px -6px inset, rgba(255, 255, 255, 0.12) -4px -6px 14px -8px inset, rgba(0, 0, 0, 0.45) 0px -16px 28px -18px inset, rgba(0, 0, 0, 0.6) 4px 18px 28px -16px",
+              "strength": "",
+              "xLight": "",
+              "yLight": ""
+            }
+          ]
+        },
+        "menu": {
+          "width": 390,
+          "scrollWidth": 390,
+          "theme": "dark",
+          "focus": "<button type=\"button\" class=\"material-icon-button material-mobile-toggle\" aria-label=\"메뉴 닫기\" aria-expanded=\"true\" aria-controls=\"material-rail-panel\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M4 6h16M4 12h16M4 18h16\"></path></svg></button>",
+          "inspect": {
+            "events": 0,
+            "frames": 0,
+            "writes": 0,
+            "maxAffected": 0,
+            "flushMs": [],
+            "pending": false,
+            "surfaces": 3,
+            "enabled": false
+          },
+          "surfaces": [
+            {
+              "name": "material-rail",
+              "x": 14,
+              "y": 12,
+              "width": 362,
+              "height": 801.5,
+              "radius": "28px",
+              "background": "linear-gradient(rgb(51, 52, 60), rgb(40, 41, 49) 25%, rgb(32, 33, 39) 64%)",
+              "shadow": "rgba(255, 255, 255, 0.3) 0px 1px 1px 0px inset, rgba(255, 255, 255, 0.1) 0px -1px 1px 0px inset, rgba(255, 255, 255, 0.24) 3px 4px 12px -6px inset, rgba(255, 255, 255, 0.12) -4px -6px 14px -8px inset, rgba(0, 0, 0, 0.45) 0px -16px 28px -18px inset, rgba(0, 0, 0, 0.6) 4px 18px 28px -16px",
+              "strength": "",
+              "xLight": "",
+              "yLight": ""
+            },
+            {
+              "name": "material-toolbar material-surface",
+              "x": 14,
+              "y": 828.5,
+              "width": 362,
+              "height": 52,
+              "radius": "999px",
+              "background": "linear-gradient(rgb(51, 52, 60), rgb(40, 41, 49) 25%, rgb(32, 33, 39) 64%)",
+              "shadow": "rgba(255, 255, 255, 0.3) 0px 1px 1px 0px inset, rgba(255, 255, 255, 0.1) 0px -1px 1px 0px inset, rgba(255, 255, 255, 0.24) 3px 4px 12px -6px inset, rgba(255, 255, 255, 0.12) -4px -6px 14px -8px inset, rgba(0, 0, 0, 0.45) 0px -16px 28px -18px inset, rgba(0, 0, 0, 0.6) 4px 18px 28px -16px",
+              "strength": "",
+              "xLight": "",
+              "yLight": ""
+            },
+            {
+              "name": "material-task-card",
+              "x": 14,
+              "y": 996.640625,
+              "width": 362,
+              "height": 379.65625,
+              "radius": "30px",
+              "background": "linear-gradient(rgb(51, 52, 60), rgb(40, 41, 49) 25%, rgb(32, 33, 39) 64%)",
+              "shadow": "rgba(255, 255, 255, 0.3) 0px 1px 1px 0px inset, rgba(255, 255, 255, 0.1) 0px -1px 1px 0px inset, rgba(255, 255, 255, 0.24) 3px 4px 12px -6px inset, rgba(255, 255, 255, 0.12) -4px -6px 14px -8px inset, rgba(0, 0, 0, 0.45) 0px -16px 28px -18px inset, rgba(0, 0, 0, 0.6) 4px 18px 28px -16px",
+              "strength": "",
+              "xLight": "",
+              "yLight": ""
+            }
+          ]
+        },
+        "selected": {
+          "width": 390,
+          "scrollWidth": 390,
+          "theme": "dark",
+          "focus": "<button type=\"button\" class=\"material-capsule material-select-card\" aria-pressed=\"true\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"m5 12 4 4L19 6\"></path></svg><span>선택됨</span></button>",
+          "inspect": {
+            "events": 0,
+            "frames": 0,
+            "writes": 0,
+            "maxAffected": 0,
+            "flushMs": [],
+            "pending": false,
+            "surfaces": 3,
+            "enabled": false
+          },
+          "surfaces": [
+            {
+              "name": "material-rail",
+              "x": 14,
+              "y": 12,
+              "width": 362,
+              "height": 64,
+              "radius": "28px",
+              "background": "linear-gradient(rgb(51, 52, 60), rgb(40, 41, 49) 25%, rgb(32, 33, 39) 64%)",
+              "shadow": "rgba(255, 255, 255, 0.3) 0px 1px 1px 0px inset, rgba(255, 255, 255, 0.1) 0px -1px 1px 0px inset, rgba(255, 255, 255, 0.24) 3px 4px 12px -6px inset, rgba(255, 255, 255, 0.12) -4px -6px 14px -8px inset, rgba(0, 0, 0, 0.45) 0px -16px 28px -18px inset, rgba(0, 0, 0, 0.6) 4px 18px 28px -16px",
+              "strength": "",
+              "xLight": "",
+              "yLight": ""
+            },
+            {
+              "name": "material-toolbar material-surface",
+              "x": 14,
+              "y": 91,
+              "width": 362,
+              "height": 52,
+              "radius": "999px",
+              "background": "linear-gradient(rgb(51, 52, 60), rgb(40, 41, 49) 25%, rgb(32, 33, 39) 64%)",
+              "shadow": "rgba(255, 255, 255, 0.3) 0px 1px 1px 0px inset, rgba(255, 255, 255, 0.1) 0px -1px 1px 0px inset, rgba(255, 255, 255, 0.24) 3px 4px 12px -6px inset, rgba(255, 255, 255, 0.12) -4px -6px 14px -8px inset, rgba(0, 0, 0, 0.45) 0px -16px 28px -18px inset, rgba(0, 0, 0, 0.6) 4px 18px 28px -16px",
+              "strength": "",
+              "xLight": "",
+              "yLight": ""
+            },
+            {
+              "name": "material-task-card",
+              "x": 14,
+              "y": 259.140625,
+              "width": 362,
+              "height": 379.65625,
+              "radius": "30px",
+              "background": "linear-gradient(rgb(51, 52, 60), rgb(40, 41, 49) 25%, rgb(32, 33, 39) 64%)",
+              "shadow": "rgba(255, 255, 255, 0.3) 0px 1px 1px 0px inset, rgba(255, 255, 255, 0.1) 0px -1px 1px 0px inset, rgba(255, 255, 255, 0.24) 3px 4px 12px -6px inset, rgba(255, 255, 255, 0.12) -4px -6px 14px -8px inset, rgba(0, 0, 0, 0.45) 0px -16px 28px -18px inset, rgba(0, 0, 0, 0.6) 4px 18px 28px -16px",
+              "strength": "",
+              "xLight": "",
+              "yLight": ""
+            }
+          ]
+        },
+        "keyboard": {
+          "width": 390,
+          "scrollWidth": 390,
+          "theme": "dark",
+          "focus": "<button type=\"button\" class=\"material-capsule material-select-card\" aria-pressed=\"true\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"m5 12 4 4L19 6\"></path></svg><span>선택됨</span></button>",
+          "inspect": {
+            "events": 0,
+            "frames": 0,
+            "writes": 0,
+            "maxAffected": 0,
+            "flushMs": [],
+            "pending": false,
+            "surfaces": 3,
+            "enabled": false
+          },
+          "surfaces": [
+            {
+              "name": "material-rail",
+              "x": 14,
+              "y": 12,
+              "width": 362,
+              "height": 64,
+              "radius": "28px",
+              "background": "linear-gradient(rgb(51, 52, 60), rgb(40, 41, 49) 25%, rgb(32, 33, 39) 64%)",
+              "shadow": "rgba(255, 255, 255, 0.3) 0px 1px 1px 0px inset, rgba(255, 255, 255, 0.1) 0px -1px 1px 0px inset, rgba(255, 255, 255, 0.24) 3px 4px 12px -6px inset, rgba(255, 255, 255, 0.12) -4px -6px 14px -8px inset, rgba(0, 0, 0, 0.45) 0px -16px 28px -18px inset, rgba(0, 0, 0, 0.6) 4px 18px 28px -16px",
+              "strength": "",
+              "xLight": "",
+              "yLight": ""
+            },
+            {
+              "name": "material-toolbar material-surface",
+              "x": 14,
+              "y": 91,
+              "width": 362,
+              "height": 52,
+              "radius": "999px",
+              "background": "linear-gradient(rgb(51, 52, 60), rgb(40, 41, 49) 25%, rgb(32, 33, 39) 64%)",
+              "shadow": "rgba(255, 255, 255, 0.3) 0px 1px 1px 0px inset, rgba(255, 255, 255, 0.1) 0px -1px 1px 0px inset, rgba(255, 255, 255, 0.24) 3px 4px 12px -6px inset, rgba(255, 255, 255, 0.12) -4px -6px 14px -8px inset, rgba(0, 0, 0, 0.45) 0px -16px 28px -18px inset, rgba(0, 0, 0, 0.6) 4px 18px 28px -16px",
+              "strength": "",
+              "xLight": "",
+              "yLight": ""
+            },
+            {
+              "name": "material-task-card",
+              "x": 14,
+              "y": 259.140625,
+              "width": 362,
+              "height": 379.65625,
+              "radius": "30px",
+              "background": "linear-gradient(rgb(51, 52, 60), rgb(40, 41, 49) 25%, rgb(32, 33, 39) 64%)",
+              "shadow": "rgba(255, 255, 255, 0.3) 0px 1px 1px 0px inset, rgba(255, 255, 255, 0.1) 0px -1px 1px 0px inset, rgba(255, 255, 255, 0.24) 3px 4px 12px -6px inset, rgba(255, 255, 255, 0.12) -4px -6px 14px -8px inset, rgba(0, 0, 0, 0.45) 0px -16px 28px -18px inset, rgba(0, 0, 0, 0.6) 4px 18px 28px -16px",
+              "strength": "",
+              "xLight": "",
+              "yLight": ""
+            }
+          ]
+        },
+        "focusOutline": {
+          "style": "solid",
+          "width": "2px"
+        }
+      },
+      "failure": "locator.click: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('[data-destination=\"workload\"]')\u001b[22m\n\u001b[2m    - locator resolved to <button type=\"button\" aria-disabled=\"true\" class=\"material-nav-item\" data-destination=\"workload\" title=\"Subagent Workload · 미연결\">…</button>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m    58 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m       - element is not enabled\u001b[22m\n\u001b[2m     - retrying click action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n\n    at /Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/docs/evidence/a65-material-slice/capture.cjs:59:83",
+      "passed": false
+    },
+    {
+      "name": "mobile",
+      "theme": "light",
+      "errors": [],
+      "checks": {
+        "three_actual_projects": true,
+        "mobile_escape_focus_return": true,
+        "touch_static": true,
+        "keyboard_focus_visible": true,
+        "actual_source_read": true,
+        "direct_project_context": true,
+        "local_close_reopen": true
+      },
+      "states": {
+        "default": {
+          "width": 390,
+          "scrollWidth": 390,
+          "theme": "light",
+          "focus": "<body>\n    <!--\n      THESIS: A small, working material slice restores the original Mecca navigation grammar.\n      OWN-WORLD: Original Task Mecca mark, neutral Smoke material, Pane-derived continuous curves and light.\n      STORY: Global Hub, directly opened projects, then Operations and Help; one real synthetic task card.\n      FIRST VIEWPORT: A 32px rail, narrow floating toolbar and 30px card expose the same material at useful scales.\n      FORM: User-approved revision; top-focused reflections, asymmetric thin rim, inner lower shadow, raised selection.\n      FINISH: unreviewed and undocumented is unfinished; this slice awaits independent review and user acceptance.\n    -->\n    <a class=\"material-skip\" href=\"#material-main\">본문으로 건너뛰기</a>\n    <div id=\"material-review\"><div class=\"material-layout\" data-rail-mode=\"expanded\"><aside class=\"material-rail material-surface\" data-light-surface=\"\" id=\"material-rail\" aria-label=\"주 탐색\">\n    <div class=\"material-brand-row\"><a class=\"material-brand\" href=\"/ui/material-review.html\" aria-label=\"Task Mecca 재질 검토 홈\"><img src=\"/logo.svg\" alt=\"\"><strong>Task Mecca</strong></a><button type=\"button\" class=\"material-icon-button material-mobile-toggle\" aria-label=\"메뉴 열기\" aria-expanded=\"false\" aria-controls=\"material-rail-panel\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M4 6h16M4 12h16M4 18h16\"></path></svg></button></div>\n    <div class=\"material-rail-panel\" id=\"material-rail-panel\" hidden=\"\">\n      <nav class=\"material-nav\" aria-label=\"기존 메뉴 배치 시안\">\n        <section class=\"material-nav-group\" aria-labelledby=\"material-system\"><h2 id=\"material-system\">SYSTEM</h2><button type=\"button\" class=\"material-nav-item\" data-destination=\"hub\" title=\"Global Hub\" aria-current=\"page\"><span class=\"material-nav-icon\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M3 10 12 3l9 7v10H3z M9 20v-7h6v7\"></path></svg></span><span class=\"material-nav-label\">Global Hub</span></button><button type=\"button\" class=\"material-nav-item\" data-destination=\"storage\" aria-disabled=\"true\" title=\"저장소 관리 · 미연결\"><span class=\"material-nav-icon\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M4 4h16v6H4z M4 14h16v6H4z M7 7h.01M7 17h.01\"></path></svg></span><span class=\"material-nav-label\">저장소 관리</span><span class=\"material-unconnected\" aria-hidden=\"true\">미연결</span></button><button type=\"button\" class=\"material-nav-item\" data-destination=\"preview\" aria-disabled=\"true\" title=\"Preview Builds · 미연결\"><span class=\"material-nav-icon\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M3 7h7l2-3h9v16H3z\"></path></svg></span><span class=\"material-nav-label\">Preview Builds</span><span class=\"material-unconnected\" aria-hidden=\"true\">미연결</span></button></section>\n        <section class=\"material-nav-group\" aria-labelledby=\"material-backlogs\"><h2 id=\"material-backlogs\">BACKLOGS</h2><div id=\"material-projects\"><div class=\"material-project-row \"><button type=\"button\" class=\"material-nav-item material-project-open\" data-project=\"/var/folders/07/q_8xp6j90zn8r_gdxk6sj5nm0000gn/T/task-mecca-a65-preview-memwTY/release\" title=\"release · /var/folders/07/q_8xp6j90zn8r_gdxk6sj5nm0000gn/T/task-mecca-a65-preview-memwTY/release\"><span class=\"material-nav-icon material-project-initial\" aria-hidden=\"true\">R</span><span class=\"material-nav-label\">release</span></button><button type=\"button\" class=\"material-project-close\" data-close-project=\"/var/folders/07/q_8xp6j90zn8r_gdxk6sj5nm0000gn/T/task-mecca-a65-preview-memwTY/release\" aria-label=\"release 닫기\" title=\"프로젝트 닫기\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"m6 6 12 12M18 6 6 18\"></path></svg></button></div><div class=\"material-project-row \"><button type=\"button\" class=\"material-nav-item material-project-open\" data-project=\"/var/folders/07/q_8xp6j90zn8r_gdxk6sj5nm0000gn/T/task-mecca-a65-preview-memwTY/research\" title=\"research · /var/folders/07/q_8xp6j90zn8r_gdxk6sj5nm0000gn/T/task-mecca-a65-preview-memwTY/research\"><span class=\"material-nav-icon material-project-initial\" aria-hidden=\"true\">R</span><span class=\"material-nav-label\">research</span></button><button type=\"button\" class=\"material-project-close\" data-close-project=\"/var/folders/07/q_8xp6j90zn8r_gdxk6sj5nm0000gn/T/task-mecca-a65-preview-memwTY/research\" aria-label=\"research 닫기\" title=\"프로젝트 닫기\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"m6 6 12 12M18 6 6 18\"></path></svg></button></div><div class=\"material-project-row \"><button type=\"button\" class=\"material-nav-item material-project-open\" data-project=\"/var/folders/07/q_8xp6j90zn8r_gdxk6sj5nm0000gn/T/task-mecca-a65-preview-memwTY/task-mecca\" title=\"task-mecca · /var/folders/07/q_8xp6j90zn8r_gdxk6sj5nm0000gn/T/task-mecca-a65-preview-memwTY/task-mecca\"><span class=\"material-nav-icon material-project-initial\" aria-hidden=\"true\">T</span><span class=\"material-nav-label\">task-mecca</span></button><button type=\"button\" class=\"material-project-close\" data-close-project=\"/var/folders/07/q_8xp6j90zn8r_gdxk6sj5nm0000gn/T/task-mecca-a65-preview-memwTY/task-mecca\" aria-label=\"task-mecca 닫기\" title=\"프로젝트 닫기\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"m6 6 12 12M18 6 6 18\"></path></svg></button></div></div><div class=\"material-project-opener\"><button type=\"button\" class=\"material-nav-item\" id=\"material-open-project\" aria-expanded=\"false\" aria-controls=\"material-closed-projects\"><span class=\"material-nav-icon\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M12 5v14M5 12h14\"></path></svg></span><span class=\"material-nav-label\">프로젝트 열기</span></button><div id=\"material-closed-projects\" hidden=\"\"><p class=\"material-nav-empty\">닫힌 프로젝트가 없습니다.</p></div></div></section>\n        <section class=\"material-nav-group\" aria-labelledby=\"material-operations\"><h2 id=\"material-operations\">OPERATIONS</h2><button type=\"button\" class=\"material-nav-item\" data-destination=\"workload\" aria-disabled=\"true\" title=\"Subagent Workload · 미연결\"><span class=\"material-nav-icon\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M4 19V9m5 10V4m6 15v-8m5 8V6\"></path></svg></span><span class=\"material-nav-label\">Subagent Workload</span><span class=\"material-unconnected\" aria-hidden=\"true\">미연결</span></button><button type=\"button\" class=\"material-nav-item\" data-destination=\"notifications\" aria-disabled=\"true\" title=\"알림 센터 · 미연결\"><span class=\"material-nav-icon\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M6 9a6 6 0 0 1 12 0v6l2 3H4l2-3z M10 21h4\"></path></svg></span><span class=\"material-nav-label\">알림 센터</span><span class=\"material-unconnected\" aria-hidden=\"true\">미연결</span></button><button type=\"button\" class=\"material-nav-item\" data-destination=\"terminal\" aria-disabled=\"true\" title=\"터미널 · 미연결\"><span class=\"material-nav-icon\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"m4 6 5 6-5 6 M12 18h8\"></path></svg></span><span class=\"material-nav-label\">터미널</span><span class=\"material-unconnected\" aria-hidden=\"true\">미연결</span></button></section>\n        <section class=\"material-nav-group\" aria-labelledby=\"material-help\"><h2 id=\"material-help\">HELP</h2><button type=\"button\" class=\"material-nav-item\" data-destination=\"manual\" aria-disabled=\"true\" title=\"사용자 매뉴얼 · 미연결\"><span class=\"material-nav-icon\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M12 5C8 2 4 3 2 4v16c3-2 6-2 10 0 4-2 7-2 10 0V4c-2-1-6-2-10 1Zm0 0v15\"></path></svg></span><span class=\"material-nav-label\">사용자 매뉴얼</span><span class=\"material-unconnected\" aria-hidden=\"true\">미연결</span></button><button type=\"button\" class=\"material-nav-item\" data-destination=\"release\" aria-disabled=\"true\" title=\"업데이트 내역 · 미연결\"><span class=\"material-nav-icon\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M3 5v5h5 M3 10a9 9 0 1 1 1 7 M12 7v5l3 2\"></path></svg></span><span class=\"material-nav-label\">업데이트 내역</span><span class=\"material-unconnected\" aria-hidden=\"true\">미연결</span></button><button type=\"button\" class=\"material-nav-item\" data-destination=\"issues\" aria-disabled=\"true\" title=\"진단 및 이슈 · 미연결\"><span class=\"material-nav-icon\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M12 8v5m0 4h.01 M10 3h4l8 15-2 3H4l-2-3z\"></path></svg></span><span class=\"material-nav-label\">진단 및 이슈</span><span class=\"material-unconnected\" aria-hidden=\"true\">미연결</span></button></section>\n      </nav>\n      <footer class=\"material-rail-footer\"><div class=\"material-mode-control\" role=\"group\" aria-label=\"사이드바 표시 방식\"><button type=\"button\" data-rail-mode=\"auto\" aria-pressed=\"false\" title=\"자동\">자동</button><button type=\"button\" data-rail-mode=\"expanded\" aria-pressed=\"true\" title=\"펼침\">펼침</button><button type=\"button\" data-rail-mode=\"compact\" aria-pressed=\"false\" title=\"최소\">최소</button></div><p class=\"material-rail-note\">재질 검토 · 하위 화면 미연결</p></footer>\n    </div>\n  </aside><div class=\"material-toolbar material-surface\" data-light-surface=\"\" role=\"toolbar\" aria-label=\"검토 화면 도구\"><span class=\"material-toolbar-title\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5M16 12a4 4 0 1 1-8 0 4 4 0 0 1 8 0\"></path></svg><span>화면 모드</span></span><div class=\"material-theme-control\" role=\"group\" aria-label=\"화면 모드\"><button type=\"button\" data-material-mode=\"light\" aria-pressed=\"true\">Light</button><button type=\"button\" data-material-mode=\"dark\" aria-pressed=\"false\">Dark</button><button type=\"button\" data-material-mode=\"system\" aria-pressed=\"false\">System</button></div><span class=\"material-tool-divider\" aria-hidden=\"true\"></span><button type=\"button\" class=\"material-icon-button\" id=\"material-refresh\" aria-label=\"합성 작업 다시 읽기\" title=\"다시 읽기\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M20 8a8 8 0 1 0 0 8M20 3v5h-5\"></path></svg></button></div><main class=\"material-main\" id=\"material-main\" tabindex=\"-1\"><header class=\"material-page-header\"><h1 id=\"material-view-title\">Global Hub</h1><p>프로젝트를 바로 열고, 필요한 근거부터.</p></header><div id=\"material-card-slot\" aria-busy=\"false\"><article class=\"material-card material-surface\" data-light-surface=\"\" id=\"material-task-card\" aria-labelledby=\"material-card-title\"><header class=\"material-card-header\"><span class=\"material-card-identity\">SYN-1 · release</span><span class=\"material-status\">파일: 보류</span></header><h2 id=\"material-card-title\">SYN-1 핵심 화면 디자인 검토를 기다립니다</h2><p class=\"material-card-description\">열린 프로젝트의 합성 작업입니다. 표면의 곡률과 반사광, 선택·포커스의 깊이를 확인해 주세요.</p><dl class=\"material-card-facts\"><div><dt>프로젝트</dt><dd>release</dd></div><div><dt>담당</dt><dd>미확인</dd></div></dl><div class=\"material-card-actions\"><button type=\"button\" class=\"material-capsule material-select-card\" aria-pressed=\"false\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"m5 12 4 4L19 6\"></path></svg><span>카드 선택</span></button><button type=\"button\" class=\"material-text-button\" id=\"material-show-source\" aria-expanded=\"false\" aria-controls=\"material-source\">원문 보기</button></div><div class=\"material-source\" id=\"material-source\" hidden=\"\"></div><footer class=\"material-card-footer\">합성 데이터 · 실제 서버에서 읽음</footer></article></div><div class=\"material-feedback\" id=\"material-feedback\" role=\"status\" aria-live=\"polite\">합성 작업을 읽었습니다.</div><div class=\"material-review-notes\"><p><strong>재질·탐색 동작 시안</strong> · 사이드바, 툴바, 카드 한 장을 먼저 확인하는 화면입니다.</p><p>프로젝트 선택·닫기·다시 열기, 화면 모드와 카드 선택은 작동합니다. 작업 목록과 상세 화면, SYSTEM의 관리 화면 및 OPERATIONS·HELP의 하위 화면은 아직 연결하지 않았습니다.</p><p>마우스가 가까워지면 빛이 부드럽게 반응합니다. 터치 화면과 모션 감소 환경에는 정적 반사를 제공합니다.</p></div></main></div></div>\n    <script type=\"module\" src=\"/ui/material/review.js\"></script>\n  \n\n</body>",
+          "inspect": {
+            "events": 0,
+            "frames": 0,
+            "writes": 0,
+            "maxAffected": 0,
+            "flushMs": [],
+            "pending": false,
+            "surfaces": 3,
+            "enabled": false
+          },
+          "surfaces": [
+            {
+              "name": "material-rail",
+              "x": 14,
+              "y": 12,
+              "width": 362,
+              "height": 64,
+              "radius": "28px",
+              "background": "linear-gradient(rgb(255, 255, 255), rgb(240, 243, 246) 25%, rgb(231, 235, 240) 64%)",
+              "shadow": "rgb(255, 255, 255) 0px 1px 1px 0px inset, rgba(180, 190, 206, 0.27) 0px -1px 1px 0px inset, rgb(255, 255, 255) 3px 4px 12px -6px inset, rgba(123, 135, 153, 0.208) -4px -6px 14px -8px inset, rgba(104, 119, 141, 0.26) 0px -16px 28px -18px inset, rgba(88, 101, 120, 0.39) 4px 18px 28px -16px",
+              "strength": "",
+              "xLight": "",
+              "yLight": ""
+            },
+            {
+              "name": "material-toolbar material-surface",
+              "x": 14,
+              "y": 91,
+              "width": 362,
+              "height": 52,
+              "radius": "999px",
+              "background": "linear-gradient(rgb(255, 255, 255), rgb(240, 243, 246) 25%, rgb(231, 235, 240) 64%)",
+              "shadow": "rgb(255, 255, 255) 0px 1px 1px 0px inset, rgba(180, 190, 206, 0.27) 0px -1px 1px 0px inset, rgb(255, 255, 255) 3px 4px 12px -6px inset, rgba(123, 135, 153, 0.208) -4px -6px 14px -8px inset, rgba(104, 119, 141, 0.26) 0px -16px 28px -18px inset, rgba(88, 101, 120, 0.39) 4px 18px 28px -16px",
+              "strength": "",
+              "xLight": "",
+              "yLight": ""
+            },
+            {
+              "name": "material-task-card",
+              "x": 14,
+              "y": 259.140625,
+              "width": 362,
+              "height": 379.65625,
+              "radius": "30px",
+              "background": "linear-gradient(rgb(255, 255, 255), rgb(240, 243, 246) 25%, rgb(231, 235, 240) 64%)",
+              "shadow": "rgb(255, 255, 255) 0px 1px 1px 0px inset, rgba(180, 190, 206, 0.27) 0px -1px 1px 0px inset, rgb(255, 255, 255) 3px 4px 12px -6px inset, rgba(123, 135, 153, 0.208) -4px -6px 14px -8px inset, rgba(104, 119, 141, 0.26) 0px -16px 28px -18px inset, rgba(88, 101, 120, 0.39) 4px 18px 28px -16px",
+              "strength": "",
+              "xLight": "",
+              "yLight": ""
+            }
+          ]
+        },
+        "menu": {
+          "width": 390,
+          "scrollWidth": 390,
+          "theme": "light",
+          "focus": "<button type=\"button\" class=\"material-icon-button material-mobile-toggle\" aria-label=\"메뉴 닫기\" aria-expanded=\"true\" aria-controls=\"material-rail-panel\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M4 6h16M4 12h16M4 18h16\"></path></svg></button>",
+          "inspect": {
+            "events": 0,
+            "frames": 0,
+            "writes": 0,
+            "maxAffected": 0,
+            "flushMs": [],
+            "pending": false,
+            "surfaces": 3,
+            "enabled": false
+          },
+          "surfaces": [
+            {
+              "name": "material-rail",
+              "x": 14,
+              "y": 12,
+              "width": 362,
+              "height": 801.5,
+              "radius": "28px",
+              "background": "linear-gradient(rgb(255, 255, 255), rgb(240, 243, 246) 25%, rgb(231, 235, 240) 64%)",
+              "shadow": "rgb(255, 255, 255) 0px 1px 1px 0px inset, rgba(180, 190, 206, 0.27) 0px -1px 1px 0px inset, rgb(255, 255, 255) 3px 4px 12px -6px inset, rgba(123, 135, 153, 0.208) -4px -6px 14px -8px inset, rgba(104, 119, 141, 0.26) 0px -16px 28px -18px inset, rgba(88, 101, 120, 0.39) 4px 18px 28px -16px",
+              "strength": "",
+              "xLight": "",
+              "yLight": ""
+            },
+            {
+              "name": "material-toolbar material-surface",
+              "x": 14,
+              "y": 828.5,
+              "width": 362,
+              "height": 52,
+              "radius": "999px",
+              "background": "linear-gradient(rgb(255, 255, 255), rgb(240, 243, 246) 25%, rgb(231, 235, 240) 64%)",
+              "shadow": "rgb(255, 255, 255) 0px 1px 1px 0px inset, rgba(180, 190, 206, 0.27) 0px -1px 1px 0px inset, rgb(255, 255, 255) 3px 4px 12px -6px inset, rgba(123, 135, 153, 0.208) -4px -6px 14px -8px inset, rgba(104, 119, 141, 0.26) 0px -16px 28px -18px inset, rgba(88, 101, 120, 0.39) 4px 18px 28px -16px",
+              "strength": "",
+              "xLight": "",
+              "yLight": ""
+            },
+            {
+              "name": "material-task-card",
+              "x": 14,
+              "y": 996.640625,
+              "width": 362,
+              "height": 379.65625,
+              "radius": "30px",
+              "background": "linear-gradient(rgb(255, 255, 255), rgb(240, 243, 246) 25%, rgb(231, 235, 240) 64%)",
+              "shadow": "rgb(255, 255, 255) 0px 1px 1px 0px inset, rgba(180, 190, 206, 0.27) 0px -1px 1px 0px inset, rgb(255, 255, 255) 3px 4px 12px -6px inset, rgba(123, 135, 153, 0.208) -4px -6px 14px -8px inset, rgba(104, 119, 141, 0.26) 0px -16px 28px -18px inset, rgba(88, 101, 120, 0.39) 4px 18px 28px -16px",
+              "strength": "",
+              "xLight": "",
+              "yLight": ""
+            }
+          ]
+        },
+        "selected": {
+          "width": 390,
+          "scrollWidth": 390,
+          "theme": "light",
+          "focus": "<button type=\"button\" class=\"material-capsule material-select-card\" aria-pressed=\"true\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"m5 12 4 4L19 6\"></path></svg><span>선택됨</span></button>",
+          "inspect": {
+            "events": 0,
+            "frames": 0,
+            "writes": 0,
+            "maxAffected": 0,
+            "flushMs": [],
+            "pending": false,
+            "surfaces": 3,
+            "enabled": false
+          },
+          "surfaces": [
+            {
+              "name": "material-rail",
+              "x": 14,
+              "y": 12,
+              "width": 362,
+              "height": 64,
+              "radius": "28px",
+              "background": "linear-gradient(rgb(255, 255, 255), rgb(240, 243, 246) 25%, rgb(231, 235, 240) 64%)",
+              "shadow": "rgb(255, 255, 255) 0px 1px 1px 0px inset, rgba(180, 190, 206, 0.27) 0px -1px 1px 0px inset, rgb(255, 255, 255) 3px 4px 12px -6px inset, rgba(123, 135, 153, 0.208) -4px -6px 14px -8px inset, rgba(104, 119, 141, 0.26) 0px -16px 28px -18px inset, rgba(88, 101, 120, 0.39) 4px 18px 28px -16px",
+              "strength": "",
+              "xLight": "",
+              "yLight": ""
+            },
+            {
+              "name": "material-toolbar material-surface",
+              "x": 14,
+              "y": 91,
+              "width": 362,
+              "height": 52,
+              "radius": "999px",
+              "background": "linear-gradient(rgb(255, 255, 255), rgb(240, 243, 246) 25%, rgb(231, 235, 240) 64%)",
+              "shadow": "rgb(255, 255, 255) 0px 1px 1px 0px inset, rgba(180, 190, 206, 0.27) 0px -1px 1px 0px inset, rgb(255, 255, 255) 3px 4px 12px -6px inset, rgba(123, 135, 153, 0.208) -4px -6px 14px -8px inset, rgba(104, 119, 141, 0.26) 0px -16px 28px -18px inset, rgba(88, 101, 120, 0.39) 4px 18px 28px -16px",
+              "strength": "",
+              "xLight": "",
+              "yLight": ""
+            },
+            {
+              "name": "material-task-card",
+              "x": 14,
+              "y": 259.140625,
+              "width": 362,
+              "height": 379.65625,
+              "radius": "30px",
+              "background": "linear-gradient(rgb(255, 255, 255), rgb(240, 243, 246) 25%, rgb(231, 235, 240) 64%)",
+              "shadow": "rgb(255, 255, 255) 0px 1px 1px 0px inset, rgba(180, 190, 206, 0.27) 0px -1px 1px 0px inset, rgb(255, 255, 255) 3px 4px 12px -6px inset, rgba(123, 135, 153, 0.208) -4px -6px 14px -8px inset, rgba(104, 119, 141, 0.26) 0px -16px 28px -18px inset, rgba(88, 101, 120, 0.39) 4px 18px 28px -16px",
+              "strength": "",
+              "xLight": "",
+              "yLight": ""
+            }
+          ]
+        },
+        "keyboard": {
+          "width": 390,
+          "scrollWidth": 390,
+          "theme": "light",
+          "focus": "<button type=\"button\" class=\"material-capsule material-select-card\" aria-pressed=\"true\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"m5 12 4 4L19 6\"></path></svg><span>선택됨</span></button>",
+          "inspect": {
+            "events": 0,
+            "frames": 0,
+            "writes": 0,
+            "maxAffected": 0,
+            "flushMs": [],
+            "pending": false,
+            "surfaces": 3,
+            "enabled": false
+          },
+          "surfaces": [
+            {
+              "name": "material-rail",
+              "x": 14,
+              "y": 12,
+              "width": 362,
+              "height": 64,
+              "radius": "28px",
+              "background": "linear-gradient(rgb(255, 255, 255), rgb(240, 243, 246) 25%, rgb(231, 235, 240) 64%)",
+              "shadow": "rgb(255, 255, 255) 0px 1px 1px 0px inset, rgba(180, 190, 206, 0.27) 0px -1px 1px 0px inset, rgb(255, 255, 255) 3px 4px 12px -6px inset, rgba(123, 135, 153, 0.208) -4px -6px 14px -8px inset, rgba(104, 119, 141, 0.26) 0px -16px 28px -18px inset, rgba(88, 101, 120, 0.39) 4px 18px 28px -16px",
+              "strength": "",
+              "xLight": "",
+              "yLight": ""
+            },
+            {
+              "name": "material-toolbar material-surface",
+              "x": 14,
+              "y": 91,
+              "width": 362,
+              "height": 52,
+              "radius": "999px",
+              "background": "linear-gradient(rgb(255, 255, 255), rgb(240, 243, 246) 25%, rgb(231, 235, 240) 64%)",
+              "shadow": "rgb(255, 255, 255) 0px 1px 1px 0px inset, rgba(180, 190, 206, 0.27) 0px -1px 1px 0px inset, rgb(255, 255, 255) 3px 4px 12px -6px inset, rgba(123, 135, 153, 0.208) -4px -6px 14px -8px inset, rgba(104, 119, 141, 0.26) 0px -16px 28px -18px inset, rgba(88, 101, 120, 0.39) 4px 18px 28px -16px",
+              "strength": "",
+              "xLight": "",
+              "yLight": ""
+            },
+            {
+              "name": "material-task-card",
+              "x": 14,
+              "y": 259.140625,
+              "width": 362,
+              "height": 379.65625,
+              "radius": "30px",
+              "background": "linear-gradient(rgb(255, 255, 255), rgb(240, 243, 246) 25%, rgb(231, 235, 240) 64%)",
+              "shadow": "rgb(255, 255, 255) 0px 1px 1px 0px inset, rgba(180, 190, 206, 0.27) 0px -1px 1px 0px inset, rgb(255, 255, 255) 3px 4px 12px -6px inset, rgba(123, 135, 153, 0.208) -4px -6px 14px -8px inset, rgba(104, 119, 141, 0.26) 0px -16px 28px -18px inset, rgba(88, 101, 120, 0.39) 4px 18px 28px -16px",
+              "strength": "",
+              "xLight": "",
+              "yLight": ""
+            }
+          ]
+        },
+        "focusOutline": {
+          "style": "solid",
+          "width": "2px"
+        }
+      },
+      "failure": "locator.click: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('[data-destination=\"workload\"]')\u001b[22m\n\u001b[2m    - locator resolved to <button type=\"button\" aria-disabled=\"true\" class=\"material-nav-item\" data-destination=\"workload\" title=\"Subagent Workload · 미연결\">…</button>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m    58 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m       - element is not enabled\u001b[22m\n\u001b[2m     - retrying click action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n\n    at /Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/docs/evidence/a65-material-slice/capture.cjs:59:83",
+      "passed": false
+    }
+  ],
+  "errors": [],
+  "requests": [
+    {
+      "url": "http://127.0.0.1:57069/api/overview?page_size=4",
+      "method": "GET"
+    },
+    {
+      "url": "http://127.0.0.1:57069/api/overview?page_size=4",
+      "method": "GET"
+    },
+    {
+      "url": "http://127.0.0.1:57069/api/backlog/tasks?project=%2Fvar%2Ffolders%2F07%2Fq_8xp6j90zn8r_gdxk6sj5nm0000gn%2FT%2Ftask-mecca-a65-preview-memwTY%2Frelease&sort=id_asc&page_size=10&page=1",
+      "method": "GET"
+    },
+    {
+      "url": "http://127.0.0.1:57069/api/tasks/SYN-1?project=%2Fvar%2Ffolders%2F07%2Fq_8xp6j90zn8r_gdxk6sj5nm0000gn%2FT%2Ftask-mecca-a65-preview-memwTY%2Frelease&projection=content",
+      "method": "GET"
+    },
+    {
+      "url": "http://127.0.0.1:57069/api/backlog/tasks?project=%2Fvar%2Ffolders%2F07%2Fq_8xp6j90zn8r_gdxk6sj5nm0000gn%2FT%2Ftask-mecca-a65-preview-memwTY%2Fresearch&sort=id_asc&page_size=10&page=1",
+      "method": "GET"
+    },
+    {
+      "url": "http://127.0.0.1:57069/api/backlog/tasks?project=%2Fvar%2Ffolders%2F07%2Fq_8xp6j90zn8r_gdxk6sj5nm0000gn%2FT%2Ftask-mecca-a65-preview-memwTY%2Frelease&sort=id_asc&page_size=10&page=1",
+      "method": "GET"
+    },
+    {
+      "url": "http://127.0.0.1:57069/api/backlog/tasks?project=%2Fvar%2Ffolders%2F07%2Fq_8xp6j90zn8r_gdxk6sj5nm0000gn%2FT%2Ftask-mecca-a65-preview-memwTY%2Fresearch&sort=id_asc&page_size=10&page=1",
+      "method": "GET"
+    },
+    {
+      "url": "http://127.0.0.1:57069/api/overview?page_size=4",
+      "method": "GET"
+    },
+    {
+      "url": "http://127.0.0.1:57069/api/backlog/tasks?project=%2Fvar%2Ffolders%2F07%2Fq_8xp6j90zn8r_gdxk6sj5nm0000gn%2FT%2Ftask-mecca-a65-preview-memwTY%2Frelease&sort=id_asc&page_size=10&page=1",
+      "method": "GET"
+    },
+    {
+      "url": "http://127.0.0.1:57069/api/tasks/SYN-1?project=%2Fvar%2Ffolders%2F07%2Fq_8xp6j90zn8r_gdxk6sj5nm0000gn%2FT%2Ftask-mecca-a65-preview-memwTY%2Frelease&projection=content",
+      "method": "GET"
+    },
+    {
+      "url": "http://127.0.0.1:57069/api/backlog/tasks?project=%2Fvar%2Ffolders%2F07%2Fq_8xp6j90zn8r_gdxk6sj5nm0000gn%2FT%2Ftask-mecca-a65-preview-memwTY%2Fresearch&sort=id_asc&page_size=10&page=1",
+      "method": "GET"
+    },
+    {
+      "url": "http://127.0.0.1:57069/api/backlog/tasks?project=%2Fvar%2Ffolders%2F07%2Fq_8xp6j90zn8r_gdxk6sj5nm0000gn%2FT%2Ftask-mecca-a65-preview-memwTY%2Frelease&sort=id_asc&page_size=10&page=1",
+      "method": "GET"
+    },
+    {
+      "url": "http://127.0.0.1:57069/api/backlog/tasks?project=%2Fvar%2Ffolders%2F07%2Fq_8xp6j90zn8r_gdxk6sj5nm0000gn%2FT%2Ftask-mecca-a65-preview-memwTY%2Fresearch&sort=id_asc&page_size=10&page=1",
+      "method": "GET"
+    },
+    {
+      "url": "http://127.0.0.1:57069/api/overview?page_size=4",
+      "method": "GET"
+    },
+    {
+      "url": "http://127.0.0.1:57069/api/backlog/tasks?project=%2Fvar%2Ffolders%2F07%2Fq_8xp6j90zn8r_gdxk6sj5nm0000gn%2FT%2Ftask-mecca-a65-preview-memwTY%2Frelease&sort=id_asc&page_size=10&page=1",
+      "method": "GET"
+    },
+    {
+      "url": "http://127.0.0.1:57069/api/tasks/SYN-1?project=%2Fvar%2Ffolders%2F07%2Fq_8xp6j90zn8r_gdxk6sj5nm0000gn%2FT%2Ftask-mecca-a65-preview-memwTY%2Frelease&projection=content",
+      "method": "GET"
+    },
+    {
+      "url": "http://127.0.0.1:57069/api/backlog/tasks?project=%2Fvar%2Ffolders%2F07%2Fq_8xp6j90zn8r_gdxk6sj5nm0000gn%2FT%2Ftask-mecca-a65-preview-memwTY%2Fresearch&sort=id_asc&page_size=10&page=1",
+      "method": "GET"
+    },
+    {
+      "url": "http://127.0.0.1:57069/api/backlog/tasks?project=%2Fvar%2Ffolders%2F07%2Fq_8xp6j90zn8r_gdxk6sj5nm0000gn%2FT%2Ftask-mecca-a65-preview-memwTY%2Frelease&sort=id_asc&page_size=10&page=1",
+      "method": "GET"
+    },
+    {
+      "url": "http://127.0.0.1:57069/api/backlog/tasks?project=%2Fvar%2Ffolders%2F07%2Fq_8xp6j90zn8r_gdxk6sj5nm0000gn%2FT%2Ftask-mecca-a65-preview-memwTY%2Fresearch&sort=id_asc&page_size=10&page=1",
+      "method": "GET"
+    }
+  ],
+  "browser": "156.0.8078.4",
+  "reduced_motion": {
+    "width": 1440,
+    "scrollWidth": 1440,
+    "theme": "dark",
+    "focus": "<body>\n    <!--\n      THESIS: A small, working material slice restores the original Mecca navigation grammar.\n      OWN-WORLD: Original Task Mecca mark, neutral Smoke material, Pane-derived continuous curves and light.\n      STORY: Global Hub, directly opened projects, then Operations and Help; one real synthetic task card.\n      FIRST VIEWPORT: A 32px rail, narrow floating toolbar and 30px card expose the same material at useful scales.\n      FORM: User-approved revision; top-focused reflections, asymmetric thin rim, inner lower shadow, raised selection.\n      FINISH: unreviewed and undocumented is unfinished; this slice awaits independent review and user acceptance.\n    -->\n    <a class=\"material-skip\" href=\"#material-main\">본문으로 건너뛰기</a>\n    <div id=\"material-review\"><div class=\"material-layout\" data-rail-mode=\"expanded\"><aside class=\"material-rail material-surface\" data-light-surface=\"\" id=\"material-rail\" aria-label=\"주 탐색\">\n    <div class=\"material-brand-row\"><a class=\"material-brand\" href=\"/ui/material-review.html\" aria-label=\"Task Mecca 재질 검토 홈\"><img src=\"/logo.svg\" alt=\"\"><strong>Task Mecca</strong></a><button type=\"button\" class=\"material-icon-button material-mobile-toggle\" aria-label=\"메뉴 열기\" aria-expanded=\"false\" aria-controls=\"material-rail-panel\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M4 6h16M4 12h16M4 18h16\"></path></svg></button></div>\n    <div class=\"material-rail-panel\" id=\"material-rail-panel\">\n      <nav class=\"material-nav\" aria-label=\"기존 메뉴 배치 시안\">\n        <section class=\"material-nav-group\" aria-labelledby=\"material-system\"><h2 id=\"material-system\">SYSTEM</h2><button type=\"button\" class=\"material-nav-item\" data-destination=\"hub\" title=\"Global Hub\" aria-current=\"page\"><span class=\"material-nav-icon\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M3 10 12 3l9 7v10H3z M9 20v-7h6v7\"></path></svg></span><span class=\"material-nav-label\">Global Hub</span></button><button type=\"button\" class=\"material-nav-item\" data-destination=\"storage\" aria-disabled=\"true\" title=\"저장소 관리 · 미연결\"><span class=\"material-nav-icon\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M4 4h16v6H4z M4 14h16v6H4z M7 7h.01M7 17h.01\"></path></svg></span><span class=\"material-nav-label\">저장소 관리</span><span class=\"material-unconnected\" aria-hidden=\"true\">미연결</span></button><button type=\"button\" class=\"material-nav-item\" data-destination=\"preview\" aria-disabled=\"true\" title=\"Preview Builds · 미연결\"><span class=\"material-nav-icon\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M3 7h7l2-3h9v16H3z\"></path></svg></span><span class=\"material-nav-label\">Preview Builds</span><span class=\"material-unconnected\" aria-hidden=\"true\">미연결</span></button></section>\n        <section class=\"material-nav-group\" aria-labelledby=\"material-backlogs\"><h2 id=\"material-backlogs\">BACKLOGS</h2><div id=\"material-projects\"><div class=\"material-project-row \"><button type=\"button\" class=\"material-nav-item material-project-open\" data-project=\"/var/folders/07/q_8xp6j90zn8r_gdxk6sj5nm0000gn/T/task-mecca-a65-preview-memwTY/release\" title=\"release · /var/folders/07/q_8xp6j90zn8r_gdxk6sj5nm0000gn/T/task-mecca-a65-preview-memwTY/release\"><span class=\"material-nav-icon material-project-initial\" aria-hidden=\"true\">R</span><span class=\"material-nav-label\">release</span></button><button type=\"button\" class=\"material-project-close\" data-close-project=\"/var/folders/07/q_8xp6j90zn8r_gdxk6sj5nm0000gn/T/task-mecca-a65-preview-memwTY/release\" aria-label=\"release 닫기\" title=\"프로젝트 닫기\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"m6 6 12 12M18 6 6 18\"></path></svg></button></div><div class=\"material-project-row \"><button type=\"button\" class=\"material-nav-item material-project-open\" data-project=\"/var/folders/07/q_8xp6j90zn8r_gdxk6sj5nm0000gn/T/task-mecca-a65-preview-memwTY/research\" title=\"research · /var/folders/07/q_8xp6j90zn8r_gdxk6sj5nm0000gn/T/task-mecca-a65-preview-memwTY/research\"><span class=\"material-nav-icon material-project-initial\" aria-hidden=\"true\">R</span><span class=\"material-nav-label\">research</span></button><button type=\"button\" class=\"material-project-close\" data-close-project=\"/var/folders/07/q_8xp6j90zn8r_gdxk6sj5nm0000gn/T/task-mecca-a65-preview-memwTY/research\" aria-label=\"research 닫기\" title=\"프로젝트 닫기\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"m6 6 12 12M18 6 6 18\"></path></svg></button></div><div class=\"material-project-row \"><button type=\"button\" class=\"material-nav-item material-project-open\" data-project=\"/var/folders/07/q_8xp6j90zn8r_gdxk6sj5nm0000gn/T/task-mecca-a65-preview-memwTY/task-mecca\" title=\"task-mecca · /var/folders/07/q_8xp6j90zn8r_gdxk6sj5nm0000gn/T/task-mecca-a65-preview-memwTY/task-mecca\"><span class=\"material-nav-icon material-project-initial\" aria-hidden=\"true\">T</span><span class=\"material-nav-label\">task-mecca</span></button><button type=\"button\" class=\"material-project-close\" data-close-project=\"/var/folders/07/q_8xp6j90zn8r_gdxk6sj5nm0000gn/T/task-mecca-a65-preview-memwTY/task-mecca\" aria-label=\"task-mecca 닫기\" title=\"프로젝트 닫기\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"m6 6 12 12M18 6 6 18\"></path></svg></button></div></div><div class=\"material-project-opener\"><button type=\"button\" class=\"material-nav-item\" id=\"material-open-project\" aria-expanded=\"false\" aria-controls=\"material-closed-projects\"><span class=\"material-nav-icon\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M12 5v14M5 12h14\"></path></svg></span><span class=\"material-nav-label\">프로젝트 열기</span></button><div id=\"material-closed-projects\" hidden=\"\"><p class=\"material-nav-empty\">닫힌 프로젝트가 없습니다.</p></div></div></section>\n        <section class=\"material-nav-group\" aria-labelledby=\"material-operations\"><h2 id=\"material-operations\">OPERATIONS</h2><button type=\"button\" class=\"material-nav-item\" data-destination=\"workload\" aria-disabled=\"true\" title=\"Subagent Workload · 미연결\"><span class=\"material-nav-icon\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M4 19V9m5 10V4m6 15v-8m5 8V6\"></path></svg></span><span class=\"material-nav-label\">Subagent Workload</span><span class=\"material-unconnected\" aria-hidden=\"true\">미연결</span></button><button type=\"button\" class=\"material-nav-item\" data-destination=\"notifications\" aria-disabled=\"true\" title=\"알림 센터 · 미연결\"><span class=\"material-nav-icon\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M6 9a6 6 0 0 1 12 0v6l2 3H4l2-3z M10 21h4\"></path></svg></span><span class=\"material-nav-label\">알림 센터</span><span class=\"material-unconnected\" aria-hidden=\"true\">미연결</span></button><button type=\"button\" class=\"material-nav-item\" data-destination=\"terminal\" aria-disabled=\"true\" title=\"터미널 · 미연결\"><span class=\"material-nav-icon\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"m4 6 5 6-5 6 M12 18h8\"></path></svg></span><span class=\"material-nav-label\">터미널</span><span class=\"material-unconnected\" aria-hidden=\"true\">미연결</span></button></section>\n        <section class=\"material-nav-group\" aria-labelledby=\"material-help\"><h2 id=\"material-help\">HELP</h2><button type=\"button\" class=\"material-nav-item\" data-destination=\"manual\" aria-disabled=\"true\" title=\"사용자 매뉴얼 · 미연결\"><span class=\"material-nav-icon\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M12 5C8 2 4 3 2 4v16c3-2 6-2 10 0 4-2 7-2 10 0V4c-2-1-6-2-10 1Zm0 0v15\"></path></svg></span><span class=\"material-nav-label\">사용자 매뉴얼</span><span class=\"material-unconnected\" aria-hidden=\"true\">미연결</span></button><button type=\"button\" class=\"material-nav-item\" data-destination=\"release\" aria-disabled=\"true\" title=\"업데이트 내역 · 미연결\"><span class=\"material-nav-icon\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M3 5v5h5 M3 10a9 9 0 1 1 1 7 M12 7v5l3 2\"></path></svg></span><span class=\"material-nav-label\">업데이트 내역</span><span class=\"material-unconnected\" aria-hidden=\"true\">미연결</span></button><button type=\"button\" class=\"material-nav-item\" data-destination=\"issues\" aria-disabled=\"true\" title=\"진단 및 이슈 · 미연결\"><span class=\"material-nav-icon\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M12 8v5m0 4h.01 M10 3h4l8 15-2 3H4l-2-3z\"></path></svg></span><span class=\"material-nav-label\">진단 및 이슈</span><span class=\"material-unconnected\" aria-hidden=\"true\">미연결</span></button></section>\n      </nav>\n      <footer class=\"material-rail-footer\"><div class=\"material-mode-control\" role=\"group\" aria-label=\"사이드바 표시 방식\"><button type=\"button\" data-rail-mode=\"auto\" aria-pressed=\"false\" title=\"자동\">자동</button><button type=\"button\" data-rail-mode=\"expanded\" aria-pressed=\"true\" title=\"펼침\">펼침</button><button type=\"button\" data-rail-mode=\"compact\" aria-pressed=\"false\" title=\"최소\">최소</button></div><p class=\"material-rail-note\">재질 검토 · 하위 화면 미연결</p></footer>\n    </div>\n  </aside><div class=\"material-toolbar material-surface\" data-light-surface=\"\" role=\"toolbar\" aria-label=\"검토 화면 도구\"><span class=\"material-toolbar-title\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5M16 12a4 4 0 1 1-8 0 4 4 0 0 1 8 0\"></path></svg><span>화면 모드</span></span><div class=\"material-theme-control\" role=\"group\" aria-label=\"화면 모드\"><button type=\"button\" data-material-mode=\"light\" aria-pressed=\"false\">Light</button><button type=\"button\" data-material-mode=\"dark\" aria-pressed=\"true\">Dark</button><button type=\"button\" data-material-mode=\"system\" aria-pressed=\"false\">System</button></div><span class=\"material-tool-divider\" aria-hidden=\"true\"></span><button type=\"button\" class=\"material-icon-button\" id=\"material-refresh\" aria-label=\"합성 작업 다시 읽기\" title=\"다시 읽기\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M20 8a8 8 0 1 0 0 8M20 3v5h-5\"></path></svg></button></div><main class=\"material-main\" id=\"material-main\" tabindex=\"-1\"><header class=\"material-page-header\"><h1 id=\"material-view-title\">Global Hub</h1><p>프로젝트를 바로 열고, 필요한 근거부터.</p></header><div id=\"material-card-slot\" aria-busy=\"false\"><article class=\"material-card material-surface\" data-light-surface=\"\" id=\"material-task-card\" aria-labelledby=\"material-card-title\"><header class=\"material-card-header\"><span class=\"material-card-identity\">SYN-1 · release</span><span class=\"material-status\">파일: 보류</span></header><h2 id=\"material-card-title\">SYN-1 핵심 화면 디자인 검토를 기다립니다</h2><p class=\"material-card-description\">열린 프로젝트의 합성 작업입니다. 표면의 곡률과 반사광, 선택·포커스의 깊이를 확인해 주세요.</p><dl class=\"material-card-facts\"><div><dt>프로젝트</dt><dd>release</dd></div><div><dt>담당</dt><dd>미확인</dd></div></dl><div class=\"material-card-actions\"><button type=\"button\" class=\"material-capsule material-select-card\" aria-pressed=\"false\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"m5 12 4 4L19 6\"></path></svg><span>카드 선택</span></button><button type=\"button\" class=\"material-text-button\" id=\"material-show-source\" aria-expanded=\"false\" aria-controls=\"material-source\">원문 보기</button></div><div class=\"material-source\" id=\"material-source\" hidden=\"\"></div><footer class=\"material-card-footer\">합성 데이터 · 실제 서버에서 읽음</footer></article></div><div class=\"material-feedback\" id=\"material-feedback\" role=\"status\" aria-live=\"polite\">합성 작업을 읽었습니다.</div><div class=\"material-review-notes\"><p><strong>재질·탐색 동작 시안</strong> · 사이드바, 툴바, 카드 한 장을 먼저 확인하는 화면입니다.</p><p>프로젝트 선택·닫기·다시 열기, 화면 모드와 카드 선택은 작동합니다. 작업 목록과 상세 화면, SYSTEM의 관리 화면 및 OPERATIONS·HELP의 하위 화면은 아직 연결하지 않았습니다.</p><p>마우스가 가까워지면 빛이 부드럽게 반응합니다. 터치 화면과 모션 감소 환경에는 정적 반사를 제공합니다.</p></div></main></div></div>\n    <script type=\"module\" src=\"/ui/material/review.js\"></script>\n  \n\n</body>",
+    "inspect": {
+      "events": 0,
+      "frames": 0,
+      "writes": 0,
+      "maxAffected": 0,
+      "flushMs": [],
+      "pending": false,
+      "surfaces": 3,
+      "enabled": false
+    },
+    "surfaces": [
+      {
+        "name": "material-rail",
+        "x": 14,
+        "y": 14,
+        "width": 252,
+        "height": 972,
+        "radius": "32px",
+        "background": "linear-gradient(rgb(51, 52, 60), rgb(40, 41, 49) 25%, rgb(32, 33, 39) 64%)",
+        "shadow": "rgba(255, 255, 255, 0.3) 0px 1px 1px 0px inset, rgba(255, 255, 255, 0.1) 0px -1px 1px 0px inset, rgba(255, 255, 255, 0.24) 3px 4px 12px -6px inset, rgba(255, 255, 255, 0.12) -4px -6px 14px -8px inset, rgba(0, 0, 0, 0.45) 0px -16px 28px -18px inset, rgba(0, 0, 0, 0.6) 4px 18px 28px -16px",
+        "strength": "",
+        "xLight": "",
+        "yLight": ""
+      },
+      {
+        "name": "material-toolbar material-surface",
+        "x": 1068.484375,
+        "y": 14,
+        "width": 345.515625,
+        "height": 60,
+        "radius": "999px",
+        "background": "linear-gradient(rgb(51, 52, 60), rgb(40, 41, 49) 25%, rgb(32, 33, 39) 64%)",
+        "shadow": "rgba(255, 255, 255, 0.3) 0px 1px 1px 0px inset, rgba(255, 255, 255, 0.1) 0px -1px 1px 0px inset, rgba(255, 255, 255, 0.24) 3px 4px 12px -6px inset, rgba(255, 255, 255, 0.12) -4px -6px 14px -8px inset, rgba(0, 0, 0, 0.45) 0px -16px 28px -18px inset, rgba(0, 0, 0, 0.6) 4px 18px 28px -16px",
+        "strength": "",
+        "xLight": "",
+        "yLight": ""
+      },
+      {
+        "name": "material-task-card",
+        "x": 294,
+        "y": 199,
+        "width": 560,
+        "height": 387.875,
+        "radius": "30px",
+        "background": "linear-gradient(rgb(51, 52, 60), rgb(40, 41, 49) 25%, rgb(32, 33, 39) 64%)",
+        "shadow": "rgba(255, 255, 255, 0.3) 0px 1px 1px 0px inset, rgba(255, 255, 255, 0.1) 0px -1px 1px 0px inset, rgba(255, 255, 255, 0.24) 3px 4px 12px -6px inset, rgba(255, 255, 255, 0.12) -4px -6px 14px -8px inset, rgba(0, 0, 0, 0.45) 0px -16px 28px -18px inset, rgba(0, 0, 0, 0.6) 4px 18px 28px -16px",
+        "strength": "",
+        "xLight": "",
+        "yLight": ""
+      }
+    ]
+  },
+  "passed": false
+}

@@ -1,0 +1,288 @@
+{
+  "base_head": "aa590433e9cc02474be30c38e205ef32ba00e44f",
+  "approved_revision_file_sha256": "20f806037ff22034700f692048a715fa9d030d537f65486513eb7970c06f711c",
+  "controller_reported_effective_sha256": "924ea10acfce376fd64d317d68f96b64fb2f2f3888df390f51e67947eb726327",
+  "scope": "First reusable material slice for user review only; original active app unchanged",
+  "runtime_assets_sha256": {
+    "material-review.html": "c125fd69f432ac45f066eb054dd977f6e6df1bd9417c85cfec7ce3b4d162415d",
+    "material/components.js": "518933e9e0a5061728598ac615b0698f07238bd1ba889db9a92c9a934310b8b8",
+    "material/proximity.js": "a816135006effd1931d213c8f489fbbcae5e63950e635baf739143458977f237",
+    "material/review.js": "6cd2a9d5b648852b20536ae362a9bec1936c2af4dfce6b097a411afb5d28d434",
+    "material/material.css": "5c1ba0e59a0f095875396d1f76372b1148c8d9d1955294b5a6a10813d969c745"
+  },
+  "raw_whitespace_preserved": [
+    "docs/evidence/a65-material-slice/working-go-build-info.txt"
+  ],
+  "files": [
+    {
+      "path": "docs/evidence/a65-material-slice/README.md",
+      "bytes": 7015,
+      "sha256": "70906a617b875d44efc733ac1eb8ccbe4ac3d44a6f67edca8d55569b84055bc0"
+    },
+    {
+      "path": "docs/evidence/a65-material-slice/capture.cjs",
+      "bytes": 11050,
+      "sha256": "fb237ba7de8f7568b888669b0733fe00ca5d1859e8a2e3d56bd0352b35b288ba"
+    },
+    {
+      "path": "docs/evidence/a65-material-slice/design-detector-slice01.json",
+      "bytes": 531,
+      "sha256": "89cfde68b71b4899328629f459c0a71a382d6f9edd0ff333060ec52aacbd49f9"
+    },
+    {
+      "path": "docs/evidence/a65-material-slice/fix01/capture-report.json",
+      "bytes": 211553,
+      "sha256": "94663e6b7c40163f5f2c0f38e52f4952ef35daa888e3c51f7cb7956237e9e3dc"
+    },
+    {
+      "path": "docs/evidence/a65-material-slice/fix01/desktop-dark-default.png",
+      "bytes": 162795,
+      "sha256": "614c55b9214d95eeae99c8fb1302a07ff852654f2186bec1f227912e93d42b64"
+    },
+    {
+      "path": "docs/evidence/a65-material-slice/fix01/desktop-dark-keyboard.png",
+      "bytes": 164963,
+      "sha256": "f5713627227bdade8eb8481883546906fa94a0c74e24c7b91a4fd9d787cb24e9"
+    },
+    {
+      "path": "docs/evidence/a65-material-slice/fix01/desktop-dark-leave.png",
+      "bytes": 162514,
+      "sha256": "02951d31997b2bb5e43ac4a9c74f7056794b06de45987f3145603b2173c970dc"
+    },
+    {
+      "path": "docs/evidence/a65-material-slice/fix01/desktop-dark-near.png",
+      "bytes": 182597,
+      "sha256": "c04acfa43add89bbe74b3c8763026c98b516b9643183f2da7f01f849821d6a9e"
+    },
+    {
+      "path": "docs/evidence/a65-material-slice/fix01/desktop-dark-outside24.png",
+      "bytes": 170759,
+      "sha256": "a78d7782aa0d910a4230554019abffdc584047a1056fcb034553e5f009290e53"
+    },
+    {
+      "path": "docs/evidence/a65-material-slice/fix01/desktop-dark-reduced-motion.png",
+      "bytes": 162795,
+      "sha256": "614c55b9214d95eeae99c8fb1302a07ff852654f2186bec1f227912e93d42b64"
+    },
+    {
+      "path": "docs/evidence/a65-material-slice/fix01/desktop-dark-selected.png",
+      "bytes": 163407,
+      "sha256": "61aba142998492ae6bb348904643e6766e30db048420bdd9872d3786be502fec"
+    },
+    {
+      "path": "docs/evidence/a65-material-slice/fix01/desktop-light-default.png",
+      "bytes": 182347,
+      "sha256": "6eff530e9c9c96c086b312e9e10394f5d0d3c4f5ea4674de77391469d0c22495"
+    },
+    {
+      "path": "docs/evidence/a65-material-slice/fix01/desktop-light-keyboard.png",
+      "bytes": 182111,
+      "sha256": "7a0eadc0055e49ab956a4d4bc88291454cd58e0f385a1ff91016959b6be1f47a"
+    },
+    {
+      "path": "docs/evidence/a65-material-slice/fix01/desktop-light-leave.png",
+      "bytes": 182250,
+      "sha256": "5cd877a5ffaa8305fa02ad9f4c22e89441f605319c213572d6ba53243399d57f"
+    },
+    {
+      "path": "docs/evidence/a65-material-slice/fix01/desktop-light-near.png",
+      "bytes": 203627,
+      "sha256": "822a9673df757003ce3da5b7e491bc5fe291b9ccd2f2d09fdc82e4e5efdf6cd0"
+    },
+    {
+      "path": "docs/evidence/a65-material-slice/fix01/desktop-light-outside24.png",
+      "bytes": 192346,
+      "sha256": "6c2144505558cbb6e78a09abc63583ebde59af2b07c7c08753e48e537adeb1a2"
+    },
+    {
+      "path": "docs/evidence/a65-material-slice/fix01/desktop-light-selected.png",
+      "bytes": 180868,
+      "sha256": "8717c31b5a54d8bad8d352568da46382c15772d0fced64102649892447854432"
+    },
+    {
+      "path": "docs/evidence/a65-material-slice/fix01/mobile-dark-default.png",
+      "bytes": 88627,
+      "sha256": "498d11151993b6ae9f67f2d0be2ca745d3f98ef76120eaa1b5866310b95eb2e9"
+    },
+    {
+      "path": "docs/evidence/a65-material-slice/fix01/mobile-dark-keyboard.png",
+      "bytes": 90611,
+      "sha256": "c0fae59d80152ff16ac7ea5868a7ee39c85c4b60c98e0fb861b7f4c28ce6a074"
+    },
+    {
+      "path": "docs/evidence/a65-material-slice/fix01/mobile-dark-menu.png",
+      "bytes": 136165,
+      "sha256": "0f06f26ad3e2273bff828561ea1d51c48b2ab571bbc460a72ac3f602a3ea3cc4"
+    },
+    {
+      "path": "docs/evidence/a65-material-slice/fix01/mobile-dark-selected.png",
+      "bytes": 89117,
+      "sha256": "6af2a89e83c5ce748d227e537e6b580dd7d99ea3efbeffb9af73a5b007cd3678"
+    },
+    {
+      "path": "docs/evidence/a65-material-slice/fix01/mobile-light-default.png",
+      "bytes": 99301,
+      "sha256": "302c40adcfdb2ba599d2636bbde455a072147aef57fb5ec651efbbb32d3bad82"
+    },
+    {
+      "path": "docs/evidence/a65-material-slice/fix01/mobile-light-keyboard.png",
+      "bytes": 99921,
+      "sha256": "6fffc9c07b1741b3bbf9565f6e7856dd54123ad0c2b50d5e400b849c5dedf8c5"
+    },
+    {
+      "path": "docs/evidence/a65-material-slice/fix01/mobile-light-menu.png",
+      "bytes": 151325,
+      "sha256": "e65459712c5fca9dd99d43b976c28c446d9434fc0de20578fbbc9b8c1af29a02"
+    },
+    {
+      "path": "docs/evidence/a65-material-slice/fix01/mobile-light-selected.png",
+      "bytes": 98805,
+      "sha256": "2ca40e999ff81a83c82245df1582bd7c07147c2abeb5de5f1f9855414f6cf7c4"
+    },
+    {
+      "path": "docs/evidence/a65-material-slice/independent-material-review/finish-review.md",
+      "bytes": 8935,
+      "sha256": "2043a5b685d0ce4b44365a2a05d55f5ea3564809c7f16e8090ef7a15446d7b5e"
+    },
+    {
+      "path": "docs/evidence/a65-material-slice/independent-material-review/reviewed-inputs.sha256.json",
+      "bytes": 4796,
+      "sha256": "394d08c69faaa9bc01d5f6c3aa13c0c96f64f8f785a7cb9d967b1f69da30a61b"
+    },
+    {
+      "path": "docs/evidence/a65-material-slice/round1/capture-report.json",
+      "bytes": 143146,
+      "sha256": "2adeb27a77dcdb10c0235f18afb3d0a158d657257c9af426ebeb9b53472c3e2b"
+    },
+    {
+      "path": "docs/evidence/a65-material-slice/round1/desktop-dark-reduced-motion.png",
+      "bytes": 161960,
+      "sha256": "f06b2bd37131d1ddbc88ff44ecefcbc39484b8b8b4fd0006eddc1698831dbcb7"
+    },
+    {
+      "path": "docs/evidence/a65-material-slice/round1/desktop-light-default.png",
+      "bytes": 182287,
+      "sha256": "72f84d635e61d2b25f5321fc3e891dfbe5ca503bc7ab771579ec1935231fbcb4"
+    },
+    {
+      "path": "docs/evidence/a65-material-slice/round1/desktop-light-keyboard.png",
+      "bytes": 182045,
+      "sha256": "d9e3536a0a0b1368f992da43b927900127bd47ebff67a4c9f9afbf1a5fd7500a"
+    },
+    {
+      "path": "docs/evidence/a65-material-slice/round1/desktop-light-leave.png",
+      "bytes": 182212,
+      "sha256": "99fa13c7469b518706465006fbef1ada23e68a0bad158a90e9ec629a1441fef4"
+    },
+    {
+      "path": "docs/evidence/a65-material-slice/round1/desktop-light-near.png",
+      "bytes": 203554,
+      "sha256": "49b34bcaf38e984b140101426ce08d0650a0b7cc4a69a707aa166d55a07af08a"
+    },
+    {
+      "path": "docs/evidence/a65-material-slice/round1/desktop-light-outside24.png",
+      "bytes": 192328,
+      "sha256": "c248e012bc96ac3bbe17b834b5fd3fc8c2259c76221520fd5dabf1da36820167"
+    },
+    {
+      "path": "docs/evidence/a65-material-slice/round1/desktop-light-selected.png",
+      "bytes": 180796,
+      "sha256": "304e23bd84b9a4eb30c682fccbb556f2888aa92c2c33d33b00d350af0dd3a638"
+    },
+    {
+      "path": "docs/evidence/a65-material-slice/round1/mobile-dark-default.png",
+      "bytes": 88511,
+      "sha256": "44eb4516aecfbddd4793e75301de08d5fc7ecfaa680860cb261e17df8212928f"
+    },
+    {
+      "path": "docs/evidence/a65-material-slice/round1/mobile-dark-keyboard.png",
+      "bytes": 90432,
+      "sha256": "8e8b27280cf40eb25d90bcbe802f858d921041f5f921066f75fc8efe5c24d884"
+    },
+    {
+      "path": "docs/evidence/a65-material-slice/round1/mobile-dark-menu.png",
+      "bytes": 135318,
+      "sha256": "ebb0ecc052abf5ce44e2ce036f874974e7f19e632d2213bef5f46125c3f254fc"
+    },
+    {
+      "path": "docs/evidence/a65-material-slice/round1/mobile-dark-selected.png",
+      "bytes": 88942,
+      "sha256": "961a6549b310b74e85f2be608293d969f0f2496e42204da8e2df69a6f0146926"
+    },
+    {
+      "path": "docs/evidence/a65-material-slice/round1/mobile-light-default.png",
+      "bytes": 99291,
+      "sha256": "7cb423e3e48231f2e97c83ee149363acbd454b95e5458202fcbd30fd22e5d81b"
+    },
+    {
+      "path": "docs/evidence/a65-material-slice/round1/mobile-light-keyboard.png",
+      "bytes": 99864,
+      "sha256": "1f4320bc4aa02e14f6061651c70ab218b4dfd03205af190dfad2ec2faa6692df"
+    },
+    {
+      "path": "docs/evidence/a65-material-slice/round1/mobile-light-menu.png",
+      "bytes": 151282,
+      "sha256": "88dac058c81138d80b6162c42f3206689a14225b82b109b3e904ab346770145c"
+    },
+    {
+      "path": "docs/evidence/a65-material-slice/round1/mobile-light-selected.png",
+      "bytes": 98757,
+      "sha256": "5741aec2f871616473527d58a9857300df908d3316aa02096ef26a3842e997a6"
+    },
+    {
+      "path": "docs/evidence/a65-material-slice/technical-fix01/verification.json",
+      "bytes": 62046,
+      "sha256": "3e78100be2e1e24829a2c217f67ac04af1c1e50557e5f692978dd74a6886defd"
+    },
+    {
+      "path": "docs/evidence/a65-material-slice/technical-summary.json",
+      "bytes": 4840,
+      "sha256": "43d810cf90d05a990672f234c58efce552527ba0b11577c2801e51a46f3f75c5"
+    },
+    {
+      "path": "docs/evidence/a65-material-slice/verify.cjs",
+      "bytes": 8735,
+      "sha256": "df2f64a7797d04ebf933cdef47e75540ee353d36069d47fa878304a58f24bd37"
+    },
+    {
+      "path": "docs/evidence/a65-material-slice/working-go-build-info.txt",
+      "bytes": 1491,
+      "sha256": "55911e03f72ca8a2006f148425625eb83ccfdb34f49a5ec2d39cbc7802f033b3"
+    },
+    {
+      "path": "docs/evidence/a65-material-slice/working-preview-provenance.json",
+      "bytes": 2385,
+      "sha256": "a9079afe72d62d458e81ea859ef4619b231ec80b730be9eaabaa1694327bfbc2"
+    },
+    {
+      "path": "goassets/template/_task_mecca/framework/web/ui/material-review.html",
+      "bytes": 1296,
+      "sha256": "c125fd69f432ac45f066eb054dd977f6e6df1bd9417c85cfec7ce3b4d162415d"
+    },
+    {
+      "path": "goassets/template/_task_mecca/framework/web/ui/material/README.md",
+      "bytes": 2831,
+      "sha256": "c55b3f0936a807236eb819dc12374acab26d741486d24448c53b91271c5fe6bb"
+    },
+    {
+      "path": "goassets/template/_task_mecca/framework/web/ui/material/components.js",
+      "bytes": 7527,
+      "sha256": "518933e9e0a5061728598ac615b0698f07238bd1ba889db9a92c9a934310b8b8"
+    },
+    {
+      "path": "goassets/template/_task_mecca/framework/web/ui/material/material.css",
+      "bytes": 16794,
+      "sha256": "5c1ba0e59a0f095875396d1f76372b1148c8d9d1955294b5a6a10813d969c745"
+    },
+    {
+      "path": "goassets/template/_task_mecca/framework/web/ui/material/proximity.js",
+      "bytes": 4313,
+      "sha256": "a816135006effd1931d213c8f489fbbcae5e63950e635baf739143458977f237"
+    },
+    {
+      "path": "goassets/template/_task_mecca/framework/web/ui/material/review.js",
+      "bytes": 12060,
+      "sha256": "6cd2a9d5b648852b20536ae362a9bec1936c2af4dfce6b097a411afb5d28d434"
+    }
+  ]
+}
