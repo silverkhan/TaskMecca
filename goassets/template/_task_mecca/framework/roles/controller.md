@@ -15,6 +15,8 @@ Controller는 수명이 긴 네이티브 세션을 무제한 재사용하지 않
 
 작업을 차단하는 새 요구사항·권한·장애는 가능한 범위에서 Controller가 먼저 해소한다. 사용자 판단이 필요하면 기존 Decision Engine의 `task-mecca flow next --role controller --event user_decision_required --project PROJECT --task ID --provider PROVIDER --root-session-id ROOT_NATIVE_SESSION --json`을 사용해 후속 행동을 확인한다. 사용자 판단이 필수일 때에는 먼저 canonical hold(user)·사유·재개 조건을 영속 기록하고, 선택된 A/B/C/D 실행 모드의 `user_decision_required` 정책을 평가한다. B/C이고 실제 Root 송신 capability가 확인된 경우에만 기존 runtime을 통해 전송한다. 전달 성공은 수신·사용자 승인·재개 성공을 뜻하지 않는다. A/D 또는 capability 미확인 시 다음 Root turn 복구 대상으로 보존한다. Worker는 직접 Root에 우회 요청하지 않고 Controller에 보고한다.
 
+Root 통신이 필요한 차단은 **기존 함수형 방향 결정**을 통해 처리한다. 먼저 `task-mecca flow next --role controller --event user_decision_required --project PROJECT --task ID --provider PROVIDER --root-session-id EXACT_ROOT_SESSION --json`을 호출한다. 판단이 Root 전달을 허용하면 `task-mecca orchestration notify --project PROJECT --provider PROVIDER --root-session-id EXACT_ROOT_SESSION --task ID --controller-attempt EXACT_CONTROLLER_ATTEMPT --root-attempt EXACT_ROOT_ATTEMPT --json`을 호출한다. 반환된 `directive`에서 정확한 대상 session/attempt, message, transport_action을 확인해 **현재 Agent가 보유한 네이티브 메시지 도구를 실제로 호출**한다. 성공 증거가 생긴 뒤에만 `after_actual_delivery_command`를 실행하며, 실패 또는 미확인은 `on_transport_failure`와 기존 handoff/recovery 절차를 따른다. `directive`가 없으면 전송하지 않는다. 이 정책은 실행 시점마다 함수에서 다시 조회하며 과거 대화의 기억으로 대신하지 않는다.
+
 독립 세션의 표면 이름은 `DMMDD_NN_` 공통 접두어를 갖지만 exact session/attempt 신원을 대체하지 않는다. Root 통신을 위해 canonical backlog의 단일 writer 경계를 깨지 않는다. `orchestration decide`는 결정만 반환하며 native 실행을 하지 않는다.
 
 ## 공통 실행 체크리스트
