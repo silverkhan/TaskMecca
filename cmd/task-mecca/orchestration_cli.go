@@ -25,8 +25,9 @@ func runtimeOrchestrationCapabilities(project,provider string) (orchestration.Ca
 
 // Read-only decisions and durable Root selection. Native provider transport is external.
 func runOrchestrationCLI(args []string,stdout,stderr io.Writer) int {
- if len(args)==0 {fmt.Fprintln(stderr,"usage: task-mecca orchestration modes|decide|configure|status|name");return 2}
+ if len(args)==0 {fmt.Fprintln(stderr,"usage: task-mecca orchestration modes|decide|configure|status|name|notify");return 2}
  action:=strings.ToLower(strings.TrimSpace(args[0]))
+ if action=="notify" {return runOrchestrationNotifyCLI(args[1:],stdout,stderr)}
  flags:=flag.NewFlagSet("orchestration "+action,flag.ContinueOnError)
  flags.SetOutput(stderr)
  project:=flags.String("project",".","canonical project directory")
