@@ -57,15 +57,16 @@ export function readRoute() {
   state.project = p.get("project") || "";
   state.backlog = p.get("backlog") || "";
   state.page = Math.max(1, Number(p.get("page")) || 1);
-  state.pageSize = [10, 20, 50].includes(Number(p.get("page_size")))
-    ? Number(p.get("page_size"))
-    : "auto";
+  let savedMode='',savedSize=20,savedSort='id_desc';
+  try{savedMode=localStorage.getItem('task-mecca-list-page-mode-v1')||'';savedSize=Number(localStorage.getItem('task-mecca-list-page-size'));savedSort=localStorage.getItem('task-mecca-list-sort')||'id_desc';}catch{}
+  const size=p.get('page_size');
+  state.pageSize=[10,20,50].includes(Number(size))?Number(size):!size&&savedMode==='manual'&&[10,20,50].includes(savedSize)?savedSize:'auto';
   state.query = p.get("q") || "";
   state.toolsOpen =
     typeof history !== "undefined" ? Boolean(history.state?.toolsOpen) : false;
   state.status = p.get("status") || "all";
   state.tags = (p.get("tags") || "").split(",").filter(Boolean);
-  state.sort = p.get("sort") || "id_desc";
+  state.sort = ["id_desc","id_asc","updated_desc","updated_asc"].includes(p.get("sort")||savedSort)?p.get("sort")||savedSort:"id_desc";
   state.detailTab =
     p.get("tab") || (location.hash === "#lifecycle" ? "lifecycle" : "overview");
 }
@@ -101,5 +102,5 @@ export function effectivePageSize() {
   const row = document.querySelector(".backlog-list .task-row"), list = document.querySelector(".backlog-list");
   const rowHeight = row?.getBoundingClientRect().height || (innerWidth <= 760 ? 120 : 92);
   const start = list ? list.getBoundingClientRect().top + scrollY : (innerWidth <= 760 ? 340 : 300);
-  return Math.max(1, Math.min(100, Math.floor((innerHeight - Math.min(start, innerHeight / 2) - 100) / rowHeight)));
+  return Math.max(1, Math.min(100, Math.floor((innerHeight - start - 100) / rowHeight)));
 }

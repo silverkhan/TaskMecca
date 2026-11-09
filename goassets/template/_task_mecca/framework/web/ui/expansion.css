@@ -101,3 +101,7 @@ select.tm-combo-native{position:absolute!important;width:1px!important;height:1p
 /* Keep the execution identity reader's native DOM and sticky behavior. */
 #executionEnvironment.execution-banner{border-radius:24px;background:var(--surface2);box-shadow:var(--depth),var(--ground);backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px)}
 #executionEnvironment.execution-banner::before{content:'';position:absolute;inset:0;border-radius:inherit;padding:1px;pointer-events:none;background:conic-gradient(from 175deg at 50% 50%,var(--rim-b),var(--rim-a),var(--rim-c),var(--rim-b));mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);mask-composite:exclude}
+/* At a genuinely narrow/magnified brand row, keep the original logo and menu
+   usable instead of stacking the wordmark one glyph per line. */
+.material-brand-row{container-type:inline-size}
+@container(max-width:190px){.material-brand-row .material-brand strong{display:none!important}.material-brand-row .material-brand{max-width:none}.material-brand-row .material-brand img{width:32px;height:32px}}

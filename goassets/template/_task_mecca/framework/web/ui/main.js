@@ -455,10 +455,17 @@ function schedulePoll(current) {
     Math.max(500, Math.min(10000, Number(overviewData.retry_after_ms) || 500)),
   );
 }
-let measuredAutoSize=null;
+let measuredAutoSize=null,autoLayoutObserver;
+function scheduleAutoSize(){clearTimeout(autoResizeTimer);autoResizeTimer=setTimeout(()=>{if(state.view==='backlog'&&!state.detail&&state.pageSize==='auto'&&effectivePageSize()!==state.autoRequestedSize)void render({preserve:true});},150);}
 function bindScreen() {
   bindDocumentTools(main());
-  if(state.view==='backlog'&&!state.detail&&state.pageSize==='auto') measuredAutoSize=effectivePageSize();
+  autoLayoutObserver?.disconnect();
+  if(state.view==='backlog'&&!state.detail&&state.pageSize==='auto') {
+    measuredAutoSize=effectivePageSize();
+    autoLayoutObserver=new ResizeObserver(scheduleAutoSize);
+    for(const element of [document.querySelector('.workspace'),document.querySelector('.backlog-list')])if(element)autoLayoutObserver.observe(element);
+    if(measuredAutoSize!==state.autoRequestedSize)scheduleAutoSize();
+  }
   document.querySelectorAll('[data-tag-filter]').forEach(input=>input.onchange=()=>{const values=new Set(state.tags);if(input.checked)values.add(input.dataset.tagFilter);else values.delete(input.dataset.tagFilter);navigate(routeURL({tags:[...values],page:1}),{replace:true,preserve:true});});
   document.getElementById('backlog-location')?.addEventListener('change',e => { persist('task-mecca-backlog-folder',e.target.value); navigate(routeURL({backlog:e.target.value,page:1}),{replace:true,preserve:true}); });
   document.querySelectorAll('[data-status-filter]').forEach(b => b.onclick = () => {
@@ -538,7 +545,11 @@ function bindScreen() {
     };
     document
       .querySelectorAll('select[form="filters"]')
-      .forEach((select) => (select.onchange = apply));
+      .forEach((select) => (select.onchange = () => {
+        if(select.name==='page_size'){persist('task-mecca-list-page-mode-v1',select.value==='auto'?'auto':'manual');if(select.value!=='auto')persist('task-mecca-list-page-size',select.value);}
+        if(select.name==='sort')persist('task-mecca-list-sort',select.value);
+        apply();
+      }));
   }
   const more = document.querySelector(".filter-more");
   if (more)
@@ -765,4 +776,4 @@ export { render };
 window.addEventListener("pageshow", (event) => { if (event.persisted) void resumeExecutionEnvironment(); });
 
 let autoResizeTimer;
-addEventListener('resize',()=>{clearTimeout(autoResizeTimer);autoResizeTimer=setTimeout(()=>{if(state.view==='backlog'&&!state.detail&&state.pageSize==='auto'&&effectivePageSize()!==measuredAutoSize)void render({preserve:true});},150);},{passive:true});
+addEventListener('resize',scheduleAutoSize,{passive:true});

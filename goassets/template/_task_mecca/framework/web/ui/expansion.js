@@ -62,7 +62,7 @@ function surfaces() {
 new MutationObserver(surfaces).observe(document.body,{childList:true,subtree:true});
 addEventListener('pagehide',()=>light.dispose(),{once:true});
 document.addEventListener('click',e=> { if(e.target.closest('a[data-route]')) { const path=e.target.closest('[data-reopen-project]')?.dataset.reopenProject; if(path)openProject(path); root.removeAttribute('data-menu-open');document.getElementById('sidebar-toggle')?.setAttribute('aria-expanded','false');} });
-document.addEventListener('keydown',e=>{if(e.key==='Escape'&&root.hasAttribute('data-menu-open')){root.removeAttribute('data-menu-open');document.getElementById('sidebar-toggle')?.focus();}});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&root.hasAttribute('data-menu-open')){root.removeAttribute('data-menu-open');document.getElementById('sidebar-toggle')?.setAttribute('aria-expanded','false');document.getElementById('sidebar-toggle')?.focus();}});
 
 let diagnosticProject='',diagnosticSequence=0;
 export async function syncProjectDiagnostics(force=false){

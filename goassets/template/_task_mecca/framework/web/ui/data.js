@@ -60,10 +60,12 @@ export function fetchOverview(signal) {
   return sharedRead("/api/overview?" + p, signal);
 }
 export async function fetchBacklog(signal) {
+  const requestedSize=effectivePageSize();
+  if(state.pageSize==="auto")state.autoRequestedSize=requestedSize;
   const p = new URLSearchParams({
     project: state.project,
     page: state.page,
-    page_size: effectivePageSize(),
+    page_size: requestedSize,
     sort: state.sort,
   });
   if (state.backlog) p.set("backlog", state.backlog);
