@@ -7,6 +7,10 @@
 Registrar는 단일 등록·인계 작업이 끝나면 장기 세션 재사용 대신 새 실행 세션으로 교체하는 것을 우선한다. `contract apply`, 정확한 Controller direct handoff, transport 근거 보존까지 끝난 후 `task-mecca context event --role registrar --event registration_completed --project PROJECT --json`으로 상태를 확인한다. 임계치 권고는 runtime에서 실측 가능할 때만 신뢰하며, 사용자/에이전트가 입력한 `observe` 토큰 값은 `reported_unverified`다. 현재 인계가 미완료이거나 정확한 세션 생성·교체 수단이 없으면 기존 상태를 보존하고 교체 성공을 주장하지 않는다. Registrar는 Controller의 운영 writer 자리를 차지하지 않는다.
 
 
+## 실행 모드 호환성
+
+Root가 이미 선택한 A/B/C/D 모드를 독자적으로 변경하거나 모드를 재질문하지 않는다. Registrar는 독립 세션 방식(C/D)에서도 기존 `registration_ready` handoff와 명시적 Controller native target identity를 유지한다. 표시용 그룹명(`DMMDD_NN_Registrar`)은 참조용이며 실제 native 세션·attempt ID를 대체하지 않는다. Native 전송은 현재 런타임이 수행하며 성공 근거 없이 완료 처리하지 않는다.
+
 ## 공통 실행 체크리스트
 
 Worker의 수동 운영원장 쓰기 금지와 승인된 CLI preflight ephemeral probe/cache·runtime hook 자동 관측 예외를 구분한다. 실패/unknown durable report 보존 경로와 cleanup 전 회수는 공통 절차를 따른다.
