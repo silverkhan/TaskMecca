@@ -61,6 +61,19 @@ Tailscale 직접 HTTPS를 사용하려면 Tailscale Admin의 DNS 설정에서 Ma
 
 `archive/YYYY-MM/*.md`는 재귀적으로 읽는다. Web UI는 상태별 메뉴를 나누지 않고 **Backlog** 한 화면으로 통합한다. 기본은 `All` 단독 선택이며 전체 상태를 `ID ↓` 순으로 페이지 단위 표시한다. 페이지 크기의 기본값은 **Auto**이며 현재 브라우저 높이, 실제 backlog 행 높이, 하단 shortcut bar 여유 공간을 기준으로 한 화면에 들어갈 행 수를 자동 결정한다. 창 크기나 sidebar 폭이 바뀌면 다시 계산하며 `Per page`에서 `10 / 20 / 50`으로 고정할 수도 있다. `Ready / Working / Hold / Blocked / Done` 버튼은 여러 개를 동시에 선택할 수 있고, 개별 필터가 하나 이상 선택되면 `All`이 해제된다. `All`을 다시 누르면 나머지 필터를 모두 해제한다. `ID ↑ / Updated newest / Updated oldest` 정렬도 지원하며, Updated는 backlog 마지막 update 시각 기준이다. 목록에서는 `↑/↓` 이동, `Enter`/`→` 상세 진입, `←`/`Esc` 복귀, `/` 검색, `PgUp/PgDn` 페이지 이동을 사용할 수 있다.
 
+## 협업 실행 방식 선택 (A/B/C/D)
+
+Root는 첫 실행형 작업의 위임 준비 시 개발환경의 실제 협업 capability를 확인하고 사용자에게 다음 네 옵션을 **고정된 문자와 함께** 제시한다. 이미 유효한 선택이 이 Root 그룹에 연결되어 있으면 재질문하지 않으며, 명시적 변경 또는 환경 능력 변화 때만 재확인한다.
+
+- **A. 기본 서브에이전트** — 기존 하위 에이전트와 durable hold 복구
+- **B. 서브에이전트 + Root 통신** — 기존 하위 에이전트 유지, 필요 시 Root 통신
+- **C. 독립 세션 + Root 통신** — 역할별 독립 세션과 Root 통신
+- **D. 독립 세션 (Root 통신 없음)** — 독립 세션, Root는 다음 대화에서 차단 회수
+
+모드를 무조건 추측해서 선택하지 않는다. `task-mecca orchestration modes`와 `orchestration decide`는 정책 판단용이며 capability 탐지, 세션 생성, Root 메시지, 설정 영속 저장을 수행하지 않는다. 지원되지 않거나 미확인인 선택지는 이유를 표시한다. 세션 이름은 공통 그룹 접두어(예: `D1109_01_Controller`)를 사용하되 원래 runtime identity의 대용으로 삼지 않는다.
+
+작업 차단 시 Controller는 먼저 canonical hold·원인·재개 조건을 기록하고 실제 Root 전송이 확인된 경우에만 메시지를 보낸다. 메시지 전송 성공을 사용자 인지나 승인으로 간주하지 않는다. 불가능하면 기존 다음 Root 대화 복구를 유지한다. 구체 계약: [협업 실행 모드](../../../docs/orchestration-execution-modes.md).
+
 ## 2. Root 세션 활성화
 
 Task Mecca 설치와 Root 역할 부여는 의도적으로 분리한다.
