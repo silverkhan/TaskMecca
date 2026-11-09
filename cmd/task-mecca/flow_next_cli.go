@@ -11,6 +11,7 @@ import (
     "strings"
 
     "github.com/silverkhan/TaskMecca/internal/backlog"
+    "github.com/silverkhan/TaskMecca/internal/orchestration"
 )
 
 // flow next is a read-only decision, not a new owner of lifecycle, worktree
@@ -205,6 +206,8 @@ func runFlowNextCLI(args []string,out,stderr io.Writer) int {
     into:=fs.String("into","origin/dev","integration branch/ref")
     target:=fs.String("worktree","","exact worker worktree path")
     archive:=fs.String("archive","","external preservation archive")
+    provider:=fs.String("provider","","provider of currently selected Root group")
+    rootSessionID:=fs.String("root-session-id","","exact provider-native Root session identity")
     asJSON:=fs.Bool("json",false,"structured decision")
     if err:=fs.Parse(args[1:]);err!=nil{return 2}
     if fs.NArg()!=0||*role==""||*event==""||*task==""||*into=="" {flowNextUsage(stderr);return 2}
@@ -217,6 +220,8 @@ func runFlowNextCLI(args []string,out,stderr io.Writer) int {
     if *role=="controller"&&(*event=="final_requested"||*event=="cleanup_review"){
         decision=evaluateControllerCleanup(projectAbs,*task,*into,targetAbs,archiveAbs)
         decision.Event=*event
+    }else if *role=="controller"&&*event=="user_decision_required" {
+        decision=evaluateRootEscalationDecision(projectAbs,*task,*provider,*rootSessionID)
     }else{
         decision=flowNextDecision{
             SchemaVersion:1,Decision:"EXIT_BLOCKED",ExitAllowed:false,
@@ -235,4 +240,54 @@ func runFlowNextCLI(args []string,out,stderr io.Writer) int {
         for _,reason:=range decision.Reasons{fmt.Fprintln(out," -",reason)}
     }
     return 0
+}
+
+ 
+// evaluateRootEscalationDecision uses the same persistent selection and pure
+// orchestration policy as the Root bootstrap. It never writes or sends.
+func evaluateRootEscalationDecision(project,task,provider,rootSessionID string) flowNextDecision {
+ result:=flowNextDecision{
+  SchemaVersion:1,Decision:"EXIT_BLOCKED",ExitAllowed:false,
+  Role:"controller",Event:"user_decision_required",TaskID:strings.ToUpper(task),
+  CleanupStatus:"not_applicable",EvidenceQuality:"unverified",Reasons:[]string{},
+  NextAction:"Inspect the exact canonical user hold and saved Root execution mode.",
+  Written:false,
+ }
+ if strings.TrimSpace(provider)==""||strings.TrimSpace(rootSessionID)=="" {
+  result.Reasons=append(result.Reasons,"exact_root_identity_required")
+  return result
+ }
+ g,ok,err:=orchestration.FindGroup(project,provider,rootSessionID)
+ if err!=nil||!ok{
+  result.Reasons=append(result.Reasons,"root_group_missing_or_invalid")
+  return result
+ }
+ state,err:=backlog.Inspect(project,"",task)
+ if err!=nil||state["exists"]!=true||state["duplicate_count"]!=1 {
+  result.Reasons=append(result.Reasons,"canonical_task_unavailable")
+  return result
+ }
+ fields,_:=state["fields"].(map[string]string)
+ durable:=state["state"]=="hold" && strings.TrimSpace(fields["대기"])!="" &&
+  strings.TrimSpace(fields["대기"])!="-" && strings.TrimSpace(fields["재개조건"])!="" &&
+  strings.TrimSpace(fields["재개조건"])!="-"
+ caps,err:=runtimeOrchestrationCapabilities(project,provider)
+ if err!=nil {result.Reasons=append(result.Reasons,"capability_evidence_unavailable");return result}
+ d,err:=orchestration.Decide(orchestration.Request{
+  Mode:g.Mode,Event:"user_decision_required",TaskID:task,Capabilities:caps,DurableRecorded:durable,
+ })
+ if err!=nil{result.Reasons=append(result.Reasons,"orchestration_policy_unavailable");return result}
+ result.Reasons=append(result.Reasons,d.Reasons...)
+ if d.Action=="record_user_hold_first" {
+  result.NextAction="Record canonical hold(user), reason and resume condition before any Root transport."
+  return result
+ }
+ result.EvidenceQuality="canonical_plus_runtime_capability"
+ result.Decision="CONTINUE"
+ if d.Action=="send_to_root" {
+  result.NextAction="Run task-mecca orchestration notify --project DIR --provider PROVIDER --root-session-id EXACT --task TASK --controller-attempt EXACT --root-attempt EXACT --json; then execute native transport and mark the handoff with real evidence."
+ }else{
+  result.NextAction="Retain the user hold in canonical backlog and surface it on the next Root user turn; do not poll or fabricate delivery."
+ }
+ return result
 }
