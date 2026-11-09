@@ -2,7 +2,6 @@ package main
 
 import (
  "encoding/json"
- "errors"
  "flag"
  "fmt"
  "io"
@@ -121,5 +120,3 @@ func runOrchestrationNotifyCLI(args []string,stdout,stderr io.Writer) int {
  return 0
 }
 
-// Prevent accidental assumption that a plan proves an actual send.
-var _ = errors.Is
