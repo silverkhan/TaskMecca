@@ -39,8 +39,9 @@ type flowNextDecision struct {
 
 func flowNextUsage(out io.Writer) {
     fmt.Fprintln(out,"task-mecca flow next --role controller --event final_requested --project DIR --task B-541 --into REF --worktree EXACT_PATH [--archive EXTERNAL_DIR] --json")
-    fmt.Fprintln(out,"Read-only Controller completion/cleanup gate; no deletion, native sends or lifecycle writes.")
-    fmt.Fprintln(out,"Incomplete worktree cleanup never reports EXIT_ALLOWED. Other roles/events are not implemented yet and fail closed.")
+    fmt.Fprintln(out,"Read-only Controller cleanup/exit and user-decision escalation policy; no deletion, native sends or lifecycle writes.")
+    fmt.Fprintln(out,"task-mecca flow next --role controller --event user_decision_required --task B-620 --provider codex --root-session-id EXACT --project DIR --json")
+    fmt.Fprintln(out,"Incomplete cleanup never allows exit; unsupported role/events fail closed.")
     fmt.Fprintln(out,"See: task-mecca help worktree; run plan -> preserve -> verify -> approved remove separately.")
 }
 
