@@ -70,10 +70,20 @@ Root는 첫 실행형 작업의 위임 준비 시 개발환경의 실제 협업 
 - **C. 독립 세션 + Root 통신** — 역할별 독립 세션과 Root 통신
 - **D. 독립 세션 (Root 통신 없음)** — 독립 세션, Root는 다음 대화에서 차단 회수
 
-모드를 무조건 추측해서 선택하지 않는다. `task-mecca orchestration modes`와 `orchestration decide`는 정책 판단용이며 capability 탐지, 세션 생성, Root 메시지, 설정 영속 저장을 수행하지 않는다. 지원되지 않거나 미확인인 선택지는 이유를 표시한다. 세션 이름은 공통 그룹 접두어(예: `D1109_01_Controller`)를 사용하되 원래 runtime identity의 대용으로 삼지 않는다.
+모드를 무조건 추측해서 선택하지 않는다. `task-mecca orchestration modes`는 고정 A/B/C/D와 provider capability 상태를 보여주며, `orchestration configure`는 **명시적으로 확인된 선택**을 정확한 Root 세션 ID에 영속 저장한다. `orchestration decide`는 정책 판단용이며 직접 세션 생성이나 메시지 전송을 수행하지 않는다. 지원되지 않거나 미확인인 선택지는 이유를 표시한다. 세션 이름은 공통 그룹 접두어(예: `D1109_01_Controller`)를 사용하되 원래 runtime identity의 대용으로 삼지 않는다.
 
-작업 차단 시 Controller는 먼저 canonical hold·원인·재개 조건을 기록하고 실제 Root 전송이 확인된 경우에만 메시지를 보낸다. 메시지 전송 성공을 사용자 인지나 승인으로 간주하지 않는다. 불가능하면 기존 다음 Root 대화 복구를 유지한다. 구체 계약: [협업 실행 모드](https://github.com/silverkhan/TaskMecca/blob/dev/docs/orchestration-execution-modes.md) (upstream 문서; 개발 반영 전에는 현재 브랜치 문서를 참고).
+작업 차단 시 Controller는 먼저 canonical hold·원인·재개 조건을 기록하고 `orchestration notify`로 Root와 Controller의 정확한 runtime attempt를 검증해 기존 handoff journal에 인계를 준비한다. Native 메시지 도구가 실제 전송한 뒤 기존 `handoff mark`에 근거를 남긴다. `orchestration notify` 자체는 메시지를 보내지 않는다. 메시지 전송 성공을 사용자 인지나 승인으로 간주하지 않는다. 불가능하면 기존 다음 Root 대화 복구를 유지한다. 구체 계약: [협업 실행 모드](https://github.com/silverkhan/TaskMecca/blob/dev/docs/orchestration-execution-modes.md) (upstream 문서; 개발 반영 전에는 현재 브랜치 문서를 참고).
 
+실행 설정 예시(미확인 capability는 먼저 실제 런타임에서 확인하고 handoff capability record에 증거를 기록해야 한다):
+
+```bash
+task-mecca orchestration modes --project . --provider codex --json
+task-mecca orchestration status --project . --provider codex --root-session-id ROOT_NATIVE_ID --json
+task-mecca orchestration configure --project . --provider codex --root-session-id ROOT_NATIVE_ID --mode B --confirmed --timezone Asia/Seoul --json
+task-mecca orchestration name --project . --group D1109_01 --role controller --json
+```
+
+기존 Root 그룹의 선택을 변경하려면 사용자에게 다시 확인하고 `configure --change-mode --decision-evidence USER_REFERENCE`를 사용한다. 원장에 기록된 모드는 실행 capability가 사라져도 자동 변경되지 않으며, 상태 조회·복구 시 현재 capability를 다시 확인한다.
 ## 2. Root 세션 활성화
 
 Task Mecca 설치와 Root 역할 부여는 의도적으로 분리한다.
