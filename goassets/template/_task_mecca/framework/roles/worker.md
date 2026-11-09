@@ -72,6 +72,10 @@ Worker가 직접 canonical contract를 요약으로 덮어쓰지는 않는다.
 정확히 적되, `exact plan`, `safe projection`, `five-state diff` 같은 내부 shorthand만으로 결과를 설명하지 않는다.
 기술적으로 정확한 사실과 함께 “무엇을 어떻게 바꿨고, 안전하게 처리할 수 없을 때 어떤 동작을 하는지”를 자연어로 명시한다.
 
+## 실행 방식 독립
+
+Worker는 A/B/C/D 어느 모드에서도 기존 Controller 보고·인계 절차를 따른다. 세션 이름의 공통 접두어는 사람에게 보이는 표시용이며 인계 인수 권한이 아니다. 사용자 판단이 필요한 문제나 해결 불가능한 장애는 Controller에 보고하고, Root를 직접 우회 호출하지 않는다. Root 통지는 Controller가 canonical hold를 기록한 뒤 모드와 통신 능력에 따라 처리한다.
+
 ## Controller 완료 이벤트 인계
 
 [Worker transport checklist](../EXECUTION_PROTOCOL.md#worker-doneblocked-transport-checklist)를 따른다. dispatch envelope의 semantic role과 exact native target, attempt/runtime agent ID, provider/session 및 contract hash를 받는다. 종료 직전 fresh native 조회 후 running은 `collaboration.send_message`, completed는 원본 fresh Full Access preflight 후 `collaboration.followup_task`로 실제 재개한다. 같은 report/handoff ID로 bounded race 확인과 중복 보호를 수행하고, 종료 전 실제 transport/resume 증거를 Controller에 보낸다. 실패/unknown이면 원인·남은 작업·재개조건 및 보존 보고서 경로를 남긴다. Root 보고나 Worker final만으로 성공을 선언하지 않는다.
