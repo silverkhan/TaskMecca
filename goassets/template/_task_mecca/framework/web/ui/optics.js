@@ -82,7 +82,12 @@ function refresh() {
     }
     // A nested face keeps the accepted direct photo sample: it must not sample
     // and blur the already tinted parent or the parent's foreground content.
-    record.native = nativeBackdrop && !surface.parentElement.closest('.material-surface');
+    const native = nativeBackdrop && !surface.parentElement.closest('.material-surface');
+    // Stable faces need no class/filter writes or SVG subtree searches when
+    // unrelated content is inserted elsewhere on the screen.
+    if (record.configured && record.native === native) return;
+    record.native = native;
+    record.configured = true;
     surface.classList.toggle('material-native-surface', record.native);
     record.layer.classList.toggle('material-native-transmission', record.native);
     const blur = record.filter.querySelector('feGaussianBlur');
@@ -102,7 +107,11 @@ function refresh() {
   });
   sync();
 }
-const mutation = new MutationObserver(refresh);
+const opticalSurfaceChange = node => node.nodeType === 1 &&
+  (node.matches('.material-surface') || node.querySelector('.material-surface'));
+const mutation = new MutationObserver(records => {
+  if (records.some(record => [...record.addedNodes,...record.removedNodes].some(opticalSurfaceChange))) refresh();
+});
 mutation.observe(host, { childList: true, subtree: true });
 
 addEventListener('resize', sync, { passive: true });

@@ -67,8 +67,8 @@ test('notification labels retain their meaning and remain readable in the native
  const a=app();assert.equal(vm.runInContext("t('projectNotifications')",a.context),'알림센터');
  a.state.language='en';assert.equal(vm.runInContext("t('notificationCenter')",a.context),'Notification center');
  const en=nativeShell(),ko=nativeShell('ko'),css=fs.readFileSync('goassets/template/_task_mecca/framework/web/ui/smoke.css','utf8');
- assert.match(en,/view=notifications[^]*?<span>Notifications<\/span>/);
- assert.match(ko,/view=notifications[^]*?<span>알림<\/span>/);
+ assert.match(en,/view=notifications[^]*?<span class="material-nav-label">Notifications<\/span>/);
+ assert.match(ko,/view=notifications[^]*?<span class="material-nav-label">알림센터<\/span>/);
  assert.doesNotMatch(css,/\.rail-link[^}]*text-overflow:\s*ellipsis/);
  assert.match(css,/@media[^]*?max-width: 760px/);
 });

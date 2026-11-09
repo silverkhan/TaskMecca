@@ -88,6 +88,24 @@ select.tm-combo-native{position:absolute!important;width:1px!important;height:1p
 /* The same photo remains visible; a small shared reading veil bounds its
    contrast range for dense operational text instead of filtering text. */
 :root[data-theme=light]{--muted:#263144;--quiet:#263144;--warn:#442807}
+
+/* Operate: a restrained hierarchy over the accepted optical material. The
+   task count is supporting information, not another independently lit lens. */
+.list-summary{background:var(--surface2);border:0;border-radius:10px;box-shadow:none;padding:6px 14px;margin:10px 0 8px}
+.backlog-heading .page-heading.material-surface{padding:12px 20px}
+.backlog-heading .page-heading h1{font-size:24px;line-height:1.25}
+.backlog-heading .page-heading p{margin:4px 0 0}
+.backlog-heading{margin-bottom:12px}
+.filters,.filter-more,.detail-tabs{box-shadow:none;border-color:transparent}
+.filters{padding:8px 12px}
+.filter-more{padding:10px 14px;margin:8px 0 12px}
+.topbar{margin-bottom:18px}
+.material-surface::after{opacity:calc(var(--light-strength)*.55)}
+.material-surface .material-surface{box-shadow:none}
+.material-surface .material-surface::before{opacity:.45}
+:root[data-material-theme=light] .material-review-backdrop::after{background:rgba(255,255,255,.30)}
+:root[data-material-theme=dark] .material-review-backdrop::after{background:rgba(12,13,17,.40)}
+@media(max-width:760px){.backlog-heading .page-heading.material-surface{padding:0 14px 8px}.backlog-heading .page-heading h1{font-size:23px}.filter-more{padding:9px 12px}.list-summary{padding:5px 12px}.topbar{margin-bottom:12px}}
 :root[data-theme=light] .material-surface>.material-transmission{background-image:linear-gradient(rgba(255,255,255,.60),rgba(255,255,255,.60)),url('./material/cozy-beige-room-photo-1920.webp')}
 :root[data-theme=dark] .material-surface>.material-transmission{background-image:linear-gradient(rgba(12,13,17,.68),rgba(12,13,17,.68)),url('./material/cozy-beige-room-photo-1920.webp')}
 

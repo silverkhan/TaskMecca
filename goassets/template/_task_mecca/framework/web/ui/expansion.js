@@ -51,15 +51,23 @@ new MutationObserver(syncTheme).observe(root,{attributes:true,attributeFilter:['
 export function setBackground(mode) { if (!['image','solid'].includes(mode)) return; backgroundMode=mode; persist('task-mecca-material-background-v1',mode); syncTheme(); }
 const host = document.getElementById('material-review');
 const light = attachMaterialProximity(document.body);
+const surfaceSelector = '.tm-combo-popup,dialog[open],.page-heading,.overview-section,.summary-sheet,.document-section,.settings-sheet,.management-sheet,.detail-body > .raw-source,.backlog-list';
 function surfaces() {
-  document.querySelectorAll('.tm-combo-popup,dialog[open],.page-heading,.list-summary,.overview-section,.summary-sheet,.document-section,.settings-sheet,.management-sheet,.detail-body > .raw-source,.backlog-list').forEach(el => {
+  document.querySelectorAll(surfaceSelector).forEach(el => {
     if (!el.classList.contains('material-surface')) { el.classList.add('material-surface'); el.setAttribute('data-light-surface',''); }
   });
   document.querySelectorAll(".workflow-floating").forEach(el=>el.setAttribute("data-light-surface",""));
   refreshOptics();
   light.refresh();
 }
-new MutationObserver(surfaces).observe(document.body,{childList:true,subtree:true});
+// Text/log/option updates and our own decorative layer insertion do not change
+// the surface registry. Readonly screens still enter through this same selector.
+const changesSurfaces = node => node.nodeType === 1 &&
+  (node.matches(surfaceSelector + ',[data-light-surface],.workflow-floating') ||
+   node.querySelector(surfaceSelector + ',[data-light-surface],.workflow-floating'));
+new MutationObserver(records => {
+  if (records.some(record => [...record.addedNodes,...record.removedNodes].some(changesSurfaces))) surfaces();
+}).observe(document.body,{childList:true,subtree:true});
 addEventListener('pagehide',()=>light.dispose(),{once:true});
 document.addEventListener('click',e=> { if(e.target.closest('a[data-route]')) { const path=e.target.closest('[data-reopen-project]')?.dataset.reopenProject; if(path)openProject(path); root.removeAttribute('data-menu-open');document.getElementById('sidebar-toggle')?.setAttribute('aria-expanded','false');} });
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&root.hasAttribute('data-menu-open')){root.removeAttribute('data-menu-open');document.getElementById('sidebar-toggle')?.setAttribute('aria-expanded','false');document.getElementById('sidebar-toggle')?.focus();}});

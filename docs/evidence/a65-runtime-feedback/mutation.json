@@ -1,0 +1,25 @@
+{
+  "scope": "60 synthetic DOM text updates, one run each; observer causality diagnostic, not full gate or typical user workload",
+  "results": [
+    {
+      "variant": "original",
+      "queries": 126,
+      "TaskDurationMs": 18.241999999999997,
+      "ScriptDurationMs": 4.014,
+      "insertedReadonlySurface": true,
+      "removedSurfaceCleaned": true
+    },
+    {
+      "variant": "current",
+      "queries": 3,
+      "TaskDurationMs": 15.277,
+      "ScriptDurationMs": 1.885,
+      "insertedReadonlySurface": true,
+      "removedSurfaceCleaned": true
+    }
+  ],
+  "cleanup": {
+    "browserClosed": true,
+    "serverListening": false
+  }
+}

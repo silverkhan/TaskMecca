@@ -1,0 +1,15 @@
+{
+  "phase": "before",
+  "scope": "scoped 1-second scroll/input windows; not full gate; desktop synthetic mouse on mobile viewport is not touch or physical device",
+  "at": "2026-11-09T14:48:12.063Z",
+  "browser": "156.0.8078.80",
+  "sources": {
+    "candidate": "/Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/goassets/template/_task_mecca/framework/web",
+    "gui": "/private/tmp/task-mecca-a65-baseline-f0a732e3/goassets/template/_task_mecca/framework/web"
+  },
+  "assets": {
+    "ui/optics.js": "773b87470656b8063ed71e42796f93873b7665b0c255b885c38217b0b0813b6c",
+    "ui/expansion.js": "eba138bc19e759593f9f0468423cec242078ad1e947db7b80eda7e5154a9d97a",
+    "ui/expansion.css": "d3dc7a7ecc0813a3ec1844f126fe73b682ab28f371b5c7d49cd25953cb7e5813"
+  }
+}
