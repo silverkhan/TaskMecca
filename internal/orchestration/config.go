@@ -153,9 +153,18 @@ func writeGroup(dir string,g Group) error {
  if _,err:=tmp.Write(append(data,'\n'));err!=nil{tmp.Close();return err}
  if err:=tmp.Sync();err!=nil{tmp.Close();return err}
  if err:=tmp.Close();err!=nil{return err}
- // Retain original on replace failure (Windows cannot overwrite with Rename).
- // A mode change may fail safely without changing the persisted selection.
- if err:=os.Rename(name,final);err!=nil{return err}
+ // Windows cannot atomically overwrite an existing destination with
+ // os.Rename. Keep a recovery copy instead of deleting the original first.
+ if err:=os.Rename(name,final);err!=nil {
+  backup:=final+".previous"
+  if _,statErr:=os.Stat(backup);statErr==nil{return fmt.Errorf("previous mode-change backup exists: %s",backup)}
+  if backupErr:=os.Rename(final,backup);backupErr!=nil{return err}
+  if retryErr:=os.Rename(name,final);retryErr!=nil{
+   _=os.Rename(backup,final)
+   return retryErr
+  }
+  _=os.Remove(backup)
+ }
  return nil
 }
 
