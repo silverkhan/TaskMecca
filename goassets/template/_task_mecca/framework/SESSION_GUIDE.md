@@ -72,7 +72,7 @@ Root는 첫 실행형 작업의 위임 준비 시 개발환경의 실제 협업 
 
 모드를 무조건 추측해서 선택하지 않는다. `task-mecca orchestration modes`와 `orchestration decide`는 정책 판단용이며 capability 탐지, 세션 생성, Root 메시지, 설정 영속 저장을 수행하지 않는다. 지원되지 않거나 미확인인 선택지는 이유를 표시한다. 세션 이름은 공통 그룹 접두어(예: `D1109_01_Controller`)를 사용하되 원래 runtime identity의 대용으로 삼지 않는다.
 
-작업 차단 시 Controller는 먼저 canonical hold·원인·재개 조건을 기록하고 실제 Root 전송이 확인된 경우에만 메시지를 보낸다. 메시지 전송 성공을 사용자 인지나 승인으로 간주하지 않는다. 불가능하면 기존 다음 Root 대화 복구를 유지한다. 구체 계약: [협업 실행 모드](../../../docs/orchestration-execution-modes.md).
+작업 차단 시 Controller는 먼저 canonical hold·원인·재개 조건을 기록하고 실제 Root 전송이 확인된 경우에만 메시지를 보낸다. 메시지 전송 성공을 사용자 인지나 승인으로 간주하지 않는다. 불가능하면 기존 다음 Root 대화 복구를 유지한다. 구체 계약: [협업 실행 모드](https://github.com/silverkhan/TaskMecca/blob/dev/docs/orchestration-execution-modes.md) (upstream 문서; 개발 반영 전에는 현재 브랜치 문서를 참고).
 
 ## 2. Root 세션 활성화
 
