@@ -58,11 +58,28 @@ task-mecca orchestration notify --project . --provider codex --root-session-id E
 task-mecca handoff mark HANDOFF_ID --project . --step dispatch --result ok --evidence ACTUAL_NATIVE_TRANSPORT_PROOF --json
 ```
 
-## Remaining native runtime integration
+## Direction-driven operation (selected design)
 
-1. Implement provider-specific capability probes and actual native spawn/message/resume adapters where supported; currently capability evidence is recorded after an external native smoke test.
-2. Call the new mode decisions and notify path automatically from all applicable native agent lifecycle events. Root and Controller instructions invoke them now, but the binary cannot force a provider agent to execute them.
+Task Mecca intentionally does **not** implement provider-native session creation or messaging transports. Its existing decision functions and handoff/recovery contracts direct the executing Root, Registrar, Controller or Worker to call the collaboration tools actually supplied by that environment. Do not build a duplicate Codex/Claude session manager.
+
+For Root decisions, run `task-mecca flow next --role controller --event user_decision_required ...` to select the next action. Once the canonical user hold and exact runtime identities are available, run `task-mecca orchestration notify ... --json`. When the handoff is safe, its `directive` includes:
+
+- `actor_role`, `actor_attempt_id`: who must act
+- `target_role`, `target_provider`, `target_session_id`, `target_attempt_id`, `target_runtime_agent_id`: whom to contact (never select by the display title)
+- `transport_action`: send to running session, or resume completed Root after fresh preflight if *wake capability is verified*
+- `message`: task ID, exact handoff ID, blocking reason, resume condition, instructions to ask the user
+- `after_actual_delivery_command`: command to record actual transport evidence **only after** the Agent has performed it
+- `on_transport_failure`: durable fallback when the native tool is not available or reports failure
+
+A returned directive is a task instruction for the live Agent; it is not evidence that a provider message was sent, received, or approved. The CLI must never manufacture a native result or set `delivered=true` before transport proof. Agents must call the decision function again at role/event transitions rather than relying on stale conversational memory.
+
+The same boundary applies to independent-session creation: the decision engine directs a running Root/Controller to use the available native create-session tool with the group's display name, then records the observed native session and attempt identities via existing runtime procedures. If the environment does not support creation/communication, reject that mode instead of pretending a session exists.
+
+## Remaining integrations and verification
+
+1. Provide provider-capability evidence from actual native smoke tests; automatic capability discovery is optional, not a prerequisite for direction-based orchestration.
+2. Expand event/role coverage in the existing `flow next` decision interface and ensure role instructions call it at every relevant transition; the binary cannot force the host Agent to invoke tools.
 3. Extend observability to project the selected mode, group and message acknowledgement alongside live sessions.
-4. Validate actual provider-native session creation, Root delivery, resume, fallback and cross-provider behavior end-to-end.
+4. Validate that Agent-executed native session creation, Root delivery, resume and fallback obey returned directives in each supported environment.
 
-Policy, mode persistence, display-name generation and exact-identity Root handoff **preparation** are implemented. Native tool execution, message acknowledgement and Root wake are not claimed as implemented.
+Policy, mode persistence, display-name generation and exact-identity Root handoff **preparation with explicit Agent directives** are implemented. Native tool execution is deliberately owned by the runtime Agent; message acknowledgement and Root wake are not claimed without observed evidence.
