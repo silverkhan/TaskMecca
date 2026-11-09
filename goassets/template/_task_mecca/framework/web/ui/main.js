@@ -1,5 +1,5 @@
 import { bindDocumentTools } from "./document-tools.js";
-import { bindDetailNavigation, initialDetailAnchor, scrollDetailAnchor } from "./detail-navigation.js";
+import { bindDetailNavigation, initialDetailAnchor, scrollDetailAnchor, readingIntentVersion } from "./detail-navigation.js";
 import { refreshSidebar, bindExpansionShell, paintProjects, sidebarProjects, syncProjectDiagnostics } from "./expansion.js";
 import { deliverCanonicalEvents } from "./screens/notifications.js";
 import { managedViews, management, bindManagement } from "./screens/management.js";
@@ -219,9 +219,10 @@ function ready({
     : preserve
       ? (readingY ?? scrollY)
       : 0;
+  const initialAnchor=state.detail&&!preserve&&(!restore||!Number.isFinite(history.state?.readingY))?initialDetailAnchor():null;
   requestAnimationFrame(() => {
     scrollTo(0, wanted);
-    if(state.detail&&!preserve&&!restore){const anchor=initialDetailAnchor();if(anchor)scrollDetailAnchor(anchor,{updateURL:false,focus:false});}
+    if(initialAnchor)scrollDetailAnchor(initialAnchor,{updateURL:false,focus:false});
     if (inputFocus) {
       const input = main().querySelector('[name="' + inputFocus.name + '"]');
       input?.focus({ preventScroll: true });
@@ -307,10 +308,11 @@ async function render(options = {}) {
       }
       if (document.getElementById("lifecycle")) {
         bindActivityDetailControls(state.detail);
+        const initialAnchor=!options.preserve&&(!options.restore||!Number.isFinite(history.state?.readingY))?initialDetailAnchor():null;
+        const intent=readingIntentVersion();
         void loadTaskActivity(state.detail, state.project).then(() => {
-          if(current!==epoch||options.preserve||options.restore)return;
-          const anchor=initialDetailAnchor();
-          if(anchor)requestAnimationFrame(()=>{if(current===epoch)scrollDetailAnchor(anchor,{updateURL:false,focus:false})});
+          if(current!==epoch||!initialAnchor||intent!==readingIntentVersion())return;
+          requestAnimationFrame(()=>{if(current===epoch&&intent===readingIntentVersion())scrollDetailAnchor(initialAnchor,{updateURL:false,focus:false})});
         }).catch(() => {});
       }
       try {

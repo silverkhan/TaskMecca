@@ -2,6 +2,9 @@
 // the incumbent GUI. Anchor navigation never rebuilds or hides document bodies.
 import { state } from './state.js';
 let dispose = () => {};
+let readingIntent = 0;
+for(const type of ['wheel','touchstart','pointerdown','keydown'])addEventListener(type,()=>{readingIntent++},{capture:true,passive:true});
+export const readingIntentVersion = () => readingIntent;
 export function scrollDetailAnchor(id, { updateURL = true, focus = true } = {}) {
   const target=document.getElementById(id);
   if(!target?.closest('.detail-layout'))return false;
