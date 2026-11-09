@@ -88,7 +88,7 @@ function inline(value) {
 export function markdown(value) {
   const lines = String(value || "").split("\n"),
     out = [];
-  let code = null,
+  let code = null, codeLanguage = "",
     list = false;
   const closeList = () => {
     if (list) {
@@ -100,9 +100,9 @@ export function markdown(value) {
     if (line.startsWith("```")) {
       closeList();
       if (code !== null) {
-        out.push("<pre><code>" + esc(code.join("\n")) + "</code></pre>");
+        out.push("<pre data-code-language=\"" + esc(codeLanguage) + "\"><code>" + esc(code.join("\n")) + "</code></pre>");
         code = null;
-      } else code = [];
+      } else { code = []; codeLanguage = line.slice(3).trim().split(/\s/)[0]; }
       continue;
     }
     if (code !== null) {
@@ -129,6 +129,6 @@ export function markdown(value) {
   }
   closeList();
   if (code !== null)
-    out.push("<pre><code>" + esc(code.join("\n")) + "</code></pre>");
+    out.push("<pre data-code-language=\"" + esc(codeLanguage) + "\"><code>" + esc(code.join("\n")) + "</code></pre>");
   return out.join("");
 }

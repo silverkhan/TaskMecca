@@ -3,12 +3,12 @@ const fixture=require('./helpers/a65_fixture.cjs'),runtime=process.env.WORKFLOW_
 if(process.env.WORKFLOW_REQUIRE_BROWSER==='1'&&!runtime)throw Error('Required browser runtime missing');
 test('accepted expansion keeps project scope, truthful writes, notifications and PR identity in native modules',{skip:!runtime,timeout:90000},async()=>{
  const server=await fixture.start(path.resolve('goassets/template/_task_mecca/framework/web')),browser=await require(runtime).chromium.launch({headless:true,executablePath:process.env.CHROME_EXECUTABLE});
- const posts=[],errors=[],projects=server.state.projects;let failure=false;
+ const posts=[],reads=[],errors=[],projects=server.state.projects;let failure=false;
  const context=await browser.newContext({viewport:{width:1440,height:1000},serviceWorkers:'block'});
  await context.addInitScript(()=>{localStorage.setItem('task-mecca-language','ko');localStorage.setItem('task-mecca-smoke-mode','light')});
  const target={kind:'dev',channel:'dev'},health={ok:true,preview_mode:false,boot_id:'fixture-boot',instance_id:'fixture-instance',version:'fixture-dev',execution_target:target};
  await context.route('**/api/**',async route=>{
-  const request=route.request(),u=new URL(request.url());
+  const request=route.request(),u=new URL(request.url());if(request.method()==='GET')reads.push(u.pathname+u.search);
   if(request.method()==='POST'){posts.push({url:u.pathname+u.search,headers:request.headers(),body:request.postDataJSON()});return route.fulfill({status:failure?403:200,json:failure?{error:'Synthetic permission denied'}:{ok:true,result:{accepted:true}}});}
   if(u.pathname==='/api/hub/projects')return route.fulfill({json:{projects,archives:[{id:'fixture-archive',name:'Archived fixture',path:'/fixtures/archived'}]}});
   if(u.pathname==='/api/health')return route.fulfill({json:health});
@@ -36,6 +36,9 @@ test('accepted expansion keeps project scope, truthful writes, notifications and
   assert.equal(posts.length,1);assert.equal(posts[0].headers['x-task-mecca-action'],'1');assert.deepEqual(posts[0].body,{action:'unregister',path:projects[0].path,archive_id:''});
   await page.locator('[data-close-project]').first().click();assert.equal(await page.locator('[data-reopen-project]').count(),1);await page.locator('.project-opener>summary').click();await page.locator('[data-reopen-project]').click();await page.locator('#filters').waitFor();assert.equal(new URL(page.url()).searchParams.get('project'),projects[0].path);
   await page.locator('.filter-more>summary').click();await page.locator('[data-status-filter=doing]').click();await page.waitForFunction(()=>new URL(location.href).searchParams.get('status')==='doing');await page.locator('[data-status-filter=hold]').click();await page.waitForFunction(()=>new URL(location.href).searchParams.get('status')==='doing,hold');assert.equal(await page.locator('[data-status-filter=doing]').getAttribute('aria-pressed'),'true');assert.equal(await page.locator('[data-status-filter=hold]').getAttribute('aria-pressed'),'true');
+  await page.goto(server.origin+'/?view=backlog&project='+encodeURIComponent(projects[1].path)+'&page_size=20');await page.locator('#filters').waitFor();
+  await page.locator('.rail-link[href*="view=workload"]').click();await page.locator('.management-sheet').first().waitFor();assert.equal(new URL(page.url()).searchParams.get('project'),projects[1].path);assert.ok(reads.some(u=>u==='/api/workload?project='+encodeURIComponent(projects[1].path)),'workload keeps the actual selected project');
+  await page.locator('.rail-link[href*="view=terminal"]').click();await page.locator('iframe').waitFor();assert.equal(new URL(await page.locator('iframe').getAttribute('src'),server.origin).searchParams.get('project'),projects[1].path);
   await goto('storage');assert.equal(await page.locator('[data-manage=clear-log]').count(),1,'global log is not counted/actioned once per project');assert.equal(await page.locator('[data-manage=cleanup-runtime]:enabled').count(),0,'zero reclaimable is not actionable');
   failure=true;await page.locator('[data-manage=clear-log]').click();await accept();await page.locator('#management-feedback[data-error=true]').waitFor();assert.match(await page.locator('#management-feedback').innerText(),/Synthetic permission denied/);assert.equal(posts.at(-1).body.id,'web-service');failure=false;
   await goto('workload');assert.equal(await page.locator('a[data-route]').filter({hasText:'FLOW-1'}).count(),1);assert.match(await page.locator('main').innerText(),/fixture-worker/);

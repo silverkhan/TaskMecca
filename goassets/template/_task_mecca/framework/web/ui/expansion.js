@@ -1,11 +1,13 @@
 import '../select-ui.js';
-import './material/transmissive.js';
+import './optics.js';
 import { attachMaterialProximity } from './material/proximity.js';
 import { state, routeURL, persist } from './state.js';
 import { esc, text } from './format.js';
 import { get } from './data.js';
 const read = (key, fallback) => { try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch { return fallback; } };
-let projects = [], hidden = read('task-mecca-closed-projects-v1', []), sidebarMode = localStorage.getItem('task-mecca-sidebar-mode') || 'auto';
+const readString=(key,fallback='')=>{try{return localStorage.getItem(key)||fallback;}catch{return fallback;}};
+let backgroundMode=readString('task-mecca-material-background-v1',readString('task-mecca-material-review-background','image'));
+let projects = [], hidden = read('task-mecca-closed-projects-v1', []), sidebarMode = readString('task-mecca-sidebar-mode','auto');
 if(sidebarMode==='compact') sidebarMode='collapsed';
 let opened=read('task-mecca-open-projects',null);
 let inventory;
@@ -20,7 +22,9 @@ export async function refreshSidebar(signal) {
   });
   return inventory;
 }
+export function sidebarProjects(){return [...projects];}
 export function paintProjects() {
+  void syncProjectDiagnostics();
   const slot = document.getElementById('sidebar-projects'); if (!slot) return;
   // A deep link opens its selected project; closed tabs are independent of registry membership.
   if (state.project && hidden.includes(state.project)) { hidden = hidden.filter(p => p !== state.project); persist('task-mecca-closed-projects-v1', JSON.stringify(hidden)); }
@@ -42,9 +46,9 @@ export function bindExpansionShell() {
   if (toggle) toggle.onclick = () => { const open=document.documentElement.toggleAttribute('data-menu-open'); toggle.setAttribute('aria-expanded',String(open)); };
 }
 const root = document.documentElement;
-function syncTheme() { root.dataset.materialTheme = root.dataset.theme || 'light'; root.dataset.materialBackground = localStorage.getItem('task-mecca-material-background-v1') || 'image'; }
+function syncTheme() { root.dataset.materialTheme = root.dataset.theme || 'light'; root.dataset.materialBackground = backgroundMode; }
 new MutationObserver(syncTheme).observe(root,{attributes:true,attributeFilter:['data-theme']}); syncTheme();
-export function setBackground(mode) { if (!['image','solid'].includes(mode)) return; persist('task-mecca-material-background-v1',mode); syncTheme(); }
+export function setBackground(mode) { if (!['image','solid'].includes(mode)) return; backgroundMode=mode; persist('task-mecca-material-background-v1',mode); syncTheme(); }
 const host = document.getElementById('material-review');
 const light = attachMaterialProximity(host);
 function surfaces() {
@@ -57,3 +61,15 @@ new MutationObserver(surfaces).observe(host,{childList:true,subtree:true});
 addEventListener('pagehide',()=>light.dispose(),{once:true});
 document.addEventListener('click',e=> { if(e.target.closest('a[data-route]')) { const path=e.target.closest('[data-reopen-project]')?.dataset.reopenProject; if(path)openProject(path); root.removeAttribute('data-menu-open');document.getElementById('sidebar-toggle')?.setAttribute('aria-expanded','false');} });
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&root.hasAttribute('data-menu-open')){root.removeAttribute('data-menu-open');document.getElementById('sidebar-toggle')?.focus();}});
+
+let diagnosticProject='',diagnosticSequence=0;
+export async function syncProjectDiagnostics(force=false){
+  const node=document.querySelector('.rail-link[href*="view=issues"]');if(!node)return;
+  if(!state.project){node.hidden=true;diagnosticProject='';return;}
+  if(diagnosticProject===state.project&&!force)return;
+  const project=state.project,sequence=++diagnosticSequence;diagnosticProject=project;node.hidden=false;
+  try{const data=await get('/api/issues?'+new URLSearchParams({project,...state.backlog?{backlog:state.backlog}:{}}));if(sequence!==diagnosticSequence||project!==state.project)return;
+    const has=(data.diagnostics||[]).length||Object.values(data.health||{}).some(v=>Array.isArray(v)?v.length:v&&typeof v==='object'&&Object.keys(v).length);
+    node.hidden=!has;node.title=text('백로그 진단','Backlog diagnostics');
+  }catch{if(sequence===diagnosticSequence&&project===state.project){node.hidden=false;node.title=text('진단 조회 미확인','Diagnostic status unverified');}}
+}

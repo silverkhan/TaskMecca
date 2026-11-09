@@ -1,5 +1,6 @@
 (() => {
   const params = new URLSearchParams(location.search);
+  if(params.get('embedded')==='1')document.getElementById('terminalBack')?.setAttribute('target','_top');
   const language = params.get('lang') || localStorage.getItem('task-mecca-language') || (navigator.language?.toLowerCase().startsWith('ko') ? 'ko' : 'en');
   const I18N = {
     ko: {

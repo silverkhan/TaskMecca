@@ -8,7 +8,7 @@ description: Existing Task Mecca workflows in the user-accepted f3beec75 materia
 
 첫 화면은 Global Hub다. SYSTEM / BACKLOGS / OPERATIONS / HELP 그룹과 열린 프로젝트 직접 진입을 보존한다. PC와 모바일은 같은 업무와 전용 상세 화면을 사용한다. 모바일 보조 도구는 접을 수 있으나 제거하지 않는다. 원래 logo.svg, 한영, Light/Dark/System 및 저장된 설정을 유지한다.
 
-공통 표면은 accepted `ui/material/material.css`, `background-comparison.css`, `transmissive.js`, `proximity.js`다. 이 원본 파일은 확대 작업에서 변경하지 않았다. `expansion.css`와 `expansion.js`가 실제 셸/목록/상세/관리 화면을 연결한다. rail 32px, 읽기 면 약30px의 곡률, 비대칭 rim, 내부 두께와 접지 그림자, 7px photo sampling blur, 공간 edge SVG map, 입력이 있을 때만 갱신하는 근접광을 공유한다. 작은 필드는16px, 메뉴·도구는 그 크기에 맞춰 구성한다. Pane의 실제 캡처는 형태와 깊이를 읽는 참조이며 데모의 숫자/사용자/타이머는 Task Mecca 기능이 아니다.
+공통 표면은 accepted `ui/material/material.css`, `background-comparison.css`, `transmissive.js`, `proximity.js`다. 이 원본 파일은 확대 작업에서 변경하지 않았다. `expansion.css`와 `expansion.js`가 실제 셸/목록/상세/관리 화면을 연결한다. 전체 첫 성능 gate의 scroll 악화 교정 후 production `optics.js`는 같은 photo/7px blur/edge map을 fixed viewport attachment로 샘플링한다. accepted sample 원본의 `transmissive.js`는 보존하며, production은 scroll마다 좌표를 다시 쓰지 않는다. rail 32px, 읽기 면 약30px의 곡률, 비대칭 rim, 내부 두께와 접지 그림자, 7px photo sampling blur, 공간 edge SVG map, 입력이 있을 때만 갱신하는 근접광을 공유한다. 작은 필드는16px, 메뉴·도구는 그 크기에 맞춰 구성한다. Pane의 실제 캡처는 형태와 깊이를 읽는 참조이며 데모의 숫자/사용자/타이머는 Task Mecca 기능이 아니다.
 
 배경은 고정된 로컬 사진 또는 단색이다. 투과층은 **로컬 사진의 viewport 좌표를 각 면에 샘플링**한다. 임의의 뒤 DOM을 굴절하지 않는다. Chromium의 SVG photo distortion을 enhancement로 사용하고 다른 엔진에서는 7px blur·투과·rim을 유지한다. Safari/Firefox 실물 검증을 하지 않았다면 지원 선언과 실측을 구별한다. solid에서는 sampling layer를 숨기고 같은 rim/두께를 사용한다.
 

@@ -1,4 +1,5 @@
-import { refreshSidebar, bindExpansionShell, paintProjects } from "./expansion.js";
+import { bindDocumentTools } from "./document-tools.js";
+import { refreshSidebar, bindExpansionShell, paintProjects, sidebarProjects, syncProjectDiagnostics } from "./expansion.js";
 import { deliverCanonicalEvents } from "./screens/notifications.js";
 import { managedViews, management, bindManagement } from "./screens/management.js";
 import { mountExecutionEnvironment, refreshExecutionEnvironment, stopExecutionEnvironment, resumeExecutionEnvironment } from "./environment.js";
@@ -118,8 +119,9 @@ function updateShellNavigation() {
   const active = state.view;
   paintProjects();
   document.querySelectorAll(".rail-link").forEach((a) => {
-    const view = new URL(a.href).searchParams.get("view") || "home",
-      current = view === active && (view !== "backlog" || new URL(a.href).searchParams.get("project") === state.project);
+    const view = new URL(a.href).searchParams.get("view") || "home";
+    if(!a.closest('.material-project-row')) a.href=routeURL({view,detail:null,...['home','projects','storage','preview','release-notes'].includes(view)?{project:'',backlog:''}:{}});
+    const current = view === active && (view !== "backlog" || new URL(a.href).searchParams.get("project") === state.project);
     a.classList.toggle("active", current);
     if (current) a.setAttribute("aria-current", "page");
     else a.removeAttribute("aria-current");
@@ -130,10 +132,11 @@ function renderShell() {
   if (!main() || shellLanguage !== state.language) {
     document.getElementById("app").innerHTML = shell();
     bindExpansionShell();
-    void refreshSidebar().then(()=>{ if (state.project) void deliverCanonicalEvents(state.project).catch(()=>{}); });
+    void refreshSidebar().then(()=>{ for(const p of sidebarProjects()) void deliverCanonicalEvents(p.path).catch(()=>{}); });
     shellLanguage = state.language;
     document.getElementById("refresh").onclick = () => {
       void refreshExecutionEnvironment();
+      void syncProjectDiagnostics(true);
       if (state.detail)
         invalidateContent({
           id: state.detail,
@@ -454,6 +457,7 @@ function schedulePoll(current) {
 }
 let measuredAutoSize=null;
 function bindScreen() {
+  bindDocumentTools(main());
   if(state.view==='backlog'&&!state.detail&&state.pageSize==='auto') measuredAutoSize=effectivePageSize();
   document.querySelectorAll('[data-tag-filter]').forEach(input=>input.onchange=()=>{const values=new Set(state.tags);if(input.checked)values.add(input.dataset.tagFilter);else values.delete(input.dataset.tagFilter);navigate(routeURL({tags:[...values],page:1}),{replace:true,preserve:true});});
   document.getElementById('backlog-location')?.addEventListener('change',e => { persist('task-mecca-backlog-folder',e.target.value); navigate(routeURL({backlog:e.target.value,page:1}),{replace:true,preserve:true}); });
@@ -633,6 +637,7 @@ document.addEventListener("visibilitychange", () => {
     closeLiveSource();
   } else {
     void refreshExecutionEnvironment();
+      void syncProjectDiagnostics(true);
     connectLiveSource(liveChange, streamFailure, overviewData?.revision || "");
     if (state.detail) void checkContentRevision().catch(() => {});
   }
@@ -669,7 +674,8 @@ function streamFailure() {
 async function liveChange() {
   if (sourceRefresh || document.hidden) return;
   const current = epoch;
-  if(state.project) void deliverCanonicalEvents(state.project,controller?.signal).catch(()=>{});
+  for(const p of sidebarProjects()) void deliverCanonicalEvents(p.path,controller?.signal).catch(()=>{});
+  void syncProjectDiagnostics(true);
   sourceRefresh = (async () => {
     if (state.detail) {
       await checkContentRevision();

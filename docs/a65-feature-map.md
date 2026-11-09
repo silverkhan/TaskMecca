@@ -24,7 +24,8 @@
 | Preview 빌드/검색/필터/재빌드/인스턴스중지/실행 전환 | `preview.js`, SHA-pinned 기존 API | local process와 remote build 별도, fresh server identity 조건·확인 후 실행, 격리 fixture만 |
 | actual PR identity·Dev 복귀 false-success 방지 | 기존 `environment.js` 전부 유지, mobile unknown summary 표시 수정 | P0 unit 및 browser positive/denied/mismatch/timeout |
 | 터미널/security/provider 기능 | 기존 `/terminal`을 실제 iframe으로 마운트, 원래 terminal runtime 사용 | URL placeholder가 아닌 동작 화면; 실제 shell 명령 실행 미실행 |
-| 백로그 진단/복원 요청 | `management.js`, `/api/issues` 근거 및 복구문구 | 진단 자료 읽기. Agent에 자동 전송하지 않음 |
+| Markdown 코드 복사 / Mermaid 원문·diagram | `document-tools.js`, 기존 optional local classic bundle 및 exact-pinned 11.10.0 CDN fallback, strict renderer | 코드 원문 보존, 실패 시 원문 제공; 외부 runtime는 지원 범위와 실측을 구별 |
+| 백로그 진단/복원 요청 | `management.js`, `/api/issues` health 그룹·diagnostics 및 Agent 복원요청 복사 | 진단 자료 읽기. Agent에 자동 전송하지 않음 |
 | 원래 로고·한영·Light/Dark/System·고정 배경·image/solid | 기존 boot/state, `expansion.js`, accepted material assets | 선택 복원 및 기능 검사 |
 | input/select/combo/table/header/menu/popover/modal 공통 재질 | accepted material CSS 및 `expansion.css`, 기존 `select-ui.js` 부분 기능 모듈 재사용 | text/icon은 filter 밖, 행 blur/canvas/CPU optics/continuous rAF 없음 |
 
