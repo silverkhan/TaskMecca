@@ -1,4 +1,5 @@
-// Review-only backdrop comparison. No material surface, pointer or animation changes.
+// Review-only backdrop choice; optical sampling lives in transmissive.js.
+import './transmissive.js';
 const root = document.documentElement;
 const storageKey = 'task-mecca-material-review-background';
 const choices = ['image', 'solid'];
@@ -9,7 +10,7 @@ let mode = choices.includes(query) ? query : choices.includes(saved) ? saved : '
 const section = document.createElement('section');
 section.className = 'material-background-comparison';
 section.setAttribute('aria-labelledby', 'material-background-title');
-section.innerHTML = `<h2 id="material-background-title">배경 비교</h2><div class="material-theme-control" role="group" aria-label="검토 시안 배경"><button type="button" data-material-background="image" aria-pressed="false">이미지</button><button type="button" data-material-background="solid" aria-pressed="false">단색</button></div><p>AI 생성 실내 이미지입니다. 현재 사이드바·툴바·카드 내부는 불투명하며, 배경은 표면을 통과하지 않습니다.</p><p id="material-background-feedback" role="status" aria-live="polite"></p>`;
+section.innerHTML = `<h2 id="material-background-title">배경 비교</h2><div class="material-theme-control" role="group" aria-label="검토 시안 배경"><button type="button" data-material-background="image" aria-pressed="false">이미지</button><button type="button" data-material-background="solid" aria-pressed="false">단색</button></div><p>AI 생성 실내 이미지입니다. 사이드바·툴바·카드는 같은 위치의 배경을 흐리게 투과합니다. 지원 브라우저에서는 가장자리의 배경 위치도 왜곡합니다. 근접광은 반사 표현입니다.</p><p id="material-background-feedback" role="status" aria-live="polite"></p>`;
 document.querySelector('.material-review-notes').prepend(section);
 function apply() {
   root.dataset.materialBackground = mode;

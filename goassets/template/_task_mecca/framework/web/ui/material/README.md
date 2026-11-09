@@ -11,3 +11,19 @@
 SYSTEM/BACKLOGS/OPERATIONS/HELP reproduce the old navigation grammar, with directly opened projects. Only the small review controls and project context work here. Storage, Preview management, operations/help, full backlog and detail destinations remain unconnected and are visibly labeled; changing a selection is not completion of restored UX. Mobile uses a full-width expandable rail and static reflection.
 
 The first slice gets bounded1440/390 × Light/Dark visual/state inspection and short same-fixture pointer on/off/idle measurements. Whole-core48-group/eight-pair acceptance is deliberately not rerun or claimed for this slice. User accepts the material before expansion. No merge, deployment, installation or operating Preview switch is included.
+
+## Approved transmissive sample (2026-11-09)
+
+The review-only `background-comparison.js` imports `transmissive.js`. It samples the
+same local photograph in viewport coordinates into one decorative layer per
+rail/toolbar/card. A static SVG spatial map displaces the blurred photo at the
+edges; it never filters content or calls a CPU pixel loop. This is photographic
+backdrop sampling, not refraction of arbitrary DOM behind the surface. Existing
+proximity lighting remains reflection. Scroll/resize and ResizeObserver updates
+maintain the sample coordinates without a continuous animation loop.
+
+Validated Chromium uses the SVG filter. Other engines deliberately use CSS blur
+with transmission, curvature and rim, without claiming displacement. CSS filter
+syntax support alone cannot establish SVG execution support. Solid mode hides
+the photo samples and restores the previous opaque surface gradient. No change
+to core routes, shared input handling, service installation or operating preview.
