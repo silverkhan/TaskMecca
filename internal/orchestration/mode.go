@@ -73,14 +73,19 @@ func Decide(req Request) (Decision, error) {
  valid := map[string]bool{"root_initialized":true,"user_decision_required":true,"registration_completed":true,"worker_done":true,"session_resume":true}
  if !valid[req.Event] { return Decision{}, fmt.Errorf("unsupported orchestration event %q", req.Event) }
  d := Decision{SchemaVersion:1,Mode:req.Mode,Event:req.Event,Reasons:[]string{}}
- if mode.Execution=="subagent" && !supported(req.Capabilities.SpawnSubagent) {
-  d.Action="capability_unavailable";d.Reasons=append(d.Reasons,"spawn_subagent_not_verified");return d,nil
- }
- if mode.Execution=="session" && !supported(req.Capabilities.CreateSession) {
-  d.Action="capability_unavailable";d.Reasons=append(d.Reasons,"create_session_not_verified");return d,nil
- }
- if req.Event=="root_initialized" && mode.RootCommunication && !supported(req.Capabilities.MessageRoot) {
-  d.Action="capability_unavailable";d.Reasons=append(d.Reasons,"message_root_not_verified");return d,nil
+ // Startup is gated by spawn/create support. A running or previously
+ // persisted task must still be able to reach durable recovery if creation
+ // capability later disappears.
+ if req.Event=="root_initialized" {
+  if mode.Execution=="subagent" && !supported(req.Capabilities.SpawnSubagent) {
+   d.Action="capability_unavailable";d.Reasons=append(d.Reasons,"spawn_subagent_not_verified");return d,nil
+  }
+  if mode.Execution=="session" && !supported(req.Capabilities.CreateSession) {
+   d.Action="capability_unavailable";d.Reasons=append(d.Reasons,"create_session_not_verified");return d,nil
+  }
+  if mode.RootCommunication && !supported(req.Capabilities.MessageRoot) {
+   d.Action="capability_unavailable";d.Reasons=append(d.Reasons,"message_root_not_verified");return d,nil
+  }
  }
  switch req.Event {
  case "root_initialized":
