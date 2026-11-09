@@ -15,6 +15,51 @@ import (
  "github.com/silverkhan/TaskMecca/internal/runtimeobs"
 )
 
+type nativeMessageDirective struct {
+ ActorRole string `json:"actor_role"`
+ ActorAttemptID string `json:"actor_attempt_id"`
+ TargetRole string `json:"target_role"`
+ TargetProvider string `json:"target_provider"`
+ TargetSessionID string `json:"target_session_id"`
+ TargetAttemptID string `json:"target_attempt_id"`
+ TargetRuntimeAgentID string `json:"target_runtime_agent_id,omitempty"`
+ TransportAction string `json:"transport_action"`
+ Message string `json:"message"`
+ AfterActualDeliveryCommand []string `json:"after_actual_delivery_command"`
+ OnTransportFailure string `json:"on_transport_failure"`
+}
+
+func rootCommunicationDirective(
+ project,provider,rootSessionID,controllerAttemptID,task,reason,resume string,
+ plan rootNotificationPlan,
+) *nativeMessageDirective {
+ if plan.HandoffID=="" || plan.NativeAction=="" || !plan.Decision.Allowed {
+  return nil
+ }
+ // This payload is direction for the *currently executing agent*, not an
+ // instruction to the CLI to send or to mark dispatch success.
+ payload:=fmt.Sprintf(
+  "Task Mecca USER_DECISION_REQUIRED\nTask: %s\nHandoff: %s\n"+
+   "Blocking reason: %s\nResume condition: %s\n"+
+   "Please inspect the canonical task and ask the user for the required decision. "+
+   "Do not interpret this message as authorization or automatically resume the task.",
+  task,plan.HandoffID,reason,resume,
+ )
+ return &nativeMessageDirective{
+  ActorRole:"/root/controller",ActorAttemptID:controllerAttemptID,
+  TargetRole:"/root",TargetProvider:provider,
+  TargetSessionID:rootSessionID,TargetAttemptID:plan.Target.AttemptID,
+  TargetRuntimeAgentID:plan.Target.RuntimeAgentID,
+  TransportAction:plan.NativeAction,Message:payload,
+  AfterActualDeliveryCommand:[]string{
+   "task-mecca","handoff","mark",plan.HandoffID,
+   "--project",project,"--step","dispatch","--result","ok",
+   "--evidence","<ACTUAL_NATIVE_TRANSPORT_PROOF>","--json",
+  },
+  OnTransportFailure:"Do not report delivery; record failed/unknown transport evidence through handoff mark and preserve the canonical hold(user) for a subsequent Root turn.",
+ }
+}
+
 type rootNotificationPlan struct {
  Mode orchestration.Mode `json:"mode"`
  TaskID string `json:"task_id"`
@@ -25,6 +70,7 @@ type rootNotificationPlan struct {
  RequiresFreshPreflight bool `json:"requires_fresh_preflight,omitempty"`
  Delivered bool `json:"delivered"`
  Note string `json:"note"`
+ Directive *nativeMessageDirective `json:"directive,omitempty"`
 }
 
 func runOrchestrationNotifyCLI(args []string,stdout,stderr io.Writer) int {
@@ -105,7 +151,8 @@ func runOrchestrationNotifyCLI(args []string,stdout,stderr io.Writer) int {
      plan.Decision.Reasons=append(plan.Decision.Reasons,"handoff_target_not_messageable:"+prepared.Reason)
     }
     if plan.NativeAction!=""{
-     plan.Note="Prepared handoff evidence; invoke provider-native transport and use handoff mark with actual evidence. Canonical user hold is the durable fallback. Not sent by CLI."
+     plan.Note="Prepared handoff evidence; follow directive with an available provider-native message/resume tool, then mark with actual evidence. Not sent by CLI."
+     plan.Directive=rootCommunicationDirective(projectAbs,*provider,*rootID,*source,*task,reason,resume,plan)
     }
    }
   }
