@@ -41,3 +41,20 @@ func TestOrchestrationCLIRejectsUnverifiedRootMessage(t *testing.T) {
  status=runOrchestrationCLI([]string{"notify","--project",project,"--provider","claude","--root-session-id","exact","--task","B-100","--json"},&out,&stderr)
  if status==0 {t.Fatal("notified unconfigured Root")}
 }
+
+func TestSessionModeNeedsCrossSessionEvidence(t *testing.T) {
+ project:=t.TempDir()
+ now:=time.Now()
+ for _,key:=range []string{"can_create_session","can_message_root"} {
+  if _,err:=handoff.RecordCapability(project,"claude",key,handoff.CapabilitySupported,"runtime-smoke",now);err!=nil{t.Fatal(err)}
+ }
+ caps,err:=runtimeOrchestrationCapabilities(project,"claude")
+ if err!=nil{t.Fatal(err)}
+ if caps.MessageSession=="supported"{t.Fatal("legacy baseline was treated as native smoke evidence")}
+ if _,err:=orchestration.Configure(project,"claude","root",orchestration.ModeC,caps,false,"",now);err==nil {t.Fatal("C accepted without cross-session evidence")}
+ if _,err:=handoff.RecordCapability(project,"claude","can_cross_session_message",handoff.CapabilitySupported,"native-session-message-proof",now);err!=nil{t.Fatal(err)}
+ caps,err=runtimeOrchestrationCapabilities(project,"claude")
+ if err!=nil{t.Fatal(err)}
+ g,err:=orchestration.Configure(project,"claude","root",orchestration.ModeC,caps,false,"",now)
+ if err!=nil||g.Mode!=orchestration.ModeC {t.Fatalf("%+v %v",g,err)}
+}
