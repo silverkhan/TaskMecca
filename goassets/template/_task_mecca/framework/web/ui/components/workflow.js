@@ -178,7 +178,7 @@ let workflowActiveFloating=null;
 function workflowFloatingView(root,viewport,wf,pref,ko){
   const abort=new AbortController(),options={signal:abort.signal},surface=document.createElement('div');
   surface.className='workflow-floating';surface.hidden=true;document.body.append(surface);
-  let anchor=null,pinned=false,keyboard=false,positionFrame=0,disposed=false,returningFocus=false;
+  let anchor=null,pinned=false,keyboard=false,positionFrame=0,disposed=false,returningFocus=false,placement=null;
   const key=node=>node?.dataset.workflowInterval||JSON.stringify(['row',node?.dataset.workflowRowSelect]);
   const memberFingerprint=node=>node?.closest('.workflow-run')?.dataset.workflowMembers||null;
   const anchorVisible=node=>{if(!node.dataset.workflowInterval)return true;const view=workflowViewWindow(wf,pref),origin=Date.parse(wf.axis.start);return Number(node.dataset.workflowRelativeEnd)>=view.start-origin&&Number(node.dataset.workflowRelativeStart)<=view.end-origin;};
@@ -188,20 +188,27 @@ function workflowFloatingView(root,viewport,wf,pref,ko){
     const live=new Set(anchors().filter(n=>n.dataset.workflowInterval&&Number(n.dataset.workflowRelativeEnd)>=left&&Number(n.dataset.workflowRelativeStart)<=right).map(n=>n.dataset.workflowInterval));
     return row?.intervals.filter(i=>['activity','activity_open'].includes(i.kind)&&live.has(workflowIntervalKey(row,i))&&(!memberKeys||memberKeys.has(workflowIntervalKey(row,i))))||[];
   };
-  const readingState=()=>{const active=document.activeElement,details=surface.querySelector('#workflowIntervalEvidence'),included=surface.querySelector('.workflow-included-events'),text=surface.querySelector('#workflowIntervalEvidence pre')?.firstChild,selection=getSelection();return {open:details?.open||false,includedOpen:included?.open||false,scrollTop:surface.scrollTop,focus:active===surface?'surface':active===surface.querySelector('#workflowIntervalEvidence>summary')?'summary':active===included?.querySelector('summary')?'included-summary':active?.dataset?.workflowMember?'member:'+active.dataset.workflowMember:active===surface.querySelector('button')?'close':null,selection:text&&selection?.anchorNode===text&&selection.focusNode===text?{anchor:selection.anchorOffset,focus:selection.focusOffset}:null};};
+  const readingState=()=>{const active=document.activeElement,details=surface.querySelector('#workflowIntervalEvidence'),included=surface.querySelector('.workflow-included-events'),text=surface.querySelector('#workflowIntervalEvidence pre')?.firstChild,selection=getSelection();return {placement,open:details?.open||false,includedOpen:included?.open||false,scrollTop:surface.scrollTop,focus:active===surface?'surface':active===surface.querySelector('#workflowIntervalEvidence>summary')?'summary':active===included?.querySelector('summary')?'included-summary':active?.dataset?.workflowMember?'member:'+active.dataset.workflowMember:active===surface.querySelector('button')?'close':null,selection:text&&selection?.anchorNode===text&&selection.focusNode===text?{anchor:selection.anchorOffset,focus:selection.focusOffset}:null};};
 
   const place=()=>{
     positionFrame=0;if(disposed||surface.hidden||!anchor)return;
+    const readingTop=surface.scrollTop;
     const r=anchor.getBoundingClientRect(),clip=viewport.getBoundingClientRect();
     if(!anchor.isConnected||r.right<clip.left||r.left>clip.right||r.bottom<0||r.top>innerHeight){close(false);return;}
     const margin=8,width=Math.min(pinned?360:300,innerWidth-margin*2);surface.style.width=width+'px';
     const topMargin=Math.max(margin,(document.querySelector('.topbar')?.getBoundingClientRect().bottom||0)+margin),belowSpace=innerHeight-margin-r.bottom-10,aboveSpace=r.top-topMargin-10;
     surface.style.maxHeight=Math.max(80,Math.max(belowSpace,aboveSpace))+'px';
     let h=surface.getBoundingClientRect().height;
-    const useBelow=h<=belowSpace||belowSpace>=aboveSpace;
+    const retained=pinned&&placement&&(placement==='below'?belowSpace:aboveSpace)>=80;
+    const useBelow=retained?placement==='below':h<=belowSpace||belowSpace>=aboveSpace;
+    placement=useBelow?'below':'above';
     surface.style.maxHeight=Math.max(80,useBelow?belowSpace:aboveSpace)+'px';h=surface.getBoundingClientRect().height;
     const left=Math.max(margin,Math.min(innerWidth-width-margin,(Math.max(r.left,clip.left)+Math.min(r.right,clip.right)-width)/2)),top=Math.max(topMargin,useBelow?r.bottom+10:r.top-h-10);
     surface.style.left=left+'px';surface.style.top=top+'px';
+    // Intermediate max-height probing can temporarily clamp a pinned reader's
+    // scroll offset. Restore against the final geometry, retaining native clamp
+    // behavior only when the actual viewport/content no longer permits it.
+    if(surface.scrollTop!==readingTop)surface.scrollTop=readingTop;
   };
   const queuePlace=()=>{if(!disposed&&!positionFrame)positionFrame=requestAnimationFrame(place);};
   const close=(restore=false,clear=true)=>{
@@ -213,7 +220,7 @@ function workflowFloatingView(root,viewport,wf,pref,ko){
   const show=(node,pin=false,fromKeyboard=false,reading=null)=>{
     if(!node||disposed)return;
     if(pin&&pinned&&anchor===node){close(fromKeyboard);return;}
-    close(false,!pin);anchor=node;pinned=pin;keyboard=fromKeyboard;
+    close(false,!pin);anchor=node;pinned=pin;keyboard=fromKeyboard;placement=reading?.placement||null;
     const rowID=node.dataset.workflowRowSelect,entry=rowID?null:JSON.parse(node.dataset.workflowInterval),row=wf.rows.find(r=>r.id===(rowID||entry?.[0]));
     const interval=entry&&row?.intervals.find(i=>i.id===entry[1]&&i.kind===entry[2]);
     const peers=visiblePeers(node,row);
