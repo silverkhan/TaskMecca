@@ -7,8 +7,8 @@ body{color:var(--ink);background:var(--page)}
 .rail.material-rail{padding:0;gap:0;box-shadow:var(--depth),var(--ground);border:0;width:var(--rail-width);overflow:clip}
 .material-brand-row .brand{padding:0;gap:11px}.brand img{width:36px;height:36px}
 .material-nav a{text-decoration:none}.material-nav-group{padding:0;border:0;background:none;box-shadow:none}
-.material-nav-group h2{line-height:1.5}.rail .material-nav{display:block;padding:0 12px;flex:1}
-.material-nav .rail-link{margin:0;gap:11px;line-height:1.5}.material-nav .rail-link.active{background:linear-gradient(180deg,var(--capsule-top),var(--capsule-low));box-shadow:var(--capsule-shadow),inset 0 0 0 .7px var(--capsule-rim);color:var(--ink)}
+.material-nav-group h2{line-height:1.5}.rail .material-nav{position:static;inset:auto;width:auto;z-index:auto;box-shadow:none;border-top:0;background:transparent;display:block;padding:0 12px;flex:1}
+.material-nav .rail-link{flex-direction:row;margin:0;gap:11px;line-height:1.5}.material-nav .rail-link.active{background:linear-gradient(180deg,var(--capsule-top),var(--capsule-low));box-shadow:var(--capsule-shadow),inset 0 0 0 .7px var(--capsule-rim);color:var(--ink)}
 .material-nav-icon svg{width:20px;height:20px}.material-project-close{font-size:20px}
 .sidebar-mode{display:flex;gap:4px;justify-content:center}.sidebar-mode button{padding:7px 9px;min-height:36px;font-size:11px}.sidebar-mode [aria-pressed=true]{box-shadow:var(--capsule-shadow);background:linear-gradient(var(--capsule-top),var(--capsule-low))}
 .workspace{margin-left:calc(var(--rail-width) + 42px);padding:14px 24px 40px 0;max-width:none;min-width:0}
