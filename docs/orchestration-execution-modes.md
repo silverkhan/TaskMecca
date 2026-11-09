@@ -24,7 +24,7 @@ task-mecca orchestration decide --mode B --event user_decision_required \
   --durable-recorded --json
 ```
 
-The command returns read-only policy decisions; it does not discover capabilities, persist the selection, spawn sessions, send messages, or wake Root. The caller must furnish fresh, observed capability evidence; do not label a guessed feature supported. The native runtime and existing handoff/decision/recovery owners execute, mark, and reconcile operations.
+The `decide` command returns read-only policy decisions; it does not discover capabilities, spawn sessions, send messages, or wake Root. The separate `configure` command persists explicitly confirmed selections. The caller must furnish fresh, observed capability evidence; do not label a guessed feature supported. The native runtime and existing handoff/decision/recovery owners execute, mark, and reconcile operations.
 
 For a user decision, Controller first records the hold, reason, and resume condition in the canonical backlog. Only after that does the decision function permit `send_to_root`. Transport success is not a user acknowledgement or approval. If the message feature is unknown/unsupported, use `await_next_root_turn`. Root wake is separate from send.
 
@@ -34,11 +34,35 @@ For registration/Worker completion, continue the existing handoff prepare/claim/
 
 Use `DMMDD_NN_` as the common **display** prefix per workgroup, e.g. `D1109_01_Controller`, `D1109_01_Registrar`, `D1109_01_Worker_Digeuda_G1`. Reserve a non-colliding sequence within the project and keep the initial group prefix across calendar days. Root name may be unchangeable, in which case associate Root using internal group identity. Never use the display title to authorize handoff: use project, group, exact session/native identity and runtime attempt.
 
-## Next integration boundaries
+## Implemented persistent Root selection and evidence-driven notification
 
-1. Add provider-specific capability probes and evidence, including separate `message_root`, `wake_root`, `message_session`, `resume_session`.
-2. Persist the selected mode and group identity with a schema and safe session-resume reconciliation.
-3. Plug decisions into Root bootstrap and handoff/recovery actions; provider-native action results must feed existing durable journal.
-4. Include mode, group and delivery evidence in observability, and test end-to-end against each supported provider.
+New runtime capabilities are recorded through the existing handoff capability registry, with evidence mandatory when marking a new orchestration capability as supported. Provider names never imply native session creation or Root messaging.
 
-These integrations are **not** implemented by the read-only mode decision CLI.
+```sh
+task-mecca handoff capability record --project . codex can_spawn_subagent supported --evidence NATIVE_SMOKE_RESULT --json
+task-mecca handoff capability record --project . codex can_message_root supported --evidence NATIVE_SMOKE_RESULT --json
+task-mecca orchestration modes --project . --provider codex --json
+task-mecca orchestration configure --project . --provider codex --root-session-id EXACT_ROOT_SESSION --mode B --confirmed --timezone Asia/Seoul --json
+task-mecca orchestration status --project . --provider codex --root-session-id EXACT_ROOT_SESSION --json
+task-mecca orchestration name --project . --group D1109_01 --role worker --worker Digeuda --generation 2 --json
+```
+
+Selections are persisted under `_task_mecca/data/orchestration/groups/` and are bound to `provider + exact root session ID`; they survive Root resumes and are not overwritten by framework updates. Group allocation is concurrency-safe and gives all displayed independent-session names a common prefix. A change requires `--change-mode --decision-evidence USER_REFERENCE --confirmed`. The native provider must still use the returned name when it creates/renames an actual session.
+
+`orchestration notify` checks the exact canonical user hold, resume condition, bound Controller and Root attempts, saved mode and verified capabilities. It prepares the **existing handoff journal**, and returns the native message/resume action if safe. It never asserts a send, receipt, wake or user approval without provider-side evidence.
+
+```sh
+task-mecca orchestration notify --project . --provider codex --root-session-id EXACT_ROOT_SESSION --task B-620 \
+  --controller-attempt EXACT_CONTROLLER_ATTEMPT --root-attempt EXACT_ROOT_ATTEMPT --json
+# The live provider must actually send/resume, then record the result using:
+task-mecca handoff mark HANDOFF_ID --project . --step dispatch --result ok --evidence ACTUAL_NATIVE_TRANSPORT_PROOF --json
+```
+
+## Remaining native runtime integration
+
+1. Implement provider-specific capability probes and actual native spawn/message/resume adapters where supported; currently capability evidence is recorded after an external native smoke test.
+2. Call the new mode decisions and notify path automatically from all applicable native agent lifecycle events. Root and Controller instructions invoke them now, but the binary cannot force a provider agent to execute them.
+3. Extend observability to project the selected mode, group and message acknowledgement alongside live sessions.
+4. Validate actual provider-native session creation, Root delivery, resume, fallback and cross-provider behavior end-to-end.
+
+Policy, mode persistence, display-name generation and exact-identity Root handoff **preparation** are implemented. Native tool execution, message acknowledgement and Root wake are not claimed as implemented.
