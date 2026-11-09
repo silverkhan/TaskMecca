@@ -1,0 +1,15 @@
+{
+  "assignment": "a65-ci-race-20261109",
+  "role": "/root/controller/kkobugi",
+  "started_at": "2026-11-09T01:21:43.646836+00:00",
+  "worktree": "/Users/hanati/.t3/worktrees/TaskMecca/t3-688d06d2",
+  "prepared_base": "d315e2f184c156cafe97d4d2c3129fa2a71733f9",
+  "investigation_base": "f3beec75f6b082a2852cb88ddea2c8d5d901e66e",
+  "native_t3_identity": "thread:delegated-task:command%3Amcp%3A55f92140-6805-4dc3-b669-1cf03c7787b0%3Adelegate-task%3Ac228ae52-2fc8-45af-90e1-90258939c523",
+  "native_codex_session": "01a1bde4-5552-7da0-916f-073ef1beb1b8",
+  "native_codex_thread": "01a1bde4-5552-7da0-916f-073ef1beb1b8",
+  "runtime": "T3 Code / Codex harness",
+  "model": "gpt-6.1-sol",
+  "codex_version": "0.160.0",
+  "hook_observability": "Environment and t3_thread_configure identity observed. No runtime register/query/probe or hook write was performed; canonical and copied runtime/ledger left untouched. Historical runtime identities are not claimed live."
+}

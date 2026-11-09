@@ -107,3 +107,41 @@ test('workflow real browser preserves full periods, grouped intervals, role mean
   report.passed=true;
  }finally{if(ctx)await ctx.close();await browser.close();await server.close();report.cleanup={browserClosed:true,fixtureClosed:true};if(out)fs.writeFileSync(path.join(out,'browser-contract.json'),JSON.stringify(report,null,2)+'\n');}
 });
+
+// A Promise was previously accepted as a truthy waitForFunction result even
+// when the native predicate resolved false. Hold a real refresh response to
+// prove the helper polls through pending work instead of reading the old DOM.
+test('native workflow wait polls false predicates through refresh completion',{skip:!modulePath,timeout:30000},async()=>{
+  const {chromium}=require(modulePath),server=await fixture.start(path.resolve('goassets/template/_task_mecca/framework/web'));
+  let browser,release;
+  try{
+    browser=await chromium.launch({headless:true,executablePath:process.env.CHROME_EXECUTABLE});
+    const context=await browser.newContext({viewport:{width:1440,height:1000}});
+    await context.addInitScript(()=>{window.EventSource=class{addEventListener(){}close(){}};window.setInterval=()=>0;});
+    const page=await fixture.page(context,server),data=fixture.payload('zero');
+    await fixture.open(page,server);
+    await fixture.mount(page,server,data);
+    await assert.rejects(fixture.waitFor(page,()=>false,undefined,{timeout:100}),{name:'TimeoutError'});
+    const truth=await fixture.waitFor(page,id=>state.detail===id,'FLOW-1');assert.equal(await truth.jsonValue(),true);await truth.dispose();
+    const canvas=await page.locator('.workflow-timeline-canvas').elementHandle(),before=await canvas.evaluate(el=>({end:+el.dataset.viewEnd,width:el.getBoundingClientRect().width}));
+    const held=new Promise(resolve=>release=resolve);let received;
+    const requested=new Promise(resolve=>received=resolve);
+    await page.route('**/api/activity?*',async route=>{received();await held;await route.continue();});
+    await page.locator('#activityDetailRefresh').click();await requested;
+    let completed=false;
+    const waiting=fixture.waitFor(page,()=>{
+      document.documentElement.dataset.workflowWaitPolls=String(Number(document.documentElement.dataset.workflowWaitPolls||0)+1);
+      return !activityDetailPending.size;
+    }).then(value=>{completed=true;return value;});
+    await page.waitForFunction(()=>Number(document.documentElement.dataset.workflowWaitPolls)>=2);
+    assert.equal(completed,false,'pending native response must keep the wait open across polling frames');
+    assert.equal(await fixture.evaluate(page,()=>activityDetailPending.size),1);
+    release();const result=await waiting;assert.equal(await result.jsonValue(),true);await result.dispose();
+    assert.equal(await canvas.evaluate(el=>el.isConnected),false,'refresh replaces the old canvas');
+    assert.equal(await canvas.evaluate(el=>el.getBoundingClientRect().width),0,'a detached canvas explains the zero-width stale read');
+    const current=await page.locator('.workflow-timeline-canvas').evaluate(el=>({end:+el.dataset.viewEnd,width:el.getBoundingClientRect().width}));
+    assert.deepEqual(current,before,'completed refresh preserves the original time bound and exact canvas width');
+    assert.equal(await fixture.evaluate(page,expected=>JSON.stringify(activityDetailCache.get(activityDetailKey('FLOW-1',state.project)).workflow)===expected,JSON.stringify(data.workflow)),true);
+    await canvas.dispose();await context.close();
+  }finally{release?.();if(browser)await browser.close();await server.close();}
+});

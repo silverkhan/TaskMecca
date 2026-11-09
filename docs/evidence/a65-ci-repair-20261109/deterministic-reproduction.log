@@ -1,0 +1,4 @@
+{"probe":"legacy always-false wait","result":false,"elapsedMs":1}
+{"probe":"legacy refresh wait returns while response held","waitResult":false,"expectedEnd":1793838660000,"actual":{"end":1793838600000,"width":1052},"pending":1,"cacheEnd":"2026-11-05T00:30:00Z"}
+{"probe":"native refresh replaces canvas; completed current sample","stale":{"connected":false,"width":0},"current":{"end":1793838660000,"width":1052},"expectedEnd":1793838660000,"expectedWidth":1052}
+PASS: real native pending/cache/render predicates, exact width, advanced axis, and source bytes verified

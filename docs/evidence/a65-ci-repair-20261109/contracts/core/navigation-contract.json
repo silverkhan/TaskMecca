@@ -1,0 +1,743 @@
+{
+  "synthetic": true,
+  "ui": "native ES modules / Smoke",
+  "cases": [
+    {
+      "mobile": false,
+      "precise": {
+        "start": 1793837874000.0234,
+        "end": 1793837946000.0156,
+        "fullStart": "2026-11-05T00:00:00Z",
+        "fullEnd": "2026-11-05T01:00:00Z",
+        "width": 1052
+      },
+      "label": "11. 05. · 오전 09:17:54 — 오전 09:19:06",
+      "afterLeft": {
+        "start": 1793837859600.025,
+        "end": 1793837931600.017,
+        "fullStart": "2026-11-05T00:00:00Z",
+        "fullEnd": "2026-11-05T01:00:00Z",
+        "width": 1052
+      },
+      "keys": [
+        {
+          "key": "ArrowRight",
+          "range": {
+            "start": 1793837888400.022,
+            "end": 1793837960400.0142,
+            "fullStart": "2026-11-05T00:00:00Z",
+            "fullEnd": "2026-11-05T01:00:00Z",
+            "width": 1052
+          }
+        },
+        {
+          "key": "ArrowLeft",
+          "range": {
+            "start": 1793837874000.0234,
+            "end": 1793837946000.0156,
+            "fullStart": "2026-11-05T00:00:00Z",
+            "fullEnd": "2026-11-05T01:00:00Z",
+            "width": 1052
+          }
+        },
+        {
+          "key": "+",
+          "range": {
+            "start": 1793837892000.0215,
+            "end": 1793837928000.0176,
+            "fullStart": "2026-11-05T00:00:00Z",
+            "fullEnd": "2026-11-05T01:00:00Z",
+            "width": 1052
+          }
+        },
+        {
+          "key": "-",
+          "range": {
+            "start": 1793837874000.0234,
+            "end": 1793837946000.0156,
+            "fullStart": "2026-11-05T00:00:00Z",
+            "fullEnd": "2026-11-05T01:00:00Z",
+            "width": 1052
+          }
+        },
+        {
+          "key": "Home",
+          "range": {
+            "start": 1793836800000,
+            "end": 1793840400000,
+            "fullStart": "2026-11-05T00:00:00Z",
+            "fullEnd": "2026-11-05T01:00:00Z",
+            "width": 1052
+          }
+        },
+        {
+          "key": "+",
+          "range": {
+            "start": 1793837700000,
+            "end": 1793839500000,
+            "fullStart": "2026-11-05T00:00:00Z",
+            "fullEnd": "2026-11-05T01:00:00Z",
+            "width": 1052
+          }
+        },
+        {
+          "key": "0",
+          "range": {
+            "start": 1793836800000,
+            "end": 1793840400000,
+            "fullStart": "2026-11-05T00:00:00Z",
+            "fullEnd": "2026-11-05T01:00:00Z",
+            "width": 1052
+          }
+        }
+      ],
+      "descendantKeys": [
+        {
+          "key": "ArrowLeft",
+          "range": {
+            "start": 1793837859600.025,
+            "end": 1793837931600.017,
+            "fullStart": "2026-11-05T00:00:00Z",
+            "fullEnd": "2026-11-05T01:00:00Z",
+            "width": 1052
+          },
+          "focus": "[\"worker|worker|0\",\"7\",\"activity\"]"
+        },
+        {
+          "key": "ArrowRight",
+          "range": {
+            "start": 1793837874000.0234,
+            "end": 1793837946000.0156,
+            "fullStart": "2026-11-05T00:00:00Z",
+            "fullEnd": "2026-11-05T01:00:00Z",
+            "width": 1052
+          },
+          "focus": "[\"worker|worker|0\",\"7\",\"activity\"]"
+        },
+        {
+          "key": "+",
+          "range": {
+            "start": 1793837892000.0215,
+            "end": 1793837928000.0176,
+            "fullStart": "2026-11-05T00:00:00Z",
+            "fullEnd": "2026-11-05T01:00:00Z",
+            "width": 1052
+          },
+          "focus": "workflowTimelineViewport"
+        },
+        {
+          "key": "-",
+          "range": {
+            "start": 1793837874000.0234,
+            "end": 1793837946000.0156,
+            "fullStart": "2026-11-05T00:00:00Z",
+            "fullEnd": "2026-11-05T01:00:00Z",
+            "width": 1052
+          },
+          "focus": "[\"worker|worker|0\",\"8\",\"activity\"]"
+        },
+        {
+          "key": "Home",
+          "range": {
+            "start": 1793836800000,
+            "end": 1793840400000,
+            "fullStart": "2026-11-05T00:00:00Z",
+            "fullEnd": "2026-11-05T01:00:00Z",
+            "width": 1052
+          },
+          "focus": "[\"worker|worker|0\",\"7\",\"activity\"]"
+        },
+        {
+          "key": "+",
+          "range": {
+            "start": 1793837700000,
+            "end": 1793839500000,
+            "fullStart": "2026-11-05T00:00:00Z",
+            "fullEnd": "2026-11-05T01:00:00Z",
+            "width": 1052
+          },
+          "focus": "workflowTimelineViewport"
+        },
+        {
+          "key": "0",
+          "range": {
+            "start": 1793836800000,
+            "end": 1793840400000,
+            "fullStart": "2026-11-05T00:00:00Z",
+            "fullEnd": "2026-11-05T01:00:00Z",
+            "width": 1052
+          },
+          "focus": "[\"worker|worker|0\",\"4\",\"activity\"]"
+        }
+      ],
+      "nativeEnterSpaceSelection": true,
+      "tickGeometries": [
+        {
+          "label": "desktop1440 whole",
+          "plot": {
+            "left": 494,
+            "right": 1340,
+            "width": 846
+          },
+          "ticks": [
+            {
+              "position": 0,
+              "text": "오전 09:00",
+              "visible": true,
+              "left": 494,
+              "right": 541.09375
+            },
+            {
+              "position": 0.25,
+              "text": "오전 09:15",
+              "visible": true,
+              "left": 681.953125,
+              "right": 729.046875
+            },
+            {
+              "position": 0.5,
+              "text": "오전 09:30",
+              "visible": true,
+              "left": 893.453125,
+              "right": 940.546875
+            },
+            {
+              "position": 0.75,
+              "text": "오전 09:45",
+              "visible": true,
+              "left": 1104.953125,
+              "right": 1152.046875
+            },
+            {
+              "position": 1,
+              "text": "오전 10:00",
+              "visible": true,
+              "left": 1292.90625,
+              "right": 1340
+            }
+          ]
+        },
+        {
+          "label": "desktop1440 72seconds",
+          "plot": {
+            "left": 494,
+            "right": 1340,
+            "width": 846
+          },
+          "ticks": [
+            {
+              "position": 0,
+              "text": "오전 09:17:54",
+              "visible": true,
+              "left": 494,
+              "right": 556.484375
+            },
+            {
+              "position": 0.25,
+              "text": "오전 09:18:12",
+              "visible": true,
+              "left": 674.2578125,
+              "right": 736.7421875
+            },
+            {
+              "position": 0.5,
+              "text": "오전 09:18:30",
+              "visible": true,
+              "left": 885.7578125,
+              "right": 948.2421875
+            },
+            {
+              "position": 0.75,
+              "text": "오전 09:18:48",
+              "visible": true,
+              "left": 1097.2578125,
+              "right": 1159.7421875
+            },
+            {
+              "position": 1,
+              "text": "오전 09:19:06",
+              "visible": true,
+              "left": 1277.515625,
+              "right": 1340
+            }
+          ]
+        },
+        {
+          "label": "desktop1440 subsecond",
+          "plot": {
+            "left": 494,
+            "right": 1340,
+            "width": 846
+          },
+          "ticks": [
+            {
+              "position": 0,
+              "text": "오전 09:18:29.859",
+              "visible": true,
+              "left": 494,
+              "right": 577.625
+            },
+            {
+              "position": 0.25,
+              "text": "오전 09:18:29.929",
+              "visible": true,
+              "left": 663.6875,
+              "right": 747.3125
+            },
+            {
+              "position": 0.5,
+              "text": "오전 09:18:30.000",
+              "visible": true,
+              "left": 875.1875,
+              "right": 958.8125
+            },
+            {
+              "position": 0.75,
+              "text": "오전 09:18:30.070",
+              "visible": true,
+              "left": 1086.6875,
+              "right": 1170.3125
+            },
+            {
+              "position": 1,
+              "text": "오전 09:18:30.140",
+              "visible": true,
+              "left": 1256.375,
+              "right": 1340
+            }
+          ]
+        }
+      ],
+      "subsecond": {
+        "start": 1793837909859.3945,
+        "end": 1793837910140.6445,
+        "fullStart": "2026-11-05T00:00:00Z",
+        "fullEnd": "2026-11-05T01:00:00Z",
+        "width": 1052
+      },
+      "subsecondLabel": "11. 05. · 오전 09:18:29.859 — 오전 09:18:30.140",
+      "detailRetained": true,
+      "selectionRetained": true,
+      "sourceUnchanged": true,
+      "outsideShortcutUnchanged": true,
+      "verticalUnpreventedPlotCtrlWheelHandled": true
+    },
+    {
+      "mobile": true,
+      "precise": {
+        "start": 1793837874000.035,
+        "end": 1793837945999.984,
+        "fullStart": "2026-11-05T00:00:00Z",
+        "fullEnd": "2026-11-05T01:00:00Z",
+        "width": 338
+      },
+      "label": "11. 05. · 오전 09:17:54 — 오전 09:19:05",
+      "afterLeft": {
+        "start": 1793837859600.0452,
+        "end": 1793837931599.9941,
+        "fullStart": "2026-11-05T00:00:00Z",
+        "fullEnd": "2026-11-05T01:00:00Z",
+        "width": 338
+      },
+      "keys": [
+        {
+          "key": "ArrowRight",
+          "range": {
+            "start": 1793837888400.0247,
+            "end": 1793837960399.9736,
+            "fullStart": "2026-11-05T00:00:00Z",
+            "fullEnd": "2026-11-05T01:00:00Z",
+            "width": 338
+          }
+        },
+        {
+          "key": "ArrowLeft",
+          "range": {
+            "start": 1793837874000.035,
+            "end": 1793837945999.984,
+            "fullStart": "2026-11-05T00:00:00Z",
+            "fullEnd": "2026-11-05T01:00:00Z",
+            "width": 338
+          }
+        },
+        {
+          "key": "+",
+          "range": {
+            "start": 1793837892000.022,
+            "end": 1793837927999.9966,
+            "fullStart": "2026-11-05T00:00:00Z",
+            "fullEnd": "2026-11-05T01:00:00Z",
+            "width": 338
+          }
+        },
+        {
+          "key": "-",
+          "range": {
+            "start": 1793837874000.0347,
+            "end": 1793837945999.984,
+            "fullStart": "2026-11-05T00:00:00Z",
+            "fullEnd": "2026-11-05T01:00:00Z",
+            "width": 338
+          }
+        },
+        {
+          "key": "Home",
+          "range": {
+            "start": 1793836800000,
+            "end": 1793840400000,
+            "fullStart": "2026-11-05T00:00:00Z",
+            "fullEnd": "2026-11-05T01:00:00Z",
+            "width": 338
+          }
+        },
+        {
+          "key": "+",
+          "range": {
+            "start": 1793837700000,
+            "end": 1793839500000,
+            "fullStart": "2026-11-05T00:00:00Z",
+            "fullEnd": "2026-11-05T01:00:00Z",
+            "width": 338
+          }
+        },
+        {
+          "key": "0",
+          "range": {
+            "start": 1793836800000,
+            "end": 1793840400000,
+            "fullStart": "2026-11-05T00:00:00Z",
+            "fullEnd": "2026-11-05T01:00:00Z",
+            "width": 338
+          }
+        }
+      ],
+      "descendantKeys": [
+        {
+          "key": "ArrowLeft",
+          "range": {
+            "start": 1793837859600.0452,
+            "end": 1793837931599.9941,
+            "fullStart": "2026-11-05T00:00:00Z",
+            "fullEnd": "2026-11-05T01:00:00Z",
+            "width": 338
+          },
+          "focus": "[\"worker|worker|0\",\"7\",\"activity\"]"
+        },
+        {
+          "key": "ArrowRight",
+          "range": {
+            "start": 1793837874000.035,
+            "end": 1793837945999.984,
+            "fullStart": "2026-11-05T00:00:00Z",
+            "fullEnd": "2026-11-05T01:00:00Z",
+            "width": 338
+          },
+          "focus": "[\"worker|worker|0\",\"7\",\"activity\"]"
+        },
+        {
+          "key": "+",
+          "range": {
+            "start": 1793837892000.022,
+            "end": 1793837927999.9966,
+            "fullStart": "2026-11-05T00:00:00Z",
+            "fullEnd": "2026-11-05T01:00:00Z",
+            "width": 338
+          },
+          "focus": "workflowTimelineViewport"
+        },
+        {
+          "key": "-",
+          "range": {
+            "start": 1793837874000.0347,
+            "end": 1793837945999.984,
+            "fullStart": "2026-11-05T00:00:00Z",
+            "fullEnd": "2026-11-05T01:00:00Z",
+            "width": 338
+          },
+          "focus": "[\"worker|worker|0\",\"8\",\"activity\"]"
+        },
+        {
+          "key": "Home",
+          "range": {
+            "start": 1793836800000,
+            "end": 1793840400000,
+            "fullStart": "2026-11-05T00:00:00Z",
+            "fullEnd": "2026-11-05T01:00:00Z",
+            "width": 338
+          },
+          "focus": "[\"worker|worker|0\",\"7\",\"activity\"]"
+        },
+        {
+          "key": "+",
+          "range": {
+            "start": 1793837700000,
+            "end": 1793839500000,
+            "fullStart": "2026-11-05T00:00:00Z",
+            "fullEnd": "2026-11-05T01:00:00Z",
+            "width": 338
+          },
+          "focus": "workflowTimelineViewport"
+        },
+        {
+          "key": "0",
+          "range": {
+            "start": 1793836800000,
+            "end": 1793840400000,
+            "fullStart": "2026-11-05T00:00:00Z",
+            "fullEnd": "2026-11-05T01:00:00Z",
+            "width": 338
+          },
+          "focus": "[\"worker|worker|0\",\"4\",\"activity\"]"
+        }
+      ],
+      "nativeEnterSpaceSelection": true,
+      "tickGeometries": [
+        {
+          "label": "mobile390 whole",
+          "plot": {
+            "left": 162,
+            "right": 356,
+            "width": 194
+          },
+          "ticks": [
+            {
+              "position": 0,
+              "text": "오전 09:00",
+              "visible": true,
+              "left": 162,
+              "right": 204.390625
+            },
+            {
+              "position": 0.25,
+              "text": "오전 09:15",
+              "visible": false,
+              "left": 189.3046875,
+              "right": 231.6953125
+            },
+            {
+              "position": 0.5,
+              "text": "오전 09:30",
+              "visible": true,
+              "left": 237.8046875,
+              "right": 280.1953125
+            },
+            {
+              "position": 0.75,
+              "text": "오전 09:45",
+              "visible": false,
+              "left": 286.3046875,
+              "right": 328.6953125
+            },
+            {
+              "position": 1,
+              "text": "오전 10:00",
+              "visible": true,
+              "left": 313.609375,
+              "right": 356
+            }
+          ]
+        },
+        {
+          "label": "mobile390 72seconds",
+          "plot": {
+            "left": 162,
+            "right": 356,
+            "width": 194
+          },
+          "ticks": [
+            {
+              "position": 0,
+              "text": "오전 09:17:54",
+              "visible": true,
+              "left": 162,
+              "right": 218.234375
+            },
+            {
+              "position": 0.25,
+              "text": "오전 09:18:12",
+              "visible": false,
+              "left": 182.3828125,
+              "right": 238.6171875
+            },
+            {
+              "position": 0.5,
+              "text": "오전 09:18:30",
+              "visible": false,
+              "left": 230.8828125,
+              "right": 287.1171875
+            },
+            {
+              "position": 0.75,
+              "text": "오전 09:18:47",
+              "visible": false,
+              "left": 279.3828125,
+              "right": 335.6171875
+            },
+            {
+              "position": 1,
+              "text": "오전 09:19:05",
+              "visible": true,
+              "left": 299.765625,
+              "right": 356
+            }
+          ]
+        },
+        {
+          "label": "mobile390 subsecond",
+          "plot": {
+            "left": 162,
+            "right": 356,
+            "width": 194
+          },
+          "ticks": [
+            {
+              "position": 0,
+              "text": "오전 09:18:29.859",
+              "visible": true,
+              "left": 162,
+              "right": 237.265625
+            },
+            {
+              "position": 0.25,
+              "text": "오전 09:18:29.929",
+              "visible": false,
+              "left": 172.8671875,
+              "right": 248.1328125
+            },
+            {
+              "position": 0.5,
+              "text": "오전 09:18:30.000",
+              "visible": false,
+              "left": 221.3671875,
+              "right": 296.6328125
+            },
+            {
+              "position": 0.75,
+              "text": "오전 09:18:30.070",
+              "visible": false,
+              "left": 269.8671875,
+              "right": 345.1328125
+            },
+            {
+              "position": 1,
+              "text": "오전 09:18:30.140",
+              "visible": true,
+              "left": 280.734375,
+              "right": 356
+            }
+          ]
+        },
+        {
+          "label": "mobile430 whole",
+          "plot": {
+            "left": 162,
+            "right": 396,
+            "width": 234
+          },
+          "ticks": [
+            {
+              "position": 0,
+              "text": "오전 09:00",
+              "visible": true,
+              "left": 162,
+              "right": 204.390625
+            },
+            {
+              "position": 0.25,
+              "text": "오전 09:15",
+              "visible": false,
+              "left": 199.3046875,
+              "right": 241.6953125
+            },
+            {
+              "position": 0.5,
+              "text": "오전 09:30",
+              "visible": true,
+              "left": 257.8046875,
+              "right": 300.1953125
+            },
+            {
+              "position": 0.75,
+              "text": "오전 09:45",
+              "visible": false,
+              "left": 316.3046875,
+              "right": 358.6953125
+            },
+            {
+              "position": 1,
+              "text": "오전 10:00",
+              "visible": true,
+              "left": 353.609375,
+              "right": 396
+            }
+          ]
+        },
+        {
+          "label": "mobile430 72seconds",
+          "plot": {
+            "left": 162,
+            "right": 396,
+            "width": 234
+          },
+          "ticks": [
+            {
+              "position": 0,
+              "text": "오전 09:17:53",
+              "visible": true,
+              "left": 162,
+              "right": 218.234375
+            },
+            {
+              "position": 0.25,
+              "text": "오전 09:18:11",
+              "visible": false,
+              "left": 192.3828125,
+              "right": 248.6171875
+            },
+            {
+              "position": 0.5,
+              "text": "오전 09:18:29",
+              "visible": true,
+              "left": 250.8828125,
+              "right": 307.1171875
+            },
+            {
+              "position": 0.75,
+              "text": "오전 09:18:47",
+              "visible": false,
+              "left": 309.3828125,
+              "right": 365.6171875
+            },
+            {
+              "position": 1,
+              "text": "오전 09:19:05",
+              "visible": true,
+              "left": 339.765625,
+              "right": 396
+            }
+          ]
+        }
+      ],
+      "subsecond": {
+        "start": 1793837909859.3843,
+        "end": 1793837910140.6343,
+        "fullStart": "2026-11-05T00:00:00Z",
+        "fullEnd": "2026-11-05T01:00:00Z",
+        "width": 338
+      },
+      "subsecondLabel": "11. 05. · 오전 09:18:29.859 — 오전 09:18:30.140",
+      "detailRetained": true,
+      "selectionRetained": true,
+      "sourceUnchanged": true,
+      "outsideShortcutUnchanged": true,
+      "verticalUnpreventedPlotCtrlWheelHandled": true
+    }
+  ],
+  "errors": [],
+  "cleanup": {
+    "browserClosed": true,
+    "fixtureClosed": true
+  },
+  "browser": "156.0.8078.4",
+  "passed": true
+}

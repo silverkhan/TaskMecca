@@ -19,7 +19,14 @@ async function start(root){
 }
 async function page(context,server){if(!installed.has(context)){installed.add(context);await context.route('**/__test__/workflow-bridge.js',r=>r.fulfill({contentType:'text/javascript',body:`import * as workflow from '/ui/components/workflow.js';import * as app from '/ui/main.js';import {state} from '/ui/state.js';export {state};export * from '/ui/components/workflow.js';export function run(code,arg){const api={...workflow,...app,state};const names=Object.keys(api);return new Function(...names,'arg','return ('+code+')(arg)')(...names.map(k=>api[k]),arg);}`}));for(const [file,names] of [['ui/components/workflow.js',observed],['ui/main.js',['render']]])await context.route('**/'+file,r=>r.fulfill({contentType:'text/javascript',body:appendExports(fs.readFileSync(path.join(server.webRoot,file),'utf8'),names)}));}return context.newPage();}
 const evaluate=(page,fn,arg)=>page.evaluate(async({code,arg})=>(await import('/__test__/workflow-bridge.js')).run(code,arg),{code:fn.toString(),arg});
-const waitFor=(page,fn,arg)=>page.waitForFunction(async({code,arg})=>(await import('/__test__/workflow-bridge.js')).run(code,arg),{code:fn.toString(),arg});
+async function waitFor(page,fn,arg,options){
+ // Playwright polls the callback's immediate truthiness, so an async import in
+ // that callback makes even Promise.resolve(false) finish the wait. Resolve the
+ // native bridge once, then poll the actual synchronous predicate result.
+ const bridge=await page.evaluateHandle(()=>import('/__test__/workflow-bridge.js'));
+ try{return await page.waitForFunction(({bridge,code,arg})=>bridge.run(code,arg),{bridge,code:fn.toString(),arg},options);}
+ finally{await bridge.dispose();}
+}
 async function loaded(page){await page.locator('#lifecycle').waitFor();await waitFor(page,()=>!activityDetailPending.size);await page.locator('#activityMetricsBody').waitFor();await page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));}
 function taskURL(server,id='FLOW-1'){return server.origin+'/tasks/'+encodeURIComponent(id)+'?project='+encodeURIComponent(fixture.project)+'&backlog='+encodeURIComponent(fixture.backlog)+'&tab=lifecycle';}
 async function open(page,server){await page.goto(taskURL(server));await loaded(page);const native=await page.evaluate(()=>({module:!!document.querySelector('script[type="module"][src*="ui/main.js"]'),legacy:performance.getEntriesByType('resource').some(r=>/\/app\.js(?:\?|$)/.test(r.name)),global:typeof window.state}));assert.equal(native.module,true,'actual native module entry loaded');assert.equal(native.legacy,false,'dead legacy app.js must never run');assert.equal(native.global,'undefined','no legacy state compatibility global');}

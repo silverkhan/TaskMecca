@@ -1,0 +1,52 @@
+TAP version 13
+# Subtest: workflow real browser preserves full periods, grouped intervals, role meaning and partial-update state
+ok 1 - workflow real browser preserves full periods, grouped intervals, role meaning and partial-update state
+  ---
+  duration_ms: 4263.853625
+  type: 'test'
+  ...
+# Subtest: A63 connected paint, individual dense events, fit entry and exact directional navigation use native input
+ok 2 - A63 connected paint, individual dense events, fit entry and exact directional navigation use native input
+  ---
+  duration_ms: 12458.186375
+  type: 'test'
+  ...
+# Subtest: slim workflow rows and plot-only real Ctrl-wheel and captured multi-touch gestures
+ok 3 - slim workflow rows and plot-only real Ctrl-wheel and captured multi-touch gestures
+  ---
+  duration_ms: 9697.704958
+  type: 'test'
+  ...
+# Subtest: adopted A60 corrections bound mixed outcomes and preserve open row selection extent
+ok 4 - adopted A60 corrections bound mixed outcomes and preserve open row selection extent
+  ---
+  duration_ms: 4586.579542
+  type: 'test'
+  ...
+# Subtest: representative workflow has compact context and plot-coordinate anchored time navigation
+ok 5 - representative workflow has compact context and plot-coordinate anchored time navigation
+  ---
+  duration_ms: 4898.942875
+  type: 'test'
+  ...
+# Subtest: actual Activity geometry and native hover, pinned popover, focus, tap and source reconciliation
+ok 6 - actual Activity geometry and native hover, pinned popover, focus, tap and source reconciliation
+  ---
+  duration_ms: 6219.599792
+  type: 'test'
+  ...
+# Subtest: four scoped A61 review corrections retain identical-source reading state and meaningful labels
+ok 7 - four scoped A61 review corrections retain identical-source reading state and meaningful labels
+  ---
+  duration_ms: 4275.005958
+  type: 'test'
+  ...
+1..7
+# tests 7
+# suites 0
+# pass 7
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 14350.428709
