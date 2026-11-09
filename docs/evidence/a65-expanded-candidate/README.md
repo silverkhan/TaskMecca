@@ -2,7 +2,7 @@
 
 2026-11-09. 이 후보는 **merge-ready·기술완료·최종 디자인 검토본이 아니다**. 전체 A-65 AC 8개는 미체크다.
 
-사용자 승인: [수용 재질의 기존 UX 전체 적용](https://github.com/silverkhan/TaskMecca/pull/361#issuecomment-6732301992). 기존 UX의 메뉴 그룹·Global Hub·사이드바 프로젝트 직접 진입을 유지하며, 백로그 검색/필터/정렬/페이지/복원, 전용 상세와 라이프사이클, 프로젝트/저장소/워크로드/운영/알림/터미널/도움말/업데이트/Preview 관리 기능을 네이티브 모듈에 연결한 후보다. [기능 대응표](../../../a65-feature-map.md), [구현 보고서](implementation-report.md) 참조.
+사용자 승인: [수용 재질의 기존 UX 전체 적용](https://github.com/silverkhan/TaskMecca/pull/361#issuecomment-6732301992). 기존 UX의 메뉴 그룹·Global Hub·사이드바 프로젝트 직접 진입을 유지하며, 백로그 검색/필터/정렬/페이지/복원, 전용 상세와 라이프사이클, 프로젝트/저장소/워크로드/운영/알림/터미널/도움말/업데이트/Preview 관리 기능을 네이티브 모듈에 연결한 후보다. [기능 대응표](../../a65-feature-map.md), [구현 보고서](implementation-report.md) 참조.
 
 ## 현재 소스와 판정
 
