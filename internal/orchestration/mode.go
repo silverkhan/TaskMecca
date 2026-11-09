@@ -79,6 +79,9 @@ func Decide(req Request) (Decision, error) {
  if mode.Execution=="session" && !supported(req.Capabilities.CreateSession) {
   d.Action="capability_unavailable";d.Reasons=append(d.Reasons,"create_session_not_verified");return d,nil
  }
+ if req.Event=="root_initialized" && mode.RootCommunication && !supported(req.Capabilities.MessageRoot) {
+  d.Action="capability_unavailable";d.Reasons=append(d.Reasons,"message_root_not_verified");return d,nil
+ }
  switch req.Event {
  case "root_initialized":
   d.Allowed=true; d.Action="mode_ready"
