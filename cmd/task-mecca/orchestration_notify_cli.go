@@ -105,7 +105,7 @@ func runOrchestrationNotifyCLI(args []string,stdout,stderr io.Writer) int {
      plan.Decision.Reasons=append(plan.Decision.Reasons,"handoff_target_not_messageable:"+prepared.Reason)
     }
     if plan.NativeAction!=""{
-     plan.Note="Prepared durable handoff; invoke provider-native transport and use handoff mark with actual evidence. Not sent by CLI."
+     plan.Note="Prepared handoff evidence; invoke provider-native transport and use handoff mark with actual evidence. Canonical user hold is the durable fallback. Not sent by CLI."
     }
    }
   }
