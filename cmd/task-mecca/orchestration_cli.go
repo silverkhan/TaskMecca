@@ -16,9 +16,15 @@ import (
 func runtimeOrchestrationCapabilities(project,provider string) (orchestration.Capabilities,error) {
  caps,err:=handoff.LoadCapabilities(project,provider)
  if err!=nil{return orchestration.Capabilities{},err}
+ // Legacy provider baselines are suitable for existing handoff behavior but
+ // cannot assert independent-session transport without native evidence.
+ sessionMessage:=string(caps.CanCrossSessionMessage)
+ if strings.TrimSpace(caps.Evidence["can_cross_session_message"])=="" {
+  sessionMessage="unknown"
+ }
  return orchestration.Capabilities{
   SpawnSubagent:string(caps.CanSpawnSubagent),CreateSession:string(caps.CanCreateSession),
-  MessageSession:string(caps.CanCrossSessionMessage),MessageRoot:string(caps.CanMessageRoot),
+  MessageSession:sessionMessage,MessageRoot:string(caps.CanMessageRoot),
   ResumeSession:string(caps.CanResumeSession),WakeRoot:string(caps.CanWakeRoot),
  },nil
 }
