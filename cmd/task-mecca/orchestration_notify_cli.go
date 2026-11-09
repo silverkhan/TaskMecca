@@ -145,7 +145,13 @@ func runOrchestrationNotifyCLI(args []string,stdout,stderr io.Writer) int {
     plan.RequiresFreshPreflight=prepared.RequiresFreshPreflight
     switch prepared.Action {
     case handoff.ActionMessageRunning:plan.NativeAction="message_running"
-    case handoff.ActionResumeCompleted:plan.NativeAction="resume_completed_after_preflight"
+    case handoff.ActionResumeCompleted:
+     if strings.EqualFold(caps.WakeRoot,"supported") {
+      plan.NativeAction="resume_completed_after_preflight"
+     } else {
+      plan.Decision.Allowed=false;plan.Decision.Action="await_next_root_turn"
+      plan.Decision.Reasons=append(plan.Decision.Reasons,"root_wake_not_verified")
+     }
     default:
      plan.Decision.Allowed=false;plan.Decision.Action="await_next_root_turn"
      plan.Decision.Reasons=append(plan.Decision.Reasons,"handoff_target_not_messageable:"+prepared.Reason)
