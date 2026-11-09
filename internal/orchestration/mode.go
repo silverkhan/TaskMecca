@@ -78,7 +78,14 @@ func Decide(req Request) (Decision, error) {
  // capability later disappears.
  if req.Event=="root_initialized" {
   if mode.Execution=="subagent" && !supported(req.Capabilities.SpawnSubagent) {
-   d.Action="capability_unavailable";d.Reasons=append(d.Reasons,"spawn_subagent_not_verified");return d,nil
+   if req.Mode==ModeA {
+    // Mode A is the existing workflow, not a new native capability claim.
+    // Selection is allowed; actual dispatch still requires fresh preflight
+    // and provider-native spawn capability at the point of use.
+    d.Reasons=append(d.Reasons,"legacy_subagent_spawn_requires_dispatch_preflight")
+   }else{
+    d.Action="capability_unavailable";d.Reasons=append(d.Reasons,"spawn_subagent_not_verified");return d,nil
+   }
   }
   if mode.Execution=="session" && !supported(req.Capabilities.CreateSession) {
    d.Action="capability_unavailable";d.Reasons=append(d.Reasons,"create_session_not_verified");return d,nil
