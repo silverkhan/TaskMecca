@@ -105,3 +105,11 @@ select.tm-combo-native{position:absolute!important;width:1px!important;height:1p
    usable instead of stacking the wordmark one glyph per line. */
 .material-brand-row{container-type:inline-size}
 @container(max-width:190px){.material-brand-row .material-brand strong{display:none!important}.material-brand-row .material-brand{max-width:none}.material-brand-row .material-brand img{width:32px;height:32px}}
+
+/* The native compositor samples the real backdrop. Compensate for the existing
+   photo's .30 dark / .20 white veil to retain the accepted .68 / .60 face tint.
+   Foreground text/icons and all rim, depth, curvature and proximity layers stay
+   outside the filter. Solid mode and nested/unsupported photo fallbacks remain. */
+:root:not([data-material-background='solid']) .material-native-surface{background:transparent}
+.material-surface>.material-native-transmission{background-image:none!important;background-attachment:scroll;background-color:rgba(12,13,17,.542857);filter:none}
+:root[data-theme=light] .material-surface>.material-native-transmission{background-color:rgba(255,255,255,.5)}
