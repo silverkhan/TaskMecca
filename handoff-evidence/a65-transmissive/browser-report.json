@@ -1,0 +1,207 @@
+{
+  "synthetic": true,
+  "fixture": "http://127.0.0.1:57182",
+  "cases": [
+    {
+      "name": "desktop-light",
+      "optics": "svg",
+      "surfaces": [
+        {
+          "selector": ".material-rail",
+          "interiorMeanRGBChange": 10.617841995468611
+        },
+        {
+          "selector": ".material-toolbar",
+          "interiorMeanRGBChange": 4.92234219269103
+        },
+        {
+          "selector": ".material-card",
+          "interiorMeanRGBChange": 8.315939324337258
+        }
+      ],
+      "idle": {
+        "seconds": 0.7030619999859482,
+        "taskSeconds": 0.0005890000000000001,
+        "heapBefore": 2649888,
+        "heapAfter": 2649888
+      },
+      "layerCount": 9,
+      "displacementMeanRGBChange": 0.763481819358178,
+      "blurAndDisplacementMeanRGBChange": 6.788595043995859,
+      "scrollCoordinateError": [
+        0.00011111111109585181,
+        0.003263888889023292,
+        0.00011111111109585181
+      ],
+      "resizeCoordinateError": [
+        0,
+        0.00437499999998181,
+        0
+      ],
+      "fallback": "forced CSS blur path, not actual Safari execution",
+      "after": {
+        "heap": 3933368,
+        "taskSeconds": 0.08650200000000001,
+        "seconds": 2.8679889999330044
+      },
+      "overflow": false,
+      "textFilters": {
+        "filter": "none",
+        "textShadow": "none",
+        "stroke": "0px"
+      }
+    },
+    {
+      "name": "desktop-dark",
+      "optics": "svg",
+      "surfaces": [
+        {
+          "selector": ".material-rail",
+          "interiorMeanRGBChange": 12.124013939544652
+        },
+        {
+          "selector": ".material-toolbar",
+          "interiorMeanRGBChange": 7.2468853820598005
+        },
+        {
+          "selector": ".material-card",
+          "interiorMeanRGBChange": 11.419908603694134
+        }
+      ],
+      "idle": {
+        "seconds": 0.7021389999426901,
+        "taskSeconds": 0.000155,
+        "heapBefore": 2649684,
+        "heapAfter": 2649684
+      },
+      "layerCount": 9,
+      "displacementMeanRGBChange": 0.9048718944099379,
+      "blurAndDisplacementMeanRGBChange": 5.768465320910973,
+      "scrollCoordinateError": [
+        0.00011111111109585181,
+        0.003263888889023292,
+        0.00011111111109585181
+      ],
+      "resizeCoordinateError": [
+        0,
+        0.00437499999998181,
+        0
+      ],
+      "fallback": "forced CSS blur path, not actual Safari execution",
+      "after": {
+        "heap": 3960000,
+        "taskSeconds": 0.08223499999999999,
+        "seconds": 2.8463400001637638
+      },
+      "overflow": false,
+      "textFilters": {
+        "filter": "none",
+        "textShadow": "none",
+        "stroke": "0px"
+      }
+    },
+    {
+      "name": "mobile-light",
+      "optics": "svg",
+      "surfaces": [
+        {
+          "selector": ".material-rail",
+          "interiorMeanRGBChange": 5.826100628930818
+        },
+        {
+          "selector": ".material-toolbar",
+          "interiorMeanRGBChange": 5.348401467505241
+        },
+        {
+          "selector": ".material-card",
+          "interiorMeanRGBChange": 9.973351321272355
+        }
+      ],
+      "idle": {
+        "seconds": 0.7015420000534505,
+        "taskSeconds": 0.000202,
+        "heapBefore": 2730748,
+        "heapAfter": 2730748
+      },
+      "layerCount": 7,
+      "displacementMeanRGBChange": 0.9595694210905596,
+      "blurAndDisplacementMeanRGBChange": 8.174871386820403,
+      "scrollCoordinateError": [
+        0.00022222222219170362,
+        0.00022222222219170362,
+        0.00022222222219170362
+      ],
+      "resizeCoordinateError": [
+        0,
+        0,
+        0.0003749999999911324
+      ],
+      "fallback": "forced CSS blur path, not actual Safari execution",
+      "after": {
+        "heap": 3951216,
+        "taskSeconds": 0.071814,
+        "seconds": 1.1163790000136942
+      },
+      "overflow": false,
+      "textFilters": {
+        "filter": "none",
+        "textShadow": "none",
+        "stroke": "0px"
+      }
+    },
+    {
+      "name": "mobile-dark",
+      "optics": "svg",
+      "surfaces": [
+        {
+          "selector": ".material-rail",
+          "interiorMeanRGBChange": 9.380712788259958
+        },
+        {
+          "selector": ".material-toolbar",
+          "interiorMeanRGBChange": 7.51690251572327
+        },
+        {
+          "selector": ".material-card",
+          "interiorMeanRGBChange": 11.90995030670083
+        }
+      ],
+      "idle": {
+        "seconds": 0.7023730000946671,
+        "taskSeconds": 0.00022500000000000002,
+        "heapBefore": 2738068,
+        "heapAfter": 2738068
+      },
+      "layerCount": 7,
+      "displacementMeanRGBChange": 1.0478496076547361,
+      "blurAndDisplacementMeanRGBChange": 6.83149421490912,
+      "scrollCoordinateError": [
+        0.00022222222219170362,
+        0.00022222222219170362,
+        0.00022222222219170362
+      ],
+      "resizeCoordinateError": [
+        0,
+        0,
+        0.0003749999999911324
+      ],
+      "fallback": "forced CSS blur path, not actual Safari execution",
+      "after": {
+        "heap": 3978872,
+        "taskSeconds": 0.06744299999999999,
+        "seconds": 1.1117930000182241
+      },
+      "overflow": false,
+      "textFilters": {
+        "filter": "none",
+        "textShadow": "none",
+        "stroke": "0px"
+      }
+    }
+  ],
+  "errors": [],
+  "limitations": [
+    "Not Samsung physical",
+    "Short local samples are not 48-scenario / eight-pair / CPU 10% acceptance gate"
+  ]
+}

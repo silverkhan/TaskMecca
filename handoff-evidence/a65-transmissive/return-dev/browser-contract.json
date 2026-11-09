@@ -1,0 +1,82 @@
+{
+  "synthetic": true,
+  "operating_environment_mutations": 0,
+  "mechanism": "Native Playwright interactions with same-origin synthetic API routes on owned ephemeral fixture; no actual managed return executed.",
+  "cases": [
+    {
+      "name": "desktop-light-ko",
+      "fullPRSHAVisible": true,
+      "overflow": false,
+      "returnTarget44": true,
+      "nativeCancelPostCount": 0,
+      "focusRestored": true
+    },
+    {
+      "name": "desktop-dark-en",
+      "fullPRSHAVisible": true,
+      "overflow": false,
+      "returnTarget44": true,
+      "nativeCancelPostCount": 0,
+      "focusRestored": true
+    },
+    {
+      "name": "mobile-light-ko",
+      "fullPRSHAVisible": true,
+      "overflow": false,
+      "returnTarget44": true,
+      "nativeCancelPostCount": 0,
+      "focusRestored": true
+    },
+    {
+      "name": "mobile-dark-en",
+      "fullPRSHAVisible": true,
+      "overflow": false,
+      "returnTarget44": true,
+      "nativeCancelPostCount": 0,
+      "focusRestored": true
+    },
+    {
+      "name": "unknown-desktop",
+      "unknownExplicitlyVisible": true,
+      "postCount": 0,
+      "overflow": false
+    },
+    {
+      "name": "unknown-mobile",
+      "unknownExplicitlyVisible": true,
+      "postCount": 0,
+      "overflow": false
+    },
+    {
+      "name": "unmanaged403",
+      "nativeConfirm": true,
+      "postCount": 1,
+      "success": false,
+      "reloaded": false
+    },
+    {
+      "name": "missing-identity",
+      "postCount": 0,
+      "success": false
+    },
+    {
+      "name": "pending-transition",
+      "postCount": 0
+    },
+    {
+      "name": "native-accepted-return",
+      "nativeConfirm": true,
+      "headerAndApproveBody": true,
+      "postCount": 1,
+      "duplicatePostCount": 0,
+      "freshDevBootObserved": true,
+      "syntheticReload": true
+    }
+  ],
+  "pageErrors": [],
+  "outsideFixtureRequests": [],
+  "cleanup": {
+    "browserClosed": true,
+    "fixtureClosed": true
+  }
+}
