@@ -203,7 +203,7 @@
   function applyTheme() {
     let storedTheme = '', storedPalette = '';
     try {
-      storedTheme = localStorage.getItem('task-mecca-theme') || '';
+      storedTheme = localStorage.getItem('task-mecca-smoke-mode') || localStorage.getItem('task-mecca-theme') || '';
       storedPalette = localStorage.getItem('task-mecca-palette') || '';
     } catch (_) {}
     const preference = ['dark', 'light', 'system'].includes(storedTheme) ? storedTheme : 'dark';
@@ -213,6 +213,7 @@
     const root = document.documentElement;
     root.dataset.themePreference = preference;
     root.dataset.theme = effective;
+    root.dataset.materialTheme = effective;
     root.dataset.palette = palette;
     root.style.colorScheme = effective;
     root.style.removeProperty('background-color');
@@ -1169,7 +1170,7 @@
   document.documentElement.lang = language;
   applyTheme();
   window.addEventListener('storage', event => {
-    if (!event.key || ['task-mecca-theme', 'task-mecca-palette'].includes(event.key)) applyTheme();
+    if (!event.key || ['task-mecca-smoke-mode', 'task-mecca-theme', 'task-mecca-palette'].includes(event.key)) applyTheme();
   });
   window.matchMedia?.('(prefers-color-scheme: dark)')?.addEventListener?.('change', applyTheme);
   $('#terminalBack').textContent = '← ' + t('back');

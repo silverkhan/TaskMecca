@@ -1,4 +1,4 @@
-import { state } from "./state.js";
+import { state, effectivePageSize } from "./state.js";
 export async function get(path, signal) {
   const controller = new AbortController(),
     abort = () => controller.abort();
@@ -63,7 +63,7 @@ export async function fetchBacklog(signal) {
   const p = new URLSearchParams({
     project: state.project,
     page: state.page,
-    page_size: state.pageSize,
+    page_size: effectivePageSize(),
     sort: state.sort,
   });
   if (state.backlog) p.set("backlog", state.backlog);

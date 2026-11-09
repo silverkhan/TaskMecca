@@ -1,3 +1,6 @@
+import { refreshSidebar, bindExpansionShell, paintProjects } from "./expansion.js";
+import { deliverCanonicalEvents } from "./screens/notifications.js";
+import { managedViews, management, bindManagement } from "./screens/management.js";
 import { mountExecutionEnvironment, refreshExecutionEnvironment, stopExecutionEnvironment, resumeExecutionEnvironment } from "./environment.js";
 import { connectLiveSource, closeLiveSource } from "./live-source.js";
 import {
@@ -6,7 +9,7 @@ import {
   stopLifecycleChecks,
   checkContentRevision,
 } from "./live-lifecycle.js";
-import { state, readRoute, routeURL, persist } from "./state.js";
+import { state, readRoute, routeURL, persist, effectivePageSize } from "./state.js";
 import { text, esc } from "./format.js";
 import {
   fetchOverview as fetchOverviewRequest,
@@ -112,10 +115,11 @@ let shellLanguage = null,
 const backlogKey = () =>
   [state.project, state.backlog, state.language].join("|");
 function updateShellNavigation() {
-  const active = state.view === "backlog" ? "projects" : state.view;
+  const active = state.view;
+  paintProjects();
   document.querySelectorAll(".rail-link").forEach((a) => {
     const view = new URL(a.href).searchParams.get("view") || "home",
-      current = view === active;
+      current = view === active && (view !== "backlog" || new URL(a.href).searchParams.get("project") === state.project);
     a.classList.toggle("active", current);
     if (current) a.setAttribute("aria-current", "page");
     else a.removeAttribute("aria-current");
@@ -125,6 +129,8 @@ function renderShell() {
   disposeWorkflow();
   if (!main() || shellLanguage !== state.language) {
     document.getElementById("app").innerHTML = shell();
+    bindExpansionShell();
+    void refreshSidebar().then(()=>{ if (state.project) void deliverCanonicalEvents(state.project).catch(()=>{}); });
     shellLanguage = state.language;
     document.getElementById("refresh").onclick = () => {
       void refreshExecutionEnvironment();
@@ -149,6 +155,7 @@ function renderShell() {
     };
   }
   document.getElementById("appearance").value = state.mode;
+  window.TaskMeccaSelectUI?.sync();
   updateShellNavigation();
   appearance();
   mountExecutionEnvironment();
@@ -164,7 +171,9 @@ function syncBacklogControls() {
   })) {
     const control = f.elements.namedItem(name);
     if (control && control.value !== value) control.value = value;
+  document.querySelectorAll('[data-status-filter]').forEach(b => b.setAttribute('aria-pressed',String(state.status.split(',').includes(b.dataset.statusFilter))));
   }
+  document.querySelectorAll("[data-tag-filter]").forEach(c=>c.checked=state.tags.includes(c.dataset.tagFilter));
   const tags = document.querySelector("#tags [name=tags]");
   if (tags && document.activeElement !== tags)
     tags.value = state.tags.join(",");
@@ -306,7 +315,7 @@ async function render(options = {}) {
       void checkContentRevision(true).catch(() => {});
       return;
     }
-    if (["home", "projects", "activity"].includes(state.view)) {
+    if (["home", "activity"].includes(state.view)) {
       overviewData = await fetchOverview(signal);
       if (current !== epoch) return;
       showOverview(options);
@@ -351,30 +360,11 @@ async function render(options = {}) {
       ready(options);
       return;
     }
-    if (state.view === "settings") {
-      main().innerHTML =
-        heading(
-          text("환경 설정", "Preferences"),
-          text("Smoke · 화면과 언어 설정", "Smoke · Appearance and language"),
-        ) +
-        `<section class="settings-sheet"><h2>${text("작업 환경", "Your workspace")}</h2><p>${text("상단의 화면 모드와 언어 선택은 모든 핵심 화면에 적용됩니다.", "Appearance and language controls in the top bar apply to every core screen.")}</p><dl><div><dt>${text("테마", "Theme")}</dt><dd>Smoke</dd></div><div><dt>${text("모드", "Mode")}</dt><dd>Light / Dark / System</dd></div></dl></section><section class="stage-note"><h2>${text("후속 검토 범위", "After design review")}</h2><p>${text("전체 운영, 채널·서비스·알림 구성과 추가 설정 화면은 핵심 디자인 검토 후 이어집니다.", "Full operations, channel, service, notification configuration and further settings follow the core design review.")}</p></section>`;
-      ready(options);
-      return;
-    }
-    main().innerHTML =
-      heading(
-        text("알림", "Notifications"),
-        text(
-          "현재 프로토타입은 관제 홈의 판단 필요와 최근 활동에서 기존 알림 근거를 보여 줍니다.",
-          "This prototype shows existing notification evidence through attention and recent activity.",
-        ),
-      ) +
-      link(
-        text("판단이 필요한 작업 보기", "View attention"),
-        { view: "home" },
-        "button",
-      ) +
-      `<p class="stage-note">${text("알림 전달·설정 화면은 디자인 검토 후 확장합니다.", "Notification delivery and configuration follow design review.")}</p>`;
+    if (managedViews.includes(state.view)) {
+      const markup = await management(signal);
+      if (current !== epoch) return;
+      main().innerHTML = markup;
+    } else main().innerHTML = failure(text("알 수 없는 화면입니다", "Unknown screen"));
     ready(options);
   } catch (e) {
     if (e.name === "AbortError" || current !== epoch) return;
@@ -462,7 +452,17 @@ function schedulePoll(current) {
     Math.max(500, Math.min(10000, Number(overviewData.retry_after_ms) || 500)),
   );
 }
+let measuredAutoSize=null;
 function bindScreen() {
+  if(state.view==='backlog'&&!state.detail&&state.pageSize==='auto') measuredAutoSize=effectivePageSize();
+  document.querySelectorAll('[data-tag-filter]').forEach(input=>input.onchange=()=>{const values=new Set(state.tags);if(input.checked)values.add(input.dataset.tagFilter);else values.delete(input.dataset.tagFilter);navigate(routeURL({tags:[...values],page:1}),{replace:true,preserve:true});});
+  document.getElementById('backlog-location')?.addEventListener('change',e => { persist('task-mecca-backlog-folder',e.target.value); navigate(routeURL({backlog:e.target.value,page:1}),{replace:true,preserve:true}); });
+  document.querySelectorAll('[data-status-filter]').forEach(b => b.onclick = () => {
+    const value=b.dataset.statusFilter, current=new Set(state.status==='all'?[]:state.status.split(','));
+    if(value==='all') current.clear(); else if(current.has(value)) current.delete(value); else current.add(value);
+    navigate(routeURL({status:[...current].join(',')||'all',page:1}),{replace:true,preserve:true});
+  });
+  if (managedViews.includes(state.view) && !state.detail) bindManagement(render);
   const attentionMore = document.getElementById("attentionMore");
   if (attentionMore)
     attentionMore.ontoggle = () => {
@@ -516,7 +516,7 @@ function bindScreen() {
           query: d.get("q").trim(),
           status: d.get("status"),
           sort: d.get("sort"),
-          pageSize: Number(d.get("page_size")),
+          pageSize: d.get("page_size") === "auto" ? "auto" : Number(d.get("page_size")),
           page: 1,
           detail: null,
         }),
@@ -669,6 +669,7 @@ function streamFailure() {
 async function liveChange() {
   if (sourceRefresh || document.hidden) return;
   const current = epoch;
+  if(state.project) void deliverCanonicalEvents(state.project,controller?.signal).catch(()=>{});
   sourceRefresh = (async () => {
     if (state.detail) {
       await checkContentRevision();
@@ -711,7 +712,7 @@ async function liveChange() {
       }
       return;
     }
-    if (["home", "projects", "activity"].includes(state.view)) {
+    if (["home", "activity"].includes(state.view)) {
       const next = await fetchOverview(controller.signal);
       if (current !== epoch) return;
       const fingerprint = (d) =>
@@ -748,3 +749,6 @@ render({ restore: true });
 export { render };
 
 window.addEventListener("pageshow", (event) => { if (event.persisted) void resumeExecutionEnvironment(); });
+
+let autoResizeTimer;
+addEventListener('resize',()=>{clearTimeout(autoResizeTimer);autoResizeTimer=setTimeout(()=>{if(state.view==='backlog'&&!state.detail&&state.pageSize==='auto'&&effectivePageSize()!==measuredAutoSize)void render({preserve:true});},150);},{passive:true});

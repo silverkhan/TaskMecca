@@ -69,6 +69,6 @@ test('Existing xterm canvas recolors from CSS without a session restart',()=>{
  assert.equal(term.options.theme.cursor,'#795b91');
  assert.equal(term.options.theme.selectionBackground,'#eee3f2');
  assert.ok(js.includes("window.addEventListener('storage', event =>"));
- assert.ok(js.includes("['task-mecca-theme', 'task-mecca-palette'].includes(event.key)"));
+ assert.ok(js.includes("['task-mecca-smoke-mode', 'task-mecca-theme', 'task-mecca-palette'].includes(event.key)"));
  assert.ok(js.includes("addEventListener?.('change', applyTheme)"));
 });

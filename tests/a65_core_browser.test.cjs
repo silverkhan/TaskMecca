@@ -48,7 +48,7 @@ test(
       );
       assert.equal(
         server.state.requests.filter((u) =>
-          /^\/api\/(snapshot|workload|hub)/.test(u),
+          /^\/api\/(snapshot|workload)/.test(u),
         ).length,
         0,
       );
@@ -148,6 +148,10 @@ test(
       cases.push("completed overview has no idle request or DOM growth");
       await page.locator("#projects .project-link").first().click();
       await page.locator("#filters").waitFor();
+      await page.locator('.filter-more > summary').click();
+      await page.locator('.tm-combo').filter({has:page.locator('select[name=page_size]')}).getByRole('combobox').click();
+      await page.getByRole('option',{name:'20',exact:true}).click();
+      await page.waitForFunction(() => document.querySelectorAll('.backlog-list .task-row').length === 20);
       const q = page.locator("input[name=q]");
       await page.evaluate(() => {
         window.__smokeNodes = {
@@ -216,8 +220,8 @@ test(
         "debounced search retains focus; URL page state and list reading survive dedicated detail/back",
       );
       if (!(await page.locator(".filter-more").evaluate((el) => el.open)))
-        await page.locator(".filter-more summary").click();
-      await page.locator("select[name=status]").selectOption("doing");
+        await page.locator(".filter-more > summary").click();
+      await page.locator("[data-status-filter=doing]").click();
       await page.waitForFunction(
         () => new URL(location.href).searchParams.get("status") === "doing",
       );
@@ -228,7 +232,7 @@ test(
       await page.locator(".task-row").first().waitFor();
       assert.equal(await page.locator(".task-row").count(), 6);
       if (!(await page.locator(".filter-more").evaluate((el) => el.open)))
-        await page.locator(".filter-more summary").click();
+        await page.locator(".filter-more > summary").click();
       await page.locator("input[name=tags]").fill("frontend,core");
       await page.locator("#tags").evaluate((f) => f.requestSubmit());
       await page.waitForFunction(
@@ -244,7 +248,7 @@ test(
       await page.reload();
       await page.locator("#filters").waitFor();
       assert.equal(
-        await page.locator("select[name=status]").inputValue(),
+        await page.locator("input[name=status]").inputValue(),
         "doing",
       );
       assert.equal(
@@ -424,7 +428,7 @@ test(
         stopped,
       );
       await finite.locator('a[href*="view=settings"]').click();
-      await finite.locator(".settings-sheet").waitFor();
+      await finite.locator(".management-sheet").first().waitFor();
       await finite.waitForTimeout(700);
       assert.equal(
         server.state.requests.filter((u) => u.startsWith("/api/overview?"))

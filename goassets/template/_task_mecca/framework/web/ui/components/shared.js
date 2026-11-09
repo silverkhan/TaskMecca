@@ -16,34 +16,9 @@ export const icon = (name) =>
   `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${paths[name] || paths.arrow}"/></svg>`;
 export const link = (label, changes, cls = "") =>
   `<a class="${cls}" data-route href="${esc(routeURL(changes))}">${label}</a>`;
+const navItem = (view, ko, en, glyph = view) => link(`<span class="material-nav-icon">${icon(glyph)}</span><span class="material-nav-label">${text(ko,en)}</span>`, { view, detail:null, project:"", backlog:"" }, "rail-link material-nav-item");
 export function shell() {
-  return `<aside class="rail"><a class="brand" data-route href="/"><img src="/logo.svg" alt=""><strong>Task Mecca</strong></a><nav aria-label="${text("주 탐색", "Main navigation")}">${[
-    ["home", "관제 홈", "Control home"],
-    ["projects", "프로젝트", "Projects"],
-    ["activity", "최근 활동", "Recent activity"],
-    ["notifications", "알림", "Notifications"],
-  ]
-    .map(([v, k, e]) =>
-      link(
-        icon(v === "notifications" ? "bell" : v) + `<span>${text(k, e)}</span>`,
-        { view: v, detail: null, project: "", backlog: "" },
-        "rail-link " + (state.view === v ? "active" : ""),
-      ),
-    )
-    .join(
-      "",
-    )}</nav><div class="rail-bottom"><p>${text("작업의 근거까지, 한곳에서.", "Your work. Its evidence. One place.")}</p>${link(icon("settings") + `<span>${text("환경 설정", "Preferences")}</span>`, { view: "settings", detail: null }, "rail-link " + (state.view === "settings" ? "active" : ""))}<span class="stage-label">${text("핵심 프로토타입 · 검토용", "Core prototype · For review")}</span></div></aside><div class="workspace"><header class="topbar"><span>${text("프로젝트 관제", "Project control")}</span><div class="topbar-end"><button id="refresh" class="icon-button" title="${text("새로고침", "Refresh")}" aria-label="${text("현재 화면 새로고침", "Refresh current screen")}">${icon("refresh")}</button><button id="language" class="quiet">${state.language === "ko" ? "EN" : "한국어"}</button><select id="appearance" aria-label="${text("화면 모드", "Appearance")}">${[
-    ["system", "시스템", "System"],
-    ["light", "라이트", "Light"],
-    ["dark", "다크", "Dark"],
-  ]
-    .map(
-      ([v, k, e]) =>
-        `<option value="${v}" ${state.mode === v ? "selected" : ""}>${text(k, e)}</option>`,
-    )
-    .join(
-      "",
-    )}</select></div></header>${environmentSlot()}<main id="main" tabindex="-1"></main></div><div class="live-region" role="status" aria-live="polite" id="announcement"></div>`;
+  return `<aside class="rail material-rail material-surface" data-light-surface id="material-rail"><div class="material-brand-row"><a class="brand material-brand" data-route href="/"><img src="/logo.svg" alt=""><strong>Task Mecca</strong></a><button id="sidebar-toggle" class="material-icon-button" aria-label="${text('메뉴 열기','Open menu')}" aria-expanded="false" aria-controls="rail-panel">${icon('settings')}</button></div><div class="material-rail-panel" id="rail-panel"><nav class="material-nav" aria-label="${text('주 탐색','Main navigation')}"><section class="material-nav-group"><h2>SYSTEM</h2>${navItem('home','Global Hub','Global Hub','home')}${navItem('storage','저장소 관리','Storage','projects')}${navItem('preview','Preview Builds','Preview Builds','projects')}</section><section class="material-nav-group"><h2>BACKLOGS</h2><div id="sidebar-projects"></div>${navItem('projects','프로젝트 관리','Manage projects','projects')}</section><section class="material-nav-group"><h2>OPERATIONS</h2>${navItem('workload','워크로드','Workload','activity')}${navItem('notifications','알림센터','Notifications','bell')}${navItem('terminal','터미널','Terminal','activity')}${navItem('activity','최근 활동','Recent activity','activity')}${navItem('operations','운영 상태','Operations','activity')}</section><section class="material-nav-group"><h2>HELP</h2>${navItem('manual','도움말','Help','projects')}${navItem('release-notes','업데이트','Updates','refresh')}${navItem('issues','백로그 진단','Diagnostics','activity')}${navItem('settings','설정','Settings','settings')}</section></nav><footer class="material-rail-footer"><div class="sidebar-mode" role="group" aria-label="${text('사이드바 모드','Sidebar mode')}">${[['auto','자동','Auto'],['expanded','펼침','Expanded'],['collapsed','축소','Collapsed']].map(([v,k,e])=>`<button data-sidebar-mode="${v}" aria-pressed="false">${text(k,e)}</button>`).join('')}</div></footer></div></aside><div class="workspace"><header class="topbar material-surface" data-light-surface><span>${text('프로젝트 관제','Project control')}</span><div class="topbar-end"><button id="refresh" class="icon-button" title="${text('새로고침','Refresh')}" aria-label="${text('현재 화면 새로고침','Refresh current screen')}">${icon('refresh')}</button><button id="language" class="quiet">${state.language==='ko'?'EN':'한국어'}</button><select id="appearance" aria-label="${text('화면 모드','Appearance')}">${[['system','시스템','System'],['light','라이트','Light'],['dark','다크','Dark']].map(([v,k,e])=>`<option value="${v}" ${state.mode===v?'selected':''}>${text(k,e)}</option>`).join('')}</select></div></header>${environmentSlot()}<main id="main" tabindex="-1"></main></div><div class="live-region" role="status" aria-live="polite" id="announcement"></div>`;
 }
 export function heading(title, description, extra = "") {
   return `<div class="page-heading"><div><h1>${esc(title)}</h1>${description ? `<p>${esc(description)}</p>` : ""}</div>${extra}</div>`;

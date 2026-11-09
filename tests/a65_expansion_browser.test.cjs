@@ -1,0 +1,48 @@
+const {test}=require('node:test'),assert=require('node:assert/strict'),path=require('node:path'),fs=require('node:fs');
+const fixture=require('./helpers/a65_fixture.cjs'),runtime=process.env.WORKFLOW_PLAYWRIGHT_MODULE;
+if(process.env.WORKFLOW_REQUIRE_BROWSER==='1'&&!runtime)throw Error('Required browser runtime missing');
+test('accepted expansion keeps project scope, truthful writes, notifications and PR identity in native modules',{skip:!runtime,timeout:90000},async()=>{
+ const server=await fixture.start(path.resolve('goassets/template/_task_mecca/framework/web')),browser=await require(runtime).chromium.launch({headless:true,executablePath:process.env.CHROME_EXECUTABLE});
+ const posts=[],errors=[],projects=server.state.projects;let failure=false;
+ const context=await browser.newContext({viewport:{width:1440,height:1000},serviceWorkers:'block'});
+ await context.addInitScript(()=>{localStorage.setItem('task-mecca-language','ko');localStorage.setItem('task-mecca-smoke-mode','light')});
+ const target={kind:'dev',channel:'dev'},health={ok:true,preview_mode:false,boot_id:'fixture-boot',instance_id:'fixture-instance',version:'fixture-dev',execution_target:target};
+ await context.route('**/api/**',async route=>{
+  const request=route.request(),u=new URL(request.url());
+  if(request.method()==='POST'){posts.push({url:u.pathname+u.search,headers:request.headers(),body:request.postDataJSON()});return route.fulfill({status:failure?403:200,json:failure?{error:'Synthetic permission denied'}:{ok:true,result:{accepted:true}}});}
+  if(u.pathname==='/api/hub/projects')return route.fulfill({json:{projects,archives:[{id:'fixture-archive',name:'Archived fixture',path:'/fixtures/archived'}]}});
+  if(u.pathname==='/api/health')return route.fulfill({json:health});
+  if(u.pathname==='/api/environment')return route.fulfill({json:{target,switch_supported:true,transition:null}});
+  if(u.pathname==='/api/preview/builds')return route.fulfill({json:{builds:[{number:9001,title:'Synthetic trusted PR',head_sha:'1'.repeat(40),build_status:'success'},{number:9002,title:'Synthetic failed build',head_sha:'2'.repeat(40),build_status:'failure'}]}});
+  if(u.pathname==='/api/preview/instances')return route.fulfill({json:{instances:[]}});
+  if(u.pathname==='/api/runtime/hooks')return route.fulfill({json:{hooks:[{provider:'codex',enabled:false}]}});
+  if(u.pathname==='/api/workload')return route.fulfill({json:{project_path:u.searchParams.get('project'),workload:{agents:[{agent:'/root/fixture-worker',doing:['FLOW-1'],blocking_count:0,ready_candidate_count:1}]}}});
+  if(u.pathname==='/api/runtime/history')return route.fulfill({json:{items:[{agent_path:'/root/fixture-worker',state:'completed',task_id:'FLOW-1'}],page:1,total_pages:1,total:1}});
+  if(u.pathname==='/api/runtime/root-sessions')return route.fulfill({json:{items:[],page:1,total_pages:1,total:0}});
+  if(u.pathname==='/api/storage/logs')return route.fulfill({json:{items:[{id:'web-service',label:'Fixture log',scope:'global',size_bytes:42,can_clear:true,release_condition:'explicit_manual_clear'},{id:'execution-ledger',label:'Protected ledger',scope:'project',size_bytes:99,can_clear:false,release_condition:'no_approved_deletion_policy'}]}});
+  if(u.pathname==='/api/runtime/storage')return route.fulfill({json:{total_bytes:123,cleanup:{reclaimable_bytes:0}}});
+  if(u.pathname==='/api/notifications/projects')return route.fulfill({json:{projects:projects.map(p=>({...p,status:{configured:true,connected:true,project_enabled:true,kinds:{completed:true}}}))}});
+  if(u.pathname==='/api/notifications/history')return route.fulfill({json:{history:[{event_id:'fixture-event-'+u.searchParams.get('project'),project:u.searchParams.get('project'),task_id:'FLOW-1',kind:'completed',title:'Synthetic delivery evidence',event_at:'2026-11-09T00:00:00Z',telegram:{state:'sent'},web:{state:'uncertain'}}]}});
+  if(u.pathname==='/api/attention')return route.fulfill({json:{all_items:{},needs_user:[],notification_events:[]}});
+  if(u.pathname==='/api/version')return route.fulfill({json:{cli:{current_version:'fixture-dev',latest_version:'fixture-next',update_available:true},project:{path:u.searchParams.get('project')}}});
+  if(u.pathname==='/api/channel-options')return route.fulfill({json:{channels:['stable','dev']}});
+  await route.continue();
+ });
+ const page=await context.newPage();page.on('pageerror',e=>errors.push(e.message));
+ const goto=async view=>{await page.goto(server.origin+'/?view='+view);await page.locator('.management-sheet').first().waitFor();};
+ const accept=async()=>{await page.locator('dialog[open]').waitFor();await page.locator('dialog button[value=confirm]').click();};
+ try{
+  await goto('projects');await page.locator('[data-manage=project-unregister]').first().click();await accept();await page.waitForFunction(()=>document.querySelector('#management-feedback')?.textContent.includes('accepted'));
+  assert.equal(posts.length,1);assert.equal(posts[0].headers['x-task-mecca-action'],'1');assert.deepEqual(posts[0].body,{action:'unregister',path:projects[0].path,archive_id:''});
+  await page.locator('[data-close-project]').first().click();assert.equal(await page.locator('[data-reopen-project]').count(),1);await page.locator('.project-opener>summary').click();await page.locator('[data-reopen-project]').click();await page.locator('#filters').waitFor();assert.equal(new URL(page.url()).searchParams.get('project'),projects[0].path);
+  await page.locator('.filter-more>summary').click();await page.locator('[data-status-filter=doing]').click();await page.waitForFunction(()=>new URL(location.href).searchParams.get('status')==='doing');await page.locator('[data-status-filter=hold]').click();await page.waitForFunction(()=>new URL(location.href).searchParams.get('status')==='doing,hold');assert.equal(await page.locator('[data-status-filter=doing]').getAttribute('aria-pressed'),'true');assert.equal(await page.locator('[data-status-filter=hold]').getAttribute('aria-pressed'),'true');
+  await goto('storage');assert.equal(await page.locator('[data-manage=clear-log]').count(),1,'global log is not counted/actioned once per project');assert.equal(await page.locator('[data-manage=cleanup-runtime]:enabled').count(),0,'zero reclaimable is not actionable');
+  failure=true;await page.locator('[data-manage=clear-log]').click();await accept();await page.locator('#management-feedback[data-error=true]').waitFor();assert.match(await page.locator('#management-feedback').innerText(),/Synthetic permission denied/);assert.equal(posts.at(-1).body.id,'web-service');failure=false;
+  await goto('workload');assert.equal(await page.locator('a[data-route]').filter({hasText:'FLOW-1'}).count(),1);assert.match(await page.locator('main').innerText(),/fixture-worker/);
+  await goto('notifications');assert.equal(await page.locator('tbody tr').count(),3,'all project histories retained');assert.match(await page.locator('main').innerText(),/결과 불확실/);const enabled=page.locator('[data-telegram-enabled]').first();failure=true;await enabled.uncheck();await page.locator('#management-feedback[data-error=true]').waitFor();assert.equal(await enabled.isChecked(),true,'permission denial restores confirmed setting');failure=false;
+  await goto('preview');assert.match(await page.locator('main').innerText(),/1111111111111111111111111111111111111111/);assert.equal(await page.locator('[data-manage=preview-enter]:enabled').count(),1);await page.locator('#preview-search').fill('failed');assert.equal(await page.locator('[data-manage=preview-enter]:enabled').count(),0);assert.equal(await page.locator('[data-manage=preview-rebuild]:enabled').count(),1);
+  await page.locator('[data-manage=preview-rebuild]').click();await accept();await page.waitForFunction(()=>document.querySelector('#management-feedback')?.textContent.includes('빌드를 요청'));assert.deepEqual(posts.at(-1).body,{number:9002,sha:'2'.repeat(40)});
+  await goto('settings');await page.locator('[data-manage=background-solid]').click();assert.equal(await page.locator('html').getAttribute('data-material-background'),'solid');await page.reload();await page.locator('.management-sheet').first().waitFor();assert.equal(await page.locator('html').getAttribute('data-material-background'),'solid');
+  assert.deepEqual(errors,[]);
+ }finally{await context.close();await browser.close();await server.close();if(process.env.WORKFLOW_EVIDENCE_DIR){fs.mkdirSync(process.env.WORKFLOW_EVIDENCE_DIR,{recursive:true});fs.writeFileSync(path.join(process.env.WORKFLOW_EVIDENCE_DIR,'expansion-contract.json'),JSON.stringify({synthetic:true,posts:posts.map(({headers,...p})=>({...p,actionHeader:headers['x-task-mecca-action']})),errors,operatingWrites:0},null,2));}}
+});

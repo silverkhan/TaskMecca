@@ -88,6 +88,7 @@ async function start(root) {
     if (u.pathname.startsWith("/api/")) {
       res.setHeader("Content-Type", "application/json");
       let value = {};
+      if (u.pathname === "/api/hub/projects") return res.end(JSON.stringify({projects,archives:[]}));
       if (u.pathname === "/api/revision")
         value = {
           revision: state.revision,

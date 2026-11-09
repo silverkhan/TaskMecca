@@ -233,10 +233,12 @@ test("collapsed tools preserve incoming multi-status and tag context while keepi
   const html = native
     .load("screens/backlog.js")
     .backlog({ items: [], tag_options: [], page: 1, pages: 1, total: 0 });
-  assert.match(html, /<option value="doing,hold" selected>/);
+  assert.match(html, /<input type="hidden" name="status" form="filters" value="doing,hold">/);
+  assert.match(html, /data-status-filter="doing" aria-pressed="true"/);
+  assert.match(html, /data-status-filter="hold" aria-pressed="true"/);
   assert.match(html, /Working, On hold/);
   assert.match(html, /Tags area:frontend/);
   assert.doesNotMatch(html, /<details class="tag-filter filter-more" open/);
   assert.match(html, /<input name="q" type="search"/);
-  assert.match(html, /<select name="status" form="filters"/);
+  assert.match(html, /<input type="hidden" name="status" form="filters"/);
 });

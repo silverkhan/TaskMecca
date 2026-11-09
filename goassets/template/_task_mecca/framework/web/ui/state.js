@@ -50,6 +50,7 @@ export function readRoute() {
   const u = new URL(location.href),
     p = u.searchParams;
   state.view = p.get("view") || (p.get("project") ? "backlog" : "home");
+  state.view = ({hub:"home",release:"release-notes",attention:"notifications"})[state.view] || state.view;
   const task = u.pathname.match(/^\/tasks\/([^/]+)/);
   state.detail = task ? decodeURIComponent(task[1]) : null;
   if (task) state.view = "backlog";
@@ -58,7 +59,7 @@ export function readRoute() {
   state.page = Math.max(1, Number(p.get("page")) || 1);
   state.pageSize = [10, 20, 50].includes(Number(p.get("page_size")))
     ? Number(p.get("page_size"))
-    : 20;
+    : "auto";
   state.query = p.get("q") || "";
   state.toolsOpen =
     typeof history !== "undefined" ? Boolean(history.state?.toolsOpen) : false;
@@ -93,4 +94,12 @@ export function persist(key, value) {
   try {
     localStorage.setItem(key, value);
   } catch {}
+}
+
+export function effectivePageSize() {
+  if (state.pageSize !== "auto") return state.pageSize;
+  const row = document.querySelector(".backlog-list .task-row"), list = document.querySelector(".backlog-list");
+  const rowHeight = row?.getBoundingClientRect().height || (innerWidth <= 760 ? 120 : 92);
+  const start = list ? list.getBoundingClientRect().top + scrollY : (innerWidth <= 760 ? 340 : 300);
+  return Math.max(1, Math.min(100, Math.floor((innerHeight - Math.min(start, innerHeight / 2) - 100) / rowHeight)));
 }
