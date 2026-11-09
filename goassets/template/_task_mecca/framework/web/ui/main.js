@@ -1,4 +1,5 @@
 import { bindDocumentTools } from "./document-tools.js";
+import { bindDetailNavigation, initialDetailAnchor, scrollDetailAnchor } from "./detail-navigation.js";
 import { refreshSidebar, bindExpansionShell, paintProjects, sidebarProjects, syncProjectDiagnostics } from "./expansion.js";
 import { deliverCanonicalEvents } from "./screens/notifications.js";
 import { managedViews, management, bindManagement } from "./screens/management.js";
@@ -220,6 +221,7 @@ function ready({
       : 0;
   requestAnimationFrame(() => {
     scrollTo(0, wanted);
+    if(state.detail&&!preserve&&!restore){const anchor=initialDetailAnchor();if(anchor)scrollDetailAnchor(anchor,{updateURL:false,focus:false});}
     if (inputFocus) {
       const input = main().querySelector('[name="' + inputFocus.name + '"]');
       input?.focus({ preventScroll: true });
@@ -303,9 +305,13 @@ async function render(options = {}) {
         main().innerHTML = detail(task);
         ready(options);
       }
-      if (state.detailTab === "lifecycle") {
+      if (document.getElementById("lifecycle")) {
         bindActivityDetailControls(state.detail);
-        void loadTaskActivity(state.detail, state.project);
+        void loadTaskActivity(state.detail, state.project).then(() => {
+          if(current!==epoch||options.preserve||options.restore)return;
+          const anchor=initialDetailAnchor();
+          if(anchor)requestAnimationFrame(()=>{if(current===epoch)scrollDetailAnchor(anchor,{updateURL:false,focus:false})});
+        }).catch(() => {});
       }
       try {
         await refreshViewedTaskLifecycle(
@@ -459,6 +465,7 @@ let measuredAutoSize=null,autoLayoutObserver;
 function scheduleAutoSize(){clearTimeout(autoResizeTimer);autoResizeTimer=setTimeout(()=>{if(state.view==='backlog'&&!state.detail&&state.pageSize==='auto'&&effectivePageSize()!==state.autoRequestedSize)void render({preserve:true});},150);}
 function bindScreen() {
   bindDocumentTools(main());
+  bindDetailNavigation(main());
   autoLayoutObserver?.disconnect();
   if(state.view==='backlog'&&!state.detail&&state.pageSize==='auto') {
     measuredAutoSize=effectivePageSize();

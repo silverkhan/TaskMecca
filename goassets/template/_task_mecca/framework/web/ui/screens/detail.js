@@ -1,80 +1,47 @@
-import { state } from "../state.js";
+import { state, routeURL } from "../state.js";
 import { esc, text, status, markdown, fmtSec, date } from "../format.js";
 import { heading, link, icon } from "../components/shared.js";
 import { lifecycleSnapshotNotice } from "../components/lifecycle.js";
 import { activityDetailSection } from "../components/workflow.js";
-function section(label, value) {
+function section(label, value, id) {
   if (value == null || value === "") return "";
-  return `<section class="document-section"><h2>${esc(label)}</h2><div class="markdown">${markdown(typeof value === "string" ? value : JSON.stringify(value, null, 2))}</div></section>`;
+  return `<section class="document-section detail-section" id="${id}" data-toc-label="${esc(label)}"><h2>${esc(label)}</h2><div class="markdown">${markdown(typeof value === "string" ? value : JSON.stringify(value, null, 2))}</div></section>`;
+}
+const jump = (id, label, tab = "overview") => `<a href="${esc(routeURL({detailTab:tab}))}#${id}" data-detail-target="${id}">${label}</a>`;
+function requirements(task) {
+  const d=task.document||{},r=d.requirements||{};
+  if(d.contract_kind==='simple')return section(text('작업 정의','Task definition'),r.goal,'task-definition')+section(text('완료 기준','Acceptance'),r.acceptance||r.acceptance_items,'acceptance');
+  if(Object.values(r).some(v=>typeof v==='string'&&v.trim())){
+    const field=(label,value)=>value?`<h3>${label}</h3><div class="markdown">${markdown(value)}</div>`:'';
+    const group=(id,label,body)=>`<section class="document-section detail-section" id="${id}" data-toc-label="${label}"><h2>${label}</h2>${body||`<p class="muted">${text('기록 없음','Not recorded')}</p>`}</section>`;
+    return section(text('배경·문제','Background'),r.background||text('기록 없음','Not recorded'),'background')+
+      group('requirements',text('요구사항·목표','Requirements & goal'),field(text('목표','Goal'),r.goal)+field(text('요구사항','Requirements'),r.requirements))+
+      group('scope',text('작업 범위','Scope'),field(text('포함 범위','In scope'),r.scope_in)+field(text('제외 범위','Out of scope'),r.scope_out)+field(text('제약','Constraints'),r.constraints))+
+      section(text('완료 기준','Acceptance'),r.acceptance||r.acceptance_items||text('기록 없음','Not recorded'),'acceptance');
+  }
+  return section(text('작업 본문','Task description'),d.legacy_description||task.fields?.설명||task.raw_markdown,'legacy-task');
+}
+function outcome(task) {
+  const result=task.document?.result_summary||{};
+  const rows=[['achievement_1','주요 결과 1','Achievement 1'],['achievement_2','주요 결과 2','Achievement 2'],['achievement_3','주요 결과 3','Achievement 3'],['verdict','결과 판단','Verdict'],['outstanding','남은 작업','Outstanding'],['user_action','사용자 확인','User action']].filter(([key])=>String(result[key]||'').trim());
+  if(!rows.length)return '';
+  return `<section class="document-section detail-section" id="outcome-summary" data-toc-label="${text('결과 요약','Outcome')}"><h2>${text('결과 요약','Outcome')}</h2><dl>${rows.map(([key,ko,en])=>`<div><dt>${text(ko,en)}</dt><dd>${esc(result[key])}</dd></div>`).join('')}</dl></section>`;
 }
 export function detail(task) {
-  const d = task.document || {},
-    r = d.requirements || {},
-    s = d.summary || {},
-    tab = state.detailTab,
-    base = link(
-      icon("back") + text("백로그로", "Back to backlog"),
-      { detail: null, detailTab: "overview" },
-      "back-link",
-    ).replace("<a ", '<a id="backBtn" ');
-  const tabs = [
-    ["overview", "개요", "Overview"],
-    ["requirements", "요건", "Requirements"],
-    ["lifecycle", "라이프사이클", "Lifecycle"],
-    ["evidence", "실행·검증", "Execution & validation"],
-  ];
-  return (
-    base +
-    `<div class="detail-identity"><span>${esc(task.id)}</span><span class="status ${esc(task.state)}">${esc(status(task.state))}</span></div>` +
-    heading(task.title, task.agent || text("담당 미확인", "Assignee unknown")) +
-    sourceIdentity(task) +
-    `<div id="detailLifecycleNotice">${task.content_only ? `<p class="muted">${text("실행·라이프사이클 근거를 확인하고 있습니다.", "Checking lifecycle and execution evidence.")}</p>` : lifecycleSnapshotNotice(task)}</div><nav class="detail-tabs" aria-label="${text("작업 영역", "Task sections")}">${tabs.map(([v, k, e]) => link(text(k, e), { detailTab: v }, tab === v ? "active" : "")).join("")}</nav><div class="detail-body">${
-      tab === "lifecycle"
-        ? activityDetailSection(task)
-        : tab === "requirements"
-          ? `${
-              Object.values(r).some(
-                (value) => typeof value === "string" && value.trim(),
-              )
-                ? Object.entries(r)
-                    .filter(([key]) => key !== "acceptance_items")
-                    .map(([k, v]) =>
-                      section(
-                        {
-                          background: text("배경·문제", "Background"),
-                          goal: text("목표", "Goal"),
-                          requirements: text("요구사항", "Requirements"),
-                          scope_in: text("포함 범위", "In scope"),
-                          scope_out: text("제외 범위", "Out of scope"),
-                          constraints: text("제약", "Constraints"),
-                          acceptance: text("완료 기준", "Acceptance"),
-                        }[k] || k,
-                        v,
-                      ),
-                    )
-                    .join("")
-                : section(
-                    text("작업 원문", "Task source"),
-                    task.raw_markdown || d.legacy_description,
-                  )
-            }`
-          : tab === "evidence"
-            ? `${executionMetadata(task)}${section(text("작업 메모", "Work notes"), d.notes || task.fields?.메모)}${section(text("실행 근거", "Execution evidence"), d.execution || d.result || d.results || task.execution || task.fields?.결과)}${section(text("검증", "Validation"), d.validation || task.validation || d.verification || task.fields?.검증)}<details class="raw-source" open><summary>${text("원문과 상세 근거", "Source and detailed evidence")}</summary><pre class="source-code">${esc(task.raw_markdown)}</pre></details>`
-            : `<section class="summary-sheet"><h2>${text("작업 개요", "Task overview")}</h2><dl>${[
-                ["목적", "Purpose", s.purpose || r.goal],
-                ["핵심 변경", "Key change", s.change],
-                ["상태·결과", "Status / result", s.status_result],
-                ["확인·후속", "Checks / follow-up", s.follow_up],
-              ]
-                .map(
-                  ([k, e, v]) =>
-                    `<div><dt>${text(k, e)}</dt><dd>${esc(v || text("기록 없음", "Not recorded"))}</dd></div>`,
-                )
-                .join(
-                  "",
-                )}</dl></section>${relatedTasks(task)}${task.attention_reason ? section(text("확인이 필요한 근거", "Attention evidence"), typeof task.attention_reason === "string" ? task.attention_reason : JSON.stringify(task.attention_reason)) : ""}<div class="detail-quicklinks">${link(text("요건 읽기", "Read requirements") + icon("arrow"), { detailTab: "requirements" })}${link(text("작업 흐름 확인", "Inspect workflow") + icon("arrow"), { detailTab: "lifecycle" })}</div><details class="raw-source"><summary>${text("작업 원문", "Task source")}</summary><pre class="source-code">${esc(task.raw_markdown)}</pre></details>`
-    }</div>`
-  );
+  const d=task.document||{},r=d.requirements||{},s=d.summary||{};
+  const base=link(icon('back')+text('백로그로','Back to backlog'),{detail:null,detailTab:'overview'},'back-link').replace('<a ','<a id="backBtn" ');
+  const summary=`<section class="summary-sheet detail-section" id="human-summary" data-toc-label="${text('작업 개요','Task overview')}"><h2>${text('작업 개요','Task overview')}</h2><dl>${[
+    ['목적','Purpose',s.purpose||r.goal],['핵심 변경','Key change',s.change],['상태·결과','Status / result',s.status_result],['확인·후속','Checks / follow-up',s.follow_up]
+  ].map(([ko,en,v])=>`<div><dt>${text(ko,en)}</dt><dd>${esc(v||text('기록 없음','Not recorded'))}</dd></div>`).join('')}</dl><nav class="detail-tabs" aria-label="${text('본문 바로 이동','Jump to section')}">${jump('human-summary',text('개요','Overview'))}${jump(d.contract_kind==='simple'?'task-definition':Object.keys(r).length?'requirements':'legacy-task',text('요건','Requirements'),'requirements')}${jump('lifecycle',text('라이프사이클','Lifecycle'),'lifecycle')}${jump('verification',text('실행·검증','Execution & validation'),'evidence')}</nav></section>`;
+  const related=relatedTasks(task).replace('<section class="related-tasks">','<section class="related-tasks detail-section" id="related-work" data-toc-label="'+text('연결된 작업','Connected work')+'">');
+  const operations=executionMetadata(task).replace('<section class="document-section">','<section class="document-section detail-section" id="operations" data-toc-label="'+text('실행과 관측','Execution and observation')+'">');
+  const source=`<details class="raw-source detail-section" id="source" data-toc-label="${text('작업 원문','Task source')}"><summary>${text('작업 원문','Task source')}</summary><pre class="source-code">${esc(task.raw_markdown||'')}</pre></details>`;
+  const body=summary+outcome(task)+activityDetailSection(task)+related+operations+
+    (task.attention_reason?section(text('확인이 필요한 근거','Attention evidence'),task.attention_reason,'attention-evidence'):'')+
+    requirements(task)+section(text('작업 메모','Work notes'),d.notes||task.fields?.메모,'progress-result')+
+    section(text('실행 근거','Execution evidence'),d.execution||d.result||d.results||task.execution||task.fields?.결과,'execution')+
+    section(text('검증','Validation'),d.validation||task.validation||d.verification||task.fields?.검증||text('기록 없음','Not recorded'),'verification')+source;
+  return `<div class="detail-layout"><article class="detail-reading">${base}<div class="detail-identity"><span>${esc(task.id)}</span><span class="status ${esc(task.state)}">${esc(status(task.state))}</span></div>${heading(task.title,task.agent||text('담당 미확인','Assignee unknown'))}${sourceIdentity(task)}<div id="detailLifecycleNotice">${task.content_only?`<p class="muted">${text('실행·라이프사이클 근거를 확인하고 있습니다.','Checking lifecycle and execution evidence.')}</p>`:lifecycleSnapshotNotice(task)}</div><div class="detail-body">${body}</div></article><button class="detail-toc-fab" type="button" aria-controls="detail-toc" aria-expanded="false" aria-label="${text('목차 열기','Open table of contents')}">${icon('index')}</button><div class="detail-toc-scrim" aria-hidden="true"></div><aside id="detail-toc" class="detail-toc" aria-label="${text('본문 목차','Table of contents')}"><div class="detail-toc-head"><strong>${text('목차','Contents')}</strong><button class="detail-toc-close" type="button" aria-label="${text('목차 닫기','Close table of contents')}">×</button></div><nav class="detail-toc-nav"></nav></aside></div>`;
 }
 
 function safeSourceURL(value) {

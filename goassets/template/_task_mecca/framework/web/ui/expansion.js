@@ -51,7 +51,7 @@ new MutationObserver(syncTheme).observe(root,{attributes:true,attributeFilter:['
 export function setBackground(mode) { if (!['image','solid'].includes(mode)) return; backgroundMode=mode; persist('task-mecca-material-background-v1',mode); syncTheme(); }
 const host = document.getElementById('material-review');
 const light = attachMaterialProximity(document.body);
-const surfaceSelector = '.tm-combo-popup,dialog[open],.page-heading,.overview-section,.summary-sheet,.document-section,.settings-sheet,.management-sheet,.detail-body > .raw-source,.backlog-list';
+const surfaceSelector = '.tm-combo-popup,dialog[open],.material-reading-plane';
 function surfaces() {
   document.querySelectorAll(surfaceSelector).forEach(el => {
     if (!el.classList.contains('material-surface')) { el.classList.add('material-surface'); el.setAttribute('data-light-surface',''); }

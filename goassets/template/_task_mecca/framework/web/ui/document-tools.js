@@ -10,7 +10,8 @@ async function renderDiagram(pre,view,status){
 }
 export function bindDocumentTools(root){
   for(const region of root.querySelectorAll('.management-sheet > .markdown,.document-section > .markdown')){
-    region.tabIndex=0;region.setAttribute('role','region');region.setAttribute('aria-label',region.parentElement.querySelector('h2')?.textContent||text('문서 본문','Document content'));
+    if(region.closest('.detail-reading'))region.removeAttribute('tabindex');else region.tabIndex=0;
+    region.setAttribute('role','region');region.setAttribute('aria-label',region.parentElement.querySelector('h2')?.textContent||text('문서 본문','Document content'));
   }
   for(const pre of root.querySelectorAll('.markdown pre,.raw-source pre')){
     if(pre.dataset.documentTools)continue;pre.dataset.documentTools='1';
