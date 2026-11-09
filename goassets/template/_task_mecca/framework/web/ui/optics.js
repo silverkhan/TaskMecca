@@ -16,10 +16,6 @@ document.body.prepend(defs);
 // implementation is the validated enhancement; others retain blur/transmission/rim.
 root.dataset.materialOptics = /Chrome|Chromium|Edg\//.test(navigator.userAgent) ? 'svg' : 'blur';
 const layers = new Map();
-// A fixed background inside each filtered face invalidates paint on root scroll.
-// Move only the sampled photograph on a compositor scroll timeline instead.
-// Engines without native scroll timelines keep the fixed-background fallback.
-const nativeScrollSample = CSS.supports('animation-timeline', 'scroll(root block)');
 let disposed = false;
 function sync() {
   if (disposed) return;
@@ -28,29 +24,10 @@ function sync() {
   const width = 1920 * scale, height = 1080 * scale;
   const x = rect.left + (rect.width - width) / 2;
   const y = rect.top + (rect.height - height) / 2;
-  const scrollRange = Math.max(0, document.documentElement.scrollHeight - document.documentElement.clientHeight);
   for (const [surface, layer] of layers) {
     if (!surface.isConnected) { layers.delete(surface); continue; }
     // Fixed attachment samples viewport coordinates directly. Scrolling moves
     // the face over that photo without JS geometry reads/background rewrites.
-    if (nativeScrollSample) {
-      const box = surface.getBoundingClientRect();
-      let fixed = false;
-      for (let ancestor = surface; ancestor && ancestor !== document.body; ancestor = ancestor.parentElement) {
-        if (getComputedStyle(ancestor).position === 'fixed') { fixed = true; break; }
-      }
-      const photo = layer.firstElementChild;
-      const values = {
-        width: `${width}px`, height: `${height}px`, left: `${x - box.left}px`,
-        top: `${y - box.top - (fixed ? 0 : scrollY)}px`,
-        '--material-scroll-range': `${scrollRange}px`,
-      };
-      for (const [property, value] of Object.entries(values)) {
-        if (photo.style.getPropertyValue(property) !== value) photo.style.setProperty(property, value);
-      }
-      photo.classList.toggle('material-viewport-photo-fixed', fixed);
-      continue;
-    }
     const size=`auto, ${width}px ${height}px`,position=`0 0, ${x}px ${y}px`;
     if(layer.style.backgroundSize!==size)layer.style.backgroundSize=size;
     if(layer.style.backgroundPosition!==position)layer.style.backgroundPosition=position;
@@ -58,19 +35,12 @@ function sync() {
 }
 const observer = new ResizeObserver(sync);
 observer.observe(backdrop);
-observer.observe(host);
 function refresh() {
   document.querySelectorAll('.material-surface').forEach(surface => {
     if (layers.has(surface)) return;
     const layer = document.createElement('div');
     layer.className = 'material-transmission';
     layer.setAttribute('aria-hidden', 'true');
-    if (nativeScrollSample) {
-      layer.classList.add('material-viewport-sample');
-      const photo = document.createElement('div');
-      photo.className = 'material-viewport-photo';
-      layer.append(photo);
-    }
     surface.prepend(layer); layers.set(surface, layer);
   });
   sync();
