@@ -163,3 +163,9 @@ select.tm-combo-native{position:absolute!important;width:1px!important;height:1p
 :root:not([data-material-background='solid']) .material-native-surface{background:transparent}
 .material-surface>.material-native-transmission{background-image:none!important;background-attachment:scroll;background-color:rgba(12,13,17,.542857);filter:none}
 :root[data-theme=light] .material-surface>.material-native-transmission{background-color:rgba(255,255,255,.5)}
+/* Touch/Samsung: native 7px blur on one bounded plate; SVG displacement only
+   touches narrow edge bands, never a long document or high-density row. */
+:root[data-material-budget=mobile] .material-review-backdrop{min-height:100lvh}
+:root[data-material-budget=mobile] .material-reading-plane{height:calc(100lvh - 14px)}
+:root[data-material-background=solid] .material-mobile-edge{display:none!important}
+@media(max-width:760px){:root[data-material-budget=mobile] .material-reading-plane{height:calc(100lvh - 10px)}:root[data-material-budget=mobile] .rail.material-rail{background:transparent;box-shadow:none}:root[data-material-budget=mobile] .rail.material-rail>.material-transmission,:root[data-material-budget=mobile] .rail.material-rail>.material-mobile-edge,:root[data-material-budget=mobile] .rail.material-rail::before,:root[data-material-budget=mobile] .rail.material-rail::after{display:none!important}}

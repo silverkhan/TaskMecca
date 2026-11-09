@@ -20,7 +20,29 @@ const layers = new Map();
 const recordsByLayer = new WeakMap();
 const nativeBackdrop = root.dataset.materialOptics === 'svg' &&
   CSS.supports('backdrop-filter', 'blur(7px) url("#material-refraction")');
+const mobileBudget = /SamsungBrowser\//.test(navigator.userAgent) || matchMedia('(any-pointer: coarse)').matches;
+const nativeBlur = CSS.supports('backdrop-filter','blur(7px)');
+root.dataset.materialBudget=mobileBudget?'mobile':'standard';
+root.dataset.materialSampling=mobileBudget&&nativeBlur?'native-blur-edge':nativeBackdrop?'backdrop':'photo-fallback';
 let filterSequence = 0;
+function removeEdges(record){for(const edge of record.edges||[]){edge.node.remove();edge.filter.remove()}record.edges=[];record.edgeSize=null}
+function createEdges(surface,record){
+  record.edges=Array.from({length:4},()=>{
+    const filter=defs.querySelector('#material-refraction').cloneNode(true);filter.id=`material-edge-refraction-${++filterSequence}`;filter.querySelector('feGaussianBlur')?.remove();filter.querySelector('feDisplacementMap').setAttribute('in','SourceGraphic');filter.setAttribute('filterUnits','userSpaceOnUse');defs.querySelector('defs').append(filter);
+    const node=document.createElement('div');node.className='material-mobile-edge';node.setAttribute('aria-hidden','true');node.style.cssText=`position:absolute;z-index:-1;pointer-events:none;display:none;backdrop-filter:url("#${filter.id}")`;surface.append(node);
+    return {node,filter,lens:filter.querySelector('feImage')};
+  });
+}
+function sizeEdges(record,width,height){
+  if(!record.edges?.length)return;
+  const key=`${width}|${height}`;if(record.edgeSize===key)return;record.edgeSize=key;
+  const bw=Math.min(24,Math.ceil(width*.08)),bh=Math.min(24,Math.ceil(height*.08));
+  const bands=[{x:0,y:0,w:bw,h:height,fade:'to right'},{x:width-bw,y:0,w:bw,h:height,fade:'to left'},{x:bw,y:0,w:width-bw*2,h:bh,fade:'to bottom'},{x:bw,y:height-bh,w:width-bw*2,h:bh,fade:'to top'}];
+  record.edges.forEach((edge,i)=>{const b=bands[i];Object.assign(edge.node.style,{display:'block',left:`${b.x}px`,top:`${b.y}px`,width:`${b.w}px`,height:`${b.h}px`,maskImage:`linear-gradient(${b.fade},#000 65%,transparent)`});
+    for(const[k,v]of Object.entries({x:-32,y:-32,width:b.w+64,height:b.h+64}))edge.filter.setAttribute(k,String(v));
+    for(const[k,v]of Object.entries({x:-b.x,y:-b.y,width,height}))edge.lens.setAttribute(k,String(v));
+  });
+}
 // Percent lengths in the zero-sized defs viewport produce an empty feImage.
 // Give each map its face's numeric dimensions, without reading scroll geometry.
 const sizes = new ResizeObserver(entries => {
@@ -32,6 +54,7 @@ const sizes = new ResizeObserver(entries => {
       const w = String(width), h = String(height);
       if (record.lens.getAttribute('width') !== w) record.lens.setAttribute('width', w);
       if (record.lens.getAttribute('height') !== h) record.lens.setAttribute('height', h);
+      sizeEdges(record,width,height);
     }
   }
 });
@@ -60,6 +83,7 @@ function refresh() {
   for (const [surface, record] of layers) {
     if (surface.isConnected) continue;
     sizes.unobserve(record.layer);
+    removeEdges(record);
     record.filter.remove();
     layers.delete(surface);
   }
@@ -82,12 +106,13 @@ function refresh() {
     }
     // A nested face keeps the accepted direct photo sample: it must not sample
     // and blur the already tinted parent or the parent's foreground content.
-    const native = nativeBackdrop && !surface.parentElement.closest('.material-surface');
+    const native = (mobileBudget?nativeBlur:nativeBackdrop) && !surface.parentElement.closest('.material-surface');
     // Stable faces need no class/filter writes or SVG subtree searches when
     // unrelated content is inserted elsewhere on the screen.
     if (record.configured && record.native === native) return;
     record.native = native;
     record.configured = true;
+    if(mobileBudget&&record.native&&root.dataset.materialOptics==='svg'&&(surface.classList.contains('material-reading-plane')||surface.classList.contains('material-rail'))){if(!record.edges?.length)createEdges(surface,record)}else removeEdges(record);
     surface.classList.toggle('material-native-surface', record.native);
     record.layer.classList.toggle('material-native-transmission', record.native);
     const blur = record.filter.querySelector('feGaussianBlur');
@@ -101,7 +126,7 @@ function refresh() {
     if (displacement.getAttribute('in') !== input) displacement.setAttribute('in', input);
     const url = `url("#${record.filter.id}")`;
     const filter = record.native ? 'none' : root.dataset.materialOptics === 'svg' ? url : '';
-    const backdropFilter = record.native ? `blur(7px) ${url}` : '';
+    const backdropFilter = record.native ? mobileBudget?'blur(7px)':`blur(7px) ${url}` : '';
     if (record.layer.style.filter !== filter) record.layer.style.filter = filter;
     if (record.layer.style.backdropFilter !== backdropFilter) record.layer.style.backdropFilter = backdropFilter;
   });
@@ -120,6 +145,7 @@ backdrop.addEventListener('load', sync);
 refresh();
 addEventListener('pagehide', () => {
   disposed = true; observer.disconnect(); sizes.disconnect(); mutation.disconnect();
+  for(const record of layers.values())removeEdges(record);
   removeEventListener('resize', sync);
   visualViewport?.removeEventListener('resize', sync);
   backdrop.removeEventListener('load', sync);
