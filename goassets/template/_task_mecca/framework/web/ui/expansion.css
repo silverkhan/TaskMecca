@@ -70,3 +70,31 @@ select.tm-combo-native{position:absolute!important;width:1px!important;height:1p
 .topbar,.raw-source.material-surface{overflow:clip}
 .page-heading>div{min-width:0}.page-heading h1{overflow-wrap:anywhere}
 @media(max-width:760px){.material-brand-row{gap:10px;min-width:0}.material-brand{min-width:0;max-width:calc(100% - 42px);white-space:normal}.material-brand strong{min-width:0;white-space:normal;overflow-wrap:anywhere}.material-brand-row>button{flex:none}.topbar-end{flex-wrap:wrap}.topbar-end .quiet{white-space:nowrap;word-break:keep-all;min-width:36px}.topbar-end .tm-combo{flex:1 1 80px;max-width:100%;min-width:0}.topbar .tm-combo-trigger{min-width:0;max-width:100%;width:100%}}
+
+/* Bound long document sampling layers without dropping document content. */
+.management-sheet>.markdown,.document-section>.markdown{max-height:min(65dvh,680px);overflow:auto;padding-right:10px}.raw-source .source-code{max-height:min(65dvh,680px);overflow:auto}.markdown[role=region]:focus-visible{outline:2px solid var(--focus);outline-offset:4px;border-radius:12px}
+
+/* Raster samples exposed insufficient metadata contrast on the accepted photo.
+   Keep transmission and strengthen reading ink; use the same shared face under
+   page facts rather than applying an effect to the glyphs. */
+:root[data-theme=light]{--muted:#293448;--quiet:#293448;--ok:#123d2e;--warn:#4d300a}
+:root[data-theme=dark]{--muted:#dce2ed;--quiet:#dce2ed;--ok:#b0f1d3;--warn:#f5d7aa}
+.page-heading.material-surface{padding:18px 24px;border-radius:28px;overflow:clip;box-shadow:var(--depth),var(--ground)}.list-summary.material-surface{padding:10px 16px;border-radius:18px;overflow:clip;box-shadow:var(--depth)}
+.back-link{background:linear-gradient(var(--capsule-top),var(--capsule-low));color:var(--ink);box-shadow:var(--capsule-shadow);border-radius:18px;padding:8px 14px;width:fit-content}
+:root[data-theme=light] :is(.markdown,.document-section,.management-sheet,.related-tasks,.detail-source,.detail-quicklinks) a:not(.button){color:var(--ink);text-decoration:underline;text-decoration-color:var(--accent);text-underline-offset:3px}
+@media(max-width:760px){.page-heading.material-surface{padding:16px 18px;border-radius:24px}.backlog-heading .page-heading.material-surface{padding:10px 14px}.list-summary.material-surface{padding:7px 12px}}
+.page-heading.material-surface{padding:12px 20px;margin:14px 0 18px}
+@media(max-width:760px){.back-link{padding:4px 12px;margin-bottom:4px}.backlog-heading .page-heading.material-surface{padding:0 14px;margin:6px 0 8px}.list-summary.material-surface{padding:5px 12px;margin:8px 0}}
+/* The same photo remains visible; a small shared reading veil bounds its
+   contrast range for dense operational text instead of filtering text. */
+:root[data-theme=light]{--muted:#263144;--quiet:#263144;--warn:#442807}
+:root[data-theme=light] .material-surface>.material-transmission{background-image:linear-gradient(rgba(255,255,255,.60),rgba(255,255,255,.60)),url('./material/cozy-beige-room-photo-1920.webp')}
+:root[data-theme=dark] .material-surface>.material-transmission{background-image:linear-gradient(rgba(12,13,17,.68),rgba(12,13,17,.68)),url('./material/cozy-beige-room-photo-1920.webp')}
+
+.workflow-floating.material-surface{position:fixed;border-radius:24px;box-shadow:var(--depth),var(--ground)}.tm-combo-popup.material-surface{position:fixed;backdrop-filter:none;-webkit-backdrop-filter:none}dialog.material-surface{position:fixed;inset:0;margin:auto;width:min(580px,calc(100vw - 32px));height:fit-content;max-height:calc(100dvh - 32px);overflow:auto}
+
+/* Preserve the native interval reader DOM/selection offsets. Its shared rim,
+   transmission and blur use the platform fallback instead of inserted nodes. */
+.workflow-floating{border-radius:24px;background:var(--surface2);box-shadow:var(--depth),var(--ground);backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px);isolation:isolate}
+.workflow-floating::before{content:'';position:absolute;inset:0;border-radius:inherit;padding:1px;pointer-events:none;z-index:0;background:conic-gradient(from 175deg at 50% 50%,var(--rim-b),var(--rim-a),var(--rim-c),var(--rim-b));mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);mask-composite:exclude}
+.workflow-floating::after{content:'';position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:-1;background:radial-gradient(260px circle at var(--light-x,-400px) var(--light-y,-400px),var(--face-glint),transparent 70%);opacity:var(--light-strength,0)}

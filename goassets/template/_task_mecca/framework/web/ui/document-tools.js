@@ -9,6 +9,9 @@ async function renderDiagram(pre,view,status){
   catch(e){pre.hidden=false;view.hidden=true;status.textContent=text('다이어그램을 표시하지 못했습니다. 원문을 확인하거나 다시 시도하세요.','Could not render the diagram. Read the source or retry.');}
 }
 export function bindDocumentTools(root){
+  for(const region of root.querySelectorAll('.management-sheet > .markdown,.document-section > .markdown')){
+    region.tabIndex=0;region.setAttribute('role','region');region.setAttribute('aria-label',region.parentElement.querySelector('h2')?.textContent||text('문서 본문','Document content'));
+  }
   for(const pre of root.querySelectorAll('.markdown pre,.raw-source pre')){
     if(pre.dataset.documentTools)continue;pre.dataset.documentTools='1';
     const source=pre.textContent,toolbar=document.createElement('div'),copy=document.createElement('button'),status=document.createElement('span');toolbar.className='document-tools';status.setAttribute('role','status');copy.type='button';copy.textContent=text('코드 복사','Copy code');copy.onclick=async()=>{try{await navigator.clipboard.writeText(source);status.textContent=text('복사했습니다','Copied');}catch{status.textContent=text('복사하지 못했습니다. 원문을 선택해 복사하세요.','Copy failed. Select and copy the source.');}};toolbar.append(copy);

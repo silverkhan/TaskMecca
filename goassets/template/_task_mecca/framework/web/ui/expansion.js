@@ -1,5 +1,5 @@
 import '../select-ui.js';
-import './optics.js';
+import { refreshOptics } from './optics.js';
 import { attachMaterialProximity } from './material/proximity.js';
 import { state, routeURL, persist } from './state.js';
 import { esc, text } from './format.js';
@@ -50,14 +50,16 @@ function syncTheme() { root.dataset.materialTheme = root.dataset.theme || 'light
 new MutationObserver(syncTheme).observe(root,{attributes:true,attributeFilter:['data-theme']}); syncTheme();
 export function setBackground(mode) { if (!['image','solid'].includes(mode)) return; backgroundMode=mode; persist('task-mecca-material-background-v1',mode); syncTheme(); }
 const host = document.getElementById('material-review');
-const light = attachMaterialProximity(host);
+const light = attachMaterialProximity(document.body);
 function surfaces() {
-  host.querySelectorAll('.overview-section,.summary-sheet,.document-section,.settings-sheet,.management-sheet,.detail-body > .raw-source,.backlog-list,.workflow-floating').forEach(el => {
+  document.querySelectorAll('.tm-combo-popup,dialog[open],.page-heading,.list-summary,.overview-section,.summary-sheet,.document-section,.settings-sheet,.management-sheet,.detail-body > .raw-source,.backlog-list').forEach(el => {
     if (!el.classList.contains('material-surface')) { el.classList.add('material-surface'); el.setAttribute('data-light-surface',''); }
   });
+  document.querySelectorAll(".workflow-floating").forEach(el=>el.setAttribute("data-light-surface",""));
+  refreshOptics();
   light.refresh();
 }
-new MutationObserver(surfaces).observe(host,{childList:true,subtree:true});
+new MutationObserver(surfaces).observe(document.body,{childList:true,subtree:true});
 addEventListener('pagehide',()=>light.dispose(),{once:true});
 document.addEventListener('click',e=> { if(e.target.closest('a[data-route]')) { const path=e.target.closest('[data-reopen-project]')?.dataset.reopenProject; if(path)openProject(path); root.removeAttribute('data-menu-open');document.getElementById('sidebar-toggle')?.setAttribute('aria-expanded','false');} });
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&root.hasAttribute('data-menu-open')){root.removeAttribute('data-menu-open');document.getElementById('sidebar-toggle')?.focus();}});

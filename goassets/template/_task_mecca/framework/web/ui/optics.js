@@ -36,7 +36,7 @@ function sync() {
 const observer = new ResizeObserver(sync);
 observer.observe(backdrop);
 function refresh() {
-  host.querySelectorAll('.material-surface').forEach(surface => {
+  document.querySelectorAll('.material-surface').forEach(surface => {
     if (layers.has(surface)) return;
     const layer = document.createElement('div');
     layer.className = 'material-transmission';
@@ -58,3 +58,5 @@ addEventListener('pagehide', () => {
   visualViewport?.removeEventListener('resize', sync);
   backdrop.removeEventListener('load', sync);
 }, { once: true });
+
+export function refreshOptics(){refresh();}
