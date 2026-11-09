@@ -718,6 +718,14 @@ async function liveChange() {
       }
       return;
     }
+    if (managedViews.includes(state.view)) {
+      if(!document.getElementById('managementUpdateNotice')) {
+        const notice=document.createElement('div');notice.id='managementUpdateNotice';notice.className='notice';
+        const label=document.createElement('span');label.textContent=text('기록이 변경되었습니다. 현재 입력과 읽기 위치를 유지합니다.','Records changed. Your current input and reading are preserved.');
+        const update=document.createElement('button');update.textContent=text('새 기록 확인','Load current records');update.onclick=()=>render({preserve:true});notice.append(label,update);main().prepend(notice);
+      }
+      return;
+    }
     if (["home", "activity"].includes(state.view)) {
       const next = await fetchOverview(controller.signal);
       if (current !== epoch) return;
