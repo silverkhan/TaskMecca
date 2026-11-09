@@ -11,6 +11,12 @@ Controller는 수명이 긴 네이티브 세션을 무제한 재사용하지 않
 위 CLI는 Handoff **claim**에서 은퇴한 exact Controller attempt를 거부하지만, 모든 수동 Markdown 편집과 레거시 운영 쓰기 경로를 강제 차단하지는 않는다. 따라서 전역 원자적 writer fencing을 이미 구현한 것으로 주장하지 않는다. 네이티브 cross-session 생성·메시징·종료를 지원하지 않거나 안전 증거가 없는 Provider에서는 새 세션을 만든 척하지 않고 `prepared`/`acknowledged` 인계 상태를 보존하여 복구한다. Root polling·자동 재개를 요구하지 않는다.
 
 
+## Root 통신 정책과 영속 복구
+
+작업을 차단하는 새 요구사항·권한·장애는 가능한 범위에서 Controller가 먼저 해소한다. 사용자 판단이 필수일 때에는 먼저 canonical hold(user)·사유·재개 조건을 영속 기록하고, 선택된 A/B/C/D 실행 모드의 `user_decision_required` 정책을 평가한다. B/C이고 실제 Root 송신 capability가 확인된 경우에만 기존 runtime을 통해 전송한다. 전달 성공은 수신·사용자 승인·재개 성공을 뜻하지 않는다. A/D 또는 capability 미확인 시 다음 Root turn 복구 대상으로 보존한다. Worker는 직접 Root에 우회 요청하지 않고 Controller에 보고한다.
+
+독립 세션의 표면 이름은 `DMMDD_NN_` 공통 접두어를 갖지만 exact session/attempt 신원을 대체하지 않는다. Root 통신을 위해 canonical backlog의 단일 writer 경계를 깨지 않는다. `orchestration decide`는 결정만 반환하며 native 실행을 하지 않는다.
+
 ## 공통 실행 체크리스트
 
 Worker의 수동 운영원장 쓰기 금지와 승인된 CLI preflight ephemeral probe/cache·runtime hook 자동 관측 예외를 구분한다. 실패/unknown durable report 보존 경로와 cleanup 전 회수는 공통 절차를 따른다.
