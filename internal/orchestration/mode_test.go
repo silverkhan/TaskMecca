@@ -9,9 +9,13 @@ func TestModesHaveStableLetterLabels(t *testing.T) {
 }
 
 func TestUnknownCapabilitiesFailClosed(t *testing.T) {
- for _, mode := range []Mode{ModeA,ModeB,ModeC,ModeD} {
+ for _, mode := range []Mode{ModeB,ModeC,ModeD} {
   d,e:=Decide(Request{Mode:mode,Event:"root_initialized"})
   if e!=nil || d.Allowed || d.Action!="capability_unavailable" {t.Fatalf("%s: %+v %v",mode,d,e)}
+ }
+ legacy,e:=Decide(Request{Mode:ModeA,Event:"root_initialized"})
+ if e!=nil||!legacy.Allowed||legacy.Action!="mode_ready"||len(legacy.Reasons)==0 {
+  t.Fatalf("legacy subagent mode must remain selectable with explicit preflight requirement: %+v %v",legacy,e)
  }
 }
 
