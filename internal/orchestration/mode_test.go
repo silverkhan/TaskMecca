@@ -43,3 +43,12 @@ func TestInvalidModeEvent(t *testing.T) {
  if _,e:=Decide(Request{Mode:"E",Event:"root_initialized"});e==nil {t.Fatal("unknown mode accepted")}
  if _,e:=Decide(Request{Mode:ModeA,Event:"arbitrary"});e==nil {t.Fatal("unknown event accepted")}
 }
+
+func TestRootModeNotOfferedWithoutVerifiedMessageCapability(t *testing.T) {
+ cap:=Capabilities{SpawnSubagent:"supported"}
+ d,e:=Decide(Request{Mode:ModeB,Event:"root_initialized",Capabilities:cap})
+ if e!=nil||d.Allowed||d.Action!="capability_unavailable" {t.Fatalf("%+v %v",d,e)}
+ cap.MessageRoot="supported"
+ d,e=Decide(Request{Mode:ModeB,Event:"root_initialized",Capabilities:cap})
+ if e!=nil||!d.Allowed||d.Action!="mode_ready" {t.Fatalf("%+v %v",d,e)}
+}
