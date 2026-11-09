@@ -83,6 +83,9 @@ func Decide(req Request) (Decision, error) {
   if mode.Execution=="session" && !supported(req.Capabilities.CreateSession) {
    d.Action="capability_unavailable";d.Reasons=append(d.Reasons,"create_session_not_verified");return d,nil
   }
+  if mode.Execution=="session" && !supported(req.Capabilities.MessageSession) {
+   d.Action="capability_unavailable";d.Reasons=append(d.Reasons,"message_session_not_verified");return d,nil
+  }
   if mode.RootCommunication && !supported(req.Capabilities.MessageRoot) {
    d.Action="capability_unavailable";d.Reasons=append(d.Reasons,"message_root_not_verified");return d,nil
   }
@@ -98,8 +101,8 @@ func Decide(req Request) (Decision, error) {
   if !mode.RootCommunication {
    d.Allowed=true;d.Action="await_next_root_turn";return d,nil
   }
-  if !supported(req.Capabilities.MessageRoot) {
-   d.Allowed=true;d.Action="await_next_root_turn";d.Reasons=append(d.Reasons,"root_message_not_verified");return d,nil
+  if !supported(req.Capabilities.MessageRoot) || (mode.Execution=="session" && !supported(req.Capabilities.MessageSession)) {
+   d.Allowed=true;d.Action="await_next_root_turn";d.Reasons=append(d.Reasons,"root_message_transport_not_verified");return d,nil
   }
   d.Allowed=true;d.NativeExecutionRequired=true;d.Action="send_to_root"
   if !supported(req.Capabilities.WakeRoot) {d.Reasons=append(d.Reasons,"root_wake_not_verified_delivery_is_not_acknowledgement")}
