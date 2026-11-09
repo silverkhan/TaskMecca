@@ -1,0 +1,11 @@
+{
+  "baseline": "27dbe42e",
+  "excludedApprovedFiles": [
+    "goassets/template/_task_mecca/framework/web/ui/expansion.css",
+    "goassets/template/_task_mecca/framework/web/ui/expansion.js",
+    "goassets/template/_task_mecca/framework/web/ui/optics.js"
+  ],
+  "count": 49,
+  "allByteIdentical": true,
+  "mismatches": []
+}

@@ -1,4 +1,4 @@
-# 실사용 피드백에 따른 제한된 보완 — 검증 중
+# 실사용 피드백에 따른 제한된 보완 — timing 통과, idle 기준 충돌 유지
 
 원천 피드백: “UI구현된 사항 PR검증모드 진입해서 확인했는데 1. 랙이 심하다 2. 전체적으로 뭔가 정돈되지 않은 느낌이라 정신이없다”.
 
@@ -17,3 +17,19 @@ before8장(기존GUI4+후보4)→수정→after4장(후보PC/mobile Light/Dark) 
 회귀: 첫 CSS수정은 mobile 첫행450px조건 실패해 padding을 바로 교정했다(regression.tap 보존). 이후 core/expansion/P0 3/3 PASS(final-regression.tap). 알림 테스트는 실제 nav-label span과 기존부터 있는 정확한 한국어 '알림센터'를 검증하도록 정정. 기존 CI의 class없는 span/알림 기대 불일치 이력을 보존하고 notification-final.tap11/11 PASS. assertion 삭제·성능 threshold/하네스 수정 없음.
 
 원래e646 full47/48·idle26/27 실패와 정책hold는 그대로다. 이 작은 보완을 전체 gate 통과/전체UX수용/AC체크로 확대하지 않는다. 새 frozen source의 전체 gate는 별도로 기록한다. 운영Dev18765/소유57069/merge/deploy 변경0, 새 Worker/reviewer0.
+
+## 새 frozen source 결과
+
+source **7eab6fa8d17399a26fc54c3bc8a49eae0fa1b7a6**. [원래 하네스·raw·manifest·idle](../a65-feedback-gate/frozen-7eab6fa8/)는 기존 pairi의 protocol/fixture/paired/idle와 SHA256 byte동일이다. 새 production 소스의 full gate는 한 번만 실행했다. 48/48 timing PASS, 54 raw pairs(6warmup 포함), invalid0, assets/head/Chrome binary stable=true. 이전 e646 FAIL을 지우거나 PASS로 재분류하지 않는다.
+
+기존 잔여1440Light navigation은 이번 run의 baseline83.445→candidate81.0505ms(-2.8696%). 각 run의 baseline 자체도 달라졌으므로 e646의82.6585ms와 이번81.0505ms 차이를 전부 수정효과라고 주장하지 않는다. 이번 최악 TaskDuration 그룹은1280Light navigation+0.8512%로 원래10%기준 안이다. mixed scoped 결과와 별도 기록한다.
+
+동일source immutable idle는 **26/27 FAIL**. pendingStopsOnRoute에서 `/api/version`, `/api/runtime/hooks`, `/api/channel-options` 각1회, streams0. 필수 settings bootstrap과 all-API-zero 충돌은 해결/승인된 것이 아니다. 기술 BLOCKED/정책hold 유지, 전체AC체크0/사용자최종수용0. 필수조회삭제·하네스변경·API예외·load타이밍편법0. 최종 독립검수는 아직 시행하지 않았다.
+
+gate owned browsers/servers 종료·streams0, idle 프로세스정상종료/cleanupStreams0. source-linked binary는 build만 했고 서비스설치/전환은 하지 않았다. 별도 임의 visual 서버가 아니라 기존 synthetic browser-test fixture만 사용했다.
+
+화면표시source 추가조회: 운영18765에 readonly GET `/api/preview/instances` 결과 `instances:[]`. `/api/preview/builds`는5초 timeout으로 응답body0. 따라서 사용자가 보았던 검증모드의 실제 실행SHA를 확인하지 못했다. GET 관측과 timeout을 실패 그대로 보존하고 build/설치/전환 POST0. 57069 listenerPID60445는 유지되며 전체 후보로 갱신하지 않았다. 이 주소는 원래 f3 작은시안이다.
+
+protected.json: 승인된3파일 제외 현재 tracked web49파일은27dbe와byte동일. API/Go/원본photo/material/P0environment/workflow_native 변경0. CI의 알림nav-label 기대 교정은 실제 기존 labels를 정확히 assert하며 성능기준 완화와 무관하다.
+
+실제 신원은 identity.json의 동일 Controller ordinal22/CODEX01a1bdce…/full-access. hook 미관측·수동state조작0. context는 이번 세션1회(초기 canonical cwd의 material-review target) 실행했고 재실행하지 않았다. 이후 실제 integration checkout source·기존GUI 동일자료·quieter/optimize/craft-floor를 직접 읽고 대조했다. context target 실행 위치 한계는 숨기지 않는다.
