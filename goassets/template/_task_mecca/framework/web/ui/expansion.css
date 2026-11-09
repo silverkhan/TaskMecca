@@ -65,3 +65,8 @@ select.tm-combo-native{position:absolute!important;width:1px!important;height:1p
 .material-surface>.material-transmission{background-attachment:fixed,fixed}
 
 .document-tools{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:12px 0 6px}.document-tools button{min-height:36px;font-size:12px}.document-tools span{font-size:12px;color:var(--muted)}.document-diagram{overflow:auto;max-width:100%;padding:16px}.document-diagram svg{max-width:none;height:auto}
+/* One bundled visual correction: contain the decorative SVG filter output;
+   allow the compact shell to reflow when text/layout is magnified. */
+.topbar,.raw-source.material-surface{overflow:clip}
+.page-heading>div{min-width:0}.page-heading h1{overflow-wrap:anywhere}
+@media(max-width:760px){.material-brand-row{gap:10px;min-width:0}.material-brand{min-width:0;max-width:calc(100% - 42px);white-space:normal}.material-brand strong{min-width:0;white-space:normal;overflow-wrap:anywhere}.material-brand-row>button{flex:none}.topbar-end{flex-wrap:wrap}.topbar-end .quiet{white-space:nowrap;word-break:keep-all;min-width:36px}.topbar-end .tm-combo{flex:1 1 80px;max-width:100%;min-width:0}.topbar .tm-combo-trigger{min-width:0;max-width:100%;width:100%}}
