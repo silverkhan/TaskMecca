@@ -1,0 +1,9 @@
+{
+  "candidate_head": "e646f475870aa1dbfc4c4f43d88fcaa317768183",
+  "candidate_binary": "/private/tmp/task-mecca-a65-pairi-e646f475870aa1dbfc4c4f43d88fcaa317768183",
+  "candidate_binary_sha256": "8a2e8bffa90390c953eff49027bfe17a8352c9c124338888b5c2534da81de869",
+  "build_command": "go build -trimpath -o /private/tmp/task-mecca-a65-pairi-e646f475870aa1dbfc4c4f43d88fcaa317768183 ./cmd/task-mecca",
+  "source_assets_equal_commit": true,
+  "vcs_modified_reason": "only newly generated untracked evidence; tracked production matches source commit",
+  "scope": "Provenance only. Timed suite serves actual static frontend assets, not this Go backend binary."
+}

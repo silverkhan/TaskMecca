@@ -1,0 +1,1535 @@
+{
+  "results": [
+    {
+      "width": 1440,
+      "theme": "light",
+      "before": {
+        "layerCount": 5,
+        "nativeCount": 5,
+        "filterCount": 6,
+        "mapSizesValid": true,
+        "badForeground": [],
+        "foregroundSample": [
+          {
+            "font": "650 13px / 19.5px Manrope, \"Apple SD Gothic Neo\", \"Noto Sans KR\", sans-serif",
+            "color": "rgb(38, 49, 68)",
+            "filter": "none",
+            "textShadow": "none"
+          },
+          {
+            "font": "650 13px / 19.5px Manrope, \"Apple SD Gothic Neo\", \"Noto Sans KR\", sans-serif",
+            "color": "rgb(38, 49, 68)",
+            "filter": "none",
+            "textShadow": "none"
+          },
+          {
+            "font": "650 13px / 19.5px Manrope, \"Apple SD Gothic Neo\", \"Noto Sans KR\", sans-serif",
+            "color": "rgb(38, 49, 68)",
+            "filter": "none",
+            "textShadow": "none"
+          },
+          {
+            "font": "650 13px / 19.5px Manrope, \"Apple SD Gothic Neo\", \"Noto Sans KR\", sans-serif",
+            "color": "rgb(36, 41, 52)",
+            "filter": "none",
+            "textShadow": "none"
+          },
+          {
+            "font": "650 13px / 19.5px Manrope, \"Apple SD Gothic Neo\", \"Noto Sans KR\", sans-serif",
+            "color": "rgb(38, 49, 68)",
+            "filter": "none",
+            "textShadow": "none"
+          }
+        ],
+        "overflow": false,
+        "rects": [
+          {
+            "className": "rail material-rail material-surface material-native-surface",
+            "rect": {
+              "x": 14,
+              "y": 14,
+              "width": 252,
+              "height": 960,
+              "top": 14,
+              "right": 266,
+              "bottom": 974,
+              "left": 14
+            },
+            "radius": "32px",
+            "shadow": "rgba(255, 255, 255, 0.93) 1px 1px 0px 0px inset, rgba(255, 255, 255, 0.133) -1px -1px 0px 0px inset, rgba(33, 40, 49, 0.243) 2.56679px 11.7004px 26.1173px -14.417px",
+            "before": "radial-gradient(220px at -400px -400px, color(srgb 0 0 0 / 0), rgba(0, 0, 0, 0) 72%), conic-gradient(from 175deg, rgba(164, 173, 189, 0.4) 0deg, rgba(164, 173, 189, 0.4) 70deg, rgba(255, 255, 255, 0.98) 146deg, rgb(255, 255, 255) 178deg, rgba(164, 173, 189, 0.4) 243deg, rgb(255, 255, 255) 292deg, rgba(164, 173, 189, 0.4) 360deg)"
+          },
+          {
+            "className": "topbar material-surface material-native-surface",
+            "rect": {
+              "x": 294,
+              "y": 14,
+              "width": 1122,
+              "height": 64,
+              "top": 14,
+              "right": 1416,
+              "bottom": 78,
+              "left": 294
+            },
+            "radius": "26px",
+            "shadow": "rgb(255, 255, 255) 0px 1px 1px 0px inset, rgba(180, 190, 206, 0.27) 0px -1px 1px 0px inset, rgb(255, 255, 255) 3px 4px 12px -6px inset, rgba(123, 135, 153, 0.208) -4px -6px 14px -8px inset, rgba(104, 119, 141, 0.26) 0px -16px 28px -18px inset, rgba(88, 101, 120, 0.39) 4px 18px 28px -16px",
+            "before": "radial-gradient(220px at -400px -400px, color(srgb 0 0 0 / 0), rgba(0, 0, 0, 0) 72%), conic-gradient(from 175deg, rgba(164, 173, 189, 0.4) 0deg, rgba(164, 173, 189, 0.4) 70deg, rgba(255, 255, 255, 0.98) 146deg, rgb(255, 255, 255) 178deg, rgba(164, 173, 189, 0.4) 243deg, rgb(255, 255, 255) 292deg, rgba(164, 173, 189, 0.4) 360deg)"
+          },
+          {
+            "className": "page-heading material-surface material-native-surface",
+            "rect": {
+              "x": 294,
+              "y": 178,
+              "width": 1122,
+              "height": 93.6875,
+              "top": 178,
+              "right": 1416,
+              "bottom": 271.6875,
+              "left": 294
+            },
+            "radius": "28px",
+            "shadow": "rgb(255, 255, 255) 0px 1px 1px 0px inset, rgba(180, 190, 206, 0.27) 0px -1px 1px 0px inset, rgb(255, 255, 255) 3px 4px 12px -6px inset, rgba(123, 135, 153, 0.208) -4px -6px 14px -8px inset, rgba(104, 119, 141, 0.26) 0px -16px 28px -18px inset, rgba(88, 101, 120, 0.39) 4px 18px 28px -16px",
+            "before": "radial-gradient(220px at -400px -400px, color(srgb 0 0 0 / 0), rgba(0, 0, 0, 0) 72%), conic-gradient(from 175deg, rgba(164, 173, 189, 0.4) 0deg, rgba(164, 173, 189, 0.4) 70deg, rgba(255, 255, 255, 0.98) 146deg, rgb(255, 255, 255) 178deg, rgba(164, 173, 189, 0.4) 243deg, rgb(255, 255, 255) 292deg, rgba(164, 173, 189, 0.4) 360deg)"
+          },
+          {
+            "className": "list-summary material-surface material-native-surface",
+            "rect": {
+              "x": 294,
+              "y": 459.6875,
+              "width": 1122,
+              "height": 37.046875,
+              "top": 459.6875,
+              "right": 1416,
+              "bottom": 496.734375,
+              "left": 294
+            },
+            "radius": "18px",
+            "shadow": "rgb(255, 255, 255) 0px 1px 1px 0px inset, rgba(180, 190, 206, 0.27) 0px -1px 1px 0px inset, rgb(255, 255, 255) 3px 4px 12px -6px inset, rgba(123, 135, 153, 0.208) -4px -6px 14px -8px inset, rgba(104, 119, 141, 0.26) 0px -16px 28px -18px inset",
+            "before": "radial-gradient(220px at -400px -400px, color(srgb 0 0 0 / 0), rgba(0, 0, 0, 0) 72%), conic-gradient(from 175deg, rgba(164, 173, 189, 0.4) 0deg, rgba(164, 173, 189, 0.4) 70deg, rgba(255, 255, 255, 0.98) 146deg, rgb(255, 255, 255) 178deg, rgba(164, 173, 189, 0.4) 243deg, rgb(255, 255, 255) 292deg, rgba(164, 173, 189, 0.4) 360deg)"
+          },
+          {
+            "className": "task-list backlog-list material-surface material-native-surface",
+            "rect": {
+              "x": 294,
+              "y": 508.734375,
+              "width": 1122,
+              "height": 1470.75,
+              "top": 508.734375,
+              "right": 1416,
+              "bottom": 1979.484375,
+              "left": 294
+            },
+            "radius": "30px",
+            "shadow": "rgb(255, 255, 255) 0px 1px 1px 0px inset, rgba(180, 190, 206, 0.27) 0px -1px 1px 0px inset, rgb(255, 255, 255) 3px 4px 12px -6px inset, rgba(123, 135, 153, 0.208) -4px -6px 14px -8px inset, rgba(104, 119, 141, 0.26) 0px -16px 28px -18px inset, rgba(88, 101, 120, 0.39) 4px 18px 28px -16px",
+            "before": "radial-gradient(220px at -400px -400px, color(srgb 0 0 0 / 0), rgba(0, 0, 0, 0) 72%), conic-gradient(from 175deg, rgba(164, 173, 189, 0.4) 0deg, rgba(164, 173, 189, 0.4) 70deg, rgba(255, 255, 255, 0.98) 146deg, rgb(255, 255, 255) 178deg, rgba(164, 173, 189, 0.4) 243deg, rgb(255, 255, 255) 292deg, rgba(164, 173, 189, 0.4) 360deg)"
+          }
+        ]
+      },
+      "scrolled": {
+        "layerCount": 5,
+        "nativeCount": 5,
+        "filterCount": 6,
+        "mapSizesValid": true,
+        "badForeground": [],
+        "foregroundSample": [
+          {
+            "font": "650 13px / 19.5px Manrope, \"Apple SD Gothic Neo\", \"Noto Sans KR\", sans-serif",
+            "color": "rgb(38, 49, 68)",
+            "filter": "none",
+            "textShadow": "none"
+          },
+          {
+            "font": "650 13px / 19.5px Manrope, \"Apple SD Gothic Neo\", \"Noto Sans KR\", sans-serif",
+            "color": "rgb(38, 49, 68)",
+            "filter": "none",
+            "textShadow": "none"
+          },
+          {
+            "font": "650 13px / 19.5px Manrope, \"Apple SD Gothic Neo\", \"Noto Sans KR\", sans-serif",
+            "color": "rgb(38, 49, 68)",
+            "filter": "none",
+            "textShadow": "none"
+          },
+          {
+            "font": "650 13px / 19.5px Manrope, \"Apple SD Gothic Neo\", \"Noto Sans KR\", sans-serif",
+            "color": "rgb(36, 41, 52)",
+            "filter": "none",
+            "textShadow": "none"
+          },
+          {
+            "font": "650 13px / 19.5px Manrope, \"Apple SD Gothic Neo\", \"Noto Sans KR\", sans-serif",
+            "color": "rgb(38, 49, 68)",
+            "filter": "none",
+            "textShadow": "none"
+          }
+        ],
+        "overflow": false,
+        "rects": [
+          {
+            "className": "rail material-rail material-surface material-native-surface",
+            "rect": {
+              "x": 14,
+              "y": 14,
+              "width": 252,
+              "height": 960,
+              "top": 14,
+              "right": 266,
+              "bottom": 974,
+              "left": 14
+            },
+            "radius": "32px",
+            "shadow": "rgba(255, 255, 255, 0.93) 1px 1px 0px 0px inset, rgba(255, 255, 255, 0.133) -1px -1px 0px 0px inset, rgba(33, 40, 49, 0.243) 2.56679px 11.7004px 26.1173px -14.417px",
+            "before": "radial-gradient(220px at -400px -400px, color(srgb 0 0 0 / 0), rgba(0, 0, 0, 0) 72%), conic-gradient(from 175deg, rgba(164, 173, 189, 0.4) 0deg, rgba(164, 173, 189, 0.4) 70deg, rgba(255, 255, 255, 0.98) 146deg, rgb(255, 255, 255) 178deg, rgba(164, 173, 189, 0.4) 243deg, rgb(255, 255, 255) 292deg, rgba(164, 173, 189, 0.4) 360deg)"
+          },
+          {
+            "className": "topbar material-surface material-native-surface",
+            "rect": {
+              "x": 294,
+              "y": -386,
+              "width": 1122,
+              "height": 64,
+              "top": -386,
+              "right": 1416,
+              "bottom": -322,
+              "left": 294
+            },
+            "radius": "26px",
+            "shadow": "rgb(255, 255, 255) 0px 1px 1px 0px inset, rgba(180, 190, 206, 0.27) 0px -1px 1px 0px inset, rgb(255, 255, 255) 3px 4px 12px -6px inset, rgba(123, 135, 153, 0.208) -4px -6px 14px -8px inset, rgba(104, 119, 141, 0.26) 0px -16px 28px -18px inset, rgba(88, 101, 120, 0.39) 4px 18px 28px -16px",
+            "before": "radial-gradient(220px at -400px -400px, color(srgb 0 0 0 / 0), rgba(0, 0, 0, 0) 72%), conic-gradient(from 175deg, rgba(164, 173, 189, 0.4) 0deg, rgba(164, 173, 189, 0.4) 70deg, rgba(255, 255, 255, 0.98) 146deg, rgb(255, 255, 255) 178deg, rgba(164, 173, 189, 0.4) 243deg, rgb(255, 255, 255) 292deg, rgba(164, 173, 189, 0.4) 360deg)"
+          },
+          {
+            "className": "page-heading material-surface material-native-surface",
+            "rect": {
+              "x": 294,
+              "y": -222,
+              "width": 1122,
+              "height": 93.6875,
+              "top": -222,
+              "right": 1416,
+              "bottom": -128.3125,
+              "left": 294
+            },
+            "radius": "28px",
+            "shadow": "rgb(255, 255, 255) 0px 1px 1px 0px inset, rgba(180, 190, 206, 0.27) 0px -1px 1px 0px inset, rgb(255, 255, 255) 3px 4px 12px -6px inset, rgba(123, 135, 153, 0.208) -4px -6px 14px -8px inset, rgba(104, 119, 141, 0.26) 0px -16px 28px -18px inset, rgba(88, 101, 120, 0.39) 4px 18px 28px -16px",
+            "before": "radial-gradient(220px at -400px -400px, color(srgb 0 0 0 / 0), rgba(0, 0, 0, 0) 72%), conic-gradient(from 175deg, rgba(164, 173, 189, 0.4) 0deg, rgba(164, 173, 189, 0.4) 70deg, rgba(255, 255, 255, 0.98) 146deg, rgb(255, 255, 255) 178deg, rgba(164, 173, 189, 0.4) 243deg, rgb(255, 255, 255) 292deg, rgba(164, 173, 189, 0.4) 360deg)"
+          },
+          {
+            "className": "list-summary material-surface material-native-surface",
+            "rect": {
+              "x": 294,
+              "y": 59.6875,
+              "width": 1122,
+              "height": 37.046875,
+              "top": 59.6875,
+              "right": 1416,
+              "bottom": 96.734375,
+              "left": 294
+            },
+            "radius": "18px",
+            "shadow": "rgb(255, 255, 255) 0px 1px 1px 0px inset, rgba(180, 190, 206, 0.27) 0px -1px 1px 0px inset, rgb(255, 255, 255) 3px 4px 12px -6px inset, rgba(123, 135, 153, 0.208) -4px -6px 14px -8px inset, rgba(104, 119, 141, 0.26) 0px -16px 28px -18px inset",
+            "before": "radial-gradient(220px at -400px -400px, color(srgb 0 0 0 / 0), rgba(0, 0, 0, 0) 72%), conic-gradient(from 175deg, rgba(164, 173, 189, 0.4) 0deg, rgba(164, 173, 189, 0.4) 70deg, rgba(255, 255, 255, 0.98) 146deg, rgb(255, 255, 255) 178deg, rgba(164, 173, 189, 0.4) 243deg, rgb(255, 255, 255) 292deg, rgba(164, 173, 189, 0.4) 360deg)"
+          },
+          {
+            "className": "task-list backlog-list material-surface material-native-surface",
+            "rect": {
+              "x": 294,
+              "y": 108.734375,
+              "width": 1122,
+              "height": 1470.75,
+              "top": 108.734375,
+              "right": 1416,
+              "bottom": 1579.484375,
+              "left": 294
+            },
+            "radius": "30px",
+            "shadow": "rgb(255, 255, 255) 0px 1px 1px 0px inset, rgba(180, 190, 206, 0.27) 0px -1px 1px 0px inset, rgb(255, 255, 255) 3px 4px 12px -6px inset, rgba(123, 135, 153, 0.208) -4px -6px 14px -8px inset, rgba(104, 119, 141, 0.26) 0px -16px 28px -18px inset, rgba(88, 101, 120, 0.39) 4px 18px 28px -16px",
+            "before": "radial-gradient(220px at -400px -400px, color(srgb 0 0 0 / 0), rgba(0, 0, 0, 0) 72%), conic-gradient(from 175deg, rgba(164, 173, 189, 0.4) 0deg, rgba(164, 173, 189, 0.4) 70deg, rgba(255, 255, 255, 0.98) 146deg, rgb(255, 255, 255) 178deg, rgba(164, 173, 189, 0.4) 243deg, rgb(255, 255, 255) 292deg, rgba(164, 173, 189, 0.4) 360deg)"
+          }
+        ]
+      },
+      "resized": {
+        "layerCount": 5,
+        "nativeCount": 5,
+        "filterCount": 6,
+        "mapSizesValid": true,
+        "badForeground": [],
+        "foregroundSample": [
+          {
+            "font": "650 13px / 19.5px Manrope, \"Apple SD Gothic Neo\", \"Noto Sans KR\", sans-serif",
+            "color": "rgb(38, 49, 68)",
+            "filter": "none",
+            "textShadow": "none"
+          },
+          {
+            "font": "650 13px / 19.5px Manrope, \"Apple SD Gothic Neo\", \"Noto Sans KR\", sans-serif",
+            "color": "rgb(38, 49, 68)",
+            "filter": "none",
+            "textShadow": "none"
+          },
+          {
+            "font": "650 13px / 19.5px Manrope, \"Apple SD Gothic Neo\", \"Noto Sans KR\", sans-serif",
+            "color": "rgb(38, 49, 68)",
+            "filter": "none",
+            "textShadow": "none"
+          },
+          {
+            "font": "650 13px / 19.5px Manrope, \"Apple SD Gothic Neo\", \"Noto Sans KR\", sans-serif",
+            "color": "rgb(36, 41, 52)",
+            "filter": "none",
+            "textShadow": "none"
+          },
+          {
+            "font": "650 13px / 19.5px Manrope, \"Apple SD Gothic Neo\", \"Noto Sans KR\", sans-serif",
+            "color": "rgb(38, 49, 68)",
+            "filter": "none",
+            "textShadow": "none"
+          }
+        ],
+        "overflow": false,
+        "rects": [
+          {
+            "className": "rail material-rail material-surface material-native-surface",
+            "rect": {
+              "x": 14,
+              "y": 14,
+              "width": 252,
+              "height": 860,
+              "top": 14,
+              "right": 266,
+              "bottom": 874,
+              "left": 14
+            },
+            "radius": "32px",
+            "shadow": "rgba(255, 255, 255, 0.93) 1px 1px 0px 0px inset, rgba(255, 255, 255, 0.133) -1px -1px 0px 0px inset, rgba(37, 45, 55, 0.267) 3.15095px 13.4528px 29.3302px -15.8774px",
+            "before": "radial-gradient(220px at -400px -400px, color(srgb 0 0 0 / 0), rgba(0, 0, 0, 0) 72%), conic-gradient(from 175deg, rgba(164, 173, 189, 0.4) 0deg, rgba(164, 173, 189, 0.4) 70deg, rgba(255, 255, 255, 0.98) 146deg, rgb(255, 255, 255) 178deg, rgba(164, 173, 189, 0.4) 243deg, rgb(255, 255, 255) 292deg, rgba(164, 173, 189, 0.4) 360deg)"
+          },
+          {
+            "className": "topbar material-surface material-native-surface",
+            "rect": {
+              "x": 294,
+              "y": -386,
+              "width": 962,
+              "height": 64,
+              "top": -386,
+              "right": 1256,
+              "bottom": -322,
+              "left": 294
+            },
+            "radius": "26px",
+            "shadow": "rgb(255, 255, 255) 0px 1px 1px 0px inset, rgba(180, 190, 206, 0.27) 0px -1px 1px 0px inset, rgb(255, 255, 255) 3px 4px 12px -6px inset, rgba(123, 135, 153, 0.208) -4px -6px 14px -8px inset, rgba(104, 119, 141, 0.26) 0px -16px 28px -18px inset, rgba(88, 101, 120, 0.39) 4px 18px 28px -16px",
+            "before": "radial-gradient(220px at -400px -400px, color(srgb 0 0 0 / 0), rgba(0, 0, 0, 0) 72%), conic-gradient(from 175deg, rgba(164, 173, 189, 0.4) 0deg, rgba(164, 173, 189, 0.4) 70deg, rgba(255, 255, 255, 0.98) 146deg, rgb(255, 255, 255) 178deg, rgba(164, 173, 189, 0.4) 243deg, rgb(255, 255, 255) 292deg, rgba(164, 173, 189, 0.4) 360deg)"
+          },
+          {
+            "className": "page-heading material-surface material-native-surface",
+            "rect": {
+              "x": 294,
+              "y": -222,
+              "width": 962,
+              "height": 93.6875,
+              "top": -222,
+              "right": 1256,
+              "bottom": -128.3125,
+              "left": 294
+            },
+            "radius": "28px",
+            "shadow": "rgb(255, 255, 255) 0px 1px 1px 0px inset, rgba(180, 190, 206, 0.27) 0px -1px 1px 0px inset, rgb(255, 255, 255) 3px 4px 12px -6px inset, rgba(123, 135, 153, 0.208) -4px -6px 14px -8px inset, rgba(104, 119, 141, 0.26) 0px -16px 28px -18px inset, rgba(88, 101, 120, 0.39) 4px 18px 28px -16px",
+            "before": "radial-gradient(220px at -400px -400px, color(srgb 0 0 0 / 0), rgba(0, 0, 0, 0) 72%), conic-gradient(from 175deg, rgba(164, 173, 189, 0.4) 0deg, rgba(164, 173, 189, 0.4) 70deg, rgba(255, 255, 255, 0.98) 146deg, rgb(255, 255, 255) 178deg, rgba(164, 173, 189, 0.4) 243deg, rgb(255, 255, 255) 292deg, rgba(164, 173, 189, 0.4) 360deg)"
+          },
+          {
+            "className": "list-summary material-surface material-native-surface",
+            "rect": {
+              "x": 294,
+              "y": 59.6875,
+              "width": 962,
+              "height": 37.046875,
+              "top": 59.6875,
+              "right": 1256,
+              "bottom": 96.734375,
+              "left": 294
+            },
+            "radius": "18px",
+            "shadow": "rgb(255, 255, 255) 0px 1px 1px 0px inset, rgba(180, 190, 206, 0.27) 0px -1px 1px 0px inset, rgb(255, 255, 255) 3px 4px 12px -6px inset, rgba(123, 135, 153, 0.208) -4px -6px 14px -8px inset, rgba(104, 119, 141, 0.26) 0px -16px 28px -18px inset",
+            "before": "radial-gradient(220px at -400px -400px, color(srgb 0 0 0 / 0), rgba(0, 0, 0, 0) 72%), conic-gradient(from 175deg, rgba(164, 173, 189, 0.4) 0deg, rgba(164, 173, 189, 0.4) 70deg, rgba(255, 255, 255, 0.98) 146deg, rgb(255, 255, 255) 178deg, rgba(164, 173, 189, 0.4) 243deg, rgb(255, 255, 255) 292deg, rgba(164, 173, 189, 0.4) 360deg)"
+          },
+          {
+            "className": "task-list backlog-list material-surface material-native-surface",
+            "rect": {
+              "x": 294,
+              "y": 108.734375,
+              "width": 962,
+              "height": 1470.75,
+              "top": 108.734375,
+              "right": 1256,
+              "bottom": 1579.484375,
+              "left": 294
+            },
+            "radius": "30px",
+            "shadow": "rgb(255, 255, 255) 0px 1px 1px 0px inset, rgba(180, 190, 206, 0.27) 0px -1px 1px 0px inset, rgb(255, 255, 255) 3px 4px 12px -6px inset, rgba(123, 135, 153, 0.208) -4px -6px 14px -8px inset, rgba(104, 119, 141, 0.26) 0px -16px 28px -18px inset, rgba(88, 101, 120, 0.39) 4px 18px 28px -16px",
+            "before": "radial-gradient(220px at -400px -400px, color(srgb 0 0 0 / 0), rgba(0, 0, 0, 0) 72%), conic-gradient(from 175deg, rgba(164, 173, 189, 0.4) 0deg, rgba(164, 173, 189, 0.4) 70deg, rgba(255, 255, 255, 0.98) 146deg, rgb(255, 255, 255) 178deg, rgba(164, 173, 189, 0.4) 243deg, rgb(255, 255, 255) 292deg, rgba(164, 173, 189, 0.4) 360deg)"
+          }
+        ]
+      },
+      "optical": {
+        "backdrop": "blur(7px) url(\"#material-face-refraction-6\")",
+        "filter": "none",
+        "pointer": "none"
+      },
+      "nested": {
+        "native": false,
+        "filter": "url(\"#material-face-refraction-7\")",
+        "attachment": "fixed, fixed"
+      },
+      "errors": []
+    },
+    {
+      "width": 1440,
+      "theme": "dark",
+      "before": {
+        "layerCount": 5,
+        "nativeCount": 5,
+        "filterCount": 6,
+        "mapSizesValid": true,
+        "badForeground": [],
+        "foregroundSample": [
+          {
+            "font": "650 13px / 19.5px Manrope, \"Apple SD Gothic Neo\", \"Noto Sans KR\", sans-serif",
+            "color": "rgb(220, 226, 237)",
+            "filter": "none",
+            "textShadow": "none"
+          },
+          {
+            "font": "650 13px / 19.5px Manrope, \"Apple SD Gothic Neo\", \"Noto Sans KR\", sans-serif",
+            "color": "rgb(220, 226, 237)",
+            "filter": "none",
+            "textShadow": "none"
+          },
+          {
+            "font": "650 13px / 19.5px Manrope, \"Apple SD Gothic Neo\", \"Noto Sans KR\", sans-serif",
+            "color": "rgb(220, 226, 237)",
+            "filter": "none",
+            "textShadow": "none"
+          },
+          {
+            "font": "650 13px / 19.5px Manrope, \"Apple SD Gothic Neo\", \"Noto Sans KR\", sans-serif",
+            "color": "rgb(242, 242, 246)",
+            "filter": "none",
+            "textShadow": "none"
+          },
+          {
+            "font": "650 13px / 19.5px Manrope, \"Apple SD Gothic Neo\", \"Noto Sans KR\", sans-serif",
+            "color": "rgb(220, 226, 237)",
+            "filter": "none",
+            "textShadow": "none"
+          }
+        ],
+        "overflow": false,
+        "rects": [
+          {
+            "className": "rail material-rail material-surface material-native-surface",
+            "rect": {
+              "x": 14,
+              "y": 14,
+              "width": 252,
+              "height": 960,
+              "top": 14,
+              "right": 266,
+              "bottom": 974,
+              "left": 14
+            },
+            "radius": "32px",
+            "shadow": "rgba(255, 255, 255, 0.14) 1px 1px 0px 0px inset, rgba(0, 0, 0, 0.086) -1px -1px 0px 0px inset, rgba(0, 0, 0, 0.247) 0.859819px 7.00937px 17.1589px -9.71964px",
+            "before": "radial-gradient(220px at -400px -400px, color(srgb 0 0 0 / 0), rgba(0, 0, 0, 0) 72%), conic-gradient(from 175deg, rgba(255, 255, 255, 0.082) 0deg, rgba(255, 255, 255, 0.082) 70deg, rgba(255, 255, 255, 0.55) 146deg, rgba(255, 255, 255, 0.24) 178deg, rgba(255, 255, 255, 0.082) 243deg, rgba(255, 255, 255, 0.24) 292deg, rgba(255, 255, 255, 0.082) 360deg)"
+          },
+          {
+            "className": "topbar material-surface material-native-surface",
+            "rect": {
+              "x": 294,
+              "y": 14,
+              "width": 1122,
+              "height": 64,
+              "top": 14,
+              "right": 1416,
+              "bottom": 78,
+              "left": 294
+            },
+            "radius": "26px",
+            "shadow": "rgba(255, 255, 255, 0.3) 0px 1px 1px 0px inset, rgba(255, 255, 255, 0.1) 0px -1px 1px 0px inset, rgba(255, 255, 255, 0.24) 3px 4px 12px -6px inset, rgba(255, 255, 255, 0.12) -4px -6px 14px -8px inset, rgba(0, 0, 0, 0.45) 0px -16px 28px -18px inset, rgba(0, 0, 0, 0.6) 4px 18px 28px -16px",
+            "before": "radial-gradient(220px at -400px -400px, color(srgb 0 0 0 / 0), rgba(0, 0, 0, 0) 72%), conic-gradient(from 175deg, rgba(255, 255, 255, 0.082) 0deg, rgba(255, 255, 255, 0.082) 70deg, rgba(255, 255, 255, 0.55) 146deg, rgba(255, 255, 255, 0.24) 178deg, rgba(255, 255, 255, 0.082) 243deg, rgba(255, 255, 255, 0.24) 292deg, rgba(255, 255, 255, 0.082) 360deg)"
+          },
+          {
+            "className": "page-heading material-surface material-native-surface",
+            "rect": {
+              "x": 294,
+              "y": 178,
+              "width": 1122,
+              "height": 93.6875,
+              "top": 178,
+              "right": 1416,
+              "bottom": 271.6875,
+              "left": 294
+            },
+            "radius": "28px",
+            "shadow": "rgba(255, 255, 255, 0.3) 0px 1px 1px 0px inset, rgba(255, 255, 255, 0.1) 0px -1px 1px 0px inset, rgba(255, 255, 255, 0.24) 3px 4px 12px -6px inset, rgba(255, 255, 255, 0.12) -4px -6px 14px -8px inset, rgba(0, 0, 0, 0.45) 0px -16px 28px -18px inset, rgba(0, 0, 0, 0.6) 4px 18px 28px -16px",
+            "before": "radial-gradient(220px at -400px -400px, color(srgb 0 0 0 / 0), rgba(0, 0, 0, 0) 72%), conic-gradient(from 175deg, rgba(255, 255, 255, 0.082) 0deg, rgba(255, 255, 255, 0.082) 70deg, rgba(255, 255, 255, 0.55) 146deg, rgba(255, 255, 255, 0.24) 178deg, rgba(255, 255, 255, 0.082) 243deg, rgba(255, 255, 255, 0.24) 292deg, rgba(255, 255, 255, 0.082) 360deg)"
+          },
+          {
+            "className": "list-summary material-surface material-native-surface",
+            "rect": {
+              "x": 294,
+              "y": 459.6875,
+              "width": 1122,
+              "height": 37.046875,
+              "top": 459.6875,
+              "right": 1416,
+              "bottom": 496.734375,
+              "left": 294
+            },
+            "radius": "18px",
+            "shadow": "rgba(255, 255, 255, 0.3) 0px 1px 1px 0px inset, rgba(255, 255, 255, 0.1) 0px -1px 1px 0px inset, rgba(255, 255, 255, 0.24) 3px 4px 12px -6px inset, rgba(255, 255, 255, 0.12) -4px -6px 14px -8px inset, rgba(0, 0, 0, 0.45) 0px -16px 28px -18px inset",
+            "before": "radial-gradient(220px at -400px -400px, color(srgb 0 0 0 / 0), rgba(0, 0, 0, 0) 72%), conic-gradient(from 175deg, rgba(255, 255, 255, 0.082) 0deg, rgba(255, 255, 255, 0.082) 70deg, rgba(255, 255, 255, 0.55) 146deg, rgba(255, 255, 255, 0.24) 178deg, rgba(255, 255, 255, 0.082) 243deg, rgba(255, 255, 255, 0.24) 292deg, rgba(255, 255, 255, 0.082) 360deg)"
+          },
+          {
+            "className": "task-list backlog-list material-surface material-native-surface",
+            "rect": {
+              "x": 294,
+              "y": 508.734375,
+              "width": 1122,
+              "height": 1470.75,
+              "top": 508.734375,
+              "right": 1416,
+              "bottom": 1979.484375,
+              "left": 294
+            },
+            "radius": "30px",
+            "shadow": "rgba(255, 255, 255, 0.3) 0px 1px 1px 0px inset, rgba(255, 255, 255, 0.1) 0px -1px 1px 0px inset, rgba(255, 255, 255, 0.24) 3px 4px 12px -6px inset, rgba(255, 255, 255, 0.12) -4px -6px 14px -8px inset, rgba(0, 0, 0, 0.45) 0px -16px 28px -18px inset, rgba(0, 0, 0, 0.6) 4px 18px 28px -16px",
+            "before": "radial-gradient(220px at -400px -400px, color(srgb 0 0 0 / 0), rgba(0, 0, 0, 0) 72%), conic-gradient(from 175deg, rgba(255, 255, 255, 0.082) 0deg, rgba(255, 255, 255, 0.082) 70deg, rgba(255, 255, 255, 0.55) 146deg, rgba(255, 255, 255, 0.24) 178deg, rgba(255, 255, 255, 0.082) 243deg, rgba(255, 255, 255, 0.24) 292deg, rgba(255, 255, 255, 0.082) 360deg)"
+          }
+        ]
+      },
+      "scrolled": {
+        "layerCount": 5,
+        "nativeCount": 5,
+        "filterCount": 6,
+        "mapSizesValid": true,
+        "badForeground": [],
+        "foregroundSample": [
+          {
+            "font": "650 13px / 19.5px Manrope, \"Apple SD Gothic Neo\", \"Noto Sans KR\", sans-serif",
+            "color": "rgb(220, 226, 237)",
+            "filter": "none",
+            "textShadow": "none"
+          },
+          {
+            "font": "650 13px / 19.5px Manrope, \"Apple SD Gothic Neo\", \"Noto Sans KR\", sans-serif",
+            "color": "rgb(220, 226, 237)",
+            "filter": "none",
+            "textShadow": "none"
+          },
+          {
+            "font": "650 13px / 19.5px Manrope, \"Apple SD Gothic Neo\", \"Noto Sans KR\", sans-serif",
+            "color": "rgb(220, 226, 237)",
+            "filter": "none",
+            "textShadow": "none"
+          },
+          {
+            "font": "650 13px / 19.5px Manrope, \"Apple SD Gothic Neo\", \"Noto Sans KR\", sans-serif",
+            "color": "rgb(242, 242, 246)",
+            "filter": "none",
+            "textShadow": "none"
+          },
+          {
+            "font": "650 13px / 19.5px Manrope, \"Apple SD Gothic Neo\", \"Noto Sans KR\", sans-serif",
+            "color": "rgb(220, 226, 237)",
+            "filter": "none",
+            "textShadow": "none"
+          }
+        ],
+        "overflow": false,
+        "rects": [
+          {
+            "className": "rail material-rail material-surface material-native-surface",
+            "rect": {
+              "x": 14,
+              "y": 14,
+              "width": 252,
+              "height": 960,
+              "top": 14,
+              "right": 266,
+              "bottom": 974,
+              "left": 14
+            },
+            "radius": "32px",
+            "shadow": "rgba(255, 255, 255, 0.14) 1px 1px 0px 0px inset, rgba(0, 0, 0, 0.086) -1px -1px 0px 0px inset, rgba(0, 0, 0, 0.247) 0.859819px 7.00937px 17.1589px -9.71964px",
+            "before": "radial-gradient(220px at -400px -400px, color(srgb 0 0 0 / 0), rgba(0, 0, 0, 0) 72%), conic-gradient(from 175deg, rgba(255, 255, 255, 0.082) 0deg, rgba(255, 255, 255, 0.082) 70deg, rgba(255, 255, 255, 0.55) 146deg, rgba(255, 255, 255, 0.24) 178deg, rgba(255, 255, 255, 0.082) 243deg, rgba(255, 255, 255, 0.24) 292deg, rgba(255, 255, 255, 0.082) 360deg)"
+          },
+          {
+            "className": "topbar material-surface material-native-surface",
+            "rect": {
+              "x": 294,
+              "y": -386,
+              "width": 1122,
+              "height": 64,
+              "top": -386,
+              "right": 1416,
+              "bottom": -322,
+              "left": 294
+            },
+            "radius": "26px",
+            "shadow": "rgba(255, 255, 255, 0.3) 0px 1px 1px 0px inset, rgba(255, 255, 255, 0.1) 0px -1px 1px 0px inset, rgba(255, 255, 255, 0.24) 3px 4px 12px -6px inset, rgba(255, 255, 255, 0.12) -4px -6px 14px -8px inset, rgba(0, 0, 0, 0.45) 0px -16px 28px -18px inset, rgba(0, 0, 0, 0.6) 4px 18px 28px -16px",
+            "before": "radial-gradient(220px at -400px -400px, color(srgb 0 0 0 / 0), rgba(0, 0, 0, 0) 72%), conic-gradient(from 175deg, rgba(255, 255, 255, 0.082) 0deg, rgba(255, 255, 255, 0.082) 70deg, rgba(255, 255, 255, 0.55) 146deg, rgba(255, 255, 255, 0.24) 178deg, rgba(255, 255, 255, 0.082) 243deg, rgba(255, 255, 255, 0.24) 292deg, rgba(255, 255, 255, 0.082) 360deg)"
+          },
+          {
+            "className": "page-heading material-surface material-native-surface",
+            "rect": {
+              "x": 294,
+              "y": -222,
+              "width": 1122,
+              "height": 93.6875,
+              "top": -222,
+              "right": 1416,
+              "bottom": -128.3125,
+              "left": 294
+            },
+            "radius": "28px",
+            "shadow": "rgba(255, 255, 255, 0.3) 0px 1px 1px 0px inset, rgba(255, 255, 255, 0.1) 0px -1px 1px 0px inset, rgba(255, 255, 255, 0.24) 3px 4px 12px -6px inset, rgba(255, 255, 255, 0.12) -4px -6px 14px -8px inset, rgba(0, 0, 0, 0.45) 0px -16px 28px -18px inset, rgba(0, 0, 0, 0.6) 4px 18px 28px -16px",
+            "before": "radial-gradient(220px at -400px -400px, color(srgb 0 0 0 / 0), rgba(0, 0, 0, 0) 72%), conic-gradient(from 175deg, rgba(255, 255, 255, 0.082) 0deg, rgba(255, 255, 255, 0.082) 70deg, rgba(255, 255, 255, 0.55) 146deg, rgba(255, 255, 255, 0.24) 178deg, rgba(255, 255, 255, 0.082) 243deg, rgba(255, 255, 255, 0.24) 292deg, rgba(255, 255, 255, 0.082) 360deg)"
+          },
+          {
+            "className": "list-summary material-surface material-native-surface",
+            "rect": {
+              "x": 294,
+              "y": 59.6875,
+              "width": 1122,
+              "height": 37.046875,
+              "top": 59.6875,
+              "right": 1416,
+              "bottom": 96.734375,
+              "left": 294
+            },
+            "radius": "18px",
+            "shadow": "rgba(255, 255, 255, 0.3) 0px 1px 1px 0px inset, rgba(255, 255, 255, 0.1) 0px -1px 1px 0px inset, rgba(255, 255, 255, 0.24) 3px 4px 12px -6px inset, rgba(255, 255, 255, 0.12) -4px -6px 14px -8px inset, rgba(0, 0, 0, 0.45) 0px -16px 28px -18px inset",
+            "before": "radial-gradient(220px at -400px -400px, color(srgb 0 0 0 / 0), rgba(0, 0, 0, 0) 72%), conic-gradient(from 175deg, rgba(255, 255, 255, 0.082) 0deg, rgba(255, 255, 255, 0.082) 70deg, rgba(255, 255, 255, 0.55) 146deg, rgba(255, 255, 255, 0.24) 178deg, rgba(255, 255, 255, 0.082) 243deg, rgba(255, 255, 255, 0.24) 292deg, rgba(255, 255, 255, 0.082) 360deg)"
+          },
+          {
+            "className": "task-list backlog-list material-surface material-native-surface",
+            "rect": {
+              "x": 294,
+              "y": 108.734375,
+              "width": 1122,
+              "height": 1470.75,
+              "top": 108.734375,
+              "right": 1416,
+              "bottom": 1579.484375,
+              "left": 294
+            },
+            "radius": "30px",
+            "shadow": "rgba(255, 255, 255, 0.3) 0px 1px 1px 0px inset, rgba(255, 255, 255, 0.1) 0px -1px 1px 0px inset, rgba(255, 255, 255, 0.24) 3px 4px 12px -6px inset, rgba(255, 255, 255, 0.12) -4px -6px 14px -8px inset, rgba(0, 0, 0, 0.45) 0px -16px 28px -18px inset, rgba(0, 0, 0, 0.6) 4px 18px 28px -16px",
+            "before": "radial-gradient(220px at -400px -400px, color(srgb 0 0 0 / 0), rgba(0, 0, 0, 0) 72%), conic-gradient(from 175deg, rgba(255, 255, 255, 0.082) 0deg, rgba(255, 255, 255, 0.082) 70deg, rgba(255, 255, 255, 0.55) 146deg, rgba(255, 255, 255, 0.24) 178deg, rgba(255, 255, 255, 0.082) 243deg, rgba(255, 255, 255, 0.24) 292deg, rgba(255, 255, 255, 0.082) 360deg)"
+          }
+        ]
+      },
+      "resized": {
+        "layerCount": 5,
+        "nativeCount": 5,
+        "filterCount": 6,
+        "mapSizesValid": true,
+        "badForeground": [],
+        "foregroundSample": [
+          {
+            "font": "650 13px / 19.5px Manrope, \"Apple SD Gothic Neo\", \"Noto Sans KR\", sans-serif",
+            "color": "rgb(220, 226, 237)",
+            "filter": "none",
+            "textShadow": "none"
+          },
+          {
+            "font": "650 13px / 19.5px Manrope, \"Apple SD Gothic Neo\", \"Noto Sans KR\", sans-serif",
+            "color": "rgb(220, 226, 237)",
+            "filter": "none",
+            "textShadow": "none"
+          },
+          {
+            "font": "650 13px / 19.5px Manrope, \"Apple SD Gothic Neo\", \"Noto Sans KR\", sans-serif",
+            "color": "rgb(220, 226, 237)",
+            "filter": "none",
+            "textShadow": "none"
+          },
+          {
+            "font": "650 13px / 19.5px Manrope, \"Apple SD Gothic Neo\", \"Noto Sans KR\", sans-serif",
+            "color": "rgb(242, 242, 246)",
+            "filter": "none",
+            "textShadow": "none"
+          },
+          {
+            "font": "650 13px / 19.5px Manrope, \"Apple SD Gothic Neo\", \"Noto Sans KR\", sans-serif",
+            "color": "rgb(220, 226, 237)",
+            "filter": "none",
+            "textShadow": "none"
+          }
+        ],
+        "overflow": false,
+        "rects": [
+          {
+            "className": "rail material-rail material-surface material-native-surface",
+            "rect": {
+              "x": 14,
+              "y": 14,
+              "width": 252,
+              "height": 860,
+              "top": 14,
+              "right": 266,
+              "bottom": 874,
+              "left": 14
+            },
+            "radius": "32px",
+            "shadow": "rgba(255, 255, 255, 0.14) 1px 1px 0px 0px inset, rgba(0, 0, 0, 0.086) -1px -1px 0px 0px inset, rgba(0, 0, 0, 0.416) 2.13195px 11.4618px 24.7917px -12.2639px",
+            "before": "radial-gradient(220px at -400px -400px, color(srgb 0 0 0 / 0), rgba(0, 0, 0, 0) 72%), conic-gradient(from 175deg, rgba(255, 255, 255, 0.082) 0deg, rgba(255, 255, 255, 0.082) 70deg, rgba(255, 255, 255, 0.55) 146deg, rgba(255, 255, 255, 0.24) 178deg, rgba(255, 255, 255, 0.082) 243deg, rgba(255, 255, 255, 0.24) 292deg, rgba(255, 255, 255, 0.082) 360deg)"
+          },
+          {
+            "className": "topbar material-surface material-native-surface",
+            "rect": {
+              "x": 294,
+              "y": -386,
+              "width": 962,
+              "height": 64,
+              "top": -386,
+              "right": 1256,
+              "bottom": -322,
+              "left": 294
+            },
+            "radius": "26px",
+            "shadow": "rgba(255, 255, 255, 0.3) 0px 1px 1px 0px inset, rgba(255, 255, 255, 0.1) 0px -1px 1px 0px inset, rgba(255, 255, 255, 0.24) 3px 4px 12px -6px inset, rgba(255, 255, 255, 0.12) -4px -6px 14px -8px inset, rgba(0, 0, 0, 0.45) 0px -16px 28px -18px inset, rgba(0, 0, 0, 0.6) 4px 18px 28px -16px",
+            "before": "radial-gradient(220px at -400px -400px, color(srgb 0 0 0 / 0), rgba(0, 0, 0, 0) 72%), conic-gradient(from 175deg, rgba(255, 255, 255, 0.082) 0deg, rgba(255, 255, 255, 0.082) 70deg, rgba(255, 255, 255, 0.55) 146deg, rgba(255, 255, 255, 0.24) 178deg, rgba(255, 255, 255, 0.082) 243deg, rgba(255, 255, 255, 0.24) 292deg, rgba(255, 255, 255, 0.082) 360deg)"
+          },
+          {
+            "className": "page-heading material-surface material-native-surface",
+            "rect": {
+              "x": 294,
+              "y": -222,
+              "width": 962,
+              "height": 93.6875,
+              "top": -222,
+              "right": 1256,
+              "bottom": -128.3125,
+              "left": 294
+            },
+            "radius": "28px",
+            "shadow": "rgba(255, 255, 255, 0.3) 0px 1px 1px 0px inset, rgba(255, 255, 255, 0.1) 0px -1px 1px 0px inset, rgba(255, 255, 255, 0.24) 3px 4px 12px -6px inset, rgba(255, 255, 255, 0.12) -4px -6px 14px -8px inset, rgba(0, 0, 0, 0.45) 0px -16px 28px -18px inset, rgba(0, 0, 0, 0.6) 4px 18px 28px -16px",
+            "before": "radial-gradient(220px at -400px -400px, color(srgb 0 0 0 / 0), rgba(0, 0, 0, 0) 72%), conic-gradient(from 175deg, rgba(255, 255, 255, 0.082) 0deg, rgba(255, 255, 255, 0.082) 70deg, rgba(255, 255, 255, 0.55) 146deg, rgba(255, 255, 255, 0.24) 178deg, rgba(255, 255, 255, 0.082) 243deg, rgba(255, 255, 255, 0.24) 292deg, rgba(255, 255, 255, 0.082) 360deg)"
+          },
+          {
+            "className": "list-summary material-surface material-native-surface",
+            "rect": {
+              "x": 294,
+              "y": 59.6875,
+              "width": 962,
+              "height": 37.046875,
+              "top": 59.6875,
+              "right": 1256,
+              "bottom": 96.734375,
+              "left": 294
+            },
+            "radius": "18px",
+            "shadow": "rgba(255, 255, 255, 0.3) 0px 1px 1px 0px inset, rgba(255, 255, 255, 0.1) 0px -1px 1px 0px inset, rgba(255, 255, 255, 0.24) 3px 4px 12px -6px inset, rgba(255, 255, 255, 0.12) -4px -6px 14px -8px inset, rgba(0, 0, 0, 0.45) 0px -16px 28px -18px inset",
+            "before": "radial-gradient(220px at -400px -400px, color(srgb 0 0 0 / 0), rgba(0, 0, 0, 0) 72%), conic-gradient(from 175deg, rgba(255, 255, 255, 0.082) 0deg, rgba(255, 255, 255, 0.082) 70deg, rgba(255, 255, 255, 0.55) 146deg, rgba(255, 255, 255, 0.24) 178deg, rgba(255, 255, 255, 0.082) 243deg, rgba(255, 255, 255, 0.24) 292deg, rgba(255, 255, 255, 0.082) 360deg)"
+          },
+          {
+            "className": "task-list backlog-list material-surface material-native-surface",
+            "rect": {
+              "x": 294,
+              "y": 108.734375,
+              "width": 962,
+              "height": 1470.75,
+              "top": 108.734375,
+              "right": 1256,
+              "bottom": 1579.484375,
+              "left": 294
+            },
+            "radius": "30px",
+            "shadow": "rgba(255, 255, 255, 0.3) 0px 1px 1px 0px inset, rgba(255, 255, 255, 0.1) 0px -1px 1px 0px inset, rgba(255, 255, 255, 0.24) 3px 4px 12px -6px inset, rgba(255, 255, 255, 0.12) -4px -6px 14px -8px inset, rgba(0, 0, 0, 0.45) 0px -16px 28px -18px inset, rgba(0, 0, 0, 0.6) 4px 18px 28px -16px",
+            "before": "radial-gradient(220px at -400px -400px, color(srgb 0 0 0 / 0), rgba(0, 0, 0, 0) 72%), conic-gradient(from 175deg, rgba(255, 255, 255, 0.082) 0deg, rgba(255, 255, 255, 0.082) 70deg, rgba(255, 255, 255, 0.55) 146deg, rgba(255, 255, 255, 0.24) 178deg, rgba(255, 255, 255, 0.082) 243deg, rgba(255, 255, 255, 0.24) 292deg, rgba(255, 255, 255, 0.082) 360deg)"
+          }
+        ]
+      },
+      "optical": {
+        "backdrop": "blur(7px) url(\"#material-face-refraction-6\")",
+        "filter": "none",
+        "pointer": "none"
+      },
+      "nested": {
+        "native": false,
+        "filter": "url(\"#material-face-refraction-7\")",
+        "attachment": "fixed, fixed"
+      },
+      "errors": []
+    },
+    {
+      "width": 390,
+      "theme": "light",
+      "before": {
+        "layerCount": 5,
+        "nativeCount": 5,
+        "filterCount": 6,
+        "mapSizesValid": true,
+        "badForeground": [],
+        "foregroundSample": [
+          {
+            "font": "650 13px / 19.5px Manrope, \"Apple SD Gothic Neo\", \"Noto Sans KR\", sans-serif",
+            "color": "rgb(38, 49, 68)",
+            "filter": "none",
+            "textShadow": "none"
+          },
+          {
+            "font": "650 13px / 19.5px Manrope, \"Apple SD Gothic Neo\", \"Noto Sans KR\", sans-serif",
+            "color": "rgb(38, 49, 68)",
+            "filter": "none",
+            "textShadow": "none"
+          },
+          {
+            "font": "650 13px / 19.5px Manrope, \"Apple SD Gothic Neo\", \"Noto Sans KR\", sans-serif",
+            "color": "rgb(38, 49, 68)",
+            "filter": "none",
+            "textShadow": "none"
+          },
+          {
+            "font": "650 13px / 19.5px Manrope, \"Apple SD Gothic Neo\", \"Noto Sans KR\", sans-serif",
+            "color": "rgb(36, 41, 52)",
+            "filter": "none",
+            "textShadow": "none"
+          },
+          {
+            "font": "650 13px / 19.5px Manrope, \"Apple SD Gothic Neo\", \"Noto Sans KR\", sans-serif",
+            "color": "rgb(38, 49, 68)",
+            "filter": "none",
+            "textShadow": "none"
+          }
+        ],
+        "overflow": false,
+        "rects": [
+          {
+            "className": "rail material-rail material-surface material-native-surface",
+            "rect": {
+              "x": 10,
+              "y": 10,
+              "width": 370,
+              "height": 64,
+              "top": 10,
+              "right": 380,
+              "bottom": 74,
+              "left": 10
+            },
+            "radius": "28px",
+            "shadow": "rgba(255, 255, 255, 0.93) 1px 1px 0px 0px inset, rgba(255, 255, 255, 0.133) -1px -1px 0px 0px inset, rgba(16, 19, 23, 0.17) 0.8551px 6.5653px 16.703px -10.1377px",
+            "before": "radial-gradient(220px at -400px -400px, color(srgb 0 0 0 / 0), rgba(0, 0, 0, 0) 72%), conic-gradient(from 175deg, rgba(164, 173, 189, 0.4) 0deg, rgba(164, 173, 189, 0.4) 70deg, rgba(255, 255, 255, 0.98) 146deg, rgb(255, 255, 255) 178deg, rgba(164, 173, 189, 0.4) 243deg, rgb(255, 255, 255) 292deg, rgba(164, 173, 189, 0.4) 360deg)"
+          },
+          {
+            "className": "topbar material-surface material-native-surface",
+            "rect": {
+              "x": 10,
+              "y": 86,
+              "width": 370,
+              "height": 60,
+              "top": 86,
+              "right": 380,
+              "bottom": 146,
+              "left": 10
+            },
+            "radius": "26px",
+            "shadow": "rgb(255, 255, 255) 0px 1px 1px 0px inset, rgba(180, 190, 206, 0.27) 0px -1px 1px 0px inset, rgb(255, 255, 255) 3px 4px 12px -6px inset, rgba(123, 135, 153, 0.208) -4px -6px 14px -8px inset, rgba(104, 119, 141, 0.26) 0px -16px 28px -18px inset, rgba(88, 101, 120, 0.39) 4px 18px 28px -16px",
+            "before": "radial-gradient(220px at -400px -400px, color(srgb 0 0 0 / 0), rgba(0, 0, 0, 0) 72%), conic-gradient(from 175deg, rgba(164, 173, 189, 0.4) 0deg, rgba(164, 173, 189, 0.4) 70deg, rgba(255, 255, 255, 0.98) 146deg, rgb(255, 255, 255) 178deg, rgba(164, 173, 189, 0.4) 243deg, rgb(255, 255, 255) 292deg, rgba(164, 173, 189, 0.4) 360deg)"
+          },
+          {
+            "className": "page-heading material-surface material-native-surface",
+            "rect": {
+              "x": 10,
+              "y": 202,
+              "width": 370,
+              "height": 32.1875,
+              "top": 202,
+              "right": 380,
+              "bottom": 234.1875,
+              "left": 10
+            },
+            "radius": "24px",
+            "shadow": "rgb(255, 255, 255) 0px 1px 1px 0px inset, rgba(180, 190, 206, 0.27) 0px -1px 1px 0px inset, rgb(255, 255, 255) 3px 4px 12px -6px inset, rgba(123, 135, 153, 0.208) -4px -6px 14px -8px inset, rgba(104, 119, 141, 0.26) 0px -16px 28px -18px inset, rgba(88, 101, 120, 0.39) 4px 18px 28px -16px",
+            "before": "radial-gradient(220px at -400px -400px, color(srgb 0 0 0 / 0), rgba(0, 0, 0, 0) 72%), conic-gradient(from 175deg, rgba(164, 173, 189, 0.4) 0deg, rgba(164, 173, 189, 0.4) 70deg, rgba(255, 255, 255, 0.98) 146deg, rgb(255, 255, 255) 178deg, rgba(164, 173, 189, 0.4) 243deg, rgb(255, 255, 255) 292deg, rgba(164, 173, 189, 0.4) 360deg)"
+          },
+          {
+            "className": "list-summary material-surface material-native-surface",
+            "rect": {
+              "x": 10,
+              "y": 397.1875,
+              "width": 370,
+              "height": 27.046875,
+              "top": 397.1875,
+              "right": 380,
+              "bottom": 424.234375,
+              "left": 10
+            },
+            "radius": "18px",
+            "shadow": "rgb(255, 255, 255) 0px 1px 1px 0px inset, rgba(180, 190, 206, 0.27) 0px -1px 1px 0px inset, rgb(255, 255, 255) 3px 4px 12px -6px inset, rgba(123, 135, 153, 0.208) -4px -6px 14px -8px inset, rgba(104, 119, 141, 0.26) 0px -16px 28px -18px inset",
+            "before": "radial-gradient(220px at -400px -400px, color(srgb 0 0 0 / 0), rgba(0, 0, 0, 0) 72%), conic-gradient(from 175deg, rgba(164, 173, 189, 0.4) 0deg, rgba(164, 173, 189, 0.4) 70deg, rgba(255, 255, 255, 0.98) 146deg, rgb(255, 255, 255) 178deg, rgba(164, 173, 189, 0.4) 243deg, rgb(255, 255, 255) 292deg, rgba(164, 173, 189, 0.4) 360deg)"
+          },
+          {
+            "className": "task-list backlog-list material-surface material-native-surface",
+            "rect": {
+              "x": 10,
+              "y": 432.234375,
+              "width": 370,
+              "height": 2293.8125,
+              "top": 432.234375,
+              "right": 380,
+              "bottom": 2726.046875,
+              "left": 10
+            },
+            "radius": "28px",
+            "shadow": "rgb(255, 255, 255) 0px 1px 1px 0px inset, rgba(180, 190, 206, 0.27) 0px -1px 1px 0px inset, rgb(255, 255, 255) 3px 4px 12px -6px inset, rgba(123, 135, 153, 0.208) -4px -6px 14px -8px inset, rgba(104, 119, 141, 0.26) 0px -16px 28px -18px inset, rgba(88, 101, 120, 0.39) 4px 18px 28px -16px",
+            "before": "radial-gradient(220px at -400px -400px, color(srgb 0 0 0 / 0), rgba(0, 0, 0, 0) 72%), conic-gradient(from 175deg, rgba(164, 173, 189, 0.4) 0deg, rgba(164, 173, 189, 0.4) 70deg, rgba(255, 255, 255, 0.98) 146deg, rgb(255, 255, 255) 178deg, rgba(164, 173, 189, 0.4) 243deg, rgb(255, 255, 255) 292deg, rgba(164, 173, 189, 0.4) 360deg)"
+          }
+        ]
+      },
+      "scrolled": {
+        "layerCount": 5,
+        "nativeCount": 5,
+        "filterCount": 6,
+        "mapSizesValid": true,
+        "badForeground": [],
+        "foregroundSample": [
+          {
+            "font": "650 13px / 19.5px Manrope, \"Apple SD Gothic Neo\", \"Noto Sans KR\", sans-serif",
+            "color": "rgb(38, 49, 68)",
+            "filter": "none",
+            "textShadow": "none"
+          },
+          {
+            "font": "650 13px / 19.5px Manrope, \"Apple SD Gothic Neo\", \"Noto Sans KR\", sans-serif",
+            "color": "rgb(38, 49, 68)",
+            "filter": "none",
+            "textShadow": "none"
+          },
+          {
+            "font": "650 13px / 19.5px Manrope, \"Apple SD Gothic Neo\", \"Noto Sans KR\", sans-serif",
+            "color": "rgb(38, 49, 68)",
+            "filter": "none",
+            "textShadow": "none"
+          },
+          {
+            "font": "650 13px / 19.5px Manrope, \"Apple SD Gothic Neo\", \"Noto Sans KR\", sans-serif",
+            "color": "rgb(36, 41, 52)",
+            "filter": "none",
+            "textShadow": "none"
+          },
+          {
+            "font": "650 13px / 19.5px Manrope, \"Apple SD Gothic Neo\", \"Noto Sans KR\", sans-serif",
+            "color": "rgb(38, 49, 68)",
+            "filter": "none",
+            "textShadow": "none"
+          }
+        ],
+        "overflow": false,
+        "rects": [
+          {
+            "className": "rail material-rail material-surface material-native-surface",
+            "rect": {
+              "x": 10,
+              "y": -390,
+              "width": 370,
+              "height": 64,
+              "top": -390,
+              "right": 380,
+              "bottom": -326,
+              "left": 10
+            },
+            "radius": "28px",
+            "shadow": "rgba(255, 255, 255, 0.93) 1px 1px 0px 0px inset, rgba(255, 255, 255, 0.133) -1px -1px 0px 0px inset, rgba(24, 30, 36, 0.2) 1.56619px 8.69857px 20.614px -11.9155px",
+            "before": "radial-gradient(220px at -400px -400px, color(srgb 0 0 0 / 0), rgba(0, 0, 0, 0) 72%), conic-gradient(from 175deg, rgba(164, 173, 189, 0.4) 0deg, rgba(164, 173, 189, 0.4) 70deg, rgba(255, 255, 255, 0.98) 146deg, rgb(255, 255, 255) 178deg, rgba(164, 173, 189, 0.4) 243deg, rgb(255, 255, 255) 292deg, rgba(164, 173, 189, 0.4) 360deg)"
+          },
+          {
+            "className": "topbar material-surface material-native-surface",
+            "rect": {
+              "x": 10,
+              "y": -314,
+              "width": 370,
+              "height": 60,
+              "top": -314,
+              "right": 380,
+              "bottom": -254,
+              "left": 10
+            },
+            "radius": "26px",
+            "shadow": "rgb(255, 255, 255) 0px 1px 1px 0px inset, rgba(180, 190, 206, 0.27) 0px -1px 1px 0px inset, rgb(255, 255, 255) 3px 4px 12px -6px inset, rgba(123, 135, 153, 0.208) -4px -6px 14px -8px inset, rgba(104, 119, 141, 0.26) 0px -16px 28px -18px inset, rgba(88, 101, 120, 0.39) 4px 18px 28px -16px",
+            "before": "radial-gradient(220px at -400px -400px, color(srgb 0 0 0 / 0), rgba(0, 0, 0, 0) 72%), conic-gradient(from 175deg, rgba(164, 173, 189, 0.4) 0deg, rgba(164, 173, 189, 0.4) 70deg, rgba(255, 255, 255, 0.98) 146deg, rgb(255, 255, 255) 178deg, rgba(164, 173, 189, 0.4) 243deg, rgb(255, 255, 255) 292deg, rgba(164, 173, 189, 0.4) 360deg)"
+          },
+          {
+            "className": "page-heading material-surface material-native-surface",
+            "rect": {
+              "x": 10,
+              "y": -198,
+              "width": 370,
+              "height": 32.1875,
+              "top": -198,
+              "right": 380,
+              "bottom": -165.8125,
+              "left": 10
+            },
+            "radius": "24px",
+            "shadow": "rgb(255, 255, 255) 0px 1px 1px 0px inset, rgba(180, 190, 206, 0.27) 0px -1px 1px 0px inset, rgb(255, 255, 255) 3px 4px 12px -6px inset, rgba(123, 135, 153, 0.208) -4px -6px 14px -8px inset, rgba(104, 119, 141, 0.26) 0px -16px 28px -18px inset, rgba(88, 101, 120, 0.39) 4px 18px 28px -16px",
+            "before": "radial-gradient(220px at -400px -400px, color(srgb 0 0 0 / 0), rgba(0, 0, 0, 0) 72%), conic-gradient(from 175deg, rgba(164, 173, 189, 0.4) 0deg, rgba(164, 173, 189, 0.4) 70deg, rgba(255, 255, 255, 0.98) 146deg, rgb(255, 255, 255) 178deg, rgba(164, 173, 189, 0.4) 243deg, rgb(255, 255, 255) 292deg, rgba(164, 173, 189, 0.4) 360deg)"
+          },
+          {
+            "className": "list-summary material-surface material-native-surface",
+            "rect": {
+              "x": 10,
+              "y": -2.8125,
+              "width": 370,
+              "height": 27.046875,
+              "top": -2.8125,
+              "right": 380,
+              "bottom": 24.234375,
+              "left": 10
+            },
+            "radius": "18px",
+            "shadow": "rgb(255, 255, 255) 0px 1px 1px 0px inset, rgba(180, 190, 206, 0.27) 0px -1px 1px 0px inset, rgb(255, 255, 255) 3px 4px 12px -6px inset, rgba(123, 135, 153, 0.208) -4px -6px 14px -8px inset, rgba(104, 119, 141, 0.26) 0px -16px 28px -18px inset",
+            "before": "radial-gradient(220px at -400px -400px, color(srgb 0 0 0 / 0), rgba(0, 0, 0, 0) 72%), conic-gradient(from 175deg, rgba(164, 173, 189, 0.4) 0deg, rgba(164, 173, 189, 0.4) 70deg, rgba(255, 255, 255, 0.98) 146deg, rgb(255, 255, 255) 178deg, rgba(164, 173, 189, 0.4) 243deg, rgb(255, 255, 255) 292deg, rgba(164, 173, 189, 0.4) 360deg)"
+          },
+          {
+            "className": "task-list backlog-list material-surface material-native-surface",
+            "rect": {
+              "x": 10,
+              "y": 32.234375,
+              "width": 370,
+              "height": 2293.8125,
+              "top": 32.234375,
+              "right": 380,
+              "bottom": 2326.046875,
+              "left": 10
+            },
+            "radius": "28px",
+            "shadow": "rgb(255, 255, 255) 0px 1px 1px 0px inset, rgba(180, 190, 206, 0.27) 0px -1px 1px 0px inset, rgb(255, 255, 255) 3px 4px 12px -6px inset, rgba(123, 135, 153, 0.208) -4px -6px 14px -8px inset, rgba(104, 119, 141, 0.26) 0px -16px 28px -18px inset, rgba(88, 101, 120, 0.39) 4px 18px 28px -16px",
+            "before": "radial-gradient(220px at -400px -400px, color(srgb 0 0 0 / 0), rgba(0, 0, 0, 0) 72%), conic-gradient(from 175deg, rgba(164, 173, 189, 0.4) 0deg, rgba(164, 173, 189, 0.4) 70deg, rgba(255, 255, 255, 0.98) 146deg, rgb(255, 255, 255) 178deg, rgba(164, 173, 189, 0.4) 243deg, rgb(255, 255, 255) 292deg, rgba(164, 173, 189, 0.4) 360deg)"
+          }
+        ]
+      },
+      "resized": {
+        "layerCount": 5,
+        "nativeCount": 5,
+        "filterCount": 6,
+        "mapSizesValid": true,
+        "badForeground": [],
+        "foregroundSample": [
+          {
+            "font": "650 13px / 19.5px Manrope, \"Apple SD Gothic Neo\", \"Noto Sans KR\", sans-serif",
+            "color": "rgb(38, 49, 68)",
+            "filter": "none",
+            "textShadow": "none"
+          },
+          {
+            "font": "650 13px / 19.5px Manrope, \"Apple SD Gothic Neo\", \"Noto Sans KR\", sans-serif",
+            "color": "rgb(38, 49, 68)",
+            "filter": "none",
+            "textShadow": "none"
+          },
+          {
+            "font": "650 13px / 19.5px Manrope, \"Apple SD Gothic Neo\", \"Noto Sans KR\", sans-serif",
+            "color": "rgb(38, 49, 68)",
+            "filter": "none",
+            "textShadow": "none"
+          },
+          {
+            "font": "650 13px / 19.5px Manrope, \"Apple SD Gothic Neo\", \"Noto Sans KR\", sans-serif",
+            "color": "rgb(36, 41, 52)",
+            "filter": "none",
+            "textShadow": "none"
+          },
+          {
+            "font": "650 13px / 19.5px Manrope, \"Apple SD Gothic Neo\", \"Noto Sans KR\", sans-serif",
+            "color": "rgb(38, 49, 68)",
+            "filter": "none",
+            "textShadow": "none"
+          }
+        ],
+        "overflow": false,
+        "rects": [
+          {
+            "className": "rail material-rail material-surface material-native-surface",
+            "rect": {
+              "x": 10,
+              "y": -390,
+              "width": 410,
+              "height": 64,
+              "top": -390,
+              "right": 420,
+              "bottom": -326,
+              "left": 10
+            },
+            "radius": "28px",
+            "shadow": "rgba(255, 255, 255, 0.93) 1px 1px 0px 0px inset, rgba(255, 255, 255, 0.133) -1px -1px 0px 0px inset, rgba(33, 40, 49, 0.243) 2.56301px 11.689px 26.0966px -14.4075px",
+            "before": "radial-gradient(220px at -400px -400px, color(srgb 0 0 0 / 0), rgba(0, 0, 0, 0) 72%), conic-gradient(from 175deg, rgba(164, 173, 189, 0.4) 0deg, rgba(164, 173, 189, 0.4) 70deg, rgba(255, 255, 255, 0.98) 146deg, rgb(255, 255, 255) 178deg, rgba(164, 173, 189, 0.4) 243deg, rgb(255, 255, 255) 292deg, rgba(164, 173, 189, 0.4) 360deg)"
+          },
+          {
+            "className": "topbar material-surface material-native-surface",
+            "rect": {
+              "x": 10,
+              "y": -314,
+              "width": 410,
+              "height": 60,
+              "top": -314,
+              "right": 420,
+              "bottom": -254,
+              "left": 10
+            },
+            "radius": "26px",
+            "shadow": "rgb(255, 255, 255) 0px 1px 1px 0px inset, rgba(180, 190, 206, 0.27) 0px -1px 1px 0px inset, rgb(255, 255, 255) 3px 4px 12px -6px inset, rgba(123, 135, 153, 0.208) -4px -6px 14px -8px inset, rgba(104, 119, 141, 0.26) 0px -16px 28px -18px inset, rgba(88, 101, 120, 0.39) 4px 18px 28px -16px",
+            "before": "radial-gradient(220px at -400px -400px, color(srgb 0 0 0 / 0), rgba(0, 0, 0, 0) 72%), conic-gradient(from 175deg, rgba(164, 173, 189, 0.4) 0deg, rgba(164, 173, 189, 0.4) 70deg, rgba(255, 255, 255, 0.98) 146deg, rgb(255, 255, 255) 178deg, rgba(164, 173, 189, 0.4) 243deg, rgb(255, 255, 255) 292deg, rgba(164, 173, 189, 0.4) 360deg)"
+          },
+          {
+            "className": "page-heading material-surface material-native-surface",
+            "rect": {
+              "x": 10,
+              "y": -198,
+              "width": 410,
+              "height": 32.1875,
+              "top": -198,
+              "right": 420,
+              "bottom": -165.8125,
+              "left": 10
+            },
+            "radius": "24px",
+            "shadow": "rgb(255, 255, 255) 0px 1px 1px 0px inset, rgba(180, 190, 206, 0.27) 0px -1px 1px 0px inset, rgb(255, 255, 255) 3px 4px 12px -6px inset, rgba(123, 135, 153, 0.208) -4px -6px 14px -8px inset, rgba(104, 119, 141, 0.26) 0px -16px 28px -18px inset, rgba(88, 101, 120, 0.39) 4px 18px 28px -16px",
+            "before": "radial-gradient(220px at -400px -400px, color(srgb 0 0 0 / 0), rgba(0, 0, 0, 0) 72%), conic-gradient(from 175deg, rgba(164, 173, 189, 0.4) 0deg, rgba(164, 173, 189, 0.4) 70deg, rgba(255, 255, 255, 0.98) 146deg, rgb(255, 255, 255) 178deg, rgba(164, 173, 189, 0.4) 243deg, rgb(255, 255, 255) 292deg, rgba(164, 173, 189, 0.4) 360deg)"
+          },
+          {
+            "className": "list-summary material-surface material-native-surface",
+            "rect": {
+              "x": 10,
+              "y": -2.8125,
+              "width": 410,
+              "height": 27.046875,
+              "top": -2.8125,
+              "right": 420,
+              "bottom": 24.234375,
+              "left": 10
+            },
+            "radius": "18px",
+            "shadow": "rgb(255, 255, 255) 0px 1px 1px 0px inset, rgba(180, 190, 206, 0.27) 0px -1px 1px 0px inset, rgb(255, 255, 255) 3px 4px 12px -6px inset, rgba(123, 135, 153, 0.208) -4px -6px 14px -8px inset, rgba(104, 119, 141, 0.26) 0px -16px 28px -18px inset",
+            "before": "radial-gradient(220px at -400px -400px, color(srgb 0 0 0 / 0), rgba(0, 0, 0, 0) 72%), conic-gradient(from 175deg, rgba(164, 173, 189, 0.4) 0deg, rgba(164, 173, 189, 0.4) 70deg, rgba(255, 255, 255, 0.98) 146deg, rgb(255, 255, 255) 178deg, rgba(164, 173, 189, 0.4) 243deg, rgb(255, 255, 255) 292deg, rgba(164, 173, 189, 0.4) 360deg)"
+          },
+          {
+            "className": "task-list backlog-list material-surface material-native-surface",
+            "rect": {
+              "x": 10,
+              "y": 32.234375,
+              "width": 410,
+              "height": 1923.8125,
+              "top": 32.234375,
+              "right": 420,
+              "bottom": 1956.046875,
+              "left": 10
+            },
+            "radius": "28px",
+            "shadow": "rgb(255, 255, 255) 0px 1px 1px 0px inset, rgba(180, 190, 206, 0.27) 0px -1px 1px 0px inset, rgb(255, 255, 255) 3px 4px 12px -6px inset, rgba(123, 135, 153, 0.208) -4px -6px 14px -8px inset, rgba(104, 119, 141, 0.26) 0px -16px 28px -18px inset, rgba(88, 101, 120, 0.39) 4px 18px 28px -16px",
+            "before": "radial-gradient(220px at -400px -400px, color(srgb 0 0 0 / 0), rgba(0, 0, 0, 0) 72%), conic-gradient(from 175deg, rgba(164, 173, 189, 0.4) 0deg, rgba(164, 173, 189, 0.4) 70deg, rgba(255, 255, 255, 0.98) 146deg, rgb(255, 255, 255) 178deg, rgba(164, 173, 189, 0.4) 243deg, rgb(255, 255, 255) 292deg, rgba(164, 173, 189, 0.4) 360deg)"
+          }
+        ]
+      },
+      "optical": {
+        "backdrop": "blur(7px) url(\"#material-face-refraction-6\")",
+        "filter": "none",
+        "pointer": "none"
+      },
+      "nested": {
+        "native": false,
+        "filter": "url(\"#material-face-refraction-7\")",
+        "attachment": "fixed, fixed"
+      },
+      "errors": []
+    },
+    {
+      "width": 390,
+      "theme": "dark",
+      "before": {
+        "layerCount": 5,
+        "nativeCount": 5,
+        "filterCount": 6,
+        "mapSizesValid": true,
+        "badForeground": [],
+        "foregroundSample": [
+          {
+            "font": "650 13px / 19.5px Manrope, \"Apple SD Gothic Neo\", \"Noto Sans KR\", sans-serif",
+            "color": "rgb(220, 226, 237)",
+            "filter": "none",
+            "textShadow": "none"
+          },
+          {
+            "font": "650 13px / 19.5px Manrope, \"Apple SD Gothic Neo\", \"Noto Sans KR\", sans-serif",
+            "color": "rgb(220, 226, 237)",
+            "filter": "none",
+            "textShadow": "none"
+          },
+          {
+            "font": "650 13px / 19.5px Manrope, \"Apple SD Gothic Neo\", \"Noto Sans KR\", sans-serif",
+            "color": "rgb(220, 226, 237)",
+            "filter": "none",
+            "textShadow": "none"
+          },
+          {
+            "font": "650 13px / 19.5px Manrope, \"Apple SD Gothic Neo\", \"Noto Sans KR\", sans-serif",
+            "color": "rgb(242, 242, 246)",
+            "filter": "none",
+            "textShadow": "none"
+          },
+          {
+            "font": "650 13px / 19.5px Manrope, \"Apple SD Gothic Neo\", \"Noto Sans KR\", sans-serif",
+            "color": "rgb(220, 226, 237)",
+            "filter": "none",
+            "textShadow": "none"
+          }
+        ],
+        "overflow": false,
+        "rects": [
+          {
+            "className": "rail material-rail material-surface material-native-surface",
+            "rect": {
+              "x": 10,
+              "y": 10,
+              "width": 370,
+              "height": 64,
+              "top": 10,
+              "right": 380,
+              "bottom": 74,
+              "left": 10
+            },
+            "radius": "28px",
+            "shadow": "rgba(255, 255, 255, 0.14) 1px 1px 0px 0px inset, rgba(0, 0, 0, 0.086) -1px -1px 0px 0px inset, rgba(0, 0, 0, 0.34) 1.57129px 9.49953px 21.4278px -11.1426px",
+            "before": "radial-gradient(220px at -400px -400px, color(srgb 0 0 0 / 0), rgba(0, 0, 0, 0) 72%), conic-gradient(from 175deg, rgba(255, 255, 255, 0.082) 0deg, rgba(255, 255, 255, 0.082) 70deg, rgba(255, 255, 255, 0.55) 146deg, rgba(255, 255, 255, 0.24) 178deg, rgba(255, 255, 255, 0.082) 243deg, rgba(255, 255, 255, 0.24) 292deg, rgba(255, 255, 255, 0.082) 360deg)"
+          },
+          {
+            "className": "topbar material-surface material-native-surface",
+            "rect": {
+              "x": 10,
+              "y": 86,
+              "width": 370,
+              "height": 60,
+              "top": 86,
+              "right": 380,
+              "bottom": 146,
+              "left": 10
+            },
+            "radius": "26px",
+            "shadow": "rgba(255, 255, 255, 0.3) 0px 1px 1px 0px inset, rgba(255, 255, 255, 0.1) 0px -1px 1px 0px inset, rgba(255, 255, 255, 0.24) 3px 4px 12px -6px inset, rgba(255, 255, 255, 0.12) -4px -6px 14px -8px inset, rgba(0, 0, 0, 0.45) 0px -16px 28px -18px inset, rgba(0, 0, 0, 0.6) 4px 18px 28px -16px",
+            "before": "radial-gradient(220px at -400px -400px, color(srgb 0 0 0 / 0), rgba(0, 0, 0, 0) 72%), conic-gradient(from 175deg, rgba(255, 255, 255, 0.082) 0deg, rgba(255, 255, 255, 0.082) 70deg, rgba(255, 255, 255, 0.55) 146deg, rgba(255, 255, 255, 0.24) 178deg, rgba(255, 255, 255, 0.082) 243deg, rgba(255, 255, 255, 0.24) 292deg, rgba(255, 255, 255, 0.082) 360deg)"
+          },
+          {
+            "className": "page-heading material-surface material-native-surface",
+            "rect": {
+              "x": 10,
+              "y": 202,
+              "width": 370,
+              "height": 32.1875,
+              "top": 202,
+              "right": 380,
+              "bottom": 234.1875,
+              "left": 10
+            },
+            "radius": "24px",
+            "shadow": "rgba(255, 255, 255, 0.3) 0px 1px 1px 0px inset, rgba(255, 255, 255, 0.1) 0px -1px 1px 0px inset, rgba(255, 255, 255, 0.24) 3px 4px 12px -6px inset, rgba(255, 255, 255, 0.12) -4px -6px 14px -8px inset, rgba(0, 0, 0, 0.45) 0px -16px 28px -18px inset, rgba(0, 0, 0, 0.6) 4px 18px 28px -16px",
+            "before": "radial-gradient(220px at -400px -400px, color(srgb 0 0 0 / 0), rgba(0, 0, 0, 0) 72%), conic-gradient(from 175deg, rgba(255, 255, 255, 0.082) 0deg, rgba(255, 255, 255, 0.082) 70deg, rgba(255, 255, 255, 0.55) 146deg, rgba(255, 255, 255, 0.24) 178deg, rgba(255, 255, 255, 0.082) 243deg, rgba(255, 255, 255, 0.24) 292deg, rgba(255, 255, 255, 0.082) 360deg)"
+          },
+          {
+            "className": "list-summary material-surface material-native-surface",
+            "rect": {
+              "x": 10,
+              "y": 397.1875,
+              "width": 370,
+              "height": 27.046875,
+              "top": 397.1875,
+              "right": 380,
+              "bottom": 424.234375,
+              "left": 10
+            },
+            "radius": "18px",
+            "shadow": "rgba(255, 255, 255, 0.3) 0px 1px 1px 0px inset, rgba(255, 255, 255, 0.1) 0px -1px 1px 0px inset, rgba(255, 255, 255, 0.24) 3px 4px 12px -6px inset, rgba(255, 255, 255, 0.12) -4px -6px 14px -8px inset, rgba(0, 0, 0, 0.45) 0px -16px 28px -18px inset",
+            "before": "radial-gradient(220px at -400px -400px, color(srgb 0 0 0 / 0), rgba(0, 0, 0, 0) 72%), conic-gradient(from 175deg, rgba(255, 255, 255, 0.082) 0deg, rgba(255, 255, 255, 0.082) 70deg, rgba(255, 255, 255, 0.55) 146deg, rgba(255, 255, 255, 0.24) 178deg, rgba(255, 255, 255, 0.082) 243deg, rgba(255, 255, 255, 0.24) 292deg, rgba(255, 255, 255, 0.082) 360deg)"
+          },
+          {
+            "className": "task-list backlog-list material-surface material-native-surface",
+            "rect": {
+              "x": 10,
+              "y": 432.234375,
+              "width": 370,
+              "height": 2293.8125,
+              "top": 432.234375,
+              "right": 380,
+              "bottom": 2726.046875,
+              "left": 10
+            },
+            "radius": "28px",
+            "shadow": "rgba(255, 255, 255, 0.3) 0px 1px 1px 0px inset, rgba(255, 255, 255, 0.1) 0px -1px 1px 0px inset, rgba(255, 255, 255, 0.24) 3px 4px 12px -6px inset, rgba(255, 255, 255, 0.12) -4px -6px 14px -8px inset, rgba(0, 0, 0, 0.45) 0px -16px 28px -18px inset, rgba(0, 0, 0, 0.6) 4px 18px 28px -16px",
+            "before": "radial-gradient(220px at -400px -400px, color(srgb 0 0 0 / 0), rgba(0, 0, 0, 0) 72%), conic-gradient(from 175deg, rgba(255, 255, 255, 0.082) 0deg, rgba(255, 255, 255, 0.082) 70deg, rgba(255, 255, 255, 0.55) 146deg, rgba(255, 255, 255, 0.24) 178deg, rgba(255, 255, 255, 0.082) 243deg, rgba(255, 255, 255, 0.24) 292deg, rgba(255, 255, 255, 0.082) 360deg)"
+          }
+        ]
+      },
+      "scrolled": {
+        "layerCount": 5,
+        "nativeCount": 5,
+        "filterCount": 6,
+        "mapSizesValid": true,
+        "badForeground": [],
+        "foregroundSample": [
+          {
+            "font": "650 13px / 19.5px Manrope, \"Apple SD Gothic Neo\", \"Noto Sans KR\", sans-serif",
+            "color": "rgb(220, 226, 237)",
+            "filter": "none",
+            "textShadow": "none"
+          },
+          {
+            "font": "650 13px / 19.5px Manrope, \"Apple SD Gothic Neo\", \"Noto Sans KR\", sans-serif",
+            "color": "rgb(220, 226, 237)",
+            "filter": "none",
+            "textShadow": "none"
+          },
+          {
+            "font": "650 13px / 19.5px Manrope, \"Apple SD Gothic Neo\", \"Noto Sans KR\", sans-serif",
+            "color": "rgb(220, 226, 237)",
+            "filter": "none",
+            "textShadow": "none"
+          },
+          {
+            "font": "650 13px / 19.5px Manrope, \"Apple SD Gothic Neo\", \"Noto Sans KR\", sans-serif",
+            "color": "rgb(242, 242, 246)",
+            "filter": "none",
+            "textShadow": "none"
+          },
+          {
+            "font": "650 13px / 19.5px Manrope, \"Apple SD Gothic Neo\", \"Noto Sans KR\", sans-serif",
+            "color": "rgb(220, 226, 237)",
+            "filter": "none",
+            "textShadow": "none"
+          }
+        ],
+        "overflow": false,
+        "rects": [
+          {
+            "className": "rail material-rail material-surface material-native-surface",
+            "rect": {
+              "x": 10,
+              "y": -390,
+              "width": 370,
+              "height": 64,
+              "top": -390,
+              "right": 380,
+              "bottom": -326,
+              "left": 10
+            },
+            "radius": "28px",
+            "shadow": "rgba(255, 255, 255, 0.14) 1px 1px 0px 0px inset, rgba(0, 0, 0, 0.086) -1px -1px 0px 0px inset, rgba(0, 0, 0, 0.34) 1.57129px 9.49953px 21.4278px -11.1426px",
+            "before": "radial-gradient(220px at -400px -400px, color(srgb 0 0 0 / 0), rgba(0, 0, 0, 0) 72%), conic-gradient(from 175deg, rgba(255, 255, 255, 0.082) 0deg, rgba(255, 255, 255, 0.082) 70deg, rgba(255, 255, 255, 0.55) 146deg, rgba(255, 255, 255, 0.24) 178deg, rgba(255, 255, 255, 0.082) 243deg, rgba(255, 255, 255, 0.24) 292deg, rgba(255, 255, 255, 0.082) 360deg)"
+          },
+          {
+            "className": "topbar material-surface material-native-surface",
+            "rect": {
+              "x": 10,
+              "y": -314,
+              "width": 370,
+              "height": 60,
+              "top": -314,
+              "right": 380,
+              "bottom": -254,
+              "left": 10
+            },
+            "radius": "26px",
+            "shadow": "rgba(255, 255, 255, 0.3) 0px 1px 1px 0px inset, rgba(255, 255, 255, 0.1) 0px -1px 1px 0px inset, rgba(255, 255, 255, 0.24) 3px 4px 12px -6px inset, rgba(255, 255, 255, 0.12) -4px -6px 14px -8px inset, rgba(0, 0, 0, 0.45) 0px -16px 28px -18px inset, rgba(0, 0, 0, 0.6) 4px 18px 28px -16px",
+            "before": "radial-gradient(220px at -400px -400px, color(srgb 0 0 0 / 0), rgba(0, 0, 0, 0) 72%), conic-gradient(from 175deg, rgba(255, 255, 255, 0.082) 0deg, rgba(255, 255, 255, 0.082) 70deg, rgba(255, 255, 255, 0.55) 146deg, rgba(255, 255, 255, 0.24) 178deg, rgba(255, 255, 255, 0.082) 243deg, rgba(255, 255, 255, 0.24) 292deg, rgba(255, 255, 255, 0.082) 360deg)"
+          },
+          {
+            "className": "page-heading material-surface material-native-surface",
+            "rect": {
+              "x": 10,
+              "y": -198,
+              "width": 370,
+              "height": 32.1875,
+              "top": -198,
+              "right": 380,
+              "bottom": -165.8125,
+              "left": 10
+            },
+            "radius": "24px",
+            "shadow": "rgba(255, 255, 255, 0.3) 0px 1px 1px 0px inset, rgba(255, 255, 255, 0.1) 0px -1px 1px 0px inset, rgba(255, 255, 255, 0.24) 3px 4px 12px -6px inset, rgba(255, 255, 255, 0.12) -4px -6px 14px -8px inset, rgba(0, 0, 0, 0.45) 0px -16px 28px -18px inset, rgba(0, 0, 0, 0.6) 4px 18px 28px -16px",
+            "before": "radial-gradient(220px at -400px -400px, color(srgb 0 0 0 / 0), rgba(0, 0, 0, 0) 72%), conic-gradient(from 175deg, rgba(255, 255, 255, 0.082) 0deg, rgba(255, 255, 255, 0.082) 70deg, rgba(255, 255, 255, 0.55) 146deg, rgba(255, 255, 255, 0.24) 178deg, rgba(255, 255, 255, 0.082) 243deg, rgba(255, 255, 255, 0.24) 292deg, rgba(255, 255, 255, 0.082) 360deg)"
+          },
+          {
+            "className": "list-summary material-surface material-native-surface",
+            "rect": {
+              "x": 10,
+              "y": -2.8125,
+              "width": 370,
+              "height": 27.046875,
+              "top": -2.8125,
+              "right": 380,
+              "bottom": 24.234375,
+              "left": 10
+            },
+            "radius": "18px",
+            "shadow": "rgba(255, 255, 255, 0.3) 0px 1px 1px 0px inset, rgba(255, 255, 255, 0.1) 0px -1px 1px 0px inset, rgba(255, 255, 255, 0.24) 3px 4px 12px -6px inset, rgba(255, 255, 255, 0.12) -4px -6px 14px -8px inset, rgba(0, 0, 0, 0.45) 0px -16px 28px -18px inset",
+            "before": "radial-gradient(220px at -400px -400px, color(srgb 0 0 0 / 0), rgba(0, 0, 0, 0) 72%), conic-gradient(from 175deg, rgba(255, 255, 255, 0.082) 0deg, rgba(255, 255, 255, 0.082) 70deg, rgba(255, 255, 255, 0.55) 146deg, rgba(255, 255, 255, 0.24) 178deg, rgba(255, 255, 255, 0.082) 243deg, rgba(255, 255, 255, 0.24) 292deg, rgba(255, 255, 255, 0.082) 360deg)"
+          },
+          {
+            "className": "task-list backlog-list material-surface material-native-surface",
+            "rect": {
+              "x": 10,
+              "y": 32.234375,
+              "width": 370,
+              "height": 2293.8125,
+              "top": 32.234375,
+              "right": 380,
+              "bottom": 2326.046875,
+              "left": 10
+            },
+            "radius": "28px",
+            "shadow": "rgba(255, 255, 255, 0.3) 0px 1px 1px 0px inset, rgba(255, 255, 255, 0.1) 0px -1px 1px 0px inset, rgba(255, 255, 255, 0.24) 3px 4px 12px -6px inset, rgba(255, 255, 255, 0.12) -4px -6px 14px -8px inset, rgba(0, 0, 0, 0.45) 0px -16px 28px -18px inset, rgba(0, 0, 0, 0.6) 4px 18px 28px -16px",
+            "before": "radial-gradient(220px at -400px -400px, color(srgb 0 0 0 / 0), rgba(0, 0, 0, 0) 72%), conic-gradient(from 175deg, rgba(255, 255, 255, 0.082) 0deg, rgba(255, 255, 255, 0.082) 70deg, rgba(255, 255, 255, 0.55) 146deg, rgba(255, 255, 255, 0.24) 178deg, rgba(255, 255, 255, 0.082) 243deg, rgba(255, 255, 255, 0.24) 292deg, rgba(255, 255, 255, 0.082) 360deg)"
+          }
+        ]
+      },
+      "resized": {
+        "layerCount": 5,
+        "nativeCount": 5,
+        "filterCount": 6,
+        "mapSizesValid": true,
+        "badForeground": [],
+        "foregroundSample": [
+          {
+            "font": "650 13px / 19.5px Manrope, \"Apple SD Gothic Neo\", \"Noto Sans KR\", sans-serif",
+            "color": "rgb(220, 226, 237)",
+            "filter": "none",
+            "textShadow": "none"
+          },
+          {
+            "font": "650 13px / 19.5px Manrope, \"Apple SD Gothic Neo\", \"Noto Sans KR\", sans-serif",
+            "color": "rgb(220, 226, 237)",
+            "filter": "none",
+            "textShadow": "none"
+          },
+          {
+            "font": "650 13px / 19.5px Manrope, \"Apple SD Gothic Neo\", \"Noto Sans KR\", sans-serif",
+            "color": "rgb(220, 226, 237)",
+            "filter": "none",
+            "textShadow": "none"
+          },
+          {
+            "font": "650 13px / 19.5px Manrope, \"Apple SD Gothic Neo\", \"Noto Sans KR\", sans-serif",
+            "color": "rgb(242, 242, 246)",
+            "filter": "none",
+            "textShadow": "none"
+          },
+          {
+            "font": "650 13px / 19.5px Manrope, \"Apple SD Gothic Neo\", \"Noto Sans KR\", sans-serif",
+            "color": "rgb(220, 226, 237)",
+            "filter": "none",
+            "textShadow": "none"
+          }
+        ],
+        "overflow": false,
+        "rects": [
+          {
+            "className": "rail material-rail material-surface material-native-surface",
+            "rect": {
+              "x": 10,
+              "y": -390,
+              "width": 410,
+              "height": 64,
+              "top": -390,
+              "right": 420,
+              "bottom": -326,
+              "left": 10
+            },
+            "radius": "28px",
+            "shadow": "rgba(255, 255, 255, 0.14) 1px 1px 0px 0px inset, rgba(0, 0, 0, 0.086) -1px -1px 0px 0px inset, rgba(0, 0, 0, 0.475) 2.56756px 12.9865px 27.4054px -13.1351px",
+            "before": "radial-gradient(220px at -400px -400px, color(srgb 0 0 0 / 0), rgba(0, 0, 0, 0) 72%), conic-gradient(from 175deg, rgba(255, 255, 255, 0.082) 0deg, rgba(255, 255, 255, 0.082) 70deg, rgba(255, 255, 255, 0.55) 146deg, rgba(255, 255, 255, 0.24) 178deg, rgba(255, 255, 255, 0.082) 243deg, rgba(255, 255, 255, 0.24) 292deg, rgba(255, 255, 255, 0.082) 360deg)"
+          },
+          {
+            "className": "topbar material-surface material-native-surface",
+            "rect": {
+              "x": 10,
+              "y": -314,
+              "width": 410,
+              "height": 60,
+              "top": -314,
+              "right": 420,
+              "bottom": -254,
+              "left": 10
+            },
+            "radius": "26px",
+            "shadow": "rgba(255, 255, 255, 0.3) 0px 1px 1px 0px inset, rgba(255, 255, 255, 0.1) 0px -1px 1px 0px inset, rgba(255, 255, 255, 0.24) 3px 4px 12px -6px inset, rgba(255, 255, 255, 0.12) -4px -6px 14px -8px inset, rgba(0, 0, 0, 0.45) 0px -16px 28px -18px inset, rgba(0, 0, 0, 0.6) 4px 18px 28px -16px",
+            "before": "radial-gradient(220px at -400px -400px, color(srgb 0 0 0 / 0), rgba(0, 0, 0, 0) 72%), conic-gradient(from 175deg, rgba(255, 255, 255, 0.082) 0deg, rgba(255, 255, 255, 0.082) 70deg, rgba(255, 255, 255, 0.55) 146deg, rgba(255, 255, 255, 0.24) 178deg, rgba(255, 255, 255, 0.082) 243deg, rgba(255, 255, 255, 0.24) 292deg, rgba(255, 255, 255, 0.082) 360deg)"
+          },
+          {
+            "className": "page-heading material-surface material-native-surface",
+            "rect": {
+              "x": 10,
+              "y": -198,
+              "width": 410,
+              "height": 32.1875,
+              "top": -198,
+              "right": 420,
+              "bottom": -165.8125,
+              "left": 10
+            },
+            "radius": "24px",
+            "shadow": "rgba(255, 255, 255, 0.3) 0px 1px 1px 0px inset, rgba(255, 255, 255, 0.1) 0px -1px 1px 0px inset, rgba(255, 255, 255, 0.24) 3px 4px 12px -6px inset, rgba(255, 255, 255, 0.12) -4px -6px 14px -8px inset, rgba(0, 0, 0, 0.45) 0px -16px 28px -18px inset, rgba(0, 0, 0, 0.6) 4px 18px 28px -16px",
+            "before": "radial-gradient(220px at -400px -400px, color(srgb 0 0 0 / 0), rgba(0, 0, 0, 0) 72%), conic-gradient(from 175deg, rgba(255, 255, 255, 0.082) 0deg, rgba(255, 255, 255, 0.082) 70deg, rgba(255, 255, 255, 0.55) 146deg, rgba(255, 255, 255, 0.24) 178deg, rgba(255, 255, 255, 0.082) 243deg, rgba(255, 255, 255, 0.24) 292deg, rgba(255, 255, 255, 0.082) 360deg)"
+          },
+          {
+            "className": "list-summary material-surface material-native-surface",
+            "rect": {
+              "x": 10,
+              "y": -2.8125,
+              "width": 410,
+              "height": 27.046875,
+              "top": -2.8125,
+              "right": 420,
+              "bottom": 24.234375,
+              "left": 10
+            },
+            "radius": "18px",
+            "shadow": "rgba(255, 255, 255, 0.3) 0px 1px 1px 0px inset, rgba(255, 255, 255, 0.1) 0px -1px 1px 0px inset, rgba(255, 255, 255, 0.24) 3px 4px 12px -6px inset, rgba(255, 255, 255, 0.12) -4px -6px 14px -8px inset, rgba(0, 0, 0, 0.45) 0px -16px 28px -18px inset",
+            "before": "radial-gradient(220px at -400px -400px, color(srgb 0 0 0 / 0), rgba(0, 0, 0, 0) 72%), conic-gradient(from 175deg, rgba(255, 255, 255, 0.082) 0deg, rgba(255, 255, 255, 0.082) 70deg, rgba(255, 255, 255, 0.55) 146deg, rgba(255, 255, 255, 0.24) 178deg, rgba(255, 255, 255, 0.082) 243deg, rgba(255, 255, 255, 0.24) 292deg, rgba(255, 255, 255, 0.082) 360deg)"
+          },
+          {
+            "className": "task-list backlog-list material-surface material-native-surface",
+            "rect": {
+              "x": 10,
+              "y": 32.234375,
+              "width": 410,
+              "height": 1923.8125,
+              "top": 32.234375,
+              "right": 420,
+              "bottom": 1956.046875,
+              "left": 10
+            },
+            "radius": "28px",
+            "shadow": "rgba(255, 255, 255, 0.3) 0px 1px 1px 0px inset, rgba(255, 255, 255, 0.1) 0px -1px 1px 0px inset, rgba(255, 255, 255, 0.24) 3px 4px 12px -6px inset, rgba(255, 255, 255, 0.12) -4px -6px 14px -8px inset, rgba(0, 0, 0, 0.45) 0px -16px 28px -18px inset, rgba(0, 0, 0, 0.6) 4px 18px 28px -16px",
+            "before": "radial-gradient(220px at -400px -400px, color(srgb 0 0 0 / 0), rgba(0, 0, 0, 0) 72%), conic-gradient(from 175deg, rgba(255, 255, 255, 0.082) 0deg, rgba(255, 255, 255, 0.082) 70deg, rgba(255, 255, 255, 0.55) 146deg, rgba(255, 255, 255, 0.24) 178deg, rgba(255, 255, 255, 0.082) 243deg, rgba(255, 255, 255, 0.24) 292deg, rgba(255, 255, 255, 0.082) 360deg)"
+          }
+        ]
+      },
+      "optical": {
+        "backdrop": "blur(7px) url(\"#material-face-refraction-6\")",
+        "filter": "none",
+        "pointer": "none"
+      },
+      "nested": {
+        "native": false,
+        "filter": "url(\"#material-face-refraction-7\")",
+        "attachment": "fixed, fixed"
+      },
+      "errors": []
+    }
+  ],
+  "fallback": {
+    "scope": "Chromium with Firefox UA; branch activation only, not Firefox rendering validation",
+    "mode": "blur",
+    "nativeCount": 0,
+    "filter": "blur(7px)"
+  },
+  "verdict": "PASS_SCOPED_OPTICS"
+}

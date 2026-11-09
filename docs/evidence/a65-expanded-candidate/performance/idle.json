@@ -1,0 +1,2970 @@
+{
+  "results": [
+    {
+      "variant": "baseline",
+      "projectStreams": 1,
+      "coverageCalibration": [
+        {
+          "url": "http://127.0.0.1:57052/app.js",
+          "name": "renderOperationStages",
+          "count": 0
+        },
+        {
+          "url": "http://127.0.0.1:57052/app.js",
+          "name": "renderOperationHistory",
+          "count": 0
+        },
+        {
+          "url": "http://127.0.0.1:57052/app.js",
+          "name": "renderOperationBanner",
+          "count": 1
+        },
+        {
+          "url": "http://127.0.0.1:57052/app.js",
+          "name": "renderReleaseNotesBadge",
+          "count": 6
+        },
+        {
+          "url": "http://127.0.0.1:57052/app.js",
+          "name": "renderReleaseUnreadPrompt",
+          "count": 3
+        },
+        {
+          "url": "http://127.0.0.1:57052/app.js",
+          "name": "renderReleaseNoteModal",
+          "count": 0
+        },
+        {
+          "url": "http://127.0.0.1:57052/app.js",
+          "name": "renderGlobalUpdateIndicator",
+          "count": 5
+        },
+        {
+          "url": "http://127.0.0.1:57052/app.js",
+          "name": "renderContentUpdatePrompt",
+          "count": 4
+        },
+        {
+          "url": "http://127.0.0.1:57052/app.js",
+          "name": "renderMermaidDiagrams",
+          "count": 2
+        },
+        {
+          "url": "http://127.0.0.1:57052/app.js",
+          "name": "renderAccess",
+          "count": 3
+        },
+        {
+          "url": "http://127.0.0.1:57052/app.js",
+          "name": "renderUserAttention",
+          "count": 7
+        },
+        {
+          "url": "http://127.0.0.1:57052/app.js",
+          "name": "renderNotificationPanel",
+          "count": 0
+        },
+        {
+          "url": "http://127.0.0.1:57052/app.js",
+          "name": "renderBacklogPicker",
+          "count": 2
+        },
+        {
+          "url": "http://127.0.0.1:57052/app.js",
+          "name": "backlogUrl",
+          "count": 0
+        },
+        {
+          "url": "http://127.0.0.1:57052/app.js",
+          "name": "backlogListTools",
+          "count": 2
+        },
+        {
+          "url": "http://127.0.0.1:57052/app.js",
+          "name": "backlogListPicker",
+          "count": 2
+        },
+        {
+          "url": "http://127.0.0.1:57052/app.js",
+          "name": "backlogDiagnosticsView",
+          "count": 0
+        },
+        {
+          "url": "http://127.0.0.1:57052/app.js",
+          "name": "backlogWorkerRoster",
+          "count": 0
+        },
+        {
+          "url": "http://127.0.0.1:57052/app.js",
+          "name": "backlogWorkerRosterSection",
+          "count": 0
+        },
+        {
+          "url": "http://127.0.0.1:57052/app.js",
+          "name": "renderActivityDetailControls",
+          "count": 0
+        },
+        {
+          "url": "http://127.0.0.1:57052/app.js",
+          "name": "render",
+          "count": 3
+        },
+        {
+          "url": "http://127.0.0.1:57052/app.js",
+          "name": "renderLanguagePicker",
+          "count": 4
+        }
+      ],
+      "projectUnchanged": {
+        "requests": {},
+        "coverage": [],
+        "streams": 1
+      },
+      "projectChangedControl": {
+        "requests": {},
+        "coverage": []
+      },
+      "projectIdle": {
+        "windowMs": 2000,
+        "requests": {},
+        "coverage": []
+      },
+      "cleanupStreams": 0,
+      "requests": [
+        {
+          "at": 1794209643373,
+          "path": "/",
+          "query": "?view=backlog&project=%2Ffixtures%2Fworkflow&backlog=%2Ffixtures%2Fworkflow%2F_task_mecca%2Fdata%2Fbacklog"
+        },
+        {
+          "at": 1794209643396,
+          "path": "/theme-boot.js",
+          "query": ""
+        },
+        {
+          "at": 1794209643396,
+          "path": "/style.css",
+          "query": ""
+        },
+        {
+          "at": 1794209643397,
+          "path": "/logo.svg",
+          "query": ""
+        },
+        {
+          "at": 1794209643399,
+          "path": "/select-ui.js",
+          "query": ""
+        },
+        {
+          "at": 1794209643411,
+          "path": "/app.js",
+          "query": ""
+        },
+        {
+          "at": 1794209643412,
+          "path": "/perf-diagnostics.js",
+          "query": ""
+        },
+        {
+          "at": 1794209643506,
+          "path": "/api/hub",
+          "query": ""
+        },
+        {
+          "at": 1794209643507,
+          "path": "/api/hub/projects",
+          "query": ""
+        },
+        {
+          "at": 1794209643507,
+          "path": "/api/health",
+          "query": ""
+        },
+        {
+          "at": 1794209643508,
+          "path": "/api/backlog/tasks",
+          "query": "?backlog=%2Ffixtures%2Fworkflow%2F_task_mecca%2Fdata%2Fbacklog&project=%2Ffixtures%2Fworkflow&page=1&page_size=20&sort=id_desc&projection=initial"
+        },
+        {
+          "at": 1794209643508,
+          "path": "/api/backlog/tasks",
+          "query": "?backlog=%2Ffixtures%2Fworkflow%2F_task_mecca%2Fdata%2Fbacklog&project=%2Ffixtures%2Fworkflow&page=1&page_size=20&sort=id_desc"
+        },
+        {
+          "at": 1794209643510,
+          "path": "/api/monitor-performance",
+          "query": ""
+        },
+        {
+          "at": 1794209643511,
+          "path": "/api/health",
+          "query": ""
+        },
+        {
+          "at": 1794209643511,
+          "path": "/api/version",
+          "query": "?project=%2Ffixtures%2Fworkflow"
+        },
+        {
+          "at": 1794209643512,
+          "path": "/api/upgrade-status",
+          "query": ""
+        },
+        {
+          "at": 1794209643529,
+          "path": "/api/operations",
+          "query": ""
+        },
+        {
+          "at": 1794209643529,
+          "path": "/api/environment",
+          "query": ""
+        },
+        {
+          "at": 1794209643533,
+          "path": "/api/events",
+          "query": "?project=%2Ffixtures%2Fworkflow&backlog=%2Ffixtures%2Fworkflow%2F_task_mecca%2Fdata%2Fbacklog"
+        },
+        {
+          "at": 1794209643533,
+          "path": "/logo.svg",
+          "query": ""
+        },
+        {
+          "at": 1794209643551,
+          "path": "/api/upgrade-recovery",
+          "query": ""
+        },
+        {
+          "at": 1794209643552,
+          "path": "/api/version",
+          "query": "?project=%2Ffixtures%2Fworkflow&refresh=1"
+        }
+      ]
+    },
+    {
+      "variant": "candidate",
+      "projectStreams": 1,
+      "coverageCalibration": [
+        {
+          "url": "http://127.0.0.1:57082/ui/main.js",
+          "name": "backlogKey",
+          "count": 1
+        },
+        {
+          "url": "http://127.0.0.1:57082/ui/main.js",
+          "name": "renderShell",
+          "count": 1
+        },
+        {
+          "url": "http://127.0.0.1:57082/ui/main.js",
+          "name": "render",
+          "count": 1
+        },
+        {
+          "url": "http://127.0.0.1:57082/ui/main.js",
+          "name": "showOverview",
+          "count": 0
+        },
+        {
+          "url": "http://127.0.0.1:57082/ui/document-tools.js",
+          "name": "renderDiagram",
+          "count": 0
+        },
+        {
+          "url": "http://127.0.0.1:57082/ui/components/shared.js",
+          "name": "shell",
+          "count": 1
+        },
+        {
+          "url": "http://127.0.0.1:57082/ui/screens/home.js",
+          "name": "home",
+          "count": 0
+        },
+        {
+          "url": "http://127.0.0.1:57082/ui/screens/home.js",
+          "name": "homeTaskRows",
+          "count": 0
+        },
+        {
+          "url": "http://127.0.0.1:57082/ui/screens/backlog.js",
+          "name": "backlogResults",
+          "count": 1
+        },
+        {
+          "url": "http://127.0.0.1:57082/ui/screens/backlog.js",
+          "name": "backlog",
+          "count": 1
+        },
+        {
+          "url": "http://127.0.0.1:57082/ui/components/workflow.js",
+          "name": "renderActivityDetailControls",
+          "count": 0
+        }
+      ],
+      "projectUnchanged": {
+        "requests": {},
+        "coverage": [],
+        "streams": 1
+      },
+      "projectChangedControl": {
+        "requests": {
+          "/api/issues": 1,
+          "/api/backlog/tasks": 1
+        },
+        "coverage": [
+          {
+            "url": "http://127.0.0.1:57082/ui/screens/backlog.js",
+            "name": "backlogResults",
+            "count": 1
+          }
+        ]
+      },
+      "projectIdle": {
+        "windowMs": 2000,
+        "requests": {},
+        "coverage": []
+      },
+      "detailProjectStreams": 1,
+      "globalStreams": 1,
+      "globalCoverageCalibration": [
+        {
+          "url": "http://127.0.0.1:57082/ui/main.js",
+          "name": "backlogKey",
+          "count": 0
+        },
+        {
+          "url": "http://127.0.0.1:57082/ui/main.js",
+          "name": "renderShell",
+          "count": 1
+        },
+        {
+          "url": "http://127.0.0.1:57082/ui/main.js",
+          "name": "render",
+          "count": 2
+        },
+        {
+          "url": "http://127.0.0.1:57082/ui/main.js",
+          "name": "showOverview",
+          "count": 1
+        },
+        {
+          "url": "http://127.0.0.1:57082/ui/document-tools.js",
+          "name": "renderDiagram",
+          "count": 0
+        },
+        {
+          "url": "http://127.0.0.1:57082/ui/components/shared.js",
+          "name": "shell",
+          "count": 1
+        },
+        {
+          "url": "http://127.0.0.1:57082/ui/screens/home.js",
+          "name": "home",
+          "count": 1
+        },
+        {
+          "url": "http://127.0.0.1:57082/ui/screens/home.js",
+          "name": "homeTaskRows",
+          "count": 1
+        },
+        {
+          "url": "http://127.0.0.1:57082/ui/screens/backlog.js",
+          "name": "backlogResults",
+          "count": 0
+        },
+        {
+          "url": "http://127.0.0.1:57082/ui/screens/backlog.js",
+          "name": "backlog",
+          "count": 0
+        },
+        {
+          "url": "http://127.0.0.1:57082/ui/components/workflow.js",
+          "name": "renderActivityDetailControls",
+          "count": 0
+        }
+      ],
+      "globalUnchanged": {
+        "requests": {},
+        "coverage": [],
+        "streams": 1
+      },
+      "globalChangedControl": {
+        "requests": {
+          "/api/overview": 1
+        },
+        "coverage": []
+      },
+      "globalIdle": {
+        "windowMs": 2000,
+        "requests": {},
+        "coverage": []
+      },
+      "syntheticHiddenStreams": 0,
+      "syntheticHiddenRequests": {},
+      "syntheticVisibleStreams": 1,
+      "disconnect": {
+        "immediateStreams": 0,
+        "reconnectedStreams": 1
+      },
+      "routeExitStreams": 0,
+      "pendingBound": {
+        "requests": [
+          {
+            "at": 1794209659085,
+            "path": "/api/overview",
+            "query": "?page_size=4&attention_page=1&working_page=1&projects_page=1&activity_page=1"
+          },
+          {
+            "at": 1794209659593,
+            "path": "/api/overview",
+            "query": "?page_size=4&attention_page=1&working_page=1&projects_page=1&activity_page=1"
+          },
+          {
+            "at": 1794209660097,
+            "path": "/api/overview",
+            "query": "?page_size=4&attention_page=1&working_page=1&projects_page=1&activity_page=1"
+          },
+          {
+            "at": 1794209660601,
+            "path": "/api/overview",
+            "query": "?page_size=4&attention_page=1&working_page=1&projects_page=1&activity_page=1"
+          },
+          {
+            "at": 1794209661107,
+            "path": "/api/overview",
+            "query": "?page_size=4&attention_page=1&working_page=1&projects_page=1&activity_page=1"
+          },
+          {
+            "at": 1794209661612,
+            "path": "/api/overview",
+            "query": "?page_size=4&attention_page=1&working_page=1&projects_page=1&activity_page=1"
+          },
+          {
+            "at": 1794209662117,
+            "path": "/api/overview",
+            "query": "?page_size=4&attention_page=1&working_page=1&projects_page=1&activity_page=1"
+          },
+          {
+            "at": 1794209662623,
+            "path": "/api/overview",
+            "query": "?page_size=4&attention_page=1&working_page=1&projects_page=1&activity_page=1"
+          },
+          {
+            "at": 1794209663127,
+            "path": "/api/overview",
+            "query": "?page_size=4&attention_page=1&working_page=1&projects_page=1&activity_page=1"
+          },
+          {
+            "at": 1794209663631,
+            "path": "/api/overview",
+            "query": "?page_size=4&attention_page=1&working_page=1&projects_page=1&activity_page=1"
+          },
+          {
+            "at": 1794209664135,
+            "path": "/api/overview",
+            "query": "?page_size=4&attention_page=1&working_page=1&projects_page=1&activity_page=1"
+          },
+          {
+            "at": 1794209664640,
+            "path": "/api/overview",
+            "query": "?page_size=4&attention_page=1&working_page=1&projects_page=1&activity_page=1"
+          },
+          {
+            "at": 1794209665145,
+            "path": "/api/overview",
+            "query": "?page_size=4&attention_page=1&working_page=1&projects_page=1&activity_page=1"
+          }
+        ],
+        "notice": "\n    \n    본문으로 / Skip to content\n    Task MeccaSYSTEMGlobal HubStoragePreview BuildsBACKLOGSWWorkflow fixture×rresearch×aarchive×Open projectNo closed projectsManage projectsOPERATIONSWorkloadNotificationsTerminalRecent activityOperationsHELPHelpUpdatesDiagnosticsSettingsAutoExpandedCollapsedProject controlEnvironment unverified한국어SystemLightDarkSystemAutomatic checks paused. Refresh to check again.Control homeAcross your projects, see what needs attention next.Observed Time unknownReading project dataUnknown values are not counted as zero.Checking again shortly.Needs your attention Start with the evidence that needs a decision.Partial · 3 / 3 projectsThis coverage has not been observed yetBased on the current coverage and filters.Page 1 / 1PreviousNextWork in progress Observed execution and provisional file state stay distinct.Partial · 3 / 3 projectsThis coverage has not been observed yetBased on the current coverage and filters.Page 1 / 1PreviousNextProjects Keep every managed project in view.Partial · 3 / 3 projectsThis coverage has not been observed yetBased on the current coverage and filters.Page 1 / 1PreviousNextRecent activity Observed events from the notification journal.Partial · 3 / 3 projectsThis coverage has not been observed yetBased on the current coverage and filters.Page 1 / 1PreviousNextScreen loaded\n    \n  \n\n",
+        "afterBoundRequests": {}
+      },
+      "pendingComplete": {
+        "requests": {}
+      },
+      "pendingError": {
+        "requests": {},
+        "body": "\n    \n    본문으로 / Skip to content\n    Task MeccaSYSTEMGlobal HubStoragePreview BuildsBACKLOGSWWorkflow fixture×rresearch×aarchive×Open projectNo closed projectsManage projectsOPERATIONSWorkloadNotificationsTerminalRecent activityOperationsHELPHelpUpdatesDiagnosticsSettingsAutoExpandedCollapsedProject controlEnvironment unverified한국어SystemLightDarkSystemRefresh failed. Use Refresh to try again.Control homeAcross your projects, see what needs attention next.Observed Time unknownReading project dataUnknown values are not counted as zero.Checking again shortly.Needs your attention Start with the evidence that needs a decision.Partial · 3 / 3 projectsThis coverage has not been observed yetBased on the current coverage and filters.Page 1 / 1PreviousNextWork in progress Observed execution and provisional file state stay distinct.Partial · 3 / 3 projectsThis coverage has not been observed yetBased on the current coverage and filters.Page 1 / 1PreviousNextProjects Keep every managed project in view.Partial · 3 / 3 projectsThis coverage has not been observed yetBased on the current coverage and filters.Page 1 / 1PreviousNextRecent activity Observed events from the notification journal.Partial · 3 / 3 projectsThis coverage has not been observed yetBased on the current coverage and filters.Page 1 / 1PreviousNextScreen loaded\n    \n  \n\n"
+      },
+      "pendingRouteExit": {
+        "requests": {
+          "/logo.svg": 1,
+          "/api/version": 1,
+          "/api/runtime/hooks": 1,
+          "/api/channel-options": 1
+        },
+        "streams": 0
+      },
+      "pendingSyntheticHidden": {
+        "requests": {},
+        "streams": 0
+      },
+      "cleanupStreams": 0,
+      "requests": [
+        {
+          "at": 1794209647789,
+          "path": "/",
+          "query": "?view=backlog&project=%2Ffixtures%2Fworkflow&backlog=%2Ffixtures%2Fworkflow%2F_task_mecca%2Fdata%2Fbacklog"
+        },
+        {
+          "at": 1794209647793,
+          "path": "/ui/boot.js",
+          "query": ""
+        },
+        {
+          "at": 1794209647793,
+          "path": "/ui/smoke.css",
+          "query": ""
+        },
+        {
+          "at": 1794209647794,
+          "path": "/ui/components/workflow.css",
+          "query": ""
+        },
+        {
+          "at": 1794209647794,
+          "path": "/ui/material/material.css",
+          "query": ""
+        },
+        {
+          "at": 1794209647794,
+          "path": "/ui/material/background-comparison.css",
+          "query": ""
+        },
+        {
+          "at": 1794209647794,
+          "path": "/ui/expansion.css",
+          "query": ""
+        },
+        {
+          "at": 1794209647794,
+          "path": "/ui/main.js",
+          "query": ""
+        },
+        {
+          "at": 1794209647795,
+          "path": "/ui/material/cozy-beige-room-photo-1920.webp",
+          "query": ""
+        },
+        {
+          "at": 1794209647801,
+          "path": "/ui/fonts/manrope.ttf",
+          "query": ""
+        },
+        {
+          "at": 1794209647802,
+          "path": "/ui/document-tools.js",
+          "query": ""
+        },
+        {
+          "at": 1794209647802,
+          "path": "/ui/expansion.js",
+          "query": ""
+        },
+        {
+          "at": 1794209647802,
+          "path": "/ui/screens/notifications.js",
+          "query": ""
+        },
+        {
+          "at": 1794209647802,
+          "path": "/ui/screens/management.js",
+          "query": ""
+        },
+        {
+          "at": 1794209647802,
+          "path": "/ui/environment.js",
+          "query": ""
+        },
+        {
+          "at": 1794209647803,
+          "path": "/ui/live-source.js",
+          "query": ""
+        },
+        {
+          "at": 1794209647803,
+          "path": "/ui/live-lifecycle.js",
+          "query": ""
+        },
+        {
+          "at": 1794209647803,
+          "path": "/ui/state.js",
+          "query": ""
+        },
+        {
+          "at": 1794209647804,
+          "path": "/ui/format.js",
+          "query": ""
+        },
+        {
+          "at": 1794209647804,
+          "path": "/ui/data.js",
+          "query": ""
+        },
+        {
+          "at": 1794209647804,
+          "path": "/ui/components/shared.js",
+          "query": ""
+        },
+        {
+          "at": 1794209647804,
+          "path": "/ui/screens/home.js",
+          "query": ""
+        },
+        {
+          "at": 1794209647805,
+          "path": "/ui/screens/backlog.js",
+          "query": ""
+        },
+        {
+          "at": 1794209647805,
+          "path": "/ui/screens/detail.js",
+          "query": ""
+        },
+        {
+          "at": 1794209647806,
+          "path": "/ui/components/workflow.js",
+          "query": ""
+        },
+        {
+          "at": 1794209647806,
+          "path": "/ui/screens/preview.js",
+          "query": ""
+        },
+        {
+          "at": 1794209647806,
+          "path": "/select-ui.js",
+          "query": ""
+        },
+        {
+          "at": 1794209647806,
+          "path": "/ui/optics.js",
+          "query": ""
+        },
+        {
+          "at": 1794209647806,
+          "path": "/ui/material/proximity.js",
+          "query": ""
+        },
+        {
+          "at": 1794209647807,
+          "path": "/ui/components/lifecycle.js",
+          "query": ""
+        },
+        {
+          "at": 1794209647812,
+          "path": "/api/issues",
+          "query": "?project=%2Ffixtures%2Fworkflow&backlog=%2Ffixtures%2Fworkflow%2F_task_mecca%2Fdata%2Fbacklog"
+        },
+        {
+          "at": 1794209647813,
+          "path": "/api/hub/projects",
+          "query": ""
+        },
+        {
+          "at": 1794209647814,
+          "path": "/ui/environment.css",
+          "query": ""
+        },
+        {
+          "at": 1794209647814,
+          "path": "/api/environment",
+          "query": ""
+        },
+        {
+          "at": 1794209647814,
+          "path": "/api/health",
+          "query": ""
+        },
+        {
+          "at": 1794209647815,
+          "path": "/api/backlog/tasks",
+          "query": "?project=%2Ffixtures%2Fworkflow&page=1&page_size=20&sort=id_desc&backlog=%2Ffixtures%2Fworkflow%2F_task_mecca%2Fdata%2Fbacklog"
+        },
+        {
+          "at": 1794209647815,
+          "path": "/logo.svg",
+          "query": ""
+        },
+        {
+          "at": 1794209647842,
+          "path": "/api/events",
+          "query": "?project=%2Ffixtures%2Fworkflow&backlog=%2Ffixtures%2Fworkflow%2F_task_mecca%2Fdata%2Fbacklog"
+        },
+        {
+          "at": 1794209647842,
+          "path": "/logo.svg",
+          "query": ""
+        },
+        {
+          "at": 1794209649475,
+          "path": "/api/issues",
+          "query": "?project=%2Ffixtures%2Fworkflow&backlog=%2Ffixtures%2Fworkflow%2F_task_mecca%2Fdata%2Fbacklog"
+        },
+        {
+          "at": 1794209649475,
+          "path": "/api/backlog/tasks",
+          "query": "?project=%2Ffixtures%2Fworkflow&page=1&page_size=20&sort=id_desc&backlog=%2Ffixtures%2Fworkflow%2F_task_mecca%2Fdata%2Fbacklog"
+        },
+        {
+          "at": 1794209651861,
+          "path": "/api/tasks/FLOW-060",
+          "query": "?project=%2Ffixtures%2Fworkflow&projection=content&backlog=%2Ffixtures%2Fworkflow%2F_task_mecca%2Fdata%2Fbacklog"
+        },
+        {
+          "at": 1794209651913,
+          "path": "/logo.svg",
+          "query": ""
+        },
+        {
+          "at": 1794209651915,
+          "path": "/api/tasks/FLOW-060",
+          "query": "?project=%2Ffixtures%2Fworkflow&projection=lifecycle&backlog=%2Ffixtures%2Fworkflow%2F_task_mecca%2Fdata%2Fbacklog"
+        },
+        {
+          "at": 1794209651920,
+          "path": "/api/revision",
+          "query": "?project=%2Ffixtures%2Fworkflow&backlog=%2Ffixtures%2Fworkflow%2F_task_mecca%2Fdata%2Fbacklog"
+        },
+        {
+          "at": 1794209652231,
+          "path": "/",
+          "query": ""
+        },
+        {
+          "at": 1794209652265,
+          "path": "/ui/smoke.css",
+          "query": ""
+        },
+        {
+          "at": 1794209652265,
+          "path": "/ui/boot.js",
+          "query": ""
+        },
+        {
+          "at": 1794209652266,
+          "path": "/ui/components/workflow.css",
+          "query": ""
+        },
+        {
+          "at": 1794209652266,
+          "path": "/ui/material/material.css",
+          "query": ""
+        },
+        {
+          "at": 1794209652266,
+          "path": "/ui/material/background-comparison.css",
+          "query": ""
+        },
+        {
+          "at": 1794209652266,
+          "path": "/ui/expansion.css",
+          "query": ""
+        },
+        {
+          "at": 1794209652267,
+          "path": "/ui/main.js",
+          "query": ""
+        },
+        {
+          "at": 1794209652267,
+          "path": "/ui/material/cozy-beige-room-photo-1920.webp",
+          "query": ""
+        },
+        {
+          "at": 1794209652273,
+          "path": "/ui/fonts/manrope.ttf",
+          "query": ""
+        },
+        {
+          "at": 1794209652273,
+          "path": "/ui/document-tools.js",
+          "query": ""
+        },
+        {
+          "at": 1794209652273,
+          "path": "/ui/expansion.js",
+          "query": ""
+        },
+        {
+          "at": 1794209652274,
+          "path": "/ui/screens/notifications.js",
+          "query": ""
+        },
+        {
+          "at": 1794209652274,
+          "path": "/ui/screens/management.js",
+          "query": ""
+        },
+        {
+          "at": 1794209652274,
+          "path": "/ui/environment.js",
+          "query": ""
+        },
+        {
+          "at": 1794209652274,
+          "path": "/ui/live-source.js",
+          "query": ""
+        },
+        {
+          "at": 1794209652274,
+          "path": "/ui/live-lifecycle.js",
+          "query": ""
+        },
+        {
+          "at": 1794209652274,
+          "path": "/ui/state.js",
+          "query": ""
+        },
+        {
+          "at": 1794209652274,
+          "path": "/ui/format.js",
+          "query": ""
+        },
+        {
+          "at": 1794209652274,
+          "path": "/ui/data.js",
+          "query": ""
+        },
+        {
+          "at": 1794209652275,
+          "path": "/ui/components/shared.js",
+          "query": ""
+        },
+        {
+          "at": 1794209652275,
+          "path": "/ui/screens/home.js",
+          "query": ""
+        },
+        {
+          "at": 1794209652275,
+          "path": "/ui/screens/backlog.js",
+          "query": ""
+        },
+        {
+          "at": 1794209652275,
+          "path": "/ui/screens/detail.js",
+          "query": ""
+        },
+        {
+          "at": 1794209652276,
+          "path": "/ui/components/workflow.js",
+          "query": ""
+        },
+        {
+          "at": 1794209652276,
+          "path": "/select-ui.js",
+          "query": ""
+        },
+        {
+          "at": 1794209652277,
+          "path": "/ui/optics.js",
+          "query": ""
+        },
+        {
+          "at": 1794209652278,
+          "path": "/ui/material/proximity.js",
+          "query": ""
+        },
+        {
+          "at": 1794209652278,
+          "path": "/ui/screens/preview.js",
+          "query": ""
+        },
+        {
+          "at": 1794209652278,
+          "path": "/ui/components/lifecycle.js",
+          "query": ""
+        },
+        {
+          "at": 1794209652281,
+          "path": "/api/hub/projects",
+          "query": ""
+        },
+        {
+          "at": 1794209652281,
+          "path": "/ui/environment.css",
+          "query": ""
+        },
+        {
+          "at": 1794209652281,
+          "path": "/api/environment",
+          "query": ""
+        },
+        {
+          "at": 1794209652281,
+          "path": "/api/health",
+          "query": ""
+        },
+        {
+          "at": 1794209652281,
+          "path": "/api/overview",
+          "query": "?page_size=4&attention_page=1&working_page=1&projects_page=1&activity_page=1"
+        },
+        {
+          "at": 1794209652282,
+          "path": "/logo.svg",
+          "query": ""
+        },
+        {
+          "at": 1794209652289,
+          "path": "/api/overview/events",
+          "query": ""
+        },
+        {
+          "at": 1794209652289,
+          "path": "/logo.svg",
+          "query": ""
+        },
+        {
+          "at": 1794209653327,
+          "path": "/api/overview",
+          "query": "?page_size=4&attention_page=1&working_page=1&projects_page=1&activity_page=1"
+        },
+        {
+          "at": 1794209656389,
+          "path": "/api/environment",
+          "query": ""
+        },
+        {
+          "at": 1794209656389,
+          "path": "/api/health",
+          "query": ""
+        },
+        {
+          "at": 1794209656390,
+          "path": "/api/overview/events",
+          "query": ""
+        },
+        {
+          "at": 1794209658543,
+          "path": "/api/overview/events",
+          "query": ""
+        },
+        {
+          "at": 1794209658855,
+          "path": "/",
+          "query": "?view=settings"
+        },
+        {
+          "at": 1794209658888,
+          "path": "/ui/boot.js",
+          "query": ""
+        },
+        {
+          "at": 1794209658889,
+          "path": "/ui/smoke.css",
+          "query": ""
+        },
+        {
+          "at": 1794209658889,
+          "path": "/ui/components/workflow.css",
+          "query": ""
+        },
+        {
+          "at": 1794209658889,
+          "path": "/ui/material/material.css",
+          "query": ""
+        },
+        {
+          "at": 1794209658889,
+          "path": "/ui/material/background-comparison.css",
+          "query": ""
+        },
+        {
+          "at": 1794209658889,
+          "path": "/ui/expansion.css",
+          "query": ""
+        },
+        {
+          "at": 1794209658890,
+          "path": "/ui/main.js",
+          "query": ""
+        },
+        {
+          "at": 1794209658890,
+          "path": "/ui/material/cozy-beige-room-photo-1920.webp",
+          "query": ""
+        },
+        {
+          "at": 1794209658893,
+          "path": "/ui/fonts/manrope.ttf",
+          "query": ""
+        },
+        {
+          "at": 1794209658893,
+          "path": "/ui/document-tools.js",
+          "query": ""
+        },
+        {
+          "at": 1794209658893,
+          "path": "/ui/expansion.js",
+          "query": ""
+        },
+        {
+          "at": 1794209658893,
+          "path": "/ui/screens/notifications.js",
+          "query": ""
+        },
+        {
+          "at": 1794209658893,
+          "path": "/ui/screens/management.js",
+          "query": ""
+        },
+        {
+          "at": 1794209658893,
+          "path": "/ui/environment.js",
+          "query": ""
+        },
+        {
+          "at": 1794209658895,
+          "path": "/ui/live-source.js",
+          "query": ""
+        },
+        {
+          "at": 1794209658895,
+          "path": "/ui/live-lifecycle.js",
+          "query": ""
+        },
+        {
+          "at": 1794209658895,
+          "path": "/ui/state.js",
+          "query": ""
+        },
+        {
+          "at": 1794209658895,
+          "path": "/ui/format.js",
+          "query": ""
+        },
+        {
+          "at": 1794209658895,
+          "path": "/ui/data.js",
+          "query": ""
+        },
+        {
+          "at": 1794209658896,
+          "path": "/ui/components/shared.js",
+          "query": ""
+        },
+        {
+          "at": 1794209658897,
+          "path": "/ui/screens/home.js",
+          "query": ""
+        },
+        {
+          "at": 1794209658897,
+          "path": "/ui/screens/backlog.js",
+          "query": ""
+        },
+        {
+          "at": 1794209658897,
+          "path": "/ui/screens/detail.js",
+          "query": ""
+        },
+        {
+          "at": 1794209658897,
+          "path": "/ui/components/workflow.js",
+          "query": ""
+        },
+        {
+          "at": 1794209658897,
+          "path": "/select-ui.js",
+          "query": ""
+        },
+        {
+          "at": 1794209658897,
+          "path": "/ui/optics.js",
+          "query": ""
+        },
+        {
+          "at": 1794209658898,
+          "path": "/ui/material/proximity.js",
+          "query": ""
+        },
+        {
+          "at": 1794209658898,
+          "path": "/ui/screens/preview.js",
+          "query": ""
+        },
+        {
+          "at": 1794209658898,
+          "path": "/ui/components/lifecycle.js",
+          "query": ""
+        },
+        {
+          "at": 1794209658901,
+          "path": "/api/hub/projects",
+          "query": ""
+        },
+        {
+          "at": 1794209658901,
+          "path": "/ui/environment.css",
+          "query": ""
+        },
+        {
+          "at": 1794209658901,
+          "path": "/api/environment",
+          "query": ""
+        },
+        {
+          "at": 1794209658901,
+          "path": "/api/health",
+          "query": ""
+        },
+        {
+          "at": 1794209658902,
+          "path": "/api/hub/projects",
+          "query": ""
+        },
+        {
+          "at": 1794209658902,
+          "path": "/logo.svg",
+          "query": ""
+        },
+        {
+          "at": 1794209658911,
+          "path": "/api/version",
+          "query": "?project=%2Ffixtures%2Fworkflow"
+        },
+        {
+          "at": 1794209658911,
+          "path": "/api/runtime/hooks",
+          "query": "?project=%2Ffixtures%2Fworkflow"
+        },
+        {
+          "at": 1794209658911,
+          "path": "/api/channel-options",
+          "query": ""
+        },
+        {
+          "at": 1794209658911,
+          "path": "/logo.svg",
+          "query": ""
+        },
+        {
+          "at": 1794209659066,
+          "path": "/",
+          "query": ""
+        },
+        {
+          "at": 1794209659073,
+          "path": "/ui/smoke.css",
+          "query": ""
+        },
+        {
+          "at": 1794209659073,
+          "path": "/ui/boot.js",
+          "query": ""
+        },
+        {
+          "at": 1794209659073,
+          "path": "/ui/components/workflow.css",
+          "query": ""
+        },
+        {
+          "at": 1794209659073,
+          "path": "/ui/material/material.css",
+          "query": ""
+        },
+        {
+          "at": 1794209659073,
+          "path": "/ui/material/background-comparison.css",
+          "query": ""
+        },
+        {
+          "at": 1794209659073,
+          "path": "/ui/expansion.css",
+          "query": ""
+        },
+        {
+          "at": 1794209659074,
+          "path": "/ui/main.js",
+          "query": ""
+        },
+        {
+          "at": 1794209659074,
+          "path": "/ui/material/cozy-beige-room-photo-1920.webp",
+          "query": ""
+        },
+        {
+          "at": 1794209659077,
+          "path": "/ui/fonts/manrope.ttf",
+          "query": ""
+        },
+        {
+          "at": 1794209659077,
+          "path": "/ui/document-tools.js",
+          "query": ""
+        },
+        {
+          "at": 1794209659077,
+          "path": "/ui/expansion.js",
+          "query": ""
+        },
+        {
+          "at": 1794209659077,
+          "path": "/ui/screens/notifications.js",
+          "query": ""
+        },
+        {
+          "at": 1794209659077,
+          "path": "/ui/screens/management.js",
+          "query": ""
+        },
+        {
+          "at": 1794209659077,
+          "path": "/ui/environment.js",
+          "query": ""
+        },
+        {
+          "at": 1794209659078,
+          "path": "/ui/live-source.js",
+          "query": ""
+        },
+        {
+          "at": 1794209659079,
+          "path": "/ui/live-lifecycle.js",
+          "query": ""
+        },
+        {
+          "at": 1794209659079,
+          "path": "/ui/state.js",
+          "query": ""
+        },
+        {
+          "at": 1794209659079,
+          "path": "/ui/format.js",
+          "query": ""
+        },
+        {
+          "at": 1794209659079,
+          "path": "/ui/data.js",
+          "query": ""
+        },
+        {
+          "at": 1794209659079,
+          "path": "/ui/components/shared.js",
+          "query": ""
+        },
+        {
+          "at": 1794209659080,
+          "path": "/ui/screens/home.js",
+          "query": ""
+        },
+        {
+          "at": 1794209659080,
+          "path": "/ui/screens/backlog.js",
+          "query": ""
+        },
+        {
+          "at": 1794209659080,
+          "path": "/ui/screens/detail.js",
+          "query": ""
+        },
+        {
+          "at": 1794209659081,
+          "path": "/ui/components/workflow.js",
+          "query": ""
+        },
+        {
+          "at": 1794209659081,
+          "path": "/select-ui.js",
+          "query": ""
+        },
+        {
+          "at": 1794209659081,
+          "path": "/ui/optics.js",
+          "query": ""
+        },
+        {
+          "at": 1794209659081,
+          "path": "/ui/material/proximity.js",
+          "query": ""
+        },
+        {
+          "at": 1794209659081,
+          "path": "/ui/screens/preview.js",
+          "query": ""
+        },
+        {
+          "at": 1794209659081,
+          "path": "/ui/components/lifecycle.js",
+          "query": ""
+        },
+        {
+          "at": 1794209659084,
+          "path": "/api/hub/projects",
+          "query": ""
+        },
+        {
+          "at": 1794209659085,
+          "path": "/ui/environment.css",
+          "query": ""
+        },
+        {
+          "at": 1794209659085,
+          "path": "/api/environment",
+          "query": ""
+        },
+        {
+          "at": 1794209659085,
+          "path": "/api/health",
+          "query": ""
+        },
+        {
+          "at": 1794209659085,
+          "path": "/api/overview",
+          "query": "?page_size=4&attention_page=1&working_page=1&projects_page=1&activity_page=1"
+        },
+        {
+          "at": 1794209659085,
+          "path": "/logo.svg",
+          "query": ""
+        },
+        {
+          "at": 1794209659093,
+          "path": "/api/overview/events",
+          "query": ""
+        },
+        {
+          "at": 1794209659093,
+          "path": "/logo.svg",
+          "query": ""
+        },
+        {
+          "at": 1794209659593,
+          "path": "/api/overview",
+          "query": "?page_size=4&attention_page=1&working_page=1&projects_page=1&activity_page=1"
+        },
+        {
+          "at": 1794209660097,
+          "path": "/api/overview",
+          "query": "?page_size=4&attention_page=1&working_page=1&projects_page=1&activity_page=1"
+        },
+        {
+          "at": 1794209660601,
+          "path": "/api/overview",
+          "query": "?page_size=4&attention_page=1&working_page=1&projects_page=1&activity_page=1"
+        },
+        {
+          "at": 1794209661107,
+          "path": "/api/overview",
+          "query": "?page_size=4&attention_page=1&working_page=1&projects_page=1&activity_page=1"
+        },
+        {
+          "at": 1794209661612,
+          "path": "/api/overview",
+          "query": "?page_size=4&attention_page=1&working_page=1&projects_page=1&activity_page=1"
+        },
+        {
+          "at": 1794209662117,
+          "path": "/api/overview",
+          "query": "?page_size=4&attention_page=1&working_page=1&projects_page=1&activity_page=1"
+        },
+        {
+          "at": 1794209662623,
+          "path": "/api/overview",
+          "query": "?page_size=4&attention_page=1&working_page=1&projects_page=1&activity_page=1"
+        },
+        {
+          "at": 1794209663127,
+          "path": "/api/overview",
+          "query": "?page_size=4&attention_page=1&working_page=1&projects_page=1&activity_page=1"
+        },
+        {
+          "at": 1794209663631,
+          "path": "/api/overview",
+          "query": "?page_size=4&attention_page=1&working_page=1&projects_page=1&activity_page=1"
+        },
+        {
+          "at": 1794209664135,
+          "path": "/api/overview",
+          "query": "?page_size=4&attention_page=1&working_page=1&projects_page=1&activity_page=1"
+        },
+        {
+          "at": 1794209664640,
+          "path": "/api/overview",
+          "query": "?page_size=4&attention_page=1&working_page=1&projects_page=1&activity_page=1"
+        },
+        {
+          "at": 1794209665145,
+          "path": "/api/overview",
+          "query": "?page_size=4&attention_page=1&working_page=1&projects_page=1&activity_page=1"
+        },
+        {
+          "at": 1794209666669,
+          "path": "/",
+          "query": "?view=settings"
+        },
+        {
+          "at": 1794209666693,
+          "path": "/ui/boot.js",
+          "query": ""
+        },
+        {
+          "at": 1794209666693,
+          "path": "/ui/smoke.css",
+          "query": ""
+        },
+        {
+          "at": 1794209666693,
+          "path": "/ui/components/workflow.css",
+          "query": ""
+        },
+        {
+          "at": 1794209666693,
+          "path": "/ui/material/material.css",
+          "query": ""
+        },
+        {
+          "at": 1794209666693,
+          "path": "/ui/material/background-comparison.css",
+          "query": ""
+        },
+        {
+          "at": 1794209666694,
+          "path": "/ui/expansion.css",
+          "query": ""
+        },
+        {
+          "at": 1794209666694,
+          "path": "/ui/main.js",
+          "query": ""
+        },
+        {
+          "at": 1794209666694,
+          "path": "/ui/material/cozy-beige-room-photo-1920.webp",
+          "query": ""
+        },
+        {
+          "at": 1794209666698,
+          "path": "/ui/fonts/manrope.ttf",
+          "query": ""
+        },
+        {
+          "at": 1794209666699,
+          "path": "/ui/document-tools.js",
+          "query": ""
+        },
+        {
+          "at": 1794209666699,
+          "path": "/ui/expansion.js",
+          "query": ""
+        },
+        {
+          "at": 1794209666699,
+          "path": "/ui/screens/notifications.js",
+          "query": ""
+        },
+        {
+          "at": 1794209666699,
+          "path": "/ui/screens/management.js",
+          "query": ""
+        },
+        {
+          "at": 1794209666699,
+          "path": "/ui/environment.js",
+          "query": ""
+        },
+        {
+          "at": 1794209666700,
+          "path": "/ui/live-source.js",
+          "query": ""
+        },
+        {
+          "at": 1794209666700,
+          "path": "/ui/live-lifecycle.js",
+          "query": ""
+        },
+        {
+          "at": 1794209666700,
+          "path": "/ui/state.js",
+          "query": ""
+        },
+        {
+          "at": 1794209666700,
+          "path": "/ui/format.js",
+          "query": ""
+        },
+        {
+          "at": 1794209666700,
+          "path": "/ui/data.js",
+          "query": ""
+        },
+        {
+          "at": 1794209666700,
+          "path": "/ui/components/shared.js",
+          "query": ""
+        },
+        {
+          "at": 1794209666702,
+          "path": "/ui/screens/home.js",
+          "query": ""
+        },
+        {
+          "at": 1794209666702,
+          "path": "/ui/screens/backlog.js",
+          "query": ""
+        },
+        {
+          "at": 1794209666702,
+          "path": "/ui/screens/detail.js",
+          "query": ""
+        },
+        {
+          "at": 1794209666702,
+          "path": "/ui/components/workflow.js",
+          "query": ""
+        },
+        {
+          "at": 1794209666703,
+          "path": "/select-ui.js",
+          "query": ""
+        },
+        {
+          "at": 1794209666703,
+          "path": "/ui/optics.js",
+          "query": ""
+        },
+        {
+          "at": 1794209666703,
+          "path": "/ui/material/proximity.js",
+          "query": ""
+        },
+        {
+          "at": 1794209666703,
+          "path": "/ui/screens/preview.js",
+          "query": ""
+        },
+        {
+          "at": 1794209666703,
+          "path": "/ui/components/lifecycle.js",
+          "query": ""
+        },
+        {
+          "at": 1794209666706,
+          "path": "/api/hub/projects",
+          "query": ""
+        },
+        {
+          "at": 1794209666706,
+          "path": "/ui/environment.css",
+          "query": ""
+        },
+        {
+          "at": 1794209666706,
+          "path": "/api/environment",
+          "query": ""
+        },
+        {
+          "at": 1794209666706,
+          "path": "/api/health",
+          "query": ""
+        },
+        {
+          "at": 1794209666706,
+          "path": "/api/hub/projects",
+          "query": ""
+        },
+        {
+          "at": 1794209666706,
+          "path": "/logo.svg",
+          "query": ""
+        },
+        {
+          "at": 1794209666718,
+          "path": "/api/version",
+          "query": "?project=%2Ffixtures%2Fworkflow"
+        },
+        {
+          "at": 1794209666718,
+          "path": "/api/runtime/hooks",
+          "query": "?project=%2Ffixtures%2Fworkflow"
+        },
+        {
+          "at": 1794209666718,
+          "path": "/api/channel-options",
+          "query": ""
+        },
+        {
+          "at": 1794209666718,
+          "path": "/logo.svg",
+          "query": ""
+        },
+        {
+          "at": 1794209666719,
+          "path": "/",
+          "query": ""
+        },
+        {
+          "at": 1794209666726,
+          "path": "/ui/smoke.css",
+          "query": ""
+        },
+        {
+          "at": 1794209666726,
+          "path": "/ui/boot.js",
+          "query": ""
+        },
+        {
+          "at": 1794209666726,
+          "path": "/ui/components/workflow.css",
+          "query": ""
+        },
+        {
+          "at": 1794209666726,
+          "path": "/ui/material/material.css",
+          "query": ""
+        },
+        {
+          "at": 1794209666726,
+          "path": "/ui/material/background-comparison.css",
+          "query": ""
+        },
+        {
+          "at": 1794209666726,
+          "path": "/ui/expansion.css",
+          "query": ""
+        },
+        {
+          "at": 1794209666727,
+          "path": "/ui/main.js",
+          "query": ""
+        },
+        {
+          "at": 1794209666727,
+          "path": "/ui/material/cozy-beige-room-photo-1920.webp",
+          "query": ""
+        },
+        {
+          "at": 1794209666731,
+          "path": "/ui/fonts/manrope.ttf",
+          "query": ""
+        },
+        {
+          "at": 1794209666731,
+          "path": "/ui/document-tools.js",
+          "query": ""
+        },
+        {
+          "at": 1794209666731,
+          "path": "/ui/expansion.js",
+          "query": ""
+        },
+        {
+          "at": 1794209666731,
+          "path": "/ui/screens/notifications.js",
+          "query": ""
+        },
+        {
+          "at": 1794209666731,
+          "path": "/ui/screens/management.js",
+          "query": ""
+        },
+        {
+          "at": 1794209666731,
+          "path": "/ui/environment.js",
+          "query": ""
+        },
+        {
+          "at": 1794209666732,
+          "path": "/ui/live-source.js",
+          "query": ""
+        },
+        {
+          "at": 1794209666732,
+          "path": "/ui/live-lifecycle.js",
+          "query": ""
+        },
+        {
+          "at": 1794209666732,
+          "path": "/ui/state.js",
+          "query": ""
+        },
+        {
+          "at": 1794209666732,
+          "path": "/ui/format.js",
+          "query": ""
+        },
+        {
+          "at": 1794209666732,
+          "path": "/ui/data.js",
+          "query": ""
+        },
+        {
+          "at": 1794209666732,
+          "path": "/ui/components/shared.js",
+          "query": ""
+        },
+        {
+          "at": 1794209666733,
+          "path": "/ui/screens/home.js",
+          "query": ""
+        },
+        {
+          "at": 1794209666733,
+          "path": "/ui/screens/backlog.js",
+          "query": ""
+        },
+        {
+          "at": 1794209666734,
+          "path": "/ui/screens/detail.js",
+          "query": ""
+        },
+        {
+          "at": 1794209666734,
+          "path": "/ui/components/workflow.js",
+          "query": ""
+        },
+        {
+          "at": 1794209666734,
+          "path": "/select-ui.js",
+          "query": ""
+        },
+        {
+          "at": 1794209666734,
+          "path": "/ui/optics.js",
+          "query": ""
+        },
+        {
+          "at": 1794209666734,
+          "path": "/ui/material/proximity.js",
+          "query": ""
+        },
+        {
+          "at": 1794209666735,
+          "path": "/ui/screens/preview.js",
+          "query": ""
+        },
+        {
+          "at": 1794209666735,
+          "path": "/ui/components/lifecycle.js",
+          "query": ""
+        },
+        {
+          "at": 1794209666737,
+          "path": "/api/hub/projects",
+          "query": ""
+        },
+        {
+          "at": 1794209666737,
+          "path": "/ui/environment.css",
+          "query": ""
+        },
+        {
+          "at": 1794209666738,
+          "path": "/api/environment",
+          "query": ""
+        },
+        {
+          "at": 1794209666738,
+          "path": "/api/health",
+          "query": ""
+        },
+        {
+          "at": 1794209666738,
+          "path": "/api/overview",
+          "query": "?page_size=4&attention_page=1&working_page=1&projects_page=1&activity_page=1"
+        },
+        {
+          "at": 1794209666738,
+          "path": "/logo.svg",
+          "query": ""
+        },
+        {
+          "at": 1794209666745,
+          "path": "/api/overview/events",
+          "query": ""
+        },
+        {
+          "at": 1794209666745,
+          "path": "/logo.svg",
+          "query": ""
+        },
+        {
+          "at": 1794209667246,
+          "path": "/api/overview",
+          "query": "?page_size=4&attention_page=1&working_page=1&projects_page=1&activity_page=1"
+        },
+        {
+          "at": 1794209668753,
+          "path": "/",
+          "query": "?view=settings"
+        },
+        {
+          "at": 1794209668770,
+          "path": "/ui/smoke.css",
+          "query": ""
+        },
+        {
+          "at": 1794209668770,
+          "path": "/ui/boot.js",
+          "query": ""
+        },
+        {
+          "at": 1794209668770,
+          "path": "/ui/components/workflow.css",
+          "query": ""
+        },
+        {
+          "at": 1794209668770,
+          "path": "/ui/material/material.css",
+          "query": ""
+        },
+        {
+          "at": 1794209668770,
+          "path": "/ui/material/background-comparison.css",
+          "query": ""
+        },
+        {
+          "at": 1794209668771,
+          "path": "/ui/expansion.css",
+          "query": ""
+        },
+        {
+          "at": 1794209668771,
+          "path": "/ui/main.js",
+          "query": ""
+        },
+        {
+          "at": 1794209668771,
+          "path": "/ui/material/cozy-beige-room-photo-1920.webp",
+          "query": ""
+        },
+        {
+          "at": 1794209668775,
+          "path": "/ui/fonts/manrope.ttf",
+          "query": ""
+        },
+        {
+          "at": 1794209668775,
+          "path": "/ui/document-tools.js",
+          "query": ""
+        },
+        {
+          "at": 1794209668775,
+          "path": "/ui/expansion.js",
+          "query": ""
+        },
+        {
+          "at": 1794209668775,
+          "path": "/ui/screens/notifications.js",
+          "query": ""
+        },
+        {
+          "at": 1794209668775,
+          "path": "/ui/screens/management.js",
+          "query": ""
+        },
+        {
+          "at": 1794209668775,
+          "path": "/ui/environment.js",
+          "query": ""
+        },
+        {
+          "at": 1794209668777,
+          "path": "/ui/live-source.js",
+          "query": ""
+        },
+        {
+          "at": 1794209668777,
+          "path": "/ui/live-lifecycle.js",
+          "query": ""
+        },
+        {
+          "at": 1794209668777,
+          "path": "/ui/state.js",
+          "query": ""
+        },
+        {
+          "at": 1794209668777,
+          "path": "/ui/format.js",
+          "query": ""
+        },
+        {
+          "at": 1794209668777,
+          "path": "/ui/data.js",
+          "query": ""
+        },
+        {
+          "at": 1794209668777,
+          "path": "/ui/components/shared.js",
+          "query": ""
+        },
+        {
+          "at": 1794209668778,
+          "path": "/ui/screens/home.js",
+          "query": ""
+        },
+        {
+          "at": 1794209668778,
+          "path": "/ui/screens/backlog.js",
+          "query": ""
+        },
+        {
+          "at": 1794209668778,
+          "path": "/ui/screens/detail.js",
+          "query": ""
+        },
+        {
+          "at": 1794209668778,
+          "path": "/ui/components/workflow.js",
+          "query": ""
+        },
+        {
+          "at": 1794209668778,
+          "path": "/select-ui.js",
+          "query": ""
+        },
+        {
+          "at": 1794209668778,
+          "path": "/ui/optics.js",
+          "query": ""
+        },
+        {
+          "at": 1794209668779,
+          "path": "/ui/material/proximity.js",
+          "query": ""
+        },
+        {
+          "at": 1794209668779,
+          "path": "/ui/screens/preview.js",
+          "query": ""
+        },
+        {
+          "at": 1794209668779,
+          "path": "/ui/components/lifecycle.js",
+          "query": ""
+        },
+        {
+          "at": 1794209668783,
+          "path": "/api/hub/projects",
+          "query": ""
+        },
+        {
+          "at": 1794209668783,
+          "path": "/ui/environment.css",
+          "query": ""
+        },
+        {
+          "at": 1794209668783,
+          "path": "/api/environment",
+          "query": ""
+        },
+        {
+          "at": 1794209668783,
+          "path": "/api/health",
+          "query": ""
+        },
+        {
+          "at": 1794209668783,
+          "path": "/api/hub/projects",
+          "query": ""
+        },
+        {
+          "at": 1794209668783,
+          "path": "/logo.svg",
+          "query": ""
+        },
+        {
+          "at": 1794209668793,
+          "path": "/api/version",
+          "query": "?project=%2Ffixtures%2Fworkflow"
+        },
+        {
+          "at": 1794209668793,
+          "path": "/api/runtime/hooks",
+          "query": "?project=%2Ffixtures%2Fworkflow"
+        },
+        {
+          "at": 1794209668793,
+          "path": "/api/channel-options",
+          "query": ""
+        },
+        {
+          "at": 1794209668794,
+          "path": "/",
+          "query": ""
+        },
+        {
+          "at": 1794209668795,
+          "path": "/logo.svg",
+          "query": ""
+        },
+        {
+          "at": 1794209668803,
+          "path": "/ui/smoke.css",
+          "query": ""
+        },
+        {
+          "at": 1794209668803,
+          "path": "/ui/boot.js",
+          "query": ""
+        },
+        {
+          "at": 1794209668803,
+          "path": "/ui/components/workflow.css",
+          "query": ""
+        },
+        {
+          "at": 1794209668803,
+          "path": "/ui/material/material.css",
+          "query": ""
+        },
+        {
+          "at": 1794209668803,
+          "path": "/ui/material/background-comparison.css",
+          "query": ""
+        },
+        {
+          "at": 1794209668803,
+          "path": "/ui/expansion.css",
+          "query": ""
+        },
+        {
+          "at": 1794209668804,
+          "path": "/ui/main.js",
+          "query": ""
+        },
+        {
+          "at": 1794209668804,
+          "path": "/ui/material/cozy-beige-room-photo-1920.webp",
+          "query": ""
+        },
+        {
+          "at": 1794209668808,
+          "path": "/ui/fonts/manrope.ttf",
+          "query": ""
+        },
+        {
+          "at": 1794209668808,
+          "path": "/ui/document-tools.js",
+          "query": ""
+        },
+        {
+          "at": 1794209668808,
+          "path": "/ui/expansion.js",
+          "query": ""
+        },
+        {
+          "at": 1794209668808,
+          "path": "/ui/screens/notifications.js",
+          "query": ""
+        },
+        {
+          "at": 1794209668808,
+          "path": "/ui/screens/management.js",
+          "query": ""
+        },
+        {
+          "at": 1794209668808,
+          "path": "/ui/environment.js",
+          "query": ""
+        },
+        {
+          "at": 1794209668809,
+          "path": "/ui/live-source.js",
+          "query": ""
+        },
+        {
+          "at": 1794209668809,
+          "path": "/ui/live-lifecycle.js",
+          "query": ""
+        },
+        {
+          "at": 1794209668809,
+          "path": "/ui/state.js",
+          "query": ""
+        },
+        {
+          "at": 1794209668810,
+          "path": "/ui/format.js",
+          "query": ""
+        },
+        {
+          "at": 1794209668810,
+          "path": "/ui/data.js",
+          "query": ""
+        },
+        {
+          "at": 1794209668810,
+          "path": "/ui/components/shared.js",
+          "query": ""
+        },
+        {
+          "at": 1794209668811,
+          "path": "/ui/screens/home.js",
+          "query": ""
+        },
+        {
+          "at": 1794209668811,
+          "path": "/ui/screens/backlog.js",
+          "query": ""
+        },
+        {
+          "at": 1794209668811,
+          "path": "/ui/screens/detail.js",
+          "query": ""
+        },
+        {
+          "at": 1794209668811,
+          "path": "/ui/components/workflow.js",
+          "query": ""
+        },
+        {
+          "at": 1794209668811,
+          "path": "/select-ui.js",
+          "query": ""
+        },
+        {
+          "at": 1794209668812,
+          "path": "/ui/optics.js",
+          "query": ""
+        },
+        {
+          "at": 1794209668812,
+          "path": "/ui/material/proximity.js",
+          "query": ""
+        },
+        {
+          "at": 1794209668812,
+          "path": "/ui/screens/preview.js",
+          "query": ""
+        },
+        {
+          "at": 1794209668812,
+          "path": "/ui/components/lifecycle.js",
+          "query": ""
+        },
+        {
+          "at": 1794209668814,
+          "path": "/api/hub/projects",
+          "query": ""
+        },
+        {
+          "at": 1794209668815,
+          "path": "/ui/environment.css",
+          "query": ""
+        },
+        {
+          "at": 1794209668815,
+          "path": "/api/environment",
+          "query": ""
+        },
+        {
+          "at": 1794209668815,
+          "path": "/api/health",
+          "query": ""
+        },
+        {
+          "at": 1794209668815,
+          "path": "/api/overview",
+          "query": "?page_size=4&attention_page=1&working_page=1&projects_page=1&activity_page=1"
+        },
+        {
+          "at": 1794209668815,
+          "path": "/logo.svg",
+          "query": ""
+        },
+        {
+          "at": 1794209668821,
+          "path": "/api/overview/events",
+          "query": ""
+        },
+        {
+          "at": 1794209668822,
+          "path": "/logo.svg",
+          "query": ""
+        },
+        {
+          "at": 1794209669323,
+          "path": "/api/overview",
+          "query": "?page_size=4&attention_page=1&working_page=1&projects_page=1&activity_page=1"
+        },
+        {
+          "at": 1794209670748,
+          "path": "/",
+          "query": "?view=settings"
+        },
+        {
+          "at": 1794209670768,
+          "path": "/ui/smoke.css",
+          "query": ""
+        },
+        {
+          "at": 1794209670768,
+          "path": "/ui/boot.js",
+          "query": ""
+        },
+        {
+          "at": 1794209670768,
+          "path": "/ui/components/workflow.css",
+          "query": ""
+        },
+        {
+          "at": 1794209670768,
+          "path": "/ui/material/material.css",
+          "query": ""
+        },
+        {
+          "at": 1794209670768,
+          "path": "/ui/material/background-comparison.css",
+          "query": ""
+        },
+        {
+          "at": 1794209670768,
+          "path": "/ui/expansion.css",
+          "query": ""
+        },
+        {
+          "at": 1794209670769,
+          "path": "/ui/main.js",
+          "query": ""
+        },
+        {
+          "at": 1794209670769,
+          "path": "/ui/material/cozy-beige-room-photo-1920.webp",
+          "query": ""
+        },
+        {
+          "at": 1794209670773,
+          "path": "/ui/fonts/manrope.ttf",
+          "query": ""
+        },
+        {
+          "at": 1794209670773,
+          "path": "/ui/document-tools.js",
+          "query": ""
+        },
+        {
+          "at": 1794209670773,
+          "path": "/ui/expansion.js",
+          "query": ""
+        },
+        {
+          "at": 1794209670774,
+          "path": "/ui/screens/notifications.js",
+          "query": ""
+        },
+        {
+          "at": 1794209670774,
+          "path": "/ui/screens/management.js",
+          "query": ""
+        },
+        {
+          "at": 1794209670774,
+          "path": "/ui/environment.js",
+          "query": ""
+        },
+        {
+          "at": 1794209670774,
+          "path": "/ui/live-source.js",
+          "query": ""
+        },
+        {
+          "at": 1794209670775,
+          "path": "/ui/live-lifecycle.js",
+          "query": ""
+        },
+        {
+          "at": 1794209670775,
+          "path": "/ui/state.js",
+          "query": ""
+        },
+        {
+          "at": 1794209670775,
+          "path": "/ui/format.js",
+          "query": ""
+        },
+        {
+          "at": 1794209670775,
+          "path": "/ui/data.js",
+          "query": ""
+        },
+        {
+          "at": 1794209670775,
+          "path": "/ui/components/shared.js",
+          "query": ""
+        },
+        {
+          "at": 1794209670776,
+          "path": "/ui/screens/home.js",
+          "query": ""
+        },
+        {
+          "at": 1794209670776,
+          "path": "/ui/screens/backlog.js",
+          "query": ""
+        },
+        {
+          "at": 1794209670776,
+          "path": "/ui/screens/detail.js",
+          "query": ""
+        },
+        {
+          "at": 1794209670776,
+          "path": "/ui/components/workflow.js",
+          "query": ""
+        },
+        {
+          "at": 1794209670776,
+          "path": "/select-ui.js",
+          "query": ""
+        },
+        {
+          "at": 1794209670777,
+          "path": "/ui/optics.js",
+          "query": ""
+        },
+        {
+          "at": 1794209670777,
+          "path": "/ui/material/proximity.js",
+          "query": ""
+        },
+        {
+          "at": 1794209670777,
+          "path": "/ui/screens/preview.js",
+          "query": ""
+        },
+        {
+          "at": 1794209670778,
+          "path": "/ui/components/lifecycle.js",
+          "query": ""
+        },
+        {
+          "at": 1794209670780,
+          "path": "/api/hub/projects",
+          "query": ""
+        },
+        {
+          "at": 1794209670781,
+          "path": "/ui/environment.css",
+          "query": ""
+        },
+        {
+          "at": 1794209670781,
+          "path": "/api/environment",
+          "query": ""
+        },
+        {
+          "at": 1794209670781,
+          "path": "/api/health",
+          "query": ""
+        },
+        {
+          "at": 1794209670781,
+          "path": "/api/hub/projects",
+          "query": ""
+        },
+        {
+          "at": 1794209670781,
+          "path": "/logo.svg",
+          "query": ""
+        },
+        {
+          "at": 1794209670791,
+          "path": "/api/version",
+          "query": "?project=%2Ffixtures%2Fworkflow"
+        },
+        {
+          "at": 1794209670791,
+          "path": "/api/runtime/hooks",
+          "query": "?project=%2Ffixtures%2Fworkflow"
+        },
+        {
+          "at": 1794209670791,
+          "path": "/api/channel-options",
+          "query": ""
+        },
+        {
+          "at": 1794209670792,
+          "path": "/",
+          "query": ""
+        },
+        {
+          "at": 1794209670793,
+          "path": "/logo.svg",
+          "query": ""
+        },
+        {
+          "at": 1794209670801,
+          "path": "/ui/smoke.css",
+          "query": ""
+        },
+        {
+          "at": 1794209670801,
+          "path": "/ui/boot.js",
+          "query": ""
+        },
+        {
+          "at": 1794209670801,
+          "path": "/ui/components/workflow.css",
+          "query": ""
+        },
+        {
+          "at": 1794209670801,
+          "path": "/ui/material/material.css",
+          "query": ""
+        },
+        {
+          "at": 1794209670801,
+          "path": "/ui/material/background-comparison.css",
+          "query": ""
+        },
+        {
+          "at": 1794209670802,
+          "path": "/ui/expansion.css",
+          "query": ""
+        },
+        {
+          "at": 1794209670802,
+          "path": "/ui/main.js",
+          "query": ""
+        },
+        {
+          "at": 1794209670803,
+          "path": "/ui/material/cozy-beige-room-photo-1920.webp",
+          "query": ""
+        },
+        {
+          "at": 1794209670806,
+          "path": "/ui/fonts/manrope.ttf",
+          "query": ""
+        },
+        {
+          "at": 1794209670807,
+          "path": "/ui/document-tools.js",
+          "query": ""
+        },
+        {
+          "at": 1794209670807,
+          "path": "/ui/expansion.js",
+          "query": ""
+        },
+        {
+          "at": 1794209670807,
+          "path": "/ui/screens/notifications.js",
+          "query": ""
+        },
+        {
+          "at": 1794209670807,
+          "path": "/ui/screens/management.js",
+          "query": ""
+        },
+        {
+          "at": 1794209670807,
+          "path": "/ui/environment.js",
+          "query": ""
+        },
+        {
+          "at": 1794209670808,
+          "path": "/ui/live-source.js",
+          "query": ""
+        },
+        {
+          "at": 1794209670808,
+          "path": "/ui/live-lifecycle.js",
+          "query": ""
+        },
+        {
+          "at": 1794209670808,
+          "path": "/ui/state.js",
+          "query": ""
+        },
+        {
+          "at": 1794209670808,
+          "path": "/ui/format.js",
+          "query": ""
+        },
+        {
+          "at": 1794209670808,
+          "path": "/ui/data.js",
+          "query": ""
+        },
+        {
+          "at": 1794209670808,
+          "path": "/ui/components/shared.js",
+          "query": ""
+        },
+        {
+          "at": 1794209670809,
+          "path": "/ui/screens/home.js",
+          "query": ""
+        },
+        {
+          "at": 1794209670809,
+          "path": "/ui/screens/backlog.js",
+          "query": ""
+        },
+        {
+          "at": 1794209670809,
+          "path": "/ui/screens/detail.js",
+          "query": ""
+        },
+        {
+          "at": 1794209670810,
+          "path": "/ui/components/workflow.js",
+          "query": ""
+        },
+        {
+          "at": 1794209670810,
+          "path": "/select-ui.js",
+          "query": ""
+        },
+        {
+          "at": 1794209670810,
+          "path": "/ui/optics.js",
+          "query": ""
+        },
+        {
+          "at": 1794209670810,
+          "path": "/ui/material/proximity.js",
+          "query": ""
+        },
+        {
+          "at": 1794209670810,
+          "path": "/ui/screens/preview.js",
+          "query": ""
+        },
+        {
+          "at": 1794209670810,
+          "path": "/ui/components/lifecycle.js",
+          "query": ""
+        },
+        {
+          "at": 1794209670813,
+          "path": "/api/hub/projects",
+          "query": ""
+        },
+        {
+          "at": 1794209670813,
+          "path": "/ui/environment.css",
+          "query": ""
+        },
+        {
+          "at": 1794209670813,
+          "path": "/api/environment",
+          "query": ""
+        },
+        {
+          "at": 1794209670813,
+          "path": "/api/health",
+          "query": ""
+        },
+        {
+          "at": 1794209670813,
+          "path": "/api/overview",
+          "query": "?page_size=4&attention_page=1&working_page=1&projects_page=1&activity_page=1"
+        },
+        {
+          "at": 1794209670813,
+          "path": "/logo.svg",
+          "query": ""
+        },
+        {
+          "at": 1794209670820,
+          "path": "/api/overview/events",
+          "query": ""
+        },
+        {
+          "at": 1794209670820,
+          "path": "/logo.svg",
+          "query": ""
+        },
+        {
+          "at": 1794209670973,
+          "path": "/",
+          "query": "?view=settings"
+        },
+        {
+          "at": 1794209670983,
+          "path": "/ui/smoke.css",
+          "query": ""
+        },
+        {
+          "at": 1794209670983,
+          "path": "/ui/boot.js",
+          "query": ""
+        },
+        {
+          "at": 1794209670983,
+          "path": "/ui/components/workflow.css",
+          "query": ""
+        },
+        {
+          "at": 1794209670983,
+          "path": "/ui/material/material.css",
+          "query": ""
+        },
+        {
+          "at": 1794209670983,
+          "path": "/ui/material/background-comparison.css",
+          "query": ""
+        },
+        {
+          "at": 1794209670983,
+          "path": "/ui/expansion.css",
+          "query": ""
+        },
+        {
+          "at": 1794209670984,
+          "path": "/ui/main.js",
+          "query": ""
+        },
+        {
+          "at": 1794209670984,
+          "path": "/ui/material/cozy-beige-room-photo-1920.webp",
+          "query": ""
+        },
+        {
+          "at": 1794209670988,
+          "path": "/ui/fonts/manrope.ttf",
+          "query": ""
+        },
+        {
+          "at": 1794209670988,
+          "path": "/ui/document-tools.js",
+          "query": ""
+        },
+        {
+          "at": 1794209670988,
+          "path": "/ui/expansion.js",
+          "query": ""
+        },
+        {
+          "at": 1794209670988,
+          "path": "/ui/screens/notifications.js",
+          "query": ""
+        },
+        {
+          "at": 1794209670988,
+          "path": "/ui/screens/management.js",
+          "query": ""
+        },
+        {
+          "at": 1794209670988,
+          "path": "/ui/environment.js",
+          "query": ""
+        },
+        {
+          "at": 1794209670989,
+          "path": "/ui/live-source.js",
+          "query": ""
+        },
+        {
+          "at": 1794209670989,
+          "path": "/ui/live-lifecycle.js",
+          "query": ""
+        },
+        {
+          "at": 1794209670989,
+          "path": "/ui/state.js",
+          "query": ""
+        },
+        {
+          "at": 1794209670989,
+          "path": "/ui/format.js",
+          "query": ""
+        },
+        {
+          "at": 1794209670990,
+          "path": "/ui/data.js",
+          "query": ""
+        },
+        {
+          "at": 1794209670990,
+          "path": "/ui/components/shared.js",
+          "query": ""
+        },
+        {
+          "at": 1794209670991,
+          "path": "/ui/screens/home.js",
+          "query": ""
+        },
+        {
+          "at": 1794209670991,
+          "path": "/ui/screens/backlog.js",
+          "query": ""
+        },
+        {
+          "at": 1794209670991,
+          "path": "/ui/screens/detail.js",
+          "query": ""
+        },
+        {
+          "at": 1794209670991,
+          "path": "/ui/components/workflow.js",
+          "query": ""
+        },
+        {
+          "at": 1794209670991,
+          "path": "/select-ui.js",
+          "query": ""
+        },
+        {
+          "at": 1794209670991,
+          "path": "/ui/optics.js",
+          "query": ""
+        },
+        {
+          "at": 1794209670992,
+          "path": "/ui/material/proximity.js",
+          "query": ""
+        },
+        {
+          "at": 1794209670992,
+          "path": "/ui/screens/preview.js",
+          "query": ""
+        },
+        {
+          "at": 1794209670992,
+          "path": "/ui/components/lifecycle.js",
+          "query": ""
+        },
+        {
+          "at": 1794209670997,
+          "path": "/api/hub/projects",
+          "query": ""
+        },
+        {
+          "at": 1794209670997,
+          "path": "/ui/environment.css",
+          "query": ""
+        },
+        {
+          "at": 1794209670997,
+          "path": "/api/environment",
+          "query": ""
+        },
+        {
+          "at": 1794209670997,
+          "path": "/api/health",
+          "query": ""
+        },
+        {
+          "at": 1794209670997,
+          "path": "/api/hub/projects",
+          "query": ""
+        },
+        {
+          "at": 1794209670997,
+          "path": "/logo.svg",
+          "query": ""
+        },
+        {
+          "at": 1794209671003,
+          "path": "/api/version",
+          "query": "?project=%2Ffixtures%2Fworkflow"
+        },
+        {
+          "at": 1794209671003,
+          "path": "/api/runtime/hooks",
+          "query": "?project=%2Ffixtures%2Fworkflow"
+        },
+        {
+          "at": 1794209671003,
+          "path": "/api/channel-options",
+          "query": ""
+        },
+        {
+          "at": 1794209671003,
+          "path": "/logo.svg",
+          "query": ""
+        },
+        {
+          "at": 1794209672106,
+          "path": "/",
+          "query": ""
+        },
+        {
+          "at": 1794209672120,
+          "path": "/ui/smoke.css",
+          "query": ""
+        },
+        {
+          "at": 1794209672120,
+          "path": "/ui/boot.js",
+          "query": ""
+        },
+        {
+          "at": 1794209672120,
+          "path": "/ui/components/workflow.css",
+          "query": ""
+        },
+        {
+          "at": 1794209672120,
+          "path": "/ui/material/material.css",
+          "query": ""
+        },
+        {
+          "at": 1794209672120,
+          "path": "/ui/material/background-comparison.css",
+          "query": ""
+        },
+        {
+          "at": 1794209672120,
+          "path": "/ui/expansion.css",
+          "query": ""
+        },
+        {
+          "at": 1794209672121,
+          "path": "/ui/main.js",
+          "query": ""
+        },
+        {
+          "at": 1794209672121,
+          "path": "/ui/material/cozy-beige-room-photo-1920.webp",
+          "query": ""
+        },
+        {
+          "at": 1794209672125,
+          "path": "/ui/fonts/manrope.ttf",
+          "query": ""
+        },
+        {
+          "at": 1794209672125,
+          "path": "/ui/document-tools.js",
+          "query": ""
+        },
+        {
+          "at": 1794209672125,
+          "path": "/ui/expansion.js",
+          "query": ""
+        },
+        {
+          "at": 1794209672125,
+          "path": "/ui/screens/notifications.js",
+          "query": ""
+        },
+        {
+          "at": 1794209672125,
+          "path": "/ui/screens/management.js",
+          "query": ""
+        },
+        {
+          "at": 1794209672125,
+          "path": "/ui/environment.js",
+          "query": ""
+        },
+        {
+          "at": 1794209672126,
+          "path": "/ui/live-source.js",
+          "query": ""
+        },
+        {
+          "at": 1794209672126,
+          "path": "/ui/live-lifecycle.js",
+          "query": ""
+        },
+        {
+          "at": 1794209672126,
+          "path": "/ui/state.js",
+          "query": ""
+        },
+        {
+          "at": 1794209672127,
+          "path": "/ui/format.js",
+          "query": ""
+        },
+        {
+          "at": 1794209672127,
+          "path": "/ui/data.js",
+          "query": ""
+        },
+        {
+          "at": 1794209672127,
+          "path": "/ui/components/shared.js",
+          "query": ""
+        },
+        {
+          "at": 1794209672127,
+          "path": "/ui/screens/home.js",
+          "query": ""
+        },
+        {
+          "at": 1794209672127,
+          "path": "/ui/screens/backlog.js",
+          "query": ""
+        },
+        {
+          "at": 1794209672128,
+          "path": "/ui/screens/detail.js",
+          "query": ""
+        },
+        {
+          "at": 1794209672128,
+          "path": "/ui/components/workflow.js",
+          "query": ""
+        },
+        {
+          "at": 1794209672128,
+          "path": "/select-ui.js",
+          "query": ""
+        },
+        {
+          "at": 1794209672129,
+          "path": "/ui/optics.js",
+          "query": ""
+        },
+        {
+          "at": 1794209672129,
+          "path": "/ui/material/proximity.js",
+          "query": ""
+        },
+        {
+          "at": 1794209672129,
+          "path": "/ui/screens/preview.js",
+          "query": ""
+        },
+        {
+          "at": 1794209672129,
+          "path": "/ui/components/lifecycle.js",
+          "query": ""
+        },
+        {
+          "at": 1794209672133,
+          "path": "/api/hub/projects",
+          "query": ""
+        },
+        {
+          "at": 1794209672133,
+          "path": "/ui/environment.css",
+          "query": ""
+        },
+        {
+          "at": 1794209672133,
+          "path": "/api/environment",
+          "query": ""
+        },
+        {
+          "at": 1794209672133,
+          "path": "/api/health",
+          "query": ""
+        },
+        {
+          "at": 1794209672134,
+          "path": "/api/overview",
+          "query": "?page_size=4&attention_page=1&working_page=1&projects_page=1&activity_page=1"
+        },
+        {
+          "at": 1794209672134,
+          "path": "/logo.svg",
+          "query": ""
+        },
+        {
+          "at": 1794209672147,
+          "path": "/api/overview/events",
+          "query": ""
+        },
+        {
+          "at": 1794209672147,
+          "path": "/logo.svg",
+          "query": ""
+        }
+      ]
+    }
+  ],
+  "hiddenLimit": "document.hidden override + visibilitychange event is synthetic; physical OS background/visibility unverified",
+  "backendLimit": "Loopback synthetic SSE/API, actual production frontend consumer modules; real Go producer fanout and scan costs excluded"
+}

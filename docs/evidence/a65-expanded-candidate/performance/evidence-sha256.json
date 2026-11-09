@@ -1,0 +1,22 @@
+{
+  "algorithm": "sha256",
+  "files": {
+    "binary-provenance.json": "f118dc0606dfe079934d6887d54aa21577c681b870393f69f6b269c73c708578",
+    "cleanup.json": "929183de93c2c014751814339f9f860c6b8b1848954942c9e2beeb1f3576dc52",
+    "dataset.json": "be0fe0e2250441b7fd8dc331b9aa269bf9fecf39c823833987b8ae77d2760be4",
+    "final-verdict.json": "6cd4a5f5e133061e1ae7988b3b52d86eff734ab00034ae1bbcd79091154915b6",
+    "fixture.source.txt": "998979494d2f6eda87175fa2130bbf5551a7a02ff219442723caa8c15b324808",
+    "idle-cleanup.json": "793e347a0b5bf741ad322cea7c496a033dda7ff5505b64aaf4c27536c9a1598a",
+    "idle-verdict.json": "e8ee19586a8d65dc2d2d437e348ba7e7bb19023bf77ab4129dc97ca82d2cfb32",
+    "idle-verdict.source.txt": "3a007155986e87d14dc11e4b75925595e2c7c3114421c5bc01c2f42f5c77c2d3",
+    "idle.json": "d7714ea59f2bfdb4563498cfc5b3dc1babe3beebdc0bc01e82e14f6c4cd59611",
+    "idle.source.txt": "01569b98aab26731eb2ec2ada58104c14d88c80747162df4bb8d77fb0e0f37a4",
+    "manifest.json": "7c76faa1dbdedb8d15a3ed9f90d74efd8646a905d455c97d3e0744d33d43acdf",
+    "paired.source.txt": "d2df0da1082ce9c28275052883fc3592104b00a4c110cd80a13e74acde336b3e",
+    "protocol.json": "faa28a10931c899edaac31cbccf98e830a20a60be2a487c5f8157da235049d3e",
+    "raw.json": "1299a3add5b9e0c4967dd927004cede711ebfd6a4ceb284f8174f090ff8bcb63",
+    "report.md": "60cd5eb1b4fe0fd08ccea11b75b7111d34820897ceff2c5e9f24f43d1cd7a9e2",
+    "report.source.txt": "7197aa5dade9a3c72fd63f660a2b450708d2312a7eea1b81bff77cb3bb783f8e",
+    "summary.json": "43b3261e6db4946c0c1edf4d6369bfbc7c238cc08ff724eb5abc19e91af4d7e7"
+  }
+}
