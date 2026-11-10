@@ -251,17 +251,8 @@ func evaluateRootEscalationDecision(project,task,provider,rootSessionID string) 
   SchemaVersion:1,Decision:"EXIT_BLOCKED",ExitAllowed:false,
   Role:"controller",Event:"user_decision_required",TaskID:strings.ToUpper(task),
   CleanupStatus:"not_applicable",EvidenceQuality:"unverified",Reasons:[]string{},
-  NextAction:"Inspect the exact canonical user hold and saved Root execution mode.",
+  NextAction:"Inspect the exact canonical user hold before any Root transport.",
   Written:false,
- }
- if strings.TrimSpace(provider)==""||strings.TrimSpace(rootSessionID)=="" {
-  result.Reasons=append(result.Reasons,"exact_root_identity_required")
-  return result
- }
- g,ok,err:=orchestration.FindGroup(project,provider,rootSessionID)
- if err!=nil||!ok{
-  result.Reasons=append(result.Reasons,"root_group_missing_or_invalid")
-  return result
  }
  state,err:=backlog.Inspect(project,"",task)
  if err!=nil||state["exists"]!=true||state["duplicate_count"]!=1 {
@@ -269,24 +260,38 @@ func evaluateRootEscalationDecision(project,task,provider,rootSessionID string) 
   return result
  }
  fields,_:=state["fields"].(map[string]string)
- durable:=state["state"]=="hold" && strings.TrimSpace(fields["대기"])!="" &&
-  strings.TrimSpace(fields["대기"])!="-" && strings.TrimSpace(fields["재개조건"])!="" &&
-  strings.TrimSpace(fields["재개조건"])!="-"
- caps,err:=runtimeOrchestrationCapabilities(project,provider)
- if err!=nil {result.Reasons=append(result.Reasons,"capability_evidence_unavailable");return result}
- d,err:=orchestration.Decide(orchestration.Request{
-  Mode:g.Mode,Event:"user_decision_required",TaskID:task,Capabilities:caps,DurableRecorded:durable,
- })
- if err!=nil{result.Reasons=append(result.Reasons,"orchestration_policy_unavailable");return result}
- result.Reasons=append(result.Reasons,d.Reasons...)
- if d.Action=="record_user_hold_first" {
-  result.NextAction="Record canonical hold(user), reason and resume condition before any Root transport."
+ if !canonicalUserHold(state["state"],fields) {
+  result.Reasons=append(result.Reasons,"canonical_user_hold_incomplete")
+  result.NextAction="Record explicit hold(user), reason and resume condition before invoking Root communication."
   return result
  }
+ result.EvidenceQuality="canonical"
+ // Missing configuration is legitimate for older installations and mode A.
+ // Continue via the original next-Root-turn recovery without inventing
+ // a native transport or treating a missing Root session as task failure.
+ fallback:=func(reason string)flowNextDecision{
+  result.Decision="CONTINUE"
+  result.Reasons=append(result.Reasons,reason)
+  result.NextAction="Preserve the canonical hold(user), reason and resume condition; surface this request on the next Root user turn. Do not poll, send to an unverified session or report delivery."
+  return result
+ }
+ if strings.TrimSpace(provider)==""||strings.TrimSpace(rootSessionID)=="" {
+  return fallback("root_communication_not_configured")
+ }
+ g,ok,err:=orchestration.FindGroup(project,provider,rootSessionID)
+ if err!=nil {return fallback("root_group_lookup_failed")}
+ if !ok {return fallback("root_group_not_configured")}
+ caps,err:=runtimeOrchestrationCapabilities(project,provider)
+ if err!=nil {return fallback("capability_evidence_unavailable")}
+ d,err:=orchestration.Decide(orchestration.Request{
+  Mode:g.Mode,Event:"user_decision_required",TaskID:task,Capabilities:caps,DurableRecorded:true,
+ })
+ if err!=nil {return fallback("orchestration_policy_unavailable")}
+ result.Reasons=append(result.Reasons,d.Reasons...)
  result.EvidenceQuality="canonical_plus_runtime_capability"
  result.Decision="CONTINUE"
  if d.Action=="send_to_root" {
-  result.NextAction="Run task-mecca orchestration notify --project DIR --provider PROVIDER --root-session-id EXACT --task TASK --controller-attempt EXACT --root-attempt EXACT --json; then execute native transport and mark the handoff with real evidence."
+  result.NextAction="MANDATORY: Run task-mecca orchestration notify --project DIR --provider PROVIDER --root-session-id EXACT --task TASK --controller-attempt EXACT --root-attempt EXACT --json. If the result contains a directive, call the provider-native messaging tool addressed to its exact target. Mark actual transport result in the existing handoff journal, not from decision output alone. Do not silently finish this user hold."
  }else{
   result.NextAction="Retain the user hold in canonical backlog and surface it on the next Root user turn; do not poll or fabricate delivery."
  }
