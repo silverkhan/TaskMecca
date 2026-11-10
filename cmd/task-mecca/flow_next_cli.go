@@ -219,8 +219,21 @@ func runFlowNextCLI(args []string,out,stderr io.Writer) int {
     if *archive!=""{archiveAbs,err=filepath.Abs(*archive);if err!=nil{fmt.Fprintln(stderr,err);return 2}}
     var decision flowNextDecision
     if *role=="controller"&&(*event=="final_requested"||*event=="cleanup_review"){
-        decision=evaluateControllerCleanup(projectAbs,*task,*into,targetAbs,archiveAbs)
-        decision.Event=*event
+        // A finalization attempt is an additional safety net: if the
+        // Controller forgot to evaluate an existing user hold, redirect to
+        // the same decision policy instead of silently running cleanup.
+        snap,inspectErr:=backlog.Inspect(projectAbs,"",*task)
+        fields,_:=snap["fields"].(map[string]string)
+        if inspectErr==nil && snap["exists"]==true && snap["location"]=="active" &&
+          snap["state"]=="hold" && strings.EqualFold(strings.TrimSpace(fields["대기유형"]),"user"){
+            decision=evaluateRootEscalationDecision(projectAbs,*task,*provider,*rootSessionID)
+            decision.Event=*event
+            decision.Reasons=append(decision.Reasons,"user_hold_requires_root_decision_before_finalization")
+            decision.ExitAllowed=false
+        }else{
+            decision=evaluateControllerCleanup(projectAbs,*task,*into,targetAbs,archiveAbs)
+            decision.Event=*event
+        }
     }else if *role=="controller"&&*event=="user_decision_required" {
         decision=evaluateRootEscalationDecision(projectAbs,*task,*provider,*rootSessionID)
     }else{
