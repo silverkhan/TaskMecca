@@ -1,0 +1,5 @@
+page.waitForFunction: Timeout 30000ms exceeded.
+    at /Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/docs/evidence/a65-ux-restoration/late-reading.cjs:7:799 {
+  log: [],
+  name: 'TimeoutError'
+}

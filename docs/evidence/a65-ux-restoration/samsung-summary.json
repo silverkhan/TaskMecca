@@ -1,0 +1,757 @@
+{
+  "scope": "Desktop Chromium157 substitute. Two repeats. Not physical Samsung Internet, not 48-group gate. X durations are trace event duration, not GPU energy/memory or display presentation time. Missing metrics are null.",
+  "groups": [
+    {
+      "width": 360,
+      "theme": "light",
+      "variant": "gui",
+      "n": 2,
+      "TaskDurationMs": 40.1465,
+      "ScriptDurationMs": 3.72,
+      "frameP95Ms": 16.799999999999955,
+      "inferredMissed60Hz": [
+        0,
+        0
+      ],
+      "traceDroppedFrameEvents": [
+        2,
+        2
+      ],
+      "PaintEvents": 9.0,
+      "PaintXDurationMs": 6.3389999999999995,
+      "RasterTaskXDurationMs": 1.0405000000000002,
+      "DirectRendererDrawFrameXDurationMs": 6.3285,
+      "heapBeforeBytes": 3126054.0,
+      "heapAfterBytes": 3263604.0,
+      "layerCounts": [
+        7,
+        7
+      ],
+      "optics": [
+        {
+          "sampling": null,
+          "budget": null,
+          "coarse": true,
+          "native": 0,
+          "cached": 0,
+          "edgeArea": 0,
+          "visibleLayers": 0
+        },
+        {
+          "sampling": null,
+          "budget": null,
+          "coarse": true,
+          "native": 0,
+          "cached": 0,
+          "edgeArea": 0,
+          "visibleLayers": 0
+        }
+      ]
+    },
+    {
+      "width": 360,
+      "theme": "light",
+      "variant": "original",
+      "n": 2,
+      "TaskDurationMs": 45.784000000000006,
+      "ScriptDurationMs": 2.496,
+      "frameP95Ms": 16.799999999999955,
+      "inferredMissed60Hz": [
+        0,
+        0
+      ],
+      "traceDroppedFrameEvents": [
+        1,
+        2
+      ],
+      "PaintEvents": 55.0,
+      "PaintXDurationMs": 2.8644999999999987,
+      "RasterTaskXDurationMs": 1.5240000000000002,
+      "DirectRendererDrawFrameXDurationMs": 43.42049999999999,
+      "heapBeforeBytes": 2696240.0,
+      "heapAfterBytes": 2790474.0,
+      "layerCounts": [
+        15,
+        15
+      ],
+      "optics": [
+        {
+          "sampling": null,
+          "budget": null,
+          "coarse": true,
+          "native": 4,
+          "cached": 0,
+          "edgeArea": 0,
+          "visibleLayers": 4
+        },
+        {
+          "sampling": null,
+          "budget": null,
+          "coarse": true,
+          "native": 4,
+          "cached": 0,
+          "edgeArea": 0,
+          "visibleLayers": 4
+        }
+      ]
+    },
+    {
+      "width": 360,
+      "theme": "light",
+      "variant": "prior",
+      "n": 2,
+      "TaskDurationMs": 42.487,
+      "ScriptDurationMs": 2.5865,
+      "frameP95Ms": 16.75,
+      "inferredMissed60Hz": [
+        0,
+        0
+      ],
+      "traceDroppedFrameEvents": [
+        1,
+        1
+      ],
+      "PaintEvents": 53.0,
+      "PaintXDurationMs": 2.2494999999999994,
+      "RasterTaskXDurationMs": 0.8930000000000003,
+      "DirectRendererDrawFrameXDurationMs": 25.4465,
+      "heapBeforeBytes": 2709106.0,
+      "heapAfterBytes": 2805280.0,
+      "layerCounts": [
+        13,
+        13
+      ],
+      "optics": [
+        {
+          "sampling": null,
+          "budget": null,
+          "coarse": true,
+          "native": 2,
+          "cached": 0,
+          "edgeArea": 0,
+          "visibleLayers": 2
+        },
+        {
+          "sampling": null,
+          "budget": null,
+          "coarse": true,
+          "native": 2,
+          "cached": 0,
+          "edgeArea": 0,
+          "visibleLayers": 2
+        }
+      ]
+    },
+    {
+      "width": 360,
+      "theme": "light",
+      "variant": "candidate",
+      "n": 2,
+      "TaskDurationMs": 35.474000000000004,
+      "ScriptDurationMs": 2.0919999999999996,
+      "frameP95Ms": 16.700000000000045,
+      "inferredMissed60Hz": [
+        0,
+        0
+      ],
+      "traceDroppedFrameEvents": [
+        1,
+        0
+      ],
+      "PaintEvents": 24.0,
+      "PaintXDurationMs": 1.343,
+      "RasterTaskXDurationMs": 0.9300000000000004,
+      "DirectRendererDrawFrameXDurationMs": 33.815999999999995,
+      "heapBeforeBytes": 3282082.0,
+      "heapAfterBytes": 3412606.0,
+      "layerCounts": [
+        19,
+        19
+      ],
+      "optics": [
+        {
+          "sampling": "native-blur-edge",
+          "budget": "mobile",
+          "coarse": true,
+          "native": 2,
+          "cached": 0,
+          "edgeArea": 51936,
+          "visibleLayers": 1
+        },
+        {
+          "sampling": "native-blur-edge",
+          "budget": "mobile",
+          "coarse": true,
+          "native": 2,
+          "cached": 0,
+          "edgeArea": 51936,
+          "visibleLayers": 1
+        }
+      ]
+    },
+    {
+      "width": 360,
+      "theme": "dark",
+      "variant": "gui",
+      "n": 2,
+      "TaskDurationMs": 37.1085,
+      "ScriptDurationMs": 3.2350000000000003,
+      "frameP95Ms": 16.75,
+      "inferredMissed60Hz": [
+        0,
+        0
+      ],
+      "traceDroppedFrameEvents": [
+        2,
+        2
+      ],
+      "PaintEvents": 8.0,
+      "PaintXDurationMs": 5.9110000000000005,
+      "RasterTaskXDurationMs": 1.0545,
+      "DirectRendererDrawFrameXDurationMs": 5.720000000000001,
+      "heapBeforeBytes": 3154372.0,
+      "heapAfterBytes": 3292742.0,
+      "layerCounts": [
+        7,
+        7
+      ],
+      "optics": [
+        {
+          "sampling": null,
+          "budget": null,
+          "coarse": true,
+          "native": 0,
+          "cached": 0,
+          "edgeArea": 0,
+          "visibleLayers": 0
+        },
+        {
+          "sampling": null,
+          "budget": null,
+          "coarse": true,
+          "native": 0,
+          "cached": 0,
+          "edgeArea": 0,
+          "visibleLayers": 0
+        }
+      ]
+    },
+    {
+      "width": 360,
+      "theme": "dark",
+      "variant": "original",
+      "n": 2,
+      "TaskDurationMs": 39.018,
+      "ScriptDurationMs": 2.1865,
+      "frameP95Ms": 16.799999999999955,
+      "inferredMissed60Hz": [
+        0,
+        0
+      ],
+      "traceDroppedFrameEvents": [
+        1,
+        1
+      ],
+      "PaintEvents": 59.5,
+      "PaintXDurationMs": 3.078999999999999,
+      "RasterTaskXDurationMs": 1.3615,
+      "DirectRendererDrawFrameXDurationMs": 32.170500000000004,
+      "heapBeforeBytes": 2708414.0,
+      "heapAfterBytes": 2802502.0,
+      "layerCounts": [
+        15,
+        15
+      ],
+      "optics": [
+        {
+          "sampling": null,
+          "budget": null,
+          "coarse": true,
+          "native": 4,
+          "cached": 0,
+          "edgeArea": 0,
+          "visibleLayers": 4
+        },
+        {
+          "sampling": null,
+          "budget": null,
+          "coarse": true,
+          "native": 4,
+          "cached": 0,
+          "edgeArea": 0,
+          "visibleLayers": 4
+        }
+      ]
+    },
+    {
+      "width": 360,
+      "theme": "dark",
+      "variant": "prior",
+      "n": 2,
+      "TaskDurationMs": 32.4835,
+      "ScriptDurationMs": 2.0669999999999997,
+      "frameP95Ms": 16.75,
+      "inferredMissed60Hz": [
+        0,
+        0
+      ],
+      "traceDroppedFrameEvents": [
+        1,
+        1
+      ],
+      "PaintEvents": 53.0,
+      "PaintXDurationMs": 2.142999999999999,
+      "RasterTaskXDurationMs": 1.1625000000000005,
+      "DirectRendererDrawFrameXDurationMs": 16.167999999999996,
+      "heapBeforeBytes": 2706240.0,
+      "heapAfterBytes": 2802334.0,
+      "layerCounts": [
+        13,
+        13
+      ],
+      "optics": [
+        {
+          "sampling": null,
+          "budget": null,
+          "coarse": true,
+          "native": 2,
+          "cached": 0,
+          "edgeArea": 0,
+          "visibleLayers": 2
+        },
+        {
+          "sampling": null,
+          "budget": null,
+          "coarse": true,
+          "native": 2,
+          "cached": 0,
+          "edgeArea": 0,
+          "visibleLayers": 2
+        }
+      ]
+    },
+    {
+      "width": 360,
+      "theme": "dark",
+      "variant": "candidate",
+      "n": 2,
+      "TaskDurationMs": 34.179500000000004,
+      "ScriptDurationMs": 2.1029999999999998,
+      "frameP95Ms": 16.700000000000045,
+      "inferredMissed60Hz": [
+        0,
+        0
+      ],
+      "traceDroppedFrameEvents": [
+        0,
+        1
+      ],
+      "PaintEvents": 24.0,
+      "PaintXDurationMs": 1.3389999999999995,
+      "RasterTaskXDurationMs": 0.8825000000000003,
+      "DirectRendererDrawFrameXDurationMs": 31.551500000000004,
+      "heapBeforeBytes": 3284428.0,
+      "heapAfterBytes": 3415150.0,
+      "layerCounts": [
+        19,
+        19
+      ],
+      "optics": [
+        {
+          "sampling": "native-blur-edge",
+          "budget": "mobile",
+          "coarse": true,
+          "native": 2,
+          "cached": 0,
+          "edgeArea": 51936,
+          "visibleLayers": 1
+        },
+        {
+          "sampling": "native-blur-edge",
+          "budget": "mobile",
+          "coarse": true,
+          "native": 2,
+          "cached": 0,
+          "edgeArea": 51936,
+          "visibleLayers": 1
+        }
+      ]
+    },
+    {
+      "width": 800,
+      "theme": "light",
+      "variant": "gui",
+      "n": 2,
+      "TaskDurationMs": 40.449,
+      "ScriptDurationMs": 3.5395,
+      "frameP95Ms": 16.799999999999955,
+      "inferredMissed60Hz": [
+        0,
+        0
+      ],
+      "traceDroppedFrameEvents": [
+        2,
+        2
+      ],
+      "PaintEvents": 8.0,
+      "PaintXDurationMs": 4.797,
+      "RasterTaskXDurationMs": 6.900499999999999,
+      "DirectRendererDrawFrameXDurationMs": 7.187000000000001,
+      "heapBeforeBytes": 3131372.0,
+      "heapAfterBytes": 3269794.0,
+      "layerCounts": [
+        8,
+        8
+      ],
+      "optics": [
+        {
+          "sampling": null,
+          "budget": null,
+          "coarse": true,
+          "native": 0,
+          "cached": 0,
+          "edgeArea": 0,
+          "visibleLayers": 0
+        },
+        {
+          "sampling": null,
+          "budget": null,
+          "coarse": true,
+          "native": 0,
+          "cached": 0,
+          "edgeArea": 0,
+          "visibleLayers": 0
+        }
+      ]
+    },
+    {
+      "width": 800,
+      "theme": "light",
+      "variant": "original",
+      "n": 2,
+      "TaskDurationMs": 44.6665,
+      "ScriptDurationMs": 2.3085,
+      "frameP95Ms": 16.75,
+      "inferredMissed60Hz": [
+        0,
+        0
+      ],
+      "traceDroppedFrameEvents": [
+        1,
+        1
+      ],
+      "PaintEvents": 57.0,
+      "PaintXDurationMs": 3.129999999999999,
+      "RasterTaskXDurationMs": 0.9095000000000004,
+      "DirectRendererDrawFrameXDurationMs": 42.5295,
+      "heapBeforeBytes": 2746148.0,
+      "heapAfterBytes": 2840440.0,
+      "layerCounts": [
+        18,
+        18
+      ],
+      "optics": [
+        {
+          "sampling": null,
+          "budget": null,
+          "coarse": true,
+          "native": 4,
+          "cached": 0,
+          "edgeArea": 0,
+          "visibleLayers": 4
+        },
+        {
+          "sampling": null,
+          "budget": null,
+          "coarse": true,
+          "native": 4,
+          "cached": 0,
+          "edgeArea": 0,
+          "visibleLayers": 4
+        }
+      ]
+    },
+    {
+      "width": 800,
+      "theme": "light",
+      "variant": "prior",
+      "n": 2,
+      "TaskDurationMs": 42.84,
+      "ScriptDurationMs": 2.375,
+      "frameP95Ms": 16.75,
+      "inferredMissed60Hz": [
+        0,
+        0
+      ],
+      "traceDroppedFrameEvents": [
+        1,
+        1
+      ],
+      "PaintEvents": 53.0,
+      "PaintXDurationMs": 2.2609999999999983,
+      "RasterTaskXDurationMs": 0.5920000000000001,
+      "DirectRendererDrawFrameXDurationMs": 29.835000000000004,
+      "heapBeforeBytes": 2700712.0,
+      "heapAfterBytes": 2796720.0,
+      "layerCounts": [
+        16,
+        16
+      ],
+      "optics": [
+        {
+          "sampling": null,
+          "budget": null,
+          "coarse": true,
+          "native": 2,
+          "cached": 0,
+          "edgeArea": 0,
+          "visibleLayers": 2
+        },
+        {
+          "sampling": null,
+          "budget": null,
+          "coarse": true,
+          "native": 2,
+          "cached": 0,
+          "edgeArea": 0,
+          "visibleLayers": 2
+        }
+      ]
+    },
+    {
+      "width": 800,
+      "theme": "light",
+      "variant": "candidate",
+      "n": 2,
+      "TaskDurationMs": 46.4095,
+      "ScriptDurationMs": 1.9569999999999999,
+      "frameP95Ms": 16.799999999999955,
+      "inferredMissed60Hz": [
+        0,
+        0
+      ],
+      "traceDroppedFrameEvents": [
+        0,
+        0
+      ],
+      "PaintEvents": 118.0,
+      "PaintXDurationMs": 2.7109999999999976,
+      "RasterTaskXDurationMs": 0.5790000000000003,
+      "DirectRendererDrawFrameXDurationMs": 58.602500000000006,
+      "heapBeforeBytes": 3299464.0,
+      "heapAfterBytes": 3430082.0,
+      "layerCounts": [
+        32,
+        32
+      ],
+      "optics": [
+        {
+          "sampling": "native-blur-edge",
+          "budget": "mobile",
+          "coarse": true,
+          "native": 2,
+          "cached": 0,
+          "edgeArea": 86936,
+          "visibleLayers": 2
+        },
+        {
+          "sampling": "native-blur-edge",
+          "budget": "mobile",
+          "coarse": true,
+          "native": 2,
+          "cached": 0,
+          "edgeArea": 86936,
+          "visibleLayers": 2
+        }
+      ]
+    },
+    {
+      "width": 800,
+      "theme": "dark",
+      "variant": "gui",
+      "n": 2,
+      "TaskDurationMs": 38.471000000000004,
+      "ScriptDurationMs": 3.1685,
+      "frameP95Ms": 16.700000000000045,
+      "inferredMissed60Hz": [
+        0,
+        0
+      ],
+      "traceDroppedFrameEvents": [
+        2,
+        2
+      ],
+      "PaintEvents": 8.0,
+      "PaintXDurationMs": 5.14,
+      "RasterTaskXDurationMs": 4.2219999999999995,
+      "DirectRendererDrawFrameXDurationMs": 6.734500000000001,
+      "heapBeforeBytes": 3128512.0,
+      "heapAfterBytes": 3267340.0,
+      "layerCounts": [
+        8,
+        8
+      ],
+      "optics": [
+        {
+          "sampling": null,
+          "budget": null,
+          "coarse": true,
+          "native": 0,
+          "cached": 0,
+          "edgeArea": 0,
+          "visibleLayers": 0
+        },
+        {
+          "sampling": null,
+          "budget": null,
+          "coarse": true,
+          "native": 0,
+          "cached": 0,
+          "edgeArea": 0,
+          "visibleLayers": 0
+        }
+      ]
+    },
+    {
+      "width": 800,
+      "theme": "dark",
+      "variant": "original",
+      "n": 2,
+      "TaskDurationMs": 47.048500000000004,
+      "ScriptDurationMs": 2.4364999999999997,
+      "frameP95Ms": 16.75,
+      "inferredMissed60Hz": [
+        0,
+        0
+      ],
+      "traceDroppedFrameEvents": [
+        1,
+        2
+      ],
+      "PaintEvents": 55.0,
+      "PaintXDurationMs": 3.0669999999999984,
+      "RasterTaskXDurationMs": 0.9100000000000003,
+      "DirectRendererDrawFrameXDurationMs": 46.71900000000001,
+      "heapBeforeBytes": 2745494.0,
+      "heapAfterBytes": 2839722.0,
+      "layerCounts": [
+        18,
+        18
+      ],
+      "optics": [
+        {
+          "sampling": null,
+          "budget": null,
+          "coarse": true,
+          "native": 4,
+          "cached": 0,
+          "edgeArea": 0,
+          "visibleLayers": 4
+        },
+        {
+          "sampling": null,
+          "budget": null,
+          "coarse": true,
+          "native": 4,
+          "cached": 0,
+          "edgeArea": 0,
+          "visibleLayers": 4
+        }
+      ]
+    },
+    {
+      "width": 800,
+      "theme": "dark",
+      "variant": "prior",
+      "n": 2,
+      "TaskDurationMs": 38.581,
+      "ScriptDurationMs": 2.2275,
+      "frameP95Ms": 16.700000000000045,
+      "inferredMissed60Hz": [
+        0,
+        0
+      ],
+      "traceDroppedFrameEvents": [
+        1,
+        1
+      ],
+      "PaintEvents": 55.0,
+      "PaintXDurationMs": 2.320999999999999,
+      "RasterTaskXDurationMs": 0.6890000000000002,
+      "DirectRendererDrawFrameXDurationMs": 22.966499999999996,
+      "heapBeforeBytes": 2711082.0,
+      "heapAfterBytes": 2807048.0,
+      "layerCounts": [
+        16,
+        16
+      ],
+      "optics": [
+        {
+          "sampling": null,
+          "budget": null,
+          "coarse": true,
+          "native": 2,
+          "cached": 0,
+          "edgeArea": 0,
+          "visibleLayers": 2
+        },
+        {
+          "sampling": null,
+          "budget": null,
+          "coarse": true,
+          "native": 2,
+          "cached": 0,
+          "edgeArea": 0,
+          "visibleLayers": 2
+        }
+      ]
+    },
+    {
+      "width": 800,
+      "theme": "dark",
+      "variant": "candidate",
+      "n": 2,
+      "TaskDurationMs": 45.77449999999999,
+      "ScriptDurationMs": 2.0175,
+      "frameP95Ms": 16.75,
+      "inferredMissed60Hz": [
+        0,
+        0
+      ],
+      "traceDroppedFrameEvents": [
+        0,
+        0
+      ],
+      "PaintEvents": 118.0,
+      "PaintXDurationMs": 2.618999999999996,
+      "RasterTaskXDurationMs": 0.6395000000000003,
+      "DirectRendererDrawFrameXDurationMs": 58.333000000000006,
+      "heapBeforeBytes": 3305092.0,
+      "heapAfterBytes": 3435912.0,
+      "layerCounts": [
+        32,
+        32
+      ],
+      "optics": [
+        {
+          "sampling": "native-blur-edge",
+          "budget": "mobile",
+          "coarse": true,
+          "native": 2,
+          "cached": 0,
+          "edgeArea": 86936,
+          "visibleLayers": 2
+        },
+        {
+          "sampling": "native-blur-edge",
+          "budget": "mobile",
+          "coarse": true,
+          "native": 2,
+          "cached": 0,
+          "edgeArea": 86936,
+          "visibleLayers": 2
+        }
+      ]
+    }
+  ]
+}

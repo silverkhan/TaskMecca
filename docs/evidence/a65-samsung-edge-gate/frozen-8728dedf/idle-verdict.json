@@ -1,0 +1,47 @@
+{
+  "scope": "Browser consumer with synthetic loopback producer; hidden is explicit DOM emulation",
+  "checks": {
+    "projectCoverageCalibration": true,
+    "globalCoverageCalibration": true,
+    "projectChangedHintTriggersFetch": true,
+    "globalChangedHintTriggersFetch": true,
+    "globalIdleRequestsZero": true,
+    "globalIdleRenderZero": true,
+    "projectOneSSE": true,
+    "globalOneSSE": true,
+    "detailProjectOneSSE": true,
+    "projectUnchangedRequestsZero": true,
+    "projectUnchangedRenderZero": true,
+    "globalUnchangedRequestsZero": true,
+    "globalUnchangedRenderZero": true,
+    "projectIdleRequestsZero": true,
+    "projectIdleRenderZero": true,
+    "routeExitSSEZero": true,
+    "syntheticHiddenSSEZero": true,
+    "syntheticHiddenRequestsZero": true,
+    "syntheticVisibleOneSSE": true,
+    "reconnectOneSSE": true,
+    "pendingInitialPlus12": true,
+    "pendingStopsAtBound": true,
+    "pendingStopsOnComplete": true,
+    "pendingStopsOnError": true,
+    "pendingStopsOnRoute": false,
+    "pendingStopsOnSyntheticHidden": true,
+    "pageCleanupZero": true
+  },
+  "verdict": "FAIL",
+  "baselineObservations": {
+    "projectStreams": 1,
+    "unchanged": {
+      "requests": {},
+      "coverage": [],
+      "streams": 1
+    },
+    "idle": {
+      "windowMs": 2000,
+      "requests": {},
+      "coverage": []
+    },
+    "cleanupStreams": 0
+  }
+}

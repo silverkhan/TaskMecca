@@ -1,0 +1,118 @@
+--- a/ui/optics.js
++++ b/ui/optics.js
+@@ -20,6 +20,32 @@
+ const recordsByLayer = new WeakMap();
+ const nativeBackdrop = root.dataset.materialOptics === 'svg' &&
+   CSS.supports('backdrop-filter', 'blur(7px) url("#material-refraction")');
++// Samsung Internet / touch devices reuse the accepted local-photo lens rather
++// than re-sampling a large live backdrop at device-pixel resolution each frame.
++// This path refracts the photo, not arbitrary foreground DOM behind the face.
++const photoSampling = /SamsungBrowser\//.test(navigator.userAgent) || matchMedia('(any-pointer: coarse)').matches;
++root.dataset.materialSampling = photoSampling ? 'photo' : 'backdrop';
++let photoData;
++const photoSource = () => photoData ||= fetch(new URL('./material/cozy-beige-room-photo-1920.webp',import.meta.url),{cache:'force-cache'}).then(async response=>{
++  if(!response.ok)throw Error('Material photo unavailable');
++  const blob=new Blob([await response.arrayBuffer()],{type:'image/webp'});
++  return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=reject;reader.readAsDataURL(blob)});
++}).catch(error=>{photoData=null;throw error});
++function discardPhoto(record){record.photoGeneration=(record.photoGeneration||0)+1;if(record.photoURL)URL.revokeObjectURL(record.photoURL);record.photoURL=null}
++async function snapshotPhoto(surface,record,{width,height,x,y,faceWidth,faceHeight,radius,theme,edge}){
++  const generation=(record.photoGeneration||0)+1;record.photoGeneration=generation;record.layer.dataset.photoCache='pending';let url;
++  try{
++    const photo=await photoSource();if(disposed||!surface.isConnected||generation!==record.photoGeneration)return;
++    const tint=theme==='light'?'#fff':'#0c0d11',alpha=theme==='light'?.65:.725714;
++    const lens=edge?`<feImage href="data:image/svg+xml;base64,${btoa(map)}" width="${faceWidth}" height="${faceHeight}" preserveAspectRatio="none" result="lens"/><feDisplacementMap in="soft" in2="lens" scale="22" xChannelSelector="R" yChannelSelector="G"/>`:'';
++    const svg=`<svg xmlns="${ns}" width="${faceWidth}" height="${faceHeight}" viewBox="0 0 ${faceWidth} ${faceHeight}"><defs><clipPath id="face"><rect width="${faceWidth}" height="${faceHeight}" rx="${radius}"/></clipPath><filter id="lens" filterUnits="userSpaceOnUse" x="${-faceWidth*.1}" y="${-faceHeight*.1}" width="${faceWidth*1.2}" height="${faceHeight*1.2}" color-interpolation-filters="sRGB"><feGaussianBlur stdDeviation="7" result="soft"/>${lens}</filter></defs><g filter="url(#lens)"><g clip-path="url(#face)"><image href="${photo}" x="${x}" y="${y}" width="${width}" height="${height}" preserveAspectRatio="none"/><rect width="${faceWidth}" height="${faceHeight}" fill="${tint}" fill-opacity="${alpha}"/></g></g></svg>`;
++    url=URL.createObjectURL(new Blob([svg],{type:'image/svg+xml'}));const image=new Image();image.src=url;await image.decode();
++    if(disposed||!surface.isConnected||generation!==record.photoGeneration){URL.revokeObjectURL(url);return}
++    const previous=record.photoURL;record.photoURL=url;
++    record.layer.style.backgroundImage=`url("${url}")`;record.layer.style.backgroundSize='100% 100%';record.layer.style.backgroundPosition='0 0';record.layer.style.filter='none';record.layer.dataset.photoCache='ready';record.layer.dataset.photoRefraction=edge?'photo-edge':'blur';
++    if(previous)URL.revokeObjectURL(previous);
++  }catch{if(url)URL.revokeObjectURL(url);if(!disposed&&surface.isConnected&&generation===record.photoGeneration)record.layer.dataset.photoCache='fallback'}
++}
+ let filterSequence = 0;
+ // Percent lengths in the zero-sized defs viewport produce an empty feImage.
+ // Give each map its face's numeric dimensions, without reading scroll geometry.
+@@ -38,19 +64,34 @@
+ let disposed = false;
+ function sync() {
+   if (disposed) return;
++  if(root.dataset.materialBackground==='solid')return;
+   if (![...layers.values()].some(record => !record.native)) return;
+   const rect = backdrop.getBoundingClientRect();
+   const scale = Math.max(rect.width / 1920, rect.height / 1080);
+   const width = 1920 * scale, height = 1080 * scale;
+   const x = rect.left + (rect.width - width) / 2;
+   const y = rect.top + (rect.height - height) / 2;
+-  for (const { layer, native } of layers.values()) {
++  for (const [surface, record] of layers) {
++    const { layer, native }=record;
+     if (native) continue;
+     // Fixed attachment samples viewport coordinates directly. Scrolling moves
+     // the face over that photo without JS geometry reads/background rewrites.
+-    const size=`auto, ${width}px ${height}px`,position=`0 0, ${x}px ${y}px`;
++    const cached=photoSampling&&(surface.classList.contains('material-reading-plane')||surface.classList.contains('material-rail')&&getComputedStyle(surface).position==='fixed');
++    surface.classList.toggle('material-photo-cache',cached);
++    const rect=cached?layer.getBoundingClientRect():{left:0,top:0};
++    const theme=root.dataset.materialTheme||root.dataset.theme||'light';
++    const sampleKey=[cached,width,height,x,y,rect.left,rect.top,rect.width,rect.height,theme].join('|');
++    if(record.sampleKey===sampleKey)continue;
++    record.sampleKey=sampleKey;
++    if(record.photoURL||record.layer.dataset.photoCache==='pending'){discardPhoto(record);layer.style.backgroundImage='';layer.dataset.photoCache='';layer.style.filter=root.dataset.materialOptics==='svg'?`url("#${record.filter.id}")`:''}
++    const attachment=cached?'scroll, scroll':'',promotion=cached?'translateZ(0)':'';
++    if(layer.style.backgroundAttachment!==attachment)layer.style.backgroundAttachment=attachment;
++    if(layer.style.transform!==promotion)layer.style.transform=promotion;
++    if(layer.style.willChange!==(cached?'transform':''))layer.style.willChange=cached?'transform':'';
++    const size=`auto, ${width}px ${height}px`,position=`0 0, ${x-rect.left}px ${y-rect.top}px`;
+     if(layer.style.backgroundSize!==size)layer.style.backgroundSize=size;
+     if(layer.style.backgroundPosition!==position)layer.style.backgroundPosition=position;
++    if(cached&&rect.width>0&&rect.height>0)void snapshotPhoto(surface,record,{width,height,x:x-rect.left,y:y-rect.top,faceWidth:rect.width,faceHeight:rect.height,radius:parseFloat(getComputedStyle(surface).borderTopLeftRadius)||0,theme,edge:root.dataset.materialOptics==='svg'});
+   }
+ }
+ const observer = new ResizeObserver(sync);
+@@ -60,6 +101,7 @@
+   for (const [surface, record] of layers) {
+     if (surface.isConnected) continue;
+     sizes.unobserve(record.layer);
++    discardPhoto(record);
+     record.filter.remove();
+     layers.delete(surface);
+   }
+@@ -82,7 +124,7 @@
+     }
+     // A nested face keeps the accepted direct photo sample: it must not sample
+     // and blur the already tinted parent or the parent's foreground content.
+-    const native = nativeBackdrop && !surface.parentElement.closest('.material-surface');
++    const native = nativeBackdrop && !photoSampling && !surface.parentElement.closest('.material-surface');
+     // Stable faces need no class/filter writes or SVG subtree searches when
+     // unrelated content is inserted elsewhere on the screen.
+     if (record.configured && record.native === native) return;
+@@ -113,6 +155,8 @@
+   if (records.some(record => [...record.addedNodes,...record.removedNodes].some(opticalSurfaceChange))) refresh();
+ });
+ mutation.observe(host, { childList: true, subtree: true });
++const photoTheme = new MutationObserver(sync);
++photoTheme.observe(root,{attributes:true,attributeFilter:['data-theme','data-material-theme','data-material-background']});
+ 
+ addEventListener('resize', sync, { passive: true });
+ visualViewport?.addEventListener('resize', sync, { passive: true });
+@@ -120,6 +164,7 @@
+ refresh();
+ addEventListener('pagehide', () => {
+   disposed = true; observer.disconnect(); sizes.disconnect(); mutation.disconnect();
++  photoTheme.disconnect();for(const record of layers.values())discardPhoto(record);
+   removeEventListener('resize', sync);
+   visualViewport?.removeEventListener('resize', sync);
+   backdrop.removeEventListener('load', sync);
+--- a/ui/expansion.css
++++ b/ui/expansion.css
+@@ -163,3 +163,9 @@
+ :root:not([data-material-background='solid']) .material-native-surface{background:transparent}
+ .material-surface>.material-native-transmission{background-image:none!important;background-attachment:scroll;background-color:rgba(12,13,17,.542857);filter:none}
+ :root[data-theme=light] .material-surface>.material-native-transmission{background-color:rgba(255,255,255,.5)}
++.material-photo-cache{background:transparent}
++:root[data-material-sampling=photo] .material-review-backdrop{min-height:100lvh}
++:root[data-material-sampling=photo] .material-reading-plane{height:calc(100lvh - 14px)}
++/* On a narrow touch layout the header shares the same fixed photo plate;
++   rendering a second lens over it would add opacity and another filter pass. */
++@media(max-width:760px){:root[data-material-sampling=photo] .material-reading-plane{height:calc(100lvh - 10px)}:root[data-material-sampling=photo] .rail.material-rail{background:transparent;box-shadow:none}:root[data-material-sampling=photo] .rail.material-rail>.material-transmission,:root[data-material-sampling=photo] .rail.material-rail::before,:root[data-material-sampling=photo] .rail.material-rail::after{display:none}}

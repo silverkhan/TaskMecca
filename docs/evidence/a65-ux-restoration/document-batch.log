@@ -1,0 +1,12 @@
+locator.waitFor: Timeout 30000ms exceeded.
+Call log:
+[2m  - waiting for locator('.detail-toc-nav a').first() to be visible[22m
+[2m    62 × locator resolved to hidden <a class="active" href="#human-summary" aria-current="location" data-detail-target="human-summary">Task overview</a>[22m
+
+    at /Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/docs/evidence/a65-ux-restoration/document-browser.cjs:20:102 {
+  log: [
+    "  - waiting for locator('.detail-toc-nav a').first() to be visible",
+    '    62 × locator resolved to hidden <a class="active" href="#human-summary" aria-current="location" data-detail-target="human-summary">Task overview</a>'
+  ],
+  name: 'TimeoutError'
+}

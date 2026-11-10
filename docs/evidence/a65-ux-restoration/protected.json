@@ -1,0 +1,18 @@
+{
+  "base": "d5ac06733e7271f74bdde0e96ad10965004194bc",
+  "source": "8728dedf218d6904675b05cb7cf173e0e8a00fe1",
+  "changedPaths": [
+    "goassets/template/_task_mecca/framework/web/ui/components/shared.js",
+    "goassets/template/_task_mecca/framework/web/ui/detail-navigation.js",
+    "goassets/template/_task_mecca/framework/web/ui/document-tools.js",
+    "goassets/template/_task_mecca/framework/web/ui/expansion.css",
+    "goassets/template/_task_mecca/framework/web/ui/expansion.js",
+    "goassets/template/_task_mecca/framework/web/ui/main.js",
+    "goassets/template/_task_mecca/framework/web/ui/optics.js",
+    "goassets/template/_task_mecca/framework/web/ui/screens/detail.js"
+  ],
+  "unchangedTrackedGoassetsCount": 66,
+  "otherTrackedGoassetsByteIdenticalByGitTree": true,
+  "APIInternalAndWorkflowHelperChanged": false,
+  "photoSHA256": "48c7a6a5c4dbc1e6afe9b07ab0d026850e8516fbde21e621fa4bbabc9c072600"
+}

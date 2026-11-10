@@ -1,0 +1,9 @@
+AssertionError [ERR_ASSERTION]: late activity displaced user scroll by 816px
+    at /Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/docs/evidence/a65-ux-restoration/late-reading.cjs:7:1806 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: false,
+  expected: true,
+  operator: '==',
+  diff: 'simple'
+}

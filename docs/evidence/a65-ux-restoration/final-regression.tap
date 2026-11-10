@@ -1,0 +1,13 @@
+✔ native Smoke core: overview, navigation, filters, document-first detail and finite reads (16883.524209ms)
+✔ accepted expansion keeps project scope, truthful writes, notifications and PR identity in native modules (2079.395292ms)
+✔ synthetic native PR banner and consent/return/error flows use only owned ephemeral fixture (4202.708208ms)
+✔ workflow real browser preserves full periods, grouped intervals, role meaning and partial-update state (7121.135417ms)
+✔ native workflow wait polls false predicates through refresh completion (973.015166ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 31519.930666

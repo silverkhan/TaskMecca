@@ -1,0 +1,46 @@
+[
+  {
+    "variant": "gui",
+    "width": 1440,
+    "theme": "light",
+    "errors": [],
+    "overflow": false,
+    "documentHeight": 4954,
+    "continuous": false,
+    "anchorReload": false,
+    "floatingIndex": false
+  },
+  {
+    "variant": "gui",
+    "width": 1440,
+    "theme": "dark",
+    "errors": [],
+    "overflow": false,
+    "documentHeight": 4954,
+    "continuous": false,
+    "anchorReload": false,
+    "floatingIndex": false
+  },
+  {
+    "variant": "gui",
+    "width": 390,
+    "theme": "light",
+    "errors": [],
+    "overflow": false,
+    "documentHeight": 8783,
+    "continuous": false,
+    "anchorReload": false,
+    "floatingIndex": false
+  },
+  {
+    "variant": "gui",
+    "width": 390,
+    "theme": "dark",
+    "errors": [],
+    "overflow": false,
+    "documentHeight": 8783,
+    "continuous": false,
+    "anchorReload": false,
+    "floatingIndex": false
+  }
+]

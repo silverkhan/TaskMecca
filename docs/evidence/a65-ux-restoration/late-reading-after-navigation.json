@@ -1,0 +1,11 @@
+{
+  "phase": "after-navigation",
+  "initial": 4868,
+  "before": 4368,
+  "after": 4368,
+  "delta": 0,
+  "activityCompleted": true,
+  "pass": true,
+  "browserClosed": true,
+  "serverListening": false
+}

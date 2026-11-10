@@ -1,0 +1,35 @@
+{
+  "scope": "Workload semantics only, same immutable payload. Does not override FAIL or change fixture/gate.",
+  "records": [
+    {
+      "variant": "gui",
+      "fixtureDocument": {
+        "schema": "defined-v2",
+        "contract_kind": null,
+        "requirements": {
+          "goal": "기록과 전체 시간축을 확인한다.",
+          "acceptance": "- [ ] 근거와 시간을 구별한다."
+        }
+      },
+      "renderedRequirements": 0,
+      "renderedLegacy": 1,
+      "goalVisible": false
+    },
+    {
+      "variant": "candidate",
+      "fixtureDocument": {
+        "schema": "defined-v2",
+        "contract_kind": null,
+        "requirements": {
+          "goal": "기록과 전체 시간축을 확인한다.",
+          "acceptance": "- [ ] 근거와 시간을 구별한다."
+        }
+      },
+      "renderedRequirements": 1,
+      "renderedLegacy": 0,
+      "goalVisible": true
+    }
+  ],
+  "browserClosed": true,
+  "serversClosed": true
+}
