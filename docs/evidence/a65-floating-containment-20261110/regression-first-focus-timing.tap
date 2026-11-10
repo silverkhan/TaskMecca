@@ -1,0 +1,37 @@
+✔ approved pilot preserves exact origin/dev application, controls, styles and entry DOM (4.910667ms)
+✖ actual dev entry retains search, native menus, continuous anchors, theme and mobile controls in the pilot (1187.812792ms)
+✔ floating neutral material preserves dev palettes, semantics, geometry and System across desktop/mobile (7387.550292ms)
+✔ PR and standalone Preview offer one-click pilot/dev comparison while ordinary dev remains unchanged (8053.582875ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 3
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 8105.108125
+
+✖ failing tests:
+
+test at tests/a65_dev_floating_pilot.test.cjs:19:1
+✖ actual dev entry retains search, native menus, continuous anchors, theme and mobile controls in the pilot (1187.812792ms)
+  AssertionError [ERR_ASSERTION]: short desktop owns menu scrolling without removing Help
+  + actual - expected
+  
+    {
+  +   inside: false,
+  -   inside: true,
+      overflow: 'auto',
+      scrollable: true
+    }
+  
+      at TestContext.<anonymous> (/Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/tests/a65_dev_floating_pilot.test.cjs:32:11)
+      at async Test.run (node:internal/test_runner/test:1404:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:969:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: { overflow: 'auto', scrollable: true, inside: false },
+    expected: { overflow: 'auto', scrollable: true, inside: true },
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
