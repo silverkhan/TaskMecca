@@ -53,6 +53,13 @@ func runRecoveryEventCLI(args []string, stdout, stderr io.Writer) int {
 	for _, item := range report["candidates"].([]map[string]any) {
 		fmt.Fprintf(stdout, "- %v: %v (%v; %v)\n", item["id"], item["title"], item["health"], item["code"])
 	}
+	if count,ok:=report["pending_user_hold_count"].(int);ok && count>0 {
+		fmt.Fprintf(stdout,"Pending user holds requiring decision review: %d\n",count)
+		for _,item:=range report["pending_user_holds"].([]map[string]any){
+			fmt.Fprintf(stdout,"- %v: %v (%v)\n",item["id"],item["title"],item["next_action"])
+		}
+		fmt.Fprintln(stdout,"For every complete user hold: run task-mecca flow next --role controller --event user_decision_required --project DIR --task ID --provider PROVIDER --root-session-id EXACT --json; use existing durable fallback if Root communication is not configured.")
+	}
 	fmt.Fprintln(stdout, report["notice"])
 	return 0
 }

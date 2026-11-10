@@ -76,6 +76,7 @@ func run(args []string) int {
     }
     if len(args)>0 && args[0]=="activity" { return runActivityCLI(args[1:],os.Stdout,os.Stderr) }
     if len(args)>0 && args[0]=="context" { return runContextCLI(args[1:],os.Stdout,os.Stderr) }
+    if len(args)>0 && args[0]=="orchestration" { return runOrchestrationCLI(args[1:],os.Stdout,os.Stderr) }
     if len(args)>0 && args[0]=="recovery" { return runRecoveryEventCLI(args[1:],os.Stdout,os.Stderr) }
     if len(args)>0 && args[0]=="flow" { return runAgentJSON(args[1:],func(out,err io.Writer)int{return runFlowNextCLI(args[1:],out,err)},os.Stdout,os.Stderr) }
     if len(args)>0 && args[0]=="uninstall" { return runUninstallCLI(args[1:],os.Stdin,os.Stdout,os.Stderr) }

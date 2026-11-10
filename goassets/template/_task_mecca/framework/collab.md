@@ -89,6 +89,14 @@ Controller는 연결된 시스템이 제공하는 현재 workflow/status를 확�
 선택한다. 적합한 상태가 없으면 기존 상태를 유지하고 코멘트로 의미를 전달할 수 있다. Controller에서 연결된 도구를 사용할 수 없거나
 쓰기 권한이 없으면 canonical backlog 상태는 그대로 진행하고, `확인·후속`에 남은 외부 반영을 기록한다.
 
+## 실행 방식과 Root 역방향 통신
+
+Root가 확인·선택한 **A/B/C/D** 실행 모드는 독립적인 Root 세션 ID에 영속 연결된다. A = 기존 서브에이전트, B = 서브에이전트 + Root 통신, C = 독립 세션 + Root 통신, D = 독립 세션 (Root 통신 없음). 같은 Root 재개 시 `task-mecca orchestration status`로 선택을 복원하고, 지원 능력이 바뀌면 사용자와 재확인한다. 역할·인계 계약·단일 canonical writer는 실행 방식에 관계없이 동일하다.
+
+Registrar/Worker는 본래대로 Controller에 직접 인계하고, Worker가 사용자 판단이 필요한 문제를 발견하면 먼저 Controller에 보고한다. Controller만 canonical hold(user)·원인·재개조건을 기록한 뒤 `orchestration notify`로 정확한 Root 대상과 기존 handoff 기록을 준비한다. B/C에서 Root 통신 능력이 실제 확인되고 target이 정확하게 bound되었을 때만 native message/resume을 시도한다. A/D 또는 기능 미확인 시 다음 Root 대화에서 영속 대기 건을 회수한다. API 전송 성공은 사용자 승인·읽음·wake 성공이 아니다.
+
+독립 세션명은 같은 그룹의 `DMMDD_NN_` 접두어를 사용하되 display 명칭을 native transport identity로 사용하지 않는다. `orchestration` CLI는 메시지 송신·세션 생성 없이 결정 및 Handoff 준비만 담당한다.
+
 ## 1. 역할과 canonical flow
 
 ```text

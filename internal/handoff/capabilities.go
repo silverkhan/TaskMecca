@@ -25,6 +25,11 @@ type RuntimeCapabilities struct {
 	CanResumeRoot            CapabilityState   `json:"can_resume_root"`
 	CanDiscoverAgents        CapabilityState   `json:"can_discover_agents"`
 	CanCrossSessionMessage   CapabilityState   `json:"can_cross_session_message"`
+	CanSpawnSubagent       CapabilityState   `json:"can_spawn_subagent"`
+	CanCreateSession       CapabilityState   `json:"can_create_session"`
+	CanMessageRoot         CapabilityState   `json:"can_message_root"`
+	CanWakeRoot            CapabilityState   `json:"can_wake_root"`
+	CanResumeSession       CapabilityState   `json:"can_resume_session"`
 	SupportsCompletionHook   CapabilityState   `json:"supports_completion_hook"`
 	IdentityPersistenceScope string            `json:"identity_persistence_scope"`
 	Source                   string            `json:"source"`
@@ -46,6 +51,11 @@ func defaultCapabilities(provider string) RuntimeCapabilities {
 		CanResumeRoot:            CapabilityUnknown,
 		CanDiscoverAgents:        CapabilityUnknown,
 		CanCrossSessionMessage:   CapabilityUnknown,
+		CanSpawnSubagent:       CapabilityUnknown,
+		CanCreateSession:       CapabilityUnknown,
+		CanMessageRoot:         CapabilityUnknown,
+		CanWakeRoot:            CapabilityUnknown,
+		CanResumeSession:       CapabilityUnknown,
 		SupportsCompletionHook:   CapabilityUnknown,
 		IdentityPersistenceScope: "unknown",
 		Source:                   "builtin_baseline",
@@ -87,9 +97,12 @@ func LoadCapabilities(project, provider string) (RuntimeCapabilities, error) {
 	if strings.ToLower(strings.TrimSpace(stored.Provider)) != baseline.Provider {
 		return RuntimeCapabilities{}, fmt.Errorf("capability evidence provider mismatch: %q", stored.Provider)
 	}
-	if stored.Evidence == nil {
-		stored.Evidence = map[string]string{}
+	// Older runtime capability snapshots predate the execution-mode fields.
+	// Missing means unknown, never implied support.
+	for _, field := range []*CapabilityState{&stored.CanSpawnSubagent, &stored.CanCreateSession, &stored.CanMessageRoot, &stored.CanWakeRoot, &stored.CanResumeSession} {
+		if *field == "" { *field = CapabilityUnknown }
 	}
+	if stored.Evidence == nil { stored.Evidence = map[string]string{} }
 	return stored, nil
 }
 
@@ -107,8 +120,11 @@ func RecordCapability(project, provider, name string, state CapabilityState, evi
 		return RuntimeCapabilities{}, err
 	}
 	field, ok := capabilityField(&caps, name)
-	if !ok {
-		return RuntimeCapabilities{}, fmt.Errorf("unknown capability: %s", name)
+	if !ok { return RuntimeCapabilities{}, fmt.Errorf("unknown capability: %s", name) }
+	// Root delivery and native session creation are explicitly verified
+	// runtime features, never guessed from a provider name.
+	if state == CapabilitySupported && (name == "can_spawn_subagent" || name == "can_create_session" || name == "can_message_root" || name == "can_wake_root" || name == "can_resume_session") && strings.TrimSpace(evidence) == "" {
+		return RuntimeCapabilities{}, errors.New("supported orchestration capability requires --evidence")
 	}
 	*field = state
 	caps.Source = "runtime_evidence"
@@ -159,6 +175,16 @@ func capabilityField(caps *RuntimeCapabilities, name string) (*CapabilityState, 
 		return &caps.CanDiscoverAgents, true
 	case "can_cross_session_message":
 		return &caps.CanCrossSessionMessage, true
+	case "can_spawn_subagent":
+		return &caps.CanSpawnSubagent, true
+	case "can_create_session":
+		return &caps.CanCreateSession, true
+	case "can_message_root":
+		return &caps.CanMessageRoot, true
+	case "can_wake_root":
+		return &caps.CanWakeRoot, true
+	case "can_resume_session":
+		return &caps.CanResumeSession, true
 	case "supports_completion_hook":
 		return &caps.SupportsCompletionHook, true
 	default:

@@ -4,6 +4,18 @@
 
 이 문서는 SESSION_GUIDE 한국어·영어, collab 및 역할 문서의 공통 실행 절차다. Controller는 지정 원본 workspace의 canonical backlog/runtime의 단일 운영 writer다. Worker는 원본 계약을 읽고 구현·검증·실제 착수와 transport evidence를 Controller에 보고한다. Worker는 원본 또는 구현 worktree 사본 backlog/lifecycle/handoff/runtime 운영원장을 수동 생성·수정하거나 monitor에 등록하지 않는다. 승인된 CLI preflight의 ephemeral probe/cache 관측 쓰기와 runtime hook의 자동 관측은 허용된 예외이며 Worker의 운영원장 쓰기 권한이 아니다. Git 구현/지정 dev 통합과 원본 상태 기록은 별개다. Controller는 dev merge를 기다리지 않고 실제 배정·실행·대기·결과를 원본에 기록한다.
 
+## 사용자 판단 시 Root 연락 · 필수 Decision 호출
+
+기존 역할·서브에이전트·인계 경로는 변경하지 않는다. **Controller가 실제 사용자 판단이 필요한 `hold(user)`를 기록한 직후, 이미 존재하던 `hold(user)`를 재개/복구하면서 발견한 때, 해당 사건을 처리하고 종료·대기하려는 직전**에는 반드시 `task-mecca flow next --role controller --event user_decision_required --project PROJECT --task ID --provider PROVIDER --root-session-id EXACT_ROOT_SESSION --json`을 호출한다. 해당 시점은 Worker의 blocked 보고, 계약·승인 충돌, 외부 원천 충돌, 미아 작업 복구 등 **발생 원인과 무관하다.** Worker/Registrar는 기존 방식으로 Controller에게 인계하며 Root에 직접 우회 전송하지 않는다.
+
+1. Controller 단일 writer가 정확한 backlog를 `hold`로 전환하고 `- 대기유형: user`, 구체적인 `- 대기:`, `- 재개조건:`을 기록한다. 일반 internal/external/dependency hold는 Root 요청으로 오분류하지 않는다.
+2. 위 `flow next` 정책 함수를 **호출하고 반환된 `NextAction`을 실제로 따른다.** B/C이며 capability와 대상 신원을 확인할 수 있으면 `task-mecca orchestration notify --project PROJECT --provider PROVIDER --root-session-id EXACT_ROOT_SESSION --task ID --controller-attempt SOURCE --root-attempt TARGET --json`을 호출한다.
+3. `notify`가 `directive`를 반환했을 때에만 Controller가 현재 Agent 환경의 native message/resume 도구로 **정확한 Root session/attempt에 `directive.message`를 전송**한다. 단순한 CLI 성공/문구를 실제 전달로 기록하지 않는다. `resume_completed_after_preflight`는 fresh Full Access preflight와 실제 wake 지원이 필요하다.
+4. 실제 native 전송 결과를 확인한 뒤 기존 Handoff의 `dispatch` 단계를 `ok/failed/unknown`으로 기록한다. 이미 `dispatch=ok`, 수신 Claim/Applied, 혹은 unresolved failed/unknown이면 중복 전송을 지시하지 않으며 기존 handoff/recovery로 확인한다.
+5. A/D, Root 신원 미확인, 설정 미구성, 메시지 기능 상실, 또는 `notify`에 지시가 없는 경우에는 **기존 방식 그대로 canonical `hold(user)`와 재개 조건을 유지**하고 다음 Root 사용자 대화에서 회수한다. Root ACK/응답·임의 polling을 Controller 완료조건으로 추가하지 않는다.
+
+동일 이벤트 재호출 시 과거 대화 기억보다 canonical backlog와 기존 Handoff journal의 확인된 사실을 우선한다. 안내문이나 지침만으로 네이티브 메시지가 도달했다고 선언하지 않는다.
+
 ## Activity Recorder · 작업시간 경량 기록
 
 Activity는 Lifecycle/승인 원장과 별개의 **측정 전용 이벤트**다. 가장 적은 호출로 실제 활동을 구분할 수 있도록, 역할별 Decision 결과를 실행한 다음 실제 사건을 `task-mecca activity report TASK --project PROJECT --role ROLE --agent EXACT_ID --attempt EXACT_ATTEMPT --event PHASE_EVENT --event-id STABLE_ID --evidence SHORT_REASON ... --json`으로 **한 번만** 보고한다. Recorder가 역할·회차를 참고해 start/switch/stop 및 표준 활동 유형을 선택한다. Decision이 다음 행동을 권고했다는 이유만으로 Activity를 시작하지 않는다.

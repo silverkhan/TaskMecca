@@ -69,3 +69,37 @@ func TestRecoveryEventSnapshotRejectsUnknownOrUnscopedEvents(t *testing.T) {
 		}
 	}
 }
+
+func TestRecoveryEventSurfaceUserHoldsWithoutNativeDispatch(t *testing.T) {
+ project:=t.TempDir()
+ dir:=filepath.Join(project,"_task_mecca","data","backlog")
+ if err:=os.MkdirAll(dir,0755);err!=nil {t.Fatal(err)}
+ fixtures:=map[string]string{
+  "000620.B-620.user-choice.hold.md":"# User choice\n- 대기유형: user\n- 대기: Choose policy\n- 재개조건: User confirms\n",
+  "000621.B-621.provider-wait.hold.md":"# Provider wait\n- 대기유형: external\n- 대기: Provider reply\n- 재개조건: Provider replies\n",
+  "000622.B-622.pending-detail.hold.md":"# User reason incomplete\n- 대기유형: user\n- 대기: -\n- 재개조건: Need user input\n",
+ }
+ for name,body:=range fixtures {
+  if err:=os.WriteFile(filepath.Join(dir,name),[]byte(body),0644);err!=nil{t.Fatal(err)}
+ }
+ got,err:=RecoveryEventSnapshot(project,"","controller_resume","")
+ if err!=nil{t.Fatal(err)}
+ if got["pending_user_hold_count"]!=2 || got["status"]!="user_holds_found" {
+  t.Fatalf("user holds not discovered: %+v",got)
+ }
+ items,ok:=got["pending_user_holds"].([]map[string]any)
+ if !ok||len(items)!=2 {t.Fatalf("unexpected hold projection: %+v",got["pending_user_holds"])}
+ if items[0]["id"]!="B-620"||items[0]["next_action"]!="flow_next:user_decision_required"||items[0]["evidence_complete"]!=true {
+  t.Fatalf("complete user hold missing mandatory decision: %+v",items[0])
+ }
+ if items[1]["id"]!="B-622"||items[1]["next_action"]!="complete_canonical_user_hold_first"||items[1]["evidence_complete"]!=false {
+  t.Fatalf("incomplete user hold not flagged for repair: %+v",items[1])
+ }
+ repeated,err:=RecoveryEventSnapshot(project,"","controller_resume","")
+ if err!=nil{t.Fatal(err)}
+ if got["event_fingerprint"]!=repeated["event_fingerprint"] {t.Fatal("same user holds produced unstable event identity")}
+ for name,body:=range fixtures {
+  data,err:=os.ReadFile(filepath.Join(dir,name))
+  if err!=nil||string(data)!=body {t.Fatalf("read-only recovery modified %s: %v",name,err)}
+ }
+}

@@ -57,6 +57,20 @@ Keyboard navigation: `↑/↓`, `Enter/→`, `←/Esc`, `/`, and `PgUp/PgDn`.
 
 The top bar includes a **Language** dropdown. `한국어` and `English` are currently supported. The selected language is persisted in `localStorage`. UI text, generated states/messages, controls, and the User Manual follow the selection. Backlog Markdown authored by users is never machine-translated. Additional languages can be added through the language registry and matching localized manual files.
 
+## Select execution mode (A/B/C/D)
+
+On Root activation, discover **observed** native provider capabilities and present these stable labels:
+- **A. Basic subagents** — existing handoff and next-Root-turn durable recovery
+- **B. Subagents + Root communication** — existing execution, targeted Root user-decision messages
+- **C. Independent sessions + Root communication** — common group prefix and native session messaging
+- **D. Independent sessions (no Root communication)** — native session messaging, durable next-Root-turn fallback
+
+Do not infer support from a provider name. Use `task-mecca handoff capability show|record` with native smoke evidence, `task-mecca orchestration modes --provider PROVIDER --json`, and `orchestration status` to restore a confirmed selection. Only after the user chooses a supported mode use `orchestration configure --provider PROVIDER --root-session-id EXACT --mode A|B|C|D --confirmed --json`. The selected mode is durable in the canonical project and may only be changed after a new explicit user choice and decision evidence.
+
+For independent sessions, use `orchestration name --group D1109_01 --role controller` to derive display labels such as `D1109_01_Controller`; never substitute a display name for provider-native session identity. Root naming might not be changeable in some providers.
+
+Controller records an actual canonical user hold with reason and resume condition *before* `orchestration notify`. This command verifies exact bound Root/Controller attempts and prepares the existing handoff journal; it **does not** send native messages. The live provider must execute the actual message/resume and record an evidence-backed handoff result. Message send is never user approval. Missing capabilities fall back to the next Root turn. A/B/C/D policy and CLI boundaries: [execution mode design](https://github.com/silverkhan/TaskMecca/blob/dev/docs/orchestration-execution-modes.md).
+
 ## 2. Activate the Root session
 
 Task Mecca installation and Root activation are deliberately separate.

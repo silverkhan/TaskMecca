@@ -2,6 +2,18 @@
 
 This is the shared procedure for both SESSION_GUIDEs, collab, and roles. The Controller is the sole operational writer of the designated original canonical backlog/runtime. Workers read the original contract, implement in their assigned worktree, and report actual start/wait/resume/completion and transport evidence. Workers must not manually create, edit, or monitor-register original or copied backlog/lifecycle/handoff/runtime operational ledgers. Authorized CLI preflight ephemeral probe/cache observations and automatic runtime hooks are permitted exceptions, not Worker operational write authority. Canonical state is recorded when facts occur; it is independent of Git/dev integration and must not wait for merge.
 
+## Mandatory Root escalation decision for user holds
+
+Preserve the existing Root/Registrar/Controller/Worker chain. Whenever the Controller creates an actual `hold(user)`, revisits one during recovery/resume, or is about to go idle after handling a user-blocked task, **invoke** `task-mecca flow next --role controller --event user_decision_required --project PROJECT --task ID --provider PROVIDER --root-session-id EXACT_ROOT_SESSION --json`. This applies regardless of whether the cause was a Worker BLOCKED report, changed contract/approval, external-source conflict, or a recovered stranded task. Worker and Registrar still hand off to Controller, never directly to Root.
+
+1. Controller first persists the canonical `hold` with `대기유형: user`, meaningful `대기` and `재개조건` fields. Do not escalate external/internal/dependency holds as user holds.
+2. Act on `flow next` output. When B/C and actual capability/identity permit, run `task-mecca orchestration notify --project PROJECT --provider PROVIDER --root-session-id EXACT_ROOT_SESSION --task ID --controller-attempt SOURCE --root-attempt TARGET --json`.
+3. **Only** when `notify` returns a `directive`, the *current Controller agent* uses its available provider-native message/resume tool with that exact Root session/attempt and message. For a completed Root, require a fresh Full Access preflight and verified wake capability.
+4. Mark the dispatch step in the existing Handoff journal only with observed native transport `ok/failed/unknown` evidence. Do not send duplicates after prior dispatch OK, claim, applied, or unresolved failed/unknown; reconcile instead.
+5. With mode A/D, missing mode/Root identity, lost capability, or absent directive, retain the existing durable `hold(user)` for the next Root user turn. Root acknowledgement, Root polling and native transport adapters are not Controller completion gates.
+
+Always re-evaluate current canonical and journal evidence rather than relying on previous chat context.
+
 ## Assignment checklist
 
 Run CLI commands with the designated original project as cwd. Verify installed CLI support before assuming --project works elsewhere. Record canonical root, original repository, integration branch/base SHA, implementation worktree/branch and prohibited scope.

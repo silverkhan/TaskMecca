@@ -11,6 +11,7 @@ import (
     "strings"
 
     "github.com/silverkhan/TaskMecca/internal/backlog"
+    "github.com/silverkhan/TaskMecca/internal/orchestration"
 )
 
 // flow next is a read-only decision, not a new owner of lifecycle, worktree
@@ -38,8 +39,9 @@ type flowNextDecision struct {
 
 func flowNextUsage(out io.Writer) {
     fmt.Fprintln(out,"task-mecca flow next --role controller --event final_requested --project DIR --task B-541 --into REF --worktree EXACT_PATH [--archive EXTERNAL_DIR] --json")
-    fmt.Fprintln(out,"Read-only Controller completion/cleanup gate; no deletion, native sends or lifecycle writes.")
-    fmt.Fprintln(out,"Incomplete worktree cleanup never reports EXIT_ALLOWED. Other roles/events are not implemented yet and fail closed.")
+    fmt.Fprintln(out,"Read-only Controller cleanup/exit and user-decision escalation policy; no deletion, native sends or lifecycle writes.")
+    fmt.Fprintln(out,"task-mecca flow next --role controller --event user_decision_required --task B-620 --provider codex --root-session-id EXACT --project DIR --json")
+    fmt.Fprintln(out,"Incomplete cleanup never allows exit; unsupported role/events fail closed.")
     fmt.Fprintln(out,"See: task-mecca help worktree; run plan -> preserve -> verify -> approved remove separately.")
 }
 
@@ -205,6 +207,8 @@ func runFlowNextCLI(args []string,out,stderr io.Writer) int {
     into:=fs.String("into","origin/dev","integration branch/ref")
     target:=fs.String("worktree","","exact worker worktree path")
     archive:=fs.String("archive","","external preservation archive")
+    provider:=fs.String("provider","","provider of currently selected Root group")
+    rootSessionID:=fs.String("root-session-id","","exact provider-native Root session identity")
     asJSON:=fs.Bool("json",false,"structured decision")
     if err:=fs.Parse(args[1:]);err!=nil{return 2}
     if fs.NArg()!=0||*role==""||*event==""||*task==""||*into=="" {flowNextUsage(stderr);return 2}
@@ -215,8 +219,23 @@ func runFlowNextCLI(args []string,out,stderr io.Writer) int {
     if *archive!=""{archiveAbs,err=filepath.Abs(*archive);if err!=nil{fmt.Fprintln(stderr,err);return 2}}
     var decision flowNextDecision
     if *role=="controller"&&(*event=="final_requested"||*event=="cleanup_review"){
-        decision=evaluateControllerCleanup(projectAbs,*task,*into,targetAbs,archiveAbs)
-        decision.Event=*event
+        // A finalization attempt is an additional safety net: if the
+        // Controller forgot to evaluate an existing user hold, redirect to
+        // the same decision policy instead of silently running cleanup.
+        snap,inspectErr:=backlog.Inspect(projectAbs,"",*task)
+        fields,_:=snap["fields"].(map[string]string)
+        if inspectErr==nil && snap["exists"]==true && snap["location"]=="active" &&
+          snap["state"]=="hold" && strings.EqualFold(strings.TrimSpace(fields["대기유형"]),"user"){
+            decision=evaluateRootEscalationDecision(projectAbs,*task,*provider,*rootSessionID)
+            decision.Event=*event
+            decision.Reasons=append(decision.Reasons,"user_hold_requires_root_decision_before_finalization")
+            decision.ExitAllowed=false
+        }else{
+            decision=evaluateControllerCleanup(projectAbs,*task,*into,targetAbs,archiveAbs)
+            decision.Event=*event
+        }
+    }else if *role=="controller"&&*event=="user_decision_required" {
+        decision=evaluateRootEscalationDecision(projectAbs,*task,*provider,*rootSessionID)
     }else{
         decision=flowNextDecision{
             SchemaVersion:1,Decision:"EXIT_BLOCKED",ExitAllowed:false,
@@ -235,4 +254,59 @@ func runFlowNextCLI(args []string,out,stderr io.Writer) int {
         for _,reason:=range decision.Reasons{fmt.Fprintln(out," -",reason)}
     }
     return 0
+}
+
+ 
+// evaluateRootEscalationDecision uses the same persistent selection and pure
+// orchestration policy as the Root bootstrap. It never writes or sends.
+func evaluateRootEscalationDecision(project,task,provider,rootSessionID string) flowNextDecision {
+ result:=flowNextDecision{
+  SchemaVersion:1,Decision:"EXIT_BLOCKED",ExitAllowed:false,
+  Role:"controller",Event:"user_decision_required",TaskID:strings.ToUpper(task),
+  CleanupStatus:"not_applicable",EvidenceQuality:"unverified",Reasons:[]string{},
+  NextAction:"Inspect the exact canonical user hold before any Root transport.",
+  Written:false,
+ }
+ state,err:=backlog.Inspect(project,"",task)
+ if err!=nil||state["exists"]!=true||state["duplicate_count"]!=1 {
+  result.Reasons=append(result.Reasons,"canonical_task_unavailable")
+  return result
+ }
+ fields,_:=state["fields"].(map[string]string)
+ if !canonicalUserHold(state["state"],fields) {
+  result.Reasons=append(result.Reasons,"canonical_user_hold_incomplete")
+  result.NextAction="Record explicit hold(user), reason and resume condition before invoking Root communication."
+  return result
+ }
+ result.EvidenceQuality="canonical"
+ // Missing configuration is legitimate for older installations and mode A.
+ // Continue via the original next-Root-turn recovery without inventing
+ // a native transport or treating a missing Root session as task failure.
+ fallback:=func(reason string)flowNextDecision{
+  result.Decision="CONTINUE"
+  result.Reasons=append(result.Reasons,reason)
+  result.NextAction="Preserve the canonical hold(user), reason and resume condition; surface this request on the next Root user turn. Do not poll, send to an unverified session or report delivery."
+  return result
+ }
+ if strings.TrimSpace(provider)==""||strings.TrimSpace(rootSessionID)=="" {
+  return fallback("root_communication_not_configured")
+ }
+ g,ok,err:=orchestration.FindGroup(project,provider,rootSessionID)
+ if err!=nil {return fallback("root_group_lookup_failed")}
+ if !ok {return fallback("root_group_not_configured")}
+ caps,err:=runtimeOrchestrationCapabilities(project,provider)
+ if err!=nil {return fallback("capability_evidence_unavailable")}
+ d,err:=orchestration.Decide(orchestration.Request{
+  Mode:g.Mode,Event:"user_decision_required",TaskID:task,Capabilities:caps,DurableRecorded:true,
+ })
+ if err!=nil {return fallback("orchestration_policy_unavailable")}
+ result.Reasons=append(result.Reasons,d.Reasons...)
+ result.EvidenceQuality="canonical_plus_runtime_capability"
+ result.Decision="CONTINUE"
+ if d.Action=="send_to_root" {
+  result.NextAction="MANDATORY: Run task-mecca orchestration notify --project DIR --provider PROVIDER --root-session-id EXACT --task TASK --controller-attempt EXACT --root-attempt EXACT --json. If the result contains a directive, call the provider-native messaging tool addressed to its exact target. Mark actual transport result in the existing handoff journal, not from decision output alone. Do not silently finish this user hold."
+ }else{
+  result.NextAction="Retain the user hold in canonical backlog and surface it on the next Root user turn; do not poll or fabricate delivery."
+ }
+ return result
 }

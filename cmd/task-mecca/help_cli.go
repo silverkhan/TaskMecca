@@ -27,6 +27,7 @@ func runHelpCLI(args []string,out,stderr io.Writer) int {
 		fmt.Fprintln(out,"  task-mecca migrate           Migrate project framework (preserve project-owned data)")
 		fmt.Fprintln(out,"  task-mecca contract          Validate, plan, register or record contract decisions")
 		fmt.Fprintln(out,"  task-mecca context           Context lifecycle status, policy, event and safe rotation")
+		fmt.Fprintln(out,"  task-mecca orchestration     A/B/C/D modes, confirmed Root selection and notification handoff plan")
 		fmt.Fprintln(out,"  task-mecca recovery event    Inspect older stranded doing tasks on orchestration events (read-only)")
 		fmt.Fprintln(out,"  task-mecca flow              Inspect read-only next-action decisions; Controller cleanup/exit gate")
 		fmt.Fprintln(out,"  task-mecca worktree          Inspect and explicitly preserve/verify/remove safe Git worktrees")
@@ -48,6 +49,14 @@ func runHelpCLI(args []string,out,stderr io.Writer) int {
         fmt.Fprintln(out,"--purge-settings: also remove recognized global projects.json and channel metadata; never delete projects.")
         fmt.Fprintln(out,"Modified global agent Hook JSON files are backed up before exact Task Mecca commands are removed.")
         fmt.Fprintln(out,"Interactive uninstall requires typing 'uninstall'; --approve is explicit noninteractive confirmation.")
+	case "orchestration":
+		fmt.Fprintln(out,"task-mecca orchestration modes --project DIR --provider codex --json")
+		fmt.Fprintln(out,"task-mecca handoff capability record --project DIR codex can_spawn_subagent supported --evidence OBSERVED_PROOF --json")
+		fmt.Fprintln(out,"task-mecca orchestration configure --project DIR --provider codex --root-session-id EXACT --mode B --confirmed --timezone Asia/Seoul --json")
+		fmt.Fprintln(out,"task-mecca orchestration status --project DIR --provider codex --root-session-id EXACT --json")
+		fmt.Fprintln(out,"task-mecca orchestration name --project DIR --group D1109_01 --role controller --json")
+		fmt.Fprintln(out,"task-mecca orchestration notify --project DIR --provider codex --root-session-id EXACT --task B-620 --controller-attempt EXACT --root-attempt EXACT --json")
+		fmt.Fprintln(out,"A/B/C/D are fixed user-facing labels; unknown capabilities are unavailable. Native spawn/send/resume remain provider-owned.")
 	case "context":
         fmt.Fprintln(out,"task-mecca context status --role controller --project DIR --json")
         fmt.Fprintln(out,"task-mecca context event --role controller --event controller_resume --attempt EXACT --apply --project DIR --json")

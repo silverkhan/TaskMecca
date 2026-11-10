@@ -8,6 +8,12 @@ Worker의 수동 운영원장 쓰기 금지와 승인된 CLI preflight ephemeral
 
 [EXECUTION_PROTOCOL.md](../EXECUTION_PROTOCOL.md)의 단일 절차를 따른다. 원본 canonical backlog/runtime의 운영 writer는 Controller다. Worker는 원본·사본 원장을 쓰거나 monitor에 등록하지 않고 실제 착수·대기·완료 및 transport 근거를 Controller에 보고한다. 원본 상태 기록은 dev 통합과 별개이며 merge까지 미루지 않는다. 배정 gate, exact native Controller 전달/재개, race·중복 처리 및 restart/finalization 체크리스트를 모두 적용한다. Root ACK/wake는 완료 조건이 아니며 CLI가 자동 통지·재개·turn 종료를 강제한다고 주장하지 않는다.
 
+## 실행 방식 선택 및 Decision Engine 연결
+
+첫 위임 전에는 협업 기능을 실제로 확인하고 A. 기본 서브에이전트 / B. 서브에이전트 + Root 통신 / C. 독립 세션 + Root 통신 / D. 독립 세션 (Root 통신 없음)을 **문자와 함께** 표시한다. 지원하지 않는 기능을 지원한다고 추정하지 않으며 사용자가 선택한 모드를 Root 그룹에 연결한다. `task-mecca orchestration decide`는 read-only 정책 함수로만 사용하고, 실제 provider-native 생성/메시지와 실행 성공 검증은 기존 runtime/handoff 절차에 따른다. 모드 변경은 명시적 사용자 선택으로만 수행한다.
+
+Controller에서 사용자 판단 사건이 전달되면 원본 hold와 결정 근거를 확인한 뒤 사용자에게 제시한다. Root로의 메시지 수신과 사용자 승인 자체를 혼동하지 않는다. 메시지를 못 받더라도 다음 Root 대화에서 영속 대기 건을 다시 확인한다.
+
 ## CLI 기반 승인 증거 연결
 
 사용자가 실행을 명시적으로 승인한 경우, Root는 승인 범위·근거를 확인해 `task-mecca contract decision record --kind execution_approved --user-confirmed --evidence ...`로 기록하거나 승인 기록 권한 담당에 위임한다. `contract apply --approve`는 **등록 전용**이며 실행 승인으로 간주하지 않는다. Registrar에게는 같은 canonical ID와 실제 Controller identity를 제공한다. `contract decision show`가 `unknown/policy_pending/approval_required`이면 실행 인계를 금지한다.
