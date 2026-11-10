@@ -60,6 +60,19 @@ func rootCommunicationDirective(
  }
 }
 
+// Only an explicit canonical user hold may request Root communication.
+// External, internal and dependency holds continue through their existing
+// owners; a filename ending in .hold.md alone does not authorize escalation.
+func canonicalUserHold(state any, fields map[string]string) bool {
+ meaningful:=func(value string) bool {
+  v:=strings.TrimSpace(value)
+  return v!="" && v!="-"
+ }
+ return state=="hold" &&
+  strings.EqualFold(strings.TrimSpace(fields["대기유형"]),"user") &&
+  meaningful(fields["대기"]) && meaningful(fields["재개조건"])
+}
+
 type rootNotificationPlan struct {
  Mode orchestration.Mode `json:"mode"`
  TaskID string `json:"task_id"`
@@ -100,10 +113,9 @@ func runOrchestrationNotifyCLI(args []string,stdout,stderr io.Writer) int {
   return 1
  }
  fields,_:=snap["fields"].(map[string]string)
- hold:=snap["state"]=="hold"
  reason:=strings.TrimSpace(fields["대기"])
  resume:=strings.TrimSpace(fields["재개조건"])
- durable:=hold&&reason!=""&&reason!="-"&&resume!=""&&resume!="-"
+ durable:=canonicalUserHold(snap["state"],fields)
  caps,err:=runtimeOrchestrationCapabilities(projectAbs,*provider)
  if err!=nil{fmt.Fprintln(stderr,err);return 1}
  decision,err:=orchestration.Decide(orchestration.Request{
@@ -143,6 +155,28 @@ func runOrchestrationNotifyCLI(args []string,stdout,stderr io.Writer) int {
     plan.HandoffID=prepared.HandoffID
     plan.Target=prepared.Target
     plan.RequiresFreshPreflight=prepared.RequiresFreshPreflight
+    // A prepared handoff is idempotent by task/event/source attempt.
+    // Never direct a second message after dispatch success, claim, or
+    // unresolved failure. Transport recovery must use the existing journal.
+    existing,exists,inspectErr:=handoff.Inspect(projectAbs,prepared.HandoffID,time.Now())
+    if inspectErr!=nil {fmt.Fprintln(stderr,inspectErr);return 1}
+    if !exists {fmt.Fprintln(stderr,"prepared handoff is missing from journal");return 1}
+    if existing.Applied || existing.ClaimedBy!="" {
+     plan.Decision.Allowed=false;plan.Decision.Action="root_handoff_already_claimed"
+     plan.Decision.Reasons=append(plan.Decision.Reasons,"handoff_claimed_or_applied")
+     plan.Note="Root handoff is already claimed/applied; do not send again."
+    }else if dispatch,hasDispatch:=existing.Steps["dispatch"];hasDispatch {
+     plan.Decision.Allowed=false
+     if dispatch.Result=="ok" {
+      plan.Decision.Action="root_notification_already_dispatched"
+      plan.Decision.Reasons=append(plan.Decision.Reasons,"dispatch_already_confirmed")
+      plan.Note="Actual transport was previously recorded; do not send again."
+     }else{
+      plan.Decision.Action="root_delivery_requires_reconciliation"
+      plan.Decision.Reasons=append(plan.Decision.Reasons,"previous_dispatch_"+dispatch.Result)
+      plan.Note="Prior send failed/unknown; inspect handoff and native state before any redispatch."
+     }
+    }else{
     switch prepared.Action {
     case handoff.ActionMessageRunning:plan.NativeAction="message_running"
     case handoff.ActionResumeCompleted:
@@ -160,6 +194,7 @@ func runOrchestrationNotifyCLI(args []string,stdout,stderr io.Writer) int {
      plan.Note="Prepared handoff evidence; follow directive with an available provider-native message/resume tool, then mark with actual evidence. Not sent by CLI."
      plan.Directive=rootCommunicationDirective(projectAbs,*provider,*rootID,*source,*task,reason,resume,plan)
     }
+    }
    }
   }
  }
@@ -169,7 +204,13 @@ func runOrchestrationNotifyCLI(args []string,stdout,stderr io.Writer) int {
   fmt.Fprintf(stdout,"%s: %s; handoff=%s; native=%s\n%s\n",group.Mode,plan.Decision.Action,plan.HandoffID,plan.NativeAction,plan.Note)
  }
  if !durable{return 1}
- if decision.Action=="send_to_root"&&plan.NativeAction=="" {return 1}
+ // An already-issued or claimed notification is an idempotent no-op;
+ // a new send that cannot be prepared still needs recovery.
+ if decision.Action=="send_to_root" && plan.NativeAction=="" {
+  if plan.Decision.Action=="root_notification_already_dispatched" ||
+   plan.Decision.Action=="root_handoff_already_claimed" {return 0}
+  return 1
+ }
  return 0
 }
 
