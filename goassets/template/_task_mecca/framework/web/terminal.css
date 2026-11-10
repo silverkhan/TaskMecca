@@ -504,3 +504,10 @@ body.terminal-page {
 .terminal-diagnostics[data-kind="error"] { color: var(--danger, #e45d68); }
 .terminal-diagnostics[data-kind="warn"] { color: var(--warn, #d49b37); }
 .terminal-diagnostics[data-kind="ok"] { color: var(--ok, #39b980); }
+
+/* Glass has one continuous reader behind the terminal. The workspace owns
+   geometry only; the idle surface adds no second/third opaque coating.
+   A running xterm/basic-input surface keeps its existing console paint. */
+:root[data-palette="glass"] .terminal-workspace{background:transparent;border-color:var(--border)}
+:root[data-palette="glass"] .terminal-workspace:has(.terminal-idle:not([hidden])) .terminal-surface{background:transparent}
+@media(max-width:680px){:root[data-palette="glass"] .terminal-btn{min-height:44px;min-width:44px}}
