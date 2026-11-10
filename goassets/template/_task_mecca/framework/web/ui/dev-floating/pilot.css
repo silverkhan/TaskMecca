@@ -8,20 +8,21 @@
 .dev-floating-review-controls .action-btn {
   min-height: 44px;
 }
-/* Scope: opt-in dev sidebar/header/detail material only. No optical runtime. */
+/* Opt-in pilot: one outer gutter, aligned chrome, one continuous reading face. */
 :root[data-floating-pilot] {
-  --floating-chrome: rgb(255 255 255 / .91);
-  --floating-reading: rgb(255 255 255 / .96);
-  --floating-shadow: 0 8px 28px rgb(23 32 51 / .07);
+  --floating-gap: 12px;
+  --floating-radius: 18px;
+  --floating-chrome: color-mix(in srgb, var(--surface) 96%, transparent);
+  --floating-reading: color-mix(in srgb, var(--surface) 98%, transparent);
+  --floating-divider: color-mix(in srgb, var(--text) 12%, transparent);
+  --floating-shadow: 0 6px 22px rgb(23 32 51 / .07);
   --floating-scene-tint: rgb(247 248 250 / .20);
 }
 :root[data-floating-pilot][data-theme="dark"] {
-  --floating-chrome: rgb(23 26 33 / .91);
-  --floating-reading: rgb(23 26 33 / .96);
-  --floating-shadow: 0 8px 28px rgb(0 0 0 / .15);
+  --floating-shadow: 0 6px 22px rgb(0 0 0 / .14);
   --floating-scene-tint: rgb(17 19 24 / .40);
 }
-:root[data-floating-pilot] body {
+:root[data-floating-pilot][data-theme] body {
   isolation: isolate;
   background: var(--bg);
 }
@@ -34,50 +35,102 @@
   background: linear-gradient(var(--floating-scene-tint), var(--floating-scene-tint)),
     url("/ui/material/cozy-beige-room-photo-1920.webp") center / cover no-repeat;
 }
-:root[data-floating-pilot] .sidebar {
-  margin: 10px 0;
-  top: 10px;
-  height: calc(100svh - 20px);
+:root[data-floating-pilot][data-theme] .app-shell {
+  padding: var(--floating-gap);
+  gap: var(--floating-gap);
+}
+:root[data-floating-pilot][data-theme] .sidebar {
+  margin: 0;
+  top: var(--floating-gap);
+  left: var(--floating-gap);
+  height: calc(100svh - 2 * var(--floating-gap));
   border: 0;
-  border-radius: 20px;
+  border-radius: var(--floating-radius);
   background: var(--floating-chrome);
   box-shadow: var(--floating-shadow);
 }
-:root[data-floating-pilot] .topbar {
-  margin: 10px 14px 0;
-  top: 10px;
+:root[data-floating-pilot][data-theme] .main > :is(.topbar, .preview-identity-banner, .user-attention) {
+  width: auto;
+  max-width: none;
+  margin: 0 0 var(--floating-gap);
   border: 0;
-  border-radius: 18px;
+  border-radius: var(--floating-radius);
   background: var(--floating-chrome);
   box-shadow: var(--floating-shadow);
+}
+:root[data-floating-pilot][data-theme] .topbar {
+  top: var(--floating-gap);
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
 }
-:root[data-floating-pilot] .content:has(.detail-layout) {
-  margin: 16px 14px 28px;
-  border-radius: 20px;
+:root[data-floating-pilot][data-theme] .content:has(.detail-layout, .backlog-compact-header) {
+  max-width: none;
+  margin: 0;
+  border-radius: var(--floating-radius);
   background: var(--floating-reading);
   box-shadow: var(--floating-shadow);
 }
-/* Existing nested document sections, table rows, inputs and TOC stay dev-native. */
+:root[data-floating-pilot][data-theme] .user-attention:has(.common-attention[open]) {
+  padding-bottom: 0;
+  border-radius: var(--floating-radius);
+}
+:root[data-floating-pilot][data-theme] .common-attention-body {
+  left: 0;
+  right: 0;
+  border: 1px solid var(--floating-divider);
+  border-radius: var(--floating-radius);
+  background: var(--surface);
+  box-shadow: var(--floating-shadow);
+}
+:root[data-floating-pilot][data-theme] .task-row {
+  border-radius: 8px;
+}
+:root[data-floating-pilot][data-theme] .task-row:hover,
+:root[data-floating-pilot][data-theme] .task-row.keyboard-selected {
+  background: color-mix(in srgb, var(--accent) 5%, var(--surface));
+  box-shadow: none;
+}
+:root[data-floating-pilot][data-theme] .task-row.keyboard-selected {
+  outline: 1px solid color-mix(in srgb, var(--accent) 28%, transparent);
+  outline-offset: -1px;
+}
+:root[data-floating-pilot][data-theme] .task-row:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+:root[data-floating-pilot][data-theme] .app-shell .shortcut-bar {
+  left: calc(var(--sidebar) + 2 * var(--floating-gap));
+  right: var(--floating-gap);
+}
+@media (min-width: 681px) {
+  :root[data-floating-pilot][data-theme] .main {
+    margin-left: calc(var(--sidebar) + var(--floating-gap));
+  }
+  :root[data-floating-pilot][data-theme] .app-shell.sidebar-collapsed .main {
+    margin-left: calc(72px + var(--floating-gap));
+  }
+  :root[data-floating-pilot][data-theme] .app-shell.sidebar-collapsed .shortcut-bar {
+    left: calc(72px + 2 * var(--floating-gap));
+  }
+}
 @media (max-width: 680px) {
-  :root[data-floating-pilot] .sidebar {
-    top: 0;
-    height: auto;
-    margin: 8px;
-    width: calc(100% - 16px);
-    max-width: calc(100% - 16px);
-    border-radius: 16px;
+  :root[data-floating-pilot] {
+    --floating-gap: 8px;
+    --floating-radius: 16px;
   }
-  :root[data-floating-pilot] .topbar {
+  :root[data-floating-pilot][data-theme] .sidebar {
     top: 0;
-    margin: 0 8px;
-    width: calc(100% - 16px);
+    left: 0;
     height: auto;
-    border-radius: 16px;
+    width: 100%;
+    max-width: 100%;
+    margin-bottom: var(--floating-gap);
   }
-  :root[data-floating-pilot] .content:has(.detail-layout) {
-    margin: 12px 8px 24px;
-    border-radius: 16px;
+  :root[data-floating-pilot][data-theme] .topbar {
+    top: 0;
+  }
+  :root[data-floating-pilot][data-theme] .app-shell .shortcut-bar {
+    left: var(--floating-gap);
+    right: var(--floating-gap);
   }
 }
