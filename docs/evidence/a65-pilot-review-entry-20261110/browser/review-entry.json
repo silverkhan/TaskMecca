@@ -1,0 +1,140 @@
+{
+  "cases": [
+    {
+      "kind": "dev",
+      "width": 1440,
+      "theme": "light",
+      "ordinaryDevUnchanged": true,
+      "oneClick": false,
+      "urlContextAndHashPreserved": false,
+      "navigationChoicePersists": false,
+      "mobileHit": false,
+      "errors": []
+    },
+    {
+      "kind": "dev",
+      "width": 1440,
+      "theme": "dark",
+      "ordinaryDevUnchanged": true,
+      "oneClick": false,
+      "urlContextAndHashPreserved": false,
+      "navigationChoicePersists": false,
+      "mobileHit": false,
+      "errors": []
+    },
+    {
+      "kind": "dev",
+      "width": 320,
+      "theme": "light",
+      "ordinaryDevUnchanged": true,
+      "oneClick": false,
+      "urlContextAndHashPreserved": false,
+      "navigationChoicePersists": false,
+      "mobileHit": false,
+      "errors": []
+    },
+    {
+      "kind": "dev",
+      "width": 320,
+      "theme": "dark",
+      "ordinaryDevUnchanged": true,
+      "oneClick": false,
+      "urlContextAndHashPreserved": false,
+      "navigationChoicePersists": false,
+      "mobileHit": false,
+      "errors": []
+    },
+    {
+      "kind": "pr",
+      "width": 1440,
+      "theme": "light",
+      "ordinaryDevUnchanged": false,
+      "oneClick": true,
+      "urlContextAndHashPreserved": true,
+      "navigationChoicePersists": true,
+      "mobileHit": false,
+      "errors": []
+    },
+    {
+      "kind": "pr",
+      "width": 1440,
+      "theme": "dark",
+      "ordinaryDevUnchanged": false,
+      "oneClick": true,
+      "urlContextAndHashPreserved": true,
+      "navigationChoicePersists": true,
+      "mobileHit": false,
+      "errors": []
+    },
+    {
+      "kind": "pr",
+      "width": 320,
+      "theme": "light",
+      "ordinaryDevUnchanged": false,
+      "oneClick": true,
+      "urlContextAndHashPreserved": true,
+      "navigationChoicePersists": true,
+      "mobileHit": true,
+      "errors": []
+    },
+    {
+      "kind": "pr",
+      "width": 320,
+      "theme": "dark",
+      "ordinaryDevUnchanged": false,
+      "oneClick": true,
+      "urlContextAndHashPreserved": true,
+      "navigationChoicePersists": true,
+      "mobileHit": true,
+      "errors": []
+    },
+    {
+      "kind": "preview",
+      "width": 1440,
+      "theme": "light",
+      "ordinaryDevUnchanged": false,
+      "oneClick": true,
+      "urlContextAndHashPreserved": true,
+      "navigationChoicePersists": true,
+      "mobileHit": false,
+      "errors": []
+    },
+    {
+      "kind": "preview",
+      "width": 1440,
+      "theme": "dark",
+      "ordinaryDevUnchanged": false,
+      "oneClick": true,
+      "urlContextAndHashPreserved": true,
+      "navigationChoicePersists": true,
+      "mobileHit": false,
+      "errors": []
+    },
+    {
+      "kind": "preview",
+      "width": 320,
+      "theme": "light",
+      "ordinaryDevUnchanged": false,
+      "oneClick": true,
+      "urlContextAndHashPreserved": true,
+      "navigationChoicePersists": true,
+      "mobileHit": true,
+      "errors": []
+    },
+    {
+      "kind": "preview",
+      "width": 320,
+      "theme": "dark",
+      "ordinaryDevUnchanged": false,
+      "oneClick": true,
+      "urlContextAndHashPreserved": true,
+      "navigationChoicePersists": true,
+      "mobileHit": true,
+      "errors": []
+    }
+  ],
+  "syntheticPRIdentity": true,
+  "actualServiceAccess": false,
+  "browserClosed": true,
+  "serverListening": false
+}

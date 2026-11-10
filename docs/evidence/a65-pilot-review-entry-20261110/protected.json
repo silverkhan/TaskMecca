@@ -1,0 +1,23 @@
+{
+  "codeSource": "a91a5f6694deb4360f27891b34e7dc9f121712fe",
+  "base": "2bb105cdba180dbc98d6d2c009205243a1b3ecf9",
+  "materialSource": "3a066ed44b1c52982b008230cfb9f4f1535847df",
+  "materialCSSSuffixByteIdentical": true,
+  "devAppApartFromBoundedReviewControlsByteIdentical": true,
+  "unchangedFrom2bb105cd": {
+    "index.html": true,
+    "theme-boot.js": true,
+    "select-ui.js": true,
+    "style.css": true,
+    "ui/dev-floating/pilot.js": true,
+    "ui/optics.js": true,
+    "ui/material/cozy-beige-room-photo-1920.webp": true,
+    "ui/environment.js": true,
+    "terminal.js": true,
+    "terminal.html": true
+  },
+  "productionGoChanged": false,
+  "APIAddedOrChanged": false,
+  "newFetchInControls": false,
+  "newContinuousEffect": false
+}

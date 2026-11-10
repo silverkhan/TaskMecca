@@ -1,0 +1,22 @@
+✔ approved pilot preserves exact origin/dev application, controls, styles and entry DOM (5.999625ms)
+﹣ actual dev entry retains search, native menus, continuous anchors, theme and mobile controls in the pilot (0.106541ms) # SKIP
+✔ browser evidence follows accepted display request, preserves project and deduplicates in-flight calls (10.808125ms)
+✔ failure and disabled settings produce no false browser success; legacy and project off survive (1.302458ms)
+✔ history joins exact project/event ID and never claims unknown/failed/suppressed delivery success (24.417708ms)
+✔ resolved operation tombstone prevents same incident reappearing after stale or undated payload (1.167625ms)
+✔ diagnostic menu keeps failures visible, removes resolved entries and clipboard text requests no execution (1.248583ms)
+✔ diagnostic late response cannot restore resolved state; project/folder remain isolated and same revision polls refresh (1.082291ms)
+✔ automatic source remap invalidates an in-flight diagnostic success or failure (1.6835ms)
+✔ delivery history coalesces loads and preserves records when subsequent server read fails (2.794458ms)
+✔ hook resolution prevents stale, undated or equal-time assignment warnings from reaching browser consumer (1.380708ms)
+✔ historical native shell has dedicated preferences and notifications without a duplicate attention route (5.092041ms)
+✔ default dev shell retains its actual notification route and opt-in pilot assets (0.201084ms)
+✔ notification labels retain their meaning and remain readable in the native navigation (3.363458ms)
+ℹ tests 14
+ℹ suites 0
+ℹ pass 13
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 1
+ℹ todo 0
+ℹ duration_ms 96.10525
