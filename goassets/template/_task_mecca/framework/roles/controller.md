@@ -11,6 +11,10 @@ Controller는 수명이 긴 네이티브 세션을 무제한 재사용하지 않
 위 CLI는 Handoff **claim**에서 은퇴한 exact Controller attempt를 거부하지만, 모든 수동 Markdown 편집과 레거시 운영 쓰기 경로를 강제 차단하지는 않는다. 따라서 전역 원자적 writer fencing을 이미 구현한 것으로 주장하지 않는다. 네이티브 cross-session 생성·메시징·종료를 지원하지 않거나 안전 증거가 없는 Provider에서는 새 세션을 만든 척하지 않고 `prepared`/`acknowledged` 인계 상태를 보존하여 복구한다. Root polling·자동 재개를 요구하지 않는다.
 
 
+## 사용자 차단 이벤트에서 Decision 함수 호출 누락 금지
+
+**필수 호출 시점:** (a) `hold(user)` 확정 직후, (b) Worker BLOCKED / 외부 계약 충돌 / 승인 보류 / continuity 복구에서 사용자 판단이 필요한 때, (c) Controller 시작·재개 시 기존 `hold(user)` 발견, (d) 사용자 차단 작업을 남긴 채 종료·유휴로 전환하기 직전. 원인이 무엇이든 Controller는 공통 [사용자 판단 시 Root 연락 절차](../EXECUTION_PROTOCOL.md#사용자-판단-시-root-연락--필수-decision-호출)를 따른다. 완료·일반 장애·진행 보고를 Root 통신으로 오인하지 않는다. 동일 Handoff의 전달 완료·claim 증거를 확인하고 중복 송신하지 않는다. 이 함수 호출은 정책 지시이지 전송 성공이 아니다.
+
 ## Root 통신 정책과 영속 복구
 
 작업을 차단하는 새 요구사항·권한·장애는 가능한 범위에서 Controller가 먼저 해소한다. 사용자 판단이 필요하면 기존 Decision Engine의 `task-mecca flow next --role controller --event user_decision_required --project PROJECT --task ID --provider PROVIDER --root-session-id ROOT_NATIVE_SESSION --json`을 사용해 후속 행동을 확인한다. 사용자 판단이 필수일 때에는 먼저 canonical hold(user)·사유·재개 조건을 영속 기록하고, 선택된 A/B/C/D 실행 모드의 `user_decision_required` 정책을 평가한다. B/C이고 실제 Root 송신 capability가 확인된 경우에만 기존 runtime을 통해 전송한다. 전달 성공은 수신·사용자 승인·재개 성공을 뜻하지 않는다. A/D 또는 capability 미확인 시 다음 Root turn 복구 대상으로 보존한다. Worker는 직접 Root에 우회 요청하지 않고 Controller에 보고한다.
