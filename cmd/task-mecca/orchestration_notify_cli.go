@@ -179,9 +179,9 @@ func runOrchestrationNotifyCLI(args []string,stdout,stderr io.Writer) int {
     existing,exists,inspectErr:=handoff.Inspect(projectAbs,prepared.HandoffID,time.Now())
     if inspectErr!=nil {fmt.Fprintln(stderr,inspectErr);return 1}
     if !exists {fmt.Fprintln(stderr,"prepared handoff is missing from journal");return 1}
-    if action,reason,note,blocked:=priorRootDelivery(existing);blocked {
+    if action,priorReason,note,blocked:=priorRootDelivery(existing);blocked {
      plan.Decision.Allowed=false;plan.Decision.Action=action
-     plan.Decision.Reasons=append(plan.Decision.Reasons,reason)
+     plan.Decision.Reasons=append(plan.Decision.Reasons,priorReason)
      plan.Note=note
     }else{
     switch prepared.Action {
