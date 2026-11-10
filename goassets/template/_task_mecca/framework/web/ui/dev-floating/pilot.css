@@ -1,0 +1,73 @@
+/* Scope: opt-in dev sidebar/header/detail material only. No optical runtime. */
+:root[data-floating-pilot] {
+  --floating-chrome: rgb(255 255 255 / .91);
+  --floating-reading: rgb(255 255 255 / .96);
+  --floating-shadow: 0 8px 28px rgb(23 32 51 / .07);
+  --floating-scene-tint: rgb(247 248 250 / .20);
+}
+:root[data-floating-pilot][data-theme="dark"] {
+  --floating-chrome: rgb(23 26 33 / .91);
+  --floating-reading: rgb(23 26 33 / .96);
+  --floating-shadow: 0 8px 28px rgb(0 0 0 / .15);
+  --floating-scene-tint: rgb(17 19 24 / .40);
+}
+:root[data-floating-pilot] body {
+  isolation: isolate;
+  background: var(--bg);
+}
+:root[data-floating-pilot][data-floating-background="image"] body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: linear-gradient(var(--floating-scene-tint), var(--floating-scene-tint)),
+    url("/ui/material/cozy-beige-room-photo-1920.webp") center / cover no-repeat;
+}
+:root[data-floating-pilot] .sidebar {
+  margin: 10px 0;
+  top: 10px;
+  height: calc(100svh - 20px);
+  border: 0;
+  border-radius: 20px;
+  background: var(--floating-chrome);
+  box-shadow: var(--floating-shadow);
+}
+:root[data-floating-pilot] .topbar {
+  margin: 10px 14px 0;
+  top: 10px;
+  border: 0;
+  border-radius: 18px;
+  background: var(--floating-chrome);
+  box-shadow: var(--floating-shadow);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+:root[data-floating-pilot] .content:has(.detail-layout) {
+  margin: 16px 14px 28px;
+  border-radius: 20px;
+  background: var(--floating-reading);
+  box-shadow: var(--floating-shadow);
+}
+/* Existing nested document sections, table rows, inputs and TOC stay dev-native. */
+@media (max-width: 680px) {
+  :root[data-floating-pilot] .sidebar {
+    top: 0;
+    height: auto;
+    margin: 8px;
+    width: calc(100% - 16px);
+    max-width: calc(100% - 16px);
+    border-radius: 16px;
+  }
+  :root[data-floating-pilot] .topbar {
+    top: 0;
+    margin: 0 8px;
+    width: calc(100% - 16px);
+    height: auto;
+    border-radius: 16px;
+  }
+  :root[data-floating-pilot] .content:has(.detail-layout) {
+    margin: 12px 8px 24px;
+    border-radius: 16px;
+  }
+}

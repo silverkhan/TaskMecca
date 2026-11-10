@@ -35,9 +35,7 @@
   const value=labelFor(select);
   if(button.textContent!==value)button.textContent=value;
   button.disabled=select.disabled;
-  const label=select.closest('label');
-  const labelText=label?[...(label.childNodes||[])].filter(node=>node.nodeType===3).map(node=>node.textContent).join(' ').trim():'';
-  button.setAttribute('aria-label',select.getAttribute('aria-label')||labelText||select.name||select.id||'Select');
+  button.setAttribute('aria-label',select.getAttribute('aria-label')||select.closest('label')?.querySelector('span')?.textContent?.trim()||select.id||'Select');
   const names=select.options.length;
   if(current?.wrapper===wrapper && popup && popup.dataset.optionCount!==String(names))drawOptions();
  }
@@ -169,7 +167,6 @@
   wrapper.insertBefore(select,button);
   select.dataset.tmEnhanced='1';select.classList.add('tm-combo-native');
   select.tabIndex=-1;
-  select.setAttribute('aria-hidden','true');
   select.addEventListener('change',()=>update(wrapper));
   button.addEventListener('click',e=>{e.preventDefault();show(wrapper);});
   button.addEventListener('keydown',event=>{
