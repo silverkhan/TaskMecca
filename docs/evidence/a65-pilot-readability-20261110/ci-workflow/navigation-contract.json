@@ -1,0 +1,141 @@
+{
+  "synthetic": true,
+  "ui": "native ES modules / Smoke",
+  "cases": [
+    {
+      "mobile": false,
+      "initial": {
+        "start": 1793836800000,
+        "end": 1793840400000,
+        "fullStart": "2026-11-05T00:00:00Z",
+        "fullEnd": "2026-11-05T01:00:00Z",
+        "width": 804
+      },
+      "pointerZoom": {
+        "start": 1793838058193.98,
+        "end": 1793839858193.98,
+        "fullStart": "2026-11-05T00:00:00Z",
+        "fullEnd": "2026-11-05T01:00:00Z",
+        "width": 804
+      },
+      "pointerAnchor": {
+        "time": 1793839320000,
+        "ratio": 0.7010033444552951,
+        "pixelError": 0.5999999842665009
+      },
+      "directRange": {
+        "start": 1793837700000,
+        "end": 1793838600000,
+        "fullStart": "2026-11-05T00:00:00Z",
+        "fullEnd": "2026-11-05T01:00:00Z",
+        "width": 804
+      },
+      "horizontalWheel": {
+        "start": 1793837760200.669,
+        "end": 1793838660200.669,
+        "fullStart": "2026-11-05T00:00:00Z",
+        "fullEnd": "2026-11-05T01:00:00Z",
+        "width": 804
+      },
+      "wheelGeometry": {
+        "expected": 579.7333333007813,
+        "actual": 579.71875,
+        "error": 0.01458330078128256
+      },
+      "touch": null,
+      "preciseZoom": {
+        "start": 1793837874000.0317,
+        "end": 1793837945999.9805,
+        "fullStart": "2026-11-05T00:00:00Z",
+        "fullEnd": "2026-11-05T01:00:00Z",
+        "width": 804
+      },
+      "resizePreserved": true,
+      "partialRefreshPreserved": true,
+      "sourceUnchanged": true,
+      "outOfOrderInsertionSelectionFocusPreserved": true,
+      "filterAndErrorStalePreserved": true,
+      "actualBothBoundaryClamps": true,
+      "fitTracksNewBoundsManualRetained": true,
+      "longLifecycle": {
+        "midnight": "11. 05. · 오후 11:59:00 — 11. 06. · 오전 12:01:00",
+        "laterDay": "11. 07. · 오전 09:00:00 — 오전 09:00:45",
+        "longFit": "11. 05. · 오전 09:00 — 11. 08. · 오전 09:00"
+      }
+    },
+    {
+      "mobile": true,
+      "initial": {
+        "start": 1793836800000,
+        "end": 1793840400000,
+        "fullStart": "2026-11-05T00:00:00Z",
+        "fullEnd": "2026-11-05T01:00:00Z",
+        "width": 330
+      },
+      "pointerZoom": {
+        "start": 1793838058064.516,
+        "end": 1793839858064.516,
+        "fullStart": "2026-11-05T00:00:00Z",
+        "fullEnd": "2026-11-05T01:00:00Z",
+        "width": 330
+      },
+      "pointerAnchor": {
+        "time": 1793839320000,
+        "ratio": 0.7010752688259548,
+        "pixelError": 0.20000000162760734
+      },
+      "directRange": {
+        "start": 1793837700000,
+        "end": 1793838600000,
+        "fullStart": "2026-11-05T00:00:00Z",
+        "fullEnd": "2026-11-05T01:00:00Z",
+        "width": 330
+      },
+      "horizontalWheel": {
+        "start": 1793837893548.3872,
+        "end": 1793838793548.3872,
+        "fullStart": "2026-11-05T00:00:00Z",
+        "fullEnd": "2026-11-05T01:00:00Z",
+        "width": 330
+      },
+      "wheelGeometry": {
+        "expected": 175.59999997721354,
+        "actual": 175.59375,
+        "error": 0.006249977213542479
+      },
+      "touch": {
+        "start": 1793838093178.3423,
+        "end": 1793838971835.481,
+        "fullStart": "2026-11-05T00:00:00Z",
+        "fullEnd": "2026-11-05T01:00:00Z",
+        "width": 330
+      },
+      "preciseZoom": {
+        "start": 1793837874000.003,
+        "end": 1793837946000.0266,
+        "fullStart": "2026-11-05T00:00:00Z",
+        "fullEnd": "2026-11-05T01:00:00Z",
+        "width": 330
+      },
+      "resizePreserved": true,
+      "partialRefreshPreserved": true,
+      "sourceUnchanged": true,
+      "outOfOrderInsertionSelectionFocusPreserved": true,
+      "filterAndErrorStalePreserved": true,
+      "actualBothBoundaryClamps": true,
+      "fitTracksNewBoundsManualRetained": true,
+      "longLifecycle": {
+        "midnight": "11. 05. · 오후 11:59:00 — 11. 06. · 오전 12:01:00",
+        "laterDay": "11. 07. · 오전 09:00:00 — 오전 09:00:45",
+        "longFit": "11. 05. · 오전 09:00 — 11. 08. · 오전 09:00"
+      }
+    }
+  ],
+  "errors": [],
+  "cleanup": {
+    "browserClosed": true,
+    "fixtureClosed": true
+  },
+  "browser": "157.0.8103.39",
+  "passed": true
+}

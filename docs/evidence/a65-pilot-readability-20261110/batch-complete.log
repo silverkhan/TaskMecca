@@ -1,0 +1,10 @@
+locator.focus: Timeout 30000ms exceeded.
+Call log:
+[2m  - waiting for locator('.task-row').first().locator('a').first()[22m
+
+    at /Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/docs/evidence/a65-pilot-readability-20261110/visual.cjs:19:137 {
+  log: [
+    "  - waiting for locator('.task-row').first().locator('a').first()"
+  ],
+  name: 'TimeoutError'
+}

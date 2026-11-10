@@ -1,0 +1,10 @@
+✔ approved pilot preserves exact origin/dev application, controls, styles and entry DOM (6.393583ms)
+✔ actual dev entry retains search, native menus, continuous anchors, theme and mobile controls in the pilot (5268.713375ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 5327.566833

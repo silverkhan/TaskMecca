@@ -1,0 +1,25 @@
+✔ approved pilot preserves exact origin/dev application, controls, styles and entry DOM (5.329625ms)
+✖ actual dev entry retains search, native menus, continuous anchors, theme and mobile controls in the pilot (1337.2015ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 1
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1385.848708
+
+✖ failing tests:
+
+test at tests/a65_dev_floating_pilot.test.cjs:19:1
+✖ actual dev entry retains search, native menus, continuous anchors, theme and mobile controls in the pilot (1337.2015ms)
+  locator.click: Error: strict mode violation: getByRole('option', { name: '20', exact: true }) resolved to 2 elements:
+      1) <option value="20">20</option> aka getByLabel('Per pageAuto (7)102050Auto (7)')
+      2) <div role="option" aria-selected="false" id="tm-combo-option-2" class="tm-combo-option">20</div> aka getByRole('listbox', { name: 'Auto (7)102050Auto (7)' }).getByRole('option', { name: '20' })
+  
+  Call log:
+  [2m  - waiting for getByRole('option', { name: '20', exact: true })[22m
+  
+      at TestContext.<anonymous> (/Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/tests/a65_dev_floating_pilot.test.cjs:43:148) {
+    log: [ "  - waiting for getByRole('option', { name: '20', exact: true })" ]
+  }
