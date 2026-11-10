@@ -1,0 +1,452 @@
+Unified workflow browser regression	UNKNOWN STEP	﻿2026-11-10T09:32:42.7443007Z Current runner version: '2.338.2'
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:42.7471082Z ##[group]Runner Image Provisioner
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:42.7472071Z Hosted Compute Agent
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:42.7472693Z Version: 20261028.624
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:42.7473725Z Commit: 54898b74c23fde5556c9b3c3a2290865feef0dfe
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:42.7474563Z Build Date: 2026-10-28T21:51:42Z
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:42.7475503Z Worker ID: {fcadedaf-1bf9-4fe1-ba49-44995d5a10a4}
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:42.7476353Z Region: westus
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:42.7476929Z Cloud: Azure
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:42.7477459Z ##[endgroup]
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:42.7479442Z ##[group]Operating System
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:42.7480157Z Ubuntu
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:42.7480761Z 26.04.1
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:42.7481314Z LTS
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:42.7481829Z ##[endgroup]
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:42.7482472Z ##[group]Runner Image
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:42.7483107Z Image: ubuntu-26.04
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:42.7484080Z Version: 20261101.186.1
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:42.7485403Z Included Software: https://github.com/actions/runner-images/blob/ubuntu26/20261101.186/images/ubuntu/Ubuntu2604-Readme.md
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:42.7487030Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu26%2F20261101.186
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:42.7488034Z ##[endgroup]
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:42.7489205Z ##[group]GITHUB_TOKEN Permissions
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:42.7491636Z Contents: read
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:42.7492344Z Metadata: read
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:42.7492975Z ##[endgroup]
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:42.7495561Z Secret source: Actions
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:42.7496656Z Cache mode: write
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:42.7497390Z Prepare workflow directory
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:42.7870120Z Prepare all required actions
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:42.7945048Z Getting action download info
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:43.1288285Z Download action repository 'actions/checkout@v4' (SHA:11d5960a326750d5838078e36cf38b85af677262)
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:43.2701185Z Download action repository 'actions/setup-node@v4' (SHA:49933ea5288caeca8642d1e84afbd3f7d6820020)
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:43.3469489Z Download action repository 'actions/upload-artifact@v4' (SHA:ea165f8d65b6e75b540449e92b4886f43607fa02)
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:43.5340106Z Complete job name: Unified workflow browser regression
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:43.6249866Z ##[group]Run actions/checkout@v4
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:43.6250832Z with:
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:43.6251318Z   repository: silverkhan/TaskMecca
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:43.6255606Z   token: ***
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:43.6256077Z   ssh-strict: true
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:43.6256556Z   ssh-user: git
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:43.6257025Z   persist-credentials: true
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:43.6257531Z   clean: true
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:43.6257998Z   sparse-checkout-cone-mode: true
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:43.6258541Z   fetch-depth: 1
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:43.6259002Z   fetch-tags: false
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:43.6259465Z   show-progress: true
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:43.6259930Z   lfs: false
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:43.6260356Z   submodules: false
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:43.6260829Z   set-safe-directory: true
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:43.6261358Z   allow-unsafe-pr-checkout: false
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:43.6262211Z ##[endgroup]
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:43.9010102Z Syncing repository: silverkhan/TaskMecca
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:43.9012791Z ##[group]Getting Git version info
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:43.9014427Z Working directory is '/home/runner/work/TaskMecca/TaskMecca'
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:43.9015844Z [command]/usr/bin/git version
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:43.9038295Z git version 2.56.0
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:43.9064115Z ##[endgroup]
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:43.9080231Z Temporarily overriding HOME='/home/runner/work/_temp/a634c4bc-f1aa-48dd-a2eb-b58c5679449d' before making global git config changes
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:43.9082393Z Adding repository directory to the temporary git global config as a safe directory
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:43.9085990Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/TaskMecca/TaskMecca
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:43.9155464Z Deleting the contents of '/home/runner/work/TaskMecca/TaskMecca'
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:43.9158221Z ##[group]Initializing the repository
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:43.9163726Z [command]/usr/bin/git init /home/runner/work/TaskMecca/TaskMecca
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:43.9285744Z hint: Using 'master' as the name for the initial branch. This default branch name
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:43.9287826Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:43.9289381Z hint: to use in all of your new repositories, which will suppress this warning,
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:43.9290604Z hint: call:
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:43.9291274Z hint:
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:43.9292089Z hint: 	git config --global init.defaultBranch <name>
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:43.9293092Z hint:
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:43.9294327Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:43.9295868Z hint: 'development'. The just-created branch can be renamed via this command:
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:43.9297103Z hint:
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:43.9297785Z hint: 	git branch -m <name>
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:43.9298561Z hint:
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:43.9299580Z hint: Disable this message with "git config set advice.defaultBranchName false"
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:43.9314178Z Initialized empty Git repository in /home/runner/work/TaskMecca/TaskMecca/.git/
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:43.9330809Z [command]/usr/bin/git remote add origin https://github.com/silverkhan/TaskMecca
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:43.9387970Z ##[endgroup]
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:43.9389259Z ##[group]Disabling automatic garbage collection
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:43.9391513Z [command]/usr/bin/git config --local gc.auto 0
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:43.9430367Z ##[endgroup]
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:43.9431985Z ##[group]Setting up auth
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:43.9438889Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:43.9475451Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:43.9950368Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:43.9991991Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:44.0268517Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:44.0304341Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:44.0581717Z [command]/usr/bin/git config --local http.https://github.com/.extraheader AUTHORIZATION: basic ***
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:44.0631728Z ##[endgroup]
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:44.0633127Z ##[group]Fetching the repository
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:44.0642661Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +56e7ae839e470f3f243daa0bf0ce07b35301310e:refs/remotes/pull/361/merge
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:55.8899091Z From https://github.com/silverkhan/TaskMecca
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:55.8900258Z  * [new ref]         56e7ae839e470f3f243daa0bf0ce07b35301310e -> pull/361/merge
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:55.8905762Z ##[endgroup]
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:55.8906917Z ##[group]Determining the checkout info
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:55.8909248Z ##[endgroup]
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:55.8926775Z [command]/usr/bin/git sparse-checkout disable
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:55.8978161Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:55.9007835Z ##[group]Checking out the ref
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:55.9012771Z [command]/usr/bin/git checkout --progress --force refs/remotes/pull/361/merge
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:56.5685002Z Note: switching to 'refs/remotes/pull/361/merge'.
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:56.5685706Z 
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:56.5686240Z You are in 'detached HEAD' state. You can look around, make experimental
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:56.5687305Z changes and commit them, and you can discard any commits you make in this
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:56.5688314Z state without impacting any branches by switching back to a branch.
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:56.5688849Z 
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:56.5689325Z If you want to create a new branch to retain commits you create, you may
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:56.5690178Z do so (now or later) by using -c with the switch command. Example:
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:56.5691030Z 
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:56.5691272Z   git switch -c <new-branch-name>
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:56.5691617Z 
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:56.5691866Z Or undo this operation with:
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:56.5692185Z 
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:56.5692380Z   git switch -
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:56.5692653Z 
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:56.5693118Z Turn off this advice by setting config variable advice.detachedHead to false
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:56.5693878Z 
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:56.5694571Z HEAD is now at 56e7ae8 Merge e4918b61a01999f9ec67c57b70aa203323e41b29 into f102b6a22414b9262f4255f636f2950c4e4e9564
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:56.5743360Z ##[endgroup]
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:56.5792721Z [command]/usr/bin/git log -1 --format=%H
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:56.5826286Z 56e7ae839e470f3f243daa0bf0ce07b35301310e
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:56.6202735Z ##[group]Run actions/setup-node@v4
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:56.6203107Z with:
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:56.6203526Z   node-version: 22
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:56.6203798Z   always-auth: false
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:56.6204072Z   check-latest: false
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:56.6206499Z   token: ***
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:56.6206756Z ##[endgroup]
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:56.7654550Z Found in cache @ /opt/hostedtoolcache/node/22.23.4/x64
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:56.7660388Z (node:2413) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:56.7661868Z (Use `node --trace-deprecation ...` to show where the warning was created)
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:56.7664225Z ##[group]Environment details
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:57.2061042Z node: v22.23.4
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:57.2061642Z npm: 10.9.9
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:57.2062048Z yarn: 1.22.22
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:57.2064762Z ##[endgroup]
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:57.2290293Z ##[group]Run npm install --prefix "$RUNNER_TEMP/workflow-runtime" --no-save --no-audit --no-fund playwright@1.64.1
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:57.2291220Z ^[[36;1mnpm install --prefix "$RUNNER_TEMP/workflow-runtime" --no-save --no-audit --no-fund playwright@1.64.1^[[0m
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:57.2291988Z ^[[36;1m"$RUNNER_TEMP/workflow-runtime/node_modules/.bin/playwright" install --with-deps chromium^[[0m
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:57.2353606Z shell: /usr/bin/bash -e {0}
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:57.2353904Z ##[endgroup]
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:58.9862175Z 
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:58.9869018Z added 2 packages in 2s
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:59.5346705Z Installing dependencies...
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:59.5459003Z Switching to root user to install dependencies...
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:59.6475133Z Get:1 file:/etc/apt/apt-mirrors.txt Mirrorlist [144 B]
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:59.6612504Z Get:6 https://packages.microsoft.com/ubuntu/26.04/prod resolute InRelease [3964 B]
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:59.6805035Z Hit:2 http://azure.archive.ubuntu.com/ubuntu resolute InRelease
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:59.6838083Z Get:3 http://azure.archive.ubuntu.com/ubuntu resolute-updates InRelease [137 kB]
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:59.6859676Z Get:4 http://azure.archive.ubuntu.com/ubuntu resolute-backports InRelease [137 kB]
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:59.6884748Z Get:5 http://azure.archive.ubuntu.com/ubuntu resolute-security InRelease [137 kB]
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:59.6999946Z Get:7 https://packages.microsoft.com/ubuntu/26.04/prod resolute/main amd64 Packages [152 kB]
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:59.7254680Z Get:8 https://packages.microsoft.com/ubuntu/26.04/prod resolute/main arm64 Packages [138 kB]
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:59.7383535Z Get:9 http://azure.archive.ubuntu.com/ubuntu resolute-updates/main amd64v3 Packages [868 kB]
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:59.7532900Z Get:10 http://azure.archive.ubuntu.com/ubuntu resolute-updates/main Translation-en [195 kB]
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:59.7574413Z Get:11 http://azure.archive.ubuntu.com/ubuntu resolute-updates/universe amd64v3 Packages [381 kB]
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:59.7605661Z Get:12 http://azure.archive.ubuntu.com/ubuntu resolute-updates/universe Translation-en [120 kB]
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:59.7634760Z Get:13 http://azure.archive.ubuntu.com/ubuntu resolute-updates/restricted amd64v3 Packages [599 kB]
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:59.7692563Z Get:14 http://azure.archive.ubuntu.com/ubuntu resolute-updates/restricted Translation-en [124 kB]
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:59.7704819Z Get:15 http://azure.archive.ubuntu.com/ubuntu resolute-security/main amd64v3 Packages [668 kB]
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:59.7758596Z Get:16 http://azure.archive.ubuntu.com/ubuntu resolute-security/main Translation-en [151 kB]
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:59.7765113Z Get:17 http://azure.archive.ubuntu.com/ubuntu resolute-security/universe amd64v3 Packages [212 kB]
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:59.7786650Z Get:18 http://azure.archive.ubuntu.com/ubuntu resolute-security/universe Translation-en [70.7 kB]
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:59.8289239Z Get:19 http://azure.archive.ubuntu.com/ubuntu resolute-security/restricted amd64v3 Packages [538 kB]
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:32:59.8318234Z Get:20 http://azure.archive.ubuntu.com/ubuntu resolute-security/restricted Translation-en [110 kB]
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:01.7433903Z Fetched 4741 kB in 0s (11.3 MB/s)
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:02.3752209Z Reading package lists...
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:02.4026784Z Reading package lists...
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:02.5449536Z Building dependency tree...
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:02.5455887Z Reading state information...
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:02.5763440Z libasound2t64 is already the newest version (1.2.15.3-1ubuntu1.1).
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:02.5764609Z libasound2t64 set to manually installed.
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:02.5765707Z libatk-bridge2.0-0t64 is already the newest version (2.60.4-0ubuntu0.1).
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:02.5766750Z libatk-bridge2.0-0t64 set to manually installed.
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:02.5767697Z libatk1.0-0t64 is already the newest version (2.60.4-0ubuntu0.1).
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:02.5768608Z libatk1.0-0t64 set to manually installed.
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:02.5769560Z libatspi2.0-0t64 is already the newest version (2.60.4-0ubuntu0.1).
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:02.5770398Z libatspi2.0-0t64 set to manually installed.
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:02.5771752Z libcairo2 is already the newest version (1.18.4-3).
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:02.5772545Z libcairo2 set to manually installed.
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:02.5773737Z libcups2t64 is already the newest version (2.4.16-1ubuntu1.3).
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:02.5774724Z libcups2t64 set to manually installed.
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:02.5775511Z libdbus-1-3 is already the newest version (1.16.2-2ubuntu4).
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:02.5776158Z libdbus-1-3 set to manually installed.
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:02.5776769Z libdrm2 is already the newest version (2.4.131-1).
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:02.5777381Z libdrm2 set to manually installed.
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:02.5778023Z libgbm1 is already the newest version (26.0.8-1ubuntu0.3).
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:02.5778638Z libgbm1 set to manually installed.
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:02.5779315Z libglib2.0-0t64 is already the newest version (2.88.0-1ubuntu0.1).
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:02.5779992Z libglib2.0-0t64 set to manually installed.
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:02.5780632Z libnspr4 is already the newest version (2:4.38.2-1ubuntu1).
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:02.5781234Z libnspr4 set to manually installed.
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:02.5781826Z libnss3 is already the newest version (2:3.120-1ubuntu2.2).
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:02.5782408Z libnss3 set to manually installed.
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:02.5783013Z libpango-1.0-0 is already the newest version (1.57.0-1).
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:02.5784036Z libpango-1.0-0 set to manually installed.
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:02.5784738Z libx11-6 is already the newest version (2:1.8.13-1ubuntu0.1).
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:02.5785372Z libx11-6 set to manually installed.
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:02.5786010Z libxcb1 is already the newest version (1.17.0-2ubuntu1).
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:02.5786693Z libxcb1 set to manually installed.
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:02.5787390Z libxcomposite1 is already the newest version (1:0.4.6-1build1).
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:02.5788104Z libxcomposite1 set to manually installed.
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:02.5788725Z libxdamage1 is already the newest version (1:1.1.7-1).
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:02.5789575Z libxdamage1 set to manually installed.
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:02.5790282Z libxext6 is already the newest version (2:1.3.4-1build3).
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:02.5790915Z libxext6 set to manually installed.
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:02.5791568Z libxfixes3 is already the newest version (1:6.0.0-2build2).
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:02.5792237Z libxfixes3 set to manually installed.
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:02.5792908Z libxkbcommon0 is already the newest version (1.13.1-1).
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:02.5794110Z libxkbcommon0 set to manually installed.
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:02.5794826Z libxrandr2 is already the newest version (2:1.5.4-1build1).
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:02.5795255Z libxrandr2 set to manually installed.
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:02.5795667Z xvfb is already the newest version (2:21.1.22-1ubuntu1.3).
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:02.5796169Z fonts-noto-color-emoji is already the newest version (2.051-1build1).
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:02.5796687Z libfontconfig1 is already the newest version (2.17.1-3ubuntu1).
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:02.5797097Z libfontconfig1 set to manually installed.
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:02.5797653Z libfreetype6 is already the newest version (2.14.2+dfsg-1ubuntu0.2).
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:02.5798462Z libfreetype6 set to manually installed.
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:02.5799255Z fonts-liberation is already the newest version (1:2.1.5-3build1).
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:02.5800033Z fonts-liberation set to manually installed.
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:02.6328072Z Solving dependencies...
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:02.7202362Z The following additional packages will be installed:
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:02.7203112Z   xfonts-encodings xfonts-utils
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:02.7207600Z Recommended packages:
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:02.7208061Z   fonts-ipafont-mincho fonts-tlwg-loma
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:02.7391160Z The following NEW packages will be installed:
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:02.7391885Z   fonts-freefont-ttf fonts-ipafont-gothic fonts-tlwg-loma-otf fonts-unifont
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:02.7396266Z   fonts-wqy-zenhei xfonts-cyrillic xfonts-encodings xfonts-scalable
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:02.7396900Z   xfonts-utils
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:02.7598871Z 0 upgraded, 9 newly installed, 0 to remove and 47 not upgraded.
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:02.7599446Z Need to get 21.9 MB of archives.
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:02.7600481Z After this operation, 80.2 MB of additional disk space will be used.
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:02.7601305Z Get:1 file:/etc/apt/apt-mirrors.txt Mirrorlist [144 B]
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:02.8401942Z Get:2 http://azure.archive.ubuntu.com/ubuntu resolute/universe amd64v3 fonts-ipafont-gothic all 00303-23ubuntu1 [3703 kB]
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:05.8245459Z Get:3 http://azure.archive.ubuntu.com/ubuntu resolute/main amd64v3 fonts-freefont-ttf all 20211204+svn4273-4build1 [5656 kB]
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:10.6420063Z Get:4 http://azure.archive.ubuntu.com/ubuntu resolute/universe amd64v3 fonts-tlwg-loma-otf all 1:0.7.3-1build1 [106 kB]
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:10.7241459Z Get:5 http://azure.archive.ubuntu.com/ubuntu resolute/universe amd64v3 fonts-unifont all 1:16.0.04-1build1 [3169 kB]
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:11.0386663Z Get:6 http://azure.archive.ubuntu.com/ubuntu resolute/universe amd64v3 fonts-wqy-zenhei all 0.9.45-8build1 [7863 kB]
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:11.6878124Z Get:7 http://azure.archive.ubuntu.com/ubuntu resolute/main amd64v3 xfonts-encodings all 1:1.0.5-0ubuntu3 [576 kB]
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:11.7622966Z Get:8 http://azure.archive.ubuntu.com/ubuntu resolute/main amd64v3 xfonts-utils amd64 1:7.7+7build1 [97.3 kB]
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:11.8252515Z Get:9 http://azure.archive.ubuntu.com/ubuntu resolute/universe amd64v3 xfonts-cyrillic all 1:1.0.5+nmu1build1 [384 kB]
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:11.8971382Z Get:10 http://azure.archive.ubuntu.com/ubuntu resolute/universe amd64v3 xfonts-scalable all 1:1.0.3-1.3build1 [304 kB]
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:12.2137312Z Fetched 21.9 MB in 9s (2387 kB/s)
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:12.2381090Z Selecting previously unselected package fonts-ipafont-gothic.
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:12.2663680Z (Reading database ... 
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:12.2664573Z (Reading database ... 5%
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:12.2665272Z (Reading database ... 10%
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:12.2665991Z (Reading database ... 15%
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:12.2666777Z (Reading database ... 20%
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:12.2667605Z (Reading database ... 25%
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:12.2668346Z (Reading database ... 30%
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:12.2668963Z (Reading database ... 35%
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:12.2669519Z (Reading database ... 40%
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:12.2670018Z (Reading database ... 45%
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:12.2670784Z (Reading database ... 50%
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:12.3408059Z (Reading database ... 55%
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:12.5404172Z (Reading database ... 60%
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:12.7425009Z (Reading database ... 65%
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:12.8378066Z (Reading database ... 70%
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:13.0405035Z (Reading database ... 75%
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:13.2011683Z (Reading database ... 80%
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:13.3876022Z (Reading database ... 85%
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:13.5528017Z (Reading database ... 90%
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:13.7029669Z (Reading database ... 95%
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:13.7030092Z (Reading database ... 100%
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:13.7030716Z (Reading database ... 213197 files and directories currently installed.)
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:13.7071514Z Preparing to unpack .../0-fonts-ipafont-gothic_00303-23ubuntu1_all.deb ...
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:13.7175349Z Unpacking fonts-ipafont-gothic (00303-23ubuntu1) ...
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:13.7993945Z Selecting previously unselected package fonts-freefont-ttf.
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:13.8133464Z Preparing to unpack .../1-fonts-freefont-ttf_20211204+svn4273-4build1_all.deb ...
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:13.8141102Z Unpacking fonts-freefont-ttf (20211204+svn4273-4build1) ...
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:13.8938038Z Selecting previously unselected package fonts-tlwg-loma-otf.
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:13.9077534Z Preparing to unpack .../2-fonts-tlwg-loma-otf_1%3a0.7.3-1build1_all.deb ...
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:13.9085975Z Unpacking fonts-tlwg-loma-otf (1:0.7.3-1build1) ...
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:13.9315770Z Selecting previously unselected package fonts-unifont.
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:13.9455589Z Preparing to unpack .../3-fonts-unifont_1%3a16.0.04-1build1_all.deb ...
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:13.9463789Z Unpacking fonts-unifont (1:16.0.04-1build1) ...
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:14.0545360Z Selecting previously unselected package fonts-wqy-zenhei.
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:14.0684120Z Preparing to unpack .../4-fonts-wqy-zenhei_0.9.45-8build1_all.deb ...
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:14.0822806Z Unpacking fonts-wqy-zenhei (0.9.45-8build1) ...
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:14.1691364Z Selecting previously unselected package xfonts-encodings.
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:14.1831887Z Preparing to unpack .../5-xfonts-encodings_1%3a1.0.5-0ubuntu3_all.deb ...
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:14.1840583Z Unpacking xfonts-encodings (1:1.0.5-0ubuntu3) ...
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:14.2136804Z Selecting previously unselected package xfonts-utils.
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:14.2278024Z Preparing to unpack .../6-xfonts-utils_1%3a7.7+7build1_amd64v3.deb ...
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:14.2285574Z Unpacking xfonts-utils (1:7.7+7build1) ...
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:14.2629832Z Selecting previously unselected package xfonts-cyrillic.
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:14.2768936Z Preparing to unpack .../7-xfonts-cyrillic_1%3a1.0.5+nmu1build1_all.deb ...
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:14.2779417Z Unpacking xfonts-cyrillic (1:1.0.5+nmu1build1) ...
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:14.3120073Z Selecting previously unselected package xfonts-scalable.
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:14.3257510Z Preparing to unpack .../8-xfonts-scalable_1%3a1.0.3-1.3build1_all.deb ...
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:14.3265628Z Unpacking xfonts-scalable (1:1.0.3-1.3build1) ...
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:14.3756450Z Setting up fonts-wqy-zenhei (0.9.45-8build1) ...
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:14.3913122Z Setting up fonts-freefont-ttf (20211204+svn4273-4build1) ...
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:14.3935344Z Setting up fonts-tlwg-loma-otf (1:0.7.3-1build1) ...
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:14.3955940Z Setting up xfonts-encodings (1:1.0.5-0ubuntu3) ...
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:14.3976967Z Setting up fonts-ipafont-gothic (00303-23ubuntu1) ...
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:14.4040574Z update-alternatives: using /usr/share/fonts/opentype/ipafont-gothic/ipag.ttf to provide /usr/share/fonts/truetype/fonts-japanese-gothic.ttf (fonts-japanese-gothic.ttf) in auto mode
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:14.4057439Z Setting up fonts-unifont (1:16.0.04-1build1) ...
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:14.4078428Z Setting up xfonts-utils (1:7.7+7build1) ...
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:14.4133416Z Setting up xfonts-cyrillic (1:1.0.5+nmu1build1) ...
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:14.4568585Z Setting up xfonts-scalable (1:1.0.3-1.3build1) ...
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:14.4970704Z Processing triggers for man-db (2.13.1-1build1) ...
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:14.4991976Z Not building database; man-db/auto-update is not 'true'.
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:14.5005014Z Processing triggers for fontconfig (2.17.1-3ubuntu1) ...
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:15.2077690Z 
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:15.2078338Z Running kernel seems to be up-to-date.
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:15.2079149Z 
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:15.2079364Z Restarting services...
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:15.2167968Z 
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:15.2168299Z Service restarts being deferred:
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:15.2171062Z  systemctl restart hosted-compute-agent.service
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:15.2171613Z 
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:15.2172218Z No containers need to be restarted.
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:15.2172550Z 
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:15.2172873Z No user sessions are running outdated binaries.
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:15.2173401Z 
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:15.2174008Z No VM guests are running outdated hypervisor (qemu) binaries on this host.
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:16.0177322Z Downloading Chrome for Testing 156.0.8078.4 (playwright chromium v1248) from https://cdn.playwright.dev/builds/cft/156.0.8078.4/linux64/chrome-linux64.zip
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:16.4639912Z |                                                                                |   0% of 191.1 MiB
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:16.6303078Z |■■■■■■■■                                                                        |  10% of 191.1 MiB
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:16.7249169Z |■■■■■■■■■■■■■■■■                                                                |  20% of 191.1 MiB
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:16.8142241Z |■■■■■■■■■■■■■■■■■■■■■■■■                                                        |  30% of 191.1 MiB
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:16.9002278Z |■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                                                |  40% of 191.1 MiB
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:16.9930870Z |■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                                        |  50% of 191.1 MiB
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:17.0851955Z |■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                                |  60% of 191.1 MiB
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:17.1695033Z |■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                        |  70% of 191.1 MiB
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:17.2648327Z |■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                |  80% of 191.1 MiB
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:17.3564696Z |■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■        |  90% of 191.1 MiB
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:17.4393779Z |■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■| 100% of 191.1 MiB
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:20.1291610Z Chrome for Testing 156.0.8078.4 (playwright chromium v1248) downloaded to /home/runner/.cache/ms-playwright/chromium-1248
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:20.1308577Z Downloading FFmpeg (playwright ffmpeg v1013) from https://cdn.playwright.dev/dbazure/download/playwright/builds/ffmpeg/1013/ffmpeg-linux.zip
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:20.5145029Z |                                                                                |   0% of 2.2 MiB
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:20.5180587Z |■■■■■■■■                                                                        |  10% of 2.2 MiB
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:20.5235073Z |■■■■■■■■■■■■■■■■                                                                |  20% of 2.2 MiB
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:20.5246997Z |■■■■■■■■■■■■■■■■■■■■■■■■                                                        |  30% of 2.2 MiB
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:20.5267106Z |■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                                                |  40% of 2.2 MiB
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:20.5286706Z |■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                                        |  50% of 2.2 MiB
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:20.5301429Z |■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                                |  60% of 2.2 MiB
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:20.5319299Z |■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                        |  70% of 2.2 MiB
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:20.5341436Z |■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                |  80% of 2.2 MiB
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:20.5365666Z |■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■        |  90% of 2.2 MiB
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:20.5378707Z |■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■| 100% of 2.2 MiB
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:20.6128109Z FFmpeg (playwright ffmpeg v1013) downloaded to /home/runner/.cache/ms-playwright/ffmpeg-1013
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:20.6134210Z Downloading Chrome Headless Shell 156.0.8078.4 (playwright chromium-headless-shell v1248) from https://cdn.playwright.dev/builds/cft/156.0.8078.4/linux64/chrome-headless-shell-linux64.zip
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:21.0580212Z |                                                                                |   0% of 120 MiB
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:21.1974403Z |■■■■■■■■                                                                        |  10% of 120 MiB
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:21.2620231Z |■■■■■■■■■■■■■■■■                                                                |  20% of 120 MiB
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:21.3184962Z |■■■■■■■■■■■■■■■■■■■■■■■■                                                        |  30% of 120 MiB
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:21.3687516Z |■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                                                |  40% of 120 MiB
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:21.4214805Z |■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                                        |  50% of 120 MiB
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:21.4829016Z |■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                                |  60% of 120 MiB
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:21.5354212Z |■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                        |  70% of 120 MiB
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:21.5890027Z |■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                |  80% of 120 MiB
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:21.6562705Z |■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■        |  90% of 120 MiB
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:21.7214079Z |■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■| 100% of 120 MiB
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:23.5651235Z Chrome Headless Shell 156.0.8078.4 (playwright chromium-headless-shell v1248) downloaded to /home/runner/.cache/ms-playwright/chromium_headless_shell-1248
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:23.5836035Z ##[group]Run export WORKFLOW_PLAYWRIGHT_MODULE="$RUNNER_TEMP/workflow-runtime/node_modules/playwright"
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:23.5836840Z ^[[36;1mexport WORKFLOW_PLAYWRIGHT_MODULE="$RUNNER_TEMP/workflow-runtime/node_modules/playwright"^[[0m
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:23.5837815Z ^[[36;1mnode --test tests/a65_dev_floating_pilot.test.cjs tests/a65_pilot_review_entry.test.cjs tests/a65_pilot_neutral.test.cjs^[[0m
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:23.5838453Z ^[[36;1mnode --test tests/a65_core_browser.test.cjs^[[0m
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:23.5839319Z ^[[36;1mnode --test tests/web_workflow_browser.test.cjs tests/web_workflow_navigation.test.cjs tests/web_workflow_gestures.test.cjs tests/web_workflow_popover.test.cjs tests/web_workflow_connected.test.cjs^[[0m
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:23.5840555Z ^[[36;1mWORKFLOW_CORE_ONLY=1 WORKFLOW_NO_CAPTURE=1 WORKFLOW_EVIDENCE_DIR=workflow-browser-evidence/core node --test tests/web_workflow_navigation.test.cjs^[[0m
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:23.5892685Z shell: /usr/bin/bash -e {0}
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:23.5893034Z env:
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:23.5893468Z   WORKFLOW_REQUIRE_BROWSER: 1
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:23.5893773Z   WORKFLOW_EVIDENCE_DIR: workflow-browser-evidence
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:23.5894094Z ##[endgroup]
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:23.6444997Z TAP version 13
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:24.2005266Z # Subtest: approved pilot preserves exact origin/dev application, controls, styles and entry DOM
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:24.2067332Z ok 1 - approved pilot preserves exact origin/dev application, controls, styles and entry DOM
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:24.2093926Z   ---
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:24.2123740Z   duration_ms: 15.376369
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:24.2124463Z   type: 'test'
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:24.2375202Z   ...
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:56.6628883Z # Subtest: actual dev entry retains search, native menus, continuous anchors, theme and mobile controls in the pilot
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:56.6635201Z not ok 2 - actual dev entry retains search, native menus, continuous anchors, theme and mobile controls in the pilot
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:56.6636140Z   ---
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:56.6636496Z   duration_ms: 32966.667764
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:56.6636964Z   type: 'test'
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:56.6637750Z   location: '/home/runner/work/TaskMecca/TaskMecca/tests/a65_dev_floating_pilot.test.cjs:20:1'
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:56.6638624Z   failureType: 'testCodeFailure'
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:56.6639258Z   error: 'page.waitForFunction: Timeout 30000ms exceeded.'
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:56.6639846Z   code: 'ERR_TEST_FAILURE'
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:56.6640252Z   name: 'TimeoutError'
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:56.6640652Z   stack: |-
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:56.6641605Z     TestContext.<anonymous> (/home/runner/work/TaskMecca/TaskMecca/tests/a65_dev_floating_pilot.test.cjs:51:14)
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:56.6642503Z   ...
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:56.6786200Z # Subtest: floating neutral material preserves dev palettes, semantics, geometry and System across desktop/mobile
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:56.6787794Z ok 3 - floating neutral material preserves dev palettes, semantics, geometry and System across desktop/mobile
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:56.6788705Z   ---
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:56.6789046Z   duration_ms: 17307.453146
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:56.6789467Z   type: 'test'
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:56.6789823Z   ...
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:56.6790852Z # Subtest: PR and standalone Preview offer one-click pilot/dev comparison while ordinary dev remains unchanged
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:56.6792454Z ok 4 - PR and standalone Preview offer one-click pilot/dev comparison while ordinary dev remains unchanged
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:56.6793535Z   ---
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:56.6793895Z   duration_ms: 17570.770716
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:56.6794318Z   type: 'test'
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:56.6794668Z   ...
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:56.6794996Z 1..4
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:56.6795332Z # tests 4
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:56.6795677Z # suites 0
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:56.6796008Z # pass 3
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:56.6796357Z # fail 1
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:56.6796697Z # cancelled 0
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:56.6797055Z # skipped 0
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:56.6797404Z # todo 0
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:56.6797890Z # duration_ms 33053.245688
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:56.6860334Z ##[error]Process completed with exit code 1.
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:56.6965772Z ##[group]Run actions/upload-artifact@v4
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:56.6966074Z with:
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:56.6966294Z   name: workflow-browser-42791585728-1
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:56.6966580Z   path: workflow-browser-evidence
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:56.6966847Z   if-no-files-found: warn
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:56.6967282Z   retention-days: 7
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:56.6967497Z   compression-level: 6
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:56.6967713Z   overwrite: false
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:56.6967927Z   include-hidden-files: false
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:56.6968174Z ##[endgroup]
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:56.8685960Z (node:3490) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:56.8686802Z (Use `node --trace-deprecation ...` to show where the warning was created)
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:56.8742615Z With the provided path, there will be 3 files uploaded
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:56.8743708Z Artifact name is valid!
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:56.8744100Z Root directory input is valid!
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:57.2899475Z Beginning upload of artifact content to blob storage
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:57.3191518Z (node:3490) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:57.5746146Z Uploaded bytes 3892
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:57.6455592Z Finished uploading artifact content to blob storage!
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:57.6457349Z SHA256 digest of uploaded artifact zip is a0915e8676e8389ea4ae02bdc75930a179e25a9cab803799d5d4f825a1f5c996
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:57.6458954Z Finalizing artifact upload
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:58.0596943Z Artifact workflow-browser-42791585728-1.zip successfully finalized. Artifact ID 13752020167
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:58.0598909Z Artifact workflow-browser-42791585728-1 has been successfully uploaded! Final size is 3892 bytes. Artifact ID is 13752020167
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:58.0605090Z Artifact download URL: https://github.com/silverkhan/TaskMecca/actions/runs/42791585728/artifacts/13752020167
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:58.0826060Z Post job cleanup.
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:58.1705851Z [command]/usr/bin/git version
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:58.1758840Z git version 2.56.0
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:58.1801021Z Temporarily overriding HOME='/home/runner/work/_temp/7486d083-1f8c-44c4-83af-80009efc9adb' before making global git config changes
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:58.1802537Z Adding repository directory to the temporary git global config as a safe directory
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:58.1807038Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/TaskMecca/TaskMecca
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:58.1851453Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:58.1888721Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:58.2188339Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:58.2237705Z http.https://github.com/.extraheader
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:58.2239197Z [command]/usr/bin/git config --local --unset-all http.https://github.com/.extraheader
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:58.2282401Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:58.2619897Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:58.2651051Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:58.3090493Z Cleaning up orphan processes
+Unified workflow browser regression	UNKNOWN STEP	2026-11-10T09:33:58.3501207Z ##[warning]Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/checkout@v4, actions/setup-node@v4, actions/upload-artifact@v4. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
