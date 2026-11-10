@@ -73,6 +73,24 @@ func canonicalUserHold(state any, fields map[string]string) bool {
   meaningful(fields["대기"]) && meaningful(fields["재개조건"])
 }
 
+// Suppress duplicate Root messages across Controller resumes. A previous
+// unknown/failed dispatch must be reconciled rather than blindly replayed.
+func priorRootDelivery(row handoff.Handoff)(action,reason,note string,alreadyHandled bool){
+ if row.Applied || row.ClaimedBy!="" {
+  return "root_handoff_already_claimed","handoff_claimed_or_applied",
+   "Root handoff is already claimed/applied; do not send again.",true
+ }
+ if dispatch,ok:=row.Steps["dispatch"];ok {
+  if dispatch.Result=="ok" {
+   return "root_notification_already_dispatched","dispatch_already_confirmed",
+    "Actual transport was previously recorded; do not send again.",true
+  }
+  return "root_delivery_requires_reconciliation","previous_dispatch_"+dispatch.Result,
+   "Prior send failed/unknown; inspect handoff and native state before any redispatch.",true
+ }
+ return "","","",false
+}
+
 type rootNotificationPlan struct {
  Mode orchestration.Mode `json:"mode"`
  TaskID string `json:"task_id"`
@@ -161,21 +179,10 @@ func runOrchestrationNotifyCLI(args []string,stdout,stderr io.Writer) int {
     existing,exists,inspectErr:=handoff.Inspect(projectAbs,prepared.HandoffID,time.Now())
     if inspectErr!=nil {fmt.Fprintln(stderr,inspectErr);return 1}
     if !exists {fmt.Fprintln(stderr,"prepared handoff is missing from journal");return 1}
-    if existing.Applied || existing.ClaimedBy!="" {
-     plan.Decision.Allowed=false;plan.Decision.Action="root_handoff_already_claimed"
-     plan.Decision.Reasons=append(plan.Decision.Reasons,"handoff_claimed_or_applied")
-     plan.Note="Root handoff is already claimed/applied; do not send again."
-    }else if dispatch,hasDispatch:=existing.Steps["dispatch"];hasDispatch {
-     plan.Decision.Allowed=false
-     if dispatch.Result=="ok" {
-      plan.Decision.Action="root_notification_already_dispatched"
-      plan.Decision.Reasons=append(plan.Decision.Reasons,"dispatch_already_confirmed")
-      plan.Note="Actual transport was previously recorded; do not send again."
-     }else{
-      plan.Decision.Action="root_delivery_requires_reconciliation"
-      plan.Decision.Reasons=append(plan.Decision.Reasons,"previous_dispatch_"+dispatch.Result)
-      plan.Note="Prior send failed/unknown; inspect handoff and native state before any redispatch."
-     }
+    if action,reason,note,blocked:=priorRootDelivery(existing);blocked {
+     plan.Decision.Allowed=false;plan.Decision.Action=action
+     plan.Decision.Reasons=append(plan.Decision.Reasons,reason)
+     plan.Note=note
     }else{
     switch prepared.Action {
     case handoff.ActionMessageRunning:plan.NativeAction="message_running"
