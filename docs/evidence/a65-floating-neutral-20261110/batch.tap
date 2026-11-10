@@ -1,0 +1,23 @@
+✖ floating neutral material preserves dev palettes, semantics, geometry and System across desktop/mobile (1338.716ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1390.367208
+
+✖ failing tests:
+
+test at tests/a65_pilot_neutral.test.cjs:9:1
+✖ floating neutral material preserves dev palettes, semantics, geometry and System across desktop/mobile (1338.716ms)
+  page.evaluate: TypeError: Failed to execute 'getComputedStyle' on 'Window': parameter 1 is not of type 'Element'.
+      at s (eval at evaluate (:370:30), <anonymous>:1:17)
+      at eval (eval at evaluate (:370:30), <anonymous>:1:1007)
+      at UtilityScript.evaluate (<anonymous>:372:16)
+      at UtilityScript.<anonymous> (<anonymous>:1:44)
+      at sample (/Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/tests/a65_pilot_neutral.test.cjs:12:26)
+      at TestContext.<anonymous> (/Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/tests/a65_pilot_neutral.test.cjs:20:19) {
+    log: []
+  }
