@@ -1,0 +1,40 @@
+Go runtime	Test Go runtime with Activity CI evidence	﻿2026-11-10T09:06:28.3411303Z ##[group]Run node scripts/record-ci-test.cjs --output activity-ci-evidence.json -- go test ./...
+Go runtime	Test Go runtime with Activity CI evidence	2026-11-10T09:06:28.3411746Z ^[[36;1mnode scripts/record-ci-test.cjs --output activity-ci-evidence.json -- go test ./...^[[0m
+Go runtime	Test Go runtime with Activity CI evidence	2026-11-10T09:06:28.3458910Z shell: /usr/bin/bash -e {0}
+Go runtime	Test Go runtime with Activity CI evidence	2026-11-10T09:06:28.3459093Z ##[endgroup]
+Go runtime	Test Go runtime with Activity CI evidence	2026-11-10T09:06:35.3522069Z ?   	github.com/silverkhan/TaskMecca/goassets	[no test files]
+Go runtime	Test Go runtime with Activity CI evidence	2026-11-10T09:06:36.6086393Z ?   	github.com/silverkhan/TaskMecca/internal/handoffjournal	[no test files]
+Go runtime	Test Go runtime with Activity CI evidence	2026-11-10T09:06:37.9945672Z ok  	github.com/silverkhan/TaskMecca/cmd/task-mecca	2.226s
+Go runtime	Test Go runtime with Activity CI evidence	2026-11-10T09:06:37.9960256Z ok  	github.com/silverkhan/TaskMecca/internal/activity	0.394s
+Go runtime	Test Go runtime with Activity CI evidence	2026-11-10T09:06:38.9087275Z ok  	github.com/silverkhan/TaskMecca/internal/backlog	2.191s
+Go runtime	Test Go runtime with Activity CI evidence	2026-11-10T09:06:38.9087834Z ok  	github.com/silverkhan/TaskMecca/internal/contextlife	0.079s
+Go runtime	Test Go runtime with Activity CI evidence	2026-11-10T09:06:38.9088264Z ok  	github.com/silverkhan/TaskMecca/internal/contractscope	0.008s
+Go runtime	Test Go runtime with Activity CI evidence	2026-11-10T09:06:38.9088703Z ok  	github.com/silverkhan/TaskMecca/internal/handoff	0.491s
+Go runtime	Test Go runtime with Activity CI evidence	2026-11-10T09:06:38.9119794Z ok  	github.com/silverkhan/TaskMecca/internal/install	0.709s
+Go runtime	Test Go runtime with Activity CI evidence	2026-11-10T09:06:39.1363710Z ?   	github.com/silverkhan/TaskMecca/internal/projectionchange	[no test files]
+Go runtime	Test Go runtime with Activity CI evidence	2026-11-10T09:06:39.5215279Z ok  	github.com/silverkhan/TaskMecca/internal/maintenance	1.621s
+Go runtime	Test Go runtime with Activity CI evidence	2026-11-10T09:06:39.5253183Z ok  	github.com/silverkhan/TaskMecca/internal/notify	0.598s
+Go runtime	Test Go runtime with Activity CI evidence	2026-11-10T09:06:39.5294896Z ok  	github.com/silverkhan/TaskMecca/internal/orchestration	0.218s
+Go runtime	Test Go runtime with Activity CI evidence	2026-11-10T09:06:39.5324733Z ok  	github.com/silverkhan/TaskMecca/internal/preview	0.281s
+Go runtime	Test Go runtime with Activity CI evidence	2026-11-10T09:06:39.5325248Z ok  	github.com/silverkhan/TaskMecca/internal/projectguard	0.013s
+Go runtime	Test Go runtime with Activity CI evidence	2026-11-10T09:06:39.9181248Z ok  	github.com/silverkhan/TaskMecca/internal/runtimeobs	0.132s
+Go runtime	Test Go runtime with Activity CI evidence	2026-11-10T09:06:39.9181613Z ok  	github.com/silverkhan/TaskMecca/internal/subcontroller	0.002s
+Go runtime	Test Go runtime with Activity CI evidence	2026-11-10T09:07:02.3587155Z 2026/11/10 09:06:41 Task Mecca automatic Telegram delivery issue in project "001": 0 events, 1 failures; inspect notification delivery ledger
+Go runtime	Test Go runtime with Activity CI evidence	2026-11-10T09:07:02.3588057Z 2026/11/10 09:06:41 Task Mecca automatic Telegram delivery issue in project "001": 0 events, 1 failures; inspect notification delivery ledger
+Go runtime	Test Go runtime with Activity CI evidence	2026-11-10T09:07:02.3588960Z 2026/11/10 09:06:41 Task Mecca automatic Telegram delivery issue in project "001": 0 events, 1 failures; inspect notification delivery ledger
+Go runtime	Test Go runtime with Activity CI evidence	2026-11-10T09:07:02.3589326Z --- FAIL: TestPreviewBuildListServerDevOnlyAndNeverExecutes (0.00s)
+Go runtime	Test Go runtime with Activity CI evidence	2026-11-10T09:07:02.3591437Z     testing.go:1231: TempDir RemoveAll cleanup: unlinkat /tmp/TestPreviewBuildListServerDevOnlyAndNeverExecutes3424661448: directory not empty
+Go runtime	Test Go runtime with Activity CI evidence	2026-11-10T09:07:02.3591797Z Task Mecca Web UI
+Go runtime	Test Go runtime with Activity CI evidence	2026-11-10T09:07:02.3591947Z local:     http://127.0.0.1:39845/
+Go runtime	Test Go runtime with Activity CI evidence	2026-11-10T09:07:02.3592124Z tailscale HTTPS: initializing in background
+Go runtime	Test Go runtime with Activity CI evidence	2026-11-10T09:07:02.3592443Z backlog: /tmp/TestRunAutoPublishesLocalStateBeforeDirectTLSReady3598374836/002/_task_mecca/data/backlog (auto)
+Go runtime	Test Go runtime with Activity CI evidence	2026-11-10T09:07:02.3593157Z maintenance actions require explicit UI confirmation · Ctrl+C to stop
+Go runtime	Test Go runtime with Activity CI evidence	2026-11-10T09:07:02.3593521Z access: not yet observed · fresh active preflight runs automatically before dispatch
+Go runtime	Test Go runtime with Activity CI evidence	2026-11-10T09:07:02.3593767Z tailscale HTTPS: unavailable
+Go runtime	Test Go runtime with Activity CI evidence	2026-11-10T09:07:02.3594123Z   test delayed TLS
+Go runtime	Test Go runtime with Activity CI evidence	2026-11-10T09:07:02.3594371Z   Local Web remains available; inspect: task-mecca web logs
+Go runtime	Test Go runtime with Activity CI evidence	2026-11-10T09:07:02.3594549Z FAIL
+Go runtime	Test Go runtime with Activity CI evidence	2026-11-10T09:07:02.3594707Z FAIL	github.com/silverkhan/TaskMecca/internal/webui	21.348s
+Go runtime	Test Go runtime with Activity CI evidence	2026-11-10T09:07:02.3594972Z FAIL
+Go runtime	Test Go runtime with Activity CI evidence	2026-11-10T09:07:02.4149585Z CI command evidence: activity-ci-evidence.json (failed, 32393 ms)
+Go runtime	Test Go runtime with Activity CI evidence	2026-11-10T09:07:02.4252221Z ##[error]Process completed with exit code 1.
