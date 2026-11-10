@@ -9,6 +9,9 @@ async function start(root){
  webRoot=path.resolve(root);const upstream=await fixture.start(webRoot),clients=new Set(),waiters=new Set();let connected,eventConnections=0;
  const eventsReady=new Promise(resolve=>connected=resolve);
  const server=http.createServer((req,res)=>{const u=new URL(req.url,upstream.origin);
+  // Historical native modules keep their frozen entry; default dev/pilot is tested separately.
+  if(u.pathname==='/'||u.pathname.startsWith('/tasks/')){res.writeHead(200,{'Content-Type':'text/html','Cache-Control':'no-store'});res.end(fs.readFileSync(path.join(__dirname,'../fixtures/a65/expanded-index-f4da69f8.html')));return;}
+  if(u.pathname==='/select-ui.js'){res.writeHead(200,{'Content-Type':'text/javascript','Cache-Control':'no-store'});res.end(fs.readFileSync(path.join(__dirname,'../fixtures/a65/expanded-select-ui-f4da69f8.js')));return;}
   if(u.pathname==='/api/events'){upstream.state.requests.push(u.pathname+u.search);res.writeHead(200,{'Content-Type':'text/event-stream','Cache-Control':'no-cache','Connection':'keep-alive'});res.write(': fixture connected\n\n');clients.add(res);eventConnections++;connected();for(const notify of waiters)notify();req.on('close',()=>clients.delete(res));return;}
   let value;if(u.pathname==='/api/revision'&&upstream.state.revision)value=upstream.state.revision;else if(u.pathname.startsWith('/api/tasks/')&&upstream.state.taskResponse)value=upstream.state.taskResponse;else if(u.pathname==='/api/backlog/tasks'&&upstream.state.backlogResponse)value=upstream.state.backlogResponse;
   if(value){upstream.state.requests.push(u.pathname+u.search);res.writeHead(200,{'Content-Type':'application/json','Cache-Control':'no-store'});res.end(JSON.stringify(value));return;}

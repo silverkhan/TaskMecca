@@ -235,7 +235,17 @@ async function start(root) {
       return;
     }
     let name = decodeURIComponent(u.pathname);
-    if (name === "/" || name.startsWith("/tasks/")) name = "/index.html";
+    // This fixture targets preserved expanded-native modules, not the new dev pilot.
+      if (name === "/" || name.startsWith("/tasks/")) {
+        res.setHeader("Content-Type", "text/html");
+        res.end(fs.readFileSync(path.join(__dirname, "../fixtures/a65/expanded-index-f4da69f8.html")));
+        return;
+      }
+    if (name === "/select-ui.js") {
+      res.setHeader("Content-Type", "text/javascript");
+      res.end(fs.readFileSync(path.join(__dirname, "../fixtures/a65/expanded-select-ui-f4da69f8.js")));
+      return;
+    }
     const file = path.resolve(root, "." + name);
     if (!file.startsWith(path.resolve(root) + path.sep)) {
       res.writeHead(403);

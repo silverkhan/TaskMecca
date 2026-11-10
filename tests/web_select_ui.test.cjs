@@ -103,7 +103,8 @@ test('keyboard navigation and escape restore focus without changing native selec
  assert.equal(h.document.activeElement,button);
 });
 test('native expansion preserves authoritative select values and shared accessible combo behavior',()=>{
- assert.match(index,/type="module" src="\/ui\/main.js"/);
+ const historicalIndex=fs.readFileSync('tests/fixtures/a65/expanded-index-f4da69f8.html','utf8');
+ assert.match(historicalIndex,/type="module" src="\/ui\/main.js"/);
  const active=fs.readFileSync('goassets/template/_task_mecca/framework/web/ui/components/shared.js','utf8');
  assert.match(active,/<select id="appearance" aria-label=/);
  const filters=fs.readFileSync('goassets/template/_task_mecca/framework/web/ui/screens/backlog.js','utf8');assert.match(filters,/<input type="hidden" name="status"/);assert.match(filters,/<select name="sort"/);assert.match(filters,/<select name="page_size"/);

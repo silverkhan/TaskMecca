@@ -28,17 +28,12 @@ func TestSignatureThemeBranding(t *testing.T) {
 		return string(data)
 	}
 	html := read("index.html")
-	for _, needle := range []string{"/logo.svg", "/ui/boot.js", "/ui/smoke.css", `type="module" src="/ui/main.js"`} {
-		if !contains(html, needle) {
-			t.Fatalf("index missing Smoke native marker %q", needle)
-		}
+	for _, needle := range []string{"/logo.svg", "/theme-boot.js", "/style.css", `src="/app.js"`, `value="mecca"`, `value="slate"`, "/ui/dev-floating/pilot.js", "/ui/dev-floating/pilot.css"} {
+		if !contains(html, needle) { t.Fatalf("dev-preserving pilot entry missing %q", needle) }
 	}
-	if contains(html, `src="/app.js"`) || contains(html, `value="mecca"`) || contains(html, `value="slate"`) {
-		t.Fatal("Smoke must replace the old active theme runtime")
-	}
-	if strings.Index(html, "/ui/boot.js") > strings.Index(html, "/ui/smoke.css") {
-		t.Fatal("theme bootstrap must precede stylesheet")
-	}
+	if contains(html, `src="/ui/main.js"`) { t.Fatal("reconstructed native UI must not replace the approved dev entry") }
+	if strings.Index(html, "/theme-boot.js") > strings.Index(html, "/style.css") { t.Fatal("dev theme bootstrap must precede stylesheet") }
+	// Previously implemented native assets stay packaged as history, not the active entry.
 	boot := read("ui/boot.js")
 	for _, needle := range []string{"task-mecca-smoke-mode", "prefers-color-scheme: dark", `"light"`, `"dark"`, `"system"`} {
 		if !contains(boot, needle) {
