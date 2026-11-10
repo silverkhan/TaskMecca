@@ -1,0 +1,5 @@
+--- FAIL: TestHandlerServesDashboardAPIsAndAssets (0.26s)
+    server_test.go:172: native core module mount missing from Web shell
+FAIL
+FAIL	github.com/silverkhan/TaskMecca/internal/webui	0.916s
+FAIL

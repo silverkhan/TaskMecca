@@ -1,0 +1,38 @@
+build	Test Go runtime	﻿2026-11-10T01:26:35.6570323Z ##[group]Run go test ./...
+build	Test Go runtime	2026-11-10T01:26:35.6570713Z ^[[36;1mgo test ./...^[[0m
+build	Test Go runtime	2026-11-10T01:26:35.6626136Z shell: /usr/bin/bash -e {0}
+build	Test Go runtime	2026-11-10T01:26:35.6626469Z ##[endgroup]
+build	Test Go runtime	2026-11-10T01:26:44.2342741Z ?   	github.com/silverkhan/TaskMecca/goassets	[no test files]
+build	Test Go runtime	2026-11-10T01:26:45.2093042Z ?   	github.com/silverkhan/TaskMecca/internal/handoffjournal	[no test files]
+build	Test Go runtime	2026-11-10T01:26:46.9809709Z ok  	github.com/silverkhan/TaskMecca/cmd/task-mecca	2.047s
+build	Test Go runtime	2026-11-10T01:26:46.9810829Z ok  	github.com/silverkhan/TaskMecca/internal/activity	0.228s
+build	Test Go runtime	2026-11-10T01:26:48.3499419Z ok  	github.com/silverkhan/TaskMecca/internal/backlog	2.960s
+build	Test Go runtime	2026-11-10T01:26:48.3500275Z ok  	github.com/silverkhan/TaskMecca/internal/contextlife	0.206s
+build	Test Go runtime	2026-11-10T01:26:48.3501035Z ok  	github.com/silverkhan/TaskMecca/internal/contractscope	0.009s
+build	Test Go runtime	2026-11-10T01:26:48.3501809Z ok  	github.com/silverkhan/TaskMecca/internal/handoff	0.653s
+build	Test Go runtime	2026-11-10T01:26:48.3502229Z ok  	github.com/silverkhan/TaskMecca/internal/install	0.785s
+build	Test Go runtime	2026-11-10T01:26:48.4061663Z ?   	github.com/silverkhan/TaskMecca/internal/projectionchange	[no test files]
+build	Test Go runtime	2026-11-10T01:26:48.5290310Z ok  	github.com/silverkhan/TaskMecca/internal/maintenance	1.486s
+build	Test Go runtime	2026-11-10T01:26:48.5349194Z ok  	github.com/silverkhan/TaskMecca/internal/notify	0.467s
+build	Test Go runtime	2026-11-10T01:26:48.5359083Z ok  	github.com/silverkhan/TaskMecca/internal/preview	0.301s
+build	Test Go runtime	2026-11-10T01:26:48.5389899Z ok  	github.com/silverkhan/TaskMecca/internal/projectguard	0.016s
+build	Test Go runtime	2026-11-10T01:26:49.4912274Z ok  	github.com/silverkhan/TaskMecca/internal/runtimeobs	0.162s
+build	Test Go runtime	2026-11-10T01:26:49.4912961Z ok  	github.com/silverkhan/TaskMecca/internal/subcontroller	0.002s
+build	Test Go runtime	2026-11-10T01:27:13.4496086Z 2026/11/10 01:26:51 Task Mecca automatic Telegram delivery issue in project "001": 0 events, 1 failures; inspect notification delivery ledger
+build	Test Go runtime	2026-11-10T01:27:13.4497669Z 2026/11/10 01:26:51 Task Mecca automatic Telegram delivery issue in project "001": 0 events, 1 failures; inspect notification delivery ledger
+build	Test Go runtime	2026-11-10T01:27:13.4499450Z 2026/11/10 01:26:51 Task Mecca automatic Telegram delivery issue in project "001": 0 events, 1 failures; inspect notification delivery ledger
+build	Test Go runtime	2026-11-10T01:27:13.4500830Z --- FAIL: TestHandlerServesDashboardAPIsAndAssets (0.03s)
+build	Test Go runtime	2026-11-10T01:27:13.4502158Z     server_test.go:172: native core module mount missing from Web shell
+build	Test Go runtime	2026-11-10T01:27:13.4502882Z Task Mecca Web UI
+build	Test Go runtime	2026-11-10T01:27:13.4503327Z local:     http://127.0.0.1:37669/
+build	Test Go runtime	2026-11-10T01:27:13.4503889Z tailscale HTTPS: initializing in background
+build	Test Go runtime	2026-11-10T01:27:13.4504960Z backlog: /tmp/TestRunAutoPublishesLocalStateBeforeDirectTLSReady2417011237/002/_task_mecca/data/backlog (auto)
+build	Test Go runtime	2026-11-10T01:27:13.4506112Z maintenance actions require explicit UI confirmation · Ctrl+C to stop
+build	Test Go runtime	2026-11-10T01:27:13.4506748Z access: not yet observed · fresh active preflight runs automatically before dispatch
+build	Test Go runtime	2026-11-10T01:27:13.4507351Z tailscale HTTPS: unavailable
+build	Test Go runtime	2026-11-10T01:27:13.4507619Z   test delayed TLS
+build	Test Go runtime	2026-11-10T01:27:13.4507946Z   Local Web remains available; inspect: task-mecca web logs
+build	Test Go runtime	2026-11-10T01:27:13.4508591Z FAIL
+build	Test Go runtime	2026-11-10T01:27:13.4509058Z FAIL	github.com/silverkhan/TaskMecca/internal/webui	22.476s
+build	Test Go runtime	2026-11-10T01:27:13.4509403Z FAIL
+build	Test Go runtime	2026-11-10T01:27:13.4970275Z ##[error]Process completed with exit code 1.

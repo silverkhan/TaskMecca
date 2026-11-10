@@ -29,10 +29,16 @@ func TestSignatureThemeBranding(t *testing.T) {
 	}
 	html := read("index.html")
 	for _, needle := range []string{"/logo.svg", "/theme-boot.js", "/style.css", `src="/app.js"`, `value="mecca"`, `value="slate"`, "/ui/dev-floating/pilot.js", "/ui/dev-floating/pilot.css"} {
-		if !contains(html, needle) { t.Fatalf("dev-preserving pilot entry missing %q", needle) }
+		if !contains(html, needle) {
+			t.Fatalf("dev-preserving pilot entry missing %q", needle)
+		}
 	}
-	if contains(html, `src="/ui/main.js"`) { t.Fatal("reconstructed native UI must not replace the approved dev entry") }
-	if strings.Index(html, "/theme-boot.js") > strings.Index(html, "/style.css") { t.Fatal("dev theme bootstrap must precede stylesheet") }
+	if contains(html, `src="/ui/main.js"`) {
+		t.Fatal("reconstructed native UI must not replace the approved dev entry")
+	}
+	if strings.Index(html, "/theme-boot.js") > strings.Index(html, "/style.css") {
+		t.Fatal("dev theme bootstrap must precede stylesheet")
+	}
 	// Previously implemented native assets stay packaged as history, not the active entry.
 	boot := read("ui/boot.js")
 	for _, needle := range []string{"task-mecca-smoke-mode", "prefers-color-scheme: dark", `"light"`, `"dark"`, `"system"`} {
@@ -151,6 +157,8 @@ func TestHandlerServesDashboardAPIsAndAssets(t *testing.T) {
 		{"/sw.js", 200, "javascript"},
 		{"/style.css", 200, "text/css"},
 		{"/logo.svg", 200, "image/svg+xml"},
+		{"/ui/dev-floating/pilot.js", 200, "javascript"},
+		{"/ui/dev-floating/pilot.css", 200, "text/css"},
 		{"/tasks/A-1", 200, "text/html"},
 	}
 	for _, tc := range cases {
@@ -168,8 +176,46 @@ func TestHandlerServesDashboardAPIsAndAssets(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, req)
-	if !contains(rec.Body.String(), `type="module" src="/ui/main.js"`) || !contains(rec.Body.String(), `id="app"`) {
-		t.Fatal("native core module mount missing from Web shell")
+	// The approved default is the actual dev shell. The pilot opts into material
+	// on that same DOM; preserved native modules have separate historical fixtures.
+	wantShell, err := goassets.Template.ReadFile(embeddedRoot + "/web/index.html")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, route := range []string{"/", "/tasks/A-1", "/tasks/A-1?floating=1&background=image"} {
+		shellResponse := httptest.NewRecorder()
+		handler.ServeHTTP(shellResponse, httptest.NewRequest(http.MethodGet, route, nil))
+		if shellResponse.Code != http.StatusOK || shellResponse.Body.String() != string(wantShell) {
+			t.Fatalf("%s must serve the unchanged embedded dev shell; status=%d", route, shellResponse.Code)
+		}
+	}
+	shell := string(wantShell)
+	for _, marker := range []string{`class="app-shell"`, `id="sidebar"`, `id="sidebarToggle"`, `id="stateNav"`, `class="topbar"`, `id="content"`, `id="shortcutBar"`} {
+		if strings.Count(shell, marker) != 1 {
+			t.Fatalf("dev shell must retain one %s", marker)
+		}
+	}
+	previous := -1
+	for _, entry := range []string{`src="/theme-boot.js"`, `href="/style.css"`, `src="/ui/dev-floating/pilot.js"`, `href="/ui/dev-floating/pilot.css"`, `src="/select-ui.js"`, `src="/app.js"`} {
+		position := strings.Index(shell, entry)
+		if position <= previous || strings.Count(shell, entry) != 1 {
+			t.Fatalf("dev shell entry must occur once in bootstrap order: %s", entry)
+		}
+		previous = position
+	}
+	if contains(shell, `src="/ui/main.js"`) || contains(shell, `data-floating-pilot=`) {
+		t.Fatal("default dev shell must not mount reconstructed UI or pre-enable the opt-in pilot")
+	}
+	for _, asset := range []string{"ui/dev-floating/pilot.js", "ui/dev-floating/pilot.css", "ui/material/cozy-beige-room-photo-1920.webp"} {
+		wantAsset, err := goassets.Template.ReadFile(embeddedRoot + "/web/" + asset)
+		if err != nil {
+			t.Fatal(err)
+		}
+		assetResponse := httptest.NewRecorder()
+		handler.ServeHTTP(assetResponse, httptest.NewRequest(http.MethodGet, "/"+asset, nil))
+		if len(wantAsset) == 0 || assetResponse.Code != http.StatusOK || assetResponse.Body.String() != string(wantAsset) {
+			t.Fatalf("pilot asset /%s must serve exact embedded bytes; status=%d", asset, assetResponse.Code)
+		}
 	}
 	// Release/update UI is mapped after user design review. Its existing API
 	// and compatibility-asset checks remain below; no dead core control is added.
