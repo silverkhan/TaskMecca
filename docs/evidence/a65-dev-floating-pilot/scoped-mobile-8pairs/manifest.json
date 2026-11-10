@@ -1,0 +1,38 @@
+{
+  "source": "3a066ed44b1c52982b008230cfb9f4f1535847df",
+  "chromeBefore": "96832d133a25d835dfae36b6312de100e4d4cbe2f5e4eb0d2eac170da54672ad",
+  "assetsBefore": {
+    "dev": {
+      "index.html": "3d38ede6a6ac8fd03d2fa01de76a558db03a6453fcc0602fb40307226a25db50",
+      "app.js": "49606f2bd9165020cf9d473c232ba645498139af0a8037100e71d25c9d293905",
+      "style.css": "5fc79a28f935f7c65d30ca081ebe87250a09946ca6c440b9f1198429da1c259c"
+    },
+    "pilot": {
+      "index.html": "a81a274cb2911e7778ca357cf21aa6fba85742a67ee1c7cea3269ab9d07d2f27",
+      "app.js": "49606f2bd9165020cf9d473c232ba645498139af0a8037100e71d25c9d293905",
+      "style.css": "5fc79a28f935f7c65d30ca081ebe87250a09946ca6c440b9f1198429da1c259c",
+      "ui/dev-floating/pilot.css": "16e79876b08bc124bb19c2de204b206bc553f992d71552128a90212802068fd2",
+      "ui/dev-floating/pilot.js": "06f97653d2bcfc1d80b748a44568c7ee7035624245e425bfb2b45f4339151049"
+    },
+    "previous": {
+      "index.html": "7c83d22e6cead62646febccfd84d98a00cfb165d5be7a67b1f1ecd642fb1d511",
+      "app.js": "49606f2bd9165020cf9d473c232ba645498139af0a8037100e71d25c9d293905",
+      "style.css": "5fc79a28f935f7c65d30ca081ebe87250a09946ca6c440b9f1198429da1c259c"
+    }
+  },
+  "scope": "8 paired repeats per representative mobile viewport/theme; NOT original 48-scenario gate; Mac desktop Chromium synthetic Samsung UA/touch/DPR, not actual z fold8 ultra",
+  "cases": [
+    {
+      "width": 360,
+      "height": 800,
+      "dpr": 3
+    },
+    {
+      "width": 800,
+      "height": 900,
+      "dpr": 2.5
+    }
+  ],
+  "hardware": "Apple M5 Pro",
+  "browser": "157.0.8103.39"
+}

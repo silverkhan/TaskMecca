@@ -1,0 +1,28 @@
+AssertionError [ERR_ASSERTION]: unchanged dev semantic DOM
++ actual - expected
+... Skipped lines
+
+  {
+    anchors: [
+      {
+        href: '#human-summary',
+        text: '핵심 요약'
+...
+      {
++       head: undefined,
+        id: 'human-summary',
+        label: '핵심 요약'
+      },
+      {
+        head: '작업 흐름',
+
+    at /Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/docs/evidence/a65-dev-floating-pilot/browser.cjs:25:85
+    at runNextTicks (node:internal/process/task_queues:65:5)
+    at process.processImmediate (node:internal/timers:541:9) {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: [Object],
+  expected: [Object],
+  operator: 'deepStrictEqual',
+  diff: 'simple'
+}

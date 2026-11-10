@@ -1,0 +1,2150 @@
+[
+  {
+    "variant": "dev",
+    "width": 1440,
+    "theme": "light",
+    "signature": {
+      "nav": [],
+      "sections": [
+        {
+          "id": "human-summary",
+          "label": "핵심 요약"
+        },
+        {
+          "id": "lifecycle",
+          "label": "작업 흐름",
+          "head": "작업 흐름"
+        },
+        {
+          "id": "related-work",
+          "label": "관련 작업",
+          "head": "관련 작업"
+        },
+        {
+          "id": "operations",
+          "label": "운영·실행 근거",
+          "head": "운영·실행 근거"
+        },
+        {
+          "id": "background",
+          "label": "배경 및 문제",
+          "head": "배경 및 문제"
+        },
+        {
+          "id": "requirements",
+          "label": "요구사항·제약",
+          "head": "요구사항·제약"
+        },
+        {
+          "id": "scope",
+          "label": "작업 범위",
+          "head": "작업 범위"
+        },
+        {
+          "id": "acceptance",
+          "label": "완료 기준",
+          "head": "완료 기준"
+        },
+        {
+          "id": "progress-result",
+          "label": "상세 결과 및 기술 근거",
+          "head": "상세 결과 및 기술 근거"
+        },
+        {
+          "id": "verification",
+          "label": "검증 상세",
+          "head": "검증 상세"
+        }
+      ],
+      "anchors": [
+        {
+          "href": "#human-summary",
+          "text": "핵심 요약"
+        },
+        {
+          "href": "#lifecycle",
+          "text": "작업 흐름"
+        },
+        {
+          "href": "#related-work",
+          "text": "관련 작업"
+        },
+        {
+          "href": "#operations",
+          "text": "운영·실행 근거"
+        },
+        {
+          "href": "#background",
+          "text": "배경 및 문제"
+        },
+        {
+          "href": "#requirements",
+          "text": "요구사항·제약"
+        },
+        {
+          "href": "#scope",
+          "text": "작업 범위"
+        },
+        {
+          "href": "#acceptance",
+          "text": "완료 기준"
+        },
+        {
+          "href": "#progress-result",
+          "text": "상세 결과 및 기술 근거"
+        },
+        {
+          "href": "#verification",
+          "text": "검증 상세"
+        }
+      ],
+      "tables": [
+        21
+      ],
+      "inputs": [
+        {
+          "tag": "SELECT",
+          "type": "select-one",
+          "id": "languagePicker"
+        },
+        {
+          "tag": "SELECT",
+          "type": "select-one",
+          "id": "palettePicker"
+        },
+        {
+          "tag": "SELECT",
+          "type": "select-one",
+          "id": "activityDetailRound"
+        }
+      ],
+      "goal": "요구사항·제약목표기존 메뉴와 본문을 그대로 유지한 플로팅 소재 시안요건 정의서Requirement 1. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 2. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 3. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 4. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 5. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 6. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 7. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 8. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 9. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 10. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 11. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 12. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views."
+    },
+    "geometry": {
+      "overflow": -15,
+      "sidebar": {
+        "x": 0,
+        "y": 0,
+        "width": 74.75,
+        "height": 1000,
+        "top": 0,
+        "right": 74.75,
+        "bottom": 1000,
+        "left": 0
+      },
+      "header": {
+        "x": 74.75,
+        "y": 0,
+        "width": 1350.25,
+        "height": 60,
+        "top": 0,
+        "right": 1425,
+        "bottom": 60,
+        "left": 74.75
+      },
+      "detail": {
+        "x": 177.875,
+        "y": 90,
+        "width": 1144,
+        "height": 3195.25,
+        "top": 90,
+        "right": 1321.875,
+        "bottom": 3285.25,
+        "left": 177.875
+      },
+      "filterNodes": [
+        {
+          "tag": "IMG",
+          "cls": "",
+          "filter": "drop-shadow(rgba(169, 103, 245, 0.22) 0px 0px 7px)",
+          "backdrop": "none"
+        },
+        {
+          "tag": "DIV",
+          "cls": "content-update-prompt",
+          "filter": "none",
+          "backdrop": "blur(14px)"
+        },
+        {
+          "tag": "DIV",
+          "cls": "shortcut-bar",
+          "filter": "none",
+          "backdrop": "blur(10px)"
+        }
+      ],
+      "pilot": null
+    },
+    "anchorReload": true,
+    "resize": true,
+    "errors": []
+  },
+  {
+    "variant": "dev",
+    "width": 1440,
+    "theme": "dark",
+    "signature": {
+      "nav": [],
+      "sections": [
+        {
+          "id": "human-summary",
+          "label": "핵심 요약"
+        },
+        {
+          "id": "lifecycle",
+          "label": "작업 흐름",
+          "head": "작업 흐름"
+        },
+        {
+          "id": "related-work",
+          "label": "관련 작업",
+          "head": "관련 작업"
+        },
+        {
+          "id": "operations",
+          "label": "운영·실행 근거",
+          "head": "운영·실행 근거"
+        },
+        {
+          "id": "background",
+          "label": "배경 및 문제",
+          "head": "배경 및 문제"
+        },
+        {
+          "id": "requirements",
+          "label": "요구사항·제약",
+          "head": "요구사항·제약"
+        },
+        {
+          "id": "scope",
+          "label": "작업 범위",
+          "head": "작업 범위"
+        },
+        {
+          "id": "acceptance",
+          "label": "완료 기준",
+          "head": "완료 기준"
+        },
+        {
+          "id": "progress-result",
+          "label": "상세 결과 및 기술 근거",
+          "head": "상세 결과 및 기술 근거"
+        },
+        {
+          "id": "verification",
+          "label": "검증 상세",
+          "head": "검증 상세"
+        }
+      ],
+      "anchors": [
+        {
+          "href": "#human-summary",
+          "text": "핵심 요약"
+        },
+        {
+          "href": "#lifecycle",
+          "text": "작업 흐름"
+        },
+        {
+          "href": "#related-work",
+          "text": "관련 작업"
+        },
+        {
+          "href": "#operations",
+          "text": "운영·실행 근거"
+        },
+        {
+          "href": "#background",
+          "text": "배경 및 문제"
+        },
+        {
+          "href": "#requirements",
+          "text": "요구사항·제약"
+        },
+        {
+          "href": "#scope",
+          "text": "작업 범위"
+        },
+        {
+          "href": "#acceptance",
+          "text": "완료 기준"
+        },
+        {
+          "href": "#progress-result",
+          "text": "상세 결과 및 기술 근거"
+        },
+        {
+          "href": "#verification",
+          "text": "검증 상세"
+        }
+      ],
+      "tables": [
+        21
+      ],
+      "inputs": [
+        {
+          "tag": "SELECT",
+          "type": "select-one",
+          "id": "languagePicker"
+        },
+        {
+          "tag": "SELECT",
+          "type": "select-one",
+          "id": "palettePicker"
+        },
+        {
+          "tag": "SELECT",
+          "type": "select-one",
+          "id": "activityDetailRound"
+        }
+      ],
+      "goal": "요구사항·제약목표기존 메뉴와 본문을 그대로 유지한 플로팅 소재 시안요건 정의서Requirement 1. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 2. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 3. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 4. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 5. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 6. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 7. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 8. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 9. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 10. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 11. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 12. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views."
+    },
+    "geometry": {
+      "overflow": -15,
+      "sidebar": {
+        "x": 0,
+        "y": 0,
+        "width": 96.53125,
+        "height": 1000,
+        "top": 0,
+        "right": 96.53125,
+        "bottom": 1000,
+        "left": 0
+      },
+      "header": {
+        "x": 96.53125,
+        "y": 0,
+        "width": 1328.46875,
+        "height": 60,
+        "top": 0,
+        "right": 1425,
+        "bottom": 60,
+        "left": 96.53125
+      },
+      "detail": {
+        "x": 188.765625,
+        "y": 90,
+        "width": 1144,
+        "height": 3195.25,
+        "top": 90,
+        "right": 1332.765625,
+        "bottom": 3285.25,
+        "left": 188.765625
+      },
+      "filterNodes": [
+        {
+          "tag": "IMG",
+          "cls": "",
+          "filter": "drop-shadow(rgba(169, 103, 245, 0.22) 0px 0px 7px)",
+          "backdrop": "none"
+        },
+        {
+          "tag": "DIV",
+          "cls": "content-update-prompt",
+          "filter": "none",
+          "backdrop": "blur(14px)"
+        },
+        {
+          "tag": "DIV",
+          "cls": "shortcut-bar",
+          "filter": "none",
+          "backdrop": "blur(10px)"
+        }
+      ],
+      "pilot": null
+    },
+    "anchorReload": true,
+    "resize": true,
+    "errors": []
+  },
+  {
+    "variant": "dev",
+    "width": 1280,
+    "theme": "light",
+    "signature": {
+      "nav": [],
+      "sections": [
+        {
+          "id": "human-summary",
+          "label": "핵심 요약"
+        },
+        {
+          "id": "lifecycle",
+          "label": "작업 흐름",
+          "head": "작업 흐름"
+        },
+        {
+          "id": "related-work",
+          "label": "관련 작업",
+          "head": "관련 작업"
+        },
+        {
+          "id": "operations",
+          "label": "운영·실행 근거",
+          "head": "운영·실행 근거"
+        },
+        {
+          "id": "background",
+          "label": "배경 및 문제",
+          "head": "배경 및 문제"
+        },
+        {
+          "id": "requirements",
+          "label": "요구사항·제약",
+          "head": "요구사항·제약"
+        },
+        {
+          "id": "scope",
+          "label": "작업 범위",
+          "head": "작업 범위"
+        },
+        {
+          "id": "acceptance",
+          "label": "완료 기준",
+          "head": "완료 기준"
+        },
+        {
+          "id": "progress-result",
+          "label": "상세 결과 및 기술 근거",
+          "head": "상세 결과 및 기술 근거"
+        },
+        {
+          "id": "verification",
+          "label": "검증 상세",
+          "head": "검증 상세"
+        }
+      ],
+      "anchors": [
+        {
+          "href": "#human-summary",
+          "text": "핵심 요약"
+        },
+        {
+          "href": "#lifecycle",
+          "text": "작업 흐름"
+        },
+        {
+          "href": "#related-work",
+          "text": "관련 작업"
+        },
+        {
+          "href": "#operations",
+          "text": "운영·실행 근거"
+        },
+        {
+          "href": "#background",
+          "text": "배경 및 문제"
+        },
+        {
+          "href": "#requirements",
+          "text": "요구사항·제약"
+        },
+        {
+          "href": "#scope",
+          "text": "작업 범위"
+        },
+        {
+          "href": "#acceptance",
+          "text": "완료 기준"
+        },
+        {
+          "href": "#progress-result",
+          "text": "상세 결과 및 기술 근거"
+        },
+        {
+          "href": "#verification",
+          "text": "검증 상세"
+        }
+      ],
+      "tables": [
+        21
+      ],
+      "inputs": [
+        {
+          "tag": "SELECT",
+          "type": "select-one",
+          "id": "languagePicker"
+        },
+        {
+          "tag": "SELECT",
+          "type": "select-one",
+          "id": "palettePicker"
+        },
+        {
+          "tag": "SELECT",
+          "type": "select-one",
+          "id": "activityDetailRound"
+        }
+      ],
+      "goal": "요구사항·제약목표기존 메뉴와 본문을 그대로 유지한 플로팅 소재 시안요건 정의서Requirement 1. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 2. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 3. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 4. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 5. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 6. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 7. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 8. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 9. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 10. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 11. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 12. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views."
+    },
+    "geometry": {
+      "overflow": -15,
+      "sidebar": {
+        "x": 0,
+        "y": 0,
+        "width": 96.515625,
+        "height": 1000,
+        "top": 0,
+        "right": 96.515625,
+        "bottom": 1000,
+        "left": 0
+      },
+      "header": {
+        "x": 96.515625,
+        "y": 0,
+        "width": 1168.484375,
+        "height": 60,
+        "top": 0,
+        "right": 1265,
+        "bottom": 60,
+        "left": 96.515625
+      },
+      "detail": {
+        "x": 134.515625,
+        "y": 90,
+        "width": 930,
+        "height": 3195.25,
+        "top": 90,
+        "right": 1064.515625,
+        "bottom": 3285.25,
+        "left": 134.515625
+      },
+      "filterNodes": [
+        {
+          "tag": "IMG",
+          "cls": "",
+          "filter": "drop-shadow(rgba(169, 103, 245, 0.22) 0px 0px 7px)",
+          "backdrop": "none"
+        },
+        {
+          "tag": "DIV",
+          "cls": "content-update-prompt",
+          "filter": "none",
+          "backdrop": "blur(14px)"
+        },
+        {
+          "tag": "DIV",
+          "cls": "shortcut-bar",
+          "filter": "none",
+          "backdrop": "blur(10px)"
+        }
+      ],
+      "pilot": null
+    },
+    "anchorReload": true,
+    "resize": true,
+    "errors": []
+  },
+  {
+    "variant": "dev",
+    "width": 1280,
+    "theme": "dark",
+    "signature": {
+      "nav": [],
+      "sections": [
+        {
+          "id": "human-summary",
+          "label": "핵심 요약"
+        },
+        {
+          "id": "lifecycle",
+          "label": "작업 흐름",
+          "head": "작업 흐름"
+        },
+        {
+          "id": "related-work",
+          "label": "관련 작업",
+          "head": "관련 작업"
+        },
+        {
+          "id": "operations",
+          "label": "운영·실행 근거",
+          "head": "운영·실행 근거"
+        },
+        {
+          "id": "background",
+          "label": "배경 및 문제",
+          "head": "배경 및 문제"
+        },
+        {
+          "id": "requirements",
+          "label": "요구사항·제약",
+          "head": "요구사항·제약"
+        },
+        {
+          "id": "scope",
+          "label": "작업 범위",
+          "head": "작업 범위"
+        },
+        {
+          "id": "acceptance",
+          "label": "완료 기준",
+          "head": "완료 기준"
+        },
+        {
+          "id": "progress-result",
+          "label": "상세 결과 및 기술 근거",
+          "head": "상세 결과 및 기술 근거"
+        },
+        {
+          "id": "verification",
+          "label": "검증 상세",
+          "head": "검증 상세"
+        }
+      ],
+      "anchors": [
+        {
+          "href": "#human-summary",
+          "text": "핵심 요약"
+        },
+        {
+          "href": "#lifecycle",
+          "text": "작업 흐름"
+        },
+        {
+          "href": "#related-work",
+          "text": "관련 작업"
+        },
+        {
+          "href": "#operations",
+          "text": "운영·실행 근거"
+        },
+        {
+          "href": "#background",
+          "text": "배경 및 문제"
+        },
+        {
+          "href": "#requirements",
+          "text": "요구사항·제약"
+        },
+        {
+          "href": "#scope",
+          "text": "작업 범위"
+        },
+        {
+          "href": "#acceptance",
+          "text": "완료 기준"
+        },
+        {
+          "href": "#progress-result",
+          "text": "상세 결과 및 기술 근거"
+        },
+        {
+          "href": "#verification",
+          "text": "검증 상세"
+        }
+      ],
+      "tables": [
+        21
+      ],
+      "inputs": [
+        {
+          "tag": "SELECT",
+          "type": "select-one",
+          "id": "languagePicker"
+        },
+        {
+          "tag": "SELECT",
+          "type": "select-one",
+          "id": "palettePicker"
+        },
+        {
+          "tag": "SELECT",
+          "type": "select-one",
+          "id": "activityDetailRound"
+        }
+      ],
+      "goal": "요구사항·제약목표기존 메뉴와 본문을 그대로 유지한 플로팅 소재 시안요건 정의서Requirement 1. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 2. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 3. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 4. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 5. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 6. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 7. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 8. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 9. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 10. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 11. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 12. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views."
+    },
+    "geometry": {
+      "overflow": -15,
+      "sidebar": {
+        "x": 0,
+        "y": 0,
+        "width": 96.53125,
+        "height": 1000,
+        "top": 0,
+        "right": 96.53125,
+        "bottom": 1000,
+        "left": 0
+      },
+      "header": {
+        "x": 96.53125,
+        "y": 0,
+        "width": 1168.46875,
+        "height": 60,
+        "top": 0,
+        "right": 1265,
+        "bottom": 60,
+        "left": 96.53125
+      },
+      "detail": {
+        "x": 134.53125,
+        "y": 90,
+        "width": 930,
+        "height": 3195.25,
+        "top": 90,
+        "right": 1064.53125,
+        "bottom": 3285.25,
+        "left": 134.53125
+      },
+      "filterNodes": [
+        {
+          "tag": "IMG",
+          "cls": "",
+          "filter": "drop-shadow(rgba(169, 103, 245, 0.22) 0px 0px 7px)",
+          "backdrop": "none"
+        },
+        {
+          "tag": "DIV",
+          "cls": "content-update-prompt",
+          "filter": "none",
+          "backdrop": "blur(14px)"
+        },
+        {
+          "tag": "DIV",
+          "cls": "shortcut-bar",
+          "filter": "none",
+          "backdrop": "blur(10px)"
+        }
+      ],
+      "pilot": null
+    },
+    "anchorReload": true,
+    "resize": true,
+    "errors": []
+  },
+  {
+    "variant": "dev",
+    "width": 320,
+    "theme": "light",
+    "signature": {
+      "nav": [],
+      "sections": [
+        {
+          "id": "human-summary",
+          "label": "핵심 요약"
+        },
+        {
+          "id": "lifecycle",
+          "label": "작업 흐름",
+          "head": "작업 흐름"
+        },
+        {
+          "id": "related-work",
+          "label": "관련 작업",
+          "head": "관련 작업"
+        },
+        {
+          "id": "operations",
+          "label": "운영·실행 근거",
+          "head": "운영·실행 근거"
+        },
+        {
+          "id": "background",
+          "label": "배경 및 문제",
+          "head": "배경 및 문제"
+        },
+        {
+          "id": "requirements",
+          "label": "요구사항·제약",
+          "head": "요구사항·제약"
+        },
+        {
+          "id": "scope",
+          "label": "작업 범위",
+          "head": "작업 범위"
+        },
+        {
+          "id": "acceptance",
+          "label": "완료 기준",
+          "head": "완료 기준"
+        },
+        {
+          "id": "progress-result",
+          "label": "상세 결과 및 기술 근거",
+          "head": "상세 결과 및 기술 근거"
+        },
+        {
+          "id": "verification",
+          "label": "검증 상세",
+          "head": "검증 상세"
+        }
+      ],
+      "anchors": [
+        {
+          "href": "#human-summary",
+          "text": "핵심 요약"
+        },
+        {
+          "href": "#lifecycle",
+          "text": "작업 흐름"
+        },
+        {
+          "href": "#related-work",
+          "text": "관련 작업"
+        },
+        {
+          "href": "#operations",
+          "text": "운영·실행 근거"
+        },
+        {
+          "href": "#background",
+          "text": "배경 및 문제"
+        },
+        {
+          "href": "#requirements",
+          "text": "요구사항·제약"
+        },
+        {
+          "href": "#scope",
+          "text": "작업 범위"
+        },
+        {
+          "href": "#acceptance",
+          "text": "완료 기준"
+        },
+        {
+          "href": "#progress-result",
+          "text": "상세 결과 및 기술 근거"
+        },
+        {
+          "href": "#verification",
+          "text": "검증 상세"
+        }
+      ],
+      "tables": [
+        21
+      ],
+      "inputs": [
+        {
+          "tag": "SELECT",
+          "type": "select-one",
+          "id": "languagePicker"
+        },
+        {
+          "tag": "SELECT",
+          "type": "select-one",
+          "id": "palettePicker"
+        },
+        {
+          "tag": "SELECT",
+          "type": "select-one",
+          "id": "activityDetailRound"
+        }
+      ],
+      "goal": "요구사항·제약목표기존 메뉴와 본문을 그대로 유지한 플로팅 소재 시안요건 정의서Requirement 1. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 2. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 3. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 4. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 5. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 6. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 7. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 8. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 9. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 10. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 11. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 12. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views."
+    },
+    "geometry": {
+      "overflow": 0,
+      "sidebar": {
+        "x": 0,
+        "y": 0,
+        "width": 320,
+        "height": 73,
+        "top": 0,
+        "right": 320,
+        "bottom": 73,
+        "left": 0
+      },
+      "header": {
+        "x": 0,
+        "y": 73,
+        "width": 320,
+        "height": 89,
+        "top": 73,
+        "right": 320,
+        "bottom": 162,
+        "left": 0
+      },
+      "detail": {
+        "x": 16,
+        "y": 182,
+        "width": 288,
+        "height": 4978.9375,
+        "top": 182,
+        "right": 304,
+        "bottom": 5160.9375,
+        "left": 16
+      },
+      "filterNodes": [
+        {
+          "tag": "IMG",
+          "cls": "",
+          "filter": "drop-shadow(rgba(169, 103, 245, 0.22) 0px 0px 7px)",
+          "backdrop": "none"
+        },
+        {
+          "tag": "DIV",
+          "cls": "content-update-prompt",
+          "filter": "none",
+          "backdrop": "blur(14px)"
+        },
+        {
+          "tag": "DIV",
+          "cls": "shortcut-bar",
+          "filter": "none",
+          "backdrop": "blur(10px)"
+        }
+      ],
+      "pilot": null
+    },
+    "anchorReload": true,
+    "resize": true,
+    "errors": []
+  },
+  {
+    "variant": "dev",
+    "width": 320,
+    "theme": "dark",
+    "signature": {
+      "nav": [],
+      "sections": [
+        {
+          "id": "human-summary",
+          "label": "핵심 요약"
+        },
+        {
+          "id": "lifecycle",
+          "label": "작업 흐름",
+          "head": "작업 흐름"
+        },
+        {
+          "id": "related-work",
+          "label": "관련 작업",
+          "head": "관련 작업"
+        },
+        {
+          "id": "operations",
+          "label": "운영·실행 근거",
+          "head": "운영·실행 근거"
+        },
+        {
+          "id": "background",
+          "label": "배경 및 문제",
+          "head": "배경 및 문제"
+        },
+        {
+          "id": "requirements",
+          "label": "요구사항·제약",
+          "head": "요구사항·제약"
+        },
+        {
+          "id": "scope",
+          "label": "작업 범위",
+          "head": "작업 범위"
+        },
+        {
+          "id": "acceptance",
+          "label": "완료 기준",
+          "head": "완료 기준"
+        },
+        {
+          "id": "progress-result",
+          "label": "상세 결과 및 기술 근거",
+          "head": "상세 결과 및 기술 근거"
+        },
+        {
+          "id": "verification",
+          "label": "검증 상세",
+          "head": "검증 상세"
+        }
+      ],
+      "anchors": [
+        {
+          "href": "#human-summary",
+          "text": "핵심 요약"
+        },
+        {
+          "href": "#lifecycle",
+          "text": "작업 흐름"
+        },
+        {
+          "href": "#related-work",
+          "text": "관련 작업"
+        },
+        {
+          "href": "#operations",
+          "text": "운영·실행 근거"
+        },
+        {
+          "href": "#background",
+          "text": "배경 및 문제"
+        },
+        {
+          "href": "#requirements",
+          "text": "요구사항·제약"
+        },
+        {
+          "href": "#scope",
+          "text": "작업 범위"
+        },
+        {
+          "href": "#acceptance",
+          "text": "완료 기준"
+        },
+        {
+          "href": "#progress-result",
+          "text": "상세 결과 및 기술 근거"
+        },
+        {
+          "href": "#verification",
+          "text": "검증 상세"
+        }
+      ],
+      "tables": [
+        21
+      ],
+      "inputs": [
+        {
+          "tag": "SELECT",
+          "type": "select-one",
+          "id": "languagePicker"
+        },
+        {
+          "tag": "SELECT",
+          "type": "select-one",
+          "id": "palettePicker"
+        },
+        {
+          "tag": "SELECT",
+          "type": "select-one",
+          "id": "activityDetailRound"
+        }
+      ],
+      "goal": "요구사항·제약목표기존 메뉴와 본문을 그대로 유지한 플로팅 소재 시안요건 정의서Requirement 1. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 2. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 3. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 4. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 5. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 6. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 7. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 8. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 9. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 10. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 11. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 12. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views."
+    },
+    "geometry": {
+      "overflow": 0,
+      "sidebar": {
+        "x": 0,
+        "y": 0,
+        "width": 320,
+        "height": 73,
+        "top": 0,
+        "right": 320,
+        "bottom": 73,
+        "left": 0
+      },
+      "header": {
+        "x": 0,
+        "y": 73,
+        "width": 320,
+        "height": 89,
+        "top": 73,
+        "right": 320,
+        "bottom": 162,
+        "left": 0
+      },
+      "detail": {
+        "x": 16,
+        "y": 182,
+        "width": 288,
+        "height": 4978.9375,
+        "top": 182,
+        "right": 304,
+        "bottom": 5160.9375,
+        "left": 16
+      },
+      "filterNodes": [
+        {
+          "tag": "IMG",
+          "cls": "",
+          "filter": "drop-shadow(rgba(169, 103, 245, 0.22) 0px 0px 7px)",
+          "backdrop": "none"
+        },
+        {
+          "tag": "DIV",
+          "cls": "content-update-prompt",
+          "filter": "none",
+          "backdrop": "blur(14px)"
+        },
+        {
+          "tag": "DIV",
+          "cls": "shortcut-bar",
+          "filter": "none",
+          "backdrop": "blur(10px)"
+        }
+      ],
+      "pilot": null
+    },
+    "anchorReload": true,
+    "resize": true,
+    "errors": []
+  },
+  {
+    "variant": "dev",
+    "width": 390,
+    "theme": "light",
+    "signature": {
+      "nav": [],
+      "sections": [
+        {
+          "id": "human-summary",
+          "label": "핵심 요약"
+        },
+        {
+          "id": "lifecycle",
+          "label": "작업 흐름",
+          "head": "작업 흐름"
+        },
+        {
+          "id": "related-work",
+          "label": "관련 작업",
+          "head": "관련 작업"
+        },
+        {
+          "id": "operations",
+          "label": "운영·실행 근거",
+          "head": "운영·실행 근거"
+        },
+        {
+          "id": "background",
+          "label": "배경 및 문제",
+          "head": "배경 및 문제"
+        },
+        {
+          "id": "requirements",
+          "label": "요구사항·제약",
+          "head": "요구사항·제약"
+        },
+        {
+          "id": "scope",
+          "label": "작업 범위",
+          "head": "작업 범위"
+        },
+        {
+          "id": "acceptance",
+          "label": "완료 기준",
+          "head": "완료 기준"
+        },
+        {
+          "id": "progress-result",
+          "label": "상세 결과 및 기술 근거",
+          "head": "상세 결과 및 기술 근거"
+        },
+        {
+          "id": "verification",
+          "label": "검증 상세",
+          "head": "검증 상세"
+        }
+      ],
+      "anchors": [
+        {
+          "href": "#human-summary",
+          "text": "핵심 요약"
+        },
+        {
+          "href": "#lifecycle",
+          "text": "작업 흐름"
+        },
+        {
+          "href": "#related-work",
+          "text": "관련 작업"
+        },
+        {
+          "href": "#operations",
+          "text": "운영·실행 근거"
+        },
+        {
+          "href": "#background",
+          "text": "배경 및 문제"
+        },
+        {
+          "href": "#requirements",
+          "text": "요구사항·제약"
+        },
+        {
+          "href": "#scope",
+          "text": "작업 범위"
+        },
+        {
+          "href": "#acceptance",
+          "text": "완료 기준"
+        },
+        {
+          "href": "#progress-result",
+          "text": "상세 결과 및 기술 근거"
+        },
+        {
+          "href": "#verification",
+          "text": "검증 상세"
+        }
+      ],
+      "tables": [
+        21
+      ],
+      "inputs": [
+        {
+          "tag": "SELECT",
+          "type": "select-one",
+          "id": "languagePicker"
+        },
+        {
+          "tag": "SELECT",
+          "type": "select-one",
+          "id": "palettePicker"
+        },
+        {
+          "tag": "SELECT",
+          "type": "select-one",
+          "id": "activityDetailRound"
+        }
+      ],
+      "goal": "요구사항·제약목표기존 메뉴와 본문을 그대로 유지한 플로팅 소재 시안요건 정의서Requirement 1. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 2. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 3. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 4. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 5. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 6. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 7. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 8. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 9. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 10. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 11. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 12. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views."
+    },
+    "geometry": {
+      "overflow": 0,
+      "sidebar": {
+        "x": 0,
+        "y": 0,
+        "width": 390,
+        "height": 73,
+        "top": 0,
+        "right": 390,
+        "bottom": 73,
+        "left": 0
+      },
+      "header": {
+        "x": 0,
+        "y": 73,
+        "width": 390,
+        "height": 93,
+        "top": 73,
+        "right": 390,
+        "bottom": 166,
+        "left": 0
+      },
+      "detail": {
+        "x": 16,
+        "y": 186,
+        "width": 358,
+        "height": 4925.625,
+        "top": 186,
+        "right": 374,
+        "bottom": 5111.625,
+        "left": 16
+      },
+      "filterNodes": [
+        {
+          "tag": "IMG",
+          "cls": "",
+          "filter": "drop-shadow(rgba(169, 103, 245, 0.22) 0px 0px 7px)",
+          "backdrop": "none"
+        },
+        {
+          "tag": "DIV",
+          "cls": "content-update-prompt",
+          "filter": "none",
+          "backdrop": "blur(14px)"
+        },
+        {
+          "tag": "DIV",
+          "cls": "shortcut-bar",
+          "filter": "none",
+          "backdrop": "blur(10px)"
+        }
+      ],
+      "pilot": null
+    },
+    "anchorReload": true,
+    "resize": true,
+    "errors": []
+  },
+  {
+    "variant": "dev",
+    "width": 390,
+    "theme": "dark",
+    "signature": {
+      "nav": [],
+      "sections": [
+        {
+          "id": "human-summary",
+          "label": "핵심 요약"
+        },
+        {
+          "id": "lifecycle",
+          "label": "작업 흐름",
+          "head": "작업 흐름"
+        },
+        {
+          "id": "related-work",
+          "label": "관련 작업",
+          "head": "관련 작업"
+        },
+        {
+          "id": "operations",
+          "label": "운영·실행 근거",
+          "head": "운영·실행 근거"
+        },
+        {
+          "id": "background",
+          "label": "배경 및 문제",
+          "head": "배경 및 문제"
+        },
+        {
+          "id": "requirements",
+          "label": "요구사항·제약",
+          "head": "요구사항·제약"
+        },
+        {
+          "id": "scope",
+          "label": "작업 범위",
+          "head": "작업 범위"
+        },
+        {
+          "id": "acceptance",
+          "label": "완료 기준",
+          "head": "완료 기준"
+        },
+        {
+          "id": "progress-result",
+          "label": "상세 결과 및 기술 근거",
+          "head": "상세 결과 및 기술 근거"
+        },
+        {
+          "id": "verification",
+          "label": "검증 상세",
+          "head": "검증 상세"
+        }
+      ],
+      "anchors": [
+        {
+          "href": "#human-summary",
+          "text": "핵심 요약"
+        },
+        {
+          "href": "#lifecycle",
+          "text": "작업 흐름"
+        },
+        {
+          "href": "#related-work",
+          "text": "관련 작업"
+        },
+        {
+          "href": "#operations",
+          "text": "운영·실행 근거"
+        },
+        {
+          "href": "#background",
+          "text": "배경 및 문제"
+        },
+        {
+          "href": "#requirements",
+          "text": "요구사항·제약"
+        },
+        {
+          "href": "#scope",
+          "text": "작업 범위"
+        },
+        {
+          "href": "#acceptance",
+          "text": "완료 기준"
+        },
+        {
+          "href": "#progress-result",
+          "text": "상세 결과 및 기술 근거"
+        },
+        {
+          "href": "#verification",
+          "text": "검증 상세"
+        }
+      ],
+      "tables": [
+        21
+      ],
+      "inputs": [
+        {
+          "tag": "SELECT",
+          "type": "select-one",
+          "id": "languagePicker"
+        },
+        {
+          "tag": "SELECT",
+          "type": "select-one",
+          "id": "palettePicker"
+        },
+        {
+          "tag": "SELECT",
+          "type": "select-one",
+          "id": "activityDetailRound"
+        }
+      ],
+      "goal": "요구사항·제약목표기존 메뉴와 본문을 그대로 유지한 플로팅 소재 시안요건 정의서Requirement 1. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 2. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 3. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 4. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 5. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 6. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 7. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 8. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 9. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 10. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 11. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 12. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views."
+    },
+    "geometry": {
+      "overflow": 0,
+      "sidebar": {
+        "x": 0,
+        "y": 0,
+        "width": 390,
+        "height": 73,
+        "top": 0,
+        "right": 390,
+        "bottom": 73,
+        "left": 0
+      },
+      "header": {
+        "x": 0,
+        "y": 73,
+        "width": 390,
+        "height": 93,
+        "top": 73,
+        "right": 390,
+        "bottom": 166,
+        "left": 0
+      },
+      "detail": {
+        "x": 16,
+        "y": 186,
+        "width": 358,
+        "height": 4925.625,
+        "top": 186,
+        "right": 374,
+        "bottom": 5111.625,
+        "left": 16
+      },
+      "filterNodes": [
+        {
+          "tag": "IMG",
+          "cls": "",
+          "filter": "drop-shadow(rgba(169, 103, 245, 0.22) 0px 0px 7px)",
+          "backdrop": "none"
+        },
+        {
+          "tag": "DIV",
+          "cls": "content-update-prompt",
+          "filter": "none",
+          "backdrop": "blur(14px)"
+        },
+        {
+          "tag": "DIV",
+          "cls": "shortcut-bar",
+          "filter": "none",
+          "backdrop": "blur(10px)"
+        }
+      ],
+      "pilot": null
+    },
+    "anchorReload": true,
+    "resize": true,
+    "errors": []
+  },
+  {
+    "variant": "dev",
+    "width": 430,
+    "theme": "light",
+    "signature": {
+      "nav": [],
+      "sections": [
+        {
+          "id": "human-summary",
+          "label": "핵심 요약"
+        },
+        {
+          "id": "lifecycle",
+          "label": "작업 흐름",
+          "head": "작업 흐름"
+        },
+        {
+          "id": "related-work",
+          "label": "관련 작업",
+          "head": "관련 작업"
+        },
+        {
+          "id": "operations",
+          "label": "운영·실행 근거",
+          "head": "운영·실행 근거"
+        },
+        {
+          "id": "background",
+          "label": "배경 및 문제",
+          "head": "배경 및 문제"
+        },
+        {
+          "id": "requirements",
+          "label": "요구사항·제약",
+          "head": "요구사항·제약"
+        },
+        {
+          "id": "scope",
+          "label": "작업 범위",
+          "head": "작업 범위"
+        },
+        {
+          "id": "acceptance",
+          "label": "완료 기준",
+          "head": "완료 기준"
+        },
+        {
+          "id": "progress-result",
+          "label": "상세 결과 및 기술 근거",
+          "head": "상세 결과 및 기술 근거"
+        },
+        {
+          "id": "verification",
+          "label": "검증 상세",
+          "head": "검증 상세"
+        }
+      ],
+      "anchors": [
+        {
+          "href": "#human-summary",
+          "text": "핵심 요약"
+        },
+        {
+          "href": "#lifecycle",
+          "text": "작업 흐름"
+        },
+        {
+          "href": "#related-work",
+          "text": "관련 작업"
+        },
+        {
+          "href": "#operations",
+          "text": "운영·실행 근거"
+        },
+        {
+          "href": "#background",
+          "text": "배경 및 문제"
+        },
+        {
+          "href": "#requirements",
+          "text": "요구사항·제약"
+        },
+        {
+          "href": "#scope",
+          "text": "작업 범위"
+        },
+        {
+          "href": "#acceptance",
+          "text": "완료 기준"
+        },
+        {
+          "href": "#progress-result",
+          "text": "상세 결과 및 기술 근거"
+        },
+        {
+          "href": "#verification",
+          "text": "검증 상세"
+        }
+      ],
+      "tables": [
+        21
+      ],
+      "inputs": [
+        {
+          "tag": "SELECT",
+          "type": "select-one",
+          "id": "languagePicker"
+        },
+        {
+          "tag": "SELECT",
+          "type": "select-one",
+          "id": "palettePicker"
+        },
+        {
+          "tag": "SELECT",
+          "type": "select-one",
+          "id": "activityDetailRound"
+        }
+      ],
+      "goal": "요구사항·제약목표기존 메뉴와 본문을 그대로 유지한 플로팅 소재 시안요건 정의서Requirement 1. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 2. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 3. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 4. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 5. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 6. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 7. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 8. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 9. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 10. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 11. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 12. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views."
+    },
+    "geometry": {
+      "overflow": 0,
+      "sidebar": {
+        "x": 0,
+        "y": 0,
+        "width": 430,
+        "height": 73,
+        "top": 0,
+        "right": 430,
+        "bottom": 73,
+        "left": 0
+      },
+      "header": {
+        "x": 0,
+        "y": 73,
+        "width": 430,
+        "height": 93,
+        "top": 73,
+        "right": 430,
+        "bottom": 166,
+        "left": 0
+      },
+      "detail": {
+        "x": 16,
+        "y": 186,
+        "width": 398,
+        "height": 4388.484375,
+        "top": 186,
+        "right": 414,
+        "bottom": 4574.484375,
+        "left": 16
+      },
+      "filterNodes": [
+        {
+          "tag": "IMG",
+          "cls": "",
+          "filter": "drop-shadow(rgba(169, 103, 245, 0.22) 0px 0px 7px)",
+          "backdrop": "none"
+        },
+        {
+          "tag": "DIV",
+          "cls": "content-update-prompt",
+          "filter": "none",
+          "backdrop": "blur(14px)"
+        },
+        {
+          "tag": "DIV",
+          "cls": "shortcut-bar",
+          "filter": "none",
+          "backdrop": "blur(10px)"
+        }
+      ],
+      "pilot": null
+    },
+    "anchorReload": true,
+    "resize": true,
+    "errors": []
+  },
+  {
+    "variant": "dev",
+    "width": 430,
+    "theme": "dark",
+    "signature": {
+      "nav": [],
+      "sections": [
+        {
+          "id": "human-summary",
+          "label": "핵심 요약"
+        },
+        {
+          "id": "lifecycle",
+          "label": "작업 흐름",
+          "head": "작업 흐름"
+        },
+        {
+          "id": "related-work",
+          "label": "관련 작업",
+          "head": "관련 작업"
+        },
+        {
+          "id": "operations",
+          "label": "운영·실행 근거",
+          "head": "운영·실행 근거"
+        },
+        {
+          "id": "background",
+          "label": "배경 및 문제",
+          "head": "배경 및 문제"
+        },
+        {
+          "id": "requirements",
+          "label": "요구사항·제약",
+          "head": "요구사항·제약"
+        },
+        {
+          "id": "scope",
+          "label": "작업 범위",
+          "head": "작업 범위"
+        },
+        {
+          "id": "acceptance",
+          "label": "완료 기준",
+          "head": "완료 기준"
+        },
+        {
+          "id": "progress-result",
+          "label": "상세 결과 및 기술 근거",
+          "head": "상세 결과 및 기술 근거"
+        },
+        {
+          "id": "verification",
+          "label": "검증 상세",
+          "head": "검증 상세"
+        }
+      ],
+      "anchors": [
+        {
+          "href": "#human-summary",
+          "text": "핵심 요약"
+        },
+        {
+          "href": "#lifecycle",
+          "text": "작업 흐름"
+        },
+        {
+          "href": "#related-work",
+          "text": "관련 작업"
+        },
+        {
+          "href": "#operations",
+          "text": "운영·실행 근거"
+        },
+        {
+          "href": "#background",
+          "text": "배경 및 문제"
+        },
+        {
+          "href": "#requirements",
+          "text": "요구사항·제약"
+        },
+        {
+          "href": "#scope",
+          "text": "작업 범위"
+        },
+        {
+          "href": "#acceptance",
+          "text": "완료 기준"
+        },
+        {
+          "href": "#progress-result",
+          "text": "상세 결과 및 기술 근거"
+        },
+        {
+          "href": "#verification",
+          "text": "검증 상세"
+        }
+      ],
+      "tables": [
+        21
+      ],
+      "inputs": [
+        {
+          "tag": "SELECT",
+          "type": "select-one",
+          "id": "languagePicker"
+        },
+        {
+          "tag": "SELECT",
+          "type": "select-one",
+          "id": "palettePicker"
+        },
+        {
+          "tag": "SELECT",
+          "type": "select-one",
+          "id": "activityDetailRound"
+        }
+      ],
+      "goal": "요구사항·제약목표기존 메뉴와 본문을 그대로 유지한 플로팅 소재 시안요건 정의서Requirement 1. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 2. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 3. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 4. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 5. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 6. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 7. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 8. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 9. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 10. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 11. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 12. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views."
+    },
+    "geometry": {
+      "overflow": 0,
+      "sidebar": {
+        "x": 0,
+        "y": 0,
+        "width": 430,
+        "height": 73,
+        "top": 0,
+        "right": 430,
+        "bottom": 73,
+        "left": 0
+      },
+      "header": {
+        "x": 0,
+        "y": 73,
+        "width": 430,
+        "height": 93,
+        "top": 73,
+        "right": 430,
+        "bottom": 166,
+        "left": 0
+      },
+      "detail": {
+        "x": 16,
+        "y": 186,
+        "width": 398,
+        "height": 4388.484375,
+        "top": 186,
+        "right": 414,
+        "bottom": 4574.484375,
+        "left": 16
+      },
+      "filterNodes": [
+        {
+          "tag": "IMG",
+          "cls": "",
+          "filter": "drop-shadow(rgba(169, 103, 245, 0.22) 0px 0px 7px)",
+          "backdrop": "none"
+        },
+        {
+          "tag": "DIV",
+          "cls": "content-update-prompt",
+          "filter": "none",
+          "backdrop": "blur(14px)"
+        },
+        {
+          "tag": "DIV",
+          "cls": "shortcut-bar",
+          "filter": "none",
+          "backdrop": "blur(10px)"
+        }
+      ],
+      "pilot": null
+    },
+    "anchorReload": true,
+    "resize": true,
+    "errors": []
+  },
+  {
+    "variant": "dev",
+    "width": 800,
+    "theme": "light",
+    "signature": {
+      "nav": [],
+      "sections": [
+        {
+          "id": "human-summary",
+          "label": "핵심 요약"
+        },
+        {
+          "id": "lifecycle",
+          "label": "작업 흐름",
+          "head": "작업 흐름"
+        },
+        {
+          "id": "related-work",
+          "label": "관련 작업",
+          "head": "관련 작업"
+        },
+        {
+          "id": "operations",
+          "label": "운영·실행 근거",
+          "head": "운영·실행 근거"
+        },
+        {
+          "id": "background",
+          "label": "배경 및 문제",
+          "head": "배경 및 문제"
+        },
+        {
+          "id": "requirements",
+          "label": "요구사항·제약",
+          "head": "요구사항·제약"
+        },
+        {
+          "id": "scope",
+          "label": "작업 범위",
+          "head": "작업 범위"
+        },
+        {
+          "id": "acceptance",
+          "label": "완료 기준",
+          "head": "완료 기준"
+        },
+        {
+          "id": "progress-result",
+          "label": "상세 결과 및 기술 근거",
+          "head": "상세 결과 및 기술 근거"
+        },
+        {
+          "id": "verification",
+          "label": "검증 상세",
+          "head": "검증 상세"
+        }
+      ],
+      "anchors": [
+        {
+          "href": "#human-summary",
+          "text": "핵심 요약"
+        },
+        {
+          "href": "#lifecycle",
+          "text": "작업 흐름"
+        },
+        {
+          "href": "#related-work",
+          "text": "관련 작업"
+        },
+        {
+          "href": "#operations",
+          "text": "운영·실행 근거"
+        },
+        {
+          "href": "#background",
+          "text": "배경 및 문제"
+        },
+        {
+          "href": "#requirements",
+          "text": "요구사항·제약"
+        },
+        {
+          "href": "#scope",
+          "text": "작업 범위"
+        },
+        {
+          "href": "#acceptance",
+          "text": "완료 기준"
+        },
+        {
+          "href": "#progress-result",
+          "text": "상세 결과 및 기술 근거"
+        },
+        {
+          "href": "#verification",
+          "text": "검증 상세"
+        }
+      ],
+      "tables": [
+        21
+      ],
+      "inputs": [
+        {
+          "tag": "SELECT",
+          "type": "select-one",
+          "id": "languagePicker"
+        },
+        {
+          "tag": "SELECT",
+          "type": "select-one",
+          "id": "palettePicker"
+        },
+        {
+          "tag": "SELECT",
+          "type": "select-one",
+          "id": "activityDetailRound"
+        }
+      ],
+      "goal": "요구사항·제약목표기존 메뉴와 본문을 그대로 유지한 플로팅 소재 시안요건 정의서Requirement 1. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 2. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 3. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 4. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 5. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 6. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 7. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 8. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 9. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 10. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 11. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 12. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views."
+    },
+    "geometry": {
+      "overflow": 0,
+      "sidebar": {
+        "x": 0,
+        "y": 0,
+        "width": 89.4375,
+        "height": 1000,
+        "top": 0,
+        "right": 89.4375,
+        "bottom": 1000,
+        "left": 0
+      },
+      "header": {
+        "x": 89.4375,
+        "y": 0,
+        "width": 710.5625,
+        "height": 60,
+        "top": 0,
+        "right": 800,
+        "bottom": 60,
+        "left": 89.4375
+      },
+      "detail": {
+        "x": 113.4375,
+        "y": 84,
+        "width": 662.5625,
+        "height": 3973.171875,
+        "top": 84,
+        "right": 776,
+        "bottom": 4057.171875,
+        "left": 113.4375
+      },
+      "filterNodes": [
+        {
+          "tag": "IMG",
+          "cls": "",
+          "filter": "drop-shadow(rgba(169, 103, 245, 0.22) 0px 0px 7px)",
+          "backdrop": "none"
+        },
+        {
+          "tag": "DIV",
+          "cls": "content-update-prompt",
+          "filter": "none",
+          "backdrop": "blur(14px)"
+        },
+        {
+          "tag": "DIV",
+          "cls": "shortcut-bar",
+          "filter": "none",
+          "backdrop": "blur(10px)"
+        }
+      ],
+      "pilot": null
+    },
+    "anchorReload": true,
+    "resize": true,
+    "errors": []
+  },
+  {
+    "variant": "dev",
+    "width": 800,
+    "theme": "dark",
+    "signature": {
+      "nav": [],
+      "sections": [
+        {
+          "id": "human-summary",
+          "label": "핵심 요약"
+        },
+        {
+          "id": "lifecycle",
+          "label": "작업 흐름",
+          "head": "작업 흐름"
+        },
+        {
+          "id": "related-work",
+          "label": "관련 작업",
+          "head": "관련 작업"
+        },
+        {
+          "id": "operations",
+          "label": "운영·실행 근거",
+          "head": "운영·실행 근거"
+        },
+        {
+          "id": "background",
+          "label": "배경 및 문제",
+          "head": "배경 및 문제"
+        },
+        {
+          "id": "requirements",
+          "label": "요구사항·제약",
+          "head": "요구사항·제약"
+        },
+        {
+          "id": "scope",
+          "label": "작업 범위",
+          "head": "작업 범위"
+        },
+        {
+          "id": "acceptance",
+          "label": "완료 기준",
+          "head": "완료 기준"
+        },
+        {
+          "id": "progress-result",
+          "label": "상세 결과 및 기술 근거",
+          "head": "상세 결과 및 기술 근거"
+        },
+        {
+          "id": "verification",
+          "label": "검증 상세",
+          "head": "검증 상세"
+        }
+      ],
+      "anchors": [
+        {
+          "href": "#human-summary",
+          "text": "핵심 요약"
+        },
+        {
+          "href": "#lifecycle",
+          "text": "작업 흐름"
+        },
+        {
+          "href": "#related-work",
+          "text": "관련 작업"
+        },
+        {
+          "href": "#operations",
+          "text": "운영·실행 근거"
+        },
+        {
+          "href": "#background",
+          "text": "배경 및 문제"
+        },
+        {
+          "href": "#requirements",
+          "text": "요구사항·제약"
+        },
+        {
+          "href": "#scope",
+          "text": "작업 범위"
+        },
+        {
+          "href": "#acceptance",
+          "text": "완료 기준"
+        },
+        {
+          "href": "#progress-result",
+          "text": "상세 결과 및 기술 근거"
+        },
+        {
+          "href": "#verification",
+          "text": "검증 상세"
+        }
+      ],
+      "tables": [
+        21
+      ],
+      "inputs": [
+        {
+          "tag": "SELECT",
+          "type": "select-one",
+          "id": "languagePicker"
+        },
+        {
+          "tag": "SELECT",
+          "type": "select-one",
+          "id": "palettePicker"
+        },
+        {
+          "tag": "SELECT",
+          "type": "select-one",
+          "id": "activityDetailRound"
+        }
+      ],
+      "goal": "요구사항·제약목표기존 메뉴와 본문을 그대로 유지한 플로팅 소재 시안요건 정의서Requirement 1. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 2. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 3. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 4. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 5. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 6. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 7. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 8. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 9. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 10. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 11. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.Requirement 12. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views."
+    },
+    "geometry": {
+      "overflow": 0,
+      "sidebar": {
+        "x": 0,
+        "y": 0,
+        "width": 89.4375,
+        "height": 1000,
+        "top": 0,
+        "right": 89.4375,
+        "bottom": 1000,
+        "left": 0
+      },
+      "header": {
+        "x": 89.4375,
+        "y": 0,
+        "width": 710.5625,
+        "height": 60,
+        "top": 0,
+        "right": 800,
+        "bottom": 60,
+        "left": 89.4375
+      },
+      "detail": {
+        "x": 113.4375,
+        "y": 84,
+        "width": 662.5625,
+        "height": 3973.171875,
+        "top": 84,
+        "right": 776,
+        "bottom": 4057.171875,
+        "left": 113.4375
+      },
+      "filterNodes": [
+        {
+          "tag": "IMG",
+          "cls": "",
+          "filter": "drop-shadow(rgba(169, 103, 245, 0.22) 0px 0px 7px)",
+          "backdrop": "none"
+        },
+        {
+          "tag": "DIV",
+          "cls": "content-update-prompt",
+          "filter": "none",
+          "backdrop": "blur(14px)"
+        },
+        {
+          "tag": "DIV",
+          "cls": "shortcut-bar",
+          "filter": "none",
+          "backdrop": "blur(10px)"
+        }
+      ],
+      "pilot": null
+    },
+    "anchorReload": true,
+    "resize": true,
+    "errors": []
+  }
+]

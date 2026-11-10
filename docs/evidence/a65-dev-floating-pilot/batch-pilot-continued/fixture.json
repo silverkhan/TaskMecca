@@ -1,0 +1,66 @@
+{
+  "id": "FLOW-1",
+  "title": "작업 기록과 검토 흐름 확인",
+  "state": "done",
+  "file_state": "done",
+  "agent": "/root/controller/pairi",
+  "location": "active",
+  "fields": {},
+  "tags": [],
+  "depends_on": [],
+  "related": [],
+  "raw_markdown": "Background 1. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.\n\nBackground 2. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.\n\nBackground 3. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.\n\nBackground 4. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.\n\nBackground 5. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.\n\nBackground 6. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.\n\nBackground 7. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.\n\nBackground 8. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.\n\n기존 메뉴와 본문을 그대로 유지한 플로팅 소재 시안\n\nRequirement 1. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.\n\nRequirement 2. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.\n\nRequirement 3. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.\n\nRequirement 4. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.\n\nRequirement 5. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.\n\nRequirement 6. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.\n\nRequirement 7. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.\n\nRequirement 8. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.\n\nRequirement 9. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.\n\nRequirement 10. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.\n\nRequirement 11. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.\n\nRequirement 12. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.\n\nScope 1. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.\n\nScope 2. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.\n\nScope 3. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.\n\n운영 서비스 변경 제외\n\nNo optical runtime. No row blur.\n\n- [ ] 기존 앵커와 플로팅 인덱스 보존",
+  "activity": {
+    "health": "healthy"
+  },
+  "lifecycle": {
+    "events": [
+      {
+        "event_id": "synthetic-register",
+        "state": "todo",
+        "label": "Registered",
+        "kind": "registered",
+        "at": "2026-11-05T00:00:00Z",
+        "actor": "/root/registrar",
+        "source": "fixture"
+      },
+      {
+        "event_id": "synthetic-complete-0",
+        "state": "done",
+        "label": "Completed",
+        "kind": "completed",
+        "at": "2026-11-05T01:00:00Z",
+        "actor": "/root/controller",
+        "source": "fixture"
+      }
+    ],
+    "current_state": "done",
+    "lead_seconds": 3600
+  },
+  "snapshot": {
+    "trust": "verified",
+    "version": "fixture-v1"
+  },
+  "document": {
+    "schema": "defined-v2",
+    "summary": {
+      "purpose": "실제 사건과 측정 누락을 구분해 읽는다.",
+      "change": "역할별 전체 시간축",
+      "status_result": "합성 검증 자료",
+      "follow_up": "실제 운영 데이터가 아닙니다."
+    },
+    "notes": "Notes 1. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.\n\nNotes 2. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.\n\nNotes 3. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.\n\nNotes 4. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.\n\nNotes 5. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.\n\nNotes 6. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.\n\nNotes 7. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.\n\nNotes 8. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.",
+    "result": "Result 1. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.\n\nResult 2. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.\n\nResult 3. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.\n\nResult 4. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.\n\nResult 5. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.\n\nResult 6. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.\n\nResult 7. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.\n\nResult 8. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.",
+    "verification": "Verification 1. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.\n\nVerification 2. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.\n\nVerification 3. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.\n\nVerification 4. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.\n\nVerification 5. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.\n\nVerification 6. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.\n\nVerification 7. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.\n\nVerification 8. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.",
+    "requirements": {
+      "background": "Background 1. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.\n\nBackground 2. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.\n\nBackground 3. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.\n\nBackground 4. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.\n\nBackground 5. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.\n\nBackground 6. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.\n\nBackground 7. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.\n\nBackground 8. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.",
+      "goal": "기존 메뉴와 본문을 그대로 유지한 플로팅 소재 시안",
+      "requirements": "Requirement 1. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.\n\nRequirement 2. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.\n\nRequirement 3. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.\n\nRequirement 4. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.\n\nRequirement 5. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.\n\nRequirement 6. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.\n\nRequirement 7. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.\n\nRequirement 8. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.\n\nRequirement 9. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.\n\nRequirement 10. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.\n\nRequirement 11. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.\n\nRequirement 12. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.",
+      "scope_in": "Scope 1. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.\n\nScope 2. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.\n\nScope 3. 기존 dev UI와 동일한 내용으로 연속 문서·앵커 탐색을 확인합니다. The same synthetic content is used in both views.",
+      "scope_out": "운영 서비스 변경 제외",
+      "constraints": "No optical runtime. No row blur.",
+      "acceptance": "- [ ] 기존 앵커와 플로팅 인덱스 보존"
+    },
+    "contract_kind": "defined"
+  }
+}

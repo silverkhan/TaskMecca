@@ -1,0 +1,44 @@
+✔ native upgrade preserves legacy light before first paint and module startup (2.998084ms)
+✔ native upgrade preserves legacy dark before first paint and module startup (0.967875ms)
+✔ native upgrade preserves legacy system before first paint and module startup (0.691125ms)
+✔ saved Smoke light wins over the old theme (0.729833ms)
+✔ saved Smoke dark wins over the old theme (0.576084ms)
+✔ saved Smoke system wins over the old theme (0.58525ms)
+✔ saved language / locale ko / en-US (0.567167ms)
+✔ saved language / locale en / ko-KR (0.712166ms)
+✔ saved language / locale null / ko-KR (0.598875ms)
+✔ saved language / locale null / en-GB (0.889958ms)
+✔ saved language / locale null / fr-FR (0.793292ms)
+✔ saved language / locale invalid / KO-kr (0.578917ms)
+✔ invalid modes fall back to System and retain the locale policy (0.568ms)
+✔ blocked preference storage does not prevent first paint or native startup (0.644625ms)
+✔ every select is enhanced while native change event continues powering existing handlers (1.932958ms)
+✔ keyboard navigation and escape restore focus without changing native selection (1.1295ms)
+✔ native expansion preserves authoritative select values and shared accessible combo behavior (1.209166ms)
+✔ mobile header media query hides picker captions only, not inserted select wrappers (0.543125ms)
+✔ programmatic native select changes immediately synchronize visible label (0.366958ms)
+✔ language and palette initialization explicitly synchronize themed picker text (2.167709ms)
+✔ workflow keeps full lifecycle range when all activity is unmeasured (33.994583ms)
+✔ one Agent and round has nineteen intervals in one row and round filter leaves the full axis intact (4.353625ms)
+✔ role colors are semantic and concurrency, unknown rounds, outcomes and escaped details remain present (3.954542ms)
+✔ measured zero differs from missing review and stale evidence is explicit (3.187458ms)
+✔ the unified lifecycle section keeps raw events behind disclosure (1.636167ms)
+✔ unproved execution ends remain start-only and initial load errors have an explicit retry (4.019875ms)
+✔ time window clamps both bounds, fits explicitly and does not follow new events automatically (1.753917ms)
+✔ short nonzero milliseconds never read as measured zero or unmeasured (4.457292ms)
+✔ missing boundaries stay unmeasured without a fabricated axis (1.967792ms)
+✔ visible range identifies dates for midnight and later days of a long lifecycle (1.761125ms)
+✔ A63 exact-touch runs share outer paint while original source objects stay unchanged (2.595708ms)
+✔ A63 positive nanosecond gaps never join and equivalent timezone endpoints do join (1.333458ms)
+✔ A63 lane layout preserves real overlaps and never treats source lane numbers as new time (1.777916ms)
+✔ A63 unverified ends do not prove a join and zero duration does not become missing activity (1.274041ms)
+✔ A63 Fit follows refreshed full bounds while a manual window stays in place (1.288333ms)
+✔ A63 direction indicators describe source time outside each side and no empty/point tails (1.298292ms)
+ℹ tests 36
+ℹ suites 0
+ℹ pass 36
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 130.334833

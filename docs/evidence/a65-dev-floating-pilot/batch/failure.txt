@@ -1,0 +1,5 @@
+AssertionError [ERR_ASSERTION]: no live filters
+
+3 !== 0
+
+    at /Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/docs/evidence/a65-dev-floating-pilot/browser.cjs:26:118
