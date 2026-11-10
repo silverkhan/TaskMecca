@@ -70,6 +70,37 @@ func RecoveryEventSnapshot(project, root, event, triggerTask string) (map[string
 			"incident_key": hex.EncodeToString(fingerprint[:16]),
 		})
 	}
+	// Controller startup and worker-report events must also discover existing
+	// explicit user holds, not only orphaned doing tasks. The caller then
+	// invokes the existing flow next decision function for each such hold.
+	// A read-only scan never sends a message or treats a recorded dispatch as
+	// an unprocessed user decision.
+	catalog, err := Catalog(project, root)
+	if err != nil { return nil, err }
+	userHolds := make([]map[string]any, 0)
+	seenHolds := make(map[string]bool)
+	for _, row := range catalog {
+		if row.Location!="active" || row.State!="hold" ||
+			!strings.EqualFold(strings.TrimSpace(row.Fields["대기유형"]),"user") {
+			continue
+		}
+		if seenHolds[row.ID] { continue }
+		seenHolds[row.ID]=true
+		reason:=strings.TrimSpace(row.Fields["대기"])
+		resume:=strings.TrimSpace(row.Fields["재개조건"])
+		complete:=reason!="" && reason!="-" && resume!="" && resume!="-"
+		action:="complete_canonical_user_hold_first"
+		if complete { action="flow_next:user_decision_required" }
+		userHolds=append(userHolds,map[string]any{
+			"id":row.ID, "title":row.Title,
+			"evidence_complete":complete,
+			"next_action":action,
+			"read_only":true,
+		})
+	}
+	sort.Slice(userHolds,func(i,j int)bool {
+		return toString(userHolds[i]["id"]) < toString(userHolds[j]["id"])
+	})
 	sort.Slice(items, func(i, j int) bool {
 		return toString(items[i]["id"]) < toString(items[j]["id"])
 	})
@@ -80,10 +111,14 @@ func RecoveryEventSnapshot(project, root, event, triggerTask string) (map[string
 	for _, item := range items {
 		fingerprintParts = append(fingerprintParts, toString(item["incident_key"]))
 	}
+	for _, hold := range userHolds {
+		fingerprintParts=append(fingerprintParts,"user_hold:"+toString(hold["id"])+":"+toString(hold["next_action"]))
+	}
 	digest := sha256.Sum256([]byte(strings.Join(fingerprintParts, "\x00")))
 	return map[string]any{
 		"status": func() string {
 			if len(items) > 0 { return "candidates_found" }
+			if len(userHolds) > 0 {return "user_holds_found"}
 			return "no_confirmed_candidates"
 		}(),
 		"event": event,
@@ -93,6 +128,8 @@ func RecoveryEventSnapshot(project, root, event, triggerTask string) (map[string
 		"read_only": true,
 		"candidate_count": len(items),
 		"requires_user_count": requiresUser,
+		"pending_user_hold_count":len(userHolds),
+		"pending_user_holds":userHolds,
 		"candidates": items,
 		"report_to_root": event == "registration" && len(items) > 0,
 		"event_fingerprint": hex.EncodeToString(digest[:16]),
