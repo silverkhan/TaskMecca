@@ -13,7 +13,7 @@ Controller는 수명이 긴 네이티브 세션을 무제한 재사용하지 않
 
 ## 사용자 차단 이벤트에서 Decision 함수 호출 누락 금지
 
-**필수 호출 시점:** (a) `hold(user)` 확정 직후, (b) Worker BLOCKED / 외부 계약 충돌 / 승인 보류 / continuity 복구에서 사용자 판단이 필요한 때, (c) Controller 시작·재개 시 기존 `hold(user)` 발견, (d) 사용자 차단 작업을 남긴 채 종료·유휴로 전환하기 직전. 원인이 무엇이든 Controller는 공통 [사용자 판단 시 Root 연락 절차](../EXECUTION_PROTOCOL.md#사용자-판단-시-root-연락--필수-decision-호출)를 따른다. 완료·일반 장애·진행 보고를 Root 통신으로 오인하지 않는다. 동일 Handoff의 전달 완료·claim 증거를 확인하고 중복 송신하지 않는다. 이 함수 호출은 정책 지시이지 전송 성공이 아니다.
+**필수 호출 시점:** (a) `hold(user)` 확정 직후, (b) Worker BLOCKED / 외부 계약 충돌 / 승인 보류 / continuity 복구에서 사용자 판단이 필요한 때, (c) Controller 시작·재개 시 기존 `hold(user)` 발견, (d) 사용자 차단 작업을 남긴 채 종료·유휴로 전환하기 직전. 시작·재개·Worker 보고 시 `task-mecca recovery event`의 `pending_user_holds`에서 `next_action=flow_next:user_decision_required`인 건을 빠짐없이 재평가한다. `evidence_complete=false`이면 먼저 원본 hold의 사유·재개조건을 바로잡는다. 원인이 무엇이든 Controller는 공통 [사용자 판단 시 Root 연락 절차](../EXECUTION_PROTOCOL.md#사용자-판단-시-root-연락--필수-decision-호출)를 따른다. 완료·일반 장애·진행 보고를 Root 통신으로 오인하지 않는다. 동일 Handoff의 전달 완료·claim 증거를 확인하고 중복 송신하지 않는다. 이 함수 호출은 정책 지시이지 전송 성공이 아니다.
 
 ## Root 통신 정책과 영속 복구
 
