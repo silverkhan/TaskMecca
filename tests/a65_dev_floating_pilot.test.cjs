@@ -3,7 +3,14 @@ const {test}=require('node:test'),assert=require('node:assert/strict'),fs=requir
 const web=path.resolve('goassets/template/_task_mecca/framework/web'),fixtures=path.join(__dirname,'fixtures/a65'),baseline=require('./fixtures/a65/dev-floating-baseline.json');
 const runtime=process.env.WORKFLOW_PLAYWRIGHT_MODULE;if(process.env.WORKFLOW_REQUIRE_BROWSER==='1'&&!runtime)throw Error('Required browser runtime missing');
 test('approved pilot preserves exact origin/dev application, controls, styles and entry DOM',()=>{
- for(const [file,expected]of Object.entries(baseline.sha256))assert.equal(crypto.createHash('sha256').update(fs.readFileSync(path.join(web,file))).digest('hex'),expected,file);
+ for(const [file,expected]of Object.entries(baseline.sha256)){
+  let bytes=fs.readFileSync(path.join(web,file));
+  if(file==='app.js'){
+   let source=bytes.toString();assert.equal((source.match(/\+devFloatingReviewControls\(\)/g)||[]).length,2,'only the two actual PR identity banners add controls');
+   source=source.replace(/\/\/ A-65 review controls:[\s\S]*?\/\/ End A-65 review controls\.\n\n/,'').replaceAll('+devFloatingReviewControls()','').replace("document.addEventListener('click',handleDevFloatingReview);\n",'');bytes=Buffer.from(source);
+  }
+  assert.equal(crypto.createHash('sha256').update(bytes).digest('hex'),expected,file+' remains dev apart from the bounded review-entry addition');
+ }
  const addition='  <!-- Opt-in material pilot: dev DOM and app stay unchanged. -->\n  <script src="/ui/dev-floating/pilot.js"></script>\n  <link rel="stylesheet" href="/ui/dev-floating/pilot.css" />\n';
  const html=fs.readFileSync(path.join(web,'index.html'),'utf8');assert.ok(html.includes(addition));assert.equal(html.replace(addition,''),fs.readFileSync(path.join(fixtures,'dev-index-f0a732e3.html'),'utf8'));
  const js=fs.readFileSync(path.join(web,'ui/dev-floating/pilot.js'),'utf8');assert.doesNotMatch(js,/requestAnimationFrame|addEventListener|setInterval|ResizeObserver|MutationObserver|canvas|feDisplacementMap/);

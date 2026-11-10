@@ -1,3 +1,13 @@
+/* Review controls remain usable when the pilot is off. */
+.dev-floating-review-controls {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  max-width: 100%;
+}
+.dev-floating-review-controls .action-btn {
+  min-height: 44px;
+}
 /* Scope: opt-in dev sidebar/header/detail material only. No optical runtime. */
 :root[data-floating-pilot] {
   --floating-chrome: rgb(255 255 255 / .91);

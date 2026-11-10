@@ -55,13 +55,22 @@ function nativeShell(language='en'){
  native.load('state.js').state.language=language;
  return native.load('components/shared.js').shell();
 }
-test('native packaged shell has dedicated preferences and notifications without a duplicate attention route',()=>{
- const html=fs.readFileSync('goassets/template/_task_mecca/framework/web/index.html','utf8'),shell=nativeShell();
+test('historical native shell has dedicated preferences and notifications without a duplicate attention route',()=>{
+ const html=fs.readFileSync('tests/fixtures/a65/expanded-index-f4da69f8.html','utf8'),shell=nativeShell();
  assert.match(html,/type="module" src="\/ui\/main.js"/);
  assert.match(shell,/href="\/\?view=settings"/);
  assert.match(shell,/href="\/\?view=notifications"/);
  assert.doesNotMatch(shell,/view=attention/);
  assert.doesNotMatch(html,/src="\/app.js"/);
+});
+test('default dev shell retains its actual notification route and opt-in pilot assets',()=>{
+ const html=fs.readFileSync('goassets/template/_task_mecca/framework/web/index.html','utf8');
+ assert.match(html,/src="\/app.js"/);
+ assert.match(html,/data-view="notifications" id="projectNotificationsNav"/);
+ assert.doesNotMatch(html,/data-view="attention"/);
+ assert.match(html,/src="\/ui\/dev-floating\/pilot.js"/);
+ assert.match(html,/href="\/ui\/dev-floating\/pilot.css"/);
+ assert.doesNotMatch(html,/src="\/ui\/main.js"/);
 });
 test('notification labels retain their meaning and remain readable in the native navigation',()=>{
  const a=app();assert.equal(vm.runInContext("t('projectNotifications')",a.context),'알림센터');
