@@ -1,6 +1,8 @@
 package main
 
 import (
+ "bytes"
+ "encoding/json"
  "os"
  "path/filepath"
  "strings"
@@ -72,6 +74,16 @@ func TestRootEscalationFallsBackWhenModeNotConfigured(t *testing.T) {
  }
  d=evaluateRootEscalationDecision(project,"B-620","codex","not-configured")
  if d.ExitAllowed||d.Decision!="CONTINUE" {t.Fatalf("missing mode blocked legacy hold: %+v",d)}
+ var out,stderr bytes.Buffer
+ exit:=runFlowNextCLI([]string{"next","--role","controller","--event","final_requested",
+  "--project",project,"--task","B-620","--json"},&out,&stderr)
+ if exit!=0 {t.Fatalf("finalization policy failed: %s",stderr.String())}
+ var final flowNextDecision
+ if err:=json.Unmarshal(out.Bytes(),&final);err!=nil{t.Fatal(err)}
+ if final.ExitAllowed||final.Decision!="CONTINUE"||final.Event!="final_requested" ||
+  !strings.Contains(strings.Join(final.Reasons,","),"user_hold_requires_root_decision_before_finalization"){
+  t.Fatalf("finalization skipped user Root decision: %+v",final)
+ }
  write("external")
  d=evaluateRootEscalationDecision(project,"B-620","","")
  if d.Decision!="EXIT_BLOCKED" {t.Fatalf("non-user hold went to Root: %+v",d)}
