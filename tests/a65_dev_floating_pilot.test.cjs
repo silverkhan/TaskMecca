@@ -17,12 +17,23 @@ test('approved pilot preserves exact origin/dev application, controls, styles an
  assert.equal((js.match(/addEventListener/g)||[]).length,1,'one bounded focus handler only');assert.match(js,/addEventListener\('focusin'/);assert.doesNotMatch(js,/mousemove|pointermove|scroll.*addEventListener/);
  const css=fs.readFileSync(path.join(web,'ui/dev-floating/pilot.css'),'utf8');assert.doesNotMatch(css,/(?:^|[;{]\s*)filter:\s*(?:blur|url)|text-shadow|text-stroke|will-change|animation:/);
 });
+// Synchronize with a canonical Auto measurement at the current viewport,
+// rather than accepting the boot seed of eight provisional rows as capacity.
+function autoLayoutReady(){
+ const rows=[...document.querySelectorAll('.task-row')],list=document.querySelector('.task-list'),bar=document.querySelector('.shortcut-bar');
+ if(state.listPageMode!=='auto'||state.listRevalidating||state.listData?.pending_reconciliation||!list||!rows.length||autoPageRowHeightBudget<=0)return false;
+ const available=Math.max(0,innerHeight-(list.getBoundingClientRect().top+scrollY)-(bar?.getBoundingClientRect().height||28)-12);
+ const capacity=Math.max(1,Math.min(50,Math.floor(available/autoPageRowHeightBudget)));
+ return state.autoListPageSize===capacity&&rows.length===Math.min(20,capacity)&&rows.at(-1).getBoundingClientRect().bottom<=innerHeight-(bar?.getBoundingClientRect().height||0);
+}
 test('actual dev entry retains search, native menus, continuous anchors, theme and mobile controls in the pilot',{skip:!runtime,timeout:180000},async()=>{
  const {start,project,backlog}=require('../docs/evidence/a65-performance/fixture.cjs'),{chromium}=require(runtime),server=await start(web);let browser;const cases=[];
  try{browser=await chromium.launch({headless:true,executablePath:process.env.CHROME_EXECUTABLE});
  for(const width of [1440,390])for(const theme of ['light','dark']){
   const ctx=await browser.newContext({viewport:{width,height:844},hasTouch:width===390,isMobile:width===390,colorScheme:theme,reducedMotion:'reduce',serviceWorkers:'block'});
   await ctx.route('**/*',r=>r.request().url().startsWith(server.origin+'/')?r.continue():r.abort());
+  const controlledAuto=width===390&&theme==='light';let releaseAuto;const autoGate=new Promise(resolve=>{releaseAuto=resolve});let seedProof=null;
+  if(controlledAuto)await ctx.route('**/api/backlog/tasks?*',async route=>{const u=new URL(route.request().url());if(u.searchParams.get('page_size')==='8'&&u.searchParams.get('q')==='Needle'&&!u.searchParams.has('projection'))await autoGate;await route.continue();});
   await ctx.addInitScript(({theme,backlog})=>{for(const[k,v]of Object.entries({'task-mecca-theme':theme,'task-mecca-language':'en','task-mecca-backlog-folder':backlog,'task-mecca-list-page-size':'20','task-mecca-list-page-mode-v1':'manual'}))localStorage.setItem(k,v)},{theme,backlog});
   const page=await ctx.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));const query=new URLSearchParams({project,backlog,floating:'1',view:'backlog',page_size:'20'});
   await page.goto(server.origin+'/?'+query);await page.waitForFunction(()=>document.querySelectorAll('.task-row').length===20);
@@ -41,8 +52,17 @@ test('actual dev entry retains search, native menus, continuous anchors, theme a
   // Exercise the unchanged dev Auto fitter separately from the fixed-size
   // historical workflow fixture, including a viewport-height change.
   await page.locator('#listPageSize').selectOption('auto',{force:true});
-  await page.waitForFunction(()=>state.listPageMode==='auto'&&state.autoListPageSize>0&&state.autoListPageSize<20&&document.querySelectorAll('.task-row').length===Math.min(20,state.autoListPageSize));
-  const autoBefore=await page.evaluate(()=>state.autoListPageSize);await page.setViewportSize({width,height:600});await page.waitForFunction(before=>state.autoListPageSize<before||before===1,autoBefore);
+  if(controlledAuto){try{
+   // Hold only the authoritative eight-row reply. The old readiness predicate
+   // accepts its provisional render although no Auto geometry has been measured.
+   await page.waitForFunction(()=>state.listPageMode==='auto'&&state.autoListPageSize===8&&document.querySelectorAll('.task-row').length===8);
+   seedProof=await page.evaluate(()=>({size:state.autoListPageSize,pending:state.listData?.pending_reconciliation,revalidating:state.listRevalidating,budget:autoPageRowHeightBudget,height:innerHeight,rowCount:document.querySelectorAll('.task-row').length}));
+   assert.equal(await page.evaluate(autoLayoutReady),false,'provisional boot seed cannot be accepted as measured Auto capacity');
+   assert.equal(seedProof.revalidating,true);
+  }finally{releaseAuto();}}
+  await page.evaluate(()=>document.fonts.ready);
+  await page.waitForFunction(autoLayoutReady);
+  const autoInitial=await page.evaluate(()=>({size:state.autoListPageSize,budget:autoPageRowHeightBudget,height:innerHeight,listTop:document.querySelector('.task-list').getBoundingClientRect().top+scrollY,revalidating:state.listRevalidating,pending:state.listData?.pending_reconciliation}));const autoBefore=autoInitial.size;await page.setViewportSize({width,height:600});await page.waitForFunction(before=>state.autoListPageSize<before||before===1,autoBefore);
   await page.waitForFunction(()=>document.querySelectorAll('.task-row').length===Math.min(20,state.autoListPageSize));
   const autoSmall=await page.evaluate(()=>state.autoListPageSize);
   await page.setViewportSize({width,height:844});
@@ -68,7 +88,7 @@ await page.locator('#listPageSize').locator('..').locator('button.tm-combo-trigg
   await page.reload();await page.locator('.detail-toc-nav a').first().waitFor();assert.equal(await page.evaluate(()=>document.documentElement.dataset.floatingPilot),'true');assert.ok(page.url().includes('#'+target));
   const url=new URL(page.url());url.searchParams.set('floating','0');await page.goto(url.toString());await page.locator('.detail-toc-nav a').first().waitFor();assert.equal(await page.evaluate(()=>document.documentElement.hasAttribute('data-floating-pilot')),false);assert.deepEqual(await page.evaluate(()=>({ids:[...document.querySelectorAll('.detail-section[id]')].map(e=>e.id),links:[...document.querySelectorAll('.detail-toc-nav a')].map(e=>e.getAttribute('href')),icons:[...document.querySelectorAll('#nav .nav-icon')].map(e=>e.innerHTML)})),signature);
   for(const view of ['hub','storage']){const route=new URL('/',server.origin);route.searchParams.set('floating','1');route.searchParams.set('view',view);route.searchParams.delete('task');route.hash='';await page.goto(route.toString());await page.waitForFunction(v=>state.view===v&&document.querySelector('#content h1'),view);assert.notEqual(await page.locator('#content').evaluate(e=>getComputedStyle(e).backgroundColor),'rgba(0, 0, 0, 0)',view+' heading/copy/controls share a reading surface');assert.equal(await page.locator('#content').evaluate(e=>getComputedStyle(e).backdropFilter),'none','large reading face stays unfiltered');}
-  assert.deepEqual(errors,[]);assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));cases.push({width,theme,search:true,keyboard:true,comboPointer:true,system:true,sidebar:true,anchorReload:true,defaultDevParity:true,sharedListReadingFace:true,autoAndResize:true,autoBefore,autoSmall,autoRestored,keyboardFocus:true,errors});await ctx.close();
+  assert.deepEqual(errors,[]);assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));cases.push({width,theme,search:true,keyboard:true,comboPointer:true,system:true,sidebar:true,anchorReload:true,defaultDevParity:true,sharedListReadingFace:true,autoAndResize:true,seedProof,autoInitial,autoBefore,autoSmall,autoRestored,keyboardFocus:true,errors});await ctx.close();
  }
  }finally{await browser?.close();await server.close();const out=process.env.WORKFLOW_EVIDENCE_DIR;if(out){fs.mkdirSync(out,{recursive:true});fs.writeFileSync(path.join(out,'dev-floating-mechanics.json'),JSON.stringify({cases,sourceBaseline:baseline.originDev,browserClosed:!browser?.isConnected(),serverListening:server.isListening()},null,2));}}
 });
