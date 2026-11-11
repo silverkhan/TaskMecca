@@ -1,0 +1,119 @@
+{
+  "outcome": {
+    "ok": true,
+    "items": 1
+  },
+  "events": [
+    "route-finished",
+    "context-closed"
+  ],
+  "clientEvaluation": {
+    "result": {
+      "items": [
+        {
+          "id": "FLOW-060",
+          "title": "Project task 060 · synthetic workflow verification",
+          "state": "done",
+          "file_state": "done",
+          "agent": "/root/controller/pairi",
+          "location": "active",
+          "fields": {},
+          "tags": [
+            "synthetic"
+          ],
+          "depends_on": [],
+          "related": [],
+          "activity": {
+            "health": "n/a"
+          },
+          "project": "/fixtures/workflow",
+          "project_name": "Workflow fixture",
+          "backlog": "/fixtures/workflow/_task_mecca/data/backlog",
+          "updated_at": "2026-11-08T00:00:00Z",
+          "active_seconds": null,
+          "source": {},
+          "sort_key": "060",
+          "document": {
+            "schema": "defined-v2",
+            "summary": {
+              "purpose": "실제 사건과 측정 누락을 구분해 읽는다.",
+              "change": "역할별 전체 시간축",
+              "status_result": "합성 검증 자료",
+              "follow_up": "실제 운영 데이터가 아닙니다."
+            },
+            "summary_present": true,
+            "result": "가상 결과입니다.",
+            "notes": "가상 검증 기록입니다.",
+            "requirements": {
+              "goal": "기록과 전체 시간축을 확인한다."
+            }
+          }
+        }
+      ],
+      "page": 1,
+      "page_size": 1,
+      "pages": 60,
+      "total": 60,
+      "counts": {
+        "all": 60,
+        "done": 60,
+        "working": 0,
+        "hold": 0,
+        "ready": 0,
+        "todo": 0
+      },
+      "tag_catalog": {
+        "registry": [
+          {
+            "canonical": "synthetic",
+            "namespace": "",
+            "name": "synthetic",
+            "status": "active",
+            "created_at": "2026-11-08T00:00:00Z",
+            "updated_at": "2026-11-08T00:00:00Z"
+          }
+        ],
+        "stats": [
+          {
+            "tag": "synthetic",
+            "namespace": "",
+            "total": 60,
+            "active": 0,
+            "hold": 0,
+            "done": 60
+          }
+        ],
+        "namespaces": {
+          "": [
+            {
+              "tag": "synthetic",
+              "namespace": "",
+              "total": 60,
+              "active": 0,
+              "hold": 0,
+              "done": 60
+            }
+          ]
+        },
+        "unregistered": []
+      },
+      "backlog_selection": {
+        "scan_root": "/fixtures/workflow",
+        "selected": "/fixtures/workflow/_task_mecca/data/backlog",
+        "auto_selected": false,
+        "candidates": []
+      },
+      "project_path": "/fixtures/workflow",
+      "attention": [],
+      "attention_items": {},
+      "notification_events": [],
+      "backlog_presence": {
+        "present": true
+      },
+      "revision": "fixture:1",
+      "signal_revision": "signal:1"
+    }
+  },
+  "browserClosed": true,
+  "serverListening": false
+}

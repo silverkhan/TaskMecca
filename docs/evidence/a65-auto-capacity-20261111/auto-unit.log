@@ -1,0 +1,3 @@
+Backlog list controls: placement, escaped query, rebind, folder, debounce, scope and slash PASS
+AID-186: provisional render, ResizeObserver feedback isolation, stable row budget, and viewport resize PASS
+AID-241: first mobile touch retains row through click; cancel unlocks PASS

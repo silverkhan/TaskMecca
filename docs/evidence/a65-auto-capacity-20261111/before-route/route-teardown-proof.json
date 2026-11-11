@@ -1,0 +1,7 @@
+{
+  "outcome": {
+    "error": "route.fetch: Target page, context or browser has been closed"
+  },
+  "browserClosed": true,
+  "serverListening": false
+}

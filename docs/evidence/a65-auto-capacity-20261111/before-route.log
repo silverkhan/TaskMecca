@@ -1,0 +1,20 @@
+✖ routed context teardown joins an in-flight fixture fetch before closing (273.136333ms)
+(node:75070) PromiseRejectionHandledWarning: Promise rejection was handled asynchronously (rejection id: 4)
+(Use `node --trace-warnings ...` to show where the warning was created)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 328.531333
+
+✖ failing tests:
+
+test at tests/a65_pilot_neutral.test.cjs:34:1
+✖ routed context teardown joins an in-flight fixture fetch before closing (273.136333ms)
+  page.evaluate: Target page, context or browser has been closed
+      at TestContext.<anonymous> (/Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/tests/a65_pilot_neutral.test.cjs:38:99) {
+    log: []
+  }

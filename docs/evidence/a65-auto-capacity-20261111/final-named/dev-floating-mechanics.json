@@ -1,0 +1,138 @@
+{
+  "cases": [
+    {
+      "width": 1440,
+      "theme": "light",
+      "search": true,
+      "keyboard": true,
+      "comboPointer": true,
+      "system": true,
+      "sidebar": true,
+      "anchorReload": true,
+      "defaultDevParity": true,
+      "sharedListReadingFace": true,
+      "autoAndResize": true,
+      "seedProof": null,
+      "autoInitial": {
+        "size": 7,
+        "budget": 79.046875,
+        "height": 844,
+        "listTop": 226.5,
+        "revalidating": false
+      },
+      "autoBefore": 7,
+      "autoSmall": 4,
+      "autoRestored": {
+        "size": 7,
+        "rowHeightBudget": 79.046875,
+        "height": 844,
+        "lastBottom": 780.828125
+      },
+      "keyboardFocus": true,
+      "errors": []
+    },
+    {
+      "width": 1440,
+      "theme": "dark",
+      "search": true,
+      "keyboard": true,
+      "comboPointer": true,
+      "system": true,
+      "sidebar": true,
+      "anchorReload": true,
+      "defaultDevParity": true,
+      "sharedListReadingFace": true,
+      "autoAndResize": true,
+      "seedProof": null,
+      "autoInitial": {
+        "size": 7,
+        "budget": 79.046875,
+        "height": 844,
+        "listTop": 226.5,
+        "revalidating": false
+      },
+      "autoBefore": 7,
+      "autoSmall": 4,
+      "autoRestored": {
+        "size": 7,
+        "rowHeightBudget": 79.046875,
+        "height": 844,
+        "lastBottom": 780.828125
+      },
+      "keyboardFocus": true,
+      "errors": []
+    },
+    {
+      "width": 390,
+      "theme": "light",
+      "search": true,
+      "keyboard": true,
+      "comboPointer": true,
+      "system": true,
+      "sidebar": true,
+      "anchorReload": true,
+      "defaultDevParity": true,
+      "sharedListReadingFace": true,
+      "autoAndResize": true,
+      "seedProof": {
+        "size": 8,
+        "pending": true,
+        "revalidating": true,
+        "budget": 0,
+        "height": 855,
+        "rowCount": 8
+      },
+      "autoInitial": {
+        "size": 3,
+        "budget": 92.859375,
+        "height": 844,
+        "listTop": 517.5,
+        "revalidating": false
+      },
+      "autoBefore": 3,
+      "autoSmall": 1,
+      "autoRestored": {
+        "size": 3,
+        "rowHeightBudget": 92.859375,
+        "height": 844,
+        "lastBottom": 797.078125
+      },
+      "keyboardFocus": true,
+      "errors": []
+    },
+    {
+      "width": 390,
+      "theme": "dark",
+      "search": true,
+      "keyboard": true,
+      "comboPointer": true,
+      "system": true,
+      "sidebar": true,
+      "anchorReload": true,
+      "defaultDevParity": true,
+      "sharedListReadingFace": true,
+      "autoAndResize": true,
+      "seedProof": null,
+      "autoInitial": {
+        "size": 3,
+        "budget": 92.859375,
+        "height": 844,
+        "listTop": 517.5,
+        "revalidating": false
+      },
+      "autoBefore": 3,
+      "autoSmall": 1,
+      "autoRestored": {
+        "size": 3,
+        "rowHeightBudget": 92.859375,
+        "height": 844,
+        "lastBottom": 797.078125
+      },
+      "keyboardFocus": true,
+      "errors": []
+    }
+  ],
+  "sourceBaseline": "f0a732e3dd8234a663dccf3c6937fc9dc674917b",
+  "browserClosed": true,
+  "serverListening": false
+}
