@@ -1,0 +1,224 @@
+✖ approved pilot preserves exact origin/dev application, controls, styles and entry DOM (3.622375ms)
+﹣ actual dev entry retains search, native menus, continuous anchors, theme and mobile controls in the pilot (0.122917ms) # SKIP
+✖ browser evidence follows accepted display request, preserves project and deduplicates in-flight calls (9.801875ms)
+✖ failure and disabled settings produce no false browser success; legacy and project off survive (4.516458ms)
+✖ history joins exact project/event ID and never claims unknown/failed/suppressed delivery success (4.253708ms)
+✖ resolved operation tombstone prevents same incident reappearing after stale or undated payload (4.250083ms)
+✖ diagnostic menu keeps failures visible, removes resolved entries and clipboard text requests no execution (4.173958ms)
+✖ diagnostic late response cannot restore resolved state; project/folder remain isolated and same revision polls refresh (4.513625ms)
+✖ automatic source remap invalidates an in-flight diagnostic success or failure (4.088708ms)
+✖ delivery history coalesces loads and preserves records when subsequent server read fails (4.162709ms)
+✖ hook resolution prevents stale, undated or equal-time assignment warnings from reaching browser consumer (4.082292ms)
+✔ historical native shell has dedicated preferences and notifications without a duplicate attention route (4.875416ms)
+✔ default dev shell retains its actual notification route and opt-in pilot assets (0.46675ms)
+✖ notification labels retain their meaning and remain readable in the native navigation (4.058084ms)
+ℹ tests 14
+ℹ suites 0
+ℹ pass 2
+ℹ fail 11
+ℹ cancelled 0
+ℹ skipped 1
+ℹ todo 0
+ℹ duration_ms 98.570292
+
+✖ failing tests:
+
+test at tests/a65_dev_floating_pilot.test.cjs:5:1
+✖ approved pilot preserves exact origin/dev application, controls, styles and entry DOM (3.622375ms)
+  AssertionError [ERR_ASSERTION]: app.js remains dev apart from the bounded review-entry addition
+  + actual - expected
+  
+  + '57dacc8a237dc16f007a6ab7ecc613e076a27550688cf5b493155dee0168b385'
+  - '49606f2bd9165020cf9d473c232ba645498139af0a8037100e71d25c9d293905'
+  
+      at TestContext.<anonymous> (/Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/tests/a65_dev_floating_pilot.test.cjs:12:10)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1397:25)
+      at Test.start (node:internal/test_runner/test:1257:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: '57dacc8a237dc16f007a6ab7ecc613e076a27550688cf5b493155dee0168b385',
+    expected: '49606f2bd9165020cf9d473c232ba645498139af0a8037100e71d25c9d293905',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests/web_notification_center.test.cjs:18:1
+✖ browser evidence follows accepted display request, preserves project and deduplicates in-flight calls (9.801875ms)
+  evalmachine.<anonymous>:3746
+  document.addEventListener('click',event=>{
+           ^
+  
+  TypeError: document.addEventListener is not a function
+      at evalmachine.<anonymous>:3746:10
+      at Script.runInContext (node:vm:150:12)
+      at Object.runInContext (node:vm:302:6)
+      at app (/Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/tests/web_notification_center.test.cjs:14:5)
+      at TestContext.<anonymous> (/Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/tests/web_notification_center.test.cjs:19:74)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1397:25)
+      at Test.start (node:internal/test_runner/test:1257:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17)
+
+test at tests/web_notification_center.test.cjs:21:1
+✖ failure and disabled settings produce no false browser success; legacy and project off survive (4.516458ms)
+  evalmachine.<anonymous>:3746
+  document.addEventListener('click',event=>{
+           ^
+  
+  TypeError: document.addEventListener is not a function
+      at evalmachine.<anonymous>:3746:10
+      at Script.runInContext (node:vm:150:12)
+      at Object.runInContext (node:vm:302:6)
+      at app (/Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/tests/web_notification_center.test.cjs:14:5)
+      at TestContext.<anonymous> (/Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/tests/web_notification_center.test.cjs:22:10)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1397:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:969:18)
+      at Test.postRun (node:internal/test_runner/test:1537:19)
+      at Test.run (node:internal/test_runner/test:1462:12)
+
+test at tests/web_notification_center.test.cjs:24:1
+✖ history joins exact project/event ID and never claims unknown/failed/suppressed delivery success (4.253708ms)
+  evalmachine.<anonymous>:3746
+  document.addEventListener('click',event=>{
+           ^
+  
+  TypeError: document.addEventListener is not a function
+      at evalmachine.<anonymous>:3746:10
+      at Script.runInContext (node:vm:150:12)
+      at Object.runInContext (node:vm:302:6)
+      at app (/Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/tests/web_notification_center.test.cjs:14:5)
+      at TestContext.<anonymous> (/Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/tests/web_notification_center.test.cjs:25:10)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1397:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:969:18)
+      at Test.postRun (node:internal/test_runner/test:1537:19)
+      at Test.run (node:internal/test_runner/test:1462:12)
+
+test at tests/web_notification_center.test.cjs:27:1
+✖ resolved operation tombstone prevents same incident reappearing after stale or undated payload (4.250083ms)
+  evalmachine.<anonymous>:3746
+  document.addEventListener('click',event=>{
+           ^
+  
+  TypeError: document.addEventListener is not a function
+      at evalmachine.<anonymous>:3746:10
+      at Script.runInContext (node:vm:150:12)
+      at Object.runInContext (node:vm:302:6)
+      at app (/Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/tests/web_notification_center.test.cjs:14:5)
+      at TestContext.<anonymous> (/Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/tests/web_notification_center.test.cjs:28:10)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1397:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:969:18)
+      at Test.postRun (node:internal/test_runner/test:1537:19)
+      at Test.run (node:internal/test_runner/test:1462:12)
+
+test at tests/web_notification_center.test.cjs:30:1
+✖ diagnostic menu keeps failures visible, removes resolved entries and clipboard text requests no execution (4.173958ms)
+  evalmachine.<anonymous>:3746
+  document.addEventListener('click',event=>{
+           ^
+  
+  TypeError: document.addEventListener is not a function
+      at evalmachine.<anonymous>:3746:10
+      at Script.runInContext (node:vm:150:12)
+      at Object.runInContext (node:vm:302:6)
+      at app (/Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/tests/web_notification_center.test.cjs:14:5)
+      at TestContext.<anonymous> (/Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/tests/web_notification_center.test.cjs:31:24)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1397:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:969:18)
+      at Test.postRun (node:internal/test_runner/test:1537:19)
+      at Test.run (node:internal/test_runner/test:1462:12)
+
+test at tests/web_notification_center.test.cjs:33:1
+✖ diagnostic late response cannot restore resolved state; project/folder remain isolated and same revision polls refresh (4.513625ms)
+  evalmachine.<anonymous>:3746
+  document.addEventListener('click',event=>{
+           ^
+  
+  TypeError: document.addEventListener is not a function
+      at evalmachine.<anonymous>:3746:10
+      at Script.runInContext (node:vm:150:12)
+      at Object.runInContext (node:vm:302:6)
+      at app (/Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/tests/web_notification_center.test.cjs:14:5)
+      at TestContext.<anonymous> (/Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/tests/web_notification_center.test.cjs:34:29)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1397:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:969:18)
+      at Test.postRun (node:internal/test_runner/test:1537:19)
+      at Test.run (node:internal/test_runner/test:1462:12)
+
+test at tests/web_notification_center.test.cjs:36:1
+✖ automatic source remap invalidates an in-flight diagnostic success or failure (4.088708ms)
+  evalmachine.<anonymous>:3746
+  document.addEventListener('click',event=>{
+           ^
+  
+  TypeError: document.addEventListener is not a function
+      at evalmachine.<anonymous>:3746:10
+      at Script.runInContext (node:vm:150:12)
+      at Object.runInContext (node:vm:302:6)
+      at app (/Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/tests/web_notification_center.test.cjs:14:5)
+      at TestContext.<anonymous> (/Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/tests/web_notification_center.test.cjs:37:55)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1397:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:969:18)
+      at Test.postRun (node:internal/test_runner/test:1537:19)
+      at Test.run (node:internal/test_runner/test:1462:12)
+
+test at tests/web_notification_center.test.cjs:39:1
+✖ delivery history coalesces loads and preserves records when subsequent server read fails (4.162709ms)
+  evalmachine.<anonymous>:3746
+  document.addEventListener('click',event=>{
+           ^
+  
+  TypeError: document.addEventListener is not a function
+      at evalmachine.<anonymous>:3746:10
+      at Script.runInContext (node:vm:150:12)
+      at Object.runInContext (node:vm:302:6)
+      at app (/Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/tests/web_notification_center.test.cjs:14:5)
+      at TestContext.<anonymous> (/Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/tests/web_notification_center.test.cjs:40:40)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1397:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:969:18)
+      at Test.postRun (node:internal/test_runner/test:1537:19)
+      at Test.run (node:internal/test_runner/test:1462:12)
+
+test at tests/web_notification_center.test.cjs:42:1
+✖ hook resolution prevents stale, undated or equal-time assignment warnings from reaching browser consumer (4.082292ms)
+  evalmachine.<anonymous>:3746
+  document.addEventListener('click',event=>{
+           ^
+  
+  TypeError: document.addEventListener is not a function
+      at evalmachine.<anonymous>:3746:10
+      at Script.runInContext (node:vm:150:12)
+      at Object.runInContext (node:vm:302:6)
+      at app (/Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/tests/web_notification_center.test.cjs:14:5)
+      at TestContext.<anonymous> (/Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/tests/web_notification_center.test.cjs:43:21)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1397:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:969:18)
+      at Test.postRun (node:internal/test_runner/test:1537:19)
+      at Test.run (node:internal/test_runner/test:1462:12)
+
+test at tests/web_notification_center.test.cjs:75:1
+✖ notification labels retain their meaning and remain readable in the native navigation (4.058084ms)
+  evalmachine.<anonymous>:3746
+  document.addEventListener('click',event=>{
+           ^
+  
+  TypeError: document.addEventListener is not a function
+      at evalmachine.<anonymous>:3746:10
+      at Script.runInContext (node:vm:150:12)
+      at Object.runInContext (node:vm:302:6)
+      at app (/Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/tests/web_notification_center.test.cjs:14:5)
+      at TestContext.<anonymous> (/Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/tests/web_notification_center.test.cjs:76:10)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1397:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:969:18)
+      at Test.postRun (node:internal/test_runner/test:1537:19)
+      at Test.run (node:internal/test_runner/test:1462:12)

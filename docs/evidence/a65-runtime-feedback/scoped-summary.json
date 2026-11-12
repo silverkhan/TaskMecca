@@ -1,0 +1,165 @@
+{
+  "scope": "4 repeats per action. Not counterbalanced, not full gate. Mixed result, no lag-resolution claim.",
+  "results": [
+    {
+      "phase": "before",
+      "width": 1440,
+      "theme": "light",
+      "action": "scroll",
+      "taskMs": 7.3970000000000145,
+      "scriptMs": 0.8155000000000003,
+      "frameMedianMs": 16.699999999999818,
+      "heapBytes": 3578550.0
+    },
+    {
+      "phase": "before",
+      "width": 1440,
+      "theme": "light",
+      "action": "input",
+      "taskMs": 27.36049999999998,
+      "scriptMs": 1.0944999999999983,
+      "frameMedianMs": 16.699999999999818,
+      "heapBytes": 3614104.0
+    },
+    {
+      "phase": "before",
+      "width": 1440,
+      "theme": "dark",
+      "action": "scroll",
+      "taskMs": 8.194999999999993,
+      "scriptMs": 0.8759999999999997,
+      "frameMedianMs": 16.699999999999818,
+      "heapBytes": 3536634.0
+    },
+    {
+      "phase": "before",
+      "width": 1440,
+      "theme": "dark",
+      "action": "input",
+      "taskMs": 26.94500000000001,
+      "scriptMs": 1.0975000000000006,
+      "frameMedianMs": 16.699999999999818,
+      "heapBytes": 3572308.0
+    },
+    {
+      "phase": "before",
+      "width": 390,
+      "theme": "light",
+      "action": "scroll",
+      "taskMs": 10.450999999999988,
+      "scriptMs": 0.9260000000000002,
+      "frameMedianMs": 16.699999999999818,
+      "heapBytes": 3536968.0
+    },
+    {
+      "phase": "before",
+      "width": 390,
+      "theme": "light",
+      "action": "input",
+      "taskMs": 34.32549999999999,
+      "scriptMs": 1.1515000000000006,
+      "frameMedianMs": 16.699999999999818,
+      "heapBytes": 3574844.0
+    },
+    {
+      "phase": "before",
+      "width": 390,
+      "theme": "dark",
+      "action": "scroll",
+      "taskMs": 9.225000000000012,
+      "scriptMs": 0.9985000000000002,
+      "frameMedianMs": 16.699999999999818,
+      "heapBytes": 3549956.0
+    },
+    {
+      "phase": "before",
+      "width": 390,
+      "theme": "dark",
+      "action": "input",
+      "taskMs": 33.27350000000001,
+      "scriptMs": 1.1330000000000005,
+      "frameMedianMs": 16.699999999999818,
+      "heapBytes": 3587856.0
+    },
+    {
+      "phase": "after",
+      "width": 1440,
+      "theme": "light",
+      "action": "scroll",
+      "taskMs": 7.4979999999999905,
+      "scriptMs": 0.7879999999999996,
+      "frameMedianMs": 16.699999999999818,
+      "heapBytes": 3541960.0
+    },
+    {
+      "phase": "after",
+      "width": 1440,
+      "theme": "light",
+      "action": "input",
+      "taskMs": 28.800000000000004,
+      "scriptMs": 1.1965000000000006,
+      "frameMedianMs": 16.699999999999818,
+      "heapBytes": 3575042.0
+    },
+    {
+      "phase": "after",
+      "width": 1440,
+      "theme": "dark",
+      "action": "scroll",
+      "taskMs": 7.190000000000001,
+      "scriptMs": 0.7760000000000002,
+      "frameMedianMs": 16.699999999999818,
+      "heapBytes": 3530018.0
+    },
+    {
+      "phase": "after",
+      "width": 1440,
+      "theme": "dark",
+      "action": "input",
+      "taskMs": 28.278499999999987,
+      "scriptMs": 1.1554999999999995,
+      "frameMedianMs": 16.699999999999818,
+      "heapBytes": 3563124.0
+    },
+    {
+      "phase": "after",
+      "width": 390,
+      "theme": "light",
+      "action": "scroll",
+      "taskMs": 10.081999999999994,
+      "scriptMs": 0.9665000000000004,
+      "frameMedianMs": 16.699999999999818,
+      "heapBytes": 3496624.0
+    },
+    {
+      "phase": "after",
+      "width": 390,
+      "theme": "light",
+      "action": "input",
+      "taskMs": 32.660999999999994,
+      "scriptMs": 1.2974999999999999,
+      "frameMedianMs": 16.699999999999818,
+      "heapBytes": 3531668.0
+    },
+    {
+      "phase": "after",
+      "width": 390,
+      "theme": "dark",
+      "action": "scroll",
+      "taskMs": 9.706,
+      "scriptMs": 0.9239999999999995,
+      "frameMedianMs": 16.699999999999818,
+      "heapBytes": 3490314.0
+    },
+    {
+      "phase": "after",
+      "width": 390,
+      "theme": "dark",
+      "action": "input",
+      "taskMs": 33.96650000000001,
+      "scriptMs": 1.2944999999999998,
+      "frameMedianMs": 16.699999999999818,
+      "heapBytes": 3525322.0
+    }
+  ]
+}

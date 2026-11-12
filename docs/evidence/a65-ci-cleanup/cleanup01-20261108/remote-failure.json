@@ -1,0 +1,6 @@
+{
+  "source": "docs/evidence/a65-prototype/ci-487c2391/go-runtime.log",
+  "sha256": "09a2ad7abf3082b5ca02cd95668c2432c49b0ba73deb11f13dde53cec84a5a22",
+  "excerpt": "2026-11-08T00:00:50.6153758Z 2026/11/08 00:00:28 Task Mecca automatic Telegram delivery issue in project \"001\": 0 events, 1 failures; inspect notification delivery ledger\n2026-11-08T00:00:50.6154333Z 2026/11/08 00:00:28 Task Mecca automatic Telegram delivery issue in project \"001\": 0 events, 1 failures; inspect notification delivery ledger\n2026-11-08T00:00:50.6154724Z --- FAIL: TestActivityHTTPIncludesReportedLifecycleCoverage (0.01s)\n2026-11-08T00:00:50.6155812Z     testing.go:1231: TempDir RemoveAll cleanup: unlinkat /tmp/TestActivityHTTPIncludesReportedLifecycleCoverage263819627/001/_task_mecca: directory not empty\n2026-11-08T00:00:50.6156350Z 2026/11/08 00:00:28 Task Mecca automatic Telegram delivery issue in project \"001\": 0 events, 1 failures; inspect notification delivery ledger\n2026-11-08T00:00:50.6156820Z 2026/11/08 00:00:29 Task Mecca automatic Telegram delivery issue in project \"001\": 0 events, 1 failures; inspect notification delivery ledger",
+  "classification": "fixture TempDir RemoveAll directory-not-empty race; no lifecycle coverage assertion failure reported"
+}

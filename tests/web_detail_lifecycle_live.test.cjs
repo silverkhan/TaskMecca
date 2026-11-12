@@ -1,6 +1,6 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
 const {test}=require('node:test');
-const source=fs.readFileSync('goassets/template/_task_mecca/framework/web/app.js','utf8');
+const nativeVM=require('./helpers/native_ui_vm.cjs');
 const stamp='2026-10-14T12:00:00Z';
 function session(fetch,options={}){
  const section={
@@ -10,16 +10,15 @@ function session(fetch,options={}){
    getBoundingClientRect(){return {height:this.height,bottom:this.rectBottom}}
  };
  const scrolled=[];
- const context=vm.createContext({
+ const native=nativeVM.session({
    fetch,URLSearchParams,AbortController,setTimeout:(fn,delay)=>delay===1200?(options.setTimeout?options.setTimeout(fn,delay):1):setTimeout(fn,delay),clearTimeout,location:{search:'?project=/demo'},
    navigator:{language:'ko'},queueMicrotask,
    window:{scrollX:0,scrollY:600,scrollTo:args=>scrolled.push(args)},
    document:{visibilityState:'visible',querySelector:()=>null,getElementById:id=>id==='lifecycle'?section:null},
    localStorage:{getItem:()=>null,setItem(){},removeItem(){}}
  });
- vm.runInContext(source.slice(0,source.indexOf('\ntranslateChrome();'))+
- '\nglobalThis.harness={state,checkContentRevision,refreshViewedTaskLifecycle,lifecycleVisualFingerprint};',context);
- const harness=context.harness;
+ const context=native.context;
+ const harness={...native.load('live-lifecycle.js'),state:native.load('state.js').state};
  Object.assign(harness.state,{
    view:'backlog',project:'/demo',backlog:'team',detail:'A-1',
    contentRevision:'r1',signalRevision:'s1',pendingContentUpdate:false,
@@ -52,7 +51,7 @@ test('other backlog edits do not notify current reading; lifecycle updates only 
  assert.equal(a.harness.state.contentRevision,'r2');
  assert.equal(a.harness.state.signalRevision,'s2');
  assert.equal(a.harness.state.detailTask.raw_markdown,original.raw_markdown);
- assert.match(a.section.innerHTML,/Lifecycle|라이프사이클/);
+ assert.match(a.section.innerHTML,/class="event-list"/);
  assert.match(a.section.innerHTML,/e2/);
  assert.equal(a.scrolled.length,0,'the document reading position must not be moved');
  assert.ok(urls.some(u=>u.includes('projection=content')));

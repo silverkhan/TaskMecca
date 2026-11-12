@@ -1,0 +1,17 @@
+{
+  "description": "Project-owned AI-generated photorealistic room image reused byte-for-byte for A-65 background comparison only",
+  "display_label": "AI 생성 실내 이미지",
+  "origin_commit": "5d9c85fca75274a6026e1beb42bd577a690e3143",
+  "origin_file": "/Users/hanati/.codex/worktrees/pr-348-glass-refinement/TaskMecca/goassets/template/_task_mecca/framework/web/cozy-beige-room-photo-1920.webp",
+  "asset_file": "goassets/template/_task_mecca/framework/web/ui/material/cozy-beige-room-photo-1920.webp",
+  "dimensions": [
+    1920,
+    1080
+  ],
+  "bytes": 451256,
+  "sha256": "48c7a6a5c4dbc1e6afe9b07ab0d026850e8516fbde21e621fa4bbabc9c072600",
+  "byte_identical_copy": true,
+  "origin_metadata_sha256": "b69fe970792dbe3caa76723d7266ee73718f38e9c2be8a387c9ac2e1cc23d532",
+  "origin_worker_report_sha256": "08fd6e410aa32ba124e5768a63c368de9f356d977d2af20499bd52aa5ab82a3a",
+  "attribution_limit": "No new CC0/public-domain/license or camera-origin claim; generation and processing history retained verbatim in origin metadata."
+}

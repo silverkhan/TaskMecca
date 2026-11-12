@@ -1,0 +1,12 @@
+[
+  {
+    "antipattern": "layout-transition",
+    "name": "Layout property animation",
+    "description": "Animating width, height, padding, or margin causes layout thrash and janky performance. Use transform and opacity instead, or grid-template-rows for height animations.",
+    "severity": "warning",
+    "category": "quality",
+    "file": "/Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/goassets/template/_task_mecca/framework/web/ui/material/material.css",
+    "line": 22,
+    "snippet": "transition: width"
+  }
+]

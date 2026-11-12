@@ -1,0 +1,12 @@
+{
+  "synthetic": true,
+  "passed": false,
+  "stage": "intermediate dirty candidate before static-route correction",
+  "source_head_before_frontend_commit": "68c353420f307979ee1d07fba35bc122501095ac",
+  "url": "http://127.0.0.1:57369",
+  "failure": "GET /ui/main.js and other new native assets reached the catch-all index.html route. The new index was embedded but module assets were not served.",
+  "observed": "Browser project links never appeared; direct HTTP root returned the new Smoke index. Static registration was missing in server.go.",
+  "response": "Assigned guarded /ui/ nested static route and MIME/traversal tests to backend owner. Final exact-binary smoke remains required.",
+  "operating_service_changed": false,
+  "user_preview_switched": false
+}

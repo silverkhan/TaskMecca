@@ -1,0 +1,12 @@
+locator.waitFor: Timeout 30000ms exceeded.
+Call log:
+[2m  - waiting for locator('#userAttention') to be visible[22m
+[2m    63 × locator resolved to hidden <section hidden="" id="userAttention" aria-live="polite" class="user-attention"></section>[22m
+
+    at /Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/docs/evidence/a65-pilot-readability-20261110/visual.cjs:13:419 {
+  log: [
+    "  - waiting for locator('#userAttention') to be visible",
+    '    63 × locator resolved to hidden <section hidden="" id="userAttention" aria-live="polite" class="user-attention"></section>'
+  ],
+  name: 'TimeoutError'
+}

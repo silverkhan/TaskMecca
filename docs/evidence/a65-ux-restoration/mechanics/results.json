@@ -1,0 +1,112 @@
+[
+  {
+    "variant": "candidate",
+    "width": 1440,
+    "theme": "light",
+    "errors": [],
+    "overflow": false,
+    "documentHeight": 7610,
+    "continuous": true,
+    "anchorReload": true,
+    "floatingIndex": false
+  },
+  {
+    "variant": "candidate",
+    "width": 1440,
+    "theme": "dark",
+    "errors": [],
+    "overflow": false,
+    "documentHeight": 7610,
+    "continuous": true,
+    "anchorReload": true,
+    "floatingIndex": false
+  },
+  {
+    "variant": "candidate",
+    "width": 1280,
+    "theme": "light",
+    "errors": [],
+    "overflow": false,
+    "documentHeight": 7610,
+    "continuous": true,
+    "anchorReload": true,
+    "floatingIndex": true
+  },
+  {
+    "variant": "candidate",
+    "width": 1280,
+    "theme": "dark",
+    "errors": [],
+    "overflow": false,
+    "documentHeight": 7610,
+    "continuous": true,
+    "anchorReload": true,
+    "floatingIndex": true
+  },
+  {
+    "variant": "candidate",
+    "width": 320,
+    "theme": "light",
+    "errors": [],
+    "overflow": false,
+    "documentHeight": 10346,
+    "continuous": true,
+    "anchorReload": true,
+    "floatingIndex": true
+  },
+  {
+    "variant": "candidate",
+    "width": 320,
+    "theme": "dark",
+    "errors": [],
+    "overflow": false,
+    "documentHeight": 10346,
+    "continuous": true,
+    "anchorReload": true,
+    "floatingIndex": true
+  },
+  {
+    "variant": "candidate",
+    "width": 390,
+    "theme": "light",
+    "errors": [],
+    "overflow": false,
+    "documentHeight": 9501,
+    "continuous": true,
+    "anchorReload": true,
+    "floatingIndex": true
+  },
+  {
+    "variant": "candidate",
+    "width": 390,
+    "theme": "dark",
+    "errors": [],
+    "overflow": false,
+    "documentHeight": 9501,
+    "continuous": true,
+    "anchorReload": true,
+    "floatingIndex": true
+  },
+  {
+    "variant": "candidate",
+    "width": 430,
+    "theme": "light",
+    "errors": [],
+    "overflow": false,
+    "documentHeight": 8024,
+    "continuous": true,
+    "anchorReload": true,
+    "floatingIndex": true
+  },
+  {
+    "variant": "candidate",
+    "width": 430,
+    "theme": "dark",
+    "errors": [],
+    "overflow": false,
+    "documentHeight": 8024,
+    "continuous": true,
+    "anchorReload": true,
+    "floatingIndex": true
+  }
+]

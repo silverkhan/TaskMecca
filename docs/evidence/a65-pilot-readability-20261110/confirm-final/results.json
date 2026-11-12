@@ -1,0 +1,1094 @@
+[
+  {
+    "width": 1920,
+    "theme": "light",
+    "geometry": {
+      "width": 1920,
+      "overflow": 0,
+      "sidebar": {
+        "x": 12,
+        "y": 12,
+        "width": 238,
+        "height": 976,
+        "top": 12,
+        "right": 250,
+        "bottom": 988,
+        "left": 12
+      },
+      "header": {
+        "x": 262,
+        "y": 12,
+        "width": 1646,
+        "height": 60,
+        "top": 12,
+        "right": 1908,
+        "bottom": 72,
+        "left": 262
+      },
+      "pr": {
+        "x": 262,
+        "y": 84,
+        "width": 1646,
+        "height": 68,
+        "top": 84,
+        "right": 1908,
+        "bottom": 152,
+        "left": 262
+      },
+      "attention": {
+        "x": 262,
+        "y": 164,
+        "width": 1646,
+        "height": 47.5,
+        "top": 164,
+        "right": 1908,
+        "bottom": 211.5,
+        "left": 262
+      },
+      "reading": {
+        "x": 262,
+        "y": 223.5,
+        "width": 1646,
+        "height": 1762.21875,
+        "top": 223.5,
+        "right": 1908,
+        "bottom": 1985.71875,
+        "left": 262
+      },
+      "readingStyle": {
+        "background": "color(srgb 0.988235 0.976471 0.988235 / 0.98) none repeat scroll 0% 0% / auto padding-box border-box",
+        "border": "0px none rgb(41, 37, 54)",
+        "borderRadius": "18px",
+        "outline": "rgb(41, 37, 54) none 3px",
+        "filter": "none",
+        "backdrop": "none"
+      },
+      "selectedStyle": {
+        "background": "color(srgb 0.962549 0.94549 0.967255) none repeat scroll 0% 0% / auto padding-box border-box",
+        "border": "",
+        "borderRadius": "8px",
+        "outline": "color(srgb 0.47451 0.356863 0.568627 / 0.28) solid 1px",
+        "filter": "none",
+        "backdrop": "none"
+      },
+      "columns": [
+        "ID",
+        "작업",
+        "상태",
+        "에이전트",
+        "활성",
+        "마지막 업데이트",
+        ""
+      ],
+      "rows": 20,
+      "filterRows": 0
+    },
+    "focus": {
+      "tag": "DIV",
+      "outline": "rgb(121, 91, 145) solid 2px",
+      "focusVisible": true
+    },
+    "errors": []
+  },
+  {
+    "width": 1920,
+    "theme": "dark",
+    "geometry": {
+      "width": 1920,
+      "overflow": 0,
+      "sidebar": {
+        "x": 12,
+        "y": 12,
+        "width": 238,
+        "height": 976,
+        "top": 12,
+        "right": 250,
+        "bottom": 988,
+        "left": 12
+      },
+      "header": {
+        "x": 262,
+        "y": 12,
+        "width": 1646,
+        "height": 60,
+        "top": 12,
+        "right": 1908,
+        "bottom": 72,
+        "left": 262
+      },
+      "pr": {
+        "x": 262,
+        "y": 84,
+        "width": 1646,
+        "height": 68,
+        "top": 84,
+        "right": 1908,
+        "bottom": 152,
+        "left": 262
+      },
+      "attention": {
+        "x": 262,
+        "y": 164,
+        "width": 1646,
+        "height": 47.5,
+        "top": 164,
+        "right": 1908,
+        "bottom": 211.5,
+        "left": 262
+      },
+      "reading": {
+        "x": 262,
+        "y": 223.5,
+        "width": 1646,
+        "height": 1762.21875,
+        "top": 223.5,
+        "right": 1908,
+        "bottom": 1985.71875,
+        "left": 262
+      },
+      "readingStyle": {
+        "background": "color(srgb 0.0666667 0.0784314 0.145098 / 0.98) none repeat scroll 0% 0% / auto padding-box border-box",
+        "border": "0px none rgb(240, 237, 245)",
+        "borderRadius": "18px",
+        "outline": "rgb(240, 237, 245) none 3px",
+        "filter": "none",
+        "backdrop": "none"
+      },
+      "selectedStyle": {
+        "background": "color(srgb 0.0966667 0.101765 0.177059) none repeat scroll 0% 0% / auto padding-box border-box",
+        "border": "",
+        "borderRadius": "8px",
+        "outline": "color(srgb 0.666667 0.545098 0.784314 / 0.28) solid 1px",
+        "filter": "none",
+        "backdrop": "none"
+      },
+      "columns": [
+        "ID",
+        "작업",
+        "상태",
+        "에이전트",
+        "활성",
+        "마지막 업데이트",
+        ""
+      ],
+      "rows": 20,
+      "filterRows": 0
+    },
+    "focus": {
+      "tag": "DIV",
+      "outline": "rgb(170, 139, 200) solid 2px",
+      "focusVisible": true
+    },
+    "errors": []
+  },
+  {
+    "width": 1440,
+    "theme": "light",
+    "geometry": {
+      "width": 1440,
+      "overflow": 0,
+      "sidebar": {
+        "x": 12,
+        "y": 12,
+        "width": 238,
+        "height": 976,
+        "top": 12,
+        "right": 250,
+        "bottom": 988,
+        "left": 12
+      },
+      "header": {
+        "x": 262,
+        "y": 12,
+        "width": 1166,
+        "height": 60,
+        "top": 12,
+        "right": 1428,
+        "bottom": 72,
+        "left": 262
+      },
+      "pr": {
+        "x": 262,
+        "y": 84,
+        "width": 1166,
+        "height": 68,
+        "top": 84,
+        "right": 1428,
+        "bottom": 152,
+        "left": 262
+      },
+      "attention": {
+        "x": 262,
+        "y": 164,
+        "width": 1166,
+        "height": 47.5,
+        "top": 164,
+        "right": 1428,
+        "bottom": 211.5,
+        "left": 262
+      },
+      "reading": {
+        "x": 262,
+        "y": 223.5,
+        "width": 1166,
+        "height": 1762.21875,
+        "top": 223.5,
+        "right": 1428,
+        "bottom": 1985.71875,
+        "left": 262
+      },
+      "readingStyle": {
+        "background": "color(srgb 0.988235 0.976471 0.988235 / 0.98) none repeat scroll 0% 0% / auto padding-box border-box",
+        "border": "0px none rgb(41, 37, 54)",
+        "borderRadius": "18px",
+        "outline": "rgb(41, 37, 54) none 3px",
+        "filter": "none",
+        "backdrop": "none"
+      },
+      "selectedStyle": {
+        "background": "color(srgb 0.962549 0.94549 0.967255) none repeat scroll 0% 0% / auto padding-box border-box",
+        "border": "",
+        "borderRadius": "8px",
+        "outline": "color(srgb 0.47451 0.356863 0.568627 / 0.28) solid 1px",
+        "filter": "none",
+        "backdrop": "none"
+      },
+      "columns": [
+        "ID",
+        "작업",
+        "상태",
+        "에이전트",
+        "활성",
+        "마지막 업데이트",
+        ""
+      ],
+      "rows": 20,
+      "filterRows": 0
+    },
+    "focus": {
+      "tag": "DIV",
+      "outline": "rgb(121, 91, 145) solid 2px",
+      "focusVisible": true
+    },
+    "errors": []
+  },
+  {
+    "width": 1440,
+    "theme": "dark",
+    "geometry": {
+      "width": 1440,
+      "overflow": 0,
+      "sidebar": {
+        "x": 12,
+        "y": 12,
+        "width": 238,
+        "height": 976,
+        "top": 12,
+        "right": 250,
+        "bottom": 988,
+        "left": 12
+      },
+      "header": {
+        "x": 262,
+        "y": 12,
+        "width": 1166,
+        "height": 60,
+        "top": 12,
+        "right": 1428,
+        "bottom": 72,
+        "left": 262
+      },
+      "pr": {
+        "x": 262,
+        "y": 84,
+        "width": 1166,
+        "height": 68,
+        "top": 84,
+        "right": 1428,
+        "bottom": 152,
+        "left": 262
+      },
+      "attention": {
+        "x": 262,
+        "y": 164,
+        "width": 1166,
+        "height": 47.5,
+        "top": 164,
+        "right": 1428,
+        "bottom": 211.5,
+        "left": 262
+      },
+      "reading": {
+        "x": 262,
+        "y": 223.5,
+        "width": 1166,
+        "height": 1762.21875,
+        "top": 223.5,
+        "right": 1428,
+        "bottom": 1985.71875,
+        "left": 262
+      },
+      "readingStyle": {
+        "background": "color(srgb 0.0666667 0.0784314 0.145098 / 0.98) none repeat scroll 0% 0% / auto padding-box border-box",
+        "border": "0px none rgb(240, 237, 245)",
+        "borderRadius": "18px",
+        "outline": "rgb(240, 237, 245) none 3px",
+        "filter": "none",
+        "backdrop": "none"
+      },
+      "selectedStyle": {
+        "background": "color(srgb 0.0966667 0.101765 0.177059) none repeat scroll 0% 0% / auto padding-box border-box",
+        "border": "",
+        "borderRadius": "8px",
+        "outline": "color(srgb 0.666667 0.545098 0.784314 / 0.28) solid 1px",
+        "filter": "none",
+        "backdrop": "none"
+      },
+      "columns": [
+        "ID",
+        "작업",
+        "상태",
+        "에이전트",
+        "활성",
+        "마지막 업데이트",
+        ""
+      ],
+      "rows": 20,
+      "filterRows": 0
+    },
+    "focus": {
+      "tag": "DIV",
+      "outline": "rgb(170, 139, 200) solid 2px",
+      "focusVisible": true
+    },
+    "errors": []
+  },
+  {
+    "width": 1280,
+    "theme": "light",
+    "geometry": {
+      "width": 1280,
+      "overflow": 0,
+      "sidebar": {
+        "x": 12,
+        "y": 12,
+        "width": 238,
+        "height": 976,
+        "top": 12,
+        "right": 250,
+        "bottom": 988,
+        "left": 12
+      },
+      "header": {
+        "x": 262,
+        "y": 12,
+        "width": 1006,
+        "height": 60,
+        "top": 12,
+        "right": 1268,
+        "bottom": 72,
+        "left": 262
+      },
+      "pr": {
+        "x": 262,
+        "y": 84,
+        "width": 1006,
+        "height": 68,
+        "top": 84,
+        "right": 1268,
+        "bottom": 152,
+        "left": 262
+      },
+      "attention": {
+        "x": 262,
+        "y": 164,
+        "width": 1006,
+        "height": 47.5,
+        "top": 164,
+        "right": 1268,
+        "bottom": 211.5,
+        "left": 262
+      },
+      "reading": {
+        "x": 262,
+        "y": 223.5,
+        "width": 1006,
+        "height": 1762.21875,
+        "top": 223.5,
+        "right": 1268,
+        "bottom": 1985.71875,
+        "left": 262
+      },
+      "readingStyle": {
+        "background": "color(srgb 0.988235 0.976471 0.988235 / 0.98) none repeat scroll 0% 0% / auto padding-box border-box",
+        "border": "0px none rgb(41, 37, 54)",
+        "borderRadius": "18px",
+        "outline": "rgb(41, 37, 54) none 3px",
+        "filter": "none",
+        "backdrop": "none"
+      },
+      "selectedStyle": {
+        "background": "color(srgb 0.962549 0.94549 0.967255) none repeat scroll 0% 0% / auto padding-box border-box",
+        "border": "",
+        "borderRadius": "8px",
+        "outline": "color(srgb 0.47451 0.356863 0.568627 / 0.28) solid 1px",
+        "filter": "none",
+        "backdrop": "none"
+      },
+      "columns": [
+        "ID",
+        "작업",
+        "상태",
+        "에이전트",
+        "활성",
+        "마지막 업데이트",
+        ""
+      ],
+      "rows": 20,
+      "filterRows": 0
+    },
+    "focus": {
+      "tag": "DIV",
+      "outline": "rgb(121, 91, 145) solid 2px",
+      "focusVisible": true
+    },
+    "errors": []
+  },
+  {
+    "width": 1280,
+    "theme": "dark",
+    "geometry": {
+      "width": 1280,
+      "overflow": 0,
+      "sidebar": {
+        "x": 12,
+        "y": 12,
+        "width": 238,
+        "height": 976,
+        "top": 12,
+        "right": 250,
+        "bottom": 988,
+        "left": 12
+      },
+      "header": {
+        "x": 262,
+        "y": 12,
+        "width": 1006,
+        "height": 60,
+        "top": 12,
+        "right": 1268,
+        "bottom": 72,
+        "left": 262
+      },
+      "pr": {
+        "x": 262,
+        "y": 84,
+        "width": 1006,
+        "height": 68,
+        "top": 84,
+        "right": 1268,
+        "bottom": 152,
+        "left": 262
+      },
+      "attention": {
+        "x": 262,
+        "y": 164,
+        "width": 1006,
+        "height": 47.5,
+        "top": 164,
+        "right": 1268,
+        "bottom": 211.5,
+        "left": 262
+      },
+      "reading": {
+        "x": 262,
+        "y": 223.5,
+        "width": 1006,
+        "height": 1762.21875,
+        "top": 223.5,
+        "right": 1268,
+        "bottom": 1985.71875,
+        "left": 262
+      },
+      "readingStyle": {
+        "background": "color(srgb 0.0666667 0.0784314 0.145098 / 0.98) none repeat scroll 0% 0% / auto padding-box border-box",
+        "border": "0px none rgb(240, 237, 245)",
+        "borderRadius": "18px",
+        "outline": "rgb(240, 237, 245) none 3px",
+        "filter": "none",
+        "backdrop": "none"
+      },
+      "selectedStyle": {
+        "background": "color(srgb 0.0966667 0.101765 0.177059) none repeat scroll 0% 0% / auto padding-box border-box",
+        "border": "",
+        "borderRadius": "8px",
+        "outline": "color(srgb 0.666667 0.545098 0.784314 / 0.28) solid 1px",
+        "filter": "none",
+        "backdrop": "none"
+      },
+      "columns": [
+        "ID",
+        "작업",
+        "상태",
+        "에이전트",
+        "활성",
+        "마지막 업데이트",
+        ""
+      ],
+      "rows": 20,
+      "filterRows": 0
+    },
+    "focus": {
+      "tag": "DIV",
+      "outline": "rgb(170, 139, 200) solid 2px",
+      "focusVisible": true
+    },
+    "errors": []
+  },
+  {
+    "width": 320,
+    "theme": "light",
+    "geometry": {
+      "width": 320,
+      "overflow": 0,
+      "sidebar": {
+        "x": 8,
+        "y": 8,
+        "width": 304,
+        "height": 57.1875,
+        "top": 8,
+        "right": 312,
+        "bottom": 65.1875,
+        "left": 8
+      },
+      "header": {
+        "x": 8,
+        "y": 73.1875,
+        "width": 304,
+        "height": 88,
+        "top": 73.1875,
+        "right": 312,
+        "bottom": 161.1875,
+        "left": 8
+      },
+      "pr": {
+        "x": 8,
+        "y": 169.1875,
+        "width": 304,
+        "height": 99.6875,
+        "top": 169.1875,
+        "right": 312,
+        "bottom": 268.875,
+        "left": 8
+      },
+      "attention": {
+        "x": 8,
+        "y": 276.875,
+        "width": 304,
+        "height": 43.5,
+        "top": 276.875,
+        "right": 312,
+        "bottom": 320.375,
+        "left": 8
+      },
+      "reading": {
+        "x": 8,
+        "y": 328.375,
+        "width": 304,
+        "height": 2222.6875,
+        "top": 328.375,
+        "right": 312,
+        "bottom": 2551.0625,
+        "left": 8
+      },
+      "readingStyle": {
+        "background": "color(srgb 0.988235 0.976471 0.988235 / 0.98) none repeat scroll 0% 0% / auto padding-box border-box",
+        "border": "0px none rgb(41, 37, 54)",
+        "borderRadius": "16px",
+        "outline": "rgb(41, 37, 54) none 3px",
+        "filter": "none",
+        "backdrop": "none"
+      },
+      "selectedStyle": {
+        "background": "color(srgb 0.962549 0.94549 0.967255) none repeat scroll 0% 0% / auto padding-box border-box",
+        "border": "",
+        "borderRadius": "8px",
+        "outline": "color(srgb 0.47451 0.356863 0.568627 / 0.28) solid 1px",
+        "filter": "none",
+        "backdrop": "none"
+      },
+      "columns": [
+        "ID",
+        "작업",
+        "상태",
+        "에이전트",
+        "활성",
+        "마지막 업데이트",
+        ""
+      ],
+      "rows": 20,
+      "filterRows": 0
+    },
+    "focus": {
+      "tag": "DIV",
+      "outline": "rgb(121, 91, 145) solid 2px",
+      "focusVisible": true
+    },
+    "errors": []
+  },
+  {
+    "width": 320,
+    "theme": "dark",
+    "geometry": {
+      "width": 320,
+      "overflow": 0,
+      "sidebar": {
+        "x": 8,
+        "y": 8,
+        "width": 304,
+        "height": 57.1875,
+        "top": 8,
+        "right": 312,
+        "bottom": 65.1875,
+        "left": 8
+      },
+      "header": {
+        "x": 8,
+        "y": 73.1875,
+        "width": 304,
+        "height": 88,
+        "top": 73.1875,
+        "right": 312,
+        "bottom": 161.1875,
+        "left": 8
+      },
+      "pr": {
+        "x": 8,
+        "y": 169.1875,
+        "width": 304,
+        "height": 99.6875,
+        "top": 169.1875,
+        "right": 312,
+        "bottom": 268.875,
+        "left": 8
+      },
+      "attention": {
+        "x": 8,
+        "y": 276.875,
+        "width": 304,
+        "height": 43.5,
+        "top": 276.875,
+        "right": 312,
+        "bottom": 320.375,
+        "left": 8
+      },
+      "reading": {
+        "x": 8,
+        "y": 328.375,
+        "width": 304,
+        "height": 2222.6875,
+        "top": 328.375,
+        "right": 312,
+        "bottom": 2551.0625,
+        "left": 8
+      },
+      "readingStyle": {
+        "background": "color(srgb 0.0666667 0.0784314 0.145098 / 0.98) none repeat scroll 0% 0% / auto padding-box border-box",
+        "border": "0px none rgb(240, 237, 245)",
+        "borderRadius": "16px",
+        "outline": "rgb(240, 237, 245) none 3px",
+        "filter": "none",
+        "backdrop": "none"
+      },
+      "selectedStyle": {
+        "background": "color(srgb 0.0966667 0.101765 0.177059) none repeat scroll 0% 0% / auto padding-box border-box",
+        "border": "",
+        "borderRadius": "8px",
+        "outline": "color(srgb 0.666667 0.545098 0.784314 / 0.28) solid 1px",
+        "filter": "none",
+        "backdrop": "none"
+      },
+      "columns": [
+        "ID",
+        "작업",
+        "상태",
+        "에이전트",
+        "활성",
+        "마지막 업데이트",
+        ""
+      ],
+      "rows": 20,
+      "filterRows": 0
+    },
+    "focus": {
+      "tag": "DIV",
+      "outline": "rgb(170, 139, 200) solid 2px",
+      "focusVisible": true
+    },
+    "errors": []
+  },
+  {
+    "width": 390,
+    "theme": "light",
+    "geometry": {
+      "width": 390,
+      "overflow": 0,
+      "sidebar": {
+        "x": 8,
+        "y": 8,
+        "width": 374,
+        "height": 57.1875,
+        "top": 8,
+        "right": 382,
+        "bottom": 65.1875,
+        "left": 8
+      },
+      "header": {
+        "x": 8,
+        "y": 73.1875,
+        "width": 374,
+        "height": 92,
+        "top": 73.1875,
+        "right": 382,
+        "bottom": 165.1875,
+        "left": 8
+      },
+      "pr": {
+        "x": 8,
+        "y": 173.1875,
+        "width": 374,
+        "height": 112,
+        "top": 173.1875,
+        "right": 382,
+        "bottom": 285.1875,
+        "left": 8
+      },
+      "attention": {
+        "x": 8,
+        "y": 293.1875,
+        "width": 374,
+        "height": 43.5,
+        "top": 293.1875,
+        "right": 382,
+        "bottom": 336.6875,
+        "left": 8
+      },
+      "reading": {
+        "x": 8,
+        "y": 344.6875,
+        "width": 374,
+        "height": 2222.6875,
+        "top": 344.6875,
+        "right": 382,
+        "bottom": 2567.375,
+        "left": 8
+      },
+      "readingStyle": {
+        "background": "color(srgb 0.988235 0.976471 0.988235 / 0.98) none repeat scroll 0% 0% / auto padding-box border-box",
+        "border": "0px none rgb(41, 37, 54)",
+        "borderRadius": "16px",
+        "outline": "rgb(41, 37, 54) none 3px",
+        "filter": "none",
+        "backdrop": "none"
+      },
+      "selectedStyle": {
+        "background": "color(srgb 0.962549 0.94549 0.967255) none repeat scroll 0% 0% / auto padding-box border-box",
+        "border": "",
+        "borderRadius": "8px",
+        "outline": "color(srgb 0.47451 0.356863 0.568627 / 0.28) solid 1px",
+        "filter": "none",
+        "backdrop": "none"
+      },
+      "columns": [
+        "ID",
+        "작업",
+        "상태",
+        "에이전트",
+        "활성",
+        "마지막 업데이트",
+        ""
+      ],
+      "rows": 20,
+      "filterRows": 0
+    },
+    "focus": {
+      "tag": "DIV",
+      "outline": "rgb(121, 91, 145) solid 2px",
+      "focusVisible": true
+    },
+    "errors": []
+  },
+  {
+    "width": 390,
+    "theme": "dark",
+    "geometry": {
+      "width": 390,
+      "overflow": 0,
+      "sidebar": {
+        "x": 8,
+        "y": 8,
+        "width": 374,
+        "height": 57.1875,
+        "top": 8,
+        "right": 382,
+        "bottom": 65.1875,
+        "left": 8
+      },
+      "header": {
+        "x": 8,
+        "y": 73.1875,
+        "width": 374,
+        "height": 92,
+        "top": 73.1875,
+        "right": 382,
+        "bottom": 165.1875,
+        "left": 8
+      },
+      "pr": {
+        "x": 8,
+        "y": 173.1875,
+        "width": 374,
+        "height": 112,
+        "top": 173.1875,
+        "right": 382,
+        "bottom": 285.1875,
+        "left": 8
+      },
+      "attention": {
+        "x": 8,
+        "y": 293.1875,
+        "width": 374,
+        "height": 43.5,
+        "top": 293.1875,
+        "right": 382,
+        "bottom": 336.6875,
+        "left": 8
+      },
+      "reading": {
+        "x": 8,
+        "y": 344.6875,
+        "width": 374,
+        "height": 2222.6875,
+        "top": 344.6875,
+        "right": 382,
+        "bottom": 2567.375,
+        "left": 8
+      },
+      "readingStyle": {
+        "background": "color(srgb 0.0666667 0.0784314 0.145098 / 0.98) none repeat scroll 0% 0% / auto padding-box border-box",
+        "border": "0px none rgb(240, 237, 245)",
+        "borderRadius": "16px",
+        "outline": "rgb(240, 237, 245) none 3px",
+        "filter": "none",
+        "backdrop": "none"
+      },
+      "selectedStyle": {
+        "background": "color(srgb 0.0966667 0.101765 0.177059) none repeat scroll 0% 0% / auto padding-box border-box",
+        "border": "",
+        "borderRadius": "8px",
+        "outline": "color(srgb 0.666667 0.545098 0.784314 / 0.28) solid 1px",
+        "filter": "none",
+        "backdrop": "none"
+      },
+      "columns": [
+        "ID",
+        "작업",
+        "상태",
+        "에이전트",
+        "활성",
+        "마지막 업데이트",
+        ""
+      ],
+      "rows": 20,
+      "filterRows": 0
+    },
+    "focus": {
+      "tag": "DIV",
+      "outline": "rgb(170, 139, 200) solid 2px",
+      "focusVisible": true
+    },
+    "errors": []
+  },
+  {
+    "width": 430,
+    "theme": "light",
+    "geometry": {
+      "width": 430,
+      "overflow": 0,
+      "sidebar": {
+        "x": 8,
+        "y": 8,
+        "width": 414,
+        "height": 57.1875,
+        "top": 8,
+        "right": 422,
+        "bottom": 65.1875,
+        "left": 8
+      },
+      "header": {
+        "x": 8,
+        "y": 73.1875,
+        "width": 414,
+        "height": 92,
+        "top": 73.1875,
+        "right": 422,
+        "bottom": 165.1875,
+        "left": 8
+      },
+      "pr": {
+        "x": 8,
+        "y": 173.1875,
+        "width": 414,
+        "height": 112,
+        "top": 173.1875,
+        "right": 422,
+        "bottom": 285.1875,
+        "left": 8
+      },
+      "attention": {
+        "x": 8,
+        "y": 293.1875,
+        "width": 414,
+        "height": 43.5,
+        "top": 293.1875,
+        "right": 422,
+        "bottom": 336.6875,
+        "left": 8
+      },
+      "reading": {
+        "x": 8,
+        "y": 344.6875,
+        "width": 414,
+        "height": 2222.6875,
+        "top": 344.6875,
+        "right": 422,
+        "bottom": 2567.375,
+        "left": 8
+      },
+      "readingStyle": {
+        "background": "color(srgb 0.988235 0.976471 0.988235 / 0.98) none repeat scroll 0% 0% / auto padding-box border-box",
+        "border": "0px none rgb(41, 37, 54)",
+        "borderRadius": "16px",
+        "outline": "rgb(41, 37, 54) none 3px",
+        "filter": "none",
+        "backdrop": "none"
+      },
+      "selectedStyle": {
+        "background": "color(srgb 0.962549 0.94549 0.967255) none repeat scroll 0% 0% / auto padding-box border-box",
+        "border": "",
+        "borderRadius": "8px",
+        "outline": "color(srgb 0.47451 0.356863 0.568627 / 0.28) solid 1px",
+        "filter": "none",
+        "backdrop": "none"
+      },
+      "columns": [
+        "ID",
+        "작업",
+        "상태",
+        "에이전트",
+        "활성",
+        "마지막 업데이트",
+        ""
+      ],
+      "rows": 20,
+      "filterRows": 0
+    },
+    "focus": {
+      "tag": "DIV",
+      "outline": "rgb(121, 91, 145) solid 2px",
+      "focusVisible": true
+    },
+    "errors": []
+  },
+  {
+    "width": 430,
+    "theme": "dark",
+    "geometry": {
+      "width": 430,
+      "overflow": 0,
+      "sidebar": {
+        "x": 8,
+        "y": 8,
+        "width": 414,
+        "height": 57.1875,
+        "top": 8,
+        "right": 422,
+        "bottom": 65.1875,
+        "left": 8
+      },
+      "header": {
+        "x": 8,
+        "y": 73.1875,
+        "width": 414,
+        "height": 92,
+        "top": 73.1875,
+        "right": 422,
+        "bottom": 165.1875,
+        "left": 8
+      },
+      "pr": {
+        "x": 8,
+        "y": 173.1875,
+        "width": 414,
+        "height": 112,
+        "top": 173.1875,
+        "right": 422,
+        "bottom": 285.1875,
+        "left": 8
+      },
+      "attention": {
+        "x": 8,
+        "y": 293.1875,
+        "width": 414,
+        "height": 43.5,
+        "top": 293.1875,
+        "right": 422,
+        "bottom": 336.6875,
+        "left": 8
+      },
+      "reading": {
+        "x": 8,
+        "y": 344.6875,
+        "width": 414,
+        "height": 2222.6875,
+        "top": 344.6875,
+        "right": 422,
+        "bottom": 2567.375,
+        "left": 8
+      },
+      "readingStyle": {
+        "background": "color(srgb 0.0666667 0.0784314 0.145098 / 0.98) none repeat scroll 0% 0% / auto padding-box border-box",
+        "border": "0px none rgb(240, 237, 245)",
+        "borderRadius": "16px",
+        "outline": "rgb(240, 237, 245) none 3px",
+        "filter": "none",
+        "backdrop": "none"
+      },
+      "selectedStyle": {
+        "background": "color(srgb 0.0966667 0.101765 0.177059) none repeat scroll 0% 0% / auto padding-box border-box",
+        "border": "",
+        "borderRadius": "8px",
+        "outline": "color(srgb 0.666667 0.545098 0.784314 / 0.28) solid 1px",
+        "filter": "none",
+        "backdrop": "none"
+      },
+      "columns": [
+        "ID",
+        "작업",
+        "상태",
+        "에이전트",
+        "활성",
+        "마지막 업데이트",
+        ""
+      ],
+      "rows": 20,
+      "filterRows": 0
+    },
+    "focus": {
+      "tag": "DIV",
+      "outline": "rgb(170, 139, 200) solid 2px",
+      "focusVisible": true
+    },
+    "errors": []
+  }
+]

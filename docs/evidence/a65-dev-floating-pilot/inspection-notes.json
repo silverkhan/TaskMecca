@@ -1,0 +1,24 @@
+{
+  "batch": "dev12cases + pilot12cases, continuation of same inspection due harness assumptions",
+  "harnessCorrections": [
+    "Existing dev logo/shortcut/content-update filters are inherited, not new pilot filters; original zero-global-filter assumption corrected to explicit header/no-new-optics checks.",
+    "Serialized signature undefined key normalized via JSON; no product requirement weakened.",
+    "Disable query was duplicated floating=1&floating=0; corrected test URL replacement."
+  ],
+  "productFixBatch": [
+    "Mobile dev width100% plus new outer margins caused 8px clipping; bound sidebar/header to viewport minus16px.",
+    "Desktop sidebar horizontal inset removed to preserve dev column width.",
+    "Header height override removed to retain dev responsive wrapping."
+  ],
+  "confirm": "12cases one final visual confirmation; no new full visual rounds",
+  "performanceSetupFailures": [
+    "Missing existing manual-page-mode key caused first list-count timeout; preserved one scroll trace.",
+    "Old d5ac reconstructed DOM lacks dev continuous TOC, so 3-way same-document comparison invalid; two collected samples retained, excluded from final paired result."
+  ],
+  "thresholdChanged": false,
+  "idlePolicyChanged": false,
+  "historicalTestBoundary": [
+    "Default is now dev; native entry assertion moved intact to frozen historical index.",
+    "Historical fixture also serves original enhanced select helper; native core first failed due two combobox roles in restored dev helper; default dev has independent new exact-source/browser tests."
+  ]
+}

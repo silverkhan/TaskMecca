@@ -1,0 +1,12 @@
+{
+  "base": "e4918b61a01999f9ec67c57b70aa203323e41b29",
+  "originDev": "f102b6a22414b9262f4255f636f2950c4e4e9564",
+  "autoControllerSHA256": "6274c71f216492a37f002c7d84b29dc9fd2c137d33e64497ff60426078c70a34",
+  "autoControllerEqualsOriginDev": true,
+  "originalRestorePredicateSHA256": "a460ca39c00f5f206e473ef05d7603b08212818acb03371c373a5b02f326f030",
+  "predicateUnchanged": true,
+  "productionTree": "6dd64e67ef7b0ca6942808c191290b2e5acb74d4",
+  "onlyTestChange": "failure-path diagnostic artifact + rethrow original error",
+  "actualSamsung": false,
+  "actualLinuxCIReproduced": false
+}

@@ -1,0 +1,28 @@
+TAP version 13
+# Subtest: native workflow wait polls false predicates through refresh completion
+not ok 1 - native workflow wait polls false predicates through refresh completion
+  ---
+  duration_ms: 237.067125
+  type: 'test'
+  location: '/Users/hanati/.t3/worktrees/TaskMecca/t3-688d06d2/tests/web_workflow_browser.test.cjs:114:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    page.evaluate: SecurityError: Failed to read the 'localStorage' property from 'Window': Access is denied for this document.
+        at UtilityScript.evaluate (<anonymous>:372:16)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+  code: 'ERR_TEST_FAILURE'
+  stack: |-
+    UtilityScript.evaluate (<anonymous>:372:16)
+    UtilityScript.<anonymous> (<anonymous>:1:44)
+    Object.mount (/Users/hanati/.t3/worktrees/TaskMecca/t3-688d06d2/tests/helpers/workflow_native.cjs:33:151)
+    TestContext.<anonymous> (/Users/hanati/.t3/worktrees/TaskMecca/t3-688d06d2/tests/web_workflow_browser.test.cjs:122:19)
+  ...
+1..1
+# tests 1
+# suites 0
+# pass 0
+# fail 1
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 293.776667

@@ -1,0 +1,100 @@
+{
+  "width": 390,
+  "theme": "light",
+  "autoBefore": 8,
+  "autoSmall": 3,
+  "browser": "156.0.8078.4",
+  "platform": "linux",
+  "diagnostic": {
+    "autoSize": 3,
+    "mode": "auto",
+    "revalidating": false,
+    "rowBudget": 92.859375,
+    "rowHeights": [
+      92.859375,
+      92.859375,
+      92.859375
+    ],
+    "rowCount": 3,
+    "lastBottom": 797.078125,
+    "listTop": 517.5,
+    "scrollY": 0,
+    "innerHeight": 844,
+    "barHeight": 29.5,
+    "selected": 0,
+    "listPage": 1,
+    "requestSize": 3,
+    "measureContext": "[\"/fixtures/workflow\",\"\",[\"all\"],[],\"Needle\",\"id_desc\",390]",
+    "available": 285,
+    "capacity": 3
+  },
+  "conditions": {
+    "auto": true,
+    "settled": true,
+    "growth": false,
+    "rows": true,
+    "fit": true
+  },
+  "requests": [
+    {
+      "at": 1794335115078,
+      "path": "/api/backlog/tasks",
+      "query": "?project=%2Ffixtures%2Fworkflow&page=1&page_size=7&q=Needle&sort=id_desc"
+    },
+    {
+      "at": 1794335115163,
+      "path": "/api/backlog/tasks",
+      "query": "?project=%2Ffixtures%2Fworkflow&page=2&page_size=7&q=Needle&sort=id_desc&prefetch=1"
+    },
+    {
+      "at": 1794335115277,
+      "path": "/api/backlog/tasks",
+      "query": "?project=%2Ffixtures%2Fworkflow&page=1&page_size=20&q=Needle&sort=id_desc"
+    },
+    {
+      "at": 1794335117643,
+      "path": "/api/backlog/tasks",
+      "query": "?backlog=%2Ffixtures%2Fworkflow%2F_task_mecca%2Fdata%2Fbacklog&project=%2Ffixtures%2Fworkflow&page=1&page_size=20&sort=id_desc&projection=initial"
+    },
+    {
+      "at": 1794335117643,
+      "path": "/api/backlog/tasks",
+      "query": "?backlog=%2Ffixtures%2Fworkflow%2F_task_mecca%2Fdata%2Fbacklog&project=%2Ffixtures%2Fworkflow&page=1&page_size=20&sort=id_desc"
+    },
+    {
+      "at": 1794335118016,
+      "path": "/api/backlog/tasks",
+      "query": "?project=%2Ffixtures%2Fworkflow&page=1&page_size=20&q=Needle&sort=id_desc&projection=initial"
+    },
+    {
+      "at": 1794335118022,
+      "path": "/api/backlog/tasks",
+      "query": "?project=%2Ffixtures%2Fworkflow&page=1&page_size=20&q=Needle&sort=id_desc"
+    },
+    {
+      "at": 1794335118125,
+      "path": "/api/backlog/tasks",
+      "query": "?project=%2Ffixtures%2Fworkflow&page=1&page_size=8&q=Needle&sort=id_desc&projection=initial"
+    },
+    {
+      "at": 1794335118126,
+      "path": "/api/backlog/tasks",
+      "query": "?project=%2Ffixtures%2Fworkflow&page=1&page_size=8&q=Needle&sort=id_desc"
+    },
+    {
+      "at": 1794335118166,
+      "path": "/api/backlog/tasks",
+      "query": "?project=%2Ffixtures%2Fworkflow&page=1&page_size=3&q=Needle&sort=id_desc&projection=initial"
+    },
+    {
+      "at": 1794335118170,
+      "path": "/api/backlog/tasks",
+      "query": "?project=%2Ffixtures%2Fworkflow&page=1&page_size=3&q=Needle&sort=id_desc"
+    },
+    {
+      "at": 1794335118201,
+      "path": "/api/backlog/tasks",
+      "query": "?project=%2Ffixtures%2Fworkflow&page=2&page_size=3&q=Needle&sort=id_desc&prefetch=1"
+    }
+  ]
+}

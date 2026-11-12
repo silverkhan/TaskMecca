@@ -1,0 +1,8 @@
+{
+  "source": "e3cde648f30cbe4e7a38925d76ce57d38b577d64",
+  "base": "d82f5d343ae3729547cbf895872b872ee51136d1",
+  "measuredCSSsha256": "6f63f9e6315c56289ebce2964094c65123bcf62714d2138227f5b8e9a1ca97f9",
+  "performanceTimingBoundary": "CSS final; focus-only JS handler added after measurement; no full-final-source performance claim",
+  "browserMatrix": "before/after final CSS; keyboard-only JS verified later with functional regression",
+  "actualSamsung": false
+}

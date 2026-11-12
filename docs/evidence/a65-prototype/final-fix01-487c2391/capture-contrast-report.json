@@ -1,0 +1,3280 @@
+{
+  "synthetic": true,
+  "source_head": "487c23918449aaab6ab422c5d1f47b71a1669055",
+  "api_routing": "none; actual Go API and embedded assets",
+  "screens": [
+    {
+      "name": "pc-dark-home.png",
+      "label": "pc-dark",
+      "screen": "home",
+      "width": 1440,
+      "height": 1000,
+      "theme": "dark",
+      "language": "ko",
+      "overflow": false,
+      "main": {
+        "width": 1107
+      },
+      "projectsY": 570.8125,
+      "projectRows": [
+        {
+          "identity": "release",
+          "state": "오래된 정보",
+          "counts": "진행 3확인 3",
+          "bottom": 692.203125
+        },
+        {
+          "identity": "research",
+          "state": "오래된 정보",
+          "counts": "진행 3확인 3",
+          "bottom": 748.203125
+        },
+        {
+          "identity": "task-mecca",
+          "state": "오래된 정보",
+          "counts": "진행 3확인 3",
+          "bottom": 804.203125
+        }
+      ],
+      "attentionBodyWidths": [
+        356,
+        355
+      ],
+      "updatedFacts": [],
+      "focusVisible": "none"
+    },
+    {
+      "name": "pc-dark-backlog.png",
+      "label": "pc-dark",
+      "screen": "backlog",
+      "width": 1440,
+      "height": 1000,
+      "theme": "dark",
+      "language": "ko",
+      "overflow": false,
+      "main": {
+        "width": 1107
+      },
+      "projectRows": [],
+      "attentionBodyWidths": [],
+      "toolsOpen": false,
+      "firstTaskY": 392.328125,
+      "updatedFacts": [
+        "수정 11월 8일 오전 09:00",
+        "수정 11월 8일 오전 09:00",
+        "수정 11월 8일 오전 09:00",
+        "수정 11월 8일 오전 09:00",
+        "수정 11월 8일 오전 09:00",
+        "수정 11월 8일 오전 09:00",
+        "수정 11월 8일 오전 09:00",
+        "수정 11월 8일 오전 09:00",
+        "수정 11월 8일 오전 09:00",
+        "수정 11월 8일 오전 09:00",
+        "수정 11월 8일 오전 09:00",
+        "수정 11월 8일 오전 09:00",
+        "수정 11월 8일 오전 09:00",
+        "수정 11월 8일 오전 09:00",
+        "수정 11월 8일 오전 09:00",
+        "수정 11월 8일 오전 09:00",
+        "수정 11월 8일 오전 09:00",
+        "수정 11월 8일 오전 09:00",
+        "수정 11월 8일 오전 09:00",
+        "수정 11월 8일 오전 09:00"
+      ],
+      "focusVisible": "none"
+    },
+    {
+      "name": "pc-dark-detail.png",
+      "label": "pc-dark",
+      "screen": "detail",
+      "width": 1440,
+      "height": 1000,
+      "theme": "dark",
+      "language": "ko",
+      "overflow": false,
+      "main": {
+        "width": 1107
+      },
+      "projectRows": [],
+      "attentionBodyWidths": [],
+      "updatedFacts": [],
+      "focusVisible": "none"
+    },
+    {
+      "name": "pc-dark-lifecycle.png",
+      "label": "pc-dark",
+      "screen": "lifecycle",
+      "width": 1440,
+      "height": 1000,
+      "theme": "dark",
+      "language": "ko",
+      "overflow": false,
+      "main": {
+        "width": 1107
+      },
+      "projectRows": [],
+      "attentionBodyWidths": [],
+      "updatedFacts": [],
+      "focusVisible": "none"
+    },
+    {
+      "name": "pc-light-home.png",
+      "label": "pc-light",
+      "screen": "home",
+      "width": 1280,
+      "height": 900,
+      "theme": "light",
+      "language": "en",
+      "overflow": false,
+      "main": {
+        "width": 947
+      },
+      "projectsY": 589.3125,
+      "projectRows": [
+        {
+          "identity": "release",
+          "state": "Stale",
+          "counts": "Working 3Attention 3",
+          "bottom": 710.703125
+        },
+        {
+          "identity": "research",
+          "state": "Stale",
+          "counts": "Working 3Attention 3",
+          "bottom": 766.703125
+        },
+        {
+          "identity": "task-mecca",
+          "state": "Stale",
+          "counts": "Working 3Attention 3",
+          "bottom": 822.703125
+        }
+      ],
+      "attentionBodyWidths": [
+        221.5,
+        220.5
+      ],
+      "updatedFacts": [],
+      "focusVisible": "none"
+    },
+    {
+      "name": "pc-light-backlog.png",
+      "label": "pc-light",
+      "screen": "backlog",
+      "width": 1280,
+      "height": 900,
+      "theme": "light",
+      "language": "en",
+      "overflow": false,
+      "main": {
+        "width": 947
+      },
+      "projectRows": [],
+      "attentionBodyWidths": [],
+      "toolsOpen": false,
+      "firstTaskY": 392.328125,
+      "updatedFacts": [
+        "Updated Nov 8, 09:00 AM",
+        "Updated Nov 8, 09:00 AM",
+        "Updated Nov 8, 09:00 AM",
+        "Updated Nov 8, 09:00 AM",
+        "Updated Nov 8, 09:00 AM",
+        "Updated Nov 8, 09:00 AM",
+        "Updated Nov 8, 09:00 AM",
+        "Updated Nov 8, 09:00 AM",
+        "Updated Nov 8, 09:00 AM",
+        "Updated Nov 8, 09:00 AM",
+        "Updated Nov 8, 09:00 AM",
+        "Updated Nov 8, 09:00 AM",
+        "Updated Nov 8, 09:00 AM",
+        "Updated Nov 8, 09:00 AM",
+        "Updated Nov 8, 09:00 AM",
+        "Updated Nov 8, 09:00 AM",
+        "Updated Nov 8, 09:00 AM",
+        "Updated Nov 8, 09:00 AM",
+        "Updated Nov 8, 09:00 AM",
+        "Updated Nov 8, 09:00 AM"
+      ],
+      "focusVisible": "none"
+    },
+    {
+      "name": "pc-light-detail.png",
+      "label": "pc-light",
+      "screen": "detail",
+      "width": 1280,
+      "height": 900,
+      "theme": "light",
+      "language": "en",
+      "overflow": false,
+      "main": {
+        "width": 947
+      },
+      "projectRows": [],
+      "attentionBodyWidths": [],
+      "updatedFacts": [],
+      "focusVisible": "none"
+    },
+    {
+      "name": "pc-light-lifecycle.png",
+      "label": "pc-light",
+      "screen": "lifecycle",
+      "width": 1280,
+      "height": 900,
+      "theme": "light",
+      "language": "en",
+      "overflow": false,
+      "main": {
+        "width": 947
+      },
+      "projectRows": [],
+      "attentionBodyWidths": [],
+      "updatedFacts": [],
+      "focusVisible": "none"
+    },
+    {
+      "name": "mobile-dark-home.png",
+      "label": "mobile-dark",
+      "screen": "home",
+      "width": 390,
+      "height": 844,
+      "theme": "dark",
+      "language": "ko",
+      "overflow": false,
+      "main": {
+        "width": 335
+      },
+      "projectsY": 1527.546875,
+      "projectRows": [
+        {
+          "identity": "release",
+          "state": "오래된 정보",
+          "counts": "진행 3확인 3",
+          "bottom": 1656.484375
+        },
+        {
+          "identity": "research",
+          "state": "오래된 정보",
+          "counts": "진행 3확인 3",
+          "bottom": 1724.484375
+        },
+        {
+          "identity": "task-mecca",
+          "state": "오래된 정보",
+          "counts": "진행 3확인 3",
+          "bottom": 1792.484375
+        }
+      ],
+      "attentionBodyWidths": [
+        303,
+        303
+      ],
+      "updatedFacts": [],
+      "focusVisible": "none"
+    },
+    {
+      "name": "mobile-dark-backlog.png",
+      "label": "mobile-dark",
+      "screen": "backlog",
+      "width": 390,
+      "height": 844,
+      "theme": "dark",
+      "language": "ko",
+      "overflow": false,
+      "main": {
+        "width": 335
+      },
+      "projectRows": [],
+      "attentionBodyWidths": [],
+      "toolsOpen": false,
+      "firstTaskY": 385.71875,
+      "updatedFacts": [
+        "수정 11월 8일 오전 09:00",
+        "수정 11월 8일 오전 09:00",
+        "수정 11월 8일 오전 09:00",
+        "수정 11월 8일 오전 09:00",
+        "수정 11월 8일 오전 09:00",
+        "수정 11월 8일 오전 09:00",
+        "수정 11월 8일 오전 09:00",
+        "수정 11월 8일 오전 09:00",
+        "수정 11월 8일 오전 09:00",
+        "수정 11월 8일 오전 09:00",
+        "수정 11월 8일 오전 09:00",
+        "수정 11월 8일 오전 09:00",
+        "수정 11월 8일 오전 09:00",
+        "수정 11월 8일 오전 09:00",
+        "수정 11월 8일 오전 09:00",
+        "수정 11월 8일 오전 09:00",
+        "수정 11월 8일 오전 09:00",
+        "수정 11월 8일 오전 09:00",
+        "수정 11월 8일 오전 09:00",
+        "수정 11월 8일 오전 09:00"
+      ],
+      "focusVisible": "none"
+    },
+    {
+      "name": "mobile-dark-detail.png",
+      "label": "mobile-dark",
+      "screen": "detail",
+      "width": 390,
+      "height": 844,
+      "theme": "dark",
+      "language": "ko",
+      "overflow": false,
+      "main": {
+        "width": 335
+      },
+      "projectRows": [],
+      "attentionBodyWidths": [],
+      "updatedFacts": [],
+      "focusVisible": "none"
+    },
+    {
+      "name": "mobile-dark-lifecycle.png",
+      "label": "mobile-dark",
+      "screen": "lifecycle",
+      "width": 390,
+      "height": 844,
+      "theme": "dark",
+      "language": "ko",
+      "overflow": false,
+      "main": {
+        "width": 335
+      },
+      "projectRows": [],
+      "attentionBodyWidths": [],
+      "updatedFacts": [],
+      "focusVisible": "none"
+    },
+    {
+      "name": "mobile-light-home.png",
+      "label": "mobile-light",
+      "screen": "home",
+      "width": 320,
+      "height": 844,
+      "theme": "light",
+      "language": "en",
+      "overflow": false,
+      "main": {
+        "width": 265
+      },
+      "projectsY": 1717.765625,
+      "projectRows": [
+        {
+          "identity": "release",
+          "state": "Stale",
+          "counts": "Working 3Attention 3",
+          "bottom": 1846.703125
+        },
+        {
+          "identity": "research",
+          "state": "Stale",
+          "counts": "Working 3Attention 3",
+          "bottom": 1914.703125
+        },
+        {
+          "identity": "task-mecca",
+          "state": "Stale",
+          "counts": "Working 3Attention 3",
+          "bottom": 1982.703125
+        }
+      ],
+      "attentionBodyWidths": [
+        233,
+        233
+      ],
+      "updatedFacts": [],
+      "focusVisible": "none"
+    },
+    {
+      "name": "mobile-light-backlog.png",
+      "label": "mobile-light",
+      "screen": "backlog",
+      "width": 320,
+      "height": 844,
+      "theme": "light",
+      "language": "en",
+      "overflow": false,
+      "main": {
+        "width": 265
+      },
+      "projectRows": [],
+      "attentionBodyWidths": [],
+      "toolsOpen": false,
+      "firstTaskY": 385.71875,
+      "updatedFacts": [
+        "Updated Nov 8, 09:00 AM",
+        "Updated Nov 8, 09:00 AM",
+        "Updated Nov 8, 09:00 AM",
+        "Updated Nov 8, 09:00 AM",
+        "Updated Nov 8, 09:00 AM",
+        "Updated Nov 8, 09:00 AM",
+        "Updated Nov 8, 09:00 AM",
+        "Updated Nov 8, 09:00 AM",
+        "Updated Nov 8, 09:00 AM",
+        "Updated Nov 8, 09:00 AM",
+        "Updated Nov 8, 09:00 AM",
+        "Updated Nov 8, 09:00 AM",
+        "Updated Nov 8, 09:00 AM",
+        "Updated Nov 8, 09:00 AM",
+        "Updated Nov 8, 09:00 AM",
+        "Updated Nov 8, 09:00 AM",
+        "Updated Nov 8, 09:00 AM",
+        "Updated Nov 8, 09:00 AM",
+        "Updated Nov 8, 09:00 AM",
+        "Updated Nov 8, 09:00 AM"
+      ],
+      "focusVisible": "none"
+    },
+    {
+      "name": "mobile-light-detail.png",
+      "label": "mobile-light",
+      "screen": "detail",
+      "width": 320,
+      "height": 844,
+      "theme": "light",
+      "language": "en",
+      "overflow": false,
+      "main": {
+        "width": 265
+      },
+      "projectRows": [],
+      "attentionBodyWidths": [],
+      "updatedFacts": [],
+      "focusVisible": "none"
+    },
+    {
+      "name": "mobile-light-lifecycle.png",
+      "label": "mobile-light",
+      "screen": "lifecycle",
+      "width": 320,
+      "height": 844,
+      "theme": "light",
+      "language": "en",
+      "overflow": false,
+      "main": {
+        "width": 265
+      },
+      "projectRows": [],
+      "attentionBodyWidths": [],
+      "updatedFacts": [],
+      "focusVisible": "none"
+    },
+    {
+      "name": "mobile-wide-home.png",
+      "label": "mobile-wide",
+      "screen": "home",
+      "width": 430,
+      "height": 900,
+      "theme": "dark",
+      "language": "en",
+      "overflow": false,
+      "main": {
+        "width": 375
+      },
+      "projectsY": 1454.984375,
+      "projectRows": [
+        {
+          "identity": "release",
+          "state": "Stale",
+          "counts": "Working 3Attention 3",
+          "bottom": 1583.921875
+        },
+        {
+          "identity": "research",
+          "state": "Stale",
+          "counts": "Working 3Attention 3",
+          "bottom": 1651.921875
+        },
+        {
+          "identity": "task-mecca",
+          "state": "Observed",
+          "counts": "Working 3Attention 3",
+          "bottom": 1719.921875
+        }
+      ],
+      "attentionBodyWidths": [
+        343,
+        343
+      ],
+      "updatedFacts": [],
+      "focusVisible": "none"
+    },
+    {
+      "name": "mobile-wide-backlog.png",
+      "label": "mobile-wide",
+      "screen": "backlog",
+      "width": 430,
+      "height": 900,
+      "theme": "dark",
+      "language": "en",
+      "overflow": false,
+      "main": {
+        "width": 375
+      },
+      "projectRows": [],
+      "attentionBodyWidths": [],
+      "toolsOpen": false,
+      "firstTaskY": 385.71875,
+      "updatedFacts": [
+        "Updated Nov 8, 09:00 AM",
+        "Updated Nov 8, 09:00 AM",
+        "Updated Nov 8, 09:00 AM",
+        "Updated Nov 8, 09:00 AM",
+        "Updated Nov 8, 09:00 AM",
+        "Updated Nov 8, 09:00 AM",
+        "Updated Nov 8, 09:00 AM",
+        "Updated Nov 8, 09:00 AM",
+        "Updated Nov 8, 09:00 AM",
+        "Updated Nov 8, 09:00 AM",
+        "Updated Nov 8, 09:00 AM",
+        "Updated Nov 8, 09:00 AM",
+        "Updated Nov 8, 09:00 AM",
+        "Updated Nov 8, 09:00 AM",
+        "Updated Nov 8, 09:00 AM",
+        "Updated Nov 8, 09:00 AM",
+        "Updated Nov 8, 09:00 AM",
+        "Updated Nov 8, 09:00 AM",
+        "Updated Nov 8, 09:00 AM",
+        "Updated Nov 8, 09:00 AM"
+      ],
+      "focusVisible": "none"
+    },
+    {
+      "name": "mobile-wide-detail.png",
+      "label": "mobile-wide",
+      "screen": "detail",
+      "width": 430,
+      "height": 900,
+      "theme": "dark",
+      "language": "en",
+      "overflow": false,
+      "main": {
+        "width": 375
+      },
+      "projectRows": [],
+      "attentionBodyWidths": [],
+      "updatedFacts": [],
+      "focusVisible": "none"
+    },
+    {
+      "name": "mobile-wide-lifecycle.png",
+      "label": "mobile-wide",
+      "screen": "lifecycle",
+      "width": 430,
+      "height": 900,
+      "theme": "dark",
+      "language": "en",
+      "overflow": false,
+      "main": {
+        "width": 375
+      },
+      "projectRows": [],
+      "attentionBodyWidths": [],
+      "updatedFacts": [],
+      "focusVisible": "none"
+    }
+  ],
+  "errors": [],
+  "contrast": [
+    {
+      "label": "pc-dark",
+      "screen": "home",
+      "kind": "heading",
+      "selector": "h1",
+      "foreground": "rgb(238, 240, 243)",
+      "backgrounds": [
+        [
+          32,
+          33,
+          36
+        ]
+      ],
+      "ratio": 14.10090029297361,
+      "required": 3,
+      "pass": true,
+      "fontSize": "30px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "pc-dark",
+      "screen": "home",
+      "kind": "body",
+      "selector": ".task-main strong",
+      "foreground": "rgb(238, 240, 243)",
+      "backgrounds": [
+        [
+          44,
+          46,
+          50
+        ],
+        [
+          41,
+          43,
+          47
+        ]
+      ],
+      "ratio": 11.84732332602344,
+      "required": 4.5,
+      "pass": true,
+      "fontSize": "13px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "pc-dark",
+      "screen": "home",
+      "kind": "secondary",
+      "selector": ".section-heading p",
+      "foreground": "rgb(176, 181, 191)",
+      "backgrounds": [
+        [
+          32,
+          33,
+          36
+        ]
+      ],
+      "ratio": 7.825537893976913,
+      "required": 4.5,
+      "pass": true,
+      "fontSize": "12px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "pc-dark",
+      "screen": "home",
+      "kind": "secondary",
+      "selector": ".task-meta",
+      "foreground": "rgb(176, 181, 191)",
+      "backgrounds": [
+        [
+          44,
+          46,
+          50
+        ],
+        [
+          41,
+          43,
+          47
+        ]
+      ],
+      "ratio": 6.574876476233981,
+      "required": 4.5,
+      "pass": true,
+      "fontSize": "11px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "pc-dark",
+      "screen": "home",
+      "kind": "secondary",
+      "selector": ".project-state",
+      "foreground": "rgb(176, 181, 191)",
+      "backgrounds": [
+        [
+          44,
+          46,
+          50
+        ],
+        [
+          41,
+          43,
+          47
+        ]
+      ],
+      "ratio": 6.574876476233981,
+      "required": 4.5,
+      "pass": true,
+      "fontSize": "10px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "pc-dark",
+      "screen": "home",
+      "kind": "coverage",
+      "selector": ".coverage",
+      "foreground": "rgb(176, 181, 191)",
+      "backgrounds": [
+        [
+          32,
+          33,
+          36
+        ]
+      ],
+      "ratio": 7.825537893976913,
+      "required": 4.5,
+      "pass": true,
+      "fontSize": "11px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "pc-dark",
+      "screen": "home",
+      "kind": "status",
+      "selector": ".status",
+      "foreground": "rgb(176, 181, 191)",
+      "backgrounds": [
+        [
+          51,
+          54,
+          59
+        ],
+        [
+          51,
+          54,
+          59
+        ]
+      ],
+      "ratio": 5.895124189866617,
+      "required": 4.5,
+      "pass": true,
+      "fontSize": "11px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "pc-dark",
+      "screen": "home",
+      "kind": "control",
+      "selector": "#appearance",
+      "foreground": "rgb(176, 181, 191)",
+      "backgrounds": [
+        [
+          41,
+          43,
+          47
+        ]
+      ],
+      "ratio": 6.893116983298321,
+      "required": 4.5,
+      "pass": true,
+      "fontSize": "12px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "pc-dark",
+      "screen": "home",
+      "kind": "body",
+      "selector": ".task-updated",
+      "foreground": "rgb(176, 181, 191)",
+      "backgrounds": [
+        [
+          44,
+          46,
+          50
+        ],
+        [
+          41,
+          43,
+          47
+        ]
+      ],
+      "ratio": 6.574876476233981,
+      "required": 4.5,
+      "pass": true,
+      "fontSize": "11px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "pc-dark",
+      "screen": "backlog",
+      "kind": "heading",
+      "selector": "h1",
+      "foreground": "rgb(238, 240, 243)",
+      "backgrounds": [
+        [
+          32,
+          33,
+          36
+        ]
+      ],
+      "ratio": 14.10090029297361,
+      "required": 3,
+      "pass": true,
+      "fontSize": "30px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "pc-dark",
+      "screen": "backlog",
+      "kind": "body",
+      "selector": ".task-main strong",
+      "foreground": "rgb(238, 240, 243)",
+      "backgrounds": [
+        [
+          44,
+          46,
+          50
+        ],
+        [
+          41,
+          43,
+          47
+        ]
+      ],
+      "ratio": 11.84732332602344,
+      "required": 4.5,
+      "pass": true,
+      "fontSize": "14px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "pc-dark",
+      "screen": "backlog",
+      "kind": "secondary",
+      "selector": ".task-meta",
+      "foreground": "rgb(176, 181, 191)",
+      "backgrounds": [
+        [
+          44,
+          46,
+          50
+        ],
+        [
+          41,
+          43,
+          47
+        ]
+      ],
+      "ratio": 6.574876476233981,
+      "required": 4.5,
+      "pass": true,
+      "fontSize": "11px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "pc-dark",
+      "screen": "backlog",
+      "kind": "control",
+      "selector": ".filter-more summary",
+      "foreground": "rgb(176, 181, 191)",
+      "backgrounds": [
+        [
+          32,
+          33,
+          36
+        ]
+      ],
+      "ratio": 7.825537893976913,
+      "required": 4.5,
+      "pass": true,
+      "fontSize": "12px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "pc-dark",
+      "screen": "backlog",
+      "kind": "status",
+      "selector": ".status",
+      "foreground": "rgb(135, 213, 182)",
+      "backgrounds": [
+        [
+          51,
+          54,
+          59
+        ],
+        [
+          51,
+          54,
+          59
+        ]
+      ],
+      "ratio": 7.059072130524954,
+      "required": 4.5,
+      "pass": true,
+      "fontSize": "11px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "pc-dark",
+      "screen": "backlog",
+      "kind": "control",
+      "selector": "#appearance",
+      "foreground": "rgb(176, 181, 191)",
+      "backgrounds": [
+        [
+          41,
+          43,
+          47
+        ]
+      ],
+      "ratio": 6.893116983298321,
+      "required": 4.5,
+      "pass": true,
+      "fontSize": "12px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "pc-dark",
+      "screen": "backlog",
+      "kind": "control",
+      "selector": "#filters button",
+      "foreground": "rgb(162, 191, 255)",
+      "backgrounds": [
+        [
+          53,
+          67,
+          93
+        ]
+      ],
+      "ratio": 5.412389057219134,
+      "required": 4.5,
+      "pass": true,
+      "fontSize": "14px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "pc-dark",
+      "screen": "backlog",
+      "kind": "placeholder",
+      "selector": "input[name=q]",
+      "foreground": "rgb(176, 181, 191)",
+      "backgrounds": [
+        [
+          41,
+          43,
+          47
+        ]
+      ],
+      "ratio": 6.893116983298321,
+      "required": 4.5,
+      "pass": true,
+      "fontSize": "14px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "pc-dark",
+      "screen": "backlog",
+      "kind": "body",
+      "selector": ".task-updated",
+      "foreground": "rgb(176, 181, 191)",
+      "backgrounds": [
+        [
+          44,
+          46,
+          50
+        ],
+        [
+          41,
+          43,
+          47
+        ]
+      ],
+      "ratio": 6.574876476233981,
+      "required": 4.5,
+      "pass": true,
+      "fontSize": "11px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "pc-dark",
+      "screen": "detail",
+      "kind": "heading",
+      "selector": "h1",
+      "foreground": "rgb(238, 240, 243)",
+      "backgrounds": [
+        [
+          32,
+          33,
+          36
+        ]
+      ],
+      "ratio": 14.10090029297361,
+      "required": 3,
+      "pass": true,
+      "fontSize": "30px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "pc-dark",
+      "screen": "detail",
+      "kind": "status",
+      "selector": ".status",
+      "foreground": "rgb(135, 213, 182)",
+      "backgrounds": [
+        [
+          51,
+          54,
+          59
+        ]
+      ],
+      "ratio": 7.059072130524954,
+      "required": 4.5,
+      "pass": true,
+      "fontSize": "11px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "pc-dark",
+      "screen": "detail",
+      "kind": "control",
+      "selector": "#appearance",
+      "foreground": "rgb(176, 181, 191)",
+      "backgrounds": [
+        [
+          41,
+          43,
+          47
+        ]
+      ],
+      "ratio": 6.893116983298321,
+      "required": 4.5,
+      "pass": true,
+      "fontSize": "12px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "pc-dark",
+      "screen": "detail",
+      "kind": "body",
+      "selector": ".summary-sheet dd",
+      "foreground": "rgb(238, 240, 243)",
+      "backgrounds": [
+        [
+          44,
+          46,
+          50
+        ],
+        [
+          41,
+          43,
+          47
+        ]
+      ],
+      "ratio": 11.84732332602344,
+      "required": 4.5,
+      "pass": true,
+      "fontSize": "14px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "pc-dark",
+      "screen": "lifecycle",
+      "kind": "heading",
+      "selector": "h1",
+      "foreground": "rgb(238, 240, 243)",
+      "backgrounds": [
+        [
+          32,
+          33,
+          36
+        ]
+      ],
+      "ratio": 14.10090029297361,
+      "required": 3,
+      "pass": true,
+      "fontSize": "30px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "pc-dark",
+      "screen": "lifecycle",
+      "kind": "status",
+      "selector": ".status",
+      "foreground": "rgb(135, 213, 182)",
+      "backgrounds": [
+        [
+          51,
+          54,
+          59
+        ]
+      ],
+      "ratio": 7.059072130524954,
+      "required": 4.5,
+      "pass": true,
+      "fontSize": "11px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "pc-dark",
+      "screen": "lifecycle",
+      "kind": "control",
+      "selector": "#appearance",
+      "foreground": "rgb(176, 181, 191)",
+      "backgrounds": [
+        [
+          41,
+          43,
+          47
+        ]
+      ],
+      "ratio": 6.893116983298321,
+      "required": 4.5,
+      "pass": true,
+      "fontSize": "12px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "pc-dark",
+      "screen": "lifecycle",
+      "kind": "workflow",
+      "selector": ".workflow-view",
+      "foreground": "rgb(238, 240, 243)",
+      "backgrounds": [
+        [
+          44,
+          46,
+          50
+        ],
+        [
+          41,
+          43,
+          47
+        ]
+      ],
+      "ratio": 11.84732332602344,
+      "required": 4.5,
+      "pass": true,
+      "fontSize": "12px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "pc-light",
+      "screen": "home",
+      "kind": "heading",
+      "selector": "h1",
+      "foreground": "rgb(36, 39, 45)",
+      "backgrounds": [
+        [
+          240,
+          241,
+          242
+        ]
+      ],
+      "ratio": 13.23437659321779,
+      "required": 3,
+      "pass": true,
+      "fontSize": "30px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "pc-light",
+      "screen": "home",
+      "kind": "body",
+      "selector": ".task-main strong",
+      "foreground": "rgb(36, 39, 45)",
+      "backgrounds": [
+        [
+          250,
+          251,
+          252
+        ],
+        [
+          250,
+          251,
+          252
+        ]
+      ],
+      "ratio": 14.445962843238071,
+      "required": 4.5,
+      "pass": true,
+      "fontSize": "13px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "pc-light",
+      "screen": "home",
+      "kind": "secondary",
+      "selector": ".section-heading p",
+      "foreground": "rgb(98, 104, 115)",
+      "backgrounds": [
+        [
+          240,
+          241,
+          242
+        ]
+      ],
+      "ratio": 4.955759142695487,
+      "required": 4.5,
+      "pass": true,
+      "fontSize": "12px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "pc-light",
+      "screen": "home",
+      "kind": "secondary",
+      "selector": ".task-meta",
+      "foreground": "rgb(98, 104, 115)",
+      "backgrounds": [
+        [
+          250,
+          251,
+          252
+        ],
+        [
+          250,
+          251,
+          252
+        ]
+      ],
+      "ratio": 5.409451055828682,
+      "required": 4.5,
+      "pass": true,
+      "fontSize": "11px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "pc-light",
+      "screen": "home",
+      "kind": "secondary",
+      "selector": ".project-state",
+      "foreground": "rgb(98, 104, 115)",
+      "backgrounds": [
+        [
+          250,
+          251,
+          252
+        ],
+        [
+          250,
+          251,
+          252
+        ]
+      ],
+      "ratio": 5.409451055828682,
+      "required": 4.5,
+      "pass": true,
+      "fontSize": "10px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "pc-light",
+      "screen": "home",
+      "kind": "coverage",
+      "selector": ".coverage",
+      "foreground": "rgb(98, 104, 115)",
+      "backgrounds": [
+        [
+          240,
+          241,
+          242
+        ]
+      ],
+      "ratio": 4.955759142695487,
+      "required": 4.5,
+      "pass": true,
+      "fontSize": "11px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "pc-light",
+      "screen": "home",
+      "kind": "status",
+      "selector": ".status",
+      "foreground": "rgb(98, 104, 115)",
+      "backgrounds": [
+        [
+          233,
+          235,
+          238
+        ],
+        [
+          233,
+          235,
+          238
+        ]
+      ],
+      "ratio": 4.692439691265203,
+      "required": 4.5,
+      "pass": true,
+      "fontSize": "11px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "pc-light",
+      "screen": "home",
+      "kind": "control",
+      "selector": "#appearance",
+      "foreground": "rgb(98, 104, 115)",
+      "backgrounds": [
+        [
+          250,
+          251,
+          252
+        ]
+      ],
+      "ratio": 5.409451055828682,
+      "required": 4.5,
+      "pass": true,
+      "fontSize": "12px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "pc-light",
+      "screen": "home",
+      "kind": "body",
+      "selector": ".task-updated",
+      "foreground": "rgb(98, 104, 115)",
+      "backgrounds": [
+        [
+          250,
+          251,
+          252
+        ],
+        [
+          250,
+          251,
+          252
+        ]
+      ],
+      "ratio": 5.409451055828682,
+      "required": 4.5,
+      "pass": true,
+      "fontSize": "11px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "pc-light",
+      "screen": "backlog",
+      "kind": "heading",
+      "selector": "h1",
+      "foreground": "rgb(36, 39, 45)",
+      "backgrounds": [
+        [
+          240,
+          241,
+          242
+        ]
+      ],
+      "ratio": 13.23437659321779,
+      "required": 3,
+      "pass": true,
+      "fontSize": "30px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "pc-light",
+      "screen": "backlog",
+      "kind": "body",
+      "selector": ".task-main strong",
+      "foreground": "rgb(36, 39, 45)",
+      "backgrounds": [
+        [
+          250,
+          251,
+          252
+        ],
+        [
+          250,
+          251,
+          252
+        ]
+      ],
+      "ratio": 14.445962843238071,
+      "required": 4.5,
+      "pass": true,
+      "fontSize": "14px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "pc-light",
+      "screen": "backlog",
+      "kind": "secondary",
+      "selector": ".task-meta",
+      "foreground": "rgb(98, 104, 115)",
+      "backgrounds": [
+        [
+          250,
+          251,
+          252
+        ],
+        [
+          250,
+          251,
+          252
+        ]
+      ],
+      "ratio": 5.409451055828682,
+      "required": 4.5,
+      "pass": true,
+      "fontSize": "11px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "pc-light",
+      "screen": "backlog",
+      "kind": "control",
+      "selector": ".filter-more summary",
+      "foreground": "rgb(98, 104, 115)",
+      "backgrounds": [
+        [
+          240,
+          241,
+          242
+        ]
+      ],
+      "ratio": 4.955759142695487,
+      "required": 4.5,
+      "pass": true,
+      "fontSize": "12px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "pc-light",
+      "screen": "backlog",
+      "kind": "status",
+      "selector": ".status",
+      "foreground": "rgb(35, 118, 92)",
+      "backgrounds": [
+        [
+          233,
+          235,
+          238
+        ],
+        [
+          233,
+          235,
+          238
+        ]
+      ],
+      "ratio": 4.605952453942677,
+      "required": 4.5,
+      "pass": true,
+      "fontSize": "11px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "pc-light",
+      "screen": "backlog",
+      "kind": "control",
+      "selector": "#appearance",
+      "foreground": "rgb(98, 104, 115)",
+      "backgrounds": [
+        [
+          250,
+          251,
+          252
+        ]
+      ],
+      "ratio": 5.409451055828682,
+      "required": 4.5,
+      "pass": true,
+      "fontSize": "12px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "pc-light",
+      "screen": "backlog",
+      "kind": "control",
+      "selector": "#filters button",
+      "foreground": "rgb(49, 92, 169)",
+      "backgrounds": [
+        [
+          231,
+          237,
+          248
+        ]
+      ],
+      "ratio": 5.52408680043815,
+      "required": 4.5,
+      "pass": true,
+      "fontSize": "14px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "pc-light",
+      "screen": "backlog",
+      "kind": "placeholder",
+      "selector": "input[name=q]",
+      "foreground": "rgb(98, 104, 115)",
+      "backgrounds": [
+        [
+          250,
+          251,
+          252
+        ]
+      ],
+      "ratio": 5.409451055828682,
+      "required": 4.5,
+      "pass": true,
+      "fontSize": "14px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "pc-light",
+      "screen": "backlog",
+      "kind": "body",
+      "selector": ".task-updated",
+      "foreground": "rgb(98, 104, 115)",
+      "backgrounds": [
+        [
+          250,
+          251,
+          252
+        ],
+        [
+          250,
+          251,
+          252
+        ]
+      ],
+      "ratio": 5.409451055828682,
+      "required": 4.5,
+      "pass": true,
+      "fontSize": "11px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "pc-light",
+      "screen": "detail",
+      "kind": "heading",
+      "selector": "h1",
+      "foreground": "rgb(36, 39, 45)",
+      "backgrounds": [
+        [
+          240,
+          241,
+          242
+        ]
+      ],
+      "ratio": 13.23437659321779,
+      "required": 3,
+      "pass": true,
+      "fontSize": "30px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "pc-light",
+      "screen": "detail",
+      "kind": "status",
+      "selector": ".status",
+      "foreground": "rgb(35, 118, 92)",
+      "backgrounds": [
+        [
+          233,
+          235,
+          238
+        ]
+      ],
+      "ratio": 4.605952453942677,
+      "required": 4.5,
+      "pass": true,
+      "fontSize": "11px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "pc-light",
+      "screen": "detail",
+      "kind": "control",
+      "selector": "#appearance",
+      "foreground": "rgb(98, 104, 115)",
+      "backgrounds": [
+        [
+          250,
+          251,
+          252
+        ]
+      ],
+      "ratio": 5.409451055828682,
+      "required": 4.5,
+      "pass": true,
+      "fontSize": "12px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "pc-light",
+      "screen": "detail",
+      "kind": "body",
+      "selector": ".summary-sheet dd",
+      "foreground": "rgb(36, 39, 45)",
+      "backgrounds": [
+        [
+          250,
+          251,
+          252
+        ],
+        [
+          250,
+          251,
+          252
+        ]
+      ],
+      "ratio": 14.445962843238071,
+      "required": 4.5,
+      "pass": true,
+      "fontSize": "14px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "pc-light",
+      "screen": "lifecycle",
+      "kind": "heading",
+      "selector": "h1",
+      "foreground": "rgb(36, 39, 45)",
+      "backgrounds": [
+        [
+          240,
+          241,
+          242
+        ]
+      ],
+      "ratio": 13.23437659321779,
+      "required": 3,
+      "pass": true,
+      "fontSize": "30px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "pc-light",
+      "screen": "lifecycle",
+      "kind": "status",
+      "selector": ".status",
+      "foreground": "rgb(35, 118, 92)",
+      "backgrounds": [
+        [
+          233,
+          235,
+          238
+        ]
+      ],
+      "ratio": 4.605952453942677,
+      "required": 4.5,
+      "pass": true,
+      "fontSize": "11px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "pc-light",
+      "screen": "lifecycle",
+      "kind": "control",
+      "selector": "#appearance",
+      "foreground": "rgb(98, 104, 115)",
+      "backgrounds": [
+        [
+          250,
+          251,
+          252
+        ]
+      ],
+      "ratio": 5.409451055828682,
+      "required": 4.5,
+      "pass": true,
+      "fontSize": "12px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "pc-light",
+      "screen": "lifecycle",
+      "kind": "workflow",
+      "selector": ".workflow-view",
+      "foreground": "rgb(36, 39, 45)",
+      "backgrounds": [
+        [
+          250,
+          251,
+          252
+        ],
+        [
+          250,
+          251,
+          252
+        ]
+      ],
+      "ratio": 14.445962843238071,
+      "required": 4.5,
+      "pass": true,
+      "fontSize": "12px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "mobile-dark",
+      "screen": "home",
+      "kind": "heading",
+      "selector": "h1",
+      "foreground": "rgb(238, 240, 243)",
+      "backgrounds": [
+        [
+          32,
+          33,
+          36
+        ]
+      ],
+      "ratio": 14.10090029297361,
+      "required": 3,
+      "pass": true,
+      "fontSize": "26px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "mobile-dark",
+      "screen": "home",
+      "kind": "body",
+      "selector": ".task-main strong",
+      "foreground": "rgb(238, 240, 243)",
+      "backgrounds": [
+        [
+          44,
+          46,
+          50
+        ],
+        [
+          41,
+          43,
+          47
+        ]
+      ],
+      "ratio": 11.84732332602344,
+      "required": 4.5,
+      "pass": true,
+      "fontSize": "13px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "mobile-dark",
+      "screen": "home",
+      "kind": "secondary",
+      "selector": ".section-heading p",
+      "foreground": "rgb(176, 181, 191)",
+      "backgrounds": [
+        [
+          32,
+          33,
+          36
+        ]
+      ],
+      "ratio": 7.825537893976913,
+      "required": 4.5,
+      "pass": true,
+      "fontSize": "11px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "mobile-dark",
+      "screen": "home",
+      "kind": "secondary",
+      "selector": ".task-meta",
+      "foreground": "rgb(176, 181, 191)",
+      "backgrounds": [
+        [
+          44,
+          46,
+          50
+        ],
+        [
+          41,
+          43,
+          47
+        ]
+      ],
+      "ratio": 6.574876476233981,
+      "required": 4.5,
+      "pass": true,
+      "fontSize": "11px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "mobile-dark",
+      "screen": "home",
+      "kind": "secondary",
+      "selector": ".project-state",
+      "foreground": "rgb(176, 181, 191)",
+      "backgrounds": [
+        [
+          44,
+          46,
+          50
+        ],
+        [
+          41,
+          43,
+          47
+        ]
+      ],
+      "ratio": 6.574876476233981,
+      "required": 4.5,
+      "pass": true,
+      "fontSize": "10px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "mobile-dark",
+      "screen": "home",
+      "kind": "coverage",
+      "selector": ".coverage",
+      "foreground": "rgb(176, 181, 191)",
+      "backgrounds": [
+        [
+          32,
+          33,
+          36
+        ]
+      ],
+      "ratio": 7.825537893976913,
+      "required": 4.5,
+      "pass": true,
+      "fontSize": "10px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "mobile-dark",
+      "screen": "home",
+      "kind": "status",
+      "selector": ".status",
+      "foreground": "rgb(176, 181, 191)",
+      "backgrounds": [
+        [
+          51,
+          54,
+          59
+        ],
+        [
+          51,
+          54,
+          59
+        ]
+      ],
+      "ratio": 5.895124189866617,
+      "required": 4.5,
+      "pass": true,
+      "fontSize": "10px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "mobile-dark",
+      "screen": "home",
+      "kind": "control",
+      "selector": "#appearance",
+      "foreground": "rgb(176, 181, 191)",
+      "backgrounds": [
+        [
+          41,
+          43,
+          47
+        ]
+      ],
+      "ratio": 6.893116983298321,
+      "required": 4.5,
+      "pass": true,
+      "fontSize": "11px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "mobile-dark",
+      "screen": "home",
+      "kind": "body",
+      "selector": ".task-updated",
+      "foreground": "rgb(176, 181, 191)",
+      "backgrounds": [
+        [
+          44,
+          46,
+          50
+        ],
+        [
+          41,
+          43,
+          47
+        ]
+      ],
+      "ratio": 6.574876476233981,
+      "required": 4.5,
+      "pass": true,
+      "fontSize": "11px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "mobile-dark",
+      "screen": "backlog",
+      "kind": "heading",
+      "selector": "h1",
+      "foreground": "rgb(238, 240, 243)",
+      "backgrounds": [
+        [
+          32,
+          33,
+          36
+        ]
+      ],
+      "ratio": 14.10090029297361,
+      "required": 3,
+      "pass": true,
+      "fontSize": "26px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "mobile-dark",
+      "screen": "backlog",
+      "kind": "body",
+      "selector": ".task-main strong",
+      "foreground": "rgb(238, 240, 243)",
+      "backgrounds": [
+        [
+          44,
+          46,
+          50
+        ],
+        [
+          41,
+          43,
+          47
+        ]
+      ],
+      "ratio": 11.84732332602344,
+      "required": 4.5,
+      "pass": true,
+      "fontSize": "13px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "mobile-dark",
+      "screen": "backlog",
+      "kind": "secondary",
+      "selector": ".task-meta",
+      "foreground": "rgb(176, 181, 191)",
+      "backgrounds": [
+        [
+          44,
+          46,
+          50
+        ],
+        [
+          41,
+          43,
+          47
+        ]
+      ],
+      "ratio": 6.574876476233981,
+      "required": 4.5,
+      "pass": true,
+      "fontSize": "11px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "mobile-dark",
+      "screen": "backlog",
+      "kind": "control",
+      "selector": ".filter-more summary",
+      "foreground": "rgb(176, 181, 191)",
+      "backgrounds": [
+        [
+          32,
+          33,
+          36
+        ]
+      ],
+      "ratio": 7.825537893976913,
+      "required": 4.5,
+      "pass": true,
+      "fontSize": "12px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "mobile-dark",
+      "screen": "backlog",
+      "kind": "status",
+      "selector": ".status",
+      "foreground": "rgb(135, 213, 182)",
+      "backgrounds": [
+        [
+          51,
+          54,
+          59
+        ],
+        [
+          51,
+          54,
+          59
+        ]
+      ],
+      "ratio": 7.059072130524954,
+      "required": 4.5,
+      "pass": true,
+      "fontSize": "10px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "mobile-dark",
+      "screen": "backlog",
+      "kind": "control",
+      "selector": "#appearance",
+      "foreground": "rgb(176, 181, 191)",
+      "backgrounds": [
+        [
+          41,
+          43,
+          47
+        ]
+      ],
+      "ratio": 6.893116983298321,
+      "required": 4.5,
+      "pass": true,
+      "fontSize": "11px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "mobile-dark",
+      "screen": "backlog",
+      "kind": "placeholder",
+      "selector": "input[name=q]",
+      "foreground": "rgb(176, 181, 191)",
+      "backgrounds": [
+        [
+          41,
+          43,
+          47
+        ]
+      ],
+      "ratio": 6.893116983298321,
+      "required": 4.5,
+      "pass": true,
+      "fontSize": "14px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "mobile-dark",
+      "screen": "backlog",
+      "kind": "body",
+      "selector": ".task-updated",
+      "foreground": "rgb(176, 181, 191)",
+      "backgrounds": [
+        [
+          44,
+          46,
+          50
+        ],
+        [
+          41,
+          43,
+          47
+        ]
+      ],
+      "ratio": 6.574876476233981,
+      "required": 4.5,
+      "pass": true,
+      "fontSize": "11px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "mobile-dark",
+      "screen": "detail",
+      "kind": "heading",
+      "selector": "h1",
+      "foreground": "rgb(238, 240, 243)",
+      "backgrounds": [
+        [
+          32,
+          33,
+          36
+        ]
+      ],
+      "ratio": 14.10090029297361,
+      "required": 3,
+      "pass": true,
+      "fontSize": "26px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "mobile-dark",
+      "screen": "detail",
+      "kind": "status",
+      "selector": ".status",
+      "foreground": "rgb(135, 213, 182)",
+      "backgrounds": [
+        [
+          51,
+          54,
+          59
+        ]
+      ],
+      "ratio": 7.059072130524954,
+      "required": 4.5,
+      "pass": true,
+      "fontSize": "11px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "mobile-dark",
+      "screen": "detail",
+      "kind": "control",
+      "selector": "#appearance",
+      "foreground": "rgb(176, 181, 191)",
+      "backgrounds": [
+        [
+          41,
+          43,
+          47
+        ]
+      ],
+      "ratio": 6.893116983298321,
+      "required": 4.5,
+      "pass": true,
+      "fontSize": "11px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "mobile-dark",
+      "screen": "detail",
+      "kind": "body",
+      "selector": ".summary-sheet dd",
+      "foreground": "rgb(238, 240, 243)",
+      "backgrounds": [
+        [
+          44,
+          46,
+          50
+        ],
+        [
+          41,
+          43,
+          47
+        ]
+      ],
+      "ratio": 11.84732332602344,
+      "required": 4.5,
+      "pass": true,
+      "fontSize": "13px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "mobile-dark",
+      "screen": "lifecycle",
+      "kind": "heading",
+      "selector": "h1",
+      "foreground": "rgb(238, 240, 243)",
+      "backgrounds": [
+        [
+          32,
+          33,
+          36
+        ]
+      ],
+      "ratio": 14.10090029297361,
+      "required": 3,
+      "pass": true,
+      "fontSize": "26px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "mobile-dark",
+      "screen": "lifecycle",
+      "kind": "status",
+      "selector": ".status",
+      "foreground": "rgb(135, 213, 182)",
+      "backgrounds": [
+        [
+          51,
+          54,
+          59
+        ]
+      ],
+      "ratio": 7.059072130524954,
+      "required": 4.5,
+      "pass": true,
+      "fontSize": "11px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "mobile-dark",
+      "screen": "lifecycle",
+      "kind": "control",
+      "selector": "#appearance",
+      "foreground": "rgb(176, 181, 191)",
+      "backgrounds": [
+        [
+          41,
+          43,
+          47
+        ]
+      ],
+      "ratio": 6.893116983298321,
+      "required": 4.5,
+      "pass": true,
+      "fontSize": "11px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "mobile-dark",
+      "screen": "lifecycle",
+      "kind": "workflow",
+      "selector": ".workflow-view",
+      "foreground": "rgb(238, 240, 243)",
+      "backgrounds": [
+        [
+          44,
+          46,
+          50
+        ],
+        [
+          41,
+          43,
+          47
+        ]
+      ],
+      "ratio": 11.84732332602344,
+      "required": 4.5,
+      "pass": true,
+      "fontSize": "12px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "mobile-light",
+      "screen": "home",
+      "kind": "heading",
+      "selector": "h1",
+      "foreground": "rgb(36, 39, 45)",
+      "backgrounds": [
+        [
+          240,
+          241,
+          242
+        ]
+      ],
+      "ratio": 13.23437659321779,
+      "required": 3,
+      "pass": true,
+      "fontSize": "26px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "mobile-light",
+      "screen": "home",
+      "kind": "body",
+      "selector": ".task-main strong",
+      "foreground": "rgb(36, 39, 45)",
+      "backgrounds": [
+        [
+          250,
+          251,
+          252
+        ],
+        [
+          250,
+          251,
+          252
+        ]
+      ],
+      "ratio": 14.445962843238071,
+      "required": 4.5,
+      "pass": true,
+      "fontSize": "13px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "mobile-light",
+      "screen": "home",
+      "kind": "secondary",
+      "selector": ".section-heading p",
+      "foreground": "rgb(98, 104, 115)",
+      "backgrounds": [
+        [
+          240,
+          241,
+          242
+        ]
+      ],
+      "ratio": 4.955759142695487,
+      "required": 4.5,
+      "pass": true,
+      "fontSize": "11px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "mobile-light",
+      "screen": "home",
+      "kind": "secondary",
+      "selector": ".task-meta",
+      "foreground": "rgb(98, 104, 115)",
+      "backgrounds": [
+        [
+          250,
+          251,
+          252
+        ],
+        [
+          250,
+          251,
+          252
+        ]
+      ],
+      "ratio": 5.409451055828682,
+      "required": 4.5,
+      "pass": true,
+      "fontSize": "11px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "mobile-light",
+      "screen": "home",
+      "kind": "secondary",
+      "selector": ".project-state",
+      "foreground": "rgb(98, 104, 115)",
+      "backgrounds": [
+        [
+          250,
+          251,
+          252
+        ],
+        [
+          250,
+          251,
+          252
+        ]
+      ],
+      "ratio": 5.409451055828682,
+      "required": 4.5,
+      "pass": true,
+      "fontSize": "10px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "mobile-light",
+      "screen": "home",
+      "kind": "coverage",
+      "selector": ".coverage",
+      "foreground": "rgb(98, 104, 115)",
+      "backgrounds": [
+        [
+          240,
+          241,
+          242
+        ]
+      ],
+      "ratio": 4.955759142695487,
+      "required": 4.5,
+      "pass": true,
+      "fontSize": "10px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "mobile-light",
+      "screen": "home",
+      "kind": "status",
+      "selector": ".status",
+      "foreground": "rgb(98, 104, 115)",
+      "backgrounds": [
+        [
+          233,
+          235,
+          238
+        ],
+        [
+          233,
+          235,
+          238
+        ]
+      ],
+      "ratio": 4.692439691265203,
+      "required": 4.5,
+      "pass": true,
+      "fontSize": "10px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "mobile-light",
+      "screen": "home",
+      "kind": "control",
+      "selector": "#appearance",
+      "foreground": "rgb(98, 104, 115)",
+      "backgrounds": [
+        [
+          250,
+          251,
+          252
+        ]
+      ],
+      "ratio": 5.409451055828682,
+      "required": 4.5,
+      "pass": true,
+      "fontSize": "11px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "mobile-light",
+      "screen": "home",
+      "kind": "body",
+      "selector": ".task-updated",
+      "foreground": "rgb(98, 104, 115)",
+      "backgrounds": [
+        [
+          250,
+          251,
+          252
+        ],
+        [
+          250,
+          251,
+          252
+        ]
+      ],
+      "ratio": 5.409451055828682,
+      "required": 4.5,
+      "pass": true,
+      "fontSize": "11px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "mobile-light",
+      "screen": "backlog",
+      "kind": "heading",
+      "selector": "h1",
+      "foreground": "rgb(36, 39, 45)",
+      "backgrounds": [
+        [
+          240,
+          241,
+          242
+        ]
+      ],
+      "ratio": 13.23437659321779,
+      "required": 3,
+      "pass": true,
+      "fontSize": "26px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "mobile-light",
+      "screen": "backlog",
+      "kind": "body",
+      "selector": ".task-main strong",
+      "foreground": "rgb(36, 39, 45)",
+      "backgrounds": [
+        [
+          250,
+          251,
+          252
+        ],
+        [
+          250,
+          251,
+          252
+        ]
+      ],
+      "ratio": 14.445962843238071,
+      "required": 4.5,
+      "pass": true,
+      "fontSize": "13px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "mobile-light",
+      "screen": "backlog",
+      "kind": "secondary",
+      "selector": ".task-meta",
+      "foreground": "rgb(98, 104, 115)",
+      "backgrounds": [
+        [
+          250,
+          251,
+          252
+        ],
+        [
+          250,
+          251,
+          252
+        ]
+      ],
+      "ratio": 5.409451055828682,
+      "required": 4.5,
+      "pass": true,
+      "fontSize": "11px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "mobile-light",
+      "screen": "backlog",
+      "kind": "control",
+      "selector": ".filter-more summary",
+      "foreground": "rgb(98, 104, 115)",
+      "backgrounds": [
+        [
+          240,
+          241,
+          242
+        ]
+      ],
+      "ratio": 4.955759142695487,
+      "required": 4.5,
+      "pass": true,
+      "fontSize": "12px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "mobile-light",
+      "screen": "backlog",
+      "kind": "status",
+      "selector": ".status",
+      "foreground": "rgb(35, 118, 92)",
+      "backgrounds": [
+        [
+          233,
+          235,
+          238
+        ],
+        [
+          233,
+          235,
+          238
+        ]
+      ],
+      "ratio": 4.605952453942677,
+      "required": 4.5,
+      "pass": true,
+      "fontSize": "10px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "mobile-light",
+      "screen": "backlog",
+      "kind": "control",
+      "selector": "#appearance",
+      "foreground": "rgb(98, 104, 115)",
+      "backgrounds": [
+        [
+          250,
+          251,
+          252
+        ]
+      ],
+      "ratio": 5.409451055828682,
+      "required": 4.5,
+      "pass": true,
+      "fontSize": "11px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "mobile-light",
+      "screen": "backlog",
+      "kind": "placeholder",
+      "selector": "input[name=q]",
+      "foreground": "rgb(98, 104, 115)",
+      "backgrounds": [
+        [
+          250,
+          251,
+          252
+        ]
+      ],
+      "ratio": 5.409451055828682,
+      "required": 4.5,
+      "pass": true,
+      "fontSize": "14px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "mobile-light",
+      "screen": "backlog",
+      "kind": "body",
+      "selector": ".task-updated",
+      "foreground": "rgb(98, 104, 115)",
+      "backgrounds": [
+        [
+          250,
+          251,
+          252
+        ],
+        [
+          250,
+          251,
+          252
+        ]
+      ],
+      "ratio": 5.409451055828682,
+      "required": 4.5,
+      "pass": true,
+      "fontSize": "11px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "mobile-light",
+      "screen": "detail",
+      "kind": "heading",
+      "selector": "h1",
+      "foreground": "rgb(36, 39, 45)",
+      "backgrounds": [
+        [
+          240,
+          241,
+          242
+        ]
+      ],
+      "ratio": 13.23437659321779,
+      "required": 3,
+      "pass": true,
+      "fontSize": "26px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "mobile-light",
+      "screen": "detail",
+      "kind": "status",
+      "selector": ".status",
+      "foreground": "rgb(35, 118, 92)",
+      "backgrounds": [
+        [
+          233,
+          235,
+          238
+        ]
+      ],
+      "ratio": 4.605952453942677,
+      "required": 4.5,
+      "pass": true,
+      "fontSize": "11px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "mobile-light",
+      "screen": "detail",
+      "kind": "control",
+      "selector": "#appearance",
+      "foreground": "rgb(98, 104, 115)",
+      "backgrounds": [
+        [
+          250,
+          251,
+          252
+        ]
+      ],
+      "ratio": 5.409451055828682,
+      "required": 4.5,
+      "pass": true,
+      "fontSize": "11px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "mobile-light",
+      "screen": "detail",
+      "kind": "body",
+      "selector": ".summary-sheet dd",
+      "foreground": "rgb(36, 39, 45)",
+      "backgrounds": [
+        [
+          250,
+          251,
+          252
+        ],
+        [
+          250,
+          251,
+          252
+        ]
+      ],
+      "ratio": 14.445962843238071,
+      "required": 4.5,
+      "pass": true,
+      "fontSize": "13px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "mobile-light",
+      "screen": "lifecycle",
+      "kind": "heading",
+      "selector": "h1",
+      "foreground": "rgb(36, 39, 45)",
+      "backgrounds": [
+        [
+          240,
+          241,
+          242
+        ]
+      ],
+      "ratio": 13.23437659321779,
+      "required": 3,
+      "pass": true,
+      "fontSize": "26px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "mobile-light",
+      "screen": "lifecycle",
+      "kind": "status",
+      "selector": ".status",
+      "foreground": "rgb(35, 118, 92)",
+      "backgrounds": [
+        [
+          233,
+          235,
+          238
+        ]
+      ],
+      "ratio": 4.605952453942677,
+      "required": 4.5,
+      "pass": true,
+      "fontSize": "11px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "mobile-light",
+      "screen": "lifecycle",
+      "kind": "control",
+      "selector": "#appearance",
+      "foreground": "rgb(98, 104, 115)",
+      "backgrounds": [
+        [
+          250,
+          251,
+          252
+        ]
+      ],
+      "ratio": 5.409451055828682,
+      "required": 4.5,
+      "pass": true,
+      "fontSize": "11px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "mobile-light",
+      "screen": "lifecycle",
+      "kind": "workflow",
+      "selector": ".workflow-view",
+      "foreground": "rgb(36, 39, 45)",
+      "backgrounds": [
+        [
+          250,
+          251,
+          252
+        ],
+        [
+          250,
+          251,
+          252
+        ]
+      ],
+      "ratio": 14.445962843238071,
+      "required": 4.5,
+      "pass": true,
+      "fontSize": "12px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "mobile-wide",
+      "screen": "home",
+      "kind": "heading",
+      "selector": "h1",
+      "foreground": "rgb(238, 240, 243)",
+      "backgrounds": [
+        [
+          32,
+          33,
+          36
+        ]
+      ],
+      "ratio": 14.10090029297361,
+      "required": 3,
+      "pass": true,
+      "fontSize": "26px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "mobile-wide",
+      "screen": "home",
+      "kind": "body",
+      "selector": ".task-main strong",
+      "foreground": "rgb(238, 240, 243)",
+      "backgrounds": [
+        [
+          44,
+          46,
+          50
+        ],
+        [
+          41,
+          43,
+          47
+        ]
+      ],
+      "ratio": 11.84732332602344,
+      "required": 4.5,
+      "pass": true,
+      "fontSize": "13px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "mobile-wide",
+      "screen": "home",
+      "kind": "secondary",
+      "selector": ".section-heading p",
+      "foreground": "rgb(176, 181, 191)",
+      "backgrounds": [
+        [
+          32,
+          33,
+          36
+        ]
+      ],
+      "ratio": 7.825537893976913,
+      "required": 4.5,
+      "pass": true,
+      "fontSize": "11px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "mobile-wide",
+      "screen": "home",
+      "kind": "secondary",
+      "selector": ".task-meta",
+      "foreground": "rgb(176, 181, 191)",
+      "backgrounds": [
+        [
+          44,
+          46,
+          50
+        ],
+        [
+          41,
+          43,
+          47
+        ]
+      ],
+      "ratio": 6.574876476233981,
+      "required": 4.5,
+      "pass": true,
+      "fontSize": "11px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "mobile-wide",
+      "screen": "home",
+      "kind": "secondary",
+      "selector": ".project-state",
+      "foreground": "rgb(176, 181, 191)",
+      "backgrounds": [
+        [
+          44,
+          46,
+          50
+        ],
+        [
+          41,
+          43,
+          47
+        ]
+      ],
+      "ratio": 6.574876476233981,
+      "required": 4.5,
+      "pass": true,
+      "fontSize": "10px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "mobile-wide",
+      "screen": "home",
+      "kind": "coverage",
+      "selector": ".coverage",
+      "foreground": "rgb(176, 181, 191)",
+      "backgrounds": [
+        [
+          32,
+          33,
+          36
+        ]
+      ],
+      "ratio": 7.825537893976913,
+      "required": 4.5,
+      "pass": true,
+      "fontSize": "10px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "mobile-wide",
+      "screen": "home",
+      "kind": "status",
+      "selector": ".status",
+      "foreground": "rgb(176, 181, 191)",
+      "backgrounds": [
+        [
+          51,
+          54,
+          59
+        ],
+        [
+          51,
+          54,
+          59
+        ]
+      ],
+      "ratio": 5.895124189866617,
+      "required": 4.5,
+      "pass": true,
+      "fontSize": "10px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "mobile-wide",
+      "screen": "home",
+      "kind": "control",
+      "selector": "#appearance",
+      "foreground": "rgb(176, 181, 191)",
+      "backgrounds": [
+        [
+          41,
+          43,
+          47
+        ]
+      ],
+      "ratio": 6.893116983298321,
+      "required": 4.5,
+      "pass": true,
+      "fontSize": "11px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "mobile-wide",
+      "screen": "home",
+      "kind": "body",
+      "selector": ".task-updated",
+      "foreground": "rgb(176, 181, 191)",
+      "backgrounds": [
+        [
+          44,
+          46,
+          50
+        ],
+        [
+          41,
+          43,
+          47
+        ]
+      ],
+      "ratio": 6.574876476233981,
+      "required": 4.5,
+      "pass": true,
+      "fontSize": "11px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "mobile-wide",
+      "screen": "backlog",
+      "kind": "heading",
+      "selector": "h1",
+      "foreground": "rgb(238, 240, 243)",
+      "backgrounds": [
+        [
+          32,
+          33,
+          36
+        ]
+      ],
+      "ratio": 14.10090029297361,
+      "required": 3,
+      "pass": true,
+      "fontSize": "26px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "mobile-wide",
+      "screen": "backlog",
+      "kind": "body",
+      "selector": ".task-main strong",
+      "foreground": "rgb(238, 240, 243)",
+      "backgrounds": [
+        [
+          44,
+          46,
+          50
+        ],
+        [
+          41,
+          43,
+          47
+        ]
+      ],
+      "ratio": 11.84732332602344,
+      "required": 4.5,
+      "pass": true,
+      "fontSize": "13px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "mobile-wide",
+      "screen": "backlog",
+      "kind": "secondary",
+      "selector": ".task-meta",
+      "foreground": "rgb(176, 181, 191)",
+      "backgrounds": [
+        [
+          44,
+          46,
+          50
+        ],
+        [
+          41,
+          43,
+          47
+        ]
+      ],
+      "ratio": 6.574876476233981,
+      "required": 4.5,
+      "pass": true,
+      "fontSize": "11px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "mobile-wide",
+      "screen": "backlog",
+      "kind": "control",
+      "selector": ".filter-more summary",
+      "foreground": "rgb(176, 181, 191)",
+      "backgrounds": [
+        [
+          32,
+          33,
+          36
+        ]
+      ],
+      "ratio": 7.825537893976913,
+      "required": 4.5,
+      "pass": true,
+      "fontSize": "12px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "mobile-wide",
+      "screen": "backlog",
+      "kind": "status",
+      "selector": ".status",
+      "foreground": "rgb(135, 213, 182)",
+      "backgrounds": [
+        [
+          51,
+          54,
+          59
+        ],
+        [
+          51,
+          54,
+          59
+        ]
+      ],
+      "ratio": 7.059072130524954,
+      "required": 4.5,
+      "pass": true,
+      "fontSize": "10px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "mobile-wide",
+      "screen": "backlog",
+      "kind": "control",
+      "selector": "#appearance",
+      "foreground": "rgb(176, 181, 191)",
+      "backgrounds": [
+        [
+          41,
+          43,
+          47
+        ]
+      ],
+      "ratio": 6.893116983298321,
+      "required": 4.5,
+      "pass": true,
+      "fontSize": "11px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "mobile-wide",
+      "screen": "backlog",
+      "kind": "placeholder",
+      "selector": "input[name=q]",
+      "foreground": "rgb(176, 181, 191)",
+      "backgrounds": [
+        [
+          41,
+          43,
+          47
+        ]
+      ],
+      "ratio": 6.893116983298321,
+      "required": 4.5,
+      "pass": true,
+      "fontSize": "14px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "mobile-wide",
+      "screen": "backlog",
+      "kind": "body",
+      "selector": ".task-updated",
+      "foreground": "rgb(176, 181, 191)",
+      "backgrounds": [
+        [
+          44,
+          46,
+          50
+        ],
+        [
+          41,
+          43,
+          47
+        ]
+      ],
+      "ratio": 6.574876476233981,
+      "required": 4.5,
+      "pass": true,
+      "fontSize": "11px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "mobile-wide",
+      "screen": "detail",
+      "kind": "heading",
+      "selector": "h1",
+      "foreground": "rgb(238, 240, 243)",
+      "backgrounds": [
+        [
+          32,
+          33,
+          36
+        ]
+      ],
+      "ratio": 14.10090029297361,
+      "required": 3,
+      "pass": true,
+      "fontSize": "26px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "mobile-wide",
+      "screen": "detail",
+      "kind": "status",
+      "selector": ".status",
+      "foreground": "rgb(135, 213, 182)",
+      "backgrounds": [
+        [
+          51,
+          54,
+          59
+        ]
+      ],
+      "ratio": 7.059072130524954,
+      "required": 4.5,
+      "pass": true,
+      "fontSize": "11px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "mobile-wide",
+      "screen": "detail",
+      "kind": "control",
+      "selector": "#appearance",
+      "foreground": "rgb(176, 181, 191)",
+      "backgrounds": [
+        [
+          41,
+          43,
+          47
+        ]
+      ],
+      "ratio": 6.893116983298321,
+      "required": 4.5,
+      "pass": true,
+      "fontSize": "11px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "mobile-wide",
+      "screen": "detail",
+      "kind": "body",
+      "selector": ".summary-sheet dd",
+      "foreground": "rgb(238, 240, 243)",
+      "backgrounds": [
+        [
+          44,
+          46,
+          50
+        ],
+        [
+          41,
+          43,
+          47
+        ]
+      ],
+      "ratio": 11.84732332602344,
+      "required": 4.5,
+      "pass": true,
+      "fontSize": "13px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "mobile-wide",
+      "screen": "lifecycle",
+      "kind": "heading",
+      "selector": "h1",
+      "foreground": "rgb(238, 240, 243)",
+      "backgrounds": [
+        [
+          32,
+          33,
+          36
+        ]
+      ],
+      "ratio": 14.10090029297361,
+      "required": 3,
+      "pass": true,
+      "fontSize": "26px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "mobile-wide",
+      "screen": "lifecycle",
+      "kind": "status",
+      "selector": ".status",
+      "foreground": "rgb(135, 213, 182)",
+      "backgrounds": [
+        [
+          51,
+          54,
+          59
+        ]
+      ],
+      "ratio": 7.059072130524954,
+      "required": 4.5,
+      "pass": true,
+      "fontSize": "11px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "mobile-wide",
+      "screen": "lifecycle",
+      "kind": "control",
+      "selector": "#appearance",
+      "foreground": "rgb(176, 181, 191)",
+      "backgrounds": [
+        [
+          41,
+          43,
+          47
+        ]
+      ],
+      "ratio": 6.893116983298321,
+      "required": 4.5,
+      "pass": true,
+      "fontSize": "11px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    },
+    {
+      "label": "mobile-wide",
+      "screen": "lifecycle",
+      "kind": "workflow",
+      "selector": ".workflow-view",
+      "foreground": "rgb(238, 240, 243)",
+      "backgrounds": [
+        [
+          44,
+          46,
+          50
+        ],
+        [
+          41,
+          43,
+          47
+        ]
+      ],
+      "ratio": 11.84732332602344,
+      "required": 4.5,
+      "pass": true,
+      "fontSize": "12px",
+      "method": "computed color with composited ancestor surfaces and gradient endpoint extremes"
+    }
+  ],
+  "limitations": [
+    "Computed CSS colors composited through ancestor backgrounds and gradient endpoints; conservative representative contrast, not a full screen-reader audit.",
+    "No physical device, native browser zoom, OS trackpad or energy claims."
+  ],
+  "browser": "156.0.8078.4",
+  "finish_checks": {
+    "M1": true,
+    "M2": true,
+    "M3": true,
+    "M4": true
+  },
+  "mechanical_pass": true
+}

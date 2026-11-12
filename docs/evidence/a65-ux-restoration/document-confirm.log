@@ -1,0 +1,8 @@
+locator.click: Timeout 30000ms exceeded.
+Call log:
+[2m  - waiting for locator('.task-row a').first()[22m
+
+    at /Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/docs/evidence/a65-ux-restoration/document-browser.cjs:20:46 {
+  log: [ "  - waiting for locator('.task-row a').first()" ],
+  name: 'TimeoutError'
+}

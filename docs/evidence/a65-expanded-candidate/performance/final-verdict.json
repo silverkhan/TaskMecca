@@ -1,0 +1,16 @@
+{
+  "overall": "FAIL",
+  "timing": "FAIL",
+  "idle": "FAIL",
+  "head": "e646f475870aa1dbfc4c4f43d88fcaa317768183",
+  "finalHead": "e646f475870aa1dbfc4c4f43d88fcaa317768183",
+  "assetStable": true,
+  "browserBinaryStable": true,
+  "scope": "Frontend synthetic-server comparison only; core prototype, not whole A-65 completion",
+  "unverified": [
+    "real Go backend/producers",
+    "active task ticking",
+    "physical phone/OS visibility/gestures",
+    "total CPU/GPU/memory/energy"
+  ]
+}

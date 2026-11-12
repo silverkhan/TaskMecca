@@ -13,6 +13,7 @@ import (
 func TestActivityHTTPIncludesReportedLifecycleCoverage(t *testing.T){
  project:=t.TempDir()
  registerWebFixture(t,project)
+ stopProjectAttentionFeedsForTest(t,project)
  origin:=time.Date(2026,11,4,0,0,0,0,time.UTC)
  for i,e:=range []struct{kind,actor string;minute int}{
   {"registered","/root/registrar",0},

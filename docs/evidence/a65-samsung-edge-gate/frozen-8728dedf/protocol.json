@@ -1,0 +1,56 @@
+{
+  "version": 1,
+  "declared_before_gate": true,
+  "scope": "Frontend static assets served on owned loopback HTTP with schema adapters over a single synthetic dataset. Excludes Go backend latency, filesystem scanning, real project count scaling and physical mobile hardware.",
+  "dataset": "Three shared projects (one with 60 identical semantic tasks, two empty), fixed descending ID order, 20 rows/page; Needle query returns exactly 20 shared task IDs; shared continuous workflow fixture and 30-section task document; API projection shapes follow actual Go source (compact/default, initial provisional, summary counts-only, content-only)",
+  "viewports": [
+    {
+      "width": 1440,
+      "height": 1000
+    },
+    {
+      "width": 1280,
+      "height": 900
+    },
+    {
+      "width": 390,
+      "height": 844
+    }
+  ],
+  "themes": [
+    "light",
+    "dark"
+  ],
+  "repetitions": 8,
+  "order": "AB for even pair indexes, BA for odd; viewport/theme outer order fixed. One discarded instrument-validation pair per case retained separately.",
+  "cache": "Fresh browser context per app repetition, HTTP cache disabled through CDP and no-store response headers, Service Workers blocked in both products to prevent worker-mediated cache differences. Browser process reused, no CPU/network throttling. External requests aborted. Local fonts and static asset imports included.",
+  "window_ms": 1500,
+  "actions": {
+    "initial": "Navigate fresh context to project backlog; readiness 20 rendered task rows with exact expected IDs. CDP counter starts on about:blank immediately before goto, sampled after fixed 1500ms elapsed wall time; rAF begins at document init. Negative deltas invalidate sample.",
+    "navigation": "From ready backlog click first task and reveal Lifecycle (baseline same visible lifecycle section via anchor; candidate dedicated Lifecycle tab). Ready when workflow timeline exists and has positive width. Same fixed 1500ms includes both interactions and rendering.",
+    "search": "Return to backlog outside measured window, clear query, input Needle once. Ready when actual request q=Needle has completed and 20 expected IDs rendered. Fixed 1500ms includes each product's natural debounce.",
+    "scroll": "Ready searched backlog at top, scroll actual available list host 400 CSS pixels in ten 40px steps at 30ms spacing; verify start/end and capacity. Fixed 1500ms. If either UI cannot move exactly 400px, mark pair non-comparable instead of silently clamping."
+  },
+  "primary_metrics": [
+    "CDP Performance TaskDuration delta * 1000 (ms main thread task execution in fixed window)",
+    "median requestAnimationFrame timestamp gap (ms, full raw gap list retained)"
+  ],
+  "secondary_metrics": [
+    "rAF p95/max gap",
+    "display readiness latency",
+    "CDP ScriptDuration/LayoutDuration/RecalcStyleDuration deltas",
+    "actual request list"
+  ],
+  "gate": "For every comparable viewport/theme/action/primary metric, compare candidate median to baseline median over eight paired samples. (candidate/baseline-1)*100 >10 fails and requires source correction or honest unresolved failure; no noise waiver or threshold change. Paired per-sample ratios also retained. Readiness beyond fixed window or invalid counters invalidate that sample, and cannot produce PASS.",
+  "idle": "Separate instrumentation runs (not mixed with primary timing): actual SSE connections/counts, identical heartbeat API requests and precise-coverage function invocation deltas; bounded pending polls and complete/error/route/hidden cleanup; browser page close and owned server cleanup. Synthetic hidden-event emulation explicitly distinguished from physical OS visibility.",
+  "limitations": [
+    "rAF intervals measure browser callback cadence, not compositor/GPU presentation or physical touch/OS gestures",
+    "No total CPU, GPU, memory or energy claims",
+    "Overview is newly introduced; baseline hub comparison is observation only",
+    "Final result requires frozen HEAD and asset hashes plus browser executable hash and candidate binary provenance; docs-only changes require runtime hash equality"
+  ],
+  "cdp_time_domain": "Explicit timeTicks: wall duration of renderer main-thread tasks; not process CPU percentage or total device CPU. Same setting for both products.",
+  "readiness_instrumentation": "Bounded passive DOM MutationObserver over childList/subtree, exact shared row IDs or workflow width; scroll capture event confirms 400px. No rAF-based Playwright readiness polling inside primary windows. Any preparatory waitForFunction runs outside measured windows. Ready epoch is performance.timeOrigin+performance.now; raw observed CDP Timestamp window is retained. This corrects preparation observer overhead without changing metrics, 1500ms target, repetitions or 10% gate.",
+  "source_validation": "Final run requires explicit A65_PERF_HEAD equal to start HEAD, identical before/after complete static asset hashes for both products and identical Chrome executable hash. HEAD change during capture is accepted only for docs/Markdown-only commits with identical runtime graph; other source changes invalidate the final gate even if numeric groups pass.",
+  "validity": "Every sample requires positive finite TaskDuration and rAF samples, readiness within fixed window, exact expected IDs/scroll movement, and no pageerror in either result. No zero/unsupported counter or failed screen can produce PASS."
+}

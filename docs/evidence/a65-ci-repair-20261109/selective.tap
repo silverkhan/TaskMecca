@@ -1,0 +1,40 @@
+TAP version 13
+# Subtest: workflow real browser preserves full periods, grouped intervals, role meaning and partial-update state
+ok 1 - workflow real browser preserves full periods, grouped intervals, role meaning and partial-update state
+  ---
+  duration_ms: 3757.884292
+  type: 'test'
+  ...
+# Subtest: native workflow wait polls false predicates through refresh completion
+ok 2 - native workflow wait polls false predicates through refresh completion
+  ---
+  duration_ms: 532.454875
+  type: 'test'
+  ...
+# Subtest: slim workflow rows and plot-only real Ctrl-wheel and captured multi-touch gestures
+ok 3 - slim workflow rows and plot-only real Ctrl-wheel and captured multi-touch gestures
+  ---
+  duration_ms: 9401.323708
+  type: 'test'
+  ...
+# Subtest: adopted A60 corrections bound mixed outcomes and preserve open row selection extent
+ok 4 - adopted A60 corrections bound mixed outcomes and preserve open row selection extent
+  ---
+  duration_ms: 4537.57675
+  type: 'test'
+  ...
+# Subtest: representative workflow has compact context and plot-coordinate anchored time navigation
+ok 5 - representative workflow has compact context and plot-coordinate anchored time navigation
+  ---
+  duration_ms: 4532.53475
+  type: 'test'
+  ...
+1..5
+# tests 5
+# suites 0
+# pass 5
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 14003.142167

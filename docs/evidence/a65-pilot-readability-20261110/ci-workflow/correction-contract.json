@@ -1,0 +1,634 @@
+{
+  "synthetic": true,
+  "scope": "LUMEN-A60-01/02 only; native row/interval selection and buttons, ko/en desktop/mobile",
+  "cases": [
+    {
+      "language": "ko",
+      "mobile": false,
+      "mixedGeometry": {
+        "row": {
+          "left": 342,
+          "right": 1146,
+          "width": 804,
+          "height": 34.4375
+        },
+        "track": {
+          "left": 540,
+          "right": 1138,
+          "width": 598,
+          "height": 28
+        },
+        "label": {
+          "left": 342,
+          "right": 532,
+          "width": 190,
+          "height": 34.4375
+        },
+        "plot": {
+          "left": 540,
+          "right": 1138,
+          "width": 598,
+          "height": 28
+        },
+        "name": {
+          "left": 342,
+          "right": 474.6875,
+          "width": 132.6875,
+          "height": 30.4375
+        },
+        "children": [
+          {
+            "text": "Worker보완1차 · 활동 누적 15분",
+            "left": 342,
+            "right": 474.6875,
+            "width": 132.6875,
+            "height": 30.4375
+          },
+          {
+            "text": "4",
+            "left": 477.6875,
+            "right": 493,
+            "width": 15.3125,
+            "height": 15.5
+          },
+          {
+            "text": "4",
+            "left": 496,
+            "right": 524,
+            "width": 28,
+            "height": 24
+          }
+        ],
+        "nowrap": "normal"
+      },
+      "expandedGeometry": {
+        "row": {
+          "left": 342,
+          "right": 1146,
+          "width": 804,
+          "height": 104
+        },
+        "track": {
+          "left": 540,
+          "right": 1138,
+          "width": 598,
+          "height": 104
+        },
+        "label": {
+          "left": 342,
+          "right": 532,
+          "width": 190,
+          "height": 34.4375
+        },
+        "plot": {
+          "left": 540,
+          "right": 1138,
+          "width": 598,
+          "height": 104
+        },
+        "name": {
+          "left": 342,
+          "right": 474.6875,
+          "width": 132.6875,
+          "height": 30.4375
+        },
+        "children": [
+          {
+            "text": "Worker보완1차 · 활동 누적 15분",
+            "left": 342,
+            "right": 474.6875,
+            "width": 132.6875,
+            "height": 30.4375
+          },
+          {
+            "text": "4",
+            "left": 477.6875,
+            "right": 493,
+            "width": 15.3125,
+            "height": 15.5
+          },
+          {
+            "text": "4",
+            "left": 496,
+            "right": 524,
+            "width": 28,
+            "height": 24
+          }
+        ],
+        "nowrap": "normal"
+      },
+      "originalOutcomes": [
+        "passed",
+        "failed",
+        "needs_changes",
+        "cancelled"
+      ],
+      "rowOpen": {
+        "start": 1793836800000,
+        "end": 1793838600000,
+        "width": 804
+      },
+      "intervalOpen": {
+        "start": 1793836800000,
+        "end": 1793838600000,
+        "width": 804
+      },
+      "rowGrown": {
+        "start": 1793836800000,
+        "end": 1793839200000,
+        "width": 804
+      },
+      "rowSameObject": {
+        "start": 1793836800000,
+        "end": 1793839800000,
+        "width": 804
+      },
+      "points": [
+        {
+          "kind": "execution_report",
+          "detailOnly": true
+        },
+        {
+          "kind": "handoff_review",
+          "detailOnly": true
+        }
+      ],
+      "originalEndAndDurationsUnchanged": true,
+      "outsideRefreshDismisses": true,
+      "fitRefreshFollows": true
+    },
+    {
+      "language": "ko",
+      "mobile": true,
+      "mixedGeometry": {
+        "row": {
+          "left": 30,
+          "right": 360,
+          "width": 330,
+          "height": 40
+        },
+        "track": {
+          "left": 166,
+          "right": 352,
+          "width": 186,
+          "height": 28
+        },
+        "label": {
+          "left": 30,
+          "right": 158,
+          "width": 128,
+          "height": 40
+        },
+        "plot": {
+          "left": 166,
+          "right": 352,
+          "width": 186,
+          "height": 28
+        },
+        "name": {
+          "left": 30,
+          "right": 100.6875,
+          "width": 70.6875,
+          "height": 40
+        },
+        "children": [
+          {
+            "text": "Worker보완1차 · 활동 누적 15분",
+            "left": 30,
+            "right": 100.6875,
+            "width": 70.6875,
+            "height": 40
+          },
+          {
+            "text": "4",
+            "left": 103.6875,
+            "right": 119,
+            "width": 15.3125,
+            "height": 15.5
+          },
+          {
+            "text": "4",
+            "left": 122,
+            "right": 150,
+            "width": 28,
+            "height": 24
+          }
+        ],
+        "nowrap": "normal"
+      },
+      "expandedGeometry": {
+        "row": {
+          "left": 30,
+          "right": 360,
+          "width": 330,
+          "height": 104
+        },
+        "track": {
+          "left": 166,
+          "right": 352,
+          "width": 186,
+          "height": 104
+        },
+        "label": {
+          "left": 30,
+          "right": 158,
+          "width": 128,
+          "height": 40
+        },
+        "plot": {
+          "left": 166,
+          "right": 352,
+          "width": 186,
+          "height": 104
+        },
+        "name": {
+          "left": 30,
+          "right": 100.6875,
+          "width": 70.6875,
+          "height": 40
+        },
+        "children": [
+          {
+            "text": "Worker보완1차 · 활동 누적 15분",
+            "left": 30,
+            "right": 100.6875,
+            "width": 70.6875,
+            "height": 40
+          },
+          {
+            "text": "4",
+            "left": 103.6875,
+            "right": 119,
+            "width": 15.3125,
+            "height": 15.5
+          },
+          {
+            "text": "4",
+            "left": 122,
+            "right": 150,
+            "width": 28,
+            "height": 24
+          }
+        ],
+        "nowrap": "normal"
+      },
+      "originalOutcomes": [
+        "passed",
+        "failed",
+        "needs_changes",
+        "cancelled"
+      ],
+      "rowOpen": {
+        "start": 1793836800000,
+        "end": 1793838600000,
+        "width": 330
+      },
+      "intervalOpen": {
+        "start": 1793836800000,
+        "end": 1793838600000,
+        "width": 330
+      },
+      "rowGrown": {
+        "start": 1793836800000,
+        "end": 1793839200000,
+        "width": 330
+      },
+      "rowSameObject": {
+        "start": 1793836800000,
+        "end": 1793839800000,
+        "width": 330
+      },
+      "points": [
+        {
+          "kind": "execution_report",
+          "detailOnly": true
+        },
+        {
+          "kind": "handoff_review",
+          "detailOnly": true
+        }
+      ],
+      "originalEndAndDurationsUnchanged": true,
+      "outsideRefreshDismisses": true,
+      "fitRefreshFollows": true
+    },
+    {
+      "language": "en",
+      "mobile": false,
+      "mixedGeometry": {
+        "row": {
+          "left": 342,
+          "right": 1146,
+          "width": 804,
+          "height": 48.9375
+        },
+        "track": {
+          "left": 540,
+          "right": 1138,
+          "width": 598,
+          "height": 28
+        },
+        "label": {
+          "left": 342,
+          "right": 532,
+          "width": 190,
+          "height": 48.9375
+        },
+        "plot": {
+          "left": 540,
+          "right": 1138,
+          "width": 598,
+          "height": 28
+        },
+        "name": {
+          "left": 342,
+          "right": 474.6875,
+          "width": 132.6875,
+          "height": 44.9375
+        },
+        "children": [
+          {
+            "text": "WorkerCorrection 1 · Activity total 15m",
+            "left": 342,
+            "right": 474.6875,
+            "width": 132.6875,
+            "height": 44.9375
+          },
+          {
+            "text": "4",
+            "left": 477.6875,
+            "right": 493,
+            "width": 15.3125,
+            "height": 15.5
+          },
+          {
+            "text": "4",
+            "left": 496,
+            "right": 524,
+            "width": 28,
+            "height": 24
+          }
+        ],
+        "nowrap": "normal"
+      },
+      "expandedGeometry": {
+        "row": {
+          "left": 342,
+          "right": 1146,
+          "width": 804,
+          "height": 104
+        },
+        "track": {
+          "left": 540,
+          "right": 1138,
+          "width": 598,
+          "height": 104
+        },
+        "label": {
+          "left": 342,
+          "right": 532,
+          "width": 190,
+          "height": 48.9375
+        },
+        "plot": {
+          "left": 540,
+          "right": 1138,
+          "width": 598,
+          "height": 104
+        },
+        "name": {
+          "left": 342,
+          "right": 474.6875,
+          "width": 132.6875,
+          "height": 44.9375
+        },
+        "children": [
+          {
+            "text": "WorkerCorrection 1 · Activity total 15m",
+            "left": 342,
+            "right": 474.6875,
+            "width": 132.6875,
+            "height": 44.9375
+          },
+          {
+            "text": "4",
+            "left": 477.6875,
+            "right": 493,
+            "width": 15.3125,
+            "height": 15.5
+          },
+          {
+            "text": "4",
+            "left": 496,
+            "right": 524,
+            "width": 28,
+            "height": 24
+          }
+        ],
+        "nowrap": "normal"
+      },
+      "originalOutcomes": [
+        "passed",
+        "failed",
+        "needs_changes",
+        "cancelled"
+      ],
+      "rowOpen": {
+        "start": 1793836800000,
+        "end": 1793838600000,
+        "width": 804
+      },
+      "intervalOpen": {
+        "start": 1793836800000,
+        "end": 1793838600000,
+        "width": 804
+      },
+      "rowGrown": {
+        "start": 1793836800000,
+        "end": 1793839200000,
+        "width": 804
+      },
+      "rowSameObject": {
+        "start": 1793836800000,
+        "end": 1793839800000,
+        "width": 804
+      },
+      "points": [
+        {
+          "kind": "execution_report",
+          "detailOnly": true
+        },
+        {
+          "kind": "handoff_review",
+          "detailOnly": true
+        }
+      ],
+      "originalEndAndDurationsUnchanged": true,
+      "outsideRefreshDismisses": true,
+      "fitRefreshFollows": true
+    },
+    {
+      "language": "en",
+      "mobile": true,
+      "mixedGeometry": {
+        "row": {
+          "left": 30,
+          "right": 360,
+          "width": 330,
+          "height": 44.171875
+        },
+        "track": {
+          "left": 166,
+          "right": 352,
+          "width": 186,
+          "height": 28
+        },
+        "label": {
+          "left": 30,
+          "right": 158,
+          "width": 128,
+          "height": 44.171875
+        },
+        "plot": {
+          "left": 166,
+          "right": 352,
+          "width": 186,
+          "height": 28
+        },
+        "name": {
+          "left": 30,
+          "right": 100.6875,
+          "width": 70.6875,
+          "height": 44.171875
+        },
+        "children": [
+          {
+            "text": "WorkerCorrection 1 · Activity total 15m",
+            "left": 30,
+            "right": 100.6875,
+            "width": 70.6875,
+            "height": 44.171875
+          },
+          {
+            "text": "4",
+            "left": 103.6875,
+            "right": 119,
+            "width": 15.3125,
+            "height": 15.5
+          },
+          {
+            "text": "4",
+            "left": 122,
+            "right": 150,
+            "width": 28,
+            "height": 24
+          }
+        ],
+        "nowrap": "normal"
+      },
+      "expandedGeometry": {
+        "row": {
+          "left": 30,
+          "right": 360,
+          "width": 330,
+          "height": 104
+        },
+        "track": {
+          "left": 166,
+          "right": 352,
+          "width": 186,
+          "height": 104
+        },
+        "label": {
+          "left": 30,
+          "right": 158,
+          "width": 128,
+          "height": 44.171875
+        },
+        "plot": {
+          "left": 166,
+          "right": 352,
+          "width": 186,
+          "height": 104
+        },
+        "name": {
+          "left": 30,
+          "right": 100.6875,
+          "width": 70.6875,
+          "height": 44.171875
+        },
+        "children": [
+          {
+            "text": "WorkerCorrection 1 · Activity total 15m",
+            "left": 30,
+            "right": 100.6875,
+            "width": 70.6875,
+            "height": 44.171875
+          },
+          {
+            "text": "4",
+            "left": 103.6875,
+            "right": 119,
+            "width": 15.3125,
+            "height": 15.5
+          },
+          {
+            "text": "4",
+            "left": 122,
+            "right": 150,
+            "width": 28,
+            "height": 24
+          }
+        ],
+        "nowrap": "normal"
+      },
+      "originalOutcomes": [
+        "passed",
+        "failed",
+        "needs_changes",
+        "cancelled"
+      ],
+      "rowOpen": {
+        "start": 1793836800000,
+        "end": 1793838600000,
+        "width": 330
+      },
+      "intervalOpen": {
+        "start": 1793836800000,
+        "end": 1793838600000,
+        "width": 330
+      },
+      "rowGrown": {
+        "start": 1793836800000,
+        "end": 1793839200000,
+        "width": 330
+      },
+      "rowSameObject": {
+        "start": 1793836800000,
+        "end": 1793839800000,
+        "width": 330
+      },
+      "points": [
+        {
+          "kind": "execution_report",
+          "detailOnly": true
+        },
+        {
+          "kind": "handoff_review",
+          "detailOnly": true
+        }
+      ],
+      "originalEndAndDurationsUnchanged": true,
+      "outsideRefreshDismisses": true,
+      "fitRefreshFollows": true
+    }
+  ],
+  "errors": [],
+  "cleanup": {
+    "browserClosed": true,
+    "fixtureClosed": true,
+    "portRefused": true
+  },
+  "browser": "157.0.8103.39",
+  "passed": true
+}

@@ -1,0 +1,165 @@
+{
+  "actual_http_asset_source_matches": true,
+  "visual_asset_source_matches": true,
+  "working_binary_sha256": "a56612f2565397ffadeaab26884e99f2f19bc7a7c5d36fffdf1b47705e9901c4",
+  "source_frozen": true,
+  "system_followup": [
+    {
+      "width": 1440,
+      "initial": "dark",
+      "actual_light_change": true,
+      "actual_dark_change": true,
+      "original_preferences_untouched": true,
+      "passed": true
+    },
+    {
+      "width": 1440,
+      "initial": "light",
+      "actual_light_change": true,
+      "actual_dark_change": true,
+      "original_preferences_untouched": true,
+      "passed": true
+    },
+    {
+      "width": 390,
+      "initial": "dark",
+      "actual_light_change": true,
+      "actual_dark_change": true,
+      "original_preferences_untouched": true,
+      "passed": true
+    },
+    {
+      "width": 390,
+      "initial": "light",
+      "actual_light_change": true,
+      "actual_dark_change": true,
+      "original_preferences_untouched": true,
+      "passed": true
+    }
+  ],
+  "capture_original_top_level": false,
+  "capture_original_failures": [
+    {
+      "name": "desktop",
+      "theme": "dark",
+      "failure": "AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\n\n'dark' !== 'light'\n\n    at /Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/docs/evidence/a65-material-slice/capture.cjs:65:125"
+    },
+    {
+      "name": "desktop",
+      "theme": "light",
+      "failure": "AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\n\n'light' !== 'dark'\n\n    at /Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/docs/evidence/a65-material-slice/capture.cjs:65:256"
+    },
+    {
+      "name": "mobile",
+      "theme": "dark",
+      "failure": "AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\n\n'dark' !== 'light'\n\n    at /Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/docs/evidence/a65-material-slice/capture.cjs:65:125"
+    },
+    {
+      "name": "mobile",
+      "theme": "light",
+      "failure": "AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\n\n'light' !== 'dark'\n\n    at /Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/docs/evidence/a65-material-slice/capture.cjs:65:256"
+    }
+  ],
+  "original_capture_reports_unchanged": true,
+  "pointer_summary": {
+    "onTaskDurationMs": [
+      54.815,
+      41.749
+    ],
+    "offTaskDurationMs": [
+      17.532000000000004,
+      22.429000000000002
+    ],
+    "onMedianTaskDurationMs": 48.282,
+    "offMedianTaskDurationMs": 19.980500000000003,
+    "absoluteMedianDifferenceMs": 28.301499999999994,
+    "onFrameMedianMs": 16.699999999999818,
+    "offFrameMedianMs": 16.699999999999818,
+    "noRelativePercentClaim": true,
+    "wholeCoreGate": "NOT RUN for this first slice",
+    "limits": [
+      "two short counterbalanced pairs only",
+      "same synthetic actual Go fixture; warm data/fonts",
+      "no physical pointer/touch device, energy or total CPU/GPU/memory inference",
+      "the explicit rAF frame meter runs only during timing and is stopped before idle checks"
+    ]
+  },
+  "pointer_runs": [
+    {
+      "order": "AB-on",
+      "elapsedMs": 2207,
+      "events": 80,
+      "moduleFrames": 80,
+      "moduleWrites": 210,
+      "maxAffected": 2,
+      "maxFlushMs": 0.10000014305114746,
+      "idle": {
+        "windowMs": 1100,
+        "frames": 0,
+        "writes": 0,
+        "events": 0,
+        "pending": false,
+        "domMutations": 0,
+        "apiRequests": 0,
+        "taskDurationMs": 0.676999999999997
+      }
+    },
+    {
+      "order": "AB-off",
+      "elapsedMs": 2204,
+      "events": 80,
+      "moduleFrames": 0,
+      "moduleWrites": 0,
+      "maxAffected": 0,
+      "maxFlushMs": 0,
+      "idle": {
+        "windowMs": 1100,
+        "frames": 0,
+        "writes": 0,
+        "events": 0,
+        "pending": false,
+        "domMutations": 0,
+        "apiRequests": 0,
+        "taskDurationMs": 0.1260000000000011
+      }
+    },
+    {
+      "order": "BA-off",
+      "elapsedMs": 2206,
+      "events": 80,
+      "moduleFrames": 0,
+      "moduleWrites": 0,
+      "maxAffected": 0,
+      "maxFlushMs": 0.09999990463256836,
+      "idle": {
+        "windowMs": 1100,
+        "frames": 0,
+        "writes": 0,
+        "events": 0,
+        "pending": false,
+        "domMutations": 0,
+        "apiRequests": 0,
+        "taskDurationMs": 0.34
+      }
+    },
+    {
+      "order": "BA-on",
+      "elapsedMs": 2204,
+      "events": 80,
+      "moduleFrames": 80,
+      "moduleWrites": 210,
+      "maxAffected": 2,
+      "maxFlushMs": 0.10000014305114746,
+      "idle": {
+        "windowMs": 1100,
+        "frames": 0,
+        "writes": 0,
+        "events": 0,
+        "pending": false,
+        "domMutations": 0,
+        "apiRequests": 0,
+        "taskDurationMs": 1.2580000000000022
+      }
+    }
+  ]
+}

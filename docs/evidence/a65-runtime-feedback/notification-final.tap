@@ -1,0 +1,19 @@
+✔ browser evidence follows accepted display request, preserves project and deduplicates in-flight calls (6.045292ms)
+✔ failure and disabled settings produce no false browser success; legacy and project off survive (1.126917ms)
+✔ history joins exact project/event ID and never claims unknown/failed/suppressed delivery success (8.801458ms)
+✔ resolved operation tombstone prevents same incident reappearing after stale or undated payload (0.960041ms)
+✔ diagnostic menu keeps failures visible, removes resolved entries and clipboard text requests no execution (1.136459ms)
+✔ diagnostic late response cannot restore resolved state; project/folder remain isolated and same revision polls refresh (1.02625ms)
+✔ automatic source remap invalidates an in-flight diagnostic success or failure (1.514208ms)
+✔ delivery history coalesces loads and preserves records when subsequent server read fails (2.464417ms)
+✔ hook resolution prevents stale, undated or equal-time assignment warnings from reaching browser consumer (1.291541ms)
+✔ native packaged shell has dedicated preferences and notifications without a duplicate attention route (2.698542ms)
+✔ notification labels retain their meaning and remain readable in the native navigation (2.298959ms)
+ℹ tests 11
+ℹ suites 0
+ℹ pass 11
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 66.836083

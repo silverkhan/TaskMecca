@@ -1,0 +1,15 @@
+{
+  "command": [
+    "go",
+    "test",
+    "-race",
+    "./internal/webui",
+    "-run",
+    "^TestActivityHTTPIncludesReportedLifecycleCoverage$",
+    "-count=1",
+    "-v"
+  ],
+  "exit": 0,
+  "elapsed_ms": 5042.3,
+  "note": "One bounded local baseline; a local pass does not negate observed nondeterministic remote cleanup failure."
+}

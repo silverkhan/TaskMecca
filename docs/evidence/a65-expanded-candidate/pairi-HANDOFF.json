@@ -1,0 +1,35 @@
+{
+  "stable_id": "a65-performance-correction-pairi-20261109-t3-32ea130b",
+  "status": "BLOCKED",
+  "assignment": "assignment-e17b301517088a37defdac1a151424ec",
+  "semantic_worker": "/root/controller/pairi",
+  "source_commit": "e646f475870aa1dbfc4c4f43d88fcaa317768183",
+  "evidence_commit": "786ffe3496d0897116cc16898876c6b9d3c77cc7",
+  "base_merge_commit": "ff5e3b6b607c9efeda15fb43832ebdb2e681060c",
+  "report": "handoff-evidence/performance-correction/REPORT.md",
+  "checkout": "/Users/hanati/.t3/worktrees/TaskMecca/t3-32ea130b",
+  "branch": "t3/optics-performance-correction",
+  "source_merge_ready": false,
+  "timing_counts": {
+    "PASS": 47,
+    "FAIL": 1
+  },
+  "idle_counts": {
+    "pass": 26,
+    "total": 27
+  },
+  "blocker": "The immutable idle gate rejects all API calls after page load in its route-exit observation, including required settings bootstrap GETs. Four controlled repetitions per legacy/e646/guard variant reproduce those three legitimate settings GETs, with zero stale overview GETs and zero SSE. Worker cannot classify this as PASS, weaken assertion, suppress required APIs, or change approved measurement readiness. Navigation remains a separate +11.0531% FAIL in the frozen full gate.",
+  "controller_t3_thread": "thread:delegated-task:command%3Amcp%3A39b825cc-e32b-4f03-8716-c7353d39e936%3Adelegate-task%3Aa65-transmissive-glass-controller-20261109",
+  "worker_codex_thread": "01a1bf10-eeee-7cc0-9366-011ff76fde0c",
+  "worker_t3_thread": "thread:delegated-task:command%3Amcp%3Ab47f2958-5d29-4728-b41e-ca53598882b3%3Adelegate-task%3A016e5613-3996-409b-93a6-b34d37a10eac",
+  "controller_observed_before_final_send": {
+    "status": "completed",
+    "ordinal": 20
+  },
+  "fresh_full_access": "final-preflight.json; owned isolated probe only",
+  "final_transport": "controller-final-transport.json (written after actual tool return)",
+  "root_ack_required": false,
+  "canonical_write": false,
+  "external_push_pr": false,
+  "subagents": 0
+}

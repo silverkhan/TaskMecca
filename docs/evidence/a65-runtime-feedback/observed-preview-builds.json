@@ -1,0 +1,11 @@
+{
+  "observation": {
+    "method": "GET",
+    "url": "http://127.0.0.1:18765/api/preview/builds",
+    "exitCode": 28,
+    "error": "timeout after5007ms",
+    "responseBodyBytes": 0
+  },
+  "sourceSHA": "unobserved",
+  "notAnAPIResponse": true
+}

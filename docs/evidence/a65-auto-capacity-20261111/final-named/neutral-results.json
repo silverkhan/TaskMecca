@@ -1,0 +1,3377 @@
+{
+  "browser": "156.0.8078.4",
+  "records": [
+    {
+      "palette": "mecca",
+      "width": 1440,
+      "choice": "light",
+      "off": {
+        "theme": "light",
+        "preference": "light",
+        "root": "rgba(0, 0, 0, 0)",
+        "body": "rgb(247, 243, 248)",
+        "chrome": "rgba(0, 0, 0, 0)",
+        "sidebar": "rgba(0, 0, 0, 0)",
+        "reading": "rgba(0, 0, 0, 0)",
+        "selected": "color(srgb 0.962549 0.94549 0.967255)",
+        "selectedOutline": "color(srgb 0.47451 0.356863 0.568627 / 0.58)",
+        "ink": "rgb(41, 37, 54)",
+        "muted": "rgb(113, 105, 123)",
+        "semantics": {
+          "--ok": "#347b60",
+          "--warn": "#9a641f",
+          "--danger": "#bd4d59",
+          "--accent": "#795b91"
+        },
+        "doneDot": "rgb(52, 123, 96)",
+        "holdDot": "rgb(154, 100, 31)",
+        "logo": {
+          "src": "/logo.svg",
+          "filter": "drop-shadow(rgba(169, 103, 245, 0.22) 0px 0px 7px)"
+        },
+        "geometry": {
+          "sidebar": {
+            "x": 0,
+            "y": 0,
+            "width": 238,
+            "height": 1000,
+            "top": 0,
+            "right": 238,
+            "bottom": 1000,
+            "left": 0
+          },
+          "header": {
+            "x": 238,
+            "y": 0,
+            "width": 1187,
+            "height": 60,
+            "top": 0,
+            "right": 1425,
+            "bottom": 60,
+            "left": 238
+          },
+          "reading": {
+            "x": 238,
+            "y": 209.5,
+            "width": 1187,
+            "height": 1762.21875,
+            "top": 209.5,
+            "right": 1425,
+            "bottom": 1971.71875,
+            "left": 238
+          },
+          "pr": {
+            "x": 253,
+            "y": 70,
+            "width": 1157,
+            "height": 72,
+            "top": 70,
+            "right": 1410,
+            "bottom": 142,
+            "left": 253
+          },
+          "attention": {
+            "x": 262,
+            "y": 158,
+            "width": 1139,
+            "height": 51.5,
+            "top": 158,
+            "right": 1401,
+            "bottom": 209.5,
+            "left": 262
+          },
+          "overflow": -15,
+          "rows": 20,
+          "rowFilters": 0
+        }
+      },
+      "active": {
+        "theme": "light",
+        "preference": "light",
+        "root": "rgb(242, 242, 242)",
+        "body": "rgb(242, 242, 242)",
+        "chrome": "color(srgb 1 1 1 / 0.91)",
+        "sidebar": "color(srgb 1 1 1 / 0.91)",
+        "reading": "color(srgb 1 1 1 / 0.96)",
+        "selected": "color(srgb 0.961961 0.961961 0.961961)",
+        "selectedOutline": "color(srgb 0.239216 0.239216 0.239216 / 0.28)",
+        "ink": "rgb(36, 36, 36)",
+        "muted": "rgb(98, 98, 98)",
+        "semantics": {
+          "--ok": "#347b60",
+          "--warn": "#9a641f",
+          "--danger": "#bd4d59",
+          "--accent": "#795b91"
+        },
+        "doneDot": "rgb(52, 123, 96)",
+        "holdDot": "rgb(154, 100, 31)",
+        "logo": {
+          "src": "/logo.svg",
+          "filter": "drop-shadow(rgba(169, 103, 245, 0.22) 0px 0px 7px)"
+        },
+        "geometry": {
+          "sidebar": {
+            "x": 12,
+            "y": 12,
+            "width": 238,
+            "height": 976,
+            "top": 12,
+            "right": 250,
+            "bottom": 988,
+            "left": 12
+          },
+          "header": {
+            "x": 262,
+            "y": 12,
+            "width": 1151,
+            "height": 60,
+            "top": 12,
+            "right": 1413,
+            "bottom": 72,
+            "left": 262
+          },
+          "reading": {
+            "x": 262,
+            "y": 223.5,
+            "width": 1151,
+            "height": 1762.21875,
+            "top": 223.5,
+            "right": 1413,
+            "bottom": 1985.71875,
+            "left": 262
+          },
+          "pr": {
+            "x": 262,
+            "y": 84,
+            "width": 1151,
+            "height": 68,
+            "top": 84,
+            "right": 1413,
+            "bottom": 152,
+            "left": 262
+          },
+          "attention": {
+            "x": 262,
+            "y": 164,
+            "width": 1151,
+            "height": 47.5,
+            "top": 164,
+            "right": 1413,
+            "bottom": 211.5,
+            "left": 262
+          },
+          "overflow": -15,
+          "rows": 20,
+          "rowFilters": 0
+        }
+      },
+      "contrastBounds": {
+        "body": 14.213183336851284,
+        "muted": 5.585072368960612
+      },
+      "systemFlip": null,
+      "errors": []
+    },
+    {
+      "palette": "mecca",
+      "width": 1440,
+      "choice": "dark",
+      "off": {
+        "theme": "dark",
+        "preference": "dark",
+        "root": "rgba(0, 0, 0, 0)",
+        "body": "rgb(10, 14, 27)",
+        "chrome": "rgba(0, 0, 0, 0)",
+        "sidebar": "rgba(0, 0, 0, 0)",
+        "reading": "rgba(0, 0, 0, 0)",
+        "selected": "color(srgb 0.0966667 0.101765 0.177059)",
+        "selectedOutline": "color(srgb 0.666667 0.545098 0.784314 / 0.58)",
+        "ink": "rgb(240, 237, 245)",
+        "muted": "rgb(165, 156, 175)",
+        "semantics": {
+          "--ok": "#78b99e",
+          "--warn": "#d6aa72",
+          "--danger": "#e98992",
+          "--accent": "#aa8bc8"
+        },
+        "doneDot": "rgb(120, 185, 158)",
+        "holdDot": "rgb(214, 170, 114)",
+        "logo": {
+          "src": "/logo.svg",
+          "filter": "drop-shadow(rgba(169, 103, 245, 0.22) 0px 0px 7px)"
+        },
+        "geometry": {
+          "sidebar": {
+            "x": 0,
+            "y": 0,
+            "width": 238,
+            "height": 1000,
+            "top": 0,
+            "right": 238,
+            "bottom": 1000,
+            "left": 0
+          },
+          "header": {
+            "x": 238,
+            "y": 0,
+            "width": 1187,
+            "height": 60,
+            "top": 0,
+            "right": 1425,
+            "bottom": 60,
+            "left": 238
+          },
+          "reading": {
+            "x": 238,
+            "y": 209.5,
+            "width": 1187,
+            "height": 1762.21875,
+            "top": 209.5,
+            "right": 1425,
+            "bottom": 1971.71875,
+            "left": 238
+          },
+          "pr": {
+            "x": 253,
+            "y": 70,
+            "width": 1157,
+            "height": 72,
+            "top": 70,
+            "right": 1410,
+            "bottom": 142,
+            "left": 253
+          },
+          "attention": {
+            "x": 262,
+            "y": 158,
+            "width": 1139,
+            "height": 51.5,
+            "top": 158,
+            "right": 1401,
+            "bottom": 209.5,
+            "left": 262
+          },
+          "overflow": -15,
+          "rows": 20,
+          "rowFilters": 0
+        }
+      },
+      "active": {
+        "theme": "dark",
+        "preference": "dark",
+        "root": "rgb(17, 17, 17)",
+        "body": "rgb(17, 17, 17)",
+        "chrome": "color(srgb 0.0941177 0.0941177 0.0941177 / 0.91)",
+        "sidebar": "color(srgb 0.0941177 0.0941177 0.0941177 / 0.91)",
+        "reading": "color(srgb 0.0941177 0.0941177 0.0941177 / 0.96)",
+        "selected": "color(srgb 0.132941 0.132941 0.132941)",
+        "selectedOutline": "color(srgb 0.870588 0.870588 0.870588 / 0.28)",
+        "ink": "rgb(242, 242, 242)",
+        "muted": "rgb(182, 182, 182)",
+        "semantics": {
+          "--ok": "#78b99e",
+          "--warn": "#d6aa72",
+          "--danger": "#e98992",
+          "--accent": "#aa8bc8"
+        },
+        "doneDot": "rgb(120, 185, 158)",
+        "holdDot": "rgb(214, 170, 114)",
+        "logo": {
+          "src": "/logo.svg",
+          "filter": "drop-shadow(rgba(169, 103, 245, 0.22) 0px 0px 7px)"
+        },
+        "geometry": {
+          "sidebar": {
+            "x": 12,
+            "y": 12,
+            "width": 238,
+            "height": 976,
+            "top": 12,
+            "right": 250,
+            "bottom": 988,
+            "left": 12
+          },
+          "header": {
+            "x": 262,
+            "y": 12,
+            "width": 1151,
+            "height": 60,
+            "top": 12,
+            "right": 1413,
+            "bottom": 72,
+            "left": 262
+          },
+          "reading": {
+            "x": 262,
+            "y": 223.5,
+            "width": 1151,
+            "height": 1762.21875,
+            "top": 223.5,
+            "right": 1413,
+            "bottom": 1985.71875,
+            "left": 262
+          },
+          "pr": {
+            "x": 262,
+            "y": 84,
+            "width": 1151,
+            "height": 68,
+            "top": 84,
+            "right": 1413,
+            "bottom": 152,
+            "left": 262
+          },
+          "attention": {
+            "x": 262,
+            "y": 164,
+            "width": 1151,
+            "height": 47.5,
+            "top": 164,
+            "right": 1413,
+            "bottom": 211.5,
+            "left": 262
+          },
+          "overflow": -15,
+          "rows": 20,
+          "rowFilters": 0
+        }
+      },
+      "contrastBounds": {
+        "body": 14.342324058567206,
+        "muted": 7.917731053357226
+      },
+      "systemFlip": null,
+      "errors": []
+    },
+    {
+      "palette": "mecca",
+      "width": 1440,
+      "choice": "system-light",
+      "off": {
+        "theme": "light",
+        "preference": "system",
+        "root": "rgba(0, 0, 0, 0)",
+        "body": "rgb(247, 243, 248)",
+        "chrome": "rgba(0, 0, 0, 0)",
+        "sidebar": "rgba(0, 0, 0, 0)",
+        "reading": "rgba(0, 0, 0, 0)",
+        "selected": "color(srgb 0.962549 0.94549 0.967255)",
+        "selectedOutline": "color(srgb 0.47451 0.356863 0.568627 / 0.58)",
+        "ink": "rgb(41, 37, 54)",
+        "muted": "rgb(113, 105, 123)",
+        "semantics": {
+          "--ok": "#347b60",
+          "--warn": "#9a641f",
+          "--danger": "#bd4d59",
+          "--accent": "#795b91"
+        },
+        "doneDot": "rgb(52, 123, 96)",
+        "holdDot": "rgb(154, 100, 31)",
+        "logo": {
+          "src": "/logo.svg",
+          "filter": "drop-shadow(rgba(169, 103, 245, 0.22) 0px 0px 7px)"
+        },
+        "geometry": {
+          "sidebar": {
+            "x": 0,
+            "y": 0,
+            "width": 238,
+            "height": 1000,
+            "top": 0,
+            "right": 238,
+            "bottom": 1000,
+            "left": 0
+          },
+          "header": {
+            "x": 238,
+            "y": 0,
+            "width": 1187,
+            "height": 60,
+            "top": 0,
+            "right": 1425,
+            "bottom": 60,
+            "left": 238
+          },
+          "reading": {
+            "x": 238,
+            "y": 209.5,
+            "width": 1187,
+            "height": 1762.21875,
+            "top": 209.5,
+            "right": 1425,
+            "bottom": 1971.71875,
+            "left": 238
+          },
+          "pr": {
+            "x": 253,
+            "y": 70,
+            "width": 1157,
+            "height": 72,
+            "top": 70,
+            "right": 1410,
+            "bottom": 142,
+            "left": 253
+          },
+          "attention": {
+            "x": 262,
+            "y": 158,
+            "width": 1139,
+            "height": 51.5,
+            "top": 158,
+            "right": 1401,
+            "bottom": 209.5,
+            "left": 262
+          },
+          "overflow": -15,
+          "rows": 20,
+          "rowFilters": 0
+        }
+      },
+      "active": {
+        "theme": "light",
+        "preference": "system",
+        "root": "rgb(242, 242, 242)",
+        "body": "rgb(242, 242, 242)",
+        "chrome": "color(srgb 1 1 1 / 0.91)",
+        "sidebar": "color(srgb 1 1 1 / 0.91)",
+        "reading": "color(srgb 1 1 1 / 0.96)",
+        "selected": "color(srgb 0.961961 0.961961 0.961961)",
+        "selectedOutline": "color(srgb 0.239216 0.239216 0.239216 / 0.28)",
+        "ink": "rgb(36, 36, 36)",
+        "muted": "rgb(98, 98, 98)",
+        "semantics": {
+          "--ok": "#347b60",
+          "--warn": "#9a641f",
+          "--danger": "#bd4d59",
+          "--accent": "#795b91"
+        },
+        "doneDot": "rgb(52, 123, 96)",
+        "holdDot": "rgb(154, 100, 31)",
+        "logo": {
+          "src": "/logo.svg",
+          "filter": "drop-shadow(rgba(169, 103, 245, 0.22) 0px 0px 7px)"
+        },
+        "geometry": {
+          "sidebar": {
+            "x": 12,
+            "y": 12,
+            "width": 238,
+            "height": 976,
+            "top": 12,
+            "right": 250,
+            "bottom": 988,
+            "left": 12
+          },
+          "header": {
+            "x": 262,
+            "y": 12,
+            "width": 1151,
+            "height": 60,
+            "top": 12,
+            "right": 1413,
+            "bottom": 72,
+            "left": 262
+          },
+          "reading": {
+            "x": 262,
+            "y": 223.5,
+            "width": 1151,
+            "height": 1762.21875,
+            "top": 223.5,
+            "right": 1413,
+            "bottom": 1985.71875,
+            "left": 262
+          },
+          "pr": {
+            "x": 262,
+            "y": 84,
+            "width": 1151,
+            "height": 68,
+            "top": 84,
+            "right": 1413,
+            "bottom": 152,
+            "left": 262
+          },
+          "attention": {
+            "x": 262,
+            "y": 164,
+            "width": 1151,
+            "height": 47.5,
+            "top": 164,
+            "right": 1413,
+            "bottom": 211.5,
+            "left": 262
+          },
+          "overflow": -15,
+          "rows": 20,
+          "rowFilters": 0
+        }
+      },
+      "contrastBounds": {
+        "body": 14.213183336851284,
+        "muted": 5.585072368960612
+      },
+      "systemFlip": {
+        "theme": "dark",
+        "preference": "system",
+        "root": "rgb(17, 17, 17)",
+        "body": "rgb(17, 17, 17)",
+        "chrome": "color(srgb 0.0941177 0.0941177 0.0941177 / 0.91)",
+        "sidebar": "oklab(0.999994 0.0000455677 0.0000200868 / 0.91)",
+        "reading": "color(srgb 0.0941177 0.0941177 0.0941177 / 0.96)",
+        "selected": "color(srgb 0.132941 0.132941 0.132941)",
+        "selectedOutline": "color(srgb 0.870588 0.870588 0.870588 / 0.28)",
+        "ink": "rgb(242, 242, 242)",
+        "muted": "rgb(182, 182, 182)",
+        "semantics": {
+          "--ok": "#78b99e",
+          "--warn": "#d6aa72",
+          "--danger": "#e98992",
+          "--accent": "#aa8bc8"
+        },
+        "doneDot": "rgb(120, 185, 158)",
+        "holdDot": "rgb(214, 170, 114)",
+        "logo": {
+          "src": "/logo.svg",
+          "filter": "drop-shadow(rgba(169, 103, 245, 0.22) 0px 0px 7px)"
+        },
+        "geometry": {
+          "sidebar": {
+            "x": 12,
+            "y": 12,
+            "width": 238,
+            "height": 976,
+            "top": 12,
+            "right": 250,
+            "bottom": 988,
+            "left": 12
+          },
+          "header": {
+            "x": 262,
+            "y": 12,
+            "width": 1151,
+            "height": 60,
+            "top": 12,
+            "right": 1413,
+            "bottom": 72,
+            "left": 262
+          },
+          "reading": {
+            "x": 262,
+            "y": 223.5,
+            "width": 1151,
+            "height": 1762.21875,
+            "top": 223.5,
+            "right": 1413,
+            "bottom": 1985.71875,
+            "left": 262
+          },
+          "pr": {
+            "x": 262,
+            "y": 84,
+            "width": 1151,
+            "height": 68,
+            "top": 84,
+            "right": 1413,
+            "bottom": 152,
+            "left": 262
+          },
+          "attention": {
+            "x": 262,
+            "y": 164,
+            "width": 1151,
+            "height": 47.5,
+            "top": 164,
+            "right": 1413,
+            "bottom": 211.5,
+            "left": 262
+          },
+          "overflow": -15,
+          "rows": 20,
+          "rowFilters": 0
+        }
+      },
+      "errors": []
+    },
+    {
+      "palette": "mecca",
+      "width": 1440,
+      "choice": "system-dark",
+      "off": {
+        "theme": "dark",
+        "preference": "system",
+        "root": "rgba(0, 0, 0, 0)",
+        "body": "rgb(10, 14, 27)",
+        "chrome": "rgba(0, 0, 0, 0)",
+        "sidebar": "rgba(0, 0, 0, 0)",
+        "reading": "rgba(0, 0, 0, 0)",
+        "selected": "color(srgb 0.0966667 0.101765 0.177059)",
+        "selectedOutline": "color(srgb 0.666667 0.545098 0.784314 / 0.58)",
+        "ink": "rgb(240, 237, 245)",
+        "muted": "rgb(165, 156, 175)",
+        "semantics": {
+          "--ok": "#78b99e",
+          "--warn": "#d6aa72",
+          "--danger": "#e98992",
+          "--accent": "#aa8bc8"
+        },
+        "doneDot": "rgb(120, 185, 158)",
+        "holdDot": "rgb(214, 170, 114)",
+        "logo": {
+          "src": "/logo.svg",
+          "filter": "drop-shadow(rgba(169, 103, 245, 0.22) 0px 0px 7px)"
+        },
+        "geometry": {
+          "sidebar": {
+            "x": 0,
+            "y": 0,
+            "width": 238,
+            "height": 1000,
+            "top": 0,
+            "right": 238,
+            "bottom": 1000,
+            "left": 0
+          },
+          "header": {
+            "x": 238,
+            "y": 0,
+            "width": 1187,
+            "height": 60,
+            "top": 0,
+            "right": 1425,
+            "bottom": 60,
+            "left": 238
+          },
+          "reading": {
+            "x": 238,
+            "y": 209.5,
+            "width": 1187,
+            "height": 1762.21875,
+            "top": 209.5,
+            "right": 1425,
+            "bottom": 1971.71875,
+            "left": 238
+          },
+          "pr": {
+            "x": 253,
+            "y": 70,
+            "width": 1157,
+            "height": 72,
+            "top": 70,
+            "right": 1410,
+            "bottom": 142,
+            "left": 253
+          },
+          "attention": {
+            "x": 262,
+            "y": 158,
+            "width": 1139,
+            "height": 51.5,
+            "top": 158,
+            "right": 1401,
+            "bottom": 209.5,
+            "left": 262
+          },
+          "overflow": -15,
+          "rows": 20,
+          "rowFilters": 0
+        }
+      },
+      "active": {
+        "theme": "dark",
+        "preference": "system",
+        "root": "rgb(17, 17, 17)",
+        "body": "rgb(17, 17, 17)",
+        "chrome": "color(srgb 0.0941177 0.0941177 0.0941177 / 0.91)",
+        "sidebar": "color(srgb 0.0941177 0.0941177 0.0941177 / 0.91)",
+        "reading": "color(srgb 0.0941177 0.0941177 0.0941177 / 0.96)",
+        "selected": "color(srgb 0.132941 0.132941 0.132941)",
+        "selectedOutline": "color(srgb 0.870588 0.870588 0.870588 / 0.28)",
+        "ink": "rgb(242, 242, 242)",
+        "muted": "rgb(182, 182, 182)",
+        "semantics": {
+          "--ok": "#78b99e",
+          "--warn": "#d6aa72",
+          "--danger": "#e98992",
+          "--accent": "#aa8bc8"
+        },
+        "doneDot": "rgb(120, 185, 158)",
+        "holdDot": "rgb(214, 170, 114)",
+        "logo": {
+          "src": "/logo.svg",
+          "filter": "drop-shadow(rgba(169, 103, 245, 0.22) 0px 0px 7px)"
+        },
+        "geometry": {
+          "sidebar": {
+            "x": 12,
+            "y": 12,
+            "width": 238,
+            "height": 976,
+            "top": 12,
+            "right": 250,
+            "bottom": 988,
+            "left": 12
+          },
+          "header": {
+            "x": 262,
+            "y": 12,
+            "width": 1151,
+            "height": 60,
+            "top": 12,
+            "right": 1413,
+            "bottom": 72,
+            "left": 262
+          },
+          "reading": {
+            "x": 262,
+            "y": 223.5,
+            "width": 1151,
+            "height": 1762.21875,
+            "top": 223.5,
+            "right": 1413,
+            "bottom": 1985.71875,
+            "left": 262
+          },
+          "pr": {
+            "x": 262,
+            "y": 84,
+            "width": 1151,
+            "height": 68,
+            "top": 84,
+            "right": 1413,
+            "bottom": 152,
+            "left": 262
+          },
+          "attention": {
+            "x": 262,
+            "y": 164,
+            "width": 1151,
+            "height": 47.5,
+            "top": 164,
+            "right": 1413,
+            "bottom": 211.5,
+            "left": 262
+          },
+          "overflow": -15,
+          "rows": 20,
+          "rowFilters": 0
+        }
+      },
+      "contrastBounds": {
+        "body": 14.342324058567206,
+        "muted": 7.917731053357226
+      },
+      "systemFlip": {
+        "theme": "light",
+        "preference": "system",
+        "root": "rgb(242, 242, 242)",
+        "body": "rgb(242, 242, 242)",
+        "chrome": "color(srgb 1 1 1 / 0.91)",
+        "sidebar": "oklab(0.209035 0.00000952929 0.00000418723 / 0.91)",
+        "reading": "color(srgb 1 1 1 / 0.96)",
+        "selected": "color(srgb 0.961961 0.961961 0.961961)",
+        "selectedOutline": "color(srgb 0.239216 0.239216 0.239216 / 0.28)",
+        "ink": "rgb(36, 36, 36)",
+        "muted": "rgb(98, 98, 98)",
+        "semantics": {
+          "--ok": "#347b60",
+          "--warn": "#9a641f",
+          "--danger": "#bd4d59",
+          "--accent": "#795b91"
+        },
+        "doneDot": "rgb(52, 123, 96)",
+        "holdDot": "rgb(154, 100, 31)",
+        "logo": {
+          "src": "/logo.svg",
+          "filter": "drop-shadow(rgba(169, 103, 245, 0.22) 0px 0px 7px)"
+        },
+        "geometry": {
+          "sidebar": {
+            "x": 12,
+            "y": 12,
+            "width": 238,
+            "height": 976,
+            "top": 12,
+            "right": 250,
+            "bottom": 988,
+            "left": 12
+          },
+          "header": {
+            "x": 262,
+            "y": 12,
+            "width": 1151,
+            "height": 60,
+            "top": 12,
+            "right": 1413,
+            "bottom": 72,
+            "left": 262
+          },
+          "reading": {
+            "x": 262,
+            "y": 223.5,
+            "width": 1151,
+            "height": 1762.21875,
+            "top": 223.5,
+            "right": 1413,
+            "bottom": 1985.71875,
+            "left": 262
+          },
+          "pr": {
+            "x": 262,
+            "y": 84,
+            "width": 1151,
+            "height": 68,
+            "top": 84,
+            "right": 1413,
+            "bottom": 152,
+            "left": 262
+          },
+          "attention": {
+            "x": 262,
+            "y": 164,
+            "width": 1151,
+            "height": 47.5,
+            "top": 164,
+            "right": 1413,
+            "bottom": 211.5,
+            "left": 262
+          },
+          "overflow": -15,
+          "rows": 20,
+          "rowFilters": 0
+        }
+      },
+      "errors": []
+    },
+    {
+      "palette": "mecca",
+      "width": 390,
+      "choice": "light",
+      "off": {
+        "theme": "light",
+        "preference": "light",
+        "root": "rgba(0, 0, 0, 0)",
+        "body": "rgb(247, 243, 248)",
+        "chrome": "rgba(0, 0, 0, 0)",
+        "sidebar": "rgba(0, 0, 0, 0)",
+        "reading": "rgba(0, 0, 0, 0)",
+        "selected": "color(srgb 0.962549 0.94549 0.967255)",
+        "selectedOutline": "color(srgb 0.47451 0.356863 0.568627 / 0.58)",
+        "ink": "rgb(41, 37, 54)",
+        "muted": "rgb(113, 105, 123)",
+        "semantics": {
+          "--ok": "#347b60",
+          "--warn": "#9a641f",
+          "--danger": "#bd4d59",
+          "--accent": "#795b91"
+        },
+        "doneDot": "rgb(52, 123, 96)",
+        "holdDot": "rgb(154, 100, 31)",
+        "logo": {
+          "src": "/logo.svg",
+          "filter": "drop-shadow(rgba(169, 103, 245, 0.22) 0px 0px 7px)"
+        },
+        "geometry": {
+          "sidebar": {
+            "x": 0,
+            "y": 0,
+            "width": 390,
+            "height": 58.1875,
+            "top": 0,
+            "right": 390,
+            "bottom": 58.1875,
+            "left": 0
+          },
+          "header": {
+            "x": 0,
+            "y": 58.1875,
+            "width": 390,
+            "height": 93,
+            "top": 58.1875,
+            "right": 390,
+            "bottom": 151.1875,
+            "left": 0
+          },
+          "reading": {
+            "x": 0,
+            "y": 334.6875,
+            "width": 390,
+            "height": 2222.6875,
+            "top": 334.6875,
+            "right": 390,
+            "bottom": 2557.375,
+            "left": 0
+          },
+          "pr": {
+            "x": 10,
+            "y": 159.1875,
+            "width": 370,
+            "height": 116,
+            "top": 159.1875,
+            "right": 380,
+            "bottom": 275.1875,
+            "left": 10
+          },
+          "attention": {
+            "x": 12,
+            "y": 287.1875,
+            "width": 366,
+            "height": 47.5,
+            "top": 287.1875,
+            "right": 378,
+            "bottom": 334.6875,
+            "left": 12
+          },
+          "overflow": 0,
+          "rows": 20,
+          "rowFilters": 0
+        }
+      },
+      "active": {
+        "theme": "light",
+        "preference": "light",
+        "root": "rgb(242, 242, 242)",
+        "body": "rgb(242, 242, 242)",
+        "chrome": "color(srgb 1 1 1 / 0.91)",
+        "sidebar": "color(srgb 1 1 1 / 0.91)",
+        "reading": "color(srgb 1 1 1 / 0.96)",
+        "selected": "color(srgb 0.961961 0.961961 0.961961)",
+        "selectedOutline": "color(srgb 0.239216 0.239216 0.239216 / 0.28)",
+        "ink": "rgb(36, 36, 36)",
+        "muted": "rgb(98, 98, 98)",
+        "semantics": {
+          "--ok": "#347b60",
+          "--warn": "#9a641f",
+          "--danger": "#bd4d59",
+          "--accent": "#795b91"
+        },
+        "doneDot": "rgb(52, 123, 96)",
+        "holdDot": "rgb(154, 100, 31)",
+        "logo": {
+          "src": "/logo.svg",
+          "filter": "drop-shadow(rgba(169, 103, 245, 0.22) 0px 0px 7px)"
+        },
+        "geometry": {
+          "sidebar": {
+            "x": 8,
+            "y": 8,
+            "width": 374,
+            "height": 57.1875,
+            "top": 8,
+            "right": 382,
+            "bottom": 65.1875,
+            "left": 8
+          },
+          "header": {
+            "x": 8,
+            "y": 73.1875,
+            "width": 374,
+            "height": 92,
+            "top": 73.1875,
+            "right": 382,
+            "bottom": 165.1875,
+            "left": 8
+          },
+          "reading": {
+            "x": 8,
+            "y": 344.6875,
+            "width": 374,
+            "height": 2222.6875,
+            "top": 344.6875,
+            "right": 382,
+            "bottom": 2567.375,
+            "left": 8
+          },
+          "pr": {
+            "x": 8,
+            "y": 173.1875,
+            "width": 374,
+            "height": 112,
+            "top": 173.1875,
+            "right": 382,
+            "bottom": 285.1875,
+            "left": 8
+          },
+          "attention": {
+            "x": 8,
+            "y": 293.1875,
+            "width": 374,
+            "height": 43.5,
+            "top": 293.1875,
+            "right": 382,
+            "bottom": 336.6875,
+            "left": 8
+          },
+          "overflow": 0,
+          "rows": 20,
+          "rowFilters": 0
+        }
+      },
+      "contrastBounds": {
+        "body": 14.213183336851284,
+        "muted": 5.585072368960612
+      },
+      "systemFlip": null,
+      "errors": []
+    },
+    {
+      "palette": "mecca",
+      "width": 390,
+      "choice": "dark",
+      "off": {
+        "theme": "dark",
+        "preference": "dark",
+        "root": "rgba(0, 0, 0, 0)",
+        "body": "rgb(10, 14, 27)",
+        "chrome": "rgba(0, 0, 0, 0)",
+        "sidebar": "rgba(0, 0, 0, 0)",
+        "reading": "rgba(0, 0, 0, 0)",
+        "selected": "color(srgb 0.0966667 0.101765 0.177059)",
+        "selectedOutline": "color(srgb 0.666667 0.545098 0.784314 / 0.58)",
+        "ink": "rgb(240, 237, 245)",
+        "muted": "rgb(165, 156, 175)",
+        "semantics": {
+          "--ok": "#78b99e",
+          "--warn": "#d6aa72",
+          "--danger": "#e98992",
+          "--accent": "#aa8bc8"
+        },
+        "doneDot": "rgb(120, 185, 158)",
+        "holdDot": "rgb(214, 170, 114)",
+        "logo": {
+          "src": "/logo.svg",
+          "filter": "drop-shadow(rgba(169, 103, 245, 0.22) 0px 0px 7px)"
+        },
+        "geometry": {
+          "sidebar": {
+            "x": 0,
+            "y": 0,
+            "width": 390,
+            "height": 58.1875,
+            "top": 0,
+            "right": 390,
+            "bottom": 58.1875,
+            "left": 0
+          },
+          "header": {
+            "x": 0,
+            "y": 58.1875,
+            "width": 390,
+            "height": 93,
+            "top": 58.1875,
+            "right": 390,
+            "bottom": 151.1875,
+            "left": 0
+          },
+          "reading": {
+            "x": 0,
+            "y": 334.6875,
+            "width": 390,
+            "height": 2222.6875,
+            "top": 334.6875,
+            "right": 390,
+            "bottom": 2557.375,
+            "left": 0
+          },
+          "pr": {
+            "x": 10,
+            "y": 159.1875,
+            "width": 370,
+            "height": 116,
+            "top": 159.1875,
+            "right": 380,
+            "bottom": 275.1875,
+            "left": 10
+          },
+          "attention": {
+            "x": 12,
+            "y": 287.1875,
+            "width": 366,
+            "height": 47.5,
+            "top": 287.1875,
+            "right": 378,
+            "bottom": 334.6875,
+            "left": 12
+          },
+          "overflow": 0,
+          "rows": 20,
+          "rowFilters": 0
+        }
+      },
+      "active": {
+        "theme": "dark",
+        "preference": "dark",
+        "root": "rgb(17, 17, 17)",
+        "body": "rgb(17, 17, 17)",
+        "chrome": "color(srgb 0.0941177 0.0941177 0.0941177 / 0.91)",
+        "sidebar": "color(srgb 0.0941177 0.0941177 0.0941177 / 0.91)",
+        "reading": "color(srgb 0.0941177 0.0941177 0.0941177 / 0.96)",
+        "selected": "color(srgb 0.132941 0.132941 0.132941)",
+        "selectedOutline": "color(srgb 0.870588 0.870588 0.870588 / 0.28)",
+        "ink": "rgb(242, 242, 242)",
+        "muted": "rgb(182, 182, 182)",
+        "semantics": {
+          "--ok": "#78b99e",
+          "--warn": "#d6aa72",
+          "--danger": "#e98992",
+          "--accent": "#aa8bc8"
+        },
+        "doneDot": "rgb(120, 185, 158)",
+        "holdDot": "rgb(214, 170, 114)",
+        "logo": {
+          "src": "/logo.svg",
+          "filter": "drop-shadow(rgba(169, 103, 245, 0.22) 0px 0px 7px)"
+        },
+        "geometry": {
+          "sidebar": {
+            "x": 8,
+            "y": 8,
+            "width": 374,
+            "height": 57.1875,
+            "top": 8,
+            "right": 382,
+            "bottom": 65.1875,
+            "left": 8
+          },
+          "header": {
+            "x": 8,
+            "y": 73.1875,
+            "width": 374,
+            "height": 92,
+            "top": 73.1875,
+            "right": 382,
+            "bottom": 165.1875,
+            "left": 8
+          },
+          "reading": {
+            "x": 8,
+            "y": 344.6875,
+            "width": 374,
+            "height": 2222.6875,
+            "top": 344.6875,
+            "right": 382,
+            "bottom": 2567.375,
+            "left": 8
+          },
+          "pr": {
+            "x": 8,
+            "y": 173.1875,
+            "width": 374,
+            "height": 112,
+            "top": 173.1875,
+            "right": 382,
+            "bottom": 285.1875,
+            "left": 8
+          },
+          "attention": {
+            "x": 8,
+            "y": 293.1875,
+            "width": 374,
+            "height": 43.5,
+            "top": 293.1875,
+            "right": 382,
+            "bottom": 336.6875,
+            "left": 8
+          },
+          "overflow": 0,
+          "rows": 20,
+          "rowFilters": 0
+        }
+      },
+      "contrastBounds": {
+        "body": 14.342324058567206,
+        "muted": 7.917731053357226
+      },
+      "systemFlip": null,
+      "errors": []
+    },
+    {
+      "palette": "mecca",
+      "width": 390,
+      "choice": "system-light",
+      "off": {
+        "theme": "light",
+        "preference": "system",
+        "root": "rgba(0, 0, 0, 0)",
+        "body": "rgb(247, 243, 248)",
+        "chrome": "rgba(0, 0, 0, 0)",
+        "sidebar": "rgba(0, 0, 0, 0)",
+        "reading": "rgba(0, 0, 0, 0)",
+        "selected": "color(srgb 0.962549 0.94549 0.967255)",
+        "selectedOutline": "color(srgb 0.47451 0.356863 0.568627 / 0.58)",
+        "ink": "rgb(41, 37, 54)",
+        "muted": "rgb(113, 105, 123)",
+        "semantics": {
+          "--ok": "#347b60",
+          "--warn": "#9a641f",
+          "--danger": "#bd4d59",
+          "--accent": "#795b91"
+        },
+        "doneDot": "rgb(52, 123, 96)",
+        "holdDot": "rgb(154, 100, 31)",
+        "logo": {
+          "src": "/logo.svg",
+          "filter": "drop-shadow(rgba(169, 103, 245, 0.22) 0px 0px 7px)"
+        },
+        "geometry": {
+          "sidebar": {
+            "x": 0,
+            "y": 0,
+            "width": 390,
+            "height": 58.1875,
+            "top": 0,
+            "right": 390,
+            "bottom": 58.1875,
+            "left": 0
+          },
+          "header": {
+            "x": 0,
+            "y": 58.1875,
+            "width": 390,
+            "height": 93,
+            "top": 58.1875,
+            "right": 390,
+            "bottom": 151.1875,
+            "left": 0
+          },
+          "reading": {
+            "x": 0,
+            "y": 334.6875,
+            "width": 390,
+            "height": 2222.6875,
+            "top": 334.6875,
+            "right": 390,
+            "bottom": 2557.375,
+            "left": 0
+          },
+          "pr": {
+            "x": 10,
+            "y": 159.1875,
+            "width": 370,
+            "height": 116,
+            "top": 159.1875,
+            "right": 380,
+            "bottom": 275.1875,
+            "left": 10
+          },
+          "attention": {
+            "x": 12,
+            "y": 287.1875,
+            "width": 366,
+            "height": 47.5,
+            "top": 287.1875,
+            "right": 378,
+            "bottom": 334.6875,
+            "left": 12
+          },
+          "overflow": 0,
+          "rows": 20,
+          "rowFilters": 0
+        }
+      },
+      "active": {
+        "theme": "light",
+        "preference": "system",
+        "root": "rgb(242, 242, 242)",
+        "body": "rgb(242, 242, 242)",
+        "chrome": "color(srgb 1 1 1 / 0.91)",
+        "sidebar": "color(srgb 1 1 1 / 0.91)",
+        "reading": "color(srgb 1 1 1 / 0.96)",
+        "selected": "color(srgb 0.961961 0.961961 0.961961)",
+        "selectedOutline": "color(srgb 0.239216 0.239216 0.239216 / 0.28)",
+        "ink": "rgb(36, 36, 36)",
+        "muted": "rgb(98, 98, 98)",
+        "semantics": {
+          "--ok": "#347b60",
+          "--warn": "#9a641f",
+          "--danger": "#bd4d59",
+          "--accent": "#795b91"
+        },
+        "doneDot": "rgb(52, 123, 96)",
+        "holdDot": "rgb(154, 100, 31)",
+        "logo": {
+          "src": "/logo.svg",
+          "filter": "drop-shadow(rgba(169, 103, 245, 0.22) 0px 0px 7px)"
+        },
+        "geometry": {
+          "sidebar": {
+            "x": 8,
+            "y": 8,
+            "width": 374,
+            "height": 57.1875,
+            "top": 8,
+            "right": 382,
+            "bottom": 65.1875,
+            "left": 8
+          },
+          "header": {
+            "x": 8,
+            "y": 73.1875,
+            "width": 374,
+            "height": 92,
+            "top": 73.1875,
+            "right": 382,
+            "bottom": 165.1875,
+            "left": 8
+          },
+          "reading": {
+            "x": 8,
+            "y": 344.6875,
+            "width": 374,
+            "height": 2222.6875,
+            "top": 344.6875,
+            "right": 382,
+            "bottom": 2567.375,
+            "left": 8
+          },
+          "pr": {
+            "x": 8,
+            "y": 173.1875,
+            "width": 374,
+            "height": 112,
+            "top": 173.1875,
+            "right": 382,
+            "bottom": 285.1875,
+            "left": 8
+          },
+          "attention": {
+            "x": 8,
+            "y": 293.1875,
+            "width": 374,
+            "height": 43.5,
+            "top": 293.1875,
+            "right": 382,
+            "bottom": 336.6875,
+            "left": 8
+          },
+          "overflow": 0,
+          "rows": 20,
+          "rowFilters": 0
+        }
+      },
+      "contrastBounds": {
+        "body": 14.213183336851284,
+        "muted": 5.585072368960612
+      },
+      "systemFlip": {
+        "theme": "dark",
+        "preference": "system",
+        "root": "rgb(17, 17, 17)",
+        "body": "rgb(17, 17, 17)",
+        "chrome": "color(srgb 0.0941177 0.0941177 0.0941177 / 0.91)",
+        "sidebar": "color(srgb 0.0941177 0.0941177 0.0941177 / 0.91)",
+        "reading": "color(srgb 0.0941177 0.0941177 0.0941177 / 0.96)",
+        "selected": "color(srgb 0.132941 0.132941 0.132941)",
+        "selectedOutline": "color(srgb 0.870588 0.870588 0.870588 / 0.28)",
+        "ink": "rgb(242, 242, 242)",
+        "muted": "rgb(182, 182, 182)",
+        "semantics": {
+          "--ok": "#78b99e",
+          "--warn": "#d6aa72",
+          "--danger": "#e98992",
+          "--accent": "#aa8bc8"
+        },
+        "doneDot": "rgb(120, 185, 158)",
+        "holdDot": "rgb(214, 170, 114)",
+        "logo": {
+          "src": "/logo.svg",
+          "filter": "drop-shadow(rgba(169, 103, 245, 0.22) 0px 0px 7px)"
+        },
+        "geometry": {
+          "sidebar": {
+            "x": 8,
+            "y": 8,
+            "width": 374,
+            "height": 57.1875,
+            "top": 8,
+            "right": 382,
+            "bottom": 65.1875,
+            "left": 8
+          },
+          "header": {
+            "x": 8,
+            "y": 73.1875,
+            "width": 374,
+            "height": 92,
+            "top": 73.1875,
+            "right": 382,
+            "bottom": 165.1875,
+            "left": 8
+          },
+          "reading": {
+            "x": 8,
+            "y": 344.6875,
+            "width": 374,
+            "height": 2222.6875,
+            "top": 344.6875,
+            "right": 382,
+            "bottom": 2567.375,
+            "left": 8
+          },
+          "pr": {
+            "x": 8,
+            "y": 173.1875,
+            "width": 374,
+            "height": 112,
+            "top": 173.1875,
+            "right": 382,
+            "bottom": 285.1875,
+            "left": 8
+          },
+          "attention": {
+            "x": 8,
+            "y": 293.1875,
+            "width": 374,
+            "height": 43.5,
+            "top": 293.1875,
+            "right": 382,
+            "bottom": 336.6875,
+            "left": 8
+          },
+          "overflow": 0,
+          "rows": 20,
+          "rowFilters": 0
+        }
+      },
+      "errors": []
+    },
+    {
+      "palette": "mecca",
+      "width": 390,
+      "choice": "system-dark",
+      "off": {
+        "theme": "dark",
+        "preference": "system",
+        "root": "rgba(0, 0, 0, 0)",
+        "body": "rgb(10, 14, 27)",
+        "chrome": "rgba(0, 0, 0, 0)",
+        "sidebar": "rgba(0, 0, 0, 0)",
+        "reading": "rgba(0, 0, 0, 0)",
+        "selected": "color(srgb 0.0966667 0.101765 0.177059)",
+        "selectedOutline": "color(srgb 0.666667 0.545098 0.784314 / 0.58)",
+        "ink": "rgb(240, 237, 245)",
+        "muted": "rgb(165, 156, 175)",
+        "semantics": {
+          "--ok": "#78b99e",
+          "--warn": "#d6aa72",
+          "--danger": "#e98992",
+          "--accent": "#aa8bc8"
+        },
+        "doneDot": "rgb(120, 185, 158)",
+        "holdDot": "rgb(214, 170, 114)",
+        "logo": {
+          "src": "/logo.svg",
+          "filter": "drop-shadow(rgba(169, 103, 245, 0.22) 0px 0px 7px)"
+        },
+        "geometry": {
+          "sidebar": {
+            "x": 0,
+            "y": 0,
+            "width": 390,
+            "height": 58.1875,
+            "top": 0,
+            "right": 390,
+            "bottom": 58.1875,
+            "left": 0
+          },
+          "header": {
+            "x": 0,
+            "y": 58.1875,
+            "width": 390,
+            "height": 93,
+            "top": 58.1875,
+            "right": 390,
+            "bottom": 151.1875,
+            "left": 0
+          },
+          "reading": {
+            "x": 0,
+            "y": 334.6875,
+            "width": 390,
+            "height": 2222.6875,
+            "top": 334.6875,
+            "right": 390,
+            "bottom": 2557.375,
+            "left": 0
+          },
+          "pr": {
+            "x": 10,
+            "y": 159.1875,
+            "width": 370,
+            "height": 116,
+            "top": 159.1875,
+            "right": 380,
+            "bottom": 275.1875,
+            "left": 10
+          },
+          "attention": {
+            "x": 12,
+            "y": 287.1875,
+            "width": 366,
+            "height": 47.5,
+            "top": 287.1875,
+            "right": 378,
+            "bottom": 334.6875,
+            "left": 12
+          },
+          "overflow": 0,
+          "rows": 20,
+          "rowFilters": 0
+        }
+      },
+      "active": {
+        "theme": "dark",
+        "preference": "system",
+        "root": "rgb(17, 17, 17)",
+        "body": "rgb(17, 17, 17)",
+        "chrome": "color(srgb 0.0941177 0.0941177 0.0941177 / 0.91)",
+        "sidebar": "color(srgb 0.0941177 0.0941177 0.0941177 / 0.91)",
+        "reading": "color(srgb 0.0941177 0.0941177 0.0941177 / 0.96)",
+        "selected": "color(srgb 0.132941 0.132941 0.132941)",
+        "selectedOutline": "color(srgb 0.870588 0.870588 0.870588 / 0.28)",
+        "ink": "rgb(242, 242, 242)",
+        "muted": "rgb(182, 182, 182)",
+        "semantics": {
+          "--ok": "#78b99e",
+          "--warn": "#d6aa72",
+          "--danger": "#e98992",
+          "--accent": "#aa8bc8"
+        },
+        "doneDot": "rgb(120, 185, 158)",
+        "holdDot": "rgb(214, 170, 114)",
+        "logo": {
+          "src": "/logo.svg",
+          "filter": "drop-shadow(rgba(169, 103, 245, 0.22) 0px 0px 7px)"
+        },
+        "geometry": {
+          "sidebar": {
+            "x": 8,
+            "y": 8,
+            "width": 374,
+            "height": 57.1875,
+            "top": 8,
+            "right": 382,
+            "bottom": 65.1875,
+            "left": 8
+          },
+          "header": {
+            "x": 8,
+            "y": 73.1875,
+            "width": 374,
+            "height": 92,
+            "top": 73.1875,
+            "right": 382,
+            "bottom": 165.1875,
+            "left": 8
+          },
+          "reading": {
+            "x": 8,
+            "y": 344.6875,
+            "width": 374,
+            "height": 2222.6875,
+            "top": 344.6875,
+            "right": 382,
+            "bottom": 2567.375,
+            "left": 8
+          },
+          "pr": {
+            "x": 8,
+            "y": 173.1875,
+            "width": 374,
+            "height": 112,
+            "top": 173.1875,
+            "right": 382,
+            "bottom": 285.1875,
+            "left": 8
+          },
+          "attention": {
+            "x": 8,
+            "y": 293.1875,
+            "width": 374,
+            "height": 43.5,
+            "top": 293.1875,
+            "right": 382,
+            "bottom": 336.6875,
+            "left": 8
+          },
+          "overflow": 0,
+          "rows": 20,
+          "rowFilters": 0
+        }
+      },
+      "contrastBounds": {
+        "body": 14.342324058567206,
+        "muted": 7.917731053357226
+      },
+      "systemFlip": {
+        "theme": "light",
+        "preference": "system",
+        "root": "rgb(242, 242, 242)",
+        "body": "rgb(242, 242, 242)",
+        "chrome": "color(srgb 1 1 1 / 0.91)",
+        "sidebar": "color(srgb 1 1 1 / 0.91)",
+        "reading": "color(srgb 1 1 1 / 0.96)",
+        "selected": "color(srgb 0.961961 0.961961 0.961961)",
+        "selectedOutline": "color(srgb 0.239216 0.239216 0.239216 / 0.28)",
+        "ink": "rgb(36, 36, 36)",
+        "muted": "rgb(98, 98, 98)",
+        "semantics": {
+          "--ok": "#347b60",
+          "--warn": "#9a641f",
+          "--danger": "#bd4d59",
+          "--accent": "#795b91"
+        },
+        "doneDot": "rgb(52, 123, 96)",
+        "holdDot": "rgb(154, 100, 31)",
+        "logo": {
+          "src": "/logo.svg",
+          "filter": "drop-shadow(rgba(169, 103, 245, 0.22) 0px 0px 7px)"
+        },
+        "geometry": {
+          "sidebar": {
+            "x": 8,
+            "y": 8,
+            "width": 374,
+            "height": 57.1875,
+            "top": 8,
+            "right": 382,
+            "bottom": 65.1875,
+            "left": 8
+          },
+          "header": {
+            "x": 8,
+            "y": 73.1875,
+            "width": 374,
+            "height": 92,
+            "top": 73.1875,
+            "right": 382,
+            "bottom": 165.1875,
+            "left": 8
+          },
+          "reading": {
+            "x": 8,
+            "y": 344.6875,
+            "width": 374,
+            "height": 2222.6875,
+            "top": 344.6875,
+            "right": 382,
+            "bottom": 2567.375,
+            "left": 8
+          },
+          "pr": {
+            "x": 8,
+            "y": 173.1875,
+            "width": 374,
+            "height": 112,
+            "top": 173.1875,
+            "right": 382,
+            "bottom": 285.1875,
+            "left": 8
+          },
+          "attention": {
+            "x": 8,
+            "y": 293.1875,
+            "width": 374,
+            "height": 43.5,
+            "top": 293.1875,
+            "right": 382,
+            "bottom": 336.6875,
+            "left": 8
+          },
+          "overflow": 0,
+          "rows": 20,
+          "rowFilters": 0
+        }
+      },
+      "errors": []
+    },
+    {
+      "palette": "slate",
+      "width": 1440,
+      "choice": "light",
+      "off": {
+        "theme": "light",
+        "preference": "light",
+        "root": "rgba(0, 0, 0, 0)",
+        "body": "rgb(247, 248, 250)",
+        "chrome": "color(srgb 0.968627 0.972549 0.980392 / 0.88)",
+        "sidebar": "rgb(255, 255, 255)",
+        "reading": "rgba(0, 0, 0, 0)",
+        "selected": "color(srgb 0.963726 0.970196 0.997451)",
+        "selectedOutline": "color(srgb 0.27451 0.403922 0.94902 / 0.58)",
+        "ink": "rgb(23, 32, 51)",
+        "muted": "rgb(104, 115, 134)",
+        "semantics": {
+          "--ok": "#16855b",
+          "--warn": "#b36b00",
+          "--danger": "#d33b45",
+          "--accent": "#4667f2"
+        },
+        "doneDot": "rgb(22, 133, 91)",
+        "holdDot": "rgb(179, 107, 0)",
+        "logo": {
+          "src": "/logo.svg",
+          "filter": "drop-shadow(rgba(169, 103, 245, 0.22) 0px 0px 7px)"
+        },
+        "geometry": {
+          "sidebar": {
+            "x": 0,
+            "y": 0,
+            "width": 238,
+            "height": 1000,
+            "top": 0,
+            "right": 238,
+            "bottom": 1000,
+            "left": 0
+          },
+          "header": {
+            "x": 238,
+            "y": 0,
+            "width": 1187,
+            "height": 60,
+            "top": 0,
+            "right": 1425,
+            "bottom": 60,
+            "left": 238
+          },
+          "reading": {
+            "x": 238,
+            "y": 209.5,
+            "width": 1187,
+            "height": 1762.21875,
+            "top": 209.5,
+            "right": 1425,
+            "bottom": 1971.71875,
+            "left": 238
+          },
+          "pr": {
+            "x": 253,
+            "y": 70,
+            "width": 1157,
+            "height": 72,
+            "top": 70,
+            "right": 1410,
+            "bottom": 142,
+            "left": 253
+          },
+          "attention": {
+            "x": 262,
+            "y": 158,
+            "width": 1139,
+            "height": 51.5,
+            "top": 158,
+            "right": 1401,
+            "bottom": 209.5,
+            "left": 262
+          },
+          "overflow": -15,
+          "rows": 20,
+          "rowFilters": 0
+        }
+      },
+      "active": {
+        "theme": "light",
+        "preference": "light",
+        "root": "rgb(242, 242, 242)",
+        "body": "rgb(242, 242, 242)",
+        "chrome": "color(srgb 1 1 1 / 0.91)",
+        "sidebar": "color(srgb 1 1 1 / 0.91)",
+        "reading": "color(srgb 1 1 1 / 0.96)",
+        "selected": "color(srgb 0.961961 0.961961 0.961961)",
+        "selectedOutline": "color(srgb 0.239216 0.239216 0.239216 / 0.28)",
+        "ink": "rgb(36, 36, 36)",
+        "muted": "rgb(98, 98, 98)",
+        "semantics": {
+          "--ok": "#16855b",
+          "--warn": "#b36b00",
+          "--danger": "#d33b45",
+          "--accent": "#4667f2"
+        },
+        "doneDot": "rgb(22, 133, 91)",
+        "holdDot": "rgb(179, 107, 0)",
+        "logo": {
+          "src": "/logo.svg",
+          "filter": "drop-shadow(rgba(169, 103, 245, 0.22) 0px 0px 7px)"
+        },
+        "geometry": {
+          "sidebar": {
+            "x": 12,
+            "y": 12,
+            "width": 238,
+            "height": 976,
+            "top": 12,
+            "right": 250,
+            "bottom": 988,
+            "left": 12
+          },
+          "header": {
+            "x": 262,
+            "y": 12,
+            "width": 1151,
+            "height": 60,
+            "top": 12,
+            "right": 1413,
+            "bottom": 72,
+            "left": 262
+          },
+          "reading": {
+            "x": 262,
+            "y": 223.5,
+            "width": 1151,
+            "height": 1762.21875,
+            "top": 223.5,
+            "right": 1413,
+            "bottom": 1985.71875,
+            "left": 262
+          },
+          "pr": {
+            "x": 262,
+            "y": 84,
+            "width": 1151,
+            "height": 68,
+            "top": 84,
+            "right": 1413,
+            "bottom": 152,
+            "left": 262
+          },
+          "attention": {
+            "x": 262,
+            "y": 164,
+            "width": 1151,
+            "height": 47.5,
+            "top": 164,
+            "right": 1413,
+            "bottom": 211.5,
+            "left": 262
+          },
+          "overflow": -15,
+          "rows": 20,
+          "rowFilters": 0
+        }
+      },
+      "contrastBounds": {
+        "body": 14.213183336851284,
+        "muted": 5.585072368960612
+      },
+      "systemFlip": null,
+      "errors": []
+    },
+    {
+      "palette": "slate",
+      "width": 1440,
+      "choice": "dark",
+      "off": {
+        "theme": "dark",
+        "preference": "dark",
+        "root": "rgba(0, 0, 0, 0)",
+        "body": "rgb(17, 19, 24)",
+        "chrome": "color(srgb 0.0666667 0.0745098 0.0941176 / 0.88)",
+        "sidebar": "rgb(23, 26, 33)",
+        "reading": "rgba(0, 0, 0, 0)",
+        "selected": "color(srgb 0.110588 0.126078 0.172941)",
+        "selectedOutline": "color(srgb 0.498039 0.584314 1 / 0.58)",
+        "ink": "rgb(237, 240, 245)",
+        "muted": "rgb(155, 165, 181)",
+        "semantics": {
+          "--ok": "#57c99b",
+          "--warn": "#f1b65b",
+          "--danger": "#ff737d",
+          "--accent": "#7f95ff"
+        },
+        "doneDot": "rgb(87, 201, 155)",
+        "holdDot": "rgb(241, 182, 91)",
+        "logo": {
+          "src": "/logo.svg",
+          "filter": "drop-shadow(rgba(169, 103, 245, 0.22) 0px 0px 7px)"
+        },
+        "geometry": {
+          "sidebar": {
+            "x": 0,
+            "y": 0,
+            "width": 238,
+            "height": 1000,
+            "top": 0,
+            "right": 238,
+            "bottom": 1000,
+            "left": 0
+          },
+          "header": {
+            "x": 238,
+            "y": 0,
+            "width": 1187,
+            "height": 60,
+            "top": 0,
+            "right": 1425,
+            "bottom": 60,
+            "left": 238
+          },
+          "reading": {
+            "x": 238,
+            "y": 209.5,
+            "width": 1187,
+            "height": 1762.21875,
+            "top": 209.5,
+            "right": 1425,
+            "bottom": 1971.71875,
+            "left": 238
+          },
+          "pr": {
+            "x": 253,
+            "y": 70,
+            "width": 1157,
+            "height": 72,
+            "top": 70,
+            "right": 1410,
+            "bottom": 142,
+            "left": 253
+          },
+          "attention": {
+            "x": 262,
+            "y": 158,
+            "width": 1139,
+            "height": 51.5,
+            "top": 158,
+            "right": 1401,
+            "bottom": 209.5,
+            "left": 262
+          },
+          "overflow": -15,
+          "rows": 20,
+          "rowFilters": 0
+        }
+      },
+      "active": {
+        "theme": "dark",
+        "preference": "dark",
+        "root": "rgb(17, 17, 17)",
+        "body": "rgb(17, 17, 17)",
+        "chrome": "color(srgb 0.0941177 0.0941177 0.0941177 / 0.91)",
+        "sidebar": "color(srgb 0.0941177 0.0941177 0.0941177 / 0.91)",
+        "reading": "color(srgb 0.0941177 0.0941177 0.0941177 / 0.96)",
+        "selected": "color(srgb 0.132941 0.132941 0.132941)",
+        "selectedOutline": "color(srgb 0.870588 0.870588 0.870588 / 0.28)",
+        "ink": "rgb(242, 242, 242)",
+        "muted": "rgb(182, 182, 182)",
+        "semantics": {
+          "--ok": "#57c99b",
+          "--warn": "#f1b65b",
+          "--danger": "#ff737d",
+          "--accent": "#7f95ff"
+        },
+        "doneDot": "rgb(87, 201, 155)",
+        "holdDot": "rgb(241, 182, 91)",
+        "logo": {
+          "src": "/logo.svg",
+          "filter": "drop-shadow(rgba(169, 103, 245, 0.22) 0px 0px 7px)"
+        },
+        "geometry": {
+          "sidebar": {
+            "x": 12,
+            "y": 12,
+            "width": 238,
+            "height": 976,
+            "top": 12,
+            "right": 250,
+            "bottom": 988,
+            "left": 12
+          },
+          "header": {
+            "x": 262,
+            "y": 12,
+            "width": 1151,
+            "height": 60,
+            "top": 12,
+            "right": 1413,
+            "bottom": 72,
+            "left": 262
+          },
+          "reading": {
+            "x": 262,
+            "y": 223.5,
+            "width": 1151,
+            "height": 1762.21875,
+            "top": 223.5,
+            "right": 1413,
+            "bottom": 1985.71875,
+            "left": 262
+          },
+          "pr": {
+            "x": 262,
+            "y": 84,
+            "width": 1151,
+            "height": 68,
+            "top": 84,
+            "right": 1413,
+            "bottom": 152,
+            "left": 262
+          },
+          "attention": {
+            "x": 262,
+            "y": 164,
+            "width": 1151,
+            "height": 47.5,
+            "top": 164,
+            "right": 1413,
+            "bottom": 211.5,
+            "left": 262
+          },
+          "overflow": -15,
+          "rows": 20,
+          "rowFilters": 0
+        }
+      },
+      "contrastBounds": {
+        "body": 14.342324058567206,
+        "muted": 7.917731053357226
+      },
+      "systemFlip": null,
+      "errors": []
+    },
+    {
+      "palette": "slate",
+      "width": 1440,
+      "choice": "system-light",
+      "off": {
+        "theme": "light",
+        "preference": "system",
+        "root": "rgba(0, 0, 0, 0)",
+        "body": "rgb(247, 248, 250)",
+        "chrome": "color(srgb 0.968627 0.972549 0.980392 / 0.88)",
+        "sidebar": "rgb(255, 255, 255)",
+        "reading": "rgba(0, 0, 0, 0)",
+        "selected": "color(srgb 0.963726 0.970196 0.997451)",
+        "selectedOutline": "color(srgb 0.27451 0.403922 0.94902 / 0.58)",
+        "ink": "rgb(23, 32, 51)",
+        "muted": "rgb(104, 115, 134)",
+        "semantics": {
+          "--ok": "#16855b",
+          "--warn": "#b36b00",
+          "--danger": "#d33b45",
+          "--accent": "#4667f2"
+        },
+        "doneDot": "rgb(22, 133, 91)",
+        "holdDot": "rgb(179, 107, 0)",
+        "logo": {
+          "src": "/logo.svg",
+          "filter": "drop-shadow(rgba(169, 103, 245, 0.22) 0px 0px 7px)"
+        },
+        "geometry": {
+          "sidebar": {
+            "x": 0,
+            "y": 0,
+            "width": 238,
+            "height": 1000,
+            "top": 0,
+            "right": 238,
+            "bottom": 1000,
+            "left": 0
+          },
+          "header": {
+            "x": 238,
+            "y": 0,
+            "width": 1187,
+            "height": 60,
+            "top": 0,
+            "right": 1425,
+            "bottom": 60,
+            "left": 238
+          },
+          "reading": {
+            "x": 238,
+            "y": 209.5,
+            "width": 1187,
+            "height": 1762.21875,
+            "top": 209.5,
+            "right": 1425,
+            "bottom": 1971.71875,
+            "left": 238
+          },
+          "pr": {
+            "x": 253,
+            "y": 70,
+            "width": 1157,
+            "height": 72,
+            "top": 70,
+            "right": 1410,
+            "bottom": 142,
+            "left": 253
+          },
+          "attention": {
+            "x": 262,
+            "y": 158,
+            "width": 1139,
+            "height": 51.5,
+            "top": 158,
+            "right": 1401,
+            "bottom": 209.5,
+            "left": 262
+          },
+          "overflow": -15,
+          "rows": 20,
+          "rowFilters": 0
+        }
+      },
+      "active": {
+        "theme": "light",
+        "preference": "system",
+        "root": "rgb(242, 242, 242)",
+        "body": "rgb(242, 242, 242)",
+        "chrome": "color(srgb 1 1 1 / 0.91)",
+        "sidebar": "color(srgb 1 1 1 / 0.91)",
+        "reading": "color(srgb 1 1 1 / 0.96)",
+        "selected": "color(srgb 0.961961 0.961961 0.961961)",
+        "selectedOutline": "color(srgb 0.239216 0.239216 0.239216 / 0.28)",
+        "ink": "rgb(36, 36, 36)",
+        "muted": "rgb(98, 98, 98)",
+        "semantics": {
+          "--ok": "#16855b",
+          "--warn": "#b36b00",
+          "--danger": "#d33b45",
+          "--accent": "#4667f2"
+        },
+        "doneDot": "rgb(22, 133, 91)",
+        "holdDot": "rgb(179, 107, 0)",
+        "logo": {
+          "src": "/logo.svg",
+          "filter": "drop-shadow(rgba(169, 103, 245, 0.22) 0px 0px 7px)"
+        },
+        "geometry": {
+          "sidebar": {
+            "x": 12,
+            "y": 12,
+            "width": 238,
+            "height": 976,
+            "top": 12,
+            "right": 250,
+            "bottom": 988,
+            "left": 12
+          },
+          "header": {
+            "x": 262,
+            "y": 12,
+            "width": 1151,
+            "height": 60,
+            "top": 12,
+            "right": 1413,
+            "bottom": 72,
+            "left": 262
+          },
+          "reading": {
+            "x": 262,
+            "y": 223.5,
+            "width": 1151,
+            "height": 1762.21875,
+            "top": 223.5,
+            "right": 1413,
+            "bottom": 1985.71875,
+            "left": 262
+          },
+          "pr": {
+            "x": 262,
+            "y": 84,
+            "width": 1151,
+            "height": 68,
+            "top": 84,
+            "right": 1413,
+            "bottom": 152,
+            "left": 262
+          },
+          "attention": {
+            "x": 262,
+            "y": 164,
+            "width": 1151,
+            "height": 47.5,
+            "top": 164,
+            "right": 1413,
+            "bottom": 211.5,
+            "left": 262
+          },
+          "overflow": -15,
+          "rows": 20,
+          "rowFilters": 0
+        }
+      },
+      "contrastBounds": {
+        "body": 14.213183336851284,
+        "muted": 5.585072368960612
+      },
+      "systemFlip": {
+        "theme": "dark",
+        "preference": "system",
+        "root": "rgb(17, 17, 17)",
+        "body": "rgb(17, 17, 17)",
+        "chrome": "color(srgb 0.0941177 0.0941177 0.0941177 / 0.91)",
+        "sidebar": "oklab(0.999994 0.0000455677 0.0000200868 / 0.91)",
+        "reading": "color(srgb 0.0941177 0.0941177 0.0941177 / 0.96)",
+        "selected": "color(srgb 0.132941 0.132941 0.132941)",
+        "selectedOutline": "color(srgb 0.870588 0.870588 0.870588 / 0.28)",
+        "ink": "rgb(242, 242, 242)",
+        "muted": "rgb(182, 182, 182)",
+        "semantics": {
+          "--ok": "#57c99b",
+          "--warn": "#f1b65b",
+          "--danger": "#ff737d",
+          "--accent": "#7f95ff"
+        },
+        "doneDot": "rgb(87, 201, 155)",
+        "holdDot": "rgb(241, 182, 91)",
+        "logo": {
+          "src": "/logo.svg",
+          "filter": "drop-shadow(rgba(169, 103, 245, 0.22) 0px 0px 7px)"
+        },
+        "geometry": {
+          "sidebar": {
+            "x": 12,
+            "y": 12,
+            "width": 238,
+            "height": 976,
+            "top": 12,
+            "right": 250,
+            "bottom": 988,
+            "left": 12
+          },
+          "header": {
+            "x": 262,
+            "y": 12,
+            "width": 1151,
+            "height": 60,
+            "top": 12,
+            "right": 1413,
+            "bottom": 72,
+            "left": 262
+          },
+          "reading": {
+            "x": 262,
+            "y": 223.5,
+            "width": 1151,
+            "height": 1762.21875,
+            "top": 223.5,
+            "right": 1413,
+            "bottom": 1985.71875,
+            "left": 262
+          },
+          "pr": {
+            "x": 262,
+            "y": 84,
+            "width": 1151,
+            "height": 68,
+            "top": 84,
+            "right": 1413,
+            "bottom": 152,
+            "left": 262
+          },
+          "attention": {
+            "x": 262,
+            "y": 164,
+            "width": 1151,
+            "height": 47.5,
+            "top": 164,
+            "right": 1413,
+            "bottom": 211.5,
+            "left": 262
+          },
+          "overflow": -15,
+          "rows": 20,
+          "rowFilters": 0
+        }
+      },
+      "errors": []
+    },
+    {
+      "palette": "slate",
+      "width": 1440,
+      "choice": "system-dark",
+      "off": {
+        "theme": "dark",
+        "preference": "system",
+        "root": "rgba(0, 0, 0, 0)",
+        "body": "rgb(17, 19, 24)",
+        "chrome": "color(srgb 0.0666667 0.0745098 0.0941176 / 0.88)",
+        "sidebar": "rgb(23, 26, 33)",
+        "reading": "rgba(0, 0, 0, 0)",
+        "selected": "color(srgb 0.110588 0.126078 0.172941)",
+        "selectedOutline": "color(srgb 0.498039 0.584314 1 / 0.58)",
+        "ink": "rgb(237, 240, 245)",
+        "muted": "rgb(155, 165, 181)",
+        "semantics": {
+          "--ok": "#57c99b",
+          "--warn": "#f1b65b",
+          "--danger": "#ff737d",
+          "--accent": "#7f95ff"
+        },
+        "doneDot": "rgb(87, 201, 155)",
+        "holdDot": "rgb(241, 182, 91)",
+        "logo": {
+          "src": "/logo.svg",
+          "filter": "drop-shadow(rgba(169, 103, 245, 0.22) 0px 0px 7px)"
+        },
+        "geometry": {
+          "sidebar": {
+            "x": 0,
+            "y": 0,
+            "width": 238,
+            "height": 1000,
+            "top": 0,
+            "right": 238,
+            "bottom": 1000,
+            "left": 0
+          },
+          "header": {
+            "x": 238,
+            "y": 0,
+            "width": 1187,
+            "height": 60,
+            "top": 0,
+            "right": 1425,
+            "bottom": 60,
+            "left": 238
+          },
+          "reading": {
+            "x": 238,
+            "y": 209.5,
+            "width": 1187,
+            "height": 1762.21875,
+            "top": 209.5,
+            "right": 1425,
+            "bottom": 1971.71875,
+            "left": 238
+          },
+          "pr": {
+            "x": 253,
+            "y": 70,
+            "width": 1157,
+            "height": 72,
+            "top": 70,
+            "right": 1410,
+            "bottom": 142,
+            "left": 253
+          },
+          "attention": {
+            "x": 262,
+            "y": 158,
+            "width": 1139,
+            "height": 51.5,
+            "top": 158,
+            "right": 1401,
+            "bottom": 209.5,
+            "left": 262
+          },
+          "overflow": -15,
+          "rows": 20,
+          "rowFilters": 0
+        }
+      },
+      "active": {
+        "theme": "dark",
+        "preference": "system",
+        "root": "rgb(17, 17, 17)",
+        "body": "rgb(17, 17, 17)",
+        "chrome": "color(srgb 0.0941177 0.0941177 0.0941177 / 0.91)",
+        "sidebar": "color(srgb 0.0941177 0.0941177 0.0941177 / 0.91)",
+        "reading": "color(srgb 0.0941177 0.0941177 0.0941177 / 0.96)",
+        "selected": "color(srgb 0.132941 0.132941 0.132941)",
+        "selectedOutline": "color(srgb 0.870588 0.870588 0.870588 / 0.28)",
+        "ink": "rgb(242, 242, 242)",
+        "muted": "rgb(182, 182, 182)",
+        "semantics": {
+          "--ok": "#57c99b",
+          "--warn": "#f1b65b",
+          "--danger": "#ff737d",
+          "--accent": "#7f95ff"
+        },
+        "doneDot": "rgb(87, 201, 155)",
+        "holdDot": "rgb(241, 182, 91)",
+        "logo": {
+          "src": "/logo.svg",
+          "filter": "drop-shadow(rgba(169, 103, 245, 0.22) 0px 0px 7px)"
+        },
+        "geometry": {
+          "sidebar": {
+            "x": 12,
+            "y": 12,
+            "width": 238,
+            "height": 976,
+            "top": 12,
+            "right": 250,
+            "bottom": 988,
+            "left": 12
+          },
+          "header": {
+            "x": 262,
+            "y": 12,
+            "width": 1151,
+            "height": 60,
+            "top": 12,
+            "right": 1413,
+            "bottom": 72,
+            "left": 262
+          },
+          "reading": {
+            "x": 262,
+            "y": 223.5,
+            "width": 1151,
+            "height": 1762.21875,
+            "top": 223.5,
+            "right": 1413,
+            "bottom": 1985.71875,
+            "left": 262
+          },
+          "pr": {
+            "x": 262,
+            "y": 84,
+            "width": 1151,
+            "height": 68,
+            "top": 84,
+            "right": 1413,
+            "bottom": 152,
+            "left": 262
+          },
+          "attention": {
+            "x": 262,
+            "y": 164,
+            "width": 1151,
+            "height": 47.5,
+            "top": 164,
+            "right": 1413,
+            "bottom": 211.5,
+            "left": 262
+          },
+          "overflow": -15,
+          "rows": 20,
+          "rowFilters": 0
+        }
+      },
+      "contrastBounds": {
+        "body": 14.342324058567206,
+        "muted": 7.917731053357226
+      },
+      "systemFlip": {
+        "theme": "light",
+        "preference": "system",
+        "root": "rgb(242, 242, 242)",
+        "body": "rgb(242, 242, 242)",
+        "chrome": "color(srgb 1 1 1 / 0.91)",
+        "sidebar": "oklab(0.209035 0.00000952929 0.00000418723 / 0.91)",
+        "reading": "color(srgb 1 1 1 / 0.96)",
+        "selected": "color(srgb 0.961961 0.961961 0.961961)",
+        "selectedOutline": "color(srgb 0.239216 0.239216 0.239216 / 0.28)",
+        "ink": "rgb(36, 36, 36)",
+        "muted": "rgb(98, 98, 98)",
+        "semantics": {
+          "--ok": "#16855b",
+          "--warn": "#b36b00",
+          "--danger": "#d33b45",
+          "--accent": "#4667f2"
+        },
+        "doneDot": "rgb(22, 133, 91)",
+        "holdDot": "rgb(179, 107, 0)",
+        "logo": {
+          "src": "/logo.svg",
+          "filter": "drop-shadow(rgba(169, 103, 245, 0.22) 0px 0px 7px)"
+        },
+        "geometry": {
+          "sidebar": {
+            "x": 12,
+            "y": 12,
+            "width": 238,
+            "height": 976,
+            "top": 12,
+            "right": 250,
+            "bottom": 988,
+            "left": 12
+          },
+          "header": {
+            "x": 262,
+            "y": 12,
+            "width": 1151,
+            "height": 60,
+            "top": 12,
+            "right": 1413,
+            "bottom": 72,
+            "left": 262
+          },
+          "reading": {
+            "x": 262,
+            "y": 223.5,
+            "width": 1151,
+            "height": 1762.21875,
+            "top": 223.5,
+            "right": 1413,
+            "bottom": 1985.71875,
+            "left": 262
+          },
+          "pr": {
+            "x": 262,
+            "y": 84,
+            "width": 1151,
+            "height": 68,
+            "top": 84,
+            "right": 1413,
+            "bottom": 152,
+            "left": 262
+          },
+          "attention": {
+            "x": 262,
+            "y": 164,
+            "width": 1151,
+            "height": 47.5,
+            "top": 164,
+            "right": 1413,
+            "bottom": 211.5,
+            "left": 262
+          },
+          "overflow": -15,
+          "rows": 20,
+          "rowFilters": 0
+        }
+      },
+      "errors": []
+    },
+    {
+      "palette": "slate",
+      "width": 390,
+      "choice": "light",
+      "off": {
+        "theme": "light",
+        "preference": "light",
+        "root": "rgba(0, 0, 0, 0)",
+        "body": "rgb(247, 248, 250)",
+        "chrome": "color(srgb 0.968627 0.972549 0.980392 / 0.88)",
+        "sidebar": "rgb(255, 255, 255)",
+        "reading": "rgba(0, 0, 0, 0)",
+        "selected": "color(srgb 0.963726 0.970196 0.997451)",
+        "selectedOutline": "color(srgb 0.27451 0.403922 0.94902 / 0.58)",
+        "ink": "rgb(23, 32, 51)",
+        "muted": "rgb(104, 115, 134)",
+        "semantics": {
+          "--ok": "#16855b",
+          "--warn": "#b36b00",
+          "--danger": "#d33b45",
+          "--accent": "#4667f2"
+        },
+        "doneDot": "rgb(22, 133, 91)",
+        "holdDot": "rgb(179, 107, 0)",
+        "logo": {
+          "src": "/logo.svg",
+          "filter": "drop-shadow(rgba(169, 103, 245, 0.22) 0px 0px 7px)"
+        },
+        "geometry": {
+          "sidebar": {
+            "x": 0,
+            "y": 0,
+            "width": 390,
+            "height": 58.1875,
+            "top": 0,
+            "right": 390,
+            "bottom": 58.1875,
+            "left": 0
+          },
+          "header": {
+            "x": 0,
+            "y": 58.1875,
+            "width": 390,
+            "height": 93,
+            "top": 58.1875,
+            "right": 390,
+            "bottom": 151.1875,
+            "left": 0
+          },
+          "reading": {
+            "x": 0,
+            "y": 334.6875,
+            "width": 390,
+            "height": 2222.6875,
+            "top": 334.6875,
+            "right": 390,
+            "bottom": 2557.375,
+            "left": 0
+          },
+          "pr": {
+            "x": 10,
+            "y": 159.1875,
+            "width": 370,
+            "height": 116,
+            "top": 159.1875,
+            "right": 380,
+            "bottom": 275.1875,
+            "left": 10
+          },
+          "attention": {
+            "x": 12,
+            "y": 287.1875,
+            "width": 366,
+            "height": 47.5,
+            "top": 287.1875,
+            "right": 378,
+            "bottom": 334.6875,
+            "left": 12
+          },
+          "overflow": 0,
+          "rows": 20,
+          "rowFilters": 0
+        }
+      },
+      "active": {
+        "theme": "light",
+        "preference": "light",
+        "root": "rgb(242, 242, 242)",
+        "body": "rgb(242, 242, 242)",
+        "chrome": "color(srgb 1 1 1 / 0.91)",
+        "sidebar": "color(srgb 1 1 1 / 0.91)",
+        "reading": "color(srgb 1 1 1 / 0.96)",
+        "selected": "color(srgb 0.961961 0.961961 0.961961)",
+        "selectedOutline": "color(srgb 0.239216 0.239216 0.239216 / 0.28)",
+        "ink": "rgb(36, 36, 36)",
+        "muted": "rgb(98, 98, 98)",
+        "semantics": {
+          "--ok": "#16855b",
+          "--warn": "#b36b00",
+          "--danger": "#d33b45",
+          "--accent": "#4667f2"
+        },
+        "doneDot": "rgb(22, 133, 91)",
+        "holdDot": "rgb(179, 107, 0)",
+        "logo": {
+          "src": "/logo.svg",
+          "filter": "drop-shadow(rgba(169, 103, 245, 0.22) 0px 0px 7px)"
+        },
+        "geometry": {
+          "sidebar": {
+            "x": 8,
+            "y": 8,
+            "width": 374,
+            "height": 57.1875,
+            "top": 8,
+            "right": 382,
+            "bottom": 65.1875,
+            "left": 8
+          },
+          "header": {
+            "x": 8,
+            "y": 73.1875,
+            "width": 374,
+            "height": 92,
+            "top": 73.1875,
+            "right": 382,
+            "bottom": 165.1875,
+            "left": 8
+          },
+          "reading": {
+            "x": 8,
+            "y": 344.6875,
+            "width": 374,
+            "height": 2222.6875,
+            "top": 344.6875,
+            "right": 382,
+            "bottom": 2567.375,
+            "left": 8
+          },
+          "pr": {
+            "x": 8,
+            "y": 173.1875,
+            "width": 374,
+            "height": 112,
+            "top": 173.1875,
+            "right": 382,
+            "bottom": 285.1875,
+            "left": 8
+          },
+          "attention": {
+            "x": 8,
+            "y": 293.1875,
+            "width": 374,
+            "height": 43.5,
+            "top": 293.1875,
+            "right": 382,
+            "bottom": 336.6875,
+            "left": 8
+          },
+          "overflow": 0,
+          "rows": 20,
+          "rowFilters": 0
+        }
+      },
+      "contrastBounds": {
+        "body": 14.213183336851284,
+        "muted": 5.585072368960612
+      },
+      "systemFlip": null,
+      "errors": []
+    },
+    {
+      "palette": "slate",
+      "width": 390,
+      "choice": "dark",
+      "off": {
+        "theme": "dark",
+        "preference": "dark",
+        "root": "rgba(0, 0, 0, 0)",
+        "body": "rgb(17, 19, 24)",
+        "chrome": "color(srgb 0.0666667 0.0745098 0.0941176 / 0.88)",
+        "sidebar": "rgb(23, 26, 33)",
+        "reading": "rgba(0, 0, 0, 0)",
+        "selected": "color(srgb 0.110588 0.126078 0.172941)",
+        "selectedOutline": "color(srgb 0.498039 0.584314 1 / 0.58)",
+        "ink": "rgb(237, 240, 245)",
+        "muted": "rgb(155, 165, 181)",
+        "semantics": {
+          "--ok": "#57c99b",
+          "--warn": "#f1b65b",
+          "--danger": "#ff737d",
+          "--accent": "#7f95ff"
+        },
+        "doneDot": "rgb(87, 201, 155)",
+        "holdDot": "rgb(241, 182, 91)",
+        "logo": {
+          "src": "/logo.svg",
+          "filter": "drop-shadow(rgba(169, 103, 245, 0.22) 0px 0px 7px)"
+        },
+        "geometry": {
+          "sidebar": {
+            "x": 0,
+            "y": 0,
+            "width": 390,
+            "height": 58.1875,
+            "top": 0,
+            "right": 390,
+            "bottom": 58.1875,
+            "left": 0
+          },
+          "header": {
+            "x": 0,
+            "y": 58.1875,
+            "width": 390,
+            "height": 93,
+            "top": 58.1875,
+            "right": 390,
+            "bottom": 151.1875,
+            "left": 0
+          },
+          "reading": {
+            "x": 0,
+            "y": 334.6875,
+            "width": 390,
+            "height": 2222.6875,
+            "top": 334.6875,
+            "right": 390,
+            "bottom": 2557.375,
+            "left": 0
+          },
+          "pr": {
+            "x": 10,
+            "y": 159.1875,
+            "width": 370,
+            "height": 116,
+            "top": 159.1875,
+            "right": 380,
+            "bottom": 275.1875,
+            "left": 10
+          },
+          "attention": {
+            "x": 12,
+            "y": 287.1875,
+            "width": 366,
+            "height": 47.5,
+            "top": 287.1875,
+            "right": 378,
+            "bottom": 334.6875,
+            "left": 12
+          },
+          "overflow": 0,
+          "rows": 20,
+          "rowFilters": 0
+        }
+      },
+      "active": {
+        "theme": "dark",
+        "preference": "dark",
+        "root": "rgb(17, 17, 17)",
+        "body": "rgb(17, 17, 17)",
+        "chrome": "color(srgb 0.0941177 0.0941177 0.0941177 / 0.91)",
+        "sidebar": "color(srgb 0.0941177 0.0941177 0.0941177 / 0.91)",
+        "reading": "color(srgb 0.0941177 0.0941177 0.0941177 / 0.96)",
+        "selected": "color(srgb 0.132941 0.132941 0.132941)",
+        "selectedOutline": "color(srgb 0.870588 0.870588 0.870588 / 0.28)",
+        "ink": "rgb(242, 242, 242)",
+        "muted": "rgb(182, 182, 182)",
+        "semantics": {
+          "--ok": "#57c99b",
+          "--warn": "#f1b65b",
+          "--danger": "#ff737d",
+          "--accent": "#7f95ff"
+        },
+        "doneDot": "rgb(87, 201, 155)",
+        "holdDot": "rgb(241, 182, 91)",
+        "logo": {
+          "src": "/logo.svg",
+          "filter": "drop-shadow(rgba(169, 103, 245, 0.22) 0px 0px 7px)"
+        },
+        "geometry": {
+          "sidebar": {
+            "x": 8,
+            "y": 8,
+            "width": 374,
+            "height": 57.1875,
+            "top": 8,
+            "right": 382,
+            "bottom": 65.1875,
+            "left": 8
+          },
+          "header": {
+            "x": 8,
+            "y": 73.1875,
+            "width": 374,
+            "height": 92,
+            "top": 73.1875,
+            "right": 382,
+            "bottom": 165.1875,
+            "left": 8
+          },
+          "reading": {
+            "x": 8,
+            "y": 344.6875,
+            "width": 374,
+            "height": 2222.6875,
+            "top": 344.6875,
+            "right": 382,
+            "bottom": 2567.375,
+            "left": 8
+          },
+          "pr": {
+            "x": 8,
+            "y": 173.1875,
+            "width": 374,
+            "height": 112,
+            "top": 173.1875,
+            "right": 382,
+            "bottom": 285.1875,
+            "left": 8
+          },
+          "attention": {
+            "x": 8,
+            "y": 293.1875,
+            "width": 374,
+            "height": 43.5,
+            "top": 293.1875,
+            "right": 382,
+            "bottom": 336.6875,
+            "left": 8
+          },
+          "overflow": 0,
+          "rows": 20,
+          "rowFilters": 0
+        }
+      },
+      "contrastBounds": {
+        "body": 14.342324058567206,
+        "muted": 7.917731053357226
+      },
+      "systemFlip": null,
+      "errors": []
+    },
+    {
+      "palette": "slate",
+      "width": 390,
+      "choice": "system-light",
+      "off": {
+        "theme": "light",
+        "preference": "system",
+        "root": "rgba(0, 0, 0, 0)",
+        "body": "rgb(247, 248, 250)",
+        "chrome": "color(srgb 0.968627 0.972549 0.980392 / 0.88)",
+        "sidebar": "rgb(255, 255, 255)",
+        "reading": "rgba(0, 0, 0, 0)",
+        "selected": "color(srgb 0.963726 0.970196 0.997451)",
+        "selectedOutline": "color(srgb 0.27451 0.403922 0.94902 / 0.58)",
+        "ink": "rgb(23, 32, 51)",
+        "muted": "rgb(104, 115, 134)",
+        "semantics": {
+          "--ok": "#16855b",
+          "--warn": "#b36b00",
+          "--danger": "#d33b45",
+          "--accent": "#4667f2"
+        },
+        "doneDot": "rgb(22, 133, 91)",
+        "holdDot": "rgb(179, 107, 0)",
+        "logo": {
+          "src": "/logo.svg",
+          "filter": "drop-shadow(rgba(169, 103, 245, 0.22) 0px 0px 7px)"
+        },
+        "geometry": {
+          "sidebar": {
+            "x": 0,
+            "y": 0,
+            "width": 390,
+            "height": 58.1875,
+            "top": 0,
+            "right": 390,
+            "bottom": 58.1875,
+            "left": 0
+          },
+          "header": {
+            "x": 0,
+            "y": 58.1875,
+            "width": 390,
+            "height": 93,
+            "top": 58.1875,
+            "right": 390,
+            "bottom": 151.1875,
+            "left": 0
+          },
+          "reading": {
+            "x": 0,
+            "y": 334.6875,
+            "width": 390,
+            "height": 2222.6875,
+            "top": 334.6875,
+            "right": 390,
+            "bottom": 2557.375,
+            "left": 0
+          },
+          "pr": {
+            "x": 10,
+            "y": 159.1875,
+            "width": 370,
+            "height": 116,
+            "top": 159.1875,
+            "right": 380,
+            "bottom": 275.1875,
+            "left": 10
+          },
+          "attention": {
+            "x": 12,
+            "y": 287.1875,
+            "width": 366,
+            "height": 47.5,
+            "top": 287.1875,
+            "right": 378,
+            "bottom": 334.6875,
+            "left": 12
+          },
+          "overflow": 0,
+          "rows": 20,
+          "rowFilters": 0
+        }
+      },
+      "active": {
+        "theme": "light",
+        "preference": "system",
+        "root": "rgb(242, 242, 242)",
+        "body": "rgb(242, 242, 242)",
+        "chrome": "color(srgb 1 1 1 / 0.91)",
+        "sidebar": "color(srgb 1 1 1 / 0.91)",
+        "reading": "color(srgb 1 1 1 / 0.96)",
+        "selected": "color(srgb 0.961961 0.961961 0.961961)",
+        "selectedOutline": "color(srgb 0.239216 0.239216 0.239216 / 0.28)",
+        "ink": "rgb(36, 36, 36)",
+        "muted": "rgb(98, 98, 98)",
+        "semantics": {
+          "--ok": "#16855b",
+          "--warn": "#b36b00",
+          "--danger": "#d33b45",
+          "--accent": "#4667f2"
+        },
+        "doneDot": "rgb(22, 133, 91)",
+        "holdDot": "rgb(179, 107, 0)",
+        "logo": {
+          "src": "/logo.svg",
+          "filter": "drop-shadow(rgba(169, 103, 245, 0.22) 0px 0px 7px)"
+        },
+        "geometry": {
+          "sidebar": {
+            "x": 8,
+            "y": 8,
+            "width": 374,
+            "height": 57.1875,
+            "top": 8,
+            "right": 382,
+            "bottom": 65.1875,
+            "left": 8
+          },
+          "header": {
+            "x": 8,
+            "y": 73.1875,
+            "width": 374,
+            "height": 92,
+            "top": 73.1875,
+            "right": 382,
+            "bottom": 165.1875,
+            "left": 8
+          },
+          "reading": {
+            "x": 8,
+            "y": 344.6875,
+            "width": 374,
+            "height": 2222.6875,
+            "top": 344.6875,
+            "right": 382,
+            "bottom": 2567.375,
+            "left": 8
+          },
+          "pr": {
+            "x": 8,
+            "y": 173.1875,
+            "width": 374,
+            "height": 112,
+            "top": 173.1875,
+            "right": 382,
+            "bottom": 285.1875,
+            "left": 8
+          },
+          "attention": {
+            "x": 8,
+            "y": 293.1875,
+            "width": 374,
+            "height": 43.5,
+            "top": 293.1875,
+            "right": 382,
+            "bottom": 336.6875,
+            "left": 8
+          },
+          "overflow": 0,
+          "rows": 20,
+          "rowFilters": 0
+        }
+      },
+      "contrastBounds": {
+        "body": 14.213183336851284,
+        "muted": 5.585072368960612
+      },
+      "systemFlip": {
+        "theme": "dark",
+        "preference": "system",
+        "root": "rgb(17, 17, 17)",
+        "body": "rgb(17, 17, 17)",
+        "chrome": "color(srgb 0.0941177 0.0941177 0.0941177 / 0.91)",
+        "sidebar": "color(srgb 0.0941177 0.0941177 0.0941177 / 0.91)",
+        "reading": "color(srgb 0.0941177 0.0941177 0.0941177 / 0.96)",
+        "selected": "color(srgb 0.132941 0.132941 0.132941)",
+        "selectedOutline": "color(srgb 0.870588 0.870588 0.870588 / 0.28)",
+        "ink": "rgb(242, 242, 242)",
+        "muted": "rgb(182, 182, 182)",
+        "semantics": {
+          "--ok": "#57c99b",
+          "--warn": "#f1b65b",
+          "--danger": "#ff737d",
+          "--accent": "#7f95ff"
+        },
+        "doneDot": "rgb(87, 201, 155)",
+        "holdDot": "rgb(241, 182, 91)",
+        "logo": {
+          "src": "/logo.svg",
+          "filter": "drop-shadow(rgba(169, 103, 245, 0.22) 0px 0px 7px)"
+        },
+        "geometry": {
+          "sidebar": {
+            "x": 8,
+            "y": 8,
+            "width": 374,
+            "height": 57.1875,
+            "top": 8,
+            "right": 382,
+            "bottom": 65.1875,
+            "left": 8
+          },
+          "header": {
+            "x": 8,
+            "y": 73.1875,
+            "width": 374,
+            "height": 92,
+            "top": 73.1875,
+            "right": 382,
+            "bottom": 165.1875,
+            "left": 8
+          },
+          "reading": {
+            "x": 8,
+            "y": 344.6875,
+            "width": 374,
+            "height": 2222.6875,
+            "top": 344.6875,
+            "right": 382,
+            "bottom": 2567.375,
+            "left": 8
+          },
+          "pr": {
+            "x": 8,
+            "y": 173.1875,
+            "width": 374,
+            "height": 112,
+            "top": 173.1875,
+            "right": 382,
+            "bottom": 285.1875,
+            "left": 8
+          },
+          "attention": {
+            "x": 8,
+            "y": 293.1875,
+            "width": 374,
+            "height": 43.5,
+            "top": 293.1875,
+            "right": 382,
+            "bottom": 336.6875,
+            "left": 8
+          },
+          "overflow": 0,
+          "rows": 20,
+          "rowFilters": 0
+        }
+      },
+      "errors": []
+    },
+    {
+      "palette": "slate",
+      "width": 390,
+      "choice": "system-dark",
+      "off": {
+        "theme": "dark",
+        "preference": "system",
+        "root": "rgba(0, 0, 0, 0)",
+        "body": "rgb(17, 19, 24)",
+        "chrome": "color(srgb 0.0666667 0.0745098 0.0941176 / 0.88)",
+        "sidebar": "rgb(23, 26, 33)",
+        "reading": "rgba(0, 0, 0, 0)",
+        "selected": "color(srgb 0.110588 0.126078 0.172941)",
+        "selectedOutline": "color(srgb 0.498039 0.584314 1 / 0.58)",
+        "ink": "rgb(237, 240, 245)",
+        "muted": "rgb(155, 165, 181)",
+        "semantics": {
+          "--ok": "#57c99b",
+          "--warn": "#f1b65b",
+          "--danger": "#ff737d",
+          "--accent": "#7f95ff"
+        },
+        "doneDot": "rgb(87, 201, 155)",
+        "holdDot": "rgb(241, 182, 91)",
+        "logo": {
+          "src": "/logo.svg",
+          "filter": "drop-shadow(rgba(169, 103, 245, 0.22) 0px 0px 7px)"
+        },
+        "geometry": {
+          "sidebar": {
+            "x": 0,
+            "y": 0,
+            "width": 390,
+            "height": 58.1875,
+            "top": 0,
+            "right": 390,
+            "bottom": 58.1875,
+            "left": 0
+          },
+          "header": {
+            "x": 0,
+            "y": 58.1875,
+            "width": 390,
+            "height": 93,
+            "top": 58.1875,
+            "right": 390,
+            "bottom": 151.1875,
+            "left": 0
+          },
+          "reading": {
+            "x": 0,
+            "y": 334.6875,
+            "width": 390,
+            "height": 2222.6875,
+            "top": 334.6875,
+            "right": 390,
+            "bottom": 2557.375,
+            "left": 0
+          },
+          "pr": {
+            "x": 10,
+            "y": 159.1875,
+            "width": 370,
+            "height": 116,
+            "top": 159.1875,
+            "right": 380,
+            "bottom": 275.1875,
+            "left": 10
+          },
+          "attention": {
+            "x": 12,
+            "y": 287.1875,
+            "width": 366,
+            "height": 47.5,
+            "top": 287.1875,
+            "right": 378,
+            "bottom": 334.6875,
+            "left": 12
+          },
+          "overflow": 0,
+          "rows": 20,
+          "rowFilters": 0
+        }
+      },
+      "active": {
+        "theme": "dark",
+        "preference": "system",
+        "root": "rgb(17, 17, 17)",
+        "body": "rgb(17, 17, 17)",
+        "chrome": "color(srgb 0.0941177 0.0941177 0.0941177 / 0.91)",
+        "sidebar": "color(srgb 0.0941177 0.0941177 0.0941177 / 0.91)",
+        "reading": "color(srgb 0.0941177 0.0941177 0.0941177 / 0.96)",
+        "selected": "color(srgb 0.132941 0.132941 0.132941)",
+        "selectedOutline": "color(srgb 0.870588 0.870588 0.870588 / 0.28)",
+        "ink": "rgb(242, 242, 242)",
+        "muted": "rgb(182, 182, 182)",
+        "semantics": {
+          "--ok": "#57c99b",
+          "--warn": "#f1b65b",
+          "--danger": "#ff737d",
+          "--accent": "#7f95ff"
+        },
+        "doneDot": "rgb(87, 201, 155)",
+        "holdDot": "rgb(241, 182, 91)",
+        "logo": {
+          "src": "/logo.svg",
+          "filter": "drop-shadow(rgba(169, 103, 245, 0.22) 0px 0px 7px)"
+        },
+        "geometry": {
+          "sidebar": {
+            "x": 8,
+            "y": 8,
+            "width": 374,
+            "height": 57.1875,
+            "top": 8,
+            "right": 382,
+            "bottom": 65.1875,
+            "left": 8
+          },
+          "header": {
+            "x": 8,
+            "y": 73.1875,
+            "width": 374,
+            "height": 92,
+            "top": 73.1875,
+            "right": 382,
+            "bottom": 165.1875,
+            "left": 8
+          },
+          "reading": {
+            "x": 8,
+            "y": 344.6875,
+            "width": 374,
+            "height": 2222.6875,
+            "top": 344.6875,
+            "right": 382,
+            "bottom": 2567.375,
+            "left": 8
+          },
+          "pr": {
+            "x": 8,
+            "y": 173.1875,
+            "width": 374,
+            "height": 112,
+            "top": 173.1875,
+            "right": 382,
+            "bottom": 285.1875,
+            "left": 8
+          },
+          "attention": {
+            "x": 8,
+            "y": 293.1875,
+            "width": 374,
+            "height": 43.5,
+            "top": 293.1875,
+            "right": 382,
+            "bottom": 336.6875,
+            "left": 8
+          },
+          "overflow": 0,
+          "rows": 20,
+          "rowFilters": 0
+        }
+      },
+      "contrastBounds": {
+        "body": 14.342324058567206,
+        "muted": 7.917731053357226
+      },
+      "systemFlip": {
+        "theme": "light",
+        "preference": "system",
+        "root": "rgb(242, 242, 242)",
+        "body": "rgb(242, 242, 242)",
+        "chrome": "color(srgb 1 1 1 / 0.91)",
+        "sidebar": "color(srgb 1 1 1 / 0.91)",
+        "reading": "color(srgb 1 1 1 / 0.96)",
+        "selected": "color(srgb 0.961961 0.961961 0.961961)",
+        "selectedOutline": "color(srgb 0.239216 0.239216 0.239216 / 0.28)",
+        "ink": "rgb(36, 36, 36)",
+        "muted": "rgb(98, 98, 98)",
+        "semantics": {
+          "--ok": "#16855b",
+          "--warn": "#b36b00",
+          "--danger": "#d33b45",
+          "--accent": "#4667f2"
+        },
+        "doneDot": "rgb(22, 133, 91)",
+        "holdDot": "rgb(179, 107, 0)",
+        "logo": {
+          "src": "/logo.svg",
+          "filter": "drop-shadow(rgba(169, 103, 245, 0.22) 0px 0px 7px)"
+        },
+        "geometry": {
+          "sidebar": {
+            "x": 8,
+            "y": 8,
+            "width": 374,
+            "height": 57.1875,
+            "top": 8,
+            "right": 382,
+            "bottom": 65.1875,
+            "left": 8
+          },
+          "header": {
+            "x": 8,
+            "y": 73.1875,
+            "width": 374,
+            "height": 92,
+            "top": 73.1875,
+            "right": 382,
+            "bottom": 165.1875,
+            "left": 8
+          },
+          "reading": {
+            "x": 8,
+            "y": 344.6875,
+            "width": 374,
+            "height": 2222.6875,
+            "top": 344.6875,
+            "right": 382,
+            "bottom": 2567.375,
+            "left": 8
+          },
+          "pr": {
+            "x": 8,
+            "y": 173.1875,
+            "width": 374,
+            "height": 112,
+            "top": 173.1875,
+            "right": 382,
+            "bottom": 285.1875,
+            "left": 8
+          },
+          "attention": {
+            "x": 8,
+            "y": 293.1875,
+            "width": 374,
+            "height": 43.5,
+            "top": 293.1875,
+            "right": 382,
+            "bottom": 336.6875,
+            "left": 8
+          },
+          "overflow": 0,
+          "rows": 20,
+          "rowFilters": 0
+        }
+      },
+      "errors": []
+    }
+  ],
+  "browserClosed": true,
+  "serverListening": false,
+  "syntheticData": true,
+  "actualSamsung": false
+}

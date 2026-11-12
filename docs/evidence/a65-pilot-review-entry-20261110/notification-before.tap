@@ -1,0 +1,112 @@
+✔ browser evidence follows accepted display request, preserves project and deduplicates in-flight calls (11.250625ms)
+✔ failure and disabled settings produce no false browser success; legacy and project off survive (1.236125ms)
+✔ history joins exact project/event ID and never claims unknown/failed/suppressed delivery success (24.222917ms)
+✔ resolved operation tombstone prevents same incident reappearing after stale or undated payload (1.183042ms)
+✔ diagnostic menu keeps failures visible, removes resolved entries and clipboard text requests no execution (1.380125ms)
+✔ diagnostic late response cannot restore resolved state; project/folder remain isolated and same revision polls refresh (1.105958ms)
+✔ automatic source remap invalidates an in-flight diagnostic success or failure (1.881667ms)
+✔ delivery history coalesces loads and preserves records when subsequent server read fails (3.079625ms)
+✔ hook resolution prevents stale, undated or equal-time assignment warnings from reaching browser consumer (1.574125ms)
+✖ native packaged shell has dedicated preferences and notifications without a duplicate attention route (52.303541ms)
+✔ notification labels retain their meaning and remain readable in the native navigation (5.511875ms)
+ℹ tests 11
+ℹ suites 0
+ℹ pass 10
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 151.433833
+
+✖ failing tests:
+
+test at tests/web_notification_center.test.cjs:58:1
+✖ native packaged shell has dedicated preferences and notifications without a duplicate attention route (52.303541ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /type="module" src="\/ui\/main.js"/. Input:
+  
+  '<!doctype html>\n' +
+    '<html lang="ko">\n' +
+    '<head>\n' +
+    '  <meta charset="utf-8" />\n' +
+    '  <meta name="viewport" content="width=device-width,initial-scale=1" />\n' +
+    '  <title>Task Mecca</title>\n' +
+    '  <meta name="theme-color" content="#0a0e1b" />\n' +
+    '  <meta name="apple-mobile-web-app-capable" content="yes" />\n' +
+    '  <meta name="apple-mobile-web-app-title" content="Task Mecca" />\n' +
+    '  <link rel="manifest" href="/manifest.webmanifest" />\n' +
+    '  <script src="/theme-boot.js"></script>\n' +
+    '  <link rel="icon" href="/logo.svg" type="image/svg+xml" />\n' +
+    '  <link rel="stylesheet" href="/style.css" />\n' +
+    '  <!-- Opt-in material pilot: dev DOM and app stay unchanged. -->\n' +
+    '  <script src="/ui/dev-floating/pilot.js"></script>\n' +
+    '  <link rel="stylesheet" href="/ui/dev-floating/pilot.css" />\n' +
+    '</head>\n' +
+    '<body>\n' +
+    '  <div class="app-shell">\n' +
+    '    <aside class="sidebar" id="sidebar">\n' +
+    '      <div class="sidebar-head">\n' +
+    '        <div class="brand"><button type="button" class="brand-mark" id="channelSwitchMark" aria-label="Task Mecca release channel" title="Task Mecca"><img src="/logo.svg" alt="" aria-hidden="true" /></button><div class="brand-copy"><strong>Task Mecca</strong><small>Backlog Observatory</small></div></div>\n' +
+    '        <button id="sidebarToggle" class="sidebar-toggle" type="button" aria-label="Collapse sidebar" title="Collapse sidebar" aria-controls="mobileSidebarPanel" aria-expanded="false">‹</button>\n' +
+    '      </div>\n' +
+    '      <div id="mobileSidebarPanel" class="mobile-sidebar-panel">\n' +
+    '      <nav id="stateNav" class="nav"></nav>\n' +
+    '      <div class="sidebar-section"><div class="sidebar-label" id="operationsLabel">OPERATIONS</div>\n' +
+    '        <button class="nav-item" data-view="workload" title="Subagent Workload"><span class="nav-main"><span class="nav-icon" aria-hidden="true">◫</span><span class="nav-text" id="workloadText">Subagent Workload</span></span><span id="workloadCount" class="count"></span></button>\n' +
+    '        <button class="nav-item" data-view="notifications" id="projectNotificationsNav" type="button" title="Notification center" aria-label="Notification center"><span class="nav-main"><span class="nav-icon notification-bell" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg></span><span class="nav-text" id="projectNotificationsText">Notification center</span></span><span class="count"></span></button>\n' +
+    '        <button class="nav-item" id="terminalNavBtn" type="button" title="Terminal"><span class="nav-main"><span class="nav-icon" aria-hidden="true">&gt;_</span><span class="nav-text" id="terminalText">Terminal</span></span><span class="count"></span></button>\n' +
+    '      </div>\n' +
+    '      <div class="sidebar-section"><div class="sidebar-label" id="helpLabel">HELP</div>\n' +
+    '        <button class="nav-item" data-view="manual" title="User Manual"><span class="nav-main"><span class="nav-icon" aria-hidden="true">?</span><span class="nav-text" id="manualText">User Manual</span></span><span class="count">?</span></button>\n' +
+    '        <button class="nav-item" data-view="release-notes" title="Update history"><span class="nav-main"><span class="nav-icon" aria-hidden="true">↟</span><span class="nav-text" id="releaseNotesText">Update history</span></span><span id="releaseNotesBadge" class="count release-nav-badge" aria-hidden="true"></span></button>\n' +
+    '      </div>\n' +
+    '      <button class="nav-item" data-view="issues" title="Backlog diagnostics" hidden><span class="nav-main"><span class="nav-icon" aria-hidden="true">!</span><span class="nav-text" id="issuesText">Backlog diagnostics</span></span><span id="issueCount" class="count"></span></button>\n' +
+    '  <div class="sidebar-footer"><span id="connectionDot" class="dot"></span><span id="snapshotAge" class="sidebar-footer-text">Loading…</span></div>\n' +
+    '      </div>\n' +
+    '    </aside>\n' +
+    '    <main class="main">\n' +
+    '      <header class="topbar">\n' +
+    '        <label class="language-picker"><span id="languageLabel">Language</span><select id="languagePicker" aria-label="Language"></select></label>\n' +
+    '        <div id="accessPill" class="access-pill unknown" title="Effective subagent dispatch access">Access unchecked</div>\n' +
+    '        <div id="globalUpdateIndicator" class="global-update-indicator" aria-live="polite"></div>\n' +
+    '        <label class="palette-picker" title="Theme"><span>Theme</span><select id="palettePicker" aria-label="Theme"><option value="mecca">Mecca</option><option value="slate">Slate</option></select></label>\n' +
+    '        <div class="theme-switcher" role="group" aria-label="Color mode" title="Color mode">\n' +
+    '          <button class="theme-btn" data-theme-choice="system" title="Follow system theme">System</button>\n' +
+    '          <button class="theme-btn" data-theme-choice="light" title="Use light theme">Light</button>\n' +
+    '          <button class="theme-btn" data-theme-choice="dark" title="Use dark theme">Dark</button>\n' +
+    '        </div>\n' +
+    '        <span id="refreshFeedback" class="refresh-feedback" role="status" aria-live="polite" aria-atomic="true"></span>\n' +
+    '        <button id="refreshBtn" class="icon-btn" type="button" title="Refresh and check for updates" aria-label="Refresh and check for updates">↻</button>\n' +
+    '      </header>\n' +
+    '<div id="previewIdentityBanner" class="preview-identity-banner" role="status" hidden></div>\n' +
+    '<div id="prExecutionBanner" class="preview-identity-banner" role="status" hidden></div>\n' +
+    '<section id="userAttention" class="user-attention" aria-live="polite" hidden></section>\n' +
+    '\n' +
+    '      <div id="releaseUnreadPrompt" class="release-unread-prompt" aria-live="polite"></div>\n' +
+    '      <section id="content" class="content"><div class="loading">Loading…</div></section>\n' +
+    '      <div id="contentUpdatePrompt" class="content-update-prompt" aria-live="polite"></div>\n' +
+    '      <div class="shortcut-bar" id="shortcutBar"><span><kbd>↑</kbd><kbd>↓</kbd> move</span><span><kbd>Enter</kbd>/<kbd>→</kbd> open</span><span><kbd>←</kbd>/<kbd>Esc</kbd> back</span><span><kbd>/</kbd> search</span><span><kbd>PgUp</kbd>/<kbd>PgDn</kbd> page</span></div>\n' +
+    '    </main>\n' +
+    '  </div>\n' +
+    '  <div id="mobileSidebarScrim" class="mobile-sidebar-scrim" aria-hidden="true" hidden></div>\n' +
+    '  <div id="releaseNoteModal" class="release-note-modal" hidden></div>\n' +
+    '  <div id="notificationPanel" class="notification-panel" role="dialog" aria-label="Notification settings"></div>\n' +
+    '<script src="/select-ui.js"></script>\n' +
+    '<script src="/app.js"></script>\n' +
+    '<script src="/perf-diagnostics.js"></script>\n' +
+    '</body>\n' +
+    '</html>\n'
+  
+      at TestContext.<anonymous> (/Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/tests/web_notification_center.test.cjs:60:9)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1397:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:969:18)
+      at Test.postRun (node:internal/test_runner/test:1537:19)
+      at Test.run (node:internal/test_runner/test:1462:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:969:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: '<!doctype html>\n<html lang="ko">\n<head>\n  <meta charset="utf-8" />\n  <meta name="viewport" content="width=device-width,initial-scale=1" />\n  <title>Task Mecca</title>\n  <meta name="theme-color" content="#0a0e1b" />\n  <meta name="apple-mobile-web-app-capable" content="yes" />\n  <meta name="apple-mobile-web-app-title" content="Task Mecca" />\n  <link rel="manifest" href="/manifest.webmanifest" />\n  <script src="/theme-boot.js"></script>\n  <link rel="icon" href="/logo.svg" type="image/svg+xml" />\n  <link rel="stylesheet" href="/style.css" />\n  <!-- Opt-in material pilot: dev DOM and app stay unchanged. -->\n  <script src="/ui/dev-floating/pilot.js"></script>\n  <link rel="stylesheet" href="/ui/dev-floating/pilot.css" />\n</head>\n<body>\n  <div class="app-shell">\n    <aside class="sidebar" id="sidebar">\n      <div class="sidebar-head">\n        <div class="brand"><button type="button" class="brand-mark" id="channelSwitchMark" aria-label="Task Mecca release channel" title="Task Mecca"><img src="/logo.svg" alt="" aria-hidden="true" /></button><div class="brand-copy"><strong>Task Mecca</strong><small>Backlog Observatory</small></div></div>\n        <button id="sidebarToggle" class="sidebar-toggle" type="button" aria-label="Collapse sidebar" title="Collapse sidebar" aria-controls="mobileSidebarPanel" aria-expanded="false">‹</button>\n      </div>\n      <div id="mobileSidebarPanel" class="mobile-sidebar-panel">\n      <nav id="stateNav" class="nav"></nav>\n      <div class="sidebar-section"><div class="sidebar-label" id="operationsLabel">OPERATIONS</div>\n        <button class="nav-item" data-view="workload" title="Subagent Workload"><span class="nav-main"><span class="nav-icon" aria-hidden="true">◫</span><span class="nav-text" id="workloadText">Subagent Workload</span></span><span id="workloadCount" class="count"></span></button>\n        <button class="nav-item" data-view="notifications" id="projectNotificationsNav" type="button" title="Notification center" aria-label="Notification center"><span class="nav-main"><span class="nav-icon notification-bell" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg></span><span class="nav-text" id="projectNotificationsText">Notification center</span></span><span class="count"></span></button>\n        <button class="nav-item" id="terminalNavBtn" type="button" title="Terminal"><span class="nav-main"><span class="nav-icon" aria-hidden="true">&gt;_</span><span class="nav-text" id="terminalText">Terminal</span></span><span class="count"></span></button>\n      </div>\n      <div class="sidebar-section"><div class="sidebar-label" id="helpLabel">HELP</div>\n        <button class="nav-item" data-view="manual" title="User Manual"><span class="nav-main"><span class="nav-icon" aria-hidden="true">?</span><span class="nav-text" id="manualText">User Manual</span></span><span class="count">?</span></button>\n        <button class="nav-item" data-view="release-notes" title="Update history"><span class="nav-main"><span class="nav-icon" aria-hidden="true">↟</span><span class="nav-text" id="releaseNotesText">Update history</span></span><span id="releaseNotesBadge" class="count release-nav-badge" aria-hidden="true"></span></button>\n      </div>\n      <button class="nav-item" data-view="issues" title="Backlog diagnostics" hidden><span class="nav-main"><span class="nav-icon" aria-hidden="true">!</span><span class="nav-text" id="issuesText">Backlog diagnostics</span></span><span id="issueCount" class="count"></span></button>\n  <div class="sidebar-footer"><span id="connectionDot" class="dot"></span><span id="snapshotAge" class="sidebar-footer-text">Loading…</span></div>\n      </div>\n    </aside>\n    <main class="main">\n      <header class="topbar">\n        <label class="language-picker"><span id="languageLabel">Language</span><select id="languagePicker" aria-label="Language"></select></label>\n        <div id="accessPill" class="access-pill unknown" title="Effective subagent dispatch access">Access unchecked</div>\n        <div id="globalUpdateIndicator" class="global-update-indicator" aria-live="polite"></div>\n        <label class="palette-picker" title="Theme"><span>Theme</span><select id="palettePicker" aria-label="Theme"><option value="mecca">Mecca</option><option value="slate">Slate</option></select></label>\n        <div class="theme-switcher" role="group" aria-label="Color mode" title="Color mode">\n          <button class="theme-btn" data-theme-choice="system" title="Follow system theme">System</button>\n          <button class="theme-btn" data-theme-choice="light" title="Use light theme">Light</button>\n          <button class="theme-btn" data-theme-choice="dark" title="Use dark theme">Dark</button>\n        </div>\n        <span id="refreshFeedback" class="refresh-feedback" role="status" aria-live="polite" aria-atomic="true"></span>\n        <button id="refreshBtn" class="icon-btn" type="button" title="Refresh and check for updates" aria-label="Refresh and check for updates">↻</button>\n      </header>\n<div id="previewIdentityBanner" class="preview-identity-banner" role="status" hidden></div>\n<div id="prExecutionBanner" class="preview-identity-banner" role="status" hidden></div>\n<section id="userAttention" class="user-attention" aria-live="polite" hidden></section>\n\n      <div id="releaseUnreadPrompt" class="release-unread-prompt" aria-live="polite"></div>\n      <section id="content" class="content"><div class="loading">Loading…</div></section>\n      <div id="contentUpdatePrompt" class="content-update-prompt" aria-live="polite"></div>\n      <div class="shortcut-bar" id="shortcutBar"><span><kbd>↑</kbd><kbd>↓</kbd> move</span><span><kbd>Enter</kbd>/<kbd>→</kbd> open</span><span><kbd>←</kbd>/<kbd>Esc</kbd> back</span><span><kbd>/</kbd> search</span><span><kbd>PgUp</kbd>/<kbd>PgDn</kbd> page</span></div>\n    </main>\n  </div>\n  <div id="mobileSidebarScrim" class="mobile-sidebar-scrim" aria-hidden="true" hidden></div>\n  <div id="releaseNoteModal" class="release-note-modal" hidden></div>\n  <div id="notificationPanel" class="notification-panel" role="dialog" aria-label="Notification settings"></div>\n<script src="/select-ui.js"></script>\n<script src="/app.js"></script>\n<script src="/perf-diagnostics.js"></script>\n</body>\n</html>\n',
+    expected: /type="module" src="\/ui\/main.js"/,
+    operator: 'match',
+    diff: 'simple'
+  }

@@ -1,0 +1,45 @@
+✔ browser evidence follows accepted display request, preserves project and deduplicates in-flight calls (8.855ms)
+✔ failure and disabled settings produce no false browser success; legacy and project off survive (1.294459ms)
+✔ history joins exact project/event ID and never claims unknown/failed/suppressed delivery success (18.554834ms)
+✔ resolved operation tombstone prevents same incident reappearing after stale or undated payload (1.060167ms)
+✔ diagnostic menu keeps failures visible, removes resolved entries and clipboard text requests no execution (1.191125ms)
+✔ diagnostic late response cannot restore resolved state; project/folder remain isolated and same revision polls refresh (1.143541ms)
+✔ automatic source remap invalidates an in-flight diagnostic success or failure (1.561958ms)
+✔ delivery history coalesces loads and preserves records when subsequent server read fails (2.782875ms)
+✔ hook resolution prevents stale, undated or equal-time assignment warnings from reaching browser consumer (1.499917ms)
+✔ native packaged shell has dedicated preferences and notifications without a duplicate attention route (2.888ms)
+✔ notification labels retain their meaning and remain readable in the native navigation (2.736291ms)
+✔ Terminal initializes shared appearance before first stylesheet paint (0.548292ms)
+✔ Terminal shell, fallback and emergency commands use semantic colors (0.654959ms)
+✔ Terminal resolves Mecca/Slate and System/Light/Dark without overrides (1.68125ms)
+✔ Existing xterm canvas recolors from CSS without a session restart (0.347167ms)
+﹣ A63 connected paint, individual dense events, fit entry and exact directional navigation use native input (0.380584ms) # SKIP
+✔ workflow keeps full lifecycle range when all activity is unmeasured (28.036292ms)
+✔ one Agent and round has nineteen intervals in one row and round filter leaves the full axis intact (4.002875ms)
+✔ role colors are semantic and concurrency, unknown rounds, outcomes and escaped details remain present (3.449542ms)
+✔ measured zero differs from missing review and stale evidence is explicit (2.986958ms)
+✔ the unified lifecycle section keeps raw events behind disclosure (1.611125ms)
+✔ unproved execution ends remain start-only and initial load errors have an explicit retry (1.67775ms)
+✔ time window clamps both bounds, fits explicitly and does not follow new events automatically (1.415916ms)
+✔ short nonzero milliseconds never read as measured zero or unmeasured (3.847667ms)
+✔ missing boundaries stay unmeasured without a fabricated axis (1.55225ms)
+✔ visible range identifies dates for midnight and later days of a long lifecycle (1.356542ms)
+✔ A63 exact-touch runs share outer paint while original source objects stay unchanged (1.995917ms)
+✔ A63 positive nanosecond gaps never join and equivalent timezone endpoints do join (1.066083ms)
+✔ A63 lane layout preserves real overlaps and never treats source lane numbers as new time (1.329083ms)
+✔ A63 unverified ends do not prove a join and zero duration does not become missing activity (1.056792ms)
+✔ A63 Fit follows refreshed full bounds while a manual window stays in place (1.018958ms)
+✔ A63 direction indicators describe source time outside each side and no empty/point tails (1.019583ms)
+﹣ slim workflow rows and plot-only real Ctrl-wheel and captured multi-touch gestures (0.428542ms) # SKIP
+﹣ adopted A60 corrections bound mixed outcomes and preserve open row selection extent (0.078ms) # SKIP
+﹣ representative workflow has compact context and plot-coordinate anchored time navigation (0.382166ms) # SKIP
+﹣ actual Activity geometry and native hover, pinned popover, focus, tap and source reconciliation (0.427458ms) # SKIP
+﹣ four scoped A61 review corrections retain identical-source reading state and meaningful labels (0.088042ms) # SKIP
+ℹ tests 37
+ℹ suites 0
+ℹ pass 31
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 6
+ℹ todo 0
+ℹ duration_ms 114.744375

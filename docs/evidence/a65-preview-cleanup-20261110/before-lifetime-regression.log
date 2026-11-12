@@ -1,0 +1,6 @@
+2026/11/10 18:29:35 Task Mecca automatic Telegram delivery issue in project "001": 0 events, 1 failures; inspect notification delivery ledger
+--- FAIL: TestRegisteredWebFixtureJoinsAttentionFeedBeforeTempCleanup (0.02s)
+    registered_fixture_test.go:57: fixture returned before its background writer finished
+FAIL
+FAIL	github.com/silverkhan/TaskMecca/internal/webui	0.472s
+FAIL

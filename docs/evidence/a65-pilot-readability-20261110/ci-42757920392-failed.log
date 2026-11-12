@@ -1,0 +1,176 @@
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	﻿2026-11-10T04:47:12.3452038Z ##[group]Run export WORKFLOW_PLAYWRIGHT_MODULE="$RUNNER_TEMP/workflow-runtime/node_modules/playwright"
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:47:12.3452807Z ^[[36;1mexport WORKFLOW_PLAYWRIGHT_MODULE="$RUNNER_TEMP/workflow-runtime/node_modules/playwright"^[[0m
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:47:12.3453446Z ^[[36;1mnode --test tests/a65_dev_floating_pilot.test.cjs tests/a65_pilot_review_entry.test.cjs^[[0m
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:47:12.3453937Z ^[[36;1mnode --test tests/a65_core_browser.test.cjs^[[0m
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:47:12.3454781Z ^[[36;1mnode --test tests/web_workflow_browser.test.cjs tests/web_workflow_navigation.test.cjs tests/web_workflow_gestures.test.cjs tests/web_workflow_popover.test.cjs tests/web_workflow_connected.test.cjs^[[0m
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:47:12.3455983Z ^[[36;1mWORKFLOW_CORE_ONLY=1 WORKFLOW_NO_CAPTURE=1 WORKFLOW_EVIDENCE_DIR=workflow-browser-evidence/core node --test tests/web_workflow_navigation.test.cjs^[[0m
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:47:12.3507154Z shell: /usr/bin/bash -e {0}
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:47:12.3507402Z env:
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:47:12.3507598Z   WORKFLOW_REQUIRE_BROWSER: 1
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:47:12.3507924Z   WORKFLOW_EVIDENCE_DIR: workflow-browser-evidence
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:47:12.3508224Z ##[endgroup]
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:47:12.4021424Z TAP version 13
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:47:12.7777337Z # Subtest: approved pilot preserves exact origin/dev application, controls, styles and entry DOM
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:47:12.7785104Z ok 1 - approved pilot preserves exact origin/dev application, controls, styles and entry DOM
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:47:12.7785735Z   ---
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:47:12.7786301Z   duration_ms: 9.9933
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:47:12.7786702Z   type: 'test'
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:47:12.7787175Z   ...
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:47:20.8402176Z # Subtest: actual dev entry retains search, native menus, continuous anchors, theme and mobile controls in the pilot
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:47:20.8412106Z ok 2 - actual dev entry retains search, native menus, continuous anchors, theme and mobile controls in the pilot
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:47:20.8429214Z   ---
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:47:20.8444575Z   duration_ms: 8394.057911
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:47:20.8451487Z   type: 'test'
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:47:20.8452180Z   ...
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:47:25.8896546Z # Subtest: PR and standalone Preview offer one-click pilot/dev comparison while ordinary dev remains unchanged
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:47:25.8899423Z ok 3 - PR and standalone Preview offer one-click pilot/dev comparison while ordinary dev remains unchanged
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:47:25.8901272Z   ---
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:47:25.8901611Z   duration_ms: 13458.026709
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:47:25.8902013Z   type: 'test'
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:47:25.8921115Z   ...
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:47:25.9184033Z 1..3
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:47:25.9184376Z # tests 3
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:47:25.9185053Z # suites 0
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:47:25.9185685Z # pass 3
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:47:25.9186284Z # fail 0
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:47:25.9186881Z # cancelled 0
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:47:25.9187529Z # skipped 0
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:47:25.9188126Z # todo 0
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:47:25.9188870Z # duration_ms 13531.8689
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:47:25.9637033Z TAP version 13
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:47:51.3500777Z # Subtest: native Smoke core: overview, navigation, filters, document-first detail and finite reads
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:47:51.3507541Z ok 1 - native Smoke core: overview, navigation, filters, document-first detail and finite reads
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:47:51.3508475Z   ---
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:47:51.3508863Z   duration_ms: 25354.367118
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:47:51.3509321Z   type: 'test'
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:47:51.3509687Z   ...
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:47:51.3735103Z 1..1
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:47:51.3736874Z # tests 1
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:47:51.3737638Z # suites 0
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:47:51.3738583Z # pass 1
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:47:51.3740738Z # fail 0
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:47:51.3741717Z # cancelled 0
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:47:51.3742377Z # skipped 0
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:47:51.3743912Z # todo 0
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:47:51.3744463Z # duration_ms 25421.354211
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:47:51.4280036Z TAP version 13
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:48:26.9909685Z # Subtest: workflow real browser preserves full periods, grouped intervals, role meaning and partial-update state
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:48:26.9926460Z ok 1 - workflow real browser preserves full periods, grouped intervals, role meaning and partial-update state
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:48:26.9929543Z   ---
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:48:26.9930099Z   duration_ms: 35526.33955
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:48:26.9931404Z   type: 'test'
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:48:26.9931918Z   ...
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:48:29.8702155Z # Subtest: native workflow wait polls false predicates through refresh completion
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:48:29.8731449Z ok 2 - native workflow wait polls false predicates through refresh completion
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:48:29.8734609Z   ---
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:48:29.8752829Z   duration_ms: 2877.495556
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:48:29.8753640Z   type: 'test'
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:48:29.8754270Z   ...
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:48:34.7422317Z # Subtest: A63 connected paint, individual dense events, fit entry and exact directional navigation use native input
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:48:34.7424466Z not ok 3 - A63 connected paint, individual dense events, fit entry and exact directional navigation use native input
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:48:34.7425551Z   ---
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:48:34.7426018Z   duration_ms: 43279.126507
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:48:34.7426625Z   type: 'test'
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:48:34.7427548Z   location: '/home/runner/work/TaskMecca/TaskMecca/tests/web_workflow_connected.test.cjs:7:1'
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:48:34.7428587Z   failureType: 'testCodeFailure'
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:48:34.7429194Z   error: |-
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:48:34.7429762Z     locator.click: Timeout 30000ms exceeded.
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:48:34.7430553Z     Call log:
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:48:34.7431271Z       - waiting for locator('.task-row[data-id="FLOW-1"] a').first()
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:48:34.7433790Z         6 × locator resolved to <a data-route="" class="task-link" href="/tasks/FLOW-1?project=%2Ffixtures%2Fworkflow&backlog=%2Ffixtures%2Fworkflow%2F_task_mecca%2Fdata%2Fbacklog&page=1&page_size=auto&sort=id_desc">…</a>
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:48:34.7442335Z         - attempting click action
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:48:34.7442951Z           - waiting for element to be visible, enabled and stable
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:48:34.7443599Z         - element was detached from the DOM, retrying
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:48:34.7445688Z         - locator resolved to <a data-route="" class="task-link" href="/tasks/FLOW-1?project=%2Ffixtures%2Fworkflow&backlog=%2Ffixtures%2Fworkflow%2F_task_mecca%2Fdata%2Fbacklog&page=1&page_size=auto&sort=id_desc">…</a>
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:48:34.7447738Z       - attempting click action
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:48:34.7448350Z         - waiting for element to be visible, enabled and stable
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:48:34.7448969Z         - element is not stable
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:48:34.7449390Z       - retrying click action
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:48:34.7450106Z         3 × waiting for element to be visible, enabled and stable
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:48:34.7451111Z         - element was detached from the DOM, retrying
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:48:34.7453206Z           - locator resolved to <a data-route="" class="task-link" href="/tasks/FLOW-1?project=%2Ffixtures%2Fworkflow&backlog=%2Ffixtures%2Fworkflow%2F_task_mecca%2Fdata%2Fbacklog&page=1&page_size=auto&sort=id_desc">…</a>
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:48:34.7454857Z         - attempting click action
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:48:34.7455471Z         - waiting for element to be visible, enabled and stable
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:48:34.7456115Z         - element is not stable
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:48:34.7456540Z       - retrying click action
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:48:34.7457235Z         2 × waiting for element to be visible, enabled and stable
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:48:34.7457920Z         - element was detached from the DOM, retrying
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:48:34.7459941Z           - locator resolved to <a data-route="" class="task-link" href="/tasks/FLOW-1?project=%2Ffixtures%2Fworkflow&backlog=%2Ffixtures%2Fworkflow%2F_task_mecca%2Fdata%2Fbacklog&page=1&page_size=auto&sort=id_desc">…</a>
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:48:34.7461550Z         - attempting click action
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:48:34.7462205Z         5 × waiting for element to be visible, enabled and stable
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:48:34.7462762Z           - element is not stable
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:48:34.7463224Z         - retrying click action
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:48:34.7463810Z           - waiting for element to be visible, enabled and stable
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:48:34.7464498Z         - element was detached from the DOM, retrying
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:48:34.7466539Z           - locator resolved to <a data-route="" class="task-link" href="/tasks/FLOW-1?project=%2Ffixtures%2Fworkflow&backlog=%2Ffixtures%2Fworkflow%2F_task_mecca%2Fdata%2Fbacklog&page=1&page_size=auto&sort=id_desc">…</a>
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:48:34.7468372Z         - attempting click action
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:48:34.7469071Z         4 × waiting for element to be visible, enabled and stable
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:48:34.7469762Z         - element was detached from the DOM, retrying
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:48:34.7483028Z           - locator resolved to <a data-route="" class="task-link" href="/tasks/FLOW-1?project=%2Ffixtures%2Fworkflow&backlog=%2Ffixtures%2Fworkflow%2F_task_mecca%2Fdata%2Fbacklog&page=1&page_size=auto&sort=id_desc">…</a>
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:48:34.7484670Z         - attempting click action
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:48:34.7485303Z           - waiting for element to be visible, enabled and stable
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:48:34.7485931Z           - element is not stable
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:48:34.7486435Z         - retrying click action
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:48:34.7487031Z           - waiting for element to be visible, enabled and stable
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:48:34.7487719Z         - element was detached from the DOM, retrying
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:48:34.7489836Z           - locator resolved to <a data-route="" class="task-link" href="/tasks/FLOW-1?project=%2Ffixtures%2Fworkflow&backlog=%2Ffixtures%2Fworkflow%2F_task_mecca%2Fdata%2Fbacklog&page=1&page_size=auto&sort=id_desc">…</a>
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:48:34.7491557Z         - attempting click action
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:48:34.7492268Z         2 × waiting for element to be visible, enabled and stable
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:48:34.7492969Z         - element was detached from the DOM, retrying
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:48:34.7495025Z           - locator resolved to <a data-route="" class="task-link" href="/tasks/FLOW-1?project=%2Ffixtures%2Fworkflow&backlog=%2Ffixtures%2Fworkflow%2F_task_mecca%2Fdata%2Fbacklog&page=1&page_size=auto&sort=id_desc">…</a>
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:48:34.7496585Z         - attempting click action
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:48:34.7497760Z         - waiting for element to be visible, enabled and stable
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:48:34.7498349Z         - element is not stable
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:48:34.7498792Z       - retrying click action
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:48:34.7499495Z         2 × waiting for element to be visible, enabled and stable
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:48:34.7500206Z         - element was detached from the DOM, retrying
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:48:34.7502416Z           - locator resolved to <a data-route="" class="task-link" href="/tasks/FLOW-1?project=%2Ffixtures%2Fworkflow&backlog=%2Ffixtures%2Fworkflow%2F_task_mecca%2Fdata%2Fbacklog&page=1&page_size=auto&sort=id_desc">…</a>
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:48:34.7503992Z         - attempting click action
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:48:34.7504598Z         - waiting for element to be visible, enabled and stable
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:48:34.7505274Z       - element was detached from the DOM, retrying
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:48:34.7505771Z     
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:48:34.7506093Z   code: 'ERR_TEST_FAILURE'
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:48:34.7506492Z   name: 'TimeoutError'
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:48:34.7506895Z   stack: |-
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:48:34.7507881Z     TestContext.<anonymous> (/home/runner/work/TaskMecca/TaskMecca/tests/web_workflow_connected.test.cjs:35:150)
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:48:34.7508808Z   ...
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:49:11.6392092Z # Subtest: slim workflow rows and plot-only real Ctrl-wheel and captured multi-touch gestures
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:49:11.6393742Z ok 4 - slim workflow rows and plot-only real Ctrl-wheel and captured multi-touch gestures
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:49:11.6423149Z   ---
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:49:11.6423955Z   duration_ms: 43340.852413
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:49:11.6424531Z   type: 'test'
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:49:11.6425005Z   ...
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:49:11.6425953Z # Subtest: adopted A60 corrections bound mixed outcomes and preserve open row selection extent
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:49:11.6427314Z ok 5 - adopted A60 corrections bound mixed outcomes and preserve open row selection extent
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:49:11.6428179Z   ---
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:49:11.6428633Z   duration_ms: 36823.771556
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:49:11.6429152Z   type: 'test'
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:49:11.6429628Z   ...
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:49:11.6801457Z # Subtest: representative workflow has compact context and plot-coordinate anchored time navigation
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:49:11.6803485Z ok 6 - representative workflow has compact context and plot-coordinate anchored time navigation
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:49:11.6804289Z   ---
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:49:11.6804664Z   duration_ms: 28798.420225
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:49:11.6805214Z   type: 'test'
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:49:11.6805693Z   ...
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:49:12.5425178Z # Subtest: actual Activity geometry and native hover, pinned popover, focus, tap and source reconciliation
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:49:12.5430654Z ok 7 - actual Activity geometry and native hover, pinned popover, focus, tap and source reconciliation
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:49:12.5431980Z   ---
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:49:12.5432692Z   duration_ms: 37540.539394
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:49:12.5432992Z   type: 'test'
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:49:12.5433200Z   ...
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:49:35.1462042Z # Subtest: four scoped A61 review corrections retain identical-source reading state and meaningful labels
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:49:35.1481994Z ok 8 - four scoped A61 review corrections retain identical-source reading state and meaningful labels
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:49:35.1482974Z   ---
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:49:35.1483366Z   duration_ms: 22604.056012
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:49:35.1483760Z   type: 'test'
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:49:35.1484173Z   ...
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:49:35.1882732Z 1..8
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:49:35.1883199Z # tests 8
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:49:35.1883591Z # suites 0
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:49:35.1884163Z # pass 7
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:49:35.1884924Z # fail 1
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:49:35.1885486Z # cancelled 0
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:49:35.1886135Z # skipped 0
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:49:35.1886665Z # todo 0
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:49:35.1887312Z # duration_ms 103781.987978
+Unified workflow browser regression	Verify workflow timing and interaction in actual Chromium	2026-11-10T04:49:35.1956659Z ##[error]Process completed with exit code 1.

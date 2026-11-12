@@ -1,0 +1,60 @@
+{
+  "url": "http://127.0.0.1:57068/?view=backlog&project=%2Fvar%2Ffolders%2F07%2Fq_8xp6j90zn8r_gdxk6sj5nm0000gn%2FT%2Ftask-mecca-a65-preview-zZLFod%2Ftask-mecca&backlog=%2Fvar%2Ffolders%2F07%2Fq_8xp6j90zn8r_gdxk6sj5nm0000gn%2FT%2Ftask-mecca-a65-preview-zZLFod%2Ftask-mecca%2F_task_mecca%2Fdata%2Fbacklog&page=1&page_size=10&status=doing&tags=area%3Afrontend&sort=updated_asc",
+  "source_head": "487c23918449aaab6ab422c5d1f47b71a1669055",
+  "synthetic": true,
+  "viewport": [
+    320,
+    844
+  ],
+  "open": true,
+  "overflow": false,
+  "controls": [
+    {
+      "name": "status",
+      "value": "doing",
+      "top": 398.859375,
+      "left": 20,
+      "right": 147.5,
+      "width": 127.5
+    },
+    {
+      "name": "sort",
+      "value": "updated_asc",
+      "top": 398.859375,
+      "left": 157.5,
+      "right": 285,
+      "width": 127.5
+    },
+    {
+      "name": "page_size",
+      "value": "10",
+      "top": 472,
+      "left": 20,
+      "right": 285,
+      "width": 265
+    },
+    {
+      "name": "tags",
+      "value": "area:frontend",
+      "top": 546.796875,
+      "left": 20,
+      "right": 191.625,
+      "width": 171.625
+    },
+    {
+      "name": "Apply tags",
+      "value": "",
+      "top": 546.796875,
+      "left": 203.625,
+      "right": 285,
+      "width": 81.375
+    }
+  ],
+  "summary": "Working · Least recently updated · 10 rows/page · Tags area:frontend",
+  "paths": [
+    "Project path: /var/folders/07/q_8xp6j90zn8r_gdxk6sj5nm0000gn/T/task-mecca-a65-preview-zZLFod/task-mecca",
+    "Backlog path: /var/folders/07/q_8xp6j90zn8r_gdxk6sj5nm0000gn/T/task-mecca-a65-preview-zZLFod/task-mecca/_task_mecca/data/backlog"
+  ],
+  "rows": 3,
+  "passed": true
+}

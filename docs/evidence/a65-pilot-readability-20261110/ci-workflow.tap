@@ -1,0 +1,16 @@
+✔ workflow real browser preserves full periods, grouped intervals, role meaning and partial-update state (14307.809084ms)
+✔ native workflow wait polls false predicates through refresh completion (1601.784959ms)
+✔ A63 connected paint, individual dense events, fit entry and exact directional navigation use native input (25054.668792ms)
+✔ slim workflow rows and plot-only real Ctrl-wheel and captured multi-touch gestures (18139.81725ms)
+✔ adopted A60 corrections bound mixed outcomes and preserve open row selection extent (8757.049208ms)
+✔ representative workflow has compact context and plot-coordinate anchored time navigation (13205.211125ms)
+✔ actual Activity geometry and native hover, pinned popover, focus, tap and source reconciliation (14335.097167ms)
+✔ four scoped A61 review corrections retain identical-source reading state and meaningful labels (9118.52ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 26976.183709

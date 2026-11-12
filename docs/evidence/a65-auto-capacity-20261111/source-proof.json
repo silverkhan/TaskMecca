@@ -1,0 +1,10 @@
+{
+  "base": "a92e1c3bea8c50363141d04bd71c654a5c073151",
+  "productionChanged": false,
+  "restorationPredicateAndTimeoutIdentical": true,
+  "restorationBlockSha256": "ff2fa4b5a4a9d95abc86e66b3192867a75bf9412c663487c7a6c78d034e4b196",
+  "changedTrackedFiles": [
+    "tests/a65_dev_floating_pilot.test.cjs",
+    "tests/a65_pilot_neutral.test.cjs"
+  ]
+}

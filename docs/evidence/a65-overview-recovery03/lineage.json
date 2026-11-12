@@ -1,0 +1,30 @@
+[
+  {
+    "commit": "68c353420f307979ee1d07fba35bc122501095ac",
+    "parents": [
+      "f0a732e3dd8234a663dccf3c6937fc9dc674917b"
+    ],
+    "subject": "feat(webui): add bounded read-only overview aggregation API"
+  },
+  {
+    "commit": "f56ebcb3eff1cf27960a433e3c6c7c232e472c75",
+    "parents": [
+      "68c353420f307979ee1d07fba35bc122501095ac"
+    ],
+    "subject": "test(web): migrate workflow suites to native UI modules"
+  },
+  {
+    "commit": "be9f9284bf37928d4884a93a4f0dc01d15bbedb3",
+    "parents": [
+      "f56ebcb3eff1cf27960a433e3c6c7c232e472c75"
+    ],
+    "subject": "fix(webui): preserve live overview updates and serve UI modules"
+  },
+  {
+    "commit": "767b0f42ceab5da2e8d01efdd1a9aaf87b33a00c",
+    "parents": [
+      "be9f9284bf37928d4884a93a4f0dc01d15bbedb3"
+    ],
+    "subject": "feat(web): build Smoke control center core prototype"
+  }
+]

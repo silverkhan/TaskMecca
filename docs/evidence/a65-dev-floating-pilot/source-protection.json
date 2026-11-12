@@ -1,0 +1,50 @@
+{
+  "uiSource": "3a066ed44b1c52982b008230cfb9f4f1535847df",
+  "originDev": "f0a732e3dd8234a663dccf3c6937fc9dc674917b",
+  "devAssets": {
+    "app.js": {
+      "sha256": "49606f2bd9165020cf9d473c232ba645498139af0a8037100e71d25c9d293905",
+      "byteEqualsOriginDev": true
+    },
+    "style.css": {
+      "sha256": "5fc79a28f935f7c65d30ca081ebe87250a09946ca6c440b9f1198429da1c259c",
+      "byteEqualsOriginDev": true
+    },
+    "theme-boot.js": {
+      "sha256": "b8747545f5eee6116aa3990aee2bd08d54911c0e12ae6f7d557c0150aa236a8c",
+      "byteEqualsOriginDev": true
+    },
+    "select-ui.js": {
+      "sha256": "119e238229046ff6fb7bcce09287a745034919a4f1a7ac9fb746e0148afaec80",
+      "byteEqualsOriginDev": true
+    },
+    "logo.svg": {
+      "sha256": "29933e9a85c92660f22fc5a556f4fb179171a75d9e290c782b6b69c348012caa",
+      "byteEqualsOriginDev": true
+    },
+    "manifest.webmanifest": {
+      "sha256": "55d73484134dd037125b5750b05be82d875aa0335e4661c47ee7d4114971d606",
+      "byteEqualsOriginDev": true
+    },
+    "perf-diagnostics.js": {
+      "sha256": "d41b5e248ab5290292cda0ebb9512e885b6c88601345c3a2ebc2cb18c8efdeff",
+      "byteEqualsOriginDev": true
+    }
+  },
+  "previousSource": "f4da69f8f6d321381e8aa3509c4d1d70998bef40",
+  "unchangedFromPrevious": {
+    "ui/optics.js": true,
+    "ui/environment.js": true,
+    "ui/material/cozy-beige-room-photo-1920.webp": true,
+    "terminal.js": true,
+    "terminal.html": true
+  },
+  "productionGoChanged": false,
+  "backendAPIsChanged": false,
+  "binary": {
+    "path": "/private/tmp/task-mecca-a65-build/task-mecca-dev-floating-pilot",
+    "sha256": "14b6bdc7bf50a89e0034a5e6fda571970787a01a5626741fffa3915a77558a8a",
+    "installed": false,
+    "serviceRun": false
+  }
+}

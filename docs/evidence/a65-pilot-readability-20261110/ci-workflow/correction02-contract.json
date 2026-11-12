@@ -1,0 +1,360 @@
+{
+  "synthetic": true,
+  "scope": "LUMEN-A61-01..04 only; ko/en desktop/mobile native interactions",
+  "cases": [
+    {
+      "language": "ko",
+      "mobile": false,
+      "visibleZoomName": "시간축 확대",
+      "layout": {
+        "group": {
+          "x": 342,
+          "y": 215.65625,
+          "width": 196.046875,
+          "height": 34,
+          "top": 215.65625,
+          "right": 538.046875,
+          "bottom": 249.65625,
+          "left": 342
+        },
+        "children": [
+          {
+            "text": "시간축 확대",
+            "x": 342,
+            "y": 223.859375,
+            "width": 49.78125,
+            "height": 17.59375,
+            "top": 223.859375,
+            "right": 391.78125,
+            "bottom": 241.453125,
+            "left": 342
+          },
+          {
+            "text": "−",
+            "x": 399.78125,
+            "y": 215.65625,
+            "width": 34,
+            "height": 34,
+            "top": 215.65625,
+            "right": 433.78125,
+            "bottom": 249.65625,
+            "left": 399.78125
+          },
+          {
+            "text": "+",
+            "x": 437.78125,
+            "y": 215.65625,
+            "width": 34,
+            "height": 34,
+            "top": 215.65625,
+            "right": 471.78125,
+            "bottom": 249.65625,
+            "left": 437.78125
+          },
+          {
+            "text": "전체 보기",
+            "x": 475.78125,
+            "y": 215.65625,
+            "width": 62.265625,
+            "height": 34,
+            "top": 215.65625,
+            "right": 538.046875,
+            "bottom": 249.65625,
+            "left": 475.78125
+          }
+        ],
+        "pageWidth": 1440,
+        "viewport": 1440
+      },
+      "readingBefore": {
+        "open": true,
+        "scrollTop": 0,
+        "selection": "attempt_id",
+        "active": "SUMMARY",
+        "text": "구현 · 1분×Worker최초 작업시작2026. 11. 5. 오전 9:18:00종료2026. 11. 5. 오전 9:19:00포함 이벤트 (19)구현 · 1분2026. 11. 5. 오전 9:10:00테스트 · 1분2026. 11. 5. 오전 9:11:00구현 · 1분2026. 11. 5. 오전 9:12:00테스트 · 1분2026. 11. 5. 오전 9:13:00구현 · 1분2026. 11. 5. 오전 9:14:00테스트 · 1분2026. 11. 5. 오전 9:15:00구현 · 1분2026. 11. 5. 오전 9:16:00테스트 · 1분2026. 11. 5. 오전 9:17:00구현 · 1분2026. 11. 5. 오전 9:18:00테스트 · 1분2026. 11. 5. 오전 9:19:00구현 · 1분2026. 11. 5. 오전 9:20:00테스트 · 1분2026. 11. 5. 오전 9:21:00구현 · 1분2026. 11. 5. 오전 9:22:00테스트 · 1분2026. 11. 5. 오전 9:23:00구현 · 1분2026. 11. 5. 오전 9:24:00테스트 · 1분2026. 11. 5. 오전 9:25:00구현 · 1분2026. 11. 5. 오전 9:26:00테스트 · 1분2026. 11. 5. 오전 9:27:00구현 · 1분2026. 11. 5. 오전 9:28:00정확한 근거{\n  \"role\": \"worker\",\n  \"agent_id\": \"worker\",\n  \"display_name\": null,\n  \"display_name_source\": \"unverified\",\n  \"round\": 0,\n  \"interval\": {\n    \"id\": \"8\",\n    \"kind\": \"activity\",\n    \"type\": \"implementation\",\n    \"start\": \"2026-11-05T00:18:00Z\",\n    \"end\": \"2026-11-05T00:19:00Z\",\n    \"measured\": true,\n    \"duration_ms\": 60000,\n    \"attempt_id\": \"one-attempt\",\n    \"lane\": 0\n  }\n}"
+      },
+      "readingAfter": {
+        "open": true,
+        "scrollTop": 0,
+        "selection": "attempt_id",
+        "active": "SUMMARY",
+        "text": "구현 · 1분×Worker최초 작업시작2026. 11. 5. 오전 9:18:00종료2026. 11. 5. 오전 9:19:00포함 이벤트 (19)구현 · 1분2026. 11. 5. 오전 9:10:00테스트 · 1분2026. 11. 5. 오전 9:11:00구현 · 1분2026. 11. 5. 오전 9:12:00테스트 · 1분2026. 11. 5. 오전 9:13:00구현 · 1분2026. 11. 5. 오전 9:14:00테스트 · 1분2026. 11. 5. 오전 9:15:00구현 · 1분2026. 11. 5. 오전 9:16:00테스트 · 1분2026. 11. 5. 오전 9:17:00구현 · 1분2026. 11. 5. 오전 9:18:00테스트 · 1분2026. 11. 5. 오전 9:19:00구현 · 1분2026. 11. 5. 오전 9:20:00테스트 · 1분2026. 11. 5. 오전 9:21:00구현 · 1분2026. 11. 5. 오전 9:22:00테스트 · 1분2026. 11. 5. 오전 9:23:00구현 · 1분2026. 11. 5. 오전 9:24:00테스트 · 1분2026. 11. 5. 오전 9:25:00구현 · 1분2026. 11. 5. 오전 9:26:00테스트 · 1분2026. 11. 5. 오전 9:27:00구현 · 1분2026. 11. 5. 오전 9:28:00정확한 근거{\n  \"role\": \"worker\",\n  \"agent_id\": \"worker\",\n  \"display_name\": null,\n  \"display_name_source\": \"unverified\",\n  \"round\": 0,\n  \"interval\": {\n    \"id\": \"8\",\n    \"kind\": \"activity\",\n    \"type\": \"implementation\",\n    \"start\": \"2026-11-05T00:18:00Z\",\n    \"end\": \"2026-11-05T00:19:00Z\",\n    \"measured\": true,\n    \"duration_ms\": 60000,\n    \"attempt_id\": \"one-attempt\",\n    \"lane\": 0\n  }\n}"
+      },
+      "actualProducerFixture": "cb5f5ef6ca93f31ada3c6ceb112097b16c9f4691dfe54a8bd248deee4a396f5d",
+      "sameSourceEquality": true,
+      "changedAndMissingDismissed": true,
+      "opaqueNameFallbackAndExactGrounds": true,
+      "knownNameAndRoleDedup": true,
+      "zeroMissingMillisecondsDistinct": true
+    },
+    {
+      "language": "ko",
+      "mobile": true,
+      "visibleZoomName": "시간축 확대",
+      "layout": {
+        "group": {
+          "x": 30,
+          "y": 199.359375,
+          "width": 216.046875,
+          "height": 44,
+          "top": 199.359375,
+          "right": 246.046875,
+          "bottom": 243.359375,
+          "left": 30
+        },
+        "children": [
+          {
+            "text": "시간축 확대",
+            "x": 30,
+            "y": 212.5625,
+            "width": 49.78125,
+            "height": 17.59375,
+            "top": 212.5625,
+            "right": 79.78125,
+            "bottom": 230.15625,
+            "left": 30
+          },
+          {
+            "text": "−",
+            "x": 87.78125,
+            "y": 199.359375,
+            "width": 44,
+            "height": 44,
+            "top": 199.359375,
+            "right": 131.78125,
+            "bottom": 243.359375,
+            "left": 87.78125
+          },
+          {
+            "text": "+",
+            "x": 135.78125,
+            "y": 199.359375,
+            "width": 44,
+            "height": 44,
+            "top": 199.359375,
+            "right": 179.78125,
+            "bottom": 243.359375,
+            "left": 135.78125
+          },
+          {
+            "text": "전체 보기",
+            "x": 183.78125,
+            "y": 199.359375,
+            "width": 62.265625,
+            "height": 44,
+            "top": 199.359375,
+            "right": 246.046875,
+            "bottom": 243.359375,
+            "left": 183.78125
+          }
+        ],
+        "pageWidth": 390,
+        "viewport": 390
+      },
+      "readingBefore": {
+        "open": true,
+        "scrollTop": 60,
+        "selection": "attempt_id",
+        "active": "SUMMARY",
+        "text": "구현 · 1분×Worker최초 작업시작2026. 11. 5. 오전 9:18:00종료2026. 11. 5. 오전 9:19:00포함 이벤트 (19)구현 · 1분2026. 11. 5. 오전 9:10:00테스트 · 1분2026. 11. 5. 오전 9:11:00구현 · 1분2026. 11. 5. 오전 9:12:00테스트 · 1분2026. 11. 5. 오전 9:13:00구현 · 1분2026. 11. 5. 오전 9:14:00테스트 · 1분2026. 11. 5. 오전 9:15:00구현 · 1분2026. 11. 5. 오전 9:16:00테스트 · 1분2026. 11. 5. 오전 9:17:00구현 · 1분2026. 11. 5. 오전 9:18:00테스트 · 1분2026. 11. 5. 오전 9:19:00구현 · 1분2026. 11. 5. 오전 9:20:00테스트 · 1분2026. 11. 5. 오전 9:21:00구현 · 1분2026. 11. 5. 오전 9:22:00테스트 · 1분2026. 11. 5. 오전 9:23:00구현 · 1분2026. 11. 5. 오전 9:24:00테스트 · 1분2026. 11. 5. 오전 9:25:00구현 · 1분2026. 11. 5. 오전 9:26:00테스트 · 1분2026. 11. 5. 오전 9:27:00구현 · 1분2026. 11. 5. 오전 9:28:00정확한 근거{\n  \"role\": \"worker\",\n  \"agent_id\": \"worker\",\n  \"display_name\": null,\n  \"display_name_source\": \"unverified\",\n  \"round\": 0,\n  \"interval\": {\n    \"id\": \"8\",\n    \"kind\": \"activity\",\n    \"type\": \"implementation\",\n    \"start\": \"2026-11-05T00:18:00Z\",\n    \"end\": \"2026-11-05T00:19:00Z\",\n    \"measured\": true,\n    \"duration_ms\": 60000,\n    \"attempt_id\": \"one-attempt\",\n    \"lane\": 0\n  }\n}"
+      },
+      "readingAfter": {
+        "open": true,
+        "scrollTop": 60,
+        "selection": "attempt_id",
+        "active": "SUMMARY",
+        "text": "구현 · 1분×Worker최초 작업시작2026. 11. 5. 오전 9:18:00종료2026. 11. 5. 오전 9:19:00포함 이벤트 (19)구현 · 1분2026. 11. 5. 오전 9:10:00테스트 · 1분2026. 11. 5. 오전 9:11:00구현 · 1분2026. 11. 5. 오전 9:12:00테스트 · 1분2026. 11. 5. 오전 9:13:00구현 · 1분2026. 11. 5. 오전 9:14:00테스트 · 1분2026. 11. 5. 오전 9:15:00구현 · 1분2026. 11. 5. 오전 9:16:00테스트 · 1분2026. 11. 5. 오전 9:17:00구현 · 1분2026. 11. 5. 오전 9:18:00테스트 · 1분2026. 11. 5. 오전 9:19:00구현 · 1분2026. 11. 5. 오전 9:20:00테스트 · 1분2026. 11. 5. 오전 9:21:00구현 · 1분2026. 11. 5. 오전 9:22:00테스트 · 1분2026. 11. 5. 오전 9:23:00구현 · 1분2026. 11. 5. 오전 9:24:00테스트 · 1분2026. 11. 5. 오전 9:25:00구현 · 1분2026. 11. 5. 오전 9:26:00테스트 · 1분2026. 11. 5. 오전 9:27:00구현 · 1분2026. 11. 5. 오전 9:28:00정확한 근거{\n  \"role\": \"worker\",\n  \"agent_id\": \"worker\",\n  \"display_name\": null,\n  \"display_name_source\": \"unverified\",\n  \"round\": 0,\n  \"interval\": {\n    \"id\": \"8\",\n    \"kind\": \"activity\",\n    \"type\": \"implementation\",\n    \"start\": \"2026-11-05T00:18:00Z\",\n    \"end\": \"2026-11-05T00:19:00Z\",\n    \"measured\": true,\n    \"duration_ms\": 60000,\n    \"attempt_id\": \"one-attempt\",\n    \"lane\": 0\n  }\n}"
+      },
+      "actualProducerFixture": "cb5f5ef6ca93f31ada3c6ceb112097b16c9f4691dfe54a8bd248deee4a396f5d",
+      "sameSourceEquality": true,
+      "changedAndMissingDismissed": true,
+      "opaqueNameFallbackAndExactGrounds": true,
+      "knownNameAndRoleDedup": true,
+      "zeroMissingMillisecondsDistinct": true
+    },
+    {
+      "language": "en",
+      "mobile": false,
+      "visibleZoomName": "Timeline zoom",
+      "layout": {
+        "group": {
+          "x": 342,
+          "y": 215.65625,
+          "width": 204.828125,
+          "height": 34,
+          "top": 215.65625,
+          "right": 546.828125,
+          "bottom": 249.65625,
+          "left": 342
+        },
+        "children": [
+          {
+            "text": "Timeline zoom",
+            "x": 342,
+            "y": 223.859375,
+            "width": 72.859375,
+            "height": 17.59375,
+            "top": 223.859375,
+            "right": 414.859375,
+            "bottom": 241.453125,
+            "left": 342
+          },
+          {
+            "text": "−",
+            "x": 422.859375,
+            "y": 215.65625,
+            "width": 34,
+            "height": 34,
+            "top": 215.65625,
+            "right": 456.859375,
+            "bottom": 249.65625,
+            "left": 422.859375
+          },
+          {
+            "text": "+",
+            "x": 460.859375,
+            "y": 215.65625,
+            "width": 34,
+            "height": 34,
+            "top": 215.65625,
+            "right": 494.859375,
+            "bottom": 249.65625,
+            "left": 460.859375
+          },
+          {
+            "text": "Fit all",
+            "x": 498.859375,
+            "y": 215.65625,
+            "width": 47.96875,
+            "height": 34,
+            "top": 215.65625,
+            "right": 546.828125,
+            "bottom": 249.65625,
+            "left": 498.859375
+          }
+        ],
+        "pageWidth": 1440,
+        "viewport": 1440
+      },
+      "readingBefore": {
+        "open": true,
+        "scrollTop": 0,
+        "selection": "attempt_id",
+        "active": "SUMMARY",
+        "text": "Implementation · 1m×WorkerInitial workStart11/5/2026, 9:18:00 AMEnd11/5/2026, 9:19:00 AMIncluded events (19)Implementation · 1m11/5/2026, 9:10:00 AMTest · 1m11/5/2026, 9:11:00 AMImplementation · 1m11/5/2026, 9:12:00 AMTest · 1m11/5/2026, 9:13:00 AMImplementation · 1m11/5/2026, 9:14:00 AMTest · 1m11/5/2026, 9:15:00 AMImplementation · 1m11/5/2026, 9:16:00 AMTest · 1m11/5/2026, 9:17:00 AMImplementation · 1m11/5/2026, 9:18:00 AMTest · 1m11/5/2026, 9:19:00 AMImplementation · 1m11/5/2026, 9:20:00 AMTest · 1m11/5/2026, 9:21:00 AMImplementation · 1m11/5/2026, 9:22:00 AMTest · 1m11/5/2026, 9:23:00 AMImplementation · 1m11/5/2026, 9:24:00 AMTest · 1m11/5/2026, 9:25:00 AMImplementation · 1m11/5/2026, 9:26:00 AMTest · 1m11/5/2026, 9:27:00 AMImplementation · 1m11/5/2026, 9:28:00 AMExact evidence{\n  \"role\": \"worker\",\n  \"agent_id\": \"worker\",\n  \"display_name\": null,\n  \"display_name_source\": \"unverified\",\n  \"round\": 0,\n  \"interval\": {\n    \"id\": \"8\",\n    \"kind\": \"activity\",\n    \"type\": \"implementation\",\n    \"start\": \"2026-11-05T00:18:00Z\",\n    \"end\": \"2026-11-05T00:19:00Z\",\n    \"measured\": true,\n    \"duration_ms\": 60000,\n    \"attempt_id\": \"one-attempt\",\n    \"lane\": 0\n  }\n}"
+      },
+      "readingAfter": {
+        "open": true,
+        "scrollTop": 0,
+        "selection": "attempt_id",
+        "active": "SUMMARY",
+        "text": "Implementation · 1m×WorkerInitial workStart11/5/2026, 9:18:00 AMEnd11/5/2026, 9:19:00 AMIncluded events (19)Implementation · 1m11/5/2026, 9:10:00 AMTest · 1m11/5/2026, 9:11:00 AMImplementation · 1m11/5/2026, 9:12:00 AMTest · 1m11/5/2026, 9:13:00 AMImplementation · 1m11/5/2026, 9:14:00 AMTest · 1m11/5/2026, 9:15:00 AMImplementation · 1m11/5/2026, 9:16:00 AMTest · 1m11/5/2026, 9:17:00 AMImplementation · 1m11/5/2026, 9:18:00 AMTest · 1m11/5/2026, 9:19:00 AMImplementation · 1m11/5/2026, 9:20:00 AMTest · 1m11/5/2026, 9:21:00 AMImplementation · 1m11/5/2026, 9:22:00 AMTest · 1m11/5/2026, 9:23:00 AMImplementation · 1m11/5/2026, 9:24:00 AMTest · 1m11/5/2026, 9:25:00 AMImplementation · 1m11/5/2026, 9:26:00 AMTest · 1m11/5/2026, 9:27:00 AMImplementation · 1m11/5/2026, 9:28:00 AMExact evidence{\n  \"role\": \"worker\",\n  \"agent_id\": \"worker\",\n  \"display_name\": null,\n  \"display_name_source\": \"unverified\",\n  \"round\": 0,\n  \"interval\": {\n    \"id\": \"8\",\n    \"kind\": \"activity\",\n    \"type\": \"implementation\",\n    \"start\": \"2026-11-05T00:18:00Z\",\n    \"end\": \"2026-11-05T00:19:00Z\",\n    \"measured\": true,\n    \"duration_ms\": 60000,\n    \"attempt_id\": \"one-attempt\",\n    \"lane\": 0\n  }\n}"
+      },
+      "actualProducerFixture": "cb5f5ef6ca93f31ada3c6ceb112097b16c9f4691dfe54a8bd248deee4a396f5d",
+      "sameSourceEquality": true,
+      "changedAndMissingDismissed": true,
+      "opaqueNameFallbackAndExactGrounds": true,
+      "knownNameAndRoleDedup": true,
+      "zeroMissingMillisecondsDistinct": true
+    },
+    {
+      "language": "en",
+      "mobile": true,
+      "visibleZoomName": "Timeline zoom",
+      "layout": {
+        "group": {
+          "x": 30,
+          "y": 199.359375,
+          "width": 224.828125,
+          "height": 44,
+          "top": 199.359375,
+          "right": 254.828125,
+          "bottom": 243.359375,
+          "left": 30
+        },
+        "children": [
+          {
+            "text": "Timeline zoom",
+            "x": 30,
+            "y": 212.5625,
+            "width": 72.859375,
+            "height": 17.59375,
+            "top": 212.5625,
+            "right": 102.859375,
+            "bottom": 230.15625,
+            "left": 30
+          },
+          {
+            "text": "−",
+            "x": 110.859375,
+            "y": 199.359375,
+            "width": 44,
+            "height": 44,
+            "top": 199.359375,
+            "right": 154.859375,
+            "bottom": 243.359375,
+            "left": 110.859375
+          },
+          {
+            "text": "+",
+            "x": 158.859375,
+            "y": 199.359375,
+            "width": 44,
+            "height": 44,
+            "top": 199.359375,
+            "right": 202.859375,
+            "bottom": 243.359375,
+            "left": 158.859375
+          },
+          {
+            "text": "Fit all",
+            "x": 206.859375,
+            "y": 199.359375,
+            "width": 47.96875,
+            "height": 44,
+            "top": 199.359375,
+            "right": 254.828125,
+            "bottom": 243.359375,
+            "left": 206.859375
+          }
+        ],
+        "pageWidth": 390,
+        "viewport": 390
+      },
+      "readingBefore": {
+        "open": true,
+        "scrollTop": 60,
+        "selection": "attempt_id",
+        "active": "SUMMARY",
+        "text": "Implementation · 1m×WorkerInitial workStart11/5/2026, 9:18:00 AMEnd11/5/2026, 9:19:00 AMIncluded events (19)Implementation · 1m11/5/2026, 9:10:00 AMTest · 1m11/5/2026, 9:11:00 AMImplementation · 1m11/5/2026, 9:12:00 AMTest · 1m11/5/2026, 9:13:00 AMImplementation · 1m11/5/2026, 9:14:00 AMTest · 1m11/5/2026, 9:15:00 AMImplementation · 1m11/5/2026, 9:16:00 AMTest · 1m11/5/2026, 9:17:00 AMImplementation · 1m11/5/2026, 9:18:00 AMTest · 1m11/5/2026, 9:19:00 AMImplementation · 1m11/5/2026, 9:20:00 AMTest · 1m11/5/2026, 9:21:00 AMImplementation · 1m11/5/2026, 9:22:00 AMTest · 1m11/5/2026, 9:23:00 AMImplementation · 1m11/5/2026, 9:24:00 AMTest · 1m11/5/2026, 9:25:00 AMImplementation · 1m11/5/2026, 9:26:00 AMTest · 1m11/5/2026, 9:27:00 AMImplementation · 1m11/5/2026, 9:28:00 AMExact evidence{\n  \"role\": \"worker\",\n  \"agent_id\": \"worker\",\n  \"display_name\": null,\n  \"display_name_source\": \"unverified\",\n  \"round\": 0,\n  \"interval\": {\n    \"id\": \"8\",\n    \"kind\": \"activity\",\n    \"type\": \"implementation\",\n    \"start\": \"2026-11-05T00:18:00Z\",\n    \"end\": \"2026-11-05T00:19:00Z\",\n    \"measured\": true,\n    \"duration_ms\": 60000,\n    \"attempt_id\": \"one-attempt\",\n    \"lane\": 0\n  }\n}"
+      },
+      "readingAfter": {
+        "open": true,
+        "scrollTop": 60,
+        "selection": "attempt_id",
+        "active": "SUMMARY",
+        "text": "Implementation · 1m×WorkerInitial workStart11/5/2026, 9:18:00 AMEnd11/5/2026, 9:19:00 AMIncluded events (19)Implementation · 1m11/5/2026, 9:10:00 AMTest · 1m11/5/2026, 9:11:00 AMImplementation · 1m11/5/2026, 9:12:00 AMTest · 1m11/5/2026, 9:13:00 AMImplementation · 1m11/5/2026, 9:14:00 AMTest · 1m11/5/2026, 9:15:00 AMImplementation · 1m11/5/2026, 9:16:00 AMTest · 1m11/5/2026, 9:17:00 AMImplementation · 1m11/5/2026, 9:18:00 AMTest · 1m11/5/2026, 9:19:00 AMImplementation · 1m11/5/2026, 9:20:00 AMTest · 1m11/5/2026, 9:21:00 AMImplementation · 1m11/5/2026, 9:22:00 AMTest · 1m11/5/2026, 9:23:00 AMImplementation · 1m11/5/2026, 9:24:00 AMTest · 1m11/5/2026, 9:25:00 AMImplementation · 1m11/5/2026, 9:26:00 AMTest · 1m11/5/2026, 9:27:00 AMImplementation · 1m11/5/2026, 9:28:00 AMExact evidence{\n  \"role\": \"worker\",\n  \"agent_id\": \"worker\",\n  \"display_name\": null,\n  \"display_name_source\": \"unverified\",\n  \"round\": 0,\n  \"interval\": {\n    \"id\": \"8\",\n    \"kind\": \"activity\",\n    \"type\": \"implementation\",\n    \"start\": \"2026-11-05T00:18:00Z\",\n    \"end\": \"2026-11-05T00:19:00Z\",\n    \"measured\": true,\n    \"duration_ms\": 60000,\n    \"attempt_id\": \"one-attempt\",\n    \"lane\": 0\n  }\n}"
+      },
+      "actualProducerFixture": "cb5f5ef6ca93f31ada3c6ceb112097b16c9f4691dfe54a8bd248deee4a396f5d",
+      "sameSourceEquality": true,
+      "changedAndMissingDismissed": true,
+      "opaqueNameFallbackAndExactGrounds": true,
+      "knownNameAndRoleDedup": true,
+      "zeroMissingMillisecondsDistinct": true
+    }
+  ],
+  "errors": [],
+  "sources": {
+    "goassets/template/_task_mecca/framework/web/ui/components/workflow.js": "6c46ae5f88940164fc37ff6214d81caed6919f5064617b092433bfd8c2864986",
+    "goassets/template/_task_mecca/framework/web/ui/components/workflow.css": "f69e9151a1d916242f5ec5996550fb00928a137a903038665ce5172b4896f285",
+    "internal/activity/workflow.go": "01f9fac3d8333ef4fa493732d7ab3db2c694f235b3f0db7abf4caf3c9dc4a2f2",
+    "tests/fixtures/workflow/opaque-bound-name.json": "cb5f5ef6ca93f31ada3c6ceb112097b16c9f4691dfe54a8bd248deee4a396f5d"
+  },
+  "browser": "157.0.8103.39",
+  "passed": true,
+  "cleanup": {
+    "browserClosed": true,
+    "fixtureClosed": true,
+    "portRefused": true
+  }
+}

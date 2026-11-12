@@ -1,0 +1,21 @@
+/* Fixed photo and review-only optical surfaces share one viewport coordinate frame. */
+.material-review-backdrop{position:fixed;inset:0;z-index:0;pointer-events:none;background:var(--page);overflow:hidden}
+.material-review-backdrop img{display:block;width:100%;height:100%;object-fit:cover;object-position:center;pointer-events:none}
+.material-review-backdrop::after{content:'';position:absolute;inset:0;background:rgba(12,13,17,.30);pointer-events:none}
+:root[data-material-theme='light'] .material-review-backdrop::after{background:rgba(255,255,255,.20)}
+:root[data-material-background='solid'] .material-review-backdrop{display:none}
+#material-review{position:relative;z-index:1}
+.material-background-comparison{margin:0 0 18px;padding:0 0 16px;border-bottom:1px solid var(--line)}
+.material-background-comparison h2{font:inherit;font-weight:650;color:var(--ink);margin:0 0 9px}
+.material-background-comparison .material-theme-control{display:inline-flex}
+.material-background-comparison p{margin:9px 0 0}
+
+/* A single decorative sampling layer; content never enters its filter chain. */
+.material-surface{background:rgba(24,25,29,.36)}
+:root[data-material-theme='light'] .material-surface{background:rgba(255,255,255,.46)}
+.material-surface>.material-transmission{position:absolute;inset:0;z-index:-1;pointer-events:none;border-radius:inherit;overflow:hidden;background-image:linear-gradient(rgba(12,13,17,.60),rgba(12,13,17,.60)),url('./cozy-beige-room-photo-1920.webp');background-repeat:no-repeat;filter:blur(7px);transform:none}
+:root[data-material-theme='light'] .material-transmission{background-image:linear-gradient(rgba(255,255,255,.50),rgba(255,255,255,.50)),url('./cozy-beige-room-photo-1920.webp')}
+:root[data-material-optics='svg'] .material-transmission{filter:url('#material-refraction')}
+:root[data-material-background='solid'] .material-transmission{display:none}
+:root[data-material-background='solid'] .material-surface{background:linear-gradient(180deg,var(--surface-top),var(--surface-mid) 25%,var(--surface-low) 64%)}
+.material-optical-defs{position:absolute;width:0;height:0;pointer-events:none;overflow:hidden}

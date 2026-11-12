@@ -1,0 +1,11 @@
+{
+  "before": "go test ./internal/webui -run '^TestHandlerServesDashboardAPIsAndAssets$' -count=1",
+  "after": "go test ./internal/webui -run '^(TestHandlerServesDashboardAPIsAndAssets|TestSignatureThemeBranding|TestOverviewUIAssetsNestedMIMEBytesAndTraversalReadOnly)$' -count=1 -v",
+  "productionDiffFrom555863bb": "",
+  "changedTestSha256": "2110c352826bacd5390b37984787bd9a1a8a389c8ec4bf8f6bed60447e86715c",
+  "at": "2026-11-10T01:49:34.806698+00:00",
+  "codexThreadId": "01a1bdce-8fa4-7a62-987e-129ff53a6d9f",
+  "ordinal": 26,
+  "newVisualRound": false,
+  "fullGateRemeasured": false
+}

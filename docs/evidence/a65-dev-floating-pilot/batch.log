@@ -1,0 +1,24 @@
+PASS dev 1440 light
+PASS dev 1440 dark
+PASS dev 1280 light
+PASS dev 1280 dark
+PASS dev 320 light
+PASS dev 320 dark
+PASS dev 390 light
+PASS dev 390 dark
+PASS dev 430 light
+PASS dev 430 dark
+PASS dev 800 light
+PASS dev 800 dark
+AssertionError [ERR_ASSERTION]: no live filters
+
+3 !== 0
+
+    at /Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/docs/evidence/a65-dev-floating-pilot/browser.cjs:26:118 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: 3,
+  expected: 0,
+  operator: 'strictEqual',
+  diff: 'simple'
+}

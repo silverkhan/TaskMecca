@@ -1,0 +1,184 @@
+{
+  "stable_id": "a65-performance-correction-pairi-20261109-t3-32ea130b",
+  "status": "BLOCKED",
+  "source_commit": "e646f475870aa1dbfc4c4f43d88fcaa317768183",
+  "base_merge_commit": "ff5e3b6b607c9efeda15fb43832ebdb2e681060c",
+  "authorized_base": "75749827a94ea515dc2442d5767d8ad9cfa2d1dd",
+  "timing": {
+    "gate": "FAIL",
+    "counts": {
+      "PASS": 47,
+      "FAIL": 1
+    },
+    "failures": [
+      {
+        "width": 1440,
+        "theme": "light",
+        "action": "navigation",
+        "metric": "TaskDurationMs",
+        "baselineMedian": 74.4315,
+        "candidateMedian": 82.6585,
+        "changePercent": 11.053115952251403,
+        "pairedPercent": [
+          18.146949705710025,
+          15.64667797132724,
+          -8.078955761082495,
+          -2.1200248519659626,
+          35.95895511273939,
+          3.664719424077534,
+          12.319233795479834,
+          0.4956644436136415
+        ],
+        "n": 8,
+        "valid": true,
+        "verdict": "FAIL"
+      }
+    ],
+    "invalid": 0
+  },
+  "idle": {
+    "verdict": "FAIL",
+    "passed": 26,
+    "total": 27,
+    "failed_checks": [
+      "pendingStopsOnRoute"
+    ]
+  },
+  "strict_failures_preserved": true,
+  "no_noise_waiver": true,
+  "no_threshold_or_assertion_change": true,
+  "no_same_source_full_rerun": true,
+  "prior_baseline_and_binary_comparison": [
+    {
+      "path": "/Users/hanati/projects/TaskMecca/TaskMecca/_task_mecca/data/contracts/uiux-redesign-20261108/accepted-expansion-20261109/worker-final-e21594e8/performance-final-e21594e8/manifest.json",
+      "sha256": "8c4d45a8bbc1e38e75765cf9c7989711dfd1f1e0136a5b2c44ef7fe90f53eb0f",
+      "chromeBinaryEqual": true,
+      "baselineAssetsEqual": true
+    }
+  ],
+  "source_and_browser_stable": {
+    "head": "e646f475870aa1dbfc4c4f43d88fcaa317768183",
+    "finalHead": "e646f475870aa1dbfc4c4f43d88fcaa317768183",
+    "assetStable": true,
+    "browserBinaryStable": true,
+    "headStableOrDocsOnly": true
+  },
+  "route_controls": {
+    "legacy": {
+      "n": 4,
+      "settings_bootstrap_after_load_each": [
+        {
+          "/api/version": 1,
+          "/api/runtime/hooks": 1,
+          "/api/channel-options": 1
+        },
+        {
+          "/api/version": 1,
+          "/api/runtime/hooks": 1,
+          "/api/channel-options": 1
+        },
+        {
+          "/api/version": 1,
+          "/api/runtime/hooks": 1,
+          "/api/channel-options": 1
+        },
+        {
+          "/api/version": 1,
+          "/api/runtime/hooks": 1,
+          "/api/channel-options": 1
+        }
+      ],
+      "stale_overview_count": 0,
+      "streams": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "candidate": {
+      "n": 4,
+      "settings_bootstrap_after_load_each": [
+        {
+          "/api/version": 1,
+          "/api/runtime/hooks": 1,
+          "/api/channel-options": 1
+        },
+        {
+          "/api/version": 1,
+          "/api/runtime/hooks": 1,
+          "/api/channel-options": 1
+        },
+        {
+          "/api/version": 1,
+          "/api/runtime/hooks": 1,
+          "/api/channel-options": 1
+        },
+        {
+          "/api/version": 1,
+          "/api/runtime/hooks": 1,
+          "/api/channel-options": 1
+        }
+      ],
+      "stale_overview_count": 0,
+      "streams": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "guard": {
+      "n": 4,
+      "settings_bootstrap_after_load_each": [
+        {
+          "/api/version": 1,
+          "/api/runtime/hooks": 1,
+          "/api/channel-options": 1
+        },
+        {
+          "/api/version": 1,
+          "/api/runtime/hooks": 1,
+          "/api/channel-options": 1
+        },
+        {
+          "/api/version": 1,
+          "/api/runtime/hooks": 1,
+          "/api/channel-options": 1
+        },
+        {
+          "/api/version": 1,
+          "/api/runtime/hooks": 1,
+          "/api/channel-options": 1
+        }
+      ],
+      "stale_overview_count": 0,
+      "streams": [
+        0,
+        0,
+        0,
+        0
+      ]
+    }
+  },
+  "blocker": "The immutable idle gate rejects all API calls after page load in its route-exit observation, including required settings bootstrap GETs. Four controlled repetitions per legacy/e646/guard variant reproduce those three legitimate settings GETs, with zero stale overview GETs and zero SSE. Worker cannot classify this as PASS, weaken assertion, suppress required APIs, or change approved measurement readiness. Navigation remains a separate +11.0531% FAIL in the frozen full gate.",
+  "regressions": {
+    "browser_pass": 11,
+    "unit_pass": 66,
+    "scoped_optics_viewport_theme_pass": 4,
+    "ua_fallback_branch_only": true,
+    "detector": []
+  },
+  "unverified": [
+    "new source real Go backend/producers",
+    "physical Samsung/phone",
+    "Safari/Firefox rendering",
+    "OS zoom200",
+    "screen reader",
+    "total CPU/GPU/memory/energy",
+    "active-task scaling"
+  ],
+  "external_pr_push": false,
+  "canonical_runtime_lifecycle_contract_writes": false,
+  "subagents": 0
+}

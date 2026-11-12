@@ -1,0 +1,58 @@
+TAP version 13
+# Subtest: workflow real browser preserves full periods, grouped intervals, role meaning and partial-update state
+ok 1 - workflow real browser preserves full periods, grouped intervals, role meaning and partial-update state
+  ---
+  duration_ms: 7205.119208
+  type: 'test'
+  ...
+# Subtest: native workflow wait polls false predicates through refresh completion
+ok 2 - native workflow wait polls false predicates through refresh completion
+  ---
+  duration_ms: 818.536708
+  type: 'test'
+  ...
+# Subtest: A63 connected paint, individual dense events, fit entry and exact directional navigation use native input
+ok 3 - A63 connected paint, individual dense events, fit entry and exact directional navigation use native input
+  ---
+  duration_ms: 20016.286625
+  type: 'test'
+  ...
+# Subtest: slim workflow rows and plot-only real Ctrl-wheel and captured multi-touch gestures
+ok 4 - slim workflow rows and plot-only real Ctrl-wheel and captured multi-touch gestures
+  ---
+  duration_ms: 10759.233083
+  type: 'test'
+  ...
+# Subtest: adopted A60 corrections bound mixed outcomes and preserve open row selection extent
+ok 5 - adopted A60 corrections bound mixed outcomes and preserve open row selection extent
+  ---
+  duration_ms: 7578.247875
+  type: 'test'
+  ...
+# Subtest: representative workflow has compact context and plot-coordinate anchored time navigation
+ok 6 - representative workflow has compact context and plot-coordinate anchored time navigation
+  ---
+  duration_ms: 6711.827042
+  type: 'test'
+  ...
+# Subtest: actual Activity geometry and native hover, pinned popover, focus, tap and source reconciliation
+ok 7 - actual Activity geometry and native hover, pinned popover, focus, tap and source reconciliation
+  ---
+  duration_ms: 13269.393125
+  type: 'test'
+  ...
+# Subtest: four scoped A61 review corrections retain identical-source reading state and meaningful labels
+ok 8 - four scoped A61 review corrections retain identical-source reading state and meaningful labels
+  ---
+  duration_ms: 8917.407708
+  type: 'test'
+  ...
+1..8
+# tests 8
+# suites 0
+# pass 8
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 22262.026541

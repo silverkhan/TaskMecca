@@ -1,0 +1,459 @@
+{
+  "synthetic": true,
+  "mechanism": "Native Playwright mouse/keyboard/tap with isolated fixture API; no private zoom/selection calls",
+  "sources": {
+    "goassets/template/_task_mecca/framework/web/ui/components/workflow.js": "7ccc8a53ebc4f744a4f2e9c3df564daac12a292e877dab4f832d0f15db88b322",
+    "goassets/template/_task_mecca/framework/web/ui/components/workflow.css": "f69e9151a1d916242f5ec5996550fb00928a137a903038665ce5172b4896f285"
+  },
+  "cases": [
+    {
+      "mobile": false,
+      "language": "ko",
+      "palette": "smoke",
+      "theme": "light",
+      "nanoRuns": [
+        {
+          "from": "1793837100000000000",
+          "to": "1793837100001000000",
+          "left": 8.33333,
+          "width": 0.0000277778,
+          "authoredLeft": 8.333333333333332,
+          "authoredWidth": 0.000027777777777777776
+        },
+        {
+          "from": "1793837100001000001",
+          "to": "1793837100002000001",
+          "left": 8.33336,
+          "width": 0.0000277778,
+          "authoredLeft": 8.333361111138888,
+          "authoredWidth": 0.000027777777777777776
+        }
+      ],
+      "capsules": [
+        {
+          "height": 8,
+          "radius": 4,
+          "width": 42.296875
+        },
+        {
+          "height": 8,
+          "radius": 4,
+          "width": 225.53125
+        },
+        {
+          "height": 8,
+          "radius": 4,
+          "width": 14.09375
+        }
+      ],
+      "separator": {
+        "width": "1px",
+        "background": "rgba(255, 255, 255, 0.94)",
+        "pointer": "none"
+      },
+      "nativeArrowBoundaries": true,
+      "clippedOriginalEndpoints": true,
+      "denseOriginalMemberIDs": true,
+      "copyAndReadingRefresh": true,
+      "sameOpenRerenderPreserved": true,
+      "fitAndManualRefresh": true,
+      "newEntryTest": true,
+      "sourceUnchanged": true,
+      "pointAndEmptyTrue": true
+    },
+    {
+      "mobile": false,
+      "language": "ko",
+      "palette": "smoke",
+      "theme": "dark",
+      "nanoRuns": [
+        {
+          "from": "1793837100000000000",
+          "to": "1793837100001000000",
+          "left": 8.33333,
+          "width": 0.0000277778,
+          "authoredLeft": 8.333333333333332,
+          "authoredWidth": 0.000027777777777777776
+        },
+        {
+          "from": "1793837100001000001",
+          "to": "1793837100002000001",
+          "left": 8.33336,
+          "width": 0.0000277778,
+          "authoredLeft": 8.333361111138888,
+          "authoredWidth": 0.000027777777777777776
+        }
+      ],
+      "capsules": [
+        {
+          "height": 8,
+          "radius": 4,
+          "width": 42.296875
+        },
+        {
+          "height": 8,
+          "radius": 4,
+          "width": 225.53125
+        },
+        {
+          "height": 8,
+          "radius": 4,
+          "width": 14.09375
+        }
+      ],
+      "separator": {
+        "width": "1px",
+        "background": "rgba(255, 255, 255, 0.65)",
+        "pointer": "none"
+      },
+      "nativeArrowBoundaries": true,
+      "clippedOriginalEndpoints": true,
+      "denseOriginalMemberIDs": true,
+      "copyAndReadingRefresh": true,
+      "sameOpenRerenderPreserved": true,
+      "fitAndManualRefresh": true,
+      "newEntryTest": false,
+      "sourceUnchanged": true,
+      "pointAndEmptyTrue": true
+    },
+    {
+      "mobile": false,
+      "language": "en",
+      "palette": "smoke",
+      "theme": "light",
+      "nanoRuns": [
+        {
+          "from": "1793837100000000000",
+          "to": "1793837100001000000",
+          "left": 8.33333,
+          "width": 0.0000277778,
+          "authoredLeft": 8.333333333333332,
+          "authoredWidth": 0.000027777777777777776
+        },
+        {
+          "from": "1793837100001000001",
+          "to": "1793837100002000001",
+          "left": 8.33336,
+          "width": 0.0000277778,
+          "authoredLeft": 8.333361111138888,
+          "authoredWidth": 0.000027777777777777776
+        }
+      ],
+      "capsules": [
+        {
+          "height": 8,
+          "radius": 4,
+          "width": 42.296875
+        },
+        {
+          "height": 8,
+          "radius": 4,
+          "width": 225.53125
+        },
+        {
+          "height": 8,
+          "radius": 4,
+          "width": 14.09375
+        }
+      ],
+      "separator": {
+        "width": "1px",
+        "background": "rgba(255, 255, 255, 0.94)",
+        "pointer": "none"
+      },
+      "nativeArrowBoundaries": true,
+      "clippedOriginalEndpoints": true,
+      "denseOriginalMemberIDs": true,
+      "copyAndReadingRefresh": true,
+      "sameOpenRerenderPreserved": true,
+      "fitAndManualRefresh": true,
+      "newEntryTest": false,
+      "sourceUnchanged": true,
+      "pointAndEmptyTrue": true
+    },
+    {
+      "mobile": false,
+      "language": "en",
+      "palette": "smoke",
+      "theme": "dark",
+      "nanoRuns": [
+        {
+          "from": "1793837100000000000",
+          "to": "1793837100001000000",
+          "left": 8.33333,
+          "width": 0.0000277778,
+          "authoredLeft": 8.333333333333332,
+          "authoredWidth": 0.000027777777777777776
+        },
+        {
+          "from": "1793837100001000001",
+          "to": "1793837100002000001",
+          "left": 8.33336,
+          "width": 0.0000277778,
+          "authoredLeft": 8.333361111138888,
+          "authoredWidth": 0.000027777777777777776
+        }
+      ],
+      "capsules": [
+        {
+          "height": 8,
+          "radius": 4,
+          "width": 42.296875
+        },
+        {
+          "height": 8,
+          "radius": 4,
+          "width": 225.53125
+        },
+        {
+          "height": 8,
+          "radius": 4,
+          "width": 14.09375
+        }
+      ],
+      "separator": {
+        "width": "1px",
+        "background": "rgba(255, 255, 255, 0.65)",
+        "pointer": "none"
+      },
+      "nativeArrowBoundaries": true,
+      "clippedOriginalEndpoints": true,
+      "denseOriginalMemberIDs": true,
+      "copyAndReadingRefresh": true,
+      "sameOpenRerenderPreserved": true,
+      "fitAndManualRefresh": true,
+      "newEntryTest": false,
+      "sourceUnchanged": true,
+      "pointAndEmptyTrue": true
+    },
+    {
+      "mobile": true,
+      "language": "ko",
+      "palette": "smoke",
+      "theme": "light",
+      "nanoRuns": [
+        {
+          "from": "1793837100000000000",
+          "to": "1793837100001000000",
+          "left": 8.33333,
+          "width": 0.0000277778,
+          "authoredLeft": 8.333333333333332,
+          "authoredWidth": 0.000027777777777777776
+        },
+        {
+          "from": "1793837100001000001",
+          "to": "1793837100002000001",
+          "left": 8.33336,
+          "width": 0.0000277778,
+          "authoredLeft": 8.333361111138888,
+          "authoredWidth": 0.000027777777777777776
+        }
+      ],
+      "capsules": [
+        {
+          "height": 8,
+          "radius": 4,
+          "width": 9.6875
+        },
+        {
+          "height": 8,
+          "radius": 4,
+          "width": 51.71875
+        },
+        {
+          "height": 8,
+          "radius": 4,
+          "width": 3.21875
+        }
+      ],
+      "separator": {
+        "width": "1px",
+        "background": "rgba(255, 255, 255, 0.94)",
+        "pointer": "none"
+      },
+      "nativeArrowBoundaries": true,
+      "clippedOriginalEndpoints": true,
+      "denseOriginalMemberIDs": true,
+      "copyAndReadingRefresh": true,
+      "sameOpenRerenderPreserved": true,
+      "fitAndManualRefresh": true,
+      "newEntryTest": true,
+      "sourceUnchanged": true,
+      "pointAndEmptyTrue": true
+    },
+    {
+      "mobile": true,
+      "language": "ko",
+      "palette": "smoke",
+      "theme": "dark",
+      "nanoRuns": [
+        {
+          "from": "1793837100000000000",
+          "to": "1793837100001000000",
+          "left": 8.33333,
+          "width": 0.0000277778,
+          "authoredLeft": 8.333333333333332,
+          "authoredWidth": 0.000027777777777777776
+        },
+        {
+          "from": "1793837100001000001",
+          "to": "1793837100002000001",
+          "left": 8.33336,
+          "width": 0.0000277778,
+          "authoredLeft": 8.333361111138888,
+          "authoredWidth": 0.000027777777777777776
+        }
+      ],
+      "capsules": [
+        {
+          "height": 8,
+          "radius": 4,
+          "width": 9.6875
+        },
+        {
+          "height": 8,
+          "radius": 4,
+          "width": 51.71875
+        },
+        {
+          "height": 8,
+          "radius": 4,
+          "width": 3.21875
+        }
+      ],
+      "separator": {
+        "width": "1px",
+        "background": "rgba(255, 255, 255, 0.65)",
+        "pointer": "none"
+      },
+      "nativeArrowBoundaries": true,
+      "clippedOriginalEndpoints": true,
+      "denseOriginalMemberIDs": true,
+      "copyAndReadingRefresh": true,
+      "sameOpenRerenderPreserved": true,
+      "fitAndManualRefresh": true,
+      "newEntryTest": false,
+      "sourceUnchanged": true,
+      "pointAndEmptyTrue": true
+    },
+    {
+      "mobile": true,
+      "language": "en",
+      "palette": "smoke",
+      "theme": "light",
+      "nanoRuns": [
+        {
+          "from": "1793837100000000000",
+          "to": "1793837100001000000",
+          "left": 8.33333,
+          "width": 0.0000277778,
+          "authoredLeft": 8.333333333333332,
+          "authoredWidth": 0.000027777777777777776
+        },
+        {
+          "from": "1793837100001000001",
+          "to": "1793837100002000001",
+          "left": 8.33336,
+          "width": 0.0000277778,
+          "authoredLeft": 8.333361111138888,
+          "authoredWidth": 0.000027777777777777776
+        }
+      ],
+      "capsules": [
+        {
+          "height": 8,
+          "radius": 4,
+          "width": 9.6875
+        },
+        {
+          "height": 8,
+          "radius": 4,
+          "width": 51.71875
+        },
+        {
+          "height": 8,
+          "radius": 4,
+          "width": 3.21875
+        }
+      ],
+      "separator": {
+        "width": "1px",
+        "background": "rgba(255, 255, 255, 0.94)",
+        "pointer": "none"
+      },
+      "nativeArrowBoundaries": true,
+      "clippedOriginalEndpoints": true,
+      "denseOriginalMemberIDs": true,
+      "copyAndReadingRefresh": true,
+      "sameOpenRerenderPreserved": true,
+      "fitAndManualRefresh": true,
+      "newEntryTest": false,
+      "sourceUnchanged": true,
+      "pointAndEmptyTrue": true
+    },
+    {
+      "mobile": true,
+      "language": "en",
+      "palette": "smoke",
+      "theme": "dark",
+      "nanoRuns": [
+        {
+          "from": "1793837100000000000",
+          "to": "1793837100001000000",
+          "left": 8.33333,
+          "width": 0.0000277778,
+          "authoredLeft": 8.333333333333332,
+          "authoredWidth": 0.000027777777777777776
+        },
+        {
+          "from": "1793837100001000001",
+          "to": "1793837100002000001",
+          "left": 8.33336,
+          "width": 0.0000277778,
+          "authoredLeft": 8.333361111138888,
+          "authoredWidth": 0.000027777777777777776
+        }
+      ],
+      "capsules": [
+        {
+          "height": 8,
+          "radius": 4,
+          "width": 9.6875
+        },
+        {
+          "height": 8,
+          "radius": 4,
+          "width": 51.71875
+        },
+        {
+          "height": 8,
+          "radius": 4,
+          "width": 3.21875
+        }
+      ],
+      "separator": {
+        "width": "1px",
+        "background": "rgba(255, 255, 255, 0.65)",
+        "pointer": "none"
+      },
+      "nativeArrowBoundaries": true,
+      "clippedOriginalEndpoints": true,
+      "denseOriginalMemberIDs": true,
+      "copyAndReadingRefresh": true,
+      "sameOpenRerenderPreserved": true,
+      "fitAndManualRefresh": true,
+      "newEntryTest": false,
+      "sourceUnchanged": true,
+      "pointAndEmptyTrue": true
+    }
+  ],
+  "errors": [],
+  "screens": [],
+  "browser": "156.0.8078.4",
+  "passed": true,
+  "cleanup": {
+    "browserClosed": true,
+    "fixtureClosed": true,
+    "portRefused": true
+  }
+}

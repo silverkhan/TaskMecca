@@ -20,60 +20,48 @@ import (
 )
 
 func TestSignatureThemeBranding(t *testing.T) {
-	indexHTML, err := goassets.Template.ReadFile(embeddedRoot + "/web/index.html")
-	if err != nil {
-		t.Fatal(err)
+	read := func(name string) string {
+		data, err := goassets.Template.ReadFile(embeddedRoot + "/web/" + name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return string(data)
 	}
-	html := string(indexHTML)
-	for _, needle := range []string{"/logo.svg", `<option value="mecca">Mecca</option>`, `<option value="slate">Slate</option>`} {
+	html := read("index.html")
+	for _, needle := range []string{"/logo.svg", "/theme-boot.js", "/style.css", `src="/app.js"`, `value="mecca"`, `value="slate"`, "/ui/dev-floating/pilot.js", "/ui/dev-floating/pilot.css"} {
 		if !contains(html, needle) {
-			t.Fatalf("index missing signature theme marker %q", needle)
+			t.Fatalf("dev-preserving pilot entry missing %q", needle)
 		}
 	}
-
-	appAsset, err := goassets.Template.ReadFile(embeddedRoot + "/web/app.js")
-	if err != nil {
-		t.Fatal(err)
+	if contains(html, `src="/ui/main.js"`) {
+		t.Fatal("reconstructed native UI must not replace the approved dev entry")
 	}
-	appJS := string(appAsset)
-	for _, needle := range []string{"task-mecca-palette-version", "['dark','light','system'].includes(preference)", "syncThemeBrowserChrome()", "task-mecca-stable-brand-intro-v1", "if((cli.channel||'stable')!=='stable')return", "localStorage.setItem(marker,'1')"} {
-		if !contains(appJS, needle) {
-			t.Fatalf("app.js missing signature migration marker %q", needle)
+	if strings.Index(html, "/theme-boot.js") > strings.Index(html, "/style.css") {
+		t.Fatal("dev theme bootstrap must precede stylesheet")
+	}
+	// Previously implemented native assets stay packaged as history, not the active entry.
+	boot := read("ui/boot.js")
+	for _, needle := range []string{"task-mecca-smoke-mode", "prefers-color-scheme: dark", `"light"`, `"dark"`, `"system"`} {
+		if !contains(boot, needle) {
+			t.Fatalf("Smoke bootstrap missing %q", needle)
 		}
 	}
-
-	// The bootstrap must run before the stylesheet is parsed.
-	if strings.Index(html, "/theme-boot.js") < 0 || strings.Index(html, "/theme-boot.js") > strings.Index(html, "/style.css") {
-		t.Fatal("theme bootstrap must precede the stylesheet")
+	css := read("ui/smoke.css")
+	if !contains(css, `data-theme="dark"`) || !contains(css, "color-scheme: light") {
+		t.Fatal("Smoke must package light and dark modes")
 	}
-	boot, err := goassets.Template.ReadFile(embeddedRoot + "/web/theme-boot.js")
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, needle := range []string{"task-mecca-theme", "task-mecca-palette", "themePreference", "prefers-color-scheme: dark"} {
-		if !contains(string(boot), needle) {
-			t.Fatalf("theme bootstrap missing %q", needle)
+	shared := read("ui/components/shared.js")
+	for _, needle := range []string{`id="appearance" aria-label=`, "System", "Light", "Dark", "Task Mecca"} {
+		if !contains(shared, needle) {
+			t.Fatalf("native appearance/brand missing %q", needle)
 		}
 	}
-
-	cssAsset, err := goassets.Template.ReadFile(embeddedRoot + "/web/style.css")
-	if err != nil {
-		t.Fatal(err)
+	if !contains(read("logo.svg"), "<svg") {
+		t.Fatal("original logo must remain a valid SVG asset")
 	}
-	css := string(cssAsset)
-	if !contains(css, `data-palette="mecca"`) {
-		t.Fatal("style.css missing Mecca signature palette")
-	}
-	if contains(css, `data-palette="nocturne"`) {
-		t.Fatal("style.css still exposes legacy Nocturne palette")
-	}
-
-	logo, err := goassets.Template.ReadFile(embeddedRoot + "/web/logo.svg")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !contains(string(logo), "<svg") {
-		t.Fatal("logo.svg is not a valid SVG asset")
+	// Existing terminal/compatibility assets remain independently packaged.
+	if !contains(read("app.js"), "syncThemeBrowserChrome()") || !contains(read("theme-boot.js"), "task-mecca-theme") {
+		t.Fatal("legacy compatibility assets were removed")
 	}
 }
 
@@ -169,6 +157,8 @@ func TestHandlerServesDashboardAPIsAndAssets(t *testing.T) {
 		{"/sw.js", 200, "javascript"},
 		{"/style.css", 200, "text/css"},
 		{"/logo.svg", 200, "image/svg+xml"},
+		{"/ui/dev-floating/pilot.js", 200, "javascript"},
+		{"/ui/dev-floating/pilot.css", 200, "text/css"},
 		{"/tasks/A-1", 200, "text/html"},
 	}
 	for _, tc := range cases {
@@ -186,9 +176,49 @@ func TestHandlerServesDashboardAPIsAndAssets(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, req)
-	if !contains(rec.Body.String(), "releaseUnreadPrompt") {
-		t.Fatal("release unread prompt container missing from Web shell")
+	// The approved default is the actual dev shell. The pilot opts into material
+	// on that same DOM; preserved native modules have separate historical fixtures.
+	wantShell, err := goassets.Template.ReadFile(embeddedRoot + "/web/index.html")
+	if err != nil {
+		t.Fatal(err)
 	}
+	for _, route := range []string{"/", "/tasks/A-1", "/tasks/A-1?floating=1&background=image"} {
+		shellResponse := httptest.NewRecorder()
+		handler.ServeHTTP(shellResponse, httptest.NewRequest(http.MethodGet, route, nil))
+		if shellResponse.Code != http.StatusOK || shellResponse.Body.String() != string(wantShell) {
+			t.Fatalf("%s must serve the unchanged embedded dev shell; status=%d", route, shellResponse.Code)
+		}
+	}
+	shell := string(wantShell)
+	for _, marker := range []string{`class="app-shell"`, `id="sidebar"`, `id="sidebarToggle"`, `id="stateNav"`, `class="topbar"`, `id="content"`, `id="shortcutBar"`} {
+		if strings.Count(shell, marker) != 1 {
+			t.Fatalf("dev shell must retain one %s", marker)
+		}
+	}
+	previous := -1
+	for _, entry := range []string{`src="/theme-boot.js"`, `href="/style.css"`, `src="/ui/dev-floating/pilot.js"`, `href="/ui/dev-floating/pilot.css"`, `src="/select-ui.js"`, `src="/app.js"`} {
+		position := strings.Index(shell, entry)
+		if position <= previous || strings.Count(shell, entry) != 1 {
+			t.Fatalf("dev shell entry must occur once in bootstrap order: %s", entry)
+		}
+		previous = position
+	}
+	if contains(shell, `src="/ui/main.js"`) || contains(shell, `data-floating-pilot=`) {
+		t.Fatal("default dev shell must not mount reconstructed UI or pre-enable the opt-in pilot")
+	}
+	for _, asset := range []string{"ui/dev-floating/pilot.js", "ui/dev-floating/pilot.css", "ui/material/cozy-beige-room-photo-1920.webp"} {
+		wantAsset, err := goassets.Template.ReadFile(embeddedRoot + "/web/" + asset)
+		if err != nil {
+			t.Fatal(err)
+		}
+		assetResponse := httptest.NewRecorder()
+		handler.ServeHTTP(assetResponse, httptest.NewRequest(http.MethodGet, "/"+asset, nil))
+		if len(wantAsset) == 0 || assetResponse.Code != http.StatusOK || assetResponse.Body.String() != string(wantAsset) {
+			t.Fatalf("pilot asset /%s must serve exact embedded bytes; status=%d", asset, assetResponse.Code)
+		}
+	}
+	// Release/update UI is mapped after user design review. Its existing API
+	// and compatibility-asset checks remain below; no dead core control is added.
 
 	// The existing self-only CSP must allow the bootstrap without unsafe-inline.
 	req = httptest.NewRequest(http.MethodGet, "/", nil)
@@ -1139,12 +1169,12 @@ func TestHandlerServesUninitializedBacklogAsNormalProject(t *testing.T) {
 		if rec.Code != http.StatusOK {
 			t.Fatalf("%s status=%d body=%s", path, rec.Code, rec.Body.String())
 		}
-        if path=="/api/backlog/tasks" {
-            timing:=rec.Header().Get("Server-Timing")
-            if !strings.Contains(timing,"selection;dur=")||!strings.Contains(timing,"backlog;dur=") {
-                t.Fatalf("backlog response missing diagnostic timings: %q",timing)
-            }
-        }
+		if path == "/api/backlog/tasks" {
+			timing := rec.Header().Get("Server-Timing")
+			if !strings.Contains(timing, "selection;dur=") || !strings.Contains(timing, "backlog;dur=") {
+				t.Fatalf("backlog response missing diagnostic timings: %q", timing)
+			}
+		}
 		payload := map[string]any{}
 		if err := json.Unmarshal(rec.Body.Bytes(), &payload); err != nil {
 			t.Fatalf("%s: %v", path, err)

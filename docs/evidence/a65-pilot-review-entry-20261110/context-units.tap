@@ -1,0 +1,40 @@
+✔ browser evidence follows accepted display request, preserves project and deduplicates in-flight calls (14.332625ms)
+✔ failure and disabled settings produce no false browser success; legacy and project off survive (1.723583ms)
+✔ history joins exact project/event ID and never claims unknown/failed/suppressed delivery success (47.359458ms)
+✔ resolved operation tombstone prevents same incident reappearing after stale or undated payload (1.241334ms)
+✔ diagnostic menu keeps failures visible, removes resolved entries and clipboard text requests no execution (1.300042ms)
+✔ diagnostic late response cannot restore resolved state; project/folder remain isolated and same revision polls refresh (1.214ms)
+✔ automatic source remap invalidates an in-flight diagnostic success or failure (2.019042ms)
+✔ delivery history coalesces loads and preserves records when subsequent server read fails (3.287708ms)
+✔ hook resolution prevents stale, undated or equal-time assignment warnings from reaching browser consumer (1.522542ms)
+✔ historical native shell has dedicated preferences and notifications without a duplicate attention route (5.942541ms)
+✔ default dev shell retains its actual notification route and opt-in pilot assets (0.498167ms)
+✔ notification labels retain their meaning and remain readable in the native navigation (3.366333ms)
+✔ PR environments accessible only from Dev and not an active PR (9.948167ms)
+✔ PR list uses SHA-pinned environment switch, not child processes (2.531125ms)
+✔ Preview child identity never exposes environment manager (1.563583ms)
+✔ execution switch uses approved local API and health identity (0.327292ms)
+✔ a Dev PR with missing or expired build offers a SHA-pinned rebuild, never runs a child Preview (1.780459ms)
+✔ native PR switch and rebuild dialogs render real line breaks, not escaped newline characters (2.103417ms)
+✔ mobile PR refresh control keeps a compact single-line label and independent full-width description (3.457417ms)
+✔ lookup failure is unknown availability, never an empty build list (2.027083ms)
+✔ failed refresh keeps prior results identifiable and disables switching (2.134417ms)
+✔ Preview workflow title is quoted so YAML preserves PR hash and SHA (0.935625ms)
+✔ clicking an update instantly opens checking UI and only fetches release notes once (2.306916ms)
+✔ missing release notes requires explicit choice and never starts an installation (1.358ms)
+✔ multiple update presses create only one POST and a visible stage immediately (0.560334ms)
+✔ HTTP failure stays in panel and retry issues one new POST (0.571709ms)
+✔ 409 attaches to an existing update instead of showing a false failure (0.507375ms)
+✔ restart displays its own phase and a distinct timeout error (0.426166ms)
+✔ restart confirmation detects a new Web boot with the wrong installed version without waiting 30 seconds (1.002875ms)
+✔ restart confirmation accepts correct new process and reloads (0.607709ms)
+✔ slow release note lookup stops blocking update confirmation after a bounded wait (3.483958ms)
+✔ update POST passes already displayed latest release as a hint, not a forced refresh (0.91725ms)
+ℹ tests 32
+ℹ suites 0
+ℹ pass 32
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 149.176875

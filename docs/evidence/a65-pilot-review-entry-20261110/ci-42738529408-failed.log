@@ -1,0 +1,744 @@
+Go runtime	UNKNOWN STEP	﻿2026-11-10T01:49:56.1520584Z Current runner version: '2.338.2'
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:56.1541548Z ##[group]Runner Image Provisioner
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:56.1542379Z Hosted Compute Agent
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:56.1542862Z Version: 20261028.624
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:56.1543355Z Commit: 54898b74c23fde5556c9b3c3a2290865feef0dfe
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:56.1543997Z Build Date: 2026-10-28T21:51:42Z
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:56.1544545Z Worker ID: {4d6ae811-8243-43c9-93dc-64db49bacfe1}
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:56.1545153Z Region: eastus2
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:56.1545616Z Cloud: Azure
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:56.1546314Z ##[endgroup]
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:56.1547767Z ##[group]Operating System
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:56.1548282Z Ubuntu
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:56.1548831Z 26.04.1
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:56.1549259Z LTS
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:56.1549678Z ##[endgroup]
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:56.1550163Z ##[group]Runner Image
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:56.1550667Z Image: ubuntu-26.04
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:56.1551144Z Version: 20261101.186.1
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:56.1552229Z Included Software: https://github.com/actions/runner-images/blob/ubuntu26/20261101.186/images/ubuntu/Ubuntu2604-Readme.md
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:56.1553490Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu26%2F20261101.186
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:56.1554257Z ##[endgroup]
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:56.1555248Z ##[group]GITHUB_TOKEN Permissions
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:56.1556998Z Contents: read
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:56.1557475Z Metadata: read
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:56.1558022Z ##[endgroup]
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:56.1559745Z Secret source: Actions
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:56.1560580Z Cache mode: write
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:56.1561148Z Prepare workflow directory
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:56.1832506Z Prepare all required actions
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:56.1871745Z Getting action download info
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:56.3709370Z Download action repository 'actions/checkout@v4' (SHA:11d5960a326750d5838078e36cf38b85af677262)
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:56.4877964Z Download action repository 'actions/setup-go@v5' (SHA:40f1582b2485089dde7abd97c1529aa768e1baff)
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:56.7051979Z Download action repository 'actions/upload-artifact@v4' (SHA:ea165f8d65b6e75b540449e92b4886f43607fa02)
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:56.9385268Z Complete job name: Go runtime
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:57.0138056Z ##[group]Run actions/checkout@v4
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:57.0138732Z with:
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:57.0139119Z   repository: silverkhan/TaskMecca
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:57.0142438Z   token: ***
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:57.0142810Z   ssh-strict: true
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:57.0143182Z   ssh-user: git
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:57.0143558Z   persist-credentials: true
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:57.0143970Z   clean: true
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:57.0144348Z   sparse-checkout-cone-mode: true
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:57.0144780Z   fetch-depth: 1
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:57.0145149Z   fetch-tags: false
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:57.0145525Z   show-progress: true
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:57.0145909Z   lfs: false
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:57.0146456Z   submodules: false
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:57.0146851Z   set-safe-directory: true
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:57.0147278Z   allow-unsafe-pr-checkout: false
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:57.0147883Z ##[endgroup]
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:57.2697030Z Syncing repository: silverkhan/TaskMecca
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:57.2699034Z ##[group]Getting Git version info
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:57.2699781Z Working directory is '/home/runner/work/TaskMecca/TaskMecca'
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:57.2700601Z [command]/usr/bin/git version
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:57.2715051Z git version 2.56.0
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:57.2731571Z ##[endgroup]
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:57.2751396Z Temporarily overriding HOME='/home/runner/work/_temp/0efc4fad-20fa-4189-b061-e9b1faa65f35' before making global git config changes
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:57.2753174Z Adding repository directory to the temporary git global config as a safe directory
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:57.2755771Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/TaskMecca/TaskMecca
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:57.2809471Z Deleting the contents of '/home/runner/work/TaskMecca/TaskMecca'
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:57.2812973Z ##[group]Initializing the repository
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:57.2816756Z [command]/usr/bin/git init /home/runner/work/TaskMecca/TaskMecca
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:57.2923065Z hint: Using 'master' as the name for the initial branch. This default branch name
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:57.2924920Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:57.2926553Z hint: to use in all of your new repositories, which will suppress this warning,
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:57.2927789Z hint: call:
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:57.2928590Z hint:
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:57.2929296Z hint: 	git config --global init.defaultBranch <name>
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:57.2930052Z hint:
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:57.2930764Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:57.2931929Z hint: 'development'. The just-created branch can be renamed via this command:
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:57.2932818Z hint:
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:57.2933319Z hint: 	git branch -m <name>
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:57.2933878Z hint:
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:57.2934617Z hint: Disable this message with "git config set advice.defaultBranchName false"
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:57.2935846Z Initialized empty Git repository in /home/runner/work/TaskMecca/TaskMecca/.git/
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:57.2942136Z [command]/usr/bin/git remote add origin https://github.com/silverkhan/TaskMecca
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:57.2984108Z ##[endgroup]
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:57.2984955Z ##[group]Disabling automatic garbage collection
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:57.2987879Z [command]/usr/bin/git config --local gc.auto 0
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:57.3019449Z ##[endgroup]
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:57.3020297Z ##[group]Setting up auth
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:57.3026468Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:57.3060071Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:57.3427675Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:57.3468255Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:57.3705088Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:57.3735752Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:57.3966295Z [command]/usr/bin/git config --local http.https://github.com/.extraheader AUTHORIZATION: basic ***
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:57.4034549Z ##[endgroup]
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:57.4040623Z ##[group]Fetching the repository
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:57.4041716Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +df6fe7e469e3d4a4377f53a291f7e06c07fc9e6b:refs/remotes/pull/361/merge
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:59.4436312Z From https://github.com/silverkhan/TaskMecca
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:59.4437638Z  * [new ref]         df6fe7e469e3d4a4377f53a291f7e06c07fc9e6b -> pull/361/merge
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:59.4439936Z ##[endgroup]
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:59.4440949Z ##[group]Determining the checkout info
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:59.4441987Z ##[endgroup]
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:59.4445425Z [command]/usr/bin/git sparse-checkout disable
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:59.4532869Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:59.4559220Z ##[group]Checking out the ref
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:59.4561264Z [command]/usr/bin/git checkout --progress --force refs/remotes/pull/361/merge
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:59.8666628Z Note: switching to 'refs/remotes/pull/361/merge'.
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:59.8667127Z 
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:59.8667368Z You are in 'detached HEAD' state. You can look around, make experimental
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:59.8667929Z changes and commit them, and you can discard any commits you make in this
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:59.8668462Z state without impacting any branches by switching back to a branch.
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:59.8668751Z 
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:59.8669002Z If you want to create a new branch to retain commits you create, you may
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:59.8669486Z do so (now or later) by using -c with the switch command. Example:
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:59.8670065Z 
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:59.8670221Z   git switch -c <new-branch-name>
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:59.8670415Z 
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:59.8670583Z Or undo this operation with:
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:59.8670770Z 
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:59.8670894Z   git switch -
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:59.8671112Z 
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:59.8671341Z Turn off this advice by setting config variable advice.detachedHead to false
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:59.8671636Z 
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:59.8671995Z HEAD is now at df6fe7e Merge 2bb105cdba180dbc98d6d2c009205243a1b3ecf9 into f0a732e3dd8234a663dccf3c6937fc9dc674917b
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:59.8696792Z ##[endgroup]
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:59.8739084Z [command]/usr/bin/git log -1 --format=%H
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:59.8760529Z df6fe7e469e3d4a4377f53a291f7e06c07fc9e6b
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:59.8999800Z ##[group]Run actions/setup-go@v5
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:59.9000220Z with:
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:59.9000558Z   go-version-file: go.mod
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:59.9000922Z   check-latest: false
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:59.9003460Z   token: ***
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:59.9003803Z   cache: true
+Go runtime	UNKNOWN STEP	2026-11-10T01:49:59.9004122Z ##[endgroup]
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:00.0029481Z Setup go version spec 1.22
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:00.0064191Z Attempting to download 1.22...
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:00.0266226Z (node:2196) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:00.0267231Z (Use `node --trace-deprecation ...` to show where the warning was created)
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:00.5566488Z matching 1.22...
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:00.5598397Z Acquiring 1.22.12 from https://github.com/actions/go-versions/releases/download/1.22.12-13149489080/go-1.22.12-linux-x64.tar.gz
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:01.1823996Z Extracting Go...
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:01.1924952Z [command]/usr/bin/tar xz --warning=no-unknown-keyword --overwrite -C /home/runner/work/_temp/eabceea4-e10d-4cf4-bc0a-95073aa45a55 -f /home/runner/work/_temp/a2c7c867-4e3f-4bc8-a1c0-85249c52e702
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:02.1619380Z Successfully extracted go to /home/runner/work/_temp/eabceea4-e10d-4cf4-bc0a-95073aa45a55
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:02.1620153Z Adding to the cache ...
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:06.0767774Z Successfully cached go to /opt/hostedtoolcache/go/1.22.12/x64
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:06.0769578Z Added go to the path
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:06.0771606Z Successfully set up Go version 1.22
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:06.0944749Z [command]/opt/hostedtoolcache/go/1.22.12/x64/bin/go env GOMODCACHE
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:06.0985655Z [command]/opt/hostedtoolcache/go/1.22.12/x64/bin/go env GOCACHE
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:06.1024453Z /home/runner/go/pkg/mod
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:06.1037459Z /home/runner/.cache/go-build
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:06.1712761Z Cache hit for: setup-go-Linux-x64-ubuntu26-go-1.22.12-a0dda88cfc92ef25ad2e57caf590d7241cb4e6849d501f463f8a99b60f2516a3
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:06.1796327Z (node:2196) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:06.7768236Z Received 129072372 of 129072372 (100.0%), 213.7 MBs/sec
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:06.7768896Z Cache Size: ~123 MB (129072372 B)
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:06.7871734Z [command]/usr/bin/tar -xf /home/runner/work/_temp/062041da-e050-4f22-8d34-55499eb5755f/cache.tzst -P -C /home/runner/work/TaskMecca/TaskMecca --use-compress-program unzstd
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:07.1494801Z Cache restored successfully
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:07.1552037Z Cache restored from key: setup-go-Linux-x64-ubuntu26-go-1.22.12-a0dda88cfc92ef25ad2e57caf590d7241cb4e6849d501f463f8a99b60f2516a3
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:07.1573286Z go version go1.22.12 linux/amd64
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:07.1573477Z 
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:07.1573742Z ##[group]go env
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:07.1685962Z GO111MODULE=''
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:07.1686390Z GOARCH='amd64'
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:07.1686720Z GOBIN=''
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:07.1686960Z GOCACHE='/home/runner/.cache/go-build'
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:07.1687215Z GOENV='/home/runner/.config/go/env'
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:07.1687440Z GOEXE=''
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:07.1687629Z GOEXPERIMENT=''
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:07.1687822Z GOFLAGS=''
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:07.1688278Z GOHOSTARCH='amd64'
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:07.1688467Z GOHOSTOS='linux'
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:07.1688690Z GOINSECURE=''
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:07.1688891Z GOMODCACHE='/home/runner/go/pkg/mod'
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:07.1689110Z GONOPROXY=''
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:07.1689275Z GONOSUMDB=''
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:07.1689434Z GOOS='linux'
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:07.1689606Z GOPATH='/home/runner/go'
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:07.1689802Z GOPRIVATE=''
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:07.1690020Z GOPROXY='https://proxy.golang.org,direct'
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:07.1690301Z GOROOT='/opt/hostedtoolcache/go/1.22.12/x64'
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:07.1691135Z GOSUMDB='sum.golang.org'
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:07.1691336Z GOTMPDIR=''
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:07.1691522Z GOTOOLCHAIN='auto'
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:07.1692040Z GOTOOLDIR='/opt/hostedtoolcache/go/1.22.12/x64/pkg/tool/linux_amd64'
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:07.1692379Z GOVCS=''
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:07.1692620Z GOVERSION='go1.22.12'
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:07.1692835Z GCCGO='gccgo'
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:07.1693077Z GOAMD64='v1'
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:07.1693330Z AR='ar'
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:07.1693525Z CC='gcc'
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:07.1693678Z CXX='g++'
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:07.1693858Z CGO_ENABLED='1'
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:07.1694195Z GOMOD='/home/runner/work/TaskMecca/TaskMecca/go.mod'
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:07.1694518Z GOWORK=''
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:07.1694870Z CGO_CFLAGS='-O2 -g'
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:07.1695057Z CGO_CPPFLAGS=''
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:07.1695238Z CGO_CXXFLAGS='-O2 -g'
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:07.1695427Z CGO_FFLAGS='-O2 -g'
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:07.1695608Z CGO_LDFLAGS='-O2 -g'
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:07.1695818Z PKG_CONFIG='pkg-config'
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:07.1696596Z GOGCCFLAGS='-fPIC -m64 -pthread -Wl,--no-gc-sections -fmessage-length=0 -ffile-prefix-map=/tmp/go-build3261439421=/tmp/go-build -gno-record-gcc-switches'
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:07.1697060Z 
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:07.1697330Z ##[endgroup]
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:07.1892075Z ##[group]Run node scripts/record-ci-test.cjs --output activity-ci-evidence.json -- go test ./...
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:07.1892703Z ^[[36;1mnode scripts/record-ci-test.cjs --output activity-ci-evidence.json -- go test ./...^[[0m
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:07.1942528Z shell: /usr/bin/bash -e {0}
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:07.1942795Z ##[endgroup]
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:13.3361617Z ?   	github.com/silverkhan/TaskMecca/goassets	[no test files]
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:14.3651423Z ?   	github.com/silverkhan/TaskMecca/internal/handoffjournal	[no test files]
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:16.3532831Z ok  	github.com/silverkhan/TaskMecca/cmd/task-mecca	2.602s
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:16.3533661Z ok  	github.com/silverkhan/TaskMecca/internal/activity	0.393s
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:17.9973050Z ok  	github.com/silverkhan/TaskMecca/internal/backlog	3.489s
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:17.9973654Z ok  	github.com/silverkhan/TaskMecca/internal/contextlife	0.146s
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:17.9974724Z ok  	github.com/silverkhan/TaskMecca/internal/contractscope	0.056s
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:17.9975618Z ok  	github.com/silverkhan/TaskMecca/internal/handoff	0.515s
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:17.9976480Z ok  	github.com/silverkhan/TaskMecca/internal/install	1.523s
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:17.9977208Z ok  	github.com/silverkhan/TaskMecca/internal/maintenance	1.357s
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:17.9978122Z ?   	github.com/silverkhan/TaskMecca/internal/projectionchange	[no test files]
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:18.6098883Z ok  	github.com/silverkhan/TaskMecca/internal/notify	1.466s
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:18.6099714Z ok  	github.com/silverkhan/TaskMecca/internal/preview	0.956s
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:18.6100646Z ok  	github.com/silverkhan/TaskMecca/internal/projectguard	0.016s
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:19.0237978Z ok  	github.com/silverkhan/TaskMecca/internal/runtimeobs	0.207s
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:19.0238983Z ok  	github.com/silverkhan/TaskMecca/internal/subcontroller	0.002s
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:44.1193497Z ok  	github.com/silverkhan/TaskMecca/internal/webui	23.298s
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:44.1593239Z CI command evidence: activity-ci-evidence.json (passed, 36798 ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:44.1725626Z ##[group]Run actions/upload-artifact@v4
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:44.1725866Z with:
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:44.1726200Z   name: activity-ci-evidence-42738529408-1
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:44.1726448Z   path: activity-ci-evidence.json
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:44.1726830Z   if-no-files-found: warn
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:44.1727022Z   compression-level: 6
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:44.1727219Z   overwrite: false
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:44.1727406Z   include-hidden-files: false
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:44.1727614Z ##[endgroup]
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:44.3108779Z (node:6604) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:44.3109377Z (Use `node --trace-deprecation ...` to show where the warning was created)
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:44.3128516Z With the provided path, there will be 1 file uploaded
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:44.3156863Z Artifact name is valid!
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:44.3166979Z Root directory input is valid!
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:44.5396838Z Beginning upload of artifact content to blob storage
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:44.5563090Z (node:6604) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:44.5961198Z Uploaded bytes 568
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:44.6086483Z Finished uploading artifact content to blob storage!
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:44.6087285Z SHA256 digest of uploaded artifact zip is 9abb4da94a89024a714f8ed1cf6daec1960fc356fe990aa83f5fdc0e4827e535
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:44.6088646Z Finalizing artifact upload
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:44.9721015Z Artifact activity-ci-evidence-42738529408-1.zip successfully finalized. Artifact ID 13726879968
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:44.9721945Z Artifact activity-ci-evidence-42738529408-1 has been successfully uploaded! Final size is 568 bytes. Artifact ID is 13726879968
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:44.9726397Z Artifact download URL: https://github.com/silverkhan/TaskMecca/actions/runs/42738529408/artifacts/13726879968
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:44.9860555Z ##[group]Run node --test tests/record_ci_test.test.cjs
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:44.9860922Z ^[[36;1mnode --test tests/record_ci_test.test.cjs^[[0m
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:44.9907334Z shell: /usr/bin/bash -e {0}
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:44.9907558Z ##[endgroup]
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:45.0838275Z ✔ CI command parsing requires one explicit output and command (1.326919ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:45.0843291Z ✔ CI run evidence has grounded timing, result, SHA and no backlog inference (0.530684ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:45.0846615Z ✔ failed CI command preserves exit code and does not invent wall time (0.149701ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:45.0919722Z ℹ tests 3
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:45.0920013Z ℹ suites 0
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:45.0920294Z ℹ pass 3
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:45.0920543Z ℹ fail 0
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:45.0920799Z ℹ cancelled 0
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:45.0921481Z ℹ skipped 0
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:45.0945339Z ℹ todo 0
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:45.0945635Z ℹ duration_ms 64.809164
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:45.1010015Z ##[group]Run go test ./internal/backlog -run '^TestLifecycleProjectionPerformanceRegression$' -count=1 -v
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:45.1010630Z ^[[36;1mgo test ./internal/backlog -run '^TestLifecycleProjectionPerformanceRegression$' -count=1 -v^[[0m
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:45.1011154Z ^[[36;1mgo test -race ./internal/backlog ./internal/webui -run 'TestLifecycleProjection' -count=1^[[0m
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:45.1011684Z ^[[36;1mnode --test tests/web_detail_lifecycle_live.test.cjs tests/web_task_detail_prefetch.test.cjs^[[0m
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:45.1057626Z shell: /usr/bin/bash -e {0}
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:45.1057850Z env:
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:45.1058028Z   TASK_MECCA_LIFECYCLE_PERF: 1
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:45.1058312Z   TASK_MECCA_LIFECYCLE_PERF_REPORT: lifecycle-performance.json
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:45.1058613Z ##[endgroup]
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:46.3121867Z === RUN   TestLifecycleProjectionPerformanceRegression
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:47.0406955Z     lifecycle_projection_perf_test.go:154: {
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:47.0407536Z           "arch": "amd64",
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:47.0408057Z           "baseline": "same fixture legacy full-detail path and same-run 100-task read distribution",
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:47.0408446Z           "cpus": 4,
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:47.0408701Z           "go_version": "go1.22.12",
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:47.0409034Z           "measured_at": "2026-11-10T01:50:47.04035353Z",
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:47.0409576Z           "measurements": [
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:47.0409796Z             {
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:47.0410012Z               "tasks": 100,
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:47.0410284Z               "runtime_events": 100,
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:47.0410568Z               "handoff_events": 100,
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:47.0410857Z               "cold_ms": 26.324493,
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:47.0411134Z               "legacy_ms": 7.028504,
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:47.0411398Z               "refresh_ms": 2.80085,
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:47.0411722Z               "automatic_refresh_ms": 11.106939,
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:47.0412019Z               "warm_p50_ns": 14191,
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:47.0412292Z               "warm_p95_ns": 51747,
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:47.0412595Z               "concurrent_ns_per_op": 9293,
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:47.0412896Z               "read_control_runs": 0,
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:47.0413187Z               "read_source_scans": 0
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:47.0413410Z             },
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:47.0413592Z             {
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:47.0413812Z               "tasks": 500,
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:47.0414077Z               "runtime_events": 500,
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:47.0414349Z               "handoff_events": 500,
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:47.0414622Z               "cold_ms": 82.489726,
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:47.0414895Z               "legacy_ms": 24.283511,
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:47.0415186Z               "refresh_ms": 6.062854,
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:47.0415504Z               "automatic_refresh_ms": 32.214322,
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:47.0415813Z               "warm_p50_ns": 14662,
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:47.0416282Z               "warm_p95_ns": 39318,
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:47.0416595Z               "concurrent_ns_per_op": 10377,
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:47.0417030Z               "read_control_runs": 0,
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:47.0417337Z               "read_source_scans": 0
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:47.0417585Z             },
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:47.0417771Z             {
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:47.0417990Z               "tasks": 1000,
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:47.0418267Z               "runtime_events": 1000,
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:47.0418548Z               "handoff_events": 1000,
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:47.0418844Z               "cold_ms": 145.279834,
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:47.0419124Z               "legacy_ms": 47.019736,
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:47.0419396Z               "refresh_ms": 8.873047,
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:47.0419711Z               "automatic_refresh_ms": 55.663459,
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:47.0420005Z               "warm_p50_ns": 14632,
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:47.0420272Z               "warm_p95_ns": 18727,
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:47.0420578Z               "concurrent_ns_per_op": 12294,
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:47.0420876Z               "read_control_runs": 0,
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:47.0421159Z               "read_source_scans": 0
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:47.0421378Z             }
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:47.0421738Z           ],
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:47.0422207Z           "network": "not measured; localhost HTTP and remote Tailscale are separate diagnostics",
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:47.0422593Z           "os": "linux",
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:47.0422833Z           "route": "in_process"
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:47.0423049Z         }
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:47.0615113Z --- PASS: TestLifecycleProjectionPerformanceRegression (0.75s)
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:47.0615498Z PASS
+Go runtime	UNKNOWN STEP	2026-11-10T01:50:47.0646589Z ok  	github.com/silverkhan/TaskMecca/internal/backlog	0.755s
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:05.1217702Z ok  	github.com/silverkhan/TaskMecca/internal/backlog	5.579s
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:06.5134682Z ok  	github.com/silverkhan/TaskMecca/internal/webui	1.061s
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:06.6866299Z ✔ other backlog edits do not notify current reading; lifecycle updates only its DOM (42.355771ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:06.6867610Z ✔ actual current Markdown modification prompts but does not replace the open document (2.829082ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:06.6872022Z ✔ heartbeat-only signal change produces no alert and no lifecycle markup replacement (5.232031ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:06.7128056Z ✔ task navigation during a pending lifecycle response must not rewrite a different document (7.43225ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:06.7129515Z ✔ snapshot stale and error notices patch lifecycle without replacing body or open disclosures (3.517317ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:06.7131089Z ✔ failed independent lifecycle refresh keeps evidence and displays retry (3.959013ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:06.7132115Z ✔ late lifecycle response cannot replace a newer independent refresh (2.992352ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:06.7133121Z ✔ server restart pending snapshot keeps previous evidence and marks it stale (2.892766ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:06.7134291Z ✔ browser timings connect response Server-Timing and HTTP TTFB without inventing network values (2.555599ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:06.7135420Z ✔ unchanged signal still rechecks lifecycle to recover Git changes and missed events (3.316962ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:06.7146916Z ✔ stale snapshot automatically rechecks with a bounded retry budget (5.237023ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:06.7155095Z ✔ historical reassignment shows current assignee, former Worker and ambiguous Controller start separately (3.160641ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:06.7255279Z ✔ Controller review lifecycle label is localized in Korean and English (10.744204ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:06.7256514Z ✔ adjacent list pages only contain summary, while hover prefetch shares click and paints body (6.942458ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:06.7257519Z ✔ project changes cannot display previous project detail or reuse its cache (3.818451ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:06.7258362Z ✔ cached long detail is rendered only once on reentry (3.296271ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:06.7259111Z ✔ content revision invalidation prevents stale prefetch reuse (2.734353ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:06.7259888Z ✔ failed speculative fetch never locks out foreground retry (3.76996ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:06.7260785Z ✔ idle preload limits work to one current row and never crosses changed query context (3.20067ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:06.7261907Z ✔ content-first detail paints Markdown before a deliberately slow full reconciliation (3.629763ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:06.7262896Z ✔ late full response cannot replace the body from a different task (4.076742ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:06.7263753Z ✔ outdated canonical result never silently swaps changed Markdown (3.155944ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:06.7264767Z ✔ confirmed lifecycle hides redundant persistence source but retains Worker and event ID (2.693743ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:06.7265910Z ✔ AID-174: refresh button repaints content and enriches it when revision arrives before 60ms (4.681904ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:06.7268253Z ✔ AID-174: old in-flight lifecycle fetch does not block a refreshed document (3.135593ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:06.7269482Z ✔ AID-174: same task reloaded while old lifecycle is pending shows only new document (2.991953ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:06.7270607Z ✔ AID-174: transient 503 retries once without disrupting visible Markdown (4.104393ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:06.7272196Z ✔ AID-174: repeated full API failure surfaces lifecycle-only retry and can recover (3.933325ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:06.7273454Z ✔ AID-174: task changes while a retry is queued cannot leak lifecycle errors into another task (3.383099ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:06.7274723Z ✔ AID-237: pending snapshot never invents lifecycle and retries only its projection (5.483847ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:06.7275554Z ℹ tests 30
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:06.7276286Z ℹ suites 0
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:06.7276912Z ℹ pass 30
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:06.7277224Z ℹ fail 0
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:06.7277502Z ℹ cancelled 0
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:06.7277804Z ℹ skipped 0
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:06.7278100Z ℹ todo 0
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:06.7278401Z ℹ duration_ms 137.17466
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:06.7364707Z ##[group]Run actions/upload-artifact@v4
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:06.7364950Z with:
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:06.7365144Z   name: lifecycle-performance-42738529408
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:06.7365421Z   path: lifecycle-performance.json
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:06.7365652Z   if-no-files-found: ignore
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:06.7365866Z   compression-level: 6
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:06.7366264Z   overwrite: false
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:06.7366484Z   include-hidden-files: false
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:06.7366701Z ##[endgroup]
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:06.8724114Z (node:9753) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:06.8724788Z (Use `node --trace-deprecation ...` to show where the warning was created)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:06.8736901Z No files were found with the provided path: lifecycle-performance.json. No artifacts will be uploaded.
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:06.8887483Z ##[group]Run go vet ./...
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:06.8887742Z ^[[36;1mgo vet ./...^[[0m
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:06.8954330Z shell: /usr/bin/bash -e {0}
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:06.8954578Z ##[endgroup]
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:09.3376760Z ##[group]Run go build ./cmd/task-mecca
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:09.3377274Z ^[[36;1mgo build ./cmd/task-mecca^[[0m
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:09.3422064Z shell: /usr/bin/bash -e {0}
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:09.3422289Z ##[endgroup]
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:10.5858686Z ##[group]Run node scripts/check-native-ui.cjs
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:10.5859019Z ^[[36;1mnode scripts/check-native-ui.cjs^[[0m
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:10.5859355Z ^[[36;1mnode --test tests/a65_task_data.test.cjs tests/a65_preferences.test.cjs^[[0m
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:10.5859783Z ^[[36;1mnode --check goassets/template/_task_mecca/framework/web/app.js^[[0m
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:10.5860175Z ^[[36;1mnode --check goassets/template/_task_mecca/framework/web/select-ui.js^[[0m
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:10.5860572Z ^[[36;1mnode --check goassets/template/_task_mecca/framework/web/sw.js^[[0m
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:10.5860946Z ^[[36;1mnode --check goassets/template/_task_mecca/framework/web/terminal.js^[[0m
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:10.5904389Z shell: /usr/bin/bash -e {0}
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:10.5904625Z ##[endgroup]
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:11.3266322Z ✔ native upgrade preserves legacy light before first paint and module startup (3.422278ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:11.3274351Z ✔ native upgrade preserves legacy dark before first paint and module startup (1.135254ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:11.3275871Z ✔ native upgrade preserves legacy system before first paint and module startup (1.120122ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:11.3277069Z ✔ saved Smoke light wins over the old theme (1.20663ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:11.3277731Z ✔ saved Smoke dark wins over the old theme (1.181873ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:11.3278385Z ✔ saved Smoke system wins over the old theme (1.773165ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:11.3279036Z ✔ saved language / locale ko / en-US (1.079492ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:11.3293257Z ✔ saved language / locale en / ko-KR (1.041667ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:11.3295206Z ✔ saved language / locale null / ko-KR (1.029959ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:11.3296500Z ✔ saved language / locale null / en-GB (1.102696ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:11.3297749Z ✔ saved language / locale null / fr-FR (1.009239ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:11.3298637Z ✔ saved language / locale invalid / KO-kr (1.06485ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:11.3299478Z ✔ invalid modes fall back to System and retain the locale policy (1.053624ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:11.3300513Z ✔ blocked preference storage does not prevent first paint or native startup (1.262853ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:11.3600324Z ✔ native data layer shares a pending hover request with foreground navigation (2.043404ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:11.3601441Z ✔ speculative work is bounded to one request, with no hidden queued scan (0.479597ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:11.3602290Z ✔ content cache keys include project and backlog (3.556165ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:11.3603059Z ✔ cached reentry avoids a duplicate content request (0.430896ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:11.3604067Z ✔ explicit invalidation forces a new document and prevents stale pending cache resurrection (0.637089ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:11.3605419Z ✔ a failed speculative request never blocks foreground retry (0.521349ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:11.3608321Z ✔ content requests are content-only; lifecycle is an independent projection (0.464225ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:11.3609334Z ✔ failed HTTP responses surface a recoverable error and do not cache zero-like content (0.770577ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:11.3610553Z ✔ native document renderer preserves source links and escapes executable markup (2.530603ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:11.3612381Z ✔ native backlog consumes the real compact-list and tag catalog contract (1.32833ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:11.3614160Z ✔ captured actual Go compact-list response stays nonempty and exposes canonical tag names (0.929001ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:11.3616508Z ✔ actual legacy task with empty defined requirement fields still shows its source (21.03384ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:11.3620631Z ✔ overview and backlog duplicate reads share only the same route signal (0.457104ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:11.3628483Z ✔ a new route signal does not join an old route request (0.462793ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:11.3629509Z ✔ task row shows labeled update facts and explicit unknown without inventing duration (2.111324ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:11.3630903Z ✔ collapsed tools preserve incoming multi-status and tag context while keeping search primary (6.446529ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:11.3709093Z ℹ tests 30
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:11.3709421Z ℹ suites 0
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:11.3710096Z ℹ pass 30
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:11.3710402Z ℹ fail 0
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:11.3710687Z ℹ cancelled 0
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:11.3710967Z ℹ skipped 0
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:11.3711254Z ℹ todo 0
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:11.3711542Z ℹ duration_ms 105.75978
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:11.4758137Z ##[group]Run node --test tests/web_completion_review.test.cjs tests/web_user_attention.test.cjs tests/web_common_attention.test.cjs tests/web_live_list.test.cjs tests/web_task_detail_prefetch.test.cjs tests/web_notification_center.test.cjs tests/web_notification_delivery.test.cjs tests/web_notification_pagination.test.cjs tests/web_push_service_worker.test.cjs tests/web_notification_settings.test.cjs tests/web_telegram_controls_ui.test.cjs tests/web_storage_management.test.cjs tests/web_terminal_service_restart.test.cjs tests/web_terminal_theme.test.cjs tests/web_select_ui.test.cjs tests/web_preview_builds.test.cjs
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:11.4761281Z ^[[36;1mnode --test tests/web_completion_review.test.cjs tests/web_user_attention.test.cjs tests/web_common_attention.test.cjs tests/web_live_list.test.cjs tests/web_task_detail_prefetch.test.cjs tests/web_notification_center.test.cjs tests/web_notification_delivery.test.cjs tests/web_notification_pagination.test.cjs tests/web_push_service_worker.test.cjs tests/web_notification_settings.test.cjs tests/web_telegram_controls_ui.test.cjs tests/web_storage_management.test.cjs tests/web_terminal_service_restart.test.cjs tests/web_terminal_theme.test.cjs tests/web_select_ui.test.cjs tests/web_preview_builds.test.cjs^[[0m
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:11.4805911Z shell: /usr/bin/bash -e {0}
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:11.4806317Z ##[endgroup]
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:11.5871016Z ✔ one disclosure defaults closed, separates types and retains choice across every common view (13.614412ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:11.5887168Z ✔ resolution hides empty area and old, undated or equal timestamp responses cannot restore it (4.847591ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:11.5897137Z ✔ late operations response cannot recreate warnings after newer empty snapshot (3.987371ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:11.6105987Z ✔ global attention response started before a current resolution cannot override it (8.283379ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:11.6107480Z ✔ source text and links escape safely without treating Controller review as user need (4.254877ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:11.6108287Z ✔ default snapshot updates only its selected folder (4.69802ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:11.6110717Z ✔ successful folder inventory prunes deleted sources while failed inventory preserves them (3.431231ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:11.6116403Z ✔ resolved history is not rendered in workload (0.421662ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:11.6127840Z ✔ common notification controls retain native keyboard behavior (0.399229ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:11.6134648Z ✔ global refresh reads each discovered folder and keeps same task IDs scoped (4.411827ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:11.6231056Z ✔ three folders survive both candidate completion orders and resolve independently (14.224411ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:11.6282949Z ✔ an SSE resolution invalidates only its exact folder pending response (4.436664ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:11.6347060Z ✔ unrelated folder SSE does not cancel the pending default selected snapshot (5.10478ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:11.6352383Z ✔ recovered scan gaps never reach browser or common alerts while actual unresolved warnings remain (3.208683ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:11.6353411Z ✔ expanded alerts retain one continuous outlined floating surface (1.14588ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:11.6359046Z ✔ Mecca attention keeps original visible accent-to-warm-gold gradient while floating (1.136707ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:11.6476584Z ✔ normal Controller review phases and recovery do not emit user intervention or completion (18.896583ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:11.6478050Z ✔ old completion_pending and Controller recovery attention reasons cannot become user notifications (5.157668ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:11.6479180Z ✔ explicit user intervention is still delivered (6.618753ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:11.6480038Z ✔ server completion events cannot notify before canonical file state is done (4.205974ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:11.6480993Z ✔ file-state completion requires a canonical completed event (3.536947ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:11.6567722Z ✔ first-page content and runtime events coalesce, preserve query, selection, scroll and focus (21.474005ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:11.6569504Z ✔ later pages keep current rows and ask for refresh; returning to first page resumes live updates (7.184402ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:11.6570701Z ✔ scheduled live refresh cannot change a page reached before its microtask starts (5.629434ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:11.6571714Z ✔ late list responses cannot overwrite page, filters, project, folder, view or detail (41.436646ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:11.6628669Z ✔ refresh requested while first-page fetch is running queues only one latest-page fetch (5.65396ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:11.6728288Z ✔ revision polling routes first page live and later pages to existing confirmation (10.551584ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:11.6846541Z ✔ actual SSE callback keeps notification processing and follows page-specific update policy (8.484545ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:11.6877332Z ✔ first-page relative times tick without fetching or replacing rows; later-page behavior stays unchanged (4.464871ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:11.6906966Z ✔ foreground renders before adjacent requests, three-page cache evicts and reentry paints before validation (4.614016ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:11.6953883Z ✔ later-page summary updates aggregate and current notification without replacing rows or acknowledging changes (5.168444ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:11.7009132Z ✔ resolved invalidation rejects prefetch in flight and cached rows never consume attention (5.880023ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:11.7042054Z ✔ cache context isolates every query dimension and first/last pages never prefetch outside bounds (4.024376ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:11.7098153Z ✔ late summary cannot overwrite a resolved epoch or a project switch (5.411532ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:11.7132667Z ✔ last page deletion clamps current cache and still prefetches its previous valid neighbor (3.287359ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:11.7168707Z ✔ accepted background resolution invalidates cached rows while late history cannot restore a cache (3.698706ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:11.7275165Z ✔ newer automatic folder selection invalidates a cached default source even when attention is empty (3.319136ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:11.7277006Z ✔ changing a displayed query context hides previous rows before a different-context response (3.034246ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:11.7278496Z ✔ new project starts immediately instead of waiting for a previous project response (4.001613ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:11.7312700Z ✔ first page live-refreshes when only execution evidence changes (3.934183ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:11.7344235Z ✔ runtime-only evidence change on page two prompts once without moving rows (3.257966ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:11.7467760Z ✔ unchanged content and execution revision does not request a list refresh (2.961939ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:11.7493173Z ✔ initial project backlog fetch subscribes to realtime updates after its folder is resolved (3.089828ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:11.7517278Z ✔ backlog Active column displays known completed and live durations but not fabricated history (5.126922ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:11.7539462Z ✔ provisional list is visible before the authoritative reconciliation finishes (5.105301ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:11.7649145Z ✔ waking a stale first page refreshes authoritative rows, not page two or task detail (12.402254ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:11.7703393Z ✔ first page rejects late pre-sleep data after waking and keeps new response (4.417606ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:11.7736335Z ✔ revision establishment does not acknowledge a newly added but unseen backlog (4.351429ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:11.7798631Z ✔ a hung revision poll releases its single-flight gate after deadline and detects new work (6.021512ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:11.7901119Z ✔ a hung list reload times out, then next first-page refresh can recover (5.622644ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:11.7940466Z ✔ archived B-539 is recovered from revision inventory without needing B-540 registration (8.395123ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:11.7985497Z ✔ newer summary with identical revision does not suppress authoritative archived rows (4.613906ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:11.7990705Z ✔ stale visible first page reconciles even without any new revision or focus event (4.458366ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6077139Z ✔ browser evidence follows accepted display request, preserves project and deduplicates in-flight calls (17.734089ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6077911Z ✔ failure and disabled settings produce no false browser success; legacy and project off survive (4.121729ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6078749Z ✔ history joins exact project/event ID and never claims unknown/failed/suppressed delivery success (83.336339ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6079896Z ✔ resolved operation tombstone prevents same incident reappearing after stale or undated payload (3.615804ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6081053Z ✔ diagnostic menu keeps failures visible, removes resolved entries and clipboard text requests no execution (4.116762ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6082361Z ✔ diagnostic late response cannot restore resolved state; project/folder remain isolated and same revision polls refresh (4.626134ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6083517Z ✔ automatic source remap invalidates an in-flight diagnostic success or failure (6.106267ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6084572Z ✔ delivery history coalesces loads and preserves records when subsequent server read fails (10.055602ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6085758Z ✔ hook resolution prevents stale, undated or equal-time assignment warnings from reaching browser consumer (5.191127ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6086949Z ✖ native packaged shell has dedicated preferences and notifications without a duplicate attention route (7.200051ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6087946Z ✔ notification labels retain their meaning and remain readable in the native navigation (5.745765ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6088777Z ✔ center and hub polling dispatch all projects and folders without selected project (72.362031ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6089647Z ✔ explicit source controls title, tag, settings and click target across project transition (5.846309ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6090560Z ✔ folder-scoped previous rows do not fabricate completion of another same-ID task (5.127488ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6091558Z ✔ denied unsupported insecure and display failure never create successful evidence (11.041136ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6092470Z ✔ resolved reason, stale payload and old first-snapshot events are not redisplayed (4.526586ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6093409Z ✔ server reason and current row produce one delivery, and type-off is not bypassed by row fallback (11.157017ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6094352Z ✔ service worker accepts explicit source URL and delivery evidence only after success (3.089067ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6095286Z ✔ deferred SW ready cannot resurrect a resolved reason while source transition remains valid (8.961468ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6096381Z ✔ new auto-folder mapping and mismatched source payload invalidate old-source dispatch (3.636303ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6097265Z ✔ pending display rechecks settings and service-worker failure records no success (5.825063ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6098019Z ✔ legacy seen reason stays consumed after introducing explicit folder source (3.818052ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6098782Z ✔ shared browser claim permits one device and prevents replay on another (6.115981ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6099454Z ✔ claim rejection, broker failure and unknown canonical ID never send OS notifications (9.114454ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6100043Z ✔ 0/1/30/31 boundaries render 30 latest rows with real page navigation and no current body (32.537213ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6100624Z ✔ past pages keep exact ordered window under new arrivals and changed send times until Latest (6.458627ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6101426Z ✔ settings preserves snapshot and counts local web evidence; first page updates only in history (2.951393ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6102024Z ✔ actual later send time orders merged history deterministically across project/time ties (2.300403ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6102617Z ✔ conditional revision request merges changed rows and deletions without full-history reload (3.138239ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6103144Z ✔ late history response cannot apply after project context switch (3.33893ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6103588Z ✔ old settings GET cannot undo a successful saved channel value (2.780361ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6104233Z ✔ previous/number 1 capture newest window immediately while past-page moves retain snapshot (3.253379ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6104813Z ✔ settings render preservation retains typed draft, selection, disclosure and focus (3.683694ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6105397Z ✔ mixed fractional RFC3339 and offsets use actual epoch for channel maximum sort and new count (3.062237ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6105971Z ✔ late selected-project Telegram status cannot replace the new project settings (2.46118ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6106779Z ✔ individual token setup refreshes configured status immediately without browser reload (12.334914ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6107486Z ✔ shared token setup refreshes every project without reloading the browser (3.788648ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6108205Z ✔ all nine event types have independent web and Telegram switches (3.568554ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6108873Z ✔ Telegram channel master toggles all projects while preserving their type filters (2.752971ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6109413Z ✔ Web types are independent and support finalize in Push type synchronization (2.639624ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6109945Z ✔ mobile notification switches are atomic and never leak accessibility text (4.274014ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6110545Z ✔ turning Telegram channel off disables and visually marks all its child kinds, retaining stored selections (4.226615ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6111192Z ✔ project Web OFF and global Web OFF lock dependent settings without clearing saved event kinds (4.025788ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6111721Z ✔ OFF switch has distinct dark-theme border and child lock visuals (2.053438ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6112246Z ✔ Telegram toggle visibly updates without waiting for a slow POST or full projects reload (3.456489ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6112748Z ✔ Telegram optimistic toggle rolls back on network failure (2.760191ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6113247Z ✔ global Telegram toggle starts requests for all projects before their responses resolve (2.645853ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6113818Z ✔ pending Telegram connection has a visible confirmation button and no overview action (3.19339ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6114400Z ✔ connected Telegram recipient has one project test button and no duplicated overview button (2.56308ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6114993Z ✔ project channels, connection status and test action are visible before expanding event kinds (2.861741ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6115582Z ✔ missing-token project keeps channel switches and setup status, without test action (3.152966ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6116715Z ✔ test action never overwrites persisted connection with its acknowledgement payload (2.836544ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6117343Z ✔ read-only watch refreshes live connection without reloading page and stops off settings view (2.344038ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6117892Z ✔ Telegram test action matches the main notification UI button pattern (3.79321ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6118393Z ✔ Registered Telegram bot shows name even when recipient chat is still pending (2.432087ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6118903Z ✔ first Web startup with zero Telegram tokens displays guided setup once (2.561228ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6119460Z ✔ token configured but chat pending does not retrigger the automatic startup guide (2.363456ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6120010Z ✔ connected and partially connected recipients do not show the missing-token guide (2.239273ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6120545Z ✔ absence of all bot tokens prompts once even when channel switches were turned off (2.560577ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6121590Z ✔ startup guide is shown only once per service instance and honors explicit never (2.531244ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6122252Z ✔ a single project token removal preserves other project credentials (3.762636ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6122963Z ✔ all-project deletion clears configured tokens and only prompts after restart (2.461561ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6123715Z ✔ clear buttons are available in per-project and all-project setup without leaking tokens (2.722115ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6124455Z ✔ sidebar indicator uses a separate marker rather than overriding browser notification permission (0.384237ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6125370Z ✔ PR environments accessible only from Dev and not an active PR (11.664556ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6125854Z ✔ PR list uses SHA-pinned environment switch, not child processes (3.236815ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6126621Z ✔ Preview child identity never exposes environment manager (3.577817ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6127087Z ✔ execution switch uses approved local API and health identity (0.512065ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6127634Z ✔ a Dev PR with missing or expired build offers a SHA-pinned rebuild, never runs a child Preview (2.849653ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6128347Z ✔ native PR switch and rebuild dialogs render real line breaks, not escaped newline characters (3.184507ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6129347Z ✔ mobile PR refresh control keeps a compact single-line label and independent full-width description (4.412829ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6129894Z ✔ lookup failure is unknown availability, never an empty build list (2.82006ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6130372Z ✔ failed refresh keeps prior results identifiable and disables switching (2.915841ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6130867Z ✔ Preview workflow title is quoted so YAML preserves PR hash and SHA (3.524458ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6131326Z ✔ background Push shows a canonical notification without an open tab (1.59343ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6131777Z ✔ Push URL must be same-origin and malformed payload cannot display (0.696467ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6132298Z ✔ every select is enhanced while native change event continues powering existing handlers (2.891755ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6132849Z ✔ keyboard navigation and escape restore focus without changing native selection (1.724534ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6133432Z ✔ native expansion preserves authoritative select values and shared accessible combo behavior (0.52892ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6134005Z ✔ mobile header media query hides picker captions only, not inserted select wrappers (0.641977ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6134529Z ✔ programmatic native select changes immediately synchronize visible label (0.681535ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6135060Z ✔ language and palette initialization explicitly synchronize themed picker text (2.39333ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6135570Z ✔ storage management has its own navigation and isolates project data (11.783281ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6136288Z ✔ dashboard differentiates measured categories and never offers protected-ledger deletion (17.254341ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6136853Z ✔ failed usage query stays an error, never a fake zero-byte success (3.055036ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6137347Z ✔ unregistered project paths cannot be submitted by the global storage selector (2.068131ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6137900Z ✔ agent execution record labels explain each bucket and protected-subset double counting (2.98333ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6138451Z ✔ zero cleanup candidates do not claim that nonprotected records are safe to erase (3.672577ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6138970Z ✔ storage language uses accurate English agent record labels and inclusion note (3.320809ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6139547Z ✔ storage diagnostics separates immediate cleanup from conditional estimates and unsafe files (3.356661ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6140131Z ✔ unavailable file diagnostics show missing support rather than invented zero results (3.168143ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6140665Z ✔ English explanations distinguish future potential from guaranteed savings (2.918836ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6141359Z ✔ storage global view counts shared Web service log only once across projects (3.099993ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6141834Z ✔ all-project partial load failures warn that totals are incomplete (3.128104ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6142365Z ✔ log release conditions separate clearable diagnostics from protected canonical ledgers (2.659974ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6142962Z ✔ dated Raw retention countdown distinguishes wait duration from actual deletion eligibility (11.282256ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6143517Z ✔ Controller review lifecycle label is localized in Korean and English (10.744218ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6144087Z ✔ adjacent list pages only contain summary, while hover prefetch shares click and paints body (7.950106ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6144840Z ✔ project changes cannot display previous project detail or reuse its cache (3.721509ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6145527Z ✔ cached long detail is rendered only once on reentry (2.993105ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6146272Z ✔ content revision invalidation prevents stale prefetch reuse (2.86099ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6146945Z ✔ failed speculative fetch never locks out foreground retry (4.099887ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6147704Z ✔ idle preload limits work to one current row and never crosses changed query context (3.185618ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6148563Z ✔ content-first detail paints Markdown before a deliberately slow full reconciliation (3.582163ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6149347Z ✔ late full response cannot replace the body from a different task (4.518284ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6150015Z ✔ outdated canonical result never silently swaps changed Markdown (4.052938ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6150797Z ✔ confirmed lifecycle hides redundant persistence source but retains Worker and event ID (3.399675ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6151684Z ✔ AID-174: refresh button repaints content and enriches it when revision arrives before 60ms (5.683494ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6152493Z ✔ AID-174: old in-flight lifecycle fetch does not block a refreshed document (4.023165ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6153281Z ✔ AID-174: same task reloaded while old lifecycle is pending shows only new document (3.913983ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6153857Z ✔ AID-174: transient 503 retries once without disrupting visible Markdown (3.596716ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6154378Z ✔ AID-174: repeated full API failure surfaces lifecycle-only retry and can recover (3.569325ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6154934Z ✔ AID-174: task changes while a retry is queued cannot leak lifecycle errors into another task (3.04743ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6155611Z ✔ AID-237: pending snapshot never invents lifecycle and retries only its projection (4.794082ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6156292Z ✔ Telegram connection buttons adopt shared action-btn styling (0.904385ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6156793Z ✔ Telegram bot token and chat connection are distinct (0.188448ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6157473Z ✔ All-project bot token replacement is explicit and requires warning (0.238832ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6158154Z ✔ Web restart and PTY restart are separate controls (0.779449ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6158604Z ✔ Web restart requests detached service restart, not a shell command (0.920548ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6159046Z ✔ Web restart completes only on a new boot ID, not an HTTP 200 (0.19647ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6159538Z ✔ Terminal stream failures remain visible and basic-input recovery is accessible (0.258972ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6160035Z ✔ Terminal status visibility is not inferred from HTTP status alone (0.163591ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6160481Z ✔ Terminal can poll bounded PTY history without weakening auth (0.211522ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6160966Z ✔ PTY always occupies the flexible terminal grid row with hidden status panels (0.497865ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6161467Z ✔ Terminal initializes shared appearance before first stylesheet paint (0.623009ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6161973Z ✔ Terminal shell, fallback and emergency commands use semantic colors (0.891935ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6162460Z ✔ Terminal resolves Mecca/Slate and System/Light/Dark without overrides (2.980496ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6163209Z ✔ Existing xterm canvas recolors from CSS without a session restart (0.592144ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6163764Z ✔ typed current policy hold shows exact task and concrete decision even without hold review (11.759826ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6164333Z ✔ resolved history, controller recovery and inactive tasks never appear (2.934639ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6164863Z ✔ resolution replaces snapshot and stale or undated responses cannot resurrect it (3.099172ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6165401Z ✔ global attention survives pagination and safely escapes all visible source text (2.418228ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6165925Z ✔ late SSE from previous project or backlog cannot overwrite current attention (2.664009ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6166744Z ✔ automatic list, live SSE and explicit selection share the exact canonical source (3.559831ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6167293Z ✔ unknown automatic scope waits for selected metadata instead of creating an alias (2.206285ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6167895Z ✔ automatic source remapping needs a newer selected snapshot and stale data cannot retarget its stream (2.472737ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6168333Z ℹ tests 189
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6168518Z ℹ suites 0
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6168703Z ℹ pass 188
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6168872Z ℹ fail 1
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6169050Z ℹ cancelled 0
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6169245Z ℹ skipped 0
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6169415Z ℹ todo 0
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6169603Z ℹ duration_ms 1096.30102
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6169780Z 
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6169882Z ✖ failing tests:
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6169991Z 
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6170120Z test at tests/web_notification_center.test.cjs:58:1
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6170661Z ✖ native packaged shell has dedicated preferences and notifications without a duplicate attention route (7.200051ms)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6171350Z   AssertionError [ERR_ASSERTION]: The input did not match the regular expression /type="module" src="\/ui\/main.js"/. Input:
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6171766Z   
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6171945Z   '<!doctype html>\n' +
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6172161Z     '<html lang="ko">\n' +
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6172374Z     '<head>\n' +
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6172582Z     '  <meta charset="utf-8" />\n' +
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6172963Z     '  <meta name="viewport" content="width=device-width,initial-scale=1" />\n' +
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6173312Z     '  <title>Task Mecca</title>\n' +
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6173601Z     '  <meta name="theme-color" content="#0a0e1b" />\n' +
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6173979Z     '  <meta name="apple-mobile-web-app-capable" content="yes" />\n' +
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6174392Z     '  <meta name="apple-mobile-web-app-title" content="Task Mecca" />\n' +
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6174784Z     '  <link rel="manifest" href="/manifest.webmanifest" />\n' +
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6175106Z     '  <script src="/theme-boot.js"></script>\n' +
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6175486Z     '  <link rel="icon" href="/logo.svg" type="image/svg+xml" />\n' +
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6175851Z     '  <link rel="stylesheet" href="/style.css" />\n' +
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6176474Z     '  <!-- Opt-in material pilot: dev DOM and app stay unchanged. -->\n' +
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6176882Z     '  <script src="/ui/dev-floating/pilot.js"></script>\n' +
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6177275Z     '  <link rel="stylesheet" href="/ui/dev-floating/pilot.css" />\n' +
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6177585Z     '</head>\n' +
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6177797Z     '<body>\n' +
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6178014Z     '  <div class="app-shell">\n' +
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6178305Z     '    <aside class="sidebar" id="sidebar">\n' +
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6178627Z     '      <div class="sidebar-head">\n' +
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6179767Z     '        <div class="brand"><button type="button" class="brand-mark" id="channelSwitchMark" aria-label="Task Mecca release channel" title="Task Mecca"><img src="/logo.svg" alt="" aria-hidden="true" /></button><div class="brand-copy"><strong>Task Mecca</strong><small>Backlog Observatory</small></div></div>\n' +
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6181392Z     '        <button id="sidebarToggle" class="sidebar-toggle" type="button" aria-label="Collapse sidebar" title="Collapse sidebar" aria-controls="mobileSidebarPanel" aria-expanded="false">‹</button>\n' +
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6182202Z     '      </div>\n' +
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6182541Z     '      <div id="mobileSidebarPanel" class="mobile-sidebar-panel">\n' +
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6182909Z     '      <nav id="stateNav" class="nav"></nav>\n' +
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6183418Z     '      <div class="sidebar-section"><div class="sidebar-label" id="operationsLabel">OPERATIONS</div>\n' +
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6184904Z     '        <button class="nav-item" data-view="workload" title="Subagent Workload"><span class="nav-main"><span class="nav-icon" aria-hidden="true">◫</span><span class="nav-text" id="workloadText">Subagent Workload</span></span><span id="workloadCount" class="count"></span></button>\n' +
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6187525Z     '        <button class="nav-item" data-view="notifications" id="projectNotificationsNav" type="button" title="Notification center" aria-label="Notification center"><span class="nav-main"><span class="nav-icon notification-bell" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg></span><span class="nav-text" id="projectNotificationsText">Notification center</span></span><span class="count"></span></button>\n' +
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6189620Z     '        <button class="nav-item" id="terminalNavBtn" type="button" title="Terminal"><span class="nav-main"><span class="nav-icon" aria-hidden="true">&gt;_</span><span class="nav-text" id="terminalText">Terminal</span></span><span class="count"></span></button>\n' +
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6190396Z     '      </div>\n' +
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6190989Z     '      <div class="sidebar-section"><div class="sidebar-label" id="helpLabel">HELP</div>\n' +
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6192727Z     '        <button class="nav-item" data-view="manual" title="User Manual"><span class="nav-main"><span class="nav-icon" aria-hidden="true">?</span><span class="nav-text" id="manualText">User Manual</span></span><span class="count">?</span></button>\n' +
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6194580Z     '        <button class="nav-item" data-view="release-notes" title="Update history"><span class="nav-main"><span class="nav-icon" aria-hidden="true">↟</span><span class="nav-text" id="releaseNotesText">Update history</span></span><span id="releaseNotesBadge" class="count release-nav-badge" aria-hidden="true"></span></button>\n' +
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6195492Z     '      </div>\n' +
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6196611Z     '      <button class="nav-item" data-view="issues" title="Backlog diagnostics" hidden><span class="nav-main"><span class="nav-icon" aria-hidden="true">!</span><span class="nav-text" id="issuesText">Backlog diagnostics</span></span><span id="issueCount" class="count"></span></button>\n' +
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6197882Z     '  <div class="sidebar-footer"><span id="connectionDot" class="dot"></span><span id="snapshotAge" class="sidebar-footer-text">Loading…</span></div>\n' +
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6198380Z     '      </div>\n' +
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6198590Z     '    </aside>\n' +
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6198793Z     '    <main class="main">\n' +
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6199052Z     '      <header class="topbar">\n' +
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6199638Z     '        <label class="language-picker"><span id="languageLabel">Language</span><select id="languagePicker" aria-label="Language"></select></label>\n' +
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6200393Z     '        <div id="accessPill" class="access-pill unknown" title="Effective subagent dispatch access">Access unchecked</div>\n' +
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6201034Z     '        <div id="globalUpdateIndicator" class="global-update-indicator" aria-live="polite"></div>\n' +
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6201935Z     '        <label class="palette-picker" title="Theme"><span>Theme</span><select id="palettePicker" aria-label="Theme"><option value="mecca">Mecca</option><option value="slate">Slate</option></select></label>\n' +
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6202736Z     '        <div class="theme-switcher" role="group" aria-label="Color mode" title="Color mode">\n' +
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6203482Z     '          <button class="theme-btn" data-theme-choice="system" title="Follow system theme">System</button>\n' +
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6204078Z     '          <button class="theme-btn" data-theme-choice="light" title="Use light theme">Light</button>\n' +
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6204636Z     '          <button class="theme-btn" data-theme-choice="dark" title="Use dark theme">Dark</button>\n' +
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6204996Z     '        </div>\n' +
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6205478Z     '        <span id="refreshFeedback" class="refresh-feedback" role="status" aria-live="polite" aria-atomic="true"></span>\n' +
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6206613Z     '        <button id="refreshBtn" class="icon-btn" type="button" title="Refresh and check for updates" aria-label="Refresh and check for updates">↻</button>\n' +
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6207123Z     '      </header>\n' +
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6207530Z     '<div id="previewIdentityBanner" class="preview-identity-banner" role="status" hidden></div>\n' +
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6208098Z     '<div id="prExecutionBanner" class="preview-identity-banner" role="status" hidden></div>\n' +
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6208632Z     '<section id="userAttention" class="user-attention" aria-live="polite" hidden></section>\n' +
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6208971Z     '\n' +
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6209342Z     '      <div id="releaseUnreadPrompt" class="release-unread-prompt" aria-live="polite"></div>\n' +
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6209972Z     '      <section id="content" class="content"><div class="loading">Loading…</div></section>\n' +
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6210515Z     '      <div id="contentUpdatePrompt" class="content-update-prompt" aria-live="polite"></div>\n' +
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6211706Z     '      <div class="shortcut-bar" id="shortcutBar"><span><kbd>↑</kbd><kbd>↓</kbd> move</span><span><kbd>Enter</kbd>/<kbd>→</kbd> open</span><span><kbd>←</kbd>/<kbd>Esc</kbd> back</span><span><kbd>/</kbd> search</span><span><kbd>PgUp</kbd>/<kbd>PgDn</kbd> page</span></div>\n' +
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6212417Z     '    </main>\n' +
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6212610Z     '  </div>\n' +
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6212998Z     '  <div id="mobileSidebarScrim" class="mobile-sidebar-scrim" aria-hidden="true" hidden></div>\n' +
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6213494Z     '  <div id="releaseNoteModal" class="release-note-modal" hidden></div>\n' +
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6214066Z     '  <div id="notificationPanel" class="notification-panel" role="dialog" aria-label="Notification settings"></div>\n' +
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6214553Z     '<script src="/select-ui.js"></script>\n' +
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6214821Z     '<script src="/app.js"></script>\n' +
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6215115Z     '<script src="/perf-diagnostics.js"></script>\n' +
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6215374Z     '</body>\n' +
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6215554Z     '</html>\n'
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6215720Z   
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6216413Z       at TestContext.<anonymous> (/home/runner/work/TaskMecca/TaskMecca/tests/web_notification_center.test.cjs:60:9)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6216912Z       at Test.runInAsyncScope (node:async_hooks:227:14)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6217258Z       at Test.run (node:internal/test_runner/test:1402:25)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6217689Z       at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6218327Z       at Test.postRun (node:internal/test_runner/test:1542:19)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6218834Z       at Test.run (node:internal/test_runner/test:1467:12)
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6219501Z       at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6220064Z     generatedMessage: true,
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6220394Z     code: 'ERR_ASSERTION',
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6243820Z     actual: '<!doctype html>\n<html lang="ko">\n<head>\n  <meta charset="utf-8" />\n  <meta name="viewport" content="width=device-width,initial-scale=1" />\n  <title>Task Mecca</title>\n  <meta name="theme-color" content="#0a0e1b" />\n  <meta name="apple-mobile-web-app-capable" content="yes" />\n  <meta name="apple-mobile-web-app-title" content="Task Mecca" />\n  <link rel="manifest" href="/manifest.webmanifest" />\n  <script src="/theme-boot.js"></script>\n  <link rel="icon" href="/logo.svg" type="image/svg+xml" />\n  <link rel="stylesheet" href="/style.css" />\n  <!-- Opt-in material pilot: dev DOM and app stay unchanged. -->\n  <script src="/ui/dev-floating/pilot.js"></script>\n  <link rel="stylesheet" href="/ui/dev-floating/pilot.css" />\n</head>\n<body>\n  <div class="app-shell">\n    <aside class="sidebar" id="sidebar">\n      <div class="sidebar-head">\n        <div class="brand"><button type="button" class="brand-mark" id="channelSwitchMark" aria-label="Task Mecca release channel" title="Task Mecca"><img src="/logo.svg" alt="" aria-hidden="true" /></button><div class="brand-copy"><strong>Task Mecca</strong><small>Backlog Observatory</small></div></div>\n        <button id="sidebarToggle" class="sidebar-toggle" type="button" aria-label="Collapse sidebar" title="Collapse sidebar" aria-controls="mobileSidebarPanel" aria-expanded="false">‹</button>\n      </div>\n      <div id="mobileSidebarPanel" class="mobile-sidebar-panel">\n      <nav id="stateNav" class="nav"></nav>\n      <div class="sidebar-section"><div class="sidebar-label" id="operationsLabel">OPERATIONS</div>\n        <button class="nav-item" data-view="workload" title="Subagent Workload"><span class="nav-main"><span class="nav-icon" aria-hidden="true">◫</span><span class="nav-text" id="workloadText">Subagent Workload</span></span><span id="workloadCount" class="count"></span></button>\n        <button class="nav-item" data-view="notifications" id="projectNotificationsNav" type="button" title="Notification center" aria-label="Notification center"><span class="nav-main"><span class="nav-icon notification-bell" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg></span><span class="nav-text" id="projectNotificationsText">Notification center</span></span><span class="count"></span></button>\n        <button class="nav-item" id="terminalNavBtn" type="button" title="Terminal"><span class="nav-main"><span class="nav-icon" aria-hidden="true">&gt;_</span><span class="nav-text" id="terminalText">Terminal</span></span><span class="count"></span></button>\n      </div>\n      <div class="sidebar-section"><div class="sidebar-label" id="helpLabel">HELP</div>\n        <button class="nav-item" data-view="manual" title="User Manual"><span class="nav-main"><span class="nav-icon" aria-hidden="true">?</span><span class="nav-text" id="manualText">User Manual</span></span><span class="count">?</span></button>\n        <button class="nav-item" data-view="release-notes" title="Update history"><span class="nav-main"><span class="nav-icon" aria-hidden="true">↟</span><span class="nav-text" id="releaseNotesText">Update history</span></span><span id="releaseNotesBadge" class="count release-nav-badge" aria-hidden="true"></span></button>\n      </div>\n      <button class="nav-item" data-view="issues" title="Backlog diagnostics" hidden><span class="nav-main"><span class="nav-icon" aria-hidden="true">!</span><span class="nav-text" id="issuesText">Backlog diagnostics</span></span><span id="issueCount" class="count"></span></button>\n  <div class="sidebar-footer"><span id="connectionDot" class="dot"></span><span id="snapshotAge" class="sidebar-footer-text">Loading…</span></div>\n      </div>\n    </aside>\n    <main class="main">\n      <header class="topbar">\n        <label class="language-picker"><span id="languageLabel">Language</span><select id="languagePicker" aria-label="Language"></select></label>\n        <div id="accessPill" class="access-pill unknown" title="Effective subagent dispatch access">Access unchecked</div>\n        <div id="globalUpdateIndicator" class="global-update-indicator" aria-live="polite"></div>\n        <label class="palette-picker" title="Theme"><span>Theme</span><select id="palettePicker" aria-label="Theme"><option value="mecca">Mecca</option><option value="slate">Slate</option></select></label>\n        <div class="theme-switcher" role="group" aria-label="Color mode" title="Color mode">\n          <button class="theme-btn" data-theme-choice="system" title="Follow system theme">System</button>\n          <button class="theme-btn" data-theme-choice="light" title="Use light theme">Light</button>\n          <button class="theme-btn" data-theme-choice="dark" title="Use dark theme">Dark</button>\n        </div>\n        <span id="refreshFeedback" class="refresh-feedback" role="status" aria-live="polite" aria-atomic="true"></span>\n        <button id="refreshBtn" class="icon-btn" type="button" title="Refresh and check for updates" aria-label="Refresh and check for updates">↻</button>\n      </header>\n<div id="previewIdentityBanner" class="preview-identity-banner" role="status" hidden></div>\n<div id="prExecutionBanner" class="preview-identity-banner" role="status" hidden></div>\n<section id="userAttention" class="user-attention" aria-live="polite" hidden></section>\n\n      <div id="releaseUnreadPrompt" class="release-unread-prompt" aria-live="polite"></div>\n      <section id="content" class="content"><div class="loading">Loading…</div></section>\n      <div id="contentUpdatePrompt" class="content-update-prompt" aria-live="polite"></div>\n      <div class="shortcut-bar" id="shortcutBar"><span><kbd>↑</kbd><kbd>↓</kbd> move</span><span><kbd>Enter</kbd>/<kbd>→</kbd> open</span><span><kbd>←</kbd>/<kbd>Esc</kbd> back</span><span><kbd>/</kbd> search</span><span><kbd>PgUp</kbd>/<kbd>PgDn</kbd> page</span></div>\n    </main>\n  </div>\n  <div id="mobileSidebarScrim" class="mobile-sidebar-scrim" aria-hidden="true" hidden></div>\n  <div id="releaseNoteModal" class="release-note-modal" hidden></div>\n  <div id="notificationPanel" class="notification-panel" role="dialog" aria-label="Notification settings"></div>\n<script src="/select-ui.js"></script>\n<script src="/app.js"></script>\n<script src="/perf-diagnostics.js"></script>\n</body>\n</html>\n',
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6259322Z     expected: /type="module" src="\/ui\/main.js"/,
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6259607Z     operator: 'match',
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6259814Z     diff: 'simple'
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6259991Z   }
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6269755Z ##[error]Process completed with exit code 1.
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.6399085Z Post job cleanup.
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.7093584Z [command]/usr/bin/git version
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.7133444Z git version 2.56.0
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.7167147Z Temporarily overriding HOME='/home/runner/work/_temp/cf442119-37cd-4648-b377-fae70ea67000' before making global git config changes
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.7167976Z Adding repository directory to the temporary git global config as a safe directory
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.7171647Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/TaskMecca/TaskMecca
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.7205615Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.7237276Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.7499749Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.7523213Z http.https://github.com/.extraheader
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.7535010Z [command]/usr/bin/git config --local --unset-all http.https://github.com/.extraheader
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.7571929Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.7840150Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.7871326Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.8247499Z Cleaning up orphan processes
+Go runtime	UNKNOWN STEP	2026-11-10T01:51:12.8544356Z ##[warning]Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/checkout@v4, actions/setup-go@v5, actions/upload-artifact@v4. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/

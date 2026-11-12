@@ -1,0 +1,13 @@
+{
+  "CODEX_THREAD_ID": "01a1bdce-8fa4-7a62-987e-129ff53a6d9f",
+  "T3CODE_THREAD_ID": "thread:delegated-task:command%3Amcp%3A39b825cc-e32b-4f03-8716-c7353d39e936%3Adelegate-task%3Aa65-transmissive-glass-controller-20261109",
+  "observedOrdinal": 25,
+  "currentRunId": "run:thread:thread%3Adelegated-task%3Acommand%253Amcp%253A39b825cc-e32b-4f03-8716-c7353d39e936%253Adelegate-task%253Aa65-transmissive-glass-controller-20261109:ordinal:25",
+  "provider": "codex",
+  "model": "gpt-6.1-sol",
+  "runtimeMode": "full-access",
+  "interactionMode": "default",
+  "hookBindingObserved": false,
+  "newDelegate": false,
+  "olderCompletedRunsReused": false
+}

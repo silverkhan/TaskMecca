@@ -1,0 +1,22 @@
+{
+  "cases": [
+    {
+      "width": 1440,
+      "theme": "light",
+      "search": true,
+      "keyboard": true,
+      "comboPointer": true,
+      "system": true,
+      "sidebar": true,
+      "anchorReload": true,
+      "defaultDevParity": true,
+      "sharedListReadingFace": true,
+      "autoAndResize": true,
+      "keyboardFocus": true,
+      "errors": []
+    }
+  ],
+  "sourceBaseline": "f0a732e3dd8234a663dccf3c6937fc9dc674917b",
+  "browserClosed": true,
+  "serverListening": false
+}

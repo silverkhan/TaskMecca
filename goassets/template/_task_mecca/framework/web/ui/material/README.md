@@ -1,0 +1,29 @@
+# First material slice — awaiting user review
+
+`/ui/material-review.html` is a dedicated review route. The active core index, `aa590433` source/binary/evidence and port57068 remain preserved. This is a shared-component implementation, not an image mock, replacement core or accepted final design system. DESIGN.md records the prior candidate and is not the authority for this revision.
+
+- `components.js` exports real sidebar, project rows, floating toolbar, task card and icon markup. Future core screens can import these same primitives and use `material.css` without importing the demo controller.
+- `proximity.js` attaches input-driven light to `[data-light-surface]`. One pending rAF coalesces pointer events. Geometry reads precede writes. Only nearby surfaces update. Distance outside a rectangle attenuates quadratically over150px; Pane-style face glint uses260px radial extent to70% transparency. Leave/blur/hidden reset strength; CSS returns softly. No ticker, recursive rAF, canvas, pixel engine, backdrop or per-row blur.
+- Fine pointer only. Touch/coarse pointers and reduced-motion use static material. The overlay has no hit target and never changes focus or click geometry. `inspect()` observes the real module's counters; `dispose()` removes listeners/observers and cancels the one pending frame.
+- `material.css` gives rail32px/card30px curvature, top-focused face/reflection, asymmetric thin rim, lower inset shading, grounding shadow and raised capsule selection. Pointer face response is grounded in actual Pane observations; distance-based neighboring-edge attenuation is the separately authorized extension, not a claim of observed Pane outside-surface behavior.
+- `review.js` is the review-only adapter: actual read-only Go overview/compact-task/content APIs, public synthetic projects, independent preference keys, local project selection/close/reopen, desktop Auto/Expanded/Compact, mobile menu with Escape/focus return, Light/Dark/System and card/source controls. It does not change server project registration or the operating user's settings.
+
+SYSTEM/BACKLOGS/OPERATIONS/HELP reproduce the old navigation grammar, with directly opened projects. Only the small review controls and project context work here. Storage, Preview management, operations/help, full backlog and detail destinations remain unconnected and are visibly labeled; changing a selection is not completion of restored UX. Mobile uses a full-width expandable rail and static reflection.
+
+The first slice gets bounded1440/390 × Light/Dark visual/state inspection and short same-fixture pointer on/off/idle measurements. Whole-core48-group/eight-pair acceptance is deliberately not rerun or claimed for this slice. User accepts the material before expansion. No merge, deployment, installation or operating Preview switch is included.
+
+## Approved transmissive sample (2026-11-09)
+
+The review-only `background-comparison.js` imports `transmissive.js`. It samples the
+same local photograph in viewport coordinates into one decorative layer per
+rail/toolbar/card. A static SVG spatial map displaces the blurred photo at the
+edges; it never filters content or calls a CPU pixel loop. This is photographic
+backdrop sampling, not refraction of arbitrary DOM behind the surface. Existing
+proximity lighting remains reflection. Scroll/resize and ResizeObserver updates
+maintain the sample coordinates without a continuous animation loop.
+
+Validated Chromium uses the SVG filter. Other engines deliberately use CSS blur
+with transmission, curvature and rim, without claiming displacement. CSS filter
+syntax support alone cannot establish SVG execution support. Solid mode hides
+the photo samples and restores the previous opaque surface gradient. No change
+to core routes, shared input handling, service installation or operating preview.

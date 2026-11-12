@@ -1,0 +1,5 @@
+locator.waitFor: Timeout 30000ms exceeded.
+Call log:
+[2m  - waiting for locator('.detail-toc-nav a').first() to be visible[22m
+
+    at /Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/docs/evidence/a65-dev-floating-pilot/performance.cjs:23:198

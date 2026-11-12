@@ -1,0 +1,64 @@
+TAP version 13
+# Subtest: native Smoke core: overview, navigation, filters, document-first detail and finite reads
+ok 1 - native Smoke core: overview, navigation, filters, document-first detail and finite reads
+  ---
+  duration_ms: 13532.182334
+  type: 'test'
+  ...
+# Subtest: workflow real browser preserves full periods, grouped intervals, role meaning and partial-update state
+ok 2 - workflow real browser preserves full periods, grouped intervals, role meaning and partial-update state
+  ---
+  duration_ms: 4277.0205
+  type: 'test'
+  ...
+# Subtest: native workflow wait polls false predicates through refresh completion
+ok 3 - native workflow wait polls false predicates through refresh completion
+  ---
+  duration_ms: 592.883875
+  type: 'test'
+  ...
+# Subtest: A63 connected paint, individual dense events, fit entry and exact directional navigation use native input
+ok 4 - A63 connected paint, individual dense events, fit entry and exact directional navigation use native input
+  ---
+  duration_ms: 12659.502
+  type: 'test'
+  ...
+# Subtest: slim workflow rows and plot-only real Ctrl-wheel and captured multi-touch gestures
+ok 5 - slim workflow rows and plot-only real Ctrl-wheel and captured multi-touch gestures
+  ---
+  duration_ms: 9633.644083
+  type: 'test'
+  ...
+# Subtest: adopted A60 corrections bound mixed outcomes and preserve open row selection extent
+ok 6 - adopted A60 corrections bound mixed outcomes and preserve open row selection extent
+  ---
+  duration_ms: 4658.781417
+  type: 'test'
+  ...
+# Subtest: representative workflow has compact context and plot-coordinate anchored time navigation
+ok 7 - representative workflow has compact context and plot-coordinate anchored time navigation
+  ---
+  duration_ms: 4824.958209
+  type: 'test'
+  ...
+# Subtest: actual Activity geometry and native hover, pinned popover, focus, tap and source reconciliation
+ok 8 - actual Activity geometry and native hover, pinned popover, focus, tap and source reconciliation
+  ---
+  duration_ms: 6203.965584
+  type: 'test'
+  ...
+# Subtest: four scoped A61 review corrections retain identical-source reading state and meaningful labels
+ok 9 - four scoped A61 review corrections retain identical-source reading state and meaningful labels
+  ---
+  duration_ms: 4351.614167
+  type: 'test'
+  ...
+1..9
+# tests 9
+# suites 0
+# pass 9
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 14365.766625

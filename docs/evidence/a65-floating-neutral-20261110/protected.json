@@ -1,0 +1,75 @@
+{
+  "source": "a83f6035dcebdf45ce72c32da928b9405d848ba9",
+  "base": "2ea0098e56f17c9a475d44c7139887b71d10ebd4",
+  "onlyProductionChange": "ui/dev-floating/pilot.css",
+  "assets": {
+    "index.html": {
+      "sha256": "a81a274cb2911e7778ca357cf21aa6fba85742a67ee1c7cea3269ab9d07d2f27",
+      "byteEquals2ea0098e": true
+    },
+    "app.js": {
+      "sha256": "41bf1984ae22f52db662ce1b5be6fd186e5f39e44c5cf577b7edcd4329f15c60",
+      "byteEquals2ea0098e": true
+    },
+    "style.css": {
+      "sha256": "5fc79a28f935f7c65d30ca081ebe87250a09946ca6c440b9f1198429da1c259c",
+      "byteEquals2ea0098e": true
+    },
+    "theme-boot.js": {
+      "sha256": "b8747545f5eee6116aa3990aee2bd08d54911c0e12ae6f7d557c0150aa236a8c",
+      "byteEquals2ea0098e": true
+    },
+    "select-ui.js": {
+      "sha256": "119e238229046ff6fb7bcce09287a745034919a4f1a7ac9fb746e0148afaec80",
+      "byteEquals2ea0098e": true
+    },
+    "ui/dev-floating/pilot.js": {
+      "sha256": "06f97653d2bcfc1d80b748a44568c7ee7035624245e425bfb2b45f4339151049",
+      "byteEquals2ea0098e": true
+    },
+    "ui/material/cozy-beige-room-photo-1920.webp": {
+      "sha256": "48c7a6a5c4dbc1e6afe9b07ab0d026850e8516fbde21e621fa4bbabc9c072600",
+      "byteEquals2ea0098e": true
+    },
+    "ui/material/material.css": {
+      "sha256": "5c1ba0e59a0f095875396d1f76372b1148c8d9d1955294b5a6a10813d969c745",
+      "byteEquals2ea0098e": true
+    },
+    "ui/material/background-comparison.css": {
+      "sha256": "52204c4969c9546974b2f95ae1b22af9a456d8b3c69ec328bb8da9396767879d",
+      "byteEquals2ea0098e": true
+    },
+    "ui/optics.js": {
+      "sha256": "203675db71fcfe99fe16d7c39e61e252462c1d4ced93a5b73cea9b89f47790ed",
+      "byteEquals2ea0098e": true
+    },
+    "ui/environment.js": {
+      "sha256": "a432ebfc1c8de0f4886218d716fff23a74ba0d9c061706808824f1380c653c51",
+      "byteEquals2ea0098e": true
+    },
+    "ui/components/workflow.js": {
+      "sha256": "6c46ae5f88940164fc37ff6214d81caed6919f5064617b092433bfd8c2864986",
+      "byteEquals2ea0098e": true
+    },
+    "ui/components/workflow.css": {
+      "sha256": "f69e9151a1d916242f5ec5996550fb00928a137a903038665ce5172b4896f285",
+      "byteEquals2ea0098e": true
+    },
+    "terminal.html": {
+      "sha256": "3e7629205ca832f7201913c238312985777d5ee0e559d968e4c4952f4d3b0921",
+      "byteEquals2ea0098e": true
+    },
+    "terminal.js": {
+      "sha256": "79f2736d76165bf9bd781b00e18027e1eb7a3a1552eedb87dc988475e511b940",
+      "byteEquals2ea0098e": true
+    },
+    "logo.svg": {
+      "sha256": "29933e9a85c92660f22fc5a556f4fb179171a75d9e290c782b6b69c348012caa",
+      "byteEquals2ea0098e": true
+    }
+  },
+  "newOpticsEngine": false,
+  "geometryDensityDOMChanged": false,
+  "captureSHASeed": "2ea0098e synthetic PR identity, not live source proof",
+  "CSSSha256": "bcaec796820d52323e5c0697b1d0f2bbb9d26d96609d8c101d491e204053f472"
+}

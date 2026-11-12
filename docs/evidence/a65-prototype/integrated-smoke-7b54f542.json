@@ -1,0 +1,48 @@
+{
+  "synthetic": true,
+  "source_head": "7b54f5427234bd08bbc83f5bd276faea6066631e",
+  "url": "http://127.0.0.1:57068",
+  "api_routing": "none; actual Go HTTP only",
+  "assets": [
+    {
+      "file": "ui/main.js",
+      "status": 200,
+      "mime": "text/javascript; charset=utf-8",
+      "sha256": "d65188531b7405c817e44940e48b9e4986813b4966e2fc6cd0cb39180247586a"
+    },
+    {
+      "file": "ui/screens/home.js",
+      "status": 200,
+      "mime": "text/javascript; charset=utf-8",
+      "sha256": "db79346a19f2b4eff2c05e8d9d6161968b6c7898525939bf8973adc44ec7ef33"
+    },
+    {
+      "file": "ui/smoke.css",
+      "status": 200,
+      "mime": "text/css; charset=utf-8",
+      "sha256": "bfc8532b68fe0c21ebc9da46d17a1d8269220ff2824432c8f26befc57d083870"
+    },
+    {
+      "file": "ui/fonts/manrope.ttf",
+      "status": 200,
+      "mime": "font/ttf",
+      "sha256": "3ae11c49db0455a3cc33e37d380f20fdb8c7f8b41dc07625c177e3d87a9d6ae6"
+    }
+  ],
+  "projects": [],
+  "errors": [],
+  "requests": [
+    "http://127.0.0.1:57068/api/overview?page_size=8&attention_page=1&working_page=1&projects_page=1&activity_page=1",
+    "http://127.0.0.1:57068/api/overview/events",
+    "http://127.0.0.1:57068/api/overview?page_size=8&attention_page=1&working_page=1&projects_page=1&activity_page=1",
+    "http://127.0.0.1:57068/api/backlog/tasks?project=%2Fvar%2Ffolders%2F07%2Fq_8xp6j90zn8r_gdxk6sj5nm0000gn%2FT%2Ftask-mecca-a65-preview-URcmar%2Frelease&page=1&page_size=20&sort=id_desc",
+    "http://127.0.0.1:57068/api/events?project=%2Fvar%2Ffolders%2F07%2Fq_8xp6j90zn8r_gdxk6sj5nm0000gn%2FT%2Ftask-mecca-a65-preview-URcmar%2Frelease&backlog=%2Fvar%2Ffolders%2F07%2Fq_8xp6j90zn8r_gdxk6sj5nm0000gn%2FT%2Ftask-mecca-a65-preview-URcmar%2Frelease%2F_task_mecca%2Fdata%2Fbacklog",
+    "http://127.0.0.1:57068/api/tasks/SYN-8?project=%2Fvar%2Ffolders%2F07%2Fq_8xp6j90zn8r_gdxk6sj5nm0000gn%2FT%2Ftask-mecca-a65-preview-URcmar%2Frelease&projection=content&backlog=%2Fvar%2Ffolders%2F07%2Fq_8xp6j90zn8r_gdxk6sj5nm0000gn%2FT%2Ftask-mecca-a65-preview-URcmar%2Frelease%2F_task_mecca%2Fdata%2Fbacklog",
+    "http://127.0.0.1:57068/api/tasks/SYN-8?project=%2Fvar%2Ffolders%2F07%2Fq_8xp6j90zn8r_gdxk6sj5nm0000gn%2FT%2Ftask-mecca-a65-preview-URcmar%2Frelease&projection=lifecycle&backlog=%2Fvar%2Ffolders%2F07%2Fq_8xp6j90zn8r_gdxk6sj5nm0000gn%2FT%2Ftask-mecca-a65-preview-URcmar%2Frelease%2F_task_mecca%2Fdata%2Fbacklog",
+    "http://127.0.0.1:57068/api/revision?project=%2Fvar%2Ffolders%2F07%2Fq_8xp6j90zn8r_gdxk6sj5nm0000gn%2FT%2Ftask-mecca-a65-preview-URcmar%2Frelease&backlog=%2Fvar%2Ffolders%2F07%2Fq_8xp6j90zn8r_gdxk6sj5nm0000gn%2FT%2Ftask-mecca-a65-preview-URcmar%2Frelease%2F_task_mecca%2Fdata%2Fbacklog",
+    "http://127.0.0.1:57068/api/tasks/SYN-8?project=%2Fvar%2Ffolders%2F07%2Fq_8xp6j90zn8r_gdxk6sj5nm0000gn%2FT%2Ftask-mecca-a65-preview-URcmar%2Frelease&projection=lifecycle&backlog=%2Fvar%2Ffolders%2F07%2Fq_8xp6j90zn8r_gdxk6sj5nm0000gn%2FT%2Ftask-mecca-a65-preview-URcmar%2Frelease%2F_task_mecca%2Fdata%2Fbacklog"
+  ],
+  "sse_initial": "id: ecd8170eea2b01d8ad1ef1fb:7\nevent: overview\ndata: {\"schema_version\":1,\"revision\":\"ecd8170eea2b01d8ad1ef1fb:7\",\"reason\":\"ready\"}\n\n",
+  "passed": false,
+  "failure": "AssertionError [ERR_ASSERTION]: requirements or honest source fallback is visible\n    at /Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/docs/evidence/a65-prototype/integrated-smoke.cjs:8:569"
+}

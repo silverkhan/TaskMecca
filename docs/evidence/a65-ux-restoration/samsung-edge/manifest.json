@@ -1,0 +1,11 @@
+{
+  "phase": "samsung-edge",
+  "head": "8d28d7a206f2c70485c400589c45050fbe5caa35",
+  "browserBinaryBefore": "96832d133a25d835dfae36b6312de100e4d4cbe2f5e4eb0d2eac170da54672ad",
+  "started": "2026-11-09T23:28:59.872Z",
+  "browser": "157.0.8103.39",
+  "scope": "Synthetic Samsung UA / representative narrow-wide viewport+DPR / touch input in desktop Chromium. Not physical Samsung Internet and not verified device dimensions.",
+  "browserBinaryAfter": "96832d133a25d835dfae36b6312de100e4d4cbe2f5e4eb0d2eac170da54672ad",
+  "browserStable": true,
+  "finished": "2026-11-09T23:30:13.452Z"
+}

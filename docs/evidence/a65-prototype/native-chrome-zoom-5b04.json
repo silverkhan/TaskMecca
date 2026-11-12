@@ -1,0 +1,16 @@
+{
+  "source_head":"5b04ba6f4f2aa3c8ff30949a3af0bca45cddd179",
+  "synthetic":true,
+  "url":"http://127.0.0.1:57068/",
+  "method":"Computer Use, native Chrome zoom bubble controls. No CSS zoom or CDP emulation was used for this observation.",
+  "native_zoom_before":"90%",
+  "native_zoom_tested":"200%",
+  "native_zoom_restored":"90%",
+  "observed_flows":["Home","Projects","Release backlog with eight actual Go rows","Dedicated SYN-8 detail","Lifecycle"],
+  "at_200_percent":{"inner_width":1384,"inner_height":554,"document_scroll_width":1377,"backlog_filter_width":1059,"backlog_rows":8,"workflow_width":1011},
+  "visual_observation":"Home screenshot inspected through Computer Use; no document overflow or overlapping controls observed in this wide-window case.",
+  "restoration":{"native_bubble":"90%","inner_width":3076,"inner_height":1231,"document_scroll_width":3060,"bubble_closed":true},
+  "limits":["One desktop Chrome window only; not every required width at native zoom.","No physical-phone, OS-trackpad, screen-reader or energy claim.","Screenshot was emitted in Computer Use evidence; no standalone screenshot file is asserted by this JSON."],
+  "user_service_changed":false,
+  "user_preview_switched":false
+}

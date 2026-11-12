@@ -1,0 +1,23 @@
+✔ native Smoke core: overview, navigation, filters, document-first detail and finite reads (16376.412709ms)
+✖ accepted expansion keeps project scope, truthful writes, notifications and PR identity in native modules (4841.535333ms)
+✔ synthetic native PR banner and consent/return/error flows use only owned ephemeral fixture (4070.001084ms)
+✔ workflow real browser preserves full periods, grouped intervals, role meaning and partial-update state (6782.085583ms)
+✔ native workflow wait polls false predicates through refresh completion (942.774ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 4
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 33239.414291
+
+✖ failing tests:
+
+test at tests/a65_expansion_browser.test.cjs:4:1
+✖ accepted expansion keeps project scope, truthful writes, notifications and PR identity in native modules (4841.535333ms)
+  page.waitForFunction: Timeout 3000ms exceeded.
+      at TestContext.<anonymous> (/Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/tests/a65_expansion_browser.test.cjs:51:14) {
+    name: 'TimeoutError',
+    log: []
+  }

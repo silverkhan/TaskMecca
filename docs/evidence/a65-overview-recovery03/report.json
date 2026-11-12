@@ -1,0 +1,313 @@
+{
+  "report_id": "a65-overview-recovery03-20261108-01",
+  "scope": "Fresh corrective API verification on the complete committed767 source; source changes were not required. This is not full A65 acceptance or completion.",
+  "task": "A-65",
+  "contract_sha": "2c27553e4e280bbdf61813b461367668b2689567f562e1160225deca857149c3",
+  "contract_source5_verified": true,
+  "execution_approval": "Implement the proposed plan.",
+  "assignment": "assignment-540af15a3b97397148f3632b743c5408",
+  "runtime": {
+    "native": "01a1aab8-7aab-7b60-9e80-7a10f550e5ce",
+    "session": "01a18149-b707-7ee3-8069-d86f0a14d405",
+    "turn": "01a1b837-c37d-7603-9655-00a630bda04d",
+    "attempt": "run-7aa2b19b6166f129",
+    "firstbind": "Controller confirmed exact bound/running/A-65/findings[] before validation; oldrun24e was not reused",
+    "controller_actual": "/root/controller_recovery",
+    "controller_attempt": "run-027e4f2d5af6f6a8"
+  },
+  "source": {
+    "commit": "767b0f42ceab5da2e8d01efdd1a9aaf87b33a00c",
+    "tree": "8d5f953894f3f1f785c57ccc1276bb3af295154b",
+    "tracked_files": 638,
+    "tracked_source_before_after_equal": true,
+    "head_before": "767b0f42ceab5da2e8d01efdd1a9aaf87b33a00c",
+    "head_after": "767b0f42ceab5da2e8d01efdd1a9aaf87b33a00c",
+    "tracked_status_before": "",
+    "tracked_status_after": "",
+    "api_source_files": {
+      "internal/webui/overview.go": {
+        "sha256": "713ba2859fe23c78b548373c9d9a9f1ac67f0ade6bdad7fd4ca1f162420c7db2",
+        "bytes": 29712,
+        "symlink": false
+      },
+      "internal/webui/overview_test.go": {
+        "sha256": "99482c276947bfc3da7946b9885a89af0d3d84ec8ae05f9383a96f074cbae410",
+        "bytes": 20773,
+        "symlink": false
+      },
+      "internal/webui/overview_events_test.go": {
+        "sha256": "cb90d345947862a3a8d9c66bf01795a028a29bd13d82b78f85e787a3edd26d97",
+        "bytes": 14659,
+        "symlink": false
+      },
+      "internal/webui/attention_stream.go": {
+        "sha256": "1d19d00d09bb6c340701aeb1fac7b06fe15b38779d9b497c7ebb5d30de3e9b7e",
+        "bytes": 12420,
+        "symlink": false
+      },
+      "internal/webui/server.go": {
+        "sha256": "59340cf80754c6bd28df9b9834cb71d8724c424821e57bbd6941c5682a9f3e92",
+        "bytes": 87559,
+        "symlink": false
+      }
+    },
+    "committed_ui_assets_plus_index": 19,
+    "ui_asset_manifest": "committed-ui-assets.json",
+    "all_tracked_manifests": [
+      "source-before.json",
+      "source-after.json"
+    ],
+    "new_source_changes": 0,
+    "new_commits": 0,
+    "lineage": [
+      {
+        "commit": "68c353420f307979ee1d07fba35bc122501095ac",
+        "parents": [
+          "f0a732e3dd8234a663dccf3c6937fc9dc674917b"
+        ],
+        "subject": "feat(webui): add bounded read-only overview aggregation API"
+      },
+      {
+        "commit": "f56ebcb3eff1cf27960a433e3c6c7c232e472c75",
+        "parents": [
+          "68c353420f307979ee1d07fba35bc122501095ac"
+        ],
+        "subject": "test(web): migrate workflow suites to native UI modules"
+      },
+      {
+        "commit": "be9f9284bf37928d4884a93a4f0dc01d15bbedb3",
+        "parents": [
+          "f56ebcb3eff1cf27960a433e3c6c7c232e472c75"
+        ],
+        "subject": "fix(webui): preserve live overview updates and serve UI modules"
+      },
+      {
+        "commit": "767b0f42ceab5da2e8d01efdd1a9aaf87b33a00c",
+        "parents": [
+          "be9f9284bf37928d4884a93a4f0dc01d15bbedb3"
+        ],
+        "subject": "feat(web): build Smoke control center core prototype"
+      }
+    ]
+  },
+  "verification": {
+    "source_head": "767b0f42ceab5da2e8d01efdd1a9aaf87b33a00c",
+    "source_tree": "8d5f953894f3f1f785c57ccc1276bb3af295154b",
+    "command": [
+      "go",
+      "test",
+      "-race",
+      "./internal/webui",
+      "-run",
+      "^(TestOverview|TestOperationMonitorStartsCanonicalEventFeedsForEveryActiveProject)",
+      "-count=1",
+      "-v"
+    ],
+    "started_at": "2026-11-07T22:56:50.710689+00:00",
+    "ended_at": "2026-11-07T22:57:06.907981+00:00",
+    "exit": 0,
+    "tracked_files": 638,
+    "changed_files": [],
+    "head_before": "767b0f42ceab5da2e8d01efdd1a9aaf87b33a00c",
+    "head_after": "767b0f42ceab5da2e8d01efdd1a9aaf87b33a00c",
+    "tracked_status_before": "",
+    "tracked_status_after": "",
+    "historical_evidence_changed": [],
+    "historical_evidence_files": 12,
+    "package_elapsed_seconds": 12.365,
+    "verification_window_ms_including_post_inventory": 16197.3,
+    "pass_count": 17,
+    "skip_count": 0,
+    "race_detected": false,
+    "failed_tests": [],
+    "pass_tests": [
+      "TestOperationMonitorStartsCanonicalEventFeedsForEveryActiveProject",
+      "TestOverviewEventsBoundedCoalescingIdleAndCancel",
+      "TestOverviewEventsSubscriberLimitAndRegistryChanges",
+      "TestOverviewEventsHeartbeatReconnectDisconnectAndGracefulShutdown",
+      "TestOverviewEventsInvalidateTTLAndDiscardOldInflightResult",
+      "TestOverviewEventsStableSemanticFeedAndLateRetiredSource",
+      "TestOverviewUIAssetsNestedMIMEBytesAndTraversalReadOnly",
+      "TestOverviewEventsObserveExistingFeedRegistrationAndStop",
+      "TestOverviewColdRequestReturnsBeforeBoundedReadAndSharesFourWorkers",
+      "TestOverviewCursorReachesEveryKnownRowAcrossProjectBatches",
+      "TestOverviewIndependentPagesUnknownAndEmptySemantics",
+      "TestOverviewReadFailureStaleAndCacheInvalidation",
+      "TestOverviewHTTPColdToDataReadOnlyAndRealTaskLinks",
+      "TestOverviewRegistryFailureAndMonitoringSuppression",
+      "TestOverviewAutomaticMonitorWarmsCanonicalAttentionWithoutUIReadWrites",
+      "TestOverviewCacheBoundAndStaleWhileRevalidate",
+      "TestOverviewResponseBudgetPreservesUnknownAndRejectsOversize"
+    ],
+    "scope_counts": {
+      "existing_overview": 9,
+      "existing_monitor": 1,
+      "sse_and_static": 7
+    },
+    "fixture_metrics": [
+      "overview_test.go:92: OVERVIEW_COLD_BOUND simulated_projects=10000 blocked_source=true request_ms=50.121",
+      "overview_test.go:108: OVERVIEW_WORK_BOUND calls=8 max_concurrency=4",
+      "overview_test.go:344: OVERVIEW_READONLY_HTTP files=75 before=836fd157fea542ed0bcd20abb9cdd839c5dbde6c0a9eed25f0bafbfcab2b355a after=836fd157fea542ed0bcd20abb9cdd839c5dbde6c0a9eed25f0bafbfcab2b355a",
+      "overview_test.go:474: OVERVIEW_READONLY_CANONICAL files=7 before=030e3f9a000e10b25cca420ef2c9b4f7086ecd3065eb52ea6679875cb15ebd9d after=030e3f9a000e10b25cca420ef2c9b4f7086ecd3065eb52ea6679875cb15ebd9d"
+    ],
+    "full_local_go_suite": "not run; forbidden",
+    "new_failures": []
+  },
+  "evidence_interpretation": {
+    "static": "Real committed Go Handler HTTP responses assert JS/nested JS/CSS/font MIME class, nosniff and exact equality to embedded asset bytes. Asset SHA256 inputs are now committed and hash-frozen with the whole source tree. Raw per-response headers were not dumped independently; named test assertions and current asset hashes are the reproducible proof.",
+    "invalid_static_paths": "directory, nonexistent, encoded traversal, backslash traversal and raw traversal are asserted non-200; some raw paths may be ServeMux redirects rather than404, so no claim that every invalid path returns404.",
+    "methods": "Preview guard returns403 for POST before the new route; direct SSE handler independently returns405 with Allow:GET. No guard/permission changes were made.",
+    "sse": "Isolated loopback HTTP SSE fixture, not an operating Web service: ready/current revision, heartbeat comments only, offline missed-change recovery, disconnect cleanup, graceful Shutdown callback and fixture listener refused after shutdown.",
+    "server_idle_zero": "Repeated current reads and heartbeat frames do not increment revision or emit JSON events. Same-generation repeated aggregate reads add no source calls. This is server protocol evidence; actual browser request/render/CPU idle metrics belong to the lead/performance gate.",
+    "generation_fence": "A pre-change in-flight result is discarded even if it finishes after invalidation. A changed source invalidates an otherwise fresh five-second cache; the next read is pending/partial rather than falsely fresh old data. The next aggregate recovers current data.",
+    "coalescing": "Queue capacity1 retains the newest hint; subscriber limit256 is explicit; concurrent publication/cancel/shutdown tested under race.",
+    "source_hooks": "Stable semantic working/lifecycle changes trigger; clock-only elapsed/age/computed_at do not. Registration/stop and already-observed registry membership propagate without new scans; duplicate lookup/stop and late retired sources do not create extra invalidation.",
+    "read_only": "HTTP cold-data source tree and synthetic canonical source hashes match before/after; static/notifier test paths add no project evidence. Notification uses existing in-memory payload/registry reads only; no new control feed or ledger reconciliation is started by event clients."
+  },
+  "semantics_preserved": [
+    "Working remains existing file-doing class, with state_provisional and null time/activity until a canonical projection exists.",
+    "Unknown totals and incomplete coverage staynull; known empty is0.",
+    "Auto-monitor canonical attention may have validated_at:null/trust:stale. Stale is preserved with computed observation time and canonical reason/link; it is not promoted to fresh.",
+    "Activity source remains notification_events, not the full runtime ledger."
+  ],
+  "historical_evidence": {
+    "report01_manifest_count": 9,
+    "report01_mismatches": [],
+    "report01_manifest_sha256": "64c551bdc2b6cb2dd0dc3727dcbc0513c9619e8818815787a4aade027904cf78",
+    "report02_files": {
+      "development.log": "215ef28e0f2b6d47504b5c7398fb0b6b355343d6772ad4e6631577beccc590ac",
+      "final-race.log": "3796a60f09e5a93f2a1d195a4ca33c395e1f93b32dbf039273ded49464b8f0ec"
+    },
+    "older_ui_asset_provenance": "Old17PASS used untracked working-tree UI assets without a stored tree hash; it is not retrospectively attested. This report03 is a new test on fully committed767."
+  },
+  "provenance_boundary": {
+    "old_untracked_assets": "Old17PASS at be9 did not store its working-tree UI hash. No retrospective hash attestation is made.",
+    "new_validation": "This report is a new17-test race run on fully committed767, with638 tracked source files and19 UI/index asset inputs hashed before/after.",
+    "correct_parent": "be9 parent is f56ebcb3eff1cf27960a433e3c6c7c232e472c75; f56 parent68c35342. The earlier parent68 message was incorrect and is not repeated as evidence.",
+    "handoff": "Direct current contribution under the new assignment; it does not consume or bypass old claimed handoff4bb8.",
+    "old02": "development.log and final-race.log remain unchanged; no report02 or retroactive manifest was created. Old Preview403-versus405 assertion failure remains historical evidence."
+  },
+  "coordination": {
+    "ui_source_frozen_by_lead": true,
+    "performance_worker_confirmed_no_benchmark_before_run": true,
+    "heavy_cpu_window_released_to_lead_and_performance": "Notified immediately after verification ended22:57:06.907981Z; no further build/test planned.",
+    "lead_actual_binary_plan": "Lead owns exact767 go build and scripts/a65-isolated-preview.cjs three-synthetic-project loopback actual overview/static/SSE/UI browser probe without route mock.",
+    "lead_actual_binary_result": "pending lead result; not substituted by this Go handler/protocol verification",
+    "remaining_owner": "Lead/Controller own native-app UI/body gates, performancepairedgate, newDraftPR, exactHEADCI, isolatedPreview and user review hold.",
+    "controller_directive_after_new_test_dirty": "Controller confirmed the later test change owner and requested report03 completion without repeating CPU validation; final integrated HEAD/CI stays a separate gate."
+  },
+  "operational_boundaries": {
+    "canonical_activity_handoff_or_operating_ledger_writes": 0,
+    "source_or_runtime_configuration_changes": 0,
+    "operating_web_or_user_preview_changes": 0,
+    "push_merge_deploy_reset_forcepush_deletion": 0
+  },
+  "post_validation_observation": {
+    "observed_at": "2026-11-07T23:03:24.649817+00:00",
+    "head": "767b0f42ceab5da2e8d01efdd1a9aaf87b33a00c",
+    "tracked_status": " M internal/webui/server_test.go\n",
+    "api_source_count": 5,
+    "ui_asset_and_index_count": 19,
+    "api_or_ui_hash_mismatches": [],
+    "files": {
+      "goassets/template/_task_mecca/framework/web/index.html": {
+        "before_sha256": "c100327215cb257523554551ecde85b3c843a73afaaa2b755f4d37d1f56a4854",
+        "current_sha256": "c100327215cb257523554551ecde85b3c843a73afaaa2b755f4d37d1f56a4854"
+      },
+      "goassets/template/_task_mecca/framework/web/ui/boot.js": {
+        "before_sha256": "24e18b21109bf1708a9b3c7c6e60c6deb2978cc17d63ec28d0c6097eb53e807a",
+        "current_sha256": "24e18b21109bf1708a9b3c7c6e60c6deb2978cc17d63ec28d0c6097eb53e807a"
+      },
+      "goassets/template/_task_mecca/framework/web/ui/components/lifecycle.js": {
+        "before_sha256": "1c067f89feed2ad911c911399e7566323649d8398c394cc634beb3b2eb1239bc",
+        "current_sha256": "1c067f89feed2ad911c911399e7566323649d8398c394cc634beb3b2eb1239bc"
+      },
+      "goassets/template/_task_mecca/framework/web/ui/components/shared.js": {
+        "before_sha256": "a37b9688911f89b88b7a75a17f508d7d7eff24279aadb3b57a52330f0129b028",
+        "current_sha256": "a37b9688911f89b88b7a75a17f508d7d7eff24279aadb3b57a52330f0129b028"
+      },
+      "goassets/template/_task_mecca/framework/web/ui/components/workflow.css": {
+        "before_sha256": "f69e9151a1d916242f5ec5996550fb00928a137a903038665ce5172b4896f285",
+        "current_sha256": "f69e9151a1d916242f5ec5996550fb00928a137a903038665ce5172b4896f285"
+      },
+      "goassets/template/_task_mecca/framework/web/ui/components/workflow.js": {
+        "before_sha256": "7ccc8a53ebc4f744a4f2e9c3df564daac12a292e877dab4f832d0f15db88b322",
+        "current_sha256": "7ccc8a53ebc4f744a4f2e9c3df564daac12a292e877dab4f832d0f15db88b322"
+      },
+      "goassets/template/_task_mecca/framework/web/ui/data.js": {
+        "before_sha256": "53c79ac1164cb35a534043fb1a623097af5f632da50686f7e0e0d0aff230c95b",
+        "current_sha256": "53c79ac1164cb35a534043fb1a623097af5f632da50686f7e0e0d0aff230c95b"
+      },
+      "goassets/template/_task_mecca/framework/web/ui/fonts/OFL.txt": {
+        "before_sha256": "58172e0c0fac2cda8a37b348164bb55e44b0e69051e557e92b1d3f6910141f7b",
+        "current_sha256": "58172e0c0fac2cda8a37b348164bb55e44b0e69051e557e92b1d3f6910141f7b"
+      },
+      "goassets/template/_task_mecca/framework/web/ui/fonts/manrope.ttf": {
+        "before_sha256": "3ae11c49db0455a3cc33e37d380f20fdb8c7f8b41dc07625c177e3d87a9d6ae6",
+        "current_sha256": "3ae11c49db0455a3cc33e37d380f20fdb8c7f8b41dc07625c177e3d87a9d6ae6"
+      },
+      "goassets/template/_task_mecca/framework/web/ui/format.js": {
+        "before_sha256": "fb312d1605385f97190b2404e719cbb948e55f6a403a9ceb21a0c76eb4bb1426",
+        "current_sha256": "fb312d1605385f97190b2404e719cbb948e55f6a403a9ceb21a0c76eb4bb1426"
+      },
+      "goassets/template/_task_mecca/framework/web/ui/live-lifecycle.js": {
+        "before_sha256": "1ea06c0f3e5bc1d10ec53473ac75c7392cbee3f2f13faff98f356e936fa3101e",
+        "current_sha256": "1ea06c0f3e5bc1d10ec53473ac75c7392cbee3f2f13faff98f356e936fa3101e"
+      },
+      "goassets/template/_task_mecca/framework/web/ui/live-source.js": {
+        "before_sha256": "143fbf6d5617bf6cb551ac0712fa253190a7c506bafb8acb6ae7d2fbee4ede49",
+        "current_sha256": "143fbf6d5617bf6cb551ac0712fa253190a7c506bafb8acb6ae7d2fbee4ede49"
+      },
+      "goassets/template/_task_mecca/framework/web/ui/main.js": {
+        "before_sha256": "580ce01e4e5a4901f73a3036e4673b63e56add4a1dc942784c3dfd78fefe1e87",
+        "current_sha256": "580ce01e4e5a4901f73a3036e4673b63e56add4a1dc942784c3dfd78fefe1e87"
+      },
+      "goassets/template/_task_mecca/framework/web/ui/package.json": {
+        "before_sha256": "89c47db7851f89caec72da4f215ebc21cf1e294aeef3b45d2583562d846ab035",
+        "current_sha256": "89c47db7851f89caec72da4f215ebc21cf1e294aeef3b45d2583562d846ab035"
+      },
+      "goassets/template/_task_mecca/framework/web/ui/screens/backlog.js": {
+        "before_sha256": "9cc1f0d77ce733e0555d9fb1a470ed13050828fdd3ae8ea512284c58a77c3c9d",
+        "current_sha256": "9cc1f0d77ce733e0555d9fb1a470ed13050828fdd3ae8ea512284c58a77c3c9d"
+      },
+      "goassets/template/_task_mecca/framework/web/ui/screens/detail.js": {
+        "before_sha256": "f17c0f51520d01564da47edceb04330ad99fb8a0ddff5e78361dd7e2c9c516bd",
+        "current_sha256": "f17c0f51520d01564da47edceb04330ad99fb8a0ddff5e78361dd7e2c9c516bd"
+      },
+      "goassets/template/_task_mecca/framework/web/ui/screens/home.js": {
+        "before_sha256": "db79346a19f2b4eff2c05e8d9d6161968b6c7898525939bf8973adc44ec7ef33",
+        "current_sha256": "db79346a19f2b4eff2c05e8d9d6161968b6c7898525939bf8973adc44ec7ef33"
+      },
+      "goassets/template/_task_mecca/framework/web/ui/smoke.css": {
+        "before_sha256": "5ba0781ee595c56bedd96a7534844d506150a3e25711f77a0360572aa4a452a6",
+        "current_sha256": "5ba0781ee595c56bedd96a7534844d506150a3e25711f77a0360572aa4a452a6"
+      },
+      "goassets/template/_task_mecca/framework/web/ui/state.js": {
+        "before_sha256": "eb19539d2099672a4829080c3df12f546ec7b206d2b7c1cf09e2106eb3bfc0d5",
+        "current_sha256": "eb19539d2099672a4829080c3df12f546ec7b206d2b7c1cf09e2106eb3bfc0d5"
+      },
+      "internal/webui/attention_stream.go": {
+        "before_sha256": "1d19d00d09bb6c340701aeb1fac7b06fe15b38779d9b497c7ebb5d30de3e9b7e",
+        "current_sha256": "1d19d00d09bb6c340701aeb1fac7b06fe15b38779d9b497c7ebb5d30de3e9b7e"
+      },
+      "internal/webui/overview.go": {
+        "before_sha256": "713ba2859fe23c78b548373c9d9a9f1ac67f0ade6bdad7fd4ca1f162420c7db2",
+        "current_sha256": "713ba2859fe23c78b548373c9d9a9f1ac67f0ade6bdad7fd4ca1f162420c7db2"
+      },
+      "internal/webui/overview_events_test.go": {
+        "before_sha256": "cb90d345947862a3a8d9c66bf01795a028a29bd13d82b78f85e787a3edd26d97",
+        "current_sha256": "cb90d345947862a3a8d9c66bf01795a028a29bd13d82b78f85e787a3edd26d97"
+      },
+      "internal/webui/overview_test.go": {
+        "before_sha256": "99482c276947bfc3da7946b9885a89af0d3d84ec8ae05f9383a96f074cbae410",
+        "current_sha256": "99482c276947bfc3da7946b9885a89af0d3d84ec8ae05f9383a96f074cbae410"
+      },
+      "internal/webui/server.go": {
+        "before_sha256": "59340cf80754c6bd28df9b9834cb71d8724c424821e57bbd6941c5682a9f3e92",
+        "current_sha256": "59340cf80754c6bd28df9b9834cb71d8724c424821e57bbd6941c5682a9f3e92"
+      }
+    },
+    "other_writer_change": "Controller confirmed server_test.go belongs to lead migration of old theme/static markup expectations, after the completed clean verification window. No source test was repeated by support.",
+    "boundary": "Exact17 validation refers to recorded22:56:50–22:57:06 window and source tree767. Current later working-tree changes are not claimed to be part of that clean window."
+  }
+}

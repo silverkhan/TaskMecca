@@ -3738,6 +3738,27 @@ function nav() {
 
 
 
+// A-65 review controls: only PR/Preview identity banners call this helper.
+function devFloatingReviewControls(){
+  const identity=state.previewIdentity||(state.executionTarget?.kind==='pr'?state.executionTarget:null);
+  const number=Number(identity?.number??identity?.pr_number),sha=String(identity?.sha??identity?.head_sha??'');
+  if(!Number.isSafeInteger(number)||number<1||!/^[a-f0-9]{40}$/.test(sha))return '';
+  const ko=state.language==='ko',active=document.documentElement.dataset.floatingPilot==='true';
+  return '<span class="dev-floating-review-controls" role="group" aria-label="'+(ko?'플로팅 시안 비교':'Floating pilot comparison')+'">'+
+    '<button type="button" class="action-btn secondary" data-floating-review="1" aria-pressed="'+active+'">'+(ko?'플로팅 시안 보기':'View floating pilot')+'</button>'+
+    '<button type="button" class="action-btn secondary" data-floating-review="0" aria-pressed="'+!active+'">'+(ko?'기존 UI 비교':'Compare existing UI')+'</button></span>';
+}
+function handleDevFloatingReview(event){
+  const control=event.target.closest?.('button[data-floating-review]');
+  if(!control||!control.closest('#prExecutionBanner, #previewIdentityBanner'))return;
+  const params=new URLSearchParams(location.search),choice=control.dataset.floatingReview;
+  if(choice!=='1'&&choice!=='0')return;
+  params.set('floating',choice);
+  if(choice==='1'&&!params.has('background'))params.set('background','image');
+  location.assign(location.pathname+'?'+params.toString()+location.hash);
+}
+// End A-65 review controls.
+
 function previewIdentityFromHealth(payload){
   const number=Number(payload?.preview_pr),sha=String(payload?.preview_sha||'');
   const parent=String(payload?.preview_parent_url||'');
@@ -3763,7 +3784,7 @@ async function loadPreviewIdentity(){
       '<span>'+esc(ko?'별도 테스트 프로젝트를 사용하지만, 현재 사용자와 동일한 OS 권한으로 실행 중입니다.':'Separate test project; process still shares your OS account permissions.')+'</span></div>'+
       '<div class="preview-identity-actions">'+
       '<a class="action-btn secondary" href="'+esc(base)+'">'+(ko?'Dev로 돌아가기':'Back to Dev')+'</a>'+
-      '<a class="action-btn secondary danger-action" href="'+esc(base+'&stop_preview='+identity.number)+'">'+(ko?'Preview 종료':'Stop Preview')+'</a></div>';
+      '<a class="action-btn secondary danger-action" href="'+esc(base+'&stop_preview='+identity.number)+'">'+(ko?'Preview 종료':'Stop Preview')+'</a></div>'+devFloatingReviewControls();
     banner.hidden=false;
     document.title='PREVIEW · PR #'+identity.number+' · Task Mecca';
     nav();
@@ -3960,7 +3981,7 @@ async function refreshExecutionTarget(){
       if(target?.kind==='pr'){
         banner.innerHTML='<strong>PR #'+Number(target.pr_number)+' · '+esc(String(target.head_sha||'').slice(0,10))+'</strong> · '+
           esc(state.language==='ko'?'전체 실행 환경':'Full execution environment')+
-          ' <button id="prReturnDev" type="button" class="action-btn secondary">'+esc(state.language==='ko'?'Dev 복귀':'Return to Dev')+'</button>';
+          ' <button id="prReturnDev" type="button" class="action-btn secondary">'+esc(state.language==='ko'?'Dev 복귀':'Return to Dev')+'</button>'+devFloatingReviewControls();
         $('#prReturnDev')?.addEventListener('click',()=>{void returnToPinnedDev().catch(e=>alert(String(e?.message||e)))});
       }
     }
@@ -7854,6 +7875,7 @@ function applyTheme(value) {
   if (document.querySelector('.mermaid-wrap')) renderMermaidDiagrams(true);
 }
 translateChrome();
+document.addEventListener('click',handleDevFloatingReview);
 applyPalette(state.palette);
 applyTheme(state.theme);
 document.querySelectorAll('[data-theme-choice]').forEach(b=>b.addEventListener('click',()=>applyTheme(b.dataset.themeChoice)));

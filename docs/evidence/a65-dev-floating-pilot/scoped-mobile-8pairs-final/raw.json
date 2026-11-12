@@ -1,0 +1,126 @@
+[
+  {
+    "variant": "dev",
+    "viewport": {
+      "width": 360,
+      "height": 800,
+      "dpr": 3
+    },
+    "theme": "light",
+    "pair": 0,
+    "order": [
+      "dev",
+      "pilot",
+      "previous"
+    ],
+    "scroll": {
+      "TaskDurationMs": 68.92099999999998,
+      "ScriptDurationMs": 2.981000000000001,
+      "LayoutDurationMs": 0.6589999999999998,
+      "RecalcStyleDurationMs": 2.13,
+      "movement": 602,
+      "frameMedianMs": 16.700000000000045,
+      "frameP95Ms": 16.800000000000068,
+      "rafIntervalsOver25Ms": 0,
+      "observedDroppedFrameTraceEvents": 0,
+      "traceCost": {
+        "Paint": {
+          "count": 106,
+          "totalMs": 22.592
+        },
+        "PrePaint": {
+          "count": 77,
+          "totalMs": 2.449
+        },
+        "CompositeLayers": {
+          "count": 0,
+          "totalMs": 0
+        },
+        "RasterTask": {
+          "count": 3,
+          "totalMs": 5.137
+        },
+        "UpdateLayerTree": {
+          "count": 0,
+          "totalMs": 0
+        }
+      },
+      "trace": "360-light-0-dev.trace.json.gz",
+      "heapBefore": 3842176,
+      "heapAfter": 3998312,
+      "layersBefore": 0,
+      "layersAfter": 0
+    },
+    "input": {
+      "TaskDurationMs": 31.428000000000004,
+      "ScriptDurationMs": 3.634,
+      "LayoutDurationMs": 5.965999999999999,
+      "RecalcStyleDurationMs": 2.7790000000000004,
+      "wallMs": 213.98199999999997,
+      "rows": 20
+    },
+    "errors": []
+  },
+  {
+    "variant": "pilot",
+    "viewport": {
+      "width": 360,
+      "height": 800,
+      "dpr": 3
+    },
+    "theme": "light",
+    "pair": 0,
+    "order": [
+      "dev",
+      "pilot",
+      "previous"
+    ],
+    "scroll": {
+      "TaskDurationMs": 32.080999999999996,
+      "ScriptDurationMs": 2.272,
+      "LayoutDurationMs": 0.5269999999999997,
+      "RecalcStyleDurationMs": 1.582,
+      "movement": 601,
+      "frameMedianMs": 16.69999999999999,
+      "frameP95Ms": 16.700000000000045,
+      "rafIntervalsOver25Ms": 0,
+      "observedDroppedFrameTraceEvents": 2,
+      "traceCost": {
+        "Paint": {
+          "count": 33,
+          "totalMs": 4.13
+        },
+        "PrePaint": {
+          "count": 77,
+          "totalMs": 2.22
+        },
+        "CompositeLayers": {
+          "count": 0,
+          "totalMs": 0
+        },
+        "RasterTask": {
+          "count": 6,
+          "totalMs": 4.24
+        },
+        "UpdateLayerTree": {
+          "count": 0,
+          "totalMs": 0
+        }
+      },
+      "trace": "360-light-0-pilot.trace.json.gz",
+      "heapBefore": 3840476,
+      "heapAfter": 3996416,
+      "layersBefore": 0,
+      "layersAfter": 0
+    },
+    "input": {
+      "TaskDurationMs": 25.613999999999997,
+      "ScriptDurationMs": 3.2510000000000003,
+      "LayoutDurationMs": 6.587000000000001,
+      "RecalcStyleDurationMs": 3.1340000000000003,
+      "wallMs": 209.06079200000022,
+      "rows": 20
+    },
+    "errors": []
+  }
+]

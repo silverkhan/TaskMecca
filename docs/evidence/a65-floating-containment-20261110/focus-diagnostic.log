@@ -1,0 +1,28 @@
+{
+  mode: 'auto',
+  peek: true,
+  active: '<button class="nav-item" data-view="release-notes" title="업데이트 기록"><span class="nav-main"><span class="nav-icon" aria-hidden="true">↟</span><span class="nav-text" id="releaseNotesText">업데이트 기록</span></span><span id="releaseNotesBadge" class="count release-nav-badge" aria-hidden="true"></span></button>',
+  panel: {
+    x: 26,
+    y: 95.1875,
+    width: 210,
+    height: 290.8125,
+    top: 95.1875,
+    right: 236,
+    bottom: 386,
+    left: 26
+  },
+  last: {
+    x: 26,
+    y: 512.375,
+    width: 210,
+    height: 37.6875,
+    top: 512.375,
+    right: 236,
+    bottom: 550.0625,
+    left: 26
+  },
+  scrollTop: 221,
+  scrollHeight: 712,
+  rootScroll: 0
+}

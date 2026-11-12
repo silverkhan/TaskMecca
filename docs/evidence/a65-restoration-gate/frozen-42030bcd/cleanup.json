@@ -1,0 +1,20 @@
+{
+  "at": "2026-11-09T23:01:27.902Z",
+  "browserClosed": true,
+  "browserConnectedAfterClose": false,
+  "ownedServersClosed": true,
+  "ownedResources": [
+    {
+      "origin": "http://127.0.0.1:56247",
+      "listeningAfterClose": false,
+      "streamsAfterClose": 0
+    },
+    {
+      "origin": "http://127.0.0.1:56248",
+      "listeningAfterClose": false,
+      "streamsAfterClose": 0
+    }
+  ],
+  "nodeProcessId": 77649,
+  "externalProcessesKilled": false
+}

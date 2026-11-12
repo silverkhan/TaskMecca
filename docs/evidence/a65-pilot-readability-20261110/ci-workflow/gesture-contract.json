@@ -1,0 +1,1112 @@
+{
+  "synthetic": true,
+  "mechanism": "Playwright native wheel/keyboard and CDP Input.dispatchTouchEvent; product handles captured PointerEvent coordinates",
+  "cases": [
+    {
+      "mobile": false,
+      "rows": [
+        {
+          "id": "worker|worker|0",
+          "height": 34.4375,
+          "labelHeight": 30.4375,
+          "lineHeight": 15.95,
+          "whiteSpace": "normal",
+          "ellipsis": "ellipsis",
+          "fullName": null,
+          "name": "Worker최초 작업 · 활동 누적 19분"
+        }
+      ],
+      "overlapRows": [
+        {
+          "id": "controller|reviewer|0",
+          "height": 35.4375,
+          "labelHeight": 30.4375,
+          "lineHeight": 15.95,
+          "whiteSpace": "normal",
+          "ellipsis": "ellipsis",
+          "fullName": null,
+          "name": "Controller최초 작업 · 활동 누적 10분"
+        },
+        {
+          "id": "worker|a-second-very-long-named-agent-for-accessibility-check|1",
+          "height": 35.4375,
+          "labelHeight": 30.4375,
+          "lineHeight": 15.95,
+          "whiteSpace": "normal",
+          "ellipsis": "ellipsis",
+          "fullName": null,
+          "name": "Worker보완1차 · 활동 누적 5분"
+        },
+        {
+          "id": "worker|worker|1",
+          "height": 34.4375,
+          "labelHeight": 30.4375,
+          "lineHeight": 15.95,
+          "whiteSpace": "normal",
+          "ellipsis": "ellipsis",
+          "fullName": null,
+          "name": "Worker보완1차 · 활동 누적 15분"
+        }
+      ],
+      "expandedHeight": 56,
+      "ctrl": {
+        "start": 1793837621591.914,
+        "end": 1793839849212.1248,
+        "width": 804,
+        "axisStart": "2026-11-05T00:00:00Z",
+        "axisEnd": "2026-11-05T01:00:00Z"
+      },
+      "ctrlOut": {
+        "start": 1793837259856.2083,
+        "end": 1793840091716.5085,
+        "width": 804,
+        "axisStart": "2026-11-05T00:00:00Z",
+        "axisEnd": "2026-11-05T01:00:00Z"
+      },
+      "pinch": {
+        "pinched": {
+          "start": 1793837784462.7546,
+          "end": 1793838925926.1692,
+          "width": 804,
+          "axisStart": "2026-11-05T00:00:00Z",
+          "axisEnd": "2026-11-05T01:00:00Z"
+        },
+        "continued": {
+          "start": 1793837798143.3115,
+          "end": 1793838753245.3523,
+          "width": 804,
+          "axisStart": "2026-11-05T00:00:00Z",
+          "axisEnd": "2026-11-05T01:00:00Z"
+        },
+        "reversed": {
+          "start": 1793837775404.0073,
+          "end": 1793839040268.872,
+          "width": 804,
+          "axisStart": "2026-11-05T00:00:00Z",
+          "axisEnd": "2026-11-05T01:00:00Z"
+        },
+        "movedMid": {
+          "start": 1793837754252.421,
+          "end": 1793839019117.286,
+          "width": 804,
+          "axisStart": "2026-11-05T00:00:00Z",
+          "axisEnd": "2026-11-05T01:00:00Z"
+        },
+        "switched": {
+          "start": 1793837754252.421,
+          "end": 1793839019117.286,
+          "width": 804,
+          "axisStart": "2026-11-05T00:00:00Z",
+          "axisEnd": "2026-11-05T01:00:00Z"
+        },
+        "canceled": {
+          "start": 1793837909905.5488,
+          "end": 1793838467714.6719,
+          "width": 804,
+          "axisStart": "2026-11-05T00:00:00Z",
+          "axisEnd": "2026-11-05T01:00:00Z"
+        }
+      },
+      "fractionalWheelStream": {
+        "start": 1793837768586.2195,
+        "end": 1793839443541.8315,
+        "width": 804,
+        "axisStart": "2026-11-05T00:00:00Z",
+        "axisEnd": "2026-11-05T01:00:00Z"
+      },
+      "pointerEvents": [
+        {
+          "type": "pointerdown",
+          "id": 2,
+          "target": "",
+          "interval": true
+        },
+        {
+          "type": "gotpointercapture",
+          "id": 2,
+          "target": "workflowTimelineViewport",
+          "active": [
+            2
+          ]
+        },
+        {
+          "type": "pointermove",
+          "id": 2,
+          "target": "workflowTimelineViewport",
+          "active": [
+            2
+          ]
+        },
+        {
+          "type": "pointerdown",
+          "id": 3,
+          "target": "",
+          "interval": true
+        },
+        {
+          "type": "gotpointercapture",
+          "id": 3,
+          "target": "workflowTimelineViewport",
+          "active": [
+            2,
+            3
+          ]
+        },
+        {
+          "type": "pointermove",
+          "id": 3,
+          "target": "workflowTimelineViewport",
+          "active": [
+            2,
+            3
+          ]
+        },
+        {
+          "type": "pointermove",
+          "id": 2,
+          "target": "workflowTimelineViewport",
+          "active": [
+            2,
+            3
+          ]
+        },
+        {
+          "type": "pointermove",
+          "id": 3,
+          "target": "workflowTimelineViewport",
+          "active": [
+            2,
+            3
+          ]
+        },
+        {
+          "type": "pointermove",
+          "id": 2,
+          "target": "workflowTimelineViewport",
+          "active": [
+            2,
+            3
+          ]
+        },
+        {
+          "type": "pointermove",
+          "id": 3,
+          "target": "workflowTimelineViewport",
+          "active": [
+            2,
+            3
+          ]
+        },
+        {
+          "type": "pointermove",
+          "id": 2,
+          "target": "workflowTimelineViewport",
+          "active": [
+            2,
+            3
+          ]
+        },
+        {
+          "type": "pointermove",
+          "id": 3,
+          "target": "workflowTimelineViewport",
+          "active": [
+            2,
+            3
+          ]
+        },
+        {
+          "type": "pointermove",
+          "id": 2,
+          "target": "workflowTimelineViewport",
+          "active": [
+            2,
+            3
+          ]
+        },
+        {
+          "type": "pointerdown",
+          "id": 4,
+          "target": "",
+          "interval": true
+        },
+        {
+          "type": "pointerup",
+          "id": 2,
+          "target": "workflowTimelineViewport",
+          "active": [
+            3
+          ]
+        },
+        {
+          "type": "lostpointercapture",
+          "id": 2,
+          "target": "workflowTimelineViewport",
+          "active": [
+            3
+          ]
+        },
+        {
+          "type": "gotpointercapture",
+          "id": 4,
+          "target": "workflowTimelineViewport",
+          "active": [
+            3,
+            4
+          ]
+        },
+        {
+          "type": "pointermove",
+          "id": 4,
+          "target": "workflowTimelineViewport",
+          "active": [
+            3,
+            4
+          ]
+        },
+        {
+          "type": "pointermove",
+          "id": 3,
+          "target": "workflowTimelineViewport",
+          "active": [
+            3,
+            4
+          ]
+        },
+        {
+          "type": "pointerup",
+          "id": 4,
+          "target": "workflowTimelineViewport",
+          "active": [
+            3
+          ]
+        },
+        {
+          "type": "lostpointercapture",
+          "id": 4,
+          "target": "workflowTimelineViewport",
+          "active": [
+            3
+          ]
+        },
+        {
+          "type": "pointermove",
+          "id": 3,
+          "target": "workflowTimelineViewport",
+          "active": [
+            3
+          ]
+        },
+        {
+          "type": "pointerup",
+          "id": 3,
+          "target": "workflowTimelineViewport",
+          "active": []
+        },
+        {
+          "type": "lostpointercapture",
+          "id": 3,
+          "target": "workflowTimelineViewport",
+          "active": []
+        },
+        {
+          "type": "pointerdown",
+          "id": 5,
+          "target": "",
+          "interval": true
+        },
+        {
+          "type": "pointerdown",
+          "id": 6,
+          "target": "",
+          "interval": true
+        },
+        {
+          "type": "gotpointercapture",
+          "id": 6,
+          "target": "workflowTimelineViewport",
+          "active": [
+            6
+          ]
+        },
+        {
+          "type": "pointermove",
+          "id": 6,
+          "target": "workflowTimelineViewport",
+          "active": [
+            6
+          ]
+        },
+        {
+          "type": "gotpointercapture",
+          "id": 5,
+          "target": "workflowTimelineViewport",
+          "active": [
+            6,
+            5
+          ]
+        },
+        {
+          "type": "pointermove",
+          "id": 5,
+          "target": "workflowTimelineViewport",
+          "active": [
+            6,
+            5
+          ]
+        },
+        {
+          "type": "pointercancel",
+          "id": 5,
+          "target": "workflowTimelineViewport",
+          "active": [
+            6
+          ]
+        },
+        {
+          "type": "lostpointercapture",
+          "id": 5,
+          "target": "workflowTimelineViewport",
+          "active": [
+            6
+          ]
+        },
+        {
+          "type": "lostpointercapture",
+          "id": 6,
+          "target": "workflowTimelineViewport",
+          "active": [
+            6
+          ]
+        },
+        {
+          "type": "pointercancel",
+          "id": 6,
+          "target": "",
+          "active": []
+        },
+        {
+          "type": "pointerdown",
+          "id": 7,
+          "target": "",
+          "interval": true
+        },
+        {
+          "type": "gotpointercapture",
+          "id": 7,
+          "target": "workflowTimelineViewport",
+          "active": [
+            7
+          ]
+        },
+        {
+          "type": "pointermove",
+          "id": 7,
+          "target": "workflowTimelineViewport",
+          "active": [
+            7
+          ]
+        },
+        {
+          "type": "pointermove",
+          "id": 7,
+          "target": "workflowTimelineViewport",
+          "active": [
+            7
+          ]
+        },
+        {
+          "type": "pointercancel",
+          "id": 7,
+          "target": "workflowTimelineViewport",
+          "active": []
+        },
+        {
+          "type": "lostpointercapture",
+          "id": 7,
+          "target": "workflowTimelineViewport",
+          "active": []
+        }
+      ],
+      "wheels": [
+        {
+          "ctrl": true,
+          "prevented": false
+        },
+        {
+          "ctrl": false,
+          "prevented": false
+        }
+      ],
+      "outsideTouches": [
+        {
+          "type": "touchstart",
+          "count": 1,
+          "prevented": false
+        },
+        {
+          "type": "touchstart",
+          "count": 2,
+          "prevented": false
+        },
+        {
+          "type": "touchmove",
+          "count": 2,
+          "prevented": false
+        },
+        {
+          "type": "touchmove",
+          "count": 2,
+          "prevented": false
+        }
+      ],
+      "sourceUnchanged": true
+    },
+    {
+      "mobile": true,
+      "rows": [
+        {
+          "id": "worker|worker|0",
+          "height": 40,
+          "labelHeight": 40,
+          "lineHeight": 13,
+          "whiteSpace": "normal",
+          "ellipsis": "ellipsis",
+          "fullName": null,
+          "name": "Worker최초 작업 · 활동 누적 19분"
+        }
+      ],
+      "overlapRows": [
+        {
+          "id": "controller|reviewer|0",
+          "height": 41,
+          "labelHeight": 40,
+          "lineHeight": 13,
+          "whiteSpace": "normal",
+          "ellipsis": "ellipsis",
+          "fullName": null,
+          "name": "Controller최초 작업 · 활동 누적 10분"
+        },
+        {
+          "id": "worker|a-second-very-long-named-agent-for-accessibility-check|1",
+          "height": 41,
+          "labelHeight": 40,
+          "lineHeight": 13,
+          "whiteSpace": "normal",
+          "ellipsis": "ellipsis",
+          "fullName": null,
+          "name": "Worker보완1차 · 활동 누적 5분"
+        },
+        {
+          "id": "worker|worker|1",
+          "height": 40,
+          "labelHeight": 40,
+          "lineHeight": 13,
+          "whiteSpace": "normal",
+          "ellipsis": "ellipsis",
+          "fullName": null,
+          "name": "Worker보완1차 · 활동 누적 15분"
+        }
+      ],
+      "expandedHeight": 56,
+      "ctrl": {
+        "start": 1793837619000.842,
+        "end": 1793839846621.0525,
+        "width": 330,
+        "axisStart": "2026-11-05T00:00:00Z",
+        "axisEnd": "2026-11-05T01:00:00Z"
+      },
+      "ctrlOut": {
+        "start": 1793837258405.95,
+        "end": 1793840090266.2498,
+        "width": 330,
+        "axisStart": "2026-11-05T00:00:00Z",
+        "axisEnd": "2026-11-05T01:00:00Z"
+      },
+      "pinch": {
+        "pinched": {
+          "start": 1793837898556.7466,
+          "end": 1793839040020.1614,
+          "width": 330,
+          "axisStart": "2026-11-05T00:00:00Z",
+          "axisEnd": "2026-11-05T01:00:00Z"
+        },
+        "continued": {
+          "start": 1793837921883.2292,
+          "end": 1793838876985.27,
+          "width": 330,
+          "axisStart": "2026-11-05T00:00:00Z",
+          "axisEnd": "2026-11-05T01:00:00Z"
+        },
+        "reversed": {
+          "start": 1793837883110.8328,
+          "end": 1793839147975.6975,
+          "width": 330,
+          "axisStart": "2026-11-05T00:00:00Z",
+          "axisEnd": "2026-11-05T01:00:00Z"
+        },
+        "movedMid": {
+          "start": 1793837815107.3452,
+          "end": 1793839079972.2102,
+          "width": 330,
+          "axisStart": "2026-11-05T00:00:00Z",
+          "axisEnd": "2026-11-05T01:00:00Z"
+        },
+        "switched": {
+          "start": 1793837815107.3452,
+          "end": 1793839079972.2102,
+          "width": 330,
+          "axisStart": "2026-11-05T00:00:00Z",
+          "axisEnd": "2026-11-05T01:00:00Z"
+        },
+        "canceled": {
+          "start": 1793838220582.1113,
+          "end": 1793838662809.3447,
+          "width": 330,
+          "axisStart": "2026-11-05T00:00:00Z",
+          "axisEnd": "2026-11-05T01:00:00Z"
+        }
+      },
+      "fractionalWheelStream": {
+        "start": 1793837768572.7285,
+        "end": 1793839443528.341,
+        "width": 330,
+        "axisStart": "2026-11-05T00:00:00Z",
+        "axisEnd": "2026-11-05T01:00:00Z"
+      },
+      "pointerEvents": [
+        {
+          "type": "pointerdown",
+          "id": 2,
+          "target": "",
+          "interval": true
+        },
+        {
+          "type": "gotpointercapture",
+          "id": 2,
+          "target": "workflowTimelineViewport",
+          "active": [
+            2
+          ]
+        },
+        {
+          "type": "pointermove",
+          "id": 2,
+          "target": "workflowTimelineViewport",
+          "active": [
+            2
+          ]
+        },
+        {
+          "type": "pointerdown",
+          "id": 3,
+          "target": "",
+          "interval": true
+        },
+        {
+          "type": "gotpointercapture",
+          "id": 3,
+          "target": "workflowTimelineViewport",
+          "active": [
+            2,
+            3
+          ]
+        },
+        {
+          "type": "pointermove",
+          "id": 3,
+          "target": "workflowTimelineViewport",
+          "active": [
+            2,
+            3
+          ]
+        },
+        {
+          "type": "pointermove",
+          "id": 2,
+          "target": "workflowTimelineViewport",
+          "active": [
+            2,
+            3
+          ]
+        },
+        {
+          "type": "pointermove",
+          "id": 3,
+          "target": "workflowTimelineViewport",
+          "active": [
+            2,
+            3
+          ]
+        },
+        {
+          "type": "pointermove",
+          "id": 2,
+          "target": "workflowTimelineViewport",
+          "active": [
+            2,
+            3
+          ]
+        },
+        {
+          "type": "pointermove",
+          "id": 3,
+          "target": "workflowTimelineViewport",
+          "active": [
+            2,
+            3
+          ]
+        },
+        {
+          "type": "pointermove",
+          "id": 2,
+          "target": "workflowTimelineViewport",
+          "active": [
+            2,
+            3
+          ]
+        },
+        {
+          "type": "pointermove",
+          "id": 3,
+          "target": "workflowTimelineViewport",
+          "active": [
+            2,
+            3
+          ]
+        },
+        {
+          "type": "pointermove",
+          "id": 2,
+          "target": "workflowTimelineViewport",
+          "active": [
+            2,
+            3
+          ]
+        },
+        {
+          "type": "pointerdown",
+          "id": 4,
+          "target": "",
+          "interval": true
+        },
+        {
+          "type": "pointerup",
+          "id": 2,
+          "target": "workflowTimelineViewport",
+          "active": [
+            3
+          ]
+        },
+        {
+          "type": "lostpointercapture",
+          "id": 2,
+          "target": "workflowTimelineViewport",
+          "active": [
+            3
+          ]
+        },
+        {
+          "type": "gotpointercapture",
+          "id": 4,
+          "target": "workflowTimelineViewport",
+          "active": [
+            3,
+            4
+          ]
+        },
+        {
+          "type": "pointermove",
+          "id": 4,
+          "target": "workflowTimelineViewport",
+          "active": [
+            3,
+            4
+          ]
+        },
+        {
+          "type": "pointermove",
+          "id": 3,
+          "target": "workflowTimelineViewport",
+          "active": [
+            3,
+            4
+          ]
+        },
+        {
+          "type": "pointerup",
+          "id": 4,
+          "target": "workflowTimelineViewport",
+          "active": [
+            3
+          ]
+        },
+        {
+          "type": "lostpointercapture",
+          "id": 4,
+          "target": "workflowTimelineViewport",
+          "active": [
+            3
+          ]
+        },
+        {
+          "type": "pointermove",
+          "id": 3,
+          "target": "workflowTimelineViewport",
+          "active": [
+            3
+          ]
+        },
+        {
+          "type": "pointerup",
+          "id": 3,
+          "target": "workflowTimelineViewport",
+          "active": []
+        },
+        {
+          "type": "lostpointercapture",
+          "id": 3,
+          "target": "workflowTimelineViewport",
+          "active": []
+        },
+        {
+          "type": "pointerdown",
+          "id": 5,
+          "target": "",
+          "interval": true
+        },
+        {
+          "type": "pointerdown",
+          "id": 6,
+          "target": "",
+          "interval": true
+        },
+        {
+          "type": "gotpointercapture",
+          "id": 6,
+          "target": "workflowTimelineViewport",
+          "active": [
+            6
+          ]
+        },
+        {
+          "type": "pointermove",
+          "id": 6,
+          "target": "workflowTimelineViewport",
+          "active": [
+            6
+          ]
+        },
+        {
+          "type": "gotpointercapture",
+          "id": 5,
+          "target": "workflowTimelineViewport",
+          "active": [
+            6,
+            5
+          ]
+        },
+        {
+          "type": "pointermove",
+          "id": 5,
+          "target": "workflowTimelineViewport",
+          "active": [
+            6,
+            5
+          ]
+        },
+        {
+          "type": "pointercancel",
+          "id": 5,
+          "target": "workflowTimelineViewport",
+          "active": [
+            6
+          ]
+        },
+        {
+          "type": "lostpointercapture",
+          "id": 5,
+          "target": "workflowTimelineViewport",
+          "active": [
+            6
+          ]
+        },
+        {
+          "type": "lostpointercapture",
+          "id": 6,
+          "target": "workflowTimelineViewport",
+          "active": [
+            6
+          ]
+        },
+        {
+          "type": "pointercancel",
+          "id": 6,
+          "target": "",
+          "active": []
+        },
+        {
+          "type": "pointerdown",
+          "id": 7,
+          "target": "",
+          "interval": true
+        },
+        {
+          "type": "gotpointercapture",
+          "id": 7,
+          "target": "workflowTimelineViewport",
+          "active": [
+            7
+          ]
+        },
+        {
+          "type": "pointermove",
+          "id": 7,
+          "target": "workflowTimelineViewport",
+          "active": [
+            7
+          ]
+        },
+        {
+          "type": "pointermove",
+          "id": 7,
+          "target": "workflowTimelineViewport",
+          "active": [
+            7
+          ]
+        },
+        {
+          "type": "pointercancel",
+          "id": 7,
+          "target": "workflowTimelineViewport",
+          "active": []
+        },
+        {
+          "type": "lostpointercapture",
+          "id": 7,
+          "target": "workflowTimelineViewport",
+          "active": []
+        }
+      ],
+      "wheels": [
+        {
+          "ctrl": true,
+          "prevented": false
+        },
+        {
+          "ctrl": false,
+          "prevented": false
+        }
+      ],
+      "outsideTouches": [
+        {
+          "type": "touchstart",
+          "count": 1,
+          "prevented": false
+        },
+        {
+          "type": "touchstart",
+          "count": 2,
+          "prevented": false
+        },
+        {
+          "type": "touchmove",
+          "count": 2,
+          "prevented": false
+        },
+        {
+          "type": "touchmove",
+          "count": 2,
+          "prevented": false
+        }
+      ],
+      "sourceUnchanged": true
+    }
+  ],
+  "errors": [],
+  "cleanup": {
+    "browserClosed": true,
+    "fixtureClosed": true,
+    "portRefused": true
+  },
+  "browser": "157.0.8103.39",
+  "lastNativeStream": {
+    "mobile": true,
+    "point": {
+      "x": 268.3,
+      "y": 263.359375
+    },
+    "events": [
+      {
+        "deltaY": -1.5,
+        "deltaMode": 0,
+        "x": 268,
+        "y": 263,
+        "prevented": true
+      },
+      {
+        "deltaY": -1.5,
+        "deltaMode": 0,
+        "x": 268,
+        "y": 263,
+        "prevented": true
+      },
+      {
+        "deltaY": -1.5,
+        "deltaMode": 0,
+        "x": 268,
+        "y": 263,
+        "prevented": true
+      },
+      {
+        "deltaY": -1.5,
+        "deltaMode": 0,
+        "x": 268,
+        "y": 263,
+        "prevented": true
+      },
+      {
+        "deltaY": -1.5,
+        "deltaMode": 0,
+        "x": 268,
+        "y": 263,
+        "prevented": true
+      },
+      {
+        "deltaY": -1.5,
+        "deltaMode": 0,
+        "x": 268,
+        "y": 263,
+        "prevented": true
+      },
+      {
+        "deltaY": -1.5,
+        "deltaMode": 0,
+        "x": 268,
+        "y": 263,
+        "prevented": true
+      },
+      {
+        "deltaY": -1.5,
+        "deltaMode": 0,
+        "x": 268,
+        "y": 263,
+        "prevented": true
+      },
+      {
+        "deltaY": -1.5,
+        "deltaMode": 0,
+        "x": 268,
+        "y": 263,
+        "prevented": true
+      },
+      {
+        "deltaY": -1.5,
+        "deltaMode": 0,
+        "x": 268,
+        "y": 263,
+        "prevented": true
+      },
+      {
+        "deltaY": -1.5,
+        "deltaMode": 0,
+        "x": 268,
+        "y": 263,
+        "prevented": true
+      },
+      {
+        "deltaY": -1.5,
+        "deltaMode": 0,
+        "x": 268,
+        "y": 263,
+        "prevented": true
+      },
+      {
+        "deltaY": -1.5,
+        "deltaMode": 0,
+        "x": 268,
+        "y": 263,
+        "prevented": true
+      },
+      {
+        "deltaY": -1.5,
+        "deltaMode": 0,
+        "x": 268,
+        "y": 263,
+        "prevented": true
+      },
+      {
+        "deltaY": -1.5,
+        "deltaMode": 0,
+        "x": 268,
+        "y": 263,
+        "prevented": true
+      },
+      {
+        "deltaY": -1.5,
+        "deltaMode": 0,
+        "x": 268,
+        "y": 263,
+        "prevented": true
+      },
+      {
+        "deltaY": -1.5,
+        "deltaMode": 0,
+        "x": 268,
+        "y": 263,
+        "prevented": true
+      },
+      {
+        "deltaY": -1.5,
+        "deltaMode": 0,
+        "x": 268,
+        "y": 263,
+        "prevented": true
+      },
+      {
+        "deltaY": -1.5,
+        "deltaMode": 0,
+        "x": 268,
+        "y": 263,
+        "prevented": true
+      },
+      {
+        "deltaY": -1.5,
+        "deltaMode": 0,
+        "x": 268,
+        "y": 263,
+        "prevented": true
+      },
+      {
+        "deltaY": -1.5,
+        "deltaMode": 0,
+        "x": 268,
+        "y": 263,
+        "prevented": true
+      },
+      {
+        "deltaY": -1.5,
+        "deltaMode": 0,
+        "x": 268,
+        "y": 263,
+        "prevented": true
+      },
+      {
+        "deltaY": -1.5,
+        "deltaMode": 0,
+        "x": 268,
+        "y": 263,
+        "prevented": true
+      },
+      {
+        "deltaY": -1.5,
+        "deltaMode": 0,
+        "x": 268,
+        "y": 263,
+        "prevented": true
+      }
+    ]
+  },
+  "passed": true,
+  "lastState": []
+}

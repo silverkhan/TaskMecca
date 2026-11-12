@@ -1,0 +1,38 @@
+// A65 native-module workflow harness. All observability stays in this test
+// server: the shipped UI gets no globals, compatibility shim, or test hooks.
+const fs=require('node:fs'),path=require('node:path'),http=require('node:http'),net=require('node:net'),assert=require('node:assert/strict');
+const fixture=require('./workflow_fixture.cjs');
+const installed=new WeakSet();let webRoot;
+const observed=['activityDetailKey','activityDetailPrefs','activityDetailCache','activityDetailPending','activityDetailViews','activityMetricsBody','workflowMetricsBody','workflowRoleClass','workflowViewWindow','workflowSetWindow','workflowZoomWindow','workflowVisibleRange','activityDisplayDuration','workflowActivityLayout','workflowTimeNS','workflowEdgeState','workflowActiveFloating','renderActivityDetailControls'];
+function appendExports(source,names){const named=[...source.matchAll(/export\s*\{([^}]+)\}/g)].flatMap(m=>m[1].split(',').map(n=>n.trim().split(/\s+as\s+/).at(-1)));const declarations=names.filter(name=>!named.includes(name)&&new RegExp('(?:function|const|let|var)\\s+'+name+'\\b').test(source)&&!new RegExp('export\\s+(?:(?:async\\s+)?function|const|let|var)\\s+'+name+'\\b').test(source));return source+'\n// Test-only export of existing native bindings; implementation unchanged.\nexport {'+declarations.join(',')+'};\n';}
+async function start(root){
+ webRoot=path.resolve(root);const upstream=await fixture.start(webRoot),clients=new Set(),waiters=new Set();let connected,eventConnections=0;
+ const eventsReady=new Promise(resolve=>connected=resolve);
+ const server=http.createServer((req,res)=>{const u=new URL(req.url,upstream.origin);
+  // Historical native modules keep their frozen entry; default dev/pilot is tested separately.
+  if(u.pathname==='/'||u.pathname.startsWith('/tasks/')){res.writeHead(200,{'Content-Type':'text/html','Cache-Control':'no-store'});res.end(fs.readFileSync(path.join(__dirname,'../fixtures/a65/expanded-index-f4da69f8.html')));return;}
+  if(u.pathname==='/select-ui.js'){res.writeHead(200,{'Content-Type':'text/javascript','Cache-Control':'no-store'});res.end(fs.readFileSync(path.join(__dirname,'../fixtures/a65/expanded-select-ui-f4da69f8.js')));return;}
+  if(u.pathname==='/api/events'){upstream.state.requests.push(u.pathname+u.search);res.writeHead(200,{'Content-Type':'text/event-stream','Cache-Control':'no-cache','Connection':'keep-alive'});res.write(': fixture connected\n\n');clients.add(res);eventConnections++;connected();for(const notify of waiters)notify();req.on('close',()=>clients.delete(res));return;}
+  let value;if(u.pathname==='/api/revision'&&upstream.state.revision)value=upstream.state.revision;else if(u.pathname.startsWith('/api/tasks/')&&upstream.state.taskResponse)value=upstream.state.taskResponse;else if(u.pathname==='/api/backlog/tasks'&&upstream.state.backlogResponse)value=upstream.state.backlogResponse;
+  if(value){upstream.state.requests.push(u.pathname+u.search);res.writeHead(200,{'Content-Type':'application/json','Cache-Control':'no-store'});res.end(JSON.stringify(value));return;}
+  const request=http.request(u,{method:req.method,headers:req.headers,agent:false},response=>{res.writeHead(response.statusCode,response.headers);response.pipe(res)});request.on('error',error=>{res.writeHead(502);res.end(error.message)});req.pipe(request);
+ });await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));const origin='http://127.0.0.1:'+server.address().port;
+ const refused=origin=>new Promise(resolve=>{const s=net.connect(Number(new URL(origin).port),'127.0.0.1');s.on('error',e=>resolve(e.code==='ECONNREFUSED'));s.on('connect',()=>{s.destroy();resolve(false)})});
+ return {origin,state:upstream.state,webRoot,eventsReady,get eventConnections(){return eventConnections},waitForEvents:after=>new Promise((resolve,reject)=>{const timer=setTimeout(()=>{waiters.delete(notify);reject(Error('Native runtime did not open its real EventSource'))},5000),notify=()=>{if(eventConnections>after){clearTimeout(timer);waiters.delete(notify);resolve()}};waiters.add(notify);notify()}),emitAttention:payload=>{assert.ok(clients.size,'real native EventSource must be subscribed');for(const client of clients)client.write('event: attention\ndata: '+JSON.stringify(payload)+'\n\n')},close:async()=>{for(const client of clients)client.end();await new Promise(resolve=>server.close(resolve));await upstream.close();assert.equal(await refused(origin),true);assert.equal(await refused(upstream.origin),true);}};
+}
+async function page(context,server){if(!installed.has(context)){installed.add(context);await context.route('**/__test__/workflow-bridge.js',r=>r.fulfill({contentType:'text/javascript',body:`import * as workflow from '/ui/components/workflow.js';import * as app from '/ui/main.js';import {state} from '/ui/state.js';export {state};export * from '/ui/components/workflow.js';export function run(code,arg){const api={...workflow,...app,state};const names=Object.keys(api);return new Function(...names,'arg','return ('+code+')(arg)')(...names.map(k=>api[k]),arg);}`}));for(const [file,names] of [['ui/components/workflow.js',observed],['ui/main.js',['render']]])await context.route('**/'+file,r=>r.fulfill({contentType:'text/javascript',body:appendExports(fs.readFileSync(path.join(server.webRoot,file),'utf8'),names)}));}return context.newPage();}
+const evaluate=(page,fn,arg)=>page.evaluate(async({code,arg})=>(await import('/__test__/workflow-bridge.js')).run(code,arg),{code:fn.toString(),arg});
+async function waitFor(page,fn,arg,options){
+ // Playwright polls the callback's immediate truthiness, so an async import in
+ // that callback makes even Promise.resolve(false) finish the wait. Resolve the
+ // native bridge once, then poll the actual synchronous predicate result.
+ const bridge=await page.evaluateHandle(()=>import('/__test__/workflow-bridge.js'));
+ try{return await page.waitForFunction(({bridge,code,arg})=>bridge.run(code,arg),{bridge,code:fn.toString(),arg},options);}
+ finally{await bridge.dispose();}
+}
+async function loaded(page){await page.locator('#lifecycle').waitFor();await waitFor(page,()=>!activityDetailPending.size);await page.locator('#activityMetricsBody').waitFor();await page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));}
+function taskURL(server,id='FLOW-1'){return server.origin+'/tasks/'+encodeURIComponent(id)+'?project='+encodeURIComponent(fixture.project)+'&backlog='+encodeURIComponent(fixture.backlog)+'&tab=lifecycle';}
+async function open(page,server){await page.goto(taskURL(server));await loaded(page);const native=await page.evaluate(()=>({module:!!document.querySelector('script[type="module"][src*="ui/main.js"]'),legacy:performance.getEntriesByType('resource').some(r=>/\/app\.js(?:\?|$)/.test(r.name)),global:typeof window.state}));assert.equal(native.module,true,'actual native module entry loaded');assert.equal(native.legacy,false,'dead legacy app.js must never run');assert.equal(native.global,'undefined','no legacy state compatibility global');}
+async function mount(page,server,data,{theme='light',language='ko',id='FLOW-1'}={}){server.state.data=data;server.state.activityStatus=200;await page.evaluate(({theme,language})=>{localStorage.setItem('task-mecca-smoke-mode',theme);localStorage.setItem('task-mecca-language',language)},{theme,language});await page.goto(taskURL(server,id));await loaded(page);await scroll(page);}
+async function scroll(page){await page.locator('.workflow-section').evaluate(el=>scrollTo({top:el.getBoundingClientRect().top+scrollY-(document.querySelector('.topbar')?.getBoundingClientRect().height||0)-18,behavior:'instant'}));}
+module.exports={...fixture,start,page,evaluate,waitFor,open,mount,loaded,scroll,appendExports,observed};

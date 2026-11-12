@@ -1,0 +1,9 @@
+{
+  "run": 42543905419,
+  "attempt": 2,
+  "job": 128926504925,
+  "head": "f3beec75f6b082a2852cb88ddea2c8d5d901e66e",
+  "raw_log": "/Users/hanati/projects/TaskMecca/TaskMecca/_task_mecca/data/contracts/uiux-redesign-20261108/ci-repair-20261109/attempt2-job.log",
+  "raw_log_sha256": "8fdcc9a3d020e533565a59cda93e6866e0896ad24f5c430288a2aa65b61bfae7",
+  "failing_assertion": "tests/web_workflow_gestures.test.cjs:55:157; canvas width expected 1052 actual 0; not scroll position"
+}

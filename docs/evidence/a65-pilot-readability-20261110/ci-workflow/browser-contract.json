@@ -1,0 +1,974 @@
+{
+  "synthetic": true,
+  "browser": "157.0.8103.39",
+  "platform": "darwin",
+  "checks": [
+    "one row / nineteen intervals; full 60-minute axis; zoom and round filtering preserve bounds; keyboard details; refresh keeps Markdown/disclosure/chart/selection; failed refresh retains data",
+    "139-minute Activity0 axis; nine grounded execution/review rows; rework filtering; concurrent lanes; unclassified round; outcome badges; escaped ledger; measured zero differs from unknown; completed then resumed keeps 30-minute current axis, actor/Worker/action/initial round and prior completion; initial-load retry",
+    "real native EventSource attention producer updates lifecycle evidence and filtered list; preserves open source/reader and announces changed Markdown; no direct revision function call"
+  ],
+  "screenshots": [
+    {
+      "name": "continuous-smoke-light-desktop-summary-viewport.png",
+      "capture": "actual viewport with application chrome",
+      "width": 852,
+      "scrollWidth": 1440,
+      "viewport": 1440,
+      "rows": 1,
+      "roleColors": [
+        {
+          "role": "workflow-interval wf-role-worker wf-kind-activity",
+          "color": "rgba(0, 0, 0, 0)",
+          "foreground": "rgb(255, 255, 255)"
+        },
+        {
+          "role": "workflow-interval wf-role-worker wf-kind-activity",
+          "color": "rgba(0, 0, 0, 0)",
+          "foreground": "rgb(255, 255, 255)"
+        },
+        {
+          "role": "workflow-interval wf-role-worker wf-kind-activity",
+          "color": "rgba(0, 0, 0, 0)",
+          "foreground": "rgb(255, 255, 255)"
+        }
+      ],
+      "controls": [
+        {
+          "width": 34,
+          "height": 34
+        },
+        {
+          "width": 34,
+          "height": 34
+        },
+        {
+          "width": 62.265625,
+          "height": 34
+        },
+        {
+          "width": 150,
+          "height": 34
+        },
+        {
+          "width": 60.0625,
+          "height": 34
+        }
+      ]
+    },
+    {
+      "name": "continuous-smoke-light-desktop-section.png",
+      "capture": "section crop; fixed chrome hidden only during capture",
+      "width": 852,
+      "scrollWidth": 1440,
+      "viewport": 1440,
+      "rows": 1,
+      "roleColors": [
+        {
+          "role": "workflow-interval wf-role-worker wf-kind-activity",
+          "color": "rgba(0, 0, 0, 0)",
+          "foreground": "rgb(255, 255, 255)"
+        },
+        {
+          "role": "workflow-interval wf-role-worker wf-kind-activity",
+          "color": "rgba(0, 0, 0, 0)",
+          "foreground": "rgb(255, 255, 255)"
+        },
+        {
+          "role": "workflow-interval wf-role-worker wf-kind-activity",
+          "color": "rgba(0, 0, 0, 0)",
+          "foreground": "rgb(255, 255, 255)"
+        }
+      ],
+      "controls": [
+        {
+          "width": 34,
+          "height": 34
+        },
+        {
+          "width": 34,
+          "height": 34
+        },
+        {
+          "width": 62.265625,
+          "height": 34
+        },
+        {
+          "width": 150,
+          "height": 34
+        },
+        {
+          "width": 60.0625,
+          "height": 34
+        }
+      ]
+    },
+    {
+      "name": "history-smoke-light-desktop-summary-viewport.png",
+      "capture": "actual viewport with application chrome",
+      "width": 852,
+      "scrollWidth": 1440,
+      "viewport": 1440,
+      "rows": 0,
+      "roleColors": [],
+      "controls": [
+        {
+          "width": 34,
+          "height": 34
+        },
+        {
+          "width": 34,
+          "height": 34
+        },
+        {
+          "width": 62.265625,
+          "height": 34
+        },
+        {
+          "width": 150,
+          "height": 34
+        },
+        {
+          "width": 60.0625,
+          "height": 34
+        }
+      ]
+    },
+    {
+      "name": "history-smoke-light-desktop-section.png",
+      "capture": "section crop; fixed chrome hidden only during capture",
+      "width": 852,
+      "scrollWidth": 1440,
+      "viewport": 1440,
+      "rows": 0,
+      "roleColors": [],
+      "controls": [
+        {
+          "width": 34,
+          "height": 34
+        },
+        {
+          "width": 34,
+          "height": 34
+        },
+        {
+          "width": 62.265625,
+          "height": 34
+        },
+        {
+          "width": 150,
+          "height": 34
+        },
+        {
+          "width": 60.0625,
+          "height": 34
+        }
+      ]
+    },
+    {
+      "name": "overlap-smoke-dark-desktop-summary-viewport.png",
+      "capture": "actual viewport with application chrome",
+      "width": 852,
+      "scrollWidth": 1440,
+      "viewport": 1440,
+      "rows": 3,
+      "roleColors": [
+        {
+          "role": "workflow-interval wf-role-controller wf-kind-activity",
+          "color": "rgba(0, 0, 0, 0)",
+          "foreground": "rgb(255, 255, 255)"
+        },
+        {
+          "role": "workflow-interval wf-role-worker wf-kind-activity",
+          "color": "rgba(0, 0, 0, 0)",
+          "foreground": "rgb(255, 255, 255)"
+        },
+        {
+          "role": "workflow-interval wf-role-worker wf-kind-activity",
+          "color": "rgba(0, 0, 0, 0)",
+          "foreground": "rgb(255, 255, 255)"
+        }
+      ],
+      "controls": [
+        {
+          "width": 34,
+          "height": 34
+        },
+        {
+          "width": 34,
+          "height": 34
+        },
+        {
+          "width": 62.265625,
+          "height": 34
+        },
+        {
+          "width": 150,
+          "height": 34
+        },
+        {
+          "width": 60.0625,
+          "height": 34
+        }
+      ]
+    },
+    {
+      "name": "overlap-smoke-dark-desktop-section.png",
+      "capture": "section crop; fixed chrome hidden only during capture",
+      "width": 852,
+      "scrollWidth": 1440,
+      "viewport": 1440,
+      "rows": 3,
+      "roleColors": [
+        {
+          "role": "workflow-interval wf-role-controller wf-kind-activity",
+          "color": "rgba(0, 0, 0, 0)",
+          "foreground": "rgb(255, 255, 255)"
+        },
+        {
+          "role": "workflow-interval wf-role-worker wf-kind-activity",
+          "color": "rgba(0, 0, 0, 0)",
+          "foreground": "rgb(255, 255, 255)"
+        },
+        {
+          "role": "workflow-interval wf-role-worker wf-kind-activity",
+          "color": "rgba(0, 0, 0, 0)",
+          "foreground": "rgb(255, 255, 255)"
+        }
+      ],
+      "controls": [
+        {
+          "width": 34,
+          "height": 34
+        },
+        {
+          "width": 34,
+          "height": 34
+        },
+        {
+          "width": 62.265625,
+          "height": 34
+        },
+        {
+          "width": 150,
+          "height": 34
+        },
+        {
+          "width": 60.0625,
+          "height": 34
+        }
+      ]
+    },
+    {
+      "name": "continuous-smoke-dark-mobile-summary-viewport.png",
+      "capture": "actual viewport with application chrome",
+      "width": 354,
+      "scrollWidth": 390,
+      "viewport": 390,
+      "rows": 1,
+      "roleColors": [
+        {
+          "role": "workflow-interval wf-role-worker wf-kind-activity",
+          "color": "rgba(0, 0, 0, 0)",
+          "foreground": "rgb(255, 255, 255)"
+        },
+        {
+          "role": "workflow-interval wf-role-worker wf-kind-activity",
+          "color": "rgba(0, 0, 0, 0)",
+          "foreground": "rgb(255, 255, 255)"
+        },
+        {
+          "role": "workflow-interval wf-role-worker wf-kind-activity",
+          "color": "rgba(0, 0, 0, 0)",
+          "foreground": "rgb(255, 255, 255)"
+        }
+      ],
+      "controls": [
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 62.265625,
+          "height": 44
+        },
+        {
+          "width": 150,
+          "height": 44
+        },
+        {
+          "width": 60.0625,
+          "height": 44
+        }
+      ]
+    },
+    {
+      "name": "continuous-smoke-dark-mobile-section.png",
+      "capture": "section crop; fixed chrome hidden only during capture",
+      "width": 354,
+      "scrollWidth": 390,
+      "viewport": 390,
+      "rows": 1,
+      "roleColors": [
+        {
+          "role": "workflow-interval wf-role-worker wf-kind-activity",
+          "color": "rgba(0, 0, 0, 0)",
+          "foreground": "rgb(255, 255, 255)"
+        },
+        {
+          "role": "workflow-interval wf-role-worker wf-kind-activity",
+          "color": "rgba(0, 0, 0, 0)",
+          "foreground": "rgb(255, 255, 255)"
+        },
+        {
+          "role": "workflow-interval wf-role-worker wf-kind-activity",
+          "color": "rgba(0, 0, 0, 0)",
+          "foreground": "rgb(255, 255, 255)"
+        }
+      ],
+      "controls": [
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 62.265625,
+          "height": 44
+        },
+        {
+          "width": 150,
+          "height": 44
+        },
+        {
+          "width": 60.0625,
+          "height": 44
+        }
+      ]
+    },
+    {
+      "name": "history-smoke-light-mobile-summary-viewport.png",
+      "capture": "actual viewport with application chrome",
+      "width": 354,
+      "scrollWidth": 390,
+      "viewport": 390,
+      "rows": 0,
+      "roleColors": [],
+      "controls": [
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 62.265625,
+          "height": 44
+        },
+        {
+          "width": 150,
+          "height": 44
+        },
+        {
+          "width": 60.0625,
+          "height": 44
+        }
+      ]
+    },
+    {
+      "name": "history-smoke-light-mobile-section.png",
+      "capture": "section crop; fixed chrome hidden only during capture",
+      "width": 354,
+      "scrollWidth": 390,
+      "viewport": 390,
+      "rows": 0,
+      "roleColors": [],
+      "controls": [
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 62.265625,
+          "height": 44
+        },
+        {
+          "width": 150,
+          "height": 44
+        },
+        {
+          "width": 60.0625,
+          "height": 44
+        }
+      ]
+    },
+    {
+      "name": "zero-smoke-dark-desktop-summary-viewport.png",
+      "capture": "actual viewport with application chrome",
+      "width": 852,
+      "scrollWidth": 1440,
+      "viewport": 1440,
+      "rows": 1,
+      "roleColors": [
+        {
+          "role": "workflow-interval wf-role-worker wf-kind-activity",
+          "color": "rgba(0, 0, 0, 0)",
+          "foreground": "rgb(255, 255, 255)"
+        }
+      ],
+      "controls": [
+        {
+          "width": 34,
+          "height": 34
+        },
+        {
+          "width": 34,
+          "height": 34
+        },
+        {
+          "width": 62.265625,
+          "height": 34
+        },
+        {
+          "width": 150,
+          "height": 34
+        },
+        {
+          "width": 60.0625,
+          "height": 34
+        }
+      ]
+    },
+    {
+      "name": "zero-smoke-dark-desktop-section.png",
+      "capture": "section crop; fixed chrome hidden only during capture",
+      "width": 852,
+      "scrollWidth": 1440,
+      "viewport": 1440,
+      "rows": 1,
+      "roleColors": [
+        {
+          "role": "workflow-interval wf-role-worker wf-kind-activity",
+          "color": "rgba(0, 0, 0, 0)",
+          "foreground": "rgb(255, 255, 255)"
+        }
+      ],
+      "controls": [
+        {
+          "width": 34,
+          "height": 34
+        },
+        {
+          "width": 34,
+          "height": 34
+        },
+        {
+          "width": 62.265625,
+          "height": 34
+        },
+        {
+          "width": 150,
+          "height": 34
+        },
+        {
+          "width": 60.0625,
+          "height": 34
+        }
+      ]
+    },
+    {
+      "name": "short-smoke-light-desktop-summary-viewport.png",
+      "capture": "actual viewport with application chrome",
+      "width": 852,
+      "scrollWidth": 1440,
+      "viewport": 1440,
+      "rows": 1,
+      "roleColors": [
+        {
+          "role": "workflow-interval wf-role-worker wf-kind-activity",
+          "color": "rgba(0, 0, 0, 0)",
+          "foreground": "rgb(255, 255, 255)"
+        },
+        {
+          "role": "workflow-interval wf-role-worker wf-kind-activity",
+          "color": "rgba(0, 0, 0, 0)",
+          "foreground": "rgb(255, 255, 255)"
+        }
+      ],
+      "controls": [
+        {
+          "width": 34,
+          "height": 34
+        },
+        {
+          "width": 34,
+          "height": 34
+        },
+        {
+          "width": 62.265625,
+          "height": 34
+        },
+        {
+          "width": 150,
+          "height": 34
+        },
+        {
+          "width": 60.0625,
+          "height": 34
+        }
+      ]
+    },
+    {
+      "name": "short-smoke-light-desktop-section.png",
+      "capture": "section crop; fixed chrome hidden only during capture",
+      "width": 852,
+      "scrollWidth": 1440,
+      "viewport": 1440,
+      "rows": 1,
+      "roleColors": [
+        {
+          "role": "workflow-interval wf-role-worker wf-kind-activity",
+          "color": "rgba(0, 0, 0, 0)",
+          "foreground": "rgb(255, 255, 255)"
+        },
+        {
+          "role": "workflow-interval wf-role-worker wf-kind-activity",
+          "color": "rgba(0, 0, 0, 0)",
+          "foreground": "rgb(255, 255, 255)"
+        }
+      ],
+      "controls": [
+        {
+          "width": 34,
+          "height": 34
+        },
+        {
+          "width": 34,
+          "height": 34
+        },
+        {
+          "width": 62.265625,
+          "height": 34
+        },
+        {
+          "width": 150,
+          "height": 34
+        },
+        {
+          "width": 60.0625,
+          "height": 34
+        }
+      ]
+    },
+    {
+      "name": "stale-smoke-light-desktop-summary-viewport.png",
+      "capture": "actual viewport with application chrome",
+      "width": 852,
+      "scrollWidth": 1440,
+      "viewport": 1440,
+      "rows": 1,
+      "roleColors": [
+        {
+          "role": "workflow-interval wf-role-worker wf-kind-activity",
+          "color": "rgba(0, 0, 0, 0)",
+          "foreground": "rgb(255, 255, 255)"
+        },
+        {
+          "role": "workflow-interval wf-role-worker wf-kind-activity",
+          "color": "rgba(0, 0, 0, 0)",
+          "foreground": "rgb(255, 255, 255)"
+        },
+        {
+          "role": "workflow-interval wf-role-worker wf-kind-activity",
+          "color": "rgba(0, 0, 0, 0)",
+          "foreground": "rgb(255, 255, 255)"
+        }
+      ],
+      "controls": [
+        {
+          "width": 34,
+          "height": 34
+        },
+        {
+          "width": 34,
+          "height": 34
+        },
+        {
+          "width": 62.265625,
+          "height": 34
+        },
+        {
+          "width": 150,
+          "height": 34
+        },
+        {
+          "width": 60.0625,
+          "height": 34
+        }
+      ]
+    },
+    {
+      "name": "stale-smoke-light-desktop-section.png",
+      "capture": "section crop; fixed chrome hidden only during capture",
+      "width": 852,
+      "scrollWidth": 1440,
+      "viewport": 1440,
+      "rows": 1,
+      "roleColors": [
+        {
+          "role": "workflow-interval wf-role-worker wf-kind-activity",
+          "color": "rgba(0, 0, 0, 0)",
+          "foreground": "rgb(255, 255, 255)"
+        },
+        {
+          "role": "workflow-interval wf-role-worker wf-kind-activity",
+          "color": "rgba(0, 0, 0, 0)",
+          "foreground": "rgb(255, 255, 255)"
+        },
+        {
+          "role": "workflow-interval wf-role-worker wf-kind-activity",
+          "color": "rgba(0, 0, 0, 0)",
+          "foreground": "rgb(255, 255, 255)"
+        }
+      ],
+      "controls": [
+        {
+          "width": 34,
+          "height": 34
+        },
+        {
+          "width": 34,
+          "height": 34
+        },
+        {
+          "width": 62.265625,
+          "height": 34
+        },
+        {
+          "width": 150,
+          "height": 34
+        },
+        {
+          "width": 60.0625,
+          "height": 34
+        }
+      ]
+    },
+    {
+      "name": "short-smoke-dark-desktop-summary-viewport.png",
+      "capture": "actual viewport with application chrome",
+      "width": 852,
+      "scrollWidth": 1440,
+      "viewport": 1440,
+      "rows": 1,
+      "roleColors": [
+        {
+          "role": "workflow-interval wf-role-worker wf-kind-activity",
+          "color": "rgba(0, 0, 0, 0)",
+          "foreground": "rgb(255, 255, 255)"
+        },
+        {
+          "role": "workflow-interval wf-role-worker wf-kind-activity",
+          "color": "rgba(0, 0, 0, 0)",
+          "foreground": "rgb(255, 255, 255)"
+        }
+      ],
+      "controls": [
+        {
+          "width": 34,
+          "height": 34
+        },
+        {
+          "width": 34,
+          "height": 34
+        },
+        {
+          "width": 62.265625,
+          "height": 34
+        },
+        {
+          "width": 150,
+          "height": 34
+        },
+        {
+          "width": 60.0625,
+          "height": 34
+        }
+      ]
+    },
+    {
+      "name": "short-smoke-dark-desktop-section.png",
+      "capture": "section crop; fixed chrome hidden only during capture",
+      "width": 852,
+      "scrollWidth": 1440,
+      "viewport": 1440,
+      "rows": 1,
+      "roleColors": [
+        {
+          "role": "workflow-interval wf-role-worker wf-kind-activity",
+          "color": "rgba(0, 0, 0, 0)",
+          "foreground": "rgb(255, 255, 255)"
+        },
+        {
+          "role": "workflow-interval wf-role-worker wf-kind-activity",
+          "color": "rgba(0, 0, 0, 0)",
+          "foreground": "rgb(255, 255, 255)"
+        }
+      ],
+      "controls": [
+        {
+          "width": 34,
+          "height": 34
+        },
+        {
+          "width": 34,
+          "height": 34
+        },
+        {
+          "width": 62.265625,
+          "height": 34
+        },
+        {
+          "width": 150,
+          "height": 34
+        },
+        {
+          "width": 60.0625,
+          "height": 34
+        }
+      ]
+    },
+    {
+      "name": "history-smoke-dark-mobile-summary-viewport.png",
+      "capture": "actual viewport with application chrome",
+      "width": 354,
+      "scrollWidth": 390,
+      "viewport": 390,
+      "rows": 0,
+      "roleColors": [],
+      "controls": [
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 62.265625,
+          "height": 44
+        },
+        {
+          "width": 150,
+          "height": 44
+        },
+        {
+          "width": 60.0625,
+          "height": 44
+        }
+      ]
+    },
+    {
+      "name": "history-smoke-dark-mobile-section.png",
+      "capture": "section crop; fixed chrome hidden only during capture",
+      "width": 354,
+      "scrollWidth": 390,
+      "viewport": 390,
+      "rows": 0,
+      "roleColors": [],
+      "controls": [
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 62.265625,
+          "height": 44
+        },
+        {
+          "width": 150,
+          "height": 44
+        },
+        {
+          "width": 60.0625,
+          "height": 44
+        }
+      ]
+    },
+    {
+      "name": "continuous-smoke-light-mobile-summary-viewport.png",
+      "capture": "actual viewport with application chrome",
+      "width": 354,
+      "scrollWidth": 390,
+      "viewport": 390,
+      "rows": 1,
+      "roleColors": [
+        {
+          "role": "workflow-interval wf-role-worker wf-kind-activity",
+          "color": "rgba(0, 0, 0, 0)",
+          "foreground": "rgb(255, 255, 255)"
+        },
+        {
+          "role": "workflow-interval wf-role-worker wf-kind-activity",
+          "color": "rgba(0, 0, 0, 0)",
+          "foreground": "rgb(255, 255, 255)"
+        },
+        {
+          "role": "workflow-interval wf-role-worker wf-kind-activity",
+          "color": "rgba(0, 0, 0, 0)",
+          "foreground": "rgb(255, 255, 255)"
+        }
+      ],
+      "controls": [
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 62.265625,
+          "height": 44
+        },
+        {
+          "width": 150,
+          "height": 44
+        },
+        {
+          "width": 60.0625,
+          "height": 44
+        }
+      ]
+    },
+    {
+      "name": "continuous-smoke-light-mobile-section.png",
+      "capture": "section crop; fixed chrome hidden only during capture",
+      "width": 354,
+      "scrollWidth": 390,
+      "viewport": 390,
+      "rows": 1,
+      "roleColors": [
+        {
+          "role": "workflow-interval wf-role-worker wf-kind-activity",
+          "color": "rgba(0, 0, 0, 0)",
+          "foreground": "rgb(255, 255, 255)"
+        },
+        {
+          "role": "workflow-interval wf-role-worker wf-kind-activity",
+          "color": "rgba(0, 0, 0, 0)",
+          "foreground": "rgb(255, 255, 255)"
+        },
+        {
+          "role": "workflow-interval wf-role-worker wf-kind-activity",
+          "color": "rgba(0, 0, 0, 0)",
+          "foreground": "rgb(255, 255, 255)"
+        }
+      ],
+      "controls": [
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 44,
+          "height": 44
+        },
+        {
+          "width": 62.265625,
+          "height": 44
+        },
+        {
+          "width": 150,
+          "height": 44
+        },
+        {
+          "width": 60.0625,
+          "height": 44
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "cleanup": {
+    "browserClosed": true,
+    "fixtureClosed": true
+  },
+  "runtimeProducer": {
+    "eventConnections": 2,
+    "wireEvent": "attention",
+    "newLifecycleEvent": "runtime-sse-new",
+    "readingPreserved": true,
+    "modifiedSourceAnnounced": true,
+    "filteredListUpdated": true,
+    "requests": [
+      "/api/tasks/FLOW-1?project=%2Ffixtures%2Fworkflow&projection=lifecycle&backlog=%2Ffixtures%2Fworkflow%2F_task_mecca%2Fdata%2Fbacklog",
+      "/api/revision?project=%2Ffixtures%2Fworkflow&backlog=%2Ffixtures%2Fworkflow%2F_task_mecca%2Fdata%2Fbacklog",
+      "/api/tasks/FLOW-1?project=%2Ffixtures%2Fworkflow&projection=lifecycle&backlog=%2Ffixtures%2Fworkflow%2F_task_mecca%2Fdata%2Fbacklog",
+      "/api/revision?project=%2Ffixtures%2Fworkflow&backlog=%2Ffixtures%2Fworkflow%2F_task_mecca%2Fdata%2Fbacklog",
+      "/api/tasks/FLOW-1?project=%2Ffixtures%2Fworkflow&projection=lifecycle&backlog=%2Ffixtures%2Fworkflow%2F_task_mecca%2Fdata%2Fbacklog",
+      "/api/revision?project=%2Ffixtures%2Fworkflow&backlog=%2Ffixtures%2Fworkflow%2F_task_mecca%2Fdata%2Fbacklog",
+      "/api/tasks/FLOW-1?project=%2Ffixtures%2Fworkflow&projection=lifecycle&backlog=%2Ffixtures%2Fworkflow%2F_task_mecca%2Fdata%2Fbacklog",
+      "/api/revision?project=%2Ffixtures%2Fworkflow&backlog=%2Ffixtures%2Fworkflow%2F_task_mecca%2Fdata%2Fbacklog",
+      "/api/tasks/FLOW-1?project=%2Ffixtures%2Fworkflow&projection=lifecycle&backlog=%2Ffixtures%2Fworkflow%2F_task_mecca%2Fdata%2Fbacklog",
+      "/api/revision?project=%2Ffixtures%2Fworkflow&backlog=%2Ffixtures%2Fworkflow%2F_task_mecca%2Fdata%2Fbacklog",
+      "/api/tasks/FLOW-1?project=%2Ffixtures%2Fworkflow&projection=lifecycle&backlog=%2Ffixtures%2Fworkflow%2F_task_mecca%2Fdata%2Fbacklog",
+      "/api/revision?project=%2Ffixtures%2Fworkflow&backlog=%2Ffixtures%2Fworkflow%2F_task_mecca%2Fdata%2Fbacklog",
+      "/api/tasks/FLOW-1?project=%2Ffixtures%2Fworkflow&projection=lifecycle&backlog=%2Ffixtures%2Fworkflow%2F_task_mecca%2Fdata%2Fbacklog",
+      "/api/revision?project=%2Ffixtures%2Fworkflow&backlog=%2Ffixtures%2Fworkflow%2F_task_mecca%2Fdata%2Fbacklog",
+      "/api/tasks/FLOW-1?project=%2Ffixtures%2Fworkflow&projection=lifecycle&backlog=%2Ffixtures%2Fworkflow%2F_task_mecca%2Fdata%2Fbacklog",
+      "/api/revision?project=%2Ffixtures%2Fworkflow&backlog=%2Ffixtures%2Fworkflow%2F_task_mecca%2Fdata%2Fbacklog",
+      "/api/tasks/FLOW-1?project=%2Ffixtures%2Fworkflow&projection=lifecycle&backlog=%2Ffixtures%2Fworkflow%2F_task_mecca%2Fdata%2Fbacklog",
+      "/api/revision?project=%2Ffixtures%2Fworkflow&backlog=%2Ffixtures%2Fworkflow%2F_task_mecca%2Fdata%2Fbacklog",
+      "/api/tasks/FLOW-1?project=%2Ffixtures%2Fworkflow&projection=lifecycle&backlog=%2Ffixtures%2Fworkflow%2F_task_mecca%2Fdata%2Fbacklog",
+      "/api/revision?project=%2Ffixtures%2Fworkflow&backlog=%2Ffixtures%2Fworkflow%2F_task_mecca%2Fdata%2Fbacklog",
+      "/api/tasks/FLOW-1?project=%2Ffixtures%2Fworkflow&projection=lifecycle&backlog=%2Ffixtures%2Fworkflow%2F_task_mecca%2Fdata%2Fbacklog",
+      "/api/revision?project=%2Ffixtures%2Fworkflow&backlog=%2Ffixtures%2Fworkflow%2F_task_mecca%2Fdata%2Fbacklog",
+      "/api/tasks/FLOW-1?project=%2Ffixtures%2Fworkflow&projection=lifecycle&backlog=%2Ffixtures%2Fworkflow%2F_task_mecca%2Fdata%2Fbacklog",
+      "/api/revision?project=%2Ffixtures%2Fworkflow&backlog=%2Ffixtures%2Fworkflow%2F_task_mecca%2Fdata%2Fbacklog",
+      "/api/tasks/FLOW-1?project=%2Ffixtures%2Fworkflow&projection=lifecycle&backlog=%2Ffixtures%2Fworkflow%2F_task_mecca%2Fdata%2Fbacklog",
+      "/api/revision?project=%2Ffixtures%2Fworkflow&backlog=%2Ffixtures%2Fworkflow%2F_task_mecca%2Fdata%2Fbacklog",
+      "/api/tasks/FLOW-1?project=%2Ffixtures%2Fworkflow&projection=lifecycle&backlog=%2Ffixtures%2Fworkflow%2F_task_mecca%2Fdata%2Fbacklog",
+      "/api/revision?project=%2Ffixtures%2Fworkflow&backlog=%2Ffixtures%2Fworkflow%2F_task_mecca%2Fdata%2Fbacklog",
+      "/api/tasks/FLOW-1?project=%2Ffixtures%2Fworkflow&projection=lifecycle&backlog=%2Ffixtures%2Fworkflow%2F_task_mecca%2Fdata%2Fbacklog",
+      "/api/revision?project=%2Ffixtures%2Fworkflow&backlog=%2Ffixtures%2Fworkflow%2F_task_mecca%2Fdata%2Fbacklog",
+      "/api/tasks/FLOW-1?project=%2Ffixtures%2Fworkflow&projection=lifecycle&backlog=%2Ffixtures%2Fworkflow%2F_task_mecca%2Fdata%2Fbacklog",
+      "/api/revision?project=%2Ffixtures%2Fworkflow&backlog=%2Ffixtures%2Fworkflow%2F_task_mecca%2Fdata%2Fbacklog",
+      "/api/tasks/FLOW-1?project=%2Ffixtures%2Fworkflow&projection=lifecycle&backlog=%2Ffixtures%2Fworkflow%2F_task_mecca%2Fdata%2Fbacklog",
+      "/api/revision?project=%2Ffixtures%2Fworkflow&backlog=%2Ffixtures%2Fworkflow%2F_task_mecca%2Fdata%2Fbacklog",
+      "/api/tasks/FLOW-1?project=%2Ffixtures%2Fworkflow&projection=lifecycle&backlog=%2Ffixtures%2Fworkflow%2F_task_mecca%2Fdata%2Fbacklog",
+      "/api/revision?project=%2Ffixtures%2Fworkflow&backlog=%2Ffixtures%2Fworkflow%2F_task_mecca%2Fdata%2Fbacklog",
+      "/api/tasks/FLOW-1?project=%2Ffixtures%2Fworkflow&projection=lifecycle&backlog=%2Ffixtures%2Fworkflow%2F_task_mecca%2Fdata%2Fbacklog",
+      "/api/revision?project=%2Ffixtures%2Fworkflow&backlog=%2Ffixtures%2Fworkflow%2F_task_mecca%2Fdata%2Fbacklog",
+      "/api/tasks/FLOW-1?project=%2Ffixtures%2Fworkflow&projection=lifecycle&backlog=%2Ffixtures%2Fworkflow%2F_task_mecca%2Fdata%2Fbacklog",
+      "/api/revision?project=%2Ffixtures%2Fworkflow&backlog=%2Ffixtures%2Fworkflow%2F_task_mecca%2Fdata%2Fbacklog",
+      "/api/tasks/FLOW-1?project=%2Ffixtures%2Fworkflow&projection=lifecycle&backlog=%2Ffixtures%2Fworkflow%2F_task_mecca%2Fdata%2Fbacklog",
+      "/api/events?project=%2Ffixtures%2Fworkflow&backlog=%2Ffixtures%2Fworkflow%2F_task_mecca%2Fdata%2Fbacklog",
+      "/api/revision?project=%2Ffixtures%2Fworkflow&backlog=%2Ffixtures%2Fworkflow%2F_task_mecca%2Fdata%2Fbacklog",
+      "/api/revision?project=%2Ffixtures%2Fworkflow&backlog=%2Ffixtures%2Fworkflow%2F_task_mecca%2Fdata%2Fbacklog",
+      "/api/tasks/FLOW-1?project=%2Ffixtures%2Fworkflow&projection=lifecycle&backlog=%2Ffixtures%2Fworkflow%2F_task_mecca%2Fdata%2Fbacklog",
+      "/api/revision?project=%2Ffixtures%2Fworkflow&backlog=%2Ffixtures%2Fworkflow%2F_task_mecca%2Fdata%2Fbacklog",
+      "/api/tasks/FLOW-1?project=%2Ffixtures%2Fworkflow&projection=lifecycle&backlog=%2Ffixtures%2Fworkflow%2F_task_mecca%2Fdata%2Fbacklog",
+      "/api/events?project=%2Ffixtures%2Fworkflow&backlog=%2Ffixtures%2Fworkflow%2F_task_mecca%2Fdata%2Fbacklog"
+    ]
+  },
+  "passed": true
+}

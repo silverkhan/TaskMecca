@@ -1,0 +1,74 @@
+[
+  {
+    "file": "screens/1440-light-ko-home.png",
+    "source": "12fb5dd9c6c20d377a138c33765da44581919ea6",
+    "fixture": "actual owned Go server synthetic data",
+    "boundary": "before subsequent Auto/menu and native-backdrop correction; not exact final candidate capture"
+  },
+  {
+    "file": "screens/1440-light-ko-backlog.png",
+    "source": "12fb5dd9c6c20d377a138c33765da44581919ea6",
+    "fixture": "actual owned Go server synthetic data",
+    "boundary": "before subsequent Auto/menu and native-backdrop correction; not exact final candidate capture"
+  },
+  {
+    "file": "screens/1440-light-ko-detail.png",
+    "source": "12fb5dd9c6c20d377a138c33765da44581919ea6",
+    "fixture": "actual owned Go server synthetic data",
+    "boundary": "before subsequent Auto/menu and native-backdrop correction; not exact final candidate capture"
+  },
+  {
+    "file": "screens/1440-dark-ko-home.png",
+    "source": "12fb5dd9c6c20d377a138c33765da44581919ea6",
+    "fixture": "actual owned Go server synthetic data",
+    "boundary": "before subsequent Auto/menu and native-backdrop correction; not exact final candidate capture"
+  },
+  {
+    "file": "screens/1440-dark-ko-backlog.png",
+    "source": "12fb5dd9c6c20d377a138c33765da44581919ea6",
+    "fixture": "actual owned Go server synthetic data",
+    "boundary": "before subsequent Auto/menu and native-backdrop correction; not exact final candidate capture"
+  },
+  {
+    "file": "screens/1440-dark-ko-detail.png",
+    "source": "12fb5dd9c6c20d377a138c33765da44581919ea6",
+    "fixture": "actual owned Go server synthetic data",
+    "boundary": "before subsequent Auto/menu and native-backdrop correction; not exact final candidate capture"
+  },
+  {
+    "file": "screens/390-light-ko-home.png",
+    "source": "12fb5dd9c6c20d377a138c33765da44581919ea6",
+    "fixture": "actual owned Go server synthetic data",
+    "boundary": "before subsequent Auto/menu and native-backdrop correction; not exact final candidate capture"
+  },
+  {
+    "file": "screens/390-light-ko-backlog.png",
+    "source": "12fb5dd9c6c20d377a138c33765da44581919ea6",
+    "fixture": "actual owned Go server synthetic data",
+    "boundary": "before subsequent Auto/menu and native-backdrop correction; not exact final candidate capture"
+  },
+  {
+    "file": "screens/390-light-ko-detail.png",
+    "source": "12fb5dd9c6c20d377a138c33765da44581919ea6",
+    "fixture": "actual owned Go server synthetic data",
+    "boundary": "before subsequent Auto/menu and native-backdrop correction; not exact final candidate capture"
+  },
+  {
+    "file": "screens/390-dark-ko-home.png",
+    "source": "12fb5dd9c6c20d377a138c33765da44581919ea6",
+    "fixture": "actual owned Go server synthetic data",
+    "boundary": "before subsequent Auto/menu and native-backdrop correction; not exact final candidate capture"
+  },
+  {
+    "file": "screens/390-dark-ko-backlog.png",
+    "source": "12fb5dd9c6c20d377a138c33765da44581919ea6",
+    "fixture": "actual owned Go server synthetic data",
+    "boundary": "before subsequent Auto/menu and native-backdrop correction; not exact final candidate capture"
+  },
+  {
+    "file": "screens/390-dark-ko-detail.png",
+    "source": "12fb5dd9c6c20d377a138c33765da44581919ea6",
+    "fixture": "actual owned Go server synthetic data",
+    "boundary": "before subsequent Auto/menu and native-backdrop correction; not exact final candidate capture"
+  }
+]

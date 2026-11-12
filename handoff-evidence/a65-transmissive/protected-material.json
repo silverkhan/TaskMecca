@@ -1,0 +1,30 @@
+{
+  "goassets/template/_task_mecca/framework/web/ui/material/material.css": {
+    "sha256": "5c1ba0e59a0f095875396d1f76372b1148c8d9d1955294b5a6a10813d969c745",
+    "same_as_e7": true
+  },
+  "goassets/template/_task_mecca/framework/web/ui/material/components.js": {
+    "sha256": "518933e9e0a5061728598ac615b0698f07238bd1ba889db9a92c9a934310b8b8",
+    "same_as_e7": true
+  },
+  "goassets/template/_task_mecca/framework/web/ui/material/proximity.js": {
+    "sha256": "a816135006effd1931d213c8f489fbbcae5e63950e635baf739143458977f237",
+    "same_as_e7": true
+  },
+  "goassets/template/_task_mecca/framework/web/ui/material/review.js": {
+    "sha256": "6cd2a9d5b648852b20536ae362a9bec1936c2af4dfce6b097a411afb5d28d434",
+    "same_as_e7": true
+  },
+  "goassets/template/_task_mecca/framework/web/ui/material/cozy-beige-room-photo-1920.webp": {
+    "sha256": "48c7a6a5c4dbc1e6afe9b07ab0d026850e8516fbde21e621fa4bbabc9c072600",
+    "same_as_e7": true
+  },
+  "goassets/template/_task_mecca/framework/web/ui/material-review.html": {
+    "sha256": "9e57b4a20bc0eccf3e3a5935bcb0cb7e5b59a4dd2c0f4810de6dc50d2502d55c",
+    "same_as_e7": true
+  },
+  "goassets/template/_task_mecca/framework/web/logo.svg": {
+    "sha256": "29933e9a85c92660f22fc5a556f4fb179171a75d9e290c782b6b69c348012caa",
+    "same_as_e7": true
+  }
+}

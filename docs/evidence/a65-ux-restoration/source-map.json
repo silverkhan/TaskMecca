@@ -1,0 +1,37 @@
+{
+  "productionSource": "8728dedf218d6904675b05cb7cf173e0e8a00fe1",
+  "currentProductionHashes": {
+    "ui/components/shared.js": "a2d323d08d57bfb5fa6863e352acaa1429216b184ba382ab7cb658a46ca40d69",
+    "ui/document-tools.js": "51723699cc863cdee0f543c41943c1f5f7b09ac2727159b9ebf14013d6dbf380",
+    "ui/expansion.css": "e45a129f6716a1cece2aae762fbb8ff92d87f13aab9b73c804dd895f6d0fdec0",
+    "ui/expansion.js": "ecb4e57d52deb68e07cf8f48b34412347a1396900d0320cbd1ee8befa5425f4b",
+    "ui/main.js": "bf476820cfa08459534a716bc7e318329a009ef899c310bce36d86bba00eab30",
+    "ui/screens/detail.js": "7cfa4e3bd9019ebdf36f718d6c687bef01984cbf5987f393aad3649733f434a0",
+    "ui/detail-navigation.js": "b31099be27248c15426d8c0e2fe7060d829d3e3adb006284bb723782cd47a5f2",
+    "ui/optics.js": "203675db71fcfe99fe16d7c39e61e252462c1d4ced93a5b73cea9b89f47790ed"
+  },
+  "retrospectiveMapping": true,
+  "mappingNote": "Samsung budget and mobile-proof ran against these unchanged local optics/CSS files on base8d28, committed unchanged as8728 after the probes. The original fullgate then freezes source8728 and verifies all assets before/after. Earlier visual captures are c7/pre-final body order and mobile shader changes; never final Samsung acceptance.",
+  "phases": {
+    "diagnose": "d5ac frozen asset copy / origin-dev f0a732e3",
+    "plane-probe": "d5ac plus runtime-only CSS/plane injection",
+    "scroll-confirm": "c7a69762 sticky plane; mobile cost failure retained",
+    "fixed-correction": "42030bcd fixed plane",
+    "reading-guard": "8d28d7a2 / Chrome157 stable",
+    "samsung-substitute": "8d28 asset snapshots + rejected photo-css patch",
+    "samsung-static": "rejected full SVG image patch",
+    "samsung-edge": "rejected SVG image strip patch",
+    "samsung-layer": "rejected foreground promotion patch",
+    "samsung-budget": "mobile native7+boundedSVG; unchanged then committed8728",
+    "mobile-proof": "same mobile8728 source, synthetic Samsung UA/viewport/DPR/touch only",
+    "confirm": "c7 viewport reading plane before final body order/input guard/mobilebudget",
+    "reference": "origin/dev f0a732e3 same expanded synthetic document",
+    "mechanics": "final document order before mobile shader changes",
+    "late-reading-before-navigation": "4203 -> +816px failure",
+    "late-reading-after-navigation": "8d28 -> delta0",
+    "late-reading-deep-after": "8d28 -> delta0",
+    "optics-chrome157": "8d28 native full-face primitive, desktop contexts and UA fallback",
+    "fullgate4203": "INVALID browser156->157; all raw kept",
+    "fullgate8728": "44/48 FAIL; stable source/assets/Chrome157; no waiver"
+  }
+}

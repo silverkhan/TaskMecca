@@ -1,0 +1,24 @@
+✖ native Smoke core: overview, navigation, filters, document-first detail and finite reads (25107.592166ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 26094.708541
+
+✖ failing tests:
+
+test at tests/a65_core_browser.test.cjs:9:1
+✖ native Smoke core: overview, navigation, filters, document-first detail and finite reads (25107.592166ms)
+  locator.click: Error: strict mode violation: locator('.tm-combo').filter({ has: locator('select[name=page_size]') }).getByRole('combobox') resolved to 2 elements:
+      1) <select tabindex="-1" form="filters" name="page_size" data-tm-enhanced="1" class="tm-combo-native">…</select> aka getByLabel('페이지 크기자동102050자동')
+      2) <button type="button" role="combobox" aria-expanded="false" aria-haspopup="listbox" aria-label="자동102050자동" class="tm-combo-trigger">자동</button> aka getByRole('combobox', { name: '자동102050자동' })
+  
+  Call log:
+  [2m  - waiting for locator('.tm-combo').filter({ has: locator('select[name=page_size]') }).getByRole('combobox')[22m
+  
+      at TestContext.<anonymous> (/Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/tests/a65_core_browser.test.cjs:152:114) {
+    log: [ "  - waiting for locator('.tm-combo').filter({ has: locator('select[name=page_size]') }).getByRole('combobox')" ]
+  }

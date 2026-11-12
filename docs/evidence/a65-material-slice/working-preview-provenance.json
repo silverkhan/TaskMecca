@@ -1,0 +1,47 @@
+{
+  "synthetic": true,
+  "binary": "/private/tmp/task-mecca-a65-build/task-mecca-material-slice01-fix01-loading",
+  "root": "/var/folders/07/q_8xp6j90zn8r_gdxk6sj5nm0000gn/T/task-mecca-a65-preview-CRGjHj",
+  "management": "/var/folders/07/q_8xp6j90zn8r_gdxk6sj5nm0000gn/T/task-mecca-a65-preview-CRGjHj/management",
+  "projects": [
+    {
+      "name": "Task Mecca",
+      "project": "/var/folders/07/q_8xp6j90zn8r_gdxk6sj5nm0000gn/T/task-mecca-a65-preview-CRGjHj/task-mecca",
+      "backlog": "/var/folders/07/q_8xp6j90zn8r_gdxk6sj5nm0000gn/T/task-mecca-a65-preview-CRGjHj/task-mecca/_task_mecca/data/backlog",
+      "tasks": 36
+    },
+    {
+      "name": "Research Board",
+      "project": "/var/folders/07/q_8xp6j90zn8r_gdxk6sj5nm0000gn/T/task-mecca-a65-preview-CRGjHj/research",
+      "backlog": "/var/folders/07/q_8xp6j90zn8r_gdxk6sj5nm0000gn/T/task-mecca-a65-preview-CRGjHj/research/_task_mecca/data/backlog",
+      "tasks": 14
+    },
+    {
+      "name": "Release Desk",
+      "project": "/var/folders/07/q_8xp6j90zn8r_gdxk6sj5nm0000gn/T/task-mecca-a65-preview-CRGjHj/release",
+      "backlog": "/var/folders/07/q_8xp6j90zn8r_gdxk6sj5nm0000gn/T/task-mecca-a65-preview-CRGjHj/release/_task_mecca/data/backlog",
+      "tasks": 8
+    }
+  ],
+  "host": "127.0.0.1",
+  "port": 57069,
+  "url": "http://127.0.0.1:57069",
+  "pid": 88009,
+  "service_installed": false,
+  "user_preview_switched": false,
+  "launcher_git_head": "aa590433e9cc02474be30c38e205ef32ba00e44f",
+  "source_state": "base aa590433 plus uncommitted slice assets; not a pristine aa build",
+  "slice_assets_sha256": {
+    "material-review.html": "c125fd69f432ac45f066eb054dd977f6e6df1bd9417c85cfec7ce3b4d162415d",
+    "material/components.js": "518933e9e0a5061728598ac615b0698f07238bd1ba889db9a92c9a934310b8b8",
+    "material/proximity.js": "a816135006effd1931d213c8f489fbbcae5e63950e635baf739143458977f237",
+    "material/review.js": "6cd2a9d5b648852b20536ae362a9bec1936c2af4dfce6b097a411afb5d28d434",
+    "material/material.css": "5c1ba0e59a0f095875396d1f76372b1148c8d9d1955294b5a6a10813d969c745"
+  },
+  "binary_sha256": "a56612f2565397ffadeaab26884e99f2f19bc7a7c5d36fffdf1b47705e9901c4",
+  "source_commit": null,
+  "old_review_57068_preserved": true,
+  "old_binary": "/private/tmp/task-mecca-a65-build/task-mecca-aa590433",
+  "old_pid": 50664,
+  "working_review_url": "http://127.0.0.1:57069/ui/material-review.html"
+}

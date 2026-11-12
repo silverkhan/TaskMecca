@@ -1,0 +1,20 @@
+{
+  "command": "go test -race ./internal/webui -run '^(TestOverview|TestOperationMonitorStartsCanonicalEventFeedsForEveryActiveProject)' -count=1 -v",
+  "exit": 0,
+  "tests": 10,
+  "overview_tests": 9,
+  "existing_monitor_tests": 1,
+  "elapsed_seconds": 10.505,
+  "metrics": [
+    "overview_test.go:92: OVERVIEW_COLD_BOUND simulated_projects=10000 blocked_source=true request_ms=28.609",
+    "overview_test.go:108: OVERVIEW_WORK_BOUND calls=8 max_concurrency=4",
+    "overview_test.go:344: OVERVIEW_READONLY_HTTP files=75 before=3a59894ee29d70ac660a66edd93c5dc8e689d7fb62dcd9cd1a2af600b836273a after=3a59894ee29d70ac660a66edd93c5dc8e689d7fb62dcd9cd1a2af600b836273a",
+    "overview_test.go:474: OVERVIEW_READONLY_CANONICAL files=7 before=d7e632c32d263831e1f4b63110cb14f826a93aabe22d391a80604d0401e5bf01 after=d7e632c32d263831e1f4b63110cb14f826a93aabe22d391a80604d0401e5bf01"
+  ],
+  "source_commit": "68c353420f307979ee1d07fba35bc122501095ac",
+  "working_source_matches_commit": {
+    "internal/webui/overview.go": true,
+    "internal/webui/overview_test.go": true,
+    "internal/webui/server.go": true
+  }
+}

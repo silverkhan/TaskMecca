@@ -1,0 +1,35 @@
+✔ approved pilot preserves exact origin/dev application, controls, styles and entry DOM (5.681ms)
+✖ actual dev entry retains search, native menus, continuous anchors, theme and mobile controls in the pilot (35305.439792ms)
+✔ PR and standalone Preview offer one-click pilot/dev comparison while ordinary dev remains unchanged (16021.129ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 2
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 35365.060791
+
+✖ failing tests:
+
+test at tests/a65_dev_floating_pilot.test.cjs:19:1
+✖ actual dev entry retains search, native menus, continuous anchors, theme and mobile controls in the pilot (35305.439792ms)
+  locator.selectOption: Timeout 30000ms exceeded.
+  Call log:
+  [2m  - waiting for locator('#listPageSize')[22m
+  [2m    - locator resolved to <select tabindex="-1" id="listPageSize" data-tm-enhanced="1" class="tm-combo-native">…</select>[22m
+  [2m  - attempting select option action[22m
+  [2m    2 × option being selected is not enabled[22m
+  [2m    - retrying select option action[22m
+  [2m    - waiting 20ms[22m
+  [2m    2 × option being selected is not enabled[22m
+  [2m    - retrying select option action[22m
+  [2m      - waiting 100ms[22m
+  [2m    60 × option being selected is not enabled[22m
+  [2m     - retrying select option action[22m
+  [2m       - waiting 500ms[22m
+  
+      at TestContext.<anonymous> (/Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/tests/a65_dev_floating_pilot.test.cjs:37:86) {
+    name: 'TimeoutError',
+    log: [ "  - waiting for locator('#listPageSize')", '    - locator resolved to <select tabindex="-1" id="listPageSize" data-tm-enhanced="1" class="tm-combo-native">…</select>', '  - attempting select option action', '    2 × option being selected is not enabled', '    - retrying select option action', '    - waiting 20ms', '    2 × option being selected is not enabled', '    - retrying select option action', '      - waiting 100ms', '    60 × option being selected is not enabled', '     - retrying select option action', '       - waiting 500ms' ]
+  }

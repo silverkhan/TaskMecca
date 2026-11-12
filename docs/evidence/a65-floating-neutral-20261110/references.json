@@ -1,0 +1,21 @@
+{
+  "priorDevSource": "3a066ed44b1c52982b008230cfb9f4f1535847df",
+  "priorDevFile": "goassets/template/_task_mecca/framework/web/ui/dev-floating/pilot.css",
+  "priorDeclaredNeutralAndAlpha": "/* Scope: opt-in dev sidebar/header/detail material only. No optical runtime. */\n:root[data-floating-pilot] {\n  --floating-chrome: rgb(255 255 255 / .91);\n  --floating-reading: rgb(255 255 255 / .96);\n  --floating-shadow: 0 8px 28px rgb(23 32 51 / .07);\n  --floating-scene-tint: rgb(247 248 250 / .20);\n}\n:root[data-floating-pilot][data-theme=\"dark\"] {\n  --floating-chrome: rgb(23 26 33 / .91);\n  --floating-reading: rgb(23 26 33 / .96);\n  --floating-shadow: 0 8px 28px rgb(0 0 0 / .15);\n  --floating-scene-tint: rgb(17 19 24 / .40);\n}\n:root[data-floating-pilot] body {\n  isolation: isolate;\n  background: var(--bg);",
+  "readabilityBaseSource": "2ea0098e56f17c9a475d44c7139887b71d10ebd4",
+  "readabilityRoleTokens": ":root[data-floating-pilot] {\n  --floating-gap: 12px;\n  --floating-radius: 18px;\n  --floating-chrome: color-mix(in srgb, var(--surface) 96%, transparent);\n  --floating-reading: color-mix(in srgb, var(--surface) 98%, transparent);\n  --floating-divider: color-mix(in srgb, var(--text) 12%, transparent);\n  --floating-shadow: 0 6px 22px rgb(23 32 51 / .07);\n  --floating-scene-tint: rgb(247 248 250 / .20);\n}\n:root[data-floating-pilot][data-theme=\"dark\"] {\n  --floating-shadow: 0 6px 22px rgb(0 0 0 / .14);\n  --floating-scene-tint: rgb(17 19 24 / .40);\n}\n:root[data-floating-pilot][data-theme] body {\n  isolation: isolate;",
+  "legacyOpticalFile": "goassets/template/_task_mecca/framework/web/ui/material/background-comparison.css",
+  "legacyCoupledLayerReference": "/* A single decorative sampling layer; content never enters its filter chain. */\n.material-surface{background:rgba(24,25,29,.36)}\n:root[data-material-theme='light'] .material-surface{background:rgba(255,255,255,.46)}\n.material-surface>.material-transmission{position:absolute;inset:0;z-index:-1;pointer-events:none;border-radius:inherit;overflow:hidden;background-image:linear-gradient(rgba(12,13,17,.60),rgba(12,13,17,.60)),url('./cozy-beige-room-photo-1920.webp');background-repeat:no-repeat;filter:blur(7px);transform:none}\n:root[data-material-theme='light'] .material-transmission{background-image:linear-gradient(rgba(255,255,255,.50),rgba(255,255,255,.50)),url('./cozy-beige-room-photo-1920.webp')}\n:root[data-material-optics='svg'] .material-transmission{filter:url('#material-refraction')}\n:root[data-material-background='solid'] .material-transmission{display:none}\n:root[data-material-background='solid'] .material-surface{background:linear-gradient(180deg,var(--surface-top),var(--surface-mid) 25%,var(--surface-low) 64%)}",
+  "newRoles": {
+    "lightSurface": "#ffffff",
+    "darkSurface": "#181818",
+    "chromeAlpha": 0.91,
+    "readingAlpha": 0.96,
+    "inputSummaryFaces": "opaque neutral surface/surface2",
+    "sceneOverlay": {
+      "light": "white .20",
+      "dark": "black .40"
+    }
+  },
+  "reason": "Restore declared 3a chrome/reading alpha by role with hue-free surfaces; do not copy .36/.46 optical sample fill because it requires separate transmission/image/blur layers."
+}

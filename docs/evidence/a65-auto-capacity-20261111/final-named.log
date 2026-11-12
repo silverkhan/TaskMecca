@@ -1,0 +1,13 @@
+✔ approved pilot preserves exact origin/dev application, controls, styles and entry DOM (4.052667ms)
+✔ actual dev entry retains search, native menus, continuous anchors, theme and mobile controls in the pilot (5571.95175ms)
+✔ floating neutral material preserves dev palettes, semantics, geometry and System across desktop/mobile (5068.308417ms)
+✔ routed context teardown joins an in-flight fixture fetch before closing (133.48175ms)
+✔ PR and standalone Preview offer one-click pilot/dev comparison while ordinary dev remains unchanged (9628.840375ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 9675.152541

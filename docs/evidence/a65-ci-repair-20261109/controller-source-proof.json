@@ -1,0 +1,33 @@
+{
+  "base": "f3beec75f6b082a2852cb88ddea2c8d5d901e66e",
+  "algorithm": "Each actual file Git blob SHA-1 matches the base object; SHA-256 aggregates cover path + NUL + actual file SHA-256 + newline.",
+  "groups": {
+    ".github/workflows": {
+      "files": 8,
+      "sha256": "9b4baef65b4a3bc369b158cb333e5633d7f12ece2863ca4b0792c5a28007a243"
+    },
+    "cmd": {
+      "files": 58,
+      "sha256": "c2b82d6613e2f5e4c960c61d170aecde190fbdabc8e039ed7aa67e8570dae8f6"
+    },
+    "goassets": {
+      "files": 64,
+      "sha256": "1cbff5ecbc2fbcc3e222c450a2ca647b88b3d4bfc031a95be2a2b323c0abe21e"
+    },
+    "handoff-evidence/a65-transmissive": {
+      "files": 39,
+      "sha256": "2ddc3493209999ee3b3f116611892ffcd8dbbd7c8f60c12e30f5a458a3f79e98"
+    },
+    "internal": {
+      "files": 341,
+      "sha256": "d55bf096f09d96a123db1f71e22c82b87f02fff403fe4042b10e6864e10b15d9"
+    },
+    "tests/fixtures": {
+      "files": 9,
+      "sha256": "be383c145f09a93a792f6a2afcac44dc3ba958c640d0c8571b3491c8ce0e3909"
+    }
+  },
+  "mismatches": [],
+  "originalBrowserAssertionsPreserved": true,
+  "unchangedOriginalTestFiles": 4
+}

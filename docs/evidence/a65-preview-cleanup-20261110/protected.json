@@ -1,0 +1,13 @@
+{
+  "base": "8a2ee6772946dff16feae1760f9cad66d1f168c4",
+  "source": "bf161355b9d0bea873b5870234995d5947b8cba9",
+  "identicalGitTreesOrBlobs": {
+    "goassets": "6dd64e67ef7b0ca6942808c191290b2e5acb74d4",
+    "internal/webui/server.go": "86b0515d2000c8bc5089c251d469facd70a683c5",
+    "internal/webui/attention_stream.go": "63074e4e79c01f29cad7093e8c6bb38a858c53c0",
+    "internal/webui/preview_builds_test.go": "a3cf69503b42c62d82613b815a124feeb1060fdb"
+  },
+  "onlyCodeChange": "internal/webui/registered_fixture_test.go",
+  "productionChanges": false,
+  "visualChanges": false
+}

@@ -1,0 +1,20 @@
+{
+  "browserClosed": true,
+  "servers": [
+    {
+      "origin": "http://127.0.0.1:63304",
+      "listening": false,
+      "streams": 0
+    },
+    {
+      "origin": "http://127.0.0.1:63305",
+      "listening": false,
+      "streams": 0
+    },
+    {
+      "origin": "http://127.0.0.1:63306",
+      "listening": false,
+      "streams": 0
+    }
+  ]
+}

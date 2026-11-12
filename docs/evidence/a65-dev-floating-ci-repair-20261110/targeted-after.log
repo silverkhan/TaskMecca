@@ -1,0 +1,8 @@
+=== RUN   TestOverviewUIAssetsNestedMIMEBytesAndTraversalReadOnly
+--- PASS: TestOverviewUIAssetsNestedMIMEBytesAndTraversalReadOnly (0.01s)
+=== RUN   TestSignatureThemeBranding
+--- PASS: TestSignatureThemeBranding (0.00s)
+=== RUN   TestHandlerServesDashboardAPIsAndAssets
+--- PASS: TestHandlerServesDashboardAPIsAndAssets (0.68s)
+PASS
+ok  	github.com/silverkhan/TaskMecca/internal/webui	1.136s

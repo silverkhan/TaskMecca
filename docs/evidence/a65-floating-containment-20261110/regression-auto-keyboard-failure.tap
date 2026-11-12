@@ -1,0 +1,20 @@
+✔ approved pilot preserves exact origin/dev application, controls, styles and entry DOM (4.677333ms)
+✖ actual dev entry retains search, native menus, continuous anchors, theme and mobile controls in the pilot (31096.142084ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 1
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 31149.261291
+
+✖ failing tests:
+
+test at tests/a65_dev_floating_pilot.test.cjs:19:1
+✖ actual dev entry retains search, native menus, continuous anchors, theme and mobile controls in the pilot (31096.142084ms)
+  page.waitForFunction: Timeout 30000ms exceeded.
+      at TestContext.<anonymous> (/Users/hanati/.codex/worktrees/a65-uiux-redesign/TaskMecca/tests/a65_dev_floating_pilot.test.cjs:31:15) {
+    name: 'TimeoutError',
+    log: []
+  }
