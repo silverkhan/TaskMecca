@@ -1,0 +1,27 @@
+{
+  "native_receipt": {
+    "provider": "codex",
+    "session_id": "01a1cebe-fd3a-7672-bd3f-3108ea17f44b",
+    "requested_name": "D1112_01_Worker_raichyu_G1",
+    "observed_name": "D1112_01_Worker_raichyu_G1",
+    "observed_session_id": "01a1cebe-fd3a-7672-bd3f-3108ea17f44b",
+    "status": "verified",
+    "support": "supported",
+    "source": "codex_app_server:thread/read",
+    "applied": false,
+    "verified": true,
+    "checked_at": "2026-11-12T08:00:47.831943Z"
+  },
+  "apply_checked_at": "2026-11-12T08:00:35.319366Z",
+  "apply_verified": true,
+  "operational_written": false,
+  "cli_naming_complete": false,
+  "cli_t3_status": "agent_tool_read_required",
+  "independent_t3_thread_read": {
+    "thread_id": "thread:delegated-task:command%3Amcp%3A17c02103-a2d4-43df-b4c5-96ede8dc66b1%3Adelegate-task%3Aa70-raichyu-workflow-terminal-lifecycle-20261112",
+    "title": "D1112_01_Worker_raichyu_G1",
+    "status": "running",
+    "updated_at": "2026-11-12T08:00:48.002Z"
+  },
+  "identity_authoritative": false
+}
