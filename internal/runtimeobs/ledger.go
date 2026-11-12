@@ -38,6 +38,7 @@ const (
 	BindingAmbiguous BindingState = "ambiguous"
 
 	EvidenceHook          EvidenceSource = "hook"
+	EvidenceT3            EvidenceSource = "t3_structured"
 	EvidenceManualBinding EvidenceSource = "manual_binding"
 	EvidenceReconciled    EvidenceSource = "reconciled"
 
@@ -47,6 +48,7 @@ const (
 )
 
 type ExecutionEvent struct {
+	NativeReceipt      *T3Receipt         `json:"native_receipt,omitempty"`
 	EventID            string             `json:"event_id"`
 	EventKind          string             `json:"event_kind"`
 	ObservedAt         string             `json:"observed_at"`
@@ -84,6 +86,7 @@ type Transition struct {
 }
 
 type Attempt struct {
+	NativeReceipt           *T3Receipt         `json:"native_receipt,omitempty"`
 	AttemptID               string             `json:"attempt_id"`
 	Provider                string             `json:"provider"`
 	SessionID               string             `json:"session_id,omitempty"`
@@ -305,6 +308,15 @@ func AppendExecutionEvent(project string, e ExecutionEvent) error {
 }
 
 func BindAttempt(project, attemptID, taskID, agentPath, source, parentAttemptID string, evidence map[string]string, now time.Time) (Attempt, error) {
+	release, err := lockHookEvents(project)
+	if err != nil {
+		return Attempt{}, err
+	}
+	defer release()
+	return bindAttempt(project, attemptID, taskID, agentPath, source, parentAttemptID, evidence, now)
+}
+
+func bindAttempt(project, attemptID, taskID, agentPath, source, parentAttemptID string, evidence map[string]string, now time.Time) (Attempt, error) {
 	attemptID = strings.TrimSpace(attemptID)
 	taskID = strings.ToUpper(strings.TrimSpace(taskID))
 	agentPath = strings.TrimSpace(agentPath)
@@ -366,6 +378,11 @@ func BindRuntimeAgentForAssignment(project, assignmentID, runtimeAgentID, parent
 }
 
 func bindRuntimeAgent(project, runtimeAgentID, taskID, agentPath, parentAttemptID, assignmentID string, now time.Time) (Attempt, error) {
+	release, lockErr := lockHookEvents(project)
+	if lockErr != nil {
+		return Attempt{}, lockErr
+	}
+	defer release()
 	runtimeAgentID = strings.TrimSpace(runtimeAgentID)
 	if runtimeAgentID == "" {
 		return Attempt{}, errors.New("runtime_agent_id is required")
@@ -452,7 +469,7 @@ func bindRuntimeAgent(project, runtimeAgentID, taskID, agentPath, parentAttemptI
 	if assignmentID != "" {
 		evidence["assignment_id"] = assignmentID
 	}
-	return BindAttempt(project, matches[0].AttemptID, taskID, agentPath, "dispatch", parentAttemptID, evidence, now)
+	return bindAttempt(project, matches[0].AttemptID, taskID, agentPath, "dispatch", parentAttemptID, evidence, now)
 }
 
 type accumulator struct {
@@ -517,6 +534,10 @@ func applyCurrentBinding(a *accumulator) {
 
 func (a *accumulator) apply(e ExecutionEvent) {
 	a.attempt.EvidenceCount++
+	if e.NativeReceipt != nil {
+		copy := *e.NativeReceipt
+		a.attempt.NativeReceipt = &copy
+	}
 	if e.Provider != "" {
 		a.attempt.Provider = e.Provider
 	}

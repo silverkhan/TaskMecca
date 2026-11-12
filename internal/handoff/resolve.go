@@ -72,6 +72,11 @@ func resolveTarget(project, targetPath, sourceAttemptID, targetAttemptID string,
 		RuntimeAgentID: chosen.RuntimeAgentID, SessionID: chosen.SessionID,
 		Provider: chosen.Provider, State: string(chosen.CurrentState),
 	}
+	if chosen.StateEvidenceSource == runtimeobs.EvidenceT3 {
+		if err := runtimeobs.VerifyT3Attempt(*chosen, now); err != nil {
+			return target, ActionHold, false, "t3_current_execution_unverified", err
+		}
+	}
 	action, fresh, reason, capabilityErr := actionFor(project, *chosen, targetPath)
 	if capabilityErr != nil {
 		return target, ActionHold, false, "capability_evidence_error", capabilityErr
@@ -93,8 +98,8 @@ func actionFor(project string, attempt runtimeobs.Attempt, targetPath string) (A
 		}
 		return ActionHold, false, "message_running_capability_" + string(caps.CanMessageRunning), nil
 	case runtimeobs.StateCompleted:
-		agentType:=strings.ToLower(strings.TrimSpace(attempt.AgentType))
-		if provider=="claude" && (agentType=="explore" || agentType=="plan") {
+		agentType := strings.ToLower(strings.TrimSpace(attempt.AgentType))
+		if provider == "claude" && (agentType == "explore" || agentType == "plan") {
 			return ActionHold, false, "claude_one_shot_agent_not_resumable", nil
 		}
 		if targetPath == "/root" {

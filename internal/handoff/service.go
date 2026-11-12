@@ -12,6 +12,7 @@ import (
 	"github.com/silverkhan/TaskMecca/internal/backlog"
 	"github.com/silverkhan/TaskMecca/internal/contextlife"
 	"github.com/silverkhan/TaskMecca/internal/contractscope"
+	"github.com/silverkhan/TaskMecca/internal/runtimeobs"
 )
 
 func Prepare(req PrepareRequest, now time.Time) (PrepareResult, error) {
@@ -55,6 +56,12 @@ func Prepare(req PrepareRequest, now time.Time) (PrepareResult, error) {
 		if _, decodeErr := hex.DecodeString(expected); decodeErr != nil {
 			return PrepareResult{}, errors.New("expected contract sha256 must be hexadecimal")
 		}
+		if expected != currentContractSHA {
+			matches, _ := contractscope.MatchesFingerprint(raw, expected)
+			if !matches {
+				return PrepareResult{}, errors.New("contract_changed")
+			}
+		}
 		contractSHA = expected
 	}
 
@@ -95,6 +102,19 @@ func Prepare(req PrepareRequest, now time.Time) (PrepareResult, error) {
 
 	var result PrepareResult
 	err = withLock(req.Project, func() error {
+
+		freshInspection, checkErr := backlog.Inspect(req.Project, "", req.TaskID)
+		if checkErr != nil {
+			return checkErr
+		}
+		freshRaw, _ := freshInspection["raw_markdown"].(string)
+		if freshInspection["exists"] != true {
+			return errors.New("task_missing")
+		}
+		if matches, _ := contractscope.MatchesFingerprint(freshRaw, contractSHA); !matches {
+			return errors.New("contract_changed_during_prepare")
+		}
+		raw = freshRaw
 		ledger, buildErr := buildLedgerUnlocked(req.Project, now)
 		if buildErr != nil {
 			return buildErr
@@ -108,12 +128,12 @@ func Prepare(req PrepareRequest, now time.Time) (PrepareResult, error) {
 				Target: existing.Target, Action: existing.Action,
 				RequiresFreshPreflight: existing.RequiresFreshPreflight, Reason: "already_prepared",
 			}
-			if existing.Applied || existing.ClaimedBy != "" || strings.TrimSpace(req.TargetAttemptID) == "" || req.TargetAttemptID == existing.Target.AttemptID {
+			if existing.Applied || existing.Action == ActionReportOnly || (existing.EventType == EventRegistrationReady && !req.ExecutionAuthorized) || existing.ClaimedBy != "" || strings.TrimSpace(req.TargetAttemptID) == "" || (req.TargetAttemptID == existing.Target.AttemptID && existing.Action != ActionHold) {
 				return nil
 			}
 
 			target, action, fresh, reason, resolveErr := resolveTarget(req.Project, req.TargetAgentPath, req.SourceAttemptID, req.TargetAttemptID, now)
-			if resolveErr != nil || !sameVerifiedRuntimeIdentity(existing.Target, target) {
+			if resolveErr != nil || !verifiedTargetObservation(req.Project, target, now) || !recoverableRuntimeIdentity(req.Project, existing.Target, target, now) {
 				if reason == "" {
 					reason = "retarget_identity_not_verified"
 				}
@@ -124,6 +144,9 @@ func Prepare(req PrepareRequest, now time.Time) (PrepareResult, error) {
 				result.Action = ActionHold
 				result.RequiresFreshPreflight = false
 				result.Reason = reason
+				return nil
+			}
+			if target == existing.Target && action == existing.Action && fresh == existing.RequiresFreshPreflight {
 				return nil
 			}
 			record := Record{HandoffID: handoffID, RecordKind: "retargeted", TargetAgentPath: target.AgentPath, TargetAttemptID: target.AttemptID, TargetRuntimeAgentID: target.RuntimeAgentID, TargetRuntimeName: target.RuntimeName, TargetSessionID: target.SessionID, Provider: target.Provider, TargetState: target.State, Action: action, RequiresFreshPreflight: fresh, ObservedAt: now.UTC().Format(time.RFC3339Nano)}
@@ -261,6 +284,11 @@ func Claim(project, handoffID, recipient, claimantAttemptID string, now time.Tim
 				result.ClaimConflict = true
 				result.Reason = "claimed_by_other_runtime_attempt"
 			}
+			return nil
+		}
+		if err := verifyCurrentReceiptTarget(project, row.Target, now); err != nil {
+			result.ClaimConflict = true
+			result.Reason = err.Error()
 			return nil
 		}
 		record := Record{
@@ -426,4 +454,65 @@ func detailEvidence(value string) map[string]string {
 		return nil
 	}
 	return map[string]string{"detail": value}
+}
+
+// A pending dispatch has no provider/session yet. Recover it only through the
+// same immutable runtime ID and its now-verified T3 native session. The original
+// attempt must still exist; a path/name is never sufficient.
+func recoverableRuntimeIdentity(project string, previous, next Target, now time.Time) bool {
+	if sameVerifiedRuntimeIdentity(previous, next) {
+		return true
+	}
+	if previous.AgentPath != next.AgentPath || previous.RuntimeAgentID == "" || previous.RuntimeAgentID != next.RuntimeAgentID || previous.Provider != "" || previous.SessionID != "" {
+		return false
+	}
+	ledger, err := runtimeobs.BuildLedger(project, 20, now)
+	if err != nil {
+		return false
+	}
+	var old, current *runtimeobs.Attempt
+	for i := range ledger.Attempts {
+		a := &ledger.Attempts[i]
+		if a.AttemptID == previous.AttemptID {
+			old = a
+		}
+		if a.AttemptID == next.AttemptID {
+			current = a
+		}
+	}
+	if old == nil || current == nil || old.BindingState != runtimeobs.BindingBound || old.AgentPath != previous.AgentPath || old.RuntimeAgentID != previous.RuntimeAgentID || current.BindingState != runtimeobs.BindingBound || !runtimeobs.HasObservedExecution(*current) {
+		return false
+	}
+	if current.StateEvidenceSource == runtimeobs.EvidenceHook && old.AttemptID == current.AttemptID {
+		return old.Provider == next.Provider && old.SessionID == next.SessionID
+	}
+	return current.NativeReceipt != nil && old.Provider == next.Provider && old.SessionID == next.SessionID && current.SessionID == next.RuntimeAgentID && runtimeobs.VerifyT3Attempt(*current, now) == nil
+}
+func verifyCurrentReceiptTarget(project string, target Target, now time.Time) error {
+	ledger, err := runtimeobs.BuildLedger(project, 20, now)
+	if err != nil {
+		return err
+	}
+	for _, a := range ledger.Attempts {
+		if a.AttemptID == target.AttemptID && a.StateEvidenceSource == runtimeobs.EvidenceT3 {
+			if a.BindingState != runtimeobs.BindingBound || a.AgentPath != target.AgentPath || a.Provider != target.Provider || a.SessionID != target.SessionID || a.RuntimeAgentID != target.RuntimeAgentID || a.Terminal || a.CurrentState != runtimeobs.StateRunning {
+				return errors.New("target_identity_changed")
+			}
+			return runtimeobs.VerifyT3Attempt(a, now)
+		}
+	}
+	return nil
+}
+
+func verifiedTargetObservation(project string, target Target, now time.Time) bool {
+	ledger, err := runtimeobs.BuildLedger(project, 20, now)
+	if err != nil {
+		return false
+	}
+	for _, a := range ledger.Attempts {
+		if a.AttemptID == target.AttemptID {
+			return a.BindingState == runtimeobs.BindingBound && a.AgentPath == target.AgentPath && a.Provider != "" && a.SessionID != "" && a.RuntimeAgentID != "" && runtimeobs.HasObservedExecution(a)
+		}
+	}
+	return false
 }

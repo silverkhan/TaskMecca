@@ -39,6 +39,8 @@ type ActivityRuntimeAttempt struct {
     LastObservedAt string `json:"last_observed_at,omitempty"`
     StateEvidenceSource runtimeobs.EvidenceSource `json:"state_evidence_source,omitempty"`
     RecentHookTransitions int `json:"recent_hook_transitions"`
+ RecentT3Transitions int `json:"recent_t3_transitions"`
+ LatestRecentT3At string `json:"latest_recent_t3_at,omitempty"`
     LatestRecentHookAt string `json:"latest_recent_hook_at,omitempty"`
     Diagnostic string `json:"diagnostic"`
 }
@@ -89,6 +91,7 @@ func summarizeActivityRuntimeEvidence(taskID string, attempts []runtimeobs.Attem
             StateEvidenceSource:a.StateEvidenceSource,
         }
         for _,transition:=range a.RecentTransitions {
+            if transition.EvidenceSource==runtimeobs.EvidenceT3{row.RecentT3Transitions++;if transition.At>row.LatestRecentT3At{row.LatestRecentT3At=transition.At};continue}
             if transition.EvidenceSource!=runtimeobs.EvidenceHook{continue}
             row.RecentHookTransitions++
             if transition.At>row.LatestRecentHookAt{row.LatestRecentHookAt=transition.At}

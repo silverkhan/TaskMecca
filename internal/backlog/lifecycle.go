@@ -539,7 +539,7 @@ func lifecycleTimings(project,root string,rows []Record,shared ...requestRuntime
 				if matches != 1 { continue }
 				live := 0
 				for _, attempt := range attempts.Attempts {
-					if attempt.AttemptID != h.Target.AttemptID || attempt.AgentPath != h.Target.AgentPath || attempt.RuntimeAgentID != h.Target.RuntimeAgentID || attempt.SessionID != h.Target.SessionID || attempt.Provider != h.Target.Provider || attempt.BindingState != runtimeobs.BindingBound || attempt.StateEvidenceSource != runtimeobs.EvidenceHook || (attempt.StateObservationQuality != runtimeobs.QualityObserved && attempt.StateObservationQuality != runtimeobs.QualityAuthoritative) || attempt.CurrentState != runtimeobs.StateRunning || attempt.Terminal { continue }
+					if attempt.AttemptID != h.Target.AttemptID || attempt.AgentPath != h.Target.AgentPath || attempt.RuntimeAgentID != h.Target.RuntimeAgentID || attempt.SessionID != h.Target.SessionID || attempt.Provider != h.Target.Provider || attempt.BindingState != runtimeobs.BindingBound || !runtimeobs.HasObservedExecution(attempt) || (attempt.StateObservationQuality != runtimeobs.QualityObserved && attempt.StateObservationQuality != runtimeobs.QualityAuthoritative) || attempt.CurrentState != runtimeobs.StateRunning || attempt.Terminal { continue }
 					last, ok := parseTime(attempt.LastActivityAt); if ok && !last.Before(claimedAt.Add(-15*time.Minute)) && !last.After(now) { live++ }
 				}
 				if live == 1 { combinedEvents[id] = append(combinedEvents[id], lifecycleEvent{State:"doing", At:h.ClaimedAt, Source:"handoff_projection", ID:h.HandoffID, Kind:"review_started", Actor:h.ClaimedBy, EvidenceSource:"exact_controller_claim", AssignmentID:assignmentID, AttemptID:h.Target.AttemptID}) }

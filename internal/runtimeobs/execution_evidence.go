@@ -9,6 +9,10 @@ func HasObservedExecution(a Attempt) bool {
 	if a.StateObservationQuality != QualityObserved && a.StateObservationQuality != QualityAuthoritative {
 		return false
 	}
+	if a.StateEvidenceSource == EvidenceT3 {
+		r := a.NativeReceipt
+		return r != nil && r.Origin == "t3_local_projection_v2" && r.Provider == a.Provider && r.SessionID == a.SessionID && a.RuntimeAgentID == a.SessionID && r.NativeAttemptID == a.TurnID && r.State == a.CurrentState && r.ObservedAt != "" && r.ObservedAt <= a.LastObservedAt
+	}
 	if a.StateEvidenceSource == EvidenceHook {
 		return true
 	}

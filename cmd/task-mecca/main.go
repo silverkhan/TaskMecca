@@ -102,7 +102,10 @@ func run(args []string) int {
         }
         return 0
     }
-    if len(args) > 1 && args[0] == "runtime" && args[1] == "diagnose" {
+    if len(args)>1 && args[0]=="runtime" && args[1]=="observe-t3" {
+ return runAgentJSON(args[2:],func(out,err io.Writer)int{return runRuntimeObserveT3CLI(args[2:],out,err)},os.Stdout,os.Stderr)
+ }
+ if len(args) > 1 && args[0] == "runtime" && args[1] == "diagnose" {
         return runAgentJSON(args[2:],func(out,err io.Writer)int{return runRuntimeDiagnoseCLI(args[2:],out,err)},os.Stdout,os.Stderr)
     }
     if len(args) > 1 && args[0] == "runtime" && args[1] == "query" {
@@ -202,7 +205,7 @@ func run(args []string) int {
             if args[i] == "--no-open" { noOpen = true }
             if args[i] == "--foreground" { foreground = true }
             if args[i] == "--follow" { follow = true }
-        } else if !strings.HasPrefix(args[i], "-") {
+        } else if !strings.HasPrefix(args[i], "-") || (args[i]=="-" && command=="runtime" && len(positional)==2 && positional[0]=="bind-agent") {
             positional = append(positional, args[i])
         } else {
             fmt.Fprintf(os.Stderr, "unknown argument: %s\n", args[i])

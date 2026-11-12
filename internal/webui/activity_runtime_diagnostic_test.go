@@ -81,3 +81,9 @@ func TestRuntimeDiagnosticRecentHookEvidenceDoesNotClaimContinuousWork(t *testin
        t.Fatalf("unexpected recent provenance %+v",got)
     }
 }
+
+func TestActivityRuntimeT3EvidenceRemainsDistinctAndDoesNotInventActivity(t *testing.T){
+ a:=runtimeobs.Attempt{AttemptID:"current",TaskID:"A-67",RuntimeAgentID:"native",SessionID:"native",Provider:"codex",BindingState:runtimeobs.BindingBound,CurrentState:runtimeobs.StateRunning,StateEvidenceSource:runtimeobs.EvidenceT3,StateObservationQuality:runtimeobs.QualityObserved,RecentTransitions:[]runtimeobs.Transition{{At:"2026-11-12T01:00:00Z",EvidenceSource:runtimeobs.EvidenceT3}}}
+ out:=summarizeActivityRuntimeEvidence("A-67",[]runtimeobs.Attempt{a},nil)
+ if out.WithoutActivity!=1||out.MatchedAttempts!=0||out.Attempts[0].RecentHookTransitions!=0||out.Attempts[0].RecentT3Transitions!=1||out.Attempts[0].StateEvidenceSource!=runtimeobs.EvidenceT3{t.Fatalf("T3 evidence confused with Hook/Activity: %+v",out)}
+}
