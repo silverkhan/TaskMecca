@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Task Mecca | AI 에이전트 오케스트레이션과 작업 연속성 관리</title>
+<meta name="description" content="Task Mecca는 AI 에이전트의 역할 분담, 백로그, 세션 간 작업 인계, 진행 상황 및 알림을 통합하는 오픈소스 멀티 에이전트 작업 관리 도구입니다.">
+<meta name="robots" content="index,follow">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Task Mecca — Multi-agent orchestration with continuity">
+<meta property="og:description" content="백로그 기반 멀티 에이전트 협업, 세션 간 작업 연속성, 실행 이력과 알림을 한곳에서.">
+<meta property="og:locale" content="ko_KR">
+<meta name="theme-color" content="#101827">
+<style>
+:root{color-scheme:dark;font-family:system-ui,-apple-system,"Apple SD Gothic Neo","Noto Sans KR",sans-serif}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 15% 0%,#22334d 0%,#101827 50%,#0d1420 100%);color:#e9eef5;line-height:1.7}
+main{max-width:960px;padding:72px 24px 88px;margin:auto}h1{font-size:clamp(2.65rem,7vw,5rem);letter-spacing:-.055em;line-height:1.12;margin:.4em 0}h2{font-size:1.4rem;margin-top:3rem;letter-spacing:-.02em}
+.kicker{letter-spacing:.17em;text-transform:uppercase;font-size:.77rem;color:#a4c5e9;font-weight:750}
+.lead{font-size:clamp(1.1rem,2.7vw,1.45rem);max-width:700px;color:#c6d0e1}
+a{color:#b9dafc}a:hover{color:white}.actions{display:flex;flex-wrap:wrap;gap:12px;margin:32px 0 48px}.btn{padding:12px 21px;border:1px solid #52657b;border-radius:12px;text-decoration:none;font-weight:700}.btn.primary{background:#e5edf7;color:#152036;border-color:#e5edf7}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px}.card{border:1px solid #35465e;background:#ffffff08;border-radius:17px;padding:24px}.card h3{margin:0 0 8px;font-size:1.05rem}.card p{margin:0;color:#b8c6d8}
+pre{overflow:auto;padding:20px;background:#0b111c;border:1px solid #35465e;border-radius:12px;color:#d4e5f7}code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace}
+.small{font-size:.92rem;color:#a9b8ca}footer{border-top:1px solid #34455b;margin-top:64px;padding-top:24px;color:#a9b8ca}
+</style>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"Task Mecca","description":"Open-source multi-agent orchestration and task management with persistent backlogs, cross-session continuity and monitoring.","codeRepository":"https://github.com/silverkhan/TaskMecca","programmingLanguage":"Go","url":"https://github.com/silverkhan/TaskMecca"}</script>
+</head>
+<body>
+<main>
+<div class="kicker">Open-source · Multi-agent orchestration</div>
+<h1>Task Mecca</h1>
+<p class="lead">여러 AI 에이전트의 작업을 연결하고, 세션이 바뀌어도 이어갑니다.</p>
+<p>Task Mecca는 백로그 기반의 AI 에이전트 오케스트레이션 및 작업 관리 도구입니다. 사용자 요청의 역할 분담, 실행 이력, 세션 간 작업 인계와 진행 상황을 한곳에서 관리합니다.</p>
+<div class="actions"><a class="btn primary" href="https://github.com/silverkhan/TaskMecca">GitHub 저장소 보기</a><a class="btn" href="https://github.com/silverkhan/TaskMecca#빠른-시작">설치 및 빠른 시작</a><a class="btn" href="https://github.com/silverkhan/TaskMecca/blob/main/README.en.md" lang="en">English README</a></div>
+<section aria-labelledby="features"><h2 id="features">주요 기능</h2><div class="cards">
+<div class="card"><h3>작업에 맞춘 역할 분담</h3><p>Controller가 적합한 Worker에게 업무를 맡기고 작업 결과와 상태를 백로그로 관리합니다.</p></div>
+<div class="card"><h3>세션을 넘는 연속성</h3><p>연결된 작업 이력과 인계 정보로 담당 에이전트나 실행 세션이 달라져도 문맥을 이어갑니다.</p></div>
+<div class="card"><h3>진행 상황과 알림</h3><p>Web UI에서 작업 상태·실행 이력을 확인하고 Telegram 및 브라우저 알림을 활용할 수 있습니다.</p></div>
+</div></section>
+<section><h2>빠른 설치</h2><p class="small">macOS / Linux</p><pre><code>curl -fsSL https://raw.githubusercontent.com/silverkhan/TaskMecca/main/install.sh | sh</code></pre><p class="small">Windows PowerShell 및 상세 사용법은 <a href="https://github.com/silverkhan/TaskMecca">저장소 README</a>를 참고하세요.</p></section>
+<section lang="en"><h2>Multi-agent task orchestration, without losing context</h2><p>Task Mecca coordinates AI agent work through a persistent backlog. It supports worker assignment, cross-session handoffs, execution history, web-based progress monitoring, and notifications. Explore the <a href="https://github.com/silverkhan/TaskMecca/blob/main/README.en.md">English documentation</a>.</p></section>
+<footer>Task Mecca · <a href="https://github.com/silverkhan/TaskMecca">Source on GitHub</a></footer>
+</main></body></html>
