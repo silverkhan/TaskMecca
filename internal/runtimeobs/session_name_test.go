@@ -20,6 +20,10 @@ func TestNameProtocolHelper(t *testing.T) {
 	}
 	args := os.Args
 	mode := os.Getenv("A69_METADATA_MODE")
+	// A valid schema helper may start slowly; this is not a protocol timeout.
+	if mode == "slow_schema" && strings.Contains(strings.Join(os.Args, " "), "generate-json-schema") {
+		time.Sleep(650 * time.Millisecond)
+	}
 	if strings.Contains(strings.Join(args, " "), "generate-json-schema") {
 		var dir string
 		for i, a := range args {
@@ -119,6 +123,7 @@ func TestSessionNameOfficialProtocol(t *testing.T) {
 		{"", "D1112_01_Controller", "verified", true, true, false, false},
 		{"", "legacy", "mismatch", false, false, false, false},
 		{"mismatch", "legacy", "mismatch", true, false, true, true},
+		{"slow_schema", "legacy", "verified", true, true, true, false},
 		{"unsupported", "legacy", "unsupported", true, false, false, false},
 		{"schema_error", "legacy", "error", true, false, false, false},
 		{"set_error", "legacy", "partial", true, false, false, true},
@@ -131,7 +136,13 @@ func TestSessionNameOfficialProtocol(t *testing.T) {
 	} {
 		t.Run(tt.mode+tt.initial+tt.status, func(t *testing.T) {
 			mockNameCodex(t, tt.mode, tt.initial)
-			ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+			// Normal paths use the adapter's bounded production context. Only the
+			// intentionally nonresponsive fixtures need a shorter test deadline.
+			ctx := context.Background()
+			cancel := func() {}
+			if tt.mode == "timeout" || tt.mode == "timeout_after_set" {
+				ctx, cancel = context.WithTimeout(ctx, 500*time.Millisecond)
+			}
 			defer cancel()
 			r := CodexSessionName(ctx, "exact-native", "D1112_01_Controller", tt.apply)
 			if r.Status != tt.status || r.Verified != tt.verified || r.RequestAcknowledged != tt.ack || r.RequestedNotConfirmed != tt.requested {
