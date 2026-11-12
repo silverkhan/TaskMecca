@@ -1,0 +1,76 @@
+{
+  "as_of": "2026-11-12T05:13:11.140283Z",
+  "diagnosis": "native_hook_observation_gap",
+  "checks": [
+    {
+      "evidence": "/Users/hanati/.codex/hooks.json",
+      "source": "global_hook_configuration",
+      "status": "configured"
+    },
+    {
+      "evidence": "/Users/hanati/projects/TaskMecca/TaskMecca/.codex/hooks.json",
+      "source": "project_hook_configuration",
+      "status": "configured"
+    },
+    {
+      "source": "observation_control",
+      "status": "configured"
+    },
+    {
+      "evidence": "provider_events=0; source=/Users/hanati/projects/TaskMecca/TaskMecca/_task_mecca/.runtime/observability-spike/events.jsonl",
+      "source": "hook_event_journal",
+      "status": "not_observed"
+    },
+    {
+      "evidence": "matched=0; journal=/Users/hanati/projects/TaskMecca/TaskMecca/_task_mecca/.runtime/executions",
+      "source": "canonical_runtime_ledger",
+      "status": "not_observed"
+    },
+    {
+      "evidence": "event counts only: session_meta=1 task_started=5 turn_context=5; token=b9a4df0847097070",
+      "source": "codex_native_session_jsonl",
+      "status": "observed_native"
+    }
+  ],
+  "hook_configuration": [
+    {
+      "changed": false,
+      "configured_at": "2026-10-12T01:25:34.666971338Z",
+      "events": {
+        "PostToolUse": true,
+        "PreToolUse": true,
+        "SubagentStart": true,
+        "SubagentStop": true
+      },
+      "installed": true,
+      "path": "/Users/hanati/.codex/hooks.json",
+      "provider": "codex"
+    },
+    {
+      "changed": false,
+      "configured_at": "2026-10-06T02:44:35.552484549Z",
+      "events": {
+        "PostToolUse": true,
+        "PreToolUse": true,
+        "SubagentStart": true,
+        "SubagentStop": true
+      },
+      "installed": true,
+      "path": "/Users/hanati/projects/TaskMecca/TaskMecca/.codex/hooks.json",
+      "provider": "codex"
+    }
+  ],
+  "native_log": {
+    "lines_read": 532,
+    "metadata_matched": true,
+    "provider": "codex",
+    "session_id": "01a1ce01-277d-73d0-8b25-b8992cc5ae2a",
+    "session_meta": 1,
+    "source_token": "b9a4df0847097070",
+    "status": "observed_native",
+    "task_started": 5,
+    "turn_context": 5
+  },
+  "native_operation_attempted": false,
+  "reconciliation_performed": false
+}

@@ -1,0 +1,1 @@
+ok  	github.com/silverkhan/TaskMecca/cmd/task-mecca	11.698s

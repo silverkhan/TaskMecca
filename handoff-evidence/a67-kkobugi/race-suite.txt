@@ -1,0 +1,6 @@
+ok  	github.com/silverkhan/TaskMecca/internal/runtimeobs	4.083s
+ok  	github.com/silverkhan/TaskMecca/internal/handoff	9.504s
+ok  	github.com/silverkhan/TaskMecca/internal/backlog	15.674s
+ok  	github.com/silverkhan/TaskMecca/internal/activity	2.555s
+ok  	github.com/silverkhan/TaskMecca/internal/webui	24.270s
+ok  	github.com/silverkhan/TaskMecca/cmd/task-mecca	12.456s

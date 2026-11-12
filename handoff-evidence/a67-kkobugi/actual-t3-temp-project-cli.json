@@ -1,0 +1,148 @@
+{
+  "project_kind": "generated temporary project; removed by TemporaryDirectory after verification",
+  "pending": {
+    "attempt_id": "run-3d84973186ef20ef",
+    "provider": "",
+    "runtime_agent_id": "01a1ce1e-3541-7733-8ad1-ab87bb4a320a",
+    "agent_path": "/root/controller",
+    "binding_state": "bound",
+    "binding_source": "dispatch",
+    "binding_at": "2026-11-12T05:17:00.408295Z",
+    "binding_evidence": {
+      "correlation": "explicit_dispatch_result",
+      "runtime_agent_id": "01a1ce1e-3541-7733-8ad1-ab87bb4a320a"
+    },
+    "current_state": "runtime_unknown",
+    "terminal": false,
+    "first_observed_at": "2026-11-12T05:17:00.408295Z",
+    "last_observed_at": "2026-11-12T05:17:00.408295Z",
+    "elapsed_ms": 0,
+    "waiting_ms": 0,
+    "active_time_available": false,
+    "active_time_note": "hook lifecycle does not provide authoritative active intervals; observed_active_ms is unset",
+    "evidence_count": 2,
+    "activity_count": 0,
+    "recent_transitions": [
+      {
+        "at": "2026-11-12T05:17:00.408295Z",
+        "kind": "binding",
+        "evidence_source": "manual_binding",
+        "observation_quality": "authoritative",
+        "reason": "bound"
+      }
+    ]
+  },
+  "held": {
+    "handoff_id": "handoff-edd6fae38275d5b3fdf3",
+    "duplicate": false,
+    "contract_sha256": "c90740107881df6420947c8b6fb98e294a475c45a10b70dae41d47d2aae3fb23",
+    "target": {
+      "agent_path": "/root/controller",
+      "attempt_id": "run-3d84973186ef20ef",
+      "runtime_agent_id": "01a1ce1e-3541-7733-8ad1-ab87bb4a320a",
+      "state": "runtime_unknown"
+    },
+    "action": "hold",
+    "requires_fresh_preflight": false,
+    "reason": "target_state_unknown"
+  },
+  "observed": {
+    "attempt": {
+      "active_time_available": false,
+      "active_time_note": "hook lifecycle does not provide authoritative active intervals; observed_active_ms is unset",
+      "activity_count": 0,
+      "agent_path": "/root/controller",
+      "attempt_id": "run-3d84973186ef20ef",
+      "binding_at": "2026-11-12T05:17:00.408295Z",
+      "binding_evidence": {
+        "correlation": "explicit_dispatch_result",
+        "runtime_agent_id": "01a1ce1e-3541-7733-8ad1-ab87bb4a320a"
+      },
+      "binding_source": "dispatch",
+      "binding_state": "bound",
+      "current_state": "running",
+      "elapsed_ms": 0,
+      "evidence_count": 3,
+      "first_observed_at": "2026-11-12T05:17:00.408295Z",
+      "last_activity_at": "2026-11-12T05:17:00.49271Z",
+      "last_observed_at": "2026-11-12T05:17:00.49271Z",
+      "native_receipt": {
+        "native_attempt_id": "run-attempt:run:run%3Athread%3Athread%253Adelegated-task%253Acommand%25253Amcp%25253A17c02103-a2d4-43df-b4c5-96ede8dc66b1%25253Adelegate-task%25253Aa67-kkobugi-runtime-recovery-20261112%3Aordinal%3A1:attempt:1",
+        "observed_at": "2026-11-12T05:17:00.49271Z",
+        "origin": "t3_local_projection_v2",
+        "provider": "codex",
+        "run_id": "run:thread:thread%3Adelegated-task%3Acommand%253Amcp%253A17c02103-a2d4-43df-b4c5-96ede8dc66b1%253Adelegate-task%253Aa67-kkobugi-runtime-recovery-20261112:ordinal:1",
+        "session_id": "01a1ce1e-3541-7733-8ad1-ab87bb4a320a",
+        "started_at": "2026-11-12T04:57:29.195Z",
+        "state": "running",
+        "thread_id": "thread:delegated-task:command%3Amcp%3A17c02103-a2d4-43df-b4c5-96ede8dc66b1%3Adelegate-task%3Aa67-kkobugi-runtime-recovery-20261112"
+      },
+      "provider": "codex",
+      "recent_transitions": [
+        {
+          "at": "2026-11-12T05:17:00.408295Z",
+          "evidence_source": "manual_binding",
+          "kind": "binding",
+          "observation_quality": "authoritative",
+          "reason": "bound"
+        },
+        {
+          "at": "2026-11-12T05:17:00.49271Z",
+          "evidence_source": "t3_structured",
+          "kind": "state",
+          "observation_quality": "observed",
+          "reason": "t3_local_projection_v2",
+          "state": "running"
+        }
+      ],
+      "runtime_agent_id": "01a1ce1e-3541-7733-8ad1-ab87bb4a320a",
+      "session_id": "01a1ce1e-3541-7733-8ad1-ab87bb4a320a",
+      "started_at": "2026-11-12T05:17:00.49271Z",
+      "state_evidence_source": "t3_structured",
+      "state_observation_quality": "observed",
+      "terminal": false,
+      "turn_id": "run-attempt:run:run%3Athread%3Athread%253Adelegated-task%253Acommand%25253Amcp%25253A17c02103-a2d4-43df-b4c5-96ede8dc66b1%25253Adelegate-task%25253Aa67-kkobugi-runtime-recovery-20261112%3Aordinal%3A1:attempt:1",
+      "waiting_ms": 0
+    },
+    "receipt": {
+      "native_attempt_id": "run-attempt:run:run%3Athread%3Athread%253Adelegated-task%253Acommand%25253Amcp%25253A17c02103-a2d4-43df-b4c5-96ede8dc66b1%25253Adelegate-task%25253Aa67-kkobugi-runtime-recovery-20261112%3Aordinal%3A1:attempt:1",
+      "observed_at": "2026-11-12T05:17:00.49271Z",
+      "origin": "t3_local_projection_v2",
+      "provider": "codex",
+      "run_id": "run:thread:thread%3Adelegated-task%3Acommand%253Amcp%253A17c02103-a2d4-43df-b4c5-96ede8dc66b1%253Adelegate-task%253Aa67-kkobugi-runtime-recovery-20261112:ordinal:1",
+      "session_id": "01a1ce1e-3541-7733-8ad1-ab87bb4a320a",
+      "started_at": "2026-11-12T04:57:29.195Z",
+      "state": "running",
+      "thread_id": "thread:delegated-task:command%3Amcp%3A17c02103-a2d4-43df-b4c5-96ede8dc66b1%3Adelegate-task%3Aa67-kkobugi-runtime-recovery-20261112"
+    },
+    "verified": true,
+    "written": true
+  },
+  "recovered": {
+    "handoff_id": "handoff-edd6fae38275d5b3fdf3",
+    "duplicate": true,
+    "contract_sha256": "c90740107881df6420947c8b6fb98e294a475c45a10b70dae41d47d2aae3fb23",
+    "target": {
+      "agent_path": "/root/controller",
+      "attempt_id": "run-3d84973186ef20ef",
+      "runtime_agent_id": "01a1ce1e-3541-7733-8ad1-ab87bb4a320a",
+      "session_id": "01a1ce1e-3541-7733-8ad1-ab87bb4a320a",
+      "provider": "codex",
+      "state": "running"
+    },
+    "action": "message_running",
+    "requires_fresh_preflight": false,
+    "reason": "retargeted_verified_runtime_identity"
+  },
+  "claim": {
+    "handoff_id": "handoff-edd6fae38275d5b3fdf3",
+    "claimed": true,
+    "already_claimed": false,
+    "already_applied": false,
+    "claim_conflict": false,
+    "contract_changed": false,
+    "current_contract_sha256": "c90740107881df6420947c8b6fb98e294a475c45a10b70dae41d47d2aae3fb23",
+    "claimed_by": "/root/controller",
+    "claimed_attempt_id": "run-3d84973186ef20ef"
+  }
+}

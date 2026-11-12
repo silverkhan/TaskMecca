@@ -1,0 +1,15 @@
+{
+  "receipt": {
+    "native_attempt_id": "run-attempt:run:run%3Athread%3Athread%253Adelegated-task%253Acommand%25253Amcp%25253A17c02103-a2d4-43df-b4c5-96ede8dc66b1%25253Adelegate-task%25253Aa67-kkobugi-runtime-recovery-20261112%3Aordinal%3A1:attempt:1",
+    "observed_at": "2026-11-12T05:13:11.475333Z",
+    "origin": "t3_local_projection_v2",
+    "provider": "codex",
+    "run_id": "run:thread:thread%3Adelegated-task%3Acommand%253Amcp%253A17c02103-a2d4-43df-b4c5-96ede8dc66b1%253Adelegate-task%253Aa67-kkobugi-runtime-recovery-20261112:ordinal:1",
+    "session_id": "01a1ce1e-3541-7733-8ad1-ab87bb4a320a",
+    "started_at": "2026-11-12T04:57:29.195Z",
+    "state": "running",
+    "thread_id": "thread:delegated-task:command%3Amcp%3A17c02103-a2d4-43df-b4c5-96ede8dc66b1%3Adelegate-task%3Aa67-kkobugi-runtime-recovery-20261112"
+  },
+  "verified": true,
+  "written": false
+}

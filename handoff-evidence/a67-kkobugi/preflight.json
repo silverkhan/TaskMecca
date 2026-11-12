@@ -1,0 +1,74 @@
+{
+  "access": {
+    "checked_at": "2026-11-12T14:13:11+09:00",
+    "config_hint": {
+      "approval_policy": "never",
+      "approvals_reviewer": "user",
+      "path": "/Users/hanati/.codex/config.toml",
+      "readable": true,
+      "sandbox_mode": "danger-full-access"
+    },
+    "dispatch_recheck_required": false,
+    "full_access_confirmed": true,
+    "message": "Effective Full Access가 확인되었습니다. subagent orchestration을 시작할 수 있습니다.",
+    "network": "not_explicitly_disabled",
+    "network_note": "Network is independent from filesystem sandbox mode; check it separately when the task requires network.",
+    "orchestration_ready": true,
+    "permission_contract": "effective-full-filesystem-access",
+    "permission_note": "Product UI toggle is not read directly; readiness is based on current runtime markers plus harmless effective probes.",
+    "probes": {
+      "external_write": {
+        "name": "external_write",
+        "ok": true,
+        "path": "/Users/hanati",
+        "status": "pass"
+      },
+      "git_metadata_write": {
+        "name": "git_metadata_write",
+        "ok": true,
+        "path": "/Users/hanati/projects/TaskMecca/TaskMecca/.git",
+        "status": "pass"
+      },
+      "subprocess": {
+        "name": "subprocess",
+        "ok": true,
+        "returncode": 0,
+        "status": "pass"
+      },
+      "workspace_write": {
+        "name": "workspace_write",
+        "ok": true,
+        "path": "/Users/hanati/projects/TaskMecca/TaskMecca/_task_mecca/.runtime",
+        "status": "pass"
+      }
+    },
+    "reasons": [],
+    "restriction_current": false,
+    "sandbox_env": null,
+    "sandbox_marker": "absent",
+    "source": "effective_probe",
+    "status": "full"
+  },
+  "active_count": 3,
+  "backlog": {
+    "active_count": 3,
+    "folders": [
+      "/Users/hanati/projects/TaskMecca/TaskMecca/_task_mecca/data/backlog"
+    ],
+    "message": "backlog를 찾았고 항목을 읽을 수 있다.",
+    "ok": true,
+    "record_count": 67,
+    "root": "/Users/hanati/projects/TaskMecca/TaskMecca/_task_mecca",
+    "status": "ok"
+  },
+  "folders": [
+    "/Users/hanati/projects/TaskMecca/TaskMecca/_task_mecca/data/backlog"
+  ],
+  "full_access_required": true,
+  "message": "backlog를 찾았고 항목을 읽을 수 있다.",
+  "ok": true,
+  "orchestration_ready": true,
+  "record_count": 67,
+  "root": "/Users/hanati/projects/TaskMecca/TaskMecca/_task_mecca",
+  "status": "ok"
+}
