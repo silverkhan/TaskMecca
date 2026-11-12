@@ -63,12 +63,15 @@ func TransferClaim(project,handoffID,fromAttempt,toAttempt,evidence string,now t
   if err!=nil{return err}
   var oldAgent,newAgent *runtimeobs.Attempt
   currentControllers:=0
+  // A stale historical state is not current liveness proof; never mutate it.
+  staleControllers:=map[string]bool{}
+  for _,f:=range ledger.Findings {if f.Code=="stale" {staleControllers[f.AttemptID]=true}}
   for i:=range ledger.Attempts {
    a:=&ledger.Attempts[i]
    if a.AttemptID==fromAttempt{oldAgent=a}
    if a.AttemptID==toAttempt{newAgent=a}
    if a.AgentPath=="/root/controller" && a.BindingState==runtimeobs.BindingBound && !a.Terminal &&
-    a.CurrentState==runtimeobs.StateRunning {currentControllers++}
+    a.CurrentState==runtimeobs.StateRunning && !staleControllers[a.AttemptID] && runtimeobs.HasObservedExecution(*a) {currentControllers++}
   }
   if oldAgent==nil||newAgent==nil{return errors.New("both exact Controller runtime attempts must exist")}
   if oldAgent.AgentPath!="/root/controller"||newAgent.AgentPath!="/root/controller"||

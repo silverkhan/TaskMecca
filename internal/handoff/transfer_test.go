@@ -97,3 +97,27 @@ func TestB575CompetingSuccessorsDoNotBothAcquireHandoff(t *testing.T){
  state,_,err:=Inspect(project,id,now.Add(8*time.Second))
  if err!=nil||state.ClaimedAttemptID!="controller-old"{t.Fatalf("owner changed under ambiguity: %+v %v",state,err)}
 }
+
+func TestTransferIgnoresStaleHistoricalControllerWithoutChangingIt(t *testing.T) {
+	project, id, now := setupClaimedControllerHandoff(t)
+	endController(t, project, "controller-old", now.Add(4*time.Second))
+	appendControllerAttempt(t, project, "controller-new", "session-new", "native-new", runtimeobs.StateRunning, now.Add(5*time.Second))
+	appendControllerAttempt(t, project, "controller-stale", "session-stale", "native-stale", runtimeobs.StateRunning, now.Add(-7*24*time.Hour))
+	result, err := TransferClaim(project, id, "controller-old", "controller-new", "fresh exact successor; stale historical record is not current liveness", now.Add(7*time.Second))
+	if err != nil || !result.Transferred {
+		t.Fatalf("transfer=%+v err=%v", result, err)
+	}
+	ledger, err := runtimeobs.BuildLedger(project, 20, now.Add(8*time.Second))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, a := range ledger.Attempts {
+		if a.AttemptID == "controller-stale" {
+			if a.Terminal || a.CurrentState != runtimeobs.StateRunning {
+				t.Fatal("stale history was changed or declared terminal")
+			}
+			return
+		}
+	}
+	t.Fatal("stale historical attempt disappeared")
+}
