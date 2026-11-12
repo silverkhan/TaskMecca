@@ -306,3 +306,7 @@ A migration that only changes Web UI/CSS/runtime implementation and does not alt
 When migration is run from the Web UI, the migrator determines whether upstream instruction files actually changed. If resynchronization is required, the completion dialog provides a copyable prompt that can be pasted directly into the **current Root session**. Before starting another subagent dispatch or execution step, Root rereads the latest `ROOT_PROMPT.md`, the session guide for the active language, `collab.md`, and `roles/root.md`, then reapplies the current operating rules.
 
 There is no need to create a new Root session solely because of migration. The existing session can continue after it has reread and reapplied the updated instructions.
+
+## Managed session naming
+
+Every role must follow [official session naming](EXECUTION_PROTOCOL.en.md#official-session-naming-mandatory-before-and-after-dispatch) before/after new native dispatch and existing-session resume. `orchestration name` generates display metadata only. `orchestration session-name plan|apply|verify` checks installed official support and fresh exact provider readback; T3 title verification requires a separate actual tool read. Keep the same generation on the same native session; missing proof and caller JSON never establish applied/verified state.

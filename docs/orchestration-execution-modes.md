@@ -83,3 +83,11 @@ The same boundary applies to independent-session creation: the decision engine d
 4. Validate that Agent-executed native session creation, Root delivery, resume and fallback obey returned directives in each supported environment.
 
 Policy, mode persistence, display-name generation and exact-identity Root handoff **preparation with explicit Agent directives** are implemented. Native tool execution is deliberately owned by the runtime Agent; message acknowledgement and Root wake are not claimed without observed evidence.
+
+## Official metadata naming workflow
+
+`orchestration name` remains the only name generator. Run `orchestration session-name plan` before **both newSession and existingSession dispatch**, then include all generated before/after/resume directives in the actual agent task. Apply/verify in the exact current native session after dispatch. Codex uses the installed official app-server schema and metadata-only `thread/name/set` plus `thread/read`; Claude uses documented SDK `renameSession` plus `getSessionInfo().customTitle` when those exports are actually installed. No creation, model turns, messaging, authorization, or operational ledger writing is added.
+
+T3 `delegate_task.title` uses the same generated string at creation. The acting agent must separately read the exact current T3 thread with official tools, update only if needed and reread. The CLI never trusts caller JSON as T3 or provider verification. It emits pending T3 verification even after successful native verification. Same native session resumes preserve group/role/worker/generation; generated-name identity conflicts fail without a write. No bulk historical rename is provided.
+
+Commands, mandatory role steps, status meanings and primary source citations are in the managed-source [execution protocol](../goassets/template/_task_mecca/framework/EXECUTION_PROTOCOL.md#공식-세션-이름-적용과-확인-필수). Update the canonical `goassets/template` sources only; use the existing installer/updater consent and backup policy for installed projects. No global or running-project framework sync is implied by a source edit.

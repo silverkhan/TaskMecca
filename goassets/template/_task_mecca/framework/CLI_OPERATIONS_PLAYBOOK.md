@@ -167,3 +167,7 @@ task-mecca runtime diagnose --provider codex --agent-id AGENT_UUID --json
 - **Worker:** 코드·테스트·실측 결과와 미확인 항목을 Controller에 보고. canonical 원장 직접 수정 금지.
 
 **유지보수:** 이 문서와 `task-mecca help`, `docs/cli-*.md`, 기존 role 문서, README의 명령은 함께 갱신하고 테스트한다. 문서만 먼저 수정하여 미구현 기능을 구현된 것처럼 광고하지 않는다.
+
+## 관리 세션 이름: dispatch·resume 필수 절차
+
+새 세션과 기존 세션 resume/reuse 모두 [공식 세션 이름 적용과 확인](EXECUTION_PROTOCOL.md#공식-세션-이름-적용과-확인-필수)을 따른다. native dispatch 전에 `orchestration session-name plan`의 생성 이름·지원 확인·before/after/resume 지시를 실제 Agent prompt에 넣고, T3 생성은 `delegate_task.title`에 생성 이름을 그대로 쓴다. 실제 실행 세션은 exact native ID를 확인한 뒤 `session-name apply`와 fresh `session-name verify`를 수행한다. T3는 exact current thread를 공식 도구로 별도 재조회하고, 필요할 때만 update 후 다시 읽는다. 동일 세션 resume는 group/role/Worker/G를 보존한다. provider receipt와 실제 T3 tool readback이 누락되면 완료라고 보고하지 않는다. caller JSON·API ack·작업 제목은 적용/검증 증거가 아니며, 실패·미지원·미검증은 Controller에 직접 보고한다. 이름은 표시 metadata이고 runtime/attempt/claim/handoff 신원·권한을 대체하지 않는다.

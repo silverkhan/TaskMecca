@@ -122,6 +122,7 @@ func FilterLedger(ledger Ledger, provider string) Ledger {
 }
 
 type CodexThreadMetadata struct {
+	ID    string
 	Name  string
 	Title string
 }
@@ -131,22 +132,21 @@ type codexRPCMessage struct {
 	Error  json.RawMessage `json:"error,omitempty"`
 }
 
-func codexAppServerCommand(ctx context.Context) *exec.Cmd {
-	// Web may be launched as a background service and therefore not inherit the
-	// interactive/login-shell PATH where Codex is installed. Prefer the current
-	// PATH, then fall back to a login shell on Unix so Web and Terminal resolve
-	// the same Codex CLI.
+func codexCommand(ctx context.Context, args ...string) *exec.Cmd {
 	if path, err := exec.LookPath("codex"); err == nil {
-		return exec.CommandContext(ctx, path, "app-server", "--listen", "stdio://")
+		return exec.CommandContext(ctx, path, args...)
 	}
 	if runtime.GOOS != "windows" {
 		shell := strings.TrimSpace(os.Getenv("SHELL"))
 		if shell == "" {
 			shell = "/bin/sh"
 		}
-		return exec.CommandContext(ctx, shell, "-lc", "exec codex app-server --listen stdio://")
+		return exec.CommandContext(ctx, shell, append([]string{"-lc", "exec codex \"$@\"", "task-mecca"}, args...)...)
 	}
-	return exec.CommandContext(ctx, "codex", "app-server", "--listen", "stdio://")
+	return exec.CommandContext(ctx, "codex", args...)
+}
+func codexAppServerCommand(ctx context.Context) *exec.Cmd {
+	return codexCommand(ctx, "app-server", "--listen", "stdio://")
 }
 
 func readCodexRPC(reader *bufio.Reader, wantedID float64) (codexRPCMessage, error) {
@@ -171,55 +171,17 @@ func readCodexRPC(reader *bufio.Reader, wantedID float64) (codexRPCMessage, erro
 }
 
 func ResolveCodexThreadMetadata(ctx context.Context, sessionID string) (CodexThreadMetadata, error) {
-	sessionID = strings.TrimSpace(sessionID)
-	if sessionID == "" {
-		return CodexThreadMetadata{}, errors.New("empty Codex session_id")
+	if strings.TrimSpace(sessionID) == "" {
+		return CodexThreadMetadata{}, errors.New("session_id is required")
 	}
-	lookupCtx, cancel := context.WithTimeout(ctx, 4*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 4*time.Second)
 	defer cancel()
-	cmd := codexAppServerCommand(lookupCtx)
-	stdin, err := cmd.StdinPipe()
+	client, err := openCodexMetadata(ctx)
 	if err != nil {
 		return CodexThreadMetadata{}, err
 	}
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		return CodexThreadMetadata{}, err
-	}
-	if err = cmd.Start(); err != nil {
-		return CodexThreadMetadata{}, err
-	}
-	defer func() { _ = stdin.Close(); cancel(); _ = cmd.Wait() }()
-	enc := json.NewEncoder(stdin)
-	reader := bufio.NewReader(stdout)
-	initRequest := map[string]any{"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": map[string]any{"clientInfo": map[string]any{"name": "task_mecca", "title": "Task Mecca", "version": "0.1"}}}
-	if err = enc.Encode(initRequest); err != nil {
-		return CodexThreadMetadata{}, err
-	}
-	if _, err = readCodexRPC(reader, 1); err != nil {
-		return CodexThreadMetadata{}, fmt.Errorf("codex initialize: %w", err)
-	}
-	if err = enc.Encode(map[string]any{"jsonrpc": "2.0", "method": "initialized", "params": map[string]any{}}); err != nil {
-		return CodexThreadMetadata{}, err
-	}
-	if err = enc.Encode(map[string]any{"jsonrpc": "2.0", "id": 2, "method": "thread/read", "params": map[string]any{"threadId": sessionID}}); err != nil {
-		return CodexThreadMetadata{}, err
-	}
-	msg, err := readCodexRPC(reader, 2)
-	if err != nil {
-		return CodexThreadMetadata{}, fmt.Errorf("codex thread/read: %w", err)
-	}
-	var result struct {
-		Thread struct {
-			ID    string `json:"id"`
-			Name  string `json:"name"`
-			Title string `json:"title"`
-		} `json:"thread"`
-	}
-	if err = json.Unmarshal(msg.Result, &result); err != nil {
-		return CodexThreadMetadata{}, err
-	}
-	return CodexThreadMetadata{Name: strings.TrimSpace(result.Thread.Name), Title: strings.TrimSpace(result.Thread.Title)}, nil
+	defer client.close()
+	return client.read(sessionID)
 }
 
 var (

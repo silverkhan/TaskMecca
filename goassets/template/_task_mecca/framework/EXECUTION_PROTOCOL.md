@@ -134,3 +134,81 @@ Controller는 검증한 공식 bundle의 `init`/`migrate`로 설치를 반영한
 `migrate --json`은 읽기 전용 조회가 아니다. modified 파일이 있으면 `choice_required`와 계획을 반환하여 선택을 기다리지만, modified 파일이 없으면 첫 호출에서도 자동 적용한다. 따라서 공식 bundle의 전체 교체 범위·출처 대조, 전체 managed 파일과 manifest 백업, 프로젝트 소유 데이터 보존 스냅샷을 어떤 `migrate` 호출보다 먼저 준비한다. modified가 있을 때 반환된 계획을 확인하고 승인된 선택에 `--expect-plan`을 사용한다. `--choice cancel`은 계획을 만들지 않고 즉시 취소하므로 계획 조회 명령으로 사용하지 않는다.
 
 `migrate --project <project> --json`으로 `modified_files`·전체 managed 교체 범위·`plan_digest`를 승인 범위 및 출처와 대조한다. 출처 불명 변경은 판단과 재개 조건을 기록하고 적용을 멈춘다. 같은 검증 binary로 `migrate --project <project> --choice backup --expect-plan <plan_digest> --json`을 수행한다. 내장 backup은 충돌 파일의 백업이며 전체 managed 파일·manifest 사전 백업을 대신하지 않는다. 계획이 달라지면 새 계획을 검토한다. 같은 bundle로 다시 migration 검사하여 baseline과 hash를 확인하고 데이터 보존 결과를 기록한다. `instruction_refresh_required`이면 지침을 다시 읽는다. 배포 소스 문서 변경을 설치에도 반영하려면 그 문서가 포함된 새 공식 배포본을 검증하고 이 절차를 다시 사용한다. 먼저 직접 복사하여 동기화하지 않는다.
+
+## 공식 세션 이름 적용과 확인 (필수)
+
+모든 관리 역할은 기존 `orchestration.SessionName` / `orchestration name`의
+`DMMDD_NN_` 그룹·역할·Worker·세대 규칙 하나만 사용한다. 작업 ID·작업 제목을
+세션 이름으로 대신하지 않는다. 이름은 표시 metadata이며 claim/dispatch/권한의
+근거가 아니다. provider/session ID, runtime agent ID, attempt, 내부 Worker 경로,
+handoff 연결은 그대로 보존한다. 사용자 다른 세션과 완료된 과거 세션을 일괄 변경하지 않는다.
+
+**native dispatch 직전** fresh canonical contract/Full Access gate와 함께 다음을 실행한다.
+새 생성은 `newSession`, 정확한 기존 관리 세션의 resume/reuse는 `existingSession`이다.
+
+```sh
+task-mecca orchestration session-name plan --project ORIGINAL_PROJECT --group D1112_01 \
+  --role worker --worker pikachyu --generation 1 --provider codex \
+  --execution newSession --worker-path /root/controller/pikachyu --json
+# 기존 세션에는 --execution existingSession --session-id EXACT_NATIVE_ID 사용
+```
+
+반환된 `directive`의 before/after/resume 지시를 실제 dispatch prompt에 포함한다.
+`naming_support=supported`는 설치된 공식 인터페이스의 지원 확인일 뿐 적용 증거가 아니다.
+`plan`과 `name`은 `verified=false`, `dispatch_authorized=false`이며 실행 승인을 대신하지 않는다.
+기존 세션의 plan은 exact ID를 공식 조회하여 다른 생성 이름/세대면 `identity_conflict`로 거부한다.
+기존 legacy 표시 이름은 `mismatch`로 남기고 해당 관리 세션이 실제 재개된 뒤 적용한다.
+T3 delegate 생성 시 `delegate_task.title`에 **생성된 이름 그대로** 넣는다.
+Codex native ID는 실제 spawn 결과/현재 환경에서 확인한 후 적용하며 제목에서 추측하지 않는다.
+Claude native 생성이 지원되면 공식 `--name`을 사용한다. 모드/provider를 임의 전환하지 않는다.
+
+**실제 생성 또는 재개 직후**, 대상 세션 자신이 exact native ID로 실행한다.
+아래 `apply`와 `verify`는 원본 project를 읽기만 하고 공식 provider 표시 metadata만 처리한다.
+operational backlog/runtime/handoff/Activity에 기록하지 않는다.
+
+```sh
+task-mecca orchestration session-name apply --project ORIGINAL_PROJECT --group D1112_01 \
+  --role worker --worker pikachyu --generation 1 --provider codex \
+  --execution existingSession --session-id "$CODEX_THREAD_ID" --json
+task-mecca orchestration session-name verify --project ORIGINAL_PROJECT --group D1112_01 \
+  --role worker --worker pikachyu --generation 1 --provider codex \
+  --execution existingSession --session-id "$CODEX_THREAD_ID" --json
+```
+
+Controller 등은 해당 `--role`을 쓰며 worker/generation 옵션은 Worker에만 해당한다.
+Claude 경로는 실제 선택된 Claude 세션의 `CLAUDE_SESSION_ID`와 `--provider claude`를 쓴다.
+현재 native 환경과 다른 ID, caller JSON receipt/ownership/capability 선언은 증거로 받지 않는다.
+Codex는 설치 CLI가 생성한 공식 schema를 확인하고 app-server의
+`initialize` → `initialized` → `thread/read(includeTurns:false)` → 필요한 경우만
+`thread/name/set(threadId,name)` → `thread/read`로 exact ID와 `thread.name`을 비교한다.
+Claude는 설치 공식 SDK의 `renameSession`/`getSessionInfo` export를 확인하고
+`customTitle`과 `sessionId`를 비교한다. SDK query/model turn은 실행하지 않는다.
+
+T3를 썼으면 **별도로** 제공된 `t3_thread_read`로 exact current thread의 `title`을 확인한다.
+다르면 `t3_thread_update`로 생성된 제목을 적용하고 다시 `t3_thread_read`한다.
+이미 같으면 변경하지 않는다. CLI는 caller JSON으로 T3를 검증했다고 주장하지 않으며
+`t3_status=agent_tool_read_required`, `naming_complete=false`를 유지한다.
+Controller는 실제 native receipt와 실제 T3 tool readback 둘 다 확인한 후에만 완료로 보고한다.
+최소 보고는 생성 이름, exact native ID/읽힌 이름, exact T3 ID/읽힌 제목, 실제 사용한
+공식 도구·시각·결과이며 transcript/secret은 보관하지 않는다. Worker는 이 근거를 Controller에
+직접 보내고 Controller만 canonical 운영원장에 반영한다.
+
+동일 native 세션의 resume/reuse는 기존 group/role/worker/generation을 유지한다.
+새 turn이라는 이유로 G를 증가시키지 않는다. 다른 생성 이름으로 변경하는 apply는
+`identity_conflict`다. 매 resume 직후에도 provider와 T3를 fresh 재조회하며 옛 receipt를
+현재 증거로 재사용하지 않는다. 이름을 바꾸어 runtime/attempt/handoff 신원을 바꾸지 않는다.
+
+`unsupported`, `timeout`, `error`, `partial`, `mismatch`, `identity_conflict`는 성공이 아니다.
+API ack만으로 `applied/verified=true`가 되지 않는다. 쓰기 요청 후 readback이 없으면
+`requested_not_confirmed=true`이고, 재시도 전 verify로 실제 상태를 확인한다.
+미지원/미검증은 원인·현재 근거·재개 조건을 직접 보고하고 provider/mode를 바꾸지 않는다.
+이 절차는 Agent 지시이며 native spawn/메시지 session manager를 새로 만들지 않는다.
+
+공식 계약 확인 출처 (2026-11-12):
+[Codex app-server](https://learn.chatgpt.com/docs/app-server),
+설치 `codex app-server generate-json-schema --out TEMP_DIR`의
+`ClientRequest`/`ThreadSetNameParams`/`ThreadReadParams`,
+[Claude CLI --name 및 /rename](https://code.claude.com/docs/en/cli-reference),
+[Claude SDK renameSession/getSessionInfo/customTitle](https://code.claude.com/docs/en/agent-sdk/typescript#renamesession).
+Claude 지원은 실제 설치 SDK capability와 실제 세션 readback이 있을 때만 주장한다.
+문서/fixture 확인과 실제 Claude 실행 검증은 구분하여 보고한다.

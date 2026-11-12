@@ -407,3 +407,7 @@ migrate는 framework만 갱신하며 감시·보관 상태와 백로그·설정�
 Web UI에서 migration을 실행하면 migrator가 실제 upstream instruction 변경 여부를 판정한다. 재동기화가 필요하면 완료 팝업에서 현재 Root 세션에 그대로 붙여넣을 수 있는 프롬프트를 제공한다. 사용자는 이 프롬프트를 복사해 **현재 Root 세션**에 전달한다. Root는 새 subagent dispatch나 새 실행 단계를 시작하기 전에 최신 `ROOT_PROMPT.md`, 현재 언어의 `SESSION_GUIDE`, `collab.md`, `roles/root.md`를 다시 읽고, 변경된 운영 규칙을 현재 세션에 재적용한 뒤 작업을 계속한다.
 
 Root 세션 자체를 새로 만들 필요는 없다. 최신 지침 재읽기와 재적용이 완료되면 기존 세션을 계속 사용할 수 있다.
+
+## 관리 세션 이름: dispatch·resume 필수 절차
+
+새 세션과 기존 세션 resume/reuse 모두 [공식 세션 이름 적용과 확인](EXECUTION_PROTOCOL.md#공식-세션-이름-적용과-확인-필수)을 따른다. native dispatch 전에 `orchestration session-name plan`의 생성 이름·지원 확인·before/after/resume 지시를 실제 Agent prompt에 넣고, T3 생성은 `delegate_task.title`에 생성 이름을 그대로 쓴다. 실제 실행 세션은 exact native ID를 확인한 뒤 `session-name apply`와 fresh `session-name verify`를 수행한다. T3는 exact current thread를 공식 도구로 별도 재조회하고, 필요할 때만 update 후 다시 읽는다. 동일 세션 resume는 group/role/Worker/G를 보존한다. provider receipt와 실제 T3 tool readback이 누락되면 완료라고 보고하지 않는다. caller JSON·API ack·작업 제목은 적용/검증 증거가 아니며, 실패·미지원·미검증은 Controller에 직접 보고한다. 이름은 표시 metadata이고 runtime/attempt/claim/handoff 신원·권한을 대체하지 않는다.

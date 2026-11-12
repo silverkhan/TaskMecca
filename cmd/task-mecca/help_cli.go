@@ -55,6 +55,8 @@ func runHelpCLI(args []string,out,stderr io.Writer) int {
 		fmt.Fprintln(out,"task-mecca orchestration configure --project DIR --provider codex --root-session-id EXACT --mode B --confirmed --timezone Asia/Seoul --json")
 		fmt.Fprintln(out,"task-mecca orchestration status --project DIR --provider codex --root-session-id EXACT --json")
 		fmt.Fprintln(out,"task-mecca orchestration name --project DIR --group D1109_01 --role controller --json")
+		fmt.Fprintln(out,"task-mecca orchestration session-name plan|apply|verify --project DIR --group DMMDD_NN --role ROLE --provider codex --execution newSession|existingSession --session-id EXACT --json")
+		fmt.Fprintln(out,"Names are display metadata. Apply/verify require the exact current native session; T3 title requires separate official tool readback.")
 		fmt.Fprintln(out,"task-mecca orchestration notify --project DIR --provider codex --root-session-id EXACT --task B-620 --controller-attempt EXACT --root-attempt EXACT --json")
 		fmt.Fprintln(out,"A/B/C/D are fixed user-facing labels; unknown capabilities are unavailable. Native spawn/send/resume remain provider-owned.")
 	case "context":

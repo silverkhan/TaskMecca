@@ -31,8 +31,9 @@ func runtimeOrchestrationCapabilities(project,provider string) (orchestration.Ca
 
 // Read-only decisions and durable Root selection. Native provider transport is external.
 func runOrchestrationCLI(args []string,stdout,stderr io.Writer) int {
- if len(args)==0 {fmt.Fprintln(stderr,"usage: task-mecca orchestration modes|decide|configure|status|name|notify");return 2}
+ if len(args)==0 {fmt.Fprintln(stderr,"usage: task-mecca orchestration modes|decide|configure|status|name|session-name|notify");return 2}
  action:=strings.ToLower(strings.TrimSpace(args[0]))
+ if action=="session-name" {return runSessionNameCLI(args[1:],stdout,stderr)}
  if action=="notify" {return runOrchestrationNotifyCLI(args[1:],stdout,stderr)}
  flags:=flag.NewFlagSet("orchestration "+action,flag.ContinueOnError)
  flags.SetOutput(stderr)
@@ -126,10 +127,10 @@ func runOrchestrationCLI(args []string,stdout,stderr io.Writer) int {
   if err!=nil{fmt.Fprintln(stderr,err);return 1}
   name,err:=orchestration.SessionName(g,*role,*worker,*generation)
   if err!=nil{fmt.Fprintln(stderr,err);return 2}
-  if *asJSON{return write(map[string]any{"group":g.GroupID,"display_name":name,"identity_authoritative":false})}
+  if *asJSON{return write(map[string]any{"group":g.GroupID,"display_name":name,"identity_authoritative":false,"naming_verified":false,"next_action":"MANDATORY: orchestration session-name plan before native dispatch; apply and verify in exact current session after dispatch/resume; separately reread T3 title with official tools"})}
   fmt.Fprintln(stdout,name);return 0
  default:
-  fmt.Fprintln(stderr,"usage: task-mecca orchestration modes|decide|configure|status|name")
+  fmt.Fprintln(stderr,"usage: task-mecca orchestration modes|decide|configure|status|name|session-name|notify")
   return 2
  }
 }
