@@ -6,6 +6,8 @@
 - **끊김 없는 작업 연속성** — 백로그에 기록된 작업 간 관계와 이력을 바탕으로 담당 Worker나 세션, 에이전트 프로바이더가 바뀌어도 이전 작업을 이어갈 수 있습니다.
 - **진행 상황 관리와 알림** — Web에서 작업별 진행 상태와 이력을 확인하고, 착수·완료·사용자 확인이 필요한 상황을 Telegram과 브라우저 알림으로 받을 수 있습니다.
 
+Task Mecca는 **AI 에이전트 오케스트레이션(multi-agent orchestration)** 및 **AI 작업 관리(agent task management)** 도구로, Codex·Claude Code 등의 에이전트 작업을 백로그로 연결하고 세션 간 작업 인계(cross-session handoff), 실행 이력, 진행 상황 모니터링을 지원합니다.
+
 [English](README.en.md) · [사용자 매뉴얼](goassets/template/_task_mecca/framework/README.md)
 
 > [!IMPORTANT]
