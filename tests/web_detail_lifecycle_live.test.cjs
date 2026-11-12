@@ -199,3 +199,18 @@ test('historical reassignment shows current assignee, former Worker and ambiguou
  assert.match(html,/legacy-controller-start/);
  assert.match(html,/아래는 과거 담당자와 기록 주체/);
 });
+
+test('independent visible Lifecycle refresh patches its evidence and reloads separate Workflow',async()=>{
+ const a=session(()=>Promise.resolve(json(live([{label:'Started',kind:'started',at:stamp,event_id:'independent',actor:'worker'}]))));
+ const evidence={innerHTML:'Old evidence',querySelector:()=>null};
+ a.section.querySelector=selector=>selector==='#workflowLifecycleEvidenceBody'?evidence:null;
+ const workflow={innerHTML:'Workflow controls stay mounted'};
+ a.context.document.getElementById=id=>id==='lifecycle'?a.section:id==='activityMetricsBody'?workflow:null;
+ vm.runInContext('globalThis.activityReloads=[];loadTaskActivity=async(id,project)=>{activityReloads.push([id,project]);};',a.context);
+ await a.harness.refreshViewedTaskLifecycle('/demo','team','A-1',{force:true});
+ assert.match(evidence.innerHTML,/independent/);
+ assert.equal(a.section.innerHTML,'Original lifecycle');
+ assert.equal(workflow.innerHTML,'Workflow controls stay mounted');
+ assert.equal(a.context.activityReloads.length,1);
+ assert.equal(a.context.activityReloads[0][0],'A-1');
+});

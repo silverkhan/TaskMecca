@@ -102,7 +102,31 @@ Do not add parallel Agent durations and report them as elapsed wall-time. Open a
 
 The Activity detail screen has a **Compare runtime evidence** button. It requests
 `GET /api/activity?task=TASK&project=...&runtime_diagnostic=1` only when
-clicked. The ordinary lazy Activity read performs **no Runtime ledger scan**.
+clicked. The ordinary lazy Activity read folds persisted Runtime journals through
+`BuildLedger`, using its process-local fold cache. It does not scan provider
+sessions, reconcile bindings, acquire the monitor lock, or write observations.
+Terminal evidence therefore remains available when the separate Control Tower
+Lifecycle snapshot is pending or stale. The Workflow response cache also includes
+Runtime evidence, so a new terminal or resumed execution invalidates the response.
+
+Workflow matches the exact task, attempt, native actor and assignment binding.
+Verified terminal evidence carries `hook` or `t3_structured` provenance in
+`runtime_terminal`; it remains visible even if an earlier Worker handoff supplies
+the execution-report boundary. Runtime `ended_at` is the persisted observation
+boundary; a T3 receipt's native `completed_at` can precede it. Neither timestamp
+is a measured Activity phase-end report.
+
+An Activity start without a phase-end report becomes `activity_unreported` in
+Workflow when its exact Runtime attempt is terminal. It has no measured duration
+and is excluded from measured activity ribbons and totals. Immutable Activity
+events and the ledger summary remain unchanged: `summary.open_activities` counts
+unclosed ledger records, not running Workers. Missing/untrusted terminal evidence
+leaves the execution end unobserved. Reads never append synthetic stops or
+backdate Activity events.
+
+Backlog detail renders Summary → visible Lifecycle → separate Workflow. Existing
+Lifecycle evidence/retry anchors remain available; asynchronous Lifecycle refresh
+patches its evidence and refreshes Workflow without replacing document content.
 
 This comparison matches the exact task-bound Runtime attempt and native agent
 identifier to the immutable Activity events. It distinguishes a matched

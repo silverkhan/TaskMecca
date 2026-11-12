@@ -97,21 +97,28 @@ type WorkflowRow struct {
 	RoundStatus            string                 `json:"round_status"`
 	Intervals              []WorkflowInterval     `json:"intervals"`
 }
+type WorkflowTerminalEvidence struct {
+	ObservedAt time.Time                 `json:"observed_at"`
+	Source     runtimeobs.EvidenceSource `json:"source"`
+}
+
 type WorkflowInterval struct {
-	EndEvidence    string     `json:"end_evidence,omitempty"`
-	ID             string     `json:"id"`
-	Kind           string     `json:"kind"`
-	Type           string     `json:"type"`
-	Start          time.Time  `json:"start"`
-	End            *time.Time `json:"end,omitempty"`
-	Measured       bool       `json:"measured"`
-	DurationMillis *int64     `json:"duration_ms,omitempty"`
-	AttemptID      string     `json:"attempt_id,omitempty"`
-	AssignmentID   string     `json:"assignment_id,omitempty"`
-	HandoffID      string     `json:"handoff_id,omitempty"`
-	Evidence       string     `json:"evidence,omitempty"`
-	Outcome        string     `json:"outcome,omitempty"`
-	Lane           int        `json:"lane"`
+	RuntimeTerminal   *WorkflowTerminalEvidence `json:"runtime_terminal,omitempty"`
+	EndEvidence       string                    `json:"end_evidence,omitempty"`
+	EndEvidenceSource runtimeobs.EvidenceSource `json:"end_evidence_source,omitempty"`
+	ID                string                    `json:"id"`
+	Kind              string                    `json:"kind"`
+	Type              string                    `json:"type"`
+	Start             time.Time                 `json:"start"`
+	End               *time.Time                `json:"end,omitempty"`
+	Measured          bool                      `json:"measured"`
+	DurationMillis    *int64                    `json:"duration_ms,omitempty"`
+	AttemptID         string                    `json:"attempt_id,omitempty"`
+	AssignmentID      string                    `json:"assignment_id,omitempty"`
+	HandoffID         string                    `json:"handoff_id,omitempty"`
+	Evidence          string                    `json:"evidence,omitempty"`
+	Outcome           string                    `json:"outcome,omitempty"`
+	Lane              int                       `json:"lane"`
 }
 type WorkflowGap struct {
 	Start time.Time `json:"start"`
@@ -381,6 +388,7 @@ func SummarizeWorkflow(in WorkflowInput) Workflow {
 		}
 		add(string(s.Role), s.AgentID, n, v)
 	}
+	terminalFor := workflowTerminalLookup(in)
 	latestWorker := (*Event)(nil)
 	latestOpen := (*Event)(nil)
 	for _, history := range eventByActor {
@@ -400,7 +408,13 @@ func SummarizeWorkflow(in WorkflowInput) Workflow {
 			copy := latest
 			latestOpen = &copy
 		}
-		add(string(latest.Role), latest.AgentID, roundNumber(latest.OccurredAt, boundaries, known), WorkflowInterval{ID: latest.EventID, Kind: "activity_open", Type: string(latest.Type), Start: latest.OccurredAt, AttemptID: latest.RuntimeAttemptID, AssignmentID: latest.AssignmentID, HandoffID: latest.HandoffID, Evidence: latest.Evidence})
+		interval := WorkflowInterval{ID: latest.EventID, Kind: "activity_open", Type: string(latest.Type), Start: latest.OccurredAt, AttemptID: latest.RuntimeAttemptID, AssignmentID: latest.AssignmentID, HandoffID: latest.HandoffID, Evidence: latest.Evidence}
+		if end, source, ok := terminalFor(latest.RuntimeAttemptID, "", latest.AgentID, latest.AssignmentID, latest.OccurredAt); ok {
+			// Runtime end bounds the unknown interval; it is not a measured phase end.
+			interval.Kind, interval.End, interval.EndEvidence, interval.EndEvidenceSource = "activity_unreported", &end, "native_terminal", source
+			interval.RuntimeTerminal = &WorkflowTerminalEvidence{ObservedAt: end, Source: source}
+		}
+		add(string(latest.Role), latest.AgentID, roundNumber(latest.OccurredAt, boundaries, known), interval)
 		if latest.Role == RoleWorker && (latestWorker == nil || latest.OccurredAt.After(latestWorker.OccurredAt)) {
 			copy := latest
 			latestWorker = &copy
@@ -460,13 +474,14 @@ func SummarizeWorkflow(in WorkflowInput) Workflow {
 			end = &at
 			endEvidence = reports[j].basis
 		}
-		if a, ok := terminalByAttempt[f.AttemptID]; ok && !ambiguousAttempts[f.AttemptID] && a.TaskID == in.TaskID && a.BindingState == runtimeobs.BindingBound && a.Terminal && a.RuntimeAgentID != "" && a.SessionID != "" && a.Provider != "" && runtimeobs.HasObservedExecution(a) && (a.CurrentState == runtimeobs.StateCompleted || a.CurrentState == runtimeobs.StateErrored || a.CurrentState == runtimeobs.StateInterrupted || a.CurrentState == runtimeobs.StateShutdown) && (f.Actor == "" || f.Actor == a.AgentPath) {
-			if at, ok := workflowTime(a.EndedAt); ok && !at.Before(f.OccurredAt) && !at.After(in.Now) && (end == nil || at.Before(*end)) {
-				end = &at
-				endEvidence = "native_terminal"
+		var endSource runtimeobs.EvidenceSource
+		var terminal *WorkflowTerminalEvidence
+		if at, source, ok := terminalFor(f.AttemptID, f.Actor, "", f.AssignmentID, f.OccurredAt); ok {
+			terminal = &WorkflowTerminalEvidence{ObservedAt: at, Source: source}
+			if end == nil || at.Before(*end) {
+				end, endEvidence, endSource = &at, "native_terminal", source
 			}
 		}
-
 		// These are reported execution boundaries, not measurements of active work.
 		agent := f.Actor
 		if agent == "/root/controller" || agent == "/root/registrar" {
@@ -475,7 +490,7 @@ func SummarizeWorkflow(in WorkflowInput) Workflow {
 		if native := nativeByAttempt[f.AttemptID]; native != "" {
 			agent = native
 		}
-		add("worker", agent, roundNumber(f.OccurredAt, boundaries, known), WorkflowInterval{ID: f.EventID, Kind: "execution_report", Type: "unclassified_execution", Start: f.OccurredAt, End: end, EndEvidence: endEvidence, AttemptID: f.AttemptID, AssignmentID: f.AssignmentID, Evidence: f.EvidenceSource})
+		add("worker", agent, roundNumber(f.OccurredAt, boundaries, known), WorkflowInterval{RuntimeTerminal: terminal, ID: f.EventID, Kind: "execution_report", Type: "unclassified_execution", Start: f.OccurredAt, End: end, EndEvidence: endEvidence, EndEvidenceSource: endSource, AttemptID: f.AttemptID, AssignmentID: f.AssignmentID, Evidence: f.EvidenceSource})
 	}
 	for _, h := range handoffs {
 		claimed, ok := workflowTime(h.ClaimedAt)
@@ -629,7 +644,8 @@ func SummarizeWorkflow(in WorkflowInput) Workflow {
 		}
 	}
 	if latestWorker != nil {
-		newer := true
+		_, _, ended := terminalFor(latestWorker.RuntimeAttemptID, "", latestWorker.AgentID, latestWorker.AssignmentID, latestWorker.OccurredAt)
+		newer := !ended
 		for _, h := range handoffs {
 			if at, ok := workflowTime(h.ClaimedAt); ok && at.After(latestWorker.OccurredAt) {
 				newer = false
@@ -651,6 +667,15 @@ func SummarizeWorkflow(in WorkflowInput) Workflow {
 			w.Current.ProcessingRole = "worker"
 			w.Current.ProcessingAgent = latestWorker.AgentID
 			w.Current.NextAction = "implement_and_verify"
+		}
+	}
+	if (w.Current.Phase == "implementation" || w.Current.Phase == "rework") && len(facts) > 0 {
+		f := facts[len(facts)-1]
+		if f.Kind == "started" || f.Kind == "resumed" {
+			if _, _, ended := terminalFor(f.AttemptID, f.Actor, "", f.AssignmentID, f.OccurredAt); ended {
+				w.Current.Phase, w.Current.Basis, w.Current.NextAction = "execution_ended", "native_terminal", "review_report"
+				w.Current.ProcessingRole, w.Current.ProcessingAgent = "", ""
+			}
 		}
 	}
 	if snapshot, ok := in.Control["snapshot"].(map[string]any); ok {

@@ -9,7 +9,6 @@ import (
 	"github.com/silverkhan/TaskMecca/internal/activity"
 	"github.com/silverkhan/TaskMecca/internal/backlog"
 	"github.com/silverkhan/TaskMecca/internal/handoffjournal"
-	"github.com/silverkhan/TaskMecca/internal/runtimeobs"
 )
 
 type workflowResponseEntry struct {
@@ -77,11 +76,15 @@ func loadWorkflowHandoffs(project string, now time.Time) workflowHandoffCacheEnt
 }
 
 // This is an on-demand, bounded read cache, not a Control Tower reconciliation.
-// No Runtime scan or monitor lock is triggered by the Activity endpoint.
+// Only persisted Runtime evidence is read; no provider scan or monitor lock runs.
 func readActivityWorkflow(project, task string, events []activity.Event, summary activity.Summary, facts []activity.LifecycleFact) activity.Workflow {
 	now := time.Now().UTC()
 	cached := loadWorkflowHandoffs(project, now)
 	control, _ := backlog.ReadLifecycleProjection(project, "", task)
+	observations, observationErr := activity.ReadWorkflowExecutions(project, task, now)
+	// Include the complete current evidence in the response cache identity. A
+	// terminal update/resume must invalidate it even while Control Tower is pending.
+	observationRevision, _ := json.Marshal(observations)
 	key := project + "\x00" + task
 	lastEvent, lastFact := "", ""
 	if len(events) > 0 {
@@ -91,18 +94,19 @@ func readActivityWorkflow(project, task string, events []activity.Event, summary
 		lastFact = facts[len(facts)-1].EventID
 	}
 	snapshot, _ := control["snapshot"].(map[string]any)
-	revision := fmt.Sprintf("%d:%s|%d:%s|%s|%v|%v|%v", len(events), lastEvent, len(facts), lastFact, cached.checkedAt.Format(time.RFC3339Nano), snapshot["version"], snapshot["trust"], snapshot["source_revision"])
+	revision := fmt.Sprintf("%d:%s|%d:%s|%s|%v|%v|%v", len(events), lastEvent, len(facts), lastFact, cached.checkedAt.Format(time.RFC3339Nano), snapshot["version"], snapshot["trust"], snapshot["source_revision"]) + "|" + string(observationRevision) + fmt.Sprint(observationErr)
 	workflowResponseCache.Lock()
 	prior, found := workflowResponseCache.items[key]
 	workflowResponseCache.Unlock()
 	if found && prior.revision == revision && now.Sub(prior.at) < 2*time.Second {
 		return prior.value
 	}
-	observations := []runtimeobs.Attempt{}
-	if raw, err := json.Marshal(control["execution_observations"]); err == nil {
-		_ = json.Unmarshal(raw, &observations)
-	}
 	out := activity.SummarizeWorkflow(activity.WorkflowInput{ExecutionObservations: observations, TaskID: task, Events: events, Summary: summary, Facts: facts, Handoffs: cached.ledger.Handoffs, Control: control, Now: now})
+	out.Snapshot["execution_evidence_source"] = "runtime_ledger_read_only"
+	if observationErr != nil {
+		out.Snapshot["execution_evidence_error"] = observationErr.Error()
+		out.Measurement.Status = "conflict"
+	}
 	out.Snapshot["handoff_checked_at"] = cached.checkedAt
 	out.Snapshot["handoff_computed_at"] = cached.at
 	if cached.err != nil {
