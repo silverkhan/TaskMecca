@@ -23,6 +23,7 @@ Keyboard navigation:
 - `←` or `Esc`: return to list
 - `/`: focus search
 - `PgUp / PgDn`: change page
+- `1`–`9`: switch directly to the matching open project in sidebar order, including from detail. Numbers remain visible when collapsed; missing numbers do nothing. Typing, terminal input, IME composition and modified keys keep their normal behavior.
 
 Task details place **Lifecycle immediately below Overview**. Wide screens show a floating right-side TOC; narrower screens show a floating TOC button that opens the same navigation panel.
 

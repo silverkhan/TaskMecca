@@ -1223,6 +1223,7 @@ body.release-modal-open{overflow:hidden}
   border-color:color-mix(in srgb,var(--accent) 50%,var(--border));
   box-shadow:0 0 0 1px color-mix(in srgb,var(--accent) 23%,transparent),0 2px 7px rgba(17,12,25,.09);
 }
+.session-number{position:absolute;top:-5px;right:-5px;min-width:14px;height:14px;display:grid;place-items:center;border:1px solid var(--border);border-radius:4px;background:var(--surface);color:var(--text);font-size:10px;line-height:1;font-weight:750;font-variant-numeric:tabular-nums}
 /* Small app-style status badges: inherit exactly the same severity colors as
    backlog status dots (warning/hold=--warn, error/blocked=--danger).
    The theme surface supplies a high-contrast glyph in both light and dark. */

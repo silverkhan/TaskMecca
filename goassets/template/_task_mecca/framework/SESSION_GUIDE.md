@@ -319,6 +319,7 @@ Web UI는 Markdown/Git 원장의 projection이며 직접 backlog를 수정하지
 - **Unified Backlog**: 현재/완료 작업을 한 화면에 통합하고 `All / Ready / Working / Hold / Blocked / Done` 버튼형 다중 필터 제공
 - **Archive history**: `archive/YYYY-MM/` 재귀 읽기, `ID ↓` 기본 정렬, Auto page size 기본값 및 Updated 기준 정렬 변경
 - **Keyboard navigation**: `↑/↓`, `Enter/→`, `←/Esc`, `/`, `PgUp/PgDn`
+- **프로젝트 직접 이동**: 숫자키 `1`–`9` 단독 입력으로 사이드바 순서의 열린 프로젝트에 이동한다. 상세 화면에서도 동작하고 접힌 사이드바에도 첫 9개 번호를 표시한다. 없는 번호는 무시하며 최근 사용 순서로 재정렬하지 않는다. 입력·터미널·편집 영역·IME 조합 및 수정키 조합은 가로채지 않는다.
 - **Web Terminal**: 좌측 `OPERATIONS → Terminal`에서 현재 프로젝트 루트를 working directory로 하는 실제 PTY 셸을 연다. macOS/Linux는 사용자 셸(zsh/bash/sh), Windows는 PowerShell/pwsh/cmd를 ConPTY로 연결한다.
 - **Terminal 원격 보안**: localhost에서는 항상 사용할 수 있고, Tailscale HTTPS는 신뢰된 원격 관리 경로로 간주해 별도 localhost 사전 활성화 없이 원격 Terminal을 기본 허용한다. 원격 Terminal은 Tailscale HTTPS에서만 사용할 수 있으며 일반 LAN/공인망 접속의 Terminal API는 차단한다. 필요하면 localhost 또는 Tailscale 화면에서 원격 Terminal을 OFF/ON 할 수 있다.
 - **Terminal lifecycle**: 브라우저가 끊긴 세션은 5분 동안 재연결할 수 있고 이후 자동 종료한다. 같은 프로젝트에서 새 Terminal을 시작하면 기존 세션을 종료하고 교체한다. xterm.js를 사용할 수 있으면 ANSI/방향키/Ctrl+C/resize를 지원하고, 브라우저 런타임을 불러오지 못하면 기본 명령 입력 fallback을 사용한다.
