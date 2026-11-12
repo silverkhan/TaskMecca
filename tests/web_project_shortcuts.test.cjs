@@ -5,94 +5,7 @@ const vm = require('node:vm');
 const { test } = require('node:test');
 
 const web = path.join(__dirname, '../goassets/template/_task_mecca/framework/web');
-const source = fs.readFileSync(path.join(web, 'app.js'), 'utf8');
-const startup = source.indexOf('\ntranslateChrome();');
-const keyboardStart = source.indexOf('let projectShortcutComposing=');
-const keyboardEnd = source.indexOf('\nlet autoPageResizeTimer=', keyboardStart);
-assert.ok(startup > 0 && keyboardStart > startup && keyboardEnd > keyboardStart);
-
-// Minimal DOM ancestry, rather than replacing the app's editing guard.
-function element(tagName = 'DIV', attrs = {}, parentElement = null) {
-  return {
-    tagName, parentElement, attrs,
-    get isContentEditable() {
-      if ('contenteditable' in attrs) return attrs.contenteditable !== 'false';
-      return parentElement?.isContentEditable || false;
-    },
-    closest(selectors) {
-      for (let node = this; node; node = node.parentElement) {
-        if (selectors.split(',').some(selector => {
-          if (selector.startsWith('#')) return node.attrs.id === selector.slice(1);
-          if (selector.startsWith('.')) return (node.attrs.class || '').split(' ').includes(selector.slice(1));
-          if (selector.startsWith('[contenteditable]')) return 'contenteditable' in node.attrs && node.attrs.contenteditable !== 'false';
-          const role = selector.match(/^\[role="(.+)"\]$/);
-          return role ? node.attrs.role === role[1] : node.tagName.toLowerCase() === selector;
-        })) return node;
-      }
-      return null;
-    },
-  };
-}
-
-function page(count = 10) {
-  const elements = new Map();
-  const listeners = new Map();
-  const routes = [];
-  const calls = [];
-  const projects = Array.from({ length: count }, (_, i) => `/repos/project-${i + 1}`);
-  const storage = new Map([['task-mecca-open-projects', JSON.stringify(projects)]]);
-  const document = {
-    activeElement: element('BODY'), documentElement: {},
-    createElement() { return { dataset: {}, setAttribute() {}, querySelectorAll() { return []; } }; },
-    addEventListener(type, callback) { listeners.set(type, callback); },
-    querySelector(selector) {
-      if (selector === '.hub-confirm-overlay') return this.confirmOpen ? {} : null;
-      if (!elements.has(selector)) elements.set(selector, {
-        innerHTML: '', textContent: '', addEventListener() {}, setAttribute() {},
-        closest() { return null; }, prepend() {},
-        focus() { document.activeElement = element('INPUT'); },
-        classList: { toggle() {}, add() {}, remove() {}, contains() { return false; } },
-      });
-      return elements.get(selector);
-    },
-    querySelectorAll() { return []; },
-  };
-  const context = vm.createContext({
-    URLSearchParams, location: { search: '' }, navigator: { language: 'en' }, document, window: { matchMedia: () => ({ matches: false }), innerWidth: 1400 },
-    history: { pushState(...args) { routes.push(args[2]); } },
-    localStorage: {
-      getItem(key) { return storage.get(key) ?? null; },
-      setItem(key, value) { storage.set(key, String(value)); },
-      removeItem(key) { storage.delete(key); },
-    }, calls,
-  });
-  vm.runInContext(source.slice(0, startup) + `
-    render = () => nav();
-    refresh = refreshList = ensureAttentionStream = refreshVersionInfo = updateDiagnosticNavigation = () => {};
-    highlightSelection = n => calls.push(['highlight', n]);
-    selectedRowId = () => 'A-1';
-    openTask = id => { state.detail = id; calls.push(['open', id]); };
-    closeTask = () => { state.detail = null; calls.push(['close']); };
-    changeListPage = n => calls.push(['page', n]);
-    globalThis.app = { state, nav, switchProject, closeProjectSession, manualView, translateChrome };
-  ` + source.slice(keyboardStart, keyboardEnd), context);
-  const app = context.app;
-  app.state.hub = { projects: projects.map((path, i) => ({ path, name: `Project ${i + 1}`, counts: {} })) };
-  app.state.project = projects[0] || '';
-  app.state.view = 'backlog';
-  app.nav();
-  return { ...app, document, routes, calls, projects,
-    menu: () => elements.get('#stateNav').innerHTML,
-    html: selector => elements.get(selector)?.innerHTML,
-    composition(type) { listeners.get(type)(); },
-    key(key, options = {}) {
-      const event = { key, target: document.activeElement, prevented: false,
-        preventDefault() { this.prevented = true; }, ...options };
-      listeners.get('keydown')(event);
-      return event;
-    },
-  };
-}
+const { page, element } = require('./helpers/project_shortcut_fixture.cjs');
 
 test('1–9 directly use sidebar order without reordering sessions, including from details', () => {
   const app = page();
@@ -120,21 +33,23 @@ test('missing ordinals, zero and out-of-range numbers are no-ops, even in detail
   }
 });
 
-test('input/search/select, editable descendants and terminal descendants keep their numbers', () => {
+test('input/search/select, editable descendants and terminals keep project shortcut keys', () => {
   const owners = [element('INPUT'), element('TEXTAREA'), element('SELECT'),
     element('DIV', { contenteditable: 'true' }), element('DIV', { contenteditable: 'plaintext-only' }),
-    element('DIV', { role: 'textbox' }), element('DIV', { role: 'combobox' }),
+    element('DIV', { role: 'textbox' }), element('DIV', { role: 'combobox' }), element('DIV', { role: 'spinbutton' }),
     element('DIV', { class: 'xterm' }), element('DIV', { class: 'terminal' })];
   for (const owner of owners) {
     for (const node of [owner, element('SPAN', {}, owner)]) {
       for (const via of ['target', 'focus']) {
-        const app = page();
-        app.state.detail = 'A-1';
-        if (via === 'focus') app.document.activeElement = node;
-        assert.equal(app.key('2', via === 'target' ? { target: node } : {}).prevented, false);
-        assert.equal(app.state.project, app.projects[0]);
-        assert.equal(app.state.detail, 'A-1');
-        assert.equal(app.routes.length, 0);
+        for (const key of ['2', '[', ']']) {
+          const app = page();
+          app.state.detail = 'A-1';
+          if (via === 'focus') app.document.activeElement = node;
+          assert.equal(app.key(key, via === 'target' ? { target: node } : {}).prevented, false);
+          assert.equal(app.state.project, app.projects[0]);
+          assert.equal(app.state.detail, 'A-1');
+          assert.equal(app.routes.length, 0);
+        }
       }
     }
   }
@@ -142,11 +57,13 @@ test('input/search/select, editable descendants and terminal descendants keep th
 
 test('IME event flags, keyCode 229 and the full composition lifecycle suppress switching', () => {
   const app = page();
-  for (const options of [{ isComposing: true }, { keyCode: 229 }]) {
-    assert.equal(app.key('2', options).prevented, false);
+  for (const key of ['2', '[', ']']) {
+    for (const options of [{ isComposing: true }, { keyCode: 229 }]) {
+      assert.equal(app.key(key, options).prevented, false);
+    }
   }
   app.composition('compositionstart');
-  assert.equal(app.key('2').prevented, false);
+  for (const key of ['2', '[', ']']) assert.equal(app.key(key).prevented, false);
   assert.equal(app.state.project, app.projects[0]);
   app.composition('compositionend');
   assert.equal(app.key('2').prevented, true);
@@ -158,10 +75,10 @@ test('every modifier combination and an already consumed event stay with their o
   const modifiers = ['ctrlKey', 'metaKey', 'altKey', 'shiftKey'];
   for (let mask = 1; mask < 16; mask++) {
     const options = Object.fromEntries(modifiers.map((name, i) => [name, !!(mask & (1 << i))]));
-    assert.equal(app.key('2', options).prevented, false);
+    for (const key of ['2', '[', ']']) assert.equal(app.key(key, options).prevented, false);
   }
-  assert.equal(app.key('2', { getModifierState: name => name === 'AltGraph' }).prevented, false);
-  assert.equal(app.key('2', { defaultPrevented: true }).prevented, false);
+  for (const key of ['2', '[', ']']) assert.equal(app.key(key, { getModifierState: name => name === 'AltGraph' }).prevented, false);
+  for (const key of ['2', '[', ']']) assert.equal(app.key(key, { defaultPrevented: true }).prevented, false);
   assert.equal(app.routes.length, 0);
   for (const key of ['/', 'ArrowLeft', 'ArrowDown', 'PageDown']) {
     assert.equal(app.key(key, { metaKey: true }).prevented, false);
@@ -219,6 +136,10 @@ test('existing manual and shortcut bar document numeric navigation in both langu
     app.translateChrome();
     assert.match(app.html('#shortcutBar'), /<kbd>1–9<\/kbd>/);
     assert.match(app.manualView(), /<kbd>1–9<\/kbd>/);
+    for (const html of [app.html('#shortcutBar'), app.manualView()]) {
+      assert.match(html, /<kbd>\[<\/kbd>\/<kbd>\]<\/kbd>/);
+      assert.match(html, language === 'ko' ? /이전\/다음/ : /previous\/next/);
+    }
     assert.match(app.html('#shortcutBar'), language === 'ko' ? /프로젝트 이동/ : /switch project/);
   }
 });
@@ -227,13 +148,82 @@ test('existing manual and shortcut bar document numeric navigation in both langu
 test('dev confirmation overlays and attention focus retain their shortcut boundary', () => {
   const app = page();
   app.document.confirmOpen = true;
-  assert.equal(app.key('2').prevented, false);
+  for (const key of ['2', '[', ']']) assert.equal(app.key(key).prevented, false);
   assert.equal(app.routes.length, 0);
   app.document.confirmOpen = false;
   app.document.activeElement = element('BUTTON', {}, element('SECTION', { id: 'userAttention' }));
-  assert.equal(app.key('2').prevented, false);
+  for (const key of ['2', '[', ']']) assert.equal(app.key(key).prevented, false);
   assert.equal(app.routes.length, 0);
   app.document.activeElement = element('BODY');
   assert.equal(app.key('2').prevented, true);
   assert.equal(app.state.project, app.projects[1]);
+});
+
+
+test('brackets follow stable OPEN sidebar order in both directions, wrap, and leave details', () => {
+  const app = page();
+  // Closed hub projects are never inserted into the shortcut sequence.
+  app.state.hub.projects.unshift({path:'/repos/closed',name:'Closed',counts:{}});
+  for (const [key, ordinal] of [['[',10], [']',1], [']',2], ['[',1], ['[',10]]) {
+    app.state.detail = 'A-1';
+    app.state.detailTask = {id:'A-1'};
+    assert.equal(app.key(key).prevented, true);
+    assert.equal(app.state.project, app.projects[ordinal-1]);
+    assert.equal(app.state.detail, null);
+    assert.equal(app.state.detailTask, null);
+    assert.deepEqual(Array.from(app.state.openProjects), app.projects);
+  }
+  app.key('9');
+  app.key(']');
+  assert.equal(app.state.project, app.projects[9]);
+  app.key('1');
+  assert.equal(app.state.project, app.projects[0]);
+});
+
+test('empty and single active sessions preserve detail, filters, routes and focus', () => {
+  for (const count of [0,1]) {
+    const app = page(count);
+    const focus = app.document.activeElement;
+    app.state.detail = 'A-1';
+    app.state.query = 'retained';
+    app.state.listPage = 3;
+    for (const key of ['[', ']']) assert.equal(app.key(key).prevented, false);
+    assert.equal(app.state.detail, 'A-1');
+    assert.equal(app.state.query, 'retained');
+    assert.equal(app.state.listPage, 3);
+    assert.equal(app.routes.length, 0);
+    assert.equal(app.document.activeElement, focus);
+  }
+});
+
+test('hub or unmatched active project enters first forward, last backward without off-by-one', () => {
+  for (const count of [1,3]) for (const view of ['hub','backlog']) for (const key of ['[',']']) {
+    const app = page(count);
+    app.state.view = view;
+    // Hub can retain a matching project path; it still has no active row.
+    app.state.project = view === 'hub' ? app.projects[0] : '/repos/missing';
+    assert.equal(app.key(key).prevented, true);
+    assert.equal(app.state.project, app.projects[key === ']' ? 0 : count-1]);
+    assert.equal(app.state.view, 'backlog');
+    assert.deepEqual(Array.from(app.state.openProjects), app.projects);
+  }
+});
+
+test('mobile navigation retains Escape and Tab focus ownership with brackets enabled', () => {
+  const app = page();
+  app.state.mobileNavOpen = true;
+  vm.runInContext("window.matchMedia=()=>({matches:true}); closeMobileNav=()=>{state.mobileNavOpen=false}", app.context);
+  const panel = app.document.querySelector('#mobileSidebarPanel');
+  const first = {getClientRects:()=>[{}],closest:()=>null,focus:()=>{app.document.activeElement=first}};
+  const last = {getClientRects:()=>[{}],closest:()=>null,focus:()=>{app.document.activeElement=last}};
+  panel.querySelectorAll=()=>[first,last];
+  panel.contains=node=>node===first||node===last;
+  app.document.activeElement=last;
+  assert.equal(app.key('Tab').prevented,true);
+  assert.equal(app.document.activeElement,first);
+  assert.equal(app.key('Tab',{shiftKey:true}).prevented,true);
+  assert.equal(app.document.activeElement,last);
+  assert.equal(app.key('Escape').prevented,true);
+  assert.equal(app.state.mobileNavOpen,false);
+  assert.equal(app.routes.length,0);
 });

@@ -55,6 +55,8 @@ Page size defaults to **Auto** and is calculated from viewport height and measur
 
 Keyboard navigation: `↑/↓`, `Enter/→`, `←/Esc`, `/`, and `PgUp/PgDn`.
 
+Project shortcuts follow the open sidebar order: `1–9` selects directly; `[` goes to the previous project and `]` to the next, wrapping at either end. From Hub or an unmatched active project, `]` enters the first item and `[` the last. With no open projects or only the current project, brackets leave the screen unchanged. They also work from task details and preserve input/editing, terminal, IME, modifier, confirmation modal and user-attention focus boundaries. Below each initial, the left marker shows the first nine shortcut numbers; the right `!` retains the existing warning/error meaning.
+
 The top bar includes a **Language** dropdown. `한국어` and `English` are currently supported. The selected language is persisted in `localStorage`. UI text, generated states/messages, controls, and the User Manual follow the selection. Backlog Markdown authored by users is never machine-translated. Additional languages can be added through the language registry and matching localized manual files.
 
 ## Select execution mode (A/B/C/D)
