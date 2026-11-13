@@ -2,7 +2,7 @@
 
 An assignment/envelope is preparation. A dispatch request is a request. A real
 creation receipt establishes the created tool identity, and an observed START
-establishes execution. Reuse `runtime worker-start` and its A72 exact assignment,
+establishes execution. Reuse `runtime observe-t3 --assignment ... --task-id ... --worker-path ... --source-worktree ...` and its A72 exact assignment,
 native/T3 observation and binding checks; do not create a second START manager.
 Never infer START or an interruption cause from `runtime query: not_found`.
 
