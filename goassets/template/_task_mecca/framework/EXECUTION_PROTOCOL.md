@@ -246,6 +246,8 @@ are different quantities. Missing Activity remains unmeasured after completion.
 
 ## 실행환경에 따른 생성 경로 (A-76)
 
+T3 process 환경 변수가 없다는 사실만으로 native 호스트라고 판정하지 않는다. 호스트는 unknown으로 남기고 실제 host 도구로 별도 확인한다.
+
 Root 초기화와 재개 시 `task-mecca orchestration environment --provider codex --root-session-id EXACT_CURRENT_NATIVE --json`으로 현재 process 환경을 수집한다. 호스트/provider/exact native/T3 ID, 생성·통신 도구의 지원/미지원/미확인, 추적 노출 범위와 근거 출처·확인시각을 구분한다. CLI가 볼 수 없는 MCP 도구와 실제 native/T3 연결은 unknown이며, 실제 host의 현재 callable schema와 exact 공식 조회로 보완한다. 비밀·프롬프트·전사를 수집하지 않는다. 협업 handle·native ID·T3 thread ID·표시 이름을 서로 대입하지 않는다.
 
 배정 전에 기존 엔진 `orchestration decide --project CANONICAL --provider PROVIDER --root-session-id EXACT_NATIVE --root-t3-thread-id EXACT_T3 --event dispatch_requested --environment PROFILE.json --separate-worktree --source-cwd ABSOLUTE_SOURCE_CWD --base EXACT_COMMITTED_SHA --json`을 사용한다. 별도 worktree가 필요 없으면 그 flag를 생략한다. exact Root에 저장된 A–D/group/mode를 유지하며 명시 승인 없는 변경은 거부한다. JSON profile은 진단 입력이며 지원·생성·연결 검증이나 실행 권한이 아니다. `allowed`는 경로 계획 가능 여부이고 `dispatch.execution_authorized`는 false다. CLI는 MCP를 몰래 호출하지 않는다.

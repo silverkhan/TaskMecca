@@ -44,6 +44,26 @@ func TestEnvironmentCLICollectsOnlyCurrentProcessMetadata(t *testing.T) {
 	}
 }
 
+func TestEnvironmentCLIMissingT3MarkerDoesNotProveNativeHost(t *testing.T) {
+	t.Setenv("CODEX_THREAD_ID", "native-current")
+	t.Setenv("T3CODE_THREAD_ID", "")
+	var out, errOut bytes.Buffer
+	if code := runOrchestrationCLI([]string{"environment", "--provider", "codex", "--root-session-id", "native-current", "--json"}, &out, &errOut); code != 0 {
+		t.Fatal(errOut.String())
+	}
+	var result struct{ Environment orchestration.Environment }
+	if err := json.Unmarshal(out.Bytes(), &result); err != nil {
+		t.Fatal(err)
+	}
+	if result.Environment.Host != "unknown" || result.Environment.IdentityLinkage != "unknown" || result.Environment.RootSessionID != "native-current" {
+		t.Fatalf("missing marker promoted to host proof: %s", out.String())
+	}
+	plan := orchestration.PlanDispatch(result.Environment, orchestration.DispatchRequest{CanonicalProject: "/fixture/canonical", Provider: "codex", RootSessionID: "native-current", SourceCWD: "/fixture/source", Base: strings.Repeat("a", 40)}, orchestration.ModeB, time.Now())
+	if plan.Allowed || !strings.Contains(strings.Join(plan.Reasons, ","), "environment_host_unknown") {
+		t.Fatalf("missing host evidence did not block dispatch: %+v", plan)
+	}
+}
+
 func TestEnvironmentCLICallerJSONCannotAuthorizeAndSavedBPreserved(t *testing.T) {
 	project := t.TempDir()
 	now := time.Now().UTC()

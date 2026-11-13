@@ -99,6 +99,7 @@ At Root startup and resume, collect current process metadata with
 `orchestration environment --provider codex --root-session-id EXACT_CURRENT_NATIVE --json`.
 The command reads only the selected provider's current identity and the current T3 environment marker.
 It does not enumerate MCP tools or prove native/T3 linkage: tools and tracking remain unknown.
+An absent T3 process marker leaves the host unknown; it does not prove a native environment.
 The host agent independently reads its actual callable schemas and exact native/T3 linkage,
 then supplies a minimal `Environment` profile: host (`t3`, `native`, `other`, `unknown`),
 provider, exact Root native session and T3 thread IDs, separately observed collaboration handle,

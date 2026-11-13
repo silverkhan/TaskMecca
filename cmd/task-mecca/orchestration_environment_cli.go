@@ -36,7 +36,9 @@ func runOrchestrationEnvironmentCLI(args []string, out, errOut io.Writer) int {
 		return 2
 	}
 	now := time.Now().UTC()
-	host := "native"
+	// T3 can omit its environment marker. Its absence does not prove a
+	// native host; actual host tools must independently resolve that case.
+	host := "unknown"
 	t3 := os.Getenv("T3CODE_THREAD_ID")
 	if t3 != "" {
 		host = "t3"
