@@ -461,14 +461,17 @@ func TestOperationScanRecoveryKeepsSourceTimeAndDoesNotRedeliverAfterRestart(t *
 	}
 	defer func() { operationDeliver = originalDeliver }()
 
-	firstAt := base.Add(20 * time.Minute)
+	// This attempt already has observed Hook execution; a project-level
+	// verifier cannot downgrade it to unknown. Let its own signal become stale
+	// before exercising source-timed recovery and restart delivery deduplication.
+	firstAt := base.Add(runtimeobs.StaleWarnDuration() + time.Minute)
 	first, err := scanOperationProject(project, firstAt)
 	if err != nil {
 		t.Fatalf("initial scan failed: %v", err)
 	}
 	var recoveredID string
 	for _, incident := range first.Incidents {
-		if incident.AttemptID == initialHook.AttemptID && incident.Kind == "runtime_unknown" && incident.AssignmentID == assignment.AssignmentID && incident.RecoveredAt == "" {
+		if incident.AttemptID == initialHook.AttemptID && incident.Kind == "no_signal" && incident.AssignmentID == assignment.AssignmentID && incident.RecoveredAt == "" {
 			recoveredID = incident.ID
 			break
 		}
