@@ -97,7 +97,8 @@ func runHelpCLI(args []string,out,stderr io.Writer) int {
 	case "contract":
 		contractUsage(out)
 	case "runtime":
-		fmt.Fprintln(out,"Runtime actions: list, reconcile, observe, hooks, assign, bind, bind-agent, bind-assignment, enrich-name")
+		fmt.Fprintln(out,"Controller START: runtime observe-t3 --project CANONICAL --thread-id EXACT_T3 --session-id EXACT_NATIVE --agent-id EXACT_NATIVE --assignment ID --task-id TASK --worker-path /root/controller/WORKER --source-worktree ACTUAL_CWD [--phase CURRENT_EVENT] --json")
+    fmt.Fprintln(out,"Runtime actions: list, reconcile, observe, hooks, assign, bind, bind-agent, bind-assignment, enrich-name")
 		fmt.Fprintln(out,"Runtime diagnosis (read-only): task-mecca runtime diagnose --provider codex --session-id SESSION_ID --json")
 		fmt.Fprintln(out,"Exact Codex session ID enables private native JSONL event-type count comparison; transcript contents are not returned.")
 		fmt.Fprintln(out,"Runtime query (read-only):")

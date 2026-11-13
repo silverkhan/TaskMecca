@@ -212,3 +212,16 @@ API ack만으로 `applied/verified=true`가 되지 않는다. 쓰기 요청 후 
 [Claude SDK renameSession/getSessionInfo/customTitle](https://code.claude.com/docs/en/agent-sdk/typescript#renamesession).
 Claude 지원은 실제 설치 SDK capability와 실제 세션 readback이 있을 때만 주장한다.
 문서/fixture 확인과 실제 Claude 실행 검증은 구분하여 보고한다.
+# Worker START collection boundary
+
+Follow the required START/phase sections in `roles/worker.md` and
+`roles/controller.md`: actual environment native/T3 IDs -> official exact
+observation -> exact canonical assignment/task binding -> Worker current-phase
+`activity report` receipt. Send START and each phase success/failure directly to
+Controller. Failed transport, unbound identity and report failure remain visible
+collection gaps with supported retry; no Root ACK gate or historical backfill.
+The Controller owns Runtime/lifecycle/handoff writes; the Worker may report only
+its own real Activity through the verified CLI. Keep canonical project separate
+from source worktree, and native start separate from START report/relay time.
+Reported lifecycle wait, verified Runtime, total elapsed and Activity coverage
+are different quantities. Missing Activity remains unmeasured after completion.
