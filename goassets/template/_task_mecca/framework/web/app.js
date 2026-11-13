@@ -469,16 +469,20 @@ const OPERATION_COPY = {
 const OPERATION_EVIDENCE = {
   ko: {
     'doing assignment has no linked runtime attempt':'진행 중인 배정은 있지만 연결된 runtime attempt가 없습니다.',
-    'verified hook has no recent signal':'실제로 수신된 Hook에서 장시간 새 신호가 없습니다.',
+    'verified hook has no recent signal':'해당 실행에서 수신한 Hook 이후 장시간 새 신호가 없습니다.',
+    'observed execution has no recent signal':'해당 실행의 검증된 관측 이후 장시간 새 신호가 없습니다.',
     'runtime identity or hook execution unverified':'runtime identity 또는 Hook 실행 여부를 확인하지 못했습니다.',
     'terminal state lacks observed hook evidence':'종료 상태에 실제 Hook 수신 근거가 없습니다.',
     'web server scan gap; exact session stop time is unknown':'Web 서버의 감시 공백이 있었습니다. 그 사이의 정확한 세션 중단 시각은 알 수 없습니다.',
     'hook terminal state':'Hook이 종료 상태를 실제로 전달했습니다.',
+    'verified structured execution terminal state':'검증된 T3 실행 근거에서 종료 상태를 확인했습니다.',
+    'verified structured execution completed state':'검증된 T3 실행 근거에서 정상 완료를 확인했습니다.',
     'hook completed state':'Hook이 정상 완료 상태를 실제로 전달했습니다.',
   },
   en: {
     'doing assignment has no linked runtime attempt':'A doing assignment has no linked runtime attempt.',
-    'verified hook has no recent signal':'A previously observed Hook has no recent signal.',
+    'verified hook has no recent signal':'This attempt has no recent signal after an observed Hook.',
+    'observed execution has no recent signal':'This attempt has no recent signal after a verified observation.',
     'runtime identity or hook execution unverified':'Runtime identity or Hook execution is unverified.',
     'terminal state lacks observed hook evidence':'The terminal state lacks an observed Hook event.',
     'web server scan gap; exact session stop time is unknown':'Web monitoring stopped; the exact session stop time is unknown.',
@@ -520,8 +524,8 @@ function renderOperationBanner(payload) {
  if(Number.isFinite(observed))state.operationObservedAt=observed;
  state.operationTombstones||={};
  for(const item of [...(payload.recent||[]),...(payload.resolved_observations||[])])if(item.id&&(item.recovered_at||item.resolution||item.recovery_evidence||item.history||item.active===false))state.operationTombstones[item.id]=true;
- state.operationPayload={projects:payload.projects||[],stages:payload.stages||[],resolved_observations:payload.resolved_observations||[],telegram_transport_disabled:Boolean(payload.telegram_transport_disabled)};
-  state.sessionWarnings=(payload.active||[]).filter(item=>!state.operationTombstones[item.id]&&!item.recovered_at&&!item.resolution&&!item.recovery_evidence&&!item.policy_resolution&&item.kind!=='normal_exit'&&!item.history&&item.active!==false);
+ state.operationPayload={projects:payload.projects||[],stages:payload.stages||[],resolved_observations:payload.resolved_observations||[],telegram_transport_disabled:Boolean(payload.telegram_transport_disabled),user_holds:payload.user_holds||[],observation_history:payload.observation_history||[],diagnostics:payload.diagnostics||[]};
+  state.sessionWarnings=(payload.active||[]).filter(item=>!state.operationTombstones[item.id]&&!item.recovered_at&&!item.resolution&&!item.recovery_evidence&&!item.policy_resolution&&item.kind!=='normal_exit'&&!item.history&&item.active!==false&&(!item.category||item.category==='current_operation'));
   renderUserAttention();
  if(state.view==='workload')render();
 }
@@ -2306,6 +2310,8 @@ function userAttentionMarkup(rows) {
 }
 Object.assign(I18N.ko,{commonAttention:'현재 알림',commonUserCount:'사용자 판단 {count}건',commonSessionCount:'세션 경고 {count}건',commonSessionHeading:'현재 세션 경고',commonSessionLink:'관련 세션 보기',commonTaskLink:'관련 작업 보기'});
 Object.assign(I18N.en,{commonAttention:'Current notifications',commonUserCount:'User decisions: {count}',commonSessionCount:'Session warnings: {count}',commonSessionHeading:'Current session warnings',commonSessionLink:'View related session',commonTaskLink:'View related task'});
+Object.assign(I18N.ko,{operationHoldExplanation:'사용자 판단 또는 외부 조치를 기다리는 보류입니다.',operationHoldAction:'작업의 재개조건을 확인하세요.',operationHoldHistory:'보류 관련 관측 이력',operationHistoryHeading:'과거 관측 이력',operationDiagnosticHeading:'판단 근거 부족 · 진단',operationObservationUnknown:'당시 실행 상태는 미확인입니다. 이 분류는 실행 종료를 뜻하지 않습니다.',operationHistoryCount:'과거 관측 {count}건',operationDiagnosticCount:'진단 {count}건',operationAttempt:'실행 · 배정'});
+Object.assign(I18N.en,{operationHoldExplanation:'On hold for a user decision or external action.',operationHoldAction:'Check the task’s resume condition.',operationHoldHistory:'Hold observation history',operationHistoryHeading:'Past observation history',operationDiagnosticHeading:'Insufficient evidence · diagnostics',operationObservationUnknown:'Runtime state at the time remains unverified. This category does not confirm execution termination.',operationHistoryCount:'Past observations: {count}',operationDiagnosticCount:'Diagnostics: {count}',operationAttempt:'Attempt · assignment'});
 function storeCommonUserAttention(payload,project,backlog) {
   if(!project||!Array.isArray(payload?.attention))return;
   const requestedBacklog=backlog||'';
@@ -2339,12 +2345,21 @@ function commonAttentionUsers() {
  for(const source of Object.values(state.commonUserAttention)){
   for(const row of source.rows){const key=source.project+'|'+source.backlog+'|'+row.id;if(seen.has(key))continue;seen.add(key);rows.push({...row,project:source.project,backlog:source.backlog});}
  }
+ for(const item of state.operationPayload.user_holds||[]){
+  let row=rows.find(row=>row.project===item.project&&row.id===item.task_id);
+  if(!row){row={id:item.task_id,project:item.project,title:item.task_id,message:item.hold_reason||t('operationHoldExplanation'),action:item.resume_condition||t('operationHoldAction'),histories:[]};rows.push(row);}
+  row.histories||=[];row.histories.push(item);
+ }
  return rows;
+}
+function operationObservationDetails(items,label) {
+ if(!items.length)return '';
+ return `<details class="operation-observation-details"><summary>${esc(label)} · ${items.length}</summary><ul>${items.map(item=>`<li><strong>${esc(item.task_id||item.agent_path||item.attempt_id||item.project)}</strong><p>${esc(operationEvidence(item.evidence||''))}</p><dl><div><dt>${esc(operationText('project'))}</dt><dd>${esc(item.project||'')}</dd></div><div><dt>${esc(operationText('seen'))}</dt><dd>${esc(operationTime(item.last_observed_at))}</dd></div><div><dt>${esc(operationText('detected'))}</dt><dd>${esc(operationTime(item.detected_at))}</dd></div><div><dt>${esc(t('operationAttempt'))}</dt><dd>${esc(item.attempt_id||'—')} · ${esc(item.assignment_id||'—')}</dd></div>${item.provider||item.session_id?`<div><dt>${esc(t('signalSource'))}</dt><dd>${esc(item.provider||'')} · ${esc(item.session_id||'')}</dd></div>`:''}${item.ended_at?`<div><dt>${esc(operationText('ended'))}</dt><dd>${esc(operationTime(item.ended_at))}</dd></div>`:''}${item.recovered_at?`<div><dt>${esc(operationText('reconciliationAt'))}</dt><dd>${esc(operationTime(item.recovered_at))}</dd></div>`:''}</dl>${item.policy_resolution||item.resolution?`<p>${esc((item.policy_resolution||item.resolution).event_id||'')} · ${esc((item.policy_resolution||item.resolution).boundary_at||(item.policy_resolution||item.resolution).completed_at||'')} · ${esc((item.policy_resolution||item.resolution).task_path||'')}</p>`:''}<p>${esc(item.recovery_evidence||item.policy_resolution?.reason||item.resolution?.reason||(item.kind==='normal_exit'&&item.quality==='confirmed'?operationEvidence(item.evidence||''):t('operationObservationUnknown')))}</p></li>`).join('')}</ul></details>`;
 }
 function commonAttentionMarkup(users,warnings,expanded=false) {
  const userRows=users.map(row=>{
   const params=new URLSearchParams({project:row.project});if(row.backlog)params.set('backlog',row.backlog);
-  return `<li><a data-user-attention-task="${esc(row.id)}" href="/tasks/${encodeURIComponent(row.id)}?${esc(params.toString())}"><span class="user-attention-id">${esc(row.id)}</span><strong>${esc(row.title)}</strong></a><div class="user-attention-decision"><p class="common-attention-project">${esc(row.project)}</p>${row.message?`<p>${esc(row.message)}</p>`:''}<p><b>${esc(t('userAttentionAction'))}</b> ${esc(row.action)}</p></div></li>`;
+  return `<li><a data-user-attention-task="${esc(row.id)}" href="/tasks/${encodeURIComponent(row.id)}?${esc(params.toString())}"><span class="user-attention-id">${esc(row.id)}</span><strong>${esc(row.title)}</strong></a><div class="user-attention-decision"><p class="common-attention-project">${esc(row.project)}</p>${row.message?`<p>${esc(row.message)}</p>`:''}<p><b>${esc(t('userAttentionAction'))}</b> ${esc(row.action)}</p>${operationObservationDetails(row.histories||[],t('operationHoldHistory'))}</div></li>`;
  }).join('');
  const sessionRows=warnings.map(item=>{
   const params=new URLSearchParams({project:item.project||''});
@@ -2352,7 +2367,7 @@ function commonAttentionMarkup(users,warnings,expanded=false) {
   params.set('view','workload');
   return `<li><div><strong>${esc(operationText(item.kind==='monitor_gap'?'gap':item.kind))}</strong><span class="badge ${item.severity==='error'?'danger':'warn'}">${esc(operationText(item.severity||'warning'))}</span><p>${esc(item.task_id||item.agent_path||item.attempt_id||item.project)}</p></div><div class="user-attention-decision"><p class="common-attention-project">${esc(item.project||'')}</p><p>${esc(operationEvidence(item.evidence||''))}</p>${item.agent_path?`<p>${esc(item.agent_path)}</p>`:''}${item.attempt_id?`<p>${esc(item.attempt_id)}</p>`:''}<p><b>${esc(operationText('action'))}</b> ${esc(operationAction(item)||'')}</p><div class="common-attention-links">${taskLink}<a href="/?${esc(params.toString())}${item.attempt_id?'#runtime-attempt-'+encodeURIComponent(item.attempt_id):''}">${esc(t('commonSessionLink'))}</a></div></div></li>`;
  }).join('');
- return `<details class="common-attention"${state.commonAttentionOpen||expanded?' open':''}><summary><strong>${esc(t('commonAttention'))}</strong><span>${esc(t('commonUserCount',{count:users.length}))}</span><span>${esc(t('commonSessionCount',{count:warnings.length}))}</span></summary><div class="common-attention-body"><a class="common-center-link" href="/?view=notifications" data-notification-center>${esc(t('notificationCenter'))} · ${esc(t('notificationCurrent'))}</a>${users.length?`<h2>${esc(t('currentUserAttention'))}</h2><ul>${userRows}</ul>`:''}${warnings.length?`<h2>${esc(t('commonSessionHeading'))}</h2><ul>${sessionRows}</ul>`:''}</div></details>`;
+ return `<details class="common-attention"${state.commonAttentionOpen||expanded?' open':''}><summary><strong>${esc(t('commonAttention'))}</strong><span>${esc(t('commonUserCount',{count:users.length}))}</span><span>${esc(t('commonSessionCount',{count:warnings.length}))}</span>${state.operationPayload.observation_history?.length?`<span>${esc(t('operationHistoryCount',{count:state.operationPayload.observation_history.length}))}</span>`:''}${state.operationPayload.diagnostics?.length?`<span>${esc(t('operationDiagnosticCount',{count:state.operationPayload.diagnostics.length}))}</span>`:''}</summary><div class="common-attention-body"><a class="common-center-link" href="/?view=notifications" data-notification-center>${esc(t('notificationCenter'))} · ${esc(t('notificationCurrent'))}</a>${users.length?`<h2>${esc(t('currentUserAttention'))}</h2><ul>${userRows}</ul>`:''}${warnings.length?`<h2>${esc(t('commonSessionHeading'))}</h2><ul>${sessionRows}</ul>`:''}${operationObservationDetails(state.operationPayload.observation_history||[],t('operationHistoryHeading'))}${operationObservationDetails(state.operationPayload.diagnostics||[],t('operationDiagnosticHeading'))}</div></details>`;
 }
 function renderUserAttention() {
  const users=commonAttentionUsers(),warnings=state.sessionWarnings;
@@ -2360,7 +2375,7 @@ function renderUserAttention() {
  // existing tile in place to preserve hover, focus and compact sidebar state.
  syncSessionAttentionSeverity(users);
  const el=$('#userAttention');if(!el)return;
- el.hidden=!users.length&&!warnings.length;
+ el.hidden=!users.length&&!warnings.length&&!(state.operationPayload.observation_history||[]).length&&!(state.operationPayload.diagnostics||[]).length;
  if(el.hidden){el.innerHTML='';state.commonAttentionOpen=false;return;}
  const markup=commonAttentionMarkup(users,warnings);
  if(el.innerHTML===markup)return;

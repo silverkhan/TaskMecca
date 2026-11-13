@@ -2443,3 +2443,12 @@ select.tm-combo-native{position:absolute!important;width:1px!important;height:1p
   .workflow-chart-footer .workflow-pan-button{width:44px;min-height:44px}
   .workflow-member{min-height:44px}
 }
+
+/* Observation history supports current decisions without inflating alerts. */
+.common-attention .operation-observation-details { margin-block: 12px; min-width: 0; }
+.common-attention .operation-observation-details summary { cursor: pointer; padding-block: 8px; overflow-wrap: anywhere; }
+.common-attention .operation-observation-details li,
+.common-attention .operation-observation-details dd { min-width: 0; overflow-wrap: anywhere; }
+.common-attention .operation-observation-details dl { display: grid; gap: 8px; margin-block: 8px; }
+.common-attention .operation-observation-details dl > div { display: flex; flex-wrap: wrap; gap: 4px 12px; }
+.common-attention .operation-observation-details dd { margin: 0; }

@@ -28,6 +28,13 @@ const operationGapAfter = 2 * operationScanInterval
 
 // An operation incident is an observation, never a backlog lifecycle decision.
 type operationIncident struct {
+	Provider         string                         `json:"provider,omitempty"`
+	SessionID        string                         `json:"session_id,omitempty"`
+	RuntimeAgentID   string                         `json:"runtime_agent_id,omitempty"`
+	TurnID           string                         `json:"turn_id,omitempty"`
+	HoldReason       string                         `json:"hold_reason,omitempty"`
+	ResumeCondition  string                         `json:"resume_condition,omitempty"`
+	Category         string                         `json:"category,omitempty"`
 	ID               string                         `json:"id"`
 	Key              string                         `json:"key"`
 	Project          string                         `json:"project"`
@@ -152,38 +159,40 @@ func hookVerified(project, provider string) bool {
 	return false
 }
 
-func classifyOperation(project string, attempt runtimeobs.Attempt, now time.Time, verified bool) (operationSignal, bool) {
+func classifyOperation(project string, attempt runtimeobs.Attempt, now time.Time, _ bool) (operationSignal, bool) {
 	if attempt.AttemptID == "" {
 		return operationSignal{}, false
 	}
-	base := operationIncident{Project: project, AttemptID: attempt.AttemptID, AssignmentID: attempt.BindingEvidence["assignment_id"], TaskID: attempt.TaskID,
+	base := operationIncident{Provider: attempt.Provider, SessionID: attempt.SessionID, RuntimeAgentID: attempt.RuntimeAgentID, TurnID: attempt.TurnID, Project: project, AttemptID: attempt.AttemptID, AssignmentID: attempt.BindingEvidence["assignment_id"], TaskID: attempt.TaskID,
 		AgentPath: attempt.AgentPath, LastObservedAt: attempt.LastObservedAt, EndedAt: attempt.EndedAt}
 	key := "attempt:" + attempt.AttemptID
-	confirmed := attempt.StateEvidenceSource == runtimeobs.EvidenceHook &&
-		(attempt.StateObservationQuality == runtimeobs.QualityObserved || attempt.StateObservationQuality == runtimeobs.QualityAuthoritative)
+	confirmed := operationObservedExecution(attempt, now)
 	switch attempt.CurrentState {
 	case runtimeobs.StateErrored, runtimeobs.StateInterrupted, runtimeobs.StateShutdown:
 		if confirmed {
-			base.Kind, base.Quality, base.Evidence = string(attempt.CurrentState), "confirmed", "hook terminal state"
+			base.Kind, base.Quality, base.Evidence = string(attempt.CurrentState), "confirmed", operationObservedEvidence(attempt, false)
 			base.Action = "Controller: 종료 근거와 작업 상태를 확인하고 재배정 또는 복구를 판단하세요."
 			return operationSignal{key: key, incident: base, alert: true}, true
 		}
 		base.Kind, base.Quality, base.Evidence = "runtime_unknown", "verification_required", "terminal state lacks observed hook evidence"
 	case runtimeobs.StateCompleted:
 		if confirmed {
-			base.Kind, base.Quality, base.Evidence = "normal_exit", "confirmed", "hook completed state"
+			base.Kind, base.Quality, base.Evidence = "normal_exit", "confirmed", operationObservedEvidence(attempt, true)
 			base.Action = "종료가 확인되었습니다. 백로그 완료 여부는 Controller가 별도로 판단하세요."
 			return operationSignal{key: key, incident: base}, true
 		}
 		return operationSignal{}, false
 	default:
 		last, err := time.Parse(time.RFC3339Nano, attempt.LastObservedAt)
-		if verified && err == nil && now.Sub(last) >= runtimeobs.StaleWarnDuration() && !attempt.Terminal {
+		if confirmed && err == nil && now.Sub(last) >= runtimeobs.StaleWarnDuration() && !attempt.Terminal {
 			base.Kind, base.Quality, base.Evidence = "no_signal", "verification_required", "verified hook has no recent signal"
+			if attempt.StateEvidenceSource == runtimeobs.EvidenceT3 {
+				base.Evidence = "observed execution has no recent signal"
+			}
 			base.Action = "Controller: 세션과 Hook 수신 경로를 확인하세요. 무신호만으로 Worker 종료를 확정하지 마세요."
 			return operationSignal{key: key, incident: base, alert: true}, true
 		}
-		if attempt.CurrentState != runtimeobs.StateRuntimeUnknown && verified {
+		if attempt.CurrentState != runtimeobs.StateRuntimeUnknown && confirmed {
 			return operationSignal{}, false
 		}
 		base.Kind, base.Quality, base.Evidence = "runtime_unknown", "verification_required", "runtime identity or hook execution unverified"
@@ -233,13 +242,13 @@ func operationEvidenceRecovery(item operationIncident, attempts []runtimeobs.Att
 		return "", false
 	}
 	for _, attempt := range attempts {
-		if (item.AttemptID != "" && attempt.AttemptID != item.AttemptID) || !strings.EqualFold(attempt.TaskID, item.TaskID) || attempt.AgentPath != item.AgentPath || attempt.BindingState != runtimeobs.BindingBound || attempt.BindingEvidence["assignment_id"] != item.AssignmentID {
+		if !operationIncidentIdentityMatches(item,attempt) || (item.AttemptID != "" && attempt.AttemptID != item.AttemptID) || !strings.EqualFold(attempt.TaskID, item.TaskID) || attempt.AgentPath != item.AgentPath || attempt.BindingState != runtimeobs.BindingBound || attempt.BindingEvidence["assignment_id"] != item.AssignmentID {
 			continue
 		}
-		if attempt.CurrentState != runtimeobs.StateRunning || attempt.Terminal || attempt.StateEvidenceSource != runtimeobs.EvidenceHook || (attempt.StateObservationQuality != runtimeobs.QualityObserved && attempt.StateObservationQuality != runtimeobs.QualityAuthoritative) {
+		if attempt.CurrentState != runtimeobs.StateRunning || attempt.Terminal || !operationObservedExecution(attempt, now) {
 			continue
 		}
-		observed, parseErr := time.Parse(time.RFC3339Nano, attempt.LastActivityAt)
+		observed, parseErr := time.Parse(time.RFC3339Nano, operationExecutionClock(attempt))
 		if parseErr != nil || observed.IsZero() || !observed.After(since) || observed.After(now) || now.Sub(observed) >= runtimeobs.StaleWarnDuration() {
 			continue
 		}
@@ -248,34 +257,52 @@ func operationEvidenceRecovery(item operationIncident, attempts []runtimeobs.Att
 	return "", false
 }
 
-// A verified, later Hook event for the *same attempt* can retire an
+// Verified execution evidence for the *same attempt* can retire an
 // unverified warning even when the original binding had no assignment ID.
+// Completion may predate detection, but must cover the warning source clock.
 // It cannot retire a confirmed error, interruption, or shutdown.
 func operationExactAttemptRecovered(item operationIncident, attempts []runtimeobs.Attempt, now time.Time) (string, string, bool) {
- if item.Quality!="verification_required" || (item.Kind!="runtime_unknown" && item.Kind!="no_signal") || item.AttemptID=="" {return "","",false}
- detected,err:=time.Parse(time.RFC3339Nano,item.DetectedAt)
- if err!=nil || detected.IsZero(){return "","",false}
- for _,a:=range attempts {
-  if a.AttemptID!=item.AttemptID || !strings.EqualFold(a.TaskID,item.TaskID) ||
-   a.AgentPath!=item.AgentPath || (item.AssignmentID!="" && a.BindingEvidence["assignment_id"]!=item.AssignmentID) ||
-   a.StateEvidenceSource!=runtimeobs.EvidenceHook ||
-   (a.StateObservationQuality!=runtimeobs.QualityObserved && a.StateObservationQuality!=runtimeobs.QualityAuthoritative){continue}
-  switch a.CurrentState {
-  case runtimeobs.StateCompleted:
-   if !a.Terminal{continue}
-   at,err:=time.Parse(time.RFC3339Nano,a.EndedAt)
-   if err==nil&&at.After(detected)&&!at.After(now){
-    return at.UTC().Format(time.RFC3339Nano),"same attempt has confirmed Hook completion; previous warning retired without changing runtime evidence",true
-   }
-  case runtimeobs.StateRunning:
-   if a.Terminal{continue}
-   at,err:=time.Parse(time.RFC3339Nano,a.LastObservedAt)
-   if err==nil&&at.After(detected)&&!at.After(now)&&now.Sub(at)<runtimeobs.StaleWarnDuration(){
-    return at.UTC().Format(time.RFC3339Nano),"same attempt has later observed Hook running state; previous warning retired without changing runtime evidence",true
-   }
-  }
- }
- return "","",false
+	if item.Quality != "verification_required" || (item.Kind != "runtime_unknown" && item.Kind != "no_signal") || item.AttemptID == "" {
+		return "", "", false
+	}
+	detected, err := time.Parse(time.RFC3339Nano, item.DetectedAt)
+	if err != nil || detected.IsZero() || detected.After(now) {
+		return "", "", false
+	}
+	anchor := detected
+	if item.LastObservedAt != "" {
+		var anchorErr error
+		anchor, anchorErr = time.Parse(time.RFC3339Nano, item.LastObservedAt)
+		if anchorErr != nil || anchor.IsZero() || anchor.After(now) {
+			return "", "", false
+		}
+	}
+	for _, a := range attempts {
+		if !operationIncidentIdentityMatches(item, a) || a.AttemptID != item.AttemptID || !strings.EqualFold(a.TaskID, item.TaskID) ||
+			a.AgentPath != item.AgentPath || (item.AssignmentID != "" && a.BindingEvidence["assignment_id"] != item.AssignmentID) ||
+			!operationObservedExecution(a, now) {
+			continue
+		}
+		switch a.CurrentState {
+		case runtimeobs.StateCompleted:
+			if !a.Terminal {
+				continue
+			}
+			at, err := time.Parse(time.RFC3339Nano, a.EndedAt)
+			if err == nil && !at.After(now) && !at.Before(anchor) {
+				return at.UTC().Format(time.RFC3339Nano), operationRecoveryEvidence(a, true), true
+			}
+		case runtimeobs.StateRunning:
+			if a.Terminal {
+				continue
+			}
+			at, err := time.Parse(time.RFC3339Nano, operationExecutionClock(a))
+			if err == nil && at.After(detected) && at.After(anchor) && !at.After(now) && now.Sub(at) < runtimeobs.StaleWarnDuration() {
+				return at.UTC().Format(time.RFC3339Nano), operationRecoveryEvidence(a, false), true
+			}
+		}
+	}
+	return "", "", false
 }
 
 // A canonical done task makes its previous unbound-assignment warning no
@@ -336,6 +363,7 @@ func scanOperationProject(project string, now time.Time) (operationJournal, erro
 	if err != nil { return journal, err }
     started = time.Now()
 	nowText := now.UTC().Format(time.RFC3339Nano)
+	evidenceAttempts := operationUnconflictedAttempts(ledger)
 	completions := operationCompletionEvidence(project, ledger, now)
 	policies := operationPolicies(project, ledger, now)
 	recoveryPolicies := operationRecoveryPolicy(project, ledger, now)
@@ -413,6 +441,7 @@ func scanOperationProject(project string, now time.Time) (operationJournal, erro
             hookVerificationDuration += time.Since(verifyStarted)
 		}
         classifyStarted := time.Now()
+        if operationAttemptBlocked(ledger, attempt) { attempt.StateObservationQuality = runtimeobs.ObservationQuality("unknown") }
         signal, classified := classifyOperation(project, attempt, now, verified[attempt.Provider])
         classificationDuration += time.Since(classifyStarted)
 		if classified {
@@ -426,7 +455,7 @@ func scanOperationProject(project string, now time.Time) (operationJournal, erro
 			// Suppress the same obsolete source on every scan, not only while
 			// its first incident is active. Otherwise resolution would recur.
 			latestAssignmentStillCanonical := resolvedIndex.latestAssignmentResolved(signal.incident) && canonicalDoing(signal.incident.TaskID)
-			if resolvedIndex.alreadyResolved(signal.incident, now) || latestAssignmentStillCanonical || (recoveryPolicies[strings.ToUpper(signal.incident.TaskID)] && latestOperationRecovery(signal.incident, ledger.Attempts, stages, now)) {
+			if resolvedIndex.alreadyResolved(signal.incident, now) || latestAssignmentStillCanonical || (recoveryPolicies[strings.ToUpper(signal.incident.TaskID)] && latestOperationRecovery(signal.incident, evidenceAttempts, stages, now)) {
 				continue
 			}
 			if stageSuppresses(signal.incident, stages, now) {
@@ -458,7 +487,7 @@ func scanOperationProject(project string, now time.Time) (operationJournal, erro
 		if err != nil {
 			continue
 		}
-		for _, later := range ledger.Attempts {
+		for _, later := range evidenceAttempts {
 			if later.AttemptID == prior.AttemptID || !strings.EqualFold(later.TaskID, prior.TaskID) {
 				continue
 			}
@@ -550,7 +579,7 @@ recordMonitorPerf("operation_monitor_assignments", time.Since(workloadStarted), 
 			item.RecoveryEvidence = "bounded normal handoff/review grace; runtime evidence unchanged"
 			continue
 		}
-		if at,evidence,recovered:=operationExactAttemptRecovered(*item,ledger.Attempts,now);recovered{
+		if at,evidence,recovered:=operationExactAttemptRecovered(*item,evidenceAttempts,now);recovered{
 			item.RecoveredAt=at
 			item.RecoveryEvidence=evidence
 			if signal,ok:=signals[item.Key];ok&&signal.incident.Quality=="verification_required"{delete(signals,item.Key)}
@@ -564,13 +593,13 @@ recordMonitorPerf("operation_monitor_assignments", time.Since(workloadStarted), 
 			if signal,ok:=signals[item.Key];ok&&signal.incident.Quality=="verification_required"{delete(signals,item.Key)}
 			continue
 		}
-		if at, recovered := operationEvidenceRecovery(*item, ledger.Attempts, now); recovered {
+		if at, recovered := operationEvidenceRecovery(*item, evidenceAttempts, now); recovered {
 			item.RecoveredAt = at
-			item.RecoveryEvidence = "same assignment has recent observed Hook execution; prior runtime evidence unchanged"
+			item.RecoveryEvidence = "same assignment has recent observed execution; prior runtime evidence unchanged"
 			delete(signals, item.Key)
 			continue
 		}
-		if recoveryPolicies[strings.ToUpper(item.TaskID)] && latestOperationRecovery(*item, ledger.Attempts, stages, now) {
+		if recoveryPolicies[strings.ToUpper(item.TaskID)] && latestOperationRecovery(*item, evidenceAttempts, stages, now) {
 			item.RecoveredAt = nowText
 			item.RecoveryEvidence = "latest assignment has observed execution evidence; prior runtime evidence unchanged"
 			delete(signals, item.Key)
@@ -670,12 +699,14 @@ func operationControllerReviews(stages []operationStage) map[string]map[string]b
 }
 
 func operationActionableIncidents(journal operationJournal) []notify.Event {
+    rows, available := operationCanonicalRows(journal.Project)
     reviews := operationControllerReviews(journal.Stages)
     events := make([]notify.Event, 0)
     for _, incident := range journal.Incidents {
         // Retain history in the journal but do not recheck recovered episodes
         // against each active stage on every scan.
         if incident.Kind == "normal_exit" || incident.RecoveredAt != "" { continue }
+        if operationViewCategory(incident, rows, available, time.Now().UTC()) != operationCurrent { continue }
         byAttempt := reviews[strings.ToLower(incident.TaskID)]
         if len(byAttempt) > 0 && (incident.AttemptID == "" || byAttempt[incident.AttemptID]) { continue }
         events = append(events, notify.Event{
@@ -826,19 +857,35 @@ func operationSnapshot(primary string) map[string]any {
 	recent := []operationIncident{}
 	resolved := []operationIncident{}
 	stages := []operationStage{}
+	holds, historical, diagnostics := []operationIncident{}, []operationIncident{}, []operationIncident{}
 	for _, project := range operationProjects(primary) {
 		journal, err := readOperationJournal(project)
 		if err != nil {
 			projects = append(projects, map[string]any{"path": project, "error": err.Error()})
+			diagnostics = append(diagnostics, operationIncident{Project: project, Category: operationDiagnostic, Kind: "runtime_unknown", Quality: "verification_required", Evidence: "operations journal unavailable: " + err.Error(), Action: "Controller: 감시 기록을 읽을 수 없습니다. 기록과 읽기 권한을 확인하세요. 실행 종료를 추정하지 마세요."})
 			continue
 		}
 		projects = append(projects, map[string]any{"path": project, "last_scan_at": journal.LastScanAt})
 		stages = append(stages, journal.Stages...)
+		rows, available := operationCanonicalRows(project)
 		for _, incident := range journal.Incidents {
+			incident.Category = operationViewCategory(incident, rows, available, time.Now().UTC())
+			switch incident.Category {
+			case operationHold:
+				if matches := rows[strings.ToUpper(incident.TaskID)]; len(matches) == 1 {
+					incident.HoldReason = matches[0].Fields["대기"]
+					incident.ResumeCondition = matches[0].Fields["재개조건"]
+				}
+				holds = append(holds, incident)
+			case operationHistory:
+				historical = append(historical, incident)
+			case operationDiagnostic:
+				diagnostics = append(diagnostics, incident)
+			}
 			if (incident.Resolution != nil || incident.RecoveryEvidence != "") && incident.RecoveredAt != "" {
 				resolved = append(resolved, incident)
 			}
-			if incident.RecoveredAt == "" && incident.Kind != "normal_exit" {
+			if incident.RecoveredAt == "" && incident.Kind != "normal_exit" && incident.Category == operationCurrent {
 				active = append(active, incident)
 			}
 			recent = append(recent, incident)
@@ -852,5 +899,5 @@ func operationSnapshot(primary string) map[string]any {
 	if len(resolved) > 20 {
 		resolved = resolved[:20]
 	}
-	return map[string]any{"snapshot_at": time.Now().Format(time.RFC3339Nano), "projects": projects, "active": active, "recent": recent, "resolved_observations": resolved, "stages": stages, "telegram_transport_disabled": notify.TelegramTransportDisabled()}
+	return map[string]any{"snapshot_at": time.Now().Format(time.RFC3339Nano), "projects": projects, "active": active, "user_holds": holds, "observation_history": historical, "diagnostics": diagnostics, "recent": recent, "resolved_observations": resolved, "stages": stages, "telegram_transport_disabled": notify.TelegramTransportDisabled()}
 }
