@@ -317,3 +317,10 @@ Job ID, commit SHA, 장애 재현, 상세 검증 수치와 실패 이력은 기�
 ## 관리 세션 이름: dispatch·resume 필수 절차
 
 새 세션과 기존 세션 resume/reuse 모두 [공식 세션 이름 적용과 확인](../EXECUTION_PROTOCOL.md#공식-세션-이름-적용과-확인-필수)을 따른다. native dispatch 전에 `orchestration session-name plan`의 생성 이름·지원 확인·before/after/resume 지시를 실제 Agent prompt에 넣고, T3 생성은 `delegate_task.title`에 생성 이름을 그대로 쓴다. 실제 실행 세션은 exact native ID를 확인한 뒤 `session-name apply`와 fresh `session-name verify`를 수행한다. T3는 exact current thread를 공식 도구로 별도 재조회하고, 필요할 때만 update 후 다시 읽는다. 동일 세션 resume는 group/role/Worker/G를 보존한다. provider receipt와 실제 T3 tool readback이 누락되면 완료라고 보고하지 않는다. caller JSON·API ack·작업 제목은 적용/검증 증거가 아니며, 실패·미지원·미검증은 Controller에 직접 보고한다. 이름은 표시 metadata이고 runtime/attempt/claim/handoff 신원·권한을 대체하지 않는다.
+
+
+## 실행환경에 따른 생성 경로 (A-76)
+
+초기화·재개 때 현재 exact Root의 `orchestration environment` process 관측과 host의 실제 생성·통신 도구 schema/연결 관측을 분리해 수집한다. 배정 전 `orchestration decide --event dispatch_requested --environment PROFILE.json`에 exact Root/native/T3, 실제 source cwd/committed base와 별도 worktree 요구를 넣고 반환된 경로·검증 지시를 따른다. 전체 명령과 경계는 [실행환경에 따른 생성 경로](../EXECUTION_PROTOCOL.md#실행환경에-따른-생성-경로-a-76)를 따른다.
+
+T3 별도 worktree는 실제 `delegate_task(isolation=worktree)`만 사용한다. unknown/stale/미지원일 때 임의 fallback하지 않는다. 호출 직전 fresh Full Access·현재 schema를 재확인하고 생성 후 exact 영수증/T3 parent 연결/cwd/base를 독립 검증한다. shared/native의 T3 Thread Details/Lineage 한계와 실제 handle 상태 조회 방법을 배정 메시지에 포함한다. 기존 mode/group/name allocator, START/Activity, typed transport 및 source/표시 이름 경계를 보존한다. JSON profile과 도구 ACK를 실행·착수·추적 검증 성공으로 기록하지 않는다.

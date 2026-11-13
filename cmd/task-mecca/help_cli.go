@@ -50,6 +50,9 @@ func runHelpCLI(args []string,out,stderr io.Writer) int {
         fmt.Fprintln(out,"Modified global agent Hook JSON files are backed up before exact Task Mecca commands are removed.")
         fmt.Fprintln(out,"Interactive uninstall requires typing 'uninstall'; --approve is explicit noninteractive confirmation.")
 	case "orchestration":
+  fmt.Fprintln(out,"task-mecca orchestration environment --provider codex --root-session-id EXACT_CURRENT_NATIVE --json")
+  fmt.Fprintln(out,"task-mecca orchestration decide --project DIR --provider codex --root-session-id EXACT_NATIVE --root-t3-thread-id EXACT_T3 --event dispatch_requested --environment PROFILE.json --separate-worktree --source-cwd ABSOLUTE_CWD --base COMMITTED_SHA --json")
+  fmt.Fprintln(out,"Environment profiles are diagnostic input. Tool support, creation and linkage require fresh host adapter observations; CLI never invokes MCP or authorizes dispatch from JSON.")
 		fmt.Fprintln(out,"task-mecca orchestration modes --project DIR --provider codex --json")
 		fmt.Fprintln(out,"task-mecca handoff capability record --project DIR codex can_spawn_subagent supported --evidence OBSERVED_PROOF --json")
 		fmt.Fprintln(out,"task-mecca orchestration configure --project DIR --provider codex --root-session-id EXACT --mode B --confirmed --timezone Asia/Seoul --json")

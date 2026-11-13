@@ -91,3 +91,63 @@ Policy, mode persistence, display-name generation and exact-identity Root handof
 T3 `delegate_task.title` uses the same generated string at creation. The acting agent must separately read the exact current T3 thread with official tools, update only if needed and reread. The CLI never trusts caller JSON as T3 or provider verification. It emits pending T3 verification even after successful native verification. Same native session resumes preserve group/role/worker/generation; generated-name identity conflicts fail without a write. No bulk historical rename is provided.
 
 Commands, mandatory role steps, status meanings and primary source citations are in the managed-source [execution protocol](../goassets/template/_task_mecca/framework/EXECUTION_PROTOCOL.md#공식-세션-이름-적용과-확인-필수). Update the canonical `goassets/template` sources only; use the existing installer/updater consent and backup policy for installed projects. No global or running-project framework sync is implied by a source edit.
+
+
+## Environment-aware dispatch boundary (A-76)
+
+At Root startup and resume, collect current process metadata with
+`orchestration environment --provider codex --root-session-id EXACT_CURRENT_NATIVE --json`.
+The command reads only the selected provider's current identity and the current T3 environment marker.
+It does not enumerate MCP tools or prove native/T3 linkage: tools and tracking remain unknown.
+The host agent independently reads its actual callable schemas and exact native/T3 linkage,
+then supplies a minimal `Environment` profile: host (`t3`, `native`, `other`, `unknown`),
+provider, exact Root native session and T3 thread IDs, separately observed collaboration handle,
+creation/communication tool support (`supported`, `unsupported`, `unknown`), tracking visibility,
+source and checked-at timestamps. A missing collaboration handle remains missing.
+Collect no prompts, secrets, transcripts or raw provider audit files. Do not copy identities from a display name.
+
+Use the existing decision engine, rather than deciding transport from conversational memory:
+
+```sh
+task-mecca orchestration decide --project CANONICAL --provider codex \
+  --root-session-id EXACT_NATIVE --root-t3-thread-id EXACT_T3 \
+  --event dispatch_requested --environment PROFILE.json --separate-worktree \
+  --source-cwd ABSOLUTE_SOURCE_CWD --base EXACT_COMMITTED_SHA --json
+```
+
+`PROFILE.json` accepts either an Environment object or the environment command's wrapper.
+This is **diagnostic policy input** even if it contains `verified`, `created` or `execution_authorized` assertions.
+`dispatch.execution_authorized` remains false. `allowed` means the requested policy route can be planned;
+it does not mean that a tool exists, a session was created, Full Access passed, or work may start.
+Saved exact-Root mode is reused and a conflicting requested mode is rejected. Existing A–D selections,
+name allocation, direction-based communication and recovery stay in their original owners.
+Legacy startup calls remain compatible but explicitly require environment evidence before actual dispatch.
+
+T3 separate worktree selects `delegate_task` with `isolation=worktree`, including independently observed
+schema support for that isolation. Missing support blocks the request with evidence/resume guidance;
+there is no native, provider, model, settings or mode fallback. Session modes C/D have no assumed
+T3 subagent/worktree route. Shared subagent work selects the actual native tool only when observed supported.
+For non-T3 environments the same explicit support checks apply; native separate-worktree support is not invented.
+Native children may be absent from T3 Thread Details/Lineage. Verify them through the actual native
+creation receipt and the supported status/read tool on its exact returned handle. Record that visibility limit.
+T3 dispatch requires an independent exact `t3_thread_read` after creation and verified parent linkage,
+native ID, actual cwd/worktree and committed base. A collaboration handle is not a native ID or T3 ID.
+
+`HostAdapter` is the typed boundary for an actual tool-owning host integration. It is not a CLI-loaded JSON
+adapter, provider manager or an implementation of MCP transport. `CheckDispatchBoundary` re-observes the
+exact environment and current tool schema, then fresh canonical Full Access within the same check.
+The host must call it immediately before the actual tool call, while preserving contract/runtime/assignment/handoff gates.
+No concrete host dispatch is performed by the CLI. Follow the decision's instructions with the real host tools;
+unsupported or unobserved host integration stays unverified rather than becoming an apparent success.
+
+`VerifyCreation` takes a real creation receipt and independently reads it through the host adapter.
+It checks exact native/T3 IDs, selected provider, source cwd, separate worktree and committed base.
+Created-but-unlinked is a partial result, never START, tracked success, or proof of a technical interruption.
+START/binding and Activity remain the existing A-72 procedures; typed communication and source/display
+separation remain A-74/A-75. Dispatch request, assignment preparation, creation, START and tracking proof
+are distinct evidence boundaries. Re-observe after resume, environment change or identity conflict;
+profiles expire after five minutes, and cached support is never dispatch authority.
+
+An existing instruction violation, missing product environment input, and an unknown historical interruption
+cause are different findings. Preserve the evidence for each; do not infer a historical cause or phase from
+missing collection. Dev integration/CI/release/operating installation also remain separate Controller-owned results.

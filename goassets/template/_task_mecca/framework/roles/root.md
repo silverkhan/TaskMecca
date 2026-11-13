@@ -289,3 +289,10 @@ Codex는 공식 `thread/read`를 exact native ID와 `includeTurns=false`로 조�
 T3 수집은 기존 읽기 전용 구조화 관측 경로를 사용한다. 프로젝트 workspace 경로와 thread 소유권, native ID, 최신 run/attempt의 연결을 검증하고 살아 있는 T3 owner를 확인한다. 연결이 없거나 모호하거나 다른 프로젝트이면 제목을 사용하지 않는다. 제목과 연결은 검증 전후 다시 읽으며 변경 중이면 다음 갱신까지 확인 필요로 처리한다. caller JSON이나 전달받은 제목만으로 검증 성공을 주장하지 않는다. 구조화 저장소가 미지원이면 우회 SQL이나 transcript 추출을 추가하지 않는다.
 
 이름·제목의 변경, 삭제, 빈 값도 갱신 결과다. 성공 결과는 최대 30초, 조회 불가는 10초 간격으로 재조회하며 이전 이름을 계속 유지하지 않는다. `display_name_status`와 `display_name_checked_at`으로 확인 상태와 조회 시점을 구분한다. 표시 metadata는 attempt/assignment/claim/권한/liveness의 근거가 아니며 기존 판정을 변경하지 않는다. 관측은 SQLite/JSONL 수동 수정, native/T3 rename, 운영 설치와 별개다.
+
+
+## 실행환경에 따른 생성 경로 (A-76)
+
+초기화·재개 때 현재 exact Root의 `orchestration environment` process 관측과 host의 실제 생성·통신 도구 schema/연결 관측을 분리해 수집한다. 배정 전 `orchestration decide --event dispatch_requested --environment PROFILE.json`에 exact Root/native/T3, 실제 source cwd/committed base와 별도 worktree 요구를 넣고 반환된 경로·검증 지시를 따른다. 전체 명령과 경계는 [실행환경에 따른 생성 경로](../EXECUTION_PROTOCOL.md#실행환경에-따른-생성-경로-a-76)를 따른다.
+
+T3 별도 worktree는 실제 `delegate_task(isolation=worktree)`만 사용한다. unknown/stale/미지원일 때 임의 fallback하지 않는다. 호출 직전 fresh Full Access·현재 schema를 재확인하고 생성 후 exact 영수증/T3 parent 연결/cwd/base를 독립 검증한다. shared/native의 T3 Thread Details/Lineage 한계와 실제 handle 상태 조회 방법을 배정 메시지에 포함한다. 기존 mode/group/name allocator, START/Activity, typed transport 및 source/표시 이름 경계를 보존한다. JSON profile과 도구 ACK를 실행·착수·추적 검증 성공으로 기록하지 않는다.
