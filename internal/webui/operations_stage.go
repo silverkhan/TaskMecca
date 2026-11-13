@@ -66,10 +66,13 @@ func exactControllerStageLive(h handoff.Handoff, attempts []runtimeobs.Attempt, 
 		}
 		exact = a
 	}
-	if exact == nil || exact.AgentPath != h.Target.AgentPath || exact.RuntimeAgentID != h.Target.RuntimeAgentID || exact.SessionID != h.Target.SessionID || exact.Provider != h.Target.Provider || exact.BindingState != runtimeobs.BindingBound || exact.StateEvidenceSource != runtimeobs.EvidenceHook || (exact.StateObservationQuality != runtimeobs.QualityObserved && exact.StateObservationQuality != runtimeobs.QualityAuthoritative) || exact.CurrentState != runtimeobs.StateRunning || exact.Terminal {
+	if exact == nil || exact.AgentPath != h.Target.AgentPath || exact.RuntimeAgentID != h.Target.RuntimeAgentID || exact.SessionID != h.Target.SessionID || exact.Provider != h.Target.Provider || exact.BindingState != runtimeobs.BindingBound || !runtimeobs.HasObservedExecution(*exact) || exact.CurrentState != runtimeobs.StateRunning || exact.Terminal {
 		return false
 	}
-	last, err := time.Parse(time.RFC3339Nano, exact.LastActivityAt)
+	if exact.StateEvidenceSource == runtimeobs.EvidenceT3 && !operationObservedExecution(*exact, now) {
+		return false
+	}
+	last, err := time.Parse(time.RFC3339Nano, operationExecutionClock(*exact))
 	return err == nil && !last.Before(claimedAt.Add(-15*time.Minute)) && !last.After(now)
 }
 
@@ -204,10 +207,10 @@ func projectOperationStages(project string, assignments []runtimeobs.Assignment,
 			s.Stage = "runtime_observation_pending"
 			s.Evidence = "latest assignment bound to runtime"
 			duration = 0
-			if attempt.CurrentState == runtimeobs.StateRunning && !attempt.Terminal && attempt.StateEvidenceSource == runtimeobs.EvidenceHook && (attempt.StateObservationQuality == runtimeobs.QualityObserved || attempt.StateObservationQuality == runtimeobs.QualityAuthoritative) {
+			if attempt.CurrentState == runtimeobs.StateRunning && !attempt.Terminal && operationObservedExecution(attempt, now) {
 				s.Stage = "worker_running"
 			}
-			if attempt.CurrentState == runtimeobs.StateCompleted && attempt.Terminal && attempt.StateEvidenceSource == runtimeobs.EvidenceHook && (attempt.StateObservationQuality == runtimeobs.QualityObserved || attempt.StateObservationQuality == runtimeobs.QualityAuthoritative) {
+			if attempt.CurrentState == runtimeobs.StateCompleted && attempt.Terminal && operationObservedExecution(attempt, now) {
 				s.Stage = "worker_report_pending"
 				s.Since = attempt.EndedAt
 				s.Evidence = "observed worker completion; report pending"
@@ -346,7 +349,7 @@ func latestOperationRecovery(item operationIncident, attempts []runtimeobs.Attem
 			continue
 		}
 		for _, a := range attempts {
-			if a.AttemptID != s.AttemptID || a.BindingState != runtimeobs.BindingBound || a.Terminal || a.CurrentState != runtimeobs.StateRunning || a.StateEvidenceSource != runtimeobs.EvidenceHook || (a.StateObservationQuality != runtimeobs.QualityObserved && a.StateObservationQuality != runtimeobs.QualityAuthoritative) {
+			if a.AttemptID != s.AttemptID || a.BindingState != runtimeobs.BindingBound || a.Terminal || a.CurrentState != runtimeobs.StateRunning || !operationObservedExecution(a, now) {
 				continue
 			}
 			observed, e := time.Parse(time.RFC3339Nano, a.LastObservedAt)
@@ -363,10 +366,15 @@ func operationSourceAlreadyResolved(signal operationIncident, journal operationJ
 		return false
 	}
 	for _, prior := range journal.Incidents {
-		if prior.RecoveredAt == "" {continue}
+		if prior.RecoveredAt == "" {
+			continue
+		}
 		switch prior.RecoveryEvidence {
 		case "same assignment has recent observed Hook execution; prior runtime evidence unchanged",
+			"same assignment has recent observed execution; prior runtime evidence unchanged",
 			"same attempt has later observed Hook running state; previous warning retired without changing runtime evidence",
+			"same attempt has later observed execution running state; previous warning retired without changing runtime evidence",
+			"same attempt has confirmed execution completion; previous warning retired without changing runtime evidence",
 			"same attempt has confirmed Hook completion; previous warning retired without changing runtime evidence":
 		default:
 			continue
@@ -379,8 +387,10 @@ func operationSourceAlreadyResolved(signal operationIncident, journal operationJ
 		// source has now gone quiet for a full stale interval, this is a new
 		// observable no-signal episode and needs a new warning.
 		if prior.RecoveredAt == signal.LastObservedAt {
-			at,err:=time.Parse(time.RFC3339Nano,prior.RecoveredAt)
-			if err!=nil || at.After(now) || now.Sub(at)>=runtimeobs.StaleWarnDuration(){continue}
+			at, err := time.Parse(time.RFC3339Nano, prior.RecoveredAt)
+			if err != nil || at.After(now) || now.Sub(at) >= runtimeobs.StaleWarnDuration() {
+				continue
+			}
 		}
 		if prior.Project == signal.Project && prior.AttemptID == signal.AttemptID && prior.AssignmentID == signal.AssignmentID && prior.TaskID == signal.TaskID && prior.AgentPath == signal.AgentPath && prior.Kind == signal.Kind && prior.Evidence == signal.Evidence && sameSourceClock {
 			return true

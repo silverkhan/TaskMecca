@@ -79,11 +79,7 @@ func operationRecoveryPolicy(project string, ledger runtimeobs.Ledger, now time.
 	if !ok {
 		return out
 	}
-	for _, f := range ledger.Findings {
-		if f.Severity != "info" {
-			return out
-		}
-	}
+
 	scan, err := backlog.ReadLifecycleTransitions(project)
 	if err != nil || len(scan.Findings) != 0 {
 		return out
@@ -111,6 +107,9 @@ func operationRecoveryPolicy(project string, ledger runtimeobs.Ledger, now time.
 			if t.After(at) {
 				latest, at = a, t
 			}
+		}
+		if operationTaskBlocked(ledger, id) {
+			continue
 		}
 		if !valid || latest.AgentPath != strings.TrimSpace(matches[0].Fields["Agent"]) {
 			continue
@@ -141,7 +140,7 @@ func operationRecoveryPolicy(project string, ledger runtimeobs.Ledger, now time.
 			}
 			count++
 			t, e := time.Parse(time.RFC3339Nano, a.LastObservedAt)
-			observed = e == nil && !t.IsZero() && !t.Before(at) && !t.After(now) && a.StateEvidenceSource == runtimeobs.EvidenceHook && (a.StateObservationQuality == runtimeobs.QualityObserved || a.StateObservationQuality == runtimeobs.QualityAuthoritative)
+			observed = e == nil && !t.IsZero() && !t.Before(at) && !t.After(now) && operationObservedExecution(a, now)
 		}
 		out[id] = count == 1 && observed
 	}
@@ -150,11 +149,7 @@ func operationRecoveryPolicy(project string, ledger runtimeobs.Ledger, now time.
 
 func operationPolicies(project string, ledger runtimeobs.Ledger, now time.Time) map[string]operationPolicy {
 	out := map[string]operationPolicy{}
-	for _, finding := range ledger.Findings {
-		if finding.Severity != "info" {
-			return out
-		}
-	}
+
 	scan, err := backlog.ReadLifecycleTransitions(project)
 	if err != nil || len(scan.Findings) != 0 {
 		return out
@@ -172,6 +167,9 @@ func operationPolicies(project string, ledger runtimeobs.Ledger, now time.Time) 
 			continue
 		}
 		row := matches[0]
+		if operationTaskBlocked(ledger, id) {
+			continue
+		}
 		kind, reason := "", ""
 		if row.State == "done" && operationMeaningfulEvidence(row.Fields["결과"]) && operationMeaningfulEvidence(row.Fields["검증"]) {
 			kind, reason = "completed", "canonical_task_completed"
@@ -236,6 +234,10 @@ func operationPolicies(project string, ledger runtimeobs.Ledger, now time.Time) 
 			if !strings.EqualFold(a.TaskID, id) {
 				continue
 			}
+			if operationAttemptBlocked(ledger, a) {
+				valid = false
+				break
+			}
 			// Pre-assignment/manual legacy attempts are separate evidence.
 			// They cannot retire an attempt warning or veto an unrelated
 			// assignment-only stage. Their actual errors remain classified.
@@ -264,7 +266,7 @@ func operationPolicies(project string, ledger runtimeobs.Ledger, now time.Time) 
 			// attempt after Controller records the hold. Trust a real terminal
 			// Hook, not polling time or a guessed grace window. Fresh running
 			// activity/new bindings and post-terminal activity still fail closed.
-			if latest.AttemptID == a.AttemptID && latest.AssignmentID == a.BindingEvidence["assignment_id"] && a.CurrentState == runtimeobs.StateCompleted && a.Terminal && a.StateEvidenceSource == runtimeobs.EvidenceHook && (a.StateObservationQuality == runtimeobs.QualityObserved || a.StateObservationQuality == runtimeobs.QualityAuthoritative) {
+			if latest.AttemptID == a.AttemptID && latest.AssignmentID == a.BindingEvidence["assignment_id"] && a.CurrentState == runtimeobs.StateCompleted && a.Terminal && operationObservedExecution(a, now) {
 				ended, e := time.Parse(time.RFC3339Nano, a.EndedAt)
 				if e != nil || ended.IsZero() || ended.After(now) {
 					valid = false

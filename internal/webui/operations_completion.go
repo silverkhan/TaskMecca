@@ -23,21 +23,17 @@ type operationCompletionResolution struct {
 }
 
 type operationCompletion struct {
-	project     string
-	taskID      string
-	agentPath   string
-	assignedAt  time.Time
-	completedAt time.Time
-	resolution  operationCompletionResolution
+	project                                     string
+	taskID                                      string
+	provider, sessionID, runtimeAgentID, turnID string
+	agentPath                                   string
+	assignedAt                                  time.Time
+	completedAt                                 time.Time
+	resolution                                  operationCompletionResolution
 }
 
 func operationCompletionEvidence(project string, ledger runtimeobs.Ledger, now time.Time) map[string]operationCompletion {
 	out := map[string]operationCompletion{}
-	for _, finding := range ledger.Findings {
-		if finding.Severity != "info" {
-			return out
-		}
-	}
 	scan, err := backlog.ReadLifecycleTransitions(project)
 	if err != nil || len(scan.Findings) != 0 {
 		return out
@@ -65,6 +61,9 @@ func operationCompletionEvidence(project string, ledger runtimeobs.Ledger, now t
 		}
 	}
 	for _, attempt := range ledger.Attempts {
+		if operationAttemptBlocked(ledger, attempt) {
+			continue
+		}
 		id := strings.ToUpper(attempt.TaskID)
 		matches := rows[id]
 		if len(matches) != 1 || matches[0].State != "done" || attempt.BindingState != runtimeobs.BindingBound {
@@ -155,7 +154,7 @@ func operationCompletionEvidence(project string, ledger runtimeobs.Ledger, now t
 		if attempt.CurrentState == runtimeobs.StateCompleted {
 			reason = "task_completed_runtime_observed"
 		}
-		out[attempt.AttemptID] = operationCompletion{project: project, taskID: id, agentPath: attempt.AgentPath, assignedAt: assigned, completedAt: completed,
+		out[attempt.AttemptID] = operationCompletion{provider: attempt.Provider, sessionID: attempt.SessionID, runtimeAgentID: attempt.RuntimeAgentID, turnID: attempt.TurnID, project: project, taskID: id, agentPath: attempt.AgentPath, assignedAt: assigned, completedAt: completed,
 			resolution: operationCompletionResolution{Reason: reason, EventID: completion.EventID, CompletedAt: completion.OccurredAt,
 				AssignmentID: assignmentID, AttemptID: attempt.AttemptID, TaskPath: row.Path, RecordedAt: now.UTC().Format(time.RFC3339Nano)}}
 	}
@@ -193,7 +192,7 @@ func operationCompletedUnknown(incident operationIncident, completions map[strin
 		return nil
 	}
 	completion, ok := completions[incident.AttemptID]
-	if !ok || filepath.Clean(incident.Project) != filepath.Clean(completion.project) || !strings.EqualFold(incident.TaskID, completion.taskID) || incident.AgentPath != completion.agentPath {
+	if !ok || (incident.AssignmentID != "" && incident.AssignmentID != completion.resolution.AssignmentID) || !operationIncidentIdentityMatches(incident, runtimeobs.Attempt{Provider: completion.provider, SessionID: completion.sessionID, RuntimeAgentID: completion.runtimeAgentID, TurnID: completion.turnID}) || filepath.Clean(incident.Project) != filepath.Clean(completion.project) || !strings.EqualFold(incident.TaskID, completion.taskID) || incident.AgentPath != completion.agentPath {
 		return nil
 	}
 	observed, err := time.Parse(time.RFC3339Nano, incident.LastObservedAt)
@@ -245,12 +244,22 @@ func ReconcileCompletedOperation(project, incidentID string, now time.Time, dryR
 		if incident.Resolution != nil && incident.RecoveredAt != "" {
 			return map[string]any{"project": project, "dry_run": dryRun, "notifications_sent": false, "changed": false, "incident": *incident}, nil
 		}
+		if incident.RecoveredAt != "" {
+			return map[string]any{"project": project, "dry_run": dryRun, "notifications_sent": false, "changed": false, "incident": *incident}, nil
+		}
 		resolution := operationCompletedUnknown(*incident, completions)
-		if resolution == nil || incident.RecoveredAt != "" {
+		if at, evidence, ok := operationExactAttemptRecovered(*incident, operationUnconflictedAttempts(ledger), now); ok {
+			incident.RecoveryEvidence = evidence
+			incident.RecoveredAt = at
+		} else if resolution != nil {
+			incident.Resolution = resolution
+			incident.RecoveredAt = now.UTC().Format(time.RFC3339Nano)
+		} else if policy := operationPolicyForIncident(*incident, operationPolicies(project, ledger, now)); policy != nil {
+			incident.PolicyResolution = policy
+			incident.RecoveredAt = now.UTC().Format(time.RFC3339Nano)
+		} else {
 			return nil, fmt.Errorf("incident %s lacks unique verified completion mapping", incidentID)
 		}
-		incident.Resolution = resolution
-		incident.RecoveredAt = now.UTC().Format(time.RFC3339Nano)
 		if !dryRun {
 			if err := writeOperationJournal(project, journal); err != nil {
 				return nil, err
