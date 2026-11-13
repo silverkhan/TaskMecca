@@ -9,7 +9,8 @@ import (
 	"github.com/silverkhan/TaskMecca/internal/runtimeobs"
 )
 
-func TestWorkloadLinksBoundAttemptToObservedSessionName(t *testing.T) {
+func TestWorkloadLinksBoundAttemptWithoutPromotingLegacySessionName(t *testing.T) {
+	t.Setenv("PATH", t.TempDir())
 	project := t.TempDir()
 	backlogDir := filepath.Join(project, "_task_mecca", "data", "backlog")
 	if err := os.MkdirAll(backlogDir, 0755); err != nil {
@@ -33,7 +34,7 @@ func TestWorkloadLinksBoundAttemptToObservedSessionName(t *testing.T) {
 	}
 	item := snapshot["all_items"].(map[string]map[string]any)["B-455"]
 	runtime := item["runtime_attempt"].(map[string]any)
-	if runtime["attempt_id"] != "run-b455" || runtime["session_name"] != "EMPFUND B-455" {
+	if runtime["attempt_id"] != "run-b455" || runtime["root_session_id"] == "" || runtime["session_name"] == "EMPFUND B-455" || runtime["session_name_source"] != "task_mecca_fallback" {
 		t.Fatalf("runtime projection=%+v", runtime)
 	}
 }

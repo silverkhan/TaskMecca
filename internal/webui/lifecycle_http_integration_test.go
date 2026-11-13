@@ -144,7 +144,11 @@ func TestDurableLifecycleHTTPProjectionWithAndWithoutGit(t *testing.T) {
 				sent.Add(1)
 				return &http.Response{StatusCode: 200, Header: http.Header{"Content-Type": []string{"application/json"}}, Body: io.NopCloser(strings.NewReader(`{"ok":true,"result":{"message_id":1}}`)), Request: r}, nil
 			}}
-			defer func() { http.DefaultTransport = previousTransport }()
+			defer func() {
+				// Join fixture-owned delivery work before restoring its transport.
+				stopProjectAttentionFeeds(project)
+				http.DefaultTransport = previousTransport
+			}()
 			for i, event := range []backlog.LifecycleTransition{
 				{EventID: "http-register", TaskID: "B-1", Kind: "registered", Actor: "/root/registrar", EvidenceSource: "registrar_report"},
 				{EventID: "http-assign", TaskID: "B-1", Kind: "assigned", Actor: "/root/controller", EvidenceSource: "controller_report"},
@@ -161,6 +165,19 @@ func TestDurableLifecycleHTTPProjectionWithAndWithoutGit(t *testing.T) {
 			handler, err := Handler(project, "", "test")
 			if err != nil {
 				t.Fatal(err)
+			}
+			// Startup delivers registration asynchronously. Wait for its actual
+			// publication (which follows delivery), rather than racing the later
+			// explicit Worker-start delivery against the startup baseline.
+			feed := ensureDurableAttentionFeed(project, "")
+			updates, initial, unsubscribe := feed.subscribe()
+			defer unsubscribe()
+			if len(initial) == 0 {
+				select {
+				case <-updates:
+				case <-time.After(2 * time.Second):
+					t.Fatal("fixture startup delivery did not publish")
+				}
 			}
 			request := func(path string) map[string]any {
 				t.Helper()

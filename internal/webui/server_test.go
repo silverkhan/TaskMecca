@@ -787,6 +787,9 @@ func TestRuntimeSessionManagerClassifiesAndExposesStorageAPI(t *testing.T) {
 }
 
 func TestRuntimeRootSessionAPIAndCleanup(t *testing.T) {
+	// Keep this fixture independent of installed provider tools. Legacy Hook
+	// names must not be promoted when official metadata is unavailable.
+	t.Setenv("PATH", t.TempDir())
 	root := t.TempDir()
 	backlogDir := filepath.Join(root, "_task_mecca", "data", "backlog")
 	if err := os.MkdirAll(backlogDir, 0755); err != nil {
@@ -878,7 +881,7 @@ func TestRuntimeRootSessionAPIAndCleanup(t *testing.T) {
 		}
 		if row["cleanup_eligible"] == true {
 			cleanupID, _ = row["root_session_id"].(string)
-			if row["display_name"] != "오래된 Root" {
+			if row["display_name_source"] != "task_mecca_fallback" || row["display_name_status"] != "unavailable" || row["display_name"] == "오래된 Root" || !strings.HasPrefix(row["display_name"].(string), "Root · ") {
 				t.Fatalf("cleanup row=%+v", row)
 			}
 			if row["storage_bytes"].(float64) <= 0 {
