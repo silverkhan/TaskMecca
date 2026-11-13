@@ -242,3 +242,16 @@ are different quantities. Missing Activity remains unmeasured after completion.
 ## Root 표시 이름의 관측 경계 (A-75)
 
 [세션 가이드](SESSION_GUIDE.md#t3-환경의-root-표시-이름-수집-a-75)의 exact native/T3/project 연결 검증과 갱신 절차를 따른다. 검증된 T3 제목은 `t3_title`로만 표시한다. 미지원·실패·모호한 연결은 확인 필요 상태이며 사용자 Root rename이나 provider 저장소 수동 수정으로 복구하지 않는다. 표시 이름은 실행 신원과 Activity/attempt/assignment/claim/권한/liveness 판정에 영향을 주지 않는다.
+
+
+## 실행환경에 따른 생성 경로 (A-76)
+
+Root 초기화와 재개 시 `task-mecca orchestration environment --provider codex --root-session-id EXACT_CURRENT_NATIVE --json`으로 현재 process 환경을 수집한다. 호스트/provider/exact native/T3 ID, 생성·통신 도구의 지원/미지원/미확인, 추적 노출 범위와 근거 출처·확인시각을 구분한다. CLI가 볼 수 없는 MCP 도구와 실제 native/T3 연결은 unknown이며, 실제 host의 현재 callable schema와 exact 공식 조회로 보완한다. 비밀·프롬프트·전사를 수집하지 않는다. 협업 handle·native ID·T3 thread ID·표시 이름을 서로 대입하지 않는다.
+
+배정 전에 기존 엔진 `orchestration decide --project CANONICAL --provider PROVIDER --root-session-id EXACT_NATIVE --root-t3-thread-id EXACT_T3 --event dispatch_requested --environment PROFILE.json --separate-worktree --source-cwd ABSOLUTE_SOURCE_CWD --base EXACT_COMMITTED_SHA --json`을 사용한다. 별도 worktree가 필요 없으면 그 flag를 생략한다. exact Root에 저장된 A–D/group/mode를 유지하며 명시 승인 없는 변경은 거부한다. JSON profile은 진단 입력이며 지원·생성·연결 검증이나 실행 권한이 아니다. `allowed`는 경로 계획 가능 여부이고 `dispatch.execution_authorized`는 false다. CLI는 MCP를 몰래 호출하지 않는다.
+
+T3 별도 worktree는 실제 `delegate_task(isolation=worktree)`만 선택하며 현재 schema의 worktree 지원까지 확인한다. 미지원/미확인/stale/ID 충돌이면 필요한 근거와 같은 경로의 재개 조건을 보고한다. 임의 native/provider/model/settings/mode fallback은 금지한다. C/D의 독립 세션을 T3 subagent로 바꾸지 않는다. shared/native가 허용되면 T3 Thread Details/Lineage에 나타나지 않을 수 있음을 보고하고 실제 native 생성 영수증과 지원되는 exact handle 상태 조회로 확인한다. 비T3에서도 확인되지 않은 별도 worktree 기능을 가정하지 않는다.
+
+실제 생성 도구 호출 직전 host adapter 경계에서 현재 환경·해당 callable schema와 canonical fresh Full Access를 새로 확인한다. 기존 contract/runtime/assignment/handoff gate를 유지한다. 생성 뒤 exact native/T3/session, source cwd, 실제 worktree와 committed base 및 필요한 parent T3 연결을 독립 조회한다. 도구 요청/배정 준비/실제 생성/Worker START/추적 검증을 구분하며 created-but-unlinked를 성공·START·기술적 중단 원인으로 승격하지 않는다. 기존 START/bind/Activity, typed transport, 표시 이름 분리 절차와 naming directive를 그대로 적용한다. 재개·환경변경·충돌 시 재관측하고 과거 snapshot을 현재 도구 지원 근거로 쓰지 않는다.
+
+구현 경계·profile schema·영수증 검증은 `docs/orchestration-execution-modes.md` 및 기존 `internal/orchestration` 엔진이 정의한다. 지침 미준수, 제품 환경 입력 부족, 원인 미확인의 과거 중단을 구분하고 미측정 phase를 합성하지 않는다. Controller가 canonical 운영 기록과 최종 수용을 소유한다.
