@@ -48,6 +48,19 @@ dispatch 전 어느 gate라도 실패하면 dispatch를 중단하고 원본에 �
 
 ## Worker DONE/BLOCKED transport checklist
 
+Tool addressing precedes the checklist's message/resume choice. Native UUIDs
+belong to runtime observation/binding; they are not collaboration handles.
+`handoff transport-plan EXACT_HANDOFF --project ORIGINAL --json` returns the
+verified current tool/address, or an explicit hold/unsupported reason. The
+collaboration calls below require that tool's observed exact agent handle.
+When only an exact T3 route is supported, use `t3_thread_read` + current native
+episode verification, then fresh canonical Full Access immediately before a
+completed-target `t3_thread_send(threadId=EXACT_T3, mode=auto)`. Never infer a
+handle from a name, role, UUID or transport thread. Preserve original failure,
+stable report ID, exact recipient, report path, checkpoint owner/resume condition.
+An actual transport ACK does not claim/apply the handoff; Controller recovery
+continues independently. Unknown delivery must be reconciled before retry.
+
 Worker final 또는 Root 보고는 transport 성공이 아니다. 같은 결과에는 안정적인 report/handoff ID를 사용하고 재시도에도 유지한다.
 
 1. 수용 기준별 결과, commit/push/PR/검증, 미커밋·ignored 파일, 잔여와 재개조건을 보고한다. `/tmp`는 임시 전달용으로만 사용한다. 실패/unknown 증적은 dispatch에서 Controller가 지정한 보존 경로 또는 Worker 구현 worktree의 별도 `handoff-evidence/` 경로에 안정적인 report/handoff ID로 durable report 파일을 보존한다. 이 경로는 운영원장이 아니며 backlog/runtime 사본 안에 두지 않는다. 원본 handoff prepare/mark와 durable 원장 기록은 Controller에게 위임한다.
