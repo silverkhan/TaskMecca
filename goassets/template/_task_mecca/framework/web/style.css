@@ -2346,7 +2346,7 @@ select.tm-combo-native{position:absolute!important;width:1px!important;height:1p
 .workflow-empty,.workflow-load-error{font-size:12px;line-height:1.7;padding:10px 0}
 .workflow-load-error button{font:inherit;min-height:44px;padding:6px 12px;color:var(--text);background:var(--surface);border:1px solid var(--border);border-radius:6px}
 .workflow-section #activityLedgerDetail{border:0;border-radius:0;padding:10px 0;margin-top:14px}
-.workflow-section #workflowLifecycleEvidenceBody{padding-top:2px}
+.lifecycle-section #workflowLifecycleEvidenceBody{padding-top:2px}
 @media(max-width:720px){
   .workflow-context{margin-bottom:16px}
   .workflow-context-line{gap:4px 12px}

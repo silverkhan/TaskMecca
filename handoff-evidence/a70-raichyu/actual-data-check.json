@@ -1,0 +1,70 @@
+{
+  "read_only": true,
+  "read_no_write_equal": true,
+  "files_hashed": 43370,
+  "source_digest": "d5bd00c4266f0da04a84d7263fa1ef4b1f6bb5dddf334e59daf98aeabc1c4ff9",
+  "runtime": {
+    "task_id": "A-68",
+    "attempt_id": "run-ad478c65e15a5d8a",
+    "runtime_agent_id": "01a1ce73-7221-7ad1-adf6-47728b52348d",
+    "agent_path": "/root/controller/isanghaessi",
+    "assignment_id": "a68-cycle-badges-20261112",
+    "binding_state": "bound",
+    "state": "completed",
+    "terminal": true,
+    "ended_at": "2026-11-12T06:48:19.952955Z",
+    "source": "t3_structured",
+    "observed_execution_verified": true
+  },
+  "native_completed_at": "2026-11-12T06:46:40.368Z",
+  "installed": {
+    "task_id": "A-68",
+    "phase": "completed",
+    "snapshot_trust": "pending",
+    "open_activities": 1,
+    "worker_intervals": [
+      {
+        "kind": "execution_report",
+        "end_evidence": "unobserved",
+        "measured": false
+      },
+      {
+        "kind": "activity_open",
+        "measured": false
+      }
+    ]
+  },
+  "candidate": {
+    "phase": "completed",
+    "worker_metric": {
+      "status": "partial",
+      "event_count": 1,
+      "segment_count": 0
+    },
+    "raw_ledger_open_activities": 1,
+    "worker_intervals": [
+      {
+        "kind": "execution_report",
+        "end": "2026-11-12T06:48:19.952955Z",
+        "end_evidence": "native_terminal",
+        "end_evidence_source": "t3_structured",
+        "runtime_terminal": {
+          "observed_at": "2026-11-12T06:48:19.952955Z",
+          "source": "t3_structured"
+        },
+        "measured": false
+      },
+      {
+        "kind": "activity_unreported",
+        "end": "2026-11-12T06:48:19.952955Z",
+        "end_evidence": "native_terminal",
+        "end_evidence_source": "t3_structured",
+        "runtime_terminal": {
+          "observed_at": "2026-11-12T06:48:19.952955Z",
+          "source": "t3_structured"
+        },
+        "measured": false
+      }
+    ]
+  }
+}
