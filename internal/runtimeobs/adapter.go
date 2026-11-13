@@ -122,9 +122,8 @@ func FilterLedger(ledger Ledger, provider string) Ledger {
 }
 
 type CodexThreadMetadata struct {
-	ID    string
-	Name  string
-	Title string
+	ID   string
+	Name string
 }
 type codexRPCMessage struct {
 	ID     any             `json:"id,omitempty"`
@@ -193,23 +192,23 @@ var (
 )
 
 func EnrichCodexSessionName(project, sessionID string, now time.Time) (ExecutionEvent, bool, error) {
-	meta, err := resolveCodexThreadMetadata(context.Background(), sessionID)
-	if err != nil {
-		return ExecutionEvent{}, false, err
+	if strings.TrimSpace(sessionID) == "" {
+		return ExecutionEvent{}, false, errors.New("session_id is required")
 	}
-	if meta.Name == "" && meta.Title == "" {
-		return ExecutionEvent{}, false, nil
-	}
+	observation := observeRootName(project, strings.TrimSpace(sessionID), now)
 	event := ExecutionEvent{
 		EventKind: "session_metadata", ObservedAt: now.UTC().Format(time.RFC3339Nano),
 		Provider: "codex", SessionID: strings.TrimSpace(sessionID),
-		SessionName: meta.Name, SessionTitle: meta.Title,
-		AttemptID: "rootmeta-" + rootSessionIDFor("codex", sessionID),
-		Reason:    "codex_app_server", EvidenceSource: EvidenceReconciled,
-		ObservationQuality: QualityObserved,
+		RootName:       &observation,
+		AttemptID:      "rootmeta-" + rootSessionIDFor("codex", sessionID),
+		Reason:         "root_display_metadata_v1",
+		EvidenceSource: EvidenceReconciled, ObservationQuality: QualityObserved,
+	}
+	if observation.Source == "provider_name" {
+		event.SessionName = observation.Name
 	}
 	event.EventID = eventIDFor(event)
-	if err = AppendExecutionEvent(project, event); err != nil {
+	if err := AppendExecutionEvent(project, event); err != nil {
 		return ExecutionEvent{}, false, err
 	}
 	return event, true, nil
@@ -249,11 +248,16 @@ func RefreshCodexRootNames(project string, ledger Ledger, now time.Time) (bool, 
 		if !wrote {
 			continue
 		}
-		resolvedName := event.SessionName
-		if resolvedName == "" {
-			resolvedName = event.SessionTitle
+		resolvedName := rootFallbackName(root.CreatedAt)
+		if event.RootName != nil && event.RootName.Name != "" {
+			resolvedName = event.RootName.Name
 		}
-		if resolvedName == root.DisplayName {
+		if event.RootName != nil && event.RootName.Status == "unavailable" {
+			codexNameCacheMu.Lock()
+			codexNameCache[key] = now.Add(codexNameNegativeTTL)
+			codexNameCacheMu.Unlock()
+		}
+		if resolvedName == root.DisplayName && event.RootName != nil && event.RootName.Source == root.DisplayNameSource && event.RootName.Status == root.DisplayNameStatus {
 			continue
 		}
 		changed = true

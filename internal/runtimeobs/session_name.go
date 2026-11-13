@@ -72,9 +72,8 @@ func (c *codexMetadataClient) read(id string) (CodexThreadMetadata, error) {
 	}
 	var result struct {
 		Thread struct {
-			ID    string `json:"id"`
-			Name  string `json:"name"`
-			Title string `json:"title"`
+			ID   string          `json:"id"`
+			Name json.RawMessage `json:"name"`
 		} `json:"thread"`
 	}
 	if err = json.Unmarshal(raw, &result); err != nil {
@@ -83,7 +82,16 @@ func (c *codexMetadataClient) read(id string) (CodexThreadMetadata, error) {
 	if result.Thread.ID != id {
 		return CodexThreadMetadata{}, errors.New("official readback session identity mismatch")
 	}
-	return CodexThreadMetadata{ID: result.Thread.ID, Name: result.Thread.Name, Title: result.Thread.Title}, nil
+	if len(result.Thread.Name) == 0 {
+		return CodexThreadMetadata{}, errors.New("official metadata does not expose name")
+	}
+	var name string
+	if string(result.Thread.Name) != "null" {
+		if err = json.Unmarshal(result.Thread.Name, &name); err != nil {
+			return CodexThreadMetadata{}, err
+		}
+	}
+	return CodexThreadMetadata{ID: result.Thread.ID, Name: name}, nil
 }
 
 // Receipts are output only. Verify always does a fresh exact provider read.

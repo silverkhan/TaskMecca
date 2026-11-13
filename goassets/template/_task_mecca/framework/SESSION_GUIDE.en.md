@@ -310,3 +310,9 @@ There is no need to create a new Root session solely because of migration. The e
 ## Managed session naming
 
 Every role must follow [official session naming](EXECUTION_PROTOCOL.en.md#official-session-naming-mandatory-before-and-after-dispatch) before/after new native dispatch and existing-session resume. `orchestration name` generates display metadata only. `orchestration session-name plan|apply|verify` checks installed official support and fresh exact provider readback; T3 title verification requires a separate actual tool read. Keep the same generation on the same native session; missing proof and caller JSON never establish applied/verified state.
+
+## Root display names in T3 (A-75)
+
+Prefer a nonempty official native name. Otherwise use a T3 title only after the existing read-only structured observer verifies the exact native ID, owned thread, project workspace, live T3 owner and current run/attempt mapping. Recheck the title and mapping after validation. Missing, ambiguous, foreign, deleted or unsupported mappings use the fallback; caller JSON and supplied titles are not verification. Label a verified title `t3_title`, never as a native name.
+
+Use exact-ID Codex `thread/read` with `includeTurns=false`. Check the installed schema: Codex 0.168.0 exposes nullable `name`, not `title`. Never promote preview, first prompt or native SQLite title. Failed or mismatched official reads remain unavailable. Refresh changed, empty and deleted names after 30 seconds; retry unavailable observations after 10 seconds. Expose source, checked time and unknown status without retaining stale names. Display metadata does not change identities, attempts, assignments, claims, permissions or liveness. Never automatically rename user sessions or manually modify provider SQLite/JSONL.

@@ -91,6 +91,12 @@ func TestNameProtocolHelper(t *testing.T) {
 				id = "foreign"
 			}
 			result = map[string]any{"thread": map[string]any{"id": id, "name": name}}
+			if mode == "missing_name" {
+				result = map[string]any{"thread": map[string]any{"id": id, "preview": "must not become a display name"}}
+			}
+			if mode == "null_name" {
+				result = map[string]any{"thread": map[string]any{"id": id, "name": nil, "preview": "must not become a display name", "title": "legacy first prompt"}}
+			}
 		default:
 			os.Exit(7) // No turn, resume, start, query or other method allowed.
 		}
@@ -158,6 +164,24 @@ func TestSessionNameSharedCodexReaderChecksIdentity(t *testing.T) {
 	mockNameCodex(t, "wrong_id", "")
 	if _, err := ResolveCodexThreadMetadata(context.Background(), "exact"); err == nil {
 		t.Fatal("foreign ID accepted")
+	}
+}
+
+func TestA75OfficialMetadataSchemaPresence(t *testing.T) {
+	for _, mode := range []string{"missing_name", "null_name"} {
+		t.Run(mode, func(t *testing.T) {
+			mockNameCodex(t, mode, "")
+			meta, err := ResolveCodexThreadMetadata(context.Background(), "exact")
+			if mode == "missing_name" {
+				if err == nil {
+					t.Fatal("missing name field treated as verified empty name")
+				}
+				return
+			}
+			if err != nil || meta.ID != "exact" || meta.Name != "" {
+				t.Fatalf("metadata %+v error %v", meta, err)
+			}
+		})
 	}
 }
 

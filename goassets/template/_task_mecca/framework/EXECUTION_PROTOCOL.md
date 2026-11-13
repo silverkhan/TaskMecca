@@ -238,3 +238,7 @@ its own real Activity through the verified CLI. Keep canonical project separate
 from source worktree, and native start separate from START report/relay time.
 Reported lifecycle wait, verified Runtime, total elapsed and Activity coverage
 are different quantities. Missing Activity remains unmeasured after completion.
+
+## Root 표시 이름의 관측 경계 (A-75)
+
+[세션 가이드](SESSION_GUIDE.md#t3-환경의-root-표시-이름-수집-a-75)의 exact native/T3/project 연결 검증과 갱신 절차를 따른다. 검증된 T3 제목은 `t3_title`로만 표시한다. 미지원·실패·모호한 연결은 확인 필요 상태이며 사용자 Root rename이나 provider 저장소 수동 수정으로 복구하지 않는다. 표시 이름은 실행 신원과 Activity/attempt/assignment/claim/권한/liveness 판정에 영향을 주지 않는다.

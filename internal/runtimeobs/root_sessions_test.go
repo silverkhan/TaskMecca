@@ -51,7 +51,7 @@ func TestBuildRootSessionsGroupsByProviderSessionAndPrefersProviderName(t *testi
     if first.AgentCount!=2 || first.CurrentCount!=1 || first.TerminalCount!=1 || first.Status!=RootSessionActive {
         t.Fatalf("first=%+v",first)
     }
-    if second.DisplayName!="다른 Root" || second.DisplayNameSource!="provider_title" {
+    if second.DisplayName=="다른 Root" || second.DisplayNameSource!="task_mecca_fallback" {
         t.Fatalf("second=%+v",second)
     }
     if first.RootSessionID==second.RootSessionID {
@@ -202,7 +202,7 @@ func TestRefreshCodexRootNamesThrottlesAndUpdatesSameRoot(t *testing.T) {
     ledger,err:=BuildLedger(project,10,now); if err!=nil { t.Fatal(err) }
     original:=resolveCodexThreadMetadata
     calls:=0
-    resolveCodexThreadMetadata=func(ctx context.Context,sessionID string)(CodexThreadMetadata,error){ calls++; return CodexThreadMetadata{Name:"새 이름"},nil }
+    resolveCodexThreadMetadata=func(ctx context.Context,sessionID string)(CodexThreadMetadata,error){ calls++; return CodexThreadMetadata{ID:sessionID,Name:"새 이름"},nil }
     defer func(){ resolveCodexThreadMetadata=original }()
     codexNameCacheMu.Lock(); codexNameCache=map[string]time.Time{}; codexNameCacheMu.Unlock()
 
@@ -281,7 +281,7 @@ func TestRefreshCodexRootNamesIncludesTerminalRoot(t *testing.T) {
     ledger,err:=BuildLedger(project,10,now); if err!=nil { t.Fatal(err) }
     original:=resolveCodexThreadMetadata
     calls:=0
-    resolveCodexThreadMetadata=func(ctx context.Context,sessionID string)(CodexThreadMetadata,error){ calls++; return CodexThreadMetadata{Name:"대화 없이 바뀐 이름"},nil }
+    resolveCodexThreadMetadata=func(ctx context.Context,sessionID string)(CodexThreadMetadata,error){ calls++; return CodexThreadMetadata{ID:sessionID,Name:"대화 없이 바뀐 이름"},nil }
     defer func(){ resolveCodexThreadMetadata=original }()
     codexNameCacheMu.Lock(); codexNameCache=map[string]time.Time{}; codexNameCacheMu.Unlock()
 
