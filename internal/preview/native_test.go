@@ -24,7 +24,12 @@ func TestNativeRunnerRequiresNoDockerAndOnlyStopsOwnedProcess(t *testing.T){
  helperSource:=`package main
 import ("os";"path/filepath";"time")
 func main(){
- _=os.WriteFile(filepath.Join(os.Getenv("HOME"),"child-status.txt"),[]byte(os.Getenv("TASK_MECCA_PREVIEW_MODE")+"|"+os.Getenv("TASK_MECCA_PREVIEW_PR")+"|"+os.Getenv("TASK_MECCA_PREVIEW_SHA")+"|"+os.Getenv("TASK_MECCA_TELEGRAM_TRANSPORT")),0600)
+ // Publish only a complete readiness record. WriteFile creates the target
+ // before writing, so the parent could otherwise read an empty marker.
+ marker:=filepath.Join(os.Getenv("HOME"),"child-status.txt")
+ pending:=marker+".pending"
+ if err:=os.WriteFile(pending,[]byte(os.Getenv("TASK_MECCA_PREVIEW_MODE")+"|"+os.Getenv("TASK_MECCA_PREVIEW_PR")+"|"+os.Getenv("TASK_MECCA_PREVIEW_SHA")+"|"+os.Getenv("TASK_MECCA_TELEGRAM_TRANSPORT")),0600);err!=nil{panic(err)}
+ if err:=os.Rename(pending,marker);err!=nil{panic(err)}
  for{time.Sleep(time.Second)}
 }
 `
