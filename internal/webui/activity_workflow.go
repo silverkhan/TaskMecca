@@ -9,6 +9,7 @@ import (
 	"github.com/silverkhan/TaskMecca/internal/activity"
 	"github.com/silverkhan/TaskMecca/internal/backlog"
 	"github.com/silverkhan/TaskMecca/internal/handoffjournal"
+	"github.com/silverkhan/TaskMecca/internal/runtimeobs"
 )
 
 type workflowResponseEntry struct {
@@ -82,9 +83,16 @@ func readActivityWorkflow(project, task string, events []activity.Event, summary
 	cached := loadWorkflowHandoffs(project, now)
 	control, _ := backlog.ReadLifecycleProjection(project, "", task)
 	observations, observationErr := activity.ReadWorkflowExecutions(project, task, now)
-	// Include the complete current evidence in the response cache identity. A
-	// terminal update/resume must invalidate it even while Control Tower is pending.
-	observationRevision, _ := json.Marshal(observations)
+	// Compare persisted evidence, not elapsed/waiting durations recomputed at
+	// read time. Terminal updates/resumes must still invalidate the cache even
+	// while Control Tower is pending. Keep the actual response input intact.
+	revisionEvidence := make([]runtimeobs.Attempt, len(observations))
+	copy(revisionEvidence, observations)
+	for i := range revisionEvidence {
+		revisionEvidence[i].ElapsedMillis = 0
+		revisionEvidence[i].WaitingMillis = 0
+	}
+	observationRevision, _ := json.Marshal(revisionEvidence)
 	key := project + "\x00" + task
 	lastEvent, lastFact := "", ""
 	if len(events) > 0 {
