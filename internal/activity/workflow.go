@@ -13,18 +13,19 @@ import (
 // Workflow is an additive read model. These observations never write Activity
 // events, assign work, authorize execution or reconcile the Control Tower.
 type Workflow struct {
-	Version     int               `json:"version"`
-	TaskID      string            `json:"task_id"`
-	ComputedAt  time.Time         `json:"computed_at"`
-	Axis        WorkflowAxis      `json:"axis"`
-	Lifecycle   LifecycleCoverage `json:"lifecycle"`
-	Measurement Measurement       `json:"measurement"`
-	Current     WorkflowCurrent   `json:"current"`
-	Rounds      []WorkRound       `json:"rounds"`
-	Rows        []WorkflowRow     `json:"rows"`
-	Unmeasured  []WorkflowGap     `json:"unmeasured_intervals"`
-	Reporting   ReportingCoverage `json:"reporting"`
-	Snapshot    map[string]any    `json:"control_snapshot"`
+	RuntimeTiming RuntimeTiming     `json:"runtime_timing"`
+	Version       int               `json:"version"`
+	TaskID        string            `json:"task_id"`
+	ComputedAt    time.Time         `json:"computed_at"`
+	Axis          WorkflowAxis      `json:"axis"`
+	Lifecycle     LifecycleCoverage `json:"lifecycle"`
+	Measurement   Measurement       `json:"measurement"`
+	Current       WorkflowCurrent   `json:"current"`
+	Rounds        []WorkRound       `json:"rounds"`
+	Rows          []WorkflowRow     `json:"rows"`
+	Unmeasured    []WorkflowGap     `json:"unmeasured_intervals"`
+	Reporting     ReportingCoverage `json:"reporting"`
+	Snapshot      map[string]any    `json:"control_snapshot"`
 }
 type WorkflowAxis struct {
 	Start          *time.Time `json:"start,omitempty"`
@@ -293,6 +294,7 @@ func SummarizeWorkflow(in WorkflowInput) Workflow {
 		m.Status = "conflict"
 	}
 	w.Measurement = m
+	w.RuntimeTiming = summarizeRuntimeTiming(in, w.Axis, w.Lifecycle)
 	boundaries := reviewBoundaries(in.TaskID, events, in.Handoffs)
 	handoffs := []handoffjournal.Handoff{}
 	for _, h := range in.Handoffs {
@@ -449,6 +451,7 @@ func SummarizeWorkflow(in WorkflowInput) Workflow {
 		terminalByAttempt[a.AttemptID] = a
 	}
 	seenExec := map[string]bool{}
+	seenExecutionReports := map[string]bool{}
 	for _, f := range facts {
 		if f.TaskID != in.TaskID || (f.Kind != "started" && f.Kind != "resumed") {
 			continue
@@ -459,10 +462,17 @@ func SummarizeWorkflow(in WorkflowInput) Workflow {
 		}
 		if !seenExec[key] {
 			seenExec[key] = true
-			w.Reporting.ExpectedExecutions++
-			if f.AttemptID == "" || eventByAttempt[f.AttemptID] == 0 {
-				w.Reporting.ExecutionsWithoutActivity++
-				w.Reporting.Findings = append(w.Reporting.Findings, ReportingFinding{Code: "execution_activity_missing", AttemptID: f.AttemptID, AssignmentID: f.AssignmentID, RequiredPhase: "implementation_started"})
+			executionKey := f.AttemptID
+			if executionKey == "" {
+				executionKey = key
+			}
+			if !seenExecutionReports[executionKey] {
+				seenExecutionReports[executionKey] = true
+				w.Reporting.ExpectedExecutions++
+				if f.AttemptID == "" || eventByAttempt[f.AttemptID] == 0 {
+					w.Reporting.ExecutionsWithoutActivity++
+					w.Reporting.Findings = append(w.Reporting.Findings, ReportingFinding{Code: "execution_activity_missing", AttemptID: f.AttemptID, AssignmentID: f.AssignmentID, RequiredPhase: "implementation_started"})
+				}
 			}
 		}
 		var end *time.Time
@@ -492,6 +502,20 @@ func SummarizeWorkflow(in WorkflowInput) Workflow {
 		}
 		add("worker", agent, roundNumber(f.OccurredAt, boundaries, known), WorkflowInterval{RuntimeTerminal: terminal, ID: f.EventID, Kind: "execution_report", Type: "unclassified_execution", Start: f.OccurredAt, End: end, EndEvidence: endEvidence, EndEvidenceSource: endSource, AttemptID: f.AttemptID, AssignmentID: f.AssignmentID, Evidence: f.EvidenceSource})
 	}
+	// A verified bound execution can exist even when START transport/lifecycle
+	// collection failed. Surface that gap without manufacturing a lifecycle fact.
+	for _, a := range in.ExecutionObservations {
+		if seenExecutionReports[a.AttemptID] || ambiguousAttempts[a.AttemptID] || a.TaskID != in.TaskID || a.BindingState != runtimeobs.BindingBound || !strings.HasPrefix(a.AgentPath, "/root/controller/") || strings.HasPrefix(a.AgentPath, "/root/controller/sub-") || a.RuntimeAgentID == "" || a.BindingEvidence["assignment_id"] == "" || !runtimeobs.HasObservedExecution(a) {
+			continue
+		}
+		seenExecutionReports[a.AttemptID] = true
+		w.Reporting.ExpectedExecutions++
+		if eventByAttempt[a.AttemptID] == 0 {
+			w.Reporting.ExecutionsWithoutActivity++
+			w.Reporting.Findings = append(w.Reporting.Findings, ReportingFinding{Code: "execution_activity_missing", AttemptID: a.AttemptID, AssignmentID: a.BindingEvidence["assignment_id"], RequiredPhase: "current_actual_phase"})
+		}
+	}
+
 	for _, h := range handoffs {
 		claimed, ok := workflowTime(h.ClaimedAt)
 		if !ok || h.ClaimedBy != "/root/controller" || (h.EventType != handoffjournal.EventWorkerDone && h.EventType != handoffjournal.EventWorkerBlocked && h.EventType != handoffjournal.EventCompletionReport) {

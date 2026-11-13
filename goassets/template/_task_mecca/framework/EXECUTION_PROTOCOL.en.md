@@ -66,3 +66,16 @@ Actual Codex smoke: kkobugi sent followup_task to a completed Controller after f
 ## Official session naming: mandatory before and after dispatch
 
 Follow the single [official naming procedure](EXECUTION_PROTOCOL.md#공식-세션-이름-적용과-확인-필수). Before every newSession or existingSession dispatch, run `orchestration session-name plan` and put its generated name and before/after/resume instructions in the actual agent prompt. Use that exact generated name as `delegate_task.title` on T3 creation. After actual spawn/resume, the current session runs `session-name apply` and fresh `session-name verify` with its exact provider-native ID. Re-read the exact current T3 title with official tools separately; update only if different and read again. Missing provider or T3 proof cannot be reported as complete. Preserve group, role, worker and generation on same-session resume. Display metadata never grants dispatch/claim authority or changes runtime, attempt or handoff identities. Report unsupported, partial, error, timeout and mismatch honestly; never switch provider/mode or bulk-rename historical sessions. See the linked procedure for official source citations and CLI examples.
+# Worker START collection boundary
+
+Follow the required START/phase sections in `roles/worker.md` and
+`roles/controller.md`: actual environment native/T3 IDs -> official exact
+observation -> exact canonical assignment/task binding -> Worker current-phase
+`activity report` receipt. Send START and each phase success/failure directly to
+Controller. Failed transport, unbound identity and report failure remain visible
+collection gaps with supported retry; no Root ACK gate or historical backfill.
+The Controller owns Runtime/lifecycle/handoff writes; the Worker may report only
+its own real Activity through the verified CLI. Keep canonical project separate
+from source worktree, and native start separate from START report/relay time.
+Reported lifecycle wait, verified Runtime, total elapsed and Activity coverage
+are different quantities. Missing Activity remains unmeasured after completion.

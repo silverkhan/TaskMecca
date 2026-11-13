@@ -1,6 +1,7 @@
 package activity
 
 import (
+	"strings"
 	"time"
 
 	"github.com/silverkhan/TaskMecca/internal/runtimeobs"
@@ -55,6 +56,33 @@ func CheckReporting(project, task string, role Role, attempt, assignment, handof
 	if role == RoleWorker && assignment == "" {
 		assignment = actual.BindingEvidence["assignment_id"]
 		out.AssignmentID = assignment
+	}
+	if role == RoleWorker {
+		if !runtimeobs.HasObservedExecution(*actual) {
+			out.Diagnostic = "verified observed execution required; binding alone is not execution"
+			return out
+		}
+		assignments, readErr := runtimeobs.ListAssignments(project)
+		if readErr != nil {
+			out.Diagnostic = readErr.Error()
+			return out
+		}
+		// The reminder must not suggest a runnable command for a different
+		// assignment, role or task. Actual report still enforces attribution.
+		if actual.TaskID != task || !strings.HasPrefix(actual.AgentPath, "/root/controller/") || strings.HasPrefix(actual.AgentPath, "/root/controller/sub-") || actual.BindingEvidence["assignment_id"] != assignment {
+			out.Diagnostic = "exact Worker task/path/assignment binding required"
+			return out
+		}
+		matches := 0
+		for _, a := range assignments {
+			if a.AssignmentID == assignment && a.TaskID == task && a.AgentPath == actual.AgentPath {
+				matches++
+			}
+		}
+		if matches != 1 {
+			out.Diagnostic = "canonical assignment missing or mismatched"
+			return out
+		}
 	}
 	if role == RoleWorker && (actual.AgentPath == "/root/controller" || assignment == "") {
 		out.Diagnostic = "Worker assignment required"

@@ -1,5 +1,25 @@
 # Worker 역할 (`/root/controller/<pokemon>`)
 
+## Required START and phase collection
+
+Capture actual native session and T3 thread IDs separately from the managed
+environment. Officially read the exact T3 thread; a title is not identity. Send
+START directly to Controller with task, assignment, internal Worker path,
+canonical project, actual source cwd and current phase. After Controller verifies
+observation and exact binding, query `runtime query --project CANONICAL --agent-id
+ACTUAL_NATIVE --task-id TASK --json` and use its exact current attempt.
+
+Report your real boundaries through the approved `activity report` CLI:
+`requirements_started`, `implementation_started`, `targeted_test_started`
+(or actual `full_regression_started`/`build_started`), and `worker_completed`.
+Do not run a full suite merely to collect an event. Preserve stable event IDs,
+actual evidence and each receipt; directly report phase success/failure to
+Controller. Missing binding, unsupported observation, report failure or direct
+transport failure is a `collection_gap` with exact native/T3/assignment IDs.
+Use supported retry after repair; collect only the current phase, never past
+timestamps or a terminal actor. Runtime is not phase Activity. This legitimate
+own-Activity CLI path does not authorize manual operating-ledger writes.
+
 > **CLI 명령 선택·등록/승인/인계·실패 재개:** [CLI_OPERATIONS_PLAYBOOK.md](../CLI_OPERATIONS_PLAYBOOK.md)를 먼저 확인한다. 신규 CLI가 설치되어 있지 않은 경우에만 구형 수동 절차를 사용하고, 사용자 승인/등록 이력을 두 번 기록하지 않는다.
 
 ## Worker 컨텍스트 수명 및 교체

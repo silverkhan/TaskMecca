@@ -86,6 +86,9 @@ type Transition struct {
 }
 
 type Attempt struct {
+	// Native boundaries retain provenance separately from observation-time StartedAt/EndedAt.
+	NativeStartedAt         string             `json:"native_started_at,omitempty"`
+	NativeCompletedAt       string             `json:"native_completed_at,omitempty"`
 	NativeReceipt           *T3Receipt         `json:"native_receipt,omitempty"`
 	AttemptID               string             `json:"attempt_id"`
 	Provider                string             `json:"provider"`
@@ -537,6 +540,8 @@ func (a *accumulator) apply(e ExecutionEvent) {
 	if e.NativeReceipt != nil {
 		copy := *e.NativeReceipt
 		a.attempt.NativeReceipt = &copy
+		a.attempt.NativeStartedAt = copy.StartedAt
+		a.attempt.NativeCompletedAt = copy.CompletedAt
 	}
 	if e.Provider != "" {
 		a.attempt.Provider = e.Provider

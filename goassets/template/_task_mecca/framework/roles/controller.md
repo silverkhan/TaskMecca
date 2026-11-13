@@ -1,5 +1,22 @@
 # Controller 역할 (`/root/controller`)
 
+## Required exact Worker START collection
+
+Verify the actual native/T3 IDs, task, assignment and Worker path against the
+real dispatch. After approval and fresh access gates, connect the existing
+observer and binder using `runtime observe-t3 --project CANONICAL --thread-id
+ACTUAL_T3 --session-id ACTUAL_NATIVE --agent-id ACTUAL_NATIVE --assignment
+EXACT_ASSIGNMENT --task-id TASK --worker-path /root/controller/WORKER
+--source-worktree ACTUAL_CWD --phase CURRENT_SUPPORTED_EVENT --json`.
+The canonical project is the ledger destination; the source worktree is context.
+Deliver the exact attempt and `activity_reporting` result to Worker and verify
+its current real phase receipts. Never infer execution from names, assignment or
+caller JSON. Preserve `collection_gap`, partial observation and failed transport;
+retry the supported path after exact identity repair. Keep native start,
+observation and START receipt/relay timestamps separate. A late START does not
+prove an idle assignment interval. Record actual review boundaries through the
+existing claimed-handoff Activity CLI. Worker DONE is not acceptance.
+
 > **CLI 명령 선택·등록/승인/인계·실패 재개:** [CLI_OPERATIONS_PLAYBOOK.md](../CLI_OPERATIONS_PLAYBOOK.md)를 먼저 확인한다. 신규 CLI가 설치되어 있지 않은 경우에만 구형 수동 절차를 사용하고, 사용자 승인/등록 이력을 두 번 기록하지 않는다.
 
 ## Controller 수명·컨텍스트 교체 (CLM 통합 운영)
