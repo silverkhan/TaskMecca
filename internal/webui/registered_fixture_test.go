@@ -18,4 +18,33 @@ func registerWebFixture(t *testing.T, project string) {
 	if err := maintenance.RegisterProject(project); err != nil {
 		t.Fatal(err)
 	}
+	// Register after TempDir/environment cleanup so the fixture's feed is
+	// stopped and joined before its registry or project directory is removed.
+	stopProjectAttentionFeedsForTest(t, project)
+}
+
+func TestRegisteredWebFixtureOwnsAttentionFeedTeardown(t *testing.T) {
+	var project string
+	var feed *attentionFeed
+	t.Run("registered project", func(t *testing.T) {
+		project = t.TempDir()
+		registerWebFixture(t, project)
+		feed = ensureDurableAttentionFeed(project, "")
+	})
+	// Subtest cleanups have completed: stopping without joining the refresh
+	// would still permit writes racing with TempDir removal.
+	select {
+	case <-feed.doneCh:
+	default:
+		t.Fatal("fixture returned before its attention feed stopped")
+	}
+	attentionFeeds.Lock()
+	_, retained := attentionFeeds.feeds[project+"\x00"]
+	attentionFeeds.Unlock()
+	if retained {
+		t.Fatal("fixture retained a background feed")
+	}
+	if _, err := os.Stat(project); !os.IsNotExist(err) {
+		t.Fatalf("fixture project not removed after feed shutdown: %v", err)
+	}
 }
