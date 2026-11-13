@@ -35,7 +35,7 @@ type cliOptions struct {
 
 func RunCLI(args []string, stdout, stderr io.Writer) int {
 	if len(args) == 0 {
-		fmt.Fprintln(stderr, "handoff requires one of: prepare, claim, transfer, recover-plan, redispatch, mark, inspect, reconcile, capability")
+		fmt.Fprintln(stderr, "handoff requires one of: prepare, transport-plan, claim, transfer, recover-plan, redispatch, mark, inspect, reconcile, capability")
 		return 2
 	}
 	action := strings.ToLower(args[0])
@@ -60,6 +60,17 @@ func RunCLI(args []string, stdout, stderr io.Writer) int {
 	now := time.Now()
 
 	switch action {
+	case "transport-plan":
+		if len(opts.positionals) != 1 {
+			fmt.Fprintln(stderr, "handoff transport-plan requires exact handoff ID")
+			return 2
+		}
+		result, callErr := PlanTransport(project, opts.positionals[0], now)
+		if callErr != nil {
+			fmt.Fprintln(stderr, callErr)
+			return 1
+		}
+		printValue(stdout, result, opts.jsonOutput)
 	case "prepare":
 		if len(opts.positionals) != 1 {
 			fmt.Fprintln(stderr, "handoff prepare requires a task ID")

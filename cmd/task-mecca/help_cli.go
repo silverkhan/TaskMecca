@@ -140,6 +140,7 @@ func runHelpCLI(args []string,out,stderr io.Writer) int {
 		fmt.Fprintln(out, "  task-mecca handoff mark HANDOFF_ID --project DIR --step dispatch --result ok|failed|unknown --evidence NATIVE_TRANSPORT_PROOF --json")
 		fmt.Fprintln(out, "  task-mecca handoff redispatch HANDOFF_ID --project DIR --target-attempt CURRENT_ATTEMPT --evidence RECOVERY_NATIVE_TRANSPORT_PROOF --json")
 		fmt.Fprintln(out, "  task-mecca handoff recover-plan HANDOFF_ID --project DIR --json  # read-only exact-runtime recovery decision")
+		fmt.Fprintln(out,"  task-mecca handoff transport-plan HANDOFF_ID --project DIR --json  # read-only exact tool/address; native UUID is not a collaboration handle")
 		fmt.Fprintln(out, "  On claimant_attempt_mismatch: unclaimed -> verify current native Controller and rerun original prepare with new --target-attempt; claimed -> exact-owner handoff transfer.")
 		fmt.Fprintln(out, "  dispatch=ok, redispatch receipt, actual claim and implementation start are different evidence stages.")
 		fmt.Fprintln(out, "  task-mecca handoff capability show PROVIDER --project DIR --json")

@@ -1,5 +1,21 @@
 # Worker 역할 (`/root/controller/<pokemon>`)
 
+## Exact transport namespaces
+
+Native session/runtime UUID, T3 thread ID and collaboration agent handle are
+different addresses. Use `handoff transport-plan EXACT_HANDOFF --project ORIGINAL
+--json` before DONE/BLOCKED delivery. A `collaboration.send_message` or
+`collaboration.followup_task` instruction below applies only when that tool's
+exact handle is observed from its own creation/discovery receipt. Never pass a
+native UUID, role, title or T3 ID as that handle. If unobservable, preserve the
+limitation; use the verified T3 direct route when available, not a guessed handle.
+For T3 use exact `t3_thread_read`, current native episode verification and fresh
+canonical Full Access immediately before completed-target `t3_thread_send` with
+`mode:auto`. Preserve stable report ID, exact recipient, original error, durable
+undelivered/unknown checkpoint, action owner and resume condition. Tool ACK is
+not claim/applied. Retry the same report after repair; uncertain delivery needs
+reconciliation, not duplicate Worker creation. Root ACK is not a gate.
+
 ## Required START and phase collection
 
 Capture actual native session and T3 thread IDs separately from the managed
