@@ -895,7 +895,9 @@ func run(args []string) int {
             var changed bool
             event,changed,err=runtimeobs.EnrichCodexSessionName(runtimeProject,positional[1],time.Now())
             if err==nil {
-                if jsonOutput { emitJSON(map[string]any{"changed":changed,"event":event}) } else if changed { fmt.Println(event.SessionName) } else { fmt.Println("(Codex thread has no name/title)") }
+                if jsonOutput { emitJSON(map[string]any{"changed":changed,"event":event}) } else if changed { if event.RootName!=nil {
+                        if event.RootName.Name!="" { fmt.Println(event.RootName.Name) } else { fmt.Println("(session name needs verification)") }
+                    } else { fmt.Println(event.SessionName) } } else { fmt.Println("(Codex thread has no name/title)") }
             }
         case "bind":
             if len(positional)<4 || len(positional)>5 {

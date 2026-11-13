@@ -279,3 +279,13 @@ proxy로 생성한다. 신규 worker 이름은 공통 규약의 Pokémon ASCII p
 ## 관리 세션 이름: dispatch·resume 필수 절차
 
 새 세션과 기존 세션 resume/reuse 모두 [공식 세션 이름 적용과 확인](../EXECUTION_PROTOCOL.md#공식-세션-이름-적용과-확인-필수)을 따른다. native dispatch 전에 `orchestration session-name plan`의 생성 이름·지원 확인·before/after/resume 지시를 실제 Agent prompt에 넣고, T3 생성은 `delegate_task.title`에 생성 이름을 그대로 쓴다. 실제 실행 세션은 exact native ID를 확인한 뒤 `session-name apply`와 fresh `session-name verify`를 수행한다. T3는 exact current thread를 공식 도구로 별도 재조회하고, 필요할 때만 update 후 다시 읽는다. 동일 세션 resume는 group/role/Worker/G를 보존한다. provider receipt와 실제 T3 tool readback이 누락되면 완료라고 보고하지 않는다. caller JSON·API ack·작업 제목은 적용/검증 증거가 아니며, 실패·미지원·미검증은 Controller에 직접 보고한다. 이름은 표시 metadata이고 runtime/attempt/claim/handoff 신원·권한을 대체하지 않는다.
+
+## T3 환경의 Root 표시 이름 수집 (A-75)
+
+Root 표시 이름은 공식 native 이름을 먼저 사용하고, 이름이 비어 있으면 정확한 native 세션·T3 thread·프로젝트 연결을 검증한 T3 제목을 사용한다. 둘 다 확인되지 않으면 기존 기본 이름을 표시한다. T3 제목의 출처는 `t3_title`이며 native 이름으로 기록하거나 두 이름을 자동 동기화하지 않는다. 사용자 Root를 자동으로 rename하지 않는다.
+
+Codex는 공식 `thread/read`를 exact native ID와 `includeTurns=false`로 조회한다. 설치된 공식 스키마의 실제 필드를 확인하며 `preview`, 첫 프롬프트, native SQLite의 title은 표시 이름 후보로 사용하지 않는다. Codex 0.168.0은 nullable `name`을 제공하고 `title`은 제공하지 않는다. native 조회 실패·미지원·ID 불일치를 빈 이름의 성공으로 취급하지 않는다.
+
+T3 수집은 기존 읽기 전용 구조화 관측 경로를 사용한다. 프로젝트 workspace 경로와 thread 소유권, native ID, 최신 run/attempt의 연결을 검증하고 살아 있는 T3 owner를 확인한다. 연결이 없거나 모호하거나 다른 프로젝트이면 제목을 사용하지 않는다. 제목과 연결은 검증 전후 다시 읽으며 변경 중이면 다음 갱신까지 확인 필요로 처리한다. caller JSON이나 전달받은 제목만으로 검증 성공을 주장하지 않는다. 구조화 저장소가 미지원이면 우회 SQL이나 transcript 추출을 추가하지 않는다.
+
+이름·제목의 변경, 삭제, 빈 값도 갱신 결과다. 성공 결과는 최대 30초, 조회 불가는 10초 간격으로 재조회하며 이전 이름을 계속 유지하지 않는다. `display_name_status`와 `display_name_checked_at`으로 확인 상태와 조회 시점을 구분한다. 표시 metadata는 attempt/assignment/claim/권한/liveness의 근거가 아니며 기존 판정을 변경하지 않는다. 관측은 SQLite/JSONL 수동 수정, native/T3 rename, 운영 설치와 별개다.

@@ -5051,7 +5051,10 @@ Object.assign(I18N.ko,{
   runtimeRootTerminal:'종료됨',
   runtimeRootNeedsCheckStatus:'상태 확인 필요',
   runtimeRootActiveStatus:'활성',
-  runtimeRootFallbackHint:'Provider 이름을 확인할 수 없어 Task Mecca fallback 이름을 사용 중입니다.',
+  runtimeRootFallbackHint:'확인된 세션 이름이나 T3 제목이 없어 기본 이름을 표시합니다.',
+  runtimeRootDefaultName:'기본 이름',
+  runtimeRootT3Title:'T3 제목',
+  runtimeRootNameUnavailable:'이름 확인 필요',
 });
 Object.assign(I18N.ko,{
   runtimeHookOnboardingTitle:'Runtime 관측 설정이 아직 완료되지 않았습니다.',
@@ -5140,7 +5143,10 @@ Object.assign(I18N.en,{
   runtimeRootTerminal:'Terminal',
   runtimeRootNeedsCheckStatus:'Needs verification',
   runtimeRootActiveStatus:'Active',
-  runtimeRootFallbackHint:'Task Mecca fallback name is shown because no provider session name was available.',
+  runtimeRootFallbackHint:'A default name is shown because no verified session name or T3 title is available.',
+  runtimeRootDefaultName:'Default name',
+  runtimeRootT3Title:'T3 title',
+  runtimeRootNameUnavailable:'Name needs verification',
 });
 
 Object.assign(I18N.ko,{
@@ -5370,6 +5376,12 @@ function runtimeRootStatusLabel(status) {
 function runtimeRootStatusClass(status) {
   return status==='active'?'ok':status==='needs_check'?'warn':status==='inactive_terminal'?'warn':'';
 }
+function runtimeRootNameHint(root) {
+  return root.display_name_source==='task_mecca_fallback'
+    ? `<span class="runtime-root-fallback" title="${esc(t('runtimeRootFallbackHint'))}">${esc(t(root.display_name_status==='unavailable'?'runtimeRootNameUnavailable':'runtimeRootDefaultName'))}</span>`
+    : root.display_name_source==='t3_title'
+      ? `<span class="runtime-root-fallback">${esc(t('runtimeRootT3Title'))}</span>` : '';
+}
 function runtimeRootCard(root,attempts,findingsByAttempt,attemptRootMap) {
   const key=String(root.root_session_id||root.provider_session_id||root.display_name||'root');
   const remembered=Object.prototype.hasOwnProperty.call(state.runtimeRootDisclosure,key);
@@ -5378,14 +5390,11 @@ function runtimeRootCard(root,attempts,findingsByAttempt,attemptRootMap) {
   const sessionAttempts=attempts.filter(a=>attemptRootMap[a.attempt_id]===root.root_session_id);
   const createdLabel=root.created_at_source==='provider_metadata'?t('runtimeRootCreated'):t('runtimeRootObservedStart');
   const providerID=root.provider_session_id||'-';
-  const fallbackHint=root.display_name_source==='task_mecca_fallback'
-    ? `<span class="runtime-root-fallback" title="${esc(t('runtimeRootFallbackHint'))}">fallback</span>`
-    : '';
   const cleanupBadge=root.cleanup_eligible?`<span class="badge warn">${esc(t('runtimeRootCleanupEligible'))}</span>`:'';
   return `<details class="runtime-root-card" data-runtime-root-key="${esc(key)}" ${open?'open':''}>
     <summary class="runtime-root-summary">
       <div class="runtime-root-title-wrap">
-        <div class="runtime-root-title">${esc(root.display_name||'Root Session')} ${fallbackHint}</div>
+        <div class="runtime-root-title">${esc(root.display_name||'Root Session')} ${runtimeRootNameHint(root)}</div>
         <div class="runtime-root-id"><span>${esc(t('runtimeRootProvider'))} <strong>${esc(String(root.provider||'-').toUpperCase())}</strong></span><span>${esc(t('runtimeRootID'))} <strong title="${esc(providerID)}">${esc(providerID)}</strong></span></div>
       </div>
       <div class="runtime-root-badges">
@@ -5416,7 +5425,7 @@ function runtimeRootListRow(root) {
     : '';
   return `<div class="runtime-root-list-row">
     <div class="runtime-root-list-main">
-      <strong>${esc(root.display_name||'Root Session')}</strong>
+      <strong>${esc(root.display_name||'Root Session')}</strong> ${runtimeRootNameHint(root)}
       <span>${esc(t('runtimeRootProvider'))} ${esc(String(root.provider||'-').toUpperCase())}</span>
       <small>${esc(t('runtimeRootID'))} ${esc(root.provider_session_id||'-')}</small>
     </div>

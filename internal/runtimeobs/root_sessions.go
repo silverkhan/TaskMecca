@@ -29,6 +29,8 @@ type RootSession struct {
     Provider            string            `json:"provider"`
     ProviderSessionID   string            `json:"provider_session_id,omitempty"`
     DisplayName         string            `json:"display_name"`
+    DisplayNameStatus string `json:"display_name_status,omitempty"`
+    DisplayNameCheckedAt string `json:"display_name_checked_at,omitempty"`
     DisplayNameSource   string            `json:"display_name_source"`
     CreatedAt           string            `json:"created_at,omitempty"`
     CreatedAtSource     string            `json:"created_at_source,omitempty"`
@@ -106,6 +108,8 @@ type mutableRootSession struct {
 }
 
 type rootSessionMetadata struct {
+    nameSnapshot *RootNameObservation
+    nameSnapshotAt string
     provider      string
     sessionID     string
     explicitName  string
@@ -133,6 +137,11 @@ func loadRootSessionMetadata(project string) (map[string]rootSessionMetadata,err
             if provider=="" || sessionID=="" { continue }
             key:=provider+"\x00"+sessionID
             meta:=out[key]
+            if provider=="codex" && event.RootName!=nil && event.ObservedAt>=meta.nameSnapshotAt {
+                snapshot:=event.RootName.displaySnapshot()
+                meta.nameSnapshot=&snapshot
+                meta.nameSnapshotAt=event.ObservedAt
+            }
             meta.provider=provider
             meta.sessionID=sessionID
             if event.SessionName!="" && (meta.explicitAt=="" || event.ObservedAt>=meta.explicitAt) {
@@ -281,7 +290,7 @@ func BuildRootSessions(project string,ledger Ledger,now time.Time) (RootSessionC
             group.explicitName=attempt.SessionName
             group.explicitNameAt=rootAttemptCreatedAt(attempt)
         }
-        if attempt.SessionTitle!="" && group.title=="" {
+        if provider!="codex" && attempt.SessionTitle!="" && group.title=="" {
             group.title=attempt.SessionTitle
             group.titleAt=rootAttemptCreatedAt(attempt)
         }
@@ -306,7 +315,7 @@ func BuildRootSessions(project string,ledger Ledger,now time.Time) (RootSessionC
             group.explicitName=meta.explicitName
             group.explicitNameAt=meta.explicitAt
         }
-        if meta.title!="" {
+        if group.session.Provider!="codex" && meta.title!="" {
             group.title=meta.title
             group.titleAt=meta.titleAt
         }
@@ -323,6 +332,13 @@ func BuildRootSessions(project string,ledger Ledger,now time.Time) (RootSessionC
     for _,key:=range order {
         group:=groups[key]
         root:=group.session
+        meta:=metadata[root.Provider+"\x00"+root.ProviderSessionID]
+        if snapshot:=meta.nameSnapshot; snapshot!=nil {
+            group.explicitName=snapshot.Name
+            group.title=""
+            root.DisplayNameStatus=snapshot.Status
+            root.DisplayNameCheckedAt=snapshot.CheckedAt
+        }
         root.AgentCount=len(group.agents)
         sort.Strings(root.AttemptIDs)
 
@@ -338,6 +354,7 @@ func BuildRootSessions(project string,ledger Ledger,now time.Time) (RootSessionC
             root.DisplayNameSource="task_mecca_fallback"
         }
 
+        if snapshot:=meta.nameSnapshot; snapshot!=nil { root.DisplayNameSource=snapshot.Source }
         if root.LastActivityAt!="" {
             if parsed,parseErr:=time.Parse(time.RFC3339Nano,root.LastActivityAt); parseErr==nil && now.After(parsed) {
                 root.InactiveMillis=now.Sub(parsed).Milliseconds()

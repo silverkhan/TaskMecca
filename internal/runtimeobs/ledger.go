@@ -48,6 +48,7 @@ const (
 )
 
 type ExecutionEvent struct {
+	RootName *RootNameObservation `json:"root_name,omitempty"`
 	NativeReceipt      *T3Receipt         `json:"native_receipt,omitempty"`
 	EventID            string             `json:"event_id"`
 	EventKind          string             `json:"event_kind"`
@@ -199,6 +200,10 @@ func resolveAttemptID(project string, e SpikeEvent) string {
 
 func eventIDFor(e ExecutionEvent) string {
 	parts := []string{e.EventKind, e.Provider, e.SessionID, e.SessionName, e.SessionTitle, e.TurnID, e.RuntimeAgentID, e.HookEventName, e.ToolUseID, string(e.State), e.RawSHA256, e.TaskID, e.AgentPath, e.ParentAttemptID, e.BindingSource}
+	if e.RootName != nil {
+		snapshot, _ := json.Marshal(e.RootName)
+		parts = append(parts, string(snapshot))
+	}
 	if e.RawSHA256 == "" || (e.EventKind == "state" && e.TurnID == "") {
 		parts = append(parts, e.ObservedAt)
 	}

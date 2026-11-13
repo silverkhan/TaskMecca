@@ -79,3 +79,9 @@ its own real Activity through the verified CLI. Keep canonical project separate
 from source worktree, and native start separate from START report/relay time.
 Reported lifecycle wait, verified Runtime, total elapsed and Activity coverage
 are different quantities. Missing Activity remains unmeasured after completion.
+
+## Root display names in T3 (A-75)
+
+Prefer a nonempty official native name. Otherwise use a T3 title only after the existing read-only structured observer verifies the exact native ID, owned thread, project workspace, live T3 owner and current run/attempt mapping. Recheck the title and mapping after validation. Missing, ambiguous, foreign, deleted or unsupported mappings use the fallback; caller JSON and supplied titles are not verification. Label a verified title `t3_title`, never as a native name.
+
+Use exact-ID Codex `thread/read` with `includeTurns=false`. Check the installed schema: Codex 0.168.0 exposes nullable `name`, not `title`. Never promote preview, first prompt or native SQLite title. Failed or mismatched official reads remain unavailable. Refresh changed, empty and deleted names after 30 seconds; retry unavailable observations after 10 seconds. Expose source, checked time and unknown status without retaining stale names. Display metadata does not change identities, attempts, assignments, claims, permissions or liveness. Never automatically rename user sessions or manually modify provider SQLite/JSONL.
