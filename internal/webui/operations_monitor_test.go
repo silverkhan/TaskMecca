@@ -38,6 +38,19 @@ func testOperationHook(t *testing.T, project, event string, at time.Time) runtim
 	return value
 }
 
+// A pending native dispatch has identity but no verified execution receipt.
+// Use it when exercising unknown-state delivery; project Hook setup is not
+// evidence about the current attempt.
+func testOperationUnverified(t *testing.T, project, session, native string, at time.Time) runtimeobs.Attempt {
+	t.Helper()
+	id := "pending-" + session
+	err := runtimeobs.AppendExecutionEvent(project, runtimeobs.ExecutionEvent{EventID: id, EventKind: "state", AttemptID: id, Provider: "codex", SessionID: session, RuntimeAgentID: native, State: runtimeobs.StateRunning, ObservedAt: at.Format(time.RFC3339Nano), EvidenceSource: runtimeobs.EvidenceManualBinding, ObservationQuality: runtimeobs.QualityInferred})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return runtimeobs.Attempt{AttemptID: id}
+}
+
 func TestOperationEpisodesPreserveEvidenceAcrossRestartAndRecurrence(t *testing.T) {
 	t.Setenv("TASK_MECCA_STALE_WARN_SECONDS", "2")
 	project := testOperationProject(t)
@@ -124,7 +137,7 @@ func TestOperationClassifiesConfirmedStopUnverifiedRuntimeAndMonitoringGap(t *te
 	operationHookVerifier = func(string, string) bool { return false }
 	defer func() { operationHookVerifier = originalVerifier }()
 	base := time.Now().UTC()
-	start := testOperationHook(t, project, `{"session_id":"s2","hook_event_name":"SubagentStart","agent_id":"worker-2"}`, base)
+	start := testOperationUnverified(t, project, "s2", "worker-2", base)
 	if _, err := runtimeobs.BindAttempt(project, start.AttemptID, "A-5", "/root/controller/worker", "explicit", "", nil, base.Add(time.Second)); err != nil {
 		t.Fatal(err)
 	}
@@ -133,7 +146,7 @@ func TestOperationClassifiesConfirmedStopUnverifiedRuntimeAndMonitoringGap(t *te
 		t.Fatal(err)
 	}
 	if len(unknown.Incidents) != 1 || unknown.Incidents[0].Kind != "runtime_unknown" || unknown.Incidents[0].EndedAt != "" {
-		t.Fatalf("missing hook configuration must remain unverified: %+v", unknown.Incidents)
+		t.Fatalf("pending execution receipt must remain unverified: %+v", unknown.Incidents)
 	}
 	stop := runtimeobs.ExecutionEvent{EventKind: "state", ObservedAt: base.Add(3 * time.Second).Format(time.RFC3339Nano), AttemptID: start.AttemptID,
 		Provider: "codex", RuntimeAgentID: "worker-2", State: runtimeobs.StateErrored, Terminal: true,
@@ -187,7 +200,11 @@ func TestOperationMonitorScansAllProjectsWithoutBrowserSubscription(t *testing.T
 	}
 	base := time.Now().UTC()
 	for _, project := range []string{primary, secondary} {
-		start := testOperationHook(t, project, `{"session_id":"s3","hook_event_name":"SubagentStart","agent_id":"worker-3"}`, base)
+		// Delivery is for a current task, not an unlinked diagnostic.
+		if err := os.WriteFile(filepath.Join(project, "_task_mecca", "data", "backlog", "000005.A-5.current.doing.md"), []byte("# A-5 Current fixture\n- Agent: /root/controller/worker\n"), 0600); err != nil {
+			t.Fatal(err)
+		}
+		start := testOperationUnverified(t, project, "s3", "worker-3", base)
 		if _, err := runtimeobs.BindAttempt(project, start.AttemptID, "A-5", "/root/controller/worker", "explicit", "", nil, base.Add(time.Second)); err != nil {
 			t.Fatal(err)
 		}
@@ -335,7 +352,7 @@ func TestOperationExplicitOutcomesHaveDistinctEvidenceAndSeverity(t *testing.T) 
 	} {
 		attempt := runtimeobs.Attempt{AttemptID: "run-1", TaskID: "A-5", CurrentState: tc.state,
 			StateEvidenceSource: runtimeobs.EvidenceHook, StateObservationQuality: runtimeobs.QualityObserved,
-			EndedAt: now.Format(time.RFC3339Nano)}
+			Terminal: true, StartedAt: now.Add(-time.Minute).Format(time.RFC3339Nano), LastObservedAt: now.Format(time.RFC3339Nano), EndedAt: now.Format(time.RFC3339Nano)}
 		signal, ok := classifyOperation("/project", attempt, now, false)
 		if !ok || signal.incident.Kind != tc.kind || signal.incident.Quality != "confirmed" || signal.alert != tc.alert {
 			t.Fatalf("%s classified as %+v, ok=%v", tc.state, signal, ok)
@@ -351,7 +368,7 @@ func TestOperationExplicitOutcomesHaveDistinctEvidenceAndSeverity(t *testing.T) 
 func TestOperationUnknownRecoveryRequiresRecentExactAssignmentHook(t *testing.T) {
 	now := time.Date(2026, 10, 12, 12, 0, 0, 0, time.UTC)
 	incident := operationIncident{Kind: "runtime_unknown", Quality: "verification_required", TaskID: "A-5", AgentPath: "/root/controller/worker", AttemptID: "attempt-1", AssignmentID: "assignment-1", DetectedAt: now.Add(-time.Minute).Format(time.RFC3339Nano), LastObservedAt: now.Add(-time.Minute).Format(time.RFC3339Nano)}
-	attempt := runtimeobs.Attempt{AttemptID: "attempt-1", TaskID: "A-5", AgentPath: incident.AgentPath, BindingState: runtimeobs.BindingBound, CurrentState: runtimeobs.StateRunning, StateEvidenceSource: runtimeobs.EvidenceHook, StateObservationQuality: runtimeobs.QualityObserved, LastActivityAt: now.Add(-time.Second).Format(time.RFC3339Nano)}
+	attempt := runtimeobs.Attempt{AttemptID: "attempt-1", TaskID: "A-5", AgentPath: incident.AgentPath, BindingState: runtimeobs.BindingBound, CurrentState: runtimeobs.StateRunning, StateEvidenceSource: runtimeobs.EvidenceHook, StateObservationQuality: runtimeobs.QualityObserved, StartedAt: now.Add(-2 * time.Minute).Format(time.RFC3339Nano), LastObservedAt: now.Add(-time.Second).Format(time.RFC3339Nano), LastActivityAt: now.Add(-time.Second).Format(time.RFC3339Nano)}
 	attempt.BindingEvidence = map[string]string{"assignment_id": "assignment-1"}
 	if recoveredAt, ok := operationEvidenceRecovery(incident, []runtimeobs.Attempt{attempt}, now); !ok || recoveredAt != attempt.LastActivityAt {
 		t.Fatalf("same assignment Hook evidence did not recover at source time: %s %v", recoveredAt, ok)

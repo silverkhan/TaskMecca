@@ -2,6 +2,8 @@ package webui
 
 import (
     "strings"
+ "os"
+ "path/filepath"
     "testing"
 
     "github.com/silverkhan/TaskMecca/internal/notify"
@@ -29,9 +31,16 @@ func legacyOperationActionable(journal operationJournal) []notify.Event {
 }
 
 func TestOperationActionableIncidentsMatchesLegacy(t *testing.T) {
+ // The legacy oracle applies to current incidents only; history/diagnostics
+ // intentionally do not notify. Give those current fixtures canonical tasks.
+ project := testOperationProject(t)
+ for _, id := range []string{"B-100", "B-200", "B-300"} {
+  if err := os.WriteFile(filepath.Join(project, "_task_mecca", "data", "backlog", "000001."+id+".current.doing.md"), []byte("# "+id+" Current fixture\n- Agent: /root/controller/worker\n"), 0600); err != nil {t.Fatal(err)}
+ }
+
     // Mixed attempt binding and casing; recovered/normal incidents must never
     // create a live notification, nor should a review mask a different attempt.
-    journal := operationJournal{
+    journal := operationJournal{Project:project,
         Stages: []operationStage{
             {TaskID:"B-100", AttemptID:"a-1", ControllerReview:true},
             {TaskID:"B-200", AttemptID:"", ControllerReview:true},

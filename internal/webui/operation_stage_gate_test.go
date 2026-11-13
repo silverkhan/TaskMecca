@@ -46,7 +46,7 @@ func TestOperationStageOnlyCurrentAssignmentAndMatchingAttempt(t *testing.T) {
     }
     attempts:=[]runtimeobs.Attempt{
         {TaskID:"A-42",AttemptID:"old-worker",AgentPath:"/root/old",BindingState:runtimeobs.BindingBound,BindingEvidence:map[string]string{"assignment_id":"old"}},
-        {TaskID:"A-42",AttemptID:"new-worker",AgentPath:"/root/new",BindingState:runtimeobs.BindingBound,BindingEvidence:map[string]string{"assignment_id":"current"},CurrentState:runtimeobs.StateRunning,StateEvidenceSource:runtimeobs.EvidenceHook,StateObservationQuality:runtimeobs.QualityObserved},
+        {TaskID:"A-42",AttemptID:"new-worker",LastObservedAt:current,StartedAt:current,AgentPath:"/root/new",BindingState:runtimeobs.BindingBound,BindingEvidence:map[string]string{"assignment_id":"current"},CurrentState:runtimeobs.StateRunning,StateEvidenceSource:runtimeobs.EvidenceHook,StateObservationQuality:runtimeobs.QualityObserved},
         {TaskID:"A-42",AttemptID:"other-worker",AgentPath:"/root/other",BindingState:runtimeobs.BindingBound,BindingEvidence:map[string]string{"assignment_id":"current"}},
     }
     stages:=projectOperationStages("p",assignments,attempts,handoff.Ledger{},now)
