@@ -2452,3 +2452,27 @@ select.tm-combo-native{position:absolute!important;width:1px!important;height:1p
 .common-attention .operation-observation-details dl { display: grid; gap: 8px; margin-block: 8px; }
 .common-attention .operation-observation-details dl > div { display: flex; flex-wrap: wrap; gap: 4px 12px; }
 .common-attention .operation-observation-details dd { margin: 0; }
+
+/* Past observations remain subordinate to current actions. Both levels of
+   navigation are bounded; these styles inherit the incumbent theme tokens. */
+.common-attention .operation-history-note { color: var(--muted); margin-block: 10px; }
+.common-attention .operation-history-source { color: var(--muted); font-size: 12px; overflow-wrap: anywhere; }
+.common-attention .operation-history-scope { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; margin-block: 12px; }
+.common-attention .operation-history-scope :is(select,input) { max-width: 100%; min-width: 0; flex: 1 1 200px; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 8px; }
+.common-attention .operation-history-pager, .common-attention .operation-history-pager form { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-block: 8px; }
+.common-attention .operation-history-pager input { width: 76px; max-width: 100%; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 8px; }
+.common-attention .operation-observation-details button { color: var(--text); background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; min-height: 36px; padding: 7px 12px; cursor: pointer; font: inherit; }
+.common-attention .operation-observation-details button:disabled { opacity: .5; cursor: default; }
+.common-attention .operation-observation-details button:hover:not(:disabled), .common-attention .operation-observation-details button[aria-pressed="true"] { border-color: var(--text); }
+.common-attention .operation-observation-details :is(button,select,input,summary):focus-visible { outline: 2px solid var(--text); outline-offset: 3px; }
+.common-attention .operation-history-groups { list-style: none; padding: 0; }
+.common-attention .operation-history-raw { border-top: 1px solid var(--border); margin-top: 16px; padding-top: 12px; min-width: 0; }
+.common-attention .operation-history-raw h3 { overflow-wrap: anywhere; }
+.common-attention .operation-raw-fields pre { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; max-width: 100%; }
+@media(max-width:720px) {
+ .common-attention .operation-observation-details :is(button,select,input) { min-height: 44px; }
+ .common-attention .operation-history-pager form { flex-basis: 100%; }
+}
+@media(max-width:720px) {
+ .common-attention .operation-observation-details summary { min-height: 44px; }
+}
