@@ -68,6 +68,7 @@ func BuildLedger(project string, now time.Time) (Ledger, error) {
 			row.ContractSHA256 = record.ContractSHA256
 			row.SourceAgentPath = record.SourceAgentPath
 			row.SourceAttemptID = record.SourceAttemptID
+ row.SourceWorkspace = record.SourceWorkspace
 			row.Target = Target{
 				AgentPath: record.TargetAgentPath, AttemptID: record.TargetAttemptID,
 				RuntimeAgentID: record.TargetRuntimeAgentID, RuntimeName: record.TargetRuntimeName,

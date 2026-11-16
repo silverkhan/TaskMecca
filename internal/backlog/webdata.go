@@ -408,6 +408,7 @@ func TaskDetailWithTimings(project,root,id string) (map[string]any,TaskDetailTim
     timing:=map[string]any{}
     if v,ok:=control.Timings[row.ID]; ok { timing=v }
     item:=dashboardItem(row,state,waiting,timing,nil)
+ item["role_policy"]=RolePolicyProjection(project,row.ID,row.RawMarkdown)
     if signal,ok:=control.Activity[row.ID]; ok { item["activity"]=signal } else { item["activity"]=map[string]any{"health":"n/a"} }
     reason:=control.Attention[row.ID]
     if len(reason)>0 {

@@ -2,6 +2,7 @@ package handoff
 
 import (
 	"github.com/silverkhan/TaskMecca/internal/activity"
+ "github.com/silverkhan/TaskMecca/internal/rolepolicy"
 	"github.com/silverkhan/TaskMecca/internal/handoffjournal"
 )
 
@@ -25,6 +26,7 @@ const ActionReportOnly = handoffjournal.ActionReportOnly
 const ActionHold = handoffjournal.ActionHold
 
 type PrepareRequest struct {
+ SourceWorkspace string
 	Project                string
 	TaskID                 string
 	EventType              EventType
@@ -38,6 +40,7 @@ type PrepareRequest struct {
 }
 
 type PrepareResult struct {
+ RolePolicy *rolepolicy.View `json:"role_policy,omitempty"`
 	ActivityReporting      *activity.ReportingRequirement `json:"activity_reporting,omitempty"`
 	HandoffID              string                         `json:"handoff_id"`
 	Duplicate              bool                           `json:"duplicate"`
@@ -49,6 +52,7 @@ type PrepareResult struct {
 }
 
 type ClaimResult struct {
+ RolePolicy *rolepolicy.View `json:"role_policy,omitempty"`
 	ContractCompatibility string                         `json:"contract_compatibility,omitempty"`
 	ActivityReporting     *activity.ReportingRequirement `json:"activity_reporting,omitempty"`
 	HandoffID             string                         `json:"handoff_id"`

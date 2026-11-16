@@ -12,6 +12,7 @@ import (
 	"net/url"
 	"os"
 	"strings"
+ "github.com/silverkhan/TaskMecca/internal/rolepolicy"
 )
 
 const contractMaxInputBytes = 8 << 20
@@ -24,6 +25,7 @@ type contractManifest struct {
 }
 
 type contractTask struct {
+ RolePolicy *rolepolicy.Policy `json:"role_policy,omitempty"`
 	Key                string   `json:"key"`
 	Title              string   `json:"title"`
 	Kind               string   `json:"kind"`
@@ -64,6 +66,7 @@ type contractResult struct {
 }
 
 func contractUsage(out io.Writer) {
+ fmt.Fprintln(out," task-mecca contract role-policy check|snapshot --project DIR --task ID --attempt EXACT --source-worktree ACTUAL [--review] --json")
 	fmt.Fprintln(out, "Usage: task-mecca contract validate --input <manifest.json|-> [--json]")
 	fmt.Fprintln(out, "       task-mecca contract preview  --input <manifest.json|-> [--json]")
 	fmt.Fprintln(out, "Read-only: validate source fields, or preview canonical Markdown without creating tasks.")
@@ -80,7 +83,8 @@ func runContractCLI(args []string, out, stderr io.Writer) int {
 		return 0
 	}
 	action:=args[0]
-	if action=="decision" { return runContractDecisionCLI(args[1:],out,stderr) }
+	if action=="role-policy" { return runRolePolicyCLI(args[1:],out,stderr) }
+ if action=="decision" { return runContractDecisionCLI(args[1:],out,stderr) }
 	if action=="plan" || action=="apply" || action=="status" { return runContractBatchCLI(action,args[1:],out,stderr) }
 	if action!="validate" && action!="preview" {
 		fmt.Fprintf(stderr,"unknown contract action: %s (use validate or preview)\n",action)
@@ -275,6 +279,7 @@ func renderContract(task contractTask)string {
 		add("### 요구사항")
 		add("")
 		add(fallback(task.Requirements))
+ if task.RolePolicy!=nil { b,_:=json.MarshalIndent(task.RolePolicy,"","  ");add("");add(rolepolicy.Fence+string(b)+"\n```") }
 		add("")
 		add("### 범위")
 		add("")

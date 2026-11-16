@@ -69,7 +69,18 @@ func run(args []string) int {
             fmt.Fprintln(os.Stderr,"subcontroller decide: invalid JSON:",err)
             return 2
         }
-        decision,err:=subcontroller.Decide(snapshot)
+        // Native/source verification overrides caller JSON claims. This remains a
+  // read-only recommendation; handoff acceptance revalidates independently.
+  if snapshot.Project!="" {
+   decisionApproval,approvalErr:=projectContractDecision(snapshot.Project,snapshot.BacklogID)
+   snapshot.Authorized=approvalErr==nil && decisionApproval.ExecutionAuthorized
+   requiresReview:=snapshot.IndependentReviewRequired || snapshot.Event=="review_completed"
+   a, verifyErr:=handoff.AssessPolicy(snapshot.Project,snapshot.BacklogID,snapshot.ImplementationAttempt,snapshot.SourceWorkspace,requiresReview,time.Now())
+   snapshot.RuntimeKnown=a.ImplementationIdentity.Bound && a.ImplementationIdentity.Observed
+   snapshot.IndependentReviewRequired=requiresReview
+   if verifyErr!=nil {a.Allowed=false;a.Reason=verifyErr.Error()};snapshot.VerifiedRolePolicy=&a.View
+  }
+  decision,err:=subcontroller.Decide(snapshot)
         if err!=nil {fmt.Fprintln(os.Stderr,err);return 2}
         if err:=json.NewEncoder(os.Stdout).Encode(decision);err!=nil {fmt.Fprintln(os.Stderr,err);return 2}
         return 0

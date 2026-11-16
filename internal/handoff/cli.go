@@ -12,6 +12,7 @@ import (
 )
 
 type cliOptions struct {
+ sourceWorkspace string
 	project             string
 	jsonOutput          bool
 	event               string
@@ -79,7 +80,7 @@ func RunCLI(args []string, stdout, stderr io.Writer) int {
 		result, callErr := Prepare(PrepareRequest{
 			Project: project, TaskID: opts.positionals[0], EventType: EventType(strings.ReplaceAll(opts.event, "-", "_")),
 			SourceAgentPath: opts.from, TargetAgentPath: opts.to,
-			SourceAttemptID: opts.sourceAttempt, TargetAttemptID: opts.targetAttempt,
+			SourceAttemptID: opts.sourceAttempt, SourceWorkspace: opts.sourceWorkspace, TargetAttemptID: opts.targetAttempt,
 			ReportFile: opts.reportFile, ExpectedContractSHA256: opts.contractSHA256, ExecutionAuthorized: opts.executionAuthorized,
 		}, now)
 		if callErr != nil {
@@ -259,14 +260,16 @@ func parseCLI(args []string) (cliOptions, error) {
 			opts.fields = args[i]
 		case "--execution-authorized":
 			opts.executionAuthorized = true
-		case "--project", "--event", "--from", "--to", "--source-attempt", "--target-attempt", "--from-attempt", "--to-attempt", "--report-file", "--contract-sha256", "--as", "--step", "--result", "--evidence":
+		case "--source-worktree", "--project", "--event", "--from", "--to", "--source-attempt", "--target-attempt", "--from-attempt", "--to-attempt", "--report-file", "--contract-sha256", "--as", "--step", "--result", "--evidence":
 			if i+1 >= len(args) {
 				return opts, fmt.Errorf("%s requires a value", arg)
 			}
 			value := args[i+1]
 			i++
 			switch arg {
-			case "--project":
+			case "--source-worktree":
+ opts.sourceWorkspace = value
+ case "--project":
 				opts.project = value
 			case "--event":
 				opts.event = value

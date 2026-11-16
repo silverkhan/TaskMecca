@@ -1,7 +1,10 @@
 package runtimeobs
 
 import (
+	"errors"
 	"fmt"
+	"github.com/silverkhan/TaskMecca/internal/rolepolicy"
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -80,6 +83,23 @@ func observeWorkerStart(in WorkerStart, now time.Time, observe func(string, T3Se
 		return fail(fmt.Errorf("observed native/T3 execution does not match current START"))
 	}
 	out.Stage = "binding"
+	raw, policyErr := rolepolicy.TaskMarkdown(project, in.TaskID)
+	if policyErr != nil && !errors.Is(policyErr, os.ErrNotExist) {
+		return fail(policyErr)
+	}
+	policy, approved, policyErr := rolepolicy.Load(project, in.TaskID, raw)
+	if policyErr != nil {
+		return fail(policyErr)
+	}
+	identity := PolicyIdentity(out.Attempt)
+	// The exact observed native and assignment mapping were checked above;
+	// the following evaluation precedes the durable binding write.
+	identity.Bound = true
+	identity.TaskID = in.TaskID
+	identity.AgentPath = in.WorkerPath
+	if view := rolepolicy.Evaluate(policy, identity, source, approved); !view.Allowed {
+		return fail(fmt.Errorf("role_policy_hold: %s; resume: %s", view.Reason, view.ResumeWhen))
+	}
 	bound, err := BindRuntimeAgentForAssignment(project, in.AssignmentID, in.Selector.RuntimeAgentID, "", now)
 	if err != nil {
 		return fail(err)

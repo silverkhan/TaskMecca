@@ -14,10 +14,12 @@ import (
 
 	"github.com/silverkhan/TaskMecca/internal/backlog"
  "github.com/silverkhan/TaskMecca/internal/contractscope"
+ "github.com/silverkhan/TaskMecca/internal/rolepolicy"
 	"github.com/silverkhan/TaskMecca/internal/projectguard"
 )
 
 type decisionEvent struct {
+ RolePolicySHA256 string `json:"role_policy_sha256,omitempty"`
 	EventID string `json:"event_id"`
 	TaskID string `json:"task_id"`
 	Kind string `json:"kind"`
@@ -38,6 +40,10 @@ type decisionFinding struct {
 }
 
 type contractDecisionReport struct {
+ RolePolicy *rolepolicy.Policy `json:"role_policy,omitempty"`
+ RolePolicySHA256 string `json:"role_policy_sha256,omitempty"`
+ RoleExceptionApproved bool `json:"role_exception_approved"`
+ RolePolicyError string `json:"role_policy_error,omitempty"`
  ApprovalCompatibility string `json:"approval_compatibility,omitempty"`
  ApprovalAnchorSHA256 string `json:"approval_anchor_sha256,omitempty"`
 	TaskID string `json:"task_id"`
@@ -57,6 +63,7 @@ type contractDecisionReport struct {
 var decisionEventPattern=regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$`)
 
 func decisionUsage(out io.Writer){
+ fmt.Fprintln(out,"Restricted implementation exception: policy_confirmed --policy-key implementation-role-exception --role-policy-sha256 CURRENT_DIGEST (separate actual user decision required).")
 	fmt.Fprintln(out,"task-mecca contract decision record --project DIR --task B-123 --event-id STABLE-ID --kind execution_approved|execution_revoked|supplement|policy_pending|policy_confirmed --actor AGENT --evidence REF [--body-file FILE] [--policy-key KEY] [--user-confirmed] --json")
 	fmt.Fprintln(out,"task-mecca contract decision show --project DIR --task B-123 --json")
 	fmt.Fprintln(out,"Record only explicit user decisions; approval/supplement/policy confirmation require --user-confirmed. This does not wake or dispatch an agent.")
@@ -76,7 +83,8 @@ func runContractDecisionCLI(args []string,out,stderr io.Writer)int{
 	evidence:=flags.String("evidence","","source reference to a real user decision")
 	policyKey:=flags.String("policy-key","","policy identifier")
 	bodyFile:=flags.String("body-file","","text supplement file; never reinterpreted by CLI")
-	confirmed:=flags.Bool("user-confirmed",false,"the user explicitly confirmed the specified decision")
+	roleSHA:=flags.String("role-policy-sha256","","exact restricted role policy digest; not general execution approval")
+ confirmed:=flags.Bool("user-confirmed",false,"the user explicitly confirmed the specified decision")
 	asJSON:=flags.Bool("json",false,"machine-readable result")
 	if err:=flags.Parse(args[1:]);err!=nil{return 2}
 	if flags.NArg()!=0||strings.TrimSpace(*taskID)==""{fmt.Fprintln(stderr,"--task is required; no positional args");return 2}
@@ -118,7 +126,7 @@ func runContractDecisionCLI(args []string,out,stderr io.Writer)int{
 	if existingRaw,readErr:=os.ReadFile(decisionPath(abs,*eventID));readErr==nil{
 		var existing decisionEvent
 		if err:=json.Unmarshal(existingRaw,&existing);err!=nil{fmt.Fprintln(stderr,err);return 3}
-		if existing.TaskID!=strings.ToUpper(*taskID)||existing.Kind!=*kind||existing.Actor!=*actor||existing.Evidence!=*evidence||existing.PolicyKey!=*policyKey||existing.Text!=text||existing.UserConfirmed!=*confirmed{
+		if existing.TaskID!=strings.ToUpper(*taskID)||existing.Kind!=*kind||existing.Actor!=*actor||existing.Evidence!=*evidence||existing.PolicyKey!=*policyKey||existing.Text!=text||existing.UserConfirmed!=*confirmed||existing.RolePolicySHA256!=*roleSHA{
 			fmt.Fprintln(stderr,"DECISION_ID_CONFLICT: existing event does not match supplied decision")
 			return 3
 		}
@@ -128,12 +136,14 @@ func runContractDecisionCLI(args []string,out,stderr io.Writer)int{
 	}else if !os.IsNotExist(readErr){fmt.Fprintln(stderr,readErr);return 1}
 	prior,err:=projectContractDecision(abs,*taskID)
 	if err!=nil{fmt.Fprintln(stderr,err);return 1}
-	if prior.Status=="unknown"{fmt.Fprintln(stderr,"CONTRACT_UNKNOWN: inconsistent decision ledger; resolve findings before recording");return 3}
+	if *roleSHA!="" && (*kind!="policy_confirmed" || *policyKey!="implementation-role-exception" || prior.RolePolicySHA256!=*roleSHA) {fmt.Fprintln(stderr,"ROLE_POLICY_DIGEST_MISMATCH: exact current restricted policy digest required");return 3}
+ if *kind=="policy_confirmed" && *policyKey=="implementation-role-exception" && (*roleSHA=="" || prior.RolePolicy==nil) {fmt.Fprintln(stderr,"ROLE_POLICY_REQUIRED: confirmation requires structured policy and --role-policy-sha256");return 3}
+ if prior.Status=="unknown"{fmt.Fprintln(stderr,"CONTRACT_UNKNOWN: inconsistent decision ledger; resolve findings before recording");return 3}
 	if *kind=="execution_approved"&&len(prior.PendingPolicies)>0{
 		fmt.Fprintln(stderr,"POLICY_PENDING: resolve all pending policies before execution approval");return 3
 	}
 	event:=decisionEvent{
-		EventID:*eventID,TaskID:strings.ToUpper(*taskID),Kind:*kind,Actor:*actor,
+		RolePolicySHA256:*roleSHA,EventID:*eventID,TaskID:strings.ToUpper(*taskID),Kind:*kind,Actor:*actor,
 		Evidence:*evidence,PolicyKey:*policyKey,Text:text,UserConfirmed:*confirmed,
 		BaseSHA256:prior.CurrentSHA256,EffectiveSHA256:prior.EffectiveSHA256,
 	}
@@ -210,17 +220,7 @@ func readDecisionEvents(project,taskID string)([]decisionEvent,[]decisionFinding
 
 // Authorization scope intentionally excludes operational notes and lifecycle
 // projections. Their routine updates must not invalidate explicit consent.
-func authorizationContractScopeRaw(raw string)string{
-	start:=strings.Index(raw,"## 작업 정의\n")
-	if start<0{start=strings.Index(raw,"## 요건 정의서\n")}
-	if start<0{return raw}
-	end:=strings.Index(raw[start:],"## 실행 정보\n")
-	if end<0{end=len(raw)-start}
-	firstLine:=strings.SplitN(raw,"\n",2)[0]
-	scope:=firstLine+"\n"+raw[start:start+end]
-	if i:=strings.Index(raw,"## 원천 전문 (변경 금지)\n");i>=0{scope+="\n"+raw[i:]}
-	return scope
-}
+func authorizationContractScopeRaw(raw string)string{return rolepolicy.DecisionScopeRaw(raw)}
 func authorizationContractScope(raw string)string{return contractscope.NormalizeAcceptance(authorizationContractScopeRaw(raw))}
 
 func projectContractDecision(project,taskID string)(contractDecisionReport,error){
@@ -233,6 +233,10 @@ func projectContractDecision(project,taskID string)(contractDecisionReport,error
 	if duplicates,ok:=item["duplicate_count"].(int);ok&&duplicates!=1{return result,fmt.Errorf("duplicate task ID %s requires reconciliation",taskID)}
 	raw,_:=item["raw_markdown"].(string)
 	result.BaseMarkdown=raw
+ policy, exceptionApproved, policyErr := rolepolicy.Load(project,taskID,raw)
+ result.RolePolicy=policy; result.RoleExceptionApproved=exceptionApproved; result.RolePolicySHA256=rolepolicy.PolicyDigest(policy)
+ if policyErr!=nil{result.RolePolicyError=policyErr.Error()}
+
 	result.CurrentSHA256=hashBatchBytes([]byte(authorizationContractScope(raw)))
 	events,findings,err:=readDecisionEvents(project,taskID)
 	if err!=nil{return result,err}
