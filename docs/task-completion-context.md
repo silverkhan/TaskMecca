@@ -25,8 +25,44 @@ reports the latest actual Worker phase on the current assignment and returns kno
 same-task reports with their changes/tests/errors. Empty collections are unknown
 evidence, not successful implementation. Another task's report remains a historical
 reference, never an implicit result for this task. Old attempts are not silently
-reused. Existing unclaimed retarget or verified claim transfer must precede resume
-on a replacement attempt; the original report's receiving attempt remains visible.
+reused. Existing unclaimed retarget or verified claim transfer applies to pending
+handoffs. An already-applied registration is immutable intake history: the typed
+same-native lineage check below connects it without a transfer or rewrite. The
+original report's receiving attempt remains visible.
+
+### Applied registration intake and current Controller episodes
+
+A registration `applied` receipt records intake; it is not a completion report.
+For a later current episode, `context` and each distinct completion gate verify
+the same task/contract/AC and a typed `registration_lineage` proof. The old receipt
+must be registration_ready, applied and claimed by its exact Controller target.
+That exact old attempt must have observed, bound terminal native evidence matching
+the immutable target's provider/session/runtime identity. The separately verified
+fresh current Controller must have that same native/session/provider identity.
+The response preserves original target/claim/applied time, current attempt, and
+`historical_target_mismatch: true`; it never pretends the old receipt targets the
+current episode. Old unobserved, foreign-native/provider, unclaimed, pending,
+wrong-task, changed-contract and stale-current evidence still refuse. Pending
+handoffs continue using their existing retarget/transfer rules.
+
+No new registration, approval, transfer of an applied row, or canonical repair is
+created by this read-only link. Completion uses a distinct report/source/assignment
+handoff with its own current receiver. Repeated current episodes retain this
+original lineage while existing pending-completion retarget/retry stays idempotent.
+Normal Worker metadata continues preserving existing execution consent.
+
+### Implementation attribution during review
+
+`StartContext` resolves the implementation owner from the current role policy,
+including supported worker_metadata, or an explicit canonical Agent path for a
+legacy task. It then selects assignments only for that owner and verifies the
+actual bound observed native identity. A later reviewer assignment is returned
+under `other_actors`; it cannot become the implementation source/phase or erase
+the completed implementer's collection gap. Explicit implementation reassignment
+uses the new declared owner and its exact assignment. Missing/multi-owner legacy
+metadata, ambiguous assignments/attempts and policy/native mismatch remain a
+collection gap with a Controller verification stage; latest task assignment is
+never an ownership fallback. No reviewer name heuristic is used.
 
 The existing `coordinate.recovery_queue` and `recovery event` paths include finished
 Worker turns without completion evidence and assignment/START collection gaps after
