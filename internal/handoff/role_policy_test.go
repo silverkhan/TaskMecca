@@ -18,15 +18,18 @@ func a78PolicyFixture(t *testing.T) (string, string, *rolepolicy.Policy, time.Ti
 	t.Helper()
 	project, source := t.TempDir(), t.TempDir()
 	writeSimpleTask(t, project, "A-1")
+ if b,e:=exec.Command("git","init","-q",source).CombinedOutput();e!=nil{t.Fatal(string(b),e)}
+ if e:=os.WriteFile(filepath.Join(source,"source.go"),[]byte("package candidate\n"),0600);e!=nil{t.Fatal(e)}
 	p := &rolepolicy.Policy{SchemaVersion: 1, Implementation: rolepolicy.Owner{Role: "worker", AgentPath: "/root/controller/kkobugi"}, Operational: rolepolicy.Owner{Role: "controller", AgentPath: "/root/controller"}, Reviewer: rolepolicy.Owner{Role: "worker", AgentPath: "/root/controller/pikachu"}, Method: "worker", Workspace: source, Scope: []string{"source.go"}}
 	file := filepath.Join(project, "_task_mecca/data/backlog/000001.A-1.handoff-test.todo.md")
 	b, _ := os.ReadFile(file)
 	encoded, _ := json.Marshal(p)
 	os.WriteFile(file, []byte(strings.Replace(string(b), "### 수용 기준", rolepolicy.Fence+string(encoded)+"\n```\n\n### 수용 기준", 1)), 0600)
 	now := time.Date(2026, 11, 16, 1, 0, 0, 0, time.UTC)
+ if _,e:=runtimeobs.RecordAssignment(project,"assignment-worker","A-1",p.Implementation.AgentPath,now);e!=nil{t.Fatal(e)}
 	for _, event := range []runtimeobs.ExecutionEvent{
 		{EventKind: "state", ObservedAt: now.Format(time.RFC3339Nano), AttemptID: "worker-run", Provider: "codex", SessionID: "worker-native", RuntimeAgentID: "worker-native", State: runtimeobs.StateRunning, EvidenceSource: runtimeobs.EvidenceHook, ObservationQuality: runtimeobs.QualityObserved},
-		{EventKind: "binding", ObservedAt: now.Add(time.Second).Format(time.RFC3339Nano), AttemptID: "worker-run", TaskID: "A-1", AgentPath: p.Implementation.AgentPath, BindingSource: "dispatch", EvidenceSource: runtimeobs.EvidenceManualBinding, ObservationQuality: runtimeobs.QualityAuthoritative},
+		{EventKind: "binding", ObservedAt: now.Add(time.Second).Format(time.RFC3339Nano), AttemptID: "worker-run", TaskID: "A-1", AgentPath: p.Implementation.AgentPath, BindingSource: "dispatch", BindingEvidence: map[string]string{"assignment_id":"assignment-worker"}, EvidenceSource: runtimeobs.EvidenceManualBinding, ObservationQuality: runtimeobs.QualityAuthoritative},
 	} {
 		if e := runtimeobs.AppendExecutionEvent(project, event); e != nil {
 			t.Fatal(e)
@@ -37,11 +40,12 @@ func a78PolicyFixture(t *testing.T) (string, string, *rolepolicy.Policy, time.Ti
 }
 
 func TestA78SupportedHandoffAndAcceptanceHold(t *testing.T) {
-	project, source, _, now := a78PolicyFixture(t)
+	project, source, p, now := a78PolicyFixture(t)
 	report := filepath.Join(source, "report.md")
 	os.WriteFile(report, []byte("worker candidate, separate reviewer pending"), 0600)
 	req := PrepareRequest{Project: project, TaskID: "A-1", EventType: EventWorkerDone, SourceAgentPath: "/root/controller/kkobugi", SourceAttemptID: "worker-run", SourceWorkspace: source, TargetAgentPath: "/root/controller", TargetAttemptID: "controller-run", ReportFile: report}
-	wrong := req
+	attachA79PolicyContext(t,&req,p.Scope,now)
+ wrong := req
 	wrong.SourceWorkspace = "/wrong/workspace"
 	if _, e := Prepare(wrong, now); e == nil {
 		t.Fatal("workspace mismatch accepted")

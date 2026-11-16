@@ -48,16 +48,15 @@ func TestHandoffClaimKeepsLegacyCheckedFingerprintWithoutRewritingIt(t *testing.
 }
 
 func TestHandoffClaimCLIDetectsReviewReportingOmission(t *testing.T) {
-	project := t.TempDir()
-	writeSimpleTask(t, project, "A-1")
-	now := time.Now().UTC()
-	appendControllerAttempt(t, project, "controller", "session", "native", runtimeobs.StateRunning, now)
-	prepared, err := Prepare(PrepareRequest{Project: project, TaskID: "A-1", EventType: EventCompletionReport, SourceAgentPath: "/root/controller/pairi", SourceAttemptID: "worker", TargetAgentPath: "/root/controller", TargetAttemptID: "controller"}, now.Add(time.Second))
+	req, _, now := a79ContextFixture(t)
+	req.EventType = EventCompletionReport
+	project := req.Project
+	prepared, err := Prepare(req, now)
 	if err != nil {
 		t.Fatal(err)
 	}
 	var out, errs bytes.Buffer
-	code := RunCLI([]string{"claim", prepared.HandoffID, "--project", project, "--as", "/root/controller", "--source-attempt", "controller", "--json"}, &out, &errs)
+	code := RunCLI([]string{"claim", prepared.HandoffID, "--project", project, "--as", "/root/controller", "--source-attempt", req.TargetAttemptID, "--json"}, &out, &errs)
 	if code != 0 {
 		t.Fatalf("claim failed: %s", errs.String())
 	}
