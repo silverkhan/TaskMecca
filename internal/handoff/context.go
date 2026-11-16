@@ -51,18 +51,21 @@ type CheckEvidence struct {
 }
 
 type ContextCheck struct {
-	KnownReports                []TaskEvidence     `json:"known_reports,omitempty"`
-	TaskID                      string             `json:"task_id"`
-	ReportedTargets             []TaskEvidence     `json:"reported_targets,omitempty"`
-	WorkerRuntime               *WorkerObservation `json:"worker_runtime,omitempty"`
-	Status                      string             `json:"status"`
-	CurrentControllerAttemptID  string             `json:"current_controller_attempt_id"`
-	ReportedControllerAttemptID string             `json:"reported_controller_attempt_id,omitempty"`
-	Target                      *TaskEvidence      `json:"target,omitempty"`
-	ActionOwner                 string             `json:"action_owner"`
-	RemainingStage              string             `json:"remaining_stage"`
-	ResumeCondition             string             `json:"resume_condition"`
-	OriginalError               string             `json:"original_error,omitempty"`
+	RegistrationLineage         *RegistrationLineage    `json:"registration_lineage,omitempty"`
+	ImplementationOwner         *rolepolicy.Owner       `json:"implementation_owner,omitempty"`
+	OtherActors                 []AssignmentObservation `json:"other_actors,omitempty"`
+	KnownReports                []TaskEvidence          `json:"known_reports,omitempty"`
+	TaskID                      string                  `json:"task_id"`
+	ReportedTargets             []TaskEvidence          `json:"reported_targets,omitempty"`
+	WorkerRuntime               *WorkerObservation      `json:"worker_runtime,omitempty"`
+	Status                      string                  `json:"status"`
+	CurrentControllerAttemptID  string                  `json:"current_controller_attempt_id"`
+	ReportedControllerAttemptID string                  `json:"reported_controller_attempt_id,omitempty"`
+	Target                      *TaskEvidence           `json:"target,omitempty"`
+	ActionOwner                 string                  `json:"action_owner"`
+	RemainingStage              string                  `json:"remaining_stage"`
+	ResumeCondition             string                  `json:"resume_condition"`
+	OriginalError               string                  `json:"original_error,omitempty"`
 }
 
 type WorkerObservation struct {
@@ -70,6 +73,112 @@ type WorkerObservation struct {
 	NativeID  string                    `json:"native_id"`
 	State     runtimeobs.CanonicalState `json:"state"`
 	TurnEnded bool                      `json:"turn_ended"`
+}
+
+// An applied registration is an immutable intake receipt, not a completion or
+// ownership-transfer target. Link its verified native lineage without rewriting it.
+type RegistrationLineage struct {
+	Mode                       string `json:"mode"`
+	OriginalHandoffID          string `json:"original_handoff_id"`
+	OriginalTargetAttemptID    string `json:"original_target_attempt_id"`
+	OriginalClaimedAttemptID   string `json:"original_claimed_attempt_id,omitempty"`
+	OriginalAppliedAt          string `json:"original_applied_at,omitempty"`
+	CurrentControllerAttemptID string `json:"current_controller_attempt_id"`
+	HistoricalTargetMismatch   bool   `json:"historical_target_mismatch"`
+	Provider                   string `json:"provider"`
+	NativeID                   string `json:"native_id"`
+	RuntimeAgentID             string `json:"runtime_agent_id"`
+}
+
+func registrationLineage(project string, original Handoff, current Target, now time.Time) (*RegistrationLineage, error) {
+	proof := &RegistrationLineage{Mode: "current_registration_target", OriginalHandoffID: original.HandoffID, OriginalTargetAttemptID: original.Target.AttemptID, OriginalClaimedAttemptID: original.ClaimedAttemptID, OriginalAppliedAt: original.AppliedAt, CurrentControllerAttemptID: current.AttemptID, Provider: current.Provider, NativeID: current.SessionID, RuntimeAgentID: current.RuntimeAgentID}
+	if original.Target.AttemptID == current.AttemptID && (original.ClaimedAttemptID == "" || original.ClaimedAttemptID == current.AttemptID) && sameVerifiedRuntimeIdentity(original.Target, current) {
+		return proof, nil
+	}
+	deny := func() (*RegistrationLineage, error) {
+		return nil, errors.New("original_handoff_current_attempt_mismatch")
+	}
+	if original.EventType != EventRegistrationReady || !original.Applied || original.ClaimedBy != "/root/controller" || original.ClaimedAttemptID == "" || original.ClaimedAttemptID != original.Target.AttemptID || original.ClaimedAttemptID == current.AttemptID {
+		return deny()
+	}
+	ledger, e := runtimeobs.BuildLedger(project, 20, now)
+	if e != nil {
+		return nil, e
+	}
+	for _, old := range ledger.Attempts {
+		if old.AttemptID != original.ClaimedAttemptID {
+			continue
+		}
+		id := runtimeobs.PolicyIdentity(old)
+		if !old.Terminal || !id.Bound || !id.Observed || id.NativeID == "" || old.AgentPath != "/root/controller" {
+			return deny()
+		}
+		actual := Target{AgentPath: old.AgentPath, Provider: old.Provider, SessionID: old.SessionID, RuntimeAgentID: old.RuntimeAgentID}
+		if !sameVerifiedRuntimeIdentity(actual, original.Target) || !sameVerifiedRuntimeIdentity(actual, current) {
+			return deny()
+		}
+		proof.Mode = "applied_registration_same_native_history"
+		proof.HistoricalTargetMismatch = true
+		return proof, nil
+	}
+	return deny()
+}
+
+func contextImplementationOwner(project, task, raw string, inspection map[string]any) (rolepolicy.Owner, error) {
+	p, _, e := rolepolicy.Load(project, task, raw)
+	if e != nil {
+		return rolepolicy.Owner{}, e
+	}
+	if p != nil {
+		return p.Implementation, nil
+	}
+	// Legacy operational Agent is usable only as an explicit owner/path. Missing
+	// or multi-owner metadata must be collected, never replaced by latest-task wins.
+	fields, _ := inspection["fields"].(map[string]string)
+	path := strings.TrimSpace(fields["Agent"])
+	if !rolepolicy.WorkerPath(path) {
+		return rolepolicy.Owner{}, errors.New("implementation_owner_unresolved: verify canonical implementation owner or structured role policy; do not infer from latest task assignment")
+	}
+	return rolepolicy.Owner{Role: "worker", AgentPath: path}, nil
+}
+
+type AssignmentObservation struct {
+	AssignmentID string             `json:"assignment_id"`
+	AgentPath    string             `json:"agent_path"`
+	Runtime      *WorkerObservation `json:"runtime,omitempty"`
+	Phase        string             `json:"phase,omitempty"`
+}
+
+func contextOtherActors(task string, owner rolepolicy.Owner, assignments []runtimeobs.Assignment, attempts []runtimeobs.Attempt, events []activity.Event) []AssignmentObservation {
+	var out []AssignmentObservation
+	for _, assignment := range assignments {
+		if assignment.TaskID != task || assignment.AgentPath == owner.AgentPath {
+			continue
+		}
+		o := AssignmentObservation{AssignmentID: assignment.AssignmentID, AgentPath: assignment.AgentPath}
+		latest := ""
+		for _, a := range attempts {
+			at := a.StartedAt
+			if a.BindingAt > at {
+				at = a.BindingAt
+			}
+			if a.TaskID != task || a.AgentPath != assignment.AgentPath || a.BindingEvidence["assignment_id"] != assignment.AssignmentID || !runtimeobs.PolicyIdentity(a).Observed || a.BindingState != runtimeobs.BindingBound || at <= latest {
+				continue
+			}
+			latest = at
+			o.Runtime = &WorkerObservation{AttemptID: a.AttemptID, NativeID: a.SessionID, State: a.CurrentState, TurnEnded: a.Terminal}
+		}
+		if o.Runtime != nil {
+			for _, event := range events {
+				if event.TaskID == task && event.AssignmentID == assignment.AssignmentID && event.RuntimeAttemptID == o.Runtime.AttemptID && event.PhaseEvent != "" {
+					o.Phase = event.PhaseEvent
+				}
+			}
+		}
+		out = append(out, o)
+	}
+	sort.SliceStable(out, func(i, j int) bool { return out[i].AssignmentID < out[j].AssignmentID })
+	return out
 }
 
 func contextFailure(task, attempt, stage string, err error) (ContextCheck, error) {
@@ -189,7 +298,8 @@ func CheckContext(project, task, attempt string, c ExecutionContext, completion 
 	if c.SchemaVersion != 1 || c.ControllerAttemptID != attempt {
 		return fail(errors.New("context_controller_attempt_mismatch"))
 	}
-	if _, e := currentController(project, attempt, now); e != nil {
+	controller, e := currentController(project, attempt, now)
+	if e != nil {
 		return fail(e)
 	}
 	var t *TaskEvidence
@@ -238,8 +348,9 @@ func CheckContext(project, task, attempt string, c ExecutionContext, completion 
 	if matches, _ := contractscope.MatchesFingerprint(raw, original.ContractSHA256); !matches {
 		return fail(errors.New("original_handoff_contract_changed"))
 	}
-	if original.Target.AttemptID != attempt && original.ClaimedAttemptID != attempt {
-		return fail(errors.New("original_handoff_current_attempt_mismatch"))
+	lineage, e := registrationLineage(project, original, controller, now)
+	if e != nil {
+		return fail(e)
 	}
 	switch t.Phase {
 	case "assigned_prepared", "requirements_started", "research_started", "implementation_started", "targeted_test_started", "full_regression_started", "build_started", "worker_completed", "controller_review_pending", "controller_review", "controller_finalizing", "waiting":
@@ -254,7 +365,7 @@ func CheckContext(project, task, attempt string, c ExecutionContext, completion 
 			return fail(e)
 		}
 	}
-	return ContextCheck{TaskID: task, Status: "verified", CurrentControllerAttemptID: attempt, ReportedControllerAttemptID: c.ControllerAttemptID, Target: t, ActionOwner: "/root/controller", RemainingStage: t.Phase, ResumeCondition: "Continue the existing handoff/review path; this check does not approve, claim, complete, wake or install anything."}, nil
+	return ContextCheck{RegistrationLineage: lineage, TaskID: task, Status: "verified", CurrentControllerAttemptID: attempt, ReportedControllerAttemptID: c.ControllerAttemptID, Target: t, ActionOwner: "/root/controller", RemainingStage: t.Phase, ResumeCondition: "Continue the existing handoff/review path; this check does not approve, claim, complete, wake or install anything."}, nil
 }
 
 func checkCompletionTarget(project string, t TaskEvidence, now time.Time) error {
@@ -437,6 +548,10 @@ func StartContext(project, handoffID, current string, now time.Time) (ContextChe
 	if e != nil {
 		return contextFailure(row.TaskID, current, "start_resume", e)
 	}
+	owner, ownerErr := contextImplementationOwner(project, row.TaskID, raw, i)
+	if ownerErr != nil {
+		return contextFailure(row.TaskID, current, "implementation_owner_verification", ownerErr)
+	}
 	t := TaskEvidence{TaskID: row.TaskID, ContractSHA256: row.ContractSHA256, AcceptanceSHA256: ac, OriginalHandoffID: row.HandoffID, Phase: "assigned_prepared", Changes: []string{}, Tests: []CheckEvidence{}}
 	assignments, e := runtimeobs.ListAssignments(project)
 	if e != nil {
@@ -444,7 +559,10 @@ func StartContext(project, handoffID, current string, now time.Time) (ContextChe
 	}
 	latestAssignmentAt := ""
 	for _, a := range assignments {
-		if a.TaskID == row.TaskID && a.AssignedAt > latestAssignmentAt {
+		if a.TaskID == row.TaskID && a.AgentPath == owner.AgentPath && a.AssignedAt == latestAssignmentAt && t.AssignmentID != "" && a.AssignmentID != t.AssignmentID {
+			return contextFailure(row.TaskID, current, "implementation_owner_verification", errors.New("implementation_assignment_ambiguous"))
+		}
+		if a.TaskID == row.TaskID && a.AgentPath == owner.AgentPath && a.AssignedAt > latestAssignmentAt {
 			latestAssignmentAt = a.AssignedAt
 			t.AssignmentID = a.AssignmentID
 		}
@@ -455,16 +573,29 @@ func StartContext(project, handoffID, current string, now time.Time) (ContextChe
 		return contextFailure(row.TaskID, current, "native_observation", e)
 	}
 	latestWorkerAt := ""
+	var selectedIdentity rolepolicy.Identity
 	for _, a := range runtimeLedger.Attempts {
 		at := a.StartedAt
 		if a.BindingAt > at {
 			at = a.BindingAt
 		}
-		if t.AssignmentID != "" && a.TaskID == row.TaskID && a.BindingState == runtimeobs.BindingBound && a.BindingEvidence["assignment_id"] == t.AssignmentID && at > latestWorkerAt {
-			latestWorkerAt = at
-			t.SourceAttemptID = a.AttemptID
-			worker = &WorkerObservation{AttemptID: a.AttemptID, NativeID: a.SessionID, State: a.CurrentState, TurnEnded: a.Terminal}
+		id := runtimeobs.PolicyIdentity(a)
+		if t.AssignmentID == "" || a.TaskID != row.TaskID || a.AgentPath != owner.AgentPath || a.BindingState != runtimeobs.BindingBound || a.BindingEvidence["assignment_id"] != t.AssignmentID || !id.Observed || id.NativeID == "" {
+			continue
 		}
+		if worker != nil && at == latestWorkerAt && a.AttemptID != worker.AttemptID {
+			return contextFailure(row.TaskID, current, "implementation_owner_verification", errors.New("implementation_attempt_ambiguous"))
+		}
+		if at <= latestWorkerAt {
+			continue
+		}
+		latestWorkerAt = at
+		t.SourceAttemptID = a.AttemptID
+		selectedIdentity = id
+		worker = &WorkerObservation{AttemptID: a.AttemptID, NativeID: a.SessionID, State: a.CurrentState, TurnEnded: a.Terminal}
+	}
+	if worker != nil && (rolepolicy.Role(selectedIdentity.AgentPath) != owner.Role || (owner.NativeID != "" && owner.NativeID != selectedIdentity.NativeID)) {
+		return contextFailure(row.TaskID, current, "implementation_owner_verification", errors.New("implementation_identity_mismatch"))
 	}
 	events, e := (activity.Ledger{Project: project}).List(row.TaskID)
 	if e != nil {
@@ -484,6 +615,8 @@ func StartContext(project, handoffID, current string, now time.Time) (ContextChe
 	c := ExecutionContext{SchemaVersion: 1, ControllerAttemptID: current, Targets: []TaskEvidence{t}}
 	out, e := CheckContext(project, row.TaskID, current, c, false, now)
 	if e == nil {
+		out.ImplementationOwner = &owner
+		out.OtherActors = contextOtherActors(row.TaskID, owner, assignments, runtimeLedger.Attempts, events)
 		out.Status = "progress_observation"
 		out.WorkerRuntime = worker
 		if worker != nil && worker.TurnEnded {

@@ -41,6 +41,14 @@ func a79ContextFixture(t *testing.T) (PrepareRequest, ExecutionContext, time.Tim
 	c := ExecutionContext{SchemaVersion: 1, ControllerAttemptID: "controller-current", References: []string{"B-621 historical reference is not B-638 evidence"}}
 	for _, task := range []string{"B-638", "B-621"} {
 		writeSimpleTask(t, project, task)
+		taskFile := filepath.Join(project, "_task_mecca/data/backlog/000001."+task+".handoff-test.todo.md")
+		original, e := os.ReadFile(taskFile)
+		if e != nil {
+			t.Fatal(e)
+		}
+		if e = os.WriteFile(taskFile, []byte(strings.Replace(string(original), "- Agent: -", "- Agent: /root/controller/pairi", 1)), 0600); e != nil {
+			t.Fatal(e)
+		}
 		worker, assignment := "worker-"+task, "assignment-"+task
 		if _, e := runtimeobs.RecordAssignment(project, assignment, task, "/root/controller/pairi", now); e != nil {
 			t.Fatal(e)
