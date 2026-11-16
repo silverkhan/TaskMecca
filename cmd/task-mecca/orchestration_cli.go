@@ -69,6 +69,10 @@ func runOrchestrationCLI(args []string, stdout, stderr io.Writer) int {
 	asJSON := flags.Bool("json", false, "structured JSON output")
 	environmentFile := flags.String("environment", "", "environment JSON file (diagnostic assertions, never verified support)")
 	separateWorktree := flags.Bool("separate-worktree", false, "task requires separate tool-prepared worktree")
+	creatorNative := flags.String("creator-native-id", "", "actual tool caller native identity, not automatically Root")
+	creatorT3 := flags.String("creator-t3-thread-id", "", "actual tool caller T3 identity / expected child parent")
+	t3Project := flags.String("t3-project-id", "", "official T3 project ID")
+	purpose := flags.String("purpose", "", "workflow purpose, separate from actual naming role")
 	rootT3 := flags.String("root-t3-thread-id", "", "exact Root T3 identity; distinct from native session")
 	sourceCWD := flags.String("source-cwd", "", "actual source checkout cwd")
 	base := flags.String("base", "", "exact committed source base")
@@ -184,6 +188,11 @@ func runOrchestrationCLI(args []string, stdout, stderr io.Writer) int {
 				return 2
 			}
 			if exists {
+				if *group != "" && *group != saved.GroupID {
+					fmt.Fprintln(stderr, "saved Root group conflict")
+					return 2
+				}
+				*group = saved.GroupID
 				if selected == "" {
 					selected = saved.Mode
 				}
@@ -193,7 +202,7 @@ func runOrchestrationCLI(args []string, stdout, stderr io.Writer) int {
 				}
 			}
 		}
-		d, err := orchestration.Decide(orchestration.Request{Mode: selected, Event: *event, TaskID: *task, Capabilities: capabilities, DurableRecorded: *durable, Environment: environment, Dispatch: orchestration.DispatchRequest{CanonicalProject: abs, Provider: *provider, RootSessionID: *rootSessionID, T3ThreadID: *rootT3, SeparateWorktree: *separateWorktree, SourceCWD: *sourceCWD, Base: *base}})
+		d, err := orchestration.Decide(orchestration.Request{Mode: selected, Event: *event, TaskID: *task, Capabilities: capabilities, DurableRecorded: *durable, Environment: environment, Dispatch: orchestration.DispatchRequest{CreatorNativeID: *creatorNative, CreatorT3ThreadID: *creatorT3, T3ProjectID: *t3Project, GroupID: *group, Role: *role, Worker: *worker, Generation: *generation, Purpose: *purpose, CanonicalProject: abs, Provider: *provider, RootSessionID: *rootSessionID, T3ThreadID: *rootT3, SeparateWorktree: *separateWorktree, SourceCWD: *sourceCWD, Base: *base}})
 		if err != nil {
 			fmt.Fprintln(stderr, err)
 			return 2

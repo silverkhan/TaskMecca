@@ -78,12 +78,13 @@ func TestEnvironmentCLICallerJSONCannotAuthorizeAndSavedBPreserved(t *testing.T)
 		t.Fatal(err)
 	}
 	path := filepath.Join(project, "profile.json")
-	e := orchestration.Environment{Host: "t3", Provider: "codex", RootSessionID: "root-exact", T3ThreadID: "t3-exact", Source: "caller:asserted", CheckedAt: now, Tools: map[string]orchestration.ToolEvidence{"delegate_task": {Support: "supported", Worktree: "supported", Source: "caller:asserted", CheckedAt: now}}}
+	e := orchestration.Environment{Host: "t3", Provider: "codex", RootSessionID: "root-exact", T3ThreadID: "t3-exact", Source: "caller:asserted", CheckedAt: now, Tools: map[string]orchestration.ToolEvidence{"delegate_task": {Support: "supported", Worktree: "supported", Shared: "supported", Source: "caller:asserted", CheckedAt: now}}}
+	e.Creator = &orchestration.CreatorIdentity{NativeSessionID: "controller-native", T3ThreadID: "controller-t3", ProjectID: "fixture-project", Source: "caller:diagnostic-only", CheckedAt: now, Linkage: "verified"}
 	raw, _ := json.Marshal(map[string]any{"environment": e, "verified": true, "created": true, "execution_authorized": true})
 	if err := os.WriteFile(path, raw, 0600); err != nil {
 		t.Fatal(err)
 	}
-	args := []string{"decide", "--project", project, "--provider", "codex", "--root-session-id", "root-exact", "--root-t3-thread-id", "t3-exact", "--event", "dispatch_requested", "--environment", path, "--separate-worktree", "--source-cwd", "/fixture/parent", "--base", strings.Repeat("a", 40), "--json"}
+	args := []string{"decide", "--project", project, "--provider", "codex", "--root-session-id", "root-exact", "--root-t3-thread-id", "t3-exact", "--event", "dispatch_requested", "--environment", path, "--creator-native-id", "controller-native", "--creator-t3-thread-id", "controller-t3", "--t3-project-id", "fixture-project", "--role", "worker", "--worker", "isanghaessi", "--generation", "4", "--separate-worktree", "--source-cwd", "/fixture/parent", "--base", strings.Repeat("a", 40), "--json"}
 	var out, errOut bytes.Buffer
 	if runOrchestrationCLI(args, &out, &errOut) != 0 {
 		t.Fatal(errOut.String())
@@ -97,6 +98,29 @@ func TestEnvironmentCLICallerJSONCannotAuthorizeAndSavedBPreserved(t *testing.T)
 	}
 	if !strings.Contains(strings.Join(d.Dispatch.Instructions, " "), "CLI does not invoke MCP") {
 		t.Fatal("host boundary omitted")
+	}
+	// The same saved B group routes Registrar shared work through managed T3.
+	shared := append([]string{}, args...)
+	for i := 0; i < len(shared); i++ {
+		if shared[i] == "--separate-worktree" {
+			shared = append(shared[:i], shared[i+1:]...)
+			break
+		}
+	}
+	shared = append(shared, "--role", "registrar")
+	out.Reset()
+	if runOrchestrationCLI(shared, &out, &errOut) != 0 {
+		t.Fatal(errOut.String())
+	}
+	if err := json.Unmarshal(out.Bytes(), &d); err != nil {
+		t.Fatal(err)
+	}
+	if !d.Allowed || d.Dispatch.Tool != "delegate_task" || d.Dispatch.Isolation != "shared" || d.Mode != orchestration.ModeB {
+		t.Fatalf("%s", out.String())
+	}
+	out.Reset()
+	if runOrchestrationCLI(append(args, "--group", "D1113_99"), &out, &errOut) == 0 {
+		t.Fatal("saved group changed")
 	}
 	out.Reset()
 	if runOrchestrationCLI(append(args, "--mode", "A"), &out, &errOut) == 0 {

@@ -323,7 +323,7 @@ Job ID, commit SHA, 장애 재현, 상세 검증 수치와 실패 이력은 기�
 
 초기화·재개 때 현재 exact Root의 `orchestration environment` process 관측과 host의 실제 생성·통신 도구 schema/연결 관측을 분리해 수집한다. 배정 전 `orchestration decide --event dispatch_requested --environment PROFILE.json`에 exact Root/native/T3, 실제 source cwd/committed base와 별도 worktree 요구를 넣고 반환된 경로·검증 지시를 따른다. 전체 명령과 경계는 [실행환경에 따른 생성 경로](../EXECUTION_PROTOCOL.md#실행환경에-따른-생성-경로-a-76)를 따른다.
 
-T3 별도 worktree는 실제 `delegate_task(isolation=worktree)`만 사용한다. unknown/stale/미지원일 때 임의 fallback하지 않는다. 호출 직전 fresh Full Access·현재 schema를 재확인하고 생성 후 exact 영수증/T3 parent 연결/cwd/base를 독립 검증한다. shared/native의 T3 Thread Details/Lineage 한계와 실제 handle 상태 조회 방법을 배정 메시지에 포함한다. 기존 mode/group/name allocator, START/Activity, typed transport 및 source/표시 이름 경계를 보존한다. JSON profile과 도구 ACK를 실행·착수·추적 검증 성공으로 기록하지 않는다.
+T3 별도 worktree는 실제 `delegate_task(isolation=worktree)`만 사용한다. unknown/stale/미지원일 때 임의 fallback하지 않는다. 호출 직전 fresh Full Access·현재 schema를 재확인하고 생성 후 exact 영수증/T3 parent 연결/cwd/base를 독립 검증한다. T3 shared도 `delegate_task(isolation=shared)`를 사용하고 공식 exact read/list로 검증한다. 비T3 native의 노출 한계와 실제 handle 상태 조회 방법은 별도로 보고한다. 기존 mode/group/name allocator, START/Activity, typed transport 및 source/표시 이름 경계를 보존한다. JSON profile과 도구 ACK를 실행·착수·추적 검증 성공으로 기록하지 않는다.
 
 ## 제품 구현 역할과 독립 검수
 
@@ -332,3 +332,11 @@ Worker 제품 구현은 기존 실행 승인으로 진행한다. Controller의 �
 같은 native agent의 다른 역할/turn 또는 Activity `review_accepted`는 자기 검수다. 독립 검수는 실제 다른 bound native 신원·정확한 task·완전한 검수 대상 소스 해시·실제 최종 검수 결과/보고서 근거를 확인한다. 검수 뒤 제품 소스가 바뀌면 재검수하고, Controller는 별도 결과로 원본 최종 수용을 기록한다. 지원되지 않는 수동·레거시 편집까지 전면 차단되었다고 주장하지 않는다.
 
 구조화 정책은 기존 contract supplement/decision, START, handoff 및 acceptance/applied gate에서 같은 공통 판정을 사용한다. 설정된 completion handoff에는 실제 `--source-worktree`를 포함한다. `contract role-policy check|snapshot`과 실제 Reviewer 보고 형식은 [제품 구현 역할 정책](../../../../../docs/implementation-role-policy.md)을 따른다. Worker는 원본 decision/handoff/lifecycle을 쓰지 않고 자신의 실제 Activity와 직접 완료 보고만 남긴다.
+
+## T3 managed 역할 생성 · 공통 경계
+
+T3의 새 Controller/Worker/Registrar/검수 목적 세션은 shared도 실제 `delegate_task`로 생성한다. 구현 Worker는 `isolation=worktree`, 공유 작업은 `isolation=shared`와 현재 schema 지원을 확인한다. native `spawn_agent`·provider/model/settings/mode 우회는 금지한다. 저장된 정확 Root group과 A/B 의미를 보존하고, 지원되는 독립 managed 경로가 없는 C/D는 이유·담당자·재개조건과 함께 차단한다. 비T3와 기존 이력은 보존하며 과거 native 세션을 T3 연결로 소급 표시하지 않는다.
+
+생성자는 Root와 별개다. Controller가 만든 child의 예상 부모는 실제 Controller T3 ID다. 공식 `t3_thread_read`와 `t3_thread_list`에서 반환된 정확 child ID·프로젝트·subagent 관계·공식 생성 역할 이름·workspace를 대조한다. 한 도구가 부모를 생략하면 다른 공식 도구의 명시적 근거를 확인하고, 둘 다 없으면 unknown이다. provider-native ID는 지원되는 독립 native 조회로 별도 연결하며 title/임의 UUID/caller JSON/Root ID로 대체하지 않는다. 검수 목적은 실제 공식 Worker identity와 분리하며 지원되지 않는 Reviewer 표시 이름을 만들지 않는다.
+
+생성 성공 후 연결 미확인은 `created_tracking_unverified`다. 같은 receipt·assignment로 기존 조회/수집/인계 복구를 재개하고 재생성하지 않는다. request/prepared/created/linked/START/claimed/accepted는 별도 근거다. CLI는 MCP를 호출하지 않으며 typed HostAdapter/fixture는 실제 bridge가 아니다. 지원되는 Task Mecca 결정·host 경계는 검사할 수 있지만 외부 임의 도구 호출 전체를 기술적으로 강제한다고 주장하지 않는다. 상세 입력·검증은 저장소 `docs/orchestration-execution-modes.md`를 따른다.

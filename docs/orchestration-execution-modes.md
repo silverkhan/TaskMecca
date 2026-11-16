@@ -113,7 +113,10 @@ Use the existing decision engine, rather than deciding transport from conversati
 task-mecca orchestration decide --project CANONICAL --provider codex \
   --root-session-id EXACT_NATIVE --root-t3-thread-id EXACT_T3 \
   --event dispatch_requested --environment PROFILE.json --separate-worktree \
-  --source-cwd ABSOLUTE_SOURCE_CWD --base EXACT_COMMITTED_SHA --json
+  --source-cwd ABSOLUTE_SOURCE_CWD --base EXACT_COMMITTED_SHA \
+  --creator-native-id ACTUAL_CALLER_NATIVE --creator-t3-thread-id ACTUAL_CALLER_T3 \
+  --t3-project-id EXACT_T3_PROJECT --role worker --worker isanghaessi --generation 4 \
+  --purpose implementation --json
 ```
 
 `PROFILE.json` accepts either an Environment object or the environment command's wrapper.
@@ -124,15 +127,34 @@ Saved exact-Root mode is reused and a conflicting requested mode is rejected. Ex
 name allocation, direction-based communication and recovery stay in their original owners.
 Legacy startup calls remain compatible but explicitly require environment evidence before actual dispatch.
 
-T3 separate worktree selects `delegate_task` with `isolation=worktree`, including independently observed
-schema support for that isolation. Missing support blocks the request with evidence/resume guidance;
-there is no native, provider, model, settings or mode fallback. Session modes C/D have no assumed
-T3 subagent/worktree route. Shared subagent work selects the actual native tool only when observed supported.
-For non-T3 environments the same explicit support checks apply; native separate-worktree support is not invented.
-Native children may be absent from T3 Thread Details/Lineage. Verify them through the actual native
-creation receipt and the supported status/read tool on its exact returned handle. Record that visibility limit.
-T3 dispatch requires an independent exact `t3_thread_read` after creation and verified parent linkage,
-native ID, actual cwd/worktree and committed base. A collaboration handle is not a native ID or T3 ID.
+For **all new T3 Controller, Worker, Registrar and review-purpose creations**, select
+`delegate_task`: `isolation=worktree` for implementation Workers; `isolation=shared`
+for shared work. Both isolation schemas require independently observed support.
+Never recommend native `spawn_agent` for T3 shared work. A/B retain subagent
+semantics; C/D are blocked because an independent-session managed route has not
+been established. Do not reinterpret them or substitute provider/model/settings.
+Non-T3 routes and historical records retain their existing behavior. Past native
+sessions are never retroactively marked as T3-linked.
+
+The exact saved Root group/mode is distinct from the actual caller. Supply
+`creator-native-id`, `creator-t3-thread-id`, and `t3-project-id`; the environment's
+`creator` observation must independently match them. A Worker created by a
+Controller has that Controller as its expected parent, not automatically Root.
+`group`, `role`, `worker`, `generation` use the shared official name generator;
+the saved group wins and conflicting groups are rejected. Review is a **purpose**,
+not a naming identity: use an actual supported Worker identity with
+`--purpose reviewer`, or block an unsupported role. Never handcraft a Reviewer
+name or infer native IDs from a UUID-shaped string or display name.
+
+After creation, independently official-read the exact returned child AND match
+that exact child ID in the official list. Verify project, subagent relationship,
+generated role-name and workspace. Parent may be absent on one surface; require
+an explicit matching parent on at least one and reject any contradiction. If
+both omit it, parent is unknown. Link the provider-native session with a distinct
+trusted supported native observation (e.g. the existing T3 native projection),
+never a caller JSON assertion, title, collaboration handle or Root native ID.
+Unavailable official fields stay unknown; a generated title and collection/bind
+success alone do not establish managed tracking.
 
 `HostAdapter` is the typed boundary for an actual tool-owning host integration. It is not a CLI-loaded JSON
 adapter, provider manager or an implementation of MCP transport. `CheckDispatchBoundary` re-observes the
@@ -143,7 +165,13 @@ unsupported or unobserved host integration stays unverified rather than becoming
 
 `VerifyCreation` takes a real creation receipt and independently reads it through the host adapter.
 It checks exact native/T3 IDs, selected provider, source cwd, separate worktree and committed base.
-Created-but-unlinked is a partial result, never START, tracked success, or proof of a technical interruption.
+A real creation receipt immediately preserves `created=true`, even if native linkage
+is unavailable. Failed verification returns `created_tracking_unverified` with
+reason, dispatching-host owner, resume condition and `reconcile_same_receipt`.
+Retry only the existing `VerifyCreation` read on that same receipt and preserve
+existing assignment/runtime/handoff idempotency keys; never create a second
+child to repair tracking. There is no new session manager or creation journal.
+Created, linked, START, claimed and accepted remain separate facts.
 START/binding and Activity remain the existing A-72 procedures; typed communication and source/display
 separation remain A-74/A-75. Dispatch request, assignment preparation, creation, START and tracking proof
 are distinct evidence boundaries. Re-observe after resume, environment change or identity conflict;

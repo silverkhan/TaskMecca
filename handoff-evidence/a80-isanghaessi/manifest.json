@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "task_id": "A-80",
+  "status": "worker_source_candidate_independent_review_pending",
+  "source_base": "709f6870b693b5ca0d9366662ecb9051063d4076",
+  "inheritance": {
+    "approved_dev": "c34300fc",
+    "unaccepted_A78_candidate": "646961d4",
+    "dependent_merge_base": "709f6870b693b5ca0d9366662ecb9051063d4076",
+    "A79": "concurrent different checkout; not edited or accepted"
+  },
+  "native_id": "01a1e2e7-3724-7cf1-8ea5-049a32e1946b",
+  "runtime_attempt": "run-b55faaf405d6d022",
+  "assignment_id": "assignment-c315b10be22251ded70ec6a0c0c40ffd",
+  "source_files": {
+    "cmd/task-mecca/orchestration_cli.go": "342e7357bae8994e6f8ca38c9deb85c241e3d63a5426fbd5175e1a79e6c3e37e",
+    "cmd/task-mecca/orchestration_environment_cli_test.go": "d95bd6c7f22088d3cded04ddbba36348ef68f9217153180a996ab03bf364bb29",
+    "docs/orchestration-execution-modes.md": "6a1f655f38c30cc4d5d9a274a5443a88f7780700ddf51c1c790ba22e4ab10456",
+    "goassets/template/_task_mecca/framework/CLI_OPERATIONS_PLAYBOOK.md": "beb7a9374631174cc84ff9879d95725a4c61cd9d711b2a042f05f04f2ad59cd0",
+    "goassets/template/_task_mecca/framework/EXECUTION_PROTOCOL.en.md": "72e31f75f713b4a8d334c8d618571920d38cde0b26d7a4b4d17e687aa84dcea5",
+    "goassets/template/_task_mecca/framework/EXECUTION_PROTOCOL.md": "cbae3bd172805e62fd05efe1ada2a3677fa743b0cee299e2e3ac9e5a2accc66a",
+    "goassets/template/_task_mecca/framework/SESSION_GUIDE.en.md": "a298391e3ae2dc1ad6531a7ac74b2cfcc69167dc0e907ff31d2c62b04db96572",
+    "goassets/template/_task_mecca/framework/SESSION_GUIDE.md": "b7c8aec371411cc2eafae9056f18af1660e082c5a5a88a3aba210bf210bcce64",
+    "goassets/template/_task_mecca/framework/collab.md": "692e314cb776d0b2651e930dd21a0f46ae1ff334cea264f311b48692bf39ffd7",
+    "goassets/template/_task_mecca/framework/roles/controller.md": "cad4406ab7fc6d2a1b5174ef9109d4ebc2bd53cf6f0380f426cebc0b77ad2438",
+    "goassets/template/_task_mecca/framework/roles/registrar.md": "45975393d4ca30d43614ecdd5ae1e71f8d69a840fc8286500b26f6aad5860d97",
+    "goassets/template/_task_mecca/framework/roles/root.md": "245ffcbfae0c3aba8a1b0d1f242a5d1634fbc9c432a747a33b5048405cd2b624",
+    "goassets/template/_task_mecca/framework/roles/worker.md": "5f59c7434d702ee2c351edf188b934edcf8f0fb8d5abc03de3ec8db391e89ec0",
+    "internal/orchestration/environment.go": "322ef08ef76b9c8b815ebdc08175cb91402546fda0571c73accfe4beb774c9cc",
+    "internal/orchestration/environment_test.go": "08b341aa858581b1ddd8175bdee209c524cf1baaad17c1c3cdbd8279a4cc4ed4",
+    "internal/orchestration/mode.go": "447cfab87252496c28a019f17c04d3212dbbcd8e4c56ed934682af65495e81c1"
+  },
+  "excluded_artifacts": ".artifacts/a80: filtered tool metadata, sandbox profile, build binary, logs; retained untracked; no raw transport/transcripts committed"
+}

@@ -102,7 +102,13 @@ func Decide(req Request) (Decision, error) {
 			return d, nil
 		}
 		if req.Event == "dispatch_requested" {
-			ready, err := Decide(Request{Mode: req.Mode, Event: "root_initialized", Capabilities: req.Capabilities})
+			startupCaps := req.Capabilities
+			// Managed T3 creation is gated by delegate_task schema, not native
+			// spawn_agent support. Communication requirements still apply.
+			if p.Tool == "delegate_task" {
+				startupCaps.SpawnSubagent = "supported"
+			}
+			ready, err := Decide(Request{Mode: req.Mode, Event: "root_initialized", Capabilities: startupCaps})
 			if err != nil {
 				return d, err
 			}
@@ -121,7 +127,7 @@ func Decide(req Request) (Decision, error) {
 	// persisted task must still be able to reach durable recovery if creation
 	// capability later disappears.
 	if req.Event == "root_initialized" {
-		if mode.Execution == "subagent" && !supported(req.Capabilities.SpawnSubagent) {
+		if mode.Execution == "subagent" && !(d.Dispatch != nil && d.Dispatch.Tool == "delegate_task") && !supported(req.Capabilities.SpawnSubagent) {
 			if req.Mode == ModeA {
 				// Mode A is the existing workflow, not a new native capability claim.
 				// Selection is allowed; actual dispatch still requires fresh preflight

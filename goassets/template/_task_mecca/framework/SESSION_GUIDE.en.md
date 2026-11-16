@@ -322,3 +322,27 @@ Use exact-ID Codex `thread/read` with `includeTurns=false`. Check the installed 
 Workers implement product changes under the existing execution approval. Controller ledger recording, assignment, integration and final acceptance remain operational responsibilities. Controller product implementation requires a structured restricted policy with reason, evidence, scope, actual workspace and a verified different native reviewer. Slot shortages, spawn failures and prose role names never grant an exception. Preserve pending reasons and resume conditions.
 
 The shared [role policy](../../../../docs/implementation-role-policy.md) is consumed by contract decisions, supported START/handoff/acceptance gates and task detail. Same-native role/turn changes and Activity `review_accepted` are self review. Independent review requires actual bound native/task, final reviewer result, report hash and current source scope. Revalidate changed product sources; Controller can finalize acceptance using the separate result. Manual/legacy editor writes are not universally fenced. Workers never write canonical policy/handoff/lifecycle records.
+
+## Managed T3 creation for every role (A-80)
+
+All new T3 Controller, Worker, Registrar and review-purpose sessions require actual
+`delegate_task`, including shared work (`isolation=shared`); implementation Workers
+require `isolation=worktree`. Verify current schema support. Preserve saved Root
+group/mode and exact provider/model/settings. A/B keep subagent semantics; block
+C/D until an independent managed route is supported. No native fallback or
+retroactive linking of historical native sessions. Non-T3 behavior is retained.
+
+The actual caller/expected parent can be a Controller, distinct from Root. Match
+the exact child in official read AND list, with project, subagent relation, official
+generated role-name and workspace. Require an explicit parent on at least one
+surface, with no contradictory field; absent on both stays unknown. Independently
+link a distinct provider-native identity using a trusted supported source; caller
+JSON, title, UUID shape and collaboration handles are not proof. Review purpose
+uses a supported actual Worker identity, not an invented Reviewer naming enum.
+
+Created-but-unlinked is `created_tracking_unverified`: retain the same receipt and
+existing assignment/runtime/handoff keys; reconcile official reads without a new
+spawn. Request/prepared/created/linked/START/claimed/accepted remain distinct.
+CLI never invokes MCP; typed HostAdapter and fixtures do not constitute a deployed
+host bridge or enforce arbitrary external tool calls. See the full input contract
+in repository `docs/orchestration-execution-modes.md` and the shared Korean protocol.
