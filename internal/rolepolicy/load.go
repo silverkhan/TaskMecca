@@ -6,8 +6,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -64,7 +64,7 @@ func Load(project, task, raw string) (*Policy, bool, error) {
 	}
 	var events []decision
 	for _, file := range files {
-		b, e := os.ReadFile(file)
+		b, e := readDecisionFile(project, file)
 		if e != nil {
 			return nil, false, e
 		}
@@ -169,62 +169,103 @@ func TaskMarkdown(project, task string) (string, error) {
 }
 
 func HashFile(path string) (string, error) {
-	b, e := os.ReadFile(path)
+	abs, e := filepath.Abs(path)
 	if e != nil {
 		return "", e
 	}
-	h := sha256.Sum256(b)
-	return hex.EncodeToString(h[:]), nil
+	root, e := filepath.EvalSymlinks(filepath.Dir(abs))
+	if e != nil {
+		return "", e
+	}
+	f, e := openSnapshotPath(root, filepath.Base(abs))
+	if e != nil {
+		return "", e
+	}
+	defer f.Close()
+	info, e := f.Stat()
+	if e != nil {
+		return "", e
+	}
+	if !info.Mode().IsRegular() || info.Size() > defaultSnapshotLimits.fileBytes {
+		return "", errors.New("evidence_file_nonregular_or_size_limit")
+	}
+	h := sha256.New()
+	n, e := io.Copy(h, io.LimitReader(f, defaultSnapshotLimits.fileBytes+1))
+	if e != nil {
+		return "", e
+	}
+	after, e := f.Stat()
+	if e != nil {
+		return "", e
+	}
+	if n != info.Size() || n > defaultSnapshotLimits.fileBytes || after.Size() != info.Size() || !after.ModTime().Equal(info.ModTime()) {
+		return "", errors.New("evidence_file_changed_or_size_limit")
+	}
+	return hex.EncodeToString(h.Sum(nil)), nil
 }
 
-// Snapshot hashes all Git source files in every declared scope, including new
-// files and deletions. No commit ancestry or importer-selected subset can hide a
-// later change. Paths crossing a symlink boundary are deliberately unsupported.
-func Snapshot(workspace string, scope []string) (Source, error) {
-	s := Source{Files: map[string]string{}}
-	if !filepath.IsAbs(workspace) || !validScope(scope) {
-		return s, errors.New("exact_workspace_and_scope_required")
-	}
-	root, e := filepath.EvalSymlinks(workspace)
+// ReviewRevision pins the existing material contract and task-specific decision
+// history, including consent/revocation and typed reviewer/reference updates.
+// It is only a freshness fence, never another authorization/approval manager.
+// Operational notes, other tasks and unrelated workspace files are excluded.
+func ReviewRevision(project, task, raw string) (string, error) {
+	h := sha256.New()
+	h.Write([]byte(contractscope.NormalizeAcceptance(DecisionScopeRaw(raw))))
+	files, e := filepath.Glob(filepath.Join(project, "_task_mecca", "data", "contract_decisions", "events", "*.json"))
 	if e != nil {
-		return s, e
+		return "", e
 	}
-	args := append([]string{"-C", root, "ls-files", "-z", "--cached", "--others", "--exclude-standard", "--"}, scope...)
-	b, e := exec.Command("git", args...).Output()
-	if e != nil {
-		return s, e
-	}
-	for _, path := range strings.Split(string(b), "\x00") {
-		if path == "" {
+	for _, file := range files {
+		b, e := readDecisionFile(project, file)
+		if e != nil {
+			return "", e
+		}
+		var d decision
+		if e = json.Unmarshal(b, &d); e != nil {
+			return "", e
+		}
+		if d.TaskID != task {
 			continue
 		}
-		if !Covers(scope, path) {
-			return s, errors.New("source_outside_scope")
-		}
-		full := filepath.Join(root, filepath.FromSlash(path))
-		info, e := os.Lstat(full)
-		if os.IsNotExist(e) {
-			s.Files[path] = "absent"
-			continue
-		}
-		if e != nil {
-			return s, e
-		}
-		actual, e := filepath.EvalSymlinks(full)
-		if e != nil {
-			return s, e
-		}
-		if actual != full || !info.Mode().IsRegular() {
-			return s, errors.New("source_symlink_or_nonregular")
-		}
-		h, e := HashFile(full)
-		if e != nil {
-			return s, e
-		}
-		s.Files[path] = h
+		sum := sha256.Sum256(b)
+		h.Write([]byte("\x00" + filepath.Base(file) + "\x00"))
+		h.Write(sum[:])
 	}
-	if len(s.Files) == 0 {
-		return s, errors.New("source_scope_empty")
+	return hex.EncodeToString(h.Sum(nil)), nil
+}
+
+func readDecisionFile(project, file string) ([]byte, error) {
+	abs, e := filepath.Abs(project)
+	if e != nil {
+		return nil, e
 	}
-	return s, nil
+	root, e := filepath.EvalSymlinks(abs)
+	if e != nil {
+		return nil, e
+	}
+	path := filepath.ToSlash(filepath.Join("_task_mecca", "data", "contract_decisions", "events", filepath.Base(file)))
+	f, e := openSnapshotPath(root, path)
+	if e != nil {
+		return nil, e
+	}
+	defer f.Close()
+	info, e := f.Stat()
+	if e != nil {
+		return nil, e
+	}
+	if !info.Mode().IsRegular() || info.Size() > 8<<20 {
+		return nil, errors.New("decision_evidence_unbounded_or_nonregular")
+	}
+	b, e := io.ReadAll(io.LimitReader(f, (8<<20)+1))
+	if e != nil {
+		return nil, e
+	}
+	after, e := f.Stat()
+	if e != nil {
+		return nil, e
+	}
+	if int64(len(b)) != info.Size() || len(b) > 8<<20 || after.Size() != info.Size() || !after.ModTime().Equal(info.ModTime()) {
+		return nil, errors.New("decision_evidence_changed_or_unbounded")
+	}
+	return b, nil
 }

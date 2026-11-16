@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/silverkhan/TaskMecca/internal/rolepolicy"
 )
@@ -336,5 +337,55 @@ func TestA78WorkerMetadataChangedContractNeedsRealConsentThenFreshFacts(t *testi
 	after, _ := os.ReadFile(decisionPath(project, "historical-facts"))
 	if string(before) != string(after) {
 		t.Fatal("historical metadata rewritten")
+	}
+}
+
+func TestA78WorkerMetadataCannotChangeInsideAcceptanceLease(t *testing.T) {
+	project := makeDecisionFixture(t)
+	approved := existingWorkerApproval(t, project)
+	file := metadataBody(t, normalWorkerMetadata())
+	held, release, leaseDone := make(chan struct{}), make(chan struct{}), make(chan error, 1)
+	go func() {
+		leaseDone <- rolepolicy.WithDecisionReadLease(project, func() error { close(held); <-release; return nil })
+	}()
+	select {
+	case <-held:
+	case e := <-leaseDone:
+		t.Fatal("lease acquisition failed", e)
+	case <-time.After(2 * time.Second):
+		t.Fatal("lease acquisition hung")
+	}
+	writerStarted, writerDone := make(chan struct{}), make(chan int, 1)
+	go func() {
+		close(writerStarted)
+		code, _, _ := decisionInvoke(t, workerMetadataArgs(project, "facts-after-append", file)...)
+		writerDone <- code
+	}()
+	<-writerStarted
+	escaped := false
+	select {
+	case <-writerDone:
+		escaped = true
+	case <-time.After(30 * time.Millisecond):
+	}
+	_, statErr := os.Stat(decisionPath(project, "facts-after-append"))
+	close(release)
+	if e := <-leaseDone; e != nil {
+		t.Fatal(e)
+	}
+	if escaped || !os.IsNotExist(statErr) {
+		t.Fatal("supported metadata writer changed inputs inside final acceptance read lease")
+	}
+	select {
+	case code := <-writerDone:
+		if code != 0 {
+			t.Fatal("writer failed after lease release", code)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("writer did not resume after lease release")
+	}
+	_, current, _ := decisionInvoke(t, "show", "--project", project, "--task", "B-1", "--json")
+	if !current.ExecutionAuthorized || current.ApprovalEventID != approved.ApprovalEventID || current.EffectiveSHA256 != approved.EffectiveSHA256 {
+		t.Fatal("serialization required another ordinary execution approval", current)
 	}
 }

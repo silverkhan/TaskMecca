@@ -5,12 +5,128 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
+	"time"
 )
 
 func workerIdentity() Identity {
 	return Identity{AttemptID: "worker-run", NativeID: "actual-native-worker", Provider: "codex", AgentPath: "/root/controller/kkobugi", TaskID: "A-78", Bound: true, Observed: true}
+}
+
+func TestA78IgnoredScopedBuildInputsInvalidateSnapshot(t *testing.T) {
+	dir := t.TempDir()
+	if b, e := exec.Command("git", "init", "-q", dir).CombinedOutput(); e != nil {
+		t.Fatal(string(b), e)
+	}
+	os.MkdirAll(filepath.Join(dir, "product"), 0700)
+	os.WriteFile(filepath.Join(dir, ".gitignore"), []byte("generated.go\ngenerated/\n*.json\n"), 0600)
+	base := filepath.Join(dir, "product/base.go")
+	os.WriteFile(base, []byte("package product\n"), 0600)
+	before, e := Snapshot(dir, []string{"product"})
+	if e != nil {
+		t.Fatal(e)
+	}
+	generated := filepath.Join(dir, "product/generated.go")
+	os.WriteFile(generated, []byte("package product\nfunc NewBehavior() {}\n"), 0600)
+	added, e := Snapshot(dir, []string{"product"})
+	if e != nil || added.Digest() == before.Digest() || added.Files["product/generated.go"] == "" {
+		t.Fatal("ignored compilable addition omitted", added, e)
+	}
+	os.WriteFile(generated, []byte("package product\nfunc ChangedBehavior() {}\n"), 0600)
+	changed, e := Snapshot(dir, []string{"product"})
+	if e != nil || changed.Digest() == added.Digest() {
+		t.Fatal("ignored source change omitted", changed, e)
+	}
+	os.MkdirAll(filepath.Join(dir, "product/generated"), 0700)
+	os.WriteFile(filepath.Join(dir, "product/generated/build-input.json"), []byte(`{"build":"input"}`), 0600)
+	embedded, e := Snapshot(dir, []string{"product"})
+	if e != nil || embedded.Digest() == changed.Digest() || embedded.Files["product/generated/build-input.json"] == "" {
+		t.Fatal("ignored directory/data build input omitted", embedded, e)
+	}
+	exact, e := Snapshot(dir, []string{"product/generated/build-input.json"})
+	if e != nil || len(exact.Files) != 1 {
+		t.Fatal("ignored explicit input omitted", exact, e)
+	}
+	os.Remove(generated)
+	removed, e := Snapshot(dir, []string{"product"})
+	if e != nil || removed.Digest() == embedded.Digest() {
+		t.Fatal("ignored deletion omitted", removed, e)
+	}
+	if b, e := exec.Command("git", "-C", dir, "add", "--", "product/base.go").CombinedOutput(); e != nil {
+		t.Fatal(string(b), e)
+	}
+	os.Remove(base)
+	deleted, e := Snapshot(dir, []string{"product"})
+	if e != nil || deleted.Files["product/base.go"] != "absent" {
+		t.Fatal("indexed deletion lost", deleted, e)
+	}
+}
+
+func TestA78SnapshotIsScopedBoundedAndNeverFollowsSpecialFiles(t *testing.T) {
+	setup := func(t *testing.T) string {
+		dir := t.TempDir()
+		if b, e := exec.Command("git", "init", "-q", dir).CombinedOutput(); e != nil {
+			t.Fatal(string(b), e)
+		}
+		os.MkdirAll(filepath.Join(dir, "product"), 0700)
+		os.WriteFile(filepath.Join(dir, "product/base.go"), []byte("source"), 0600)
+		return dir
+	}
+	for _, name := range []string{"outside-artifact", "inside-artifact", "file-link", "directory-link", "fifo", "file-bound", "total-bound", "entry-bound", "depth-bound"} {
+		t.Run(name, func(t *testing.T) {
+			dir := setup(t)
+			before, e := Snapshot(dir, []string{"product"})
+			if e != nil {
+				t.Fatal(e)
+			}
+			limits := defaultSnapshotLimits
+			switch name {
+			case "outside-artifact":
+				os.MkdirAll(filepath.Join(dir, ".artifacts/raw"), 0700)
+				os.Symlink("/unrelated/private/source", filepath.Join(dir, ".artifacts/raw/never-follow"))
+				after, e := Snapshot(dir, []string{"product"})
+				if e != nil || after.Digest() != before.Digest() {
+					t.Fatal("unrelated raw/artifact traversed", after, e)
+				}
+				return
+			case "inside-artifact":
+				os.MkdirAll(filepath.Join(dir, "product/.artifacts/raw"), 0700)
+				os.Symlink("/unrelated/private/source", filepath.Join(dir, "product/.artifacts/raw/never-follow"))
+			case "file-link":
+				os.Symlink(filepath.Join(dir, ".git/config"), filepath.Join(dir, "product/link"))
+			case "directory-link":
+				os.Symlink(filepath.Join(dir, ".git"), filepath.Join(dir, "product/link"))
+			case "fifo":
+				if runtime.GOOS == "windows" {
+					t.Skip("Unix FIFO fixture")
+				}
+				if b, e := exec.Command("mkfifo", filepath.Join(dir, "product/pipe")).CombinedOutput(); e != nil {
+					t.Fatal(string(b), e)
+				}
+			case "file-bound":
+				limits.fileBytes = 3
+			case "total-bound":
+				limits.totalBytes = 3
+			case "entry-bound":
+				limits.entries = 1
+			case "depth-bound":
+				os.MkdirAll(filepath.Join(dir, "product/deep/path"), 0700)
+				limits.depth = 1
+			}
+			done := make(chan error, 1)
+			go func() { _, e := snapshotWithLimits(dir, []string{"product"}, limits); done <- e }()
+			select {
+			case e := <-done:
+				if e == nil {
+					t.Fatal("unsafe/unbounded scope accepted", name)
+				}
+			case <-time.After(2 * time.Second):
+				t.Fatal("source scan hung on unsafe scope", name)
+			}
+		})
+	}
 }
 func workerPolicy(workspace string) *Policy {
 	return &Policy{SchemaVersion: 1, Implementation: Owner{Role: "worker", AgentPath: "/root/controller/kkobugi"}, Operational: Owner{Role: "controller", AgentPath: "/root/controller"}, Reviewer: Owner{Role: "worker", AgentPath: "/root/controller/pikachu", NativeID: "actual-native-reviewer"}, Workspace: workspace, Method: "worker", Scope: []string{"product.go"}}
