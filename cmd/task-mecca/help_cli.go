@@ -101,6 +101,7 @@ func runHelpCLI(args []string,out,stderr io.Writer) int {
 		contractUsage(out)
 	case "runtime":
 		fmt.Fprintln(out,"Controller START: runtime observe-t3 --project CANONICAL --thread-id EXACT_T3 --session-id EXACT_NATIVE --agent-id EXACT_NATIVE --assignment ID --task-id TASK --worker-path /root/controller/WORKER --source-worktree ACTUAL_CWD [--phase CURRENT_EVENT] --json")
+		fmt.Fprintln(out,"Formal role collection: runtime observe-t3 --project CANONICAL --thread-id EXACT_T3 --session-id EXACT_NATIVE --agent-id EXACT_NATIVE --assignment ID --task-id TASK --role controller|worker --agent-path EXACT_PATH --parent-thread-id EXACT_PARENT_T3 --source-worktree ACTUAL_CWD --json (operational binding, not claim or implementation approval)")
     fmt.Fprintln(out,"Runtime actions: list, reconcile, observe, hooks, assign, bind, bind-agent, bind-assignment, enrich-name")
 		fmt.Fprintln(out,"Runtime diagnosis (read-only): task-mecca runtime diagnose --provider codex --session-id SESSION_ID --json")
 		fmt.Fprintln(out,"Exact Codex session ID enables private native JSONL event-type count comparison; transcript contents are not returned.")

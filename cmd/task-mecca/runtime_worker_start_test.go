@@ -43,3 +43,24 @@ func TestA72StartCLIGapsAreVisibleWithoutOperatingProject(t *testing.T) {
 		t.Fatalf("implicit project accepted %d", code)
 	}
 }
+
+func TestA81FormalRoleCLISeparatesRoleAndIdentityWithoutHostWrites(t *testing.T) {
+	base := []string{"--project", t.TempDir(), "--thread-id", "thread:delegated-task:opaque", "--session-id", "native", "--agent-id", "native", "--assignment", "assignment", "--task-id", "A-81", "--source-worktree", t.TempDir(), "--role", "controller", "--agent-path", "/root/controller/naong", "--parent-thread-id", "parent", "--json"}
+	var out, stderr bytes.Buffer
+	code := runRuntimeObserveT3CLI(base, &out, &stderr)
+	var result map[string]any
+	if e := json.Unmarshal(out.Bytes(), &result); e != nil {
+		t.Fatalf("%s %s %v", out.String(), stderr.String(), e)
+	}
+	start, ok := result["role_start"].(map[string]any)
+	if code != 1 || !ok || start["stage"] != "role" || result["binding_verified"] != false || result["activity_written"] != false || result["implementation_authorized"] != false || result["handoff_claimed"] != false {
+		t.Fatalf("code=%d %+v", code, result)
+	}
+	for _, extra := range [][]string{{"--worker-path", "/root/controller/naong"}, {"--dry-run"}, {"--role", "root"}} {
+		out.Reset()
+		stderr.Reset()
+		if code = runRuntimeObserveT3CLI(append(append([]string{}, base...), extra...), &out, &stderr); code != 2 {
+			t.Fatalf("unsupported formal mode accepted %v code=%d %s", extra, code, out.String())
+		}
+	}
+}

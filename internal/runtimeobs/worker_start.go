@@ -37,9 +37,19 @@ func ObserveT3WorkerStart(in WorkerStart, now time.Time) (WorkerStartResult, err
 }
 
 func observeWorkerStart(in WorkerStart, now time.Time, observe func(string, T3Selector, time.Time) (Attempt, T3Receipt, error)) (WorkerStartResult, error) {
+	return observeRoleStart(in, now, observe, false)
+}
+
+// Controller collection is operational binding only. Worker implementation
+// authorization remains in its original path below.
+func observeRoleStart(in WorkerStart, now time.Time, observe func(string, T3Selector, time.Time) (Attempt, T3Receipt, error), controller bool) (WorkerStartResult, error) {
 	out := WorkerStartResult{Status: "collection_gap", Stage: "identity", Context: in, ReceivedAt: now.UTC().Format(time.RFC3339Nano)}
 	fail := func(err error) (WorkerStartResult, error) { out.Diagnostic = err.Error(); return out, err }
-	if in.CanonicalProject == "" || in.SourceWorktree == "" || in.TaskID == "" || in.AssignmentID == "" || !strings.HasPrefix(in.WorkerPath, "/root/controller/") || strings.HasPrefix(in.WorkerPath, "/root/controller/sub-") || in.Selector.ThreadID == "" || in.Selector.SessionID == "" || in.Selector.RuntimeAgentID != in.Selector.SessionID || in.Selector.ThreadID == in.Selector.SessionID {
+	validPath := strings.HasPrefix(in.WorkerPath, "/root/controller/") && !strings.HasPrefix(in.WorkerPath, "/root/controller/sub-")
+	if controller {
+		validPath = in.WorkerPath == "/root/controller"
+	}
+	if in.CanonicalProject == "" || in.SourceWorktree == "" || in.TaskID == "" || in.AssignmentID == "" || !validPath || in.Selector.ThreadID == "" || in.Selector.SessionID == "" || in.Selector.RuntimeAgentID != in.Selector.SessionID || in.Selector.ThreadID == in.Selector.SessionID {
 		return fail(fmt.Errorf("exact canonical project, source worktree, task, assignment, worker path and distinct native/T3 identities required"))
 	}
 	project, err := ResolveProject(in.CanonicalProject)
@@ -83,22 +93,24 @@ func observeWorkerStart(in WorkerStart, now time.Time, observe func(string, T3Se
 		return fail(fmt.Errorf("observed native/T3 execution does not match current START"))
 	}
 	out.Stage = "binding"
-	raw, policyErr := rolepolicy.TaskMarkdown(project, in.TaskID)
-	if policyErr != nil && !errors.Is(policyErr, os.ErrNotExist) {
-		return fail(policyErr)
-	}
-	policy, approved, policyErr := rolepolicy.Load(project, in.TaskID, raw)
-	if policyErr != nil {
-		return fail(policyErr)
-	}
-	identity := PolicyIdentity(out.Attempt)
-	// The exact observed native and assignment mapping were checked above;
-	// the following evaluation precedes the durable binding write.
-	identity.Bound = true
-	identity.TaskID = in.TaskID
-	identity.AgentPath = in.WorkerPath
-	if view := rolepolicy.Evaluate(policy, identity, source, approved); !view.Allowed {
-		return fail(fmt.Errorf("role_policy_hold: %s; resume: %s", view.Reason, view.ResumeWhen))
+	if !controller {
+		raw, policyErr := rolepolicy.TaskMarkdown(project, in.TaskID)
+		if policyErr != nil && !errors.Is(policyErr, os.ErrNotExist) {
+			return fail(policyErr)
+		}
+		policy, approved, policyErr := rolepolicy.Load(project, in.TaskID, raw)
+		if policyErr != nil {
+			return fail(policyErr)
+		}
+		identity := PolicyIdentity(out.Attempt)
+		// The exact observed native and assignment mapping were checked above;
+		// the following evaluation precedes the durable binding write.
+		identity.Bound = true
+		identity.TaskID = in.TaskID
+		identity.AgentPath = in.WorkerPath
+		if view := rolepolicy.Evaluate(policy, identity, source, approved); !view.Allowed {
+			return fail(fmt.Errorf("role_policy_hold: %s; resume: %s", view.Reason, view.ResumeWhen))
+		}
 	}
 	bound, err := BindRuntimeAgentForAssignment(project, in.AssignmentID, in.Selector.RuntimeAgentID, "", now)
 	if err != nil {
