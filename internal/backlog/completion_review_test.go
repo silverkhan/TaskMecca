@@ -277,7 +277,7 @@ func TestCompletionReviewActualEventsAcrossWebAndRecoveryAPIs(t *testing.T) {
 		controllerState runtimeobs.CanonicalState
 		fail, accept    bool
 	}{
-		{name: "DONE before journal", state: "controller_review_pending", controllerState: runtimeobs.StateRunning},
+		{name: "DONE before journal", state: "progress_collection_gap", controllerState: runtimeobs.StateRunning},
 		{name: "DONE handoff claim before Worker terminal", state: "controller_review", workerRunning: true, controllerState: runtimeobs.StateRunning},
 		{name: "terminal after DONE handoff claim", state: "controller_review", controllerState: runtimeobs.StateRunning},
 		{name: "failed handoff", state: "controller_recovery", controllerState: runtimeobs.StateRunning, fail: true},
@@ -333,6 +333,43 @@ func TestCompletionReviewActualEventsAcrossWebAndRecoveryAPIs(t *testing.T) {
 			snapshot, err := AttentionSnapshot(project, folder, true)
 			if err != nil {
 				t.Fatal(err)
+			}
+			if mode.name == "DONE before journal" {
+				// A terminal hook is not an implementation DONE/report. Keep the
+				// exact owner's collection gap instead of fabricating review progress.
+				signals := runtimeLedgerSignals(project, []Record{row}, time.Now())
+				applyCompletionReviews(project, []Record{row}, signals, time.Now())
+				signal := signals[row.ID]
+				if signal["health"] != mode.state || signal["source"] != "execution_ledger" ||
+					signal["attempt_id"] != worker.AttemptID || signal["assignment_id"] != "assignment-test" ||
+					signal["agent_path"] != worker.AgentPath || signal["completion_review"] != nil {
+					t.Fatalf("terminal-only evidence promoted or misattributed: %v", signal)
+				}
+				progress, ok := signal["progress_evidence"].(map[string]any)
+				if !ok || progress["phase"] != "assigned_prepared" || progress["turn_ended"] != true ||
+					progress["technical_crash"] != "unproven" || progress["remaining_stage"] != "worker_START_and_current_phase" {
+					t.Fatalf("terminal-only observation fabricated DONE/START: %v", progress)
+				}
+				if len(snapshot["notification_events"].([]map[string]any)) != 0 {
+					t.Fatal("terminal hook emitted success notification")
+				}
+				detail, err := TaskDetail(project, folder, row.ID)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if detail["file_state"] != "doing" || detail["state"] != "doing" || detail["completion_review"] != nil {
+					t.Fatalf("missing report presented as completion/review: %v", detail)
+				}
+				coordinate, err := Coordinate(project, folder, 3)
+				if err != nil {
+					t.Fatal(err)
+				}
+				gaps := coordinate["recovery_queue"].([]map[string]any)
+				if len(gaps) != 1 || gaps[0]["id"] != row.ID || gaps[0]["agent"] != worker.AgentPath ||
+					gaps[0]["health"] != mode.state || gaps[0]["code"] != "turn_ended_progress_collection_gap" {
+					t.Fatalf("real implementation recovery erased: %v", gaps)
+				}
+				return
 			}
 			items := snapshot["all_items"].(map[string]map[string]any)
 			item := items[row.ID]

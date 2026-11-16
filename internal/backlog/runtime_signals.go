@@ -1,140 +1,263 @@
 package backlog
 
 import (
-    "strings"
-    "time"
+	"errors"
+	"strings"
+	"time"
 
-    "github.com/silverkhan/TaskMecca/internal/runtimeobs"
- "github.com/silverkhan/TaskMecca/internal/activity"
+	"github.com/silverkhan/TaskMecca/internal/activity"
+	"github.com/silverkhan/TaskMecca/internal/rolepolicy"
+	"github.com/silverkhan/TaskMecca/internal/runtimeobs"
 )
 
-// runtimeLedgerSignals projects only explicitly/reliably bound execution attempts
-// into backlog health. Unbound or ambiguous attempts are never guessed onto tasks.
-func runtimeLedgerSignals(project string,rows []Record,now time.Time,shared ...requestRuntime) map[string]map[string]any {
-    out:=map[string]map[string]any{}
-    ledger,err:=readRequestRuntime(project,20,now,shared...)
-    if err!=nil { return out }
+type runtimeImplementationOwner struct {
+	rolepolicy.Owner
+	Structured bool
+}
 
-    doing:=map[string]bool{}
-    for _,row:=range rows {
-        if row.Location=="active" && row.State=="doing" { doing[strings.ToUpper(strings.TrimSpace(row.ID))]=true }
-    }
-    stale:=map[string]bool{}
-    for _,finding:=range ledger.Findings {
-        if finding.Code=="stale" && finding.AttemptID!="" { stale[finding.AttemptID]=true }
-    }
+// Match the context gate: structured implementation metadata is authoritative;
+// otherwise only an explicit legacy Worker path is an ownership declaration.
+func runtimeOwner(project string, row Record) (runtimeImplementationOwner, error) {
+	p, _, e := rolepolicy.Load(project, row.ID, row.RawMarkdown)
+	if e != nil {
+		return runtimeImplementationOwner{}, e
+	}
+	if p != nil {
+		owner := p.Implementation
+		if owner.AgentPath == "" || owner.Role != rolepolicy.Role(owner.AgentPath) || owner.Role == "unknown" {
+			return runtimeImplementationOwner{}, errors.New("implementation_policy_owner_invalid")
+		}
+		return runtimeImplementationOwner{Owner: owner, Structured: true}, nil
+	}
+	path := strings.TrimSpace(row.Fields["Agent"])
+	if !rolepolicy.WorkerPath(path) {
+		return runtimeImplementationOwner{}, errors.New("implementation_owner_unresolved")
+	}
+	return runtimeImplementationOwner{Owner: rolepolicy.Owner{Role: "worker", AgentPath: path}}, nil
+}
 
-    expectedWorker:=map[string]string{}
-    for _,row:=range rows {if row.Location=="active" && row.State=="doing" {expectedWorker[strings.ToUpper(row.ID)]=strings.TrimSpace(row.Fields["Agent"])}}
-    latest:=map[string]runtimeobs.Attempt{}
-    for _,attempt:=range ledger.Attempts {
-        taskID:=strings.ToUpper(strings.TrimSpace(attempt.TaskID))
-        if !doing[taskID] || attempt.BindingState!=runtimeobs.BindingBound { continue }
-        if owner:=expectedWorker[taskID];owner!="" && attempt.AgentPath!=owner {continue}
-        previous,ok:=latest[taskID]
-        if !ok || attemptSignalTime(attempt).After(attemptSignalTime(previous)) { latest[taskID]=attempt }
-    }
-    for taskID,attempt:=range latest {
-        health:="active"
-        switch attempt.CurrentState {
-        case runtimeobs.StateWaitingUser,runtimeobs.StateWaitingApproval:
-            health="needs_user"
-        case runtimeobs.StateCompleted:
-            health="awaiting_finalize"
-        case runtimeobs.StateErrored,runtimeobs.StateInterrupted,runtimeobs.StateShutdown:
-            health="execution_interrupted"
-        case runtimeobs.StateRuntimeUnknown:
-            health="runtime_unknown"
-        default:
-            if stale[attempt.AttemptID] { health="stale" }
-        }
-		if attempt.StartedAt == "" && !attempt.Terminal {
+func runtimeOwnerGap(task, reason string, owner runtimeImplementationOwner) map[string]any {
+	return map[string]any{"health": "implementation_owner_unverified", "source": "execution_ledger", "owner_resolution_error": reason, "agent_path": owner.AgentPath, "implementation_owner": owner.Owner,
+		"progress_evidence": map[string]any{"task_id": task, "phase": "implementation_owner_unverified", "action_owner": "/root/controller", "remaining_stage": "implementation_owner_verification", "technical_crash": "unproven", "resume_condition": "Verify current structured implementation owner/native or explicit legacy owner, exact assignment and observed bound implementation attempt. Preserve reviewer/other-actor evidence separately; never use latest-task or reviewer active state as fallback. Existing preflight/transport/approval gates remain."}}
+}
+
+func implementationDispatchTime(a runtimeobs.Attempt) time.Time {
+	var latest time.Time
+	for _, raw := range []string{a.BindingAt, a.StartedAt, a.FirstObservedAt} {
+		if at, e := time.Parse(time.RFC3339Nano, raw); e == nil && at.After(latest) {
+			latest = at
+		}
+	}
+	return latest
+}
+
+// Only actual owner-correlated implementation evidence can override legacy
+// registry signals. Owner errors explicitly override rather than falling back to
+// an unrelated reviewer or another native sharing the same display/path metadata.
+func runtimeLedgerSignals(project string, rows []Record, now time.Time, shared ...requestRuntime) map[string]map[string]any {
+	out := map[string]map[string]any{}
+	expected := map[string]runtimeImplementationOwner{}
+	for _, row := range rows {
+		if row.Location != "active" || row.State != "doing" {
+			continue
+		}
+		id := strings.ToUpper(strings.TrimSpace(row.ID))
+		owner, e := runtimeOwner(project, row)
+		if e != nil {
+			// Ownership recovery concerns active implementation, not unrelated
+			// completed or queued tasks lacking legacy owner metadata.
+			out[id] = runtimeOwnerGap(id, e.Error(), owner)
+			continue
+		}
+		expected[id] = owner
+	}
+	ledger, e := readRequestRuntime(project, 20, now, shared...)
+	if e != nil {
+		for id, owner := range expected {
+			out[id] = runtimeOwnerGap(id, e.Error(), owner)
+		}
+		return out
+	}
+	assignments, e := runtimeobs.ListAssignments(project)
+	if e != nil {
+		for id, owner := range expected {
+			out[id] = runtimeOwnerGap(id, e.Error(), owner)
+		}
+		return out
+	}
+	latestAssignment := map[string]runtimeobs.Assignment{}
+	ambiguousAssignment := map[string]bool{}
+	for _, a := range assignments {
+		key := a.TaskID + "\x00" + a.AgentPath
+		previous, ok := latestAssignment[key]
+		if !ok || a.AssignedAt > previous.AssignedAt {
+			latestAssignment[key] = a
+			ambiguousAssignment[key] = false
+		} else if a.AssignedAt == previous.AssignedAt && a.AssignmentID != previous.AssignmentID {
+			ambiguousAssignment[key] = true
+		}
+	}
+	stale := map[string]bool{}
+	for _, finding := range ledger.Findings {
+		if finding.Code == "stale" && finding.AttemptID != "" {
+			stale[finding.AttemptID] = true
+		}
+	}
+	latest := map[string]runtimeobs.Attempt{}
+	ambiguousAttempt := map[string]bool{}
+	for _, a := range ledger.Attempts {
+		id := strings.ToUpper(strings.TrimSpace(a.TaskID))
+		owner, ok := expected[id]
+		if !ok || a.BindingState != runtimeobs.BindingBound || a.AgentPath != owner.AgentPath {
+			continue
+		}
+		key := id + "\x00" + owner.AgentPath
+		assignment, assigned := latestAssignment[key]
+		if ambiguousAssignment[key] {
+			out[id] = runtimeOwnerGap(id, "implementation_assignment_ambiguous", owner)
+			continue
+		}
+		if assigned && a.BindingEvidence["assignment_id"] != assignment.AssignmentID {
+			continue
+		}
+		previous, ok := latest[id]
+		at := implementationDispatchTime(a)
+		previousAt := implementationDispatchTime(previous)
+		if !ok || at.After(previousAt) {
+			latest[id] = a
+			ambiguousAttempt[id] = false
+		} else if at.Equal(previousAt) && a.AttemptID != previous.AttemptID {
+			ambiguousAttempt[id] = true
+		}
+	}
+	for id, a := range latest {
+		if out[id] != nil {
+			continue
+		}
+		owner := expected[id]
+		identity := runtimeobs.PolicyIdentity(a)
+		_, assigned := latestAssignment[id+"\x00"+owner.AgentPath]
+		if ambiguousAttempt[id] {
+			out[id] = runtimeOwnerGap(id, "implementation_attempt_ambiguous", owner)
+			continue
+		}
+		if owner.Structured && (!identity.Observed || identity.NativeID == "" || !assigned || identity.AgentPath != owner.AgentPath || rolepolicy.Role(identity.AgentPath) != owner.Role || (owner.NativeID != "" && identity.NativeID != owner.NativeID)) {
+			signal := runtimeOwnerGap(id, "implementation_identity_or_assignment_unverified", owner)
+			signal["unverified_attempt_id"] = a.AttemptID
+			signal["candidate_native_id"] = a.SessionID
+			out[id] = signal
+			continue
+		}
+		health := "active"
+		switch a.CurrentState {
+		case runtimeobs.StateWaitingUser, runtimeobs.StateWaitingApproval:
+			health = "needs_user"
+		case runtimeobs.StateCompleted:
+			health = "progress_collection_gap"
+		case runtimeobs.StateErrored, runtimeobs.StateInterrupted, runtimeobs.StateShutdown:
+			health = "execution_interrupted"
+		case runtimeobs.StateRuntimeUnknown:
+			health = "runtime_unknown"
+		default:
+			if stale[a.AttemptID] {
+				health = "stale"
+			}
+		}
+		if a.StartedAt == "" && !a.Terminal {
 			health = "awaiting_start"
 		}
-		signal:=map[string]any{
-            "health":health,"source":"execution_ledger","attempt_id":attempt.AttemptID,
-            "runtime_state":attempt.CurrentState,"last_activity_at":attempt.LastActivityAt,
-            "binding_state":attempt.BindingState,"binding_source":attempt.BindingSource,
-			"binding_at": attempt.BindingAt, "started_at": attempt.StartedAt, "runtime_agent_id": attempt.RuntimeAgentID,
-			"assignment_id":   attempt.BindingEvidence["assignment_id"],
-			"evidence_source":attempt.StateEvidenceSource,"observation_quality":attempt.StateObservationQuality,
-        }
-        events, activityErr := (activity.Ledger{Project:project}).ListCached(taskID)
-        progress := workerProgress(attempt,events)
-        signal["progress_evidence"]=progress
-        if activityErr!=nil {signal["activity_read_error"]=activityErr.Error()}
-        if attempt.CurrentState==runtimeobs.StateCompleted {signal["health"]="progress_collection_gap"}
-        out[taskID]=signal
-	}
-	assignments, _ := runtimeobs.ListAssignments(project)
-	latestAssignment := map[string]runtimeobs.Assignment{}
-	for _, assignment := range assignments {
-		key := assignment.TaskID + "\x00" + assignment.AgentPath
-		if previous, ok := latestAssignment[key]; !ok || assignment.AssignedAt > previous.AssignedAt {
-			latestAssignment[key] = assignment
+		events, activityErr := (activity.Ledger{Project: project}).ListCached(id)
+		signal := map[string]any{"health": health, "source": "execution_ledger", "attempt_id": a.AttemptID, "runtime_state": a.CurrentState, "last_activity_at": a.LastActivityAt, "binding_state": a.BindingState, "binding_source": a.BindingSource, "binding_at": a.BindingAt, "started_at": a.StartedAt, "runtime_agent_id": a.RuntimeAgentID, "assignment_id": a.BindingEvidence["assignment_id"], "evidence_source": a.StateEvidenceSource, "observation_quality": a.StateObservationQuality, "agent_path": owner.AgentPath, "implementation_owner": owner.Owner, "progress_evidence": workerProgress(a, events)}
+		if activityErr != nil {
+			signal["activity_read_error"] = activityErr.Error()
 		}
+		out[id] = signal
 	}
 	owners := map[string]int{}
-	for _, row := range rows {
-		if row.Location == "active" && row.State == "doing" {
-			owners[strings.TrimSpace(row.Fields["Agent"])]++
-		}
+	for _, owner := range expected {
+		owners[owner.AgentPath]++
 	}
-	for _, row := range rows {
-		id := strings.ToUpper(strings.TrimSpace(row.ID))
-		if row.Location != "active" || row.State != "doing" || out[id] != nil {
+	for id, owner := range expected {
+		if out[id] != nil {
 			continue
 		}
-		agent := strings.TrimSpace(row.Fields["Agent"])
-		if agent == "" {
+		key := id + "\x00" + owner.AgentPath
+		assignment, assigned := latestAssignment[key]
+		if ambiguousAssignment[key] {
+			out[id] = runtimeOwnerGap(id, "implementation_assignment_ambiguous", owner)
 			continue
 		}
-		assignment, hasAssignment := latestAssignment[id+"\x00"+agent]
 		candidates := []string{}
-		ambiguousEvidence := false
-		workerName := agent
-		if slash := strings.LastIndex(workerName, "/"); slash >= 0 {
-			workerName = workerName[slash+1:]
+		ambiguous := false
+		name := owner.AgentPath
+		if slash := strings.LastIndex(name, "/"); slash >= 0 {
+			name = name[slash+1:]
 		}
-		for _, attempt := range ledger.Attempts {
-			if attempt.Terminal || (attempt.BindingState != runtimeobs.BindingUnbound && attempt.BindingState != runtimeobs.BindingAmbiguous) {
+		for _, a := range ledger.Attempts {
+			if a.Terminal || (a.BindingState != runtimeobs.BindingUnbound && a.BindingState != runtimeobs.BindingAmbiguous) {
 				continue
 			}
-			if attempt.RuntimeAgentID == agent || attempt.RuntimeAgentID == workerName {
-				candidates = append(candidates, attempt.AttemptID)
-				if attempt.BindingState == runtimeobs.BindingAmbiguous { ambiguousEvidence = true }
+			match := owner.NativeID != "" && (a.RuntimeAgentID == owner.NativeID || a.SessionID == owner.NativeID)
+			if !owner.Structured {
+				match = a.RuntimeAgentID == owner.AgentPath || a.RuntimeAgentID == name
+			}
+			if !match {
+				continue
+			}
+			candidates = append(candidates, a.AttemptID)
+			if a.BindingState == runtimeobs.BindingAmbiguous {
+				ambiguous = true
 			}
 		}
-		if !hasAssignment && len(candidates) == 0 {
+		if !assigned && len(candidates) == 0 {
+			if owner.Structured {
+				out[id] = runtimeOwnerGap(id, "implementation_assignment_or_observation_missing", owner)
+			}
 			continue
 		}
 		health := "assignment_unobserved"
 		if len(candidates) > 0 {
 			health = "binding_pending"
 		}
-		if ambiguousEvidence || len(candidates) > 1 || (len(candidates) > 0 && owners[agent] > 1) {
+		if ambiguous || len(candidates) > 1 || (len(candidates) > 0 && owners[owner.AgentPath] > 1) {
 			health = "binding_ambiguous"
 		}
-		out[id] = map[string]any{"health": health, "source": "execution_ledger", "assignment_id": assignment.AssignmentID,
-			"assigned_at": assignment.AssignedAt, "candidate_attempt_ids": candidates, "candidate_count": len(candidates), "agent_path": agent}
+		out[id] = map[string]any{"health": health, "source": "execution_ledger", "assignment_id": assignment.AssignmentID, "assigned_at": assignment.AssignedAt, "candidate_attempt_ids": candidates, "candidate_count": len(candidates), "agent_path": owner.AgentPath, "implementation_owner": owner.Owner}
 	}
-    return out
+	// Keep other task actors as observations, never as implementation progress.
+	for id, signal := range out {
+		owner, known := expected[id]
+		others := []map[string]any{}
+		for _, a := range ledger.Attempts {
+			if a.TaskID != id || a.BindingState != runtimeobs.BindingBound || (known && a.AgentPath == owner.AgentPath) {
+				continue
+			}
+			identity := runtimeobs.PolicyIdentity(a)
+			others = append(others, map[string]any{"attempt_id": a.AttemptID, "agent_path": a.AgentPath, "native_id": identity.NativeID, "observed": identity.Observed, "assignment_id": a.BindingEvidence["assignment_id"], "runtime_state": a.CurrentState, "terminal": a.Terminal})
+		}
+		signal["other_actors"] = others
+	}
+	return out
 }
 
 func attemptSignalTime(a runtimeobs.Attempt) time.Time {
-    for _,raw:=range []string{a.LastObservedAt,a.EndedAt,a.LastActivityAt,a.StartedAt,a.FirstObservedAt} {
-        if at,err:=time.Parse(time.RFC3339Nano,raw); err==nil { return at }
-    }
-    return time.Time{}
+	for _, raw := range []string{a.LastObservedAt, a.EndedAt, a.LastActivityAt, a.StartedAt, a.FirstObservedAt} {
+		if at, err := time.Parse(time.RFC3339Nano, raw); err == nil {
+			return at
+		}
+	}
+	return time.Time{}
 }
 
-func mergeRuntimeSignals(base,ledger map[string]map[string]any) map[string]map[string]any {
-    out:=map[string]map[string]any{}
-    for id,signal:=range base { out[id]=signal }
-    for id,signal:=range ledger {
-        // A bound Execution Ledger attempt has stronger task correlation than the
-        // legacy registry signal. Keep legacy data only when no bound signal exists.
-        out[id]=signal
-    }
-    return out
+func mergeRuntimeSignals(base, ledger map[string]map[string]any) map[string]map[string]any {
+	out := map[string]map[string]any{}
+	for id, signal := range base {
+		out[id] = signal
+	}
+	for id, signal := range ledger {
+		// A bound Execution Ledger attempt has stronger task correlation than the
+		// legacy registry signal. Keep legacy data only when no bound signal exists.
+		out[id] = signal
+	}
+	return out
 }
