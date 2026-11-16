@@ -181,19 +181,35 @@ func TestTransportPreparedIsNotSTARTOrHandle(t *testing.T) {
 		t.Fatal(err)
 	}
 	req := PrepareRequest{Project: project, TaskID: "A-1", EventType: EventWorkerDone, SourceAgentPath: "/root/controller/worker", SourceAttemptID: "assignment-prepared-only", TargetAgentPath: "/root/controller", TargetAttemptID: "controller", ReportFile: report}
+	if _, err := Prepare(req, now); err == nil || !strings.Contains(err.Error(), "completion_context_required") {
+		t.Fatalf("prepared assignment authorized completion without context: %v", err)
+	}
+	req.EventType = EventRegistrationReady
+	req.ExecutionAuthorized = true
 	p, err := Prepare(req, now)
 	if err != nil {
 		t.Fatal(err)
 	}
-	plan, err := PlanTransport(project, p.HandoffID, now.Add(time.Second))
-	if err != nil || plan.Supported || plan.Reason != "source_start_not_observed" {
-		t.Fatalf("%+v %v", plan, err)
-	}
-	req.EventType = EventRegistrationReady
-	req.ExecutionAuthorized = true
-	p, err = Prepare(req, now)
+	// A historical prepared row is still not an observed START. Seed only
+	// this isolated legacy fixture; new completion preparation must reject it.
+	legacyID := "legacy-prepared-without-start"
+	err = withLock(project, func() error {
+		return appendRecordUnlocked(project, Record{
+			HandoffID: legacyID, RecordKind: "prepared", EventType: EventWorkerDone,
+			TaskID: req.TaskID, ContractSHA256: p.ContractSHA256,
+			SourceAgentPath: req.SourceAgentPath, SourceAttemptID: req.SourceAttemptID,
+			TargetAgentPath: p.Target.AgentPath, TargetAttemptID: p.Target.AttemptID,
+			TargetRuntimeAgentID: p.Target.RuntimeAgentID, TargetSessionID: p.Target.SessionID,
+			Provider: p.Target.Provider, TargetState: p.Target.State, Action: p.Action,
+			ObservedAt: now.UTC().Format(time.RFC3339Nano),
+		})
+	})
 	if err != nil {
 		t.Fatal(err)
+	}
+	plan, err := PlanTransport(project, legacyID, now.Add(time.Second))
+	if err != nil || plan.Supported || plan.Reason != "source_start_not_observed" {
+		t.Fatalf("%+v %v", plan, err)
 	}
 	plan, err = PlanTransport(project, p.HandoffID, now.Add(time.Second))
 	if err != nil || plan.Supported || plan.Reason != "collaboration_handle_not_observed" {
