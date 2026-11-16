@@ -257,3 +257,11 @@ T3 별도 worktree는 실제 `delegate_task(isolation=worktree)`만 선택하며
 실제 생성 도구 호출 직전 host adapter 경계에서 현재 환경·해당 callable schema와 canonical fresh Full Access를 새로 확인한다. 기존 contract/runtime/assignment/handoff gate를 유지한다. 생성 뒤 exact native/T3/session, source cwd, 실제 worktree와 committed base 및 필요한 parent T3 연결을 독립 조회한다. 도구 요청/배정 준비/실제 생성/Worker START/추적 검증을 구분하며 created-but-unlinked를 성공·START·기술적 중단 원인으로 승격하지 않는다. 기존 START/bind/Activity, typed transport, 표시 이름 분리 절차와 naming directive를 그대로 적용한다. 재개·환경변경·충돌 시 재관측하고 과거 snapshot을 현재 도구 지원 근거로 쓰지 않는다.
 
 구현 경계·profile schema·영수증 검증은 `docs/orchestration-execution-modes.md` 및 기존 `internal/orchestration` 엔진이 정의한다. 지침 미준수, 제품 환경 입력 부족, 원인 미확인의 과거 중단을 구분하고 미측정 phase를 합성하지 않는다. Controller가 canonical 운영 기록과 최종 수용을 소유한다.
+
+## 제품 구현 역할과 독립 검수
+
+Worker 제품 구현은 기존 실행 승인으로 진행한다. Controller의 운영 원장 기록·배정·통합·최종 수용은 운영 책임이며 제품 구현 예외가 아니다. Controller 제품 구현은 구조화된 소유자·실제 실행 workspace·방식·범위·예외 사유/근거·제한 정책 승인 및 실제 별도 검수자 신원이 확인될 때만 허용한다. 생성 실패·슬롯 부족·worktree 제약이나 “Controller 직접 구현” 문구는 예외 승인 근거가 아니다. 미확정 예외는 사유와 재개 조건을 보존한다.
+
+같은 native agent의 다른 역할/turn 또는 Activity `review_accepted`는 자기 검수다. 독립 검수는 실제 다른 bound native 신원·정확한 task·완전한 검수 대상 소스 해시·실제 최종 검수 결과/보고서 근거를 확인한다. 검수 뒤 제품 소스가 바뀌면 재검수하고, Controller는 별도 결과로 원본 최종 수용을 기록한다. 지원되지 않는 수동·레거시 편집까지 전면 차단되었다고 주장하지 않는다.
+
+구조화 정책은 기존 contract supplement/decision, START, handoff 및 acceptance/applied gate에서 같은 공통 판정을 사용한다. 설정된 completion handoff에는 실제 `--source-worktree`를 포함한다. `contract role-policy check|snapshot`과 실제 Reviewer 보고 형식은 [제품 구현 역할 정책](../../../../docs/implementation-role-policy.md)을 따른다. Worker는 원본 decision/handoff/lifecycle을 쓰지 않고 자신의 실제 Activity와 직접 완료 보고만 남긴다.

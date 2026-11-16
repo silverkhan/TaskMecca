@@ -159,3 +159,11 @@ runtime/orchestration layer가 지원하면 Controller가 지정 원본 registry
 ## 관리 세션 이름: dispatch·resume 필수 절차
 
 새 세션과 기존 세션 resume/reuse 모두 [공식 세션 이름 적용과 확인](../EXECUTION_PROTOCOL.md#공식-세션-이름-적용과-확인-필수)을 따른다. native dispatch 전에 `orchestration session-name plan`의 생성 이름·지원 확인·before/after/resume 지시를 실제 Agent prompt에 넣고, T3 생성은 `delegate_task.title`에 생성 이름을 그대로 쓴다. 실제 실행 세션은 exact native ID를 확인한 뒤 `session-name apply`와 fresh `session-name verify`를 수행한다. T3는 exact current thread를 공식 도구로 별도 재조회하고, 필요할 때만 update 후 다시 읽는다. 동일 세션 resume는 group/role/Worker/G를 보존한다. provider receipt와 실제 T3 tool readback이 누락되면 완료라고 보고하지 않는다. caller JSON·API ack·작업 제목은 적용/검증 증거가 아니며, 실패·미지원·미검증은 Controller에 직접 보고한다. 이름은 표시 metadata이고 runtime/attempt/claim/handoff 신원·권한을 대체하지 않는다.
+
+## 제품 구현 역할과 독립 검수
+
+Worker 제품 구현은 기존 실행 승인으로 진행한다. Controller의 운영 원장 기록·배정·통합·최종 수용은 운영 책임이며 제품 구현 예외가 아니다. Controller 제품 구현은 구조화된 소유자·실제 실행 workspace·방식·범위·예외 사유/근거·제한 정책 승인 및 실제 별도 검수자 신원이 확인될 때만 허용한다. 생성 실패·슬롯 부족·worktree 제약이나 “Controller 직접 구현” 문구는 예외 승인 근거가 아니다. 미확정 예외는 사유와 재개 조건을 보존한다.
+
+같은 native agent의 다른 역할/turn 또는 Activity `review_accepted`는 자기 검수다. 독립 검수는 실제 다른 bound native 신원·정확한 task·완전한 검수 대상 소스 해시·실제 최종 검수 결과/보고서 근거를 확인한다. 검수 뒤 제품 소스가 바뀌면 재검수하고, Controller는 별도 결과로 원본 최종 수용을 기록한다. 지원되지 않는 수동·레거시 편집까지 전면 차단되었다고 주장하지 않는다.
+
+구조화 정책은 기존 contract supplement/decision, START, handoff 및 acceptance/applied gate에서 같은 공통 판정을 사용한다. 설정된 completion handoff에는 실제 `--source-worktree`를 포함한다. `contract role-policy check|snapshot`과 실제 Reviewer 보고 형식은 [제품 구현 역할 정책](../../../../../docs/implementation-role-policy.md)을 따른다. Worker는 원본 decision/handoff/lifecycle을 쓰지 않고 자신의 실제 Activity와 직접 완료 보고만 남긴다.

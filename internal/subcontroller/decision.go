@@ -5,9 +5,14 @@ package subcontroller
 import (
  "errors"
  "strings"
+ "github.com/silverkhan/TaskMecca/internal/rolepolicy"
 )
 
 type Snapshot struct {
+ Project string `json:"project,omitempty"`
+ ImplementationAttempt string `json:"implementation_attempt,omitempty"`
+ SourceWorkspace string `json:"source_workspace,omitempty"`
+ VerifiedRolePolicy *rolepolicy.View `json:"-"`
  BacklogID string `json:"backlog_id"`
  ActorRole string `json:"actor_role"`
  Event string `json:"event"`
@@ -36,6 +41,8 @@ func Decide(s Snapshot) (Decision,error) {
  if strings.TrimSpace(s.BacklogID)=="" {return Decision{},errors.New("backlog_id required")}
  if s.ActorRole!="main_controller" && s.ActorRole!="sub_controller" {return Decision{},errors.New("unsupported actor_role")}
  d:=Decision{Owner:"main_controller",CanonicalWriteAllowed:false,NeedsMainApproval:true}
+ if s.VerifiedRolePolicy!=nil && !s.VerifiedRolePolicy.Allowed { d.Action="request_evidence";d.Reason=s.VerifiedRolePolicy.Reason;return d,nil }
+ if s.IndependentReviewRequired { s.IndependentReviewReady=s.VerifiedRolePolicy!=nil && s.VerifiedRolePolicy.Review=="independent" }
  if s.ContractChanged||s.ScopeConflict {
   d.Action="escalate";d.Reason="contract or scope conflict";return d,nil
  }

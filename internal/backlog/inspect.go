@@ -60,6 +60,7 @@ func Inspect(project,root,itemID string) (map[string]any,error) {
         "lifecycle":lifecycle,
         "document":row.Document,
         "raw_markdown":row.RawMarkdown,
+ "role_policy":RolePolicyProjection(project,row.ID,row.RawMarkdown),
         "fields":row.Fields,
     }
     for key,value:=range blockers { report[key]=value }

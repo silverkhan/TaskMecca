@@ -6875,13 +6875,23 @@ function patchLifecycleEvidence(section,task){
   section.querySelector?.('#lifecycleRetryBtn')?.addEventListener('click',retryTaskLifecycle);
 }
 
+function rolePolicyPanel(task) {
+ const v=task.role_policy,ko=state.language==='ko';
+ if(!v)return '';
+ const p=v.policy||{},implementation={worker_default:ko?'Worker 기본 경로 · 실제 구현 미확인':'Worker default · actual implementation unknown',worker:ko?'Worker 구현':'Worker implementation',controller_exception:v.exception_approved?(ko?'승인된 Controller 예외 구현':'Approved Controller exception implementation'):(ko?'Controller 예외 요청 · 보류':'Controller exception requested · hold')}[v.implementation]||(ko?'구현 방식 미확인':'Implementation method unknown');
+ const review={independent:ko?'독립 검수 확인':'Independent review verified',self:ko?'자기 검수 · 독립 검수 아님':'Self review · not independent',unknown:ko?'검수 미확인':'Review unknown'}[v.review]||(ko?'검수 미확인':'Review unknown');
+ const owner=o=>[o?.role,o?.agent_path,o?.native_id].filter(Boolean).join(' · ')||'—';
+ const facts=[[ko?'제품 구현':'Product implementation',owner(p.implementation_owner)],[ko?'운영·최종 수용':'Operations / final acceptance',owner(p.operational_owner)],[ko?'별도 검수자':'Separate reviewer',owner(p.review_owner)],[ko?'구현 workspace':'Implementation workspace',p.workspace],[ko?'적용 범위':'Scope',(p.scope||[]).join(', ')]];
+ const exception=p.exception?[[ko?'예외 승인':'Exception approval',v.exception_approved?(ko?'제한 정책 승인 확인':'Restricted policy approval verified'):(ko?'승인 미확인 · 보류':'Approval unknown · hold')],[ko?'예외 사유':'Exception reason',p.exception.reason],[ko?'예외 근거':'Exception evidence',p.exception.evidence],[ko?'예외 범위':'Exception scope',(p.exception.scope||[]).join(', ')],[ko?'재개 조건':'Resume condition',p.exception.resume_when]]:[];
+ return '<section class="section detail-section role-policy-section" id="role-policy" data-toc-label="'+esc(ko?'구현·검수 책임':'Implementation and review')+'"><h2>'+esc(ko?'구현·검수 책임':'Implementation and review')+'</h2>'+(v.error?'<p role="status">'+esc(ko?'정책 확인 실패 · 보류. 현재 계약과 실제 실행 신원을 확인하세요.':'Policy verification failed · hold. Check the current contract and actual execution identity.')+'</p>':'')+'<p><strong>'+esc(implementation)+'</strong> · '+esc(review)+'</p>'+(v.legacy?'<p>'+esc(ko?'과거 기록에는 구조화된 역할 정책이 없습니다. 일반 실행 승인은 Controller 제품 구현 예외 승인이 아닙니다.':'This legacy record has no structured role policy. General execution approval does not approve a Controller implementation exception.')+'</p>':'<dl class="role-policy-facts">'+facts.concat(exception).map(([label,value])=>'<div><dt>'+esc(label)+'</dt><dd>'+esc(value||'—')+'</dd></div>').join('')+'</dl>')+(v.review!=='independent'?'<p>'+esc(ko?'독립 검수는 다른 실제 native 신원·대상 작업·보고서·현재 소스 근거가 확인된 뒤 표시됩니다. Controller가 별도 결과로 최종 수용합니다.':'Independent review requires a different actual native identity, the target task, report and current source evidence. The Controller records final acceptance using that result.')+'</p>':'')+'<details><summary>'+esc(ko?'정책·검수 근거':'Policy and review evidence')+'</summary><pre>'+esc(JSON.stringify(v,null,2))+'</pre></details></section>';
+}
 function detailView(task) {
   const act=task.activity||{}, lc=task.lifecycle||{}, reason=task.attention_reason||null, warn=Boolean(reason)||['quiet','stale','worker_missing'].includes(act.health), events=lc.events||[];
   const hs=humanSummary(task);
   const timingInferred=Boolean(lc.lifecycle_inferred), timingIncomplete=Boolean(lc.timing_incomplete);
   const lifecyclePreview=events.length?`${lifecycleEventLabel(events[events.length-1].label)} · ${dateTimeLabel(events[events.length-1].at,true)}`:t('noLifecycle');
   const lifecycleBody=detailLifecycleBody(task);
-  const lifecycle=`<section class="section detail-section lifecycle-section" id="lifecycle" data-toc-label="${esc(t('lifecycle'))}"><h2>${esc(t('lifecycle'))}</h2>${lifecycleBody}</section>`;
+  const lifecycle=`${rolePolicyPanel(task)}<section class="section detail-section lifecycle-section" id="lifecycle" data-toc-label="${esc(t('lifecycle'))}"><h2>${esc(t('lifecycle'))}</h2>${lifecycleBody}</section>`;
   const passiveAlert=!reason&&warn?`<div class="attention-banner ${['stale','worker_missing'].includes(act.health)?'danger':''}"><strong>${esc(healthLabel(act.health))}</strong><span>${esc(t('lastObservable',{ago:ago(act.last_activity_at),source:act.last_activity_source}))} ${esc(act.health==='worker_missing'?t('workerMissingDetail'):t('quietAdvisory'))}</span></div>`:'';
   const sectionSummaries=task.document?.section_summaries||{};
   const progressBody=`<h3>${esc(t('workNotes'))}</h3><div class="markdown">${markdown(task.document?.notes||task.fields?.메모)}</div><h3>${esc(t('result'))}</h3><div class="markdown">${markdown(task.document?.result||task.fields?.결과)}</div>`;

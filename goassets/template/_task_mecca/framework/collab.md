@@ -530,3 +530,11 @@ Codex는 공식 `thread/read`를 exact native ID와 `includeTurns=false`로 조�
 T3 수집은 기존 읽기 전용 구조화 관측 경로를 사용한다. 프로젝트 workspace 경로와 thread 소유권, native ID, 최신 run/attempt의 연결을 검증하고 살아 있는 T3 owner를 확인한다. 연결이 없거나 모호하거나 다른 프로젝트이면 제목을 사용하지 않는다. 제목과 연결은 검증 전후 다시 읽으며 변경 중이면 다음 갱신까지 확인 필요로 처리한다. caller JSON이나 전달받은 제목만으로 검증 성공을 주장하지 않는다. 구조화 저장소가 미지원이면 우회 SQL이나 transcript 추출을 추가하지 않는다.
 
 이름·제목의 변경, 삭제, 빈 값도 갱신 결과다. 성공 결과는 최대 30초, 조회 불가는 10초 간격으로 재조회하며 이전 이름을 계속 유지하지 않는다. `display_name_status`와 `display_name_checked_at`으로 확인 상태와 조회 시점을 구분한다. 표시 metadata는 attempt/assignment/claim/권한/liveness의 근거가 아니며 기존 판정을 변경하지 않는다. 관측은 SQLite/JSONL 수동 수정, native/T3 rename, 운영 설치와 별개다.
+
+## 제품 구현 역할과 독립 검수
+
+Worker 제품 구현은 기존 실행 승인으로 진행한다. Controller의 운영 원장 기록·배정·통합·최종 수용은 운영 책임이며 제품 구현 예외가 아니다. Controller 제품 구현은 구조화된 소유자·실제 실행 workspace·방식·범위·예외 사유/근거·제한 정책 승인 및 실제 별도 검수자 신원이 확인될 때만 허용한다. 생성 실패·슬롯 부족·worktree 제약이나 “Controller 직접 구현” 문구는 예외 승인 근거가 아니다. 미확정 예외는 사유와 재개 조건을 보존한다.
+
+같은 native agent의 다른 역할/turn 또는 Activity `review_accepted`는 자기 검수다. 독립 검수는 실제 다른 bound native 신원·정확한 task·완전한 검수 대상 소스 해시·실제 최종 검수 결과/보고서 근거를 확인한다. 검수 뒤 제품 소스가 바뀌면 재검수하고, Controller는 별도 결과로 원본 최종 수용을 기록한다. 지원되지 않는 수동·레거시 편집까지 전면 차단되었다고 주장하지 않는다.
+
+구조화 정책은 기존 contract supplement/decision, START, handoff 및 acceptance/applied gate에서 같은 공통 판정을 사용한다. 설정된 completion handoff에는 실제 `--source-worktree`를 포함한다. `contract role-policy check|snapshot`과 실제 Reviewer 보고 형식은 [제품 구현 역할 정책](../../../../docs/implementation-role-policy.md)을 따른다. Worker는 원본 decision/handoff/lifecycle을 쓰지 않고 자신의 실제 Activity와 직접 완료 보고만 남긴다.

@@ -13,6 +13,7 @@ import (
 	"github.com/silverkhan/TaskMecca/internal/contextlife"
 	"github.com/silverkhan/TaskMecca/internal/contractscope"
 	"github.com/silverkhan/TaskMecca/internal/runtimeobs"
+ "github.com/silverkhan/TaskMecca/internal/rolepolicy"
 )
 
 func Prepare(req PrepareRequest, now time.Time) (PrepareResult, error) {
@@ -44,6 +45,15 @@ func Prepare(req PrepareRequest, now time.Time) (PrepareResult, error) {
 		return PrepareResult{}, fmt.Errorf("task not found: %s", req.TaskID)
 	}
 	raw, _ := inspection["raw_markdown"].(string)
+ policy, _, policyErr := rolepolicy.Load(req.Project, req.TaskID, raw)
+ if policyErr != nil { return PrepareResult{}, policyErr }
+ if policy != nil && (req.EventType == EventWorkerDone || req.EventType == EventCompletionReport) {
+  assessment, e := AssessPolicy(req.Project, req.TaskID, req.SourceAttemptID, req.SourceWorkspace, false, now)
+  if e!=nil{return PrepareResult{},e}
+  if assessment.ImplementationIdentity.AgentPath!=req.SourceAgentPath{return PrepareResult{},errors.New("source_attempt_path_mismatch")}
+
+ }
+
 	currentContractSHA, err := ContractFingerprint(raw)
 	if err != nil {
 		return PrepareResult{}, fmt.Errorf("contract fingerprint: %w", err)
@@ -177,7 +187,7 @@ func Prepare(req PrepareRequest, now time.Time) (PrepareResult, error) {
 		record := Record{
 			HandoffID: handoffID, RecordKind: "prepared", EventType: req.EventType,
 			TaskID: req.TaskID, ContractSHA256: contractSHA,
-			SourceAgentPath: req.SourceAgentPath, SourceAttemptID: req.SourceAttemptID,
+			SourceAgentPath: req.SourceAgentPath, SourceAttemptID: req.SourceAttemptID, SourceWorkspace: req.SourceWorkspace,
 			TargetAgentPath: target.AgentPath, TargetAttemptID: target.AttemptID,
 			TargetRuntimeAgentID: target.RuntimeAgentID, TargetRuntimeName: target.RuntimeName,
 			TargetSessionID: target.SessionID, Provider: target.Provider, TargetState: target.State,
@@ -193,7 +203,12 @@ func Prepare(req PrepareRequest, now time.Time) (PrepareResult, error) {
 		}
 		return nil
 	})
-	return result, err
+	if policy!=nil && (req.EventType==EventWorkerDone || req.EventType==EventCompletionReport) {
+  assessed,policyErr:=AssessPolicy(req.Project,req.TaskID,req.SourceAttemptID,req.SourceWorkspace,false,now)
+  result.RolePolicy=&assessed.View
+  if policyErr!=nil{return result,policyErr}
+ }
+ return result, err
 }
 
 func Claim(project, handoffID, recipient, claimantAttemptID string, now time.Time) (ClaimResult, error) {
@@ -244,6 +259,14 @@ func Claim(project, handoffID, recipient, claimantAttemptID string, now time.Tim
 				return nil
 			}
 			raw, _ := inspection["raw_markdown"].(string)
+   policy,_,policyErr:=rolepolicy.Load(project,row.TaskID,raw)
+   if policyErr!=nil{return policyErr}
+   if policy!=nil && policy.Operational.NativeID!="" && policy.Operational.NativeID!=row.Target.SessionID {result.ClaimConflict=true;result.Reason="operational_owner_native_mismatch";result.RecoveryHint="Verify the actual operational owner and update the scoped contract policy.";return nil}
+   if policy!=nil && (row.EventType==EventWorkerDone || row.EventType==EventCompletionReport) {
+    assessed,e:=AssessPolicy(project,row.TaskID,row.SourceAttemptID,row.SourceWorkspace,false,now);result.RolePolicy=&assessed.View
+    if e!=nil{result.ClaimConflict=true;result.Reason=e.Error();result.RecoveryHint=assessed.ResumeWhen;return nil}
+   }
+
 			currentSHA, hashErr := ContractFingerprint(raw)
 			if hashErr != nil {
 				return hashErr
@@ -341,6 +364,11 @@ func MarkAs(project, handoffID, step, resultValue, evidence, claimantAttemptID s
 		if claimantAttemptID != "" && row.ClaimedAttemptID != "" && row.ClaimedAttemptID != claimantAttemptID {
 			return errors.New("handoff mark denied: claimant attempt mismatch")
 		}
+
+  if resultValue == "ok" && (step == "acceptance" || step == "applied") {
+   checked, policyErr := acceptancePolicyEvidence(project, row, step, evidence, now)
+   if policyErr != nil { return policyErr }; evidence = checked
+  }
 		if step == "applied" {
 			if row.Applied {
 				result.Duplicate = true
