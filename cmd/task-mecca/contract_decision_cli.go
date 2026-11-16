@@ -1,6 +1,7 @@
 package main
 
 import (
+ "bytes"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -19,6 +20,7 @@ import (
 )
 
 type decisionEvent struct {
+ WorkerMetadata json.RawMessage `json:"worker_metadata,omitempty"`
  RolePolicySHA256 string `json:"role_policy_sha256,omitempty"`
 	EventID string `json:"event_id"`
 	TaskID string `json:"task_id"`
@@ -40,6 +42,7 @@ type decisionFinding struct {
 }
 
 type contractDecisionReport struct {
+ WorkerMetadataEvents []decisionEvent `json:"worker_metadata_events,omitempty"`
  RolePolicy *rolepolicy.Policy `json:"role_policy,omitempty"`
  RolePolicySHA256 string `json:"role_policy_sha256,omitempty"`
  RoleExceptionApproved bool `json:"role_exception_approved"`
@@ -63,8 +66,9 @@ type contractDecisionReport struct {
 var decisionEventPattern=regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$`)
 
 func decisionUsage(out io.Writer){
+ fmt.Fprintln(out,"Normal Worker facts: record --kind worker_metadata --actor /root/controller --body-file STRICT_POLICY_JSON --evidence OBSERVATION (preserves existing approval; no --user-confirmed).")
  fmt.Fprintln(out,"Restricted implementation exception: policy_confirmed --policy-key implementation-role-exception --role-policy-sha256 CURRENT_DIGEST (separate actual user decision required).")
-	fmt.Fprintln(out,"task-mecca contract decision record --project DIR --task B-123 --event-id STABLE-ID --kind execution_approved|execution_revoked|supplement|policy_pending|policy_confirmed --actor AGENT --evidence REF [--body-file FILE] [--policy-key KEY] [--user-confirmed] --json")
+	fmt.Fprintln(out,"task-mecca contract decision record --project DIR --task B-123 --event-id STABLE-ID --kind execution_approved|execution_revoked|supplement|policy_pending|policy_confirmed|worker_metadata --actor AGENT --evidence REF [--body-file FILE] [--policy-key KEY] [--user-confirmed] --json")
 	fmt.Fprintln(out,"task-mecca contract decision show --project DIR --task B-123 --json")
 	fmt.Fprintln(out,"Record only explicit user decisions; approval/supplement/policy confirmation require --user-confirmed. This does not wake or dispatch an agent.")
 }
@@ -80,9 +84,9 @@ func runContractDecisionCLI(args []string,out,stderr io.Writer)int{
 	eventID:=flags.String("event-id","","stable source event identity")
 	kind:=flags.String("kind","","explicit decision type")
 	actor:=flags.String("actor","","recording actor")
-	evidence:=flags.String("evidence","","source reference to a real user decision")
+	evidence:=flags.String("evidence","","actual decision reference or typed Worker observation reference")
 	policyKey:=flags.String("policy-key","","policy identifier")
-	bodyFile:=flags.String("body-file","","text supplement file; never reinterpreted by CLI")
+	bodyFile:=flags.String("body-file","","material text supplement or strict typed Worker policy JSON")
 	roleSHA:=flags.String("role-policy-sha256","","exact restricted role policy digest; not general execution approval")
  confirmed:=flags.Bool("user-confirmed",false,"the user explicitly confirmed the specified decision")
 	asJSON:=flags.Bool("json",false,"machine-readable result")
@@ -99,22 +103,28 @@ func runContractDecisionCLI(args []string,out,stderr io.Writer)int{
 		fmt.Fprintln(stderr,"record requires stable --event-id, --actor and exact --evidence from an actual decision")
 		return 2
 	}
-	if *kind!="execution_approved"&&*kind!="execution_revoked"&&*kind!="supplement"&&*kind!="policy_pending"&&*kind!="policy_confirmed"{
+	if *kind!="execution_approved"&&*kind!="execution_revoked"&&*kind!="supplement"&&*kind!="policy_pending"&&*kind!="policy_confirmed"&&*kind!="worker_metadata"{
 		fmt.Fprintln(stderr,"unsupported decision --kind");return 2
 	}
-	if *kind!="policy_pending"&&!(*confirmed){fmt.Fprintln(stderr,"USER_APPROVAL_REQUIRED: record explicit user confirmation with --user-confirmed");return 3}
+	if *kind!="policy_pending"&&*kind!="worker_metadata"&&!(*confirmed){fmt.Fprintln(stderr,"USER_APPROVAL_REQUIRED: record explicit user confirmation with --user-confirmed");return 3}
 	if (*kind=="policy_pending"||*kind=="policy_confirmed")&&!decisionEventPattern.MatchString(*policyKey){
 		fmt.Fprintln(stderr,"policy decisions require stable --policy-key");return 2
 	}
-	if *kind=="supplement" && *bodyFile==""{fmt.Fprintln(stderr,"supplement requires --body-file with full text");return 2}
-	if *kind!="supplement"&&*bodyFile!=""{fmt.Fprintln(stderr,"--body-file only valid for supplements");return 2}
+	if (*kind=="supplement"||*kind=="worker_metadata") && *bodyFile==""{fmt.Fprintln(stderr,"supplement/worker_metadata requires --body-file with full payload");return 2}
+	if *kind!="supplement"&&*kind!="worker_metadata"&&*bodyFile!=""{fmt.Fprintln(stderr,"--body-file only valid for supplements or worker_metadata");return 2}
 	text:=""
 	if *bodyFile!=""{
 		data,e:=readContractInput(*bodyFile)
 		if e!=nil{fmt.Fprintln(stderr,e);return 2}
 		text=string(data)
 	}
-	release,err:=projectguard.AcquireWrite(abs)
+	var workerMetadata json.RawMessage
+ if *kind=="worker_metadata" {
+  policy,parseErr:=rolepolicy.ValidateWorkerMetadataEvent([]byte(text),"",*actor,*policyKey,*roleSHA,*confirmed)
+  if parseErr!=nil{fmt.Fprintln(stderr,"WORKER_METADATA_INVALID:",parseErr);return 2}
+  workerMetadata,_=json.Marshal(policy);text=""
+ }
+ release,err:=projectguard.AcquireWrite(abs)
 	if err!=nil{fmt.Fprintln(stderr,err);return 1}
 	defer release()
 	// Serialize per-project decision projection and create against the same baseline.
@@ -126,7 +136,7 @@ func runContractDecisionCLI(args []string,out,stderr io.Writer)int{
 	if existingRaw,readErr:=os.ReadFile(decisionPath(abs,*eventID));readErr==nil{
 		var existing decisionEvent
 		if err:=json.Unmarshal(existingRaw,&existing);err!=nil{fmt.Fprintln(stderr,err);return 3}
-		if existing.TaskID!=strings.ToUpper(*taskID)||existing.Kind!=*kind||existing.Actor!=*actor||existing.Evidence!=*evidence||existing.PolicyKey!=*policyKey||existing.Text!=text||existing.UserConfirmed!=*confirmed||existing.RolePolicySHA256!=*roleSHA{
+		if existing.TaskID!=strings.ToUpper(*taskID)||existing.Kind!=*kind||existing.Actor!=*actor||existing.Evidence!=*evidence||existing.PolicyKey!=*policyKey||existing.Text!=text||existing.UserConfirmed!=*confirmed||existing.RolePolicySHA256!=*roleSHA||!sameWorkerMetadataJSON(existing.WorkerMetadata,workerMetadata){
 			fmt.Fprintln(stderr,"DECISION_ID_CONFLICT: existing event does not match supplied decision")
 			return 3
 		}
@@ -138,12 +148,13 @@ func runContractDecisionCLI(args []string,out,stderr io.Writer)int{
 	if err!=nil{fmt.Fprintln(stderr,err);return 1}
 	if *roleSHA!="" && (*kind!="policy_confirmed" || *policyKey!="implementation-role-exception" || prior.RolePolicySHA256!=*roleSHA) {fmt.Fprintln(stderr,"ROLE_POLICY_DIGEST_MISMATCH: exact current restricted policy digest required");return 3}
  if *kind=="policy_confirmed" && *policyKey=="implementation-role-exception" && (*roleSHA=="" || prior.RolePolicy==nil) {fmt.Fprintln(stderr,"ROLE_POLICY_REQUIRED: confirmation requires structured policy and --role-policy-sha256");return 3}
+ if *kind=="worker_metadata"&&!prior.ExecutionAuthorized{fmt.Fprintln(stderr,"EXISTING_EXECUTION_AUTHORIZATION_REQUIRED: metadata cannot grant or restore consent");return 3}
  if prior.Status=="unknown"{fmt.Fprintln(stderr,"CONTRACT_UNKNOWN: inconsistent decision ledger; resolve findings before recording");return 3}
 	if *kind=="execution_approved"&&len(prior.PendingPolicies)>0{
 		fmt.Fprintln(stderr,"POLICY_PENDING: resolve all pending policies before execution approval");return 3
 	}
 	event:=decisionEvent{
-		RolePolicySHA256:*roleSHA,EventID:*eventID,TaskID:strings.ToUpper(*taskID),Kind:*kind,Actor:*actor,
+		WorkerMetadata:workerMetadata,RolePolicySHA256:*roleSHA,EventID:*eventID,TaskID:strings.ToUpper(*taskID),Kind:*kind,Actor:*actor,
 		Evidence:*evidence,PolicyKey:*policyKey,Text:text,UserConfirmed:*confirmed,
 		BaseSHA256:prior.CurrentSHA256,EffectiveSHA256:prior.EffectiveSHA256,
 	}
@@ -258,6 +269,15 @@ func projectContractDecision(project,taskID string)(contractDecisionReport,error
             if !match.matched{code:="BASE_CHANGED";message:="canonical contract changed after decision; re-confirm needed";if !match.exhaustive{code="LEGACY_CHECK_STATE_UNVERIFIED";message="legacy approval has no text snapshot; bounded acceptance-state hash proof exhausted; authorization remains unverified"};result.Findings=append(result.Findings,decisionFinding{Code:code,Message:message,EventID:event.EventID})}
         }
 		switch event.Kind{
+  case "worker_metadata":
+   _,metadataErr:=rolepolicy.ValidateWorkerMetadataEvent(event.WorkerMetadata,event.Text,event.Actor,event.PolicyKey,event.RolePolicySHA256,event.UserConfirmed)
+   if metadataErr!=nil {
+    message:="typed Worker metadata is invalid or belongs to a changed contract";if metadataErr!=nil{message=metadataErr.Error()}
+    result.Findings=append(result.Findings,decisionFinding{Code:"INVALID_WORKER_METADATA",Message:message,EventID:event.EventID})
+   } else if !matchBase(event.BaseSHA256).matched {
+    result.Findings=append(result.Findings,decisionFinding{Code:"WORKER_METADATA_BASE_CHANGED",Message:"Worker facts require a current-contract replacement after material consent is resolved; preserve historical metadata",EventID:event.EventID})
+   } else {result.WorkerMetadataEvents=append(result.WorkerMetadataEvents,event)}
+   // Operational facts are deliberately absent from the material-consent hash.
 		case "supplement":
 			if event.UserConfirmed {
 				result.Supplements=append(result.Supplements,event)
@@ -288,7 +308,7 @@ func projectContractDecision(project,taskID string)(contractDecisionReport,error
 	// contract are retained as warnings rather than permanently preventing a
 	// new explicit approval for the current contract.
 	for _,finding:=range result.Findings{
-		if finding.Code=="INVALID_EVENT"||finding.Code=="INCOMPLETE_EVENT"||finding.Code=="UNKNOWN_KIND"{
+		if finding.Code=="INVALID_EVENT"||finding.Code=="INCOMPLETE_EVENT"||finding.Code=="UNKNOWN_KIND"||finding.Code=="INVALID_WORKER_METADATA"{
 			result.Status="unknown";return result,nil
 		}
 	}
@@ -302,3 +322,10 @@ func projectContractDecision(project,taskID string)(contractDecisionReport,error
 	return result,nil
 }
 
+
+func sameWorkerMetadataJSON(a,b json.RawMessage)bool {
+ if len(a)==0||len(b)==0{return len(a)==0&&len(b)==0}
+ var left,right bytes.Buffer
+ if json.Compact(&left,a)!=nil||json.Compact(&right,b)!=nil{return false}
+ return bytes.Equal(left.Bytes(),right.Bytes())
+}
