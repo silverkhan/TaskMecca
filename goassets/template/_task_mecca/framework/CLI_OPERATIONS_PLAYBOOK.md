@@ -174,6 +174,8 @@ task-mecca runtime diagnose --provider codex --agent-id AGENT_UUID --json
 
 ## 제품 구현 역할과 독립 검수
 
+정상 Worker의 실제 소유자/native·workspace·scope·별도 검수자 계획은 `contract decision record --kind worker_metadata --actor /root/controller --body-file worker-policy.json --evidence ACTUAL_OBSERVATION --event-id STABLE --project PROJECT --task ID --json`으로 기록한다. 입력은 prose/fence/unknown field가 없는 엄격한 normal Worker 정책 JSON이며 `--user-confirmed`를 붙이지 않는다. 기존 실행 승인이 있어야 기록할 수 있고 원래 승인 event/hash를 유지한다. 일반 `supplement`는 여전히 material 변경이며 역할 JSON이 있어도 자동 승인 예외가 아니다. 과거 generic metadata/임시 carry-forward 승인 이력을 삭제·재해석하지 않는다. 실제 역할 불일치·Controller 예외·검수 소스 변경 gate는 그대로 유지한다.
+
 Worker 제품 구현은 기존 실행 승인으로 진행한다. Controller의 운영 원장 기록·배정·통합·최종 수용은 운영 책임이며 제품 구현 예외가 아니다. Controller 제품 구현은 구조화된 소유자·실제 실행 workspace·방식·범위·예외 사유/근거·제한 정책 승인 및 실제 별도 검수자 신원이 확인될 때만 허용한다. 생성 실패·슬롯 부족·worktree 제약이나 “Controller 직접 구현” 문구는 예외 승인 근거가 아니다. 미확정 예외는 사유와 재개 조건을 보존한다.
 
 같은 native agent의 다른 역할/turn 또는 Activity `review_accepted`는 자기 검수다. 독립 검수는 실제 다른 bound native 신원·정확한 task·완전한 검수 대상 소스 해시·실제 최종 검수 결과/보고서 근거를 확인한다. 검수 뒤 제품 소스가 바뀌면 재검수하고, Controller는 별도 결과로 원본 최종 수용을 기록한다. 지원되지 않는 수동·레거시 편집까지 전면 차단되었다고 주장하지 않는다.

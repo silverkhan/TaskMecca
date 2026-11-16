@@ -12,9 +12,53 @@ handoff preparation/claim, acceptance/applied, the subcontroller recommendation,
 and task detail. Existing manual/legacy editor writes are not universally fenced.
 Historical records are preserved and their independent review remains unknown.
 
-Record structured policy in the contract's requirements section, or use the
-existing `contract decision record --kind supplement --body-file ...` path with
-a fenced `task-mecca-role-policy` JSON block. Do not put authority in source
+For normal Worker execution facts, use the explicitly typed operational path
+below. It preserves the **existing** general execution authorization; it does
+not require or create another `execution_approved` event or user decision:
+
+```text
+contract decision record --project CANONICAL --task TASK --kind worker_metadata --event-id STABLE_FACT_ID --actor /root/controller --evidence ACTUAL_ASSIGNMENT_NATIVE_WORKSPACE_OBSERVATION --body-file worker-policy.json --json
+contract decision show --project CANONICAL --task TASK --json
+```
+
+`worker-policy.json` must be one strict JSON object matching the policy schema
+below, **without** a Markdown fence, surrounding prose, or unknown fields.
+Use `method: "worker"`, an actual Worker path/native, the Controller operational
+owner, an absolute implementation workspace, exact relative source scope, and
+a distinct planned reviewer path. A planned reviewer may omit its native ID;
+that remains pending, never an independent result. `exception` is forbidden.
+The optional `review` field contains evidence references only; all actual
+native/task/report/source checks still apply. `--user-confirmed`, policy keys
+and exception digests are rejected on this operational event. Only the
+authorized canonical Root/Controller writer records it; Workers report facts.
+
+The CLI requires existing execution consent before recording this event, stores
+it separately as `worker_metadata` in the immutable decision history, and
+exposes `worker_metadata_events` on decision show. Typed facts are excluded from
+the material-consent hash, while their strict schema, role and current-contract
+anchor are revalidated on readback by the same policy loader used by the gates.
+Metadata cannot grant or restore missing/revoked consent, resolve a pending
+policy, approve a Controller exception, or hide a changed goal/source/AC.
+Actual recipient-role mismatches and changed reviewed sources still hold their
+respective execution/acceptance gates even when general consent is present.
+
+After a material contract change, historical typed facts remain stale rather
+than authorizing the new goal/source/AC. After the genuine new material consent
+is recorded, the canonical writer can append fresh current-contract facts;
+old events and base-change findings remain preserved.
+
+Material policy and requirements still use the contract's requirements section
+or the existing `contract decision record --kind supplement --body-file ...`
+path with a fenced `task-mecca-role-policy` JSON block. **All generic supplements
+remain material**, including legacy normal-Worker role JSON and any prose beside
+it: they change the consent hash and require the existing confirmation flow.
+Historical events are not erased, reclassified, or automatically migrated.
+The A78/A79 canonical regression and original-consent carry-forward events are
+preserved as an operational workaround; those events are not proof of this
+source repair. The repaired path is approval → typed Worker metadata → still
+authorized, with the same original approval event/hash and no second approval.
+
+Do not put authority in source
 quotations, operational notes, display names, or phrases such as “Controller
 직접 구현”. Original quotations, clickable source links, source hashes, tags and
 acceptance criteria remain intact. Supplement recording is a canonical writer
@@ -86,7 +130,8 @@ TASK_MECCA_REVIEW {"task_id":"EXACT_TASK","reviewer_attempt_id":"EXACT_BOUND_REV
 The line contains actual values and the **complete** snapshot, not these
 placeholders. The report is separate from this final-answer statement, avoiding
 a self-referential report hash. A needs-changes result is not acceptance.
-Controller records the resulting exact review reference in a supplement and
+For a normal Worker policy, Controller records the resulting exact review
+reference with `worker_metadata` and
 uses `contract role-policy check ... --review` and normal `handoff mark`.
 
 The production adapter reads the exact bound reviewer's completed final

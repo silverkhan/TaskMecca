@@ -37,16 +37,18 @@ func DecisionScopeRaw(raw string) string {
 }
 
 type decision struct {
-	EventID          string `json:"event_id"`
-	TaskID           string `json:"task_id"`
-	Kind             string `json:"kind"`
-	Text             string `json:"text"`
-	PolicyKey        string `json:"policy_key"`
-	Evidence         string `json:"evidence"`
-	UserConfirmed    bool   `json:"user_confirmed"`
-	BaseSHA256       string `json:"base_sha256"`
-	RecordedAt       string `json:"recorded_at"`
-	RolePolicySHA256 string `json:"role_policy_sha256"`
+	Actor            string          `json:"actor"`
+	WorkerMetadata   json.RawMessage `json:"worker_metadata"`
+	EventID          string          `json:"event_id"`
+	TaskID           string          `json:"task_id"`
+	Kind             string          `json:"kind"`
+	Text             string          `json:"text"`
+	PolicyKey        string          `json:"policy_key"`
+	Evidence         string          `json:"evidence"`
+	UserConfirmed    bool            `json:"user_confirmed"`
+	BaseSHA256       string          `json:"base_sha256"`
+	RecordedAt       string          `json:"recorded_at"`
+	RolePolicySHA256 string          `json:"role_policy_sha256"`
 }
 
 func Load(project, task, raw string) (*Policy, bool, error) {
@@ -85,7 +87,23 @@ func Load(project, task, raw string) (*Policy, bool, error) {
 		return ok
 	}
 	approved := map[string]string{}
+	var staleMetadata error
 	for _, d := range events {
+		if d.Kind == "worker_metadata" {
+			if d.Evidence == "" {
+				return nil, false, errors.New("worker_metadata_observation_evidence_required")
+			}
+			next, e := ValidateWorkerMetadataEvent(d.WorkerMetadata, d.Text, d.Actor, d.PolicyKey, d.RolePolicySHA256, d.UserConfirmed)
+			if e != nil {
+				return nil, false, e
+			}
+			if !matching(d) {
+				staleMetadata = errors.New("worker_metadata_requires_current_contract")
+				continue
+			}
+			p = next
+			staleMetadata = nil
+		}
 		if d.Kind == "supplement" && strings.Contains(d.Text, Fence) {
 			if !d.UserConfirmed || !matching(d) {
 				return nil, false, errors.New("role_policy_supplement_requires_current_contract_confirmation")
@@ -95,6 +113,7 @@ func Load(project, task, raw string) (*Policy, bool, error) {
 				return nil, false, e
 			}
 			p = next
+			staleMetadata = nil
 		}
 		if d.PolicyKey == "implementation-role-exception" && d.UserConfirmed && d.Evidence != "" && matching(d) {
 			if d.Kind == "policy_pending" {
@@ -104,6 +123,9 @@ func Load(project, task, raw string) (*Policy, bool, error) {
 				approved[d.EventID] = d.RolePolicySHA256
 			}
 		}
+	}
+	if staleMetadata != nil {
+		return nil, false, staleMetadata
 	}
 	confirmed := p != nil && p.Exception != nil && approved[p.Exception.ApprovalEventID] == PolicyDigest(p)
 	return p, confirmed, nil
