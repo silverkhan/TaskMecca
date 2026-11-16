@@ -12,6 +12,7 @@ import (
 )
 
 type cliOptions struct {
+ contextFile string
  sourceWorkspace string
 	project             string
 	jsonOutput          bool
@@ -36,7 +37,7 @@ type cliOptions struct {
 
 func RunCLI(args []string, stdout, stderr io.Writer) int {
 	if len(args) == 0 {
-		fmt.Fprintln(stderr, "handoff requires one of: prepare, transport-plan, claim, transfer, recover-plan, redispatch, mark, inspect, reconcile, capability")
+		fmt.Fprintln(stderr, "handoff requires one of: context, context-check, prepare, transport-plan, claim, transfer, recover-plan, redispatch, mark, inspect, reconcile, capability")
 		return 2
 	}
 	action := strings.ToLower(args[0])
@@ -61,6 +62,16 @@ func RunCLI(args []string, stdout, stderr io.Writer) int {
 	now := time.Now()
 
 	switch action {
+ case "context":
+  if len(opts.positionals)!=1 || opts.targetAttempt=="" {fmt.Fprintln(stderr,"handoff context requires exact original handoff ID --target-attempt CURRENT");return 2}
+  result, callErr := StartContext(project,opts.positionals[0],opts.targetAttempt,now)
+  printValue(stdout,result,opts.jsonOutput);if callErr!=nil {fmt.Fprintln(stderr,callErr);return 1}
+ case "context-check":
+  if len(opts.positionals)!=1 || opts.targetAttempt=="" || opts.contextFile=="" {fmt.Fprintln(stderr,"handoff context-check requires TASK --target-attempt CURRENT --context-file FILE");return 2}
+  c,callErr:=readExecutionContext(opts.contextFile);if callErr!=nil {fmt.Fprintln(stderr,callErr);return 1}
+  result,callErr:=CheckContext(project,opts.positionals[0],opts.targetAttempt,c,false,now)
+  printValue(stdout,result,opts.jsonOutput);if callErr!=nil {fmt.Fprintln(stderr,callErr);return 1}
+
 	case "transport-plan":
 		if len(opts.positionals) != 1 {
 			fmt.Fprintln(stderr, "handoff transport-plan requires exact handoff ID")
@@ -81,7 +92,7 @@ func RunCLI(args []string, stdout, stderr io.Writer) int {
 			Project: project, TaskID: opts.positionals[0], EventType: EventType(strings.ReplaceAll(opts.event, "-", "_")),
 			SourceAgentPath: opts.from, TargetAgentPath: opts.to,
 			SourceAttemptID: opts.sourceAttempt, SourceWorkspace: opts.sourceWorkspace, TargetAttemptID: opts.targetAttempt,
-			ReportFile: opts.reportFile, ExpectedContractSHA256: opts.contractSHA256, ExecutionAuthorized: opts.executionAuthorized,
+			ContextFile: opts.contextFile, ReportFile: opts.reportFile, ExpectedContractSHA256: opts.contractSHA256, ExecutionAuthorized: opts.executionAuthorized,
 		}, now)
 		if callErr != nil {
 			fmt.Fprintln(stderr, callErr)
@@ -260,14 +271,16 @@ func parseCLI(args []string) (cliOptions, error) {
 			opts.fields = args[i]
 		case "--execution-authorized":
 			opts.executionAuthorized = true
-		case "--source-worktree", "--project", "--event", "--from", "--to", "--source-attempt", "--target-attempt", "--from-attempt", "--to-attempt", "--report-file", "--contract-sha256", "--as", "--step", "--result", "--evidence":
+		case "--context-file", "--source-worktree", "--project", "--event", "--from", "--to", "--source-attempt", "--target-attempt", "--from-attempt", "--to-attempt", "--report-file", "--contract-sha256", "--as", "--step", "--result", "--evidence":
 			if i+1 >= len(args) {
 				return opts, fmt.Errorf("%s requires a value", arg)
 			}
 			value := args[i+1]
 			i++
 			switch arg {
-			case "--source-worktree":
+			case "--context-file":
+ opts.contextFile = value
+ case "--source-worktree":
  opts.sourceWorkspace = value
  case "--project":
 				opts.project = value

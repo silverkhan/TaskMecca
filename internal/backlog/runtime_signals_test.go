@@ -26,7 +26,9 @@ func TestRuntimeLedgerSignalsProjectBoundTerminalAttempt(t *testing.T) {
 
     rows:=[]Record{{ID:"AID-39",State:"doing",Location:"active"}}
     got:=runtimeLedgerSignals(project,rows,base.Add(3*time.Minute))
-    if got["AID-39"]["health"]!="awaiting_finalize"{t.Fatalf("signal=%v",got["AID-39"])}
+    if got["AID-39"]["health"]!="progress_collection_gap"{t.Fatalf("signal=%v",got["AID-39"])}
+    progress,ok:=got["AID-39"]["progress_evidence"].(map[string]any)
+    if !ok || progress["phase"]!="assigned_prepared" || progress["technical_crash"]!="unproven" || progress["remaining_stage"]!="worker_START_and_current_phase" {t.Fatalf("finished turn fabricated product result: %v",got["AID-39"])}
     if got["AID-39"]["attempt_id"]!="run-test"{t.Fatalf("attempt=%v",got["AID-39"])}
 }
 

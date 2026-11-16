@@ -93,6 +93,13 @@ func Coordinate(project,root string,workerCap int) (map[string]any,error) {
 		case "awaiting_finalize":
             code="worker_completed_backlog_doing"
             action="verify acceptance; finalize done if satisfied, otherwise dispatch a fresh worker turn"
+        case "progress_collection_gap":
+            code="turn_ended_progress_collection_gap"
+            action="preserve actual phase and original report/error; collect missing Worker START, completion or review evidence through the existing exact Controller recovery path; a finished turn is not success or a proven crash"
+        case "assignment_unobserved", "binding_pending", "binding_ambiguous", "awaiting_start":
+            if !assignmentCollectionDue(signal,time.Now()) {continue}
+            code="worker_start_collection_gap"
+            action="verify actual native Worker creation and exact assignment binding; collect only current phase, or resume/reassign using existing supported transport after fresh Full Access"
         case "worker_missing":
             code="worker_missing_backlog_doing"
             action="refresh live agent state; re-dispatch the same worker only with a confirmed fresh turn, otherwise reassign explicitly"
@@ -125,6 +132,7 @@ func Coordinate(project,root string,workerCap int) (map[string]any,error) {
             "change_scope":row.Fields["변경범위"],
             "health":health,
             "runtime_state":signal["runtime_state"],
+            "progress_evidence":signal["progress_evidence"],
             "code":code,
             "action":action,
             "recovery":recovery,

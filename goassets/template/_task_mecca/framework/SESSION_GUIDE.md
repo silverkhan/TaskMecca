@@ -429,3 +429,8 @@ Worker 제품 구현은 기존 실행 승인으로 진행한다. Controller의 �
 같은 native agent의 다른 역할/turn 또는 Activity `review_accepted`는 자기 검수다. 독립 검수는 실제 다른 bound native 신원·정확한 task·완전한 검수 대상 소스 해시·실제 최종 검수 결과/보고서 근거를 확인한다. 검수 뒤 제품 소스가 바뀌면 재검수하고, Controller는 별도 결과로 원본 최종 수용을 기록한다. 지원되지 않는 수동·레거시 편집까지 전면 차단되었다고 주장하지 않는다.
 
 구조화 정책은 기존 contract supplement/decision, START, handoff 및 acceptance/applied gate에서 같은 공통 판정을 사용한다. 설정된 completion handoff에는 실제 `--source-worktree`를 포함한다. `contract role-policy check|snapshot`과 실제 Reviewer 보고 형식은 [제품 구현 역할 정책](../../../../docs/implementation-role-policy.md)을 따른다. Worker는 원본 decision/handoff/lifecycle을 쓰지 않고 자신의 실제 Activity와 직접 완료 보고만 남긴다.
+
+## 현재 작업 재개·완료 근거 (A-79)
+Controller 시작/재개 시 exact native 현재 attempt와 원래 인계를 관측한 뒤 `handoff context ORIGINAL_HANDOFF --project CANONICAL --target-attempt CURRENT --json` 및 기존 `coordinate.recovery_queue`를 확인한다. 이 읽기 전용 snapshot의 task·계약/AC·실측 phase·현재 attempt·원래 handoff·알려진 보고/변경/검증 근거를 대조한다. 과거 다른 작업은 reference이며 현재 완료 근거가 아니다.
+새 `worker_done`/`completion_report`는 실제 Worker/assignment·소스와 `TASK_MECCA_REPORT` 선언이 있는 durable report의 hash를 담은 `--context-file`을 사용한다. Controller만 기존 prepare/claim/acceptance/applied를 기록하며 각 gate는 적용되는 task의 근거를 재확인한다. 다중 작업은 각 대상의 근거를 따로 확인한다. A78 실제 별도 native 검수와 기존 승인·fresh Full Access gate는 그대로 유지하며 정상 Worker에 사용자 재승인을 추가하지 않는다.
+회차 종료·배정 준비는 실제 구현 START·검수·완료가 아니다. 누락은 실측 단계의 collection gap으로 보존하고 기존 Controller recovery/transport로 회수한다. 원래 오류·보고·task·attempt 및 담당/남은 단계/재개조건을 보존한다. 자동 wake·기술적 crash 원인·Root ACK를 가정하지 않고 과거 phase를 합성하지 않는다. 상세 JSON/재시도 계약은 `docs/task-completion-context.md`를 따른다. Worker는 보고 후보를 구현 worktree에 만들고 직접 전달하며 canonical 운영원장을 쓰지 않는다.

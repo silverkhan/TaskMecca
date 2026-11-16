@@ -69,6 +69,7 @@ func BuildLedger(project string, now time.Time) (Ledger, error) {
 			row.SourceAgentPath = record.SourceAgentPath
 			row.SourceAttemptID = record.SourceAttemptID
  row.SourceWorkspace = record.SourceWorkspace
+ row.ContextJSON = record.ContextJSON
 			row.Target = Target{
 				AgentPath: record.TargetAgentPath, AttemptID: record.TargetAttemptID,
 				RuntimeAgentID: record.TargetRuntimeAgentID, RuntimeName: record.TargetRuntimeName,
