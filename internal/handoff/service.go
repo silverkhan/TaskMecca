@@ -379,6 +379,15 @@ func MarkAs(project, handoffID, step, resultValue, evidence, claimantAttemptID s
    checked, policyErr := acceptancePolicyEvidence(project, row, step, evidence, now)
    if policyErr != nil { return policyErr }; evidence = checked
   }
+appendCheckedRecord:=func(record Record)error{
+   if resultValue=="ok" && (step=="acceptance" || step=="applied") {
+    return rolepolicy.WithDecisionReadLease(project,func()error{
+     if e:=validateAcceptanceEvidenceCurrent(project,row,evidence,now);e!=nil{return e}
+     return appendRecordUnlocked(project,record)
+    })
+   }
+   return appendRecordUnlocked(project,record)
+  }
 		if step == "applied" {
 			if row.Applied {
 				result.Duplicate = true
@@ -395,7 +404,7 @@ func MarkAs(project, handoffID, step, resultValue, evidence, claimantAttemptID s
 				HandoffID: handoffID, RecordKind: "applied", Step: step, Result: resultValue,
 				ObservedAt: now.UTC().Format(time.RFC3339Nano), Evidence: detailEvidence(evidence),
 			}
-			if err := appendRecordUnlocked(project, record); err != nil {
+			if err := appendCheckedRecord(record); err != nil {
 				return err
 			}
 			result.Applied = true
@@ -419,7 +428,7 @@ func MarkAs(project, handoffID, step, resultValue, evidence, claimantAttemptID s
 			HandoffID: handoffID, RecordKind: kind, Step: step, Result: resultValue,
 			ObservedAt: now.UTC().Format(time.RFC3339Nano), Evidence: detailEvidence(evidence),
 		}
-		if err := appendRecordUnlocked(project, record); err != nil {
+		if err := appendCheckedRecord(record); err != nil {
 			return err
 		}
 		return nil

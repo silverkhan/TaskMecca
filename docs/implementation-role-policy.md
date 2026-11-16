@@ -159,6 +159,31 @@ merge/commit metadata do not. Symlink source boundaries and empty scope fail
 closed. A stale review must be re-reviewed on the changed final source rather
 than overwritten into success. Original failed/unknown evidence is preserved.
 
+Directory scopes include **ignored untracked files**, including generated Go
+and embedded/data build inputs. Git ignore rules cannot exempt applicable
+source from review. Discovery walks only the declared literal paths, uses
+bounded batches and no-follow handles, and rejects symlinks and special files
+before reading. It does not scan unrelated workspace roots. Encountering
+`.git` or `.artifacts` inside a directory scope fails closed rather than
+silently excluding data or traversing raw artifacts; use narrower explicit
+source paths. Limits are 50,000 entries, 20,000 files, depth 64, 32 MiB per file
+and 256 MiB total. Exceeding a limit is unknown/blocked, never a partial valid
+snapshot. Evidence/report reads are bounded and reject nonregular files too.
+Stored review receipts are limited to 512 KiB before outer journal escaping;
+larger scopes remain blocked rather than publishing unreadable journal data.
+
+Native verification also pins the material contract and task-specific decision
+history, including consent/revocation and typed reviewer/reference updates.
+After native I/O it reloads current policy, both identities, report and complete
+source; any changed applicable input rejects the old result with a rerun
+condition. Supported acceptance/applied appends perform the local freshness
+check again immediately before writing the receipt, under a shared lease on
+the existing contract CLI decision writer lock. Supported decision/metadata
+writes cannot interleave between that last check and append. This is a freshness fence
+for the existing approval evidence, not another approval manager or a claim to
+fence every manual filesystem write. Ordinary operational notes, acceptance
+checkbox completion and unrelated tasks do not change that material revision.
+
 A-78 itself follows the Worker path. Its source candidate is not Controller
 acceptance, real independent review, dev integration, CI, release or installation.
 A-79 can consume the task, contract, exact attempt, handoff, Activity phases,
