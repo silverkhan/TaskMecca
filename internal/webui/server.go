@@ -831,9 +831,14 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 			writeJSON(w, map[string]any{"error": "GET required"}, 405)
 			return
 		}
-		activeProject := projectFor(r)
-		if strings.TrimSpace(r.URL.Query().Get("project")) == "" {
+		requested := strings.TrimSpace(r.URL.Query().Get("project"))
+		if requested == "" {
 			writeJSON(w, map[string]any{"error": "explicit project required"}, 400)
+			return
+		}
+		activeProject, err := workloadSessionProject(requested)
+		if err != nil {
+			writeJSON(w, map[string]any{"error": err.Error()}, 404)
 			return
 		}
 		now := time.Now()

@@ -35,3 +35,9 @@ test('distinct no-project, no-session, loading and error states; escape supplied
  a.state.workloadSessionsError='';a.state.workloadSessions=payload('/p');a.state.workloadSessions.active.items[0].display_name='<script>bad</script>';assert.match(a.workloadSessionPanel(),/&lt;script&gt;bad/);
 });
 module.exports={app,root,payload};
+
+test('an explicit empty project choice stays empty and never fetches another project',async()=>{
+ const a=app();a.state.hub={projects:[{path:'/first',name:'First'}]};a.state.project='/backlog';a.c.fetch=()=>{throw Error('unexpected project request');};
+ await a.selectWorkloadSessionProject('');assert.equal(a.state.workloadSessionProject,'');assert.equal(a.state.project,'/backlog');assert.equal(a.state.workloadSessions,null);assert.match(a.workloadSessionPanel(),/Select a project/);
+ await a.loadWorkloadSessions();assert.equal(a.state.workloadSessionProject,'');
+});

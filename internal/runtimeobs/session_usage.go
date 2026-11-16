@@ -25,11 +25,15 @@ func attemptUsage(a Attempt, now time.Time) (string, string) {
 		accept(a.LastHookActivityAt, "observed_hook_activity")
 	}
 	// Receipt timestamps are provider execution boundaries, never ObservedAt.
-	if r := a.NativeReceipt; r != nil && r.Origin == "t3_local_projection_v2" &&
-		r.SessionID == a.SessionID && r.Provider == a.Provider &&
-		r.ThreadID != "" && r.RunID != "" && r.NativeAttemptID != "" {
-		accept(r.StartedAt, "native_execution_boundary")
-		accept(r.CompletedAt, "native_execution_boundary")
+	if r := a.NativeReceipt; r != nil && a.StateEvidenceSource == EvidenceT3 && HasObservedExecution(a) && r.ThreadID != "" && r.RunID != "" && r.NativeAttemptID != "" {
+		observed, err := time.Parse(time.RFC3339Nano, r.ObservedAt)
+		if err == nil && !observed.After(now) {
+			for _, value := range []string{r.StartedAt, r.CompletedAt} {
+				if at, err := time.Parse(time.RFC3339Nano, value); err == nil && !at.After(observed) {
+					accept(value, "native_execution_boundary")
+				}
+			}
+		}
 	}
 	return latest, source
 }

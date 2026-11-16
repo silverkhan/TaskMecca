@@ -1742,7 +1742,6 @@ async function performRootSessionCleanup(button) {
     alert(t('runtimeRootCleanupDone',{bytes:fmtBytes(body.result?.reclaimed_bytes||bytes)}));
     await refresh();
     if(button?.dataset?.sessionProject)await loadWorkloadSessions();
-    if(button?.dataset?.sessionProject)await loadWorkloadSessions();
     if(state.runtimeRootListOpen)await loadRuntimeRootSessions(Number(state.runtimeRootList?.page||1));
     if(state.runtimeStorageOpen)await loadRuntimeStorage(true);
   }catch(e){
@@ -5722,10 +5721,8 @@ function workloadSessionOpen(root){
   return Object.hasOwn(state.workloadSessionDisclosure,key)?state.workloadSessionDisclosure[key]:root.root_session_id===state.workloadSessions?.latest_session_id;
 }
 function ensureWorkloadSessionProject(){
-  if(!state.workloadSessionProject){
-    // Initial choice uses the registered project inventory, never Backlog state.
-    state.workloadSessionProject=state.hub?.projects?.[0]?.path||'';
-  }
+  // An explicit empty selection stays empty, including across refresh. A
+  // remembered session selection is already loaded independently of Backlog.
   return state.workloadSessionProject;
 }
 async function selectWorkloadSessionProject(project){

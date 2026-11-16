@@ -31,7 +31,7 @@ func TestSessionUsageProvenanceAndBoundary(t *testing.T) {
 			}
 		})
 	}
-	a := Attempt{Provider: "codex", SessionID: "native", AttemptID: "a", LastObservedAt: stamp(0), NativeReceipt: &T3Receipt{Provider: "codex", SessionID: "native", ThreadID: "thread", RunID: "run", NativeAttemptID: "attempt", Origin: "t3_local_projection_v2", StartedAt: stamp(-72 * time.Hour), CompletedAt: stamp(-50 * time.Hour), ObservedAt: stamp(0)}}
+	a := Attempt{Provider: "codex", SessionID: "native", RuntimeAgentID: "native", TurnID: "attempt", AttemptID: "a", CurrentState: StateCompleted, StateEvidenceSource: EvidenceT3, StateObservationQuality: QualityObserved, LastObservedAt: stamp(0), NativeReceipt: &T3Receipt{Provider: "codex", SessionID: "native", ThreadID: "thread", RunID: "run", NativeAttemptID: "attempt", State: StateCompleted, Origin: "t3_local_projection_v2", StartedAt: stamp(-72 * time.Hour), CompletedAt: stamp(-50 * time.Hour), ObservedAt: stamp(0)}}
 	at, source := attemptUsage(a, now)
 	if at != stamp(-50*time.Hour) || source != "native_execution_boundary" {
 		t.Fatalf("%s %s", at, source)
@@ -39,6 +39,39 @@ func TestSessionUsageProvenanceAndBoundary(t *testing.T) {
 	a.NativeReceipt.SessionID = "other"
 	if at, _ := attemptUsage(a, now); at != "" {
 		t.Fatal("cross-session receipt accepted")
+	}
+}
+
+func TestSessionUsageRejectsUnverifiedNativeReceipt(t *testing.T) {
+	now := time.Date(2026, 11, 16, 3, 0, 0, 0, time.UTC)
+	stamp := now.Format(time.RFC3339Nano)
+	base := Attempt{Provider: "codex", SessionID: "native", RuntimeAgentID: "native", TurnID: "episode", CurrentState: StateRunning, StateEvidenceSource: EvidenceT3, StateObservationQuality: QualityObserved, LastObservedAt: stamp, NativeReceipt: &T3Receipt{Origin: "t3_local_projection_v2", Provider: "codex", SessionID: "native", ThreadID: "thread", RunID: "run", NativeAttemptID: "episode", State: StateRunning, ObservedAt: stamp, StartedAt: now.Add(-time.Hour).Format(time.RFC3339Nano)}}
+	if at, _ := attemptUsage(base, now); at == "" {
+		t.Fatal("verified boundary missing")
+	}
+	for _, tc := range []struct {
+		name   string
+		change func(*Attempt)
+	}{
+		{"unknown quality", func(a *Attempt) { a.StateObservationQuality = ObservationQuality("unknown") }},
+		{"unverified source", func(a *Attempt) { a.StateEvidenceSource = EvidenceManualBinding }},
+		{"foreign runtime", func(a *Attempt) { a.RuntimeAgentID = "other" }},
+		{"foreign episode", func(a *Attempt) { a.TurnID = "other" }},
+		{"state conflict", func(a *Attempt) { a.NativeReceipt.State = StateCompleted }},
+		{"future observation", func(a *Attempt) {
+			a.NativeReceipt.ObservedAt = now.Add(time.Hour).Format(time.RFC3339Nano)
+			a.LastObservedAt = a.NativeReceipt.ObservedAt
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			a := base
+			r := *base.NativeReceipt
+			a.NativeReceipt = &r
+			tc.change(&a)
+			if at, _ := attemptUsage(a, now); at != "" {
+				t.Fatalf("unverified receipt promoted to actual use: %s", at)
+			}
+		})
 	}
 }
 
