@@ -298,10 +298,28 @@ func applyCompletionReviews(project string, rows []Record, activity map[string]m
 		if signal == nil || toString(signal["health"]) == "needs_user" {
 			continue
 		}
+		// Execution Ledger already resolved the authoritative implementation owner,
+		// native and current assignment. Do not reselect an actor via legacy Agent.
+		correlated := toString(signal["source"]) == "execution_ledger"
+		if correlated {
+			if toString(signal["attempt_id"]) == "" || toString(signal["agent_path"]) == "" {
+				continue
+			}
+			fields := make(map[string]string, len(row.Fields))
+			for key, value := range row.Fields {
+				fields[key] = value
+			}
+			fields["Agent"] = toString(signal["agent_path"])
+			row.Fields = fields
+			assignmentID = toString(signal["assignment_id"])
+		}
 		var worker *runtimeobs.Attempt
 		ambiguous := false
 		for i := range ledger.Attempts {
 			a := &ledger.Attempts[i]
+			if correlated && a.AttemptID != toString(signal["attempt_id"]) {
+				continue
+			}
 			if a.BindingState != runtimeobs.BindingBound || !strings.EqualFold(a.TaskID, row.ID) || a.AgentPath != row.Fields["Agent"] {
 				continue
 			}
@@ -320,6 +338,11 @@ func applyCompletionReviews(project string, rows []Record, activity map[string]m
 				continue
 			}
 			reportAt := reportedCompletionAt(row, worker, handoffs, now)
+			// A terminal provider turn alone is a collection gap, not a DONE report.
+			if correlated && toString(signal["health"]) == "progress_collection_gap" && reportAt == "" {
+
+				continue
+			}
 			terminalDone := worker.CurrentState == runtimeobs.StateCompleted && worker.Terminal && worker.StateEvidenceSource == runtimeobs.EvidenceHook && (worker.StateObservationQuality == runtimeobs.QualityObserved || worker.StateObservationQuality == runtimeobs.QualityAuthoritative)
 			if !terminalDone && reportAt == "" {
 				// A newer active/error attempt must not inherit an old completed heartbeat.

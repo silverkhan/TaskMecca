@@ -137,3 +137,23 @@ new acceptance of one requires matching scoped evidence, rather than a fabricate
 retroactive START/review. Supported CLI gates do not fence every manual/legacy
 Markdown/journal write. Tool ACK, Controller acceptance, local/dev integration,
 remote commit/CI/release and operating installation remain separate outcomes.
+
+Backlog runtime projection and `coordinate` use the same authoritative implementation
+owner rule as start context: structured role policy (including existing Worker
+metadata) overrides the legacy operational Agent field. Bound implementation
+progress requires that owner's path, observed native identity and exact current
+assignment. A later reviewer observation stays in `other_actors`; it cannot erase
+an implementation collection gap or supply its recovery owner. A newer prepared
+implementation assignment remains a START collection gap rather than reusing an
+older completed episode. Unknown, conflicting or unverifiable ownership produces
+an implementation-owner verification recovery entry. Without structured policy,
+only an explicit single legacy Worker path can correlate execution evidence.
+These observations authorize no automatic dispatch, approval or completion.
+
+Legacy Worker paths remain supported for exact assignment/runtime correlation and
+real matching completion reports. A terminal hook without a report retains its
+collection gap. The historical pending-only presentation exception is not used:
+its inherited test also requires an empty recovery queue, which would erase that
+owner's actual collection gap. That protected historical assertion remains
+unchanged and is reported as an explicit compatibility conflict, rather than
+weakening report gates or manufacturing DONE evidence.

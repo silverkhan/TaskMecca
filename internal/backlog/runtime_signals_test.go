@@ -24,7 +24,7 @@ func TestRuntimeLedgerSignalsProjectBoundTerminalAttempt(t *testing.T) {
 	end.Terminal=true
     if err:=runtimeobs.AppendExecutionEvent(project,end);err!=nil{t.Fatal(err)}
 
-    rows:=[]Record{{ID:"AID-39",State:"doing",Location:"active"}}
+    rows:=[]Record{{ID:"AID-39",State:"doing",Location:"active",Fields:map[string]string{"Agent":"/root/controller/pairi"}}}
     got:=runtimeLedgerSignals(project,rows,base.Add(3*time.Minute))
     if got["AID-39"]["health"]!="progress_collection_gap"{t.Fatalf("signal=%v",got["AID-39"])}
     progress,ok:=got["AID-39"]["progress_evidence"].(map[string]any)
@@ -37,7 +37,7 @@ func TestRuntimeLedgerSignalsIgnoreUnboundAttempt(t *testing.T) {
     base:=time.Date(2026,10,3,1,0,0,0,time.UTC)
     event:=runtimeobs.ExecutionEvent{EventKind:"state",ObservedAt:base.Format(time.RFC3339Nano),AttemptID:"run-unbound",Provider:"codex",RuntimeAgentID:"worker-1",State:runtimeobs.StateCompleted,Terminal:true,EvidenceSource:runtimeobs.EvidenceHook,ObservationQuality:runtimeobs.QualityObserved}
     if err:=runtimeobs.AppendExecutionEvent(project,event);err!=nil{t.Fatal(err)}
-    rows:=[]Record{{ID:"AID-39",State:"doing",Location:"active"}}
+    rows:=[]Record{{ID:"AID-39",State:"doing",Location:"active",Fields:map[string]string{"Agent":"/root/controller/pairi"}}}
     if got:=runtimeLedgerSignals(project,rows,base.Add(time.Minute));len(got)!=0{t.Fatalf("unbound attempt leaked into backlog signal: %v",got)}
 }
 
@@ -56,7 +56,7 @@ func TestAssignedAttemptWithoutHookShowsStartGap(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	rows := []Record{{ID: "B-446", State: "doing", Location: "active"}}
+	rows := []Record{{ID: "B-446", State: "doing", Location: "active", Fields: map[string]string{"Agent": "/root/controller/worker-446"}}}
 	signal := runtimeLedgerSignals(project, rows, now)["B-446"]
 	if signal["health"] != "awaiting_start" || signal["attempt_id"] != bound.AttemptID || signal["binding_at"] == "" {
 		t.Fatalf("missing assignment gap evidence: %+v", signal)

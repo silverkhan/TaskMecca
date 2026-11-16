@@ -86,13 +86,16 @@ func Coordinate(project,root string,workerCap int) (map[string]any,error) {
         action:=""
         switch health {
 		case "controller_review_pending", "controller_review", "controller_finalizing":
-			continue
-		case "controller_recovery":
+            continue
+        case "controller_recovery":
 			code = "controller_completion_recovery"
 			action = "Controller가 인계·검토 근거를 확인하고 복구하세요."
 		case "awaiting_finalize":
             code="worker_completed_backlog_doing"
             action="verify acceptance; finalize done if satisfied, otherwise dispatch a fresh worker turn"
+        case "implementation_owner_unverified":
+            code="implementation_owner_collection_gap"
+            action="verify current structured implementation owner/native or explicit legacy owner and exact assignment; preserve other actors separately; do not replace implementation recovery with reviewer active state"
         case "progress_collection_gap":
             code="turn_ended_progress_collection_gap"
             action="preserve actual phase and original report/error; collect missing Worker START, completion or review evidence through the existing exact Controller recovery path; a finished turn is not success or a proven crash"
@@ -125,10 +128,15 @@ func Coordinate(project,root string,workerCap int) (map[string]any,error) {
             recovery["working_tree_check"]="unavailable"
             recovery["working_tree_error"]=workingTreeErr.Error()
         }
+        recoveryAgent:=row.Fields["Agent"]
+        if signal["source"]=="execution_ledger" {
+            // An unresolved owner must not inherit a different actor from legacy Agent.
+            recoveryAgent,_=signal["agent_path"].(string)
+        }
         continuityGaps=append(continuityGaps,map[string]any{
             "id":row.ID,
             "title":row.Title,
-            "agent":row.Fields["Agent"],
+            "agent":recoveryAgent,
             "change_scope":row.Fields["변경범위"],
             "health":health,
             "runtime_state":signal["runtime_state"],
