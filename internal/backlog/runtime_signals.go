@@ -5,6 +5,7 @@ import (
     "time"
 
     "github.com/silverkhan/TaskMecca/internal/runtimeobs"
+ "github.com/silverkhan/TaskMecca/internal/activity"
 )
 
 // runtimeLedgerSignals projects only explicitly/reliably bound execution attempts
@@ -23,10 +24,13 @@ func runtimeLedgerSignals(project string,rows []Record,now time.Time,shared ...r
         if finding.Code=="stale" && finding.AttemptID!="" { stale[finding.AttemptID]=true }
     }
 
+    expectedWorker:=map[string]string{}
+    for _,row:=range rows {if row.Location=="active" && row.State=="doing" {expectedWorker[strings.ToUpper(row.ID)]=strings.TrimSpace(row.Fields["Agent"])}}
     latest:=map[string]runtimeobs.Attempt{}
     for _,attempt:=range ledger.Attempts {
         taskID:=strings.ToUpper(strings.TrimSpace(attempt.TaskID))
         if !doing[taskID] || attempt.BindingState!=runtimeobs.BindingBound { continue }
+        if owner:=expectedWorker[taskID];owner!="" && attempt.AgentPath!=owner {continue}
         previous,ok:=latest[taskID]
         if !ok || attemptSignalTime(attempt).After(attemptSignalTime(previous)) { latest[taskID]=attempt }
     }
@@ -55,6 +59,11 @@ func runtimeLedgerSignals(project string,rows []Record,now time.Time,shared ...r
 			"assignment_id":   attempt.BindingEvidence["assignment_id"],
 			"evidence_source":attempt.StateEvidenceSource,"observation_quality":attempt.StateObservationQuality,
         }
+        events, activityErr := (activity.Ledger{Project:project}).ListCached(taskID)
+        progress := workerProgress(attempt,events)
+        signal["progress_evidence"]=progress
+        if activityErr!=nil {signal["activity_read_error"]=activityErr.Error()}
+        if attempt.CurrentState==runtimeobs.StateCompleted {signal["health"]="progress_collection_gap"}
         out[taskID]=signal
 	}
 	assignments, _ := runtimeobs.ListAssignments(project)

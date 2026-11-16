@@ -26,6 +26,7 @@ const ActionReportOnly = handoffjournal.ActionReportOnly
 const ActionHold = handoffjournal.ActionHold
 
 type PrepareRequest struct {
+ ContextFile string
  SourceWorkspace string
 	Project                string
 	TaskID                 string

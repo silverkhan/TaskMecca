@@ -75,7 +75,9 @@ func Prepare(req PrepareRequest, now time.Time) (PrepareResult, error) {
 		contractSHA = expected
 	}
 
-	evidence := map[string]string{}
+	contextJSON, contextErr := prepareContext(req, now)
+ if contextErr != nil { return PrepareResult{}, contextErr }
+ evidence := map[string]string{}
 	if contractSHA != currentContractSHA {
 		evidence["current_contract_sha256"] = currentContractSHA
 	}
@@ -88,7 +90,7 @@ func Prepare(req PrepareRequest, now time.Time) (PrepareResult, error) {
 		}
 		evidence["execution_authorized"] = auth
 		idParts = append(idParts, auth)
-	case EventWorkerDone, EventWorkerBlocked:
+	case EventWorkerDone, EventWorkerBlocked, EventCompletionReport:
 		if strings.TrimSpace(req.SourceAttemptID) == "" {
 			return PrepareResult{}, errors.New("worker event requires --source-attempt")
 		}
@@ -125,6 +127,7 @@ func Prepare(req PrepareRequest, now time.Time) (PrepareResult, error) {
 			return errors.New("contract_changed_during_prepare")
 		}
 		raw = freshRaw
+ if _, err := prepareContext(req, now); err != nil { return err }
 		ledger, buildErr := buildLedgerUnlocked(req.Project, now)
 		if buildErr != nil {
 			return buildErr
@@ -187,7 +190,7 @@ func Prepare(req PrepareRequest, now time.Time) (PrepareResult, error) {
 		record := Record{
 			HandoffID: handoffID, RecordKind: "prepared", EventType: req.EventType,
 			TaskID: req.TaskID, ContractSHA256: contractSHA,
-			SourceAgentPath: req.SourceAgentPath, SourceAttemptID: req.SourceAttemptID, SourceWorkspace: req.SourceWorkspace,
+			SourceAgentPath: req.SourceAgentPath, SourceAttemptID: req.SourceAttemptID, SourceWorkspace: req.SourceWorkspace, ContextJSON: contextJSON,
 			TargetAgentPath: target.AgentPath, TargetAttemptID: target.AttemptID,
 			TargetRuntimeAgentID: target.RuntimeAgentID, TargetRuntimeName: target.RuntimeName,
 			TargetSessionID: target.SessionID, Provider: target.Provider, TargetState: target.State,
@@ -243,7 +246,10 @@ func Claim(project, handoffID, recipient, claimantAttemptID string, now time.Tim
 			result.AlreadyApplied = true
 			return nil
 		}
-		if row.Action == ActionHold {
+		if completionEvent(row.EventType) {
+ if _, e := checkStoredContext(project, row, claimantAttemptID, now); e != nil { result.ClaimConflict=true; result.Reason=e.Error(); result.RecoveryHint="Preserve original report and collect matching current task/contract/source evidence; do not complete another task."; return nil }
+ }
+ if row.Action == ActionHold {
 			result.ClaimConflict = true
 			result.Reason = "handoff_on_hold"
 			return nil
@@ -365,7 +371,11 @@ func MarkAs(project, handoffID, step, resultValue, evidence, claimantAttemptID s
 			return errors.New("handoff mark denied: claimant attempt mismatch")
 		}
 
+  if row.Applied && step == "applied" && resultValue == "ok" { result.Duplicate=true; return nil }
   if resultValue == "ok" && (step == "acceptance" || step == "applied") {
+   if completionEvent(row.EventType) {
+    current := claimantAttemptID; if current == "" { current = row.ClaimedAttemptID }; if current == "" { return errors.New("completion_current_claimant_required") }; if _, e := checkStoredContext(project,row,current,now); e != nil { return e }; if step == "applied" && row.Steps["acceptance"].Result != "ok" { return errors.New("completion_acceptance_required_before_applied") }
+   }
    checked, policyErr := acceptancePolicyEvidence(project, row, step, evidence, now)
    if policyErr != nil { return policyErr }; evidence = checked
   }

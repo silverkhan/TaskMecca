@@ -1,3 +1,79 @@
+# A-80 current dependency-integration repair — actual episode 2
+
+Current status: source integration complete, candidate UNACCEPTED and separate final-source review pending. This continuation is implementation/dependency integration, not an independent review. Stable completion report ID: `a80-isanghaessi-g4-repair2-completion-20261116`. The original episode-1 report below is retained as history and is not reused as current execution evidence.
+
+## Exact lineage, own changes and inherited changes
+
+Same existing source checkout `/Users/hanati/.t3/worktrees/TaskMecca/t3-2e1187c1-06d1d14c05f2187c`; actual resumed HEAD `c382bc7a5453e6fe3bac28949ea547d24f23a2bc`, tracked clean before edits; prior `.artifacts/` and `direct-done.json` retained untracked. No checkout creation/switch. Ordinary `git merge --no-commit --no-ff 49f160e4d6381d4a05c6fad5b52963aefd77942f` integrates the exact combined A78+A79 dependency (A79 candidate `0a6007b2`, also unaccepted). The merge commit has c382 and exact49f as parents. A78 candidate `646961d4` and approved dev `c34300fc` remain ancestors.
+
+Controller's first merge failed in five docs and its own merge was aborted back to clean49f without product edits. Original first failure preserved/read at `/Users/hanati/.t3/worktrees/TaskMecca/a67-controller-runtime--4baefb370dc86055/.artifacts/a80-integration/{first-merge-conflict.diff,first-merge-status.txt}`. This Worker reproduced the same five conflicts; `.artifacts/a80/repair2-first-{merge.log,conflict.diff,status.txt}` retains the initial local failure. No failure or source was discarded.
+
+Resolved only the five appended documentation conflicts, retaining BOTH exact original added sections:
+
+- `goassets/template/_task_mecca/framework/CLI_OPERATIONS_PLAYBOOK.md`
+- `goassets/template/_task_mecca/framework/EXECUTION_PROTOCOL.md`
+- `goassets/template/_task_mecca/framework/SESSION_GUIDE.md`
+- `goassets/template/_task_mecca/framework/collab.md`
+- `goassets/template/_task_mecca/framework/roles/worker.md`
+
+Each keeps A79 `현재 작업 재개·완료 근거` (current attempt/task/contract/AC, completion report/source/hash, context prepare/claim/acceptance/applied checks), A80 `T3 managed 역할 생성 · 공통 경계` (shared/worktree, actual creator parent, official read/list/native linkage, partial tracking, no duplicate/fallback), and inherited A78 role/independent-review policy. Inline preservation assertions verify both exact added sections, policy heading and no conflict markers. `.artifacts/a80/repair2-preservation.json` records 32 source-path checks. Outside the five docs, inherited A79 source is byte-identical to49f and own A80 source byte-identical toc382. No inherited Go product logic, A79 task/report, or A78 policy implementation was edited. `manifest.json` distinguishes own16/A79 inherited21 (5 overlap), their current32 source hashes and original c382 hashes.
+
+A78's separately authored metadata-supplement consent repair is NOT in49f and NOT implemented here. Later integration must retain its architecture and revalidate the combined source. A81 may use this coherent candidate as a dependency; this report grants no acceptance of A78/A79/A80/A81.
+
+## Current actual runtime and graph evidence
+
+Same native `01a1e2e7-3724-7cf1-8ea5-049a32e1946b`, G4 and assignment `assignment-c315b10be22251ded70ec6a0c0c40ffd`. Official ordinal2 observe/bind supplied by Controller and independently queried with exact native/task: NEW attempt `run-3a3fe3df2a2adba9` bound/running; OLD `run-b55faaf405d6d022` completed historical ordinal1. The first resumed query had only the old record; Worker stayed read-only until new binding. No initial backfill or synthetic START/Hook. The initial resumed interval remains unmeasured.
+
+Controller's [current official read](/Users/hanati/projects/TaskMecca/TaskMecca/_task_mecca/data/reports/A-80/repair-current-official-read.json), messages view/limit1/runLimit1, recorded actual ordinal2 at `updatedAt=2026-11-16T06:15:46.212Z`, contains explicit expected Controller `parentThreadId` and exact assigned `worktreePath`, with matching own T3 ID/project/title/subagent relation. This is a distinct Controller-observed official source, read by Worker; it is not a claim that earlier list/activity outputs contained those fields. Worker's own messages-view official read at `2026-11-16T06:17:39.656Z` still omitted parent/workspace in BOTH text and structured results; minimal metadata retained `.artifacts/a80/repair2-official-read.json`. Omission is not contradiction, and no missing list-parent value is invented. Parent/workspace evidence is attributed to Controller's timestamped official read; this Worker's later returned fields alone remain insufficient to independently establish them. Revalidate supported current fields on final review; never duplicate the existing child or infer Hook failure.
+
+Same-session native naming apply then verify at06:16:26/27Z returned supported/verified official native name and exact session, no rename needed; `naming_complete=false` remains the CLI's honest separate-T3-proof status. Exact own T3 title matches G4. No generation increment or historical rename.
+
+Controller's literal `run-unused` resumed lifecycle attribution was erroneous, not a real attempt. [Correction evidence](/Users/hanati/projects/TaskMecca/TaskMecca/_task_mecca/data/reports/A-80/lifecycle-attribution-correction-20261116.json) preserves the first error and actual-current attribution. Worker did not use that literal for Activity, duration, binding or review, nor rewrite lifecycle history.
+
+## New actual phase receipts
+
+All phases use approved original candidate CLI, exact canonical project, native/task/new attempt/assignment and stable event IDs. Each returned `ok=true,recorded=true` only when the phase actually began/ended. No old episode events reused.
+
+| Event | Stable ID | actual occurred_at UTC |
+| --- | --- | --- |
+| requirements_started | a80-isanghaessi-g4-repair2-requirements-started | 2026-11-16T06:17:22.008344Z |
+| implementation_started | a80-isanghaessi-g4-repair2-implementation-started | 2026-11-16T06:17:39.76284Z |
+| targeted_test_started | a80-isanghaessi-g4-repair2-targeted-test-started | 2026-11-16T06:18:23.505586Z |
+| build_started | a80-isanghaessi-g4-repair2-build-started | 2026-11-16T06:18:44.193448Z |
+| worker_completed | a80-isanghaessi-g4-repair2-worker-completed | 2026-11-16T06:19:32.226744Z |
+
+Current actual phase command form:
+
+```sh
+CLI activity report A-80 --project /Users/hanati/projects/TaskMecca/TaskMecca --role worker --agent 01a1e2e7-3724-7cf1-8ea5-049a32e1946b --attempt run-3a3fe3df2a2adba9 --assignment assignment-c315b10be22251ded70ec6a0c0c40ffd --event EVENT --event-id STABLE_ID --evidence ACTUAL_CURRENT_PHASE --json
+```
+
+`CLI` is the same explicitly approved a7879 candidate path recorded in the historical report below. Actual evidence states: newly bound requirements/initial interval unmeasured; ordinary49f integration; selected sandboxed tests; combined candidate build; completed integration with preserved32-path checks and review pending. Worker-completed is stop, not task acceptance.
+
+## Exact scoped validation and results on integrated source
+
+All test/build commands below used existing `.artifacts/a80/deny-canonical.sb` OS child sandbox denying writes to BOTH canonical TaskMecca and EMPFUND. Only audited selected domain/temp-ledger/mock fixtures ran; no full Go/full CLI/services or operating server.
+
+```sh
+sandbox-exec -f .artifacts/a80/deny-canonical.sb go test ./internal/orchestration -run '^Test(Environment|Dispatch|Created|Creation|AllManaged|Managed|Modes|UnknownCapabilities|RootNotification|IndependentSession|InvalidModeEvent|RootMode|PersistentGroup|GroupNames|ConcurrentReservations|UnsupportedSelection|SessionNaming)' -count=1 -v
+sandbox-exec -f .artifacts/a80/deny-canonical.sb go test ./cmd/task-mecca -run '^TestEnvironmentCLI' -count=1 -v
+sandbox-exec -f .artifacts/a80/deny-canonical.sb go test ./internal/handoff ./internal/backlog -run '^TestA79' -count=1 -v
+sandbox-exec -f .artifacts/a80/deny-canonical.sb go build -o .artifacts/a80/repair2-task-mecca ./cmd/task-mecca
+git diff --check
+```
+
+All exit0: domain23 top-level/59 including subtests; CLI3; A79 handoff6+backlog2 =8 top-level/22 including subtests; build pass. Logs retained `.artifacts/a80/repair2-{domain-tests.log,cli-tests.log,a79-tests.log,build.log}`. Preservation assertions passed32 source paths. Report/manifest updates follow these checks; no product edits followed testing.
+
+## Current handback and limits
+
+Final direct DONE is sent to the same exact Controller only after fresh official target read + canonical require-full-access, preserving its actual receipt as untracked `handoff-evidence/a80-isanghaessi/direct-done-repair2.json`. It uses stable report ID `a80-isanghaessi-g4-repair2-completion-20261116` and final local source SHA. Prior episode direct-done.json remains unchanged. Delivery/ACK is not canonical acceptance/applied. No Worker canonical runtime/binding/lifecycle/handoff/policy writes; only authorized own phase reports and preflight. No operating install, push, merge-to-dev, cleanup, root-sessions metadata enrichment or new child/reviewer.
+
+The next Controller steps remain actual separate final-source review, current supported graph/native evidence, and DISTINCT completion handoff with actual task/contract/AC/report/source context. The applied registration intake is not completion authority. Original full five AC/source/constraints/tags/links are preserved below; AC5's independent review, dev/CI/release and any final acceptance remain pending. This integration itself is complete and source candidate is coherent; it does not assert those later outcomes.
+
+---
+
+## Historical original implementation episode 1 (retained)
+
 # A-80 implementation candidate — isanghaessi G4
 
 Status: Worker source candidate complete; canonical task acceptance, independent review, dev integration, CI/release and operating installation are separate. No independent reviewer result is authored here.

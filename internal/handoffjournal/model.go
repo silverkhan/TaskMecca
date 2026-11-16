@@ -34,6 +34,7 @@ type Record struct {
 	ContractSHA256         string            `json:"contract_sha256,omitempty"`
 	SourceAgentPath        string            `json:"source_agent_path,omitempty"`
  SourceWorkspace string `json:"source_workspace,omitempty"`
+ ContextJSON string `json:"task_context,omitempty"`
 	SourceAttemptID        string            `json:"source_attempt_id,omitempty"`
 	TargetAgentPath        string            `json:"target_agent_path,omitempty"`
 	TargetAttemptID        string            `json:"target_attempt_id,omitempty"`
@@ -67,6 +68,7 @@ type Handoff struct {
 	ContractSHA256         string               `json:"contract_sha256,omitempty"`
 	SourceAgentPath        string               `json:"source_agent_path,omitempty"`
  SourceWorkspace string `json:"source_workspace,omitempty"`
+ ContextJSON string `json:"task_context,omitempty"`
 	SourceAttemptID        string               `json:"source_attempt_id,omitempty"`
 	Target                 Target               `json:"target"`
 	Action                 Action               `json:"action"`
