@@ -2476,3 +2476,22 @@ select.tm-combo-native{position:absolute!important;width:1px!important;height:1p
 @media(max-width:720px) {
  .common-attention .operation-observation-details summary { min-height: 44px; }
 }
+
+/* Workload session scope follows the existing Operate controls and disclosure. */
+.session-scope{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.session-scope label{font-weight:600}
+.session-scope select{flex:1;min-width:0;max-width:100%;min-height:44px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:8px 12px}
+.session-scope button,.workload-sessions button{min-height:44px;padding:8px 12px;cursor:pointer}
+.session-scope :focus-visible,.workload-sessions summary:focus-visible,.workload-sessions button:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.session-scope-path,.session-usage-note{overflow-wrap:anywhere;line-height:1.6;max-width:75ch}
+.session-scope-path{margin:8px 0}
+.session-usage-note{color:var(--muted);margin:12px 0 20px}
+.session-historical>summary{cursor:pointer;font-weight:600;padding:12px 0;min-height:44px}
+.session-raw{margin:16px 0}
+.session-raw pre{max-width:100%;overflow:auto;max-height:420px}
+.workload-sessions .runtime-root-id strong{overflow-wrap:anywhere;word-break:break-word}
+.workload-sessions .runtime-history-pager{flex-wrap:wrap}
+@media(max-width:600px){.session-scope{align-items:stretch}.session-scope label,.session-scope select{flex-basis:100%}.session-scope button{width:100%}.workload-sessions .runtime-root-summary{min-width:0}.workload-sessions .runtime-root-meta{overflow-wrap:anywhere}}
+
+.workload-sessions .runtime-root-id{display:flex;flex-wrap:wrap;column-gap:12px;row-gap:4px;white-space:normal}
+.workload-sessions .runtime-root-id>span{min-width:0}

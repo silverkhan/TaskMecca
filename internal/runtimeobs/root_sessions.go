@@ -35,6 +35,9 @@ type RootSession struct {
     CreatedAt           string            `json:"created_at,omitempty"`
     CreatedAtSource     string            `json:"created_at_source,omitempty"`
     LastActivityAt      string            `json:"last_activity_at,omitempty"`
+    LastUsedAt          string `json:"last_used_at,omitempty"`
+    UsageSource         string `json:"usage_source,omitempty"`
+    UsageGroup          string `json:"usage_group"`
     Status              RootSessionStatus `json:"status"`
     InactiveMillis      int64             `json:"inactive_ms"`
     CleanupEligible     bool              `json:"cleanup_eligible"`
@@ -398,6 +401,7 @@ func BuildRootSessions(project string,ledger Ledger,now time.Time) (RootSessionC
         }
         return collection.Items[i].RootSessionID<collection.Items[j].RootSessionID
     })
+    applySessionUsage(collection.Items, attempts, now)
     collection.Total=len(collection.Items)
     return collection,nil
 }

@@ -825,6 +825,41 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 		writeJSON(w, operationSnapshot(project), http.StatusOK)
 	})
 
+	// Read-only usage projection: no metadata enrichment or retention maintenance.
+	mux.HandleFunc("/api/runtime/workload-sessions", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			writeJSON(w, map[string]any{"error": "GET required"}, 405)
+			return
+		}
+		activeProject := projectFor(r)
+		if strings.TrimSpace(r.URL.Query().Get("project")) == "" {
+			writeJSON(w, map[string]any{"error": "explicit project required"}, 400)
+			return
+		}
+		now := time.Now()
+		ledger, err := runtimeobs.ReconcileLedger(activeProject, 10, now)
+		if err != nil {
+			writeJSON(w, map[string]any{"error": err.Error()}, 500)
+			return
+		}
+		page, _ := strconv.Atoi(r.URL.Query().Get("page"))
+		if id := r.URL.Query().Get("root_session_id"); id != "" {
+			detail, err := runtimeobs.QuerySessionWorkloadDetail(activeProject, ledger, id, page, now)
+			if err != nil {
+				writeJSON(w, map[string]any{"error": err.Error()}, 404)
+				return
+			}
+			writeJSON(w, detail, 200)
+			return
+		}
+		historicalPage, _ := strconv.Atoi(r.URL.Query().Get("historical_page"))
+		data, err := runtimeobs.QuerySessionWorkload(activeProject, ledger, page, historicalPage, 10, now)
+		if err != nil {
+			writeJSON(w, map[string]any{"error": err.Error()}, 500)
+			return
+		}
+		writeJSON(w, data, 200)
+	})
 	mux.HandleFunc("/api/runtime/root-sessions", func(w http.ResponseWriter, r *http.Request) {
 		activeProject := projectFor(r)
 		now := time.Now()

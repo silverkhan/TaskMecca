@@ -84,6 +84,11 @@ const state = {
   storageProject: '__all__',
   storageGlobal: null,
   runtimeRootDisclosure: {},
+  workloadSessionProject: localStorage.getItem('task-mecca-workload-session-project')||'',
+  workloadSessions: null, workloadSessionsError: '', workloadSessionsLoading: false,
+  workloadSessionProjectsLoading: false, workloadSessionProjectsError: '',
+  workloadSessionEpoch: 0, workloadSessionRequest: 0, workloadSessionDetails: {},
+  workloadSessionDisclosure: {}, workloadHistoricalDisclosure: {}, workloadSessionRawDisclosure: {}, workloadSessionDetailPages: {},
   runtimeRootListOpen: false,
   runtimeRootListLoading: false,
   runtimeRootListError: '',
@@ -1700,7 +1705,7 @@ async function loadRuntimeRootSessions(page=1) {
     if(!r.ok)throw new Error(body.error||`HTTP ${r.status}`);
     state.runtimeRootList=body;
   }catch(e){
-    state.runtimeRootListError=String(e?.message||e||'Root Session load failed');
+    state.runtimeRootListError=String(e?.message||e||'Session load failed');
   }finally{
     state.runtimeRootListLoading=false;
   }
@@ -1716,7 +1721,8 @@ async function toggleRuntimeRootList() {
 }
 async function performRootSessionCleanup(button) {
   const rootSessionID=button?.dataset?.runtimeRootCleanup||'';
-  const name=button?.dataset?.runtimeRootName||'Root Session';
+  const cleanupProject=button?.dataset?.sessionProject||state.project;
+  const name=button?.dataset?.runtimeRootName||'Session';
   const bytes=Number(button?.dataset?.runtimeRootBytes||0);
   if(!rootSessionID)return;
   if(!window.confirm(t('runtimeRootCleanupConfirm',{name,bytes:fmtBytes(bytes)})))return;
@@ -1724,7 +1730,7 @@ async function performRootSessionCleanup(button) {
   if(button){button.disabled=true;button.textContent=t('runtimeCleanupRunning');}
   try{
     const params=new URLSearchParams();
-    if(state.project)params.set('project',state.project);
+    if(cleanupProject)params.set('project',cleanupProject);
     const qs=params.toString()?`?${params}`:'';
     const r=await fetch('/api/runtime/root-sessions'+qs,{
       method:'POST',
@@ -1732,9 +1738,11 @@ async function performRootSessionCleanup(button) {
       body:JSON.stringify({action:'cleanup',root_session_id:rootSessionID})
     });
     const body=await r.json();
-    if(!r.ok)throw new Error(body.error||'Root Session cleanup failed');
+    if(!r.ok)throw new Error(body.error||'Session cleanup failed');
     alert(t('runtimeRootCleanupDone',{bytes:fmtBytes(body.result?.reclaimed_bytes||bytes)}));
     await refresh();
+    if(button?.dataset?.sessionProject)await loadWorkloadSessions();
+    if(button?.dataset?.sessionProject)await loadWorkloadSessions();
     if(state.runtimeRootListOpen)await loadRuntimeRootSessions(Number(state.runtimeRootList?.page||1));
     if(state.runtimeStorageOpen)await loadRuntimeStorage(true);
   }catch(e){
@@ -5079,33 +5087,33 @@ Object.assign(I18N.ko,{
   runtimeCleanupRunning:'정리 중…',
   runtimeCleanupDone:'에이전트 실행 기록 {bytes}를 정리했습니다.',
   runtimeFiles:'파일 {n}개',
-  runtimeRootSessions:'Root Sessions',
-  runtimeRootActive:'현재 Root',
-  runtimeRootNeedsCheck:'확인 필요 Root',
-  runtimeRootPrevious:'이전 Root',
-  runtimeRootCleanupEligible:'정리 가능 Root',
+  runtimeRootSessions:'세션',
+  runtimeRootActive:'현재 실행 세션',
+  runtimeRootNeedsCheck:'확인 필요 세션',
+  runtimeRootPrevious:'종료된 실행 세션',
+  runtimeRootCleanupEligible:'정리 가능 세션',
   runtimeRootAgents:'Agent {n}',
   runtimeRootAttempts:'Attempt {n}',
   runtimeRootCreated:'개설',
   runtimeRootObservedStart:'관측 시작',
   runtimeRootLastActivity:'마지막 활동',
-  runtimeRootID:'Root Session ID',
+  runtimeRootID:'Session ID',
   runtimeRootProvider:'Provider',
   runtimeRootCurrentCount:'현재 {n}',
   runtimeRootNeedsCount:'확인 필요 {n}',
   runtimeRootTerminalCount:'종료 {n}',
-  runtimeRootShowPrevious:'이전 Root Sessions 보기',
-  runtimeRootHidePrevious:'이전 Root Sessions 닫기',
-  runtimeRootLoading:'Root Session 이력을 불러오는 중…',
-  runtimeRootEmpty:'이전 Root Session이 없습니다.',
-  runtimeRootPage:'{page} / {pages} 페이지 · {total}개 Root',
+  runtimeRootShowPrevious:'이전 Sessions 보기',
+  runtimeRootHidePrevious:'이전 Sessions 닫기',
+  runtimeRootLoading:'Session 이력을 불러오는 중…',
+  runtimeRootEmpty:'이전 Session이 없습니다.',
+  runtimeRootPage:'{page} / {pages} 페이지 · 세션 {total}개',
   runtimeRootCleanup:'Root 기록 정리',
-  runtimeRootCleanupConfirm:'{name} Root Session과 그 하위 Runtime 기록 약 {bytes}를 정리할까요? canonical backlog/Git과 Hook 설정은 유지됩니다.',
-  runtimeRootCleanupDone:'Root Session 기록 {bytes}를 정리했습니다.',
+  runtimeRootCleanupConfirm:'{name} Session과 그 하위 Runtime 기록 약 {bytes}를 정리할까요? canonical backlog/Git과 Hook 설정은 유지됩니다.',
+  runtimeRootCleanupDone:'Session 기록 {bytes}를 정리했습니다.',
   runtimeRootInactiveTerminal:'7일 이상 미활동 · 정리 가능',
   runtimeRootTerminal:'종료됨',
   runtimeRootNeedsCheckStatus:'상태 확인 필요',
-  runtimeRootActiveStatus:'활성',
+  runtimeRootActiveStatus:'현재 실행 관측',
   runtimeRootFallbackHint:'확인된 세션 이름이나 T3 제목이 없어 기본 이름을 표시합니다.',
   runtimeRootDefaultName:'기본 이름',
   runtimeRootT3Title:'T3 제목',
@@ -5120,7 +5128,7 @@ Object.assign(I18N.ko,{
   runtimeHookInUseBody:'백로그/현재 Root 근거상 이 Provider가 실사용 중이지만 Hook이 꺼져 있거나 현재 세션에서 관측되지 않습니다. 다른 Agent의 Hook이 켜져 있어도 이 경고는 해제되지 않습니다.',
   runtimeHookInUseUnconfigured:'{provider}가 현재 실사용 중이지만 Task Mecca Hook 설정이 없습니다.',
   runtimeHookInUseNotObserved:'{provider}가 현재 실사용 중이고 설정 파일도 존재하지만 현재 Runtime Hook 신호가 확인되지 않습니다. Agent 앱에서 Hook 활성화·신뢰 상태를 확인하세요.',
-  runtimeHookNewRootRequired:'설정 또는 활성화 후에는 새 Root Session을 시작하세요. 이미 열려 있는 Root에는 SessionStart/기존 Agent Start 이벤트가 소급 적용되지 않습니다.',
+  runtimeHookNewRootRequired:'설정 또는 활성화 후에는 새 Session을 시작하세요. 이미 열려 있는 Root에는 SessionStart/기존 Agent Start 이벤트가 소급 적용되지 않습니다.',
   runtimeHookAgentGuide:'{provider} 앱에서 켜는 방법',
   runtimeHookDesktop:'Desktop',
   runtimeHookCLI:'CLI',
@@ -5138,7 +5146,7 @@ Object.assign(I18N.en,{
   runtimeHookInUseBody:'Backlog/current Root evidence shows this provider is in use, but its Hook is disabled or not being observed in the current session. Enabling a different agent does not clear this warning.',
   runtimeHookInUseUnconfigured:'{provider} is currently in use but Task Mecca Hooks are not configured.',
   runtimeHookInUseNotObserved:'{provider} is currently in use and the project Hook file exists, but no current Runtime Hook signal is observed. Check Hook enablement and trust in the agent app.',
-  runtimeHookNewRootRequired:'After setup or enablement, start a new Root Session. SessionStart and existing Agent Start events from an already-open Root are not backfilled.',
+  runtimeHookNewRootRequired:'After setup or enablement, start a new Session. SessionStart and existing Agent Start events from an already-open Root are not backfilled.',
   runtimeHookAgentGuide:'Enable in {provider}',
   runtimeHookDesktop:'Desktop',
   runtimeHookCLI:'CLI',
@@ -5172,32 +5180,33 @@ Object.assign(I18N.en,{
   runtimeCleanupRunning:'Cleaning…',
   runtimeCleanupDone:'Cleaned {bytes} of agent execution records.',
   runtimeFiles:'{n} files',
-  runtimeRootSessions:'Root Sessions',
-  runtimeRootActive:'Current roots',
-  runtimeRootNeedsCheck:'Roots needing verification',
-  runtimeRootPrevious:'Previous roots',
+  runtimeRootSessions:'Sessions',
+  runtimeRootProvider:'Provider',
+  runtimeRootActive:'Current execution sessions',
+  runtimeRootNeedsCheck:'Sessions needing verification',
+  runtimeRootPrevious:'Previous execution sessions',
   runtimeRootCleanupEligible:'Cleanup eligible',
   runtimeRootAgents:'{n} agents',
   runtimeRootAttempts:'{n} attempts',
   runtimeRootCreated:'Created',
   runtimeRootObservedStart:'First observed',
   runtimeRootLastActivity:'Last activity',
-  runtimeRootID:'Root Session ID',
+  runtimeRootID:'Session ID',
   runtimeRootCurrentCount:'Current {n}',
   runtimeRootNeedsCount:'Needs check {n}',
   runtimeRootTerminalCount:'Terminal {n}',
-  runtimeRootShowPrevious:'View previous Root Sessions',
-  runtimeRootHidePrevious:'Close previous Root Sessions',
-  runtimeRootLoading:'Loading Root Session history…',
-  runtimeRootEmpty:'No previous Root Sessions.',
-  runtimeRootPage:'Page {page} / {pages} · {total} roots',
-  runtimeRootCleanup:'Clean Root records',
-  runtimeRootCleanupConfirm:'Clean about {bytes} of runtime records for Root Session {name}? Canonical backlog/Git and Hook settings are preserved.',
-  runtimeRootCleanupDone:'Cleaned {bytes} of Root Session runtime records.',
+  runtimeRootShowPrevious:'View previous Sessions',
+  runtimeRootHidePrevious:'Close previous Sessions',
+  runtimeRootLoading:'Loading Session history…',
+  runtimeRootEmpty:'No previous Sessions.',
+  runtimeRootPage:'Page {page} / {pages} · {total} sessions',
+  runtimeRootCleanup:'Clean session records',
+  runtimeRootCleanupConfirm:'Clean about {bytes} of runtime records for Session {name}? Canonical backlog/Git and Hook settings are preserved.',
+  runtimeRootCleanupDone:'Cleaned {bytes} of Session runtime records.',
   runtimeRootInactiveTerminal:'Inactive for 7+ days · cleanup eligible',
   runtimeRootTerminal:'Terminal',
   runtimeRootNeedsCheckStatus:'Needs verification',
-  runtimeRootActiveStatus:'Active',
+  runtimeRootActiveStatus:'Current execution observed',
   runtimeRootFallbackHint:'A default name is shown because no verified session name or T3 title is available.',
   runtimeRootDefaultName:'Default name',
   runtimeRootT3Title:'T3 title',
@@ -5438,18 +5447,19 @@ function runtimeRootNameHint(root) {
       ? `<span class="runtime-root-fallback">${esc(t('runtimeRootT3Title'))}</span>` : '';
 }
 function runtimeRootCard(root,attempts,findingsByAttempt,attemptRootMap) {
-  const key=String(root.root_session_id||root.provider_session_id||root.display_name||'root');
-  const remembered=Object.prototype.hasOwnProperty.call(state.runtimeRootDisclosure,key);
-  const defaultOpen=root.status==='active'||root.status==='needs_check';
-  const open=remembered?Boolean(state.runtimeRootDisclosure[key]):defaultOpen;
+  const key=root._scopedKey||String(root.root_session_id||root.provider_session_id||root.display_name||'root');
+  const disclosure=root._scopedKey?state.workloadSessionDisclosure:state.runtimeRootDisclosure;
+  const remembered=Object.prototype.hasOwnProperty.call(disclosure,key);
+  const defaultOpen=root._scopedKey?root._defaultOpen:(root.status==='active'||root.status==='needs_check');
+  const open=remembered?Boolean(disclosure[key]):defaultOpen;
   const sessionAttempts=attempts.filter(a=>attemptRootMap[a.attempt_id]===root.root_session_id);
   const createdLabel=root.created_at_source==='provider_metadata'?t('runtimeRootCreated'):t('runtimeRootObservedStart');
   const providerID=root.provider_session_id||'-';
   const cleanupBadge=root.cleanup_eligible?`<span class="badge warn">${esc(t('runtimeRootCleanupEligible'))}</span>`:'';
   return `<details class="runtime-root-card" data-runtime-root-key="${esc(key)}" ${open?'open':''}>
-    <summary class="runtime-root-summary">
+    <summary class="runtime-root-summary" ${root._scopedKey?`id="session-summary-${esc(encodeURIComponent(key))}"`: ''}>
       <div class="runtime-root-title-wrap">
-        <div class="runtime-root-title">${esc(root.display_name||'Root Session')} ${runtimeRootNameHint(root)}</div>
+        <div class="runtime-root-title">${esc(root.display_name||'Session')} ${runtimeRootNameHint(root)}</div>
         <div class="runtime-root-id"><span>${esc(t('runtimeRootProvider'))} <strong>${esc(String(root.provider||'-').toUpperCase())}</strong></span><span>${esc(t('runtimeRootID'))} <strong title="${esc(providerID)}">${esc(providerID)}</strong></span></div>
       </div>
       <div class="runtime-root-badges">
@@ -5459,6 +5469,7 @@ function runtimeRootCard(root,attempts,findingsByAttempt,attemptRootMap) {
       <div class="runtime-root-meta">
         <span>${esc(createdLabel)} <strong>${esc(dateTimeLabel(root.created_at,true))}</strong></span>
         <span>${esc(t('runtimeRootLastActivity'))} <strong>${esc(root.last_activity_at?ago(root.last_activity_at):'-')}</strong></span>
+        ${root._scopedKey?`<span>${esc(workloadSessionWords().used)} <strong>${esc(root.last_used_at?dateTimeLabel(root.last_used_at,true):(state.language==='ko'?'미확인':'Unknown'))}</strong></span>`:''}
       </div>
       <div class="runtime-root-counts">
         <span>${esc(t('runtimeRootAgents',{n:Number(root.agent_count||0)}))}</span>
@@ -5469,18 +5480,18 @@ function runtimeRootCard(root,attempts,findingsByAttempt,attemptRootMap) {
       <span class="runtime-root-chevron" aria-hidden="true">›</span>
     </summary>
     <div class="runtime-root-body">
-      ${sessionAttempts.length?`<div class="runtime-attempt-grid">${sessionAttempts.map(a=>runtimeAttemptCard(a,findingsByAttempt[a.attempt_id]||[])).join('')}</div>`:`<div class="runtime-empty compact">-</div>`}
+      ${root._detailHTML!==undefined?root._detailHTML:sessionAttempts.length?`<div class="runtime-attempt-grid">${sessionAttempts.map(a=>runtimeAttemptCard(a,findingsByAttempt[a.attempt_id]||[])).join('')}</div>`:`<div class="runtime-empty compact">-</div>`}
     </div>
   </details>`;
 }
 function runtimeRootListRow(root) {
   const statusClass=runtimeRootStatusClass(root.status);
   const cleanup=root.cleanup_eligible
-    ? `<button class="runtime-root-cleanup-btn" data-runtime-root-cleanup="${esc(root.root_session_id||'')}" data-runtime-root-name="${esc(root.display_name||'Root Session')}" data-runtime-root-bytes="${Number(root.cleanup_bytes||root.storage_bytes||0)}">${esc(t('runtimeRootCleanup'))}</button>`
+    ? `<button class="runtime-root-cleanup-btn" data-runtime-root-cleanup="${esc(root.root_session_id||'')}" data-runtime-root-name="${esc(root.display_name||'Session')}" data-runtime-root-bytes="${Number(root.cleanup_bytes||root.storage_bytes||0)}">${esc(t('runtimeRootCleanup'))}</button>`
     : '';
   return `<div class="runtime-root-list-row">
     <div class="runtime-root-list-main">
-      <strong>${esc(root.display_name||'Root Session')}</strong> ${runtimeRootNameHint(root)}
+      <strong>${esc(root.display_name||'Session')}</strong> ${runtimeRootNameHint(root)}
       <span>${esc(t('runtimeRootProvider'))} ${esc(String(root.provider||'-').toUpperCase())}</span>
       <small>${esc(t('runtimeRootID'))} ${esc(root.provider_session_id||'-')}</small>
     </div>
@@ -5684,14 +5695,153 @@ async function loadActivityProject(project){
   }
 }
 
+function renderWorkloadSessionUpdate(){
+  if(state.view!=='workload')return;
+  const id=document.activeElement?.id,x=window.scrollX,y=window.scrollY;
+  render();
+  const target=id?document.getElementById(id):null;
+  if(target&&!target.disabled)target.focus({preventScroll:true});
+  window.scrollTo({left:x,top:y,behavior:'auto'});
+}
+function workloadSessionWords() {
+  return state.language==='ko'?{
+    project:'세션 프로젝트',scope:'현재 세션 조회 범위',choose:'프로젝트를 선택하세요',none:'등록된 프로젝트가 없습니다.',
+    active:'활성 세션',historical:'과거 세션',note:'활성은 최근 48시간 내 실제 사용 기준이며 실행 중 여부가 아닙니다. 프로젝트 선택은 백로그와 별도로 유지됩니다.',
+    unknown:'실제 사용 시각 미확인: 메타데이터·관측 시각으로 사용을 추정하지 않습니다.',used:'마지막 실제 사용',
+    empty:'이 프로젝트에 기록된 세션이 없습니다.',error:'세션을 불러오지 못했습니다. 새로고침으로 다시 시도하세요.',loading:'세션을 불러오는 중…',
+    refresh:'세션 새로고침',previous:'이전 페이지',next:'다음 페이지',raw:'원본 관측 필드',details:'세션 실행 상세',detailError:'상세를 불러오지 못했습니다.',retry:'다시 시도',source:'사용 근거',hook:'관측된 Hook 활동',native:'네이티브 실행 경계',emptyGroup:'이 그룹에 세션이 없습니다.'
+  }:{project:'Session project',scope:'Current session scope',choose:'Select a project',none:'No registered projects.',
+    active:'Active sessions',historical:'Historical sessions',note:'Active means actual use within the last 48 hours, independent of runtime state. This project selection is separate from Backlog.',
+    unknown:'Actual usage time is unknown; metadata and observation clocks do not establish usage.',used:'Last actual use',
+    empty:'No recorded sessions in this project.',error:'Sessions could not be loaded. Refresh sessions to retry.',loading:'Loading sessions…',
+    refresh:'Refresh sessions',previous:'Previous page',next:'Next page',raw:'Raw observation fields',details:'Session execution details',detailError:'Session details could not be loaded.',retry:'Retry',source:'Usage evidence',hook:'Observed Hook activity',native:'Native execution boundary',emptyGroup:'No sessions in this group.'};
+}
+function workloadSessionKey(id,project=state.workloadSessionProject){return JSON.stringify([project,id]);}
+function workloadSessionOpen(root){
+  const key=workloadSessionKey(root.root_session_id);
+  return Object.hasOwn(state.workloadSessionDisclosure,key)?state.workloadSessionDisclosure[key]:root.root_session_id===state.workloadSessions?.latest_session_id;
+}
+function ensureWorkloadSessionProject(){
+  if(!state.workloadSessionProject){
+    // Initial choice uses the registered project inventory, never Backlog state.
+    state.workloadSessionProject=state.hub?.projects?.[0]?.path||'';
+  }
+  return state.workloadSessionProject;
+}
+async function selectWorkloadSessionProject(project){
+  state.workloadSessionProject=project;
+  localStorage.setItem('task-mecca-workload-session-project',project);
+  state.workloadSessionEpoch++;
+  state.workloadSessionDetails={};state.workloadSessions=null;state.workloadSessionsError='';
+  renderWorkloadSessionUpdate();await loadWorkloadSessions(1,1);
+}
+async function loadWorkloadSessions(activePage,historicalPage){
+  if(!state.hub){
+    state.workloadSessionProjectsLoading=true;
+    try{await refreshHub(false);state.workloadSessionProjectsError='';}
+    catch(error){state.workloadSessionProjectsError=String(error.message||error);renderWorkloadSessionUpdate();return;}
+    finally{state.workloadSessionProjectsLoading=false;}
+  }
+  const project=ensureWorkloadSessionProject();if(!project){renderWorkloadSessionUpdate();return;}
+  const request=++state.workloadSessionRequest,epoch=state.workloadSessionEpoch;
+  const current=()=>project===state.workloadSessionProject&&epoch===state.workloadSessionEpoch&&request===state.workloadSessionRequest;
+  const prior=state.workloadSessions;
+  const params=new URLSearchParams({project,page:String(activePage??prior?.active?.page??1),historical_page:String(historicalPage??prior?.historical?.page??1)});
+  state.workloadSessionsLoading=true;state.workloadSessionsError='';
+  try{
+    const response=await fetch('/api/runtime/workload-sessions?'+params,{cache:'no-store'}),body=await response.json();
+    if(!current())return;
+    if(!response.ok)throw Error(body.error||String(response.status));
+    if(body.project!==project)throw Error('Session scope mismatch');
+    state.workloadSessions=body;
+    // Detail requests carry the list generation. Late replies from a previous
+    // refresh cannot overwrite the newly accepted scope or usage classification.
+    state.workloadSessionEpoch++;
+    state.workloadSessionDetails={};
+    for(const root of [...body.active.items,...body.historical.items])if(workloadSessionOpen(root))void loadWorkloadSessionDetail(root.root_session_id,state.workloadSessionDetailPages[workloadSessionKey(root.root_session_id)]||1);
+  }catch(error){if(current()){state.workloadSessions=null;state.workloadSessionDetails={};state.workloadSessionsError=String(error.message||error);}}
+  finally{if(request===state.workloadSessionRequest&&project===state.workloadSessionProject){state.workloadSessionsLoading=false;renderWorkloadSessionUpdate();}}
+}
+async function loadWorkloadSessionDetail(id,page=1){
+  const project=state.workloadSessionProject,epoch=state.workloadSessionEpoch,key=workloadSessionKey(id,project);
+  state.workloadSessionDetailPages[key]=page;
+  const token={loading:true};state.workloadSessionDetails[key]=token;
+  try{
+    const params=new URLSearchParams({project,root_session_id:id,page:String(page)});
+    const response=await fetch('/api/runtime/workload-sessions?'+params,{cache:'no-store'}),body=await response.json();
+    if(epoch!==state.workloadSessionEpoch||project!==state.workloadSessionProject||state.workloadSessionDetails[key]!==token)return;
+    if(!response.ok)throw Error(body.error||String(response.status));
+    if(body.project!==project||body.root_session?.root_session_id!==id)throw Error('Session detail scope mismatch');
+    state.workloadSessionDetails[key]=body;
+  }catch(error){if(epoch!==state.workloadSessionEpoch||project!==state.workloadSessionProject||state.workloadSessionDetails[key]!==token)return;state.workloadSessionDetails[key]={error:String(error.message||error)};}
+  renderWorkloadSessionUpdate();
+}
+function workloadSessionPager(group,data){
+  const w=workloadSessionWords(),page=Number(data.page||1),pages=Number(data.total_pages||0);
+  if(pages<=1)return '';
+  return `<div class="runtime-history-pager"><button type="button" id="session-${esc(group)}-previous" data-session-page="${esc(group)}" data-page="${page-1}" ${page<=1?'disabled':''}>${esc(w.previous)}</button><span>${esc(t('runtimeRootPage',{page,pages,total:data.total}))}</span><button type="button" id="session-${esc(group)}-next" data-session-page="${esc(group)}" data-page="${page+1}" ${page>=pages?'disabled':''}>${esc(w.next)}</button></div>`;
+}
+function workloadSessionCard(root){
+  const w=workloadSessionWords(),id=root.root_session_id,key=workloadSessionKey(id),data=state.workloadSessionDetails[key];
+  let detail='';
+  if(!data||data.loading)detail=`<p role="status">${esc(w.loading)}</p>`;
+  else if(data.error)detail=`<p role="alert">${esc(w.detailError)} <button type="button" data-session-detail="${esc(id)}">${esc(w.retry)}</button></p>`;
+  else{
+    const findings={};for(const f of data.findings||[])(findings[f.attempt_id]??=[]).push(f);
+    detail=`<div class="runtime-attempt-grid">${(data.attempts||[]).map(a=>runtimeAttemptCard(a,findings[a.attempt_id]||[])).join('')}</div>`;
+    detail+=`<details class="session-raw" data-session-raw="${esc(key)}" ${state.workloadSessionRawDisclosure[key]?'open':''}><summary id="session-raw-${esc(encodeURIComponent(key))}">${esc(w.raw)}</summary><pre><code>${esc(JSON.stringify(data,null,2))}</code></pre></details>`;
+    if(data.total_pages>1)detail+=`<div class="runtime-history-pager"><button type="button" id="session-detail-${esc(id)}-previous" data-session-detail="${esc(id)}" data-page="${data.page-1}" ${data.page<=1?'disabled':''}>${esc(w.previous)}</button><span>${esc(t('runtimeRootPage',{page:data.page,pages:data.total_pages,total:data.total}))}</span><button type="button" id="session-detail-${esc(id)}-next" data-session-detail="${esc(id)}" data-page="${data.page+1}" ${data.page>=data.total_pages?'disabled':''}>${esc(w.next)}</button></div>`;
+    // Keep the existing preservation/cleanup action and all eligibility checks.
+    if(root.cleanup_eligible)detail+=`<button type="button" class="runtime-root-cleanup-btn" data-runtime-root-cleanup="${esc(id)}" data-session-project="${esc(state.workloadSessionProject)}" data-runtime-root-bytes="${Number(data.root_session?.cleanup_bytes||0)}" data-runtime-root-name="${esc(root.display_name)}">${esc(t('runtimeRootCleanup'))}</button>`;
+  }
+  const use=root.last_used_at?`${w.used}: ${dateTimeLabel(root.last_used_at,true)} · ${w.source}: ${root.usage_source==='observed_hook_activity'?w.hook:w.native}`:w.unknown;
+  detail=`<p class="session-usage-note">${esc(use)}</p>`+detail;
+  return runtimeRootCard({...root,_scopedKey:key,_defaultOpen:root.root_session_id===state.workloadSessions?.latest_session_id,_detailHTML:detail},[],{},{});
+}
+function workloadSessionPanel(){
+  const w=workloadSessionWords(),project=state.workloadSessionProject,projects=state.hub?.projects||[],data=state.workloadSessions;
+  const options=projects.some(p=>p.path===project)?projects:project?[...projects,{path:project,name:project}]:projects;
+  const selector=`<div class="session-scope"><label for="workloadSessionProject">${esc(w.project)}</label><select id="workloadSessionProject"><option value="">${esc(w.choose)}</option>${options.map(p=>`<option value="${esc(p.path)}" ${p.path===project?'selected':''}>${esc(p.name||p.path)}</option>`).join('')}</select><button type="button" id="workloadSessionsRefresh" class="runtime-history-toggle">${esc(w.refresh)}</button></div><p class="session-scope-path">${esc(w.scope)}: ${esc(project||'—')}</p><p class="session-usage-note">${esc(w.note)}</p>`;
+  let content='';
+  if(state.workloadSessionProjectsError)content=`<p role="alert">${esc(state.language==='ko'?'등록 프로젝트를 불러오지 못했습니다. 세션 새로고침으로 다시 시도하세요.':'Registered projects could not be loaded. Refresh sessions to retry.')}</p>`;
+  else if(!state.hub||state.workloadSessionProjectsLoading)content=`<p role="status">${esc(w.loading)}</p>`;
+  else if(!project)content=`<p role="status">${esc(projects.length?w.choose:w.none)}</p>`;
+  else if(state.workloadSessionsError)content=`<p role="alert">${esc(w.error)}</p>`;
+  else if(!data)content=`<p role="status">${esc(w.loading)}</p>`;
+  else if(!data.active.total&&!data.historical.total)content=`<p role="status">${esc(w.empty)}</p>`;
+  else{
+    const active=data.active,historical=data.historical;
+    const historicalOpen=Boolean(state.workloadHistoricalDisclosure[project]);
+    content=`<section class="runtime-root-section"><h3>${esc(w.active)} · ${active.total}</h3><div class="runtime-root-stack">${active.items.map(workloadSessionCard).join('')||`<p>${esc(w.emptyGroup)}</p>`}</div>${workloadSessionPager('active',active)}</section><details class="runtime-root-section session-historical" id="workloadHistorical" ${historicalOpen?'open':''}><summary>${esc(w.historical)} · ${historical.total}${data.unknown_usage?` · ${esc(state.language==='ko'?'사용 시각 미확인':'Usage unknown')}: ${data.unknown_usage}`:''}</summary>${historicalOpen?`<div class="runtime-root-stack">${historical.items.map(workloadSessionCard).join('')}</div>${workloadSessionPager('historical',historical)}`:''}</details>`;
+  }
+  const counts=data?.runtime_counts;
+  const runtimeCounts=counts?`<p class="session-runtime-counts">${esc(t('runtimeRootActive'))}: ${Number(counts.active||0)} · ${esc(t('runtimeRootNeedsCheck'))}: ${Number(counts.needs_check||0)} · ${esc(t('runtimeRootPrevious'))}: ${Number(counts.terminal||0)} · ${esc(t('runtimeRootCleanupEligible'))}: ${Number(counts.cleanup_eligible||0)}</p>`:'';
+  return `<section class="workload-sessions" aria-busy="${state.workloadSessionsLoading?'true':'false'}">${selector}${runtimeCounts}${content}</section>`;
+}
+function bindWorkloadSessions(){
+  document.querySelector('#workloadSessionProject')?.addEventListener('change',e=>selectWorkloadSessionProject(e.target.value));
+  document.querySelector('#workloadSessionsRefresh')?.addEventListener('click',()=>loadWorkloadSessions());
+  const historical=document.querySelector('#workloadHistorical');
+  historical?.querySelector(':scope > summary')?.addEventListener('click',event=>{
+    event.preventDefault();state.workloadHistoricalDisclosure[state.workloadSessionProject]=!historical.open;render();document.querySelector('#workloadHistorical > summary')?.focus({preventScroll:true});
+  });
+  document.querySelectorAll('.runtime-root-card[data-runtime-root-key]').forEach(details=>{
+    const key=details.dataset.runtimeRootKey;if(!key.startsWith('['))return;
+    details.querySelector(':scope > summary')?.addEventListener('click',()=>{
+      state.workloadSessionDisclosure[key]=!details.open;
+      const id=JSON.parse(key)[1];if(!details.open&&!state.workloadSessionDetails[key])void loadWorkloadSessionDetail(id);
+    });
+  });
+  document.querySelectorAll('[data-session-page]').forEach(button=>button.addEventListener('click',()=>{
+    const page=Number(button.dataset.page);void loadWorkloadSessions(button.dataset.sessionPage==='active'?page:undefined,button.dataset.sessionPage==='historical'?page:undefined);
+  }));
+  document.querySelectorAll('[data-session-raw]').forEach(details=>details.querySelector(':scope > summary')?.addEventListener('click',()=>{state.workloadSessionRawDisclosure[details.dataset.sessionRaw]=!details.open;}));
+  document.querySelectorAll('[data-session-detail]').forEach(button=>button.addEventListener('click',()=>loadWorkloadSessionDetail(button.dataset.sessionDetail,Number(button.dataset.page||1))));
+}
+
 function workloadView() {
   const snapshot=state.snapshot||{}, w=snapshot.workload||{}, agents=w.agents||[], all=snapshot.all_items||{}, unassigned=w.unassigned_doing||[], released=w.released_holds||[];
-  const runtime=snapshot.runtime_observability||{}, attempts=runtime.attempts||[], findings=runtime.findings||[], hooks=runtime.hooks||[], rc=runtime.counts||{}, historyMeta=runtime.history||{};
-  const rootSessions=runtime.root_sessions||[], rootCounts=runtime.root_session_counts||{}, attemptRootMap=runtime.attempt_root_sessions||{};
-  const currentRoots=rootSessions.filter(r=>r.status==='active'||r.status==='needs_check');
-  const recentPreviousRoots=rootSessions.filter(r=>r.status==='terminal'||r.status==='inactive_terminal');
-  const findingsByAttempt={};
-  findings.forEach(row=>{if(row.attempt_id)(findingsByAttempt[row.attempt_id]??=[]).push(row)});
+  const runtime=snapshot.runtime_observability||{}, attempts=runtime.attempts||[], hooks=runtime.hooks||[];
   const latestByAgent={};
   attempts.forEach(attempt=>{if(attempt.agent_path&&!latestByAgent[attempt.agent_path])latestByAgent[attempt.agent_path]=attempt});
   const hookCards=hooks.map(runtimeHookCard).join('');
@@ -5703,28 +5853,9 @@ function workloadView() {
       <div class="runtime-hook-explainer"><strong>${esc(t('runtimeHookStatus'))}</strong><p>${esc(t('runtimeHookNote'))}</p><p class="runtime-hook-history-note">${esc(t('runtimeHookHistoryPreserved'))}</p></div>
       <div class="runtime-hook-list">${hookCards||'-'}</div>
     </div>
-    <div class="metrics runtime-metrics runtime-root-metrics">
-      <div class="metric"><strong>${Number(rootCounts.active||0)}</strong><span>${esc(t('runtimeRootActive'))}</span></div>
-      <div class="metric"><strong>${Number(rootCounts.needs_check||0)}</strong><span>${esc(t('runtimeRootNeedsCheck'))}</span></div>
-      <div class="metric"><strong>${Number(rootCounts.terminal||0)}</strong><span>${esc(t('runtimeRootPrevious'))}</span></div>
-      <div class="metric"><strong>${Number(rootCounts.cleanup_eligible||0)}</strong><span>${esc(t('runtimeRootCleanupEligible'))}</span></div>
-    </div>
-    <div class="runtime-storage-toolbar">
-      <button class="runtime-history-toggle" id="runtimeStorageToggle">${esc(state.runtimeStorageOpen?t('runtimeStorageClose'):t('runtimeStorageOpen'))}</button>
-    </div>
+    <div class="runtime-storage-toolbar"><button class="runtime-history-toggle" id="runtimeStorageToggle">${esc(state.runtimeStorageOpen?t('runtimeStorageClose'):t('runtimeStorageOpen'))}</button><span>${esc(state.project)}</span></div>
     ${runtimeStoragePanel()}
-    <div class="runtime-root-section">
-      <div class="runtime-attempt-section-head"><h3>${esc(t('runtimeRootSessions'))}</h3></div>
-      ${currentRoots.length?`<div class="runtime-root-stack">${currentRoots.map(root=>runtimeRootCard(root,attempts,findingsByAttempt,attemptRootMap)).join('')}</div>`:`<div class="runtime-empty compact">${esc(t('runtimeNoCurrentExecutions'))}</div>`}
-    </div>
-    <div class="runtime-root-section runtime-root-previous">
-      <div class="runtime-attempt-section-head">
-        <h3>${esc(t('runtimeRootPrevious'))} · ${Number(rootCounts.terminal||0)}</h3>
-        ${Number(rootCounts.terminal||0)>0?`<button class="runtime-history-toggle" id="runtimeRootListToggle">${esc(state.runtimeRootListOpen?t('runtimeRootHidePrevious'):t('runtimeRootShowPrevious'))}</button>`:''}
-      </div>
-      ${recentPreviousRoots.length?`<div class="runtime-root-stack">${recentPreviousRoots.map(root=>runtimeRootCard(root,attempts,findingsByAttempt,attemptRootMap)).join('')}</div>`:`<div class="runtime-empty compact">${esc(t('runtimeRootEmpty'))}</div>`}
-      ${runtimeRootListPanel()}
-    </div>
+    ${workloadSessionPanel()}
   </section>`;
 
   const doingTotal=agents.reduce((n,a)=>n+(a.doing_count||0),0), blockingTotal=agents.reduce((n,a)=>n+(a.blocking_count||0),0), continuityTotal=agents.reduce((n,a)=>n+(a.ready_candidate_count||0),0);
@@ -7327,12 +7458,13 @@ function render() {
     document.querySelectorAll('[data-runtime-root-page]').forEach(button=>{
       button.addEventListener('click',()=>loadRuntimeRootSessions(Number(button.dataset.runtimeRootPage||1)));
     });
+    bindWorkloadSessions();
     document.querySelectorAll('[data-runtime-root-cleanup]').forEach(button=>{
       button.addEventListener('click',e=>performRootSessionCleanup(e.currentTarget));
     });
     document.querySelectorAll('.runtime-root-card[data-runtime-root-key]').forEach(details=>{
       details.addEventListener('toggle',()=>{
-        state.runtimeRootDisclosure[details.dataset.runtimeRootKey]=details.open;
+        if(!details.dataset.runtimeRootKey.startsWith('['))state.runtimeRootDisclosure[details.dataset.runtimeRootKey]=details.open;
       });
     });
     document.querySelectorAll('[data-runtime-history-page]').forEach(button=>{
@@ -7693,6 +7825,8 @@ async function refreshOnce() {
     }
     return;
   }
+
+  if(targetView==='workload')await loadWorkloadSessions();
 
   if(targetView==='backlog'){
     // Deep links and reloads must show the selected Markdown before any
