@@ -116,12 +116,12 @@ func runRuntimeDiagnoseCLI(args []string,out,stderr io.Writer)int{
 			report.NativeLog=&native
 			add("codex_native_session_jsonl",native.Status,
 				fmt.Sprintf("event counts only: session_meta=%d task_started=%d turn_context=%d; token=%s",native.SessionMeta,native.TaskStarted,native.TurnContext,native.SourceToken))
-			if native.Status=="observed_native"&&native.TaskStarted>0&&enabled&&configured&&
-				(providerEvents==0||len(report.Attempts)==0){
+			if nativeObservationGap(native.Status,native.TaskStarted,enabled,configured,report.Attempts){
 				report.Diagnosis="native_hook_observation_gap"
 				report.Recovery=[]string{
 					"Codex native task_started exists for the exact session, but a matching canonical attempt/Hook observation was not confirmed.",
-					"Review actual Codex Hook settings and execution; start a new real session after fixing delivery, never synthesize lifecycle events.",
+					"Hook configuration is not delivery proof; the cause of the missing matching event is unknown. Inspect exact session event counts and collector diagnostics without changing hooks or injecting events.",
+					"Where the live T3 bridge is supported, observe the current exact role/parent/project/native episode and assignment with runtime observe-t3 --role controller|worker. Binding is separate from Hook delivery, handoff claim and applied. Do not create a replacement session solely for this diagnosis.",
 				}
 			}
 		}else{

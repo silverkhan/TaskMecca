@@ -21,6 +21,9 @@ func runRuntimeObserveT3CLI(args []string, out, stderr io.Writer) int {
 	assignment := f.String("assignment", "", "exact canonical Worker assignment; Controller START integration")
 	task := f.String("task-id", "", "exact task from START")
 	worker := f.String("worker-path", "", "exact internal Worker path from START")
+	role := f.String("role", "", "formal collection role: controller or worker; never implementation authorization")
+	agentPath := f.String("agent-path", "", "exact assigned role path for formal collection")
+	parent := f.String("parent-thread-id", "", "exact managed parent verified against the live host store")
 	phase := f.String("phase", "requirements_started", "actual current Worker phase reminder only; never records Activity")
 	source := f.String("source-worktree", "", "source cwd, never the canonical ledger destination")
 	dry := f.Bool("dry-run", false, "verify actual source without writing any project ledger")
@@ -33,8 +36,13 @@ func runRuntimeObserveT3CLI(args []string, out, stderr io.Writer) int {
 		return 2
 	}
 	sel := runtimeobs.T3Selector{ThreadID: *thread, SessionID: *session, RuntimeAgentID: *agent, RunID: *run}
-	startMode := *assignment != "" || *task != "" || *worker != "" || *source != ""
-	if startMode && (*assignment == "" || *task == "" || *worker == "" || *source == "" || *project == ".") {
+	formalMode := *role != "" || *agentPath != "" || *parent != ""
+	startMode := *assignment != "" || *task != "" || *worker != "" || *source != "" || formalMode
+	if formalMode && (*worker != "" || (*role != "controller" && *role != "worker") || *agentPath == "" || *parent == "") {
+		fmt.Fprintln(stderr, "formal collection requires --role controller|worker --agent-path EXACT --parent-thread-id EXACT; do not mix --worker-path")
+		return 2
+	}
+	if startMode && (*assignment == "" || *task == "" || (!formalMode && *worker == "") || *source == "" || *project == ".") {
 		fmt.Fprintln(stderr, "START integration requires explicit --project --assignment --task-id --worker-path --source-worktree")
 		return 2
 	}
@@ -47,6 +55,10 @@ func runRuntimeObserveT3CLI(args []string, out, stderr io.Writer) int {
 		}
 	}
 	if *dry {
+		if formalMode {
+			fmt.Fprintln(stderr, "formal role collection dry-run is unsupported; use read-only runtime query/diagnose and exact official host reads. No binding was attempted.")
+			return 2
+		}
 		receipt, err := runtimeobs.ReadT3Execution(sel, time.Now())
 		if err != nil {
 			fmt.Fprintln(stderr, err)
@@ -55,13 +67,34 @@ func runRuntimeObserveT3CLI(args []string, out, stderr io.Writer) int {
 		return writeT3Result(out, *asJSON, map[string]any{"verified": true, "written": false, "receipt": receipt})
 	}
 	if startMode {
-		result, err := runtimeobs.ObserveT3WorkerStart(runtimeobs.WorkerStart{CanonicalProject: *project, SourceWorktree: *source, TaskID: *task, AssignmentID: *assignment, WorkerPath: *worker, Selector: sel}, time.Now())
+		var result runtimeobs.WorkerStartResult
+		var err error
+		if formalMode {
+			result, err = runtimeobs.ObserveT3RoleStart(runtimeobs.RoleStart{CanonicalProject: *project, SourceWorktree: *source, TaskID: *task, AssignmentID: *assignment, Role: *role, AgentPath: *agentPath, ParentThreadID: *parent, Selector: sel}, time.Now())
+		} else {
+			result, err = runtimeobs.ObserveT3WorkerStart(runtimeobs.WorkerStart{CanonicalProject: *project, SourceWorktree: *source, TaskID: *task, AssignmentID: *assignment, WorkerPath: *worker, Selector: sel}, time.Now())
+		}
 		response := map[string]any{"verified": err == nil, "worker_start": result, "binding_verified": err == nil, "activity_written": false}
+		if formalMode {
+			delete(response, "worker_start")
+			response["role_start"] = result
+			response["role"] = *role
+			response["implementation_authorized"] = false
+			response["handoff_claimed"] = false
+		}
 		if err != nil {
 			response["collection_gap"] = err.Error()
 			response["next_action"] = "Controller: diagnose exact identity/binding, retry current START; Worker: report current phase only after exact bound query. Partial observation may have persisted."
+			if !formalMode && *worker == "/root/controller" {
+				response["failure_kind"] = "worker_role_path_mismatch"
+				response["next_action"] = "Controller is not a Worker child. Retain this original error; use formal --role controller --agent-path /root/controller --parent-thread-id EXACT_PARENT_T3 with the exact existing assignment and source cwd. Opaque T3 IDs are not required to be UUIDs. No binding, Hook delivery or claim is implied."
+			}
 			writeT3Result(out, *asJSON, response)
 			return 1
+		}
+		if formalMode && *role == "controller" {
+			response["next_action"] = "Operational Controller binding only. Query exact attempt, recover the SAME existing handoff, directly deliver, then claim using supported current context. Delivery/steered is not claim/applied; Worker implementation authorization remains separate."
+			return writeT3Result(out, *asJSON, response)
 		}
 		reporting := activity.CheckReporting(result.Context.CanonicalProject, *task, activity.RoleWorker, result.Attempt.AttemptID, *assignment, "", *phase, time.Now())
 		response["activity_reporting"] = reporting
