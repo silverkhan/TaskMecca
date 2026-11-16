@@ -152,8 +152,6 @@ These observations authorize no automatic dispatch, approval or completion.
 
 Legacy Worker paths remain supported for exact assignment/runtime correlation and
 real matching completion reports. A terminal hook without a report retains its
-collection gap. The historical pending-only presentation exception is not used:
-its inherited test also requires an empty recovery queue, which would erase that
-owner's actual collection gap. That protected historical assertion remains
-unchanged and is reported as an explicit compatibility conflict, rather than
-weakening report gates or manufacturing DONE evidence.
+owner-aware collection gap; it cannot provide a pending-review or DONE fact.
+The legacy terminal-only regression verifies that distinction across runtime,
+coordination and task detail without manufacturing a completion report.
