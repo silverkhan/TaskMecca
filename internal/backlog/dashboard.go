@@ -28,7 +28,7 @@ func dashboardItem(row Record, stateName string, waiting []string, timing map[st
     if row.State=="done" { itemTime=toString(valueOr(timing["duration"],"-")) }
     return map[string]any{
         "id":row.ID,"sort_key":row.SortKey,"title":row.Title,"state":stateName,
-        "file_state":row.State,"location":row.Location,"archive_month":row.ArchiveMonth,
+        "file_state":row.State,"business_state":listBusinessState(row.State,stateName),"location":row.Location,"archive_month":row.ArchiveMonth,
         "path":row.Path,"mtime":row.Mtime,"updated_at":updatedAt,
         "agent":assignment["agent"],"assignment_kind":assignment["assignment_kind"],
         "hold_audit":assignment["hold_audit"],"candidate_agents":topAgents,
