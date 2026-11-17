@@ -244,12 +244,33 @@ type workflowGapSource struct {
 	evidence      WorkflowGapEvidence
 }
 
+// Lifecycle wait intervals are task-global candidates. Only unique endpoint
+// facts for the same exact actor, execution and assignment support a role wait.
+// A logical role name alone cannot pair different native episodes.
+func workflowWaitPair(task string, v WaitInterval, facts map[string][]LifecycleFact, now time.Time) (LifecycleFact, string) {
+	from, to := facts[v.FromEventID], facts[v.ToEventID]
+	if v.FromEventID == "" || v.ToEventID == "" || v.FromEventID == v.ToEventID || len(from) != 1 || len(to) != 1 {
+		return LifecycleFact{}, "wait/resume endpoints are missing or ambiguous"
+	}
+	a, b := from[0], to[0]
+	if a.TaskID != task || b.TaskID != task || a.EventID != v.FromEventID || b.EventID != v.ToEventID || a.Kind != "waiting" || b.Kind != "resumed" || a.OccurredAt.IsZero() || b.OccurredAt.IsZero() || !a.OccurredAt.Equal(v.StartedAt) || !b.OccurredAt.Equal(v.EndedAt) || !b.OccurredAt.After(a.OccurredAt) || b.OccurredAt.After(now) {
+		return a, "wait/resume task, kind or original time boundary does not match"
+	}
+	if a.Actor == "" || a.Actor != b.Actor || !Role(workflowActorRole(a.Actor)).Valid() {
+		return a, "wait/resume actor identity is missing, unsupported or different"
+	}
+	if a.AttemptID == "" || a.AttemptID != b.AttemptID || a.AssignmentID == "" || a.AssignmentID != b.AssignmentID {
+		return a, "wait/resume exact attempt or assignment evidence is missing or different"
+	}
+	return a, ""
+}
+
 func workflowGapEvidence(in WorkflowInput, w *Workflow) {
 	sources := []workflowGapSource{}
-	actors := map[string]string{}
+	facts := map[string][]LifecycleFact{}
 	for _, f := range in.Facts {
 		if f.TaskID == in.TaskID {
-			actors[f.EventID] = f.Actor
+			facts[f.EventID] = append(facts[f.EventID], f)
 		}
 	}
 	paths := map[string]string{}
@@ -261,7 +282,12 @@ func workflowGapEvidence(in WorkflowInput, w *Workflow) {
 	}
 	for _, v := range w.Lifecycle.Intervals {
 		if v.Kind == "explicit_wait" {
-			sources = append(sources, workflowGapSource{start: v.StartedAt, end: v.EndedAt, status: "confirmed_wait", agent: actors[v.FromEventID], evidence: WorkflowGapEvidence{Source: "reported_lifecycle", ObservedAt: v.StartedAt, EventID: v.FromEventID, Reason: "Explicit waiting report bounded by its resume report; no active work inferred"}})
+			from, rejected := workflowWaitPair(in.TaskID, v, facts, in.Now)
+			status, reason := "confirmed_wait", "Explicit waiting/resume reports match the same actor, exact attempt and assignment; no active work inferred"
+			if rejected != "" {
+				status, reason = "unmeasured", "Task-global wait candidate is not a confirmed role wait: "+rejected
+			}
+			sources = append(sources, workflowGapSource{start: v.StartedAt, end: v.EndedAt, status: status, agent: from.Actor, evidence: WorkflowGapEvidence{Source: "reported_lifecycle", ObservedAt: v.StartedAt, EventID: v.FromEventID, AttemptID: from.AttemptID, Reason: reason}})
 		}
 	}
 	for _, a := range workflowObservedAttempts(in) {
@@ -275,12 +301,15 @@ func workflowGapEvidence(in WorkflowInput, w *Workflow) {
 		}
 		sources = append(sources, workflowGapSource{start: start, end: end, status: "native_observed", agent: a.RuntimeAgentID, evidence: WorkflowGapEvidence{Source: string(a.StateEvidenceSource), ObservedAt: end, AttemptID: a.AttemptID, Reason: "Native execution observed; activity within this range is unmeasured, not idle or measured work"}})
 	}
-	classify := func(gaps []WorkflowGap, agent string) []WorkflowGap {
+	classify := func(gaps []WorkflowGap, agent string, attempts map[string]bool) []WorkflowGap {
+		applies := func(s workflowGapSource) bool {
+			return matches(agent, s.agent) && (agent == "" || s.status != "confirmed_wait" || attempts[s.evidence.AttemptID])
+		}
 		out := []WorkflowGap{}
 		for _, g := range gaps {
 			cuts := []time.Time{g.Start, g.End}
 			for _, s := range sources {
-				if !matches(agent, s.agent) {
+				if !applies(s) {
 					continue
 				}
 				for _, at := range []time.Time{s.start, s.end} {
@@ -296,7 +325,7 @@ func workflowGapEvidence(in WorkflowInput, w *Workflow) {
 				}
 				piece := WorkflowGap{Start: cuts[i-1], End: cuts[i], Kind: "activity_unmeasured", Status: "unmeasured", Evidence: []WorkflowGapEvidence{{Source: "activity_ledger", ObservedAt: in.Now, Reason: "No closed measured Activity covers this span; insufficient evidence to infer activity or inactivity"}}}
 				for _, s := range sources {
-					if !matches(agent, s.agent) {
+					if !applies(s) {
 						continue
 					}
 					if !s.start.After(piece.Start) && !s.end.Before(piece.End) {
@@ -319,12 +348,23 @@ func workflowGapEvidence(in WorkflowInput, w *Workflow) {
 		}
 		return out
 	}
-	w.Unmeasured = classify(w.Unmeasured, "")
+	w.Unmeasured = classify(w.Unmeasured, "", nil)
 	if w.Axis.Start == nil || w.Axis.End == nil {
 		return
 	}
 	for i := range w.Rows {
 		r := &w.Rows[i]
+		attempts := map[string]bool{}
+		for _, v := range r.Intervals {
+			if v.AttemptID != "" {
+				attempts[v.AttemptID] = true
+			}
+		}
+		for _, f := range r.RoleFacts {
+			if f.AttemptID != "" {
+				attempts[f.AttemptID] = true
+			}
+		}
 		lo, hi := *w.Axis.Start, *w.Axis.End
 		if r.Round != nil && *r.Round >= 0 && *r.Round < len(w.Rounds) {
 			if w.Rounds[*r.Round].StartedAt.After(lo) {
@@ -356,7 +396,7 @@ func workflowGapEvidence(in WorkflowInput, w *Workflow) {
 		if cursor.Before(hi) {
 			gaps = append(gaps, WorkflowGap{Start: cursor, End: hi})
 		}
-		r.Gaps = classify(gaps, r.AgentID)
+		r.Gaps = classify(gaps, r.AgentID, attempts)
 	}
 }
 
