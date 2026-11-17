@@ -894,7 +894,9 @@ func deliverOperationIncidents(project string, journal operationJournal) {
 	current.ExecutionEvidence = operationExecutionLoader(project, ledger, time.Now().UTC(), true)
 	// Official I/O can race canonical resolution or policy/native changes.
 	// Reload the same shared pure projection, then retain only unchanged exact
-	// identities. This is a separate boundary revalidation, not owner inference.
+	// identities and execution states. The same attempt can complete or resume
+	// during official I/O; its earlier state must not authorize an obsolete
+	// action. This is a separate boundary revalidation, not owner inference.
 	latest, err := runtimeobs.BuildLedger(project, 3, time.Now().UTC())
 	if err != nil {
 		return
@@ -902,7 +904,7 @@ func deliverOperationIncidents(project string, journal operationJournal) {
 	check := operationExecutionLoader(project, latest, time.Now().UTC(), false)
 	for task, s := range current.ExecutionEvidence {
 		other, ok := check[task]
-		if !ok || !other.Matched || !reflect.DeepEqual(s.Identity, other.Identity) || s.AttemptID != other.AttemptID {
+		if !ok || !other.Matched || !reflect.DeepEqual(s.Identity, other.Identity) || s.AttemptID != other.AttemptID || s.State != other.State {
 			delete(current.ExecutionEvidence, task)
 		}
 	}

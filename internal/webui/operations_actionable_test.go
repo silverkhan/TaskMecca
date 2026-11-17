@@ -244,3 +244,97 @@ func TestA83DeliveryRevalidatesResolutionStateAndIdentityAndRetryID(t *testing.T
 		})
 	}
 }
+
+func TestA83IndependentDeliveryRejectsLatestCompletedState(t *testing.T) {
+	project := testOperationProject(t)
+	path := filepath.Join(project, "_task_mecca/data/backlog/000083.A-83.fixture.hold.md")
+	if err := os.WriteFile(path, []byte("# A-83 fixture\n- Agent: /root/controller/worker\n- 대기유형: user\n- 대기: Repository access denied; owner approval required\n- 재개조건: Repository owner: grant the requested read permission\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	rows, available := operationCanonicalRows(project)
+	j := operationJournal{Project: project, Version: 1}
+	reconcileOperationActions(&j, rows, available, time.Now().UTC())
+	if len(j.Actions) != 1 {
+		t.Fatal("fixture action unavailable")
+	}
+	if err := writeOperationJournal(project, j); err != nil {
+		t.Fatal(err)
+	}
+	oldLoader, oldDeliver := operationExecutionLoader, operationDeliver
+	defer func() { operationExecutionLoader = oldLoader; operationDeliver = oldDeliver }()
+	operationExecutionLoader = func(_ string, _ runtimeobs.Ledger, at time.Time, refresh bool) map[string]runtimeobs.CurrentExecutionSnapshot {
+		state := runtimeobs.StateRunning
+		if !refresh {
+			state = runtimeobs.StateCompleted
+		}
+		return a83Evidence(at, state)
+	}
+	delivered := 0
+	operationDeliver = func(_ string, events []notify.Event) []error { delivered += len(events); return nil }
+	deliverOperationIncidents(project, j)
+	if delivered != 0 {
+		t.Fatalf("delivered %d obsolete action despite latest same-identity/attempt state=completed", delivered)
+	}
+}
+
+func TestA83DeliveryRequiresStableLatestExecutionState(t *testing.T) {
+	for _, tc := range []struct {
+		name             string
+		official, latest runtimeobs.CanonicalState
+		wantKind         string
+	}{
+		{"completed during boundary", runtimeobs.StateRunning, runtimeobs.StateCompleted, ""},
+		{"error during boundary", runtimeobs.StateRunning, runtimeobs.StateErrored, ""},
+		{"interrupted during boundary", runtimeobs.StateRunning, runtimeobs.StateInterrupted, ""},
+		{"approval during boundary", runtimeobs.StateRunning, runtimeobs.StateWaitingApproval, ""},
+		{"unknown during boundary", runtimeobs.StateRunning, runtimeobs.StateRuntimeUnknown, ""},
+		{"approval resumed", runtimeobs.StateWaitingApproval, runtimeobs.StateRunning, ""},
+		{"error recovered", runtimeobs.StateErrored, runtimeobs.StateRunning, ""},
+		{"stable running real blocker", runtimeobs.StateRunning, runtimeobs.StateRunning, "intervention"},
+		{"stable confirmed error", runtimeobs.StateErrored, runtimeobs.StateErrored, "interrupted"},
+		{"stable confirmed interruption", runtimeobs.StateInterrupted, runtimeobs.StateInterrupted, "interrupted"},
+		{"stable approval", runtimeobs.StateWaitingApproval, runtimeobs.StateWaitingApproval, "approval"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			project := testOperationProject(t)
+			path := filepath.Join(project, "_task_mecca/data/backlog/000083.A-83.fixture.hold.md")
+			if err := os.WriteFile(path, []byte("# A-83 fixture\n- Agent: /root/controller/worker\n- 대기유형: user\n- 대기: Owner permission required\n- 재개조건: Owner: approve requested access\n"), 0600); err != nil {
+				t.Fatal(err)
+			}
+			rows, available := operationCanonicalRows(project)
+			original := operationIncident{ID: "original-source", TaskID: "A-83", Kind: "no_signal", Quality: "verification_required", Severity: "warning", Evidence: "original observation gap"}
+			j := operationJournal{Project: project, Version: 1, Incidents: []operationIncident{original}}
+			reconcileOperationActions(&j, rows, available, time.Now().UTC())
+			if len(j.Actions) != 1 {
+				t.Fatal("fixture human cause unavailable")
+			}
+			actionID := j.Actions[0].ID
+			if err := writeOperationJournal(project, j); err != nil {
+				t.Fatal(err)
+			}
+			oldLoader, oldDeliver := operationExecutionLoader, operationDeliver
+			defer func() { operationExecutionLoader = oldLoader; operationDeliver = oldDeliver }()
+			operationExecutionLoader = func(_ string, _ runtimeobs.Ledger, at time.Time, refresh bool) map[string]runtimeobs.CurrentExecutionSnapshot {
+				state := tc.latest
+				if refresh {
+					state = tc.official
+				}
+				return a83Evidence(at, state) // identical identity and attempt on both reads
+			}
+			var events []notify.Event
+			operationDeliver = func(_ string, batch []notify.Event) []error { events = append(events, batch...); return nil }
+			deliverOperationIncidents(project, j)
+			if tc.wantKind == "" {
+				if len(events) != 0 {
+					t.Fatalf("state changed %s -> %s but sent obsolete action %+v", tc.official, tc.latest, events)
+				}
+			} else if len(events) != 1 || events[0].Kind != tc.wantKind || events[0].ID != actionID || events[0].Message == "" || events[0].ResumeCondition == "" {
+				t.Fatalf("stable real human action semantics lost: %+v", events)
+			}
+			stored, err := readOperationJournal(project)
+			if err != nil || len(stored.Incidents) != 1 || !reflect.DeepEqual(stored.Incidents[0], original) || len(stored.Actions) != 1 || stored.Actions[0].ID != actionID || stored.Actions[0].ResolvedAt != "" {
+				t.Fatalf("boundary rejection changed source or fabricated human-cause resolution: %+v %v", stored, err)
+			}
+		})
+	}
+}
