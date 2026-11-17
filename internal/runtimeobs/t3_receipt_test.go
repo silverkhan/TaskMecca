@@ -2,7 +2,9 @@ package runtimeobs
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -13,6 +15,42 @@ import (
 	"time"
 )
 
+func TestT3CurrentExecutionContextCancelsAndReapsChild(t *testing.T) {
+	dir := t.TempDir()
+	for _, name := range []string{"statev2.sqlite", "server-owner.sqlite"} {
+		if err := os.WriteFile(filepath.Join(dir, name), nil, 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	bin := t.TempDir()
+	pidPath := filepath.Join(bin, "pid")
+	// exec ensures the actual SQL replacement is the owned child, so its PID
+	// must be reaped when CommandContext returns, not an abandoned grandchild.
+	script := "#!/bin/sh\necho $$ > '" + pidPath + "'\nexec /bin/sleep 10\n"
+	if err := os.WriteFile(filepath.Join(bin, "sqlite3"), []byte(script), 0700); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
+	base := t3Store{dir: dir}
+	ctx, cancel := context.WithTimeout(context.Background(), 750*time.Millisecond)
+	defer cancel()
+	start := time.Now()
+	_, err := base.withContext(ctx).query("SELECT 1")
+	if !errors.Is(err, context.DeadlineExceeded) || time.Since(start) > 2*time.Second || base.ctx != nil {
+		t.Fatalf("deadline/copy failed: %v elapsed %v", err, time.Since(start))
+	}
+	pid, err := os.ReadFile(pidPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if exec.Command("/bin/kill", "-0", strings.TrimSpace(string(pid))).Run() == nil {
+		t.Fatal("cancelled SQL child still exists")
+	}
+	if base.withContext(nil).ctx != nil {
+		t.Fatal("legacy nil context changed")
+	}
+}
+
 func t3Fixture(t *testing.T) (t3Store, func(string)) {
 	t.Helper()
 	if _, err := exec.LookPath("sqlite3"); err != nil {
@@ -22,7 +60,7 @@ func t3Fixture(t *testing.T) (t3Store, func(string)) {
 	if err := os.MkdirAll(dir, 0700); err != nil {
 		t.Fatal(err)
 	}
-	store := t3Store{dir}
+	store := t3Store{dir: dir}
 	sql := func(q string) {
 		t.Helper()
 		out, err := exec.Command("sqlite3", filepath.Join(dir, "statev2.sqlite"), q).CombinedOutput()
@@ -193,7 +231,7 @@ func TestT3ArbitraryJSONCannotAuthorizeAndDeadOwnerCannotObserve(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	_, err := (t3Store{dir}).read(sel, false, time.Now())
+	_, err := (t3Store{dir: dir}).read(sel, false, time.Now())
 	if err == nil || !strings.Contains(err.Error(), "ownership") {
 		t.Fatalf("owner=%v", err)
 	}

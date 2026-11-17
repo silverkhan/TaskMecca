@@ -1,6 +1,7 @@
 package runtimeobs
 
 import (
+	"context"
 	"path/filepath"
 	"strings"
 	"time"
@@ -21,23 +22,26 @@ type CurrentExecutionIdentity struct {
 // CurrentExecutionSnapshot keeps observation freshness separate from task
 // progress. Running is not proof of progress or absence of a human blocker.
 type CurrentExecutionSnapshot struct {
-	Identity        CurrentExecutionIdentity `json:"identity"`
-	AttemptID       string                   `json:"attempt_id,omitempty"`
-	SessionID       string                   `json:"session_id,omitempty"`
-	RuntimeAgentID  string                   `json:"runtime_agent_id,omitempty"`
-	TurnID          string                   `json:"turn_id,omitempty"`
-	Receipt         *T3Receipt               `json:"receipt,omitempty"`
-	State           CanonicalState           `json:"state"`
-	Source          EvidenceSource           `json:"source,omitempty"`
-	ObservedAt      string                   `json:"observed_at,omitempty"`
-	ProgressAt      string                   `json:"progress_at,omitempty"`
-	WaitReason      string                   `json:"wait_reason,omitempty"`
-	Matched         bool                     `json:"matched"`
-	Fresh           bool                     `json:"fresh"`
-	OfficialCurrent bool                     `json:"official_current"`
-	FailedStage     string                   `json:"failed_stage,omitempty"`
-	ActionOwner     string                   `json:"action_owner,omitempty"`
-	Limitation      string                   `json:"limitation,omitempty"`
+	ImplementationAgentPath string                   `json:"implementation_agent_path,omitempty"`
+	ReviewAgentPath         string                   `json:"review_agent_path,omitempty"`
+	ReviewNativeID          string                   `json:"review_native_id,omitempty"`
+	Identity                CurrentExecutionIdentity `json:"identity"`
+	AttemptID               string                   `json:"attempt_id,omitempty"`
+	SessionID               string                   `json:"session_id,omitempty"`
+	RuntimeAgentID          string                   `json:"runtime_agent_id,omitempty"`
+	TurnID                  string                   `json:"turn_id,omitempty"`
+	Receipt                 *T3Receipt               `json:"receipt,omitempty"`
+	State                   CanonicalState           `json:"state"`
+	Source                  EvidenceSource           `json:"source,omitempty"`
+	ObservedAt              string                   `json:"observed_at,omitempty"`
+	ProgressAt              string                   `json:"progress_at,omitempty"`
+	WaitReason              string                   `json:"wait_reason,omitempty"`
+	Matched                 bool                     `json:"matched"`
+	Fresh                   bool                     `json:"fresh"`
+	OfficialCurrent         bool                     `json:"official_current"`
+	FailedStage             string                   `json:"failed_stage,omitempty"`
+	ActionOwner             string                   `json:"action_owner,omitempty"`
+	Limitation              string                   `json:"limitation,omitempty"`
 }
 
 func executionDiagnostic(s CurrentExecutionSnapshot, stage, limitation string) CurrentExecutionSnapshot {
@@ -134,7 +138,23 @@ func EvaluateCurrentExecution(id CurrentExecutionIdentity, attempts []Attempt, n
 // RefreshCurrentExecution makes at most one read, with the selected exact run
 // pinned. It never appends runtime/Activity evidence, renames or updates usage.
 func RefreshCurrentExecution(s CurrentExecutionSnapshot, now time.Time) CurrentExecutionSnapshot {
-	return refreshCurrentExecution(s, now, ReadT3Execution)
+	return RefreshCurrentExecutionContext(context.Background(), s, now)
+}
+
+// RefreshCurrentExecutionContext inherits one caller deadline into the real
+// SQLite child processes. No background reader survives a cancelled request.
+func RefreshCurrentExecutionContext(ctx context.Context, s CurrentExecutionSnapshot, now time.Time) CurrentExecutionSnapshot {
+	return refreshCurrentExecution(s, now, func(sel T3Selector, at time.Time) (T3Receipt, error) {
+		if err := ctx.Err(); err != nil {
+			return T3Receipt{}, err
+		}
+		store, err := localT3Store()
+		if err != nil {
+			return T3Receipt{}, err
+		}
+		store.ctx = ctx
+		return store.read(sel, false, at)
+	})
 }
 
 func refreshCurrentExecution(s CurrentExecutionSnapshot, now time.Time, read func(T3Selector, time.Time) (T3Receipt, error)) CurrentExecutionSnapshot {

@@ -39,14 +39,24 @@ type T3Receipt struct {
 // No T3 database path, SQL or state is supplied by the CLI caller. The live
 // server's exclusive owner lock is required so an abandoned running projection
 // cannot authorize execution. Unsupported stores fail closed.
-type t3Store struct{ dir string }
+type t3Store struct {
+	dir string
+	ctx context.Context
+}
+
+// withContext returns an immutable request-scoped copy. A nil context keeps
+// legacy readers' default three-second bound; no global reader is changed.
+func (s t3Store) withContext(ctx context.Context) t3Store {
+	s.ctx = ctx
+	return s
+}
 
 func localT3Store() (t3Store, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return t3Store{}, err
 	}
-	return t3Store{filepath.Join(home, ".t3", "userdata")}, nil
+	return t3Store{dir: filepath.Join(home, ".t3", "userdata")}, nil
 }
 func (s t3Store) query(sql string) ([]byte, error) {
 	for _, name := range []string{"statev2.sqlite", "server-owner.sqlite"} {
@@ -56,11 +66,18 @@ func (s t3Store) query(sql string) ([]byte, error) {
 			return nil, fmt.Errorf("T3 source unavailable or unsafe: %s", name)
 		}
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	parent := s.ctx
+	if parent == nil {
+		parent = context.Background()
+	}
+	ctx, cancel := context.WithTimeout(parent, 3*time.Second)
 	defer cancel()
 	// T3 holds this database exclusively for the lifetime of its server.
 	owner := exec.CommandContext(ctx, "sqlite3", "-readonly", filepath.Join(s.dir, "server-owner.sqlite"), "SELECT count(*) FROM sqlite_master;")
 	output, err := owner.CombinedOutput()
+	if ctx.Err() != nil {
+		return nil, ctx.Err()
+	}
 	if err == nil || !strings.Contains(string(output), "database is locked") {
 		return nil, errors.New("T3 live server ownership lock not verified")
 	}
