@@ -83,3 +83,16 @@ test('shipped CSS paints actual segments, never an opaque role run, and supports
   assert.match(css,/\.wf-type-unknown\s*\{[^}]*--wf-type-color/);assert.match(css,/workflow-state-unmeasured[^{]*\{[^}]*repeating-linear-gradient/);assert.match(css,/@media\s*\(forced-colors:\s*active\)/);assert.match(css,/workflow-type-swatch/);
   assert.match(css,/\.workflow-run \.workflow-interval>span\s*\{[^}]*background:var\(--wf-type-color/,'visible text has solid type backing instead of low-contrast pattern strokes');assert.match(css,/\.workflow-run \.wf-kind-activity_open>span\s*\{[^}]*background:var\(--surface\)/,'open labels retain theme text contrast');
 });
+
+test('palette paint stays inside original source capsules when the view clips both endpoints',()=>{
+ const a=page(),data=freeze(fixture()),wf=data.workflow,before=JSON.stringify(data),prefs=a.activityDetailPrefs('FLOW-1'),start=Date.parse(wf.axis.start);
+ a.workflowSetWindow(wf,prefs,start+180000,start+240000);
+ const html=a.workflowPlotHTML(wf,prefs,false),run=html.match(/<div class="workflow-run wf-role-worker"[^>]*data-workflow-from-ns="([^"]*)" data-workflow-to-ns="([^"]*)" style="left:([^;]*)%;width:([^;]*)%[^>]*><div class="workflow-run-surface[^"]*"[^>]*>([\s\S]*?)<\/div>/);
+ assert.ok(run,'production DOM keeps the capsule directly inside its full source wrapper');
+ assert.equal(BigInt(run[1]),BigInt(start)*1000000n);assert.equal(BigInt(run[2]),BigInt(start+660000)*1000000n);
+ for(const plotWidth of [181.875,672.8]){const left=Number(run[3])/100*plotWidth,right=(Number(run[3])+Number(run[4]))/100*plotWidth;assert.ok(left<0&&right>plotWidth,'source capsule endpoints remain outside clipped viewport, not fabricated rounded window ends');}
+ const paints=[...run[5].matchAll(/workflow-type-paint wf-type-([^" ]+)" style="left:([\d.eE+-]+)%;width:([\d.eE+-]+)%/g)];assert.equal(paints.length,11);
+ paints.forEach((paint,index)=>{assert.ok(Math.abs(Number(paint[2])-index/11*100)<1e-9);assert.ok(Math.abs(Number(paint[3])-100/11)<1e-9);});
+ assert.match(css,/\.workflow-run-surface\s*\{[^}]*left:0;right:0;/,'capsule stretches over the source wrapper, not the viewport');
+ assert.equal(JSON.stringify(data),before,'source timestamps, overlap, metrics, gaps and events remain unchanged');
+});
