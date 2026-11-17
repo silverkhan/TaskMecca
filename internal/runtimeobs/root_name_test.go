@@ -180,3 +180,58 @@ func TestA75UnsupportedT3StoreFailsClosed(t *testing.T) {
 		t.Fatal("unsupported schema accepted")
 	}
 }
+
+func TestA84OfficialHostAndNativeFallbackContract(t *testing.T) {
+	oldNative, oldHost := resolveCodexThreadMetadata, resolveT3RootTitle
+	t.Cleanup(func() { resolveCodexThreadMetadata = oldNative; resolveT3RootTitle = oldHost })
+	for _, tc := range []struct {
+		name, hostTitle, nativeID, nativeName      string
+		hostErr, nativeErr                         bool
+		wantName, wantSource, wantStatus, wantHost string
+		wantIdentity                               bool
+	}{
+		{"host-wins", "official host", "native", "native candidate", false, false, "official host", "t3_title", "verified", "verified", true},
+		{"native-fallback", "", "native", "native candidate", true, false, "native candidate", "provider_name", "verified", "unavailable", false},
+		{"empty-host-native-candidate", "", "native", "native candidate", false, false, "native candidate", "provider_name", "verified", "empty", true},
+		{"both-unavailable", "", "native", "", true, true, "", "task_mecca_fallback", "unavailable", "unavailable", false},
+		{"empty-native", "", "native", "", true, false, "", "task_mecca_fallback", "unavailable", "unavailable", false},
+		{"wrong-native", "", "other-native", "foreign name", true, false, "", "task_mecca_fallback", "unavailable", "unavailable", false},
+		{"host-survives-native-failure", "official host", "native", "", false, true, "official host", "t3_title", "verified", "verified", true},
+		{"empty-both", "", "native", "", false, false, "", "task_mecca_fallback", "empty", "empty", true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			project := t.TempDir()
+			now := time.Now().UTC()
+			ctx, cancel := context.WithTimeout(context.Background(), 250*time.Millisecond)
+			defer cancel()
+			resolveT3RootTitle = func(got context.Context, p, id string, _ time.Time) (t3RootTitle, error) {
+				if got != ctx || p != project || id != "native" {
+					t.Fatal("host context/identity changed")
+				}
+				if tc.hostErr {
+					return t3RootTitle{}, errors.New("fixture host unavailable")
+				}
+				return t3RootTitle{ThreadID: "host-thread", ProjectID: "host-project", Title: tc.hostTitle, IdentityVerified: true}, nil
+			}
+			resolveCodexThreadMetadata = func(got context.Context, id string) (CodexThreadMetadata, error) {
+				if got != ctx || id != "native" {
+					t.Fatal("native context/identity changed")
+				}
+				if tc.nativeErr {
+					return CodexThreadMetadata{}, errors.New("fixture native unavailable")
+				}
+				return CodexThreadMetadata{ID: tc.nativeID, Name: tc.nativeName}, nil
+			}
+			got := observeRootNameContext(ctx, project, "native", now).displaySnapshot()
+			if got.Name != tc.wantName || got.Source != tc.wantSource || got.Status != tc.wantStatus || got.HostStatus != tc.wantHost || got.IdentityVerified != tc.wantIdentity {
+				t.Fatalf("name provenance=%+v", got)
+			}
+			if tc.wantSource == "task_mecca_fallback" && got.Name != "" {
+				t.Fatal("lookup failure invented a title")
+			}
+			if tc.hostErr && got.Failure == "" {
+				t.Fatal("host failure was concealed by fallback")
+			}
+		})
+	}
+}

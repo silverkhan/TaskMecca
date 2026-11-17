@@ -881,9 +881,7 @@ func TestRuntimeRootSessionAPIAndCleanup(t *testing.T) {
 		}
 		if row["cleanup_eligible"] == true {
 			cleanupID, _ = row["root_session_id"].(string)
-			if row["display_name_source"] != "task_mecca_fallback" || row["display_name_status"] != "unavailable" || row["display_name"] == "오래된 Root" || !strings.HasPrefix(row["display_name"].(string), "Root · ") {
-				t.Fatalf("cleanup row=%+v", row)
-			}
+			assertA84UnavailableNativeSessionName(t, row, old)
 			if row["storage_bytes"].(float64) <= 0 {
 				t.Fatalf("storage bytes missing: %+v", row)
 			}
@@ -1314,4 +1312,54 @@ func TestRuntimeUnknownWarningPolicyContract(t *testing.T) {
 			t.Fatalf("runtime warning policy marker missing: %s", marker)
 		}
 	}
+}
+
+// Shared by the remote cleanup test and the safe local display-only fixture.
+// A native storage group is not a verified Root merely because its old name
+// contained Root. Keep unavailable-name and role provenance explicit.
+func assertA84UnavailableNativeSessionName(t *testing.T, row map[string]any, createdAt time.Time) {
+	t.Helper()
+	expected := "Session · " + createdAt.Local().Format("2006-01-02 15:04")
+	if row["display_name"] != expected || row["display_name_source"] != "task_mecca_fallback" || row["display_name_status"] != "unavailable" || row["host_name_status"] != "unavailable" || row["role"] != "unknown" || row["relation_status"] != "unverified" {
+		t.Fatalf("unverified native session display=%+v, expected name=%q", row, expected)
+	}
+}
+
+func TestA84UnavailableNativeSessionDisplayOnlyFixture(t *testing.T) {
+	project := t.TempDir()
+	now := time.Now().UTC()
+	old := now.Add(-8 * 24 * time.Hour)
+	state := runtimeobs.ExecutionEvent{EventKind: "state", ObservedAt: old.Format(time.RFC3339Nano), AttemptID: "old-attempt", Provider: "codex", SessionID: "session-old", SessionName: "old fixture Root title", RuntimeAgentID: "agent-old", State: runtimeobs.StateCompleted, Terminal: true, EvidenceSource: runtimeobs.EvidenceHook, ObservationQuality: runtimeobs.QualityObserved}
+	if err := runtimeobs.AppendExecutionEvent(project, state); err != nil {
+		t.Fatal(err)
+	}
+	snapshot := runtimeobs.RootNameObservation{Version: 1, Source: "task_mecca_fallback", Status: "unavailable", HostStatus: "unavailable", Failure: "host_identity_or_title_unavailable", CheckedAt: now.Format(time.RFC3339Nano)}
+	if err := runtimeobs.AppendExecutionEvent(project, runtimeobs.ExecutionEvent{EventKind: "session_metadata", ObservedAt: snapshot.CheckedAt, AttemptID: "name-only", Provider: "codex", SessionID: "session-old", RootName: &snapshot}); err != nil {
+		t.Fatal(err)
+	}
+	ledger, err := runtimeobs.BuildLedger(project, 10, now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	collection, err := runtimeobs.BuildRootSessions(project, ledger, now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(collection.Items) != 1 {
+		t.Fatalf("items=%+v", collection.Items)
+	}
+	row := collection.Items[0]
+	if !row.CleanupEligible || row.CurrentCount != 0 || row.TerminalCount != 1 {
+		t.Fatalf("retention metadata changed: %+v", row)
+	}
+	data, err := json.Marshal(row)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var projected map[string]any
+	if err = json.Unmarshal(data, &projected); err != nil {
+		t.Fatal(err)
+	}
+	assertA84UnavailableNativeSessionName(t, projected, old)
+	// No Handler/service boot, cleanup preview, delete or retention maintenance.
 }
