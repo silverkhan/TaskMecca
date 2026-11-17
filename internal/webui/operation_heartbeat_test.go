@@ -2,6 +2,7 @@ package webui
 
 import (
 	"bytes"
+	"github.com/silverkhan/TaskMecca/internal/maintenance"
 	"github.com/silverkhan/TaskMecca/internal/notify"
 	"github.com/silverkhan/TaskMecca/internal/runtimeobs"
 	"os"
@@ -13,6 +14,10 @@ import (
 
 func TestOperationExecutionOverlayDoesNotRewriteHistoryButActionChangesPersist(t *testing.T) {
 	project := testOperationProject(t)
+	t.Setenv("TASK_MECCA_HOME", t.TempDir())
+	if err := maintenance.RegisterProject(project); err != nil {
+		t.Fatal(err)
+	}
 	a83TypedActionFixture(t, project, "A-83", "Owner permission required", "Owner: approve access", runtimeobs.StateRunning)
 	installA83MockCurrentExecution(t)
 	now := time.Now().UTC()
