@@ -216,6 +216,11 @@ func runActivityCLI(args []string,out,errOut io.Writer) int {
             if err!=nil{return fmt.Errorf("assignment evidence unavailable: %w",err)}
             return activity.ValidateAttribution(e,runtimeLedger.Attempts,assignments)
         case activity.RoleRegistrar:
+            observed:=false
+            for _,a:=range runtimeLedger.Attempts {
+                if a.AttemptID==e.RuntimeAttemptID && a.RuntimeAgentID==e.AgentID && a.TaskID==e.TaskID && a.AgentPath=="/root/registrar" && runtimeobs.HasObservedExecution(a) { observed=true }
+            }
+            if !observed { return fmt.Errorf("Registrar Activity requires verified observed execution; a registration fact or binding alone is not activity") }
             return activity.ValidateRegistrarAttribution(e,runtimeLedger.Attempts)
         case activity.RoleSubController:
             return activity.ValidateSubControllerAttribution(e,runtimeLedger.Attempts)

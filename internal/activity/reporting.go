@@ -4,6 +4,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/silverkhan/TaskMecca/internal/handoffjournal"
 	"github.com/silverkhan/TaskMecca/internal/runtimeobs"
 )
 
@@ -53,6 +54,18 @@ func CheckReporting(project, task string, role Role, attempt, assignment, handof
 		out.Diagnostic = "runtime task mismatch"
 		return out
 	}
+	if !runtimeobs.HasObservedExecution(*actual) {
+		out.Diagnostic = "verified observed execution required; binding alone is not execution"
+		return out
+	}
+	if role != RoleWorker && role != RoleController && role != RoleRegistrar {
+		out.Diagnostic = "unsupported role collection boundary"
+		return out
+	}
+	if role == RoleRegistrar && (actual.AgentPath != "/root/registrar" || actual.TaskID != task || assignment != "" || handoff != "") {
+		out.Diagnostic = "exact task-bound Registrar required; Worker assignment and Controller claim are not Registrar Activity proof"
+		return out
+	}
 	if role == RoleWorker && assignment == "" {
 		assignment = actual.BindingEvidence["assignment_id"]
 		out.AssignmentID = assignment
@@ -92,6 +105,18 @@ func CheckReporting(project, task string, role Role, attempt, assignment, handof
 		out.Diagnostic = "claimed Controller handoff required"
 		return out
 	}
+	if role == RoleController && !actual.Terminal {
+		claims, err := handoffjournal.BuildLedger(project, now)
+		if err != nil {
+			out.Diagnostic = err.Error()
+			return out
+		}
+		probe := Event{TaskID: task, Role: role, AgentID: actual.RuntimeAgentID, RuntimeAttemptID: attempt, HandoffID: handoff, Action: Start}
+		if err := ValidateControllerAttribution(probe, ledger.Attempts, claims.Handoffs); err != nil {
+			out.Diagnostic = err.Error()
+			return out
+		}
+	}
 	for _, e := range events {
 		if e.AgentID == actual.RuntimeAgentID && e.RuntimeAttemptID == attempt && e.Role == role && (assignment == "" || e.AssignmentID == assignment) && (handoff == "" || e.HandoffID == handoff) {
 			matches := e.PhaseEvent == phase
@@ -117,6 +142,10 @@ func CheckReporting(project, task string, role Role, attempt, assignment, handof
 	}
 	if phase == "review_outcome" {
 		out.Diagnostic = "Report the actual review outcome using review_accepted, review_rejected or review_needs_changes; no synthetic review start."
+		return out
+	}
+	if Suggest(role, phase, 0).RequiresExplanation && phase != "worker_completed" && phase != "registration_completed" && phase != "phase_completed" {
+		out.Diagnostic = "Unsupported phase needs an explicit explanation; preserve the collection gap and use a supported actual phase."
 		return out
 	}
 	out.Arguments = []string{"activity", "report", task, "--project", project, "--role", string(role), "--agent", actual.RuntimeAgentID, "--attempt", attempt, "--event", phase, "--event-id", "<stable-current-event-id>", "--evidence", "<actual-current-phase-evidence>"}
