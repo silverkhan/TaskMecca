@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/silverkhan/TaskMecca/internal/notify"
+	"github.com/silverkhan/TaskMecca/internal/runtimeobs"
 )
 
 func TestRecoveredMonitoringGapsStayDiagnosticAcrossResumes(t *testing.T) {
@@ -80,30 +81,58 @@ func TestRecoveredGapRealTelegramConsumerPreservesUnresolvedAlerts(t *testing.T)
 		messages = append(messages, payload["text"].(string))
 		return &http.Response{StatusCode: 200, Header: http.Header{"Content-Type": []string{"application/json"}}, Body: io.NopCloser(strings.NewReader(`{"ok":true,"result":{"message_id":1}}`))}, nil
 	}}
+	installA83MockCurrentExecution(t)
+	for _, tc := range []struct {
+		task, reason string
+		state        runtimeobs.CanonicalState
+	}{
+		{"A-1", "actual failure needs owner access", runtimeobs.StateErrored},
+		{"A-4", "actual shutdown needs owner recovery", runtimeobs.StateShutdown},
+		{"A-5", "actual interruption needs owner approval", runtimeobs.StateInterrupted},
+	} {
+		a83TypedActionFixture(t, project, tc.task, tc.reason, "Owner: restore requested access", tc.state)
+	}
 	stamp := now.Format(time.RFC3339Nano)
-	journal := operationJournal{Incidents: []operationIncident{
-		{ID: "old-gap", Kind: "monitor_gap", Evidence: "recovered scan", DetectedAt: stamp, RecoveredAt: stamp},
-		{ID: "error", TaskID: "A-1", Kind: "errored", Quality: "confirmed", Evidence: "actual failure", DetectedAt: stamp},
-		{ID: "shutdown", TaskID: "A-4", Kind: "shutdown", Quality: "confirmed", Evidence: "actual shutdown", DetectedAt: stamp},
-		{ID: "interrupted", TaskID: "A-5", Kind: "interrupted", Quality: "confirmed", Evidence: "actual interruption", DetectedAt: stamp},
-		{ID: "unknown", TaskID: "A-2", Kind: "runtime_unknown", Evidence: "unresolved evidence", DetectedAt: stamp},
-	}}
+	journal, err := scanOperationProject(project, time.Now().UTC())
+	if err != nil {
+		t.Fatal(err)
+	}
+	journal.Incidents = append(journal.Incidents,
+		operationIncident{ID: "old-gap", Kind: "monitor_gap", Evidence: "recovered scan", DetectedAt: stamp, RecoveredAt: stamp},
+		operationIncident{ID: "unknown", TaskID: "A-2", Kind: "runtime_unknown", Evidence: "unresolved evidence", DetectedAt: stamp})
+	if err := writeOperationJournal(project, journal); err != nil {
+		t.Fatal(err)
+	}
 	deliverOperationIncidents(project, journal)
 	errs := notify.Deliver(project, []notify.Event{{ID: "user", TaskID: "A-3", Kind: "intervention", Message: "actual user decision", At: stamp}})
 	if len(errs) != 0 {
 		t.Fatal(errs)
 	}
-	if len(messages) != 5 {
+	if len(messages) != 4 {
 		t.Fatalf("actual consumer sends=%d: %v", len(messages), messages)
 	}
 	for _, message := range messages {
-		if strings.Contains(message, "recovered scan") {
+		if strings.Contains(message, "recovered scan") || strings.Contains(message, "unresolved evidence") {
 			t.Fatalf("gap sent: %s", message)
 		}
 	}
 	deliverOperationIncidents(project, journal)
-	if len(messages) != 5 {
+	if len(messages) != 4 {
 		t.Fatal("dedupe changed")
+	}
+	unknown, err := notify.DeliveryRecords(project, "A-2", "unknown")
+	if err != nil || len(unknown) != 0 {
+		t.Fatal("unverified diagnostic consumed", unknown, err)
+	}
+	stored, err := readOperationJournal(project)
+	if err != nil || len(stored.Incidents) != len(journal.Incidents) {
+		t.Fatal("source audit lost", stored, err)
+	}
+	for _, task := range []string{"A-1", "A-4", "A-5"} {
+		records, err := notify.DeliveryRecords(project, task, "")
+		if err != nil || len(records) != 1 || records[0].State != "sent" || records[0].Attempts != 1 {
+			t.Fatalf("real human terminal action lost/idempotence changed %s %+v %v", task, records, err)
+		}
 	}
 	records, err := notify.DeliveryRecords(project, "", "old-gap")
 	if err != nil || len(records) != 0 {

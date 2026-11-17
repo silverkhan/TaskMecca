@@ -1,16 +1,157 @@
 package webui
 
 import (
+	stdcontext "context"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/silverkhan/TaskMecca/internal/backlog"
 	"github.com/silverkhan/TaskMecca/internal/notify"
+	"github.com/silverkhan/TaskMecca/internal/rolepolicy"
 	"github.com/silverkhan/TaskMecca/internal/runtimeobs"
 )
+
+// Temp-only typed ownership/assignment/runtime fixture. Only the bounded
+// official observation is mocked; canonical selection and identity checks use
+// the same loader as production. No host, native Activity or real delivery.
+func a83TypedActionFixture(t *testing.T, project, task, reason, next string, state runtimeobs.CanonicalState) {
+	t.Helper()
+	now := time.Now().UTC()
+	native, assignment, attempt := "fixture-native-"+task, "fixture-assignment-"+task, "fixture-attempt-"+task
+	p := rolepolicy.Policy{SchemaVersion: 1, Method: "worker", Workspace: project, Scope: []string{"fixture.go"},
+		Implementation: rolepolicy.Owner{Role: "worker", AgentPath: "/root/controller/fixture", NativeID: native},
+		Operational:    rolepolicy.Owner{Role: "controller", AgentPath: "/root/controller"},
+		Reviewer:       rolepolicy.Owner{Role: "worker", AgentPath: "/root/controller/reviewer", NativeID: "fixture-reviewer-" + task}}
+	policy, err := json.Marshal(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	folder := filepath.Join(project, "_task_mecca", "data", "backlog")
+	if err := os.MkdirAll(folder, 0700); err != nil {
+		t.Fatal(err)
+	}
+	raw := "# " + task + " Human action fixture\n- Agent: /root/controller/fixture\n- 대기유형: user\n- 대기: " + reason + "\n- 재개조건: " + next + "\n\n## 작업 정의\n### 목표\nFixture only\n" + rolepolicy.Fence + string(policy) + "\n```\n"
+	if err := os.WriteFile(filepath.Join(folder, "000001."+task+".fixture.hold.md"), []byte(raw), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := runtimeobs.RecordAssignment(project, assignment, task, p.Implementation.AgentPath, now.Add(-2*time.Minute)); err != nil {
+		t.Fatal(err)
+	}
+	r := &runtimeobs.T3Receipt{CanonicalProject: project, ThreadID: "fixture-thread-" + task, RunID: "fixture-run-" + task, NativeAttemptID: "fixture-episode-" + task, SessionID: native, Provider: "codex", State: state, StartedAt: now.Add(-time.Minute).Format(time.RFC3339Nano), ObservedAt: now.Format(time.RFC3339Nano), Origin: "t3_local_projection_v2"}
+	terminal := state == runtimeobs.StateErrored || state == runtimeobs.StateInterrupted || state == runtimeobs.StateShutdown || state == runtimeobs.StateCompleted
+	if terminal {
+		r.CompletedAt = now.Format(time.RFC3339Nano)
+	}
+	if state != runtimeobs.StateRunning {
+		start := *r
+		start.State, start.ObservedAt, start.CompletedAt = runtimeobs.StateRunning, r.StartedAt, ""
+		if err := runtimeobs.AppendExecutionEvent(project, runtimeobs.ExecutionEvent{EventKind: "state", AttemptID: attempt, Provider: "codex", SessionID: native, RuntimeAgentID: native, TurnID: r.NativeAttemptID, ObservedAt: start.ObservedAt, State: start.State, EvidenceSource: runtimeobs.EvidenceT3, ObservationQuality: runtimeobs.QualityObserved, NativeReceipt: &start}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := runtimeobs.AppendExecutionEvent(project, runtimeobs.ExecutionEvent{EventKind: "state", AttemptID: attempt, Provider: "codex", SessionID: native, RuntimeAgentID: native, TurnID: r.NativeAttemptID, ObservedAt: r.ObservedAt, State: state, Terminal: terminal, EvidenceSource: runtimeobs.EvidenceT3, ObservationQuality: runtimeobs.QualityObserved, NativeReceipt: r}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := runtimeobs.BindAttempt(project, attempt, task, p.Implementation.AgentPath, "explicit", "", map[string]string{"assignment_id": assignment, "runtime_agent_id": native}, now); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func installA83MockCurrentExecution(t *testing.T) {
+	t.Helper()
+	previous := operationExecutionLoader
+	t.Cleanup(func() { operationExecutionLoader = previous })
+	operationExecutionLoader = func(project string, ledger runtimeobs.Ledger, now time.Time, refresh bool) map[string]runtimeobs.CurrentExecutionSnapshot {
+		rows, available := operationCanonicalRows(project)
+		assignments, err := runtimeobs.ListAssignments(project)
+		return loadCurrentExecutionEvidence(stdcontext.Background(), project, ledger, rows, available, assignments, err, now, refresh, rolepolicy.Load,
+			func(_ stdcontext.Context, s runtimeobs.CurrentExecutionSnapshot, at time.Time) runtimeobs.CurrentExecutionSnapshot {
+				if !s.Matched || s.Receipt == nil || s.Identity.Project != project || s.Identity.NativeID != s.SessionID || s.Identity.NativeID != s.RuntimeAgentID {
+					t.Fatal("mock reached without exact current typed fixture", s)
+				}
+				s.Fresh, s.OfficialCurrent = true, true
+				s.ObservedAt = at.Format(time.RFC3339Nano)
+				s.FailedStage, s.ActionOwner, s.Limitation = "", "", "mock official read; fixture only"
+				return s
+			})
+	}
+}
+
+func TestA83TypedCurrentHumanActionRejectsWrongNativeAndUnsupportedObservation(t *testing.T) {
+	project := testOperationProject(t)
+	a83TypedActionFixture(t, project, "A-83", "Owner access required", "Owner: grant requested access", runtimeobs.StateRunning)
+	installA83MockCurrentExecution(t)
+	now := time.Now().UTC()
+	ledger, err := runtimeobs.BuildLedger(project, 3, now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	valid := operationExecutionLoader(project, ledger, now, true)["A-83"]
+	if !valid.Matched || !valid.OfficialCurrent || valid.Identity.NativeID != "fixture-native-A-83" || valid.Identity.AssignmentID != "fixture-assignment-A-83" {
+		t.Fatal("typed fixture failed to establish exact current evidence", valid)
+	}
+	j, err := scanOperationProject(project, now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(j.Actions) != 1 {
+		t.Fatal("missing explicit human action", j)
+	}
+	id := j.Actions[0].ID
+	current := operationExecutionLoader
+	operationExecutionLoader = func(project string, ledger runtimeobs.Ledger, at time.Time, refresh bool) map[string]runtimeobs.CurrentExecutionSnapshot {
+		result := current(project, ledger, at, refresh)
+		if refresh {
+			s := result["A-83"]
+			s.OfficialCurrent = false
+			s.Fresh = false
+			s.FailedStage = "official_observation"
+			s.ActionOwner = "/root/controller"
+			s.Limitation = "mock unsupported observation"
+			result["A-83"] = s
+		}
+		return result
+	}
+	oldDeliver := operationDeliver
+	defer func() { operationDeliver = oldDeliver }()
+	sent := 0
+	operationDeliver = func(_ string, events []notify.Event) []error { sent += len(events); return nil }
+	deliverOperationIncidents(project, j)
+	if sent != 0 {
+		t.Fatal("unsupported observation externally delivered")
+	}
+	stored, err := readOperationJournal(project)
+	if err != nil || len(stored.Actions) != 1 || stored.Actions[0].ID != id || stored.Actions[0].ResolvedAt != "" {
+		t.Fatal("collector trouble lost real unresolved cause", stored, err)
+	}
+	operationExecutionLoader = current
+	path := filepath.Join(project, "_task_mecca/data/backlog/000001.A-83.fixture.hold.md")
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Keep the same legacy Agent; it cannot replace a changed typed native.
+	changed := strings.Replace(string(raw), "fixture-native-A-83", "different-current-typed-native", 1)
+	if changed == string(raw) {
+		t.Fatal("fixture typed native not found")
+	}
+	if err := os.WriteFile(path, []byte(changed), 0600); err != nil {
+		t.Fatal(err)
+	}
+	wrong := operationExecutionLoader(project, ledger, time.Now().UTC(), true)["A-83"]
+	if wrong.Matched || wrong.OfficialCurrent || wrong.FailedStage == "" {
+		t.Fatal("legacy Agent or old native substituted current typed owner", wrong)
+	}
+	deliverOperationIncidents(project, j)
+	if sent != 0 {
+		t.Fatal("wrong current typed native externally delivered")
+	}
+}
 
 // Sanitized, source-derived six distinct B644 episodes, not six retries.
 // Source: 20261117-B644-stalled-notification-trigger-audit.json, source commit
