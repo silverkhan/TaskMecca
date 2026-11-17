@@ -50,6 +50,7 @@ func webSummaryItem(row Record,state string,waiting []string,reason map[string]a
     assignment:=assignmentView(row)
     item:=map[string]any{
         "id":row.ID,"sort_key":row.SortKey,"title":row.Title,"state":state,"file_state":row.State,
+        "business_state":listBusinessState(row.State,state),
         "location":row.Location,"archive_month":row.ArchiveMonth,"path":row.Path,"mtime":row.Mtime,"updated_at":row.Mtime,
         "agent":assignment["agent"],"assignment_kind":assignment["assignment_kind"],"scope":assignment["change_scope"],
         "tags":parseTagList(row.Fields["Tags"]),"depends_on":refs(row.Fields["선행"]),"related":refs(row.Fields["연관"]),"waiting_for":waiting,
@@ -83,9 +84,17 @@ func webWorkflowStateMaps(project,root string,rows []Record) (map[string]bool,ma
     return readyIDs,blocked
 }
 
+// Only the validated dependency projection may refine todo. Runtime warnings
+// remain in legacy state/attention_reason and cannot change business state.
+func listBusinessState(fileState, workflowState string) string {
+    if fileState=="todo" && (workflowState=="ready" || workflowState=="blocked") { return workflowState }
+    return fileState
+}
+
 func stateMatches(item map[string]any,statuses []string) bool {
     if len(statuses)==0 { return true }
-    state:=toString(item["state"]); fileState:=toString(item["file_state"])
+    fileState:=toString(item["file_state"])
+    state:=listBusinessState(fileState,toString(item["business_state"]))
     for _,status:=range statuses {
         switch status {
         case "ready": if state=="ready" { return true }
@@ -238,14 +247,9 @@ func BacklogPage(project,root string,page,pageSize int,statuses,tags []string,se
         if state=="ready" { counts["ready"]++ }
         if state=="blocked" { counts["blocked"]++ }
         reason,signal:=control.Attention[id],control.Activity[id]
-        // Reuse the same state transformation as webSummaryItem, including
-        // controller completion-review semantics, without allocating its
-        // document, assignment, fields and other bulky payloads.
-        stateView:=map[string]any{"state":state,"file_state":row.State}
-        if len(reason)>0 && toString(reason["audience"])!="controller" {
-            stateView["state"]=effectiveStateFromControl(state,reason)
-        }
-        applyCompletionReviewItem(stateView,signal)
+        // Filters and counts share the list business projection. Legacy state
+        // still carries attention/completion-review semantics for other consumers.
+        stateView:=map[string]any{"business_state":listBusinessState(row.State,state),"file_state":row.State}
         if stateMatches(stateView,statuses) {
             filtered=append(filtered,backlogPageRow{
                 row:row,state:state,waiting:waiting,reason:reason,signal:signal,

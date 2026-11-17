@@ -4919,12 +4919,77 @@ async function manageHubProject(button) {
   } catch(error) { await refreshHub(true);render();hubFeedback(hubText('failed')+' '+String(error?.message||error),true); } finally { button.disabled=false; }
 }
 
+function backlogBusinessState(task) {
+  const file=String(task.file_state||'');
+  // A dependency state is valid only for todo; never trust warning/phase state.
+  const workflow=task.business_state||task.state;
+  if(file==='todo'&&['ready','blocked'].includes(workflow))return workflow;
+  return ['todo','doing','hold','done'].includes(file)?file:'';
+}
+function backlogWarning(task) {
+  const reason=task.attention_reason;
+  if(!reason||reason.audience==='controller'||reason.resolved||reason.resolved_at||reason.recovered_at||reason.history||reason.active===false||['resolved','closed','dismissed'].includes(reason.status||reason.state))return null;
+  return reason;
+}
+function backlogWarningLabel(reason) {
+  const labels={runtime_unknown:['추적 확인 필요','Check tracking'],runtime_stalled:['활동 확인 필요','Check activity'],execution_interrupted:['실행 중단 확인','Check interruption'],awaiting_runtime:['실행 관측 대기','Awaiting observation'],awaiting_start:['착수 확인 필요','Check start'],binding_pending:['실행 연결 확인','Check binding'],binding_ambiguous:['실행 연결 확인','Check binding'],user_intervention:['사용자 확인 필요','User action needed'],approval_required:['승인 확인 필요','Check approval'],completion_pending:['완료 확인 필요','Check completion']};
+  return labels[reason.type]?.[state.language==='ko'?0:1]||(state.language==='ko'?'추적 경고':'Tracking warning');
+}
+function backlogStatusCell(task) {
+  const business=backlogBusinessState(task),reason=backlogWarning(task);
+  const warning=reason?`<button type="button" class="backlog-warning" data-backlog-warning="${esc(task.id)}" aria-haspopup="dialog" aria-expanded="false"><svg aria-hidden="true" viewBox="0 0 16 16" width="12" height="12"><path d="M8 1.5 15 14H1Z" fill="none" stroke="currentColor" stroke-linejoin="round"/><path d="M8 5v4m0 2v1" stroke="currentColor"/></svg><span>${esc(backlogWarningLabel(reason))}</span></button>`:'';
+  return `${warning}<span class="status ${esc(business)}">${esc(business?stateLabel(business):(state.language==='ko'?'상태 미확인':'Unknown status'))}</span>`;
+}
+let backlogWarningSurface=null;
+function closeBacklogWarning(restoreFocus=false) {
+  const current=backlogWarningSurface;if(!current)return;
+  backlogWarningSurface=null;current.panel.remove();current.abort.abort();
+  current.button?.setAttribute('aria-expanded','false');current.button?.removeAttribute('aria-controls');
+  if(restoreFocus){
+    const target=current.button?.isConnected?current.button:[...document.querySelectorAll('.task-row[data-id]')].find(row=>row.dataset.id===current.id);
+    target?.focus();
+  }
+}
+function bindBacklogWarnings() {
+  const buttons=[...document.querySelectorAll('[data-backlog-warning]')];
+  const current=backlogWarningSurface;
+  if(current){
+    const button=buttons.find(b=>b.dataset.backlogWarning===current.id);
+    const task=allRowsForView().find(t=>t.id===current.id);
+    if(button)current.button=button;
+    if(!button||JSON.stringify(backlogWarning(task||{}))!==current.signature||state.language!==current.language)closeBacklogWarning(current.panel.contains(document.activeElement));
+    else{button.setAttribute('aria-expanded','true');button.setAttribute('aria-controls','backlogWarningDetails');current.place?.();}
+  }
+  buttons.forEach(button=>{
+    button.addEventListener('keydown',e=>e.stopPropagation());
+    button.addEventListener('click',e=>{
+      e.preventDefault();e.stopPropagation();
+      if(backlogWarningSurface?.id===button.dataset.backlogWarning){closeBacklogWarning(true);return;}
+      closeBacklogWarning();
+      const task=allRowsForView().find(t=>t.id===button.dataset.backlogWarning),reason=task&&backlogWarning(task);
+      if(!reason)return;
+      const ko=state.language==='ko',unknown=ko?'미확인':'Unknown';
+      // Observation timestamps only: mtime/snapshot/render time are not evidence.
+      const observed=reason.last_observed_at||task.activity?.last_observed_at;
+      const time=observed&&Number.isFinite(Date.parse(observed))?dateTimeLabel(observed):unknown;
+      const next=reason.resume_condition||reason.action||(ko?'Controller에서 실행 연결과 최신 관측 근거를 확인하세요.':'Ask the Controller to verify the runtime binding and latest observation.');
+      const panel=document.createElement('section'),abort=new AbortController();
+      panel.id='backlogWarningDetails';panel.className='backlog-warning-details';panel.setAttribute('role','dialog');panel.setAttribute('aria-modal','false');panel.setAttribute('aria-labelledby','backlogWarningTitle');panel.tabIndex=-1;
+      panel.innerHTML=`<div class="backlog-warning-head"><strong id="backlogWarningTitle">${esc(backlogWarningLabel(reason))}</strong><button type="button" class="action-btn secondary" data-warning-close>${esc(ko?'닫기':'Close')}</button></div><dl><dt>${esc(ko?'사유':'Reason')}</dt><dd>${esc(reason.message||reason.evidence||unknown)}</dd><dt>${esc(ko?'마지막 관측':'Last observed')}</dt><dd>${esc(time)}</dd><dt>${esc(ko?'다음 조치':'Next action')}</dt><dd>${esc(next)}</dd></dl>`;
+      document.body.appendChild(panel);button.setAttribute('aria-expanded','true');button.setAttribute('aria-controls',panel.id);
+      backlogWarningSurface={id:task.id,signature:JSON.stringify(reason),language:state.language,button,panel,abort};
+      const place=()=>{const anchor=backlogWarningSurface?.button?.getBoundingClientRect();if(!anchor)return;const pad=12;panel.style.left=Math.max(pad,Math.min(anchor.left,innerWidth-panel.offsetWidth-pad))+'px';panel.style.top=Math.max(pad,Math.min(anchor.bottom+6,innerHeight-panel.offsetHeight-pad))+'px';};
+      backlogWarningSurface.place=place;place();panel.focus();
+      panel.querySelector('[data-warning-close]').onclick=()=>closeBacklogWarning(true);
+      panel.addEventListener('keydown',event=>{event.stopPropagation();if(event.key==='Escape'){event.preventDefault();closeBacklogWarning(true);}});
+      document.addEventListener('pointerdown',event=>{if(!panel.contains(event.target)&&!backlogWarningSurface?.button?.contains(event.target))closeBacklogWarning();},{capture:true,signal:abort.signal});
+      document.addEventListener('focusin',event=>{if(!panel.contains(event.target)&&!backlogWarningSurface?.button?.contains(event.target))closeBacklogWarning();},{signal:abort.signal});
+      window.addEventListener('resize',place,{signal:abort.signal});window.addEventListener('scroll',place,{capture:true,signal:abort.signal});
+    });
+  });
+}
 function matchesStatusFilter(t, key) {
-  if (key === 'ready') return t.state === 'ready';
-  if (key === 'doing') return t.state === 'doing' || t.file_state === 'doing';
-  if (key === 'hold') return t.state === 'hold' || t.file_state === 'hold';
-  if (key === 'blocked') return t.state === 'blocked';
-  if (key === 'done') return t.state === 'done' || t.file_state === 'done';
+  if (['todo','ready','doing','hold','blocked','done'].includes(key)) return backlogBusinessState(t) === key;
   return true;
 }
 function allRowsForView() {
@@ -5019,20 +5084,18 @@ function listView() {
   const metricValue=key=>preliminary?'—':String(c[key]||0);
   const summaryText=summary+(preliminary?(state.language==='ko'?' · 실행 상태 확인 중':' · Verifying execution state'):'');
   return `${uninitialized?`${listControls(info)}${emptyState}`:`${listControls(info)}${rows.length?`${head}<div class="task-list">${rows.map((task,i)=>{
-    const act=task.activity||{}, h=act.health;
     const time=task.file_state==='doing'?fmtSec(runningSeconds(task,'active')):(task.file_state==='done'?fmtSec(task.active_seconds):'-');
     const hs=humanSummary(task);
     const sub=hs.purpose||task.scope||'';
     const summaryLine=[hs.change,hs.follow_up?`${t('summaryFollowUp')}: ${hs.follow_up}`:''].filter(Boolean).join(' · ');
     const previewLine=[sub,summaryLine].filter(Boolean).join(' · ');
-    const statusSummary=summaryPreview(hs.status_result,90);
     const tags=task.tags||[];
     const visibleTags=tags.slice(0,2);
     const hiddenTags=tags.slice(2);
     const taskMeta=[task.source?.label?sourceLink(task.source,true):'',...visibleTags.map(tag=>tagChip(tag,true)),hiddenTags.length?`<span class="tag-overflow" title="${esc(hiddenTags.join(' · '))}">+${hiddenTags.length}</span>`:''].filter(Boolean).join('');
     const updated=updatedAt(task);
     const alias=(task.agent||'').split('/').pop()||'-';
-    return `<div class="task-row ${i===state.selectedIndex?'keyboard-selected':''}" data-id="${esc(task.id)}" data-row-index="${i}" tabindex="-1"><div class="task-id">${esc(task.id)}</div><div class="task-main"><div class="task-mobile-id">${esc(task.id)}</div><div class="task-title">${esc(titleOf(task))}</div>${taskMeta?`<div class="task-meta-row">${taskMeta}</div>`:''}${previewLine?`<div class="task-preview">${esc(previewLine)}</div>`:''}</div><div class="state-col"><span class="status ${preliminary?'todo':esc(task.state)}">${esc(preliminary?(state.language==='ko'?'확인 중':'Checking'):stateLabel(task.state))}</span>${!preliminary&&statusSummary?`<div class="task-state-summary">${esc(statusSummary)}</div>`:''}${['quiet','stale','worker_missing'].includes(h)?`<div class="task-sub">${esc(healthLabel(h))}</div>`:''}</div><div class="task-agent"><div>${esc(alias)}</div>${task.archive_month?`<div class="task-sub">archive/${esc(task.archive_month)}</div>`:''}</div><div class="task-active timer live-timer" data-id="${esc(task.id)}">${time}</div><div class="task-updated" title="${esc(dateTimeLabel(updated))}"><strong class="live-updated" data-updated-at="${esc(updated)}">${esc(ago(updated))}</strong><span>${esc(dateTimeLabel(updated,true))}</span></div><div class="chev">›</div></div>`;
+    return `<div class="task-row ${i===state.selectedIndex?'keyboard-selected':''}" data-id="${esc(task.id)}" data-row-index="${i}" tabindex="-1"><div class="task-id">${esc(task.id)}</div><div class="task-main"><div class="task-mobile-id">${esc(task.id)}</div><div class="task-title">${esc(titleOf(task))}</div>${taskMeta?`<div class="task-meta-row">${taskMeta}</div>`:''}${previewLine?`<div class="task-preview">${esc(previewLine)}</div>`:''}</div><div class="state-col">${backlogStatusCell(task)}</div><div class="task-agent"><div>${esc(alias)}</div>${task.archive_month?`<div class="task-sub">archive/${esc(task.archive_month)}</div>`:''}</div><div class="task-active timer live-timer" data-id="${esc(task.id)}">${time}</div><div class="task-updated" title="${esc(dateTimeLabel(updated))}"><strong class="live-updated" data-updated-at="${esc(updated)}">${esc(ago(updated))}</strong><span>${esc(dateTimeLabel(updated,true))}</span></div><div class="chev">›</div></div>`;
   }).join('')}</div>`:`<div class="empty">${esc(t('noMatches'))}</div>`}`}`;
 }
 
@@ -7195,8 +7258,9 @@ function closeTask() {
 }
 function bindRows() {
   bindBacklogListTools();
+  bindBacklogWarnings();
   document.querySelectorAll('[data-id]').forEach(el => el.onclick = e => {
-    if(e.target?.closest?.('[data-external-source]'))return;
+    if(e.target?.closest?.('[data-external-source],[data-backlog-warning]'))return;
     if (el.dataset.rowIndex != null) state.selectedIndex = Number(el.dataset.rowIndex) || 0;
     openTask(el.dataset.id);
   });
