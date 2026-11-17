@@ -727,6 +727,7 @@ func CleanupRootSession(project string,ledger Ledger,rootSessionID string,now ti
 // Root identity plus a verified host parent chain establishes a hierarchy.
 func applyRootSessionRelations(project string, roots []RootSession, attempts []Attempt, metadata map[string]rootSessionMetadata, now time.Time) {
 	byThread := map[string][]int{}
+	eligibleRows := make([]bool, len(roots))
 	roles := map[string]map[string]bool{}
 	for _, a := range attempts {
 		if a.BindingState != BindingBound || a.RuntimeAgentID == "" || a.SessionID == "" || (a.Provider == "codex" && a.RuntimeAgentID != a.SessionID) {
@@ -764,10 +765,11 @@ func applyRootSessionRelations(project string, roots []RootSession, attempts []A
 		r.T3ThreadID, r.ParentThreadID, r.RelationCheckedAt = snap.T3ThreadID, snap.ParentThreadID, snap.CheckedAt
 		at, err := time.Parse(time.RFC3339Nano, snap.CheckedAt)
   if err!=nil || at.After(now) || now.Sub(at)>30*time.Second {if r.NameFailure=="" {r.NameFailure="name_refresh_expired"}}
-  if !snap.IdentityVerified || snap.HostProjectID == "" || err != nil || at.After(now) || now.Sub(at) > 2*time.Minute {
+  if !snap.IdentityVerified || snap.HostProjectID == "" || r.ProviderSessionID == "" || r.T3ThreadID == "" || err != nil || at.After(now) || now.Sub(at) > 2*time.Minute {
 			continue
 		}
 		byThread[r.T3ThreadID] = append(byThread[r.T3ThreadID], i)
+		eligibleRows[i] = true
 		if r.ParentThreadID == "" {
 			group, found, e := orchestration.FindGroup(project, r.Provider, r.ProviderSessionID)
 			if e == nil && found && (len(roles[r.RootSessionID]) == 0 || (len(roles[r.RootSessionID]) == 1 && roles[r.RootSessionID]["root"])) {
@@ -783,8 +785,18 @@ func applyRootSessionRelations(project string, roots []RootSession, attempts []A
 				roots[i].RelationStatus = "unverified"
 				roots[i].GroupID = ""
 				roots[i].RootAncestorID = ""
+				roots[i].GroupCreatedAt, roots[i].RelationSource = "", ""
 			}
 		}
+	}
+	// A fresh native row sharing a host thread cannot validate another row
+	// excluded above. Every visited node must be the exact indexed native row.
+	indexedRow := func(i int) bool {
+		if i < 0 || i >= len(roots) || !eligibleRows[i] {
+			return false
+		}
+		indices := byThread[roots[i].T3ThreadID]
+		return len(indices) == 1 && indices[0] == i
 	}
 	// Resolve only unambiguous chains within the same host project. No names,
 	// recent-use order, native grouping, or task activity can prove a parent.
@@ -794,20 +806,23 @@ func applyRootSessionRelations(project string, roots []RootSession, attempts []A
 			continue
 		}
 		childMeta := metadata[r.Provider+"\x00"+r.ProviderSessionID].nameSnapshot
-		if childMeta == nil || len(byThread[r.T3ThreadID]) != 1 {
+		if childMeta == nil || !indexedRow(i) {
 			continue
 		}
 		current, seen := i, map[int]bool{i: true}
 		for depth := 0; depth < 32; depth++ {
+			if !indexedRow(current) {
+				break
+			}
 			parent := byThread[roots[current].ParentThreadID]
-			if len(parent) != 1 || seen[parent[0]] {
+			if len(parent) != 1 || !indexedRow(parent[0]) || seen[parent[0]] {
 				break
 			}
 			n := parent[0]
 			seen[n] = true
 			pm := metadata[roots[n].Provider+"\x00"+roots[n].ProviderSessionID].nameSnapshot
 			cm := metadata[roots[current].Provider+"\x00"+roots[current].ProviderSessionID].nameSnapshot
-			if pm == nil || cm == nil || cm.Relationship != "subagent" || pm.HostProjectID != childMeta.HostProjectID || roots[n].Provider != r.Provider {
+			if pm == nil || cm == nil || cm.Relationship != "subagent" || cm.HostProjectID != childMeta.HostProjectID || pm.HostProjectID != childMeta.HostProjectID || roots[n].Provider != r.Provider {
 				break
 			}
 			if current == i {

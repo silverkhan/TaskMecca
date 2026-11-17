@@ -200,3 +200,134 @@ func TestA84RootOwnObservationPinsCanonicalWithoutChangingStoredState(t *testing
 		t.Fatalf("wrong project accepted %+v", got)
 	}
 }
+
+func TestA84ReviewStaleNativeCannotBorrowFreshThreadIdentity(t *testing.T) {
+	project := t.TempDir()
+	now := time.Now().UTC()
+	dir := filepath.Join(project, "_task_mecca", "data", "orchestration", "groups")
+	os.MkdirAll(dir, 0700)
+	b, _ := json.Marshal(orchestration.Group{SchemaVersion: 1, GroupID: "D1112_01", DisplayPrefix: "D1112_01_", Mode: orchestration.ModeB, Provider: "codex", RootSessionID: "root", CreatedAt: now.Add(-time.Hour).Format(time.RFC3339Nano)})
+	os.WriteFile(filepath.Join(dir, "D1112_01.json"), b, 0600)
+	roots := []RootSession{}
+	attempts := []Attempt{}
+	metadata := map[string]rootSessionMetadata{}
+	for _, id := range []string{"root", "old-native", "new-native"} {
+		a := Attempt{Provider: "codex", SessionID: id, RuntimeAgentID: id, BindingState: BindingBound, AgentPath: "/root/controller/worker"}
+		if id == "root" {
+			a.AgentPath = "/root"
+		}
+		attempts = append(attempts, a)
+		roots = append(roots, RootSession{RootSessionID: RootSessionIDForAttempt(a), Provider: "codex", ProviderSessionID: id})
+		s := &RootNameObservation{Version: 1, Source: "t3_title", Status: "verified", HostStatus: "verified", IdentityVerified: true, Name: id, HostProjectID: "project", CheckedAt: now.Format(time.RFC3339Nano), T3ThreadID: "worker-thread", ParentThreadID: "root-thread", Relationship: "subagent"}
+		if id == "root" {
+			s.T3ThreadID = "root-thread"
+			s.ParentThreadID = ""
+			s.Relationship = ""
+		}
+		if id == "old-native" {
+			s.CheckedAt = now.Add(-3 * time.Minute).Format(time.RFC3339Nano)
+		}
+		metadata["codex\x00"+id] = rootSessionMetadata{nameSnapshot: s}
+	}
+	applyRootSessionRelations(project, roots, attempts, metadata, now)
+	t.Logf("old=%+v new=%+v", roots[1], roots[2])
+	if roots[1].RelationStatus == "verified" {
+		t.Fatal("STALE native snapshot borrowed another native session's fresh thread identity")
+	}
+}
+
+func TestA84RepairNativeRowEligibilityAndDescendantUsage(t *testing.T) {
+	now := time.Date(2026, 11, 17, 6, 0, 0, 0, time.UTC)
+	for _, tc := range []struct {
+		name               string
+		change             func(*RootNameObservation)
+		freshAliasVerified bool
+	}{
+		{"stale", func(s *RootNameObservation) { s.CheckedAt = now.Add(-3 * time.Minute).Format(time.RFC3339Nano) }, true},
+		{"future", func(s *RootNameObservation) { s.CheckedAt = now.Add(time.Second).Format(time.RFC3339Nano) }, true},
+		{"invalid-time", func(s *RootNameObservation) { s.CheckedAt = "not-a-time" }, true},
+		{"unverified-identity", func(s *RootNameObservation) { s.IdentityVerified = false }, true},
+		{"missing-project", func(s *RootNameObservation) { s.HostProjectID = "" }, true},
+		{"missing-thread", func(s *RootNameObservation) { s.T3ThreadID = "" }, true},
+		{"two-fresh-natives-ambiguous", func(*RootNameObservation) {}, false},
+		{"fresh-foreign-project-ambiguous", func(s *RootNameObservation) { s.HostProjectID = "foreign" }, false},
+	} {
+		for _, reverse := range []bool{false, true} {
+			t.Run(fmt.Sprintf("%s/reverse=%v", tc.name, reverse), func(t *testing.T) {
+				project := t.TempDir()
+				dir := filepath.Join(project, "_task_mecca", "data", "orchestration", "groups")
+				if err := os.MkdirAll(dir, 0700); err != nil {
+					t.Fatal(err)
+				}
+				group := orchestration.Group{SchemaVersion: 1, GroupID: "D1112_01", DisplayPrefix: "D1112_01_", Mode: orchestration.ModeB, Provider: "codex", RootSessionID: "root", CreatedAt: now.Add(-time.Hour).Format(time.RFC3339Nano)}
+				b, err := json.Marshal(group)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if err = os.WriteFile(filepath.Join(dir, "D1112_01.json"), b, 0600); err != nil {
+					t.Fatal(err)
+				}
+				roots := []RootSession{}
+				attempts := []Attempt{}
+				metadata := map[string]rootSessionMetadata{}
+				for _, native := range []string{"root", "rejected-native", "fresh-native", "leaf"} {
+					agent, thread, parent := "/root/controller", "controller-thread", "root-thread"
+					if native == "root" {
+						agent, thread, parent = "/root", "root-thread", ""
+					}
+					if native == "leaf" {
+						agent, thread, parent = "/root/controller/worker", "leaf-thread", "controller-thread"
+					}
+					a := Attempt{AttemptID: native, Provider: "codex", SessionID: native, RuntimeAgentID: native, BindingState: BindingBound, AgentPath: agent}
+					attempts = append(attempts, a)
+					used := now.Add(-time.Hour).Format(time.RFC3339Nano)
+					if native == "root" {
+						used = now.Add(-4 * time.Hour).Format(time.RFC3339Nano)
+					}
+					if native == "rejected-native" {
+						used = now.Format(time.RFC3339Nano)
+					}
+					if native == "leaf" {
+						used = now.Add(-30 * time.Minute).Format(time.RFC3339Nano)
+					}
+					roots = append(roots, RootSession{RootSessionID: RootSessionIDForAttempt(a), Provider: "codex", ProviderSessionID: native, LastUsedAt: used})
+					s := &RootNameObservation{Version: 1, Name: native, Source: "t3_title", Status: "verified", HostStatus: "verified", IdentityVerified: true, T3ThreadID: thread, ParentThreadID: parent, Relationship: "subagent", HostProjectID: "project", CheckedAt: now.Format(time.RFC3339Nano)}
+					if parent == "" {
+						s.Relationship = ""
+					}
+					if native == "rejected-native" {
+						tc.change(s)
+					}
+					metadata["codex\x00"+native] = rootSessionMetadata{nameSnapshot: s}
+				}
+				if reverse {
+					for left, right := 0, len(roots)-1; left < right; left, right = left+1, right-1 {
+						roots[left], roots[right] = roots[right], roots[left]
+					}
+				}
+				applyRootSessionRelations(project, roots, attempts, metadata, now)
+				byNative := map[string]RootSession{}
+				for _, r := range roots {
+					byNative[r.ProviderSessionID] = r
+				}
+				rejected, fresh, leaf, root := byNative["rejected-native"], byNative["fresh-native"], byNative["leaf"], byNative["root"]
+				if rejected.RelationStatus == "verified" || rejected.Role != "unknown" || rejected.GroupID != "" || rejected.RootAncestorID != "" || rejected.ParentSessionID != "" {
+					t.Fatalf("rejected row borrowed identity: %+v", rejected)
+				}
+				if (fresh.RelationStatus == "verified") != tc.freshAliasVerified || (leaf.RelationStatus == "verified") != tc.freshAliasVerified {
+					t.Fatalf("fresh/chain result fresh=%+v leaf=%+v", fresh, leaf)
+				}
+				wantDesc := ""
+				if tc.freshAliasVerified {
+					wantDesc = now.Add(-30 * time.Minute).Format(time.RFC3339Nano)
+					if leaf.ParentSessionID != fresh.RootSessionID {
+						t.Fatal("leaf did not use exact fresh parent row")
+					}
+				}
+				if root.DescendantLastUsedAt != wantDesc || root.LastUsedAt != now.Add(-4*time.Hour).Format(time.RFC3339Nano) {
+					t.Fatalf("rejected row changed Root usage: %+v", root)
+				}
+			})
+		}
+	}
+}
