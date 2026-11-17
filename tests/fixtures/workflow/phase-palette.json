@@ -1,0 +1,757 @@
+{
+  "source": "Synthetic B644-shaped palette fixture; no operating ledger or real identity/times.",
+  "task_id": "FLOW-1",
+  "acceptance": {
+    "status": "unknown",
+    "applied": false
+  },
+  "workflow": {
+    "version": 1,
+    "task_id": "FLOW-1",
+    "computed_at": "2026-11-05T00:15:00.000Z",
+    "axis": {
+      "start": "2026-11-05T00:00:00.000Z",
+      "end": "2026-11-05T00:15:00.000Z",
+      "open": true,
+      "elapsed_ms": 900000,
+      "basis": "registered_current",
+      "boundary_status": "complete"
+    },
+    "current": {
+      "phase": "implementation",
+      "processing_role": "worker",
+      "processing_agent": "synthetic-worker",
+      "assigned_worker": "/root/controller/naong",
+      "round": 0,
+      "next_action": "implement_and_verify"
+    },
+    "measurement": {
+      "status": "partial",
+      "worker": {
+        "status": "observed",
+        "duration_ms": 760250
+      },
+      "review": {
+        "status": "not_recorded"
+      },
+      "unmeasured_ms": 139750,
+      "coverage_percent": 84.47
+    },
+    "lifecycle": {
+      "wait_ms": 30000,
+      "total_elapsed_ms": 900000,
+      "wait_intervals": [
+        {
+          "kind": "registration_queue",
+          "started_at": "2026-11-05T00:11:00.000Z",
+          "ended_at": "2026-11-05T00:11:20.000Z",
+          "duration_ms": 20000
+        },
+        {
+          "kind": "dispatch_wait",
+          "started_at": "2026-11-05T00:12:20.000Z",
+          "ended_at": "2026-11-05T00:12:30.000Z",
+          "duration_ms": 10000
+        }
+      ],
+      "completion_history": []
+    },
+    "runtime_timing": {
+      "status": "observed",
+      "duration_ms": 70000
+    },
+    "reporting": {
+      "status": "partial",
+      "executions_without_activity": 1,
+      "reviews_without_activity": 1,
+      "findings": [],
+      "scope": "observed_evidence_only",
+      "roles": [
+        {
+          "role": "worker",
+          "status": "partial",
+          "fact_count": 0,
+          "activity_event_count": 15
+        },
+        {
+          "role": "registrar",
+          "status": "partial",
+          "fact_count": 1,
+          "activity_event_count": 0
+        },
+        {
+          "role": "controller",
+          "status": "partial",
+          "fact_count": 1,
+          "activity_event_count": 0
+        }
+      ]
+    },
+    "control_snapshot": {
+      "trust": "verified",
+      "validated_at": "2026-11-05T00:15:00.000Z"
+    },
+    "rounds": [
+      {
+        "number": 0,
+        "started_at": "2026-11-05T00:00:00.000Z",
+        "basis": "synthetic"
+      },
+      {
+        "number": 1,
+        "started_at": "2026-11-05T00:11:20.000Z",
+        "basis": "synthetic"
+      }
+    ],
+    "rows": [
+      {
+        "id": "worker|phase|0",
+        "role": "worker",
+        "agent_id": "synthetic-worker",
+        "display_name": "naong",
+        "display_name_source": "bound_runtime_agent_path",
+        "round": 0,
+        "observed_activity_ms": 760250,
+        "intervals": [
+          {
+            "id": "phase-requirements",
+            "kind": "activity",
+            "type": "requirements",
+            "start": "2026-11-05T00:00:00.000Z",
+            "end": "2026-11-05T00:01:00.000Z",
+            "measured": true,
+            "duration_ms": 60000,
+            "attempt_id": "synthetic-attempt",
+            "assignment_id": "synthetic-assignment",
+            "evidence": "Synthetic source <not markup>"
+          },
+          {
+            "id": "phase-research",
+            "kind": "activity",
+            "type": "research",
+            "start": "2026-11-05T00:01:00.000Z",
+            "end": "2026-11-05T00:02:00.000Z",
+            "measured": true,
+            "duration_ms": 60000,
+            "attempt_id": "synthetic-attempt",
+            "assignment_id": "synthetic-assignment",
+            "evidence": "Synthetic source <not markup>"
+          },
+          {
+            "id": "phase-implementation",
+            "kind": "activity",
+            "type": "implementation",
+            "start": "2026-11-05T00:02:00.000Z",
+            "end": "2026-11-05T00:03:00.000Z",
+            "measured": true,
+            "duration_ms": 60000,
+            "attempt_id": "synthetic-attempt",
+            "assignment_id": "synthetic-assignment",
+            "evidence": "Synthetic source <not markup>"
+          },
+          {
+            "id": "phase-targeted_test",
+            "kind": "activity",
+            "type": "targeted_test",
+            "start": "2026-11-05T00:03:00.000Z",
+            "end": "2026-11-05T00:04:00.000Z",
+            "measured": true,
+            "duration_ms": 60000,
+            "attempt_id": "synthetic-attempt",
+            "assignment_id": "synthetic-assignment",
+            "evidence": "Synthetic source <not markup>"
+          },
+          {
+            "id": "phase-full_regression",
+            "kind": "activity",
+            "type": "full_regression",
+            "start": "2026-11-05T00:04:00.000Z",
+            "end": "2026-11-05T00:05:00.000Z",
+            "measured": true,
+            "duration_ms": 60000,
+            "attempt_id": "synthetic-attempt",
+            "assignment_id": "synthetic-assignment",
+            "evidence": "Synthetic source <not markup>"
+          },
+          {
+            "id": "phase-build_check",
+            "kind": "activity",
+            "type": "build_check",
+            "start": "2026-11-05T00:05:00.000Z",
+            "end": "2026-11-05T00:06:00.000Z",
+            "measured": true,
+            "duration_ms": 60000,
+            "attempt_id": "synthetic-attempt",
+            "assignment_id": "synthetic-assignment",
+            "evidence": "Synthetic source <not markup>"
+          },
+          {
+            "id": "phase-controller_review",
+            "kind": "activity",
+            "type": "controller_review",
+            "start": "2026-11-05T00:06:00.000Z",
+            "end": "2026-11-05T00:07:00.000Z",
+            "measured": true,
+            "duration_ms": 60000,
+            "attempt_id": "synthetic-attempt",
+            "assignment_id": "synthetic-assignment",
+            "evidence": "Synthetic source <not markup>"
+          },
+          {
+            "id": "phase-controller_rereview",
+            "kind": "activity",
+            "type": "controller_rereview",
+            "start": "2026-11-05T00:07:00.000Z",
+            "end": "2026-11-05T00:08:00.000Z",
+            "measured": true,
+            "duration_ms": 60000,
+            "attempt_id": "synthetic-attempt",
+            "assignment_id": "synthetic-assignment",
+            "evidence": "Synthetic source <not markup>"
+          },
+          {
+            "id": "phase-handoff",
+            "kind": "activity",
+            "type": "handoff",
+            "start": "2026-11-05T00:08:00.000Z",
+            "end": "2026-11-05T00:09:00.000Z",
+            "measured": true,
+            "duration_ms": 60000,
+            "attempt_id": "synthetic-attempt",
+            "assignment_id": "synthetic-assignment",
+            "evidence": "Synthetic source <not markup>"
+          },
+          {
+            "id": "phase-recovery",
+            "kind": "activity",
+            "type": "recovery",
+            "start": "2026-11-05T00:09:00.000Z",
+            "end": "2026-11-05T00:10:00.000Z",
+            "measured": true,
+            "duration_ms": 60000,
+            "attempt_id": "synthetic-attempt",
+            "assignment_id": "synthetic-assignment",
+            "evidence": "Synthetic source <not markup>"
+          },
+          {
+            "id": "phase-other",
+            "kind": "activity",
+            "type": "other",
+            "start": "2026-11-05T00:10:00.000Z",
+            "end": "2026-11-05T00:11:00.000Z",
+            "measured": true,
+            "duration_ms": 60000,
+            "attempt_id": "synthetic-attempt",
+            "assignment_id": "synthetic-assignment",
+            "evidence": "Synthetic source <not markup>"
+          },
+          {
+            "id": "short-test",
+            "kind": "activity",
+            "type": "targeted_test",
+            "start": "2026-11-05T00:11:40.000Z",
+            "end": "2026-11-05T00:11:40.250Z",
+            "measured": true,
+            "duration_ms": 250,
+            "attempt_id": "synthetic-attempt",
+            "assignment_id": "synthetic-assignment",
+            "evidence": "Synthetic source <not markup>"
+          },
+          {
+            "id": "overlap-test",
+            "kind": "activity",
+            "type": "targeted_test",
+            "start": "2026-11-05T00:01:40.000Z",
+            "end": "2026-11-05T00:03:00.000Z",
+            "measured": true,
+            "duration_ms": 80000,
+            "attempt_id": "synthetic-attempt",
+            "assignment_id": "synthetic-assignment",
+            "evidence": "Synthetic source <not markup>"
+          },
+          {
+            "id": "unknown",
+            "kind": "activity",
+            "type": "future<phase>",
+            "start": "2026-11-05T00:12:00.000Z",
+            "end": "2026-11-05T00:12:20.000Z",
+            "measured": true,
+            "duration_ms": 20000,
+            "attempt_id": "synthetic-attempt",
+            "assignment_id": "synthetic-assignment",
+            "evidence": "Synthetic source <not markup>"
+          },
+          {
+            "id": "open",
+            "kind": "activity_open",
+            "type": "implementation",
+            "start": "2026-11-05T00:12:40.000Z",
+            "measured": false,
+            "attempt_id": "synthetic-open",
+            "evidence": "Synthetic start only; no phase terminal"
+          }
+        ],
+        "gaps": [
+          {
+            "start": "2026-11-05T00:00:00.000Z",
+            "end": "2026-11-05T00:00:10.000Z",
+            "kind": "activity_unmeasured",
+            "status": "unmeasured",
+            "evidence": []
+          },
+          {
+            "start": "2026-11-05T00:11:00.000Z",
+            "end": "2026-11-05T00:11:20.000Z",
+            "kind": "activity_unmeasured",
+            "status": "confirmed_wait",
+            "evidence": [
+              {
+                "source": "lifecycle",
+                "observed_at": "2026-11-05T00:11:20.000Z",
+                "reason": "Synthetic explicit wait followed by resume",
+                "event_id": "synthetic-wait-resume"
+              }
+            ]
+          },
+          {
+            "start": "2026-11-05T00:11:40.250Z",
+            "end": "2026-11-05T00:12:00.000Z",
+            "kind": "activity_unmeasured",
+            "status": "native_observed",
+            "evidence": [
+              {
+                "source": "t3_structured",
+                "observed_at": "2026-11-05T00:12:00.000Z",
+                "reason": "Synthetic native boundary observed; not a phase duration",
+                "attempt_id": "synthetic-native"
+              }
+            ]
+          },
+          {
+            "start": "2026-11-05T00:12:20.000Z",
+            "end": "2026-11-05T00:12:40.000Z",
+            "kind": "activity_unmeasured",
+            "status": "collection_failed",
+            "evidence": [
+              {
+                "source": "agent_report",
+                "observed_at": "2026-11-05T00:12:40.000Z",
+                "reason": "Synthetic collector failure <not markup>",
+                "event_id": "synthetic-collection-failure"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "controller|phase|0",
+        "role": "controller",
+        "agent_id": "synthetic-controller",
+        "display_name": "controller",
+        "round": 0,
+        "observed_activity_ms": 60000,
+        "intervals": [
+          {
+            "id": "controller-implementation",
+            "kind": "activity",
+            "type": "implementation",
+            "start": "2026-11-05T00:02:00.000Z",
+            "end": "2026-11-05T00:03:00.000Z",
+            "measured": true,
+            "duration_ms": 60000,
+            "attempt_id": "synthetic-attempt",
+            "assignment_id": "synthetic-assignment",
+            "evidence": "Synthetic source <not markup>"
+          }
+        ]
+      },
+      {
+        "id": "registrar|phase|0",
+        "role": "registrar",
+        "agent_id": "synthetic-registrar",
+        "display_name": "registrar",
+        "round": 0,
+        "observed_activity_ms": 60000,
+        "intervals": [
+          {
+            "id": "registrar-implementation",
+            "kind": "activity",
+            "type": "implementation",
+            "start": "2026-11-05T00:02:00.000Z",
+            "end": "2026-11-05T00:03:00.000Z",
+            "measured": true,
+            "duration_ms": 60000,
+            "attempt_id": "synthetic-attempt",
+            "assignment_id": "synthetic-assignment",
+            "evidence": "Synthetic source <not markup>"
+          }
+        ],
+        "role_facts": [
+          {
+            "id": "registration-point",
+            "kind": "registered",
+            "at": "2026-11-05T00:02:30.000Z",
+            "source": "lifecycle",
+            "reason": "Synthetic exact /root/registrar source actor; registration queue is not active time",
+            "measurement_status": "unmeasured",
+            "assignment_id": "synthetic-assignment"
+          }
+        ]
+      },
+      {
+        "id": "sub_controller|phase|0",
+        "role": "sub_controller",
+        "agent_id": "synthetic-sub_controller",
+        "display_name": "sub_controller",
+        "round": 0,
+        "observed_activity_ms": 60000,
+        "intervals": [
+          {
+            "id": "sub_controller-implementation",
+            "kind": "activity",
+            "type": "implementation",
+            "start": "2026-11-05T00:02:00.000Z",
+            "end": "2026-11-05T00:03:00.000Z",
+            "measured": true,
+            "duration_ms": 60000,
+            "attempt_id": "synthetic-attempt",
+            "assignment_id": "synthetic-assignment",
+            "evidence": "Synthetic source <not markup>"
+          }
+        ]
+      },
+      {
+        "id": "worker|fact|1",
+        "role": "worker",
+        "agent_id": "synthetic-fact",
+        "round": 1,
+        "intervals": [
+          {
+            "id": "fact",
+            "kind": "execution_report",
+            "type": "unclassified_execution",
+            "start": "2026-11-05T00:11:20.000Z",
+            "end": "2026-11-05T00:12:30.000Z",
+            "measured": false,
+            "end_evidence": "native_terminal",
+            "end_evidence_source": "t3_structured",
+            "attempt_id": "synthetic-fact"
+          },
+          {
+            "id": "missing-end",
+            "kind": "activity_unreported",
+            "type": "targeted_test",
+            "start": "2026-11-05T00:11:20.000Z",
+            "end": "2026-11-05T00:12:30.000Z",
+            "measured": false,
+            "attempt_id": "synthetic-fact"
+          },
+          {
+            "id": "claimed",
+            "kind": "handoff_review",
+            "type": "unclassified_review",
+            "start": "2026-11-05T00:12:30.000Z",
+            "measured": false,
+            "handoff_id": "synthetic-handoff"
+          }
+        ]
+      },
+      {
+        "id": "controller|fact-only|1",
+        "role": "controller",
+        "agent_id": "synthetic-fact-controller",
+        "round": 1,
+        "intervals": [],
+        "gaps": [],
+        "role_facts": [
+          {
+            "id": "controller-observed-point",
+            "kind": "native_observed",
+            "at": "2026-11-05T00:12:00.000Z",
+            "source": "t3_structured",
+            "reason": "Synthetic exact controller actor; no Activity measurement",
+            "measurement_status": "unmeasured",
+            "attempt_id": "synthetic-fact-controller"
+          }
+        ]
+      }
+    ],
+    "unmeasured_intervals": [
+      {
+        "start": "2026-11-05T00:11:00.000Z",
+        "end": "2026-11-05T00:11:40.000Z",
+        "kind": "activity_unmeasured",
+        "status": "unmeasured",
+        "evidence": []
+      },
+      {
+        "start": "2026-11-05T00:11:40.250Z",
+        "end": "2026-11-05T00:12:00.000Z",
+        "kind": "activity_unmeasured",
+        "status": "unmeasured",
+        "evidence": []
+      },
+      {
+        "start": "2026-11-05T00:12:20.000Z",
+        "end": "2026-11-05T00:12:40.000Z",
+        "kind": "activity_unmeasured",
+        "status": "unmeasured",
+        "evidence": []
+      }
+    ]
+  },
+  "summary": {
+    "by_type_ms": {
+      "requirements": 60000,
+      "research": 60000,
+      "implementation": 60000,
+      "targeted_test": 60000,
+      "full_regression": 60000,
+      "build_check": 60000,
+      "controller_review": 60000,
+      "controller_rereview": 60000,
+      "handoff": 60000,
+      "recovery": 60000,
+      "other": 60000
+    },
+    "segments": [
+      {
+        "type": "requirements",
+        "role": "worker",
+        "duration_ms": 60000,
+        "started_at": "2026-11-05T00:00:00.000Z",
+        "ended_at": "2026-11-05T00:01:00.000Z"
+      },
+      {
+        "type": "research",
+        "role": "worker",
+        "duration_ms": 60000,
+        "started_at": "2026-11-05T00:01:00.000Z",
+        "ended_at": "2026-11-05T00:02:00.000Z"
+      },
+      {
+        "type": "implementation",
+        "role": "worker",
+        "duration_ms": 60000,
+        "started_at": "2026-11-05T00:02:00.000Z",
+        "ended_at": "2026-11-05T00:03:00.000Z"
+      },
+      {
+        "type": "targeted_test",
+        "role": "worker",
+        "duration_ms": 60000,
+        "started_at": "2026-11-05T00:03:00.000Z",
+        "ended_at": "2026-11-05T00:04:00.000Z"
+      },
+      {
+        "type": "full_regression",
+        "role": "worker",
+        "duration_ms": 60000,
+        "started_at": "2026-11-05T00:04:00.000Z",
+        "ended_at": "2026-11-05T00:05:00.000Z"
+      },
+      {
+        "type": "build_check",
+        "role": "worker",
+        "duration_ms": 60000,
+        "started_at": "2026-11-05T00:05:00.000Z",
+        "ended_at": "2026-11-05T00:06:00.000Z"
+      },
+      {
+        "type": "controller_review",
+        "role": "worker",
+        "duration_ms": 60000,
+        "started_at": "2026-11-05T00:06:00.000Z",
+        "ended_at": "2026-11-05T00:07:00.000Z"
+      },
+      {
+        "type": "controller_rereview",
+        "role": "worker",
+        "duration_ms": 60000,
+        "started_at": "2026-11-05T00:07:00.000Z",
+        "ended_at": "2026-11-05T00:08:00.000Z"
+      },
+      {
+        "type": "handoff",
+        "role": "worker",
+        "duration_ms": 60000,
+        "started_at": "2026-11-05T00:08:00.000Z",
+        "ended_at": "2026-11-05T00:09:00.000Z"
+      },
+      {
+        "type": "recovery",
+        "role": "worker",
+        "duration_ms": 60000,
+        "started_at": "2026-11-05T00:09:00.000Z",
+        "ended_at": "2026-11-05T00:10:00.000Z"
+      },
+      {
+        "type": "other",
+        "role": "worker",
+        "duration_ms": 60000,
+        "started_at": "2026-11-05T00:10:00.000Z",
+        "ended_at": "2026-11-05T00:11:00.000Z"
+      },
+      {
+        "type": "targeted_test",
+        "role": "worker",
+        "duration_ms": 250,
+        "started_at": "2026-11-05T00:11:40.000Z",
+        "ended_at": "2026-11-05T00:11:40.250Z"
+      },
+      {
+        "type": "targeted_test",
+        "role": "worker",
+        "duration_ms": 80000,
+        "started_at": "2026-11-05T00:01:40.000Z",
+        "ended_at": "2026-11-05T00:03:00.000Z"
+      },
+      {
+        "type": "future<phase>",
+        "role": "worker",
+        "duration_ms": 20000,
+        "started_at": "2026-11-05T00:12:00.000Z",
+        "ended_at": "2026-11-05T00:12:20.000Z"
+      }
+    ]
+  },
+  "events": [
+    {
+      "event_id": "synthetic-phase-requirements",
+      "role": "worker",
+      "type": "requirements",
+      "action": "start",
+      "occurred_at": "2026-11-05T00:00:00.000Z",
+      "evidence": "Synthetic source <not markup>"
+    },
+    {
+      "event_id": "synthetic-phase-research",
+      "role": "worker",
+      "type": "research",
+      "action": "start",
+      "occurred_at": "2026-11-05T00:01:00.000Z",
+      "evidence": "Synthetic source <not markup>"
+    },
+    {
+      "event_id": "synthetic-phase-implementation",
+      "role": "worker",
+      "type": "implementation",
+      "action": "start",
+      "occurred_at": "2026-11-05T00:02:00.000Z",
+      "evidence": "Synthetic source <not markup>"
+    },
+    {
+      "event_id": "synthetic-phase-targeted_test",
+      "role": "worker",
+      "type": "targeted_test",
+      "action": "start",
+      "occurred_at": "2026-11-05T00:03:00.000Z",
+      "evidence": "Synthetic source <not markup>"
+    },
+    {
+      "event_id": "synthetic-phase-full_regression",
+      "role": "worker",
+      "type": "full_regression",
+      "action": "start",
+      "occurred_at": "2026-11-05T00:04:00.000Z",
+      "evidence": "Synthetic source <not markup>"
+    },
+    {
+      "event_id": "synthetic-phase-build_check",
+      "role": "worker",
+      "type": "build_check",
+      "action": "start",
+      "occurred_at": "2026-11-05T00:05:00.000Z",
+      "evidence": "Synthetic source <not markup>"
+    },
+    {
+      "event_id": "synthetic-phase-controller_review",
+      "role": "worker",
+      "type": "controller_review",
+      "action": "start",
+      "occurred_at": "2026-11-05T00:06:00.000Z",
+      "evidence": "Synthetic source <not markup>"
+    },
+    {
+      "event_id": "synthetic-phase-controller_rereview",
+      "role": "worker",
+      "type": "controller_rereview",
+      "action": "start",
+      "occurred_at": "2026-11-05T00:07:00.000Z",
+      "evidence": "Synthetic source <not markup>"
+    },
+    {
+      "event_id": "synthetic-phase-handoff",
+      "role": "worker",
+      "type": "handoff",
+      "action": "start",
+      "occurred_at": "2026-11-05T00:08:00.000Z",
+      "evidence": "Synthetic source <not markup>"
+    },
+    {
+      "event_id": "synthetic-phase-recovery",
+      "role": "worker",
+      "type": "recovery",
+      "action": "start",
+      "occurred_at": "2026-11-05T00:09:00.000Z",
+      "evidence": "Synthetic source <not markup>"
+    },
+    {
+      "event_id": "synthetic-phase-other",
+      "role": "worker",
+      "type": "other",
+      "action": "start",
+      "occurred_at": "2026-11-05T00:10:00.000Z",
+      "evidence": "Synthetic source <not markup>"
+    },
+    {
+      "event_id": "synthetic-short-test",
+      "role": "worker",
+      "type": "targeted_test",
+      "action": "start",
+      "occurred_at": "2026-11-05T00:11:40.000Z",
+      "evidence": "Synthetic source <not markup>"
+    },
+    {
+      "event_id": "synthetic-overlap-test",
+      "role": "worker",
+      "type": "targeted_test",
+      "action": "start",
+      "occurred_at": "2026-11-05T00:01:40.000Z",
+      "evidence": "Synthetic source <not markup>"
+    },
+    {
+      "event_id": "synthetic-unknown",
+      "role": "worker",
+      "type": "future<phase>",
+      "action": "start",
+      "occurred_at": "2026-11-05T00:12:00.000Z",
+      "evidence": "Synthetic source <not markup>"
+    },
+    {
+      "event_id": "synthetic-open",
+      "role": "worker",
+      "type": "implementation",
+      "action": "start",
+      "occurred_at": "2026-11-05T00:12:40.000Z",
+      "evidence": "Synthetic start only; no phase terminal"
+    }
+  ],
+  "generated_cases": [
+    {
+      "name": "a85-worker-only-with-role-facts",
+      "sha256": "69c3cff9419a5ba6627f3ec26a71d5ef5f6dc8e52d9f0e397c7bfe8b922e631c",
+      "raw_json": "{\n  \"events\": [\n    {\n      \"schema_version\": 0,\n      \"event_id\": \"w\",\n      \"task_id\": \"A-85\",\n      \"action\": \"start\",\n      \"role\": \"worker\",\n      \"agent_id\": \"native-worker\",\n      \"runtime_attempt_id\": \"worker\",\n      \"round\": 0,\n      \"type\": \"implementation\",\n      \"confidence\": \"\",\n      \"occurred_at\": \"2026-11-05T00:05:00Z\",\n      \"recorded_at\": \"0001-01-01T00:00:00Z\"\n    },\n    {\n      \"schema_version\": 0,\n      \"event_id\": \"we\",\n      \"task_id\": \"A-85\",\n      \"action\": \"stop\",\n      \"role\": \"worker\",\n      \"agent_id\": \"native-worker\",\n      \"runtime_attempt_id\": \"worker\",\n      \"round\": 0,\n      \"type\": \"implementation\",\n      \"confidence\": \"\",\n      \"occurred_at\": \"2026-11-05T00:10:00Z\",\n      \"recorded_at\": \"0001-01-01T00:00:00Z\"\n    }\n  ],\n  \"source\": \"synthetic regression fixture; contains no user evidence\",\n  \"summary\": {\n    \"task_id\": \"A-85\",\n    \"segments\": [\n      {\n        \"task_id\": \"A-85\",\n        \"agent_id\": \"native-worker\",\n        \"attempt_id\": \"worker\",\n        \"role\": \"worker\",\n        \"type\": \"implementation\",\n        \"round\": 0,\n        \"started_at\": \"2026-11-05T00:05:00Z\",\n        \"ended_at\": \"2026-11-05T00:10:00Z\",\n        \"duration_ms\": 300000\n      }\n    ],\n    \"by_type_ms\": {\n      \"implementation\": 300000\n    },\n    \"agent_time_ms\": 300000,\n    \"observed_wall_ms\": 300000,\n    \"first_observed_at\": \"2026-11-05T00:05:00Z\",\n    \"last_observed_at\": \"2026-11-05T00:10:00Z\",\n    \"observed_span_ms\": 300000,\n    \"unattributed_gap_ms\": 0,\n    \"open_activities\": 0,\n    \"invalid_transitions\": 0,\n    \"invalid_corrections\": 0,\n    \"interrupted_activities\": 0,\n    \"unmeasured_upper_bound_ms\": 0,\n    \"initial_worker_ms\": 300000,\n    \"rework_worker_ms\": 0,\n    \"controller_first_review_ms\": 0,\n    \"controller_rereview_ms\": 0\n  },\n  \"workflow\": {\n    \"runtime_timing\": {\n      \"source\": \"persisted_verified_t3_receipts\",\n      \"status\": \"not_recorded\",\n      \"reported_wait_overlap_ms\": 0,\n      \"intervals\": [],\n      \"rejected\": 0\n    },\n    \"version\": 1,\n    \"task_id\": \"A-85\",\n    \"computed_at\": \"2026-11-05T00:20:00Z\",\n    \"axis\": {\n      \"start\": \"2026-11-05T00:00:00Z\",\n      \"end\": \"2026-11-05T00:20:00Z\",\n      \"basis\": \"registered_current\",\n      \"boundary_status\": \"complete\",\n      \"elapsed_ms\": 1200000,\n      \"open\": true\n    },\n    \"lifecycle\": {\n      \"task_id\": \"A-85\",\n      \"source\": \"reported_lifecycle\",\n      \"registered_at\": \"2026-11-05T00:00:00Z\",\n      \"completion_history\": null,\n      \"registration_queue_ms\": 120000,\n      \"dispatch_wait_ms\": 0,\n      \"explicit_wait_ms\": 0,\n      \"wait_ms\": 120000,\n      \"covered_elapsed_ms\": 0,\n      \"wait_activity_overlap_ms\": 0,\n      \"invalid_facts\": 0,\n      \"open_wait_count\": 1,\n      \"wait_intervals\": [\n        {\n          \"kind\": \"registration_queue\",\n          \"started_at\": \"2026-11-05T00:00:00Z\",\n          \"ended_at\": \"2026-11-05T00:02:00Z\",\n          \"duration_ms\": 120000,\n          \"from_event_id\": \"r\",\n          \"to_event_id\": \"a\"\n        }\n      ]\n    },\n    \"measurement\": {\n      \"status\": \"partial\",\n      \"activity\": {\n        \"status\": \"observed\",\n        \"duration_ms\": 300000,\n        \"event_count\": 2,\n        \"segment_count\": 1\n      },\n      \"worker\": {\n        \"status\": \"observed\",\n        \"duration_ms\": 300000,\n        \"event_count\": 2,\n        \"segment_count\": 1\n      },\n      \"controller\": {\n        \"status\": \"not_recorded\",\n        \"event_count\": 0,\n        \"segment_count\": 0\n      },\n      \"registrar\": {\n        \"status\": \"not_recorded\",\n        \"event_count\": 0,\n        \"segment_count\": 0\n      },\n      \"review\": {\n        \"status\": \"not_recorded\",\n        \"event_count\": 0,\n        \"segment_count\": 0\n      },\n      \"tests\": {\n        \"status\": \"not_recorded\",\n        \"event_count\": 0,\n        \"segment_count\": 0\n      },\n      \"observed_wall_ms\": 300000,\n      \"agent_time_ms\": 300000,\n      \"unmeasured_ms\": 900000,\n      \"coverage_percent\": 25\n    },\n    \"current\": {\n      \"phase\": \"dispatch_wait\",\n      \"basis\": \"reported_lifecycle\",\n      \"next_action\": \"confirm_worker_start\",\n      \"round\": 0,\n      \"round_status\": \"initial\"\n    },\n    \"rounds\": [\n      {\n        \"number\": 0,\n        \"kind\": \"initial\",\n        \"started_at\": \"2026-11-05T00:00:00Z\",\n        \"basis\": \"registered_or_reported_activity\",\n        \"assignment_ids\": [],\n        \"attempt_ids\": [\n          \"worker\"\n        ],\n        \"handoff_ids\": [],\n        \"commits\": [],\n        \"verification_results\": []\n      }\n    ],\n    \"rows\": [\n      {\n        \"role_facts\": [\n          {\n            \"id\": \"a\",\n            \"kind\": \"assigned\",\n            \"at\": \"2026-11-05T00:02:00Z\",\n            \"source\": \"controller_report\",\n            \"reason\": \"Reported lifecycle fact; no role Activity measurement is implied\",\n            \"measurement_status\": \"unmeasured\"\n          }\n        ],\n        \"gaps\": [\n          {\n            \"start\": \"2026-11-05T00:00:00Z\",\n            \"end\": \"2026-11-05T00:20:00Z\",\n            \"kind\": \"activity_unmeasured\",\n            \"status\": \"unmeasured\",\n            \"evidence\": [\n              {\n                \"source\": \"activity_ledger\",\n                \"observed_at\": \"2026-11-05T00:20:00Z\",\n                \"reason\": \"No closed measured Activity covers this span; insufficient evidence to infer activity or inactivity\"\n              }\n            ]\n          }\n        ],\n        \"id\": \"controller|/root/controller|0\",\n        \"role\": \"controller\",\n        \"agent_id\": \"/root/controller\",\n        \"round\": 0,\n        \"round_status\": \"initial\",\n        \"intervals\": []\n      },\n      {\n        \"role_facts\": [\n          {\n            \"id\": \"r\",\n            \"kind\": \"registered\",\n            \"at\": \"2026-11-05T00:00:00Z\",\n            \"source\": \"registrar_report\",\n            \"reason\": \"Reported lifecycle fact; no role Activity measurement is implied\",\n            \"measurement_status\": \"unmeasured\"\n          }\n        ],\n        \"gaps\": [\n          {\n            \"start\": \"2026-11-05T00:00:00Z\",\n            \"end\": \"2026-11-05T00:20:00Z\",\n            \"kind\": \"activity_unmeasured\",\n            \"status\": \"unmeasured\",\n            \"evidence\": [\n              {\n                \"source\": \"activity_ledger\",\n                \"observed_at\": \"2026-11-05T00:20:00Z\",\n                \"reason\": \"No closed measured Activity covers this span; insufficient evidence to infer activity or inactivity\"\n              }\n            ]\n          }\n        ],\n        \"id\": \"registrar|/root/registrar|0\",\n        \"role\": \"registrar\",\n        \"agent_id\": \"/root/registrar\",\n        \"round\": 0,\n        \"round_status\": \"initial\",\n        \"intervals\": []\n      },\n      {\n        \"role_facts\": null,\n        \"gaps\": [\n          {\n            \"start\": \"2026-11-05T00:00:00Z\",\n            \"end\": \"2026-11-05T00:05:00Z\",\n            \"kind\": \"activity_unmeasured\",\n            \"status\": \"unmeasured\",\n            \"evidence\": [\n              {\n                \"source\": \"activity_ledger\",\n                \"observed_at\": \"2026-11-05T00:20:00Z\",\n                \"reason\": \"No closed measured Activity covers this span; insufficient evidence to infer activity or inactivity\"\n              }\n            ]\n          },\n          {\n            \"start\": \"2026-11-05T00:10:00Z\",\n            \"end\": \"2026-11-05T00:20:00Z\",\n            \"kind\": \"activity_unmeasured\",\n            \"status\": \"unmeasured\",\n            \"evidence\": [\n              {\n                \"source\": \"activity_ledger\",\n                \"observed_at\": \"2026-11-05T00:20:00Z\",\n                \"reason\": \"No closed measured Activity covers this span; insufficient evidence to infer activity or inactivity\"\n              }\n            ]\n          }\n        ],\n        \"observed_activity_ms\": 300000,\n        \"id\": \"worker|native-worker|0\",\n        \"role\": \"worker\",\n        \"agent_id\": \"native-worker\",\n        \"round\": 0,\n        \"round_status\": \"initial\",\n        \"intervals\": [\n          {\n            \"id\": \"w\",\n            \"kind\": \"activity\",\n            \"type\": \"implementation\",\n            \"start\": \"2026-11-05T00:05:00Z\",\n            \"end\": \"2026-11-05T00:10:00Z\",\n            \"measured\": true,\n            \"duration_ms\": 300000,\n            \"attempt_id\": \"worker\",\n            \"lane\": 0\n          }\n        ]\n      }\n    ],\n    \"unmeasured_intervals\": [\n      {\n        \"start\": \"2026-11-05T00:00:00Z\",\n        \"end\": \"2026-11-05T00:05:00Z\",\n        \"kind\": \"activity_unmeasured\",\n        \"status\": \"unmeasured\",\n        \"evidence\": [\n          {\n            \"source\": \"activity_ledger\",\n            \"observed_at\": \"2026-11-05T00:20:00Z\",\n            \"reason\": \"No closed measured Activity covers this span; insufficient evidence to infer activity or inactivity\"\n          }\n        ]\n      },\n      {\n        \"start\": \"2026-11-05T00:10:00Z\",\n        \"end\": \"2026-11-05T00:20:00Z\",\n        \"kind\": \"activity_unmeasured\",\n        \"status\": \"unmeasured\",\n        \"evidence\": [\n          {\n            \"source\": \"activity_ledger\",\n            \"observed_at\": \"2026-11-05T00:20:00Z\",\n            \"reason\": \"No closed measured Activity covers this span; insufficient evidence to infer activity or inactivity\"\n          }\n        ]\n      }\n    ],\n    \"reporting\": {\n      \"scope\": \"observed_evidence_only\",\n      \"roles\": [\n        {\n          \"role\": \"controller\",\n          \"status\": \"partial\",\n          \"fact_count\": 1,\n          \"activity_event_count\": 0\n        },\n        {\n          \"role\": \"registrar\",\n          \"status\": \"partial\",\n          \"fact_count\": 1,\n          \"activity_event_count\": 0\n        },\n        {\n          \"role\": \"worker\",\n          \"status\": \"recorded\",\n          \"fact_count\": 0,\n          \"activity_event_count\": 2\n        }\n      ],\n      \"status\": \"partial\",\n      \"expected_executions\": 0,\n      \"executions_without_activity\": 0,\n      \"expected_reviews\": 0,\n      \"reviews_without_activity\": 0,\n      \"findings\": []\n    },\n    \"control_snapshot\": {}\n  }\n}\n"
+    },
+    {
+      "name": "a85-native-wait-unmeasured",
+      "sha256": "a00eb77a70dd2479597d8da190b3a964c995186d6e349663a6aa265993e5fadb",
+      "raw_json": "{\n  \"events\": null,\n  \"source\": \"synthetic regression fixture; contains no user evidence\",\n  \"summary\": {\n    \"task_id\": \"A-85\",\n    \"segments\": [],\n    \"by_type_ms\": {},\n    \"agent_time_ms\": 0,\n    \"observed_wall_ms\": 0,\n    \"observed_span_ms\": 0,\n    \"unattributed_gap_ms\": 0,\n    \"open_activities\": 0,\n    \"invalid_transitions\": 0,\n    \"invalid_corrections\": 0,\n    \"interrupted_activities\": 0,\n    \"unmeasured_upper_bound_ms\": 0,\n    \"initial_worker_ms\": 0,\n    \"rework_worker_ms\": 0,\n    \"controller_first_review_ms\": 0,\n    \"controller_rereview_ms\": 0\n  },\n  \"workflow\": {\n    \"runtime_timing\": {\n      \"source\": \"persisted_verified_t3_receipts\",\n      \"status\": \"not_recorded\",\n      \"reported_wait_overlap_ms\": 0,\n      \"intervals\": [],\n      \"rejected\": 1\n    },\n    \"version\": 1,\n    \"task_id\": \"A-85\",\n    \"computed_at\": \"2026-11-05T00:10:00Z\",\n    \"axis\": {\n      \"start\": \"2026-11-05T00:00:00Z\",\n      \"end\": \"2026-11-05T00:10:00Z\",\n      \"basis\": \"registered_current\",\n      \"boundary_status\": \"complete\",\n      \"elapsed_ms\": 600000,\n      \"open\": true\n    },\n    \"lifecycle\": {\n      \"task_id\": \"A-85\",\n      \"source\": \"reported_lifecycle\",\n      \"registered_at\": \"2026-11-05T00:00:00Z\",\n      \"completion_history\": null,\n      \"registration_queue_ms\": 0,\n      \"dispatch_wait_ms\": 0,\n      \"explicit_wait_ms\": 180000,\n      \"wait_ms\": 180000,\n      \"covered_elapsed_ms\": 0,\n      \"wait_activity_overlap_ms\": 0,\n      \"invalid_facts\": 0,\n      \"open_wait_count\": 0,\n      \"wait_intervals\": [\n        {\n          \"kind\": \"explicit_wait\",\n          \"started_at\": \"2026-11-05T00:05:00Z\",\n          \"ended_at\": \"2026-11-05T00:08:00Z\",\n          \"duration_ms\": 180000,\n          \"from_event_id\": \"wait\",\n          \"to_event_id\": \"resume\"\n        }\n      ]\n    },\n    \"measurement\": {\n      \"status\": \"not_recorded\",\n      \"activity\": {\n        \"status\": \"not_recorded\",\n        \"event_count\": 0,\n        \"segment_count\": 0\n      },\n      \"worker\": {\n        \"status\": \"not_recorded\",\n        \"event_count\": 0,\n        \"segment_count\": 0\n      },\n      \"controller\": {\n        \"status\": \"not_recorded\",\n        \"event_count\": 0,\n        \"segment_count\": 0\n      },\n      \"registrar\": {\n        \"status\": \"not_recorded\",\n        \"event_count\": 0,\n        \"segment_count\": 0\n      },\n      \"review\": {\n        \"status\": \"not_recorded\",\n        \"event_count\": 0,\n        \"segment_count\": 0\n      },\n      \"tests\": {\n        \"status\": \"not_recorded\",\n        \"event_count\": 0,\n        \"segment_count\": 0\n      },\n      \"observed_wall_ms\": 0,\n      \"agent_time_ms\": 0,\n      \"unmeasured_ms\": 600000,\n      \"coverage_percent\": 0\n    },\n    \"current\": {\n      \"phase\": \"execution_observed\",\n      \"basis\": \"reported_lifecycle\",\n      \"processing_role\": \"unknown\",\n      \"next_action\": \"implement_and_verify\",\n      \"round\": 0,\n      \"round_status\": \"initial\"\n    },\n    \"rounds\": [\n      {\n        \"number\": 0,\n        \"kind\": \"initial\",\n        \"started_at\": \"2026-11-05T00:00:00Z\",\n        \"basis\": \"registered_or_reported_activity\",\n        \"assignment_ids\": [],\n        \"attempt_ids\": [\n          \"registrar\"\n        ],\n        \"handoff_ids\": [],\n        \"commits\": [],\n        \"verification_results\": []\n      }\n    ],\n    \"rows\": [\n      {\n        \"role_facts\": [\n          {\n            \"id\": \"wait\",\n            \"kind\": \"waiting\",\n            \"at\": \"2026-11-05T00:05:00Z\",\n            \"source\": \"controller_report\",\n            \"reason\": \"Reported lifecycle fact; no role Activity measurement is implied\",\n            \"measurement_status\": \"unmeasured\"\n          }\n        ],\n        \"gaps\": [\n          {\n            \"start\": \"2026-11-05T00:00:00Z\",\n            \"end\": \"2026-11-05T00:05:00Z\",\n            \"kind\": \"activity_unmeasured\",\n            \"status\": \"unmeasured\",\n            \"evidence\": [\n              {\n                \"source\": \"activity_ledger\",\n                \"observed_at\": \"2026-11-05T00:10:00Z\",\n                \"reason\": \"No closed measured Activity covers this span; insufficient evidence to infer activity or inactivity\"\n              }\n            ]\n          },\n          {\n            \"start\": \"2026-11-05T00:05:00Z\",\n            \"end\": \"2026-11-05T00:08:00Z\",\n            \"kind\": \"activity_unmeasured\",\n            \"status\": \"confirmed_wait\",\n            \"evidence\": [\n              {\n                \"source\": \"activity_ledger\",\n                \"observed_at\": \"2026-11-05T00:10:00Z\",\n                \"reason\": \"No closed measured Activity covers this span; insufficient evidence to infer activity or inactivity\"\n              },\n              {\n                \"source\": \"reported_lifecycle\",\n                \"observed_at\": \"2026-11-05T00:05:00Z\",\n                \"reason\": \"Explicit waiting report bounded by its resume report; no active work inferred\",\n                \"event_id\": \"wait\"\n              }\n            ]\n          },\n          {\n            \"start\": \"2026-11-05T00:08:00Z\",\n            \"end\": \"2026-11-05T00:10:00Z\",\n            \"kind\": \"activity_unmeasured\",\n            \"status\": \"unmeasured\",\n            \"evidence\": [\n              {\n                \"source\": \"activity_ledger\",\n                \"observed_at\": \"2026-11-05T00:10:00Z\",\n                \"reason\": \"No closed measured Activity covers this span; insufficient evidence to infer activity or inactivity\"\n              }\n            ]\n          }\n        ],\n        \"id\": \"controller|/root/controller|0\",\n        \"role\": \"controller\",\n        \"agent_id\": \"/root/controller\",\n        \"round\": 0,\n        \"round_status\": \"initial\",\n        \"intervals\": []\n      },\n      {\n        \"role_facts\": [\n          {\n            \"id\": \"runtime:registrar\",\n            \"kind\": \"observed_execution\",\n            \"at\": \"2026-11-05T00:02:00Z\",\n            \"source\": \"hook\",\n            \"reason\": \"Exact task-bound native execution observed; phase activity remains independently reported\",\n            \"measurement_status\": \"unmeasured\",\n            \"attempt_id\": \"registrar\"\n          }\n        ],\n        \"gaps\": [\n          {\n            \"start\": \"2026-11-05T00:00:00Z\",\n            \"end\": \"2026-11-05T00:02:00Z\",\n            \"kind\": \"activity_unmeasured\",\n            \"status\": \"unmeasured\",\n            \"evidence\": [\n              {\n                \"source\": \"activity_ledger\",\n                \"observed_at\": \"2026-11-05T00:10:00Z\",\n                \"reason\": \"No closed measured Activity covers this span; insufficient evidence to infer activity or inactivity\"\n              }\n            ]\n          },\n          {\n            \"start\": \"2026-11-05T00:02:00Z\",\n            \"end\": \"2026-11-05T00:04:00Z\",\n            \"kind\": \"activity_unmeasured\",\n            \"status\": \"native_observed\",\n            \"evidence\": [\n              {\n                \"source\": \"activity_ledger\",\n                \"observed_at\": \"2026-11-05T00:10:00Z\",\n                \"reason\": \"No closed measured Activity covers this span; insufficient evidence to infer activity or inactivity\"\n              },\n              {\n                \"source\": \"hook\",\n                \"observed_at\": \"2026-11-05T00:04:00Z\",\n                \"reason\": \"Native execution observed; activity within this range is unmeasured, not idle or measured work\",\n                \"attempt_id\": \"registrar\"\n              }\n            ]\n          },\n          {\n            \"start\": \"2026-11-05T00:04:00Z\",\n            \"end\": \"2026-11-05T00:10:00Z\",\n            \"kind\": \"activity_unmeasured\",\n            \"status\": \"unmeasured\",\n            \"evidence\": [\n              {\n                \"source\": \"activity_ledger\",\n                \"observed_at\": \"2026-11-05T00:10:00Z\",\n                \"reason\": \"No closed measured Activity covers this span; insufficient evidence to infer activity or inactivity\"\n              }\n            ]\n          }\n        ],\n        \"name_evidence\": [\n          {\n            \"attempt_id\": \"registrar\",\n            \"agent_path\": \"/root/registrar\",\n            \"status\": \"readable_bound_runtime_path\"\n          }\n        ],\n        \"display_name\": \"registrar\",\n        \"display_name_source\": \"bound_runtime_agent_path\",\n        \"id\": \"registrar|native-r|0\",\n        \"role\": \"registrar\",\n        \"agent_id\": \"native-r\",\n        \"round\": 0,\n        \"round_status\": \"initial\",\n        \"intervals\": [\n          {\n            \"end_evidence\": \"observed_boundary\",\n            \"id\": \"runtime:registrar\",\n            \"kind\": \"native_observed\",\n            \"type\": \"unclassified_execution\",\n            \"start\": \"2026-11-05T00:02:00Z\",\n            \"end\": \"2026-11-05T00:04:00Z\",\n            \"measured\": false,\n            \"attempt_id\": \"registrar\",\n            \"evidence\": \"hook\",\n            \"lane\": 0\n          }\n        ]\n      },\n      {\n        \"role_facts\": null,\n        \"gaps\": [\n          {\n            \"start\": \"2026-11-05T00:00:00Z\",\n            \"end\": \"2026-11-05T00:02:00Z\",\n            \"kind\": \"activity_unmeasured\",\n            \"status\": \"unmeasured\",\n            \"evidence\": [\n              {\n                \"source\": \"activity_ledger\",\n                \"observed_at\": \"2026-11-05T00:10:00Z\",\n                \"reason\": \"No closed measured Activity covers this span; insufficient evidence to infer activity or inactivity\"\n              }\n            ]\n          },\n          {\n            \"start\": \"2026-11-05T00:02:00Z\",\n            \"end\": \"2026-11-05T00:04:00Z\",\n            \"kind\": \"activity_unmeasured\",\n            \"status\": \"native_observed\",\n            \"evidence\": [\n              {\n                \"source\": \"activity_ledger\",\n                \"observed_at\": \"2026-11-05T00:10:00Z\",\n                \"reason\": \"No closed measured Activity covers this span; insufficient evidence to infer activity or inactivity\"\n              },\n              {\n                \"source\": \"hook\",\n                \"observed_at\": \"2026-11-05T00:04:00Z\",\n                \"reason\": \"Native execution observed; activity within this range is unmeasured, not idle or measured work\",\n                \"attempt_id\": \"registrar\"\n              }\n            ]\n          },\n          {\n            \"start\": \"2026-11-05T00:04:00Z\",\n            \"end\": \"2026-11-05T00:05:00Z\",\n            \"kind\": \"activity_unmeasured\",\n            \"status\": \"unmeasured\",\n            \"evidence\": [\n              {\n                \"source\": \"activity_ledger\",\n                \"observed_at\": \"2026-11-05T00:10:00Z\",\n                \"reason\": \"No closed measured Activity covers this span; insufficient evidence to infer activity or inactivity\"\n              }\n            ]\n          },\n          {\n            \"start\": \"2026-11-05T00:05:00Z\",\n            \"end\": \"2026-11-05T00:08:00Z\",\n            \"kind\": \"activity_unmeasured\",\n            \"status\": \"confirmed_wait\",\n            \"evidence\": [\n              {\n                \"source\": \"activity_ledger\",\n                \"observed_at\": \"2026-11-05T00:10:00Z\",\n                \"reason\": \"No closed measured Activity covers this span; insufficient evidence to infer activity or inactivity\"\n              },\n              {\n                \"source\": \"reported_lifecycle\",\n                \"observed_at\": \"2026-11-05T00:05:00Z\",\n                \"reason\": \"Explicit waiting report bounded by its resume report; no active work inferred\",\n                \"event_id\": \"wait\"\n              }\n            ]\n          },\n          {\n            \"start\": \"2026-11-05T00:08:00Z\",\n            \"end\": \"2026-11-05T00:10:00Z\",\n            \"kind\": \"activity_unmeasured\",\n            \"status\": \"unmeasured\",\n            \"evidence\": [\n              {\n                \"source\": \"activity_ledger\",\n                \"observed_at\": \"2026-11-05T00:10:00Z\",\n                \"reason\": \"No closed measured Activity covers this span; insufficient evidence to infer activity or inactivity\"\n              }\n            ]\n          }\n        ],\n        \"id\": \"unknown||0\",\n        \"role\": \"unknown\",\n        \"agent_id\": \"\",\n        \"round\": 0,\n        \"round_status\": \"initial\",\n        \"intervals\": [\n          {\n            \"end_evidence\": \"unobserved\",\n            \"id\": \"resume\",\n            \"kind\": \"execution_report\",\n            \"type\": \"unclassified_execution\",\n            \"start\": \"2026-11-05T00:08:00Z\",\n            \"measured\": false,\n            \"evidence\": \"worker_report\",\n            \"lane\": 0\n          }\n        ]\n      }\n    ],\n    \"unmeasured_intervals\": [\n      {\n        \"start\": \"2026-11-05T00:00:00Z\",\n        \"end\": \"2026-11-05T00:02:00Z\",\n        \"kind\": \"activity_unmeasured\",\n        \"status\": \"unmeasured\",\n        \"evidence\": [\n          {\n            \"source\": \"activity_ledger\",\n            \"observed_at\": \"2026-11-05T00:10:00Z\",\n            \"reason\": \"No closed measured Activity covers this span; insufficient evidence to infer activity or inactivity\"\n          }\n        ]\n      },\n      {\n        \"start\": \"2026-11-05T00:02:00Z\",\n        \"end\": \"2026-11-05T00:04:00Z\",\n        \"kind\": \"activity_unmeasured\",\n        \"status\": \"native_observed\",\n        \"evidence\": [\n          {\n            \"source\": \"activity_ledger\",\n            \"observed_at\": \"2026-11-05T00:10:00Z\",\n            \"reason\": \"No closed measured Activity covers this span; insufficient evidence to infer activity or inactivity\"\n          },\n          {\n            \"source\": \"hook\",\n            \"observed_at\": \"2026-11-05T00:04:00Z\",\n            \"reason\": \"Native execution observed; activity within this range is unmeasured, not idle or measured work\",\n            \"attempt_id\": \"registrar\"\n          }\n        ]\n      },\n      {\n        \"start\": \"2026-11-05T00:04:00Z\",\n        \"end\": \"2026-11-05T00:05:00Z\",\n        \"kind\": \"activity_unmeasured\",\n        \"status\": \"unmeasured\",\n        \"evidence\": [\n          {\n            \"source\": \"activity_ledger\",\n            \"observed_at\": \"2026-11-05T00:10:00Z\",\n            \"reason\": \"No closed measured Activity covers this span; insufficient evidence to infer activity or inactivity\"\n          }\n        ]\n      },\n      {\n        \"start\": \"2026-11-05T00:05:00Z\",\n        \"end\": \"2026-11-05T00:08:00Z\",\n        \"kind\": \"activity_unmeasured\",\n        \"status\": \"confirmed_wait\",\n        \"evidence\": [\n          {\n            \"source\": \"activity_ledger\",\n            \"observed_at\": \"2026-11-05T00:10:00Z\",\n            \"reason\": \"No closed measured Activity covers this span; insufficient evidence to infer activity or inactivity\"\n          },\n          {\n            \"source\": \"reported_lifecycle\",\n            \"observed_at\": \"2026-11-05T00:05:00Z\",\n            \"reason\": \"Explicit waiting report bounded by its resume report; no active work inferred\",\n            \"event_id\": \"wait\"\n          }\n        ]\n      },\n      {\n        \"start\": \"2026-11-05T00:08:00Z\",\n        \"end\": \"2026-11-05T00:10:00Z\",\n        \"kind\": \"activity_unmeasured\",\n        \"status\": \"unmeasured\",\n        \"evidence\": [\n          {\n            \"source\": \"activity_ledger\",\n            \"observed_at\": \"2026-11-05T00:10:00Z\",\n            \"reason\": \"No closed measured Activity covers this span; insufficient evidence to infer activity or inactivity\"\n          }\n        ]\n      }\n    ],\n    \"reporting\": {\n      \"scope\": \"observed_evidence_only\",\n      \"roles\": [\n        {\n          \"role\": \"controller\",\n          \"status\": \"partial\",\n          \"fact_count\": 1,\n          \"activity_event_count\": 0\n        },\n        {\n          \"role\": \"registrar\",\n          \"status\": \"partial\",\n          \"fact_count\": 1,\n          \"activity_event_count\": 0\n        },\n        {\n          \"role\": \"worker\",\n          \"status\": \"not_recorded\",\n          \"fact_count\": 0,\n          \"activity_event_count\": 0\n        }\n      ],\n      \"status\": \"missing\",\n      \"expected_executions\": 1,\n      \"executions_without_activity\": 1,\n      \"expected_reviews\": 0,\n      \"reviews_without_activity\": 0,\n      \"findings\": [\n        {\n          \"code\": \"execution_activity_missing\",\n          \"required_phase\": \"implementation_started\"\n        },\n        {\n          \"role\": \"registrar\",\n          \"code\": \"role_execution_activity_missing\",\n          \"attempt_id\": \"registrar\",\n          \"required_phase\": \"current_actual_phase\"\n        }\n      ]\n    },\n    \"control_snapshot\": {}\n  }\n}\n"
+    },
+    {
+      "name": "a85-failure-retry-concurrent-open",
+      "sha256": "5750e6bf14738b1c32b6d060578073c585de173820103b9fa6d9c41de85dc3bf",
+      "raw_json": "{\n  \"events\": [\n    {\n      \"schema_version\": 0,\n      \"event_id\": \"r1\",\n      \"task_id\": \"A-85\",\n      \"action\": \"start\",\n      \"role\": \"registrar\",\n      \"agent_id\": \"r\",\n      \"runtime_attempt_id\": \"r1\",\n      \"round\": 0,\n      \"type\": \"requirements\",\n      \"confidence\": \"\",\n      \"occurred_at\": \"2026-11-05T00:02:00Z\",\n      \"recorded_at\": \"0001-01-01T00:00:00Z\"\n    },\n    {\n      \"schema_version\": 0,\n      \"event_id\": \"r2\",\n      \"task_id\": \"A-85\",\n      \"action\": \"stop\",\n      \"role\": \"registrar\",\n      \"agent_id\": \"r\",\n      \"runtime_attempt_id\": \"r1\",\n      \"round\": 0,\n      \"type\": \"requirements\",\n      \"confidence\": \"\",\n      \"occurred_at\": \"2026-11-05T00:05:00Z\",\n      \"recorded_at\": \"0001-01-01T00:00:00Z\"\n    },\n    {\n      \"schema_version\": 0,\n      \"event_id\": \"c1\",\n      \"task_id\": \"A-85\",\n      \"action\": \"start\",\n      \"role\": \"controller\",\n      \"agent_id\": \"c\",\n      \"runtime_attempt_id\": \"c1\",\n      \"round\": 0,\n      \"type\": \"recovery\",\n      \"confidence\": \"\",\n      \"occurred_at\": \"2026-11-05T00:03:00Z\",\n      \"recorded_at\": \"0001-01-01T00:00:00Z\"\n    },\n    {\n      \"schema_version\": 0,\n      \"event_id\": \"c2\",\n      \"task_id\": \"A-85\",\n      \"action\": \"stop\",\n      \"role\": \"controller\",\n      \"agent_id\": \"c\",\n      \"runtime_attempt_id\": \"c1\",\n      \"round\": 0,\n      \"type\": \"recovery\",\n      \"confidence\": \"\",\n      \"occurred_at\": \"2026-11-05T00:07:00Z\",\n      \"recorded_at\": \"0001-01-01T00:00:00Z\"\n    },\n    {\n      \"schema_version\": 0,\n      \"event_id\": \"w1\",\n      \"task_id\": \"A-85\",\n      \"action\": \"start\",\n      \"role\": \"worker\",\n      \"agent_id\": \"w\",\n      \"runtime_attempt_id\": \"w1\",\n      \"round\": 0,\n      \"type\": \"implementation\",\n      \"confidence\": \"\",\n      \"occurred_at\": \"2026-11-05T00:08:00Z\",\n      \"recorded_at\": \"0001-01-01T00:00:00Z\"\n    }\n  ],\n  \"source\": \"synthetic regression fixture; contains no user evidence\",\n  \"summary\": {\n    \"task_id\": \"A-85\",\n    \"segments\": [\n      {\n        \"task_id\": \"A-85\",\n        \"agent_id\": \"r\",\n        \"attempt_id\": \"r1\",\n        \"role\": \"registrar\",\n        \"type\": \"requirements\",\n        \"round\": 0,\n        \"started_at\": \"2026-11-05T00:02:00Z\",\n        \"ended_at\": \"2026-11-05T00:05:00Z\",\n        \"duration_ms\": 180000\n      },\n      {\n        \"task_id\": \"A-85\",\n        \"agent_id\": \"c\",\n        \"attempt_id\": \"c1\",\n        \"role\": \"controller\",\n        \"type\": \"recovery\",\n        \"round\": 0,\n        \"started_at\": \"2026-11-05T00:03:00Z\",\n        \"ended_at\": \"2026-11-05T00:07:00Z\",\n        \"duration_ms\": 240000\n      }\n    ],\n    \"by_type_ms\": {\n      \"recovery\": 240000,\n      \"requirements\": 180000\n    },\n    \"agent_time_ms\": 420000,\n    \"observed_wall_ms\": 300000,\n    \"first_observed_at\": \"2026-11-05T00:02:00Z\",\n    \"last_observed_at\": \"2026-11-05T00:08:00Z\",\n    \"observed_span_ms\": 360000,\n    \"unattributed_gap_ms\": 60000,\n    \"open_activities\": 1,\n    \"invalid_transitions\": 0,\n    \"invalid_corrections\": 0,\n    \"interrupted_activities\": 0,\n    \"unmeasured_upper_bound_ms\": 0,\n    \"initial_worker_ms\": 0,\n    \"rework_worker_ms\": 0,\n    \"controller_first_review_ms\": 0,\n    \"controller_rereview_ms\": 0\n  },\n  \"workflow\": {\n    \"runtime_timing\": {\n      \"source\": \"persisted_verified_t3_receipts\",\n      \"status\": \"not_recorded\",\n      \"reported_wait_overlap_ms\": 0,\n      \"intervals\": [],\n      \"rejected\": 0\n    },\n    \"version\": 1,\n    \"task_id\": \"A-85\",\n    \"computed_at\": \"2026-11-05T00:12:00Z\",\n    \"axis\": {\n      \"start\": \"2026-11-05T00:00:00Z\",\n      \"end\": \"2026-11-05T00:12:00Z\",\n      \"basis\": \"registered_current\",\n      \"boundary_status\": \"complete\",\n      \"elapsed_ms\": 720000,\n      \"open\": true\n    },\n    \"lifecycle\": {\n      \"task_id\": \"A-85\",\n      \"source\": \"reported_lifecycle\",\n      \"registered_at\": \"2026-11-05T00:00:00Z\",\n      \"completion_history\": null,\n      \"registration_queue_ms\": 0,\n      \"dispatch_wait_ms\": 0,\n      \"explicit_wait_ms\": 0,\n      \"wait_ms\": 0,\n      \"covered_elapsed_ms\": 0,\n      \"wait_activity_overlap_ms\": 0,\n      \"invalid_facts\": 0,\n      \"open_wait_count\": 1,\n      \"wait_intervals\": []\n    },\n    \"measurement\": {\n      \"status\": \"partial\",\n      \"activity\": {\n        \"status\": \"observed\",\n        \"duration_ms\": 420000,\n        \"event_count\": 5,\n        \"segment_count\": 2\n      },\n      \"worker\": {\n        \"status\": \"partial\",\n        \"event_count\": 1,\n        \"segment_count\": 0\n      },\n      \"controller\": {\n        \"status\": \"observed\",\n        \"duration_ms\": 240000,\n        \"event_count\": 2,\n        \"segment_count\": 1\n      },\n      \"registrar\": {\n        \"status\": \"observed\",\n        \"duration_ms\": 180000,\n        \"event_count\": 2,\n        \"segment_count\": 1\n      },\n      \"review\": {\n        \"status\": \"not_recorded\",\n        \"event_count\": 0,\n        \"segment_count\": 0\n      },\n      \"tests\": {\n        \"status\": \"not_recorded\",\n        \"event_count\": 0,\n        \"segment_count\": 0\n      },\n      \"observed_wall_ms\": 300000,\n      \"agent_time_ms\": 420000,\n      \"unmeasured_ms\": 420000,\n      \"coverage_percent\": 41.666666666666664\n    },\n    \"current\": {\n      \"phase\": \"implementation\",\n      \"basis\": \"open_reported_activity\",\n      \"processing_role\": \"worker\",\n      \"processing_agent\": \"w\",\n      \"next_action\": \"implement_and_verify\",\n      \"round\": 0,\n      \"round_status\": \"initial\"\n    },\n    \"rounds\": [\n      {\n        \"number\": 0,\n        \"kind\": \"initial\",\n        \"started_at\": \"2026-11-05T00:00:00Z\",\n        \"basis\": \"registered_or_reported_activity\",\n        \"assignment_ids\": [],\n        \"attempt_ids\": [\n          \"r1\",\n          \"c1\",\n          \"w1\"\n        ],\n        \"handoff_ids\": [],\n        \"commits\": [],\n        \"verification_results\": []\n      }\n    ],\n    \"rows\": [\n      {\n        \"role_facts\": null,\n        \"gaps\": [\n          {\n            \"start\": \"2026-11-05T00:00:00Z\",\n            \"end\": \"2026-11-05T00:03:00Z\",\n            \"kind\": \"activity_unmeasured\",\n            \"status\": \"unmeasured\",\n            \"evidence\": [\n              {\n                \"source\": \"activity_ledger\",\n                \"observed_at\": \"2026-11-05T00:12:00Z\",\n                \"reason\": \"No closed measured Activity covers this span; insufficient evidence to infer activity or inactivity\"\n              }\n            ]\n          },\n          {\n            \"start\": \"2026-11-05T00:07:00Z\",\n            \"end\": \"2026-11-05T00:12:00Z\",\n            \"kind\": \"activity_unmeasured\",\n            \"status\": \"unmeasured\",\n            \"evidence\": [\n              {\n                \"source\": \"activity_ledger\",\n                \"observed_at\": \"2026-11-05T00:12:00Z\",\n                \"reason\": \"No closed measured Activity covers this span; insufficient evidence to infer activity or inactivity\"\n              }\n            ]\n          }\n        ],\n        \"observed_activity_ms\": 240000,\n        \"id\": \"controller|c|0\",\n        \"role\": \"controller\",\n        \"agent_id\": \"c\",\n        \"round\": 0,\n        \"round_status\": \"initial\",\n        \"intervals\": [\n          {\n            \"id\": \"c1\",\n            \"kind\": \"activity\",\n            \"type\": \"recovery\",\n            \"start\": \"2026-11-05T00:03:00Z\",\n            \"end\": \"2026-11-05T00:07:00Z\",\n            \"measured\": true,\n            \"duration_ms\": 240000,\n            \"attempt_id\": \"c1\",\n            \"lane\": 0\n          }\n        ]\n      },\n      {\n        \"role_facts\": [\n          {\n            \"id\": \"failed-transport\",\n            \"kind\": \"collection_failed\",\n            \"at\": \"2026-11-05T00:01:00Z\",\n            \"source\": \"fixture_transport_receipt\",\n            \"reason\": \"original report failed; later successful retry preserves original failure\",\n            \"measurement_status\": \"unmeasured\"\n          }\n        ],\n        \"gaps\": [\n          {\n            \"start\": \"2026-11-05T00:00:00Z\",\n            \"end\": \"2026-11-05T00:02:00Z\",\n            \"kind\": \"activity_unmeasured\",\n            \"status\": \"collection_failed\",\n            \"evidence\": [\n              {\n                \"source\": \"activity_ledger\",\n                \"observed_at\": \"2026-11-05T00:12:00Z\",\n                \"reason\": \"No closed measured Activity covers this span; insufficient evidence to infer activity or inactivity\"\n              },\n              {\n                \"source\": \"fixture_transport_receipt\",\n                \"observed_at\": \"2026-11-05T00:01:00Z\",\n                \"reason\": \"Collection failure observed at this point; the span is NOT a measured failure duration: original report failed; later successful retry preserves original failure\",\n                \"event_id\": \"failed-transport\"\n              }\n            ]\n          },\n          {\n            \"start\": \"2026-11-05T00:05:00Z\",\n            \"end\": \"2026-11-05T00:12:00Z\",\n            \"kind\": \"activity_unmeasured\",\n            \"status\": \"unmeasured\",\n            \"evidence\": [\n              {\n                \"source\": \"activity_ledger\",\n                \"observed_at\": \"2026-11-05T00:12:00Z\",\n                \"reason\": \"No closed measured Activity covers this span; insufficient evidence to infer activity or inactivity\"\n              }\n            ]\n          }\n        ],\n        \"observed_activity_ms\": 180000,\n        \"id\": \"registrar|r|0\",\n        \"role\": \"registrar\",\n        \"agent_id\": \"r\",\n        \"round\": 0,\n        \"round_status\": \"initial\",\n        \"intervals\": [\n          {\n            \"id\": \"r1\",\n            \"kind\": \"activity\",\n            \"type\": \"requirements\",\n            \"start\": \"2026-11-05T00:02:00Z\",\n            \"end\": \"2026-11-05T00:05:00Z\",\n            \"measured\": true,\n            \"duration_ms\": 180000,\n            \"attempt_id\": \"r1\",\n            \"lane\": 0\n          }\n        ]\n      },\n      {\n        \"role_facts\": null,\n        \"gaps\": [\n          {\n            \"start\": \"2026-11-05T00:00:00Z\",\n            \"end\": \"2026-11-05T00:12:00Z\",\n            \"kind\": \"activity_unmeasured\",\n            \"status\": \"unmeasured\",\n            \"evidence\": [\n              {\n                \"source\": \"activity_ledger\",\n                \"observed_at\": \"2026-11-05T00:12:00Z\",\n                \"reason\": \"No closed measured Activity covers this span; insufficient evidence to infer activity or inactivity\"\n              }\n            ]\n          }\n        ],\n        \"id\": \"worker|w|0\",\n        \"role\": \"worker\",\n        \"agent_id\": \"w\",\n        \"round\": 0,\n        \"round_status\": \"initial\",\n        \"intervals\": [\n          {\n            \"id\": \"w1\",\n            \"kind\": \"activity_open\",\n            \"type\": \"implementation\",\n            \"start\": \"2026-11-05T00:08:00Z\",\n            \"measured\": false,\n            \"attempt_id\": \"w1\",\n            \"lane\": 0\n          }\n        ]\n      }\n    ],\n    \"unmeasured_intervals\": [\n      {\n        \"start\": \"2026-11-05T00:00:00Z\",\n        \"end\": \"2026-11-05T00:02:00Z\",\n        \"kind\": \"activity_unmeasured\",\n        \"status\": \"collection_failed\",\n        \"evidence\": [\n          {\n            \"source\": \"activity_ledger\",\n            \"observed_at\": \"2026-11-05T00:12:00Z\",\n            \"reason\": \"No closed measured Activity covers this span; insufficient evidence to infer activity or inactivity\"\n          },\n          {\n            \"source\": \"fixture_transport_receipt\",\n            \"observed_at\": \"2026-11-05T00:01:00Z\",\n            \"reason\": \"Collection failure observed at this point; the span is NOT a measured failure duration: original report failed; later successful retry preserves original failure\",\n            \"event_id\": \"failed-transport\"\n          }\n        ]\n      },\n      {\n        \"start\": \"2026-11-05T00:07:00Z\",\n        \"end\": \"2026-11-05T00:12:00Z\",\n        \"kind\": \"activity_unmeasured\",\n        \"status\": \"unmeasured\",\n        \"evidence\": [\n          {\n            \"source\": \"activity_ledger\",\n            \"observed_at\": \"2026-11-05T00:12:00Z\",\n            \"reason\": \"No closed measured Activity covers this span; insufficient evidence to infer activity or inactivity\"\n          }\n        ]\n      }\n    ],\n    \"reporting\": {\n      \"scope\": \"observed_evidence_only\",\n      \"roles\": [\n        {\n          \"role\": \"controller\",\n          \"status\": \"recorded\",\n          \"fact_count\": 0,\n          \"activity_event_count\": 2\n        },\n        {\n          \"role\": \"registrar\",\n          \"status\": \"recorded\",\n          \"fact_count\": 1,\n          \"activity_event_count\": 2\n        },\n        {\n          \"role\": \"worker\",\n          \"status\": \"recorded\",\n          \"fact_count\": 0,\n          \"activity_event_count\": 1\n        }\n      ],\n      \"status\": \"not_expected\",\n      \"expected_executions\": 0,\n      \"executions_without_activity\": 0,\n      \"expected_reviews\": 0,\n      \"reviews_without_activity\": 0,\n      \"findings\": []\n    },\n    \"control_snapshot\": {}\n  }\n}\n"
+    }
+  ]
+}
