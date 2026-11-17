@@ -198,8 +198,11 @@ func TestOperationMonitorScansAllProjectsWithoutBrowserSubscription(t *testing.T
 	if err := maintenance.RegisterProject(secondary); err != nil {
 		t.Fatal(err)
 	}
+	installA83MockCurrentExecution(t)
 	base := time.Now().UTC()
+	tasks := map[string]string{primary:"A-6", secondary:"A-7"}
 	for _, project := range []string{primary, secondary} {
+		a83TypedActionFixture(t, project, tasks[project], "Owner access required", "Owner: grant access", runtimeobs.StateRunning)
 		// Delivery is for a current task, not an unlinked diagnostic.
 		if err := os.WriteFile(filepath.Join(project, "_task_mecca", "data", "backlog", "000005.A-5.current.doing.md"), []byte("# A-5 Current fixture\n- Agent: /root/controller/worker\n"), 0600); err != nil {
 			t.Fatal(err)
@@ -223,7 +226,7 @@ func TestOperationMonitorScansAllProjectsWithoutBrowserSubscription(t *testing.T
 		if err != nil {
 			t.Fatal(err)
 		}
-		if journal.LastScanAt == "" || len(journal.Incidents) != 1 || len(delivered[project]) != 1 {
+		if journal.LastScanAt == "" || len(journal.Incidents) != 1 || journal.Incidents[0].Kind != "runtime_unknown" || len(delivered[project]) != 1 || delivered[project][0].TaskID != tasks[project] || delivered[project][0].Kind != "intervention" || delivered[project][0].ID == journal.Incidents[0].ID {
 			t.Fatalf("project %s not monitored/delivered: %+v %+v", project, journal, delivered[project])
 		}
 	}
@@ -616,14 +619,15 @@ func TestOperationWebProcessContinuesAfterBrowserClose(t *testing.T) {
 	if decodeErr != nil || len(api.Active) != 1 || api.Active[0].ID != incident.ID || len(api.Projects) != 1 || api.Projects[0]["last_scan_at"] == "" {
 		t.Fatalf("Web did not expose incident and scan scope: %+v, error=%v", api, decodeErr)
 	}
+	// Browser-independent monitoring must preserve this unverified source in
+	// the API, but may not consume it as an external notification. Real typed
+	// human actions and retries are covered by the offline current-evidence
+	// consumer fixtures; this process/control test runs only in remote CI.
 	deliveryDeadline := time.Now().Add(3 * time.Second)
-	for {
+	for time.Now().Before(deliveryDeadline) {
 		records, deliveryErr := notify.DeliveryRecords(project, "", incident.ID)
-		if deliveryErr == nil && len(records) == 1 {
-			break
-		}
-		if time.Now().After(deliveryDeadline) {
-			t.Fatalf("incident did not reach Telegram delivery ledger: %v %+v", deliveryErr, records)
+		if deliveryErr != nil || len(records) != 0 {
+			t.Fatalf("unverified diagnostic entered delivery ledger: %v %+v", deliveryErr, records)
 		}
 		time.Sleep(50 * time.Millisecond)
 	}

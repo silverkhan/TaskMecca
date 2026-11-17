@@ -80,7 +80,9 @@ type operationJournal struct {
 	Incidents           []operationIncident                            `json:"incidents"`
 	Stages              []operationStage                               `json:"stages,omitempty"`
 	Actions             []operationAction                              `json:"actions,omitempty"`
-	ExecutionEvidence   map[string]runtimeobs.CurrentExecutionSnapshot `json:"execution_evidence,omitempty"`
+	// A request-scoped observation overlay, never durable history or a stored
+	// current-execution certificate. Readers refresh it independently.
+	ExecutionEvidence   map[string]runtimeobs.CurrentExecutionSnapshot `json:"-"`
 	lastPersistedScanAt string                                         `json:"-"`
 }
 
@@ -88,6 +90,23 @@ var operationMu sync.Mutex
 var operationDeliver = notify.Deliver
 var operationHookVerifier = hookVerified
 var operationExecutionLoader = currentExecutionEvidence
+
+func snapshotDurableOperationJournal(j operationJournal) operationJournal {
+	out := snapshotOperationJournal(j)
+	out.Actions = append([]operationAction(nil), j.Actions...)
+	for i := range out.Actions {
+		out.Actions[i].SourceIncidentIDs = append([]string(nil), j.Actions[i].SourceIncidentIDs...)
+	}
+	out.ExecutionEvidence = nil
+	return out
+}
+
+func sameDurableOperationJournal(a, b operationJournal) bool {
+	return a.Version == b.Version && a.Project == b.Project && a.NextSequence == b.NextSequence &&
+		((len(a.Actions) == 0 && len(b.Actions) == 0) || reflect.DeepEqual(a.Actions, b.Actions)) &&
+		((len(a.Incidents) == 0 && len(b.Incidents) == 0) || reflect.DeepEqual(a.Incidents, b.Incidents)) &&
+		((len(a.Stages) == 0 && len(b.Stages) == 0) || reflect.DeepEqual(a.Stages, b.Stages))
+}
 
 func operationJournalPath(project string) string {
 	return filepath.Join(project, "_task_mecca", ".runtime", "operations", "session-monitor.json")
@@ -375,7 +394,7 @@ func scanOperationProject(project string, now time.Time) (operationJournal, erro
 	journal, err := readOperationJournal(project)
     recordMonitorPerf("operation_journal_read", time.Since(started), len(journal.Incidents), 0, false, false)
 	if err != nil { return journal, err }
-    previous:=snapshotOperationJournal(journal)
+    previous:=snapshotDurableOperationJournal(journal)
     started = time.Now()
 	ledger, err := runtimeobs.BuildLedger(project, 3, now)
     recordMonitorPerf("operation_build_ledger", time.Since(started), len(ledger.Attempts), 0, false, false)
@@ -683,14 +702,7 @@ recordMonitorPerf("operation_monitor_assignments", time.Since(workloadStarted), 
 	journal.ExecutionEvidence = currentExecutionEvidence(project, ledger, now, false)
 	reconcileOperationActions(&journal, canonicalRows, canonicalAvailable, now)
     started = time.Now()
-    unchanged:=previous.Version==journal.Version && previous.Project==journal.Project &&
-        previous.NextSequence==journal.NextSequence &&
-        reflect.DeepEqual(previous.Actions,journal.Actions) &&
-        reflect.DeepEqual(previous.ExecutionEvidence,journal.ExecutionEvidence) &&
-        ((len(previous.Incidents)==0 && len(journal.Incidents)==0) ||
-            reflect.DeepEqual(previous.Incidents,journal.Incidents)) &&
-        ((len(previous.Stages)==0 && len(journal.Stages)==0) ||
-            reflect.DeepEqual(previous.Stages,journal.Stages))
+    unchanged:=previous.LastScanAt!="" && sameDurableOperationJournal(previous,journal)
     var writeErr error
     if unchanged {
         // No incident/stage change: persist only the scan clock. The
@@ -879,6 +891,7 @@ func deliverOperationIncidents(project string, journal operationJournal) {
 	if err != nil {
 		return
 	}
+	previous := snapshotDurableOperationJournal(current)
 	rows, available := operationCanonicalRows(project)
 	reconcileOperationActions(&current, rows, available, time.Now().UTC())
 	candidates := map[string]operationAction{}
@@ -910,8 +923,10 @@ func deliverOperationIncidents(project string, journal operationJournal) {
 	}
 	freshRows, freshAvailable := operationCanonicalRows(project)
 	reconcileOperationActions(&current, freshRows, freshAvailable, time.Now().UTC())
-	if err := writeOperationJournal(project, current); err != nil {
-		return
+	if !sameDurableOperationJournal(previous, current) {
+		if err := writeOperationJournal(project, current); err != nil {
+			return
+		}
 	}
 	events := operationActionableIncidents(current)
 	stable := events[:0]
@@ -1074,6 +1089,11 @@ func operationSnapshot(primary string) map[string]any {
 		projects = append(projects, map[string]any{"path": project, "last_scan_at": journal.LastScanAt})
 		stages = append(stages, journal.Stages...)
 		actions = append(actions, journal.Actions...)
+		// Rehydrate read-only diagnostics without persisting observation clocks
+		// or policy/native projection into the source incident journal.
+		if ledger, ledgerErr := runtimeobs.BuildLedger(project, 3, time.Now().UTC()); ledgerErr == nil {
+			journal.ExecutionEvidence = currentExecutionEvidence(project, ledger, time.Now().UTC(), false)
+		}
 		for _, evidence := range journal.ExecutionEvidence {
 			executionEvidence = append(executionEvidence, evidence)
 		}
