@@ -861,12 +861,20 @@ func deliverOperationIncidents(project string, journal operationJournal) {
 	// events to the idempotent transport. A caller's stale scan is no authority
 	// to retry a reason that was resolved, changed or reassigned meanwhile.
 	operationMu.Lock()
-	defer operationMu.Unlock()
 	release, err := lockOperationJournal(project)
 	if err != nil {
+		operationMu.Unlock()
 		return
 	}
-	defer release()
+	locked := true
+	unlock := func() {
+		if locked {
+			release()
+			operationMu.Unlock()
+			locked = false
+		}
+	}
+	defer unlock()
 	current, err := readOperationJournal(project)
 	if err != nil {
 		return
@@ -912,6 +920,9 @@ func deliverOperationIncidents(project string, journal operationJournal) {
 		}
 	}
 	events = stable
+	// The transport owns its own durable per-project idempotency lock. Do not
+	// hold the global observation lock across an external network response.
+	unlock()
     recordMonitorPerf("operation_alert_filter", time.Since(started), len(journal.Incidents), len(events), false, false)
     started = time.Now()
     _ = operationDeliver(project, events)
