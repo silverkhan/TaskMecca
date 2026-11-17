@@ -56,19 +56,38 @@ type operationIncident struct {
 	PolicyResolution *operationPolicyResolution     `json:"policy_resolution,omitempty"`
 }
 
+// Action episodes aggregate a task's unresolved human reason independently
+// from immutable per-agent/runtime incidents and the delivery audit ledger.
+type operationAction struct {
+	ID                string   `json:"id"`
+	TaskID            string   `json:"task_id"`
+	ReasonKey         string   `json:"reason_key"`
+	Reason            string   `json:"reason"`
+	NextAction        string   `json:"next_action"`
+	Owner             string   `json:"owner"`
+	Kind              string   `json:"kind"`
+	DetectedAt        string   `json:"detected_at"`
+	ResolvedAt        string   `json:"resolved_at,omitempty"`
+	SourceIncidentIDs []string `json:"source_incident_ids,omitempty"`
+	CanonicalSource   string   `json:"canonical_source"`
+}
+
 type operationJournal struct {
-	Version      int                 `json:"version"`
-	Project      string              `json:"project"`
-	LastScanAt   string              `json:"last_scan_at,omitempty"`
-	NextSequence int                 `json:"next_sequence"`
-	Incidents    []operationIncident `json:"incidents"`
-	Stages       []operationStage    `json:"stages,omitempty"`
-    lastPersistedScanAt string `json:"-"`
+	Version             int                                            `json:"version"`
+	Project             string                                         `json:"project"`
+	LastScanAt          string                                         `json:"last_scan_at,omitempty"`
+	NextSequence        int                                            `json:"next_sequence"`
+	Incidents           []operationIncident                            `json:"incidents"`
+	Stages              []operationStage                               `json:"stages,omitempty"`
+	Actions             []operationAction                              `json:"actions,omitempty"`
+	ExecutionEvidence   map[string]runtimeobs.CurrentExecutionSnapshot `json:"execution_evidence,omitempty"`
+	lastPersistedScanAt string                                         `json:"-"`
 }
 
 var operationMu sync.Mutex
 var operationDeliver = notify.Deliver
 var operationHookVerifier = hookVerified
+var operationExecutionLoader = currentExecutionEvidence
 
 func operationJournalPath(project string) string {
 	return filepath.Join(project, "_task_mecca", ".runtime", "operations", "session-monitor.json")
@@ -190,7 +209,7 @@ func classifyOperation(project string, attempt runtimeobs.Attempt, now time.Time
 				base.Evidence = "observed execution has no recent signal"
 			}
 			base.Action = "Controller: 세션과 Hook 수신 경로를 확인하세요. 무신호만으로 Worker 종료를 확정하지 마세요."
-			return operationSignal{key: key, incident: base, alert: true}, true
+			return operationSignal{key: key, incident: base}, true
 		}
 		if attempt.CurrentState != runtimeobs.StateRuntimeUnknown && confirmed {
 			return operationSignal{}, false
@@ -201,7 +220,7 @@ func classifyOperation(project string, attempt runtimeobs.Attempt, now time.Time
 		return operationSignal{}, false
 	}
 	base.Action = "Controller: runtime identity와 Hook 승인·연결 근거를 확인하세요. Worker 종료로 단정하지 마세요."
-	return operationSignal{key: key, incident: base, alert: true}, true
+	return operationSignal{key: key, incident: base}, true
 }
 
 func operationID(project, key string, sequence int) string {
@@ -223,10 +242,10 @@ func operationNotificationKind(item operationIncident) string {
 	if item.Quality == "confirmed" {
 		return "interrupted"
 	}
-	if item.Kind == "no_signal" || item.Kind == "handoff_stalled" {
-		return "stalled"
-	}
-	return "runtime_unknown"
+	// Observation gaps and collector/handoff diagnostics carry no external
+	// notification kind. Human actions are projected separately from their
+	// exact canonical reason and next action, never from elapsed silence.
+	return ""
 }
 
 func operationEvidenceRecovery(item operationIncident, attempts []runtimeobs.Attempt, now time.Time) (string, bool) {
@@ -660,9 +679,14 @@ recordMonitorPerf("operation_monitor_assignments", time.Since(workloadStarted), 
     recordMonitorPerf("operation_reconcile_finalize", time.Since(phaseStarted), len(signals), 0, false, false)
     recordMonitorPerf("operation_reconcile", time.Since(started), len(ledger.Attempts), len(journal.Incidents), false, false)
 	journal.LastScanAt = nowText
+	if !canonicalLoaded { canonicalRows, canonicalAvailable = operationCanonicalRows(project); canonicalLoaded = true }
+	journal.ExecutionEvidence = currentExecutionEvidence(project, ledger, now, false)
+	reconcileOperationActions(&journal, canonicalRows, canonicalAvailable, now)
     started = time.Now()
     unchanged:=previous.Version==journal.Version && previous.Project==journal.Project &&
         previous.NextSequence==journal.NextSequence &&
+        reflect.DeepEqual(previous.Actions,journal.Actions) &&
+        reflect.DeepEqual(previous.ExecutionEvidence,journal.ExecutionEvidence) &&
         ((len(previous.Incidents)==0 && len(journal.Incidents)==0) ||
             reflect.DeepEqual(previous.Incidents,journal.Incidents)) &&
         ((len(previous.Stages)==0 && len(journal.Stages)==0) ||
@@ -698,29 +722,196 @@ func operationControllerReviews(stages []operationStage) map[string]map[string]b
     return indexed
 }
 
+func operationHumanReason(row backlog.Record) (string, string, string, bool) {
+	if row.Location != "active" || (row.State != "doing" && row.State != "hold") {
+		return "", "", "", false
+	}
+	owner := row.Fields["대기유형"]
+	if owner != "user" && owner != "external" {
+		return "", "", "", false
+	}
+	reason, next := strings.TrimSpace(row.Fields["대기"]), strings.TrimSpace(row.Fields["재개조건"])
+	if !operationMeaningfulEvidence(reason) || !operationMeaningfulEvidence(next) {
+		return "", "", "", false
+	}
+	return reason, next, owner, true
+}
+
+func operationReasonKey(task, reason string) string {
+	normalized := strings.ToLower(strings.Join(strings.Fields(reason), " "))
+	sum := sha256.Sum256([]byte(strings.ToUpper(task) + "\x00" + normalized))
+	return hex.EncodeToString(sum[:])
+}
+
+// Canonical human cause episodes outlive Controller/Worker/native changes.
+// A collector outage never resolves an episode. Only a readable unique current
+// canonical row clearing/changing that cause supplies the resolution boundary.
+func reconcileOperationActions(journal *operationJournal, rows map[string][]backlog.Record, available bool, now time.Time) {
+	if !available {
+		return
+	}
+	current := map[string]int{}
+	stamp := now.UTC().Format(time.RFC3339Nano)
+	for i := range journal.Actions {
+		item := &journal.Actions[i]
+		if item.ResolvedAt != "" {
+			continue
+		}
+		matches := rows[strings.ToUpper(item.TaskID)]
+		if len(matches) != 1 {
+			continue
+		}
+		reason, _, _, ok := operationHumanReason(matches[0])
+		if !ok || operationReasonKey(item.TaskID, reason) != item.ReasonKey {
+			item.ResolvedAt = stamp
+			continue
+		}
+		current[item.ReasonKey] = i
+	}
+	tasks := make([]string, 0, len(rows))
+	for task := range rows {
+		tasks = append(tasks, task)
+	}
+	sort.Strings(tasks)
+	for _, task := range tasks {
+		matches := rows[task]
+		if len(matches) != 1 {
+			continue
+		}
+		row := matches[0]
+		reason, next, owner, ok := operationHumanReason(row)
+		if !ok {
+			continue
+		}
+		key := operationReasonKey(task, reason)
+		index, exists := current[key]
+		if !exists {
+			journal.NextSequence++
+			journal.Actions = append(journal.Actions, operationAction{ID: operationID(journal.Project, "human-action:"+key, journal.NextSequence), TaskID: task, ReasonKey: key, Reason: reason, NextAction: next, Owner: owner, Kind: "intervention", DetectedAt: stamp})
+			index = len(journal.Actions) - 1
+			current[key] = index
+		}
+		item := &journal.Actions[index]
+		item.NextAction, item.Owner = next, owner
+		item.CanonicalSource = row.Path + "@" + row.Mtime
+		// Preserve a reference to original source episodes without changing
+		// their IDs, timestamps, facts or the independent transport audit.
+		seen := map[string]bool{}
+		for _, id := range item.SourceIncidentIDs {
+			seen[id] = true
+		}
+		for _, incident := range journal.Incidents {
+			if strings.EqualFold(incident.TaskID, task) && incident.ID != "" && !seen[incident.ID] {
+				item.SourceIncidentIDs = append(item.SourceIncidentIDs, incident.ID)
+				seen[incident.ID] = true
+			}
+		}
+	}
+}
+
+func operationActionEligible(action operationAction, rows map[string][]backlog.Record, available bool, evidence map[string]runtimeobs.CurrentExecutionSnapshot) (runtimeobs.CurrentExecutionSnapshot, bool) {
+	s, found := evidence[strings.ToUpper(action.TaskID)]
+	if !available || action.ResolvedAt != "" || !found || !s.Matched || !s.Fresh || !s.OfficialCurrent || s.FailedStage != "" {
+		return s, false
+	}
+	observed, err := time.Parse(time.RFC3339Nano, s.ObservedAt)
+	now := time.Now().UTC()
+	if err != nil || observed.IsZero() || observed.After(now) || now.Sub(observed) > 2*time.Minute {
+		return s, false
+	}
+	matches := rows[strings.ToUpper(action.TaskID)]
+	if len(matches) != 1 {
+		return s, false
+	}
+	reason, next, owner, ok := operationHumanReason(matches[0])
+	if !ok || operationReasonKey(action.TaskID, reason) != action.ReasonKey || next != action.NextAction || owner != action.Owner {
+		return s, false
+	}
+	// A real canonical blocker remains actionable while the exact native is
+	// running. Completed work is never made stalled by its old observation.
+	if s.State == runtimeobs.StateCompleted || s.State == runtimeobs.StateRuntimeUnknown {
+		return s, false
+	}
+	return s, true
+}
+
 func operationActionableIncidents(journal operationJournal) []notify.Event {
     rows, available := operationCanonicalRows(journal.Project)
-    reviews := operationControllerReviews(journal.Stages)
     events := make([]notify.Event, 0)
-    for _, incident := range journal.Incidents {
-        // Retain history in the journal but do not recheck recovered episodes
-        // against each active stage on every scan.
-        if incident.Kind == "normal_exit" || incident.RecoveredAt != "" { continue }
-        if operationViewCategory(incident, rows, available, time.Now().UTC()) != operationCurrent { continue }
-        byAttempt := reviews[strings.ToLower(incident.TaskID)]
-        if len(byAttempt) > 0 && (incident.AttemptID == "" || byAttempt[incident.AttemptID]) { continue }
-        events = append(events, notify.Event{
-            ID: incident.ID, TaskID: incident.TaskID, Kind: operationNotificationKind(incident),
-            Title: strings.ReplaceAll(incident.Kind, "_", " "), Message: incident.Evidence,
-            ResumeCondition: incident.Action, At: incident.DetectedAt,
-        })
+	for _, action := range journal.Actions {
+		s, eligible := operationActionEligible(action, rows, available, journal.ExecutionEvidence)
+		if !eligible {
+			continue
+		}
+		kind := "intervention"
+		switch s.State {
+		case runtimeobs.StateWaitingApproval:
+			kind = "approval"
+		case runtimeobs.StateErrored, runtimeobs.StateInterrupted, runtimeobs.StateShutdown:
+			kind = "interrupted"
+		}
+		events = append(events, notify.Event{ID: action.ID, TaskID: action.TaskID, Kind: kind, Title: action.TaskID, Message: action.Reason, ResumeCondition: action.NextAction, At: action.DetectedAt})
     }
     return events
 }
 
 func deliverOperationIncidents(project string, journal operationJournal) {
     started := time.Now()
-    events := operationActionableIncidents(journal)
+	// Re-read under the same monitor journal lock immediately before handing
+	// events to the idempotent transport. A caller's stale scan is no authority
+	// to retry a reason that was resolved, changed or reassigned meanwhile.
+	operationMu.Lock()
+	defer operationMu.Unlock()
+	release, err := lockOperationJournal(project)
+	if err != nil {
+		return
+	}
+	defer release()
+	current, err := readOperationJournal(project)
+	if err != nil {
+		return
+	}
+	rows, available := operationCanonicalRows(project)
+	reconcileOperationActions(&current, rows, available, time.Now().UTC())
+	candidates := map[string]operationAction{}
+	for _, action := range current.Actions {
+		if action.ResolvedAt == "" {
+			candidates[action.ID] = action
+		}
+	}
+	ledger, err := runtimeobs.BuildLedger(project, 3, time.Now().UTC())
+	if err != nil {
+		return
+	}
+	current.ExecutionEvidence = operationExecutionLoader(project, ledger, time.Now().UTC(), true)
+	// Official I/O can race canonical resolution or policy/native changes.
+	// Reload the same shared pure projection, then retain only unchanged exact
+	// identities. This is a separate boundary revalidation, not owner inference.
+	latest, err := runtimeobs.BuildLedger(project, 3, time.Now().UTC())
+	if err != nil {
+		return
+	}
+	check := operationExecutionLoader(project, latest, time.Now().UTC(), false)
+	for task, s := range current.ExecutionEvidence {
+		other, ok := check[task]
+		if !ok || !other.Matched || !reflect.DeepEqual(s.Identity, other.Identity) || s.AttemptID != other.AttemptID {
+			delete(current.ExecutionEvidence, task)
+		}
+	}
+	freshRows, freshAvailable := operationCanonicalRows(project)
+	reconcileOperationActions(&current, freshRows, freshAvailable, time.Now().UTC())
+	if err := writeOperationJournal(project, current); err != nil {
+		return
+	}
+	events := operationActionableIncidents(current)
+	stable := events[:0]
+	for _, event := range events {
+		before, ok := candidates[event.ID]
+		if ok && before.Reason == event.Message && before.NextAction == event.ResumeCondition {
+			stable = append(stable, event)
+		}
+	}
+	events = stable
     recordMonitorPerf("operation_alert_filter", time.Since(started), len(journal.Incidents), len(events), false, false)
     started = time.Now()
     _ = operationDeliver(project, events)
@@ -858,6 +1049,8 @@ func operationSnapshot(primary string) map[string]any {
 	resolved := []operationIncident{}
 	stages := []operationStage{}
 	holds, historical, diagnostics := []operationIncident{}, []operationIncident{}, []operationIncident{}
+	actions := []operationAction{}
+	executionEvidence := []runtimeobs.CurrentExecutionSnapshot{}
 	for _, project := range operationProjects(primary) {
 		journal, err := readOperationJournal(project)
 		if err != nil {
@@ -867,6 +1060,10 @@ func operationSnapshot(primary string) map[string]any {
 		}
 		projects = append(projects, map[string]any{"path": project, "last_scan_at": journal.LastScanAt})
 		stages = append(stages, journal.Stages...)
+		actions = append(actions, journal.Actions...)
+		for _, evidence := range journal.ExecutionEvidence {
+			executionEvidence = append(executionEvidence, evidence)
+		}
 		rows, available := operationCanonicalRows(project)
 		for _, incident := range journal.Incidents {
 			incident.Category = operationViewCategory(incident, rows, available, time.Now().UTC())
@@ -899,5 +1096,5 @@ func operationSnapshot(primary string) map[string]any {
 	if len(resolved) > 20 {
 		resolved = resolved[:20]
 	}
-	return map[string]any{"snapshot_at": time.Now().Format(time.RFC3339Nano), "projects": projects, "active": active, "user_holds": holds, "observation_history": historical, "diagnostics": diagnostics, "recent": recent, "resolved_observations": resolved, "stages": stages, "telegram_transport_disabled": notify.TelegramTransportDisabled()}
+	return map[string]any{"snapshot_at": time.Now().Format(time.RFC3339Nano), "projects": projects, "active": active, "user_holds": holds, "observation_history": historical, "diagnostics": diagnostics, "recent": recent, "resolved_observations": resolved, "stages": stages, "human_actions": actions, "execution_evidence": executionEvidence, "telegram_transport_disabled": notify.TelegramTransportDisabled()}
 }

@@ -401,10 +401,10 @@ func TestOperationIncidentSharedSeverityAndNotificationClassification(t *testing
 		severity string
 		kind     string
 	}{
-		{operationIncident{Kind: "runtime_unknown", Quality: "verification_required"}, "warning", "runtime_unknown"},
-		{operationIncident{Kind: "no_signal", Quality: "verification_required"}, "warning", "stalled"},
+		{operationIncident{Kind: "runtime_unknown", Quality: "verification_required"}, "warning", ""},
+		{operationIncident{Kind: "no_signal", Quality: "verification_required"}, "warning", ""},
 		{operationIncident{Kind: "errored", Quality: "confirmed"}, "error", "interrupted"},
-		{operationIncident{Kind: "monitor_gap", Quality: "monitoring_gap"}, "info", "runtime_unknown"},
+		{operationIncident{Kind: "monitor_gap", Quality: "monitoring_gap"}, "info", ""},
 	}
 	for _, tc := range cases {
 		if got := operationIncidentSeverity(tc.incident); got != tc.severity {
@@ -497,8 +497,8 @@ func TestOperationScanRecoveryKeepsSourceTimeAndDoesNotRedeliverAfterRestart(t *
 		t.Fatalf("exact-attempt warning not recorded: %+v", first.Incidents)
 	}
 	deliverOperationIncidents(project, first)
-	if len(delivered) == 0 {
-		t.Fatal("initial warning was not delivered")
+	if len(delivered) != 0 {
+		t.Fatal("diagnostic silence warning was externally delivered without a human cause")
 	}
 	initialDeliveryCount := len(delivered)
 

@@ -15,24 +15,26 @@ import (
 // T3Selector contains identities only. State and timestamps are never accepted
 // from a caller-supplied receipt; they are read from the local live T3 store.
 type T3Selector struct {
-	ThreadID        string `json:"thread_id"`
-	SessionID       string `json:"session_id"`
-	RuntimeAgentID  string `json:"runtime_agent_id"`
-	RunID           string `json:"run_id,omitempty"`
-	NativeAttemptID string `json:"native_attempt_id,omitempty"`
+	CanonicalProject string `json:"canonical_project,omitempty"`
+	ThreadID         string `json:"thread_id"`
+	SessionID        string `json:"session_id"`
+	RuntimeAgentID   string `json:"runtime_agent_id"`
+	RunID            string `json:"run_id,omitempty"`
+	NativeAttemptID  string `json:"native_attempt_id,omitempty"`
 }
 
 type T3Receipt struct {
-	ThreadID        string         `json:"thread_id"`
-	RunID           string         `json:"run_id"`
-	NativeAttemptID string         `json:"native_attempt_id"`
-	SessionID       string         `json:"session_id"`
-	Provider        string         `json:"provider"`
-	State           CanonicalState `json:"state"`
-	StartedAt       string         `json:"started_at"`
-	CompletedAt     string         `json:"completed_at,omitempty"`
-	ObservedAt      string         `json:"observed_at"`
-	Origin          string         `json:"origin"`
+	CanonicalProject string         `json:"canonical_project,omitempty"`
+	ThreadID         string         `json:"thread_id"`
+	RunID            string         `json:"run_id"`
+	NativeAttemptID  string         `json:"native_attempt_id"`
+	SessionID        string         `json:"session_id"`
+	Provider         string         `json:"provider"`
+	State            CanonicalState `json:"state"`
+	StartedAt        string         `json:"started_at"`
+	CompletedAt      string         `json:"completed_at,omitempty"`
+	ObservedAt       string         `json:"observed_at"`
+	Origin           string         `json:"origin"`
 }
 
 // Schema-bound read-only adapter for the installed T3 v2 projection store.
@@ -100,6 +102,12 @@ func (s t3Store) read(sel T3Selector, historical bool, now time.Time) (T3Receipt
  JOIN orchestration_v2_projection_provider_threads p ON p.provider_thread_id=a.provider_thread_id AND p.provider_thread_id=r.provider_thread_id
  JOIN orchestration_v2_projection_threads t ON t.thread_id=r.thread_id
  WHERE r.thread_id=` + sqlLiteral(sel.ThreadID)
+	if sel.CanonicalProject != "" {
+		if !filepath.IsAbs(sel.CanonicalProject) || filepath.Clean(sel.CanonicalProject) != sel.CanonicalProject {
+			return T3Receipt{}, errors.New("exact canonical project path required")
+		}
+		query += ` AND EXISTS (SELECT 1 FROM projection_projects project WHERE project.project_id=t.project_id AND project.workspace_root=` + sqlLiteral(sel.CanonicalProject) + ` AND project.deleted_at IS NULL AND project.archived_at IS NULL)`
+	}
 	if historical {
 		query += ` AND r.run_id=` + sqlLiteral(sel.RunID)
 	} else {
@@ -145,7 +153,7 @@ func (s t3Store) read(sel T3Selector, historical bool, now time.Time) (T3Receipt
 	if e != nil || started.After(now) {
 		return T3Receipt{}, errors.New("T3 start timestamp invalid or future")
 	}
-	result := T3Receipt{ThreadID: r.Thread, RunID: r.Run, NativeAttemptID: r.Attempt, SessionID: r.Session, Provider: r.Provider, StartedAt: r.Started, ObservedAt: now.UTC().Format(time.RFC3339Nano), Origin: "t3_local_projection_v2"}
+	result := T3Receipt{CanonicalProject: sel.CanonicalProject, ThreadID: r.Thread, RunID: r.Run, NativeAttemptID: r.Attempt, SessionID: r.Session, Provider: r.Provider, StartedAt: r.Started, ObservedAt: now.UTC().Format(time.RFC3339Nano), Origin: "t3_local_projection_v2"}
 	switch r.Status {
 	case "running":
 		if historical || r.RunStatus != "running" || r.Completed != nil || r.RunCompleted != nil || r.ProviderStatus != "active" {

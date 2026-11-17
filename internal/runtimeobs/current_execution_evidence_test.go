@@ -9,7 +9,7 @@ import (
 
 func currentEvidenceFixture(now time.Time) (CurrentExecutionIdentity, Attempt) {
 	id := CurrentExecutionIdentity{Project: "/fixture/project", TaskID: "A-83", AgentPath: "/root/controller/worker", NativeID: "native", AssignmentID: "assigned", Provider: "codex"}
-	r := &T3Receipt{ThreadID: "thread", RunID: "current-run", NativeAttemptID: "native-attempt", SessionID: "native", Provider: "codex", State: StateRunning, StartedAt: now.Add(-time.Hour).Format(time.RFC3339Nano), ObservedAt: now.Format(time.RFC3339Nano), Origin: "t3_local_projection_v2"}
+	r := &T3Receipt{CanonicalProject: id.Project, ThreadID: "thread", RunID: "current-run", NativeAttemptID: "native-attempt", SessionID: "native", Provider: "codex", State: StateRunning, StartedAt: now.Add(-time.Hour).Format(time.RFC3339Nano), ObservedAt: now.Format(time.RFC3339Nano), Origin: "t3_local_projection_v2"}
 	a := Attempt{AttemptID: "attempt", Provider: "codex", TaskID: id.TaskID, AgentPath: id.AgentPath, SessionID: "native", RuntimeAgentID: "native", TurnID: r.NativeAttemptID, BindingState: BindingBound, BindingEvidence: map[string]string{"assignment_id": id.AssignmentID}, CurrentState: StateRunning, StateEvidenceSource: EvidenceT3, StateObservationQuality: QualityObserved, StartedAt: r.StartedAt, LastObservedAt: r.ObservedAt, NativeReceipt: r}
 	return id, a
 }
@@ -41,6 +41,11 @@ func TestCurrentExecutionExactIdentityAndFreshness(t *testing.T) {
 	if s := EvaluateCurrentExecution(id, []Attempt{a, a}, now); s.Matched {
 		t.Fatal("ambiguous episodes selected")
 	}
+	conflict := a
+	conflict.Provider = "claude"
+	if s := EvaluateCurrentExecution(id, []Attempt{a, conflict}, now); s.Matched {
+		t.Fatal("cross-provider conflict ignored")
+	}
 	if s := EvaluateCurrentExecution(id, []Attempt{a}, now.Add(3*time.Minute)); s.Fresh || !s.Matched || s.FailedStage != "observation_freshness" {
 		t.Fatalf("stale not diagnostic %+v", s)
 	}
@@ -54,7 +59,7 @@ func TestCurrentExecutionBoundedReadOnlyRefresh(t *testing.T) {
 	calls := 0
 	read := func(sel T3Selector, at time.Time) (T3Receipt, error) {
 		calls++
-		if sel.RunID != "current-run" || sel.NativeAttemptID != a.TurnID {
+		if sel.CanonicalProject != id.Project || sel.RunID != "current-run" || sel.NativeAttemptID != a.TurnID {
 			t.Fatal("unpinned selector")
 		}
 		r := *a.NativeReceipt
@@ -65,7 +70,7 @@ func TestCurrentExecutionBoundedReadOnlyRefresh(t *testing.T) {
 	if calls != 1 || !got.Fresh || !got.OfficialCurrent || got.ProgressAt != "" || !reflect.DeepEqual(before, *s.Receipt) {
 		t.Fatalf("refresh mutated source/progress: %+v", got)
 	}
-	for _, failure := range []string{"unsupported", "new run", "new episode", "wrong native", "future"} {
+	for _, failure := range []string{"unsupported", "new run", "new episode", "wrong native", "future", "cross project"} {
 		t.Run(failure, func(t *testing.T) {
 			calls = 0
 			got := refreshCurrentExecution(s, now, func(sel T3Selector, at time.Time) (T3Receipt, error) {
@@ -82,6 +87,8 @@ func TestCurrentExecutionBoundedReadOnlyRefresh(t *testing.T) {
 					r.SessionID = "other"
 				case "future":
 					r.ObservedAt = at.Add(time.Second).Format(time.RFC3339Nano)
+				case "cross project":
+					r.CanonicalProject = "/another/project"
 				}
 				return r, nil
 			})

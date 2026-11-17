@@ -20,7 +20,7 @@ func currentLoaderFixture(now time.Time) (map[string][]backlog.Record, []runtime
 	r.EndedAt = ""
 	r.NativeReceipt.CompletedAt = ""
 	p := &rolepolicy.Policy{Implementation: rolepolicy.Owner{Role: "worker", AgentPath: r.AgentPath, NativeID: r.SessionID}, Reviewer: rolepolicy.Owner{AgentPath: "/root/controller/reviewer", NativeID: "review-native"}}
-	rows := map[string][]backlog.Record{"F-1": {{ID: "F-1", Location: "active", RawMarkdown: "current canonical policy"}}}
+	rows := map[string][]backlog.Record{"F-1": {{ID: "F-1", Location: "active", State: "doing", RawMarkdown: "current canonical policy"}}}
 	assignments := []runtimeobs.Assignment{{TaskID: "F-1", AgentPath: r.AgentPath, AssignmentID: "fixture-assignment", AssignedAt: now.Add(-time.Hour).Format(time.RFC3339Nano)}}
 	return rows, assignments, runtimeobs.Ledger{Attempts: []runtimeobs.Attempt{r}}, p
 }

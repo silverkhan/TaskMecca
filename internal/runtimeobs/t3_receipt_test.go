@@ -99,6 +99,40 @@ func t3Fixture(t *testing.T) (t3Store, func(string)) {
 func testT3Selector() T3Selector {
 	return T3Selector{ThreadID: "thread", SessionID: "native-session", RuntimeAgentID: "native-session"}
 }
+
+func TestT3CurrentExecutionCanonicalProjectPins(t *testing.T) {
+	store, sql := t3Fixture(t)
+	sql(`ALTER TABLE orchestration_v2_projection_threads ADD COLUMN project_id TEXT;
+	CREATE TABLE projection_projects(project_id TEXT,workspace_root TEXT,deleted_at TEXT,archived_at TEXT);
+	UPDATE orchestration_v2_projection_threads SET project_id='canonical';
+	INSERT INTO projection_projects VALUES('canonical','/fixture/canonical',NULL,NULL);`)
+	sel := testT3Selector()
+	sel.CanonicalProject = "/fixture/canonical"
+	now := time.Now().UTC()
+	r, err := store.read(sel, false, now)
+	if err != nil || r.CanonicalProject != sel.CanonicalProject {
+		t.Fatalf("exact canonical project rejected %+v %v", r, err)
+	}
+	for _, bad := range []string{"/other/project", "/fixture/source-worktree"} {
+		wrong := sel
+		wrong.CanonicalProject = bad
+		if _, err := store.read(wrong, false, now); err == nil {
+			t.Fatal("cross-project/source-worktree accepted")
+		}
+	}
+	for _, column := range []string{"deleted_at", "archived_at"} {
+		sql("UPDATE projection_projects SET " + column + "='2026-11-17';")
+		if _, err := store.read(sel, false, now); err == nil {
+			t.Fatalf("%s project accepted", column)
+		}
+		sql("UPDATE projection_projects SET " + column + "=NULL;")
+	}
+	// Legacy selectors preserve their previous unscoped observation contract.
+	legacy := testT3Selector()
+	if r, err := store.read(legacy, false, now); err != nil || r.CanonicalProject != "" {
+		t.Fatal("legacy reader changed", err)
+	}
+}
 func TestT3SourceReadsLiveStructuredIdentityAndFailsClosed(t *testing.T) {
 	store, sql := t3Fixture(t)
 	now := time.Date(2026, 11, 12, 1, 1, 0, 0, time.UTC)

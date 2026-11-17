@@ -60,6 +60,9 @@ func EvaluateCurrentExecution(id CurrentExecutionIdentity, attempts []Attempt, n
 	}
 	var candidates []Attempt
 	for _, a := range attempts {
+		if strings.EqualFold(a.TaskID, id.TaskID) && a.AgentPath == id.AgentPath && a.BindingState == BindingBound && a.BindingEvidence["assignment_id"] == id.AssignmentID && (a.SessionID == id.NativeID || a.RuntimeAgentID == id.NativeID) && (a.Provider != id.Provider || a.SessionID != id.NativeID || a.RuntimeAgentID != id.NativeID) {
+			return executionDiagnostic(s, "attempt_selection", "conflicting native/provider identity at the exact implementation assignment")
+		}
 		if !strings.EqualFold(a.TaskID, id.TaskID) || a.AgentPath != id.AgentPath || a.BindingState != BindingBound || a.BindingEvidence["assignment_id"] != id.AssignmentID || a.Provider != id.Provider || a.SessionID != id.NativeID || a.RuntimeAgentID != id.NativeID {
 			continue
 		}
@@ -152,8 +155,7 @@ func RefreshCurrentExecutionContext(ctx context.Context, s CurrentExecutionSnaps
 		if err != nil {
 			return T3Receipt{}, err
 		}
-		store.ctx = ctx
-		return store.read(sel, false, at)
+		return store.withContext(ctx).read(sel, false, at)
 	})
 }
 
@@ -161,12 +163,12 @@ func refreshCurrentExecution(s CurrentExecutionSnapshot, now time.Time, read fun
 	if !s.Matched || s.Receipt == nil || s.Source != EvidenceT3 || s.Receipt.ThreadID == "" || s.Receipt.RunID == "" {
 		return executionDiagnostic(s, "official_observation", "supported official current execution selector unavailable; stored Hook state remains diagnostic")
 	}
-	r, err := read(T3Selector{ThreadID: s.Receipt.ThreadID, SessionID: s.SessionID, RuntimeAgentID: s.RuntimeAgentID, RunID: s.Receipt.RunID, NativeAttemptID: s.TurnID}, now)
+	r, err := read(T3Selector{CanonicalProject: s.Identity.Project, ThreadID: s.Receipt.ThreadID, SessionID: s.SessionID, RuntimeAgentID: s.RuntimeAgentID, RunID: s.Receipt.RunID, NativeAttemptID: s.TurnID}, now)
 	if err != nil {
 		return executionDiagnostic(s, "official_observation", "official current execution read failed: "+err.Error())
 	}
 	at, e := time.Parse(time.RFC3339Nano, r.ObservedAt)
-	if r.ThreadID != s.Receipt.ThreadID || r.RunID != s.Receipt.RunID || r.NativeAttemptID != s.TurnID || r.SessionID != s.Identity.NativeID || r.Provider != s.Identity.Provider || r.Origin != "t3_local_projection_v2" || e != nil || at.After(now) || now.Sub(at) > 2*time.Minute {
+	if r.CanonicalProject != s.Identity.Project || r.ThreadID != s.Receipt.ThreadID || r.RunID != s.Receipt.RunID || r.NativeAttemptID != s.TurnID || r.SessionID != s.Identity.NativeID || r.Provider != s.Identity.Provider || r.Origin != "t3_local_projection_v2" || e != nil || at.After(now) || now.Sub(at) > 2*time.Minute {
 		return executionDiagnostic(s, "official_revalidation", "current native/run identity or observation conflict; refresh runtime through supported owner")
 	}
 	s.Receipt = &r

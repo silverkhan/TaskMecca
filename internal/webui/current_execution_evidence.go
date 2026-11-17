@@ -44,6 +44,24 @@ func loadCurrentExecutionEvidence(ctx stdcontext.Context, project string, ledger
 		keys = append(keys, task)
 	}
 	sort.Strings(keys)
+	// Spend the bounded official-read budget on explicit human causes first.
+	// This ordering never chooses an owner or converts task state to liveness.
+	sort.SliceStable(keys, func(i, j int) bool {
+		priority := func(task string) int {
+			r := rows[task]
+			if len(r) != 1 {
+				return 3
+			}
+			if r[0].Fields["대기유형"] == "user" || r[0].Fields["대기유형"] == "external" {
+				return 0
+			}
+			if r[0].State == "doing" {
+				return 1
+			}
+			return 2
+		}
+		return priority(keys[i]) < priority(keys[j])
+	})
 	reads := 0
 	for _, task := range keys {
 		s := runtimeobs.CurrentExecutionSnapshot{Identity: runtimeobs.CurrentExecutionIdentity{Project: project, TaskID: task}, State: runtimeobs.StateRuntimeUnknown}
@@ -58,6 +76,14 @@ func loadCurrentExecutionEvidence(ctx stdcontext.Context, project string, ledger
 		matches := rows[task]
 		if !available || len(matches) != 1 || matches[0].Location != "active" {
 			fail("canonical_task", "unique active canonical task unavailable")
+			continue
+		}
+		if ctx.Err() != nil {
+			fail("official_observation_budget", "current evidence deferred at shared request deadline")
+			continue
+		}
+		if matches[0].State != "doing" && matches[0].State != "hold" {
+			fail("canonical_task", "task has no current doing/hold implementation; historical execution remains separate")
 			continue
 		}
 		p, _, e := load(project, task, matches[0].RawMarkdown)
