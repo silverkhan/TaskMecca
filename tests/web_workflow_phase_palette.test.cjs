@@ -80,7 +80,7 @@ test('shipped CSS paints actual segments, never an opaque role run, and supports
   const surface=css.match(/\.workflow-run-surface\s*\{[^}]*\}/g)||[];assert.ok(surface.length);assert.ok(surface.every(rule=>!rule.includes('background:var(--wf-role-color)')),'run must not mask phase boundaries with role paint');
   const paint=css.match(/\.workflow-type-paint\s*\{[^}]*\}/)?.[0];assert.ok(paint,'production per-entry paint');assert.match(paint,/--wf-type-color/);assert.match(paint,/border|box-shadow/,'visible segment boundary');
   for(const type of types){const rule=css.match(new RegExp('\\.wf-type-'+type+'\\s*\\{[^}]*\\}'))?.[0];assert.ok(rule,'actual schema type '+type);assert.match(rule,/--wf-type-color/);}
-  assert.match(css,/\.wf-type-unknown\s*\{[^}]*--wf-type-color/);assert.match(css,/workflow-state-unmeasured[^{]*\{[^}]*repeating-linear-gradient/);assert.match(css,/@media\s*\(forced-colors:\s*active\)/);assert.match(css,/workflow-type-swatch/);
+  assert.match(css,/\.wf-type-unknown\s*\{[^}]*--wf-type-color/);assert.match(css,/workflow-state-unmeasured[^{]*\{[^}]*background:color-mix[^}]*border-block-end:1px dotted/);assert.doesNotMatch(css.match(/\.workflow-state-unmeasured\s*\{[^}]*\}/)?.[0]||"",/repeating-linear-gradient/,"unmeasured bounds stay inspectable without dense stripes");assert.match(css,/@media\s*\(forced-colors:\s*active\)/);assert.match(css,/workflow-type-swatch/);
   assert.match(css,/\.workflow-run \.workflow-interval>span\s*\{[^}]*background:var\(--wf-type-color/,'visible text has solid type backing instead of low-contrast pattern strokes');assert.match(css,/\.workflow-run \.wf-kind-activity_open>span\s*\{[^}]*background:var\(--surface\)/,'open labels retain theme text contrast');
 });
 
