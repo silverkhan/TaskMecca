@@ -5518,10 +5518,29 @@ function runtimeRootStatusClass(status) {
   return status==='active'?'ok':status==='needs_check'?'warn':status==='inactive_terminal'?'warn':'';
 }
 function runtimeRootNameHint(root) {
+  if(root._scopedKey&&root.display_name_source==='task_mecca_fallback')return `<span class="runtime-root-fallback">${esc(state.language==='ko'?'표시 이름 미확인':'Name unverified')}</span>`;
   return root.display_name_source==='task_mecca_fallback'
     ? `<span class="runtime-root-fallback" title="${esc(t('runtimeRootFallbackHint'))}">${esc(t(root.display_name_status==='unavailable'?'runtimeRootNameUnavailable':'runtimeRootDefaultName'))}</span>`
     : root.display_name_source==='t3_title'
       ? `<span class="runtime-root-fallback">${esc(t('runtimeRootT3Title'))}</span>` : '';
+}
+function workloadSessionIdentity(root){
+  const ko=state.language==='ko',known=root.relation_status==='verified';
+  const role=known?({root:'Root',controller:'Controller',worker:'Worker',registrar:'Registrar',reviewer:'Reviewer'}[root.role]||(ko?'역할 미확인':'Role unknown')):(ko?'관계 미확인':'Relationship unverified');
+  const rows=[...(state.workloadSessions?.active?.items||[]),...(state.workloadSessions?.historical?.items||[])];
+  const parent=rows.find(r=>r.root_session_id===root.parent_session_id);
+  const relation=root.parent_session_id?`${ko?'부모':'Parent'}: ${parent?.display_name||root.parent_session_id}`:'';
+  const nameSource=root.display_name_source==='t3_title'?'T3':root.display_name_source==='provider_name'?(ko?'네이티브 이름':'Native name'):(ko?'기본 표시':'Fallback');
+  const freshness=root.display_name_checked_at?dateTimeLabel(root.display_name_checked_at,true):(ko?'조회 시각 미확인':'Check time unknown');
+  const failure=root.name_failure?(ko?'호스트 이름 미확인; 후보 또는 기본 표시 사용':'Host name unverified; using candidate or fallback'):'';
+  return `<div class="session-relation"><strong>${esc(role)}</strong>${root.group_id?` · ${esc(root.group_id)}`:''}${relation?` · ${esc(relation)}`:''}</div><div class="session-name-provenance">${root.native_name?`<span>${esc(ko?'네이티브 이름':'Native name')}: ${esc(root.native_name)}</span>`:''}<span>${esc(nameSource)} · ${esc(freshness)}</span>${failure?`<span>${esc(failure)}</span>`:''}</div>`;
+}
+function workloadSessionExecution(root){
+ const ko=state.language==='ko',e=root.execution;
+ if(!e)return `<p class="session-execution">${esc(ko?'현재 호스트 실행: 미확인':'Current host execution: unverified')}</p>`;
+ const verified=e.official_current===true;
+ const stateLabel=verified?runtimeStateLabel(e.state):(ko?'미확인':'Unverified');
+ return `<p class="session-execution"><strong>${esc(ko?'현재 호스트 실행':'Current host execution')}: ${esc(stateLabel)}</strong> · ${esc(e.observed_at?dateTimeLabel(e.observed_at,true):(ko?'조회 시각 미확인':'Check time unknown'))}${!verified?` · ${esc(ko?'현재 실행을 확인하지 못했습니다. 저장된 기록은 아래에서 확인하세요.':'Current execution could not be verified. Stored records remain below.')}`:''}</p>`;
 }
 function runtimeRootCard(root,attempts,findingsByAttempt,attemptRootMap) {
   const key=root._scopedKey||String(root.root_session_id||root.provider_session_id||root.display_name||'root');
@@ -5537,10 +5556,11 @@ function runtimeRootCard(root,attempts,findingsByAttempt,attemptRootMap) {
     <summary class="runtime-root-summary" ${root._scopedKey?`id="session-summary-${esc(encodeURIComponent(key))}"`: ''}>
       <div class="runtime-root-title-wrap">
         <div class="runtime-root-title">${esc(root.display_name||'Session')} ${runtimeRootNameHint(root)}</div>
+        ${root._scopedKey?workloadSessionIdentity(root):''}
         <div class="runtime-root-id"><span>${esc(t('runtimeRootProvider'))} <strong>${esc(String(root.provider||'-').toUpperCase())}</strong></span><span>${esc(t('runtimeRootID'))} <strong title="${esc(providerID)}">${esc(providerID)}</strong></span></div>
       </div>
       <div class="runtime-root-badges">
-        <span class="badge ${runtimeRootStatusClass(root.status)}">${esc(runtimeRootStatusLabel(root.status))}</span>
+        <span class="badge ${runtimeRootStatusClass(root.status)}">${root._scopedKey?esc(state.language==='ko'?'저장된 실행: ':'Stored execution: '):''}${esc(runtimeRootStatusLabel(root.status))}</span>
         ${cleanupBadge}
       </div>
       <div class="runtime-root-meta">
@@ -5858,6 +5878,7 @@ function workloadSessionPager(group,data){
 }
 function workloadSessionCard(root){
   const w=workloadSessionWords(),id=root.root_session_id,key=workloadSessionKey(id),data=state.workloadSessionDetails[key];
+  if(data?.root_session)root={...root,...data.root_session};
   let detail='';
   if(!data||data.loading)detail=`<p role="status">${esc(w.loading)}</p>`;
   else if(data.error)detail=`<p role="alert">${esc(w.detailError)} <button type="button" data-session-detail="${esc(id)}">${esc(w.retry)}</button></p>`;
@@ -5870,7 +5891,7 @@ function workloadSessionCard(root){
     if(root.cleanup_eligible)detail+=`<button type="button" class="runtime-root-cleanup-btn" data-runtime-root-cleanup="${esc(id)}" data-session-project="${esc(state.workloadSessionProject)}" data-runtime-root-bytes="${Number(data.root_session?.cleanup_bytes||0)}" data-runtime-root-name="${esc(root.display_name)}">${esc(t('runtimeRootCleanup'))}</button>`;
   }
   const use=root.last_used_at?`${w.used}: ${dateTimeLabel(root.last_used_at,true)} · ${w.source}: ${root.usage_source==='observed_hook_activity'?w.hook:w.native}`:w.unknown;
-  detail=`<p class="session-usage-note">${esc(use)}</p>`+detail;
+  detail=`${workloadSessionExecution(root)}<p class="session-usage-note">${esc(use)}</p>${root.descendant_last_used_at?`<p class="session-usage-note">${esc(state.language==='ko'?'하위 세션 마지막 사용 (Root 직접 사용과 별도)':'Last descendant use (separate from direct Root use)')}: ${esc(dateTimeLabel(root.descendant_last_used_at,true))}</p>`:''}`+detail;
   return runtimeRootCard({...root,_scopedKey:key,_defaultOpen:root.root_session_id===state.workloadSessions?.latest_session_id,_detailHTML:detail},[],{},{});
 }
 function workloadSessionPanel(){
@@ -5889,11 +5910,23 @@ function workloadSessionPanel(){
     const historicalOpen=Boolean(state.workloadHistoricalDisclosure[project]);
     content=`<section class="runtime-root-section"><h3>${esc(w.active)} · ${active.total}</h3><div class="runtime-root-stack">${active.items.map(workloadSessionCard).join('')||`<p>${esc(w.emptyGroup)}</p>`}</div>${workloadSessionPager('active',active)}</section><details class="runtime-root-section session-historical" id="workloadHistorical" ${historicalOpen?'open':''}><summary>${esc(w.historical)} · ${historical.total}${data.unknown_usage?` · ${esc(state.language==='ko'?'사용 시각 미확인':'Usage unknown')}: ${data.unknown_usage}`:''}</summary>${historicalOpen?`<div class="runtime-root-stack">${historical.items.map(workloadSessionCard).join('')}</div>${workloadSessionPager('historical',historical)}`:''}</details>`;
   }
+  const representative=data?.representative;
+  const representativeHTML=representative?`<div class="session-representative"><span>${esc(state.language==='ko'?'프로젝트 Root':'Project Root')}</span><button type="button" class="runtime-history-toggle" data-session-representative="${esc(representative.root_session_id)}">${esc(representative.display_name)}</button><span>${esc(representative.group_id||'')}</span>${workloadSessionExecution(representative)}</div>`:'';
+  const current=Object.values(data?.current_execution||{});
+  const currentHTML=current.length?`<section class="session-current-evidence"><h3>${esc(state.language==='ko'?'현재 구현자 실행 관측':'Current implementation observations')}</h3><p>${esc(state.language==='ko'?'Root 직접 실행·사용과 별도입니다. 실행 중이라는 사실만으로 업무 진행이나 차단 해소를 뜻하지 않습니다.':'Separate from direct Root execution and use. Running does not establish task progress or resolve a blocker.')}</p>${current.map(e=>`<p><strong>${esc(e.identity?.task_id||'—')}</strong> · ${esc(e.identity?.agent_path||'—')} · ${esc(e.official_current&&e.fresh?runtimeStateLabel(e.state):(state.language==='ko'?'현재 실행 미확인':'Current execution unverified'))} · ${esc(e.observed_at?dateTimeLabel(e.observed_at,true):'—')}${e.failed_stage?` · ${esc(state.language==='ko'?'관측 진단':'Observation diagnostic')}: ${esc(e.failed_stage)}`:''}${e.wait_reason?` · ${esc(e.wait_reason)}`:''}</p>`).join('')}</section>`:'';
   const counts=data?.runtime_counts;
   const runtimeCounts=counts?`<p class="session-runtime-counts">${esc(t('runtimeRootActive'))}: ${Number(counts.active||0)} · ${esc(t('runtimeRootNeedsCheck'))}: ${Number(counts.needs_check||0)} · ${esc(t('runtimeRootPrevious'))}: ${Number(counts.terminal||0)} · ${esc(t('runtimeRootCleanupEligible'))}: ${Number(counts.cleanup_eligible||0)}</p>`:'';
-  return `<section class="workload-sessions" aria-busy="${state.workloadSessionsLoading?'true':'false'}">${selector}${runtimeCounts}${content}</section>`;
+  return `<section class="workload-sessions" aria-busy="${state.workloadSessionsLoading?'true':'false'}">${selector}${representativeHTML}${currentHTML}${runtimeCounts}${content}</section>`;
 }
 function bindWorkloadSessions(){
+  document.querySelector('[data-session-representative]')?.addEventListener('click',async event=>{
+    const id=event.currentTarget.dataset.sessionRepresentative,data=state.workloadSessions;
+    state.workloadSessionDisclosure[workloadSessionKey(id)]=true;
+    if(data?.representative?.usage_group==='historical')state.workloadHistoricalDisclosure[state.workloadSessionProject]=true;
+    const page=data?.representative_page||1;
+    await loadWorkloadSessions(data?.representative?.usage_group==='active'?page:undefined,data?.representative?.usage_group==='historical'?page:undefined);
+    document.querySelector(`#session-summary-${CSS.escape(encodeURIComponent(workloadSessionKey(id)))}`)?.focus({preventScroll:false});
+  });
   document.querySelector('#workloadSessionProject')?.addEventListener('change',e=>selectWorkloadSessionProject(e.target.value));
   document.querySelector('#workloadSessionsRefresh')?.addEventListener('click',()=>loadWorkloadSessions());
   const historical=document.querySelector('#workloadHistorical');

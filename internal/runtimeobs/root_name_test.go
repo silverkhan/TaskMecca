@@ -11,11 +11,11 @@ import (
 func TestA75RootTitleRequiresOwnedExactMapping(t *testing.T) {
 	store, sql := t3Fixture(t)
 	project := t.TempDir()
-	sql(`ALTER TABLE orchestration_v2_projection_threads ADD COLUMN title TEXT;
+	sql(`ALTER TABLE orchestration_v2_projection_threads ADD COLUMN title TEXT; ALTER TABLE orchestration_v2_projection_threads ADD COLUMN payload_json TEXT;
 ALTER TABLE orchestration_v2_projection_threads ADD COLUMN project_id TEXT;
-CREATE TABLE projection_projects(project_id TEXT,workspace_root TEXT,deleted_at TEXT);
+CREATE TABLE projection_projects(project_id TEXT,workspace_root TEXT,deleted_at TEXT,archived_at TEXT);
 UPDATE orchestration_v2_projection_threads SET title='🌱 1110_EMPFUND',project_id='project';
-INSERT INTO projection_projects VALUES('project',` + sqlLiteral(project) + `,NULL);`)
+INSERT INTO projection_projects(project_id,workspace_root,deleted_at) VALUES('project',` + sqlLiteral(project) + `,NULL);`)
 	now := time.Date(2026, 11, 12, 1, 0, 1, 0, time.UTC)
 	got, err := store.rootTitle(project, "native-session", now)
 	if err != nil || got.Title != "🌱 1110_EMPFUND" || got.ThreadID != "thread" {
@@ -41,7 +41,7 @@ INSERT INTO projection_projects VALUES('project',` + sqlLiteral(project) + `,NUL
 	if err != nil || got.Title != "" {
 		t.Fatalf("empty: %+v %v", got, err)
 	}
-	sql(`INSERT INTO orchestration_v2_projection_threads VALUES('other-thread',NULL,NULL,'ambiguous','project');
+	sql(`INSERT INTO orchestration_v2_projection_threads (thread_id,deleted_at,archived_at,title,project_id) VALUES('other-thread',NULL,NULL,'ambiguous','project');
 INSERT INTO orchestration_v2_projection_run_attempts(thread_id,provider,payload_json) VALUES('other-thread','codex','{"nativeThreadId":"native-session"}');`)
 	if _, err = store.rootTitle(project, "native-session", now); err == nil {
 		t.Fatal("ambiguous mapping accepted")
@@ -70,7 +70,7 @@ func TestA75NameRefreshTransitionsDoNotRetainPromptOrNames(t *testing.T) {
 	resolveCodexThreadMetadata = func(context.Context, string) (CodexThreadMetadata, error) {
 		return CodexThreadMetadata{ID: "native", Name: name}, nativeErr
 	}
-	resolveT3RootTitle = func(string, string, time.Time) (t3RootTitle, error) {
+	resolveT3RootTitle = func(context.Context, string, string, time.Time) (t3RootTitle, error) {
 		return t3RootTitle{ThreadID: "thread", Title: title}, t3Err
 	}
 	check := func(want, source, status string) {
@@ -105,7 +105,7 @@ func TestA75NameRefreshTransitionsDoNotRetainPromptOrNames(t *testing.T) {
 			t.Fatalf("identity/liveness changed: %+v", r)
 		}
 	}
-	check("official", "provider_name", "verified")
+	check(title, "t3_title", "verified")
 	name = ""
 	check("T3 title", "t3_title", "verified")
 	title = "변경된 T3 제목"
@@ -118,10 +118,10 @@ func TestA75NameRefreshTransitionsDoNotRetainPromptOrNames(t *testing.T) {
 	title = "T3 title"
 	check(title, "t3_title", "verified")
 	nativeErr = errors.New("official read failed")
-	check("", "task_mecca_fallback", "unavailable")
+	check(title, "t3_title", "verified")
 	nativeErr = nil
 	name = "new official name"
-	check(name, "provider_name", "verified")
+	check(title, "t3_title", "verified")
 }
 
 func TestA75SnapshotVersionFailsClosed(t *testing.T) {

@@ -128,7 +128,7 @@ func TestSessionUsagePagesDetailReuseAndTies(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if reused.LatestSessionID != oldID || reused.Active.Total != 26 || reused.Historical.Total != 99 {
+	if reused.LatestSessionID != "" || reused.Active.Total != 26 || reused.Historical.Total != 99 {
 		t.Fatal("reuse counts/default disagree")
 	}
 	detail, err := QuerySessionWorkloadDetail(project, ledger, oldID, 1, now)
@@ -189,7 +189,7 @@ func TestSessionUsageFoldIgnoresFreshMetadataAndObserver(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if page.Active.Total != 1 || page.Historical.Total != 0 || page.Active.Items[0].RootSessionID != page.LatestSessionID {
+	if page.Active.Total != 1 || page.Historical.Total != 0 || page.LatestSessionID != "" {
 		t.Fatalf("%+v", page)
 	}
 }

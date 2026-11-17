@@ -61,13 +61,16 @@ func applySessionUsage(roots []RootSession, attempts []Attempt, now time.Time) {
 }
 
 type SessionWorkload struct {
-	Project         string          `json:"project"`
-	GeneratedAt     string          `json:"generated_at"`
-	Active          RootSessionPage `json:"active"`
-	Historical      RootSessionPage `json:"historical"`
-	LatestSessionID string          `json:"latest_session_id,omitempty"`
-	UnknownUsage    int             `json:"unknown_usage"`
-	RuntimeCounts   map[string]int  `json:"runtime_counts"`
+	Representative     *RootSession                        `json:"representative,omitempty"`
+	RepresentativePage int                                 `json:"representative_page,omitempty"`
+	CurrentExecution   map[string]CurrentExecutionSnapshot `json:"current_execution,omitempty"`
+	Project            string                              `json:"project"`
+	GeneratedAt        string                              `json:"generated_at"`
+	Active             RootSessionPage                     `json:"active"`
+	Historical         RootSessionPage                     `json:"historical"`
+	LatestSessionID    string                              `json:"latest_session_id,omitempty"`
+	UnknownUsage       int                                 `json:"unknown_usage"`
+	RuntimeCounts      map[string]int                      `json:"runtime_counts"`
 }
 
 func usagePage(rows []RootSession, page, size int) RootSessionPage {
@@ -104,6 +107,12 @@ func QuerySessionWorkload(project string, ledger Ledger, activePage, historicalP
 	}
 	sort.Slice(roots.Items, func(i, j int) bool {
 		a, b := roots.Items[i], roots.Items[j]
+		if (a.Role == "root") != (b.Role == "root") {
+			return a.Role == "root"
+		}
+		if a.Role == "root" && a.GroupCreatedAt != b.GroupCreatedAt {
+			return a.GroupCreatedAt > b.GroupCreatedAt
+		}
 		if !valueTime(a.LastUsedAt).Equal(valueTime(b.LastUsedAt)) {
 			return valueTime(a.LastUsedAt).After(valueTime(b.LastUsedAt))
 		}
@@ -122,21 +131,44 @@ func QuerySessionWorkload(project string, ledger Ledger, activePage, historicalP
 			historical = append(historical, root)
 		}
 	}
-	if len(active) > 0 {
-		out.LatestSessionID = active[0].RootSessionID
+	for _, root := range roots.Items {
+		if root.Role == "root" && root.RelationStatus == "verified" {
+			out.LatestSessionID = root.RootSessionID
+			pageSize := size
+			if pageSize < 1 {
+				pageSize = 10
+			}
+			if pageSize > 50 {
+				pageSize = 50
+			}
+			selected := root
+			out.Representative = &selected
+			rows := active
+			if root.UsageGroup != "active" {
+				rows = historical
+			}
+			for i, r := range rows {
+				if r.RootSessionID == root.RootSessionID {
+					out.RepresentativePage = i/pageSize + 1
+					break
+				}
+			}
+			break
+		}
 	}
 	out.Active, out.Historical = usagePage(active, activePage, size), usagePage(historical, historicalPage, size)
 	return out, nil
 }
 
 type SessionWorkloadDetail struct {
-	Project     string          `json:"project"`
-	RootSession RootSession     `json:"root_session"`
-	Attempts    []Attempt       `json:"attempts"`
-	Findings    []LedgerFinding `json:"findings"`
-	Page        int             `json:"page"`
-	TotalPages  int             `json:"total_pages"`
-	Total       int             `json:"total"`
+	CurrentExecution map[string]CurrentExecutionSnapshot `json:"current_execution,omitempty"`
+	Project          string                              `json:"project"`
+	RootSession      RootSession                         `json:"root_session"`
+	Attempts         []Attempt                           `json:"attempts"`
+	Findings         []LedgerFinding                     `json:"findings"`
+	Page             int                                 `json:"page"`
+	TotalPages       int                                 `json:"total_pages"`
+	Total            int                                 `json:"total"`
 }
 
 func QuerySessionWorkloadDetail(project string, ledger Ledger, id string, page int, now time.Time) (SessionWorkloadDetail, error) {

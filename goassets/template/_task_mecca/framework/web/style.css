@@ -2518,3 +2518,13 @@ select.tm-combo-native{position:absolute!important;width:1px!important;height:1p
 .backlog-warning-details dt{margin-top:12px;color:var(--muted);font-size:12px}
 .backlog-warning-details dd{margin:3px 0 0;white-space:pre-wrap}
 @media(pointer:coarse){.state-col .backlog-warning{min-height:32px}.backlog-warning-head button{min-height:44px}}
+
+/* Workload identity and observation use the incumbent typography and surfaces. */
+.session-relation { margin-top: .35rem; font-size: .85rem; overflow-wrap: anywhere; }
+.session-name-provenance { display: flex; flex-wrap: wrap; gap: .3rem .8rem; margin-top: .25rem; font-size: .8rem; color: var(--muted); overflow-wrap: anywhere; }
+.session-representative { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; margin: 1rem 0; }
+.session-representative button { min-height: 44px; max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
+.session-execution, .session-current-evidence p { overflow-wrap: anywhere; font-size: .85rem; }
+.session-current-evidence { margin-block: 1rem; }
+.session-current-evidence h3 { font-size: 1rem; margin-bottom: .4rem; }
+@media (max-width: 600px) { .session-name-provenance { display: grid; gap: .3rem; } }

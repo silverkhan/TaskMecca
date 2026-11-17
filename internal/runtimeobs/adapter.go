@@ -6,10 +6,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/silverkhan/TaskMecca/internal/orchestration"
 	"io"
 	"os"
 	"os/exec"
 	"runtime"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -195,7 +197,10 @@ func EnrichCodexSessionName(project, sessionID string, now time.Time) (Execution
 	if strings.TrimSpace(sessionID) == "" {
 		return ExecutionEvent{}, false, errors.New("session_id is required")
 	}
-	observation := observeRootName(project, strings.TrimSpace(sessionID), now)
+	return enrichCodexSessionName(project, sessionID, now, observeRootName(project, strings.TrimSpace(sessionID), now))
+}
+
+func enrichCodexSessionName(project, sessionID string, now time.Time, observation RootNameObservation) (ExecutionEvent, bool, error) {
 	event := ExecutionEvent{
 		EventKind: "session_metadata", ObservedAt: now.UTC().Format(time.RFC3339Nano),
 		Provider: "codex", SessionID: strings.TrimSpace(sessionID),
@@ -219,7 +224,20 @@ func RefreshCodexRootNames(project string, ledger Ledger, now time.Time) (bool, 
 	if err != nil {
 		return false, err
 	}
+	sort.SliceStable(roots.Items, func(i, j int) bool {
+		_, left, _ := orchestration.FindGroup(project, roots.Items[i].Provider, roots.Items[i].ProviderSessionID)
+		_, right, _ := orchestration.FindGroup(project, roots.Items[j].Provider, roots.Items[j].ProviderSessionID)
+		if left != right {
+			return left
+		}
+		return roots.Items[i].DisplayNameCheckedAt < roots.Items[j].DisplayNameCheckedAt
+	})
 	changed := false
+	// A bounded batch per user request; cached entries do not consume the batch.
+	// A lookup is itself bounded by the existing native/T3 adapter timeouts.
+	budget := 16
+	ctx, cancel := context.WithTimeout(context.Background(), 250*time.Millisecond)
+	defer cancel()
 	for _, root := range roots.Items {
 		if root.Provider != "codex" || root.ProviderSessionID == "" {
 			continue
@@ -235,10 +253,16 @@ func RefreshCodexRootNames(project string, ledger Ledger, now time.Time) (bool, 
 			codexNameCacheMu.Unlock()
 			continue
 		}
+		if budget == 0 || ctx.Err() != nil {
+			codexNameCacheMu.Unlock()
+			break
+		}
+		budget--
 		codexNameCache[key] = now.Add(codexNameRefreshTTL)
 		codexNameCacheMu.Unlock()
 
-		event, wrote, lookupErr := EnrichCodexSessionName(project, root.ProviderSessionID, now)
+		observation := observeRootNameContext(ctx, project, root.ProviderSessionID, now)
+		event, wrote, lookupErr := enrichCodexSessionName(project, root.ProviderSessionID, now, observation)
 		if lookupErr != nil {
 			codexNameCacheMu.Lock()
 			codexNameCache[key] = now.Add(codexNameNegativeTTL)
@@ -252,7 +276,7 @@ func RefreshCodexRootNames(project string, ledger Ledger, now time.Time) (bool, 
 		if event.RootName != nil && event.RootName.Name != "" {
 			resolvedName = event.RootName.Name
 		}
-		if event.RootName != nil && event.RootName.Status == "unavailable" {
+		if event.RootName != nil && (event.RootName.Status == "unavailable" || event.RootName.HostStatus == "unavailable") {
 			codexNameCacheMu.Lock()
 			codexNameCache[key] = now.Add(codexNameNegativeTTL)
 			codexNameCacheMu.Unlock()

@@ -11,6 +11,8 @@ import (
     "sort"
     "strings"
     "time"
+    "path"
+    "github.com/silverkhan/TaskMecca/internal/orchestration"
 )
 
 const rootSessionCleanupAge = 7 * 24 * time.Hour
@@ -25,6 +27,23 @@ const (
 )
 
 type RootSession struct {
+    CanonicalProject string `json:"-"`
+	Execution            *RootSessionExecution `json:"execution,omitempty"`
+	Role                 string                `json:"role"`
+	RelationStatus       string                `json:"relation_status"`
+	RelationSource       string                `json:"relation_source,omitempty"`
+	RelationCheckedAt    string                `json:"relation_checked_at,omitempty"`
+	GroupID              string                `json:"group_id,omitempty"`
+	GroupCreatedAt       string                `json:"group_created_at,omitempty"`
+	ParentSessionID      string                `json:"parent_session_id,omitempty"`
+	RootAncestorID       string                `json:"root_ancestor_id,omitempty"`
+	T3ThreadID           string                `json:"t3_thread_id,omitempty"`
+	ParentThreadID       string                `json:"parent_thread_id,omitempty"`
+	NativeName           string                `json:"native_name,omitempty"`
+	NameFailure          string                `json:"name_failure,omitempty"`
+	HostNameStatus       string                `json:"host_name_status,omitempty"`
+	DescendantLastUsedAt string                `json:"descendant_last_used_at,omitempty"`
+
     RootSessionID       string            `json:"root_session_id"`
     Provider            string            `json:"provider"`
     ProviderSessionID   string            `json:"provider_session_id,omitempty"`
@@ -202,9 +221,9 @@ func rootAttemptLastActivity(attempt Attempt) string {
 
 func rootFallbackName(createdAt string) string {
     if parsed,err:=time.Parse(time.RFC3339Nano,createdAt); err==nil {
-        return "Root · "+parsed.Local().Format("2006-01-02 15:04")
+        return "Session · "+parsed.Local().Format("2006-01-02 15:04")
     }
-    return "Root Session"
+    return "Session"
 }
 
 func rootSessionAttempts(project string,ledger Ledger,now time.Time) ([]Attempt,error) {
@@ -255,6 +274,7 @@ func BuildRootSessions(project string,ledger Ledger,now time.Time) (RootSessionC
         if group==nil {
             group=&mutableRootSession{
                 session:RootSession{
+                    CanonicalProject:project,
                     RootSessionID:rootID,
                     Provider:provider,
                     ProviderSessionID:providerSessionID,
@@ -402,6 +422,7 @@ func BuildRootSessions(project string,ledger Ledger,now time.Time) (RootSessionC
         return collection.Items[i].RootSessionID<collection.Items[j].RootSessionID
     })
     applySessionUsage(collection.Items, attempts, now)
+    applyRootSessionRelations(project, collection.Items, attempts, metadata, now)
     collection.Total=len(collection.Items)
     return collection,nil
 }
@@ -700,4 +721,114 @@ func CleanupRootSession(project string,ledger Ledger,rootSessionID string,now ti
         if removed { result.HistoryFilesRemoved++ }
     }
     return result,nil
+}
+
+// Native session storage groups are retained individually. Only exact saved
+// Root identity plus a verified host parent chain establishes a hierarchy.
+func applyRootSessionRelations(project string, roots []RootSession, attempts []Attempt, metadata map[string]rootSessionMetadata, now time.Time) {
+	byThread := map[string][]int{}
+	roles := map[string]map[string]bool{}
+	for _, a := range attempts {
+		if a.BindingState != BindingBound || a.RuntimeAgentID == "" || a.SessionID == "" || (a.Provider == "codex" && a.RuntimeAgentID != a.SessionID) {
+			continue
+		}
+		role := "unknown"
+		switch a.AgentPath {
+		case "/root":
+			role = "root"
+		case "/root/controller":
+			role = "controller"
+		case "/root/registrar":
+			role = "registrar"
+		default:
+			if path.Dir(a.AgentPath) == "/root/controller" && path.Base(a.AgentPath) != "." {
+				role = "worker"
+			}
+		}
+		id := RootSessionIDForAttempt(a)
+		if roles[id] == nil {
+			roles[id] = map[string]bool{}
+		}
+		roles[id][role] = true
+	}
+	for i := range roots {
+		r := &roots[i]
+		r.Role, r.RelationStatus = "unknown", "unverified"
+		r.ParentSessionID, r.RootAncestorID, r.GroupID, r.GroupCreatedAt, r.RelationSource, r.DescendantLastUsedAt = "", "", "", "", "", ""
+		snap := metadata[r.Provider+"\x00"+r.ProviderSessionID].nameSnapshot
+		if snap == nil {
+   if r.Provider=="codex" {r.NameFailure="name_refresh_not_observed"}
+   continue
+  }
+		r.NativeName, r.NameFailure, r.HostNameStatus = snap.NativeName, snap.Failure, snap.HostStatus
+		r.T3ThreadID, r.ParentThreadID, r.RelationCheckedAt = snap.T3ThreadID, snap.ParentThreadID, snap.CheckedAt
+		at, err := time.Parse(time.RFC3339Nano, snap.CheckedAt)
+  if err!=nil || at.After(now) || now.Sub(at)>30*time.Second {if r.NameFailure=="" {r.NameFailure="name_refresh_expired"}}
+  if !snap.IdentityVerified || snap.HostProjectID == "" || err != nil || at.After(now) || now.Sub(at) > 2*time.Minute {
+			continue
+		}
+		byThread[r.T3ThreadID] = append(byThread[r.T3ThreadID], i)
+		if r.ParentThreadID == "" {
+			group, found, e := orchestration.FindGroup(project, r.Provider, r.ProviderSessionID)
+			if e == nil && found && (len(roles[r.RootSessionID]) == 0 || (len(roles[r.RootSessionID]) == 1 && roles[r.RootSessionID]["root"])) {
+				r.Role, r.RelationStatus, r.RelationSource = "root", "verified", "saved_exact_group+host_parent"
+				r.GroupID, r.GroupCreatedAt, r.RootAncestorID = group.GroupID, group.CreatedAt, r.RootSessionID
+			}
+		}
+	}
+	for _, indices := range byThread {
+		if len(indices) > 1 {
+			for _, i := range indices {
+				roots[i].Role = "unknown"
+				roots[i].RelationStatus = "unverified"
+				roots[i].GroupID = ""
+				roots[i].RootAncestorID = ""
+			}
+		}
+	}
+	// Resolve only unambiguous chains within the same host project. No names,
+	// recent-use order, native grouping, or task activity can prove a parent.
+	for i := range roots {
+		r := &roots[i]
+		if r.Role == "root" || r.ParentThreadID == "" {
+			continue
+		}
+		childMeta := metadata[r.Provider+"\x00"+r.ProviderSessionID].nameSnapshot
+		if childMeta == nil || len(byThread[r.T3ThreadID]) != 1 {
+			continue
+		}
+		current, seen := i, map[int]bool{i: true}
+		for depth := 0; depth < 32; depth++ {
+			parent := byThread[roots[current].ParentThreadID]
+			if len(parent) != 1 || seen[parent[0]] {
+				break
+			}
+			n := parent[0]
+			seen[n] = true
+			pm := metadata[roots[n].Provider+"\x00"+roots[n].ProviderSessionID].nameSnapshot
+			cm := metadata[roots[current].Provider+"\x00"+roots[current].ProviderSessionID].nameSnapshot
+			if pm == nil || cm == nil || cm.Relationship != "subagent" || pm.HostProjectID != childMeta.HostProjectID || roots[n].Provider != r.Provider {
+				break
+			}
+			if current == i {
+				r.ParentSessionID = roots[n].RootSessionID
+			}
+			if roots[n].Role == "root" {
+				r.RelationStatus, r.RelationSource = "verified", "host_parent_chain+bound_role"
+				r.RootAncestorID, r.GroupID, r.GroupCreatedAt = roots[n].RootSessionID, roots[n].GroupID, roots[n].GroupCreatedAt
+				if len(roles[r.RootSessionID]) == 1 {
+					for role := range roles[r.RootSessionID] {
+						if role != "root" {
+							r.Role = role
+						}
+					}
+				}
+				if valueTime(r.LastUsedAt).After(valueTime(roots[n].DescendantLastUsedAt)) {
+					roots[n].DescendantLastUsedAt = r.LastUsedAt
+				}
+				break
+			}
+			current = n
+		}
+	}
 }
