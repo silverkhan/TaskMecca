@@ -39,8 +39,9 @@ func observeRoleCollection(in RoleStart, now time.Time, scope func(RoleStart) er
 	fail := func(stage, reason string) (WorkerStartResult, error) {
 		return WorkerStartResult{Status: "collection_gap", Stage: stage, Context: legacy, ReceivedAt: now.UTC().Format(time.RFC3339Nano), Diagnostic: reason}, errors.New(reason)
 	}
-	if (in.Role != "controller" && in.Role != "worker") || rolepolicy.Role(in.AgentPath) != in.Role {
-		return fail("role", "role_path_mismatch: controller requires /root/controller; worker requires a direct Worker child path")
+	validRolePath := rolepolicy.Role(in.AgentPath) == in.Role || (in.Role == "registrar" && in.AgentPath == "/root/registrar")
+	if (in.Role != "controller" && in.Role != "worker" && in.Role != "registrar") || !validRolePath {
+		return fail("role", "role_path_mismatch: controller requires /root/controller; registrar requires /root/registrar; worker requires a direct Worker child path")
 	}
 	if in.ParentThreadID == "" || in.ParentThreadID == in.Selector.ThreadID {
 		return fail("scope", "parent_identity_required: use exact host parent thread, never native ID or display name")
@@ -51,7 +52,7 @@ func observeRoleCollection(in RoleStart, now time.Time, scope func(RoleStart) er
 	if err := scope(in); err != nil {
 		return fail("scope", err.Error())
 	}
-	return observeRoleStart(legacy, now, func(p string, s T3Selector, n time.Time) (Attempt, T3Receipt, error) {
+	verifiedObserve := func(p string, s T3Selector, n time.Time) (Attempt, T3Receipt, error) {
 		if err := scope(in); err != nil {
 			return Attempt{}, T3Receipt{}, err
 		}
@@ -60,7 +61,58 @@ func observeRoleCollection(in RoleStart, now time.Time, scope func(RoleStart) er
 			err = scope(in) // changed host scope cannot authorize binding
 		}
 		return a, r, err
-	}, in.Role == "controller")
+	}
+	if in.Role == "registrar" {
+		return observeRegistrarCollection(legacy, now, verifiedObserve)
+	}
+	return observeRoleStart(legacy, now, verifiedObserve, in.Role == "controller")
+}
+
+// Registration is operational attribution, not Worker implementation consent.
+// Require an existing exact task/Registrar assignment, managed parent/project/
+// repository scope, and the current structured receipt. Never bind by a title,
+// registration timestamp, an old run, or a caller-supplied execution object.
+func observeRegistrarCollection(in WorkerStart, now time.Time, observe func(string, T3Selector, time.Time) (Attempt, T3Receipt, error)) (WorkerStartResult, error) {
+	out := WorkerStartResult{Status: "collection_gap", Stage: "assignment", Context: in, ReceivedAt: now.UTC().Format(time.RFC3339Nano)}
+	fail := func(err error) (WorkerStartResult, error) { out.Diagnostic = err.Error(); return out, err }
+	project, err := ResolveProject(in.CanonicalProject)
+	if err != nil {
+		return fail(err)
+	}
+	project, err = exactDirectory(project)
+	if err != nil {
+		return fail(err)
+	}
+	requested, err := exactDirectory(in.CanonicalProject)
+	if err != nil || requested != project {
+		return fail(errors.New("--project must name the canonical project root explicitly"))
+	}
+	a, err := FindAssignment(project, in.AssignmentID)
+	if err != nil {
+		return fail(err)
+	}
+	if a.TaskID != in.TaskID || a.AgentPath != "/root/registrar" || in.WorkerPath != a.AgentPath {
+		return fail(errors.New("Registrar task/path does not match exact canonical assignment"))
+	}
+	out.Stage = "observation"
+	out.Attempt, out.Receipt, err = observe(project, in.Selector, now)
+	if err != nil {
+		return fail(err)
+	}
+	r := out.Receipt
+	if r.ThreadID != in.Selector.ThreadID || r.SessionID != in.Selector.SessionID || out.Attempt.RuntimeAgentID != in.Selector.RuntimeAgentID || out.Attempt.NativeReceipt == nil || *out.Attempt.NativeReceipt != r || r.Provider != "codex" || r.RunID == "" || r.NativeAttemptID == "" || (in.Selector.RunID != "" && r.RunID != in.Selector.RunID) || r.State != StateRunning || out.Attempt.Terminal {
+		return fail(errors.New("observed native/T3 execution does not match current Registrar START"))
+	}
+	out.Stage = "binding"
+	bound, err := BindRuntimeAgentForAssignment(project, in.AssignmentID, in.Selector.RuntimeAgentID, "", now)
+	if err != nil {
+		return fail(err)
+	}
+	if bound.AttemptID != out.Attempt.AttemptID || bound.BindingState != BindingBound || bound.TaskID != in.TaskID || bound.AgentPath != "/root/registrar" || bound.BindingEvidence["assignment_id"] != in.AssignmentID {
+		return fail(errors.New("exact observed Registrar attempt was not bound"))
+	}
+	out.Attempt, out.Status, out.Stage = bound, "bound", "activity_reporting"
+	return out, nil
 }
 
 // Scope comes from the same schema-bound, ownership-checked read-only adapter

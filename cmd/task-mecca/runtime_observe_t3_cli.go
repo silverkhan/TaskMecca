@@ -21,9 +21,10 @@ func runRuntimeObserveT3CLI(args []string, out, stderr io.Writer) int {
 	assignment := f.String("assignment", "", "exact canonical Worker assignment; Controller START integration")
 	task := f.String("task-id", "", "exact task from START")
 	worker := f.String("worker-path", "", "exact internal Worker path from START")
-	role := f.String("role", "", "formal collection role: controller or worker; never implementation authorization")
+	role := f.String("role", "", "formal collection role: controller, registrar or worker; never implementation authorization")
 	agentPath := f.String("agent-path", "", "exact assigned role path for formal collection")
 	parent := f.String("parent-thread-id", "", "exact managed parent verified against the live host store")
+	handoff := f.String("handoff", "", "exact already claimed Controller handoff, never a claim request")
 	phase := f.String("phase", "requirements_started", "actual current Worker phase reminder only; never records Activity")
 	source := f.String("source-worktree", "", "source cwd, never the canonical ledger destination")
 	dry := f.Bool("dry-run", false, "verify actual source without writing any project ledger")
@@ -38,15 +39,19 @@ func runRuntimeObserveT3CLI(args []string, out, stderr io.Writer) int {
 	sel := runtimeobs.T3Selector{ThreadID: *thread, SessionID: *session, RuntimeAgentID: *agent, RunID: *run}
 	formalMode := *role != "" || *agentPath != "" || *parent != ""
 	startMode := *assignment != "" || *task != "" || *worker != "" || *source != "" || formalMode
-	if formalMode && (*worker != "" || (*role != "controller" && *role != "worker") || *agentPath == "" || *parent == "") {
-		fmt.Fprintln(stderr, "formal collection requires --role controller|worker --agent-path EXACT --parent-thread-id EXACT; do not mix --worker-path")
+	if formalMode && (*worker != "" || (*role != "controller" && *role != "worker" && *role != "registrar") || *agentPath == "" || *parent == "") {
+		fmt.Fprintln(stderr, "formal collection requires --role controller|registrar|worker --agent-path EXACT --parent-thread-id EXACT; do not mix --worker-path")
+		return 2
+	}
+	if *handoff != "" && (!formalMode || *role != "controller") {
+		fmt.Fprintln(stderr, "--handoff is only an existing formal Controller claim")
 		return 2
 	}
 	if startMode && (*assignment == "" || *task == "" || (!formalMode && *worker == "") || *source == "" || *project == ".") {
 		fmt.Fprintln(stderr, "START integration requires explicit --project --assignment --task-id --worker-path --source-worktree")
 		return 2
 	}
-	if startMode {
+	if startMode && (!formalMode || *role == "worker") {
 		switch *phase {
 		case "requirements_started", "implementation_started", "targeted_test_started", "full_regression_started", "build_started", "worker_completed":
 		default:
@@ -94,9 +99,25 @@ func runRuntimeObserveT3CLI(args []string, out, stderr io.Writer) int {
 		}
 		if formalMode && *role == "controller" {
 			response["next_action"] = "Operational Controller binding only. Query exact attempt, recover the SAME existing handoff, directly deliver, then claim using supported current context. Delivery/steered is not claim/applied; Worker implementation authorization remains separate."
+			if *handoff == "" {
+				response["activity_reporting"] = map[string]string{"status": "unverified", "diagnostic": "Exact current claimed handoff required for Controller Activity; binding alone is not claim or measured coordination."}
+				response["collection_gap"] = "Controller phase reporting requires its exact current claimed handoff; no Activity was written"
+			} else {
+				reporting := activity.CheckReporting(result.Context.CanonicalProject, *task, activity.RoleController, result.Attempt.AttemptID, "", *handoff, *phase, time.Now())
+				response["activity_reporting"] = reporting
+				if reporting.Status == "unverified" || reporting.Status == "error" {
+					response["collection_gap"] = reporting.Diagnostic
+					writeT3Result(out, *asJSON, response)
+					return 1
+				}
+			}
 			return writeT3Result(out, *asJSON, response)
 		}
-		reporting := activity.CheckReporting(result.Context.CanonicalProject, *task, activity.RoleWorker, result.Attempt.AttemptID, *assignment, "", *phase, time.Now())
+		reportRole, reportAssignment := activity.RoleWorker, *assignment
+		if formalMode && *role == "registrar" {
+			reportRole, reportAssignment = activity.RoleRegistrar, ""
+		}
+		reporting := activity.CheckReporting(result.Context.CanonicalProject, *task, reportRole, result.Attempt.AttemptID, reportAssignment, "", *phase, time.Now())
 		response["activity_reporting"] = reporting
 		if reporting.Status == "unverified" || reporting.Status == "error" {
 			response["collection_gap"] = reporting.Diagnostic

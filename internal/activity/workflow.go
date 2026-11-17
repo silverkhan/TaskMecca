@@ -87,6 +87,8 @@ type WorkflowNameEvidence struct {
 }
 
 type WorkflowRow struct {
+	RoleFacts              []WorkflowRoleFact     `json:"role_facts"`
+	Gaps                   []WorkflowGap          `json:"gaps"`
 	NameEvidence           []WorkflowNameEvidence `json:"name_evidence,omitempty"`
 	DisplayName            string                 `json:"display_name,omitempty"`
 	DisplayNameSource      string                 `json:"display_name_source,omitempty"`
@@ -122,19 +124,24 @@ type WorkflowInterval struct {
 	Lane              int                       `json:"lane"`
 }
 type WorkflowGap struct {
-	Start time.Time `json:"start"`
-	End   time.Time `json:"end"`
-	Kind  string    `json:"kind"`
+	Start    time.Time             `json:"start"`
+	End      time.Time             `json:"end"`
+	Kind     string                `json:"kind"`
+	Status   string                `json:"status"`
+	Evidence []WorkflowGapEvidence `json:"evidence"`
 }
 type ReportingCoverage struct {
-	Status                    string             `json:"status"`
-	ExpectedExecutions        int                `json:"expected_executions"`
-	ExecutionsWithoutActivity int                `json:"executions_without_activity"`
-	ExpectedReviews           int                `json:"expected_reviews"`
-	ReviewsWithoutActivity    int                `json:"reviews_without_activity"`
-	Findings                  []ReportingFinding `json:"findings"`
+	Scope                     string                  `json:"scope"`
+	Roles                     []RoleReportingCoverage `json:"roles"`
+	Status                    string                  `json:"status"`
+	ExpectedExecutions        int                     `json:"expected_executions"`
+	ExecutionsWithoutActivity int                     `json:"executions_without_activity"`
+	ExpectedReviews           int                     `json:"expected_reviews"`
+	ReviewsWithoutActivity    int                     `json:"reviews_without_activity"`
+	Findings                  []ReportingFinding      `json:"findings"`
 }
 type ReportingFinding struct {
+	Role          string `json:"role,omitempty"`
 	Code          string `json:"code"`
 	AttemptID     string `json:"attempt_id,omitempty"`
 	AssignmentID  string `json:"assignment_id,omitempty"`
@@ -142,6 +149,7 @@ type ReportingFinding struct {
 	RequiredPhase string `json:"required_phase,omitempty"`
 }
 type WorkflowInput struct {
+	CollectionFailures    []WorkflowCollectionFailure
 	ExecutionObservations []runtimeobs.Attempt
 	TaskID                string
 	Events                []Event
@@ -280,14 +288,14 @@ func SummarizeWorkflow(in WorkflowInput) Workflow {
 		cursor := *w.Axis.Start
 		for _, v := range measured {
 			if v.start.After(cursor) {
-				w.Unmeasured = append(w.Unmeasured, WorkflowGap{cursor, v.start, "activity_unmeasured"})
+				w.Unmeasured = append(w.Unmeasured, WorkflowGap{Start: cursor, End: v.start, Kind: "activity_unmeasured"})
 			}
 			if v.end.After(cursor) {
 				cursor = v.end
 			}
 		}
 		if cursor.Before(*w.Axis.End) {
-			w.Unmeasured = append(w.Unmeasured, WorkflowGap{cursor, *w.Axis.End, "activity_unmeasured"})
+			w.Unmeasured = append(w.Unmeasured, WorkflowGap{Start: cursor, End: *w.Axis.End, Kind: "activity_unmeasured"})
 		}
 	}
 	if in.Summary.InvalidTransitions+in.Summary.InvalidCorrections+w.Lifecycle.InvalidFacts > 0 || w.Axis.BoundaryStatus == "conflict" {
@@ -352,8 +360,8 @@ func SummarizeWorkflow(in WorkflowInput) Workflow {
 		if e.Action == Stop && e.ReviewOutcome != "" {
 			reviewOutcomeByEnd[actorKey(e)+"|"+e.OccurredAt.Format(time.RFC3339Nano)] = e.ReviewOutcome
 		}
-		eventByAttempt[e.RuntimeAttemptID]++
 		if e.Role == RoleWorker {
+			eventByAttempt[e.RuntimeAttemptID]++
 			nativeByAttempt[e.RuntimeAttemptID] = e.AgentID
 		}
 		if e.HandoffID != "" {
@@ -494,13 +502,11 @@ func SummarizeWorkflow(in WorkflowInput) Workflow {
 		}
 		// These are reported execution boundaries, not measurements of active work.
 		agent := f.Actor
-		if agent == "/root/controller" || agent == "/root/registrar" {
-			agent = "unclassified_worker"
-		}
+		role := workflowActorRole(agent)
 		if native := nativeByAttempt[f.AttemptID]; native != "" {
 			agent = native
 		}
-		add("worker", agent, roundNumber(f.OccurredAt, boundaries, known), WorkflowInterval{RuntimeTerminal: terminal, ID: f.EventID, Kind: "execution_report", Type: "unclassified_execution", Start: f.OccurredAt, End: end, EndEvidence: endEvidence, EndEvidenceSource: endSource, AttemptID: f.AttemptID, AssignmentID: f.AssignmentID, Evidence: f.EvidenceSource})
+		add(role, agent, roundNumber(f.OccurredAt, boundaries, known), WorkflowInterval{RuntimeTerminal: terminal, ID: f.EventID, Kind: "execution_report", Type: "unclassified_execution", Start: f.OccurredAt, End: end, EndEvidence: endEvidence, EndEvidenceSource: endSource, AttemptID: f.AttemptID, AssignmentID: f.AssignmentID, Evidence: f.EvidenceSource})
 	}
 	// A verified bound execution can exist even when START transport/lifecycle
 	// collection failed. Surface that gap without manufacturing a lifecycle fact.
@@ -542,6 +548,7 @@ func SummarizeWorkflow(in WorkflowInput) Workflow {
 			w.Reporting.Status = "missing"
 		}
 	}
+	workflowRoleFacts(in, &w, rows, add, boundaries, known, events)
 	for _, row := range rows {
 		// Names require an exact, unambiguous task/attempt/native identity binding.
 		// Never derive aliases from Activity UUIDs or unbound paths.
@@ -621,8 +628,11 @@ func SummarizeWorkflow(in WorkflowInput) Workflow {
 			w.Current.Phase = "dispatch_wait"
 			w.Current.NextAction = "confirm_worker_start"
 		case "started", "resumed":
-			w.Current.Phase = "implementation"
-			w.Current.ProcessingRole = "worker"
+			w.Current.ProcessingRole = workflowActorRole(latest.Actor)
+			w.Current.Phase = "execution_observed"
+			if w.Current.ProcessingRole == "worker" {
+				w.Current.Phase = "implementation"
+			}
 			w.Current.ProcessingAgent = latest.Actor
 			w.Current.NextAction = "implement_and_verify"
 		case "waiting":
@@ -727,6 +737,13 @@ func SummarizeWorkflow(in WorkflowInput) Workflow {
 	// remain unclassified rather than being relabelled as a user hold.
 	if latestOpen != nil && w.Current.Phase != "completed" {
 		e := latestOpen
+		if e.Role != RoleWorker && (len(facts) == 0 || !facts[len(facts)-1].OccurredAt.After(e.OccurredAt)) {
+			if _, _, ended := terminalFor(e.RuntimeAttemptID, "", e.AgentID, e.AssignmentID, e.OccurredAt); !ended {
+				w.Current.Phase, w.Current.Basis = string(e.Type), "open_reported_activity"
+				w.Current.ProcessingRole, w.Current.ProcessingAgent = string(e.Role), e.AgentID
+				w.Current.NextAction = "continue_actual_phase"
+			}
+		}
 		if e.PhaseEvent == "external_ci_wait_started" || strings.EqualFold(e.ProposedType, "external_ci_wait") {
 			w.Current.Phase = "external_ci_wait"
 			w.Current.Basis = "explicit_activity_report"
@@ -734,6 +751,7 @@ func SummarizeWorkflow(in WorkflowInput) Workflow {
 		}
 	}
 
+	workflowGapEvidence(in, &w)
 	return w
 }
 

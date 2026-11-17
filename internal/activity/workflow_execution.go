@@ -2,8 +2,10 @@ package activity
 
 import (
 	"fmt"
+	"sort"
 	"time"
 
+	"github.com/silverkhan/TaskMecca/internal/rolepolicy"
 	"github.com/silverkhan/TaskMecca/internal/runtimeobs"
 )
 
@@ -27,6 +29,335 @@ func ReadWorkflowExecutions(project, task string, now time.Time) ([]runtimeobs.A
 		}
 	}
 	return out, nil
+}
+
+// Role facts are inspectable source points. They never contain a work duration.
+type WorkflowRoleFact struct {
+	ID                string    `json:"id"`
+	Kind              string    `json:"kind"`
+	At                time.Time `json:"at"`
+	Source            string    `json:"source"`
+	Reason            string    `json:"reason"`
+	MeasurementStatus string    `json:"measurement_status"`
+	AttemptID         string    `json:"attempt_id,omitempty"`
+	AssignmentID      string    `json:"assignment_id,omitempty"`
+	HandoffID         string    `json:"handoff_id,omitempty"`
+}
+type WorkflowGapEvidence struct {
+	Source     string    `json:"source"`
+	ObservedAt time.Time `json:"observed_at"`
+	Reason     string    `json:"reason"`
+	EventID    string    `json:"event_id,omitempty"`
+	AttemptID  string    `json:"attempt_id,omitempty"`
+}
+type RoleReportingCoverage struct {
+	Role               string `json:"role"`
+	Status             string `json:"status"`
+	FactCount          int    `json:"fact_count"`
+	ActivityEventCount int    `json:"activity_event_count"`
+}
+
+// Optional explicit caller evidence, never inferred from missing Activity or
+// diagnostic wording. A failed report is a point, not a failure-duration span.
+type WorkflowCollectionFailure struct {
+	ID, TaskID, Role, AgentID, AttemptID, Source, Reason string
+	At                                                   time.Time
+}
+
+func workflowActorRole(path string) string {
+	if path == "/root/registrar" {
+		return "registrar"
+	}
+	if path == "/root/controller" {
+		return "controller"
+	}
+	if r := rolepolicy.Role(path); r != "" {
+		return r
+	}
+	return "unknown"
+}
+
+func workflowObservedAttempts(in WorkflowInput) []runtimeobs.Attempt {
+	counts := map[string]int{}
+	for _, a := range in.ExecutionObservations {
+		counts[a.AttemptID]++
+	}
+	out := []runtimeobs.Attempt{}
+	for _, a := range in.ExecutionObservations {
+		if a.AttemptID == "" || counts[a.AttemptID] != 1 || a.TaskID != in.TaskID || a.BindingState != runtimeobs.BindingBound || a.RuntimeAgentID == "" || a.SessionID == "" || a.Provider == "" || !runtimeobs.HasObservedExecution(a) {
+			continue
+		}
+		if native := a.BindingEvidence["runtime_agent_id"]; native != "" && native != a.RuntimeAgentID {
+			continue
+		}
+		if a.StateEvidenceSource == runtimeobs.EvidenceT3 && (a.NativeReceipt.ThreadID == "" || a.NativeReceipt.RunID == "" || a.NativeReceipt.ThreadID == a.SessionID) {
+			continue
+		}
+		out = append(out, a)
+	}
+	return out
+}
+
+func workflowRoleFacts(in WorkflowInput, w *Workflow, rows map[string]*WorkflowRow, add func(string, string, *int, WorkflowInterval), bounds []reviewBoundary, known bool, events []Event) {
+	coverage := map[string]*RoleReportingCoverage{}
+	for _, role := range []string{"worker", "controller", "registrar"} {
+		coverage[role] = &RoleReportingCoverage{Role: role, Status: "not_recorded"}
+	}
+	roleCoverage := func(role string) *RoleReportingCoverage {
+		if coverage[role] == nil {
+			coverage[role] = &RoleReportingCoverage{Role: role, Status: "not_recorded"}
+		}
+		return coverage[role]
+	}
+	seen := map[string]bool{}
+	missing := map[string]bool{}
+	fact := func(role, agent string, f WorkflowRoleFact) {
+		if f.ID == "" || f.At.IsZero() || f.At.After(in.Now) || seen[role+"|"+agent+"|"+f.ID] {
+			return
+		}
+		seen[role+"|"+agent+"|"+f.ID] = true
+		n := roundNumber(f.At, bounds, known)
+		label := "unknown"
+		if n != nil {
+			label = fmt.Sprint(*n)
+		}
+		key := role + "|" + agent + "|" + label
+		if rows[key] == nil {
+			rows[key] = &WorkflowRow{ID: key, Role: role, AgentID: agent, Round: n, RoundStatus: roundStatus(n), Intervals: []WorkflowInterval{}}
+		}
+		f.MeasurementStatus = "unmeasured"
+		rows[key].RoleFacts = append(rows[key].RoleFacts, f)
+		roleCoverage(role).FactCount++
+	}
+	for _, f := range in.Facts {
+		if f.TaskID != in.TaskID {
+			continue
+		}
+		// Execution relays already have their original interval. Registration,
+		// assignment, wait and completion remain source points for their actor.
+		if f.Kind == "started" || f.Kind == "resumed" {
+			continue
+		}
+		if f.Actor == "" {
+			continue
+		} // event kind is not proof of a role or identity
+		source := f.EvidenceSource
+		if source == "" {
+			source = "lifecycle_ledger"
+		}
+		fact(workflowActorRole(f.Actor), f.Actor, WorkflowRoleFact{ID: f.EventID, Kind: f.Kind, At: f.OccurredAt, Source: source, Reason: "Reported lifecycle fact; no role Activity measurement is implied", AttemptID: f.AttemptID, AssignmentID: f.AssignmentID})
+	}
+	for _, a := range workflowObservedAttempts(in) {
+		at, ok := workflowTime(a.FirstObservedAt)
+		if !ok {
+			at, ok = workflowTime(a.StartedAt)
+		}
+		if !ok {
+			continue
+		}
+		role := workflowActorRole(a.AgentPath)
+		recorded := false
+		for _, e := range events {
+			if string(e.Role) == role && e.RuntimeAttemptID == a.AttemptID && e.AgentID == a.RuntimeAgentID {
+				recorded = true
+				break
+			}
+		}
+		if !recorded {
+			missing[role] = true
+			w.Reporting.Findings = append(w.Reporting.Findings, ReportingFinding{Code: "role_execution_activity_missing", Role: role, AttemptID: a.AttemptID, AssignmentID: a.BindingEvidence["assignment_id"], RequiredPhase: "current_actual_phase"})
+		}
+		fact(role, a.RuntimeAgentID, WorkflowRoleFact{ID: "runtime:" + a.AttemptID, Kind: "observed_execution", At: at, Source: string(a.StateEvidenceSource), Reason: "Exact task-bound native execution observed; phase activity remains independently reported", AttemptID: a.AttemptID, AssignmentID: a.BindingEvidence["assignment_id"]})
+		if role != "worker" {
+			// A bounded observation range, never an agent-active interval. Do not
+			// extrapolate a running session from last observation to current time.
+			end, valid := workflowTime(a.LastObservedAt)
+			if a.Terminal {
+				end, valid = workflowTime(a.EndedAt)
+			}
+			if valid && !end.Before(at) && !end.After(in.Now) {
+				add(role, a.RuntimeAgentID, roundNumber(at, bounds, known), WorkflowInterval{ID: "runtime:" + a.AttemptID, Kind: "native_observed", Type: "unclassified_execution", Start: at, End: &end, AttemptID: a.AttemptID, AssignmentID: a.BindingEvidence["assignment_id"], Evidence: string(a.StateEvidenceSource), EndEvidence: "observed_boundary"})
+			}
+		}
+	}
+	for _, h := range in.Handoffs {
+		if h.TaskID != in.TaskID {
+			continue
+		}
+		if at, ok := workflowTime(h.PreparedAt); ok && h.SourceAgentPath != "" {
+			fact(workflowActorRole(h.SourceAgentPath), h.SourceAgentPath, WorkflowRoleFact{ID: "prepared:" + h.HandoffID, Kind: "handoff_prepared", At: at, Source: "handoff_journal", Reason: "Handoff prepared; delivery and activity are separate", AttemptID: h.SourceAttemptID, HandoffID: h.HandoffID})
+		}
+		if at, ok := workflowTime(h.ClaimedAt); ok && h.ClaimedBy != "" {
+			fact(workflowActorRole(h.ClaimedBy), h.Target.RuntimeAgentID, WorkflowRoleFact{ID: "claimed:" + h.HandoffID, Kind: "handoff_claimed", At: at, Source: "handoff_journal", Reason: "Actual handoff claim; no measured coordination or review duration", AttemptID: h.ClaimedAttemptID, HandoffID: h.HandoffID})
+		}
+	}
+	for _, f := range in.CollectionFailures {
+		if f.TaskID == in.TaskID && f.Source != "" && f.Reason != "" {
+			role := f.Role
+			if !Role(role).Valid() {
+				role = "unknown"
+			}
+			fact(role, f.AgentID, WorkflowRoleFact{ID: f.ID, Kind: "collection_failed", At: f.At, Source: f.Source, Reason: f.Reason, AttemptID: f.AttemptID})
+		}
+	}
+	for _, e := range events {
+		roleCoverage(string(e.Role)).ActivityEventCount++
+	}
+	w.Reporting.Scope = "observed_evidence_only"
+	roles := []string{}
+	for role := range coverage {
+		roles = append(roles, role)
+	}
+	sort.Strings(roles)
+	partial := false
+	for _, role := range roles {
+		c := coverage[role]
+		if c.ActivityEventCount > 0 {
+			c.Status = "recorded"
+		} else if c.FactCount > 0 {
+			c.Status = "partial"
+		}
+		if missing[role] {
+			c.Status = "partial"
+		}
+		if c.Status != "recorded" {
+			partial = true
+		}
+		w.Reporting.Roles = append(w.Reporting.Roles, *c)
+	}
+	if partial && w.Reporting.Status != "missing" {
+		w.Reporting.Status = "partial"
+	}
+	for _, row := range rows {
+		sort.Slice(row.RoleFacts, func(i, j int) bool {
+			if row.RoleFacts[i].At.Equal(row.RoleFacts[j].At) {
+				return row.RoleFacts[i].ID < row.RoleFacts[j].ID
+			}
+			return row.RoleFacts[i].At.Before(row.RoleFacts[j].At)
+		})
+	}
+}
+
+type workflowGapSource struct {
+	start, end    time.Time
+	status, agent string
+	evidence      WorkflowGapEvidence
+}
+
+func workflowGapEvidence(in WorkflowInput, w *Workflow) {
+	sources := []workflowGapSource{}
+	actors := map[string]string{}
+	for _, f := range in.Facts {
+		if f.TaskID == in.TaskID {
+			actors[f.EventID] = f.Actor
+		}
+	}
+	paths := map[string]string{}
+	for _, a := range workflowObservedAttempts(in) {
+		paths[a.RuntimeAgentID] = a.AgentPath
+	}
+	matches := func(row, source string) bool {
+		return row == "" || (source != "" && (source == row || paths[row] == source || paths[source] == row))
+	}
+	for _, v := range w.Lifecycle.Intervals {
+		if v.Kind == "explicit_wait" {
+			sources = append(sources, workflowGapSource{start: v.StartedAt, end: v.EndedAt, status: "confirmed_wait", agent: actors[v.FromEventID], evidence: WorkflowGapEvidence{Source: "reported_lifecycle", ObservedAt: v.StartedAt, EventID: v.FromEventID, Reason: "Explicit waiting report bounded by its resume report; no active work inferred"}})
+		}
+	}
+	for _, a := range workflowObservedAttempts(in) {
+		start, ok := workflowTime(a.StartedAt)
+		end, valid := workflowTime(a.LastObservedAt)
+		if a.Terminal {
+			end, valid = workflowTime(a.EndedAt)
+		}
+		if !ok || !valid || !end.After(start) || end.After(in.Now) {
+			continue
+		}
+		sources = append(sources, workflowGapSource{start: start, end: end, status: "native_observed", agent: a.RuntimeAgentID, evidence: WorkflowGapEvidence{Source: string(a.StateEvidenceSource), ObservedAt: end, AttemptID: a.AttemptID, Reason: "Native execution observed; activity within this range is unmeasured, not idle or measured work"}})
+	}
+	classify := func(gaps []WorkflowGap, agent string) []WorkflowGap {
+		out := []WorkflowGap{}
+		for _, g := range gaps {
+			cuts := []time.Time{g.Start, g.End}
+			for _, s := range sources {
+				if !matches(agent, s.agent) {
+					continue
+				}
+				for _, at := range []time.Time{s.start, s.end} {
+					if at.After(g.Start) && at.Before(g.End) {
+						cuts = append(cuts, at)
+					}
+				}
+			}
+			sort.Slice(cuts, func(i, j int) bool { return cuts[i].Before(cuts[j]) })
+			for i := 1; i < len(cuts); i++ {
+				if !cuts[i].After(cuts[i-1]) {
+					continue
+				}
+				piece := WorkflowGap{Start: cuts[i-1], End: cuts[i], Kind: "activity_unmeasured", Status: "unmeasured", Evidence: []WorkflowGapEvidence{{Source: "activity_ledger", ObservedAt: in.Now, Reason: "No closed measured Activity covers this span; insufficient evidence to infer activity or inactivity"}}}
+				for _, s := range sources {
+					if !matches(agent, s.agent) {
+						continue
+					}
+					if !s.start.After(piece.Start) && !s.end.Before(piece.End) {
+						piece.Evidence = append(piece.Evidence, s.evidence)
+						if s.status == "confirmed_wait" || piece.Status == "unmeasured" {
+							piece.Status = s.status
+						}
+					}
+				}
+				for _, f := range in.CollectionFailures {
+					if f.TaskID == in.TaskID && f.Source != "" && f.Reason != "" && (agent == "" || f.AgentID == agent) && !f.At.Before(piece.Start) && f.At.Before(piece.End) {
+						piece.Evidence = append(piece.Evidence, WorkflowGapEvidence{Source: f.Source, ObservedAt: f.At, EventID: f.ID, AttemptID: f.AttemptID, Reason: "Collection failure observed at this point; the span is NOT a measured failure duration: " + f.Reason})
+						if piece.Status == "unmeasured" {
+							piece.Status = "collection_failed"
+						}
+					}
+				}
+				out = append(out, piece)
+			}
+		}
+		return out
+	}
+	w.Unmeasured = classify(w.Unmeasured, "")
+	if w.Axis.Start == nil || w.Axis.End == nil {
+		return
+	}
+	for i := range w.Rows {
+		r := &w.Rows[i]
+		lo, hi := *w.Axis.Start, *w.Axis.End
+		if r.Round != nil && *r.Round >= 0 && *r.Round < len(w.Rounds) {
+			if w.Rounds[*r.Round].StartedAt.After(lo) {
+				lo = w.Rounds[*r.Round].StartedAt
+			}
+			if *r.Round+1 < len(w.Rounds) && w.Rounds[*r.Round+1].StartedAt.Before(hi) {
+				hi = w.Rounds[*r.Round+1].StartedAt
+			}
+		}
+		measured := []timingInterval{}
+		for _, v := range r.Intervals {
+			if v.Measured && v.End != nil {
+				if x, ok := clipInterval(v.Start, *v.End, lo, hi); ok {
+					measured = append(measured, x)
+				}
+			}
+		}
+		sort.Slice(measured, func(i, j int) bool { return measured[i].start.Before(measured[j].start) })
+		cursor := lo
+		gaps := []WorkflowGap{}
+		for _, v := range measured {
+			if v.start.After(cursor) {
+				gaps = append(gaps, WorkflowGap{Start: cursor, End: v.start})
+			}
+			if v.end.After(cursor) {
+				cursor = v.end
+			}
+		}
+		if cursor.Before(hi) {
+			gaps = append(gaps, WorkflowGap{Start: cursor, End: hi})
+		}
+		r.Gaps = classify(gaps, r.AgentID)
+	}
 }
 
 // Resolve the exact attempt and binding, never a logical name or another run.
