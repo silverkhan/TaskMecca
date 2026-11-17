@@ -26,6 +26,64 @@ for(const language of ['ko','en']){
 assert(!call('backlogStatusCell',{id:'<unsafe>',file_state:'doing',attention_reason:{type:'unknown'}}).includes('data-backlog-warning="<unsafe>'));
 console.log('A82 pure business/warning projection, KO/EN, resolution and escaping PASS');
 
+// Read the real projection/wrapper shape so these regressions cannot silently
+// replace the server's outer info severity with a simplified warning fixture.
+const completionSource=fs.readFileSync('internal/backlog/completion_review.go','utf8');
+const controlSource=fs.readFileSync('internal/backlog/control_tower.go','utf8');
+const projection=completionSource.slice(completionSource.indexOf('func completionReviewProjection('),completionSource.indexOf('\nfunc completionReview('));
+const projectionFields=[...projection.matchAll(/"([^"]+)":\s*([^,\n}]+)/g)];
+assert(projectionFields.length>=13,'inspect changed server completion-review projection');
+assert(controlSource.includes('map[string]any{"type": "controller_completion_review", "audience": "controller", "severity": "info", "state": review["state"], "message": review["diagnostic"], "completion_review": review}'));
+function serverRecoveryTask(overrides={}) {
+ const values={state:'controller_recovery',since:'2026-11-17T00:20:00Z',graceUntil:'2026-11-17T00:25:00Z',diagnostic:'Controller execution failed',reason:'controller_execution_failed',quality:'confirmed',action:'investigate_controller_execution',severity:'error',failed:true,handoffID:'synthetic-handoff',contract:'synthetic-contract',...overrides};
+ const review=Object.fromEntries(projectionFields.map(([,key,raw])=>{const expr=raw.trim();return [key,expr==='action != ""'?values.action!=='':expr.startsWith('"')?JSON.parse(expr):values[expr]]}));
+ assert.equal(review.action_required,values.action!=='');assert.equal(review.confirmed_failure,values.failed);assert.equal(review.observation_quality,values.quality);
+ return {id:'SYNTHETIC-A82-RECOVERY',file_state:'doing',business_state:'doing',state:review.state,attention_reason:{type:'controller_completion_review',audience:'controller',severity:'info',state:review.state,message:review.diagnostic,completion_review:review},completion_review:review,activity:{health:review.state,last_observed_at:'2026-11-17T01:00:00Z'},updated_at:'2026-11-17T02:00:00Z'};
+}
+for(const language of ['ko','en']) {
+ state.language=language;
+ for(const overrides of [{},{reason:'handoff_step_failed',action:'investigate_failed_handoff_step',diagnostic:'Explicit handoff step failure'},{severity:'warning',failed:false,quality:'insufficient',reason:'controller_claim_unverified',action:'verify_exact_controller_binding',diagnostic:'Controller claim unverified'}]) {
+  const task=serverRecoveryTask(overrides),before=JSON.stringify(task),warning=call('backlogWarning',task);
+  assert(warning,'server-shaped actionable controller recovery must remain visible');
+  assert.equal(warning.completion_review,task.completion_review);assert.equal(warning.message,task.completion_review.diagnostic);assert.equal(warning.action,task.completion_review.action);
+  const html=call('backlogStatusCell',task);assert(html.indexOf('data-backlog-warning')<html.indexOf('class="status doing"'));assert.equal(call('backlogBusinessState',task),'doing');assert(call('matchesStatusFilter',task,'doing'));
+  const details=call('backlogWarningDetails',task,warning);assert.equal(details.message,task.completion_review.diagnostic);assert.equal(details.time,language==='ko'?'미확인':'Unknown','since, grace, worker observation, and file timestamps are not Controller observation time');assert(details.next);
+  assert.equal(JSON.stringify(task),before,'do not mutate server warning/activity/business data');
+ }
+ for(const phase of ['controller_review_pending','controller_review','controller_finalizing'])assert.equal(call('backlogWarning',serverRecoveryTask({state:phase,severity:'info',failed:false,action:'review_worker_result'})),null);
+ assert.equal(call('backlogWarning',serverRecoveryTask({severity:'info',failed:false,action:''})),null,'non-actionable controller info stays excluded');
+ for(const inactive of [{resolved:true},{resolved_at:'2026-11-17T00:30:00Z'},{recovered_at:'2026-11-17T00:30:00Z'},{history:true},{active:false},{status:'closed'}]) {
+  for(const nested of [false,true]) {const task=serverRecoveryTask();Object.assign(nested?task.completion_review:task.attention_reason,inactive);assert.equal(call('backlogWarning',task),null)}
+ }
+ const timed=serverRecoveryTask();timed.completion_review.last_observed_at='2026-11-17T00:29:00Z';
+ const warning=call('backlogWarning',timed);assert.equal(warning.last_observed_at,timed.completion_review.last_observed_at);
+ context.dateTimeLabel=at=>'observed:'+at;
+ assert.equal(call('backlogWarningDetails',timed,warning).time,'observed:2026-11-17T00:29:00Z');
+ timed.completion_review.last_observed_at='invalid';assert.equal(call('backlogWarningDetails',timed,call('backlogWarning',timed)).time,language==='ko'?'미확인':'Unknown');
+ assert.equal(call('backlogWarningDetails',{}, {type:'user_intervention',action:'verify_exact_controller_binding'}).next,'verify_exact_controller_binding','ordinary warning action behavior stays unchanged');
+}
+console.log('A82 actual server-shaped Controller error/warning recovery, info/history exclusion, nested diagnostic/action/observation and unchanged business state PASS');
+
+// Exercise the production row/warning disclosure handlers against a tiny DOM
+// adapter. This is source/DOM regression evidence, not another browser render.
+const domTask=serverRecoveryTask({diagnostic:'Controller <execution> failed'});
+let panel=null,rowOpens=0,buttons=[];
+const element=()=>({dataset:{},attributes:{},listeners:{},style:{},isConnected:true,offsetWidth:320,offsetHeight:240,setAttribute(k,v){this.attributes[k]=v},removeAttribute(k){delete this.attributes[k]},addEventListener(k,fn){this.listeners[k]=fn},focus(){document.activeElement=this},contains(target){return target===this},getBoundingClientRect(){return {left:200,bottom:100}},remove(){panel=null;this.isConnected=false}});
+const button=element();button.dataset.backlogWarning=domTask.id;buttons=[button];
+const row=element();row.dataset.id=domTask.id;row.dataset.rowIndex='0';
+const document={activeElement:null,querySelectorAll(selector){return selector==='[data-backlog-warning]'?buttons:['[data-id]','.task-list .task-row[data-id]','.task-row[data-id]'].includes(selector)?[row]:[]},addEventListener(){},createElement(){const p=element();p.closeButton=element();p.querySelector=()=>p.closeButton;return p},body:{appendChild(p){panel=p}}};
+Object.assign(context,{document,window:{addEventListener(){}},AbortController,innerWidth:1440,innerHeight:900,allRowsForView:()=>[domTask],bindBacklogListTools(){},prefetchTaskDetail(){},$:()=>null,openTask(){rowOpens++}});
+vm.runInContext(extract('function bindRows()','function changeListPage('),context);
+const click=()=>{const e={prevented:false,stopped:false,target:{closest:()=>button},preventDefault(){this.prevented=true},stopPropagation(){this.stopped=true}};button.listeners.click(e);if(!e.stopped)row.onclick(e);return e};
+for(const language of ['ko','en']) {
+ state.language=language;context.bindRows();const e=click();
+ assert(e.prevented&&e.stopped);assert.equal(rowOpens,0);assert(panel);assert.equal(panel.attributes.role,'dialog');assert.equal(button.attributes['aria-expanded'],'true');
+ assert(panel.innerHTML.includes('Controller &lt;execution&gt; failed'));assert(panel.innerHTML.includes(language==='ko'?'미확인':'Unknown'));assert(panel.innerHTML.includes(language==='ko'?'Controller의 실행 오류·중단 근거를 확인하세요.':'Check the evidence of the Controller execution error or interruption.'));
+ const key={key:'Escape',preventDefault(){this.prevented=true},stopPropagation(){this.stopped=true}};panel.listeners.keydown(key);assert(key.prevented&&key.stopped);assert.equal(panel,null);assert.equal(button.attributes['aria-expanded'],'false');assert.equal(document.activeElement,button);
+ context.bindRows();click();domTask.completion_review.history=true;context.bindRows();assert.equal(panel,null,'resolved/history refresh closes existing disclosure');delete domTask.completion_review.history;
+}
+console.log('A82 production DOM disclosure: nested diagnostic/action, honest Unknown, row-click isolation, Escape/focus/aria and history cleanup PASS');
+
 // Optional sanitized standalone fixture uses the production row renderer and
 // warning/row event handlers. No backend, network, personal audit, or server.
 if(process.argv[2]){

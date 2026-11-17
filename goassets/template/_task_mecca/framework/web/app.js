@@ -4926,13 +4926,32 @@ function backlogBusinessState(task) {
   if(file==='todo'&&['ready','blocked'].includes(workflow))return workflow;
   return ['todo','doing','hold','done'].includes(file)?file:'';
 }
+function backlogWarningInactive(reason) {
+  return reason.resolved||reason.resolved_at||reason.recovered_at||reason.history||reason.active===false||['resolved','closed','dismissed'].includes(reason.status||reason.state);
+}
 function backlogWarning(task) {
   const reason=task.attention_reason;
-  if(!reason||reason.audience==='controller'||reason.resolved||reason.resolved_at||reason.recovered_at||reason.history||reason.active===false||['resolved','closed','dismissed'].includes(reason.status||reason.state))return null;
+  if(!reason||backlogWarningInactive(reason))return null;
+  if(reason.audience==='controller'){
+    const review=reason.completion_review;
+    // The server wrapper is info even when its nested recovery is actionable.
+    // Routine review/finalizing remains informational, never a business state.
+    if(reason.type!=='controller_completion_review'||!review||backlogWarningInactive(review)||review.state!=='controller_recovery'||!(review.confirmed_failure||['error','danger'].includes(review.severity)||(review.severity==='warning'&&(review.action_required||review.action))))return null;
+    return {...reason,severity:review.severity||reason.severity,message:review.diagnostic||reason.message,action:review.action||reason.action,resume_condition:review.resume_condition||reason.resume_condition,last_observed_at:review.last_observed_at||reason.last_observed_at};
+  }
   return reason;
+}
+function backlogWarningDetails(task,reason) {
+  const ko=state.language==='ko',unknown=ko?'미확인':'Unknown';
+  // Review since/grace timestamps and the Worker's activity are not evidence
+  // of the Controller's last observation. Absent evidence stays unknown.
+  const observed=reason.last_observed_at||(reason.type==='controller_completion_review'?null:task.activity?.last_observed_at);
+  const actions={investigate_controller_execution:['Controller의 실행 오류·중단 근거를 확인하세요.','Check the evidence of the Controller execution error or interruption.'],investigate_failed_handoff_step:['실패한 인계 단계의 근거를 확인하세요.','Check the evidence for the failed handoff step.'],verify_exact_controller_binding:['정확한 Controller 실행 연결을 확인하세요.','Verify the exact Controller runtime binding.'],verify_controller_runtime_activity:['Controller의 최신 런타임 활동 근거를 확인하세요.','Verify the latest evidence of Controller runtime activity.'],verify_controller_execution_state:['Controller의 실제 실행 상태를 확인하세요.','Verify the Controller execution state.']};
+  return {message:reason.message||reason.evidence||unknown,time:observed&&Number.isFinite(Date.parse(observed))?dateTimeLabel(observed):unknown,next:reason.resume_condition||(reason.type==='controller_completion_review'?actions[reason.action]?.[ko?0:1]:null)||reason.action||(ko?'Controller에서 실행 연결과 최신 관측 근거를 확인하세요.':'Ask the Controller to verify the runtime binding and latest observation.')};
 }
 function backlogWarningLabel(reason) {
   const labels={runtime_unknown:['추적 확인 필요','Check tracking'],runtime_stalled:['활동 확인 필요','Check activity'],execution_interrupted:['실행 중단 확인','Check interruption'],awaiting_runtime:['실행 관측 대기','Awaiting observation'],awaiting_start:['착수 확인 필요','Check start'],binding_pending:['실행 연결 확인','Check binding'],binding_ambiguous:['실행 연결 확인','Check binding'],user_intervention:['사용자 확인 필요','User action needed'],approval_required:['승인 확인 필요','Check approval'],completion_pending:['완료 확인 필요','Check completion']};
+  if(reason.type==='controller_completion_review')return state.language==='ko'?'복구 확인 필요':'Check recovery';
   return labels[reason.type]?.[state.language==='ko'?0:1]||(state.language==='ko'?'추적 경고':'Tracking warning');
 }
 function backlogStatusCell(task) {
@@ -4968,14 +4987,10 @@ function bindBacklogWarnings() {
       closeBacklogWarning();
       const task=allRowsForView().find(t=>t.id===button.dataset.backlogWarning),reason=task&&backlogWarning(task);
       if(!reason)return;
-      const ko=state.language==='ko',unknown=ko?'미확인':'Unknown';
-      // Observation timestamps only: mtime/snapshot/render time are not evidence.
-      const observed=reason.last_observed_at||task.activity?.last_observed_at;
-      const time=observed&&Number.isFinite(Date.parse(observed))?dateTimeLabel(observed):unknown;
-      const next=reason.resume_condition||reason.action||(ko?'Controller에서 실행 연결과 최신 관측 근거를 확인하세요.':'Ask the Controller to verify the runtime binding and latest observation.');
+      const ko=state.language==='ko',details=backlogWarningDetails(task,reason);
       const panel=document.createElement('section'),abort=new AbortController();
       panel.id='backlogWarningDetails';panel.className='backlog-warning-details';panel.setAttribute('role','dialog');panel.setAttribute('aria-modal','false');panel.setAttribute('aria-labelledby','backlogWarningTitle');panel.tabIndex=-1;
-      panel.innerHTML=`<div class="backlog-warning-head"><strong id="backlogWarningTitle">${esc(backlogWarningLabel(reason))}</strong><button type="button" class="action-btn secondary" data-warning-close>${esc(ko?'닫기':'Close')}</button></div><dl><dt>${esc(ko?'사유':'Reason')}</dt><dd>${esc(reason.message||reason.evidence||unknown)}</dd><dt>${esc(ko?'마지막 관측':'Last observed')}</dt><dd>${esc(time)}</dd><dt>${esc(ko?'다음 조치':'Next action')}</dt><dd>${esc(next)}</dd></dl>`;
+      panel.innerHTML=`<div class="backlog-warning-head"><strong id="backlogWarningTitle">${esc(backlogWarningLabel(reason))}</strong><button type="button" class="action-btn secondary" data-warning-close>${esc(ko?'닫기':'Close')}</button></div><dl><dt>${esc(ko?'사유':'Reason')}</dt><dd>${esc(details.message)}</dd><dt>${esc(ko?'마지막 관측':'Last observed')}</dt><dd>${esc(details.time)}</dd><dt>${esc(ko?'다음 조치':'Next action')}</dt><dd>${esc(details.next)}</dd></dl>`;
       document.body.appendChild(panel);button.setAttribute('aria-expanded','true');button.setAttribute('aria-controls',panel.id);
       backlogWarningSurface={id:task.id,signature:JSON.stringify(reason),language:state.language,button,panel,abort};
       const place=()=>{const anchor=backlogWarningSurface?.button?.getBoundingClientRect();if(!anchor)return;const pad=12;panel.style.left=Math.max(pad,Math.min(anchor.left,innerWidth-panel.offsetWidth-pad))+'px';panel.style.top=Math.max(pad,Math.min(anchor.bottom+6,innerHeight-panel.offsetHeight-pad))+'px';};
