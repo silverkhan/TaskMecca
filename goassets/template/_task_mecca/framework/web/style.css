@@ -2296,6 +2296,22 @@ select.tm-combo-native{position:absolute!important;width:1px!important;height:1p
 .workflow-row-expand{flex:0 1 auto;min-width:28px;max-width:40px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border:1px solid var(--border);background:none;color:var(--muted);font:inherit;font-size:9px;padding:1px 3px;border-radius:3px;min-height:24px;cursor:pointer}
 .workflow-role-swatch{display:inline-block;width:8px;height:8px;border-radius:1px;background:var(--wf-role-color);margin-right:5px}
 .wf-role-worker{--wf-role-color:var(--wf-worker)}
+.wf-role-reviewer{--wf-role-color:var(--accent)}
+.workflow-view .workflow-row-label[data-review-presentation]>span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.workflow-view .workflow-row-label[data-review-presentation] small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.review-identity-detail,.review-presentation-detail{min-width:0;overflow-wrap:anywhere}
+.review-identity-detail>div,.review-presentation-detail dl>div{display:grid;grid-template-columns:minmax(90px,1fr) minmax(0,3fr);gap:8px;margin-block:6px}
+.review-identity-detail dt,.review-presentation-detail dt,.review-presentation-note,.session-review-summary{color:var(--muted);font-size:11px}
+.review-identity-detail dd,.review-presentation-detail dd{margin:0;min-width:0;overflow-wrap:anywhere}
+.review-presentation-detail dl>div{grid-template-columns:minmax(70px,1fr) minmax(0,2fr)}
+.review-presentation-detail details>summary,.execution-coverage-items details>summary{cursor:pointer;min-height:28px;display:flex;align-items:center}
+.review-presentation-detail details>summary:focus-visible,.execution-coverage-items details>summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.workflow-review-summary{margin-block:8px 12px}
+.workflow-review-summary p{margin-block:4px}
+.execution-coverage-items{padding-inline-start:20px}
+.execution-coverage-items>li{margin-block:12px;overflow-wrap:anywhere}
+.execution-coverage-items>li>span{display:block;color:var(--muted);font-size:11px}
+.execution-coverage-items pre,.review-presentation-detail pre{max-width:100%;white-space:pre-wrap;overflow-wrap:anywhere}
 .wf-role-controller{--wf-role-color:var(--wf-controller)}
 .wf-role-registrar{--wf-role-color:var(--wf-registrar)}
 .wf-role-sub_controller{--wf-role-color:var(--wf-sub-controller)}

@@ -1,0 +1,107 @@
+{
+  "source": "Synthetic A92 UI cases; not actual A88 review or host evidence",
+  "states": [
+    "omitted",
+    "unassigned",
+    "requested",
+    "started",
+    "in_progress",
+    "needs_changes",
+    "accepted",
+    "failed",
+    "unknown"
+  ],
+  "actors": [
+    {
+      "role": "worker",
+      "name": "pairi",
+      "native": "fixture-implementer",
+      "attempt": "fixture-implementation",
+      "generation": 7,
+      "purpose": "implementation",
+      "round": null,
+      "state": "unknown"
+    },
+    {
+      "role": "worker",
+      "name": "pikachyu",
+      "native": "fixture-old-review-11",
+      "attempt": "fixture-review-11",
+      "generation": 11,
+      "purpose": "review",
+      "round": 1,
+      "state": "needs_changes"
+    },
+    {
+      "role": "worker",
+      "name": "pikachyu",
+      "native": "fixture-old-review-12",
+      "attempt": "fixture-review-12",
+      "generation": 12,
+      "purpose": "review",
+      "round": 2,
+      "state": "accepted"
+    },
+    {
+      "role": "reviewer",
+      "name": "pikachyu",
+      "native": "fixture-formal-review-13",
+      "attempt": "fixture-review-13",
+      "generation": 13,
+      "purpose": "review",
+      "round": 3,
+      "state": "reviewing"
+    },
+    {
+      "role": "reviewer",
+      "name": "pikachyu",
+      "native": "fixture-formal-review-14",
+      "attempt": "fixture-review-14",
+      "generation": 14,
+      "purpose": "review",
+      "round": null,
+      "state": "unknown"
+    },
+    {
+      "role": "controller",
+      "name": "controller",
+      "native": "fixture-controller",
+      "attempt": "fixture-final-acceptance",
+      "generation": null,
+      "purpose": "final_acceptance",
+      "round": null,
+      "state": "unknown"
+    }
+  ],
+  "interface_example": {
+    "version": 1,
+    "by_attempt": {
+      "run-fixture": {
+        "attempt_id": "run-fixture",
+        "native_id": "native-fixture",
+        "task_id": "A-fixture",
+        "official_name": "D1112_01_Worker_pikachyu_G14",
+        "name_verified": true,
+        "name_source": "provider_name",
+        "name_observed_at": "2026-11-19T00:00:00Z",
+        "purpose": "unknown",
+        "purpose_verified": false,
+        "necessity": "unknown",
+        "actual_state": "unknown",
+        "chain_id": "",
+        "review_round": null,
+        "session_generation": null,
+        "context_status": "unknown",
+        "continuity_ref": "",
+        "context_ref": "",
+        "source_delta": [],
+        "errors": []
+      }
+    },
+    "task": {
+      "necessity": "unknown",
+      "actual_state": "unknown",
+      "reason": "review evidence unavailable"
+    }
+  }
+}
