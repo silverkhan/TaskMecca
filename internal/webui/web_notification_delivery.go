@@ -178,7 +178,7 @@ func currentNotificationDecisions(project, root string) (map[string]backlog.Huma
 	}
 	needRuntime := false
 	for _, decision := range decisions {
-		if strings.HasPrefix(notificationValue(decision.Condition["key"]), "runtime:") {
+		if runtimeDerivedHumanAction(decision.Condition) {
 			needRuntime = true
 		}
 	}
@@ -193,7 +193,7 @@ func currentNotificationDecisions(project, root string) (map[string]backlog.Huma
 	evidence := operationExecutionLoader(project, ledger, now, true)
 	now = time.Now().UTC()
 	for task, decision := range decisions {
-		if !strings.HasPrefix(notificationValue(decision.Condition["key"]), "runtime:") {
+		if !runtimeDerivedHumanAction(decision.Condition) {
 			continue
 		}
 		current, ok := evidence[task]
@@ -236,14 +236,22 @@ func preserveHumanActionDeliveryIDs(project string, decisions map[string]backlog
 		return decisions
 	}
 	for task, decision := range decisions {
-		since, e := time.Parse(time.RFC3339Nano, decision.Since)
+		boundary, hasBoundary := time.Time{}, false
+		if decision.LegacyNotBefore != "" {
+			var e error
+			boundary, e = time.Parse(time.RFC3339Nano, decision.LegacyNotBefore)
+			if e != nil {
+				continue
+			}
+			hasBoundary = true
+		}
 		assigned, aerr := time.Parse(time.RFC3339Nano, notificationValue(decision.Condition["assigned_at"]))
-		if e != nil || aerr != nil {
+		if aerr != nil {
 			continue
 		}
 		for _, action := range journal.Actions {
 			detected, err := time.Parse(time.RFC3339Nano, action.DetectedAt)
-			if err != nil || detected.Before(since) || detected.Before(assigned) || detected.After(time.Now().UTC()) || action.ResolvedAt != "" || !strings.EqualFold(action.TaskID, task) || action.Reason != notificationValue(decision.Condition["message"]) || action.NextAction != notificationValue(decision.Condition["resume_condition"]) {
+			if err != nil || (hasBoundary && detected.Before(boundary)) || detected.Before(assigned) || detected.After(time.Now().UTC()) || action.ResolvedAt != "" || !strings.EqualFold(action.TaskID, task) || action.Reason != notificationValue(decision.Condition["message"]) || action.NextAction != notificationValue(decision.Condition["resume_condition"]) {
 				continue
 			}
 			records, err := notify.DeliveryRecords(project, task, action.ID)
@@ -298,4 +306,9 @@ func currentOperationDeliveryEvents(project string, events []notify.Event) []not
 		filtered = append(filtered, event)
 	}
 	return filtered
+}
+
+func runtimeDerivedHumanAction(condition map[string]any) bool {
+	basis, _ := condition["human_action_basis"].(map[string]any)
+	return strings.HasPrefix(notificationValue(condition["key"]), "runtime:") || notificationValue(basis["source"]) == "observed_current_execution"
 }

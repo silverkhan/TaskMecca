@@ -231,6 +231,7 @@ func canonicalOperationalState(row Record, review, signal map[string]any, observ
 			"message":          firstNonEmpty(row.Fields["대기"], toString(review["wait_note"]), "사용자 입력 또는 판단을 기다리고 있습니다."),
 			"resume_condition": firstNonEmpty(row.Fields["재개조건"], toString(review["resume_condition"])), "evidence": firstNonEmpty(row.Fields["대기근거"], toString(review["wait_evidence"])),
 		}
+		reason["human_action_basis"] = requestedHumanAction(toString(reason["message"]), toString(reason["resume_condition"]))
 		condition = notificationCondition("intervention", "hold:user", reason, signal)
 	}
 
@@ -243,7 +244,17 @@ func canonicalOperationalState(row Record, review, signal map[string]any, observ
 	if review, ok := signal["completion_review"].(map[string]any); ok {
 		if review["state"] == "needs_user" {
 			r := map[string]any{"type": "user_intervention", "severity": "danger", "message": review["diagnostic"], "resume_condition": "필요한 사용자 판단 또는 승인을 제공해 주세요."}
-			return r, notificationCondition("intervention", "controller:user", r, signal)
+			now := time.Now()
+			if len(observedAt) > 0 {
+				now = observedAt[0]
+			}
+			r["human_action_basis"] = controllerWaitBasis(review, row.RawMarkdown, now)
+			condition := notificationCondition("intervention", "controller:user", r, nil)
+			if !HumanActionCondition(condition) {
+				condition = nil
+				r["audience"] = "controller"
+			}
+			return r, condition
 		}
 		return map[string]any{"type": "controller_completion_review", "audience": "controller", "severity": "info", "state": review["state"], "message": review["diagnostic"], "completion_review": review}, nil
 	}
@@ -305,8 +316,24 @@ func canonicalOperationalState(row Record, review, signal map[string]any, observ
 
 func notificationCondition(kind, key string, reason, signal map[string]any) map[string]any {
 	out := map[string]any{"kind": kind, "message": toString(reason["message"]), "resume_condition": toString(reason["resume_condition"]), "reason_type": toString(reason["type"])}
-	concrete := key == "hold:user" || key == "controller:user"
-	out["human_action_verified"] = concrete || signal["human_action_runtime_verified"] == true
+	basis, _ := reason["human_action_basis"].(map[string]any)
+	if basis == nil && signal["human_action_runtime_verified"] == true {
+		observedKind := runtimeHumanActionKind(toString(signal["runtime_state"]))
+		if observedKind != "" {
+			basis = map[string]any{"source": "observed_current_execution", "state": toString(signal["runtime_state"])}
+			out["kind"] = observedKind
+			switch observedKind {
+			case "approval":
+				out["reason_type"] = "approval_required"
+			case "interrupted":
+				out["reason_type"] = "execution_interrupted"
+			default:
+				out["reason_type"] = "user_intervention"
+			}
+		}
+	}
+	out["human_action_basis"] = basis
+	out["human_action_verified"] = basis != nil
 	cause := strings.ToLower(strings.Join(strings.Fields(toString(reason["message"])), " "))
 	out["key"] = key + "\x00" + cause
 	if signal != nil {

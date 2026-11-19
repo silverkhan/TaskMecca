@@ -11,6 +11,77 @@ import (
 	"time"
 )
 
+func TestA88RepairConcreteCauseRequiresRequestAndCorrespondingAction(t *testing.T) {
+	row := Record{ID: "A-88", State: "hold", Location: "active", Fields: map[string]string{"대기유형": "user"}}
+	next := "Check Worker status and decide whether to reassign or complete."
+	for _, request := range []string{"No signal from Worker for 30 minutes.", "Runtime observation is unknown; worker may be missing.", "실행 관측 공백이 30분 지속되었습니다.", "The collector has not received any events for two hours."} {
+		row.Fields["대기"], row.Fields["재개조건"] = request, next
+		_, condition := canonicalOperationalState(row, nil, map[string]any{"runtime_state": "running", "human_action_runtime_verified": true})
+		if len(condition) != 0 {
+			t.Fatalf("label or running state manufactured cause: %+v", condition)
+		}
+		disguised := map[string]any{"kind": "intervention", "reason_type": "user_intervention", "human_action_verified": true, "message": request, "resume_condition": next, "human_action_basis": map[string]any{"source": "canonical_requested_action", "category": "grant_access"}}
+		if HumanActionCondition(disguised) {
+			t.Fatal("copied proof accepted generic telemetry request", disguised)
+		}
+		_, controller := canonicalOperationalState(Record{ID: "A-88", State: "doing", Location: "active"}, nil, map[string]any{"completion_review": map[string]any{"state": "needs_user", "diagnostic": request}})
+		if len(controller) != 0 {
+			t.Fatal("controller needs_user label manufactured cause", controller)
+		}
+	}
+	// A topic word plus a proposed action is still not evidence of a blocker.
+	row.Fields["대기"], row.Fields["재개조건"] = "Repository access observation is unknown; Worker may be missing.", "Owner grants repository access"
+	_, unknownTopic := canonicalOperationalState(row, nil, nil)
+	if len(unknownTopic) != 0 {
+		t.Fatal("unknown access observation manufactured an access requirement", unknownTopic)
+	}
+	for _, pair := range [][2]string{
+		{"Repository administrator access required", "Owner grants repository access"},
+		{"Billing administrator approval needed", "Owner approves the billing decision"},
+		{"User answer to the deployment question is required", "User: answer the deployment question"},
+		{"사용자 답변 대기", "사용자: 요청된 승인 여부를 답변해 주세요."},
+	} {
+		row.Fields["대기"], row.Fields["재개조건"] = pair[0], pair[1]
+		_, condition := canonicalOperationalState(row, nil, nil)
+		if !HumanActionCondition(condition) || condition["human_action_basis"] == nil {
+			t.Fatal("concrete request/action lost", pair, condition)
+		}
+	}
+}
+
+func TestA88RepairControllerWaitNeedsCorrelatedProjectionEvidence(t *testing.T) {
+	now := time.Now().UTC()
+	markdown := "# A-88\n## 작업 정의\n### 목표\nPreserve real Controller waits.\n### 수용 기준\n- [ ] Exact current wait evidence.\n"
+	review := map[string]any{"state": "needs_user", "reason": "exact_controller_claim_running", "observation_quality": "observed", "since": now.Add(-time.Minute).Format(time.RFC3339Nano), "handoff_id": "exact-claimed-handoff", "contract_sha256": completionContract(markdown), "diagnostic": "Controller가 명시적으로 사용자 판단 또는 승인을 기다리고 있습니다."}
+	row := Record{ID: "A-88", State: "doing", Location: "active", RawMarkdown: markdown}
+	_, condition := canonicalOperationalState(row, nil, map[string]any{"completion_review": review}, now)
+	if !HumanActionCondition(condition) {
+		t.Fatal("observed exact Controller wait lost", condition)
+	}
+	for _, bad := range []string{"quality", "handoff", "future", "label_only", "foreign_contract"} {
+		copy := map[string]any{}
+		for k, v := range review {
+			copy[k] = v
+		}
+		switch bad {
+		case "foreign_contract":
+			copy["contract_sha256"] = "foreign-contract"
+		case "quality":
+			copy["observation_quality"] = "insufficient"
+		case "handoff":
+			copy["handoff_id"] = ""
+		case "future":
+			copy["since"] = now.Add(time.Hour).Format(time.RFC3339Nano)
+		case "label_only":
+			copy["reason"] = "handoff_on_user_hold"
+		}
+		_, condition := canonicalOperationalState(row, nil, map[string]any{"completion_review": copy}, now)
+		if len(condition) != 0 {
+			t.Fatal("unverified Controller wait escaped", bad, condition)
+		}
+	}
+}
+
 func TestA88ObservationGapNeverRequestsHumanAction(t *testing.T) {
 	row := Record{ID: "B-648", State: "doing", Location: "active"}
 	for _, health := range []string{"stale", "worker_missing", "runtime_unknown"} {

@@ -9,6 +9,22 @@ import (
  "time"
 )
 
+func TestA88RepairBoundaryCorruptionFailsClosedWithoutHistoryRewrite(t *testing.T) {
+ project,rows:=a88ActionFixture(t)
+ first:=currentBacklogDeliveryEvents(project,"",rows)
+ if len(first)!=1 {t.Fatal(first)}
+ path:=filepath.Join(project,"_task_mecca",".runtime","human_action_boundaries.json")
+ original,err:=os.ReadFile(path);if err!=nil {t.Fatal(err)}
+ for _,bad:=range []string{`{invalid`, `{"version":2,"items":{}}`, `{"version":1,"items":{"A-88":{"key":"active","since":"not-a-time"}}}`, `{"version":1,"items":{"A-88":{"not_before":"2999-01-01T00:00:00Z"}}}`} {
+  if err:=os.WriteFile(path,[]byte(bad),0600);err!=nil {t.Fatal(err)}
+  if got:=currentBacklogDeliveryEvents(project,"",rows);len(got)!=0 {t.Fatal("corrupt continuity authorized delivery",got)}
+  retained,_:=os.ReadFile(path);if string(retained)!=bad {t.Fatal("invalid boundary evidence overwritten")}
+ }
+ if err:=os.WriteFile(path,original,0600);err!=nil {t.Fatal(err)}
+ again:=currentBacklogDeliveryEvents(project,"",rows)
+ if len(again)!=1 || again[0].ID!=first[0].ID {t.Fatal("valid continuity lost after restore",again)}
+}
+
 func webDeliveryFixture(t *testing.T) string {
  t.Helper()
  project:=t.TempDir()

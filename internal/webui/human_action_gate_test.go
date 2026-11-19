@@ -16,6 +16,139 @@ import (
 	"github.com/silverkhan/TaskMecca/internal/runtimeobs"
 )
 
+func TestA88RepairPreBacklogLegacyChronologyAndRecoveryBoundaries(t *testing.T) {
+	for _, scenario := range []string{"continuous", "new_assignment", "new_cause", "clear_recur", "clear_recur_before_tracker", "complete_resume", "future_action", "before_assignment", "resolved_action", "restart"} {
+		t.Run(scenario, func(t *testing.T) {
+			project, rows := a88ActionFixture(t)
+			now := time.Now().UTC()
+			action := operationAction{ID: "immutable-pre-backlog-sent", TaskID: "A-88", Reason: "Owner access required", NextAction: "Owner: grant requested access", DetectedAt: now.Add(-30 * time.Second).Format(time.RFC3339Nano)}
+			switch scenario {
+			case "future_action":
+				action.DetectedAt = now.Add(time.Minute).Format(time.RFC3339Nano)
+			case "before_assignment":
+				action.DetectedAt = now.Add(-3 * time.Minute).Format(time.RFC3339Nano)
+			case "resolved_action":
+				action.ResolvedAt = now.Add(-time.Second).Format(time.RFC3339Nano)
+			}
+			if err := writeOperationJournal(project, operationJournal{Version: 1, Project: project, Actions: []operationAction{action}}); err != nil {
+				t.Fatal(err)
+			}
+			dir := filepath.Join(project, "_task_mecca", ".runtime", "notifications")
+			if err := os.MkdirAll(dir, 0700); err != nil {
+				t.Fatal(err)
+			}
+			sent := []byte(`{"version":1,"records":{"immutable-pre-backlog-sent":{"event_id":"immutable-pre-backlog-sent","task_id":"A-88","kind":"intervention","channel":"telegram","state":"sent","attempts":1}}}`)
+			ledger := filepath.Join(dir, "delivery_ledger.json")
+			if err := os.WriteFile(ledger, sent, 0600); err != nil {
+				t.Fatal(err)
+			}
+			journalBefore, _ := os.ReadFile(operationJournalPath(project))
+			path := filepath.Join(project, "_task_mecca", "data", "backlog", "000001.A-88.fixture.hold.md")
+			original, err := os.ReadFile(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if scenario != "clear_recur_before_tracker" {
+				_ = currentBacklogDeliveryEvents(project, "", rows)
+			}
+			switch scenario {
+			case "new_assignment":
+				if _, err := runtimeobs.RecordAssignment(project, "repair-new-assignment", "A-88", "/root/controller/fixture", time.Now().UTC()); err != nil {
+					t.Fatal(err)
+				}
+			case "new_cause":
+				changed := strings.ReplaceAll(string(original), "Owner access required", "Database permission required")
+				changed = strings.ReplaceAll(changed, "Owner: grant requested access", "Owner: grant database permission")
+				if err := os.WriteFile(path, []byte(changed), 0600); err != nil {
+					t.Fatal(err)
+				}
+			case "clear_recur", "clear_recur_before_tracker":
+				if err := os.WriteFile(path, []byte(strings.ReplaceAll(string(original), "- 대기유형: user", "- 대기유형: -")), 0600); err != nil {
+					t.Fatal(err)
+				}
+				if scenario == "clear_recur" {
+					_ = currentBacklogDeliveryEvents(project, "", rows)
+				} else {
+					if _, err := backlog.AttentionSnapshot(project, "", true); err != nil {
+						t.Fatal(err)
+					}
+				}
+				if err := os.WriteFile(path, original, 0600); err != nil {
+					t.Fatal(err)
+				}
+			case "complete_resume":
+				done := strings.ReplaceAll(path, ".hold.md", ".done.md")
+				if err := os.Rename(path, done); err != nil {
+					t.Fatal(err)
+				}
+				_ = currentBacklogDeliveryEvents(project, "", rows)
+				if err := os.Rename(done, path); err != nil {
+					t.Fatal(err)
+				}
+			}
+			snapshot, err := backlog.AttentionSnapshot(project, "", true)
+			if err != nil {
+				t.Fatal(err)
+			}
+			rows = a88OnlyActions(snapshot["notification_events"].([]map[string]any))
+			got := currentBacklogDeliveryEvents(project, "", rows)
+			if len(got) != 1 {
+				t.Fatal("current genuine cause lost", scenario, got)
+			}
+			inherit := scenario == "continuous" || scenario == "restart"
+			if (got[0].ID == action.ID) != inherit {
+				t.Fatal("incorrect legacy episode inheritance", scenario, got)
+			}
+			if scenario == "restart" {
+				again := currentBacklogDeliveryEvents(project, "", rows)
+				if len(again) != 1 || again[0].ID != action.ID {
+					t.Fatal("persisted continuity lost", again)
+				}
+			}
+			journalAfter, _ := os.ReadFile(operationJournalPath(project))
+			sentAfter, _ := os.ReadFile(ledger)
+			if string(journalBefore) != string(journalAfter) || string(sent) != string(sentAfter) {
+				t.Fatal("source or sent journal bytes changed", scenario)
+			}
+		})
+	}
+}
+
+func TestA88RepairCollectionFailureDoesNotInventRecoveryOrNewIdentity(t *testing.T) {
+	project, rows := a88ActionFixture(t)
+	first := currentBacklogDeliveryEvents(project, "", rows)
+	if len(first) != 1 {
+		t.Fatal(first)
+	}
+	path := filepath.Join(project, "_task_mecca", "data", "backlog", "000001.A-88.fixture.hold.md")
+	original, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Unknown implementation identity cannot clear an independently real cause.
+	foreign := strings.ReplaceAll(string(original), "fixture-native-A-88", "unobserved-native")
+	if err := os.WriteFile(path, []byte(foreign), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if got := currentBacklogDeliveryEvents(project, "", rows); len(got) != 0 {
+		t.Fatal("unverified identity created new external cause", got)
+	}
+	if err := os.WriteFile(path, original, 0600); err != nil {
+		t.Fatal(err)
+	}
+	snapshot, err := backlog.AttentionSnapshot(project, "", true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	currentRows := a88OnlyActions(snapshot["notification_events"].([]map[string]any))
+	for i := 0; i < 2; i++ {
+		restored := currentBacklogDeliveryEvents(project, "", currentRows)
+		if len(restored) != 1 || restored[0].ID != first[0].ID {
+			t.Fatal("collection outage fabricated recovery or replay ID", restored, first)
+		}
+	}
+}
+
 func a88ActionFixture(t *testing.T) (string, []map[string]any) {
 	t.Helper()
 	project := testOperationProject(t)

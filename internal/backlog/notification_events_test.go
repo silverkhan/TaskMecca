@@ -179,7 +179,7 @@ func TestControlTowerAllOperationalKindsJournalExactlyOnce(t *testing.T) {
         {"","waiting_approval","approval"},
         {"needs_user","waiting_user","intervention"},
         {"stale","running","stalled"},
-        {"execution_interrupted","failed","interrupted"},
+        {"execution_interrupted","errored","interrupted"},
         {"awaiting_finalize","completed","finalize"},
     }
     for _,tc:=range cases {
@@ -362,7 +362,7 @@ func TestNotificationFinalizeBlocksLateStartedRegression(t *testing.T) {
 
 func TestControlTowerHoldUserProducesCanonicalIntervention(t *testing.T) {
     row:=Record{ID:"B-601",State:"hold",Location:"active"}
-    reason,condition:=canonicalOperationalState(row,map[string]any{"wait_kind":"user","wait_note":"need answer","resume_condition":"reply"},nil)
+    reason,condition:=canonicalOperationalState(row,map[string]any{"wait_kind":"user","wait_note":"User answer to the deployment question is required","resume_condition":"User: answer the deployment question"},nil)
     if toString(reason["type"])!="user_intervention" || toString(condition["kind"])!="intervention" {
         t.Fatalf("reason=%+v condition=%+v",reason,condition)
     }
