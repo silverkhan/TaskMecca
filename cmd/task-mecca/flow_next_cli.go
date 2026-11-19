@@ -42,6 +42,7 @@ func flowNextUsage(out io.Writer) {
     fmt.Fprintln(out,"Read-only Controller cleanup/exit and user-decision escalation policy; no deletion, native sends or lifecycle writes.")
     fmt.Fprintln(out,"task-mecca flow next --role controller --event user_decision_required --task B-620 --provider codex --root-session-id EXACT --project DIR --json")
     fmt.Fprintln(out,"Incomplete cleanup never allows exit; unsupported role/events fail closed.")
+    fmt.Fprintln(out,"task-mecca flow next --role worker|controller --event analysis_requested --task ID --analysis-input FILE --json (read-only advisory; fresh authority remains required)")
     fmt.Fprintln(out,"See: task-mecca help worktree; run plan -> preserve -> verify -> approved remove separately.")
 }
 
@@ -209,9 +210,14 @@ func runFlowNextCLI(args []string,out,stderr io.Writer) int {
     archive:=fs.String("archive","","external preservation archive")
     provider:=fs.String("provider","","provider of currently selected Root group")
     rootSessionID:=fs.String("root-session-id","","exact provider-native Root session identity")
+    analysisInput:=fs.String("analysis-input","","read-only analysis evidence JSON; advisory only")
     asJSON:=fs.Bool("json",false,"structured decision")
     if err:=fs.Parse(args[1:]);err!=nil{return 2}
     if fs.NArg()!=0||*role==""||*event==""||*task==""||*into=="" {flowNextUsage(stderr);return 2}
+    if *event=="analysis_requested" && (*role=="worker" || *role=="controller") {
+        if *analysisInput=="" {fmt.Fprintln(stderr,"--analysis-input required");return 2}
+        return runAnalysisDepthCLI(*analysisInput,*task,out,stderr)
+    }
     projectAbs,err:=filepath.Abs(*project)
     if err!=nil{fmt.Fprintln(stderr,err);return 2}
     var targetAbs,archiveAbs string

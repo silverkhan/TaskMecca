@@ -278,3 +278,10 @@ T3의 새 Controller/Worker/Registrar/검수 목적 세션은 shared도 실제 `
 Controller 시작/재개 시 exact native 현재 attempt와 원래 인계를 관측한 뒤 `handoff context ORIGINAL_HANDOFF --project CANONICAL --target-attempt CURRENT --json` 및 기존 `coordinate.recovery_queue`를 확인한다. 이 읽기 전용 snapshot의 task·계약/AC·실측 phase·현재 attempt·원래 handoff·알려진 보고/변경/검증 근거를 대조한다. 과거 다른 작업은 reference이며 현재 완료 근거가 아니다.
 새 `worker_done`/`completion_report`는 실제 Worker/assignment·소스와 `TASK_MECCA_REPORT` 선언이 있는 durable report의 hash를 담은 `--context-file`을 사용한다. Controller만 기존 prepare/claim/acceptance/applied를 기록하며 각 gate는 적용되는 task의 근거를 재확인한다. 다중 작업은 각 대상의 근거를 따로 확인한다. A78 실제 별도 native 검수와 기존 승인·fresh Full Access gate는 그대로 유지하며 정상 Worker에 사용자 재승인을 추가하지 않는다.
 회차 종료·배정 준비는 실제 구현 START·검수·완료가 아니다. 누락은 실측 단계의 collection gap으로 보존하고 기존 Controller recovery/transport로 회수한다. 원래 오류·보고·task·attempt 및 담당/남은 단계/재개조건을 보존한다. 자동 wake·기술적 crash 원인·Root ACK를 가정하지 않고 과거 phase를 합성하지 않는다. 상세 JSON/재시도 계약은 `docs/task-completion-context.md`를 따른다. Worker는 보고 후보를 구현 worktree에 만들고 직접 전달하며 canonical 운영원장을 쓰지 않는다.
+
+
+## 작업 규모에 맞는 분석과 재개
+
+Controller/Worker는 원계약·AC, 위험/복잡성, 유효 기존 분석, 현재 변경 source/hash를 확인하고 필요한 분석 범위와 종료 기준을 정한다. 단순 작업은 최소 확인 후 구현하고 삭제/중요 데이터/높은 영향의 필수 안전 조사는 유지한다. 파일 수나 고정 시간으로 강제 종료하지 않는다. `flow next --role worker --event analysis_requested --task ID --analysis-input FILE --json`은 읽기 전용 advisory이며 실제 권한·완료 판정을 대신하지 않는다.
+
+task/계약/AC/source hash/이전 결정/미해결 문제/context와 위험이 일치하는 분석만 재사용한다. 변경분과 영향받는 확인을 재검토하고 현재 지침·권한·실제 dispatch gate는 fresh로 확인한다. requirements/research/implementation/verification/actual_wait/coordination_handoff는 실제 현재 경계에서 지원 API로 기록하며 미측정 구간·전환 누락·원래 시각을 보존한다. 기대 범위와 차이가 나면 원인/현재 산출물/남은 확인/다음 조치를 Controller에게 직접 조율하고 경과시간만으로 사용자 정체 알림으로 승격하지 않는다. 상세 입력·B651 근거 한계는 `docs/analysis-depth-continuity.md`를 따른다.
