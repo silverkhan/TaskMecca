@@ -3,7 +3,9 @@ package backlog
 import (
 	"os"
 	"path/filepath"
+	"reflect"
 	"testing"
+	"time"
 )
 
 const policyWaitFixture = "# A-14 텔레그램 알림에 프로젝트명 표시 및 백로그 ID 중복 제거\n## 작업 정의\n### 목표\n알림 표시 개선\n## 작업 노트\n- 대기: 같은 작업 ID가 든 프로젝트명과 링크 또는 여러 링크를 모두 보존할 때 평문 표시 1회 기준과 충돌하는 실제 입력의 처리 정책 확인 필요.\n- 대기유형: user\n- 재개조건: 프로젝트명·링크 ID를 표시 중복 예외로 둘지, 링크 표시 방식 확장을 허용할지 사용자 확정 후 계약과 대조한다.\n- 대기근거: Controller가 Root에 구체적인 충돌 예시와 선택지를 직접 전달했다.\n"
@@ -146,5 +148,67 @@ func TestUnsupportedExternalWaitDoesNotHideCurrentExecutionError(t *testing.T) {
 	reason, condition := canonicalOperationalState(row, nil, map[string]any{"health": "execution_interrupted", "runtime_state": "errored", "human_action_runtime_verified": true})
 	if reason["type"] != "execution_interrupted" || condition["kind"] != "interrupted" || !HumanActionCondition(condition) {
 		t.Fatal("external diagnostic hid current execution error", reason, condition)
+	}
+}
+
+func TestUnsupportedExternalWaitPreservesCurrentRuntimeMeaning(t *testing.T) {
+	now := time.Now().UTC()
+	staleReview := map[string]any{"wait_kind": "user", "wait_note": "Repository access required", "resume_condition": "Owner: grant repository access"}
+	for _, runtime := range []struct{ state, health string }{
+		{"errored", "execution_interrupted"}, {"interrupted", "execution_interrupted"},
+		{"shutdown", "execution_interrupted"}, {"waiting_approval", ""}, {"waiting_user", "needs_user"},
+	} {
+		t.Run(runtime.state, func(t *testing.T) {
+			signal := map[string]any{"runtime_state": runtime.state, "health": runtime.health, "human_action_runtime_verified": true, "assignment_id": "current-assignment", "attempt_id": "current-attempt"}
+			baseline := Record{ID: "A-88", State: "doing", Location: "active", Fields: map[string]string{}}
+			wantReason, wantCondition := canonicalOperationalState(baseline, nil, signal, now)
+			if !HumanActionCondition(wantCondition) {
+				t.Fatal("current runtime positive baseline missing", wantReason, wantCondition)
+			}
+			for _, missing := range []string{"neither", "reason", "action", "both"} {
+				t.Run(missing, func(t *testing.T) {
+					fields := map[string]string{"대기유형": "external", "대기": "Vendor response is pending", "재개조건": "Read the vendor status page"}
+					if missing == "reason" || missing == "both" {
+						delete(fields, "대기")
+					}
+					if missing == "action" || missing == "both" {
+						delete(fields, "재개조건")
+					}
+					if requestedHumanAction(fields["대기"], fields["재개조건"]) != nil {
+						t.Fatal("unsupported external fixture acquired intrinsic authority")
+					}
+					row := Record{ID: baseline.ID, State: "hold", Location: "active", Fields: fields}
+					gotReason, gotCondition := canonicalOperationalState(row, staleReview, signal, now)
+					if !HumanActionCondition(gotCondition) || !reflect.DeepEqual(gotReason, wantReason) {
+						t.Fatal("external text replaced or suppressed genuine current reason", gotReason, wantReason)
+					}
+					for field, want := range wantCondition {
+						if field != "human_action_basis" && !reflect.DeepEqual(gotCondition[field], want) {
+							t.Errorf("outbound %s changed: got=%v want=%v", field, gotCondition[field], want)
+						}
+					}
+				})
+			}
+			// A concrete external request retains its own exact action even when
+			// a separate current runtime signal also has human-action authority.
+			row := Record{ID: baseline.ID, State: "hold", Location: "active", Fields: map[string]string{"대기유형": "external", "대기": "Repository access required", "재개조건": "Owner: grant repository access"}}
+			reason, condition := canonicalOperationalState(row, staleReview, signal, now)
+			if !HumanActionCondition(condition) || reason["message"] != row.Fields["대기"] || condition["resume_condition"] != row.Fields["재개조건"] || condition["kind"] != "intervention" {
+				t.Fatal("genuine external request lost its own meaning", reason, condition)
+			}
+		})
+	}
+}
+
+func TestGenericExternalWaitCannotInventRuntimeAuthority(t *testing.T) {
+	for _, state := range []string{"running", "unknown", "", "waiting_approval", "waiting_user", "errored"} {
+		t.Run(state, func(t *testing.T) {
+			signal := map[string]any{"runtime_state": state, "health": "stale"}
+			row := Record{ID: "A-88", State: "hold", Location: "active", Fields: map[string]string{"대기유형": "external", "대기": "Vendor response is pending", "재개조건": "Read the vendor status page"}}
+			_, condition := canonicalOperationalState(row, nil, signal)
+			if HumanActionCondition(condition) {
+				t.Fatal("unsupported external invented runtime authority", condition)
+			}
+		})
 	}
 }

@@ -258,13 +258,16 @@ func canonicalOperationalStateUnsealed(row Record, review, signal map[string]any
 			"message":          firstNonEmpty(row.Fields["대기"], toString(waitReview["wait_note"]), "사용자 입력 또는 판단을 기다리고 있습니다."),
 			"resume_condition": firstNonEmpty(row.Fields["재개조건"], toString(waitReview["resume_condition"])), "evidence": firstNonEmpty(row.Fields["대기근거"], toString(waitReview["wait_evidence"])),
 		}
-		reason["human_action_basis"] = requestedHumanAction(toString(reason["message"]), toString(reason["resume_condition"]))
-		condition = notificationCondition("intervention", "hold:user", reason, signal)
-		// An external wait is not a user-attention request merely because an
-		// older review called it one. Only an independently supported human
-		// action (or authoritative current runtime wait/error) may promote it.
-		if waitKind == "external" && !validHumanActionBasis(condition) {
+		basis := requestedHumanAction(toString(reason["message"]), toString(reason["resume_condition"]))
+		reason["human_action_basis"] = basis
+		// External text must establish its own request/action authority before
+		// notificationCondition can attach runtime evidence. Otherwise construct
+		// the current runtime's own reason and action below, without borrowing
+		// its proof to authorize unrelated external wording.
+		if waitKind == "external" && basis == nil {
 			reason, condition = map[string]any{}, map[string]any{}
+		} else {
+			condition = notificationCondition("intervention", "hold:user", reason, signal)
 		}
 	}
 
