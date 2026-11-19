@@ -225,7 +225,7 @@ func canonicalOperationalState(row Record, review, signal map[string]any, observ
 	if waitKind == "" {
 		waitKind = toString(review["wait_kind"])
 	}
-	if row.State == "hold" && waitKind == "user" {
+	if row.State == "hold" && (waitKind == "user" || waitKind == "external") {
 		reason = map[string]any{
 			"type": "user_intervention", "severity": "danger", "title": "사용자 개입 필요",
 			"message":          firstNonEmpty(row.Fields["대기"], toString(review["wait_note"]), "사용자 입력 또는 판단을 기다리고 있습니다."),
@@ -235,6 +235,9 @@ func canonicalOperationalState(row Record, review, signal map[string]any, observ
 	}
 
 	if signal == nil || len(reason) > 0 {
+		if !recordableNotificationCondition(condition) {
+			condition = nil
+		}
 		return reason, condition
 	}
 	if review, ok := signal["completion_review"].(map[string]any); ok {
@@ -286,32 +289,34 @@ func canonicalOperationalState(row Record, review, signal map[string]any, observ
 		reason = map[string]any{"type": "user_intervention", "severity": "danger", "title": "사용자 개입 필요", "message": "워커 런타임이 사용자 입력 또는 조치를 기다리고 있습니다.", "resume_condition": "필요한 사용자 판단 또는 입력을 제공한 뒤 작업을 재개하세요."}
 		condition = notificationCondition("intervention", "runtime:user", reason, signal)
 	case health == "stale" || health == "worker_missing":
-		reason = map[string]any{"type": "runtime_stalled", "severity": "warning", "title": "작업 정체 확인 필요", "message": "진행 중 태스크의 런타임 활동이 중단되었거나 할당 워커를 찾을 수 없습니다.", "resume_condition": "워커 상태와 남은 작업을 확인하고 재할당 또는 완료 처리 여부를 결정하세요."}
-		condition = notificationCondition("stalled", "runtime:stalled", reason, signal)
+		reason = map[string]any{"type": "observation_gap", "severity": "info", "title": "실행 관측 공백", "message": "최근 실행 관측이 부족합니다. 작업 중단이나 Worker 실종을 뜻하지 않습니다.", "audience": "controller", "resume_condition": "현재 배정과 실행의 관측 수집 경로를 확인하세요."}
 	case health == "execution_interrupted":
 		reason = map[string]any{"type": "execution_interrupted", "severity": "danger", "title": "실행 복구 필요", "message": "백로그는 doing 상태이지만 연결된 실행 attempt가 정상 완료되지 않고 종료되었습니다.", "resume_condition": "실행 결과와 남은 작업을 확인한 뒤 재할당 또는 상태 정리를 수행하세요."}
 		condition = notificationCondition("interrupted", "runtime:interrupted", reason, signal)
 	case health == "runtime_unknown":
 		reason = map[string]any{"type": "runtime_unknown", "severity": "warning", "title": "실행 상태 확인 필요", "message": "백로그에 연결된 실행 attempt의 현재 상태를 신뢰성 있게 확인할 수 없습니다.", "resume_condition": "런타임과 hook 상태를 확인하고 필요하면 작업을 재개하세요."}
-		condition = notificationCondition("runtime_unknown", "runtime:unknown", reason, signal)
+		reason["audience"] = "controller"
+	}
+	if len(condition) > 0 && !recordableNotificationCondition(condition) {
+		condition = nil
 	}
 	return reason, condition
 }
 
 func notificationCondition(kind, key string, reason, signal map[string]any) map[string]any {
-	out := map[string]any{
-		"kind": kind, "key": key,
-		"message":          toString(reason["message"]),
-		"resume_condition": toString(reason["resume_condition"]),
-		"reason_type":      toString(reason["type"]),
-	}
+	out := map[string]any{"kind": kind, "message": toString(reason["message"]), "resume_condition": toString(reason["resume_condition"]), "reason_type": toString(reason["type"])}
+	concrete := key == "hold:user" || key == "controller:user"
+	out["human_action_verified"] = concrete || signal["human_action_runtime_verified"] == true
+	cause := strings.ToLower(strings.Join(strings.Fields(toString(reason["message"])), " "))
+	out["key"] = key + "\x00" + cause
 	if signal != nil {
-		out["attempt_id"] = toString(signal["attempt_id"])
-		out["runtime_state"] = toString(signal["runtime_state"])
-		// Episode identity is part of the key so a later execution attempt may
-		// legitimately raise the same condition again.
-		if attempt := toString(signal["attempt_id"]); attempt != "" {
-			out["key"] = key + "\x00" + attempt
+		for _, field := range []string{"attempt_id", "runtime_state", "assignment_id", "native_id", "assigned_at"} {
+			out[field] = toString(signal[field])
+		}
+		// An unresolved cause survives native/attempt changes within one assignment.
+		// A new assignment is a new episode; recovery is tracked by the journal.
+		if assignment := toString(signal["assignment_id"]); assignment != "" {
+			out["key"] = toString(out["key"]) + "\x00" + assignment
 		}
 	}
 	return out
@@ -325,7 +330,7 @@ func effectiveStateFromControl(fileState string, reason map[string]any) string {
 		return "controller_recovery"
 	case "user_intervention", "approval_required":
 		return "needs_user"
-	case "runtime_stalled", "execution_interrupted", "runtime_unknown":
+	case "runtime_stalled", "execution_interrupted":
 		return "stalled"
 	default:
 		return fileState

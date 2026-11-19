@@ -151,9 +151,9 @@ func TestControllerReviewMismatchFailsClosed(t *testing.T) {
 			if signal["health"] != "stale" {
 				t.Fatalf("mismatch was hidden: %+v", signal)
 			}
-			reason, _ := canonicalOperationalState(f.row, nil, signal, f.now)
-			if reason["type"] != "runtime_stalled" {
-				t.Fatalf("expected stale alert to remain: %+v", reason)
+			reason, condition := canonicalOperationalState(f.row, nil, signal, f.now)
+			if reason["type"] != "observation_gap" || len(condition)!=0 {
+				t.Fatalf("expected diagnostic gap without human alert: %+v %+v", reason, condition)
 			}
 		})
 	}
@@ -179,6 +179,7 @@ func TestControllerReviewDoesNotHideFailureOrUserHold(t *testing.T) {
 		f.row.State = "hold"
 		f.row.Fields["대기유형"] = "user"
 		f.row.Fields["대기"] = "사용자 답변 대기"
+        f.row.Fields["재개조건"] = "사용자: 요청된 결과의 승인 여부를 답변해 주세요."
 		f.writeHandoff(t, f.prepared, f.claim)
 		f.apply(t)
 		reason, condition := canonicalOperationalState(f.row, nil, f.activity["A-51"], f.now)

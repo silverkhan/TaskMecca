@@ -198,14 +198,7 @@ func (f *attentionFeed) refreshActive() {
 	revision := attentionRevision(payload)
     deliveryStarted := time.Now()
 	if rows, ok := payload["notification_events"].([]map[string]any); ok {
-		events := make([]notify.Event, 0, len(rows))
-		for _, row := range rows {
-			events = append(events, notify.Event{
-				ID: notificationValue(row["id"]), TaskID: notificationValue(row["task_id"]), Kind: notificationValue(row["kind"]),
-				Title: notificationValue(row["title"]), Message: notificationValue(row["message"]),
-				ResumeCondition: notificationValue(row["resume_condition"]), At: notificationValue(row["at"]),
-			})
-		}
+		events := currentBacklogDeliveryEvents(f.project, f.root, rows)
 		if errs := notify.Deliver(f.project, events); len(errs) > 0 {
 			// HTTP errors can include credentials in request URLs. Never log
 			// the raw error, bot token, destination or message contents.

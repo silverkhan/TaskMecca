@@ -90,12 +90,12 @@ func TestNotificationFastPathDoesNotHideLateStartOrConditionReset(t *testing.T) 
  if err!=nil||len(started)!=1||started[0]["kind"]!="started"{t.Fatalf("late Hook start invisible: %v %v",started,err)}
  // A first actionable episode must be emitted, then a cleared condition
  // may reappear with the same identifier as a separate notification episode.
- item["notification_condition"]=map[string]any{"kind":"stalled","key":"worker:stalled","message":"no activity"}
+ item["notification_condition"]=map[string]any{"kind":"intervention","key":"hold:user:access","reason_type":"user_intervention","human_action_verified":true,"message":"Owner access needed","resume_condition":"Owner: grant access"}
  first,err:=NotificationEvents(project,rows)
  if err!=nil||len(first)!=2 {t.Fatalf("condition invisible: %v %v",first,err)}
  item["notification_condition"]=nil
  if _,err:=NotificationEvents(project,rows);err!=nil{t.Fatal(err)}
- item["notification_condition"]=map[string]any{"kind":"stalled","key":"worker:stalled","message":"no activity"}
+ item["notification_condition"]=map[string]any{"kind":"intervention","key":"hold:user:access","reason_type":"user_intervention","human_action_verified":true,"message":"Owner access needed","resume_condition":"Owner: grant access"}
  again,err:=NotificationEvents(project,rows)
  if err!=nil||len(again)!=3 {t.Fatalf("new episode suppressed by consumed cache: %v %v",again,err)}
 }

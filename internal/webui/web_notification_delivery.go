@@ -14,6 +14,8 @@ import (
 
  "github.com/silverkhan/TaskMecca/internal/backlog"
  "github.com/silverkhan/TaskMecca/internal/projectguard"
+ "github.com/silverkhan/TaskMecca/internal/notify"
+ "github.com/silverkhan/TaskMecca/internal/runtimeobs"
 )
 
 // projectguard serializes other processes; this mutex also serializes goroutines
@@ -131,8 +133,15 @@ func applyWebDelivery(project,action,eventID,token,client string)(webDeliveryDec
  // Client-provided timestamps and synthetic event IDs are never trusted.
  events,err:=backlog.ReadNotificationEvents(project);if err!=nil{return webDeliveryDecision{},err}
  var at string
+ var selected map[string]any
  for _,event:=range events{
-  if id,_:=event["id"].(string);id==eventID{at,_=event["at"].(string);break}
+  if id,_:=event["id"].(string);id==eventID{at,_=event["at"].(string);selected=event;break}
+ }
+ if selected != nil && backlog.HumanActionKind(notificationValue(selected["kind"])) {
+  decisions, gateErr := currentNotificationDecisions(project, "")
+  if gateErr != nil { return webDeliveryDecision{State:"decision_unavailable"},nil }
+  decision, exists := decisions[strings.ToUpper(notificationValue(selected["task_id"]))]
+  if !exists || !decision.Match(selected) { return webDeliveryDecision{State:"condition_resolved"},nil }
  }
  eventTime,err:=time.Parse(time.RFC3339Nano,at)
  if err!=nil{return webDeliveryDecision{State:"unknown_event"},nil}
@@ -157,4 +166,136 @@ func webDeliveryHistory(project string)(map[string]map[string]any,error){
   "state":e.State,"sent_at":e.SentAt,"attempts":e.Attempts,"client":e.Client,"claimed_at":e.ClaimedAt,
  }}
  return out,nil
+}
+
+// Both senders and the browser/push claim boundary use the same canonical
+// decision. Runtime-derived actions also require a bounded official exact read;
+// a cached turn interval is never a liveness or CPU measurement.
+func currentNotificationDecisions(project, root string) (map[string]backlog.HumanActionDecision, error) {
+	decisions, err := backlog.CurrentHumanActionDecisions(project, root)
+	if err != nil {
+		return nil, err
+	}
+	needRuntime := false
+	for _, decision := range decisions {
+		if strings.HasPrefix(notificationValue(decision.Condition["key"]), "runtime:") {
+			needRuntime = true
+		}
+	}
+	if !needRuntime {
+		return stableHumanActionDecisions(project, root, decisions)
+	}
+	now := time.Now().UTC()
+	ledger, err := runtimeobs.BuildLedger(project, 3, now)
+	if err != nil {
+		return nil, err
+	}
+	evidence := operationExecutionLoader(project, ledger, now, true)
+	now = time.Now().UTC()
+	for task, decision := range decisions {
+		if !strings.HasPrefix(notificationValue(decision.Condition["key"]), "runtime:") {
+			continue
+		}
+		current, ok := evidence[task]
+		observed, parseErr := time.Parse(time.RFC3339Nano, current.ObservedAt)
+		if !ok || !current.Matched || !current.Fresh || !current.OfficialCurrent || current.FailedStage != "" || parseErr != nil || observed.After(now) || now.Sub(observed) > 2*time.Minute || current.AttemptID != notificationValue(decision.Condition["attempt_id"]) || current.Identity.AssignmentID != notificationValue(decision.Condition["assignment_id"]) || current.Identity.NativeID != notificationValue(decision.Condition["native_id"]) || string(current.State) != notificationValue(decision.Condition["runtime_state"]) {
+			delete(decisions, task)
+		}
+	}
+	return stableHumanActionDecisions(project, root, decisions)
+}
+
+// Canonical completion, reason or assignment may change during official I/O.
+// Preserve only the same current episode after that independent read boundary.
+func stableHumanActionDecisions(project, root string, decisions map[string]backlog.HumanActionDecision) (map[string]backlog.HumanActionDecision, error) {
+	fresh, err := backlog.CurrentHumanActionDecisions(project, root)
+	if err != nil {
+		return nil, err
+	}
+	for task, prior := range decisions {
+		current, ok := fresh[task]
+		same := ok && prior.Since == current.Since
+		for _, field := range []string{"key", "attempt_id", "assignment_id", "native_id", "runtime_state", "message", "resume_condition"} {
+			if notificationValue(prior.Condition[field]) != notificationValue(current.Condition[field]) {
+				same = false
+			}
+		}
+		if !same {
+			delete(decisions, task)
+		}
+	}
+	return preserveHumanActionDeliveryIDs(project, decisions), nil
+}
+
+// A shared ID migration must not resend a cause delivered by the old monitor.
+// Read its immutable outcome, and alias only the still-unresolved same cause
+// from this episode and assignment. Never rewrite source actions or sent rows.
+func preserveHumanActionDeliveryIDs(project string, decisions map[string]backlog.HumanActionDecision) map[string]backlog.HumanActionDecision {
+	journal, err := readOperationJournal(project)
+	if err != nil {
+		return decisions
+	}
+	for task, decision := range decisions {
+		since, e := time.Parse(time.RFC3339Nano, decision.Since)
+		assigned, aerr := time.Parse(time.RFC3339Nano, notificationValue(decision.Condition["assigned_at"]))
+		if e != nil || aerr != nil {
+			continue
+		}
+		for _, action := range journal.Actions {
+			detected, err := time.Parse(time.RFC3339Nano, action.DetectedAt)
+			if err != nil || detected.Before(since) || detected.Before(assigned) || detected.After(time.Now().UTC()) || action.ResolvedAt != "" || !strings.EqualFold(action.TaskID, task) || action.Reason != notificationValue(decision.Condition["message"]) || action.NextAction != notificationValue(decision.Condition["resume_condition"]) {
+				continue
+			}
+			records, err := notify.DeliveryRecords(project, task, action.ID)
+			if err != nil {
+				continue
+			}
+			for _, record := range records {
+				if record.State == "sent" || record.State == "consumed_legacy" {
+					decision.EventID = action.ID
+					decisions[task] = decision
+					break
+				}
+			}
+		}
+	}
+	return decisions
+}
+
+func currentBacklogDeliveryEvents(project, root string, rows []map[string]any) []notify.Event {
+	decisions, err := currentNotificationDecisions(project, root)
+	if err != nil {
+		decisions = nil
+	} // Fail closed for actions; lifecycle stays separate.
+	events := make([]notify.Event, 0, len(rows))
+	for _, row := range rows {
+		kind := notificationValue(row["kind"])
+		id := notificationValue(row["id"])
+		if backlog.HumanActionKind(kind) {
+			decision, exists := decisions[strings.ToUpper(notificationValue(row["task_id"]))]
+			if !exists || !decision.Match(row) {
+				continue
+			}
+			id = decision.EventID
+		}
+		events = append(events, notify.Event{ID: id, TaskID: notificationValue(row["task_id"]), Kind: kind, Title: notificationValue(row["title"]), Message: notificationValue(row["message"]), ResumeCondition: notificationValue(row["resume_condition"]), At: notificationValue(row["at"])})
+	}
+	return events
+}
+
+func currentOperationDeliveryEvents(project string, events []notify.Event) []notify.Event {
+	decisions, err := currentNotificationDecisions(project, "")
+	if err != nil {
+		return nil
+	}
+	filtered := make([]notify.Event, 0, len(events))
+	for _, event := range events {
+		decision, ok := decisions[strings.ToUpper(event.TaskID)]
+		if !ok || event.Message != notificationValue(decision.Condition["message"]) || event.ResumeCondition != notificationValue(decision.Condition["resume_condition"]) {
+			continue
+		}
+		event.ID = decision.EventID
+		filtered = append(filtered, event)
+	}
+	return filtered
 }

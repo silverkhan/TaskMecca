@@ -469,9 +469,16 @@ func TestA83DeliveryRequiresStableLatestExecutionState(t *testing.T) {
 				if len(events) != 0 {
 					t.Fatalf("state changed %s -> %s but sent obsolete action %+v", tc.official, tc.latest, events)
 				}
-			} else if len(events) != 1 || events[0].Kind != tc.wantKind || events[0].ID != actionID || events[0].Message == "" || events[0].ResumeCondition == "" {
+			} else if len(events) != 1 || events[0].Kind != tc.wantKind || events[0].ID == "" || events[0].Message == "" || events[0].ResumeCondition == "" {
 				t.Fatalf("stable real human action semantics lost: %+v", events)
 			}
+
+            if tc.wantKind != "" {
+                decisions, gateErr := currentNotificationDecisions(project, "")
+                if gateErr != nil || decisions["A-83"].EventID != events[0].ID { t.Fatalf("delivery lacks shared current episode ID: %+v %v", events, gateErr) }
+                deliverOperationIncidents(project, j)
+                if len(events)!=2 || events[0].ID!=events[1].ID {t.Fatalf("retry changed transport idempotency key: %+v",events)}
+            }
 			stored, err := readOperationJournal(project)
 			if err != nil || len(stored.Incidents) != 1 || !reflect.DeepEqual(stored.Incidents[0], original) || len(stored.Actions) != 1 || stored.Actions[0].ID != actionID || stored.Actions[0].ResolvedAt != "" {
 				t.Fatalf("boundary rejection changed source or fabricated human-cause resolution: %+v %v", stored, err)

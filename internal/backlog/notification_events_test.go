@@ -70,16 +70,16 @@ func TestNotificationEventsPersistAttentionEpisode(t *testing.T) {
     events,err:=NotificationEvents(project,items); if err!=nil { t.Fatal(err) }
     if len(events)!=0 { t.Fatalf("baseline events=%v",events) }
 
-    items["AID-39"]["notification_condition"]=map[string]any{"kind":"stalled","key":"runtime:stalled","reason_type":"runtime_stalled","message":"no activity","resume_condition":"check worker"}
+    items["AID-39"]["notification_condition"]=map[string]any{"kind":"intervention","key":"hold:user","reason_type":"user_intervention","human_action_verified":true,"message":"Owner access needed","resume_condition":"Owner: grant access"}
     events,err=NotificationEvents(project,items); if err!=nil { t.Fatal(err) }
     if len(events)!=1 { t.Fatalf("events=%v",events) }
-    if events[0]["kind"]!="stalled" || events[0]["task_id"]!="AID-39" { t.Fatalf("event=%v",events[0]) }
+    if events[0]["kind"]!="intervention" || events[0]["task_id"]!="AID-39" { t.Fatalf("event=%v",events[0]) }
     again,err:=NotificationEvents(project,items); if err!=nil { t.Fatal(err) }
     if len(again)!=1 { t.Fatalf("duplicate attention event: %v",again) }
 
     items["AID-39"]["notification_condition"]=nil
     if _,err=NotificationEvents(project,items); err!=nil { t.Fatal(err) }
-    items["AID-39"]["notification_condition"]=map[string]any{"kind":"stalled","key":"runtime:stalled","reason_type":"runtime_stalled","message":"no activity","resume_condition":"check worker"}
+    items["AID-39"]["notification_condition"]=map[string]any{"kind":"intervention","key":"hold:user","reason_type":"user_intervention","human_action_verified":true,"message":"Owner access needed","resume_condition":"Owner: grant access"}
     resumed,err:=NotificationEvents(project,items); if err!=nil { t.Fatal(err) }
     if len(resumed)!=2 { t.Fatalf("reappearing attention should create a new episode, got %v",resumed) }
 }
@@ -188,13 +188,13 @@ func TestControlTowerAllOperationalKindsJournalExactlyOnce(t *testing.T) {
             base:=map[string]map[string]any{"B-600":{"file_state":"doing","updated_at":"2026-10-05T11:00:00Z","title":"Kinds"}}
             if _,err:=NotificationEvents(project,base);err!=nil{t.Fatal(err)}
             row:=Record{ID:"B-600",State:"doing",Location:"active"}
-            _,condition:=canonicalOperationalState(row,nil,map[string]any{"source":"execution_ledger","attempt_id":"run-600","runtime_state":tc.state,"health":tc.health})
+            _,condition:=canonicalOperationalState(row,nil,map[string]any{"source":"execution_ledger","attempt_id":"run-600","runtime_state":tc.state,"health":tc.health,"human_action_runtime_verified":true})
             item:=map[string]any{"file_state":"doing","updated_at":"2026-10-05T11:01:00Z","title":"Kinds","notification_condition":condition}
             events,err:=NotificationEvents(project,map[string]map[string]any{"B-600":item})
             if err!=nil{t.Fatal(err)}
             count:=0
             for _,event:=range events { if toString(event["kind"])==tc.kind { count++ } }
-            if count!=1 { t.Fatalf("kind %s count=%d events=%+v",tc.kind,count,events) }
+            want:=1; if tc.kind=="stalled" {want=0}; if count!=want { t.Fatalf("kind %s count=%d want=%d events=%+v",tc.kind,count,want,events) }
             again,err:=NotificationEvents(project,map[string]map[string]any{"B-600":item});if err!=nil{t.Fatal(err)}
             if len(again)!=len(events){t.Fatalf("kind %s duplicated: %+v",tc.kind,again)}
         })
@@ -202,7 +202,7 @@ func TestControlTowerAllOperationalKindsJournalExactlyOnce(t *testing.T) {
 }
 
 
-func TestRuntimeUnknownNotificationRequiresStableDwell(t *testing.T) {
+func TestRuntimeUnknownNotificationRemainsDiagnosticAfterLongDwell(t *testing.T) {
     project:=t.TempDir()
     base:=map[string]map[string]any{
         "B-610":{"file_state":"doing","updated_at":"2026-10-06T00:00:00Z","title":"Transient hook gap"},
@@ -232,7 +232,7 @@ func TestRuntimeUnknownNotificationRequiresStableDwell(t *testing.T) {
     obs:=journal.Items["B-610"]
     // One minute is enough for a previously-started runtime loss, but a task
     // that has not established canonical start yet gets a longer startup grace.
-    obs.ConditionSince=time.Now().Add(-runtimeUnknownNotificationGrace-time.Second).Format(time.RFC3339Nano)
+    obs.ConditionSince=time.Now().Add(-time.Minute-time.Second).Format(time.RFC3339Nano)
     obs.ConditionConsumed=false
     journal.Items["B-610"]=obs
     encoded,err:=json.MarshalIndent(journal,"","  ");if err!=nil{t.Fatal(err)}
@@ -249,7 +249,7 @@ func TestRuntimeUnknownNotificationRequiresStableDwell(t *testing.T) {
     data,err=os.ReadFile(path);if err!=nil{t.Fatal(err)}
     if err:=json.Unmarshal(data,&journal);err!=nil{t.Fatal(err)}
     obs=journal.Items["B-610"]
-    obs.ConditionSince=time.Now().Add(-runtimeUnknownStartupNotificationGrace-time.Second).Format(time.RFC3339Nano)
+    obs.ConditionSince=time.Now().Add(-24*time.Hour-time.Second).Format(time.RFC3339Nano)
     obs.ConditionConsumed=false
     journal.Items["B-610"]=obs
     encoded,err=json.MarshalIndent(journal,"","  ");if err!=nil{t.Fatal(err)}
@@ -261,7 +261,7 @@ func TestRuntimeUnknownNotificationRequiresStableDwell(t *testing.T) {
     for _,event:=range events{
         if toString(event["task_id"])=="B-610" && toString(event["kind"])=="runtime_unknown"{count++}
     }
-    if count!=1{t.Fatalf("persistent startup runtime_unknown must alert once after startup dwell: %+v",events)}
+    if count!=0{t.Fatalf("persistent uncertainty must remain diagnostic after any dwell: %+v",events)}
 
     again,err:=NotificationEvents(project,unknown);if err!=nil{t.Fatal(err)}
     if len(again)!=len(events){t.Fatalf("runtime_unknown duplicated after consumption: %+v",again)}
@@ -393,8 +393,8 @@ func TestNotificationEventsLegacyJournalMigrationDoesNotBackfillCurrentState(t *
             "file_state":"doing","updated_at":"2026-10-05T11:20:00Z","title":"Existing",
             "lifecycle":map[string]any{"started_at":"2026-10-05T11:00:00Z"},
             "notification_condition":map[string]any{
-                "kind":"stalled","key":"runtime:stalled:run-old",
-                "reason_type":"runtime_stalled","message":"existing condition",
+                "kind":"intervention","key":"hold:user:existing",
+                "reason_type":"user_intervention","human_action_verified":true,"message":"existing owner access needed","resume_condition":"Owner: grant access",
             },
         },
     }
@@ -406,7 +406,7 @@ func TestNotificationEventsLegacyJournalMigrationDoesNotBackfillCurrentState(t *
     var journal notificationJournal
     if err:=json.Unmarshal(data,&journal);err!=nil{t.Fatal(err)}
     if journal.Version!=notificationJournalVersion{t.Fatalf("version=%d",journal.Version)}
-    if journal.Items["B-800"].ConditionKey!="runtime:stalled:run-old"{
+    if journal.Items["B-800"].ConditionKey!="hold:user:existing"{
         t.Fatalf("condition key not migrated into baseline: %+v",journal.Items["B-800"])
     }
 }
@@ -540,7 +540,7 @@ func TestNotificationEventsNewTaskCurrentConditionIsNotLost(t *testing.T) {
             },
             "notification_condition":map[string]any{
                 "kind":"approval","key":"runtime:approval:run-3","reason_type":"approval_required",
-                "message":"approval needed","attempt_id":"run-3","runtime_state":"waiting_approval",
+                "message":"approval needed","attempt_id":"run-3","runtime_state":"waiting_approval","human_action_verified":true,"resume_condition":"Owner: grant approval",
             },
         },
     }

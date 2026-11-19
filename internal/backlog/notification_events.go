@@ -12,8 +12,6 @@ import (
 )
 
 const notificationJournalVersion = 4
-const runtimeUnknownNotificationGrace = 60 * time.Second
-const runtimeUnknownStartupNotificationGrace = 2 * time.Minute
 
 var notificationJournalMu sync.Mutex
 
@@ -23,6 +21,7 @@ type notificationObservation struct {
     ConditionKey      string `json:"condition_key,omitempty"`
     ConditionSince    string `json:"condition_since,omitempty"`
     ConditionConsumed bool   `json:"condition_consumed,omitempty"`
+    ConditionEventID  string `json:"condition_event_id,omitempty"`
     StartedAt         string `json:"started_at,omitempty"`
 }
 
@@ -221,10 +220,10 @@ func NotificationEvents(project string, items map[string]map[string]any) ([]map[
         // Fast path for an unchanged, already-consumed observation. Unlike
         // merely comparing the task's mtime this also checks the exact
         // lifecycle start and notification condition episode. An unconsumed
-        // condition is ALWAYS revisited: runtime_unknown can mature into an
-        // alert solely because its dwell clock expired.
+        // unconsumed verified condition is ALWAYS revisited; observation-only
+        // gaps never become actionable through the passage of time.
         conditionKeyNow:=""
-        if condition,ok:=item["notification_condition"].(map[string]any); ok && len(condition)>0 {
+        if condition,ok:=item["notification_condition"].(map[string]any); ok && recordableNotificationCondition(condition) {
             conditionKeyNow=toString(condition["key"])
             if conditionKeyNow=="" {
                 conditionKeyNow=toString(condition["kind"])+"\x00"+toString(condition["reason_type"])
@@ -287,19 +286,17 @@ func NotificationEvents(project string, items map[string]map[string]any) ([]map[
         conditionKey := ""
         conditionSince := ""
         conditionConsumed := false
-        if fileState!="done" && phase < 40 {
-        if condition, ok := item["notification_condition"].(map[string]any); ok && len(condition) > 0 {
+        conditionEventID := ""
+        if fileState!="done" {
+        if condition, ok := item["notification_condition"].(map[string]any); ok && recordableNotificationCondition(condition) {
             kind := toString(condition["kind"])
             conditionKey = toString(condition["key"])
             if conditionKey == "" {
                 conditionKey = kind + "\x00" + toString(condition["reason_type"])
             }
 
-            // User-actionable conditions are emitted immediately when a new
-            // episode is observed. runtime_unknown is different: it represents
-            // uncertainty in sensing, not a confirmed failure. Keep it visible
-            // in the UI immediately, but require a stable dwell before pushing
-            // an external alert so short hook gaps do not create false alarms.
+            // Only verified human causes (and internal finalize evidence) reach
+            // this episode clock. Observation gaps never mature into alerts.
             conditionChanged := (seen && previous.ConditionKey != conditionKey) || (!seen && registeredNow)
             if conditionChanged {
                 conditionSince = now
@@ -307,6 +304,7 @@ func NotificationEvents(project string, items map[string]map[string]any) ([]map[
             } else if seen {
                 conditionSince = previous.ConditionSince
                 conditionConsumed = previous.ConditionConsumed
+                conditionEventID = previous.ConditionEventID
                 if conditionSince == "" {
                     conditionSince = now
                 }
@@ -314,36 +312,37 @@ func NotificationEvents(project string, items map[string]map[string]any) ([]map[
                 conditionSince = now
             }
 
+            // Re-key a legacy condition only when the exact prior attempt and
+            // unchanged canonical row prove it is the same unresolved cause.
+            // Preserve its episode and sent event ID; schema changes cannot
+            // manufacture a retry of already delivered human-action evidence.
+            legacyKey := legacyConditionKey(condition)
+            if conditionChanged && previous.ConditionConsumed && previous.ConditionKey == legacyKey && legacyKey != "" && previous.UpdatedAt == updatedAt && previous.ConditionSince != "" {
+                conditionSince, conditionConsumed = previous.ConditionSince, true
+                conditionEventID = previous.ConditionEventID
+                for i:=len(journal.Events)-1;i>=0;i-- {
+                    event:=journal.Events[i]
+                    if toString(event["task_id"])==id && toString(event["kind"])==kind && toString(event["message"])==toString(condition["message"]) && toString(event["resume_condition"])==toString(condition["resume_condition"]) && toString(event["attempt_id"])==toString(condition["attempt_id"]) {
+                        conditionEventID=toString(event["id"]);break
+                    }
+                }
+            }
             if baseline {
                 conditionConsumed = true
             } else if kind != "" && !conditionConsumed {
                 emit := false
                 at := now
-                if kind == "runtime_unknown" {
-                    if since, parseErr := time.Parse(time.RFC3339Nano, conditionSince); parseErr == nil {
-                        grace:=runtimeUnknownNotificationGrace
-                        // Before canonical start is established, runtime_unknown
-                        // commonly represents correlation/startup convergence.
-                        // Give that path a longer dwell so a normally starting
-                        // worker does not emit a false external warning.
-                        if startedAt=="" { grace=runtimeUnknownStartupNotificationGrace }
-                        threshold := since.Add(grace)
-                        if !nowTime.Before(threshold) {
-                            emit = true
-                            at = threshold.Format(time.RFC3339Nano)
-                        }
-                    }
-                } else if conditionChanged || !conditionConsumed {
-                    emit = true
-                }
-
+                if conditionChanged || !conditionConsumed { emit = true }
                 if emit {
-                    eventID := notificationEventID(id, kind, at)
+                    eventID := humanActionEventID(id, conditionKey, conditionSince)
+                    conditionEventID = eventID
                     if !notificationEventExists(journal.Events, eventID) {
                         journal.Events = append(journal.Events, map[string]any{
                             "id": eventID, "task_id": id, "kind": kind, "at": at,
                             "title": toString(item["title"]),
                             "reason_type": toString(condition["reason_type"]),
+                            "condition_key": conditionKey, "condition_since": conditionSince,
+                            "assignment_id": condition["assignment_id"], "native_id": condition["native_id"],
                             "message": toString(condition["message"]),
                             "resume_condition": toString(condition["resume_condition"]),
                             "attempt_id": toString(condition["attempt_id"]),
@@ -392,7 +391,7 @@ func NotificationEvents(project string, items map[string]map[string]any) ([]map[
 
         next := notificationObservation{
             FileState: fileState, UpdatedAt: updatedAt, ConditionKey: conditionKey,
-            ConditionSince: conditionSince, ConditionConsumed: conditionConsumed, StartedAt: startedAt,
+            ConditionSince: conditionSince, ConditionConsumed: conditionConsumed, ConditionEventID: conditionEventID, StartedAt: startedAt,
         }
         if !seen || previous != next {
             journal.Items[id] = next
@@ -404,10 +403,6 @@ func NotificationEvents(project string, items map[string]map[string]any) ([]map[
         }
     }
 
-    if len(journal.Events) > 250 {
-        journal.Events = append([]map[string]any{}, journal.Events[len(journal.Events)-250:]...)
-        dirty = true
-    }
 
     if !dirty {
         return append([]map[string]any{}, journal.Events...), nil

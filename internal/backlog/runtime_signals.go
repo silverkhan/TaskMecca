@@ -58,7 +58,7 @@ func runtimeLedgerSignals(project string, rows []Record, now time.Time, shared .
 	out := map[string]map[string]any{}
 	expected := map[string]runtimeImplementationOwner{}
 	for _, row := range rows {
-		if row.Location != "active" || row.State != "doing" {
+		if row.Location != "active" || (row.State != "doing" && row.State != "hold") {
 			continue
 		}
 		id := strings.ToUpper(strings.TrimSpace(row.ID))
@@ -167,9 +167,18 @@ func runtimeLedgerSignals(project string, rows []Record, now time.Time, shared .
 			health = "awaiting_start"
 		}
 		events, activityErr := (activity.Ledger{Project: project}).ListCached(id)
-		signal := map[string]any{"health": health, "source": "execution_ledger", "attempt_id": a.AttemptID, "runtime_state": a.CurrentState, "last_activity_at": a.LastActivityAt, "binding_state": a.BindingState, "binding_source": a.BindingSource, "binding_at": a.BindingAt, "started_at": a.StartedAt, "runtime_agent_id": a.RuntimeAgentID, "assignment_id": a.BindingEvidence["assignment_id"], "evidence_source": a.StateEvidenceSource, "observation_quality": a.StateObservationQuality, "agent_path": owner.AgentPath, "implementation_owner": owner.Owner, "progress_evidence": workerProgress(a, events)}
+		signal := map[string]any{"health": health, "source": "execution_ledger", "attempt_id": a.AttemptID, "runtime_state": a.CurrentState, "last_activity_at": a.LastActivityAt, "binding_state": a.BindingState, "binding_source": a.BindingSource, "binding_at": a.BindingAt, "started_at": a.StartedAt, "runtime_agent_id": a.RuntimeAgentID, "assignment_id": a.BindingEvidence["assignment_id"], "evidence_source": a.StateEvidenceSource, "observation_quality": a.StateObservationQuality, "agent_path": owner.AgentPath, "implementation_owner": owner.Owner, "progress_evidence": workerProgress(a, attributedActivityEvents(a, events, now))}
 		if activityErr != nil {
 			signal["activity_read_error"] = activityErr.Error()
+		}
+		observed, observedErr := time.Parse(time.RFC3339Nano, a.LastObservedAt)
+		assignedAt, assignedErr := time.Parse(time.RFC3339Nano, latestAssignment[id+"\x00"+owner.AgentPath].AssignedAt)
+		exact := identity.Observed && identity.NativeID != "" && a.RuntimeAgentID == identity.NativeID && assigned && assignedErr == nil && !assignedAt.After(now) && observedErr == nil && !observed.After(now) && !observed.Before(assignedAt) && (owner.NativeID == "" || owner.NativeID == identity.NativeID)
+		signal["human_action_runtime_verified"] = exact
+		signal["native_id"] = identity.NativeID
+		signal["assigned_at"] = latestAssignment[id+"\x00"+owner.AgentPath].AssignedAt
+		if exact {
+			signal["recent_activity_report"] = currentActivityEvidence(a, events, now)
 		}
 		out[id] = signal
 	}

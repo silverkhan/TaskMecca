@@ -942,7 +942,7 @@ func deliverOperationIncidents(project string, journal operationJournal) {
 	unlock()
     recordMonitorPerf("operation_alert_filter", time.Since(started), len(journal.Incidents), len(events), false, false)
     started = time.Now()
-    _ = operationDeliver(project, events)
+    _ = operationDeliver(project, currentOperationDeliveryEvents(project, events))
     recordMonitorPerf("operation_alert_delivery", time.Since(started), len(events), 0, false, false)
 }
 func operationProjects(primary string) []string {
