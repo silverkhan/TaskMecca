@@ -181,15 +181,18 @@ func boundaryRoleMatches(role, name string) bool {
 // extra reporting call is necessary. Each real invocation has a distinct stable
 // operation identity, while RequestID groups retries of the same registration.
 type registrationBoundary struct {
-	project    string
-	base       runtimeobs.OperationBoundary
-	stderr     io.Writer
-	firstError error
-	failedKey  string
-	disabled   bool
-	finished   bool
-	started    bool
-	ended      bool
+	startReceipt runtimeobs.T3Receipt
+	nativeName   string
+	identityLost bool
+	project      string
+	base         runtimeobs.OperationBoundary
+	stderr       io.Writer
+	firstError   error
+	failedKey    string
+	disabled     bool
+	finished     bool
+	started      bool
+	ended        bool
 }
 
 type registrationCollectionStatus struct {
@@ -245,7 +248,7 @@ func beginRegistrationBoundary(project, request string, stderr io.Writer) *regis
 	}
 	start := time.Now().UTC()
 	base := runtimeobs.OperationBoundary{RequestID: request, OperationID: "registration:" + request + ":" + r.NativeAttemptID + ":" + start.Format("20060102T150405.000000000Z"), Provider: r.Provider, NativeID: native, AttemptID: a.AttemptID, ThreadID: thread, Role: role, Source: "registration_apply", Evidence: "approved registration apply request " + request}
-	c := &registrationBoundary{project: project, base: base, stderr: stderr}
+	c := &registrationBoundary{project: project, base: base, stderr: stderr, startReceipt: observed, nativeName: m.Name}
 	c.write("start", "start", "", nil, "")
 	c.phase("input_validation")
 	return c
@@ -258,6 +261,14 @@ func (c *registrationBoundary) write(key, kind, phase string, tasks []string, or
 	if c.disabled {
 		return
 	}
+	if c.identityLost {
+		return
+	}
+	if err := c.verifyCurrent(); err != nil {
+		c.identityLost = true
+		c.collectError(key, fmt.Errorf("current registration identity not verified: %w", err))
+		return
+	}
 	b := c.base
 	b.Key = key
 	b.Kind = kind
@@ -266,11 +277,7 @@ func (c *registrationBoundary) write(key, kind, phase string, tasks []string, or
 	b.Error = originalError
 	_, _, err := runtimeobs.AppendOperationBoundary(c.project, b, time.Now().UTC())
 	if err != nil {
-		if c.firstError == nil {
-			c.firstError = err
-			c.failedKey = key
-		}
-		fmt.Fprintf(c.stderr, "execution_boundary collection_failure key=%s: %v\n", key, err)
+		c.collectError(key, err)
 	} else {
 		if kind == "start" {
 			c.started = true
@@ -279,6 +286,73 @@ func (c *registrationBoundary) write(key, kind, phase string, tasks []string, or
 			c.ended = true
 		}
 	}
+}
+
+// Stored START evidence is a comparison baseline, never permission for a later
+// append. Resolve the own actor, role, observed episode and current live host
+// receipt again. No identity loss is journaled under the obsolete actor.
+func (c *registrationBoundary) verifyCurrent() error {
+	if !c.ownIdentityMatches() {
+		return errors.New("own native/T3 identity changed or unavailable")
+	}
+	r := c.startReceipt
+	if !c.sameReceipt(r) || c.nativeName == "" {
+		return errors.New("verified START receipt/role metadata missing")
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
+	defer cancel()
+	m, err := runtimeobs.ResolveCodexThreadMetadata(ctx, c.base.NativeID)
+	if err != nil {
+		return fmt.Errorf("current native role read: %w", err)
+	}
+	if m.ID != c.base.NativeID || m.Name != c.nativeName || !boundaryRoleMatches(c.base.Role, m.Name) {
+		return errors.New("current native role metadata changed")
+	}
+	ledger, err := runtimeobs.BuildLedger(c.project, 0, time.Now().UTC())
+	if err != nil {
+		return fmt.Errorf("current observed attempt read: %w", err)
+	}
+	matches := 0
+	for _, a := range ledger.Attempts {
+		if a.AttemptID != c.base.AttemptID {
+			continue
+		}
+		matches++
+		if a.Terminal || a.StateEvidenceSource != runtimeobs.EvidenceT3 || a.Provider != c.base.Provider || a.SessionID != c.base.NativeID || a.RuntimeAgentID != c.base.NativeID || a.NativeReceipt == nil || !c.sameReceipt(*a.NativeReceipt) || !runtimeobs.HasObservedExecution(a) {
+			return errors.New("current observed attempt no longer matches START")
+		}
+	}
+	if matches != 1 {
+		return errors.New("current observed attempt missing or ambiguous")
+	}
+	// This is the final external read immediately before the append; a retry,
+	// terminal state or another run cannot inherit the previous operation.
+	now := time.Now().UTC()
+	current, err := runtimeobs.ReadT3Execution(runtimeobs.T3Selector{CanonicalProject: c.project, ThreadID: c.base.ThreadID, SessionID: c.base.NativeID, RuntimeAgentID: c.base.NativeID}, now)
+	if err != nil {
+		return fmt.Errorf("current T3 receipt read: %w", err)
+	}
+	if !c.sameReceipt(current) || !c.ownIdentityMatches() {
+		return errors.New("current running native/run/attempt changed before append")
+	}
+	return nil
+}
+
+func (c *registrationBoundary) ownIdentityMatches() bool {
+	return c.base.Provider == "codex" && c.base.NativeID != "" && c.base.ThreadID != "" && c.base.AttemptID != "" && os.Getenv("CODEX_THREAD_ID") == c.base.NativeID && os.Getenv("T3CODE_THREAD_ID") == c.base.ThreadID
+}
+func (c *registrationBoundary) sameReceipt(r runtimeobs.T3Receipt) bool {
+	s := c.startReceipt
+	return r.State == runtimeobs.StateRunning && r.CompletedAt == "" && r.Provider == c.base.Provider && r.SessionID == c.base.NativeID && r.ThreadID == c.base.ThreadID && r.CanonicalProject == c.project && r.Origin == "t3_local_projection_v2" && s.RunID != "" && s.NativeAttemptID != "" && r.RunID == s.RunID && r.NativeAttemptID == s.NativeAttemptID && r.StartedAt == s.StartedAt
+}
+func (c *registrationBoundary) collectError(key string, err error) {
+	if c.firstError == nil {
+		c.firstError = err
+		c.failedKey = key
+	} else {
+		c.firstError = errors.Join(c.firstError, err)
+	}
+	fmt.Fprintf(c.stderr, "execution_boundary collection_failure key=%s: %v\n", key, err)
 }
 func (c *registrationBoundary) phase(phase string) {
 	if c != nil {
@@ -298,14 +372,13 @@ func (c *registrationBoundary) finish(code int, originalError string) {
 		return
 	}
 	c.finished = true
+	if c.identityLost {
+		return
+	}
 	if c.firstError != nil {
-		b := c.base
-		b.Key = "collection_failure:" + c.failedKey
-		b.Kind = "collection_failure"
-		b.RelatedID = c.failedKey
-		b.Error = c.firstError.Error()
-		if _, _, err := runtimeobs.AppendOperationBoundary(c.project, b, time.Now().UTC()); err != nil {
-			fmt.Fprintf(c.stderr, "execution_boundary failure persistence unavailable: %v\n", err)
+		c.write("collection_failure:"+c.failedKey, "collection_failure", "", nil, c.firstError.Error())
+		if c.identityLost {
+			return
 		}
 	}
 	if code != 0 && originalError == "" {
