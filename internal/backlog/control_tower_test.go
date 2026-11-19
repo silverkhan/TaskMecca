@@ -4,7 +4,7 @@ import "testing"
 
 func TestControlTowerUserHoldPreservesDecision(t *testing.T) {
 	row := Record{ID: "B-710", State: "hold", Location: "active"}
-	review := map[string]any{"wait_kind": "user", "wait_note": "hold asks user", "resume_condition": "Owner: answer the question"}
+	review := map[string]any{"wait_kind": "user", "wait_note": "User answer to the deployment question is required", "resume_condition": "User: answer the deployment question"}
 	signal := map[string]any{"source": "execution_ledger", "attempt_id": "run-710", "runtime_state": "completed", "health": "awaiting_finalize"}
 	reason, condition := canonicalOperationalState(row, review, signal)
 	if toString(reason["type"]) != "user_intervention" {

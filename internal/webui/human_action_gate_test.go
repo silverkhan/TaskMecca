@@ -411,3 +411,51 @@ func TestA88ExistingMonitorSentCauseAliasesWithoutChangingItsJournal(t *testing.
 		t.Fatal("new assignment reused prior sent episode")
 	}
 }
+
+func TestA88Repair2SenderSemanticAdversarialMatrix(t *testing.T) {
+	cases := []struct {
+		name, reason, next string
+		positive           bool
+	}{
+		{"conditional_action", "Repository access is required.", "Owner: grant repository access if necessary.", false},
+		{"mixed_clause", "Repository access is required. But it is only a telemetry hypothesis.", "Owner: grant repository access.", false},
+		{"future_action", "Repository access is required.", "Owner: grant repository access next month.", false},
+		{"negated_kr", "저장소 접근 권한이 필요하지 않습니다.", "관리자: 저장소 접근 권한을 부여해 주세요.", false},
+		{"future_kr", "다음 달 저장소 접근 권한이 필요합니다.", "관리자: 저장소 접근 권한을 부여해 주세요.", false},
+		{"conditional_kr", "저장소 접근 권한이 필요합니다.", "관리자: 필요하면 저장소 접근 권한을 부여해 주세요.", false},
+		{"uncertain_positive_action", "Unknown whether repository access is required.", "Owner: grant repository access.", false},
+		{"present_access", "Repository access is required to continue deployment.", "Owner: grant repository access.", true},
+		{"present_kr", "배포를 계속하려면 저장소 접근 권한 부여가 필요합니다.", "관리자: 저장소 접근 권한을 부여해 주세요.", true},
+		{"present_approval", "Billing administrator approval needed", "Owner approves the billing decision", true},
+		{"present_input", "User answer to the deployment question is required", "User: answer the deployment question", true},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			p := testOperationProject(t)
+			if _, err := backlog.NotificationEvents(p, map[string]map[string]any{}); err != nil {
+				t.Fatal(err)
+			}
+			a83TypedActionFixture(t, p, "A-88", c.reason, c.next, runtimeobs.StateRunning)
+			installA83MockCurrentExecution(t)
+			snapshot, err := backlog.AttentionSnapshot(p, "", true)
+			if err != nil {
+				t.Fatal(err)
+			}
+			rows := a88OnlyActions(snapshot["notification_events"].([]map[string]any))
+			first := currentBacklogDeliveryEvents(p, "", rows)
+			op := currentOperationDeliveryEvents(p, []notify.Event{{ID: "candidate", TaskID: "A-88", Kind: "intervention", Message: c.reason, ResumeCondition: c.next}})
+			webDeliveryTestCutover(t, p)
+			granted := false
+			for _, row := range rows {
+				decision, err := applyWebDelivery(p, "claim", notificationValue(row["id"]), "", "push")
+				if err != nil {
+					t.Fatal(err)
+				}
+				granted = granted || decision.Granted
+			}
+			if (len(first) == 1) != c.positive || (len(op) == 1) != c.positive || granted != c.positive {
+				t.Fatalf("positive=%v backlog=%+v operation=%+v push=%v", c.positive, first, op, granted)
+			}
+		})
+	}
+}

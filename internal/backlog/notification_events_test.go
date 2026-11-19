@@ -70,7 +70,7 @@ func TestNotificationEventsPersistAttentionEpisode(t *testing.T) {
     events,err:=NotificationEvents(project,items); if err!=nil { t.Fatal(err) }
     if len(events)!=0 { t.Fatalf("baseline events=%v",events) }
 
-    items["AID-39"]["notification_condition"]=map[string]any{"kind":"intervention","key":"hold:user","reason_type":"user_intervention","human_action_verified":true,"message":"Owner access needed","resume_condition":"Owner: grant access"}
+    items["AID-39"]["notification_condition"]=map[string]any{"kind":"intervention","key":"hold:user","reason_type":"user_intervention","human_action_verified":true,"human_action_basis":requestedHumanAction("Owner access needed","Owner: grant access"),"message":"Owner access needed","resume_condition":"Owner: grant access"}
     events,err=NotificationEvents(project,items); if err!=nil { t.Fatal(err) }
     if len(events)!=1 { t.Fatalf("events=%v",events) }
     if events[0]["kind"]!="intervention" || events[0]["task_id"]!="AID-39" { t.Fatalf("event=%v",events[0]) }
@@ -79,7 +79,7 @@ func TestNotificationEventsPersistAttentionEpisode(t *testing.T) {
 
     items["AID-39"]["notification_condition"]=nil
     if _,err=NotificationEvents(project,items); err!=nil { t.Fatal(err) }
-    items["AID-39"]["notification_condition"]=map[string]any{"kind":"intervention","key":"hold:user","reason_type":"user_intervention","human_action_verified":true,"message":"Owner access needed","resume_condition":"Owner: grant access"}
+    items["AID-39"]["notification_condition"]=map[string]any{"kind":"intervention","key":"hold:user","reason_type":"user_intervention","human_action_verified":true,"human_action_basis":requestedHumanAction("Owner access needed","Owner: grant access"),"message":"Owner access needed","resume_condition":"Owner: grant access"}
     resumed,err:=NotificationEvents(project,items); if err!=nil { t.Fatal(err) }
     if len(resumed)!=2 { t.Fatalf("reappearing attention should create a new episode, got %v",resumed) }
 }
@@ -394,7 +394,7 @@ func TestNotificationEventsLegacyJournalMigrationDoesNotBackfillCurrentState(t *
             "lifecycle":map[string]any{"started_at":"2026-10-05T11:00:00Z"},
             "notification_condition":map[string]any{
                 "kind":"intervention","key":"hold:user:existing",
-                "reason_type":"user_intervention","human_action_verified":true,"message":"existing owner access needed","resume_condition":"Owner: grant access",
+                "reason_type":"user_intervention","human_action_verified":true,"human_action_basis":requestedHumanAction("existing owner access needed","Owner: grant access"),"message":"existing owner access needed","resume_condition":"Owner: grant access",
             },
         },
     }
@@ -540,7 +540,7 @@ func TestNotificationEventsNewTaskCurrentConditionIsNotLost(t *testing.T) {
             },
             "notification_condition":map[string]any{
                 "kind":"approval","key":"runtime:approval:run-3","reason_type":"approval_required",
-                "message":"approval needed","attempt_id":"run-3","runtime_state":"waiting_approval","human_action_verified":true,"resume_condition":"Owner: grant approval",
+                "message":"approval needed","attempt_id":"run-3","runtime_state":"waiting_approval","human_action_verified":true,"human_action_basis":requestedHumanAction("approval needed","Owner: grant approval"),"resume_condition":"Owner: grant approval",
             },
         },
     }

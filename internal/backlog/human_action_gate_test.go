@@ -2,11 +2,18 @@ package backlog
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
 	"github.com/silverkhan/TaskMecca/internal/activity"
+	"github.com/silverkhan/TaskMecca/internal/projectguard"
 	"github.com/silverkhan/TaskMecca/internal/runtimeobs"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"reflect"
+	"strconv"
+	"strings"
+	"sync"
 	"testing"
 	"time"
 )
@@ -303,5 +310,267 @@ func TestA88JournalRejectsGapConditionsWithoutRewritingHistory(t *testing.T) {
 				t.Fatalf("gap emitted: %+v", event)
 			}
 		}
+	}
+}
+
+func canonicalRequestConditionFixture(request, next string) map[string]any {
+	_, condition := canonicalOperationalState(Record{ID: "A-55", State: "hold", Location: "active", Fields: map[string]string{"대기유형": "user", "대기": request, "재개조건": next}}, nil, nil)
+	return condition
+}
+
+func TestA88Repair2PresentAssertionAndUnforgeableProof(t *testing.T) {
+	negative := [][2]string{
+		{"Unknown whether repository access is required; no execution signal was observed.", "Owner: grant repository access if subsequently confirmed necessary."},
+		{"Repository access is not required. We only need to investigate the telemetry gap.", "Owner: grant repository access."},
+		{"접근 권한이 필요한지 확인할 수 없습니다. 실행 관측 공백만 확인되었습니다.", "관리자: 저장소 접근 권한을 부여해 주세요."},
+		{"Repository access is required next month.", "Owner: grant repository access."},
+		{"Repository access is required.", "Owner: grant repository access next month."},
+		{"Repository access is required, if deployment proceeds.", "Owner: grant repository access."},
+		{"Repository access is required.", "Owner: grant repository access if necessary."},
+		{"저장소 접근 권한이 필요하지 않습니다.", "관리자: 저장소 접근 권한을 부여해 주세요."},
+		{"다음 달 저장소 접근 권한이 필요합니다.", "관리자: 저장소 접근 권한을 부여해 주세요."},
+		{"저장소 접근 권한이 필요합니다.", "관리자: 필요하면 저장소 접근 권한을 부여해 주세요."},
+		{"Repository access is required. But it is only a telemetry hypothesis.", "Owner: grant repository access."},
+	}
+	for _, pair := range negative {
+		if requestedHumanAction(pair[0], pair[1]) != nil {
+			t.Fatal("unsupported prose minted proof", pair)
+		}
+	}
+	for _, pair := range [][2]string{{"Repository access is required to continue deployment.", "Owner: grant repository access."}, {"배포를 계속하려면 저장소 접근 권한 부여가 필요합니다.", "관리자: 저장소 접근 권한을 부여해 주세요."}, {"Billing administrator approval needed", "Owner approves the billing decision"}, {"User answer to the deployment question is required", "User: answer the deployment question"}} {
+		c := canonicalRequestConditionFixture(pair[0], pair[1])
+		if !HumanActionCondition(c) {
+			t.Fatal("genuine request lost", pair, c)
+		}
+		raw, _ := json.Marshal(c)
+		var forged map[string]any
+		_ = json.Unmarshal(raw, &forged)
+		if HumanActionCondition(forged) {
+			t.Fatal("serialized private proof regained authority")
+		}
+		forged["human_action_basis"] = map[string]any{"source": "canonical_requested_action", "category": "grant_access", "request": pair[0], "next": pair[1]}
+		if HumanActionCondition(forged) {
+			t.Fatal("freeform forged proof gained authority")
+		}
+	}
+}
+
+func TestA88Repair2CanonicalTupleRejectsRecomputedCorruption(t *testing.T) {
+	now := time.Now().UTC()
+	since := now.Add(-time.Minute).Format(time.RFC3339Nano)
+	key := "hold:user\x00repository access is required."
+	b := humanActionBoundary{Key: key, Since: since, OriginSince: since, EventID: "canonical-event"}
+	b.Checksum = humanBoundaryChecksum(b)
+	j := notificationJournal{Items: map[string]notificationObservation{"A-88": {ConditionKey: key, ConditionSince: since, ConditionEventID: b.EventID}}, Events: []map[string]any{{"id": b.EventID, "task_id": "A-88", "kind": "intervention", "condition_key": key, "condition_since": since, "assignment_id": ""}}}
+	if err := validateHumanActionBoundary(t.TempDir(), "A-88", b, j, HumanActionDecision{}, nil, nil, now); err != nil {
+		t.Fatal("valid canonical tuple rejected", err)
+	}
+	for name, mutate := range map[string]func(*humanActionBoundary){"foreign_event": func(v *humanActionBoundary) { v.EventID = "foreign-transport" }, "foreign_assignment": func(v *humanActionBoundary) { v.Assignment = "foreign"; v.Key += "\x00foreign" }, "missing_since": func(v *humanActionBoundary) { v.Since = "" }, "shift_origin": func(v *humanActionBoundary) { v.OriginSince = now.Add(-2 * time.Minute).Format(time.RFC3339Nano) }, "foreign_cause": func(v *humanActionBoundary) { v.Key = "hold:user\x00different cause" }, "invented_floor": func(v *humanActionBoundary) { v.NotBefore = now.Add(-2 * time.Minute).Format(time.RFC3339Nano) }} {
+		t.Run(name, func(t *testing.T) {
+			v := b
+			mutate(&v)
+			v.Checksum = humanBoundaryChecksum(v)
+			raw, _ := json.Marshal(v)
+			path := filepath.Join(t.TempDir(), "boundary.json")
+			_ = os.WriteFile(path, raw, 0600)
+			if err := validateHumanActionBoundary(t.TempDir(), "A-88", v, j, HumanActionDecision{}, nil, nil, now); err == nil {
+				t.Fatal("canonical contradiction accepted", v)
+			}
+			got, _ := os.ReadFile(path)
+			if string(got) != string(raw) {
+				t.Fatal("corrupt raw bytes changed")
+			}
+		})
+	}
+}
+
+func TestA88Repair2DurableAtomicBoundaryFailures(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "state.json")
+	old := []byte("old-complete\n")
+	_ = os.WriteFile(path, old, 0600)
+	foreign := filepath.Join(filepath.Dir(path), ".human-action-state-foreign.tmp")
+	_ = os.WriteFile(foreign, []byte("foreign"), 0600)
+	fileSync, dirSync := humanStateFileSync, humanStateDirectorySync
+	defer func() { humanStateFileSync = fileSync; humanStateDirectorySync = dirSync }()
+	humanStateFileSync = func(*os.File) error { return errors.New("fixture file sync failure") }
+	if err := writeHumanActionState(path, []byte("new-complete\n")); err == nil {
+		t.Fatal("file sync failure ignored")
+	}
+	got, _ := os.ReadFile(path)
+	if string(got) != string(old) {
+		t.Fatal("precommit failure changed raw state")
+	}
+	humanStateFileSync = fileSync
+	humanStateDirectorySync = func(*os.File) error { return errors.New("fixture directory sync failure") }
+	if err := writeHumanActionState(path, []byte("new-complete\n")); err == nil {
+		t.Fatal("directory sync failure ignored")
+	}
+	got, _ = os.ReadFile(path)
+	if string(got) != "new-complete\n" {
+		t.Fatal("postcommit state incomplete")
+	}
+	humanStateDirectorySync = dirSync
+	if err := writeHumanActionState(path, []byte("durable\n")); err != nil {
+		t.Fatal(err)
+	}
+	temps, _ := filepath.Glob(filepath.Join(filepath.Dir(path), ".human-action-state-*.tmp"))
+	if len(temps) != 1 || temps[0] != foreign {
+		t.Fatal("foreign temp changed or own temp leaked", temps)
+	}
+}
+
+func TestA88Repair2StateLockChild(t *testing.T) {
+	project := os.Getenv("A88_LOCK_CHILD_PROJECT")
+	if project == "" {
+		return
+	}
+	for i := 0; i < 12; i++ {
+		release, err := projectguard.AcquireStateLock(project, "fixture_counter")
+		if err != nil {
+			t.Fatal(err)
+		}
+		path := filepath.Join(project, "counter")
+		raw, _ := os.ReadFile(path)
+		n, _ := strconv.Atoi(string(raw))
+		time.Sleep(time.Millisecond)
+		err = os.WriteFile(path, []byte(strconv.Itoa(n+1)), 0600)
+		release()
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+func TestA88Repair2CrossProcessExclusiveStableLock(t *testing.T) {
+	project := t.TempDir()
+	t.Setenv("TASK_MECCA_HOME", t.TempDir())
+	release, err := projectguard.AcquireStateLock(project, "fixture_counter")
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(project, "_task_mecca/.runtime/fixture_counter.lock")
+	before, _ := os.Stat(path)
+	release()
+	var wg sync.WaitGroup
+	errs := make(chan error, 4)
+	for i := 0; i < 4; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			cmd := exec.Command(os.Args[0], "-test.run=^TestA88Repair2StateLockChild$", "-test.count=1")
+			cmd.Env = append(os.Environ(), "A88_LOCK_CHILD_PROJECT="+project)
+			raw, err := cmd.CombinedOutput()
+			if err != nil {
+				errs <- fmt.Errorf("%w: %s", err, raw)
+			}
+		}()
+	}
+	wg.Wait()
+	close(errs)
+	for err := range errs {
+		t.Error(err)
+	}
+	raw, _ := os.ReadFile(filepath.Join(project, "counter"))
+	if string(raw) != "48" {
+		t.Fatal("lost concurrent update", string(raw))
+	}
+	after, _ := os.Stat(path)
+	if !os.SameFile(before, after) {
+		t.Fatal("lock inode replaced")
+	}
+	for _, name := range []string{"../escape", "", "Upper", "a/b", strings.Repeat("a", 65)} {
+		if release, err := projectguard.AcquireStateLock(project, name); err == nil {
+			release()
+			t.Fatal("invalid name accepted", name)
+		}
+	}
+	_ = os.Symlink(path, filepath.Join(filepath.Dir(path), "symlink.lock"))
+	if release, err := projectguard.AcquireStateLock(project, "symlink"); err == nil {
+		release()
+		t.Fatal("symlink accepted")
+	}
+	// Failed acquisition must release the shared management fence.
+	management, err := projectguard.AcquireManagement()
+	if err != nil {
+		t.Fatal("error path leaked fence", err)
+	}
+	management()
+	home := projectguard.Home()
+	_ = os.MkdirAll(home, 0700)
+	body, _ := json.Marshal(map[string]any{"paused_projects": []string{project}})
+	_ = os.WriteFile(filepath.Join(home, "projects.json"), body, 0600)
+	if release, err := projectguard.AcquireStateLock(project, "paused"); err == nil {
+		release()
+		t.Fatal("paused project acquired lock")
+	}
+	if _, err := os.Stat(filepath.Join(filepath.Dir(path), "paused.lock")); !os.IsNotExist(err) {
+		t.Fatal("paused lock was created", err)
+	}
+	missing := filepath.Join(t.TempDir(), "removed")
+	if release, err := projectguard.AcquireStateLock(missing, "removed"); err == nil {
+		release()
+		t.Fatal("removed project recreated")
+	}
+	if _, err := os.Stat(missing); !os.IsNotExist(err) {
+		t.Fatal("removed project was touched", err)
+	}
+}
+
+func TestA88Repair2PersistedCorruptionFailsClosedWithoutRewrite(t *testing.T) {
+	for _, field := range []string{"event_id", "assignment", "since", "key", "origin_since", "not_before"} {
+		t.Run(field, func(t *testing.T) {
+			project := t.TempDir()
+			t.Setenv("TASK_MECCA_HOME", t.TempDir())
+			dir := filepath.Join(project, "_task_mecca/data/backlog")
+			if err := os.MkdirAll(dir, 0700); err != nil {
+				t.Fatal(err)
+			}
+			path := filepath.Join(dir, "000088.A-88.fixture.hold.md")
+			if err := os.WriteFile(path, []byte("# A-88 fixture\n- 대기유형: user\n- 대기: Repository access is required.\n- 재개조건: Owner: grant repository access.\n"), 0600); err != nil {
+				t.Fatal(err)
+			}
+			decisions, err := CurrentHumanActionDecisions(project, "")
+			if err != nil || len(decisions) != 1 {
+				t.Fatal("genuine baseline missing", decisions, err)
+			}
+			statePath := filepath.Join(project, "_task_mecca/.runtime/human_action_boundaries.json")
+			raw, err := os.ReadFile(statePath)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var state humanActionBoundaries
+			if err = json.Unmarshal(raw, &state); err != nil {
+				t.Fatal(err)
+			}
+			b := state.Items["A-88"]
+			switch field {
+			case "event_id":
+				b.EventID = "foreign-sent-transport"
+			case "assignment":
+				b.Assignment = "foreign-assignment"
+				b.Key += "\x00foreign-assignment"
+			case "since":
+				b.Since = ""
+			case "key":
+				b.Key = "hold:user\x00different cause"
+			case "origin_since":
+				b.OriginSince = time.Now().Add(-time.Hour).Format(time.RFC3339Nano)
+			case "not_before":
+				b.NotBefore = time.Now().Add(-time.Hour).Format(time.RFC3339Nano)
+			}
+			b.Checksum = humanBoundaryChecksum(b)
+			state.Items["A-88"] = b
+			raw, _ = json.Marshal(state)
+			if err = os.WriteFile(statePath, raw, 0600); err != nil {
+				t.Fatal(err)
+			}
+			decisions, err = CurrentHumanActionDecisions(project, "")
+			if err == nil || len(decisions) != 0 {
+				t.Fatal("persisted semantic corruption authorized decision", decisions, err)
+			}
+			after, _ := os.ReadFile(statePath)
+			if string(after) != string(raw) {
+				t.Fatal("semantic corruption silently rewritten")
+			}
+		})
 	}
 }

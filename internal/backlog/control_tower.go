@@ -316,11 +316,11 @@ func canonicalOperationalState(row Record, review, signal map[string]any, observ
 
 func notificationCondition(kind, key string, reason, signal map[string]any) map[string]any {
 	out := map[string]any{"kind": kind, "message": toString(reason["message"]), "resume_condition": toString(reason["resume_condition"]), "reason_type": toString(reason["type"])}
-	basis, _ := reason["human_action_basis"].(map[string]any)
+	basis, _ := reason["human_action_basis"].(*humanActionProof)
 	if basis == nil && signal["human_action_runtime_verified"] == true {
 		observedKind := runtimeHumanActionKind(toString(signal["runtime_state"]))
 		if observedKind != "" {
-			basis = map[string]any{"source": "observed_current_execution", "state": toString(signal["runtime_state"])}
+			basis = &humanActionProof{source: "observed_current_execution", state: toString(signal["runtime_state"])}
 			out["kind"] = observedKind
 			switch observedKind {
 			case "approval":
@@ -331,6 +331,12 @@ func notificationCondition(kind, key string, reason, signal map[string]any) map[
 				out["reason_type"] = "user_intervention"
 			}
 		}
+	}
+	if basis != nil {
+		copy := *basis
+		copy.request = toString(out["message"])
+		copy.next = toString(out["resume_condition"])
+		basis = &copy
 	}
 	out["human_action_basis"] = basis
 	out["human_action_verified"] = basis != nil

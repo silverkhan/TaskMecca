@@ -1,9 +1,13 @@
 package backlog
 
 import (
+	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"github.com/silverkhan/TaskMecca/internal/projectguard"
+	"io"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -27,17 +31,20 @@ func HumanActionCondition(condition map[string]any) bool {
 	if !meaningfulHumanAction(toString(condition["message"])) || !meaningfulHumanAction(toString(condition["resume_condition"])) {
 		return false
 	}
-	basis, _ := condition["human_action_basis"].(map[string]any)
-	switch toString(basis["source"]) {
-	case "observed_current_execution":
-		return runtimeHumanActionKind(toString(basis["state"])) == kind && toString(basis["state"]) == toString(condition["runtime_state"])
-	case "observed_controller_wait":
-		return kind == "intervention" && meaningfulHumanAction(toString(basis["handoff_id"])) && meaningfulHumanAction(toString(basis["contract_sha256"]))
-	default:
-		// Low-level journal callers also pass explicit request/action pairs. A
-		// verified flag or user/hold label alone never supplies such a request.
-		return requestedHumanAction(toString(condition["message"]), toString(condition["resume_condition"])) != nil
+	proof, ok := condition["human_action_basis"].(*humanActionProof)
+	if !ok || proof == nil || proof.request != toString(condition["message"]) || proof.next != toString(condition["resume_condition"]) {
+		return false
 	}
+	switch proof.source {
+	case "observed_current_execution":
+		return runtimeHumanActionKind(proof.state) == kind && proof.state == toString(condition["runtime_state"])
+	case "observed_controller_wait":
+		return kind == "intervention" && proof.handoff != "" && proof.contract != ""
+	case "canonical_requested_action":
+		parsed := requestedHumanAction(proof.request, proof.next)
+		return parsed != nil && parsed.category == proof.category
+	}
+	return false
 }
 
 func runtimeHumanActionKind(state string) string {
@@ -52,40 +59,58 @@ func runtimeHumanActionKind(state string) string {
 	return ""
 }
 
-var requestedActionActor = regexp.MustCompile(`(?i)\b(owner|user|administrator|admin|root|operator)\s*:?\s*(?:please\s+)?(grant|approve|restore|provide|allow|authorize|answer|reply|choose|confirm|decide|select)s?\b|(?:사용자|관리자|소유자|담당자)\s*:?`)
-var requestedNeed = regexp.MustCompile(`(?i)\b(required?|requires?|needed?|needs?|request(?:ed)?|asks user|awaiting|denied|forbidden|blocked|grant|provide)\b|필요|요청|답변 대기|거부|차단|충돌`)
+// The supported grammar consumes the ENTIRE assertion/action, including its
+// tense and qualifiers. Arbitrary clauses are not a resource name. Unknown,
+// negated, conditional, or future prose cannot be salvaged by keyword matches.
+const humanNoun = `(?:repository|database|deployment|billing|project|service|external|owner|administrator|access|permission|credentials?|approval|decision|choice|policy|input|answer|question|result|value|existing|requested|different|read|write)`
+const humanObject = `(?:(?:the|a) )?(?:` + humanNoun + `(?: ` + humanNoun + `)*)`
 
-var requestedAccess = regexp.MustCompile(`(?i)\b(access|permission|credentials?|authorization)\b|권한|접근|인증`)
-var requestedDecision = regexp.MustCompile(`(?i)\b(approval|decision|choice|policy)\b|승인|판단|선택|정책|확정`)
-var requestedInput = regexp.MustCompile(`(?i)\b(input|question|answer|asks user)\b|입력|질문|답변`)
-var accessAction = regexp.MustCompile(`(?i)\b(grant|approve|restore|provide|allow|authorize)s?\b|부여|허용|승인|제공`)
-var decisionAction = regexp.MustCompile(`(?i)\b(approve|decide|choose|confirm|provide|answer|grant)s?\b|승인|확정|선택|답변|제공`)
-var inputAction = regexp.MustCompile(`(?i)\b(answer|reply|provide|choose|select)s?\b|답변|입력|제공|선택`)
+const presentHumanClause = `(?:` + humanObject + ` (?:is |are )?(?:required|needed|denied|blocked)(?: (?:now|to (?:continue|resume) (?:deployment|work|execution|the task)))?)`
 
-// Positive request evidence has TWO independent fields: a concrete blocker and
-// a named person's action on that blocker. This is a small supported action
-// grammar, not a blacklist of the unbounded ways to describe missing telemetry.
-// Unknown prose stays diagnostic until a concrete request or runtime wait exists.
-func requestedHumanAction(request, next string) map[string]any {
-	if !requestedNeed.MatchString(request) || !requestedActionActor.MatchString(next) {
-		return nil
-	}
+var presentHumanAssertion = regexp.MustCompile(`(?i)^(?:` + presentHumanClause + `(?:; ` + presentHumanClause + `)?|(?:grant|provide|restore|approve|answer) ` + humanObject + `|(?:user|owner) answer to the (?:deployment|billing|project) question is required)\.?$`)
+var unconditionalHumanAction = regexp.MustCompile(`(?i)^(?:repository )?(owner|user|administrator|admin|root|operator):? (?:please )?(grant|approve|restore|provide|allow|authorize|answer|reply|choose|confirm|decide|select)s? (` + humanObject + `|answer to the (?:deployment|billing|project) question)\.?$`)
+var presentKoreanAssertion = regexp.MustCompile(`^(?:(?:배포를|작업을|실행을) (?:계속|재개)하려면 )?(?:저장소 |데이터베이스 |프로젝트 |배포 |서비스 |계정 |사용자 )?(?:접근 권한(?: 부여)?|권한(?: 부여)?|승인|결정|입력|답변)(?:이|가)? (?:필요합니다|필요함|필요해요|필요|대기)\.?$`)
+var unconditionalKoreanAction = regexp.MustCompile(`^(관리자|사용자|소유자|담당자):? ((?:(?:저장소|데이터베이스|프로젝트|배포|서비스|계정) )?(?:접근 권한|권한)|(?:요청된 )?(?:결과의 승인 여부|승인 여부|입력|답변|결정|질문|배포 질문)|배포)(?:을|를|에) (부여|승인|제공|답변|입력|선택|확정)해 주세요\.?$`)
+var accessSubject = regexp.MustCompile(`(?i)\b(access|permission|credentials?)\b|권한`)
+var decisionSubject = regexp.MustCompile(`(?i)\b(approval|decision|choice|policy)\b|승인|결정`)
+var inputSubject = regexp.MustCompile(`(?i)\b(answer|question|input|value)\b|답변|질문|입력`)
+
+// This private in-memory type is never accepted from serialized JSON or a
+// freeform "proof" map. Only canonical projection constructors mint evidence.
+type humanActionProof struct {
+	source, category, request, next, state, handoff, contract string
+}
+
+func requestedHumanAction(request, next string) *humanActionProof {
+	request = strings.TrimSpace(request)
+	next = strings.TrimSpace(next)
 	category := ""
-	switch {
-	case requestedAccess.MatchString(request) && requestedAccess.MatchString(next) && accessAction.MatchString(next):
-		category = "grant_access"
-	case requestedDecision.MatchString(request) && (requestedDecision.MatchString(next) || requestedAccess.MatchString(next)) && decisionAction.MatchString(next):
-		category = "provide_decision"
-	case requestedInput.MatchString(request) && requestedInput.MatchString(next) && inputAction.MatchString(next):
-		category = "provide_input"
+	if presentHumanAssertion.MatchString(request) && unconditionalHumanAction.MatchString(next) {
+		switch {
+		case accessSubject.MatchString(request) && accessSubject.MatchString(next):
+			category = "grant_access"
+		case decisionSubject.MatchString(request) && (decisionSubject.MatchString(next) || accessSubject.MatchString(next)):
+			category = "provide_decision"
+		case inputSubject.MatchString(request) && inputSubject.MatchString(next):
+			category = "provide_input"
+		}
+	} else if presentKoreanAssertion.MatchString(request) && unconditionalKoreanAction.MatchString(next) {
+		switch {
+		case accessSubject.MatchString(request) && accessSubject.MatchString(next):
+			category = "grant_access"
+		case decisionSubject.MatchString(request) && decisionSubject.MatchString(next):
+			category = "provide_decision"
+		case inputSubject.MatchString(request) && inputSubject.MatchString(next):
+			category = "provide_input"
+		}
 	}
 	if category == "" {
 		return nil
 	}
-	return map[string]any{"source": "canonical_requested_action", "category": category, "request": request, "next_action": next}
+	return &humanActionProof{source: "canonical_requested_action", category: category, request: request, next: next}
 }
 
-func controllerWaitBasis(review map[string]any, markdown string, now time.Time) map[string]any {
+func controllerWaitBasis(review map[string]any, markdown string, now time.Time) *humanActionProof {
 	// This reason/quality pair is produced only after the completion projector
 	// validates the exact claimed Controller execution. A needs_user label or
 	// generic diagnostic (including a handoff hold label) cannot supply it.
@@ -93,7 +118,7 @@ func controllerWaitBasis(review map[string]any, markdown string, now time.Time) 
 	if review["state"] != "needs_user" || review["reason"] != "exact_controller_claim_running" || review["observation_quality"] != "observed" || !completionContractMatches(markdown, toString(review["contract_sha256"])) || err != nil || since.After(now) || !meaningfulHumanAction(toString(review["handoff_id"])) || !meaningfulHumanAction(toString(review["contract_sha256"])) {
 		return nil
 	}
-	return map[string]any{"source": "observed_controller_wait", "handoff_id": review["handoff_id"], "contract_sha256": review["contract_sha256"], "observed_since": review["since"]}
+	return &humanActionProof{source: "observed_controller_wait", handoff: toString(review["handoff_id"]), contract: toString(review["contract_sha256"])}
 }
 
 // Finalize is retained internal lifecycle evidence. External senders still use
@@ -153,10 +178,11 @@ func currentActivityEvidence(a runtimeobs.Attempt, events []activity.Event, now 
 }
 
 type HumanActionDecision struct {
-	Condition       map[string]any
-	EventID         string
-	Since           string
-	LegacyNotBefore string
+	Condition           map[string]any
+	EventID             string
+	Since               string
+	LegacyNotBefore     string
+	LegacyPreviousSince string
 }
 
 // CurrentHumanActionDecisions re-reads the canonical inputs at the send boundary.
@@ -164,7 +190,7 @@ type HumanActionDecision struct {
 // use its ID, so the existing transport lock deduplicates concurrent senders.
 // Historical events and sent channel records are never rewritten or replayed.
 func CurrentHumanActionDecisions(project, root string) (map[string]HumanActionDecision, error) {
-	release, err := projectguard.AcquireWrite(project)
+	release, err := projectguard.AcquireStateLock(project, "human_action_boundaries")
 	if err != nil {
 		return nil, err
 	}
@@ -260,12 +286,14 @@ func legacyConditionKey(condition map[string]any) string {
 // operation/source and sent journals are never migrated or rewritten by this
 // tracker. Observed clears, cause changes and completion survive a restart.
 type humanActionBoundary struct {
-	Key        string `json:"key,omitempty"`
-	Since      string `json:"since,omitempty"`
-	NotBefore  string `json:"not_before,omitempty"`
-	EventID    string `json:"event_id,omitempty"`
-	Assignment string `json:"assignment_id,omitempty"`
-	Uncertain  bool   `json:"uncertain,omitempty"`
+	Key         string `json:"key,omitempty"`
+	Since       string `json:"since,omitempty"`
+	OriginSince string `json:"origin_since,omitempty"`
+	NotBefore   string `json:"not_before,omitempty"`
+	EventID     string `json:"event_id,omitempty"`
+	Assignment  string `json:"assignment_id,omitempty"`
+	Uncertain   bool   `json:"uncertain,omitempty"`
+	Checksum    string `json:"checksum"`
 }
 type humanActionBoundaries struct {
 	Version int                            `json:"version"`
@@ -277,8 +305,13 @@ func trackHumanActionBoundaries(project string, items, signals map[string]map[st
 	state := humanActionBoundaries{Version: 1, Items: map[string]humanActionBoundary{}}
 	data, err := os.ReadFile(path)
 	if err == nil {
-		if err = json.Unmarshal(data, &state); err != nil {
+		decoder := json.NewDecoder(bytes.NewReader(data))
+		decoder.DisallowUnknownFields()
+		if err = decoder.Decode(&state); err != nil {
 			return err
+		}
+		if err = decoder.Decode(new(any)); err != io.EOF {
+			return errors.New("extra human action boundary JSON")
 		}
 		if state.Version != 1 || state.Items == nil {
 			return errors.New("invalid human action boundaries")
@@ -296,6 +329,11 @@ func trackHumanActionBoundaries(project string, items, signals map[string]map[st
 	}
 	for id := range tasks {
 		old, seen := state.Items[id]
+		if seen {
+			if err := validateHumanActionBoundary(project, id, old, journal, decisions[id], items[id], signals[id], now); err != nil {
+				return err
+			}
+		}
 		for _, stamp := range []string{old.Since, old.NotBefore} {
 			if stamp != "" {
 				at, e := time.Parse(time.RFC3339Nano, stamp)
@@ -312,6 +350,7 @@ func trackHumanActionBoundaries(project string, items, signals map[string]map[st
 			if seen && old.Assignment != "" && assignment == "" && sameHumanCauseKey(old.Key, key) {
 				// Lost identity collection is not recovery or a new assignment.
 				next.Uncertain = true
+				next.Checksum = humanBoundaryChecksum(next)
 				state.Items[id] = next
 				dirty = dirty || next != old
 				delete(decisions, id)
@@ -333,19 +372,32 @@ func trackHumanActionBoundaries(project string, items, signals map[string]map[st
 			} else if old.Key == key && old.EventID != "" && (old.Uncertain || old.Since == decision.Since) {
 				decision.EventID = old.EventID
 			}
+			if old.Key == "" && old.NotBefore != "" {
+				next.NotBefore = decision.Since
+			}
+			next.OriginSince = decision.Since
+			if old.Key == key && old.EventID == decision.EventID && old.OriginSince != "" {
+				next.OriginSince = old.OriginSince
+			}
+			previous := previousHumanEpisode(id, key, next.OriginSince, journal)
+			if previous != "" {
+				next.NotBefore = next.OriginSince
+			}
+			decision.LegacyPreviousSince = previous
 			next.Assignment, next.EventID, next.Uncertain = assignment, decision.EventID, false
 			next.Key, next.Since = key, decision.Since
 			decision.LegacyNotBefore = next.NotBefore
 			decisions[id] = decision
 		} else if old.Key != "" {
 			if authoritativeHumanCauseClear(old.Key, items[id], signals[id]) {
-				next.Key, next.Since, next.EventID = "", "", ""
+				next.Key, next.Since, next.EventID, next.OriginSince = "", "", "", ""
 				next.NotBefore = now.Format(time.RFC3339Nano)
 				next.Uncertain = false
 			} else {
 				next.Uncertain = true
 			}
 		}
+		next.Checksum = humanBoundaryChecksum(next)
 		if !seen || old != next {
 			state.Items[id] = next
 			dirty = true
@@ -358,10 +410,7 @@ func trackHumanActionBoundaries(project string, items, signals map[string]map[st
 	if err != nil {
 		return err
 	}
-	if err = os.WriteFile(path+".tmp", append(body, '\n'), 0600); err != nil {
-		return err
-	}
-	return os.Rename(path+".tmp", path)
+	return persistHumanActionState(path, append(body, '\n'))
 }
 
 func sameHumanCauseKey(left, right string) bool {
@@ -385,4 +434,236 @@ func authoritativeHumanCauseClear(key string, item, signal map[string]any) bool 
 		return toString(signal["runtime_state"]) == string(runtimeobs.StateRunning) || toString(signal["runtime_state"]) == string(runtimeobs.StateCompleted)
 	}
 	return false
+}
+
+func HumanActionRequiresRuntime(condition map[string]any) bool {
+	proof, ok := condition["human_action_basis"].(*humanActionProof)
+	return ok && proof != nil && proof.source == "observed_current_execution"
+}
+
+func humanBoundaryChecksum(value humanActionBoundary) string {
+	value.Checksum = ""
+	body, _ := json.Marshal(value)
+	sum := sha256.Sum256(body)
+	return hex.EncodeToString(sum[:])
+}
+
+func validateHumanActionBoundary(project, task string, b humanActionBoundary, journal notificationJournal, current HumanActionDecision, item, signal map[string]any, now time.Time) error {
+	bad := func() error { return errors.New("inconsistent human action boundary tuple") }
+	if b.Checksum == "" || b.Checksum != humanBoundaryChecksum(b) {
+		return bad()
+	}
+	if b.Key == "" {
+		if b.Since != "" || b.EventID != "" || b.OriginSince != "" {
+			return bad()
+		}
+		return nil
+	}
+	if b.Since == "" || b.EventID == "" || b.OriginSince == "" {
+		return bad()
+	}
+	checkpoint, err := time.Parse(time.RFC3339Nano, b.Since)
+	if err != nil || checkpoint.After(now) {
+		return bad()
+	}
+	originTime, e := time.Parse(time.RFC3339Nano, b.OriginSince)
+	if e != nil || originTime.After(checkpoint) {
+		return bad()
+	}
+	previous := previousHumanEpisode(task, b.Key, b.OriginSince, journal)
+	if previous != "" && b.NotBefore != b.OriginSince {
+		return bad()
+	}
+	if b.NotBefore != "" && b.NotBefore != b.OriginSince {
+		return bad()
+	}
+	parts := strings.Split(b.Key, "\x00")
+	if len(parts) < 2 || (b.Assignment != "" && (len(parts) != 3 || parts[2] != b.Assignment)) || (b.Assignment == "" && len(parts) != 2) {
+		return bad()
+	}
+	foundCheckpoint := false
+	observation, hasObservation := journal.Items[task]
+	if hasObservation && observation.ConditionKey == b.Key && observation.ConditionSince == b.Since {
+		foundCheckpoint = true
+	}
+	var origin map[string]any
+	gap := false
+	for _, event := range journal.Events {
+		if toString(event["task_id"]) != task {
+			continue
+		}
+		if toString(event["id"]) == b.EventID {
+			origin = event
+		}
+		if toString(event["condition_key"]) == b.Key && toString(event["condition_since"]) == b.Since && toString(event["assignment_id"]) == b.Assignment {
+			foundCheckpoint = true
+		}
+		since, e := time.Parse(time.RFC3339Nano, toString(event["condition_since"]))
+		if e == nil && !since.Before(checkpoint) && toString(event["assignment_id"]) == "" && sameHumanCauseKey(b.Key, toString(event["condition_key"])) {
+			gap = true
+		}
+	}
+	if origin != nil {
+		if !HumanActionKind(toString(origin["kind"])) {
+			return bad()
+		}
+		if toString(origin["condition_key"]) != "" {
+			if toString(origin["condition_key"]) != b.Key || toString(origin["assignment_id"]) != b.Assignment || !foundCheckpoint {
+				return bad()
+			}
+			since, e := time.Parse(time.RFC3339Nano, toString(origin["condition_since"]))
+			if e != nil || since.After(checkpoint) || !since.Equal(originTime) {
+				return bad()
+			}
+			if b.NotBefore != "" {
+				floor, e := time.Parse(time.RFC3339Nano, b.NotBefore)
+				if e != nil || since.Before(floor) {
+					return bad()
+				}
+			}
+			if !since.Equal(checkpoint) {
+				bridge := false
+				for _, event := range journal.Events {
+					if toString(event["task_id"]) != task {
+						continue
+					}
+					at, e := time.Parse(time.RFC3339Nano, toString(event["condition_since"]))
+					if e != nil || !at.After(since) || at.After(checkpoint) {
+						continue
+					}
+					if toString(event["kind"]) == "completed" || !sameHumanCauseKey(b.Key, toString(event["condition_key"])) {
+						return bad()
+					}
+					if toString(event["assignment_id"]) == "" {
+						bridge = true
+					}
+				}
+				if !bridge {
+					return bad()
+				}
+			}
+		} else {
+			// A retained pre-schema canonical event must be the journal's explicit
+			// migration alias, not an arbitrary transport/source ID supplied here.
+			if !hasObservation || observation.ConditionEventID != b.EventID || observation.ConditionKey != b.Key || observation.ConditionSince != b.Since {
+				return bad()
+			}
+		}
+	} else {
+		// A consumed cold-start baseline has a persisted canonical observation but
+		// deliberately no outbound event. Its identity is deterministic, not caller
+		// supplied. Existing historical assignment facts permit a later transition.
+		if b.EventID != humanActionEventID(task, b.Key, b.OriginSince) || b.Since != b.OriginSince {
+			return bad()
+		}
+		if !foundCheckpoint {
+			// A last-known consumed baseline may legitimately be superseded by
+			// a NEW canonical episode. Its checksum and deterministic identity
+			// are mandatory; the successor must be independently persisted.
+			successor := false
+			for _, event := range journal.Events {
+				at, e := time.Parse(time.RFC3339Nano, toString(event["condition_since"]))
+				if e == nil && at.After(checkpoint) && toString(event["task_id"]) == task && toString(event["condition_key"]) != "" {
+					successor = true
+				}
+				completed, e := time.Parse(time.RFC3339Nano, toString(event["at"]))
+				if e == nil && completed.After(checkpoint) && toString(event["task_id"]) == task && toString(event["kind"]) == "completed" {
+					successor = true
+				}
+			}
+			if !successor && !authoritativeHumanCauseClear(b.Key, item, signal) {
+				return bad()
+			}
+			if b.Assignment != "" {
+				assignment, e := runtimeobs.FindAssignment(project, b.Assignment)
+				assigned, te := time.Parse(time.RFC3339Nano, assignment.AssignedAt)
+				if e != nil || te != nil || assignment.TaskID != task || assigned.After(originTime) {
+					return bad()
+				}
+			}
+		}
+	}
+	if b.Uncertain && current.Condition != nil && toString(current.Condition["key"]) == b.Key && toString(current.Condition["assignment_id"]) == b.Assignment && !gap {
+		return bad()
+	}
+	return nil
+}
+
+// The commit point is rename. Temp file Sync and directory Sync establish the
+// normal filesystem durability boundary; a post-rename sync error suppresses
+// delivery and retains a complete committed record, never a partial overwrite.
+var humanStateFileSync = func(file *os.File) error { return file.Sync() }
+var humanStateDirectorySync = func(dir *os.File) error { return dir.Sync() }
+var persistHumanActionState = writeHumanActionState
+
+func writeHumanActionState(path string, body []byte) error {
+	dir, err := os.Open(filepath.Dir(path))
+	if err != nil {
+		return err
+	}
+	defer dir.Close()
+	temp, err := os.CreateTemp(filepath.Dir(path), ".human-action-state-*.tmp")
+	if err != nil {
+		return err
+	}
+	name := temp.Name()
+	defer os.Remove(name)
+	if err = temp.Chmod(0600); err == nil {
+		_, err = temp.Write(body)
+	}
+	if err == nil {
+		err = humanStateFileSync(temp)
+	}
+	closeErr := temp.Close()
+	if err != nil {
+		return err
+	}
+	if closeErr != nil {
+		return closeErr
+	}
+	if err = os.Rename(name, path); err != nil {
+		return err
+	}
+	return humanStateDirectorySync(dir)
+}
+
+// An earlier canonical cause/completion is independent evidence that this is
+// not the first episode. Identity-collection gaps alone are not recovery.
+func previousHumanEpisode(task, key, origin string, journal notificationJournal) string {
+	start, e := time.Parse(time.RFC3339Nano, origin)
+	if e != nil {
+		return ""
+	}
+	var latest time.Time
+	for _, event := range journal.Events {
+		if toString(event["task_id"]) != task {
+			continue
+		}
+		if !HumanActionKind(toString(event["kind"])) && toString(event["kind"]) != "completed" {
+			continue
+		}
+		raw := toString(event["condition_since"])
+		if raw == "" {
+			raw = toString(event["at"])
+		}
+		at, e := time.Parse(time.RFC3339Nano, raw)
+		if e != nil || !at.Before(start) {
+			continue
+		}
+		// Legacy completion stamps have second precision. They cannot prove
+		// ordering against an origin inside that same second.
+		if toString(event["kind"]) == "completed" && !at.Add(time.Second).Before(start) {
+			continue
+		}
+		if toString(event["kind"]) != "completed" && toString(event["assignment_id"]) == "" && sameHumanCauseKey(key, toString(event["condition_key"])) {
+			continue
+		}
+		if at.After(latest) {
+			latest = at
+		}
+	}
+	if latest.IsZero() {
+		return ""
+	}
+	return latest.Format(time.RFC3339Nano)
 }
