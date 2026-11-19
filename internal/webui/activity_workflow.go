@@ -240,7 +240,7 @@ func readReviewerPresentation(project, task string, existing *runtimeobs.Ledger)
 			}
 			if formal {
 				role := "reviewer:" + strings.TrimPrefix(a.AgentPath, "/root/controller/reviewer/")
-				if s, e := contextlife.Read(project, role); e == nil && s.OwnerAttempt == a.AttemptID && s.Observation != nil && s.Observation.AttemptID == a.AttemptID {
+				if s, e := contextlife.Read(project, role); e == nil && s.OwnerAttempt == a.AttemptID && s.Observation != nil && s.Observation.AttemptID == a.AttemptID && a.Provider != "" && s.Observation.Provider == a.Provider {
 					v.ContextStatus = contextlife.Decide(role, s.Observation, 0, "").ContextStatus
 				}
 			}
