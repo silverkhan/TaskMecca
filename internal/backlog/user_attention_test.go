@@ -107,3 +107,44 @@ func userReason(row Record, review, signal map[string]any) map[string]any {
 	reason, _ := canonicalOperationalState(row, review, signal)
 	return reason
 }
+
+func TestCanonicalExternalWaitRequiresItsOwnHumanActionBasis(t *testing.T) {
+	row := Record{ID: "A-14", State: "hold", Location: "active", Fields: map[string]string{"대기유형": "external", "대기": "외부 응답을 기다리는 일반 서술"}}
+	stale := map[string]any{"wait_kind": "user", "wait_note": "Repository access required", "resume_condition": "Owner: grant repository access"}
+	reason, condition := canonicalOperationalState(row, stale, nil)
+	if len(reason) != 0 || len(condition) != 0 {
+		t.Fatal("external diagnostic borrowed stale user review", reason, condition)
+	}
+	row.Fields["대기"] = "External owner decision required"
+	row.Fields["재개조건"] = "Owner: provide requested decision"
+	reason, condition = canonicalOperationalState(row, stale, nil)
+	if reason["message"] != row.Fields["대기"] || condition["resume_condition"] != row.Fields["재개조건"] || !HumanActionCondition(condition) {
+		t.Fatal("genuine canonical external action was hidden or overwritten", reason, condition)
+	}
+}
+
+func TestCanonicalExternalWaitDoesNotFillMissingFieldsFromUserReview(t *testing.T) {
+	stale := map[string]any{"wait_kind": "user", "wait_note": "Repository access required", "resume_condition": "Owner: grant repository access"}
+	for _, missing := range []string{"reason", "action", "both"} {
+		t.Run(missing, func(t *testing.T) {
+			fields := map[string]string{"대기유형": "external", "대기": "Repository access required", "재개조건": "Owner: grant repository access"}
+			if missing == "reason" || missing == "both" {
+				delete(fields, "대기")
+			}
+			if missing == "action" || missing == "both" {
+				delete(fields, "재개조건")
+			}
+			reason, condition := canonicalOperationalState(Record{ID: "A-14", State: "hold", Location: "active", Fields: fields}, stale, nil)
+			if len(reason) != 0 || len(condition) != 0 {
+				t.Fatal("canonical external borrowed stale user fields", reason, condition)
+			}
+		})
+	}
+}
+func TestUnsupportedExternalWaitDoesNotHideCurrentExecutionError(t *testing.T) {
+	row := Record{ID: "A-14", State: "hold", Location: "active", Fields: map[string]string{"대기유형": "external", "대기": "외부 응답을 기다리는 일반 서술"}}
+	reason, condition := canonicalOperationalState(row, nil, map[string]any{"health": "execution_interrupted", "runtime_state": "errored", "human_action_runtime_verified": true})
+	if reason["type"] != "execution_interrupted" || condition["kind"] != "interrupted" || !HumanActionCondition(condition) {
+		t.Fatal("external diagnostic hid current execution error", reason, condition)
+	}
+}

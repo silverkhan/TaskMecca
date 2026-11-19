@@ -242,18 +242,30 @@ func canonicalOperationalStateUnsealed(row Record, review, signal map[string]any
 	}
 
 	// Backlog hold is a sensor input. It is interpreted here exactly once.
-	waitKind := strings.TrimSpace(row.Fields["대기유형"])
+	canonicalWaitKind := strings.TrimSpace(row.Fields["대기유형"])
+	waitKind := canonicalWaitKind
 	if waitKind == "" {
 		waitKind = toString(review["wait_kind"])
+	}
+	waitReview := review
+	if canonicalWaitKind == "external" {
+		// A stale user review cannot fill missing canonical external fields.
+		waitReview = nil
 	}
 	if row.State == "hold" && (waitKind == "user" || waitKind == "external") {
 		reason = map[string]any{
 			"type": "user_intervention", "severity": "danger", "title": "사용자 개입 필요",
-			"message":          firstNonEmpty(row.Fields["대기"], toString(review["wait_note"]), "사용자 입력 또는 판단을 기다리고 있습니다."),
-			"resume_condition": firstNonEmpty(row.Fields["재개조건"], toString(review["resume_condition"])), "evidence": firstNonEmpty(row.Fields["대기근거"], toString(review["wait_evidence"])),
+			"message":          firstNonEmpty(row.Fields["대기"], toString(waitReview["wait_note"]), "사용자 입력 또는 판단을 기다리고 있습니다."),
+			"resume_condition": firstNonEmpty(row.Fields["재개조건"], toString(waitReview["resume_condition"])), "evidence": firstNonEmpty(row.Fields["대기근거"], toString(waitReview["wait_evidence"])),
 		}
 		reason["human_action_basis"] = requestedHumanAction(toString(reason["message"]), toString(reason["resume_condition"]))
 		condition = notificationCondition("intervention", "hold:user", reason, signal)
+		// An external wait is not a user-attention request merely because an
+		// older review called it one. Only an independently supported human
+		// action (or authoritative current runtime wait/error) may promote it.
+		if waitKind == "external" && !validHumanActionBasis(condition) {
+			reason, condition = map[string]any{}, map[string]any{}
+		}
 	}
 
 	if signal == nil || len(reason) > 0 {

@@ -18,7 +18,9 @@ func TestOperationExecutionOverlayDoesNotRewriteHistoryButActionChangesPersist(t
 	if err := maintenance.RegisterProject(project); err != nil {
 		t.Fatal(err)
 	}
-	a83TypedActionFixture(t, project, "A-83", "Owner permission required", "Owner: approve access", runtimeobs.StateRunning)
+	reason := "Repository access approval required"
+	firstAction := "Owner: approve repository access"
+	a83TypedActionFixture(t, project, "A-83", reason, firstAction, runtimeobs.StateRunning)
 	installA83MockCurrentExecution(t)
 	now := time.Now().UTC()
 	first, err := scanOperationProject(project, now)
@@ -29,6 +31,14 @@ func TestOperationExecutionOverlayDoesNotRewriteHistoryButActionChangesPersist(t
 		t.Fatal("missing current typed cause/projection", first)
 	}
 	actionID := first.Actions[0].ID
+
+	decisions, decisionErr := currentNotificationDecisions(project, "")
+	decision, found := decisions["A-83"]
+	if decisionErr != nil || !found || decision.EventID == "" || decision.Condition["message"] != reason || decision.Condition["resume_condition"] != firstAction {
+		t.Fatal("fixture has no genuine current human action", decisions, decisionErr)
+	}
+	deliveryID := decision.EventID // shared cause episode; immutable operation source remains actionID
+
 	path := operationJournalPath(project)
 	raw, err := os.ReadFile(path)
 	if err != nil {
@@ -63,7 +73,7 @@ func TestOperationExecutionOverlayDoesNotRewriteHistoryButActionChangesPersist(t
 	if !os.SameFile(baseline, after) || !baseline.ModTime().Equal(after.ModTime()) || baseline.Size() != after.Size() {
 		t.Fatal("read-only refresh/delivery rewrote journal or detached heartbeat")
 	}
-	if len(sent) != 2 || sent[0].ID != actionID || sent[1].ID != actionID {
+	if len(sent) != 2 || sent[0].ID != deliveryID || sent[1].ID != deliveryID {
 		t.Fatal("real human cause/retry identity lost", sent)
 	}
 	persisted, err := readOperationJournal(project)
@@ -77,11 +87,12 @@ func TestOperationExecutionOverlayDoesNotRewriteHistoryButActionChangesPersist(t
 	if err != nil {
 		t.Fatal(err)
 	}
-	newAction := "Owner: grant the explicitly requested repository read permission"
-	if err := os.WriteFile(canonical, []byte(strings.Replace(string(document), "Owner: approve access", newAction, 1)), 0600); err != nil {
+	newAction := "Owner: approve requested repository access"
+	if err := os.WriteFile(canonical, []byte(strings.Replace(string(document), firstAction, newAction, 1)), 0600); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := scanOperationProject(project, now.Add(16*time.Second)); err != nil {
+	_, err = scanOperationProject(project, now.Add(16*time.Second))
+	if err != nil {
 		t.Fatal(err)
 	}
 	changed, err := os.Stat(path)
@@ -92,6 +103,13 @@ func TestOperationExecutionOverlayDoesNotRewriteHistoryButActionChangesPersist(t
 	if err != nil || os.SameFile(after, changed) || len(persisted.Actions) != 1 || persisted.Actions[0].NextAction != newAction || persisted.Actions[0].ID != actionID {
 		t.Fatal("durable action change not persisted under same unresolved identity", persisted, err)
 	}
+
+	changedDecisions, decisionErr := currentNotificationDecisions(project, "")
+	changedDecision, found := changedDecisions["A-83"]
+	if decisionErr != nil || !found || changedDecision.EventID != deliveryID || changedDecision.Condition["resume_condition"] != newAction {
+		t.Fatal("matching changed action lost shared retry episode", changedDecisions, decisionErr)
+	}
+
 }
 
 func TestOperationNoChangeScanUsesDurableHeartbeat(t *testing.T) {
