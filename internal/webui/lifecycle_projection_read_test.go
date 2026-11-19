@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -26,18 +27,32 @@ func TestLifecycleProjectionBypassesMonitoringAndReportsFreshness(t *testing.T) 
 	if err := os.WriteFile(filepath.Join(folder, "000001.A-1.read.todo.md"), []byte("# A-1 Read only\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
+	entered, release, finished := make(chan struct{}), make(chan struct{}), make(chan bool, 1)
+	go func() {
+		finished <- maintenance.WithProjectMonitoring(project, func() { close(entered); <-release })
+	}()
+	<-entered
+	releaseMonitoring := sync.OnceFunc(func() {
+		close(release)
+		if !<-finished {
+			t.Error("monitor unexpectedly suppressed")
+		}
+	})
+	// Always release the global registry read lock, including on Fatal. This
+	// cleanup runs before the registered fixture joins its background feed.
+	t.Cleanup(releaseMonitoring)
 	handler, err := Handler(project, "", "test")
 	if err != nil {
 		t.Fatal(err)
 	}
+	// Prime while holding the same monitoring lock used by the attention
+	// feed. Its startup reconciliation must not overwrite a verified snapshot
+	// between this control pass and the read whose lock bypass we measure.
 	for i := 0; i < 2; i++ {
 		if err := backlog.RefreshLifecycleProjection(project, folder, i == 0); err != nil {
 			t.Fatal(err)
 		}
 	}
-	entered, release, finished := make(chan struct{}), make(chan struct{}), make(chan bool, 1)
-	go func() { finished <- maintenance.WithProjectMonitoring(project, func() { close(entered); <-release }) }()
-	<-entered
 	response := make(chan *httptest.ResponseRecorder, 1)
 	go func() {
 		r := httptest.NewRecorder()
@@ -70,13 +85,9 @@ func TestLifecycleProjectionBypassesMonitoringAndReportsFreshness(t *testing.T) 
 			t.Fatal("projection contains body")
 		}
 	case <-time.After(2 * time.Second):
-		close(release)
 		t.Fatal("lifecycle read waited for monitoring mutex")
 	}
-	close(release)
-	if !<-finished {
-		t.Fatal("monitor unexpectedly suppressed")
-	}
+	releaseMonitoring()
 	// Wait for the scheduled control job before removing fixture files.
 	deadline := time.Now().Add(10 * time.Second)
 	for {

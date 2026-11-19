@@ -245,7 +245,13 @@ func ValidateReview(task string, implementation, reviewer Identity, p *Policy, s
 	if p.Reviewer.AgentPath != "" && p.Reviewer.AgentPath != reviewer.AgentPath {
 		return "unknown", errors.New("reviewer_path_mismatch")
 	}
-	if p.Reviewer.Role != Role(reviewer.AgentPath) || p.Reviewer.Role == "unknown" {
+	// Older supported receipts named a Worker at this exact review-purpose
+	// path. Keep that stored identity, without admitting it to fresh formal
+	// Reviewer dispatch (EvaluateReviewer) or changing Role/WorkerPath.
+	historicalWorker := p.Reviewer.Role == "worker" &&
+		p.Reviewer.AgentPath == "/root/controller/reviewer" && reviewer.AgentPath == p.Reviewer.AgentPath &&
+		p.ReviewRequirement == nil && p.Review != nil && p.Review.AttemptID == reviewer.AttemptID
+	if !historicalWorker && (p.Reviewer.Role != Role(reviewer.AgentPath) || p.Reviewer.Role == "unknown") {
 		return "unknown", errors.New("reviewer_role_mismatch")
 	}
 	if statement.Result != "accepted" || reportSHA == "" || reportSHA != statement.ReportSHA256 || len(statement.Source.Files) == 0 || len(current.Files) == 0 || statement.Source.Digest() != current.Digest() {

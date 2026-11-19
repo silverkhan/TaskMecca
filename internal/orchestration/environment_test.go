@@ -220,13 +220,16 @@ func linkedObservation(r DispatchRequest, receipt CreationReceipt, now time.Time
 	return CreationObservation{CreationReceipt: receipt, Provider: r.Provider, SourceCWD: r.SourceCWD, Source: "fixture:official-host", CheckedAt: now, T3Read: read, T3List: &list, NativeLink: &NativeLinkObservation{NativeSessionID: receipt.NativeSessionID, T3ThreadID: receipt.T3ThreadID, Provider: r.Provider, Kind: "provider_native_session", Source: "fixture:trusted-supported-native-projection", CheckedAt: now}}
 }
 func TestAllManagedRolesAndIsolation(t *testing.T) {
-	for _, role := range []string{"controller", "registrar", "worker"} {
+	for _, role := range []string{"controller", "registrar", "worker", "reviewer"} {
 		for _, worktree := range []bool{false, true} {
 			for _, mode := range []Mode{ModeA, ModeB, ModeC, ModeD} {
 				e, r, now := dispatchFixture()
 				r.Role, r.SeparateWorktree = role, worktree
-				if role != "worker" {
+				if role != "worker" && role != "reviewer" {
 					r.Worker = ""
+				}
+				if role == "reviewer" {
+					r.Purpose = "reviewer"
 				}
 				p := PlanDispatch(e, r, mode, now)
 				if mode == ModeC || mode == ModeD {
@@ -246,13 +249,24 @@ func TestAllManagedRolesAndIsolation(t *testing.T) {
 		}
 	}
 	e, r, now := dispatchFixture()
+	// Subcontroller has no supported session-naming directive on this managed
+	// dispatch route; a purpose label must not bypass that role boundary.
+	r.Role = "subcontroller"
+	if p := PlanDispatch(e, r, ModeB, now); p.Allowed || len(p.Reasons) != 1 || p.Reasons[0] != "supported_role_naming_directive_required" {
+		t.Fatalf("unsupported subcontroller dispatch: %+v", p)
+	}
+	r.Role = "worker"
 	r.Purpose = "reviewer" // Actual identity is still officially named Worker.
 	if !PlanDispatch(e, r, ModeB, now).Allowed {
 		t.Fatal("review purpose must not invent a reviewer naming role")
 	}
 	r.Role = "reviewer"
-	if PlanDispatch(e, r, ModeB, now).Allowed {
-		t.Fatal("unsupported naming role")
+	if !PlanDispatch(e, r, ModeB, now).Allowed {
+		t.Fatal("formal Reviewer review purpose rejected")
+	}
+	r.Purpose = "implementation"
+	if p := PlanDispatch(e, r, ModeB, now); p.Allowed || len(p.Reasons) != 1 || p.Reasons[0] != "reviewer_cannot_dispatch_product_implementation" {
+		t.Fatalf("formal Reviewer implementation boundary: %+v", p)
 	}
 	r.Role = "worker"
 	r.Purpose = "implementation"
