@@ -192,6 +192,9 @@ func TestOperationMonitorScansAllProjectsWithoutBrowserSubscription(t *testing.T
 	t.Setenv("TASK_MECCA_HOME", t.TempDir())
 	primary := testOperationProject(t)
 	secondary := testOperationProject(t)
+	// Stop and join both projects' feeds before TempDir/environment cleanup.
+	stopProjectAttentionFeedsForTest(t, primary)
+	stopProjectAttentionFeedsForTest(t, secondary)
 	if err := maintenance.RegisterProject(primary); err != nil {
 		t.Fatal(err)
 	}
