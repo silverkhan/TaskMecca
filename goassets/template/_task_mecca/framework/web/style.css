@@ -2480,8 +2480,8 @@ select.tm-combo-native{position:absolute!important;width:1px!important;height:1p
 :is(.workflow-fact-point,.workflow-gap-paint):is(:hover,:focus-visible,.is-selected){outline:2px solid var(--accent);outline-offset:2px;z-index:3}
 .workflow-marker-options{position:relative;flex:none;font-size:11px;color:var(--muted)}
 .workflow-marker-options>summary{cursor:pointer;min-height:24px;line-height:24px;white-space:nowrap;padding:0 4px}
-.workflow-agent-label{position:relative;flex-wrap:wrap}
-.workflow-agent-label>.workflow-row-label{flex:1 0 100%}
+.workflow-agent-label:has(>.workflow-marker-options){position:relative;flex-wrap:wrap}
+.workflow-agent-label:has(>.workflow-marker-options)>.workflow-row-label{flex:1 0 100%}
 .workflow-agent-label>.workflow-marker-options{margin-inline-start:12px}
 .workflow-unmeasured-row>span{display:flex;flex-wrap:wrap;align-items:center;gap:2px 8px}
 .workflow-gap-paint.workflow-state-native_observed{border-block:1px dashed color-mix(in srgb,var(--muted) 35%,transparent)}
