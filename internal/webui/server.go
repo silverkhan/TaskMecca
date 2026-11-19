@@ -1854,7 +1854,7 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 			return
 		}
 
-		writeJSON(w, item, 200)
+		writeJSON(w, reviewerPresentationEnvelope(item,readReviewerPresentation(activeProject,id,nil)), 200)
 	})
 
 	sendEmbedded := func(w http.ResponseWriter, name string) {

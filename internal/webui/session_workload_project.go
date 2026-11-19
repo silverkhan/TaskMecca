@@ -103,7 +103,7 @@ func workloadSessionsHandler(w http.ResponseWriter, r *http.Request) {
 		enrichSessionWorkload(activeProject, ledger, &projection, now)
 		detail.RootSession = projection.Active.Items[0]
 		detail.CurrentExecution = projection.CurrentExecution
-		writeJSON(w, detail, 200)
+		writeJSON(w, reviewerPresentationEnvelope(detail,readReviewerPresentation(activeProject,"",&ledger)), 200)
 		return
 	}
 	historicalPage, _ := strconv.Atoi(r.URL.Query().Get("historical_page"))
@@ -113,7 +113,7 @@ func workloadSessionsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	enrichSessionWorkload(activeProject, ledger, &data, now)
-	writeJSON(w, data, 200)
+	writeJSON(w, reviewerPresentationEnvelope(data,readReviewerPresentation(activeProject,"",&ledger)), 200)
 
 }
 

@@ -76,7 +76,8 @@ type StatusReport struct {
 }
 func validRole(role string) bool {
  switch role {case "controller","registrar":return true}
- return strings.HasPrefix(role,"worker:") && len(role)>7 && len(role)<96 && validName(role[7:])
+ for _,prefix:=range []string{"worker:","reviewer:"} {if strings.HasPrefix(role,prefix) {return len(role)<96&&validName(strings.TrimPrefix(role,prefix))}}
+ return false
 }
 func validName(v string) bool {
  if v=="" {return false}
@@ -86,6 +87,7 @@ func validName(v string) bool {
 func rolePath(role string) string {
  if role=="controller" {return "/root/controller"}
  if role=="registrar" {return "/root/registrar"}
+ if strings.HasPrefix(role,"reviewer:") {return "/root/controller/reviewer/"+strings.TrimPrefix(role,"reviewer:")}
  return "/root/controller/"+strings.TrimPrefix(role,"worker:")
 }
 func filePath(project,role string) string {
@@ -157,7 +159,7 @@ func checkpoint(project,role string,now time.Time)(Checkpoint,error){
  if rows,ok:=coord["doing"].([]map[string]any);ok {
   for _,item:=range rows {
    id,_:=item["id"].(string);agent,_:=item["agent"].(string);scope,_:=item["change_scope"].(string)
-   if role=="controller" || (strings.HasPrefix(role,"worker:")&&agent==rolePath(role)){
+  if role=="controller" || ((strings.HasPrefix(role,"worker:")||strings.HasPrefix(role,"reviewer:"))&&agent==rolePath(role)){
     snap.ActiveDoing=append(snap.ActiveDoing,id+"|"+agent+"|"+scope)
    }
   }
@@ -168,7 +170,8 @@ func checkpoint(project,role string,now time.Time)(Checkpoint,error){
   if item.Applied {continue}
   if (role=="controller"&&item.Target.AgentPath==rolePath(role)) ||
     (role=="registrar"&&item.SourceAgentPath==rolePath(role)) ||
-    (strings.HasPrefix(role,"worker:")&&item.SourceAgentPath==rolePath(role)){
+   (strings.HasPrefix(role,"worker:")&&item.SourceAgentPath==rolePath(role)) ||
+   (strings.HasPrefix(role,"reviewer:")&&(item.SourceAgentPath==rolePath(role)||item.Target.AgentPath==rolePath(role))){
    snap.PendingHandoffs=append(snap.PendingHandoffs,id)
   }
  }
@@ -212,6 +215,7 @@ func Decide(role string,o *Observation,age time.Duration,event string)Decision {
  if strings.HasPrefix(role,"worker:") && event=="worker_done" && d.Action=="continue"{
   d.Action="prepare";d.Reason="worker task completed; rotate at idle boundary"
  }
+ if strings.HasPrefix(role,"reviewer:") && (event=="review_completed"||event=="review_iteration_completed") && d.Action=="continue" {d.Action="prepare";d.Reason="review idle boundary; checkpoint prior source, findings and errors before native succession"}
  if d.Action!="continue"{d.RequiresNativeAction=true}
  return d
 }
@@ -289,7 +293,7 @@ func Acknowledge(project,role,rotationID,targetAttempt,checkpointSHA string,now 
   if checkpointSHA!=r.Checkpoint.Fingerprint {return errors.New("checkpoint fingerprint mismatch")}
   owner,err:=attemptFor(project,role,r.FromAttempt,now);if err!=nil{return err}
   if owner.Provider!=successor.Provider{return errors.New("cross-provider rotation requires a separate verified adapter")}
-  if owner.SessionID==successor.SessionID&&owner.RuntimeAgentID==successor.RuntimeAgentID{return errors.New("same native session cannot be a fresh successor")}
+  if owner.SessionID==successor.SessionID||owner.RuntimeAgentID==successor.RuntimeAgentID{return errors.New("same native session cannot be a fresh successor")}
   r.ToAttempt=targetAttempt;r.Stage="acknowledged";r.AcknowledgedAt=now.UTC().Format(time.RFC3339Nano)
   return nil
  })

@@ -21,7 +21,7 @@ func runContextCLI(args []string,out,stderr io.Writer)int{
  } else {args=args[1:]}
  flags:=flag.NewFlagSet("context",flag.ContinueOnError);flags.SetOutput(stderr)
  project:=flags.String("project",".","canonical project")
- role:=flags.String("role","","controller|registrar|worker:<canonical-name>")
+ role:=flags.String("role","","controller|registrar|worker:<canonical-name>|reviewer:<canonical-name>")
  event:=flags.String("event","","registration_completed|controller_start|controller_resume|worker_done|worker_blocked")
  attempt:=flags.String("attempt","","exact old owner attempt")
  successor:=flags.String("successor","","exact new runtime attempt")
