@@ -748,3 +748,105 @@ func canonicalRuntimeConditionFixture(task, attempt, state string) map[string]an
 	_, condition := canonicalOperationalState(Record{ID: task, State: "doing", Location: "active"}, nil, map[string]any{"health": "active", "attempt_id": attempt, "runtime_state": state, "human_action_runtime_verified": true})
 	return condition
 }
+
+func TestA88Repair4EverySemanticNounMustBeConsumed(t *testing.T) {
+	nouns := []string{"access", "permission", "input", "answer", "question", "approval", "decision", "credentials"}
+	actions := []string{"Owner: grant repository access.", "Owner: approve repository access.", "User: provide repository input.", "Owner: approve repository decision.", "Operator: provide repository credentials."}
+	for _, left := range nouns {
+		for _, right := range nouns {
+			for actionIndex, next := range actions {
+				for _, upper := range []bool{false, true} {
+					name := fmt.Sprintf("%s_%s/action%d/upper%v", left, right, actionIndex, upper)
+					t.Run(name, func(t *testing.T) {
+						request := "Repository " + left + " " + right + " is required."
+						if upper {
+							request = strings.ToUpper(request)
+							next = strings.ToUpper(next)
+						}
+						// Only the explicitly supported ordered access-approval compound has
+						// one meaning. Repeated nouns, reversed compounds and other mixtures
+						// must not silently discard a semantic token.
+						want := (left == "access" || left == "permission") && right == "approval" && actionIndex == 1
+						got := HumanActionCondition(canonicalRequestConditionFixture(request, next))
+						if got != want {
+							t.Fatalf("request=%q action=%q got%v want%v", request, next, got, want)
+						}
+					})
+				}
+			}
+		}
+	}
+	for _, triple := range []string{"access approval input", "input access approval", "approval access answer", "credentials access approval", "answer input access", "access input answer", "permission approval decision", "access approval approval", "credentials credentials access"} {
+		for _, next := range actions {
+			if HumanActionCondition(canonicalRequestConditionFixture("Repository "+triple+" is required.", next)) {
+				t.Fatal("unconsumed third semantic token authorized", triple, next)
+			}
+		}
+	}
+}
+
+func TestA88Repair4PrivilegesResourcesAndExplicitControls(t *testing.T) {
+	for _, c := range []struct {
+		request, next string
+		want          bool
+	}{
+		{"Repository access approval is required.", "Owner: approve repository access.", true},
+		{"Repository approval access is required.", "Owner: approve repository access.", false},
+		{"Approve repository access", "Owner: approve repository access.", true},
+		{"Approve repository access", "Owner: grant repository access.", false},
+		{"Database read permission approval is required.", "Administrator: approve database read permission.", true},
+		{"Database read write permission is required.", "Administrator: grant database read permission.", false},
+		{"Database read read permission is required.", "Administrator: grant database read permission.", false},
+		{"Database read permission is required.", "Administrator: grant database write permission.", false},
+		{"Database read permission is required.", "Administrator: grant database read permission.", true},
+		{"Service credentials are required.", "Operator: provide service credentials.", true},
+		{"Service access credentials are required.", "Operator: provide service credentials.", false},
+		{"Service credentials input is required.", "Operator: provide service credentials.", false},
+		{"Service read credentials are required.", "Operator: provide service credentials.", false},
+		{"Repository repository access is required.", "Owner: grant repository access.", false},
+		{"Repository access is required.", "Owner: grant repository repository access.", false},
+		{"Repository access is required.", "Repository owner: grant repository access.", true},
+		{"Repository answer is required.", "User: answer repository question.", true},
+		{"User answer to the deployment question is required.", "User: answer the deployment question.", true},
+		{"사용자 답변 대기", "사용자: 요청된 결과의 승인 여부를 답변해 주세요.", true},
+		{"저장소 접근 권한 승인이 필요합니다.", "관리자: 저장소 접근 권한을 승인해 주세요.", true},
+		{"저장소 접근 권한 승인이 필요합니다.", "관리자: 저장소 접근 권한을 부여해 주세요.", false},
+		{"저장소 접근 권한 입력이 필요합니다.", "관리자: 저장소 접근 권한을 부여해 주세요.", false},
+		{"저장소 입력 접근 권한이 필요합니다.", "관리자: 저장소 접근 권한을 부여해 주세요.", false},
+		{"저장소 접근 권한이 필요합니다.", "관리자: 저장소 접근 권한을 부여해 주세요.", true},
+	} {
+		t.Run(c.request+"/"+c.next, func(t *testing.T) {
+			got := HumanActionCondition(canonicalRequestConditionFixture(c.request, c.next))
+			if got != c.want {
+				t.Fatal("intent/object token correspondence", got, c.want, c.request, c.next)
+			}
+		})
+	}
+	// Test inventory independently of the outer sentence grammar as well.
+	for _, text := range []string{"저장소 권한 입력", "저장소 입력 권한", "저장소 권한 답변", "저장소 답변 권한", "저장소 권한 승인 입력", "저장소 승인 결정", "저장소 권한 권한"} {
+		if _, ok := parseHumanObject(text, "", false); ok {
+			t.Fatal("mixed/repeated Korean inventory accepted", text)
+		}
+	}
+}
+
+func TestA88Repair4AnswerNounAndImperativeRemainDistinct(t *testing.T) {
+	for _, c := range []struct {
+		request, next string
+		want          bool
+	}{
+		{"Answer is required.", "User: provide answer.", true},
+		{"Answer required", "User: provide answer.", true},
+		{"Input is required.", "User: provide input.", true},
+		{"Answer the deployment question", "User: answer the deployment question.", true},
+		{"Answer input is required.", "User: provide input.", false},
+		{"Answer access is required.", "Owner: grant access.", false},
+		{"Answer approval is required.", "Owner: approve approval.", false},
+	} {
+		t.Run(c.request, func(t *testing.T) {
+			if got := HumanActionCondition(canonicalRequestConditionFixture(c.request, c.next)); got != c.want {
+				t.Fatal("noun/imperative consumption", c.request, c.next, got, c.want)
+			}
+		})
+	}
+}

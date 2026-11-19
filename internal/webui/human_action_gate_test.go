@@ -505,3 +505,53 @@ func TestA88Repair3IndependentCorrespondenceAcrossSenders(t *testing.T) {
 		})
 	}
 }
+
+func TestA88Repair4MixedIntentAcrossSenders(t *testing.T) {
+	for _, c := range []struct {
+		request, next string
+		want          bool
+	}{
+		{"Repository access answer is required.", "Owner: grant repository access.", false},
+		{"Repository input access is required.", "Owner: grant repository access.", false},
+		{"REPOSITORY ACCESS INPUT IS REQUIRED.", "OWNER: GRANT REPOSITORY ACCESS.", false},
+		{"Repository access approval input is required.", "Owner: approve repository access.", false},
+		{"Service access credentials are required.", "Operator: provide service credentials.", false},
+		{"Repository access is required.", "Owner: grant repository access input.", false},
+		{"Database read write permission is required.", "Administrator: grant database read permission.", false},
+		{"Repository repository access is required.", "Owner: grant repository access.", false},
+		{"Repository access approval is required.", "Owner: approve repository access.", true},
+		{"Database read permission approval is required.", "Administrator: approve database read permission.", true},
+		{"Repository answer is required.", "User: answer repository question.", true},
+		{"Service credentials are required.", "Operator: provide service credentials.", true},
+		{"저장소 접근 권한 승인이 필요합니다.", "관리자: 저장소 접근 권한을 승인해 주세요.", true},
+		{"저장소 접근 권한 입력이 필요합니다.", "관리자: 저장소 접근 권한을 부여해 주세요.", false},
+	} {
+		t.Run(c.request+"/"+c.next, func(t *testing.T) {
+			p := testOperationProject(t)
+			if _, err := backlog.NotificationEvents(p, map[string]map[string]any{}); err != nil {
+				t.Fatal(err)
+			}
+			a83TypedActionFixture(t, p, "A-88", c.request, c.next, runtimeobs.StateRunning)
+			installA83MockCurrentExecution(t)
+			snapshot, err := backlog.AttentionSnapshot(p, "", true)
+			if err != nil {
+				t.Fatal(err)
+			}
+			rows := a88OnlyActions(snapshot["notification_events"].([]map[string]any))
+			fromBacklog := currentBacklogDeliveryEvents(p, "", rows)
+			fromOperations := currentOperationDeliveryEvents(p, []notify.Event{{ID: "candidate", TaskID: "A-88", Kind: "intervention", Message: c.request, ResumeCondition: c.next}})
+			webDeliveryTestCutover(t, p)
+			granted := false
+			for _, row := range rows {
+				decision, err := applyWebDelivery(p, "claim", notificationValue(row["id"]), "", "push")
+				if err != nil {
+					t.Fatal(err)
+				}
+				granted = granted || decision.Granted
+			}
+			if (len(fromBacklog) == 1) != c.want || (len(fromOperations) == 1) != c.want || granted != c.want {
+				t.Fatalf("want%v backlog%+v operations%+v push%v", c.want, fromBacklog, fromOperations, granted)
+			}
+		})
+	}
+}
