@@ -6,6 +6,7 @@ import (
     "strings"
 
     "github.com/silverkhan/TaskMecca/internal/runtimeobs"
+    "github.com/silverkhan/TaskMecca/internal/rolepolicy"
 )
 
 var ErrUnverifiedActor = errors.New("activity actor identity is not verified")
@@ -47,6 +48,7 @@ func ValidateAttribution(e Event, attempts []runtimeobs.Attempt, assignments []r
     case found.AgentPath=="/root/registrar":expectedRole=string(RoleRegistrar)
     case found.AgentPath=="/root/controller":expectedRole=string(RoleController)
     case strings.HasPrefix(found.AgentPath,"/root/controller/sub-"):expectedRole=string(RoleSubController)
+    case rolepolicy.ReviewerPath(found.AgentPath):expectedRole=string(RoleReviewer)
     case strings.HasPrefix(found.AgentPath,"/root/controller/"):expectedRole=string(RoleWorker)
     }
     if expectedRole==""||string(e.Role)!=expectedRole{return deny("role does not match bound agent path")}

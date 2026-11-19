@@ -28,20 +28,21 @@ type ExecutionContext struct {
 }
 
 type TaskEvidence struct {
-	TaskID            string            `json:"task_id"`
-	ContractSHA256    string            `json:"contract_sha256"`
-	AcceptanceSHA256  string            `json:"acceptance_sha256"`
-	OriginalHandoffID string            `json:"original_handoff_id"`
-	Phase             string            `json:"phase"`
-	SourceAttemptID   string            `json:"source_attempt_id,omitempty"`
-	AssignmentID      string            `json:"assignment_id,omitempty"`
-	SourceWorkspace   string            `json:"source_workspace,omitempty"`
-	Source            rolepolicy.Source `json:"source"`
-	ReportFile        string            `json:"report_file,omitempty"`
-	ReportSHA256      string            `json:"report_sha256,omitempty"`
-	Changes           []string          `json:"changes"`
-	Tests             []CheckEvidence   `json:"tests"`
-	OriginalErrors    []string          `json:"original_errors,omitempty"`
+	ReviewRequest     *rolepolicy.ReviewRequest `json:"review_request,omitempty"`
+	TaskID            string                    `json:"task_id"`
+	ContractSHA256    string                    `json:"contract_sha256"`
+	AcceptanceSHA256  string                    `json:"acceptance_sha256"`
+	OriginalHandoffID string                    `json:"original_handoff_id"`
+	Phase             string                    `json:"phase"`
+	SourceAttemptID   string                    `json:"source_attempt_id,omitempty"`
+	AssignmentID      string                    `json:"assignment_id,omitempty"`
+	SourceWorkspace   string                    `json:"source_workspace,omitempty"`
+	Source            rolepolicy.Source         `json:"source"`
+	ReportFile        string                    `json:"report_file,omitempty"`
+	ReportSHA256      string                    `json:"report_sha256,omitempty"`
+	Changes           []string                  `json:"changes"`
+	Tests             []CheckEvidence           `json:"tests"`
+	OriginalErrors    []string                  `json:"original_errors,omitempty"`
 }
 
 type CheckEvidence struct {

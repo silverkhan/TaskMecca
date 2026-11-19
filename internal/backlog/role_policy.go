@@ -25,6 +25,27 @@ func RolePolicyProjection(project, task, raw string) map[string]any {
 	if p == nil {
 		return v
 	}
+	if p.ReviewRequirement != nil {
+		if err := rolepolicy.ValidateRequirementScope(p); err != nil {
+			v["error"] = err.Error()
+			return v
+		}
+		d, err := p.ReviewRequirement.Decide()
+		if err != nil {
+			v["error"] = err.Error()
+			return v
+		}
+		v["review_requirement"] = d
+		if d.Status == "omitted" {
+			if p.Method == "controller_exception" {
+				v["error"] = "controller_exception_requires_independent_review"
+				return v
+			}
+			v["review"] = "omitted"
+			v["review_reason"] = p.ReviewRequirement.OmissionReason
+			return v
+		}
+	}
 	v["implementation"] = p.Method
 	v["policy_sha256"] = rolepolicy.PolicyDigest(p)
 	l, err := runtimeobs.BuildLedger(project, 0, time.Now())

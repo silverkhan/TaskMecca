@@ -108,7 +108,22 @@ func observeRoleStart(in WorkerStart, now time.Time, observe func(string, T3Sele
 		identity.Bound = true
 		identity.TaskID = in.TaskID
 		identity.AgentPath = in.WorkerPath
-		if view := rolepolicy.Evaluate(policy, identity, source, approved); !view.Allowed {
+		view := rolepolicy.Evaluate(policy, identity, source, approved)
+		if rolepolicy.ReviewerPath(in.WorkerPath) {
+			if policy == nil {
+				return fail(errors.New("structured_reviewer_policy_required"))
+			}
+			snapshot, err := rolepolicy.Snapshot(policy.Workspace, policy.Scope)
+			if err != nil {
+				return fail(err)
+			}
+			history, err := ProductImplementationHistory(project, in.TaskID, policy, now)
+			if err != nil {
+				return fail(err)
+			}
+			view = rolepolicy.EvaluateReviewer(policy, identity, policy.Workspace, snapshot, history)
+		}
+		if !view.Allowed {
 			return fail(fmt.Errorf("role_policy_hold: %s; resume: %s", view.Reason, view.ResumeWhen))
 		}
 	}

@@ -174,7 +174,10 @@ func SessionName(g Group,role,worker string,generation int)(string,error) {
  case "root":return g.DisplayPrefix+"Root",nil
  case "registrar":return g.DisplayPrefix+"Registrar",nil
  case "controller":return g.DisplayPrefix+"Controller",nil
- case "worker":
+ case "reviewer":
+        if !workerNamePattern.MatchString(worker)||generation<1{return "",errors.New("reviewer name and generation >= 1 are required")}
+        return fmt.Sprintf("%sReviewer_%s_G%d",g.DisplayPrefix,worker,generation),nil
+    case "worker":
   if !workerNamePattern.MatchString(worker)||generation<1{return "",errors.New("worker name and generation >= 1 are required")}
   return fmt.Sprintf("%sWorker_%s_G%d",g.DisplayPrefix,worker,generation),nil
  default:return "",fmt.Errorf("unknown role %q",role)

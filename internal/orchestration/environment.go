@@ -119,6 +119,9 @@ func PlanDispatch(e Environment, req DispatchRequest, mode Mode, now time.Time) 
 	if !filepath.IsAbs(req.CanonicalProject) || !filepath.IsAbs(req.SourceCWD) || !regexp.MustCompile(`^[a-fA-F0-9]{40}([a-fA-F0-9]{24})?$`).MatchString(req.Base) {
 		return block("source_cwd_and_committed_base_required")
 	}
+	if strings.EqualFold(strings.TrimSpace(req.Role), "reviewer") && req.Purpose == "implementation" {
+		return block("reviewer_cannot_dispatch_product_implementation")
+	}
 	if e.Host == "t3" {
 		if req.CreatorNativeID == "" || req.CreatorT3ThreadID == "" || req.T3ProjectID == "" {
 			return block("explicit_actual_creator_and_t3_project_required")

@@ -41,7 +41,7 @@ func runRuntimeDiagnoseCLI(args []string,out,stderr io.Writer)int{
 	provider:=f.String("provider","codex","codex or claude")
 	agent:=f.String("agent-id","","exact native runtime agent ID")
 	session:=f.String("session-id","","exact provider session ID")
-	role:=f.String("role","","root, controller, worker, or registrar")
+	role:=f.String("role","","root, controller, worker, reviewer, or registrar")
 	limit:=f.Int("limit",4,"recent matched attempts")
 	asJSON:=f.Bool("json",false,"machine-readable evidence")
 	help:=f.Bool("help",false,"show examples")
@@ -55,8 +55,8 @@ func runRuntimeDiagnoseCLI(args []string,out,stderr io.Writer)int{
 	if f.NArg()!=0||(*provider!="codex"&&*provider!="claude")||*limit<=0||*limit>50{
 		fmt.Fprintln(stderr,"invalid options: --provider codex|claude, --limit 1..50 and no positional args");return 2
 	}
-	if *role!=""&&*role!="root"&&*role!="registrar"&&*role!="controller"&&*role!="worker"{
-		fmt.Fprintln(stderr,"--role requires root|registrar|controller|worker");return 2
+	if *role!=""&&*role!="root"&&*role!="registrar"&&*role!="controller"&&*role!="worker"&&*role!="reviewer"{
+		fmt.Fprintln(stderr,"--role requires root|registrar|controller|worker|reviewer");return 2
 	}
 	resolved,err:=runtimeobs.ResolveProject(*project)
 	if err!=nil{fmt.Fprintln(stderr,err);return 1}

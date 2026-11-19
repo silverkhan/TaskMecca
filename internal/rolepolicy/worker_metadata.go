@@ -36,9 +36,23 @@ func ParseWorkerMetadata(raw []byte) (*Policy, error) {
 	if p.Operational.Role != "controller" || p.Operational.AgentPath != "/root/controller" {
 		return nil, errors.New("worker_metadata_operational_owner_invalid")
 	}
-	if p.Reviewer.Role != Role(p.Reviewer.AgentPath) || p.Reviewer.Role == "unknown" || (p.Reviewer.Role == "worker" && !metadataWorkerPath.MatchString(p.Reviewer.AgentPath)) || p.Reviewer.AgentPath == p.Implementation.AgentPath || (p.Reviewer.NativeID != "" && p.Reviewer.NativeID == p.Implementation.NativeID) {
-		return nil, errors.New("worker_metadata_requires_distinct_planned_reviewer")
+	needsReviewer := true
+	if p.ReviewRequirement != nil {
+		d, err := p.ReviewRequirement.Decide()
+		if err != nil {
+			return nil, err
+		}
+		if err := ValidateRequirementScope(&p); err != nil {
+			return nil, err
+		}
+		needsReviewer = d.Status != "omitted"
 	}
+	if needsReviewer || p.Reviewer.Role != "" || p.Reviewer.AgentPath != "" || p.Reviewer.NativeID != "" {
+		if p.Reviewer.Role != Role(p.Reviewer.AgentPath) || p.Reviewer.Role == "unknown" || (p.Reviewer.Role == "worker" && !metadataWorkerPath.MatchString(p.Reviewer.AgentPath)) || p.Reviewer.AgentPath == p.Implementation.AgentPath || (p.Reviewer.NativeID != "" && p.Reviewer.NativeID == p.Implementation.NativeID) {
+			return nil, errors.New("worker_metadata_requires_distinct_planned_reviewer")
+		}
+	}
+
 	for _, owner := range []Owner{p.Implementation, p.Operational, p.Reviewer} {
 		if strings.IndexFunc(owner.NativeID, unicode.IsSpace) >= 0 {
 			return nil, errors.New("worker_metadata_native_identity_invalid")

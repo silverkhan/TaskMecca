@@ -188,3 +188,12 @@ A-78 itself follows the Worker path. Its source candidate is not Controller
 acceptance, real independent review, dev integration, CI, release or installation.
 A-79 can consume the task, contract, exact attempt, handoff, Activity phases,
 report and source evidence without a second policy manager.
+# A-90 정식 Reviewer와 선택 검수
+
+정식 Reviewer는 `/root/controller/reviewer/<name>`이며 구현자가 아니다. 실제 START는 지정된 별도 native, 원 프로젝트/부모/checkout/현재 실행, 배정, 완전한 구현 소스와 구현 이력을 확인한 뒤 수집한다. `EvaluateReviewer`의 읽기 전용 결과는 `Evaluate`의 제품 구현 허가와 분리된다. Reviewer는 구현 Activity를 기록할 수 없다. 검수 중 제품 수정을 해야 하면 구현 역할과 소스 변경을 명시하고 다른 독립 Reviewer를 확보한다.
+
+`review_requirement`가 없는 과거 계약은 기존 gate와 Worker 검수 기록 그대로 처리한다. 구조화 판단을 추가한 계약에서는 영향도·복잡성·가역성·검증 가능성·명시 요구·이전 지적사항을 검토한다. 필수 검수는 생략할 수 없고 권장/선택 검수의 생략에는 Controller 사유가 필요하다. 생략의 수용 결과는 `omitted`이며 `independent`가 아니다. Controller 직접 구현 예외의 별도 검수는 생략할 수 없다. 판단 범위는 구현 정책의 전체 scope와 일치해야 한다.
+
+`contract role-policy review-decision --input requirement.json --json`은 typed 판단만 반환하며 Reviewer 생성이나 MCP 호출을 수행하지 않는다. 실제 Reviewer의 읽기 전용 gate는 `contract role-policy check --recipient-role reviewer --project CANONICAL --task TASK --attempt EXACT_REVIEWER --source-worktree IMPLEMENTATION_SOURCE --json`으로 확인한다. 기존 `--review`는 구현 attempt 기준의 실제 독립 검수 수용 검증이다.
+
+완전한 소스 hashset·task·계약 revision·실제 신원·보고서는 기존 수용 gate에서 재검증한다. 해당 제품 구현 이력이 있는 native는 turn·역할·이름을 바꿔도 독립 검수자가 될 수 없다. 소스가 바뀌면 이전 accepted를 복사하지 않고 변경 위험과 지적사항 영향을 다시 판단한다. 공통 연속성/화면 인터페이스는 `docs/reviewer-role-interface.md`를 따른다. A-91/A-92 구현 및 실제 외부 호스트 지원의 완료를 뜻하지 않는다.

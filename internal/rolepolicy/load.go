@@ -101,6 +101,10 @@ func Load(project, task, raw string) (*Policy, bool, error) {
 				staleMetadata = errors.New("worker_metadata_requires_current_contract")
 				continue
 			}
+			if err := ValidateRequirementTransition(p, next); err != nil {
+				staleMetadata = err
+				continue
+			}
 			p = next
 			staleMetadata = nil
 		}

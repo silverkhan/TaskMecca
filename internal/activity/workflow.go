@@ -265,7 +265,9 @@ func SummarizeWorkflow(in WorkflowInput) Workflow {
 			w.Axis.ElapsedMillis = &ms
 		}
 	}
-	m := Measurement{Activity: metric(events, in.Summary.Segments, func(Role, Type) bool { return true }), Worker: metric(events, in.Summary.Segments, func(r Role, _ Type) bool { return r == RoleWorker }), Controller: metric(events, in.Summary.Segments, func(r Role, _ Type) bool { return r == RoleController || r == RoleSubController }), Registrar: metric(events, in.Summary.Segments, func(r Role, _ Type) bool { return r == RoleRegistrar }), Review: metric(events, in.Summary.Segments, func(_ Role, t Type) bool { return t == ControllerReview || t == ControllerReReview }), Tests: metric(events, in.Summary.Segments, func(_ Role, t Type) bool { return t == TargetedTest || t == FullRegression || t == BuildCheck }), AgentTimeMillis: in.Summary.AgentTimeMillis}
+	m := Measurement{Activity: metric(events, in.Summary.Segments, func(Role, Type) bool { return true }), Worker: metric(events, in.Summary.Segments, func(r Role, _ Type) bool { return r == RoleWorker }), Controller: metric(events, in.Summary.Segments, func(r Role, _ Type) bool { return r == RoleController || r == RoleSubController }), Registrar: metric(events, in.Summary.Segments, func(r Role, _ Type) bool { return r == RoleRegistrar }), Review: metric(events, in.Summary.Segments, func(r Role, t Type) bool {
+		return r == RoleReviewer || t == ControllerReview || t == ControllerReReview
+	}), Tests: metric(events, in.Summary.Segments, func(_ Role, t Type) bool { return t == TargetedTest || t == FullRegression || t == BuildCheck }), AgentTimeMillis: in.Summary.AgentTimeMillis}
 	m.Status = m.Activity.Status
 	measured := []timingInterval{}
 	if w.Axis.ElapsedMillis != nil {
@@ -766,7 +768,7 @@ func reviewBoundaries(task string, events []Event, handoffs map[string]handoffjo
 	seen := map[string]bool{}
 	reviewed := map[string]bool{}
 	for _, e := range events {
-		if e.TaskID != task || e.Role != RoleController || e.Action != Stop || (e.Type != ControllerReview && e.Type != ControllerReReview) || seen[e.EventID] {
+		if e.TaskID != task || (e.Role != RoleController && e.Role != RoleReviewer) || e.Action != Stop || (e.Type != ControllerReview && e.Type != ControllerReReview) || seen[e.EventID] {
 			continue
 		}
 		seen[e.EventID] = true

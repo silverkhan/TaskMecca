@@ -115,3 +115,10 @@ SQLite/mock tool fixtures prove local validation and retry behavior, not real
 MCP collection/delivery, external Hook execution or EMPFUND recovery. Actual
 maintenance Worker collection, independent review, Controller acceptance, dev
 integration, CI/release and operating installation need their own evidence.
+# A-90 Reviewer 수집 경계
+
+`role=reviewer`와 `/root/controller/reviewer/<name>`을 정식 역할로 사용한다. 이름은 `DMMDD_NN_Reviewer_<name>_G<n>`이며 같은 세션 재개 시 세대는 유지한다. exact own-native `session-name plan/apply/verify`와 별도의 공식 T3 title update/readback을 수행한다. 관리 경로·공식 이름만으로 native/배정/현재 실행을 추정하지 않는다.
+
+Reviewer START는 기존 원 프로젝트/부모/실제 checkout/배정/현재 native 검증에 읽기 전용 검수 gate를 추가한다. 지정 Reviewer native와 다른 실제 구현 native·구현 이력·전체 소스 준비를 확인하며 구현용 Evaluate 권한을 열지 않는다. Activity attribution과 `runtime query --role reviewer`가 Worker와 구분한다. 과거 Worker 검수의 역할·이름·시각은 소급 수정하지 않는다.
+
+T3 신규 검수/재검수는 실제 새 managed delegate로 수행한다. 이 CLI가 외부 MCP 생성·권한을 수행했다고 주장하지 않는다. 정책·fixture 지원과 실제 호스트 실행 검증은 구분한다. 초기 미측정 구간은 backfill하지 않는다.

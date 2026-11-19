@@ -34,15 +34,16 @@ type Review struct {
 	SourceWorkspace string `json:"source_workspace"`
 }
 type Policy struct {
-	SchemaVersion  int        `json:"schema_version"`
-	Implementation Owner      `json:"implementation_owner"`
-	Operational    Owner      `json:"operational_owner"`
-	Reviewer       Owner      `json:"review_owner"`
-	Workspace      string     `json:"workspace"`
-	Method         string     `json:"method"`
-	Scope          []string   `json:"scope"`
-	Exception      *Exception `json:"exception,omitempty"`
-	Review         *Review    `json:"review,omitempty"`
+	SchemaVersion     int                `json:"schema_version"`
+	Implementation    Owner              `json:"implementation_owner"`
+	Operational       Owner              `json:"operational_owner"`
+	Reviewer          Owner              `json:"review_owner"`
+	Workspace         string             `json:"workspace"`
+	Method            string             `json:"method"`
+	Scope             []string           `json:"scope"`
+	Exception         *Exception         `json:"exception,omitempty"`
+	Review            *Review            `json:"review,omitempty"`
+	ReviewRequirement *ReviewRequirement `json:"review_requirement,omitempty"`
 }
 
 // Identity is populated from the runtime ledger, never from a caller's role,
@@ -94,11 +95,14 @@ func Parse(text string) (*Policy, error) {
 	return &p, nil
 }
 func WorkerPath(path string) bool {
-	return strings.HasPrefix(path, "/root/controller/") && !strings.Contains(strings.TrimPrefix(path, "/root/controller/"), "/") && !strings.HasPrefix(path, "/root/controller/sub-") && path != "/root/controller/"
+	return strings.HasPrefix(path, "/root/controller/") && !strings.Contains(strings.TrimPrefix(path, "/root/controller/"), "/") && !strings.HasPrefix(path, "/root/controller/sub-") && path != "/root/controller/" && path != "/root/controller/reviewer"
 }
 func Role(path string) string {
 	if path == "/root/controller" {
 		return "controller"
+	}
+	if ReviewerPath(path) {
+		return "reviewer"
 	}
 	if WorkerPath(path) {
 		return "worker"
@@ -138,6 +142,18 @@ func Evaluate(p *Policy, actual Identity, workspace string, approved bool) View 
 		v.Reason = "existing_worker_authorization_applies"
 		v.ResumeWhen = ""
 		return v
+	}
+	if p.ReviewRequirement != nil {
+		d, err := p.ReviewRequirement.Decide()
+		if err != nil {
+			return deny(err.Error())
+		}
+		if err := ValidateRequirementScope(p); err != nil {
+			return deny(err.Error())
+		}
+		if p.Method == "controller_exception" && d.Status == "omitted" {
+			return deny("controller_exception_requires_independent_review")
+		}
 	}
 	if p.Exception != nil && p.Exception.ResumeWhen != "" {
 		v.ResumeWhen = p.Exception.ResumeWhen

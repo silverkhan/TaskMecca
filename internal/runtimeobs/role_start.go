@@ -40,7 +40,7 @@ func observeRoleCollection(in RoleStart, now time.Time, scope func(RoleStart) er
 		return WorkerStartResult{Status: "collection_gap", Stage: stage, Context: legacy, ReceivedAt: now.UTC().Format(time.RFC3339Nano), Diagnostic: reason}, errors.New(reason)
 	}
 	validRolePath := rolepolicy.Role(in.AgentPath) == in.Role || (in.Role == "registrar" && in.AgentPath == "/root/registrar")
-	if (in.Role != "controller" && in.Role != "worker" && in.Role != "registrar") || !validRolePath {
+	if (in.Role != "controller" && in.Role != "worker" && in.Role != "reviewer" && in.Role != "registrar") || !validRolePath {
 		return fail("role", "role_path_mismatch: controller requires /root/controller; registrar requires /root/registrar; worker requires a direct Worker child path")
 	}
 	if in.ParentThreadID == "" || in.ParentThreadID == in.Selector.ThreadID {

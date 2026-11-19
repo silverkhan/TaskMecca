@@ -15,8 +15,9 @@ const (
     RoleController Role = "controller"
     RoleSubController Role = "sub_controller"
     RoleWorker Role = "worker"
+    RoleReviewer Role = "reviewer"
 )
-func (r Role) Valid() bool { switch r {case RoleRegistrar, RoleController, RoleSubController, RoleWorker: return true}; return false }
+func (r Role) Valid() bool { switch r {case RoleRegistrar, RoleController, RoleSubController, RoleWorker, RoleReviewer: return true}; return false }
 
 type Type string
 const (
@@ -86,6 +87,7 @@ func(e Event) Validate() error {
     }
     if !e.Action.Valid(){return fail("invalid action")}
     if !e.Role.Valid(){return fail("invalid role")}
+    if e.Role == RoleReviewer && e.Type == Implementation { return fail("reviewer cannot record product implementation; change role and obtain independent review") }
     if !e.Type.Valid(){return fail("invalid type")}
     if !e.Confidence.Valid(){return fail("invalid confidence")}
     if e.Round<0{return fail("negative round")}

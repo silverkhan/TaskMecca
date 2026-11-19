@@ -27,6 +27,7 @@ type conflict struct {
 
 func identityName(value string) string {
     value=strings.TrimSpace(value)
+    value=strings.TrimPrefix(value,"/root/controller/reviewer/")
     value=strings.TrimPrefix(value,"/root/controller/")
     if strings.Contains(value,"/") { return "" }
     return value
