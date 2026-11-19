@@ -6216,6 +6216,35 @@ function workflowTypeLegend(ko,wf,prefs){
   return '<div class="workflow-current-legend">'+workflowCurrentTypeLegend(wf,prefs,ko)+'</div><details class="workflow-legend-help"><summary>'+esc(workflowText(ko,'전체 활동 유형과 측정 상태','All activity types and measurement states'))+'</summary><p>'+esc(workflowText(ko,'범례는 선택한 회차에 보고된 활동 유형입니다. 막대와 선택 상세에서 활동 이름을 확인할 수 있습니다. 지원 목록 밖의 활동 유형은 중립색으로 표시하며 정확한 유형은 상세 근거에서 확인할 수 있습니다.','The legend shows Activity types reported in the selected rounds. Bars and selected details identify each activity. Types outside this list use a neutral color; exact types remain available in the evidence.'))+'</p>'+reference+workflowStateLegend(ko)+'</details>';
 }
 function workflowGapLabel(status,ko){return ({unmeasured:['활동 미측정 · 무활동 뜻 아님','Activity unmeasured · does not mean no work'],confirmed_wait:['명시적으로 보고된 대기','Explicitly reported wait'],native_observed:['실행 관측 · 단계 활동 미측정','Execution observed · phase Activity unmeasured'],collection_failed:['수집 실패 · 활동 미측정','Collection failed · Activity unmeasured']})[status]?.[ko?0:1]||workflowText(ko,'활동 미측정','Activity unmeasured');}
+// Marker identities address the original payload, including entries without usable
+// times. Geometry never supplies a missing source boundary.
+const workflowAnchorSelector='[data-workflow-interval],[data-workflow-row-select],[data-workflow-marker]';
+function workflowMarkers(wf,row=null){
+  return [...(row?.role_facts||[]).map((value,index)=>({key:JSON.stringify(['marker',row.id,'fact',value.id??null,index]),row,kind:'fact',value})),...(row?row.gaps||[]:wf.unmeasured_intervals||[]).map((value,index)=>({key:JSON.stringify(['marker',row?.id??null,'gap',value.id??null,index]),row,kind:'gap',value}))];
+}
+function workflowMarkerLabel(marker,ko){
+  const value=marker.value,unknown=workflowText(ko,'종류 미확인','Kind unverified');
+  const kinds={registered:['등록','Registered'],started:['시작 보고','Start reported'],resumed:['재개 보고','Resume reported'],assigned:['배정','Assigned'],execution_approved:['실행 승인','Execution authorized'],registration_authorization:['실행 승인','Execution authorized'],observed_execution:['실행 관측','Execution observed'],handoff_prepared:['인계 준비','Handoff prepared'],handoff_claimed:['인계 수신','Handoff claimed'],handoff_review:['검토 인계','Review handoff'],collection_failed:['수집 실패','Collection failed'],worker_completed:['Worker 완료 보고','Worker completion reported'],completed:['완료 기록','Completion recorded']};
+  const kind=value.type||value.kind;
+  return marker.kind==='fact'?workflowText(ko,'관측 사실','Observed fact')+' · '+(kinds[kind]?.[ko?0:1]||kind||unknown):workflowGapLabel(value.status||'unmeasured',ko)+(value.kind?' · '+value.kind:'');
+}
+function workflowMarkerTime(value,ko){return value&&!String(value).startsWith('0001-01-01T00:00:00')&&Number.isFinite(Date.parse(value))?activityEventTime(value,ko):workflowText(ko,'시각 미확인','Time unverified');}
+function workflowMarkerNote(marker,ko){
+  if(marker.kind==='fact')return workflowText(ko,'한 시점에 관측된 사실입니다. 작업 시간이 아닙니다.','An observed instant, not time spent working.');
+  const status=marker.value.status;
+  if(status==='native_observed')return workflowText(ko,'실행이 관측된 경계입니다. 단계별 활동 시간을 측정한 것은 아닙니다.','Observed execution bounds, not measured phase Activity.');
+  if(status==='confirmed_wait')return workflowText(ko,'명시적으로 보고된 대기입니다. 유휴시간을 뜻하지 않습니다.','Explicitly reported wait; this does not establish idle time.');
+  if(status==='collection_failed')return workflowText(ko,'수집 실패로 활동을 확인할 수 없습니다. 무활동이나 정체를 뜻하지 않습니다.','Collection failed; this does not establish inactivity or a stall.');
+  return workflowText(ko,'활동을 측정하지 못한 구간입니다. 무활동이나 정체를 뜻하지 않습니다.','Activity was not measured; this does not establish inactivity or a stall.');
+}
+function workflowMarkerAttrs(marker,ko){
+  const v=marker.value,summary=[marker.row?workflowActorLabel(marker.row,ko):workflowText(ko,'전체 미측정 경계','Unmeasured bounds'),workflowMarkerLabel(marker,ko),marker.kind==='fact'?workflowMarkerTime(v.at,ko):workflowMarkerTime(v.start,ko)+' — '+workflowMarkerTime(v.end,ko),workflowMarkerNote(marker,ko)].join(' · ');
+  return ' data-workflow-marker="'+esc(marker.key)+'" data-workflow-title="'+esc(summary)+'" data-workflow-fingerprint="'+esc(JSON.stringify([marker.row?.role,marker.row?.display_name,marker.row?.display_name_source,marker.row?.name_evidence,v]))+'" aria-label="'+esc(summary)+'"';
+}
+function workflowMarkerOptions(wf,row,prefs,ko){
+  const markers=workflowMarkers(wf,row),scope=row?.id??'global';if(!markers.length)return '';
+  return '<details class="workflow-marker-options" data-workflow-marker-options="'+esc(scope)+'"'+(prefs.markerOptions?.[scope]?' open':'')+'><summary>'+esc(workflowText(ko,'표식 선택','Select marker'))+' ('+markers.length+')</summary><div>'+markers.map(marker=>'<button type="button" class="workflow-marker-option"'+workflowMarkerAttrs(marker,ko)+'>'+esc(workflowMarkerLabel(marker,ko))+'<small>'+esc(marker.kind==='fact'?workflowMarkerTime(marker.value.at,ko):workflowMarkerTime(marker.value.start,ko)+' — '+workflowMarkerTime(marker.value.end,ko))+'</small></button>').join('')+'</div></details>';
+}
 function workflowGapEvidence(wf,ko){
   const rows=Array.isArray(wf.rows)?wf.rows:[],facts=rows.flatMap(row=>(Array.isArray(row.role_facts)?row.role_facts:[]).map(fact=>({row, fact}))),gaps=rows.flatMap(row=>(Array.isArray(row.gaps)?row.gaps:[]).map(gap=>({row,gap})));
   if(!facts.length&&!gaps.length&&!(wf.unmeasured_intervals||[]).length&&!wf.reporting?.roles)return '';
@@ -6311,12 +6340,12 @@ function workflowPlotHTML(wf,prefs,ko,drawWindow=null){
   const selected=prefs.round==='all'?'all':String(prefs.round),visible=selected==='all'?rows:rows.filter(r=>String(r.round??'unknown')===selected);
   const originNS=workflowTimeNS(axis.start),origin=Date.parse(axis.start),relative=ns=>Number(ns-originNS)/1000000,pctNS=ns=>(relative(ns)-(view.start-origin))/span*100;
   const ticks=[0,.25,.5,.75,1].map(p=>'<span data-workflow-tick="'+p+'" style="left:'+p*100+'%;transform:translateX('+(p===0?0:p===1?-100:-50)+'%)">'+esc(workflowTimeLabel(view.start+span*p,view,ko))+'</span>').join('');
-  const gapHTML=gaps=>(Array.isArray(gaps)?gaps:[]).map(gap=>{
+  const gapHTML=(gaps,row=null)=>(Array.isArray(gaps)?gaps:[]).map((gap,index)=>{
+    const marker=workflowMarkers(wf,row).filter(m=>m.kind==='gap')[index];
     const from=workflowTimeNS(gap.start),to=workflowTimeNS(gap.end);
     if(from===null||to===null||to<from||Date.parse(gap.end)<draw.start||Date.parse(gap.start)>draw.end)return '';
     const status=['confirmed_wait','native_observed','collection_failed'].includes(gap.status)?gap.status:'unmeasured';
-    const text=workflowGapLabel(status,ko)+' · '+activityEventTime(gap.start,ko)+' — '+activityEventTime(gap.end,ko)+'\n'+JSON.stringify(gap,null,2);
-    return '<span class="workflow-gap-paint workflow-state-'+status+'" data-workflow-gap="'+esc(status)+'" role="img" aria-label="'+esc(text)+'" title="'+esc(text)+'" style="left:'+pctNS(from)+'%;width:'+(Number(to-from)/1000000/span*100)+'%"></span>';
+    return '<button type="button" class="workflow-gap-paint workflow-state-'+status+'" data-workflow-gap="'+esc(status)+'"'+workflowMarkerAttrs(marker,ko)+' style="left:'+pctNS(from)+'%;width:'+(Number(to-from)/1000000/span*100)+'%"></button>';
   }).join('');
   const intervalHTML=(row,interval,index,layout,run)=>{
     const {from,to,point,fromNS,toNS}=workflowIntervalBounds(interval,axis.end);
@@ -6345,10 +6374,10 @@ function workflowPlotHTML(wf,prefs,ko,drawWindow=null){
       const open=run.entries.map(e=>'<span class="workflow-type-paint wf-type-'+workflowTypeClass(e.interval.type)+(e.open?' workflow-open-paint':'')+'" style="left:'+Number(e.fromNS-run.fromNS)/total*100+'%;width:'+Number(e.toNS-e.fromNS)/total*100+'%"></span>').join('');
       return '<div class="workflow-run wf-role-'+workflowRoleClass(row.role)+'" data-workflow-run data-workflow-members="'+esc(JSON.stringify(members))+'" data-workflow-from-ns="'+run.fromNS+'" data-workflow-to-ns="'+run.toNS+'" style="left:'+pctNS(run.fromNS)+'%;width:'+(Number(run.toNS-run.fromNS)/1000000/span*100)+'%;--workflow-run-height:'+height+'px;--workflow-run-top:'+top+'px"><div class="workflow-run-surface'+(run.open?' is-open':'')+'" aria-hidden="true">'+open+dividers+'</div>'+run.entries.map(e=>intervalHTML(row,e.interval,e.index,{lane:e.lane,lanes:layout.lanes,expanded},run)).join('')+'</div>';
     }).join('');
-    const points=facts.map(fact=>{const at=workflowTimeNS(fact.at);if(at===null||Date.parse(fact.at)<draw.start||Date.parse(fact.at)>draw.end)return '';const text=workflowActorLabel(row,ko)+' · '+workflowText(ko,'관측 사실 · 활동 미측정','Observed fact · Activity unmeasured')+' · '+activityEventTime(fact.at,ko)+'\n'+JSON.stringify(fact,null,2);return '<span class="workflow-fact-point" data-workflow-fact="'+esc(fact.id)+'" role="img" aria-label="'+esc(text)+'" title="'+esc(text)+'" style="left:'+pctNS(at)+'%"></span>';}).join('');
-    return '<div class="workflow-agent-row" data-workflow-row="'+esc(row.id)+'"><div class="workflow-agent-label">'+label+results+(lane?'<button type="button" class="workflow-row-expand" data-workflow-row-expand="'+esc(row.id)+'" aria-expanded="'+expanded+'" aria-label="'+esc(workflowText(ko,(expanded?'접기: ':'펼치기: ')+(lane+1)+'개 동시 구간',(expanded?'Collapse: ':'Expand: ')+(lane+1)+' concurrent intervals'))+'">'+(lane+1)+'</button>':'')+'</div><div class="workflow-agent-plot"><div class="workflow-agent-track" style="height:'+(expanded?(lane+1)*24+8:28)+'px">'+gapHTML(row.gaps)+runs+points+'</div></div></div>';
+    const points=workflowMarkers(wf,row).filter(m=>m.kind==='fact').map(marker=>{const at=workflowTimeNS(marker.value.at);if(at===null||Date.parse(marker.value.at)<draw.start||Date.parse(marker.value.at)>draw.end)return '';return '<button type="button" class="workflow-fact-point" data-workflow-fact="'+esc(marker.value.id||'')+'"'+workflowMarkerAttrs(marker,ko)+' style="left:'+pctNS(at)+'%"></button>';}).join('');
+    return '<div class="workflow-agent-row" data-workflow-row="'+esc(row.id)+'"><div class="workflow-agent-label">'+label+results+workflowMarkerOptions(wf,row,prefs,ko)+(lane?'<button type="button" class="workflow-row-expand" data-workflow-row-expand="'+esc(row.id)+'" aria-expanded="'+expanded+'" aria-label="'+esc(workflowText(ko,(expanded?'접기: ':'펼치기: ')+(lane+1)+'개 동시 구간',(expanded?'Collapse: ':'Expand: ')+(lane+1)+' concurrent intervals'))+'">'+(lane+1)+'</button>':'')+'</div><div class="workflow-agent-plot"><div class="workflow-agent-track" style="height:'+(expanded?(lane+1)*24+8:28)+'px">'+gapHTML(row.gaps,row)+runs+points+'</div></div></div>';
   }).join('');
-  const gaps=gapHTML(wf.unmeasured_intervals),coverage=gaps?'<div class="workflow-unmeasured-row"><span>'+esc(workflowText(ko,'전체 미측정 경계','Unmeasured bounds'))+'</span><div class="workflow-unmeasured-clip"><div class="workflow-coverage-track">'+gaps+'</div></div></div>':'';
+  const gaps=gapHTML(wf.unmeasured_intervals),coverage=(wf.unmeasured_intervals||[]).length?'<div class="workflow-unmeasured-row"><span>'+esc(workflowText(ko,'전체 미측정 경계','Unmeasured bounds'))+workflowMarkerOptions(wf,null,prefs,ko)+'</span><div class="workflow-unmeasured-clip"><div class="workflow-coverage-track">'+gaps+'</div></div></div>':'';
   return '<div class="workflow-ruler-row"><span>'+esc(workflowText(ko,'역할 · 회차','Role · round'))+'</span><div class="activity-time-ruler workflow-axis-track">'+ticks+'</div></div>'+coverage+rowHTML+(!rowHTML?'<p class="workflow-empty">'+esc(workflowText(ko,'실제 활동 구간 미측정 · 실행 보고는 근거에서 확인할 수 있습니다.','Actual activity unmeasured · execution reports are available in sources.'))+'</p>':'');
 }
 const workflowFloatingViews=new WeakMap();
@@ -6358,10 +6387,10 @@ function workflowFloatingView(root,viewport,wf,pref,ko){
   const abort=new AbortController(),options={signal:abort.signal},surface=document.createElement('div');
   surface.className='workflow-floating';surface.hidden=true;document.body.append(surface);
   let anchor=null,pinned=false,keyboard=false,positionFrame=0,disposed=false,returningFocus=false;
-  const key=node=>node?.dataset.workflowInterval||JSON.stringify(['row',node?.dataset.workflowRowSelect]);
+  const key=node=>node?.dataset.workflowMarker||node?.dataset.workflowInterval||JSON.stringify(['row',node?.dataset.workflowRowSelect]);
   const memberFingerprint=node=>node?.closest('.workflow-run')?.dataset.workflowMembers||null;
-  const anchorVisible=node=>{if(!node.dataset.workflowInterval)return true;const view=workflowViewWindow(wf,pref),origin=Date.parse(wf.axis.start);return Number(node.dataset.workflowRelativeEnd)>=view.start-origin&&Number(node.dataset.workflowRelativeStart)<=view.end-origin;};
-  const anchors=()=>[...root.querySelectorAll('[data-workflow-interval],[data-workflow-row-select]')];
+  const anchorVisible=node=>{if(node.dataset.workflowMarker){if(node.classList.contains('workflow-marker-option'))return !node.closest('details:not([open])')&&Boolean(node.getClientRects().length);const marker=JSON.parse(node.dataset.workflowMarker),value=(marker[2]==='fact'?wf.rows.find(r=>r.id===marker[1])?.role_facts:marker[1]===null?wf.unmeasured_intervals:wf.rows.find(r=>r.id===marker[1])?.gaps)?.[marker[4]],view=workflowViewWindow(wf,pref),start=Date.parse(value?.at||value?.start||''),end=Date.parse(value?.at||value?.end||'');return Number.isFinite(start)&&Number.isFinite(end)&&end>=view.start&&start<=view.end;}if(!node.dataset.workflowInterval)return true;const view=workflowViewWindow(wf,pref),origin=Date.parse(wf.axis.start);return Number(node.dataset.workflowRelativeEnd)>=view.start-origin&&Number(node.dataset.workflowRelativeStart)<=view.end-origin;};
+  const anchors=()=>[...root.querySelectorAll(workflowAnchorSelector)];
   const visiblePeers=(node,row)=>{
     const view=workflowViewWindow(wf,pref),origin=Date.parse(wf.axis.start),left=view.start-origin,right=view.end-origin,members=memberFingerprint(node),memberKeys=members?new Set(JSON.parse(members)):null;
     const live=new Set(anchors().filter(n=>n.dataset.workflowInterval&&Number(n.dataset.workflowRelativeEnd)>=left&&Number(n.dataset.workflowRelativeStart)<=right).map(n=>n.dataset.workflowInterval));
@@ -6385,7 +6414,7 @@ function workflowFloatingView(root,viewport,wf,pref,ko){
   const queuePlace=()=>{if(!disposed&&!positionFrame)positionFrame=requestAnimationFrame(place);};
   const close=(restore=false,clear=true)=>{
     const previous=anchor;anchor?.classList.remove('is-selected');anchor?.removeAttribute('aria-describedby');anchor?.removeAttribute('aria-expanded');
-    root.querySelectorAll('.workflow-interval.is-selected,.workflow-row-label.is-selected').forEach(node=>{node.classList.remove('is-selected');node.removeAttribute('aria-expanded');});
+    root.querySelectorAll('.workflow-interval.is-selected,.workflow-row-label.is-selected,[data-workflow-marker].is-selected').forEach(node=>{node.classList.remove('is-selected');node.removeAttribute('aria-expanded');});
     anchor=null;pinned=false;surface.classList.remove('is-pinned');surface.hidden=true;surface.replaceChildren();if(clear)pref.selection=null;
     if(restore&&keyboard&&previous?.isConnected){returningFocus=true;previous.focus({preventScroll:true});returningFocus=false;}
   };
@@ -6393,17 +6422,28 @@ function workflowFloatingView(root,viewport,wf,pref,ko){
     if(!node||disposed)return;
     if(pin&&pinned&&anchor===node){close(fromKeyboard);return;}
     close(false,!pin);anchor=node;pinned=pin;keyboard=fromKeyboard;
-    const rowID=node.dataset.workflowRowSelect,entry=rowID?null:JSON.parse(node.dataset.workflowInterval),row=wf.rows.find(r=>r.id===(rowID||entry?.[0]));
+    const markerKey=node.dataset.workflowMarker,marker=markerKey&&[...workflowMarkers(wf),...wf.rows.flatMap(r=>workflowMarkers(wf,r))].find(m=>m.key===markerKey);
+    const rowID=node.dataset.workflowRowSelect,entry=rowID||markerKey?null:JSON.parse(node.dataset.workflowInterval),row=marker?.row||wf.rows.find(r=>r.id===(rowID||entry?.[0]));
     const interval=entry&&row?.intervals.find(i=>i.id===entry[1]&&i.kind===entry[2]);
-    const peers=visiblePeers(node,row);
-    if(!row){close(false);return;}
+    const peers=marker?[]:visiblePeers(node,row);
+    if(!row&&!marker){close(false);return;}
     const title=node.dataset.workflowTitle||node.dataset.workflowSummary||workflowActorLabel(row,ko);
     surface.id='workflowActivityFloating';surface.classList.toggle('is-pinned',pin);surface.setAttribute('role',pin?'dialog':'tooltip');
     surface.setAttribute('aria-label',title);surface.tabIndex=pin?-1:0;
     if(pin){
-      const badges=[workflowActorLabel(row,ko),workflowRoundLabel(row.round,ko),workflowOutcome(interval?.outcome,ko)].filter(Boolean);
+      const badges=[row?workflowActorLabel(row,ko):workflowText(ko,'전체 미측정 경계','Unmeasured bounds'),row?workflowRoundLabel(row.round,ko):'',workflowOutcome(interval?.outcome,ko)].filter(Boolean);
       const times=interval?'<dl><div><dt>'+esc(workflowText(ko,'시작','Start'))+'</dt><dd>'+esc(activityEventTime(interval.start,ko))+'</dd></div><div><dt>'+esc(workflowText(ko,'종료','End'))+'</dt><dd>'+esc(interval.end?activityEventTime(interval.end,ko):workflowText(ko,'종료 미관측','End unobserved'))+'</dd></div></dl>':'';
-      surface.innerHTML='<div class="workflow-floating-head"><strong'+(interval?' class="workflow-type-label wf-type-'+workflowTypeClass(interval.type)+'"':'')+'>'+(interval?workflowTypeSwatch(interval.type):'')+esc(title)+'</strong><button type="button" class="workflow-floating-close" aria-label="'+esc(workflowText(ko,'구간 상세 닫기','Close interval details'))+'">×</button></div><div class="workflow-floating-badges">'+badges.map(b=>'<span>'+esc(b)+'</span>').join('')+'</div>'+times+'<details id="workflowIntervalEvidence"><summary>'+esc(workflowText(ko,'정확한 근거','Exact evidence'))+'</summary><pre>'+esc(JSON.stringify({role:row.role,agent_id:row.agent_id,display_name:row.display_name||null,display_name_source:row.display_name_source||'unverified',name_evidence:row.name_evidence,round:row.round,interval:interval||undefined,intervals:interval?undefined:row.intervals},null,2))+'</pre></details>';
+      surface.innerHTML='<div class="workflow-floating-head"><strong'+(interval?' class="workflow-type-label wf-type-'+workflowTypeClass(interval.type)+'"':'')+'>'+(interval?workflowTypeSwatch(interval.type):'')+esc(title)+'</strong><button type="button" class="workflow-floating-close" aria-label="'+esc(workflowText(ko,'구간 상세 닫기','Close interval details'))+'">×</button></div><div class="workflow-floating-badges">'+badges.map(b=>'<span>'+esc(b)+'</span>').join('')+'</div>'+times+'<details id="workflowIntervalEvidence"><summary>'+esc(workflowText(ko,'정확한 근거','Exact evidence'))+'</summary><pre>'+esc(JSON.stringify({role:row?.role,agent_id:row?.agent_id,display_name:row?.display_name||null,display_name_source:row?.display_name_source||'unverified',name_evidence:row?.name_evidence,round:row?.round,interval:interval||undefined,intervals:interval?undefined:row?.intervals},null,2))+'</pre></details>';
+      if(marker){
+        surface.querySelector('.workflow-floating-head strong').textContent=workflowMarkerLabel(marker,ko);
+        const v=marker.value,unknown=workflowText(ko,'근거 없음','Not provided'),evidence=Array.isArray(v.evidence)?v.evidence:[],sources=[v.source,...evidence.map(e=>e.source)].filter(Boolean),reasons=[v.reason,...evidence.map(e=>e.reason)].filter(Boolean),field=(label,value)=>'<div><dt>'+esc(label)+'</dt><dd>'+esc(value)+'</dd></div>';
+        const time=marker.kind==='fact'?field(workflowText(ko,'시각','Time'),workflowMarkerTime(v.at,ko)):field(workflowText(ko,'시작','Start'),workflowMarkerTime(v.start,ko))+field(workflowText(ko,'끝','End'),workflowMarkerTime(v.end,ko));
+        surface.querySelector('dl')?.remove();
+        surface.querySelector('#workflowIntervalEvidence').insertAdjacentHTML('beforebegin','<p class="workflow-marker-note">'+esc(workflowMarkerNote(marker,ko))+'</p><dl>'+time+field(workflowText(ko,'종류','Kind'),[v.kind,v.type,v.status].filter(Boolean).join(' · ')||unknown)+field(workflowText(ko,'원천','Source'),[...new Set(sources)].join(' · ')||unknown)+field(workflowText(ko,'사유','Reason'),[...new Set(reasons)].join(' · ')||unknown)+'</dl>');
+        surface.querySelector('#workflowIntervalEvidence pre').textContent=JSON.stringify({role:row?.role||null,agent_id:row?.agent_id||null,display_name:row?.display_name||null,round:row?.round??null,[marker.kind]:v},null,2);
+      }else if(interval?.kind==='activity_open'||interval?.kind==='execution_report'&&!interval.end){
+        surface.querySelector('#workflowIntervalEvidence').insertAdjacentHTML('beforebegin','<p class="workflow-marker-note">'+esc(workflowText(ko,'종료가 확인되지 않았습니다. 현재 실행 중이라는 뜻은 아닙니다.','The end is unverified; this does not prove it is running now.'))+'</p>');
+      }
       if(peers.length>1){
         const list=document.createElement('details');list.className='workflow-included-events';list.open=reading?.includedOpen??Boolean(interval&&node.getBoundingClientRect().width<7);
         list.innerHTML='<summary>'+esc(workflowText(ko,'포함 이벤트','Included events'))+' ('+peers.length+')</summary><div class="workflow-member-list">'+peers.map(i=>'<button type="button" class="workflow-member" data-workflow-member="'+esc(workflowIntervalKey(row,i))+'" aria-pressed="'+(i===interval)+'">'+esc(workflowIntervalType(i,ko)+' · '+(i.measured?activityDisplayDuration(i.duration_ms,ko):workflowText(ko,'미측정','Unmeasured')))+'<small>'+esc(activityEventTime(i.start,ko))+'</small></button>').join('')+'</div>';
@@ -6429,16 +6469,16 @@ function workflowFloatingView(root,viewport,wf,pref,ko){
     if(pinned||pref.selection){const selection=pref.selection,node=selection&&anchors().find(n=>key(n)===selection.key&&n.dataset.workflowFingerprint===selection.fingerprint&&memberFingerprint(n)===selection.membersFingerprint&&anchorVisible(n));
       if(!node){close(false);return;}
       if(!pinned)show(node,true,Boolean(selection.keyboard&&selection.focused),selection.reading);
-      else{const rowID=node.dataset.workflowRowSelect||JSON.parse(node.dataset.workflowInterval)[0],row=wf.rows.find(r=>r.id===rowID),visible=JSON.stringify(visiblePeers(node,row).map(i=>workflowIntervalKey(row,i)));
+      else{const rowID=node.dataset.workflowRowSelect||(node.dataset.workflowMarker?JSON.parse(node.dataset.workflowMarker)[1]:JSON.parse(node.dataset.workflowInterval)[0]),row=wf.rows.find(r=>r.id===rowID),visible=JSON.stringify(node.dataset.workflowMarker?[]:visiblePeers(node,row).map(i=>workflowIntervalKey(row,i)));
         if(visible!==selection.visibleMembersFingerprint){const reading=readingState();pinned=false;show(node,true,false,reading);}
         else{anchor?.classList.remove('is-selected');anchor=node;node.classList.add('is-selected');node.setAttribute('aria-expanded','true');queuePlace();}
       }
     }else if(anchor&&!anchor.isConnected)close(false);
   };
-  viewport.addEventListener('pointerover',e=>{if(e.pointerType!=='touch'&&!pinned)show(e.target.closest('[data-workflow-interval],[data-workflow-row-select]'));},options);
+  viewport.addEventListener('pointerover',e=>{if(e.pointerType!=='touch'&&!pinned)show(e.target.closest(workflowAnchorSelector));},options);
   viewport.addEventListener('pointerout',e=>{if(!pinned&&anchor&&!anchor.contains(e.relatedTarget))close(false);},options);
   surface.addEventListener('keydown',e=>e.stopPropagation(),options);
-  viewport.addEventListener('focusin',e=>{if(!returningFocus&&!pinned)show(e.target.closest('[data-workflow-interval],[data-workflow-row-select]'));},options);
+  viewport.addEventListener('focusin',e=>{if(!returningFocus&&!pinned)show(e.target.closest(workflowAnchorSelector));},options);
   viewport.addEventListener('focusout',()=>{if(!pinned)close(false);},options);
   document.addEventListener('pointerdown',e=>{if(!surface.hidden&&!surface.contains(e.target)&&!anchor?.contains(e.target))close(false);}, {...options,capture:true});
   document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!surface.hidden){e.preventDefault();e.stopImmediatePropagation();if(pinned)keyboard=true;close(true);}}, {...options,capture:true});
@@ -6480,14 +6520,16 @@ function bindWorkflowControls(taskID,project,root){
     intervalNodes.forEach(item=>{const track=item.button.closest('.workflow-agent-track'),key=item.button.style.top;if(!hitGroups.has(track))hitGroups.set(track,new Map());const groups=hitGroups.get(track);if(!groups.has(key))groups.set(key,[]);groups.get(key).push(item);});
     hitGroups.forEach(groups=>groups.forEach(items=>{items.sort((a,b)=>(a.start+a.end)-(b.start+b.end));items.forEach((item,index)=>{const pixels=Math.max(0,item.end-item.start)/span*width,center=(item.start+item.end)/2,previous=items[index-1],next=items[index+1],left=Math.min(12,previous?(center-(previous.start+previous.end)/2)/span*width/2:12),right=Math.min(12,next?((next.start+next.end)/2-center)/span*width/2:12);item.button.style.setProperty('--workflow-hit-left',(pixels/2-Math.max(pixels/2,left))+'px');item.button.style.setProperty('--workflow-hit-width',(Math.max(pixels/2,left)+Math.max(pixels/2,right))+'px');});}));
     intervalNodes.forEach(({button,label,start,end})=>{const left=view.start-Date.parse(wf.axis.start),right=view.end-Date.parse(wf.axis.start),visible=end>=left&&start<=right,pixels=Math.max(0,Math.min(end,right)-Math.max(start,left))/span*width,visibility=parseFloat(button.style.height)>=14&&pixels>=textWidth(label.textContent,labelFont)+14?'visible':'hidden';if(label.style.visibility!==visibility)label.style.visibility=visibility;const tab=visible?0:-1;if(button.tabIndex!==tab)button.tabIndex=tab;if(visible)button.removeAttribute('aria-hidden');else button.setAttribute('aria-hidden','true');});
+    canvas.querySelectorAll('.workflow-fact-point,.workflow-gap-paint').forEach(node=>{const tuple=JSON.parse(node.dataset.workflowMarker),value=(tuple[2]==='fact'?wf.rows.find(r=>r.id===tuple[1])?.role_facts:tuple[1]===null?wf.unmeasured_intervals:wf.rows.find(r=>r.id===tuple[1])?.gaps)?.[tuple[4]],start=Date.parse(value?.at||value?.start||''),end=Date.parse(value?.at||value?.end||''),visible=end>=view.start&&start<=view.end;node.tabIndex=visible?0:-1;if(visible)node.removeAttribute('aria-hidden');else node.setAttribute('aria-hidden','true');});
     let last=-Infinity;const ending=ticks.at(-1),endingLeft=width-(ending?textWidth(ending.textContent,tickFont):0);
     ticks.forEach((tick,i)=>{const p=Number(tick.dataset.workflowTick),w=textWidth(tick.textContent,tickFont),left=p*width-(p===0?0:p===1?w:w/2),right=left+w,visible=!i||i===ticks.length-1||(left>=last+8&&right<=endingLeft-8);tick.style.visibility=visible?'visible':'hidden';if(visible)last=right;});
   };
   const updateEdges=()=>{const edges=workflowEdgeState(wf,workflowViewWindow(wf,pref));for(const side of ['left','right']){const button=root.querySelector('[data-workflow-pan="'+side+'"]');if(button&&!edges[side]&&button===document.activeElement)viewport?.focus({preventScroll:true});if(button)button.hidden=!edges[side];const fade=root.querySelector('[data-workflow-fade="'+side+'"]');if(fade)fade.hidden=!edges[side];}};
+  root.addEventListener('toggle',e=>{if(e.target.matches?.('[data-workflow-marker-options]')){pref.markerOptions??={};pref.markerOptions[e.target.dataset.workflowMarkerOptions]=e.target.open;}},true);
   const displaySelection=()=>floating?.reconcile();
   const paint=()=>{
     if(!canvas||!canvas.isConnected)return;
-    const focused=document.activeElement?.getAttribute?.('data-workflow-interval'),focusedRow=document.activeElement?.getAttribute?.('data-workflow-row-select'),focusedExpand=document.activeElement?.getAttribute?.('data-workflow-row-expand');
+    const focusedMarker=document.activeElement?.getAttribute?.('data-workflow-marker'),focused=document.activeElement?.getAttribute?.('data-workflow-interval'),focusedRow=document.activeElement?.getAttribute?.('data-workflow-row-select'),focusedExpand=document.activeElement?.getAttribute?.('data-workflow-row-expand');
     const view=workflowViewWindow(wf,pref),span=view.end-view.start;
     if(!plotted||plotted.span!==span||plotted.round!==pref.round||view.start<plotted.draw.start||view.end>plotted.draw.end){
       const draw={start:Math.max(Date.parse(wf.axis.start),view.start-span),end:Math.min(Date.parse(wf.axis.end),view.end+span)};
@@ -6502,9 +6544,10 @@ function bindWorkflowControls(taskID,project,root){
     root.querySelector('#workflowZoomOut').disabled=isFit;root.querySelector('#workflowZoomIn').disabled=view.end-view.start<=1;
     displaySelection();fitLabels();updateEdges();
     if(focusedRow||focusedExpand){const attr=focusedRow?'data-workflow-row-select':'data-workflow-row-expand',value=focusedRow||focusedExpand;[...canvas.querySelectorAll('['+attr+']')].find(button=>button.getAttribute(attr)===value)?.focus({preventScroll:true});}
+    if(focusedMarker){const target=[...canvas.querySelectorAll('[data-workflow-marker]')].find(x=>x.dataset.workflowMarker===focusedMarker&&x.tabIndex!==-1&&!x.closest('details:not([open])')&&x.getClientRects().length);(target||viewport)?.focus({preventScroll:true});}
     if(focused){const target=[...canvas.querySelectorAll('[data-workflow-interval]')].find(x=>x.dataset.workflowInterval===focused&&x.tabIndex===0);(target||viewport)?.focus({preventScroll:true});}
   };
-  const select=(target,keyboard=false)=>floating?.show(target.closest?.('[data-workflow-interval],[data-workflow-row-select]'),true,keyboard);
+  const select=(target,keyboard=false)=>floating?.show(target.closest?.(workflowAnchorSelector),true,keyboard);
   let frame=0;const queuePaint=()=>{if(!frame)frame=requestAnimationFrame(()=>{frame=0;paint();});};
   const zoom=(factor,anchor,ratio)=>{workflowZoomWindow(wf,pref,factor,anchor,ratio??.5);paint();};
   const fit=()=>{pref.window=null;workflowViewWindow(wf,pref);paint();};
@@ -6520,7 +6563,7 @@ function bindWorkflowControls(taskID,project,root){
   const inPlot=(x,rect)=>x>=rect.left&&x<=rect.right;
   viewport.addEventListener('click',e=>{if(e.detail>0&&performance.now()<suppressClick){e.preventDefault();return;}suppressClick=0;const expand=e.target.closest?.('[data-workflow-row-expand]');if(expand){pref.expandedRows??={};pref.expandedRows[expand.dataset.workflowRowExpand]=!pref.expandedRows[expand.dataset.workflowRowExpand];plotted=null;paint();return;}select(e.target,e.detail===0);});
   root.addEventListener('keydown',e=>{
-    if(e.target!==viewport&&!e.target.closest?.('[data-workflow-interval],[data-workflow-row-select],[data-workflow-row-expand],[data-workflow-pan]'))return;if(e.ctrlKey||e.metaKey||e.altKey)return;
+    if(e.target!==viewport&&!e.target.closest?.('[data-workflow-interval],[data-workflow-row-select],[data-workflow-row-expand],[data-workflow-pan],[data-workflow-marker]'))return;if(e.ctrlKey||e.metaKey||e.altKey)return;
     if(!['+','=','-','Home','0','ArrowLeft','ArrowRight'].includes(e.key))return;
     e.preventDefault();e.stopPropagation();
     const v=workflowViewWindow(wf,pref),span=v.end-v.start;
@@ -6980,6 +7023,7 @@ function renderActivityDetailControls(taskID,project=state.project){
   const scroll=root.querySelector?.('.activity-timeline-scroll')?.scrollLeft||0;
   const active=typeof document!=='undefined'?document.activeElement:null;
   const activeId=root.contains?.(active)?active?.id:null;
+  const activeMarker=root.contains?.(active)?active?.getAttribute?.('data-workflow-marker'):null;
   const activeInterval=root.contains?.(active)?active?.getAttribute?.('data-workflow-interval'):null;
   const activeRow=root.contains?.(active)?active?.getAttribute?.('data-workflow-row-select'):null,activeExpand=root.contains?.(active)?active?.getAttribute?.('data-workflow-row-expand'):null;
   const selected=root.querySelector?.('#activityTimelineSelection');
@@ -6993,6 +7037,7 @@ function renderActivityDetailControls(taskID,project=state.project){
   const output=root.querySelector?.('#activityTimelineSelection');if(output&&selection&&!root.querySelector('.workflow-view')){output.textContent=selection;output.hidden=false;}
   if(activeId)root.querySelector?.('#'+activeId)?.focus?.({preventScroll:true});
   if(activeRow||activeExpand){const attr=activeRow?'data-workflow-row-select':'data-workflow-row-expand',value=activeRow||activeExpand;[...(root.querySelectorAll?.('['+attr+']')||[])].find(button=>button.getAttribute(attr)===value)?.focus?.({preventScroll:true});}
+  if(activeMarker){const button=[...(root.querySelectorAll?.('[data-workflow-marker]')||[])].find(button=>button.getAttribute('data-workflow-marker')===activeMarker&&button.tabIndex!==-1&&!button.closest('details:not([open])')&&button.getClientRects().length);(button||root.querySelector?.('#workflowTimelineViewport'))?.focus?.({preventScroll:true});}
   if(activeInterval){const button=[...(root.querySelectorAll?.('[data-workflow-interval]')||[])].find(button=>button.getAttribute('data-workflow-interval')===activeInterval);(button||root.querySelector?.('#workflowTimelineViewport'))?.focus?.({preventScroll:true});}
   if(typeof window!=='undefined'&&window.scrollY!==y)window.scrollTo?.({left:x,top:y,behavior:'auto'});
 }

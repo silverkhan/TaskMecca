@@ -2474,8 +2474,25 @@ select.tm-combo-native{position:absolute!important;width:1px!important;height:1p
 .workflow-unmeasured-row{display:grid;grid-template-columns:var(--workflow-label-width) minmax(0,1fr);align-items:center;min-height:26px;color:var(--muted);font-size:10px}
 .workflow-unmeasured-clip{overflow:hidden;height:10px;margin:0 8px}
 .workflow-unmeasured-clip .workflow-coverage-track{height:10px}
-.workflow-gap-paint{position:absolute;inset-block:0;box-sizing:border-box;pointer-events:auto}
-.workflow-fact-point{position:absolute;top:10px;width:7px;height:7px;border:1px solid var(--muted);background:var(--surface);transform:translateX(-50%) rotate(45deg);box-sizing:border-box}
+.workflow-gap-paint{position:absolute;inset-block:0;box-sizing:border-box;pointer-events:auto;padding:0;border-inline:0;border-block-start:0;border-radius:0;color:inherit;cursor:pointer;min-width:0}
+.workflow-fact-point{position:absolute;top:10px;width:7px;height:7px;padding:0;min-width:0;border:1px solid var(--muted);border-radius:0;background:var(--surface);transform:translateX(-50%) rotate(45deg);box-sizing:border-box;cursor:pointer}
+.workflow-fact-point::after{content:"";position:absolute;inset:-6px}
+:is(.workflow-fact-point,.workflow-gap-paint):is(:hover,:focus-visible,.is-selected){outline:2px solid var(--accent);outline-offset:2px;z-index:3}
+.workflow-marker-options{position:relative;flex:none;font-size:11px;color:var(--muted)}
+.workflow-marker-options>summary{cursor:pointer;min-height:24px;line-height:24px;white-space:nowrap;padding:0 4px}
+.workflow-agent-label{position:relative;flex-wrap:wrap}
+.workflow-agent-label>.workflow-row-label{flex:1 0 100%}
+.workflow-agent-label>.workflow-marker-options{margin-inline-start:12px}
+.workflow-unmeasured-row>span{display:flex;flex-wrap:wrap;align-items:center;gap:2px 8px}
+.workflow-gap-paint.workflow-state-native_observed{border-block:1px dashed color-mix(in srgb,var(--muted) 35%,transparent)}
+.workflow-gap-paint.workflow-state-collection_failed{border-block:1px dotted var(--muted)}
+.workflow-marker-options[open]>div{position:absolute;inset-inline-start:0;top:100%;z-index:6;width:min(300px,65vw);max-height:260px;overflow:auto;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:8px;box-shadow:0 6px 20px rgba(0,0,0,.18);padding:4px}
+.workflow-marker-option{display:block;width:100%;min-height:44px;padding:8px;text-align:start;color:var(--text);background:transparent;border:0;border-radius:4px;white-space:normal;overflow-wrap:anywhere;font:12px/1.5 var(--font-family,system-ui);cursor:pointer}
+.workflow-marker-option small{display:block;color:var(--muted);font-variant-numeric:tabular-nums}
+.workflow-marker-option:is(:hover,.is-selected){background:var(--hover)}
+.workflow-marker-options :is(button,summary):focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.workflow-marker-note{margin:0 0 12px;font-size:12px;line-height:1.6}
+.workflow-floating dl>div:has(dd){grid-template-columns:48px minmax(0,1fr)}
 .workflow-gap-evidence ul{list-style:none;padding:0;margin:12px 0}
 .workflow-gap-evidence li{margin-bottom:16px;font-size:11px;overflow-wrap:anywhere}
 .workflow-gap-evidence li>span{display:block;color:var(--muted)}

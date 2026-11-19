@@ -1,0 +1,307 @@
+{
+  "schema_version": 1,
+  "cases": {
+    "mixed": {
+      "source": {
+        "kind": "synthetic",
+        "provenance": "Hand-authored A89 offline marker scenarios; no operating journal or native identifiers."
+      },
+      "task_id": "A89-FIXTURE",
+      "acceptance": {
+        "status": "unknown",
+        "applied": false
+      },
+      "workflow": {
+        "version": 1,
+        "task_id": "A89-FIXTURE",
+        "computed_at": "2026-11-05T00:15:00.000Z",
+        "axis": {
+          "start": "2026-11-05T00:00:00.000Z",
+          "end": "2026-11-05T01:00:00.000Z",
+          "open": true,
+          "elapsed_ms": 3600000,
+          "basis": "registered_current",
+          "boundary_status": "complete"
+        },
+        "current": {
+          "phase": "implementation",
+          "processing_role": "worker",
+          "processing_agent": "fixture-worker-1",
+          "assigned_worker": "fixture-worker-1",
+          "round": 0,
+          "next_action": "implement_and_verify"
+        },
+        "measurement": {
+          "status": "partial",
+          "worker": {
+            "status": "observed",
+            "duration_ms": 760250
+          },
+          "review": {
+            "status": "not_recorded"
+          },
+          "unmeasured_ms": 139750,
+          "coverage_percent": 84.47
+        },
+        "lifecycle": {
+          "wait_ms": 30000,
+          "total_elapsed_ms": 900000,
+          "wait_intervals": [
+            {
+              "kind": "registration_queue",
+              "started_at": "2026-11-05T00:11:00.000Z",
+              "ended_at": "2026-11-05T00:11:20.000Z",
+              "duration_ms": 20000
+            },
+            {
+              "kind": "dispatch_wait",
+              "started_at": "2026-11-05T00:12:20.000Z",
+              "ended_at": "2026-11-05T00:12:30.000Z",
+              "duration_ms": 10000
+            }
+          ],
+          "completion_history": []
+        },
+        "runtime_timing": {
+          "status": "observed",
+          "duration_ms": 70000
+        },
+        "reporting": {},
+        "control_snapshot": {
+          "trust": "verified",
+          "validated_at": "2026-11-05T00:15:00.000Z"
+        },
+        "rounds": [],
+        "rows": [
+          {
+            "id": "worker-1",
+            "role": "worker",
+            "agent_id": "fixture-worker-1",
+            "display_name": "worker-1",
+            "display_name_source": "bound_runtime_agent_path",
+            "round": 0,
+            "observed_activity_ms": 900000,
+            "intervals": [
+              {
+                "id": "r",
+                "kind": "activity",
+                "type": "requirements",
+                "start": "2026-11-05T00:00:00.000Z",
+                "end": "2026-11-05T00:05:00.000Z",
+                "duration_ms": 300000,
+                "measured": true,
+                "attempt_id": "fixture-attempt",
+                "evidence": "Synthetic A87 interval"
+              },
+              {
+                "id": "i",
+                "kind": "activity",
+                "type": "implementation",
+                "start": "2026-11-05T00:05:00.000Z",
+                "end": "2026-11-05T00:10:00.000Z",
+                "duration_ms": 300000,
+                "measured": true,
+                "attempt_id": "fixture-attempt",
+                "evidence": "Synthetic A87 interval"
+              },
+              {
+                "id": "t",
+                "kind": "activity",
+                "type": "targeted_test",
+                "start": "2026-11-05T00:10:00.000Z",
+                "end": "2026-11-05T00:15:00.000Z",
+                "duration_ms": 300000,
+                "measured": true,
+                "attempt_id": "fixture-attempt",
+                "evidence": "Synthetic A87 interval"
+              },
+              {
+                "id": "open",
+                "kind": "activity_open",
+                "type": "implementation",
+                "start": "2026-11-05T00:30:00.000Z",
+                "measured": false
+              }
+            ],
+            "role_facts": [
+              {
+                "id": "worker-fact",
+                "kind": "started",
+                "at": "2026-11-05T00:05:00.000Z",
+                "source": "synthetic-runtime",
+                "reason": "Observed start only"
+              }
+            ],
+            "gaps": [
+              {
+                "start": "2026-11-05T00:15:00.000Z",
+                "end": "2026-11-05T00:20:00.000Z",
+                "status": "native_observed",
+                "evidence": [
+                  {
+                    "source": "synthetic-runtime",
+                    "reason": "Bounds only; phase unmeasured",
+                    "observed_at": "2026-11-05T01:00:00.000Z"
+                  }
+                ]
+              },
+              {
+                "start": "2026-11-05T00:20:00.000Z",
+                "end": "2026-11-05T00:25:00.000Z",
+                "status": "confirmed_wait",
+                "evidence": [
+                  {
+                    "source": "synthetic-coverage",
+                    "reason": "Explicit report",
+                    "observed_at": "2026-11-05T01:00:00.000Z"
+                  }
+                ]
+              },
+              {
+                "start": "2026-11-05T00:25:00.000Z",
+                "end": "2026-11-05T00:30:00.000Z",
+                "status": "collection_failed",
+                "evidence": [
+                  {
+                    "source": "synthetic-coverage",
+                    "reason": "Fixture collection failure",
+                    "observed_at": "2026-11-05T01:00:00.000Z"
+                  }
+                ]
+              },
+              {
+                "start": "2026-11-05T00:31:00.000Z",
+                "status": "unmeasured",
+                "evidence": []
+              },
+              {
+                "start": "bad-time",
+                "end": "2026-11-05T00:32:00.000Z",
+                "status": "unmeasured",
+                "evidence": []
+              }
+            ]
+          },
+          {
+            "id": "controller",
+            "role": "controller",
+            "agent_id": "fixture-controller",
+            "display_name": "controller",
+            "round": 0,
+            "intervals": [],
+            "role_facts": [
+              {
+                "id": "controller-fact",
+                "kind": "started",
+                "at": "2026-11-05T00:02:00.000Z",
+                "source": "synthetic-controller",
+                "reason": "Observed instant, not measured work"
+              },
+              {
+                "id": "controller-overlap",
+                "kind": "handoff_review",
+                "type": "unclassified_review",
+                "at": "2026-11-05T00:02:00.000Z",
+                "source": "synthetic-handoff",
+                "reason": "Same instant, separate fact"
+              },
+              {
+                "id": "controller-missing",
+                "kind": "future<fact>",
+                "at": null,
+                "reason": "No timestamp <script>fixture</script>"
+              }
+            ],
+            "gaps": [
+              {
+                "start": "2026-11-05T00:00:00.000Z",
+                "end": "2026-11-05T01:00:00.000Z",
+                "status": "unmeasured",
+                "evidence": [
+                  {
+                    "source": "synthetic-coverage",
+                    "reason": "No phase coverage; no idle inference",
+                    "observed_at": "2026-11-05T01:00:00.000Z"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "registrar",
+            "role": "registrar",
+            "agent_id": "fixture-registrar",
+            "display_name": "registrar",
+            "round": 1,
+            "intervals": [],
+            "role_facts": [
+              {
+                "id": "registrar-fact",
+                "kind": "registration_authorization",
+                "at": "2026-11-05T00:02:00.000Z",
+                "source": "synthetic-registrar",
+                "reason": "Observed instant, not measured work"
+              },
+              {
+                "id": "registrar-overlap",
+                "kind": "handoff_review",
+                "type": "unclassified_review",
+                "at": "2026-11-05T00:02:00.000Z",
+                "source": "synthetic-handoff",
+                "reason": "Same instant, separate fact"
+              },
+              {
+                "id": "registrar-missing",
+                "kind": "future<fact>",
+                "at": null,
+                "reason": "No timestamp <script>fixture</script>"
+              }
+            ],
+            "gaps": [
+              {
+                "start": "2026-11-05T00:00:00.000Z",
+                "end": "2026-11-05T01:00:00.000Z",
+                "status": "unmeasured",
+                "evidence": [
+                  {
+                    "source": "synthetic-coverage",
+                    "reason": "No phase coverage; no idle inference",
+                    "observed_at": "2026-11-05T01:00:00.000Z"
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "unmeasured_intervals": [
+          {
+            "start": "2026-11-05T00:00:00.000Z",
+            "end": "2026-11-05T01:00:00.000Z",
+            "status": "unmeasured",
+            "evidence": [
+              {
+                "source": "synthetic-coverage",
+                "reason": "Global fixture boundary",
+                "observed_at": "2026-11-05T01:00:00.000Z"
+              }
+            ]
+          },
+          {
+            "start": null,
+            "end": "2026-11-05T01:00:00.000Z",
+            "status": "collection_failed",
+            "evidence": []
+          }
+        ]
+      },
+      "summary": {
+        "by_type_ms": {
+          "requirements": 300000,
+          "implementation": 300000,
+          "targeted_test": 300000
+        }
+      },
+      "events": []
+    }
+  }
+}
