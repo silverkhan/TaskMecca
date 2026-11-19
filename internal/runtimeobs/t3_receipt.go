@@ -111,7 +111,7 @@ func (s t3Store) read(sel T3Selector, historical bool, now time.Time) (T3Receipt
 	if historical {
 		query += ` AND r.run_id=` + sqlLiteral(sel.RunID)
 	} else {
-		query += ` AND r.ordinal=(SELECT max(ordinal) FROM orchestration_v2_projection_runs WHERE thread_id=r.thread_id)`
+		query += currentT3RunPredicate()
 	}
 	if historical && sel.NativeAttemptID != "" {
 		query += ` AND a.attempt_id=` + sqlLiteral(sel.NativeAttemptID) + `;`
@@ -306,10 +306,26 @@ func observeT3Execution(project string, sel T3Selector, now time.Time, read t3Re
 	}
 	for _, a := range ledger.Attempts {
 		if a.AttemptID == episode {
+			if err := collectNativeBoundary(project, a, receipt, now); err != nil {
+				return a, receipt, fmt.Errorf("native boundary collection failed: %w", err)
+			}
 			return a, receipt, nil
 		}
 	}
 	return Attempt{}, receipt, errors.New("observed episode disappeared")
+}
+
+// A queued follow-up is not the current native execution. Only a unique running
+// run with exclusively queued successors may displace the latest ordinal.
+// Ambiguity, a later terminal/start state, and all native identity checks still
+// fail closed. Historical selectors deliberately do not use this predicate.
+func currentT3RunPredicate() string {
+	return ` AND (
+ (r.status='running'
+  AND (SELECT count(*) FROM orchestration_v2_projection_runs live WHERE live.thread_id=r.thread_id AND live.status='running')=1
+  AND NOT EXISTS (SELECT 1 FROM orchestration_v2_projection_runs later WHERE later.thread_id=r.thread_id AND later.ordinal>r.ordinal AND later.status<>'queued'))
+ OR (NOT EXISTS (SELECT 1 FROM orchestration_v2_projection_runs live WHERE live.thread_id=r.thread_id AND live.status='running')
+  AND r.ordinal=(SELECT max(ordinal) FROM orchestration_v2_projection_runs latest WHERE latest.thread_id=r.thread_id)))`
 }
 func appendT3State(project, episode, runtimeID string, r T3Receipt) error {
 	e := ExecutionEvent{EventKind: "state", AttemptID: episode, Provider: r.Provider, SessionID: r.SessionID, RuntimeAgentID: runtimeID, TurnID: r.NativeAttemptID, ObservedAt: r.ObservedAt, State: r.State, Terminal: r.State != StateRunning, EvidenceSource: EvidenceT3, ObservationQuality: QualityObserved, NativeReceipt: &r, Reason: r.Origin}

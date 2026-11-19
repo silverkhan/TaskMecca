@@ -107,7 +107,7 @@ func readActivityWorkflow(project, task string, events []activity.Event, summary
 	prior, found := workflowResponseCache.items[key]
 	workflowResponseCache.Unlock()
 	if found && prior.revision == revision && now.Sub(prior.at) < 2*time.Second {
-		return prior.value
+		return activity.AttachExecutionCoverage(project, task, prior.value)
 	}
 	out := activity.SummarizeWorkflow(activity.WorkflowInput{ExecutionObservations: observations, TaskID: task, Events: events, Summary: summary, Facts: facts, Handoffs: cached.ledger.Handoffs, Control: control, Now: now})
 	out.Snapshot["execution_evidence_source"] = "runtime_ledger_read_only"
@@ -139,5 +139,5 @@ func readActivityWorkflow(project, task string, events []activity.Event, summary
 	}
 	workflowResponseCache.items[key] = workflowResponseEntry{at: now, revision: revision, value: out}
 	workflowResponseCache.Unlock()
-	return out
+	return activity.AttachExecutionCoverage(project, task, out)
 }

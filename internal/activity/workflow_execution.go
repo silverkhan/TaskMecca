@@ -51,10 +51,39 @@ type WorkflowGapEvidence struct {
 	AttemptID  string    `json:"attempt_id,omitempty"`
 }
 type RoleReportingCoverage struct {
-	Role               string `json:"role"`
-	Status             string `json:"status"`
-	FactCount          int    `json:"fact_count"`
-	ActivityEventCount int    `json:"activity_event_count"`
+	ExecutionCoverage  *ExecutionCoverage `json:"execution_coverage,omitempty"`
+	Role               string             `json:"role"`
+	Status             string             `json:"status"`
+	FactCount          int                `json:"fact_count"`
+	ActivityEventCount int                `json:"activity_event_count"`
+}
+
+func workflowCoverageItems(w Workflow) []ExecutionCoverageItem {
+	out := []ExecutionCoverageItem{}
+	for _, row := range w.Rows {
+		for _, interval := range row.Intervals {
+			category := "observation_handoff"
+			if interval.Measured && interval.End != nil {
+				category = "confirmed_closed_activity"
+			} else if interval.End == nil && (interval.Kind == "activity" || interval.Kind == "activity_open") {
+				category = "open_start"
+			} else if interval.Kind == "activity_unreported" {
+				category = "unmeasured"
+			}
+			out = append(out, ExecutionCoverageItem{ID: coverageID(row.Role, row.AgentID, interval.ID), Category: category, Role: row.Role, ActorID: row.AgentID, AttemptID: interval.AttemptID, Start: interval.Start, End: interval.End, DurationMillis: interval.DurationMillis, Reason: interval.Evidence})
+		}
+		for _, fact := range row.RoleFacts {
+			category := "observation_handoff"
+			if fact.Kind == "collection_failed" {
+				category = "collection_failure"
+			}
+			out = append(out, ExecutionCoverageItem{ID: coverageID(row.Role, row.AgentID, fact.ID), Category: category, Role: row.Role, ActorID: row.AgentID, AttemptID: fact.AttemptID, HandoffID: fact.HandoffID, Start: fact.At, Reason: fact.Reason})
+		}
+	}
+	for i, gap := range w.Unmeasured {
+		out = append(out, ExecutionCoverageItem{ID: fmt.Sprintf("unmeasured:%d", i), Category: "unmeasured", Role: "unknown", Start: gap.Start, End: &gap.End, Reason: gap.Status})
+	}
+	return out
 }
 
 // Optional explicit caller evidence, never inferred from missing Activity or
@@ -186,6 +215,11 @@ func workflowRoleFacts(in WorkflowInput, w *Workflow, rows map[string]*WorkflowR
 		}
 		if at, ok := workflowTime(h.PreparedAt); ok && h.SourceAgentPath != "" {
 			fact(workflowActorRole(h.SourceAgentPath), h.SourceAgentPath, WorkflowRoleFact{ID: "prepared:" + h.HandoffID, Kind: "handoff_prepared", At: at, Source: "handoff_journal", Reason: "Handoff prepared; delivery and activity are separate", AttemptID: h.SourceAttemptID, HandoffID: h.HandoffID})
+		}
+		if step, ok := h.Steps["dispatch"]; ok && step.Result == "ok" && h.DeliveryStatus == "dispatch_ok" && h.SourceAgentPath != "" {
+			if at, valid := workflowTime(step.ObservedAt); valid {
+				fact(workflowActorRole(h.SourceAgentPath), h.SourceAgentPath, WorkflowRoleFact{ID: "delivered:" + h.HandoffID, Kind: "handoff_delivered", At: at, Source: "handoff_journal", Reason: step.Evidence, AttemptID: h.SourceAttemptID, HandoffID: h.HandoffID})
+			}
 		}
 		if at, ok := workflowTime(h.ClaimedAt); ok && h.ClaimedBy != "" {
 			fact(workflowActorRole(h.ClaimedBy), h.Target.RuntimeAgentID, WorkflowRoleFact{ID: "claimed:" + h.HandoffID, Kind: "handoff_claimed", At: at, Source: "handoff_journal", Reason: "Actual handoff claim; no measured coordination or review duration", AttemptID: h.ClaimedAttemptID, HandoffID: h.HandoffID})

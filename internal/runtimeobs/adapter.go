@@ -95,6 +95,9 @@ func ObserveHook(project, provider string, input io.Reader, now time.Time) (Exec
 	if err := appendHookEventOnce(project, &event); err != nil {
 		return ExecutionEvent{}, err
 	}
+	if err := collectHookBoundary(project, event, now); err != nil {
+		return event, fmt.Errorf("hook boundary collection failed: %w", err)
+	}
 	return event, nil
 }
 

@@ -113,7 +113,10 @@ func run(args []string) int {
         }
         return 0
     }
-    if len(args)>1 && args[0]=="runtime" && args[1]=="observe-t3" {
+	if len(args)>1 && args[0]=="runtime" && args[1]=="boundary" {
+		return runAgentJSON(args[2:],func(out,err io.Writer)int{return runRuntimeBoundaryCLI(args[2:],out,err)},os.Stdout,os.Stderr)
+	}
+	if len(args)>1 && args[0]=="runtime" && args[1]=="observe-t3" {
  return runAgentJSON(args[2:],func(out,err io.Writer)int{return runRuntimeObserveT3CLI(args[2:],out,err)},os.Stdout,os.Stderr)
  }
  if len(args) > 1 && args[0] == "runtime" && args[1] == "diagnose" {

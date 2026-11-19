@@ -44,6 +44,7 @@ type batchPlan struct {
 }
 
 type batchResult struct {
+	ExecutionCollection *registrationCollectionStatus `json:"execution_collection,omitempty"`
 	Status string `json:"status"`
 	RequestID string `json:"request_id"`
 	PlanDigest string `json:"plan_digest"`
@@ -72,7 +73,7 @@ func batchUsage(out io.Writer) {
 	fmt.Fprintln(out,"plan is read-only; apply registers tasks only (never authorizes execution). Retry with same key/input/digest.")
 }
 
-func runContractBatchCLI(action string,args []string,out,stderr io.Writer)int{
+func runContractBatchCLI(action string,args []string,out,stderr io.Writer)(exitCode int){
 	flags:=flag.NewFlagSet("contract "+action,flag.ContinueOnError)
 	flags.SetOutput(stderr)
 	project:=flags.String("project",".","exact project root")
@@ -93,6 +94,14 @@ func runContractBatchCLI(action string,args []string,out,stderr io.Writer)int{
 	if action=="plan" && (*approve||*expect!=""){fmt.Fprintln(stderr,"plan never accepts approval or expected digest");return 2}
 	abs,err:=filepath.Abs(*project)
 	if err!=nil {fmt.Fprintln(stderr,err);return 2}
+	// plan/status remain read-only, including runtime storage.
+	var collection *registrationBoundary
+	if action=="apply" {
+		collection=beginRegistrationBoundary(abs,*requestID,stderr)
+		var originalErrors bytes.Buffer
+		stderr=io.MultiWriter(stderr,&originalErrors)
+		defer func(){collection.finish(exitCode,originalErrors.String())}()
+	}
 	if action=="status" {
 		plan,err:=readBatchPlan(batchJournalPath(abs,*requestID))
 		if err!=nil {fmt.Fprintln(stderr,err);return 1}
@@ -156,7 +165,13 @@ func runContractBatchCLI(action string,args []string,out,stderr io.Writer)int{
 		fmt.Fprintln(stderr,"IDEMPOTENCY_CONFLICT: request already used with different manifest, project, prefix or plan digest")
 		return 3
 	}
+	collection.phase("registration_apply")
 	result:=applyContractBatch(plan,manifest)
+	ids:=[]string{};for _,item:=range result.Tasks {if item.Registered {ids=append(ids,item.ID)}}
+	collection.link(ids)
+	resultCode:=0;if result.Status!="success"{resultCode=3}
+	collection.finish(resultCode,result.Error)
+	result.ExecutionCollection=collection.status()
 	if *asJSON {if err:=json.NewEncoder(out).Encode(result);err!=nil{fmt.Fprintln(stderr,err);return 1}}else{
 		fmt.Fprintf(out,"%s: %d tasks, request=%s\n",result.Status,len(result.Tasks),result.RequestID)
 		for _,item:=range result.Tasks {fmt.Fprintf(out,"%s %s registered=%t lifecycle=%t %s\n",item.Key,item.ID,item.Registered,item.LifecycleRecorded,item.Error)}
