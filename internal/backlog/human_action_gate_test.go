@@ -46,7 +46,7 @@ func TestA88RepairConcreteCauseRequiresRequestAndCorrespondingAction(t *testing.
 		{"Repository administrator access required", "Owner grants repository access"},
 		{"Billing administrator approval needed", "Owner approves the billing decision"},
 		{"User answer to the deployment question is required", "User: answer the deployment question"},
-		{"사용자 답변 대기", "사용자: 요청된 승인 여부를 답변해 주세요."},
+		{"사용자 승인 여부 답변 대기", "사용자: 요청된 승인 여부를 답변해 주세요."},
 	} {
 		row.Fields["대기"], row.Fields["재개조건"] = pair[0], pair[1]
 		_, condition := canonicalOperationalState(row, nil, nil)
@@ -268,7 +268,7 @@ func TestA88LegacySameCauseRekeyDoesNotReplayAndHistoryIsNotTrimmed(t *testing.T
 
 func TestA88CompletedThenResumedCauseStartsNewEpisode(t *testing.T) {
 	project := t.TempDir()
-	row := Record{ID: "A-88", State: "hold", Location: "active", Fields: map[string]string{"대기유형": "external", "대기": "External owner decision required", "재개조건": "Owner: provide decision"}}
+	row := Record{ID: "A-88", State: "hold", Location: "active", Fields: map[string]string{"대기유형": "external", "대기": "External owner decision required", "재개조건": "Owner: provide requested decision"}}
 	_, condition := canonicalOperationalState(row, nil, nil)
 	items := map[string]map[string]any{"A-88": {"file_state": "hold"}}
 	if _, err := NotificationEvents(project, items); err != nil {
@@ -808,7 +808,7 @@ func TestA88Repair4PrivilegesResourcesAndExplicitControls(t *testing.T) {
 		{"Repository access is required.", "Repository owner: grant repository access.", true},
 		{"Repository answer is required.", "User: answer repository question.", true},
 		{"User answer to the deployment question is required.", "User: answer the deployment question.", true},
-		{"사용자 답변 대기", "사용자: 요청된 결과의 승인 여부를 답변해 주세요.", true},
+		{"사용자 결과의 승인 여부 답변 대기", "사용자: 요청된 결과의 승인 여부를 답변해 주세요.", true},
 		{"저장소 접근 권한 승인이 필요합니다.", "관리자: 저장소 접근 권한을 승인해 주세요.", true},
 		{"저장소 접근 권한 승인이 필요합니다.", "관리자: 저장소 접근 권한을 부여해 주세요.", false},
 		{"저장소 접근 권한 입력이 필요합니다.", "관리자: 저장소 접근 권한을 부여해 주세요.", false},
@@ -846,6 +846,156 @@ func TestA88Repair4AnswerNounAndImperativeRemainDistinct(t *testing.T) {
 		t.Run(c.request, func(t *testing.T) {
 			if got := HumanActionCondition(canonicalRequestConditionFixture(c.request, c.next)); got != c.want {
 				t.Fatal("noun/imperative consumption", c.request, c.next, got, c.want)
+			}
+		})
+	}
+}
+
+func TestA88Repair5AllowedTokenSemanticAudit(t *testing.T) {
+	// This is the former admitted vocabulary, audited through the authoritative
+	// parser. Every token now has a descriptor/operation/role/reference meaning
+	// or is explicitly unsupported; matching a topic alone is never sufficient.
+	cases := []struct {
+		token, request, next, field, want string
+		authorized                        bool
+	}{
+		{"repository", "Repository access required", "Owner: grant repository access", "resource", "repository", true},
+		{"database", "Database access required", "Owner: grant database access", "resource", "database", true},
+		{"deployment", "Deployment input required", "User: provide deployment input", "resource", "deployment", true},
+		{"billing", "Billing approval required", "Owner: approve billing decision", "resource", "billing", true},
+		{"project", "Project value required", "User: provide project value", "resource", "project", true},
+		{"service", "Service credentials required", "Operator: provide service credentials", "resource", "service", true},
+		{"external", "External owner decision required", "Owner: provide requested decision", "scope", "external", true},
+		{"owner", "Owner access required", "Owner: grant requested access", "subject", "approver", true},
+		{"administrator", "Repository administrator access required", "Owner: grant repository access", "subject", "approver", true},
+		{"admin", "Admin repository access required", "Admin: grant repository access", "subject", "approver", true},
+		{"access", "Repository access required", "Owner: grant repository access", "object", "access", true},
+		{"permission", "Database read permission required", "Administrator: grant database read permission", "object", "access", true},
+		{"credential", "Service credential required", "Operator: provide service credential", "object", "credentials", true},
+		{"credentials", "Service credentials required", "Operator: provide service credentials", "object", "credentials", true},
+		{"approval", "Repository access approval required", "Owner: approve repository access", "intent", "approve_access", true},
+		{"decision", "Billing decision required", "Owner: confirm billing decision", "object", "decision", true},
+		{"choice", "Project choice required", "User: select project choice", "object", "choice", true},
+		{"policy", "Project policy required", "Owner: confirm project policy", "object", "policy", true},
+		{"input", "User input required", "User: provide input", "object", "input", true},
+		{"answer", "Answer required", "User: provide answer", "object", "response", true},
+		{"question", "Answer the project question", "User: answer project question", "object", "response", true},
+		{"result", "Project result required", "User: provide project result", "object", "result", true},
+		{"value", "Project value required", "User: provide project value", "object", "value", true},
+		{"existing", "Existing owner access required", "Owner: grant requested access", "status", "existing", true},
+		{"requested", "Existing repository access required", "Owner: grant requested access", "reference", "requested", true},
+		{"different", "Different repository access required", "Owner: grant different repository access", "", "", false},
+		{"read", "Database read permission required", "Administrator: grant database read permission", "privilege", "read", true},
+		{"write", "Database write permission required", "Administrator: grant database write permission", "privilege", "write", true},
+		{"the", "The repository access required", "Owner: grant the repository access", "resource", "repository", true},
+		{"a", "A repository access required", "Owner: grant a repository access", "", "", false},
+	}
+	seen := map[string]bool{}
+	for _, c := range cases {
+		t.Run(c.token, func(t *testing.T) {
+			seen[c.token] = true
+			condition := canonicalRequestConditionFixture(c.request, c.next)
+			if HumanActionCondition(condition) != c.authorized {
+				t.Fatal("token audit authorization", c.token, condition)
+			}
+			if !c.authorized {
+				return
+			}
+			p, ok := parseRequestedHumanObject(c.request)
+			if !ok {
+				t.Fatal("supported request not parsed")
+			}
+			actual := map[string]string{"resource": p.resource, "object": p.object, "privilege": p.privilege, "status": p.status, "scope": p.scope, "subject": p.subjectRole, "intent": p.intent}[c.field]
+			if c.field == "reference" {
+				a, ok := parsePerformedHumanObject(c.next)
+				if !ok || !a.requested {
+					t.Fatal("requested token not a bound reference")
+				}
+				actual = "requested"
+			}
+			if actual != c.want {
+				t.Fatal("token not represented in authoritative parse", c.token, actual, c.want)
+			}
+		})
+	}
+	for _, token := range []string{"repository", "database", "deployment", "billing", "project", "service", "external", "owner", "administrator", "access", "permission", "credential", "credentials", "approval", "decision", "choice", "policy", "input", "answer", "question", "result", "value", "existing", "requested", "different", "read", "write"} {
+		if !seen[token] {
+			t.Fatal("former admitted token lacks semantic audit", token)
+		}
+	}
+}
+
+func TestA88Repair5QualifierReferenceResourceCrossProduct(t *testing.T) {
+	type qualifier struct {
+		text, status, scope string
+		supported           bool
+	}
+	qualifiers := []qualifier{{"", "", "", true}, {"existing ", "existing", "", true}, {"external ", "", "external", true}, {"existing external ", "existing", "external", true}, {"different ", "", "", false}, {"other ", "", "", false}, {"alternative ", "", "", false}, {"ambiguous ", "", "", false}, {"unknown ", "", "", false}}
+	for _, resource := range []string{"repository", "database", "service"} {
+		for _, q := range qualifiers {
+			for _, a := range qualifiers {
+				for _, reference := range []bool{false, true} {
+					t.Run(fmt.Sprintf("%s/q%q/a%q/ref%v", resource, q.text, a.text, reference), func(t *testing.T) {
+						request := q.text + resource + " access required"
+						ref := ""
+						if reference {
+							ref = "requested "
+						}
+						next := "Owner: grant " + ref + a.text + resource + " access"
+						want := q.supported && a.supported
+						if reference {
+							want = want && (a.status == "" || a.status == q.status) && (a.scope == "" || a.scope == q.scope)
+						} else {
+							want = want && a.status == q.status && a.scope == q.scope
+						}
+						if got := HumanActionCondition(canonicalRequestConditionFixture(request, next)); got != want {
+							t.Fatalf("descriptor/reference mismatch got%v want%v request%q action%q", got, want, request, next)
+						}
+					})
+				}
+			}
+		}
+	}
+}
+
+func TestA88Repair5ReferencesNeverInventOrEraseTarget(t *testing.T) {
+	for _, c := range []struct {
+		q, a string
+		want bool
+	}{
+		{"Repository access required", "Owner: grant different repository access", false},
+		{"Repository access required; different repository access required", "Owner: grant repository access", false},
+		{"Repository access required; existing repository access required", "Owner: grant requested repository access", false},
+		{"Existing repository access required; existing repository access required", "Owner: grant requested access", true},
+		{"Existing repository access required", "Owner: grant repository access", false},
+		{"Existing repository access required", "Owner: grant existing repository access", true},
+		{"Existing repository access required", "Owner: grant requested repository access", true},
+		{"Repository access required", "Owner: grant requested existing repository access", false},
+		{"Requested repository access required", "Owner: grant requested repository access", false},
+		{"Repository access required", "Owner: grant requested requested repository access", false},
+		{"Repository access required", "Repository owner: grant access", false},
+		{"Repository access required", "Repository owner: grant requested access", true},
+		{"Access required", "Repository owner: grant requested access", false},
+		{"Repository access required", "Database owner: grant requested repository access", false},
+		{"Repository access required", "Unknown owner: grant repository access", false},
+		{"Repository access required", "Adminish: grant repository access", false},
+		{"Project policy required", "Owner: confirm project decision", false},
+		{"Project result required", "User: provide project value", false},
+		{"Project value required", "User: provide project result", false},
+		{"User input required", "Owner: provide input", false},
+		{"User input required", "User: provide input", true},
+		{"Repository access required", "Owner: grant repository different access", false},
+		{"Repository access required", "Owner: grant repository access existing", false},
+		{"사용자 결과의 승인 여부 답변 대기", "사용자: 요청된 결과의 승인 여부를 답변해 주세요.", true},
+		{"사용자 결과의 승인 여부 답변 대기", "사용자: 요청된 승인 여부를 답변해 주세요.", false},
+		{"사용자 답변 대기", "사용자: 요청된 결과의 승인 여부를 답변해 주세요.", false},
+		{"기존 저장소 접근 권한이 필요합니다.", "관리자: 요청된 접근 권한을 부여해 주세요.", true},
+		{"기존 저장소 접근 권한이 필요합니다.", "관리자: 저장소 접근 권한을 부여해 주세요.", false},
+		{"저장소 접근 권한이 필요합니다.", "관리자: 다른 저장소 접근 권한을 부여해 주세요.", false},
+	} {
+		t.Run(c.q+"/"+c.a, func(t *testing.T) {
+			if got := HumanActionCondition(canonicalRequestConditionFixture(c.q, c.a)); got != c.want {
+				t.Fatal("complete descriptor not preserved", got, c.want, c.q, c.a)
 			}
 		})
 	}

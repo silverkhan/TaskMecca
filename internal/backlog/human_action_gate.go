@@ -70,243 +70,330 @@ func runtimeHumanActionKind(state string) string {
 	return ""
 }
 
-// The supported grammar consumes the ENTIRE assertion/action, including its
-// tense and qualifiers. Arbitrary clauses are not a resource name. Unknown,
-// negated, conditional, or future prose cannot be salvaged by keyword matches.
-const humanNoun = `(?:repository|database|deployment|billing|project|service|external|owner|administrator|access|permission|credentials?|approval|decision|choice|policy|input|answer|question|result|value|existing|requested|different|read|write)`
-const humanObject = `(?:(?:the|a) )?(?:` + humanNoun + `(?: ` + humanNoun + `)*)`
-
-const presentHumanClause = `(?:` + humanObject + ` (?:is |are )?(?:required|needed|denied|blocked)(?: (?:now|to (?:continue|resume) (?:deployment|work|execution|the task)))?)`
-
-var presentHumanAssertion = regexp.MustCompile(`(?i)^(?:` + presentHumanClause + `(?:; ` + presentHumanClause + `)?|(?:grant|provide|restore|approve|answer) ` + humanObject + `|(?:user|owner) answer to the (?:deployment|billing|project) question is required)\.?$`)
-var unconditionalHumanAction = regexp.MustCompile(`(?i)^(?:repository )?(owner|user|administrator|admin|root|operator):? (?:please )?(grant|approve|restore|provide|allow|authorize|answer|reply|choose|confirm|decide|select)s? (` + humanObject + `|answer to the (?:deployment|billing|project) question)\.?$`)
-var presentKoreanAssertion = regexp.MustCompile(`^(?:(?:배포를|작업을|실행을) (?:계속|재개)하려면 )?(?:저장소 |데이터베이스 |프로젝트 |배포 |서비스 |계정 |사용자 )?(?:접근 권한(?: 부여| 승인)?|권한(?: 부여| 승인)?|승인|결정|입력|답변)(?:이|가)? (?:필요합니다|필요함|필요해요|필요|대기)\.?$`)
-var unconditionalKoreanAction = regexp.MustCompile(`^(관리자|사용자|소유자|담당자):? ((?:(?:저장소|데이터베이스|프로젝트|배포|서비스|계정) )?(?:접근 권한|권한)|(?:요청된 )?(?:결과의 승인 여부|승인 여부|입력|답변|결정|질문|배포 질문)|배포)(?:을|를|에) (부여|승인|제공|답변|입력|선택|확정)해 주세요\.?$`)
-
-// This private in-memory type is never accepted from serialized JSON or a
-// freeform "proof" map. Only canonical projection constructors mint evidence.
+// A concrete current request and an unconditional named action must each parse
+// completely. Positive target grammar, not a bag of recognized nouns, defines
+// which tokens are structural roles, descriptors, references and operations.
 type humanActionProof struct {
 	source, category, request, next, state, handoff, contract string
 	condition                                                 map[string]any
 	fingerprint                                               string
 }
+type humanTargetDescriptor struct {
+	resource, object, privilege, status, scope, topic string
+}
+type parsedHumanObject struct {
+	humanTargetDescriptor
+	intent, subjectRole, actorRole, actorResource string
+	requested                                     bool
+}
+
+var humanResources = map[string]string{
+	"repository": "repository", "database": "database", "deployment": "deployment", "billing": "billing", "project": "project", "service": "service", "account": "account",
+	"저장소": "repository", "데이터베이스": "database", "배포": "deployment", "청구": "billing", "프로젝트": "project", "서비스": "service", "계정": "account",
+}
+var humanRoles = map[string]string{"owner": "approver", "administrator": "approver", "admin": "approver", "root": "approver", "user": "user", "operator": "operator", "관리자": "approver", "소유자": "approver", "사용자": "user", "담당자": "operator"}
+var humanPurpose = regexp.MustCompile(`(?i) (?:now|to (?:continue|resume) (?:deployment|work|execution|the task))\.?$`)
+var koreanHumanPurpose = regexp.MustCompile(`^(?:배포를|작업을|실행을) (?:계속|재개)하려면 `)
+var humanNominalRequest = regexp.MustCompile(`^(.+?)(?: (?:is|are))? (required|needed|denied|blocked)\.?$`)
+var humanImperativeRequest = regexp.MustCompile(`^(grant|provide|restore|approve|answer) (.+?)\.?$`)
+var koreanNominalRequest = regexp.MustCompile(`^(.+?)(?:이|가)? (필요합니다|필요함|필요해요|필요|대기)\.?$`)
+var humanNamedOperation = regexp.MustCompile(`^(?:(repository|database|deployment|billing|project|service|account) )?(owner|user|administrator|admin|root|operator):? (?:please )?(grant|approve|restore|provide|allow|authorize|answer|reply|choose|confirm|decide|select)s? (.+?)\.?$`)
+var koreanNamedOperation = regexp.MustCompile(`^(관리자|사용자|소유자|담당자):? (.+?)(?:을|를|에) (부여|승인|제공|답변|입력|선택|확정)해 주세요\.?$`)
+var humanAnswerTarget = regexp.MustCompile(`^(?:(user|owner) )?answer to (?:the )?(repository|database|deployment|billing|project|service|account) question$`)
 
 func requestedHumanAction(request, next string) *humanActionProof {
 	request = strings.TrimSpace(request)
 	next = strings.TrimSpace(next)
-	category := ""
-	if (presentHumanAssertion.MatchString(request) && unconditionalHumanAction.MatchString(next)) || (presentKoreanAssertion.MatchString(request) && unconditionalKoreanAction.MatchString(next)) {
-		required, ok := parseRequestedHumanObject(request)
-		performed, actionOK := parsePerformedHumanObject(next)
-		if ok && actionOK && required.object == performed.object && required.intent == performed.intent && required.privilege == performed.privilege {
-			// A deictic 'requested' action may refer to the one explicit request;
-			// an unrelated explicit entity can never be inferred or substituted.
-			if required.resource == performed.resource || (required.resource != "" && performed.resource == "" && performed.requested) {
-				category = required.intent + ":" + required.resource + ":" + required.object + ":" + required.privilege
-			}
-		}
-	}
-	if category == "" {
+	required, ok := parseRequestedHumanObject(request)
+	performed, actionOK := parsePerformedHumanObject(next)
+	if !ok || !actionOK || !matchingHumanTargets(required, performed) {
 		return nil
 	}
-	return &humanActionProof{source: "canonical_requested_action", category: category, request: request, next: next}
+	// The complete parsed request, including descriptors and requester context,
+	// participates in the private basis identity. References never mint a target.
+	body, _ := json.Marshal([]string{required.intent, required.resource, required.object, required.privilege, required.status, required.scope, required.topic, required.subjectRole})
+	return &humanActionProof{source: "canonical_requested_action", category: string(body), request: request, next: next}
 }
-
-// A supported sentence is parsed into an entity, object, privilege and intent.
-// Topic overlap is never authority. Mixed requirements must describe one and
-// the same operation, otherwise they need a more precise canonical request.
-type parsedHumanObject struct {
-	resource, object, privilege, intent string
-	requested                           bool
+func matchingHumanTargets(required, performed parsedHumanObject) bool {
+	if required.intent != performed.intent || required.object != performed.object {
+		return false
+	}
+	if required.subjectRole != "" && required.subjectRole != performed.actorRole {
+		return false
+	}
+	// Actor scope may constrain a known target; it cannot supply its resource.
+	if performed.actorResource != "" && performed.actorResource != required.resource {
+		return false
+	}
+	if !performed.requested {
+		return required.humanTargetDescriptor == performed.humanTargetDescriptor
+	}
+	// One complete current request is already established by the request parser.
+	// A requested reference inherits only unspecified fields; every explicit
+	// descriptor must agree. An asserted 'existing' target is never erased.
+	for _, pair := range [][2]string{{performed.resource, required.resource}, {performed.privilege, required.privilege}, {performed.status, required.status}, {performed.scope, required.scope}, {performed.topic, required.topic}} {
+		if pair[0] != "" && pair[0] != pair[1] {
+			return false
+		}
+	}
+	return true
 }
-
-var humanResourceWords = map[string][]string{
-	"repository": {"repository", "저장소"}, "database": {"database", "데이터베이스"},
-	"billing": {"billing", "청구"}, "deployment": {"deployment", "배포"},
-	"project": {"project", "프로젝트"}, "service": {"service", "서비스"}, "account": {"account", "계정"},
-}
-var humanPurpose = regexp.MustCompile(`(?i) (?:now|to (?:continue|resume) (?:deployment|work|execution|the task))\.?$`)
-var koreanHumanPurpose = regexp.MustCompile(`^(?:배포를|작업을|실행을) (?:계속|재개)하려면 `)
-var humanActionVerb = regexp.MustCompile(`(?i)^(?:(?:repository )?(?:owner|user|administrator|admin|root|operator):? (?:please )?)?(grant|approve|restore|provide|allow|authorize|answer|reply|choose|confirm|decide|select)s? `)
-
 func parseRequestedHumanObject(request string) (parsedHumanObject, bool) {
-	request = koreanHumanPurpose.ReplaceAllString(strings.ToLower(strings.TrimSpace(request)), "")
-	request = humanPurpose.ReplaceAllString(request, "")
-	clauses := strings.Split(request, "; ")
+	clauses := strings.Split(strings.ToLower(strings.TrimSpace(request)), "; ")
 	var result parsedHumanObject
 	for i, clause := range clauses {
 		parsed, ok := parseHumanObject(clause, "", false)
-		if !ok || (i > 0 && (parsed.resource != result.resource || parsed.object != result.object || parsed.privilege != result.privilege || parsed.intent != result.intent)) {
+		if !ok || parsed.requested || (i > 0 && (parsed.humanTargetDescriptor != result.humanTargetDescriptor || parsed.intent != result.intent || parsed.subjectRole != result.subjectRole)) {
 			return parsedHumanObject{}, false
 		}
 		result = parsed
 	}
-	return result, true
+	return result, len(clauses) > 0
 }
 func parsePerformedHumanObject(action string) (parsedHumanObject, bool) {
-	action = strings.ToLower(strings.TrimSpace(action))
-	verb := ""
-	if match := humanActionVerb.FindStringSubmatch(action); len(match) > 1 {
-		verb = match[1]
-	}
-	if strings.Contains(action, "부여해") {
-		verb = "grant"
-	} else if strings.Contains(action, "승인해") {
-		verb = "approve"
-	} else if strings.Contains(action, "답변해") {
-		verb = "answer"
-	} else if strings.Contains(action, "입력해") || strings.Contains(action, "제공해") {
-		verb = "provide"
-	} else if strings.Contains(action, "선택해") || strings.Contains(action, "확정해") {
-		verb = "decide"
-	}
-	if verb == "" {
-		return parsedHumanObject{}, false
-	}
-	return parseHumanObject(action, verb, true)
+	return parseHumanObject(action, "", true)
 }
-
-// Inventory every object/intent token before selecting a meaning. A sentence
-// with multiple categories has no authority unless it is an explicit supported
-// compound. No category may suppress another noun that the request asserted.
-var humanSemanticToken = regexp.MustCompile(`(?i)\b(?:access|permission|credentials?|approval|decision|choice|policy|input|answer|question|result|value)\b|권한|승인|결정|입력|답변|질문|결과`)
-var humanResourceToken = regexp.MustCompile(`(?i)\b(?:repository|database|billing|deployment|project|service|account)\b|저장소|데이터베이스|청구|배포|프로젝트|서비스|계정`)
-var humanPrivilegeToken = regexp.MustCompile(`(?i)\b(?:read|write)\b`)
-var explicitAccessApproval = regexp.MustCompile(`(?:access|permission) approval|권한 승인`)
-var explicitAnswerQuestion = regexp.MustCompile(`^(?:(?:user|owner) )?answer to (?:the )?(?:deployment|billing|project) question(?: (?:is )?required)?\.?$`)
-var humanRequestVerb = regexp.MustCompile(`^(grant|provide|restore|approve|answer) `)
-var humanNominalAssertionEnd = regexp.MustCompile(` (?:is |are )?(?:required|needed|denied|blocked)\.?$`)
-var koreanNamedHuman = regexp.MustCompile(`^(?:관리자|사용자|소유자|담당자):? `)
-var koreanHumanOperation = regexp.MustCompile(`(?:부여|승인|제공|답변|입력|선택|확정)해 주세요\.?$`)
 
 func parseHumanObject(text, verb string, action bool) (parsedHumanObject, bool) {
 	text = strings.ToLower(strings.TrimSpace(text))
-	p := parsedHumanObject{requested: strings.Contains(text, "requested") || strings.Contains(text, "요청된")}
-	actorResource := ""
+	p := parsedHumanObject{}
+	korean := false
 	if action {
-		if prefix := humanActionVerb.FindStringIndex(text); prefix != nil {
-			if strings.HasPrefix(text, "repository ") {
-				actorResource = "repository"
-			}
-			text = text[prefix[1]:]
+		if m := humanNamedOperation.FindStringSubmatch(text); m != nil {
+			p.actorResource = m[1]
+			p.actorRole = humanRoles[m[2]]
+			verb = m[3]
+			text = m[4]
+		} else if m := koreanNamedOperation.FindStringSubmatch(text); m != nil {
+			p.actorRole = humanRoles[m[1]]
+			text = m[2]
+			verb = map[string]string{"부여": "grant", "승인": "approve", "제공": "provide", "답변": "answer", "입력": "provide", "선택": "choose", "확정": "confirm"}[m[3]]
+			korean = true
 		} else {
-			text = koreanNamedHuman.ReplaceAllString(text, "")
-			text = koreanHumanOperation.ReplaceAllString(text, "")
-		}
-		// This explicit question phrase is the object of a reply, not an
-		// independent approval operation. Other mixed clauses remain unsupported.
-		if verb == "answer" {
-			text = strings.ReplaceAll(text, "요청된 결과의 승인 여부", "질문")
-			text = strings.ReplaceAll(text, "요청된 승인 여부", "질문")
-			text = strings.ReplaceAll(text, "승인 여부", "질문")
-		}
-	} else if match := humanRequestVerb.FindStringSubmatchIndex(text); match != nil && !humanNominalAssertionEnd.MatchString(text) {
-		verb = text[match[2]:match[3]]
-		text = text[match[1]:]
-	}
-	resources := humanResourceToken.FindAllString(text, -1)
-	// Repeating the same resource in the object is not evidence that two
-	// independently asserted objects are one. Named actor scope is separate.
-	if len(resources) > 1 {
-		return p, false
-	}
-	if len(resources) == 1 {
-		for canonical, words := range humanResourceWords {
-			for _, word := range words {
-				if resources[0] == word {
-					p.resource = canonical
-				}
-			}
-		}
-	}
-	if actorResource != "" {
-		if p.resource != "" && p.resource != actorResource {
 			return p, false
 		}
-		p.resource = actorResource
-	}
-	privileges := humanPrivilegeToken.FindAllString(text, -1)
-	if len(privileges) > 1 {
-		return p, false
-	}
-	if len(privileges) == 1 {
-		p.privilege = privileges[0]
-	}
-	counts := map[string]int{}
-	approval := 0
-	for _, token := range humanSemanticToken.FindAllString(text, -1) {
-		switch token {
-		case "access", "permission", "권한":
-			counts["access"]++
-		case "credential", "credentials":
-			counts["credentials"]++
-		case "input", "answer", "question", "result", "value", "입력", "답변", "질문", "결과":
-			counts["input"]++
-		case "approval", "decision", "choice", "policy", "승인", "결정":
-			counts["decision"]++
-			if token == "approval" || token == "승인" {
-				approval++
-			}
-		}
-	}
-	if len(counts) == 2 && counts["access"] == 1 && counts["decision"] == 1 && approval == 1 && explicitAccessApproval.MatchString(text) {
-		p.object = "access"
-		p.intent = "approve_access"
 	} else {
-		if len(counts) != 1 {
-			return p, false
-		}
-		switch {
-		case counts["access"] == 1:
-			p.object = "access"
-			p.intent = "grant_access"
-		case counts["credentials"] == 1:
-			p.object = "credentials"
-			p.intent = "provide_credentials"
-		case counts["input"] == 1 || (counts["input"] == 2 && explicitAnswerQuestion.MatchString(text)):
-			p.object = "input"
-			p.intent = "provide_input"
-		case counts["decision"] == 1:
-			p.object = "decision"
-			p.intent = "provide_decision"
-		default:
+		text = koreanHumanPurpose.ReplaceAllString(text, "")
+		text = humanPurpose.ReplaceAllString(text, "")
+		if m := humanNominalRequest.FindStringSubmatch(text); m != nil {
+			text = m[1]
+		} else if m := humanImperativeRequest.FindStringSubmatch(text); m != nil {
+			verb = m[1]
+			text = m[2]
+		} else if m := koreanNominalRequest.FindStringSubmatch(text); m != nil {
+			text = m[1]
+			korean = true
+		} else {
 			return p, false
 		}
 	}
-	if p.privilege != "" && p.object != "access" {
+	var ok bool
+	if korean {
+		p, ok = parseKoreanHumanTarget(text, p, action)
+	} else {
+		p, ok = parseEnglishHumanTarget(text, p, action)
+	}
+	if !ok || (!action && p.requested) || (p.privilege != "" && p.object != "access") {
 		return p, false
 	}
-	if verb != "" {
-		switch p.object {
-		case "access":
-			intent := ""
-			switch verb {
-			case "grant", "restore", "allow":
-				intent = "grant_access"
-			case "approve", "authorize":
-				intent = "approve_access"
-			}
-			if intent == "" || (p.intent == "approve_access" && intent != "approve_access") {
-				return p, false
-			}
-			p.intent = intent
-		case "credentials":
-			if verb != "provide" {
-				return p, false
-			}
-		case "input":
-			if verb != "answer" && verb != "reply" && verb != "provide" {
-				return p, false
-			}
-		case "decision":
-			if verb != "approve" && verb != "choose" && verb != "confirm" && verb != "decide" && verb != "select" && verb != "provide" {
-				return p, false
-			}
-		default:
-			return p, false
-		}
+	if verb != "" && !applyHumanOperation(&p, verb) {
+		return p, false
 	}
 	return p, true
+}
+
+// Each recognized prefix has a documented slot. Remaining text must be one
+// exact object production. No unknown/reordered/repeated modifier is skipped.
+func parseEnglishHumanTarget(text string, p parsedHumanObject, action bool) (parsedHumanObject, bool) {
+	if m := humanAnswerTarget.FindStringSubmatch(text); m != nil {
+		if action && m[1] != "" {
+			return p, false
+		}
+		p.subjectRole = humanRoles[m[1]]
+		p.resource = m[2]
+		p.object = "response"
+		p.intent = "provide_input"
+		return p, true
+	}
+	words := strings.Split(text, " ")
+	take := func(word string) bool {
+		if len(words) > 0 && words[0] == word {
+			words = words[1:]
+			return true
+		}
+		return false
+	}
+	// 'the' is a definite current-target determiner, not an entity name.
+	take("the")
+	p.requested = take("requested")
+	if take("existing") {
+		p.status = "existing"
+	}
+	if take("external") {
+		p.scope = "external"
+	}
+	if len(words) > 0 {
+		if role, known := humanRoles[words[0]]; known {
+			if action {
+				return p, false
+			}
+			p.subjectRole = role
+			words = words[1:]
+		}
+	}
+	if len(words) > 0 {
+		if resource, known := humanResources[words[0]]; known {
+			p.resource = resource
+			words = words[1:]
+		}
+	}
+	if len(words) > 0 {
+		if role, known := humanRoles[words[0]]; known {
+			if action || p.subjectRole != "" {
+				return p, false
+			}
+			p.subjectRole = role
+			words = words[1:]
+		}
+	}
+	if take("read") {
+		p.privilege = "read"
+	} else if take("write") {
+		p.privilege = "write"
+	}
+	object := strings.Join(words, " ")
+	switch object {
+	case "access", "permission":
+		p.object = "access"
+		p.intent = "grant_access"
+	case "access approval", "permission approval":
+		p.object = "access"
+		p.intent = "approve_access"
+	case "credential", "credentials":
+		p.object = "credentials"
+		p.intent = "provide_credentials"
+	case "approval", "decision":
+		p.object = "decision"
+		p.intent = "provide_decision"
+	case "choice", "policy":
+		p.object = object
+		p.intent = "provide_decision"
+	case "input", "result", "value":
+		p.object = object
+		p.intent = "provide_input"
+	case "answer", "question":
+		p.object = "response"
+		p.intent = "provide_input"
+	default:
+		return p, false
+	}
+	return p, true
+}
+func parseKoreanHumanTarget(text string, p parsedHumanObject, action bool) (parsedHumanObject, bool) {
+	take := func(prefix string) bool {
+		if strings.HasPrefix(text, prefix+" ") {
+			text = strings.TrimPrefix(text, prefix+" ")
+			return true
+		}
+		return false
+	}
+	p.requested = take("요청된")
+	if take("기존") {
+		p.status = "existing"
+	}
+	if take("외부") {
+		p.scope = "external"
+	}
+	for _, role := range []string{"관리자", "사용자", "소유자", "담당자"} {
+		if take(role) {
+			if action {
+				return p, false
+			}
+			p.subjectRole = humanRoles[role]
+			break
+		}
+	}
+	for _, resource := range []string{"저장소", "데이터베이스", "배포", "청구", "프로젝트", "서비스", "계정"} {
+		if take(resource) {
+			p.resource = humanResources[resource]
+			break
+		}
+	}
+	switch text {
+	case "접근 권한", "권한", "접근 권한 부여", "권한 부여":
+		p.object = "access"
+		p.intent = "grant_access"
+	case "접근 권한 승인", "권한 승인":
+		p.object = "access"
+		p.intent = "approve_access"
+	case "승인", "결정":
+		p.object = "decision"
+		p.intent = "provide_decision"
+	case "입력":
+		p.object = "input"
+		p.intent = "provide_input"
+	case "답변", "질문":
+		p.object = "response"
+		p.intent = "provide_input"
+	case "결과":
+		p.object = "result"
+		p.intent = "provide_input"
+	case "값":
+		p.object = "value"
+		p.intent = "provide_input"
+	case "인증 정보", "자격 증명":
+		p.object = "credentials"
+		p.intent = "provide_credentials"
+	case "승인 여부 답변", "승인 여부 질문":
+		p.object = "response"
+		p.intent = "provide_input"
+		p.topic = "approval"
+	case "결과의 승인 여부 답변", "결과의 승인 여부 질문":
+		p.object = "response"
+		p.intent = "provide_input"
+		p.topic = "result_approval"
+	case "승인 여부":
+		if !action {
+			return p, false
+		}
+		p.object = "response"
+		p.intent = "provide_input"
+		p.topic = "approval"
+	case "결과의 승인 여부":
+		if !action {
+			return p, false
+		}
+		p.object = "response"
+		p.intent = "provide_input"
+		p.topic = "result_approval"
+	default:
+		return p, false
+	}
+	return p, true
+}
+func applyHumanOperation(p *parsedHumanObject, verb string) bool {
+	switch p.object {
+	case "access":
+		intent := ""
+		switch verb {
+		case "grant", "restore", "allow":
+			intent = "grant_access"
+		case "approve", "authorize":
+			intent = "approve_access"
+		}
+		if intent == "" || (p.intent == "approve_access" && intent != "approve_access") {
+			return false
+		}
+		p.intent = intent
+		return true
+	case "credentials":
+		return verb == "provide"
+	case "input", "response", "result", "value":
+		return verb == "answer" || verb == "reply" || verb == "provide"
+	case "decision", "choice", "policy":
+		return verb == "approve" || verb == "choose" || verb == "confirm" || verb == "decide" || verb == "select" || verb == "provide"
+	}
+	return false
 }
 
 // Bind every exported field plus the private basis identity, and bind the

@@ -597,8 +597,11 @@ func TestNotificationEventsLegacyJournalMigrationDoesNotBackfillCurrentState(t *
 		"B-800": {
 			"file_state": "doing", "updated_at": "2026-10-05T11:20:00Z", "title": "Existing",
 			"lifecycle":              map[string]any{"started_at": "2026-10-05T11:00:00Z"},
-			"notification_condition": canonicalTaskRequestFixture("B-800", "existing owner access needed", "Owner: grant access", nil),
+			"notification_condition": canonicalTaskRequestFixture("B-800", "existing owner access needed", "Owner: grant requested access", nil),
 		},
+	}
+	if !HumanActionCondition(items["B-800"]["notification_condition"].(map[string]any)) {
+		t.Fatal("existing-target migration fixture lost genuine authority")
 	}
 	events, err := NotificationEvents(project, items)
 	if err != nil {
