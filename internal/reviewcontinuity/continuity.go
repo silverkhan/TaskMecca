@@ -344,6 +344,12 @@ func Assess(root string, in Input) (Result, error) {
 		if json.Unmarshal(b, &context) != nil || context.State.Role != role || context.State.OwnerAttempt != r.Reviewer.AttemptID {
 			return fail(errors.New("CLM context owner mismatch"))
 		}
+		// The saved owner does not establish which execution supplied usage.
+		// Validate it before deriving context, generation or pressure on any host.
+		o := context.State.Observation
+		if o == nil || o.AttemptID != r.Reviewer.AttemptID || o.Provider != r.Reviewer.Provider {
+			return fail(errors.New("CLM observation identity mismatch"))
+		}
 		out.ContextRef = r.ContextRef
 		context.Decision = contextlife.Decide(role, context.State.Observation, 0, "")
 		out.ContextStatus = context.Decision.ContextStatus

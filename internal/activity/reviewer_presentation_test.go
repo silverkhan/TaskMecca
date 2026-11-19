@@ -12,6 +12,60 @@ import (
 	"time"
 )
 
+func TestReviewerUnavailableJournalBlocksOnlyOlderEvidence(t *testing.T) {
+	for _, barrier := range []string{"none", "broken-symlink", "symlink-loop", "directory"} {
+		t.Run(barrier, func(t *testing.T) {
+			project := t.TempDir()
+			dir := runtimeobs.ExecutionRawDir(project)
+			if err := os.MkdirAll(dir, 0700); err != nil {
+				t.Fatal(err)
+			}
+			write := func(day, native string) {
+				at := day + "T00:00:00Z"
+				name := runtimeobs.RootNameObservation{Version: 1, Name: "D1112_01_Worker_pikachyu_G14", Source: "t3_title", Status: "verified", CheckedAt: at, T3ThreadID: "thread-" + native, HostStatus: "verified", HostProjectID: "fixture-project", IdentityVerified: true}
+				b, err := json.Marshal(runtimeobs.ExecutionEvent{EventKind: "session_metadata", Provider: "codex", SessionID: native, ObservedAt: at, RootName: &name})
+				if err != nil {
+					t.Fatal(err)
+				}
+				if err = os.WriteFile(filepath.Join(dir, day+".jsonl"), append(b, '\n'), 0600); err != nil {
+					t.Fatal(err)
+				}
+			}
+			write("2026-11-16", "older")
+			write("2026-11-18", "newer")
+			path := filepath.Join(dir, "2026-11-17.jsonl")
+			var err error
+			switch barrier {
+			case "broken-symlink":
+				err = os.Symlink(filepath.Join(dir, "missing-target"), path)
+			case "symlink-loop":
+				err = os.Symlink(path, path)
+			case "directory":
+				err = os.Mkdir(path, 0700)
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			attempts := []runtimeobs.Attempt{}
+			for _, native := range []string{"older", "newer"} {
+				attempts = append(attempts, runtimeobs.Attempt{AttemptID: "run-" + native, TaskID: "A-91", Provider: "codex", SessionID: native, RuntimeAgentID: native, AgentPath: "/root/controller/pikachyu", BindingState: runtimeobs.BindingBound, NativeReceipt: &runtimeobs.T3Receipt{SessionID: native, ThreadID: "thread-" + native}})
+			}
+			got := NewReviewerPresentation(project, "A-91", attempts, nil, nil, nil)
+			older, newer := got.ByAttempt["run-older"], got.ByAttempt["run-newer"]
+			if !newer.NameVerified || newer.OfficialName == "" {
+				t.Fatal("newer parsed proof lost", newer)
+			}
+			if barrier == "none" {
+				if !older.NameVerified || older.OfficialName == "" {
+					t.Fatal("healthy older proof lost", older)
+				}
+			} else if older.NameVerified || older.OfficialName != "" {
+				t.Fatal("older name crossed unavailable journal", older)
+			}
+		})
+	}
+}
+
 func TestReviewerPresentationRequiresExactNativeNameEvidence(t *testing.T) {
 	project := t.TempDir()
 	at := time.Now().UTC().Add(-time.Minute).Format(time.RFC3339Nano)

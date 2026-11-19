@@ -171,3 +171,80 @@ func TestUnknownAndThresholdContextCannotReuse(t *testing.T) {
 		}
 	}
 }
+
+func TestReviewerContextObservationIdentityBeforeDerivation(t *testing.T) {
+	for _, host := range []string{"t3", "codex", "claude", "unknown"} {
+		for _, pressure := range []struct {
+			name  string
+			value float64
+		}{{"low", 30}, {"protect", 95}} {
+			for _, mismatch := range []string{"foreign-attempt", "empty-attempt", "foreign-provider", "empty-provider", "missing-observation"} {
+				t.Run(host+"/"+pressure.name+"/"+mismatch, func(t *testing.T) {
+					root, in := fixture(t)
+					in.Host = Host{Kind: host, ReuseSupport: "supported", PolicyAllowsReuse: true}
+					b, err := ReadReference(root, in.ContextRef)
+					if err != nil {
+						t.Fatal(err)
+					}
+					var c contextlife.StatusReport
+					if err = json.Unmarshal(b, &c); err != nil {
+						t.Fatal(err)
+					}
+					c.State.Observation.UsagePercent = &pressure.value
+					switch mismatch {
+					case "foreign-attempt":
+						c.State.Observation.AttemptID = "run-foreign"
+					case "empty-attempt":
+						c.State.Observation.AttemptID = ""
+					case "foreign-provider":
+						c.State.Observation.Provider = "claude"
+					case "empty-provider":
+						c.State.Observation.Provider = ""
+					case "missing-observation":
+						c.State.Observation = nil
+					}
+					in.ContextRef = save(t, root, "identity-context.json", c)
+					in.Current.Request.ContextRef = in.ContextRef.Path
+					got, err := Assess(root, in)
+					if err == nil || !strings.Contains(err.Error(), "observation identity mismatch") || got.ContextStatus != "unknown" || got.SessionGeneration != nil || strings.Contains(got.Reason, "CLM protect") {
+						t.Fatal("unverified usage affected current context", got, err)
+					}
+				})
+			}
+		}
+	}
+}
+
+func TestReviewerMatchingContextPreservesCLMThresholds(t *testing.T) {
+	for _, pressure := range []struct {
+		name  string
+		value float64
+	}{{"30", 30}, {"65", 65}, {"80", 80}, {"90", 90}, {"95", 95}} {
+		t.Run(pressure.name, func(t *testing.T) {
+			root, in := fixture(t)
+			b, err := ReadReference(root, in.ContextRef)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var c contextlife.StatusReport
+			if err = json.Unmarshal(b, &c); err != nil {
+				t.Fatal(err)
+			}
+			c.State.Observation.UsagePercent = &pressure.value
+			in.ContextRef = save(t, root, "matching-context.json", c)
+			in.Current.Request.ContextRef = in.ContextRef.Path
+			got, err := Assess(root, in)
+			decision := contextlife.Decide(c.State.Role, c.State.Observation, 0, "")
+			if got.ContextStatus != decision.ContextStatus || got.SessionGeneration == nil || *got.SessionGeneration != c.State.Generation {
+				t.Fatal(got, err)
+			}
+			if decision.Action == "protect" {
+				if err == nil || !strings.Contains(got.Reason, "CLM protect") {
+					t.Fatal(got, err)
+				}
+			} else if err != nil || got.Mode != "new_delegate_task" {
+				t.Fatal(got, err)
+			}
+		})
+	}
+}

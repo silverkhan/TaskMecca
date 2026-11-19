@@ -63,8 +63,9 @@ type nameReadStats struct {
 	BudgetExhausted bool
 }
 type nameJournalFile struct {
-	path  string
-	order time.Time
+	path        string
+	order       time.Time
+	unavailable bool
 }
 
 func readPersistedNameEvidence(project string, wanted map[string]bool, byteBudget int64, fileBudget int) (map[string]runtimeobs.RootNameObservation, nameReadStats) {
@@ -74,18 +75,24 @@ func readPersistedNameEvidence(project string, wanted map[string]bool, byteBudge
 	if e != nil {
 		return out, stats
 	}
-	paths = append(paths, runtimeobs.ExecutionLegacyJournalPath(project))
+	legacy := runtimeobs.ExecutionLegacyJournalPath(project)
+	// Unlike a glob result, an absent legacy journal was never discovered.
+	if _, err := os.Lstat(legacy); err == nil || !os.IsNotExist(err) {
+		paths = append(paths, legacy)
+	}
 	files := []nameJournalFile{}
 	for _, path := range paths {
 		info, e := os.Stat(path)
-		if e != nil || !info.Mode().IsRegular() {
-			continue
+		unavailable := e != nil || !info.Mode().IsRegular()
+		// An unavailable undated file has no provable position: block fallback.
+		order := time.Date(9999, 12, 31, 23, 59, 59, 0, time.UTC)
+		if !unavailable {
+			order = info.ModTime()
 		}
-		order := info.ModTime()
 		if day, e := time.Parse("2006-01-02.jsonl", filepath.Base(path)); e == nil {
 			order = day.Add(24*time.Hour - time.Nanosecond)
 		}
-		files = append(files, nameJournalFile{path, order})
+		files = append(files, nameJournalFile{path, order, unavailable})
 	}
 	sort.Slice(files, func(i, j int) bool {
 		if files[i].order.Equal(files[j].order) {
@@ -96,6 +103,10 @@ func readPersistedNameEvidence(project string, wanted map[string]bool, byteBudge
 	latest := map[string]time.Time{}
 	ambiguous := map[string]bool{}
 	for _, entry := range files {
+		// Preserve parsed newer proof, but unresolved keys cannot skip a gap.
+		if entry.unavailable {
+			break
+		}
 		if stats.FilesRead >= fileBudget || stats.BytesRead >= byteBudget {
 			stats.BudgetExhausted = true
 			break
