@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -959,5 +960,174 @@ func TestA88Repair3ProductionJournalAtomicFaultAndCache(t *testing.T) {
 	preserved, _ := os.ReadFile(path)
 	if string(preserved) != string(changed) {
 		t.Fatal("malformed original journal rewritten")
+	}
+}
+
+func TestA88Repair6PostCommitPublicationMatrix(t *testing.T) {
+	for _, kind := range []string{"unchanged", "corrupt", "whitespace_only", "truncated", "formatted_valid", "valid_atomic_replace", "same_inode_corrupt_restored_metadata", "same_inode_valid_restored_metadata"} {
+		t.Run(kind, func(t *testing.T) {
+			p := t.TempDir()
+			t.Setenv("TASK_MECCA_HOME", t.TempDir())
+			if _, err := NotificationEvents(p, map[string]map[string]any{}); err != nil {
+				t.Fatal(err)
+			}
+			path := filepath.Join(p, "_task_mecca/.runtime/notification_events.json")
+			syncDir := humanStateDirectorySync
+			defer func() { humanStateDirectorySync = syncDir }()
+			injected := false
+			var expectedRaw []byte
+			humanStateDirectorySync = func(dir *os.File) error {
+				if err := syncDir(dir); err != nil {
+					return err
+				}
+				if injected {
+					return nil
+				}
+				injected = true
+				raw, err := os.ReadFile(path)
+				if err != nil {
+					return err
+				}
+				info, err := os.Stat(path)
+				if err != nil {
+					return err
+				}
+				switch kind {
+				case "unchanged":
+					expectedRaw = raw
+					return nil
+				case "corrupt":
+					raw = []byte("{external-corruption")
+				case "whitespace_only":
+					raw = []byte(strings.Repeat(" ", len(raw)))
+				case "truncated":
+					raw = raw[:len(raw)/2]
+				case "formatted_valid":
+					raw = append(append([]byte(" \n"), raw...), []byte("\n \t")...)
+				case "valid_atomic_replace":
+					var journal notificationJournal
+					if err = json.Unmarshal(raw, &journal); err != nil {
+						return err
+					}
+					journal.Events = []map[string]any{{"id": "external-only", "task_id": "EXTERNAL", "kind": "registered"}}
+					raw, err = json.Marshal(journal)
+					if err != nil {
+						return err
+					}
+				case "same_inode_corrupt_restored_metadata":
+					raw = append([]byte(nil), raw...)
+					raw[0] = '!'
+				case "same_inode_valid_restored_metadata":
+					raw = []byte(strings.ReplaceAll(string(raw), "A-88", "B-88"))
+				}
+				expectedRaw = raw
+				if kind == "valid_atomic_replace" {
+					temp := path + ".external"
+					if err = os.WriteFile(temp, raw, 0600); err != nil {
+						return err
+					}
+					return os.Rename(temp, path)
+				}
+				if err = os.WriteFile(path, raw, 0600); err != nil {
+					return err
+				}
+				if strings.HasPrefix(kind, "same_inode_") {
+					after, err := os.Stat(path)
+					if err != nil {
+						return err
+					}
+					if !os.SameFile(info, after) || info.Size() != after.Size() {
+						return fmt.Errorf("fixture did not preserve inode/size")
+					}
+					return os.Chtimes(path, info.ModTime(), info.ModTime())
+				}
+				return nil
+			}
+			condition := canonicalTaskRequestFixture("A-88", "Repository access required", "Owner: grant repository access", nil)
+			if !HumanActionCondition(condition) {
+				t.Fatal("genuine action fixture")
+			}
+			items := map[string]map[string]any{"A-88": {"id": "A-88", "file_state": "hold", "updated_at": "2026-11-19T00:00:00Z", "notification_condition": condition}}
+			events, writeErr := NotificationEvents(p, items)
+			humanStateDirectorySync = syncDir
+			if !injected {
+				t.Fatal("publication edit was not injected")
+			}
+			if kind == "unchanged" {
+				if writeErr != nil || len(events) != 2 {
+					t.Fatal("positive write failed", events, writeErr)
+				}
+				again, err := NotificationEvents(p, items)
+				if err != nil || !reflect.DeepEqual(events, again) {
+					t.Fatal("unchanged commit lost IDs/history", again, err)
+				}
+			} else {
+				if writeErr == nil || len(events) != 0 {
+					t.Fatal("unexpected bytes returned old events/action", events, writeErr)
+				}
+				notificationJournalMu.Lock()
+				_, published := notificationJournalCache[path]
+				notificationJournalMu.Unlock()
+				if published {
+					t.Fatal("mismatched bytes published a cache entry")
+				}
+			}
+			raw, err := os.ReadFile(path)
+			if err != nil || string(raw) != string(expectedRaw) {
+				t.Fatal("external bytes overwritten", err)
+			}
+			var disk notificationJournal
+			parseErr := json.Unmarshal(raw, &disk)
+			for _, mode := range []string{"hot", "cold"} {
+				if mode == "cold" {
+					notificationJournalMu.Lock()
+					delete(notificationJournalCache, path)
+					notificationJournalMu.Unlock()
+				}
+				got, err := ReadNotificationEvents(p)
+				if parseErr != nil {
+					if err == nil || len(got) != 0 {
+						t.Fatal("malformed disk hidden by cache", mode, got, err)
+					}
+				} else if err != nil || !reflect.DeepEqual(got, disk.Events) {
+					t.Fatal("public read differs from current disk", mode, got, disk.Events, err)
+				}
+				after, _ := os.ReadFile(path)
+				if string(after) != string(raw) {
+					t.Fatal("read rewrote external bytes")
+				}
+			}
+		})
+	}
+}
+
+func TestA88Repair6EmptyBaselineRoundTripsAcrossColdRead(t *testing.T) {
+	p := t.TempDir()
+	if _, err := NotificationEvents(p, map[string]map[string]any{}); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(p, "_task_mecca/.runtime/notification_events.json")
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var journal notificationJournal
+	if err = json.Unmarshal(raw, &journal); err != nil || journal.Items == nil || journal.Phases == nil {
+		t.Fatal("serialized baseline lost initialization", string(raw), err)
+	}
+	notificationJournalMu.Lock()
+	delete(notificationJournalCache, path)
+	notificationJournalMu.Unlock()
+	if got, err := ReadNotificationEvents(p); err != nil || len(got) != 0 {
+		t.Fatal("cold empty history changed", got, err)
+	}
+	first := map[string]map[string]any{"FIRST": {"id": "FIRST", "file_state": "todo", "updated_at": "2026-11-19T00:00:00Z"}}
+	events, err := NotificationEvents(p, first)
+	if err != nil || len(events) != 1 || events[0]["kind"] != "registered" {
+		t.Fatal("cold baseline suppressed first registration", events, err)
+	}
+	again, err := NotificationEvents(p, first)
+	if err != nil || !reflect.DeepEqual(events, again) {
+		t.Fatal("first committed identity/history changed", again, err)
 	}
 }

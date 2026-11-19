@@ -28,7 +28,7 @@ type notificationObservation struct {
 type notificationJournal struct {
 	Version int                                `json:"version"`
 	Items   map[string]notificationObservation `json:"items"`
-	Phases  map[string]int                     `json:"phases,omitempty"`
+	Phases  map[string]int                     `json:"phases"`
 	Events  []map[string]any                   `json:"events"`
 }
 
@@ -114,17 +114,14 @@ func readNotificationEventsLocked(project string) ([]map[string]any, error) {
 	path := filepath.Join(project, "_task_mecca", ".runtime", "notification_events.json")
 	journal, hit := cachedNotificationJournal(path)
 	if !hit {
-		data, err := os.ReadFile(path)
+		var err error
+		journal, err = rememberNotificationJournal(path, nil)
 		if os.IsNotExist(err) {
 			return []map[string]any{}, nil
 		}
 		if err != nil {
 			return nil, err
 		}
-		if err := json.Unmarshal(data, &journal); err != nil {
-			return nil, err
-		}
-		rememberNotificationJournal(path, journal)
 	}
 	if journal.Events == nil {
 		return []map[string]any{}, nil
@@ -158,10 +155,15 @@ func notificationEventsLocked(project string, items map[string]map[string]any) (
 	itemsPresent := true
 	phasesPresent := true
 	cached, hit := cachedNotificationJournal(path)
-	var data []byte
 	var err error
 	if !hit {
-		data, err = os.ReadFile(path)
+		// Preserve the initialized empty baseline when no file exists.
+		// A failed factory must not replace it with a zero-value journal.
+		var loadedJournal notificationJournal
+		loadedJournal, err = rememberNotificationJournal(path, nil)
+		if err == nil {
+			journal = loadedJournal
+		}
 	}
 	switch {
 	case hit:
@@ -180,10 +182,6 @@ func notificationEventsLocked(project string, items map[string]map[string]any) (
 		}
 	case err == nil:
 		loaded = true
-		if err := json.Unmarshal(data, &journal); err != nil {
-			return nil, err
-		}
-		rememberNotificationJournal(path, journal)
 		itemsPresent = journal.Items != nil
 		phasesPresent = journal.Phases != nil
 		if journal.Items == nil {
@@ -466,13 +464,16 @@ func notificationEventsLocked(project string, items map[string]map[string]any) (
 	if err != nil {
 		return nil, err
 	}
-	if err := writeHumanActionState(path, append(encoded, '\n')); err != nil {
+	payload := append(encoded, '\n')
+	if err := writeHumanActionState(path, payload); err != nil {
 		delete(notificationJournalCache, path)
 		return nil, err
 	}
 
 	// Publish only the fully committed journal. Readers in this process
 	// otherwise trust an obsolete observation until the next stat.
-	rememberNotificationJournal(path, journal)
+	if _, err := rememberNotificationJournal(path, payload); err != nil {
+		return nil, err
+	}
 	return append([]map[string]any{}, journal.Events...), nil
 }

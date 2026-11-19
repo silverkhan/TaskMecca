@@ -1,19 +1,28 @@
 package backlog
 
 import (
+	"bytes"
 	"crypto/sha256"
+	"encoding/json"
+	"errors"
+	"io"
 	"os"
 	"time"
 )
 
-// Production access holds notification_state before notificationJournalMu. A cached journal is immutable;
-// every reconciliation receives writable copies so observations cannot leak
-// into subsequent scans before the atomic on-disk commit.
+// Production lock order: notification_state, then notificationJournalMu.
+// Only readNotificationJournalSnapshot constructs a verified parsed snapshot.
+// A caller cannot supply a parsed journal to be paired with unrelated bytes.
+type notificationJournalSnapshot struct {
+	info     os.FileInfo
+	raw      []byte
+	digest   [32]byte
+	journal  notificationJournal
+	verified bool
+}
 type notificationJournalCacheEntry struct {
-	info    os.FileInfo
+	notificationJournalSnapshot
 	checked time.Time
-	journal notificationJournal
-	digest  [32]byte
 }
 
 var notificationJournalCache = map[string]notificationJournalCacheEntry{}
@@ -21,6 +30,24 @@ var notificationJournalCache = map[string]notificationJournalCacheEntry{}
 const notificationJournalCacheLimit = 32
 const notificationJournalCheckpoint = 30 * time.Second
 
+func duplicateNotificationJournalValue(value any) any {
+	switch value := value.(type) {
+	case map[string]any:
+		copy := make(map[string]any, len(value))
+		for key, item := range value {
+			copy[key] = duplicateNotificationJournalValue(item)
+		}
+		return copy
+	case []any:
+		copy := make([]any, len(value))
+		for i, item := range value {
+			copy[i] = duplicateNotificationJournalValue(item)
+		}
+		return copy
+	default:
+		return value
+	}
+}
 func duplicateNotificationJournal(j notificationJournal) notificationJournal {
 	out := notificationJournal{Version: j.Version}
 	if j.Items != nil {
@@ -38,46 +65,99 @@ func duplicateNotificationJournal(j notificationJournal) notificationJournal {
 	if j.Events != nil {
 		out.Events = make([]map[string]any, len(j.Events))
 		for i, event := range j.Events {
-			copyEvent := make(map[string]any, len(event))
-			for k, v := range event {
-				copyEvent[k] = v
+			if event != nil {
+				out.Events[i] = duplicateNotificationJournalValue(event).(map[string]any)
 			}
-			out.Events[i] = copyEvent
 		}
 	}
 	return out
 }
+func sameNotificationJournalFile(a, b os.FileInfo) bool {
+	return a != nil && b != nil && a.Mode().IsRegular() && b.Mode().IsRegular() && os.SameFile(a, b) && a.Size() == b.Size() && a.ModTime().Equal(b.ModTime())
+}
 
-// The production caller must own notification_state and notificationJournalMu. Externally replaced files
-// invalidate via file identity, not mtime alone. Periodically force a full
-// read even for an unchanged identity, as a conservative audit checkpoint.
+// Bind the bytes read from an opened regular inode to its pre/post-read and
+// named-path identities. An observed replacement or edit is an error, not a
+// reason to attach new metadata to an older parse. No retry or rewrite occurs.
+func readNotificationJournalBytes(path string) ([]byte, os.FileInfo, error) {
+	before, err := os.Lstat(path)
+	if err != nil {
+		return nil, nil, err
+	}
+	if !before.Mode().IsRegular() {
+		return nil, nil, errors.New("notification journal is not a regular file")
+	}
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer file.Close()
+	opened, err := file.Stat()
+	if err != nil {
+		return nil, nil, err
+	}
+	if !sameNotificationJournalFile(before, opened) {
+		return nil, nil, errors.New("notification journal identity changed before read")
+	}
+	raw, err := io.ReadAll(file)
+	if err != nil {
+		return nil, nil, err
+	}
+	afterOpen, err := file.Stat()
+	if err != nil {
+		return nil, nil, err
+	}
+	afterPath, err := os.Lstat(path)
+	if err != nil {
+		return nil, nil, err
+	}
+	if !sameNotificationJournalFile(opened, afterOpen) || !sameNotificationJournalFile(afterOpen, afterPath) || int64(len(raw)) != afterOpen.Size() {
+		return nil, nil, errors.New("notification journal changed during read")
+	}
+	return raw, afterOpen, nil
+}
+func notificationJournalSnapshotCurrent(path string, snapshot notificationJournalSnapshot) bool {
+	raw, info, err := readNotificationJournalBytes(path)
+	return err == nil && snapshot.verified && sameNotificationJournalFile(info, snapshot.info) && sha256.Sum256(raw) == snapshot.digest && bytes.Equal(raw, snapshot.raw)
+}
+func readNotificationJournalSnapshot(path string, expected []byte) (notificationJournalSnapshot, error) {
+	raw, info, err := readNotificationJournalBytes(path)
+	if err != nil {
+		return notificationJournalSnapshot{}, err
+	}
+	if expected != nil && !bytes.Equal(raw, expected) {
+		return notificationJournalSnapshot{}, errors.New("notification journal differs from expected committed bytes")
+	}
+	var journal notificationJournal
+	if err = json.Unmarshal(raw, &journal); err != nil {
+		return notificationJournalSnapshot{}, err
+	}
+	snapshot := notificationJournalSnapshot{info: info, raw: raw, digest: sha256.Sum256(raw), journal: journal, verified: true}
+	// Validate the same bytes again after parsing, including named inode identity.
+	if !notificationJournalSnapshotCurrent(path, snapshot) {
+		return notificationJournalSnapshot{}, errors.New("notification journal changed while parsing")
+	}
+	return snapshot, nil
+}
+
+// The caller holds both production locks. Every hit revalidates disk bytes and
+// identity; periodic expiry additionally forces a fresh parse. The entry's
+// digest is always the digest of the bytes from which its journal was parsed.
 func cachedNotificationJournal(path string) (notificationJournal, bool) {
 	entry, found := notificationJournalCache[path]
 	if !found {
 		return notificationJournal{}, false
 	}
-	if time.Since(entry.checked) >= notificationJournalCheckpoint {
-		return notificationJournal{}, false
-	}
-	info, err := os.Lstat(path)
-	if err != nil || !info.Mode().IsRegular() || !os.SameFile(info, entry.info) || info.Size() != entry.info.Size() || !info.ModTime().Equal(entry.info.ModTime()) {
-		delete(notificationJournalCache, path)
-		return notificationJournal{}, false
-	}
-	raw, err := os.ReadFile(path)
-	after, statErr := os.Lstat(path)
-	if err != nil || statErr != nil || !os.SameFile(info, after) || !after.ModTime().Equal(info.ModTime()) || after.Size() != info.Size() || sha256.Sum256(raw) != entry.digest {
+	if time.Since(entry.checked) >= notificationJournalCheckpoint || !notificationJournalSnapshotCurrent(path, entry.notificationJournalSnapshot) {
 		delete(notificationJournalCache, path)
 		return notificationJournal{}, false
 	}
 	return duplicateNotificationJournal(entry.journal), true
 }
-
-func rememberNotificationJournal(path string, journal notificationJournal) {
-	info, err := os.Lstat(path)
-	if err != nil || !info.Mode().IsRegular() {
+func publishNotificationJournalSnapshot(path string, snapshot notificationJournalSnapshot) error {
+	if !notificationJournalSnapshotCurrent(path, snapshot) {
 		delete(notificationJournalCache, path)
-		return
+		return errors.New("notification journal changed before cache publication")
 	}
 	if len(notificationJournalCache) >= notificationJournalCacheLimit {
 		if _, ok := notificationJournalCache[path]; !ok {
@@ -87,12 +167,22 @@ func rememberNotificationJournal(path string, journal notificationJournal) {
 			}
 		}
 	}
-	raw, readErr := os.ReadFile(path)
-	if readErr != nil {
+	notificationJournalCache[path] = notificationJournalCacheEntry{notificationJournalSnapshot: snapshot, checked: time.Now()}
+	return nil
+}
+
+// Both cold readers and writers use this factory. nil expected means a cold
+// current-disk read. A writer must pass its exact committed payload. Neither
+// API accepts an independent parsed journal, so old-parse/new-digest pairing
+// cannot be constructed at the publication call sites.
+func rememberNotificationJournal(path string, expected []byte) (notificationJournal, error) {
+	snapshot, err := readNotificationJournalSnapshot(path, expected)
+	if err != nil {
 		delete(notificationJournalCache, path)
-		return
+		return notificationJournal{}, err
 	}
-	notificationJournalCache[path] = notificationJournalCacheEntry{digest: sha256.Sum256(raw),
-		info: info, checked: time.Now(), journal: duplicateNotificationJournal(journal),
+	if err = publishNotificationJournalSnapshot(path, snapshot); err != nil {
+		return notificationJournal{}, err
 	}
+	return duplicateNotificationJournal(snapshot.journal), nil
 }
