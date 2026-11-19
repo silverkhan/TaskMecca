@@ -459,3 +459,49 @@ func TestA88Repair2SenderSemanticAdversarialMatrix(t *testing.T) {
 		})
 	}
 }
+
+func TestA88Repair3IndependentCorrespondenceAcrossSenders(t *testing.T) {
+	for _, c := range []struct {
+		name, request, next string
+		want                bool
+	}{
+		{"database_same", "Database access is required.", "Owner: grant database access.", true},
+		{"database_to_repo", "Database access is required.", "Owner: grant repository access.", false},
+		{"approval_same", "Billing approval is required.", "Owner: approve billing decision.", true},
+		{"approval_to_grant_same_entity", "Billing approval is required.", "Owner: grant billing access.", false},
+		{"approval_access_same", "Repository access approval needed", "Owner: approve repository access", true},
+		{"grant_to_approve_same_entity", "Repository access is required.", "Owner: approve repository access.", false},
+		{"input_same", "Deployment input is required.", "User: provide deployment input.", true},
+		{"input_wrong_object", "Deployment input is required.", "User: approve deployment input.", false},
+		{"kr_same_database", "데이터베이스 접근 권한이 필요합니다.", "관리자: 데이터베이스 접근 권한을 부여해 주세요.", true},
+		{"kr_database_to_repo", "데이터베이스 접근 권한이 필요합니다.", "관리자: 저장소 접근 권한을 부여해 주세요.", false},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			p := testOperationProject(t)
+			if _, err := backlog.NotificationEvents(p, map[string]map[string]any{}); err != nil {
+				t.Fatal(err)
+			}
+			a83TypedActionFixture(t, p, "A-88", c.request, c.next, runtimeobs.StateRunning)
+			installA83MockCurrentExecution(t)
+			snapshot, err := backlog.AttentionSnapshot(p, "", true)
+			if err != nil {
+				t.Fatal(err)
+			}
+			rows := a88OnlyActions(snapshot["notification_events"].([]map[string]any))
+			backlogEvents := currentBacklogDeliveryEvents(p, "", rows)
+			operationEvents := currentOperationDeliveryEvents(p, []notify.Event{{ID: "candidate", TaskID: "A-88", Kind: "intervention", Message: c.request, ResumeCondition: c.next}})
+			webDeliveryTestCutover(t, p)
+			granted := false
+			for _, row := range rows {
+				decision, err := applyWebDelivery(p, "claim", notificationValue(row["id"]), "", "push")
+				if err != nil {
+					t.Fatal(err)
+				}
+				granted = granted || decision.Granted
+			}
+			if (len(backlogEvents) == 1) != c.want || (len(operationEvents) == 1) != c.want || granted != c.want {
+				t.Fatalf("want=%v backlog=%+v operation=%+v push=%v", c.want, backlogEvents, operationEvents, granted)
+			}
+		})
+	}
+}

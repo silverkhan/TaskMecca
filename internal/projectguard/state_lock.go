@@ -38,7 +38,12 @@ func AcquireStateLock(project, name string) (func(), error) {
 	if err = os.MkdirAll(dir, 0700); err != nil {
 		return fail(err)
 	}
-	file, err := os.OpenFile(filepath.Join(dir, name+".lock"), os.O_CREATE|os.O_RDWR, 0600)
+	dirInfo, err := os.Stat(dir)
+	if err != nil {
+		return fail(err)
+	}
+	lockPath := filepath.Join(dir, name+".lock")
+	file, err := openStateFile(lockPath)
 	if err != nil {
 		return fail(err)
 	}
@@ -46,6 +51,20 @@ func AcquireStateLock(project, name string) (func(), error) {
 	if err != nil {
 		file.Close()
 		return fail(err)
+	}
+	// Verify opened inode after locking. Never operate under a path which
+	// changed to a different inode or symlink while acquisition blocked.
+	opened, statErr := file.Stat()
+	named, pathErr := os.Lstat(lockPath)
+	currentDir, dirErr := os.Lstat(dir)
+	parent, parentErr := os.Lstat(filepath.Dir(dir))
+	if statErr != nil || pathErr != nil || dirErr != nil || parentErr != nil ||
+		!opened.Mode().IsRegular() || !named.Mode().IsRegular() ||
+		currentDir.Mode()&os.ModeSymlink != 0 || parent.Mode()&os.ModeSymlink != 0 ||
+		!os.SameFile(opened, named) || !os.SameFile(dirInfo, currentDir) {
+		unlock()
+		_ = file.Close()
+		return fail(errors.New("project state lock path changed during acquisition"))
 	}
 	return func() { unlock(); _ = file.Close(); releaseGuard() }, nil
 }

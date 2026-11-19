@@ -214,6 +214,27 @@ func suppressLiveControllerReviewSignalsWithHandoffs(project string, rows []Reco
 }
 
 func canonicalOperationalState(row Record, review, signal map[string]any, observedAt ...time.Time) (map[string]any, map[string]any) {
+	reason, condition := canonicalOperationalStateUnsealed(row, review, signal, observedAt...)
+	if len(condition) > 0 {
+		condition["task_id"] = row.ID
+		for _, field := range []string{"runtime_agent_id", "binding_state", "binding_source", "evidence_source", "observation_quality", "started_at"} {
+			condition[field] = signal[field]
+		}
+		condition["current_owner"] = toString(signal["agent_path"])
+		condition["implementation_owner"] = signal["implementation_owner"]
+		condition["source_observed_at"] = toString(signal["last_activity_at"])
+		condition["binding_at"] = toString(signal["binding_at"])
+		condition["decision_at"] = time.Now().UTC().Format(time.RFC3339Nano)
+		if len(observedAt) > 0 {
+			condition["decision_at"] = observedAt[0].UTC().Format(time.RFC3339Nano)
+		}
+		sealHumanActionCondition(condition)
+	}
+	return reason, condition
+}
+
+// Candidate construction is private; only the wrapper exposes a sealed final tuple.
+func canonicalOperationalStateUnsealed(row Record, review, signal map[string]any, observedAt ...time.Time) (map[string]any, map[string]any) {
 	reason := map[string]any{}
 	condition := map[string]any{}
 	if row.Location == "archive" || (row.State != "doing" && row.State != "hold") {
@@ -236,7 +257,7 @@ func canonicalOperationalState(row Record, review, signal map[string]any, observ
 	}
 
 	if signal == nil || len(reason) > 0 {
-		if !recordableNotificationCondition(condition) {
+		if !(validHumanActionBasis(condition) || (toString(condition["kind"]) == "finalize" && toString(condition["reason_type"]) == "completion_pending")) {
 			condition = nil
 		}
 		return reason, condition
@@ -250,7 +271,7 @@ func canonicalOperationalState(row Record, review, signal map[string]any, observ
 			}
 			r["human_action_basis"] = controllerWaitBasis(review, row.RawMarkdown, now)
 			condition := notificationCondition("intervention", "controller:user", r, nil)
-			if !HumanActionCondition(condition) {
+			if !validHumanActionBasis(condition) {
 				condition = nil
 				r["audience"] = "controller"
 			}
@@ -308,7 +329,7 @@ func canonicalOperationalState(row Record, review, signal map[string]any, observ
 		reason = map[string]any{"type": "runtime_unknown", "severity": "warning", "title": "실행 상태 확인 필요", "message": "백로그에 연결된 실행 attempt의 현재 상태를 신뢰성 있게 확인할 수 없습니다.", "resume_condition": "런타임과 hook 상태를 확인하고 필요하면 작업을 재개하세요."}
 		reason["audience"] = "controller"
 	}
-	if len(condition) > 0 && !recordableNotificationCondition(condition) {
+	if len(condition) > 0 && !(validHumanActionBasis(condition) || (toString(condition["kind"]) == "finalize" && toString(condition["reason_type"]) == "completion_pending")) {
 		condition = nil
 	}
 	return reason, condition

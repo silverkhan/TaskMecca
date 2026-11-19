@@ -185,7 +185,7 @@ func TestA88CauseEpisodesAndHistorySurviveRestart(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "notification_events.json"), body, 0600); err != nil {
 		t.Fatal(err)
 	}
-	row := Record{ID: "A-88", State: "hold", Location: "active", Fields: map[string]string{"대기유형": "user", "대기": "Grant owner access", "재개조건": "Owner: approve access"}}
+	row := Record{ID: "A-88", State: "hold", Location: "active", Fields: map[string]string{"대기유형": "user", "대기": "Grant owner access", "재개조건": "Owner: grant access"}}
 	condition := func(assignment string) map[string]any {
 		_, c := canonicalOperationalState(row, nil, map[string]any{"assignment_id": assignment})
 		return c
@@ -221,7 +221,8 @@ func TestA88CauseEpisodesAndHistorySurviveRestart(t *testing.T) {
 	if len(events) != 4 {
 		t.Fatal("new assignment collapsed", events)
 	}
-	row.Fields["대기"] = "Provide a different owner decision"
+	row.Fields["대기"] = "Billing approval is required."
+	row.Fields["재개조건"] = "Owner: approve billing decision."
 	items["A-88"]["notification_condition"] = condition("second")
 	events = get()
 	if len(events) != 5 {
@@ -573,4 +574,177 @@ func TestA88Repair2PersistedCorruptionFailsClosedWithoutRewrite(t *testing.T) {
 			}
 		})
 	}
+}
+
+func canonicalTaskRequestFixture(task, request, next string, signal map[string]any) map[string]any {
+	_, condition := canonicalOperationalState(Record{ID: task, State: "hold", Location: "active", Fields: map[string]string{"대기유형": "user", "대기": request, "재개조건": next}}, nil, signal)
+	return condition
+}
+
+func TestA88Repair3ProofBindsCompleteFinalTuple(t *testing.T) {
+	makeCondition := func() map[string]any {
+		return canonicalTaskRequestFixture("A-88", "Repository access is required.", "Owner: grant repository access.", map[string]any{"agent_path": "/root/controller/pairi", "native_id": "native", "runtime_agent_id": "native", "attempt_id": "attempt", "assignment_id": "assignment", "assigned_at": "2026-11-19T01:00:00Z", "binding_at": "2026-11-19T01:00:01Z", "runtime_state": "running", "binding_state": "bound", "observation_quality": "observed"})
+	}
+	original := makeCondition()
+	if !HumanActionCondition(original) {
+		t.Fatal("genuine final tuple lost", original)
+	}
+	for field := range original {
+		if field == "human_action_basis" {
+			continue
+		}
+		t.Run(field, func(t *testing.T) {
+			c := makeCondition()
+			c[field] = "foreign-mutated-value"
+			if HumanActionCondition(c) {
+				t.Fatal("mutated authority field accepted", field)
+			}
+		})
+	}
+	for _, name := range []string{"copied_map", "different_condition", "extra_field", "private_basis", "removed_field", "wrong_task_writer"} {
+		t.Run(name, func(t *testing.T) {
+			c := makeCondition()
+			switch name {
+			case "copied_map":
+				copy := map[string]any{}
+				for k, v := range c {
+					copy[k] = v
+				}
+				if HumanActionCondition(copy) {
+					t.Fatal("same tuple copied proof accepted on different map")
+				}
+				return
+			case "different_condition":
+				other := makeCondition()
+				other["human_action_basis"] = c["human_action_basis"]
+				c = other
+			case "extra_field":
+				c["foreign_authority"] = "added"
+			case "private_basis":
+				p := *c["human_action_basis"].(*humanActionProof)
+				p.category = "foreign"
+				c["human_action_basis"] = &p
+			case "removed_field":
+				delete(c, "assigned_at")
+			case "wrong_task_writer":
+				project := t.TempDir()
+				if _, err := NotificationEvents(project, map[string]map[string]any{}); err != nil {
+					t.Fatal(err)
+				}
+				events, err := NotificationEvents(project, map[string]map[string]any{"FOREIGN": {"file_state": "hold", "notification_condition": c}})
+				if err != nil {
+					t.Fatal(err)
+				}
+				for _, event := range events {
+					if event["kind"] == "intervention" {
+						t.Fatal("proof transplanted to other task", event)
+					}
+				}
+				return
+			}
+			if HumanActionCondition(c) {
+				t.Fatal("transplanted or mutated proof accepted", name)
+			}
+		})
+	}
+}
+
+func TestA88Repair3ParsedEntityObjectIntentInvariant(t *testing.T) {
+	resources := []string{"repository", "database", "billing", "project", "service"}
+	for _, request := range resources {
+		for _, action := range resources {
+			for _, intent := range []string{"access", "approval", "input"} {
+				name := request + "_" + action + "_" + intent
+				t.Run(name, func(t *testing.T) {
+					reason := strings.Title(request) + " access is required."
+					next := "Owner: grant " + action + " access."
+					if intent == "approval" {
+						reason = strings.Title(request) + " approval is required."
+						next = "Owner: approve " + action + " decision."
+					}
+					if intent == "input" {
+						reason = strings.Title(request) + " input is required."
+						next = "User: provide " + action + " input."
+					}
+					got := requestedHumanAction(reason, next) != nil
+					if got != (request == action) {
+						t.Fatal("resource/entity correspondence violated", reason, next, got)
+					}
+					if requestedHumanAction(reason, "Owner: grant "+action+" access.") != nil && intent != "access" {
+						t.Fatal("intent correspondence violated", intent)
+					}
+				})
+			}
+		}
+	}
+	for _, pair := range [][2]string{{"Repository access approval needed", "Owner: grant requested repository access"}, {"Billing approval is required.", "Owner: grant database access."}, {"Repository access is required.", "Owner: approve repository access."}, {"Repository read permission is required.", "Owner: grant repository write permission."}, {"Repository access is required.", "Owner: grant repository database access."}, {"저장소 접근 권한이 필요합니다.", "관리자: 데이터베이스 접근 권한을 부여해 주세요."}} {
+		if requestedHumanAction(pair[0], pair[1]) != nil {
+			t.Fatal("mismatched intent/object/entity accepted", pair)
+		}
+	}
+}
+
+func TestA88Repair3G11MatchingEquivalentEpisodes(t *testing.T) {
+	project := t.TempDir()
+	if _, err := NotificationEvents(project, map[string]map[string]any{}); err != nil {
+		t.Fatal(err)
+	}
+	makeCondition := func(request, next, assignment string) map[string]any {
+		return canonicalTaskRequestFixture("A-88", request, next, map[string]any{"assignment_id": assignment})
+	}
+	c := makeCondition("Repository access approval needed", "Owner: approve requested repository access", "assignment1")
+	item := map[string]any{"file_state": "hold", "updated_at": "same", "notification_condition": c}
+	items := map[string]map[string]any{"A-88": item}
+	actions := func() []map[string]any {
+		all, err := NotificationEvents(project, items)
+		if err != nil {
+			t.Fatal(err)
+		}
+		out := []map[string]any{}
+		for _, e := range all {
+			if e["kind"] == "intervention" {
+				out = append(out, e)
+			}
+		}
+		return out
+	}
+	first := actions()
+	if len(first) != 1 {
+		t.Fatal(first)
+	}
+	id := first[0]["id"]
+	if len(actions()) != 1 {
+		t.Fatal("repeated call duplicated")
+	}
+	item["notification_condition"] = nil
+	actions()
+	item["notification_condition"] = makeCondition("Repository access approval needed", "Owner: approve requested repository access", "assignment1")
+	recur := actions()
+	if len(recur) != 2 || recur[1]["id"] == id {
+		t.Fatal("clear/recur collapsed", recur)
+	}
+	item["notification_condition"] = makeCondition("Billing administrator approval needed", "Owner: approve billing decision", "assignment1")
+	changed := actions()
+	if len(changed) != 3 {
+		t.Fatal("new cause collapsed", changed)
+	}
+	item["notification_condition"] = makeCondition("Billing administrator approval needed", "Owner: approve billing decision", "assignment2")
+	assigned := actions()
+	if len(assigned) != 4 {
+		t.Fatal("new assignment collapsed", assigned)
+	}
+	item["file_state"] = "done"
+	item["notification_condition"] = nil
+	actions()
+	item["file_state"] = "hold"
+	item["notification_condition"] = makeCondition("Billing administrator approval needed", "Owner: approve billing decision", "assignment2")
+	resumed := actions()
+	if len(resumed) != 5 || resumed[4]["id"] == assigned[3]["id"] {
+		t.Fatal("complete/resume collapsed", resumed)
+	}
+}
+
+func canonicalRuntimeConditionFixture(task, attempt, state string) map[string]any {
+	_, condition := canonicalOperationalState(Record{ID: task, State: "doing", Location: "active"}, nil, map[string]any{"health": "active", "attempt_id": attempt, "runtime_state": state, "human_action_runtime_verified": true})
+	return condition
 }

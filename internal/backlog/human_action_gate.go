@@ -10,6 +10,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"reflect"
 	"regexp"
 	"strings"
 	"time"
@@ -21,6 +22,16 @@ import (
 // HumanActionCondition is the shared outbound policy. An observation gap is
 // diagnostic even after a long dwell; changing its label cannot authorize it.
 func HumanActionCondition(condition map[string]any) bool {
+	proof, ok := condition["human_action_basis"].(*humanActionProof)
+	if !ok || proof == nil || toString(condition["task_id"]) == "" || proof.condition == nil || reflect.ValueOf(condition).UnsafePointer() != reflect.ValueOf(proof.condition).UnsafePointer() {
+		return false
+	}
+	fingerprint, err := humanConditionFingerprint(condition, proof)
+	return err == nil && fingerprint == proof.fingerprint && validHumanActionBasis(condition)
+}
+
+// Only canonical construction may validate an unsealed candidate.
+func validHumanActionBasis(condition map[string]any) bool {
 	if condition["human_action_verified"] != true {
 		return false
 	}
@@ -79,35 +90,182 @@ var inputSubject = regexp.MustCompile(`(?i)\b(answer|question|input|value)\b|답
 // freeform "proof" map. Only canonical projection constructors mint evidence.
 type humanActionProof struct {
 	source, category, request, next, state, handoff, contract string
+	condition                                                 map[string]any
+	fingerprint                                               string
 }
 
 func requestedHumanAction(request, next string) *humanActionProof {
 	request = strings.TrimSpace(request)
 	next = strings.TrimSpace(next)
 	category := ""
-	if presentHumanAssertion.MatchString(request) && unconditionalHumanAction.MatchString(next) {
-		switch {
-		case accessSubject.MatchString(request) && accessSubject.MatchString(next):
-			category = "grant_access"
-		case decisionSubject.MatchString(request) && (decisionSubject.MatchString(next) || accessSubject.MatchString(next)):
-			category = "provide_decision"
-		case inputSubject.MatchString(request) && inputSubject.MatchString(next):
-			category = "provide_input"
-		}
-	} else if presentKoreanAssertion.MatchString(request) && unconditionalKoreanAction.MatchString(next) {
-		switch {
-		case accessSubject.MatchString(request) && accessSubject.MatchString(next):
-			category = "grant_access"
-		case decisionSubject.MatchString(request) && decisionSubject.MatchString(next):
-			category = "provide_decision"
-		case inputSubject.MatchString(request) && inputSubject.MatchString(next):
-			category = "provide_input"
+	if (presentHumanAssertion.MatchString(request) && unconditionalHumanAction.MatchString(next)) || (presentKoreanAssertion.MatchString(request) && unconditionalKoreanAction.MatchString(next)) {
+		required, ok := parseRequestedHumanObject(request)
+		performed, actionOK := parsePerformedHumanObject(next)
+		if ok && actionOK && required.object == performed.object && required.intent == performed.intent && required.privilege == performed.privilege {
+			// A deictic 'requested' action may refer to the one explicit request;
+			// an unrelated explicit entity can never be inferred or substituted.
+			if required.resource == performed.resource || (required.resource != "" && performed.resource == "" && performed.requested) {
+				category = required.intent + ":" + required.resource + ":" + required.object + ":" + required.privilege
+			}
 		}
 	}
 	if category == "" {
 		return nil
 	}
 	return &humanActionProof{source: "canonical_requested_action", category: category, request: request, next: next}
+}
+
+// A supported sentence is parsed into an entity, object, privilege and intent.
+// Topic overlap is never authority. Mixed requirements must describe one and
+// the same operation, otherwise they need a more precise canonical request.
+type parsedHumanObject struct {
+	resource, object, privilege, intent string
+	requested                           bool
+}
+
+var humanResourceWords = map[string][]string{
+	"repository": {"repository", "저장소"}, "database": {"database", "데이터베이스"},
+	"billing": {"billing", "청구"}, "deployment": {"deployment", "배포"},
+	"project": {"project", "프로젝트"}, "service": {"service", "서비스"}, "account": {"account", "계정"},
+}
+var humanPurpose = regexp.MustCompile(`(?i) (?:now|to (?:continue|resume) (?:deployment|work|execution|the task))\.?$`)
+var koreanHumanPurpose = regexp.MustCompile(`^(?:배포를|작업을|실행을) (?:계속|재개)하려면 `)
+var humanActionVerb = regexp.MustCompile(`(?i)^(?:(?:repository )?(?:owner|user|administrator|admin|root|operator):? (?:please )?)?(grant|approve|restore|provide|allow|authorize|answer|reply|choose|confirm|decide|select)s? `)
+
+func parseRequestedHumanObject(request string) (parsedHumanObject, bool) {
+	request = koreanHumanPurpose.ReplaceAllString(strings.ToLower(strings.TrimSpace(request)), "")
+	request = humanPurpose.ReplaceAllString(request, "")
+	clauses := strings.Split(request, "; ")
+	var result parsedHumanObject
+	for i, clause := range clauses {
+		parsed, ok := parseHumanObject(clause, "", false)
+		if !ok || (i > 0 && (parsed.resource != result.resource || parsed.object != result.object || parsed.privilege != result.privilege || parsed.intent != result.intent)) {
+			return parsedHumanObject{}, false
+		}
+		result = parsed
+	}
+	return result, true
+}
+func parsePerformedHumanObject(action string) (parsedHumanObject, bool) {
+	action = strings.ToLower(strings.TrimSpace(action))
+	verb := ""
+	if match := humanActionVerb.FindStringSubmatch(action); len(match) > 1 {
+		verb = match[1]
+	}
+	if strings.Contains(action, "부여해") {
+		verb = "grant"
+	} else if strings.Contains(action, "승인해") {
+		verb = "approve"
+	} else if strings.Contains(action, "답변해") {
+		verb = "answer"
+	} else if strings.Contains(action, "입력해") || strings.Contains(action, "제공해") {
+		verb = "provide"
+	} else if strings.Contains(action, "선택해") || strings.Contains(action, "확정해") {
+		verb = "decide"
+	}
+	if verb == "" {
+		return parsedHumanObject{}, false
+	}
+	return parseHumanObject(action, verb, true)
+}
+func parseHumanObject(text, verb string, action bool) (parsedHumanObject, bool) {
+	p := parsedHumanObject{requested: strings.Contains(text, "requested") || strings.Contains(text, "요청된")}
+	for canonical, words := range humanResourceWords {
+		for _, word := range words {
+			if strings.Contains(text, word) {
+				if p.resource != "" && p.resource != canonical {
+					return p, false
+				}
+				p.resource = canonical
+			}
+		}
+	}
+	access := accessSubject.MatchString(text)
+	input := inputSubject.MatchString(text)
+	decision := decisionSubject.MatchString(text)
+	// An answer about approval is still input; approving input is not answering it.
+	if input && (!access) {
+		p.object = "input"
+		p.intent = "provide_input"
+		if action && verb != "answer" && verb != "reply" && verb != "provide" {
+			return p, false
+		}
+	}
+	if access {
+		p.object = "access"
+		p.intent = "grant_access"
+		if strings.Contains(text, "credential") {
+			p.object = "credentials"
+		}
+		if strings.Contains(text, "read") {
+			p.privilege = "read"
+		}
+		if strings.Contains(text, "write") {
+			if p.privilege != "" {
+				return p, false
+			}
+			p.privilege = "write"
+		}
+		if !action && decision {
+			p.intent = "approve_access"
+		}
+		if action {
+			switch verb {
+			case "grant", "restore", "allow":
+			case "provide":
+				if p.object != "credentials" {
+					return p, false
+				}
+			case "approve", "authorize":
+				p.intent = "approve_access"
+			default:
+				return p, false
+			}
+		}
+	} else if !input && decision {
+		p.object = "decision"
+		p.intent = "provide_decision"
+		if action && verb != "approve" && verb != "choose" && verb != "confirm" && verb != "decide" && verb != "select" && verb != "provide" {
+			return p, false
+		}
+	}
+	return p, p.object != ""
+}
+
+// Bind every exported field plus the private basis identity, and bind the
+// original map instance. Copied proofs cannot authorize a different condition.
+func humanConditionFingerprint(condition map[string]any, proof *humanActionProof) (string, error) {
+	fields := map[string]any{}
+	for key, value := range condition {
+		if key != "human_action_basis" {
+			fields[key] = value
+		}
+	}
+	body, err := json.Marshal(struct {
+		Fields map[string]any
+		Basis  []string
+	}{fields, []string{proof.source, proof.category, proof.request, proof.next, proof.state, proof.handoff, proof.contract}})
+	if err != nil {
+		return "", err
+	}
+	sum := sha256.Sum256(body)
+	return hex.EncodeToString(sum[:]), nil
+}
+func sealHumanActionCondition(condition map[string]any) {
+	proof, ok := condition["human_action_basis"].(*humanActionProof)
+	if !ok || proof == nil {
+		return
+	}
+	copy := *proof
+	copy.condition = condition
+	copy.fingerprint = ""
+	condition["human_action_basis"] = &copy
+	fingerprint, err := humanConditionFingerprint(condition, &copy)
+	if err != nil {
+		condition["human_action_verified"] = false
+		return
+	}
+	copy.fingerprint = fingerprint
 }
 
 func controllerWaitBasis(review map[string]any, markdown string, now time.Time) *humanActionProof {
@@ -123,6 +281,13 @@ func controllerWaitBasis(review map[string]any, markdown string, now time.Time) 
 
 // Finalize is retained internal lifecycle evidence. External senders still use
 // HumanActionCondition, so completion-review events never bypass the human gate.
+func recordableNotificationConditionForTask(task string, condition map[string]any) bool {
+	if kind := toString(condition["kind"]); kind == "intervention" || kind == "approval" || kind == "interrupted" {
+		return toString(condition["task_id"]) == task && HumanActionCondition(condition)
+	}
+	return recordableNotificationCondition(condition)
+}
+
 func recordableNotificationCondition(condition map[string]any) bool {
 	return HumanActionCondition(condition) || (toString(condition["kind"]) == "finalize" && toString(condition["reason_type"]) == "completion_pending")
 }
@@ -190,7 +355,7 @@ type HumanActionDecision struct {
 // use its ID, so the existing transport lock deduplicates concurrent senders.
 // Historical events and sent channel records are never rewritten or replayed.
 func CurrentHumanActionDecisions(project, root string) (map[string]HumanActionDecision, error) {
-	release, err := projectguard.AcquireStateLock(project, "human_action_boundaries")
+	release, err := projectguard.AcquireStateLock(project, "notification_state")
 	if err != nil {
 		return nil, err
 	}
@@ -218,7 +383,7 @@ func CurrentHumanActionDecisions(project, root string) (map[string]HumanActionDe
 	for id, row := range preferredRows(rows) {
 		items[id] = map[string]any{"id": id, "title": row.Title, "file_state": row.State, "updated_at": row.Mtime, "lifecycle": control.Timings[id], "notification_condition": control.NotificationCondition[id], "canonical_wait_kind": row.Fields["대기유형"], "canonical_wait_reason": row.Fields["대기"]}
 	}
-	if _, err := NotificationEvents(project, items); err != nil {
+	if _, err := notificationEventsLocked(project, items); err != nil {
 		return nil, err
 	}
 	notificationJournalMu.Lock()

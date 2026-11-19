@@ -183,7 +183,7 @@ func TestA83B644SixNoSignalEpisodesAreDiagnostic(t *testing.T) {
 }
 
 func a83HumanRows(project string) map[string][]backlog.Record {
-	return map[string][]backlog.Record{"A-83": {{ID: "A-83", Location: "active", State: "hold", Path: filepath.Join(project, "_task_mecca/data/backlog/task.md"), Mtime: time.Now().UTC().Format(time.RFC3339Nano), Fields: map[string]string{"대기유형": "user", "대기": "Repository access denied; owner approval required", "재개조건": "Repository owner: grant the requested read permission"}}}}
+	return map[string][]backlog.Record{"A-83": {{ID: "A-83", Location: "active", State: "hold", Path: filepath.Join(project, "_task_mecca/data/backlog/task.md"), Mtime: time.Now().UTC().Format(time.RFC3339Nano), Fields: map[string]string{"대기유형": "user", "대기": "Repository access is required.", "재개조건": "Repository owner: grant repository access."}}}}
 }
 
 func a83Evidence(now time.Time, state runtimeobs.CanonicalState) map[string]runtimeobs.CurrentExecutionSnapshot {
@@ -290,7 +290,7 @@ func TestA83LongComputeCollectorTroubleAndRecoveryNeverCreateHumanActions(t *tes
 func TestA83ExplicitHumanCausePreservesApprovalAndErrorNotificationMeaning(t *testing.T) {
 	project := testOperationProject(t)
 	path := filepath.Join(project, "_task_mecca/data/backlog/000083.A-83.fixture.hold.md")
-	if err := os.WriteFile(path, []byte("# A-83 fixture\n- 대기유형: user\n- 대기: Owner permission required\n- 재개조건: Owner: approve requested access\n"), 0600); err != nil {
+	if err := os.WriteFile(path, []byte("# A-83 fixture\n- 대기유형: user\n- 대기: Owner access approval required\n- 재개조건: Owner: approve requested access\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
 	now := time.Now().UTC()
@@ -300,7 +300,7 @@ func TestA83ExplicitHumanCausePreservesApprovalAndErrorNotificationMeaning(t *te
 	for state, kind := range map[runtimeobs.CanonicalState]string{runtimeobs.StateWaitingApproval: "approval", runtimeobs.StateInterrupted: "interrupted", runtimeobs.StateErrored: "interrupted", runtimeobs.StateRunning: "intervention"} {
 		j.ExecutionEvidence = a83Evidence(now, state)
 		events := operationActionableIncidents(j)
-		if len(events) != 1 || events[0].Kind != kind || events[0].Message != "Owner permission required" || events[0].ResumeCondition != "Owner: approve requested access" {
+		if len(events) != 1 || events[0].Kind != kind || events[0].Message != "Owner access approval required" || events[0].ResumeCondition != "Owner: approve requested access" {
 			t.Fatalf("actual %s action semantics lost %+v", state, events)
 		}
 	}
@@ -314,12 +314,12 @@ func TestA83DeliveryRevalidatesResolutionStateAndIdentityAndRetryID(t *testing.T
 			path := filepath.Join(project, "_task_mecca/data/backlog/000083.A-83.fixture.hold.md")
 			write := func(reason string) {
 				t.Helper()
-				body := "# A-83 fixture\n- Agent: /root/controller/worker\n- 대기유형: user\n- 대기: " + reason + "\n- 재개조건: Repository owner: grant the requested read permission\n"
+				body := "# A-83 fixture\n- Agent: /root/controller/worker\n- 대기유형: user\n- 대기: " + reason + "\n- 재개조건: Repository owner: grant repository access.\n"
 				if err := os.WriteFile(path, []byte(body), 0600); err != nil {
 					t.Fatal(err)
 				}
 			}
-			write("Repository access denied; owner approval required")
+			write("Repository access is required.")
 			rows, available := operationCanonicalRows(project)
 			if !available {
 				t.Fatal("fixture catalog unavailable")
@@ -389,7 +389,7 @@ func TestA83DeliveryRevalidatesResolutionStateAndIdentityAndRetryID(t *testing.T
 func TestA83IndependentDeliveryRejectsLatestCompletedState(t *testing.T) {
 	project := testOperationProject(t)
 	path := filepath.Join(project, "_task_mecca/data/backlog/000083.A-83.fixture.hold.md")
-	if err := os.WriteFile(path, []byte("# A-83 fixture\n- Agent: /root/controller/worker\n- 대기유형: user\n- 대기: Repository access denied; owner approval required\n- 재개조건: Repository owner: grant the requested read permission\n"), 0600); err != nil {
+	if err := os.WriteFile(path, []byte("# A-83 fixture\n- Agent: /root/controller/worker\n- 대기유형: user\n- 대기: Repository access is required.\n- 재개조건: Repository owner: grant repository access.\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
 	rows, available := operationCanonicalRows(project)
@@ -439,7 +439,7 @@ func TestA83DeliveryRequiresStableLatestExecutionState(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			project := testOperationProject(t)
 			path := filepath.Join(project, "_task_mecca/data/backlog/000083.A-83.fixture.hold.md")
-			if err := os.WriteFile(path, []byte("# A-83 fixture\n- Agent: /root/controller/worker\n- 대기유형: user\n- 대기: Owner permission required\n- 재개조건: Owner: approve requested access\n"), 0600); err != nil {
+			if err := os.WriteFile(path, []byte("# A-83 fixture\n- Agent: /root/controller/worker\n- 대기유형: user\n- 대기: Owner access approval required\n- 재개조건: Owner: approve requested access\n"), 0600); err != nil {
 				t.Fatal(err)
 			}
 			rows, available := operationCanonicalRows(project)
@@ -473,12 +473,16 @@ func TestA83DeliveryRequiresStableLatestExecutionState(t *testing.T) {
 				t.Fatalf("stable real human action semantics lost: %+v", events)
 			}
 
-            if tc.wantKind != "" {
-                decisions, gateErr := currentNotificationDecisions(project, "")
-                if gateErr != nil || decisions["A-83"].EventID != events[0].ID { t.Fatalf("delivery lacks shared current episode ID: %+v %v", events, gateErr) }
-                deliverOperationIncidents(project, j)
-                if len(events)!=2 || events[0].ID!=events[1].ID {t.Fatalf("retry changed transport idempotency key: %+v",events)}
-            }
+			if tc.wantKind != "" {
+				decisions, gateErr := currentNotificationDecisions(project, "")
+				if gateErr != nil || decisions["A-83"].EventID != events[0].ID {
+					t.Fatalf("delivery lacks shared current episode ID: %+v %v", events, gateErr)
+				}
+				deliverOperationIncidents(project, j)
+				if len(events) != 2 || events[0].ID != events[1].ID {
+					t.Fatalf("retry changed transport idempotency key: %+v", events)
+				}
+			}
 			stored, err := readOperationJournal(project)
 			if err != nil || len(stored.Incidents) != 1 || !reflect.DeepEqual(stored.Incidents[0], original) || len(stored.Actions) != 1 || stored.Actions[0].ID != actionID || stored.Actions[0].ResolvedAt != "" {
 				t.Fatalf("boundary rejection changed source or fabricated human-cause resolution: %+v %v", stored, err)
