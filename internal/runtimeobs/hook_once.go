@@ -54,6 +54,9 @@ func appendHookEventOnce(project string, event *ExecutionEvent) error {
 			if firstErr == nil && secondErr == nil && currentAt.Sub(previousAt) > -5*time.Second && currentAt.Sub(previousAt) < 5*time.Second {
 				if prior.State == "done" {
 					event.EventID = prior.EventID
+					// A retry refers to the original received event. Downstream
+					// boundary keys must retain its source time as well as its ID.
+					event.ObservedAt = prior.ObservedAt
 					return nil
 				}
 				exists, scanErr := rawHookEventExists(project, prior.EventID)
@@ -62,6 +65,7 @@ func appendHookEventOnce(project string, event *ExecutionEvent) error {
 				}
 				if exists {
 					event.EventID = prior.EventID
+					event.ObservedAt = prior.ObservedAt
 					prior.State = "done"
 					updated, _ := json.Marshal(prior)
 					return os.WriteFile(marker, updated, 0600)

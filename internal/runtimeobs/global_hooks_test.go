@@ -1,6 +1,7 @@
 package runtimeobs
 
 import (
+	"bytes"
 	"encoding/json"
 	"os"
 	"os/exec"
@@ -139,21 +140,26 @@ func TestGlobalProjectHookDuplicateChild(t *testing.T) {
 }
 
 func TestGlobalProjectHookConcurrentInvocationRecordsOnce(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	t.Setenv("TASK_MECCA_HOME", t.TempDir())
 	project := t.TempDir()
 	binary, err := os.Executable()
 	if err != nil {
 		t.Fatal(err)
 	}
 	commands := []*exec.Cmd{exec.Command(binary, "-test.run=^TestGlobalProjectHookDuplicateChild$"), exec.Command(binary, "-test.run=^TestGlobalProjectHookDuplicateChild$")}
-	for _, command := range commands {
+	outputs := make([]bytes.Buffer, len(commands))
+	for i, command := range commands {
+		command.Stdout = &outputs[i]
+		command.Stderr = &outputs[i]
 		command.Env = append(os.Environ(), "TASK_MECCA_A4_CHILD=1", "TASK_MECCA_A4_PROJECT="+project)
 		if err := command.Start(); err != nil {
 			t.Fatal(err)
 		}
 	}
-	for _, command := range commands {
+	for i, command := range commands {
 		if err := command.Wait(); err != nil {
-			t.Fatal(err)
+			t.Errorf("hook child %d: %v\n%s", i, err, outputs[i].String())
 		}
 	}
 	files, err := executionEventFiles(project)
@@ -174,6 +180,62 @@ func TestGlobalProjectHookConcurrentInvocationRecordsOnce(t *testing.T) {
 	}
 	if count != 1 {
 		t.Fatalf("raw Hook event count=%d, want 1", count)
+	}
+}
+
+func TestGlobalHookRetryPreservesOriginalBoundaryEvidence(t *testing.T) {
+	for _, state := range []string{"done", "pending"} {
+		t.Run(state, func(t *testing.T) {
+			t.Setenv("HOME", t.TempDir())
+			t.Setenv("TASK_MECCA_HOME", t.TempDir())
+			project := t.TempDir()
+			at := time.Now().UTC()
+			payload := `{"session_id":"shared","turn_id":"turn","hook_event_name":"SubagentStart","agent_id":"worker"}`
+			first, err := ObserveHook(project, "codex", strings.NewReader(payload), at)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if state == "pending" {
+				// Simulate a crash after the event append but before claim commit.
+				paths, err := filepath.Glob(filepath.Join(ExecutionRootPath(project), "hook_ids", "*", "*"))
+				if err != nil || len(paths) != 1 {
+					t.Fatal(paths, err)
+				}
+				data, err := os.ReadFile(paths[0])
+				if err != nil {
+					t.Fatal(err)
+				}
+				var claim hookClaim
+				if err := json.Unmarshal(data, &claim); err != nil {
+					t.Fatal(err)
+				}
+				claim.State = "pending"
+				data, err = json.Marshal(claim)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(paths[0], data, 0600); err != nil {
+					t.Fatal(err)
+				}
+			}
+			retry, err := ObserveHook(project, "codex", strings.NewReader(payload), at.Add(time.Second))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if retry.EventID != first.EventID || retry.ObservedAt != first.ObservedAt {
+				t.Fatalf("retry changed canonical event: first=%+v retry=%+v", first, retry)
+			}
+			boundaries, err := ReadOperationBoundaries(project)
+			if err != nil || len(boundaries) != 1 || boundaries[0].SourceAt == nil || !boundaries[0].SourceAt.Equal(at) {
+				t.Fatal(boundaries, err)
+			}
+			changed := boundaries[0]
+			other := at.Add(time.Second)
+			changed.SourceAt = &other
+			if _, _, err := AppendOperationBoundary(project, changed, other); err == nil {
+				t.Fatal("conflicting boundary evidence accepted")
+			}
+		})
 	}
 }
 
