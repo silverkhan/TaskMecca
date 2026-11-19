@@ -14,6 +14,8 @@ import (
     "github.com/silverkhan/TaskMecca/internal/activity"
     "github.com/silverkhan/TaskMecca/internal/runtimeobs"
     "github.com/silverkhan/TaskMecca/internal/handoffjournal"
+    "github.com/silverkhan/TaskMecca/internal/handoff"
+    "github.com/silverkhan/TaskMecca/internal/rolepolicy"
 )
 
 // Activity mutations are explicit and evidence-backed. An untrusted agent may
@@ -211,6 +213,33 @@ func runActivityCLI(args []string,out,errOut io.Writer) int {
         runtimeLedger,err:=runtimeobs.BuildLedger(root,10,time.Now().UTC())
         if err!=nil{return fmt.Errorf("runtime evidence unavailable: %w",err)}
         switch e.Role {
+        case activity.RoleReviewer:
+            // Reviewer recording uses the real CLI write boundary. It grants
+            // no implementation permission and rechecks the current task,
+            // exact recipient, execution consent and complete policy source.
+            reviewRuntime,err:=runtimeobs.BuildLedger(root,0,time.Now().UTC())
+            if err!=nil{return fmt.Errorf("reviewer runtime evidence unavailable: %w",err)}
+            assignments,err:=runtimeobs.ListAssignments(root)
+            if err!=nil{return fmt.Errorf("assignment evidence unavailable: %w",err)}
+            if err:=activity.ValidateAttribution(e,reviewRuntime.Attempts,assignments);err!=nil{return err}
+            decision,err:=projectContractDecision(root,e.TaskID)
+            if err!=nil{return err}
+            if !decision.ExecutionAuthorized||decision.RolePolicy==nil||decision.RolePolicyError!=""{return fmt.Errorf("Reviewer Activity requires current execution authorization and structured review policy")}
+            p:=decision.RolePolicy
+            assessment,err:=handoff.AssessReviewerPolicy(root,e.TaskID,e.RuntimeAttemptID,p.Workspace,time.Now().UTC())
+            if err!=nil{return fmt.Errorf("Reviewer Activity readonly gate: %w",err)}
+            if !assessment.Allowed||assessment.Implementation!="reviewer_readonly"||assessment.Source==nil{return fmt.Errorf("Reviewer Activity requires verified readonly recipient/source")}
+            fresh,err:=projectContractDecision(root,e.TaskID)
+            if err!=nil{return err}
+            if !fresh.ExecutionAuthorized||fresh.RolePolicyError!=""||rolepolicy.PolicyDigest(fresh.RolePolicy)!=assessment.PolicySHA256{return fmt.Errorf("Reviewer Activity authorization or policy changed during verification")}
+            source,err:=rolepolicy.Snapshot(p.Workspace,p.Scope)
+            if err!=nil{return err}
+            if source.Digest()!=assessment.Source.Digest(){return fmt.Errorf("Reviewer Activity source changed during verification")}
+            currentRuntime,err:=runtimeobs.BuildLedger(root,0,time.Now().UTC())
+            if err!=nil{return err}
+            currentAssignments,err:=runtimeobs.ListAssignments(root)
+            if err!=nil{return err}
+            return activity.ValidateAttribution(e,currentRuntime.Attempts,currentAssignments)
         case activity.RoleWorker:
             assignments,err:=runtimeobs.ListAssignments(root)
             if err!=nil{return fmt.Errorf("assignment evidence unavailable: %w",err)}
