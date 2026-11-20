@@ -77,10 +77,11 @@ func summarizeRuntimeTiming(in WorkflowInput, axis WorkflowAxis, lifecycle Lifec
 		item := RuntimeTimingInterval{AttemptID: a.AttemptID, AgentID: a.RuntimeAgentID, SessionID: a.SessionID, ThreadID: r.ThreadID, NativeStartedAt: start, NativeCompletedAt: completed, ObservedAt: observed, FirstActivityStatus: "not_recorded"}
 		role := Role(workflowActorRole(a.AgentPath))
 		boundNative := a.BindingEvidence["runtime_agent_id"]
-		if role.Valid() && (boundNative == "" || boundNative == a.RuntimeAgentID) {
+		assignment := a.BindingEvidence["assignment_id"]
+		if role.Valid() && assignment != "" && (boundNative == "" || boundNative == a.RuntimeAgentID) {
 			key := actorKey(Event{Role: role, AgentID: a.RuntimeAgentID, RuntimeAttemptID: a.AttemptID})
 			for _, e := range starts[key] {
-				if e.AssignmentID != a.BindingEvidence["assignment_id"] || e.OccurredAt.Before(start) || e.OccurredAt.After(in.Now) || e.RecordedAt.After(in.Now) || completed != nil && e.OccurredAt.After(*completed) || e.Provider != "" && e.Provider != a.Provider || e.SessionID != "" && e.SessionID != a.SessionID {
+				if e.AssignmentID == "" || e.AssignmentID != assignment || e.OccurredAt.Before(start) || e.OccurredAt.After(in.Now) || e.RecordedAt.After(in.Now) || completed != nil && e.OccurredAt.After(*completed) || e.Provider != "" && e.Provider != a.Provider || e.SessionID != "" && e.SessionID != a.SessionID {
 					continue
 				}
 				if item.FirstActivityAt != nil && (e.OccurredAt.After(*item.FirstActivityAt) || e.OccurredAt.Equal(*item.FirstActivityAt) && e.EventID >= item.FirstActivityEventID) {

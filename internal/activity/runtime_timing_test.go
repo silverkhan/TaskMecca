@@ -111,3 +111,54 @@ func TestB1NativeFirstActivityDelayRequiresExactEvidence(t *testing.T) {
 		t.Fatalf("missing report became zero %+v", v)
 	}
 }
+
+func TestB1FirstActivityRequiresNonemptyAssignment(t *testing.T) {
+	b, at := workflowFixture()
+	for _, actor := range []struct {
+		path string
+		role Role
+	}{
+		{"/root/controller/w", RoleWorker},
+		{"/root/controller/reviewer/pikachyu", RoleReviewer},
+	} {
+		for _, c := range []struct {
+			name, binding, event string
+			observed             bool
+		}{
+			{"bothMissing", "", "", false},
+			{"bindingMissing", "", "assignment", false},
+			{"eventMissing", "assignment", "", false},
+			{"mismatch", "assignment", "other", false},
+			{"exact", "assignment", "assignment", true},
+		} {
+			t.Run(string(actor.role)+"/"+c.name, func(t *testing.T) {
+				a := runtimeobs.Attempt{AttemptID: "attempt", TaskID: "T", AgentPath: actor.path, RuntimeAgentID: "native", SessionID: "native", Provider: "codex", TurnID: "turn", LastObservedAt: at(11).Format(time.RFC3339Nano), BindingState: runtimeobs.BindingBound, BindingEvidence: map[string]string{"assignment_id": c.binding, "runtime_agent_id": "native"}, CurrentState: runtimeobs.StateCompleted, Terminal: true, StateEvidenceSource: runtimeobs.EvidenceT3, StateObservationQuality: runtimeobs.QualityObserved, NativeReceipt: &runtimeobs.T3Receipt{Origin: "t3_local_projection_v2", ThreadID: "thread", RunID: "run", NativeAttemptID: "turn", SessionID: "native", Provider: "codex", State: runtimeobs.StateCompleted, StartedAt: b.Format(time.RFC3339Nano), CompletedAt: at(10).Format(time.RFC3339Nano), ObservedAt: at(11).Format(time.RFC3339Nano)}}
+				e := validEvent()
+				e.EventID = "first"
+				e.TaskID = "T"
+				e.Role = actor.role
+				e.AgentID = "native"
+				e.RuntimeAttemptID = "attempt"
+				e.AssignmentID = c.event
+				e.OccurredAt = at(2)
+				e.RecordedAt = at(3)
+				if err := e.Validate(); err != nil {
+					t.Fatal(err)
+				}
+				in := WorkflowInput{TaskID: "T", Now: at(12), Events: []Event{e}, ExecutionObservations: []runtimeobs.Attempt{a}}
+				out := summarizeRuntimeTiming(in, WorkflowAxis{Start: &b, End: &in.Now}, LifecycleCoverage{})
+				if len(out.Intervals) != 1 || out.DurationMillis == nil || *out.DurationMillis != 600000 || out.ReportedWaitOverlapMillis != 0 {
+					t.Fatalf("assignment gap changed native timing %+v", out)
+				}
+				phase := out.Intervals[0]
+				if c.observed {
+					if phase.FirstActivityStatus != "observed" || phase.FirstActivityEventID != e.EventID || phase.FirstActivityAt == nil || phase.FirstActivityDelayMillis == nil || *phase.FirstActivityDelayMillis != 120000 {
+						t.Fatalf("exact assignment rejected %+v", phase)
+					}
+				} else if phase.FirstActivityStatus != "not_recorded" || phase.FirstActivityAt != nil || phase.FirstActivityEventID != "" || phase.FirstActivityDelayMillis != nil {
+					t.Fatalf("missing/mismatched assignment promoted %+v", phase)
+				}
+			})
+		}
+	}
+}
