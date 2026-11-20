@@ -256,35 +256,9 @@ func BacklogPage(project,root string,page,pageSize int,statuses,tags []string,se
             })
         }
     }
-    cmpUpdated:=func(i,j int)bool {
-        li,lj:=filtered[i].row.Mtime,filtered[j].row.Mtime
-        if li!=lj { return li<lj }
-        return filtered[i].row.SortKey<filtered[j].row.SortKey
-    }
-    switch sortKey {
-    case "updated_asc":
-        sort.Slice(filtered,cmpUpdated)
-    case "updated_desc":
-        sort.Slice(filtered,func(i,j int)bool {
-            li,lj:=filtered[i].row.Mtime,filtered[j].row.Mtime
-            if li!=lj { return li>lj }
-            si,sj:=filtered[i].row.SortKey,filtered[j].row.SortKey
-            if si!=sj { return si>sj }
-            return filtered[i].row.ID>filtered[j].row.ID
-        })
-    case "id_asc":
-        sort.Slice(filtered,func(i,j int)bool {
-            si,sj:=filtered[i].row.SortKey,filtered[j].row.SortKey
-            if si!=sj { return si<sj }
-            return filtered[i].row.ID<filtered[j].row.ID
-        })
-    default:
-        sort.Slice(filtered,func(i,j int)bool {
-            si,sj:=filtered[i].row.SortKey,filtered[j].row.SortKey
-            if si!=sj { return si>sj }
-            return filtered[i].row.ID>filtered[j].row.ID
-        })
-    }
+    registered, err := registrationIndex(project)
+    if err != nil { return nil, err }
+    sort.Slice(filtered,func(i,j int)bool { return backlogRecordLess(filtered[i].row,filtered[j].row,sortKey,registered) })
     if pageSize<1 { pageSize=20 }; if pageSize>100 { pageSize=100 }; if page<1 { page=1 }
     total:=len(filtered); pages:=(total+pageSize-1)/pageSize; if pages<1 { pages=1 }; if page>pages { page=pages }
     start:=(page-1)*pageSize; end:=start+pageSize; if end>total { end=total }
@@ -294,6 +268,7 @@ func BacklogPage(project,root string,page,pageSize int,statuses,tags []string,se
         items=make([]map[string]any,0,end-start)
         for _,selected:=range filtered[start:end] {
             item:=webSummaryItem(selected.row,selected.state,selected.waiting,selected.reason,selected.signal)
+            addRegistrationKey(item,registered,selected.row.ID)
             // The backlog list uses a compact projection, but Active must use
             // the same canonical lifecycle evidence as task detail. Project
             // only the visible rows, and never synthesize a missing start.
@@ -426,6 +401,8 @@ func TaskDetailWithTimings(project,root,id string) (map[string]any,TaskDetailTim
 func AttentionSnapshotFromRows(project,root string,rows []Record,reconcile bool,shared ...controlTowerSnapshot) (map[string]any,error) {
     var control controlTowerSnapshot
  if len(shared)>0 { control=shared[0] } else { control=reconcileControlTower(project,root,rows) }
+    registered, registrationErr := registrationIndex(project)
+    if registrationErr != nil { return nil, registrationErr }
     byID:=preferredRows(rows)
     allItems:=map[string]map[string]any{}
     attention:=[]map[string]any{}
@@ -437,6 +414,7 @@ func AttentionSnapshotFromRows(project,root string,rows []Record,reconcile bool,
         signal:=control.Activity[id]
         if row.Location=="active" && (row.State=="doing" || row.State=="hold") {
             item:=webSummaryItem(row,row.State,nil,reason,signal)
+            addRegistrationKey(item,registered,id)
             if review, ok := item["completion_review"].(map[string]any); ok {
 				entry := map[string]any{"id": id}
 				for k, v := range review {

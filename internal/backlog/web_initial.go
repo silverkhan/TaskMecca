@@ -16,7 +16,7 @@ func BacklogInitialPage(project,root string,page,pageSize int,tags []string,sear
     if !cached {
         // Cold process startup has no snapshot yet; fall back to the usual
         // filesystem read. An already parsed catalog must not wait for a
-        // concurrent authoritative catalog refresh or lifecycle scan.
+        // concurrent authoritative catalog refresh or lifecycle reconstruction.
         rows,err=CachedCatalog(project,root)
         if err!=nil{return nil,err}
     }
@@ -37,24 +37,9 @@ func BacklogInitialPage(project,root string,page,pageSize int,tags []string,sear
         case "done":counts["done"]++
         }
     }
-    sort.Slice(filtered,func(i,j int)bool{
-        left,right:=filtered[i],filtered[j]
-        switch sortKey {
-        case "updated_asc":
-            if left.Mtime!=right.Mtime {return left.Mtime<right.Mtime}
-            return left.SortKey<right.SortKey
-        case "updated_desc":
-            if left.Mtime!=right.Mtime {return left.Mtime>right.Mtime}
-            if left.SortKey!=right.SortKey {return left.SortKey>right.SortKey}
-            return left.ID>right.ID
-        case "id_asc":
-            if left.SortKey!=right.SortKey {return left.SortKey<right.SortKey}
-            return left.ID<right.ID
-        default:
-            if left.SortKey!=right.SortKey {return left.SortKey>right.SortKey}
-            return left.ID>right.ID
-        }
-    })
+    registered, err := registrationIndex(project)
+    if err != nil { return nil, err }
+    sort.Slice(filtered,func(i,j int)bool { return backlogRecordLess(filtered[i],filtered[j],sortKey,registered) })
     if pageSize<1 {pageSize=20};if pageSize>100{pageSize=100};if page<1{page=1}
     total:=len(filtered);pages:=(total+pageSize-1)/pageSize
     if pages<1{pages=1};if page>pages{page=pages}
@@ -65,6 +50,7 @@ func BacklogInitialPage(project,root string,page,pageSize int,tags []string,sear
         item["document"]=compactListDocument(row)
         item["fields"]=compactListFields(row)
         item["state_provisional"]=true
+        addRegistrationKey(item,registered,row.ID)
         items=append(items,item)
     }
     repoName:=filepath.Base(project)

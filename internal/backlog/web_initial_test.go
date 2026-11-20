@@ -1,6 +1,7 @@
 package backlog
 
 import (
+	"reflect"
  "fmt"
  "os"
  "path/filepath"
@@ -91,4 +92,61 @@ func TestCachedTaskRecordFindsActiveFileWithoutCatalogWarmup(t *testing.T) {
  if err!=nil||!ok||row.Location!="active"||!strings.Contains(row.RawMarkdown,"Direct lookup") {
     t.Fatalf("fast active lookup failed: %v %v %+v",err,ok,row)
  }
+}
+
+func TestA95InitialFullColdWarmRegistrationConsistency(t *testing.T) {
+	project, root := a95RegistrationFixture(t)
+	beforeBuilds, beforeScans := projectionCounts(project, root)
+	for _, key := range []string{"", "invalid", "recently_registered", "id_desc", "id_asc", "updated_desc", "updated_asc"} {
+		// First call is a cold catalog/index; later calls reuse immutable snapshots.
+		initial, err := BacklogInitialPage(project, root, 1, 2, []string{"area:backend"}, "fixture", key)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if builds, scans := projectionCounts(project, root); key == "" && (builds != beforeBuilds || scans != beforeScans) {
+			t.Fatal("initial registration sort reconstructed full lifecycle")
+		}
+		full, err := BacklogPage(project, root, 1, 2, nil, []string{"area:backend"}, "fixture", key)
+		if err != nil {
+			t.Fatal(err)
+		}
+		warm, err := BacklogInitialPage(project, root, 1, 2, []string{"area:backend"}, "fixture", key)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, candidate := range []map[string]any{initial, warm} {
+			got := candidate["items"].([]map[string]any)
+			want := full["items"].([]map[string]any)
+			if !reflect.DeepEqual(a95IDs(got), a95IDs(want)) {
+				t.Fatalf("%s initial/full IDs: %v / %v", key, a95IDs(got), a95IDs(want))
+			}
+			for i := range got {
+				if got[i]["registration_sort_key"] != want[i]["registration_sort_key"] {
+					t.Fatalf("key differs: %v / %v", got[i], want[i])
+				}
+			}
+		}
+	}
+	if builds := a95IndexBuilds(project); builds != 1 {
+		t.Fatalf("cold/warm page scans=%d", builds)
+	}
+	// An alternative backlog root uses the same trusted facts, scoped to its rows.
+	alternate := filepath.Join(project, "_task_mecca", "data", "alternate", "backlog")
+	writeWebTask(t, alternate, "000001.A-900.scoped.done.md", "# A-900 scoped\n")
+	writeWebTask(t, alternate, "000002.B-1.scoped.done.md", "# B-1 scoped\n")
+	for _, initial := range []bool{true, false} {
+		var page map[string]any
+		var err error
+		if initial {
+			page, err = BacklogInitialPage(project, alternate, 1, 1, nil, "", "")
+		} else {
+			page, err = BacklogPage(project, alternate, 1, 1, nil, nil, "", "")
+		}
+		if err != nil {
+			t.Fatal(err)
+		}
+		if page["total"] != 2 || page["items"].([]map[string]any)[0]["id"] != "B-1" {
+			t.Fatalf("alternate scope: %+v", page)
+		}
+	}
 }
