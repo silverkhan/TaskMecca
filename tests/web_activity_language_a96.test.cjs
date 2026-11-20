@@ -58,3 +58,43 @@ test('A96 unknown special evidence names stay verbatim rather than inheriting di
   assert.equal(brief.evidence,evidence);assert.ok(a.workflowFloatingContent(row,interval,null,locale==='ko').includes(escape(evidence)));
  }
 });
+
+test('A96 repair1 free evidence and reasons appear only inside closed raw details across locales',()=>{
+ const a=load(),p=fixture(),row=p.workflow.rows[0];
+ const free='Fresh ordinal3 strict gate independently verified /raw/path native:T3';
+ const reason='Original free reason <source> & "exact"';
+ const cases=[
+  {interval:{...row.intervals[0],explanation:'',evidence:free,reason}},
+  {interval:{...row.intervals[0],explanation:'사람이 작성한 설명 / authored description',evidence:free,reason}},
+  {marker:{kind:'fact',value:{kind:'assigned',at:p.workflow.axis.end,source:'claimed_handoff',reason:free,evidence:[{source:'t3_structured',reason}]}}},
+  {marker:{kind:'gap',value:{start:row.intervals[0].start,end:row.intervals[0].end,status:'unmeasured',source:'t3_structured',reason:free,evidence:[{source:'claimed_handoff',reason}]}}},
+ ];
+ for(const sample of cases){const value=sample.interval||sample.marker.value,before=JSON.stringify(value);
+  for(const locale of ['ko','en','ko']){a.state.language=locale;const ko=locale==='ko',html=a.workflowFloatingContent(row,sample.interval||null,sample.marker||null,ko),firstDetails=html.indexOf('<details');
+   assert.ok(firstDetails>=0);const primary=html.slice(0,firstDetails),raw=html.slice(firstDetails);
+   assert.ok(!primary.includes(free),'free prose hidden from visible surface');assert.ok(!primary.includes(escape(reason)),'free reasons hidden from visible surface');
+   assert.match(raw,/^<details class="operation-raw-fields">/,'raw disclosure starts closed');
+   assert.ok(raw.includes(free));assert.ok(raw.includes('&lt;source&gt; &amp; \\&quot;exact\\&quot;'),'raw JSON keeps escaped exact reason');
+   if(sample.interval?.explanation)assert.ok(primary.includes(sample.interval.explanation),'authored description remains visible');
+   assert.equal(JSON.stringify(value),before,'locale switch never changes raw object');
+   const brief=a.workflowBrief(value,sample.interval?.kind||sample.marker.kind,ko);
+   assert.ok(brief.evidence.includes(free),'legacy workflowBrief.evidence API retains original');
+  }
+ }
+});
+
+test('A96 repair1 visible evidence uses exact individual known fields without splitting unknown prose',()=>{
+ const a=load(),p=fixture(),row=p.workflow.rows[0];
+ for(const locale of ['ko','en']){a.state.language=locale;const ko=locale==='ko';
+  for(const evidence of ['claimed_handoff · t3_structured','claimed_handoff extra prose',' claimed_handoff','future_source','constructor','__proto__']){
+   const value={...row.intervals[0],explanation:'',evidence},before=JSON.stringify(value),html=a.workflowFloatingContent(row,value,null,ko),primary=html.slice(0,html.indexOf('<details'));
+   assert.ok(!primary.includes('workflow-brief-evidence'),'unknown or joined input is never promoted to visible code evidence');
+   assert.ok(html.slice(html.indexOf('<details')).includes(evidence));assert.equal(JSON.stringify(value),before);
+  }
+  const value={...row.intervals[0],explanation:'',source:'t3_structured',evidence:'claimed_handoff',reason:'free reason with claimed_handoff keyword'},before=JSON.stringify(value),html=a.workflowFloatingContent(row,value,null,ko),primary=html.slice(0,html.indexOf('<details'));
+  const paragraph=primary.match(/<p class="workflow-brief-evidence">([\s\S]*?)<\/p>/)?.[1];assert.ok(paragraph);
+  assert.ok(paragraph.includes(ko?'인계 수신이 보고되었습니다.':'A handoff claim was reported'));
+  assert.ok(paragraph.includes(ko?'구조화된 T3 관측 근거입니다.':'Structured T3 observation'));
+  assert.ok(!paragraph.includes(value.reason));assert.ok(html.slice(html.indexOf('<details')).includes(value.reason));assert.equal(JSON.stringify(value),before);
+ }
+});

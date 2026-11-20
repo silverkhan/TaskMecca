@@ -6510,6 +6510,10 @@ function workflowBrief(value,kind,ko){
 }
 function workflowFloatingContent(row,interval,marker,ko,presentation=null){
   const value=interval||marker?.value,brief=workflowBrief(value,interval?.kind||marker?.kind,ko);
+  // Visible evidence accepts individual exact dictionary keys only; free prose stays in raw details.
+  const evidenceEntries=Array.isArray(value?.evidence)?value.evidence:[],language=ko?'ko':'en';
+  const evidenceCodes=[value?.source,value?.reason,typeof value?.evidence==='string'?value.evidence:null,...evidenceEntries.flatMap(e=>[e?.source,e?.reason])];
+  const visibleEvidence=[...new Set(evidenceCodes.filter(code=>typeof code==='string'&&Object.hasOwn(OPERATION_EVIDENCE[language],code)))].map(code=>operationEvidence(code,language)).join(' · ');
   const field=(label,value)=>'<div><dt>'+esc(label)+'</dt><dd>'+esc(value)+'</dd></div>';
   const badges=[row?workflowActorLabel(row,ko,presentation):workflowText(ko,'전체 미측정 경계','Unmeasured bounds'),row?workflowRoundLabel(row.round,ko):'',workflowOutcome(interval?.outcome,ko)].filter(Boolean);
   let facts='';
@@ -6519,7 +6523,7 @@ function workflowFloatingContent(row,interval,marker,ko,presentation=null){
     facts=(marker.kind==='fact'?field(workflowText(ko,'시각','Time'),workflowMarkerTime(v.at,ko)):field(workflowText(ko,'시작','Start'),workflowMarkerTime(v.start,ko))+field(workflowText(ko,'끝','End'),workflowMarkerTime(v.end,ko)))+field(workflowText(ko,'종류','Kind'),[v.kind,v.type,v.status].filter(Boolean).join(' ')||unknown)+field(workflowText(ko,'원천','Source'),[...new Set(sources)].map(v=>operationEvidence(v,ko?'ko':'en')).join(' ')||unknown);
   }
   const note=marker?workflowMarkerNote(marker,ko):interval?.kind==='activity_open'||interval?.kind==='execution_report'&&!interval.end?workflowText(ko,'종료가 확인되지 않았습니다. 현재 실행 중이라는 뜻은 아닙니다.','The end is unverified; this does not prove it is running now.'):'';
-  return '<div class="workflow-floating-content"><p class="workflow-brief'+(brief.recorded?'':' is-unrecorded')+'">'+esc(brief.text)+'</p><div class="workflow-floating-badges">'+badges.map(b=>'<span>'+esc(b)+'</span>').join('')+'</div>'+(facts?'<dl>'+facts+'</dl>':'')+(note?'<p class="workflow-marker-note">'+esc(note)+'</p>':'')+(brief.evidence?'<p class="workflow-brief-evidence"><span>'+esc(workflowText(ko,'근거','Evidence'))+'</span> '+esc(brief.evidence)+'</p>':'')+'<details class="operation-raw-fields"><summary>'+esc(workflowText(ko,'원문 근거','Raw evidence'))+'</summary><pre>'+esc(JSON.stringify({evidence:value?.evidence,reason:value?.reason,source:value?.source,attempt_id:value?.attempt_id,assignment_id:value?.assignment_id},null,2))+'</pre></details></div>';
+  return '<div class="workflow-floating-content"><p class="workflow-brief'+(brief.recorded?'':' is-unrecorded')+'">'+esc(brief.text)+'</p><div class="workflow-floating-badges">'+badges.map(b=>'<span>'+esc(b)+'</span>').join('')+'</div>'+(facts?'<dl>'+facts+'</dl>':'')+(note?'<p class="workflow-marker-note">'+esc(note)+'</p>':'')+(visibleEvidence?'<p class="workflow-brief-evidence"><span>'+esc(workflowText(ko,'근거','Evidence'))+'</span> '+esc(visibleEvidence)+'</p>':'')+'<details class="operation-raw-fields"><summary>'+esc(workflowText(ko,'원문 근거','Raw evidence'))+'</summary><pre>'+esc(JSON.stringify({evidence:value?.evidence,reason:value?.reason,source:value?.source,attempt_id:value?.attempt_id,assignment_id:value?.assignment_id},null,2))+'</pre></details></div>';
 }
 const workflowFloatingViews=new WeakMap();
 let workflowActiveFloating=null;
