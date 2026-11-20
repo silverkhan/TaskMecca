@@ -43,16 +43,37 @@ const fallback=section('function allRowsForView()', 'function effectiveListPageS
 const query=section('function listQueryString()', '// Cache rows only.');
 const contextKey=section('function listContextKey(', 'function listSourceKey(');
 const preference=/listSort: ([^\n]+),/.exec(source)[1];
-assert(source.includes('value="recently_registered"'));
-assert(source.includes("registeredNewest:'최근 등록순'"));
-assert(source.includes("registeredNewest:'Recently registered'"));
+const translations=section('const I18N =', 'function t(')+section('function t(', '// Use the same project name');
+const controls=section('function listControls(info)', 'function listView()');
 const setup='const state={statusFilters:["all"],tagFilters:[],query:"",listData:null,listPage:1,backlog:"",project:"fixture"};'+
  'const localStorage={getItem:()=>stored};let stored=null;function initialSort(){return '+preference+';}'+
- 'function effectiveListPageSize(){return 2;}function updatedAt(task){return task.updated_at;}function matchesStatusFilter(task,key){return task.state===key;}';
-new Function('assert',helpers+fallback+query+contextKey+setup+input.fixture)(assert);
+ 'function effectiveListPageSize(){return 2;}function updatedAt(task){return task.updated_at;}function matchesStatusFilter(task,key){return task.state===key;}'+
+ 'function esc(value){return String(value);}function currentProjectData(){return {};}function backlogListPicker(){return "";}function statusFilterBar(){return "";}function tagFilterBar(){return "";}function backlogListTools(){return "";}';
+new Function('assert',helpers+fallback+query+contextKey+translations+controls+setup+input.fixture)(assert);
 `
 
 const a95RegistrationUIAssertions = `
+// Read actual dictionaries and render the shipped selector; source presence
+// alone cannot detect duplicate keys overriding KO or missing EN translations.
+for(const [language,label] of [['ko','최근 등록순'],['en','Recently registered']]){
+ assert.equal(I18N[language].registeredNewest,label);
+ state.language=language;state.listSort='recently_registered';state.listPageSize=20;
+ assert.equal(t('registeredNewest'),label);
+ const html=listControls({page:1,pages:3,total:6,pageSize:20});
+ const selector=/<select id="listSort">([\s\S]*?)<\/select>/.exec(html);
+ assert(selector,'rendered sort selector');
+ assert(selector[1].includes('value="recently_registered" selected>'+label+'</option>'));
+ for(const key of ['id_desc','id_asc','updated_desc','updated_asc'])assert(selector[1].includes('value="'+key+'"'));
+}
+for(const at of ['2026-02-31T00:00:00Z','2025-02-29T00:00:00.000000100Z','1900-02-29T00:00:00Z','2026-04-31T00:00:00+09:00','2026-00-01T00:00:00Z','2026-13-01T00:00:00Z','2026-01-00T00:00:00Z','2026-01-01T24:00:00Z','2026-01-01T00:60:00Z','2026-01-01T00:00:60Z','2026-01-01T00:00:00+24:00','2026-01-01T00:00:00+00:60']){
+ assert.equal(normalizedRegistrationTimestamp(at),'',at);
+ assert.equal(registrationSortKey({registration_sort_key:at,lifecycle:{events:[{kind:'registered',source:'durable_lifecycle',at}]}}),'',at);
+}
+const leap='2024-02-29T23:59:59.000000123Z';
+assert.equal(normalizedRegistrationTimestamp(leap),leap);
+assert.equal(normalizedRegistrationTimestamp('2024-03-01T08:59:59.000000123+09:00'),leap);
+assert.equal(normalizedRegistrationTimestamp('2000-02-29T00:00:00Z'),'2000-02-29T00:00:00.000000000Z');
+assert(normalizedRegistrationTimestamp('2024-02-29T23:59:59.000000124Z')>leap);
 const event=(at,source='durable_lifecycle',kind='registered')=>({at,source,kind});
 const tasks=[
  {id:'A-900',sort_key:'000900',updated_at:'2026-10-02',lifecycle:{events:[event('2026-10-01T00:00:00.000000100Z'),event('2026-10-04T00:00:00Z')]}},

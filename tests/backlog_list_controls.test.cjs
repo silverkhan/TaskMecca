@@ -58,7 +58,7 @@ state.view='manual';context.editing=false;vm.runInContext('key()',context);asser
 console.log('Backlog list controls: placement, escaped query, rebind, folder, debounce, scope and slash PASS');
 context.URLSearchParams=URLSearchParams;context.effectiveListPageSize=()=>10;
 Object.assign(state,{project:'/fixture/project',backlog:'/fixture/backlog',listPage:2,statusFilters:['ready','doing'],tagFilters:['area:frontend'],query:' needle ',listSort:'updated_desc'});
-vm.runInContext(extract('listQueryString','async function refreshList'),context);
+vm.runInContext(extract('normalizedBacklogSort','function normalizedRegistrationTimestamp')+extract('listQueryString','async function refreshList'),context);
 const params=new URLSearchParams(vm.runInContext('listQueryString()',context));
 assert.equal(params.get('project'),'/fixture/project');assert.equal(params.get('backlog'),'/fixture/backlog');
 assert.equal(params.get('q'),'needle');assert.equal(params.get('status'),'ready,doing');assert.equal(params.get('tags'),'area:frontend');
