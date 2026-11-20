@@ -2623,3 +2623,12 @@ select.tm-combo-native{position:absolute!important;width:1px!important;height:1p
 .session-current-evidence { margin-block: 1rem; }
 .session-current-evidence h3 { font-size: 1rem; margin-bottom: .4rem; }
 @media (max-width: 600px) { .session-name-provenance { display: grid; gap: .3rem; } }
+
+/* B3: readable exact-source content, scoped to the existing floating surface. */
+.workflow-floating{overflow:hidden}
+.workflow-floating-content .workflow-brief{margin:8px 0;font-size:13px;line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere}
+.workflow-floating-content .workflow-brief.is-unrecorded{font-size:11px;color:var(--muted)}
+.workflow-floating-content .workflow-floating-badges{margin:6px 0 8px}
+.workflow-floating-content dl{margin-bottom:8px}
+.workflow-floating-content .workflow-brief-evidence{margin:8px 0;font-size:11px;white-space:pre-wrap;overflow-wrap:anywhere}
+.workflow-brief-evidence>span{color:var(--muted)}

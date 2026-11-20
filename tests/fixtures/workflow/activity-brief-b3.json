@@ -1,0 +1,17 @@
+{
+  "synthetic": true,
+  "interface": "B1 agreed optional WorkflowInterval.explanation from exact originating effective Start/Switch; combined projection not yet asserted",
+  "comments": {
+    "short": "삭제 대상 21개 파일의 참조 확인",
+    "english": "Check references to 21 files before removal",
+    "special": "권한 <img src=x onerror=\"window.__b3xss=1\"> & \"actual\"\n원래 문장 보존",
+    "long": "긴 경로 대신 실제 작업 대상과 수행 내용을 확인합니다. same exact event / 매우 긴 설명·특수문자 & <> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx same exact event / 매우 긴 설명·특수문자 & <> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx same exact event / 매우 긴 설명·특수문자 & <> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx same exact event / 매우 긴 설명·특수문자 & <> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx same exact event / 매우 긴 설명·특수문자 & <> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx same exact event / 매우 긴 설명·특수문자 & <> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx same exact event / 매우 긴 설명·특수문자 & <> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx same exact event / 매우 긴 설명·특수문자 & <> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx same exact event / 매우 긴 설명·특수문자 & <> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx "
+  },
+  "origin": {
+    "task_id": "FLOW-1",
+    "agent_id": "b3-native-exact",
+    "attempt_id": "b3-attempt-exact",
+    "assignment_id": "b3-assignment-exact",
+    "event_id": "b3-original-start"
+  }
+}

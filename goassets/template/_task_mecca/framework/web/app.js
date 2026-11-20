@@ -6452,6 +6452,29 @@ function workflowPlotHTML(wf,prefs,ko,drawWindow=null){
   const gaps=gapHTML(wf.unmeasured_intervals),coverage=(wf.unmeasured_intervals||[]).length?'<div class="workflow-unmeasured-row"><span>'+esc(workflowText(ko,'전체 미측정 경계','Unmeasured bounds'))+workflowMarkerOptions(wf,null,prefs,ko)+'</span><div class="workflow-unmeasured-clip"><div class="workflow-coverage-track">'+gaps+'</div></div></div>':'';
   return '<div class="workflow-ruler-row"><span>'+esc(workflowText(ko,'역할 · 회차','Role · round'))+'</span><div class="activity-time-ruler workflow-axis-track">'+ticks+'</div></div>'+coverage+rowHTML+(!rowHTML?'<p class="workflow-empty">'+esc(workflowText(ko,'실제 활동 구간 미측정 · 실행 보고는 근거에서 확인할 수 있습니다.','Actual activity unmeasured · execution reports are available in sources.'))+'</p>':'');
 }
+// Read only the selected DTO. Never recover a missing comment from adjacent
+// events, actor labels, current state or unmeasured observations.
+function workflowBrief(value,kind,ko){
+  const activity=['activity','activity_open','activity_unreported'].includes(kind);
+  const explanation=activity&&typeof value?.explanation==='string'?value.explanation:'';
+  const recorded=Boolean(explanation.trim());
+  const evidence=typeof value?.evidence==='string'?value.evidence:'';
+  const reasons=[value?.reason,...(Array.isArray(value?.evidence)?value.evidence.map(e=>e?.reason):[])].filter(v=>typeof v==='string'&&v.trim());
+  return {recorded,text:recorded?explanation:workflowText(ko,'작업 설명 미기록','Work description not recorded'),evidence:[evidence,...new Set(reasons)].filter(v=>v.trim()).join(' · ')};
+}
+function workflowFloatingContent(row,interval,marker,ko,presentation=null){
+  const value=interval||marker?.value,brief=workflowBrief(value,interval?.kind||marker?.kind,ko);
+  const field=(label,value)=>'<div><dt>'+esc(label)+'</dt><dd>'+esc(value)+'</dd></div>';
+  const badges=[row?workflowActorLabel(row,ko,presentation):workflowText(ko,'전체 미측정 경계','Unmeasured bounds'),row?workflowRoundLabel(row.round,ko):'',workflowOutcome(interval?.outcome,ko)].filter(Boolean);
+  let facts='';
+  if(interval)facts=field(workflowText(ko,'시작','Start'),activityEventTime(interval.start,ko))+field(workflowText(ko,'종료','End'),interval.end?activityEventTime(interval.end,ko):workflowText(ko,'종료 미관측','End unobserved'));
+  if(marker){
+    const v=marker.value,unknown=workflowText(ko,'근거 없음','Not provided'),evidence=Array.isArray(v.evidence)?v.evidence:[],sources=[v.source,...evidence.map(e=>e?.source)].filter(Boolean);
+    facts=(marker.kind==='fact'?field(workflowText(ko,'시각','Time'),workflowMarkerTime(v.at,ko)):field(workflowText(ko,'시작','Start'),workflowMarkerTime(v.start,ko))+field(workflowText(ko,'끝','End'),workflowMarkerTime(v.end,ko)))+field(workflowText(ko,'종류','Kind'),[v.kind,v.type,v.status].filter(Boolean).join(' ')||unknown)+field(workflowText(ko,'원천','Source'),[...new Set(sources)].join(' ')||unknown);
+  }
+  const note=marker?workflowMarkerNote(marker,ko):interval?.kind==='activity_open'||interval?.kind==='execution_report'&&!interval.end?workflowText(ko,'종료가 확인되지 않았습니다. 현재 실행 중이라는 뜻은 아닙니다.','The end is unverified; this does not prove it is running now.'):'';
+  return '<div class="workflow-floating-content"><p class="workflow-brief'+(brief.recorded?'':' is-unrecorded')+'">'+esc(brief.text)+'</p><div class="workflow-floating-badges">'+badges.map(b=>'<span>'+esc(b)+'</span>').join('')+'</div>'+(facts?'<dl>'+facts+'</dl>':'')+(note?'<p class="workflow-marker-note">'+esc(note)+'</p>':'')+(brief.evidence?'<p class="workflow-brief-evidence"><span>'+esc(workflowText(ko,'근거','Evidence'))+'</span> '+esc(brief.evidence)+'</p>':'')+'</div>';
+}
 const workflowFloatingViews=new WeakMap();
 let workflowActiveFloating=null;
 // One nonmodal floating surface per chart. No polling or additional source reads.
@@ -6503,20 +6526,11 @@ function workflowFloatingView(root,viewport,wf,pref,ko){
     surface.id='workflowActivityFloating';surface.classList.toggle('is-pinned',pin);surface.setAttribute('role',pin?'dialog':'tooltip');
     surface.setAttribute('aria-label',title);surface.tabIndex=pin?-1:0;
     if(pin){
-      const badges=[row?workflowActorLabel(row,ko,reviewRowPresentation(wf,row)):workflowText(ko,'전체 미측정 경계','Unmeasured bounds'),row?workflowRoundLabel(row.round,ko):'',workflowOutcome(interval?.outcome,ko)].filter(Boolean);
-      const times=interval?'<dl><div><dt>'+esc(workflowText(ko,'시작','Start'))+'</dt><dd>'+esc(activityEventTime(interval.start,ko))+'</dd></div><div><dt>'+esc(workflowText(ko,'종료','End'))+'</dt><dd>'+esc(interval.end?activityEventTime(interval.end,ko):workflowText(ko,'종료 미관측','End unobserved'))+'</dd></div></dl>':'';
-      surface.innerHTML='<div class="workflow-floating-head"><strong'+(interval?' class="workflow-type-label wf-type-'+workflowTypeClass(interval.type)+'"':'')+'>'+(interval?workflowTypeSwatch(interval.type):'')+esc(title)+'</strong><button type="button" class="workflow-floating-close" aria-label="'+esc(workflowText(ko,'구간 상세 닫기','Close interval details'))+'">×</button></div><div class="workflow-floating-badges">'+badges.map(b=>'<span>'+esc(b)+'</span>').join('')+'</div>'+times+'<details id="workflowIntervalEvidence"><summary>'+esc(workflowText(ko,'정확한 근거','Exact evidence'))+'</summary><pre>'+esc(JSON.stringify({role:row?.role,agent_id:row?.agent_id,display_name:row?.display_name||null,display_name_source:row?.display_name_source||'unverified',name_evidence:row?.name_evidence,round:row?.round,interval:interval||undefined,intervals:interval?undefined:row?.intervals},null,2))+'</pre></details>';
+      const content=workflowFloatingContent(row,interval,marker,ko,reviewRowPresentation(wf,row));
+      surface.innerHTML='<div class="workflow-floating-head"><strong'+(interval?' class="workflow-type-label wf-type-'+workflowTypeClass(interval.type)+'"':'')+'>'+(interval?workflowTypeSwatch(interval.type):'')+esc(title)+'</strong><button type="button" class="workflow-floating-close" aria-label="'+esc(workflowText(ko,'구간 상세 닫기','Close interval details'))+'">×</button></div>'+content+'<details id="workflowIntervalEvidence"><summary>'+esc(workflowText(ko,'정확한 근거','Exact evidence'))+'</summary><pre>'+esc(JSON.stringify({role:row?.role,agent_id:row?.agent_id,display_name:row?.display_name||null,display_name_source:row?.display_name_source||'unverified',name_evidence:row?.name_evidence,round:row?.round,interval:interval||undefined,intervals:interval?undefined:row?.intervals},null,2))+'</pre></details>';
       if(row)surface.querySelector('#workflowIntervalEvidence').insertAdjacentHTML('beforebegin',reviewPresentationDetail(reviewRowPresentation(wf,row),ko));
-      if(marker){
-        surface.querySelector('.workflow-floating-head strong').textContent=workflowMarkerLabel(marker,ko);
-        const v=marker.value,unknown=workflowText(ko,'근거 없음','Not provided'),evidence=Array.isArray(v.evidence)?v.evidence:[],sources=[v.source,...evidence.map(e=>e.source)].filter(Boolean),reasons=[v.reason,...evidence.map(e=>e.reason)].filter(Boolean),field=(label,value)=>'<div><dt>'+esc(label)+'</dt><dd>'+esc(value)+'</dd></div>';
-        const time=marker.kind==='fact'?field(workflowText(ko,'시각','Time'),workflowMarkerTime(v.at,ko)):field(workflowText(ko,'시작','Start'),workflowMarkerTime(v.start,ko))+field(workflowText(ko,'끝','End'),workflowMarkerTime(v.end,ko));
-        surface.querySelector('dl')?.remove();
-        surface.querySelector('#workflowIntervalEvidence').insertAdjacentHTML('beforebegin','<p class="workflow-marker-note">'+esc(workflowMarkerNote(marker,ko))+'</p><dl>'+time+field(workflowText(ko,'종류','Kind'),[v.kind,v.type,v.status].filter(Boolean).join(' · ')||unknown)+field(workflowText(ko,'원천','Source'),[...new Set(sources)].join(' · ')||unknown)+field(workflowText(ko,'사유','Reason'),[...new Set(reasons)].join(' · ')||unknown)+'</dl>');
-        surface.querySelector('#workflowIntervalEvidence pre').textContent=JSON.stringify({role:row?.role||null,agent_id:row?.agent_id||null,display_name:row?.display_name||null,round:row?.round??null,[marker.kind]:v},null,2);
-      }else if(interval?.kind==='activity_open'||interval?.kind==='execution_report'&&!interval.end){
-        surface.querySelector('#workflowIntervalEvidence').insertAdjacentHTML('beforebegin','<p class="workflow-marker-note">'+esc(workflowText(ko,'종료가 확인되지 않았습니다. 현재 실행 중이라는 뜻은 아닙니다.','The end is unverified; this does not prove it is running now.'))+'</p>');
-      }
+      if(marker)surface.querySelector('.workflow-floating-head strong').textContent=workflowMarkerLabel(marker,ko);
+      if(marker)surface.querySelector('#workflowIntervalEvidence pre').textContent=JSON.stringify({role:row?.role||null,agent_id:row?.agent_id||null,display_name:row?.display_name||null,round:row?.round??null,[marker.kind]:marker.value},null,2);
       if(peers.length>1){
         const list=document.createElement('details');list.className='workflow-included-events';list.open=reading?.includedOpen??Boolean(interval&&node.getBoundingClientRect().width<7);
         list.innerHTML='<summary>'+esc(workflowText(ko,'포함 이벤트','Included events'))+' ('+peers.length+')</summary><div class="workflow-member-list">'+peers.map(i=>'<button type="button" class="workflow-member" data-workflow-member="'+esc(workflowIntervalKey(row,i))+'" aria-pressed="'+(i===interval)+'">'+esc(workflowIntervalType(i,ko)+' · '+(i.measured?activityDisplayDuration(i.duration_ms,ko):workflowText(ko,'미측정','Unmeasured')))+'<small>'+esc(activityEventTime(i.start,ko))+'</small></button>').join('')+'</div>';
@@ -6528,7 +6542,7 @@ function workflowFloatingView(root,viewport,wf,pref,ko){
       surface.querySelector('#workflowIntervalEvidence').addEventListener('toggle',queuePlace,options);
       node.classList.add('is-selected');node.setAttribute('aria-expanded','true');
       pref.selection={key:key(node),fingerprint:node.dataset.workflowFingerprint,keyboard:fromKeyboard,membersFingerprint:memberFingerprint(node),visibleMembersFingerprint:JSON.stringify(peers.map(i=>workflowIntervalKey(row,i)))};
-    }else{surface.textContent=title;node.setAttribute('aria-describedby',surface.id);}
+    }else{surface.innerHTML='<strong>'+esc(marker?workflowMarkerLabel(marker,ko):title)+'</strong>'+workflowFloatingContent(row,interval,marker,ko,reviewRowPresentation(wf,row));node.setAttribute('aria-describedby',surface.id);}
     if(pin&&reading)surface.querySelector('#workflowIntervalEvidence').open=reading.open;
     surface.hidden=false;place();
     if(pin&&reading){
