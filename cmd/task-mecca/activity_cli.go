@@ -172,6 +172,11 @@ func runActivityCLI(args []string,out,errOut io.Writer) int {
         if *round<0{*round=0}
     }
     if prior,readErr:=store.Read(*eventID);readErr==nil {
+        // Existing retries may omit --type. Reuse only that event's exact type
+        // for the generated default, keeping explicit text/language conflicts intact.
+        if action!="correct" && *kind=="" && selectedLanguage!="" && strings.TrimSpace(*explain)==""{
+            *explain=activityPhaseExplanation("",string(prior.Type),selectedLanguage)
+        }
         if prior.TaskID==task && string(prior.Action)==action && string(prior.Role)==*role && prior.AgentID==*agent && prior.RuntimeAttemptID==*attempt && prior.AssignmentID==*assignment && prior.HandoffID==*handoffID && prior.ReviewOutcome==*reviewOutcome && prior.SupersedesID==*supersedesID && prior.Round==*round && prior.Evidence==*evidence && prior.Explanation==*explain && prior.ExplanationLanguage==selectedLanguage && (*kind=="" || string(prior.Type)==*kind) {
             emit(map[string]any{"ok":true,"recorded":false,"event":prior});return 0
         }

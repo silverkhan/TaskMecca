@@ -68,3 +68,19 @@ func TestA96LanguageRejectsUnknownAndRunFlags(t *testing.T){
  for _,args:=range [][]string{{"fr",""},{"","fr"},{"ko","unknown"}}{if _,err:=activityExplanationLanguage(args[0],args[1]);err==nil{t.Fatal("unsupported language silently accepted",args)}}
  for _,flag:=range []string{"--language","--fallback-language"}{var out,errOut bytes.Buffer;code:=runActivityCLI([]string{"run","A-96",flag,"ko","--","must-never-execute"},&out,&errOut);if code!=2||!strings.Contains(errOut.String(),"flag provided but not defined"){t.Fatalf("run language silently accepted: %d %s",code,errOut.String())}}
 }
+
+func TestA96TypeOmittedRetry(t *testing.T){
+ for _,language:=range []string{"","ko"}{t.Run("language-"+language,func(t *testing.T){
+ project:=t.TempDir();now:=time.Now().UTC()
+ if _,err:=runtimeobs.RecordAssignment(project,"assignment-omit","A-96","/root/controller/omit",now);err!=nil{t.Fatal(err)}
+ if err:=runtimeobs.AppendExecutionEvent(project,runtimeobs.ExecutionEvent{EventID:"omit-hook",EventKind:"state",ObservedAt:now.Format(time.RFC3339Nano),AttemptID:"omit-attempt",Provider:"codex",RuntimeAgentID:"omit-native",State:runtimeobs.StateRunning,EvidenceSource:runtimeobs.EvidenceHook,ObservationQuality:runtimeobs.QualityObserved});err!=nil{t.Fatal(err)}
+ if _,err:=runtimeobs.BindAttempt(project,"omit-attempt","A-96","/root/controller/omit","dispatch","",map[string]string{"assignment_id":"assignment-omit"},now.Add(time.Millisecond));err!=nil{t.Fatal(err)}
+ base:=[]string{"start","A-96","--project",project,"--role","worker","--agent","omit-native","--attempt","omit-attempt","--assignment","assignment-omit","--event-id","omit-start","--evidence","exact retry source","--json"}
+ if language!=""{base=append(base,"--language",language)}
+ if c,_,m:=invokeActivity(t,append(append([]string{},base...),"--type","implementation")...);c!=0{t.Fatalf("first start %d %s",c,m)}
+ eventPath:=filepath.Join(project,"_task_mecca","data","activity","events","omit-start.json");rawBefore,err:=os.ReadFile(eventPath);if err!=nil{t.Fatal(err)}
+ if c,r,m:=invokeActivity(t,base...);c!=0||r["recorded"]!=false{t.Fatalf("supported type-omitted retry %d %v %s",c,r,m)}
+ for _,change:=range [][]string{{"--explanation","실제 설명 변경"},{"--language","en"}}{args:=append(append([]string{},base...),change...);if c,_,_:=invokeActivity(t,args...);c==0{t.Fatal("changed intent reused event ID",change)}}
+ rawAfter,err:=os.ReadFile(eventPath);if err!=nil{t.Fatal(err)};if !bytes.Equal(rawBefore,rawAfter){t.Fatal("retry overwrote original event")}
+ })}
+}
