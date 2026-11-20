@@ -364,6 +364,7 @@ func TestB1WorkflowExplanationKeepsExactOrigin(t *testing.T) {
 				in.ExecutionObservations = []runtimeobs.Attempt{{AttemptID: "attempt", TaskID: "T", AgentPath: "/root/controller/w", RuntimeAgentID: "native", SessionID: "native", Provider: "codex", BindingState: runtimeobs.BindingBound, BindingEvidence: map[string]string{"assignment_id": "assignment"}, Terminal: true, CurrentState: runtimeobs.StateCompleted, EndedAt: at(2).Format(time.RFC3339Nano), StateEvidenceSource: runtimeobs.EvidenceHook, StateObservationQuality: runtimeobs.QualityObserved}}
 			}
 			w := SummarizeWorkflow(in)
+			exportWorkflowFixture(t, "synthetic-b1-"+mode+".json", w, events)
 			raw, err := json.Marshal(w)
 			if err != nil {
 				t.Fatal(err)
