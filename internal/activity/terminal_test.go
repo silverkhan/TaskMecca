@@ -7,9 +7,13 @@ import (
 )
 
 func TestTerminalHookClosesUnknownWithoutInventingTime(t *testing.T) {
+ for _, actor := range []struct{path string; role Role}{
+  {"/root/controller/w",RoleWorker},
+  {"/root/controller/reviewer/raichyu",RoleReviewer},
+ } {t.Run(string(actor.role),func(t *testing.T){
  project:=t.TempDir()
  base:=time.Now().UTC().Add(-5*time.Minute)
- assignment,err:=runtimeobs.RecordAssignment(project,"assignment-terminal","B-589","/root/controller/w",base)
+ assignment,err:=runtimeobs.RecordAssignment(project,"assignment-terminal","B-589",actor.path,base)
  if err!=nil{t.Fatal(err)}
  start:=runtimeobs.ExecutionEvent{
   EventID:"hook-start",EventKind:"state",AttemptID:"run-terminal",ObservedAt:base.Format(time.RFC3339Nano),
@@ -21,6 +25,7 @@ func TestTerminalHookClosesUnknownWithoutInventingTime(t *testing.T) {
   map[string]string{"assignment_id":assignment.AssignmentID},base.Add(time.Second))
  if err!=nil{t.Fatal(err)}
  observed:=validEvent()
+ observed.Role=actor.role
  observed.EventID="reported-start"
  observed.AgentID="agent-w"
  observed.RuntimeAttemptID="run-terminal"
@@ -45,6 +50,7 @@ func TestTerminalHookClosesUnknownWithoutInventingTime(t *testing.T) {
    summary.UnmeasuredUpperBoundMillis!=120000{
   t.Fatalf("terminal cannot invent active duration: %+v",summary)
  }
+ })}
 }
 
 func TestNonTerminalHookHasZeroRecorderCost(t *testing.T){

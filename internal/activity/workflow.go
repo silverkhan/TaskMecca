@@ -120,6 +120,7 @@ type WorkflowInterval struct {
 	AssignmentID      string                    `json:"assignment_id,omitempty"`
 	HandoffID         string                    `json:"handoff_id,omitempty"`
 	Evidence          string                    `json:"evidence,omitempty"`
+	Explanation       string                    `json:"explanation,omitempty"`
 	Outcome           string                    `json:"outcome,omitempty"`
 	Lane              int                       `json:"lane"`
 }
@@ -379,7 +380,7 @@ func SummarizeWorkflow(in WorkflowInput) Workflow {
 	for _, s := range in.Summary.Segments {
 		n := roundNumber(s.StartedAt, boundaries, known)
 		end, ms := s.EndedAt, s.DurationMillis
-		v := WorkflowInterval{ID: s.AttemptID + "|" + s.StartedAt.Format(time.RFC3339Nano), Kind: "activity", Type: string(s.Type), Start: s.StartedAt, End: &end, Measured: true, DurationMillis: &ms, AttemptID: s.AttemptID}
+		v := WorkflowInterval{ID: s.AttemptID + "|" + s.StartedAt.Format(time.RFC3339Nano), Kind: "activity", Type: string(s.Type), Start: s.StartedAt, End: &end, Measured: true, DurationMillis: &ms, AttemptID: s.AttemptID, Explanation: s.Explanation}
 		if e, ok := eventByStart[string(s.Role)+"\x00"+s.AgentID+"\x00"+s.AttemptID+"|"+s.StartedAt.Format(time.RFC3339Nano)]; ok {
 			v.ID = e.EventID
 			v.AssignmentID = e.AssignmentID
@@ -420,7 +421,7 @@ func SummarizeWorkflow(in WorkflowInput) Workflow {
 			copy := latest
 			latestOpen = &copy
 		}
-		interval := WorkflowInterval{ID: latest.EventID, Kind: "activity_open", Type: string(latest.Type), Start: latest.OccurredAt, AttemptID: latest.RuntimeAttemptID, AssignmentID: latest.AssignmentID, HandoffID: latest.HandoffID, Evidence: latest.Evidence}
+		interval := WorkflowInterval{ID: latest.EventID, Kind: "activity_open", Type: string(latest.Type), Start: latest.OccurredAt, AttemptID: latest.RuntimeAttemptID, AssignmentID: latest.AssignmentID, HandoffID: latest.HandoffID, Evidence: latest.Evidence, Explanation: latest.Explanation}
 		if end, source, ok := terminalFor(latest.RuntimeAttemptID, "", latest.AgentID, latest.AssignmentID, latest.OccurredAt); ok {
 			// Runtime end bounds the unknown interval; it is not a measured phase end.
 			interval.Kind, interval.End, interval.EndEvidence, interval.EndEvidenceSource = "activity_unreported", &end, "native_terminal", source

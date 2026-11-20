@@ -16,13 +16,17 @@ type RuntimeTiming struct {
 	Rejected                  int                     `json:"rejected"`
 }
 type RuntimeTimingInterval struct {
-	AttemptID         string     `json:"attempt_id"`
-	AgentID           string     `json:"agent_id"`
-	SessionID         string     `json:"session_id"`
-	ThreadID          string     `json:"t3_thread_id"`
-	NativeStartedAt   time.Time  `json:"native_started_at"`
-	NativeCompletedAt *time.Time `json:"native_completed_at,omitempty"`
-	ObservedAt        time.Time  `json:"observed_at"`
+	AttemptID                string     `json:"attempt_id"`
+	AgentID                  string     `json:"agent_id"`
+	SessionID                string     `json:"session_id"`
+	ThreadID                 string     `json:"t3_thread_id"`
+	NativeStartedAt          time.Time  `json:"native_started_at"`
+	NativeCompletedAt        *time.Time `json:"native_completed_at,omitempty"`
+	ObservedAt               time.Time  `json:"observed_at"`
+	FirstActivityStatus      string     `json:"first_activity_status"`
+	FirstActivityAt          *time.Time `json:"first_activity_at,omitempty"`
+	FirstActivityEventID     string     `json:"first_activity_event_id,omitempty"`
+	FirstActivityDelayMillis *int64     `json:"first_activity_delay_ms,omitempty"`
 }
 
 func summarizeRuntimeTiming(in WorkflowInput, axis WorkflowAxis, lifecycle LifecycleCoverage) RuntimeTiming {
@@ -32,6 +36,15 @@ func summarizeRuntimeTiming(in WorkflowInput, axis WorkflowAxis, lifecycle Lifec
 		counts[a.AttemptID]++
 	}
 	intervals := []timingInterval{}
+	// Index effective phase starts once; identity and native-window checks below
+	// remain separate from native duration and reported lifecycle waits.
+	effective, _ := EffectiveEvents(in.Events)
+	starts := map[string][]Event{}
+	for _, e := range effective {
+		if e.TaskID == in.TaskID && e.EventID != "" && (e.Action == Start || e.Action == Switch) {
+			starts[actorKey(e)] = append(starts[actorKey(e)], e)
+		}
+	}
 	for _, a := range in.ExecutionObservations {
 		r := a.NativeReceipt
 		if a.TaskID != in.TaskID {
@@ -61,7 +74,23 @@ func summarizeRuntimeTiming(in WorkflowInput, axis WorkflowAxis, lifecycle Lifec
 			out.Rejected++
 			continue
 		}
-		out.Intervals = append(out.Intervals, RuntimeTimingInterval{a.AttemptID, a.RuntimeAgentID, a.SessionID, r.ThreadID, start, completed, observed})
+		item := RuntimeTimingInterval{AttemptID: a.AttemptID, AgentID: a.RuntimeAgentID, SessionID: a.SessionID, ThreadID: r.ThreadID, NativeStartedAt: start, NativeCompletedAt: completed, ObservedAt: observed, FirstActivityStatus: "not_recorded"}
+		role := Role(workflowActorRole(a.AgentPath))
+		boundNative := a.BindingEvidence["runtime_agent_id"]
+		if role.Valid() && (boundNative == "" || boundNative == a.RuntimeAgentID) {
+			key := actorKey(Event{Role: role, AgentID: a.RuntimeAgentID, RuntimeAttemptID: a.AttemptID})
+			for _, e := range starts[key] {
+				if e.AssignmentID != a.BindingEvidence["assignment_id"] || e.OccurredAt.Before(start) || e.OccurredAt.After(in.Now) || e.RecordedAt.After(in.Now) || completed != nil && e.OccurredAt.After(*completed) || e.Provider != "" && e.Provider != a.Provider || e.SessionID != "" && e.SessionID != a.SessionID {
+					continue
+				}
+				if item.FirstActivityAt != nil && (e.OccurredAt.After(*item.FirstActivityAt) || e.OccurredAt.Equal(*item.FirstActivityAt) && e.EventID >= item.FirstActivityEventID) {
+					continue
+				}
+				at, delay := e.OccurredAt, e.OccurredAt.Sub(start).Milliseconds()
+				item.FirstActivityStatus, item.FirstActivityAt, item.FirstActivityEventID, item.FirstActivityDelayMillis = "observed", &at, e.EventID, &delay
+			}
+		}
+		out.Intervals = append(out.Intervals, item)
 		if axis.Start != nil && axis.End != nil {
 			if clipped, ok := clipInterval(start, end, *axis.Start, *axis.End); ok {
 				intervals = append(intervals, clipped)

@@ -340,3 +340,115 @@ func TestWorkflowDisplayNameRejectsOpaqueBoundPathLeaves(t *testing.T) {
 		})
 	}
 }
+
+func TestB1WorkflowExplanationKeepsExactOrigin(t *testing.T) {
+	b, at := workflowFixture()
+	for _, mode := range []string{"open", "closed", "unreported"} {
+		t.Run(mode, func(t *testing.T) {
+			first := Event{EventID: "origin", TaskID: "T", Role: RoleWorker, AgentID: "native", RuntimeAttemptID: "attempt", AssignmentID: "assignment", HandoffID: "handoff", Action: Start, Type: Research, OccurredAt: at(1), RecordedAt: at(1), Evidence: "source proof", Explanation: "Inspect exact collector callers"}
+			other := first
+			other.EventID = "other"
+			other.AgentID = "other-native"
+			other.Explanation = "Different actor at same time"
+			events := []Event{first, other}
+			if mode == "closed" {
+				stop := first
+				stop.EventID = "stop"
+				stop.Action = Stop
+				stop.OccurredAt = at(2)
+				stop.Explanation = "Stop must not replace comment"
+				events = append(events, stop)
+			}
+			in := WorkflowInput{TaskID: "T", Events: events, Summary: Summarize("T", events), Facts: []LifecycleFact{{EventID: "registered", TaskID: "T", Kind: "registered", OccurredAt: b}}, Now: at(3)}
+			if mode == "unreported" {
+				in.ExecutionObservations = []runtimeobs.Attempt{{AttemptID: "attempt", TaskID: "T", AgentPath: "/root/controller/w", RuntimeAgentID: "native", SessionID: "native", Provider: "codex", BindingState: runtimeobs.BindingBound, BindingEvidence: map[string]string{"assignment_id": "assignment"}, Terminal: true, CurrentState: runtimeobs.StateCompleted, EndedAt: at(2).Format(time.RFC3339Nano), StateEvidenceSource: runtimeobs.EvidenceHook, StateObservationQuality: runtimeobs.QualityObserved}}
+			}
+			w := SummarizeWorkflow(in)
+			raw, err := json.Marshal(w)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var view struct {
+				Rows []struct {
+					Intervals []map[string]any `json:"intervals"`
+				} `json:"rows"`
+			}
+			if err = json.Unmarshal(raw, &view); err != nil {
+				t.Fatal(err)
+			}
+			found := false
+			for _, row := range view.Rows {
+				for _, v := range row.Intervals {
+					if v["id"] == "origin" {
+						found = true
+						if mode == "unreported" && (v["kind"] != "activity_unreported" || v["duration_ms"] != nil || v["measured"] != false) {
+							t.Fatalf("terminal phase became measured %+v", v)
+						}
+						if v["explanation"] != first.Explanation || v["evidence"] != first.Evidence || v["assignment_id"] != first.AssignmentID || v["handoff_id"] != first.HandoffID {
+							t.Fatalf("origin fields lost: %+v", v)
+						}
+					}
+				}
+			}
+			if !found {
+				t.Fatal("origin interval missing")
+			}
+			if events[0] != first {
+				t.Fatal("source event mutated")
+			}
+		})
+	}
+}
+
+func TestB1WorkflowExplanationUsesEffectiveCorrection(t *testing.T) {
+	b, at := workflowFixture()
+	first := validEvent()
+	first.TaskID = "T"
+	first.EventID = "origin"
+	first.AgentID = "native"
+	first.RuntimeAttemptID = "attempt"
+	first.AssignmentID = "assignment"
+	first.OccurredAt = at(1)
+	first.RecordedAt = at(1)
+	first.Explanation = "Original comment"
+	correction := first
+	correction.Action = Correct
+	correction.EventID = "corrected"
+	correction.SupersedesID = first.EventID
+	correction.RecordedAt = at(3)
+	correction.Explanation = "Exact corrected source explanation"
+	stop := first
+	stop.Action = Stop
+	stop.EventID = "stop"
+	stop.OccurredAt = at(2)
+	stop.RecordedAt = at(2)
+	events := []Event{first, correction, stop}
+	w := SummarizeWorkflow(WorkflowInput{TaskID: "T", Events: events, Summary: Summarize("T", events), Facts: []LifecycleFact{{TaskID: "T", EventID: "registered", Kind: "registered", OccurredAt: b}}, Now: at(4)})
+	raw, _ := json.Marshal(w)
+	var v struct {
+		Rows []struct {
+			Intervals []map[string]any `json:"intervals"`
+		} `json:"rows"`
+	}
+	json.Unmarshal(raw, &v)
+	found := false
+	for _, row := range v.Rows {
+		for _, interval := range row.Intervals {
+			if interval["id"] == "corrected" {
+				found = true
+				if interval["explanation"] != correction.Explanation {
+					t.Fatal(interval)
+				}
+			}
+			if interval["id"] == "origin" {
+				t.Fatal("superseded event projected")
+			}
+		}
+	}
+	if !found {
+		t.Fatal("effective comment missing")
+	}
+	if events[0].Explanation != "Original comment" {
+		t.Fatal("historical event rewritten")
+	}
+}

@@ -10,6 +10,7 @@ import (
     "time"
 
     "github.com/silverkhan/TaskMecca/internal/runtimeobs"
+    "github.com/silverkhan/TaskMecca/internal/rolepolicy"
 )
 
 // RecordTerminal conservatively closes an Activity left open by a terminal
@@ -43,6 +44,7 @@ func RecordTerminal(project string,hook runtimeobs.ExecutionEvent)(bool,error){
     case bound.AgentPath=="/root/controller":role=RoleController
     case bound.AgentPath=="/root/registrar":role=RoleRegistrar
     case strings.HasPrefix(bound.AgentPath,"/root/controller/sub-"):role=RoleSubController
+    case rolepolicy.ReviewerPath(bound.AgentPath):role=RoleReviewer
     case strings.HasPrefix(bound.AgentPath,"/root/controller/"):role=RoleWorker
     default:return false,nil
     }
