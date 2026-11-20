@@ -66,7 +66,7 @@ func RecordTerminal(project string,hook runtimeobs.ExecutionEvent)(bool,error){
         TaskID:active.TaskID,Action:Abandon,Role:active.Role,
         AgentID:active.AgentID,RuntimeAttemptID:active.RuntimeAttemptID,
         AssignmentID:active.AssignmentID,HandoffID:active.HandoffID,
-        Round:active.Round,Type:active.Type,Explanation:active.Explanation,
+        Round:active.Round,Type:active.Type,Explanation:active.Explanation,ExplanationLanguage:active.ExplanationLanguage,
         Confidence:Unknown,Source:"runtime_terminal",Evidence:fmt.Sprintf("runtime event %s terminal state %s",hook.EventID,hook.State),
         OccurredAt:when,RecordedAt:time.Now().UTC(),
     }

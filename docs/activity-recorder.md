@@ -182,3 +182,57 @@ Project-owned data lives beneath `_task_mecca/data/activity/`, not the managed f
 - Per-event file storage should be profiled under large histories before treating the metrics as zero-cost.
 - The UI reports observed intervals only; it does not reconstruct unobserved historical phases.
 - Full rollout should be judged after implementation and Dev real-use observation, not by synthetic charts alone.
+
+## Explicit language for new human descriptions
+
+The UI display language is browser-local (`task-mecca-language`, otherwise navigator
+language). `setLanguage` rerenders the UI; it does not deliver browser storage to the
+CLI. There is no new global setting or implicit language environment variable.
+Dispatch callers carry `language` and `fallback_language` explicitly and pass them
+as `--language ko|en` and `--fallback-language ko|en` to `activity report`, `start`,
+`switch`, `stop` or `correct`. Supported explicit language wins. Missing or
+unsupported preferred language uses the explicitly supplied supported fallback;
+unsupported preferred language without a fallback, or an invalid fallback, fails.
+With neither input, existing callers remain language-unobserved. For this user's
+current envelope no transferable preference was observed; conversation fallback is
+explicitly `ko`. Never infer a language from evidence keywords.
+
+For new records with language context and no authored explanation, the recorder
+uses a short description of the exact supported phase/type. Unknown/`other` still
+requires an authored explanation. `--explanation` always remains verbatim; the
+optional `explanation_language` records the caller's declared language, not proof
+of translation. Commands, paths, codes, identities and raw diagnostics stay exact.
+An identical event ID retries without rewriting bytes; changed language or
+explanation conflicts. A correction without a replacement explanation inherits the
+source explanation and language, even when the caller's locale changed. Runtime
+abandonment preserves that source context. No historical records are repaired.
+
+`activity run` does **not** support these new flags: it rejects `--language` and
+`--fallback-language` before executing a child. Its original command fingerprints,
+purpose, evidence and restore behavior remain unchanged. Do not claim the wrapper
+has language delivery; use supported explicit boundary reports and disclose this
+collection limitation. A release/install is needed before using new flags with an
+installed CLI that lacks them; existing `--explanation` remains supported.
+
+Controller, Registrar, Worker and any required Reviewer should carry the same
+explicit envelope and author short natural descriptions of their actual action
+at existing collection boundaries, never extra heartbeat/tool-call records or
+per-record LLM translation. For example (only after the real phase began):
+
+```sh
+task-mecca activity report TASK --project CANONICAL --role worker \
+  --agent EXACT_NATIVE --attempt EXACT_ATTEMPT --assignment EXACT_ASSIGNMENT \
+  --event implementation_started --event-id STABLE_ID \
+  --fallback-language ko --explanation '변경 대상의 설명 전달 경로를 구현합니다.' \
+  --evidence 'EXACT ORIGINAL SOURCE DIAGNOSTIC' --json
+```
+
+Retain each role's existing attribution/authorization requirements. Explanation
+language never changes runtime, claim, acceptance, round or liveness decisions.
+The shared workflow tooltip shows the exact authored description first; absent
+text retains “Work description not recorded” plus a confirmed phase/source when
+available. Only exact known codes use existing locale mappings. `claimed_handoff`
+means a reported claim; `t3_structured` means structured observation. Neither proves
+passing tests, independent acceptance or current execution. Free prose is never
+translated or classified. The shared surface and existing detail disclosures keep
+raw data accessible through locale switches.

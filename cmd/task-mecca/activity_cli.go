@@ -40,6 +40,8 @@ func runActivityCLI(args []string,out,errOut io.Writer) int {
     occurredAt:=fs.String("occurred-at","","corrected event occurrence in RFC3339Nano (default original)")
     evidence:=fs.String("evidence","","source evidence")
     explain:=fs.String("explanation","","required for other activity")
+    language:=fs.String("language","","explicit human explanation language: ko|en; not browser storage")
+    fallbackLanguage:=fs.String("fallback-language","","explicit conversation language fallback: ko|en")
     proposed:=fs.String("proposed-type","","suggested type for other activity")
     round:=fs.Int("round",-1,"default auto from observed review evidence; explicit 0 for initial work")
     eventName:=fs.String("event","","decision or work phase event for suggest")
@@ -101,6 +103,13 @@ func runActivityCLI(args []string,out,errOut io.Writer) int {
     if strings.TrimSpace(*role)==""||strings.TrimSpace(*agent)==""||strings.TrimSpace(*attempt)==""{
         fmt.Fprintln(errOut,"--role, --agent, --attempt (or exact runtime env) required");return 2
     }
+    selectedLanguage,languageErr:=activityExplanationLanguage(*language,*fallbackLanguage)
+    if languageErr!=nil{fmt.Fprintln(errOut,languageErr);return 2}
+    // Generate only from the caller's exact standard phase/type. Never translate evidence.
+    if action!="correct" && strings.TrimSpace(*explain)=="" && selectedLanguage!=""{
+        descriptionPhase:=*eventName;if action=="stop"{descriptionPhase="phase_completed"}
+        *explain=activityPhaseExplanation(descriptionPhase,*kind,selectedLanguage)
+    }
     task:=fs.Arg(0)
     phaseEvent:=""
     if action=="report"{
@@ -111,7 +120,7 @@ func runActivityCLI(args []string,out,errOut io.Writer) int {
             if prior.TaskID==task && prior.PhaseEvent==*eventName && string(prior.Role)==*role &&
                 prior.AgentID==*agent && prior.RuntimeAttemptID==*attempt &&
                 prior.AssignmentID==*assignment && prior.HandoffID==*handoffID &&
-                prior.Evidence==*evidence && prior.Explanation==*explain &&
+                prior.Evidence==*evidence && prior.Explanation==*explain && prior.ExplanationLanguage==selectedLanguage &&
                 prior.ProposedType==*proposed && prior.Source=="agent_report" {
                 emit(map[string]any{"ok":true,"recorded":false,"event":prior});return 0
             }
@@ -138,7 +147,7 @@ func runActivityCLI(args []string,out,errOut io.Writer) int {
         if *kind==""{*kind=string(original.Type)}
         if *round<0{*round=original.Round}
         if *reviewOutcome==""{*reviewOutcome=original.ReviewOutcome}
-        if *kind==string(activity.Other) && *explain==""{*explain=original.Explanation}
+        if *explain==""{*explain=original.Explanation;selectedLanguage=original.ExplanationLanguage}
         if *kind==string(activity.Other) && *proposed==""{*proposed=original.ProposedType}
     }
     // Auto-classify revision round only from explicit Controller review outcomes.
@@ -163,7 +172,7 @@ func runActivityCLI(args []string,out,errOut io.Writer) int {
         if *round<0{*round=0}
     }
     if prior,readErr:=store.Read(*eventID);readErr==nil {
-        if prior.TaskID==task && string(prior.Action)==action && string(prior.Role)==*role && prior.AgentID==*agent && prior.RuntimeAttemptID==*attempt && prior.AssignmentID==*assignment && prior.HandoffID==*handoffID && prior.ReviewOutcome==*reviewOutcome && prior.SupersedesID==*supersedesID && prior.Round==*round && prior.Evidence==*evidence && (*kind=="" || string(prior.Type)==*kind) {
+        if prior.TaskID==task && string(prior.Action)==action && string(prior.Role)==*role && prior.AgentID==*agent && prior.RuntimeAttemptID==*attempt && prior.AssignmentID==*assignment && prior.HandoffID==*handoffID && prior.ReviewOutcome==*reviewOutcome && prior.SupersedesID==*supersedesID && prior.Round==*round && prior.Evidence==*evidence && prior.Explanation==*explain && prior.ExplanationLanguage==selectedLanguage && (*kind=="" || string(prior.Type)==*kind) {
             emit(map[string]any{"ok":true,"recorded":false,"event":prior});return 0
         }
         fmt.Fprintln(errOut,"event-id already belongs to another activity");return 3
@@ -190,7 +199,7 @@ func runActivityCLI(args []string,out,errOut io.Writer) int {
     e:=activity.Event{SchemaVersion:1,EventID:*eventID,TaskID:task,Action:activity.Action(action),
         Role:activity.Role(*role),AgentID:*agent,RuntimeAttemptID:*attempt,AssignmentID:*assignment,HandoffID:*handoffID,
         Round:*round,Type:activity.Type(*kind),Confidence:activity.Inferred,Source:"agent_report",PhaseEvent:phaseEvent,
-        Evidence:*evidence,Explanation:*explain,ProposedType:*proposed,ReviewOutcome:*reviewOutcome,RunEvidence:runEvidence,SupersedesID:*supersedesID,OccurredAt:eventOccurred,RecordedAt:now}
+        Evidence:*evidence,Explanation:*explain,ExplanationLanguage:selectedLanguage,ProposedType:*proposed,ReviewOutcome:*reviewOutcome,RunEvidence:runEvidence,SupersedesID:*supersedesID,OccurredAt:eventOccurred,RecordedAt:now}
     if correctionTarget!=nil {
         e.Source="agent_correction"
         e.PhaseEvent=correctionTarget.PhaseEvent
@@ -267,4 +276,44 @@ func runActivityCLI(args []string,out,errOut io.Writer) int {
     }
     emit(map[string]any{"ok":true,"recorded":inserted,"event":e,"recorder_elapsed_ms":float64(time.Since(callStarted).Microseconds())/1000})
     return 0
+}
+
+// No implicit environment/global/browser language lookup: the dispatch caller supplies context.
+func activityExplanationLanguage(preferred,fallback string)(string,error){
+    valid:=func(v string)bool{return v=="ko"||v=="en"}
+    if fallback!=""&&!valid(fallback){return "",fmt.Errorf("--fallback-language supports ko|en only")}
+    if valid(preferred){return preferred,nil}
+    if fallback!=""{return fallback,nil}
+    if preferred!=""{return "",fmt.Errorf("unsupported --language; supply explicit --fallback-language ko|en")}
+    return "",nil // Legacy callers remain unchanged, language unobserved.
+}
+func activityPhaseExplanation(phase,kind,language string)string{
+    // These describe reported boundaries, never tests passed, acceptance or current liveness.
+    ends:=map[string][2]string{
+        "worker_completed":{"작업 결과를 컨트롤러에 보고합니다.","Reporting work results to the Controller."},
+        "worker_blocked":{"작업 진행을 막는 조건을 보고합니다.","Reporting a condition blocking work."},
+        "registration_completed":{"작업 등록 결과를 보고합니다.","Reporting task registration results."},
+        "review_completed":{"검토 단계의 종료를 보고합니다.","Reporting the end of the review phase."},
+        "phase_completed":{"활동 단계의 종료를 보고합니다.","Reporting the end of the activity phase."},
+        "review_accepted":{"검토 수용 의견을 보고합니다.","Reporting a review acceptance opinion."},
+        "review_rejected":{"검토 반려 의견을 보고합니다.","Reporting a review rejection opinion."},
+        "review_needs_changes":{"검토에서 필요한 수정을 보고합니다.","Reporting changes requested by review."},
+    }
+    index:=1;if language=="ko"{index=0}
+    if text,ok:=ends[phase];ok{return text[index]}
+    if phase!=""{kind=string(activity.Suggest(activity.RoleController,phase,0).Type)}
+    text,ok:=map[string][2]string{
+        "requirements":{"작업 요구사항을 확인합니다.","Checking task requirements."},
+        "research":{"작업에 필요한 자료와 소스를 조사합니다.","Inspecting sources and references for the task."},
+        "implementation":{"작업 변경 사항을 구현합니다.","Implementing the task changes."},
+        "targeted_test":{"변경 대상의 검증을 수행합니다.","Performing targeted validation."},
+        "full_regression":{"회귀 검증을 수행합니다.","Performing regression validation."},
+        "build_check":{"빌드 검증을 수행합니다.","Performing build validation."},
+        "controller_review":{"작업 결과와 근거를 검토합니다.","Reviewing work results and evidence."},
+        "controller_rereview":{"수정 결과와 근거를 다시 검토합니다.","Reviewing revised results and evidence."},
+        "handoff":{"작업 결과와 다음 조치를 인계합니다.","Handing off work results and next actions."},
+        "recovery":{"작업 재개에 필요한 복구를 수행합니다.","Performing recovery needed to resume work."},
+    }[kind]
+    if !ok{return ""} // Unknown/other still needs authored explanation, no keyword guessing.
+    return text[index]
 }

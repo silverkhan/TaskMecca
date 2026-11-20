@@ -285,3 +285,26 @@ Controller 시작/재개 시 exact native 현재 attempt와 원래 인계를 관
 Controller/Worker는 원계약·AC, 위험/복잡성, 유효 기존 분석, 현재 변경 source/hash를 확인하고 필요한 분석 범위와 종료 기준을 정한다. 단순 작업은 최소 확인 후 구현하고 삭제/중요 데이터/높은 영향의 필수 안전 조사는 유지한다. 파일 수나 고정 시간으로 강제 종료하지 않는다. `flow next --role worker --event analysis_requested --task ID --analysis-input FILE --json`은 읽기 전용 advisory이며 실제 권한·완료 판정을 대신하지 않는다.
 
 task/계약/AC/source hash/이전 결정/미해결 문제/context와 위험이 일치하는 분석만 재사용한다. 변경분과 영향받는 확인을 재검토하고 현재 지침·권한·실제 dispatch gate는 fresh로 확인한다. requirements/research/implementation/verification/actual_wait/coordination_handoff는 실제 현재 경계에서 지원 API로 기록하며 미측정 구간·전환 누락·원래 시각을 보존한다. 기대 범위와 차이가 나면 원인/현재 산출물/남은 확인/다음 조치를 Controller에게 직접 조율하고 경과시간만으로 사용자 정체 알림으로 승격하지 않는다. 상세 입력·B651 근거 한계는 `docs/analysis-depth-continuity.md`를 따른다.
+
+## 새 활동 설명의 명시 언어 전달
+
+Controller·Registrar·Worker·필요한 Reviewer 배정에는 관측된 전달 가능 언어
+`language`와 명시 대체 기준 `fallback_language`를 함께 전달한다. 전달 가능한
+설정이 미확인인 현재 한국어 대화는 `fallback_language=ko`다. 브라우저
+`task-mecca-language`/navigator 설정을 CLI가 읽었다고 간주하지 않는다.
+지원되는 새 소스 CLI의 `activity report|start|switch|stop|correct`에
+`--language ko|en` / `--fallback-language ko|en`을 명시한다. 지원 언어 우선,
+미확인·미지원 선호 언어는 명시된 지원 대체 언어만 사용하며 없으면 거부한다.
+둘 다 없으면 기존 기록의 언어는 미확인으로 보존한다. 전역 설정을 바꾸지 않는다.
+
+실제 단계/operation 경계에서 대상·행동을 짧고 자연스럽게 `--explanation`에
+기록한다. 명령·경로·코드·신원·진단 원문은 그대로 evidence/raw에 보존한다.
+정확한 표준 단계의 기본 설명만 지원하며 자유 서술을 추측하거나 자동 번역하지
+않는다. 추가 도구별 기록·heartbeat·LLM 번역 호출은 필요 없다. 실제 단계 보고와
+권한 확인을 대체하지 않으며 미측정 bootstrap·과거 기록을 보충하지 않는다.
+
+`activity run`은 새 언어 flag를 지원하지 않고 실행 전에 거부한다. 기존 wrapper의
+명령/purpose/근거를 바꾸거나 언어 전달 성공으로 보고하지 않는다. 설치 CLI가 새
+flag를 지원하기 전에는 기존 `--explanation`으로 명시 한국어 설명을 전달하고
+소스 검증·릴리스·운영 설치를 구분한다. 상세 범위·재시도·정정·원문 보존 규약은
+`docs/activity-recorder.md`를 따른다.

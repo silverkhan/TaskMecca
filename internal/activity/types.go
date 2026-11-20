@@ -72,6 +72,7 @@ type Event struct {
     Evidence string `json:"evidence,omitempty"`
     ProposedType string `json:"proposed_type,omitempty"`
     Explanation string `json:"explanation,omitempty"`
+    ExplanationLanguage string `json:"explanation_language,omitempty"`
     SupersedesID string `json:"supersedes_id,omitempty"`
     OccurredAt time.Time `json:"occurred_at"`
     RecordedAt time.Time `json:"recorded_at"`
@@ -98,6 +99,7 @@ func(e Event) Validate() error {
         if (e.Action!=Stop && e.Action!=Correct) || (e.Type!=ControllerReview&&e.Type!=ControllerReReview) {return fail("review outcome requires review stop")}
         if e.ReviewOutcome!="accepted"&&e.ReviewOutcome!="rejected"&&e.ReviewOutcome!="needs_changes" {return fail("invalid review outcome")}
     }
+    if e.ExplanationLanguage!="" && e.ExplanationLanguage!="ko" && e.ExplanationLanguage!="en"{return fail("unsupported explanation_language")}
     if e.Type==Other && strings.TrimSpace(e.Explanation)==""{return fail("other requires explanation")}
     if e.RunEvidence!=nil { if err:=e.RunEvidence.Validate();err!=nil{return err} }
     if e.Type!=Other && e.ProposedType!=""{return fail("proposed_type only valid for other")}

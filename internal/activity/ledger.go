@@ -180,7 +180,7 @@ func sameActivityIntent(a,b Event)bool{
         a.Role==b.Role && a.AgentID==b.AgentID && a.RuntimeAttemptID==b.RuntimeAttemptID &&
         a.AssignmentID==b.AssignmentID && a.HandoffID==b.HandoffID &&
         a.Type==b.Type && a.Round==b.Round &&
-        a.Evidence==b.Evidence && a.Explanation==b.Explanation &&
+        a.Evidence==b.Evidence && a.Explanation==b.Explanation && a.ExplanationLanguage==b.ExplanationLanguage &&
         a.ProposedType==b.ProposedType && a.ReviewOutcome==b.ReviewOutcome &&
         a.SupersedesID==b.SupersedesID &&
         a.Source==b.Source && a.PhaseEvent==b.PhaseEvent && a.Confidence==b.Confidence &&

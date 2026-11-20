@@ -20,6 +20,7 @@ type Segment struct {
     RunEvidence *RunEvidence `json:"run_evidence,omitempty"`
     ProposedType string `json:"proposed_type,omitempty"`
     Explanation string `json:"explanation,omitempty"`
+    ExplanationLanguage string `json:"explanation_language,omitempty"`
 }
 type Dimension struct {
     Role Role `json:"role"`
@@ -95,7 +96,7 @@ func Summarize(task string, events []Event) Summary {
                 continue
             }
             duration:=e.OccurredAt.Sub(current.event.OccurredAt).Milliseconds()
-            segment:=Segment{TaskID:task,AgentID:current.event.AgentID,AttemptID:current.event.RuntimeAttemptID,Role:current.event.Role,Type:current.event.Type,Round:current.event.Round,StartedAt:current.event.OccurredAt,EndedAt:e.OccurredAt,DurationMillis:duration,RunEvidence:current.event.RunEvidence,ProposedType:current.event.ProposedType,Explanation:current.event.Explanation}
+            segment:=Segment{TaskID:task,AgentID:current.event.AgentID,AttemptID:current.event.RuntimeAttemptID,Role:current.event.Role,Type:current.event.Type,Round:current.event.Round,StartedAt:current.event.OccurredAt,EndedAt:e.OccurredAt,DurationMillis:duration,RunEvidence:current.event.RunEvidence,ProposedType:current.event.ProposedType,Explanation:current.event.Explanation,ExplanationLanguage:current.event.ExplanationLanguage}
             if e.RunEvidence!=nil && e.RunEvidence.Result!="" {
                 if segment.RunEvidence==nil {copyRun:=*e.RunEvidence;segment.RunEvidence=&copyRun
                 }else{copyRun:=*segment.RunEvidence;copyRun.Result=e.RunEvidence.Result;segment.RunEvidence=&copyRun}
