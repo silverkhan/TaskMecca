@@ -7,7 +7,43 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/silverkhan/TaskMecca/internal/analysisdepth"
+	"github.com/silverkhan/TaskMecca/internal/rolepolicy"
 )
+
+func TestB2AnalysisCLIExposesStructuralAdviceWithoutAuthority(t *testing.T) {
+	p := filepath.Join(t.TempDir(), "b2-analysis.json")
+	in := analysisdepth.Input{
+		Current:        analysisdepth.Context{Task: "B-2", ContractSHA256: strings.Repeat("a", 64), AcceptanceSHA256: strings.Repeat("b", 64), Sources: map[string]string{"product.go": strings.Repeat("c", 64)}, Decisions: []string{}, OpenIssues: []string{}, ContextID: "current"},
+		Risk:           rolepolicy.ReviewRisk{Impact: "moderate", Complexity: "complex", Reversibility: "easy", Verifiability: "established"},
+		RequiredChecks: []string{"source"}, CompletedChecks: []string{"source"}, CurrentPhase: "environment_identity", NextPhase: "independent_review",
+		Counterexamples: &rolepolicy.CounterexampleMatrix{TaskID: "B-2", Source: rolepolicy.Source{Files: map[string]string{"product.go": strings.Repeat("c", 64)}}, Required: []string{"negative"}, Cases: []rolepolicy.Counterexample{{ID: "negative", Question: "Can negative intent grant authority?", Input: "do not act", Expected: "deny", Result: "not_run"}}},
+		ReviewPreflight: &rolepolicy.ReviewPreflightInput{}, ReviewFollowup: &rolepolicy.ReviewFollowupInput{Cause: "identity_recovery"},
+	}
+	body, err := json.Marshal(in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = os.WriteFile(p, body, 0600); err != nil {
+		t.Fatal(err)
+	}
+	var out, errs bytes.Buffer
+	if code := runAnalysisDepthCLI(p, "B-2", &out, &errs); code != 0 {
+		t.Fatal(code, errs.String())
+	}
+	var a analysisdepth.Advice
+	if err = json.Unmarshal(out.Bytes(), &a); err != nil {
+		t.Fatal(err)
+	}
+	if !a.Advisory || a.ExecutionAuthorized || a.Written || a.Counterexamples.Ready || a.Counterexamples.Cases[0].Result != "not_run" || a.ReviewPreflight.Ready || a.ReviewPreflight.AcceptanceGranted || a.ReviewFollowup.Action != "blocked" {
+		t.Fatal(a)
+	}
+	after, _ := os.ReadFile(p)
+	if !bytes.Equal(body, after) {
+		t.Fatal("input was changed")
+	}
+}
 
 func TestA94FlowAnalysisReadOnly(t *testing.T) {
 	p := filepath.Join(t.TempDir(), "analysis.json")

@@ -1,10 +1,65 @@
 package analysisdepth
 
 import (
+	"encoding/json"
 	"github.com/silverkhan/TaskMecca/internal/rolepolicy"
 	"strings"
 	"testing"
 )
+
+func TestB2PhaseCategoriesKeepUnknownAndMetricsSeparate(t *testing.T) {
+	for _, phase := range []string{"requirements", "research", "environment_identity", "implementation", "verification", "independent_review", "result_readback", "actual_wait"} {
+		in := small()
+		in.CurrentPhase, in.NextPhase = phase, phase
+		in.Evidence = []Evidence{{ContractRef: "contract", ArtifactRef: "actual-phase", ReferenceRef: "original", Phase: phase, Purpose: "repeat", Finding: "same source confirmation"}}
+		a := Evaluate(in)
+		if contains(a.Reasons, "phase_gap_or_unknown_preserve_unmeasured") || a.Classifications[0].Category != "repeated_confirmation" {
+			t.Fatal(phase, a)
+		}
+	}
+	in := small()
+	in.CurrentPhase = "unknown"
+	if !contains(Evaluate(in).Reasons, "phase_gap_or_unknown_preserve_unmeasured") {
+		t.Fatal("unknown phase became measured")
+	}
+}
+
+func TestB2BoundedComparableAnalysisWork(t *testing.T) {
+	in := small()
+	in.CompletedChecks = nil
+	baseline := Evaluate(in)
+	in.Prior = prior(in)
+	unchanged := Evaluate(in)
+	if len(baseline.RemainingChecks) != 2 || len(unchanged.RemainingChecks) != 0 || unchanged.Reuse != "exact" || len(unchanged.FreshChecks) != len(baseline.FreshChecks) {
+		t.Fatal(baseline, unchanged)
+	}
+	// A real delta must still be verified. This control makes no savings claim.
+	in.Current.Sources = map[string]string{"source.go": strings.Repeat("d", 64)}
+	changed := Evaluate(in)
+	if changed.Reuse != "changed_sources_only" || len(changed.ChangedSources) != 1 || len(changed.RemainingChecks) != 2 {
+		t.Fatal(changed)
+	}
+	for _, a := range []Advice{baseline, unchanged, changed} {
+		if a.ExecutionAuthorized || a.Written {
+			t.Fatal(a)
+		}
+	}
+	t.Logf("bounded planning counts: unchanged analysis required checks %d -> %d; changed-source control checks=%d changed paths=%d; fresh checks retained=%d; no host-call or elapsed-time gain measured", len(baseline.RemainingChecks), len(unchanged.RemainingChecks), len(changed.RemainingChecks), len(changed.ChangedSources), len(unchanged.FreshChecks))
+}
+
+func TestB2ReviewAdviceCannotEscapeAnalysisContext(t *testing.T) {
+	in := small()
+	in.ReviewPreflight = &rolepolicy.ReviewPreflightInput{}
+	in.ReviewFollowup = &rolepolicy.ReviewFollowupInput{Cause: "report_transport"}
+	a := Evaluate(in)
+	if a.ReviewPreflight.Ready || a.ReviewFollowup.Action != "blocked" || !contains(a.ReviewPreflight.Findings, "analysis_review_context_mismatch") {
+		t.Fatal(a)
+	}
+	b, err := json.Marshal(a)
+	if err != nil || !strings.Contains(string(b), `"acceptance_granted":false`) {
+		t.Fatal(string(b), err)
+	}
+}
 
 func small() Input {
 	return Input{Current: Context{Task: "A-94", ContractSHA256: strings.Repeat("a", 64), AcceptanceSHA256: strings.Repeat("b", 64), Sources: map[string]string{"source.go": strings.Repeat("c", 64)}, Decisions: []string{}, OpenIssues: []string{}, ContextID: "current-context"}, Risk: rolepolicy.ReviewRisk{Impact: "low", Complexity: "simple", Reversibility: "easy", Verifiability: "established"}, RequiredChecks: []string{"contract-ac", "source"}, CompletedChecks: []string{"contract-ac", "source"}, CurrentPhase: "research", NextPhase: "implementation"}

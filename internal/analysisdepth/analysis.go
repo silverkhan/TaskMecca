@@ -47,17 +47,20 @@ type Drift struct {
 }
 
 type Input struct {
-	Current         Context               `json:"current"`
-	Risk            rolepolicy.ReviewRisk `json:"risk"`
-	Prior           *Prior                `json:"prior,omitempty"`
-	RequiredChecks  []string              `json:"required_checks"`
-	SafetyChecks    []string              `json:"safety_checks"`
-	CompletedChecks []string              `json:"completed_checks"`
-	Evidence        []Evidence            `json:"evidence"`
-	CurrentPhase    string                `json:"current_phase"`
-	NextPhase       string                `json:"next_phase"`
-	PhaseGap        bool                  `json:"phase_gap"`
-	Drift           *Drift                `json:"drift,omitempty"`
+	Current         Context                          `json:"current"`
+	Risk            rolepolicy.ReviewRisk            `json:"risk"`
+	Prior           *Prior                           `json:"prior,omitempty"`
+	RequiredChecks  []string                         `json:"required_checks"`
+	SafetyChecks    []string                         `json:"safety_checks"`
+	CompletedChecks []string                         `json:"completed_checks"`
+	Evidence        []Evidence                       `json:"evidence"`
+	CurrentPhase    string                           `json:"current_phase"`
+	NextPhase       string                           `json:"next_phase"`
+	PhaseGap        bool                             `json:"phase_gap"`
+	Drift           *Drift                           `json:"drift,omitempty"`
+	Counterexamples *rolepolicy.CounterexampleMatrix `json:"counterexamples,omitempty"`
+	ReviewPreflight *rolepolicy.ReviewPreflightInput `json:"review_preflight,omitempty"`
+	ReviewFollowup  *rolepolicy.ReviewFollowupInput  `json:"review_followup,omitempty"`
 }
 
 type Classification struct {
@@ -66,20 +69,23 @@ type Classification struct {
 }
 
 type Advice struct {
-	Advisory               bool             `json:"advisory"`
-	ExecutionAuthorized    bool             `json:"execution_authorized"`
-	Written                bool             `json:"written"`
-	Depth                  string           `json:"depth"`
-	NextAction             string           `json:"next_action"`
-	StopCriteria           []string         `json:"stop_criteria"`
-	Reuse                  string           `json:"reuse"`
-	ChangedSources         []string         `json:"changed_sources"`
-	RemainingChecks        []string         `json:"remaining_checks"`
-	Reasons                []string         `json:"reasons"`
-	Classifications        []Classification `json:"classifications"`
-	ControllerCoordination *Drift           `json:"controller_coordination,omitempty"`
-	FreshChecks            []string         `json:"fresh_checks"`
-	PhaseInstruction       string           `json:"phase_instruction"`
+	Advisory               bool                              `json:"advisory"`
+	ExecutionAuthorized    bool                              `json:"execution_authorized"`
+	Written                bool                              `json:"written"`
+	Depth                  string                            `json:"depth"`
+	NextAction             string                            `json:"next_action"`
+	StopCriteria           []string                          `json:"stop_criteria"`
+	Reuse                  string                            `json:"reuse"`
+	ChangedSources         []string                          `json:"changed_sources"`
+	RemainingChecks        []string                          `json:"remaining_checks"`
+	Reasons                []string                          `json:"reasons"`
+	Classifications        []Classification                  `json:"classifications"`
+	ControllerCoordination *Drift                            `json:"controller_coordination,omitempty"`
+	FreshChecks            []string                          `json:"fresh_checks"`
+	PhaseInstruction       string                            `json:"phase_instruction"`
+	Counterexamples        *rolepolicy.CounterexampleAdvice  `json:"counterexamples,omitempty"`
+	ReviewPreflight        *rolepolicy.ReviewPreflightAdvice `json:"review_preflight,omitempty"`
+	ReviewFollowup         *rolepolicy.ReviewFollowupAdvice  `json:"review_followup,omitempty"`
 }
 
 func hash(s string) bool { b, e := hex.DecodeString(s); return e == nil && len(b) == 32 }
@@ -103,7 +109,7 @@ func contains(xs []string, s string) bool {
 	return false
 }
 func phases(s string) bool {
-	return contains([]string{"requirements", "research", "implementation", "verification", "actual_wait", "coordination_handoff"}, s)
+	return contains([]string{"requirements", "research", "environment_identity", "implementation", "verification", "independent_review", "result_readback", "actual_wait", "coordination_handoff"}, s)
 }
 
 // Evaluate does not open files or write journals. Its input is explicit evidence;
@@ -211,6 +217,26 @@ func Evaluate(in Input) Advice {
 		if in.Drift.Cause == "" || in.Drift.CurrentArtifact == "" || len(in.Drift.RemainingChecks) == 0 || in.Drift.NextAction == "" {
 			a.Reasons = append(a.Reasons, "drift_report_incomplete")
 		}
+	}
+	if in.Counterexamples != nil {
+		x := rolepolicy.CheckCounterexamples(*in.Counterexamples, in.Current.Task, rolepolicy.Source{Files: in.Current.Sources})
+		a.Counterexamples = &x
+	}
+	if in.ReviewPreflight != nil {
+		x := rolepolicy.PreflightReview(*in.ReviewPreflight)
+		if !currentValid || in.ReviewPreflight.Request.TaskID != in.Current.Task || in.ReviewPreflight.ContractSHA256 != in.Current.ContractSHA256 || in.ReviewPreflight.CurrentSource.Digest() != (rolepolicy.Source{Files: in.Current.Sources}).Digest() {
+			x.Ready = false
+			x.Findings = append(x.Findings, "analysis_review_context_mismatch")
+		}
+		a.ReviewPreflight = &x
+	}
+	if in.ReviewFollowup != nil {
+		x := rolepolicy.ClassifyReviewFollowup(*in.ReviewFollowup)
+		if !currentValid || in.ReviewFollowup.Original.Request.TaskID != in.Current.Task || in.ReviewFollowup.CurrentContractSHA256 != in.Current.ContractSHA256 || in.ReviewFollowup.CurrentSource.Digest() != (rolepolicy.Source{Files: in.Current.Sources}).Digest() {
+			x.Action = "blocked"
+			x.Reasons = append(x.Reasons, "analysis_review_context_mismatch")
+		}
+		a.ReviewFollowup = &x
 	}
 	return a
 }
