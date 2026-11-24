@@ -8,6 +8,49 @@ import (
 )
 
 func a100at(second int) time.Time { return time.Date(2026, 11, 24, 0, 0, second, 0, time.UTC) }
+
+func TestA100MeasuredZeroWithinTaskAxisKeepsMetricEvidence(t *testing.T) {
+	for _, tc := range []struct {
+		name         string
+		second       int
+		wantMeasured bool
+	}{
+		{"beforeTask", -1, false},
+		{"atRegistration", 0, true},
+		{"insideTask", 5, true},
+		{"atCompletion", 10, true},
+		{"afterTask", 11, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			events := []Event{
+				{EventID: "zero-start", TaskID: "T", Role: RoleWorker, AgentID: "worker", RuntimeAttemptID: "run", Action: Start, Type: Implementation, OccurredAt: a100at(tc.second)},
+				{EventID: "zero-stop", TaskID: "T", Role: RoleWorker, AgentID: "worker", RuntimeAttemptID: "run", Action: Stop, Type: Implementation, OccurredAt: a100at(tc.second)},
+			}
+			summary := Summarize("T", events)
+			before, _ := json.Marshal(summary)
+			w := SummarizeWorkflow(WorkflowInput{TaskID: "T", Events: events, Summary: summary,
+				Facts: []LifecycleFact{{EventID: "registered", TaskID: "T", Kind: "registered", OccurredAt: a100at(0)}, {EventID: "completed", TaskID: "T", Kind: "completed", OccurredAt: a100at(10)}}, Now: a100at(20)})
+			for _, m := range []MeasuredMetric{w.Measurement.Activity, w.Measurement.Worker} {
+				if m.EventCount != 2 || (m.Millis != nil) != tc.wantMeasured {
+					t.Fatalf("zero/absence confused: %+v", m)
+				}
+				if tc.wantMeasured && (*m.Millis != 0 || m.SegmentCount != 1 || m.Status != "observed") {
+					t.Fatalf("measured zero lost: %+v", m)
+				}
+				if !tc.wantMeasured && m.SegmentCount != 0 {
+					t.Fatalf("outside zero measured: %+v", m)
+				}
+			}
+			if w.Measurement.AgentTimeMillis != 0 || w.Measurement.RawAgentTimeMillis != 0 || w.Measurement.OutsideTaskMillis != 0 || w.Measurement.ObservedWallMillis != 0 {
+				t.Fatal("zero fabricated duration", w.Measurement)
+			}
+			after, _ := json.Marshal(summary)
+			if string(before) != string(after) {
+				t.Fatal("raw segment mutated")
+			}
+		})
+	}
+}
 func TestA100SeparateParticipationStateAndActivity(t *testing.T) {
 	start, end := a100at(0), a100at(60)
 	elapsed := int64(60000)

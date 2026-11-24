@@ -46,6 +46,14 @@ func workflowClipMeasurement(m *Measurement, in WorkflowInput, events []Event, a
 	}
 	segments := []Segment{}
 	for _, s := range in.Summary.Segments {
+		// A closed zero-length Activity is measured evidence, even at either
+		// task boundary. It contributes no time, but must not become absence.
+		// Keep clipInterval strict for positive intervals and state coverage.
+		if s.StartedAt.Equal(s.EndedAt) && !s.StartedAt.Before(*axis.Start) && !s.EndedAt.After(*axis.End) {
+			s.DurationMillis = 0
+			segments = append(segments, s)
+			continue
+		}
 		if x, ok := clipInterval(s.StartedAt, s.EndedAt, *axis.Start, *axis.End); ok {
 			s.StartedAt = x.start
 			s.EndedAt = x.end
