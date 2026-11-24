@@ -40,6 +40,8 @@ func runRuntimeBoundaryCLI(args []string, out, stderr io.Writer) int {
 	task := f.String("task", "", "list task filter")
 	tasks := f.String("tasks", "", "comma-separated canonical task associations")
 	evidence := f.String("evidence", "", "actual boundary evidence")
+	explanation := f.String("explanation", "", "one concrete sentence about the actual operation; original evidence stays separate")
+	language := f.String("language", "", "explicit explanation language: ko|en")
 	related := f.String("related-id", "", "matching wait key or supported handoff ID")
 	originalError := f.String("error", "", "original collection error; never replaces unknown with success")
 	scope := f.String("wait-scope", "actor", "actor|task_next_stage")
@@ -110,6 +112,11 @@ func runRuntimeBoundaryCLI(args []string, out, stderr io.Writer) int {
 		return 1
 	}
 	b := runtimeobs.OperationBoundary{Key: *key, OperationID: *operation, Provider: receipt.Provider, NativeID: *native, AttemptID: *attempt, ThreadID: *thread, Role: *role, Kind: *kind, Phase: *phase, RelatedID: *related, Source: "current_native_boundary", Evidence: *evidence, Error: *originalError}
+	b.Explanation = *explanation
+	b.ExplanationLanguage = *language
+	if strings.TrimSpace(*explanation) != "" {
+		b.ExplanationOrigin = "written"
+	}
 	if *tasks != "" {
 		b.TaskIDs = strings.Split(*tasks, ",")
 		for i, id := range b.TaskIDs {
@@ -181,6 +188,7 @@ func boundaryRoleMatches(role, name string) bool {
 // extra reporting call is necessary. Each real invocation has a distinct stable
 // operation identity, while RequestID groups retries of the same registration.
 type registrationBoundary struct {
+	requestKey   string
 	startReceipt runtimeobs.T3Receipt
 	nativeName   string
 	identityLost bool
@@ -196,19 +204,31 @@ type registrationBoundary struct {
 }
 
 type registrationCollectionStatus struct {
-	Status        string `json:"status"`
-	RequestID     string `json:"request_id,omitempty"`
-	OperationID   string `json:"operation_id,omitempty"`
-	NativeID      string `json:"native_id,omitempty"`
-	Started       bool   `json:"started"`
-	Ended         bool   `json:"ended"`
-	OriginalError string `json:"original_error,omitempty"`
+	RequestReceiptKey string `json:"request_receipt_key,omitempty"`
+	Status            string `json:"status"`
+	RequestID         string `json:"request_id,omitempty"`
+	OperationID       string `json:"operation_id,omitempty"`
+	NativeID          string `json:"native_id,omitempty"`
+	Started           bool   `json:"started"`
+	Ended             bool   `json:"ended"`
+	OriginalError     string `json:"original_error,omitempty"`
 }
 
-func beginRegistrationBoundary(project, request string, stderr io.Writer) *registrationBoundary {
+func beginRegistrationBoundary(project, request string, stderr io.Writer, description ...string) *registrationBoundary {
+	requestKey := "registration-request:" + request + ":" + time.Now().UTC().Format("20060102T150405.000000000Z")
+	_, intentErr := runtimeobs.RecordCollectionReceipt(project, runtimeobs.RequestCollectionReceipt(request, requestKey, "pending", "", time.Now().UTC()))
 	fail := func(err error) *registrationBoundary {
+		if intentErr != nil {
+			err = errors.Join(err, fmt.Errorf("request intent unavailable: %w", intentErr))
+		} else {
+			_, persistErr := runtimeobs.RecordCollectionReceipt(project, runtimeobs.RequestCollectionReceipt(request, requestKey, "failed", err.Error(), time.Now().UTC()))
+			err = errors.Join(err, persistErr)
+		}
 		fmt.Fprintf(stderr, "execution_boundary collection_failure/unmeasured: %v\n", err)
-		return &registrationBoundary{project: project, stderr: stderr, disabled: true, firstError: err, base: runtimeobs.OperationBoundary{RequestID: request}}
+		return &registrationBoundary{project: project, requestKey: requestKey, stderr: stderr, disabled: true, firstError: err, base: runtimeobs.OperationBoundary{RequestID: request}}
+	}
+	if intentErr != nil {
+		return fail(intentErr)
 	}
 	native, thread := os.Getenv("CODEX_THREAD_ID"), os.Getenv("T3CODE_THREAD_ID")
 	if native == "" || thread == "" {
@@ -248,7 +268,22 @@ func beginRegistrationBoundary(project, request string, stderr io.Writer) *regis
 	}
 	start := time.Now().UTC()
 	base := runtimeobs.OperationBoundary{RequestID: request, OperationID: "registration:" + request + ":" + r.NativeAttemptID + ":" + start.Format("20060102T150405.000000000Z"), Provider: r.Provider, NativeID: native, AttemptID: a.AttemptID, ThreadID: thread, Role: role, Source: "registration_apply", Evidence: "approved registration apply request " + request}
-	c := &registrationBoundary{project: project, base: base, stderr: stderr, startReceipt: observed, nativeName: m.Name}
+	base.Explanation = "Register approved task contracts"
+	base.ExplanationLanguage = "en"
+	base.ExplanationOrigin = "type_default"
+	if len(description) > 1 && description[1] == "ko" {
+		base.Explanation = "승인된 작업 계약을 등록합니다."
+		base.ExplanationLanguage = "ko"
+	}
+	if len(description) > 0 && strings.TrimSpace(description[0]) != "" {
+		base.Explanation = description[0]
+		base.ExplanationOrigin = "written"
+		base.ExplanationLanguage = ""
+		if len(description) > 1 {
+			base.ExplanationLanguage = description[1]
+		}
+	}
+	c := &registrationBoundary{project: project, requestKey: requestKey, base: base, stderr: stderr, startReceipt: observed, nativeName: m.Name}
 	c.write("start", "start", "", nil, "")
 	c.phase("input_validation")
 	return c
@@ -267,6 +302,14 @@ func (c *registrationBoundary) write(key, kind, phase string, tasks []string, or
 	if err := c.verifyCurrent(); err != nil {
 		c.identityLost = true
 		c.collectError(key, fmt.Errorf("current registration identity not verified: %w", err))
+		// Never journal this failure under a stale native actor. Keep only the
+		// original request association, whose pending observation is independent.
+		if c.requestKey != "" {
+			_, persistErr := runtimeobs.RecordCollectionReceipt(c.project, runtimeobs.RequestCollectionReceipt(c.base.RequestID, c.requestKey, "failed", c.firstError.Error(), time.Now().UTC()))
+			if persistErr != nil {
+				c.collectError(key, persistErr)
+			}
+		}
 		return
 	}
 	b := c.base
@@ -385,13 +428,27 @@ func (c *registrationBoundary) finish(code int, originalError string) {
 		originalError = fmt.Sprintf("registration apply exit code %d; original diagnostic unavailable", code)
 	}
 	c.write("end", "end", "", nil, originalError)
+	if c.requestKey != "" {
+		status := "ack"
+		problem := ""
+		if !c.ended || c.firstError != nil {
+			status = "failed"
+			problem = fmt.Sprint(c.firstError)
+			if c.firstError == nil {
+				problem = "operation end not durably acknowledged"
+			}
+		}
+		if _, err := runtimeobs.RecordCollectionReceipt(c.project, runtimeobs.RequestCollectionReceipt(c.base.RequestID, c.requestKey, status, problem, time.Now().UTC())); err != nil {
+			c.collectError("request_ack", err)
+		}
+	}
 }
 
 func (c *registrationBoundary) status() *registrationCollectionStatus {
 	if c == nil {
 		return nil
 	}
-	s := &registrationCollectionStatus{Status: "observed", RequestID: c.base.RequestID, OperationID: c.base.OperationID, NativeID: c.base.NativeID, Started: c.started, Ended: c.ended}
+	s := &registrationCollectionStatus{Status: "observed", RequestReceiptKey: c.requestKey, RequestID: c.base.RequestID, OperationID: c.base.OperationID, NativeID: c.base.NativeID, Started: c.started, Ended: c.ended}
 	if c.disabled {
 		s.Status = "unmeasured"
 	} else if c.firstError != nil || !c.started || !c.ended {

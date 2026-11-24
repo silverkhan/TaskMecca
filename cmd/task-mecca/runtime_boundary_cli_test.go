@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/silverkhan/TaskMecca/internal/activity"
 	"github.com/silverkhan/TaskMecca/internal/runtimeobs"
 	"io"
 	"os"
@@ -15,6 +16,209 @@ import (
 	"testing"
 	"time"
 )
+
+func TestA98SupportedRegistrationApplyDurableRequestAndWrittenDescription(t *testing.T) {
+	p := t.TempDir()
+	host := newRegistrationHostFixture(t, p)
+	var diagnostics bytes.Buffer
+	host.collector(&diagnostics)
+	input := filepath.Join(t.TempDir(), "manifest.json")
+	if err := os.WriteFile(input, []byte(`{"schema_version":1,"tasks":[{"key":"one","title":"격리된 등록","kind":"simple","goal":"검증","acceptance_criteria":["원문 보존"]}]}`), 0600); err != nil {
+		t.Fatal(err)
+	}
+	base := []string{"--project", p, "--input", input, "--request-id", "a98-registration", "--prefix", "A", "--json"}
+	var out, errOut bytes.Buffer
+	if code := runContractBatchCLI("plan", base, &out, &errOut); code != 0 {
+		t.Fatal(code, errOut.String())
+	}
+	var plan batchPlan
+	if err := json.Unmarshal(out.Bytes(), &plan); err != nil {
+		t.Fatal(err)
+	}
+	out.Reset()
+	errOut.Reset()
+	description := "승인된 작업 계약을 등록합니다." // Explicit text equal to default remains written.
+	args := append(append([]string{}, base...), "--approve", "--expect-plan", plan.PlanDigest, "--language", "ko", "--explanation", description)
+	if code := runContractBatchCLI("apply", args, &out, &errOut); code != 0 {
+		t.Fatalf("actual apply: %d %s %s", code, out.String(), errOut.String())
+	}
+	var result batchResult
+	if err := json.Unmarshal(out.Bytes(), &result); err != nil {
+		t.Fatal(err)
+	}
+	if result.ExecutionCollection == nil || result.ExecutionCollection.Status != "observed" || !result.ExecutionCollection.Ended {
+		t.Fatal("success JSON preceded durable end", out.String())
+	}
+	rows, err := runtimeobs.ReadCollectionReceipts(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rows) < 3 || rows[0].Boundary != nil || rows[0].Activity != nil || rows[0].Status != "pending" {
+		t.Fatal("pre-native preparation acquired native/task", rows)
+	}
+	if rows[len(rows)-1].Status != "ack" || rows[len(rows)-1].Key != result.ExecutionCollection.RequestReceiptKey {
+		t.Fatal("request not acknowledged", rows)
+	}
+	boundaries, err := runtimeobs.ReadOperationBoundaries(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, b := range boundaries {
+		if b.Source != "registration_apply" {
+			continue
+		}
+		if b.Explanation != description || b.ExplanationLanguage != "ko" || b.ExplanationOrigin != "written" {
+			t.Fatalf("authored explanation lost %+v", b)
+		}
+	}
+}
+
+func TestA98SupportedRegistrationIdentityFailureDurableAndUnlinked(t *testing.T) {
+	p := t.TempDir()
+	t.Setenv("CODEX_THREAD_ID", "")
+	t.Setenv("T3CODE_THREAD_ID", "")
+	var diag bytes.Buffer
+	c := beginRegistrationBoundary(p, "missing-native", &diag)
+	c.finish(0, "")
+	if c.status().Status == "observed" || c.started || c.ended {
+		t.Fatal("unsupported collector claimed success")
+	}
+	rows, err := runtimeobs.ReadCollectionReceipts(p)
+	if err != nil || len(rows) != 2 || rows[1].Status != "failed" || rows[1].Error == "" {
+		t.Fatal("identity failure not durable", err, rows)
+	}
+	for _, r := range rows {
+		if r.Boundary != nil || r.Activity != nil {
+			t.Fatal("unverified native association", r)
+		}
+	}
+}
+
+func TestA98AbruptCollectorChild(t *testing.T) {
+	if os.Getenv("A98_INTERRUPTED_COLLECTOR") != "1" {
+		return
+	}
+	c := beginRegistrationBoundary(os.Getenv("A98_COLLECTOR_PROJECT"), "interrupted", os.Stderr)
+	if !c.started {
+		os.Exit(24)
+	}
+	os.Exit(23) // Real process interruption: no deferred finish/END/ACK.
+}
+
+func TestA98ActualCollectorProcessInterruptionLeavesPending(t *testing.T) {
+	p := t.TempDir()
+	host := newRegistrationHostFixture(t, p)
+	var diag bytes.Buffer
+	host.collector(&diag)
+	cmd := exec.Command(os.Args[0], "-test.run=^TestA98AbruptCollectorChild$")
+	cmd.Env = append(os.Environ(), "A98_INTERRUPTED_COLLECTOR=1", "A98_COLLECTOR_PROJECT="+p)
+	raw, err := cmd.CombinedOutput()
+	exit, ok := err.(*exec.ExitError)
+	if !ok || exit.ExitCode() != 23 {
+		t.Fatalf("interruption fixture: %v %s", err, raw)
+	}
+	rows, err := runtimeobs.ReadCollectionReceipts(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	requestPending := false
+	for _, r := range rows {
+		if r.Boundary == nil && r.RequestID == "interrupted" && r.Status == "pending" {
+			requestPending = true
+		}
+		if r.Boundary == nil && r.RequestID == "interrupted" && r.Status == "ack" {
+			t.Fatal("crash fabricated request ACK")
+		}
+	}
+	if !requestPending {
+		t.Fatal("crashed request disappeared", rows)
+	}
+	boundaries, err := runtimeobs.ReadOperationBoundaries(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, b := range boundaries {
+		if b.Kind == "end" {
+			t.Fatal("process interruption invented successful end")
+		}
+	}
+}
+
+func TestA98ActivityOriginACKAndLegacyRetry(t *testing.T) {
+	p := t.TempDir()
+	now := time.Now().UTC().Add(-time.Minute)
+	if _, err := runtimeobs.RecordAssignment(p, "assignment-a98", "A-98", "/root/controller/fixture", now); err != nil {
+		t.Fatal(err)
+	}
+	if err := runtimeobs.AppendExecutionEvent(p, runtimeobs.ExecutionEvent{EventID: "hook", EventKind: "state", AttemptID: "run-a98", RuntimeAgentID: "agent-a98", Provider: "codex", State: runtimeobs.StateRunning, EvidenceSource: runtimeobs.EvidenceHook, ObservationQuality: runtimeobs.QualityObserved, ObservedAt: now.Format(time.RFC3339Nano)}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := runtimeobs.BindAttempt(p, "run-a98", "A-98", "/root/controller/fixture", "dispatch", "", map[string]string{"assignment_id": "assignment-a98"}, now); err != nil {
+		t.Fatal(err)
+	}
+	base := []string{"--project", p, "--role", "worker", "--agent", "agent-a98", "--attempt", "run-a98", "--assignment", "assignment-a98", "--evidence", "actual isolated phase", "--json", "--language", "ko"}
+	call := func(args ...string) (int, map[string]any, string) { return invokeActivity(t, append(args, base...)...) }
+	if code, _, msg := call("report", "A-98", "--event", "implementation_started", "--event-id", "default"); code != 0 {
+		t.Fatal(code, msg)
+	}
+	l := activity.Ledger{Project: p}
+	first, _ := l.Read("default")
+	if first.ExplanationOrigin != "type_default" {
+		t.Fatal(first)
+	}
+	if code, _, _ := call("report", "A-98", "--event", "implementation_started", "--event-id", "default", "--explanation", first.Explanation); code == 0 {
+		t.Fatal("different explicit origin silently accepted")
+	}
+	if code, _, msg := call("report", "A-98", "--event", "targeted_test_started", "--event-id", "written", "--explanation", first.Explanation); code != 0 {
+		t.Fatal(code, msg)
+	}
+	written, _ := l.Read("written")
+	if written.ExplanationOrigin != "written" {
+		t.Fatal(written)
+	}
+	// Simulate a collector interruption after immutable event publication but
+	// before ACK. The supported same-ID retry reconciles exact event content.
+	if _, err := runtimeobs.RecordCollectionReceipt(p, activityCollectionReceipt(written, "pending", "", time.Now())); err != nil {
+		t.Fatal(err)
+	}
+	if code, r, msg := call("report", "A-98", "--event", "targeted_test_started", "--event-id", "written", "--explanation", first.Explanation); code != 0 || r["recorded"] != false {
+		t.Fatal(code, r, msg)
+	}
+	receipts, _ := runtimeobs.ReadCollectionReceipts(p)
+	if receipts[len(receipts)-1].Status != "ack" {
+		t.Fatal("lost ACK not reconciled", receipts)
+	}
+	// Exact legacy raw bytes are immutable and never acquire an inferred origin.
+	rawPath := filepath.Join(p, "_task_mecca", "data", "activity", "events", "written.json")
+	raw, _ := os.ReadFile(rawPath)
+	var legacy map[string]any
+	json.Unmarshal(raw, &legacy)
+	delete(legacy, "explanation_origin")
+	legacyRaw, _ := json.Marshal(legacy)
+	if err := os.WriteFile(rawPath, legacyRaw, 0600); err != nil {
+		t.Fatal(err)
+	}
+	// Remove the synthetic delivery journal for this separate legacy-input case.
+	if err := os.Remove(runtimeobs.CollectionOutboxPath(p)); err != nil {
+		t.Fatal(err)
+	}
+	if code, r, msg := call("report", "A-98", "--event", "targeted_test_started", "--event-id", "written", "--explanation", first.Explanation); code != 0 || r["recorded"] != false {
+		t.Fatal(code, r, msg)
+	}
+	after, _ := os.ReadFile(rawPath)
+	if !bytes.Equal(legacyRaw, after) {
+		t.Fatal("legacy event metadata rewritten")
+	}
+	if err := os.Mkdir(runtimeobs.CollectionOutboxPath(p), 0700); err != nil {
+		t.Fatal(err)
+	}
+	if code, _, _ := call("report", "A-98", "--event", "implementation_started", "--event-id", "uncollected"); code == 0 {
+		t.Fatal("unwritable durable intent claimed Activity success")
+	}
+	if _, err := l.Read("uncollected"); !os.IsNotExist(err) {
+		t.Fatal("Activity published before durable preparation", err)
+	}
+}
 
 func TestRuntimeBoundaryCLIFailsClosedForForeignNativeAndUnmeasuredList(t *testing.T) {
 	p := t.TempDir()

@@ -236,3 +236,12 @@ means a reported claim; `t3_structured` means structured observation. Neither pr
 passing tests, independent acceptance or current execution. Free prose is never
 translated or classified. The shared surface and existing detail disclosures keep
 raw data accessible through locale switches.
+# 수집 전달 영수증과 복구 (A-98)
+
+새 collector는 실제 append 전에 `_task_mecca/.runtime/collection-outbox.jsonl`에 pending을 동기 기록하고 대상 이벤트의 durable append 뒤 ACK를 남긴다. append 실패는 원래 오류와 담당자·재개조건을 보존한다. 같은 안정적 event/operation key와 정확한 현재 신원으로 원본을 대조해 ACK 유실을 복구한다. 후속 ACK는 이전 실패를 삭제하지 않는다. 읽기 API는 pending·실패를 실행 시간이나 측정 Activity로 계산하지 않는다. 원장 전체가 쓰기 불가하면 성공을 주장하지 않고 실제 오류·보고 근거와 복구조건을 보존한다.
+
+`contract apply`의 등록 request 준비는 native 확인 전에도 request ID로 남길 수 있다. 이 준비 영수증에는 native·task 신원이 없다. 실제 지원 경로에서 현재 native/role/run을 확인한 뒤 operation 경계를 쓰고 생성된 task는 연관 관계로 연결한다. 한 operation 시간을 task 수만큼 복제하지 않는다. 정상 종료는 결과 JSON 이전에 end와 ACK를 확인한다. 등록 자체의 결과와 수집 실패 상태는 별도로 보존한다.
+
+새 Activity 이벤트와 operation 경계의 `explanation_origin`은 호출자가 직접 제공한 문장이면 `written`, 지원 CLI가 만든 유형 문구면 `type_default`다. 같은 문장이라도 출처는 다르다. 예전 이벤트의 누락 필드는 미확인으로 남기며 재시도나 terminal 처리로 소급 생성하지 않는다. `contract apply`와 `runtime boundary record`는 선택적인 `--explanation` 및 `--language ko|en`을 전달한다. 증거·오류·코드 원문은 번역하거나 설명으로 바꾸지 않는다.
+
+native 시작·완료, 수집 관측, START relay, Activity 시작·종료는 서로 다른 경계다. native terminal은 열린 phase를 `abandon`으로 남길 수 있으나 단계 성공·실제 종료 보고를 만들지 않는다. native 완료보다 늦은 수집 도착은 측정 시간에 더하지 않는다. task 완료 이후 후처리는 `after_task_completion`으로 별도 표시하며 task 경과의 완료 경계를 늘리지 않는다. 이전 stop→start의 미세 공백은 보존하고 새 단계 전환에는 단일 `switch`를 사용한다.

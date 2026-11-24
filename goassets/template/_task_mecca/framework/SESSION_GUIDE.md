@@ -442,3 +442,6 @@ T3의 새 Controller/Worker/Registrar/검수 목적 세션은 shared도 실제 `
 Controller 시작/재개 시 exact native 현재 attempt와 원래 인계를 관측한 뒤 `handoff context ORIGINAL_HANDOFF --project CANONICAL --target-attempt CURRENT --json` 및 기존 `coordinate.recovery_queue`를 확인한다. 이 읽기 전용 snapshot의 task·계약/AC·실측 phase·현재 attempt·원래 handoff·알려진 보고/변경/검증 근거를 대조한다. 과거 다른 작업은 reference이며 현재 완료 근거가 아니다.
 새 `worker_done`/`completion_report`는 실제 Worker/assignment·소스와 `TASK_MECCA_REPORT` 선언이 있는 durable report의 hash를 담은 `--context-file`을 사용한다. Controller만 기존 prepare/claim/acceptance/applied를 기록하며 각 gate는 적용되는 task의 근거를 재확인한다. 다중 작업은 각 대상의 근거를 따로 확인한다. A78 실제 별도 native 검수와 기존 승인·fresh Full Access gate는 그대로 유지하며 정상 Worker에 사용자 재승인을 추가하지 않는다.
 회차 종료·배정 준비는 실제 구현 START·검수·완료가 아니다. 누락은 실측 단계의 collection gap으로 보존하고 기존 Controller recovery/transport로 회수한다. 원래 오류·보고·task·attempt 및 담당/남은 단계/재개조건을 보존한다. 자동 wake·기술적 crash 원인·Root ACK를 가정하지 않고 과거 phase를 합성하지 않는다. 상세 JSON/재시도 계약은 `docs/task-completion-context.md`를 따른다. Worker는 보고 후보를 구현 worktree에 만들고 직접 전달하며 canonical 운영원장을 쓰지 않는다.
+## 수집 실패와 재개 신원 보존 (A-98)
+
+역할별 실제 단계 전환에서만 짧고 구체적인 한국어 `--explanation`을 기존 Activity 경로로 전달한다. 매 도구마다 기록하거나 추가 LLM·heartbeat를 만들지 않는다. native 시작·관측·START·Activity·native 완료·수집 도착은 별도 근거다. pending/failed/ACK 전달 영수증은 실행 승인이나 측정 활동이 아니다. 실패 원문·정확한 request/operation·담당자·재개조건을 보존하고 기록 없는 시간을 유휴나 측정 완료로 바꾸지 않는다. 상세 복구는 Activity Recorder 문서를 따른다.

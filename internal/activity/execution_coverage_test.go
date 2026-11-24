@@ -12,6 +12,84 @@ import (
 	"github.com/silverkhan/TaskMecca/internal/runtimeobs"
 )
 
+func TestA98CoverageRetainsRecoveredFailureAndSeparatesPostTask(t *testing.T) {
+	p := t.TempDir()
+	now := time.Now().UTC()
+	end := now.Add(-time.Minute)
+	b := runtimeobs.OperationBoundary{Key: "start", OperationID: "op", RequestID: "request", Provider: "codex", NativeID: "native", AttemptID: "attempt", Role: "registrar", Kind: "start", Source: "fixture", Evidence: "original", TaskIDs: []string{"T"}}
+	b, err := runtimeobs.PrepareOperationBoundary(b, now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, status := range []string{"pending", "failed", "ack"} {
+		problem := ""
+		if status == "failed" {
+			problem = "original write failure"
+		}
+		if _, err := runtimeobs.RecordCollectionReceipt(p, runtimeobs.BoundaryCollectionReceipt(b, status, problem, now)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	coverage := ReadExecutionCoverage(p, "T", Workflow{Axis: WorkflowAxis{End: &end}, Rows: []WorkflowRow{}})
+	if len(coverage.Items) != 1 || coverage.Items[0].Category != "collection_failure" || coverage.Items[0].Scope != "after_task_completion" || coverage.Items[0].DurationMillis != nil {
+		t.Fatal("failure hidden or measured", coverage)
+	}
+	if coverage.Items[0].CollectionReceipt.Error != "original write failure" {
+		t.Fatal("original failure erased")
+	}
+}
+
+func TestA98UnassociatedRequestsCannotLeakAcrossTasks(t *testing.T) {
+	p := t.TempDir()
+	now := time.Now().UTC()
+	for _, task := range []string{"T", "OTHER"} {
+		b := runtimeobs.OperationBoundary{Key: "link", OperationID: task, Provider: "codex", NativeID: task, AttemptID: task, Role: "worker", Kind: "task_link", Source: "fixture", Evidence: "exact operation", TaskIDs: []string{task}}
+		if _, _, err := runtimeobs.AppendOperationBoundary(p, b, now); err != nil {
+			t.Fatal(err)
+		}
+		b.Key = "missing"
+		b.Kind = "phase"
+		b.TaskIDs = nil
+		b, err := runtimeobs.PrepareOperationBoundary(b, now)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := runtimeobs.RecordCollectionReceipt(p, runtimeobs.BoundaryCollectionReceipt(b, "pending", "", now)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	coverage := ReadExecutionCoverage(p, "T", Workflow{})
+	for _, item := range coverage.Items {
+		if item.NativeID == "OTHER" {
+			t.Fatal("empty request ID joined unrelated task", item)
+		}
+	}
+	found := false
+	for _, item := range coverage.Items {
+		if item.Category == "collection_pending" && item.NativeID == "T" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatal("exact operation association lost", coverage)
+	}
+}
+
+func TestA98ActivityCrossingTaskEndKeepsExplicitScopeAndOriginalDuration(t *testing.T) {
+	now := time.Now().UTC()
+	start := now.Add(-2 * time.Minute)
+	end := now.Add(-time.Minute)
+	ms := int64(120000)
+	w := Workflow{Axis: WorkflowAxis{Start: &start, End: &end}, Rows: []WorkflowRow{{Role: "worker", AgentID: "native", Intervals: []WorkflowInterval{{ID: "phase", Kind: "activity", Start: start, End: &now, Measured: true, DurationMillis: &ms}}}}}
+	got := ReadExecutionCoverage(t.TempDir(), "T", w)
+	if len(got.Items) != 1 || got.Items[0].Scope != "crosses_task_completion" || *got.Items[0].DurationMillis != ms {
+		t.Fatal("post-task boundary hidden or original duration rewritten", got)
+	}
+	if *w.Rows[0].Intervals[0].DurationMillis != ms || !w.Axis.End.Equal(end) {
+		t.Fatal("source axis/activity mutated")
+	}
+}
+
 func TestExecutionCoverageBatchAllocationAndConcurrentWait(t *testing.T) {
 	now := time.Date(2026, 11, 19, 7, 0, 0, 0, time.UTC)
 	b := func(key, kind string, sec int) runtimeobs.OperationBoundary {

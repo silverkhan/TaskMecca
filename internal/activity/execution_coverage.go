@@ -18,21 +18,22 @@ type ExecutionCoverage struct {
 	Allocation       string                  `json:"allocation"`
 }
 type ExecutionCoverageItem struct {
-	ActorID        string                        `json:"actor_id,omitempty"`
-	HandoffID      string                        `json:"handoff_id,omitempty"`
-	ID             string                        `json:"id"`
-	Category       string                        `json:"category"`
-	Role           string                        `json:"role"`
-	NativeID       string                        `json:"native_id,omitempty"`
-	AttemptID      string                        `json:"attempt_id,omitempty"`
-	OperationID    string                        `json:"operation_id,omitempty"`
-	TaskIDs        []string                      `json:"task_ids,omitempty"`
-	Scope          string                        `json:"scope,omitempty"`
-	Start          time.Time                     `json:"start"`
-	End            *time.Time                    `json:"end,omitempty"`
-	DurationMillis *int64                        `json:"duration_ms,omitempty"`
-	Reason         string                        `json:"reason"`
-	Boundary       *runtimeobs.OperationBoundary `json:"boundary,omitempty"`
+	CollectionReceipt *runtimeobs.CollectionReceipt `json:"collection_receipt,omitempty"`
+	ActorID           string                        `json:"actor_id,omitempty"`
+	HandoffID         string                        `json:"handoff_id,omitempty"`
+	ID                string                        `json:"id"`
+	Category          string                        `json:"category"`
+	Role              string                        `json:"role"`
+	NativeID          string                        `json:"native_id,omitempty"`
+	AttemptID         string                        `json:"attempt_id,omitempty"`
+	OperationID       string                        `json:"operation_id,omitempty"`
+	TaskIDs           []string                      `json:"task_ids,omitempty"`
+	Scope             string                        `json:"scope,omitempty"`
+	Start             time.Time                     `json:"start"`
+	End               *time.Time                    `json:"end,omitempty"`
+	DurationMillis    *int64                        `json:"duration_ms,omitempty"`
+	Reason            string                        `json:"reason"`
+	Boundary          *runtimeobs.OperationBoundary `json:"boundary,omitempty"`
 }
 
 func operationKey(b runtimeobs.OperationBoundary) string {
@@ -159,7 +160,100 @@ func BuildExecutionCoverage(task string, rows []runtimeobs.OperationBoundary, w 
 
 func ReadExecutionCoverage(project, task string, w Workflow) ExecutionCoverage {
 	rows, err := runtimeobs.ReadOperationBoundaries(project)
-	return BuildExecutionCoverage(task, rows, w, err)
+	out := BuildExecutionCoverage(task, rows, w, err)
+	receipts, readErr := runtimeobs.ReadCollectionReceipts(project)
+	if readErr != nil {
+		out.CollectionErrors = append(out.CollectionErrors, readErr.Error())
+		out.Items = append(out.Items, ExecutionCoverageItem{ID: "collection-outbox-read", Category: "collection_failure", Role: "unknown", Reason: readErr.Error(), Scope: "collection_delivery"})
+	}
+	links := map[string]map[string]bool{}
+	operationLinks := map[string]map[string]bool{}
+	latest := map[string]string{}
+	resolved := map[string]time.Time{}
+	for _, b := range rows {
+		if b.RequestID != "" && links[b.RequestID] == nil {
+			links[b.RequestID] = map[string]bool{}
+		}
+		key := operationKey(b)
+		if operationLinks[key] == nil {
+			operationLinks[key] = map[string]bool{}
+		}
+		for _, id := range b.TaskIDs {
+			if b.RequestID != "" {
+				links[b.RequestID][id] = true
+			}
+			operationLinks[key][id] = true
+		}
+	}
+	for _, r := range receipts {
+		latest[r.Key] = r.Status
+		if r.Status == "ack" || r.Status == "failed" {
+			resolved[r.Key] = r.At
+		}
+	}
+	for _, r := range receipts {
+		requestObservation := r.Status == "pending" && r.Boundary == nil && r.Activity == nil
+		if r.Status == "ack" || (r.Status == "pending" && latest[r.Key] != "pending" && !requestObservation) {
+			continue
+		}
+		if task != "" && !(r.RequestID != "" && links[r.RequestID][task]) {
+			linked := r.Activity != nil && r.Activity.TaskID == task
+			if r.Boundary != nil {
+				linked = linked || operationLinks[operationKey(*r.Boundary)][task]
+				for _, id := range r.Boundary.TaskIDs {
+					if id == task {
+						linked = true
+					}
+				}
+			}
+			if !linked {
+				continue
+			}
+		}
+		copy := r
+		item := ExecutionCoverageItem{ID: r.ID, Category: "collection_pending", Role: "unknown", Start: r.At, Scope: "collection_delivery", CollectionReceipt: &copy, Reason: "Collection intent persisted; append/ACK unverified. This is not execution or measured Activity."}
+		if requestObservation {
+			item.Category = "request_observation"
+			item.Scope = "request_delivery_status"
+			item.OperationID = r.Key
+			item.Reason = "Request preparation observed before authoritative native/task identity. Later task links are associations; delivery status is not measured work."
+			if end, ok := resolved[r.Key]; ok {
+				item.End = &end
+			}
+		}
+		if r.Activity != nil {
+			item.Role = r.Activity.Role
+			item.ActorID = r.Activity.AgentID
+			item.AttemptID = r.Activity.AttemptID
+			item.TaskIDs = []string{r.Activity.TaskID}
+		}
+		if r.Boundary != nil {
+			b := r.Boundary
+			item.Role = b.Role
+			item.NativeID = b.NativeID
+			item.AttemptID = b.AttemptID
+			item.OperationID = b.OperationID
+			item.TaskIDs = append([]string(nil), b.TaskIDs...)
+		}
+		if r.Status == "failed" {
+			item.Category = "collection_failure"
+			item.Reason = r.Error
+			if latest[r.Key] == "ack" {
+				item.Scope = "collection_delivery_recovered"
+				item.Reason += "; later delivery acknowledged; original failure retained"
+			}
+		}
+		out.Items = append(out.Items, item)
+	}
+	for i := range out.Items {
+		item := &out.Items[i]
+		if w.Axis.End != nil && !w.Axis.Open && !item.Start.IsZero() && !item.Start.Before(*w.Axis.End) {
+			item.Scope = "after_task_completion"
+		} else if w.Axis.End != nil && !w.Axis.Open && item.End != nil && item.End.After(*w.Axis.End) {
+			item.Scope = "crosses_task_completion"
+		}
+	}
+	return out
 }
 
 // AttachExecutionCoverage preserves the A90 Workflow type and all measurement

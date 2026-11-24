@@ -308,3 +308,6 @@ Controller·Registrar·Worker·필요한 Reviewer 배정에는 관측된 전달 
 flag를 지원하기 전에는 기존 `--explanation`으로 명시 한국어 설명을 전달하고
 소스 검증·릴리스·운영 설치를 구분한다. 상세 범위·재시도·정정·원문 보존 규약은
 `docs/activity-recorder.md`를 따른다.
+## 같은 native의 다음 작업 배정 순서 (A-98)
+
+현재 live attempt가 다른 task에 묶여 있으면 `bind-assignment` 거부를 보존한다. task를 수동 해제하거나 fake terminal을 쓰지 않는다. 실제 native 턴 종료를 공식 조회와 지원 observe로 독립 확인한 뒤, live attempt가 없는 동안 기존 정확한 다음 assignment를 지원 CLI로 pending 배정한다. 같은 native/group/Worker/G를 재개하고 새 실제 episode가 그 task/assignment에 연결됐는지 확인한 다음 START·strict role-policy·현재 Activity를 기록한다. pending 배정은 START나 Activity가 아니다. 관측이 이전 task를 상속하면 작업을 시작하지 않고 원래 오류와 복구 담당자를 보존한다.

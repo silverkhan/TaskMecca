@@ -42,25 +42,28 @@ func (w *BoundaryWait) Evidenced() bool {
 }
 
 type OperationBoundary struct {
-	RequestID   string        `json:"request_id,omitempty"`
-	ID          string        `json:"id"`
-	Key         string        `json:"key"`
-	OperationID string        `json:"operation_id"`
-	Provider    string        `json:"provider"`
-	NativeID    string        `json:"native_id"`
-	AttemptID   string        `json:"attempt_id"`
-	ThreadID    string        `json:"thread_id,omitempty"`
-	Role        string        `json:"role"`
-	Kind        string        `json:"kind"`
-	Phase       string        `json:"phase,omitempty"`
-	RelatedID   string        `json:"related_id,omitempty"` // wait ID, handoff ID or failed boundary key
-	ObservedAt  time.Time     `json:"observed_at"`
-	SourceAt    *time.Time    `json:"source_at,omitempty"` // original evidence time; never the measured start
-	TaskIDs     []string      `json:"task_ids,omitempty"`
-	Source      string        `json:"source"`
-	Evidence    string        `json:"evidence"`
-	Wait        *BoundaryWait `json:"wait,omitempty"`
-	Error       string        `json:"error,omitempty"`
+	Explanation         string        `json:"explanation,omitempty"`
+	ExplanationLanguage string        `json:"explanation_language,omitempty"`
+	ExplanationOrigin   string        `json:"explanation_origin,omitempty"`
+	RequestID           string        `json:"request_id,omitempty"`
+	ID                  string        `json:"id"`
+	Key                 string        `json:"key"`
+	OperationID         string        `json:"operation_id"`
+	Provider            string        `json:"provider"`
+	NativeID            string        `json:"native_id"`
+	AttemptID           string        `json:"attempt_id"`
+	ThreadID            string        `json:"thread_id,omitempty"`
+	Role                string        `json:"role"`
+	Kind                string        `json:"kind"`
+	Phase               string        `json:"phase,omitempty"`
+	RelatedID           string        `json:"related_id,omitempty"` // wait ID, handoff ID or failed boundary key
+	ObservedAt          time.Time     `json:"observed_at"`
+	SourceAt            *time.Time    `json:"source_at,omitempty"` // original evidence time; never the measured start
+	TaskIDs             []string      `json:"task_ids,omitempty"`
+	Source              string        `json:"source"`
+	Evidence            string        `json:"evidence"`
+	Wait                *BoundaryWait `json:"wait,omitempty"`
+	Error               string        `json:"error,omitempty"`
 }
 
 func boundaryID(b OperationBoundary) string {
@@ -73,6 +76,12 @@ func OperationBoundaryPath(project string) string {
 }
 
 func validateBoundary(b OperationBoundary) error {
+	if b.ExplanationLanguage != "" && b.ExplanationLanguage != "ko" && b.ExplanationLanguage != "en" {
+		return errors.New("unsupported boundary explanation language")
+	}
+	if b.ExplanationOrigin != "" && b.ExplanationOrigin != "written" && b.ExplanationOrigin != "type_default" {
+		return errors.New("unsupported boundary explanation origin")
+	}
 	if b.Provider == "" || b.NativeID == "" || b.AttemptID == "" || b.OperationID == "" || b.Key == "" || b.Evidence == "" || b.Source == "" || b.ObservedAt.IsZero() {
 		return errors.New("boundary requires exact native/attempt, stable operation/key and evidence")
 	}
@@ -179,12 +188,27 @@ func AppendOperationBoundary(project string, b OperationBoundary, now time.Time)
 	if err != nil {
 		return b, false, err
 	}
-	release, err := projectguard.AcquireStateLock(project, "execution-boundaries")
-	if err != nil {
-		return b, false, err
+	if _, err = RecordCollectionReceipt(project, BoundaryCollectionReceipt(b, "pending", "", now)); err != nil {
+		return b, false, fmt.Errorf("durable boundary intent unavailable: %w", err)
 	}
-	defer release()
-	return appendPreparedBoundary(project, b)
+	var recorded bool
+	func() {
+		var release func()
+		release, err = projectguard.AcquireStateLock(project, "execution-boundaries")
+		if err != nil {
+			return
+		}
+		defer release()
+		b, recorded, err = appendPreparedBoundary(project, b)
+	}()
+	if err != nil {
+		_, failureErr := RecordCollectionReceipt(project, BoundaryCollectionReceipt(b, "failed", err.Error(), time.Now().UTC()))
+		return b, false, errors.Join(err, failureErr)
+	}
+	if _, ackErr := RecordCollectionReceipt(project, BoundaryCollectionReceipt(b, "ack", "", time.Now().UTC())); ackErr != nil {
+		return b, recorded, fmt.Errorf("boundary appended; ACK uncertain, reconcile same key before retry: %w", ackErr)
+	}
+	return b, recorded, nil
 }
 
 // PrepareOperationBoundary performs the same validation used by the writer,

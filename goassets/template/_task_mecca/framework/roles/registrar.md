@@ -172,3 +172,6 @@ T3의 새 Controller/Worker/Registrar/검수 목적 세션은 shared도 실제 `
 생성자는 Root와 별개다. Controller가 만든 child의 예상 부모는 실제 Controller T3 ID다. 공식 `t3_thread_read`와 `t3_thread_list`에서 반환된 정확 child ID·프로젝트·subagent 관계·공식 생성 역할 이름·workspace를 대조한다. 한 도구가 부모를 생략하면 다른 공식 도구의 명시적 근거를 확인하고, 둘 다 없으면 unknown이다. provider-native ID는 지원되는 독립 native 조회로 별도 연결하며 title/임의 UUID/caller JSON/Root ID로 대체하지 않는다. 검수 목적은 실제 공식 Worker identity와 분리하며 지원되지 않는 Reviewer 표시 이름을 만들지 않는다.
 
 생성 성공 후 연결 미확인은 `created_tracking_unverified`다. 같은 receipt·assignment로 기존 조회/수집/인계 복구를 재개하고 재생성하지 않는다. request/prepared/created/linked/START/claimed/accepted는 별도 근거다. CLI는 MCP를 호출하지 않으며 typed HostAdapter/fixture는 실제 bridge가 아니다. 지원되는 Task Mecca 결정·host 경계는 검사할 수 있지만 외부 임의 도구 호출 전체를 기술적으로 강제한다고 주장하지 않는다. 상세 입력·검증은 저장소 `docs/orchestration-execution-modes.md`를 따른다.
+## 등록 operation과 설명 수집 (A-98)
+
+등록 전 request 준비와 실제 native/role 확인을 구분한다. 지원 `contract apply`는 request-only pending을 먼저 남기고 확인된 현재 native의 operation에 실제 등록 경계를 연결한다. 구체적인 등록 문장은 `--explanation`과 명시 언어 `--language ko|en`으로 전달한다. task ID 생성 뒤 연결은 연관 관계이며 task 수만큼 실행 시간을 더하지 않는다. 오류·취소·프로세스 중단의 pending/failed를 지우거나 과거 Activity를 채우지 않는다. 원래 request/오류와 복구 책임을 Controller에 직접 인계하고 실제 end·ACK와 등록 성공을 구분한다.

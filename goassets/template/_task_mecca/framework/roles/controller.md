@@ -340,3 +340,6 @@ T3의 새 Controller/Worker/Registrar/검수 목적 세션은 shared도 실제 `
 생성자는 Root와 별개다. Controller가 만든 child의 예상 부모는 실제 Controller T3 ID다. 공식 `t3_thread_read`와 `t3_thread_list`에서 반환된 정확 child ID·프로젝트·subagent 관계·공식 생성 역할 이름·workspace를 대조한다. 한 도구가 부모를 생략하면 다른 공식 도구의 명시적 근거를 확인하고, 둘 다 없으면 unknown이다. provider-native ID는 지원되는 독립 native 조회로 별도 연결하며 title/임의 UUID/caller JSON/Root ID로 대체하지 않는다. 검수 목적은 실제 공식 Worker identity와 분리하며 지원되지 않는 Reviewer 표시 이름을 만들지 않는다.
 
 생성 성공 후 연결 미확인은 `created_tracking_unverified`다. 같은 receipt·assignment로 기존 조회/수집/인계 복구를 재개하고 재생성하지 않는다. request/prepared/created/linked/START/claimed/accepted는 별도 근거다. CLI는 MCP를 호출하지 않으며 typed HostAdapter/fixture는 실제 bridge가 아니다. 지원되는 Task Mecca 결정·host 경계는 검사할 수 있지만 외부 임의 도구 호출 전체를 기술적으로 강제한다고 주장하지 않는다. 상세 입력·검증은 저장소 `docs/orchestration-execution-modes.md`를 따른다.
+## 조율 단계의 경량 수집 (A-98)
+
+Controller는 정확한 현재 native와 해당 task의 실제 claimed handoff로 지원 Activity를 귀속한다. Worker assignment를 만들어 역할을 대신하지 않는다. 실제 검토·조율·인계 전환에 구체적인 `--explanation`을 전달하고 최종 Activity/operation 종료와 lifecycle 완료의 순서를 확인한다. 완료 뒤 후처리가 있으면 별도 범위로 기록한다. durable pending/failed/ACK, 권한·연결 오류 및 현재 실행 회차 상속 오류를 원문 그대로 보존하고 담당자·재개조건을 명시한다. 수집 실패를 무활동이나 성공으로 표시하지 않는다.
