@@ -2395,7 +2395,7 @@ select.tm-combo-native{position:absolute!important;width:1px!important;height:1p
 .workflow-row-label:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .workflow-row-label.is-selected{outline:1px solid var(--accent);outline-offset:-1px}
 .workflow-interval{min-width:0;border-radius:6px;overflow:visible;box-shadow:none}
-.workflow-interval::after{content:"";position:absolute;inset-block:-5px;left:var(--workflow-hit-left,0);width:var(--workflow-hit-width,100%);background:transparent}
+.workflow-interval::after{content:"";position:absolute;inset-block:var(--workflow-hit-inset,-5px);left:var(--workflow-hit-left,0);width:var(--workflow-hit-width,100%);background:transparent}
 .workflow-interval>span{display:block;max-width:100%;overflow:hidden;pointer-events:none;box-sizing:border-box}
 .workflow-interval.is-selected{outline:1px solid var(--text);outline-offset:1px;z-index:2}
 .workflow-interval:focus-visible{outline:2px solid var(--accent);outline-offset:3px;z-index:3}
@@ -2643,3 +2643,8 @@ select.tm-combo-native{position:absolute!important;width:1px!important;height:1p
 .workflow-execution-paint{background:transparent;box-shadow:none;border:1px dashed var(--muted)}
 .workflow-run .wf-kind-operation_execution>span,.workflow-run .wf-kind-execution_report>span,.workflow-run .wf-kind-activity_unreported>span{background:var(--surface);color:var(--text)}
 .workflow-interval.wf-execution-point{min-width:3px}
+
+/* Source facts have their own rail; enlarged hit areas cannot cover lanes. */
+.workflow-fact-rail{position:absolute;inset-inline:0;pointer-events:none}
+.workflow-fact-rail .workflow-fact-point{pointer-events:auto}
+.workflow-interval.wf-start-only::before{top:50%;left:50%;width:min(10px,var(--workflow-entry-height,10px));height:min(10px,var(--workflow-entry-height,10px));transform:translate(-50%,-50%);pointer-events:none}

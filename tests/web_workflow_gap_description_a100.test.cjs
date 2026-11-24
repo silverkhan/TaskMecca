@@ -49,6 +49,19 @@ test('A100 real browser keyboard, touch, overlap and narrow zoom',{skip:!process
   const report={transport:'CDP pipe + file URL; network blocked; no HTTP listener',checks:[]};
   for(const language of ['ko','en']){
    await cmd('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:true});assert.deepEqual(await setup(language),{activity:2,execution:3,entries:5});
+   const entryCenters=await evaluate(`([...document.querySelectorAll('[data-workflow-entry]')].map(b=>{const r=b.getBoundingClientRect(),x=r.x+r.width/2,y=r.y+r.height/2;return {x,y,id:JSON.parse(b.dataset.workflowEntry)[1],own:document.elementFromPoint(x,y)?.closest('[data-workflow-entry]')===b}}))`);
+   assert.equal(entryCenters.length,5);assert.ok(entryCenters.every(c=>c.own),'actual browser centers must hit their own entry, not another pseudo/fact');
+   for(const entry of entryCenters){
+    await cmd('Input.dispatchMouseEvent',{type:'mouseMoved',x:entry.x,y:entry.y});
+    assert.equal(await evaluate(`(()=>{const b=[...document.querySelectorAll('[data-workflow-entry]')].find(b=>JSON.parse(b.dataset.workflowEntry)[1]===${JSON.stringify(entry.id)});return b.getAttribute('aria-describedby')==='workflowActivityFloating'&&!document.querySelector('.workflow-floating').hidden})()`),true,'actual hover binds the exact own entry');
+    const hoverExpected=fixture.workflow.rows[0].intervals.find(i=>i.id===entry.id).explanation;if(hoverExpected)assert.equal(await evaluate("document.querySelector('.workflow-floating .workflow-brief').textContent"),hoverExpected);
+
+    await cmd('Input.dispatchMouseEvent',{type:'mousePressed',x:entry.x,y:entry.y,button:'left',clickCount:1});await cmd('Input.dispatchMouseEvent',{type:'mouseReleased',x:entry.x,y:entry.y,button:'left',clickCount:1});
+    assert.equal(await evaluate("JSON.parse(document.querySelector('#workflowIntervalEvidence pre').textContent).interval.id"),entry.id,'actual pointer selects own exact source');
+    const expected=fixture.workflow.rows[0].intervals.find(i=>i.id===entry.id).explanation;if(expected)assert.equal(await evaluate("document.querySelector('.workflow-floating .workflow-brief').textContent"),expected);
+    await cmd('Input.dispatchKeyEvent',{type:'keyDown',key:'Escape',code:'Escape',windowsVirtualKeyCode:27});await cmd('Input.dispatchKeyEvent',{type:'keyUp',key:'Escape',code:'Escape',windowsVirtualKeyCode:27});
+   }
+   const factCenters=await evaluate(`([...document.querySelectorAll('[data-workflow-fact]')].map(b=>{const r=b.getBoundingClientRect(),x=r.x+r.width/2,y=r.y+r.height/2;return document.elementFromPoint(x,y)?.closest('[data-workflow-fact]')===b}))`);assert.ok(factCenters.length&&factCenters.every(Boolean),'actual fact centers remain reachable');
    const bounds=await evaluate(`(()=>{const b=document.querySelector('[data-workflow-interval]');b.focus();return {x:b.getBoundingClientRect().x,y:b.getBoundingClientRect().y}})()`);
    await cmd('Input.dispatchKeyEvent',{type:'keyDown',key:'Enter',code:'Enter',windowsVirtualKeyCode:13});await cmd('Input.dispatchKeyEvent',{type:'keyUp',key:'Enter',code:'Enter',windowsVirtualKeyCode:13});
    assert.equal(await evaluate("Boolean(document.querySelector('.workflow-floating.is-pinned:not([hidden])'))"),true);
@@ -82,4 +95,28 @@ test('A100 overlap geometry wrappers pass hit testing to actual interval control
  const a=load(),html=a.activityMetricsBody(structuredClone(fixture),'A100-HIT-STRUCTURE');
  assert.equal((html.match(/data-workflow-entry=/g)||[]).length,5);assert.equal((html.match(/data-workflow-interval=/g)||[]).length,2);assert.equal((html.match(/data-workflow-execution=/g)||[]).length,3);
  // This checks the CSS contract and real renderer structure, not browser geometry.
+});
+
+test('A100 lane centers resolve their own rendered interval and explanation, with facts on a separate rail',()=>{
+ const css=fs.readFileSync(path.join(__dirname,'../goassets/template/_task_mecca/framework/web/style.css'),'utf8');
+ const number=(style,key,fallback)=>{const match=style.match(new RegExp('(?:^|;)'+key+':(-?[0-9.]+)px'));return match?Number(match[1]):fallback;};
+ for(const count of [5,12])for(const language of ['ko','en']){
+  const a=load(language),p=structuredClone(fixture),r=p.workflow.rows[0];
+  if(count===12)r.intervals=Array.from({length:count},(_,i)=>({...r.intervals[0],id:'dense-'+i,explanation:'Own dense explanation '+i}));
+  const original=JSON.stringify(p),html=a.activityMetricsBody(p,'A100-GEOMETRY-'+count);
+  const controls=[...html.matchAll(/<button[^>]*data-workflow-entry="([^"]*)"[^>]*style="([^"]*)"/g)].map(m=>{const key=JSON.parse(m[1].replaceAll('&quot;','"').replaceAll('&amp;','&'));const top=number(m[2],'top',NaN),height=number(m[2],'height',NaN),inset=number(m[2],'--workflow-hit-inset',-5);return {id:key[1],top,height,from:top+inset,to:top+height-inset,center:top+height/2};});
+  assert.equal(controls.length,count);assert.ok(controls.every(c=>Number.isFinite(c.center)));
+  for(const entry of controls){
+   const hit=controls.filter(c=>entry.center>c.from&&entry.center<c.to);assert.deepEqual(hit.map(c=>c.id),[entry.id],'painted center must not hit an adjacent pseudo area: '+JSON.stringify(controls));
+   const own=r.intervals.find(i=>i.id===hit[0].id),detail=a.workflowFloatingContent(r,own,null,language==='ko');
+   if(own.explanation)assert.ok(detail.includes(own.explanation.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;')),'modeled hit selects its own explanation');
+  }
+  const rail=html.match(/class="workflow-fact-rail"[^>]*style="top:([0-9.]+)px/);assert.ok(rail,'facts have a separate actual renderer rail');
+  const factRule=css.match(/\.workflow-fact-point\{([^}]*)\}/)[1],after=css.match(/\.workflow-fact-point::after\{([^}]*)\}/)[1];
+  const size=number(factRule,'height',NaN),width=number(factRule,'width',NaN),top=number(factRule,'top',NaN),margin=Math.abs(number(after,'inset',NaN));
+  const factCenter=Number(rail[1])+top+size/2,factRadius=Math.hypot(width+2*margin,size+2*margin)/2;
+  assert.ok(factCenter-factRadius>Math.max(...controls.map(c=>c.to)),'rotated fact hit target cannot cover an activity lane');
+  assert.match(html,/data-workflow-fact=/,'fact controls remain reachable');assert.equal(JSON.stringify(p),original);
+ }
+ // This is an actual-renderer geometry model, not a browser hit-test claim.
 });
