@@ -4,7 +4,7 @@ const source=fs.readFileSync(path.join(__dirname,'../goassets/template/_task_mec
 const fixture=require('./fixtures/workflow/gap-description-a100.json');
 function load(language='ko'){
  const c=vm.createContext({URLSearchParams,AbortController,fetch(){throw Error('network forbidden')},location:{search:''},navigator:{language},history:{pushState(){}},queueMicrotask,setTimeout:()=>1,clearTimeout,document:{querySelector:()=>null,addEventListener(){}},localStorage:{getItem:()=>null,setItem(){},removeItem(){}}});
- vm.runInContext(cut+'\nglobalThis.a100={state,activityMetricsBody,workflowActivityLayout,workflowFloatingContent,workflowExplanationOrigin,workflowBrief,workflowRowSummary,workflowIntervalType};',c);c.a100.state.language=language;return c.a100;
+ vm.runInContext(cut+'\nglobalThis.a100={state,activityMetricsBody,workflowActivityLayout,workflowFloatingContent,workflowExplanationOrigin,workflowBrief,workflowRowSummary,workflowIntervalType,workflowFactLaneLayout:typeof workflowFactLaneLayout==="function"?workflowFactLaneLayout:null,workflowPackFactRail:typeof workflowPackFactRail==="function"?workflowPackFactRail:null};',c);c.a100.state.language=language;return c.a100;
 }
 test('A100 actual renderer includes open, execution-only, operation and unreported intervals in KO/EN',()=>{
  for(const language of ['ko','en']){const a=load(language),p=structuredClone(fixture),before=JSON.stringify(p),r=p.workflow.rows[0],layout=a.workflowActivityLayout(r,p.workflow.axis.end,true);assert.equal(layout.entries.length,5);assert.ok(layout.lanes>=2);
@@ -119,4 +119,21 @@ test('A100 lane centers resolve their own rendered interval and explanation, wit
   assert.match(html,/data-workflow-fact=/,'fact controls remain reachable');assert.equal(JSON.stringify(p),original);
  }
  // This is an actual-renderer geometry model, not a browser hit-test claim.
+});
+
+test('A100 coincident fact centers preserve exact time and select their own fact in separate vertical lanes',()=>{
+ for(const language of ['ko','en']){
+  const a=load(language),p=structuredClone(fixture),before=JSON.stringify(p),html=a.activityMetricsBody(p,'A100-FACT-PACK');let checked=0;
+  for(const rail of html.matchAll(/class="workflow-fact-rail"[^>]*style="top:([0-9.]+)px;height:([0-9.]+)px"[^>]*>([\s\S]*?)<\/div>/g)){
+   const boxes=[...rail[3].matchAll(/data-workflow-fact="([^"]+)"[^>]*style="left:([-0-9.]+)%;?([^"]*)"/g)].map(m=>({id:m[1],left:Number(m[2]),top:Number(m[3].match(/top:([-0-9.]+)px/)?.[1]??10)}));
+   for(const b of boxes){const own=boxes.filter(v=>Math.abs(v.left-b.left)*1.6<13.5&&Math.abs(v.top-b.top)<13.5);assert.deepEqual(own.map(v=>v.id),[b.id],'actual renderer same-time fact centers must not share a hit area');checked++;}
+   if(boxes.length===1)assert.equal(Number(rail[2]),28,'no collision keeps baseline rail');
+   if(boxes.length===2){assert.equal(boxes[0].left,boxes[1].left,'horizontal timestamp is never offset');assert.equal(Number(rail[2]),56);}
+  }
+  assert.equal(checked,5);assert.equal(JSON.stringify(p),before);
+  const points=[{x:100},{x:100},{x:112},{x:200}],raw=JSON.stringify(points),layout=a.workflowFactLaneLayout(points);assert.deepEqual(Array.from(layout.lanes),[0,1,2,0]);assert.equal(layout.count,3);assert.equal(JSON.stringify(points),raw);
+  const nodes=points.map((p,i)=>({style:{left:i+'%'},dataset:{},getAttribute:()=>null,getBoundingClientRect:()=>({x:p.x-3.5,width:7})})),track={style:{}},rail={style:{top:'0px',height:'28px'},querySelectorAll:()=>nodes,closest:()=>track};
+  a.workflowPackFactRail(rail);assert.deepEqual(nodes.map(n=>n.style.top),['10px','38px','66px','10px']);assert.equal(rail.style.height,'84px');assert.equal(track.style.height,'84px');assert.deepEqual(nodes.map(n=>n.style.left),['0%','1%','2%','3%']);
+  points.forEach((p,i)=>p.x=i*40);a.workflowPackFactRail(rail);assert.equal(rail.style.height,'28px','resize/zoom can return to baseline');assert.equal(track.style.height,'28px');
+ }
 });
