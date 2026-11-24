@@ -315,3 +315,110 @@ func TestA97SessionRoundProvenanceWithResumedAttempts(t *testing.T) {
 		t.Fatal("input source mutated")
 	}
 }
+
+func TestA97ExplicitHandoffConstrainsEverySessionRole(t *testing.T) {
+	_, at := workflowFixture()
+	for _, path := range []string{"/root/controller/kkobugi", "/root/controller/reviewer/pikachyu", "/root/controller"} {
+		t.Run(path, func(t *testing.T) {
+			a := a97Attempt("one", "native-one", path)
+			for _, tc := range []struct {
+				name   string
+				change func(*WorkflowInput, *handoffjournal.Handoff, *string)
+				want   bool
+			}{
+				{"exactClaim", nil, true},
+				{"foreignTask", func(_ *WorkflowInput, h *handoffjournal.Handoff, _ *string) { h.TaskID = "FOREIGN" }, false},
+				{"wrongAssignment", func(_ *WorkflowInput, _ *handoffjournal.Handoff, assignment *string) {
+					*assignment = "foreign-assignment"
+				}, false},
+				{"wrongNative", func(_ *WorkflowInput, h *handoffjournal.Handoff, _ *string) {
+					h.Target.RuntimeAgentID = "foreign-native"
+				}, false},
+				{"wrongSession", func(_ *WorkflowInput, h *handoffjournal.Handoff, _ *string) { h.Target.SessionID = "foreign-session" }, false},
+				{"wrongProvider", func(_ *WorkflowInput, h *handoffjournal.Handoff, _ *string) { h.Target.Provider = "foreign-provider" }, false},
+				{"wrongActor", func(_ *WorkflowInput, h *handoffjournal.Handoff, _ *string) { h.Target.AgentPath = "/root/registrar" }, false},
+				{"wrongAttempt", func(_ *WorkflowInput, h *handoffjournal.Handoff, _ *string) { h.Target.AttemptID = "foreign-attempt" }, false},
+				{"wrongClaim", func(_ *WorkflowInput, h *handoffjournal.Handoff, _ *string) { h.ClaimedAttemptID = "foreign-attempt" }, false},
+				{"missingClaimTime", func(_ *WorkflowInput, h *handoffjournal.Handoff, _ *string) { h.ClaimedAt = "" }, false},
+				{"futureClaim", func(_ *WorkflowInput, h *handoffjournal.Handoff, _ *string) {
+					h.ClaimedAt = at(20).Format(time.RFC3339Nano)
+				}, false},
+				{"contradictoryID", func(_ *WorkflowInput, h *handoffjournal.Handoff, _ *string) { h.HandoffID = "foreign-id" }, false},
+				{"duplicateReceipt", func(in *WorkflowInput, h *handoffjournal.Handoff, _ *string) {
+					other := *h
+					other.TaskID = "FOREIGN"
+					in.Handoffs["duplicate"] = other
+				}, false},
+				{"sourceCannotOverrideContradictoryRecipient", func(_ *WorkflowInput, h *handoffjournal.Handoff, _ *string) {
+					h.SourceAgentPath, h.SourceAttemptID = a.AgentPath, a.AttemptID
+					h.Target.SessionID = "foreign-session"
+				}, false},
+			} {
+				t.Run(tc.name, func(t *testing.T) {
+					assignment := a.BindingEvidence["assignment_id"]
+					h := a97Claims(a)[assignment]
+					h.HandoffID = "explicit-handoff"
+					in := WorkflowInput{TaskID: "T", Now: at(10), ExecutionObservations: []runtimeobs.Attempt{a}, Handoffs: map[string]handoffjournal.Handoff{}}
+					if tc.change != nil {
+						tc.change(&in, &h, &assignment)
+					}
+					in.Handoffs["explicit-handoff"] = h
+					rows := map[string]*WorkflowRow{"source": {ID: "source", Role: workflowActorRole(path), AgentID: path,
+						Intervals: []WorkflowInterval{{ID: "activity", AttemptID: a.AttemptID, AssignmentID: assignment, HandoffID: "explicit-handoff"}},
+						RoleFacts: []WorkflowRoleFact{{ID: "fact", AttemptID: a.AttemptID, AssignmentID: assignment, HandoffID: "explicit-handoff"}}}}
+					before, _ := json.Marshal(rows)
+					for _, row := range workflowSessionRows(in, rows) {
+						if got := row.SessionIdentity.Status == "verified"; got != tc.want {
+							t.Fatalf("verified=%v want=%v: %+v", got, tc.want, row)
+						}
+						if len(row.Intervals) != 1 || len(row.RoleFacts) != 1 {
+							t.Fatal("source evidence lost", row)
+						}
+					}
+					after, _ := json.Marshal(rows)
+					if string(before) != string(after) {
+						t.Fatal("raw source mutated")
+					}
+				})
+			}
+		})
+	}
+}
+
+func TestA97SourceHandoffKeepsCounterpartDistinct(t *testing.T) {
+	for _, path := range []string{"/root/controller/kkobugi", "/root/controller/reviewer/pikachyu"} {
+		t.Run(path, func(t *testing.T) {
+			a := a97Attempt("one", "native-one", path)
+			h := handoffjournal.Handoff{HandoffID: "source-handoff", TaskID: "T", SourceAgentPath: path, SourceAttemptID: a.AttemptID,
+				Target: handoffjournal.Target{AgentPath: "/root/controller", AttemptID: "counterpart-attempt", RuntimeAgentID: "counterpart-native", SessionID: "counterpart-session", Provider: "codex"}}
+			for _, tc := range []struct {
+				name   string
+				change func(*handoffjournal.Handoff)
+				want   bool
+			}{
+				{"exactSourceDifferentRecipient", nil, true},
+				{"foreignTask", func(h *handoffjournal.Handoff) { h.TaskID = "FOREIGN" }, false},
+				{"wrongSourceActor", func(h *handoffjournal.Handoff) { h.SourceAgentPath = "/root/registrar" }, false},
+				{"wrongSourceAttempt", func(h *handoffjournal.Handoff) { h.SourceAttemptID = "foreign-attempt" }, false},
+			} {
+				t.Run(tc.name, func(t *testing.T) {
+					copy := h
+					if tc.change != nil {
+						tc.change(&copy)
+					}
+					in := WorkflowInput{TaskID: "T", ExecutionObservations: []runtimeobs.Attempt{a}, Handoffs: map[string]handoffjournal.Handoff{h.HandoffID: copy}}
+					row := &WorkflowRow{ID: "source", Role: workflowActorRole(path), AgentID: path, Intervals: []WorkflowInterval{{ID: "activity", AttemptID: a.AttemptID, HandoffID: h.HandoffID}}}
+					for _, got := range workflowSessionRows(in, map[string]*WorkflowRow{"source": row}) {
+						if (got.SessionIdentity.Status == "verified") != tc.want {
+							t.Fatal("source/counterpart association incorrect", got)
+						}
+					}
+				})
+			}
+			deleteSource := WorkflowInput{TaskID: "T", ExecutionObservations: []runtimeobs.Attempt{a}}
+			if workflowSessionAssociation(deleteSource, a, a.BindingEvidence["assignment_id"], h.HandoffID) {
+				t.Fatal("missing explicit receipt accepted")
+			}
+		})
+	}
+}

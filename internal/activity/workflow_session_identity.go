@@ -188,8 +188,50 @@ func workflowSessionClaim(in WorkflowInput, a runtimeobs.Attempt, id string) boo
 	return false
 }
 
+// An explicit receipt is a constraint, never a hint that a valid assignment
+// may override. A source receipt or an exact claimed recipient must be local.
+func workflowExplicitSessionHandoff(in WorkflowInput, a runtimeobs.Attempt, id string) bool {
+	count := 0
+	for key, h := range in.Handoffs {
+		if key != id && h.HandoffID != id {
+			continue
+		}
+		count++
+		if count > 1 || h.HandoffID != id || h.TaskID != in.TaskID {
+			return false
+		}
+		source := h.SourceAgentPath == a.AgentPath && h.SourceAttemptID == a.AttemptID
+		// If the receipt explicitly targets/claims this exact attempt, its target
+		// identity must also agree; a contradictory native is not a source fallback.
+		targetsAttempt := h.Target.AttemptID == a.AttemptID || h.ClaimedAttemptID == a.AttemptID
+		if targetsAttempt && !workflowSessionClaim(in, a, id) {
+			return false
+		}
+		if !source && !workflowSessionClaim(in, a, id) {
+			return false
+		}
+	}
+	return count == 1
+}
 func workflowSessionAssociation(in WorkflowInput, a runtimeobs.Attempt, assignment, handoff string) bool {
 	role := workflowActorRole(a.AgentPath)
+	if a.TaskID != in.TaskID && !(role == "controller" && a.TaskID == "") {
+		return false
+	}
+	expected := a.BindingEvidence["assignment_id"]
+	if assignment != "" && expected != "" && assignment != expected {
+		return false
+	}
+	explicit := handoff
+	if role == "controller" && explicit == "" && assignment != "" {
+		explicit = assignment
+	}
+	if explicit != "" && !workflowExplicitSessionHandoff(in, a, explicit) {
+		return false
+	}
+	if role == "controller" && expected == "" && assignment != "" && handoff != "" && assignment != handoff {
+		return false
+	}
 	if role == "controller" {
 		if handoff == "" && assignment != "" {
 			handoff = assignment
@@ -199,7 +241,6 @@ func workflowSessionAssociation(in WorkflowInput, a runtimeobs.Attempt, assignme
 	if a.TaskID != in.TaskID {
 		return false
 	}
-	expected := a.BindingEvidence["assignment_id"]
 	if expected != "" {
 		return assignment == "" || assignment == expected
 	}
