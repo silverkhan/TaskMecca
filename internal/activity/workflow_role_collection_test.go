@@ -283,3 +283,38 @@ func TestA85RepairWaitPairRejectsChangedEndpointBoundaries(t *testing.T) {
 		})
 	}
 }
+
+func TestA100ParticipationAndExactOrigin(t *testing.T) {
+	b, at := workflowFixture()
+	events := []Event{{EventID: "start", TaskID: "A-100", Role: RoleWorker, AgentID: "native", RuntimeAttemptID: "run", Action: Start, Type: Implementation, OccurredAt: at(5), Explanation: "구현", ExplanationLanguage: "ko", ExplanationOrigin: "type_default"}, {EventID: "stop", TaskID: "A-100", Role: RoleWorker, AgentID: "native", RuntimeAttemptID: "run", Action: Stop, Type: Implementation, OccurredAt: at(10)}}
+	w := SummarizeWorkflow(WorkflowInput{TaskID: "A-100", Events: events, Summary: Summarize("A-100", events), Facts: []LifecycleFact{{EventID: "registration", TaskID: "A-100", Kind: "registered", Actor: "/root/registrar", OccurredAt: b}}, Now: at(20)})
+	var found bool
+	for _, r := range w.Rows {
+		if r.AgentID != "native" {
+			continue
+		}
+		found = true
+		if r.Participation == nil || !r.Participation.Start.Equal(at(5)) || !r.Participation.End.Equal(at(10)) {
+			t.Fatal(r)
+		}
+		if len(r.Gaps) != 2 || r.Gaps[0].Status != "before_participation" || r.Gaps[1].Status != "after_participation" {
+			t.Fatal(r.Gaps)
+		}
+		if r.Intervals[0].ExplanationOrigin != "type_default" {
+			t.Fatal("origin inferred/lost", r.Intervals)
+		}
+	}
+	if !found {
+		t.Fatal("missing row")
+	}
+	// Explicit text equal to the default remains authored, legacy stays unknown.
+	for _, origin := range []string{"written", ""} {
+		events[0].ExplanationOrigin = origin
+		w = SummarizeWorkflow(WorkflowInput{TaskID: "A-100", Events: events, Summary: Summarize("A-100", events), Now: at(20)})
+		for _, r := range w.Rows {
+			if r.AgentID == "native" && r.Intervals[0].ExplanationOrigin != origin {
+				t.Fatal("origin guessed", r)
+			}
+		}
+	}
+}

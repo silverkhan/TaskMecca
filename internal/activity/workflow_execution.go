@@ -414,6 +414,59 @@ func workflowGapEvidence(in WorkflowInput, w *Workflow) {
 				hi = w.Rounds[*r.Round+1].StartedAt
 			}
 		}
+		// Bounds describe evidence-backed participation, not a claim that the
+		// actor was absent outside it. A point alone has no inferred duration.
+		var first, last time.Time
+		include := func(t time.Time) {
+			if t.IsZero() {
+				return
+			}
+			if first.IsZero() || t.Before(first) {
+				first = t
+			}
+			if last.IsZero() || t.After(last) {
+				last = t
+			}
+		}
+		for _, v := range r.Intervals {
+			include(v.Start)
+			if v.End != nil {
+				include(*v.End)
+			}
+		}
+		for _, f := range r.RoleFacts {
+			include(f.At)
+		}
+		for _, s := range sources {
+			if matches(r.AgentID, s.agent) && (s.evidence.AttemptID == "" || attempts[s.evidence.AttemptID]) {
+				include(s.start)
+				include(s.end)
+			}
+		}
+		outside := []WorkflowGap{}
+		if !first.IsZero() && !last.IsZero() {
+			if first.After(lo) {
+				end := first
+				if end.After(hi) {
+					end = hi
+				}
+				outside = append(outside, participationGap(lo, end, "before_participation"))
+			}
+			if last.Before(hi) {
+				start := last
+				if start.Before(lo) {
+					start = lo
+				}
+				outside = append(outside, participationGap(start, hi, "after_participation"))
+			}
+			if first.After(lo) {
+				lo = first
+			}
+			if last.Before(hi) {
+				hi = last
+			}
+			r.Participation = &WorkflowParticipation{Start: first, End: last, Basis: "observed_bounds_not_exclusive_presence", Status: "bounded"}
+		}
 		measured := []timingInterval{}
 		for _, v := range r.Intervals {
 			if v.Measured && v.End != nil {
@@ -436,7 +489,8 @@ func workflowGapEvidence(in WorkflowInput, w *Workflow) {
 		if cursor.Before(hi) {
 			gaps = append(gaps, WorkflowGap{Start: cursor, End: hi})
 		}
-		r.Gaps = classify(gaps, r.AgentID, attempts)
+		r.Gaps = append(outside, classify(gaps, r.AgentID, attempts)...)
+		sort.SliceStable(r.Gaps, func(i, j int) bool { return r.Gaps[i].Start.Before(r.Gaps[j].Start) })
 	}
 }
 

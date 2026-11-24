@@ -209,3 +209,56 @@ func TestExecutionCoverageUnknownWaitAndNoBackfill(t *testing.T) {
 		t.Fatalf("%+v", d)
 	}
 }
+
+func TestA100OperationVisibleOnceSharedAndNeverMeasured(t *testing.T) {
+	start := time.Date(2026, 11, 24, 0, 0, 0, 0, time.UTC)
+	end := start.Add(584 * time.Millisecond)
+	b := runtimeobs.OperationBoundary{ID: "start", Provider: "codex", NativeID: "native", AttemptID: "run", OperationID: "op", Role: "registrar", Kind: "start", Source: "fixture", Evidence: "exact", TaskIDs: []string{"A", "B"}, ObservedAt: start, Explanation: "등록 확인", ExplanationLanguage: "ko", ExplanationOrigin: "written"}
+	finish := b
+	finish.ID = "end"
+	finish.Kind = "end"
+	finish.ObservedAt = end
+	w := Workflow{TaskID: "A"}
+	d := BuildExecutionCoverage("A", []runtimeobs.OperationBoundary{b, finish}, w, nil)
+	workflowAttachOperationIntervals(&w, d)
+	if len(w.Rows) != 1 || len(w.Rows[0].Intervals) != 1 {
+		t.Fatal(w.Rows)
+	}
+	v := w.Rows[0].Intervals[0]
+	if v.Measured || v.DurationMillis != nil || v.Kind != "operation_execution" || v.ExplanationOrigin != "written" || !v.End.Equal(end) {
+		t.Fatal(v)
+	}
+	foreign := w
+	foreign.TaskID = "foreign"
+	foreign.Rows = nil
+	workflowAttachOperationIntervals(&foreign, d)
+	if len(foreign.Rows) != 0 {
+		t.Fatal("foreign operation linked")
+	}
+	open := Workflow{TaskID: "A"}
+	workflowAttachOperationIntervals(&open, BuildExecutionCoverage("A", []runtimeobs.OperationBoundary{b}, open, nil))
+	if len(open.Rows) != 1 || open.Rows[0].Intervals[0].End != nil {
+		t.Fatal("open hidden or closed", open)
+	}
+}
+
+func TestA100ParallelOperationsStateUnionNotActivity(t *testing.T) {
+	start := a100at(0)
+	end := a100at(10)
+	elapsed := int64(10000)
+	rows := []runtimeobs.OperationBoundary{}
+	for _, op := range []string{"one", "two"} {
+		b := runtimeobs.OperationBoundary{ID: op + "s", Provider: "codex", NativeID: "native", AttemptID: "run", OperationID: op, Role: "registrar", Kind: "start", Source: "fixture", Evidence: "actual boundary", TaskIDs: []string{"T", "other"}, ObservedAt: start}
+		e := b
+		e.ID = op + "e"
+		e.Kind = "end"
+		e.ObservedAt = end
+		rows = append(rows, b, e)
+	}
+	w := Workflow{TaskID: "T", Axis: WorkflowAxis{Start: &start, End: &end, ElapsedMillis: &elapsed}}
+	workflowAttachOperationIntervals(&w, BuildExecutionCoverage("T", rows, w, nil))
+	workflowDiagnoseCoverage(&w)
+	if w.Coverage.StateCoveredMillis != 10000 || w.Coverage.UnaccountedStateMillis != 0 || w.Coverage.ClosedActivityWallMillis != 0 || w.Measurement.AgentTimeMillis != 0 {
+		t.Fatal("parallel/shared operation became exclusive Activity", w.Coverage)
+	}
+}

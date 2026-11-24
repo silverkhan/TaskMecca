@@ -291,7 +291,117 @@ func AttachExecutionCoverage(project, task string, w Workflow) Workflow {
 		}
 		w.Reporting.Roles[idx].ExecutionCoverage = &d
 	}
+	workflowAttachOperationIntervals(&w, detail)
+	workflowDiagnoseCoverage(&w)
+	for _, key := range []string{"execution_evidence_error", "handoff_error"} {
+		if cause, ok := w.Snapshot[key].(string); ok && cause != "" {
+			w.Coverage.Findings = append(w.Coverage.Findings, WorkflowRecoveryFinding{TaskID: task, Start: w.ComputedAt, End: w.ComputedAt, Status: "collection_failed", Cause: cause, Owner: "controller", ResumeCondition: "Restore persisted source read and verify next actual boundary; historical gaps remain unknown", Evidence: []WorkflowGapEvidence{}})
+		}
+	}
+	for _, item := range detail.Items {
+		if item.Category == "collection_failure" || item.Category == "collection_pending" {
+			end := item.Start
+			if item.End != nil {
+				end = *item.End
+			}
+			cause := "unknown"
+			if item.Category == "collection_failure" {
+				cause = item.Reason
+			}
+			actor := item.NativeID
+			if actor == "" {
+				actor = item.ActorID
+			}
+			var last *time.Time
+			for _, prior := range detail.Items {
+				if prior.Category == "collection_failure" || prior.Category == "collection_pending" || prior.AttemptID != item.AttemptID || prior.OperationID != item.OperationID || prior.NativeID != item.NativeID || prior.ActorID != item.ActorID {
+					continue
+				}
+				at := prior.Start
+				if prior.End != nil {
+					at = *prior.End
+				}
+				if !at.After(item.Start) && (last == nil || at.After(*last)) {
+					copy := at
+					last = &copy
+				}
+			}
+			w.Coverage.Findings = append(w.Coverage.Findings, WorkflowRecoveryFinding{TaskID: task, ActorID: actor, AttemptID: item.AttemptID, OperationID: item.OperationID, Start: item.Start, End: end, Status: item.Category, Cause: cause, Owner: item.Role, LastSuccessfulBoundary: last, ResumeCondition: "Retry exact durable collection key and verify append ACK; no historical Activity backfill", Evidence: []WorkflowGapEvidence{}})
+		}
+	}
 	return w
 }
 
 func coverageID(role, actor, id string) string { return fmt.Sprintf("%s:%s:%s", role, actor, id) }
+
+// Operation wall time is visible once per exact native/attempt/operation. It
+// remains a shared task association, never confirmed Activity or task allocation.
+func workflowAttachOperationIntervals(w *Workflow, detail ExecutionCoverage) {
+	w.Rows = append([]WorkflowRow(nil), w.Rows...)
+	for i := range w.Rows {
+		w.Rows[i].Intervals = append([]WorkflowInterval(nil), w.Rows[i].Intervals...)
+	}
+	seen := map[string]bool{}
+	for _, item := range detail.Items {
+		if item.Boundary == nil || item.Boundary.Provider == "" || item.NativeID == "" || item.AttemptID == "" || item.OperationID == "" || (item.Category != "closed_operation" && item.Category != "open_start") {
+			continue
+		}
+		linked := false
+		for _, task := range item.TaskIDs {
+			if task == w.TaskID {
+				linked = true
+			}
+		}
+		if !linked {
+			continue
+		}
+		key := item.Boundary.Provider + "|" + item.NativeID + "|" + item.AttemptID + "|" + item.OperationID
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+		index := -1
+		for i, r := range w.Rows {
+			if r.Role != item.Role || r.SessionIdentity == nil || r.SessionIdentity.Status != "verified" || r.SessionIdentity.NativeID != item.NativeID || r.SessionIdentity.Provider != item.Boundary.Provider {
+				continue
+			}
+			for _, a := range r.SessionIdentity.Attempts {
+				if a.AttemptID == item.AttemptID {
+					index = i
+				}
+			}
+		}
+		if index < 0 {
+			w.Rows = append(w.Rows, WorkflowRow{ID: "operation|" + key, Role: item.Role, AgentID: item.NativeID, RoundStatus: "unclassified", Intervals: []WorkflowInterval{}, RoleFacts: []WorkflowRoleFact{}, Gaps: []WorkflowGap{}})
+			index = len(w.Rows) - 1
+		}
+		b := item.Boundary
+		v := WorkflowInterval{ID: "operation|" + key, Kind: "operation_execution", Type: "operation", Start: item.Start, End: item.End, Measured: false, AttemptID: item.AttemptID, OperationID: item.OperationID, Scope: item.Scope, Evidence: item.Reason, Explanation: b.Explanation, ExplanationLanguage: b.ExplanationLanguage, ExplanationOrigin: b.ExplanationOrigin}
+		w.Rows[index].Intervals = append(w.Rows[index].Intervals, v)
+		if item.End != nil {
+			first, last := item.Start, *item.End
+			if prior := w.Rows[index].Participation; prior != nil {
+				if prior.Start.Before(first) {
+					first = prior.Start
+				}
+				if prior.End.After(last) {
+					last = prior.End
+				}
+			}
+			w.Rows[index].Participation = &WorkflowParticipation{Start: first, End: last, Basis: "observed_bounds_with_exact_operation_task_association_shared_not_exclusive", Status: "bounded"}
+			gaps := []WorkflowGap{}
+			for _, g := range w.Rows[index].Gaps {
+				if g.Status == "before_participation" && g.End.After(first) {
+					g.End = first
+				}
+				if g.Status == "after_participation" && g.Start.Before(last) {
+					g.Start = last
+				}
+				if g.End.After(g.Start) {
+					gaps = append(gaps, g)
+				}
+			}
+			w.Rows[index].Gaps = gaps
+		}
+	}
+}

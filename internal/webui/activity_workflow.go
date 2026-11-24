@@ -122,6 +122,7 @@ func readActivityWorkflow(project, task string, events []activity.Event, summary
 	out.Snapshot["execution_evidence_source"] = "runtime_ledger_read_only"
 	if observationErr != nil {
 		out.Snapshot["execution_evidence_error"] = observationErr.Error()
+		out.Coverage.Findings = append(out.Coverage.Findings, activity.WorkflowRecoveryFinding{TaskID: task, Start: now, End: now, Status: "collection_failed", Cause: observationErr.Error(), Owner: "controller", ResumeCondition: "Restore persisted execution evidence read; do not fabricate historical Activity", Evidence: []activity.WorkflowGapEvidence{}})
 		out.Measurement.Status = "conflict"
 	}
 	out.Snapshot["handoff_checked_at"] = cached.checkedAt

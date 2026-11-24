@@ -13,19 +13,20 @@ import (
 // Workflow is an additive read model. These observations never write Activity
 // events, assign work, authorize execution or reconcile the Control Tower.
 type Workflow struct {
-	RuntimeTiming RuntimeTiming     `json:"runtime_timing"`
-	Version       int               `json:"version"`
-	TaskID        string            `json:"task_id"`
-	ComputedAt    time.Time         `json:"computed_at"`
-	Axis          WorkflowAxis      `json:"axis"`
-	Lifecycle     LifecycleCoverage `json:"lifecycle"`
-	Measurement   Measurement       `json:"measurement"`
-	Current       WorkflowCurrent   `json:"current"`
-	Rounds        []WorkRound       `json:"rounds"`
-	Rows          []WorkflowRow     `json:"rows"`
-	Unmeasured    []WorkflowGap     `json:"unmeasured_intervals"`
-	Reporting     ReportingCoverage `json:"reporting"`
-	Snapshot      map[string]any    `json:"control_snapshot"`
+	Coverage      WorkflowCoverageDiagnostic `json:"coverage_diagnostic"`
+	RuntimeTiming RuntimeTiming              `json:"runtime_timing"`
+	Version       int                        `json:"version"`
+	TaskID        string                     `json:"task_id"`
+	ComputedAt    time.Time                  `json:"computed_at"`
+	Axis          WorkflowAxis               `json:"axis"`
+	Lifecycle     LifecycleCoverage          `json:"lifecycle"`
+	Measurement   Measurement                `json:"measurement"`
+	Current       WorkflowCurrent            `json:"current"`
+	Rounds        []WorkRound                `json:"rounds"`
+	Rows          []WorkflowRow              `json:"rows"`
+	Unmeasured    []WorkflowGap              `json:"unmeasured_intervals"`
+	Reporting     ReportingCoverage          `json:"reporting"`
+	Snapshot      map[string]any             `json:"control_snapshot"`
 }
 type WorkflowAxis struct {
 	Start          *time.Time `json:"start,omitempty"`
@@ -42,6 +43,8 @@ type MeasuredMetric struct {
 	SegmentCount int    `json:"segment_count"`
 }
 type Measurement struct {
+	RawAgentTimeMillis int64          `json:"raw_agent_time_ms"`
+	OutsideTaskMillis  int64          `json:"outside_task_activity_ms"`
 	Status             string         `json:"status"`
 	Activity           MeasuredMetric `json:"activity"`
 	Worker             MeasuredMetric `json:"worker"`
@@ -89,6 +92,7 @@ type WorkflowNameEvidence struct {
 }
 
 type WorkflowRow struct {
+	Participation          *WorkflowParticipation     `json:"participation,omitempty"`
 	SessionDisplay         *ReviewerPresentationEntry `json:"session_display,omitempty"`
 	SessionIdentity        *WorkflowSessionIdentity   `json:"session_identity,omitempty"`
 	RoleFacts              []WorkflowRoleFact         `json:"role_facts"`
@@ -110,6 +114,9 @@ type WorkflowTerminalEvidence struct {
 }
 
 type WorkflowInterval struct {
+	ExplanationOrigin   string                    `json:"explanation_origin,omitempty"`
+	OperationID         string                    `json:"operation_id,omitempty"`
+	Scope               string                    `json:"scope,omitempty"`
 	Purpose             string                    `json:"purpose,omitempty"`
 	PurposeVerified     bool                      `json:"purpose_verified,omitempty"`
 	ContractSHA256      string                    `json:"contract_sha256,omitempty"`
@@ -315,6 +322,7 @@ func SummarizeWorkflow(in WorkflowInput) Workflow {
 	if in.Summary.InvalidTransitions+in.Summary.InvalidCorrections+w.Lifecycle.InvalidFacts > 0 || w.Axis.BoundaryStatus == "conflict" {
 		m.Status = "conflict"
 	}
+	workflowClipMeasurement(&m, in, events, w.Axis)
 	w.Measurement = m
 	w.RuntimeTiming = summarizeRuntimeTiming(in, w.Axis, w.Lifecycle)
 	boundaries := reviewBoundaries(in.TaskID, events, in.Handoffs)
@@ -397,6 +405,7 @@ func SummarizeWorkflow(in WorkflowInput) Workflow {
 			v.AssignmentID = e.AssignmentID
 			v.HandoffID = e.HandoffID
 			v.Evidence = e.Evidence
+			v.ExplanationOrigin = e.ExplanationOrigin
 			v.ContractSHA256 = e.ContractSHA256
 			v.TaskRevision = e.TaskRevision
 			v.Provider = e.Provider
@@ -437,6 +446,7 @@ func SummarizeWorkflow(in WorkflowInput) Workflow {
 			latestOpen = &copy
 		}
 		interval := WorkflowInterval{ID: latest.EventID, Kind: "activity_open", Type: string(latest.Type), Start: latest.OccurredAt, AttemptID: latest.RuntimeAttemptID, AssignmentID: latest.AssignmentID, HandoffID: latest.HandoffID, Evidence: latest.Evidence, Explanation: latest.Explanation, ExplanationLanguage: latest.ExplanationLanguage}
+		interval.ExplanationOrigin = latest.ExplanationOrigin
 		interval.ContractSHA256 = latest.ContractSHA256
 		interval.TaskRevision = latest.TaskRevision
 		interval.Provider = latest.Provider
@@ -775,6 +785,7 @@ func SummarizeWorkflow(in WorkflowInput) Workflow {
 	}
 
 	workflowGapEvidence(in, &w)
+	workflowDiagnoseCoverage(&w)
 	return w
 }
 

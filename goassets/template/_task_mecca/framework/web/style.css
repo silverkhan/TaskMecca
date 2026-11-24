@@ -2632,3 +2632,14 @@ select.tm-combo-native{position:absolute!important;width:1px!important;height:1p
 .workflow-floating-content dl{margin-bottom:8px}
 .workflow-floating-content .workflow-brief-evidence{margin:8px 0;font-size:11px;white-space:pre-wrap;overflow-wrap:anywhere}
 .workflow-brief-evidence>span{color:var(--muted)}
+
+/* Evidence boundaries use the incumbent neutral palette, never measured fills. */
+.workflow-state-before_participation,.workflow-state-after_participation{background:transparent;opacity:.5;border:1px dashed currentColor}
+.workflow-interval.wf-kind-operation_execution,.workflow-interval.wf-kind-execution_report,.workflow-interval.wf-kind-activity_unreported{background:var(--surface-2);border:1px dashed currentColor;min-width:3px}
+.workflow-session-activities{padding-inline-start:1.25rem;margin-block:1rem}
+.workflow-session-activities li{margin-block:1rem}
+.workflow-session-activities p{margin-block:.25rem;overflow-wrap:anywhere}
+.workflow-explanation-origin{font-size:.85em;color:var(--text-secondary);margin-block:.35rem 1rem}
+.workflow-execution-paint{background:transparent;box-shadow:none;border:1px dashed var(--muted)}
+.workflow-run .wf-kind-operation_execution>span,.workflow-run .wf-kind-execution_report>span,.workflow-run .wf-kind-activity_unreported>span{background:var(--surface);color:var(--text)}
+.workflow-interval.wf-execution-point{min-width:3px}
