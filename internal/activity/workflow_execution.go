@@ -3,6 +3,7 @@ package activity
 import (
 	"fmt"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/silverkhan/TaskMecca/internal/rolepolicy"
@@ -24,7 +25,9 @@ func ReadWorkflowExecutions(project, task string, now time.Time) ([]runtimeobs.A
 	}
 	out := []runtimeobs.Attempt{}
 	for _, a := range ledger.Attempts {
-		if a.TaskID == task {
+		// Taskless Controller candidates need an exact current-task claim in the
+		// session resolver. Supplying a candidate alone creates no task facts.
+		if a.TaskID == task || (a.TaskID == "" && a.AgentPath == "/root/controller" && a.BindingState == runtimeobs.BindingBound) {
 			out = append(out, a)
 		}
 	}
@@ -99,6 +102,9 @@ func workflowActorRole(path string) string {
 	}
 	if path == "/root/controller" {
 		return "controller"
+	}
+	if strings.HasPrefix(path, "/root/controller/sub-") && !strings.Contains(strings.TrimPrefix(path, "/root/controller/"), "/") {
+		return "sub_controller"
 	}
 	if r := rolepolicy.Role(path); r != "" {
 		return r

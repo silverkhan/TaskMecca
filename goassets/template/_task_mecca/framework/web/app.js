@@ -6368,7 +6368,12 @@ function workflowActorLabel(row,ko,presentation=null){
   const actorName=presentation?.actor_name_source==='bound_runtime_agent_path'&&typeof presentation.actor_name==='string'&&presentation.actor_name.trim()?presentation.actor_name:null;
   const name=storedName||actorName;
   const label=name&&name.toLowerCase().replace(/[-_ ]/g,'')!==role.toLowerCase().replace(/[-_ ]/g,'')?role+' · '+name:role;
-  return presentation||row.role==='reviewer'?label+' · '+reviewGenerationLabel(presentation,ko):label;
+  const roleLabel=presentation||row.role==='reviewer'?label+' · '+reviewGenerationLabel(presentation,ko):label;
+  const identity=row.session_identity;
+  if(!identity)return roleLabel;
+  if(identity.status!=='verified'||!identity.native_id||!identity.provider)return roleLabel+' · '+workflowText(ko,'세션 연결 미확인','Session link unverified');
+  const native=identity.native_id,short=native.length>18?native.slice(0,8)+'…'+native.slice(-6):native;
+  return roleLabel+' · '+short;
 }
 function workflowPhaseLabel(value,ko){
   const labels={queued:['배정 대기','Queued'],dispatch_wait:['착수 확인 대기','Awaiting start'],implementation:['구현 중','Implementing'],execution_ended:['실행 종료 · 검토 대기','Execution ended · awaiting review'],rework:['수정 중','Correcting'],rework_requested:['수정 요청됨','Changes requested'],controller_review:['Controller 검토','Controller review'],finalizing:['완료 처리 중','Finalizing'],completed:['완료','Completed'],external_ci_wait:['외부 검증 대기','External verification'],user_decision_wait:['사용자 판단 대기','User decision'],wait_unclassified:['대기 사유 미확인','Wait reason unverified'],recovery:['실행 근거 확인 필요','Execution needs verification'],unknown:['처리 단계 미확인','Phase unverified']};
@@ -6577,7 +6582,7 @@ function workflowFloatingView(root,viewport,wf,pref,ko){
     surface.setAttribute('aria-label',title);surface.tabIndex=pin?-1:0;
     if(pin){
       const content=workflowFloatingContent(row,interval,marker,ko,reviewRowPresentation(wf,row));
-      surface.innerHTML='<div class="workflow-floating-head"><strong'+(interval?' class="workflow-type-label wf-type-'+workflowTypeClass(interval.type)+'"':'')+'>'+(interval?workflowTypeSwatch(interval.type):'')+esc(title)+'</strong><button type="button" class="workflow-floating-close" aria-label="'+esc(workflowText(ko,'구간 상세 닫기','Close interval details'))+'">×</button></div>'+content+'<details id="workflowIntervalEvidence"><summary>'+esc(workflowText(ko,'정확한 근거','Exact evidence'))+'</summary><pre>'+esc(JSON.stringify({role:row?.role,agent_id:row?.agent_id,display_name:row?.display_name||null,display_name_source:row?.display_name_source||'unverified',name_evidence:row?.name_evidence,round:row?.round,interval:interval||undefined,intervals:interval?undefined:row?.intervals},null,2))+'</pre></details>';
+      surface.innerHTML='<div class="workflow-floating-head"><strong'+(interval?' class="workflow-type-label wf-type-'+workflowTypeClass(interval.type)+'"':'')+'>'+(interval?workflowTypeSwatch(interval.type):'')+esc(title)+'</strong><button type="button" class="workflow-floating-close" aria-label="'+esc(workflowText(ko,'구간 상세 닫기','Close interval details'))+'">×</button></div>'+content+'<details id="workflowIntervalEvidence"><summary>'+esc(workflowText(ko,'정확한 근거','Exact evidence'))+'</summary><pre>'+esc(JSON.stringify({role:row?.role,agent_id:row?.agent_id,display_name:row?.display_name||null,display_name_source:row?.display_name_source||'unverified',name_evidence:row?.name_evidence,session_identity:row?.session_identity,role_facts:interval?undefined:row?.role_facts,round:row?.round,interval:interval||undefined,intervals:interval?undefined:row?.intervals},null,2))+'</pre></details>';
       if(row)surface.querySelector('#workflowIntervalEvidence').insertAdjacentHTML('beforebegin',reviewPresentationDetail(reviewRowPresentation(wf,row),ko));
       if(marker)surface.querySelector('.workflow-floating-head strong').textContent=workflowMarkerLabel(marker,ko);
       if(marker)surface.querySelector('#workflowIntervalEvidence pre').textContent=JSON.stringify({role:row?.role||null,agent_id:row?.agent_id||null,display_name:row?.display_name||null,round:row?.round??null,[marker.kind]:marker.value},null,2);

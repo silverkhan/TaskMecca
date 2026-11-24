@@ -87,18 +87,19 @@ type WorkflowNameEvidence struct {
 }
 
 type WorkflowRow struct {
-	RoleFacts              []WorkflowRoleFact     `json:"role_facts"`
-	Gaps                   []WorkflowGap          `json:"gaps"`
-	NameEvidence           []WorkflowNameEvidence `json:"name_evidence,omitempty"`
-	DisplayName            string                 `json:"display_name,omitempty"`
-	DisplayNameSource      string                 `json:"display_name_source,omitempty"`
-	ObservedActivityMillis *int64                 `json:"observed_activity_ms,omitempty"`
-	ID                     string                 `json:"id"`
-	Role                   string                 `json:"role"`
-	AgentID                string                 `json:"agent_id"`
-	Round                  *int                   `json:"round,omitempty"`
-	RoundStatus            string                 `json:"round_status"`
-	Intervals              []WorkflowInterval     `json:"intervals"`
+	SessionIdentity        *WorkflowSessionIdentity `json:"session_identity,omitempty"`
+	RoleFacts              []WorkflowRoleFact       `json:"role_facts"`
+	Gaps                   []WorkflowGap            `json:"gaps"`
+	NameEvidence           []WorkflowNameEvidence   `json:"name_evidence,omitempty"`
+	DisplayName            string                   `json:"display_name,omitempty"`
+	DisplayNameSource      string                   `json:"display_name_source,omitempty"`
+	ObservedActivityMillis *int64                   `json:"observed_activity_ms,omitempty"`
+	ID                     string                   `json:"id"`
+	Role                   string                   `json:"role"`
+	AgentID                string                   `json:"agent_id"`
+	Round                  *int                     `json:"round,omitempty"`
+	RoundStatus            string                   `json:"round_status"`
+	Intervals              []WorkflowInterval       `json:"intervals"`
 }
 type WorkflowTerminalEvidence struct {
 	ObservedAt time.Time                 `json:"observed_at"`
@@ -106,24 +107,24 @@ type WorkflowTerminalEvidence struct {
 }
 
 type WorkflowInterval struct {
-	RuntimeTerminal   *WorkflowTerminalEvidence `json:"runtime_terminal,omitempty"`
-	EndEvidence       string                    `json:"end_evidence,omitempty"`
-	EndEvidenceSource runtimeobs.EvidenceSource `json:"end_evidence_source,omitempty"`
-	ID                string                    `json:"id"`
-	Kind              string                    `json:"kind"`
-	Type              string                    `json:"type"`
-	Start             time.Time                 `json:"start"`
-	End               *time.Time                `json:"end,omitempty"`
-	Measured          bool                      `json:"measured"`
-	DurationMillis    *int64                    `json:"duration_ms,omitempty"`
-	AttemptID         string                    `json:"attempt_id,omitempty"`
-	AssignmentID      string                    `json:"assignment_id,omitempty"`
-	HandoffID         string                    `json:"handoff_id,omitempty"`
-	Evidence          string                    `json:"evidence,omitempty"`
-	Explanation       string                    `json:"explanation,omitempty"`
-    ExplanationLanguage string `json:"explanation_language,omitempty"`
-	Outcome           string                    `json:"outcome,omitempty"`
-	Lane              int                       `json:"lane"`
+	RuntimeTerminal     *WorkflowTerminalEvidence `json:"runtime_terminal,omitempty"`
+	EndEvidence         string                    `json:"end_evidence,omitempty"`
+	EndEvidenceSource   runtimeobs.EvidenceSource `json:"end_evidence_source,omitempty"`
+	ID                  string                    `json:"id"`
+	Kind                string                    `json:"kind"`
+	Type                string                    `json:"type"`
+	Start               time.Time                 `json:"start"`
+	End                 *time.Time                `json:"end,omitempty"`
+	Measured            bool                      `json:"measured"`
+	DurationMillis      *int64                    `json:"duration_ms,omitempty"`
+	AttemptID           string                    `json:"attempt_id,omitempty"`
+	AssignmentID        string                    `json:"assignment_id,omitempty"`
+	HandoffID           string                    `json:"handoff_id,omitempty"`
+	Evidence            string                    `json:"evidence,omitempty"`
+	Explanation         string                    `json:"explanation,omitempty"`
+	ExplanationLanguage string                    `json:"explanation_language,omitempty"`
+	Outcome             string                    `json:"outcome,omitempty"`
+	Lane                int                       `json:"lane"`
 }
 type WorkflowGap struct {
 	Start    time.Time             `json:"start"`
@@ -553,6 +554,7 @@ func SummarizeWorkflow(in WorkflowInput) Workflow {
 		}
 	}
 	workflowRoleFacts(in, &w, rows, add, boundaries, known, events)
+	rows = workflowSessionRows(in, rows)
 	for _, row := range rows {
 		// Names require an exact, unambiguous task/attempt/native identity binding.
 		// Never derive aliases from Activity UUIDs or unbound paths.
