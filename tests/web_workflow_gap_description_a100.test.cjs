@@ -4,11 +4,11 @@ const source=fs.readFileSync(path.join(__dirname,'../goassets/template/_task_mec
 const fixture=require('./fixtures/workflow/gap-description-a100.json');
 function load(language='ko'){
  const c=vm.createContext({URLSearchParams,AbortController,fetch(){throw Error('network forbidden')},location:{search:''},navigator:{language},history:{pushState(){}},queueMicrotask,setTimeout:()=>1,clearTimeout,document:{querySelector:()=>null,addEventListener(){}},localStorage:{getItem:()=>null,setItem(){},removeItem(){}}});
- vm.runInContext(cut+'\nglobalThis.a100={state,activityMetricsBody,workflowActivityLayout,workflowFloatingContent,workflowExplanationOrigin,workflowBrief,workflowRowSummary};',c);c.a100.state.language=language;return c.a100;
+ vm.runInContext(cut+'\nglobalThis.a100={state,activityMetricsBody,workflowActivityLayout,workflowFloatingContent,workflowExplanationOrigin,workflowBrief,workflowRowSummary,workflowIntervalType};',c);c.a100.state.language=language;return c.a100;
 }
 test('A100 actual renderer includes open, execution-only, operation and unreported intervals in KO/EN',()=>{
  for(const language of ['ko','en']){const a=load(language),p=structuredClone(fixture),before=JSON.stringify(p),r=p.workflow.rows[0],layout=a.workflowActivityLayout(r,p.workflow.axis.end,true);assert.equal(layout.entries.length,5);assert.ok(layout.lanes>=2);
-  const html=a.activityMetricsBody(p,'A100-FIXTURE');for(const kind of ['activity_open','operation_execution','execution_report','activity_unreported'])assert.match(html,new RegExp('wf-kind-'+kind));assert.match(html,language==='ko'?/상태 근거가 있는 시간/:/Time with state evidence/);assert.equal(JSON.stringify(p),before);
+  const html=a.activityMetricsBody(p,'A100-FIXTURE');assert.equal((html.match(/data-workflow-interval=/g)||[]).length,2);assert.equal((html.match(/data-workflow-execution=/g)||[]).length,3);for(const kind of ['activity_open','operation_execution','execution_report','activity_unreported'])assert.match(html,new RegExp('wf-kind-'+kind));assert.match(html,language==='ko'?/상태 근거가 있는 시간/:/Time with state evidence/);assert.equal(JSON.stringify(p),before);
  }
 });
 test('A100 own interval explanation, exact marker reason, origins and session summary stay distinct',()=>{
@@ -45,17 +45,17 @@ test('A100 real browser keyboard, touch, overlap and narrow zoom',{skip:!process
   const evaluate=async(expression)=>{const r=await cmd('Runtime.evaluate',{expression,returnByValue:true,awaitPromise:true});if(r.exceptionDetails)throw Error(JSON.stringify(r.exceptionDetails));return r.result.value;};
   // Page load completes before evaluation via the next protocol command in this local file.
   let ready=false;for(let i=0;i<20&&!ready;i++){ready=await evaluate('window.ready===true');if(!ready)await new Promise(r=>setTimeout(r,30));}assert.ok(ready,'fixture load');
-  const setup=language=>evaluate(`(()=>{state.language=${JSON.stringify(language)};state.project='fixture';activityDetailCache.set(activityDetailKey('A100','fixture'),fixture);document.querySelector('#fixture').innerHTML=activityMetricsBody(fixture,'A100','fixture');bindWorkflowControls('A100','fixture',document.querySelector('#fixture'));return document.querySelectorAll('[data-workflow-interval]').length})()`);
+  const setup=language=>evaluate(`(()=>{state.language=${JSON.stringify(language)};state.project='fixture';activityDetailCache.set(activityDetailKey('A100','fixture'),fixture);document.querySelector('#fixture').innerHTML=activityMetricsBody(fixture,'A100','fixture');bindWorkflowControls('A100','fixture',document.querySelector('#fixture'));return {activity:document.querySelectorAll('[data-workflow-interval]').length,execution:document.querySelectorAll('[data-workflow-execution]').length,entries:document.querySelectorAll('[data-workflow-entry]').length}})()`);
   const report={transport:'CDP pipe + file URL; network blocked; no HTTP listener',checks:[]};
   for(const language of ['ko','en']){
-   await cmd('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:true});assert.ok(await setup(language)>=5);
+   await cmd('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:true});assert.deepEqual(await setup(language),{activity:2,execution:3,entries:5});
    const bounds=await evaluate(`(()=>{const b=document.querySelector('[data-workflow-interval]');b.focus();return {x:b.getBoundingClientRect().x,y:b.getBoundingClientRect().y}})()`);
    await cmd('Input.dispatchKeyEvent',{type:'keyDown',key:'Enter',code:'Enter',windowsVirtualKeyCode:13});await cmd('Input.dispatchKeyEvent',{type:'keyUp',key:'Enter',code:'Enter',windowsVirtualKeyCode:13});
    assert.equal(await evaluate("Boolean(document.querySelector('.workflow-floating.is-pinned:not([hidden])'))"),true);
    assert.match(await evaluate("document.querySelector('.workflow-floating').textContent"),/실제 구현 설명/);
    await cmd('Input.dispatchKeyEvent',{type:'keyDown',key:'Escape',code:'Escape',windowsVirtualKeyCode:27});await cmd('Input.dispatchKeyEvent',{type:'keyUp',key:'Escape',code:'Escape',windowsVirtualKeyCode:27});
    const before=await evaluate("JSON.stringify(activityDetailPrefs('A100','fixture').window)");await evaluate("document.querySelector('#workflowZoomIn').click()");await evaluate("new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)))");assert.notEqual(await evaluate("JSON.stringify(activityDetailPrefs('A100','fixture').window)"),before);
-   await evaluate("document.querySelector('#workflowZoomFit')?.click()");
+   await evaluate("document.querySelector('#workflowFit').click()");await evaluate("new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)))");assert.equal(await evaluate("JSON.stringify(activityDetailPrefs('A100','fixture').window)"),before,'Fit restores the full pre-zoom window');
    const point=await evaluate("(()=>{const b=document.querySelector('[data-workflow-row-select]'),r=b.getBoundingClientRect();return {x:r.x+r.width/2,y:r.y+r.height/2}})()");
    await cmd('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:point.x,y:point.y}]});await cmd('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
    await evaluate("new Promise(r=>requestAnimationFrame(r))");assert.match(await evaluate("document.querySelector('.workflow-floating').textContent"),language==='ko'?/이 세션의 기록 현황/:/This session’s recorded scope/);
@@ -63,4 +63,23 @@ test('A100 real browser keyboard, touch, overlap and narrow zoom',{skip:!process
   }
   fs.writeFileSync(path.join(out,'browser-report.json'),JSON.stringify(report,null,2));
  })(),timeout]);}finally{clearTimeout(timer);if(!exited)await Promise.race([call('Browser.close').catch(()=>{}),new Promise(r=>setTimeout(r,500))]);chrome.kill();fs.writeFileSync(path.join(out,'chrome.stderr'),stderr);}
+});
+
+test('A100 missing terminal fields stay unknown in actual labels and accessible renderer text',()=>{
+ for(const language of ['ko','en']){const a=load(language),ko=language==='ko',p=structuredClone(fixture),before=JSON.stringify(p),v=p.workflow.rows[0].intervals.find(i=>i.kind==='activity_unreported');
+  const label=a.workflowIntervalType(v,ko);assert.match(label,ko?/실행 종료 근거 미확인/:/Execution end evidence unknown/);assert.doesNotMatch(label,/undefined|실행 종료 관측|Execution end observed/);
+  const html=a.activityMetricsBody(p,'A100-TERMINAL');assert.doesNotMatch(html,/종료 관측 \(undefined\)|end observed \(undefined\)/);assert.match(html,ko?/실행 종료 근거 미확인/:/Execution end evidence unknown/);
+  assert.match(a.workflowIntervalType({...v,end_evidence:'native_terminal',end_evidence_source:'hook'},ko),/hook/);
+  assert.match(a.workflowIntervalType({...v,end_evidence:'native_terminal',end_evidence_source:'unknown'},ko),ko?/근거 미확인/:/evidence unknown/);assert.match(a.workflowIntervalType({...v,runtime_terminal:{},end_evidence_source:'hook'},ko),ko?/근거 미확인/:/evidence unknown/);
+  assert.equal(JSON.stringify(p),before,'no manufactured terminal state in source fixture');
+ }
+});
+
+test('A100 overlap geometry wrappers pass hit testing to actual interval controls',()=>{
+ const css=fs.readFileSync(path.join(__dirname,'../goassets/template/_task_mecca/framework/web/style.css'),'utf8');
+ assert.match(css,/\.workflow-run\{[^}]*pointer-events:none/,'full-height geometry wrapper cannot intercept another lane');
+ assert.match(css,/\.workflow-run \.workflow-interval\{[^}]*pointer-events:auto/,'actual buttons retain hover, click and bubbling viewport gestures');
+ const a=load(),html=a.activityMetricsBody(structuredClone(fixture),'A100-HIT-STRUCTURE');
+ assert.equal((html.match(/data-workflow-entry=/g)||[]).length,5);assert.equal((html.match(/data-workflow-interval=/g)||[]).length,2);assert.equal((html.match(/data-workflow-execution=/g)||[]).length,3);
+ // This checks the CSS contract and real renderer structure, not browser geometry.
 });

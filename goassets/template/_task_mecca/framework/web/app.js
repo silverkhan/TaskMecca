@@ -5931,7 +5931,7 @@ function workloadSessionCard(root){
   const nativeID=root.provider_session_id,lookup=reviewPresentationMap(metadata);
   const attemptIDs=Object.keys(lookup?.by_attempt||{}).filter(id=>lookup.by_attempt[id]?.native_id===nativeID);
   const presentation=reviewPresentationLookup(metadata,attemptIDs,nativeID);
-  let detail=reviewPresentationDetail(presentation,state.language==='ko');
+  let detail=reviewPresentationDetail(presentation,state.language==='ko',root)||workflowSessionDisplayDetail({session_display:presentation},state.language==='ko');
   if(!data||data.loading)detail+=`<p role="status">${esc(w.loading)}</p>`;
   else if(data.error)detail+=`<p role="alert">${esc(w.detailError)} <button type="button" data-session-detail="${esc(id)}">${esc(w.retry)}</button></p>`;
   else{
@@ -6358,8 +6358,18 @@ function reviewPresentationSummary(p,ko){
   const purpose=p?.purpose_verified===true&&p.purpose==='review'?workflowText(ko,'검수 목적 확인','Review purpose verified'):'';
   return [purpose,reviewRoundLabel(p,ko),reviewStateLabel(p?.actual_state,ko)].filter(Boolean).join(' · ');
 }
-function reviewPresentationDetail(p,ko){
-  if(p&&p.purpose_verified!==true&&p.stored_role!=='reviewer'&&!p.chain_id)return workflowSessionDisplayDetail({session_display:p},ko);
+function workflowReviewPresentationDetail(wf,row,interval,marker,ko){
+  if(!row)return '';
+  const value=interval||marker?.value,p=value?(value.attempt_id?reviewPresentationLookup(wf,[value.attempt_id],row.agent_id):null):reviewRowPresentation(wf,row);
+  const actor=interval?{role:row.role,purpose:interval.purpose,purpose_verified:interval.purpose_verified===true}:row;
+  return reviewPresentationDetail(p,ko,actor);
+}
+function reviewPresentationDetail(p,ko,actor=null){
+  if(actor){
+    const reviewPurpose=actor.purpose_verified===true&&actor.purpose==='review'||!Object.hasOwn(actor,'purpose_verified')&&p?.purpose_verified===true&&p.purpose==='review';
+    if((actor.role||p?.stored_role)!=='reviewer'&&!reviewPurpose)return '';
+  }
+  if(!actor&&p&&p.purpose_verified!==true&&p.stored_role!=='reviewer'&&!p.chain_id)return workflowSessionDisplayDetail({session_display:p},ko);
   if(!p)return '<p class="review-presentation-note">'+esc(workflowText(ko,'검수 목적·연결·차수·컨텍스트 근거 미확인','Review purpose, linkage, round and context evidence unknown'))+'</p>';
   const context=p.context_status,contextText=typeof context==='string'?context:context?.status;
   const collectionText=p.context_support==='unsupported'?workflowText(ko,'이 역할에서는 지원하지 않음','Unsupported for this role'):p.context_support==='not_collected'?workflowText(ko,'미수집','Not collected'):null;
@@ -6397,11 +6407,16 @@ function workflowActionLabel(value,ko){
 function workflowMeasurementLabel(status,ko){return ({not_recorded:['활동 미측정','Activity unmeasured'],partial:['부분 관측','Partially observed'],observed:['관측됨','Observed'],conflict:['근거 충돌','Conflicting evidence']})[status]?.[ko?0:1]||workflowText(ko,'측정 상태 미확인','Measurement unverified');}
 function workflowRoleClass(role){return ['worker','reviewer','controller','registrar','sub_controller','wait'].includes(role)?role:'unknown';}
 function workflowMetric(metric,ko){return metric&&Number.isFinite(metric.duration_ms)?activityDisplayDuration(metric.duration_ms,ko):workflowText(ko,'미측정','Unmeasured');}
+function workflowTerminalLabel(interval,ko){
+  const source=interval.runtime_terminal?.source||interval.end_evidence_source,at=interval.runtime_terminal?.observed_at||interval.end;
+  const known=typeof source==='string'&&source.trim()&&source!=='unknown'&&Number.isFinite(Date.parse(at||''))&&(interval.end_evidence==='native_terminal'||typeof interval.runtime_terminal?.source==='string'&&Number.isFinite(Date.parse(interval.runtime_terminal?.observed_at||'')));
+  return known?workflowText(ko,'실행 종료 관측','Execution end observed')+' ('+source+')':workflowText(ko,'실행 종료 근거 미확인','Execution end evidence unknown');
+}
 function workflowIntervalType(interval,ko){
   const typeLabel=interval.purpose_verified===true&&interval.purpose==='review'?workflowText(ko,'독립 검수','Independent review'):activityDisplayType(interval.type,ko);
   if(interval.kind==='operation_execution')return workflowText(ko,'공유 operation · Activity 미측정','Shared operation · Activity unmeasured');
-  if(interval.kind==='execution_report')return interval.end?(interval.end_evidence==='native_terminal'?workflowText(ko,'실행 종료 관측','Execution end observed')+' ('+interval.end_evidence_source+') · '+workflowText(ko,'활동 미측정','activity unmeasured'):workflowText(ko,'실행 보고 · 활동 미측정','Execution reported · activity unmeasured')):workflowText(ko,'시작만 관측 · 종료 미확인','Start observed · end unverified');
-  if(interval.kind==='activity_unreported')return typeLabel+workflowText(ko,' · 실행 종료 관측',' · execution end observed')+' ('+interval.end_evidence_source+') · '+workflowText(ko,'단계 종료 보고 누락 · 활동 미측정','phase-end report missing · activity unmeasured');
+  if(interval.kind==='execution_report')return interval.end?(interval.end_evidence==='native_terminal'?workflowTerminalLabel(interval,ko)+' · '+workflowText(ko,'활동 미측정','activity unmeasured'):workflowText(ko,'실행 보고 · 활동 미측정','Execution reported · activity unmeasured')):workflowText(ko,'시작만 관측 · 종료 미확인','Start observed · end unverified');
+  if(interval.kind==='activity_unreported')return typeLabel+' · '+workflowTerminalLabel(interval,ko)+' · '+workflowText(ko,'단계 종료 보고 누락 · 활동 미측정','phase-end report missing · activity unmeasured');
   if(interval.kind==='handoff_review')return workflowText(ko,'검토 인계 · 활동 미측정','Review claimed · activity unmeasured');
   if(workflowIntervalPresentation(interval).category==='unknown')return workflowText(ko,'알 수 없는 활동 유형','Unknown activity type')+' · '+(interval.type||workflowText(ko,'유형 값 없음','Type not provided'))+(interval.kind==='activity_open'?workflowText(ko,' · 종료 미관측',' · end unobserved'):'');
   return typeLabel+(interval.kind==='activity_open'?workflowText(ko,' · 종료 미관측',' · end unobserved'):'');
@@ -6608,7 +6623,7 @@ function workflowFloatingView(root,viewport,wf,pref,ko){
     if(pin){
       const content=workflowFloatingContent(row,interval,marker,ko,reviewRowPresentation(wf,row));
       surface.innerHTML='<div class="workflow-floating-head"><strong'+(interval?' class="workflow-type-label wf-type-'+workflowTypeClass(interval.type)+'"':'')+'>'+(interval?workflowTypeSwatch(interval.type):'')+esc(title)+'</strong><button type="button" class="workflow-floating-close" aria-label="'+esc(workflowText(ko,'구간 상세 닫기','Close interval details'))+'">×</button></div>'+content+'<details id="workflowIntervalEvidence"><summary>'+esc(workflowText(ko,'정확한 근거','Exact evidence'))+'</summary><pre>'+esc(JSON.stringify({role:row?.role,agent_id:row?.agent_id,display_name:row?.display_name||null,display_name_source:row?.display_name_source||'unverified',name_evidence:row?.name_evidence,session_display:row?.session_display,session_identity:row?.session_identity,role_facts:interval?undefined:row?.role_facts,round:row?.round,interval:interval||undefined,intervals:interval?undefined:row?.intervals},null,2))+'</pre></details>';
-      if(row)surface.querySelector('#workflowIntervalEvidence').insertAdjacentHTML('beforebegin',reviewPresentationDetail(reviewRowPresentation(wf,row),ko));
+      if(row)surface.querySelector('#workflowIntervalEvidence').insertAdjacentHTML('beforebegin',workflowReviewPresentationDetail(wf,row,interval,marker,ko));
       if(marker)surface.querySelector('.workflow-floating-head strong').textContent=workflowMarkerLabel(marker,ko);
       if(marker)surface.querySelector('#workflowIntervalEvidence pre').textContent=JSON.stringify({role:row?.role||null,agent_id:row?.agent_id||null,display_name:row?.display_name||null,round:row?.round??null,[marker.kind]:marker.value},null,2);
       if(peers.length>1){

@@ -2432,14 +2432,14 @@ select.tm-combo-native{position:absolute!important;width:1px!important;height:1p
   .workflow-floating summary{min-height:36px}
 }
 /* A63 geometry and source-member controls stay intact; each entry owns its type paint. */
-.workflow-run{position:absolute;top:0;height:100%;min-width:0}
+.workflow-run{position:absolute;top:0;height:100%;min-width:0;pointer-events:none}
 .workflow-run-surface{position:absolute;left:0;right:0;top:var(--workflow-run-top);height:var(--workflow-run-height);border-radius:calc(var(--workflow-run-height)/2);overflow:hidden;background:transparent;pointer-events:none}
 .workflow-run-surface.is-open{border-top-right-radius:0;border-bottom-right-radius:0}
 .workflow-divider{position:absolute;top:0;bottom:0;width:1px;background:#ffffff80;pointer-events:none}
 [data-theme="dark"] .workflow-divider{background:#ffffff60}
 .workflow-type-paint{position:absolute;inset-block:0;box-sizing:border-box;background-color:var(--wf-type-color,#596273);background-image:var(--wf-type-pattern,none);background-size:var(--wf-type-pattern-size,auto);box-shadow:inset -1px 0 0 color-mix(in srgb,var(--surface) 70%,transparent);pointer-events:none}
 .workflow-open-paint{background-color:color-mix(in srgb,var(--wf-type-color) 12%,var(--surface));background-image:repeating-linear-gradient(135deg,transparent 0 4px,color-mix(in srgb,var(--wf-type-color) 55%,transparent) 4px 5px);border:1px dashed var(--wf-type-color);pointer-events:none}
-.workflow-run .workflow-interval{background:transparent;border:0;border-radius:0;box-shadow:none;overflow:visible}
+.workflow-run .workflow-interval{pointer-events:auto;background:transparent;border:0;border-radius:0;box-shadow:none;overflow:visible}
 .workflow-run .workflow-interval>span{background:var(--wf-type-color,#596273);border-radius:2px}
 .workflow-run .wf-kind-activity_open{color:var(--text)}
 .workflow-run .wf-kind-activity_open>span{background:var(--surface);color:var(--text)}
