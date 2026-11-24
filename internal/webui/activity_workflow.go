@@ -14,6 +14,7 @@ import (
 	"github.com/silverkhan/TaskMecca/internal/backlog"
 	"github.com/silverkhan/TaskMecca/internal/contextlife"
 	"github.com/silverkhan/TaskMecca/internal/contractscope"
+	"github.com/silverkhan/TaskMecca/internal/handoff"
 	"github.com/silverkhan/TaskMecca/internal/handoffjournal"
 	"github.com/silverkhan/TaskMecca/internal/reviewcontinuity"
 	"github.com/silverkhan/TaskMecca/internal/rolepolicy"
@@ -155,9 +156,10 @@ func attachReviewerPresentation(project, task string, w activity.Workflow) activ
 	for k, v := range w.Snapshot {
 		cloned[k] = v
 	}
-	cloned["reviewer_presentation"] = readReviewerPresentation(project, task, nil)
+	presentation := readReviewerPresentation(project, task, nil)
+	cloned["reviewer_presentation"] = presentation
 	w.Snapshot = cloned
-	return w
+	return activity.ApplyReviewPurpose(w, presentation)
 }
 
 // Persisted reads only: no provider refresh, monitor, mutation or timing edits.
@@ -180,6 +182,7 @@ func readReviewerPresentation(project, task string, existing *runtimeobs.Ledger)
 		}
 	}
 	rows, _ := operationCanonicalRows(project)
+	assignments, assignmentErr := runtimeobs.ListAssignments(project)
 	identities := []rolepolicy.Identity{}
 	for _, a := range ledger.Attempts {
 		identities = append(identities, rolepolicy.Identity{AttemptID: a.AttemptID, NativeID: a.SessionID, RuntimeAgentID: a.RuntimeAgentID, Provider: a.Provider, AgentPath: a.AgentPath, TaskID: a.TaskID, Bound: a.BindingState == runtimeobs.BindingBound, Observed: runtimeobs.HasObservedExecution(a)})
@@ -224,10 +227,36 @@ func readReviewerPresentation(project, task string, existing *runtimeobs.Ledger)
 			// Historical Worker purposes require an explicit actual review record;
 			// their stored role/name remains unchanged.
 			legacy := p.Reviewer.Role == "worker" && p.Review != nil && p.Review.AttemptID == a.AttemptID
-			if !formal && !legacy {
+			workerPurpose := p.Reviewer.Role == "worker" && rolepolicy.WorkerPath(a.AgentPath)
+			if !formal && !legacy && !workerPurpose {
 				continue
 			}
 			v := activity.ReviewerPresentationEntry{AttemptID: a.AttemptID, NativeID: a.SessionID, TaskID: id, Purpose: "review", PurposeVerified: true, Necessity: "unknown", ActualState: "unknown", ContextStatus: "unknown", SourceDelta: []json.RawMessage{}, Errors: []string{}}
+			// Current exact assignment and source linkage are independent from the
+			// legacy policy-purpose display. No old Activity is upgraded by keywords.
+			assignmentID := a.BindingEvidence["assignment_id"]
+			matches := 0
+			for _, assigned := range assignments {
+				if assigned.AssignmentID == assignmentID && assigned.TaskID == id && assigned.AgentPath == a.AgentPath {
+					matches++
+				}
+			}
+			if assignmentErr == nil && assignmentID != "" && matches == 1 && rolepolicy.ValidateRequirementScope(p) == nil {
+				contract := contractscope.Fingerprint(records[0].RawMarkdown)
+				ac, acErr := handoff.AcceptanceFingerprint(records[0].RawMarkdown)
+				if contract != "" && acErr == nil {
+					v.AssignmentID = assignmentID
+					v.ContractSHA256 = contract
+					v.AcceptanceSHA256 = ac
+					copy := source
+					v.Source = &copy
+					v.PolicySHA256 = rolepolicy.PolicyDigest(p)
+					v.LinkageVerified = true
+				}
+			}
+			if workerPurpose && !legacy && !v.LinkageVerified {
+				continue
+			}
 			if p.ReviewRequirement != nil {
 				if d, e := p.ReviewRequirement.Decide(); e == nil {
 					v.Necessity = string(d.Level)

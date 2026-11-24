@@ -246,3 +246,97 @@ func TestA90ReviewDecisionCLIHasNoDispatchOrToolClaim(t *testing.T) {
 		t.Fatal(code, stderr.String())
 	}
 }
+
+func TestA99NamedWorkerReviewPurposeUsesActualCLIAndPinsSource(t *testing.T) {
+	project, source, p := a90RepairReviewerFixture(t, true)
+	p.Reviewer = rolepolicy.Owner{Role: "worker", AgentPath: "/root/controller/pikachyu", NativeID: "worker-review-native"}
+	raw, _ := json.Marshal(p)
+	body := filepath.Join(t.TempDir(), "worker-review-policy.md")
+	if err := os.WriteFile(body, []byte(rolepolicy.Fence+string(raw)+"\n```"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if code, _, msg := decisionInvoke(t, append(decisionRecordArgs(project, "worker-purpose-policy", "supplement"), "--body-file", body, "--user-confirmed")...); code != 0 {
+		t.Fatal(code, msg)
+	}
+	if code, _, msg := decisionInvoke(t, append(decisionRecordArgs(project, "worker-purpose-consent", "execution_approved"), "--user-confirmed")...); code != 0 {
+		t.Fatal(code, msg)
+	}
+	now := time.Now().UTC()
+	if _, err := runtimeobs.RecordAssignment(project, "worker-review-assignment", "B-1", p.Reviewer.AgentPath, now); err != nil {
+		t.Fatal(err)
+	}
+	if err := runtimeobs.AppendExecutionEvent(project, runtimeobs.ExecutionEvent{EventID: "worker-review-hook", EventKind: "state", AttemptID: "worker-review-run", Provider: "codex", SessionID: p.Reviewer.NativeID, RuntimeAgentID: p.Reviewer.NativeID, State: runtimeobs.StateRunning, EvidenceSource: runtimeobs.EvidenceHook, ObservationQuality: runtimeobs.QualityObserved, ObservedAt: now.Format(time.RFC3339Nano)}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := runtimeobs.BindAttempt(project, "worker-review-run", "B-1", p.Reviewer.AgentPath, "dispatch", "", map[string]string{"assignment_id": "worker-review-assignment"}, now); err != nil {
+		t.Fatal(err)
+	}
+	base := []string{"B-1", "--project", project, "--role", "worker", "--agent", p.Reviewer.NativeID, "--attempt", "worker-review-run", "--assignment", "worker-review-assignment", "--type", "other", "--explanation", "explicit task review", "--evidence", "isolated actual review purpose", "--json"}
+	call := func(action, id string, trace bool) (int, map[string]any, string) {
+		args := append([]string{action}, base...)
+		args = append(args, "--event-id", id)
+		if trace {
+			args = append(args, "--workflow-purpose", "review")
+		}
+		return invokeActivity(t, args...)
+	}
+	if code, _, msg := call("start", "ordinary-other", false); code != 0 {
+		t.Fatal(code, msg)
+	}
+	ordinary, _ := (activity.Ledger{Project: project}).Read("ordinary-other")
+	if ordinary.TaskRevision != "" {
+		t.Fatal("other inferred review purpose", ordinary)
+	}
+	if code, _, msg := call("stop", "ordinary-stop", false); code != 0 {
+		t.Fatal(code, msg)
+	}
+	if code, _, msg := call("start", "explicit-review", true); code != 0 {
+		t.Fatal(code, msg)
+	}
+	event, _ := (activity.Ledger{Project: project}).Read("explicit-review")
+	snapshot, _ := rolepolicy.Snapshot(source, p.Scope)
+	if event.Role != activity.RoleWorker || event.Type != activity.Other || event.TaskRevision != activity.ReviewSourceRevision(snapshot) || event.ContractSHA256 == "" || event.Provider != "codex" || event.SessionID != p.Reviewer.NativeID {
+		t.Fatal("review evidence missing or role changed", event)
+	}
+	for _, change := range []func(*activity.Event){func(e *activity.Event) { e.TaskID = "OTHER" }, func(e *activity.Event) { e.AgentID = "foreign" }, func(e *activity.Event) { e.RuntimeAttemptID = "foreign" }, func(e *activity.Event) { e.Provider = "claude" }, func(e *activity.Event) { e.SessionID = "foreign" }} {
+		bad := event
+		change(&bad)
+		if _, err := activityReviewTrace(project, bad); err == nil {
+			t.Fatal("foreign review identity accepted", bad)
+		}
+	}
+	// This is the exact read-only join also rerun under the publication lock.
+	checked, err := activityReviewTrace(project, event)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(source, "source.go"), []byte("package changed\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	fresh, err := activityReviewTrace(project, event)
+	if err == nil && fresh.TaskRevision == checked.TaskRevision {
+		t.Fatal("source-change-after-check not detected")
+	}
+	if code, _, _ := call("stop", "changed-source-stop", true); code == 0 {
+		t.Fatal("old review accepted changed source")
+	}
+	if _, err := (activity.Ledger{Project: project}).Read("changed-source-stop"); !os.IsNotExist(err) {
+		t.Fatal("source failure published Activity", err)
+	}
+	if err := os.WriteFile(filepath.Join(source, "source.go"), []byte("package candidate\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	implementation := append([]string{"switch"}, base...)
+	for i := range implementation {
+		if implementation[i] == "--type" {
+			implementation[i+1] = "implementation"
+		}
+	}
+	implementation = append(implementation, "--event-id", "actual-prior-implementation")
+	if code, _, msg := invokeActivity(t, implementation...); code != 0 {
+		t.Fatal("original Worker attribution changed", code, msg)
+	}
+	if code, _, msg := call("switch", "self-review-trace", true); code == 0 || !strings.Contains(msg, "independent review") {
+		t.Fatal("actual prior implementation became independent self-review", code, msg)
+	}
+}

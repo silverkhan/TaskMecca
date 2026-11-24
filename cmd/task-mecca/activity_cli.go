@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/silverkhan/TaskMecca/internal/activity"
+	"github.com/silverkhan/TaskMecca/internal/contractscope"
 	"github.com/silverkhan/TaskMecca/internal/handoff"
 	"github.com/silverkhan/TaskMecca/internal/handoffjournal"
 	"github.com/silverkhan/TaskMecca/internal/rolepolicy"
@@ -50,6 +51,7 @@ func runActivityCLI(args []string, out, errOut io.Writer) int {
 	language := fs.String("language", "", "explicit human explanation language: ko|en; not browser storage")
 	fallbackLanguage := fs.String("fallback-language", "", "explicit conversation language fallback: ko|en")
 	proposed := fs.String("proposed-type", "", "suggested type for other activity")
+	workflowPurpose := fs.String("workflow-purpose", "", "explicit review trace purpose; never changes role or permission")
 	round := fs.Int("round", -1, "default auto from observed review evidence; explicit 0 for initial work")
 	eventName := fs.String("event", "", "decision or work phase event for suggest")
 	reviewOutcome := fs.String("review-outcome", "", "accepted|rejected|needs_changes; Controller review stop only")
@@ -358,6 +360,35 @@ func runActivityCLI(args []string, out, errOut io.Writer) int {
 			e.RunEvidence = &copyRun
 		}
 	}
+	if *workflowPurpose != "" && *workflowPurpose != "review" {
+		fmt.Fprintln(errOut, "--workflow-purpose supports review trace only")
+		return 2
+	}
+	reviewTrace := e.Role == activity.RoleReviewer || *workflowPurpose == "review"
+	if reviewTrace && e.Action != activity.Correct {
+		proof, err := activityReviewTrace(root, e)
+		if err != nil {
+			fmt.Fprintln(errOut, err)
+			return 1
+		}
+		// Existing TaskRevision holds the exact reviewed-source digest for these
+		// records. This metadata alone grants no role, execution or acceptance.
+		e.ContractSHA256 = proof.ContractSHA256
+		e.TaskRevision = proof.TaskRevision
+		e.Provider = proof.Provider
+		e.SessionID = proof.SessionID
+		priorRows, err := store.List(e.TaskID)
+		if err != nil {
+			fmt.Fprintln(errOut, err)
+			return 1
+		}
+		for _, prior := range priorRows {
+			if prior.RuntimeAttemptID == e.RuntimeAttemptID && prior.AssignmentID == e.AssignmentID && prior.TaskRevision != "" && (prior.TaskRevision != e.TaskRevision || prior.ContractSHA256 != e.ContractSHA256) {
+				fmt.Fprintln(errOut, "review source/contract changed; new verified review assignment required")
+				return 1
+			}
+		}
+	}
 	if err := e.Validate(); err != nil {
 		fmt.Fprintln(errOut, err)
 		return 2
@@ -366,6 +397,16 @@ func runActivityCLI(args []string, out, errOut io.Writer) int {
 	// A terminal/runtime rebinding event cannot land between verification and
 	// Activity publication through other canonical project writers.
 	verifyAttribution := func() error {
+		if reviewTrace {
+			fresh, err := activityReviewTrace(root, e)
+			if err != nil {
+				return err
+			}
+			if fresh.TaskRevision != e.TaskRevision || fresh.ContractSHA256 != e.ContractSHA256 || fresh.Provider != e.Provider || fresh.SessionID != e.SessionID {
+				return fmt.Errorf("review source/identity changed before publication")
+			}
+		}
+
 		runtimeLedger, err := runtimeobs.BuildLedger(root, 10, time.Now().UTC())
 		if err != nil {
 			return fmt.Errorf("runtime evidence unavailable: %w", err)
@@ -540,4 +581,36 @@ func activityPhaseExplanation(phase, kind, language string) string {
 		return ""
 	} // Unknown/other still needs authored explanation, no keyword guessing.
 	return text[index]
+}
+
+// activityReviewTrace is a read-only evidence join. Existing role attribution,
+// readonly Reviewer authorization and the project publication lock remain live.
+func activityReviewTrace(project string, e activity.Event) (activity.Event, error) {
+	d, err := projectContractDecision(project, e.TaskID)
+	if err != nil {
+		return e, err
+	}
+	if !d.ExecutionAuthorized || d.RolePolicy == nil || d.RolePolicyError != "" {
+		return e, fmt.Errorf("review purpose requires existing execution authorization and exact policy")
+	}
+	ledger, err := runtimeobs.BuildLedger(project, 0, time.Now().UTC())
+	if err != nil {
+		return e, err
+	}
+	assignments, err := runtimeobs.ListAssignments(project)
+	if err != nil {
+		return e, err
+	}
+	actual, source, err := activity.VerifyReviewPurpose(project, d.RolePolicy, ledger.Attempts, assignments, e)
+	if err != nil {
+		return e, err
+	}
+	e.Provider = actual.Provider
+	e.SessionID = actual.SessionID
+	e.ContractSHA256 = contractscope.Fingerprint(d.BaseMarkdown)
+	e.TaskRevision = activity.ReviewSourceRevision(source)
+	if e.ContractSHA256 == "" {
+		return e, fmt.Errorf("review contract fingerprint unavailable")
+	}
+	return e, nil
 }

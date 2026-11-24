@@ -55,15 +55,17 @@ type Measurement struct {
 	CoveragePercent    *float64       `json:"coverage_percent,omitempty"`
 }
 type WorkflowCurrent struct {
-	Phase           string `json:"phase"`
-	Basis           string `json:"basis"`
-	ProcessingRole  string `json:"processing_role,omitempty"`
-	ProcessingAgent string `json:"processing_agent,omitempty"`
-	AssignedWorker  string `json:"assigned_worker,omitempty"`
-	NextAction      string `json:"next_action"`
-	Round           *int   `json:"round,omitempty"`
-	RoundStatus     string `json:"round_status"`
-	HandoffID       string `json:"handoff_id,omitempty"`
+	IndependentReviews []WorkflowReviewActor `json:"independent_reviews,omitempty"`
+	NextOwner          string                `json:"next_owner,omitempty"`
+	Phase              string                `json:"phase"`
+	Basis              string                `json:"basis"`
+	ProcessingRole     string                `json:"processing_role,omitempty"`
+	ProcessingAgent    string                `json:"processing_agent,omitempty"`
+	AssignedWorker     string                `json:"assigned_worker,omitempty"`
+	NextAction         string                `json:"next_action"`
+	Round              *int                  `json:"round,omitempty"`
+	RoundStatus        string                `json:"round_status"`
+	HandoffID          string                `json:"handoff_id,omitempty"`
 }
 type WorkRound struct {
 	Number              int       `json:"number"`
@@ -87,19 +89,20 @@ type WorkflowNameEvidence struct {
 }
 
 type WorkflowRow struct {
-	SessionIdentity        *WorkflowSessionIdentity `json:"session_identity,omitempty"`
-	RoleFacts              []WorkflowRoleFact       `json:"role_facts"`
-	Gaps                   []WorkflowGap            `json:"gaps"`
-	NameEvidence           []WorkflowNameEvidence   `json:"name_evidence,omitempty"`
-	DisplayName            string                   `json:"display_name,omitempty"`
-	DisplayNameSource      string                   `json:"display_name_source,omitempty"`
-	ObservedActivityMillis *int64                   `json:"observed_activity_ms,omitempty"`
-	ID                     string                   `json:"id"`
-	Role                   string                   `json:"role"`
-	AgentID                string                   `json:"agent_id"`
-	Round                  *int                     `json:"round,omitempty"`
-	RoundStatus            string                   `json:"round_status"`
-	Intervals              []WorkflowInterval       `json:"intervals"`
+	SessionDisplay         *ReviewerPresentationEntry `json:"session_display,omitempty"`
+	SessionIdentity        *WorkflowSessionIdentity   `json:"session_identity,omitempty"`
+	RoleFacts              []WorkflowRoleFact         `json:"role_facts"`
+	Gaps                   []WorkflowGap              `json:"gaps"`
+	NameEvidence           []WorkflowNameEvidence     `json:"name_evidence,omitempty"`
+	DisplayName            string                     `json:"display_name,omitempty"`
+	DisplayNameSource      string                     `json:"display_name_source,omitempty"`
+	ObservedActivityMillis *int64                     `json:"observed_activity_ms,omitempty"`
+	ID                     string                     `json:"id"`
+	Role                   string                     `json:"role"`
+	AgentID                string                     `json:"agent_id"`
+	Round                  *int                       `json:"round,omitempty"`
+	RoundStatus            string                     `json:"round_status"`
+	Intervals              []WorkflowInterval         `json:"intervals"`
 }
 type WorkflowTerminalEvidence struct {
 	ObservedAt time.Time                 `json:"observed_at"`
@@ -107,6 +110,12 @@ type WorkflowTerminalEvidence struct {
 }
 
 type WorkflowInterval struct {
+	Purpose             string                    `json:"purpose,omitempty"`
+	PurposeVerified     bool                      `json:"purpose_verified,omitempty"`
+	ContractSHA256      string                    `json:"contract_sha256,omitempty"`
+	TaskRevision        string                    `json:"task_revision,omitempty"`
+	Provider            string                    `json:"provider,omitempty"`
+	SessionID           string                    `json:"session_id,omitempty"`
 	RuntimeTerminal     *WorkflowTerminalEvidence `json:"runtime_terminal,omitempty"`
 	EndEvidence         string                    `json:"end_evidence,omitempty"`
 	EndEvidenceSource   runtimeobs.EvidenceSource `json:"end_evidence_source,omitempty"`
@@ -388,6 +397,10 @@ func SummarizeWorkflow(in WorkflowInput) Workflow {
 			v.AssignmentID = e.AssignmentID
 			v.HandoffID = e.HandoffID
 			v.Evidence = e.Evidence
+			v.ContractSHA256 = e.ContractSHA256
+			v.TaskRevision = e.TaskRevision
+			v.Provider = e.Provider
+			v.SessionID = e.SessionID
 		}
 
 		if s.RunEvidence != nil {
@@ -424,6 +437,10 @@ func SummarizeWorkflow(in WorkflowInput) Workflow {
 			latestOpen = &copy
 		}
 		interval := WorkflowInterval{ID: latest.EventID, Kind: "activity_open", Type: string(latest.Type), Start: latest.OccurredAt, AttemptID: latest.RuntimeAttemptID, AssignmentID: latest.AssignmentID, HandoffID: latest.HandoffID, Evidence: latest.Evidence, Explanation: latest.Explanation, ExplanationLanguage: latest.ExplanationLanguage}
+		interval.ContractSHA256 = latest.ContractSHA256
+		interval.TaskRevision = latest.TaskRevision
+		interval.Provider = latest.Provider
+		interval.SessionID = latest.SessionID
 		if end, source, ok := terminalFor(latest.RuntimeAttemptID, "", latest.AgentID, latest.AssignmentID, latest.OccurredAt); ok {
 			// Runtime end bounds the unknown interval; it is not a measured phase end.
 			interval.Kind, interval.End, interval.EndEvidence, interval.EndEvidenceSource = "activity_unreported", &end, "native_terminal", source

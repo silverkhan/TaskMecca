@@ -191,3 +191,60 @@ func TestA91CurrentCLMIdentityMatrix(t *testing.T) {
 		}
 	}
 }
+
+func TestA99ActualAssignedWorkerPurposeSourceAndCurrentProjection(t *testing.T) {
+	project, source := t.TempDir(), t.TempDir()
+	if raw, err := exec.Command("git", "init", "-q", source).CombinedOutput(); err != nil {
+		t.Fatal(err, string(raw))
+	}
+	os.WriteFile(filepath.Join(source, "product.go"), []byte("package product\n"), 0600)
+	p := rolepolicy.Policy{SchemaVersion: 1, Method: "worker", Workspace: source, Scope: []string{"product.go"}, Implementation: rolepolicy.Owner{Role: "worker", AgentPath: "/root/controller/impl", NativeID: "impl-native"}, Operational: rolepolicy.Owner{Role: "controller", AgentPath: "/root/controller"}, Reviewer: rolepolicy.Owner{Role: "worker", AgentPath: "/root/controller/pikachyu", NativeID: "review-native"}, ReviewRequirement: &rolepolicy.ReviewRequirement{Scope: []string{"product.go"}, Risk: rolepolicy.ReviewRisk{Impact: "high", Complexity: "complex", Reversibility: "easy", Verifiability: "established", ExplicitRequired: true, TrustBoundary: true}, Rationale: "actual independent review"}}
+	rawPolicy, _ := json.Marshal(p)
+	raw := "# A-1 fixture\n\n## 작업 정의\n### 목표\n정확한 검수\n### 수용 기준\n- [ ] 원문 보존\n\n### 역할 정책\n" + rolepolicy.Fence + string(rawPolicy) + "\n```\n"
+	folder := filepath.Join(project, "_task_mecca", "data", "backlog")
+	os.MkdirAll(folder, 0700)
+	os.WriteFile(filepath.Join(folder, "000001.A-1.fixture.doing.md"), []byte(raw), 0600)
+	now := time.Now().UTC().Add(-time.Minute)
+	for _, actor := range []struct{ id, native, path, assignment string }{{"impl", "impl-native", p.Implementation.AgentPath, "impl-assignment"}, {"review", "review-native", p.Reviewer.AgentPath, "review-assignment"}} {
+		runtimeobs.RecordAssignment(project, actor.assignment, "A-1", actor.path, now)
+		runtimeobs.AppendExecutionEvent(project, runtimeobs.ExecutionEvent{EventID: actor.id, EventKind: "state", AttemptID: actor.id, Provider: "codex", SessionID: actor.native, RuntimeAgentID: actor.native, State: runtimeobs.StateRunning, EvidenceSource: runtimeobs.EvidenceHook, ObservationQuality: runtimeobs.QualityObserved, ObservedAt: now.Format(time.RFC3339Nano)})
+		if _, err := runtimeobs.BindAttempt(project, actor.id, "A-1", actor.path, "dispatch", "", map[string]string{"assignment_id": actor.assignment}, now); err != nil {
+			t.Fatal(err)
+		}
+	}
+	snapshot, _ := rolepolicy.Snapshot(source, p.Scope)
+	e := activity.Event{SchemaVersion: 1, EventID: "explicit-review", TaskID: "A-1", Action: activity.Start, Role: activity.RoleWorker, AgentID: "review-native", RuntimeAttemptID: "review", AssignmentID: "review-assignment", Provider: "codex", SessionID: "review-native", ContractSHA256: contractscope.Fingerprint(raw), TaskRevision: activity.ReviewSourceRevision(snapshot), Type: activity.Other, Explanation: "explicit review", Evidence: "fixture source-linked review", Confidence: activity.Inferred, OccurredAt: now.Add(time.Second), RecordedAt: now.Add(time.Second)}
+	if _, err := (activity.Ledger{Project: project}).Apply(e); err != nil {
+		t.Fatal(err)
+	}
+	got := readReviewerPresentation(project, "A-1", nil)
+	v := got.ByAttempt["review"]
+	if !v.LinkageVerified || !v.PurposeVerified || v.StoredRole != "worker" || v.ActualState != "reviewing" || v.AssignmentID != "review-assignment" {
+		t.Fatalf("actual Worker purpose not projected %+v", v)
+	}
+	model := readActivityWorkflow(project, "A-1", []activity.Event{e}, activity.Summarize("A-1", []activity.Event{e}), nil)
+	found := false
+	for _, row := range model.Rows {
+		for _, interval := range row.Intervals {
+			if interval.ID == e.EventID {
+				found = true
+				if interval.Type != "other" || !interval.PurposeVerified || interval.Purpose != "review" || interval.TaskRevision != e.TaskRevision {
+					t.Fatal("individual purpose missing or raw type changed", interval)
+				}
+			}
+		}
+	}
+	if !found {
+		t.Fatal("source Activity absent from actual workflow API")
+	}
+	w := activity.Workflow{TaskID: "A-1", Current: activity.WorkflowCurrent{Phase: "implementation", NextAction: "implement_and_verify"}, Snapshot: map[string]any{}, Rows: []activity.WorkflowRow{}}
+	projected := attachReviewerPresentation(project, "A-1", w)
+	if projected.Current.Phase != "independent_review" || projected.Current.NextAction != "await_independent_review" {
+		t.Fatal("review regressed into implementation", projected.Current)
+	}
+	os.WriteFile(filepath.Join(source, "product.go"), []byte("package changed\n"), 0600)
+	changed := readReviewerPresentation(project, "A-1", nil).ByAttempt["review"]
+	if changed.ActualState == "reviewing" || changed.ActualState == "accepted" {
+		t.Fatal("old source review reused", changed)
+	}
+}

@@ -2,6 +2,7 @@ package activity
 
 import (
 	"encoding/json"
+	"github.com/silverkhan/TaskMecca/internal/orchestration"
 	"github.com/silverkhan/TaskMecca/internal/rolepolicy"
 	"github.com/silverkhan/TaskMecca/internal/runtimeobs"
 	"os"
@@ -11,6 +12,84 @@ import (
 	"testing"
 	"time"
 )
+
+func TestA99OfficialWorkerMetadataGenerationRequiresNativeAndManagedContract(t *testing.T) {
+	p := t.TempDir()
+	now := time.Now().UTC().Add(-time.Minute)
+	group := orchestration.Group{SchemaVersion: 1, GroupID: "D1123_01", DisplayPrefix: "D1123_01_", Provider: "codex", RootSessionID: "root", Mode: orchestration.ModeB, CreatedAt: now.Format(time.RFC3339Nano), UpdatedAt: now.Format(time.RFC3339Nano)}
+	dir := filepath.Join(p, "_task_mecca", "data", "orchestration", "groups")
+	os.MkdirAll(dir, 0700)
+	raw, _ := json.Marshal(group)
+	os.WriteFile(filepath.Join(dir, group.GroupID+".json"), raw, 0600)
+	a := a97Attempt("ordinal1", "native", "/root/controller/isanghaessi")
+	a.NativeReceipt = &runtimeobs.T3Receipt{SessionID: a.SessionID, Provider: a.Provider, ThreadID: "thread", CanonicalProject: p}
+	o := runtimeobs.RootNameObservation{Version: 1, Name: "D1123_01_Worker_isanghaessi_G1", NativeName: "D1123_01_Worker_isanghaessi_G1", Source: "t3_title", Status: "verified", HostStatus: "verified", HostProjectID: "project", T3ThreadID: "thread", IdentityVerified: true, CheckedAt: now.Format(time.RFC3339Nano)}
+	for _, tc := range []struct {
+		name   string
+		change func(*runtimeobs.RootNameObservation, *runtimeobs.Attempt)
+		want   bool
+	}{
+		{"verified", func(*runtimeobs.RootNameObservation, *runtimeobs.Attempt) {}, true},
+		{"hostOnly", func(o *runtimeobs.RootNameObservation, a *runtimeobs.Attempt) { o.NativeName = "" }, false},
+		{"nativeHostConflict", func(o *runtimeobs.RootNameObservation, a *runtimeobs.Attempt) {
+			o.NativeName = "D1123_01_Worker_other_G9"
+		}, false},
+		{"missingGroup", func(o *runtimeobs.RootNameObservation, a *runtimeobs.Attempt) {
+			o.Name = "D1123_02_Worker_isanghaessi_G1"
+			o.NativeName = o.Name
+		}, false},
+		{"roleConflict", func(o *runtimeobs.RootNameObservation, a *runtimeobs.Attempt) {
+			o.Name = "D1123_01_Reviewer_isanghaessi_G1"
+			o.NativeName = o.Name
+		}, false},
+		{"pathConflict", func(o *runtimeobs.RootNameObservation, a *runtimeobs.Attempt) { a.AgentPath = "/root/controller/other" }, false},
+		{"providerConflict", func(o *runtimeobs.RootNameObservation, a *runtimeobs.Attempt) { a.Provider = "claude" }, false},
+		{"identityMissing", func(o *runtimeobs.RootNameObservation, a *runtimeobs.Attempt) { o.IdentityVerified = false }, false},
+		{"projectProofMissing", func(o *runtimeobs.RootNameObservation, a *runtimeobs.Attempt) { o.HostProjectID = "" }, false},
+		{"foreignCanonicalReceipt", func(o *runtimeobs.RootNameObservation, a *runtimeobs.Attempt) {
+			copy := *a.NativeReceipt
+			copy.CanonicalProject = "/foreign"
+			a.NativeReceipt = &copy
+		}, false},
+		{"legacyReceiptPairedWithExactEnrichedProject", func(o *runtimeobs.RootNameObservation, a *runtimeobs.Attempt) {
+			copy := *a.NativeReceipt
+			copy.CanonicalProject = ""
+			a.NativeReceipt = &copy
+		}, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			copy, actor := o, a
+			tc.change(&copy, &actor)
+			g := verifiedDisplayGeneration(p, actor, copy)
+			if (g != nil) != tc.want {
+				t.Fatal("generation inferred without exact evidence", g, copy)
+			}
+			if g != nil && *g != 1 {
+				t.Fatal("generation changed", g)
+			}
+		})
+	}
+	for _, ordinal := range []string{"ordinal1", "ordinal4"} {
+		actor := a
+		actor.AttemptID = ordinal
+		g := verifiedDisplayGeneration(p, actor, o)
+		if g == nil || *g != 1 {
+			t.Fatal("resume ordinal changed generation")
+		}
+	}
+	journal := runtimeobs.ExecutionRawDir(p)
+	os.MkdirAll(journal, 0700)
+	metadata, _ := json.Marshal(runtimeobs.ExecutionEvent{EventKind: "session_metadata", Provider: a.Provider, SessionID: a.SessionID, ObservedAt: o.CheckedAt, RootName: &o})
+	os.WriteFile(filepath.Join(journal, "metadata.jsonl"), append(metadata, '\n'), 0600)
+	resumed := a
+	resumed.AttemptID = "ordinal4"
+	projection := NewReviewerPresentation(p, "T", []runtimeobs.Attempt{a, resumed}, nil, nil, nil)
+	for _, v := range projection.ByAttempt {
+		if !v.NameVerified || v.NameObservedAt != o.CheckedAt || v.SessionGeneration == nil || *v.SessionGeneration != 1 || v.GenerationEvidence != "managed_contract_and_exact_native" || v.PurposeVerified || v.ContextSupport != "unsupported" {
+			t.Fatal("actual persisted metadata lost or became review/usage authority", v)
+		}
+	}
+}
 
 func TestReviewerUnavailableJournalBlocksOnlyOlderEvidence(t *testing.T) {
 	for _, barrier := range []string{"none", "broken-symlink", "symlink-loop", "directory"} {

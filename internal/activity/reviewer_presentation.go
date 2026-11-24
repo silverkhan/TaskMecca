@@ -5,10 +5,13 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
+	"github.com/silverkhan/TaskMecca/internal/orchestration"
 	"github.com/silverkhan/TaskMecca/internal/rolepolicy"
 	"github.com/silverkhan/TaskMecca/internal/runtimeobs"
 )
@@ -26,27 +29,39 @@ type ReviewerTaskPresentation struct {
 	Reason      string `json:"reason"`
 }
 type ReviewerPresentationEntry struct {
-	ActorName         string            `json:"actor_name"`
-	ActorNameSource   string            `json:"actor_name_source"`
-	AttemptID         string            `json:"attempt_id"`
-	NativeID          string            `json:"native_id"`
-	TaskID            string            `json:"task_id"`
-	OfficialName      string            `json:"official_name"`
-	NameVerified      bool              `json:"name_verified"`
-	NameSource        string            `json:"name_source"`
-	NameObservedAt    string            `json:"name_observed_at"`
-	Purpose           string            `json:"purpose"`
-	PurposeVerified   bool              `json:"purpose_verified"`
-	Necessity         string            `json:"necessity"`
-	ActualState       string            `json:"actual_state"`
-	ChainID           string            `json:"chain_id"`
-	ReviewRound       *int              `json:"review_round"`
-	SessionGeneration *int              `json:"session_generation"`
-	ContextStatus     string            `json:"context_status"`
-	ContinuityRef     string            `json:"continuity_ref"`
-	ContextRef        string            `json:"context_ref"`
-	SourceDelta       []json.RawMessage `json:"source_delta"`
-	Errors            []string          `json:"errors"`
+	Provider           string                          `json:"provider,omitempty"`
+	GenerationEvidence string                          `json:"generation_evidence,omitempty"`
+	StartedAt          string                          `json:"started_at,omitempty"`
+	LinkageVerified    bool                            `json:"linkage_verified,omitempty"`
+	StoredRole         string                          `json:"stored_role,omitempty"`
+	AssignmentID       string                          `json:"assignment_id,omitempty"`
+	ContractSHA256     string                          `json:"contract_sha256,omitempty"`
+	AcceptanceSHA256   string                          `json:"acceptance_sha256,omitempty"`
+	Source             *rolepolicy.Source              `json:"source,omitempty"`
+	PolicySHA256       string                          `json:"policy_sha256,omitempty"`
+	ContextSupport     string                          `json:"context_support,omitempty"`
+	NameEvidence       *runtimeobs.RootNameObservation `json:"name_evidence,omitempty"`
+	ActorName          string                          `json:"actor_name"`
+	ActorNameSource    string                          `json:"actor_name_source"`
+	AttemptID          string                          `json:"attempt_id"`
+	NativeID           string                          `json:"native_id"`
+	TaskID             string                          `json:"task_id"`
+	OfficialName       string                          `json:"official_name"`
+	NameVerified       bool                            `json:"name_verified"`
+	NameSource         string                          `json:"name_source"`
+	NameObservedAt     string                          `json:"name_observed_at"`
+	Purpose            string                          `json:"purpose"`
+	PurposeVerified    bool                            `json:"purpose_verified"`
+	Necessity          string                          `json:"necessity"`
+	ActualState        string                          `json:"actual_state"`
+	ChainID            string                          `json:"chain_id"`
+	ReviewRound        *int                            `json:"review_round"`
+	SessionGeneration  *int                            `json:"session_generation"`
+	ContextStatus      string                          `json:"context_status"`
+	ContinuityRef      string                          `json:"continuity_ref"`
+	ContextRef         string                          `json:"context_ref"`
+	SourceDelta        []json.RawMessage               `json:"source_delta"`
+	Errors             []string                        `json:"errors"`
 }
 
 // PersistedNameEvidence reads a bounded recent suffix of persisted metadata.
@@ -240,6 +255,18 @@ func NewReviewerPresentation(project, task string, attempts []runtimeobs.Attempt
 			v = supplied
 		}
 		v.ActorName = ""
+		v.Provider = a.Provider
+		v.StartedAt = a.StartedAt
+		if a.NativeReceipt != nil && a.NativeReceipt.StartedAt != "" {
+			v.StartedAt = a.NativeReceipt.StartedAt
+		}
+		v.StoredRole = workflowActorRole(a.AgentPath)
+		v.ContextSupport = "not_collected"
+		if rolepolicy.WorkerPath(a.AgentPath) {
+			v.ContextSupport = "unsupported"
+		} else if rolepolicy.ReviewerPath(a.AgentPath) && v.ContextStatus != "" && v.ContextStatus != "unknown" {
+			v.ContextSupport = "supported"
+		}
 		v.ActorNameSource = ""
 		if a.RuntimeAgentID != "" && a.Provider != "" && (rolepolicy.WorkerPath(a.AgentPath) || rolepolicy.ReviewerPath(a.AgentPath)) {
 			v.ActorName = filepath.Base(a.AgentPath)
@@ -249,21 +276,49 @@ func NewReviewerPresentation(project, task string, attempts []runtimeobs.Attempt
 		v.NameVerified = false
 		v.NameSource = ""
 		v.NameObservedAt = ""
+		v.NameEvidence = nil
+		if v.SessionGeneration != nil {
+			v.GenerationEvidence = "verified_continuity_only"
+		}
 		if v.ActualState != "omitted" {
 			v.ActualState = "unknown"
 		}
 		o, ok := names[a.Provider+"\x00"+a.SessionID]
 		at, err := time.Parse(time.RFC3339Nano, o.CheckedAt)
-		if ok && o.Version == 1 && o.Status == "verified" && o.IdentityVerified && o.HostProjectID != "" && o.T3ThreadID != "" && o.HostStatus == "verified" && strings.TrimSpace(o.Name) != "" && (o.Source == "provider_name" || o.Source == "t3_title") && err == nil && !at.After(time.Now().UTC()) && a.NativeReceipt != nil && a.NativeReceipt.SessionID == a.SessionID && a.NativeReceipt.ThreadID == o.T3ThreadID {
+		if ok && o.Version == 1 && o.Status == "verified" && o.IdentityVerified && o.HostProjectID != "" && o.T3ThreadID != "" && o.HostStatus == "verified" && strings.TrimSpace(o.Name) != "" && (o.Source == "provider_name" || o.Source == "t3_title") && err == nil && !at.After(time.Now().UTC()) && a.NativeReceipt != nil && a.NativeReceipt.SessionID == a.SessionID && a.NativeReceipt.ThreadID == o.T3ThreadID && (a.NativeReceipt.Provider == "" || a.NativeReceipt.Provider == a.Provider) && (a.NativeReceipt.CanonicalProject == "" || a.NativeReceipt.CanonicalProject == project) {
 			v.OfficialName = o.Name
 			v.NameVerified = true
 			v.NameSource = o.Source
 			v.NameObservedAt = o.CheckedAt
+			copy := o
+			v.NameEvidence = &copy
+			if generation := verifiedDisplayGeneration(project, a, o); generation != nil {
+				v.SessionGeneration = generation
+				v.GenerationEvidence = "managed_contract_and_exact_native"
+			}
 		}
 		// Only actual review Activity changes actual_state; running is not review.
 		if v.PurposeVerified {
-			for _, e := range events {
-				if e.TaskID != a.TaskID || e.RuntimeAttemptID != a.AttemptID || e.AgentID != a.RuntimeAgentID || (e.Type != ControllerReview && e.Type != ControllerReReview) {
+			if v.LinkageVerified {
+				v.ActualState = "requested"
+			}
+			effective, _ := EffectiveEvents(events)
+			sort.SliceStable(effective, func(i, j int) bool { return effective[i].OccurredAt.Before(effective[j].OccurredAt) })
+			for _, e := range effective {
+				if e.TaskID != a.TaskID || e.RuntimeAttemptID != a.AttemptID || e.AgentID != a.RuntimeAgentID || (e.Type != ControllerReview && e.Type != ControllerReReview && !(v.LinkageVerified && e.Type != Implementation && e.TaskRevision != "")) || (v.AssignmentID != "" && e.AssignmentID != v.AssignmentID) {
+					continue
+				}
+				if v.Source != nil && (e.ContractSHA256 != v.ContractSHA256 || e.TaskRevision != ReviewSourceRevision(*v.Source)) {
+					v.Errors = append(v.Errors, "review Activity source/contract linkage missing or changed")
+					v.ActualState = "source_unverified"
+					continue
+				}
+				if v.LinkageVerified && (e.Provider != a.Provider || e.SessionID != a.SessionID) {
+					v.Errors = append(v.Errors, "review Activity native/provider mismatch")
+					v.ActualState = "identity_unverified"
+					continue
+				}
+				if v.LinkageVerified && (e.Role == RoleController || string(e.Role) != v.StoredRole) {
 					continue
 				}
 				switch e.Action {
@@ -279,10 +334,41 @@ func NewReviewerPresentation(project, task string, attempts []runtimeobs.Attempt
 			v.Errors = append(v.Errors, "terminal review has no observed result boundary")
 		}
 		out.ByAttempt[a.AttemptID] = v
-		if a.TaskID == task && v.PurposeVerified && (latestTaskAttempt == "" || a.StartedAt > latestTaskAttempt) {
-			latestTaskAttempt = a.StartedAt
+		if a.TaskID == task && v.PurposeVerified && (latestTaskAttempt == "" || v.StartedAt > latestTaskAttempt) {
+			latestTaskAttempt = v.StartedAt
 			out.Task.ActualState = v.ActualState
 		}
 	}
 	return out
+}
+
+var managedDisplayGeneration = regexp.MustCompile(`^(D[0-9]{4}_[0-9]{2,})_(Worker|Reviewer)_([A-Za-z][A-Za-z0-9_-]{0,39})_G([1-9][0-9]*)$`)
+
+func verifiedDisplayGeneration(project string, a runtimeobs.Attempt, o runtimeobs.RootNameObservation) *int {
+	// A host title alone is never a generation. Require exact persisted native
+	// metadata plus the canonical managed naming contract for the bound role.
+	if !o.IdentityVerified || o.HostProjectID == "" || o.T3ThreadID == "" || o.Status != "verified" || o.HostStatus != "verified" || o.NativeName == "" || o.Name != o.NativeName || a.NativeReceipt == nil || a.NativeReceipt.ThreadID != o.T3ThreadID || a.NativeReceipt.SessionID != a.SessionID || a.NativeReceipt.Provider != a.Provider || (a.NativeReceipt.CanonicalProject != "" && a.NativeReceipt.CanonicalProject != project) {
+		return nil
+	}
+	m := managedDisplayGeneration.FindStringSubmatch(o.NativeName)
+	if len(m) != 5 {
+		return nil
+	}
+	role := workflowActorRole(a.AgentPath)
+	if !strings.EqualFold(role, m[2]) || filepath.Base(a.AgentPath) != m[3] {
+		return nil
+	}
+	generation, err := strconv.Atoi(m[4])
+	if err != nil {
+		return nil
+	}
+	group, err := orchestration.FindGroupByID(project, m[1])
+	if err != nil || group.Provider != a.Provider {
+		return nil
+	}
+	expected, err := orchestration.SessionName(group, role, m[3], generation)
+	if err != nil || expected != o.NativeName {
+		return nil
+	}
+	return &generation
 }
