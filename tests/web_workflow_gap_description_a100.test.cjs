@@ -11,6 +11,18 @@ test('A100 actual renderer includes open, execution-only, operation and unreport
   const html=a.activityMetricsBody(p,'A100-FIXTURE');assert.equal((html.match(/data-workflow-interval=/g)||[]).length,2);assert.equal((html.match(/data-workflow-execution=/g)||[]).length,3);for(const kind of ['activity_open','operation_execution','execution_report','activity_unreported'])assert.match(html,new RegExp('wf-kind-'+kind));assert.match(html,language==='ko'?/상태 근거가 있는 시간/:/Time with state evidence/);assert.equal(JSON.stringify(p),before);
  }
 });
+test('A100 reported-only participation preserves incumbent Activity-only rendering and exact metrics',()=>{
+ const classic=require('./helpers/workflow_fixture.cjs');
+ for(const language of ['ko','en']){
+  const a=load(language),p=classic.payload(),r=p.workflow.rows[0];r.intervals[0]={...r.intervals[0],type:'targeted_test',id:'eleven-second-test',duration_ms:11000,end:new Date(Date.parse(r.intervals[0].start)+11000).toISOString(),lane:37};
+  const before=JSON.stringify(p.workflow),metric=JSON.stringify([r.observed_activity_ms,p.workflow.measurement]);
+  const baseline=a.activityMetricsBody(p,'FLOW-1');assert.equal((baseline.match(/data-workflow-interval=/g)||[]).length,19);assert.equal((baseline.match(/data-workflow-execution=/g)||[]).length,0);assert.doesNotMatch(baseline,/wf-kind-execution_report|data-workflow-row-expand=/);assert.match(baseline,/height:18px/);assert.equal(a.workflowActivityLayout(r,p.workflow.axis.end).lanes,1);assert.equal(JSON.stringify(p.workflow),before);
+  const execution={id:'duplicate-range',kind:'execution_report',type:'unclassified_execution',start:p.workflow.axis.start,end:p.workflow.axis.end,measured:false,lane:99,end_evidence:'reported_only'};r.intervals.push(execution);const reported=JSON.stringify(p.workflow);
+  const html=a.activityMetricsBody(p,'FLOW-1');assert.equal((html.match(/data-workflow-interval=/g)||[]).length,19);assert.equal((html.match(/data-workflow-execution=/g)||[]).length,1);assert.equal((html.match(/wf-kind-execution_report/g)||[]).length,1);assert.match(html,/data-workflow-state="execution"/);assert.equal((html.match(/data-workflow-row-expand=/g)||[]).length,1);assert.match(html,/concurrent intervals|개 동시 구간/);
+  assert.equal(a.workflowActivityLayout(r,p.workflow.axis.end,true).lanes,2);assert.equal(a.workflowActivityLayout(r,p.workflow.axis.end).lanes,1);assert.equal(JSON.stringify([r.observed_activity_ms,p.workflow.measurement]),metric);assert.equal(JSON.stringify(p.workflow),reported);
+  assert.match(html,/duplicate-range/);assert.match(html,/reported_only/);assert.match(html,language==='ko'?/미측정/:/unmeasured/i);assert.equal(r.intervals.at(-1),execution);
+ }
+});
 test('A100 own interval explanation, exact marker reason, origins and session summary stay distinct',()=>{
  for(const language of ['ko','en']){const a=load(language),ko=language==='ko',r=fixture.workflow.rows[0];
   const interval=a.workflowFloatingContent(r,r.intervals[0],null,ko);assert.match(interval,/실제 구현 설명 &lt;원문&gt;/);assert.match(interval,ko?/작성된 설명/:/Written explanation/);
