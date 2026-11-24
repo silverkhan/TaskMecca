@@ -91,7 +91,14 @@ type WorkflowNameEvidence struct {
 	Status    string `json:"status"`
 }
 
+// WorkflowRoundScope preserves the source work-round inside a session row.
+// A session identity never depends on a review/rework round.
+type WorkflowRoundScope struct {
+	Round  *int   `json:"round"`
+	Status string `json:"status"`
+}
 type WorkflowRow struct {
+	Rounds                 []WorkflowRoundScope       `json:"rounds,omitempty"`
 	Participation          *WorkflowParticipation     `json:"participation,omitempty"`
 	SessionDisplay         *ReviewerPresentationEntry `json:"session_display,omitempty"`
 	SessionIdentity        *WorkflowSessionIdentity   `json:"session_identity,omitempty"`
@@ -114,6 +121,8 @@ type WorkflowTerminalEvidence struct {
 }
 
 type WorkflowInterval struct {
+	Round               *int                      `json:"round"`
+	RoundStatus         string                    `json:"round_status,omitempty"`
 	ExplanationOrigin   string                    `json:"explanation_origin,omitempty"`
 	OperationID         string                    `json:"operation_id,omitempty"`
 	Scope               string                    `json:"scope,omitempty"`

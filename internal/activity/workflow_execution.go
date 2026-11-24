@@ -36,6 +36,8 @@ func ReadWorkflowExecutions(project, task string, now time.Time) ([]runtimeobs.A
 
 // Role facts are inspectable source points. They never contain a work duration.
 type WorkflowRoleFact struct {
+	Round             *int      `json:"round"`
+	RoundStatus       string    `json:"round_status,omitempty"`
 	ID                string    `json:"id"`
 	Kind              string    `json:"kind"`
 	At                time.Time `json:"at"`

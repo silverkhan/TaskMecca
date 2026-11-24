@@ -133,7 +133,7 @@ func TestA97ProjectionPreservesMeasurementAndRawEvidence(t *testing.T) {
 	}
 }
 
-func TestA97AllRolesKeepRoleAndRoundBoundaries(t *testing.T) {
+func TestA97AllRolesKeepRoleAndRoundEvidence(t *testing.T) {
 	for _, path := range []string{"/root/controller", "/root/registrar", "/root/controller/kkobugi", "/root/controller/reviewer/pikachyu", "/root/controller/sub-pairi"} {
 		t.Run(path, func(t *testing.T) {
 			a := a97Attempt("one", "native", path)
@@ -146,8 +146,10 @@ func TestA97AllRolesKeepRoleAndRoundBoundaries(t *testing.T) {
 			}
 			rows["wrong-role"] = &WorkflowRow{ID: "wrong-role", Role: "unknown", AgentID: path, Intervals: []WorkflowInterval{{ID: "wrong", AttemptID: a.AttemptID}}}
 			out := workflowSessionRows(WorkflowInput{TaskID: "T", ExecutionObservations: []runtimeobs.Attempt{a}, Handoffs: a97Claims(a)}, rows)
-			if len(out) != 3 {
-				t.Fatalf("role/round crossed %+v", out)
+			// Correct the new A97 expectation: verified sessions cross work-round
+			// boundaries, while role separation and source rounds remain mandatory.
+			if len(out) != 2 {
+				t.Fatalf("same session split by round or role merged %+v", out)
 			}
 			for _, r := range out {
 				if r.Role == "unknown" && r.SessionIdentity.Status != "unverified" {
@@ -155,6 +157,21 @@ func TestA97AllRolesKeepRoleAndRoundBoundaries(t *testing.T) {
 				}
 				if r.Role == role && r.SessionIdentity.NativeID != "native" {
 					t.Fatal("common role not resolved")
+				}
+				if r.Role == role {
+					if r.Round != nil || r.RoundStatus != "multiple" || len(r.Rounds) != 2 || len(r.SessionIdentity.Attempts) != 1 || len(r.SessionIdentity.Attempts[0].Rounds) != 2 {
+						t.Fatalf("session round provenance missing: %+v", r)
+					}
+					rounds := map[int]bool{}
+					for _, v := range r.Intervals {
+						if v.Round == nil {
+							t.Fatal("interval round omitted")
+						}
+						rounds[*v.Round] = true
+					}
+					if !rounds[0] || !rounds[1] {
+						t.Fatal("source rounds collapsed", rounds)
+					}
 				}
 			}
 		})
@@ -257,5 +274,44 @@ func TestA97TasklessReaderCandidateNeedsTaskClaim(t *testing.T) {
 	}
 	if !found {
 		t.Fatal("exact claim did not connect reader candidate", got)
+	}
+}
+
+func TestA97SessionRoundProvenanceWithResumedAttempts(t *testing.T) {
+	a := a97Attempt("one", "native", "/root/controller/kkobugi")
+	b := a97Attempt("two", "native", "/root/controller/kkobugi")
+	n0, n1 := 0, 1
+	rows := map[string]*WorkflowRow{
+		"first":   {ID: "first", Role: "worker", AgentID: a.AgentPath, Round: &n0, RoundStatus: "initial", Intervals: []WorkflowInterval{{ID: "activity-before", AttemptID: a.AttemptID, AssignmentID: "assignment-one"}}, RoleFacts: []WorkflowRoleFact{{ID: "fact-before", AttemptID: a.AttemptID, AssignmentID: "assignment-one"}}},
+		"resumed": {ID: "resumed", Role: "worker", AgentID: b.RuntimeAgentID, Round: &n1, RoundStatus: "rework", Intervals: []WorkflowInterval{{ID: "activity-after", AttemptID: b.AttemptID, AssignmentID: "assignment-two"}}, RoleFacts: []WorkflowRoleFact{{ID: "fact-after", AttemptID: b.AttemptID, AssignmentID: "assignment-two"}}},
+	}
+	before, _ := json.Marshal(rows)
+	out := workflowSessionRows(WorkflowInput{TaskID: "T", ExecutionObservations: []runtimeobs.Attempt{a, b}}, rows)
+	if len(out) != 1 {
+		t.Fatalf("resume split session %+v", out)
+	}
+	for _, r := range out {
+		if len(r.Intervals) != 2 || len(r.RoleFacts) != 2 || len(r.SessionIdentity.Attempts) != 2 || len(r.Rounds) != 2 || r.Round != nil {
+			t.Fatal("lost source provenance", r)
+		}
+		for _, v := range r.Intervals {
+			if v.Round == nil || (*v.Round == 0 && v.ID != "activity-before") || (*v.Round == 1 && v.ID != "activity-after") {
+				t.Fatal("wrong interval round", v)
+			}
+		}
+		for _, v := range r.RoleFacts {
+			if v.Round == nil || (*v.Round == 0 && v.ID != "fact-before") || (*v.Round == 1 && v.ID != "fact-after") {
+				t.Fatal("wrong fact round", v)
+			}
+		}
+		for _, v := range r.SessionIdentity.Attempts {
+			if len(v.Rounds) != 1 || v.Rounds[0].Round == nil || (*v.Rounds[0].Round == 0 && v.AttemptID != "one") || (*v.Rounds[0].Round == 1 && v.AttemptID != "two") {
+				t.Fatal("wrong attempt round", v)
+			}
+		}
+	}
+	after, _ := json.Marshal(rows)
+	if string(before) != string(after) {
+		t.Fatal("input source mutated")
 	}
 }

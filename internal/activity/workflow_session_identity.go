@@ -19,17 +19,18 @@ type WorkflowSessionIdentity struct {
 }
 
 type WorkflowSessionAttempt struct {
-	AttemptID      string   `json:"attempt_id"`
-	AssignmentID   string   `json:"assignment_id"`
-	AgentPath      string   `json:"agent_path"`
-	RuntimeAgentID string   `json:"runtime_agent_id"`
-	ThreadID       string   `json:"thread_id,omitempty"`
-	Source         string   `json:"source"`
-	BindingSource  string   `json:"binding_source,omitempty"`
-	HandoffIDs     []string `json:"handoff_ids,omitempty"`
-	StartedAt      string   `json:"started_at,omitempty"`
-	ObservedAt     string   `json:"observed_at,omitempty"`
-	CompletedAt    string   `json:"completed_at,omitempty"`
+	Rounds         []WorkflowRoundScope `json:"rounds,omitempty"`
+	AttemptID      string               `json:"attempt_id"`
+	AssignmentID   string               `json:"assignment_id"`
+	AgentPath      string               `json:"agent_path"`
+	RuntimeAgentID string               `json:"runtime_agent_id"`
+	ThreadID       string               `json:"thread_id,omitempty"`
+	Source         string               `json:"source"`
+	BindingSource  string               `json:"binding_source,omitempty"`
+	HandoffIDs     []string             `json:"handoff_ids,omitempty"`
+	StartedAt      string               `json:"started_at,omitempty"`
+	ObservedAt     string               `json:"observed_at,omitempty"`
+	CompletedAt    string               `json:"completed_at,omitempty"`
 }
 
 func workflowSessionRows(in WorkflowInput, rows map[string]*WorkflowRow) map[string]*WorkflowRow {
@@ -71,7 +72,7 @@ func workflowSessionRows(in WorkflowInput, rows map[string]*WorkflowRow) map[str
 		ok = ok && row.Role == workflowActorRole(a.AgentPath) && (row.AgentID == a.AgentPath || row.AgentID == a.RuntimeAgentID) && workflowSessionAssociation(in, a, assignment, handoff)
 		key := row.ID
 		if ok {
-			key = fmt.Sprintf("%s|session:%s:%s|%v", row.Role, a.Provider, a.SessionID, roundKey(row.Round))
+			key = fmt.Sprintf("%s|session:%s:%s", row.Role, a.Provider, a.SessionID)
 		}
 		out := result[key]
 		if out == nil {
@@ -85,17 +86,23 @@ func workflowSessionRows(in WorkflowInput, rows map[string]*WorkflowRow) map[str
 			}
 			result[key] = out
 		}
+		out.Rounds = workflowAppendRound(out.Rounds, row.Round, row.RoundStatus)
+		if len(out.Rounds) > 1 {
+			out.Round = nil
+			out.RoundStatus = "multiple"
+		}
 		identity := out.SessionIdentity
 		identity.Aliases = appendUnique(identity.Aliases, row.AgentID)
 		if ok {
 			found := false
-			for _, e := range identity.Attempts {
+			for i, e := range identity.Attempts {
 				if e.AttemptID == attempt {
+					identity.Attempts[i].Rounds = workflowAppendRound(identity.Attempts[i].Rounds, row.Round, row.RoundStatus)
 					found = true
 				}
 			}
 			if !found {
-				e := WorkflowSessionAttempt{AttemptID: attempt, AssignmentID: a.BindingEvidence["assignment_id"], AgentPath: a.AgentPath, RuntimeAgentID: a.RuntimeAgentID, Source: string(a.StateEvidenceSource), BindingSource: a.BindingSource, StartedAt: a.StartedAt, ObservedAt: a.LastObservedAt, CompletedAt: a.EndedAt}
+				e := WorkflowSessionAttempt{Rounds: workflowAppendRound(nil, row.Round, row.RoundStatus), AttemptID: attempt, AssignmentID: a.BindingEvidence["assignment_id"], AgentPath: a.AgentPath, RuntimeAgentID: a.RuntimeAgentID, Source: string(a.StateEvidenceSource), BindingSource: a.BindingSource, StartedAt: a.StartedAt, ObservedAt: a.LastObservedAt, CompletedAt: a.EndedAt}
 				for id, h := range in.Handoffs {
 					if workflowSessionClaim(in, a, id) {
 						e.HandoffIDs = append(e.HandoffIDs, h.HandoffID)
@@ -118,6 +125,8 @@ func workflowSessionRows(in WorkflowInput, rows map[string]*WorkflowRow) map[str
 		}
 		for _, v := range row.Intervals {
 			out := resolve(row, v.AttemptID, v.AssignmentID, v.HandoffID)
+			v.Round = workflowRoundCopy(row.Round)
+			v.RoundStatus = row.RoundStatus
 			out.Intervals = append(out.Intervals, v)
 			if v.Measured && v.DurationMillis != nil {
 				if out.ObservedActivityMillis == nil {
@@ -129,6 +138,8 @@ func workflowSessionRows(in WorkflowInput, rows map[string]*WorkflowRow) map[str
 		}
 		for _, f := range row.RoleFacts {
 			out := resolve(row, f.AttemptID, f.AssignmentID, f.HandoffID)
+			f.Round = workflowRoundCopy(row.Round)
+			f.RoundStatus = row.RoundStatus
 			out.RoleFacts = append(out.RoleFacts, f)
 		}
 	}
@@ -201,4 +212,33 @@ func workflowSessionAssociation(in WorkflowInput, a runtimeobs.Attempt, assignme
 	}
 	at, ok := workflowTime(a.BindingAt)
 	return ok && (in.Now.IsZero() || !at.After(in.Now))
+}
+
+func workflowRoundCopy(n *int) *int {
+	if n == nil {
+		return nil
+	}
+	copy := *n
+	return &copy
+}
+func workflowAppendRound(scopes []WorkflowRoundScope, n *int, status string) []WorkflowRoundScope {
+	for _, s := range scopes {
+		if roundKey(s.Round) == roundKey(n) {
+			return scopes
+		}
+	}
+	if status == "" {
+		status = roundStatus(n)
+	}
+	scopes = append(scopes, WorkflowRoundScope{Round: workflowRoundCopy(n), Status: status})
+	sort.Slice(scopes, func(i, j int) bool {
+		if scopes[i].Round == nil {
+			return scopes[j].Round != nil
+		}
+		if scopes[j].Round == nil {
+			return false
+		}
+		return *scopes[i].Round < *scopes[j].Round
+	})
+	return scopes
 }
