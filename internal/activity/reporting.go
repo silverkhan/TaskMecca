@@ -1,10 +1,10 @@
 package activity
 
 import (
-	"strings"
 	"time"
 
 	"github.com/silverkhan/TaskMecca/internal/handoffjournal"
+	"github.com/silverkhan/TaskMecca/internal/rolepolicy"
 	"github.com/silverkhan/TaskMecca/internal/runtimeobs"
 )
 
@@ -58,7 +58,7 @@ func CheckReporting(project, task string, role Role, attempt, assignment, handof
 		out.Diagnostic = "verified observed execution required; binding alone is not execution"
 		return out
 	}
-	if role != RoleWorker && role != RoleController && role != RoleRegistrar {
+	if role != RoleWorker && role != RoleReviewer && role != RoleController && role != RoleRegistrar {
 		out.Diagnostic = "unsupported role collection boundary"
 		return out
 	}
@@ -70,7 +70,7 @@ func CheckReporting(project, task string, role Role, attempt, assignment, handof
 		assignment = actual.BindingEvidence["assignment_id"]
 		out.AssignmentID = assignment
 	}
-	if role == RoleWorker {
+	if role == RoleWorker || role == RoleReviewer {
 		if !runtimeobs.HasObservedExecution(*actual) {
 			out.Diagnostic = "verified observed execution required; binding alone is not execution"
 			return out
@@ -82,8 +82,9 @@ func CheckReporting(project, task string, role Role, attempt, assignment, handof
 		}
 		// The reminder must not suggest a runnable command for a different
 		// assignment, role or task. Actual report still enforces attribution.
-		if actual.TaskID != task || !strings.HasPrefix(actual.AgentPath, "/root/controller/") || strings.HasPrefix(actual.AgentPath, "/root/controller/sub-") || actual.BindingEvidence["assignment_id"] != assignment {
-			out.Diagnostic = "exact Worker task/path/assignment binding required"
+		validPath := role == RoleWorker && rolepolicy.WorkerPath(actual.AgentPath) || role == RoleReviewer && rolepolicy.ReviewerPath(actual.AgentPath)
+		if actual.TaskID != task || !validPath || actual.BindingEvidence["assignment_id"] != assignment || (role == RoleReviewer && (assignment == "" || handoff != "")) {
+			out.Diagnostic = "exact Worker or Reviewer role/task/path/assignment binding required"
 			return out
 		}
 		matches := 0

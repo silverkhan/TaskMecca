@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"github.com/silverkhan/TaskMecca/internal/activity"
+	"github.com/silverkhan/TaskMecca/internal/rolepolicy"
 	"github.com/silverkhan/TaskMecca/internal/runtimeobs"
 	"io"
 	"time"
@@ -183,6 +184,9 @@ func runRuntimeObserveT3CLI(args []string, out, stderr io.Writer) int {
 		if formalMode && *role == "registrar" {
 			reportRole, reportAssignment = activity.RoleRegistrar, ""
 		}
+		if rolepolicy.ReviewerPath(result.Attempt.AgentPath) {
+			reportRole = activity.RoleReviewer
+		}
 		reporting := activity.CheckReporting(result.Context.CanonicalProject, *task, reportRole, result.Attempt.AttemptID, reportAssignment, "", *phase, time.Now())
 		response["activity_reporting"] = reporting
 		if reporting.Status == "unverified" || reporting.Status == "error" {
@@ -190,7 +194,7 @@ func runRuntimeObserveT3CLI(args []string, out, stderr io.Writer) int {
 			writeT3Result(out, *asJSON, response)
 			return 1
 		}
-		response["next_action"] = "Deliver exact attempt and reporting requirement to Worker; Worker reports its current actual phase, not a historical start. Report any transport/report failure as collection_gap."
+		response["next_action"] = "Deliver exact attempt and reporting requirement to the bound role; report its current actual phase, not a historical start. Report any transport/report failure as collection_gap."
 		return writeT3Result(out, *asJSON, response)
 	}
 	resolved, err := runtimeobs.ResolveProject(*project)
