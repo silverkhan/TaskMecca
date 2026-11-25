@@ -73,3 +73,24 @@ test('notification center sidebar keeps its original name without ellipsis',()=>
  assert.match(css,/#projectNotificationsNav \.count\{flex:0 0 auto\}/,
   'Telegram setup dot retains its own space');
 });
+
+
+test('all current warning kinds exclude canonical done while unknown and taskless warnings and history remain',()=>{
+  const a=app();
+  vm.runInContext('globalThis.app.storeCommonUserAttention=storeCommonUserAttention;globalThis.app.commonAttentionUsers=commonAttentionUsers;globalThis.app.currentSessionWarnings=currentSessionWarnings;',a.context);
+  a.storeCommonUserAttention=a.context.app.storeCommonUserAttention;
+  a.storeCommonUserAttention({snapshot_at:'2026-11-25T00:00:00Z',attention:[],all_items:{'A-1':{id:'A-1',file_state:'done'}},current_task_states:{'A-archive':'done'}},'/demo','team');
+  const kinds=['registered','started','completed','intervention','approval','stalled','runtime_unknown'];
+  const active=kinds.map(kind=>({id:kind,project:'/demo',task_id:'A-1',kind,evidence:'historical doing warning'}));
+  active.push({id:'archived',project:'/demo',task_id:'A-archive',kind:'no_signal'});
+  active.push({id:'other',project:'/other',task_id:'A-1',kind:'no_signal'});
+  active.push({id:'unknown',project:'/demo',task_id:'missing',kind:'no_signal'});
+  active.push({id:'system',project:'/demo',kind:'monitor_gap'});
+  const history=[{id:'retained',project:'/demo',task_id:'A-1',kind:'normal_exit',history:true}];
+  const before=JSON.stringify({active,history});
+  a.renderOperationBanner({active,observation_history:history});
+  assert.deepEqual(Array.from(a.context.app.currentSessionWarnings(),row=>row.id),['other','unknown','system']);
+  assert.equal(a.state.sessionWarnings.length,11,'raw current source observations remain available');
+  assert.equal(JSON.stringify({active,history}),before);
+  assert.equal(a.state.operationPayload.observation_history[0].id,'retained');
+});

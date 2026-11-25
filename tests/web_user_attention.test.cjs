@@ -75,3 +75,16 @@ test('automatic source remapping needs a newer selected snapshot and stale data 
  for(const time of ['2026-10-07T14:01:00Z','2026-10-07T14:02:00Z',''])app.storeCommonUserAttention({...snapshot(time),attention:[]},'/repos/demo','');
  assert.equal(app.state.attentionScopes['/repos/demo|'],'/repos/demo/other');assert.equal(app.streams.at(-1),stream);
 });
+
+
+test('canonical done projection overrides stale attention rows and survives paged list conversion',()=>{
+  const app=page(),data=snapshot();
+  data.current_task_states={'A-14':'done','A-archive':'done'};
+  const original=JSON.stringify(data);
+  assert.equal(app.currentUserAttention(data).length,0);
+  const payload=app.listNotificationPayload({...data,items:[],attention_items:data.all_items});
+  assert.equal(payload.current_task_states['A-14'],'done');
+  app.updateCurrentUserAttention(payload);
+  assert.equal(app.element.hidden,true);
+  assert.equal(JSON.stringify(data),original,'current projection must not mutate snapshot evidence');
+});

@@ -143,3 +143,33 @@ test('Mecca attention keeps original visible accent-to-warm-gold gradient while 
  assert.match(flyout,/background:var\(--attention-fill\) padding-box,var\(--attention-outline\) border-box/,'flyout must use identical border and fill to summary');
  assert.match(css,/\.user-attention:has\(\.common-attention\[open\]\)\{[^}]*border-bottom-width:0/,'no double border at join');
 });
+
+
+test('current holds use exact canonical project state including archive while incomplete and unknown remain',()=>{
+  const app=page();
+  app.storeCommonUserAttention({snapshot_at:'2026-11-25T00:00:00Z',attention:[],all_items:{},current_task_states:{'A-1':'done','A-archive':'done','A-worker':'doing','A-todo':'todo','A-hold':'hold'}},'/done-project','team');
+  app.storeCommonUserAttention({snapshot_at:'2026-11-25T00:00:00Z',attention:[],all_items:{},current_task_states:{'A-1':'doing'}},'/other-project','team');
+  const holds=[['/done-project','A-1'],['/done-project','A-archive'],['/done-project','A-worker'],['/done-project','A-todo'],['/done-project','A-hold'],['/other-project','A-1'],['/unknown-project','A-1'],['/done-project','missing']].map(([project,task_id])=>({project,task_id,hold_reason:'needs decision'}));
+  app.renderOperationBanner({snapshot_at:'2026-11-25T00:00:00Z',active:[],user_holds:holds,stages:[{project:'/done-project',task_id:'A-worker',stage:'worker_completed'}]});
+  assert.match(app.element.innerHTML,/사용자 판단 6건/);
+  assert.doesNotMatch(app.element.innerHTML,/A-archive/);
+  assert.match(app.element.innerHTML,/other-project/);
+  assert.match(app.element.innerHTML,/A-worker/);
+  assert.match(app.element.innerHTML,/A-todo/);
+  assert.match(app.element.innerHTML,/A-hold/);
+  assert.equal(holds.length,8,'operation source holds stay intact');
+});
+
+test('existing snapshot refresh removes a current hold after done and stale snapshots cannot restore it',()=>{
+  const app=page(),at='2026-11-25T00:00:00Z';
+  const payload=(time,file_state)=>({snapshot_at:time,attention:[],all_items:{'A-1':{id:'A-1',file_state}},current_task_states:{'A-1':file_state}});
+  app.storeCommonUserAttention(payload(at,'doing'),'/demo','team');
+  app.renderOperationBanner({active:[],user_holds:[{project:'/demo',task_id:'A-1',hold_reason:'decision'}]});
+  assert.match(app.element.innerHTML,/사용자 판단 1건/);
+  app.storeCommonUserAttention(payload('2026-11-25T00:00:01Z','done'),'/demo','team');
+  assert.equal(app.element.hidden,true);
+  app.storeCommonUserAttention(payload(at,'doing'),'/demo','team');
+  assert.equal(app.element.hidden,true);
+  app.storeCommonUserAttention(payload('2026-11-25T00:00:02Z','doing'),'/demo','team');
+  assert.match(app.element.innerHTML,/사용자 판단 1건/,'newer canonical reopen remains visible');
+});

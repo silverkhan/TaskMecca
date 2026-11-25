@@ -310,7 +310,7 @@ func BacklogPage(project,root string,page,pageSize int,statuses,tags []string,se
             "catalog":catalogMS,"state":stateMS,"control":controlMS,
             "notification":attentionMS,"total":time.Since(profileStart).Seconds()*1000,
         },
-        "attention":attention["attention"],"attention_items":pagedNotificationItems(attention["all_items"]),"notification_events":attention["notification_events"],
+        "attention":attention["attention"],"attention_items":pagedNotificationItems(attention["all_items"]),"current_task_states":attention["current_task_states"],"notification_events":attention["notification_events"],
     },nil
 }
 
@@ -470,7 +470,7 @@ func AttentionSnapshotFromRows(project,root string,rows []Record,reconcile bool,
         if _,exists:=allItems[id]; exists { continue }
         if row,ok:=byID[id]; ok { item:=webSummaryItem(row,row.State,nil,control.Attention[id],control.Activity[id]); if lifecycle,ok:=control.Timings[id]; ok { item["lifecycle"]=lifecycle }; allItems[id]=item }
     }
-    return map[string]any{"snapshot_at":time.Now().Format(time.RFC3339Nano),"attention":attention, "content_revision":backlogRevisionFromRows(rows),"controller_reviews": controllerReviews,"all_items":allItems,"notification_events":events,"counts":map[string]any{"attention":len(attention)}},nil
+    return map[string]any{"snapshot_at":time.Now().Format(time.RFC3339Nano),"attention":attention, "content_revision":backlogRevisionFromRows(rows),"controller_reviews": controllerReviews,"all_items":allItems,"notification_events":events,"current_task_states":currentNotificationTaskStates(rows),"counts":map[string]any{"attention":len(attention)}},nil
 }
 
 // AttentionSnapshotWithProfile returns the existing canonical snapshot and

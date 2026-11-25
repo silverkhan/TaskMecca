@@ -15,6 +15,16 @@ const notificationJournalVersion = 4
 
 var notificationJournalMu sync.Mutex
 
+// currentNotificationTaskStates is a presentation projection of canonical files,
+// including archived tasks. It must never replace or modify delivery events.
+func currentNotificationTaskStates(rows []Record) map[string]string {
+	states := make(map[string]string)
+	for id, row := range preferredRows(rows) {
+		states[id] = row.State
+	}
+	return states
+}
+
 type notificationObservation struct {
 	FileState         string `json:"file_state"`
 	UpdatedAt         string `json:"updated_at,omitempty"`

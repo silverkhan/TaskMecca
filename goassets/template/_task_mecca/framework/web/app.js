@@ -2323,11 +2323,29 @@ async function loadRuntimeHookStatus(force=false) {
 
 Object.assign(I18N.ko,{currentUserAttention:'사용자 판단이 필요한 작업',userAttentionAction:'필요한 판단·조치',userAttentionFallback:'백로그를 열어 필요한 판단을 확인해 주세요.'});
 Object.assign(I18N.en,{currentUserAttention:'Tasks awaiting your decision',userAttentionAction:'Decision or action needed',userAttentionFallback:'Open the backlog to review the decision needed.'});
+// Current lists use canonical file state; delivery/history keep their raw events.
+function currentNotificationTaskStates(payload) {
+  const states={};
+  for(const task of [...Object.values(payload?.all_items||{}),...(payload?.done_items||[])])if(task?.id&&task.file_state)states[task.id]=task.file_state;
+  return Object.assign(states,payload?.current_task_states||{});
+}
+function currentTaskIsDone(project,id,backlog='') {
+  if(!project||!id)return false;
+  const sources=Object.values(state.commonUserAttention).filter(source=>source.project===project&&(!backlog||source.backlog===backlog));
+  const known=sources.map(source=>source.taskStates?.[id]).filter(Boolean);
+  // Conflicting folder identities are not proof of canonical completion.
+  return known.length>0&&known.every(fileState=>fileState==='done');
+}
+function currentSessionWarnings() {
+  return state.sessionWarnings.filter(item=>!currentTaskIsDone(item.project,item.task_id,item.backlog||''));
+}
 function currentUserAttention(payload) {
   const items=payload?.all_items||{}, seen=new Set(), rows=[];
+  const taskStates=currentNotificationTaskStates(payload);
   for(const reason of payload?.attention||[]){
     if(reason.type!=='user_intervention'||reason.audience==='controller'||reason.resolved||reason.resolved_at||reason.history||reason.active===false||['resolved','closed','dismissed'].includes(reason.status||reason.state))continue;
     const task=items[reason.id];
+    if(taskStates[reason.id]==='done')continue;
     if(!task||!task.id||seen.has(task.id)||!['doing','hold'].includes(task.file_state)||(task.location&&task.location!=='active')||String(task.state||'').startsWith('controller_'))continue;
     seen.add(task.id);
     rows.push({id:task.id,title:titleOf(task),message:reason.message||'',action:reason.resume_condition||task.fields?.재개조건||task.document?.summary?.follow_up||t('userAttentionFallback')});
@@ -2382,7 +2400,7 @@ function storeCommonUserAttention(payload,project,backlog) {
   if(previousSignature!==undefined&&previousSignature!==signature&&!payload._listSnapshot)invalidateProjectPages(project);
   listSourceSignatures.set(key,signature);
   state.commonUserRevision[key]=(state.commonUserRevision[key]||0)+1;
-  state.commonUserAttention[key]={project,backlog:backlog||payload.backlog_selection?.selected||'',observed:Number.isFinite(observed)?observed:0,rows:nextRows};
+  state.commonUserAttention[key]={project,backlog:backlog||payload.backlog_selection?.selected||'',observed:Number.isFinite(observed)?observed:0,rows:nextRows,taskStates:currentNotificationTaskStates(payload)};
   renderUserAttention();
 
   if(document.querySelector('[data-view="issues"]')&&project===state.project&&(requestedBacklog===state.backlog||backlog===state.backlog)){const selectedContext=state.backlog;queueMicrotask(()=>{if(project===state.project&&selectedContext===state.backlog)refreshDiagnostics(project,selectedContext,backlog+'|'+String(payload.content_revision||''));});}
@@ -2390,9 +2408,10 @@ function storeCommonUserAttention(payload,project,backlog) {
 function commonAttentionUsers() {
  const rows=[],seen=new Set();
  for(const source of Object.values(state.commonUserAttention)){
-  for(const row of source.rows){const key=source.project+'|'+source.backlog+'|'+row.id;if(seen.has(key))continue;seen.add(key);rows.push({...row,project:source.project,backlog:source.backlog});}
+    for(const row of source.rows){const key=source.project+'|'+source.backlog+'|'+row.id;if(seen.has(key)||currentTaskIsDone(source.project,row.id,source.backlog))continue;seen.add(key);rows.push({...row,project:source.project,backlog:source.backlog});}
  }
  for(const item of state.operationPayload.user_holds||[]){
+    if(currentTaskIsDone(item.project,item.task_id,item.backlog||''))continue;
   let row=rows.find(row=>row.project===item.project&&row.id===item.task_id);
   if(!row){row={id:item.task_id,project:item.project,title:item.task_id,message:item.hold_reason||t('operationHoldExplanation'),action:item.resume_condition||t('operationHoldAction'),histories:[]};rows.push(row);}
   row.histories||=[];row.histories.push(item);
@@ -2471,7 +2490,7 @@ function commonAttentionMarkup(users,warnings,expanded=false) {
  return `<details class="common-attention"${state.commonAttentionOpen||expanded?' open':''}><summary><strong>${esc(t(!users.length&&!warnings.length&&!(state.operationPayload.diagnostics||[]).length?'operationHistoryHeading':'commonAttention'))}</strong><span>${esc(t('commonUserCount',{count:users.length}))}</span><span>${esc(t('commonSessionCount',{count:warnings.length}))}</span>${state.operationPayload.diagnostics?.length?`<span>${esc(t('operationDiagnosticCount',{count:state.operationPayload.diagnostics.length}))}</span>`:''}</summary><div class="common-attention-body"><a class="common-center-link" href="/?view=notifications" data-notification-center>${esc(t('notificationCenter'))} · ${esc(t('notificationCurrent'))}</a>${users.length?`<h2>${esc(t('currentUserAttention'))}</h2><ul>${userRows}</ul>`:''}${warnings.length?`<h2>${esc(t('commonSessionHeading'))}</h2><ul>${sessionRows}</ul>`:''}${operationObservationDetails(state.operationPayload.observation_history||[],t('operationHistoryHeading'))}${operationObservationDetails(state.operationPayload.diagnostics||[],t('operationDiagnosticHeading'),'diagnostics')}</div></details>`;
 }
 function renderUserAttention() {
- const users=commonAttentionUsers(),warnings=state.sessionWarnings;
+  const users=commonAttentionUsers(),warnings=currentSessionWarnings();
  // SSE/attention summaries may change without a full nav render. Update the
  // existing tile in place to preserve hover, focus and compact sidebar state.
  syncSessionAttentionSeverity(users);
@@ -7944,7 +7963,7 @@ let listRefreshAbort=null;
 function listNotificationPayload(data) {
   const current={...(data?.attention_items||{})};
   (data?.items||[]).forEach(task=>{current[task.id]=task});
-  return {_listSnapshot:true,content_revision:data?.revision,snapshot_at:data?.snapshot_at,backlog_selection:data?.backlog_selection,project_path:data?.project_path,all_items:current,notification_events:data?.notification_events||[],attention:data?.attention||[]};
+  return {_listSnapshot:true,content_revision:data?.revision,snapshot_at:data?.snapshot_at,backlog_selection:data?.backlog_selection,project_path:data?.project_path,all_items:current,current_task_states:data?.current_task_states,notification_events:data?.notification_events||[],attention:data?.attention||[]};
 }
 
 async function refreshHub(force=false) {

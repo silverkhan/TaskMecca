@@ -136,3 +136,21 @@ test('claim rejection, broker failure and unknown canonical ID never send OS not
   assert.equal(calls.length,0);
  }
 });
+
+
+test('canonical done is hidden from current lists without suppressing completed delivery or changing event history',async()=>{
+  const calls=[],a=app({construct:(title,options)=>calls.push({title,options})}),at=new Date().toISOString();
+  const event={id:'done-delivery',task_id:'A-1',kind:'completed',at};
+  const data=snapshot('/demo','team',{'A-1':{id:'A-1',title:'Completed task',file_state:'done'}},[event],at);
+  data.current_task_states={'A-1':'done'};
+  const original=JSON.stringify(data.notification_events);
+  a.processTaskNotifications(data,{project:'/demo',backlog:'team'});
+  await tick();
+  assert.equal(calls.length,1,'completed sending policy is unchanged');
+  assert.equal(a.browserDeliveryHistory()[0].event_id,'done-delivery');
+  assert.equal(a.state.userAttention.length,0);
+  assert.equal(JSON.stringify(data.notification_events),original);
+  a.state.notificationHistory=[{event_id:event.id,project:'/demo',task_id:'A-1',kind:'completed',telegram:{state:'sent'}}];
+  assert.equal(a.mergedNotificationHistory().length,1);
+  assert.equal(a.mergedNotificationHistory()[0].telegram.state,'sent');
+});

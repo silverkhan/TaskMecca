@@ -47,6 +47,13 @@ func notificationValue(v any) string {
 
 func attentionRevision(payload map[string]any) string {
 	parts := []string{}
+	// Canonical completion can change while retained delivery event IDs stay the
+	// same. Publish that change through the existing refresh/subscriber path.
+	if states, ok := payload["current_task_states"].(map[string]string); ok {
+		for id, state := range states {
+			parts = append(parts, "task:"+id+":"+state)
+		}
+	}
 	if rows, ok := payload["attention"].([]map[string]any); ok {
 		for _, row := range rows {
 			parts = append(parts, strings.Join([]string{
