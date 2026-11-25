@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -8,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"regexp"
 	"strings"
 	"time"
@@ -26,10 +28,15 @@ func runRuntimeBoundaryCLI(args []string, out, stderr io.Writer) int {
 		return 2
 	}
 	action := args[0]
+	if action == "run" {
+		return runManagedBoundary(args[1:], out, stderr)
+	}
 	f := flag.NewFlagSet("runtime boundary", flag.ContinueOnError)
 	f.SetOutput(stderr)
 	project := f.String("project", ".", "canonical project")
+	collection := f.String("collection-project", "", "owned isolated collection destination")
 	operation := f.String("operation", "", "stable registration request/operation ID")
+	request := f.String("request-id", "", "exact originating request")
 	key := f.String("key", "", "stable boundary key; retain on retry")
 	kind := f.String("kind", "", "start|phase|wait|resume|end|task_link|handoff_request|handoff_delivery|handoff_claim|collection_failure")
 	role := f.String("role", "", "observed controller|registrar|worker|reviewer")
@@ -42,6 +49,7 @@ func runRuntimeBoundaryCLI(args []string, out, stderr io.Writer) int {
 	evidence := f.String("evidence", "", "actual boundary evidence")
 	explanation := f.String("explanation", "", "one concrete sentence about the actual operation; original evidence stays separate")
 	language := f.String("language", "", "explicit explanation language: ko|en")
+	fallback := f.String("fallback-language", "", "explicit conversation fallback")
 	related := f.String("related-id", "", "matching wait key or supported handoff ID")
 	originalError := f.String("error", "", "original collection error; never replaces unknown with success")
 	scope := f.String("wait-scope", "actor", "actor|task_next_stage")
@@ -50,6 +58,7 @@ func runRuntimeBoundaryCLI(args []string, out, stderr io.Writer) int {
 	owner := f.String("next-owner", "", "next owner")
 	last := f.String("last-evidence", "", "last actual evidence")
 	resume := f.String("resume-condition", "", "actual resume condition")
+	previousAttempt := f.String("previous-attempt", "", "exact previous terminal episode for same-native task continuation; old stop remains unreported")
 	f.Bool("json", false, "JSON response")
 	if err := f.Parse(args[1:]); err != nil {
 		return 2
@@ -57,7 +66,21 @@ func runRuntimeBoundaryCLI(args []string, out, stderr io.Writer) int {
 	if f.NArg() != 0 {
 		return 2
 	}
+	selectedLanguage, languageErr := activityExplanationLanguage(*language, *fallback)
+	if languageErr != nil {
+		fmt.Fprintln(stderr, languageErr)
+		return 2
+	}
 	now := time.Now().UTC()
+	hostProject := *project
+	if *collection != "" {
+		a, e := runtimeobs.CollectionActor(hostProject, *collection, now)
+		if e != nil || a.Role != *role || a.Selector.SessionID != *native || a.Selector.ThreadID != *thread {
+			fmt.Fprintf(stderr, "isolated boundary actor rejected: %v\n", e)
+			return 1
+		}
+		*project = *collection
+	}
 	if action == "list" {
 		detail := activity.ReadExecutionCoverage(*project, *task, activity.Workflow{})
 		if err := json.NewEncoder(out).Encode(detail); err != nil {
@@ -77,7 +100,7 @@ func runRuntimeBoundaryCLI(args []string, out, stderr io.Writer) int {
 		fmt.Fprintln(stderr, "exact own current Codex/T3 identity required; unsupported hosts remain unmeasured")
 		return 1
 	}
-	receipt, err := runtimeobs.ReadT3Execution(runtimeobs.T3Selector{CanonicalProject: *project, ThreadID: *thread, SessionID: *native, RuntimeAgentID: *native}, now)
+	receipt, err := runtimeobs.ReadT3Execution(runtimeobs.T3Selector{CanonicalProject: hostProject, ThreadID: *thread, SessionID: *native, RuntimeAgentID: *native}, now)
 	if err != nil {
 		fmt.Fprintln(stderr, err)
 		return 1
@@ -111,9 +134,24 @@ func runRuntimeBoundaryCLI(args []string, out, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "current native role metadata unavailable or mismatched: %v\n", err)
 		return 1
 	}
-	b := runtimeobs.OperationBoundary{Key: *key, OperationID: *operation, Provider: receipt.Provider, NativeID: *native, AttemptID: *attempt, ThreadID: *thread, Role: *role, Kind: *kind, Phase: *phase, RelatedID: *related, Source: "current_native_boundary", Evidence: *evidence, Error: *originalError}
+	b := runtimeobs.OperationBoundary{RequestID: *request, Key: *key, OperationID: *operation, Provider: receipt.Provider, NativeID: *native, AttemptID: *attempt, ThreadID: *thread, Role: *role, Kind: *kind, Phase: *phase, RelatedID: *related, Source: "current_native_boundary", Evidence: *evidence, Error: *originalError}
+	if *previousAttempt != "" {
+		if *kind != "resume" {
+			fmt.Fprintln(stderr, "--previous-attempt only supports an actual resume boundary")
+			return 2
+		}
+		current, terminal, e := runtimeobs.VerifyOperationResume(*project, hostProject, *attempt, *previousAttempt, *related, now)
+		if e != nil || current.RuntimeAgentID != *native || current.NativeReceipt == nil || current.NativeReceipt.NativeAttemptID != receipt.NativeAttemptID {
+			fmt.Fprintf(stderr, "same-native resume source rejected: %v\n", e)
+			return 1
+		}
+		end, _ := time.Parse(time.RFC3339Nano, terminal.CompletedAt)
+		b.SourceAt = &end
+		b.PreviousAttemptID = *previousAttempt
+		b.PreviousNativeStatus = terminal.NativeStatus
+	}
 	b.Explanation = *explanation
-	b.ExplanationLanguage = *language
+	b.ExplanationLanguage = selectedLanguage
 	if strings.TrimSpace(*explanation) != "" {
 		b.ExplanationOrigin = "written"
 	}
@@ -161,7 +199,7 @@ func runRuntimeBoundaryCLI(args []string, out, stderr io.Writer) int {
 		}
 		return 0
 	}
-	current, e := runtimeobs.ReadT3Execution(runtimeobs.T3Selector{CanonicalProject: *project, ThreadID: *thread, SessionID: *native, RuntimeAgentID: *native}, time.Now().UTC())
+	current, e := runtimeobs.ReadT3Execution(runtimeobs.T3Selector{CanonicalProject: hostProject, ThreadID: *thread, SessionID: *native, RuntimeAgentID: *native}, time.Now().UTC())
 	if e != nil || current.State != runtimeobs.StateRunning || current.NativeAttemptID != receipt.NativeAttemptID || current.RunID != receipt.RunID {
 		fmt.Fprintf(stderr, "native execution changed before boundary append: %v\n", e)
 		return 1
@@ -188,6 +226,7 @@ func boundaryRoleMatches(role, name string) bool {
 // extra reporting call is necessary. Each real invocation has a distinct stable
 // operation identity, while RequestID groups retries of the same registration.
 type registrationBoundary struct {
+	hostProject  string
 	requestKey   string
 	startReceipt runtimeobs.T3Receipt
 	nativeName   string
@@ -215,6 +254,10 @@ type registrationCollectionStatus struct {
 }
 
 func beginRegistrationBoundary(project, request string, stderr io.Writer, description ...string) *registrationBoundary {
+	hostProject := project
+	if len(description) > 2 && description[2] != "" {
+		hostProject = description[2]
+	}
 	requestKey := "registration-request:" + request + ":" + time.Now().UTC().Format("20060102T150405.000000000Z")
 	_, intentErr := runtimeobs.RecordCollectionReceipt(project, runtimeobs.RequestCollectionReceipt(request, requestKey, "pending", "", time.Now().UTC()))
 	fail := func(err error) *registrationBoundary {
@@ -235,7 +278,7 @@ func beginRegistrationBoundary(project, request string, stderr io.Writer, descri
 		return fail(errors.New("supported current native/T3 host identity unavailable; no registration start inferred"))
 	}
 	now := time.Now().UTC()
-	sel := runtimeobs.T3Selector{CanonicalProject: project, ThreadID: thread, SessionID: native, RuntimeAgentID: native}
+	sel := runtimeobs.T3Selector{CanonicalProject: hostProject, ThreadID: thread, SessionID: native, RuntimeAgentID: native}
 	r, err := runtimeobs.ReadT3Execution(sel, now)
 	if err != nil {
 		return fail(err)
@@ -283,7 +326,7 @@ func beginRegistrationBoundary(project, request string, stderr io.Writer, descri
 			base.ExplanationLanguage = description[1]
 		}
 	}
-	c := &registrationBoundary{project: project, requestKey: requestKey, base: base, stderr: stderr, startReceipt: observed, nativeName: m.Name}
+	c := &registrationBoundary{hostProject: hostProject, project: project, requestKey: requestKey, base: base, stderr: stderr, startReceipt: observed, nativeName: m.Name}
 	c.write("start", "start", "", nil, "")
 	c.phase("input_validation")
 	return c
@@ -371,7 +414,7 @@ func (c *registrationBoundary) verifyCurrent() error {
 	// This is the final external read immediately before the append; a retry,
 	// terminal state or another run cannot inherit the previous operation.
 	now := time.Now().UTC()
-	current, err := runtimeobs.ReadT3Execution(runtimeobs.T3Selector{CanonicalProject: c.project, ThreadID: c.base.ThreadID, SessionID: c.base.NativeID, RuntimeAgentID: c.base.NativeID}, now)
+	current, err := runtimeobs.ReadT3Execution(runtimeobs.T3Selector{CanonicalProject: c.hostCanonical(), ThreadID: c.base.ThreadID, SessionID: c.base.NativeID, RuntimeAgentID: c.base.NativeID}, now)
 	if err != nil {
 		return fmt.Errorf("current T3 receipt read: %w", err)
 	}
@@ -381,12 +424,18 @@ func (c *registrationBoundary) verifyCurrent() error {
 	return nil
 }
 
+func (c *registrationBoundary) hostCanonical() string {
+	if c.hostProject != "" {
+		return c.hostProject
+	}
+	return c.project
+}
 func (c *registrationBoundary) ownIdentityMatches() bool {
 	return c.base.Provider == "codex" && c.base.NativeID != "" && c.base.ThreadID != "" && c.base.AttemptID != "" && os.Getenv("CODEX_THREAD_ID") == c.base.NativeID && os.Getenv("T3CODE_THREAD_ID") == c.base.ThreadID
 }
 func (c *registrationBoundary) sameReceipt(r runtimeobs.T3Receipt) bool {
 	s := c.startReceipt
-	return r.State == runtimeobs.StateRunning && r.CompletedAt == "" && r.Provider == c.base.Provider && r.SessionID == c.base.NativeID && r.ThreadID == c.base.ThreadID && r.CanonicalProject == c.project && r.Origin == "t3_local_projection_v2" && s.RunID != "" && s.NativeAttemptID != "" && r.RunID == s.RunID && r.NativeAttemptID == s.NativeAttemptID && r.StartedAt == s.StartedAt
+	return r.State == runtimeobs.StateRunning && r.CompletedAt == "" && r.Provider == c.base.Provider && r.SessionID == c.base.NativeID && r.ThreadID == c.base.ThreadID && r.CanonicalProject == c.hostCanonical() && r.Origin == "t3_local_projection_v2" && s.RunID != "" && s.NativeAttemptID != "" && r.RunID == s.RunID && r.NativeAttemptID == s.NativeAttemptID && r.StartedAt == s.StartedAt
 }
 func (c *registrationBoundary) collectError(key string, err error) {
 	if c.firstError == nil {
@@ -458,4 +507,164 @@ func (c *registrationBoundary) status() *registrationCollectionStatus {
 		s.OriginalError = c.firstError.Error()
 	}
 	return s
+}
+
+// runManagedBoundary admits work only after the actual current operation START
+// ACK. The process inherits the caller's identity and executes without a shell.
+// Its END/failure is retained even when the child fails; this is not Activity.
+func runManagedBoundary(args []string, out, stderr io.Writer) int {
+	sep := -1
+	for i, a := range args {
+		if a == "--" {
+			sep = i
+			break
+		}
+	}
+	if sep < 0 || sep+1 >= len(args) {
+		fmt.Fprintln(stderr, "runtime boundary run OPTIONS -- PROGRAM ARGS")
+		return 2
+	}
+	options := append([]string{}, args[:sep]...)
+	command := args[sep+1:]
+	for _, a := range options {
+		if a == "--kind" {
+			fmt.Fprintln(stderr, "run owns start/end kinds")
+			return 2
+		}
+	}
+	key := ""
+	for i, a := range options {
+		if a == "--key" && i+1 < len(options) {
+			key = options[i+1]
+		}
+	}
+	if key == "" {
+		fmt.Fprintln(stderr, "stable --key required")
+		return 2
+	}
+	makeArgs := func(kind, suffix string) []string {
+		v := append([]string{"record"}, options...)
+		for i := 1; i < len(v); i++ {
+			if v[i] == "--key" && i+1 < len(v) {
+				v[i+1] = key + suffix
+			}
+		}
+		return append(v, "--kind", kind)
+	}
+
+	jsonMode := false
+	for _, arg := range options {
+		if arg == "--json" || arg == "-json" || arg == "--json=true" || arg == "-json=true" {
+			jsonMode = true
+		}
+	}
+	var ack, endACK bytes.Buffer
+	result := map[string]any{"ok": false, "status": "not_run", "executed": false, "command": command, "collection_status": "start_pending"}
+	receiptValue := func(raw []byte) any {
+		if json.Valid(raw) {
+			return json.RawMessage(raw)
+		}
+		return string(raw)
+	}
+	emit := func(code int) int {
+		if jsonMode {
+			result["start_ack"] = receiptValue(ack.Bytes())
+			result["end_ack"] = receiptValue(endACK.Bytes())
+			if err := json.NewEncoder(out).Encode(result); err != nil {
+				fmt.Fprintln(stderr, err)
+				return 1
+			}
+		}
+		return code
+	}
+	if code := runRuntimeBoundaryCLI(makeArgs("start", ":start"), &ack, stderr); code != 0 {
+		fmt.Fprintln(stderr, "work not executed: current operation START ACK failed")
+		result["collection_status"] = "start_failed"
+		result["error_code"] = "START_ACK_FAILED"
+		result["next_action"] = "Reconcile the exact current START receipt before retrying business work."
+		return emit(code)
+	}
+	// An already ACKed start cannot execute the business command a second time.
+	var receipt struct {
+		Recorded bool `json:"recorded"`
+	}
+	if json.Unmarshal(ack.Bytes(), &receipt) != nil || !receipt.Recorded {
+		fmt.Fprintln(stderr, "operation already started; reconcile original result before retry")
+		result["collection_status"] = "already_started"
+		result["error_code"] = "OPERATION_ALREADY_STARTED"
+		result["next_action"] = "Inspect the original operation result; do not rerun its business command."
+		return emit(3)
+	}
+	fmt.Fprint(stderr, ack.String())
+	cmd := exec.Command(command[0], command[1:]...)
+	var childOut, childDiagnostic managedCommandCapture
+	cmd.Stdout = out
+	cmd.Stderr = stderr
+	cmd.Stdin = os.Stdin
+	if jsonMode {
+		cmd.Stdout = &childOut
+		cmd.Stderr = io.MultiWriter(stderr, &childDiagnostic)
+	}
+	childErr := cmd.Run()
+	executed := cmd.Process != nil
+	code := 0
+	if childErr != nil {
+		code = 1
+		var exit *exec.ExitError
+		if errors.As(childErr, &exit) && exit.ExitCode() > 0 {
+			code = exit.ExitCode()
+		}
+		failure := append(makeArgs("collection_failure", ":failure"), "--error", childErr.Error())
+		runRuntimeBoundaryCLI(failure, stderr, stderr)
+		result["child_error"] = childErr.Error()
+	}
+	result["executed"] = executed
+	if executed {
+		result["child_exit_code"] = code
+	}
+	if jsonMode {
+		result["stdout"] = childOut.buf.String()
+		result["stderr"] = childDiagnostic.buf.String()
+		result["stdout_bytes"] = childOut.total
+		result["stderr_bytes"] = childDiagnostic.total
+		result["stdout_truncated"] = childOut.total > int64(childOut.buf.Len())
+		result["stderr_truncated"] = childDiagnostic.total > int64(childDiagnostic.buf.Len())
+	}
+	endCode := runRuntimeBoundaryCLI(makeArgs("end", ":end"), &endACK, stderr)
+	fmt.Fprint(stderr, endACK.String())
+	if endCode != 0 {
+		fmt.Fprintln(stderr, "work ran but END ACK failed; preserve operation and reconcile exact key")
+		result["status"] = "collection_gap"
+		result["collection_status"] = "end_failed"
+		result["error_code"] = "END_ACK_FAILED"
+		result["next_action"] = "Collector owner: reconcile the original END key; the business command already ran and must not be repeated."
+		return emit(endCode)
+	}
+	result["collection_status"] = "acknowledged"
+	if code == 0 {
+		result["ok"] = true
+		result["status"] = "completed"
+	} else if executed {
+		result["status"] = "failed"
+	}
+	return emit(code)
+}
+
+// JSON output is explicit about bounded child-output capture. Streaming mode is
+// unchanged. Truncation never turns missing bytes into an empty/not-run result.
+type managedCommandCapture struct {
+	buf   bytes.Buffer
+	total int64
+}
+
+func (b *managedCommandCapture) Write(p []byte) (int, error) {
+	b.total += int64(len(p))
+	left := (1 << 20) - b.buf.Len()
+	if left > len(p) {
+		left = len(p)
+	}
+	if left > 0 {
+		_, _ = b.buf.Write(p[:left])
+	}
+	return len(p), nil
 }

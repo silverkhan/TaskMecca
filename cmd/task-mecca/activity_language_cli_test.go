@@ -64,11 +64,33 @@ func TestA96LanguageRecorder(t *testing.T) {
  })}
 }
 
-func TestA96LanguageRejectsUnknownAndRunFlags(t *testing.T){
- for _,args:=range [][]string{{"fr",""},{"","fr"},{"ko","unknown"}}{if _,err:=activityExplanationLanguage(args[0],args[1]);err==nil{t.Fatal("unsupported language silently accepted",args)}}
- for _,flag:=range []string{"--language","--fallback-language"}{var out,errOut bytes.Buffer;code:=runActivityCLI([]string{"run","A-96",flag,"ko","--","must-never-execute"},&out,&errOut);if code!=2||!strings.Contains(errOut.String(),"flag provided but not defined"){t.Fatalf("run language silently accepted: %d %s",code,errOut.String())}}
+func TestA96LanguageRejectsUnknownAndRunFlags(t *testing.T) {
+	for _, args := range [][]string{{"fr", ""}, {"", "fr"}, {"ko", "unknown"}} {
+		if _, err := activityExplanationLanguage(args[0], args[1]); err == nil {
+			t.Fatal("unsupported language silently accepted", args)
+		}
+	}
+	for _, args := range [][]string{{"", "ko"}, {"fr", "ko"}} {
+		if got, err := activityExplanationLanguage(args[0], args[1]); err != nil || got != "ko" {
+			t.Fatalf("supported explicit fallback lost: %v %q %v", args, got, err)
+		}
+	}
+	// Language flags are supported by managed run. Parsing them must not waive
+	// the exact identity/event/type gate or launch an unadmitted child.
+	for _, flags := range [][]string{{"--language", "ko"}, {"--language", "en"}, {"--fallback-language", "ko"}, {"--language", "fr", "--fallback-language", "ko"}} {
+		var out, errOut bytes.Buffer
+		args := append([]string{"run", "A-96"}, flags...)
+		args = append(args, "--", "must-never-execute")
+		code := runActivityCLI(args, &out, &errOut)
+		if code != 2 || (!strings.Contains(errOut.String(), "exact actor identity") || !strings.Contains(errOut.String(), "test/build type")) || strings.Contains(errOut.String(), "flag provided but not defined") || out.Len() != 0 {
+			t.Fatalf("supported flags bypassed identity or were rejected by parser: %v %d %s", flags, code, errOut.String())
+		}
+	}
+	var out, errOut bytes.Buffer
+	if code := runActivityCLI([]string{"run", "A-96", "--unknown-language-option", "ko", "--", "must-never-execute"}, &out, &errOut); code != 2 || !strings.Contains(errOut.String(), "flag provided but not defined") {
+		t.Fatalf("unknown run option accepted: %d %s", code, errOut.String())
+	}
 }
-
 func TestA96TypeOmittedRetry(t *testing.T){
  for _,language:=range []string{"","ko"}{t.Run("language-"+language,func(t *testing.T){
  project:=t.TempDir();now:=time.Now().UTC()

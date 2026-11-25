@@ -163,3 +163,62 @@ func TestOperationBoundaryRoleDoesNotTreatWorkerPathAsController(t *testing.T) {
 		}
 	}
 }
+
+func TestA102EpisodeResumeRequiresExactGenuineContinuity(t *testing.T) {
+	now := time.Date(2026, 11, 25, 2, 0, 0, 0, time.UTC)
+	makeAttempts := func() (Attempt, Attempt, OperationBoundary, T3Receipt) {
+		receipt := T3Receipt{Origin: "t3_local_projection_v2", Provider: "codex", SessionID: "native", ThreadID: "thread", RunID: "old-run", NativeAttemptID: "old-native", State: StateInterrupted, StartedAt: now.Add(-time.Minute).Format(time.RFC3339Nano), CompletedAt: now.Add(-20 * time.Second).Format(time.RFC3339Nano), ObservedAt: now.Format(time.RFC3339Nano)}
+		old := Attempt{AttemptID: "old", Provider: "codex", RuntimeAgentID: "native", SessionID: "native", TurnID: "old-native", TaskID: "FIXTURE-1", AgentPath: "/root/controller/pairi", BindingState: BindingBound, BindingEvidence: map[string]string{"assignment_id": "continuing"}, Terminal: true, CurrentState: StateInterrupted, StateObservationQuality: QualityObserved, StateEvidenceSource: EvidenceT3, LastObservedAt: now.Format(time.RFC3339Nano), NativeReceipt: &receipt}
+		current := old
+		current.AttemptID = "current"
+		current.Terminal = false
+		current.CurrentState = StateRunning
+		current.TurnID = "current-native"
+		fresh := receipt
+		fresh.RunID = "new-run"
+		fresh.NativeAttemptID = "current-native"
+		fresh.State = StateRunning
+		fresh.StartedAt = now.Add(-10 * time.Second).Format(time.RFC3339Nano)
+		fresh.CompletedAt = ""
+		current.NativeReceipt = &fresh
+		current.BindingEvidence = map[string]string{"assignment_id": "continuing"}
+		related := OperationBoundary{ID: "actual-old-start", NativeID: "native", AttemptID: "old", ThreadID: "thread", Role: "worker", TaskIDs: []string{"FIXTURE-1"}}
+		return current, old, related, receipt
+	}
+	for _, kind := range []string{"valid", "different_native", "different_task", "different_role", "different_assignment", "nonterminal", "foreign_boundary", "foreign_thread", "unlinked", "overlap", "wrong_terminal", "missing_end"} {
+		t.Run(kind, func(t *testing.T) {
+			current, old, related, terminal := makeAttempts()
+			switch kind {
+			case "different_native":
+				current.RuntimeAgentID = "other"
+			case "different_task":
+				current.TaskID = "FIXTURE-2"
+			case "different_role":
+				current.AgentPath = "/root/controller"
+			case "different_assignment":
+				current.BindingEvidence["assignment_id"] = "other"
+			case "nonterminal":
+				old.Terminal = false
+			case "foreign_boundary":
+				related.AttemptID = "foreign"
+			case "foreign_thread":
+				terminal.ThreadID = "foreign"
+			case "unlinked":
+				related.TaskIDs = nil
+			case "overlap":
+				current.NativeReceipt.StartedAt = now.Add(-30 * time.Second).Format(time.RFC3339Nano)
+			case "wrong_terminal":
+				terminal.NativeAttemptID = "foreign"
+			case "missing_end":
+				terminal.CompletedAt = ""
+			}
+			err := ValidateEpisodeResume(current, old, related, terminal, now)
+			if (err == nil) != (kind == "valid") {
+				t.Fatalf("%s: %v", kind, err)
+			}
+			if related.Kind == "end" || related.SourceAt != nil {
+				t.Fatal("validation rewrote old boundary")
+			}
+		})
+	}
+}

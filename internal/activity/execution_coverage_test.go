@@ -262,3 +262,116 @@ func TestA100ParallelOperationsStateUnionNotActivity(t *testing.T) {
 		t.Fatal("parallel/shared operation became exclusive Activity", w.Coverage)
 	}
 }
+
+func TestA102InterruptedOperationNativeBoundIsNotReportedStop(t *testing.T) {
+	start := time.Date(2026, 11, 25, 1, 0, 0, 0, time.UTC)
+	end := start.Add(time.Minute)
+	b := runtimeobs.OperationBoundary{ID: "old-start", Provider: "codex", NativeID: "native", AttemptID: "old", OperationID: "op", Role: "controller", Kind: "start", Source: "actual", TaskIDs: []string{"FIXTURE-1"}, ObservedAt: start}
+	w := Workflow{TaskID: "FIXTURE-1", RuntimeTiming: RuntimeTiming{Intervals: []RuntimeTimingInterval{{AttemptID: "old", SessionID: "native", NativeCompletedAt: &end}}}}
+	d := BuildExecutionCoverage(w.TaskID, []runtimeobs.OperationBoundary{b}, w, nil)
+	workflowAttachOperationIntervals(&w, d)
+	v := w.Rows[0].Intervals[0]
+	if v.Kind != "operation_unreported" || v.End == nil || !v.End.Equal(end) || v.Measured || v.DurationMillis != nil || v.EndEvidence != "native_terminal_operation_end_unreported" {
+		t.Fatalf("%+v", v)
+	}
+	if d.Items[0].End != nil || b.Kind != "start" {
+		t.Fatal("native end fabricated an operation END")
+	}
+}
+
+func TestA102NativeResumeIsPointAndDoesNotCloseHistoricalWait(t *testing.T) {
+	start := time.Date(2026, 11, 25, 1, 0, 0, 0, time.UTC)
+	end := start.Add(time.Minute)
+	fresh := end.Add(time.Second)
+	row := WorkflowRow{Role: "registrar", SessionIdentity: &WorkflowSessionIdentity{Status: "verified", Provider: "codex", NativeID: "native", Attempts: []WorkflowSessionAttempt{{AttemptID: "old", AssignmentID: "assignment"}, {AttemptID: "new", AssignmentID: "assignment"}}}}
+	w := Workflow{TaskID: "FIXTURE-1", Rows: []WorkflowRow{row}, RuntimeTiming: RuntimeTiming{Intervals: []RuntimeTimingInterval{{AttemptID: "old", SessionID: "native", ThreadID: "thread", NativeStartedAt: start, NativeCompletedAt: &end}, {AttemptID: "new", SessionID: "native", ThreadID: "thread", NativeStartedAt: fresh}}}}
+	wait := runtimeobs.OperationBoundary{ID: "old-wait", Key: "old-wait", Kind: "wait", Provider: "codex", NativeID: "native", AttemptID: "old", ThreadID: "thread", Role: "registrar", OperationID: "op", TaskIDs: []string{w.TaskID}, ObservedAt: start, Wait: &runtimeobs.BoundaryWait{Scope: "actor", Reason: "actual ACK", ExpectedEvent: "handoff", NextOwner: "controller", LastEvidence: "registration ACK", ResumeCondition: "current controller"}}
+	resume := wait
+	resume.ID = "new-resume"
+	resume.Key = "new-resume"
+	resume.Kind = "resume"
+	resume.AttemptID = "new"
+	resume.PreviousAttemptID = "old"
+	resume.RelatedID = wait.ID
+	resume.ObservedAt = fresh.Add(time.Second)
+	resume.SourceAt = &end
+	resume.Wait = nil
+	for _, invalid := range []bool{false, true} {
+		candidate := w
+		candidate.Rows = append([]WorkflowRow(nil), w.Rows...)
+		if invalid {
+			identity := *row.SessionIdentity
+			identity.Attempts = append([]WorkflowSessionAttempt(nil), identity.Attempts...)
+			identity.Attempts[1].AssignmentID = "other"
+			candidate.Rows[0].SessionIdentity = &identity
+		}
+		d := BuildExecutionCoverage(w.TaskID, []runtimeobs.OperationBoundary{wait, resume}, candidate, nil)
+		category := "native_resume"
+		if invalid {
+			category = "native_resume_unverified"
+		}
+		if d.Items[0].End != nil || d.Items[1].Category != category || d.Items[1].DurationMillis != nil {
+			t.Fatalf("%+v", d.Items)
+		}
+	}
+}
+
+func TestA102CurrentReportedWaitRequiresOwnLiveACKAndPreservesMeasurements(t *testing.T) {
+	start := a100at(0)
+	now := a100at(10)
+	waitAt := a100at(5)
+	for _, kind := range []string{"valid", "missing_ack", "incomplete", "foreign_native", "terminal", "new_phase", "new_resume", "open_activity", "new_actor_activity", "completed", "review"} {
+		t.Run(kind, func(t *testing.T) {
+			b := runtimeobs.OperationBoundary{ID: "wait", Provider: "codex", NativeID: "native", AttemptID: "current", Role: "worker", Kind: "wait", ObservedAt: waitAt, Source: "current_native_boundary", Explanation: "실제 owner 확인을 기다립니다.", ExplanationLanguage: "ko", Wait: &runtimeobs.BoundaryWait{Scope: "actor", Reason: "owner ACK pending", ExpectedEvent: "owner ACK", NextOwner: "/root/controller", LastEvidence: "actual context refusal", ResumeCondition: "actual owner metadata"}}
+			w := Workflow{TaskID: "FIXTURE-1", ComputedAt: now, Current: WorkflowCurrent{Phase: "implementation"}, Measurement: Measurement{ObservedWallMillis: 1234}, Rows: []WorkflowRow{{Role: "worker", SessionIdentity: &WorkflowSessionIdentity{Status: "verified", Provider: "codex", NativeID: "native", Attempts: []WorkflowSessionAttempt{{AttemptID: "current", AssignmentID: "assignment"}}}, Intervals: []WorkflowInterval{}}}, RuntimeTiming: RuntimeTiming{Intervals: []RuntimeTimingInterval{{AttemptID: "current", SessionID: "native", NativeStartedAt: start}}}}
+			item := ExecutionCoverageItem{Category: "evidenced_wait", ACKStatus: "ack", Start: waitAt, TaskIDs: []string{w.TaskID}, Boundary: &b}
+			d := ExecutionCoverage{Items: []ExecutionCoverageItem{item}}
+			switch kind {
+			case "missing_ack":
+				d.Items[0].ACKStatus = "pending"
+			case "incomplete":
+				b.Wait.LastEvidence = ""
+			case "foreign_native":
+				b.NativeID = "foreign"
+			case "terminal":
+				w.RuntimeTiming.Intervals[0].NativeCompletedAt = &waitAt
+			case "new_phase", "new_resume":
+				next := b
+				next.Wait = nil
+				next.ObservedAt = a100at(6)
+				next.Kind = "phase"
+				if kind == "new_resume" {
+					next.Kind = "resume"
+				}
+				d.Items = append(d.Items, ExecutionCoverageItem{Boundary: &next})
+			case "open_activity":
+				w.Rows[0].Intervals = append(w.Rows[0].Intervals, WorkflowInterval{Kind: "activity_open", AttemptID: "current", Start: a100at(2)})
+			case "new_actor_activity":
+				w.Rows[0].Intervals = append(w.Rows[0].Intervals, WorkflowInterval{Kind: "activity_open", AttemptID: "other", Start: a100at(6)})
+			case "completed":
+				w.Current.Phase = "completed"
+			case "review":
+				w.Current.Phase = "controller_review"
+			}
+			before, _ := json.Marshal(w.Rows)
+			workflowAttachReportedWait(&w, d)
+			after, _ := json.Marshal(w.Rows)
+			if (w.Current.ReportedWait != nil) != (kind == "valid") {
+				t.Fatalf("%s: %+v", kind, w.Current)
+			}
+			if w.Measurement.ObservedWallMillis != 1234 || string(before) != string(after) || d.Items[0].End != nil {
+				t.Fatal("current wait fabricated duration or changed source")
+			}
+			if kind == "valid" {
+				if w.Current.Phase != "reported_wait" || w.Current.NextOwner != "/root/controller" || !w.Current.ReportedWait.ObservedAt.Equal(waitAt) {
+					t.Fatal(w.Current)
+				}
+				d.Items[0].End = &now
+				workflowAttachReportedWait(&w, d)
+				if w.Current.ReportedWait != nil || w.Current.Phase == "reported_wait" {
+					t.Fatal("closed wait remained current")
+				}
+			}
+		})
+	}
+}

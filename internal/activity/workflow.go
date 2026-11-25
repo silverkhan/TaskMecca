@@ -58,6 +58,7 @@ type Measurement struct {
 	CoveragePercent    *float64       `json:"coverage_percent,omitempty"`
 }
 type WorkflowCurrent struct {
+	ReportedWait       *WorkflowReportedWait `json:"reported_wait,omitempty"`
 	IndependentReviews []WorkflowReviewActor `json:"independent_reviews,omitempty"`
 	NextOwner          string                `json:"next_owner,omitempty"`
 	Phase              string                `json:"phase"`
@@ -116,6 +117,7 @@ type WorkflowRow struct {
 	Intervals              []WorkflowInterval         `json:"intervals"`
 }
 type WorkflowTerminalEvidence struct {
+	SourceAt   *time.Time                `json:"source_at,omitempty"`
 	ObservedAt time.Time                 `json:"observed_at"`
 	Source     runtimeobs.EvidenceSource `json:"source"`
 }
@@ -177,15 +179,19 @@ type ReportingFinding struct {
 	RequiredPhase string `json:"required_phase,omitempty"`
 }
 type WorkflowInput struct {
-	CollectionFailures    []WorkflowCollectionFailure
-	ExecutionObservations []runtimeobs.Attempt
-	TaskID                string
-	Events                []Event
-	Summary               Summary
-	Facts                 []LifecycleFact
-	Handoffs              map[string]handoffjournal.Handoff
-	Control               map[string]any
-	Now                   time.Time
+	CollectionFailures          []WorkflowCollectionFailure
+	ExecutionObservations       []runtimeobs.Attempt
+	TaskID                      string
+	Events                      []Event
+	Summary                     Summary
+	Facts                       []LifecycleFact
+	Handoffs                    map[string]handoffjournal.Handoff
+	HandoffRecords              []handoffjournal.Record // read-only journal snapshot; never dispatch/authorization input
+	OperationalControllerNative string                  // exact task policy owner; presentation proof only
+	SourceProject               string
+	NativeProjectReceipts       map[string]runtimeobs.T3Receipt // separate read-only host proof; never overwrites persisted receipts
+	Control                     map[string]any
+	Now                         time.Time
 }
 type reviewBoundary struct {
 	at                         time.Time
@@ -463,7 +469,7 @@ func SummarizeWorkflow(in WorkflowInput) Workflow {
 		if end, source, ok := terminalFor(latest.RuntimeAttemptID, "", latest.AgentID, latest.AssignmentID, latest.OccurredAt); ok {
 			// Runtime end bounds the unknown interval; it is not a measured phase end.
 			interval.Kind, interval.End, interval.EndEvidence, interval.EndEvidenceSource = "activity_unreported", &end, "native_terminal", source
-			interval.RuntimeTerminal = &WorkflowTerminalEvidence{ObservedAt: end, Source: source}
+			interval.RuntimeTerminal = workflowTerminalProvenance(in, latest.RuntimeAttemptID, end, source)
 		}
 		add(string(latest.Role), latest.AgentID, roundNumber(latest.OccurredAt, boundaries, known), interval)
 		if latest.Role == RoleWorker && (latestWorker == nil || latest.OccurredAt.After(latestWorker.OccurredAt)) {
@@ -536,7 +542,7 @@ func SummarizeWorkflow(in WorkflowInput) Workflow {
 		var endSource runtimeobs.EvidenceSource
 		var terminal *WorkflowTerminalEvidence
 		if at, source, ok := terminalFor(f.AttemptID, f.Actor, "", f.AssignmentID, f.OccurredAt); ok {
-			terminal = &WorkflowTerminalEvidence{ObservedAt: at, Source: source}
+			terminal = workflowTerminalProvenance(in, f.AttemptID, at, source)
 			if end == nil || at.Before(*end) {
 				end, endEvidence, endSource = &at, "native_terminal", source
 			}

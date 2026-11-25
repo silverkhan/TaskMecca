@@ -24,6 +24,9 @@ type T3Selector struct {
 }
 
 type T3Receipt struct {
+	RunStatus        string         `json:"run_status,omitempty"`
+	NativeStatus     string         `json:"native_status,omitempty"`
+	RunCompletedAt   string         `json:"run_completed_at,omitempty"`
 	CanonicalProject string         `json:"canonical_project,omitempty"`
 	ThreadID         string         `json:"thread_id"`
 	RunID            string         `json:"run_id"`
@@ -153,14 +156,14 @@ func (s t3Store) read(sel T3Selector, historical bool, now time.Time) (T3Receipt
 	if e != nil || started.After(now) {
 		return T3Receipt{}, errors.New("T3 start timestamp invalid or future")
 	}
-	result := T3Receipt{CanonicalProject: sel.CanonicalProject, ThreadID: r.Thread, RunID: r.Run, NativeAttemptID: r.Attempt, SessionID: r.Session, Provider: r.Provider, StartedAt: r.Started, ObservedAt: now.UTC().Format(time.RFC3339Nano), Origin: "t3_local_projection_v2"}
+	result := T3Receipt{RunStatus: r.RunStatus, NativeStatus: r.Status, CanonicalProject: sel.CanonicalProject, ThreadID: r.Thread, RunID: r.Run, NativeAttemptID: r.Attempt, SessionID: r.Session, Provider: r.Provider, StartedAt: r.Started, ObservedAt: now.UTC().Format(time.RFC3339Nano), Origin: "t3_local_projection_v2"}
 	switch r.Status {
 	case "running":
 		if historical || r.RunStatus != "running" || r.Completed != nil || r.RunCompleted != nil || r.ProviderStatus != "active" {
 			return T3Receipt{}, errors.New("T3 running state conflict")
 		}
 		result.State = StateRunning
-	case "completed", "interrupted", "errored":
+	case "completed", "interrupted", "cancelled", "errored", "failed":
 		if (!historical && (r.Status != r.RunStatus || r.RunCompleted == nil)) || r.Completed == nil {
 			return T3Receipt{}, errors.New("T3 terminal state conflict")
 		}
@@ -168,13 +171,20 @@ func (s t3Store) read(sel T3Selector, historical bool, now time.Time) (T3Receipt
 		if e != nil || ended.Before(started) || ended.After(now) {
 			return T3Receipt{}, errors.New("T3 terminal timestamp invalid")
 		}
+		if r.RunCompleted != nil {
+			runEnd, err := time.Parse(time.RFC3339Nano, *r.RunCompleted)
+			if err != nil || runEnd.Before(ended) || runEnd.After(now) {
+				return T3Receipt{}, errors.New("T3 run completion timestamp conflicts with native completion")
+			}
+			result.RunCompletedAt = *r.RunCompleted
+		}
 		result.CompletedAt = *r.Completed
 		switch r.Status {
 		case "completed":
 			result.State = StateCompleted
-		case "interrupted":
+		case "interrupted", "cancelled":
 			result.State = StateInterrupted
-		default:
+		case "errored", "failed":
 			result.State = StateErrored
 		}
 	default:
@@ -252,7 +262,10 @@ func observeT3Execution(project string, sel T3Selector, now time.Time, read t3Re
 				oldSel.RunID = a.NativeReceipt.RunID
 				oldSel.NativeAttemptID = a.NativeReceipt.NativeAttemptID
 				old, e := read(oldSel, true, now)
-				if e != nil || old.NativeAttemptID != a.NativeReceipt.NativeAttemptID || old.State == StateRunning {
+				if e != nil {
+					return Attempt{}, receipt, fmt.Errorf("previous execution episode not verified terminal: %w", e)
+				}
+				if old.NativeAttemptID != a.NativeReceipt.NativeAttemptID || old.State == StateRunning {
 					return Attempt{}, receipt, errors.New("previous execution episode not verified terminal")
 				}
 				closures = append(closures, closure{a.AttemptID, old})
@@ -365,4 +378,17 @@ func ReadT3Execution(sel T3Selector, now time.Time) (T3Receipt, error) {
 		return T3Receipt{}, err
 	}
 	return store.read(sel, false, now)
+}
+
+// Historical native verification is restricted to an exact observed episode.
+// It reads the same live ownership-checked store; no caller state/time is read.
+func ReadT3HistoricalExecution(sel T3Selector, now time.Time) (T3Receipt, error) {
+	if sel.RunID == "" || sel.NativeAttemptID == "" {
+		return T3Receipt{}, errors.New("exact historical run and native attempt required")
+	}
+	store, err := localT3Store()
+	if err != nil {
+		return T3Receipt{}, err
+	}
+	return store.read(sel, true, now)
 }

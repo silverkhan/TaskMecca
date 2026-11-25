@@ -17,6 +17,38 @@ import (
 	"time"
 )
 
+func TestA102RequiredRegistrationStopsBeforeBusinessOnCollectorFailure(t *testing.T) {
+	p := t.TempDir()
+	t.Setenv("CODEX_THREAD_ID", "")
+	t.Setenv("T3CODE_THREAD_ID", "")
+	input := filepath.Join(t.TempDir(), "fixture-manifest.json")
+	if err := os.WriteFile(input, []byte(`{"schema_version":1,"tasks":[{"key":"fixture-one","kind":"simple","title":"Fixture only","goal":"Prove failed START cannot register work","acceptance_criteria":["No business write before ACK"]}]}`), 0600); err != nil {
+		t.Fatal(err)
+	}
+	base := []string{"--project", p, "--input", input, "--request-id", "fixture-a102-strict-failure", "--prefix", "FIXTURE", "--json"}
+	var out, diagnostic bytes.Buffer
+	if code := runContractBatchCLI("plan", base, &out, &diagnostic); code != 0 {
+		t.Fatal(code, diagnostic.String())
+	}
+	var plan batchPlan
+	if err := json.Unmarshal(out.Bytes(), &plan); err != nil {
+		t.Fatal(err)
+	}
+	out.Reset()
+	diagnostic.Reset()
+	code := runContractBatchCLI("apply", append(base, "--approve", "--expect-plan", plan.PlanDigest, "--require-collection"), &out, &diagnostic)
+	if code == 0 || !strings.Contains(out.String(), `"business_started":false`) {
+		t.Fatal("failed START admitted business", code, out.String(), diagnostic.String())
+	}
+	if _, err := os.Stat(filepath.Join(p, "_task_mecca", "data", "backlog")); !os.IsNotExist(err) {
+		t.Fatal("failed START wrote backlog")
+	}
+	receipts, err := runtimeobs.ReadCollectionReceipts(p)
+	if err != nil || len(receipts) < 2 || receipts[1].Status != "failed" || receipts[1].Error == "" {
+		t.Fatal("original failure lost", receipts, err)
+	}
+}
+
 func TestA98SupportedRegistrationApplyDurableRequestAndWrittenDescription(t *testing.T) {
 	p := t.TempDir()
 	host := newRegistrationHostFixture(t, p)
@@ -589,5 +621,100 @@ func TestRegistrationBoundaryUnsupportedStatusSurvivesAgentJSON(t *testing.T) {
 	}, &out, &stderr)
 	if code != 0 || !strings.Contains(out.String(), `"status":"unmeasured"`) || !strings.Contains(out.String(), "original_error") {
 		t.Fatalf("collection error hidden: %d %s %s", code, out.String(), stderr.String())
+	}
+}
+
+func TestA102ManagedJSONReportsActualQuietNoisyAndFailedChildren(t *testing.T) {
+	for _, kind := range []string{"quiet", "noisy", "child_failure", "end_ack_failure", "prestart_rejected", "duplicate"} {
+		t.Run(kind, func(t *testing.T) {
+			project := t.TempDir()
+			host := newRegistrationHostFixture(t, project)
+			var diagnostic bytes.Buffer
+			c := host.collector(&diagnostic)
+			args := []string{"--project", project, "--thread-id", "fixture-thread", "--session-id", "fixture-native", "--attempt", c.base.AttemptID, "--role", "registrar", "--operation", "json-" + kind, "--key", "json-" + kind, "--evidence", "isolated host command result regression", "--explanation", "실제 명령과 수집 ACK를 대조합니다.", "--language", "ko", "--json", "--"}
+			child := []string{"/usr/bin/true"}
+			sentinel := filepath.Join(t.TempDir(), "child-ran")
+			switch kind {
+			case "noisy":
+				child = []string{"/bin/sh", "-c", "printf actual_stdout; printf actual_stderr >&2"}
+			case "child_failure":
+				child = []string{"/bin/sh", "-c", "printf original_failure >&2; exit 7"}
+			case "end_ack_failure":
+				child = []string{"/bin/sh", "-c", "printf '%s' '{\"id\":\"fixture-native\",\"name\":\"D1112_01_Worker_pairi_G1\"}' > " + fixtureShellQuote(host.metadata)}
+			case "prestart_rejected":
+				t.Setenv("CODEX_THREAD_ID", "foreign")
+				child = []string{"/usr/bin/touch", sentinel}
+			case "duplicate":
+				child = []string{"/bin/sh", "-c", "printf x >> " + fixtureShellQuote(sentinel)}
+			}
+			args = append(args, child...)
+			invoke := func() (int, map[string]any, string) {
+				var out, errs bytes.Buffer
+				code := runAgentJSON([]string{"--json"}, func(w, e io.Writer) int { return runManagedBoundary(args, w, e) }, &out, &errs)
+				var v map[string]any
+				if err := json.Unmarshal(out.Bytes(), &v); err != nil {
+					t.Fatalf("invalid JSON: %v %s", err, out.String())
+				}
+				return code, v, errs.String()
+			}
+			code, v, errs := invoke()
+			if kind == "prestart_rejected" {
+				if code == 0 || v["executed"] != false {
+					t.Fatal(code, v, errs)
+				}
+				if _, e := os.Stat(sentinel); !os.IsNotExist(e) {
+					t.Fatal("business executed before START ACK")
+				}
+				return
+			}
+			if v["executed"] != true || v["error_code"] == "EMPTY_RESPONSE" {
+				t.Fatal("actual execution lost", code, v, errs)
+			}
+			if kind == "end_ack_failure" {
+				if code == 0 || v["status"] != "collection_gap" || v["child_exit_code"] != float64(0) || v["collection_status"] != "end_failed" {
+					t.Fatal("successful child promoted despite missing END", code, v, errs)
+				}
+				return
+			}
+			want := 0
+			if kind == "child_failure" {
+				want = 7
+			}
+			if code != want || v["child_exit_code"] != float64(want) || v["collection_status"] != "acknowledged" {
+				t.Fatal(code, v, errs)
+			}
+			if kind == "quiet" && (v["ok"] != true || v["status"] != "completed" || v["stdout"] != "") {
+				t.Fatal("quiet success became not_run", v)
+			}
+			if kind == "noisy" && (v["stdout"] != "actual_stdout" || v["stderr"] != "actual_stderr") {
+				t.Fatal("child output changed", v)
+			}
+			if kind == "child_failure" && v["stderr"] != "original_failure" {
+				t.Fatal("original child failure lost", v)
+			}
+			boundaries, e := runtimeobs.ReadOperationBoundaries(project)
+			if e != nil {
+				t.Fatal(e)
+			}
+			start, end := 0, 0
+			for _, b := range boundaries {
+				if b.Kind == "start" {
+					start++
+				}
+				if b.Kind == "end" {
+					end++
+				}
+			}
+			if start != 1 || end != 1 {
+				t.Fatal("ACK result disagrees with durable boundaries", boundaries)
+			}
+			if kind == "duplicate" {
+				again, reply, _ := invoke()
+				data, _ := os.ReadFile(sentinel)
+				if again == 0 || reply["executed"] != false || string(data) != "x" {
+					t.Fatal("duplicate START reran business", again, reply, string(data))
+				}
+			}
+		})
 	}
 }

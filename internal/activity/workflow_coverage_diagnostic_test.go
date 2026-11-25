@@ -2,10 +2,33 @@ package activity
 
 import (
 	"encoding/json"
+	"github.com/silverkhan/TaskMecca/internal/runtimeobs"
 	"os"
 	"testing"
 	"time"
 )
+
+func TestA102StateUnionAdmitsOnlyCompleteWaitEvidence(t *testing.T) {
+	start, end := a100at(0), a100at(30)
+	waitEnd, operationEnd := a100at(10), a100at(20)
+	elapsed := int64(30000)
+	for _, complete := range []bool{false, true} {
+		wait := &runtimeobs.BoundaryWait{Scope: "task_next_stage", Reason: "fixture result pending", ExpectedEvent: "fixture_report", NextOwner: "controller", LastEvidence: "fixture_dispatch_ack", ResumeCondition: "actual report arrives"}
+		if !complete {
+			wait.LastEvidence = ""
+		}
+		detail := ExecutionCoverage{Items: []ExecutionCoverageItem{{Category: "evidenced_wait", Start: start, End: &waitEnd, Boundary: &runtimeobs.OperationBoundary{Wait: wait}}}}
+		w := Workflow{TaskID: "fixture-state-union", Axis: WorkflowAxis{Start: &start, End: &end, ElapsedMillis: &elapsed}, Rows: []WorkflowRow{{Intervals: []WorkflowInterval{{Kind: "operation_execution", Start: a100at(5), End: &operationEnd}}}}, Unmeasured: []WorkflowGap{{Start: a100at(15), End: end, Status: "native_observed"}}, Reporting: ReportingCoverage{Roles: []RoleReportingCoverage{{Role: "controller", ExecutionCoverage: &detail}}}}
+		workflowDiagnoseCoverage(&w)
+		want := int64(5000)
+		if complete {
+			want = 0
+		}
+		if w.Coverage.UnaccountedStateMillis != want || w.Coverage.ClosedActivityWallMillis != 0 || w.Coverage.InstrumentationStatus != "not_established" {
+			t.Fatalf("wait state fabricated Activity or double counted: complete=%v %+v", complete, w.Coverage)
+		}
+	}
+}
 
 func a100at(second int) time.Time { return time.Date(2026, 11, 24, 0, 0, second, 0, time.UTC) }
 

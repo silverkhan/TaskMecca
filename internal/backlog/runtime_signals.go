@@ -51,6 +51,29 @@ func implementationDispatchTime(a runtimeobs.Attempt) time.Time {
 	return latest
 }
 
+// A future dispatch request does not replace an already observed execution.
+// Keep this projection separate from assignment/START authorization: it only
+// selects existing exact-owner evidence, and never grants a prepared attempt START.
+func activeImplementationPhase(a runtimeobs.Attempt, owner runtimeImplementationOwner, assignment runtimeobs.Assignment, events []activity.Event, now time.Time) bool {
+	identity := runtimeobs.PolicyIdentity(a)
+	assignedAt, err := time.Parse(time.RFC3339Nano, assignment.AssignedAt)
+	observedAt, observedErr := time.Parse(time.RFC3339Nano, a.LastObservedAt)
+	if a.Terminal || a.CurrentState != runtimeobs.StateRunning || a.StartedAt == "" || a.BindingState != runtimeobs.BindingBound || a.TaskID != assignment.TaskID || a.AgentPath != owner.AgentPath || assignment.AgentPath != owner.AgentPath || a.BindingEvidence["assignment_id"] != assignment.AssignmentID || !identity.Observed || identity.NativeID == "" || a.RuntimeAgentID != identity.NativeID || identity.AgentPath != owner.AgentPath || rolepolicy.Role(identity.AgentPath) != owner.Role || (owner.NativeID != "" && identity.NativeID != owner.NativeID) || err != nil || observedErr != nil || assignedAt.After(now) || observedAt.After(now) || observedAt.Before(assignedAt) {
+		return false
+	}
+	effective, _ := activity.EffectiveEvents(events)
+	var latest *activity.Event
+	for _, event := range attributedActivityEvents(a, effective, now) {
+		if latest == nil || event.OccurredAt.After(latest.OccurredAt) {
+			copy := event
+			latest = &copy
+		} else if event.OccurredAt.Equal(latest.OccurredAt) && event.EventID != latest.EventID {
+			return false
+		}
+	}
+	return latest != nil && (latest.Action == activity.Start || latest.Action == activity.Switch)
+}
+
 // Only actual owner-correlated implementation evidence can override legacy
 // registry signals. Owner errors explicitly override rather than falling back to
 // an unrelated reviewer or another native sharing the same display/path metadata.
@@ -94,6 +117,47 @@ func runtimeLedgerSignals(project string, rows []Record, now time.Time, shared .
 			latestAssignment[key] = a
 			ambiguousAssignment[key] = false
 		} else if a.AssignedAt == previous.AssignedAt && a.AssignmentID != previous.AssignmentID {
+			ambiguousAssignment[key] = true
+		}
+	}
+	// Only an unused/unobserved future assignment may coexist with the current
+	// verified phase. Once its own native is observed, normal latest selection
+	// must expose its missing START, identity or terminal evidence instead.
+	for id, owner := range expected {
+		key := id + "\x00" + owner.AgentPath
+		future, ok := latestAssignment[key]
+		if !ok || ambiguousAssignment[key] || !owner.Structured {
+			continue
+		}
+		observedFuture := false
+		for _, a := range ledger.Attempts {
+			if a.TaskID == id && a.BindingEvidence["assignment_id"] == future.AssignmentID && runtimeobs.PolicyIdentity(a).Observed {
+				observedFuture = true
+			}
+		}
+		if observedFuture {
+			continue
+		}
+		events, activityErr := (activity.Ledger{Project: project}).ListCached(id)
+		if activityErr != nil {
+			continue
+		}
+		var current runtimeobs.Assignment
+		count := 0
+		for _, a := range ledger.Attempts {
+			if a.TaskID != id {
+				continue
+			}
+			for _, assignment := range assignments {
+				if assignment.AssignedAt < future.AssignedAt && activeImplementationPhase(a, owner, assignment, events, now) {
+					current = assignment
+					count++
+				}
+			}
+		}
+		if count == 1 {
+			latestAssignment[key] = current
+		} else if count > 1 {
 			ambiguousAssignment[key] = true
 		}
 	}

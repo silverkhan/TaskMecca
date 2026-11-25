@@ -100,6 +100,178 @@ func testT3Selector() T3Selector {
 	return T3Selector{ThreadID: "thread", SessionID: "native-session", RuntimeAgentID: "native-session"}
 }
 
+func TestA102TerminalHostStatusMatrix(t *testing.T) {
+	now := time.Date(2026, 11, 12, 1, 2, 0, 0, time.UTC)
+	for status, state := range map[string]CanonicalState{"completed": StateCompleted, "cancelled": StateInterrupted, "interrupted": StateInterrupted, "errored": StateErrored, "failed": StateErrored} {
+		for _, mode := range []string{"current", "historical", "missing_native_end", "missing_run_end", "run_status_conflict", "run_end_before_native", "native_end_before_start", "future_native_end", "future_run_end", "unknown"} {
+			t.Run(status+"/"+mode, func(t *testing.T) {
+				store, sql := t3Fixture(t)
+				sql(fmt.Sprintf(`UPDATE orchestration_v2_projection_runs SET status='%s',completed_at='2026-11-12T01:01:01.010Z'; UPDATE orchestration_v2_projection_run_attempts SET status='%s',payload_json=json_set(payload_json,'$.completedAt','2026-11-12T01:01:01Z');`, status, status))
+				sel := testT3Selector()
+				historical := mode == "historical"
+				switch mode {
+				case "historical":
+					sel.RunID = "run-1"
+					sel.NativeAttemptID = "native-attempt-1"
+					sql(`INSERT INTO orchestration_v2_projection_runs VALUES('thread','run-2','codex','running',NULL,2,'provider-thread'); INSERT INTO orchestration_v2_projection_run_attempts(thread_id,run_id,attempt_id,status,payload_json,attempt_ordinal,provider_thread_id) VALUES('thread','run-2','native-attempt-2','running','{"nativeThreadId":"native-session","startedAt":"2026-11-12T01:01:02Z"}',1,'provider-thread');`)
+				case "missing_native_end":
+					sql(`UPDATE orchestration_v2_projection_run_attempts SET payload_json=json_remove(payload_json,'$.completedAt');`)
+				case "missing_run_end":
+					sql(`UPDATE orchestration_v2_projection_runs SET completed_at=NULL;`)
+				case "run_status_conflict":
+					sql(`UPDATE orchestration_v2_projection_runs SET status='running';`)
+				case "run_end_before_native":
+					sql(`UPDATE orchestration_v2_projection_runs SET completed_at='2026-11-12T01:01:00Z';`)
+				case "native_end_before_start":
+					sql(`UPDATE orchestration_v2_projection_run_attempts SET payload_json=json_set(payload_json,'$.completedAt','2026-11-12T00:59:59Z');`)
+				case "future_native_end":
+					sql(`UPDATE orchestration_v2_projection_run_attempts SET payload_json=json_set(payload_json,'$.completedAt','2026-11-12T01:03:00Z');`)
+				case "future_run_end":
+					sql(`UPDATE orchestration_v2_projection_runs SET completed_at='2026-11-12T01:03:00Z';`)
+				case "unknown":
+					sql(`UPDATE orchestration_v2_projection_runs SET status='unexpected_terminal'; UPDATE orchestration_v2_projection_run_attempts SET status='unexpected_terminal';`)
+				}
+				r, err := store.read(sel, historical, now)
+				if mode != "current" && mode != "historical" {
+					if err == nil {
+						t.Fatalf("unverified terminal admitted: %+v", r)
+					}
+					return
+				}
+				if err != nil || r.State != state || r.NativeStatus != status || r.RunStatus != status || r.CompletedAt != "2026-11-12T01:01:01Z" || r.RunCompletedAt != "2026-11-12T01:01:01.010Z" || r.StartedAt != "2026-11-12T01:00:00Z" {
+					t.Fatalf("raw status/timestamps changed: %+v %v", r, err)
+				}
+				if historical {
+					if _, err := store.read(sel, false, now); err == nil {
+						t.Fatal("historical native used as current")
+					}
+				}
+			})
+		}
+	}
+}
+
+func TestA102ActualCancellationStatusRequiresTerminalSourceTimes(t *testing.T) {
+	for _, kind := range []string{"valid", "missing_native_end", "missing_run_end", "future_end", "backward_end", "wrong_run_status", "run_end_before_native"} {
+		t.Run(kind, func(t *testing.T) {
+			store, sql := t3Fixture(t)
+			now := time.Date(2026, 11, 12, 1, 2, 0, 0, time.UTC)
+			sql(`UPDATE orchestration_v2_projection_runs SET status='cancelled',completed_at='2026-11-12T01:01:01.010Z'; UPDATE orchestration_v2_projection_run_attempts SET status='cancelled',payload_json=json_set(payload_json,'$.completedAt','2026-11-12T01:01:01Z');`)
+			switch kind {
+			case "missing_native_end":
+				sql(`UPDATE orchestration_v2_projection_run_attempts SET payload_json=json_remove(payload_json,'$.completedAt');`)
+			case "missing_run_end":
+				sql(`UPDATE orchestration_v2_projection_runs SET completed_at=NULL;`)
+			case "future_end":
+				sql(`UPDATE orchestration_v2_projection_run_attempts SET payload_json=json_set(payload_json,'$.completedAt','2099-01-01T00:00:00Z');`)
+			case "backward_end":
+				sql(`UPDATE orchestration_v2_projection_run_attempts SET payload_json=json_set(payload_json,'$.completedAt','2026-11-12T00:59:59Z');`)
+			case "wrong_run_status":
+				sql(`UPDATE orchestration_v2_projection_runs SET status='completed';`)
+			case "run_end_before_native":
+				sql(`UPDATE orchestration_v2_projection_runs SET completed_at='2026-11-12T01:00:59Z';`)
+			}
+			r, err := store.read(testT3Selector(), false, now)
+			if kind != "valid" {
+				if err == nil {
+					t.Fatal("unverified cancellation admitted", kind, r)
+				}
+				return
+			}
+			if err != nil || r.State != StateInterrupted || r.NativeStatus != "cancelled" || r.RunStatus != "cancelled" || r.CompletedAt != "2026-11-12T01:01:01Z" || r.RunCompletedAt != "2026-11-12T01:01:01.010Z" {
+				t.Fatal("cancelled source relabelled/completion latency lost", r, err)
+			}
+		})
+	}
+}
+
+func TestA102CancelledPriorEpisodeResumesWithoutFakeStop(t *testing.T) {
+	store, sql := t3Fixture(t)
+	project := t.TempDir()
+	now := time.Date(2026, 11, 12, 1, 1, 0, 0, time.UTC)
+	sel := testT3Selector()
+	if _, err := BindRuntimeAgent(project, sel.RuntimeAgentID, "FIXTURE-1", "/root/controller", "", now.Add(-time.Minute)); err != nil {
+		t.Fatal(err)
+	}
+	first, _, err := observeT3Execution(project, sel, now, store.read)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sql(`UPDATE orchestration_v2_projection_runs SET status='cancelled',completed_at='2026-11-12T01:01:01Z';UPDATE orchestration_v2_projection_run_attempts SET status='cancelled',payload_json=json_set(payload_json,'$.completedAt','2026-11-12T01:01:01Z');INSERT INTO orchestration_v2_projection_runs VALUES('thread','run-2','codex','running',NULL,2,'provider-thread');INSERT INTO orchestration_v2_projection_run_attempts(thread_id,run_id,attempt_id,status,payload_json,attempt_ordinal,provider_thread_id) VALUES('thread','run-2','native-attempt-2','running','{"nativeThreadId":"native-session","startedAt":"2026-11-12T01:01:02Z"}',1,'provider-thread');`)
+	current, _, err := observeT3Execution(project, sel, now.Add(3*time.Second), store.read)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if current.AttemptID == first.AttemptID || current.Terminal || current.TaskID != "FIXTURE-1" {
+		t.Fatal("not a distinct actual resumed episode", current)
+	}
+	ledger, err := BuildLedger(project, 0, now.Add(3*time.Second))
+	if err != nil {
+		t.Fatal(err)
+	}
+	oldFound := false
+	for _, a := range ledger.Attempts {
+		if a.AttemptID == first.AttemptID {
+			oldFound = true
+			if !a.Terminal || a.CurrentState != StateInterrupted || a.NativeReceipt.NativeStatus != "cancelled" || a.NativeReceipt.CompletedAt != "2026-11-12T01:01:01Z" {
+				t.Fatal("old cancellation rewritten", a)
+			}
+		}
+	}
+	if !oldFound {
+		t.Fatal("old episode erased")
+	}
+	if _, err := os.Stat(filepath.Join(project, "_task_mecca", "data", "activity")); !os.IsNotExist(err) {
+		t.Fatal("native recovery manufactured Activity")
+	}
+}
+
+func TestA102AllTerminalPriorEpisodesResumeWithoutFakeStop(t *testing.T) {
+	for status, state := range map[string]CanonicalState{"completed": StateCompleted, "cancelled": StateInterrupted, "interrupted": StateInterrupted, "errored": StateErrored, "failed": StateErrored} {
+		t.Run(status, func(t *testing.T) {
+			store, sql := t3Fixture(t)
+			project := t.TempDir()
+			now := time.Date(2026, 11, 12, 1, 1, 0, 0, time.UTC)
+			sel := testT3Selector()
+			if _, err := BindRuntimeAgent(project, sel.RuntimeAgentID, "FIXTURE-1", "/root/controller", "", now.Add(-time.Minute)); err != nil {
+				t.Fatal(err)
+			}
+			first, _, err := observeT3Execution(project, sel, now, store.read)
+			if err != nil {
+				t.Fatal(err)
+			}
+			sql(strings.ReplaceAll(`UPDATE orchestration_v2_projection_runs SET status='cancelled',completed_at='2026-11-12T01:01:01Z';UPDATE orchestration_v2_projection_run_attempts SET status='cancelled',payload_json=json_set(payload_json,'$.completedAt','2026-11-12T01:01:01Z');INSERT INTO orchestration_v2_projection_runs VALUES('thread','run-2','codex','running',NULL,2,'provider-thread');INSERT INTO orchestration_v2_projection_run_attempts(thread_id,run_id,attempt_id,status,payload_json,attempt_ordinal,provider_thread_id) VALUES('thread','run-2','native-attempt-2','running','{"nativeThreadId":"native-session","startedAt":"2026-11-12T01:01:02Z"}',1,'provider-thread');`, "cancelled", status))
+			current, _, err := observeT3Execution(project, sel, now.Add(3*time.Second), store.read)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if current.AttemptID == first.AttemptID || current.Terminal || current.TaskID != "FIXTURE-1" {
+				t.Fatal("not a distinct actual resumed episode", current)
+			}
+			ledger, err := BuildLedger(project, 0, now.Add(3*time.Second))
+			if err != nil {
+				t.Fatal(err)
+			}
+			oldFound := false
+			for _, a := range ledger.Attempts {
+				if a.AttemptID == first.AttemptID {
+					oldFound = true
+					if !a.Terminal || a.CurrentState != state || a.NativeReceipt.NativeStatus != status || a.NativeReceipt.CompletedAt != "2026-11-12T01:01:01Z" {
+						t.Fatal("old cancellation rewritten", a)
+					}
+				}
+			}
+			if !oldFound {
+				t.Fatal("old episode erased")
+			}
+			if _, err := os.Stat(filepath.Join(project, "_task_mecca", "data", "activity")); !os.IsNotExist(err) {
+				t.Fatal("native recovery manufactured Activity")
+			}
+
+		})
+	}
+}
+
 func TestT3CurrentExecutionCanonicalProjectPins(t *testing.T) {
 	store, sql := t3Fixture(t)
 	sql(`ALTER TABLE orchestration_v2_projection_threads ADD COLUMN project_id TEXT;
@@ -353,5 +525,29 @@ func TestT3ObservationBeforeBindingRemainsObservedAndPendingResumeIsSafe(t *test
 	refreshed, _, err := observeT3Execution(project, sel, now.Add(9*time.Second), store.read)
 	if err != nil || refreshed.TaskID != "A-66" || refreshed.AgentPath != "/root/controller/new-worker" {
 		t.Fatal("historical binding overwrote current assignment", refreshed, err)
+	}
+}
+
+func TestA102ResumePreservesHistoricalReadCause(t *testing.T) {
+	store, _ := t3Fixture(t)
+	project := t.TempDir()
+	now := time.Date(2026, 11, 12, 1, 1, 0, 0, time.UTC)
+	sel := testT3Selector()
+	if _, _, err := observeT3Execution(project, sel, now, store.read); err != nil {
+		t.Fatal(err)
+	}
+	cause := errors.New("actual prior cancellation source unavailable")
+	read := func(s T3Selector, historical bool, at time.Time) (T3Receipt, error) {
+		if historical {
+			return T3Receipt{}, cause
+		}
+		r, err := store.read(s, historical, at)
+		r.RunID = "new-run"
+		r.NativeAttemptID = "new-attempt"
+		return r, err
+	}
+	_, _, err := observeT3Execution(project, sel, now.Add(time.Second), read)
+	if !errors.Is(err, cause) || !strings.Contains(err.Error(), "previous execution episode not verified terminal") {
+		t.Fatalf("original error lost: %v", err)
 	}
 }

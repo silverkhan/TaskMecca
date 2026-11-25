@@ -42,28 +42,30 @@ func (w *BoundaryWait) Evidenced() bool {
 }
 
 type OperationBoundary struct {
-	Explanation         string        `json:"explanation,omitempty"`
-	ExplanationLanguage string        `json:"explanation_language,omitempty"`
-	ExplanationOrigin   string        `json:"explanation_origin,omitempty"`
-	RequestID           string        `json:"request_id,omitempty"`
-	ID                  string        `json:"id"`
-	Key                 string        `json:"key"`
-	OperationID         string        `json:"operation_id"`
-	Provider            string        `json:"provider"`
-	NativeID            string        `json:"native_id"`
-	AttemptID           string        `json:"attempt_id"`
-	ThreadID            string        `json:"thread_id,omitempty"`
-	Role                string        `json:"role"`
-	Kind                string        `json:"kind"`
-	Phase               string        `json:"phase,omitempty"`
-	RelatedID           string        `json:"related_id,omitempty"` // wait ID, handoff ID or failed boundary key
-	ObservedAt          time.Time     `json:"observed_at"`
-	SourceAt            *time.Time    `json:"source_at,omitempty"` // original evidence time; never the measured start
-	TaskIDs             []string      `json:"task_ids,omitempty"`
-	Source              string        `json:"source"`
-	Evidence            string        `json:"evidence"`
-	Wait                *BoundaryWait `json:"wait,omitempty"`
-	Error               string        `json:"error,omitempty"`
+	PreviousAttemptID    string        `json:"previous_attempt_id,omitempty"`
+	PreviousNativeStatus string        `json:"previous_native_status,omitempty"`
+	Explanation          string        `json:"explanation,omitempty"`
+	ExplanationLanguage  string        `json:"explanation_language,omitempty"`
+	ExplanationOrigin    string        `json:"explanation_origin,omitempty"`
+	RequestID            string        `json:"request_id,omitempty"`
+	ID                   string        `json:"id"`
+	Key                  string        `json:"key"`
+	OperationID          string        `json:"operation_id"`
+	Provider             string        `json:"provider"`
+	NativeID             string        `json:"native_id"`
+	AttemptID            string        `json:"attempt_id"`
+	ThreadID             string        `json:"thread_id,omitempty"`
+	Role                 string        `json:"role"`
+	Kind                 string        `json:"kind"`
+	Phase                string        `json:"phase,omitempty"`
+	RelatedID            string        `json:"related_id,omitempty"` // wait ID, handoff ID or failed boundary key
+	ObservedAt           time.Time     `json:"observed_at"`
+	SourceAt             *time.Time    `json:"source_at,omitempty"` // original evidence time; never the measured start
+	TaskIDs              []string      `json:"task_ids,omitempty"`
+	Source               string        `json:"source"`
+	Evidence             string        `json:"evidence"`
+	Wait                 *BoundaryWait `json:"wait,omitempty"`
+	Error                string        `json:"error,omitempty"`
 }
 
 func boundaryID(b OperationBoundary) string {
@@ -76,6 +78,9 @@ func OperationBoundaryPath(project string) string {
 }
 
 func validateBoundary(b OperationBoundary) error {
+	if b.PreviousAttemptID != "" && (b.Kind != "resume" || b.PreviousAttemptID == b.AttemptID || b.RelatedID == "" || b.SourceAt == nil) {
+		return errors.New("native resume requires distinct previous episode, exact source boundary and native source time")
+	}
 	if b.ExplanationLanguage != "" && b.ExplanationLanguage != "ko" && b.ExplanationLanguage != "en" {
 		return errors.New("unsupported boundary explanation language")
 	}
@@ -116,6 +121,78 @@ func validateBoundary(b OperationBoundary) error {
 		return errors.New("wait metadata only belongs to a wait boundary")
 	}
 	return nil
+}
+
+// ValidateEpisodeResume does not close an old operation/wait. A new current
+// boundary links the genuine terminal native source to the continuing exact
+// task/role/assignment. Missing old stop reports stay missing.
+func ValidateEpisodeResume(current, previous Attempt, related OperationBoundary, terminal T3Receipt, now time.Time) error {
+	if current.Provider != previous.Provider || current.AttemptID == previous.AttemptID || current.RuntimeAgentID == "" || current.RuntimeAgentID != previous.RuntimeAgentID || current.SessionID != previous.SessionID || current.AgentPath != previous.AgentPath || current.TaskID == "" || current.TaskID != previous.TaskID || current.BindingState != BindingBound || previous.BindingState != BindingBound || current.Terminal || !previous.Terminal || current.NativeReceipt == nil || previous.NativeReceipt == nil || current.StateEvidenceSource != EvidenceT3 || previous.StateEvidenceSource != EvidenceT3 || !HasObservedExecution(current) || !HasObservedExecution(previous) {
+		return errors.New("resume requires same native/task/role, distinct genuine current and terminal episodes")
+	}
+	assignment := current.BindingEvidence["assignment_id"]
+	if assignment == "" || assignment != previous.BindingEvidence["assignment_id"] {
+		return errors.New("resume requires exact continuing assignment, never live task reassignment")
+	}
+	if related.ID == "" || related.AttemptID != previous.AttemptID || related.NativeID != previous.RuntimeAgentID || related.Role != boundaryRoleFromPath(previous.AgentPath) || related.ThreadID != previous.NativeReceipt.ThreadID {
+		return errors.New("resume source boundary differs from actual previous actor")
+	}
+	linked := false
+	for _, task := range related.TaskIDs {
+		if task == current.TaskID {
+			linked = true
+		}
+	}
+	if !linked {
+		return errors.New("previous boundary has no exact continuing task association")
+	}
+	if terminal.Origin != "t3_local_projection_v2" || terminal.Provider != current.Provider || terminal.State == StateRunning || terminal.NativeAttemptID != previous.NativeReceipt.NativeAttemptID || terminal.RunID != previous.NativeReceipt.RunID || terminal.ThreadID != current.NativeReceipt.ThreadID || terminal.SessionID != current.SessionID {
+		return errors.New("previous native terminal source does not match continuing actor")
+	}
+	end, err := time.Parse(time.RFC3339Nano, terminal.CompletedAt)
+	if err != nil || end.After(now) {
+		return errors.New("verified previous native completion required")
+	}
+	start, err := time.Parse(time.RFC3339Nano, current.NativeReceipt.StartedAt)
+	if err != nil || start.Before(end) || start.After(now) {
+		return errors.New("current native episode overlaps or precedes previous completion")
+	}
+	return nil
+}
+
+func VerifyOperationResume(project, canonical, currentID, previousID, relatedID string, now time.Time) (Attempt, T3Receipt, error) {
+	ledger, err := BuildLedger(project, 0, now)
+	if err != nil {
+		return Attempt{}, T3Receipt{}, err
+	}
+	var current, previous Attempt
+	for _, a := range ledger.Attempts {
+		if a.AttemptID == currentID {
+			current = a
+		}
+		if a.AttemptID == previousID {
+			previous = a
+		}
+	}
+	rows, err := ReadOperationBoundaries(project)
+	if err != nil {
+		return current, T3Receipt{}, err
+	}
+	var related OperationBoundary
+	for _, b := range rows {
+		if b.ID == relatedID {
+			related = b
+		}
+	}
+	if previous.NativeReceipt == nil {
+		return current, T3Receipt{}, errors.New("previous observed T3 receipt required")
+	}
+	r := previous.NativeReceipt
+	terminal, err := ReadT3HistoricalExecution(T3Selector{CanonicalProject: canonical, ThreadID: r.ThreadID, SessionID: previous.SessionID, RuntimeAgentID: previous.RuntimeAgentID, RunID: r.RunID, NativeAttemptID: r.NativeAttemptID}, now)
+	if err != nil {
+		return current, terminal, err
+	}
+	return current, terminal, ValidateEpisodeResume(current, previous, related, terminal, now)
 }
 
 // Reads never create storage. A corrupt line is reported along with valid rows,

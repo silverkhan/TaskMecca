@@ -47,6 +47,9 @@ type DeliveryCheckpoint struct {
 // Acknowledged/uncertain sends are never automatically repeated. Explicit
 // rejection can retry the SAME checkpoint after repair and fresh observation.
 func DeliverReport(project, id, reportFile string, host NativeTransport) (DeliveryCheckpoint, error) {
+	if _, e := os.Lstat(filepath.Join(project, ".collection-project.json")); e == nil {
+		return DeliveryCheckpoint{}, errors.New("isolated collection fixture: external delivery disabled")
+	}
 	if host == nil {
 		return DeliveryCheckpoint{}, errors.New("native transport unavailable")
 	}

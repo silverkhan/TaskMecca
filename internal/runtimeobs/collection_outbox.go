@@ -44,6 +44,99 @@ func CollectionOutboxPath(project string) string {
 	return filepath.Join(project, "_task_mecca", ".runtime", "collection-outbox.jsonl")
 }
 
+// RequireCollectionACK is the explicit managed-flow admission gate. It checks
+// the exact actor episode's currently open, task-linked operation and durable
+// append ACK. A point, old episode, pending append or source-only marker is
+// insufficient. Historical failed receipts are never removed by admission.
+func RequireCollectionACK(project, task, native, attempt, role string, now time.Time) error {
+	ledger, err := BuildLedger(project, 0, now)
+	if err != nil {
+		return err
+	}
+	matched := false
+	for _, a := range ledger.Attempts {
+		if a.AttemptID == attempt && a.RuntimeAgentID == native && workflowRolePath(a.AgentPath) == role && HasObservedExecution(a) && !a.Terminal {
+			matched = true
+		}
+	}
+	if !matched {
+		return errors.New("managed entry requires exact observed own role episode")
+	}
+	rows, err := ReadOperationBoundaries(project)
+	if err != nil {
+		return err
+	}
+	status, err := ReadCollectionReceipts(project)
+	if err != nil {
+		return err
+	}
+	acks := map[string]string{}
+	for _, r := range status {
+		acks[r.Key] = r.Status
+	}
+	type operation struct {
+		open, linked, failed bool
+		last                 OperationBoundary
+	}
+	ops := map[string]operation{}
+	for _, b := range rows {
+		if b.NativeID != native || b.AttemptID != attempt || b.Role != role {
+			continue
+		}
+		op := ops[b.OperationID]
+		if b.Kind == "start" {
+			op.open = true
+		}
+		if b.Kind == "end" {
+			op.open = false
+		}
+		for _, id := range b.TaskIDs {
+			if id == task {
+				op.linked = true
+			}
+		}
+		if b.Kind == "collection_failure" {
+			op.failed = true
+		}
+		if b.Kind != "collection_failure" {
+			op.last = b
+		}
+		ops[b.OperationID] = op
+	}
+	for _, r := range status {
+		if r.Status == "ack" || acks[r.Key] == "ack" {
+			continue
+		}
+		if r.Boundary != nil && r.Boundary.NativeID == native && r.Boundary.AttemptID == attempt {
+			op := ops[r.Boundary.OperationID]
+			op.failed = true
+			ops[r.Boundary.OperationID] = op
+		}
+		if r.Activity != nil && r.Activity.AgentID == native && r.Activity.AttemptID == attempt && r.Activity.TaskID == task {
+			return errors.New("managed entry held: Activity ACK unresolved; retain original failure and reconcile exact event")
+		}
+	}
+	for _, op := range ops {
+		if op.open && op.linked && !op.failed && acks["boundary:"+op.last.ID] == "ack" {
+			return nil
+		}
+	}
+	return errors.New("managed entry held: exact current task-linked operation ACK required; owner must reconcile the last boundary and retry its original key without historical Activity backfill")
+}
+
+func workflowRolePath(path string) string {
+	if path == "/root/controller" {
+		return "controller"
+	}
+	if path == "/root/registrar" {
+		return "registrar"
+	}
+	if strings.HasPrefix(path, "/root/controller/") {
+		return "worker"
+	}
+	return "unknown"
+}
+
 func collectionPathSafe(project string) error {
 	if err := boundaryPathSafe(project); err != nil {
 		return err

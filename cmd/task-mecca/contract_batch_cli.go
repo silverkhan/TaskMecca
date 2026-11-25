@@ -18,6 +18,7 @@ import (
 
 	"github.com/silverkhan/TaskMecca/internal/backlog"
 	"github.com/silverkhan/TaskMecca/internal/projectguard"
+	"github.com/silverkhan/TaskMecca/internal/runtimeobs"
 )
 
 type batchTask struct {
@@ -77,6 +78,8 @@ func runContractBatchCLI(action string, args []string, out, stderr io.Writer) (e
 	flags := flag.NewFlagSet("contract "+action, flag.ContinueOnError)
 	flags.SetOutput(stderr)
 	project := flags.String("project", ".", "exact project root")
+	collectionProject := flags.String("collection-project", "", "owned isolated collection destination")
+	requireCollection := flags.Bool("require-collection", false, "hold registration business work unless its current collector START and phase ACK succeed")
 	input := flags.String("input", "-", "JSON manifest (or - for stdin)")
 	requestID := flags.String("request-id", "", "stable registration request identity")
 	prefix := flags.String("prefix", "B", "backlog ID prefix")
@@ -85,9 +88,16 @@ func runContractBatchCLI(action string, args []string, out, stderr io.Writer) (e
 	asJSON := flags.Bool("json", false, "machine-readable JSON")
 	explanation := flags.String("explanation", "", "concrete current registration description")
 	language := flags.String("language", "", "explicit explanation language: ko|en")
+	fallback := flags.String("fallback-language", "", "explicit conversation fallback")
 	if err := flags.Parse(args); err != nil {
 		return 2
 	}
+	chosenLanguage, languageErr := activityExplanationLanguage(*language, *fallback)
+	if languageErr != nil {
+		fmt.Fprintln(stderr, languageErr)
+		return 2
+	}
+	*language = chosenLanguage
 	if *language != "" && *language != "ko" && *language != "en" {
 		fmt.Fprintln(stderr, "--language must be ko or en")
 		return 2
@@ -117,13 +127,29 @@ func runContractBatchCLI(action string, args []string, out, stderr io.Writer) (e
 		fmt.Fprintln(stderr, err)
 		return 2
 	}
+	hostProject := abs
+	if *collectionProject != "" {
+		if _, e := runtimeobs.CollectionActor(hostProject, *collectionProject, time.Now().UTC()); e != nil {
+			fmt.Fprintln(stderr, e)
+			return 1
+		}
+		abs = *collectionProject
+	}
 	// plan/status remain read-only, including runtime storage.
 	var collection *registrationBoundary
 	if action == "apply" {
-		collection = beginRegistrationBoundary(abs, *requestID, stderr, *explanation, *language)
+		collection = beginRegistrationBoundary(abs, *requestID, stderr, *explanation, *language, hostProject)
 		var originalErrors bytes.Buffer
 		stderr = io.MultiWriter(stderr, &originalErrors)
 		defer func() { collection.finish(exitCode, originalErrors.String()) }()
+		if (*requireCollection || *collectionProject != "") && (!collection.started || collection.firstError != nil) {
+			status := collection.status()
+			if *asJSON {
+				_ = json.NewEncoder(out).Encode(map[string]any{"ok": false, "business_started": false, "execution_collection": status, "next_action": "Collector owner: reconcile the exact request/start boundary ACK and retry the same request; original failures remain durable."})
+			}
+			fmt.Fprintln(stderr, "managed registration held before business work: current collector START/phase ACK failed")
+			return 1
+		}
 	}
 	if action == "status" {
 		plan, err := readBatchPlan(batchJournalPath(abs, *requestID))
@@ -230,7 +256,18 @@ func runContractBatchCLI(action string, args []string, out, stderr io.Writer) (e
 		return 3
 	}
 	collection.phase("registration_apply")
-	result := applyContractBatch(plan, manifest)
+	var admitted *registrationBoundary
+	if *requireCollection || *collectionProject != "" {
+		if !collection.started || collection.disabled || collection.identityLost || collection.firstError != nil {
+			if *asJSON {
+				_ = json.NewEncoder(out).Encode(map[string]any{"ok": false, "business_started": false, "execution_collection": collection.status(), "next_action": "Collector owner: reconcile registration_apply phase ACK and retry this exact request; no business registration was performed."})
+			}
+			fmt.Fprintln(stderr, "managed registration held: registration_apply phase ACK failed before business work")
+			return 1
+		}
+		admitted = collection
+	}
+	result := applyContractBatch(plan, manifest, admitted)
 	ids := []string{}
 	for _, item := range result.Tasks {
 		if item.Registered {
@@ -445,8 +482,42 @@ func readBatchPlan(path string) (batchPlan, error) {
 	return plan, err
 }
 
-func applyContractBatch(plan batchPlan, m contractManifest) batchResult {
+// A retry retains any already-written registration's original actor episode.
+// Only a new actual registration captures the admitted current Registrar.
+func batchRegistrationFact(item batchTask, request string, collector *registrationBoundary, prior []backlog.LifecycleTransition) backlog.LifecycleTransition {
+	fact := backlog.LifecycleTransition{TaskID: item.ID, EventID: item.EventID, Kind: "registered", Actor: "/root/registrar", EvidenceSource: "registrar_report", EvidenceRef: "cli-batch:" + request}
+	for _, old := range prior {
+		if old.EventID == fact.EventID && old.TaskID == fact.TaskID && old.Kind == fact.Kind && old.Actor == fact.Actor && old.EvidenceSource == fact.EvidenceSource && old.EvidenceRef == fact.EvidenceRef {
+			return old
+		}
+	}
+	if collector != nil && collector.base.Role == "registrar" {
+		fact.AttemptID = collector.base.AttemptID
+	}
+	return fact
+}
+
+func applyContractBatch(plan batchPlan, m contractManifest, admitted ...*registrationBoundary) batchResult {
 	r := batchResult{Status: "success", RequestID: plan.RequestID, PlanDigest: plan.PlanDigest, Tasks: []batchItemResult{}, Written: true}
+	var collector *registrationBoundary
+	if len(admitted) > 0 {
+		collector = admitted[0]
+	}
+	if collector != nil {
+		if !collector.started || collector.disabled || collector.identityLost || collector.firstError != nil {
+			r.Status = "failed"
+			r.Written = false
+			r.Error = "managed registration_apply ACK unresolved; preserve original collector error and retry exact request"
+			return r
+		}
+		if err := collector.verifyCurrent(); err != nil {
+			collector.collectError("registration_apply", err)
+			r.Status = "failed"
+			r.Written = false
+			r.Error = "managed registration actor changed before business: " + err.Error()
+			return r
+		}
+	}
 	if len(plan.Tasks) != len(m.Tasks) {
 		r.Status = "failed"
 		r.Error = "manifest/journal item count mismatch"
@@ -460,6 +531,12 @@ func applyContractBatch(plan batchPlan, m contractManifest) batchResult {
 	if err := os.MkdirAll(plan.Folder, 0755); err != nil {
 		r.Status = "failed"
 		r.Error = err.Error()
+		return r
+	}
+	scan, readErr := backlog.ReadLifecycleTransitions(plan.Project)
+	if readErr != nil {
+		r.Status = "failed"
+		r.Error = readErr.Error()
 		return r
 	}
 	for i, item := range plan.Tasks {
@@ -484,10 +561,8 @@ func applyContractBatch(plan batchPlan, m contractManifest) batchResult {
 			break
 		}
 		row.Registered = true
-		_, err := backlog.RecordLifecycleTransition(plan.Project, backlog.LifecycleTransition{
-			TaskID: item.ID, EventID: item.EventID, Kind: "registered", Actor: "/root/registrar",
-			EvidenceSource: "registrar_report", EvidenceRef: "cli-batch:" + plan.RequestID,
-		}, time.Now())
+		transition := batchRegistrationFact(item, plan.RequestID, collector, scan.Events)
+		_, err := backlog.RecordLifecycleTransition(plan.Project, transition, time.Now())
 		if err != nil {
 			row.Error = err.Error()
 			r.Status = "partial"

@@ -114,6 +114,20 @@ func workflowDiagnoseCoverage(w *Workflow) {
 			}
 		}
 	}
+	// Explicit operation waits keep their own meaning and provenance. They
+	// cover state only, never measured phase Activity; overlaps are unioned.
+	for _, role := range w.Reporting.Roles {
+		if role.ExecutionCoverage == nil {
+			continue
+		}
+		for _, item := range role.ExecutionCoverage.Items {
+			if item.Category == "evidenced_wait" && item.Boundary != nil && item.Boundary.Wait.Evidenced() && item.End != nil {
+				if x, ok := clipInterval(item.Start, *item.End, *w.Axis.Start, *w.Axis.End); ok {
+					known = append(known, x)
+				}
+			}
+		}
+	}
 	sort.Slice(known, func(i, j int) bool { return known[i].start.Before(known[j].start) })
 	d.StateCoveredMillis = unionDuration(known)
 	d.UnaccountedStateMillis = *w.Axis.ElapsedMillis - d.StateCoveredMillis

@@ -18,6 +18,7 @@ type ExecutionCoverage struct {
 	Allocation       string                  `json:"allocation"`
 }
 type ExecutionCoverageItem struct {
+	ACKStatus         string                        `json:"ack_status,omitempty"`
 	CollectionReceipt *runtimeobs.CollectionReceipt `json:"collection_receipt,omitempty"`
 	ActorID           string                        `json:"actor_id,omitempty"`
 	HandoffID         string                        `json:"handoff_id,omitempty"`
@@ -132,6 +133,15 @@ func BuildExecutionCoverage(task string, rows []runtimeobs.OperationBoundary, w 
 			waits[k+"\x00"+b.Key] = len(out.Items)
 			waits[k+"\x00"+b.ID] = len(out.Items)
 		case "resume":
+			if b.PreviousAttemptID != "" {
+				item.Category = "native_resume_unverified"
+				item.Reason = "Historical stop remains unreported; resume source relation needs exact previous/current native and assignment evidence"
+				if workflowNativeResume(w, b) {
+					item.Category = "native_resume"
+					item.Reason = "Same verified native/task/assignment resumed in a distinct episode; no old operation/wait END was inferred"
+				}
+				break
+			}
 			if i, ok := waits[k+"\x00"+b.RelatedID]; ok && out.Items[i].End == nil {
 				end := b.ObservedAt
 				out.Items[i].End = &end
@@ -189,6 +199,11 @@ func ReadExecutionCoverage(project, task string, w Workflow) ExecutionCoverage {
 		latest[r.Key] = r.Status
 		if r.Status == "ack" || r.Status == "failed" {
 			resolved[r.Key] = r.At
+		}
+	}
+	for i := range out.Items {
+		if b := out.Items[i].Boundary; b != nil {
+			out.Items[i].ACKStatus = latest["boundary:"+b.ID]
 		}
 	}
 	for _, r := range receipts {
@@ -292,6 +307,7 @@ func AttachExecutionCoverage(project, task string, w Workflow) Workflow {
 		w.Reporting.Roles[idx].ExecutionCoverage = &d
 	}
 	workflowAttachOperationIntervals(&w, detail)
+	workflowAttachReportedWait(&w, detail)
 	workflowDiagnoseCoverage(&w)
 	for _, key := range []string{"execution_evidence_error", "handoff_error"} {
 		if cause, ok := w.Snapshot[key].(string); ok && cause != "" {
@@ -340,6 +356,24 @@ func workflowAttachOperationIntervals(w *Workflow, detail ExecutionCoverage) {
 	w.Rows = append([]WorkflowRow(nil), w.Rows...)
 	for i := range w.Rows {
 		w.Rows[i].Intervals = append([]WorkflowInterval(nil), w.Rows[i].Intervals...)
+		w.Rows[i].RoleFacts = append([]WorkflowRoleFact(nil), w.Rows[i].RoleFacts...)
+	}
+	for _, item := range detail.Items {
+		if item.Category != "native_resume" || item.Boundary == nil {
+			continue
+		}
+		b := item.Boundary
+		for i := range w.Rows {
+			r := &w.Rows[i]
+			if r.Role != item.Role || r.SessionIdentity == nil || r.SessionIdentity.Status != "verified" || r.SessionIdentity.NativeID != item.NativeID {
+				continue
+			}
+			for _, a := range r.SessionIdentity.Attempts {
+				if a.AttemptID == item.AttemptID {
+					r.RoleFacts = append(r.RoleFacts, WorkflowRoleFact{ID: b.ID, Kind: "same_native_resumed", At: b.ObservedAt, Source: b.Source, SourceAt: b.SourceAt, PreviousAttemptID: b.PreviousAttemptID, AttemptID: b.AttemptID, AssignmentID: a.AssignmentID, Reason: b.Explanation + " (" + b.PreviousAttemptID + " -> " + b.AttemptID + ")", MeasurementStatus: "point_not_activity"})
+				}
+			}
+		}
 	}
 	seen := map[string]bool{}
 	for _, item := range detail.Items {
@@ -377,6 +411,23 @@ func workflowAttachOperationIntervals(w *Workflow, detail ExecutionCoverage) {
 		}
 		b := item.Boundary
 		v := WorkflowInterval{ID: "operation|" + key, Kind: "operation_execution", Type: "operation", Start: item.Start, End: item.End, Measured: false, AttemptID: item.AttemptID, OperationID: item.OperationID, Scope: item.Scope, Evidence: item.Reason, Explanation: b.Explanation, ExplanationLanguage: b.ExplanationLanguage, ExplanationOrigin: b.ExplanationOrigin}
+		if item.End == nil {
+			for _, native := range w.RuntimeTiming.Intervals {
+				if native.AttemptID == item.AttemptID && native.SessionID == item.NativeID && native.NativeCompletedAt != nil {
+					end := *native.NativeCompletedAt
+					v.Kind = "operation_unreported"
+					v.EndEvidence = "native_terminal_operation_end_unreported"
+					v.EndEvidenceSource = runtimeobs.EvidenceT3
+					v.RuntimeTerminal = &WorkflowTerminalEvidence{ObservedAt: end, Source: runtimeobs.EvidenceT3}
+					v.Evidence += "; native execution ended, operation END was not reported; displayed end is only the verified native bound, never a measured operation stop"
+					if end.Before(v.Start) {
+						end = v.Start
+						v.Scope = "reported_after_native_completion"
+					}
+					v.End = &end
+				}
+			}
+		}
 		w.Rows[index].Intervals = append(w.Rows[index].Intervals, v)
 		if item.End != nil {
 			first, last := item.Start, *item.End
@@ -388,7 +439,12 @@ func workflowAttachOperationIntervals(w *Workflow, detail ExecutionCoverage) {
 					last = prior.End
 				}
 			}
-			w.Rows[index].Participation = &WorkflowParticipation{Start: first, End: last, Basis: "observed_bounds_with_exact_operation_task_association_shared_not_exclusive", Status: "bounded"}
+			status, basis := "bounded", "observed_bounds_with_exact_operation_task_association_shared_not_exclusive"
+			if prior := w.Rows[index].Participation; prior != nil && strings.HasPrefix(prior.Status, "open_") {
+				status = prior.Status
+				basis = prior.Basis
+			}
+			w.Rows[index].Participation = &WorkflowParticipation{Start: first, End: last, Basis: basis, Status: status}
 			gaps := []WorkflowGap{}
 			for _, g := range w.Rows[index].Gaps {
 				if g.Status == "before_participation" && g.End.After(first) {
@@ -404,4 +460,144 @@ func workflowAttachOperationIntervals(w *Workflow, detail ExecutionCoverage) {
 			w.Rows[index].Gaps = gaps
 		}
 	}
+}
+
+func workflowNativeResume(w Workflow, b runtimeobs.OperationBoundary) bool {
+	var old, current *RuntimeTimingInterval
+	for i := range w.RuntimeTiming.Intervals {
+		v := &w.RuntimeTiming.Intervals[i]
+		if v.AttemptID == b.PreviousAttemptID && v.SessionID == b.NativeID {
+			old = v
+		}
+		if v.AttemptID == b.AttemptID && v.SessionID == b.NativeID {
+			current = v
+		}
+	}
+	if b.SourceAt == nil || old == nil || current == nil || old.NativeCompletedAt == nil || !b.SourceAt.Equal(*old.NativeCompletedAt) || old.ThreadID != current.ThreadID || current.ThreadID != b.ThreadID || current.NativeStartedAt.Before(*old.NativeCompletedAt) || b.ObservedAt.Before(current.NativeStartedAt) {
+		return false
+	}
+	for _, row := range w.Rows {
+		if row.Role != b.Role || row.SessionIdentity == nil || row.SessionIdentity.Status != "verified" || row.SessionIdentity.NativeID != b.NativeID {
+			continue
+		}
+		previousAssignment, currentAssignment := "", ""
+		for _, a := range row.SessionIdentity.Attempts {
+			if a.AttemptID == b.PreviousAttemptID {
+				previousAssignment = a.AssignmentID
+			}
+			if a.AttemptID == b.AttemptID {
+				currentAssignment = a.AssignmentID
+			}
+		}
+		if previousAssignment != "" && previousAssignment == currentAssignment {
+			return true
+		}
+	}
+	return false
+}
+
+// This describes an acknowledged reported state, never idle/Activity duration.
+type WorkflowReportedWait struct {
+	BoundaryID          string                  `json:"boundary_id"`
+	OperationID         string                  `json:"operation_id"`
+	AttemptID           string                  `json:"attempt_id"`
+	ObservedAt          time.Time               `json:"observed_at"`
+	Source              string                  `json:"source"`
+	Explanation         string                  `json:"explanation"`
+	ExplanationLanguage string                  `json:"explanation_language,omitempty"`
+	Wait                runtimeobs.BoundaryWait `json:"wait"`
+}
+
+func workflowAttachReportedWait(w *Workflow, detail ExecutionCoverage) {
+	if w.Current.ReportedWait != nil {
+		w.Current.ReportedWait = nil
+		if w.Current.Phase == "reported_wait" {
+			w.Current.Phase = "unknown"
+			w.Current.Basis = "reported_wait_no_longer_current"
+			w.Current.NextAction = "verify_execution_evidence"
+		}
+	}
+
+	switch w.Current.Phase {
+	case "completed", "controller_review", "independent_review", "finalizing":
+		return
+	}
+	if w.Lifecycle.CompletedAt != nil {
+		return
+	}
+	var selected *ExecutionCoverageItem
+	for i := range detail.Items {
+		item := &detail.Items[i]
+		b := item.Boundary
+		if item.Category != "evidenced_wait" || item.End != nil || item.ACKStatus != "ack" || b == nil || !b.Wait.Evidenced() || b.ObservedAt.After(w.ComputedAt) {
+			continue
+		}
+		linked := false
+		for _, task := range item.TaskIDs {
+			if task == w.TaskID {
+				linked = true
+			}
+		}
+		if !linked {
+			continue
+		}
+		verified := false
+		for _, row := range w.Rows {
+			if row.Role != b.Role || row.SessionIdentity == nil || row.SessionIdentity.Status != "verified" || row.SessionIdentity.Provider != b.Provider || row.SessionIdentity.NativeID != b.NativeID {
+				continue
+			}
+			for _, a := range row.SessionIdentity.Attempts {
+				if a.AttemptID == b.AttemptID {
+					verified = true
+				}
+			}
+		}
+		current := false
+		for _, native := range w.RuntimeTiming.Intervals {
+			if native.SessionID == b.NativeID && native.AttemptID == b.AttemptID && native.NativeCompletedAt == nil && !native.NativeStartedAt.After(b.ObservedAt) {
+				current = true
+			}
+			if native.SessionID == b.NativeID && native.NativeStartedAt.After(b.ObservedAt) {
+				verified = false
+			}
+		}
+		if !verified || !current {
+			continue
+		}
+		superseded := false
+		for _, later := range detail.Items {
+			next := later.Boundary
+			if next == nil || next.NativeID != b.NativeID || next.AttemptID != b.AttemptID || !next.ObservedAt.After(b.ObservedAt) {
+				continue
+			}
+			switch next.Kind {
+			case "start", "phase", "resume", "end", "wait", "handoff_request", "handoff_claim":
+				superseded = true
+			}
+		}
+		for _, row := range w.Rows {
+			for _, v := range row.Intervals {
+				if v.Kind == "activity_open" && (v.AttemptID == b.AttemptID || v.Start.After(b.ObservedAt)) {
+					superseded = true
+				}
+			}
+		}
+		if superseded {
+			continue
+		}
+		if selected == nil || selected.Start.Before(item.Start) {
+			selected = item
+		}
+	}
+	if selected == nil {
+		return
+	}
+	b := selected.Boundary
+	w.Current.Phase = "reported_wait"
+	w.Current.Basis = "acknowledged_operation_wait"
+	w.Current.ProcessingRole = b.Role
+	w.Current.ProcessingAgent = b.NativeID
+	w.Current.NextOwner = b.Wait.NextOwner
+	w.Current.NextAction = "resume_reported_operation"
+	w.Current.ReportedWait = &WorkflowReportedWait{BoundaryID: b.ID, OperationID: b.OperationID, AttemptID: b.AttemptID, ObservedAt: b.ObservedAt, Source: b.Source, Explanation: b.Explanation, ExplanationLanguage: b.ExplanationLanguage, Wait: *b.Wait}
 }

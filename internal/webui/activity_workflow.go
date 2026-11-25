@@ -1,11 +1,17 @@
 package webui
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
+	"github.com/silverkhan/TaskMecca/goassets"
+	"io"
+	"io/fs"
+	"net/http"
 	"os"
 	"path/filepath"
 	"reflect"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -20,6 +26,176 @@ import (
 	"github.com/silverkhan/TaskMecca/internal/rolepolicy"
 	"github.com/silverkhan/TaskMecca/internal/runtimeobs"
 )
+
+// This exact payload constructor is shared by the ordinary product Activity
+// endpoint and the source-proven isolated read-only endpoint. Neither route
+// invents a fixture workflow or substitutes a custom timeline renderer.
+func activityReadPayload(project, task string, events []activity.Event, summary activity.Summary, facts []activity.LifecycleFact, findings int) map[string]any {
+	return map[string]any{"task_id": task, "events": events, "summary": summary, "test_report": activity.SummarizeTests(summary.Segments), "review_report": activity.SummarizeReviews(events, summary.Segments), "lifecycle_coverage": activity.SummarizeLifecycle(task, facts, summary.Segments), "lifecycle_findings": findings, "workflow": readActivityWorkflow(project, task, events, summary, facts)}
+}
+
+func collectionReadRequest(project, backlogPath string, r *http.Request) bool {
+	if r.Method != http.MethodGet && r.Method != http.MethodHead {
+		return false
+	}
+	for _, value := range r.URL.Query()["project"] {
+		if value != project {
+			return false
+		}
+	}
+	for _, value := range r.URL.Query()["backlog"] {
+		if value != backlogPath {
+			return false
+		}
+	}
+	for _, key := range []string{"root", "path", "source_project", "runtime_diagnostic"} {
+		if _, ok := r.URL.Query()[key]; ok {
+			return false
+		}
+	}
+	p := r.URL.Path
+	if !strings.HasPrefix(p, "/api/") {
+		return p != "/sw.js" && p != "/manifest.webmanifest"
+	}
+	switch p {
+	case "/api/activity", "/api/backlog/tasks", "/api/hub", "/api/hub/projects", "/api/health", "/api/version":
+		return true
+	}
+	if strings.HasPrefix(p, "/api/tasks/") {
+		projection := r.URL.Query().Get("projection")
+		return projection == "content" || projection == "lifecycle"
+	}
+	return false
+}
+
+func collectionReadTree(project string) error {
+	count := 0
+	return filepath.WalkDir(filepath.Join(project, "_task_mecca"), func(path string, entry fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		count++
+		if count > 5000 {
+			return fmt.Errorf("isolated collection read tree exceeds limit")
+		}
+		if entry.Type()&os.ModeSymlink != 0 || (!entry.IsDir() && !entry.Type().IsRegular()) {
+			return fmt.Errorf("isolated collection read refuses symlink/special file: %s", path)
+		}
+		return nil
+	})
+}
+
+func collectionReadHandler(project, root, version string) (http.Handler, error) {
+	source := os.Getenv("TASK_MECCA_COLLECTION_SOURCE_PROJECT")
+	if !PreviewMode() || source == "" || root != "" {
+		return nil, fmt.Errorf("isolated collection requires explicit source-proven Preview mode and its fixed backlog")
+	}
+	if _, err := runtimeobs.ReadCollectionProject(source, project, time.Now().UTC()); err != nil {
+		return nil, err
+	}
+	if err := collectionReadTree(project); err != nil {
+		return nil, err
+	}
+	backlogPath := filepath.Join(project, "_task_mecca", "data", "backlog")
+	assets, err := fs.Sub(goassets.Template, embeddedRoot+"/web")
+	if err != nil {
+		return nil, err
+	}
+	static := http.FileServer(http.FS(assets))
+	write := func(w http.ResponseWriter, v any, status int) {
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.Header().Set("Cache-Control", "no-store")
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.WriteHeader(status)
+		_ = json.NewEncoder(w).Encode(v)
+	}
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !collectionReadRequest(project, backlogPath, r) {
+			write(w, map[string]any{"error": "route or scope disabled in isolated collection read-only view"}, http.StatusForbidden)
+			return
+		}
+		if _, err := runtimeobs.ReadCollectionProject(source, project, time.Now().UTC()); err != nil {
+			write(w, map[string]any{"error": err.Error()}, http.StatusForbidden)
+			return
+		}
+		if err := collectionReadTree(project); err != nil {
+			write(w, map[string]any{"error": err.Error()}, http.StatusForbidden)
+			return
+		}
+		w.Header().Set("X-Task-Mecca-Collection", "isolated-readonly")
+		switch r.URL.Path {
+		case "/api/activity":
+			task := strings.ToUpper(strings.TrimSpace(r.URL.Query().Get("task")))
+			if task == "" {
+				write(w, map[string]any{"error": "task query required"}, http.StatusBadRequest)
+				return
+			}
+			events, err := (activity.Ledger{Project: project}).ListCached(task)
+			if err != nil {
+				write(w, map[string]any{"error": err.Error()}, 500)
+				return
+			}
+			facts, findings, err := readActivityLifecycle(project, task)
+			if err != nil {
+				write(w, map[string]any{"error": err.Error()}, 500)
+				return
+			}
+			write(w, activityReadPayload(project, task, events, activity.Summarize(task, events), facts, findings), 200)
+		case "/api/backlog/tasks":
+			page, _ := strconv.Atoi(r.URL.Query().Get("page"))
+			size, _ := strconv.Atoi(r.URL.Query().Get("page_size"))
+			payload, err := backlog.BacklogInitialPage(project, backlogPath, page, size, nil, r.URL.Query().Get("q"), r.URL.Query().Get("sort"))
+			if err != nil {
+				write(w, map[string]any{"error": err.Error()}, 500)
+				return
+			}
+			payload["project_path"] = project
+			write(w, payload, 200)
+		case "/api/hub", "/api/hub/projects":
+			counts, err := backlog.QuickCounts(project, backlogPath)
+			if err != nil {
+				write(w, map[string]any{"error": err.Error()}, 500)
+				return
+			}
+			// Ephemeral read context, explicitly NOT a registry/monitor entry.
+			item := map[string]any{"path": project, "name": filepath.Base(project), "monitoring": false, "status": "isolated", "presence": "present", "isolated_collection": true, "counts": counts}
+			write(w, map[string]any{"projects": []any{item}, "archives": []any{}, "current_project": project, "cli": map[string]any{"current": version}}, 200)
+		case "/api/health":
+			write(w, map[string]any{"ok": true, "version": version, "preview_mode": true, "collection_readonly": true, "telegram_transport_disabled": true, "pid": os.Getpid()}, 200)
+		case "/api/version":
+			write(w, map[string]any{"cli": map[string]any{"current": version, "error": "Release lookup disabled in isolated collection view"}, "project": map[string]any{"path": project, "migration_available": false}}, 200)
+		default:
+			if strings.HasPrefix(r.URL.Path, "/api/tasks/") {
+				id := strings.TrimPrefix(r.URL.Path, "/api/tasks/")
+				if r.URL.Query().Get("projection") == "lifecycle" {
+					value, available := backlog.ReadLifecycleProjection(project, backlogPath, id)
+					if !available {
+						write(w, map[string]any{"snapshot": map[string]any{"trust": "pending"}, "isolated_collection": true}, http.StatusAccepted)
+					} else {
+						write(w, value, 200)
+					}
+					return
+				}
+				value, err := backlog.TaskContent(project, backlogPath, id)
+				if err != nil {
+					write(w, map[string]any{"error": err.Error()}, 404)
+					return
+				}
+				write(w, value, 200)
+				return
+			}
+			if r.URL.Path == "/" || strings.HasPrefix(r.URL.Path, "/tasks/") {
+				copy := r.Clone(r.Context())
+				u := *r.URL
+				u.Path = "/"
+				copy.URL = &u
+				static.ServeHTTP(w, copy)
+				return
+			}
+			static.ServeHTTP(w, r)
+		}
+	}), nil
+}
 
 type workflowResponseEntry struct {
 	at       time.Time
@@ -36,7 +212,42 @@ type workflowHandoffCacheEntry struct {
 	at        time.Time
 	checkedAt time.Time
 	ledger    handoffjournal.Ledger
+	records   []handoffjournal.Record
 	err       error
+}
+
+func readWorkflowClaimRecords(project string) []handoffjournal.Record {
+	path := handoffjournal.JournalPath(project)
+	info, err := os.Lstat(path)
+	if err != nil || !info.Mode().IsRegular() || info.Size() > 32<<20 {
+		return nil
+	}
+	f, err := os.Open(path)
+	if err != nil {
+		return nil
+	}
+	defer f.Close()
+	opened, err := f.Stat()
+	if err != nil || !os.SameFile(info, opened) {
+		return nil
+	}
+	scanner := bufio.NewScanner(io.LimitReader(f, (32<<20)+1))
+	scanner.Buffer(make([]byte, 64*1024), 2*1024*1024)
+	var records []handoffjournal.Record
+	for scanner.Scan() {
+		if strings.TrimSpace(scanner.Text()) == "" {
+			continue
+		}
+		var row handoffjournal.Record
+		if json.Unmarshal(scanner.Bytes(), &row) != nil || row.HandoffID == "" {
+			return nil
+		}
+		records = append(records, row)
+	}
+	if scanner.Err() != nil {
+		return nil
+	}
+	return records
 }
 
 var workflowHandoffCache = struct {
@@ -64,7 +275,7 @@ func loadWorkflowHandoffs(project string, now time.Time) workflowHandoffCacheEnt
 	workflowHandoffCache.flights[project] = done
 	workflowHandoffCache.Unlock()
 	ledger, err := handoffjournal.BuildLedger(project, now)
-	next := workflowHandoffCacheEntry{at: now, checkedAt: now, ledger: ledger, err: err}
+	next := workflowHandoffCacheEntry{at: now, checkedAt: now, ledger: ledger, records: readWorkflowClaimRecords(project), err: err}
 	if err != nil && ok {
 		next.ledger = cached.ledger
 		next.at = cached.at
@@ -87,10 +298,61 @@ func loadWorkflowHandoffs(project string, now time.Time) workflowHandoffCacheEnt
 
 // This is an on-demand, bounded read cache, not a Control Tower reconciliation.
 // Only persisted Runtime evidence is read; no provider scan or monitor lock runs.
+// Bounded exact local host reads supply missing historical project provenance.
+// No observation event, provider scan, role repair, or authorization is performed.
+func readWorkflowNativeProjectProof(project, task, operationalNative string, observations []runtimeobs.Attempt, history workflowHandoffCacheEntry, now time.Time) map[string]runtimeobs.T3Receipt {
+	out := map[string]runtimeobs.T3Receipt{}
+	if operationalNative == "" {
+		return out
+	}
+	ids := map[string]bool{}
+	for _, r := range history.records {
+		h, ok := history.ledger.Handoffs[r.HandoffID]
+		if !ok || h.TaskID != task {
+			continue
+		}
+		if r.RecordKind == "claimed" || r.RecordKind == "claim_transferred" {
+			ids[r.ClaimedAttemptID] = true
+			if r.PreviousClaimedAttemptID != "" {
+				ids[r.PreviousClaimedAttemptID] = true
+			}
+		}
+	}
+	if len(ids) > 64 {
+		return out
+	}
+	for _, a := range observations {
+		r := a.NativeReceipt
+		if !ids[a.AttemptID] || a.TaskID != "" || a.AgentPath != "/root/controller" || a.BindingState != runtimeobs.BindingBound || a.RuntimeAgentID != operationalNative || a.SessionID != operationalNative || r == nil || r.CanonicalProject != "" || r.ThreadID == "" || r.RunID == "" || r.NativeAttemptID == "" {
+			continue
+		}
+		sel := runtimeobs.T3Selector{CanonicalProject: project, ThreadID: r.ThreadID, SessionID: a.SessionID, RuntimeAgentID: a.RuntimeAgentID, RunID: r.RunID, NativeAttemptID: r.NativeAttemptID}
+		var proof runtimeobs.T3Receipt
+		var err error
+		if a.Terminal {
+			proof, err = runtimeobs.ReadT3HistoricalExecution(sel, now)
+		} else {
+			proof, err = runtimeobs.ReadT3Execution(sel, now)
+		}
+		if err == nil {
+			out[a.AttemptID] = proof
+		}
+	}
+	return out
+}
+
 func readActivityWorkflow(project, task string, events []activity.Event, summary activity.Summary, facts []activity.LifecycleFact) activity.Workflow {
 	now := time.Now().UTC()
 	cached := loadWorkflowHandoffs(project, now)
 	control, _ := backlog.ReadLifecycleProjection(project, "", task)
+	// Read the exact task's persisted policy. No role/name inference and no
+	// permission or current Activity association is changed by this display input.
+	operationalNative := ""
+	if rows, valid := operationCanonicalRows(project); valid && len(rows[task]) == 1 {
+		if p, _, e := rolepolicy.Load(project, task, rows[task][0].RawMarkdown); e == nil && p != nil && p.Operational.Role == "controller" && p.Operational.AgentPath == "/root/controller" {
+			operationalNative = p.Operational.NativeID
+		}
+	}
 	observations, observationErr := activity.ReadWorkflowExecutions(project, task, now)
 	// Compare persisted evidence, not elapsed/waiting durations recomputed at
 	// read time. Terminal updates/resumes must still invalidate the cache even
@@ -102,7 +364,7 @@ func readActivityWorkflow(project, task string, events []activity.Event, summary
 		revisionEvidence[i].WaitingMillis = 0
 	}
 	observationRevision, _ := json.Marshal(revisionEvidence)
-	key := project + "\x00" + task
+	key := project + "\x00" + task + "\x00" + operationalNative
 	lastEvent, lastFact := "", ""
 	if len(events) > 0 {
 		lastEvent = events[len(events)-1].EventID
@@ -118,7 +380,14 @@ func readActivityWorkflow(project, task string, events []activity.Event, summary
 	if found && prior.revision == revision && now.Sub(prior.at) < 2*time.Second {
 		return attachReviewerPresentation(project, task, activity.AttachExecutionCoverage(project, task, prior.value))
 	}
-	out := activity.SummarizeWorkflow(activity.WorkflowInput{ExecutionObservations: observations, TaskID: task, Events: events, Summary: summary, Facts: facts, Handoffs: cached.ledger.Handoffs, Control: control, Now: now})
+	hostProject := project
+	if canonical := os.Getenv("TASK_MECCA_COLLECTION_SOURCE_PROJECT"); canonical != "" {
+		if scope, e := runtimeobs.ReadCollectionProject(canonical, project, now); e == nil {
+			hostProject = scope.Canonical
+		}
+	}
+	nativeProjects := readWorkflowNativeProjectProof(hostProject, task, operationalNative, observations, cached, now)
+	out := activity.SummarizeWorkflow(activity.WorkflowInput{ExecutionObservations: observations, TaskID: task, Events: events, Summary: summary, Facts: facts, Handoffs: cached.ledger.Handoffs, HandoffRecords: cached.records, OperationalControllerNative: operationalNative, SourceProject: hostProject, NativeProjectReceipts: nativeProjects, Control: control, Now: now})
 	out.Snapshot["execution_evidence_source"] = "runtime_ledger_read_only"
 	if observationErr != nil {
 		out.Snapshot["execution_evidence_error"] = observationErr.Error()

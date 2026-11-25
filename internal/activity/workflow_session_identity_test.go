@@ -3,6 +3,7 @@ package activity
 import (
 	"encoding/json"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -13,6 +14,276 @@ import (
 func a97Attempt(id, native, path string) runtimeobs.Attempt {
 	_, at := workflowFixture()
 	return runtimeobs.Attempt{AttemptID: id, TaskID: "T", AgentPath: path, RuntimeAgentID: native, SessionID: native, Provider: "codex", BindingState: runtimeobs.BindingBound, BindingEvidence: map[string]string{"assignment_id": "assignment-" + id, "runtime_agent_id": native}, StartedAt: at(1).Format(time.RFC3339Nano), LastObservedAt: at(8).Format(time.RFC3339Nano), StateEvidenceSource: runtimeobs.EvidenceHook, StateObservationQuality: runtimeobs.QualityObserved, CurrentState: runtimeobs.StateRunning}
+}
+
+func TestA102PreviousClaimDisplayJoinDoesNotRestoreAuthority(t *testing.T) {
+	at := func(n int) time.Time { return time.Date(2026, 11, 25, 0, 0, n, 0, time.UTC) }
+	for _, mode := range []string{"valid", "terminal_after_transfer", "terminal_before_transfer", "other_native", "other_task", "other_thread", "other_project", "other_assignment", "missing_binding", "future_observation", "same_native_attempt", "unobserved", "missing_terminal", "future_transfer", "missing_transfer", "older_than_last", "activity_after_terminal", "ambiguous_current"} {
+		t.Run(mode, func(t *testing.T) {
+			old := a97Attempt("before", "native", "/root/controller")
+			old.BindingAt = at(2).Format(time.RFC3339Nano)
+			old.BindingEvidence["assignment_id"] = "continuing"
+			old.TurnID = "native-before"
+			old.Terminal = true
+			old.CurrentState = runtimeobs.StateErrored
+			old.EndedAt = at(6).Format(time.RFC3339Nano)
+			old.LastObservedAt = old.EndedAt
+			old.StateEvidenceSource = runtimeobs.EvidenceT3
+			old.NativeReceipt = &runtimeobs.T3Receipt{Origin: "t3_local_projection_v2", Provider: "codex", SessionID: "native", CanonicalProject: "/canonical", ThreadID: "actual-thread", RunID: "run-before", NativeAttemptID: old.TurnID, State: old.CurrentState, StartedAt: at(1).Format(time.RFC3339Nano), CompletedAt: at(5).Format(time.RFC3339Nano), ObservedAt: old.LastObservedAt, NativeStatus: "failed", RunStatus: "failed"}
+			next := a97Attempt("after", "native", "/root/controller")
+			next.BindingAt = at(6).Format(time.RFC3339Nano)
+			next.BindingEvidence["assignment_id"] = "continuing"
+			next.TurnID = "native-after"
+			next.StartedAt = at(6).Format(time.RFC3339Nano)
+			next.LastObservedAt = at(9).Format(time.RFC3339Nano)
+			next.StateEvidenceSource = runtimeobs.EvidenceT3
+			next.NativeReceipt = &runtimeobs.T3Receipt{Origin: "t3_local_projection_v2", Provider: "codex", SessionID: "native", CanonicalProject: "/canonical", ThreadID: "actual-thread", RunID: "run-after", NativeAttemptID: next.TurnID, State: next.CurrentState, StartedAt: next.StartedAt, ObservedAt: next.LastObservedAt}
+			h := handoffjournal.Handoff{HandoffID: "intake", TaskID: "T", ClaimedBy: "/root/controller", ClaimedAttemptID: "after", ClaimedAt: at(2).Format(time.RFC3339Nano), LastTransferFrom: "before", LastTransferredAt: at(7).Format(time.RFC3339Nano), TransferCount: 1, Target: handoffjournal.Target{AgentPath: "/root/controller", AttemptID: "after", Provider: "codex", SessionID: "native", RuntimeAgentID: "native"}}
+			event := Event{EventID: "old-phase", TaskID: "T", Role: RoleController, AgentID: "native", RuntimeAttemptID: "before", HandoffID: "intake", Action: Start, Type: Handoff, OccurredAt: at(3), RecordedAt: at(3)}
+			switch mode {
+			case "terminal_after_transfer", "terminal_before_transfer":
+				next.Terminal = true
+				next.CurrentState = runtimeobs.StateCompleted
+				next.NativeReceipt.State = next.CurrentState
+				next.NativeReceipt.CompletedAt = at(8).Format(time.RFC3339Nano)
+				if mode == "terminal_before_transfer" {
+					next.NativeReceipt.CompletedAt = at(6).Format(time.RFC3339Nano)
+				}
+			case "other_native":
+				next.SessionID = "other"
+				next.RuntimeAgentID = "other"
+			case "other_task":
+				next.TaskID = "foreign"
+			case "other_thread":
+				next.NativeReceipt.ThreadID = "other-thread"
+			case "other_project":
+				next.NativeReceipt.CanonicalProject = "/other-project"
+			case "missing_binding":
+				old.BindingAt = ""
+			case "future_observation":
+				next.NativeReceipt.ObservedAt = at(11).Format(time.RFC3339Nano)
+				next.LastObservedAt = next.NativeReceipt.ObservedAt
+			case "same_native_attempt":
+				next.TurnID = old.TurnID
+				next.NativeReceipt.NativeAttemptID = old.TurnID
+			case "other_assignment":
+				next.BindingEvidence["assignment_id"] = "new-assignment"
+			case "unobserved":
+				old.StateObservationQuality = runtimeobs.QualityInferred
+			case "missing_terminal":
+				old.Terminal = false
+			case "future_transfer":
+				h.LastTransferredAt = at(11).Format(time.RFC3339Nano)
+			case "missing_transfer":
+				h.LastTransferredAt = ""
+			case "older_than_last":
+				h.LastTransferFrom = "other-previous"
+			case "activity_after_terminal":
+				event.OccurredAt = at(6)
+			}
+			in := WorkflowInput{TaskID: "T", Now: at(10), ExecutionObservations: []runtimeobs.Attempt{old, next}, Handoffs: map[string]handoffjournal.Handoff{"intake": h}, Events: []Event{event}}
+			if mode == "ambiguous_current" {
+				in.ExecutionObservations = append(in.ExecutionObservations, next)
+			}
+			rows := map[string]*WorkflowRow{"old": {ID: "old", Role: "controller", AgentID: "native", Intervals: []WorkflowInterval{{ID: "old-phase", Kind: "activity", AttemptID: "before", HandoffID: "intake", Start: event.OccurredAt}}}, "next": {ID: "next", Role: "controller", AgentID: "native", Intervals: []WorkflowInterval{{ID: "next-native", Kind: "native_observed", AttemptID: "after", AssignmentID: "continuing", Start: at(6), Evidence: string(runtimeobs.EvidenceT3)}}}}
+			out := workflowSessionRows(in, rows)
+			joined := false
+			for _, row := range out {
+				if row.SessionIdentity.Status == "verified" {
+					for _, a := range row.SessionIdentity.Attempts {
+						if a.AttemptID == "before" {
+							joined = a.PreviousClaim != nil && len(row.SessionIdentity.Attempts) == 2
+						}
+					}
+				}
+			}
+			if joined != (mode == "valid" || mode == "terminal_after_transfer") {
+				t.Fatalf("mode=%s joined=%v rows=%+v", mode, joined, out)
+			}
+			if workflowSessionAssociation(in, old, "", "intake") || workflowSessionClaim(in, old, "intake") {
+				t.Fatal("display join restored historical authorization")
+			}
+		})
+	}
+}
+
+func TestA102ThreeTransferHistorySurvivesNextResume(t *testing.T) {
+	at := func(n int) time.Time { return time.Date(2026, 11, 25, 0, 0, n, 0, time.UTC) }
+	for _, mode := range []string{"task_bound", "global_claim_scoped", "missing_middle", "fork", "duplicate_claim", "foreign_transfer", "nonmonotone", "native_overlap", "unobserved_old", "final_mismatch", "global_before_claim", "global_missing_claim", "global_wrong_operational_native", "global_wrong_explicit_task", "global_missing_operational_owner", "global_project_verified", "global_project_missing", "global_project_foreign", "global_project_native", "global_project_state", "global_project_end", "global_project_future"} {
+		t.Run(mode, func(t *testing.T) {
+			global := mode == "global_claim_scoped" || strings.HasPrefix(mode, "global_")
+			in := WorkflowInput{TaskID: "T", Now: at(40), Handoffs: map[string]handoffjournal.Handoff{}, OperationalControllerNative: "native"}
+			rows := map[string]*WorkflowRow{}
+			for n, id := range []string{"a", "b", "c", "d"} {
+				a := a97Attempt(id, "native", "/root/controller")
+				a.BindingAt = at(2).Format(time.RFC3339Nano)
+				a.BindingEvidence["assignment_id"] = "continuing"
+				a.TurnID = "native-" + id
+				a.StartedAt = at(1 + n*5).Format(time.RFC3339Nano)
+				a.LastObservedAt = at(30).Format(time.RFC3339Nano)
+				a.StateEvidenceSource = runtimeobs.EvidenceT3
+				if global {
+					a.TaskID = ""
+					a.BindingEvidence["assignment_id"] = ""
+				}
+				if n < 3 {
+					a.Terminal = true
+					a.CurrentState = runtimeobs.StateErrored
+					a.EndedAt = at(5 + n*5).Format(time.RFC3339Nano)
+				}
+				a.NativeReceipt = &runtimeobs.T3Receipt{Origin: "t3_local_projection_v2", Provider: "codex", SessionID: "native", CanonicalProject: "/canonical", ThreadID: "actual-thread", RunID: "run-" + id, NativeAttemptID: a.TurnID, State: a.CurrentState, StartedAt: a.StartedAt, CompletedAt: a.EndedAt, ObservedAt: a.LastObservedAt}
+				in.ExecutionObservations = append(in.ExecutionObservations, a)
+				when := at(4 + n*5)
+				if mode == "global_before_claim" && n == 0 {
+					when = at(2)
+				}
+				in.Events = append(in.Events, Event{EventID: "phase-" + id, TaskID: "T", Role: RoleController, AgentID: "native", RuntimeAttemptID: id, AssignmentID: a.BindingEvidence["assignment_id"], HandoffID: "intake", Action: Start, Type: Handoff, OccurredAt: when, RecordedAt: when})
+				round := n
+				rows[id] = &WorkflowRow{ID: id, Role: "controller", AgentID: "native", Round: &round, Intervals: []WorkflowInterval{{ID: "phase-" + id, Kind: "activity", AttemptID: id, AssignmentID: a.BindingEvidence["assignment_id"], HandoffID: "intake", Start: when}}}
+			}
+			h := handoffjournal.Handoff{HandoffID: "intake", TaskID: "T", ContractSHA256: "contract", ClaimedBy: "/root/controller", ClaimedAttemptID: "d", ClaimedAt: at(3).Format(time.RFC3339Nano), TransferCount: 3, LastTransferFrom: "c", LastTransferredAt: at(17).Format(time.RFC3339Nano), RecordCount: 5, Target: handoffjournal.Target{AgentPath: "/root/controller", AttemptID: "d", Provider: "codex", SessionID: "native", RuntimeAgentID: "native"}}
+			in.HandoffRecords = []handoffjournal.Record{{HandoffID: "intake", RecordKind: "prepared", TaskID: "T", ContractSHA256: "contract", TargetAgentPath: "/root/controller", TargetAttemptID: "a", TargetRuntimeAgentID: "native", TargetSessionID: "native", Provider: "codex", ObservedAt: at(2).Format(time.RFC3339Nano)}, {HandoffID: "intake", RecordKind: "claimed", ClaimedBy: "/root/controller", ClaimedAttemptID: "a", ObservedAt: at(3).Format(time.RFC3339Nano)}}
+			ids := []string{"a", "b", "c", "d"}
+			for n := 0; n < 3; n++ {
+				in.HandoffRecords = append(in.HandoffRecords, handoffjournal.Record{HandoffID: "intake", RecordKind: "claim_transferred", ClaimedBy: "/root/controller", PreviousClaimedAttemptID: ids[n], ClaimedAttemptID: ids[n+1], TargetAgentPath: "/root/controller", TargetAttemptID: ids[n+1], TargetRuntimeAgentID: "native", TargetSessionID: "native", Provider: "codex", ObservedAt: at(7 + n*5).Format(time.RFC3339Nano)})
+			}
+			switch mode {
+			case "global_wrong_operational_native":
+				in.OperationalControllerNative = "foreign"
+			case "global_missing_operational_owner":
+				in.OperationalControllerNative = ""
+			case "global_wrong_explicit_task":
+				in.ExecutionObservations[0].TaskID = "OTHER"
+			case "global_missing_claim":
+				in.HandoffRecords = nil
+			case "missing_middle":
+				in.HandoffRecords = append(in.HandoffRecords[:3], in.HandoffRecords[4:]...)
+			case "fork":
+				in.HandoffRecords[3].PreviousClaimedAttemptID = "foreign"
+			case "duplicate_claim":
+				in.HandoffRecords = append(in.HandoffRecords, in.HandoffRecords[1])
+				h.RecordCount++
+			case "foreign_transfer":
+				in.HandoffRecords[3].TargetSessionID = "foreign"
+			case "nonmonotone":
+				in.HandoffRecords[3].ObservedAt = at(6).Format(time.RFC3339Nano)
+			case "native_overlap":
+				in.ExecutionObservations[0].NativeReceipt.CompletedAt = at(8).Format(time.RFC3339Nano)
+			case "unobserved_old":
+				in.ExecutionObservations[0].StateObservationQuality = runtimeobs.QualityInferred
+			case "final_mismatch":
+				h.TransferCount = 4
+			}
+			in.Handoffs["intake"] = h
+			if strings.HasPrefix(mode, "global_project_") {
+				in.SourceProject = "/canonical"
+				in.NativeProjectReceipts = map[string]runtimeobs.T3Receipt{}
+				for i := range in.ExecutionObservations {
+					a := &in.ExecutionObservations[i]
+					proof := *a.NativeReceipt
+					in.NativeProjectReceipts[a.AttemptID] = proof
+					a.NativeReceipt.CanonicalProject = ""
+				}
+				proof := in.NativeProjectReceipts["a"]
+				switch mode {
+				case "global_project_missing":
+					delete(in.NativeProjectReceipts, "a")
+				case "global_project_foreign":
+					proof.CanonicalProject = "/foreign"
+				case "global_project_native":
+					proof.SessionID = "foreign"
+				case "global_project_state":
+					proof.State = runtimeobs.StateRunning
+				case "global_project_end":
+					proof.CompletedAt = at(6).Format(time.RFC3339Nano)
+				case "global_project_future":
+					proof.ObservedAt = at(41).Format(time.RFC3339Nano)
+				}
+				if mode != "global_project_missing" {
+					in.NativeProjectReceipts["a"] = proof
+				}
+			}
+
+			out := workflowSessionRows(in, rows)
+			verified := map[string]WorkflowSessionAttempt{}
+			for _, r := range out {
+				if r.SessionIdentity.Status == "verified" {
+					for _, a := range r.SessionIdentity.Attempts {
+						verified[a.AttemptID] = a
+					}
+				}
+			}
+			valid := mode == "task_bound" || mode == "global_claim_scoped" || mode == "global_project_verified"
+			if valid {
+				if len(out) != 1 || len(verified) != 4 {
+					t.Fatalf("same verified native split after third transfer: %+v", out)
+				}
+				for _, id := range []string{"a", "b", "c"} {
+					p := verified[id].PreviousClaim
+					if p == nil || p.ChainTransfers != 3 || p.Basis != "validated_append_only_claim_chain_same_verified_native" {
+						t.Fatalf("history proof absent for %s: %+v", id, p)
+					}
+				}
+			} else if _, promoted := verified["a"]; promoted {
+				t.Fatalf("invalid/unknown history promoted oldest actor: %s %+v", mode, out)
+			}
+			for _, a := range in.ExecutionObservations[:3] {
+				if workflowSessionClaim(in, a, "intake") {
+					t.Fatal("history changed current claim authority")
+				}
+			}
+		})
+	}
+}
+
+func TestA102ControllerLifecyclePointNeedsItsOwnExactAuthor(t *testing.T) {
+	_, at := workflowFixture()
+	for _, mode := range []string{"valid", "missing_author", "foreign_assignment", "foreign_claim", "unobserved", "after_native_end"} {
+		t.Run(mode, func(t *testing.T) {
+			a := a97Attempt("controller", "native", "/root/controller")
+			a.BindingAt = a.StartedAt
+			a.TurnID = "native-attempt"
+			a.StateEvidenceSource = runtimeobs.EvidenceT3
+			a.NativeReceipt = &runtimeobs.T3Receipt{Origin: "t3_local_projection_v2", Provider: a.Provider, SessionID: a.SessionID, ThreadID: "actual-thread", RunID: "actual-run", NativeAttemptID: a.TurnID, State: a.CurrentState, StartedAt: a.StartedAt, ObservedAt: a.LastObservedAt}
+			h := handoffjournal.Handoff{HandoffID: "intake", TaskID: "T", ClaimedBy: a.AgentPath, ClaimedAttemptID: a.AttemptID, ClaimedAt: at(2).Format(time.RFC3339Nano), Target: handoffjournal.Target{AgentPath: a.AgentPath, AttemptID: a.AttemptID, RuntimeAgentID: a.RuntimeAgentID, SessionID: a.SessionID, Provider: a.Provider}}
+			f := WorkflowRoleFact{ID: "completed", Kind: "completed", Source: "controller_report", At: at(5), AttemptID: a.AttemptID, AssignmentID: a.BindingEvidence["assignment_id"]}
+			switch mode {
+			case "missing_author":
+				f.AttemptID = ""
+			case "foreign_assignment":
+				f.AssignmentID = "worker-assignment"
+			case "foreign_claim":
+				h.Target.SessionID = "other"
+			case "unobserved":
+				a.StateObservationQuality = runtimeobs.QualityInferred
+			case "after_native_end":
+				a.Terminal = true
+				a.CurrentState = runtimeobs.StateCompleted
+				a.NativeReceipt.State = a.CurrentState
+				a.NativeReceipt.CompletedAt = at(4).Format(time.RFC3339Nano)
+			}
+			in := WorkflowInput{TaskID: "T", Now: at(10), ExecutionObservations: []runtimeobs.Attempt{a}, Handoffs: map[string]handoffjournal.Handoff{"intake": h}}
+			if workflowSessionAssociation(in, a, a.BindingEvidence["assignment_id"], "") {
+				t.Fatal("lifecycle-only join changed Activity association")
+			}
+			out := workflowSessionRows(in, map[string]*WorkflowRow{"facts": {ID: "facts", Role: "controller", AgentID: "/root/controller", RoleFacts: []WorkflowRoleFact{{ID: "assigned", Kind: "assigned", Source: "controller_report", At: at(3), AssignmentID: "worker-assignment"}, f}}})
+			joined := false
+			unknown := false
+			for _, r := range out {
+				for _, fact := range r.RoleFacts {
+					if fact.ID == "completed" && r.SessionIdentity.Status == "verified" {
+						joined = true
+					}
+					if fact.ID == "assigned" && r.SessionIdentity.Status == "unverified" {
+						unknown = true
+					}
+				}
+			}
+			if joined != (mode == "valid") || !unknown {
+				t.Fatalf("lifecycle author inferred: %s %+v", mode, out)
+			}
+		})
+	}
 }
 
 func TestA97SessionAliasesMergeOnlyExactBoundEvidence(t *testing.T) {
@@ -418,6 +689,62 @@ func TestA97SourceHandoffKeepsCounterpartDistinct(t *testing.T) {
 			deleteSource := WorkflowInput{TaskID: "T", ExecutionObservations: []runtimeobs.Attempt{a}}
 			if workflowSessionAssociation(deleteSource, a, a.BindingEvidence["assignment_id"], h.HandoffID) {
 				t.Fatal("missing explicit receipt accepted")
+			}
+		})
+	}
+}
+
+func TestA102NativeFactJoinDoesNotAuthorizeActivityOrReview(t *testing.T) {
+	_, at := workflowFixture()
+	makeAttempt := func() runtimeobs.Attempt {
+		a := a97Attempt("native-episode", "actual-native", "/root/controller")
+		a.TurnID = "provider-attempt"
+		a.BindingSource = "dispatch"
+		a.StateEvidenceSource = runtimeobs.EvidenceT3
+		a.NativeReceipt = &runtimeobs.T3Receipt{Origin: "t3_local_projection_v2", Provider: a.Provider, SessionID: a.SessionID, ThreadID: "actual-thread", RunID: "actual-run", NativeAttemptID: a.TurnID, State: a.CurrentState, ObservedAt: a.LastObservedAt, StartedAt: a.StartedAt}
+		return a
+	}
+	for _, kind := range []string{"valid", "wrong_task", "wrong_assignment", "wrong_native", "taskless_global", "conflicting_handoff", "wrong_source"} {
+		t.Run(kind, func(t *testing.T) {
+			a := makeAttempt()
+			assignment := a.BindingEvidence["assignment_id"]
+			handoff := ""
+			source := string(runtimeobs.EvidenceT3)
+			switch kind {
+			case "wrong_task":
+				a.TaskID = "other"
+			case "wrong_assignment":
+				assignment = "other"
+			case "wrong_native":
+				a.RuntimeAgentID = "other"
+			case "taskless_global":
+				a.TaskID = ""
+			case "conflicting_handoff":
+				handoff = "foreign"
+			case "wrong_source":
+				source = "unverified"
+			}
+			in := WorkflowInput{TaskID: "T", ExecutionObservations: []runtimeobs.Attempt{a}, Now: at(10)}
+			rows := map[string]*WorkflowRow{"native": {ID: "native", Role: "controller", AgentID: "actual-native", Intervals: []WorkflowInterval{{ID: "native", Kind: "native_observed", AttemptID: a.AttemptID, AssignmentID: assignment, HandoffID: handoff, Evidence: source, Start: at(1)}}, RoleFacts: []WorkflowRoleFact{{ID: "native-fact", Kind: "observed_execution", AttemptID: a.AttemptID, AssignmentID: assignment, HandoffID: handoff, Source: source, At: at(1)}}}, "activity": {ID: "activity", Role: "controller", AgentID: "actual-native", Intervals: []WorkflowInterval{{ID: "activity", Kind: "activity_open", AttemptID: a.AttemptID, AssignmentID: assignment, Start: at(2)}}}}
+			out := workflowSessionRows(in, rows)
+			verified := 0
+			for _, r := range out {
+				if r.SessionIdentity.Status == "verified" {
+					verified++
+					if len(r.Intervals) != 1 || r.Intervals[0].Kind != "native_observed" || len(r.RoleFacts) != 1 {
+						t.Fatal("Activity joined native fact authority", r)
+					}
+				}
+			}
+			want := 0
+			if kind == "valid" {
+				want = 1
+			}
+			if verified != want {
+				t.Fatalf("%s verified=%d want=%d", kind, verified, want)
+			}
+			if workflowSessionAssociation(in, a, assignment, handoff) {
+				t.Fatal("native join upgraded Controller claim/Activity authority")
 			}
 		})
 	}

@@ -3,6 +3,7 @@ package backlog
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/silverkhan/TaskMecca/internal/activity"
 	"github.com/silverkhan/TaskMecca/internal/rolepolicy"
 	"github.com/silverkhan/TaskMecca/internal/runtimeobs"
 	"os"
@@ -262,6 +263,87 @@ func TestA79RuntimeOwnerDoesNotRetargetUnrelatedCompletedTask(t *testing.T) {
 	got := runtimeLedgerSignals(project, []Record{row, other}, time.Now())
 	if got["A-79"]["health"] != "progress_collection_gap" || got["A-80"] != nil || other.State != "done" {
 		t.Fatalf("unrelated completion altered: %+v", got)
+	}
+}
+
+func TestA102RuntimeOwnerPreparedAssignmentCoexistsWithActualPhase(t *testing.T) {
+	for _, mode := range []string{"prepared", "pending_bound", "foreign_native", "wrong_task", "wrong_role", "wrong_assignment", "missing_start", "phase_stopped", "terminal", "future_observed", "ambiguous_current"} {
+		t.Run(mode, func(t *testing.T) {
+			project, row, at := ownerFixture(t, "/root/controller/pairi", "impl")
+			native := "impl"
+			if mode == "foreign_native" {
+				native = "foreign"
+			}
+			state := runtimeobs.StateRunning
+			if mode == "terminal" {
+				state = runtimeobs.StateCompleted
+			}
+			ownerAttempt(t, project, "/root/controller/pairi", native, "current8bd", at, state)
+			phase := activity.Event{SchemaVersion: 1, EventID: "a102-current-phase", TaskID: "A-79", Action: activity.Start, Role: activity.RoleWorker, AgentID: native, SessionID: native, RuntimeAttemptID: "current8bd", AssignmentID: "current8bd-assignment", Type: activity.Requirements, PhaseEvent: "requirements_started", Confidence: activity.Confirmed, Source: "agent_report", OccurredAt: at.Add(10 * time.Millisecond), RecordedAt: at.Add(10 * time.Millisecond)}
+			if mode == "wrong_role" {
+				phase.Role = activity.RoleRegistrar
+			}
+			if mode == "wrong_assignment" {
+				phase.AssignmentID = "foreign-assignment"
+			}
+			if mode != "missing_start" {
+				if _, err := (activity.Ledger{Project: project}).Append(phase); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if mode == "phase_stopped" {
+				phase.EventID = "a102-current-stop"
+				phase.Action = activity.Stop
+				phase.PhaseEvent = "phase_completed"
+				phase.OccurredAt = at.Add(20 * time.Millisecond)
+				phase.RecordedAt = phase.OccurredAt
+				if _, err := (activity.Ledger{Project: project}).Append(phase); err != nil {
+					t.Fatal(err)
+				}
+			}
+			task := "A-79"
+			if mode == "wrong_task" {
+				task = "A-80"
+				row.ID = task
+			}
+			if _, err := runtimeobs.RecordAssignment(project, "future088e", task, "/root/controller/pairi", at.Add(time.Second)); err != nil {
+				t.Fatal(err)
+			}
+			if mode == "pending_bound" || mode == "future_observed" {
+				quality, source, state := runtimeobs.QualityInferred, runtimeobs.EvidenceManualBinding, runtimeobs.StateRuntimeUnknown
+				if mode == "future_observed" {
+					quality, source, state = runtimeobs.QualityObserved, runtimeobs.EvidenceHook, runtimeobs.StateRunning
+				}
+				if err := runtimeobs.AppendExecutionEvent(project, runtimeobs.ExecutionEvent{EventKind: "state", ObservedAt: at.Add(2 * time.Second).Format(time.RFC3339Nano), AttemptID: "future-pending", Provider: "codex", SessionID: "impl", RuntimeAgentID: "impl", State: state, EvidenceSource: source, ObservationQuality: quality}); err != nil {
+					t.Fatal(err)
+				}
+				if _, err := runtimeobs.BindAttempt(project, "future-pending", "A-79", "/root/controller/pairi", "dispatch", "", map[string]string{"assignment_id": "future088e"}, at.Add(2*time.Second)); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if mode == "ambiguous_current" {
+				ownerAttempt(t, project, "/root/controller/pairi", "impl", "another-current", at.Add(100*time.Millisecond), runtimeobs.StateRunning)
+				phase.EventID = "a102-another-phase"
+				phase.RuntimeAttemptID = "another-current"
+				phase.AssignmentID = "another-current-assignment"
+				phase.OccurredAt = at.Add(200 * time.Millisecond)
+				phase.RecordedAt = phase.OccurredAt
+				if _, err := (activity.Ledger{Project: project}).Append(phase); err != nil {
+					t.Fatal(err)
+				}
+			}
+			signal := runtimeLedgerSignals(project, []Record{row}, at.Add(3*time.Second))[task]
+			if mode == "prepared" || mode == "pending_bound" {
+				if signal["attempt_id"] != "current8bd" || signal["assignment_id"] != "current8bd-assignment" || signal["recent_activity_report"] == nil || signal["human_action_runtime_verified"] != true {
+					t.Fatalf("current execution hidden by future request: %+v", signal)
+				}
+			} else if signal["attempt_id"] == "current8bd" {
+				t.Fatalf("invalid current evidence bypassed future assignment: %+v", signal)
+			}
+			if mode == "ambiguous_current" && signal["owner_resolution_error"] != "implementation_assignment_ambiguous" {
+				t.Fatalf("ambiguous live phases selected: %+v", signal)
+			}
+		})
 	}
 }
 

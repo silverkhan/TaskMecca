@@ -241,11 +241,18 @@ func Handler(project, root, version string) (http.Handler, error) {
 }
 
 func handler(project, root, version, instanceID, controlToken string, restartCh chan<- maintenance.UpgradeResult, stopCh chan<- struct{}) (http.Handler, error) {
-    // Dev instrumentation requires no environment variables or service restart.
-    // The normal update process already restarts the Web binary.
-    if strings.Contains(strings.ToLower(version), "-dev.") && !PreviewMode() {
-        enableDevMonitorPerf()
-    }
+	// An isolated collection view must branch before ANY global boot recovery,
+	// service feed, registry lookup, or monitor initialization. Ordinary Preview
+	// and normal host management keep their existing gates below.
+	_, collectionMarkerErr := os.Lstat(filepath.Join(project, ".collection-project.json"))
+	if os.Getenv("TASK_MECCA_COLLECTION_SOURCE_PROJECT") != "" || collectionMarkerErr == nil {
+		return collectionReadHandler(project, root, version)
+	}
+	// Dev instrumentation requires no environment variables or service restart.
+	// The normal update process already restarts the Web binary.
+	if strings.Contains(strings.ToLower(version), "-dev.") && !PreviewMode() {
+		enableDevMonitorPerf()
+	}
 	if err := maintenance.ReconcileExecutionOnBoot(); err != nil {
 		return nil, fmt.Errorf("environment transition recovery requires attention: %w", err)
 	}
@@ -426,11 +433,11 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 			}
 			projectInfo["framework_version"] = p.FrameworkVersion
 			if p.FrameworkVersion != "" {
-                needed,checkErr:=install.FrameworkChangesRequired(activeProject)
-                // If current managed-file status is unavailable, offer repair;
-                // never silently declare a damaged framework current.
-                projectInfo["migration_available"]=checkErr!=nil || needed
-            }
+				needed, checkErr := install.FrameworkChangesRequired(activeProject)
+				// If current managed-file status is unavailable, offer repair;
+				// never silently declare a damaged framework current.
+				projectInfo["migration_available"] = checkErr != nil || needed
+			}
 			break
 		}
 		writeJSON(w, map[string]any{"cli": info, "project": projectInfo}, 200)
@@ -689,10 +696,10 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 
 	mux.HandleFunc("/api/events", func(w http.ResponseWriter, r *http.Request) {
 		activeProject := projectFor(r)
-        if !maintenance.ProjectMonitoringAllowed(activeProject) {
-            http.Error(w, "project monitoring is paused or unavailable", http.StatusConflict)
-            return
-        }
+		if !maintenance.ProjectMonitoringAllowed(activeProject) {
+			http.Error(w, "project monitoring is paused or unavailable", http.StatusConflict)
+			return
+		}
 		activeCtx, ctxErr := webContext(activeProject, "")
 		if ctxErr != nil {
 			http.Error(w, ctxErr.Error(), 500)
@@ -804,18 +811,18 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 		writeJSON(w, snapshot, 200)
 	})
 	mux.HandleFunc("/api/monitor-performance", func(w http.ResponseWriter, r *http.Request) {
-        if r.Method != http.MethodGet {
-            writeJSON(w, map[string]any{"error":"GET required"}, http.StatusMethodNotAllowed)
-            return
-        }
-        // Diagnostics have no stable menu or endpoint, even if collection was
-        // explicitly enabled for local troubleshooting.
-        if !strings.Contains(strings.ToLower(version), "-dev.") || PreviewMode() {
-            http.NotFound(w,r)
-            return
-        }
-        writeJSON(w, monitorPerfSnapshot(version), http.StatusOK)
-    })
+		if r.Method != http.MethodGet {
+			writeJSON(w, map[string]any{"error": "GET required"}, http.StatusMethodNotAllowed)
+			return
+		}
+		// Diagnostics have no stable menu or endpoint, even if collection was
+		// explicitly enabled for local troubleshooting.
+		if !strings.Contains(strings.ToLower(version), "-dev.") || PreviewMode() {
+			http.NotFound(w, r)
+			return
+		}
+		writeJSON(w, monitorPerfSnapshot(version), http.StatusOK)
+	})
 
 	mux.HandleFunc("/api/operations", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
@@ -1458,24 +1465,24 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 		case "unregister":
 			err := maintenance.SetProjectMonitoring(body.Path, false)
 			if err == nil {
-                stopProjectAttentionFeeds(body.Path)
-                invalidateProjectDiscovery(body.Path)
+				stopProjectAttentionFeeds(body.Path)
+				invalidateProjectDiscovery(body.Path)
 				writeJSON(w, map[string]any{"result": "monitoring_paused"}, 200)
 				return
 			}
 		case "register":
 			err := maintenance.SetProjectMonitoring(body.Path, true)
 			if err == nil {
-                ensureOperationNotificationFeed(body.Path)
-                invalidateProjectDiscovery(body.Path)
+				ensureOperationNotificationFeed(body.Path)
+				invalidateProjectDiscovery(body.Path)
 				writeJSON(w, map[string]any{"result": "monitoring_resumed"}, 200)
 				return
 			}
 		case "archive":
 			record, removeErr := maintenance.ArchiveProject(body.Path)
 			if removeErr == nil {
-                stopProjectAttentionFeeds(body.Path)
-                invalidateProjectDiscovery(body.Path)
+				stopProjectAttentionFeeds(body.Path)
+				invalidateProjectDiscovery(body.Path)
 				writeJSON(w, record, 200)
 				return
 			} else {
@@ -1484,16 +1491,16 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 		case "add":
 			err = maintenance.RegisterProject(body.Path)
 			if err == nil {
-                ensureOperationNotificationFeed(body.Path)
-                invalidateProjectDiscovery(body.Path)
+				ensureOperationNotificationFeed(body.Path)
+				invalidateProjectDiscovery(body.Path)
 				writeJSON(w, map[string]any{"result": "registered"}, 200)
 				return
 			}
 		case "restore":
 			err = maintenance.RestoreArchivedProject(body.HistoryID, body.Path)
 			if err == nil {
-                ensureOperationNotificationFeed(body.Path)
-                invalidateProjectDiscovery(body.Path)
+				ensureOperationNotificationFeed(body.Path)
+				invalidateProjectDiscovery(body.Path)
 				writeJSON(w, map[string]any{"result": "restored"}, 200)
 				return
 			}
@@ -1652,58 +1659,73 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 	})
 
 	mux.HandleFunc("/api/activity/project/filter", func(w http.ResponseWriter, r *http.Request) {
-        if r.Method != http.MethodGet {
-            w.Header().Set("Allow","GET")
-            writeJSON(w,map[string]any{"error":"method not allowed"},http.StatusMethodNotAllowed)
-            return
-        }
-        project:=projectFor(r)
-        if !maintenance.ProjectMonitoringAllowed(project) {
-            writeJSON(w,map[string]any{"error":"project monitoring unavailable"},http.StatusForbidden)
-            return
-        }
-        query:=r.URL.Query()
-        for _,key:=range []string{"role","type","agent","round","from","until"}{
-            if len(query[key])>1{
-                writeJSON(w,map[string]any{"error":"duplicate activity filter parameter: "+key},http.StatusBadRequest)
-                return
-            }
-        }
-        filter:=activity.SegmentFilter{
-            Role:activity.Role(strings.TrimSpace(query.Get("role"))),
-            Type:activity.Type(strings.TrimSpace(query.Get("type"))),
-            AgentID:strings.TrimSpace(query.Get("agent")),
-        }
-        if value:=strings.TrimSpace(query.Get("round"));value!="" {
-            parsed,err:=strconv.Atoi(value)
-            if err!=nil {writeJSON(w,map[string]any{"error":"invalid round"},http.StatusBadRequest);return}
-            filter.Round=&parsed
-        }
-        if value:=strings.TrimSpace(query.Get("from"));value!="" {
-            parsed,err:=time.Parse(time.RFC3339Nano,value)
-            if err!=nil {writeJSON(w,map[string]any{"error":"invalid from timestamp"},http.StatusBadRequest);return}
-            filter.From=&parsed
-        }
-        if value:=strings.TrimSpace(query.Get("until"));value!="" {
-            parsed,err:=time.Parse(time.RFC3339Nano,value)
-            if err!=nil {writeJSON(w,map[string]any{"error":"invalid until timestamp"},http.StatusBadRequest);return}
-            filter.Until=&parsed
-        }
-        if err:=filter.Validate();err!=nil {
-            writeJSON(w,map[string]any{"error":err.Error()},http.StatusBadRequest)
-            return
-        }
-        readStart:=time.Now()
-        rows,err:=(activity.Ledger{Project:project}).ListCached("")
-        if err!=nil {writeJSON(w,map[string]any{"error":err.Error()},http.StatusInternalServerError);return}
-        readMS:=time.Since(readStart).Seconds()*1000
-        aggregateStart:=time.Now()
-        result,err:=activity.SummarizeFilteredProject(rows,filter)
-        if err!=nil {writeJSON(w,map[string]any{"error":err.Error()},http.StatusBadRequest);return}
-        w.Header().Set("Cache-Control","no-store")
-        w.Header().Set("Server-Timing",fmt.Sprintf("activity_read;dur=%.1f,activity_filter;dur=%.1f",readMS,time.Since(aggregateStart).Seconds()*1000))
-        writeJSON(w,result,http.StatusOK)
-    })
+		if r.Method != http.MethodGet {
+			w.Header().Set("Allow", "GET")
+			writeJSON(w, map[string]any{"error": "method not allowed"}, http.StatusMethodNotAllowed)
+			return
+		}
+		project := projectFor(r)
+		if !maintenance.ProjectMonitoringAllowed(project) {
+			writeJSON(w, map[string]any{"error": "project monitoring unavailable"}, http.StatusForbidden)
+			return
+		}
+		query := r.URL.Query()
+		for _, key := range []string{"role", "type", "agent", "round", "from", "until"} {
+			if len(query[key]) > 1 {
+				writeJSON(w, map[string]any{"error": "duplicate activity filter parameter: " + key}, http.StatusBadRequest)
+				return
+			}
+		}
+		filter := activity.SegmentFilter{
+			Role:    activity.Role(strings.TrimSpace(query.Get("role"))),
+			Type:    activity.Type(strings.TrimSpace(query.Get("type"))),
+			AgentID: strings.TrimSpace(query.Get("agent")),
+		}
+		if value := strings.TrimSpace(query.Get("round")); value != "" {
+			parsed, err := strconv.Atoi(value)
+			if err != nil {
+				writeJSON(w, map[string]any{"error": "invalid round"}, http.StatusBadRequest)
+				return
+			}
+			filter.Round = &parsed
+		}
+		if value := strings.TrimSpace(query.Get("from")); value != "" {
+			parsed, err := time.Parse(time.RFC3339Nano, value)
+			if err != nil {
+				writeJSON(w, map[string]any{"error": "invalid from timestamp"}, http.StatusBadRequest)
+				return
+			}
+			filter.From = &parsed
+		}
+		if value := strings.TrimSpace(query.Get("until")); value != "" {
+			parsed, err := time.Parse(time.RFC3339Nano, value)
+			if err != nil {
+				writeJSON(w, map[string]any{"error": "invalid until timestamp"}, http.StatusBadRequest)
+				return
+			}
+			filter.Until = &parsed
+		}
+		if err := filter.Validate(); err != nil {
+			writeJSON(w, map[string]any{"error": err.Error()}, http.StatusBadRequest)
+			return
+		}
+		readStart := time.Now()
+		rows, err := (activity.Ledger{Project: project}).ListCached("")
+		if err != nil {
+			writeJSON(w, map[string]any{"error": err.Error()}, http.StatusInternalServerError)
+			return
+		}
+		readMS := time.Since(readStart).Seconds() * 1000
+		aggregateStart := time.Now()
+		result, err := activity.SummarizeFilteredProject(rows, filter)
+		if err != nil {
+			writeJSON(w, map[string]any{"error": err.Error()}, http.StatusBadRequest)
+			return
+		}
+		w.Header().Set("Cache-Control", "no-store")
+		w.Header().Set("Server-Timing", fmt.Sprintf("activity_read;dur=%.1f,activity_filter;dur=%.1f", readMS, time.Since(aggregateStart).Seconds()*1000))
+		writeJSON(w, result, http.StatusOK)
+	})
 
 	mux.HandleFunc("/api/activity/project", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
@@ -1717,25 +1739,25 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 			return
 		}
 		readStarted := time.Now()
-        rows, err := (activity.Ledger{Project: project}).ListCached("")
+		rows, err := (activity.Ledger{Project: project}).ListCached("")
 		if err != nil {
 			writeJSON(w, map[string]any{"error": err.Error()}, http.StatusInternalServerError)
 			return
 		}
 		w.Header().Set("Cache-Control", "no-store")
-		readMS := time.Since(readStarted).Seconds()*1000
-        summaryStarted := time.Now()
-        lifeEvidence,lifeErr:=loadActivityLifecycle(project)
-        if lifeErr!=nil{
-            writeJSON(w,map[string]any{"error":lifeErr.Error()},http.StatusInternalServerError)
-            return
-        }
-        report := activity.SummarizeProjectWithLifecycle(rows,lifeEvidence.byTask)
-        // The Workload dashboard needs aggregates only. Do not ship thousands
-        // of full per-backlog timelines; drill into /api/activity for details.
-        report.TaskSummaries=nil
-        w.Header().Set("Server-Timing",fmt.Sprintf("activity_read;dur=%.1f,activity_aggregate;dur=%.1f",readMS,time.Since(summaryStarted).Seconds()*1000))
-        writeJSON(w, report, http.StatusOK)
+		readMS := time.Since(readStarted).Seconds() * 1000
+		summaryStarted := time.Now()
+		lifeEvidence, lifeErr := loadActivityLifecycle(project)
+		if lifeErr != nil {
+			writeJSON(w, map[string]any{"error": lifeErr.Error()}, http.StatusInternalServerError)
+			return
+		}
+		report := activity.SummarizeProjectWithLifecycle(rows, lifeEvidence.byTask)
+		// The Workload dashboard needs aggregates only. Do not ship thousands
+		// of full per-backlog timelines; drill into /api/activity for details.
+		report.TaskSummaries = nil
+		w.Header().Set("Server-Timing", fmt.Sprintf("activity_read;dur=%.1f,activity_aggregate;dur=%.1f", readMS, time.Since(summaryStarted).Seconds()*1000))
+		writeJSON(w, report, http.StatusOK)
 	})
 
 	mux.HandleFunc("/api/activity", func(w http.ResponseWriter, r *http.Request) {
@@ -1755,30 +1777,33 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 			return
 		}
 		readStarted := time.Now()
-        rows, err := (activity.Ledger{Project: project}).ListCached(taskID)
+		rows, err := (activity.Ledger{Project: project}).ListCached(taskID)
 		if err != nil {
 			writeJSON(w, map[string]any{"error": err.Error()}, http.StatusInternalServerError)
 			return
 		}
 		w.Header().Set("Cache-Control", "no-store")
-		readMS := time.Since(readStarted).Seconds()*1000
-        summaryStarted := time.Now()
-        summary := activity.Summarize(taskID, rows)
-        lifecycle,findings,lifeErr:=readActivityLifecycle(project,taskID)
-        if lifeErr!=nil {
-            writeJSON(w,map[string]any{"error":lifeErr.Error()},http.StatusInternalServerError)
-            return
-        }
-        coverage:=activity.SummarizeLifecycle(taskID,lifecycle,summary.Segments)
-        report:=map[string]any{"task_id": taskID, "events": rows, "summary": summary, "test_report": activity.SummarizeTests(summary.Segments), "review_report": activity.SummarizeReviews(rows, summary.Segments), "lifecycle_coverage": coverage, "lifecycle_findings": findings, "workflow": readActivityWorkflow(project,taskID,rows,summary,lifecycle)}
-        // Runtime evidence scans are opt-in; normal Activity reads retain their
-        // lightweight ledger-only path. A failure never replaces valid data.
-        if r.URL.Query().Get("runtime_diagnostic")=="1" {
-            diagnostic,diagnosticErr:=readActivityRuntimeDiagnostic(project,taskID,rows)
-            if diagnosticErr!=nil{report["runtime_diagnostic_error"]=diagnosticErr.Error()}else{report["runtime_diagnostic"]=diagnostic}
-        }
-		w.Header().Set("Server-Timing",fmt.Sprintf("activity_read;dur=%.1f,activity_aggregate;dur=%.1f",readMS,time.Since(summaryStarted).Seconds()*1000))
-        writeJSON(w, report, http.StatusOK)
+		readMS := time.Since(readStarted).Seconds() * 1000
+		summaryStarted := time.Now()
+		summary := activity.Summarize(taskID, rows)
+		lifecycle, findings, lifeErr := readActivityLifecycle(project, taskID)
+		if lifeErr != nil {
+			writeJSON(w, map[string]any{"error": lifeErr.Error()}, http.StatusInternalServerError)
+			return
+		}
+		report := activityReadPayload(project, taskID, rows, summary, lifecycle, findings)
+		// Runtime evidence scans are opt-in; normal Activity reads retain their
+		// lightweight ledger-only path. A failure never replaces valid data.
+		if r.URL.Query().Get("runtime_diagnostic") == "1" {
+			diagnostic, diagnosticErr := readActivityRuntimeDiagnostic(project, taskID, rows)
+			if diagnosticErr != nil {
+				report["runtime_diagnostic_error"] = diagnosticErr.Error()
+			} else {
+				report["runtime_diagnostic"] = diagnostic
+			}
+		}
+		w.Header().Set("Server-Timing", fmt.Sprintf("activity_read;dur=%.1f,activity_aggregate;dur=%.1f", readMS, time.Since(summaryStarted).Seconds()*1000))
+		writeJSON(w, report, http.StatusOK)
 	})
 
 	mux.HandleFunc("/api/tasks/", func(w http.ResponseWriter, r *http.Request) {
@@ -1854,7 +1879,7 @@ func handler(project, root, version, instanceID, controlToken string, restartCh 
 			return
 		}
 
-		writeJSON(w, reviewerPresentationEnvelope(item,readReviewerPresentation(activeProject,id,nil)), 200)
+		writeJSON(w, reviewerPresentationEnvelope(item, readReviewerPresentation(activeProject, id, nil)), 200)
 	})
 
 	sendEmbedded := func(w http.ResponseWriter, name string) {

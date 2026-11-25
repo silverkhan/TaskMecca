@@ -7,9 +7,11 @@ import (
 	"github.com/silverkhan/TaskMecca/internal/activity"
 	"github.com/silverkhan/TaskMecca/internal/contextlife"
 	"github.com/silverkhan/TaskMecca/internal/contractscope"
+	"github.com/silverkhan/TaskMecca/internal/handoffjournal"
 	"github.com/silverkhan/TaskMecca/internal/reviewcontinuity"
 	"github.com/silverkhan/TaskMecca/internal/rolepolicy"
 	"github.com/silverkhan/TaskMecca/internal/runtimeobs"
+	"net/http/httptest"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -17,6 +19,62 @@ import (
 	"testing"
 	"time"
 )
+
+func TestA102CollectionReadRoutesCannotEscapeOrReconcile(t *testing.T) {
+	project := "/owned/collection-fixture-explicit"
+	folder := project + "/_task_mecca/data/backlog"
+	allowed := []string{"/api/activity?task=FIXTURE-1", "/api/tasks/FIXTURE-1?projection=content", "/api/tasks/FIXTURE-1?projection=lifecycle", "/api/backlog/tasks?projection=initial", "/app.js", "/style.css", "/tasks/FIXTURE-1"}
+	for _, path := range allowed {
+		if !collectionReadRequest(project, folder, httptest.NewRequest("GET", path, nil)) {
+			t.Fatal("read route rejected", path)
+		}
+	}
+	denied := []string{"/api/tasks/FIXTURE-1", "/api/runtime/query", "/api/attention", "/api/snapshot", "/api/events", "/api/workload", "/api/notifications", "/api/hub/projects?project=/foreign", "/api/activity?task=FIXTURE-1&project=/foreign", "/api/activity?project=/owned/collection-fixture-explicit&project=/foreign", "/api/backlog/tasks?backlog=/foreign", "/api/activity?root=/foreign", "/api/activity?runtime_diagnostic=1", "/api/web/restart", "/api/upgrade", "/api/channel", "/api/operations/action", "/sw.js", "/manifest.webmanifest"}
+	for _, path := range denied {
+		if collectionReadRequest(project, folder, httptest.NewRequest("GET", path, nil)) {
+			t.Fatal("unsafe read/reconcile route admitted", path)
+		}
+	}
+	for _, method := range []string{"POST", "PUT", "DELETE", "PATCH"} {
+		if collectionReadRequest(project, folder, httptest.NewRequest(method, "/api/activity?task=FIXTURE-1", nil)) {
+			t.Fatal("mutation admitted", method)
+		}
+	}
+}
+
+func TestA102CollectionHandlerRejectsBeforeAnyBootWork(t *testing.T) {
+	t.Setenv("TASK_MECCA_HOME", t.TempDir())
+	t.Setenv("TASK_MECCA_PREVIEW_MODE", "1")
+	t.Setenv("TASK_MECCA_COLLECTION_SOURCE_PROJECT", t.TempDir())
+	fixture := t.TempDir()
+	before, err := os.ReadDir(fixture)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Handler(fixture, "", "fixture-only"); err == nil {
+		t.Fatal("unproven fixture started product handler")
+	}
+	after, err := os.ReadDir(fixture)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(before) != len(after) {
+		t.Fatal("rejected fixture wrote boot state")
+	}
+	escaped := filepath.Join(fixture, "escape")
+	if err := os.Symlink(t.TempDir(), escaped); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(filepath.Join(fixture, "_task_mecca"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(escaped, filepath.Join(fixture, "_task_mecca", "data")); err != nil {
+		t.Fatal(err)
+	}
+	if collectionReadTree(fixture) == nil {
+		t.Fatal("nested source read symlink admitted")
+	}
+}
 
 func TestA91WorkflowPresentationPreservesMeasurementsAndCache(t *testing.T) {
 	project := t.TempDir()
@@ -246,5 +304,69 @@ func TestA99ActualAssignedWorkerPurposeSourceAndCurrentProjection(t *testing.T) 
 	changed := readReviewerPresentation(project, "A-1", nil).ByAttempt["review"]
 	if changed.ActualState == "reviewing" || changed.ActualState == "accepted" {
 		t.Fatal("old source review reused", changed)
+	}
+}
+
+func TestA102ClaimHistoryReadFailsClosed(t *testing.T) {
+	for _, mode := range []string{"valid", "malformed", "missing_id", "symlink", "oversize"} {
+		t.Run(mode, func(t *testing.T) {
+			p := t.TempDir()
+			path := handoffjournal.JournalPath(p)
+			if e := os.MkdirAll(filepath.Dir(path), 0700); e != nil {
+				t.Fatal(e)
+			}
+			raw := []byte("{\"handoff_id\":\"unit\",\"record_kind\":\"prepared\"}\n")
+			if mode == "malformed" {
+				raw = append(raw, []byte("{broken\n")...)
+			}
+			if mode == "missing_id" {
+				raw = []byte("{}\n")
+			}
+			if mode == "symlink" {
+				target := filepath.Join(t.TempDir(), "foreign")
+				os.WriteFile(target, raw, 0600)
+				if e := os.Symlink(target, path); e != nil {
+					t.Fatal(e)
+				}
+			} else {
+				if e := os.WriteFile(path, raw, 0600); e != nil {
+					t.Fatal(e)
+				}
+				if mode == "oversize" {
+					if e := os.Truncate(path, (32<<20)+1); e != nil {
+						t.Fatal(e)
+					}
+				}
+			}
+			got := readWorkflowClaimRecords(p)
+			if (mode == "valid") != (len(got) == 1) {
+				t.Fatalf("%s: %+v", mode, got)
+			}
+		})
+	}
+}
+
+// Opt-in read-only probe of the same product projection, not an actor simulator.
+// The OS profile denies writes to the supplied source; only output is writable.
+func TestA102ReadActualWorkflowProjection(t *testing.T) {
+	project, task, out := os.Getenv("A102_READ_PROJECT"), os.Getenv("A102_READ_TASK"), os.Getenv("A102_READ_OUTPUT")
+	if project == "" || task == "" || out == "" {
+		t.Skip("opt-in actual read-only evidence")
+	}
+	events, e := (activity.Ledger{Project: project}).List(task)
+	if e != nil {
+		t.Fatal(e)
+	}
+	facts, _, e := readActivityLifecycle(project, task)
+	if e != nil {
+		t.Fatal(e)
+	}
+	workflow := readActivityWorkflow(project, task, events, activity.Summarize(task, events), facts)
+	raw, e := json.MarshalIndent(workflow, "", "  ")
+	if e != nil {
+		t.Fatal(e)
+	}
+	if e = os.WriteFile(out, raw, 0600); e != nil {
+		t.Fatal(e)
 	}
 }

@@ -33,6 +33,13 @@ func ackActivityCollection(project string, e activity.Event) error {
 			continue
 		}
 		if r.Activity.PayloadSHA256 != want.Activity.PayloadSHA256 {
+			// A rejected/unpublished earlier attempt has no immutable event
+			// time to replay. The ledger's actual later publication is current
+			// evidence; preserve those older failed/pending payloads without
+			// making them a conflict against the new immutable publication.
+			if !e.RecordedAt.IsZero() && r.At.Before(e.RecordedAt) {
+				continue
+			}
 			return fmt.Errorf("collection receipt content conflicts with immutable Activity event")
 		}
 		found = true

@@ -36,17 +36,19 @@ func ReadWorkflowExecutions(project, task string, now time.Time) ([]runtimeobs.A
 
 // Role facts are inspectable source points. They never contain a work duration.
 type WorkflowRoleFact struct {
-	Round             *int      `json:"round"`
-	RoundStatus       string    `json:"round_status,omitempty"`
-	ID                string    `json:"id"`
-	Kind              string    `json:"kind"`
-	At                time.Time `json:"at"`
-	Source            string    `json:"source"`
-	Reason            string    `json:"reason"`
-	MeasurementStatus string    `json:"measurement_status"`
-	AttemptID         string    `json:"attempt_id,omitempty"`
-	AssignmentID      string    `json:"assignment_id,omitempty"`
-	HandoffID         string    `json:"handoff_id,omitempty"`
+	PreviousAttemptID string     `json:"previous_attempt_id,omitempty"`
+	SourceAt          *time.Time `json:"source_at,omitempty"`
+	Round             *int       `json:"round"`
+	RoundStatus       string     `json:"round_status,omitempty"`
+	ID                string     `json:"id"`
+	Kind              string     `json:"kind"`
+	At                time.Time  `json:"at"`
+	Source            string     `json:"source"`
+	Reason            string     `json:"reason"`
+	MeasurementStatus string     `json:"measurement_status"`
+	AttemptID         string     `json:"attempt_id,omitempty"`
+	AssignmentID      string     `json:"assignment_id,omitempty"`
+	HandoffID         string     `json:"handoff_id,omitempty"`
 }
 type WorkflowGapEvidence struct {
 	Source     string    `json:"source"`
@@ -209,11 +211,19 @@ func workflowRoleFacts(in WorkflowInput, w *Workflow, rows map[string]*WorkflowR
 			// A bounded observation range, never an agent-active interval. Do not
 			// extrapolate a running session from last observation to current time.
 			end, valid := workflowTime(a.LastObservedAt)
+			var terminal *WorkflowTerminalEvidence
+			if binding, ok := workflowTime(a.BindingAt); ok && binding.After(at) {
+				at = binding
+			}
 			if a.Terminal {
-				end, valid = workflowTime(a.EndedAt)
+				var source runtimeobs.EvidenceSource
+				end, source, valid = workflowTerminalLookup(in)(a.AttemptID, a.AgentPath, a.RuntimeAgentID, a.BindingEvidence["assignment_id"], at)
+				if valid {
+					terminal = workflowTerminalProvenance(in, a.AttemptID, end, source)
+				}
 			}
 			if valid && !end.Before(at) && !end.After(in.Now) {
-				add(role, a.RuntimeAgentID, roundNumber(at, bounds, known), WorkflowInterval{ID: "runtime:" + a.AttemptID, Kind: "native_observed", Type: "unclassified_execution", Start: at, End: &end, AttemptID: a.AttemptID, AssignmentID: a.BindingEvidence["assignment_id"], Evidence: string(a.StateEvidenceSource), EndEvidence: "observed_boundary"})
+				add(role, a.RuntimeAgentID, roundNumber(at, bounds, known), WorkflowInterval{RuntimeTerminal: terminal, ID: "runtime:" + a.AttemptID, Kind: "native_observed", Type: "unclassified_execution", Start: at, End: &end, AttemptID: a.AttemptID, AssignmentID: a.BindingEvidence["assignment_id"], Evidence: string(a.StateEvidenceSource), EndEvidence: "observed_boundary"})
 			}
 		}
 	}
@@ -335,8 +345,22 @@ func workflowGapEvidence(in WorkflowInput, w *Workflow) {
 	for _, a := range workflowObservedAttempts(in) {
 		start, ok := workflowTime(a.StartedAt)
 		end, valid := workflowTime(a.LastObservedAt)
+		// Raw native lifetime remains in RuntimeTiming. A late task binding cannot
+		// retroactively turn that native's earlier unrelated work into task-state
+		// evidence. A known binding admits only its intersection with native time;
+		// without a binding time retain the conservative folded task observation.
+		if a.StateEvidenceSource == runtimeobs.EvidenceT3 && a.NativeReceipt != nil {
+			if associated, known := workflowTime(a.BindingAt); known {
+				if nativeStart, e := time.Parse(time.RFC3339Nano, a.NativeReceipt.StartedAt); e == nil {
+					start = nativeStart
+					if associated.After(start) {
+						start = associated
+					}
+				}
+			}
+		}
 		if a.Terminal {
-			end, valid = workflowTime(a.EndedAt)
+			end, _, valid = workflowTerminalLookup(in)(a.AttemptID, a.AgentPath, a.RuntimeAgentID, a.BindingEvidence["assignment_id"], start)
 		}
 		if !ok || !valid || !end.After(start) || end.After(in.Now) {
 			continue
@@ -419,6 +443,8 @@ func workflowGapEvidence(in WorkflowInput, w *Workflow) {
 		// Bounds describe evidence-backed participation, not a claim that the
 		// actor was absent outside it. A point alone has no inferred duration.
 		var first, last time.Time
+		currentOpen := false
+		nativeOpen := false
 		include := func(t time.Time) {
 			if t.IsZero() {
 				return
@@ -431,6 +457,9 @@ func workflowGapEvidence(in WorkflowInput, w *Workflow) {
 			}
 		}
 		for _, v := range r.Intervals {
+			if v.End == nil && v.Kind == "activity_open" {
+				currentOpen = true
+			}
 			include(v.Start)
 			if v.End != nil {
 				include(*v.End)
@@ -438,6 +467,11 @@ func workflowGapEvidence(in WorkflowInput, w *Workflow) {
 		}
 		for _, f := range r.RoleFacts {
 			include(f.At)
+		}
+		for _, a := range workflowObservedAttempts(in) {
+			if matches(r.AgentID, a.RuntimeAgentID) && attempts[a.AttemptID] && !a.Terminal && a.CurrentState == runtimeobs.StateRunning {
+				nativeOpen = true
+			}
 		}
 		for _, s := range sources {
 			if matches(r.AgentID, s.agent) && (s.evidence.AttemptID == "" || attempts[s.evidence.AttemptID]) {
@@ -454,7 +488,7 @@ func workflowGapEvidence(in WorkflowInput, w *Workflow) {
 				}
 				outside = append(outside, participationGap(lo, end, "before_participation"))
 			}
-			if last.Before(hi) {
+			if !currentOpen && !nativeOpen && last.Before(hi) {
 				start := last
 				if start.Before(lo) {
 					start = lo
@@ -464,10 +498,19 @@ func workflowGapEvidence(in WorkflowInput, w *Workflow) {
 			if first.After(lo) {
 				lo = first
 			}
-			if last.Before(hi) {
+			if !currentOpen && !nativeOpen && last.Before(hi) {
 				hi = last
 			}
 			r.Participation = &WorkflowParticipation{Start: first, End: last, Basis: "observed_bounds_not_exclusive_presence", Status: "bounded"}
+			if currentOpen {
+				r.Participation.End = hi
+				r.Participation.Status = "open_current_phase"
+				r.Participation.Basis = "reported_current_open_phase_not_closed_activity"
+			} else if nativeOpen {
+				r.Participation.End = hi
+				r.Participation.Status = "open_native_observation"
+				r.Participation.Basis = "running_at_last_native_observation_end_unverified_not_measured_activity"
+			}
 		}
 		measured := []timingInterval{}
 		for _, v := range r.Intervals {
@@ -537,10 +580,38 @@ func workflowTerminalLookup(in WorkflowInput) func(string, string, string, strin
 			// Folded EndedAt is the observation boundary, not native CompletedAt.
 			// Preserve that clock: do not backdate an Activity or invent phase time.
 			observed, observedOK := workflowTime(r.ObservedAt)
-			if !valid || !observedOK || completed.After(observed) || completed.After(end) || observed.After(in.Now) {
+			if !valid || !observedOK || completed.Before(start) || completed.After(observed) || completed.After(end) || observed.After(in.Now) {
 				return invalid()
 			}
+			if r.StartedAt != "" {
+				nativeStart, ok := workflowTime(r.StartedAt)
+				if !ok || completed.Before(nativeStart) {
+					return invalid()
+				}
+			}
+			if bound, ok := workflowTime(a.BindingAt); ok && completed.Before(bound) {
+				return invalid()
+			}
+			end = completed // Native source clock; arrival remains separate.
+
 		}
 		return end, a.StateEvidenceSource, true
 	}
+}
+
+// Arrival never extends native life or becomes an Activity STOP.
+func workflowTerminalProvenance(in WorkflowInput, id string, end time.Time, source runtimeobs.EvidenceSource) *WorkflowTerminalEvidence {
+	out := &WorkflowTerminalEvidence{ObservedAt: end, Source: source}
+	if source == runtimeobs.EvidenceT3 {
+		for _, a := range in.ExecutionObservations {
+			if a.AttemptID == id && a.NativeReceipt != nil {
+				if observed, ok := workflowTime(a.NativeReceipt.ObservedAt); ok {
+					out.ObservedAt = observed
+					actual := end
+					out.SourceAt = &actual
+				}
+			}
+		}
+	}
+	return out
 }

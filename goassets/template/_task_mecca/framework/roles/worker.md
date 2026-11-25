@@ -38,6 +38,20 @@ own-Activity CLI path does not authorize manual operating-ledger writes.
 
 > **CLI 명령 선택·등록/승인/인계·실패 재개:** [CLI_OPERATIONS_PLAYBOOK.md](../CLI_OPERATIONS_PLAYBOOK.md)를 먼저 확인한다. 신규 CLI가 설치되어 있지 않은 경우에만 구형 수동 절차를 사용하고, 사용자 승인/등록 이력을 두 번 기록하지 않는다.
 
+Managed collection entry requires the actual current observed actor and a durable,
+task-linked operation START ACK before business work. Preserve failed event keys
+and original diagnostics; reconcile them before continuing. For an explicitly
+authorized isolated `--collection-project`, retain the real canonical source
+project and current native/role/parent/task/policy checks. A fixture marker alone
+never authorizes an actor, and fixture delivery/monitoring stay disabled.
+
+After a genuine interruption, observe the actual terminal source and distinct
+current episode, bind the exact continuing assignment, and record current START
+plus a verified `resume --previous-attempt ... --related-id ...` boundary. Do not
+close an old operation/wait or invent its Activity stop. A native turn ending is
+not task completion. A new fixture task needs a genuine terminal-to-pending-
+assignment-to-new-episode transition; never replace the live task binding.
+
 ## Worker 컨텍스트 수명 및 교체
 
 Worker는 현재 배정의 구현 맥락이 중요한 동안 임의로 종료·교체되지 않는다. DONE/BLOCKED 인수와 원본 Handoff 처리까지 완료되면 Controller가 `task-mecca context event --role worker:<pokemon-name> --event worker_done --project PROJECT --json`을 참고해 이후 신규 작업에서 새 세션을 쓸지 판단한다. 활성 `doing`, 미처리 Handoff, 미커밋 산출물이 있으면 우선 보존하고 교체를 미룬다. 동일 Pokémon 논리 이름과 서로 다른 runtime attempt는 구별한다. Worker는 CLM로 canonical 운영원장을 직접 쓰거나 자기 재개에 성공했다고 주장하지 않는다.

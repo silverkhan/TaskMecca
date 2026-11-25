@@ -37,6 +37,7 @@ func runActivityCLI(args []string, out, errOut io.Writer) int {
 	fs := flag.NewFlagSet("activity "+action, flag.ContinueOnError)
 	fs.SetOutput(errOut)
 	project := fs.String("project", ".", "canonical project")
+	collection := fs.String("collection-project", "", "owned isolated collection destination")
 	kind := fs.String("type", "", "activity type")
 	role := fs.String("role", os.Getenv("TASK_MECCA_ROLE"), "actor role")
 	agent := fs.String("agent", os.Getenv("TASK_MECCA_AGENT_ID"), "exact actor ID")
@@ -78,6 +79,15 @@ func runActivityCLI(args []string, out, errOut io.Writer) int {
 	if err != nil {
 		fmt.Fprintln(errOut, err)
 		return 2
+	}
+	hostProject := root
+	if *collection != "" {
+		actor, e := runtimeobs.CollectionActor(hostProject, *collection, time.Now().UTC())
+		if e != nil || actor.Role != *role || actor.Selector.SessionID != *agent {
+			fmt.Fprintf(errOut, "isolated Activity actor rejected: %v\n", e)
+			return 1
+		}
+		root = *collection
 	}
 	store := activity.Ledger{Project: root}
 	emit := func(v any) {
@@ -397,6 +407,16 @@ func runActivityCLI(args []string, out, errOut io.Writer) int {
 	// A terminal/runtime rebinding event cannot land between verification and
 	// Activity publication through other canonical project writers.
 	verifyAttribution := func() error {
+		if *collection != "" {
+			a, err := runtimeobs.CollectionActor(hostProject, *collection, time.Now().UTC())
+			if err != nil {
+				return err
+			}
+			if a.Role != string(e.Role) || a.Selector.SessionID != e.AgentID {
+				return fmt.Errorf("isolated Activity identity changed")
+			}
+		}
+
 		if reviewTrace {
 			fresh, err := activityReviewTrace(root, e)
 			if err != nil {
@@ -503,7 +523,7 @@ func runActivityCLI(args []string, out, errOut io.Writer) int {
 		pendingWritten = err == nil
 		return err
 	})
-	if pendingWritten {
+	if pendingWritten || writeErr != nil {
 		status, problem := "ack", ""
 		if writeErr != nil {
 			status = "failed"

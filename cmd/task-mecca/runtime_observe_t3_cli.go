@@ -14,6 +14,8 @@ func runRuntimeObserveT3CLI(args []string, out, stderr io.Writer) int {
 	f := flag.NewFlagSet("runtime observe-t3", flag.ContinueOnError)
 	f.SetOutput(stderr)
 	project := f.String("project", ".", "canonical project (Controller sole writer)")
+	collection := f.String("collection-project", "", "owned isolated evidence destination; host project remains read-only")
+	initialize := f.Bool("collection-init", false, "create a new isolated fixture for the actual authorized source Worker")
 	thread := f.String("thread-id", "", "exact T3 thread ID")
 	session := f.String("session-id", "", "exact native CODEX_THREAD_ID")
 	agent := f.String("agent-id", "", "exact native runtime ID (Codex session ID)")
@@ -37,6 +39,60 @@ func runRuntimeObserveT3CLI(args []string, out, stderr io.Writer) int {
 		return 2
 	}
 	sel := runtimeobs.T3Selector{ThreadID: *thread, SessionID: *session, RuntimeAgentID: *agent, RunID: *run}
+	if *collection != "" {
+		if *dry || *worker != "" || *handoff != "" {
+			fmt.Fprintln(stderr, "isolated observation requires explicit formal role; dry-run, worker-path and handoff are not observation authority")
+			return 2
+		}
+		in := runtimeobs.RoleStart{CanonicalProject: *project, SourceWorktree: *source, TaskID: *task, AssignmentID: *assignment, Role: *role, AgentPath: *agentPath, ParentThreadID: *parent, Selector: sel}
+		if *initialize {
+			c, err := runtimeobs.CreateCollectionProject(*collection, in, time.Now().UTC())
+			if err != nil {
+				fmt.Fprintln(stderr, err)
+				return 1
+			}
+			return writeT3Result(out, *asJSON, map[string]any{"ok": true, "collection_project": c, "canonical_written": false})
+		}
+		actor, err := runtimeobs.CollectionActor(*project, *collection, time.Now().UTC())
+		if err != nil {
+			fmt.Fprintln(stderr, err)
+			return 1
+		}
+		if actor.Role != *role || actor.AgentPath != *agentPath || actor.SourceWorktree != *source || actor.ParentThreadID != *parent || actor.Selector.ThreadID != *thread || actor.Selector.SessionID != *session || *agent != *session {
+			fmt.Fprintln(stderr, "isolated START differs from actual source actor")
+			return 1
+		}
+		if *task != "" {
+			row, e := runtimeobs.FindAssignment(*collection, *assignment)
+			if e != nil || row.TaskID != *task || row.AgentPath != actor.AgentPath {
+				fmt.Fprintln(stderr, "exact fixture task/role assignment required")
+				return 1
+			}
+		}
+		sel.CanonicalProject = *project
+		a, r, err := runtimeobs.ObserveT3Execution(*collection, sel, time.Now().UTC())
+		if err != nil {
+			fmt.Fprintln(stderr, err)
+			return 1
+		}
+		if *task != "" {
+			assignmentRow, e := runtimeobs.FindAssignment(*collection, *assignment)
+			if e != nil || assignmentRow.TaskID != *task || assignmentRow.AgentPath != actor.AgentPath {
+				fmt.Fprintln(stderr, "exact fixture task/role assignment required")
+				return 1
+			}
+			a, err = runtimeobs.BindRuntimeAgentForAssignment(*collection, *assignment, *session, "", time.Now().UTC())
+			if err != nil {
+				fmt.Fprintln(stderr, err)
+				return 1
+			}
+		}
+		return writeT3Result(out, *asJSON, map[string]any{"ok": true, "verified": true, "attempt": a, "receipt": r, "canonical_written": false, "activity_written": false, "next_action": "Report current actual phase and verify its ACK before work; no historical duration is inferred."})
+	}
+	if *initialize {
+		fmt.Fprintln(stderr, "--collection-init requires --collection-project")
+		return 2
+	}
 	formalMode := *role != "" || *agentPath != "" || *parent != ""
 	startMode := *assignment != "" || *task != "" || *worker != "" || *source != "" || formalMode
 	if formalMode && (*worker != "" || (*role != "controller" && *role != "worker" && *role != "registrar") || *agentPath == "" || *parent == "") {
@@ -47,7 +103,7 @@ func runRuntimeObserveT3CLI(args []string, out, stderr io.Writer) int {
 		fmt.Fprintln(stderr, "--handoff is only an existing formal Controller claim")
 		return 2
 	}
-	if startMode && (*assignment == "" || *task == "" || (!formalMode && *worker == "") || *source == "" || *project == ".") {
+	if startMode && !(formalMode && *role == "registrar" && *assignment == "") && (*assignment == "" || *task == "" || (!formalMode && *worker == "") || *source == "" || *project == ".") {
 		fmt.Fprintln(stderr, "START integration requires explicit --project --assignment --task-id --worker-path --source-worktree")
 		return 2
 	}
@@ -58,6 +114,16 @@ func runRuntimeObserveT3CLI(args []string, out, stderr io.Writer) int {
 			fmt.Fprintln(stderr, "unsupported Worker phase; use actual supported activity report event")
 			return 2
 		}
+	}
+	if formalMode && *role == "registrar" && *assignment == "" && !*dry {
+		result, err := runtimeobs.ObserveT3RoleStart(runtimeobs.RoleStart{CanonicalProject: *project, SourceWorktree: *source, TaskID: *task, Role: *role, AgentPath: *agentPath, ParentThreadID: *parent, Selector: sel}, time.Now().UTC())
+		response := map[string]any{"verified": err == nil, "role_start": result, "role": "registrar", "activity_written": false, "implementation_authorized": false, "next_action": "Before registration, begin an exact current request/operation boundary and verify ACK. After registration, bind the exact task and report its current Registrar phase; never reconstruct past Activity."}
+		if err != nil {
+			response["collection_gap"] = err.Error()
+			writeT3Result(out, *asJSON, response)
+			return 1
+		}
+		return writeT3Result(out, *asJSON, response)
 	}
 	if *dry {
 		if formalMode {

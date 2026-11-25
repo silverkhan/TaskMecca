@@ -2635,16 +2635,31 @@ select.tm-combo-native{position:absolute!important;width:1px!important;height:1p
 
 /* Evidence boundaries use the incumbent neutral palette, never measured fills. */
 .workflow-state-before_participation,.workflow-state-after_participation{background:transparent;opacity:.5;border:1px dashed currentColor}
-.workflow-interval.wf-kind-operation_execution,.workflow-interval.wf-kind-execution_report,.workflow-interval.wf-kind-activity_unreported{background:var(--surface-2);border:1px dashed currentColor;min-width:3px}
+.workflow-interval.wf-kind-operation_execution,.workflow-interval.wf-kind-operation_unreported,.workflow-interval.wf-kind-execution_report,.workflow-interval.wf-kind-activity_unreported{background:var(--surface-2);border:1px dashed currentColor;min-width:3px}
 .workflow-session-activities{padding-inline-start:1.25rem;margin-block:1rem}
 .workflow-session-activities li{margin-block:1rem}
 .workflow-session-activities p{margin-block:.25rem;overflow-wrap:anywhere}
 .workflow-explanation-origin{font-size:.85em;color:var(--text-secondary);margin-block:.35rem 1rem}
 .workflow-execution-paint{background:transparent;box-shadow:none;border:1px dashed var(--muted)}
-.workflow-run .wf-kind-operation_execution>span,.workflow-run .wf-kind-execution_report>span,.workflow-run .wf-kind-activity_unreported>span{background:var(--surface);color:var(--text)}
+.workflow-line-legend{display:flex;flex-wrap:wrap;gap:6px 16px;padding:0;margin:0 0 12px;list-style:none;font-size:11px;line-height:1.6;color:var(--muted)}
+.workflow-line-legend>li{display:flex;align-items:center;gap:6px;min-width:0}
+.workflow-line-legend .workflow-state-execution{transform:none;width:14px;height:10px;margin:0;border:1px dashed currentColor}
+.workflow-line-legend .workflow-state-unreported{border:1px dotted currentColor}
+.workflow-line-legend .workflow-state-native_observed{background:transparent;border:0;border-block:1px solid currentColor;border-radius:0}
+.workflow-line-legend .workflow-state-unmeasured{background:transparent;border:0;border-block-end:1px dotted currentColor;border-radius:0}
+.workflow-line-legend .workflow-state-participation{background:transparent;border:1px dashed currentColor;opacity:.5}
+.workflow-state-fact{background:var(--surface);border:1px solid var(--muted);transform:rotate(45deg);width:8px;height:8px;margin-inline:3px}
+.workflow-interval.wf-kind-operation_unreported,.workflow-interval.wf-kind-activity_unreported{border-style:dotted}
+.workflow-gap-paint.workflow-state-unmeasured{border-block-end-style:dotted}
+.workflow-run .wf-kind-operation_execution>span,.workflow-run .wf-kind-operation_unreported>span,.workflow-run .wf-kind-execution_report>span,.workflow-run .wf-kind-activity_unreported>span{background:var(--surface);color:var(--text)}
 .workflow-interval.wf-execution-point{min-width:3px}
 
 /* Source facts have their own rail; enlarged hit areas cannot cover lanes. */
 .workflow-fact-rail{position:absolute;inset-inline:0;pointer-events:none}
 .workflow-fact-rail .workflow-fact-point{pointer-events:auto}
 .workflow-interval.wf-start-only::before{top:50%;left:50%;width:min(10px,var(--workflow-entry-height,10px));height:min(10px,var(--workflow-entry-height,10px));transform:translate(-50%,-50%);pointer-events:none}
+
+/* A102: a positive source interval remains visible at overview scale. The
+   run geometry/data keep its true timestamps; this is a display minimum. */
+.workflow-run[data-workflow-positive]>.workflow-run-surface{min-width:3px}
+.workflow-run[data-workflow-positive]>.workflow-interval{min-width:3px}

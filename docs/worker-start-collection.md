@@ -70,3 +70,78 @@ has no second web app template to synchronize. Changes do not edit installed
 project frameworks. Verification uses selected domain tests with temporary
 ledgers, fixture T3 SQLite stores and offline DOM execution. Never run service
 control or global install suites against an operating project.
+
+## Managed collection and isolated verification
+
+Use an explicit operation boundary START and confirm its durable ACK before
+business entry. `runtime boundary run ... -- PROGRAM ARGS` executes a program
+only after the current actor START is acknowledged; it records the real result
+and END afterward. A dangling previous START is a recovery condition, not
+permission to run the business command again. Task-linked collection entry also
+requires an observed current actor and a successful last boundary ACK. Failed
+Activity or boundary delivery retains its original event/key, error, owner and
+resume condition. Repair and reconcile the same record before continuing.
+
+`--collection-project OWNED_FIXTURE` separates the collection journal from
+`--project REAL_CANONICAL`. Initialize a new owned `.artifacts/collection-fixture-*`
+destination with the authorized source Worker. The source-owned initialization
+grant and byte-matched marker establish destination provenance; neither grants
+an actor a role. Every actor command rechecks its actual host/native execution,
+project, source cwd, parent, current source role and authority. Worker admission
+requires its current task/assignment/policy. An operational Controller also needs
+the exact current claimed source-task handoff. Registrar keeps its real Root
+lineage and dedicated registration provenance. Canonical/monitor destinations,
+symlink escapes, altered markers and foreign actors fail before collection
+writes. Fixture delivery and monitoring remain disabled.
+
+Registration `--approve`, an execution-authorized handoff and a canonical task
+execution decision are distinct receipts. Before implementation metadata and
+Worker dispatch, record the actual existing user execution consent through
+`contract decision record --kind execution_approved ... --user-confirmed` in the
+owned destination, at the current time with the real approval source. Then record
+observed owner/assignment/workspace facts through `worker_metadata`. Neither a
+source assignment nor a fixture marker fills a missing destination decision.
+A later recovery preserves the earlier refusal and never reconstructs a past
+approval timestamp.
+
+The isolated read-only preview uses the shipped handler, workflow projection and
+assets. It validates the source-owned fixture before any boot reconciliation;
+only scoped content/catalog, existing lifecycle snapshots and Activity reads
+are admitted. Mutation, runtime, maintenance, attention, service, notification,
+monitor and arbitrary project/backlog queries remain unavailable. A pending
+lifecycle snapshot stays pending; it is not manufactured for a screenshot.
+
+## Interruption and genuine same-native continuation
+
+A verified native `cancelled` status maps to interrupted execution, preserving
+its original native/run status and both completion timestamps. It does not mean
+the task completed. Actual historical terminal source is required before the
+observer admits the distinct new episode. A failed historical read retains its
+underlying diagnostic. Never write a fabricated completed receipt or edit the
+ledger to recover an observation.
+
+After observing and binding the genuine current episode to the existing exact
+task/role/assignment, start and acknowledge a current operation. Record a
+`runtime boundary record --kind resume --previous-attempt OLD_ATTEMPT
+--related-id EXACT_OLD_BOUNDARY ...` point. The CLI verifies the actual historical
+T3 receipt, same native/session/role/task, continuing assignment, exact original
+task-linked boundary and nonoverlapping native times. It derives the historical
+source time itself. This links the real recovery without closing the old
+operation or wait. The renderer labels an old operation whose native ended but
+whose END was never reported as unmeasured, with that native bound and the
+missing report visible. Resume is a separate fact, not Activity duration.
+
+Native lifetime and task-state evidence have different bounds. Keep the original
+native start/end and observation times in RuntimeTiming. For task-state coverage,
+admit native evidence only from the later of native start and exact task binding;
+when binding time is unknown, do not extend before the folded task observation.
+An actual request/task-linked operation may independently evidence preparation.
+This preserves established earlier scope while leaving unrelated prebinding
+execution unknown for the task.
+
+A new task cannot replace the live episode's task binding. Finish the actual
+native episode, prepare the supported pending assignment, genuinely resume the
+same native/role/group and START the distinct new attempt. Native turn completion
+alone is not `worker_completed`, task acceptance or canonical done. Interrupted
+and normal fixture runs remain separate evidence, including all failures and
+missing stops; neither may backfill historical Activity coverage.
